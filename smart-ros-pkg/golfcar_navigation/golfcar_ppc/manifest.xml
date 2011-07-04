@@ -1,0 +1,28 @@
+<package>
+  <description brief="golfcar_purepursuit_cntrl">
+
+     golfcar_purepursuit_cntrl
+
+  </description>
+  <author>demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/golfcar_purepursuit_cntrl</url>
+  <depend package="std_msgs"/>
+  <depend package="nav_msgs"/>
+  <depend package="roslib"/>
+  <depend package="rospy"/>
+  <depend package="geometry_msgs"/>
+  <depend package="nav_core"/>
+  <depend package="roscpp"/>
+  <depend package="pluginlib"/>
+  <depend package="costmap_2d"/>
+  <depend package="nav_core"/>
+  <depend package="base_local_planner"/>
+  <export>
+    <cpp cflags="-I${prefix}/include -I${prefix}/msg/cpp" lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -lbase_local_planner" />
+    <nav_core plugin="${prefix}/blp_plugin.xml" />
+  </export>
+</package>
+
+

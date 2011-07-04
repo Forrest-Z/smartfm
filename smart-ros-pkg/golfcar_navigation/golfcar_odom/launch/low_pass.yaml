@@ -1,0 +1,16 @@
+velocity_filter:
+      -
+       name: lpf_2nd_10Hz_1
+       type: filters/MultiChannelTransferFunctionFilterDouble
+       params:
+          a: [1, -1.8782, 0.8819]
+          b: [0.0009, 0.0019, 0.0009]
+acc_filter:
+      -
+       name: lpf_2nd_10Hz_2
+       type: filters/MultiChannelTransferFunctionFilterDouble
+       params:
+          a: [1, -1.8782, 0.8819]
+          b: [0.0009, 0.0019, 0.0009]
+
+

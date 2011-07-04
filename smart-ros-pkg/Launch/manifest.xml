@@ -1,0 +1,14 @@
+<package>
+  <description brief="Launch">
+
+     Launch
+
+  </description>
+  <author>golfcar</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/Launch</url>
+
+</package>
+
+

@@ -1,0 +1,7 @@
+<library path="lib/libgolfcar_ppc">
+  <class name="golfcar_purepursuit/PurePursuitBase" type="golfcar_purepursuit::PurePursuitBase" base_class_type="nav_core::BaseLocalPlanner">
+    <description>
+      A implementation of a purepursuit controller for golfcar.
+    </description>
+  </class>
+</library>
