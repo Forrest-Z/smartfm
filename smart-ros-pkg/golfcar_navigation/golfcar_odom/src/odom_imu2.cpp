@@ -18,7 +18,7 @@ namespace golfcar_odometry_imu{
 		imuQ = imu.orientation;
 	}
 
-	void golfcar_odometry_imu::samplerCallBack(golfcar_halsampler::odo sampler)
+	void golfcar_odometry_imu::samplerCallBack(golfcar_odom::odo sampler)
 	{
 
 	   static tf::TransformBroadcaster broadcaster_b;

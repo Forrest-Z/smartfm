@@ -16,6 +16,7 @@
   <depend package="nav_msgs"/>
   <depend package="filters"/>
   <depend package="sensor_msgs"/>
+  <depend package="golfcar_halsampler"/>
 </package>
 
 

@@ -17,7 +17,7 @@ namespace golfcar_odometry{
 		yaw = pose2d.theta;
 	}
 		
-	void golfcar_odometry::samplerCallBack(golfcar_halsampler::odo sampler)
+	void golfcar_odometry::samplerCallBack(golfcar_odom::odo sampler)
 	{
 		
 		if(pose_init==0)
