@@ -1,0 +1,15 @@
+<stack>
+  <description brief="third_party">third_party</description>
+  <author>Maintained by golfcar</author>
+  <license>BSD,LGPL</license>  
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/third_party</url>
+  <depend stack="common_msgs" /> <!-- nav_msgs, sensor_msgs -->
+  <depend stack="diagnostics" /> <!-- self_test, diagnostic_updater -->
+  <depend stack="driver_common" /> <!-- dynamic_reconfigure, driver_base -->
+  <depend stack="geometry" /> <!-- tf -->
+  <depend stack="image_common" /> <!-- image_transport -->
+  <depend stack="ros" />
+  <depend stack="ros_comm" /> <!-- roscpp, message_filters, xmlrpcpp, std_msgs, topic_tools, rosbag -->
+
+</stack>
