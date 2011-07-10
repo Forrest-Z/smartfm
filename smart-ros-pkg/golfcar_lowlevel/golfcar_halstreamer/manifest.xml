@@ -1,0 +1,19 @@
+<package>
+  <description brief="golfcar_lowlevel">
+
+     golfcar_lowlevel
+
+  </description>
+  <author>Demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/golfcar_lowlevel</url>
+  <depend package="std_msgs"/>
+  <depend package="rospy"/>
+  <depend package="roscpp"/>
+  <depend package="joy"/>
+  <depend package="geometry_msgs"/>
+  
+</package>
+
+

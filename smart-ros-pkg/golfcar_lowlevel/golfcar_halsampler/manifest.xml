@@ -1,0 +1,16 @@
+<package>
+  <description brief="golfcar_halsampler">
+
+     golfcar_halsampler
+
+  </description>
+  <author>GolfCar</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/golfcar_halsampler</url>
+  <depend package="std_msgs"/>
+  <depend package="rospy"/>
+  <depend package="roscpp"/>
+</package>
+
+
