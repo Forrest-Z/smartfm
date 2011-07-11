@@ -8,4 +8,4 @@ libserial-0.5.2 handles leaflabs_adc's serial communication
 2. ./configure, then sudo make install
 
 Use rosmake at smart-ros-pkg to compile all the included packages.
-For compilation of individual package, a simple make command at the package folder is suffice for recompilation.
+For compilation of individual package, a simple make command at the package folder is suffice.
