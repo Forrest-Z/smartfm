@@ -1,0 +1,9 @@
+<launch>
+	<node pkg="golfcar_odom" type="golfcar_odom_imu2" name="golfcar_odom"/>
+	<node name="map_server" pkg="map_server" type="map_server" args="$(find golfcar_map)/golfcar/NUSengineering.jpg 0.05"/>
+	<node name="amcl" pkg="amcl" type="amcl" respawn="false">
+		<remap from="scan" to="sick_scan2"/>
+		
+	</node>
+</launch>
+

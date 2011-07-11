@@ -1,0 +1,52 @@
+<launch>
+	<master auto="start"/>
+	<node pkg="gpsd_client" type="gpsd_client" name="gpsd_client"/>
+	<node name="gps_conv" pkg="gps_common" type="utm_odometry_node">
+		<remap from="odom" to="vo"/>
+		<param name="rot_covariance" value="99999" />
+		<param name="frame_id" value="base_footprint" />
+	</node>
+		<node pkg="sicktoolbox_wrapper" type="sicklms" name="sicklms2">
+		<param name="port" value="/dev/ftdi1"/>
+		<remap from ="scan" to="sick_scan2"/>
+		<param name="resolution" value="0.5"/>
+		<param name="frame_id" value="sick_laser2"/>
+		<param name="baud" value="500000"/>
+	</node>
+	<node pkg="sicktoolbox_wrapper" type="sicklms" name="sicklms">
+		<param name="port" value="/dev/ftdi2"/>
+		<remap from ="scan" to="sick_scan"/>
+		<param name="resolution" value="1"/>
+		<param name="frame_id" value="sick_laser"/>
+		<param name="baud" value="500000"/>
+	</node>
+
+	<node name="hokuyo" pkg="hokuyo_node" type="hokuyo_node" respawn="false" output="screen">  
+		<!-- Starts up faster, but timestamps will be inaccurate. --> 
+		<param name="calibrate_time" type="bool" value="false"/> 
+		<param name="frame_id" value="laser"/>
+		<!-- Set the port to connect to here -->
+		<param name="port" type="string" value="/dev/hokuyo"/> 
+		<param name="min_ang" type="double" value="-2.2689"/>
+		<param name="max_ang" type="double" value="2.2689"/>  
+		<param name="intensity" type="bool" value="false"/>
+	</node>
+	<node pkg="lse_xsens_mti" type="mti_node" name="mti_node">
+		<param name="port" type="string" value="/dev/ttyUSB0"/>
+	</node>
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_hokuyolaser" args="1.14, 0.0, 1.83 0.05 0 0 /base_link /laser 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser" args="1.7, 0.0, 1.45 0 0.35 0 /base_link /sick_laser 100" />
+	<!--node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="1.83, -0.36, 0.86 0 0 0 /base_link /sick_laser2 100" /-->
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="0.92, 0, 1.83 0 0 0 /base_link /sick_laser2 100" />
+
+	<node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+		<param name="video_device" value="/dev/video0" />
+		<param name="image_width" value="640" />
+		<param name="image_height" value="480" />
+		<param name="pixel_format" value="yuyv" />
+		<param name="camera_frame_id" value="usb_cam" />
+		<param name="io_method" value="mmap"/>
+	</node>
+
+</launch>
+

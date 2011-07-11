@@ -1,0 +1,10 @@
+<launch>
+	<node pkg="pedestrian_detector" type="classifier" name="classifier"/>
+	<node pkg="pedestrian_detector" type="visualizer" name="visualizer"/>
+	<node pkg="people_detector" type="people_detect" name="people_detect">
+	</node>
+	<node pkg="people_detector" type="camera_project" name="camera_project"/>
+	<!--node pkg="tf" type="static_transform_publisher" name="pedestrian_sensor_to_map" args="196.5 100 0.0 0 0 0 /map /pedestrian_sensor 100" />
+	<node pkg="pedestrian_crossing_sensor" type="pedestrian_crossing" name="pedestrian_crossing"/-->
+</launch>
+

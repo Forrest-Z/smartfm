@@ -8,6 +8,8 @@
   <license>BSD</license>  
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/lse_communication</url>
-  <depend stack="ros" /> <!-- roscpp -->
+  <depend stack="ros" />
+  <depend stack="ros_comm" /> <!-- std_msgs, roscpp -->
+  <depend stack="third_party" /> <!-- foreign_relay -->
 
 </stack>

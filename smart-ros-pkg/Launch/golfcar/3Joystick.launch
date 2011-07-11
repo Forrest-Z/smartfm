@@ -1,0 +1,7 @@
+<launch>
+	<node pkg="joy" type="joy_node" name="joy_node">
+		<param name="dev" value="/dev/input/js1"/>
+	</node>
+	<node pkg="golfcar_lowlevel" type="joy_multichannel" name="joy_multichannel"/>
+</launch>
+
