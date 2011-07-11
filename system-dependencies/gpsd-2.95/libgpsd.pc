@@ -1,0 +1,9 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libgpsd
+Description: Lowlevel GPSD control library
+Version: 2.95
+Libs: -L${libdir} -lgpsd

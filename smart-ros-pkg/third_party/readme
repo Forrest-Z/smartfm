@@ -1,6 +1,0 @@
-Third party dependency is included inside this stack, gpsd server need to be installed as part of the dependency of gps_umd pacakge
-1. Grab the tarball: http://prdownload.berlios.de/gpsd/gpsd-2.95.tar.gz
-2. Extract to somewhere
-3. ./autogen.sh, make, then sudo make install
-4. rosmake
-

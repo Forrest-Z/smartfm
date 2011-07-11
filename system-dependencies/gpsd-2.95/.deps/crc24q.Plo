@@ -1,0 +1,7 @@
+crc24q.lo: crc24q.c \
+ /usr/lib/x86_64-linux-gnu/gcc/x86_64-linux-gnu/4.5.2/include/stdbool.h \
+ crc24q.h
+
+/usr/lib/x86_64-linux-gnu/gcc/x86_64-linux-gnu/4.5.2/include/stdbool.h:
+
+crc24q.h:
