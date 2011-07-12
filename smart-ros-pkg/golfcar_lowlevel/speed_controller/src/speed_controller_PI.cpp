@@ -8,56 +8,83 @@ namespace PID_Speed{
     ros::NodeHandle n;
     cmd_vel_sub_= n.subscribe("cmd_vel", 1, &PID_Speed::cmdVelCallBack, this);
     sampler_sub_= n.subscribe("golfcar_sampler", 1, &PID_Speed::samplerCallBack, this);
-    speed_pub_ = n.advertise<golfcar_halstreamer::throttle>("golfcar_speed", 1);
-    brake_pub_ = n.advertise<golfcar_halstreamer::brakepedal>("golfcar_brake", 1);
-    speed_e_pre_ = speed_e_ =  0;
-    cmd_vel_ = 0;
-    throttle_ = 0;
-    first_switch_=true;
-    if(!private_nh_.getParam("K1T",K1T_)) K1T_ = 1;
-    if(!private_nh_.getParam("K2T",K2T_)) K2T_ = 0.0;
-    if(!private_nh_.getParam("K3T",K3T_)) K3T_ = 0.0;
-    if(!private_nh_.getParam("K1B",K1B_)) K1B_ = 50;
-    if(!private_nh_.getParam("K2B",K2B_)) K2B_ = 0.0;
-    if(!private_nh_.getParam("K3B",K3B_)) K3B_ = 0.0;
-    if(!private_nh_.getParam("switchThreshold",SwitchThreshold_)) SwitchThreshold_ = 0.2;
+    throttle_pub_ = n.advertise<golfcar_halstreamer::throttle>("golfcar_speed", 1);
+    brakepedal_pub_ = n.advertise<golfcar_halstreamer::brakepedal>("golfcar_brake", 1);
+
+    if(!private_nh_.getParam("kp",kp_)) kp_ = 0.3;
+    if(!private_nh_.getParam("ki",ki_)) ki_ = 0.3;
+    if(!private_nh_.getParam("ki_sat",ki_sat_)) ki_sat_ = 0.4;
+    if(!private_nh_.getParam("coeff_throttle",coeff_th_)) coeff_th_ = 3;
+    if(!private_nh_.getParam("coeff_brakepedal",coeff_bp_)) coeff_bp_ = 120;
     if(!private_nh_.getParam("throttleZeroThres", throttle_zero_thres_)) throttle_zero_thres_=0.1;
     if(!private_nh_.getParam("brakeZeroThres", brake_zero_thres_)) brake_zero_thres_=1;
-    if(!private_nh_.getParam("autoControl", auto_control_)) auto_control_=false;
-    std::cout<<"K1T: "<<K1T_<<" K2T: "<<K2T_<<" K3T: "<<K3T_<<"\n";
-	std::cout<<"K1B: "<<K1B_<<" K2B: "<<K2B_<<" K3B: "<<K3B_<<"\n";
+
+    cmd_vel_ = 0;
+    time_pre_ = ros::Time::now();
+    e_pre_ = 0;
+    ei_ = 0;
+
+    std::cout<<"kp: "<<kp_<<" ki: "<<ki_<<" ki_sat: "<<ki_sat_<<"\n";
+    std::cout<<"coeff_th: "<<coeff_th_<<" coeff_bp: "<<coeff_bp_<<"\n";
+    std::cout<<"throttle_threshold: "<<throttle_zero_thres_<<" brake_threshold: "<<brake_zero_thres_<<"\n";
   }
-	void PID_Speed::samplerCallBack(golfcar_halsampler::odo sampler)
-	{
-		golfcar_halstreamer::throttle th;
-		golfcar_halstreamer::brakepedal bp;
-		
-		if(sampler.emergency)
-		{
-			th.volt = 0; bp.angle=120;
-		}
-		else 
-		{
-			if(cmd_vel_>0)
-			{
-				th.volt = cmd_vel_;
-				bp.angle=0;
-			}
-			else
-			{th.volt = 0; bp.angle=120;}
-		}
-		
-		speed_pub_.publish(th);
-		brake_pub_.publish(bp);
-	}
+
+  void PID_Speed::samplerCallBack(golfcar_halsampler::odo sampler)
+  {
+    golfcar_halstreamer::throttle th;
+    golfcar_halstreamer::brakepedal bp;
+
+    if(sampler.emergency || cmd_vel_ <= 0)
+    {
+      th.volt = 0; bp.angle = coeff_bp_;
+      cmd_vel_ = 0; time_pre_ = ros::Time::now(); e_pre_ = 0; ei_ = 0;
+    }
+    else
+    {
+      ros::Time time_now_ = ros::Time::now();
+      ros::Duration time_diff_ = time_now_ - time_pre_;
+      double dt_ = time_diff_.toSec();
+      double e_now_ = cmd_vel_ - e_pre_;
+
+      ei_ += (0.5 * dt_ * (e_pre_ + e_now_));
+      if(ki_ * ei_ > ki_sat_)
+	ei_ = ki_sat_ / ki_;
+      else if(ki_ * ei_ < -ki_sat_)
+	ei_ = -ki_sat_ / ki_;
+
+      double u = kp_ * e_now_ + ki_ * ei_;
+      if(u > 1.0)
+	u = 1.0;
+      else if(u < -1.0)
+	u = -1.0;
+
+      if(u > throttle_zero_thres_/coeff_th_)
+      {
+	th.volt = coeff_th_ * u;
+	bp.angle = 0;
+      }
+      else if(u < -brake_zero_thres_/coeff_bp_)
+      {
+	th.volt = 0;
+	bp.angle = -coeff_bp_ * u;
+      }
+      else
+      {
+	th.volt = 0; bp.angle = 0;
+      }
+
+      time_pre_ = time_now_;
+      e_pre_ = e_now_;
+    }
+
+    throttle_pub_.publish(th);
+    brakepedal_pub_.publish(bp);
+  }
 	
   void PID_Speed::cmdVelCallBack(geometry_msgs::Twist cmd_vel)
   {
-    //update commanded velocity
     cmd_vel_ = cmd_vel.linear.x;
   }
-
-  
 		
 }
 
