@@ -16,7 +16,7 @@ using namespace ros;
 using namespace dynamic_obs_msgs;
 
 #define VISUALIZE_DYNAMIC_OBSTACLES 1
-#define VISUALIZE_OBSTACLE_TRAILS   1
+#define VISUALIZE_OBSTACLE_TRAILS   0
 
 #define MAX_COUNT 1600
 #define MIN_COUNT 0
@@ -45,7 +45,7 @@ using namespace dynamic_obs_msgs;
 #endif
 
     n.param("laser_link", laser_link,std::string("sick_laser"));
-    n.param("map_frame",map_frame,std::string("map"));
+    n.param("odom_frame", odom_frame, std::string("odom"));
 
     turning = false;
     bool track_when_turning;
@@ -92,11 +92,11 @@ void LidarTracking::getClusters(vector<float> ranges, vector<float> angles, vect
 {
     // all in meters
     float minDist = 0.3;                        //min dist of cluster from laser
-    float maxDist = 75;                         //max --,,--
+    float maxDist = 5;                          //max --,,--
     float clusterThreshold = 0.4;               // see below
-    unsigned int clusterNMin = 4;               // min laser points in cluster
-    float minWidth = 0.1;                       // min cluster width  r*theta
-    float maxWidth = 0.7;                       // max --,,--
+    unsigned int clusterNMin = 10;              // min laser points in cluster
+    float minWidth = 1.0;                       // min cluster width  r*theta
+    float maxWidth = 4.0;                       // max --,,--
 
     geometry_msgs::PointStamped msg_out;
     geometry_msgs::PointStamped msg_in;
@@ -119,6 +119,7 @@ void LidarTracking::getClusters(vector<float> ranges, vector<float> angles, vect
             int lowerMid = (j+i)/2;
             float dist = (ranges[upperMid]+ranges[lowerMid])/2;
             float width = dist*(angles[j]-angles[i]);                                   //dist*tan((angles[j]-angles[i])/2);
+            //cout<<"width: " << width << " dist: " << dist << endl;
             if(width <= maxWidth && width >= minWidth && dist <= maxDist && dist >= minDist)
             {
                 Cluster c;
@@ -126,10 +127,14 @@ void LidarTracking::getClusters(vector<float> ranges, vector<float> angles, vect
 
                 msg_in.point.x = dist*cos(theta);
                 msg_in.point.y = dist*sin(theta);
-                try{
-                    tf_.transformPoint(map_frame, msg_in, msg_out);
+               
+                //tf_.waitForTransform(laser_link, odom_frame, ros::Time::now(), ros::Duration(1.0) );
+                try
+                {
+                    tf_.transformPoint(odom_frame, msg_in, msg_out);
                 }
-                catch (tf::TransformException ex){
+                catch (tf::TransformException ex)
+                {
                     ROS_ERROR("%s",ex.what());
                 }
 
@@ -137,11 +142,13 @@ void LidarTracking::getClusters(vector<float> ranges, vector<float> angles, vect
                 c.y = msg_out.point.y;
                 c.r = width/2;
 
+                raw_clusters->push_back(c);
+
             }
         }
         i=j;
     }
-    printf("%d raw clusters found\n",(int)raw_clusters->size());
+    //printf("%d raw clusters found\n",(int)raw_clusters->size());
 }
 
 // propagates clusters between scans
@@ -186,7 +193,7 @@ void LidarTracking::matchClusters(vector<Cluster> raw_clusters, double t)
         if(closest_idx == -1 || closest_dist > CLUSTER_TOO_FAR)
         {
             //no match: make new cluster with low count
-            printf("no match...\n");
+            //printf("no match...\n");
             raw_clusters[i].x_dot = 0;
             raw_clusters[i].y_dot = 0;
             raw_clusters[i].last_seen = t;
@@ -209,7 +216,7 @@ void LidarTracking::matchClusters(vector<Cluster> raw_clusters, double t)
             double mag_new = sqrt(new_x_dot*new_x_dot + new_y_dot*new_y_dot);
             double dir_diff = acos(clusters[closest_idx].x_dot/mag_old*new_x_dot/mag_new + clusters[closest_idx].y_dot/mag_old*new_y_dot/mag_new);
             double v = sqrt(x_dot*x_dot + y_dot*y_dot);
-            printf("v_old=(%f,%f) v_new(%f,%f)\n",clusters[closest_idx].x_dot,clusters[closest_idx].y_dot,new_x_dot,new_y_dot);
+            //printf("v_old=(%f,%f) v_new(%f,%f)\n",clusters[closest_idx].x_dot,clusters[closest_idx].y_dot,new_x_dot,new_y_dot);
 
             clusters[closest_idx].addPoint(raw_clusters[i].x,raw_clusters[i].y,t);
             clusters[closest_idx].getVelocity(&x_dot, &y_dot);
@@ -249,16 +256,16 @@ void LidarTracking::matchClusters(vector<Cluster> raw_clusters, double t)
             }
         }
     }
-    printf("%d clusters\n",(int)clusters.size());
+    //printf("%d clusters\n",(int)clusters.size());
 }
 
 void LidarTracking::linearExtrapolate(ros::Time stamp)
 {
-    double pred_sec = 5;
+    double pred_sec = 0.1;
     double t_gran = 0.1;
     dynamic_obs_msgs::DynamicObstacles msg;
     msg.header.stamp = stamp;
-    msg.header.frame_id = map_frame;
+    msg.header.frame_id = odom_frame;
 
     int max_count = 0;
     for(unsigned int c=0; c<clusters.size(); c++)
@@ -285,7 +292,7 @@ void LidarTracking::linearExtrapolate(ros::Time stamp)
             p.pose.pose.position.x = x + x_dot*timestep;
             p.pose.pose.position.y = y + y_dot*timestep;
             p.header.stamp = ros::Time(t + timestep);
-            p.header.frame_id = map_frame;
+            p.header.frame_id = odom_frame;
             for(int i=0; i<36; i++)
                 p.pose.covariance[i] = 0;
 
@@ -305,7 +312,7 @@ void LidarTracking::linearExtrapolate(ros::Time stamp)
 
     dynObs_pub.publish(msg);
 
-    printf("max_count=%d\n",max_count);
+    //printf("max_count=%d\n",max_count);
     printf("%d dynamic obstacles\n",(int)msg.dyn_obs.size());
 
 #if VISUALIZE_DYNAMIC_OBSTACLES
@@ -314,9 +321,10 @@ void LidarTracking::linearExtrapolate(ros::Time stamp)
     int cluster_idx = 0;
     int dynObs_idx = 0;
     visualization_msgs::MarkerArray ma;
-    for(unsigned int i=0; i<clusters.size(); i++){
-        //if(clusters[i].count < DYN_OBS_COUNT_THRESH)
-        //continue;
+    for(unsigned int i=0; i<clusters.size(); i++)
+    {
+        if(clusters[i].count < DYN_OBS_COUNT_THRESH)
+            continue;
 
         geometry_msgs::Pose pose;
         pose.position.x = clusters[i].x;
@@ -328,10 +336,11 @@ void LidarTracking::linearExtrapolate(ros::Time stamp)
         marker.type = visualization_msgs::Marker::CYLINDER;
         marker.action = visualization_msgs::Marker::ADD;
         marker.pose = pose;
-        marker.scale.x = clusters[i].r*2;
-        marker.scale.y = clusters[i].r*2;
+        marker.scale.x = clusters[i].r;
+        marker.scale.y = clusters[i].r;
         marker.scale.z = 0.1;
-        if(clusters[i].count < DYN_OBS_COUNT_THRESH){
+        if(clusters[i].count < DYN_OBS_COUNT_THRESH)
+        {
             marker.color.r = 0.0f;
             marker.color.g = 0.0f;
             marker.color.b = 1.0f;
@@ -339,15 +348,16 @@ void LidarTracking::linearExtrapolate(ros::Time stamp)
             marker.id = cluster_idx;
             cluster_idx++;
         }
-        else{
+        else
+        {
             marker.color.r = 1.0f;
-            marker.color.g = 0.0f;
-            marker.color.b = 0.0f;
+            marker.color.g = 1.0f;
+            marker.color.b = 1.0f;
             marker.ns = "dynamic_obstacle";
             marker.id = dynObs_idx;
             dynObs_idx++;
         }
-        marker.color.a = 1.0;
+        marker.color.a = 0.5;
         marker.lifetime = ros::Duration(CLUSTER_TIMEOUT-(stamp.toSec()-clusters[i].last_seen)); //ros::Duration();
         ma.markers.push_back(marker);
 

@@ -1,0 +1,13 @@
+<launch>
+
+<!-- <include file="amcl_params.launch"/> -->
+<param name="use_sim_time" value="true"/>
+
+<node name="golfcar_odom_imu2" pkg="golfcar_odom" type="golfcar_odom" respawn="false" />
+<node name="map_server" pkg="map_server" type="map_server" args="/home/pratik/docs/fm/smart-ros-pkg/demo_map.jpg 0.05" />
+<include file="$(find Launch)/tf.launch"/>
+
+<!-- <node name="rviz" pkg="rviz" type="rviz" args="$(find Launch)/nav_visualize.vcg" /> -->
+<!-- <node name="rosbag" pkg="rosbag" type="play" respawn="false" args="/home/pratik/Desktop/demo_run.bag clock" /> -->
+</launch>
+

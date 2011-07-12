@@ -57,7 +57,7 @@ class LidarTracking{
         double last_t;
         bool turning;
         string laser_link;
-        string map_frame;
+        string odom_frame;
         tf::TransformListener tf_;
 };
 
