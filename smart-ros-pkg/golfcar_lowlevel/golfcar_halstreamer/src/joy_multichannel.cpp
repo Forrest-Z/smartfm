@@ -31,6 +31,8 @@ void joyCallBack(joy::Joy joy_)
 	geometry_msgs::Twist cmd;
 	if(joy_.axes[1]>0)
 	  cmd.linear.x = joy_.axes[1]*3;
+	else
+	  cmd.linear.x = 0;
 
 	ROS_INFO("speed cmd = %3.2lf", cmd.linear.x);
 

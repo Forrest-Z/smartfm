@@ -36,7 +36,7 @@ namespace PID_Speed{
 
     if(sampler.emergency || cmd_vel_ <= 0)
     {
-      th.volt = 0; bp.angle = coeff_bp_;
+      th.volt = 0; bp.angle = -1 * coeff_bp_;
       cmd_vel_ = 0; time_pre_ = ros::Time::now(); e_pre_ = 0; ei_ = 0;
     }
     else
@@ -66,7 +66,7 @@ namespace PID_Speed{
       else if(u < -brake_zero_thres_/coeff_bp_)
       {
 	th.volt = 0;
-	bp.angle = -coeff_bp_ * u;
+	bp.angle = coeff_bp_ * u;
       }
       else
       {
