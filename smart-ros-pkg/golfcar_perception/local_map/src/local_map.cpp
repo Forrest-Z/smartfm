@@ -1,58 +1,58 @@
 #include <local_map.h>
 
-#define MAP_RES     (0.05)
-#define MAP_WIDTH   (5.0)
-#define MAP_HEIGHT  (5.0)
 
+local_map::local_map()
+{
+    xsize = MAP_WIDTH/MAP_RES;
+    ysize = MAP_HEIGHT/MAP_RES;
+}
 
-// vehicle location is always (0,0)
+// returns 1 if point outside the local map
+inline int get_cell_num(Point p, int &x, int &y)
+{
+    float px = Point.x[0];
+    float py = Point.x[1];
+    x = px/MAP_RES + xsize/2.0;
+    y = py/MAP_RES + ysize/2.0;
+
+    if( ( (x > xsize) || (x < 0) ) || ( (y > ysize) || (y < 0) ) )
+        return 1;
+    else
+        return 0;
+}
+
 void local_map::map_init()
 {
-    map = (unsigned char *) calloc(sizeof(unsigned char), (int)((MAP_WIDTH*MAP_HEIGHT)/MAP_RES/MAP_RES));;
-
-}
-void local_map::map_free()
-{
-    free map;
+    map = (unsigned char *) calloc(sizeof(unsigned char), (int)(xsize*ysize));
 }
 
-void local_map::on_sick(const sensor_msgs::LaserScan::ConstPtr &msg)
+void local_map::reduce_belief()
 {
-    cout<<"got message with: " << msg.header.frame_id << endl;
-
-    float *angles;
-    float *ranges;
-    int nranges = msg->ranges.size();
-    angles = new float[nranges];
-    ranges = new float[nranges];
-
-    float curr_angle = 0;
-    for(int i=0; i< nranges; i++)
+    for(int i=0; i < xsize; i++)
     {
-        ranges[i] = msg->ranges[i];
-        angles[i] = curr_angle;
-        curr_angle += msg->angle_increment;
+        for(int j=0; j< ysize; j++)
+        {
+            unsigned char val = map[ CELL_LIN(i, j) ];
+            map[ CELL_LIN(i, j) ] = MAX(0, val- REDUCE_BELIEF_DELTA);
+        }
     }
-
-    // transform to base_link frame here
-
-    // 
-
-    free angles;
-    free ranges;
 }
 
-int main(int argc, char **argv)
+void local_map::process_points(vector<Points> points)
 {
-    ros::init(argc, argv, "local_map");
+    reduce_belief();
 
-    ros::NodeHandle nh;
+    float xcell, ycell;
+    for(int i=0; i< points.size(); i++)
+    {
 
-    ros::Subscriber sick1;
-    sick1 = nh.subscribe(nh, "sick_scan", 2, on_sick);
-    //ros::Subscriber sick2 = nh.subscribe(nh, "sick_scan2", 2, on_sick);
-
-    ros::spin();
-
-}
+        int res = get_cell_num(points[i], xcell, ycell);
+        int map_loc = CELL_LIN(xcell, ycell);
+        if(res == 0)
+        {
+            unsigned char val = map[map_loc  ];
+            map[ map_loc ] = MIN(val+INCREASE_BELIEF_DELTA, 255);
+        }
+    }
+};
 

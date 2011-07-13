@@ -1,33 +1,39 @@
 #include <iostream>
+#include <stdlib.h>
+#include <vector>
 using namespace std;
 
-#include <ros/ros.h>
-#include <nav_msgs/OccupancyGrid.h>
-#include <tf/transform_listener.h>
-#include <sensor_msgs/LaserScan.h>
-#include <laser_geometry/laser_geometry.h>
-#include <sensor_msgs/PointCloud.h>
-#include <geometry_msgs/Point32.h>
-#include <geometry_msgs/PointStamped.h>
-#include <vector>
+#define MAP_RES     (0.05)
+#define MAP_WIDTH   (5.0)
+#define MAP_HEIGHT  (5.0)
 
-// Thread suppport
-#include <boost/thread.hpp>
-#include <boost/shared_ptr.hpp>
+#define CELL_LIN(x, y)      ((x) + (y)*ysize)
 
-//laser geometery
-#include <laser_geometry/laser_geometry.h>
+#define REDUCE_BELIEF_DELTA     (3)
+#define INCREASE_BELIEF_DELTA   (3)
 
-//add message_filter
-#include "tf/message_filter.h"
-#include "message_filters/subscriber.h"
+struct Point
+{
+    float x[3];
+};
+typedef struct Point Point;
 
 class local_map
 {
+    private:
+        int xsize;
+        int ysize;
+
     public:
+        
+        local_map();
+        ~local_map(){};
+
         unsigned char *map;
         void map_init();
         void map_free();
-        void on_sick(const sensor_msgs::LaserScan::ConstPtr *msg);
+       
+        void reduce_belief();
+        void process_points( vector<Point> points);
 
 };
