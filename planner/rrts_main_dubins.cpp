@@ -2,9 +2,6 @@
 
 #include <ctime>
 
-#include <common/globals.h>
-#include "../lcmtypes/lcmtypes.h"
-
 
 using namespace std;
 
@@ -19,9 +16,6 @@ typedef RRTstar::Vertex <DubinsCar> vertex_t;
 typedef RRTstar::Planner <DubinsCar> planner_t; 
 
 
-int publishTree (lcm_t *lcm, planner_t& planner, system_t& system);
-
-int publishTraj (lcm_t *lcm, planner_t& planner, system_t& system);
 
 int main () {
   
@@ -30,8 +24,6 @@ int main () {
   
   cout << "RRTstar is alive" << endl;
   
-  
-  lcm_t *lcm = globals_get_lcm ();
   
 
   // Initialize the system
@@ -94,8 +86,8 @@ int main () {
     clock_t timeCurr = clock();
     if (((double)(timeCurr-timePrev))/CLOCKS_PER_SEC < 1.5)  {
       if (iterationCounter%100 == 0) {
-	cout << "Cost : " << rrts.getBestVertexCost() << endl;
-	publishTraj (lcm, rrts, system);
+		  cout << "Cost : " << rrts.getBestVertexCost() << endl;
+		  //publishTraj (lcm, rrts, system);
       }
       rrts.iteration ();
       iterationCounter++;
@@ -118,6 +110,7 @@ int main () {
 }
 
 
+#if 0
 
 int publishTraj (lcm_t *lcm, planner_t& planner, system_t& system) {
 
@@ -284,3 +277,6 @@ int publishTree (lcm_t *lcm, planner_t& planner, system_t& system) {
 
   return 1;
 }
+
+
+#endif 

@@ -542,7 +542,8 @@ RRTstar::Planner< typeparams >
   vertex_t* vertexNew = insertTrajectory (*vertexParent, trajectory);
   if (vertexNew == NULL) 
     return 0;
-  
+
+  cout << "Iteration" << endl;
   
   // 4. Rewire the tree  
   if (vectorNearVertices.size() > 0) 

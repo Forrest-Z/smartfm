@@ -1,21 +1,13 @@
 include common.mk
 
-CFLAGS = $(CFLAGS_STD) \
-		 $(CFLAGS_COMMON) \
-		 $(CFLAGS_LCM) \
-		 $(CFLAGS_GTK)
+CFLAGS = $(CFLAGS_STD) 
 
-CXXFLAGS = $(CXXFLAGS_STD) \
-		 $(CFLAGS_COMMON) \
-		 $(CFLAGS_LCM) \
-		 $(CFLAGS_GTK)
+CXXFLAGS = $(CXXFLAGS_STD) 
 
-LDFLAGS = $(LDFLAGS_STD) $(LDFLAGS_COMMON) $(LDFLAGS_LCM) $(LDFLAGS_GTK) \
-		  $(LDFLAGS_GL) $(LDFLAGS_BOT_CORE) \
-		  -lbot-gl -lbot-viewer -lbot-gtk -llapack -lblas -g
+LDFLAGS = $(LDFLAGS_STD) -llapack -lblas -g
 
 
-RRTS_OBJS = 	rrts_main.o \
+RRTS_OBJS = 	rrts_main_dubins.o \
 		kdtree.o
 
 

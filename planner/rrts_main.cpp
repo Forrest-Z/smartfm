@@ -2,9 +2,6 @@
 
 #include <ctime>
 
-#include <common/globals.h>
-#include "../lcmtypes/lcmtypes.h"
-
 
 using namespace std;
 
@@ -19,9 +16,6 @@ typedef RRTstar::Vertex <SingleIntegrator> vertex_t;
 typedef RRTstar::Planner <SingleIntegrator> planner_t; 
 
 
-int publishTree (lcm_t *lcm, planner_t& planner, system_t& system);
-int publishTraj (lcm_t *lcm, planner_t& planner, system_t& system);
-
 
 int main () {
   
@@ -30,8 +24,6 @@ int main () {
   
   cout << "RRTstar is alive" << endl;
   
-
-  lcm_t *lcm = globals_get_lcm ();
 
 
   system_t system;
@@ -91,14 +83,17 @@ int main () {
   cout << "Time : " << ((double)(finish-start))/CLOCKS_PER_SEC << endl;
   
   //return 1;
-  
+#if 0  
   publishTree (lcm, rrts, system);
   publishTraj (lcm, rrts, system);
-  
+#endif  
+	
+	
   return 1;
 }
 
 
+#if 0
 
 
 int publishTraj (lcm_t *lcm, planner_t& planner, system_t& system) {
@@ -138,11 +133,11 @@ int publishTraj (lcm_t *lcm, planner_t& planner, system_t& system) {
     stateIndex++;
   }
   
-
   lcmtypes_opttree_traj_t_publish (lcm, "OPTTREE_OPTTRAJ", opttraj);
 
   lcmtypes_opttree_traj_t_destroy (opttraj);
 
+	
   cout << "Publishing trajectory -- end" << endl;
   
   return 1;
@@ -253,3 +248,5 @@ int publishTree (lcm_t *lcm, planner_t& planner, system_t& system) {
 
   return 1;
 }
+
+#endif
