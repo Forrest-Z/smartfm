@@ -11,22 +11,26 @@ namespace PID_Speed{
     throttle_pub_ = n.advertise<golfcar_halstreamer::throttle>("golfcar_speed", 1);
     brakepedal_pub_ = n.advertise<golfcar_halstreamer::brakepedal>("golfcar_brake", 1);
 
-    if(!private_nh_.getParam("kp",kp_)) kp_ = 0.3;
+    if(!private_nh_.getParam("kp",kp_)) kp_ = 0.15;
     if(!private_nh_.getParam("ki",ki_)) ki_ = 0.3;
-    if(!private_nh_.getParam("ki_sat",ki_sat_)) ki_sat_ = 0.5;
+    if(!private_nh_.getParam("ki_sat",ki_sat_)) ki_sat_ = 1.0;
     if(!private_nh_.getParam("coeff_throttle",coeff_th_)) coeff_th_ = 3.3;
     if(!private_nh_.getParam("coeff_brakepedal",coeff_bp_)) coeff_bp_ = 120;
     if(!private_nh_.getParam("throttleZeroThres", throttle_zero_thres_)) throttle_zero_thres_ = 0.2;
     if(!private_nh_.getParam("brakeZeroThres", brake_zero_thres_)) brake_zero_thres_ = 3.0;
+    if(!private_nh_.getParam("fullBrakeThres", full_brake_thres_)) full_brake_thres_ = 0.5;
+    if(!private_nh_.getParam("tau_v", tau_v_)) tau_v_ = 0.25;
 
     cmd_vel_ = 0;
     time_pre_ = ros::Time::now();
     e_pre_ = 0;
     ei_ = 0;
+    v_filtered_ = 0;
 
     std::cout<<"kp: "<<kp_<<" ki: "<<ki_<<" ki_sat: "<<ki_sat_<<"\n";
     std::cout<<"coeff_th: "<<coeff_th_<<" coeff_bp: "<<coeff_bp_<<"\n";
     std::cout<<"throttle_threshold: "<<throttle_zero_thres_<<" brake_threshold: "<<brake_zero_thres_<<"\n";
+    std::cout<<"tau_v: "<<tau_v_<<"\n";
   }
 
   void PID_Speed::samplerCallBack(golfcar_halsampler::odo sampler)
@@ -34,10 +38,11 @@ namespace PID_Speed{
     golfcar_halstreamer::throttle th;
     golfcar_halstreamer::brakepedal bp;
 
-    if(sampler.emergency || (cmd_vel_ <= 0 && sampler.vel <= 0))
+    if(sampler.emergency || (cmd_vel_ <= 0 && sampler.vel <= full_brake_thres_))
     {
       th.volt = 0; bp.angle = -1 * coeff_bp_;
       cmd_vel_ = 0; time_pre_ = ros::Time::now(); e_pre_ = 0; ei_ = 0;
+      v_filtered_ = 0;
     }
     else
     {
@@ -45,6 +50,7 @@ namespace PID_Speed{
       ros::Duration time_diff_ = time_now_ - time_pre_;
       double dt_ = time_diff_.toSec();
       double e_now_ = cmd_vel_ - sampler.vel;
+      v_filtered_ += (sampler.vel - v_filtered_) * dt_ / tau_v_;
 
       ei_ += (0.5 * dt_ * (e_pre_ + e_now_));
       if(ki_ * ei_ > ki_sat_)
@@ -52,7 +58,7 @@ namespace PID_Speed{
       else if(ki_ * ei_ < -ki_sat_)
 	ei_ = -ki_sat_ / ki_;
 
-      double u = kp_ * e_now_ + ki_ * ei_;
+      double u = kp_ * (cmd_vel_ - v_filtered_) + ki_ * ei_;
       if(u > 1.0)
 	u = 1.0;
       else if(u < -1.0)

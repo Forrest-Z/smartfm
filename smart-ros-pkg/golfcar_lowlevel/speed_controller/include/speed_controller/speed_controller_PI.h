@@ -18,12 +18,14 @@ namespace PID_Speed{
       ros::Publisher brakepedal_pub_;
 
       double kp_, ki_, ki_sat_, coeff_th_, coeff_bp_;
-      double throttle_zero_thres_, brake_zero_thres_;
+      double throttle_zero_thres_, brake_zero_thres_, full_brake_thres_;
+      double tau_v_;
 
       double cmd_vel_;
       ros::Time time_pre_;
       double e_pre_;
       double ei_;
+      double v_filtered_;
 
       void cmdVelCallBack(geometry_msgs::Twist cmd_vel);
       void samplerCallBack(golfcar_halsampler::odo sampler);
