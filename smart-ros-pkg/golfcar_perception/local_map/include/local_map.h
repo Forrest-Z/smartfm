@@ -6,7 +6,7 @@
 using namespace std;
 
 // x is forward, y is left
-#define MAP_RES     (1)
+#define MAP_RES     (0.01)
 #define MAP_WIDTH   (20.0)
 #define MAP_HEIGHT  (10.0)
 
@@ -43,8 +43,7 @@ class Local_map
         ~Local_map();
 
         // map of obstacle beliefs
-        float *map;
-        float *map_copy;
+        unsigned char *map;
         vector <vector<Pose> > map_points;
 
         void reinit_map();

@@ -315,7 +315,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
 	return -2.0;
 
       if (trajectory) {
-	double *state_new = new double(3);
+	double *state_new = new double[3];
 	for (int i = 0; i < 3; i++) 
 	  state_new[i] = state_curr[i];
 	trajectory->push_front(state_new);
@@ -357,7 +357,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
 	return -2.0;
 
       if (trajectory) {
-	double *state_new = new double(3);
+	double *state_new = new double [3];
 	for (int i = 0; i < 3; i++) 
 	  state_new[i] = state_curr[i];
 	trajectory->push_front(state_new);
@@ -401,7 +401,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
 	return -2.0;
 
       if (trajectory) {
-	double *state_new = new double(3);
+	double *state_new = new double [3];
 	for (int i = 0; i < 3; i++) 
 	  state_new[i] = state_curr[i];
 	trajectory->push_front(state_new);
@@ -546,7 +546,7 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
 		      Trajectory &trajectoryOut, bool &exactConnectionOut) {
 
   double *end_state;
-  end_state = new double (3);
+  end_state = new double [3];
   
   double time = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
 				   true, false, 
@@ -585,7 +585,7 @@ double System::evaluateExtensionCost (State &stateFromIn, State &stateTowardsIn,
 int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut) {
   
   double *end_state;
-  end_state = new double (3);
+  end_state = new double[3];
 
   bool exactConnectionOut = false;
   

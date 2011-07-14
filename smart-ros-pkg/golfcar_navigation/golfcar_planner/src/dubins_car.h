@@ -1,6 +1,7 @@
 #ifndef __RRTS_SYSTEM_H_
 #define __RRTS_SYSTEM_H_
 
+#include <float.h>
 #include <vector>
 #include <list>
 

@@ -32,6 +32,7 @@ class local_map_node
         message_filters::Subscriber<sensor_msgs::LaserScan> laser_scan_sub_;
 
         ros::Publisher map_pub_;
+        ros::Publisher map_points_pub_;
 
 };
 
@@ -40,6 +41,7 @@ local_map_node::local_map_node()
     Local_map lmap;
 
     odom_sub_ = n_.subscribe("odom",1, &local_map_node::odomCallBack, this);
+    map_points_pub_ = n_.advertise<sensor_msgs::PointCloud>("localPoints",1);
     map_pub_ = n_.advertise<sensor_msgs::PointCloud>("localCells",1);
     
     laser_scan_sub_.subscribe(n_, "sick_scan", 1);
@@ -85,6 +87,20 @@ void local_map_node::odomCallBack(const nav_msgs::Odometry::ConstPtr &odom_in)
             gc.points.push_back(p);
         }
 
+    }
+    map_points_pub_.publish(gc);
+    
+    gc.points.clear();
+    for(unsigned int i=0; i < lmap.xsize; i++)
+    {
+        for(unsigned int j=0; j< lmap.ysize; j++)
+        {
+            geometry_msgs::Point32 p;
+            Pose ptemp = lmap.get_cell_coor(i, j);
+            p.x = ptemp.x[0];
+            p.y = ptemp.x[1];
+            p.z = lmap.map[ i + j*lmap.xsize]/255.0;
+        }
     }
     map_pub_.publish(gc);
 }

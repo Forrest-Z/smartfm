@@ -543,8 +543,6 @@ RRTstar::Planner< typeparams >
   if (vertexNew == NULL) 
     return 0;
 
-  cout << "Iteration" << endl;
-  
   // 4. Rewire the tree  
   if (vectorNearVertices.size() > 0) 
     rewireVertices (*vertexNew, vectorNearVertices);

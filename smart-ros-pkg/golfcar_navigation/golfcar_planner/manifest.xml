@@ -1,0 +1,14 @@
+<package>
+  <description brief="golfcar_planner">
+
+     golfcar_planner
+
+  </description>
+  <author>Pratik</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/golfcar_planner</url>
+
+</package>
+
+
