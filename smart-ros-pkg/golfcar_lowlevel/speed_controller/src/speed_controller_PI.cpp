@@ -13,11 +13,11 @@ namespace PID_Speed{
 
     if(!private_nh_.getParam("kp",kp_)) kp_ = 0.3;
     if(!private_nh_.getParam("ki",ki_)) ki_ = 0.3;
-    if(!private_nh_.getParam("ki_sat",ki_sat_)) ki_sat_ = 0.4;
-    if(!private_nh_.getParam("coeff_throttle",coeff_th_)) coeff_th_ = 3;
+    if(!private_nh_.getParam("ki_sat",ki_sat_)) ki_sat_ = 0.5;
+    if(!private_nh_.getParam("coeff_throttle",coeff_th_)) coeff_th_ = 3.3;
     if(!private_nh_.getParam("coeff_brakepedal",coeff_bp_)) coeff_bp_ = 120;
-    if(!private_nh_.getParam("throttleZeroThres", throttle_zero_thres_)) throttle_zero_thres_=0.1;
-    if(!private_nh_.getParam("brakeZeroThres", brake_zero_thres_)) brake_zero_thres_=1;
+    if(!private_nh_.getParam("throttleZeroThres", throttle_zero_thres_)) throttle_zero_thres_ = 0.2;
+    if(!private_nh_.getParam("brakeZeroThres", brake_zero_thres_)) brake_zero_thres_ = 3.0;
 
     cmd_vel_ = 0;
     time_pre_ = ros::Time::now();
@@ -34,7 +34,7 @@ namespace PID_Speed{
     golfcar_halstreamer::throttle th;
     golfcar_halstreamer::brakepedal bp;
 
-    if(sampler.emergency || cmd_vel_ <= 0)
+    if(sampler.emergency || (cmd_vel_ <= 0 && sampler.vel <= 0))
     {
       th.volt = 0; bp.angle = -1 * coeff_bp_;
       cmd_vel_ = 0; time_pre_ = ros::Time::now(); e_pre_ = 0; ei_ = 0;
@@ -44,7 +44,7 @@ namespace PID_Speed{
       ros::Time time_now_ = ros::Time::now();
       ros::Duration time_diff_ = time_now_ - time_pre_;
       double dt_ = time_diff_.toSec();
-      double e_now_ = cmd_vel_ - e_pre_;
+      double e_now_ = cmd_vel_ - sampler.vel;
 
       ei_ += (0.5 * dt_ * (e_pre_ + e_now_));
       if(ki_ * ei_ > ki_sat_)
