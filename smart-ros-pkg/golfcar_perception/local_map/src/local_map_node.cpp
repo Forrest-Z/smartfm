@@ -1,4 +1,6 @@
-#include <local_map.h>
+#include <local_map/local_map.h>
+#include <local_map/local_map_msg.h>
+
 #include <sensor_msgs/LaserScan.h>
 #include <laser_geometry/laser_geometry.h>
 #include <tf/tf.h>
@@ -33,7 +35,6 @@ class local_map_node
 
         ros::Publisher map_pub_;
         ros::Publisher map_points_pub_;
-
 };
 
 local_map_node::local_map_node()
@@ -42,10 +43,10 @@ local_map_node::local_map_node()
 
     odom_sub_ = n_.subscribe("odom",1, &local_map_node::odomCallBack, this);
     map_points_pub_ = n_.advertise<sensor_msgs::PointCloud>("localPoints",1);
-    map_pub_ = n_.advertise<sensor_msgs::PointCloud>("localCells",1);
+    map_pub_ = n_.advertise<local_map::local_map_msg>("localCells",1);
     
-    laser_scan_sub_.subscribe(n_, "sick_scan", 1);
-    tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_scan_sub_, tf_, "base_link", 100);
+    laser_scan_sub_.subscribe(n_, "/sick_scan", 1);
+    tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_scan_sub_, tf_, "base_link", 10);
     tf_filter_->registerCallback(boost::bind(&local_map_node::on_sick, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
     odom_skip_ = 1;
@@ -71,6 +72,7 @@ void local_map_node::odomCallBack(const nav_msgs::Odometry::ConstPtr &odom_in)
     //then
     odom_pre_ = odom_now;
 
+    // publish point cloud
     sensor_msgs::PointCloud gc;
     gc.header.stamp = ros::Time::now();
     gc.header.frame_id = "base_link";
@@ -89,20 +91,27 @@ void local_map_node::odomCallBack(const nav_msgs::Odometry::ConstPtr &odom_in)
 
     }
     map_points_pub_.publish(gc);
-    
-    gc.points.clear();
-    for(unsigned int i=0; i < lmap.xsize; i++)
+   
+    // publish local_map
+    local_map::local_map_msg mtmp;
+    mtmp.header.stamp = ros::Time::now();
+    mtmp.header.frame_id = "base_link";
+    mtmp.res = lmap.res;
+    mtmp.width = lmap.width;
+    mtmp.height = lmap.height;
+    mtmp.xsize = lmap.xsize;
+    mtmp.ysize = lmap.ysize;
+    mtmp.xorigin = lmap.xorigin;
+    mtmp.yorigin = lmap.yorigin;
+
+    for(int i=0; i < lmap.xsize; i++)
     {
-        for(unsigned int j=0; j< lmap.ysize; j++)
+        for(int j=0; j< lmap.ysize; j++)
         {
-            geometry_msgs::Point32 p;
-            Pose ptemp = lmap.get_cell_coor(i, j);
-            p.x = ptemp.x[0];
-            p.y = ptemp.x[1];
-            p.z = lmap.map[ i + j*lmap.xsize]/255.0;
+            mtmp.vals.push_back(lmap.map[ i + j*lmap.xsize]);
         }
     }
-    map_pub_.publish(gc);
+    map_pub_.publish(mtmp);
 }
 
 void local_map_node::on_sick(const sensor_msgs::LaserScan::ConstPtr &scan_in)

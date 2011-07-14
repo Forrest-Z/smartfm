@@ -1,10 +1,19 @@
-#include <local_map.h>
+#include <local_map/local_map.h>
 
 Local_map::Local_map()
 {
-    xsize = MAP_HEIGHT/MAP_RES;
-    ysize = MAP_WIDTH/MAP_RES;
+
+    // x is forward, y is left
+    res = 0.05;
+    width = 20.0;
+    height = 10.0;
     
+    xsize = height/res;
+    ysize = width/res;
+    
+    xorigin = xsize/2.0;
+    yorigin = 6*ysize/10.0;
+
     map = new unsigned char[ xsize*ysize];
 }
 
@@ -23,8 +32,8 @@ inline int Local_map::get_cell_num(Pose p, int &x, int &y)
 {
     float px = p.x[0];
     float py = p.x[1];
-    x = px/MAP_RES + XORIGIN;
-    y = py/MAP_RES + YORIGIN;
+    x = px/res + xorigin;
+    y = py/res + yorigin;
 
     if( ( (x > xsize) || (x < 0) ) || ( (y > ysize) || (y < 0) ) )
         return 1;
@@ -35,8 +44,8 @@ inline int Local_map::get_cell_num(Pose p, int &x, int &y)
 Pose Local_map::get_cell_coor(int x, int y)
 {
     Pose pret;
-    pret.x[0] = (x - XORIGIN)*MAP_RES;
-    pret.x[1] = (y - YORIGIN)*MAP_RES;
+    pret.x[0] = (x - xorigin)*res;
+    pret.x[1] = (y - yorigin)*res;
 
     return pret;
 }
@@ -56,7 +65,7 @@ void Local_map::reduce_belief()
 
 void Local_map::process_points(vector<Pose> points)
 {
-    for(int i=0; i< points.size(); i++)
+    for(unsigned int i=0; i< points.size(); i++)
     {
         if( (points[i].x[1] > 5) || (points[i].x[1] < -15) )
         {
@@ -95,15 +104,21 @@ void Local_map::transform_map(Pose prev, Pose curr)
     float delth= curr.x[2] - prev.x[2];
     
     // reset local map
-    memset(map, 0, sizeof(unsigned char)*xsize*ysize);
+    //memset(map, 0, sizeof(unsigned char)*xsize*ysize);
     for(unsigned int i=0; i< map_points.size(); i++)
     {
         for(unsigned int j=0; j< map_points[i].size(); j++)
         {
             map_points[i][j].x[0] = map_points[i][j].x[0] - delx;
-
-            int map_loc = CELL_LIN(map_points[i][j].x[0], map_points[i][j].x[1]);
-            map[map_loc] = 255;
+            
+            Pose ptmp(map_points[i][j].x[0], map_points[i][j].x[1], map_points[i][j].x[2]);
+            int xnum, ynum;
+            int res = get_cell_num(ptmp, xnum, ynum);
+            if(res == 0)
+            {
+                int map_loc = CELL_LIN(xnum, ynum);
+                map[map_loc] = (uint8_t) (min(255.0, (map_points[i][j].x[2]*255.0)));
+            }
         }
     }
 }

@@ -84,8 +84,14 @@ public:
 
     region regionOperating;
     region regionGoal;
+    
+    // obstacles
     list<region*> obstacles;
     
+    int xsize, ysize, xorigin, yorigin;
+    float map_width, map_height, map_res;
+    uint8_t *map_vals;
+
     System ();
     ~System ();
     

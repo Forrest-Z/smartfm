@@ -3,15 +3,8 @@
 #include <vector>
 #include <math.h>
 #include <string.h>
+#include <inttypes.h>
 using namespace std;
-
-// x is forward, y is left
-#define MAP_RES     (0.01)
-#define MAP_WIDTH   (20.0)
-#define MAP_HEIGHT  (10.0)
-
-#define XORIGIN (xsize/2.0)
-#define YORIGIN (6*ysize/10.0)
 
 #define CELL_LIN(x, y)      ((x) + (y)*xsize)
 
@@ -36,9 +29,16 @@ class Local_map
     private:
 
     public:
+        float res;
+        float width;
+        float height;
+    
         int xsize;
         int ysize;
         
+        int xorigin;
+        int yorigin;
+
         Local_map();
         ~Local_map();
 

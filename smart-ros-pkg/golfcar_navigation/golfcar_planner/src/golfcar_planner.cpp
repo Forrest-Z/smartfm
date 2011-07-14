@@ -15,7 +15,6 @@ typedef RRTstar::Vertex <DubinsCar> vertex_t;
 typedef RRTstar::Planner <DubinsCar> planner_t; 
 
 
-
 int main () {
 
 
