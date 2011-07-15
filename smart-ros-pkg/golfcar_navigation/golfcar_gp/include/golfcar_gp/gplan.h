@@ -22,10 +22,11 @@ namespace golfcar_gp{
 		ros::Publisher g_plan_pub_;
 		ros::Publisher direction_pub_;
 		ros::Subscriber stage_sub_;
-		double stage_;
+		
 		bool firstpart_;
 		bool part1a_;
 		bool firstpart;
+		int stage_;
 		void missionStage(geometry_msgs::Point32 stage);
 	};
 };

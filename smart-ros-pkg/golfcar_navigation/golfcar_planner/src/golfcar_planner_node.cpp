@@ -17,7 +17,6 @@
 #include <nav_msgs/Path.h>
 
 #include <local_map/local_map_msg.h>
-#include <golfcar_planner/pnc_trajectory.h>
 
 #include "dubins_car.hpp"
 #include "rrts.hpp"

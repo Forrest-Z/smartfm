@@ -1,11 +1,11 @@
 <launch>
 
-	<node name="map_server" pkg="map_server" type="map_server" args="$(find mix_amcl)/worlds/curb_map.yaml">
+	<node name="map_server" pkg="map_server" type="map_server" args="$(find hybrid_amcl)/worlds/curb_map.yaml">
 		<remap from="static_map" to="static_curb_map"/>
 		<remap from="map" to= "curb_map"/>
 	</node>
 
-	<node pkg="map_server" type="map_server" name="map_server2" args="$(find mix_amcl)/worlds/planar_map.yaml">
+	<node pkg="map_server" type="map_server" name="map_server2" args="$(find hybrid_amcl)/worlds/planar_map.yaml">
 		<remap from="static_map" to="static_planar_map"/>
 		<remap from="map" to= "planar_map"/>
 	</node>
