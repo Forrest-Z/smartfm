@@ -1,0 +1,13 @@
+<launch>
+	<node pkg="map_server" type="map_server" name="map_server2" args="$(find mix_amcl)/worlds/planar_map.yaml">
+	</node>
+
+	<node pkg="road_detection" type="road_detect" name="road_detect"/>
+	<node pkg="road_detection" type="curb_track" name="curb_track"/>
+
+	<!--node name="rviz" pkg="rviz" type="rviz" respawn="false"/>
+
+	<node pkg="image_view" type="image_view" name="image_view">
+		<remap from="image" to="image_raw"/>
+	</node-->
+</launch>
