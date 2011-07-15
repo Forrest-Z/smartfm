@@ -38,12 +38,13 @@ class Planner_node
 
     private:
 
+        int num_frames_no_plan;
         list<double*> stateList;
         unsigned int RRT_MAX_ITER;
-
+        
+        bool planner_in_progress;
         bool first_frame;
         system_t system;
-        planner_t rrts;
         ros::NodeHandle nh;
 
         ros::Subscriber map_sub;
@@ -53,54 +54,39 @@ class Planner_node
         system_t create_system();
         void on_map(const local_map::local_map_msg::ConstPtr & local_map);
         void get_plan(const ros::TimerEvent &event);
-        int get_traj();
+        int get_traj(planner_t *rrts);
         void get_tree();
 };
 
 Planner_node::Planner_node()
 {
+    planner_in_progress = false;
+    num_frames_no_plan = 0;
     first_frame = 1;
     RRT_MAX_ITER = 1000;
 
     // init periodic planner
-    planner_timer = nh.createTimer(ros::Duration(0.1), &Planner_node::get_plan, this);
+    planner_timer = nh.createTimer(ros::Duration(1.0), &Planner_node::get_plan, this);
 
     // subscribe to points
     map_sub = nh.subscribe("localCells", 1, &Planner_node::on_map, this);
     traj_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 5); 
 
-    // one dummy set system
-
     system.regionOperating.center[0] = 0.0;
     system.regionOperating.center[1] = 0.0;
     system.regionOperating.center[2] = 0.0;
-    system.regionOperating.size[0] = 100.0;
-    system.regionOperating.size[1] = 20.0;
+    system.regionOperating.size[0] = 200.0;
+    system.regionOperating.size[1] = 200.0;
     system.regionOperating.size[2] = 2.0 * M_PI;
 
     // goal straight ahead
     system.regionGoal.center[0] = 50.0;
-    system.regionGoal.center[1] = 10.0;
-    system.regionGoal.center[2] = 0.0;
+    system.regionGoal.center[1] = 0.0;
+    system.regionGoal.center[2] = 0*M_PI;
     system.regionGoal.size[0] = 5.0;
     system.regionGoal.size[1] = 5.0;
-    system.regionGoal.size[2] = 0.1 * M_PI;
+    system.regionGoal.size[2] = 0.3 * M_PI;
 
-    rrts.setSystem( system );
-
-    // init root
-    vertex_t &root = rrts.getRootVertex();  
-    state_t &rootState = root.getState();
-    rootState[0] = 0.0;
-    rootState[1] = 0.0;
-    rootState[2] = 0.0;
-
-    // Initialize the planner
-    rrts.initialize ();
-
-    // Set planner parameters
-    rrts.setGamma (2.0);
-    rrts.setGoalSampleFrequency (0.1);
 }
 
 void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
@@ -118,63 +104,95 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
 
         system.map_vals = new uint8_t [system.xsize * system.ysize];
     }
-    for(int i=0; i< system.xsize* system.ysize; i++)
+    if(!planner_in_progress)
     {
-        system.map_vals[i] = local_map->vals[i];
+        for(int i=0; i< system.xsize* system.ysize; i++)
+        {
+            system.map_vals[i] = local_map->vals[i];
+        }
     }
+    /*
+    num_frames_no_plan++;
+    if(num_frames_no_plan == 10)
+    {
+        num_frames_no_plan = 0;
+        get_plan();
+    }
+    */
 }
 
 // break out of loop if cost does not decrease for > 500 iters
-void Planner_node::get_plan(const ros::TimerEvent & event)
+void Planner_node::get_plan(const ros::TimerEvent &event)
 {
+    planner_t rrts;
+    rrts.setSystem( system );
+    
+    // init root
+    vertex_t &root = rrts.getRootVertex();  
+    state_t &rootState = root.getState();
+    rootState[0] = 0.0;
+    rootState[1] = 0.0;
+    rootState[2] = 0.0;
+    
+    // Initialize the planner
+    rrts.initialize ();
+
+    // Set planner parameters
+    rrts.setGamma (2.0);
+    rrts.setGoalSampleFrequency (0.1);
+
+    planner_in_progress = true;
+    system.has_found_path = 0;
     double curr_cost = 1000, prev_cost = 1000;
+    
+    unsigned int iter = 0;
     for(unsigned int i=0; i< RRT_MAX_ITER; i++)
     {
         rrts.iteration();
-
         curr_cost = rrts.getBestVertexCost();
-        if(i % 500)
-        {
-            if( (fabs(curr_cost - prev_cost) < 1) && (curr_cost < 1000) )
-                break;
-            else
-                prev_cost = curr_cost;
-        }
+        
+        if(iter % 500 == 0)
+            cout<<"\ni: "<< iter << endl;
+        iter++;
     }
-    get_traj();
+    planner_in_progress = false;
+    cout<<"cost: "<< curr_cost << " result: ";
+    cout<< get_traj(&rrts) << endl;
 }
 
-int Planner_node::get_traj()
+int Planner_node::get_traj(planner_t *prrts)
 {
-    vertex_t& vertexBest = rrts.getBestVertex ();
+    vertex_t& vertexBest = prrts->getBestVertex ();
 
     if (&vertexBest == NULL)
         return 1;
-
-    stateList.clear();
-    rrts.getBestTrajectory (stateList);
-
-    nav_msgs::Path traj_msg;
-    traj_msg.header.stamp = ros::Time::now();
-    traj_msg.header.frame_id = "base_link";
-
-    int stateIndex = 0;
-    for (list<double*>::iterator iter = stateList.begin(); iter != stateList.end(); iter++) 
+    else
     {
-        double* stateRef = *iter;
-        geometry_msgs::PoseStamped p;
-        p.header.stamp = ros::Time::now();
-        p.header.frame_id = "base_link";
-        p.pose.position.x = stateRef[0];
-        p.pose.position.y = stateRef[1];
-        p.pose.position.z = 0;
-        traj_msg.poses.push_back(p);
-        
-        delete [] stateRef;
-        stateIndex++;
+        stateList.clear();
+        prrts->getBestTrajectory (stateList);
+
+        nav_msgs::Path traj_msg;
+        traj_msg.header.stamp = ros::Time::now();
+        traj_msg.header.frame_id = "base_link";
+
+        int stateIndex = 0;
+        for (list<double*>::iterator iter = stateList.begin(); iter != stateList.end(); iter++) 
+        {
+            double* stateRef = *iter;
+            geometry_msgs::PoseStamped p;
+            p.header.stamp = ros::Time::now();
+            p.header.frame_id = "base_link";
+            p.pose.position.x = stateRef[0];
+            p.pose.position.y = stateRef[1];
+            p.pose.position.z = 0;
+            traj_msg.poses.push_back(p);
+
+            delete [] stateRef;
+            stateIndex++;
+        }
+
+        traj_pub.publish(traj_msg);
     }
-   
-    traj_pub.publish(traj_msg);
     return 0;
 }
 

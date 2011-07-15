@@ -5,14 +5,14 @@ Local_map::Local_map()
 
     // x is forward, y is left
     res = 0.05;
-    width = 10.0;
+    width = 20.0;
     height = 10.0;
     
     xsize = height/res;
     ysize = width/res;
     
     xorigin = xsize/2.0;
-    yorigin = 6*ysize/10.0;
+    yorigin = 3*ysize/4.0;
 
     map = new unsigned char[ xsize*ysize];
 }
@@ -104,7 +104,7 @@ void Local_map::transform_map(Pose prev, Pose curr)
     float delth= curr.x[2] - prev.x[2];
     
     // reset local map
-    //memset(map, 0, sizeof(unsigned char)*xsize*ysize);
+    memset(map, 0, sizeof(unsigned char)*xsize*ysize);
     for(unsigned int i=0; i< map_points.size(); i++)
     {
         for(unsigned int j=0; j< map_points[i].size(); j++)
@@ -119,7 +119,8 @@ void Local_map::transform_map(Pose prev, Pose curr)
                 //cout<<"xnum: "<< xnum<<" "<<ynum<<endl;
                 int map_loc = CELL_LIN(xnum, ynum);
                 //cout<<"map_loc: "<< map_loc << " "<<xsize*ysize << endl;
-                map[map_loc] = (uint8_t) (min(255.0, (map_points[i][j].x[2]*255.0)));
+                map[map_loc] = 250;
+                //(uint8_t) (min(255.0, (map_points[i][j].x[2]*255.0)));
                 //cout<<"accessed map array"<<endl;
             }
         }

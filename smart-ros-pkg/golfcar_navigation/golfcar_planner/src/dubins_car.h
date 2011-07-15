@@ -89,6 +89,7 @@ public:
     // obstacles
     list<region*> obstacles;
     
+    int has_found_path;
     int xsize, ysize, xorigin, yorigin;
     float map_width, map_height, map_res;
     uint8_t *map_vals;

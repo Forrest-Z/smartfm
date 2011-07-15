@@ -32,9 +32,12 @@ RRTstar::Vertex< typeparams >
 
     if (state)
         delete state;
+    
     parent = NULL;
+    
     if (trajFromParent)
         delete trajFromParent;
+    
     children.clear();
 }
 
@@ -259,17 +262,21 @@ template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
 ::setSystem (system_t& systemIn) {
-
+    
+    /*
     if (system)
         delete system;
-
+    */
     system = &systemIn;
 
     numDimensions = system->getNumDimensions ();
-
-    // Delete all the vertices
-    for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++)
-        delete *iter;
+    
+    if(listVertices.size() > 0)
+    {
+        // Delete all the vertices
+        for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++)
+            delete *iter;
+    }
     numVertices = 0;
     lowerBoundCost = DBL_MAX;
     lowerBoundVertex = NULL;
@@ -320,6 +327,7 @@ RRTstar::Planner< typeparams >
     // Delete all the vertices
     for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++)
         delete *iter;
+    
     numVertices = 0;
     lowerBoundCost = DBL_MAX;
     lowerBoundVertex = NULL;
@@ -391,11 +399,12 @@ RRTstar::Planner< typeparams >
 
     // Compute the cost of extension for each near vertex
     int numNearVertices = vectorNearVerticesIn.size();
-
+    
     vector< pair<vertex_t*,double> > vectorVertexCostPairs(numNearVertices);
 
     int i = 0;
-    for (typename vector<vertex_t*>::iterator iter = vectorNearVerticesIn.begin(); iter != vectorNearVerticesIn.end(); iter++) {
+    for (typename vector<vertex_t*>::iterator iter = vectorNearVerticesIn.begin(); iter != vectorNearVerticesIn.end(); iter++) 
+    {
 
         vectorVertexCostPairs[i].first = *iter;
         exactConnection = false;

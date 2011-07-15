@@ -95,6 +95,7 @@ System::System ()
     turning_radius = 3.0;
     distance_limit = 1000.0;
     delta_distance = 0.05;
+    has_found_path = 0; 
 }
 
 
@@ -125,34 +126,10 @@ bool System::isReachingTarget (State &stateIn) {
         if (fabs(stateIn.x[i] - regionGoal.center[i]) > regionGoal.size[i]/2.0 )
             return false;
     }
-
+    has_found_path = 1; 
     return true;
 }
 
-
-#ifdef CHECK_USING_OBSTACLES
-bool System::IsInCollision (double stateIn[3]) 
-{
-    for (list<region*>::iterator iter = obstacles.begin(); iter != obstacles.end(); iter++) {
-
-        region *obstacleCurr = *iter;
-        bool collisionFound = true;
-
-        for (int i = 0; i < 2; i++) 
-            if (fabs(obstacleCurr->center[i] - stateIn[i]) > obstacleCurr->size[i]/2.0 ) {
-                collisionFound = false;
-                break;
-            }
-
-        if (collisionFound) {
-            return true;
-        }
-    }
-
-    return false;
-} 
-
-#else
 bool System::IsInCollision (double stateIn[3]) 
 {
     // get cell_num of stateIn
@@ -163,16 +140,22 @@ bool System::IsInCollision (double stateIn[3])
     xnum = xtmp/map_res + xorigin;
     ynum = ytmp/map_res + yorigin;
     
-    if( (xnum < 0) || (xnum > xsize)|| (ynum < 0) || (ynum > ysize) )
+    if(xnum >= xsize)
         return false;
+    else if( (ynum < 0) || (ynum >= ysize) )
+        return true;
+    else if (xnum < 0)
+        return true;
     else
     {
         float car_width = 3, car_length = 2.5;
+        
         int yleft = min(ysize, (int)(ynum + car_width/2/map_res));
         int yright = max(0, (int)(ynum - car_width/2/map_res));
         int xfront = min(xsize, (int)(xnum + car_length/2/map_res));
         int xback = max(0, (int)(xnum - car_length/2/map_res));
-        cout<<"grid: " << xback <<" "<< xfront <<" "<< yleft <<" "<< yright << endl;
+        
+        //cout<<"grid: " << xback <<" "<< xfront <<" "<< yleft <<" "<< yright << endl;
 
         for(int i = xback; i < xfront; i++)
         {
@@ -180,15 +163,22 @@ bool System::IsInCollision (double stateIn[3])
             {
                 if(map_vals[i + j*xsize] > 0)
                 {
-                    cout<<"1 ";
                     return true;
                 }
             }
         }
+       
+        /*
+        if( map_vals[xnum + ynum*xsize] > 0)
+        {
+            //cout<<"1";
+            return true;
+        }
+        */
     }
+    //cout<<"0";
     return false;
 }
-#endif
 
 int System::sampleState (State &randomStateOut) {
 
