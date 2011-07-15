@@ -19,7 +19,7 @@ Local_map::Local_map()
 
 Local_map::~Local_map()
 {
-    delete[] map;
+    //delete[] map;
 }
 
 void Local_map::reinit_map()
@@ -116,8 +116,11 @@ void Local_map::transform_map(Pose prev, Pose curr)
             int res = get_cell_num(ptmp, xnum, ynum);
             if(res == 0)
             {
+                cout<<"xnum: "<< xnum<<" "<<ynum<<endl;
                 int map_loc = CELL_LIN(xnum, ynum);
+                cout<<"map_loc: "<< map_loc << " "<<xsize*ysize << endl;
                 map[map_loc] = (uint8_t) (min(255.0, (map_points[i][j].x[2]*255.0)));
+                cout<<"accessed map array"<<endl;
             }
         }
     }
