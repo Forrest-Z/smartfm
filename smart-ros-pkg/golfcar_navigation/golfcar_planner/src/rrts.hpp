@@ -152,6 +152,7 @@ RRTstar::Planner< typeparams >
 
     // Search kdtree for the set of near vertices
     kdres_t *kdres = kd_nearest_range (kdtree, stateKey, ballRadius);
+    delete [] stateKey;
 
     // Create the vector data structure for storing the results
     int numNearVertices = kd_res_size (kdres);
@@ -624,14 +625,14 @@ RRTstar::Planner< typeparams >
     }
 
 
-    double *stateRootNew = new double(numDimensions);
+    double *stateRootNew = new double[numDimensions];
     vertex_t* vertexChildNew = NULL;
 
     bool stateFound = false;
 
     state_t& rootState = root->getState();
 
-    double *stateArrPrev = new double (numDimensions);
+    double *stateArrPrev = new double [numDimensions];
     for (int i = 0; i < numDimensions; i++) 
         stateArrPrev[i] = rootState[i];
     double distTotal = 0.0;
@@ -805,7 +806,7 @@ RRTstar::Planner< typeparams >
 
         state_t& stateCurr = vertexCurr->getState();
 
-        double *stateArrCurr = new double(2); 
+        double *stateArrCurr = new double[2]; 
         stateArrCurr[0] = stateCurr[0];
         stateArrCurr[1] = stateCurr[1];
 
@@ -825,7 +826,7 @@ RRTstar::Planner< typeparams >
 
                 double *stateArrFromParentCurr = *iter;
 
-                stateArrCurr = new double(2);
+                stateArrCurr = new double[2];
                 stateArrCurr[0] = stateArrFromParentCurr[0];
                 stateArrCurr[1] = stateArrFromParentCurr[1];
 
