@@ -165,9 +165,27 @@ bool System::IsInCollision (double stateIn[3])
     
     if( (xnum < 0) || (xnum > xsize)|| (ynum < 0) || (ynum > ysize) )
         return false;
-    else if( map_vals[xnum + ynum*xsize] > 0 )
-        return true;
+    else
+    {
+        float car_width = 3, car_length = 2.5;
+        int yleft = min(ysize, (int)(ynum + car_width/2/map_res));
+        int yright = max(0, (int)(ynum - car_width/2/map_res));
+        int xfront = min(xsize, (int)(xnum + car_length/2/map_res));
+        int xback = max(0, (int)(xnum - car_length/2/map_res));
+        cout<<"grid: " << xback <<" "<< xfront <<" "<< yleft <<" "<< yright << endl;
 
+        for(int i = xback; i < xfront; i++)
+        {
+            for(int j = yright; j< yleft; j++)
+            {
+                if(map_vals[i + j*xsize] > 0)
+                {
+                    cout<<"1 ";
+                    return true;
+                }
+            }
+        }
+    }
     return false;
 }
 #endif

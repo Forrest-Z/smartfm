@@ -85,8 +85,9 @@ void local_map_node::odomCallBack(const nav_msgs::Odometry::ConstPtr &odom_in)
             p.x = lmap.map_points[i][j].x[0];
             p.y = lmap.map_points[i][j].x[1];
             p.z = lmap.map_points[i][j].x[2];
-
-            gc.points.push_back(p);
+            
+            if(p.z > 0.3)
+                gc.points.push_back(p);
         }
 
     }

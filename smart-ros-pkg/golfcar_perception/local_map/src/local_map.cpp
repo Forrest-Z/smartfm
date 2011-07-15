@@ -5,7 +5,7 @@ Local_map::Local_map()
 
     // x is forward, y is left
     res = 0.05;
-    width = 20.0;
+    width = 10.0;
     height = 10.0;
     
     xsize = height/res;
@@ -35,7 +35,7 @@ inline int Local_map::get_cell_num(Pose p, int &x, int &y)
     x = px/res + xorigin;
     y = py/res + yorigin;
 
-    if( ( (x > xsize) || (x < 0) ) || ( (y > ysize) || (y < 0) ) )
+    if( ( (x >= xsize) || (x < 0) ) || ( (y >= ysize) || (y < 0) ) )
         return 1;
     else
         return 0;
@@ -116,11 +116,11 @@ void Local_map::transform_map(Pose prev, Pose curr)
             int res = get_cell_num(ptmp, xnum, ynum);
             if(res == 0)
             {
-                cout<<"xnum: "<< xnum<<" "<<ynum<<endl;
+                //cout<<"xnum: "<< xnum<<" "<<ynum<<endl;
                 int map_loc = CELL_LIN(xnum, ynum);
-                cout<<"map_loc: "<< map_loc << " "<<xsize*ysize << endl;
+                //cout<<"map_loc: "<< map_loc << " "<<xsize*ysize << endl;
                 map[map_loc] = (uint8_t) (min(255.0, (map_points[i][j].x[2]*255.0)));
-                cout<<"accessed map array"<<endl;
+                //cout<<"accessed map array"<<endl;
             }
         }
     }

@@ -175,7 +175,6 @@ int Planner_node::get_traj()
         stateIndex++;
     }
    
-    cout<<"published traj"<<endl;
     traj_pub.publish(traj_msg);
     return 0;
 }

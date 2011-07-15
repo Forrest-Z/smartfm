@@ -4,6 +4,7 @@
 #include <float.h>
 #include <vector>
 #include <list>
+#include <stdlib.h>
 
 using namespace std;
 
