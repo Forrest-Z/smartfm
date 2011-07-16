@@ -11,8 +11,10 @@ Local_map::Local_map()
     xsize = height/res;
     ysize = width/res;
     
-    xorigin = xsize/2.0;
-    yorigin = 3*ysize/4.0;
+    xorigin = 0;
+    yorigin = 6*ysize/10.0;
+    cout<<"xsize: "<< xsize <<" ysize: "<< ysize << " xorigin: "<< xorigin<<" yorigin: "<< yorigin<<endl;
+
 
     map = new unsigned char[ xsize*ysize];
 }
@@ -24,11 +26,11 @@ Local_map::~Local_map()
 
 void Local_map::reinit_map()
 {
-    memset(map, 0, sizeof(unsigned char)*xsize*ysize);
+    ;
 }
 
 // returns 1 if pose outside the local map
-inline int Local_map::get_cell_num(Pose p, int &x, int &y)
+int Local_map::get_cell_num(Pose p, int &x, int &y)
 {
     float px = p.x[0];
     float py = p.x[1];
@@ -50,38 +52,25 @@ Pose Local_map::get_cell_coor(int x, int y)
     return pret;
 }
 
-void Local_map::reduce_belief()
-{
-    cout << "reduce belief called" << endl;
-    for(int i=0; i < xsize; i++)
-    {
-        for(int j=0; j< ysize; j++)
-        {
-            unsigned char val = map[ CELL_LIN(i, j) ];
-            map[ CELL_LIN(i, j) ] = max(0, val- REDUCE_BELIEF_DELTA);
-        }
-    }
-}
-
 void Local_map::process_points(vector<Pose> points)
 {
+    vector<Pose> toput;
     for(unsigned int i=0; i< points.size(); i++)
     {
         if( (points[i].x[1] > 5) || (points[i].x[1] < -15) )
         {
-            points.erase(points.begin() + i);
         }
-        else if(points[i].x[2] < 0.3)
+        else if(points[i].x[2] < 0.6)
         {
-            points.erase(points.begin() + i);
         }
+        else
+            toput.push_back(points[i]);
     }
-    map_points.push_back(points);
-    if(map_points.size() > 100)
+    map_points.push_back(toput);
+    if(map_points.size() > 50)
     {
-        map_points.erase(map_points.begin() );
+        map_points.erase(map_points.begin());
     }
-    
 };
 
 // transforms the map forward
@@ -104,13 +93,19 @@ void Local_map::transform_map(Pose prev, Pose curr)
     float delth= curr.x[2] - prev.x[2];
     
     // reset local map
-    memset(map, 0, sizeof(unsigned char)*xsize*ysize);
+    for(int i=0; i< xsize; i++)
+    {
+        for(int j=0; j< ysize; j++)
+            map[i + j*xsize] = 0;
+    }
     for(unsigned int i=0; i< map_points.size(); i++)
     {
         for(unsigned int j=0; j< map_points[i].size(); j++)
         {
             map_points[i][j].x[0] = map_points[i][j].x[0] - delx;
+            //map_points[i][j].x[2] = 0;
             
+            // put points in gridmap
             Pose ptmp(map_points[i][j].x[0], map_points[i][j].x[1], map_points[i][j].x[2]);
             int xnum, ynum;
             int res = get_cell_num(ptmp, xnum, ynum);
@@ -120,7 +115,6 @@ void Local_map::transform_map(Pose prev, Pose curr)
                 int map_loc = CELL_LIN(xnum, ynum);
                 //cout<<"map_loc: "<< map_loc << " "<<xsize*ysize << endl;
                 map[map_loc] = 250;
-                //(uint8_t) (min(255.0, (map_points[i][j].x[2]*255.0)));
                 //cout<<"accessed map array"<<endl;
             }
         }

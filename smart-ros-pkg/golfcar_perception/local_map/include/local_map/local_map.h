@@ -49,8 +49,7 @@ class Local_map
         void reinit_map();
 
         Pose get_cell_coor(int x, int y);
-        inline int get_cell_num(Pose p, int &x, int &y);
-        void reduce_belief();
+        int get_cell_num(Pose p, int &x, int &y);
         void process_points( vector<Pose> points);
         inline Pose transform_pose(Pose src, Pose trans);
         void transform_map(Pose prev, Pose curr);

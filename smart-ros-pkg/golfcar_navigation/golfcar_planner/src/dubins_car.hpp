@@ -204,8 +204,9 @@ int System::sampleGoalState (State &randomStateOut) {
     }
 
     if (IsInCollision (randomStateOut.x))
+    {
         return 0;
-
+    }
     return 1;
 }
 

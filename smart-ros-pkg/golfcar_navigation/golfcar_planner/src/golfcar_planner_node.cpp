@@ -15,6 +15,7 @@
 #include <message_filters/subscriber.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
+#include <nav_msgs/GridCells.h>
 
 #include <local_map/local_map_msg.h>
 
@@ -49,6 +50,8 @@ class Planner_node
 
         ros::Subscriber map_sub;
         ros::Publisher traj_pub;
+        ros::Publisher grid_pub;
+
         ros::Timer planner_timer;
 
         system_t create_system();
@@ -63,7 +66,7 @@ Planner_node::Planner_node()
     planner_in_progress = false;
     num_frames_no_plan = 0;
     first_frame = 1;
-    RRT_MAX_ITER = 1000;
+    RRT_MAX_ITER = 2000;
 
     // init periodic planner
     planner_timer = nh.createTimer(ros::Duration(1.0), &Planner_node::get_plan, this);
@@ -71,17 +74,18 @@ Planner_node::Planner_node()
     // subscribe to points
     map_sub = nh.subscribe("localCells", 1, &Planner_node::on_map, this);
     traj_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 5); 
+    grid_pub = nh.advertise<nav_msgs::GridCells>("localgrid", 1); 
 
     system.regionOperating.center[0] = 0.0;
     system.regionOperating.center[1] = 0.0;
     system.regionOperating.center[2] = 0.0;
-    system.regionOperating.size[0] = 200.0;
-    system.regionOperating.size[1] = 200.0;
+    system.regionOperating.size[0] = 100.0;
+    system.regionOperating.size[1] = 100.0;
     system.regionOperating.size[2] = 2.0 * M_PI;
 
     // goal straight ahead
-    system.regionGoal.center[0] = 50.0;
-    system.regionGoal.center[1] = 0.0;
+    system.regionGoal.center[0] = 45.0;
+    system.regionGoal.center[1] = -45.0;
     system.regionGoal.center[2] = 0*M_PI;
     system.regionGoal.size[0] = 5.0;
     system.regionGoal.size[1] = 5.0;
@@ -106,11 +110,34 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
     }
     if(!planner_in_progress)
     {
+        memset(system.map_vals, 0, sizeof(uint8_t)*system.xsize *system.ysize);
         for(int i=0; i< system.xsize* system.ysize; i++)
         {
             system.map_vals[i] = local_map->vals[i];
+            //cout<<(int)system.map_vals[i]<<" ";
         }
+        
+        nav_msgs::GridCells gc;
+        gc.header.stamp = ros::Time::now();
+        gc.header.frame_id = "base_link";
+        gc.cell_width = system.map_res;
+        gc.cell_height = system.map_res;
+        for(int i=0; i< system.xsize* system.ysize; i++)
+        {
+            geometry_msgs::Point p;
+            int tmpx = i%system.xsize;
+            int tmpy = (float)i/system.xsize;
+            p.x = (tmpx - system.xorigin)*system.map_res;
+            p.y = (tmpy - system.yorigin)*system.map_res;
+            p.z = system.map_vals[i];
+
+            gc.cells.push_back(p);
+        }
+        grid_pub.publish(gc);
+        
     }
+    //cout<<endl;
+    
     /*
     num_frames_no_plan++;
     if(num_frames_no_plan == 10)
@@ -151,8 +178,8 @@ void Planner_node::get_plan(const ros::TimerEvent &event)
         rrts.iteration();
         curr_cost = rrts.getBestVertexCost();
         
-        if(iter % 500 == 0)
-            cout<<"\ni: "<< iter << endl;
+        //if(iter % 500 == 0)
+            //cout<<"\ni: "<< iter << endl;
         iter++;
     }
     planner_in_progress = false;
@@ -184,7 +211,7 @@ int Planner_node::get_traj(planner_t *prrts)
             p.header.frame_id = "base_link";
             p.pose.position.x = stateRef[0];
             p.pose.position.y = stateRef[1];
-            p.pose.position.z = 0;
+            p.pose.position.z = stateRef[2];
             traj_msg.poses.push_back(p);
 
             delete [] stateRef;
