@@ -1,6 +1,6 @@
-#include <odom_imu2.h>
+#include <golfcar_odom/odom_imu2.h>
 
-
+using namespace std;
 namespace golfcar_odometry_imu{
 //Constructor
         golfcar_odometry_imu::golfcar_odometry_imu(ros::NodeHandle nh_):n(nh_)
@@ -10,7 +10,7 @@ namespace golfcar_odometry_imu{
 		
 		odom_pub = n.advertise<nav_msgs::Odometry>("odom", 100);
 		initialized = false;
-		
+		yaw_drift =0;
 	}
 	
 	void golfcar_odometry_imu::imuCallBack(sensor_msgs::Imu imu)
@@ -39,11 +39,22 @@ namespace golfcar_odometry_imu{
 		if(!initialized) 
 		{
 			yaw_pre = yaw;
+			yaw_minus = yaw;
 			pose_pre = sampler.pose;
 			initialized = true;
+			
 		}
 		//Ensure that the orientation always start from yaw=0. That's the assumption made for odometry calculation
-		yaw -= yaw_pre;
+
+		//Only integrate yaw when the car is moving
+		if(sampler.vel < 0.05)
+		{
+			yaw_drift += (yaw - yaw_minus);
+			
+		}
+		yaw_minus = yaw;
+		yaw -= (yaw_pre+yaw_drift);
+		cout<<yaw<<' '<<yaw_drift<<endl;
 		btm.setRPY(roll, pitch, yaw);
 		btm.getRotation(qt_temp);
 		geometry_msgs::Quaternion qMsg;
