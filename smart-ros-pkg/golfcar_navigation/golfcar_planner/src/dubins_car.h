@@ -5,6 +5,7 @@
 #include <vector>
 #include <list>
 #include <stdlib.h>
+#include <geometry_msgs/Point.h>
 
 using namespace std;
 
@@ -90,9 +91,10 @@ public:
     list<region*> obstacles;
     
     int has_found_path;
+    geometry_msgs::Point origin;
     int xsize, ysize, xorigin, yorigin;
     float map_width, map_height, map_res;
-    uint8_t *map_vals;
+    unsigned char *map_vals;
 
     System ();
     ~System ();

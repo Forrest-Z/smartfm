@@ -6,11 +6,13 @@ float32 res
 float32 width
 float32 height
 # xsize, ysize = width/res
-uint32 xsize
-uint32 ysize
+int32 xsize
+int32 ysize
 # xorigin in terms of xsize/2 etc.
-uint32 xorigin
-uint32 yorigin
+int32 xorigin
+int32 yorigin
+# position of the car in odom frame for this map
+geometry_msgs/Point origin
 # actual data
-uint8[] vals
+float32[] vals
 

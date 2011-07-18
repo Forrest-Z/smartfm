@@ -11,6 +11,7 @@
 #include "tf/transform_listener.h"
 #include "tf/message_filter.h"
 
+#include <geometry_msgs/Point32.h>
 #include <sensor_msgs/PointCloud.h>
 #include <message_filters/subscriber.h>
 #include <nav_msgs/Odometry.h>
@@ -42,7 +43,8 @@ class Planner_node
         int num_frames_no_plan;
         list<double*> stateList;
         unsigned int RRT_MAX_ITER;
-        
+       
+        int map_skip, map_count;
         bool planner_in_progress;
         bool first_frame;
         system_t system;
@@ -50,51 +52,43 @@ class Planner_node
 
         ros::Subscriber map_sub;
         ros::Publisher traj_pub;
-        ros::Publisher grid_pub;
+        ros::Publisher obs_pub;
+        ros::Publisher tree_pub;
+        ros::Publisher vertex_pub;
 
         ros::Timer planner_timer;
 
         system_t create_system();
         void on_map(const local_map::local_map_msg::ConstPtr & local_map);
-        void get_plan(const ros::TimerEvent &event);
+        void get_plan();
         int get_traj(planner_t *rrts);
-        void get_tree();
+        int publish_tree(planner_t *rrts);
 };
 
 Planner_node::Planner_node()
 {
+    map_count = 0;
+    map_skip = 1;
     planner_in_progress = false;
     num_frames_no_plan = 0;
     first_frame = 1;
-    RRT_MAX_ITER = 2000;
+    RRT_MAX_ITER = 100;
 
     // init periodic planner
-    planner_timer = nh.createTimer(ros::Duration(1.0), &Planner_node::get_plan, this);
+    //planner_timer = nh.createTimer(ros::Duration(5.0), &Planner_node::get_plan, this);
 
     // subscribe to points
-    map_sub = nh.subscribe("localCells", 1, &Planner_node::on_map, this);
-    traj_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 5); 
-    grid_pub = nh.advertise<nav_msgs::GridCells>("localgrid", 1); 
-
-    system.regionOperating.center[0] = 0.0;
-    system.regionOperating.center[1] = 0.0;
-    system.regionOperating.center[2] = 0.0;
-    system.regionOperating.size[0] = 100.0;
-    system.regionOperating.size[1] = 100.0;
-    system.regionOperating.size[2] = 2.0 * M_PI;
-
-    // goal straight ahead
-    system.regionGoal.center[0] = 45.0;
-    system.regionGoal.center[1] = -45.0;
-    system.regionGoal.center[2] = 0*M_PI;
-    system.regionGoal.size[0] = 5.0;
-    system.regionGoal.size[1] = 5.0;
-    system.regionGoal.size[2] = 0.3 * M_PI;
-
+    map_sub = nh.subscribe<local_map::local_map_msg>("localCells", 5, &Planner_node::on_map, this);
+    traj_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 5);
+    obs_pub = nh.advertise<sensor_msgs::PointCloud>("obs_map", 5);
+    tree_pub = nh.advertise<sensor_msgs::PointCloud>("rrt_tree", 5);
+    vertex_pub = nh.advertise<sensor_msgs::PointCloud>("rrt_vertex", 5);
 }
 
 void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
 {
+    map_count++;
+
     if(first_frame)
     {
         first_frame = 0;
@@ -105,61 +99,107 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
         system.yorigin = local_map->yorigin;
         system.map_width = local_map->width;
         system.map_height = local_map->height;
-
-        system.map_vals = new uint8_t [system.xsize * system.ysize];
-    }
-    if(!planner_in_progress)
-    {
-        memset(system.map_vals, 0, sizeof(uint8_t)*system.xsize *system.ysize);
-        for(int i=0; i< system.xsize* system.ysize; i++)
-        {
-            system.map_vals[i] = local_map->vals[i];
-            //cout<<(int)system.map_vals[i]<<" ";
-        }
         
-        nav_msgs::GridCells gc;
-        gc.header.stamp = ros::Time::now();
-        gc.header.frame_id = "base_link";
-        gc.cell_width = system.map_res;
-        gc.cell_height = system.map_res;
-        for(int i=0; i< system.xsize* system.ysize; i++)
-        {
-            geometry_msgs::Point p;
-            int tmpx = i%system.xsize;
-            int tmpy = (float)i/system.xsize;
-            p.x = (tmpx - system.xorigin)*system.map_res;
-            p.y = (tmpy - system.yorigin)*system.map_res;
-            p.z = system.map_vals[i];
+        system.origin.x = 0;
+        system.origin.y = 0;
+        system.origin.z = 0;       // this is yaw
 
-            gc.cells.push_back(p);
-        }
-        grid_pub.publish(gc);
-        
+        system.map_vals = new unsigned char [system.xsize * system.ysize];
     }
-    //cout<<endl;
     
-    /*
-    num_frames_no_plan++;
-    if(num_frames_no_plan == 10)
+    if(map_count % map_skip == 0)
     {
-        num_frames_no_plan = 0;
+        map_count = 0;
+        
+        cout<<"l xsize: "<< local_map->xsize<<" l ysize:"<< local_map->ysize <<endl;
+        cout<<"xsize: "<< system.xsize<<" ysize:"<<system.ysize<<endl;
+        //cout<<"verify: "<< local_map->vals.size() <<" "<< system.xsize*system.ysize << endl;
+        for(int i=0; i< system.xsize; i++)
+        {
+            for(int j=0; j< system.ysize; j++)
+            {
+                float car_width = 3, car_length = 2.5;
+
+                int yleft = min(system.ysize, (int)(j + car_width/2/system.map_res));
+                int yright = max(0, (int)(j - car_width/2/system.map_res));
+                int xfront = min(system.xsize, (int)(i + car_length/2/system.map_res));
+                int xback = max(0, (int)(i - car_length/2/system.map_res));
+
+                system.map_vals[i + j*system.xsize] = (unsigned char)local_map->vals[i + j*system.xsize];
+                if(system.map_vals[i + j*system.xsize] > 10)
+                {
+                    for(int it= xback; it< xfront; it++)
+                    {
+                        for(int jt = yright; jt < yleft; jt++)
+                        {
+                            system.map_vals[it + jt*system.xsize] = 250;
+                        }
+                    }
+                }
+            }
+        }
+
+        // write origin in odom frame
+        system.origin.x = local_map->origin.x;
+        system.origin.y = local_map->origin.y;
+        system.origin.z = local_map->origin.z;       // this is yaw
+
         get_plan();
+        //cout<<endl;
+
+        sensor_msgs::PointCloud pc;
+        pc.header.stamp = ros::Time::now();
+        pc.header.frame_id = "odom";
+
+        //cout<<"verify: "<< local_map->vals.size() <<" "<< local_map->xsize * local_map->ysize << endl;
+        for(int i=0; i< system.xsize; i++)
+        {
+            for(int j=0; j< system.ysize; j++)
+            {
+                float tmp = (float)system.map_vals[j + i*system.xsize];
+                if( tmp > 50.0)
+                {
+                    //cout<<"1: "<<i<<" "<<j << endl;
+                    geometry_msgs::Point32 p;
+                    p.x = system.origin.x + (i - system.xorigin)*system.map_res;
+                    p.y = system.origin.y + (j - system.yorigin)*system.map_res;
+                    p.z = 0;
+
+                    pc.points.push_back(p);
+                }
+            }
+        }
+        obs_pub.publish(pc);
     }
-    */
 }
 
-// break out of loop if cost does not decrease for > 500 iters
-void Planner_node::get_plan(const ros::TimerEvent &event)
+void Planner_node::get_plan()
 {
     planner_t rrts;
+    
+    system.regionOperating.center[0] = system.origin.x;
+    system.regionOperating.center[1] = system.origin.y;
+    system.regionOperating.center[2] = system.origin.z;
+    system.regionOperating.size[0] = 2*system.map_width;
+    system.regionOperating.size[1] = 2*system.map_height;
+    system.regionOperating.size[2] = 2.0 * M_PI;
+
+    // goal straight ahead
+    system.regionGoal.center[0] = 200.0;
+    system.regionGoal.center[1] = -500.0;
+    system.regionGoal.center[2] = 0*M_PI;
+    system.regionGoal.size[0] = 5.0;
+    system.regionGoal.size[1] = 5.0;
+    system.regionGoal.size[2] = 0.3 * M_PI;
+
     rrts.setSystem( system );
     
     // init root
     vertex_t &root = rrts.getRootVertex();  
     state_t &rootState = root.getState();
-    rootState[0] = 0.0;
-    rootState[1] = 0.0;
-    rootState[2] = 0.0;
+    rootState[0] = system.origin.x;
+    rootState[1] = system.origin.y;
+    rootState[2] = system.origin.z;
     
     // Initialize the planner
     rrts.initialize ();
@@ -185,6 +225,8 @@ void Planner_node::get_plan(const ros::TimerEvent &event)
     planner_in_progress = false;
     cout<<"cost: "<< curr_cost << " result: ";
     cout<< get_traj(&rrts) << endl;
+    
+    publish_tree(&rrts);
 }
 
 int Planner_node::get_traj(planner_t *prrts)
@@ -200,7 +242,7 @@ int Planner_node::get_traj(planner_t *prrts)
 
         nav_msgs::Path traj_msg;
         traj_msg.header.stamp = ros::Time::now();
-        traj_msg.header.frame_id = "base_link";
+        traj_msg.header.frame_id = "odom";
 
         int stateIndex = 0;
         for (list<double*>::iterator iter = stateList.begin(); iter != stateList.end(); iter++) 
@@ -208,10 +250,10 @@ int Planner_node::get_traj(planner_t *prrts)
             double* stateRef = *iter;
             geometry_msgs::PoseStamped p;
             p.header.stamp = ros::Time::now();
-            p.header.frame_id = "base_link";
+            p.header.frame_id = "odom";
             p.pose.position.x = stateRef[0];
             p.pose.position.y = stateRef[1];
-            p.pose.position.z = stateRef[2];
+            p.pose.position.z = 0;
             traj_msg.poses.push_back(p);
 
             delete [] stateRef;
@@ -219,134 +261,126 @@ int Planner_node::get_traj(planner_t *prrts)
         }
 
         traj_pub.publish(traj_msg);
+
     }
     return 0;
 }
 
-/*
-   void Planner_node::get_tree()
-   {
-   tree->num_nodes = planner.numVertices; 
+int Planner_node::publish_tree(planner_t *prrts)
+{
+    int num_nodes = 0;
+    
+    num_nodes = prrts->numVertices;
 
+    sensor_msgs::PointCloud pc;
+    pc.header.stamp = ros::Time::now();
+    pc.header.frame_id = "odom";
 
-   if (tree->num_nodes > 0) {    
+    sensor_msgs::PointCloud pc1;
+    pc1.header.stamp = ros::Time::now();
+    pc1.header.frame_id = "odom";
+    
+    if (num_nodes > 0) 
+    {    
+        for (list<vertex_t*>::iterator iter = prrts->listVertices.begin(); iter != prrts->listVertices.end(); iter++) 
+        {
+            vertex_t &vertexCurr = **iter;
+            state_t &stateCurr = vertexCurr.getState ();
+            
+            geometry_msgs::Point32 p;
+            p.x = stateCurr[0];
+            p.y = stateCurr[1];
+            p.z = 0.0;
+            pc.points.push_back(p);
+            pc1.points.push_back(p);
 
+            vertex_t& vertexParent = vertexCurr.getParent();
+            if (&vertexParent != NULL) 
+            {
+                state_t& stateParent = vertexParent.getState();
+                list<double*> trajectory;
+                if (system.getTrajectory (stateParent, stateCurr, trajectory) == 0) {
+                    cout << "ERROR: Trajectory can not be regenerated" << endl;
+                    return 0;
+                }
+                int par_num_states = trajectory.size();
+                if (par_num_states) 
+                {
+                    int stateIndex = 0;
+                    for (list<double*>::iterator it_state = trajectory.begin(); it_state != trajectory.end(); it_state++) 
+                    {
+                        double *stateTraj = *it_state;
 
-   tree->nodes = (lcmtypes_opttree_node_t *) malloc (tree->num_nodes * sizeof(lcmtypes_opttree_node_t));
-   tree->traj_from_parent = (lcmtypes_opttree_traj_t *) malloc (tree->num_nodes * sizeof(lcmtypes_opttree_traj_t));
-
-   int nodeIndex = 0;
-   for (list<vertex_t*>::iterator iter = planner.listVertices.begin(); iter != planner.listVertices.end(); iter++) {
-
-
-   vertex_t &vertexCurr = **iter;
-   state_t &stateCurr = vertexCurr.getState ();
-
-   tree->nodes[nodeIndex].nodeid = nodeIndex;
-   tree->nodes[nodeIndex].dead_node = false;
-   tree->nodes[nodeIndex].state.x = stateCurr[0];
-   tree->nodes[nodeIndex].state.y = stateCurr[1];
-   tree->nodes[nodeIndex].state.z = 0.0;
-   tree->nodes[nodeIndex].distance_from_root = vertexCurr.getCost ();
-
-
-   vertex_t& vertexParent = vertexCurr.getParent();
-   if (&vertexParent != NULL) {
-   state_t& stateParent = vertexParent.getState();
-   list<double*> trajectory;
-   if (system.getTrajectory (stateParent, stateCurr, trajectory) == 0) {
-   cout << "ERROR: Trajectory can not be regenerated" << endl;
-   return 0;
-   }
-
-   tree->traj_from_parent[nodeIndex].num_states = trajectory.size();
-   if (tree->traj_from_parent[nodeIndex].num_states) {
-   tree->traj_from_parent[nodeIndex].states = (lcmtypes_optsystem_state_t *) 
-   malloc (tree->traj_from_parent[nodeIndex].num_states * sizeof (lcmtypes_optsystem_state_t));
-   int stateIndex = 0;
-   for (list<double*>::iterator it_state = trajectory.begin(); it_state != trajectory.end(); it_state++) {
-   double *stateCurr = *it_state;
-   tree->traj_from_parent[nodeIndex].states[stateIndex].x = stateCurr[0];
-   tree->traj_from_parent[nodeIndex].states[stateIndex].y = stateCurr[1];
-   tree->traj_from_parent[nodeIndex].states[stateIndex].z = 0.0;
-   stateIndex++;
-   delete [] stateCurr;
-   }
-   }
-   else 
-   tree->traj_from_parent[nodeIndex].states = NULL;
-   }
-   else {
-   tree->traj_from_parent[nodeIndex].num_states = 0;
-   tree->traj_from_parent[nodeIndex].states = NULL;
-   }
-   nodeIndex++;
-
-   }
-
-   }
-   else {
-   tree->nodes = NULL;
-   }
-
-   if (tree->num_nodes > 1) {
-   tree->num_edges = tree->num_nodes - 1;
-   tree->edges = (int32_t **) malloc (tree->num_edges * sizeof(int32_t *));
-   tree->traj_edges = (lcmtypes_opttree_traj_t *) malloc (tree->num_edges * sizeof (lcmtypes_opttree_tree_t));
-
-for (int i = 0; i < tree->num_edges; i++) {
-    tree->traj_edges[i].num_states = 0;
-    tree->traj_edges[i].states = NULL;
-}
-
-int edgeIndex = 0;
-for (list<vertex_t*>::iterator iter = planner.listVertices.begin(); iter != planner.listVertices.end(); iter++) {
-
-    vertex_t &vertexCurr = **iter;
-
-    if (&(vertexCurr.getParent()) == NULL) 
-        continue;
-
-    int parentIndex = 0;
-    bool parentFound = false;
-    for (list<vertex_t*>::iterator iterParent = planner.listVertices.begin(); 
-            iterParent != planner.listVertices.end(); iterParent++) {
-
-        vertex_t *vertexParentCurr = *iterParent;
-
-        if ( &(vertexCurr.getParent())  == vertexParentCurr) {
-
-            parentFound = true; 
-            break;
+                        geometry_msgs::Point32 p2;
+                        p2.x = stateTraj[0];
+                        p2.y = stateTraj[1];
+                        p2.z = 0.0;
+                        pc.points.push_back(p2);
+                        stateIndex++;
+                        delete [] stateTraj;
+                    }
+                }
+            }
         }
-        parentIndex++;
     }
 
-    if (parentFound == false) {
-        cout << "ERROR: No parent found" << endl; 
+    /*
+    if (tree->num_nodes > 1) 
+    {
+        tree->num_edges = tree->num_nodes - 1;
+        tree->edges = (int32_t **) malloc (tree->num_edges * sizeof(int32_t *));
+        tree->traj_edges = (lcmtypes_opttree_traj_t *) malloc (tree->num_edges * sizeof (lcmtypes_opttree_tree_t));
+
+        for (int i = 0; i < tree->num_edges; i++) {
+            tree->traj_edges[i].num_states = 0;
+            tree->traj_edges[i].states = NULL;
+        }
+
+        int edgeIndex = 0;
+        for (list<vertex_t*>::iterator iter = planner.listVertices.begin(); iter != planner.listVertices.end(); iter++) {
+
+            vertex_t &vertexCurr = **iter;
+
+            if (&(vertexCurr.getParent()) == NULL) 
+                continue;
+
+            int parentIndex = 0;
+            bool parentFound = false;
+            for (list<vertex_t*>::iterator iterParent = planner.listVertices.begin(); 
+                    iterParent != planner.listVertices.end(); iterParent++) {
+
+                vertex_t *vertexParentCurr = *iterParent;
+
+                if ( &(vertexCurr.getParent())  == vertexParentCurr) {
+
+                    parentFound = true; 
+                    break;
+                }
+                parentIndex++;
+            }
+
+            if (parentFound == false) {
+                cout << "ERROR: No parent found" << endl; 
+            }
+            tree->edges[edgeIndex] = (int32_t *) malloc (2 * sizeof(int32_t));
+            tree->edges[edgeIndex][0] = edgeIndex;
+            tree->edges[edgeIndex][1] = parentIndex;
+
+            edgeIndex++;
+        }
+
     }
-    tree->edges[edgeIndex] = (int32_t *) malloc (2 * sizeof(int32_t));
-    tree->edges[edgeIndex][0] = edgeIndex;
-    tree->edges[edgeIndex][1] = parentIndex;
+    else {
+        tree->num_edges = 0;
+        tree->edges = NULL;
+    }
+    */
+    tree_pub.publish(pc);
+    vertex_pub.publish(pc1);
 
-    edgeIndex++;
-}
-
-}
-else {
-    tree->num_edges = 0;
-    tree->edges = NULL;
-}
-
-lcmtypes_opttree_tree_t_publish (lcm, "OPTTREE_TREE", tree);
-
-lcmtypes_opttree_tree_t_destroy (tree);
-
-
-return 1;
+    return 1;
 
 }
-*/
 
 int main(int argc, char **argv)
 {

@@ -92,7 +92,7 @@ double Trajectory::evaluateCost () {
 
 System::System () 
 {
-    turning_radius = 3.0;
+    turning_radius = 4.0;
     distance_limit = 1000.0;
     delta_distance = 0.05;
     has_found_path = 0; 
@@ -133,41 +133,29 @@ bool System::isReachingTarget (State &stateIn) {
 bool System::IsInCollision (double stateIn[3]) 
 {
     // get cell_num of stateIn
-    double xtmp = stateIn[0];
-    double ytmp = stateIn[1];
+    double xtmp = stateIn[0] - origin.x;
+    double ytmp = stateIn[1] - origin.y;
 
     int xnum, ynum;
     xnum = xtmp/map_res + xorigin;
     ynum = ytmp/map_res + yorigin;
     
+    /*
     if(xnum >= xsize)
         return false;
     else if( (ynum < 0) || (ynum >= ysize) )
         return true;
     else if (xnum < 0)
         return true;
+        */
+    if( (xnum >= xsize) || (xnum < 0) || (ynum >= ysize) || (ynum < 0) )
+        return false;
     else
     {
-        float car_width = 3, car_length = 2.5;
-        
-        int yleft = min(ysize, (int)(ynum + car_width/2/map_res));
-        int yright = max(0, (int)(ynum - car_width/2/map_res));
-        int xfront = min(xsize, (int)(xnum + car_length/2/map_res));
-        int xback = max(0, (int)(xnum - car_length/2/map_res));
-        
         //cout<<"grid: " << xback <<" "<< xfront <<" "<< yleft <<" "<< yright << endl;
+        if(map_vals[ynum + xnum*xsize] > 10)
+            return true;
 
-        for(int i = xback; i < xfront; i++)
-        {
-            for(int j = yright; j< yleft; j++)
-            {
-                if(map_vals[i + j*xsize] > 0)
-                {
-                    return true;
-                }
-            }
-        }
-       
         /*
         if( map_vals[xnum + ynum*xsize] > 0)
         {
@@ -331,7 +319,6 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 t_inc_rel -= t_inc_curr - t_increment_s1;
                 t_inc_curr = t_increment_s1;
             }
-
 
             state_curr[0] = x_s1 + turning_radius * cos (direction_s1 * t_inc_curr + t_s1);
             state_curr[1] = y_s1 + turning_radius * sin (direction_s1 * t_inc_curr + t_s1);
