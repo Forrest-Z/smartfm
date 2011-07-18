@@ -5,10 +5,9 @@ namespace golfcar_purepursuit {
   PurePursuit::PurePursuit()
   {
     ros::NodeHandle n;
-    traj_sub_ = n.subscribe("pnc_trajectory", 1, &PurePursuit::trajCallBack, this);
+    traj_sub_ = n.subscribe("pnc_trajectory", 100, &PurePursuit::trajCallBack, this);
     cmd_pub_ = n.advertise<geometry_msgs::Twist>("cmd_vel",1);
-    ros::Timer timer_ = n.createTimer(ros::Duration(0.01), &PurePursuit::controlLoop, this);
-
+    timer_ = n.createTimer(ros::Duration(0.01), &PurePursuit::controlLoop, this);
     ros::NodeHandle private_nh("~");
     if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 1.5;
     if(!private_nh.getParam("turning_radius",turning_radius_)) turning_radius_ = 4;
@@ -16,11 +15,13 @@ namespace golfcar_purepursuit {
     if(!private_nh.getParam("max_steering",max_steering_)) max_steering_ = 0.65;
     if(!private_nh.getParam("switch_distance",switch_distance_)) switch_distance_ = 0.05;
     if(!private_nh.getParam("car_length",car_length_)) car_length_ = 1.632;
-
+	
     std::cout<<"turning_radius: "<<turning_radius_<<"\n";
     std::cout<<"look_ahead: "<<look_ahead_<<"\n";
     std::cout<<"max_steering: "<<max_steering_<<"\n";
     std::cout<<"switch_distance: "<<switch_distance_<<"\n";
+    
+    
   }
 
   PurePursuit::~PurePursuit()
@@ -29,13 +30,13 @@ namespace golfcar_purepursuit {
 
   void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
   {
-    trajectory_.header.frame_id = "odom";
+    trajectory_.header.frame_id = "/odom";
     trajectory_.header.stamp = ros::Time::now();
     trajectory_.poses.resize(traj->poses.size());
     for(unsigned int i=0; i<traj->poses.size(); i++)
     {
       try {
-	tf_.transformPose("odom", traj->poses[i], trajectory_.poses[i]);
+	tf_.transformPose("/odom", traj->poses[i], trajectory_.poses[i]);
       }
       catch(tf::LookupException& ex) {
 	ROS_ERROR("No Transform available Error: %s\n", ex.what());
@@ -50,10 +51,12 @@ namespace golfcar_purepursuit {
 	return;
       }
     }
+    ROS_DEBUG("Traj received");
   }
 
   void PurePursuit::controlLoop(const ros::TimerEvent &e)
   {
+	
     geometry_msgs::Twist cmd_ctrl;
 
     double cmd_vel;
@@ -75,13 +78,14 @@ namespace golfcar_purepursuit {
 
     double cmd_steer = 0;
     tf::Stamped<tf::Pose> pose;
-    if(trajectory_.poses.size() > 1 && !getRobotPose(pose))
+    if(trajectory_.poses.size() > 1 && getRobotPose(pose))
     {
       double cur_x = pose.getOrigin().x();
       double cur_y = pose.getOrigin().y();
       double cur_yaw = tf::getYaw(pose.getRotation());
       int segment = get_segment(cur_x, cur_y);
       cmd_steer = get_steering(segment, cur_x, cur_y, cur_yaw, cmd_vel);
+      ROS_DEBUG("%d %lf %lf %lf %lf", segment, cur_x, cur_y, cur_yaw, cmd_vel);
     }
 
     cmd_ctrl.linear.x = cmd_vel;
@@ -94,12 +98,12 @@ namespace golfcar_purepursuit {
     odom_pose.setIdentity();
     tf::Stamped<tf::Pose> robot_pose;
     robot_pose.setIdentity();
-    robot_pose.frame_id_ = "base_link";
+    robot_pose.frame_id_ = "/base_link";
     robot_pose.stamp_ = ros::Time();
     ros::Time current_time = ros::Time::now(); // save time for checking tf delay later
 
     try {
-      tf_.transformPose("odom", robot_pose, odom_pose);
+      tf_.transformPose("/odom", robot_pose, odom_pose);
     }
     catch(tf::LookupException& ex) {
       ROS_ERROR("No Transform available Error: %s\n", ex.what());
@@ -322,6 +326,7 @@ namespace golfcar_purepursuit {
     {
       // something seriously wrong!
       cmd_vel = 0;
+      ROS_WARN("Something seriously wrong!");
       return 0;
     }
 
@@ -330,7 +335,8 @@ namespace golfcar_purepursuit {
     double ori_x = trajectory_.poses[segment].pose.position.x;
     double ori_y = trajectory_.poses[segment].pose.position.y;
     double inv_R = get_inv_R(segment);
-
+	ROS_DEBUG("Inv_R= %lf", inv_R);
+	
     double a, b, c, x, r, theta, gamma;
     double L = look_ahead_;
 
@@ -384,8 +390,8 @@ int main(int argc, char **argv)
     ROS_ERROR("failed to start the process\n");
     return 1;
   }
-
+  
   ros::spin();
-
+  
   return 0;
 }	

@@ -27,7 +27,7 @@ public:
 	ros::Publisher filter_pub;
 	int pose_init;
 	
-	double yaw_pre;
+	double yaw_pre, yaw_drift, yaw_minus;
 	
 	nav_msgs::Odometry odom;
 	golfcar_odom::odo golfcarodo;
