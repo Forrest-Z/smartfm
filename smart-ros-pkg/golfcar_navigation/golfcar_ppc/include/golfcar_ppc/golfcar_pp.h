@@ -12,23 +12,44 @@ using namespace std;
 
 namespace golfcar_purepursuit {
 
-
-	class PurePursuit{
-		
-		public:
-		
+	class PurePursuit
+    {
+    public:
 		PurePursuit();
 		~PurePursuit();
 
-		bool getRobotPose(tf::Stamped<tf::Pose>& global_pose) const;
-		private:
-		ros::NodeHandle n_;
-        	ros::Subscriber traj_sub_;
+    private:
+        ros::Subscriber traj_sub_;
 		ros::Publisher cmd_pub_;
-		nav_msgs::Path trajectory_;
-		void trajCallBack(const nav_msgs::Path::ConstPtr &traj);
-		void controlLoop();
+        ros::Timer timer_;
+
+        double normal_speed_;
+        double turning_radius_;
+        double look_ahead_;
+        double max_steering_;
+        double switch_distance_;
+        double car_length_;
+
 		tf::TransformListener tf_;
-		double freq_;
+		nav_msgs::Path trajectory_;
+
+		void trajCallBack(const nav_msgs::Path::ConstPtr &traj);
+		void controlLoop(const ros::TimerEvent &e);
+
+		bool getRobotPose(tf::Stamped<tf::Pose>& odom_pose) const;
+        double get_distance(double x1, double y1, double x2, double y2);
+        void get_center(double tar_x, double tar_y,
+                        double ori_x, double ori_y, double inv_R,
+                        double center[2]);
+        double get_inv_R(int segment);
+        bool btwn_points(double tar_x, double tar_y,
+                         double ori_x, double ori_y,
+                         double inv_R, double x, double y);
+        void get_projection(double tar_x, double tar_y,
+                            double ori_x, double ori_y,
+                            double inv_R, double cur_x, double cur_y,
+                            double proj[2]);
+        int get_segment(double cur_x, double cur_y);
+        double get_steering(int segment, double cur_x, double cur_y, double cur_yaw, double& cmd_vel);
 	};
 };
