@@ -4,33 +4,33 @@ namespace PID_Speed{
 
   PID_Speed::PID_Speed()
   {
-    ros::NodeHandle private_nh_("~");
     ros::NodeHandle n;
     cmd_vel_sub_= n.subscribe("cmd_vel", 1, &PID_Speed::cmdVelCallBack, this);
     sampler_sub_= n.subscribe("golfcar_sampler", 1, &PID_Speed::samplerCallBack, this);
     throttle_pub_ = n.advertise<golfcar_halstreamer::throttle>("golfcar_speed", 1);
     brakepedal_pub_ = n.advertise<golfcar_halstreamer::brakepedal>("golfcar_brake", 1);
 
-    if(!private_nh_.getParam("kp",kp_)) kp_ = 0.15;
-    if(!private_nh_.getParam("ki",ki_)) ki_ = 0.3;
-    if(!private_nh_.getParam("ki_sat",ki_sat_)) ki_sat_ = 1.0;
-    if(!private_nh_.getParam("coeff_throttle",coeff_th_)) coeff_th_ = 3.3;
-    if(!private_nh_.getParam("coeff_brakepedal",coeff_bp_)) coeff_bp_ = 120;
-    if(!private_nh_.getParam("throttleZeroThres", throttle_zero_thres_)) throttle_zero_thres_ = 0.2;
-    if(!private_nh_.getParam("brakeZeroThres", brake_zero_thres_)) brake_zero_thres_ = 3.0;
-    if(!private_nh_.getParam("fullBrakeThres", full_brake_thres_)) full_brake_thres_ = 0.5;
-    if(!private_nh_.getParam("tau_v", tau_v_)) tau_v_ = 0.25;
+    ros::NodeHandle private_nh("~");
+    if(!private_nh.getParam("kp",kp_)) kp_ = 0.15;
+    if(!private_nh.getParam("ki",ki_)) ki_ = 0.25;
+    if(!private_nh.getParam("ki_sat",ki_sat_)) ki_sat_ = 0.8;
+    if(!private_nh.getParam("coeff_throttle",coeff_th_)) coeff_th_ = 3.3;
+    if(!private_nh.getParam("coeff_brakepedal",coeff_bp_)) coeff_bp_ = 120;
+    if(!private_nh.getParam("throttleZeroThres", throttle_zero_thres_)) throttle_zero_thres_ = 0.2;
+    if(!private_nh.getParam("brakeZeroThres", brake_zero_thres_)) brake_zero_thres_ = 3.0;
+    if(!private_nh.getParam("fullBrakeThres", full_brake_thres_)) full_brake_thres_ = 0.5;
+    if(!private_nh.getParam("tau_v", tau_v_)) tau_v_ = 0.25;
+
+    std::cout<<"kp: "<<kp_<<" ki: "<<ki_<<" ki_sat: "<<ki_sat_<<"\n";
+    std::cout<<"coeff_th: "<<coeff_th_<<" coeff_bp: "<<coeff_bp_<<"\n";
+    std::cout<<"throttle_threshold: "<<throttle_zero_thres_<<" brake_threshold: "<<brake_zero_thres_<<"\n";
+    std::cout<<"tau_v: "<<tau_v_<<"\n";
 
     cmd_vel_ = 0;
     time_pre_ = ros::Time::now();
     e_pre_ = 0;
     ei_ = 0;
     v_filtered_ = 0;
-
-    std::cout<<"kp: "<<kp_<<" ki: "<<ki_<<" ki_sat: "<<ki_sat_<<"\n";
-    std::cout<<"coeff_th: "<<coeff_th_<<" coeff_bp: "<<coeff_bp_<<"\n";
-    std::cout<<"throttle_threshold: "<<throttle_zero_thres_<<" brake_threshold: "<<brake_zero_thres_<<"\n";
-    std::cout<<"tau_v: "<<tau_v_<<"\n";
   }
 
   void PID_Speed::samplerCallBack(golfcar_halsampler::odo sampler)
@@ -99,6 +99,11 @@ int main(int argc, char**argv)
 {
   ros::init(argc, argv, "speed_controller");
   PID_Speed::PID_Speed *pidc = new PID_Speed::PID_Speed();
+  if(!pidc) {
+    ROS_ERROR("failed to start the process\n");
+    return 1;
+  }
+
   ros::spin();
 
   return 0;
