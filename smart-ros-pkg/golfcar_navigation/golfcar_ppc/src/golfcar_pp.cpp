@@ -370,7 +370,7 @@ namespace golfcar_purepursuit {
     gamma = 2/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
     double steering = atan(gamma * car_length_);
     ROS_DEBUG("steering, segment=%d x=%lf y=%lf yaw=%lf cmd_vel=%lf", segment, cur_x, cur_y, cur_yaw, cmd_vel);
-    ROS_DEBUG("r=%lf x=%lf theta=%lf gamma=%lf steering=%lf", r, x, theta, gamma, steering);
+    ROS_DEBUG("inv_R=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf", inv_R, r, x, theta, gamma, steering);
 
     if(steering > max_steering_)
       steering = max_steering_;
