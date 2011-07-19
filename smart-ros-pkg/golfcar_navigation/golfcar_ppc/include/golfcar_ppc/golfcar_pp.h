@@ -24,6 +24,7 @@ namespace golfcar_purepursuit {
         ros::Timer timer_;
 
         double normal_speed_;
+        int start_decreasing_;
         double turning_radius_;
         double look_ahead_;
         double max_steering_;

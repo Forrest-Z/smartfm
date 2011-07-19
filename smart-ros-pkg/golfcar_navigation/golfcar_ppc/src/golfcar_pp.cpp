@@ -11,16 +11,20 @@ namespace golfcar_purepursuit {
 
     ros::NodeHandle private_nh("~");
     if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 1.5;
+    if(!private_nh.getParam("start_decreasing",start_decreasing_)) start_decreasing_ = 2;
     if(!private_nh.getParam("turning_radius",turning_radius_)) turning_radius_ = 4;
-    if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 4;
+    if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3;
     if(!private_nh.getParam("max_steering",max_steering_)) max_steering_ = 0.65;
     if(!private_nh.getParam("switch_distance",switch_distance_)) switch_distance_ = 0.05;
     if(!private_nh.getParam("car_length",car_length_)) car_length_ = 1.632;
-	
+
+    std::cout<<"normal_speed: "<<normal_speed_<<"\n";
+    std::cout<<"start_decreasing: "<<start_decreasing_<<"\n";
     std::cout<<"turning_radius: "<<turning_radius_<<"\n";
     std::cout<<"look_ahead: "<<look_ahead_<<"\n";
     std::cout<<"max_steering: "<<max_steering_<<"\n";
     std::cout<<"switch_distance: "<<switch_distance_<<"\n";
+    std::cout<<"car_length: "<<car_length_<<"\n";
   }
 
   PurePursuit::~PurePursuit()
@@ -57,21 +61,10 @@ namespace golfcar_purepursuit {
     geometry_msgs::Twist cmd_ctrl;
 
     double cmd_vel;
-    switch(trajectory_.poses.size())
-    {
-    case 2:
-      cmd_vel = normal_speed_ * 2/3;
-      break;
-    case 1:
-      cmd_vel = normal_speed_ * 1/3;
-      break;
-    case 0:
-      cmd_vel = 0;
-      break;
-    default:
+    if((int) trajectory_.poses.size() > start_decreasing_)
       cmd_vel = normal_speed_;
-      break;
-    }
+    else
+      cmd_vel = normal_speed_ * start_decreasing_/(1+start_decreasing_);
 
     double cmd_steer = 0;
     tf::Stamped<tf::Pose> pose;
@@ -82,6 +75,11 @@ namespace golfcar_purepursuit {
       double cur_yaw = tf::getYaw(pose.getRotation());
       int segment = get_segment(cur_x, cur_y);
       cmd_steer = get_steering(segment, cur_x, cur_y, cur_yaw, cmd_vel);
+    }
+    else
+    {
+      cmd_vel = 0;
+      cmd_steer = 0;
     }
 
     cmd_ctrl.linear.x = cmd_vel;
@@ -136,10 +134,15 @@ namespace golfcar_purepursuit {
     x = (tar_x + ori_x)/2;
     y = (tar_y + ori_y)/2;
     dist1 = get_distance(ori_x, ori_y, tar_x, tar_y);
+    double sq = 1/inv_R/inv_R - dist1*dist1/4;
+    if(sq < 0) {
+      ROS_ERROR("R*R-dist*dist/4=%lf < 0\n", sq);
+    }
+
     if(inv_R > 0)
-      dist2 = sqrt(1/inv_R/inv_R - dist1*dist1/4);
+      dist2 = sqrt(sq);
     else
-      dist2 = -sqrt(1/inv_R/inv_R - dist1*dist1/4);
+      dist2 = -sqrt(sq);
     a = tar_y - ori_y;
     b = ori_x - tar_x;
 
@@ -157,7 +160,7 @@ namespace golfcar_purepursuit {
     double ori_yaw = trajectory_.poses[segment].pose.position.z;
     double tar_yaw = trajectory_.poses[segment+1].pose.position.z;
     double diff_yaw_abs = abs(tar_yaw-ori_yaw);
-    if(diff_yaw_abs > 1.0) // hack to consider wrapping
+    if(diff_yaw_abs > M_PI/2) // hack to consider wrapping and sign
     {
       if(tar_yaw < ori_yaw)
 	inv_R = 1/turning_radius_;
@@ -367,10 +370,14 @@ namespace golfcar_purepursuit {
       theta -= 2*M_PI;
     while(theta < -M_PI)
       theta += 2*M_PI;
+
+    if(abs(x) > L)
+      L = abs(x) + look_ahead_;
+
     gamma = 2/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
     double steering = atan(gamma * car_length_);
     ROS_DEBUG("steering, segment=%d x=%lf y=%lf yaw=%lf cmd_vel=%lf", segment, cur_x, cur_y, cur_yaw, cmd_vel);
-    ROS_DEBUG("inv_R=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf", inv_R, r, x, theta, gamma, steering);
+    ROS_DEBUG("inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf", inv_R, L, r, x, theta, gamma, steering);
 
     if(steering > max_steering_)
       steering = max_steering_;
