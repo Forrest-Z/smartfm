@@ -559,11 +559,9 @@ RRTstar::Planner< typeparams >
         insertIntoKdtree (**iter);
     }
     
-    if (!lowerBoundVertex)
-    {
-        lowerBoundVertex = NULL;
-        lowerBoundCost = DBL_MAX;
-    }
+    lowerBoundVertex = NULL;
+    lowerBoundCost = DBL_MAX;
+    
     listSurvivingVertices.clear();
     recomputeCost (root);
 
@@ -720,6 +718,20 @@ RRTstar::Planner< typeparams >
 template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
+::switchRootSystemOrigin ()
+{
+    double *stateOrigin = new double[numDimensions];
+    stateOrigin[0] = system.origin.x;
+    stateOrigin[1] = system.origin.y;
+    stateOrigin[2] = system.origin.z;
+    
+    vertex_t *newRoot;
+    getNearestVertex(stateOrigin, newRoot);
+}
+
+template< class typeparams >
+int 
+RRTstar::Planner< typeparams >
 ::switchRoot (double distanceIn) {
 
 
@@ -736,7 +748,6 @@ RRTstar::Planner< typeparams >
         listBestVertex.push_front (vertexCurrBest);
         vertexCurrBest = &(vertexCurrBest->getParent());
     }
-
 
     double *stateRootNew = new double[numDimensions];
     vertex_t* vertexChildNew = NULL;
@@ -814,7 +825,6 @@ RRTstar::Planner< typeparams >
     // 2. Find and store all the decendandts of the new root
     findDescendantVertices (vertexChildNew);
 
-
     // 3. Create the new root vertex
     vertex_t* vertexRoot = new vertex_t;
     vertexRoot->state = new state_t;
@@ -829,7 +839,6 @@ RRTstar::Planner< typeparams >
     // 4. Connect the new root vertex to the new child
     trajectory_t connectingTrajectory;
     bool exactConnection;
-
 
     if (system->extendTo(vertexRoot->getState(), vertexChildNew->getState(), connectingTrajectory, exactConnection) < 0)
         cout << "ERR: No extend" << endl;
@@ -919,9 +928,10 @@ RRTstar::Planner< typeparams >
 
         state_t& stateCurr = vertexCurr->getState();
 
-        double *stateArrCurr = new double[2]; 
+        double *stateArrCurr = new double[3]; 
         stateArrCurr[0] = stateCurr[0];
         stateArrCurr[1] = stateCurr[1];
+        stateArrCurr[2] = stateCurr[2];
 
         trajectoryOut.push_front (stateArrCurr);
 
@@ -935,13 +945,14 @@ RRTstar::Planner< typeparams >
             system->getTrajectory (stateParent, stateCurr, trajectory);
 
             trajectory.reverse ();
-            for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++) {
-
+            for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++) 
+            {
                 double *stateArrFromParentCurr = *iter;
 
-                stateArrCurr = new double[2];
+                stateArrCurr = new double[3];
                 stateArrCurr[0] = stateArrFromParentCurr[0];
                 stateArrCurr[1] = stateArrFromParentCurr[1];
+                stateArrCurr[2] = stateArrFromParentCurr[2];
 
                 trajectoryOut.push_front (stateArrCurr);
 

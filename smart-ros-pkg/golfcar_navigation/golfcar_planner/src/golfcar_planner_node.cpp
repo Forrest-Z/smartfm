@@ -15,6 +15,7 @@
 #include <sensor_msgs/PointCloud.h>
 #include <message_filters/subscriber.h>
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Pose.h>
 #include <nav_msgs/Path.h>
 #include <nav_msgs/GridCells.h>
 
@@ -41,7 +42,6 @@ class Planner_node
     private:
 
         int num_frames_no_plan;
-        list<double*> stateList;
         unsigned int RRT_MAX_ITER;
         planner_t rrts;
 
@@ -50,7 +50,11 @@ class Planner_node
         bool first_frame;
         system_t system;
         ros::NodeHandle nh;
+        
+        float dist_betw_odom;
+        geometry_msgs::Pose odom_prev, odom_now;
 
+        ros::Subscriber odom_sub;
         ros::Subscriber map_sub;
         ros::Publisher traj_pub;
         ros::Publisher obs_pub;
@@ -60,6 +64,7 @@ class Planner_node
         ros::Timer planner_timer;
 
         system_t create_system();
+        void on_odom(const nav_msgs::Odometry::ConstPtr & msg);
         void on_map(const local_map::local_map_msg::ConstPtr & local_map);
         void get_plan();
         int get_traj(planner_t *rrts);
@@ -71,23 +76,30 @@ class Planner_node
 
 Planner_node::Planner_node()
 {
-
+    dist_betw_odom = 0;
     map_count = 0;
     map_skip = 1;
     planner_in_progress = false;
     num_frames_no_plan = 0;
     first_frame = 1;
-    RRT_MAX_ITER = 1000;
+    RRT_MAX_ITER = 200;
 
     // init periodic planner
     //planner_timer = nh.createTimer(ros::Duration(5.0), &Planner_node::get_plan, this);
 
     // subscribe to points
+    odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", 5, &Planner_node::on_odom, this);
     map_sub = nh.subscribe<local_map::local_map_msg>("localCells", 5, &Planner_node::on_map, this);
     traj_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 5);
     obs_pub = nh.advertise<sensor_msgs::PointCloud>("obs_map", 5);
     tree_pub = nh.advertise<sensor_msgs::PointCloud>("rrt_tree", 5);
     vertex_pub = nh.advertise<sensor_msgs::PointCloud>("rrt_vertex", 5);
+}
+
+void Planner_node::on_odom(const nav_msgs::Odometry::ConstPtr & msg)
+{
+    odom_now.position.x = msg->pose.pose.position.x;
+    odom_now.position.y = msg->pose.pose.position.y;
 }
 
 void Planner_node::publish_grid()
@@ -185,7 +197,7 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
         {
             for(int j=0; j< system.ysize; j++)
             {
-                float car_width = 0.1, car_length = 0.1;
+                float car_width = 2.0, car_length = 2.0;
 
                 int yleft = min(system.ysize, (int)(j + car_width/2/system.map_res));
                 int yright = max(0, (int)(j - car_width/2/system.map_res));
@@ -287,7 +299,7 @@ void Planner_node::get_plan()
 {
     // prune the obstructed part of the tree
     rrts.checkTree();
-    //cout<<"tree_num_vert: "<< rrts.numVertices<<endl;
+    cout<<"tree_num_vert: "<< rrts.numVertices<<endl;
     
     //cout<<"sys origin: "<< system.origin.x<<" "<< system.origin.y<<endl;
     system.regionOperating.center[0] = system.origin.x;
@@ -309,16 +321,33 @@ void Planner_node::get_plan()
     system.regionGoal.size[1] = ys;
     system.regionGoal.size[2] = 0.3 * M_PI;
     //cout<<"goal dir: "<< system.regionGoal.center[2] << endl;
+ 
+    float x1 = odom_now.position.x;
+    float y1 = odom_now.position.y;
+    float x2 = odom_prev.position.x;
+    float y2 = odom_prev.position.y;
+    dist_betw_odom = sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) );
+    //cout<<"dist betw: "<< dist_betw_odom << endl;
+    state_t &state_root = root->getState();
 
-    for(unsigned int i=0; i< RRT_MAX_ITER; i++)
+    float dist = sqrt((x1 - state_root[0])*(x1 - state_root[0]) + (y1 - state_root[1])*(y1 - state_root[1]) );
+    if( dist < 0.5)
     {
-        rrts.iteration();
+        for(unsigned int i=0; i< RRT_MAX_ITER; i++)
+        {
+            rrts.iteration();
+        }
     }
-    
+
     rrts.updateReachability();
     
-    //cout<<"cost: "<< rrts.getBestVertexCost() << " result: " << get_traj(&rrts) << endl;
-    //rrts.switchRoot(1.0);
+    cout<<"cost: "<< rrts.getBestVertexCost() << " result: " << get_traj(&rrts) << endl;
+ 
+
+    odom_prev.position.x = odom_now.position.x;
+    odom_prev.position.y = odom_now.position.y;
+    
+
     publish_tree(&rrts);
 }
 
@@ -333,10 +362,19 @@ int Planner_node::get_traj(planner_t *prrts)
     }
     else
     {
-        stateList.clear();
+        list<double*> stateList;
         prrts->getBestTrajectory (stateList);
+        
+        for (list<double*>::iterator iter = stateList.begin(); iter != stateList.end(); iter++) 
+        {
+            double* stateRef = *iter;
+            //cout<<"["<<stateRef[0]<<","<<stateRef[1]<<" "<< stateRef[2]<<"] ";
+        }
+        //cout<<endl;
+        cout<<"traj size: "<< stateList.size() << endl;
 
         nav_msgs::Path traj_msg;
+        
         traj_msg.header.stamp = ros::Time::now();
         traj_msg.header.frame_id = "odom";
 
@@ -347,17 +385,21 @@ int Planner_node::get_traj(planner_t *prrts)
             geometry_msgs::PoseStamped p;
             p.header.stamp = ros::Time::now();
             p.header.frame_id = "odom";
-            p.pose.position.x = stateRef[0];
-            p.pose.position.y = stateRef[1];
-            p.pose.position.z = 0;
-            traj_msg.poses.push_back(p);
-
-            delete [] stateRef;
+            if( (stateRef[0] > 0.001) && (stateRef[0] < 1e100) && (stateRef[1] > 0.001) && (stateRef[1] < 1e100))
+            {
+                cout<<"here"<< endl;
+                //cout<<"["<<stateRef[0]<<","<<stateRef[1]<<" "<< stateRef[2]<<"] ";
+                p.pose.position.x = stateRef[0];
+                p.pose.position.y = stateRef[1];
+                p.pose.position.z = stateRef[2];
+                p.pose.orientation.w = 1.0;
+                traj_msg.poses.push_back(p);
+            }
+            //delete [] stateRef;
             stateIndex++;
         }
-
+        
         traj_pub.publish(traj_msg);
-
     }
     return 0;
 }
@@ -390,14 +432,14 @@ int Planner_node::publish_tree(planner_t *prrts)
             pc.points.push_back(p);
             pc1.points.push_back(p);
             
-            /*
             vertex_t& vertexParent = vertexCurr.getParent();
             if (&vertexParent != NULL) 
             {
                 state_t& stateParent = vertexParent.getState();
                 list<double*> trajectory;
-                if (system.getTrajectory (stateParent, stateCurr, trajectory) == 0) {
-                    cout << "ERROR: Trajectory can not be regenerated" << endl;
+                if (system.getTrajectory (stateParent, stateCurr, trajectory) == 0) 
+                {
+                    //cout << "ERROR: Trajectory can not be regenerated" << endl;
                     return 0;
                 }
                 int par_num_states = trajectory.size();
@@ -418,63 +460,10 @@ int Planner_node::publish_tree(planner_t *prrts)
                     }
                 }
             }
-            */
         }
     }
 
-    /*
-    if (tree->num_nodes > 1) 
-    {
-        tree->num_edges = tree->num_nodes - 1;
-        tree->edges = (int32_t **) malloc (tree->num_edges * sizeof(int32_t *));
-        tree->traj_edges = (lcmtypes_opttree_traj_t *) malloc (tree->num_edges * sizeof (lcmtypes_opttree_tree_t));
-
-        for (int i = 0; i < tree->num_edges; i++) {
-            tree->traj_edges[i].num_states = 0;
-            tree->traj_edges[i].states = NULL;
-        }
-
-        int edgeIndex = 0;
-        for (list<vertex_t*>::iterator iter = planner.listVertices.begin(); iter != planner.listVertices.end(); iter++) {
-
-            vertex_t &vertexCurr = **iter;
-
-            if (&(vertexCurr.getParent()) == NULL) 
-                continue;
-
-            int parentIndex = 0;
-            bool parentFound = false;
-            for (list<vertex_t*>::iterator iterParent = planner.listVertices.begin(); 
-                    iterParent != planner.listVertices.end(); iterParent++) {
-
-                vertex_t *vertexParentCurr = *iterParent;
-
-                if ( &(vertexCurr.getParent())  == vertexParentCurr) {
-
-                    parentFound = true; 
-                    break;
-                }
-                parentIndex++;
-            }
-
-            if (parentFound == false) {
-                cout << "ERROR: No parent found" << endl; 
-            }
-            tree->edges[edgeIndex] = (int32_t *) malloc (2 * sizeof(int32_t));
-            tree->edges[edgeIndex][0] = edgeIndex;
-            tree->edges[edgeIndex][1] = parentIndex;
-
-            edgeIndex++;
-        }
-
-    }
-    else {
-        tree->num_edges = 0;
-        tree->edges = NULL;
-    }
-    */
-    
-    //tree_pub.publish(pc);
+    tree_pub.publish(pc);
     vertex_pub.publish(pc1);
 
     return 1;

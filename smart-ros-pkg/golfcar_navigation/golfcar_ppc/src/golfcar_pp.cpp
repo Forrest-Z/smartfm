@@ -7,7 +7,7 @@ namespace golfcar_purepursuit {
     ros::NodeHandle n;
     traj_sub_ = n.subscribe("pnc_trajectory", 100, &PurePursuit::trajCallBack, this);
     cmd_pub_ = n.advertise<geometry_msgs::Twist>("cmd_vel",1);
-    timer_ = n.createTimer(ros::Duration(0.01), &PurePursuit::controlLoop, this);
+    timer_ = n.createTimer(ros::Duration(0.08), &PurePursuit::controlLoop, this);
 
     ros::NodeHandle private_nh("~");
     if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 1.5;
@@ -15,7 +15,7 @@ namespace golfcar_purepursuit {
     if(!private_nh.getParam("turning_radius",turning_radius_)) turning_radius_ = 4;
     if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3;
     if(!private_nh.getParam("max_steering",max_steering_)) max_steering_ = 0.65;
-    if(!private_nh.getParam("switch_distance",switch_distance_)) switch_distance_ = 0.05;
+    if(!private_nh.getParam("switch_distance",switch_distance_)) switch_distance_ = 0.01;
     if(!private_nh.getParam("car_length",car_length_)) car_length_ = 1.632;
 
     last_segment_ = 0;

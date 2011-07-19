@@ -5,8 +5,8 @@ Local_map::Local_map()
 
     // x is forward, y is left
     res = 0.15;
-    width = 15.0;
-    height = 15.0;
+    width = 30.0;
+    height = 30.0;
     
     xsize = height/res;
     ysize = width/res;
@@ -66,11 +66,13 @@ void Local_map::process_points(vector<Point> points)
         float ytmp = points[i].y;
         if( sqrt((xtmp- pose.position.x)*(xtmp- pose.position.x) + (ytmp- pose.position.y)*(ytmp- pose.position.y)) > 15)
         {}
+        else
+            toput.push_back(points[i]);
+        /*
         else if( points[i].z - pose.position.z < 0.6)
         {
         }
-        else
-            toput.push_back(points[i]);
+        */
     }
     map_points.push_back(toput);
     if(map_points.size() > 100)
