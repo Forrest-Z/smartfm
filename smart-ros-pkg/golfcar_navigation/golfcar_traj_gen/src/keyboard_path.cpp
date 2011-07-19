@@ -107,7 +107,7 @@ int main(int argc, char **argv)
 			}
 			path.poses[resolution/2+1].pose.position.x = -seperation*radius;
 			path.poses[resolution/2+1].pose.position.y = 0;
-			for(int i=resolution-1;i>resolution/2-1;i--)
+			for(int i=resolution-1;i>resolution/2-2;i--)
 			{
 				path.poses[resolution-i+resolution/2+1].pose.position.x = radius*sin(i/resolution*2.0*M_PI)-seperation*radius ;
 				path.poses[resolution-i+resolution/2+1].pose.position.y = radius*cos(i/resolution*2.0*M_PI)-radius;
@@ -127,6 +127,9 @@ int main(int argc, char **argv)
 				posex_pre = posex_cur;
 				posey_pre = posey_cur;
 			}
+			path.poses[resolution/2+1].pose.position.z = path.poses[resolution/2].pose.position.z;
+			path.poses[resolution+3].pose.position.z = path.poses[resolution+2].pose.position.z;
+
 			ROS_INFO("Trajectory of a 8 with radius %lf meter sent", radius);
 		}
 		break;
