@@ -715,6 +715,7 @@ RRTstar::Planner< typeparams >
     return 1;
 }
 
+/*
 template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
@@ -728,11 +729,12 @@ RRTstar::Planner< typeparams >
     vertex_t *newRoot;
     getNearestVertex(stateOrigin, newRoot);
 }
+*/
 
 template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
-::switchRoot (double distanceIn) {
+::switchRoot (double distanceIn, list<double *>& trajret) {
 
 
     // If there is no path reaching the goal, then return failure
@@ -808,7 +810,18 @@ RRTstar::Planner< typeparams >
         }
 
         if (stateFound)
+        {
+            trajret.clear();
+
+            state_t &state_tmp = vertexCurr->getState();
+            state_t state_root;
+            state_root[0] = stateRootNew[0];
+            state_root[1] = stateRootNew[1];
+            state_root[2] = stateRootNew[2];
+            system->getTrajectory(state_tmp, state_root, trajret);
+            
             break;
+        }
 
         vertexCurr = &vertexParent;
     }

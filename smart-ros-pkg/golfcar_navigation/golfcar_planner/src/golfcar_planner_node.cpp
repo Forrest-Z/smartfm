@@ -321,33 +321,25 @@ void Planner_node::get_plan()
     system.regionGoal.size[1] = ys;
     system.regionGoal.size[2] = 0.3 * M_PI;
     //cout<<"goal dir: "<< system.regionGoal.center[2] << endl;
+
+    for(unsigned int i=0; i< RRT_MAX_ITER; i++)
+    {
+        rrts.iteration();
+    }
+    
+    rrts.updateReachability();
+    cout<<"cost: "<< rrts.getBestVertexCost() << " result: " << get_traj(&rrts) << endl;
  
     float x1 = odom_now.position.x;
     float y1 = odom_now.position.y;
     float x2 = odom_prev.position.x;
     float y2 = odom_prev.position.y;
     dist_betw_odom = sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) );
-    //cout<<"dist betw: "<< dist_betw_odom << endl;
-    state_t &state_root = root->getState();
-
-    float dist = sqrt((x1 - state_root[0])*(x1 - state_root[0]) + (y1 - state_root[1])*(y1 - state_root[1]) );
-    if( dist < 0.5)
-    {
-        for(unsigned int i=0; i< RRT_MAX_ITER; i++)
-        {
-            rrts.iteration();
-        }
-    }
-
-    rrts.updateReachability();
     
-    cout<<"cost: "<< rrts.getBestVertexCost() << " result: " << get_traj(&rrts) << endl;
- 
-
+    //cout<<"dist betw: "<< dist_betw_odom << endl;
     odom_prev.position.x = odom_now.position.x;
     odom_prev.position.y = odom_now.position.y;
     
-
     publish_tree(&rrts);
 }
 
@@ -363,14 +355,14 @@ int Planner_node::get_traj(planner_t *prrts)
     else
     {
         list<double*> stateList;
-        prrts->getBestTrajectory (stateList);
+        rrts.switchRoot(2.0, stateList);
         
         for (list<double*>::iterator iter = stateList.begin(); iter != stateList.end(); iter++) 
         {
             double* stateRef = *iter;
-            //cout<<"["<<stateRef[0]<<","<<stateRef[1]<<" "<< stateRef[2]<<"] ";
+            cout<<"["<<stateRef[0]<<","<<stateRef[1]<<" "<< stateRef[2]<<"] ";
         }
-        //cout<<endl;
+        cout<<endl;
         cout<<"traj size: "<< stateList.size() << endl;
 
         nav_msgs::Path traj_msg;
@@ -387,7 +379,7 @@ int Planner_node::get_traj(planner_t *prrts)
             p.header.frame_id = "odom";
             if( (stateRef[0] > 0.001) && (stateRef[0] < 1e100) && (stateRef[1] > 0.001) && (stateRef[1] < 1e100))
             {
-                cout<<"here"<< endl;
+                //cout<<"here"<< endl;
                 //cout<<"["<<stateRef[0]<<","<<stateRef[1]<<" "<< stateRef[2]<<"] ";
                 p.pose.position.x = stateRef[0];
                 p.pose.position.y = stateRef[1];
@@ -399,6 +391,7 @@ int Planner_node::get_traj(planner_t *prrts)
             stateIndex++;
         }
         
+
         traj_pub.publish(traj_msg);
     }
     return 0;

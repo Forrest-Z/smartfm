@@ -124,7 +124,7 @@ namespace RRTstar {
         int checkTree();
 
         int updateReachability (); 
-        int switchRoot (double distance);
+        int switchRoot (double distance, list<double*> &traj);
         
         double getBestVertexCost () {return lowerBoundCost;}
         vertex_t& getBestVertex () {return *lowerBoundVertex;}
