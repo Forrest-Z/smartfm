@@ -33,6 +33,7 @@ namespace golfcar_purepursuit {
 
 		tf::TransformListener tf_;
 		nav_msgs::Path trajectory_;
+        int last_segment_;
 
 		void trajCallBack(const nav_msgs::Path::ConstPtr &traj);
 		void controlLoop(const ros::TimerEvent &e);

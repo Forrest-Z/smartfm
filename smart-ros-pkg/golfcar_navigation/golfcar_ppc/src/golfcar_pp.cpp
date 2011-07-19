@@ -18,6 +18,8 @@ namespace golfcar_purepursuit {
     if(!private_nh.getParam("switch_distance",switch_distance_)) switch_distance_ = 0.05;
     if(!private_nh.getParam("car_length",car_length_)) car_length_ = 1.632;
 
+    last_segment_ = 0;
+
     std::cout<<"normal_speed: "<<normal_speed_<<"\n";
     std::cout<<"start_decreasing: "<<start_decreasing_<<"\n";
     std::cout<<"turning_radius: "<<turning_radius_<<"\n";
@@ -33,6 +35,8 @@ namespace golfcar_purepursuit {
 
   void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
   {
+    last_segment_ = 0;
+
     trajectory_.header.frame_id = "/odom";
     trajectory_.header.stamp = ros::Time::now();
     trajectory_.poses.resize(traj->poses.size());
@@ -272,7 +276,7 @@ namespace golfcar_purepursuit {
     else if(trajectory_.poses.size() < 2)
       return 0;
 
-    int segment = 0;
+    int segment = last_segment_;
     bool bContinue;
     do
     {
@@ -312,6 +316,7 @@ namespace golfcar_purepursuit {
       }
     } while(bContinue);
 
+    last_segment_ = segment;
     return segment;
   }
 
