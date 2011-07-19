@@ -35,13 +35,13 @@ int main(int argc, char **argv)
 	signal(SIGINT,quit);
 	char c;
 
-	nav_msgs::Path path;
+	
 
 	//turning radius in meter
-	float radius = 5;
+	float radius = 10;
 
 	//min number of points
-	float resolution = 50;
+	float resolution = 28;
 
 	//seperation of 8 figure
 	float seperation = 1.75;
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
 			perror("read():");
 			exit(-1);
 		}
-
+		nav_msgs::Path path;
 		path.header.stamp = ros::Time::now();
 		path.header.frame_id = "/odom";
 
@@ -131,7 +131,50 @@ int main(int argc, char **argv)
 		}
 		break;
 		case KEYCODE_U:
+		{
+			geometry_msgs::PoseStamped pose;
+			for(int i=0;i<=resolution/2;i++)
+			{
+				
+				pose.pose.position.x = radius*sin(i/resolution*2.0*M_PI) ;
+				pose.pose.position.y = radius*cos(i/resolution*2.0*M_PI)-radius;
+				path.poses.push_back(pose);
+			}
+			
+			for(int i=0;i<(seperation*resolution/2.0/M_PI);i++)
+			{
+				pose.pose.position.x -= radius * 2.0*M_PI/resolution;
+				path.poses.push_back(pose);
+			}			
 
+			for(int i=resolution/2+1;i<=resolution;i++)
+			{
+				pose.pose.position.x = radius*sin(i/resolution*2.0*M_PI) -seperation*radius;
+				pose.pose.position.y = radius*cos(i/resolution*2.0*M_PI)-radius;
+				path.poses.push_back(pose);
+			}
+
+			for(int i=0;i<(seperation*resolution/2.0/M_PI);i++)
+			{
+				pose.pose.position.x += radius * 2.0*M_PI/resolution;
+				path.poses.push_back(pose);
+			}			
+
+
+			for(int i=0; i< path.poses.size(); i++)
+			{
+				path.poses[i].header.seq = i;
+				path.poses[i].header.stamp = ros::Time::now();
+				path.poses[i].header.frame_id = "/odom";
+				posex_cur = path.poses[i].pose.position.x;
+				posey_cur = path.poses[i].pose.position.y;
+				path.poses[i].pose.position.z = atan2(posey_cur-posey_pre, posex_cur-posex_pre);
+				path.poses[i].pose.orientation = tf::createQuaternionMsgFromYaw(atan2(posey_cur-posey_pre, posex_cur-posex_pre));
+				posex_pre = posex_cur;
+				posey_pre = posey_cur;
+			}
+			ROS_INFO("Trajectory of oval with radius %lf meter sent", radius);
+		}
 			break;
 		case KEYCODE_D:
 

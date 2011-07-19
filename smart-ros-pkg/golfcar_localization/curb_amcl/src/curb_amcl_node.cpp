@@ -91,6 +91,8 @@ class CurbAmclNode
 
     tf::Transform latest_tf_;
     bool latest_tf_valid_;
+    
+
 
     // Pose-generating function used to uniformly distribute particles over
     // the map
@@ -126,6 +128,10 @@ class CurbAmclNode
     int sx, sy;
     double resolution;
     
+    //move it here as class member;
+    double alpha1, alpha2, alpha3, alpha4, alpha5;
+    double alpha6;
+    
     ////////////////////////////////////////////////////////////////////////////
     //the incoming information data is actually "two beginning points for curb";
     ////////////////////////////////////////////////////////////////////////////
@@ -157,7 +163,7 @@ class CurbAmclNode
     map_t* requestMap();
 
     // Helper to get odometric pose from transform system
-    bool getOdomPose(tf::Stamped<tf::Pose>& pose,double& x, double& y, double& yaw,
+    bool getOdomPose(tf::Stamped<tf::Pose>& pose,double& x, double& y, double& yaw, double& pitch,
                      const ros::Time& t, const std::string& f);
 
     //time for tolerance on the published transform,
@@ -189,8 +195,13 @@ class CurbAmclNode
     geometry_msgs::PointStamped 				RightAnalysis_;
     ros::Publisher 								RightAnalysis_pub_;
     
-	void measAnalysis(sensor_msgs::PointCloud& oldMeas, sensor_msgs::PointCloud& newMeas, const double Disnormalizer, geometry_msgs::PointStamped& AnalysisResult, const ros::Publisher& Analysis_pub);
 
+	void measAnalysis(sensor_msgs::PointCloud& oldMeas, sensor_msgs::PointCloud& newMeas, const double Disnormalizer, geometry_msgs::PointStamped& AnalysisResult, const ros::Publisher& Analysis_pub);
+	
+	geometry_msgs::PointStamped 			    base_link_point_;    
+	ros::Publisher								baselink_pt_pub_;
+	geometry_msgs::PointStamped 			    position_covariance_;
+    ros::Publisher								cov_pub_;
 };
 
 #define USAGE "USAGE: amcl"
@@ -218,7 +229,7 @@ CurbAmclNode::CurbAmclNode() :
 {
   // Grab params off the param server
   int min_particles, max_particles;
-  double alpha1, alpha2, alpha3, alpha4, alpha5;
+  //double alpha1, alpha2, alpha3, alpha4, alpha5;
   double alpha_slow, alpha_fast;
   double z_hit, z_rand, sigma_hit, rand_range;
   double pf_err, pf_z;
@@ -236,16 +247,17 @@ CurbAmclNode::CurbAmclNode() :
   private_nh_.param("odom_alpha1", alpha1, 0.01);
   private_nh_.param("odom_alpha2", alpha2, 0.01);
   private_nh_.param("odom_alpha3", alpha3, 0.2);
-  private_nh_.param("odom_alpha4", alpha4, 0.01);
+  private_nh_.param("odom_alpha4", alpha4, 0.2);
   private_nh_.param("odom_alpha5", alpha5, 0.01);
+  private_nh_.param("odom_alpha6", alpha6, 0.09);
 
   private_nh_.param("laser_z_hit", z_hit, 0.95);
   private_nh_.param("laser_z_rand", z_rand, 0.05);
-  private_nh_.param("laser_sigma_hit", sigma_hit, 0.2);
+  private_nh_.param("laser_sigma_hit", sigma_hit, 0.25);
   private_nh_.param("rand_range", rand_range, 40.0);
   
   double laser_likelihood_max_dist;
-  private_nh_.param("laser_likelihood_max_dist",laser_likelihood_max_dist, 2.0);
+  private_nh_.param("laser_likelihood_max_dist",laser_likelihood_max_dist, 3.0);
   std::string tmp_model_type;
  
   odom_model_t odom_model_type;
@@ -260,14 +272,14 @@ CurbAmclNode::CurbAmclNode() :
 
   private_nh_.param("update_min_d", d_thresh_, 0.5);
   private_nh_.param("update_min_a", a_thresh_, M_PI/6.0);
-  private_nh_.param("update_min_num", numTresh_, 20);
+  private_nh_.param("update_min_num", numTresh_, 25);
   private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
   private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));
   private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
   private_nh_.param("resample_interval", resample_interval_, 1);
   double tmp_tol;
   private_nh_.param("transform_tolerance", tmp_tol, 0.1);
-  private_nh_.param("recovery_alpha_slow", alpha_slow, 0.001);
+  private_nh_.param("recovery_alpha_slow", alpha_slow, 0.1);  // alpha_slow, 0.001; alpha_fast, 0.1;
   private_nh_.param("recovery_alpha_fast", alpha_fast, 0.1);
 
   transform_tolerance_.fromSec(tmp_tol);
@@ -318,7 +330,7 @@ CurbAmclNode::CurbAmclNode() :
   if(odom_model_type == ODOM_MODEL_OMNI)
     odom_->SetModelOmni(alpha1, alpha2, alpha3, alpha4, alpha5);
   else
-    odom_->SetModelDiff(alpha1, alpha2, alpha3, alpha4);   
+    odom_->SetModelDiff(alpha1, alpha2, alpha3, alpha4, alpha6);   
   
   // Curb
   curb_ = new AMCLCurb(map_);
@@ -355,6 +367,9 @@ CurbAmclNode::CurbAmclNode() :
   //for analysis purposes;
   LeftAnalysis_pub_  = nh_.advertise<geometry_msgs::PointStamped>("LeftAnalysis",  5);
   RightAnalysis_pub_ = nh_.advertise<geometry_msgs::PointStamped>("RightAnalysis", 5);
+  
+  baselink_pt_pub_  = nh_.advertise<geometry_msgs::PointStamped>("baselink_in_map",  5);
+  cov_pub_		    = nh_.advertise<geometry_msgs::PointStamped>("localization_cov", 5);
   
   ROS_INFO("Construction Finished");
 }
@@ -420,7 +435,7 @@ CurbAmclNode::~CurbAmclNode()
 
 bool
 CurbAmclNode::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
-                      double& x, double& y, double& yaw,
+                      double& x, double& y, double& yaw, double& pitch,
                       const ros::Time& t, const std::string& f)
 {
   // Get the robot's pose
@@ -437,9 +452,8 @@ CurbAmclNode::getOdomPose(tf::Stamped<tf::Pose>& odom_pose,
   }
   x = odom_pose.getOrigin().x();
   y = odom_pose.getOrigin().y();
-  double pitch,roll;
+  double roll;
   odom_pose.getBasis().getEulerYPR(yaw, pitch, roll);
-
   return true;
 }
 
@@ -470,7 +484,6 @@ CurbAmclNode::uniformPoseGenerator(void* arg)
     if(MAP_VALID(map,i,j) && (map->cells[MAP_INDEX(map,i,j)].occ_state == -1))
       break;
   }
-
   return p;
 }
 
@@ -499,6 +512,11 @@ CurbAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
   
 	ros::Time curbRece_time = cloud_in->header.stamp;
 	//ROS_INFO("curbRece_time %lf", curbRece_time.toSec());
+	
+	base_link_point_.header.frame_id = "map";
+	base_link_point_.header.stamp = curbRece_time;	
+	position_covariance_.header.frame_id = "map";
+	position_covariance_.header.stamp = curbRece_time;	
 
 	//try to get current transform between "odom" and "base_link";
 	tf::StampedTransform 	baseOdomTemp;
@@ -514,8 +532,9 @@ CurbAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
   
 	tf::Stamped<tf::Pose> odom_pose;
 	pf_vector_t pose;
+	double pitch;
 	
-	if(!getOdomPose(odom_pose, pose.v[0], pose.v[1], pose.v[2],curbRece_time, base_frame_id_))
+	if(!getOdomPose(odom_pose, pose.v[0], pose.v[1], pose.v[2], pitch, curbRece_time, base_frame_id_))
 	{
 		ROS_ERROR("Couldn't determine robot's pose associated with laser scan");
 		return;
@@ -551,8 +570,7 @@ CurbAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
 	}
 	else
 	{
-		//ROS_INFO("curbdata accumulate");
-		
+		//ROS_INFO("curbdata accumulate");		
 		geometry_msgs::Pose temppose;
 		temppose.position.x=0;
 		temppose.position.y=0;
@@ -607,17 +625,44 @@ CurbAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
 					fabs(delta.v[2]) > a_thresh_;
 
 		bool update2 = (curbdata_->accumNum_) > numTresh_;
+		
+		bool update3 = distTolast < 4.0;
     
-		bool update = update1 && update2;
+		bool updateAction = update1 && update2;
+		bool updateMeas= update1 && update2 && update3;
+		
+		if(update3)
+		{
+			odom_->SetModelDiff(alpha1, alpha2, alpha3, alpha4, alpha6); 
+		}
+		else
+		{
+			//just help to shift these particles;
+			double temp_alpha1=0.0001;
+			double temp_alpha2=0.0001;
+			double temp_alpha3=0.0001;
+			double temp_alpha4=0.0001;
+			double temp_alpha6=0.0001;
+			
+			odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
+		}
 		
 		// Prediction Step;
-		if(update)
+		if(updateAction)
 		{
-			//ROS_INFO("update is true");
+			ROS_INFO("---------------------update------------------");
+			ROS_INFO("distTolast: %5f, accumNum: %d", distTolast, curbdata_->accumNum_);
+			ROS_INFO("pitch: %5f", pitch);
+			
 			AMCLOdomData odata;
-			odata.pose = pose;
+			odata.pose  = pose;
 			odata.delta = delta;
+			odata.pitch = pitch;
 			odom_->UpdateAction(pf_, (AMCLSensorData*)&odata, (void *)map_);
+			
+			//the following line is quite important and interesting;
+			//seperate "action updating" and "measurement updating" 
+			pf_odom_pose_ = pose;
 		}
 	
     
@@ -630,7 +675,7 @@ CurbAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
 		// also remember to do some post procession after using it;
 		/////////////////////////////////////////////////////////////    
 
-		if(update)
+		if(updateMeas)
 		{
 			//this is quite important!!!
 			//Because in the beginning I missed this command, the whole program cannot work properly;
@@ -682,9 +727,8 @@ CurbAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
 			//////////////////////////////////////////////////////////////////////////////////////
 						
 			curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_);
-			
-			pf_odom_pose_ = pose;
-		
+		    curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_);
+		    
 			if(!(++resample_count_ % resample_interval_))
 			{
 				pf_update_resample(pf_);
@@ -802,6 +846,15 @@ CurbAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
 					p.pose.covariance[6*0+0],
 					p.pose.covariance[6*1+1],
 					p.pose.covariance[6*3+3]);
+			
+			
+			base_link_point_.point.x = hyps[max_weight_hyp].pf_pose_mean.v[0];
+			base_link_point_.point.y = hyps[max_weight_hyp].pf_pose_mean.v[1];
+			base_link_point_.point.z = hyps[max_weight_hyp].pf_pose_mean.v[2];
+			
+			position_covariance_.point.x = p.pose.covariance[6*0+0];
+			position_covariance_.point.y = p.pose.covariance[6*1+1];
+			position_covariance_.point.z = p.pose.covariance[6*3+3];
 
 			// subtracting base to odom from map to base and send map to odom instead
 			tf::Stamped<tf::Pose> odom_to_map;
@@ -853,6 +906,9 @@ CurbAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
 		ros::Time now9 = ros::Time::now();
 		//ROS_INFO("now9 %lf", now9.toSec());
 		//--------------------------------------------------------------------------------//
+		
+		baselink_pt_pub_.publish(base_link_point_);
+		cov_pub_.publish(position_covariance_);
 	}  
 	else if(latest_tf_valid_)
 	{
@@ -898,6 +954,9 @@ CurbAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
 	ros::Time now11 = ros::Time::now();
 	//ROS_INFO("now11 %lf", now11.toSec());
 	//--------------------------------------------------------------------------------//
+	
+	
+
 	pf_mutex_.unlock();
 }
 
@@ -1052,7 +1111,6 @@ void CurbAmclNode::measAnalysis(sensor_msgs::PointCloud& oldMeas, sensor_msgs::P
 
 				AnalysisResult.point.y = newAngle - oldAngle;
 			}
-			
 			AnalysisResult.point.z = 0;	
 		}
 		//at the very beginning;
@@ -1065,8 +1123,7 @@ void CurbAmclNode::measAnalysis(sensor_msgs::PointCloud& oldMeas, sensor_msgs::P
 	else
 	{
 		return;
-	}
-	
+	}	
 	//prepare for next rounds;
 	oldMeas = newMeas;
 	Analysis_pub.publish(AnalysisResult);	

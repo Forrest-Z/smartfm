@@ -68,13 +68,15 @@ void
 AMCLOdom::SetModelDiff(double alpha1, 
                        double alpha2, 
                        double alpha3, 
-                       double alpha4)
+                       double alpha4,
+                       double alpha6)
 {
   this->model_type = ODOM_MODEL_DIFF;
   this->alpha1 = alpha1;
   this->alpha2 = alpha2;
   this->alpha3 = alpha3;
   this->alpha4 = alpha4;
+  this->alpha6 = alpha6;
 }
 
 void
@@ -153,6 +155,7 @@ bool AMCLOdom::UpdateAction(pf_t *pf, AMCLSensorData *data, void* arg)
     double delta_rot1, delta_trans, delta_rot2;
     double delta_rot1_hat, delta_trans_hat, delta_rot2_hat;
     double delta_rot1_noise, delta_rot2_noise;
+    double pitch_noise;
 
     // Avoid computing a bearing from two poses that are extremely near each
     // other (happens on in-place rotation).
@@ -173,6 +176,9 @@ bool AMCLOdom::UpdateAction(pf_t *pf, AMCLSensorData *data, void* arg)
                                 fabs(angle_diff(delta_rot1,M_PI)));
     delta_rot2_noise = std::min(fabs(angle_diff(delta_rot2,0.0)),
                                 fabs(angle_diff(delta_rot2,M_PI)));
+                                
+    pitch_noise = fabs(ndata->pitch);                            
+                              
 
     for (int i = 0; i < set->sample_count; i++)
     {
@@ -188,7 +194,7 @@ bool AMCLOdom::UpdateAction(pf_t *pf, AMCLSensorData *data, void* arg)
                                                   this->alpha2*delta_trans*delta_trans));
                                                   
 		delta_trans_hat = delta_trans - pf_ran_gaussian(this->alpha3*delta_trans*delta_trans +this->alpha4*delta_rot1_noise*delta_rot1_noise +
-								this->alpha4*delta_rot2_noise*delta_rot2_noise);
+								this->alpha4*delta_rot2_noise*delta_rot2_noise+ this->alpha6*pitch_noise*delta_trans*delta_trans);
 								
 		delta_rot2_hat = angle_diff(delta_rot2, pf_ran_gaussian(this->alpha1*delta_rot2_noise*delta_rot2_noise +
                                                   this->alpha2*delta_trans*delta_trans));
@@ -218,15 +224,13 @@ bool AMCLOdom::UpdateAction(pf_t *pf, AMCLSensorData *data, void* arg)
 		//just "award" those particles with fall into free area by increasing its weight;		
 		//Yeeeeeep, it works. 
 		//Later more analysis worth to be done; 
-		//actually, this block can also be applied in "amcl_laser" part;
-		
-		/*
+		//actually, this block can also be applied in "amcl_laser" part;		
 		int mi,mj;
 		mi = MAP_GXWX(map, sample->pose.v[0]);
 		mj = MAP_GYWY(map, sample->pose.v[1]);
-		double awardCoeff=10.0;
+		double awardCoeff=100.0;
 		if(MAP_VALID(map,mi,mj) && (map->cells[MAP_INDEX(map,mi,mj)].occ_state == -1)){sample->weight=sample->weight * awardCoeff;}
-		*/ 
+		 
     }
   }
 

@@ -52,6 +52,8 @@ class AMCLOdomData : public AMCLSensorData
 
   // Change in odometric pose
   public: pf_vector_t delta;
+
+  public: double pitch;
 };
 
 
@@ -64,7 +66,8 @@ class AMCLOdom : public AMCLSensor
   public: void SetModelDiff(double alpha1, 
                             double alpha2, 
                             double alpha3, 
-                            double alpha4);
+                            double alpha4,
+									 double alpha6);
 
   public: void SetModelOmni(double alpha1, 
                             double alpha2, 
@@ -83,7 +86,7 @@ class AMCLOdom : public AMCLSensor
   private: odom_model_t model_type;
 
   // Drift parameters
-  private: double alpha1, alpha2, alpha3, alpha4, alpha5;
+  private: double alpha1, alpha2, alpha3, alpha4, alpha5, alpha6;
 };
 
 

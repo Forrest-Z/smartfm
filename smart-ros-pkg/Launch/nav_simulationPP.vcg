@@ -1,8 +1,8 @@
 Background\ ColorR=0
 Background\ ColorG=0
 Background\ ColorB=0
-Fixed\ Frame=/odom
-Target\ Frame=/odom
+Fixed\ Frame=/map
+Target\ Frame=/map
 Grid.Alpha=0.5
 Grid.Cell\ Size=1
 Grid.ColorR=0.5
@@ -35,8 +35,8 @@ Path.Topic=/pnc_trajectory
 Tool\ 2D\ Nav\ GoalTopic=move_base_simple/goal
 Tool\ 2D\ Pose\ EstimateTopic=initialpose
 Camera\ Type=rviz::FixedOrientationOrthoViewController
-Camera\ Config=20.2642 1.82997 4.70625 1.43455 -0.707107 -0 -0 0.707107
-Property\ Grid\ State=selection=;expanded=;scrollpos=0,0;splitterpos=133,266;ispageselected=1
+Camera\ Config=20.2642 0 4.70625 0 -0.707107 -0 -0 0.707107
+Property\ Grid\ State=selection=Target Frame;expanded=.Global Options;scrollpos=0,0;splitterpos=194,404;ispageselected=1
 [Display0]
 Name=Odometry
 Package=rviz
