@@ -43,7 +43,8 @@ class Planner_node
         int num_frames_no_plan;
         list<double*> stateList;
         unsigned int RRT_MAX_ITER;
-       
+        planner_t rrts;
+
         int map_skip, map_count;
         bool planner_in_progress;
         bool first_frame;
@@ -63,16 +64,20 @@ class Planner_node
         void get_plan();
         int get_traj(planner_t *rrts);
         int publish_tree(planner_t *rrts);
+        void publish_grid();
+
+        int project_goal(float &xc, float &yc, float &xs, float &ys, float goalx, float goaly);
 };
 
 Planner_node::Planner_node()
 {
+
     map_count = 0;
     map_skip = 1;
     planner_in_progress = false;
     num_frames_no_plan = 0;
     first_frame = 1;
-    RRT_MAX_ITER = 100;
+    RRT_MAX_ITER = 1000;
 
     // init periodic planner
     //planner_timer = nh.createTimer(ros::Duration(5.0), &Planner_node::get_plan, this);
@@ -83,6 +88,34 @@ Planner_node::Planner_node()
     obs_pub = nh.advertise<sensor_msgs::PointCloud>("obs_map", 5);
     tree_pub = nh.advertise<sensor_msgs::PointCloud>("rrt_tree", 5);
     vertex_pub = nh.advertise<sensor_msgs::PointCloud>("rrt_vertex", 5);
+}
+
+void Planner_node::publish_grid()
+{
+    sensor_msgs::PointCloud pc;
+    pc.header.stamp = ros::Time::now();
+    pc.header.frame_id = "odom";
+
+    //cout<<"verify: "<< local_map->vals.size() <<" "<< local_map->xsize * local_map->ysize << endl;
+    for(int i=0; i< system.xsize; i++)
+    {
+        for(int j=0; j< system.ysize; j++)
+        {
+            float tmp = (float)system.map_vals[j + i*system.xsize];
+            if( tmp > 50.0)
+            {
+                //cout<<"1: "<<i<<" "<<j << endl;
+                geometry_msgs::Point32 p;
+                p.x = system.origin.x + (i - system.xorigin)*system.map_res;
+                p.y = system.origin.y + (j - system.yorigin)*system.map_res;
+                p.z = 0;
+
+                pc.points.push_back(p);
+            }
+        }
+    }
+    obs_pub.publish(pc);
+
 }
 
 void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
@@ -100,25 +133,59 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
         system.map_width = local_map->width;
         system.map_height = local_map->height;
         
-        system.origin.x = 0;
-        system.origin.y = 0;
-        system.origin.z = 0;       // this is yaw
+        system.origin.x = local_map->origin.x;
+        system.origin.y = local_map->origin.y;
+        system.origin.z = local_map->origin.z;       // this is yaw
 
         system.map_vals = new unsigned char [system.xsize * system.ysize];
+
+
+        // dummy sys init for getRoot to work
+        system.regionOperating.center[0] = system.origin.x;
+        system.regionOperating.center[1] = system.origin.y;
+        system.regionOperating.center[2] = system.origin.z;
+        system.regionOperating.size[0] = system.map_width;
+        system.regionOperating.size[1] = system.map_height;
+        system.regionOperating.size[2] = 2.0 * M_PI;
+
+        system.regionGoal.center[0] = 100;
+        system.regionGoal.center[1] = 0;
+        system.regionGoal.center[2] = 0;
+        system.regionGoal.size[0] = 5;
+        system.regionGoal.size[1] = 5;
+        system.regionGoal.size[2] = 0.3 * M_PI;
+        
+        rrts.setSystem( system );
+
+        // Set planner parameters
+        rrts.setGamma (2.0);
+        rrts.setGoalSampleFrequency (0.1);
+        
+        // init root
+        vertex_t &root = rrts.getRootVertex();  
+        state_t &rootState = root.getState();
+        rootState[0] = system.origin.x;
+        rootState[1] = system.origin.y;
+        rootState[2] = system.origin.z;
+
+        // Initialize the planner
+        rrts.initialize ();
+        
+        cout<<"got first frame" << endl;
     }
-    
+
     if(map_count % map_skip == 0)
     {
         map_count = 0;
         
-        cout<<"l xsize: "<< local_map->xsize<<" l ysize:"<< local_map->ysize <<endl;
-        cout<<"xsize: "<< system.xsize<<" ysize:"<<system.ysize<<endl;
+        //cout<<"l xsize: "<< local_map->xsize<<" l ysize:"<< local_map->ysize <<endl;
+        //cout<<"xsize: "<< system.xsize<<" ysize:"<<system.ysize<<endl;
         //cout<<"verify: "<< local_map->vals.size() <<" "<< system.xsize*system.ysize << endl;
         for(int i=0; i< system.xsize; i++)
         {
             for(int j=0; j< system.ysize; j++)
             {
-                float car_width = 3, car_length = 2.5;
+                float car_width = 0.1, car_length = 0.1;
 
                 int yleft = min(system.ysize, (int)(j + car_width/2/system.map_res));
                 int yright = max(0, (int)(j - car_width/2/system.map_res));
@@ -143,89 +210,115 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
         system.origin.x = local_map->origin.x;
         system.origin.y = local_map->origin.y;
         system.origin.z = local_map->origin.z;       // this is yaw
-
+        
         get_plan();
-        //cout<<endl;
-
-        sensor_msgs::PointCloud pc;
-        pc.header.stamp = ros::Time::now();
-        pc.header.frame_id = "odom";
-
-        //cout<<"verify: "<< local_map->vals.size() <<" "<< local_map->xsize * local_map->ysize << endl;
-        for(int i=0; i< system.xsize; i++)
-        {
-            for(int j=0; j< system.ysize; j++)
-            {
-                float tmp = (float)system.map_vals[j + i*system.xsize];
-                if( tmp > 50.0)
-                {
-                    //cout<<"1: "<<i<<" "<<j << endl;
-                    geometry_msgs::Point32 p;
-                    p.x = system.origin.x + (i - system.xorigin)*system.map_res;
-                    p.y = system.origin.y + (j - system.yorigin)*system.map_res;
-                    p.z = 0;
-
-                    pc.points.push_back(p);
-                }
-            }
-        }
-        obs_pub.publish(pc);
+    
+        publish_grid();
     }
+}
+
+inline float dist(float x1, float y1, float x2, float y2)
+{
+    return sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) );
+}
+
+int Planner_node::project_goal(float &xc, float &yc, float &xs, float &ys, float goalx, float goaly)
+{
+    double min_corner_dist = DBL_MAX;
+    int corner_num = 0;
+
+    float xmin, ymin;
+    vector<geometry_msgs::Point32> corners(4);
+    corners[0].x = 0; corners[0].y = 0;
+    corners[1].x = (float)system.xsize; corners[1].y = 0;
+    corners[2].x = (float)system.xsize; corners[2].y = (float)system.ysize;
+    corners[3].x = 0; corners[3].y = (float)system.ysize;
+
+    for(int i=0; i<4; i++)
+    {
+        corners[i].x = system.origin.x + (corners[i].x - system.xorigin)*system.map_res;
+        corners[i].y = system.origin.y + (corners[i].y - system.yorigin)*system.map_res;
+
+        float tmp_dist = dist(corners[i].x, corners[i].y, goalx, goaly);
+        if( tmp_dist < min_corner_dist)
+        {
+            xmin = corners[i].x; ymin = corners[i].y;
+            min_corner_dist = tmp_dist;
+            corner_num = i;
+        }
+    }
+    //cout<<"min corner: "<< xmin <<" "<< ymin << " corner_num: "<< corner_num<<endl;
+
+    float xmin2, ymin2;
+    int corner_bef = ((corner_num - 1)%4 + 4)%4;
+    int corner_next = (corner_num + 1)%4;
+    
+    if( dist( corners[corner_bef].x, corners[corner_bef].y, goalx, goaly) <= dist( corners[corner_next].x, corners[corner_next].y, goalx, goaly) )
+    {
+        xmin2 = corners[corner_bef].x;
+        ymin2 = corners[corner_bef].y;
+        //cout<<"min2: "<< xmin2<<" "<< ymin2<<" min2: "<< corner_bef<<endl;
+    }
+    else
+    {
+        xmin2 = corners[corner_next].x;
+        ymin2 = corners[corner_next].y;
+        //cout<<"min2: "<< xmin2<<" "<< ymin2<<" min2: "<< corner_next<<endl;
+    }
+    
+    xc = (xmin + xmin2)/2;
+    yc = (ymin + ymin2)/2;
+    if( fabs(xmin - xmin2) > fabs(ymin - ymin2) )
+    {
+        xs = fabs(xmin - xmin2);
+        ys = 2.0;
+    }
+    else
+    {
+        ys = fabs(ymin - ymin2);
+        xs = 2.0;
+    }
+    //cout<<"goals: "<< xc <<" "<<yc<<" "<< xs<<" " << ys << endl;
+    
+    return 0;
 }
 
 void Planner_node::get_plan()
 {
-    planner_t rrts;
+    // prune the obstructed part of the tree
+    rrts.checkTree();
+    //cout<<"tree_num_vert: "<< rrts.numVertices<<endl;
     
+    //cout<<"sys origin: "<< system.origin.x<<" "<< system.origin.y<<endl;
     system.regionOperating.center[0] = system.origin.x;
     system.regionOperating.center[1] = system.origin.y;
     system.regionOperating.center[2] = system.origin.z;
-    system.regionOperating.size[0] = 2*system.map_width;
-    system.regionOperating.size[1] = 2*system.map_height;
+    system.regionOperating.size[0] = system.map_width;
+    system.regionOperating.size[1] = system.map_height;
     system.regionOperating.size[2] = 2.0 * M_PI;
 
-    // goal straight ahead
-    system.regionGoal.center[0] = 200.0;
-    system.regionGoal.center[1] = -500.0;
-    system.regionGoal.center[2] = 0*M_PI;
-    system.regionGoal.size[0] = 5.0;
-    system.regionGoal.size[1] = 5.0;
+    // project goal
+
+    float xc, yc, xs, ys;
+    project_goal(xc, yc, xs, ys, 1000, 1000);
+
+    system.regionGoal.center[0] = xc;
+    system.regionGoal.center[1] = yc;
+    system.regionGoal.center[2] = atan2(1000 - system.origin.y, 1000 - system.origin.x);
+    system.regionGoal.size[0] = xs;
+    system.regionGoal.size[1] = ys;
     system.regionGoal.size[2] = 0.3 * M_PI;
+    //cout<<"goal dir: "<< system.regionGoal.center[2] << endl;
 
-    rrts.setSystem( system );
-    
-    // init root
-    vertex_t &root = rrts.getRootVertex();  
-    state_t &rootState = root.getState();
-    rootState[0] = system.origin.x;
-    rootState[1] = system.origin.y;
-    rootState[2] = system.origin.z;
-    
-    // Initialize the planner
-    rrts.initialize ();
-
-    // Set planner parameters
-    rrts.setGamma (2.0);
-    rrts.setGoalSampleFrequency (0.1);
-
-    planner_in_progress = true;
-    system.has_found_path = 0;
-    double curr_cost = 1000, prev_cost = 1000;
-    
-    unsigned int iter = 0;
     for(unsigned int i=0; i< RRT_MAX_ITER; i++)
     {
         rrts.iteration();
-        curr_cost = rrts.getBestVertexCost();
-        
-        //if(iter % 500 == 0)
-            //cout<<"\ni: "<< iter << endl;
-        iter++;
     }
-    planner_in_progress = false;
-    cout<<"cost: "<< curr_cost << " result: ";
-    cout<< get_traj(&rrts) << endl;
     
+    rrts.updateReachability();
+    
+    //cout<<"cost: "<< rrts.getBestVertexCost() << " result: " << get_traj(&rrts) << endl;
+    //rrts.switchRoot(1.0);
     publish_tree(&rrts);
 }
 
@@ -234,7 +327,10 @@ int Planner_node::get_traj(planner_t *prrts)
     vertex_t& vertexBest = prrts->getBestVertex ();
 
     if (&vertexBest == NULL)
+    {
+        cout<<"new vertex not found"<<endl;
         return 1;
+    }
     else
     {
         stateList.clear();
@@ -293,7 +389,8 @@ int Planner_node::publish_tree(planner_t *prrts)
             p.z = 0.0;
             pc.points.push_back(p);
             pc1.points.push_back(p);
-
+            
+            /*
             vertex_t& vertexParent = vertexCurr.getParent();
             if (&vertexParent != NULL) 
             {
@@ -321,6 +418,7 @@ int Planner_node::publish_tree(planner_t *prrts)
                     }
                 }
             }
+            */
         }
     }
 
@@ -375,7 +473,8 @@ int Planner_node::publish_tree(planner_t *prrts)
         tree->edges = NULL;
     }
     */
-    tree_pub.publish(pc);
+    
+    //tree_pub.publish(pc);
     vertex_pub.publish(pc1);
 
     return 1;

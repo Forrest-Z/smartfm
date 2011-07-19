@@ -97,6 +97,10 @@ namespace RRTstar {
         int findDescendantVertices (vertex_t* vertexIn);
         int recomputeCost (vertex_t* vertexIn);
     
+        int markCost (vertex_t& vertexIn);
+        int checkTrajectory (vertex_t& vertexIn);
+
+
     public:
     
         list<vertex_t*> listVertices;
@@ -117,6 +121,9 @@ namespace RRTstar {
     
         int iteration ();
 
+        int checkTree();
+
+        int updateReachability (); 
         int switchRoot (double distance);
         
         double getBestVertexCost () {return lowerBoundCost;}

@@ -140,31 +140,16 @@ bool System::IsInCollision (double stateIn[3])
     xnum = xtmp/map_res + xorigin;
     ynum = ytmp/map_res + yorigin;
     
-    /*
-    if(xnum >= xsize)
-        return false;
-    else if( (ynum < 0) || (ynum >= ysize) )
-        return true;
-    else if (xnum < 0)
-        return true;
-        */
     if( (xnum >= xsize) || (xnum < 0) || (ynum >= ysize) || (ynum < 0) )
-        return false;
+    {
+        return true;
+    }
     else
     {
         //cout<<"grid: " << xback <<" "<< xfront <<" "<< yleft <<" "<< yright << endl;
         if(map_vals[ynum + xnum*xsize] > 10)
             return true;
-
-        /*
-        if( map_vals[xnum + ynum*xsize] > 0)
-        {
-            //cout<<"1";
-            return true;
-        }
-        */
     }
-    //cout<<"0";
     return false;
 }
 
@@ -190,11 +175,12 @@ int System::sampleGoalState (State &randomStateOut) {
         randomStateOut.x[i] = (double)rand()/(RAND_MAX + 1.0)*regionGoal.size[i] 
             - regionGoal.size[i]/2.0 + regionGoal.center[i];
     }
-
+    
     if (IsInCollision (randomStateOut.x))
     {
         return 0;
     }
+    //cout<<"sampled goal: "<< randomStateOut.x[0]<<" "<< randomStateOut.x[1]<< endl;
     return 1;
 }
 

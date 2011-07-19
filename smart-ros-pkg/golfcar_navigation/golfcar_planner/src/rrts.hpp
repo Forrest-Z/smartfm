@@ -181,15 +181,25 @@ RRTstar::Planner< typeparams >
     return 1;
 }
 
+template< class typeparams >
+int
+RRTstar::Planner< typeparams >
+::updateReachability () 
+{
+    updateBranchCost(*root, 1);
+    lowerBoundCost = getBestVertexCost();
+
+    return 1;
+}
+
 
 template< class typeparams >
 int
 RRTstar::Planner< typeparams >
 ::checkUpdateBestVertex (vertex_t& vertexIn) {
 
-    if (system->isReachingTarget(vertexIn.getState())){
-
-
+    if (system->isReachingTarget(vertexIn.getState()))
+    {
         double costCurr = vertexIn.getCost();
         if ( (lowerBoundVertex == NULL) || ( (lowerBoundVertex != NULL) && (costCurr < lowerBoundCost)) ) {
 
@@ -262,11 +272,12 @@ template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
 ::setSystem (system_t& systemIn) {
-    
+   
     /*
     if (system)
         delete system;
     */
+
     system = &systemIn;
 
     numDimensions = system->getNumDimensions ();
@@ -460,7 +471,101 @@ RRTstar::Planner< typeparams >
         updateBranchCost (vertex, depth + 1);
     }
 
+    return 1;
+}
 
+
+template< class typeparams >
+int 
+RRTstar::Planner< typeparams >
+::markCost (vertex_t& vertexIn)
+{
+    vertexIn.costFromRoot = -1.0;
+    
+    vertex_t &par = vertexIn.getParent();
+    par.children.erase(&vertexIn);
+
+    for (typename set<vertex_t*>::iterator iter = vertexIn.children.begin(); iter != vertexIn.children.end(); iter++) 
+    {
+        markCost(**iter);
+    }
+    return 1;
+}
+
+template< class typeparams >
+int 
+RRTstar::Planner< typeparams >
+::checkTrajectory (vertex_t& vertexIn) 
+{
+    vertex_t &parent = vertexIn.getParent();
+    state_t  &state_par = parent.getState();
+    state_t &state_in = vertexIn.getState();
+
+    trajectory_t traj;
+    bool exactConnection;
+    if(system->extendTo(state_par, state_in, traj, exactConnection))
+    {
+        for (typename set<vertex_t*>::iterator iter = vertexIn.children.begin(); iter != vertexIn.children.end(); iter++) 
+        {
+            checkTrajectory(**iter);
+        }
+    }
+    else
+    {
+        //cout<<"marking"<<endl;
+        markCost(vertexIn);
+    }
+    return 1;
+}
+
+
+template< class typeparams >
+int 
+RRTstar::Planner< typeparams >
+::checkTree()
+{
+    for (typename set<vertex_t*>::iterator iter = root->children.begin(); iter != root->children.end(); iter++) 
+    {
+        vertex_t &vertex = **iter;
+        checkTrajectory(vertex);
+    }
+
+    list<vertex_t*> listSurvivingVertices;
+    for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++) 
+    {
+        vertex_t *vertex  = *iter;
+        if( vertex->costFromRoot > -0.5)
+            listSurvivingVertices.push_front(vertex);
+        else
+        {
+            //cout<<"deleting vertex"<<endl;
+            delete vertex;
+        }
+    }
+ 
+    if (kdtree) {
+        kd_clear (kdtree);
+        kd_free (kdtree);
+    }
+    kdtree = kd_create (system->getNumDimensions());
+   
+    listVertices.clear();
+    numVertices = 0;
+    for (typename list<vertex_t*>::iterator iter = listSurvivingVertices.begin(); iter != listSurvivingVertices.end(); iter++) 
+    {
+        listVertices.push_front(*iter);
+        numVertices++;
+        
+        insertIntoKdtree (**iter);
+    }
+    
+    if (!lowerBoundVertex)
+    {
+        lowerBoundVertex = NULL;
+        lowerBoundCost = DBL_MAX;
+    }
+    listSurvivingVertices.clear();
+    recomputeCost (root);
 
     return 1;
 }
@@ -521,7 +626,6 @@ RRTstar::Planner< typeparams >
         if (system->sampleState (stateRandom) <= 0) 
             return 0;
     }
-
 
     // 2. Compute the set of all near vertices
     vector<vertex_t*> vectorNearVertices;
@@ -846,10 +950,13 @@ RRTstar::Planner< typeparams >
         }
 
         vertexCurr = &vertexParent;
+
+        delete [] stateArrCurr;
     }
 
     return 1;
 }
+
 
 
 #endif
