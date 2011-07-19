@@ -1,0 +1,21 @@
+<package>
+  <description brief="golfcar_route_planner">
+
+     golfcar_route_planner
+
+  </description>
+  <author>golfcar</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/golfcar_route_planner</url>
+  <depend package="std_msgs"/>
+  <depend package="nav_msgs"/>
+  <depend package="roslib"/>
+  <depend package="rospy"/>
+  <depend package="geometry_msgs"/>
+  <depend package="roscpp"/>
+  <depend package="tf"/>
+  <depend package="sensor_msgs"/>
+</package>
+
+
