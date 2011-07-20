@@ -249,7 +249,7 @@ CurbAmclNode::CurbAmclNode() :
   private_nh_.param("odom_alpha3", alpha3, 0.2);
   private_nh_.param("odom_alpha4", alpha4, 0.2);
   private_nh_.param("odom_alpha5", alpha5, 0.01);
-  private_nh_.param("odom_alpha6", alpha6, 0.09);
+  private_nh_.param("odom_alpha6", alpha6, 0.01);
 
   private_nh_.param("laser_z_hit", z_hit, 0.95);
   private_nh_.param("laser_z_rand", z_rand, 0.05);
@@ -272,7 +272,7 @@ CurbAmclNode::CurbAmclNode() :
 
   private_nh_.param("update_min_d", d_thresh_, 0.5);
   private_nh_.param("update_min_a", a_thresh_, M_PI/6.0);
-  private_nh_.param("update_min_num", numTresh_, 25);
+  private_nh_.param("update_min_num", numTresh_, 15);
   private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
   private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));
   private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
@@ -283,14 +283,11 @@ CurbAmclNode::CurbAmclNode() :
   private_nh_.param("recovery_alpha_fast", alpha_fast, 0.1);
 
   transform_tolerance_.fromSec(tmp_tol);
-  
-  //for debugging purposes, select several sets of init_pose[i];
-  // straight-line: (20.0, 148.6, 1.50);
 
   double init_pose[3];
-  private_nh_.param("initial_pose_x", init_pose[0], 20.0);
-  private_nh_.param("initial_pose_y", init_pose[1], 148.6);
-  private_nh_.param("initial_pose_a", init_pose[2], 1.50);  
+  private_nh_.param("initial_pose_x", init_pose[0], 0.0);
+  private_nh_.param("initial_pose_y", init_pose[1], 0.0);
+  private_nh_.param("initial_pose_a", init_pose[2], 0.0);  
   
   double init_cov[3];
   private_nh_.param("initial_cov_xx", init_cov[0], 0.3 * 0.3);
@@ -350,7 +347,7 @@ CurbAmclNode::CurbAmclNode() :
   global_loc_srv_ = nh_.advertiseService("global_localization", &CurbAmclNode::globalLocalizationCallback, this);
   
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  curb_sidepoints_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud>(nh_, "curb_points", 100);
+  curb_sidepoints_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud>(nh_, "raw_curb_points", 10);
   curb_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(*curb_sidepoints_sub_, 
                                                         *tf_, 
                                                         odom_frame_id_, 

@@ -133,7 +133,7 @@ double AMCLCurb::LikelihoodFieldModel(AMCLCurbData *data, pf_sample_set_t* set)
     total_weight += sample->weight;
   }
   
-  set->meas_score = meas_total_score/(set->sample_count); 
+  set->meas_score = meas_total_score/(set->sample_count)-1; 
 
   return(total_weight);
 }

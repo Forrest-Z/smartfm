@@ -284,6 +284,8 @@ MixAmclNode::MixAmclNode() :
   private_nh_.param("curb_z_hit", curb_z_hit, 0.95);
   private_nh_.param("curb_z_rand", curb_z_rand, 0.05);
   private_nh_.param("curb_sigma_hit", curb_sigma_hit, 0.25);
+  
+  //this value depends on your threshold in "road_detection" pkg;
   private_nh_.param("curb_rand_range", curb_rand_range, 40.0);
   
   private_nh_.param("laser_z_hit", laser_z_hit, 0.95);
@@ -317,11 +319,11 @@ MixAmclNode::MixAmclNode() :
     odom_model_type = ODOM_MODEL_DIFF;
   }
 
-  private_nh_.param("laser_d_thresh_", laser_d_thresh_, 0.2);	 	  //0.2 ----10000.0
-  private_nh_.param("laser_a_thresh_", laser_a_thresh_, M_PI/6);    //M_PI/6.0 ----10000.0
-  private_nh_.param("curb_d_thresh_", curb_d_thresh_, 0.7);
+  private_nh_.param("laser_d_thresh_", laser_d_thresh_, 0.2);	 	  //0.2 
+  private_nh_.param("laser_a_thresh_", laser_a_thresh_, M_PI/6);    //M_PI/6.0 
+  private_nh_.param("curb_d_thresh_", curb_d_thresh_, 0.5);
   private_nh_.param("curb_a_thresh_", curb_a_thresh_, M_PI/6.0);
-  private_nh_.param("update_min_num", numTresh_, 20);          //30-----100000000 
+  private_nh_.param("update_min_num", numTresh_, 15);          //15
   private_nh_.param("odom_frame_id", odom_frame_id_, std::string("odom"));
   private_nh_.param("base_frame_id", base_frame_id_, std::string("base_link"));
   private_nh_.param("global_frame_id", global_frame_id_, std::string("map"));
@@ -419,7 +421,7 @@ MixAmclNode::MixAmclNode() :
   global_loc_srv_ = nh_.advertiseService("global_localization", &MixAmclNode::globalLocalizationCallback, this);
 
   
-  curb_sidepoints_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud>(nh_, "curb_points", 10);  //200
+  curb_sidepoints_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud>(nh_, "raw_curb_points", 10);  //200
   curb_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(*curb_sidepoints_sub_, *tf_, odom_frame_id_,100);                                                     
   curb_filter_->registerCallback(boost::bind(&MixAmclNode::curbReceived, this, _1));
   
@@ -574,7 +576,7 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 	ros::Time curbRece_time = cloud_in->header.stamp;
 	
 	ros::Time now1 = ros::Time::now();
-	ROS_INFO("1. curbReceived: Time now %lf, curbRece_time %lf", now1.toSec(), curbRece_time.toSec());
+	//ROS_INFO("1. curbReceived: Time now %lf, curbRece_time %lf", now1.toSec(), curbRece_time.toSec());
 
 	//try to get current transform between "odom" and "base_link";
 	tf::StampedTransform 	baseOdomTemp;
@@ -820,6 +822,16 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 				curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer);
 				curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer);
 				
+				if(LaserUseFlag_)
+				{
+					numTresh_ = 15;
+				}
+				else
+				{
+					//curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer);
+					numTresh_ = 15;
+				}
+				
 				if(CurbUseFlag_)
 				{
 					ROS_INFO("----------Curb Curb Curb---------");
@@ -1034,7 +1046,7 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 	ros::Time laserRece_time = laser_scan->header.stamp;
 	
 	ros::Time now2 = ros::Time::now();
-	ROS_INFO("2. Laser Received: Time now %lf, laserRece_time %lf", now2.toSec(), laserRece_time.toSec());
+	//ROS_INFO("2. Laser Received: Time now %lf, laserRece_time %lf", now2.toSec(), laserRece_time.toSec());
 	
 	int laser_index = -1;
 	// Do we have the base->base_laser Tx yet?

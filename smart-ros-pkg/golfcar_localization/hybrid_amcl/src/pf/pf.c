@@ -247,7 +247,7 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
   
   printf("meas_score: %e; total: %e", workset->meas_score, total);
 
-  double meas_score_threshold = 0.2;
+  double meas_score_threshold = 0.5;
 
   if(workset->meas_score <meas_score_threshold) 
   {

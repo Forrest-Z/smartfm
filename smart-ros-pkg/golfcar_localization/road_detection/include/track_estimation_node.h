@@ -77,9 +77,17 @@ namespace estimation{
 		sensor_msgs::PointCloud  				   right_point_, left_point_, right_Ptcred_, left_Ptcred_;
 		ros::Publisher 								right_point_pub_, left_point_pub_, right_Ptcred_pub_, left_Ptcred_pub_;
 		
-		//complete raw information;
+		//complete cred raw information;
 		sensor_msgs::PointCloud						cred_full_right_curb_, cred_full_left_curb_;
-		ros::Publisher									cred_full_right_pub_, cred_full_left_pub_;
+		ros::Publisher									cred_full_right_pub_,  cred_full_left_pub_;
+
+		sensor_msgs::PointCloud						Raw_Lpt_, Raw_Rpt_;
+		ros::Publisher									Raw_Lpt_pub_, Raw_Rpt_pub_;
+
+		sensor_msgs::PointCloud						hybrid_Lpt_, hybrid_Rpt_;
+		ros::Publisher									hybrid_Lpt_pub_, hybrid_Rpt_pub_;
+
+		geometry_msgs::Point32 						max_dis_point_;
 	};
 };
 #endif //  

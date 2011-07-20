@@ -25,8 +25,9 @@ namespace road_detection{
 	   ~road_detect();
 	   
 	   private:
-
-           //laser geometry
+		ros::NodeHandle private_nh_;
+		
+      //laser geometry
 	   laser_geometry::LaserProjection projector_;
 	   sensor_msgs::PointCloud laser_cloud_;	
     	ros::Publisher laser_pub_;        
@@ -35,13 +36,19 @@ namespace road_detection{
       tf::MessageFilter<sensor_msgs::LaserScan> * tf_filter_;
 	   void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_in);
 	   
+		double max_min_tresh_;
+		int ptNum_tresh_;
+		double rdLength_tresh_;
+		double slopeSin_tresh_;  //this one is for two end points of road segment;
+		double curbLow_tresh_;
+		double curbheigh_tresh_;
+		double curbTan_tresh_;
+
 	   //********************Main Part 1: process single scan*******************
 	   void ProcessSingleScan();     
            
       //1st sub function: detect all discontinuities in (angle, distance) coordinate. 
       void CurbEtraction();
-	   //float GuassianDifferentialFilter[7];
-	   
       std::vector<unsigned int> curb_candidate_PIDs_;     //PID: point ID. 
 	   sensor_msgs::PointCloud curb_candidates_;
 	   ros::Publisher curb_pub_;  

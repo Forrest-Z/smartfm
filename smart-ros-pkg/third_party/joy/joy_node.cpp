@@ -92,7 +92,7 @@ public:
     // Parameters
     ros::NodeHandle nh_param("~");
     pub_ = nh_.advertise<joy::Joy>("joy", 1);
-    nh_param.param<std::string>("dev", joy_dev_, "/dev/input/js0");
+    nh_param.param<std::string>("dev", joy_dev_, "/dev/input/js1");
     nh_param.param<double>("deadzone", deadzone_, 0.05);
     nh_param.param<double>("autorepeat_rate", autorepeat_rate_, 0);
     nh_param.param<double>("coalesce_interval", coalesce_interval_, 0.001);

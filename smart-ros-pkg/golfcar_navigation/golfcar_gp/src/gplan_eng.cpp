@@ -27,9 +27,9 @@ namespace golfcar_gp{
 		switch(stage_)
 		{
 			case 0:
-			target.x = 1077; target.y = 2158; targets.push_back(target);
-			target.x = 1053; target.y = 2188; targets.push_back(target);
-			target.x = 1047; target.y = 2221; targets.push_back(target);
+			//target.x = 1077; target.y = 2158; targets.push_back(target);
+			//target.x = 1053; target.y = 2188; targets.push_back(target);
+			//target.x = 1047; target.y = 2221; targets.push_back(target);
 			target.x = 1067; target.y = 2272; targets.push_back(target);
 			
 			target.x = 1443; target.y = 3056; targets.push_back(target);

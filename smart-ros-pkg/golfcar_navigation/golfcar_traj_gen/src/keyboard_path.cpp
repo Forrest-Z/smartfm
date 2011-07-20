@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 	
 
 	//turning radius in meter
-	float radius = 10;
+	float radius = 3;
 
 	//min number of points
 	float resolution = 28;

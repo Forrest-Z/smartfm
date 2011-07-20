@@ -47,6 +47,7 @@ public:
   road_detection::vec_point                                	estimate_value_;
   MatrixWrapper::SymmetricMatrix                          	estimate_covariance_;
   bool                                                      vehicles_flag_;
+  float                                                     old_forward_dis_;
 
 private:
 
@@ -61,7 +62,7 @@ private:
   bool 																		filter_initialized_;
  
   road_detection::vec_point											old_observation_;
-  float                                                     old_forward_dis_;
+ 
 
 
 }; // class

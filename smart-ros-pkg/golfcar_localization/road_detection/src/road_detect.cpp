@@ -13,9 +13,26 @@ namespace road_detection{
 	
 	road_detect::road_detect()
 	{
-		ros::NodeHandle nh;
-		laser_pub_ = nh.advertise<sensor_msgs::PointCloud>("laser_cloud_", 2);
+		//------------parameters of function "CurbEtraction"----------------
+		//"max_min_tresh_" should be carefully learned from filter response, which may change according to different laser sensors;
+		private_nh_.param("max_min_tresh_", max_min_tresh_, 0.6);
 		
+		//------------parameters of function "RoadSelection"----------------
+		private_nh_.param("ptNum_tresh_", ptNum_tresh_, 40);
+		private_nh_.param("rdLength_tresh_", rdLength_tresh_, 2.0);
+		private_nh_.param("slopeSin_tresh_", slopeSin_tresh_, 0.5);
+		
+		//------------parameters of function "CurbSideLine"----------------
+		private_nh_.param("curbLow_tresh_", curbLow_tresh_, 0.05);
+		private_nh_.param("curbheigh_tresh_", curbheigh_tresh_, 2.0);
+		// "curbTan_tresh_" need to be adjusted to be a bigger value;
+		//a small value may ignore some points, but will help to reduce noise as for pure "curb_track"; 
+		//a big value get more points when relying on raw points for "curb_amcl";
+		private_nh_.param("curbTan_tresh_", curbTan_tresh_, 3.0);
+		
+		ros::NodeHandle nh;
+		
+		laser_pub_ = nh.advertise<sensor_msgs::PointCloud>("laser_cloud_", 2);
 		//For debugging purposes (1), show in rviz "show_laser_cloud_", "show_filter_response_", "show_boundary_candidates_";
 		curb_pub_ = nh.advertise<sensor_msgs::PointCloud>("curb_candidates_", 2);
 		boundary_pub_ = nh.advertise<sensor_msgs::PointCloud>("road_boundary_", 2);
@@ -30,20 +47,7 @@ namespace road_detection{
 		tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, "odom", 10);
 		tf_filter_->registerCallback(boost::bind(&road_detect::scanCallback, this, _1));
 		tf_filter_->setTolerance(ros::Duration(0.05));
-		
-		//here I use 2nd order derivatives, not 1st order in the CMU paper; 
-		//following parameters are not used.
-		//change parameters to get better performances;
-		/*
-		GuassianDifferentialFilter[0]=-0.25;
-		GuassianDifferentialFilter[1]=-0.4;
-		GuassianDifferentialFilter[2]=-0.1;
-		GuassianDifferentialFilter[3]=0.0;
-		GuassianDifferentialFilter[4]=0.1;
-		GuassianDifferentialFilter[5]=0.4;
-		GuassianDifferentialFilter[6]=0.5;
-		*/
-		
+
 		begin_end_PID_[0]=0;
 		begin_end_PID_[1]=0;				
 	}
@@ -52,10 +56,10 @@ namespace road_detection{
 	{	
 		//LaserScan to PointCloud, stored in laser_cloud_;
 		ROS_INFO("laser callback begin");	
-		
+		std::string target_frame = scan_in->header.frame_id;
 		try
 		{
-			projector_.transformLaserScanToPointCloud("sick_laser", *scan_in, laser_cloud_, tf_);
+			projector_.transformLaserScanToPointCloud(target_frame, *scan_in, laser_cloud_, tf_);
 		}
 		catch (tf::TransformException& e)
 		{
@@ -63,24 +67,22 @@ namespace road_detection{
 			std::cout << e.what();
 			return;
 		}
-		
-		laser_pub_.publish(laser_cloud_);             //For the debugging purpose;
-
+		//For the debugging purpose;
+		laser_pub_.publish(laser_cloud_);             
 	    road_detect::ProcessSingleScan();
 	}
 	
 	void road_detect::ProcessSingleScan()
 	{
 		ROS_INFO("Begin ProcessSingleScan");
-		
 		road_detect::CurbEtraction();
 		road_detect::RoadSelection();
 		road_detect::CurbSideLine();
-
 		ROS_INFO("End ProcessSingleScan");
 	}
 	
-	//Main Fun1: to find all discontinuous points in the filter response; they keep their own point IDs;
+	//Sub Fun1: to find all discontinuous points in the filter response; 
+	//they keep their own point IDs;
 	void road_detect::CurbEtraction()
 	{
 		//curb_candidate_PIDs_ stored all discontinuous points, which are possible candidates;
@@ -107,7 +109,7 @@ namespace road_detection{
 			float temp_distance=sqrt(float(temp_x*temp_x+temp_y*temp_y));
 			
 			temp_show_laser.x=temp_distance;
-			temp_show_laser.y=0.5*i*0.1;   //0.5 is the resolution of angle; multiple 0.1 when shown;
+			temp_show_laser.y=0.5*i*0.1;   //0.5 is the resolution of angle; multiple 0.1 when shown; just for showing purpose here;
 			temp_show_laser.z=0;			
 			show_laser_cloud_.points.push_back(temp_show_laser);
 		}
@@ -147,10 +149,12 @@ namespace road_detection{
 				float temp_responsei=show_filter_response_.points[i].x;
 				float temp_responseip1=show_filter_response_.points[i+1].x;
 				float temp_responseip2=show_filter_response_.points[i+2].x;
-				bool temp_maxima=(temp_responsei>temp_responsein1)&&(temp_responsei>temp_responsein2)&&(temp_responsei>temp_responseip1)&&(temp_responsei>temp_responseip2);
-				bool temp_minima=(temp_responsei<temp_responsein1)&&(temp_responsei<temp_responsein2)&&(temp_responsei<temp_responseip1)&&(temp_responsei<temp_responseip2);
-				bool maxima2=false;
-				bool minima2=false;
+				
+				//try to find local "maxima" and "minima";
+				bool  temp_maxima=(temp_responsei>temp_responsein1)&&(temp_responsei>temp_responsein2)&&(temp_responsei>temp_responseip1)&&(temp_responsei>temp_responseip2);
+				bool  temp_minima=(temp_responsei<temp_responsein1)&&(temp_responsei<temp_responsein2)&&(temp_responsei<temp_responseip1)&&(temp_responsei<temp_responseip2);
+				bool  maxima2=false;
+				bool  minima2=false;
 				
 				if(temp_maxima||temp_minima)
 				{
@@ -159,8 +163,8 @@ namespace road_detection{
 					for(int j=-5; j<6;j++)
 					{
 						temp_substraction=show_filter_response_.points[i].x-show_filter_response_.points[i+j].x;
-						if(temp_maxima&&(temp_substraction>0.6)) {maxima2=true;}
-						else if(temp_minima&&(temp_substraction<-0.6)) {minima2=true;}
+						if(temp_maxima&&(temp_substraction>max_min_tresh_)) {maxima2=true;}
+						else if(temp_minima&&(temp_substraction< -max_min_tresh_)) {minima2=true;}
 						else{}
 					}	   						   						
 				}
@@ -176,18 +180,18 @@ namespace road_detection{
 			}
 			else {}
 		}
-		//ROS_INFO("1------Curb candidate numbers %d",curb_candidate_PIDs_.size());		
+		//ROS_INFO("1------Curb candidate numbers %d", curb_candidate_PIDs_.size());		
 		curb_pub_.publish(curb_candidates_);
 		show_curb_pub_.publish(show_curb_candidates_);
 	}
 	
-	//Main Fun2:Extract two end points of the road plane, with the discontinous points from last function;
+	//Sub Fun2:Extract two end points of the road plane, with the discontinous points from last function;
 	void road_detect::RoadSelection()
 	{
 		road_boundary_.points.clear();
 	    road_boundary_.header=laser_cloud_.header;
 	    
-	    //store pairs of points, with each pair of points corresponding to one road candidates.
+	    //store pairs of points, with each pair of points corresponding to one road segment candidate.
 	    std::vector<unsigned int> temp_C1C2;     	    
 		//ROS_INFO("2------Curb candidate numbers %d",curb_candidate_PIDs_.size());
 		
@@ -209,13 +213,13 @@ namespace road_detection{
 			//ROS_INFO("begin pid %d; end pid %d", line_begin_PID,line_end_PID);
 			//ROS_INFO("distance %5f", temp_line_distance);
 						
-			bool C1_flag=(line_end_PID-line_begin_PID>60)&&(temp_line_distance>2);
+			bool C1_flag=(line_end_PID-line_begin_PID>ptNum_tresh_)&&(temp_line_distance>rdLength_tresh_);
 			
 			//Criterion 2: slope <30 degree;
 			float delt_line_x=temp_x1-temp_x0;
 			float delt_line_y=temp_y1-temp_y0;
 			//ROS_INFO("delt x %3f; delt y %3f", delt_line_x,delt_line_y);			
-			bool C2_flag=(-delt_line_y*0.5<delt_line_x&&delt_line_x<delt_line_y*0.5);
+			bool C2_flag=(-delt_line_y*slopeSin_tresh_<delt_line_x && delt_line_x<delt_line_y*slopeSin_tresh_);
 						
 			//if(C1_flag==false){ROS_INFO("C1 fail");}
 			//if(C2_flag==false){ROS_INFO("C2 fail");}
@@ -238,10 +242,11 @@ namespace road_detection{
 		}
 		else if(temp_C1C2.size()>2)
 		{
-			//Criterion 3: the origin is located near begin and end points in y axis; Only used when multi choices exist; 2 steps;
+			//Criterion 3: the origin is located near begin and end points in y axis; 
+			//Only used when multi choices exist; 2 steps;
 						
 			temp_curb_exist=false;
-			for(unsigned int i; i<temp_C1C2.size();i=i+2)
+			for(unsigned int i=0; i<temp_C1C2.size();i=i+2)
 			{
 				unsigned int temp_begin=temp_C1C2[i];
 				unsigned int temp_end=temp_C1C2[i+1];
@@ -259,7 +264,7 @@ namespace road_detection{
 			{
 				temp_curb_exist=true;
 				float orgin_nearest=100.0;
-				for(unsigned int i; i<temp_C1C2.size();i=i+2)
+				for(unsigned int i=0; i<temp_C1C2.size();i=i+2)
 				{
 					unsigned int temp_begin=temp_C1C2[i];
 					unsigned int temp_end=temp_C1C2[i+1];
@@ -293,7 +298,7 @@ namespace road_detection{
 		boundary_pub_.publish(road_boundary_);
 	}
 	
-	//Main Fun3:from end points of the road, to find curbs nearby;
+	//Sub Fun3:from end points of the road, to find curbs nearby;
 	//according to the filter response, 2 pairs of points nearby are examined;
 	void road_detect::CurbSideLine()
 	{
@@ -303,40 +308,42 @@ namespace road_detection{
 	    right_curb_line_.header=laser_cloud_.header;
         
         //find PID for each points.	    
-		unsigned int left_line_begin_PID=begin_end_PID_[0];   //pay attention here,left_line_begin_PID is bigger than left_line_end_PID;
-		unsigned int left_line_end_PID=0;
-		unsigned int left_backup_end=0;    
-		unsigned int right_line_begin_PID=begin_end_PID_[1];
+        unsigned int right_line_begin_PID = begin_end_PID_[0]; //pay attention here,left_line_begin_PID is bigger than left_line_end_PID;
 		unsigned int right_line_end_PID=0;
 		unsigned int right_backup_end=0;
-
+		unsigned int left_line_begin_PID  = begin_end_PID_[1];   
+		unsigned int left_line_end_PID=0;
+		unsigned int left_backup_end=0;    
+		
 		for(unsigned int i=0; i<curb_candidate_PIDs_.size();i++)
 		{
-			if(curb_candidate_PIDs_[i]==left_line_begin_PID)
+			if(curb_candidate_PIDs_[i] == right_line_begin_PID)
 			{
 				if(i>0) //make sure that 
 				{unsigned int temp_serial1_in_candidates=i-1;
-				 left_line_end_PID=curb_candidate_PIDs_[temp_serial1_in_candidates];}
+				 right_line_end_PID=curb_candidate_PIDs_[temp_serial1_in_candidates];}
 				if(i>1)
 				{unsigned int temp_serial1_in_candidates=i-2;
-				 left_backup_end=curb_candidate_PIDs_[temp_serial1_in_candidates];}
+				 right_backup_end=curb_candidate_PIDs_[temp_serial1_in_candidates];}
 			}
 			
-			if(curb_candidate_PIDs_[i]==right_line_begin_PID)
+			if(curb_candidate_PIDs_[i] == left_line_begin_PID)
 			{
 				if(i<(curb_candidate_PIDs_.size()-1))
 				{unsigned int temp_serial2_in_candidates=i+1;
-				 right_line_end_PID=curb_candidate_PIDs_[temp_serial2_in_candidates];}
+				 left_line_end_PID=curb_candidate_PIDs_[temp_serial2_in_candidates];}
 				if(i<(curb_candidate_PIDs_.size()-2))
 				{unsigned int temp_serial2_in_candidates=i+2;
-				 right_backup_end=curb_candidate_PIDs_[temp_serial2_in_candidates];}
+				 left_backup_end=curb_candidate_PIDs_[temp_serial2_in_candidates];}
 			}
+			
 		}
 		
 		bool temp_left_flag=false;
 		bool temp_left_backup_flag=false;
 		bool temp_right_flag=false;
 		bool temp_right_backup_flag=false;
+		
 		//for left_line;
 		if((left_line_begin_PID!=0)&&(left_line_end_PID!=0))
 		{
@@ -347,16 +354,17 @@ namespace road_detection{
 			geometry_msgs::PointStamped left_end_Point_base;
 			tfSicktoBaselink(temp_left_begin_Point,left_begin_Point_base);
 			tfSicktoBaselink(temp_left_end_Point,left_end_Point_base);
+			
 			//criterion 4: curb is higher than 0.05, lower than 0.5 meter;
 			float temp_delt_z=left_begin_Point_base.point.z-left_end_Point_base.point.z;
 			ROS_INFO("left1: %3f",temp_delt_z);
-			bool temp_left_height=(temp_delt_z>0.05&&temp_delt_z<100)||(temp_delt_z<-0.05&&temp_delt_z>-100);
+			bool temp_left_height=(temp_delt_z>curbLow_tresh_ && temp_delt_z< curbheigh_tresh_)||(temp_delt_z<-curbLow_tresh_ && temp_delt_z>-curbheigh_tresh_);
 			
-			//criterion 5: the curb should be somewhat orthorgnal to the road, 45 degree;
+			//criterion 5: the curb should be somewhat orthorgnal to the road, say, 45 degree;
 			float temp_delt_x=temp_left_begin_Point.x-temp_left_end_Point.x;
 			float temp_delt_y=temp_left_begin_Point.y-temp_left_end_Point.y;
-			bool temp_left_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&temp_delt_x>temp_delt_y)||(temp_delt_y<0&&temp_delt_x>-temp_delt_y));
-			temp_left_slope=(temp_left_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x>-temp_delt_y)));
+			bool temp_left_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&curbTan_tresh_*temp_delt_x>temp_delt_y)||(temp_delt_y<0&&curbTan_tresh_*temp_delt_x>-temp_delt_y));
+			temp_left_slope=(temp_left_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x*curbTan_tresh_>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x*curbTan_tresh_>-temp_delt_y)));
 			
 			if(temp_left_height&&temp_left_slope)
 			{temp_left_flag=true;ROS_INFO("left_curb true");}
@@ -372,15 +380,16 @@ namespace road_detection{
 			geometry_msgs::PointStamped left_end_Point_base;
 			tfSicktoBaselink(temp_left_begin_Point,left_begin_Point_base);
 			tfSicktoBaselink(temp_left_end_Point,left_end_Point_base);
-			//criterion 4: curb is higher than 0.05, lower than 0.3 meter;
+			
+			//criterion 4: curb is higher than 0.05, lower than 100 meter;
 			float temp_delt_z=left_begin_Point_base.point.z-left_end_Point_base.point.z;
-			bool temp_left_height=(temp_delt_z>0.05&&temp_delt_z<100)||(temp_delt_z<-0.05&&temp_delt_z>-100);
+			bool temp_left_height=(temp_delt_z>curbLow_tresh_ && temp_delt_z<curbheigh_tresh_)||(temp_delt_z<-curbLow_tresh_&& temp_delt_z>-curbheigh_tresh_);
 			
 			//criterion 5
 			float temp_delt_x=temp_left_begin_Point.x-temp_left_end_Point.x;
 			float temp_delt_y=temp_left_begin_Point.y-temp_left_end_Point.y;
-			bool temp_left_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&temp_delt_x>temp_delt_y)||(temp_delt_y<0&&temp_delt_x>-temp_delt_y));
-			temp_left_slope=(temp_left_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x>-temp_delt_y)));
+			bool temp_left_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&curbTan_tresh_*temp_delt_x>temp_delt_y)||(temp_delt_y<0&&curbTan_tresh_*temp_delt_x>-temp_delt_y));
+			temp_left_slope=(temp_left_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x*curbTan_tresh_>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x*curbTan_tresh_>-temp_delt_y)));
 			
 			if(temp_left_height&&temp_left_slope)
 			{temp_left_backup_flag=true;ROS_INFO("left_curb backup true");}
@@ -400,12 +409,12 @@ namespace road_detection{
 			tfSicktoBaselink(temp_right_end_Point,right_end_Point_base);
 
 			float temp_delt_z=right_begin_Point_base.point.z-right_end_Point_base.point.z;
-			bool temp_right_height=(temp_delt_z>0.05&&temp_delt_z<100)||(temp_delt_z<-0.05&&temp_delt_z>-100);
+			bool temp_right_height=(temp_delt_z>curbLow_tresh_ && temp_delt_z<curbheigh_tresh_)||(temp_delt_z<-curbLow_tresh_ &&temp_delt_z> -curbheigh_tresh_);
 			
 			float temp_delt_x=temp_right_begin_Point.x-temp_right_end_Point.x;
 			float temp_delt_y=temp_right_begin_Point.y-temp_right_end_Point.y;
-			bool temp_right_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&temp_delt_x>temp_delt_y)||(temp_delt_y<0&&temp_delt_x>-temp_delt_y));
-			temp_right_slope=(temp_right_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x>-temp_delt_y)));
+			bool temp_right_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&curbTan_tresh_*temp_delt_x>temp_delt_y)||(temp_delt_y<0&&curbTan_tresh_*temp_delt_x>-temp_delt_y));
+			temp_right_slope=(temp_right_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x*curbTan_tresh_>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x*curbTan_tresh_>-temp_delt_y)));
 			
 			if(temp_right_height&&temp_right_slope)
 			{temp_right_flag=true;ROS_INFO("right curb true");}
@@ -423,12 +432,12 @@ namespace road_detection{
 			tfSicktoBaselink(temp_right_end_Point,right_end_Point_base);
 
 			float temp_delt_z=right_begin_Point_base.point.z-right_end_Point_base.point.z;
-			bool temp_right_height=(temp_delt_z>0.05&&temp_delt_z<100)||(temp_delt_z<-0.05&&temp_delt_z>-100);
+			bool temp_right_height=(temp_delt_z>curbLow_tresh_&&temp_delt_z<curbheigh_tresh_)||(temp_delt_z<-curbLow_tresh_&&temp_delt_z>-curbheigh_tresh_);
 			
 			float temp_delt_x=temp_right_begin_Point.x-temp_right_end_Point.x;
 			float temp_delt_y=temp_right_begin_Point.y-temp_right_end_Point.y;
-			bool temp_right_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&temp_delt_x>temp_delt_y)||(temp_delt_y<0&&temp_delt_x>-temp_delt_y));
-			temp_right_slope=(temp_right_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x>-temp_delt_y)));
+			bool temp_right_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&curbTan_tresh_*temp_delt_x>temp_delt_y)||(temp_delt_y<0&&curbTan_tresh_*temp_delt_x>-temp_delt_y));
+			temp_right_slope=(temp_right_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x*curbTan_tresh_>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x*curbTan_tresh_>-temp_delt_y)));
 			
 			if(temp_right_height&&temp_right_slope)
 			{temp_right_backup_flag=true;ROS_INFO("right curb backup true");}
@@ -437,33 +446,32 @@ namespace road_detection{
 	    //push back left curb line
 	    if(temp_left_flag==true)
 	    {
-			for(unsigned int i=left_line_end_PID; i<=left_line_begin_PID;i++)
+			for(unsigned int i=left_line_begin_PID; i<=left_line_end_PID;i++)
 			{left_curb_line_.points.push_back(laser_cloud_.points[i]);}
 		}
 		if(temp_left_backup_flag==true)
 	    {
-			for(unsigned int i=left_backup_end; i<=left_line_end_PID;i++)
+			for(unsigned int i=left_line_end_PID; i<=left_backup_end;i++)
 			{left_curb_line_.points.push_back(laser_cloud_.points[i]);}
 		}
 		
 		//push back right curb line
 	    if(temp_right_flag==true)
 	    {
-			for(unsigned int i=right_line_begin_PID; i<=right_line_end_PID;i++)
+			for(unsigned int i=right_line_end_PID; i<=right_line_begin_PID;i++)
 			{right_curb_line_.points.push_back(laser_cloud_.points[i]);}
 		}
 		if(temp_right_backup_flag==true)
 	    {
-			for(unsigned int i=right_line_end_PID; i<=right_backup_end;i++)
+			for(unsigned int i=right_backup_end; i<=right_line_end_PID;i++)
 			{right_curb_line_.points.push_back(laser_cloud_.points[i]);}
 		}
 		
 		sensor_msgs::PointCloud baselink_leftline_;
 		sensor_msgs::PointCloud baselink_rightline_;
-		
-		// I confuse left and right from the beginning; now correct them. ^_^
-		sick_to_baselink_.transformPointCloud("base_link", right_curb_line_, baselink_leftline_);
-		sick_to_baselink_.transformPointCloud("base_link", left_curb_line_, baselink_rightline_);
+
+		sick_to_baselink_.transformPointCloud("base_link", left_curb_line_, baselink_leftline_);
+		sick_to_baselink_.transformPointCloud("base_link", right_curb_line_, baselink_rightline_);
 		
 		//publish two lines;
 		left_curbline_pub_.publish(baselink_leftline_);		

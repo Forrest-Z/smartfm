@@ -6,9 +6,10 @@ using namespace std;
 using namespace ros;
 using namespace tf;
 
+#define MAX_DISTANCE 10.0
+
 namespace estimation{
-	
-	
+
 	//***************************the most elementary class of "TrackEstimationNode"******************************
 	TrackEstimationNode::TrackEstimationNode():
 	Rmeas_update_(true),
@@ -31,11 +32,17 @@ namespace estimation{
 		//////////////// to publish both points in one topic/////////////////////
 		left_point_pub_ 	= nh.advertise<sensor_msgs::PointCloud>("curb_points", 10);
 		right_point_pub_ 	= nh.advertise<sensor_msgs::PointCloud>("curb_points", 10);
-		right_Ptcred_pub_ 	= nh.advertise<sensor_msgs::PointCloud>("Ptcred_", 2);
-		left_Ptcred_pub_ 	= nh.advertise<sensor_msgs::PointCloud>("Ptcred_", 2);
-		 
+		//right_Ptcred_pub_ 	= nh.advertise<sensor_msgs::PointCloud>("Ptcred_", 2);
+		//left_Ptcred_pub_ 	= nh.advertise<sensor_msgs::PointCloud>("Ptcred_", 2);
+		
+		Raw_Lpt_pub_ 		= nh.advertise<sensor_msgs::PointCloud>("raw_curb_points", 10);
+		Raw_Rpt_pub_ 		= nh.advertise<sensor_msgs::PointCloud>("raw_curb_points", 10);
+				 
 		//cred_full_right_pub_= nh.advertise<sensor_msgs::PointCloud>("full_curbs", 2);
 		//cred_full_left_pub_ = nh.advertise<sensor_msgs::PointCloud>("full_curbs", 2); 
+		
+		hybrid_Lpt_pub_		= nh.advertise<sensor_msgs::PointCloud>("hybrid_Lpt", 10);
+		hybrid_Rpt_pub_ 	= nh.advertise<sensor_msgs::PointCloud>("hybrid_Rpt", 10);
 		
 		cloud_sub_.subscribe(nh, "laser_cloud_", 2);
 		tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(cloud_sub_, tf_, "odom", 10);
@@ -46,6 +53,8 @@ namespace estimation{
 		Lcurb_sub_ = nh.subscribe("left_curbline_pub_",  10, &TrackEstimationNode::LcurbCallback, this);
 		
 		odom_sub_ = nh.subscribe("odom", 10, &TrackEstimationNode::odomCallback, this);
+		
+		max_dis_point_.z = 0.0;
 	}
 	
 	void TrackEstimationNode::cloudCallback (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
@@ -65,7 +74,7 @@ namespace estimation{
 	
 	void TrackEstimationNode::odomCallback(const OdomConstPtr& odom)
 	{
-		ROS_INFO("odom call_back");
+		//ROS_INFO("odom call_back");
 		ros::Time odom_time = odom->header.stamp;
 		Quaternion q;
 		tf::quaternionMsgToTF(odom->pose.pose.orientation, q);
@@ -92,6 +101,14 @@ namespace estimation{
 		cred_full_right_curb_.header= Rcurb_line_.header;
 		cred_full_right_curb_.points.clear();
 		
+		Raw_Rpt_.header= Rcurb_line_.header;
+		Raw_Rpt_.points.clear();
+		
+		//"hybrid_Rpt_" consists of information of distance for "curb" && "no_curb";
+		// false curb of vehicles and pedestrians will not be included;
+		hybrid_Rpt_.header= Rcurb_line_.header;
+		hybrid_Rpt_.points.clear();
+		
 		geometry_msgs::Point32 right_point;
 		
 		TrackEstimationNode::RcurbProcess();
@@ -103,7 +120,10 @@ namespace estimation{
 			ROS_INFO("curb_time older than odom message buffer");
 			return;
 		}
-		else {ROS_INFO("odom OK");}
+		else 
+		{
+			ROS_INFO("odom OK");
+		}
 		
 		transformer_.lookupTransform("odom", "base_link", Rcurb_time, Rodom_meas_);
 		
@@ -135,14 +155,24 @@ namespace estimation{
 				right_point.x = Rcurb_line_.points[0].x;
 				right_point.y = Rcurb_line_.points[0].y;	
 				right_point.z = Rcurb_line_.points[0].z;
-				right_point_.points.push_back(right_point);	
+				right_point_.points.push_back(right_point);
+				Raw_Rpt_.points.push_back(right_point);
 				
+				if(right_point.y<MAX_DISTANCE && right_point.y>-MAX_DISTANCE)
+				{
+					hybrid_Rpt_.points.push_back(right_point);
+				}
+				else
+				{
+					max_dis_point_.x = R_filter_.old_forward_dis_;
+					max_dis_point_.y = -MAX_DISTANCE;
+					hybrid_Rpt_.points.push_back(max_dis_point_);
+				}
+
 				R_window_.rollingProcess(temp_infoPt, Rtrack_output_cred_);
-				
 				if(Rtrack_output_cred_)
 				{
 					right_Ptcred_.points.push_back(right_point);
-					
 					/*
 					for (unsigned int i=0; i<Rcurb_line_.points.size();i++)
 					{
@@ -151,15 +181,19 @@ namespace estimation{
 					*/ 
 				}								
 			}
+			else
+			{
+				max_dis_point_.x = R_filter_.old_forward_dis_;
+				max_dis_point_.y = -MAX_DISTANCE;
+				hybrid_Rpt_.points.push_back(max_dis_point_);
+			}			
 		}
 		else
 		{
-			//tf::Transform odom_old_new  = Rodom_meas_old_.inverse() * Rodom_meas_; //(move to above)
-			
+			//tf::Transform odom_old_new  = Rodom_meas_old_.inverse() * Rodom_meas_; //(move to above)			
 			tf::Transform odom_2old_new = Rodom_meas_2old_.inverse() * Rodom_meas_;
 			tf::Transform odom_3old_new = Rodom_meas_3old_.inverse() * Rodom_meas_;
-			
-			
+					
 			////always Remember to change coordinates. //(move to above)
 			//Rtx_ = -odom_old_new.getOrigin().y();
 			//Rty_ =  odom_old_new.getOrigin().x();
@@ -167,10 +201,12 @@ namespace estimation{
 			
 			//update controlled by "mov_dis"; this is optional;
 			float mov_dis_tresh =0.05; 
-			if(mov_dis<mov_dis_tresh){ROS_INFO("R:mov_dis less than mov_dis_tresh");return;}
-			
-			
-			
+			if(mov_dis<mov_dis_tresh)
+			{
+				//ROS_INFO("R:mov_dis less than mov_dis_tresh");
+				return;
+			}
+
 			double tmp = 0;
 			double temp_delt_phi;
 			odom_old_new.getBasis().getEulerYPR(temp_delt_phi, tmp, tmp);
@@ -179,18 +215,18 @@ namespace estimation{
 			
 			float estimation_credible_threshold = 0.3;
 			float estimation_reinitial_threshold = 0.5;
-			float measurement_reinitial_threshold = 0.3;
+			float measurement_reinitial_threshold = 0.5;
 			float gate_para = 0.5;
 			float gate_coefficient = 0.5;
 			if(R_filter_.vehicles_flag_==true)
-			{estimation_reinitial_threshold=4;measurement_reinitial_threshold=0.6;gate_coefficient=1;gate_coefficient=0.5;}
+			{estimation_reinitial_threshold=4;measurement_reinitial_threshold=0.6; gate_coefficient=1;gate_coefficient=0.5;}
 			
 			
 			float tx2, ty2, dis2;
 			tx2 = -odom_2old_new.getOrigin().y();
 			ty2 =  odom_2old_new.getOrigin().x();
 			dis2 = sqrtf(tx2*tx2+ty2*ty2);
-			ROS_INFO("vehicle move from last update: tx2 %f, ty2 %f, dis2 %f", tx2, ty2, dis2);
+			ROS_INFO("R: vehicle move from last update: tx2 %f, ty2 %f, dis2 %f", tx2, ty2, dis2);
 			//assume other vehicles will be no longer than 4 meters; when driving in the same direction;
 			if(dis2>estimation_credible_threshold){Rtrack_output_cred_ = false;}
 			if(dis2>estimation_reinitial_threshold)
@@ -204,7 +240,7 @@ namespace estimation{
 			tx3 = -odom_3old_new.getOrigin().y();
 			ty3 =  odom_3old_new.getOrigin().x();
 			dis3 = sqrtf(tx3*tx3+ty3*ty3);
-			ROS_INFO("vehicle move from last measurement: tx3 %f, ty3 %f, dis3 %f", tx3, ty3, dis3);			
+			//ROS_INFO("vehicle move from last measurement: tx3 %f, ty3 %f, dis3 %f", tx3, ty3, dis3);			
 			if(dis3>measurement_reinitial_threshold)
 			{ROS_INFO("dis3>measurement_reinitial_threshold, set reinitail true"); Rtrack_output_cred_ = false; Rreinitial_= true; return;}
 			if(Rmeas_exist_){Rodom_meas_3old_  = Rodom_meas_;}
@@ -218,8 +254,7 @@ namespace estimation{
 			//always remember to change coordinates;
 			right_point.x = R_filter_.estimate_value_.y;
 			right_point.y =-R_filter_.estimate_value_.x;
-			right_point.z = Rcurb_line_.points[0].z;	
-			
+			right_point.z = Rcurb_line_.points[0].z;			
 			right_point_.points.push_back(right_point);
 			
 			R_window_.rollingProcess(temp_infoPt, Rtrack_output_cred_);
@@ -233,12 +268,43 @@ namespace estimation{
 						cred_full_right_curb_.points.push_back(Rcurb_line_.points[i]);
 					}
 					*/
-			}			
+			}
+			
+			if(Rmeas_exist_)
+			{
+				if(!R_filter_.vehicles_flag_)
+				{
+					geometry_msgs::Point32 raw_right_point;
+					raw_right_point.x = Rcurb_line_.points[0].x;
+					raw_right_point.y = Rcurb_line_.points[0].y;	
+					raw_right_point.z = Rcurb_line_.points[0].z;
+					Raw_Rpt_.points.push_back(raw_right_point);
+					
+					if(raw_right_point.y<MAX_DISTANCE && raw_right_point.y>-MAX_DISTANCE)
+					{
+						hybrid_Rpt_.points.push_back(raw_right_point);
+					}
+					else
+					{
+						max_dis_point_.x = R_filter_.old_forward_dis_;
+						max_dis_point_.y = -MAX_DISTANCE;
+						hybrid_Rpt_.points.push_back(max_dis_point_);
+					}
+				}
+			}
+			else
+			{
+				max_dis_point_.x = R_filter_.old_forward_dis_;
+				max_dis_point_.y = -MAX_DISTANCE;
+				hybrid_Rpt_.points.push_back(max_dis_point_);
+			}
+						
 		}
 		right_point_pub_.publish(right_point_);
-		right_Ptcred_pub_.publish(right_Ptcred_);
-		
-		//cred_full_right_pub_.publish(cred_full_right_curb_);
+		//right_Ptcred_pub_.publish(right_Ptcred_);		
+		//cred_full_right_pub_.publish(cred_full_right_curb_);		
+		Raw_Rpt_pub_.publish(Raw_Rpt_);
+		hybrid_Rpt_pub_.publish(hybrid_Rpt_);
 	}
 	
 	
@@ -246,7 +312,7 @@ namespace estimation{
 	{
 		if(Rcurb_line_.points.size()==0)
 		{
-			ROS_INFO("Rcurb_line_ no points inside, set meas_exist_ ; meas_update_ as false");
+			//ROS_INFO("Rcurb_line_ no points inside, set meas_exist_ ; meas_update_ as false");
 			Rmeas_exist_  =false;
 			Rmeas_update_ =false;
 		 }
@@ -287,6 +353,13 @@ namespace estimation{
 		
 		cred_full_left_curb_.header= Lcurb_line_.header;
 		cred_full_left_curb_.points.clear();
+		
+		Raw_Lpt_.header= Lcurb_line_.header;
+		Raw_Lpt_.points.clear();
+		
+		hybrid_Lpt_.header= Lcurb_line_.header;
+		hybrid_Lpt_.points.clear();
+		
 		
 		geometry_msgs::Point32 left_point;
 		
@@ -330,7 +403,19 @@ namespace estimation{
 				left_point.x = Lcurb_line_.points[0].x;
 				left_point.y = Lcurb_line_.points[0].y;	
 				left_point.z = Lcurb_line_.points[0].z;
-				left_point_.points.push_back(left_point);	
+				left_point_.points.push_back(left_point);
+				Raw_Lpt_.points.push_back(left_point);	
+				
+				if(left_point.y<MAX_DISTANCE && left_point.y>-MAX_DISTANCE)
+				{
+					hybrid_Lpt_.points.push_back(left_point);
+				}
+				else
+				{
+					max_dis_point_.x = L_filter_.old_forward_dis_;
+					max_dis_point_.y = MAX_DISTANCE;
+					hybrid_Lpt_.points.push_back(max_dis_point_);
+				}
 				
 				L_window_.rollingProcess(temp_infoPt, Ltrack_output_cred_);
 				
@@ -345,6 +430,12 @@ namespace estimation{
 					}
 					*/ 
 				}				
+			}
+			else
+			{
+				max_dis_point_.x = L_filter_.old_forward_dis_;
+				max_dis_point_.y = MAX_DISTANCE;
+				hybrid_Lpt_.points.push_back(max_dis_point_);
 			}
 		}
 		else
@@ -370,8 +461,8 @@ namespace estimation{
 			
 			float estimation_credible_threshold = 0.3;
 			float estimation_reinitial_threshold = 0.5;
-			float measurement_reinitial_threshold = 0.3;
-			float gate_para = 0.5;
+			float measurement_reinitial_threshold = 0.5;
+			float gate_para = 0.4;
 			float gate_coefficient = 0.5;
 			
 			//for left filter, actually this case doesn't exist;
@@ -383,13 +474,14 @@ namespace estimation{
 			tx2 = -odom_2old_new.getOrigin().y();
 			ty2 =  odom_2old_new.getOrigin().x();
 			dis2 = sqrtf(tx2*tx2+ty2*ty2);
-			ROS_INFO("vehicle move from last update: tx2 %f, ty2 %f, dis2 %f", tx2, ty2, dis2);
+			ROS_INFO("L: vehicle move from last update: tx2 %f, ty2 %f, dis2 %f", tx2, ty2, dis2);
 			//assume other vehicles will be no longer than 4 meters; when driving in the same direction;
 			if(dis2>estimation_credible_threshold){Ltrack_output_cred_ = false;}
 			if(dis2>estimation_reinitial_threshold)
 			{ROS_INFO("dis2>estimation_reinitial_threshold, set reinitail true");Lreinitial_= true; return;}
 			Lassociation_gate_ = gate_para+gate_coefficient*dis2;
 			
+			//pay attention here;
 			L_filter_.update(Lcurb_observation_, Lassociation_gate_, Lmeas_update_, Lreinitial_, Ldelt_phi_, Ltx_, Lty_);	
 			
 			if(Lmeas_update_){Lodom_meas_2old_ = Lodom_meas_; Ltrack_output_cred_ = true;}
@@ -427,12 +519,44 @@ namespace estimation{
 						cred_full_left_curb_.points.push_back(Lcurb_line_.points[i]);
 					}
 					*/ 
-			}			
+			}
+			
+			
+			if(Lmeas_exist_)
+			{
+				if(!L_filter_.vehicles_flag_)
+				{
+					geometry_msgs::Point32 raw_left_point;
+					raw_left_point.x = Lcurb_line_.points[0].x;
+					raw_left_point.y = Lcurb_line_.points[0].y;	
+					raw_left_point.z = Lcurb_line_.points[0].z;
+					Raw_Lpt_.points.push_back(raw_left_point);
+				
+					if(raw_left_point.y<MAX_DISTANCE && raw_left_point.y>-MAX_DISTANCE)
+					{
+						hybrid_Lpt_.points.push_back(raw_left_point);
+					}
+					else
+					{
+						max_dis_point_.x = L_filter_.old_forward_dis_;
+						max_dis_point_.y = MAX_DISTANCE;
+						hybrid_Lpt_.points.push_back(max_dis_point_);
+					}
+				}
+			}
+			else
+			{
+				max_dis_point_.x = L_filter_.old_forward_dis_;
+				max_dis_point_.y = MAX_DISTANCE;
+				hybrid_Lpt_.points.push_back(max_dis_point_);
+			}						
 		}
 		
 		left_point_pub_.publish(left_point_);
-		left_Ptcred_pub_.publish(left_Ptcred_);
+		//left_Ptcred_pub_.publish(left_Ptcred_);
 		//cred_full_left_pub_.publish(cred_full_left_curb_);
+		Raw_Lpt_pub_.publish(Raw_Lpt_);
+		hybrid_Lpt_pub_.publish(hybrid_Lpt_);
 	}
 	
 	

@@ -21,11 +21,10 @@ using namespace ros;
 
 namespace estimation
 {
-	
   TrackEstimation::TrackEstimation():
   vehicles_flag_(false),
-  filter_initialized_(false),
-  old_forward_dis_(5.40)
+   old_forward_dis_(5.40),
+  filter_initialized_(false)
   {
 	// create SYSTEM MODEL
     ColumnVector sysNoise_Mu(3);  sysNoise_Mu = 0;
@@ -80,7 +79,7 @@ namespace estimation
   
   void TrackEstimation::initialize(const road_detection::vec_point& prior)
   {	  
-	  ROS_INFO("Initialize the Filter;");
+	  //ROS_INFO("Initialize the Filter;");
 	  ColumnVector prior_Mu(3);
 	  SymmetricMatrix prior_Cov(3);
 	  
@@ -103,9 +102,9 @@ namespace estimation
 	  prior_  = new Gaussian(prior_Mu,prior_Cov);
 	  filter_ = new ExtendedKalmanFilter(prior_);
 	  
-	  ROS_INFO("---------Initialization finished-------");
-      ROS_INFO("prior vector: (x, y, thetha) %3f, %3f, %3f", prior_Mu(1),prior_Mu(2),prior_Mu(3));
-      ROS_INFO("prior covariance: (sigma1, sigma2, sigma3) %3f, %3f, %3f", prior_Cov(1,1),prior_Cov(2,2),prior_Cov(3,3));
+	  //ROS_INFO("---------Initialization finished-------");
+      //ROS_INFO("prior vector: (x, y, thetha) %3f, %3f, %3f", prior_Mu(1),prior_Mu(2),prior_Mu(3));
+      //ROS_INFO("prior covariance: (sigma1, sigma2, sigma3) %3f, %3f, %3f", prior_Cov(1,1),prior_Cov(2,2),prior_Cov(3,3));
 	  
 	  filter_initialized_ = true;
 	  estimate_value_ = prior;
@@ -170,9 +169,9 @@ namespace estimation
       MatrixWrapper::ColumnVector estimate_vector = filter_->PostGet()->ExpectedValueGet();
       MatrixWrapper::SymmetricMatrix estimate_cov = filter_->PostGet()->CovarianceGet();
       
-      ROS_INFO("---------1. prediction finished-------");
-      ROS_INFO("Estimate vector: (x, y, thetha) %f, %f, %f", estimate_vector(1),estimate_vector(2),estimate_vector(3));
-	  ROS_INFO("Estimate vector: (sigma1, sigma2, sigma3) %f, %f, %f", estimate_cov(1,1), estimate_cov(2,2), estimate_cov(3,3));
+      //ROS_INFO("---------1. prediction finished-------");
+      //ROS_INFO("Estimate vector: (x, y, thetha) %f, %f, %f", estimate_vector(1),estimate_vector(2),estimate_vector(3));
+	  //ROS_INFO("Estimate vector: (sigma1, sigma2, sigma3) %f, %f, %f", estimate_cov(1,1), estimate_cov(2,2), estimate_cov(3,3));
       
       //------------------2--------data association: analyze data and make judgement----------------------------
       ColumnVector meas_vec(3);
@@ -180,51 +179,63 @@ namespace estimation
       meas_vec(2) = curb_observation.y;
       meas_vec(3) = curb_observation.thetha;
       
-      ROS_INFO("---------2. data association: analyze data and make judgement-------");
-      ROS_INFO("observation vector: (x, y, thetha) %3f, %3f, %3f", meas_vec(1),meas_vec(2),meas_vec(3));
-      
-      
-      //judgement made from the difference between "prediction" and "observation";
-      float dis_x = estimate_vector(1)-meas_vec(1);
-      float dis_y = estimate_vector(2)-meas_vec(2);
-      float dis_pred_meas = sqrtf(dis_x*dis_x+dis_y*dis_y);
-      ROS_INFO("dis_x %f, dis_y %f, dis_pred_meas %f", dis_x, dis_y, dis_pred_meas);
-      
-      //a.for normal noise
-      if(dis_x<-association_gate||dis_x>association_gate){meas_update = false;}
-      
-      //b.curb segmentation;
-      if((dis_x<-3||dis_x>3)&& (meas_vec(1)>=4||meas_vec(1)<-4)) 
+      //make sure "curb_observation" exists; be careful here;
+      if(meas_update==true)
       {
-	   ROS_INFO("-----------------Curb Segmentation-----------Curb Segmentation---------");
-	   meas_update = true; 	 
-	   reinitial = true;return false;
-	  }
+		ROS_INFO("---------2. data association: analyze data and make judgement-------");
+		ROS_INFO("observation vector: (x, y, thetha) %3f, %3f, %3f", meas_vec(1),meas_vec(2),meas_vec(3));
+		
+		if(meas_vec(1)>0 && meas_vec(1)<4)
+		{
+			//ROS_INFO("I will find you!!!");
+		}
+		
+		//judgement made from the difference between "prediction" and "observation";
+		float dis_x = estimate_vector(1)-meas_vec(1);
+		float dis_y = estimate_vector(2)-meas_vec(2);
+		float dis_pred_meas = sqrtf(dis_x*dis_x+dis_y*dis_y);
+		ROS_INFO("dis_x %f, dis_y %f, dis_pred_meas %f", dis_x, dis_y, dis_pred_meas);
+		
+		//a.for normal noise
+		if(dis_x<-association_gate||dis_x>association_gate){meas_update = false;}
+      
+		//b.new curb segmentation;
+		if((dis_x<-2||dis_x>2) && ((meas_vec(1)>=7||meas_vec(1)<=-7)||(estimate_vector(1)>=7||estimate_vector(1)<=-7))) 
+		{
+			ROS_INFO("-----------------Curb Segmentation-----------Curb Segmentation---------");
+			meas_update = true; 	 
+			reinitial = true;
+			return false;
+		}
 	  
-	  //c.vehicles or pedestrians; only for the right filter, because of the "left-driving" mode;
-      if(meas_vec(1)<3 && dis_x>1)
-      {
-	   ROS_INFO("---------------Vehicles or Pedestrians, set meas_update false------------");
-	   vehicles_flag_ = true;
-	   meas_update = false;
+		//c.vehicles or pedestrians; usually only for the right filter, because of the "left-driving" mode;
+		if((dis_x>1 && meas_vec(1)<3 && meas_vec(1)>0)||(dis_x<-1 && meas_vec(1)>-3 && meas_vec(1)<0))
+		{
+			ROS_INFO("---------------Vehicles or Pedestrians, set meas_update false------------");
+			vehicles_flag_ = true;
+			meas_update = false;
+		}
+		
 	  }
 
       
       //------------------3-------measurement---------update--------------------------
-      
       if(meas_update) 
       {
 		  ROS_INFO("measurement update");
 		  filter_->Update(meas_model_, meas_vec);
 	  }
-	  else {ROS_INFO("meas_update false, no update");}
+	  else
+	  {
+		  ROS_INFO("meas_update false, no update");
+	  }
       
       MatrixWrapper::ColumnVector estimate_vector_meas = filter_->PostGet()->ExpectedValueGet();
       MatrixWrapper::SymmetricMatrix estimate_cov_meas = filter_->PostGet()->CovarianceGet();
       
-      ROS_INFO("---------measurement update finished, if have-------");
-      ROS_INFO("Estimate vector: (x, y, thetha) %3f, %3f, %3f", estimate_vector_meas(1),estimate_vector_meas(2),estimate_vector_meas(3));
-      ROS_INFO("Estimate vector: (sigma1, sigma2, sigma3) %f, %f, %f", estimate_cov_meas(1,1),estimate_cov_meas(2,2),estimate_cov_meas(3,3));
+      //ROS_INFO("---------measurement update finished, if have-------");
+      //ROS_INFO("Estimate vector: (x, y, thetha) %3f, %3f, %3f", estimate_vector_meas(1),estimate_vector_meas(2),estimate_vector_meas(3));
+      //ROS_INFO("Estimate vector: (sigma1, sigma2, sigma3) %f, %f, %f", estimate_cov_meas(1,1),estimate_cov_meas(2,2),estimate_cov_meas(3,3));
 
       //------------------4-------preparing--for--next--round----------
       estimate_value_.x = estimate_vector_meas(1);
