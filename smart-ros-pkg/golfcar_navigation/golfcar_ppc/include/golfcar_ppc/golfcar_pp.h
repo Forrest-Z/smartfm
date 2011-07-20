@@ -24,9 +24,11 @@ namespace golfcar_purepursuit {
         ros::Timer timer_;
 
         double normal_speed_;
+        double slow_speed_;
         int start_decreasing_;
         double turning_radius_;
         double look_ahead_;
+        double look_ahead_bad_;
         double max_steering_;
         double switch_distance_;
         double car_length_;
@@ -40,7 +42,7 @@ namespace golfcar_purepursuit {
 
 		bool getRobotPose(tf::Stamped<tf::Pose>& odom_pose) const;
         double get_distance(double x1, double y1, double x2, double y2);
-        void get_center(double tar_x, double tar_y,
+        bool get_center(double tar_x, double tar_y,
                         double ori_x, double ori_y, double inv_R,
                         double center[2]);
         double get_inv_R(int segment);

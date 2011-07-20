@@ -11,9 +11,11 @@ namespace golfcar_purepursuit {
 
     ros::NodeHandle private_nh("~");
     if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 1.5;
-    if(!private_nh.getParam("start_decreasing",start_decreasing_)) start_decreasing_ = 2;
+    if(!private_nh.getParam("slow_speed",slow_speed_)) slow_speed_ = 1.0;
+    if(!private_nh.getParam("start_decreasing",start_decreasing_)) start_decreasing_ = 20;
     if(!private_nh.getParam("turning_radius",turning_radius_)) turning_radius_ = 4;
     if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3;
+    if(!private_nh.getParam("look_ahead_bad",look_ahead_bad_)) look_ahead_bad_ = 1;
     if(!private_nh.getParam("max_steering",max_steering_)) max_steering_ = 0.65;
     if(!private_nh.getParam("switch_distance",switch_distance_)) switch_distance_ = 0.01;
     if(!private_nh.getParam("car_length",car_length_)) car_length_ = 1.632;
@@ -21,9 +23,11 @@ namespace golfcar_purepursuit {
     last_segment_ = 0;
 
     std::cout<<"normal_speed: "<<normal_speed_<<"\n";
+    std::cout<<"slow_speed: "<<slow_speed_<<"\n";
     std::cout<<"start_decreasing: "<<start_decreasing_<<"\n";
     std::cout<<"turning_radius: "<<turning_radius_<<"\n";
     std::cout<<"look_ahead: "<<look_ahead_<<"\n";
+    std::cout<<"look_ahead_bad: "<<look_ahead_bad_<<"\n";
     std::cout<<"max_steering: "<<max_steering_<<"\n";
     std::cout<<"switch_distance: "<<switch_distance_<<"\n";
     std::cout<<"car_length: "<<car_length_<<"\n";
@@ -130,7 +134,7 @@ namespace golfcar_purepursuit {
     return (sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)));
   }
 
-  void PurePursuit::get_center(double tar_x, double tar_y,
+  bool PurePursuit::get_center(double tar_x, double tar_y,
 			       double ori_x, double ori_y, double inv_R,
 			       double center[2])
   {
@@ -141,6 +145,7 @@ namespace golfcar_purepursuit {
     double sq = 1/inv_R/inv_R - dist1*dist1/4;
     if(sq < 0) {
       ROS_ERROR("R*R-dist*dist/4=%lf < 0\n", sq);
+      return false;
     }
 
     if(inv_R > 0)
@@ -156,6 +161,8 @@ namespace golfcar_purepursuit {
 
     center[0] = x + dx;
     center[1] = y + dy;
+
+    return true;
   }
 
   double PurePursuit::get_inv_R(int segment)
@@ -204,7 +211,8 @@ namespace golfcar_purepursuit {
     else
     {
       double center[2];
-      get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center);
+      if(!get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center))
+	return btwn_points(tar_x, tar_y, ori_x, ori_y, 0, x, y);
 
       double arg1, arg2, arg;
       arg1 = atan2(ori_y - center[1], ori_x - center[0]);
@@ -258,7 +266,9 @@ namespace golfcar_purepursuit {
     else
     {
       double center[2];
-      get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center);
+      if(!get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center))
+	return get_projection(tar_x, tar_y, ori_x, ori_y, 0, cur_x, cur_y, proj);
+
       double dist = get_distance(center[0], center[1], cur_x, cur_y);
 
       proj[0] = center[0] + (cur_x - center[0])/dist/abs(inv_R);
@@ -350,25 +360,36 @@ namespace golfcar_purepursuit {
       a = tar_y - ori_y;
       b = ori_x - tar_x;
       c = (tar_x - ori_x)*ori_y + ori_x*(ori_y - tar_y);
-      x = (a*cur_x + b*cur_y + c)/sqrt(a*a + b*b);
       r = 0;
+      x = (a*cur_x + b*cur_y + c)/sqrt(a*a + b*b);
       theta = cur_yaw - atan2(tar_y - ori_y, tar_x - ori_x);
     }
     else
     {
       double center[2];
-      get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center);
-      if(inv_R > 0)
+      if(!get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center))
       {
-	r = get_distance(center[0], center[1], cur_x, cur_y) - abs(1/inv_R);
-	x = (inv_R*(r*r + L*L) + 2*r)/(2*(1 + inv_R*r));
-	theta = cur_yaw - atan2(cur_x - center[0], center[1] - cur_y);
+	a = tar_y - ori_y;
+	b = ori_x - tar_x;
+	c = (tar_x - ori_x)*ori_y + ori_x*(ori_y - tar_y);
+	r = 0;
+	x = (a*cur_x + b*cur_y + c)/sqrt(a*a + b*b);
+	theta = cur_yaw - atan2(tar_y - ori_y, tar_x - ori_x);
       }
       else
       {
-	r = -get_distance(center[0], center[1], cur_x, cur_y) + abs(1/inv_R);
-	x = (inv_R*(r*r + L*L) + 2*r)/(2*(1 + inv_R*r));
-	theta = cur_yaw - atan2(-cur_x + center[0], cur_y - center[1]);
+	if(inv_R > 0)
+	{
+	  r = get_distance(center[0], center[1], cur_x, cur_y) - abs(1/inv_R);
+	  x = (inv_R*(r*r + L*L) + 2*r)/(2*(1 + inv_R*r));
+	  theta = cur_yaw - atan2(cur_x - center[0], center[1] - cur_y);
+	}
+	else
+	{
+	  r = -get_distance(center[0], center[1], cur_x, cur_y) + abs(1/inv_R);
+	  x = (inv_R*(r*r + L*L) + 2*r)/(2*(1 + inv_R*r));
+	  theta = cur_yaw - atan2(-cur_x + center[0], cur_y - center[1]);
+	}
       }
     }
     while(theta > M_PI)
@@ -376,8 +397,12 @@ namespace golfcar_purepursuit {
     while(theta < -M_PI)
       theta += 2*M_PI;
 
-    if(abs(x) > L)
-      L = abs(x) + look_ahead_;
+    if(abs(x) > L) // too off from the path
+    {
+      if(cmd_vel > slow_speed_)
+	cmd_vel = slow_speed_;
+      L = abs(x) + look_ahead_bad_;
+    }
 
     gamma = 2/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
     double steering = atan(gamma * car_length_);
