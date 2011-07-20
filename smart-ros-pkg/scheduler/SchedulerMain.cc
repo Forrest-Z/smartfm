@@ -44,7 +44,7 @@ int SIMULATE_TIME = 1;
 int NOOP = 0;
 char* HOST_NAME = "localhost";
 int MOBILE_PORT = 4440;
-int VEHICLE_PORT = 9999;
+int VEHICLE_PORT = 4444;
 
 // The name of this program
 const char * PROGRAM_NAME;
@@ -69,6 +69,9 @@ VehicleTalker* vehicleTalker = NULL;
 // Current task
 Task currentTask;
 time_t previousTime;
+
+// Whether the vehicle is still available
+bool vehicleIsAvailable = false;
 
 // Error handling
 #define MSG(fmt, ...) \
@@ -95,7 +98,7 @@ void print_usage (FILE* stream, int exit_code)
   fprintf( stream, "Usage:  %s [options]\n", PROGRAM_NAME );
   fprintf( stream, "  --host hostname   Specify the host. The default is localhost.\n");  
   fprintf( stream, "  --mport mport     Specify the port for talking to mobile phones (any number between 2000 and 65535). The default is 4440.\n");  
-  fprintf( stream, "  --vport mport     Specify the port for talking to the vehicle (any number between 2000 and 65535). The default is 4440.\n");  
+  fprintf( stream, "  --vport vport     Specify the port for talking to the vehicle (any number between 2000 and 65535). The default is 4444.\n");  
   fprintf( stream, "  --verbose         See the status of the program at every step.\n");    
   fprintf( stream, "  --nogui           Run in plain text mode.\n");    
   fprintf( stream, "  --nomobile        Do not receive request from mobile phones.\n");  
@@ -433,7 +436,7 @@ Task getMobileTask()
       task.dropoff = rand() % NUM_STATIONS + 1;
   }
 
-  MSG("Got task <%d,%d,%d> from mobile phone", task.customerID, task.pickup, task.dropoff);
+  MSG("Got task <%d,%d,%d,%d> from mobile phone", task.customerID, task.taskID, task.pickup, task.dropoff);
 
   return task;
 }
@@ -482,6 +485,7 @@ VehicleInfo getVehicleInfo(int vehicleID)
     }
   }
   else {
+    info.isNew = true;
     if (currentTask.id < 0 || currentTask.ttask <= 0) {
       info.status = VEHICLE_AVAILABLE;
       info.tremain = 0;
@@ -539,13 +543,14 @@ void update()
   scheduler->updateVehicleStatus(vehStatus);
 
   // Get the next task and send to the vehicle if the vehicle is available
-  if (vehStatus == VEHICLE_AVAILABLE) {
+  if (vehStatus == VEHICLE_AVAILABLE && (vehicleIsAvailable || vehInfo.isNew)) {
     if (scheduler->checkTask()) {
       if (VERBOSITY_LEVEL > 0 && NOGUI)
 	cout << endl;
       
       currentTask = scheduler->getVehicleNextTask();
       sendTask2Vehicle(currentTask);
+      vehicleIsAvailable = false;
       
       if (VERBOSITY_LEVEL > 0 && NOGUI) {
 	cout << endl;
@@ -557,10 +562,11 @@ void update()
     else {
       scheduler->updateTPickupCurrent(0);
       scheduler->updateTTaskCurrent(0);
+      vehicleIsAvailable = true;
     }
   }
   // Otherwise, update the remaining task time (POB) or pickup time (other status)
-  else {
+  else if (vehStatus != VEHICLE_AVAILABLE) {
     scheduler->updateTCurrent(vehInfo.tremain);
     currentTask = scheduler->getVehicleCurrentTask();
     

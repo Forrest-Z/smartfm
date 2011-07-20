@@ -23,6 +23,7 @@ VehicleTalker::VehicleTalker(int port, int verbosityLevel)
   m_vehInfo.status = VEHICLE_NOT_AVAILABLE;
   m_vehInfo.tremain = 1000000;
   m_verbosity = verbosityLevel;
+  pthread_mutex_init(&m_statusMutex, NULL);
   try {
     m_server.init(port);
     m_server.setSocketBlocking(true);
@@ -35,6 +36,11 @@ VehicleTalker::VehicleTalker(int port, int verbosityLevel)
   }
 }
 
+VehicleTalker::~VehicleTalker() 
+{
+  pthread_mutex_destroy(&m_statusMutex);
+}
+
 bool VehicleTalker::sendNewTask(int customerID, int pickup, int dropoff)
 {
   if (!m_isconnected)
@@ -44,7 +50,7 @@ bool VehicleTalker::sendNewTask(int customerID, int pickup, int dropoff)
   while (!msgSent) {
     try {
       std::ostringstream ss;
-      ss << ";" << "0:" << customerID << ":" << pickup << ":" << dropoff << "\n";
+      ss << ";" << customerID << ":" << pickup << ":" << dropoff << "\n";
       m_socket << ss.str();
       msgSent = true;
     }
@@ -64,7 +70,10 @@ bool VehicleTalker::checkNewInfo()
 
 VehicleInfo VehicleTalker::getVehicleInfo()
 {
+  pthread_mutex_lock(&m_statusMutex);
   VehicleInfo ret = m_vehInfo;
+  ret.isNew = m_newStatusRecv;
+  pthread_mutex_unlock(&m_statusMutex);
   m_newStatusRecv = false;
   return ret;
 }
@@ -155,6 +164,7 @@ void VehicleTalker::runVehicleReceiver()
 	    }
 	  }
 	  if (statusValid) {
+	    pthread_mutex_lock(&m_statusMutex);
 	    m_vehInfo.vehicleID = atoi(vehIDStr.c_str());
 	    int vehStatus = atoi(vehStatusStr.c_str());
 	    if (vehStatus == VEHICLE_NOT_AVAILABLE)
@@ -173,6 +183,7 @@ void VehicleTalker::runVehicleReceiver()
 	    }
 	    m_vehInfo.tremain = atoi(tremainStr.c_str());
 	    m_newStatusRecv = true;
+	    pthread_mutex_unlock(&m_statusMutex);
 	  }
 	  else
 	    msgIncomplete = false;

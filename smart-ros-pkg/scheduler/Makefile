@@ -17,8 +17,11 @@ all: $(EXECNAME)
 $(EXECNAME): SchedulerMain.o SchedulerUI.o SchedulerTalker.o VehicleTalker.o Scheduler.o StationNetwork.o $(SOCKET_DIR)/socket.a
 	$(CPP) $(CPPFLAGS) $(LDFLAGS) $^ -o $@
 
+routeplanner: RoutePlanner.o RoutePlannerMain.o $(SOCKET_DIR)/socket.a
+	$(CPP) $(CPPFLAGS) $(LDFLAGS) $^ -o $@
+
 dep:
 	makedepend -Y -- $(CPPFLAGS) $(CFLAGS) -- $(SRCS) 2>/dev/null
 
 clean: 
-	rm -f *.o $(EXECNAME) *~ \#*
+	rm -f *.o $(EXECNAME) routeplanner *~ \#*

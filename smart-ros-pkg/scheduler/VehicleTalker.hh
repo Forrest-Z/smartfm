@@ -1,6 +1,7 @@
 #ifndef VEHICLETALKER_HH_
 #define VEHICLETALKER_HH_
 
+#include <pthread.h>
 #include "Scheduler.hh"
 #include "ServerSocket.hh"
 #include "SocketException.hh"
@@ -13,6 +14,9 @@ struct VehicleInfo
   // Status of the vehicle
   std::VehicleStatus status;
 
+  // Whether this is a new status
+  bool isNew;
+
   // Time to dropoff (if status is POB) or to pickup (if status is ON_CALL)
   int tremain;
 };
@@ -24,7 +28,7 @@ public:
   VehicleTalker(int port, int verbosity_level);
 
   // Default destructor
-  virtual ~VehicleTalker() {};
+  virtual ~VehicleTalker();
 
   // Send new task to the vehicle (server)
   bool sendNewTask(int customerID, int pickup, int dropoff);
@@ -43,6 +47,7 @@ public:
 
 private:
   VehicleInfo m_vehInfo;
+  pthread_mutex_t m_statusMutex;
   ServerSocket m_server, m_socket;
   bool m_quit, m_isconnected;
   bool m_newStatusRecv;

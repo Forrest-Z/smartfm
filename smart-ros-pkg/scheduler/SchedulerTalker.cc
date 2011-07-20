@@ -173,7 +173,7 @@ void SchedulerTalker::runMobileReceiver()
 	  }
 	  if (taskValid) {
 	    m_usrID = atoi(usrIDStr.c_str());
-	    m_taskID = atoi(taskStr.c_str());
+	    m_taskID = atoi(taskIDStr.c_str());
 	    m_pickup = atoi(pickupStr.c_str());
 	    m_dropoff = atoi(dropoffStr.c_str());
 	    m_newTaskRecv = true;
