@@ -67,14 +67,9 @@ namespace golfcar_purepursuit {
   void PurePursuit::controlLoop(const ros::TimerEvent &e)
   {	
     geometry_msgs::Twist cmd_ctrl;
-
     double cmd_vel;
-    if((int) trajectory_.poses.size() > start_decreasing_)
-      cmd_vel = normal_speed_;
-    else
-      cmd_vel = normal_speed_ * start_decreasing_/(1+start_decreasing_);
+    double cmd_steer;
 
-    double cmd_steer = 0;
     tf::Stamped<tf::Pose> pose;
     if(trajectory_.poses.size() > 1 && getRobotPose(pose))
     {
@@ -82,6 +77,14 @@ namespace golfcar_purepursuit {
       double cur_y = pose.getOrigin().y();
       double cur_yaw = tf::getYaw(pose.getRotation());
       int segment = get_segment(cur_x, cur_y);
+
+      if((int) trajectory_.poses.size() > start_decreasing_+segment)
+	cmd_vel = normal_speed_;
+      else
+	cmd_vel = normal_speed_ * ((int) trajectory_.poses.size() - segment - 1)/start_decreasing_;
+      if(cmd_vel < 0)
+	cmd_vel = 0;
+
       cmd_steer = get_steering(segment, cur_x, cur_y, cur_yaw, cmd_vel);
     }
     else
