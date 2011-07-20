@@ -296,6 +296,18 @@ namespace golfcar_purepursuit {
       tar_y = trajectory_.poses[segment+1].pose.position.y;
       ori_x = trajectory_.poses[segment].pose.position.x;
       ori_y = trajectory_.poses[segment].pose.position.y;
+      if(get_distance(tar_x, tar_y, ori_x, ori_y) < switch_distance_)
+      {
+	segment++;
+	if(segment+1 < (int) trajectory_.poses.size())
+	  bContinue = true;
+	else
+	{
+	  segment = -1;
+	  bContinue = false;
+	}
+      }
+
       inv_R = get_inv_R(segment);
 
       get_projection(tar_x, tar_y, ori_x, ori_y, inv_R, cur_x, cur_y, prj);
@@ -409,7 +421,13 @@ namespace golfcar_purepursuit {
     ROS_DEBUG("steering, segment=%d x=%lf y=%lf yaw=%lf cmd_vel=%lf", segment, cur_x, cur_y, cur_yaw, cmd_vel);
     ROS_DEBUG("inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf", inv_R, L, r, x, theta, gamma, steering);
 
-    if(steering > max_steering_)
+    if(isnan(steering))
+    {
+      ROS_WARN("isnan, so commanding 0!");
+      cmd_vel = 0;
+      steering = 0;
+    }
+    else if(steering > max_steering_)
       steering = max_steering_;
     else if(steering < -max_steering_)
       steering = -max_steering_;
