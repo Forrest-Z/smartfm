@@ -20,7 +20,7 @@ public:
   bool checkTask();
 
   // Receive the latest task. Return true if this message is new. Otherwise, return false
-  bool recvTask(int &usrID, int &pickup, int &dropoff);
+  bool recvTask(int &usrID, int &taskID, int &pickup, int &dropoff);
 
   // An infinite loop that keep listening for new task
   void runMobileReceiver();
@@ -32,8 +32,8 @@ private:
   ClientSocket m_socket;
   bool m_quit, m_isconnected;
   bool m_newTaskRecv;
-  int m_usrID, m_pickup, m_dropoff;
+  int m_usrID, m_taskID, m_pickup, m_dropoff;
   int m_verbosity;
 };
 
-#endif SCHEDULERTALKER_HH_
+#endif // SCHEDULERTALKER_HH_

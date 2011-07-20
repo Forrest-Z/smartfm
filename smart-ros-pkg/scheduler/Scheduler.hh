@@ -18,6 +18,7 @@ namespace std
 
   // Default customer ID used when operator add task
   const int OPERATOR_ID = -1;
+  const int OPERATOR_TASK_ID = -1;
 
   // Enumerated list of error types when adding task.
   enum
@@ -33,19 +34,22 @@ namespace std
   enum VehicleStatus
     {
       VEHICLE_NOT_AVAILABLE = 0,
-      VEHICLE_ON_CALL,
-      VEHICLE_POB,
-      VEHICLE_BUSY, // either not available, on call, or pob
-      VEHICLE_AVAILABLE
+      VEHICLE_ON_CALL = 1,
+      VEHICLE_POB = 2,
+      VEHICLE_BUSY = 3, // either not available, on call, or pob
+      VEHICLE_AVAILABLE = 4
     };
 
   struct Task
   {
-    // ID of task
+    // ID of this object. This is internal to the scheduler.
     int id;
 
     // ID of customer
     int customerID;
+
+    // ID of customer task
+    int taskID;
 
     // ID of vehicle
     int vehicleID;
@@ -56,8 +60,10 @@ namespace std
     // ID of the drop-off (destination) station
     int dropoff;
 
+    /*
     // Whether the task is cancelled
     bool cancelled;
+    */
 
     // Time from this pickup to dropoff
     int ttask;
@@ -71,6 +77,7 @@ namespace std
     Task() {
       id = -1;
       customerID = -2011;
+      taskID = -2011;
       vehicleID = -2011;
       pickup = -2011;
       dropoff = -2011;
@@ -81,7 +88,7 @@ namespace std
 
     string toString() const {
       stringstream s("");
-      s << "<" <<  id << ","  << pickup << "," << dropoff << ","
+      s << "<" <<  id << "," << customerID << "," << taskID << "," << pickup << "," << dropoff << ","
 	<< tpickup << "," << ttask << "," << twait << ">";
       return s.str();
     }
@@ -107,10 +114,11 @@ namespace std
     virtual ~Scheduler();
 
     // Method to add a task
-    int addTask(int customerID, int pickup, int dropoff);
+    int addTask(int customerID, int taskID, int pickup, int dropoff);
 
     // Method to remove a task
-    bool removeTask(int taskID);
+    bool removeTask(int id);
+    bool removeTask(int customerID, int taskID);
 
     // Method to check whether there is a task in the queue
     bool checkTask(int vehicleID = DEFAULT_VEHICLE_ID);

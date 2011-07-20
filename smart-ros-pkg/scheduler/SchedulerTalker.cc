@@ -28,7 +28,7 @@ SchedulerTalker::SchedulerTalker(string host, int port, int verbosityLevel)
     m_socket.init(host, port);
     m_socket.setSocketBlocking(true);
     m_isconnected = true;
-    m_socket << ";0:0:0:0\n";
+    m_socket << ";0:0:0:0:0\n";
   }
   catch (SocketException e) {
     ERROR("%s", e.getErrMsg().c_str());
@@ -45,7 +45,7 @@ bool SchedulerTalker::sendTaskStatus(int usrID, int taskID, int twait, int vehic
   while (!msgSent) {
     try {
       std::ostringstream ss;
-      ss << ";" << "0:" << usrID << ":" << twait << ":" << vehicleID << "\n";
+      ss << ";" << "0:" << usrID << ":" << taskID << ":" << twait << ":" << vehicleID << "\n";
       m_socket << ss.str();
       msgSent = true;
     }
@@ -63,10 +63,11 @@ bool SchedulerTalker::checkTask()
   return m_newTaskRecv;
 }
 
-bool SchedulerTalker::recvTask(int &usrID, int &pickup, int &dropoff)
+bool SchedulerTalker::recvTask(int &usrID, int &taskID, int &pickup, int &dropoff)
 {
   bool ret = m_newTaskRecv;
   usrID = m_usrID;
+  taskID = m_taskID;
   pickup = m_pickup;
   dropoff = m_dropoff;
   m_newTaskRecv = false;
@@ -96,7 +97,7 @@ void SchedulerTalker::runMobileReceiver()
 	  msg = msg.substr(endTask, msg.length());
 	}
 	else {
-	  taskStr = msg.substr(1, endTask-1);
+	  taskStr = msg.substr(1, msg.length());
 	  msg.clear();
 	}
 
@@ -121,15 +122,17 @@ void SchedulerTalker::runMobileReceiver()
 
 	int firstColon = taskStr.find(":", 0);
 	int secondColon = taskStr.find(":", firstColon+1);
-	if (firstColon < 0 || secondColon <= firstColon) {
+	int thirdColon = taskStr.find(":", secondColon+1);
+	if (firstColon < 0 || secondColon <= firstColon || thirdColon <= secondColon) {
 	  msgIncomplete = true;
 	  msg = taskStr;
 	}
 	else {
 	  bool taskValid = true;
 	  string usrIDStr = taskStr.substr(0, firstColon);
-	  string pickupStr = taskStr.substr(firstColon+1, secondColon-firstColon-1);
-	  string dropoffStr = taskStr.substr(secondColon+1, taskStr.length());
+	  string taskIDStr = taskStr.substr(firstColon+1, secondColon-firstColon-1);
+	  string pickupStr = taskStr.substr(secondColon+1, thirdColon-secondColon-1);
+	  string dropoffStr = taskStr.substr(thirdColon+1, taskStr.length());
 	  for (int i = 0; i < usrIDStr.length(); i++) {
 	    if (usrIDStr.at(i) != '+' && usrIDStr.at(i) != '-' && usrIDStr.at(i) != ' ' &&
 		(usrIDStr.at(i) < '0' || usrIDStr.at(i) > '9')) {
@@ -139,8 +142,18 @@ void SchedulerTalker::runMobileReceiver()
 	    }
 	  }
 	  if (taskValid) {
+	    for (int i = 0; i < taskIDStr.length(); i++) {
+	      if (taskIDStr.at(i) != ' ' && 
+		  (taskIDStr.at(i) < '0' || taskIDStr.at(i) > '9')) {
+		taskValid = false;
+		ERROR("Invalid taskID: %s", taskIDStr.c_str());
+		break;
+	      }
+	    }
+	  }
+	  if (taskValid) {
 	    for (int i = 0; i < pickupStr.length(); i++) {
-	      if (pickupStr.at(i) != ' ' && 
+	      if (pickupStr.at(i) != ' ' && pickupStr.at(i) != '-' &&
 		  (pickupStr.at(i) < '0' || pickupStr.at(i) > '9')) {
 		taskValid = false;
 		ERROR("Invalid pickup: %s", pickupStr.c_str());
@@ -150,7 +163,7 @@ void SchedulerTalker::runMobileReceiver()
 	  }
 	  if (taskValid) {
 	    for (int i = 0; i < dropoffStr.length(); i++) {
-	      if (dropoffStr.at(i) != ' ' &&
+	      if (dropoffStr.at(i) != ' ' && dropoffStr.at(i) != '-' &&
 		  (dropoffStr.at(i) < '0' || dropoffStr.at(i) > '9')) {
 		taskValid = false;
 		ERROR("Invalid dropoff: %s (%c)", dropoffStr.c_str(), dropoffStr.at(i));
@@ -160,6 +173,7 @@ void SchedulerTalker::runMobileReceiver()
 	  }
 	  if (taskValid) {
 	    m_usrID = atoi(usrIDStr.c_str());
+	    m_taskID = atoi(taskStr.c_str());
 	    m_pickup = atoi(pickupStr.c_str());
 	    m_dropoff = atoi(dropoffStr.c_str());
 	    m_newTaskRecv = true;

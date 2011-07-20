@@ -599,7 +599,7 @@ void SchedulerUI::onUserAddTask()
 
   int pickup = atoi(this->buttons[NEW_PICKUP].text);
   int dropoff = atoi(this->buttons[NEW_DROPOFF].text);
-  int ret = scheduler->addTask(OPERATOR_ID, pickup, dropoff);
+  int ret = scheduler->addTask(OPERATOR_ID, OPERATOR_TASK_ID, pickup, dropoff);
 
   if (ret > 0) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_GREEN) | A_BOLD);

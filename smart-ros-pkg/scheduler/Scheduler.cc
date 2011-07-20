@@ -30,7 +30,7 @@ Scheduler::Scheduler(int verbosity_level)
     this->currentTask[i].tpickup = 0;
     this->currentTask[i].twait = 0;
 
-    this->vehStatus[i] = VEHICLE_AVAILABLE;
+    this->vehStatus[i] = VEHICLE_NOT_AVAILABLE;
   }
   this->nextTaskID = 1;
   this->stNetwork = new StationNetwork();
@@ -43,34 +43,35 @@ Scheduler::~Scheduler()
   delete this->stNetwork;
 }
 
-int Scheduler::addTask(int customerID, int pickup, int dropoff)
+int Scheduler::addTask(int customerID, int taskID, int pickup, int dropoff)
 {
-  Task task;
-  task.id = this->nextTaskID++;
-  task.customerID = customerID;
-  task.vehicleID = DEFAULT_VEHICLE_ID;
-  task.pickup = pickup;
-  task.dropoff = dropoff;
-  task.cancelled = false;
-  int ret = this->addTask(task);
-  if (ret == ADD_TASK_NO_ERROR)
-    return task.id;
-  else
-    return ret;
+  if (pickup != -1 && dropoff != -1) {
+    Task task;
+    task.id = this->nextTaskID++;
+    task.customerID = customerID;
+    task.taskID = taskID;
+    task.vehicleID = DEFAULT_VEHICLE_ID;
+    task.pickup = pickup;
+    task.dropoff = dropoff;
+    int ret = this->addTask(task);
+    if (ret == ADD_TASK_NO_ERROR)
+      return task.id;
+    else
+      return ret;
+  }
+  else {
+    bool taskRemoved = this->removeTask(customerID, taskID);
+    if (!taskRemoved)
+      return TASK_NOT_EXIST;
+    else
+      return ADD_TASK_NO_ERROR;
+  }
 }
 
 int Scheduler::addTask(Task task)
 {
   if (this->verbosity_level > 0)
     MSG("Adding task <%d,%d,%d,%d>", task.id, task.customerID, task.pickup, task.dropoff);
-
-  if (task.cancelled) {
-    bool taskRemoved = this->removeTask(task.id);
-    if (!taskRemoved)
-      return TASK_NOT_EXIST;
-    else
-      return ADD_TASK_NO_ERROR;
-  }
 
   bool vehicleAvailable = false;
   for (int i = 0; i < NUM_VEHICLES; i++) {
@@ -136,16 +137,16 @@ int Scheduler::addTask(Task task)
   }
 }
 
-bool Scheduler::removeTask(int taskID)
+bool Scheduler::removeTask(int id)
 {
   if (this->verbosity_level > 0)
-    MSG("Removing task %d", taskID);
+    MSG("Removing task %d", id);
 
   for (int i = 0; i < NUM_VEHICLES; i++) {
     list<Task>::iterator it;
     int prevDropoff = this->currentTask[i].dropoff;
     for ( it=this->taskAssignment[i].begin() ; it != this->taskAssignment[i].end(); it++ ) {
-      if(it->id == taskID) {
+      if(it->id == id) {
 	it = this->taskAssignment[i].erase(it);
 	it->tpickup = 0;
 	if (prevDropoff != it->pickup)
@@ -156,7 +157,31 @@ bool Scheduler::removeTask(int taskID)
       prevDropoff = it->dropoff;
     }
   }
-  ERROR("Task %d does not exist", taskID);
+  ERROR("Task %d does not exist", id);
+  return false;
+}
+
+bool Scheduler::removeTask(int customerID, int taskID)
+{
+  if (this->verbosity_level > 0)
+    MSG("Removing task from customer %d:%d", customerID, taskID);
+
+  for (int i = 0; i < NUM_VEHICLES; i++) {
+    list<Task>::iterator it;
+    int prevDropoff = this->currentTask[i].dropoff;
+    for ( it=this->taskAssignment[i].begin() ; it != this->taskAssignment[i].end(); it++ ) {
+      if(it->customerID == customerID && it->taskID == taskID) {
+	it = this->taskAssignment[i].erase(it);
+	it->tpickup = 0;
+	if (prevDropoff != it->pickup)
+	  it->tpickup = this->stNetwork->travelTime(prevDropoff, it->pickup);
+	updateWaitTime(i);
+	return true;
+      }
+      prevDropoff = it->dropoff;
+    }
+  }
+  ERROR("Task from customer %d:%d does not exist", customerID, taskID);
   return false;
 }
 

@@ -9,12 +9,12 @@ CFLAGS += -g $(INCLUDE)
 #CFLAGS += -g -Wall $(INCLUDE)
 CPPFLAGS+= -pthread $(CFLAGS)
 LDFLAGS+=-lcurses -lncurses
-SRCS=StationNetwork.cc Scheduler.cc SchedulerUI.cc SchedulerTalker.cc SchedulerMain.cc
+SRCS=StationNetwork.cc Scheduler.cc SchedulerUI.cc SchedulerTalker.cc VehicleTalker.cc SchedulerMain.cc
 EXECNAME=scheduler
 
 all: $(EXECNAME)
 
-$(EXECNAME): SchedulerMain.o SchedulerUI.o SchedulerTalker.o Scheduler.o StationNetwork.o $(SOCKET_DIR)/socket.a
+$(EXECNAME): SchedulerMain.o SchedulerUI.o SchedulerTalker.o VehicleTalker.o Scheduler.o StationNetwork.o $(SOCKET_DIR)/socket.a
 	$(CPP) $(CPPFLAGS) $(LDFLAGS) $^ -o $@
 
 dep:
