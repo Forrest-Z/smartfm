@@ -812,14 +812,17 @@ RRTstar::Planner< typeparams >
         if (stateFound)
         {
             trajret.clear();
-
+            /*
             state_t &state_tmp = vertexCurr->getState();
             state_t state_root;
             state_root[0] = stateRootNew[0];
             state_root[1] = stateRootNew[1];
             state_root[2] = stateRootNew[2];
-            system->getTrajectory(state_tmp, state_root, trajret);
-            
+            if(system->getTrajectory(state_tmp, state_root, trajret))
+            {
+                cout<<"switching root successfull"<<endl;
+            }
+            */ 
             break;
         }
 
@@ -932,8 +935,9 @@ RRTstar::Planner< typeparams >
 ::getBestTrajectory (list<double*>& trajectoryOut) {
 
     if (lowerBoundVertex == NULL)
+    {
         return 0;
-
+    }
     vertex_t* vertexCurr = lowerBoundVertex;
 
 
