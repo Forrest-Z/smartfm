@@ -32,12 +32,12 @@ RRTstar::Vertex< typeparams >
 
     if (state)
         delete state;
-    
+
     parent = NULL;
-    
+
     if (trajFromParent)
         delete trajFromParent;
-    
+
     children.clear();
 }
 
@@ -183,7 +183,7 @@ RRTstar::Planner< typeparams >
 
 template< class typeparams >
 int
-RRTstar::Planner< typeparams >
+    RRTstar::Planner< typeparams >
 ::updateReachability () 
 {
     updateBranchCost(*root, 1);
@@ -272,16 +272,16 @@ template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
 ::setSystem (system_t& systemIn) {
-   
+
     /*
-    if (system)
-        delete system;
-    */
+       if (system)
+       delete system;
+       */
 
     system = &systemIn;
 
     numDimensions = system->getNumDimensions ();
-    
+
     if(listVertices.size() > 0)
     {
         // Delete all the vertices
@@ -338,7 +338,8 @@ RRTstar::Planner< typeparams >
     // Delete all the vertices
     for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++)
         delete *iter;
-    
+
+    listVertices.clear();
     numVertices = 0;
     lowerBoundCost = DBL_MAX;
     lowerBoundVertex = NULL;
@@ -354,6 +355,12 @@ RRTstar::Planner< typeparams >
     numDimensions = system->getNumDimensions();
     root = rootBackup;
     if (root){
+        
+        root->children.clear();
+        root->costFromParent = 0.0;
+        root->costFromRoot = 0.0;
+        root->trajFromParent = NULL;
+
         listVertices.push_back(root);
         insertIntoKdtree (*root);
         numVertices++;
@@ -405,12 +412,12 @@ template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
 ::findBestParent (state_t& stateIn, vector<vertex_t*>& vectorNearVerticesIn,
-        vertex_t*& vertexBest, trajectory_t& trajectoryOut, bool& exactConnection) {
+        vertex_t*& vertexBest, trajectory_t& trajectoryOut, bool& exactConnection, list<float>& controlOut) {
 
 
     // Compute the cost of extension for each near vertex
     int numNearVertices = vectorNearVerticesIn.size();
-    
+
     vector< pair<vertex_t*,double> > vectorVertexCostPairs(numNearVertices);
 
     int i = 0;
@@ -437,7 +444,7 @@ RRTstar::Planner< typeparams >
 
         // Extend the current vertex towards stateIn (and this time check for collision with obstacles)
         exactConnection = false;
-        if (system->extendTo(*(vertexCurr->state), stateIn, trajectoryOut, exactConnection) > 0) {
+        if (system->extendTo(*(vertexCurr->state), stateIn, trajectoryOut, exactConnection, controlOut) > 0) {
             vertexBest = vertexCurr;
             connectionEstablished = true;
             break;
@@ -477,11 +484,11 @@ RRTstar::Planner< typeparams >
 
 template< class typeparams >
 int 
-RRTstar::Planner< typeparams >
+    RRTstar::Planner< typeparams >
 ::markCost (vertex_t& vertexIn)
 {
     vertexIn.costFromRoot = -1.0;
-    
+
     vertex_t &par = vertexIn.getParent();
     par.children.erase(&vertexIn);
 
@@ -494,7 +501,7 @@ RRTstar::Planner< typeparams >
 
 template< class typeparams >
 int 
-RRTstar::Planner< typeparams >
+    RRTstar::Planner< typeparams >
 ::checkTrajectory (vertex_t& vertexIn) 
 {
     vertex_t &parent = vertexIn.getParent();
@@ -502,8 +509,9 @@ RRTstar::Planner< typeparams >
     state_t &state_in = vertexIn.getState();
 
     trajectory_t traj;
+    list<float> tmp_control;
     bool exactConnection;
-    if(system->extendTo(state_par, state_in, traj, exactConnection))
+    if(system->extendTo(state_par, state_in, traj, exactConnection, tmp_control))
     {
         for (typename set<vertex_t*>::iterator iter = vertexIn.children.begin(); iter != vertexIn.children.end(); iter++) 
         {
@@ -521,7 +529,7 @@ RRTstar::Planner< typeparams >
 
 template< class typeparams >
 int 
-RRTstar::Planner< typeparams >
+    RRTstar::Planner< typeparams >
 ::checkTree()
 {
     for (typename set<vertex_t*>::iterator iter = root->children.begin(); iter != root->children.end(); iter++) 
@@ -542,26 +550,26 @@ RRTstar::Planner< typeparams >
             delete vertex;
         }
     }
- 
+
     if (kdtree) {
         kd_clear (kdtree);
         kd_free (kdtree);
     }
     kdtree = kd_create (system->getNumDimensions());
-   
+
     listVertices.clear();
     numVertices = 0;
     for (typename list<vertex_t*>::iterator iter = listSurvivingVertices.begin(); iter != listSurvivingVertices.end(); iter++) 
     {
         listVertices.push_front(*iter);
         numVertices++;
-        
+
         insertIntoKdtree (**iter);
     }
-    
+
     lowerBoundVertex = NULL;
     lowerBoundCost = DBL_MAX;
-    
+
     listSurvivingVertices.clear();
     recomputeCost (root);
 
@@ -592,7 +600,8 @@ RRTstar::Planner< typeparams >
 
             // Compute the extension (checking for collision)
             trajectory_t trajectory;
-            if (system->extendTo (*(vertexNew.state), *(vertexCurr.state), trajectory, exactConnection) <= 0 ) 
+            list<float> tmp_control;
+            if (system->extendTo (*(vertexNew.state), *(vertexCurr.state), trajectory, exactConnection, tmp_control) <= 0 ) 
                 continue;
 
             // Insert the new trajectory to the tree by rewiring
@@ -633,6 +642,7 @@ RRTstar::Planner< typeparams >
     // 3. Find the best parent and extend from that parent
     vertex_t* vertexParent = NULL;  
     trajectory_t trajectory;
+    list<float> control;
     bool exactConnection = false;
 
     if (vectorNearVertices.size() == 0) {
@@ -640,13 +650,13 @@ RRTstar::Planner< typeparams >
         // 3.a Extend the nearest
         if (getNearestVertex (stateRandom, vertexParent) <= 0) 
             return 0;
-        if (system->extendTo(vertexParent->getState(), stateRandom, trajectory, exactConnection) <= 0)
+        if (system->extendTo(vertexParent->getState(), stateRandom, trajectory, exactConnection, control) <= 0)
             return 0;
     }
     else {
 
         // 3.b Extend the best parent within the near vertices
-        if (findBestParent (stateRandom, vectorNearVertices, vertexParent, trajectory, exactConnection) <= 0) 
+        if (findBestParent (stateRandom, vectorNearVertices, vertexParent, trajectory, exactConnection, control) <= 0) 
             return 0;
     }
 
@@ -715,26 +725,10 @@ RRTstar::Planner< typeparams >
     return 1;
 }
 
-/*
 template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
-::switchRootSystemOrigin ()
-{
-    double *stateOrigin = new double[numDimensions];
-    stateOrigin[0] = system.origin.x;
-    stateOrigin[1] = system.origin.y;
-    stateOrigin[2] = system.origin.z;
-    
-    vertex_t *newRoot;
-    getNearestVertex(stateOrigin, newRoot);
-}
-*/
-
-template< class typeparams >
-int 
-RRTstar::Planner< typeparams >
-::switchRoot (double distanceIn, list<double *>& trajret) {
+::switchRoot (double distanceIn, list<double *>& trajret, list<float> &controlret) {
 
 
     // If there is no path reaching the goal, then return failure
@@ -777,7 +771,8 @@ RRTstar::Planner< typeparams >
 
         state_t& stateParent = vertexParent.getState();    
         list<double*> trajectory;
-        system->getTrajectory (stateParent, stateCurr, trajectory);
+        list<float> control;
+        system->getTrajectory (stateParent, stateCurr, trajectory, control);
 
         for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++) {
 
@@ -812,17 +807,18 @@ RRTstar::Planner< typeparams >
         if (stateFound)
         {
             trajret.clear();
-            /*
+            controlret.clear();
+
             state_t &state_tmp = vertexCurr->getState();
             state_t state_root;
             state_root[0] = stateRootNew[0];
             state_root[1] = stateRootNew[1];
             state_root[2] = stateRootNew[2];
-            if(system->getTrajectory(state_tmp, state_root, trajret))
+            if(system->getTrajectory(rootState, state_tmp, trajret, controlret))
             {
-                cout<<"switching root successfull"<<endl;
+                cout<<"switching root successful "<< trajret.size() << endl;
             }
-            */ 
+
             break;
         }
 
@@ -854,9 +850,10 @@ RRTstar::Planner< typeparams >
 
     // 4. Connect the new root vertex to the new child
     trajectory_t connectingTrajectory;
+    list <float> connectingControl;
     bool exactConnection;
 
-    if (system->extendTo(vertexRoot->getState(), vertexChildNew->getState(), connectingTrajectory, exactConnection) < 0)
+    if (system->extendTo(vertexRoot->getState(), vertexChildNew->getState(), connectingTrajectory, exactConnection, connectingControl) < 0)
         cout << "ERR: No extend" << endl;
     if (vertexChildNew->trajFromParent)
         delete vertexChildNew->trajFromParent;
@@ -891,7 +888,7 @@ RRTstar::Planner< typeparams >
             delete vertexCurrDel;
         }
     }
-
+    cout<<"finished deleting vertices"<<endl;
     listVertices.clear();
     numVertices = 0;
 
@@ -932,7 +929,7 @@ RRTstar::Planner< typeparams >
 template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
-::getBestTrajectory (list<double*>& trajectoryOut) {
+::getBestTrajectory (list<double*>& trajectoryOut, list<float> &controlOut ) {
 
     if (lowerBoundVertex == NULL)
     {
@@ -959,9 +956,11 @@ RRTstar::Planner< typeparams >
             state_t& stateParent = vertexParent.getState();
 
             list<double*> trajectory;
-            system->getTrajectory (stateParent, stateCurr, trajectory);
+            list<float> control;
+            system->getTrajectory (stateParent, stateCurr, trajectory, control);
 
             trajectory.reverse ();
+            control.reverse();
             for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++) 
             {
                 double *stateArrFromParentCurr = *iter;
@@ -975,6 +974,10 @@ RRTstar::Planner< typeparams >
 
                 delete [] stateArrFromParentCurr;
             }
+            for (list<float>::iterator iter = control.begin(); iter != control.end(); iter++) 
+            {
+                controlOut.push_back(*iter);
+            }
         }
 
         vertexCurr = &vertexParent;
@@ -986,5 +989,18 @@ RRTstar::Planner< typeparams >
 }
 
 
+template< class typeparams >
+int 
+RRTstar::Planner< typeparams >
+::isSafeTrajectory(list<double*>& trajectory)
+{
+    for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++)
+    {
+        double *stateRef = *iter;
+        if( system->IsInCollision(stateRef) )
+            return false;
+    }
+    return true;
+}
 
 #endif

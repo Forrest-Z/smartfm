@@ -72,13 +72,12 @@ class System {
     double extend_dubins_spheres (double x_s1, double y_s1, double t_s1, 
                                   double x_s2, double y_s2, double t_s2, int comb_no, 
                                   bool check_obstacles, bool return_trajectory,
-                                  bool& fully_extends, double*& end_state, list<double*>* trajectory);
+                                  bool& fully_extends, double*& end_state, list<double*>* trajectory, list<float> &control);
 
     double extend_dubins_all (double state_ini[3], double state_fin[3], 
                               bool check_obstacles, bool return_trajectory,
-                              bool& fully_extends, double*& end_state, list<double*>* trajectory);
+                              bool& fully_extends, double*& end_state, list<double*>* trajectory, list<float> &control);
     
-    bool IsInCollision (double stateIn[3]);
 
     State rootState;
     
@@ -102,6 +101,8 @@ public:
     int getNumDimensions () {return 3;}    
     State& getRootState () {return rootState;}
     int getStateKey (State& stateIn, double* stateKey);
+    
+    bool IsInCollision (double stateIn[3]);
 
     bool isReachingTarget (State& stateIn);
 
@@ -109,13 +110,13 @@ public:
     int sampleGoalState (State& randomStateOut);
 
     int extendTo (State& stateFromIn, State& stateTowardsIn, 
-                  Trajectory& trajectoryOut, bool& exactConnectionOut); 
+                  Trajectory& trajectoryOut, bool& exactConnectionOut, list<float> &controlOut ); 
 
     double evaluateExtensionCost (State& stateFromIn, State& stateTowardsIn, bool& exactConnectionOut);
 
     double evaluateCostToGo (State& stateIn);
     
-    int getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut);
+    int getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut, list<float> &controlOut);
 
 };
 

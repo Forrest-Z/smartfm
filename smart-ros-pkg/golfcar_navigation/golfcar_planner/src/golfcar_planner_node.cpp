@@ -44,9 +44,13 @@ class Planner_node
         int num_frames_no_plan;
         unsigned int RRT_MAX_ITER;
         planner_t rrts;
+        float prev_best_cost, curr_best_cost;
 
+        int approaching_next_root;
         int already_committed;
         list<double *> toPublishTraj;
+        list<float> toPublishControl;
+
         int map_skip, map_count;
         bool planner_in_progress;
         bool first_frame;
@@ -59,6 +63,7 @@ class Planner_node
         ros::Subscriber odom_sub;
         ros::Subscriber map_sub;
         ros::Publisher traj_pub;
+        ros::Publisher trajview_pub;
         ros::Publisher obs_pub;
         ros::Publisher tree_pub;
         ros::Publisher vertex_pub;
@@ -69,6 +74,9 @@ class Planner_node
         void on_odom(const nav_msgs::Odometry::ConstPtr & msg);
         void on_map(const local_map::local_map_msg::ConstPtr & local_map);
         void get_plan();
+        void change_sampling_region();
+        void emergency_replan();
+
         int publish_traj();
         int publish_tree();
         void publish_grid();
@@ -78,14 +86,15 @@ class Planner_node
 
 Planner_node::Planner_node()
 {
-    already_committed = 0;
+    prev_best_cost = 1e10, curr_best_cost = 1e10;
+    already_committed = 0, approaching_next_root = 0;
     dist_betw_odom = 0;
     map_count = 0;
     map_skip = 1;
     planner_in_progress = false;
     num_frames_no_plan = 0;
     first_frame = 1;
-    RRT_MAX_ITER = 100;
+    RRT_MAX_ITER = 1000;
 
     // init periodic planner
     //planner_timer = nh.createTimer(ros::Duration(5.0), &Planner_node::get_plan, this);
@@ -94,6 +103,7 @@ Planner_node::Planner_node()
     odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", 5, &Planner_node::on_odom, this);
     map_sub = nh.subscribe<local_map::local_map_msg>("localCells", 5, &Planner_node::on_map, this);
     traj_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 5);
+    trajview_pub = nh.advertise<nav_msgs::Path>("pncview_trajectory", 5);
     obs_pub = nh.advertise<sensor_msgs::PointCloud>("obs_map", 5);
     tree_pub = nh.advertise<sensor_msgs::PointCloud>("rrt_tree", 5);
     vertex_pub = nh.advertise<sensor_msgs::PointCloud>("rrt_vertex", 5);
@@ -114,12 +124,11 @@ void Planner_node::on_odom(const nav_msgs::Odometry::ConstPtr & msg)
         float x2 = stateRoot[0];
         float y2 = stateRoot[1];
 
-        if( sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) < 0.1)
+        if( (sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) < 1) )
         {
             already_committed = 0;
         }
     }
-
 }
 
 void Planner_node::publish_grid()
@@ -171,28 +180,9 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
 
         system.map_vals = new unsigned char [system.xsize * system.ysize];
 
-
-        // dummy sys init for getRoot to work
-        system.regionOperating.center[0] = system.origin.x;
-        system.regionOperating.center[1] = system.origin.y;
-        system.regionOperating.center[2] = 0;
-        system.regionOperating.size[0] = system.map_width;
-        system.regionOperating.size[1] = system.map_height;
-        system.regionOperating.size[2] = 2.0 * M_PI;
-
-        system.regionGoal.center[0] = 100;
-        system.regionGoal.center[1] = 0;
-        system.regionGoal.center[2] = 0;
-        system.regionGoal.size[0] = 5;
-        system.regionGoal.size[1] = 5;
-        system.regionGoal.size[2] = 0.3 * M_PI;
-        
+        //change_sampling_region();        
         rrts.setSystem( system );
 
-        // Set planner parameters
-        rrts.setGamma (2.0);
-        rrts.setGoalSampleFrequency (0.1);
-        
         // init root
         vertex_t &root = rrts.getRootVertex();  
         state_t &rootState = root.getState();
@@ -200,6 +190,10 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
         rootState[1] = system.origin.y;
         rootState[2] = system.origin.z;
 
+        // Set planner parameters
+        rrts.setGamma (2.0);
+        rrts.setGoalSampleFrequency (0.1);
+                
         // Initialize the planner
         rrts.initialize ();
         
@@ -324,22 +318,20 @@ int Planner_node::project_goal(float &xc, float &yc, float &xs, float &ys, float
     return 0;
 }
 
-void Planner_node::get_plan()
+void Planner_node::change_sampling_region()
 {
-    // prune the obstructed part of the tree
-    rrts.checkTree();
-    //cout<<"tree_num_vert: "<< rrts.numVertices<<endl;
-
     //cout<<"sys origin: "<< system.origin.x<<" "<< system.origin.y<<endl;
-    system.regionOperating.center[0] = system.origin.x;
-    system.regionOperating.center[1] = system.origin.y;
+    vertex_t &root = rrts.getRootVertex();  
+    state_t &rootState = root.getState();
+    system.regionOperating.center[0] = rootState[0];
+    system.regionOperating.center[1] = rootState[1];
     system.regionOperating.center[2] = 0;
     system.regionOperating.size[0] = system.map_width;
     system.regionOperating.size[1] = system.map_height;
     system.regionOperating.size[2] = 2.0 * M_PI;
-
+    
     /*
-    system.regionGoal.center[0] = 10;
+    system.regionGoal.center[0] = 100;
     system.regionGoal.center[1] = 0;
     system.regionGoal.center[2] = 0; // atan2(0 - system.origin.y, 25 - system.origin.x);
     system.regionGoal.size[0] = 5;
@@ -359,6 +351,15 @@ void Planner_node::get_plan()
     system.regionGoal.size[2] = 0.3 * M_PI;
     //cout<<"goal dir: "<< system.regionGoal.center[2] << endl;
     
+}
+
+void Planner_node::get_plan()
+{
+    // prune the obstructed part of the tree
+    rrts.checkTree();
+    cout<<"tree_num_vert: "<< rrts.numVertices<<endl;
+    
+    change_sampling_region();
 
     if(rrts.numVertices < 10000)
     {
@@ -366,15 +367,18 @@ void Planner_node::get_plan()
         {
             rrts.iteration();
         }
+        cout<<"added samples "<< "commit status: "<< already_committed << endl;
     }
     rrts.updateReachability();
+    curr_best_cost = rrts.getBestVertexCost();
 
 
     // if found traj, copy it and keep publishing, switch root to some node ahead
     if(!already_committed)
     {
-        if(rrts.getBestVertexCost() < 100)
+        if( fabs(prev_best_cost - curr_best_cost) < 10.0)
         {
+            cout<<"prev: "<< prev_best_cost << " curr: " << curr_best_cost << endl;
             vertex_t& vertexBest = rrts.getBestVertex ();
             if (&vertexBest == NULL)
             {
@@ -382,14 +386,15 @@ void Planner_node::get_plan()
             }
             else
             {
-                already_committed = 1;
+                cout<<"traj cost: "<< rrts.getBestVertexCost() << endl;
                 cout<<"switching root"<<endl;
                 toPublishTraj.clear();
-                cout<<"called get best"<<endl;
-                rrts.getBestTrajectory(toPublishTraj);
-                cout<<"traj cost: "<< rrts.getBestVertexCost() << endl;
-                list<double *> dummy;
-                rrts.switchRoot(3.0, dummy);
+                toPublishControl.clear();
+                if(rrts.switchRoot(5.0, toPublishTraj, toPublishControl))
+                {
+                    already_committed = 1;
+                    change_sampling_region();
+                }
             }
         }
     }
@@ -397,6 +402,8 @@ void Planner_node::get_plan()
     {
         publish_traj();
     }
+    
+    prev_best_cost = curr_best_cost;
 
     /*
        vertex_t& vertexBest = rrts.getBestVertex ();
@@ -416,25 +423,51 @@ void Planner_node::get_plan()
     publish_tree();
 }
 
+void Planner_node::emergency_replan()
+{
+    //1. set root to current position
+    vertex_t& rootVertex =  rrts.getRootVertex();
+    state_t &stateRoot = rootVertex.getState();
+    stateRoot[0] = system.origin.x;
+    stateRoot[1] = system.origin.y;
+    stateRoot[2] = system.origin.z;
+    
+    change_sampling_region();
+
+    // 2. reinit planner
+    rrts.initialize();
+    prev_best_cost = 1e10;
+    curr_best_cost = 1e20;
+    cout<<"initialized new tree"<<endl;
+    
+    publish_tree();
+    already_committed = 0;
+    
+    get_plan();
+    cout<<"finished get_plan emergency"<<endl;
+}
 
 int Planner_node::publish_traj()
 {
-    /*
-       for (list<double*>::iterator iter = stateList.begin(); iter != stateList.end(); iter++) 
-       {
-       double* stateRef = *iter;
-       cout<<"["<<stateRef[0]<<","<<stateRef[1]<<" "<< stateRef[2]<<"] ";
-       }
-       cout<<endl;
-       */
+    
+    // 1. check if current trajectory is safe, else stop
+    if(! rrts.isSafeTrajectory(toPublishTraj) )
+    {
+        cout<<"unsafe traj: clearing"<<endl;
+        toPublishTraj.clear();
+        toPublishControl.clear();
+        
+        // initiate replan
+        emergency_replan();
+
+        return 0;
+    }
 
     nav_msgs::Path traj_msg;
     traj_msg.header.stamp = ros::Time::now();
     traj_msg.header.frame_id = "odom";
-
-    int stateIndex = 0;
+    
     cout<<"traj size: "<< toPublishTraj.size() << endl;
-    int count = 0;
     for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
     {
         double* stateRef = *iter;
@@ -452,12 +485,36 @@ int Planner_node::publish_traj()
             traj_msg.poses.push_back(p);
         //}
         //delete [] stateRef;
-        stateIndex++;
     }
-
-    traj_pub.publish(traj_msg);
     
-    return 0;
+    int which_pose =0;
+    for (list<float>::iterator iter = toPublishControl.begin(); iter != toPublishControl.end(); iter++) 
+    {
+        traj_msg.poses[which_pose].pose.position.z = *iter;
+        //cout<< *iter<<" ";
+        which_pose++;
+    }
+    cout<<endl;
+    traj_pub.publish(traj_msg);
+  
+    // publish to viewer
+    traj_msg.poses.clear();
+    for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
+    {
+        double* stateRef = *iter;
+        geometry_msgs::PoseStamped p;
+        p.header.stamp = ros::Time::now();
+        p.header.frame_id = "odom";
+
+        p.pose.position.x = stateRef[0];
+        p.pose.position.y = stateRef[1];
+        p.pose.position.z = 0;
+        p.pose.orientation.w = 1.0;
+        traj_msg.poses.push_back(p);
+    }
+    trajview_pub.publish(traj_msg);
+
+    return 1;
 }
 
 int Planner_node::publish_tree()
@@ -473,7 +530,9 @@ int Planner_node::publish_tree()
     sensor_msgs::PointCloud pc1;
     pc1.header.stamp = ros::Time::now();
     pc1.header.frame_id = "odom";
-    
+   
+    cout<<"publishing tree: "<< rrts.listVertices.size() << " " << rrts.numVertices << endl;
+    int count = 0;
     if (num_nodes > 0) 
     {    
         for (list<vertex_t*>::iterator iter = rrts.listVertices.begin(); iter != rrts.listVertices.end(); iter++) 
@@ -493,7 +552,8 @@ int Planner_node::publish_tree()
             {
                 state_t& stateParent = vertexParent.getState();
                 list<double*> trajectory;
-                if (system.getTrajectory (stateParent, stateCurr, trajectory) == 0) 
+                list<float> control;
+                if (system.getTrajectory (stateParent, stateCurr, trajectory, control) == 0) 
                 {
                     //cout << "ERROR: Trajectory can not be regenerated" << endl;
                     return 0;

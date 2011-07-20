@@ -4,7 +4,7 @@ Local_map::Local_map()
 {
 
     // x is forward, y is left
-    res = 0.15;
+    res = 0.25;
     width = 30.0;
     height = 30.0;
     
@@ -74,11 +74,15 @@ void Local_map::process_points(vector<Point> points)
         }
         */
     }
+    
+    map_points.clear();
     map_points.push_back(toput);
-    if(map_points.size() > 100)
+    /*
+    if(map_points.size() > 1)
     {
         map_points.erase(map_points.begin());
     }
+    */
 };
 
 void Local_map::create_map()

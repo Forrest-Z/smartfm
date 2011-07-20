@@ -54,7 +54,7 @@ local_map_node::local_map_node()
     tf_filter_->registerCallback(boost::bind(&local_map_node::on_sick, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
     
-    laser_skip_ = 1;
+    laser_skip_ = 10;
     laser_count_ = 0;
 }
 

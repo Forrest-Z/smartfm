@@ -89,7 +89,7 @@ namespace RRTstar {
         int insertTrajectory (vertex_t& vertexStartIn, trajectory_t& trajectoryIn, vertex_t& vertexEndIn);
     
         int findBestParent (state_t& stateIn, vector<vertex_t*>& vectorNearVerticesIn,
-                            vertex_t*& vertexBestOut, trajectory_t& trajectoryOut, bool& exactConnection);
+                            vertex_t*& vertexBestOut, trajectory_t& trajectoryOut, bool& exactConnection, list<float> &control);
     
         int updateBranchCost (vertex_t& vertexIn, int depth);    
         int rewireVertices (vertex_t& vertexNew, vector<vertex_t*>& vectorNearVertices); 
@@ -120,15 +120,16 @@ namespace RRTstar {
 
     
         int iteration ();
-
+        
+        int isSafeTrajectory(list<double*> &trajectory);
         int checkTree();
 
         int updateReachability (); 
-        int switchRoot (double distance, list<double*> &traj);
+        int switchRoot (double distance, list<double*> &traj, list<float>& control);
         
         double getBestVertexCost () {return lowerBoundCost;}
         vertex_t& getBestVertex () {return *lowerBoundVertex;}
-        int getBestTrajectory (list<double*>& trajectory);
+        int getBestTrajectory (list<double*>& trajectory, list<float> &control);
     };
 
 }
