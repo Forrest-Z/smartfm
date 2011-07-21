@@ -3,7 +3,7 @@
 
 namespace stations 
 {
-  const int STATION_LIST[] = {1, 2, 3};
+  const int STATION_LIST[] = {1, 2, 3, 4};
 
   enum {
     WORKSHOP = 1,

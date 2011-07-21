@@ -540,10 +540,10 @@ void update()
 
   VehicleInfo vehInfo = getVehicleInfo(DEFAULT_VEHICLE_ID);
   VehicleStatus vehStatus = vehInfo.status;
-  scheduler->updateVehicleStatus(vehStatus);
 
   // Get the next task and send to the vehicle if the vehicle is available
   if (vehStatus == VEHICLE_AVAILABLE && (vehicleIsAvailable || vehInfo.isNew)) {
+    scheduler->updateVehicleStatus(vehStatus);
     if (scheduler->checkTask()) {
       if (VERBOSITY_LEVEL > 0 && NOGUI)
 	cout << endl;
@@ -567,6 +567,7 @@ void update()
   }
   // Otherwise, update the remaining task time (POB) or pickup time (other status)
   else if (vehStatus != VEHICLE_AVAILABLE) {
+    scheduler->updateVehicleStatus(vehStatus);
     scheduler->updateTCurrent(vehInfo.tremain);
     currentTask = scheduler->getVehicleCurrentTask();
     

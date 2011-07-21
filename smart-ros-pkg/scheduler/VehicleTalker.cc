@@ -198,6 +198,12 @@ void VehicleTalker::runVehicleReceiver()
 	}
 	catch (SocketException e) {
 	  ERROR("%s", e.getErrMsg().c_str());
+	  try {
+	    m_server.accept ( m_socket );
+	  }
+	  catch (SocketException e) {
+	    ERROR("%s", e.getErrMsg().c_str());
+	  }
 	}
       }
     }

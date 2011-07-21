@@ -12,6 +12,7 @@ class StationNetwork {
 
  private:
   int numStations;
+  int numPairs;
   int *stList;
   int **stNetwork;
 
