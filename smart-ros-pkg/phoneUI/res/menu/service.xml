@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu
+  xmlns:android="http://schemas.android.com/apk/res/android">
+
+   
+          
+	<item android:id="@+id/book_car"
+          android:title="@string/book_car" />
+	
+	<item android:id="@+id/service_info"
+          android:title="@string/service_info" />
+	
+	<item android:id="@+id/cancel_service"
+          android:title="@string/cancel_service" />            
+    
+    <item android:id="@+id/check_setting"
+          android:title="@string/check_setting" />  
+          
+            
+          
+</menu>    
+
