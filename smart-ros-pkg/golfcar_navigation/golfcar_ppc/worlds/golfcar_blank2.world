@@ -1,0 +1,43 @@
+
+define topurg laser
+(
+  range_min 0.0
+  range_max 80.0
+  fov 180
+  samples 360
+  # generic model properties
+  color "black"
+  size [ 0.050 0.050 0.100 ]
+)
+
+define gc1 position
+(
+  size [2.385 1.200 0.250]
+  
+  origin [0.792 0 0 0]
+  gui_nose 1
+  drive "car"
+  localization "gps"
+  #odom_error [0.01 0.05 0.01 0.02 0.01 0.02]
+  odom_error [0 0 0 0 0 0]
+  topurg(pose [1.985 0 0 0])
+)
+
+window
+( 
+  size [ 640.000 480.000 ] 
+  center [0 0]
+  rotate [ 0 0.000 ]
+  scale 20 
+)
+
+
+# set the resolution of the underlying raytrace model in meters
+resolution 0.01
+
+interval_sim 30  # simulation timestep in milliseconds
+#interval_real 100  # real-time interval between simulation updates in milliseconds 
+
+# throw in a robot
+gc1( pose [0.124 0.138 0 90.776] name "gc1" color "red")
+

@@ -65,10 +65,10 @@ namespace golfcar_purepursuit{
 			double steer_angle;
 			//ROS_INFO("65");
 			path_flag_= pp_->steering_control(steer_angle);
-			if(forward_ && (robot_pose.pose.position.x >185 && robot_pose.pose.position.x <197))
+			/*if(forward_ && (robot_pose.pose.position.x >185 && robot_pose.pose.position.x <197))
 				proposed_velocities.push_back(slow_speed_);
 			if(!forward_ && (robot_pose.pose.position.x >195 && robot_pose.pose.position.x <208))
-				proposed_velocities.push_back(slow_speed_);
+				proposed_velocities.push_back(slow_speed_);*/
 			if(path_flag_){
 				if(steer_angle<0) proposed_velocities.push_back(slow_speed_+exp(steer_angle/0.3)*(maximum_speed_-slow_speed_));
 				else proposed_velocities.push_back(slow_speed_+exp(-steer_angle/0.3)*(maximum_speed_-slow_speed_));

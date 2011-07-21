@@ -4,7 +4,7 @@ namespace golfcar_purepursuit {
 
 
 		PurePursuit::PurePursuit(){
-			Lfw_ = 3;
+			Lfw_ = 2.5;
 			lfw_ = 1;
 			car_length = 1.632;
 			dist_to_final_point = 100;
