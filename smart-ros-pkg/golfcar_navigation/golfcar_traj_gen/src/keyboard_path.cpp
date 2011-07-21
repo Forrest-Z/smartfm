@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 	
 
 	//turning radius in meter
-	float radius = 3;
+	float radius = 5;
 
 	//min number of points
 	float resolution = 28;
@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 				posey_cur = radius*cos(i/resolution*2.0*M_PI)-radius;
 				path.poses[i].pose.position.x = posex_cur;
 				path.poses[i].pose.position.y = posey_cur;
-				path.poses[i].pose.position.z = atan2(posey_cur-posey_pre, posex_cur-posex_pre);
+				path.poses[i].pose.position.z = -radius;
 				path.poses[i].pose.orientation = tf::createQuaternionMsgFromYaw(atan2(posey_cur-posey_pre, posex_cur-posex_pre));
 				posex_pre = posex_cur;
 				posey_pre = posey_cur;
@@ -98,37 +98,40 @@ int main(int argc, char **argv)
 		break;
 		case KEYCODE_R:
 		{
-			path.poses.resize(resolution+4);
+			path.poses.resize(resolution+3);
 
 			for(int i=0;i<=resolution/2;i++)
 			{
 				path.poses[i].pose.position.x = radius*sin(i/resolution*2.0*M_PI) ;
 				path.poses[i].pose.position.y = radius*cos(i/resolution*2.0*M_PI)-radius;
+				path.poses[i].pose.position.z = -radius;
 			}
+			path.poses[resolution/2].pose.position.z = 0;
 			path.poses[resolution/2+1].pose.position.x = -seperation*radius;
 			path.poses[resolution/2+1].pose.position.y = 0;
-			for(int i=resolution-1;i>resolution/2-2;i--)
+			path.poses[resolution/2+1].pose.position.z = radius;
+			for(int i=resolution-1;i>resolution/2-1;i--)
 			{
 				path.poses[resolution-i+resolution/2+1].pose.position.x = radius*sin(i/resolution*2.0*M_PI)-seperation*radius ;
 				path.poses[resolution-i+resolution/2+1].pose.position.y = radius*cos(i/resolution*2.0*M_PI)-radius;
+				path.poses[resolution-i+resolution/2+1].pose.position.z = radius;
 			}
-			path.poses[resolution+3].pose.position.x = 0;
-			path.poses[resolution+3].pose.position.y = 0;
+			path.poses[resolution+1].pose.position.z = 0;
+			path.poses[resolution+2].pose.position.x = 0;
+			path.poses[resolution+2].pose.position.y = 0;
+			path.poses[resolution+2].pose.position.z = 0;
 
-			for(int i=0; i< path.poses.size(); i++)
+			for(unsigned int i=0; i< path.poses.size(); i++)
 			{
 				path.poses[i].header.seq = i;
 				path.poses[i].header.stamp = ros::Time::now();
 				path.poses[i].header.frame_id = "/odom";
 				posex_cur = path.poses[i].pose.position.x;
 				posey_cur = path.poses[i].pose.position.y;
-				path.poses[i].pose.position.z = atan2(posey_cur-posey_pre, posex_cur-posex_pre);
 				path.poses[i].pose.orientation = tf::createQuaternionMsgFromYaw(atan2(posey_cur-posey_pre, posex_cur-posex_pre));
 				posex_pre = posex_cur;
 				posey_pre = posey_cur;
 			}
-			path.poses[resolution/2+1].pose.position.z = path.poses[resolution/2].pose.position.z;
-			path.poses[resolution+3].pose.position.z = path.poses[resolution+2].pose.position.z;
 
 			ROS_INFO("Trajectory of a 8 with radius %lf meter sent", radius);
 		}
@@ -141,12 +144,18 @@ int main(int argc, char **argv)
 				
 				pose.pose.position.x = radius*sin(i/resolution*2.0*M_PI) ;
 				pose.pose.position.y = radius*cos(i/resolution*2.0*M_PI)-radius;
+				pose.pose.position.z = -radius;
+				if(i == resolution/2)
+				  pose.pose.position.z = 0;
 				path.poses.push_back(pose);
 			}
 			
 			for(int i=0;i<(seperation*resolution/2.0/M_PI);i++)
 			{
 				pose.pose.position.x -= radius * 2.0*M_PI/resolution;
+				pose.pose.position.z = 0;
+				if(i == (int) (seperation*resolution/2.0/M_PI) - 1)
+				  pose.pose.position.z = -radius;
 				path.poses.push_back(pose);
 			}			
 
@@ -154,24 +163,27 @@ int main(int argc, char **argv)
 			{
 				pose.pose.position.x = radius*sin(i/resolution*2.0*M_PI) -seperation*radius;
 				pose.pose.position.y = radius*cos(i/resolution*2.0*M_PI)-radius;
+				pose.pose.position.z = -radius;
+				if(i == resolution)
+				  pose.pose.position.z = 0;
 				path.poses.push_back(pose);
 			}
 
 			for(int i=0;i<(seperation*resolution/2.0/M_PI);i++)
 			{
 				pose.pose.position.x += radius * 2.0*M_PI/resolution;
+				pose.pose.position.z = 0;
 				path.poses.push_back(pose);
 			}			
 
 
-			for(int i=0; i< path.poses.size(); i++)
+			for(unsigned int i=0; i< path.poses.size(); i++)
 			{
 				path.poses[i].header.seq = i;
 				path.poses[i].header.stamp = ros::Time::now();
 				path.poses[i].header.frame_id = "/odom";
 				posex_cur = path.poses[i].pose.position.x;
 				posey_cur = path.poses[i].pose.position.y;
-				path.poses[i].pose.position.z = atan2(posey_cur-posey_pre, posex_cur-posex_pre);
 				path.poses[i].pose.orientation = tf::createQuaternionMsgFromYaw(atan2(posey_cur-posey_pre, posex_cur-posex_pre));
 				posex_pre = posex_cur;
 				posey_pre = posey_cur;

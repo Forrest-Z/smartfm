@@ -25,12 +25,11 @@ namespace golfcar_purepursuit {
 
         double normal_speed_;
         double slow_speed_;
-        int start_decreasing_;
-        double turning_radius_;
+        double stopping_distance_;
+        double neglect_distance_;
         double look_ahead_;
         double look_ahead_bad_;
         double max_steering_;
-        double switch_distance_;
         double car_length_;
 
 		tf::TransformListener tf_;
@@ -45,7 +44,7 @@ namespace golfcar_purepursuit {
         bool get_center(double tar_x, double tar_y,
                         double ori_x, double ori_y, double inv_R,
                         double center[2]);
-        double get_inv_R(int segment);
+        double get_inv_R(double u);
         bool btwn_points(double tar_x, double tar_y,
                          double ori_x, double ori_y,
                          double inv_R, double x, double y);
@@ -54,6 +53,7 @@ namespace golfcar_purepursuit {
                             double inv_R, double cur_x, double cur_y,
                             double proj[2]);
         int get_segment(double cur_x, double cur_y);
+        double get_desired_speed(int segment);
         double get_steering(int segment, double cur_x, double cur_y, double cur_yaw, double& cmd_vel);
 	};
 };
