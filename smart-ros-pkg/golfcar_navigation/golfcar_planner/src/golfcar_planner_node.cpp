@@ -255,6 +255,7 @@ int Planner_node::project_goal(float &xc, float &yc, float &xs, float &ys, float
     int goaly_num = ((goaly - system.origin.y)/system.map_res + system.yorigin);
     if( (goalx_num >=0) && (goalx_num < system.xsize) && (goaly_num >=0) && (goaly_num < system.ysize) )
     {
+        cout<<"goal inside: keeping it same" << endl;
         xc = goalx; yc = goaly;
         xs = 5.0; yc = 5.0;
         return 1;
@@ -341,11 +342,11 @@ void Planner_node::change_sampling_region()
     
     // project goal
     float xc, yc, xs, ys;
-    project_goal(xc, yc, xs, ys, 100, 0);
+    project_goal(xc, yc, xs, ys, 25, 0);
 
     system.regionGoal.center[0] = xc;
     system.regionGoal.center[1] = yc;
-    system.regionGoal.center[2] = atan2(0 - system.origin.y, 100 - system.origin.x);
+    system.regionGoal.center[2] = atan2(0 - system.origin.y, 25 - system.origin.x);
     system.regionGoal.size[0] = xs;
     system.regionGoal.size[1] = ys;
     system.regionGoal.size[2] = 0.3 * M_PI;
