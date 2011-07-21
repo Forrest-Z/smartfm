@@ -30,6 +30,7 @@ namespace golfcar_purepursuit {
         double neglect_distance_;
         double look_ahead_;
         double look_ahead_bad_;
+        double look_ahead_add_;
         double max_steering_;
         double car_length_;
 
