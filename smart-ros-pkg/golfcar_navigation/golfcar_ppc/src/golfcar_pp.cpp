@@ -11,12 +11,11 @@ namespace golfcar_purepursuit {
 
     ros::NodeHandle private_nh("~");
     if(!private_nh.getParam("max_timer",max_timer_)) max_timer_ = 1.0;
-    if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = .5;
-    if(!private_nh.getParam("slow_speed",slow_speed_)) slow_speed_ = 0.2;
+    if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 1.0;
+    if(!private_nh.getParam("slow_speed",slow_speed_)) slow_speed_ = 0.5;
     if(!private_nh.getParam("stopping_distance",stopping_distance_)) stopping_distance_ = 1.5;
     if(!private_nh.getParam("neglect_distance",neglect_distance_)) neglect_distance_ = 0.001;
     if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3;
-    if(!private_nh.getParam("look_ahead_bad",look_ahead_bad_)) look_ahead_bad_ = 4;
     if(!private_nh.getParam("max_steering",max_steering_)) max_steering_ = 0.65;
     if(!private_nh.getParam("car_length",car_length_)) car_length_ = 1.632;
 
@@ -28,7 +27,6 @@ namespace golfcar_purepursuit {
     std::cout<<"stopping_distance: "<<stopping_distance_<<"\n";
     std::cout<<"neglect_distance: "<<neglect_distance_<<"\n";
     std::cout<<"look_ahead: "<<look_ahead_<<"\n";
-    std::cout<<"look_ahead_bad: "<<look_ahead_bad_<<"\n";
     std::cout<<"max_steering: "<<max_steering_<<"\n";
     std::cout<<"car_length: "<<car_length_<<"\n";
   }
@@ -78,7 +76,7 @@ namespace golfcar_purepursuit {
       double cur_yaw = tf::getYaw(pose.getRotation());
       int segment = get_segment(cur_x, cur_y);
 
-      cmd_vel = get_desired_speed(segment);
+      cmd_vel = get_desired_speed(segment, cur_x, cur_y);
       cmd_steer = get_steering(segment, cur_x, cur_y, cur_yaw, cmd_vel);
     }
     else
@@ -100,7 +98,7 @@ namespace golfcar_purepursuit {
     cmd_pub_.publish(cmd_ctrl);
   }
 
-  bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose>& odom_pose) const 
+  bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const 
   {
     odom_pose.setIdentity();
     tf::Stamped<tf::Pose> robot_pose;
@@ -174,10 +172,7 @@ namespace golfcar_purepursuit {
   double PurePursuit::get_inv_R(double u)
   {
     double inv_R = 0;
-
-    if(u > 0)
-      inv_R = 1/u;
-    else if(u < 0)
+    if(u != 0)
       inv_R = 1/u;
 
     return inv_R;
@@ -269,9 +264,11 @@ namespace golfcar_purepursuit {
   int PurePursuit::get_segment(double cur_x, double cur_y)
   {
     double tar_x, tar_y, ori_x, ori_y, inv_R;
-    double prj[2];
+    double prj[2], center[2];
 
-    if(trajectory_.poses.size() < 1)
+    if(last_segment_ < 0)
+      return -1;
+    else if(trajectory_.poses.size() < 1)
       return -1;
     else if(trajectory_.poses.size() < 2)
       return 0;
@@ -287,6 +284,9 @@ namespace golfcar_purepursuit {
       ori_x = trajectory_.poses[segment].pose.position.x;
       ori_y = trajectory_.poses[segment].pose.position.y;
       inv_R = get_inv_R(trajectory_.poses[segment].pose.position.z);
+      if(inv_R != 0 && !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center))
+	inv_R = 0;
+
       if(get_distance(tar_x, tar_y, ori_x, ori_y) < neglect_distance_) // sometimes trajectory points can collapse
       {
 	segment++;
@@ -340,35 +340,29 @@ namespace golfcar_purepursuit {
       on_segment++;
     }
 
-    L = look_ahead_bad_;
-    cmd_vel = slow_speed_;
-    on_segment = segment;
-    while((int) trajectory_.poses.size() > on_segment)
-    {
-      dist1 = get_distance(cur_x, cur_y,
-			   trajectory_.poses[on_segment].pose.position.x,
-			   trajectory_.poses[on_segment].pose.position.y);
-      dist2 = get_distance(cur_x, cur_y,
-			   trajectory_.poses[on_segment+1].pose.position.x,
-			   trajectory_.poses[on_segment+1].pose.position.y);
-      if((dist1-L)*(dist2-L) <= 0)
-	return on_segment;
-
-      on_segment++;
-    }
-
     return segment;
   }
 
   // this function assumes that trajectory points are very dense like 5-cm distance
   // if the way trajectory points are generated is changed, this function should be changed
-  double PurePursuit::get_desired_speed(int segment)
+  double PurePursuit::get_desired_speed(int segment, double cur_x, double cur_y)
   {
-    if(segment < 0)
+    if(segment < 0 || trajectory_.poses.size() < 2)
       return 0;
 
     double dist_to_go = 0;
     int on_segment = segment;
+
+    double tar_x = trajectory_.poses[on_segment+1].pose.position.x;
+    double tar_y = trajectory_.poses[on_segment+1].pose.position.y;
+    double ori_x = trajectory_.poses[on_segment].pose.position.x;
+    double ori_y = trajectory_.poses[on_segment].pose.position.y;
+    double prj[2];
+    get_projection(tar_x, tar_y, ori_x, ori_y, 0, cur_x, cur_y, prj);
+    if(btwn_points(tar_x, tar_y, ori_x, ori_y, 0, prj[0], prj[1]))
+      dist_to_go += get_distance(tar_x, tar_y, prj[0], prj[1]);
+    on_segment++;
+
     while((int) trajectory_.poses.size() > on_segment)
     {
       dist_to_go += get_distance(trajectory_.poses[on_segment+1].pose.position.x,
@@ -388,7 +382,7 @@ namespace golfcar_purepursuit {
   }
 
   double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
-				   double cur_yaw, double& cmd_vel)
+				   double cur_yaw, double &cmd_vel)
   {
     if(segment < 0)
     {
@@ -411,6 +405,9 @@ namespace golfcar_purepursuit {
     double ori_x = trajectory_.poses[lookahead_segment].pose.position.x;
     double ori_y = trajectory_.poses[lookahead_segment].pose.position.y;
     double inv_R = get_inv_R(trajectory_.poses[lookahead_segment].pose.position.z);
+    double center[2];
+    if(inv_R != 0 && !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center))
+      inv_R = 0;
 
     double a, b, c, x, r, theta, gamma;
 
@@ -425,30 +422,17 @@ namespace golfcar_purepursuit {
     }
     else
     {
-      double center[2];
-      if(!get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center))
+      if(inv_R > 0)
       {
-	a = tar_y - ori_y;
-	b = ori_x - tar_x;
-	c = (tar_x - ori_x)*ori_y + ori_x*(ori_y - tar_y);
-	r = 0;
-	x = (a*cur_x + b*cur_y + c)/sqrt(a*a + b*b);
-	theta = cur_yaw - atan2(tar_y - ori_y, tar_x - ori_x);
+	r = get_distance(center[0], center[1], cur_x, cur_y) - abs(1/inv_R);
+	x = (inv_R*(r*r + L*L) + 2*r)/(2*(1 + inv_R*r));
+	theta = cur_yaw - atan2(cur_x - center[0], center[1] - cur_y);
       }
       else
       {
-	if(inv_R > 0)
-	{
-	  r = get_distance(center[0], center[1], cur_x, cur_y) - abs(1/inv_R);
-	  x = (inv_R*(r*r + L*L) + 2*r)/(2*(1 + inv_R*r));
-	  theta = cur_yaw - atan2(cur_x - center[0], center[1] - cur_y);
-	}
-	else
-	{
-	  r = -get_distance(center[0], center[1], cur_x, cur_y) + abs(1/inv_R);
-	  x = (inv_R*(r*r + L*L) + 2*r)/(2*(1 + inv_R*r));
-	  theta = cur_yaw - atan2(-cur_x + center[0], cur_y - center[1]);
-	}
+	r = -get_distance(center[0], center[1], cur_x, cur_y) + abs(1/inv_R);
+	x = (inv_R*(r*r + L*L) + 2*r)/(2*(1 + inv_R*r));
+	theta = cur_yaw - atan2(-cur_x + center[0], cur_y - center[1]);
       }
     }
     while(theta > M_PI)

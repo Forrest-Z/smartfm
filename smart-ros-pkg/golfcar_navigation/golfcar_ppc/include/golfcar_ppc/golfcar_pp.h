@@ -29,7 +29,6 @@ namespace golfcar_purepursuit {
         double stopping_distance_;
         double neglect_distance_;
         double look_ahead_;
-        double look_ahead_bad_;
         double look_ahead_add_;
         double max_steering_;
         double car_length_;
@@ -56,7 +55,7 @@ namespace golfcar_purepursuit {
                             double proj[2]);
         int get_segment(double cur_x, double cur_y);
         int find_lookahead_segment(int segment, double cur_x, double cur_y, double &L, double &cmd_vel);
-        double get_desired_speed(int segment);
+        double get_desired_speed(int segment, double cur_x, double cur_y);
         double get_steering(int segment, double cur_x, double cur_y, double cur_yaw, double &cmd_vel);
 	};
 };
