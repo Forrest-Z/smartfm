@@ -23,6 +23,7 @@ namespace golfcar_purepursuit {
 		ros::Publisher cmd_pub_;
         ros::Timer timer_;
 
+        double max_timer_;
         double normal_speed_;
         double slow_speed_;
         double stopping_distance_;
@@ -39,7 +40,7 @@ namespace golfcar_purepursuit {
 		void trajCallBack(const nav_msgs::Path::ConstPtr &traj);
 		void controlLoop(const ros::TimerEvent &e);
 
-		bool getRobotPose(tf::Stamped<tf::Pose>& odom_pose) const;
+		bool getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const;
         double get_distance(double x1, double y1, double x2, double y2);
         bool get_center(double tar_x, double tar_y,
                         double ori_x, double ori_y, double inv_R,
@@ -53,7 +54,8 @@ namespace golfcar_purepursuit {
                             double inv_R, double cur_x, double cur_y,
                             double proj[2]);
         int get_segment(double cur_x, double cur_y);
+        int find_lookahead_segment(int segment, double cur_x, double cur_y, double &L, double &cmd_vel);
         double get_desired_speed(int segment);
-        double get_steering(int segment, double cur_x, double cur_y, double cur_yaw, double& cmd_vel);
+        double get_steering(int segment, double cur_x, double cur_y, double cur_yaw, double &cmd_vel);
 	};
 };

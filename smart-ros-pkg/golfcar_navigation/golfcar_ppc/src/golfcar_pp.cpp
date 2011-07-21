@@ -10,17 +10,19 @@ namespace golfcar_purepursuit {
     timer_ = n.createTimer(ros::Duration(0.05), &PurePursuit::controlLoop, this);
 
     ros::NodeHandle private_nh("~");
+    if(!private_nh.getParam("max_timer",max_timer_)) max_timer_ = 1.0;
     if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 1.5;
     if(!private_nh.getParam("slow_speed",slow_speed_)) slow_speed_ = 1.0;
     if(!private_nh.getParam("stopping_distance",stopping_distance_)) stopping_distance_ = 1.5;
     if(!private_nh.getParam("neglect_distance",neglect_distance_)) neglect_distance_ = 0.001;
     if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3;
-    if(!private_nh.getParam("look_ahead_bad",look_ahead_bad_)) look_ahead_bad_ = 1;
+    if(!private_nh.getParam("look_ahead_bad",look_ahead_bad_)) look_ahead_bad_ = 4;
     if(!private_nh.getParam("max_steering",max_steering_)) max_steering_ = 0.65;
     if(!private_nh.getParam("car_length",car_length_)) car_length_ = 1.632;
 
     last_segment_ = 0;
 
+    std::cout<<"max_timer: "<<max_timer_<<"\n";
     std::cout<<"normal_speed: "<<normal_speed_<<"\n";
     std::cout<<"slow_speed: "<<slow_speed_<<"\n";
     std::cout<<"stopping_distance: "<<stopping_distance_<<"\n";
@@ -63,7 +65,7 @@ namespace golfcar_purepursuit {
   }
 
   void PurePursuit::controlLoop(const ros::TimerEvent &e)
-  {	
+  {
     geometry_msgs::Twist cmd_ctrl;
     double cmd_vel;
     double cmd_steer;
@@ -83,6 +85,14 @@ namespace golfcar_purepursuit {
     {
       cmd_vel = 0;
       cmd_steer = 0;
+    }
+
+    ros::Time time_now = ros::Time::now();
+    ros::Duration time_diff = time_now - trajectory_.header.stamp;
+    double dt = time_diff.toSec();
+    if(dt > max_timer_)
+    {
+      cmd_vel = 0;
     }
 
     cmd_ctrl.linear.x = cmd_vel;
@@ -312,6 +322,46 @@ namespace golfcar_purepursuit {
 
   // this function assumes that trajectory points are very dense like 5-cm distance
   // if the way trajectory points are generated is changed, this function should be changed
+  int PurePursuit::find_lookahead_segment(int segment, double cur_x, double cur_y, double &L, double &cmd_vel)
+  {
+    double dist1, dist2;
+    int on_segment = segment;
+    while((int) trajectory_.poses.size() > on_segment)
+    {
+      dist1 = get_distance(cur_x, cur_y,
+			   trajectory_.poses[on_segment].pose.position.x,
+			   trajectory_.poses[on_segment].pose.position.y);
+      dist2 = get_distance(cur_x, cur_y,
+			   trajectory_.poses[on_segment+1].pose.position.x,
+			   trajectory_.poses[on_segment+1].pose.position.y);
+      if((dist1-L)*(dist2-L) < 0)
+	return on_segment;
+
+      on_segment++;
+    }
+
+    L = look_ahead_bad_;
+    cmd_vel = slow_speed_;
+    on_segment = segment;
+    while((int) trajectory_.poses.size() > on_segment)
+    {
+      dist1 = get_distance(cur_x, cur_y,
+			   trajectory_.poses[on_segment].pose.position.x,
+			   trajectory_.poses[on_segment].pose.position.y);
+      dist2 = get_distance(cur_x, cur_y,
+			   trajectory_.poses[on_segment+1].pose.position.x,
+			   trajectory_.poses[on_segment+1].pose.position.y);
+      if((dist1-L)*(dist2-L) < 0)
+	return on_segment;
+
+      on_segment++;
+    }
+
+    return segment;
+  }
+
+  // this function assumes that trajectory points are very dense like 5-cm distance
+  // if the way trajectory points are generated is changed, this function should be changed
   double PurePursuit::get_desired_speed(int segment)
   {
     if(segment < 0)
@@ -342,7 +392,7 @@ namespace golfcar_purepursuit {
   {
     if(segment < 0)
     {
-      ROS_DEBUG("steering, segment=-1");
+      ROS_DEBUG("steering, segment = -1");
       cmd_vel = 0;
       return 0;
     }
@@ -353,14 +403,16 @@ namespace golfcar_purepursuit {
       return 0;
     }
 
-    double tar_x = trajectory_.poses[segment+1].pose.position.x;
-    double tar_y = trajectory_.poses[segment+1].pose.position.y;
-    double ori_x = trajectory_.poses[segment].pose.position.x;
-    double ori_y = trajectory_.poses[segment].pose.position.y;
-    double inv_R = get_inv_R(trajectory_.poses[segment].pose.position.z);
-	
-    double a, b, c, x, r, theta, gamma;
     double L = look_ahead_;
+    int lookahead_segment = find_lookahead_segment(segment, cur_x, cur_y, L, cmd_vel);
+
+    double tar_x = trajectory_.poses[lookahead_segment+1].pose.position.x;
+    double tar_y = trajectory_.poses[lookahead_segment+1].pose.position.y;
+    double ori_x = trajectory_.poses[lookahead_segment].pose.position.x;
+    double ori_y = trajectory_.poses[lookahead_segment].pose.position.y;
+    double inv_R = get_inv_R(trajectory_.poses[lookahead_segment].pose.position.z);
+
+    double a, b, c, x, r, theta, gamma;
 
     if(inv_R == 0)
     {
@@ -413,7 +465,7 @@ namespace golfcar_purepursuit {
 
     gamma = 2/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
     double steering = atan(gamma * car_length_);
-    ROS_DEBUG("steering, segment=%d x=%lf y=%lf yaw=%lf cmd_vel=%lf", segment, cur_x, cur_y, cur_yaw, cmd_vel);
+    ROS_DEBUG("steering, segment=%d lookahead_seg=%d x=%lf y=%lf yaw=%lf cmd_vel=%lf", segment, lookahead_segment, cur_x, cur_y, cur_yaw, cmd_vel);
     ROS_DEBUG("inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf", inv_R, L, r, x, theta, gamma, steering);
 
     if(isnan(steering))
