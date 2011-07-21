@@ -85,7 +85,7 @@ void VehicleTalker::runVehicleReceiver()
   while (!m_quit) {
     if (!m_newStatusRecv) {
       if (msg.length() > 0 && !msgIncomplete) {
-	// Msg format: customerID:picup:dropoff
+	// Msg format: vehicleID:status:tremain
 	string statusStr;
 	int beginStatus = msg.find(";", 0);
 	if (beginStatus >= 0)
@@ -95,28 +95,36 @@ void VehicleTalker::runVehicleReceiver()
 	  msgIncomplete = false;
 	  continue;
 	}
-	int endStatus = msg.find(";", beginStatus+1);
+	int endStatus = msg.find(";", 1);
 	if (endStatus >= 0) {
-	  statusStr = msg.substr(1, endStatus-1);
+	  statusStr = msg.substr(0, endStatus-1);
 	  msg = msg.substr(endStatus, msg.length());
 	}
 	else {
-	  statusStr = msg.substr(1, msg.length());
+	  statusStr = msg.substr(0, msg.length());
 	  msg.clear();
 	}
 	
 	int spacePos = statusStr.find ("\n", 0);
-	while (spacePos >= 0) {
-	  if (spacePos > 0 && spacePos < statusStr.length()-1) {
+	
+	while (spacePos >= 0 && spacePos < statusStr.length()-1) {
+	  if (spacePos > 0) {
 	    string str1 = statusStr.substr(0, spacePos);
 	    string str2 = statusStr.substr(spacePos+1, statusStr.length());
 	    statusStr = str1.append(str2);
 	  }
-	  else if (spacePos > 0)
-	    statusStr = statusStr.substr(0, spacePos);
-	  else
+	  else if (spacePos == 0)
 	    statusStr = statusStr.substr(spacePos+1, statusStr.length());
 	  spacePos = statusStr.find ("\n", 0);
+	}
+	
+	if (spacePos > 0 && spacePos == statusStr.length()-1) {
+	  statusStr = statusStr.substr(0, spacePos);
+	}
+	else {
+	  msgIncomplete = true;
+	  msg = statusStr;
+	  continue;
 	}
 	
 	if (m_verbosity > 0) {
@@ -132,7 +140,7 @@ void VehicleTalker::runVehicleReceiver()
 	}
 	else {
 	  bool statusValid = true;
-	  string vehIDStr = statusStr.substr(0, firstColon);
+	  string vehIDStr = statusStr.substr(1, firstColon-1);
 	  string vehStatusStr = statusStr.substr(firstColon+1, secondColon-firstColon-1);
 	  string tremainStr = statusStr.substr(secondColon+1, statusStr.length());
 	  for (int i = 0; i < vehIDStr.length(); i++) {

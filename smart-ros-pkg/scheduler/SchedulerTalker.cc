@@ -91,17 +91,39 @@ void SchedulerTalker::runMobileReceiver()
 	  msgIncomplete = false;
 	  continue;
 	}
-	int endTask = msg.find(";", beginTask+1);
+	int endTask = msg.find(";", 1);
 	if (endTask >= 0) {
-	  taskStr = msg.substr(1, endTask-1);
+	  taskStr = msg.substr(0, endTask-1);
 	  msg = msg.substr(endTask, msg.length());
 	}
 	else {
-	  taskStr = msg.substr(1, msg.length());
+	  taskStr = msg.substr(0, msg.length());
 	  msg.clear();
 	}
 
 	int spacePos = taskStr.find ("\n", 0);
+
+	while (spacePos >= 0 && spacePos < taskStr.length()-1) {
+	  if (spacePos > 0) {
+	    string str1 = taskStr.substr(0, spacePos);
+	    string str2 = taskStr.substr(spacePos+1, taskStr.length());
+	    taskStr = str1.append(str2);
+	  }
+	  else if (spacePos == 0)
+	    taskStr = taskStr.substr(spacePos+1, taskStr.length());
+	  spacePos = taskStr.find ("\n", 0);
+	}
+	
+	if (spacePos > 0 && spacePos == taskStr.length()-1) {
+	  taskStr = taskStr.substr(0, spacePos);
+	}
+	else {
+	  msgIncomplete = true;
+	  msg = taskStr;
+	  continue;
+	}
+
+	/*
 	while (spacePos >= 0) {
 	  if (spacePos > 0 && spacePos < taskStr.length()-1) {
 	    string str1 = taskStr.substr(0, spacePos);
@@ -114,6 +136,7 @@ void SchedulerTalker::runMobileReceiver()
 	    taskStr = taskStr.substr(spacePos+1, taskStr.length());
 	  spacePos = taskStr.find ("\n", 0);
 	}
+	*/
 
 	if (m_verbosity > 0) {
 	  MSG("Received task %s", taskStr.c_str());
@@ -123,13 +146,13 @@ void SchedulerTalker::runMobileReceiver()
 	int firstColon = taskStr.find(":", 0);
 	int secondColon = taskStr.find(":", firstColon+1);
 	int thirdColon = taskStr.find(":", secondColon+1);
-	if (firstColon < 0 || secondColon <= firstColon || thirdColon <= secondColon) {
+	if (firstColon < 0 || secondColon <= firstColon || thirdColon <= secondColon || thirdColon == msg.length()-1) {
 	  msgIncomplete = true;
 	  msg = taskStr;
 	}
 	else {
 	  bool taskValid = true;
-	  string usrIDStr = taskStr.substr(0, firstColon);
+	  string usrIDStr = taskStr.substr(1, firstColon-1);
 	  string taskIDStr = taskStr.substr(firstColon+1, secondColon-firstColon-1);
 	  string pickupStr = taskStr.substr(secondColon+1, thirdColon-secondColon-1);
 	  string dropoffStr = taskStr.substr(thirdColon+1, taskStr.length());

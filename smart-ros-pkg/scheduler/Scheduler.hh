@@ -28,7 +28,8 @@ namespace std
       INVALID_DROPOFF = -2,
       INVALID_PICKUP_DROPOFF_PAIR = -3,
       NO_AVAILABLE_VEHICLE = -4,
-      TASK_NOT_EXIST = -5
+      TASK_NOT_EXIST = -5,
+      TASK_REMOVED = -6
     };
   
   enum VehicleStatus

@@ -41,11 +41,11 @@ int NOGUI = 0;
 int NOMOBILE = 0;
 int SIMULATE_MOBILE = 0;
 int SIMULATE_VEHICLE = 0;
-int SIMULATE_TIME = 1;
+int SIMULATE_TIME = 0;
 int NOOP = 0;
 char* HOST_NAME = "localhost";
 int MOBILE_PORT = 4440;
-int VEHICLE_PORT = 4444;
+int VEHICLE_PORT = 8888;
 
 // The name of this program
 const char * PROGRAM_NAME;
@@ -97,7 +97,7 @@ void sigintHandler(int /*sig*/)
 void print_usage (FILE* stream, int exit_code)
 {
   fprintf( stream, "Usage:  %s [options]\n", PROGRAM_NAME );
-  fprintf( stream, "  --host hostname   Specify the host. The default is localhost.\n");  
+  fprintf( stream, "  --host hostname   Specify the IP address of the server for talking to mobile phone. The default is localhost.\n");  
   fprintf( stream, "  --mport mport     Specify the port for talking to mobile phones (any number between 2000 and 65535). The default is 4440.\n");  
   fprintf( stream, "  --vport vport     Specify the port for talking to the vehicle (any number between 2000 and 65535). The default is 4444.\n");  
   fprintf( stream, "  --verbose         See the status of the program at every step.\n");    
@@ -106,7 +106,7 @@ void print_usage (FILE* stream, int exit_code)
   fprintf( stream, "  --simmobile       Simulate mobile phone users.\n");  
   fprintf( stream, "  --simvehicle      Simulate vehicles' status.\n");   
   fprintf( stream, "  --simtime         Simulate remaining time of current task.\n"); 
-  fprintf( stream, "  --noop            Do not interact with operator.\n");   
+  fprintf( stream, "  --noop            Do not interact with operator when --nogui option is given.\n");   
   fprintf( stream, "  --help            Display this message.\n");
   exit(exit_code);
 }
@@ -303,6 +303,8 @@ int main(int argc, char **argv)
 	task = scheduler->getTask(ret);
 	schedulerTalker->sendTaskStatus(task.customerID, task.taskID, task.twait, task.vehicleID);
       }
+      else if (ret >= 0 && task.pickup == -1 && task.dropoff == -1 && !SIMULATE_MOBILE)
+	schedulerTalker->sendTaskStatus(task.customerID, task.taskID, -1, TASK_REMOVED);
       // Otherwise, report invalid task to the mobile customer
       else if (ret < 0)
 	reportInvalidMobileTask(task, ret);

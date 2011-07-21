@@ -14,18 +14,18 @@ namespace stations
   
   // {origin, destimation, distance, estimated travel time}
   int STATION_NETWORK[][4] = {
-    {WORKSHOP, MCDONALD, 300, 5},
-    {WORKSHOP, EA, 600, 10},
-    {WORKSHOP, E3A, 600, 10},
-    {MCDONALD, WORKSHOP, 300, 5},
-    {MCDONALD, EA, 900, 15},
-    {MCDONALD, E3A, 900, 15},
-    {EA, WORKSHOP, 600, 10},
-    {EA, MCDONALD, 900, 15},
-    {EA, E3A, 100, 2},
-    {E3A, WORKSHOP, 600, 10},
-    {E3A, MCDONALD, 900, 15},
-    {E3A, EA, 100, 2}
+    {WORKSHOP, MCDONALD, 153, 153},
+    {WORKSHOP, EA, 379, 379},
+    {WORKSHOP, E3A, 450, 450},
+    {MCDONALD, WORKSHOP, 107, 107},
+    {MCDONALD, EA, 485, 485},
+    {MCDONALD, E3A, 556, 556},
+    {EA, WORKSHOP, 340, 340},
+    {EA, MCDONALD, 493, 493},
+    {EA, E3A, 151, 151},
+    {E3A, WORKSHOP, 424, 424},
+    {E3A, MCDONALD, 577, 577},
+    {E3A, EA, 81, 81}
   };
 }
 
