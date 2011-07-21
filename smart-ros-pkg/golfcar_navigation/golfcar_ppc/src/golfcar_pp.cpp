@@ -334,7 +334,7 @@ namespace golfcar_purepursuit {
       dist2 = get_distance(cur_x, cur_y,
 			   trajectory_.poses[on_segment+1].pose.position.x,
 			   trajectory_.poses[on_segment+1].pose.position.y);
-      if((dist1-L)*(dist2-L) < 0)
+      if((dist1-L)*(dist2-L) <= 0)
 	return on_segment;
 
       on_segment++;
@@ -351,7 +351,7 @@ namespace golfcar_purepursuit {
       dist2 = get_distance(cur_x, cur_y,
 			   trajectory_.poses[on_segment+1].pose.position.x,
 			   trajectory_.poses[on_segment+1].pose.position.y);
-      if((dist1-L)*(dist2-L) < 0)
+      if((dist1-L)*(dist2-L) <= 0)
 	return on_segment;
 
       on_segment++;
@@ -455,13 +455,6 @@ namespace golfcar_purepursuit {
       theta -= 2*M_PI;
     while(theta < -M_PI)
       theta += 2*M_PI;
-
-    if(abs(x) > L) // too off from the path
-    {
-      if(cmd_vel > slow_speed_)
-	cmd_vel = slow_speed_;
-      L = abs(x) + look_ahead_bad_;
-    }
 
     gamma = 2/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
     double steering = atan(gamma * car_length_);
