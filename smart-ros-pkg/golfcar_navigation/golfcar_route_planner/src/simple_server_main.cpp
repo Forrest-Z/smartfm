@@ -7,7 +7,7 @@ int main ( int argc, int argv[] )
 {
   std::cout << "running....\n";
   // Create the listening socket
-  ServerSocket server ( 4440 );
+  ServerSocket server ( 8888 );
   int customerID = 1;
 
   while ( true )
