@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include <time.h>
+#include <string.h>
 #include "Scheduler.hh"
 #include "SchedulerUI.hh"
 #include "SchedulerTalker.hh"
