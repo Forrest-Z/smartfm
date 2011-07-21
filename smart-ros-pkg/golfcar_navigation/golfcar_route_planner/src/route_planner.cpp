@@ -11,11 +11,11 @@ using namespace std;
 
 namespace route_planner {
 
-	class RoutePlanner
+	class RoutePlannerNode
     {
     public:
-		RoutePlanner();
-		~RoutePlanner();
+		RoutePlannerNode();
+		~RoutePlannerNode();
 
     private:
 	ros::Publisher waypoint_pub_;
@@ -33,14 +33,14 @@ namespace route_planner {
 
 namespace route_planner {
 
-RoutePlanner::RoutePlanner()
+RoutePlannerNode::RoutePlannerNode()
 {
 	WaypointNo_=0;
 	ros::NodeHandle n;
 	waypoint_pub_ = n.advertise<geometry_msgs::PointStamped>("pnc_waypoint", 1);
 	g_plan_pub_ = n.advertise<nav_msgs::Path>("pnc_globalplan", 1);
 	pointCloud_pub_ = n.advertise<sensor_msgs::PointCloud>("pnc_waypointVis",1);
-	timer_ = n.createTimer(ros::Duration(0.2), &RoutePlanner::waypoint_pub_loop, this);
+	timer_ = n.createTimer(ros::Duration(0.2), &RoutePlannerNode::waypoint_pub_loop, this);
 
 	//setup the points
 	
@@ -121,16 +121,16 @@ RoutePlanner::RoutePlanner()
 	g_plan_pub_.publish(p);
 }
 
-RoutePlanner::~RoutePlanner()
+RoutePlannerNode::~RoutePlannerNode()
 {
 
 }
 
-void RoutePlanner::waypoint_pub_loop(const ros::TimerEvent &e)
+void RoutePlannerNode::waypoint_pub_loop(const ros::TimerEvent &e)
 {
 	//get global pose
 	tf::Stamped<tf::Pose> global_pose;
-	RoutePlanner::getRobotGlobalPose(global_pose);
+	RoutePlannerNode::getRobotGlobalPose(global_pose);
 
 	geometry_msgs::PointStamped map_point;
 	geometry_msgs::PointStamped odom_point;
@@ -167,7 +167,7 @@ void RoutePlanner::waypoint_pub_loop(const ros::TimerEvent &e)
 	if(WaypointNo_==targets_.size()) WaypointNo_ = targets_.size() -1;
 }
 
-bool RoutePlanner::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const 
+bool RoutePlannerNode::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const
   {
     odom_pose.setIdentity();
     tf::Stamped<tf::Pose> robot_pose;
@@ -205,7 +205,7 @@ bool RoutePlanner::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "golfcar_route_planner");
-  route_planner::RoutePlanner *rp = new route_planner::RoutePlanner();
+  route_planner::RoutePlannerNode *rp = new route_planner::RoutePlannerNode();
   if(!rp) {
     ROS_ERROR("failed to start the process\n");
     return 1;
