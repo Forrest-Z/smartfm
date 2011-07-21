@@ -43,7 +43,30 @@ class Local_map
 
         Point get_cell_coor(int x, int y);
         int get_cell_num(Point p, int &x, int &y);
-        void process_points( vector<Point> points);
+        void process_points( vector<Point>& points);
         void create_map();
 };
+
+// returns 1 if pose outside the local map
+inline int Local_map::get_cell_num(Point p, int &x, int &y)
+{
+    float px = p.x - pose.position.x;
+    float py = p.y - pose.position.y;
+    x = px/res + xorigin;
+    y = py/res + yorigin;
+
+    if( ( (x >= xsize) || (x < 0) ) || ( (y >= ysize) || (y < 0) ) )
+        return 1;
+    else
+        return 0;
+}
+
+inline Point Local_map::get_cell_coor(int x, int y)
+{
+    Point pret;
+    pret.x = (x - xorigin)*res + pose.position.x;
+    pret.y = (y - yorigin)*res + pose.position.y;
+
+    return pret;
+}
 

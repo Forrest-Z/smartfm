@@ -489,8 +489,8 @@ int
 {
     vertexIn.costFromRoot = -1.0;
 
-    vertex_t &par = vertexIn.getParent();
-    par.children.erase(&vertexIn);
+    vertex_t &parent = vertexIn.getParent();
+    parent.children.erase(&vertexIn);
 
     for (typename set<vertex_t*>::iterator iter = vertexIn.children.begin(); iter != vertexIn.children.end(); iter++) 
     {
@@ -728,8 +728,8 @@ RRTstar::Planner< typeparams >
 template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
-::switchRoot (double distanceIn, list<double *>& trajret, list<float> &controlret) {
-
+::switchRoot (double distanceIn, list<double*>& trajret, list<float> &controlret) {
+    
 
     // If there is no path reaching the goal, then return failure
     if (lowerBoundVertex == NULL) 
@@ -774,8 +774,9 @@ RRTstar::Planner< typeparams >
         list<float> control;
         system->getTrajectory (stateParent, stateCurr, trajectory, control);
 
-        for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++) {
-
+        list<float>::iterator iterControl = control.begin();
+        for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++) 
+        {
             double *stateArrCurr = *iter;
 
             double distCurr = sqrt( (stateArrCurr[0]-stateArrPrev[0])*(stateArrCurr[0]-stateArrPrev[0])
@@ -783,7 +784,14 @@ RRTstar::Planner< typeparams >
 
             distTotal += distCurr;
 
-            if (distTotal >= distanceIn) {
+            // write code for copying trajectory, control into traj here
+            double *stateTmp = new double[3]; stateTmp[0] = stateArrCurr[0];  stateTmp[1] = stateArrCurr[1]; stateTmp[2] = stateArrCurr[2];
+            float controlTmp = *iterControl;
+            trajret.push_back(stateTmp);
+            controlret.push_back(controlTmp);
+            
+            if (distTotal >= distanceIn) 
+            {
 
                 for (int i = 0; i < numDimensions; i++)
                     stateRootNew[i] = stateArrCurr[i];
@@ -795,6 +803,8 @@ RRTstar::Planner< typeparams >
 
             for (int i = 0; i < numDimensions; i++)
                 stateArrPrev[i] = stateArrCurr[i];
+
+            iterControl++;
         }
 
         // Free the temporary memory occupied by the states
@@ -806,31 +816,22 @@ RRTstar::Planner< typeparams >
 
         if (stateFound)
         {
-            trajret.clear();
-            controlret.clear();
-
-            state_t &state_tmp = vertexCurr->getState();
-            state_t state_root;
-            state_root[0] = stateRootNew[0];
-            state_root[1] = stateRootNew[1];
-            state_root[2] = stateRootNew[2];
-            if(system->getTrajectory(rootState, state_tmp, trajret, controlret))
-            {
-                cout<<"switching root successful "<< trajret.size() << endl;
-            }
-
+            cout<<"switching root successful "<< trajret.size() << " "<< controlret.size() << endl;
             break;
         }
 
         vertexCurr = &vertexParent;
     }
-
+    
     delete [] stateArrPrev;  
 
     if (stateFound == false) {
 
-        delete [] stateRootNew;
-        return 0;
+            trajret.clear();
+            controlret.clear();
+            
+            delete [] stateRootNew;
+            return 0;
     }
 
 
@@ -1001,6 +1002,30 @@ RRTstar::Planner< typeparams >
             return false;
     }
     return true;
+}
+
+
+template< class typeparams >
+double
+RRTstar::Planner< typeparams >
+::getTrajectoryLength(list<double*>& trajectory)
+{
+    double len = 0;
+    for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++)
+    {
+        list<double*>::iterator next = iter;
+        if(next != trajectory.end())
+        {
+            next++;
+            double *currState = *iter;
+            double *nextState = *next;
+            //cout<<"list states: "<< currState[0]<<" "<<currState[1]<<" "<< nextState[0]<<" "<< nextState[1]<<endl;
+            len += sqrt( (currState[0] - nextState[0])*(currState[0] - nextState[0]) + (currState[1] - nextState[1])*(currState[1] - nextState[1]) );
+        }
+        else
+            break;
+    }
+    return len;
 }
 
 #endif

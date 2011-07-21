@@ -90,7 +90,7 @@ void local_map_node::on_sick(const sensor_msgs::LaserScan::ConstPtr &scan_in)
         return;
 
     }
-    
+
     // process points
     vector<Point> points;
     points.resize(cloud.points.size());
@@ -101,17 +101,13 @@ void local_map_node::on_sick(const sensor_msgs::LaserScan::ConstPtr &scan_in)
         points[i].z=cloud.points[i].z;
     }
     lmap.process_points(points);
-    
-    if(laser_count_ % laser_skip_ == 0)
-    {
-        laser_count_ = 0;
-        
-        //call function to update the local map
-        lmap.create_map();
-        
-        // publish all msgs
-        publish_msg();
-    }
+
+
+    //call function to update the local map
+    lmap.create_map();
+
+    // publish all msgs
+    publish_msg();
 }
 
 void local_map_node::publish_msg()
@@ -148,7 +144,7 @@ void local_map_node::publish_msg()
     mtmp.yorigin = lmap.yorigin;
     mtmp.origin.x = lmap.pose.position.x;
     mtmp.origin.y = lmap.pose.position.y;
-    mtmp.origin.z = tf::getYaw(lmap.pose.orientation);          // Note .z sends in yaw to the planner
+    //mtmp.origin.z = tf::getYaw(lmap.pose.orientation);          // Note .z sends in yaw to the planner
     //cout<<"wrote origin: "<< mtmp.origin.x<<" "<< mtmp.origin.y<<" "<< mtmp.origin.z<< endl;
     for(int i=0; i < lmap.xsize; i++)
     {

@@ -10,14 +10,13 @@ namespace golfcar_purepursuit {
     timer_ = n.createTimer(ros::Duration(0.05), &PurePursuit::controlLoop, this);
 
     ros::NodeHandle private_nh("~");
-    if(!private_nh.getParam("max_timer",max_timer_)) max_timer_ = 100.0;
+    if(!private_nh.getParam("max_timer",max_timer_)) max_timer_ = 1.0;
     if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 1.5;
     if(!private_nh.getParam("slow_speed",slow_speed_)) slow_speed_ = 1.0;
     if(!private_nh.getParam("stopping_distance",stopping_distance_)) stopping_distance_ = 1.5;
     if(!private_nh.getParam("neglect_distance",neglect_distance_)) neglect_distance_ = 0.001;
     if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3;
     if(!private_nh.getParam("look_ahead_bad",look_ahead_bad_)) look_ahead_bad_ = 4;
-    if(!private_nh.getParam("look_ahead_add",look_ahead_add_)) look_ahead_add_ = 1;
     if(!private_nh.getParam("max_steering",max_steering_)) max_steering_ = 0.65;
     if(!private_nh.getParam("car_length",car_length_)) car_length_ = 1.632;
 
@@ -30,7 +29,6 @@ namespace golfcar_purepursuit {
     std::cout<<"neglect_distance: "<<neglect_distance_<<"\n";
     std::cout<<"look_ahead: "<<look_ahead_<<"\n";
     std::cout<<"look_ahead_bad: "<<look_ahead_bad_<<"\n";
-    std::cout<<"look_ahead_add: "<<look_ahead_add_<<"\n";
     std::cout<<"max_steering: "<<max_steering_<<"\n";
     std::cout<<"car_length: "<<car_length_<<"\n";
   }
@@ -458,25 +456,14 @@ namespace golfcar_purepursuit {
     while(theta < -M_PI)
       theta += 2*M_PI;
 
-    if(abs(x) > L) // too off from the path
-    {
-      if(cmd_vel > slow_speed_)
-	cmd_vel = slow_speed_;
-      L = abs(x) + look_ahead_add_;
-    }
-
     gamma = 2/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
     double steering = atan(gamma * car_length_);
-    ROS_DEBUG("steering, segment=%d lookahead_seg=%d cur_x=%lf cur_y=%lf yaw=%lf cmd_vel=%lf",
-	      segment, lookahead_segment, cur_x, cur_y, cur_yaw, cmd_vel);
-    ROS_DEBUG("seg1_x=%lf seg1_y=%lf seg2_x=%lf seg2_y=%lf",
-	      ori_x, ori_y, tar_x, tar_y);
-    ROS_DEBUG("inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf",
-	      inv_R, L, r, x, theta, gamma, steering);
+    ROS_DEBUG("steering, segment=%d lookahead_seg=%d x=%lf y=%lf yaw=%lf cmd_vel=%lf", segment, lookahead_segment, cur_x, cur_y, cur_yaw, cmd_vel);
+    ROS_DEBUG("inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf", inv_R, L, r, x, theta, gamma, steering);
 
     if(isnan(steering))
     {
-      ROS_WARN("steering is nan, so commanding just 0!");
+      ROS_WARN("isnan, so commanding just 0!");
       cmd_vel = 0;
       steering = 0;
     }

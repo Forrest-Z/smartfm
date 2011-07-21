@@ -48,7 +48,7 @@ class Planner_node
 
         int approaching_next_root;
         int already_committed;
-        list<double *> toPublishTraj;
+        list<double*> toPublishTraj;
         list<float> toPublishControl;
 
         int map_skip, map_count;
@@ -73,6 +73,7 @@ class Planner_node
         system_t create_system();
         void on_odom(const nav_msgs::Odometry::ConstPtr & msg);
         void on_map(const local_map::local_map_msg::ConstPtr & local_map);
+        void on_planner_timer(const ros::TimerEvent &e);
         void get_plan();
         void change_sampling_region();
         void emergency_replan();
@@ -82,6 +83,7 @@ class Planner_node
         void publish_grid();
 
         int project_goal(float &xc, float &yc, float &xs, float &ys, float goalx, float goaly);
+        bool system_in_goal();
 };
 
 Planner_node::Planner_node()
@@ -97,7 +99,7 @@ Planner_node::Planner_node()
     RRT_MAX_ITER = 1000;
 
     // init periodic planner
-    //planner_timer = nh.createTimer(ros::Duration(5.0), &Planner_node::get_plan, this);
+    planner_timer = nh.createTimer(ros::Duration(0.5), &Planner_node::on_planner_timer, this);
 
     // subscribe to points
     odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", 5, &Planner_node::on_odom, this);
@@ -123,7 +125,7 @@ void Planner_node::on_odom(const nav_msgs::Odometry::ConstPtr & msg)
         state_t &stateRoot = rootVertex.getState();
         float x2 = stateRoot[0];
         float y2 = stateRoot[1];
-
+        
         if( (sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) < 1) )
         {
             already_committed = 0;
@@ -173,7 +175,7 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
         system.yorigin = local_map->yorigin;
         system.map_width = local_map->width;
         system.map_height = local_map->height;
-        
+
         system.origin.x = local_map->origin.x;
         system.origin.y = local_map->origin.y;
         system.origin.z = local_map->origin.z;       // this is yaw
@@ -193,56 +195,50 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
         // Set planner parameters
         rrts.setGamma (2.0);
         rrts.setGoalSampleFrequency (0.1);
-                
+
         // Initialize the planner
         rrts.initialize ();
-        
+
         cout<<"got first frame" << endl;
+        planner_in_progress = true;
     }
 
-    if(map_count % map_skip == 0)
+    //cout<<"l xsize: "<< local_map->xsize<<" l ysize:"<< local_map->ysize <<endl;
+    //cout<<"xsize: "<< system.xsize<<" ysize:"<<system.ysize<<endl;
+    //cout<<"verify: "<< local_map->vals.size() <<" "<< system.xsize*system.ysize << endl;
+    for(int i=0; i< system.xsize; i++)
     {
-        map_count = 0;
-        
-        //cout<<"l xsize: "<< local_map->xsize<<" l ysize:"<< local_map->ysize <<endl;
-        //cout<<"xsize: "<< system.xsize<<" ysize:"<<system.ysize<<endl;
-        //cout<<"verify: "<< local_map->vals.size() <<" "<< system.xsize*system.ysize << endl;
-        for(int i=0; i< system.xsize; i++)
+        for(int j=0; j< system.ysize; j++)
         {
-            for(int j=0; j< system.ysize; j++)
+            float car_width = 2.0, car_length = 2.0;
+
+            int yleft = min(system.ysize, (int)(j + car_width/2/system.map_res));
+            int yright = max(0, (int)(j - car_width/2/system.map_res));
+            int xfront = min(system.xsize, (int)(i + car_length/2/system.map_res));
+            int xback = max(0, (int)(i - car_length/2/system.map_res));
+
+            system.map_vals[i + j*system.xsize] = (unsigned char)local_map->vals[i + j*system.xsize];
+            if(system.map_vals[i + j*system.xsize] > 10)
             {
-                float car_width = 2.0, car_length = 2.0;
-
-                int yleft = min(system.ysize, (int)(j + car_width/2/system.map_res));
-                int yright = max(0, (int)(j - car_width/2/system.map_res));
-                int xfront = min(system.xsize, (int)(i + car_length/2/system.map_res));
-                int xback = max(0, (int)(i - car_length/2/system.map_res));
-
-                system.map_vals[i + j*system.xsize] = (unsigned char)local_map->vals[i + j*system.xsize];
-                if(system.map_vals[i + j*system.xsize] > 10)
+                for(int it= xback; it< xfront; it++)
                 {
-                    for(int it= xback; it< xfront; it++)
+                    for(int jt = yright; jt < yleft; jt++)
                     {
-                        for(int jt = yright; jt < yleft; jt++)
-                        {
-                            system.map_vals[it + jt*system.xsize] = 250;
-                        }
+                        system.map_vals[it + jt*system.xsize] = 250;
                     }
                 }
             }
         }
-
-        // write origin in odom frame
-        system.origin.x = local_map->origin.x;
-        system.origin.y = local_map->origin.y;
-        system.origin.z = local_map->origin.z;       // this is yaw
-       
-        planner_in_progress = true;
-        get_plan();
-    
-        publish_grid();
     }
+
+    // write origin in odom frame
+    system.origin.x = local_map->origin.x;
+    system.origin.y = local_map->origin.y;
+    system.origin.z = local_map->origin.z;       // this is yaw
+
+    publish_grid();
 }
+
 
 inline float dist(float x1, float y1, float x2, float y2)
 {
@@ -331,48 +327,72 @@ void Planner_node::change_sampling_region()
     system.regionOperating.size[1] = system.map_height;
     system.regionOperating.size[2] = 2.0 * M_PI;
     
-    /*
-    system.regionGoal.center[0] = 100;
+
+    system.regionGoal.center[0] = 25;
     system.regionGoal.center[1] = 0;
     system.regionGoal.center[2] = 0; // atan2(0 - system.origin.y, 25 - system.origin.x);
     system.regionGoal.size[0] = 5;
     system.regionGoal.size[1] = 5;
     system.regionGoal.size[2] = 0.3 * M_PI;
-    */
     
+   
+    /*
     // project goal
     float xc, yc, xs, ys;
-    project_goal(xc, yc, xs, ys, 25, 0);
+    project_goal(xc, yc, xs, ys, 100, 0);
 
     system.regionGoal.center[0] = xc;
     system.regionGoal.center[1] = yc;
-    system.regionGoal.center[2] = atan2(0 - system.origin.y, 25 - system.origin.x);
+    system.regionGoal.center[2] = atan2(0 - system.origin.y, 100 - system.origin.x);
     system.regionGoal.size[0] = xs;
     system.regionGoal.size[1] = ys;
     system.regionGoal.size[2] = 0.3 * M_PI;
     //cout<<"goal dir: "<< system.regionGoal.center[2] << endl;
-    
+    */
+}
+
+bool Planner_node::system_in_goal()
+{
+    state_t curr_state;
+    curr_state[0] = system.origin.x;
+    curr_state[1] = system.origin.y;
+    curr_state[2] = system.origin.z;
+
+    return system.isReachingTarget(curr_state);
+}
+
+void Planner_node::on_planner_timer(const ros::TimerEvent &e)
+{
+    if(planner_in_progress)
+        get_plan();
+    return;
 }
 
 void Planner_node::get_plan()
 {
     // prune the obstructed part of the tree
     rrts.checkTree();
-    cout<<"tree_num_vert: "<< rrts.numVertices<<endl;
     
     change_sampling_region();
 
-    if(rrts.numVertices < 10000)
+    for(unsigned int i=0; i< RRT_MAX_ITER; i++)
     {
-        for(unsigned int i=0; i< RRT_MAX_ITER; i++)
-        {
-            rrts.iteration();
-        }
-        cout<<"added samples "<< "commit status: "<< already_committed << endl;
+        rrts.iteration();
+        if(rrts.numVertices > 4000)
+            break;
     }
+    cout<<"commit status: "<< already_committed << endl;
+
     rrts.updateReachability();
     curr_best_cost = rrts.getBestVertexCost();
 
+    if(system_in_goal())
+    {
+        cout<<"reached goal: clear trajectories"<<endl;
+        already_committed = 1;
+        toPublishControl.clear();
+        toPublishTraj.clear();
+    }
 
     // if found traj, copy it and keep publishing, switch root to some node ahead
     if(!already_committed)
@@ -388,11 +408,19 @@ void Planner_node::get_plan()
             else
             {
                 cout<<"traj cost: "<< rrts.getBestVertexCost() << endl;
-                cout<<"switching root"<<endl;
-                toPublishTraj.clear();
-                toPublishControl.clear();
-                if(rrts.switchRoot(5.0, toPublishTraj, toPublishControl))
+
+                // free memory for toPublishTraj
+                for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
                 {
+                    double* stateRef = *iter;
+                    delete stateRef;
+                } 
+                toPublishTraj.clear();
+                
+                toPublishControl.clear();
+                if(rrts.switchRoot( 10, toPublishTraj, toPublishControl))
+                {
+                    cout<<"switching root"<<endl;
                     already_committed = 1;
                     change_sampling_region();
                 }
@@ -406,21 +434,6 @@ void Planner_node::get_plan()
     
     prev_best_cost = curr_best_cost;
 
-    /*
-       vertex_t& vertexBest = rrts.getBestVertex ();
-       if (&vertexBest == NULL)
-       {
-        cout<<"new vertex not found"<<endl;
-    }
-    else
-    {
-        toPublishTraj.clear();
-        cout<<"called get best"<<endl;
-        rrts.getBestTrajectory(toPublishTraj);
-        cout<<"traj cost: "<< rrts.getBestVertexCost() << endl;
-        publish_traj();
-    }
-    */
     publish_tree();
 }
 
@@ -455,8 +468,15 @@ int Planner_node::publish_traj()
     if(! rrts.isSafeTrajectory(toPublishTraj) )
     {
         cout<<"unsafe traj: clearing"<<endl;
-        toPublishTraj.clear();
         toPublishControl.clear();
+    
+        // free memory
+        for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
+        {
+            double* stateRef = *iter;
+            delete stateRef;
+        } 
+        toPublishTraj.clear();
         
         // initiate replan
         emergency_replan();
@@ -532,7 +552,6 @@ int Planner_node::publish_tree()
     pc1.header.stamp = ros::Time::now();
     pc1.header.frame_id = "odom";
    
-    cout<<"publishing tree: "<< rrts.listVertices.size() << " " << rrts.numVertices << endl;
     int count = 0;
     if (num_nodes > 0) 
     {    

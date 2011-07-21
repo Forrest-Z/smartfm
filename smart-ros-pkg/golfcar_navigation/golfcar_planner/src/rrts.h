@@ -130,6 +130,8 @@ namespace RRTstar {
         double getBestVertexCost () {return lowerBoundCost;}
         vertex_t& getBestVertex () {return *lowerBoundVertex;}
         int getBestTrajectory (list<double*>& trajectory, list<float> &control);
+
+        double getTrajectoryLength(list<double*> &trajectory);
     };
 
 }
