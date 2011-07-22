@@ -28,7 +28,7 @@ window
   size [ 640.000 480.000 ] 
   center [0 0]
   rotate [ 0 0.000 ]
-  scale 20 
+  scale 1 
 )
 
 

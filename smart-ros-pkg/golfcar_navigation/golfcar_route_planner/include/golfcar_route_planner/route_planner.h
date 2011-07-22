@@ -19,8 +19,8 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Path.h>
 #include <sensor_msgs/PointCloud.h>
-#include <station_path.h>
-#include "../src/RoutePlanner.hh"
+#include "station_path.h"
+#include "../../src/RoutePlanner.hh"
 #include <iostream>
 
 namespace route_planner {

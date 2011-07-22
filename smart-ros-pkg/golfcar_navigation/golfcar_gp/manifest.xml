@@ -18,7 +18,7 @@
   <depend package="pluginlib"/>
   <depend package="costmap_2d"/>
   <depend package="nav_core"/>
-
+  <depend package="golfcar_route_planner"/>
   <export>
     <cpp cflags="-I${prefix}/include -I${prefix}/msg/cpp" lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -lbase_global_planner" />
     <nav_core plugin="${prefix}/bgp_plugin.xml" />
