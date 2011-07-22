@@ -11,13 +11,18 @@
     android:text="Choose Task to cancel"
     />
     
-<Spinner  android:id="@+id/spinnerCancel"
-       android:layout_width="fill_parent"
-       android:layout_height="wrap_content"
-       android:drawSelectorOnTop="false"
-/>
+	<Spinner  
+	android:id="@+id/spinnerCancel"
+	android:layout_width="fill_parent"
+	android:layout_height="wrap_content"
+	android:drawSelectorOnTop="false"
+	/>
+	
+	<Button 
+	android:text="Confirm" 
+	android:id="@+id/ConfirmCancel" 
+	android:layout_height="wrap_content" 
+	android:layout_width="110dp"
+	></Button>
 
-
- <Button android:text="Confirm" android:id="@+id/ConfirmCancel" android:layout_height="wrap_content" android:layout_width="110dp"></Button>
-    
 </LinearLayout>

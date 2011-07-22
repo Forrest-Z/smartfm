@@ -4,9 +4,7 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:id="@+id/mainlayout"
-    >
-
-    
+    >    
 	<com.google.android.maps.MapView
 		android:id="@+id/mapView"
 		android:layout_width="fill_parent"
@@ -14,15 +12,12 @@
 		android:enabled="true"
 		android:clickable="true"
 		android:apiKey="0KAtGOO0AQCltvem8podXguWbDwB_WJHuXmBh_g"
-		
-        	         />    
-    
+	/>    
    
-    <TextView android:id="@+id/description" 
+	<TextView 
+		android:id="@+id/description" 
  		android:text="TextView"
- 			android:layout_width="fill_parent"
-                android:layout_height="wrap_content"/>
-
-	
-    
+ 		android:layout_width="fill_parent"
+		android:layout_height="wrap_content"
+	/>
 </LinearLayout>

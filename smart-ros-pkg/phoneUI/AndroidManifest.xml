@@ -5,14 +5,11 @@
       android:versionName="1.0">
     <uses-sdk android:minSdkVersion="10" />
 	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-		<uses-permission android:name="android.permission.INTERNET" />
-	
+	<uses-permission android:name="android.permission.INTERNET" />
+
     <application android:icon="@drawable/icon" android:label="@string/app_name">
 		<uses-library android:name="com.google.android.maps"/>
     
-        
-        
-
 		<activity android:name=".MainActivity"
                   android:label="@string/app_name">
             <intent-filter>
@@ -21,31 +18,8 @@
             </intent-filter>
         </activity>
 		
-
-		<activity 
-			android:theme="@android:style/Theme.Dialog"
-			android:name=".ChooseDestinationActivity"
-			android:label="@string/app_name">
-            <intent-filter>
-                <action android:name="android.intent.action" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
         <activity 
-			android:theme="@android:style/Theme.Dialog"
-			android:name=".ChoosePickupActivity"
-			android:label="@string/app_name">
-            <intent-filter>
-                <action android:name="android.intent.action" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-        
-        
-        
-        
-        <activity 
-			android:name=".CancelOrderActivity"
+			android:name=".TaskCancelActivity"
 			android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action" />
@@ -54,36 +28,22 @@
         </activity>
 		
 		<activity 
-			android:name=".ServiceInfoActivity2"
+			android:name=".TaskListInfoActivity"
 			android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-		
-		
 		 
-        <activity 
-			android:theme="@android:style/Theme.Dialog"
-			android:name=".CancelActivity"
+	 	<activity 
+			android:name=".TaskSettingActivity"
 			android:label="@string/app_name">
             <intent-filter>
                 <action android:name="android.intent.action" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-
-	 <activity 
-			android:name=".BookCarActivity"
-			android:label="@string/app_name">
-            <intent-filter>
-                <action android:name="android.intent.action" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
-
-
 
     </application>
 </manifest>

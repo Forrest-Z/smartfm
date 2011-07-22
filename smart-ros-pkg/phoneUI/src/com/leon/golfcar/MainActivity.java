@@ -15,8 +15,6 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Point;
-import android.location.Geocoder;
-import android.location.Location;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -28,6 +26,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.ServerSocket;
@@ -35,17 +34,16 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.util.ArrayList;
 
-
 public class MainActivity extends MapActivity  {
     /** Called when the activity is first created. */
     private MapView mapView = null;
     private MapController mapController = null;
-	private GeoPoint destGeoPoint = null;
-	private GeoPoint pickupGeoPoint;
-    private double destLatitude = 0.0;
-    private double destLongitude = 0.0;
-    private double pickupLatitude = 0.0;
-    private double pickupLongitude = 0.0;
+	private GeoPoint dropOffGeoPoint = null;
+	private GeoPoint pickUpGeoPoint;
+    private double dropOffLatitude = 0.0;
+    private double dropOffLongitude = 0.0;
+    private double pickUpLatitude = 0.0;
+    private double pickUpLongitude = 0.0;
     private boolean orderFlag = false;
     private int userID;
     private int taskID = 1;
@@ -57,27 +55,35 @@ public class MainActivity extends MapActivity  {
     
     private static final String REMOTE_HOSTNAME = "172.17.185.120";
     // Phone's IP and Port for sending and listening
-    public static String LOCAL_SERVERIP = "172.17.184.92"; //default
-    public static final int LOCAL_SERVERPORT = 4440;
-    public static final String CANCEL_CONFIRM = "-6";
-    public static final String CANCEL_INVALID = "-5";
-    public static final String CANCEL_PICKUP = "-1";
-    public static final String CANCEL_DEST = "-1";
-    
-    private ServerSocket serverSocket;
-	
-    //private FMUI client = new FMUI();
-    private List<ServiceMsg> userTasks = new ArrayList<ServiceMsg>();
-    
-    
-    
-    
+    private static String LOCAL_HOSTNAME = "172.17.184.92"; //default
+    private static final int LOCAL_SERVERPORT = 4440;
+    private static final String CANCEL_CONFIRM = "-6";
+    private static final String CANCEL_INVALID = "-5";
+    private static final String CANCEL_PICKUP = "-1";
+    private static final String CANCEL_DEST = "-1";
+    private static final int SET_TASK = 2;
+    private static final int CANCEL_TASK = 1;
+
+    private List<Task> taskList = new ArrayList<Task>();
+
 	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 		setTitle("Google Map");
-        // set up GoogleMap
+		
+		initializeApp();
+    }
+	
+	private void initializeApp(){
+		initializeGoogleMap();
+		initializeUserIp();
+		initializeUserID();
+		initializeUserID();
+		runNetworkListener();
+	}
+	
+	private void initializeGoogleMap(){
 		mapView = (MapView) findViewById(R.id.mapView);
         mapView.setSatellite(true);
         mapView.setEnabled(true);
@@ -85,22 +91,38 @@ public class MainActivity extends MapActivity  {
         mapView.setBuiltInZoomControls(true);
         mapView.displayZoomControls(true);
         mapController = mapView.getController();
-        
-        // Get Phone's local Ip address
-        LOCAL_SERVERIP = getLocalIpAddress();
-        
-        // Generate an unique ID for this Phone
-        userID = generateUserID(LOCAL_SERVERIP);
-        
-        // Create a Thread for network information transfer
-        Thread fst = new Thread(new ListeningThread());
-        fst.setName("Thread:onCreate");
+	}
+	
+	private void initializeUserIp()
+	{
+		LOCAL_HOSTNAME = getLocalIpAddress();
+	}
+	
+	private void initializeUserID()
+	{
+		// serial number of the phone
+		String serialNumber = null; 
+
+		try {
+		    Class<?> c = Class.forName("android.os.SystemProperties");
+		    Method get = c.getMethod("get", String.class);
+		    serialNumber = (String) get.invoke(c, "ro.serialno");
+		} catch (Exception ignored) {
+		}
+		
+		userID = generateUserID(serialNumber);
+	}
+	
+	private void runNetworkListener()
+	{
+		Thread fst = new Thread(new NetworkListener());
+       // fst.setName("Thread:onCreate");
         fst.start();
-    }
+	}
 	
 	// Generate ID
-	private int generateUserID(String SERVERIP){
-		return SERVERIP.hashCode() > 0 ? SERVERIP.hashCode() : -SERVERIP.hashCode();
+	private int generateUserID(String serialNumber){
+		return serialNumber.hashCode() > 0 ? serialNumber.hashCode() : -serialNumber.hashCode();
 	}
 	
 
@@ -144,129 +166,163 @@ public class MainActivity extends MapActivity  {
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()){
 		case R.id.book_car:
-			Intent intent_bookCar = new Intent(MainActivity.this,BookCarActivity.class);
-			startActivityForResult(intent_bookCar, REQUEST_CODE);
+			setTask();
 			return true;
 		case R.id.service_info:
-			Intent intent_serviceInfo = new Intent(MainActivity.this,ServiceInfoActivity2.class);		
-			ArrayList<String> tmp = new ArrayList<String>();
-			// store tasks info into tmp
-			for (int i=0;i<userTasks.size();i++)
-			{
-				tmp.add(userTasks.get(i).ID+":"+userTasks.get(i).taskID+":"+userTasks.get(i).pickup_op+":"+userTasks.get(i).dest_op
-						+":"+userTasks.get(i).wait+":"+userTasks.get(i).carID+":"+userTasks.get(i).pickup_location+":"
-						+userTasks.get(i).dest_location);
-			}
-			intent_serviceInfo.putStringArrayListExtra("tmp", tmp);
-			startActivity(intent_serviceInfo);
+			checkTasklist();
 			return true;
 		case R.id.cancel_service:
-			//cancelOrder();
-			Intent intent_cancelOrder = new Intent(MainActivity.this, CancelOrderActivity.class);
-			
-			ArrayList<String> tmp2 = new ArrayList<String>();
-			// store tasks info into tmp
-			for (int i=0;i<userTasks.size();i++)
-			{
-				tmp2.add(userTasks.get(i).ID+":"+userTasks.get(i).taskID+":"+userTasks.get(i).pickup_op+":"+userTasks.get(i).dest_op
-						+":"+userTasks.get(i).wait+":"+userTasks.get(i).carID+":"+userTasks.get(i).pickup_location+":"
-						+userTasks.get(i).dest_location);
-			}
-			intent_cancelOrder.putStringArrayListExtra("tmp", tmp2);
-						
-			startActivityForResult(intent_cancelOrder, REQUEST_CODE);
-			
+			cancelTask();
 			return true;	
 		default:
 			return super.onOptionsItemSelected(item);
 		}
 	}
 	
+	private void setTask(){
+		Intent intentSetTaskActivity = new Intent(MainActivity.this,TaskSettingActivity.class);
+		startActivityForResult(intentSetTaskActivity, REQUEST_CODE);
+	}
+	
+	private void checkTasklist(){
+		Intent intentTasklistInfoActivity = new Intent(MainActivity.this,TaskListInfoActivity.class);		
+		ArrayList<String> tasklistInfoString = new ArrayList<String>();
+
+		for (int i=0;i<taskList.size();i++)
+		{
+			tasklistInfoString.add(taskList.get(i).convertTaskInfoToString());
+		}
+		
+		intentTasklistInfoActivity.putStringArrayListExtra("tasklistInfoString", tasklistInfoString);
+		startActivity(intentTasklistInfoActivity);
+	}
+
+	private void cancelTask() {
+		Intent intentCancelTask = new Intent(MainActivity.this, TaskCancelActivity.class);
+		
+		ArrayList<String> tasklistInfoString = new ArrayList<String>();
+		// store tasks info into tmp
+		for (int i=0;i<taskList.size();i++)
+		{
+			tasklistInfoString.add(taskList.get(i).convertTaskInfoToString());
+		}
+		
+		intentCancelTask.putStringArrayListExtra("tmp", tasklistInfoString);			
+		startActivityForResult(intentCancelTask, REQUEST_CODE);
+	}
+	
+	
 	//handle return value from RadioGroupActivity and RadioGroupActivity
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {		
-		if (requestCode == REQUEST_CODE) {
-			if (resultCode == RESULT_OK){
-	    		Bundle extras = data.getExtras();
-				if (extras != null)
-				{
-					if (extras.getInt("actionType")==1)
-					{
-						cancelTaskID = extras.getInt("cancelTaskID");
-						
-						if(cancelTaskID!=0)
-						{
-							cancelFlag = true;
-							//test
-						//	userTasks.get(cancelTaskID-1).pickup_op = "-1";
-						//	userTasks.get(cancelTaskID-1).dest_op = "-1";
-						}
-					}
-					else {
-						//ServiceMsg 
-						//get data from BookCarActivity.java
-						pickupLatitude = extras.getDouble("pickup_lat");
-						pickupLongitude = extras.getDouble("pickup_longi");
-						destLatitude = extras.getDouble("dest_lat");
-						destLongitude = extras.getDouble("dest_longi");	
-						
-						if (extras.getInt("pickup_op")!=extras.getInt("dest_op"))
-						{
-						//draw dest location
-						//convert destination GeoPoint to location name
-						Location dest_location = new Location("dummyprovider");
-						dest_location.setLatitude(destLatitude);
-						dest_location.setLongitude(destLongitude);
-						// draw destination pin on Map
-						destGeoPoint = new GeoPoint ((int)(destLatitude * 1000000), (int)(destLongitude * 1000000));        
-						mapController.animateTo(destGeoPoint);
-						mapController.setZoom(17);	
-						drawDestinationLocationOverlay dest_overlay = new drawDestinationLocationOverlay();
-						List<Overlay> dest_list = mapView.getOverlays();
-						dest_list.add(dest_overlay);
-						
-						// draw pickup location
-						//convert pickup GeoPoint to location name
-						Location location = new Location("pickup");
-						location.setLatitude(pickupLatitude);
-						location.setLongitude(pickupLongitude);
-						
-						// draw pickup location pin on Map
-						pickupGeoPoint = new GeoPoint ((int)(pickupLatitude * 1000000), (int)(pickupLongitude * 1000000));        
-						mapController.animateTo(pickupGeoPoint);
-						mapController.setZoom(17);	
-						
-						drawPickupLocationOverlay pickup_overlay = new drawPickupLocationOverlay();
-						List<Overlay> pickup_list = mapView.getOverlays();
-						pickup_list.add(pickup_overlay);
-						
-						// add new task to services 
-						ServiceMsg s = new ServiceMsg(Integer.toString(userID),Integer.toString(taskID++),Integer.toString(extras.getInt("pickup_op")),
-								Integer.toString(extras.getInt("dest_op")),"0","0",extras.getString("pickup_location"),extras.getString("dest_location"));
-						userTasks.add(s);
-						
-						orderFlag = true;
-						} else
-						{
-							Context context = getApplicationContext();
-				        	CharSequence text = "Service cannot be deliveried. Pick-up location and Drop-off location cannot be the same.";
-				        	int duration = Toast.LENGTH_LONG;
-				        	
-				        	Toast toast = Toast.makeText(context, text, duration);
-				        	toast.show();
-						}
-					}
-				}
-			}
+		if (requestCode == REQUEST_CODE && resultCode == RESULT_OK) {
+			setTaskAndCancelTask(data);
 		}
 	}
 	
-	//draw pickup location overlay
-	public class drawPickupLocationOverlay extends Overlay
-	{
-		public  GeoPoint gp0=null;
-		public  GeoPoint gp1=null;
+	private void setTaskAndCancelTask(Intent data){
+		Bundle extras = data.getExtras();
+		if (extras != null) {
+			receiveDataFromSetTaskActivityAndCancelTaskActivity(extras);
+		}
+	}
+	
+	private void receiveDataFromSetTaskActivityAndCancelTaskActivity(Bundle extras){
+		int actionType = 0;
 		
+		actionType = extras.getInt("actionType");
+		
+		switch(actionType) {
+			case CANCEL_TASK:
+				cancelTask(extras);
+				break;
+			case SET_TASK:
+				setTask(extras);
+				break;
+			default:
+				break;
+		}
+	}
+	
+	private void cancelTask(Bundle extras) {
+		cancelTaskID = extras.getInt("cancelTaskID");
+		
+		if(cancelTaskID!=0) {
+			cancelFlag = true;
+		}
+	}
+	
+	private void setTask(Bundle extras) {
+			if (extras.getInt("pickup_op")!=extras.getInt("dest_op"))
+			{
+				drawTaskOnMapAndAddTaskToTasklist(extras);
+				orderFlag = true;
+			} else {
+				displaySetTaskErr();
+			}
+	}
+	
+	private void drawTaskOnMapAndAddTaskToTasklist(Bundle extras) {
+		drawTaskDetailOnMap(extras);
+		addTaskToTasklist(extras);
+	}
+	
+	private void drawTaskDetailOnMap(Bundle extras) {
+		getLocationInformation(extras);
+		drawDropOffLocation();
+		drawPickUpLocation();
+	}
+	
+	private void addTaskToTasklist(Bundle extras) {
+		Task s = new Task(Integer.toString(userID),Integer.toString(taskID++),
+						Integer.toString(extras.getInt("pickup_op")),Integer.toString(extras.getInt("dest_op")),
+						"--","--",extras.getString("pickup_location"),extras.getString("dest_location"));
+		taskList.add(s);
+	}
+	
+	private void displaySetTaskErr() {
+		Context context = getApplicationContext();
+    	CharSequence text = "Service cannot be deliveried. Pick-up location and Drop-off location cannot be the same.";
+    	int duration = Toast.LENGTH_LONG;
+    	
+    	Toast toast = Toast.makeText(context, text, duration);
+    	toast.show();
+	}
+	
+	private void getLocationInformation(Bundle extras){
+		//ServiceMsg 
+		//get data from BookCarActivity.java
+		pickUpLatitude = extras.getDouble("pickup_lat");
+		pickUpLongitude = extras.getDouble("pickup_longi");
+		dropOffLatitude = extras.getDouble("dest_lat");
+		dropOffLongitude = extras.getDouble("dest_longi");	
+	}
+	
+	private void drawDropOffLocation(){
+		// draw destination pin on Map
+		dropOffGeoPoint = new GeoPoint ((int)(dropOffLatitude * 1000000), (int)(dropOffLongitude * 1000000));        
+		mapController.animateTo(dropOffGeoPoint);
+		mapController.setZoom(17);	
+		
+		DropOffLocationOverlay dropOffOverlay = new DropOffLocationOverlay();
+		List<Overlay> dest_list = mapView.getOverlays();
+		dest_list.add(dropOffOverlay);
+	}
+	
+	private void drawPickUpLocation(){
+		// draw pickup location pin on Map
+		pickUpGeoPoint = new GeoPoint ((int)(pickUpLatitude * 1000000), (int)(pickUpLongitude * 1000000));        
+		mapController.animateTo(pickUpGeoPoint);
+		mapController.setZoom(17);	
+		
+		PickUpLocationOverlay pickUpOverlay = new PickUpLocationOverlay();
+		List<Overlay> pickup_list = mapView.getOverlays();
+		pickup_list.add(pickUpOverlay);
+	}
+	
+	//draw pickup location overlay
+	public class PickUpLocationOverlay extends Overlay
+	{
 		public boolean draw(Canvas canvas, MapView mapView, boolean shadow, long when)
 		{
 			super.draw(canvas, mapView, shadow);
@@ -275,7 +331,7 @@ public class MainActivity extends MapActivity  {
 			Bitmap bmp;
 			
 			//convert
-			mapView.getProjection().toPixels(pickupGeoPoint, myScreenCoords);
+			mapView.getProjection().toPixels(pickUpGeoPoint, myScreenCoords);
 			paint.setStrokeWidth(1);
 			paint.setARGB(255, 255, 0, 0);
 			paint.setStyle(Paint.Style.STROKE);
@@ -287,22 +343,16 @@ public class MainActivity extends MapActivity  {
 		
 		public void disableCompass() {
 			// TODO Auto-generated method stub
-			
 		}
 		
 		public void enableCompass() {
 			// TODO Auto-generated method stub
-			
 		}
 	}
 	
 	//draw destination location overlay
-	public class drawDestinationLocationOverlay extends Overlay
+	public class DropOffLocationOverlay extends Overlay
 	{
-		public  Geocoder geocoder;
-		public  GeoPoint gp0=null;
-		public  GeoPoint gp1=null;
-		
 		public boolean draw(Canvas canvas, MapView mapView, boolean shadow, long when)
 		{
 			super.draw(canvas, mapView, shadow);
@@ -311,7 +361,7 @@ public class MainActivity extends MapActivity  {
 			Bitmap bmp;
 			//convert
 			
-			mapView.getProjection().toPixels(destGeoPoint, myScreenCoords);
+			mapView.getProjection().toPixels(dropOffGeoPoint, myScreenCoords);
 			paint.setStrokeWidth(1);
 			paint.setARGB(255, 255, 0, 0);
 			paint.setStyle(Paint.Style.STROKE);
@@ -320,119 +370,161 @@ public class MainActivity extends MapActivity  {
 			canvas.drawBitmap(bmp, myScreenCoords.x, myScreenCoords.y,paint);
 			
 			return true;
-			
 		}
 		
 		public void disableCompass() {
 			// TODO Auto-generated method stub
-			
 		}
 		
 		public void enableCompass() {
 			// TODO Auto-generated method stub
-			
 		}
 	}
 	
-    public class ListeningThread implements Runnable {
-		
-        public void run() {
-            try {
-                if (LOCAL_SERVERIP != null) {
-                	
-                	int[] ports = {4440, 4441, 1024, 8080};
-                	PrintWriter out = null;
-                    BufferedReader in = null;
-                    
-                    serverSocket = new ServerSocket(LOCAL_SERVERPORT);
-                    Socket socket = null;
-                    
-                    for( int p: ports ) {
-        				socket = new Socket(REMOTE_HOSTNAME,p);
-        				out = new PrintWriter(socket.getOutputStream(), true);
-        			    in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-        			    if (socket!=null) {
-        	                break;
-        	            }
-                    }
-                    
-                	while(true){
-                		if (orderFlag) {
-                			out.println(";" + userTasks.get(userTasks.size()-1).ID + ":" 
-                			+ userTasks.get(userTasks.size()-1).taskID + ":" 
-                			+ userTasks.get(userTasks.size()-1).pickup_op + ":" 
-                			+ userTasks.get(userTasks.size()-1).dest_op);
-                			orderFlag = false;
-                		}
-                		if (cancelFlag) {
-                			out.println(";" + Integer.toString(userID) + ":"
-                					+ cancelTaskID + ":"
-                					+ "-1:-1");
-                			cancelFlag = false;
-                		}
-                		
-                		try {
-                            String msg = null;
-                            
-                            //;task_id:wait:carID
-                            while (in.ready()&&(msg = in.readLine()) != null) {                                
-                                if (msg.startsWith(";")) {
-                                	int f = msg.indexOf(":");
-                                	int s = msg.indexOf(":",f+1);
-                                	String temp_taskID = msg.substring(1,f);		
-                                	
-                                	// check taskID
-                                	int sidx = -1;
-                                	for (int i=0;i<userTasks.size();i++)
-                                	{
-                                		if(userTasks.get(i).taskID.compareTo(temp_taskID)==0){
-                                			sidx = i;
-                                			break;
-                                		}		
-                                	}
-                                	
-                                	if(sidx==-1){
-                                		System.out.println("No TaskID: "+temp_taskID);
-                                	} 
-                                	else{
-                                		if (msg.substring(f+1, s).compareTo(CANCEL_PICKUP)==0 &&
-                                				msg.substring(s+1).compareTo(CANCEL_CONFIRM)==0)
-                                		{
-                                			userTasks.get(sidx).pickup_op = CANCEL_PICKUP;
-                							userTasks.get(sidx).dest_op = CANCEL_DEST;
-                                		} else if (msg.substring(f+1, s).compareTo(CANCEL_PICKUP)==0 &&
-                                				msg.substring(s+1).compareTo(CANCEL_INVALID)==0)
-                                		{
-                                			
-                                		} else {
-                                			userTasks.get(sidx).wait = msg.substring(f+1, s);
-                                			userTasks.get(sidx).carID = msg.substring(s+1);
-                                		}
-                                	}         
-                                    break;
-                                }
-                            }
-                            //break;
-                        } catch (Exception e) {
-                        	e.printStackTrace();
-                        }                    
-                	
-                		try {
-                            Thread.sleep(1000);
-                        } catch( InterruptedException e ) {
-                        }
-                	}
-                	
-                	
-                    
-                    
-                } else {	//ServiceIP = null
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+    public class NetworkListener implements Runnable {
+    	private final int[] ports = {4440, 4441, 1024, 8080};
+    	private PrintWriter out = null;
+        private BufferedReader in = null;
+        private ServerSocket serverSocket = null;
+    	private String feedbackTaskID = "0";
+    	private String feedbackTaskWaitTime = "0";
+    	private String feedbackTaskCarID = "0";
+    	
+    	public void run() {
+            if (LOCAL_HOSTNAME != null) {
+            	runNetworkListener();
+            } else {	//ServiceIP = null
             }
         }
-    }
+    
+        private void runNetworkListener(){
+	    	try{
+	    		initializeNetWorkListener();
+	            transferData();
+	    	} catch (Exception e) {
+	    		e.printStackTrace();
+	    	}
+	    }
+    
+    	private void initializeNetWorkListener() throws IOException {
+    		serverSocket = new ServerSocket(LOCAL_SERVERPORT);
+            Socket socket = null;
+            
+            for( int p: ports ) {
+				socket = new Socket(REMOTE_HOSTNAME,p);
+				out = new PrintWriter(socket.getOutputStream(), true);
+			    in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+			    if (socket!=null) {
+	                break;
+	            }
+            }
+    	}
+    
+    	private void transferData() throws IOException {
+        	while(true){
+        		if (orderFlag) {
+        			sendSetTaskData();
+        		}
+        		if (cancelFlag) {
+        			sendCancelTaskData();
+        		}
+        		
+        		getFeedbackFromScheduler();     
+	        	
+	        	try {
+	        		Thread.sleep(500);
+	        	} catch( InterruptedException e ) {
+	        		e.printStackTrace();
+	        	}
+	        }
+    	}
+    	
+    	private void sendSetTaskData(){
+    		String data = ";" + taskList.get(taskList.size()-1).ID + ":" 
+    				+ taskList.get(taskList.size()-1).taskID + ":" 
+    				+ taskList.get(taskList.size()-1).pickUpOption + ":" 
+    				+ taskList.get(taskList.size()-1).dropOffOption;
+    		
+    		out.println(data);
+    		
+    		orderFlag = false;
+    	}
+    
+    	private void sendCancelTaskData(){
+    		String data =";" + Integer.toString(userID) + ":"
+					+ cancelTaskID + ":" + "-1:-1"; 
+    		
+    		out.println(data);
+			
+    		cancelFlag = false;
+    	}
+    	
+    	private void getFeedbackFromScheduler() throws IOException {
+            String msg = null;
+            
+            //;task_id:wait:carID
+            while (in.ready()&&(msg = in.readLine()) != null) {                                
+                updateTasklist(msg);
+            }
+    	}
+    	
+    	private void updateTasklist(String msg){
+    		if (msg.startsWith(";")) {
+    			readFeedback(msg);
+            	
+            	int taskIDInTasklist = -1;
+            	taskIDInTasklist = checkTaskValid();
+            	
+            	if(taskIDInTasklist==-1){
+            		displayTaskInvalid(); //no such Task in Tasklist
+            	} 
+            	else{
+            		updateTaskInTasklist(taskIDInTasklist);
+            	}         
+            }
+    	}
+    	
+    	private void readFeedback(String msg){
+    		int f = msg.indexOf(":");
+        	int s = msg.indexOf(":",f+1);
+        	
+    		feedbackTaskID = msg.substring(1,f);
+    		feedbackTaskWaitTime = msg.substring(f+1, s);
+    		feedbackTaskCarID = msg.substring(s+1);
+    	}
+    	
+    	private int checkTaskValid(){
+    		int sidx = -1;
+    		for (int i=0;i<taskList.size();i++)
+        	{
+        		if(taskList.get(i).taskID.compareTo(feedbackTaskID)==0){
+        			sidx = i;
+        			break;
+        		}		
+        	}
+    		
+    		return sidx;
+    	}
+    	
+    	private void displayTaskInvalid(){
+    		System.out.println("No TaskID: " + feedbackTaskID);
+    	}
+    	
+    	private void updateTaskInTasklist(int taskIDInTasklist){
+    		if (feedbackTaskWaitTime.compareTo(CANCEL_PICKUP)==0 && feedbackTaskCarID.compareTo(CANCEL_CONFIRM)==0)
+    		{
+    			taskList.get(taskIDInTasklist).pickUpOption = CANCEL_PICKUP;
+				taskList.get(taskIDInTasklist).dropOffOption = CANCEL_DEST;
+    		} else if (feedbackTaskWaitTime.compareTo(CANCEL_PICKUP)==0 
+    			&& feedbackTaskCarID.compareTo(CANCEL_INVALID)==0)
+    		{
+    			
+    		} else {
+    			taskList.get(taskIDInTasklist).waitTime = feedbackTaskWaitTime;
+    			taskList.get(taskIDInTasklist).carID = feedbackTaskCarID;
+    		}
+    	}
+   }
 	
     // gets the ip address of your phone's network
     private String getLocalIpAddress() {
@@ -450,6 +542,7 @@ public class MainActivity extends MapActivity  {
         return null;
     }
 	
+    /*
     @Override
     protected void onStop() {
         super.onStop();
@@ -459,7 +552,7 @@ public class MainActivity extends MapActivity  {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-    }
+    }*/
 
 	@Override
 	protected boolean isRouteDisplayed() {
