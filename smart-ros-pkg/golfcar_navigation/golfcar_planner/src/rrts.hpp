@@ -532,47 +532,50 @@ int
     RRTstar::Planner< typeparams >
 ::checkTree()
 {
-    for (typename set<vertex_t*>::iterator iter = root->children.begin(); iter != root->children.end(); iter++) 
+    if( root->children.size() > 0)
     {
-        vertex_t &vertex = **iter;
-        checkTrajectory(vertex);
-    }
-
-    list<vertex_t*> listSurvivingVertices;
-    for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++) 
-    {
-        vertex_t *vertex  = *iter;
-        if( vertex->costFromRoot > -0.5)
-            listSurvivingVertices.push_front(vertex);
-        else
+        for (typename set<vertex_t*>::iterator iter = root->children.begin(); iter != root->children.end(); iter++) 
         {
-            //cout<<"deleting vertex"<<endl;
-            delete vertex;
+            vertex_t &vertex = **iter;
+            checkTrajectory(vertex);
         }
+
+        list<vertex_t*> listSurvivingVertices;
+        for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++) 
+        {
+            vertex_t *vertex  = *iter;
+            if( vertex->costFromRoot > -0.5)
+                listSurvivingVertices.push_front(vertex);
+            else
+            {
+                //cout<<"deleting vertex"<<endl;
+                delete vertex;
+            }
+        }
+
+        if (kdtree) {
+            kd_clear (kdtree);
+            kd_free (kdtree);
+        }
+        kdtree = kd_create (system->getNumDimensions());
+
+        listVertices.clear();
+        numVertices = 0;
+        for (typename list<vertex_t*>::iterator iter = listSurvivingVertices.begin(); iter != listSurvivingVertices.end(); iter++) 
+        {
+            listVertices.push_front(*iter);
+            numVertices++;
+
+            insertIntoKdtree (**iter);
+        }
+
+        lowerBoundVertex = NULL;
+        lowerBoundCost = DBL_MAX;
+
+        listSurvivingVertices.clear();
+        recomputeCost (root);
+
     }
-
-    if (kdtree) {
-        kd_clear (kdtree);
-        kd_free (kdtree);
-    }
-    kdtree = kd_create (system->getNumDimensions());
-
-    listVertices.clear();
-    numVertices = 0;
-    for (typename list<vertex_t*>::iterator iter = listSurvivingVertices.begin(); iter != listSurvivingVertices.end(); iter++) 
-    {
-        listVertices.push_front(*iter);
-        numVertices++;
-
-        insertIntoKdtree (**iter);
-    }
-
-    lowerBoundVertex = NULL;
-    lowerBoundCost = DBL_MAX;
-
-    listSurvivingVertices.clear();
-    recomputeCost (root);
-
     return 1;
 }
 
@@ -824,16 +827,20 @@ RRTstar::Planner< typeparams >
     }
     
     delete [] stateArrPrev;  
-
-    if (stateFound == false) {
-
-            trajret.clear();
-            controlret.clear();
-            
-            delete [] stateRootNew;
-            return 0;
+   
+    if (stateFound == false) 
+    {
+        // free memory for toPublishTraj
+        for (list<double*>::iterator iter = trajret.begin(); iter != trajret.end(); iter++) 
+        {
+            double* stateRef = *iter;
+            delete stateRef;
+        } 
+        trajret.clear();
+        controlret.clear();
+        delete [] stateRootNew;
+        return 0;
     }
-
 
     // 2. Find and store all the decendandts of the new root
     findDescendantVertices (vertexChildNew);
@@ -889,13 +896,12 @@ RRTstar::Planner< typeparams >
             delete vertexCurrDel;
         }
     }
-    cout<<"finished deleting vertices"<<endl;
+    
     listVertices.clear();
     numVertices = 0;
 
     lowerBoundVertex = NULL;
     lowerBoundCost = DBL_MAX;
-
 
 
     // 7. Repopulate the list of all vertices and recreate the kdtree

@@ -24,8 +24,8 @@ define gc1 position
   origin [0.792 0 0 0]
   gui_nose 1
   drive "car"
-  localization "odom"
-  odom_error [0.01 0.05 0.01 0.02 0.01 0.02]
+  localization "gps"
+  #odom_error [0.01 0.05 0.01 0.02 0.01 0.02]
 
   topurg(pose [1.985 0 0 0])
 )
@@ -85,12 +85,12 @@ interval_sim 30  # simulation timestep in milliseconds
 
 window
 ( 
-  size [ 843.000 706.000 ] 
+  size [ 490.000 428.000 ] 
  #center [327.990 371.960] 
-  center [-87.075 181.720]
+  center [-133.142 53.711]
 #rotate [ 0.000 -1.560 ]
   rotate [ 0 90.000 ]
-  scale 3.382 
+  scale 5.447 
 )
 
 # load an environment bitmap
@@ -108,7 +108,7 @@ pose [-176.333 160.001 0 90.000]  #for amcl_hokuyo
 )
 
 # throw in a robot
-gc1( pose [-15.935 242.588 0 -177.432] name "gc1" color "red")
+gc1( pose [-122.867 29.977 0 173.974] name "gc1" color "red")
 #gc2( pose [-95.109 181.515 0 90.763] name "gc2" color "green")
 #gc3( pose [-95.109 177.739 0 90.763] name "gc3" color "blue")
 block( pose [ -104.223 98.740 0 0 ] color "red")

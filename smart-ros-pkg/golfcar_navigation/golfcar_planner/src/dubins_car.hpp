@@ -92,7 +92,7 @@ double Trajectory::evaluateCost () {
 
 System::System () 
 {
-    turning_radius = 4.0;
+    turning_radius = 5.0;
     distance_limit = 1000.0;
     delta_distance = 0.05;
     has_found_path = 0; 
@@ -291,7 +291,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
 
         // Generate states/inputs
         double del_d = delta_distance;
-        double del_t = del_d * turning_radius;
+        double del_t = del_d/turning_radius;
 
         double t_inc_curr = 0.0;
 

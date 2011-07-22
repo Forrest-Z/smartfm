@@ -6,6 +6,7 @@
 #include <inttypes.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Pose.h>
+#include <sensor_msgs/PointCloud.h>
 
 using namespace std;
 using namespace geometry_msgs;
@@ -38,6 +39,7 @@ class Local_map
         // map of obstacle beliefs
         unsigned char *map;
         vector <vector<Point> > map_points;
+        vector<sensor_msgs::PointCloud> curb_points;
 
         void reinit_map();
 

@@ -31,11 +31,16 @@ class local_map_node
         Pose odom_now_;
         
         void publish_msg();
+        void on_curb(const sensor_msgs::PointCloud::ConstPtr &msg);
         void odomCallBack(const nav_msgs::Odometry::ConstPtr &odom_in);
         void on_sick(const sensor_msgs::LaserScan::ConstPtr &msg);
+
         tf::TransformListener tf_;
         tf::MessageFilter<sensor_msgs::LaserScan> *tf_filter_;
         message_filters::Subscriber<sensor_msgs::LaserScan> laser_scan_sub_;
+
+        ros::Subscriber curb_left_sub;
+        ros::Subscriber curb_right_sub;
 
         ros::Publisher map_pub_;
         ros::Publisher map_points_pub_;
@@ -54,6 +59,9 @@ local_map_node::local_map_node()
     tf_filter_->registerCallback(boost::bind(&local_map_node::on_sick, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
     
+    curb_left_sub = n_.subscribe<sensor_msgs::PointCloud>("left_curbline_pub_", 1, &local_map_node::on_curb, this);
+    curb_right_sub = n_.subscribe<sensor_msgs::PointCloud>("right_curbline_pub_", 1, &local_map_node::on_curb, this);
+
     laser_skip_ = 1;
     laser_count_ = 0;
 }
@@ -73,6 +81,25 @@ void local_map_node::odomCallBack(const nav_msgs::Odometry::ConstPtr &odom_in)
     lmap.pose = odom_now_;
 }
 
+void local_map_node::on_curb(const sensor_msgs::PointCloud::ConstPtr &msg)
+{
+    sensor_msgs::PointCloud pcout;
+    try{
+        tf_.transformPointCloud("/odom", *msg, pcout);
+        cout<<"transformed curb to odom"<<endl;
+
+        lmap.curb_points.push_back(pcout);
+        if(lmap.curb_points.size() > 10)
+        {
+            lmap.curb_points.erase( lmap.curb_points.begin() );
+        }
+    }
+    catch(tf::ExtrapolationException &e)
+    {
+        ROS_INFO("transform extrapolation failed");
+    }
+}
+
 void local_map_node::on_sick(const sensor_msgs::LaserScan::ConstPtr &scan_in)
 {
     laser_count_++;
@@ -82,7 +109,7 @@ void local_map_node::on_sick(const sensor_msgs::LaserScan::ConstPtr &scan_in)
 
     try
     {
-        projector.transformLaserScanToPointCloud("odom", *scan_in, cloud,tf_);
+        projector.transformLaserScanToPointCloud("odom", *scan_in, cloud, tf_);
     }
     catch (tf::TransformException& e)
     {
@@ -101,7 +128,6 @@ void local_map_node::on_sick(const sensor_msgs::LaserScan::ConstPtr &scan_in)
         points[i].z=cloud.points[i].z;
     }
     lmap.process_points(points);
-
 
     //call function to update the local map
     lmap.create_map();

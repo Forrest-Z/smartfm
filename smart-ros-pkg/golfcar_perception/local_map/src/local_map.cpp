@@ -5,8 +5,8 @@ Local_map::Local_map()
 
     // x is forward, y is left
     res = 0.25;
-    width = 50.0;
-    height = 50.0;
+    width = 20.0;
+    height = 20.0;
     
     xsize = height/res;
     ysize = width/res;
@@ -89,6 +89,28 @@ void Local_map::create_map()
             }
         }
     }
+    for(unsigned int i=0; i< curb_points.size(); i++)
+    {
+        for(unsigned int j=0; j< curb_points[i].points.size(); j++)
+        {
+            Point ptmp;
+            ptmp.x = curb_points[i].points[j].x;
+            ptmp.y = curb_points[i].points[j].y;
+            ptmp.z = curb_points[i].points[j].z;
+            
+            int xnum, ynum;
+            int res = get_cell_num( ptmp, xnum, ynum);
+            if(res == 0)
+            {
+                //cout<<"xnum: "<< xnum<<" "<<ynum<<endl;
+                int map_loc = CELL_LIN(xnum, ynum);
+                //cout<<"map_loc: "<< map_loc << " "<<xsize*ysize << endl;
+                map[map_loc] = 250;
+                //cout<<"accessed map array"<<endl;
+            }
+        }
+    }
+
 }
 
 

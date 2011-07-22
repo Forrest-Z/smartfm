@@ -16,6 +16,7 @@
 #include <message_filters/subscriber.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PointStamped.h>
 #include <nav_msgs/Path.h>
 #include <nav_msgs/GridCells.h>
 
@@ -40,75 +41,89 @@ class Planner_node
         ~Planner_node(){};
 
     private:
-
-        int num_frames_no_plan;
-        unsigned int RRT_MAX_ITER;
+        
+        // planner
+        system_t system;
         planner_t rrts;
+        unsigned int RRT_MAX_ITER;
         float prev_best_cost, curr_best_cost;
-
-        int approaching_next_root;
         int already_committed;
+        bool planner_in_progress;
+        bool first_frame;
+        float dist_betw_odom;
+        int map_skip, map_count;
+        geometry_msgs::Point32 curr_goal;
+
         list<double*> toPublishTraj;
         list<float> toPublishControl;
 
-        int map_skip, map_count;
-        bool planner_in_progress;
-        bool first_frame;
-        system_t system;
-        ros::NodeHandle nh;
+        system_t create_system();
+        void change_sampling_region();
+        void emergency_replan();
+        int project_goal(float &xc, float &yc, float &xs, float &ys, float goalx, float goaly);
+        bool system_in_goal();
         
-        float dist_betw_odom;
-        geometry_msgs::Pose odom_prev, odom_now;
-
+        // ros
+        ros::NodeHandle nh;
+        ros::Subscriber goal_sub;
         ros::Subscriber odom_sub;
         ros::Subscriber map_sub;
+
         ros::Publisher traj_pub;
         ros::Publisher trajview_pub;
         ros::Publisher obs_pub;
         ros::Publisher tree_pub;
         ros::Publisher vertex_pub;
-
         ros::Timer planner_timer;
 
-        system_t create_system();
+        geometry_msgs::Pose odom_prev, odom_now;
+        void on_goal(const geometry_msgs::PointStamped& point);
         void on_odom(const nav_msgs::Odometry::ConstPtr & msg);
         void on_map(const local_map::local_map_msg::ConstPtr & local_map);
         void on_planner_timer(const ros::TimerEvent &e);
         void get_plan();
-        void change_sampling_region();
-        void emergency_replan();
 
         int publish_traj();
         int publish_tree();
         void publish_grid();
-
-        int project_goal(float &xc, float &yc, float &xs, float &ys, float goalx, float goaly);
-        bool system_in_goal();
 };
 
 Planner_node::Planner_node()
 {
-    prev_best_cost = 1e10, curr_best_cost = 1e10;
-    already_committed = 0, approaching_next_root = 0;
+    prev_best_cost = 1e20, curr_best_cost = 1e10;
+    already_committed = 0;
     dist_betw_odom = 0;
     map_count = 0;
     map_skip = 1;
     planner_in_progress = false;
-    num_frames_no_plan = 0;
     first_frame = 1;
-    RRT_MAX_ITER = 1000;
+    RRT_MAX_ITER = 500;
+    
+    curr_goal.x = 0;
+    curr_goal.y = 0;
+    curr_goal.z = 0;
 
     // init periodic planner
-    planner_timer = nh.createTimer(ros::Duration(0.5), &Planner_node::on_planner_timer, this);
+    planner_timer = nh.createTimer(ros::Duration(0.2), &Planner_node::on_planner_timer, this);
 
     // subscribe to points
     odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", 5, &Planner_node::on_odom, this);
     map_sub = nh.subscribe<local_map::local_map_msg>("localCells", 5, &Planner_node::on_map, this);
+    goal_sub = nh.subscribe("currGoal", 5, &Planner_node::on_goal, this);
+
     traj_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 5);
     trajview_pub = nh.advertise<nav_msgs::Path>("pncview_trajectory", 5);
     obs_pub = nh.advertise<sensor_msgs::PointCloud>("obs_map", 5);
     tree_pub = nh.advertise<sensor_msgs::PointCloud>("rrt_tree", 5);
     vertex_pub = nh.advertise<sensor_msgs::PointCloud>("rrt_vertex", 5);
+}
+
+void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
+{
+    curr_goal.x = point.point.x;
+    curr_goal.y = point.point.y;
+    curr_goal.z = point.point.z;
+    cout<<"got goal: "<< curr_goal.x<<" "<< curr_goal.y<<" "<< curr_goal.z << endl;
 }
 
 void Planner_node::on_odom(const nav_msgs::Odometry::ConstPtr & msg)
@@ -126,7 +141,7 @@ void Planner_node::on_odom(const nav_msgs::Odometry::ConstPtr & msg)
         float x2 = stateRoot[0];
         float y2 = stateRoot[1];
         
-        if( (sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) < 1) )
+        if( (sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) < 2) )
         {
             already_committed = 0;
         }
@@ -210,7 +225,7 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
     {
         for(int j=0; j< system.ysize; j++)
         {
-            float car_width = 2.0, car_length = 2.0;
+            float car_width = 1.0, car_length = 1.6;
 
             int yleft = min(system.ysize, (int)(j + car_width/2/system.map_res));
             int yright = max(0, (int)(j - car_width/2/system.map_res));
@@ -327,28 +342,28 @@ void Planner_node::change_sampling_region()
     system.regionOperating.size[1] = system.map_height;
     system.regionOperating.size[2] = 2.0 * M_PI;
     
-
-    system.regionGoal.center[0] = 25;
+    /* 
+    system.regionGoal.center[0] = 10;
     system.regionGoal.center[1] = 0;
     system.regionGoal.center[2] = 0; // atan2(0 - system.origin.y, 25 - system.origin.x);
     system.regionGoal.size[0] = 5;
     system.regionGoal.size[1] = 5;
     system.regionGoal.size[2] = 0.3 * M_PI;
-    
+    */
    
-    /*
+     
     // project goal
     float xc, yc, xs, ys;
-    project_goal(xc, yc, xs, ys, 100, 0);
+    project_goal(xc, yc, xs, ys, 10, 0);
 
     system.regionGoal.center[0] = xc;
     system.regionGoal.center[1] = yc;
-    system.regionGoal.center[2] = atan2(0 - system.origin.y, 100 - system.origin.x);
+    system.regionGoal.center[2] = atan2(0 - system.origin.y, 10 - system.origin.x);
     system.regionGoal.size[0] = xs;
     system.regionGoal.size[1] = ys;
     system.regionGoal.size[2] = 0.3 * M_PI;
-    //cout<<"goal dir: "<< system.regionGoal.center[2] << endl;
-    */
+    cout<<"goal dir: "<< system.regionGoal.center[2] << endl;   
+
 }
 
 bool Planner_node::system_in_goal()
@@ -370,26 +385,40 @@ void Planner_node::on_planner_timer(const ros::TimerEvent &e)
 
 void Planner_node::get_plan()
 {
+    /*
+    if( (rrts.numVertices > 5000) && (rrts.getBestVertexCost() > 1000) )
+    {
+        system.turning_radius = 4.0;
+    }
+    else
+        system.turning_radius = 10.0;
+    */
+
     // prune the obstructed part of the tree
     rrts.checkTree();
-    
+    rrts.updateReachability();
+    cout<<"num_vert: "<< rrts.numVertices << endl;
+
     change_sampling_region();
 
     for(unsigned int i=0; i< RRT_MAX_ITER; i++)
     {
         rrts.iteration();
-        if(rrts.numVertices > 4000)
+        if(rrts.numVertices > 5000)
             break;
     }
     cout<<"commit status: "<< already_committed << endl;
-
-    rrts.updateReachability();
     curr_best_cost = rrts.getBestVertexCost();
-
+    
     if(system_in_goal())
     {
         cout<<"reached goal: clear trajectories"<<endl;
         already_committed = 1;
+        for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
+        {
+            double* stateRef = *iter;
+            delete stateRef;
+        } 
         toPublishControl.clear();
         toPublishTraj.clear();
     }
@@ -408,7 +437,7 @@ void Planner_node::get_plan()
             else
             {
                 cout<<"traj cost: "<< rrts.getBestVertexCost() << endl;
-
+                
                 // free memory for toPublishTraj
                 for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
                 {
@@ -416,14 +445,22 @@ void Planner_node::get_plan()
                     delete stateRef;
                 } 
                 toPublishTraj.clear();
-                
                 toPublishControl.clear();
-                if(rrts.switchRoot( 10, toPublishTraj, toPublishControl))
+                
+                //get best trajectory currently
+                list<double*> bestTrajectory;
+                list<float> bestControl;
+                rrts.getBestTrajectory(bestTrajectory, bestControl);
+                double length = rrts.getTrajectoryLength(bestTrajectory);
+                cout<<"length best: "<<length<<endl;
+                if(rrts.switchRoot( min(10.0, length), toPublishTraj, toPublishControl))
                 {
-                    cout<<"switching root"<<endl;
                     already_committed = 1;
                     change_sampling_region();
+                    cout<<"switching root"<<endl;
                 }
+                else
+                    cout<<"couldn't switch root" << endl;
             }
         }
     }

@@ -64,7 +64,6 @@ public:
 
 class System {
 
-    double turning_radius;
     double distance_limit;
 
     double delta_distance;
@@ -83,6 +82,7 @@ class System {
     
 public:    
 
+    double turning_radius;
     region regionOperating;
     region regionGoal;
     
