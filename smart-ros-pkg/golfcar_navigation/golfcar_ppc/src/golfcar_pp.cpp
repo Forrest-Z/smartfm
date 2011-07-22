@@ -326,7 +326,7 @@ namespace golfcar_purepursuit {
   {
     double dist1, dist2;
     int on_segment = segment;
-    while((int) trajectory_.poses.size() > on_segment)
+    while((int) trajectory_.poses.size() > on_segment+1)
     {
       dist1 = get_distance(cur_x, cur_y,
 			   trajectory_.poses[on_segment].pose.position.x,
@@ -363,7 +363,7 @@ namespace golfcar_purepursuit {
       dist_to_go += get_distance(tar_x, tar_y, prj[0], prj[1]);
     on_segment++;
 
-    while((int) trajectory_.poses.size() > on_segment)
+    while((int) trajectory_.poses.size() > on_segment+1)
     {
       dist_to_go += get_distance(trajectory_.poses[on_segment+1].pose.position.x,
 				 trajectory_.poses[on_segment+1].pose.position.y,
