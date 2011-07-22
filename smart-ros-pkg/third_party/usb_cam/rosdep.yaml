@@ -1,0 +1,2 @@
+libswscale:
+    ubuntu: libswscale-dev
