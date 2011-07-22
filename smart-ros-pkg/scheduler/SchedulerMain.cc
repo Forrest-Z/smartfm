@@ -257,6 +257,7 @@ int main(int argc, char **argv)
   else if (!NOGUI) {
     schedulerUI = new SchedulerUI(scheduler);
     schedulerUI->initConsole();
+    schedulerUI->updateConsole();
   }
 
   ostringstream ss;

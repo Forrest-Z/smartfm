@@ -267,7 +267,7 @@ void SchedulerUI::updateTaskList()
       if (i%2 == 1)
 	wattrset(this->win, COLOR_PAIR(UI_CYAN_HIGHLIGHT));
       mvwprintw(this->win, this->textFields[TASK_LIST_START + i].row, this->textFields[TASK_LIST_START + i].col, 
-		"%3d   %7d      %2d        %2d         %3d     ", it->id, it->customerID, it->pickup, it->dropoff, it->twait);
+		"%3d   %010d   %2d        %2d        %4d     ", it->id, it->customerID, it->pickup, it->dropoff, it->twait);
       wattrset(this->win, A_NORMAL);
     }
     else
