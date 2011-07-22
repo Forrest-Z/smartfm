@@ -24,7 +24,7 @@ namespace road_detection{
 		
 		//------------parameters of function "CurbSideLine"----------------
 		private_nh_.param("curbLow_tresh_", curbLow_tresh_, 0.05);
-		private_nh_.param("curbheigh_tresh_", curbheigh_tresh_, 2.0);
+		private_nh_.param("curbheigh_tresh_", curbheigh_tresh_, 4.0);
 		// "curbTan_tresh_" need to be adjusted to be a bigger value;
 		//a small value may ignore some points, but will help to reduce noise as for pure "curb_track"; 
 		//a big value get more points when relying on raw points for "curb_amcl";
@@ -446,6 +446,7 @@ namespace road_detection{
 	    //push back left curb line
 	    if(temp_left_flag==true)
 	    {
+			//the serial or sequence of "begin" and "end" will be changed here because of "push_back";
 			for(unsigned int i=left_line_begin_PID; i<=left_line_end_PID;i++)
 			{left_curb_line_.points.push_back(laser_cloud_.points[i]);}
 		}

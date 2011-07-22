@@ -6,7 +6,8 @@ using namespace std;
 using namespace ros;
 using namespace tf;
 
-#define MAX_DISTANCE 10.0
+#define MAX_DISTANCE 15.0
+#define CURB_HEIGHT 0.30
 
 namespace estimation{
 
@@ -41,8 +42,8 @@ namespace estimation{
 		//cred_full_right_pub_= nh.advertise<sensor_msgs::PointCloud>("full_curbs", 2);
 		//cred_full_left_pub_ = nh.advertise<sensor_msgs::PointCloud>("full_curbs", 2); 
 		
-		hybrid_Lpt_pub_		= nh.advertise<sensor_msgs::PointCloud>("hybrid_Lpt", 10);
-		hybrid_Rpt_pub_ 	= nh.advertise<sensor_msgs::PointCloud>("hybrid_Rpt", 10);
+		hybrid_Lpt_pub_		= nh.advertise<sensor_msgs::PointCloud>("hybrid_pt", 10);
+		hybrid_Rpt_pub_ 	= nh.advertise<sensor_msgs::PointCloud>("hybrid_pt", 10);
 		
 		cloud_sub_.subscribe(nh, "laser_cloud_", 2);
 		tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(cloud_sub_, tf_, "odom", 10);
@@ -320,13 +321,24 @@ namespace estimation{
 		else
 		{	
 			//aways Remeber to change coordinate;
-			float begin_x = -Rcurb_line_.points[0].y;
-			float begin_y =  Rcurb_line_.points[0].x;
-			float end_x   = -Rcurb_line_.points.back().y;
-			float end_y   =  Rcurb_line_.points.back().x;
+			float end_x = -Rcurb_line_.points[0].y;
+			float end_y =  Rcurb_line_.points[0].x;
+			float begin_x   = -Rcurb_line_.points.back().y;
+			float begin_y   =  Rcurb_line_.points.back().x;
 			float beginthetha=0;
 			float dx=begin_x-end_x;
 			float dy=begin_y-end_y;
+			
+			float end_z = Rcurb_line_.points[0].z;
+			float beg_z = Rcurb_line_.points.back().z;
+			float dz = end_z-beg_z;
+			ROS_INFO("heith of right curbline begin point, end point, %3f, %3f", beg_z, end_z);
+			
+			if(dz >CURB_HEIGHT||dz <-CURB_HEIGHT)
+			{
+				ROS_INFO("vehicle: dz %3f", dz);
+				R_filter_.vehicles_flag_=true;
+			}
 			
 			if((dx<0.01&&dx>0.0)||(dx>-0.01&&dx<0.0)){beginthetha = M_PI_2;}
 			else{beginthetha = atan2f(dy,dx);if(beginthetha<0)beginthetha=beginthetha+M_PI;}
@@ -571,13 +583,24 @@ namespace estimation{
 
 		else
 		{	//aways Remeber to change coordinate;
-			float begin_x = -Lcurb_line_.points[0].y;
-			float begin_y =  Lcurb_line_.points[0].x;
-			float end_x   = -Lcurb_line_.points.back().y;
-			float end_y   =  Lcurb_line_.points.back().x;
+			//in "road_detect", the serial or sequence of "begin" and "end" will be changed here because of "push_back";
+			float end_x = -Lcurb_line_.points[0].y;
+			float end_y =  Lcurb_line_.points[0].x;
+			float begin_x   = -Lcurb_line_.points.back().y;
+			float begin_y   =  Lcurb_line_.points.back().x;
 			float beginthetha=0;
 			float dx=begin_x-end_x;
 			float dy=begin_y-end_y;
+			
+			float end_z = Lcurb_line_.points[0].z;
+			float beg_z = Lcurb_line_.points[0].z;
+			float dz = end_z - beg_z;
+			
+			if(dz >CURB_HEIGHT||dz <-CURB_HEIGHT)
+			{
+				ROS_INFO("vehicle: dz %3f", dz);
+				L_filter_.vehicles_flag_=true;
+			}
 			
 			if((dx<0.01&&dx>0.0)||(dx>-0.01&&dx<0.0)){beginthetha = M_PI_2;}
 			else{beginthetha = atan2f(dy,dx);if(beginthetha<0)beginthetha=beginthetha+M_PI;}
