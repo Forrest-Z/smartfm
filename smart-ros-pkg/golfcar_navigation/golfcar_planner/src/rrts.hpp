@@ -830,6 +830,7 @@ RRTstar::Planner< typeparams >
    
     if (stateFound == false) 
     {
+        /*
         // free memory for toPublishTraj
         for (list<double*>::iterator iter = trajret.begin(); iter != trajret.end(); iter++) 
         {
@@ -838,6 +839,7 @@ RRTstar::Planner< typeparams >
         } 
         trajret.clear();
         controlret.clear();
+        */
         delete [] stateRootNew;
         return 0;
     }

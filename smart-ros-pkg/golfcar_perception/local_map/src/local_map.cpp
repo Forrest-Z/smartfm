@@ -5,8 +5,8 @@ Local_map::Local_map()
 
     // x is forward, y is left
     res = 0.25;
-    width = 20.0;
-    height = 20.0;
+    width = 50.0;
+    height = 50.0;
     
     xsize = height/res;
     ysize = width/res;

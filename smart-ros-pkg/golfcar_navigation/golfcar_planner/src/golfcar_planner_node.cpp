@@ -49,6 +49,7 @@ class Planner_node
         float prev_best_cost, curr_best_cost;
         int already_committed;
         bool planner_in_progress;
+        bool received_goal;
         bool first_frame;
         float dist_betw_odom;
         int map_skip, map_count;
@@ -90,6 +91,7 @@ class Planner_node
 
 Planner_node::Planner_node()
 {
+    received_goal = 0;
     prev_best_cost = 1e20, curr_best_cost = 1e10;
     already_committed = 0;
     dist_betw_odom = 0;
@@ -109,7 +111,7 @@ Planner_node::Planner_node()
     // subscribe to points
     odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", 5, &Planner_node::on_odom, this);
     map_sub = nh.subscribe<local_map::local_map_msg>("localCells", 5, &Planner_node::on_map, this);
-    goal_sub = nh.subscribe("currGoal", 5, &Planner_node::on_goal, this);
+    goal_sub = nh.subscribe("pnc_waypoint", 5, &Planner_node::on_goal, this);
 
     traj_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 5);
     trajview_pub = nh.advertise<nav_msgs::Path>("pncview_trajectory", 5);
@@ -124,6 +126,8 @@ void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
     curr_goal.y = point.point.y;
     curr_goal.z = point.point.z;
     cout<<"got goal: "<< curr_goal.x<<" "<< curr_goal.y<<" "<< curr_goal.z << endl;
+    received_goal = 0;
+    planner_in_progress = true;
 }
 
 void Planner_node::on_odom(const nav_msgs::Odometry::ConstPtr & msg)
@@ -141,7 +145,7 @@ void Planner_node::on_odom(const nav_msgs::Odometry::ConstPtr & msg)
         float x2 = stateRoot[0];
         float y2 = stateRoot[1];
         
-        if( (sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) < 2) )
+        if( (sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) < 1) )
         {
             already_committed = 0;
         }
@@ -215,7 +219,10 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
         rrts.initialize ();
 
         cout<<"got first frame" << endl;
-        planner_in_progress = true;
+    
+        curr_goal.x = system.origin.x;
+        curr_goal.y = system.origin.y;
+        curr_goal.z = system.origin.z;
     }
 
     //cout<<"l xsize: "<< local_map->xsize<<" l ysize:"<< local_map->ysize <<endl;
@@ -342,28 +349,27 @@ void Planner_node::change_sampling_region()
     system.regionOperating.size[1] = system.map_height;
     system.regionOperating.size[2] = 2.0 * M_PI;
     
-    /* 
-    system.regionGoal.center[0] = 10;
-    system.regionGoal.center[1] = 0;
-    system.regionGoal.center[2] = 0; // atan2(0 - system.origin.y, 25 - system.origin.x);
+    system.regionGoal.center[0] = curr_goal.x;
+    system.regionGoal.center[1] = curr_goal.y;
+    system.regionGoal.center[2] = curr_goal.z;
+    
     system.regionGoal.size[0] = 5;
     system.regionGoal.size[1] = 5;
     system.regionGoal.size[2] = 0.3 * M_PI;
-    */
    
-     
+    /* 
     // project goal
     float xc, yc, xs, ys;
-    project_goal(xc, yc, xs, ys, 10, 0);
+    project_goal(xc, yc, xs, ys, curr_goal.x, curr_goal.y);
 
     system.regionGoal.center[0] = xc;
     system.regionGoal.center[1] = yc;
-    system.regionGoal.center[2] = atan2(0 - system.origin.y, 10 - system.origin.x);
+    system.regionGoal.center[2] = atan2(yc - system.origin.y, xc - system.origin.x);
     system.regionGoal.size[0] = xs;
     system.regionGoal.size[1] = ys;
     system.regionGoal.size[2] = 0.3 * M_PI;
     cout<<"goal dir: "<< system.regionGoal.center[2] << endl;   
-
+    */
 }
 
 bool Planner_node::system_in_goal()
@@ -385,6 +391,19 @@ void Planner_node::on_planner_timer(const ros::TimerEvent &e)
 
 void Planner_node::get_plan()
 {
+    if(system_in_goal())
+    {
+        cout<<"reached goal: clear trajectories"<<endl;
+        already_committed = 1;
+        for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
+        {
+            double* stateRef = *iter;
+            delete stateRef;
+        } 
+        toPublishControl.clear();
+        toPublishTraj.clear();
+    }
+
     /*
     if( (rrts.numVertices > 5000) && (rrts.getBestVertexCost() > 1000) )
     {
@@ -404,24 +423,10 @@ void Planner_node::get_plan()
     for(unsigned int i=0; i< RRT_MAX_ITER; i++)
     {
         rrts.iteration();
-        if(rrts.numVertices > 5000)
-            break;
     }
     cout<<"commit status: "<< already_committed << endl;
     curr_best_cost = rrts.getBestVertexCost();
     
-    if(system_in_goal())
-    {
-        cout<<"reached goal: clear trajectories"<<endl;
-        already_committed = 1;
-        for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
-        {
-            double* stateRef = *iter;
-            delete stateRef;
-        } 
-        toPublishControl.clear();
-        toPublishTraj.clear();
-    }
 
     // if found traj, copy it and keep publishing, switch root to some node ahead
     if(!already_committed)
@@ -453,7 +458,8 @@ void Planner_node::get_plan()
                 rrts.getBestTrajectory(bestTrajectory, bestControl);
                 double length = rrts.getTrajectoryLength(bestTrajectory);
                 cout<<"length best: "<<length<<endl;
-                if(rrts.switchRoot( min(10.0, length), toPublishTraj, toPublishControl))
+                
+                if(rrts.switchRoot(5, toPublishTraj, toPublishControl))
                 {
                     already_committed = 1;
                     change_sampling_region();
@@ -535,7 +541,7 @@ int Planner_node::publish_traj()
         //if( (stateRef[0] > 0.001) && (stateRef[0] < 1e100) && (stateRef[1] > 0.001) && (stateRef[1] < 1e100))
         //{
             //cout<<"here"<< endl;
-            //cout<<"["<<stateRef[0]<<","<<stateRef[1]<<" "<< stateRef[2]<<"] ";
+            ROS_DEBUG(" [%f, %f, %f]", stateRef[0], stateRef[1], stateRef[2]);
             p.pose.position.x = stateRef[0];
             p.pose.position.y = stateRef[1];
             p.pose.position.z = stateRef[2];

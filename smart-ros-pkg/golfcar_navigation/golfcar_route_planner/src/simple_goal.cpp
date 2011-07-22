@@ -4,6 +4,7 @@
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
 ros::Publisher waypoint_pub_;
+
 void goalCallback(geometry_msgs::PoseStamped map_pose)
 {
 	geometry_msgs::PoseStamped odom_pose;
