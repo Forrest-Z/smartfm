@@ -571,6 +571,11 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
         return 0;
     }
 
+    while (end_state[2] < -M_PI)
+      end_state[2] += 2.0 * M_PI;
+    while (end_state[2] > M_PI)
+      end_state[2] -= 2.0 * M_PI;
+
     for (int i = 0; i < 3; i++) {
         trajectoryOut.endState.x[i] = end_state[i];
     }

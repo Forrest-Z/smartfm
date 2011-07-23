@@ -128,12 +128,12 @@ void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
     cout<<"got goal: "<< curr_goal.x<<" "<< curr_goal.y<<" "<< curr_goal.z << endl;
     already_committed = 0;
 
-    //1. set root to current position
+    // set root to current position
     vertex_t& rootVertex =  rrts.getRootVertex();
     state_t &stateRoot = rootVertex.getState();
-    stateRoot[0] = system.origin.x;
-    stateRoot[1] = system.origin.y;
-    stateRoot[2] = system.origin.z;
+    stateRoot[0] = odom_now.position.x;
+    stateRoot[1] = odom_now.position.y;
+    stateRoot[2] = odom_now.position.z;
     
     change_sampling_region();
 
@@ -150,6 +150,7 @@ void Planner_node::on_odom(const nav_msgs::Odometry::ConstPtr & msg)
 {
     odom_now.position.x = msg->pose.pose.position.x;
     odom_now.position.y = msg->pose.pose.position.y;
+    odom_now.position.z = tf::getYaw(msg->pose.pose.orientation);
 
     float x1 = odom_now.position.x;
     float y1 = odom_now.position.y;
@@ -361,17 +362,21 @@ void Planner_node::change_sampling_region()
     system.regionOperating.center[0] = rootState[0];
     system.regionOperating.center[1] = rootState[1];
     system.regionOperating.center[2] = 0;
-    system.regionOperating.size[0] = system.map_width;
-    system.regionOperating.size[1] = system.map_height;
+    system.regionOperating.size[0] = 100.0;
+    system.regionOperating.size[1] = 100.0;
     system.regionOperating.size[2] = 2.0 * M_PI;
-  
-     
+   
+    while(curr_goal.z > M_PI)
+        curr_goal.z -= 2*M_PI;
+    while(curr_goal.z < -M_PI)
+        curr_goal.z += 2*M_PI;
+    
     system.regionGoal.center[0] = curr_goal.x;
     system.regionGoal.center[1] = curr_goal.y;
     system.regionGoal.center[2] = curr_goal.z;
     system.regionGoal.size[0] = 5;
     system.regionGoal.size[1] = 5;
-    system.regionGoal.size[2] = 0.5 * M_PI;
+    system.regionGoal.size[2] = 10/180*M_PI;
     
     /*
     system.regionGoal.center[0] = 100;
@@ -457,19 +462,21 @@ void Planner_node::get_plan()
         
     }
     
+    curr_best_cost = 0;
     for(unsigned int i=0; i< RRT_MAX_ITER; i++)
     {
         rrts.iteration();
     }
+    rrts.updateReachability();
     curr_best_cost = rrts.getBestVertexCost();
     cout<<"commit status: "<< already_committed << " best_curr: "<< curr_best_cost << endl;
 
     // if found traj, copy it and keep publishing, switch root to some node ahead
     if(!already_committed)
     {
+        cout<<"prev: "<< prev_best_cost << " curr: " << curr_best_cost << endl;
         if( fabs(prev_best_cost - curr_best_cost) < 10.0)
         {
-            cout<<"prev: "<< prev_best_cost << " curr: " << curr_best_cost << endl;
             vertex_t& vertexBest = rrts.getBestVertex ();
             if (&vertexBest == NULL)
             {

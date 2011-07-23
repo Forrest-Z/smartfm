@@ -170,7 +170,8 @@ void local_map_node::publish_msg()
     mtmp.yorigin = lmap.yorigin;
     mtmp.origin.x = lmap.pose.position.x;
     mtmp.origin.y = lmap.pose.position.y;
-    //mtmp.origin.z = tf::getYaw(lmap.pose.orientation);          // Note .z sends in yaw to the planner
+    mtmp.origin.z = tf::getYaw(lmap.pose.orientation);          // Note .z sends in yaw to the planner
+    
     //cout<<"wrote origin: "<< mtmp.origin.x<<" "<< mtmp.origin.y<<" "<< mtmp.origin.z<< endl;
     for(int i=0; i < lmap.xsize; i++)
     {
