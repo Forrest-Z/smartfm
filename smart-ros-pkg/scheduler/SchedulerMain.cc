@@ -54,7 +54,7 @@ const char * PROGRAM_NAME;
 int NUM_STATIONS = 3;
 
 // Number of seconds in minutes (for testing purpose)
-int NUM_SECONDS_IN_MIN = 5;
+int NUM_SECONDS_IN_MIN = 1;
 
 // Number of seconds between two successive task info
 int NUM_SEC_TASK_INFO_SENT = 10;
@@ -70,6 +70,9 @@ VehicleTalker* vehicleTalker = NULL;
 // Current task
 Task currentTask;
 time_t previousTime;
+
+// Log file
+FILE* logFile;
 
 // Whether the vehicle is still available
 bool vehicleIsAvailable = false;
@@ -238,6 +241,7 @@ int main(int argc, char **argv)
   scheduler = new Scheduler(VERBOSITY_LEVEL);
   currentTask = scheduler->getVehicleCurrentTask();
   SchedulerUI* schedulerUI = NULL;
+  logFile = fopen ("log_scheduler.txt","w");
   pthread_t operatorThread, talkerThread, vehicleThread;
   pthread_mutex_t schedulerMutex;
 
@@ -260,9 +264,9 @@ int main(int argc, char **argv)
     schedulerUI->updateConsole();
   }
 
-  ostringstream ss;
-  ss << HOST_NAME;
   if (!NOMOBILE && !SIMULATE_MOBILE) {
+    ostringstream ss;
+    ss << HOST_NAME;
     schedulerTalker = new SchedulerTalker(ss.str(), MOBILE_PORT, VERBOSITY_LEVEL);
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -275,6 +279,9 @@ int main(int argc, char **argv)
   }
 
   if (!SIMULATE_VEHICLE) {
+    MSG("Waiting for connection from the vehicle.");
+    if (!NOGUI)
+      schedulerUI->updateConsole();
     vehicleTalker = new VehicleTalker(VEHICLE_PORT, VERBOSITY_LEVEL);
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -282,6 +289,7 @@ int main(int argc, char **argv)
     int ret = pthread_create(&vehicleThread, &attr, 
 			     thunk<VehicleTalker, &VehicleTalker::runVehicleReceiver>,
 			     vehicleTalker);
+    MSG("Vehicle ready.");
   }
 
   time_t prevTimeTaskInfo = time(NULL);
@@ -332,6 +340,8 @@ int main(int argc, char **argv)
     }
     usleep(100000);
   }
+
+  fclose (logFile);
 
   if (!NOOP && NOGUI) {
     pthread_join(operatorThread, 0);
@@ -514,9 +524,12 @@ VehicleInfo getVehicleInfo(int vehicleID)
 /* Send a new task to the vehicle */
 void sendTask2Vehicle(Task task)
 {
+  MSG("Sending task %d: <%d,%d> from customer %d to vehicle", task.id, task.pickup, task.dropoff, task.customerID);
+  fprintf (logFile, "\n%d: Sending task %d: <%d,%d> from customer %d to vehicle", (int) time(NULL), task.id, task.pickup, task.dropoff, task.customerID);
   if (!SIMULATE_VEHICLE) {
     vehicleTalker->sendNewTask(task.customerID, task.pickup, task.dropoff);
   }
+  fprintf (logFile, "\n%d: Task sent", (int) time(NULL));
 }
 
 int addTask(Task task)
@@ -544,6 +557,8 @@ void update()
 
   VehicleInfo vehInfo = getVehicleInfo(DEFAULT_VEHICLE_ID);
   VehicleStatus vehStatus = vehInfo.status;
+
+  fprintf (logFile, "\n%d: got status: %d:%d:%d", (int) time(NULL), vehInfo.status, vehInfo.tremain, vehInfo.isNew);
 
   // Get the next task and send to the vehicle if the vehicle is available
   if (vehStatus == VEHICLE_AVAILABLE && (vehicleIsAvailable || vehInfo.isNew)) {

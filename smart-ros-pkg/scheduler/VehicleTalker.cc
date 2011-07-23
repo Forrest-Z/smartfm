@@ -24,6 +24,7 @@ VehicleTalker::VehicleTalker(int port, int verbosityLevel)
   m_vehInfo.tremain = 1000000;
   m_verbosity = verbosityLevel;
   pthread_mutex_init(&m_statusMutex, NULL);
+  logFile = fopen ("log_vtalker.txt","w");
   try {
     m_server.init(port);
     m_server.setSocketBlocking(true);
@@ -39,6 +40,7 @@ VehicleTalker::VehicleTalker(int port, int verbosityLevel)
 VehicleTalker::~VehicleTalker() 
 {
   pthread_mutex_destroy(&m_statusMutex);
+  fclose (logFile);
 }
 
 bool VehicleTalker::sendNewTask(int customerID, int pickup, int dropoff)
@@ -73,8 +75,9 @@ VehicleInfo VehicleTalker::getVehicleInfo()
   pthread_mutex_lock(&m_statusMutex);
   VehicleInfo ret = m_vehInfo;
   ret.isNew = m_newStatusRecv;
-  pthread_mutex_unlock(&m_statusMutex);
+  fprintf (logFile, "\n%d: processing status: %d:%d:%d", (int) time(NULL), ret.status, ret.tremain, ret.isNew);
   m_newStatusRecv = false;
+  pthread_mutex_unlock(&m_statusMutex);
   return ret;
 }
 
@@ -83,7 +86,9 @@ void VehicleTalker::runVehicleReceiver()
   std::string msg;
   bool msgIncomplete = false;
   while (!m_quit) {
+    fprintf(logFile, "\n%d: waiting for the vehicle to pick up new msg", (int) time(NULL));
     if (!m_newStatusRecv) {
+      fprintf(logFile, "\n%d: processing msg: %s", (int) time(NULL), msg.c_str());
       if (msg.length() > 0 && !msgIncomplete) {
 	// Msg format: vehicleID:status:tremain
 	string statusStr;
@@ -97,7 +102,7 @@ void VehicleTalker::runVehicleReceiver()
 	}
 	int endStatus = msg.find(";", 1);
 	if (endStatus >= 0) {
-	  statusStr = msg.substr(0, endStatus-1);
+	  statusStr = msg.substr(0, endStatus);
 	  msg = msg.substr(endStatus, msg.length());
 	}
 	else {
@@ -124,6 +129,7 @@ void VehicleTalker::runVehicleReceiver()
 	else {
 	  msgIncomplete = true;
 	  msg = statusStr;
+	  fprintf(logFile, "\n%d: incomplete msg: %s", (int) time(NULL), msg.c_str());
 	  continue;
 	}
 	
@@ -191,6 +197,7 @@ void VehicleTalker::runVehicleReceiver()
 	    }
 	    m_vehInfo.tremain = atoi(tremainStr.c_str());
 	    m_newStatusRecv = true;
+	    fprintf (logFile, "\n%d: new status: %d:%d", (int) time(NULL), m_vehInfo.status, m_vehInfo.tremain);
 	    pthread_mutex_unlock(&m_statusMutex);
 	  }
 	  else
@@ -201,6 +208,7 @@ void VehicleTalker::runVehicleReceiver()
 	try {
 	  std::string newmsg;
 	  m_socket >> newmsg;
+	  fprintf (logFile, "\n\n%d: new msg: %s", (int) time(NULL), newmsg.c_str());
 	  msg.append(newmsg);
 	  msgIncomplete = false;
 	}

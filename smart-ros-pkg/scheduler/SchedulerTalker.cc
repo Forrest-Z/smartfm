@@ -93,7 +93,7 @@ void SchedulerTalker::runMobileReceiver()
 	}
 	int endTask = msg.find(";", 1);
 	if (endTask >= 0) {
-	  taskStr = msg.substr(0, endTask-1);
+	  taskStr = msg.substr(0, endTask);
 	  msg = msg.substr(endTask, msg.length());
 	}
 	else {

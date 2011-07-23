@@ -2,6 +2,7 @@
 #define VEHICLETALKER_HH_
 
 #include <pthread.h>
+#include <stdio.h>
 #include "Scheduler.hh"
 #include "ServerSocket.hh"
 #include "SocketException.hh"
@@ -52,6 +53,7 @@ private:
   bool m_quit, m_isconnected;
   bool m_newStatusRecv;
   int m_verbosity;
+  FILE * logFile;
 };
 
 #endif // VEHICLETALKER_HH_
