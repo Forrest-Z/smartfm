@@ -22,6 +22,7 @@
 #include "station_path.h"
 #include "../../src/RoutePlanner.hh"
 #include <iostream>
+#include <math.h>
 
 namespace route_planner {
 
@@ -36,12 +37,14 @@ private:
 	ros::Publisher g_plan_pub_;
 	ros::Publisher pointCloud_pub_;
 	ros::Publisher poseStamped_pub_;
+	ros::Publisher nextpose_pub_;
 
 	ros::Timer timer_;
 	tf::TransformListener tf_;
 	void waypoint_pub_loop();
 	void publish_goal(double pickup, double dropoff);
 	bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
+	void transformMapToOdom(geometry_msgs::PoseStamped &map_pose, geometry_msgs::PointStamped &odom_point);
 	int distance_to_goal();
 	std::vector<geometry_msgs::Point> targets_;
 	int WaypointNo_;

@@ -3,14 +3,37 @@
 #include "geometry_msgs/PointStamped.h"
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
-ros::Publisher waypoint_pub_;
 
-void goalCallback(geometry_msgs::PoseStamped map_pose)
+class simple_goal
+{
+public:
+	simple_goal();
+	~simple_goal();
+	void goalCallback(geometry_msgs::PoseStamped map_pose);
+	
+	tf::TransformListener listener;
+	ros::Subscriber sub;
+	ros::Publisher waypoint_pub_;
+	ros::NodeHandle n;
+};
+
+
+simple_goal::simple_goal()
+{
+	sub = n.subscribe("move_base_simple/goal",1,&simple_goal::goalCallback, this);
+	waypoint_pub_ = n.advertise<geometry_msgs::PointStamped>("pnc_waypoint", 100);
+}
+
+simple_goal::~simple_goal(){}
+
+void simple_goal::goalCallback(geometry_msgs::PoseStamped map_pose)
 {
 	geometry_msgs::PoseStamped odom_pose;
-	tf::TransformListener tf_;
+	//just grab the latest transform available
+	map_pose.header.stamp = ros::Time();
+
 	try {
-		tf_.transformPose("/odom", map_pose, odom_pose);
+		listener.transformPose("/odom", map_pose, odom_pose);
 	}
 	catch(tf::LookupException& ex) {
 		ROS_ERROR("No Transform available Error: %s\n", ex.what());
@@ -30,12 +53,13 @@ void goalCallback(geometry_msgs::PoseStamped map_pose)
 	waypoint_pub_.publish(odom_point);
 }
 
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "goal_listener");
 	ros::NodeHandle n;
-	ros::Subscriber sub = n.subscribe("move_base_simple/goal",1,goalCallback);
-	waypoint_pub_ = n.advertise<geometry_msgs::PointStamped>("pnc_waypoint", 100);
+	simple_goal sg;
+	
 	ros::spin();
 	return 0;
 }

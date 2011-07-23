@@ -14,6 +14,7 @@ RoutePlannerNode::RoutePlannerNode()
 	g_plan_pub_ = n.advertise<nav_msgs::Path>("pnc_globalplan", 1);
 	pointCloud_pub_ = n.advertise<sensor_msgs::PointCloud>("pnc_waypointVis",1);
 	poseStamped_pub_ = n.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
+	nextpose_pub_ = n.advertise<geometry_msgs::PoseStamped>("pnc_nextpose",1);
 	currentStationID_= 0;
 
 	RoutePlanner rp("localhost", 8888);
@@ -40,13 +41,14 @@ RoutePlannerNode::RoutePlannerNode()
 				WaypointNo_=0;
 				RoutePlannerNode::publish_goal(currentStationID_, pickup);
 				while (1){
+					if(WaypointNo_==targets_.size()) break;
 					RoutePlannerNode::waypoint_pub_loop();
 					int station_distance = RoutePlannerNode::distance_to_goal();
 					rp.sendStatus(0, VEHICLE_ON_CALL, station_distance);
 
-					if(WaypointNo_==targets_.size()) break;
+
 					ROS_INFO("Going to pickup station %d from station %d, distance to go %d m", pickup, currentStationID_, station_distance);
-					ros::Duration(0.1).sleep();
+					ros::Duration(0.5).sleep();
 				}
 				//arrive at pickup point
 				cout<<"Arrive at pickup point"<<endl;
@@ -62,13 +64,14 @@ RoutePlannerNode::RoutePlannerNode()
 			RoutePlannerNode::publish_goal(pickup, dropoff);
 
 			while (1){
+				if(WaypointNo_==targets_.size()) break;
 				RoutePlannerNode::waypoint_pub_loop();
 				int station_distance = RoutePlannerNode::distance_to_goal();
 				rp.sendStatus(0, VEHICLE_POB, station_distance );
 
-				if(WaypointNo_==targets_.size()) break;
+
 				ROS_INFO("Going to dropoff station %d from station %d, distance to go %d m", dropoff, pickup, station_distance);
-				ros::Duration(0.1).sleep();
+				ros::Duration(0.5).sleep();
 			}
 			//arrive at dropoff point, update current ID
 			ROS_INFO("Arrive at dropoff point");
@@ -121,14 +124,48 @@ void RoutePlannerNode::waypoint_pub_loop()
 
 	RoutePlannerNode::getRobotGlobalPose(global_pose);
 
-	geometry_msgs::PointStamped map_point;
+	double map_yaw=0;
+	geometry_msgs::PoseStamped map_pose;
+	map_pose.pose.position = targets_[WaypointNo_];
+	if(WaypointNo_<targets_.size()-1)
+		map_yaw = atan2(targets_[WaypointNo_+1].y- targets_[WaypointNo_].y, targets_[WaypointNo_+1].x- targets_[WaypointNo_].x);
+	else
+		map_yaw = atan2(targets_[WaypointNo_].y- targets_[WaypointNo_-1].y, targets_[WaypointNo_].x- targets_[WaypointNo_-1].x);
+
+	map_pose.pose.orientation = tf::createQuaternionMsgFromYaw(map_yaw);
+
+	//transform from pose to point, planner expect point z as yaw
 	geometry_msgs::PointStamped odom_point;
-	map_point.header.frame_id = "/map";
-	map_point.header.stamp = ros::Time();
-	map_point.point = targets_[WaypointNo_];
+	RoutePlannerNode::transformMapToOdom(map_pose, odom_point);
+
+	//publish the first waypoint in odom frame then continue to send the points until the last one
+
+	waypoint_pub_.publish(odom_point);
+	sensor_msgs::PointCloud pc;
+	pc.header.stamp = ros::Time::now();
+	pc.header.frame_id = "/odom";
+	pc.points.resize(1);
+	pc.points[0].x = odom_point.point.x;
+	pc.points[0].y = odom_point.point.y;
+	pointCloud_pub_.publish(pc);
+	//get how near it is to the goal point, if reaches the threshold, send the next point
+	double mapx = map_pose.pose.position.x, mapy = map_pose.pose.position.y;
+	double robotx = global_pose.getOrigin().x(), roboty = global_pose.getOrigin().y();
+	double distance = sqrt((mapx-robotx)*(mapx-robotx)+(mapy-roboty)*(mapy-roboty));
+
+	if(distance < 4)	WaypointNo_++;
+
+
+}
+
+void RoutePlannerNode::transformMapToOdom(geometry_msgs::PoseStamped &map_pose, geometry_msgs::PointStamped &odom_point)
+{
+	map_pose.header.frame_id = "/map";
+	map_pose.header.stamp = ros::Time();
+	geometry_msgs::PoseStamped odom_pose;
 
 	try {
-		tf_.transformPoint("/odom", map_point, odom_point);
+		tf_.transformPose("/odom", map_pose, odom_pose);
 	}
 	catch(tf::LookupException& ex) {
 		ROS_ERROR("No Transform available Error: %s\n", ex.what());
@@ -139,23 +176,12 @@ void RoutePlannerNode::waypoint_pub_loop()
 	catch(tf::ExtrapolationException& ex) {
 		ROS_ERROR("Extrapolation Error: %s\n", ex.what());
 	}
-	//publish the first waypoint in odom frame then continue to send the points until the last one
-	waypoint_pub_.publish(odom_point);
-	sensor_msgs::PointCloud pc;
-	pc.header.stamp = ros::Time::now();
-	pc.header.frame_id = "/odom";
-	pc.points.resize(1);
-	pc.points[0].x = odom_point.point.x;
-	pc.points[0].y = odom_point.point.y;
-	pointCloud_pub_.publish(pc);
-	//get how near it is to the goal point, if reaches the threshold, send the next point
-	double mapx = map_point.point.x, mapy = map_point.point.y;
-	double robotx = global_pose.getOrigin().x(), roboty = global_pose.getOrigin().y();
-	double distance = sqrt((mapx-robotx)*(mapx-robotx)+(mapy-roboty)*(mapy-roboty));
 
-	if(distance < 3.7)	WaypointNo_++;
+	odom_point.header = odom_pose.header;
+	odom_point.point = odom_pose.pose.position;
+	odom_point.point.z = tf::getYaw(odom_pose.pose.orientation);
 
-
+	nextpose_pub_.publish(odom_pose);
 }
 
 bool RoutePlannerNode::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const
