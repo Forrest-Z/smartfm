@@ -126,7 +126,23 @@ void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
     curr_goal.y = point.point.y;
     curr_goal.z = point.point.z;
     cout<<"got goal: "<< curr_goal.x<<" "<< curr_goal.y<<" "<< curr_goal.z << endl;
-    received_goal = 0;
+    already_committed = 0;
+
+    //1. set root to current position
+    vertex_t& rootVertex =  rrts.getRootVertex();
+    state_t &stateRoot = rootVertex.getState();
+    stateRoot[0] = system.origin.x;
+    stateRoot[1] = system.origin.y;
+    stateRoot[2] = system.origin.z;
+    
+    change_sampling_region();
+
+    // 2. reinit planner
+    rrts.initialize();
+    prev_best_cost = 1e10;
+    curr_best_cost = 1e20;
+    cout<<"initialized new tree"<<endl;
+
     planner_in_progress = true;
 }
 
@@ -348,17 +364,24 @@ void Planner_node::change_sampling_region()
     system.regionOperating.size[0] = system.map_width;
     system.regionOperating.size[1] = system.map_height;
     system.regionOperating.size[2] = 2.0 * M_PI;
-   
-    
+  
+     
     system.regionGoal.center[0] = curr_goal.x;
     system.regionGoal.center[1] = curr_goal.y;
     system.regionGoal.center[2] = curr_goal.z;
-    
     system.regionGoal.size[0] = 5;
     system.regionGoal.size[1] = 5;
-    system.regionGoal.size[2] = 0.3 * M_PI;
+    system.regionGoal.size[2] = 0.5 * M_PI;
     
-    
+    /*
+    system.regionGoal.center[0] = 100;
+    system.regionGoal.center[1] = 0;
+    system.regionGoal.center[2] = 0;
+    system.regionGoal.size[0] = 5;
+    system.regionGoal.size[1] = 5;
+    system.regionGoal.size[2] = 0.5 * M_PI;
+    */
+
     /*
     // project goal
     float goal_th = 0;
@@ -376,6 +399,21 @@ void Planner_node::change_sampling_region()
     system.regionGoal.size[2] = 0.3 * M_PI;
     cout<<"goal dir: "<< system.regionGoal.center[2] << endl;   
     */
+    
+    /* 
+    // project goal naive
+    float length = dist(curr_goal.x, curr_goal.y, system.origin.x, system.origin.y);
+    float xc = (curr_goal.x - system.origin.x)/length*10;
+    float yc = (curr_goal.y - system.origin.y)/length*10;
+    float goal_th = atan2(curr_goal.y - system.origin.y, curr_goal.x - system.origin.x);
+
+    system.regionGoal.center[0] = xc;
+    system.regionGoal.center[1] = yc;
+    system.regionGoal.center[2] = goal_th;
+    system.regionGoal.size[0] = 5.0;
+    system.regionGoal.size[1] = 5.0;
+    system.regionGoal.size[2] = 0.3 * M_PI;
+    */
 }
 
 bool Planner_node::system_in_goal()
@@ -383,7 +421,7 @@ bool Planner_node::system_in_goal()
     state_t curr_state;
     curr_state[0] = system.origin.x;
     curr_state[1] = system.origin.y;
-    curr_state[2] = system.origin.z;
+    curr_state[2] = curr_goal.z;
 
     return system.isReachingTarget(curr_state);
 }
@@ -397,10 +435,18 @@ void Planner_node::on_planner_timer(const ros::TimerEvent &e)
 
 void Planner_node::get_plan()
 {
+
+    // prune the obstructed part of the tree
+    rrts.checkTree();
+    rrts.updateReachability();
+    cout<<"num_vert: "<< rrts.numVertices << endl;
+    change_sampling_region();
+    
     if(system_in_goal())
     {
         cout<<"reached goal: clear trajectories"<<endl;
         already_committed = 1;
+        planner_in_progress = 0;
         for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
         {
             double* stateRef = *iter;
@@ -408,31 +454,15 @@ void Planner_node::get_plan()
         } 
         toPublishControl.clear();
         toPublishTraj.clear();
+        
     }
-
-    /*
-    if( (rrts.numVertices > 5000) && (rrts.getBestVertexCost() > 1000) )
-    {
-        system.turning_radius = 4.0;
-    }
-    else
-        system.turning_radius = 10.0;
-    */
-
-    // prune the obstructed part of the tree
-    rrts.checkTree();
-    rrts.updateReachability();
-    cout<<"num_vert: "<< rrts.numVertices << endl;
-
-    change_sampling_region();
-
+    
     for(unsigned int i=0; i< RRT_MAX_ITER; i++)
     {
         rrts.iteration();
     }
-    cout<<"commit status: "<< already_committed << endl;
     curr_best_cost = rrts.getBestVertexCost();
-    
+    cout<<"commit status: "<< already_committed << " best_curr: "<< curr_best_cost << endl;
 
     // if found traj, copy it and keep publishing, switch root to some node ahead
     if(!already_committed)
