@@ -41,7 +41,7 @@ namespace PID_Speed{
     if(sampler.emergency || (cmd_vel_ <= 0 && sampler.vel <= full_brake_thres_))
     {
       th.volt = 0; bp.angle = -1 * coeff_bp_;
-      cmd_vel_ = 0; time_pre_ = ros::Time::now(); e_pre_ = 0; ei_ = 0;
+      cmd_vel_ = 0; time_pre_ = ros::Time::now(); e_pre_ = 0; ei_ = -ki_sat_ / ki_;
       v_filtered_ = 0;
     }
     else
