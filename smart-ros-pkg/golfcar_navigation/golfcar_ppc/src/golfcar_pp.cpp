@@ -268,10 +268,10 @@ namespace golfcar_purepursuit {
 
     if(last_segment_ < 0)
       return -1;
-    else if(trajectory_.poses.size() < 1)
-      return -1;
     else if(trajectory_.poses.size() < 2)
-      return 0;
+      return -1;
+    else if((int) trajectory_.poses.size() < last_segment_+2)
+      return -1;
 
     int segment = last_segment_;
     bool bContinue;
@@ -324,6 +324,13 @@ namespace golfcar_purepursuit {
   // if the way trajectory points are generated is changed, this function should be changed
   int PurePursuit::find_lookahead_segment(int segment, double cur_x, double cur_y, double &L, double &cmd_vel)
   {
+    if(segment < 0)
+      return -1;
+    else if(trajectory_.poses.size() < 2)
+      return -1;
+    else if((int) trajectory_.poses.size() < segment+2)
+      return -1;
+
     double dist1, dist2;
     int on_segment = segment;
     while((int) trajectory_.poses.size() > on_segment+1)
@@ -340,6 +347,7 @@ namespace golfcar_purepursuit {
       on_segment++;
     }
 
+    // if not found, use the current segment
     return segment;
   }
 
@@ -347,7 +355,11 @@ namespace golfcar_purepursuit {
   // if the way trajectory points are generated is changed, this function should be changed
   double PurePursuit::get_desired_speed(int segment, double cur_x, double cur_y)
   {
-    if(segment < 0 || trajectory_.poses.size() < 2)
+    if(segment < 0)
+      return 0;
+    else if(trajectory_.poses.size() < 2)
+      return 0;
+    else if((int) trajectory_.poses.size() < segment+2)
       return 0;
 
     double dist_to_go = 0;
@@ -399,6 +411,12 @@ namespace golfcar_purepursuit {
 
     double L = look_ahead_;
     int lookahead_segment = find_lookahead_segment(segment, cur_x, cur_y, L, cmd_vel);
+    if(lookahead_segment < 0)
+    {
+      ROS_DEBUG("steering, lookahead_segment = -1");
+      cmd_vel = 0;
+      return 0;
+    }
 
     double tar_x = trajectory_.poses[lookahead_segment+1].pose.position.x;
     double tar_y = trajectory_.poses[lookahead_segment+1].pose.position.y;
@@ -439,6 +457,13 @@ namespace golfcar_purepursuit {
       theta -= 2*M_PI;
     while(theta < -M_PI)
       theta += 2*M_PI;
+
+    if(L < abs(x))
+    {
+      ROS_WARN("too off from traj, L=%lf < abs(x=%lf)", L, x);
+      cmd_vel = 0;
+      return 0;
+    }
 
     gamma = 2/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
     double steering = atan(gamma * car_length_);
