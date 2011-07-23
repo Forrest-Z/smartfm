@@ -230,10 +230,15 @@ namespace golfcar_purepursuit{
 	}
 	
 	bool PurePursuitBase::isGoalReached(){
-		
-		if(path_flag_) return false;
-		else return true;
-		
+		//fix goal criteria. Only declare goal when the car hit the very last point in addition to the path_flag
+		//std::cout<<pp_->path_n_<<"/"<<pp_->path_.poses.size()-1<<std::endl;
+		if(!path_flag_ && pp_->path_n_<pp_->path_.poses.size()-1)
+		{
+			std::cout<<"Goal reached"<<std::endl;
+			return true;
+		}
+		else return false;
+		std::cout<<"Goal "<<pp_->path_n_<<'/'<<pp_->path_.poses.size()-1<<std::endl;
 	}
 			
 	bool PurePursuitBase::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan){
