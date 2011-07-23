@@ -92,7 +92,7 @@ double Trajectory::evaluateCost () {
 
 System::System () 
 {
-    turning_radius = 5.0;
+    turning_radius = 4.0;
     distance_limit = 1000.0;
     delta_distance = 0.05;
     has_found_path = 0; 

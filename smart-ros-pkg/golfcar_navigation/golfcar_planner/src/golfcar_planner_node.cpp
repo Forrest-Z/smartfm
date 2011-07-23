@@ -348,6 +348,7 @@ void Planner_node::change_sampling_region()
     system.regionOperating.size[0] = system.map_width;
     system.regionOperating.size[1] = system.map_height;
     system.regionOperating.size[2] = 2.0 * M_PI;
+   
     
     system.regionGoal.center[0] = curr_goal.x;
     system.regionGoal.center[1] = curr_goal.y;
@@ -356,15 +357,20 @@ void Planner_node::change_sampling_region()
     system.regionGoal.size[0] = 5;
     system.regionGoal.size[1] = 5;
     system.regionGoal.size[2] = 0.3 * M_PI;
-   
-    /* 
+    
+    
+    /*
     // project goal
+    float goal_th = 0;
     float xc, yc, xs, ys;
-    project_goal(xc, yc, xs, ys, curr_goal.x, curr_goal.y);
+    if(project_goal(xc, yc, xs, ys, curr_goal.x, curr_goal.y))
+        goal_th = curr_goal.z;
+    else
+        goal_th = atan2(yc - system.origin.y, xc - system.origin.x);
 
     system.regionGoal.center[0] = xc;
     system.regionGoal.center[1] = yc;
-    system.regionGoal.center[2] = atan2(yc - system.origin.y, xc - system.origin.x);
+    system.regionGoal.center[2] = goal_th;
     system.regionGoal.size[0] = xs;
     system.regionGoal.size[1] = ys;
     system.regionGoal.size[2] = 0.3 * M_PI;
@@ -459,7 +465,7 @@ void Planner_node::get_plan()
                 double length = rrts.getTrajectoryLength(bestTrajectory);
                 cout<<"length best: "<<length<<endl;
                 
-                if(rrts.switchRoot(5, toPublishTraj, toPublishControl))
+                if(rrts.switchRoot(10, toPublishTraj, toPublishControl))
                 {
                     already_committed = 1;
                     change_sampling_region();
@@ -531,7 +537,6 @@ int Planner_node::publish_traj()
     traj_msg.header.stamp = ros::Time::now();
     traj_msg.header.frame_id = "odom";
     
-    cout<<"traj size: "<< toPublishTraj.size() << endl;
     for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
     {
         double* stateRef = *iter;
@@ -578,11 +583,13 @@ int Planner_node::publish_traj()
     }
     trajview_pub.publish(traj_msg);
 
+    cout<<"finished traj pub"<<endl;
     return 1;
 }
 
 int Planner_node::publish_tree()
 {
+    cout<<"start tree pub"<<endl;
     int num_nodes = 0;
     
     num_nodes = rrts.numVertices;
@@ -616,26 +623,24 @@ int Planner_node::publish_tree()
                 state_t& stateParent = vertexParent.getState();
                 list<double*> trajectory;
                 list<float> control;
-                if (system.getTrajectory (stateParent, stateCurr, trajectory, control) == 0) 
+                if (system.getTrajectory (stateParent, stateCurr, trajectory, control)) 
                 {
-                    //cout << "ERROR: Trajectory can not be regenerated" << endl;
-                    return 0;
-                }
-                int par_num_states = trajectory.size();
-                if (par_num_states) 
-                {
-                    int stateIndex = 0;
-                    for (list<double*>::iterator it_state = trajectory.begin(); it_state != trajectory.end(); it_state++) 
+                    int par_num_states = trajectory.size();
+                    if (par_num_states) 
                     {
-                        double *stateTraj = *it_state;
+                        int stateIndex = 0;
+                        for (list<double*>::iterator it_state = trajectory.begin(); it_state != trajectory.end(); it_state++) 
+                        {
+                            double *stateTraj = *it_state;
 
-                        geometry_msgs::Point32 p2;
-                        p2.x = stateTraj[0];
-                        p2.y = stateTraj[1];
-                        p2.z = 0.0;
-                        pc.points.push_back(p2);
-                        stateIndex++;
-                        delete [] stateTraj;
+                            geometry_msgs::Point32 p2;
+                            p2.x = stateTraj[0];
+                            p2.y = stateTraj[1];
+                            p2.z = 0.0;
+                            pc.points.push_back(p2);
+                            stateIndex++;
+                            delete [] stateTraj;
+                        }
                     }
                 }
             }
@@ -645,6 +650,7 @@ int Planner_node::publish_tree()
     tree_pub.publish(pc);
     vertex_pub.publish(pc1);
 
+    cout<<"finished tree pub"<<endl;
     return 1;
 
 }

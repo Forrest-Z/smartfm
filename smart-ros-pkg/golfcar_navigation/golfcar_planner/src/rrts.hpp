@@ -793,13 +793,13 @@ RRTstar::Planner< typeparams >
             trajret.push_back(stateTmp);
             controlret.push_back(controlTmp);
             
+            // copy it every time
+            for (int i = 0; i < numDimensions; i++)
+                stateRootNew[i] = stateArrCurr[i];
+            vertexChildNew = vertexCurr;
+            
             if (distTotal >= distanceIn) 
             {
-
-                for (int i = 0; i < numDimensions; i++)
-                    stateRootNew[i] = stateArrCurr[i];
-                vertexChildNew = vertexCurr;
-
                 stateFound = true;
                 break;
             }
@@ -819,7 +819,6 @@ RRTstar::Planner< typeparams >
 
         if (stateFound)
         {
-            cout<<"switching root successful "<< trajret.size() << " "<< controlret.size() << endl;
             break;
         }
 
@@ -827,10 +826,10 @@ RRTstar::Planner< typeparams >
     }
     
     delete [] stateArrPrev;  
-   
+    
+    /*
     if (stateFound == false) 
     {
-        /*
         // free memory for toPublishTraj
         for (list<double*>::iterator iter = trajret.begin(); iter != trajret.end(); iter++) 
         {
@@ -839,10 +838,11 @@ RRTstar::Planner< typeparams >
         } 
         trajret.clear();
         controlret.clear();
-        */
+        
         delete [] stateRootNew;
         return 0;
     }
+    */
 
     // 2. Find and store all the decendandts of the new root
     findDescendantVertices (vertexChildNew);
