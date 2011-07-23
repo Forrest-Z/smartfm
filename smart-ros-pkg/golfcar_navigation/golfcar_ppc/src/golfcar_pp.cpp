@@ -398,7 +398,7 @@ namespace golfcar_purepursuit {
   {
     if(segment < 0)
     {
-      ROS_DEBUG("steering, segment = -1");
+      ROS_WARN("steering, segment = -1");
       cmd_vel = 0;
       return 0;
     }
@@ -413,7 +413,7 @@ namespace golfcar_purepursuit {
     int lookahead_segment = find_lookahead_segment(segment, cur_x, cur_y, L, cmd_vel);
     if(lookahead_segment < 0)
     {
-      ROS_DEBUG("steering, lookahead_segment = -1");
+      ROS_WARN("steering, lookahead_segment = -1");
       cmd_vel = 0;
       return 0;
     }
@@ -467,8 +467,8 @@ namespace golfcar_purepursuit {
 
     gamma = 2/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
     double steering = atan(gamma * car_length_);
-    ROS_DEBUG("steering, segment=%d lookahead_seg=%d x=%lf y=%lf yaw=%lf cmd_vel=%lf", segment, lookahead_segment, cur_x, cur_y, cur_yaw, cmd_vel);
-    ROS_DEBUG("inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf", inv_R, L, r, x, theta, gamma, steering);
+    ROS_WARN("[just info] steering, segment=%d lookahead_seg=%d x=%lf y=%lf yaw=%lf cmd_vel=%lf", segment, lookahead_segment, cur_x, cur_y, cur_yaw, cmd_vel);
+    ROS_WARN("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf", inv_R, L, r, x, theta, gamma, steering);
 
     if(isnan(steering))
     {
