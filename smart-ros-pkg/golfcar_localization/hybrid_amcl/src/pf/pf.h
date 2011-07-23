@@ -132,8 +132,12 @@ typedef struct _pf_t
   // Decay rates for running averages
   double alpha_slow, alpha_fast;
 
+  pf_vector_t Pos_Est;
+
   // Function used to draw random pose samples
   pf_init_model_fn_t random_pose_fn;
+    
+
   void *random_pose_data;
 } pf_t;
 

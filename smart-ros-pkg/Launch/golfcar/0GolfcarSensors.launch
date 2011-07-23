@@ -31,14 +31,13 @@
 		<param name="max_ang" type="double" value="2.2689"/>  
 		<param name="intensity" type="bool" value="false"/>
 	</node>
-	<node pkg="lse_xsens_mti" type="mti_node" name="mti_node">
+	<node pkg="lse_xsens_mti" type="mti_node" name="mti_node" ns="xs">
 		<param name="port" type="string" value="/dev/ttyUSB0"/>
 	</node>
-	<node pkg="tf" type="static_transform_publisher" name="base_link_to_hokuyolaser" args="1.95, 0.0, 0.91 0.00 0.35 0 /base_link /laser 100" />
-	<node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser" args="1.7, 0.0, 1.45 0 0 0 /base_link /sick_laser 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_hokuyolaser" args="1.95, 0.0, 0.91 0.00 0 0 /base_link /laser 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser" args="1.7, 0.0, 1.45 0 0.35 0 /base_link /sick_laser 100" />
 	<!--node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="1.83, -0.36, 0.86 0 0 0 /base_link /sick_laser2 100" /-->
-	<node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="0.92, 0, 1.83 0 0 0 /base_link /sick_laser2 100" />
-
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="1.7, 0, 1.85 0 0 0 /base_link /sick_laser2 100" />
 	<node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
 		<param name="video_device" value="/dev/video0" />
 		<param name="image_width" value="640" />
@@ -48,5 +47,13 @@
 		<param name="io_method" value="mmap"/>
 	</node>
 
+	<node pkg="microstrain_3dmgx2_imu" ns="ms" type="imu_node" name="microstrain_3dmgx2_node" output="screen">
+	    <param name="time_offset" value="-0.040" />
+	    <param name="port"  type="string" value="/dev/ttyACM0" />
+	    <param name="autostart" type="bool" value="true" />
+	    <param name="frameid"  type="string" value="imu" />
+	    <param name="autocalibrate" type="bool" value="true" />
+	    <param name="angular_velocity_stdev" type="double" value="0.00017" />
+	</node>
 </launch>
 

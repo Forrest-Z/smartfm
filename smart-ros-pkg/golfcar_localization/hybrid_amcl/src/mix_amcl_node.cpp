@@ -40,6 +40,10 @@
 
 using namespace amcl;
 
+#define RANDOM_SAMPLE_BOX_X 5.0
+#define RANDOM_SAMPLE_BOX_Y 5.0
+#define RANDOM_SAMPLE_BOX_THETHA M_PI/3.0
+
 // Pose hypothesis
 typedef struct
 {
@@ -160,7 +164,7 @@ class MixAmclNode
     
     bool LaserUseFlag_;	
     bool CurbUseFlag_; 
-    
+    bool LaserOn_;
     
     pf_vector_t pf_odom_pose_;
     pf_vector_t pf_curb_odom_pose_;
@@ -269,9 +273,9 @@ MixAmclNode::MixAmclNode() :
   save_pose_period = ros::Duration(1.0/tmp);
   private_nh_.param("laser_min_range", laser_min_range_, -1.0);
   private_nh_.param("laser_max_range", laser_max_range_, -1.0);
-  private_nh_.param("min_particles", min_particles, 1000);
+  private_nh_.param("min_particles", min_particles, 2000);
   private_nh_.param("max_particles", max_particles, 5000);
-  private_nh_.param("laser_max_beams", max_beams, 30);
+  private_nh_.param("laser_max_beams", max_beams, 20);
   private_nh_.param("kld_err", pf_err, 0.01);
   private_nh_.param("kld_z", pf_z, 0.99);
   private_nh_.param("odom_alpha1", alpha1_, 0.2);
@@ -330,8 +334,8 @@ MixAmclNode::MixAmclNode() :
   
   private_nh_.param("resample_interval_", resample_interval_, 2); // this parameter matters quite much;
   
-  private_nh_.param("recovery_alpha_slow", alpha_slow, 0.1);     //0.001; here I just do not allowed uniform random particles generated;
-  private_nh_.param("recovery_alpha_fast", alpha_fast, 0.1);	  //0.1;
+  private_nh_.param("recovery_alpha_slow", alpha_slow, 0.001);     //0.001; here I just do not allowed uniform random particles generated;
+  private_nh_.param("recovery_alpha_fast", alpha_fast, 0.01);	  
   
   double tmp_tol;
   private_nh_.param("transform_tolerance", tmp_tol, 0.5);
@@ -378,8 +382,10 @@ MixAmclNode::MixAmclNode() :
   pf_init_    = false;
   curb_init_  = false;
   laser_init_ = false;
+  
   LaserUseFlag_= true;	
   CurbUseFlag_ = true;
+  LaserOn_ = true;
   // Instantiate the sensor objects
   // Odometry
   odom_ = new AMCLOdom();
@@ -533,28 +539,32 @@ bool MixAmclNode::getOdomPose(tf::Stamped<tf::Pose>& odom_pose, double& x, doubl
 
 pf_vector_t MixAmclNode::uniformPoseGenerator(void* arg)
 {
-	map_t* map = (map_t*)arg;
-	double min_x, max_x, min_y, max_y;
+	//map_t* map = (map_t*)arg;
+	double min_x, max_x, min_y, max_y, min_thetha, max_thetha;
 
-	min_x = (map->size_x * map->scale)/2.0 - map->origin_x;
-	max_x = (map->size_x * map->scale)/2.0 + map->origin_x;
-	min_y = (map->size_y * map->scale)/2.0 - map->origin_y;
-	max_y = (map->size_y * map->scale)/2.0 + map->origin_y;
+	min_x 	   	=  -RANDOM_SAMPLE_BOX_X/2.0;
+	max_x 		=   RANDOM_SAMPLE_BOX_X/2.0;
+	min_y 		=  -RANDOM_SAMPLE_BOX_Y/2.0;
+	max_y 		=  	RANDOM_SAMPLE_BOX_Y/2.0;
+	min_thetha  =  -RANDOM_SAMPLE_BOX_THETHA/2.0;
+	max_thetha  =   RANDOM_SAMPLE_BOX_THETHA/2.0;
 
 	pf_vector_t p;
 
-	for(;;)
+	//for(;;)
 	{
 		p.v[0] = min_x + drand48() * (max_x - min_x);
 		p.v[1] = min_y + drand48() * (max_y - min_y);
-		p.v[2] = drand48() * 2 * M_PI - M_PI;
+		p.v[2] = min_thetha + drand48() * (max_thetha - min_thetha);
 	
 		// Check that it's a free cell
+		/*
 		int i,j;
 		i = MAP_GXWX(map, p.v[0]);
 		j = MAP_GYWY(map, p.v[1]);
 		if(MAP_VALID(map,i,j) && (map->cells[MAP_INDEX(map,i,j)].occ_state == -1))
 		break;
+		*/ 
 	}
 	return p;
 }
@@ -700,49 +710,56 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 					   fabs(curb_delta.v[2]) > curb_a_thresh_;
 
 		bool update2 = (curbdata_->accumNum_) > numTresh_;
-		//bool update3 = distTolastCurb < 4.0;
-		bool updateAction = update1 && update2;
-		bool updateMeas= update1 && update2;
+		bool update3 = (curbdata_->accumNum_>10) && (distTolastOdom>0.6||odom_delta.v[2]> M_PI/6.0);
 		
-		/*
-		if(update3)
-		{
-			odom_->SetModelDiff(alpha1_, alpha2_, alpha3_, alpha4_, alpha6_); 
-		}
-		else
-		{
-			//because sometimes the particles got undesired spreaded;
-			//we don't use this coming measurement for updating, but accumulate this with next set of measurements;
-			//here just to shift these particles, using parameters 0.00001;
-			double temp_alpha1=0.0001;
-			double temp_alpha2=0.0001;
-			double temp_alpha3=0.0001;
-			double temp_alpha4=0.0001;
-			double temp_alpha6=0.0001;
-			odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
-		}
-		*/
+		bool updateAction = (update1 && update2)||update3;
+		bool updateMeas= (update1 && update2)||update3;
+		bool Shift_Flag = (distTolastOdom >1||odom_delta.v[2]> M_PI/3.0);
+		
 		
 		// Prediction Step;
 		if(updateAction)
 		{
+			if(!LaserUseFlag_)
+			{
+				double temp_alpha1=0.04;	//0.09
+				double temp_alpha2=0.04;	//0.09
+				double temp_alpha3=0.2;
+				double temp_alpha4=0.2;
+				double temp_alpha6=0.09;
+				odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
+			}
 			
-			double temp_alpha1=0.04;
-			double temp_alpha2=0.04;
-			double temp_alpha3=0.2;
-			double temp_alpha4=0.2;
-			double temp_alpha6=0.09;
-			odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
+			if(Shift_Flag)
+			{
+				double temp_alpha1=0.01;
+				double temp_alpha2=0.01;
+				double temp_alpha3=0.01;
+				double temp_alpha4=0.01;
+				double temp_alpha6=0.01;
+				odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
+			}
+			else if(LaserUseFlag_)
+			{
+				double temp_alpha1=0.2;
+				double temp_alpha2=0.2;
+				double temp_alpha3=0.2;
+				double temp_alpha4=0.2;
+				double temp_alpha6=0.09;
+				odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
+			}
 			
-			ROS_DEBUG("---------------------update action----------------");
-			ROS_DEBUG("distTolastOdom: %5f", distTolastOdom);
-			ROS_DEBUG("pitch: %5f", pitch);
+			//ROS_DEBUG("---------------------update action----------------");
+			//ROS_DEBUG("distTolastOdom: %5f", distTolastOdom);
+			//ROS_DEBUG("pitch: %5f", pitch);
 			
 			AMCLOdomData odata;
 			odata.pose  = pose;
 			odata.delta = odom_delta;
 			odata.pitch = pitch;
 			odom_->UpdateAction(pf_, (AMCLSensorData*)&odata, (void *)curb_map_);
+			
+			pf_->Pos_Est = pf_vector_add(odom_delta, pf_->Pos_Est);
 			
 			pf_odom_pose_ = pose;
 			
@@ -753,7 +770,6 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 	
     
 		// Measurement Update;
-	
 		/////////////////////////////////////////////////////////////
 		// if update is true, prepare the curbsegment data;
 		// transfer them into the new baselink coordinate;
@@ -763,8 +779,8 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 
 		if(updateMeas)
 		{
-			ROS_DEBUG("---------------------update Meas----------------");
-			ROS_DEBUG("distTolastCurb: %5f, accumNum: %d", distTolastCurb, curbdata_->accumNum_);
+			ROS_INFO("---------------------update Meas----------------");
+			ROS_INFO("distTolastCurb: %5f, accumNum: %d", distTolastCurb, curbdata_->accumNum_);
 			
 			//this is quite important!!!
 			//Because in the beginning I missed this command, the whole program cannot work properly;
@@ -795,7 +811,9 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 				pointtemp.z=(float)newBaselinkPose.getOrigin().z();
 			
 				temppointcloud.points.push_back(pointtemp);
-
+				//emphasize the curb points;
+				temppointcloud.points.push_back(pointtemp);
+				
 				if(pointtemp.y>0){newLeftMeas_.points.push_back(pointtemp);}
 				else{newRightMeas_.points.push_back(pointtemp);}
 			}
@@ -820,7 +838,7 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 				bool *FlagPointer = &CurbUseFlag_;
 			
 				curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer);
-				curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer);
+				//curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer);
 				
 				if(LaserUseFlag_)
 				{
@@ -828,7 +846,6 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 				}
 				else
 				{
-					//curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer);
 					numTresh_ = 15;
 				}
 				
@@ -839,7 +856,6 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 					{
 						pf_update_resample(pf_);
 						resampled = true;
-						//ROS_INFO("Resampled is true");
 					}
 			
 					pf_sample_set_t* set = pf_->sets + pf_->current_set;
@@ -913,6 +929,8 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 					hyps[max_weight_hyp].pf_pose_mean.v[0],
 					hyps[max_weight_hyp].pf_pose_mean.v[1],
 					hyps[max_weight_hyp].pf_pose_mean.v[2]);
+			
+			pf_->Pos_Est = hyps[max_weight_hyp].pf_pose_mean;
 
 			geometry_msgs::PoseWithCovarianceStamped p;
 			// Fill in the header
@@ -1131,11 +1149,30 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 		bool update =	fabs(laser_delta.v[0]) > laser_d_thresh_ ||
 						fabs(laser_delta.v[1]) > laser_d_thresh_ ||
 						fabs(laser_delta.v[2]) > laser_a_thresh_;
-
+		
 		// Set the laser update flags
 		if(update)
 		for(unsigned int i=0; i < lasers_update_.size(); i++)
 		lasers_update_[i] = true;
+		
+		bool Shift_Flag = (distTolastOdom > 0.3 || odom_delta.v[2] > M_PI/6.0);
+		
+		if(!Shift_Flag)
+		{
+			odom_->SetModelDiff(alpha1_, alpha2_, alpha3_, alpha4_, alpha6_); 
+		}
+		else
+		{
+			//because sometimes the particles got undesired spreaded;
+			//we don't use this coming measurement for updating, but accumulate this with next set of measurements;
+			//here just to shift these particles, using parameters 0.0001;
+			double temp_alpha1=0.01;
+			double temp_alpha2=0.01;
+			double temp_alpha3=0.01;
+			double temp_alpha4=0.01;
+			double temp_alpha6=0.01;
+			odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
+		}
 	}
 	
 	bool force_publication = false;
@@ -1156,7 +1193,7 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 	}
 	else if(laser_init_ && lasers_update_[laser_index])
 	{
-		
+		/*
 		if(LaserUseFlag_)
 		{
 			laser_d_thresh_ = 0.2;
@@ -1177,6 +1214,7 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 			double temp_alpha6=0.09;
 			odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
 		}
+		*/ 
 		
 		//printf("pose\n");
 		//pf_vector_fprintf(pose, stdout, "%.3f");
@@ -1189,6 +1227,8 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 		odata.delta = odom_delta;
 		odata.pitch = pitch;
 		odom_->UpdateAction(pf_, (AMCLSensorData*)&odata, (void *)curb_map_);
+		pf_->Pos_Est = pf_vector_add(odom_delta, pf_->Pos_Est);
+		//ROS_INFO("POS_EST %3f", pf_->Pos_Est.v[0]);
 	}
 	
 	bool resampled = false;
@@ -1255,6 +1295,17 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 			ldata.ranges[i][1] = angle_min +(i * angle_increment);
 		}
 		
+		bool LaserSwitch = false;
+		if(LaserOn_&&!LaserUseFlag_){LaserOn_ =false; LaserSwitch=true;ROS_INFO("LASER TURN OFF");}
+		if(!LaserOn_&&LaserUseFlag_){LaserOn_ =true;  LaserSwitch=true;ROS_INFO("LASER TURN ON");}
+		
+		if(LaserSwitch)
+		{
+			//pf_->w_slow = 0.0;
+			//pf_->w_fast = 0.0;
+		}
+		
+		
 		bool *FlagPointer = &LaserUseFlag_;
 		lasers_[laser_index]->UpdateSensor(pf_, (AMCLSensorData*)&ldata, FlagPointer);
 
@@ -1270,13 +1321,13 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 			// Resample the particles
 			if(!(++resample_count_ % resample_interval_))
 			{
-				ROS_DEBUG("resample the particles");
+				ROS_INFO("resample the particles");
 				pf_update_resample(pf_);
 				resampled = true;
 			}
 			else
 			{
-				ROS_DEBUG("laser_resample_count: %d", resample_count_);
+				ROS_INFO("laser_resample_count: %d", resample_count_);
 			}
 
 			pf_sample_set_t* set = pf_->sets + pf_->current_set;
@@ -1344,7 +1395,8 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 						hyps[max_weight_hyp].pf_pose_mean.v[1],
 						hyps[max_weight_hyp].pf_pose_mean.v[2]);
 
-
+			pf_->Pos_Est = hyps[max_weight_hyp].pf_pose_mean;
+			
 			geometry_msgs::PoseWithCovarianceStamped p;
 			// Fill in the header
 			p.header.frame_id = global_frame_id_;

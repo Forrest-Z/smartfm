@@ -71,6 +71,10 @@ pf_t *pf_alloc(int min_samples, int max_samples,
   pf->pop_err = 0.01;
   pf->pop_z = 3;
 
+  pf->Pos_Est.v[0] = 0.0;
+  pf->Pos_Est.v[1] = 0.0;
+  pf->Pos_Est.v[2] = 0.0;
+
   for (j = 0; j < 2; j++)
   {
     set = pf->sets + j;
@@ -245,11 +249,11 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
   // Compute the sample weights
   total = (*sensor_fn) (sensor_data, workset);
   
-  printf("meas_score: %e; total: %e", workset->meas_score, total);
+  printf("meas_score: %e; total: %e\n", workset->meas_score, total);
 
   double meas_score_threshold = 0.5;
 
-  if(workset->meas_score <meas_score_threshold) 
+  if(workset->meas_score < meas_score_threshold) 
   {
    *UseFlag=false;	
   return;
@@ -277,16 +281,32 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
     }
     // Update running averages of likelihood of samples (Prob Rob p258)
     w_avg /= set->sample_count;
+
+	 printf("before: w_avg: %e slow: %e fast: %e\n",w_avg, pf->w_slow, pf->w_fast);
+	 
     if(pf->w_slow == 0.0)
       pf->w_slow = w_avg;
     else
       pf->w_slow += pf->alpha_slow * (w_avg - pf->w_slow);
+
+
+	 if(pf->w_fast > 1.5*pf->w_slow)
+	 {
+		 if(w_avg>pf->w_fast) pf->alpha_fast = 0.001;   //0.2
+		 else pf->alpha_fast = 0.5;  
+	 }
+	 else
+	 {
+		 if(w_avg>pf->w_fast) pf->alpha_fast = 0.4;   //0.2
+		 else pf->alpha_fast = 0.2;  //0.05
+	 }
+
     if(pf->w_fast == 0.0)
       pf->w_fast = w_avg;
     else
       pf->w_fast += pf->alpha_fast * (w_avg - pf->w_fast);
 
-    // printf("w_avg: %e slow: %e fast: %e\n",w_avg, pf->w_slow, pf->w_fast);
+     printf("after: w_avg: %e slow: %e fast: %e\n",w_avg, pf->w_slow, pf->w_fast);
   }
   else
   {
@@ -331,6 +351,7 @@ void pf_update_resample(pf_t *pf)
     c[i+1] = c[i]+set_a->samples[i].weight;
 
   // Create the kd tree for adaptive sampling
+
   pf_kdtree_clear(set_b->kdtree);
   
   // Draw samples from set a to create set b.
@@ -338,8 +359,13 @@ void pf_update_resample(pf_t *pf)
   set_b->sample_count = 0;
 
   w_diff = 1.0 - pf->w_fast / pf->w_slow;
+  printf("w_diff %e\n", w_diff);
+
   if(w_diff < 0.0)
     w_diff = 0.0;
+  if(w_diff >0.03)
+	 w_diff = 0.03;
+	
   //printf("w_diff: %9.6f\n", w_diff);
 
   // Can't (easily) combine low-variance sampler with KLD adaptive
@@ -357,7 +383,11 @@ void pf_update_resample(pf_t *pf)
     sample_b = set_b->samples + set_b->sample_count++;
 
     if(drand48() < w_diff)
-      sample_b->pose = (pf->random_pose_fn)(pf->random_pose_data);
+    {
+		sample_b->pose = (pf->random_pose_fn)(pf->random_pose_data);
+		sample_b->pose = pf_vector_add(sample_b->pose, pf->Pos_Est);
+	 }
+		
     else
     {
       // Can't (easily) combine low-variance sampler with KLD adaptive
@@ -383,7 +413,6 @@ void pf_update_resample(pf_t *pf)
       }
       m++;
       */
-
       // Naive discrete event sampler
       double r;
       r = drand48();
@@ -414,8 +443,8 @@ void pf_update_resample(pf_t *pf)
   }
   
   // Reset averages, to avoid spiraling off into complete randomness.
-  if(w_diff > 0.0)
-    pf->w_slow = pf->w_fast = 0.0;
+  // if(w_diff > 0.0)
+  // pf->w_slow = pf->w_fast = 0.0;
 
   //fprintf(stderr, "\n\n");
 

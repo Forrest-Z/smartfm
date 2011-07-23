@@ -49,7 +49,7 @@ namespace golfcar_odometry_imu{
         //Ensure that the orientation always start from yaw=0. That's the assumption made for odometry calculation
 
         //Only integrate yaw when the car is moving
-        if(sampler.vel < 0.05)
+        if(sampler.vel < 0.01 && sampler.vel > -0.01)
         {
             yaw_drift += (yaw - yaw_minus);
 
