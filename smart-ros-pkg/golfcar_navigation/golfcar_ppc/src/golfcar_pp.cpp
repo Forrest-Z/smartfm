@@ -13,7 +13,7 @@ namespace golfcar_purepursuit {
     if(!private_nh.getParam("max_timer",max_timer_)) max_timer_ = 1.0;
     if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 1.0;
     if(!private_nh.getParam("slow_speed",slow_speed_)) slow_speed_ = 0.5;
-    if(!private_nh.getParam("stopping_distance",stopping_distance_)) stopping_distance_ = 1.5;
+    if(!private_nh.getParam("stopping_distance",stopping_distance_)) stopping_distance_ = 2.5;
     if(!private_nh.getParam("neglect_distance",neglect_distance_)) neglect_distance_ = 0.001;
     if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3;
     if(!private_nh.getParam("max_steering",max_steering_)) max_steering_ = 0.65;
@@ -172,7 +172,7 @@ namespace golfcar_purepursuit {
   double PurePursuit::get_inv_R(double u)
   {
     double inv_R = 0;
-    if(u != 0)
+    if(abs(u) > 1e-6)
       inv_R = 1/u;
 
     return inv_R;
