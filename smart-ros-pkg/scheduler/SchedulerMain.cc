@@ -311,9 +311,12 @@ int main(int argc, char **argv)
       if (ret >= 0 && task.pickup != -1 && task.dropoff != -1 && !SIMULATE_MOBILE) {
 	task = scheduler->getTask(ret);
 	schedulerTalker->sendTaskStatus(task.customerID, task.taskID, task.twait, task.vehicleID);
+	fprintf (logFile, "\n%d: Sending status: %d:%d:%d:%d to the server", (int) time(NULL), task.customerID, task.taskID, task.twait, task.vehicleID);
       }
-      else if (ret >= 0 && task.pickup == -1 && task.dropoff == -1 && !SIMULATE_MOBILE)
+      else if (ret >= 0 && task.pickup == -1 && task.dropoff == -1 && !SIMULATE_MOBILE) {
 	schedulerTalker->sendTaskStatus(task.customerID, task.taskID, -1, TASK_REMOVED);
+	fprintf (logFile, "\n%d: Sending status: %d:%d:%d:%d to the server", (int) time(NULL), task.customerID, task.taskID, -1, TASK_REMOVED);
+      }
       // Otherwise, report invalid task to the mobile customer
       else if (ret < 0)
 	reportInvalidMobileTask(task, ret);
@@ -372,6 +375,8 @@ void reportInvalidMobileTask(Task task, int errorCode)
   if (!NOMOBILE && !SIMULATE_MOBILE) {
     schedulerTalker->sendTaskStatus(task.customerID, task.taskID, 
 				    -1, errorCode);
+    fprintf (logFile, "\n%d: Sending status: %d:%d:%d:%d to the server", (int) time(NULL), task.customerID, task.taskID, 
+	     -1, errorCode);
   }
   else {
     char errMessage[1024];
@@ -397,14 +402,19 @@ void sendMobileTaskStatus()
     VehicleStatus vehStatus = scheduler->getVehicleStatus();
     list<Task> tasks = scheduler->getVehicleRemainingTasks();
 
-    if (vehStatus == VEHICLE_ON_CALL && currentTask.customerID != OPERATOR_ID)
+    if (vehStatus == VEHICLE_ON_CALL && currentTask.customerID != OPERATOR_ID) {
       schedulerTalker->sendTaskStatus(currentTask.customerID, currentTask.taskID, 
 				      currentTask.tpickup, currentTask.vehicleID);
+      fprintf (logFile, "\n%d: Sending status: %d:%d:%d:%d to the server", (int) time(NULL), currentTask.customerID, currentTask.taskID, 
+	       currentTask.tpickup, currentTask.vehicleID);
+    }
 
     list<Task>::iterator it;
     for ( it=tasks.begin(); it != tasks.end(); it++ ) {
-      if (it->customerID != OPERATOR_ID)
+      if (it->customerID != OPERATOR_ID) {
 	schedulerTalker->sendTaskStatus(it->customerID, it->taskID, it->twait, it->vehicleID);
+	fprintf (logFile, "\n%d: Sending status: %d:%d:%d:%d to the server", (int) time(NULL), it->customerID, it->taskID, it->twait, it->vehicleID);
+      }
     }
   }
 }
@@ -451,6 +461,7 @@ Task getMobileTask()
   }
 
   MSG("Got task <%d,%d,%d,%d> from mobile phone", task.customerID, task.taskID, task.pickup, task.dropoff);
+  fprintf(logFile, "\n%d: Got task <%d,%d,%d,%d> from mobile phone", (int) time(NULL), task.customerID, task.taskID, task.pickup, task.dropoff);
 
   return task;
 }
@@ -538,6 +549,7 @@ int addTask(Task task)
     cout << endl;
   
   int ret = scheduler->addTask(task.customerID, task.taskID, task.pickup, task.dropoff);
+  fprintf (logFile, "\n%d: Added task %d:%d:%d:%d to the scheduler", (int) time(NULL), task.customerID, task.taskID, task.pickup, task.dropoff);
   
   if (VERBOSITY_LEVEL > 0 && NOGUI) {
     cout << "After adding task..." << endl;
@@ -589,6 +601,7 @@ void update()
     scheduler->updateVehicleStatus(vehStatus);
     scheduler->updateTCurrent(vehInfo.tremain);
     currentTask = scheduler->getVehicleCurrentTask();
+    fprintf (logFile, "\n%d: Updated vehicle status to %d", (int) time(NULL), vehStatus, vehInfo.tremain);
     
     if (VERBOSITY_LEVEL > 0 && NOGUI) {
       cout << endl;

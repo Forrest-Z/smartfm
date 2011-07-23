@@ -33,6 +33,7 @@ VehicleTalker::VehicleTalker(int port, int verbosityLevel)
   }
   catch (SocketException e) {
     ERROR("%s", e.getErrMsg().c_str());
+    fprintf (logFile, "\n%d: ERROR: %s", (int) time(NULL), e.getErrMsg().c_str());
     m_isconnected = false;
   }
 }
@@ -54,10 +55,12 @@ bool VehicleTalker::sendNewTask(int customerID, int pickup, int dropoff)
       std::ostringstream ss;
       ss << ";" << customerID << ":" << pickup << ":" << dropoff << "\n";
       m_socket << ss.str();
+      fprintf (logFile, "\n%d: sending task: %s", (int) time(NULL), ss.str().c_str());
       msgSent = true;
     }
     catch (SocketException e) {
       ERROR("%s", e.getErrMsg().c_str());
+      fprintf (logFile, "\n%d: ERROR: %s", (int) time(NULL), e.getErrMsg().c_str());
       msgSent = false;
       sleep(1);
     }
@@ -75,7 +78,7 @@ VehicleInfo VehicleTalker::getVehicleInfo()
   pthread_mutex_lock(&m_statusMutex);
   VehicleInfo ret = m_vehInfo;
   ret.isNew = m_newStatusRecv;
-  fprintf (logFile, "\n%d: processing status: %d:%d:%d", (int) time(NULL), ret.status, ret.tremain, ret.isNew);
+  fprintf (logFile, "\n%d: returning status: %d:%d:%d", (int) time(NULL), ret.status, ret.tremain, ret.isNew);
   m_newStatusRecv = false;
   pthread_mutex_unlock(&m_statusMutex);
   return ret;
@@ -154,6 +157,7 @@ void VehicleTalker::runVehicleReceiver()
 		(vehIDStr.at(i) < '0' || vehIDStr.at(i) > '9')) {
 	      statusValid = false;
 	      ERROR("Invalid vehicle ID: %s", vehIDStr.c_str());
+	      fprintf (logFile, "\n%d: ERROR: Invalid vehicle ID: %s", (int) time(NULL), vehIDStr.c_str());
 	      break;
 	    }
 	  }
@@ -163,6 +167,7 @@ void VehicleTalker::runVehicleReceiver()
 		  (vehStatusStr.at(i) < '0' || vehStatusStr.at(i) > '9')) {
 		statusValid = false;
 		ERROR("Invalid status: %s", vehStatusStr.c_str());
+		fprintf (logFile, "\n%d: ERROR: Invalid status: %s", (int) time(NULL), vehStatusStr.c_str());
 		break;
 	      }
 	    }
@@ -173,6 +178,7 @@ void VehicleTalker::runVehicleReceiver()
 		  (tremainStr.at(i) < '0' || tremainStr.at(i) > '9')) {
 		statusValid = false;
 		ERROR("Invalid tremain: %s (%c)", tremainStr.c_str(), tremainStr.at(i));
+		fprintf (logFile, "\n%d: ERROR: Invalid tremain: %s", (int) time(NULL), tremainStr.c_str());
 		break;
 	      }
 	    }

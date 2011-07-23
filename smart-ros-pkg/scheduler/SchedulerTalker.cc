@@ -24,6 +24,7 @@ SchedulerTalker::SchedulerTalker(string host, int port, int verbosityLevel)
   m_pickup = UNINIT_INT;
   m_dropoff = UNINIT_INT;
   m_verbosity = verbosityLevel;
+  logFile = fopen ("log_stalker.txt","w");
   try {
     m_socket.init(host, port);
     m_socket.setSocketBlocking(true);
@@ -32,8 +33,14 @@ SchedulerTalker::SchedulerTalker(string host, int port, int verbosityLevel)
   }
   catch (SocketException e) {
     ERROR("%s", e.getErrMsg().c_str());
+    fprintf (logFile, "\n%d: ERROR: %s", (int) time(NULL), e.getErrMsg().c_str());
     m_isconnected = false;
   }
+}
+
+SchedulerTalker::~SchedulerTalker() 
+{
+  fclose (logFile);
 }
 
 bool SchedulerTalker::sendTaskStatus(int usrID, int taskID, int twait, int vehicleID)
@@ -47,10 +54,12 @@ bool SchedulerTalker::sendTaskStatus(int usrID, int taskID, int twait, int vehic
       std::ostringstream ss;
       ss << ";" << "0:" << usrID << ":" << taskID << ":" << twait << ":" << vehicleID << "\n";
       m_socket << ss.str();
+      fprintf (logFile, "\n%d: sending status: %s", (int) time(NULL), ss.str().c_str());
       msgSent = true;
     }
     catch (SocketException e) {
       ERROR("%s", e.getErrMsg().c_str());
+      fprintf (logFile, "\n%d: ERROR: %s", (int) time(NULL), e.getErrMsg().c_str());
       msgSent = false;
       sleep(1);
     }
@@ -70,6 +79,7 @@ bool SchedulerTalker::recvTask(int &usrID, int &taskID, int &pickup, int &dropof
   taskID = m_taskID;
   pickup = m_pickup;
   dropoff = m_dropoff;
+  fprintf (logFile, "\n%d: returning task: %d:%d:%d:%d:%d", (int) time(NULL), usrID, taskID, pickup, dropoff, ret);
   m_newTaskRecv = false;
   return ret;
 }
@@ -79,7 +89,9 @@ void SchedulerTalker::runMobileReceiver()
   std::string msg;
   bool msgIncomplete = false;
   while (!m_quit) {
+    fprintf(logFile, "\n%d: waiting for the vehicle to pick up new msg", (int) time(NULL));
     if (!m_newTaskRecv) {
+      fprintf(logFile, "\n%d: processing msg: %s", (int) time(NULL), msg.c_str());
       if (msg.length() > 0 && !msgIncomplete) {
 	// Msg format: customerID:picup:dropoff
 	string taskStr;
@@ -120,6 +132,7 @@ void SchedulerTalker::runMobileReceiver()
 	else {
 	  msgIncomplete = true;
 	  msg = taskStr;
+	  fprintf(logFile, "\n%d: incomplete msg: %s", (int) time(NULL), msg.c_str());
 	  continue;
 	}
 
@@ -161,6 +174,7 @@ void SchedulerTalker::runMobileReceiver()
 		(usrIDStr.at(i) < '0' || usrIDStr.at(i) > '9')) {
 	      taskValid = false;
 	      ERROR("Invalid customer ID: %s", usrIDStr.c_str());
+	      fprintf (logFile, "\n%d: ERROR: Invalid customer ID: %s", (int) time(NULL), usrIDStr.c_str());
 	      break;
 	    }
 	  }
@@ -170,6 +184,7 @@ void SchedulerTalker::runMobileReceiver()
 		  (taskIDStr.at(i) < '0' || taskIDStr.at(i) > '9')) {
 		taskValid = false;
 		ERROR("Invalid taskID: %s", taskIDStr.c_str());
+		fprintf (logFile, "\n%d: ERROR: Invalid task ID: %s", (int) time(NULL), taskIDStr.c_str());
 		break;
 	      }
 	    }
@@ -180,6 +195,7 @@ void SchedulerTalker::runMobileReceiver()
 		  (pickupStr.at(i) < '0' || pickupStr.at(i) > '9')) {
 		taskValid = false;
 		ERROR("Invalid pickup: %s", pickupStr.c_str());
+		fprintf (logFile, "\n%d: ERROR: Invalid pickup: %s", (int) time(NULL), pickupStr.c_str());
 		break;
 	      }
 	    }
@@ -190,6 +206,7 @@ void SchedulerTalker::runMobileReceiver()
 		  (dropoffStr.at(i) < '0' || dropoffStr.at(i) > '9')) {
 		taskValid = false;
 		ERROR("Invalid dropoff: %s (%c)", dropoffStr.c_str(), dropoffStr.at(i));
+		fprintf (logFile, "\n%d: ERROR: Invalid dropoff: %s", (int) time(NULL), dropoffStr.c_str());
 		break;
 	      }
 	    }
@@ -200,6 +217,7 @@ void SchedulerTalker::runMobileReceiver()
 	    m_pickup = atoi(pickupStr.c_str());
 	    m_dropoff = atoi(dropoffStr.c_str());
 	    m_newTaskRecv = true;
+	    fprintf (logFile, "\n%d: new task: %d:%d:%d:%d", (int) time(NULL), m_usrID, m_taskID, m_pickup, m_dropoff);
 	  }
 	  else
 	    msgIncomplete = false;
@@ -209,6 +227,7 @@ void SchedulerTalker::runMobileReceiver()
 	try {
 	  std::string newmsg;
 	  m_socket >> newmsg;
+	  fprintf (logFile, "\n\n%d: new msg: %s", (int) time(NULL), newmsg.c_str());
 	  msg.append(newmsg);
 	  msgIncomplete = false;
 	}

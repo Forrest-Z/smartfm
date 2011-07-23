@@ -1,6 +1,7 @@
 #ifndef SCHEDULERTALKER_HH_
 #define SCHEDULERTALKER_HH_
 
+#include <stdio.h>
 #include "ClientSocket.hh"
 #include "SocketException.hh"
 
@@ -11,7 +12,7 @@ public:
   SchedulerTalker(std::string host, int port, int verbosity_level);
 
   // Default destructor
-  virtual ~SchedulerTalker() {};
+  virtual ~SchedulerTalker();
 
   // Send task status to the server
   bool sendTaskStatus(int usrID, int taskID, int twait, int vehicleID);
@@ -34,6 +35,7 @@ private:
   bool m_newTaskRecv;
   int m_usrID, m_taskID, m_pickup, m_dropoff;
   int m_verbosity;
+  FILE * logFile;
 };
 
 #endif // SCHEDULERTALKER_HH_
