@@ -76,7 +76,7 @@ pose [-176.333 160.001 0 90.000]  #for amcl_hokuyo
 # pose [-40.462 102.979 0 90.000] #for mcdonal
 #pose [-95.415 145.298 0 90.000] 
 )
-
+speedup 0.1
 # throw in a robot
 gc1( pose [-139.976 105.539 0 8.779] name "gc1" color "red")
 block( pose [ -104.223 98.740 0 0 ] color "red")

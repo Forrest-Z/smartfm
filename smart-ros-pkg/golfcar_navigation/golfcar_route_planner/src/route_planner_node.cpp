@@ -38,7 +38,7 @@ RoutePlannerNode::RoutePlannerNode()
 			{
 				sp.getPath(currentStationID_, pickup, targets_ );
 				WaypointNo_=0;
-
+				RoutePlannerNode::publish_goal(currentStationID_, pickup);
 				while (1){
 					RoutePlannerNode::waypoint_pub_loop();
 					int station_distance = RoutePlannerNode::distance_to_goal();
@@ -59,7 +59,7 @@ RoutePlannerNode::RoutePlannerNode()
 			cout << "Let's go! "<<endl;
 			sp.getPath(pickup, dropoff, targets_);
 			WaypointNo_=0;
-
+			RoutePlannerNode::publish_goal(pickup, dropoff);
 
 			while (1){
 				RoutePlannerNode::waypoint_pub_loop();
@@ -99,6 +99,20 @@ int RoutePlannerNode::distance_to_goal()
 	distance+= sqrt((global_pose.getOrigin().x()-targets_[WaypointNo_].x)*(global_pose.getOrigin().x()-targets_[WaypointNo_].x) + (global_pose.getOrigin().y()-targets_[WaypointNo_].y)*(global_pose.getOrigin().y()-targets_[WaypointNo_].y));
 
 	return (int)distance;
+}
+
+void RoutePlannerNode::publish_goal(double pickup, double dropoff)
+{
+	//easy implement to send goal to the move_base package
+	geometry_msgs::PoseStamped ps;
+	ps.header.stamp = ros::Time::now();
+	ps.header.frame_id = "/map";
+
+	ps.pose.position.x = pickup;
+	ps.pose.position.y = dropoff;
+	ps.pose.orientation.w = 1.0;
+
+	poseStamped_pub_.publish(ps);
 }
 
 void RoutePlannerNode::waypoint_pub_loop()
@@ -141,15 +155,7 @@ void RoutePlannerNode::waypoint_pub_loop()
 
 	if(distance < 3.7)	WaypointNo_++;
 
-	geometry_msgs::PoseStamped ps;
-	ps.header.stamp = ros::Time::now();
-	ps.header.frame_id = "/map";
 
-	ps.pose.position.x = map_point.point.x;
-	ps.pose.position.y = map_point.point.y;
-	ps.pose.orientation.w = 1.0;
-
-	poseStamped_pub_.publish(ps);
 }
 
 bool RoutePlannerNode::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const

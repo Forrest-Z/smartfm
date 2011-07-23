@@ -40,6 +40,7 @@ private:
 	ros::Timer timer_;
 	tf::TransformListener tf_;
 	void waypoint_pub_loop();
+	void publish_goal(double pickup, double dropoff);
 	bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
 	int distance_to_goal();
 	std::vector<geometry_msgs::Point> targets_;
