@@ -28,7 +28,7 @@ RoutePlannerNode::RoutePlannerNode()
 		rp.getNewTask(usrID, pickup, dropoff);
 		//the station starts with 1 as pickup dropoff point
 		pickup--;dropoff--;
-		cout<<"Welcome "<<usrID<<"!"<<" You have requested pickup at station " <<' '<<pickup<<" to "<<dropoff<<endl;
+
 		//new task obtain, start giving way points
 
 
@@ -37,51 +37,39 @@ RoutePlannerNode::RoutePlannerNode()
 		{
 			if(currentStationID_!=pickup)
 			{
+				ROS_INFO("On call.... pickup at station %d from %d", pickup,currentStationID_);
 				sp.getPath(currentStationID_, pickup, targets_ );
-				WaypointNo_=0;
+				RoutePlannerNode::publishPathVis();
 				RoutePlannerNode::publish_goal(currentStationID_, pickup);
-				while (1){
-					if(WaypointNo_==targets_.size()) break;
-					RoutePlannerNode::waypoint_pub_loop();
-					int station_distance = RoutePlannerNode::distance_to_goal();
-					rp.sendStatus(0, VEHICLE_ON_CALL, station_distance);
+				RoutePlannerNode::startLoop(VEHICLE_ON_CALL, currentStationID_, pickup, &rp);
 
-
-					ROS_INFO("Going to pickup station %d from station %d, distance to go %d m", pickup, currentStationID_, station_distance);
-					ros::Duration(0.5).sleep();
-				}
 				//arrive at pickup point
 				cout<<"Arrive at pickup point"<<endl;
 
 			}
-			string input = "";
-			cout<<"Welcome "<<usrID<<"!"<<" You have requested pickup at station " <<' '<<pickup<<" to "<<dropoff<<endl;
-			cout << "Press enter key when you are ready!"<<endl;
-			getline(cin, input);
-			cout << "Let's go! "<<endl;
+
 			sp.getPath(pickup, dropoff, targets_);
-			WaypointNo_=0;
+			RoutePlannerNode::publishPathVis();
+
+			string input = "";
+			ROS_INFO("Welcome %d! You have requested pickup at station %d to %d", usrID,pickup,dropoff);
+			ROS_INFO("Press enter key when you are ready!");
+			getline(cin, input);
+			ROS_INFO("Let's go!");
+
+
 			RoutePlannerNode::publish_goal(pickup, dropoff);
+			RoutePlannerNode::startLoop(VEHICLE_POB, pickup, dropoff, &rp);
 
-			while (1){
-				if(WaypointNo_==targets_.size()) break;
-				RoutePlannerNode::waypoint_pub_loop();
-				int station_distance = RoutePlannerNode::distance_to_goal();
-				rp.sendStatus(0, VEHICLE_POB, station_distance );
-
-
-				ROS_INFO("Going to dropoff station %d from station %d, distance to go %d m", dropoff, pickup, station_distance);
-				ros::Duration(0.5).sleep();
-			}
 			//arrive at dropoff point, update current ID
 			ROS_INFO("Arrive at dropoff point");
 			currentStationID_ = dropoff;
-			cout << "Press enter key when you are outside the vehicle!"<<endl;
+			ROS_INFO("Press enter key when you are outside the vehicle!");
 			getline(cin, input);
 		}
 		//i'm become available again, preparing to get next task
 		rp.sendStatus(0, VEHICLE_AVAILABLE, 0);
-		cout << "I'm Available, and might move to a pick up point at any time"<<endl;
+		cout << "Waiting for next task. Prepared to move to a pick up point at any time"<<endl;
 		ros::spinOnce();
 	}
 }
@@ -91,6 +79,34 @@ RoutePlannerNode::~RoutePlannerNode()
 
 }
 
+void RoutePlannerNode::publishPathVis()
+{
+	nav_msgs::Path p;
+	p.header.stamp = ros::Time::now();
+	p.header.frame_id = "/map";
+	p.poses.resize(targets_.size());
+	for(int i=0;i<targets_.size();i++)
+	{
+		p.poses[i].pose.position.x = targets_[i].x;
+		p.poses[i].pose.position.y = targets_[i].y;
+		p.poses[i].pose.orientation.w = 1.0;
+	}
+	g_plan_pub_.publish(p);
+}
+
+void RoutePlannerNode::startLoop(VehicleStatus vehstatus,int dropoff, int pickup, RoutePlanner *rp)
+{
+	WaypointNo_=0;
+	cout<<vehstatus<<endl;
+	while (1){
+		int station_distance = RoutePlannerNode::distance_to_goal();
+		rp->sendStatus(0, vehstatus, station_distance );
+		ROS_INFO("Going to dropoff station %d from station %d, distance to go %d m", dropoff, pickup, station_distance);
+		if(WaypointNo_==targets_.size()) break;
+		RoutePlannerNode::waypoint_pub();
+		ros::Duration(0.5).sleep();
+	}
+}
 int RoutePlannerNode::distance_to_goal()
 {
 	double distance=0;
@@ -118,7 +134,7 @@ void RoutePlannerNode::publish_goal(double pickup, double dropoff)
 	poseStamped_pub_.publish(ps);
 }
 
-void RoutePlannerNode::waypoint_pub_loop()
+void RoutePlannerNode::waypoint_pub()
 {
 	//get global pose
 

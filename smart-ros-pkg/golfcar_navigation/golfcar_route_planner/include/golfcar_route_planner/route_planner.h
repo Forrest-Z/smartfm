@@ -41,11 +41,13 @@ private:
 
 	ros::Timer timer_;
 	tf::TransformListener tf_;
-	void waypoint_pub_loop();
+	void waypoint_pub();
+	void publishPathVis();
 	void publish_goal(double pickup, double dropoff);
 	bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
 	void transformMapToOdom(geometry_msgs::PoseStamped &map_pose, geometry_msgs::PointStamped &odom_point);
 	int distance_to_goal();
+	void startLoop(VehicleStatus vehstatus,int dropoff, int pickup,RoutePlanner *rp);
 	std::vector<geometry_msgs::Point> targets_;
 	int WaypointNo_;
 	//assume that the vehicle will always stop at one of the station

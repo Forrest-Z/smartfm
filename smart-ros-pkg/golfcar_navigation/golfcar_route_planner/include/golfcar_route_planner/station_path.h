@@ -22,7 +22,12 @@
 using namespace std;
 
 namespace station_path {
-
+	int dcc_mcd[][2]{DCC_MCD};
+	int mcd_dcc[][2]{MCD_DCC};
+	int dcc_ea[][2]{DCC_EA};
+	int ea_dcc[][2]{EA_DCC};
+	int e3a_ea[][2]{E3A_EA};
+	int ea_e3a[][2]{EA_E3A};
 	// main route
 	//dcc to mcd: {1046, 2220}, {1066, 2271}, {1446,3054}, {1526,3108}, {1596, 3130}, {1608, 3185}, {1573, 3221}, {1526, 3220}
 
@@ -47,7 +52,7 @@ class stationPath
 public:
 	stationPath();
 	~stationPath();
-
+	double square_distance(geometry_msgs::Point p1, geometry_msgs::Point p2);
 	void getPath(int stationPickUp, int stationDropOff, vector<geometry_msgs::Point> &path);
 	vector<vector<vector<geometry_msgs::Point> > > station_paths;
 };
@@ -58,7 +63,7 @@ namespace station_path{
 stationPath::stationPath()
 {
 	const int station_number = 4;
-
+	const int max_straight = 10;
 	station_paths.resize(station_number);
 	for(int i=0; i<station_number;i++)
 		station_paths[i].resize(station_number);
@@ -75,8 +80,87 @@ stationPath::stationPath()
 	storeIntoStationPaths(path_points_30, station_paths[3][0],sizeof(path_points_30)/sizeof(path_points_30[0]));
 	storeIntoStationPaths(path_points_31, station_paths[3][1],sizeof(path_points_31)/sizeof(path_points_31[0]));
 	storeIntoStationPaths(path_points_32, station_paths[3][2],sizeof(path_points_32)/sizeof(path_points_32[0]));
-}
 
+	vector<vector<vector<geometry_msgs::Point> > > main_paths;
+	main_paths.resize(1);
+	main_paths[0].resize(6);
+
+	storeIntoStationPaths(dcc_mcd, main_paths[0][0],sizeof(dcc_mcd)/sizeof(dcc_mcd[0]));
+	storeIntoStationPaths(mcd_dcc, main_paths[0][1],sizeof(mcd_dcc)/sizeof(mcd_dcc[0]));
+	storeIntoStationPaths(dcc_ea, main_paths[0][2],sizeof(dcc_ea)/sizeof(dcc_ea[0]));
+	storeIntoStationPaths(ea_dcc, main_paths[0][3],sizeof(ea_dcc)/sizeof(ea_dcc[0]));
+	storeIntoStationPaths(e3a_ea, main_paths[0][4],sizeof(e3a_ea)/sizeof(e3a_ea[0]));
+	storeIntoStationPaths(ea_e3a, main_paths[0][5],sizeof(ea_e3a)/sizeof(ea_e3a[0]));
+
+	for(int i=0; i<6; i++)
+	{
+		cout<<endl;
+		for(int j=0; j<main_paths[0][i].size()-1; j++)
+		{
+			cout<<square_distance(main_paths[0][i][j],main_paths[0][i][j+1])<<endl;
+		}
+		cout<<endl;
+	}
+	for(int i=0; i<station_paths[0][2].size();i++)
+	{
+		cout<<station_paths[0][2][i].x<<','<<station_paths[0][2][i].y<<'\t';
+	}
+	cout<<endl;
+
+
+	for(int i=0; i<station_number;i++)
+	{
+		for(int j=0; j<station_number; j++)
+		{
+			if(station_paths[i][j].size()<2) continue;
+			int k=0;
+			for(vector<geometry_msgs::Point>::iterator it = station_paths[i][j].begin(); it<station_paths[i][j].end()-1; it++)
+			{
+
+				//cout<<k<<' '<<station_paths[i][j].size()<<*(it+1)<<endl;
+				double dist = square_distance(*it, *(it+1));
+				//cout<<dist<<endl;
+				if(dist>max_straight)
+				{
+					vector<geometry_msgs::Point>::iterator startAddPoint = it;
+					//cout<<endl<<"Start x y "<< it->x<<' '<<it->y<<" End x y "<< (it+1)->x<<' '<<(it+1)->y<<":"<<endl;
+					double inc = max_straight/dist;
+					//cout<<"adding segment with inc "<<inc<<" with distance of "<<dist<<"path size "<<station_paths[i][j].size()<<endl;
+					double x_1 = it->x, y_1 = it->y;
+					double x_2 = (it+1)->x, y_2 = (it+1)->y;
+					for(double t=inc; t<1; t+=inc)
+					{
+						it++;
+						geometry_msgs::Point p;
+						p.x = x_1 + t * (x_2 - x_1);
+						p.y = y_1 + t * (y_2 - y_1);
+						it=station_paths[i][j].insert(it, p);
+
+						//cout<<p.x<<' '<<p.y<<'\t';
+					}
+					//cout<<endl;
+					while(startAddPoint<=it+1)
+					{
+						//cout<<(*startAddPoint).x <<' '<<(*startAddPoint).y<<endl;
+						startAddPoint++;
+					}
+
+				}
+				k++;
+			}
+		}
+	}
+	for(int i=0; i<station_paths[0][2].size();i++)
+		{
+			cout<<station_paths[0][2][i].x<<','<<station_paths[0][2][i].y<<'\t';
+		}
+		cout<<endl;
+
+}
+double stationPath::square_distance(geometry_msgs::Point p1, geometry_msgs::Point p2)
+{
+	return sqrt((p1.x-p2.x)*(p1.x-p2.x)+(p1.y-p2.y)*(p1.y-p2.y));
+}
 stationPath::~stationPath()
 {
 
@@ -93,7 +177,7 @@ void stationPath::storeIntoStationPaths(int path_points[][2], vector<geometry_ms
 	double res = 0.1;
 	int y_pixels = 3536;
 	double distance=0;
-	cout<<"Path size: "<<size<<endl;
+	cout<<"Path size: "<<size<<". ";
 	for(unsigned int i=0; i<size;i++)
 	{
 
