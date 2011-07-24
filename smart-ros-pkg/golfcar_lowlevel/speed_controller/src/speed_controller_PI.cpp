@@ -18,7 +18,7 @@ namespace PID_Speed{
     if(!private_nh.getParam("coeff_brakepedal",coeff_bp_)) coeff_bp_ = 120;
     if(!private_nh.getParam("throttleZeroThres", throttle_zero_thres_)) throttle_zero_thres_ = 0.2;
     if(!private_nh.getParam("brakeZeroThres", brake_zero_thres_)) brake_zero_thres_ = 3.0;
-    if(!private_nh.getParam("fullBrakeThres", full_brake_thres_)) full_brake_thres_ = 0.5;
+    if(!private_nh.getParam("fullBrakeThres", full_brake_thres_)) full_brake_thres_ = 0.25;
     if(!private_nh.getParam("tau_v", tau_v_)) tau_v_ = 0.25;
 
     std::cout<<"kp: "<<kp_<<" ki: "<<ki_<<" ki_sat: "<<ki_sat_<<"\n";
