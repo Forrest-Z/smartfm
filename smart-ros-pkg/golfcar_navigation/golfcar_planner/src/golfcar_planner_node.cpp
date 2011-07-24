@@ -106,7 +106,7 @@ Planner_node::Planner_node()
     curr_goal.z = 0;
 
     // init periodic planner
-    planner_timer = nh.createTimer(ros::Duration(0.2), &Planner_node::on_planner_timer, this);
+    planner_timer = nh.createTimer(ros::Duration(0.5), &Planner_node::on_planner_timer, this);
 
     // subscribe to points
     odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", 5, &Planner_node::on_odom, this);

@@ -47,7 +47,7 @@ void Local_map::process_points(vector<Point>& points)
                     (ytmp- pose.position.y)*(ytmp- pose.position.y));
 
         if( dist > width/1.414) {}
-        else if( (points[i].z - pose.position.z - curb_height/curb_dist*dist) < 1.0 )
+        else if( (points[i].z - pose.position.z) < 0.6 )
         {
             //cout<<"re: " << points[i].z <<" "<<pose.position.z<<" "<<curb_height<<" "<<curb_dist<<endl;
         }
@@ -59,7 +59,7 @@ void Local_map::process_points(vector<Point>& points)
     //map_points.clear();
     //map_points.push_back(points);
     
-    if(map_points.size() > 200)
+    if(map_points.size() > 30)
     {
         map_points.erase(map_points.begin());
     }

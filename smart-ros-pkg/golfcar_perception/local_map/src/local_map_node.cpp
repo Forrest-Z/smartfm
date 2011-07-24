@@ -56,7 +56,7 @@ local_map_node::local_map_node()
     map_pub_ = n_.advertise<local_map::local_map_msg>("localCells",1);
     grid_pub = n_.advertise<sensor_msgs::PointCloud>("localgridsent", 1);
 
-    laser_scan_sub_.subscribe(n_, "/sick_scan2", 1);
+    laser_scan_sub_.subscribe(n_, "/scan", 1);
     tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_scan_sub_, tf_, "odom", 5);
     tf_filter_->registerCallback(boost::bind(&local_map_node::on_sick, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
