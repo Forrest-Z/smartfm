@@ -326,6 +326,12 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 double *state_new = new double[3];
                 for (int i = 0; i < 3; i++) 
                     state_new[i] = state_curr[i];
+
+                while(state_new[2] > M_PI)
+                    state_new[2] -= 2.0 * M_PI;
+                while(state_new[2] < -M_PI)
+                    state_new[2] += 2.0 * M_PI;
+
                 trajectory->push_front(state_new);
 
                 // populate controls here
@@ -371,6 +377,11 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 double *state_new = new double [3];
                 for (int i = 0; i < 3; i++) 
                     state_new[i] = state_curr[i];
+                
+                while(state_new[2] > M_PI)
+                    state_new[2] -= 2.0 * M_PI;
+                while(state_new[2] < -M_PI)
+                    state_new[2] += 2.0 * M_PI;
                 trajectory->push_front(state_new);
                 
                 // populate controls here
@@ -418,6 +429,12 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 double *state_new = new double [3];
                 for (int i = 0; i < 3; i++) 
                     state_new[i] = state_curr[i];
+                
+                while(state_new[2] > M_PI)
+                    state_new[2] -= 2.0 * M_PI;
+                while(state_new[2] < -M_PI)
+                    state_new[2] += 2.0 * M_PI;
+                
                 trajectory->push_front(state_new);
                 control.push_front(turning_radius * direction_s2);
             }
@@ -450,7 +467,7 @@ System::extend_dubins_all (double state_ini[3], double state_fin[3],
         bool check_obstacles, bool return_trajectory,
         bool &fully_extends, double*& end_state, list<double*>* trajectory, list<float> &control) {
     
-    /*
+  /*
     // 1. Compute the centers of all four spheres
     while(state_ini[2] < 0.0 * M_PI)
         state_ini[2] += 2.0 * M_PI;
@@ -461,7 +478,7 @@ System::extend_dubins_all (double state_ini[3], double state_fin[3],
         state_fin[2] += 2.0 * M_PI;
     while(state_fin[2] > 2.0 * M_PI)
         state_fin[2] -= 2.0 * M_PI;
-    */
+  */
 
     double ti = state_ini[2];
     double tf = state_fin[2];

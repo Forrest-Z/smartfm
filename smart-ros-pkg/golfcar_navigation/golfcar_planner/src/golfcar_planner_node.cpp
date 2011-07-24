@@ -62,7 +62,7 @@ class Planner_node
         void change_sampling_region();
         void emergency_replan();
         int project_goal(float &xc, float &yc, float &xs, float &ys, float goalx, float goaly);
-        bool system_in_goal();
+        bool root_in_goal();
         
         // ros
         ros::NodeHandle nh;
@@ -99,14 +99,14 @@ Planner_node::Planner_node()
     map_skip = 1;
     planner_in_progress = false;
     first_frame = 1;
-    RRT_MAX_ITER = 1000;
+    RRT_MAX_ITER = 500;
     
     curr_goal.x = 0;
     curr_goal.y = 0;
     curr_goal.z = 0;
 
     // init periodic planner
-    planner_timer = nh.createTimer(ros::Duration(0.4), &Planner_node::on_planner_timer, this);
+    planner_timer = nh.createTimer(ros::Duration(0.2), &Planner_node::on_planner_timer, this);
 
     // subscribe to points
     odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", 5, &Planner_node::on_odom, this);
@@ -130,6 +130,7 @@ void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
     
     change_sampling_region();
     
+    /*
     // set root to current position
     vertex_t& rootVertex =  rrts.getRootVertex();
     state_t &stateRoot = rootVertex.getState();
@@ -143,9 +144,10 @@ void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
     prev_best_cost = 1e10;
     curr_best_cost = 1e20;
     cout<<"initialized new tree"<<endl;
+    */
 
-    //rrts.checkTree();
-    //rrts.updateReachability();
+    rrts.checkTree();
+    rrts.updateReachability();
     planner_in_progress = true;
 }
 
@@ -165,7 +167,7 @@ void Planner_node::on_odom(const nav_msgs::Odometry::ConstPtr & msg)
         float x2 = stateRoot[0];
         float y2 = stateRoot[1];
         
-        if( (sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) < 1) )
+        if( (sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) < 2) )
         {
             already_committed = 0;
         }
@@ -424,13 +426,10 @@ void Planner_node::change_sampling_region()
     */
 }
 
-bool Planner_node::system_in_goal()
+bool Planner_node::root_in_goal()
 {
-    state_t curr_state;
-    curr_state[0] = system.origin.x;
-    curr_state[1] = system.origin.y;
-    curr_state[2] = curr_goal.z;
-
+    vertex_t &rootVertex = rrts.getRootVertex();
+    state_t &curr_state = rootVertex.getState();
     return system.isReachingTarget(curr_state);
 }
 
@@ -449,70 +448,59 @@ void Planner_node::get_plan()
     rrts.updateReachability();
     cout<<"num_vert: "<< rrts.numVertices << endl;
     change_sampling_region();
-    
-    if(system_in_goal())
-    {
-        cout<<"reached goal: clear trajectories"<<endl;
-        already_committed = 1;
-        planner_in_progress = 0;
-        for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
-        {
-            double* stateRef = *iter;
-            delete stateRef;
-        } 
-        toPublishControl.clear();
-        toPublishTraj.clear();
-    }
-    
-    curr_best_cost = 0;
-    for(unsigned int i=0; i< RRT_MAX_ITER; i++)
-    {
-        rrts.iteration();
-        if( rrts.numVertices > 5000)
-            break;
-    }
-    rrts.updateReachability();
-    curr_best_cost = rrts.getBestVertexCost();
-    cout<<"commit status: "<< already_committed << " best_curr: "<< curr_best_cost << endl;
 
-    // if found traj, copy it and keep publishing, switch root to some node ahead
-    if(!already_committed)
+    if( ! root_in_goal() )
     {
-        cout<<"prev: "<< prev_best_cost << " curr: " << curr_best_cost << endl;
-        if( fabs(prev_best_cost - curr_best_cost) < 1.0)
+        for(unsigned int i=0; i< RRT_MAX_ITER; i++)
         {
-            vertex_t& vertexBest = rrts.getBestVertex ();
-            if (&vertexBest == NULL)
+            rrts.iteration();
+            if( rrts.numVertices > 5000)
+                break;
+        }
+        rrts.updateReachability();
+        curr_best_cost = rrts.getBestVertexCost();
+        cout<<"commit status: "<< already_committed << " best_curr: "<< curr_best_cost << endl;
+
+
+        // if found traj, copy it and keep publishing, switch root to some node ahead
+        if( !already_committed )
+        {
+            cout<<"prev: "<< prev_best_cost << " curr: " << curr_best_cost << endl;
+            if( fabs(prev_best_cost - curr_best_cost) < 1.0)
             {
-                cout<<"new vertex not found"<<endl;
-            }
-            else
-            {
-                cout<<"traj cost: "<< rrts.getBestVertexCost() << endl;
-                
-                // free memory for toPublishTraj
-                for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
+                vertex_t& vertexBest = rrts.getBestVertex ();
+                if (&vertexBest == NULL)
                 {
-                    double* stateRef = *iter;
-                    delete stateRef;
-                } 
-                toPublishTraj.clear();
-                toPublishControl.clear();
-                
-                if(rrts.switchRoot(10, toPublishTraj, toPublishControl))
-                {
-                    already_committed = 1;
-                    change_sampling_region();
-                    cout<<"switching root"<<endl;
+                    cout<<"new vertex not found"<<endl;
                 }
                 else
-                    cout<<"couldn't switch root" << endl;
+                {
+                    cout<<"traj cost: "<< rrts.getBestVertexCost() << endl;
+
+                    // free memory for toPublishTraj
+                    for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
+                    {
+                        double* stateRef = *iter;
+                        delete stateRef;
+                    } 
+                    toPublishTraj.clear();
+                    toPublishControl.clear();
+
+                    if(rrts.switchRoot(10, toPublishTraj, toPublishControl))
+                    {
+                        already_committed = 1;
+                        change_sampling_region();
+                        cout<<"switching root"<<endl;
+                    }
+                    else
+                        cout<<"couldn't switch root" << endl;
+                }
             }
         }
-    }
-        
-    prev_best_cost = curr_best_cost;
 
+        prev_best_cost = curr_best_cost;
+    }
+    
     publish_traj();
     publish_tree();
 }
