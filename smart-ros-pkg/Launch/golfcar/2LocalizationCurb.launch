@@ -1,0 +1,18 @@
+<launch>
+	<node pkg="golfcar_odom" type="golfcar_odom_imu2" name="golfcar_odom">
+		<remap from="/imu/data" to="/ms/imu/data"/>
+	</node>
+	<node name="map_server" pkg="map_server" type="map_server" args="$(find hybrid_amcl)/worlds/curb_map.yaml">
+		<remap from="static_map" to="static_curb_map"/>
+		<remap from="map" to= "curb_map"/>
+	</node>
+
+	<node pkg="map_server" type="map_server" name="map_server2" args="$(find hybrid_amcl)/worlds/planar_map.yaml">
+		<remap from="static_map" to="static_planar_map"/>
+		<remap from="map" to= "planar_map"/>
+	</node>
+	<node pkg="road_detection" type="road_detect" name="road_detect"/>
+	<node pkg="road_detection" type="curb_track" name="curb_track"/>
+	<node pkg="hybrid_amcl" type="mix_amcl" name="hybrid_amcl"/>
+</launch>
+

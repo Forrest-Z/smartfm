@@ -1,0 +1,12 @@
+<launch>
+	
+	<node pkg="golfcar_steeringcontrol" type="local_controller" name="local_controller"/> 
+	<node name="speed_controller" pkg="speed_controller" type="speed_controller_PI">
+		<param name="autoControl" value="false"/>
+	</node>
+	<node pkg="golfcar_ppc" type="golfcar_pp" name="golfcar_pp"/>
+	<node pkg="local_map" type="local_map_node" name="local_map"/>
+	<node pkg="golfcar_planner" type="golfcar_planner_node" name="golfcar_planner"/>
+	<node pkg="golfcar_route_planner" type="simple_goal" name="simple_goal"/>
+</launch>
+
