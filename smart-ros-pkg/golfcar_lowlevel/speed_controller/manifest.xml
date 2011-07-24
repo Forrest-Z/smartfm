@@ -15,6 +15,7 @@
   <depend package="geometry_msgs"/>
   <depend package="golfcar_halstreamer"/>
   <depend package="golfcar_halsampler"/>
+  <depend package="lse_xsens_mti"/>
 </package>
 
 

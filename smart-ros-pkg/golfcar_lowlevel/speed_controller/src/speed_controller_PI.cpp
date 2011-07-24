@@ -7,6 +7,7 @@ namespace PID_Speed{
     ros::NodeHandle n;
     cmd_vel_sub_= n.subscribe("cmd_vel", 1, &PID_Speed::cmdVelCallBack, this);
     sampler_sub_= n.subscribe("golfcar_sampler", 1, &PID_Speed::samplerCallBack, this);
+    rpy_sub_ = n.subscribe("imu/rpy", 1, &PID_Speed::rpyCallBack, this);
     throttle_pub_ = n.advertise<golfcar_halstreamer::throttle>("golfcar_speed", 1);
     brakepedal_pub_ = n.advertise<golfcar_halstreamer::brakepedal>("golfcar_brake", 1);
 
@@ -20,6 +21,8 @@ namespace PID_Speed{
     if(!private_nh.getParam("brakeZeroThres", brake_zero_thres_)) brake_zero_thres_ = 3.0;
     if(!private_nh.getParam("fullBrakeThres", full_brake_thres_)) full_brake_thres_ = 0.25;
     if(!private_nh.getParam("tau_v", tau_v_)) tau_v_ = 0.25;
+    if(!private_nh.getParam("pitch_param1", pitch_param1_)) pitch_param1_ = 0;
+    if(!private_nh.getParam("pitch_param2", pitch_param2_)) pitch_param2_ = -4;
 
     std::cout<<"kp: "<<kp_<<" ki: "<<ki_<<" ki_sat: "<<ki_sat_<<"\n";
     std::cout<<"coeff_th: "<<coeff_th_<<" coeff_bp: "<<coeff_bp_<<"\n";
@@ -31,6 +34,7 @@ namespace PID_Speed{
     e_pre_ = 0;
     ei_ = 0;
     v_filtered_ = 0;
+    pitch_last_ = 0;
   }
 
   void PID_Speed::samplerCallBack(golfcar_halsampler::odo sampler)
@@ -41,7 +45,17 @@ namespace PID_Speed{
     if(sampler.emergency || (cmd_vel_ <= 0 && sampler.vel <= full_brake_thres_))
     {
       th.volt = 0; bp.angle = -1 * coeff_bp_;
-      cmd_vel_ = 0; time_pre_ = ros::Time::now(); e_pre_ = 0; ei_ = -ki_sat_ / ki_;
+      cmd_vel_ = 0; time_pre_ = ros::Time::now(); e_pre_ = 0;
+
+      // when starting from a stopped position, initialization is important
+      // especially, uphill is tricky
+      if(pitch_last_ >= pitch_param1_)
+	ei_ = -ki_sat_ / ki_;
+      else if(pitch_last_ > pitch_param2_)
+	ei_ = -ki_sat_ / ki_ * (pitch_last_ - pitch_param2_) / (pitch_param1_ - pitch_param2_);
+      else
+	ei_ = 0;
+
       v_filtered_ = 0;
     }
     else
@@ -91,7 +105,11 @@ namespace PID_Speed{
   {
     cmd_vel_ = cmd_vel.linear.x;
   }
-		
+
+  void PID_Speed::rpyCallBack(lse_xsens_mti::imu_rpy rpy)
+  {
+    pitch_last_ = rpy.pitch;
+  }
 }
 
 
