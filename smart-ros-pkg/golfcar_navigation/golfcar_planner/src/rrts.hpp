@@ -827,11 +827,11 @@ RRTstar::Planner< typeparams >
         vertexCurr = &vertexParent;
     }
     
-    delete [] stateArrPrev;  
+    delete [] stateArrPrev; 
     
+    /*
     if (stateFound == false) 
     {
-        /*
         // free memory for toPublishTraj
         for (list<double*>::iterator iter = trajret.begin(); iter != trajret.end(); iter++) 
         {
@@ -840,102 +840,126 @@ RRTstar::Planner< typeparams >
         } 
         trajret.clear();
         controlret.clear();
-        */        
+
         delete [] stateRootNew;
         return 0;
     }
-
-    // 2. Find and store all the decendandts of the new root
-    findDescendantVertices (vertexChildNew);
-
-    // 3. Create the new root vertex
-    vertex_t* vertexRoot = new vertex_t;
-    vertexRoot->state = new state_t;
-    state_t& stateRoot = vertexRoot->getState();
-    for (int i = 0; i < numDimensions; i++)
-        stateRoot[i] = stateRootNew[i];
-    vertexRoot->children.insert (vertexChildNew);
-
-    root = vertexRoot;
-
-
-    // 4. Connect the new root vertex to the new child
-    trajectory_t connectingTrajectory;
-    list <float> connectingControl;
-    bool exactConnection;
-
-    if (system->extendTo(vertexRoot->getState(), vertexChildNew->getState(), connectingTrajectory, exactConnection, connectingControl) <= 0)
-        cout << "ERR: No extend" << endl;
-
-    if (vertexChildNew->trajFromParent)
-        delete vertexChildNew->trajFromParent;
+    */
     
-    vertexChildNew->trajFromParent = new trajectory_t(connectingTrajectory);
-    vertexChildNew->costFromParent = connectingTrajectory.evaluateCost();
-    vertexChildNew->parent = vertexRoot;
-    vertexChildNew->costFromRoot = (-1.0)*vertexChildNew->costFromParent - 1.0;
-    cout<<"vertexchild_new: "<< vertexChildNew->costFromRoot<< " "<< vertexChildNew->costFromParent<<endl;
-
-    // 5. Clear the kdtree
-    if (kdtree) {
-        kd_clear (kdtree);
-        kd_free (kdtree);
+    state_t &vertexChildNewState = vertexChildNew->getState();
+    if( (stateRootNew[0] == vertexChildNewState[0]) && (stateRootNew[1] == vertexChildNewState[1]) &&\
+            (stateRootNew[2] == vertexChildNewState[2]) )
+    {
+        // the committed trajectory is very small
+        state_t& stateRoot = root->getState();
+        for (int i = 0; i < numDimensions; i++)
+            stateRoot[i] = stateRootNew[i];
+        initialize();
+        return 1;
     }
-    kdtree = kd_create (system->getNumDimensions());
+    else
+    {
+        // goal is farther than committed trajectory
+        
+        // 2. Find and store all the decendandts of the new root
+        findDescendantVertices (vertexChildNew);
 
-    // 6. Delete all the unmarked vertices and spare the marked vertices
-    list<vertex_t*> listSurvivingVertices;
-    for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++) {
+        // 3. Create the new root vertex
+        vertex_t* vertexRoot = new vertex_t;
+        vertexRoot->state = new state_t;
+        state_t& stateRoot = vertexRoot->getState();
+        for (int i = 0; i < numDimensions; i++)
+            stateRoot[i] = stateRootNew[i];
+        vertexRoot->children.insert (vertexChildNew);
+        
+        root = vertexRoot;
 
-        vertex_t* vertexCurrDel = *iter;
+        // 4. Connect the new root vertex to the new child
+        trajectory_t connectingTrajectory;
+        list <float> connectingControl;
+        bool exactConnection;
 
-        // If the vertex was marked
-        if (vertexCurrDel->costFromRoot < -0.5) {
+        // if connection possible, switch to new root, else call vertex_new as the new root
+        if (system->extendTo(vertexRoot->getState(), vertexChildNew->getState(), connectingTrajectory, exactConnection, connectingControl) <= 0)
+        {
+            cout << "ERR: No extend, reinitializing" << endl;
 
-            // Revert the mark 
-            vertexCurrDel->costFromRoot = (-1.0)*(vertexCurrDel->costFromRoot + 1.0);
-
-            // Add the vertex to the list of surviving vetices
-            listSurvivingVertices.push_front (vertexCurrDel);
+            state_t& stateRoot = root->getState();
+            for (int i = 0; i < numDimensions; i++)
+                stateRoot[i] = stateRootNew[i];
+            initialize();
+            return 1;
         }
-        else {
 
-            delete vertexCurrDel;
+        if (vertexChildNew->trajFromParent)
+            delete vertexChildNew->trajFromParent;
+
+        vertexChildNew->trajFromParent = new trajectory_t(connectingTrajectory);
+        vertexChildNew->costFromParent = connectingTrajectory.evaluateCost();
+        vertexChildNew->parent = vertexRoot;
+        vertexChildNew->costFromRoot = (-1.0)*vertexChildNew->costFromParent - 1.0;
+        cout<<"vertexchild_new: "<< vertexChildNew->costFromRoot<< " "<< vertexChildNew->costFromParent<<endl;
+
+        // 5. Clear the kdtree
+        if (kdtree) {
+            kd_clear (kdtree);
+            kd_free (kdtree);
         }
-    }
-    
-    listVertices.clear();
-    numVertices = 0;
+        kdtree = kd_create (system->getNumDimensions());
 
-    lowerBoundVertex = NULL;
-    lowerBoundCost = DBL_MAX;
+        // 6. Delete all the unmarked vertices and spare the marked vertices
+        list<vertex_t*> listSurvivingVertices;
+        for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++) {
+
+            vertex_t* vertexCurrDel = *iter;
+
+            // If the vertex was marked
+            if (vertexCurrDel->costFromRoot < -0.5) {
+
+                // Revert the mark 
+                vertexCurrDel->costFromRoot = (-1.0)*(vertexCurrDel->costFromRoot + 1.0);
+
+                // Add the vertex to the list of surviving vetices
+                listSurvivingVertices.push_front (vertexCurrDel);
+            }
+            else {
+
+                delete vertexCurrDel;
+            }
+        }
+
+        listVertices.clear();
+        numVertices = 0;
+
+        lowerBoundVertex = NULL;
+        lowerBoundCost = DBL_MAX;
 
 
-    // 7. Repopulate the list of all vertices and recreate the kdtree
-    listVertices.push_front (vertexRoot);
-    insertIntoKdtree (*vertexRoot);
-    numVertices++;
-
-    for (typename list<vertex_t*>::iterator iter = listSurvivingVertices.begin(); iter != listSurvivingVertices.end(); iter++) {
-
-        vertex_t* vertexCurrSur = *iter;
-
-        insertIntoKdtree (*vertexCurrSur);
-
-        listVertices.push_front (vertexCurrSur);
+        // 7. Repopulate the list of all vertices and recreate the kdtree
+        listVertices.push_front (vertexRoot);
+        insertIntoKdtree (*vertexRoot);
         numVertices++;
+
+        for (typename list<vertex_t*>::iterator iter = listSurvivingVertices.begin(); iter != listSurvivingVertices.end(); iter++) {
+
+            vertex_t* vertexCurrSur = *iter;
+
+            insertIntoKdtree (*vertexCurrSur);
+
+            listVertices.push_front (vertexCurrSur);
+            numVertices++;
+        }
+
+        listSurvivingVertices.clear();
+
+        recomputeCost (vertexRoot);
+        cout<<"after switchRoot vertices left: "<< numVertices << endl;
+
+        // 8. Clear temporary memory  
+        delete [] stateRootNew;
+
+        return 1;
     }
-
-    listSurvivingVertices.clear();
-
-    recomputeCost (vertexRoot);
-    cout<<"after switchRoot vertices left: "<< numVertices << endl;
-
-    // 8. Clear temporary memory  
-    delete [] stateRootNew;
-
-    
-    return 1;
 }
 
 

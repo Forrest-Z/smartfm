@@ -99,7 +99,7 @@ Planner_node::Planner_node()
     map_skip = 1;
     planner_in_progress = false;
     first_frame = 1;
-    RRT_MAX_ITER = 500;
+    RRT_MAX_ITER = 1000;
     
     curr_goal.x = 0;
     curr_goal.y = 0;
@@ -128,6 +128,8 @@ void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
     cout<<"got goal: "<< curr_goal.x<<" "<< curr_goal.y<<" "<< curr_goal.z << endl;
     already_committed = 0;
     
+    change_sampling_region();
+    
     // set root to current position
     vertex_t& rootVertex =  rrts.getRootVertex();
     state_t &stateRoot = rootVertex.getState();
@@ -135,14 +137,13 @@ void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
     stateRoot[1] = odom_now.position.y;
     stateRoot[2] = odom_now.position.z;
     
-    change_sampling_region();
 
     // 2. reinit planner
     rrts.initialize();
     prev_best_cost = 1e10;
     curr_best_cost = 1e20;
     cout<<"initialized new tree"<<endl;
-    
+
     //rrts.checkTree();
     //rrts.updateReachability();
     planner_in_progress = true;
@@ -461,7 +462,6 @@ void Planner_node::get_plan()
         } 
         toPublishControl.clear();
         toPublishTraj.clear();
-        
     }
     
     curr_best_cost = 0;

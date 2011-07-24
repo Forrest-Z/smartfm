@@ -449,9 +449,20 @@ double
 System::extend_dubins_all (double state_ini[3], double state_fin[3],
         bool check_obstacles, bool return_trajectory,
         bool &fully_extends, double*& end_state, list<double*>* trajectory, list<float> &control) {
-
-
+    
+    /*
     // 1. Compute the centers of all four spheres
+    while(state_ini[2] < 0.0 * M_PI)
+        state_ini[2] += 2.0 * M_PI;
+    while(state_ini[2] > 2.0 * M_PI)
+        state_ini[2] -= 2.0 * M_PI;
+    
+    while(state_fin[2] < 0.0 * M_PI)
+        state_fin[2] += 2.0 * M_PI;
+    while(state_fin[2] > 2.0 * M_PI)
+        state_fin[2] -= 2.0 * M_PI;
+    */
+
     double ti = state_ini[2];
     double tf = state_fin[2];
     double sin_ti = sin (-ti);
