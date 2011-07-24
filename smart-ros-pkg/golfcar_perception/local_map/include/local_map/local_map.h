@@ -26,6 +26,8 @@ class Local_map
         float height;
     
         Pose pose;
+        float curb_height;
+        float curb_dist;
 
         int xsize;              // size in meters
         int ysize;
@@ -39,7 +41,8 @@ class Local_map
         // map of obstacle beliefs
         unsigned char *map;
         vector <vector<Point> > map_points;
-        vector<sensor_msgs::PointCloud> curb_points;
+        vector<sensor_msgs::PointCloud> left_curb_points;
+        vector<sensor_msgs::PointCloud> right_curb_points;
 
         void reinit_map();
 

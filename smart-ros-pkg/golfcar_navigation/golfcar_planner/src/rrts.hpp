@@ -534,6 +534,7 @@ int
 {
     if( root->children.size() > 0)
     {
+        int count = 0;
         for (typename set<vertex_t*>::iterator iter = root->children.begin(); iter != root->children.end(); iter++) 
         {
             vertex_t &vertex = **iter;
@@ -680,8 +681,8 @@ RRTstar::Planner< typeparams >
 template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
-::findDescendantVertices (vertex_t* vertexIn) {
-
+::findDescendantVertices (vertex_t* vertexIn) 
+{
     vertexIn->costFromRoot = (-1.0) * vertexIn->costFromRoot - 1.0;  // Mark the node so that we can understand 
     // later that it is in the list of descendants
 
@@ -758,10 +759,10 @@ RRTstar::Planner< typeparams >
     double *stateArrPrev = new double [numDimensions];
     for (int i = 0; i < numDimensions; i++) 
         stateArrPrev[i] = rootState[i];
+    
     double distTotal = 0.0;
-
-
-    for (typename list<vertex_t*>::iterator iter = listBestVertex.begin(); iter != listBestVertex.end(); iter++) {
+    for (typename list<vertex_t*>::iterator iter = listBestVertex.begin(); iter != listBestVertex.end(); iter++) 
+    {
 
         vertex_t* vertexCurr = *iter;
 
@@ -788,7 +789,8 @@ RRTstar::Planner< typeparams >
             distTotal += distCurr;
 
             // write code for copying trajectory, control into traj here
-            double *stateTmp = new double[3]; stateTmp[0] = stateArrCurr[0];  stateTmp[1] = stateArrCurr[1]; stateTmp[2] = stateArrCurr[2];
+            double *stateTmp = new double[3];
+            stateTmp[0] = stateArrCurr[0];  stateTmp[1] = stateArrCurr[1]; stateTmp[2] = stateArrCurr[2];
             float controlTmp = *iterControl;
             trajret.push_back(stateTmp);
             controlret.push_back(controlTmp);
@@ -827,9 +829,9 @@ RRTstar::Planner< typeparams >
     
     delete [] stateArrPrev;  
     
-    /*
     if (stateFound == false) 
     {
+        /*
         // free memory for toPublishTraj
         for (list<double*>::iterator iter = trajret.begin(); iter != trajret.end(); iter++) 
         {
@@ -838,11 +840,10 @@ RRTstar::Planner< typeparams >
         } 
         trajret.clear();
         controlret.clear();
-        
+        */        
         delete [] stateRootNew;
         return 0;
     }
-    */
 
     // 2. Find and store all the decendandts of the new root
     findDescendantVertices (vertexChildNew);
@@ -863,13 +864,17 @@ RRTstar::Planner< typeparams >
     list <float> connectingControl;
     bool exactConnection;
 
-    if (system->extendTo(vertexRoot->getState(), vertexChildNew->getState(), connectingTrajectory, exactConnection, connectingControl) < 0)
+    if (system->extendTo(vertexRoot->getState(), vertexChildNew->getState(), connectingTrajectory, exactConnection, connectingControl) <= 0)
         cout << "ERR: No extend" << endl;
+
     if (vertexChildNew->trajFromParent)
         delete vertexChildNew->trajFromParent;
+    
     vertexChildNew->trajFromParent = new trajectory_t(connectingTrajectory);
     vertexChildNew->costFromParent = connectingTrajectory.evaluateCost();
     vertexChildNew->parent = vertexRoot;
+    vertexChildNew->costFromRoot = (-1.0)*vertexChildNew->costFromParent - 1.0;
+    cout<<"vertexchild_new: "<< vertexChildNew->costFromRoot<< " "<< vertexChildNew->costFromParent<<endl;
 
     // 5. Clear the kdtree
     if (kdtree) {
@@ -924,11 +929,12 @@ RRTstar::Planner< typeparams >
     listSurvivingVertices.clear();
 
     recomputeCost (vertexRoot);
+    cout<<"after switchRoot vertices left: "<< numVertices << endl;
 
     // 8. Clear temporary memory  
     delete [] stateRootNew;
 
-
+    
     return 1;
 }
 

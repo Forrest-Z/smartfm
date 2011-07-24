@@ -2,6 +2,7 @@
 #include <local_map/local_map_msg.h>
 
 #include <geometry_msgs/Point.h>
+#include <geometry_msgs/Point32.h>
 #include <geometry_msgs/Pose.h>
 #include <sensor_msgs/LaserScan.h>
 #include <laser_geometry/laser_geometry.h>
@@ -31,7 +32,8 @@ class local_map_node
         Pose odom_now_;
         
         void publish_msg();
-        void on_curb(const sensor_msgs::PointCloud::ConstPtr &msg);
+        void on_curb_left(const sensor_msgs::PointCloud::ConstPtr &msg);
+        void on_curb_right(const sensor_msgs::PointCloud::ConstPtr &msg);
         void odomCallBack(const nav_msgs::Odometry::ConstPtr &odom_in);
         void on_sick(const sensor_msgs::LaserScan::ConstPtr &msg);
 
@@ -59,8 +61,8 @@ local_map_node::local_map_node()
     tf_filter_->registerCallback(boost::bind(&local_map_node::on_sick, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
     
-    curb_left_sub = n_.subscribe<sensor_msgs::PointCloud>("left_curbline_pub_", 1, &local_map_node::on_curb, this);
-    curb_right_sub = n_.subscribe<sensor_msgs::PointCloud>("right_curbline_pub_", 1, &local_map_node::on_curb, this);
+    curb_left_sub = n_.subscribe<sensor_msgs::PointCloud>("left_curbline_pub_", 1, &local_map_node::on_curb_left, this);
+    curb_right_sub = n_.subscribe<sensor_msgs::PointCloud>("right_curbline_pub_", 1, &local_map_node::on_curb_right, this);
 
     laser_skip_ = 1;
     laser_count_ = 0;
@@ -81,22 +83,91 @@ void local_map_node::odomCallBack(const nav_msgs::Odometry::ConstPtr &odom_in)
     lmap.pose = odom_now_;
 }
 
-void local_map_node::on_curb(const sensor_msgs::PointCloud::ConstPtr &msg)
+void local_map_node::on_curb_left(const sensor_msgs::PointCloud::ConstPtr &msg)
 {
-    sensor_msgs::PointCloud pcout;
-    try{
-        tf_.transformPointCloud("/odom", *msg, pcout);
-        cout<<"transformed curb to odom"<<endl;
+    if(msg->points.size() > 0)
+    {
+        /*
+           for(int i=0; i < msg->points.size(); i++)
+           {
+           cout<<"msg: " << msg->points[i].x << " " <<msg->points[i].y << " "<<msg->points[i].z << endl;
+           }
+           */
+        sensor_msgs::PointCloud pcout;
+        try{
+            tf_.transformPointCloud("/odom", *msg, pcout);
+            //cout<<"transformed curb to odom"<<endl;
 
-        lmap.curb_points.push_back(pcout);
-        if(lmap.curb_points.size() > 10)
+        }
+        catch(tf::ExtrapolationException &e)
         {
-            lmap.curb_points.erase( lmap.curb_points.begin() );
+            ROS_WARN("transform extrapolation failed");
+        }
+
+        /*
+           for(int i=0; i < pcout.points.size(); i++)
+           {
+           cout<<"pcout: " << pcout.points[i].x << " " << pcout.points[i].y << " "<< pcout.points[i].z << endl;
+           }
+           */
+        if(pcout.points.size() > 0)
+        {
+            geometry_msgs::Point32 p = pcout.points[0]; 
+            lmap.curb_height = p.z - lmap.pose.position.z;
+            lmap.curb_dist = sqrt( ( p.x - lmap.pose.position.x)*( p.x - lmap.pose.position.x) + \
+                    ( p.y - lmap.pose.position.y)*( p.y - lmap.pose.position.y) );
+
+            lmap.left_curb_points.push_back(pcout);
+            if(lmap.left_curb_points.size() > 200)
+            {
+                lmap.left_curb_points.erase( lmap.left_curb_points.begin() );
+            }
+
         }
     }
-    catch(tf::ExtrapolationException &e)
+}
+
+void local_map_node::on_curb_right(const sensor_msgs::PointCloud::ConstPtr &msg)
+{
+    if(msg->points.size() > 0)
     {
-        ROS_INFO("transform extrapolation failed");
+        /*
+           for(int i=0; i < msg->points.size(); i++)
+           {
+           cout<<"msg: " << msg->points[i].x << " " <<msg->points[i].y << " "<<msg->points[i].z << endl;
+           }
+           */
+        sensor_msgs::PointCloud pcout;
+        try{
+            tf_.transformPointCloud("/odom", *msg, pcout);
+            //cout<<"transformed curb to odom"<<endl;
+
+        }
+        catch(tf::ExtrapolationException &e)
+        {
+            ROS_WARN("transform extrapolation failed");
+        }
+
+        /*
+           for(int i=0; i < pcout.points.size(); i++)
+           {
+           cout<<"pcout: " << pcout.points[i].x << " " << pcout.points[i].y << " "<< pcout.points[i].z << endl;
+           }
+           */
+        if(pcout.points.size() > 0)
+        {
+            geometry_msgs::Point32 p = pcout.points[0]; 
+            lmap.curb_height = p.z - lmap.pose.position.z;
+            lmap.curb_dist = sqrt( ( p.x - lmap.pose.position.x)*( p.x - lmap.pose.position.x) + \
+                    ( p.y - lmap.pose.position.y)*( p.y - lmap.pose.position.y) );
+
+            lmap.right_curb_points.push_back(pcout);
+            if(lmap.right_curb_points.size() > 200)
+            {
+                lmap.right_curb_points.erase( lmap.right_curb_points.begin() );
+            }
+
+        }
     }
 }
 

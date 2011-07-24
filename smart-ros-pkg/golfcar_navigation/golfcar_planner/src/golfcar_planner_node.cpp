@@ -106,7 +106,7 @@ Planner_node::Planner_node()
     curr_goal.z = 0;
 
     // init periodic planner
-    planner_timer = nh.createTimer(ros::Duration(0.2), &Planner_node::on_planner_timer, this);
+    planner_timer = nh.createTimer(ros::Duration(0.4), &Planner_node::on_planner_timer, this);
 
     // subscribe to points
     odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", 5, &Planner_node::on_odom, this);
@@ -127,7 +127,7 @@ void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
     curr_goal.z = point.point.z;
     cout<<"got goal: "<< curr_goal.x<<" "<< curr_goal.y<<" "<< curr_goal.z << endl;
     already_committed = 0;
-
+    
     // set root to current position
     vertex_t& rootVertex =  rrts.getRootVertex();
     state_t &stateRoot = rootVertex.getState();
@@ -142,7 +142,9 @@ void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
     prev_best_cost = 1e10;
     curr_best_cost = 1e20;
     cout<<"initialized new tree"<<endl;
-
+    
+    //rrts.checkTree();
+    //rrts.updateReachability();
     planner_in_progress = true;
 }
 
@@ -466,6 +468,8 @@ void Planner_node::get_plan()
     for(unsigned int i=0; i< RRT_MAX_ITER; i++)
     {
         rrts.iteration();
+        if( rrts.numVertices > 5000)
+            break;
     }
     rrts.updateReachability();
     curr_best_cost = rrts.getBestVertexCost();
@@ -475,7 +479,7 @@ void Planner_node::get_plan()
     if(!already_committed)
     {
         cout<<"prev: "<< prev_best_cost << " curr: " << curr_best_cost << endl;
-        if( fabs(prev_best_cost - curr_best_cost) < 10.0)
+        if( fabs(prev_best_cost - curr_best_cost) < 1.0)
         {
             vertex_t& vertexBest = rrts.getBestVertex ();
             if (&vertexBest == NULL)
@@ -495,13 +499,6 @@ void Planner_node::get_plan()
                 toPublishTraj.clear();
                 toPublishControl.clear();
                 
-                //get best trajectory currently
-                list<double*> bestTrajectory;
-                list<float> bestControl;
-                rrts.getBestTrajectory(bestTrajectory, bestControl);
-                double length = rrts.getTrajectoryLength(bestTrajectory);
-                cout<<"length best: "<<length<<endl;
-                
                 if(rrts.switchRoot(10, toPublishTraj, toPublishControl))
                 {
                     already_committed = 1;
@@ -513,13 +510,10 @@ void Planner_node::get_plan()
             }
         }
     }
-    else
-    {
-        publish_traj();
-    }
-    
+        
     prev_best_cost = curr_best_cost;
 
+    publish_traj();
     publish_tree();
 }
 
