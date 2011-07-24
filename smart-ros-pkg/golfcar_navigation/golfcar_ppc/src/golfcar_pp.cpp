@@ -10,7 +10,7 @@ namespace golfcar_purepursuit {
     timer_ = n.createTimer(ros::Duration(0.05), &PurePursuit::controlLoop, this);
 
     ros::NodeHandle private_nh("~");
-    if(!private_nh.getParam("max_timer",max_timer_)) max_timer_ = 1.0;
+    if(!private_nh.getParam("max_timer",max_timer_)) max_timer_ = 2.0;
     if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 1.0;
     if(!private_nh.getParam("slow_speed",slow_speed_)) slow_speed_ = 0.5;
     if(!private_nh.getParam("stopping_distance",stopping_distance_)) stopping_distance_ = 2.5;
@@ -90,6 +90,7 @@ namespace golfcar_purepursuit {
     double dt = time_diff.toSec();
     if(dt > max_timer_)
     {
+      ROS_WARN("stopping due to timer, %lf s passed after the last plan!", dt);
       cmd_vel = 0;
     }
 
