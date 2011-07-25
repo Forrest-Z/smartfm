@@ -45,10 +45,13 @@ namespace golfcar_purepursuit{
 		std::vector<geometry_msgs::PointStamped> lookahead_points;
 		double slow_speed_, maximum_speed_, highrisk_speed_;
 		bool forward_;
+		double steer_angle_;
 		void golfcar_direction(geometry_msgs::Point32 p);
 		ros::Subscriber golfcar_direction_;
 		ros::Time expected_end_;
 		bool stopped_;
+		bool goalreached_;
+		int waypointPassed_;
 	};
 };
 			
