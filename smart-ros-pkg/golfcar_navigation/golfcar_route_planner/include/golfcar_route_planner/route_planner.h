@@ -25,7 +25,10 @@
 #include <math.h>
 #include <sensor_msgs/NavSatStatus.h>
 #include <sensor_msgs/NavSatFix.h>
+#include <move_base_msgs/MoveBaseAction.h>
+#include <actionlib/client/simple_action_client.h>
 
+typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 namespace route_planner {
 
 class RoutePlannerNode
@@ -60,5 +63,6 @@ private:
 	//assume that the vehicle will always stop at one of the station
 	int currentStationID_;
 	tf::Stamped<tf::Pose> global_pose;
+	MoveBaseClient *ac_;
 };
 };

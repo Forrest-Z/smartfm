@@ -7,6 +7,9 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Path.h>
 #include <sensor_msgs/PointCloud.h>
+#include <move_base_msgs/MoveBaseAction.h>
+#include <actionlib/client/simple_action_client.h>
+
 using namespace std;
 
 namespace route_planner {

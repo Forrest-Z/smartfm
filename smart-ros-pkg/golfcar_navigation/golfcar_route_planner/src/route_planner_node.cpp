@@ -8,12 +8,16 @@ namespace route_planner {
 RoutePlannerNode::RoutePlannerNode()
 {
 	station_path::stationPath sp;
-
+	MoveBaseClient ac("move_base", true);
+	ac_ = &ac;
+	while(!ac.waitForServer(ros::Duration(5.0))){
+		ROS_INFO("Waiting for the move_base action server to come up");
+	}
 	ros::NodeHandle n;
 	waypoint_pub_ = n.advertise<geometry_msgs::PointStamped>("pnc_waypoint", 1);
 	g_plan_pub_ = n.advertise<nav_msgs::Path>("pnc_globalplan", 1);
 	pointCloud_pub_ = n.advertise<sensor_msgs::PointCloud>("pnc_waypointVis",1);
-	poseStamped_pub_ = n.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
+	//poseStamped_pub_ = n.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
 	nextpose_pub_ = n.advertise<geometry_msgs::PoseStamped>("pnc_nextpose",1);
 	gps_sub_ = n.subscribe("fix", 1, &RoutePlannerNode::gpsCallBack, this);
 	currentStationID_= 0;
@@ -54,7 +58,7 @@ RoutePlannerNode::RoutePlannerNode()
 				RoutePlannerNode::startLoop(VEHICLE_ON_CALL, currentStationID_, pickup, &rp);
 
 				//arrive at pickup point
-				ROS_INFO("Arrive at pickup point");
+				ROS_INFO("Arrived at pickup point");
 
 			}
 
@@ -162,7 +166,7 @@ int RoutePlannerNode::distance_to_goal()
 
 void RoutePlannerNode::publish_goal(double pickup, double dropoff)
 {
-	//easy implement to send goal to the move_base package
+	//use more expansive action server to properly trace the goal status
 	geometry_msgs::PoseStamped ps;
 	ps.header.stamp = ros::Time::now();
 	ps.header.frame_id = "/map";
@@ -171,7 +175,10 @@ void RoutePlannerNode::publish_goal(double pickup, double dropoff)
 	ps.pose.position.y = dropoff;
 	ps.pose.orientation.w = 1.0;
 
-	poseStamped_pub_.publish(ps);
+	move_base_msgs::MoveBaseGoal goal;
+	goal.target_pose = ps;
+	ac_->sendGoal(goal);
+
 }
 
 void RoutePlannerNode::waypoint_pub()
