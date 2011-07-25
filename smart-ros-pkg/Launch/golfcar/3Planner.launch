@@ -2,7 +2,7 @@
 	
 	<node pkg="golfcar_steeringcontrol" type="local_controller" name="local_controller"/> 
 	<node name="speed_controller" pkg="speed_controller" type="speed_controller_PI">
-		<param name="autoControl" value="false"/>
+		<remap from="imu/rpy" to="ms/imu/rpy"/>
 	</node>
 	<node pkg="golfcar_ppc" type="golfcar_pp" name="golfcar_pp"/>
 	<node pkg="local_map" type="local_map_node" name="local_map"/>
