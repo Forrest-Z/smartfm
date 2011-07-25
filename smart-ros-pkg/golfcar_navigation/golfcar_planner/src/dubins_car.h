@@ -103,6 +103,7 @@ public:
     int getStateKey (State& stateIn, double* stateKey);
     
     bool IsInCollision (double stateIn[3]);
+    int getStateCost(double stateIn[3]);
 
     bool isReachingTarget (State& stateIn);
 

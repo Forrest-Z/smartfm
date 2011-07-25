@@ -63,7 +63,8 @@ class Planner_node
         void emergency_replan();
         int project_goal(float &xc, float &yc, float &xs, float &ys, float goalx, float goaly);
         bool root_in_goal();
-        
+        bool isFarFromTraj();
+
         // ros
         ros::NodeHandle nh;
         ros::Subscriber goal_sub;
@@ -76,14 +77,14 @@ class Planner_node
         ros::Publisher tree_pub;
         ros::Publisher vertex_pub;
         ros::Timer planner_timer;
-        ros::Timer traj_pub_timer;
+        ros::Timer tree_pub_timer;
 
         geometry_msgs::Pose odom_prev, odom_now;
         void on_goal(const geometry_msgs::PointStamped& point);
         void on_odom(const nav_msgs::Odometry::ConstPtr & msg);
         void on_map(const local_map::local_map_msg::ConstPtr & local_map);
         void on_planner_timer(const ros::TimerEvent &e);
-        void on_traj_pub_timer(const ros::TimerEvent &e);
+        void on_tree_pub_timer(const ros::TimerEvent &e);
         void get_plan();
 
         int publish_traj();
@@ -109,7 +110,7 @@ Planner_node::Planner_node()
 
     // init periodic planner
     planner_timer = nh.createTimer(ros::Duration(0.5), &Planner_node::on_planner_timer, this);
-    traj_pub_timer = nh.createTimer(ros::Duration(2.0), &Planner_node::on_traj_pub_timer, this);
+    tree_pub_timer = nh.createTimer(ros::Duration(2.0), &Planner_node::on_tree_pub_timer, this);
 
     // subscribe to points
     odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", 5, &Planner_node::on_odom, this);
@@ -247,7 +248,7 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
         // Initialize the planner
         rrts.initialize ();
 
-        cout<<"got first frame" << endl;
+        ROS_INFO("got first frame");
     
         curr_goal.x = system.origin.x;
         curr_goal.y = system.origin.y;
@@ -272,7 +273,7 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
                 {
                     for(int jt = yright; jt < yleft; jt++)
                     {
-                        system.map_vals[it + jt*system.xsize] = 250;
+                        system.map_vals[it + jt*system.xsize] = 250 - fabs(it-i) - fabs(jt-j);
                     }
                 }
             }
@@ -353,8 +354,8 @@ int Planner_node::project_goal(float &xc, float &yc, float &xs, float &ys, float
         ys = fabs(ymin - ymin2);
         xs = 5.0;
     }
-    cout<<"goals: "<< xc <<" "<<yc<<" "<< xs<<" " << ys << endl;
-    
+    ROS_INFO("projected goals: [%f, %f], size: [%f, %f]", xc, yc, xs, ys);
+
     return 0;
 }
 
@@ -380,7 +381,7 @@ void Planner_node::change_sampling_region()
     system.regionGoal.center[2] = curr_goal.z;
     system.regionGoal.size[0] = 2;
     system.regionGoal.size[1] = 2;
-    system.regionGoal.size[2] = 10/180*M_PI;
+    system.regionGoal.size[2] = 30/180*M_PI;
     
     /*
     // project goal
@@ -409,7 +410,7 @@ bool Planner_node::root_in_goal()
     return system.isReachingTarget(curr_state);
 }
 
-void Planner_node::on_traj_pub_timer(const ros::TimerEvent &e)
+void Planner_node::on_tree_pub_timer(const ros::TimerEvent &e)
 {
     publish_tree();
 }
@@ -489,9 +490,9 @@ void Planner_node::emergency_replan()
     //1. set root to current position
     vertex_t& rootVertex =  rrts.getRootVertex();
     state_t &stateRoot = rootVertex.getState();
-    stateRoot[0] = system.origin.x;
-    stateRoot[1] = system.origin.y;
-    stateRoot[2] = system.origin.z;
+    stateRoot[0] = odom_now.position.x;
+    stateRoot[1] = odom_now.position.y;
+    stateRoot[2] = odom_now.position.z;
     
     change_sampling_region();
 
@@ -507,13 +508,33 @@ void Planner_node::emergency_replan()
     ROS_INFO("finished get_plan emergency");
 }
 
+// return true normally, if it finds even one vertex within 1.5 m of car, return false
+bool Planner_node::isFarFromTraj()
+{
+    float cx = odom_now.position.x;
+    float cy = odom_now.position.y;
+    
+    if(toPublishTraj.size() == 0)
+        return false;
+
+    for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
+    {
+        double* stateRef = *iter;
+        
+        if( dist(cx, cy, stateRef[0], stateRef[1]) < 1.5)
+            return false;
+    }
+    return true;
+}
+
+
 int Planner_node::publish_traj()
 {
     
     // 1. check if current trajectory is safe, else stop
-    if(! rrts.isSafeTrajectory(toPublishTraj) )
+    if( (!rrts.isSafeTrajectory(toPublishTraj)) || isFarFromTraj()  )
     {
-        ROS_INFO("unsafe traj: clearing");
+        ROS_INFO("unsafe or too far from traj: clearing");
         toPublishControl.clear();
     
         // free memory
@@ -560,7 +581,6 @@ int Planner_node::publish_traj()
         //cout<< *iter<<" ";
         which_pose++;
     }
-    cout<<endl;
     traj_pub.publish(traj_msg);
   
     // publish to viewer

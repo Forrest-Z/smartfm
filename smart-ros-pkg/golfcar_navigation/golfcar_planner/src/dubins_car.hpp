@@ -153,6 +153,31 @@ bool System::IsInCollision (double stateIn[3])
     return false;
 }
 
+int System::getStateCost(double stateIn[3])
+{   
+    // get cell_num of stateIn
+    double xtmp = stateIn[0] - origin.x;
+    double ytmp = stateIn[1] - origin.y;
+
+    int xnum, ynum;
+    xnum = xtmp/map_res + xorigin;
+    ynum = ytmp/map_res + yorigin;
+    
+    if( (xnum >= xsize) || (xnum < 0) || (ynum >= ysize) || (ynum < 0) )
+    {
+        return 0;
+    }
+    else
+    {
+        //cout<<"grid: " << xback <<" "<< xfront <<" "<< yleft <<" "<< yright << endl;
+        if(map_vals[ynum + xnum*xsize] >= 250)
+            return 250;
+        else
+            return (250 - map_vals[ynum + xnum*xsize]);
+    }
+    return 0;
+}
+
 int System::sampleState (State &randomStateOut) {
 
     for (int i = 0; i < 3; i++) {
@@ -284,7 +309,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
     }
 
     double total_distance_travel = (t_increment_s1 + t_increment_s2) * turning_radius  + distance;
-
+    //double cost_map_cost = 0;
     fully_extends = 0;
 
     if (check_obstacles) {
@@ -658,9 +683,8 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
 
 
 
-double System::evaluateCostToGo (State& stateIn) {
-
-
+double System::evaluateCostToGo (State& stateIn) 
+{
     double size_x = regionGoal.size[0];
     double size_y = regionGoal.size[1];
     double radius = sqrt(size_x*size_x + size_y*size_y);
