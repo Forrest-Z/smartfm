@@ -15,14 +15,24 @@ RoutePlannerNode::RoutePlannerNode()
 	pointCloud_pub_ = n.advertise<sensor_msgs::PointCloud>("pnc_waypointVis",1);
 	poseStamped_pub_ = n.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
 	nextpose_pub_ = n.advertise<geometry_msgs::PoseStamped>("pnc_nextpose",1);
+	gps_sub_ = n.subscribe("fix", 1, &RoutePlannerNode::gpsCallBack, this);
 	currentStationID_= 0;
-
-	RoutePlanner rp("localhost", 8888);
+	gpsCount_=0;
+	RoutePlanner rp("localhost", 8888, 4440);
+	rp_ = &rp;
 
 	rp.sendStatus(0, VEHICLE_AVAILABLE, 0);
 
 	int usrID, pickup, dropoff;
+	string stationNo = "";
 
+	cout<<"Current station number?"<<endl;
+	getline(cin, stationNo);
+	currentStationID_ = atoi(stationNo.c_str());
+	cout<<"Got it, my current staion is "<<currentStationID_<<"Getting ready in 5 seconds"<<endl;
+	ros::Duration(5).sleep();
+	ROS_INFO("READY!");
+	RoutePlannerNode::clearscreen();
 	while (1) {
 
 		rp.getNewTask(usrID, pickup, dropoff);
@@ -44,7 +54,7 @@ RoutePlannerNode::RoutePlannerNode()
 				RoutePlannerNode::startLoop(VEHICLE_ON_CALL, currentStationID_, pickup, &rp);
 
 				//arrive at pickup point
-				cout<<"Arrive at pickup point"<<endl;
+				ROS_INFO("Arrive at pickup point");
 
 			}
 
@@ -69,7 +79,7 @@ RoutePlannerNode::RoutePlannerNode()
 		}
 		//i'm become available again, preparing to get next task
 		rp.sendStatus(0, VEHICLE_AVAILABLE, 0);
-		cout << "Waiting for next task. Prepared to move to a pick up point at any time"<<endl;
+		ROS_INFO("Waiting for next task. Prepared to move to a pick up point at any time");
 		ros::spinOnce();
 	}
 }
@@ -77,6 +87,32 @@ RoutePlannerNode::RoutePlannerNode()
 RoutePlannerNode::~RoutePlannerNode()
 {
 
+}
+
+void RoutePlannerNode::gpsCallBack(const sensor_msgs::NavSatFixConstPtr& fix)
+{
+	if (fix->status.status == sensor_msgs::NavSatStatus::STATUS_NO_FIX) {
+	    ROS_INFO("No fix.");
+	    return;
+	  }
+
+	  if (fix->header.stamp == ros::Time(0)) {
+	    return;
+	  }
+
+	  double lat= fix->latitude;
+	  double lon = fix->longitude;
+	  if(gpsCount_%5==0)
+	  {
+		  rp_->sendLocation(lat,lon);
+		  ROS_INFO("Sent gps location %lf %lf", lat, lon);
+	  }
+
+	  gpsCount_++;
+}
+
+void RoutePlannerNode::clearscreen() {
+if (system( "clear" )) system( "cls" );
 }
 
 void RoutePlannerNode::publishPathVis()
@@ -97,16 +133,20 @@ void RoutePlannerNode::publishPathVis()
 void RoutePlannerNode::startLoop(VehicleStatus vehstatus,int dropoff, int pickup, RoutePlanner *rp)
 {
 	WaypointNo_=0;
-	cout<<vehstatus<<endl;
+
 	while (1){
 		int station_distance = RoutePlannerNode::distance_to_goal();
 		rp->sendStatus(0, vehstatus, station_distance );
-		ROS_INFO("Going to dropoff station %d from station %d, distance to go %d m", dropoff, pickup, station_distance);
 		if(WaypointNo_==targets_.size()) break;
+		if(vehstatus == VEHICLE_ON_CALL) ROS_INFO("Going to pick up station %d from station %d, distance to go %d m", dropoff, pickup, station_distance);
+		if(vehstatus == VEHICLE_POB) ROS_INFO("Going to drop off station %d from station %d, distance to go %d m", dropoff, pickup, station_distance);
+
 		RoutePlannerNode::waypoint_pub();
-		ros::Duration(0.5).sleep();
+		ros::spinOnce();
+		ros::Duration(0.2).sleep();
 	}
 }
+
 int RoutePlannerNode::distance_to_goal()
 {
 	double distance=0;

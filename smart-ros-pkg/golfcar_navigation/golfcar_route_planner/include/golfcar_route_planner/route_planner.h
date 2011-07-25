@@ -23,6 +23,8 @@
 #include "../../src/RoutePlanner.hh"
 #include <iostream>
 #include <math.h>
+#include <sensor_msgs/NavSatStatus.h>
+#include <sensor_msgs/NavSatFix.h>
 
 namespace route_planner {
 
@@ -38,17 +40,22 @@ private:
 	ros::Publisher pointCloud_pub_;
 	ros::Publisher poseStamped_pub_;
 	ros::Publisher nextpose_pub_;
+	ros::Subscriber gps_sub_;
 
 	ros::Timer timer_;
 	tf::TransformListener tf_;
+	int gpsCount_;
 	void waypoint_pub();
 	void publishPathVis();
+	void clearscreen();
 	void publish_goal(double pickup, double dropoff);
 	bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
 	void transformMapToOdom(geometry_msgs::PoseStamped &map_pose, geometry_msgs::PointStamped &odom_point);
+	void gpsCallBack(const sensor_msgs::NavSatFixConstPtr& fix);
 	int distance_to_goal();
 	void startLoop(VehicleStatus vehstatus,int dropoff, int pickup,RoutePlanner *rp);
 	std::vector<geometry_msgs::Point> targets_;
+	RoutePlanner *rp_;
 	int WaypointNo_;
 	//assume that the vehicle will always stop at one of the station
 	int currentStationID_;
