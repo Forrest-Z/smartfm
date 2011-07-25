@@ -534,7 +534,6 @@ int
 {
     if( root->children.size() > 0)
     {
-        int count = 0;
         for (typename set<vertex_t*>::iterator iter = root->children.begin(); iter != root->children.end(); iter++) 
         {
             vertex_t &vertex = **iter;

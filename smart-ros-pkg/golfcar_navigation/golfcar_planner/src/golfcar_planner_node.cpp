@@ -76,12 +76,14 @@ class Planner_node
         ros::Publisher tree_pub;
         ros::Publisher vertex_pub;
         ros::Timer planner_timer;
+        ros::Timer traj_pub_timer;
 
         geometry_msgs::Pose odom_prev, odom_now;
         void on_goal(const geometry_msgs::PointStamped& point);
         void on_odom(const nav_msgs::Odometry::ConstPtr & msg);
         void on_map(const local_map::local_map_msg::ConstPtr & local_map);
         void on_planner_timer(const ros::TimerEvent &e);
+        void on_traj_pub_timer(const ros::TimerEvent &e);
         void get_plan();
 
         int publish_traj();
@@ -107,6 +109,7 @@ Planner_node::Planner_node()
 
     // init periodic planner
     planner_timer = nh.createTimer(ros::Duration(0.5), &Planner_node::on_planner_timer, this);
+    traj_pub_timer = nh.createTimer(ros::Duration(2.0), &Planner_node::on_traj_pub_timer, this);
 
     // subscribe to points
     odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", 5, &Planner_node::on_odom, this);
@@ -120,12 +123,17 @@ Planner_node::Planner_node()
     vertex_pub = nh.advertise<sensor_msgs::PointCloud>("rrt_vertex", 5);
 }
 
+inline float dist(float x1, float y1, float x2, float y2)
+{
+    return sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) );
+}
+
 void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
 {
     curr_goal.x = point.point.x;
     curr_goal.y = point.point.y;
     curr_goal.z = point.point.z;
-    cout<<"got goal: "<< curr_goal.x<<" "<< curr_goal.y<<" "<< curr_goal.z << endl;
+    ROS_INFO("got goal: %f %f %f", curr_goal.x, curr_goal.y, curr_goal.z);
     already_committed = 0;
     
     change_sampling_region();
@@ -137,7 +145,6 @@ void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
     stateRoot[0] = odom_now.position.x;
     stateRoot[1] = odom_now.position.y;
     stateRoot[2] = odom_now.position.z;
-    
 
     // 2. reinit planner
     rrts.initialize();
@@ -148,6 +155,7 @@ void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
 
     rrts.checkTree();
     rrts.updateReachability();
+
     planner_in_progress = true;
 }
 
@@ -199,7 +207,6 @@ void Planner_node::publish_grid()
         }
     }
     obs_pub.publish(pc);
-
 }
 
 void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
@@ -247,14 +254,11 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
         curr_goal.z = system.origin.z;
     }
 
-    //cout<<"l xsize: "<< local_map->xsize<<" l ysize:"<< local_map->ysize <<endl;
-    //cout<<"xsize: "<< system.xsize<<" ysize:"<<system.ysize<<endl;
-    //cout<<"verify: "<< local_map->vals.size() <<" "<< system.xsize*system.ysize << endl;
     for(int i=0; i< system.xsize; i++)
     {
         for(int j=0; j< system.ysize; j++)
         {
-            float car_width = 1.0, car_length = 1.6;
+            float car_width = 2.0, car_length = 2.0;
 
             int yleft = min(system.ysize, (int)(j + car_width/2/system.map_res));
             int yright = max(0, (int)(j - car_width/2/system.map_res));
@@ -284,20 +288,15 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
 }
 
 
-inline float dist(float x1, float y1, float x2, float y2)
-{
-    return sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) );
-}
-
 int Planner_node::project_goal(float &xc, float &yc, float &xs, float &ys, float goalx, float goaly)
 {
     int goalx_num = ((goalx - system.origin.x)/system.map_res + system.xorigin);
     int goaly_num = ((goaly - system.origin.y)/system.map_res + system.yorigin);
     if( (goalx_num >=0) && (goalx_num < system.xsize) && (goaly_num >=0) && (goaly_num < system.ysize) )
     {
-        cout<<"goal inside: keeping it same" << endl;
+        ROS_INFO("goal inside: keeping it same");
         xc = goalx; yc = goaly;
-        xs = 5.0; yc = 5.0;
+        xs = 2.0; yc = 2.0;
         return 1;
     }
     double min_corner_dist = DBL_MAX;
@@ -379,19 +378,10 @@ void Planner_node::change_sampling_region()
     system.regionGoal.center[0] = curr_goal.x;
     system.regionGoal.center[1] = curr_goal.y;
     system.regionGoal.center[2] = curr_goal.z;
-    system.regionGoal.size[0] = 5;
-    system.regionGoal.size[1] = 5;
+    system.regionGoal.size[0] = 2;
+    system.regionGoal.size[1] = 2;
     system.regionGoal.size[2] = 10/180*M_PI;
     
-    /*
-    system.regionGoal.center[0] = 100;
-    system.regionGoal.center[1] = 0;
-    system.regionGoal.center[2] = 0;
-    system.regionGoal.size[0] = 5;
-    system.regionGoal.size[1] = 5;
-    system.regionGoal.size[2] = 0.5 * M_PI;
-    */
-
     /*
     // project goal
     float goal_th = 0;
@@ -410,20 +400,6 @@ void Planner_node::change_sampling_region()
     cout<<"goal dir: "<< system.regionGoal.center[2] << endl;   
     */
     
-    /* 
-    // project goal naive
-    float length = dist(curr_goal.x, curr_goal.y, system.origin.x, system.origin.y);
-    float xc = (curr_goal.x - system.origin.x)/length*10;
-    float yc = (curr_goal.y - system.origin.y)/length*10;
-    float goal_th = atan2(curr_goal.y - system.origin.y, curr_goal.x - system.origin.x);
-
-    system.regionGoal.center[0] = xc;
-    system.regionGoal.center[1] = yc;
-    system.regionGoal.center[2] = goal_th;
-    system.regionGoal.size[0] = 5.0;
-    system.regionGoal.size[1] = 5.0;
-    system.regionGoal.size[2] = 0.3 * M_PI;
-    */
 }
 
 bool Planner_node::root_in_goal()
@@ -431,6 +407,11 @@ bool Planner_node::root_in_goal()
     vertex_t &rootVertex = rrts.getRootVertex();
     state_t &curr_state = rootVertex.getState();
     return system.isReachingTarget(curr_state);
+}
+
+void Planner_node::on_traj_pub_timer(const ros::TimerEvent &e)
+{
+    publish_tree();
 }
 
 void Planner_node::on_planner_timer(const ros::TimerEvent &e)
@@ -446,7 +427,7 @@ void Planner_node::get_plan()
     // prune the obstructed part of the tree
     rrts.checkTree();
     rrts.updateReachability();
-    cout<<"num_vert: "<< rrts.numVertices << endl;
+    ROS_INFO("rrt num_vert: %d", rrts.numVertices);
     change_sampling_region();
 
     if( ! root_in_goal() )
@@ -459,23 +440,22 @@ void Planner_node::get_plan()
         }
         rrts.updateReachability();
         curr_best_cost = rrts.getBestVertexCost();
-        cout<<"commit status: "<< already_committed << " best_curr: "<< curr_best_cost << endl;
-
+        ROS_INFO("commit status: %d best_curr: %f", already_committed, curr_best_cost);
 
         // if found traj, copy it and keep publishing, switch root to some node ahead
         if( !already_committed )
         {
-            cout<<"prev: "<< prev_best_cost << " curr: " << curr_best_cost << endl;
+            ROS_INFO("prev_cost: %f curr_cost: %f", prev_best_cost, curr_best_cost);
             if( fabs(prev_best_cost - curr_best_cost) < 1.0)
             {
                 vertex_t& vertexBest = rrts.getBestVertex ();
                 if (&vertexBest == NULL)
                 {
-                    cout<<"new vertex not found"<<endl;
+                    ROS_DEBUG("get_plan(): best not found");
                 }
                 else
                 {
-                    cout<<"traj cost: "<< rrts.getBestVertexCost() << endl;
+                    ROS_INFO("traj cost: %f", rrts.getBestVertexCost() );
 
                     // free memory for toPublishTraj
                     for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
@@ -490,10 +470,10 @@ void Planner_node::get_plan()
                     {
                         already_committed = 1;
                         change_sampling_region();
-                        cout<<"switching root"<<endl;
+                        ROS_INFO("switching root");
                     }
                     else
-                        cout<<"couldn't switch root" << endl;
+                        ROS_INFO("couldn't switch root");
                 }
             }
         }
@@ -502,7 +482,6 @@ void Planner_node::get_plan()
     }
     
     publish_traj();
-    publish_tree();
 }
 
 void Planner_node::emergency_replan()
@@ -520,13 +499,12 @@ void Planner_node::emergency_replan()
     rrts.initialize();
     prev_best_cost = 1e10;
     curr_best_cost = 1e20;
-    cout<<"initialized new tree"<<endl;
+    ROS_INFO("initialized new tree");
     
-    publish_tree();
     already_committed = 0;
     
     get_plan();
-    cout<<"finished get_plan emergency"<<endl;
+    ROS_INFO("finished get_plan emergency");
 }
 
 int Planner_node::publish_traj()
@@ -535,7 +513,7 @@ int Planner_node::publish_traj()
     // 1. check if current trajectory is safe, else stop
     if(! rrts.isSafeTrajectory(toPublishTraj) )
     {
-        cout<<"unsafe traj: clearing"<<endl;
+        ROS_INFO("unsafe traj: clearing");
         toPublishControl.clear();
     
         // free memory
@@ -602,13 +580,11 @@ int Planner_node::publish_traj()
     }
     trajview_pub.publish(traj_msg);
 
-    cout<<"finished traj pub"<<endl;
     return 1;
 }
 
 int Planner_node::publish_tree()
 {
-    cout<<"start tree pub"<<endl;
     int num_nodes = 0;
     
     num_nodes = rrts.numVertices;
@@ -621,7 +597,6 @@ int Planner_node::publish_tree()
     pc1.header.stamp = ros::Time::now();
     pc1.header.frame_id = "odom";
    
-    int count = 0;
     if (num_nodes > 0) 
     {    
         for (list<vertex_t*>::iterator iter = rrts.listVertices.begin(); iter != rrts.listVertices.end(); iter++) 
@@ -669,9 +644,7 @@ int Planner_node::publish_tree()
     tree_pub.publish(pc);
     vertex_pub.publish(pc1);
 
-    cout<<"finished tree pub"<<endl;
     return 1;
-
 }
 
 int main(int argc, char **argv)
