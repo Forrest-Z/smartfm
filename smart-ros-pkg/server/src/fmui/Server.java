@@ -50,9 +50,7 @@ public class Server implements Runnable {
 
             ClientData c = null;
             try {
-            	System.out.println(serverSocket.toString());
                 c = new ClientData(serverSocket.accept());
-                System.out.println("after"+serverSocket.toString());
             } catch (IOException e) {
                 // Print the error and exit
                 // A better mechanism should be implemented to continue accepting connections...
@@ -66,7 +64,7 @@ public class Server implements Runnable {
 				
 				
 				if (clientType==SCHEDULER) {
-					System.out.println("Scheduler");
+					System.out.println("Init Scheduler");
 					new ServerThread(c).start();
 				} else if (clientType==DESKTOP){
                     System.out.println("Desktop");
@@ -115,7 +113,7 @@ public class Server implements Runnable {
 						System.exit(1); //what to do here?
 					}
 				}	
-				System.out.println("Number of clients: " + db.clients.size() +"\n\n");
+				System.out.println("Number of clients: " + db.clients.size() +"\n");
 			}
 			
 			
@@ -311,7 +309,7 @@ public class Server implements Runnable {
 						if (!arr.isEmpty()) {
 						  Object temp = arr.get(arr.size()-1);
 						  cd.out.println(temp);		
-							toWeb = false;
+						//	toWeb = false;
                         }
                         */
                         

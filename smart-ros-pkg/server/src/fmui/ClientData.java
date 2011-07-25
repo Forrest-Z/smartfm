@@ -42,7 +42,7 @@ class ClientData {
             	int f = msg.indexOf(":");
             	ID = msg.substring(1,f);
 				
-				System.out.println("CHeck msg to Server: " + msg);
+				System.out.println("Check msg to Server: " + msg);
 				
 				 // store Scheduler data. --- ;ID:user_id:taskID:wait:carID
 				if(IDcheck.compareTo("0")==0&&ID.compareTo("0")==0) {
@@ -108,7 +108,7 @@ class ClientData {
 		
     	while((msg = in.readLine())!=null) {   
     	
-    	System.out.println("CHeck msg to Server: " + msg);
+    	System.out.println("Check msg to Server: " + msg);
     	
     	if (msg.startsWith(";")){
     		int f = msg.indexOf(":");
