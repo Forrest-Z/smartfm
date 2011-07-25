@@ -14,7 +14,7 @@ using namespace std;
   (fprintf(stderr, "\033[0;31mERROR %s:%d: " fmt "\033[0m\n", __FILE__, __LINE__, ##__VA_ARGS__) ? -1 : 0)
 */
 
-#define MAX_ADDITIONAL_TIME 1
+#define MAX_ADDITIONAL_TIME 5
 #define INF_TIME 10000
 
 Scheduler::Scheduler(int verbosity_level)

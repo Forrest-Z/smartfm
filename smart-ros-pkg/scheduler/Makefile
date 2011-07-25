@@ -12,7 +12,7 @@ LDFLAGS+=-lcurses -lncurses
 SRCS=StationNetwork.cc Scheduler.cc SchedulerUI.cc SchedulerTalker.cc VehicleTalker.cc SchedulerMain.cc
 EXECNAME=scheduler
 
-all: $(EXECNAME)
+all: $(EXECNAME) dummyrp
 
 $(EXECNAME): SchedulerMain.o SchedulerUI.o SchedulerTalker.o VehicleTalker.o Scheduler.o StationNetwork.o $(SOCKET_DIR)/socket.a
 	$(CPP) $(CPPFLAGS) $(LDFLAGS) $^ -o $@
