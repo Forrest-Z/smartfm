@@ -12,8 +12,8 @@ namespace PID_Speed{
     brakepedal_pub_ = n.advertise<golfcar_halstreamer::brakepedal>("golfcar_brake", 1);
 
     ros::NodeHandle private_nh("~");
-    if(!private_nh.getParam("kp",kp_)) kp_ = 0.17;
-    if(!private_nh.getParam("ki",ki_)) ki_ = 0.18;
+    if(!private_nh.getParam("kp",kp_)) kp_ = 0.15;
+    if(!private_nh.getParam("ki",ki_)) ki_ = 0.25;
     if(!private_nh.getParam("ki_sat",ki_sat_)) ki_sat_ = 0.8;
     if(!private_nh.getParam("coeff_throttle",coeff_th_)) coeff_th_ = 3.3;
     if(!private_nh.getParam("coeff_brakepedal",coeff_bp_)) coeff_bp_ = 120;
