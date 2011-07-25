@@ -16,12 +16,17 @@ enum VehicleStatus
 class RoutePlanner
 {
 public:
-  // Default Constructor
-  RoutePlanner(std::string host, int port);
+  // Constructors
+  // Only communication with the scheduler. Do not report current location.
+  RoutePlanner(std::string schHost, int schPort); 
+  // Use the same host to communicate with the scheduler and to report current location.
+  RoutePlanner(std::string host, int schPort, int locPort);
+  RoutePlanner(std::string schHost, int schPort, std::string locHost, int locPort);
 
   // Default destructor
   virtual ~RoutePlanner() {};
 
+  // Communication with the scheduler
   // Send new status to the server
   bool sendStatus(int vehicleID, VehicleStatus vehStatus, int tremain);
 //available should be sent only once
@@ -30,9 +35,15 @@ public:
   // Get a new task
   bool getNewTask(int &usrID, int &pickup, int &dropoff);
 
+  // Report current location
+  bool sendLocation(double lat, double lon);
+
 private:
-  ClientSocket m_socket;
-  bool m_isconnected;
+  void initSchComm(std::string host, int port);
+  void initLocComm(std::string host, int port);
+
+  ClientSocket m_schSocket, m_locSocket;
+  bool m_schConnected, m_locConnected;
   std::string msg;
 };
 

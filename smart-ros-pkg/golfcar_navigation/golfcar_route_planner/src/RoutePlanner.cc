@@ -13,22 +13,59 @@ using namespace std;
 #define ERROR(fmt, ...) \
   (fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__) ? -1 : 0)
 
-RoutePlanner::RoutePlanner(string host, int port)
+RoutePlanner::RoutePlanner(string schHost, int schPort)
+{
+  m_schConnected = false;
+  m_locConnected = false;
+  this->initSchComm(schHost, schPort);
+}
+
+RoutePlanner::RoutePlanner(string host, int schPort, int locPort)
+{
+  m_schConnected = false;
+  m_locConnected = false;
+  this->initSchComm(host, schPort);
+  this->initLocComm(host, locPort);
+}
+
+RoutePlanner::RoutePlanner(string schHost, int schPort, string locHost, int locPort)
+{
+  m_schConnected = false;
+  m_locConnected = false;
+  this->initSchComm(schHost, schPort);
+  this->initLocComm(locHost, locPort);
+}
+
+void RoutePlanner::initSchComm(string host, int port)
 {
   try {
-    m_socket.init(host, port);
-    m_socket.setSocketBlocking(true);
-    m_isconnected = true;
+    m_schSocket.init(host, port);
+    m_schSocket.setSocketBlocking(true);
+    m_schConnected = true;
   }
   catch (SocketException e) {
     ERROR("%s", e.getErrMsg().c_str());
-    m_isconnected = false;
+    m_schConnected = false;
+  }
+}
+
+void RoutePlanner::initLocComm(string host, int port)
+{
+  try {
+    m_locSocket.init(host, port);
+    m_locSocket.setSocketBlocking(true);
+    m_locSocket << ";car:0:0:0\n";
+    m_locConnected = true;
+  }
+  catch (SocketException e) {
+    ERROR("%s", e.getErrMsg().c_str());
+    m_locConnected = false;
   }
 }
 
 bool RoutePlanner::sendStatus(int vehicleID, VehicleStatus vehStatus, int tremain)
 {
-  if (!m_isconnected)
+  if (!m_schConnected)
     return false;
 
   bool msgSent = false;
@@ -36,7 +73,7 @@ bool RoutePlanner::sendStatus(int vehicleID, VehicleStatus vehStatus, int tremai
     try {
       std::ostringstream ss;
       ss << ";" << vehicleID << ":" << vehStatus << ":" << tremain << "\n";
-      m_socket << ss.str();
+      m_schSocket << ss.str();
       msgSent = true;
     }
     catch (SocketException e) {
@@ -44,6 +81,26 @@ bool RoutePlanner::sendStatus(int vehicleID, VehicleStatus vehStatus, int tremai
       msgSent = false;
       sleep(1);
     }
+  }
+  return msgSent;
+}
+
+bool RoutePlanner::sendLocation(double lat, double lon)
+{
+  if (!m_locConnected)
+    return false;
+
+  bool msgSent = false;
+  try {
+    std::ostringstream ss;
+    //ss << lat << " " << lon << "\n";
+    ss << ";car:1" << lat << ":" << lon << "\n";
+    m_locSocket << ss.str();
+    msgSent = true;
+  }
+  catch (SocketException e) {
+    ERROR("%s", e.getErrMsg().c_str());
+    msgSent = false;
   }
   return msgSent;
 }
@@ -143,7 +200,7 @@ bool RoutePlanner::getNewTask(int &usrID, int &pickup, int &dropoff)
   if (msg.length() == 0 || msgIncomplete) {
     try {
       std::string newmsg;
-      m_socket >> newmsg;
+      m_schSocket >> newmsg;
       msg.append(newmsg);
     }
     catch (SocketException e) {
