@@ -94,7 +94,7 @@ bool RoutePlanner::sendLocation(double lat, double lon)
   try {
     std::ostringstream ss;
     //ss << lat << " " << lon << "\n";
-    ss << ";car:1" << lat << ":" << lon << "\n";
+    ss << ";car:1:" << lat << ":" << lon << "\n";
     m_locSocket << ss.str();
     msgSent = true;
   }
