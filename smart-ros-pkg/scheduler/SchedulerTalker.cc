@@ -30,6 +30,7 @@ SchedulerTalker::SchedulerTalker(string host, int port, int verbosityLevel)
     m_socket.setSocketBlocking(true);
     m_isconnected = true;
     m_socket << ";0:0:0:0:0\n";
+    //m_socket << ";server:0:0:0:0\n";
   }
   catch (SocketException e) {
     ERROR("%s", e.getErrMsg().c_str());
@@ -53,6 +54,7 @@ bool SchedulerTalker::sendTaskStatus(int usrID, int taskID, int twait, int vehic
     try {
       std::ostringstream ss;
       ss << ";" << "0:" << usrID << ":" << taskID << ":" << twait << ":" << vehicleID << "\n";
+      //ss << ";" << "server:" << usrID << ":" << taskID << ":" << twait << ":" << vehicleID << "\n";
       m_socket << ss.str();
       fprintf (logFile, "\n%d: sending status: %s", (int) time(NULL), ss.str().c_str());
       msgSent = true;
