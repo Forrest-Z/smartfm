@@ -363,8 +363,8 @@ void pf_update_resample(pf_t *pf)
 
   if(w_diff < 0.0)
     w_diff = 0.0;
-  if(w_diff >0.03)
-	 w_diff = 0.03;
+  if(w_diff >0.02)
+	 w_diff = 0.02;
 	
   //printf("w_diff: %9.6f\n", w_diff);
 

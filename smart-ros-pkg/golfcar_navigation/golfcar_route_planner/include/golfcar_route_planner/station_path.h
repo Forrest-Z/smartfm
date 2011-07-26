@@ -107,7 +107,7 @@ stationPath::stationPath()
 	}
 	cout<<endl;
 
-
+/*
 	for(int i=0; i<station_number;i++)
 	{
 		for(int j=0; j<station_number; j++)
@@ -149,7 +149,7 @@ stationPath::stationPath()
 				k++;
 			}
 		}
-	}
+	}*/
 	for(int i=0; i<station_paths[0][2].size();i++)
 		{
 			cout<<station_paths[0][2][i].x<<','<<station_paths[0][2][i].y<<'\t';
