@@ -13,14 +13,14 @@ namespace PID_Speed{
 
     ros::NodeHandle private_nh("~");
     if(!private_nh.getParam("kp",kp_)) kp_ = 0.15;
-    if(!private_nh.getParam("ki",ki_)) ki_ = 0.25;
-    if(!private_nh.getParam("ki_sat",ki_sat_)) ki_sat_ = 0.8;
+    if(!private_nh.getParam("ki",ki_)) ki_ = 0.22;
+    if(!private_nh.getParam("ki_sat",ki_sat_)) ki_sat_ = 0.7;
     if(!private_nh.getParam("coeff_throttle",coeff_th_)) coeff_th_ = 3.3;
     if(!private_nh.getParam("coeff_brakepedal",coeff_bp_)) coeff_bp_ = 120;
-    if(!private_nh.getParam("throttleZeroThres", throttle_zero_thres_)) throttle_zero_thres_ = 0.2;
-    if(!private_nh.getParam("brakeZeroThres", brake_zero_thres_)) brake_zero_thres_ = 3.0;
+    if(!private_nh.getParam("throttleZeroThres", throttle_zero_thres_)) throttle_zero_thres_ = 0.5;
+    if(!private_nh.getParam("brakeZeroThres", brake_zero_thres_)) brake_zero_thres_ = 10.0;
     if(!private_nh.getParam("fullBrakeThres", full_brake_thres_)) full_brake_thres_ = 0.25;
-    if(!private_nh.getParam("tau_v", tau_v_)) tau_v_ = 0.25;
+    if(!private_nh.getParam("tau_v", tau_v_)) tau_v_ = 0.2;
     if(!private_nh.getParam("pitch_param1", pitch_param1_)) pitch_param1_ = 0;
     if(!private_nh.getParam("pitch_param2", pitch_param2_)) pitch_param2_ = -4;
 
