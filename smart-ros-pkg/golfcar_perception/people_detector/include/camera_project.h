@@ -76,6 +76,7 @@ namespace camera_projector{
 
        people_detector::people_rects prs;
        ros::Subscriber lb_objs_sub;
+		 tf::TransformListener hokuyo_to_sick_;
       };
 };
        

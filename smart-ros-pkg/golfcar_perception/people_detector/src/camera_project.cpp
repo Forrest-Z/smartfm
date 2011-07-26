@@ -34,12 +34,7 @@ namespace camera_projector{
 		temp3Dpoint.x=-lb_objs_para.lb_objs_vector[i].pedestrian_point.y;   //Here should be minus.
 		temp3Dpoint.y=lb_objs_para.lb_objs_vector[i].pedestrian_point.z-0.17;  //with fixed differencials
 		temp3Dpoint.z=lb_objs_para.lb_objs_vector[i].pedestrian_point.x-0.07; 
-		
 		camera_project::projection(temp3Dpoint, temppr);
-		
-		/* temppr point is just the breast point in the coordinate of the image;
-		 * the following part is to get the pixel of the rectangle corner.
-		 */
 		
 		if(temppr.x>0&&temppr.x<1280&&temppr.y>0&&temppr.y<1024) //at least the breast point is inside of the picture.
 		{
@@ -69,15 +64,15 @@ namespace camera_projector{
 
 		
 		//to get tempprcorner.y
-		if((temppr.y-(int)(1.2/temppr.disz*webcam.fc[0])-40)<0)
+		if((temppr.y-(int)(1.0/temppr.disz*webcam.fc[0])-40)<0)
 		{tempprcorner.y=0;
 		ROS_INFO("3-----set to false");}
 		
 		else
-		{tempprcorner.y=temppr.y-(int)(1.2/temppr.disz*webcam.fc[0])-40;}
+		{tempprcorner.y=temppr.y-(int)(1.0/temppr.disz*webcam.fc[0])-40;}
 		
 		//to get tempprcorner.height
-		if(((int)(1.8/temppr.disz*webcam.fc[0])+temppr.y+40)>1024)
+		if(((int)(1.5/temppr.disz*webcam.fc[0])+temppr.y+40)>1024)
 		{tempprcorner.height=1024-tempprcorner.y;
 		 ROS_INFO("4-----can set to false, but not set");
 		 }
@@ -85,7 +80,7 @@ namespace camera_projector{
 		else
 		{ROS_INFO("4-----is passed");
 		
-		tempprcorner.height=(int)(1.8/temppr.disz*webcam.fc[0])+temppr.y+40-tempprcorner.y;}		 
+		tempprcorner.height=(int)(1.5/temppr.disz*webcam.fc[0])+temppr.y+40-tempprcorner.y;}		 
 		
 		tempprcorner.scaled_x=(int)((webcam.scaled_image_width/webcam.raw_image_width)*tempprcorner.x);
 		tempprcorner.scaled_y=(int)((webcam.scaled_image_height/webcam.raw_image_height)*tempprcorner.y);
@@ -104,12 +99,12 @@ namespace camera_projector{
 		*/
 		
 		//2 conditions for credible judgement. Below is the 2nd one.
-		if(tempprcorner.disz>=15||tempprcorner.disz<=2){tempprcorner.complete_flag=false;}  
+		if(tempprcorner.disz>=20||tempprcorner.disz<=0.5){tempprcorner.complete_flag=false;}  
 		
 		if(tempprcorner.complete_flag==true)
-		{ROS_INFO("--------------------Credible Judge---------------------");}
+		{ROS_INFO("--------------------Credible Judge---------------------");
+		 prs.pr_vector.push_back(tempprcorner);}
 		
-		prs.pr_vector.push_back(tempprcorner); 
 		}
 		
 	    }

@@ -19,10 +19,10 @@ namespace people_detector{
 		
 		ROS_INFO("Initializing the map...\n");
 		ros::NodeHandle nh;
-		map_sub_ = nh.subscribe("map", 1, &people_detect::initMap, this);
+		map_sub_ = nh.subscribe("curb_map", 1, &people_detect::initMap, this);
 		laser_pub = nh.advertise<sensor_msgs::PointCloud>("laser_cloud", 2);
 		
-	    laser_sub_.subscribe(nh, "sick_scan", 2);
+	    laser_sub_.subscribe(nh, "scan", 2);
 		tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, "map", 2);
 		tf_filter_->registerCallback(boost::bind(&people_detect::scanCallback, this, _1));
 		tf_filter_->setTolerance(ros::Duration(0.05));
@@ -75,7 +75,7 @@ namespace people_detector{
 	    
 		for(unsigned int i = 0; i < numCells; i++)
 		{
-			if(map.data[i]==-1 || map.data[i]==100) a=0;                   //change -1 to 0, treat unknown points as clear.
+			if(map.data[i]==-1 || map.data[i]==100) a=100;                   //change -1 to 0, treat unknown points as clear.
 			else a=0;
 			input_data_.push_back(a);                                   //Will the input_data_ be too large?
 		}
@@ -278,7 +278,7 @@ namespace people_detector{
 	          temp_cluster.y_range= maximum_y-minimum_y+1;
 	          
 		      //ROS_INFO("x_range, y_range (%d, %d)",temp_cluster.x_range, temp_cluster.y_range);
-		      if(temp_cluster.x_range>=2&&temp_cluster.x_range<30&&temp_cluster.y_range>=2&&temp_cluster.y_range<30&&temp_cluster.x_range*temp_cluster.y_range<800)
+		      if(temp_cluster.x_range>=1&&temp_cluster.x_range<15&&temp_cluster.y_range>=1&&temp_cluster.y_range<15&&temp_cluster.x_range*temp_cluster.y_range<200)
 		      {
 				float temp_sum_x=0;
 				float temp_sum_y=0;
@@ -518,10 +518,21 @@ namespace people_detector{
 								else {history_pool[ih].inFOV_flag=false;}
 						   }
 						
+						   geometry_msgs::PointStamped hokuyo_ped;
+						   geometry_msgs::PointStamped camerabase_ped;
+						   hokuyo_ped.header.frame_id="laser";
+						   hokuyo_ped.point.x=ped_point_temp.x;
+						   hokuyo_ped.point.y=ped_point_temp.y;
+						   hokuyo_ped.point.z=ped_point_temp.z;
+						   tf_.transformPoint("camera_base", hokuyo_ped, camerabase_ped);
 						   
 					       people_detector::labeled_obj temp_lbobj;
 						   temp_lbobj.object_label = history_pool[ih].object_label;
-						   temp_lbobj.pedestrian_point = ped_point_temp;
+						   
+						   temp_lbobj.pedestrian_point.x =  camerabase_ped.point.x;
+						   temp_lbobj.pedestrian_point.y =  camerabase_ped.point.y;
+						   temp_lbobj.pedestrian_point.z =  camerabase_ped.point.z;
+						   
 						   lb_objs.lb_objs_vector.push_back(temp_lbobj);
 						}
 					}
@@ -552,7 +563,7 @@ namespace people_detector{
         void people_detect::tfSickPose(const tf::TransformListener& sick_to_map_para)
         {
 			geometry_msgs::PointStamped sick_local;
-			sick_local.header.frame_id="sick_laser";
+			sick_local.header.frame_id="laser";
 			sick_local.point.x=0;
 			sick_local.point.y=0;
 			sick_local.point.z=0;
@@ -571,7 +582,7 @@ namespace people_detector{
 			pose_map_temp.point.y= ped_point_temp_para.y;
 			pose_map_temp.point.z= ped_point_temp_para.z;
 			
-			sick_to_map_para.transformPoint("sick_laser",pose_map_temp, pose_sick_temp);
+			sick_to_map_para.transformPoint("laser",pose_map_temp, pose_sick_temp);
 			
 			ped_point_temp_para.x=pose_sick_temp.point.x;
 			ped_point_temp_para.y=pose_sick_temp.point.y;
@@ -639,7 +650,7 @@ namespace people_detector{
 								temp_laser_extract_obj.pr_vector.push_back(temp_veri_obj_show);
 								people_detect::HistorCreat(temp_veri_obj_show, LaserDisHisto_);
 								
-								if(history_pool[ih].belief_person>0.6||history_pool[ih].OnceforAll_flag==true)
+								if(history_pool[ih].belief_person>0.7||history_pool[ih].OnceforAll_flag==true)
 								{ 	
 									VerifiedNum_temp++;
 									MixNum_temp++;
@@ -656,7 +667,7 @@ namespace people_detector{
 									temp_mixture_obj.pr_vector.push_back(temp_veri_obj_show);
 									people_detect::HistorCreat(temp_veri_obj_show, MixDisHisto_);
 
-									if(history_pool[ih].belief_person>0.6)
+									if(history_pool[ih].belief_person>0.7)
 									{
 										history_pool[ih].OnceforAll_flag=true;
 										history_pool[ih].veriTime=tempTime.toSec();
@@ -664,7 +675,7 @@ namespace people_detector{
 									else
 									{
 										double veriInterval = tempTime.toSec()-history_pool[ih].veriTime;
-										if(veriInterval>0.2){history_pool[ih].OnceforAll_flag=false;}
+										if(veriInterval>0.5){history_pool[ih].OnceforAll_flag=false;}
 									}	
 
 

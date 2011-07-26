@@ -1,6 +1,10 @@
 <launch>
-	<node pkg="pedestrian_detector" type="classifier" name="classifier"/>
+	<node pkg="pedestrian_detector" type="classifier" name="classifier">
+	<param name="image_transport" value="compressed"/>
+	</node>
 	<node pkg="pedestrian_detector" type="visualizer" name="visualizer"/>
+	<param name="image_transport" value="compressed"/>
+	</node>
 	<node pkg="people_detector" type="people_detect" name="people_detect">
 	</node>
 	<node pkg="people_detector" type="camera_project" name="camera_project"/>
