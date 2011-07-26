@@ -118,7 +118,7 @@ class ClientData {
 					return SCHEDULER;
 				else if (ID.compareTo("car")==0)
 					return CAR;
-				else if (ID.compareTo("Desktop")==0)
+				else if (ID.compareTo("webpage")==0)
 					return DESKTOP;
 				else
 					return USER;
