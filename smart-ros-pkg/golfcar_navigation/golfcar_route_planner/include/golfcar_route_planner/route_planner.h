@@ -60,6 +60,7 @@ private:
 	std::vector<geometry_msgs::Point> targets_;
 	RoutePlanner *rp_;
 	int WaypointNo_;
+	int LastPublishedPoint_;
 	//assume that the vehicle will always stop at one of the station
 	int currentStationID_;
 	tf::Stamped<tf::Pose> global_pose;

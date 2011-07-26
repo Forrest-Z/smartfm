@@ -4,7 +4,7 @@ namespace HOG_Classifier {
 
 	HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
 	{
-		image_sub_ = it_.subscribe("image_raw", 1, &HOGClassifier::imageCallback, this);
+		image_sub_ = it_.subscribe("usb_cam/image_raw", 1, &HOGClassifier::imageCallback, this);
 		people_roi_sub_ = n.subscribe("verified_objects", 1, &HOGClassifier::peopleRoiCallback, this);
 		people_detect_sub_ = n.subscribe("pedestrian_detect", 1, &HOGClassifier::peopleDetectCallback, this);
 		people_verified_sub_ = n.subscribe("pedestrian_verified", 1, &HOGClassifier::peopleVerifiedCallback, this);

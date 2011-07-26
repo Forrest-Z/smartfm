@@ -1130,6 +1130,7 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 		pf_init_ = true;
 	}
 	
+	bool Shift_Flag;
 	if(laser_init_)
 	{
 		// Compute change in pose
@@ -1155,7 +1156,7 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 		for(unsigned int i=0; i < lasers_update_.size(); i++)
 		lasers_update_[i] = true;
 		
-		bool Shift_Flag = (distTolastOdom > 0.3 || odom_delta.v[2] > M_PI/6.0);
+		Shift_Flag = (distTolastOdom > 0.3 || odom_delta.v[2] > M_PI/6.0);
 		
 		if(!Shift_Flag)
 		{
@@ -1194,27 +1195,28 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 	else if(laser_init_ && lasers_update_[laser_index])
 	{
 		/*
-		if(LaserUseFlag_)
-		{
-			laser_d_thresh_ = 0.2;
-			double temp_alpha1=0.2;
-			double temp_alpha2=0.2;
-			double temp_alpha3=0.2;
-			double temp_alpha4=0.2;
-			double temp_alpha6=0.09;
-			odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
-		}
-		else
+		if(LaserUseFlag_ && !Shift_Flag)
 		{
 			laser_d_thresh_ = 0.3;
-			double temp_alpha1=0.2;
-			double temp_alpha2=0.2;
-			double temp_alpha3=0.2;
-			double temp_alpha4=0.2;
+			double temp_alpha1=0.04;
+			double temp_alpha2=0.04;
+			double temp_alpha3=0.09;
+			double temp_alpha4=0.09;
 			double temp_alpha6=0.09;
 			odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
 		}
-		*/ 
+		
+		else if(!Shift_Flag)
+		{
+			laser_d_thresh_ = 0.3;
+			double temp_alpha1=0.04;
+			double temp_alpha2=0.04;
+			double temp_alpha3=0.09;
+			double temp_alpha4=0.09;
+			double temp_alpha6=0.09;
+			odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
+		}
+		*/
 		
 		//printf("pose\n");
 		//pf_vector_fprintf(pose, stdout, "%.3f");

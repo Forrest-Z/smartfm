@@ -28,6 +28,8 @@ namespace golfcar_purepursuit {
 		geometry_msgs::Pose vehicle_base_;
 		double Lfw_, lfw_;
 		unsigned int path_n_;
+		int nextPathThres_;
+		int nextPathCount_;
 		bool initialized_;
 		double dist_to_final_point;
 		private:

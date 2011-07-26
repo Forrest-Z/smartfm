@@ -4,12 +4,14 @@ namespace golfcar_purepursuit {
 
 
 		PurePursuit::PurePursuit(){
-			Lfw_ = 3;
+			Lfw_ = 4;
 			lfw_ = 1;
 			car_length = 1.632;
+			nextPathThres_ = 5;
 			dist_to_final_point = 100;
 			initialized_=false;
 			path_n_ = 0;
+			nextPathCount_ = 0;
 		}
 		
 		
@@ -61,8 +63,12 @@ namespace golfcar_purepursuit {
 						break;
 					}*/ return false;
 				}
-				path_n_++;
-				//ROS_DEBUG("%d points in path", path_n_);
+				nextPathCount_++;
+				if(nextPathCount_%nextPathThres_==0)
+				{
+					path_n_++;
+					ROS_INFO("Increment happen! %d points in path", path_n_);
+				}
 			}
 			
 			

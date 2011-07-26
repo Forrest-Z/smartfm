@@ -3,7 +3,7 @@ map_type: costmap
 unknown_threshold: 9
 mark_threshold: 0
 #END VOXEL STUFF
-transform_tolerance: .5
+transform_tolerance: 1.0
 obstacle_range: 30
 max_obstacle_height: 2.0
 raytrace_range: 3.0
@@ -14,9 +14,9 @@ cost_scaling_factor: 2.0
 lethal_cost_threshold: 100
 publish_voxel_map: true
 observation_sources: scan sick_scan2 pedestrian_crossing
-sick_scan2: {data_type: LaserScan, expected_update_rate: 0.4,
+sick_scan2: {data_type: LaserScan, expected_update_rate: 1.0,
   observation_persistence: 0.0, marking: true, clearing: true, max_obstacle_height: 2, min_obstacle_height: 0.08, obstacle_range: 50, raytrace_range: 50}
 pedestrian_crossing: {data_type: PointCloud, 
   observation_persistence: 0.0, marking: true, clearing: true, max_obstacle_height: 2, min_obstacle_height: 0.08, obstacle_range: 50, raytrace_range: 50}
-scan: {data_type: LaserScan, expected_update_rate: 0.4,
+scan: {data_type: LaserScan, expected_update_rate: 1.0,
   observation_persistence: 0.0, marking: true, clearing: true, max_obstacle_height: 2, min_obstacle_height: 0.08, obstacle_range: 50, raytrace_range: 50}

@@ -126,7 +126,11 @@ void local_map_node::on_curb_left(const sensor_msgs::PointCloud::ConstPtr &msg)
                     ( p.y - lmap.pose.position.y)*( p.y - lmap.pose.position.y) );
 
             lmap.left_curb_points.push_back(pcout);
-            prune_curb_queue(lmap.left_curb_points);
+            //prune_curb_queue(lmap.left_curb_points);
+		if(lmap.left_curb_points.size()>2000)
+		{
+			lmap.left_curb_points.erase(lmap.left_curb_points.begin());
+		}
 
         }
     }
@@ -155,9 +159,16 @@ void local_map_node::on_curb_right(const sensor_msgs::PointCloud::ConstPtr &msg)
                     ( p.y - lmap.pose.position.y)*( p.y - lmap.pose.position.y) );
 
             lmap.right_curb_points.push_back(pcout);
-            prune_curb_queue(lmap.right_curb_points);
+	//prune_curb_queue(lmap.right_curb_points);
+if(lmap.right_curb_points.size()>2000)
+		{
+			lmap.right_curb_points.erase(lmap.right_curb_points.begin());
+		}
         }
+
     }
+
+
 }
 
 void local_map_node::on_sick(const sensor_msgs::LaserScan::ConstPtr &scan_in)

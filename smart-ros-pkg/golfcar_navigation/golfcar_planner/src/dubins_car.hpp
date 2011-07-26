@@ -140,17 +140,30 @@ bool System::IsInCollision (double stateIn[3])
     xnum = xtmp/map_res + xorigin;
     ynum = ytmp/map_res + yorigin;
     
-    if( (xnum >= xsize) || (xnum < 0) || (ynum >= ysize) || (ynum < 0) )
-    {
-        return false;
-    }
-    else
-    {
-        //cout<<"grid: " << xback <<" "<< xfront <<" "<< yleft <<" "<< yright << endl;
-        if(map_vals[ynum + xnum*xsize] > 10)
-            return true;
-    }
-    return false;
+            float car_width =1.0, car_length = 2.0;
+
+            int yleft = min(ysize, (int)(ynum + car_width/2/map_res));
+            int yright = max(0, (int)(ynum - car_width/2/map_res));
+            int xfront = min(xsize, (int)(xnum + car_length/2/map_res));
+            int xback = max(0, (int)(xnum - car_length/2/map_res));
+
+	bool is_collision = false;
+
+	for(int xt = xback; xt < xfront; xt++)
+	{
+		for(int yt = yright; yt < yleft; yt++)
+		{	
+    			if( (xt >= xsize) || (xt < 0) || (yt >= ysize) || (yt < 0) ){}
+    			else
+    			{
+        			//cout<<"grid: " << xback <<" "<< xfront <<" "<< yleft <<" "<< yright << endl;
+        			if(map_vals[yt + xt*xsize] > 10)
+            				is_collision = true;
+    			}
+
+		}
+	}
+    return is_collision;
 }
 
 int System::getStateCost(double stateIn[3])

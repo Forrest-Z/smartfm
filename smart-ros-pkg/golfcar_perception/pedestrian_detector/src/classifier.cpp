@@ -1,11 +1,11 @@
 #include <classifier.h>
-
+using namespace std;
 namespace HOG_Classifier {
 
 	HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
 	{
 		image_pub_ = it_.advertise("pedestrian_detector",1);
-		image_sub_ = it_.subscribe("image_raw", 1, &HOGClassifier::imageCallback, this);
+		image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &HOGClassifier::imageCallback, this);
 		people_rects_sub_ = n.subscribe("pr_vector", 1, &HOGClassifier::peopleRectsCallback, this);
 		people_roi_pub_ = n.advertise<people_detector::people_rects>("verified_objects", 1);
 		people_detect_pub_ = n.advertise<people_detector::people_rects>("pedestrian_detect",1);
@@ -13,9 +13,10 @@ namespace HOG_Classifier {
 		//initializing classifier
 		detector = cv::gpu::HOGDescriptor::getDefaultPeopleDetector();
 		gpu_hog.setSVMDetector(detector);
-		gpu_hog.nlevels=18;
+		gpu_hog.nlevels=32;
 		new_image = false;
 		cvNamedWindow("Image window");
+		cout<<"Classifier started"<<endl;
 		//&cv_image = NULL;
 	}
 	HOGClassifier::~HOGClassifier(){}

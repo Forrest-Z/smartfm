@@ -1,9 +1,11 @@
 <launch>
 	<node pkg="pedestrian_detector" type="classifier" name="classifier">
 	<param name="image_transport" value="compressed"/>
+	<remap from="image_raw" to="usb_cam/image_raw"/>
 	</node>
-	<node pkg="pedestrian_detector" type="visualizer" name="visualizer"/>
+	<node pkg="pedestrian_detector" type="visualizer" name="visualizer">
 	<param name="image_transport" value="compressed"/>
+	<remap from="image_raw" to="usb_cam/image_raw"/>
 	</node>
 	<node pkg="people_detector" type="people_detect" name="people_detect">
 	</node>
