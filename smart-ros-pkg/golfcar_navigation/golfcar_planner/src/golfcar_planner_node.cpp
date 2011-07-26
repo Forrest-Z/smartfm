@@ -135,7 +135,8 @@ void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
     curr_goal.y = point.point.y;
     curr_goal.z = point.point.z;
     ROS_INFO("got goal: %f %f %f", curr_goal.x, curr_goal.y, curr_goal.z);
-    already_committed = 0;
+    
+    //already_committed = 0;
     
     change_sampling_region();
     
@@ -467,10 +468,12 @@ void Planner_node::get_plan()
                     toPublishTraj.clear();
                     toPublishControl.clear();
 
+                    // do checktree here to avoid switchRoot going beyond an obstacle
+                    rrts.checkTree();
+                    rrts.updateReachability();
                     if(rrts.switchRoot(10, toPublishTraj, toPublishControl))
                     {
                         already_committed = 1;
-                        change_sampling_region();
                         ROS_INFO("switching root");
                     }
                     else
@@ -521,7 +524,7 @@ bool Planner_node::isFarFromTraj()
     {
         double* stateRef = *iter;
         
-        if( dist(cx, cy, stateRef[0], stateRef[1]) < 1.5)
+        if( dist(cx, cy, stateRef[0], stateRef[1]) < 3.0)
             return false;
     }
     return true;

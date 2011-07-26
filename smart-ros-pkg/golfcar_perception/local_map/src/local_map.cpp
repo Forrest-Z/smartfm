@@ -38,6 +38,7 @@ void Local_map::reinit_map()
 
 void Local_map::process_points(vector<Point>& points)
 {
+    /*
     vector<Point> toput;
     for(unsigned int i=0; i< points.size(); i++)
     {
@@ -55,10 +56,9 @@ void Local_map::process_points(vector<Point>& points)
             toput.push_back(points[i]);
     }
     map_points.push_back(toput);
+    */
 
-    //map_points.clear();
-    //map_points.push_back(points);
-    
+    map_points.push_back(points);
     if(map_points.size() > 30)
     {
         map_points.erase(map_points.begin());
@@ -75,21 +75,28 @@ void Local_map::create_map()
     {
         for(unsigned int j=0; j< map_points[i].size(); j++)
         {
+            float xtmp = map_points[i][j].x;
+            float ytmp = map_points[i][j].y;
+            float dist = sqrt((xtmp- pose.position.x)*(xtmp- pose.position.x) + \
+                    (ytmp- pose.position.y)*(ytmp- pose.position.y));
+            
             // put points in gridmap
             Point ptmp;
             ptmp.x= map_points[i][j].x;
             ptmp.y= map_points[i][j].y;
             ptmp.z= map_points[i][j].z;
-            
+
             int xnum, ynum;
             int res = get_cell_num(ptmp, xnum, ynum);
             if(res == 0)
             {
-                //cout<<"xnum: "<< xnum<<" "<<ynum<<endl;
                 int map_loc = CELL_LIN(xnum, ynum);
-                //cout<<"map_loc: "<< map_loc << " "<<xsize*ysize << endl;
-                map[map_loc] = 250;
-                //cout<<"accessed map array"<<endl;
+                if( (map_points[i][j].z - pose.position.z) > 0.6 )
+                {
+                    map[map_loc] = 250;
+                }
+                else
+                    map[map_loc] = 0;
             }
         }
     }

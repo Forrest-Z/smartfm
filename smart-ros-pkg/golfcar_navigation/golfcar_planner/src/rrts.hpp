@@ -188,7 +188,8 @@ int
 {
     updateBranchCost(*root, 1);
     lowerBoundCost = getBestVertexCost();
-
+    vertex_t &bestVertex = getBestVertex();
+    lowerBoundVertex = &bestVertex;
     return 1;
 }
 
