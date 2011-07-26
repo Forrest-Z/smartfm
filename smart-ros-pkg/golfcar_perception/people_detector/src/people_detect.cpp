@@ -121,19 +121,19 @@ namespace people_detector{
 		extracted_points.clear();
 		for(unsigned int i=0; i<cloud_points.points.size(); i++)      //i<(int)cloud_points.points.size();
 		{
-			int cell_xlabel, cell_ylabel, cell_vectorlabel[13][13];
+			int cell_xlabel, cell_ylabel, cell_vectorlabel[7][7];
 			bool extract_flag= true;
 			cell_xlabel=floor((cloud_points.points[i].x-map_origin_x)/map_resolution);
 			cell_ylabel=floor((cloud_points.points[i].y-map_origin_y)/map_resolution);  
 			
-			if((cell_xlabel>6)&&(cell_ylabel>6))  //very tricky here.
+			if((cell_xlabel>3)&&(cell_ylabel>3))  //very tricky here.
 			{
 			//to substract point if its distance to background is smaller than 6*0.05m
-			   for(int j=0; j<13; j++)
+			   for(int j=0; j<7; j++)
 			   {
-				   for(int k=0; k<13; k++)
+				   for(int k=0; k<7; k++)
 				  {
-					cell_vectorlabel[j][k]=(cell_xlabel+(k-6))+map_width_*(cell_ylabel+(j-6));
+					cell_vectorlabel[j][k]=(cell_xlabel+(k-3))+map_width_*(cell_ylabel+(j-3));
 					int temp_cellnum=cell_vectorlabel[j][k];
 					if(cells[temp_cellnum]==100)extract_flag=false;
 				  }
