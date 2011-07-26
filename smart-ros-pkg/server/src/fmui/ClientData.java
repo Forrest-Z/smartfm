@@ -21,7 +21,7 @@ class ClientData {
     public BufferedReader in;
     public PrintWriter out;
     
-       
+	
     private final int USER = 1;
     private final int SCHEDULER = 2;
     private final int CAR = 3;
@@ -35,17 +35,18 @@ class ClientData {
         out = new PrintWriter(socket.getOutputStream(), true);
     }
 	
-    public boolean readMsg(String IDcheck) throws IOException {
+    public boolean readMsg(int clientType) throws IOException {
         String msg = null; 
+        
         while(in.ready()&&(msg = in.readLine())!=null) {    	
             if (msg.startsWith(";")) {
             	int f = msg.indexOf(":");
             	ID = msg.substring(1,f);
 				
-				System.out.println("Check msg to Server: " + msg);
+				//System.out.println("Msg sent to Server: " + msg);
 				
-				 // store Scheduler data. --- ;ID:user_id:taskID:wait:carID
-				if(IDcheck.compareTo("0")==0&&ID.compareTo("0")==0) {
+				// store Scheduler data. --- ;ID:user_id:taskID:wait:carID
+				if(clientType == SCHEDULER && ID.compareTo("0") == 0) {
 	            	int s = msg.indexOf(":", f+1);
 	            	int t = msg.indexOf(":", s+1);
 	            	int i = msg.indexOf(":", t+1);
@@ -54,20 +55,20 @@ class ClientData {
 	            	taskID = msg.substring(s+1,t);
 	                wait = msg.substring(t+1,i);
 	                carID = msg.substring(i+1);
-	                //break;
+
 	                return true;
-            	} else if(IDcheck.compareTo("car")==0&&ID.compareTo("car")==0){
-                                     
+            	} else if(clientType == CAR &&ID.compareTo("car")==0){
+					
 	            	int s = msg.indexOf(":", f+1);
 	            	int t = msg.indexOf(":", s+1);
-
+					
                     taskID = msg.substring(f+1,s);
                     latitude = msg.substring(s+1,t);
                     longitude = msg.substring(t+1);
-                    //break;
+
                     return true;
-                } else if(IDcheck.compareTo("Desktop")==0&&ID.compareTo("Desktop")==0) {
-                	//break;
+                } else if(clientType == DESKTOP &&ID.compareTo("webpage")==0) {
+
                 	return true;
                 } else  {	// store User data. --- ;ID:taskID:pickup:dest
 	            	int s = msg.indexOf(":", f+1);
@@ -76,7 +77,7 @@ class ClientData {
 	            	taskID = msg.substring(f+1,s);
 	                pickup = msg.substring(s+1,t);
 	                dest = msg.substring(t+1);
-	                //break;
+
 	                return true;
                 }  
             }
@@ -101,38 +102,32 @@ class ClientData {
     
     
     
-     public int initConnection() throws IOException{
+	public int checkClientType() throws IOException{
 		String msg = null;
 		
-
-		
     	while((msg = in.readLine())!=null) {   
-    	
-    	System.out.println("Check msg to Server: " + msg);
-    	
-    	if (msg.startsWith(";")){
-    		int f = msg.indexOf(":");
-    		ID = msg.substring(1,f);
+			System.out.println("Msg sent to Server: " + msg);
+			
+			if (msg.startsWith(";")){
+				int f = msg.indexOf(":");
+				ID = msg.substring(1,f);
+			}
+			
+			if (ID!=null) {
+				if (ID.compareTo("0")==0)
+					return SCHEDULER;
+				else if (ID.compareTo("car")==0)
+					return CAR;
+				else if (ID.compareTo("Desktop")==0)
+					return DESKTOP;
+				else
+					return USER;
+			} else 
+				return ERR;   	
     	}
-    	
-    	if (ID!=null) {
-    	if (ID.compareTo("0")==0)
-    		return SCHEDULER;
-    	else if (ID.compareTo("car")==0)
-    		return CAR;
-    	else if (ID.compareTo("Desktop")==0)
-    		return DESKTOP;
-    	else
-    		return USER;
-    	} else 
-    		return ERR;   	
-    	}
-
+		
     	return ERR;
     }
-    
-    
-    
     
     
     public void reconnect(ClientData c) throws IOException {
