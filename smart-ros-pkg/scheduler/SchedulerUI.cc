@@ -415,7 +415,7 @@ void SchedulerUI::processKeyboard(int ch)
       for (int i = 1; i < sizeof(this->buttons[NEW_PICKUP].text); i++)
 	this->buttons[NEW_PICKUP].text[i] = 0;
       mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
-		"                                                            ");
+		"                                            ");
     }
     else if (strlen(this->buttons[NEW_PICKUP].text) < sizeof(this->buttons[NEW_PICKUP].text))
       this->buttons[NEW_PICKUP].text[strlen(this->buttons[NEW_PICKUP].text)] = ch;
@@ -438,7 +438,7 @@ void SchedulerUI::processKeyboard(int ch)
       for (int i = 1; i < sizeof(this->buttons[NEW_DROPOFF].text); i++)
 	this->buttons[NEW_DROPOFF].text[i] = 0;
       mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
-		"                                                            ");
+		"                                            ");
     }
     else if (strlen(this->buttons[NEW_DROPOFF].text) < sizeof(this->buttons[NEW_DROPOFF].text))
       this->buttons[NEW_DROPOFF].text[strlen(this->buttons[NEW_DROPOFF].text)] = ch;
@@ -463,7 +463,7 @@ void SchedulerUI::processKeyboard(int ch)
       mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col, 
 		"                                                          ");
       mvwprintw(this->win, this->textFields[VC_TASK_TIME_WAIT].row, this->textFields[VC_TASK_TIME_WAIT].col, 
-		"                                                           ");
+		"                                                          ");
     }
     else if (strlen(this->buttons[VC_TASK_ID].text) < sizeof(this->buttons[VC_TASK_ID].text))
       this->buttons[VC_TASK_ID].text[strlen(this->buttons[VC_TASK_ID].text)] = ch;
@@ -564,7 +564,7 @@ void SchedulerUI::onUserAddTask()
   if (strlen(this->buttons[NEW_PICKUP].text) == 0) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
     mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
-	      "Invalid pickup station!                                    ");
+	      "Invalid pickup station!             ");
     wattrset(this->win, A_NORMAL);
     return;
   }
@@ -573,7 +573,7 @@ void SchedulerUI::onUserAddTask()
 	this->buttons[NEW_PICKUP].text[i] > '9') {
       wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
       mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
-		"Invalid pickup station!                                    ");
+		"Invalid pickup station!           ");
       wattrset(this->win, A_NORMAL);
       return;
     }
@@ -582,7 +582,7 @@ void SchedulerUI::onUserAddTask()
   if (strlen(this->buttons[NEW_DROPOFF].text) == 0) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
     mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
-	      "Invalid dropoff station!                                   ");
+	      "Invalid dropoff station!            ");
     wattrset(this->win, A_NORMAL);
     return;
   }
@@ -591,7 +591,7 @@ void SchedulerUI::onUserAddTask()
 	this->buttons[NEW_DROPOFF].text[i] > '9') {
       wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
       mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
-		"Invalid dropoff station!                                   ");
+		"Invalid dropoff station!          ");
       wattrset(this->win, A_NORMAL);
       return;
     }
@@ -604,31 +604,31 @@ void SchedulerUI::onUserAddTask()
   if (ret > 0) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_GREEN) | A_BOLD);
     mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
-	      "Added task ID %d: <%d, %d>                                  ", ret, pickup, dropoff);
+	      "Added task ID %d: <%d, %d>          ", ret, pickup, dropoff);
     wattrset(this->win, A_NORMAL);
   }
   else if (ret == INVALID_PICKUP) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
     mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
-	      "Invalid pickup station!                                    ");
+	      "Invalid pickup station!             ");
     wattrset(this->win, A_NORMAL);
   }
   else if (ret == INVALID_DROPOFF) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
     mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
-	      "Invalid dropoff station!                                   ");
+	      "Invalid dropoff station!            ");
     wattrset(this->win, A_NORMAL);
   }
   else if (ret == INVALID_PICKUP_DROPOFF_PAIR) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
     mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
-	      "Invalid pickup-dropoff pair!                               ");
+	      "Invalid pickup-dropoff pair!        ");
     wattrset(this->win, A_NORMAL);
   }
   else if (ret == NO_AVAILABLE_VEHICLE) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
     mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
-	      "Vehicles not available!                                    ");
+	      "Vehicles not available!             ");
     wattrset(this->win, A_NORMAL);
   }
 }
