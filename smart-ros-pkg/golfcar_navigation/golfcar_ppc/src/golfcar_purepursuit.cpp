@@ -101,7 +101,11 @@ namespace golfcar_purepursuit {
 			
 			if(discriminant < 0)
 			{
-				ROS_DEBUG("No intersection, cur:x=%lf y%lf, next:x=%lf y=%lf", Ex,Ey,Lx,Ly);
+				ROS_WARN("No intersection, cur:x=%lf y%lf, next:x=%lf y=%lf, anchor_point:x=%lf y=%lf", Ex,Ey,Lx,Ly,Cx,Cy);
+				//Very unlikely to happen! If it is, some very wrong happen. For example large localization error
+				//Based on log it is due to sudden shift in localization, and it simply doesn't have a chance to execute the last path, try to go back to the second last segment is the safe way out!
+				ROS_WARN("Reverting to the second last path.");
+				path_n_-=2;
 				return false;
 			}
 			else
@@ -121,7 +125,7 @@ namespace golfcar_purepursuit {
 				}
 				else
 				{
-					ROS_DEBUG("No solution, cur:x=%lf y%lf, next:x=%lf y=%lf", Ex,Ey,Lx,Ly);
+					ROS_WARN("No solution, cur:x=%lf y%lf, next:x=%lf y=%lf", Ex,Ey,Lx,Ly);
 					
 					return false;
 				}
