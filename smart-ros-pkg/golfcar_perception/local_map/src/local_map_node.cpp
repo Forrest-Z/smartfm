@@ -75,7 +75,6 @@ local_map_node::~local_map_node()
 
 void local_map_node::odomCallBack(const nav_msgs::Odometry::ConstPtr &odom_in)
 {
-    laser_count_++;
 
     odom_now_.position = odom_in->pose.pose.position;
     odom_now_.orientation = odom_in->pose.pose.orientation;
@@ -126,12 +125,10 @@ void local_map_node::on_curb_left(const sensor_msgs::PointCloud::ConstPtr &msg)
                     ( p.y - lmap.pose.position.y)*( p.y - lmap.pose.position.y) );
 
             lmap.left_curb_points.push_back(pcout);
-            //prune_curb_queue(lmap.left_curb_points);
-		if(lmap.left_curb_points.size()>2000)
-		{
-			lmap.left_curb_points.erase(lmap.left_curb_points.begin());
-		}
-
+            if(lmap.left_curb_points.size() > 2000)
+            {
+                lmap.left_curb_points.erase(lmap.left_curb_points.begin() );
+            }
         }
     }
 }
@@ -159,11 +156,10 @@ void local_map_node::on_curb_right(const sensor_msgs::PointCloud::ConstPtr &msg)
                     ( p.y - lmap.pose.position.y)*( p.y - lmap.pose.position.y) );
 
             lmap.right_curb_points.push_back(pcout);
-	//prune_curb_queue(lmap.right_curb_points);
-if(lmap.right_curb_points.size()>2000)
-		{
-			lmap.right_curb_points.erase(lmap.right_curb_points.begin());
-		}
+            if(lmap.right_curb_points.size() > 2000)
+            {
+                lmap.right_curb_points.erase(lmap.right_curb_points.begin() );
+            }
         }
 
     }
@@ -198,33 +194,36 @@ void local_map_node::on_sick(const sensor_msgs::LaserScan::ConstPtr &scan_in)
         points[i].y=cloud.points[i].y;
         points[i].z=cloud.points[i].z;
     }
-    lmap.process_points(points);
+    
+    lmap.put_laser(points);
+    lmap.put_curbs();
 
-    //call function to update the local map
-    lmap.create_map();
+    if(laser_count_ == laser_skip_)
+    {
+        laser_count_ = 0;
+        lmap.create_map();
+        
+        // publish all msgs
+        publish_msg();
+    }
 
-    // publish all msgs
-    publish_msg();
 }
 
 void local_map_node::publish_msg()
 {
+
     // publish point cloud around car
     sensor_msgs::PointCloud pc;
     pc.header.stamp = ros::Time::now();
     pc.header.frame_id = "odom";
-
     for(unsigned int i=0; i< lmap.map_points.size(); i++)
     {
-        for(unsigned int j=0; j< lmap.map_points[i].size(); j++)
-        {
-            geometry_msgs::Point32 p;
-            p.x = lmap.map_points[i][j].x;
-            p.y = lmap.map_points[i][j].y;
-            p.z = lmap.map_points[i][j].z;
+        geometry_msgs::Point32 p;
+        p.x = lmap.map_points[i].x;
+        p.y = lmap.map_points[i].y;
+        p.z = lmap.map_points[i].z;
 
-            pc.points.push_back(p);
-        }
+        pc.points.push_back(p);
     }
     map_points_pub_.publish(pc);
 

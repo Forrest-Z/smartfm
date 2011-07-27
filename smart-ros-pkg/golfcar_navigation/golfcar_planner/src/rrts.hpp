@@ -188,8 +188,10 @@ int
 {
     updateBranchCost(*root, 1);
     lowerBoundCost = getBestVertexCost();
-    vertex_t &bestVertex = getBestVertex();
-    lowerBoundVertex = &bestVertex;
+    
+    //vertex_t &bestVertex = getBestVertex();
+    //lowerBoundVertex = &bestVertex;
+    
     return 1;
 }
 
@@ -906,7 +908,7 @@ RRTstar::Planner< typeparams >
         vertexChildNew->costFromParent = connectingTrajectory.evaluateCost();
         vertexChildNew->parent = vertexRoot;
         vertexChildNew->costFromRoot = (-1.0)*vertexChildNew->costFromParent - 1.0;
-        cout<<"vertexchild_new: "<< vertexChildNew->costFromRoot<< " "<< vertexChildNew->costFromParent<<endl;
+        //cout<<"vertexchild_new: "<< vertexChildNew->costFromRoot<< " "<< vertexChildNew->costFromParent<<endl;
 
         // 5. Clear the kdtree
         if (kdtree) {
@@ -961,7 +963,7 @@ RRTstar::Planner< typeparams >
         listSurvivingVertices.clear();
 
         recomputeCost (vertexRoot);
-        cout<<"after switchRoot vertices left: "<< numVertices << endl;
+        //cout<<"after switchRoot vertices left: "<< numVertices << endl;
 
         // 8. Clear temporary memory  
         delete [] stateRootNew;

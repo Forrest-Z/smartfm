@@ -57,7 +57,8 @@ class Planner_node
 
         list<double*> toPublishTraj;
         list<float> toPublishControl;
-
+        
+        ros::Time last_good_path_time;
         system_t create_system();
         void change_sampling_region();
         void emergency_replan();
@@ -136,29 +137,31 @@ void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
     curr_goal.z = point.point.z;
     ROS_INFO("got goal: %f %f %f", curr_goal.x, curr_goal.y, curr_goal.z);
     
-    //already_committed = 0;
-    
-    change_sampling_region();
-    
-    /*
-    // set root to current position
-    vertex_t& rootVertex =  rrts.getRootVertex();
-    state_t &stateRoot = rootVertex.getState();
-    stateRoot[0] = odom_now.position.x;
-    stateRoot[1] = odom_now.position.y;
-    stateRoot[2] = odom_now.position.z;
+    if(first_frame == 0)
+    {
+        change_sampling_region();
 
-    // 2. reinit planner
-    rrts.initialize();
-    prev_best_cost = 1e10;
-    curr_best_cost = 1e20;
-    cout<<"initialized new tree"<<endl;
-    */
+        /*
+        // set root to current position
+        vertex_t& rootVertex =  rrts.getRootVertex();
+        state_t &stateRoot = rootVertex.getState();
+        stateRoot[0] = odom_now.position.x;
+        stateRoot[1] = odom_now.position.y;
+        stateRoot[2] = odom_now.position.z;
 
-    rrts.checkTree();
-    rrts.updateReachability();
+        // 2. reinit planner
+        rrts.initialize();
+        prev_best_cost = 1e10;
+        curr_best_cost = 1e20;
+        cout<<"initialized new tree"<<endl;
+        */
 
-    planner_in_progress = true;
+        rrts.checkTree();
+        rrts.updateReachability();
+
+        planner_in_progress = true;
+        last_good_path_time = ros::Time::now();
+    }
 }
 
 void Planner_node::on_odom(const nav_msgs::Odometry::ConstPtr & msg)
@@ -382,26 +385,7 @@ void Planner_node::change_sampling_region()
     system.regionGoal.center[2] = curr_goal.z;
     system.regionGoal.size[0] = 2;
     system.regionGoal.size[1] = 2;
-    system.regionGoal.size[2] = 30/180*M_PI;
-    
-    /*
-    // project goal
-    float goal_th = 0;
-    float xc, yc, xs, ys;
-    if(project_goal(xc, yc, xs, ys, curr_goal.x, curr_goal.y))
-        goal_th = curr_goal.z;
-    else
-        goal_th = atan2(yc - system.origin.y, xc - system.origin.x);
-
-    system.regionGoal.center[0] = xc;
-    system.regionGoal.center[1] = yc;
-    system.regionGoal.center[2] = goal_th;
-    system.regionGoal.size[0] = xs;
-    system.regionGoal.size[1] = ys;
-    system.regionGoal.size[2] = 0.3 * M_PI;
-    cout<<"goal dir: "<< system.regionGoal.center[2] << endl;   
-    */
-    
+    system.regionGoal.size[2] = 10/180*M_PI;
 }
 
 bool Planner_node::root_in_goal()
@@ -437,7 +421,7 @@ void Planner_node::get_plan()
         for(unsigned int i=0; i< RRT_MAX_ITER; i++)
         {
             rrts.iteration();
-            if( rrts.numVertices > 5000)
+            if( rrts.numVertices > 3000)
                 break;
         }
         rrts.updateReachability();
@@ -471,7 +455,7 @@ void Planner_node::get_plan()
                     // do checktree here to avoid switchRoot going beyond an obstacle
                     rrts.checkTree();
                     rrts.updateReachability();
-                    if(rrts.switchRoot(10, toPublishTraj, toPublishControl))
+                    if(rrts.switchRoot(50, toPublishTraj, toPublishControl))
                     {
                         already_committed = 1;
                         ROS_INFO("switching root");
@@ -533,11 +517,23 @@ bool Planner_node::isFarFromTraj()
 
 int Planner_node::publish_traj()
 {
-    
-    // 1. check if current trajectory is safe, else stop
-    if( (!rrts.isSafeTrajectory(toPublishTraj)) || isFarFromTraj()  )
+    bool late_flag = false;
+    if(planner_in_progress)
     {
-        ROS_INFO("unsafe or too far from traj: clearing");
+        ros::Duration time_since_last_path = ros::Time::now() - last_good_path_time;
+        //ROS_INFO("Duration: %f", time_since_last_path.toSec());
+        if(time_since_last_path.toSec() > 5.0)
+            late_flag = true;
+        else
+            late_flag = false;
+    }
+    
+    bool safe_flag = rrts.isSafeTrajectory(toPublishTraj);
+    bool far_flag = isFarFromTraj();
+
+    if( (!safe_flag) || far_flag  || late_flag  )
+    {
+        ROS_INFO("clearing_trajectory- is_far: %d is_safe: %d is_late: %d", far_flag, safe_flag, late_flag);
         toPublishControl.clear();
     
         // free memory
@@ -553,56 +549,56 @@ int Planner_node::publish_traj()
 
         return 0;
     }
-
-    nav_msgs::Path traj_msg;
-    traj_msg.header.stamp = ros::Time::now();
-    traj_msg.header.frame_id = "odom";
-    
-    for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
+    else
     {
-        double* stateRef = *iter;
-        geometry_msgs::PoseStamped p;
-        p.header.stamp = ros::Time::now();
-        p.header.frame_id = "odom";
-        //if( (stateRef[0] > 0.001) && (stateRef[0] < 1e100) && (stateRef[1] > 0.001) && (stateRef[1] < 1e100))
-        //{
-            //cout<<"here"<< endl;
+        if(toPublishTraj.size() > 0)
+            last_good_path_time = ros::Time::now();
+
+        nav_msgs::Path traj_msg;
+        traj_msg.header.stamp = ros::Time::now();
+        traj_msg.header.frame_id = "odom";
+
+        for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
+        {
+            double* stateRef = *iter;
+            geometry_msgs::PoseStamped p;
+            p.header.stamp = ros::Time::now();
+            p.header.frame_id = "odom";
+            
             ROS_DEBUG(" [%f, %f, %f]", stateRef[0], stateRef[1], stateRef[2]);
             p.pose.position.x = stateRef[0];
             p.pose.position.y = stateRef[1];
             p.pose.position.z = stateRef[2];
             p.pose.orientation.w = 1.0;
             traj_msg.poses.push_back(p);
-        //}
-        //delete [] stateRef;
-    }
-    
-    int which_pose =0;
-    for (list<float>::iterator iter = toPublishControl.begin(); iter != toPublishControl.end(); iter++) 
-    {
-        traj_msg.poses[which_pose].pose.position.z = *iter;
-        //cout<< *iter<<" ";
-        which_pose++;
-    }
-    traj_pub.publish(traj_msg);
-  
-    // publish to viewer
-    traj_msg.poses.clear();
-    for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
-    {
-        double* stateRef = *iter;
-        geometry_msgs::PoseStamped p;
-        p.header.stamp = ros::Time::now();
-        p.header.frame_id = "odom";
+        }
 
-        p.pose.position.x = stateRef[0];
-        p.pose.position.y = stateRef[1];
-        p.pose.position.z = 0;
-        p.pose.orientation.w = 1.0;
-        traj_msg.poses.push_back(p);
-    }
-    trajview_pub.publish(traj_msg);
+        int which_pose =0;
+        for (list<float>::iterator iter = toPublishControl.begin(); iter != toPublishControl.end(); iter++) 
+        {
+            traj_msg.poses[which_pose].pose.position.z = *iter;
+            //cout<< *iter<<" ";
+            which_pose++;
+        }
+        traj_pub.publish(traj_msg);
 
+        // publish to viewer
+        traj_msg.poses.clear();
+        for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
+        {
+            double* stateRef = *iter;
+            geometry_msgs::PoseStamped p;
+            p.header.stamp = ros::Time::now();
+            p.header.frame_id = "odom";
+
+            p.pose.position.x = stateRef[0];
+            p.pose.position.y = stateRef[1];
+            p.pose.position.z = 0;
+            p.pose.orientation.w = 1.0;
+            traj_msg.poses.push_back(p);
+        }
+        trajview_pub.publish(traj_msg);
+    }
     return 1;
 }
 

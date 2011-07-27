@@ -8,11 +8,11 @@ Local_map::Local_map()
     width = 30.0;
     height = 30.0;
     
-    xsize = height/res;
-    ysize = width/res;
+    xsize = (int)height/res;
+    ysize = (int)width/res;
     
-    xorigin = xsize/2.0;
-    yorigin = ysize/2.0;
+    xorigin = xsize/2;
+    yorigin = ysize/2;
 
     // init pose in odom frame to (0,0)
     pose.position.x = 0; 
@@ -23,6 +23,7 @@ Local_map::Local_map()
 
     //cout<<"xsize: "<< xsize <<" ysize: "<< ysize << " xorigin: "<< xorigin<<" yorigin: "<< yorigin<<endl;
 
+    points_per_laser = 180;
     map = new unsigned char[ xsize*ysize];
 }
 
@@ -36,70 +37,66 @@ void Local_map::reinit_map()
     ;
 }
 
-void Local_map::process_points(vector<Point>& points)
+void Local_map::clear_inside_points(float px, float py)
 {
-    /*
-    vector<Point> toput;
-    for(unsigned int i=0; i< points.size(); i++)
+    float dist = sqrt((px- pose.position.x)*(px- pose.position.x) + \
+            (py - pose.position.y)*(py- pose.position.y));
+    int num_steps = dist/res;
+    
+    Point ptmp;
+    int xnum, ynum;
+    for(int i=0; i < num_steps; i++)
     {
-        float xtmp = points[i].x;
-        float ytmp = points[i].y;
-        float dist = sqrt((xtmp- pose.position.x)*(xtmp- pose.position.x) + \
-                    (ytmp- pose.position.y)*(ytmp- pose.position.y));
-
-        if( dist > width/1.414) {}
-        else if( (points[i].z - pose.position.z) < 0.6 )
+        ptmp.x = pose.position.x + (px-pose.position.x)*i/(double)num_steps;
+        ptmp.y = pose.position.y + (py-pose.position.y)*i/(double)num_steps;
+        
+        if(get_cell_num(ptmp, xnum, ynum) == 0)
         {
-            //cout<<"re: " << points[i].z <<" "<<pose.position.z<<" "<<curb_height<<" "<<curb_dist<<endl;
+            map[CELL_LIN(xnum, ynum)] = 0;
         }
         else
-            toput.push_back(points[i]);
+            break;
     }
-    map_points.push_back(toput);
-    */
+}
 
-    map_points.push_back(points);
-    if(map_points.size() > 30)
+// sick returns 360 points
+void Local_map::put_laser(vector<Point> &points)
+{
+    points_per_laser = points.size();
+    map_points.insert(map_points.end(), points.begin(), points.end());
+    if(map_points.size() > 100*points_per_laser)
     {
-        map_points.erase(map_points.begin());
+        map_points.erase(map_points.begin(), map_points.begin()+points_per_laser);
     }
-};
+}
 
 void Local_map::create_map()
 {
-
     // set everything to zero
     memset(map, 0, xsize*ysize);
 
     for(unsigned int i=0; i< map_points.size(); i++)
     {
-        for(unsigned int j=0; j< map_points[i].size(); j++)
-        {
-            float xtmp = map_points[i][j].x;
-            float ytmp = map_points[i][j].y;
-            float dist = sqrt((xtmp- pose.position.x)*(xtmp- pose.position.x) + \
-                    (ytmp- pose.position.y)*(ytmp- pose.position.y));
-            
-            // put points in gridmap
-            Point ptmp;
-            ptmp.x= map_points[i][j].x;
-            ptmp.y= map_points[i][j].y;
-            ptmp.z= map_points[i][j].z;
+        // put points in gridmap
+        Point ptmp;
+        ptmp.x= map_points[i].x;
+        ptmp.y= map_points[i].y;
+        ptmp.z= map_points[i].z;
+        //clear_inside_points(ptmp.x, ptmp.y);
 
-            int xnum, ynum;
-            int res = get_cell_num(ptmp, xnum, ynum);
-            if(res == 0)
+        int xnum, ynum;
+        int res = get_cell_num(ptmp, xnum, ynum);
+        if(res == 0)
+        {
+            if( (map_points[i].z - pose.position.z) > -0.6 )
             {
                 int map_loc = CELL_LIN(xnum, ynum);
-                if( (map_points[i][j].z - pose.position.z) > 0.6 )
-                {
-                    map[map_loc] = 250;
-                }
-                else
-                    map[map_loc] = 0;
+                map[map_loc] = 250;
+
             }
         }
     }
+
     for(unsigned int i=0; i< left_curb_points.size(); i++)
     {
         for(unsigned int j=0; j< left_curb_points[i].points.size(); j++)
@@ -113,11 +110,8 @@ void Local_map::create_map()
             int res = get_cell_num( ptmp, xnum, ynum);
             if(res == 0)
             {
-                //cout<<"xnum: "<< xnum<<" "<<ynum<<endl;
                 int map_loc = CELL_LIN(xnum, ynum);
-                //cout<<"map_loc: "<< map_loc << " "<<xsize*ysize << endl;
                 map[map_loc] = 250;
-                //cout<<"accessed map array"<<endl;
             }
         }
     }
@@ -134,14 +128,17 @@ void Local_map::create_map()
             int res = get_cell_num( ptmp, xnum, ynum);
             if(res == 0)
             {
-                //cout<<"xnum: "<< xnum<<" "<<ynum<<endl;
                 int map_loc = CELL_LIN(xnum, ynum);
-                //cout<<"map_loc: "<< map_loc << " "<<xsize*ysize << endl;
                 map[map_loc] = 250;
-                //cout<<"accessed map array"<<endl;
             }
         }
     }
+}
+
+
+
+void Local_map::put_curbs()
+{
 
 }
 

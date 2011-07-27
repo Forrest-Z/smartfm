@@ -40,7 +40,7 @@ class Local_map
 
         // map of obstacle beliefs
         unsigned char *map;
-        vector <vector<Point> > map_points;
+        vector <Point> map_points;
         vector<sensor_msgs::PointCloud> left_curb_points;
         vector<sensor_msgs::PointCloud> right_curb_points;
 
@@ -48,8 +48,12 @@ class Local_map
 
         Point get_cell_coor(int x, int y);
         int get_cell_num(Point p, int &x, int &y);
-        void process_points( vector<Point>& points);
+        
+        int points_per_laser;
         void create_map();
+        void put_laser(vector<Point>& points);
+        void put_curbs();
+        void clear_inside_points(float px, float py);
 };
 
 // returns 1 if pose outside the local map
