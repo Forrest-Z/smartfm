@@ -13,6 +13,7 @@ class CentralDataBase {
     public List<UserData> clients = Collections.synchronizedList(new ArrayList<UserData>());
     List<Thread> serverThreads = new ArrayList<Thread>();
 	private String dataFromCarToWeb = null;
+	private String dataFromCarToUser = null;
     
     public CentralDataBase(int[] ports) {
         for( int p:ports ) {
@@ -54,7 +55,15 @@ class CentralDataBase {
     	this.dataFromCarToWeb = dataFromCarToWeb;
     }
     
+    public void setDataFromCarToUser(String dataFromCarToUser) {
+    	this.dataFromCarToUser = dataFromCarToUser;
+    }
+    
     public String getDataFromCarToWeb(){
     	return dataFromCarToWeb;
+    }
+    
+    public String getDataFromCarToUser(){
+    	return dataFromCarToUser;
     }
 }

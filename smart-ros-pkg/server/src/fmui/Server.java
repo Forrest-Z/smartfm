@@ -28,7 +28,7 @@ public class Server implements Runnable {
     private int dataFromServerToUserID = -1;
     private boolean isDataFromSchedulerToServer = false;
     private boolean isDataFromCarToWeb = false;
-    
+    private boolean isDataFromCarToUser = false;
     
     
     public Server(int port, CentralDataBase db) throws IOException {
@@ -162,6 +162,16 @@ public class Server implements Runnable {
 	    						System.out.println("UserData not exist in Database!");
 	    					dataFromServerToUserID = -1;
     					}
+    					
+    					if (isDataFromCarToUser) {
+    						System.out.println("Car->User"+db.getDataFromCarToUser());
+    						userData.sendDataToUser(db.getDataFromCarToUser());
+    						isDataFromCarToUser = false;
+    					}
+    					
+    					//test
+    					//userData.sendDataToUser("/1.29954:103.77012");
+    					
     				}
     			} catch (IOException e) {
 					System.err.println("IOException occured: " + e.getMessage());
@@ -247,9 +257,12 @@ public class Server implements Runnable {
 	    						System.out.format("Car->Server: ;%d:%d:%d:%d\n", carData.getCarID(), carData.getTaskID(),
 	    								carData.getLatitude(), carData.getLongitude());
 	    						String dataFromCarToWeb = carData.getLatitude() + " " + carData.getLongitude(); 
+	    						String dataFromCarToUser = "/"+ carData.getLatitude() + ":" + carData.getLongitude(); 
 	    						
 	    						db.setDataFromCarToWeb(dataFromCarToWeb);
+	    						db.setDataFromCarToUser(dataFromCarToUser);
 	    						isDataFromCarToWeb = true;
+	    						isDataFromCarToUser = true;
 	    					}
 					}
 				} catch (IOException e) {
@@ -272,7 +285,7 @@ public class Server implements Runnable {
 	    		try {
 	    			synchronized(lockObject){						
 	    					if (isDataFromCarToWeb) {
-	    						System.out.println(db.getDataFromCarToWeb());
+	    						System.out.println("Car->Web" +db.getDataFromCarToWeb());
 	    						webpageData.sendDataToWebpage(db.getDataFromCarToWeb());
 	    						isDataFromCarToWeb = false;
 	    					}
