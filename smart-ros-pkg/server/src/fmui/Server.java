@@ -139,6 +139,9 @@ public class Server implements Runnable {
 		    					dataFromServerToSchedulerID = userData.getID();
 		    					db.updatePickupAndDropoff(dataFromServerToSchedulerID, userData.getDataToServer());
 		    				}
+		    				
+		    				//test
+		    				userData.sendDataToUser("/1.299092:103.770096");
     					} 
     					
     					if (dataFromServerToUserID != -1 && dataFromServerToUserID == userData.getID()) {
@@ -168,10 +171,6 @@ public class Server implements Runnable {
     						userData.sendDataToUser(db.getDataFromCarToUser());
     						isDataFromCarToUser = false;
     					}
-    					
-    					//test
-    					//userData.sendDataToUser("/1.29954:103.77012");
-    					
     				}
     			} catch (IOException e) {
 					System.err.println("IOException occured: " + e.getMessage());
@@ -263,6 +262,12 @@ public class Server implements Runnable {
 	    						db.setDataFromCarToUser(dataFromCarToUser);
 	    						isDataFromCarToWeb = true;
 	    						isDataFromCarToUser = true;
+	    					}
+	    					
+	    					try {
+	    						Thread.sleep(500);
+	    					} catch(Exception e) {
+	    						System.err.println("Exception occured: " + e.getMessage());
 	    					}
 					}
 				} catch (IOException e) {
