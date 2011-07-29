@@ -13,7 +13,7 @@ namespace HOG_Classifier {
 		//initializing classifier
 		detector = cv::gpu::HOGDescriptor::getDefaultPeopleDetector();
 		gpu_hog.setSVMDetector(detector);
-		gpu_hog.nlevels=32;
+		gpu_hog.nlevels=16;
 		new_image = false;
 		cvNamedWindow("Image window");
 		cout<<"Classifier started"<<endl;
@@ -71,7 +71,7 @@ namespace HOG_Classifier {
 				//img = img(roi);//cv::Rect(0,0,640,480));
 				cv::gpu::GpuMat gpu_img(img(roi));
 				double t = (double)cv::getTickCount();   
-				gpu_hog.detectMultiScale(gpu_img, found, 0, cv::Size(8,8), cv::Size(0,0), 1.05, 1);
+				gpu_hog.detectMultiScale(gpu_img, found, 0.2, cv::Size(8,8), cv::Size(0,0), 1.05, 1);
 				
 				t = (double)cv::getTickCount() - t;
 				printf("Detection time = %gms\n", t*1000./cv::getTickFrequency());

@@ -64,12 +64,12 @@ namespace camera_projector{
 
 		
 		//to get tempprcorner.y
-		if((temppr.y-(int)(1.0/temppr.disz*webcam.fc[0])-40)<0)
+		if((temppr.y-(int)(1.5/temppr.disz*webcam.fc[0])-40)<0)
 		{tempprcorner.y=0;
 		ROS_INFO("3-----set to false");}
 		
 		else
-		{tempprcorner.y=temppr.y-(int)(1.0/temppr.disz*webcam.fc[0])-40;}
+		{tempprcorner.y=temppr.y-(int)(1.5/temppr.disz*webcam.fc[0])-40;}
 		
 		//to get tempprcorner.height
 		if(((int)(1.5/temppr.disz*webcam.fc[0])+temppr.y+40)>1024)
@@ -99,7 +99,7 @@ namespace camera_projector{
 		*/
 		
 		//2 conditions for credible judgement. Below is the 2nd one.
-		if(tempprcorner.disz>=20||tempprcorner.disz<=0.5){tempprcorner.complete_flag=false;}  
+		if(tempprcorner.disz>=20||tempprcorner.disz<=0){tempprcorner.complete_flag=false;}  
 		
 		if(tempprcorner.complete_flag==true)
 		{ROS_INFO("--------------------Credible Judge---------------------");

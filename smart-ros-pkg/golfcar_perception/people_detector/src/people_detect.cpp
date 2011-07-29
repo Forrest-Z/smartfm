@@ -50,8 +50,8 @@ namespace people_detector{
 		//Bayes filter
 		//"veri_objs" stores data recieving from "camera_project", use its "decision_flag" to update belief of the filter;
 		veri_objs_sub=nh.subscribe("verified_objects", 1, &people_detect::Bayesfilter, this);
-		person_sense_person=0.6;
-		not_person_sense_person=0.2;
+		person_sense_person=0.8;
+		not_person_sense_person=0.3;
 		TracVeriNum_pub=nh.advertise<geometry_msgs::Point>("TracVeriNum", 2);	
 		
 		LaserHistoPub_  = nh.advertise<people_detector::dis_histogram>("LaserDisHisto_",2);
@@ -75,7 +75,7 @@ namespace people_detector{
 	    
 		for(unsigned int i = 0; i < numCells; i++)
 		{
-			if(map.data[i]==-1 || map.data[i]==100) a=100;                   //change -1 to 0, treat unknown points as clear.
+			if(map.data[i]==-1 || map.data[i]==100) a=100;                   //change -1 to 0, treat unknown points as clear.			
 			else a=0;
 			input_data_.push_back(a);                                   //Will the input_data_ be too large?
 		}
@@ -178,13 +178,13 @@ namespace people_detector{
 				dis_x = extracted_points_para[ix].label_x-extracted_points_para[ix-1].label_x;
 				dis_y = extracted_points_para[ix].label_y-extracted_points_para[ix-1].label_y;
 			  */
-			    if(sick_pose.point.x==0&&sick_pose.point.y==0&&sick_pose.point.z==0){dis_threshold=0.2;}
+			    if(sick_pose.point.x==0&&sick_pose.point.y==0&&sick_pose.point.z==0){dis_threshold=0.5;}
 			    else{
 					dis_to_sick_x=extracted_points_para[ix].pointx-sick_pose.point.x;
 					dis_to_sick_y=extracted_points_para[ix].pointy-sick_pose.point.y;
 					dis_to_sick=sqrt(dis_to_sick_x*dis_to_sick_x+dis_to_sick_y*dis_to_sick_y);
 					if(dis_to_sick>=23){dis_threshold=(double)(0.008723*dis_to_sick);}
-					else{dis_threshold=0.2;}
+					else{dis_threshold=0.5;}
 					}
 				//ROS_INFO("dis_to_sick: %.5f", dis_to_sick);	
 				dis_px=extracted_points_para[ix].pointx-extracted_points_para[ix-1].pointx;
@@ -331,7 +331,7 @@ namespace people_detector{
 		   {
 			    //ROS_INFO("---------------------------------------NEW ROUND--------------------------------------"); 
 			    int unreg_limit;
-			    float searching_range=0.15;
+			    float searching_range=0.3;
 			    
 			    //ROS_INFO("A.Loop-------Clusters Associate History: Cluster Pool Size %d", processed_clusters_para.size());
 			    for(std::vector<labeled_cluster>::size_type ic=0; ic!=processed_clusters_para.size(); ic++)  //First Loop: clusters try to find matching history;
@@ -349,8 +349,8 @@ namespace people_detector{
 					
 			       // ROS_INFO("Cluster Find Its Nearest History---Cluster Number: %d; History Number: %d, History's Obj_label %d, History's Descendant(-1): %d", ic, nearest_cluster, history_pool[nearest_cluster].object_label,history_pool[nearest_cluster].its_possible_descendant);
 			        
-			        if(history_pool[nearest_cluster].mov_flag==false){unreg_limit=4;searching_range=0.2;}
-			        else {unreg_limit=3;searching_range=0.3;}
+			        if(history_pool[nearest_cluster].mov_flag==false){unreg_limit=2;searching_range=0.3;}
+			        else {unreg_limit=3;searching_range=0.4;}
 			        
 					if(dis2d<(1+history_pool[nearest_cluster].unreg_times)*searching_range)   // (1)nearest history; (2)within 0.1 meter.
 					{
@@ -480,7 +480,7 @@ namespace people_detector{
 						double moving_range_x=history_pool[ih].cluster_data.back().average_x-history_pool[ih].cluster_data.front().average_x;
 						double moving_range_y=history_pool[ih].cluster_data.back().average_y-history_pool[ih].cluster_data.front().average_y;
 						double moving_range=sqrt(moving_range_x*moving_range_x+moving_range_y*moving_range_y);
-						if(moving_range>0.5&&moving_range<4)
+						if(moving_range>0.5&&moving_range<8)
 						{
 							history_pool[ih].mov_flag=true;     //do not clear it back to false next round; even it is only detected once as moving pedestrians.
 							moving_object_temp.moving_label=history_pool[ih].object_label;
@@ -650,7 +650,7 @@ namespace people_detector{
 								temp_laser_extract_obj.pr_vector.push_back(temp_veri_obj_show);
 								people_detect::HistorCreat(temp_veri_obj_show, LaserDisHisto_);
 								
-								if(history_pool[ih].belief_person>0.7||history_pool[ih].OnceforAll_flag==true)
+								if(history_pool[ih].belief_person>0.6||history_pool[ih].OnceforAll_flag==true)
 								{ 	
 									VerifiedNum_temp++;
 									MixNum_temp++;
@@ -667,7 +667,7 @@ namespace people_detector{
 									temp_mixture_obj.pr_vector.push_back(temp_veri_obj_show);
 									people_detect::HistorCreat(temp_veri_obj_show, MixDisHisto_);
 
-									if(history_pool[ih].belief_person>0.7)
+									if(history_pool[ih].belief_person>0.6)
 									{
 										history_pool[ih].OnceforAll_flag=true;
 										history_pool[ih].veriTime=tempTime.toSec();
@@ -675,7 +675,7 @@ namespace people_detector{
 									else
 									{
 										double veriInterval = tempTime.toSec()-history_pool[ih].veriTime;
-										if(veriInterval>0.5){history_pool[ih].OnceforAll_flag=false;}
+										if(veriInterval>0.3){history_pool[ih].OnceforAll_flag=false;}
 									}	
 
 
