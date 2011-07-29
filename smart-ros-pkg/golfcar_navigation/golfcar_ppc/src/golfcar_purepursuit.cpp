@@ -35,7 +35,7 @@ namespace golfcar_purepursuit {
 		}
 		
 
-		bool PurePursuit::heading_lookahead(double &heading_la){
+		bool PurePursuit::heading_lookahead(double &heading_la, int &status){
 			double vehicle_heading = tf::getYaw(vehicle_base_.orientation);
 			geometry_msgs::Point anchor_pt;
 			anchor_pt.x = vehicle_base_.position.x + lfw_ * cos(vehicle_heading);
@@ -72,8 +72,9 @@ namespace golfcar_purepursuit {
 			}
 			
 			
-			//ROS_DEBUG("collided_pt %lf, %lf", collided_pt.x, collided_pt.y);
-			heading_la = atan2(collided_pt.y-anchor_pt.y, collided_pt.x-anchor_pt.x) - vehicle_heading;
+			//heading_la = -1 indicate the controller couldn't find a path to follow, it has to be handle by trajectory_planner
+			if(status==-1) heading_la = -1;
+			else heading_la = atan2(collided_pt.y-anchor_pt.y, collided_pt.x-anchor_pt.x) - vehicle_heading;
 			return true;
 		}
 		
@@ -81,7 +82,7 @@ namespace golfcar_purepursuit {
 		{
 			return sqrt((wp_a.x - wp_b.x)*(wp_a.x - wp_b.x)+(wp_a.y - wp_b.y)*(wp_a.y - wp_b.y));
 		} 
-		 bool PurePursuit::circle_line_collision(geometry_msgs::Point& anchor_point, geometry_msgs::Point& intersect_point){
+		 bool PurePursuit::circle_line_collision(geometry_msgs::Point& anchor_point, geometry_msgs::Point& intersect_point, int &status){
 			//http://stackoverflow.com/questions/1073336/circle-line-collision-detection
 			double Ex = current_point_.x;
 			double Ey = current_point_.y;
@@ -98,15 +99,16 @@ namespace golfcar_purepursuit {
 			float c = (fx * fx + fy * fy) - (r * r);
 			
 			float discriminant = b*b-4*a*c;
-			
+			status =0;
 			if(discriminant < 0)
 			{
 				ROS_WARN("No intersection, cur:x=%lf y%lf, next:x=%lf y=%lf, anchor_point:x=%lf y=%lf", Ex,Ey,Lx,Ly,Cx,Cy);
 				//Very unlikely to happen! If it is, some very wrong happen. For example large localization error
 				//Based on log it is due to sudden shift in localization, and it simply doesn't have a chance to execute the last path, try to go back to the second last segment is the safe way out!
 				ROS_WARN("Reverting to the second last path.");
+				status=-1;
 				path_n_-=2;
-				return false;
+				return true;
 			}
 			else
 			{
