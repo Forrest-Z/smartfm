@@ -19,7 +19,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Path.h>
 #include <sensor_msgs/PointCloud.h>
-#include "station_path.h"
+#include "station_path_sparse.h"
 #include "../../src/RoutePlanner.hh"
 #include <iostream>
 #include <math.h>
@@ -57,6 +57,7 @@ private:
 	void gpsCallBack(const sensor_msgs::NavSatFixConstPtr& fix);
 	int distance_to_goal();
 	void startLoop(VehicleStatus vehstatus,int dropoff, int pickup,RoutePlanner *rp);
+	void startLoop(VehicleStatus vehstatus,int dropoff, int pickup);
 	std::vector<geometry_msgs::Point> targets_;
 	RoutePlanner *rp_;
 	int WaypointNo_;

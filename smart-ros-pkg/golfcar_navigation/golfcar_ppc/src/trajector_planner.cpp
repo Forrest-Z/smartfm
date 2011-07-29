@@ -25,6 +25,8 @@ namespace golfcar_purepursuit{
 		goalreached_=false;
 		waypointPassed_ =-1;
 		//ROS_INFO("%s initialized",name);
+		std::cout<<"Handling unknown stats"<<std::endl;
+		ROS_INFO("Handling unknown stats");
 		std::cout<<name<<"\n";
 	}
 	void PurePursuitBase::golfcar_direction(geometry_msgs::Point32 p)
@@ -68,7 +70,8 @@ namespace golfcar_purepursuit{
 
 		//ROS_INFO("65");
 		double steer_angle;
-		path_flag_= pp_->steering_control(steer_angle);
+		bool outOfRange;
+		path_flag_= pp_->steering_control(steer_angle,outOfRange);
 		/*if(forward_ && (robot_pose.pose.position.x >185 && robot_pose.pose.position.x <197))
 				proposed_velocities.push_back(slow_speed_);
 			if(!forward_ && (robot_pose.pose.position.x >195 && robot_pose.pose.position.x <208))
@@ -76,171 +79,161 @@ namespace golfcar_purepursuit{
 
 		if(path_flag_){
 			
-			if(steer_angle==-1)
+			steer_angle_=steer_angle;
+			goalreached_=false;
+			if(steer_angle_<0) proposed_velocities.push_back(slow_speed_+exp(steer_angle_/0.3)*(maximum_speed_-slow_speed_));
+			else proposed_velocities.push_back(slow_speed_+exp(-steer_angle_/0.3)*(maximum_speed_-slow_speed_));
+
+			cmd_vel.angular.z = steer_angle_;
+			//ROS_INFO("76");
+			//implementation of collision detection
+			geometry_msgs::PointStamped pointst;
+
+			pointst.header.frame_id = costmap_ros_->getBaseFrameID();
+			pointst.header.stamp = ros::Time();
+			ros::Time current_time = ros::Time::now();
+			lookahead_points.clear();
+			//collision detection area
+			pointst.point.x = 1.985; pointst.point.y = -1; lookahead_points.push_back(pointst);
+			pointst.point.x = 1.985+7*cos(steer_angle_); pointst.point.y = -1+7*sin(steer_angle_);  lookahead_points.push_back(pointst);
+			pointst.point.x = 1.985+7*cos(steer_angle_);pointst.point.y = 1+7*sin(steer_angle_);  lookahead_points.push_back(pointst);
+			pointst.point.x = 1.985; pointst.point.y = 1;  lookahead_points.push_back(pointst);
+			//ROS_INFO("89");
+			//for visualization
+			clear_space_.header.stamp = ros::Time();
+			clear_space_.header.frame_id = "map";
+			clear_space_.polygon.points.clear();
+
+			//ROS_INFO("95");
+			geometry_msgs::PointStamped temp;
+			geometry_msgs::Point32 tempPoint32;
+			std::vector<geometry_msgs::Point32> polygon_in_world;
+			//get proper transfrom to convert world coordinate to costmap coordinate
+
+			for(unsigned int i=0;i<lookahead_points.size();i++)
 			{
-				//dangerous situation! The controller couldn't find a path!!!
-				//stop the car!!!
-				
-				proposed_velocities.push_back(0);
+				try{
+					lookahead_points[i].header.stamp = ros::Time();
+					tf_->transformPoint("map",lookahead_points[i],temp);
+					tempPoint32.x = temp.point.x;
+					tempPoint32.y = temp.point.y;
+					polygon_in_world.push_back(tempPoint32);
+				}
+				catch(tf::TransformException& e){
+					std::cout << e.what();
+					return false;
+				}
+
 			}
-			else
+			//ROS_INFO("115");
+			//add critical line
+			geometry_msgs::Point32 critical_line_p1, critical_line_p2;
+			critical_line_p1.x = (polygon_in_world[1].x - polygon_in_world[0].x)*2/7 + polygon_in_world[0].x;
+			critical_line_p1.y = (polygon_in_world[1].y - polygon_in_world[0].y)*2/7 + polygon_in_world[0].y;
+			critical_line_p2.x = (polygon_in_world[2].x - polygon_in_world[3].x)*2/7 + polygon_in_world[3].x;
+			critical_line_p2.y = (polygon_in_world[2].y - polygon_in_world[3].y)*2/7 + polygon_in_world[3].y;
+
+			//adding the new polygons for visualization and further process for costmap
+			std::vector<geometry_msgs::Point32> critical_polygon;
+			critical_polygon.push_back(polygon_in_world[0]);
+			critical_polygon.push_back(polygon_in_world[3]);
+			critical_polygon.push_back(critical_line_p2);
+			critical_polygon.push_back(critical_line_p1);
+
+			std::vector<geometry_msgs::Point32> observed_polygon;
+			observed_polygon.push_back(critical_line_p1);
+			observed_polygon.push_back(critical_line_p2);
+			observed_polygon.push_back(polygon_in_world[2]);
+			observed_polygon.push_back(polygon_in_world[1]);
+			//ROS_INFO("135");
+			//for visualization
+			for(unsigned int i=0;i<critical_polygon.size();i++)
+				clear_space_.polygon.points.push_back(critical_polygon[i]);
+			for(unsigned int i=0;i<observed_polygon.size();i++)
+				clear_space_.polygon.points.push_back(observed_polygon[i]);
+			clear_space_pub_.publish(clear_space_);
+
+			//evaluate on the cost map
+			std::vector<MapLocation> critical_polygon_costmap;
+			std::vector<MapLocation> observed_polygon_costmap;
+			MapLocation ml;
+			Costmap2D c2d;
+			costmap_ros_->getCostmapCopy(c2d);
+			int obstacle_cost(0);
+			std::vector<MapLocation> observed_polygon_cells;
+			std::vector<MapLocation> critical_polygon_cells;
+
+			for(unsigned int i=0;i<observed_polygon.size();i++)
 			{
-				steer_angle_=steer_angle;
-				goalreached_=false;
-				if(steer_angle_<0) proposed_velocities.push_back(slow_speed_+exp(steer_angle_/0.3)*(maximum_speed_-slow_speed_));
-				else proposed_velocities.push_back(slow_speed_+exp(-steer_angle_/0.3)*(maximum_speed_-slow_speed_));
+				c2d.worldToMap(observed_polygon[i].x, observed_polygon[i].y, ml.x, ml.y);
+				observed_polygon_costmap.push_back(ml);
+			}
+			c2d.polygonOutlineCells(observed_polygon_costmap,observed_polygon_cells);
 
-				cmd_vel.angular.z = steer_angle_;
-				//ROS_INFO("76");
-				//implementation of collision detection
-				geometry_msgs::PointStamped pointst;
+			//get fill cells using function from base_local_planner
+			//ROS_INFO("161");
+			PurePursuitBase::getFillCells(observed_polygon_cells);
 
-				pointst.header.frame_id = costmap_ros_->getBaseFrameID();
-				pointst.header.stamp = ros::Time();
-				ros::Time current_time = ros::Time::now();
-				lookahead_points.clear();
-				//collision detection area
-				pointst.point.x = 1.985; pointst.point.y = -1; lookahead_points.push_back(pointst);
-				pointst.point.x = 1.985+7*cos(steer_angle_); pointst.point.y = -1+7*sin(steer_angle_);  lookahead_points.push_back(pointst);
-				pointst.point.x = 1.985+7*cos(steer_angle_);pointst.point.y = 1+7*sin(steer_angle_);  lookahead_points.push_back(pointst);
-				pointst.point.x = 1.985; pointst.point.y = 1;  lookahead_points.push_back(pointst);
-				//ROS_INFO("89");
-				//for visualization
-				clear_space_.header.stamp = ros::Time();
-				clear_space_.header.frame_id = "map";
-				clear_space_.polygon.points.clear();
+			int obstacle(0), observed_obstacle(0);
+			for(unsigned int i=0;i<observed_polygon_cells.size();i++)
+			{
+				int cells_cost = (int)c2d.getCost(observed_polygon_cells[i].x, observed_polygon_cells[i].y);
+				//std::cout<<observed_polygon_cells[i].x<<"\t"<<observed_polygon_cells[i].y<<"\t"<<cells_cost<<"\n";
+				if(cells_cost<255) obstacle_cost+=cells_cost;
+				if(cells_cost==254) observed_obstacle++;
+			}
 
-				//ROS_INFO("95");
-				geometry_msgs::PointStamped temp;
-				geometry_msgs::Point32 tempPoint32;
-				std::vector<geometry_msgs::Point32> polygon_in_world;
-				//get proper transfrom to convert world coordinate to costmap coordinate
+			//start of critical polygon evaluation
+			for(unsigned int i=0;i<critical_polygon.size();i++)
+			{
+				c2d.worldToMap(critical_polygon[i].x, critical_polygon[i].y, ml.x, ml.y);
+				critical_polygon_costmap.push_back(ml);
+			}
+			c2d.polygonOutlineCells(critical_polygon_costmap,critical_polygon_cells);
+			PurePursuitBase::getFillCells(critical_polygon_cells);
+			for(unsigned int i=0;i<critical_polygon_cells.size();i++)
+			{
+				double obstacle_x,obstacle_y;
 
-				for(unsigned int i=0;i<lookahead_points.size();i++)
+				int cells_cost = (int)c2d.getCost(critical_polygon_cells[i].x, critical_polygon_cells[i].y);
+
+				if(cells_cost==254)
 				{
-					try{
-						lookahead_points[i].header.stamp = ros::Time();
-						tf_->transformPoint("map",lookahead_points[i],temp);
-						tempPoint32.x = temp.point.x;
-						tempPoint32.y = temp.point.y;
-						polygon_in_world.push_back(tempPoint32);
-					}
-					catch(tf::TransformException& e){
-						std::cout << e.what();
-						return false;
-					}
-
+					c2d.mapToWorld(critical_polygon_cells[i].x, critical_polygon_cells[i].y,obstacle_x, obstacle_y);
+					std::cout<<"Hazard, obstacle in front! Stopping...."<<obstacle_x<<" "<<obstacle_y<<"\n";
+					cmd_vel.linear.x = 0;
+					obstacle++;
 				}
-				//ROS_INFO("115");
-				//add critical line
-				geometry_msgs::Point32 critical_line_p1, critical_line_p2;
-				critical_line_p1.x = (polygon_in_world[1].x - polygon_in_world[0].x)*2/7 + polygon_in_world[0].x;
-				critical_line_p1.y = (polygon_in_world[1].y - polygon_in_world[0].y)*2/7 + polygon_in_world[0].y;
-				critical_line_p2.x = (polygon_in_world[2].x - polygon_in_world[3].x)*2/7 + polygon_in_world[3].x;
-				critical_line_p2.y = (polygon_in_world[2].y - polygon_in_world[3].y)*2/7 + polygon_in_world[3].y;
-
-				//adding the new polygons for visualization and further process for costmap
-				std::vector<geometry_msgs::Point32> critical_polygon;
-				critical_polygon.push_back(polygon_in_world[0]);
-				critical_polygon.push_back(polygon_in_world[3]);
-				critical_polygon.push_back(critical_line_p2);
-				critical_polygon.push_back(critical_line_p1);
-
-				std::vector<geometry_msgs::Point32> observed_polygon;
-				observed_polygon.push_back(critical_line_p1);
-				observed_polygon.push_back(critical_line_p2);
-				observed_polygon.push_back(polygon_in_world[2]);
-				observed_polygon.push_back(polygon_in_world[1]);
-				//ROS_INFO("135");
-				//for visualization
-				for(unsigned int i=0;i<critical_polygon.size();i++)
-					clear_space_.polygon.points.push_back(critical_polygon[i]);
-				for(unsigned int i=0;i<observed_polygon.size();i++)
-					clear_space_.polygon.points.push_back(observed_polygon[i]);
-				clear_space_pub_.publish(clear_space_);
-
-				//evaluate on the cost map
-				std::vector<MapLocation> critical_polygon_costmap;
-				std::vector<MapLocation> observed_polygon_costmap;
-				MapLocation ml;
-				Costmap2D c2d;
-				costmap_ros_->getCostmapCopy(c2d);
-				int obstacle_cost(0);
-				std::vector<MapLocation> observed_polygon_cells;
-				std::vector<MapLocation> critical_polygon_cells;
-
-				for(unsigned int i=0;i<observed_polygon.size();i++)
+				else
 				{
-					c2d.worldToMap(observed_polygon[i].x, observed_polygon[i].y, ml.x, ml.y);
-					observed_polygon_costmap.push_back(ml);
-				}
-				c2d.polygonOutlineCells(observed_polygon_costmap,observed_polygon_cells);
-
-				//get fill cells using function from base_local_planner
-				//ROS_INFO("161");
-				PurePursuitBase::getFillCells(observed_polygon_cells);
-
-				int obstacle(0), observed_obstacle(0);
-				for(unsigned int i=0;i<observed_polygon_cells.size();i++)
-				{
-					int cells_cost = (int)c2d.getCost(observed_polygon_cells[i].x, observed_polygon_cells[i].y);
-					//std::cout<<observed_polygon_cells[i].x<<"\t"<<observed_polygon_cells[i].y<<"\t"<<cells_cost<<"\n";
+					//we ignore unknown spaces here.
 					if(cells_cost<255) obstacle_cost+=cells_cost;
-					if(cells_cost==254) observed_obstacle++;
 				}
-
-				//start of critical polygon evaluation
-				for(unsigned int i=0;i<critical_polygon.size();i++)
-				{
-					c2d.worldToMap(critical_polygon[i].x, critical_polygon[i].y, ml.x, ml.y);
-					critical_polygon_costmap.push_back(ml);
-				}
-				c2d.polygonOutlineCells(critical_polygon_costmap,critical_polygon_cells);
-				PurePursuitBase::getFillCells(critical_polygon_cells);
-				for(unsigned int i=0;i<critical_polygon_cells.size();i++)
-				{
-					double obstacle_x,obstacle_y;
-
-					int cells_cost = (int)c2d.getCost(critical_polygon_cells[i].x, critical_polygon_cells[i].y);
-
-					if(cells_cost==254)
-					{
-						c2d.mapToWorld(critical_polygon_cells[i].x, critical_polygon_cells[i].y,obstacle_x, obstacle_y);
-						std::cout<<"Hazard, obstacle in front! Stopping...."<<obstacle_x<<" "<<obstacle_y<<"\n";
-						cmd_vel.linear.x = 0;
-						obstacle++;
-					}
-					else
-					{
-						//we ignore unknown spaces here.
-						if(cells_cost<255) obstacle_cost+=cells_cost;
-					}
-				}
-				//ROS_INFO("200");
-				double risk = (255 - (double)obstacle_cost/(critical_polygon_cells.size()+observed_polygon_cells.size()))/255;
-				ROS_DEBUG("Risk (0-1): %lf", risk);
-				//double risk_factor =
-				if(obstacle==0)
-				{
-					//changed for more safety margin
-					double propose_speed = maximum_speed_ * risk;
-					if(propose_speed < slow_speed_) propose_speed = slow_speed_;
-
-					proposed_velocities.push_back(propose_speed);
-					if(observed_obstacle>0) proposed_velocities.push_back(slow_speed_);
-				}
-				else proposed_velocities.push_back(0);
-				//search for the minimum velocity
-				double min_velocity = proposed_velocities[0];
-				for(unsigned int i=1;i<proposed_velocities.size();i++)
-					if(proposed_velocities[i]<min_velocity)
-						min_velocity = proposed_velocities[i];
-				//std::cout<<obstacle<<" critical cells no:"<<critical_polygon_cells.size()<<" observed cells no:"<<observed_polygon_cells.size()<<" "<<observed_obstacle<<"\n";
-				cmd_vel.linear.x = min_velocity;
 			}
+			//ROS_INFO("200");
+			double risk = (255 - (double)obstacle_cost/(critical_polygon_cells.size()+observed_polygon_cells.size()))/255;
+			ROS_DEBUG("Risk (0-1): %lf", risk);
+			//double risk_factor =
+			if(obstacle==0)
+			{
+				//changed for more safety margin
+				double propose_speed = maximum_speed_ * risk;
+				if(propose_speed < slow_speed_) propose_speed = slow_speed_;
+
+				proposed_velocities.push_back(propose_speed);
+				if(observed_obstacle>0) proposed_velocities.push_back(slow_speed_);
+			}
+			else proposed_velocities.push_back(0);
+			//search for the minimum velocity
+			double min_velocity = proposed_velocities[0];
+			for(unsigned int i=1;i<proposed_velocities.size();i++)
+				if(proposed_velocities[i]<min_velocity)
+					min_velocity = proposed_velocities[i];
+			//std::cout<<obstacle<<" critical cells no:"<<critical_polygon_cells.size()<<" observed cells no:"<<observed_polygon_cells.size()<<" "<<observed_obstacle<<"\n";
+			cmd_vel.linear.x = min_velocity;
+		
 		}
 		else{
-
 			if(pp_->path_n_<pp_->path_.poses.size()-1)
 			{
 				cmd_vel.linear.x = slow_speed_;
@@ -257,6 +250,17 @@ namespace golfcar_purepursuit{
 					goalreached_=true;
 				}
 			}
+
+			if(outOfRange)
+			{
+				//dangerous situation! The controller couldn't find a path!!!
+				//stop the car!!!
+				cmd_vel.linear.x = slow_speed_;
+				cmd_vel.angular.z = steer_angle_;
+				ROS_WARN("Steering control at unknown state");
+			}
+
+			
 		}
 		if(waypointPassed_!=pp_->path_n_)
 		{

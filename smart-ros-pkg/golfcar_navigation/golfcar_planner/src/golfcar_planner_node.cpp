@@ -263,7 +263,7 @@ void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
     {
         for(int j=0; j< system.ysize; j++)
         {
-            float car_width = 2.0, car_length = 2.0;
+            float car_width = 1.75, car_length = 1.75;
 
             int yleft = min(system.ysize, (int)(j + car_width/2/system.map_res));
             int yright = max(0, (int)(j - car_width/2/system.map_res));
@@ -421,7 +421,7 @@ void Planner_node::get_plan()
         for(unsigned int i=0; i< RRT_MAX_ITER; i++)
         {
             rrts.iteration();
-            if( rrts.numVertices > 3000)
+            if( rrts.numVertices > 5000)
                 break;
         }
         rrts.updateReachability();
@@ -527,6 +527,7 @@ int Planner_node::publish_traj()
         else
             late_flag = false;
     }
+	late_flag = false;
     
     bool safe_flag = rrts.isSafeTrajectory(toPublishTraj);
     bool far_flag = isFarFromTraj();

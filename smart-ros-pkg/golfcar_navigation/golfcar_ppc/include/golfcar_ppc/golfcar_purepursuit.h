@@ -20,7 +20,7 @@ namespace golfcar_purepursuit {
 		PurePursuit();
 		~PurePursuit();
 		
-		bool steering_control(double& wheel_angle);
+		bool steering_control(double& wheel_angle, bool outOfRange);
 		geometry_msgs::Point current_point_, next_point_;	
 		
 		
@@ -33,8 +33,8 @@ namespace golfcar_purepursuit {
 		bool initialized_;
 		double dist_to_final_point;
 		private:
-		bool heading_lookahead(double &heading_la);
-		bool circle_line_collision(geometry_msgs::Point& anchor_point, geometry_msgs::Point& intersect_point);
+		bool heading_lookahead(double &heading_la,int &status);
+		bool circle_line_collision(geometry_msgs::Point& anchor_point, geometry_msgs::Point& intersect_point, int &status);
 		double sqrt_distance(geometry_msgs::Point wp_a, geometry_msgs::Point wp_b);
 		
 		double car_length;

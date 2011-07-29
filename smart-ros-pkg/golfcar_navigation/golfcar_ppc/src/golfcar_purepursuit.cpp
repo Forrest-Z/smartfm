@@ -15,8 +15,9 @@ namespace golfcar_purepursuit {
 		}
 		
 		
-		bool PurePursuit::steering_control(double& wheel_angle){
+		bool PurePursuit::steering_control(double& wheel_angle, bool outOfRange){
 			geometry_msgs::Point pt;
+			outOfRange = false;
 			if(!initialized_)
 			{
 				current_point_ = vehicle_base_.position;
@@ -24,7 +25,13 @@ namespace golfcar_purepursuit {
 				initialized_=true;
 			}
 			double heading_lh=0;
-			bool got_heading = heading_lookahead(heading_lh);
+			int status=0;
+			bool got_heading = heading_lookahead(heading_lh, status);
+			if(status == -1) 
+			{			
+				outOfRange = true;
+				return false;
+			}
 			wheel_angle = atan((car_length * sin(heading_lh))/(Lfw_/2+lfw_*cos(heading_lh)));
 			if(wheel_angle > 0.65) wheel_angle = 0.65;
 			else if(wheel_angle < -0.65) wheel_angle = -0.65;
@@ -42,7 +49,8 @@ namespace golfcar_purepursuit {
 			anchor_pt.y = vehicle_base_.position.y + lfw_ * sin(vehicle_heading); 
 			
 			geometry_msgs::Point collided_pt; 
-			while(!circle_line_collision(anchor_pt,collided_pt))
+			int st;
+			while(!circle_line_collision(anchor_pt,collided_pt, st))
 			{
 				
 				//ROS_DEBUG("increment path_n_ %d, path size %d", path_n_, path_.poses.size());
@@ -73,7 +81,7 @@ namespace golfcar_purepursuit {
 			
 			
 			//heading_la = -1 indicate the controller couldn't find a path to follow, it has to be handle by trajectory_planner
-			if(status==-1) heading_la = -1;
+			if(st==-1) status = st;
 			else heading_la = atan2(collided_pt.y-anchor_pt.y, collided_pt.x-anchor_pt.x) - vehicle_heading;
 			return true;
 		}
