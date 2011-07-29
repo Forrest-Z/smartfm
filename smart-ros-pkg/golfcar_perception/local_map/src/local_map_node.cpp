@@ -62,8 +62,8 @@ local_map_node::local_map_node()
     tf_filter_->registerCallback(boost::bind(&local_map_node::on_sick, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
 
-    curb_left_sub = n_.subscribe<sensor_msgs::PointCloud>("left_curbline_pub_", 1, &local_map_node::on_curb_left, this);
-    curb_right_sub = n_.subscribe<sensor_msgs::PointCloud>("right_curbline_pub_", 1, &local_map_node::on_curb_right, this);
+    curb_left_sub = n_.subscribe<sensor_msgs::PointCloud>("raw_curb_points", 1, &local_map_node::on_curb_left, this);
+    //curb_right_sub = n_.subscribe<sensor_msgs::PointCloud>("right_curbline_pub_", 1, &local_map_node::on_curb_right, this);
 
     laser_skip_ = 1;
     laser_count_ = 0;
@@ -125,7 +125,7 @@ void local_map_node::on_curb_left(const sensor_msgs::PointCloud::ConstPtr &msg)
                     ( p.y - lmap.pose.position.y)*( p.y - lmap.pose.position.y) );
 
             lmap.left_curb_points.push_back(pcout);
-            if(lmap.left_curb_points.size() > 2000)
+            if(lmap.left_curb_points.size() > 500)
             {
                 lmap.left_curb_points.erase(lmap.left_curb_points.begin() );
             }
@@ -156,7 +156,7 @@ void local_map_node::on_curb_right(const sensor_msgs::PointCloud::ConstPtr &msg)
                     ( p.y - lmap.pose.position.y)*( p.y - lmap.pose.position.y) );
 
             lmap.right_curb_points.push_back(pcout);
-            if(lmap.right_curb_points.size() > 2000)
+            if(lmap.right_curb_points.size() > 500)
             {
                 lmap.right_curb_points.erase(lmap.right_curb_points.begin() );
             }
