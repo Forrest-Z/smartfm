@@ -7,7 +7,7 @@
 #include <nav_msgs/Path.h>
 #include <string>
 #include <cmath>
-
+#include <geometry_msgs/PolygonStamped.h>
 
 
 namespace golfcar_purepursuit {
@@ -20,9 +20,10 @@ namespace golfcar_purepursuit {
 		PurePursuit();
 		~PurePursuit();
 		
-		bool steering_control(double& wheel_angle, bool outOfRange);
+		bool steering_control(double& wheel_angle);
 		geometry_msgs::Point current_point_, next_point_;	
 		
+		ros::Publisher pp_vis_;
 		
 		nav_msgs::Path path_;
 		geometry_msgs::Pose vehicle_base_;
@@ -33,8 +34,8 @@ namespace golfcar_purepursuit {
 		bool initialized_;
 		double dist_to_final_point;
 		private:
-		bool heading_lookahead(double &heading_la,int &status);
-		bool circle_line_collision(geometry_msgs::Point& anchor_point, geometry_msgs::Point& intersect_point, int &status);
+		bool heading_lookahead(double &heading_la);
+		bool circle_line_collision(geometry_msgs::Point& anchor_point, geometry_msgs::Point& intersect_point);
 		double sqrt_distance(geometry_msgs::Point wp_a, geometry_msgs::Point wp_b);
 		
 		double car_length;
