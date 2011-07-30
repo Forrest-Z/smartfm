@@ -28,7 +28,8 @@ class SchedulerData extends ClientData {
             	int t = data.indexOf(":", s+1);
             	int i = data.indexOf(":", t+1);
             	
-            	schedulerID = Integer.parseInt(data.substring(1,f));
+            	//schedulerID = Integer.parseInt(data.substring(1,f));
+            	schedulerID = 0;
             	dataToServer.userID = Integer.parseInt(data.substring(f+1,s));
             	dataToServer.taskID = Integer.parseInt(data.substring(s+1,t));
             	dataToServer.waitTime = Integer.parseInt(data.substring(t+1,i));

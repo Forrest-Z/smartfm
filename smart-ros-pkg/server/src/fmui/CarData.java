@@ -23,10 +23,11 @@ public class CarData extends ClientData{
             	int s = data.indexOf(":", f+1);
             	int t = data.indexOf(":", s+1);
             	
-            	carID = Integer.parseInt(data.substring(1,f));
+            	//carID = Integer.parseInt(data.substring(1,f));
+            	carID = 1;
             	dataToServer.taskID = Integer.parseInt(data.substring(f+1,s));
-            	dataToServer.latitude = Integer.parseInt(data.substring(s+1,t));
-            	dataToServer.longitude = Integer.parseInt(data.substring(t+1));
+            	dataToServer.latitude = Double.parseDouble(data.substring(s+1,t));
+            	dataToServer.longitude = Double.parseDouble(data.substring(t+1));
 			}
 			isReady = true;
 		}
@@ -42,11 +43,11 @@ public class CarData extends ClientData{
 		return dataToServer.taskID;
 	}
 	
-	public int getLatitude(){
+	public double getLatitude(){
 		return dataToServer.latitude;
 	}
 	
-	public int getLongitude(){
+	public double getLongitude(){
 		return dataToServer.longitude;
 	}
 }

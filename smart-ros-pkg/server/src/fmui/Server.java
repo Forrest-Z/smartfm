@@ -132,16 +132,15 @@ public class Server implements Runnable {
     		while(true){
     			try {
     				synchronized(lockObject){
+    					//test
+    					//System.out.println("in userhandler");
     					if (userData.readUserData()) {
-	    					System.out.format("User->Server: ;%d:%d:%d:%d\n", userData.getID(), userData.getTaskID(),
+    						System.out.format("User->Server: ;%d:%d:%d:%d\n", userData.getID(), userData.getTaskID(),
 									userData.getPickupOption(), userData.getDropoffOption());
 		    				if (userData.isTaskRequestValid()) {
 		    					dataFromServerToSchedulerID = userData.getID();
 		    					db.updatePickupAndDropoff(dataFromServerToSchedulerID, userData.getDataToServer());
 		    				}
-		    				
-		    				//test
-		    				userData.sendDataToUser("/1.299092:103.770096");
     					} 
     					
     					if (dataFromServerToUserID != -1 && dataFromServerToUserID == userData.getID()) {
@@ -167,7 +166,7 @@ public class Server implements Runnable {
     					}
     					
     					if (isDataFromCarToUser) {
-    						System.out.println("Car->User"+db.getDataFromCarToUser());
+    						System.out.println("Car->Server->User: "+db.getDataFromCarToUser());
     						userData.sendDataToUser(db.getDataFromCarToUser());
     						isDataFromCarToUser = false;
     					}
@@ -225,13 +224,6 @@ public class Server implements Runnable {
 	    						dataFromServerToUserID = dataFromSchedulerToServerID;
 	    					}
 						}
-						/*
-						try {
-    						Thread.sleep(500);
-    					} catch(Exception e) {
-    						System.err.println("Exception occured: " + e.getMessage());
-    					}
-    					*/
 					}
 				} catch (IOException e) {
 					System.err.println("IOException occured: " + e.getMessage());
@@ -253,7 +245,7 @@ public class Server implements Runnable {
 				try {
 	    			synchronized(lockObject){						
 	    					if (carData.readSchedulerData()) {
-	    						System.out.format("Car->Server: ;%d:%d:%d:%d\n", carData.getCarID(), carData.getTaskID(),
+	    						System.out.format("Car->Server: ;%d:%d:%f:%f\n", carData.getCarID(), carData.getTaskID(),
 	    								carData.getLatitude(), carData.getLongitude());
 	    						String dataFromCarToWeb = carData.getLatitude() + " " + carData.getLongitude(); 
 	    						String dataFromCarToUser = "/"+ carData.getLatitude() + ":" + carData.getLongitude(); 
@@ -262,12 +254,6 @@ public class Server implements Runnable {
 	    						db.setDataFromCarToUser(dataFromCarToUser);
 	    						isDataFromCarToWeb = true;
 	    						isDataFromCarToUser = true;
-	    					}
-	    					
-	    					try {
-	    						Thread.sleep(500);
-	    					} catch(Exception e) {
-	    						System.err.println("Exception occured: " + e.getMessage());
 	    					}
 					}
 				} catch (IOException e) {

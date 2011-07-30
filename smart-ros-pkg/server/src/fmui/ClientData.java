@@ -17,6 +17,8 @@ class ClientData {
     private final int WEBPAGE = 4;
     private final int ERR = 5;
 	
+    private String test = null;
+    
     public ClientData(Socket socket) throws IOException {
         this.socket = socket;
         in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -31,8 +33,9 @@ class ClientData {
 			
 			if (data.startsWith(";")){
 				int f = data.indexOf(":");
+				/*
 				clientID = Integer.parseInt(data.substring(1,f));
-			
+				
 				if (clientID != -1) {
 					if (clientID == 0)
 						return SCHEDULER;
@@ -44,6 +47,21 @@ class ClientData {
 						return USER;
 				} else
 					return ERR;
+				*/
+				test = data.substring(1,f);
+				
+				if (test!=null){
+					if (test.compareTo("0")==0)
+						return SCHEDULER;
+					else if (test.compareTo("car")==0)
+						return CAR;
+					else if (test.compareTo("webpage")==0)
+						return WEBPAGE;
+					else 
+						return USER;
+				} else
+					return ERR;
+				
 			} 
     	}
     	
