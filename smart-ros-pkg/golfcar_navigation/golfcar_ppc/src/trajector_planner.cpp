@@ -15,7 +15,7 @@ void PurePursuitBase::initialize(std::string name, tf::TransformListener* tf, co
 	l_plan_pub_ = global_node.advertise<nav_msgs::Path>("local_plan", 1);
 	g_plan_pub_ = global_node.advertise<nav_msgs::Path>("global_plan", 1);
 	clear_space_pub_ = global_node.advertise<geometry_msgs::PolygonStamped>("clear_space",1);
-	golfcar_direction_ =global_node.subscribe("direction", 1, &PurePursuitBase::golfcar_direction, this);
+
 	tf_ = tf;
 	costmap_ros_ = costmap_ros;
 
@@ -24,58 +24,25 @@ void PurePursuitBase::initialize(std::string name, tf::TransformListener* tf, co
 	stopped_ = false;
 	goalreached_=false;
 	waypointPassed_ =-1;
-	//ROS_INFO("%s initialized",name);
-	std::cout<<"Handling unknown stats"<<std::endl;
-	ROS_INFO("Handling unknown stats");
+
 	std::cout<<name<<"\n";
 }
-void PurePursuitBase::golfcar_direction(geometry_msgs::Point32 p)
-{
-	if(p.x == 255) forward_ = true;
-	else forward_ = false;
-}
+
 void PurePursuitBase::UpdatePosition()
 {
-	//use robot pose from cost map
 	tf::Stamped<tf::Pose> global_pose;
 	costmap_ros_->getRobotPose(global_pose);
-
 	tf::poseStampedTFToMsg(global_pose, robot_pose);
-
-
-	//return tf::getYaw(robot_pose.pose.orientation);
 }
 bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
-	//ROS_INFO("44");
 	PurePursuitBase::UpdatePosition();
 	std::vector<double> proposed_velocities;
-	//just a hack to let it stop at junction
-	//ROS_INFO("48");
-	/*
-			if(robot_pose.pose.position.x >=192.5) 
-			{
-				if(!stopped_)
-				{
-					expected_end_ = ros::Time::now() + ros::Duration(0.5);
-					stopped_ = true;
-				}
-				if(expected_end_ > ros::Time::now())
-					proposed_velocities.push_back(0);
-			}
-			else stopped_ = false;*/
-	//ROS_INFO("60");
+
 	pp_->vehicle_base_ = robot_pose.pose;
 
-
-
-	//ROS_INFO("65");
 	double steer_angle;
 
 	path_flag_= pp_->steering_control(steer_angle);
-	/*if(forward_ && (robot_pose.pose.position.x >185 && robot_pose.pose.position.x <197))
-				proposed_velocities.push_back(slow_speed_);
-			if(!forward_ && (robot_pose.pose.position.x >195 && robot_pose.pose.position.x <208))
-				proposed_velocities.push_back(slow_speed_);*/
 
 	if(path_flag_){
 
@@ -85,7 +52,7 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
 		else proposed_velocities.push_back(slow_speed_+exp(-steer_angle_/0.3)*(maximum_speed_-slow_speed_));
 
 		cmd_vel.angular.z = steer_angle_;
-		//ROS_INFO("76");
+
 		//implementation of collision detection
 		geometry_msgs::PointStamped pointst;
 
@@ -98,13 +65,11 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
 		pointst.point.x = 1.985+7*cos(steer_angle_); pointst.point.y = -1+7*sin(steer_angle_);  lookahead_points.push_back(pointst);
 		pointst.point.x = 1.985+7*cos(steer_angle_);pointst.point.y = 1+7*sin(steer_angle_);  lookahead_points.push_back(pointst);
 		pointst.point.x = 1.985; pointst.point.y = 1;  lookahead_points.push_back(pointst);
-		//ROS_INFO("89");
-		//for visualization
+
 		clear_space_.header.stamp = ros::Time();
 		clear_space_.header.frame_id = "map";
 		clear_space_.polygon.points.clear();
 
-		//ROS_INFO("95");
 		geometry_msgs::PointStamped temp;
 		geometry_msgs::Point32 tempPoint32;
 		std::vector<geometry_msgs::Point32> polygon_in_world;
@@ -125,7 +90,7 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
 			}
 
 		}
-		//ROS_INFO("115");
+
 		//add critical line
 		geometry_msgs::Point32 critical_line_p1, critical_line_p2;
 		critical_line_p1.x = (polygon_in_world[1].x - polygon_in_world[0].x)*2/7 + polygon_in_world[0].x;
@@ -145,7 +110,7 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
 		observed_polygon.push_back(critical_line_p2);
 		observed_polygon.push_back(polygon_in_world[2]);
 		observed_polygon.push_back(polygon_in_world[1]);
-		//ROS_INFO("135");
+
 		//for visualization
 		for(unsigned int i=0;i<critical_polygon.size();i++)
 			clear_space_.polygon.points.push_back(critical_polygon[i]);
@@ -171,7 +136,6 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
 		c2d.polygonOutlineCells(observed_polygon_costmap,observed_polygon_cells);
 
 		//get fill cells using function from base_local_planner
-		//ROS_INFO("161");
 		PurePursuitBase::getFillCells(observed_polygon_cells);
 
 		int obstacle(0), observed_obstacle(0);
@@ -210,7 +174,7 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
 				if(cells_cost<255) obstacle_cost+=cells_cost;
 			}
 		}
-		//ROS_INFO("200");
+
 		double risk = (255 - (double)obstacle_cost/(critical_polygon_cells.size()+observed_polygon_cells.size()))/255;
 		ROS_DEBUG("Risk (0-1): %lf", risk);
 		//double risk_factor =
@@ -229,11 +193,18 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
 		for(unsigned int i=1;i<proposed_velocities.size();i++)
 			if(proposed_velocities[i]<min_velocity)
 				min_velocity = proposed_velocities[i];
-		//std::cout<<obstacle<<" critical cells no:"<<critical_polygon_cells.size()<<" observed cells no:"<<observed_polygon_cells.size()<<" "<<observed_obstacle<<"\n";
+
 		cmd_vel.linear.x = min_velocity;
+
+		if(waypointPassed_!=pp_->path_n_)
+		{
+			ROS_INFO("Path %d/%lu", pp_->path_n_, pp_->path_.poses.size()-1);
+			waypointPassed_=pp_->path_n_;
+		}
 
 	}
 	else{
+
 
 		if(pp_->path_n_<pp_->path_.poses.size()-1)
 		{
@@ -254,25 +225,19 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
 
 
 	}
-	if(waypointPassed_!=pp_->path_n_)
-	{
-		ROS_INFO("Path %d/%d", pp_->path_n_, pp_->path_.poses.size());
-		waypointPassed_=pp_->path_n_;
-	}
+
 	return true;
 
 }
 
 bool PurePursuitBase::isGoalReached(){
-	//fix goal criteria. Only declare goal when the car hit the very last point in addition to the path_flag
-	//std::cout<<pp_->path_n_<<"/"<<pp_->path_.poses.size()-1<<std::endl;
 	if(!path_flag_ && pp_->path_n_<pp_->path_.poses.size()-1)
 	{
 		ROS_INFO("Goal reached");
 		return true;
 	}
 	else return false;
-	ROS_INFO("Goal %d/%d",pp_->path_n_,pp_->path_.poses.size()-1);
+	ROS_INFO("Goal %d/%lu",pp_->path_n_,pp_->path_.poses.size()-1);
 }
 
 bool PurePursuitBase::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan){
@@ -281,17 +246,12 @@ bool PurePursuitBase::setPlan(const std::vector<geometry_msgs::PoseStamped>& ori
 	PurePursuitBase::UpdatePosition();
 	std::vector<geometry_msgs::PoseStamped>::iterator it;
 	it = pp_->path_.poses.begin();
-
 	pp_-> path_.poses.insert(it, robot_pose);
+
 	pp_-> initialized_ = false;
 	pp_-> dist_to_final_point = 100;
 	pp_-> path_n_ =0;
-	geometry_msgs::PoseStamped x;
 
-	for(int i=0;i<pp_->path_.poses.size();i++)
-	{
-		ROS_INFO("path %d: %lf %lf",pp_->path_.poses[i].pose.position.x,pp_->path_.poses[i].pose.position.y);
-	}
 	return true;
 }
 //taken from base_local_planner

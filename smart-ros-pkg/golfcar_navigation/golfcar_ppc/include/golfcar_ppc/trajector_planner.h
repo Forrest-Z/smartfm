@@ -51,7 +51,7 @@ namespace golfcar_purepursuit{
 		ros::Time expected_end_;
 		bool stopped_;
 		bool goalreached_;
-		int waypointPassed_;
+		unsigned int waypointPassed_;
 	};
 };
 			

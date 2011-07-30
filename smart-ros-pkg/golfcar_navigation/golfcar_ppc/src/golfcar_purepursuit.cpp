@@ -96,9 +96,6 @@ bool PurePursuit::circle_line_collision(geometry_msgs::Point& anchor_point, geom
 
 	float discriminant = b*b-4*a*c;
 
-
-
-
 	geometry_msgs::Point32 p;
 	geometry_msgs::PolygonStamped polyStamped;
 	polyStamped.header.frame_id = "/map";
@@ -107,10 +104,6 @@ bool PurePursuit::circle_line_collision(geometry_msgs::Point& anchor_point, geom
 	if(discriminant < 0)
 	{
 		ROS_DEBUG("No intersection, cur:x=%lf y%lf, next:x=%lf y=%lf, anchor_point:x=%lf y=%lf", Ex,Ey,Lx,Ly,Cx,Cy);
-		//Very unlikely to happen! If it is, some very wrong happen. For example large localization error
-		//Based on log it is due to sudden shift in localization, and it simply doesn't have a chance to execute the last path, try to go back to the second last segment is the safe way out!
-
-		//path_n_-=2;
 		return false;
 	}
 	else
@@ -121,7 +114,6 @@ bool PurePursuit::circle_line_collision(geometry_msgs::Point& anchor_point, geom
 		geometry_msgs::Point intersect_point2;
 		p.x = intersect_point2.x = Ex+t2*dx;
 		p.y = intersect_point2.y = Ey+t2*dy;
-		//pc.points.push_back(p);
 
 		if(t1 >=0 && t1 <=1)
 		{
@@ -137,7 +129,6 @@ bool PurePursuit::circle_line_collision(geometry_msgs::Point& anchor_point, geom
 		else
 		{
 			ROS_DEBUG("No solution, cur:x=%lf y%lf, next:x=%lf y=%lf", Ex,Ey,Lx,Ly);
-
 			return false;
 		}
 
