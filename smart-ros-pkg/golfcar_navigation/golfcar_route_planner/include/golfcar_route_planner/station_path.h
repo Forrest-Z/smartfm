@@ -63,7 +63,7 @@ namespace station_path{
 stationPath::stationPath()
 {
 	const int station_number = 4;
-	const int max_straight = 10;
+	const int max_straight = 5;
 	station_paths.resize(station_number);
 	for(int i=0; i<station_number;i++)
 		station_paths[i].resize(station_number);
@@ -107,7 +107,7 @@ stationPath::stationPath()
 	}
 	cout<<endl;
 
-/*
+
 	for(int i=0; i<station_number;i++)
 	{
 		for(int j=0; j<station_number; j++)
@@ -149,7 +149,7 @@ stationPath::stationPath()
 				k++;
 			}
 		}
-	}*/
+	}
 	for(int i=0; i<station_paths[0][2].size();i++)
 		{
 			cout<<station_paths[0][2][i].x<<','<<station_paths[0][2][i].y<<'\t';
