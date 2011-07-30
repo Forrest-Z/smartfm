@@ -3,6 +3,7 @@
 #include <iostream>
 #include <sstream>
 #include <time.h>
+#include <sys/stat.h>
 #include "SchedulerTalker.hh"
 #include "SocketException.hh"
 
@@ -24,7 +25,27 @@ SchedulerTalker::SchedulerTalker(string host, int port, int verbosityLevel)
   m_pickup = UNINIT_INT;
   m_dropoff = UNINIT_INT;
   m_verbosity = verbosityLevel;
-  logFile = fopen ("log_stalker.txt","w");
+
+  // log file
+  ostringstream oss;
+  char timestr[64];
+  struct stat st;
+  time_t t = time(NULL);
+  strftime(timestr, sizeof(timestr), "%F-%a-%H-%M", localtime(&t));
+  oss  << "log_stalker" << "." << timestr << ".log";
+  string logFileName = oss.str();
+  string suffix = "";
+  
+  // if it exists already, append .1, .2, .3 ... 
+  for (int i = 1; stat((logFileName + suffix).c_str(), &st) == 0; i++) {
+    ostringstream tmp;
+    tmp << '.' << i;
+    suffix = tmp.str();
+  }
+  logFileName += suffix;
+  logFile = fopen(logFileName.c_str(), "w");
+
+  //logFile = fopen ("log_stalker.txt","w");
   try {
     m_socket.init(host, port);
     m_socket.setSocketBlocking(true);

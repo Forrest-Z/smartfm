@@ -3,6 +3,7 @@
 #include <iostream>
 #include <sstream>
 #include <time.h>
+#include <sys/stat.h>
 #include "VehicleTalker.hh"
 #include "SocketException.hh"
 
@@ -24,7 +25,27 @@ VehicleTalker::VehicleTalker(int port, int verbosityLevel)
   m_vehInfo.tremain = 1000000;
   m_verbosity = verbosityLevel;
   pthread_mutex_init(&m_statusMutex, NULL);
-  logFile = fopen ("log_vtalker.txt","w");
+
+  // log file
+  ostringstream oss;
+  char timestr[64];
+  struct stat st;
+  time_t t = time(NULL);
+  strftime(timestr, sizeof(timestr), "%F-%a-%H-%M", localtime(&t));
+  oss  << "log_vtalker" << "." << timestr << ".log";
+  string logFileName = oss.str();
+  string suffix = "";
+  
+  // if it exists already, append .1, .2, .3 ... 
+  for (int i = 1; stat((logFileName + suffix).c_str(), &st) == 0; i++) {
+    ostringstream tmp;
+    tmp << '.' << i;
+    suffix = tmp.str();
+  }
+  logFileName += suffix;
+  logFile = fopen(logFileName.c_str(), "w");
+
+  //logFile = fopen ("log_vtalker.txt","w");
   try {
     m_server.init(port);
     m_server.setSocketBlocking(true);

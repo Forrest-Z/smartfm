@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <pthread.h>
 #include <time.h>
+#include <sys/stat.h>
 #include <string.h>
 #include "Scheduler.hh"
 #include "SchedulerUI.hh"
@@ -241,7 +242,27 @@ int main(int argc, char **argv)
   scheduler = new Scheduler(VERBOSITY_LEVEL);
   currentTask = scheduler->getVehicleCurrentTask();
   SchedulerUI* schedulerUI = NULL;
-  logFile = fopen ("log_scheduler.txt","w");
+
+  // log file
+  ostringstream oss;
+  char timestr[64];
+  struct stat st;
+  time_t t = time(NULL);
+  strftime(timestr, sizeof(timestr), "%F-%a-%H-%M", localtime(&t));
+  oss  << "log_scheduler" << "." << timestr << ".log";
+  string logFileName = oss.str();
+  string suffix = "";
+  
+  // if it exists already, append .1, .2, .3 ... 
+  for (int i = 1; stat((logFileName + suffix).c_str(), &st) == 0; i++) {
+    ostringstream tmp;
+    tmp << '.' << i;
+    suffix = tmp.str();
+  }
+  logFileName += suffix;
+  logFile = fopen(logFileName.c_str(), "w");
+
+  //logFile = fopen ("log_scheduler.txt","w");
   pthread_t operatorThread, talkerThread, vehicleThread;
   pthread_mutex_t schedulerMutex;
 
