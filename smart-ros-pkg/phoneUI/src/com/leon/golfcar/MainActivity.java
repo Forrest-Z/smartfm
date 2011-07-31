@@ -28,6 +28,8 @@ import android.view.MenuItem;
 import android.widget.Toast;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -67,7 +69,7 @@ public class MainActivity extends MapActivity  {
     
     //private static final String REMOTE_HOSTNAME = "172.29.147.148";
     //private static final String REMOTE_HOSTNAME = "172.17.38.204";
-    private static final String REMOTE_HOSTNAME = "172.17.38.204";
+    private static final String REMOTE_HOSTNAME = "192.168.1.4";
     
     private static String LOCAL_HOSTNAME = "172.17.184.92"; 
     private static final int LOCAL_SERVERPORT = 4440;
@@ -81,7 +83,7 @@ public class MainActivity extends MapActivity  {
     private List<Task> taskList = new ArrayList<Task>();
     
     private List<Overlay> overlayList = null;
-    //private List<Overlay> carOverlay = null;
+    private List<Overlay> carOverlay = null;
 	@Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -267,16 +269,19 @@ public class MainActivity extends MapActivity  {
 						
 						if (extras.getInt("pickup_op")!=extras.getInt("dest_op"))
 						{
+							/*
 							// draw destination pin on Map
 							dropoffGeoPoint = new GeoPoint ((int)(dropoffLatitude * 1000000), (int)(dropoffLongitude * 1000000));        
 							mapController.animateTo(dropoffGeoPoint);
 							drawDestinationLocationOverlay dest_overlay = new drawDestinationLocationOverlay();
 							overlayList.add(dest_overlay);
+							mapView.invalidate();
 							
 							// draw pickup location pin on Map
 							pickupGeoPoint = new GeoPoint ((int)(pickupLatitude * 1000000), (int)(pickupLongitude * 1000000));        
 							drawPickupLocationOverlay pickup_overlay = new drawPickupLocationOverlay();
 							overlayList.add(pickup_overlay);
+							 */
 							
 							// add new task to services 
 							Task s = new Task(Integer.toString(userID),Integer.toString(taskID++),Integer.toString(extras.getInt("pickup_op")),
@@ -497,8 +502,8 @@ public class MainActivity extends MapActivity  {
 	                                	}         
 	                                } else if (msg.startsWith("/")){ //data format: "/latitude:longitude"
 	                                	//test
-		                            	forcheck = msg;
-		                            	checkData();
+		                            	//forcheck = msg;
+		                            	//checkData();
 	                                	
 	                                	int f = msg.indexOf(":");
 	                                	double latitude = 0.0;
@@ -507,15 +512,14 @@ public class MainActivity extends MapActivity  {
 	                                	latitude = Double.parseDouble(msg.substring(1,f));
 	                                	longitude = Double.parseDouble(msg.substring(f+1));
 	                                	if (latitude != 0.0 && longitude != 0.0) {
-	                                		
-	                                		if (overlayList.size() == 3)
-	                                			overlayList.remove(2);
-	                                		
 		                          			// draw car marker on Map  
-		                          			carGeoPoint = new GeoPoint ((int)(latitude* 1000000), (int)(longitude* 1000000));  
+	                                		overlayList.clear();
+	                                		carGeoPoint = new GeoPoint ((int)(latitude* 1000000), (int)(longitude* 1000000));  
 		                          			drawCarLocationOverlay car_overlay = new drawCarLocationOverlay();
-		                          			//bug
+		                          			//bug		                          			
+		                          			mapController.animateTo(carGeoPoint);
 		                          			overlayList.add(car_overlay);
+		                          			mapView.postInvalidate();
 	                                	}
 	                                }
 	                            }
@@ -529,6 +533,7 @@ public class MainActivity extends MapActivity  {
                         } catch( InterruptedException e ) { 
                         	e.printStackTrace();
                         }
+                        
                 	}
 				}
 			} catch (UnknownHostException e) {
