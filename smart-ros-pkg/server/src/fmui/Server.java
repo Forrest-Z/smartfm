@@ -142,7 +142,6 @@ public class Server implements Runnable {
 		    					db.updatePickupAndDropoff(dataFromServerToSchedulerID, userData.getDataToServer());
 		    				}
     					} 
-    					
     					if (dataFromServerToUserID != -1 && dataFromServerToUserID == userData.getID()) {
     						int cidx = -1;
 							
@@ -158,13 +157,12 @@ public class Server implements Runnable {
 	    						
 	    						dataSentToUser = ";" + userData.getTaskID() + ":" + userData.getWaitTime() + ":" 
 	    							+ userData.getCarID();
-	    						System.out.println("Server->User: " + dataSentToUser);
+	    						System.out.println("Scheduler->Server->User: " + dataSentToUser);
 	    						userData.sendDataToUser(dataSentToUser);	
 	    					} else
 	    						System.out.println("UserData not exist in Database!");
 	    					dataFromServerToUserID = -1;
-    					}
-    					
+    					} 
     					if (isDataFromCarToUser) {
     						System.out.println("Car->Server->User: "+db.getDataFromCarToUser());
     						userData.sendDataToUser(db.getDataFromCarToUser());
@@ -248,7 +246,7 @@ public class Server implements Runnable {
 	    						System.out.format("Car->Server: ;%d:%d:%f:%f\n", carData.getCarID(), carData.getTaskID(),
 	    								carData.getLatitude(), carData.getLongitude());
 	    						String dataFromCarToWeb = carData.getLatitude() + " " + carData.getLongitude(); 
-	    						String dataFromCarToUser = "/"+ carData.getLatitude() + ":" + carData.getLongitude(); 
+	    						String dataFromCarToUser = "/"+ carData.getLatitude() + ":" + carData.getLongitude() ; 
 	    						
 	    						db.setDataFromCarToWeb(dataFromCarToWeb);
 	    						db.setDataFromCarToUser(dataFromCarToUser);
