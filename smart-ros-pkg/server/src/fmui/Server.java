@@ -163,6 +163,14 @@ public class Server implements Runnable {
 	    						System.out.println("UserData not exist in Database!");
 	    					dataFromServerToUserID = -1;
     					} 
+    					
+    					try {
+							lockObject.wait();
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+    					
     					if (isDataFromCarToUser) {
     						System.out.println("Car->Server->User: "+db.getDataFromCarToUser());
     						userData.sendDataToUser(db.getDataFromCarToUser());
@@ -222,6 +230,7 @@ public class Server implements Runnable {
 	    						dataFromServerToUserID = dataFromSchedulerToServerID;
 	    					}
 						}
+						lockObject.notify();
 					}
 				} catch (IOException e) {
 					System.err.println("IOException occured: " + e.getMessage());
@@ -253,6 +262,14 @@ public class Server implements Runnable {
 	    						isDataFromCarToWeb = true;
 	    						isDataFromCarToUser = true;
 	    					}
+	    					
+	    					/*
+	    					try {
+	    						Thread.sleep(500);
+	    					} catch (Exception e) {
+	    						e.getStackTrace();
+	    					}
+	    					*/
 					}
 				} catch (IOException e) {
 					System.err.println("IOException occured: " + e.getMessage());
