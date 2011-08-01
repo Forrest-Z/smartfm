@@ -1,0 +1,113 @@
+#A Messa M5I20 test panel, to be run on its own with out EMC running.
+#please do not run this panel with EMC loaded. see Readme file for more info.
+
+
+# crate a thread 
+loadrt threads name1=base-thread period1=100000 name2=user-thread period2=5000000
+
+#load the hostmot2 firmware
+loadrt hostmot2
+
+#select the firmware's configuration
+loadrt hm2_pci config="firmware=hm2/5i20/SVST2_4_7I47.BIT num_encoders=1 num_pwmgens=2 num_stepgens=2"
+
+# Read all inputs, update input HAL pins
+addf hm2_5i20.0.read base-thread
+
+# Write all outputs
+addf hm2_5i20.0.write base-thread
+
+# Parameters
+#Motor Run Control
+setp hm2_5i20.0.gpio.040.is_output TRUE
+setp hm2_5i20.0.gpio.042.is_output TRUE
+
+# Pet the watchdog
+setp hm2_5i20.0.watchdog.timeout_ns 10000000
+addf hm2_5i20.0.pet_watchdog user-thread
+
+#Set up stepgen at 1000 ns
+setp hm2_5i20.0.stepgen.00.dirhold 1000
+setp hm2_5i20.0.stepgen.00.dirsetup 1000
+setp hm2_5i20.0.stepgen.00.steplen 1000
+setp hm2_5i20.0.stepgen.00.stepspace 1000
+
+setp hm2_5i20.0.stepgen.01.dirhold 1000
+setp hm2_5i20.0.stepgen.01.dirsetup 1000
+setp hm2_5i20.0.stepgen.01.steplen 1000
+setp hm2_5i20.0.stepgen.01.stepspace 1000
+
+#Set up steering control in degree
+setp hm2_5i20.0.stepgen.00.maxvel 360
+setp hm2_5i20.0.stepgen.00.maxaccel 3600 
+#0.1 sec acceleration to 3000 rpm 
+setp hm2_5i20.0.stepgen.00.position-scale 200 
+setp hm2_5i20.0.stepgen.00.enable 1
+
+#Set up brake control in degree
+setp hm2_5i20.0.stepgen.01.maxvel 360
+setp hm2_5i20.0.stepgen.01.maxaccel 3600 
+setp hm2_5i20.0.stepgen.01.position-scale 200 
+setp hm2_5i20.0.stepgen.01.enable 1
+
+setp hm2_5i20.0.pwmgen.pwm_frequency 400
+#Set up Trottle Control
+setp hm2_5i20.0.pwmgen.00.value 0
+setp hm2_5i20.0.pwmgen.00.enable 1
+setp hm2_5i20.0.pwmgen.00.scale 3.244 
+
+
+setp hm2_5i20.0.gpio.047.is_output 1
+setp hm2_5i20.0.gpio.045.is_output 1
+
+net pwmdir hm2_5i20.0.gpio.021.in => hm2_5i20.0.gpio.045.out
+net pwmdirNot hm2_5i20.0.gpio.021.in_not => hm2_5i20.0.gpio.047.out
+
+setp hm2_5i20.0.gpio.041.is_output 1
+#4000 pulses --> 1 rev --> 1.294638041m #ori: 1.4m
+setp hm2_5i20.0.encoder.00.scale 3089.666666144
+#original 2857.142857
+
+#add streamer
+loadrt streamer depth=4096 cfg=fff
+loadrt sampler depth=1024 cfg=fffb
+net	streamer0 streamer.0.pin.0 hm2_5i20.0.pwmgen.00.value
+net	streamer1 streamer.0.pin.1 hm2_5i20.0.stepgen.00.position-cmd
+net streamer2 streamer.0.pin.2 hm2_5i20.0.stepgen.01.position-cmd
+
+net	sam0 sampler.0.pin.0 hm2_5i20.0.encoder.00.position
+net	sam1 sampler.0.pin.1 hm2_5i20.0.encoder.00.velocity
+net  sam2 sampler.0.pin.2 hm2_5i20.0.stepgen.00.position-fb
+net sam3 sampler.0.pin.3 hm2_5i20.0.gpio.025.in
+
+#net	sampler2	sampler.0.pin.2 hm2_5i20.0.encoder.00.count
+
+addf streamer.0 base-thread
+addf sampler.0 user-thread
+
+#setup simulated encoder & abs component
+setp hm2_5i20.0.gpio.017.is_output true
+setp hm2_5i20.0.gpio.019.is_output true
+
+loadrt sim_encoder 
+net simencoder sim-encoder.0.phase-A hm2_5i20.0.gpio.017.out
+addf sim-encoder.make-pulses base-thread
+addf sim-encoder.update-speed base-thread
+#the virtual encoder has arbitary 1 rev/s -> 1 m/s hence, scale=1
+#but for each 1 meter, it should produce 20 pulses
+setp sim-encoder.0.ppr 20
+net sam1 sim-encoder.0.speed
+
+
+loadrt abs count=1
+loadrt not
+net sign abs.0.sign not.0.in
+net abs not.0.out
+addf not.0 base-thread
+addf abs.0 base-thread
+net sam1 abs.0.in
+net abs hm2_5i20.0.gpio.019.out
+
+# start 
+start
+
