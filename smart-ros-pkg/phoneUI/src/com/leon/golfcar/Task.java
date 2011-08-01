@@ -16,18 +16,15 @@ public class Task {
 	public String pickupLocation = "0";
 	
 	public Task(){
-		
 	}
 	
-	public Task(String ID, String taskID, String pickup_op, String dest_op, String wait, 
-			String carID, String pickup_location, String dest_location) {
+	public Task(String ID, String taskID, String pickup_op, String dest_op, String wait, String carID, String pickup_location, String dest_location) {
 		this.ID = ID;
 		this.taskID = taskID;
 		this.pickupOption = pickup_op;
 		this.dropoffOption = dest_op;
 		this.waitTime = wait;
 		this.carID = carID;
-		
 		this.pickupLocation = pickup_location;
 		this.dropoffLocation = dest_location;
 	}	

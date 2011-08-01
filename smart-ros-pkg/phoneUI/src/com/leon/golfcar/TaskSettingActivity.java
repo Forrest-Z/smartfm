@@ -16,22 +16,21 @@ import android.widget.Button;
 import android.widget.Spinner;
 
 public class TaskSettingActivity extends Activity {
-	Spinner pickupSp;
-	Spinner destSp;
+	private static final String[] pickupLocations = { "Workshop","Mcdonalds","EA","E3A"};
+	private static final String[] destLocations = { "Workshop","Mcdonalds","EA","E3A"};
+	private Double pickupLatitude = 0.0, pickupLongitude = 0.0 , destLatitude = 0.0, destLongitude = 0.0;
+	private int pickupOption = 0;
+	private int destOption = 0;
+	private String pickupLocation = "0";
+	private String destLocation = "0";
+	private Spinner pickupSp;
+	private Spinner destSp;
 	private ArrayAdapter<String> aspnPickups;
 	private ArrayAdapter<String> aspnDests;
 	private List<String> allPickups;
 	private List<String> allDests;
-
-	private Double pickupLatitude = 0.0, pickupLongitude = 0.0 , destLatitude = 0.0, destLongitude = 0.0;
-	int pickupOption = 0;
-	int destOption = 0;
-	String pickupLocation = "0";
-	String destLocation = "0";
-	
-	Button confirmButton;
-	OnClickListener dataTransferListener = null;
-	private int actionType = 0;
+	private Button confirmButton;
+	private OnClickListener dataTransferListener = null;
 	
 	/** Called when the activity is first created. */
 	@Override
@@ -42,11 +41,6 @@ public class TaskSettingActivity extends Activity {
 		choosePickupAndDest();
 		transferData();
 	}
-
-	private static final String[] pickupLocations = { "Workshop","Mcdonalds","EA","E3A"};
-	
-	private static final String[] destLocations = { "Workshop","Mcdonalds","EA","E3A"};
-	
 	
 	private void choosePickupAndDest() {
 		// choose pickup
@@ -73,7 +67,6 @@ public class TaskSettingActivity extends Activity {
 	}
 
 	private void transferData() {
-		// version 2, transfer data
         dataTransferListener = new OnClickListener() {
 			public void onClick(View v) {
 				// Intent: change from one Activity to another. Activity->ActivityFrameLayout
@@ -101,10 +94,8 @@ public class TaskSettingActivity extends Activity {
 	
 	public class PickupSelectedListener implements OnItemSelectedListener {
 
-	    public void onItemSelected(AdapterView<?> parent,
-	        View view, int pos, long id) {
-
-	    String op = parent.getItemAtPosition(pos).toString();
+	    public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+	    	String op = parent.getItemAtPosition(pos).toString();
 	    
 		    if (op=="Workshop")
 		    {
@@ -140,35 +131,34 @@ public class TaskSettingActivity extends Activity {
 	
 	public class DestSelectedListener implements OnItemSelectedListener {
 
-	    public void onItemSelected(AdapterView<?> parent,
-	        View view, int pos, long id) {
-	    String op = parent.getItemAtPosition(pos).toString();
-	    
-	    if (op=="Workshop")
-	    {
-	    	destOption = 1;
-	    	destLatitude = 1.299292;
-	    	destLongitude = 103.770596;
-	    	destLocation = "Workshop";
-	    } else if(op=="Mcdonalds")
-	    {
-	    	destOption = 2;
-	    	destLatitude = 1.298247;
-	    	destLongitude = 103.771121;
-	    	destLocation = "Mcdonalds";
-	    } else if(op=="EA")
-	    {
-	    	destOption = 3;
-	    	destLatitude = 1.300997;
-	    	destLongitude = 103.770694;
-	    	destLocation = "EA";
-	    } else if(op=="E3A")
-	    {
-	    	destOption = 4;
-	    	destLatitude = 1.300775;
-	    	destLongitude = 103.771247;
-	    	destLocation = "E3A";
-	    }
+	    public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+		    String op = parent.getItemAtPosition(pos).toString();
+		    
+		    if (op=="Workshop")
+		    {
+		    	destOption = 1;
+		    	destLatitude = 1.299292;
+		    	destLongitude = 103.770596;
+		    	destLocation = "Workshop";
+		    } else if(op=="Mcdonalds")
+		    {
+		    	destOption = 2;
+		    	destLatitude = 1.298247;
+		    	destLongitude = 103.771121;
+		    	destLocation = "Mcdonalds";
+		    } else if(op=="EA")
+		    {
+		    	destOption = 3;
+		    	destLatitude = 1.300997;
+		    	destLongitude = 103.770694;
+		    	destLocation = "EA";
+		    } else if(op=="E3A")
+		    {
+		    	destOption = 4;
+		    	destLatitude = 1.300775;
+		    	destLongitude = 103.771247;
+		    	destLocation = "E3A";
+		    }
 	    }
 
 	    public void onNothingSelected(AdapterView<?> parent) {

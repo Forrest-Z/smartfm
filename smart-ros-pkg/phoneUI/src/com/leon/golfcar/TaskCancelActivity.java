@@ -16,36 +16,28 @@ import android.widget.Button;
 import android.widget.Spinner;
 
 public class TaskCancelActivity extends Activity {
-	Button confirmButton;
-	OnClickListener dataTransferListener = null;
-	Spinner cancelSp;
-	private List<String> allTasks;
-	private ArrayAdapter<String> aspnTasks;
 	private int cancelTaskID = 0;
-	
-	
+	private List<String> allTasks;
 	private List<Task> userOrders = new ArrayList<Task>();
 	private ArrayList<String> tmp = new ArrayList<String>();
-	
+	private Button confirmButton;
+	private OnClickListener dataTransferListener = null;
+	private Spinner cancelSp;
+	private ArrayAdapter<String> aspnTasks;
+
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setTitle("CancelTaskActivity");
-		setContentView(R.layout.spinnercanceltask);
-		
-		
+		setContentView(R.layout.spinnercanceltask);		
 		Bundle extras = getIntent().getExtras();
-
         if (extras != null)
         {
-        	//totalTaskNumber = extras.getInt("totalTaskNumber");
-        	
-        	tmp = extras.getStringArrayList("tmp");
-        	
+        	tmp = extras.getStringArrayList("tmp");	
             for (int i=0;i<tmp.size();i++)
             {
-            	Task s = new  Task();
+            	Task s = new Task();
             	
             	int[] count;
             	count = new int[10];
@@ -64,14 +56,12 @@ public class TaskCancelActivity extends Activity {
             	
             	userOrders.add(s);
             }
-        	
         }
 		cancelTask();
 		transferData();	
 	}
 	
 	private void cancelTask() {
-	
 		cancelSp = (Spinner) findViewById(R.id.spinnerCancel);
 		cancelSp.setOnItemSelectedListener(new CancelListener());
 		allTasks = new ArrayList<String>();
@@ -81,22 +71,15 @@ public class TaskCancelActivity extends Activity {
 		else
 			for (int i=0;i<userOrders.size();i++) {
 				if (userOrders.get(i).pickupOption.compareTo("-1")!=0)
-					//allTasks.add("Task ID: " + userOrders.get(i).taskID + "Pick-up: " 
-						//	+ userOrders.get(i).pickup_location + "Drop-off: " + userOrders.get(i).dest_location);
 					allTasks.add("Task ID: " + userOrders.get(i).taskID);
-					
 			}
-	
-	
-		
+
 		aspnTasks = new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item, allTasks);
 		aspnTasks.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-		cancelSp.setAdapter(aspnTasks);
-		
+		cancelSp.setAdapter(aspnTasks);		
 	}
 
 	private void transferData() {
-		// version 2, transfer data
         dataTransferListener = new OnClickListener() {
 			public void onClick(View v) {
 				// Intent: change from one Activity to another. Activity->ActivityFrameLayout
@@ -116,19 +99,13 @@ public class TaskCancelActivity extends Activity {
 	
 	
 	public class CancelListener implements OnItemSelectedListener {
-
-	    public void onItemSelected(AdapterView<?> parent,
-	        View view, int pos, long id) {
-	    String op = parent.getItemAtPosition(pos).toString();
-
-	    
-	    for (int i=0;i<userOrders.size();i++){
-	    	if (op.compareTo("Task ID: "+userOrders.get(i).taskID)==0)
-	    		cancelTaskID = i+1;
-	    }
-	    
-	    
-	    
+	    public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+	    	String op = parent.getItemAtPosition(pos).toString();
+		    
+	    	for (int i=0;i<userOrders.size();i++){
+		    	if (op.compareTo("Task ID: "+userOrders.get(i).taskID)==0)
+		    		cancelTaskID = i+1;
+		    }
 	    }
 
 	    public void onNothingSelected(AdapterView<?> parent) {

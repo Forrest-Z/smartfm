@@ -18,9 +18,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Point;
-import android.location.Location;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -28,8 +26,6 @@ import android.view.MenuItem;
 import android.widget.Toast;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -41,7 +37,7 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-
+import java.util.logging.*;
 
 public class MainActivity extends MapActivity  {
     /** Called when the activity is first created. */
@@ -52,6 +48,7 @@ public class MainActivity extends MapActivity  {
     private static final String DROPOFF_CANCEL_CONFIRM = "-1";
     private static final int LOCAL_SERVERPORT = 4440;
     private static String LOCAL_HOSTNAME = "172.17.184.92"; 
+    public static Logger logger;
     private final int REQUEST_CODE = 1;
     private double dropoffLatitude = 0.0;
     private double dropoffLongitude = 0.0;
@@ -73,7 +70,7 @@ public class MainActivity extends MapActivity  {
     private ServerSocket serverSocket = null;
     private List<Task> taskList = new ArrayList<Task>();
     private List<Overlay> overlayList = null;
-    private List<Overlay> carOverlay = null;
+ //   private List<Overlay> carOverlay = null;
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -392,10 +389,23 @@ public class MainActivity extends MapActivity  {
 			Toast.makeText(MainActivity.this, errMsg, Toast.LENGTH_LONG).show();  
     }
 	
+	static {
+	    try {
+	      boolean append = true;
+	      FileHandler fh = new FileHandler("./NetworkListener.log", append);
+	      //fh.setFormatter(new XMLFormatter());
+	      fh.setFormatter(new SimpleFormatter());
+	      logger = Logger.getLogger("TestLog");
+	      logger.addHandler(fh);
+	    }
+	    catch (IOException e) {
+	      e.printStackTrace();
+	    }
+	}
     class NetworkListener implements Runnable {
     	private final int[] ports = {4440, 4441, 1024, 8080};
-    	private String forcheck = null;
-    	private String forcheck2 = null;
+    	//private String forcheck = null;
+    	//private String forcheck2 = null;
 		private PrintWriter out = null;
 		private BufferedReader in = null;
 		private Socket socket = null;
@@ -534,9 +544,13 @@ public class MainActivity extends MapActivity  {
         		carGeoPoint = new GeoPoint ((int)(latitude* 1000000), (int)(longitude* 1000000));  
       			drawCarLocationOverlay car_overlay = new drawCarLocationOverlay();
       			//bug		                          			
+      			try {
       			mapController.animateTo(carGeoPoint);
       			overlayList.add(car_overlay);
       			mapView.postInvalidate();
+      			} catch (Exception e) {
+      				logger.info(e.getMessage());
+      			}
         	}
         }
         
@@ -559,26 +573,26 @@ public class MainActivity extends MapActivity  {
 			});
         }
         
-        private void checkData(){
-        	MainActivity.this.runOnUiThread(new Runnable() {
-				public void run() {
-					String errMsg = "checkData: " + forcheck;
-					for (int i=0;i<1;i++)
-						Toast.makeText(MainActivity.this, errMsg, Toast.LENGTH_LONG).show();   
-				}
-			});
-        }
-        
-        private void checkError(){
-        	MainActivity.this.runOnUiThread(new Runnable() {
-				public void run() {
-					String errMsg = "checkData: " + forcheck2;
-					for (int i=0;i<1;i++)
-						Toast.makeText(MainActivity.this, errMsg, Toast.LENGTH_LONG).show();   
-				}
-			});
-        }
-        
+//        private void checkData(){
+//        	MainActivity.this.runOnUiThread(new Runnable() {
+//				public void run() {
+//					String errMsg = "checkData: " + forcheck;
+//					for (int i=0;i<1;i++)
+//						Toast.makeText(MainActivity.this, errMsg, Toast.LENGTH_LONG).show();   
+//				}
+//			});;
+//        }
+//        
+//        private void checkError(){
+//        	MainActivity.this.runOnUiThread(new Runnable() {
+//				public void run() {
+//					String errMsg = "checkData: " + forcheck2;
+//					for (int i=0;i<1;i++)
+//						Toast.makeText(MainActivity.this, errMsg, Toast.LENGTH_LONG).show();   
+//				}
+//			});
+//        }
+//        
         
       //draw destination location overlay
     	public class drawCarLocationOverlay extends Overlay
