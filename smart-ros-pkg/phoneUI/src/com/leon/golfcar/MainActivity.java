@@ -70,7 +70,10 @@ public class MainActivity extends MapActivity  {
     private ServerSocket serverSocket = null;
     private List<Task> taskList = new ArrayList<Task>();
     private List<Overlay> overlayList = null;
- //   private List<Overlay> carOverlay = null;
+    private List<Overlay> carOverlay = null;
+    drawLocationOverlay car_overlay = null;
+    drawLocationOverlay dest_overlay = null;
+    private Thread fst = null;
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -97,7 +100,7 @@ public class MainActivity extends MapActivity  {
         mapController.animateTo(initGeoPoint);
 		mapController.setZoom(19);
         overlayList = mapView.getOverlays();
-        //carOverlay = mapView.getOverlays();
+        carOverlay = mapView.getOverlays();
 	}
 	
 	private void initializeUserIp()
@@ -126,8 +129,12 @@ public class MainActivity extends MapActivity  {
 	private void runNetworkListener()
 	{
 		if (LOCAL_HOSTNAME!= null) {
-			Thread fst = new Thread(new NetworkListener());
+			try {
+			fst = new Thread(new NetworkListener());
 			fst.start();
+			} catch (Exception e) {
+				
+			}
 		} else
 			displayNetworkError();
 	}
@@ -194,13 +201,10 @@ public class MainActivity extends MapActivity  {
 	        .setMessage(R.string.really_quit)
 	        .setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
 				
-	            public void onClick(DialogInterface dialog, int which) {
-					
-	            	onStop();
+	            public void onClick(DialogInterface dialog, int which) {	
 	                //Stop the activity
-	                MainActivity.this.finish();    
+	            	MainActivity.this.finish();    
 	            }
-				
 	        })
 	        .setNegativeButton(R.string.no, null)
 	        .show();
@@ -257,10 +261,12 @@ public class MainActivity extends MapActivity  {
 							// draw destination pin on Map
 							dropoffGeoPoint = new GeoPoint ((int)(dropoffLatitude * 1000000), (int)(dropoffLongitude * 1000000));        
 							mapController.animateTo(dropoffGeoPoint);
-							drawDestinationLocationOverlay dest_overlay = new drawDestinationLocationOverlay();
+							dest_overlay = new drawLocationOverlay(dropoffGeoPoint, R.drawable.cabin);
 							overlayList.add(dest_overlay);
 							mapView.invalidate();
+							*/
 							
+							/*
 							// draw pickup location pin on Map
 							pickupGeoPoint = new GeoPoint ((int)(pickupLatitude * 1000000), (int)(pickupLongitude * 1000000));        
 							drawPickupLocationOverlay pickup_overlay = new drawPickupLocationOverlay();
@@ -317,9 +323,16 @@ public class MainActivity extends MapActivity  {
 			
 		}
 	}
-	
-	class drawDestinationLocationOverlay extends Overlay
+	class drawLocationOverlay extends Overlay
 	{		
+		private GeoPoint locationGeoPoint = null;
+		private int marker = 0;
+		
+		public drawLocationOverlay(GeoPoint locationGeoPoint, int marker){
+			this.locationGeoPoint = locationGeoPoint;
+			this.marker = marker;
+		}
+		
 		public boolean draw(Canvas canvas, MapView mapView, boolean shadow, long when)
 		{
 			super.draw(canvas, mapView, shadow);
@@ -328,12 +341,12 @@ public class MainActivity extends MapActivity  {
 			Bitmap bmp;
 			//convert
 			
-			mapView.getProjection().toPixels(dropoffGeoPoint, myScreenCoords);
+			mapView.getProjection().toPixels(locationGeoPoint, myScreenCoords);
 			paint.setStrokeWidth(1);
 			paint.setARGB(255, 255, 0, 0);
 			paint.setStyle(Paint.Style.STROKE);
 			
-			bmp = BitmapFactory.decodeResource(getResources(),R.drawable.cabin);			
+			bmp = BitmapFactory.decodeResource(getResources(),marker);			
 			canvas.drawBitmap(bmp, myScreenCoords.x, myScreenCoords.y,paint);
 			
 			return true;	
@@ -370,7 +383,8 @@ public class MainActivity extends MapActivity  {
         super.onStop();
         try {
 			// make sure you close the socket upon exiting
-			serverSocket.close();
+			if (serverSocket != null)
+				serverSocket.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -390,6 +404,9 @@ public class MainActivity extends MapActivity  {
 			Toast.makeText(MainActivity.this, errMsg, Toast.LENGTH_LONG).show();  
     }
 	
+	
+	// remain unknown exception, need to handle it in order to add log mechanism
+	/*
 	static {
 	    try {
 	      boolean append = true;
@@ -403,6 +420,11 @@ public class MainActivity extends MapActivity  {
 	      e.printStackTrace();
 	    }
 	}
+	
+	*/
+	
+	
+	
     class NetworkListener implements Runnable {
     	private final int[] ports = {4440, 4441, 1024, 8080};
     	//private String forcheck = null;
@@ -542,18 +564,18 @@ public class MainActivity extends MapActivity  {
         	latitude = Double.parseDouble(msg.substring(1,f));
         	longitude = Double.parseDouble(msg.substring(f+1));
         	if (latitude != 0.0 && longitude != 0.0) {
-      			// draw car marker on Map  
-        		overlayList.clear();
-        		carGeoPoint = new GeoPoint ((int)(latitude* 1000000), (int)(longitude* 1000000));  
-      			drawCarLocationOverlay car_overlay = new drawCarLocationOverlay();
-      			//bug		                          			
-      			try {
-      			mapController.animateTo(carGeoPoint);
-      			overlayList.add(car_overlay);
+      			// draw car marker on Map  				
+				carGeoPoint = new GeoPoint ((int)(latitude* 1000000), (int)(longitude* 1000000));  
+        		
+				if (car_overlay!=null) {
+					carOverlay.remove(car_overlay);
+					mapView.postInvalidate();
+				}
+				
+				car_overlay = new drawLocationOverlay(carGeoPoint, R.drawable.cab);
+        		mapController.animateTo(carGeoPoint);
+        		carOverlay.add(car_overlay);
       			mapView.postInvalidate();
-      			} catch (Exception e) {
-      				logger.info(e.getMessage());
-      			}
         	}
         }
         
@@ -576,62 +598,11 @@ public class MainActivity extends MapActivity  {
 			});
         }
         
-//        private void checkData(){
-//        	MainActivity.this.runOnUiThread(new Runnable() {
-//				public void run() {
-//					String errMsg = "checkData: " + forcheck;
-//					for (int i=0;i<1;i++)
-//						Toast.makeText(MainActivity.this, errMsg, Toast.LENGTH_LONG).show();   
-//				}
-//			});;
-//        }
-//        
-//        private void checkError(){
-//        	MainActivity.this.runOnUiThread(new Runnable() {
-//				public void run() {
-//					String errMsg = "checkData: " + forcheck2;
-//					for (int i=0;i<1;i++)
-//						Toast.makeText(MainActivity.this, errMsg, Toast.LENGTH_LONG).show();   
-//				}
-//			});
-//        }
-//        
-        
-      //draw destination location overlay
-    	public class drawCarLocationOverlay extends Overlay
-    	{		
-    		public boolean draw(Canvas canvas, MapView mapView, boolean shadow, long when)
-    		{
-    			super.draw(canvas, mapView, shadow);
-    			Paint paint = new Paint();
-    			Point myScreenCoords = new Point();
-    			Bitmap bmp;
-    			//convert
-    			mapView.getProjection().toPixels(carGeoPoint, myScreenCoords);
-    			paint.setStrokeWidth(1);
-    			paint.setARGB(255, 255, 0, 0);
-    			paint.setStyle(Paint.Style.STROKE);
-    			bmp = BitmapFactory.decodeResource(getResources(),R.drawable.cab);			
-    			canvas.drawBitmap(bmp, myScreenCoords.x, myScreenCoords.y,paint);
-    			
-    			return true;	
-    		}
-    		
-    		public void disableCompass() {
-    			// TODO Auto-generated method stub
-    			
-    		}
-    		
-    		public void enableCompass() {
-    			// TODO Auto-generated method stub
-    			
-    		}
-    	}
-    	
     	private void close() throws IOException{
     		in.close();
     		out.close();
     		socket.close();
+    		serverSocket.close();
     	}
     }
 }
