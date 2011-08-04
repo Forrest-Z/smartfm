@@ -41,7 +41,7 @@ import java.util.logging.*;
 
 public class MainActivity extends MapActivity  {
     /** Called when the activity is first created. */
-    private static final String REMOTE_HOSTNAME = "172.29.146.10";
+    private static final String REMOTE_HOSTNAME = "172.17.38.204";
     private static final String TASK_CANCEL_CONFIRM = "-6";
     private static final String TASK_CANCEL_INVALID = "-5";
     private static final String PICKUP_CANCEL_CONFIRM = "-1";
@@ -196,6 +196,7 @@ public class MainActivity extends MapActivity  {
 				
 	            public void onClick(DialogInterface dialog, int which) {
 					
+	            	onStop();
 	                //Stop the activity
 	                MainActivity.this.finish();    
 	            }
@@ -421,6 +422,8 @@ public class MainActivity extends MapActivity  {
                 		dataTransfer();
                 		sleep();
                 	}
+				} else {
+					close();
 				}
 			} catch (UnknownHostException e) {
 				displayServerError();
@@ -623,6 +626,12 @@ public class MainActivity extends MapActivity  {
     			// TODO Auto-generated method stub
     			
     		}
+    	}
+    	
+    	private void close() throws IOException{
+    		in.close();
+    		out.close();
+    		socket.close();
     	}
     }
 }
