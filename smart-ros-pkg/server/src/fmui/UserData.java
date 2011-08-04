@@ -2,10 +2,14 @@ package fmui;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 
 class UserData extends ClientData{
 	private DataFromUserToServer dataToServer = new DataFromUserToServer();
-	private DataFromServerToUser dataToUser = new DataFromServerToUser();
+	//private DataFromServerToUser dataToUser = new DataFromServerToUser();
+	private List<DataFromServerToUser> dataToUserList = new ArrayList<DataFromServerToUser>();
+	
 	private int userID = -1;
 	
 	public UserData(Socket socket) throws IOException {
@@ -58,12 +62,17 @@ class UserData extends ClientData{
 		return dataToServer.dropoffOption;
 	}
 	
+	/*
 	public int getWaitTime() {
 		return dataToUser.waitTime;
 	}
 	
 	public int getCarID() {
 		return dataToUser.carID;
+	}
+	*/
+	public List<DataFromServerToUser> getDataToUserList(){
+		return dataToUserList;
 	}
 	
 	public DataFromUserToServer getDataToServer() {
@@ -78,12 +87,27 @@ class UserData extends ClientData{
 		dataToServer.dropoffOption = dropoffOption;
 	}
 	
+	public void setTaskIDAndWaitTimeAndCarID(int taskID, int waitTime, int carID) {
+		DataFromServerToUser dataToUser = new DataFromServerToUser();
+		
+		dataToUser.taskID = taskID;
+		dataToUser.waitTime = waitTime;
+		dataToUser.carID = carID;
+		dataToUserList.add(dataToUser);
+	}
+	
+	/*
 	public void setWaitTime(int waitTime) {
 		dataToUser.waitTime = waitTime;
 	}
 	
 	public void setCarID(int carID) {
 		dataToUser.carID = carID;
+	}
+	*/
+	
+	public void cleanDataToUser(){
+		dataToUserList.clear();
 	}
 	
 	public void clean(){

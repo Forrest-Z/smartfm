@@ -44,8 +44,7 @@ class CentralDataBase {
     public void updateWaitTimeAndCarID(int dataFromSchedulerToServerID, DataFromSchedulerToServer dataToServer) {
     	for( int i=0; i<clients.size(); i++ ) {
 			if( clients.get(i).getID() == dataFromSchedulerToServerID) {
-				clients.get(i).setWaitTime(dataToServer.waitTime);
-				clients.get(i).setCarID(dataToServer.carID);
+				clients.get(i).setTaskIDAndWaitTimeAndCarID(dataToServer.taskID,dataToServer.waitTime, dataToServer.carID);				
 				break;
 			}
 		}

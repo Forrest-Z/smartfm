@@ -154,11 +154,17 @@ public class Server implements Runnable {
 	    					if (cidx != -1) {
 	    						String dataSentToUser;
 	    						UserData userData = db.clients.get(cidx);
+	    						DataFromServerToUser dataToUser;
 	    						
-	    						dataSentToUser = ";" + userData.getTaskID() + ":" + userData.getWaitTime() + ":" 
-	    							+ userData.getCarID();
-	    						System.out.println("Scheduler->Server->User: " + dataSentToUser);
-	    						userData.sendDataToUser(dataSentToUser);	
+	    						for (int i=0;i<userData.getDataToUserList().size();i++) {
+	    							dataToUser = userData.getDataToUserList().get(i);
+		    						dataSentToUser = ";" + dataToUser.taskID + ":" + dataToUser.waitTime + ":" 
+		    							+ dataToUser.carID;
+		    						System.out.println("Scheduler->Server->User: " + dataSentToUser);
+		    						userData.sendDataToUser(dataSentToUser);	
+	    						}
+	    						
+	    						userData.cleanDataToUser();
 	    					} else
 	    						System.out.println("UserData not exist in Database!");
 	    					dataFromServerToUserID = -1;
@@ -221,7 +227,8 @@ public class Server implements Runnable {
 	    					isDataFromSchedulerToServer = true;
 	    				} 
 						if (isDataFromSchedulerToServer) {
-	    					if (schedulerData.readSchedulerData()) {
+	    					//if (schedulerData.readSchedulerData()) {
+							while (schedulerData.readSchedulerData()) {
 	    						System.out.format("Scheduler->Server: ;%d:%d:%d:%d\n", schedulerData.getUserID(), schedulerData.getTaskID(),
 	    								schedulerData.getWaitTime(), schedulerData.getCarID());
 	    						int dataFromSchedulerToServerID = schedulerData.getUserID();

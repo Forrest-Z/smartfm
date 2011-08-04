@@ -72,6 +72,7 @@ class ClientData {
     	String data = null;
 		
 		while(in.ready() && (data = in.readLine())!=null) {
+			break;
 		}
 		return data;
     }
