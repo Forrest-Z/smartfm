@@ -19,11 +19,13 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.os.Bundle;
+import android.os.Message;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.widget.Toast;
+import android.os.Handler;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -37,23 +39,24 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.logging.*;
 
 public class MainActivity extends MapActivity  {
     /** Called when the activity is first created. */
-    private static final String REMOTE_HOSTNAME = "172.17.38.204";
+	private static class theLock extends Object{ }
+    static public theLock lockObject = new theLock();
+    
+    private static final String REMOTE_HOSTNAME = "172.29.146.10";
     private static final String TASK_CANCEL_CONFIRM = "-6";
     private static final String TASK_CANCEL_INVALID = "-5";
     private static final String PICKUP_CANCEL_CONFIRM = "-1";
     private static final String DROPOFF_CANCEL_CONFIRM = "-1";
     private static final int LOCAL_SERVERPORT = 4440;
     private static String LOCAL_HOSTNAME = "172.17.184.92"; 
-    public static Logger logger;
     private final int REQUEST_CODE = 1;
     private double dropoffLatitude = 0.0;
     private double dropoffLongitude = 0.0;
-    private double pickupLatitude = 0.0;
-    private double pickupLongitude = 0.0;
+    //private double pickupLatitude = 0.0;
+    //private double pickupLongitude = 0.0;
     private boolean isSetTask = false;
     private boolean isInitNetwork = false;
     private boolean isCancelTask = false;
@@ -65,16 +68,28 @@ public class MainActivity extends MapActivity  {
     private MapController mapController = null;
     private GeoPoint initGeoPoint = null;
 	private GeoPoint dropoffGeoPoint = null;
-	private GeoPoint pickupGeoPoint = null;
+	//private GeoPoint pickupGeoPoint = null;
 	private GeoPoint carGeoPoint = null;
     private ServerSocket serverSocket = null;
     private List<Task> taskList = new ArrayList<Task>();
     private List<Overlay> overlayList = null;
-    private List<Overlay> carOverlay = null;
-    drawLocationOverlay car_overlay = null;
-    drawLocationOverlay dest_overlay = null;
-    private Thread fst = null;
+    private drawLocationOverlay car_overlay = null;
+    private drawLocationOverlay dest_overlay = null;
+    private Thread networkListener = null;
 	
+    private Handler handler = new Handler(){
+    	@Override
+    	public void handleMessage(Message msg) {
+    		overlayList.clear();
+			overlayList.add(dest_overlay);
+			mapView.invalidate();
+    		
+    		mapController.animateTo(carGeoPoint);
+			overlayList.add(car_overlay);
+			mapView.invalidate();
+    	}
+    };
+    
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -100,7 +115,6 @@ public class MainActivity extends MapActivity  {
         mapController.animateTo(initGeoPoint);
 		mapController.setZoom(19);
         overlayList = mapView.getOverlays();
-        carOverlay = mapView.getOverlays();
 	}
 	
 	private void initializeUserIp()
@@ -130,8 +144,8 @@ public class MainActivity extends MapActivity  {
 	{
 		if (LOCAL_HOSTNAME!= null) {
 			try {
-			fst = new Thread(new NetworkListener());
-			fst.start();
+			networkListener = new Thread(new NetworkListener());
+			networkListener.start();
 			} catch (Exception e) {
 				
 			}
@@ -250,28 +264,19 @@ public class MainActivity extends MapActivity  {
 					else {
 						//ServiceMsg 
 						//get data from BookCarActivity.java
-						pickupLatitude = extras.getDouble("pickup_lat");
-						pickupLongitude = extras.getDouble("pickup_longi");
+						//pickupLatitude = extras.getDouble("pickup_lat");
+						//pickupLongitude = extras.getDouble("pickup_longi");
 						dropoffLatitude = extras.getDouble("dest_lat");
 						dropoffLongitude = extras.getDouble("dest_longi");	
 						
 						if (extras.getInt("pickup_op")!=extras.getInt("dest_op"))
 						{
-							/*
 							// draw destination pin on Map
 							dropoffGeoPoint = new GeoPoint ((int)(dropoffLatitude * 1000000), (int)(dropoffLongitude * 1000000));        
 							mapController.animateTo(dropoffGeoPoint);
 							dest_overlay = new drawLocationOverlay(dropoffGeoPoint, R.drawable.cabin);
 							overlayList.add(dest_overlay);
 							mapView.invalidate();
-							*/
-							
-							/*
-							// draw pickup location pin on Map
-							pickupGeoPoint = new GeoPoint ((int)(pickupLatitude * 1000000), (int)(pickupLongitude * 1000000));        
-							drawPickupLocationOverlay pickup_overlay = new drawPickupLocationOverlay();
-							overlayList.add(pickup_overlay);
-							 */
 							
 							// add new task to services 
 							Task s = new Task(Integer.toString(userID),Integer.toString(taskID++),Integer.toString(extras.getInt("pickup_op")),
@@ -293,36 +298,6 @@ public class MainActivity extends MapActivity  {
 		}
 	}
 	
-	class drawPickupLocationOverlay extends Overlay
-	{	
-		public boolean draw(Canvas canvas, MapView mapView, boolean shadow, long when)
-		{
-			super.draw(canvas, mapView, shadow);
-			Paint paint = new Paint();
-			Point myScreenCoords = new Point();
-			Bitmap bmp;
-			
-			//convert
-			mapView.getProjection().toPixels(pickupGeoPoint, myScreenCoords);
-			paint.setStrokeWidth(1);
-			paint.setARGB(255, 255, 0, 0);
-			paint.setStyle(Paint.Style.STROKE);
-			bmp = BitmapFactory.decodeResource(getResources(),R.drawable.car);
-			canvas.drawBitmap(bmp, myScreenCoords.x, myScreenCoords.y,paint);
-			
-			return true;	
-		}
-		
-		public void disableCompass() {
-			// TODO Auto-generated method stub
-			
-		}
-		
-		public void enableCompass() {
-			// TODO Auto-generated method stub
-			
-		}
-	}
 	class drawLocationOverlay extends Overlay
 	{		
 		private GeoPoint locationGeoPoint = null;
@@ -335,6 +310,7 @@ public class MainActivity extends MapActivity  {
 		
 		public boolean draw(Canvas canvas, MapView mapView, boolean shadow, long when)
 		{
+			synchronized(lockObject) {
 			super.draw(canvas, mapView, shadow);
 			Paint paint = new Paint();
 			Point myScreenCoords = new Point();
@@ -348,7 +324,7 @@ public class MainActivity extends MapActivity  {
 			
 			bmp = BitmapFactory.decodeResource(getResources(),marker);			
 			canvas.drawBitmap(bmp, myScreenCoords.x, myScreenCoords.y,paint);
-			
+			}
 			return true;	
 		}
 		
@@ -404,31 +380,8 @@ public class MainActivity extends MapActivity  {
 			Toast.makeText(MainActivity.this, errMsg, Toast.LENGTH_LONG).show();  
     }
 	
-	
-	// remain unknown exception, need to handle it in order to add log mechanism
-	/*
-	static {
-	    try {
-	      boolean append = true;
-	      FileHandler fh = new FileHandler("./NetworkListener.log", append);
-	      //fh.setFormatter(new XMLFormatter());
-	      fh.setFormatter(new SimpleFormatter());
-	      logger = Logger.getLogger("TestLog");
-	      logger.addHandler(fh);
-	    }
-	    catch (IOException e) {
-	      e.printStackTrace();
-	    }
-	}
-	
-	*/
-	
-	
-	
     class NetworkListener implements Runnable {
     	private final int[] ports = {4440, 4441, 1024, 8080};
-    	//private String forcheck = null;
-    	//private String forcheck2 = null;
 		private PrintWriter out = null;
 		private BufferedReader in = null;
 		private Socket socket = null;
@@ -553,29 +506,20 @@ public class MainActivity extends MapActivity  {
         }
         
         private void readDataFromCar(String msg){
-        	//test
-        	//forcheck = msg;
-        	//checkData();
-        	
         	int f = msg.indexOf(":");
         	double latitude = 0.0;
         	double longitude = 0.0;
         	
         	latitude = Double.parseDouble(msg.substring(1,f));
         	longitude = Double.parseDouble(msg.substring(f+1));
-        	if (latitude != 0.0 && longitude != 0.0) {
-      			// draw car marker on Map  				
-				carGeoPoint = new GeoPoint ((int)(latitude* 1000000), (int)(longitude* 1000000));  
-        		
-				if (car_overlay!=null) {
-					carOverlay.remove(car_overlay);
-					mapView.postInvalidate();
-				}
-				
+        	
+        	if (latitude != 0.0 && longitude != 0.0) {        		
+        		carGeoPoint = new GeoPoint ((int)(latitude* 1000000), (int)(longitude* 1000000));  
 				car_overlay = new drawLocationOverlay(carGeoPoint, R.drawable.cab);
-        		mapController.animateTo(carGeoPoint);
-        		carOverlay.add(car_overlay);
-      			mapView.postInvalidate();
+
+				Message myMsg = handler.obtainMessage();
+        		myMsg.obj = "Draw carOverlay";
+        		handler.sendMessage(myMsg);
         	}
         }
         
