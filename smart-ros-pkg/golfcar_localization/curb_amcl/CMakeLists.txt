@@ -21,14 +21,19 @@ rosbuild_add_library(amcl_map
 rosbuild_add_library(amcl_sensors
                     src/sensors/amcl_sensor.cpp
                     src/sensors/amcl_odom.cpp
-                    src/sensors/amcl_curb_window.cpp)
+                    src/sensors/amcl_curb_window.cpp
+					src/sensors/amcl_crossing_window.cpp)
+                    
 target_link_libraries(amcl_sensors amcl_map amcl_pf)
 
 rosbuild_add_executable(bin/curb_amcl
                        src/curb_amcl_node.cpp)
-
+                       
+rosbuild_add_executable(bin/curb_crossing
+                       src/curb_crossing_amcl.cpp)
+                       
 target_link_libraries(bin/curb_amcl amcl_sensors amcl_map amcl_pf)
-
+target_link_libraries(bin/curb_crossing amcl_sensors amcl_map amcl_pf)
 ## Tests are failing on OSX for an unknown reason
 #include(CMakeDetermineSystem)
 #if(CMAKE_SYSTEM_NAME MATCHES "Linux")

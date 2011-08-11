@@ -229,8 +229,8 @@ bool AMCLOdom::UpdateAction(pf_t *pf, AMCLSensorData *data, void* arg)
 		int mi,mj;
 		mi = MAP_GXWX(map, sample->pose.v[0]);
 		mj = MAP_GYWY(map, sample->pose.v[1]);
-		double awardCoeff=100.0;
-		if(MAP_VALID(map,mi,mj) && (map->cells[MAP_INDEX(map,mi,mj)].occ_state == -1)){sample->weight=sample->weight * awardCoeff;}
+		double penalCoeff=0.01;
+		if( (!MAP_VALID(map,mi,mj)) || ((map->cells[MAP_INDEX(map,mi,mj)].occ_state != -1))){sample->weight = sample->weight * penalCoeff;}
 		
     }
   }

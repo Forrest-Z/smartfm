@@ -16,6 +16,8 @@
 //change to "amcl_curb_window.h";
 //remember to change the cmake file;
 #include "sensors/amcl_curb_window.h"
+#include "sensors/amcl_crossing_window.h"
+
 #include "sensors/amcl_laser.h"
 
 #include "ros/assert.h"
@@ -43,6 +45,9 @@ using namespace amcl;
 #define RANDOM_SAMPLE_BOX_X 5.0
 #define RANDOM_SAMPLE_BOX_Y 5.0
 #define RANDOM_SAMPLE_BOX_THETHA M_PI/3.0
+
+#define MAX_DISTANCE 15.0
+#define CROSSING_TRESH 8
 
 // Pose hypothesis
 typedef struct
@@ -184,6 +189,10 @@ class MixAmclNode
     AMCLCurb* curb_;
     AMCLCurbData* curbdata_; 
     AMCLLaser* laser_;
+    
+    AMCLCrossing* crossing_;
+    AMCLCrossingData* LeftCroData_;
+	AMCLCrossingData* RightCroData_;
 	
 	//@_@ the following two parameters are not used;
     ros::Duration cloud_pub_interval;
@@ -273,7 +282,7 @@ MixAmclNode::MixAmclNode() :
   save_pose_period = ros::Duration(1.0/tmp);
   private_nh_.param("laser_min_range", laser_min_range_, -1.0);
   private_nh_.param("laser_max_range", laser_max_range_, -1.0);
-  private_nh_.param("min_particles", min_particles, 2000);
+  private_nh_.param("min_particles", min_particles, 1000);
   private_nh_.param("max_particles", max_particles, 5000);
   private_nh_.param("laser_max_beams", max_beams, 20);
   private_nh_.param("kld_err", pf_err, 0.01);
@@ -290,7 +299,15 @@ MixAmclNode::MixAmclNode() :
   private_nh_.param("curb_sigma_hit", curb_sigma_hit, 0.25);
   
   //this value depends on your threshold in "road_detection" pkg;
-  private_nh_.param("curb_rand_range", curb_rand_range, 40.0);
+  private_nh_.param("curb_rand_range", curb_rand_range, 15.0);
+  
+  double cro_z_hit, cro_z_short, cro_z_max, cro_z_rand, cro_sigma_hit, cro_lambda_short;
+  private_nh_.param("cro_z_hit", cro_z_hit, 0.95);
+  private_nh_.param("cro_z_short", cro_z_short, 0.1);
+  private_nh_.param("cro_z_max", cro_z_max, 0.05);
+  private_nh_.param("cro_z_rand", cro_z_rand, 0.05);
+  private_nh_.param("cro_sigma_hit", cro_sigma_hit, 0.2);
+  private_nh_.param("cro_lambda_short", cro_lambda_short, 0.1); 
   
   private_nh_.param("laser_z_hit", laser_z_hit, 0.95);
   private_nh_.param("laser_z_short", laser_z_short, 0.1);
@@ -335,7 +352,7 @@ MixAmclNode::MixAmclNode() :
   private_nh_.param("resample_interval_", resample_interval_, 2); // this parameter matters quite much;
   
   private_nh_.param("recovery_alpha_slow", alpha_slow, 0.001);     //0.001; here I just do not allowed uniform random particles generated;
-  private_nh_.param("recovery_alpha_fast", alpha_fast, 0.01);	  
+  private_nh_.param("recovery_alpha_fast", alpha_fast, 0.1);	  
   
   double tmp_tol;
   private_nh_.param("transform_tolerance", tmp_tol, 0.5);
@@ -417,6 +434,16 @@ MixAmclNode::MixAmclNode() :
   ROS_INFO("Initializing likelihood field model; this can take some time on large maps...");
   curb_->SetCurbModelLikelihoodField(curb_z_hit, curb_z_rand, curb_sigma_hit, curb_likelihood_max_dist, curb_rand_range);
   ROS_INFO("Done initializing likelihood field model.");
+  
+  //Crossing
+  crossing_ = new AMCLCrossing(curb_map_);
+  LeftCroData_ = new AMCLCrossingData(M_PI_2);
+  RightCroData_ = new AMCLCrossingData(-M_PI_2);
+  ROS_ASSERT(crossing_);
+  
+  ROS_INFO("Initializing crossing beam model");
+  crossing_->SetCrossingModelBeam(cro_z_hit, cro_z_short, cro_z_max, cro_z_rand, cro_sigma_hit, cro_lambda_short);
+  ROS_INFO("Done initializing crossing beam model");
 
   //initial publisher and subscriber;
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2);
@@ -427,7 +454,7 @@ MixAmclNode::MixAmclNode() :
   global_loc_srv_ = nh_.advertiseService("global_localization", &MixAmclNode::globalLocalizationCallback, this);
 
   
-  curb_sidepoints_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud>(nh_, "raw_curb_points", 10);  //200
+  curb_sidepoints_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud>(nh_, "hybrid_pt", 10);  //200
   curb_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(*curb_sidepoints_sub_, *tf_, odom_frame_id_,100);                                                     
   curb_filter_->registerCallback(boost::bind(&MixAmclNode::curbReceived, this, _1));
   
@@ -442,12 +469,6 @@ MixAmclNode::MixAmclNode() :
   initial_pose_filter_->registerCallback(boost::bind(&MixAmclNode::initialPoseReceived, this, _1));
 
   initial_pose_sub_old_ = nh_.subscribe("initialpose", 2, &MixAmclNode::initialPoseReceivedOld, this);
-
-  //////////////////////////////////////////////////////////////////////////////////////////////////////
-  //for analysis purposes;
-  //////////////////////////////////////////////////////////////////////////////////////////////////////
-  LeftAnalysis_pub_  = nh_.advertise<geometry_msgs::PointStamped>("LeftAnalysis",  5);
-  RightAnalysis_pub_ = nh_.advertise<geometry_msgs::PointStamped>("RightAnalysis", 5);
   
   ROS_INFO("Construction Finished");
 }
@@ -507,6 +528,11 @@ MixAmclNode::~MixAmclNode()
 	delete tfb_;
 	delete tf_;
 	pf_free(pf_);
+	
+	delete RightCroData_;
+	delete LeftCroData_;
+	delete crossing_;
+	
 	delete curbdata_;
 	delete curb_;
 	delete laser_;
@@ -583,6 +609,9 @@ bool MixAmclNode::globalLocalizationCallback(std_srvs::Empty::Request& req,std_s
 
 void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
 {
+	pf_sample_set_t* set = pf_->sets + pf_->current_set;
+	pf_sample_t *sample = set->samples;
+	
 	ros::Time curbRece_time = cloud_in->header.stamp;
 	
 	ros::Time now1 = ros::Time::now();
@@ -618,6 +647,23 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 	bool force_publication = false;
 	bool resampled = false;
 	
+	///////////////////////////////////////////////////////////////////////////////////////////
+	////following block: process the hybrid information, to get "curbdata" and "crossingdata";
+	///////////////////////////////////////////////////////////////////////////////////////////
+
+	sensor_msgs::PointCloud leftCrossing;
+	sensor_msgs::PointCloud rightCrossing;
+	sensor_msgs::PointCloud curbpoints;
+	
+	for(unsigned int ip=0; ip<cloud_in->points.size(); ip++)
+	{
+		//actually "cloud_in" only has one point every time; 
+		if(cloud_in->points[ip].y == MAX_DISTANCE){leftCrossing.points.push_back(cloud_in->points[ip]);}
+		else if(cloud_in->points[ip].y == -MAX_DISTANCE){rightCrossing.points.push_back(cloud_in->points[ip]);}
+		else{curbpoints.points.push_back(cloud_in->points[ip]);}
+	}
+	
+	
 	if(!pf_init_)
 	{
 		pf_odom_pose_ = pose; 
@@ -634,19 +680,46 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 	
 	if(curbdata_->reinit_==true)
 	{
-		//ROS_INFO("Curbdata reinit");	
+		ROS_INFO("Curbdata reinit");	
 		curbdata_->reinit_ = false;
 		curbdata_->beginningTf_ = baseOdomTemp;
-	
+		LeftCroData_->beginningTf_ = baseOdomTemp;
+		RightCroData_->beginningTf_ = baseOdomTemp;
+		
 		//to set time to be "beginning time" of the new window;
 		curbdata_->curbSegment_.header= cloud_in->header;
+		
 		curbdata_->curbSegment_.points.clear();
-	
-		for(unsigned int ip=0; ip<cloud_in->points.size(); ip++)
+		LeftCroData_->FakeSensorPose_.clear();
+		RightCroData_->FakeSensorPose_.clear();
+		
+		for(unsigned int ip=0; ip<curbpoints.points.size(); ip++)
 		{
-			curbdata_->curbSegment_.points.push_back(cloud_in->points[ip]);
+			curbdata_->curbSegment_.points.push_back(curbpoints.points[ip]);
 		}
 		curbdata_->accumNum_ = curbdata_->curbSegment_.points.size();
+		
+		for(unsigned int ip=0; ip<leftCrossing.points.size(); ip++)
+		{
+			pf_vector_t fakepose;
+			fakepose.v[0]= leftCrossing.points[ip].x;
+			fakepose.v[1]= 0.0;
+			fakepose.v[2]= 0.0;
+			LeftCroData_->FakeSensorPose_.push_back(fakepose);
+		}
+		
+		for(unsigned int ip=0; ip<rightCrossing.points.size(); ip++)
+		{
+			pf_vector_t fakepose;
+			fakepose.v[0]= rightCrossing.points[ip].x;
+			fakepose.v[1]= 0.0;
+			//fakepose.v[2] is the angle;
+			fakepose.v[2]= 0.0;
+			
+			RightCroData_->FakeSensorPose_.push_back(fakepose);
+		}
+		
+		
 	}
 	else
 	{
@@ -668,11 +741,16 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 		tf::Transform baselink_old_new  = curbdata_->beginningTf_.inverse() * baseOdomTemp;
 		tf::Transform baselink_new_old  = baseOdomTemp.inverse() * curbdata_->beginningTf_;
 	
-		for(unsigned int ip=0; ip<cloud_in->points.size(); ip++)
+		for(unsigned int ip=0; ip<curbpoints.points.size(); ip++)
 		{
-			temppose.position.x = cloud_in->points[ip].x;
-			temppose.position.y = cloud_in->points[ip].y;
-			temppose.position.z = cloud_in->points[ip].z;
+			ROS_INFO("curb accumulated");
+			//remember this, to eliminate "crossing" noise;
+			if(curbpoints.points[ip].y>0) {LeftCroData_->FakeSensorPose_.clear();}
+			else {RightCroData_->FakeSensorPose_.clear();}
+			
+			temppose.position.x = curbpoints.points[ip].x;
+			temppose.position.y = curbpoints.points[ip].y;
+			temppose.position.z = curbpoints.points[ip].z;
 			
 			tf::Pose tempTfPose;
 			tf::poseMsgToTF(temppose, tempTfPose);
@@ -686,10 +764,55 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 		
 			curbdata_->curbSegment_.points.push_back(pointtemp);
 		}
-		
 		curbbaselink_.publish(curbdata_->curbSegment_);
-		
 		curbdata_->accumNum_ = curbdata_->curbSegment_.points.size();
+		
+		for(unsigned int ip=0; ip<leftCrossing.points.size(); ip++)
+		{
+			ROS_INFO("LeftCroData_ accumulated");
+			
+			pf_vector_t fakepose;
+			temppose.position.x = leftCrossing.points[ip].x;
+			temppose.position.y = 0.0;
+			temppose.position.z = 0.0;
+			
+			tf::Pose tempTfPose;
+			tf::poseMsgToTF(temppose, tempTfPose);
+		
+			tf::Pose oldBaselinkPose = 	baselink_old_new * tempTfPose;
+		
+			fakepose.v[0] = oldBaselinkPose.getOrigin().x();
+			fakepose.v[1] = oldBaselinkPose.getOrigin().y();
+			
+			double yyaw,ttemp;
+			baselink_old_new.getBasis().getEulerYPR(yyaw, ttemp, ttemp);
+			fakepose.v[2] = yyaw;
+			
+			LeftCroData_->FakeSensorPose_.push_back(fakepose);
+		}
+		
+		for(unsigned int ip=0; ip<rightCrossing.points.size(); ip++)
+		{
+			ROS_INFO("RightCroData_ accumulated");
+			pf_vector_t fakepose;
+			temppose.position.x = rightCrossing.points[ip].x;
+			temppose.position.y = 0.0;
+			temppose.position.z = 0.0;
+			
+			tf::Pose tempTfPose;
+			tf::poseMsgToTF(temppose, tempTfPose);
+		
+			tf::Pose oldBaselinkPose = 	baselink_old_new * tempTfPose;
+		
+			fakepose.v[0] = oldBaselinkPose.getOrigin().x();
+			fakepose.v[1] = oldBaselinkPose.getOrigin().y();
+			
+			double yyaw,ttemp;
+			baselink_old_new.getBasis().getEulerYPR(yyaw, ttemp, ttemp);
+			fakepose.v[2] = yyaw;
+			
+			RightCroData_->FakeSensorPose_.push_back(fakepose);
+		}
 	
 		odom_delta.v[0] = pose.v[0] - pf_odom_pose_.v[0];
 		odom_delta.v[1] = pose.v[1] - pf_odom_pose_.v[1];
@@ -712,8 +835,12 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 		bool update2 = (curbdata_->accumNum_) > numTresh_;
 		bool update3 = (curbdata_->accumNum_>10) && (distTolastOdom>0.6||odom_delta.v[2]> M_PI/6.0);
 		
-		bool updateAction = (update1 && update2)||update3;
-		bool updateMeas= (update1 && update2)||update3;
+		bool update4 = (LeftCroData_->FakeSensorPose_.size()+RightCroData_->FakeSensorPose_.size())> CROSSING_TRESH;
+		if(update4){ROS_INFO("~~~Using Crossing Information~~");}
+		
+		bool updateAction = (update1 && (update2||update4))||update3;
+		bool updateMeas= (update1 && (update2||update4))||update3;
+		
 		bool Shift_Flag = (distTolastOdom >1||odom_delta.v[2]> M_PI/3.0);
 		
 		
@@ -726,7 +853,7 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 				double temp_alpha2=0.04;	//0.09
 				double temp_alpha3=0.2;
 				double temp_alpha4=0.2;
-				double temp_alpha6=0.09;
+				double temp_alpha6=0.01;
 				odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
 			}
 			
@@ -780,7 +907,7 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 		if(updateMeas)
 		{
 			ROS_INFO("---------------------update Meas----------------");
-			ROS_INFO("distTolastCurb: %5f, accumNum: %d", distTolastCurb, curbdata_->accumNum_);
+			ROS_INFO("distTolastCurb: %5f, curb accumNum: %d, left crossing: %d, right crossing: %d", distTolastCurb, curbdata_->accumNum_, LeftCroData_->FakeSensorPose_.size(), RightCroData_->FakeSensorPose_.size());
 			
 			//this is quite important!!!
 			//Because in the beginning I missed this command, the whole program cannot work properly;
@@ -811,43 +938,74 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 				pointtemp.z=(float)newBaselinkPose.getOrigin().z();
 			
 				temppointcloud.points.push_back(pointtemp);
-				//emphasize the curb points;
+				//to emphysize the curb measurements;
 				temppointcloud.points.push_back(pointtemp);
-				
-				if(pointtemp.y>0){newLeftMeas_.points.push_back(pointtemp);}
-				else{newRightMeas_.points.push_back(pointtemp);}
 			}
-			
 			curbdata_->curbSegment_.points=temppointcloud.points;
 			curbdata_->sensor = curb_;
 			
-			///////////////////////////////////////////////////////////////////////////////////////
-			//The following block is added for analysis purposes;
-			///////////////////////////////////////////////////////////////////////////////////////
-			measAnalysis(oldLeftMeas_,  newLeftMeas_,  distTolastCurb, LeftAnalysis_,  LeftAnalysis_pub_ );
-			measAnalysis(oldRightMeas_, newRightMeas_, distTolastCurb, RightAnalysis_, RightAnalysis_pub_);
-
+			for(unsigned int ip=0; ip< RightCroData_->FakeSensorPose_.size(); ip++)
+			{
+				temppose.position.x = (float)(RightCroData_->FakeSensorPose_[ip].v[0]);
+				temppose.position.y = (float)(RightCroData_->FakeSensorPose_[ip].v[1]);
+				temppose.position.z = 0.0;
+			
+				tf::Pose tempTfPose;
+				tf::poseMsgToTF(temppose, tempTfPose);
+				tf::Pose newBaselinkPose = 	baselink_new_old*tempTfPose;
+				
+				RightCroData_->FakeSensorPose_[ip].v[0] = newBaselinkPose.getOrigin().x();
+				RightCroData_->FakeSensorPose_[ip].v[1] = newBaselinkPose.getOrigin().y();
+			
+				double yyaw,ttemp;
+				baselink_new_old.getBasis().getEulerYPR(yyaw, ttemp, ttemp);
+				RightCroData_->FakeSensorPose_[ip].v[2] = RightCroData_->FakeSensorPose_[ip].v[2]+yyaw;
+			}
+			
+			for(unsigned int ip=0; ip< LeftCroData_->FakeSensorPose_.size(); ip++)
+			{
+				temppose.position.x = (float)(LeftCroData_->FakeSensorPose_[ip].v[0]);
+				temppose.position.y = (float)(LeftCroData_->FakeSensorPose_[ip].v[1]);
+				temppose.position.z = 0.0;
+			
+				tf::Pose tempTfPose;
+				tf::poseMsgToTF(temppose, tempTfPose);
+				tf::Pose newBaselinkPose = 	baselink_new_old*tempTfPose;
+				
+				LeftCroData_->FakeSensorPose_[ip].v[0] = newBaselinkPose.getOrigin().x();
+				LeftCroData_->FakeSensorPose_[ip].v[1] = newBaselinkPose.getOrigin().y();
+			
+				double yyaw,ttemp;
+				baselink_new_old.getBasis().getEulerYPR(yyaw, ttemp, ttemp);
+				LeftCroData_->FakeSensorPose_[ip].v[2] = LeftCroData_->FakeSensorPose_[ip].v[2]+yyaw;
+			}
+			
 			//////////////////////////////////////////////////////////////////////////////////////
 			// to keep in accordance with original code;
 			// Segmentation Fault once found here!!!
 			// because my curbdata_ here is a pointer, I shouldn't use "&" as original code does;
 			//////////////////////////////////////////////////////////////////////////////////////
-			
 				
 				
+				curbdata_->sensor = curb_;
 				bool *FlagPointer = &CurbUseFlag_;
-			
-				curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer);
-				//curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer);
 				
-				if(LaserUseFlag_)
-				{
-					numTresh_ = 15;
-				}
-				else
-				{
-					numTresh_ = 15;
-				}
+				
+				curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer);
+				
+				if(LaserUseFlag_){numTresh_ = 15;}
+				else{numTresh_ = 15;}
+				
+				bool tempflag;
+				bool *tempflagpointer = &tempflag;
+				
+				
+				
+				
+				LeftCroData_->sensor = crossing_;
+				crossing_->UpdateSensor(pf_, (AMCLSensorData*) LeftCroData_, tempflagpointer);
+				RightCroData_->sensor = crossing_;
+				crossing_->UpdateSensor(pf_, (AMCLSensorData*) RightCroData_, tempflagpointer);
 				
 				if(CurbUseFlag_)
 				{
@@ -857,9 +1015,9 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 						pf_update_resample(pf_);
 						resampled = true;
 					}
-			
-					pf_sample_set_t* set = pf_->sets + pf_->current_set;
-					ROS_DEBUG("Num samples: %d\n", set->sample_count);
+					
+					set = pf_->sets + pf_->current_set;
+					sample = set->samples;
 	
 					// Publish the resulting cloud
 					// TODO: set maximum rate for publishing
@@ -880,6 +1038,7 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 	
 	if(resampled||force_publication)
 	{
+		
 		/////////////////////////////////////////////////////////////////////////////////////////////////////
 		////if(resampled||(force_publication && (!curb_init_)))
 		//////curb_init_ = true;
@@ -893,6 +1052,11 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 		
 		//ROS_INFO("resampled or force_publish");
 		// Read out the current hypotheses
+		
+		
+		set = pf_->sets + pf_->current_set;
+		sample = set->samples;
+		
 		double max_weight = 0.0;
 		int max_weight_hyp = -1;
 		std::vector<amcl_hyp_t> hyps;
@@ -1130,7 +1294,6 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 		pf_init_ = true;
 	}
 	
-	bool Shift_Flag;
 	if(laser_init_)
 	{
 		// Compute change in pose
@@ -1156,7 +1319,7 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 		for(unsigned int i=0; i < lasers_update_.size(); i++)
 		lasers_update_[i] = true;
 		
-		Shift_Flag = (distTolastOdom > 0.3 || odom_delta.v[2] > M_PI/6.0);
+		bool Shift_Flag = (distTolastOdom > 0.3 || odom_delta.v[2] > M_PI/6.0);
 		
 		if(!Shift_Flag)
 		{
@@ -1195,28 +1358,27 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 	else if(laser_init_ && lasers_update_[laser_index])
 	{
 		/*
-		if(LaserUseFlag_ && !Shift_Flag)
+		if(LaserUseFlag_)
 		{
-			laser_d_thresh_ = 0.3;
-			double temp_alpha1=0.04;
-			double temp_alpha2=0.04;
-			double temp_alpha3=0.09;
-			double temp_alpha4=0.09;
+			laser_d_thresh_ = 0.2;
+			double temp_alpha1=0.2;
+			double temp_alpha2=0.2;
+			double temp_alpha3=0.2;
+			double temp_alpha4=0.2;
 			double temp_alpha6=0.09;
 			odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
 		}
-		
-		else if(!Shift_Flag)
+		else
 		{
 			laser_d_thresh_ = 0.3;
-			double temp_alpha1=0.04;
-			double temp_alpha2=0.04;
-			double temp_alpha3=0.09;
-			double temp_alpha4=0.09;
+			double temp_alpha1=0.2;
+			double temp_alpha2=0.2;
+			double temp_alpha3=0.2;
+			double temp_alpha4=0.2;
 			double temp_alpha6=0.09;
 			odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
 		}
-		*/
+		*/ 
 		
 		//printf("pose\n");
 		//pf_vector_fprintf(pose, stdout, "%.3f");
@@ -1331,9 +1493,8 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 			{
 				ROS_INFO("laser_resample_count: %d", resample_count_);
 			}
-
+			
 			pf_sample_set_t* set = pf_->sets + pf_->current_set;
-			ROS_DEBUG("Num samples: %d\n", set->sample_count);
 		
 			// Publish the resulting cloud
 			// TODO: set maximum rate for publishing

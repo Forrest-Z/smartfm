@@ -237,6 +237,8 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
   workset->samples = calloc(set->sample_count, sizeof(pf_sample_t));
   workset->meas_score = 0.0;
   
+  sample = set->samples;
+
   for (i = 0; i < workset->sample_count; i++)
   {
     worksample = workset->samples + i;
@@ -282,17 +284,16 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
     // Update running averages of likelihood of samples (Prob Rob p258)
     w_avg /= set->sample_count;
 
-	 printf("before: w_avg: %e slow: %e fast: %e\n",w_avg, pf->w_slow, pf->w_fast);
+	 printf("before: w_avg: %e slow: %e fast: %e total: %e sample count: %d \n",w_avg, pf->w_slow, pf->w_fast, total, set->sample_count);
 	 
-    if(pf->w_slow == 0.0)
-      pf->w_slow = w_avg;
-    else
-      pf->w_slow += pf->alpha_slow * (w_avg - pf->w_slow);
-
-
+	 ///////////////////////////////////////////////////////
+	 ///// the following block deserves much attention;
+	 ///// how to control resampled particles;
+	 ///////////////////////////////////////////////////////
+	 /*
 	 if(pf->w_fast > 1.5*pf->w_slow)
 	 {
-		 if(w_avg>pf->w_fast) pf->alpha_fast = 0.001;   //0.2
+		 if(w_avg>pf->w_fast) pf->alpha_fast = 0.01;   //0.2
 		 else pf->alpha_fast = 0.5;  
 	 }
 	 else
@@ -300,6 +301,55 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
 		 if(w_avg>pf->w_fast) pf->alpha_fast = 0.4;   //0.2
 		 else pf->alpha_fast = 0.2;  //0.05
 	 }
+	 */
+	 
+	 // step 1. to guarantee rapid response;
+	 if(pf->w_fast > 1.2*pf->w_slow)
+	 {
+		 if(w_avg>pf->w_fast) 
+		 {
+			pf->alpha_fast = 0.01;   //0.2
+			pf->alpha_slow = 0.1;
+		 }
+		 else 
+		 { 
+			pf->alpha_fast = 0.5;
+			pf->alpha_slow = 0.001;
+		 }
+	 }
+	 else if (pf->w_fast > 1.0* pf->w_slow)
+	 {
+		 if(w_avg>pf->w_fast) 
+		 {
+			pf->alpha_fast = 0.1;   
+		   pf->alpha_slow = 0.01;
+		 }
+		 else 
+		 {
+			pf->alpha_fast = 0.2; 
+			pf->alpha_slow = 0.001;
+		 }
+	 }	
+	 else  
+	 {
+		 if(w_avg>pf->w_fast) 
+		 {
+			pf->alpha_fast = 0.2; 
+		   pf->alpha_slow = 0.001;
+		 }
+		 else 
+		 {
+			pf->alpha_fast = 0.05;
+			pf->alpha_slow = 0.001;
+		 }  
+	 }
+
+
+
+    if(pf->w_slow == 0.0)
+      pf->w_slow = w_avg;
+    else
+      pf->w_slow += pf->alpha_slow * (w_avg - pf->w_slow);
 
     if(pf->w_fast == 0.0)
       pf->w_fast = w_avg;
@@ -361,11 +411,18 @@ void pf_update_resample(pf_t *pf)
   w_diff = 1.0 - pf->w_fast / pf->w_slow;
   printf("w_diff %e\n", w_diff);
 
+
+  //step 2. to prevent randomness blow-up, which may be caused by "w_slow < w_fast" for a long time;
   if(w_diff < 0.0)
-    w_diff = 0.0;
+  {
+     w_diff = 0.0;	
+  }
   if(w_diff >0.02)
-	 w_diff = 0.02;
-	
+  {
+	  pf->w_slow = pf->w_fast;
+	  w_diff = 0.02;	    
+  } 
+
   //printf("w_diff: %9.6f\n", w_diff);
 
   // Can't (easily) combine low-variance sampler with KLD adaptive
@@ -443,7 +500,7 @@ void pf_update_resample(pf_t *pf)
   }
   
   // Reset averages, to avoid spiraling off into complete randomness.
-  // if(w_diff > 0.0)
+  //if(w_diff > 0.0)
   // pf->w_slow = pf->w_fast = 0.0;
 
   //fprintf(stderr, "\n\n");
@@ -454,7 +511,7 @@ void pf_update_resample(pf_t *pf)
     sample_b = set_b->samples + i;
     sample_b->weight /= total;
   }
-  
+
   // Re-compute cluster statistics
   pf_cluster_stats(pf, set_b);
 

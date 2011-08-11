@@ -22,7 +22,8 @@ rosbuild_add_library(amcl_sensors
                     src/sensors/amcl_sensor.cpp
                     src/sensors/amcl_odom.cpp
                     src/sensors/amcl_laser.cpp
-                    src/sensors/amcl_curb_window.cpp)
+                    src/sensors/amcl_curb_window.cpp
+                    src/sensors/amcl_crossing_window.cpp)
                     
 target_link_libraries(amcl_sensors amcl_map amcl_pf)
 

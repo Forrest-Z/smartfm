@@ -50,7 +50,6 @@ double AMCLCurb::LikelihoodFieldModel(AMCLCurbData *data, pf_sample_set_t* set)
 {
   AMCLCurb *self;
   unsigned int i, j;
-  
   double z, pz;
   double p;
   double obs_range, obs_bearing;

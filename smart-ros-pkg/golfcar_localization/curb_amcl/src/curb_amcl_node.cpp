@@ -254,7 +254,7 @@ CurbAmclNode::CurbAmclNode() :
   private_nh_.param("laser_z_hit", z_hit, 0.95);
   private_nh_.param("laser_z_rand", z_rand, 0.05);
   private_nh_.param("laser_sigma_hit", sigma_hit, 0.25);
-  private_nh_.param("rand_range", rand_range, 40.0);
+  private_nh_.param("rand_range", rand_range, 15.0);            //40.0
   
   double laser_likelihood_max_dist;
   private_nh_.param("laser_likelihood_max_dist",laser_likelihood_max_dist, 3.0);
@@ -547,8 +547,7 @@ CurbAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
 
 	if(curbdata_->reinit_==true)
 	{
-		//ROS_INFO("Curbdata reinit");
-	
+		//ROS_INFO("Curbdata reinit");	
 		pf_odom_pose_ = pose;
 		force_publication = true;
 		curbdata_->reinit_ = false;
@@ -563,7 +562,6 @@ CurbAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
 			curbdata_->curbSegment_.points.push_back(cloud_in->points[ip]);
 		}
 		curbdata_->accumNum_ = curbdata_->curbSegment_.points.size();
-	
 	}
 	else
 	{

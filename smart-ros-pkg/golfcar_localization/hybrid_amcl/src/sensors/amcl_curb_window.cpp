@@ -66,6 +66,7 @@ double AMCLCurb::LikelihoodFieldModel(AMCLCurbData *data, pf_sample_set_t* set)
 
   double meas_total_score=0.0;
   // Compute the sample weights
+  
   for (j = 0; j < set->sample_count; j++)
   {
     sample = set->samples + j;
@@ -83,7 +84,7 @@ double AMCLCurb::LikelihoodFieldModel(AMCLCurbData *data, pf_sample_set_t* set)
     for (i = 0; i < data->curbSegment_.points.size(); i++)
     {
       pz = 0.0;
-
+      
       //////////////////////////////////////////////////////////////////////////////////////
       //Treat the curb points as laser-beam end points, to make the most of original code;
       //////////////////////////////////////////////////////////////////////////////////////
@@ -134,6 +135,5 @@ double AMCLCurb::LikelihoodFieldModel(AMCLCurbData *data, pf_sample_set_t* set)
   }
   
   set->meas_score = meas_total_score/(set->sample_count)-1; 
-
   return(total_weight);
 }
