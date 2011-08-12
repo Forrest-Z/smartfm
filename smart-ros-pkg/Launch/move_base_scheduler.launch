@@ -1,5 +1,6 @@
 <launch>
 	<node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
+		<remap from="/cmd_vel" to="/move_vel"/>
 		<param name="footprint_padding" value="0.1" />
 		<param name="controller_frequency" value="10.0" />
 		<param name="controller_patience" value="100.0" />

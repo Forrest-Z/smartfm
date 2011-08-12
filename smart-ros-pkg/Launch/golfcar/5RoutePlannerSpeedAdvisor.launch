@@ -1,0 +1,4 @@
+<launch>
+	<node pkg="golfcar_ppc" type="speed_advisor" name="speed_advisor" output="screen"/>
+	<node pkg="golfcar_route_planner" type="route_planner_standalone" name="route_planner"  output="screen"/>
+</launch>
