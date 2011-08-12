@@ -93,10 +93,10 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
 
 		//add critical line
 		geometry_msgs::Point32 critical_line_p1, critical_line_p2;
-		critical_line_p1.x = (polygon_in_world[1].x - polygon_in_world[0].x)*2/7 + polygon_in_world[0].x;
-		critical_line_p1.y = (polygon_in_world[1].y - polygon_in_world[0].y)*2/7 + polygon_in_world[0].y;
-		critical_line_p2.x = (polygon_in_world[2].x - polygon_in_world[3].x)*2/7 + polygon_in_world[3].x;
-		critical_line_p2.y = (polygon_in_world[2].y - polygon_in_world[3].y)*2/7 + polygon_in_world[3].y;
+		critical_line_p1.x = (polygon_in_world[1].x - polygon_in_world[0].x)*3/7 + polygon_in_world[0].x;
+		critical_line_p1.y = (polygon_in_world[1].y - polygon_in_world[0].y)*3/7 + polygon_in_world[0].y;
+		critical_line_p2.x = (polygon_in_world[2].x - polygon_in_world[3].x)*3/7 + polygon_in_world[3].x;
+		critical_line_p2.y = (polygon_in_world[2].y - polygon_in_world[3].y)*3/7 + polygon_in_world[3].y;
 
 		//adding the new polygons for visualization and further process for costmap
 		std::vector<geometry_msgs::Point32> critical_polygon;
