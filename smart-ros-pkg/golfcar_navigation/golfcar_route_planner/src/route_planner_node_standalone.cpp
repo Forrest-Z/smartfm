@@ -29,8 +29,13 @@ RoutePlannerNode::RoutePlannerNode()
 
 	
 	currentStationID_ = 0;
-	//cout<<"Got it, my current staion is "<<currentStationID_<<". Getting ready in 5 seconds"<<endl;
-	//ros::Duration(5).sleep();
+	string station = "";
+	cout<<"Current station?"<<endl;
+	getline(cin, station);
+
+	currentStationID_ = atoi(station.c_str());
+	cout<<"Got it, my current staion is "<<currentStationID_<<endl;
+
 	ROS_INFO("READY!");
 	RoutePlannerNode::clearscreen();
 	while (ros::ok()) {
@@ -47,25 +52,12 @@ RoutePlannerNode::RoutePlannerNode()
 		//go to the pickup point
 		if(dropoff!=pickup)
 		{
-			if(currentStationID_!=pickup)
-			{
-				ROS_INFO("On call.... pickup at station %d from %d", pickup,currentStationID_);
-				sp.getPath(currentStationID_, pickup, targets_ );
-				RoutePlannerNode::publishPathVis();
-				RoutePlannerNode::publish_goal(currentStationID_, pickup);
-				RoutePlannerNode::startLoop(VEHICLE_ON_CALL, currentStationID_, pickup);
-
-				//arrive at pickup point
-				ROS_INFO("Arrived at pickup point");
-
-			}
-
 			sp.getPath(pickup, dropoff, targets_);
 			RoutePlannerNode::publishPathVis();
 
 			string input = "";
 			ROS_INFO("Welcome %d! You have requested pickup at station %d to %d", usrID,pickup,dropoff);
-			ROS_INFO("Press enter key when you are ready!");
+			//ROS_INFO("Press enter key when you are ready!");
 			//getline(cin, input);
 			ROS_INFO("Let's go!");
 
@@ -76,12 +68,9 @@ RoutePlannerNode::RoutePlannerNode()
 			//arrive at dropoff point, update current ID
 			ROS_INFO("Arrive at dropoff point");
 			currentStationID_ = dropoff;
-			ROS_INFO("Press enter key when you are outside the vehicle!");
-			getline(cin, input);
 		}
 		//i'm become available again, preparing to get next task
 
-		ROS_INFO("Waiting for next task. Prepared to move to a pick up point at any time");
 		ros::spinOnce();
 	}
 }
@@ -140,8 +129,8 @@ void RoutePlannerNode::startLoop(VehicleStatus vehstatus,int dropoff, int pickup
 		int station_distance = RoutePlannerNode::distance_to_goal();
 
 		if(WaypointNo_==targets_.size()) break;
-		if(vehstatus == VEHICLE_ON_CALL) ROS_INFO("Going to pick up station %d from station %d, distance to go %d m", dropoff, pickup, station_distance);
-		if(vehstatus == VEHICLE_POB) ROS_INFO("Going to drop off station %d from station %d, distance to go %d m", dropoff, pickup, station_distance);
+		if(vehstatus == VEHICLE_ON_CALL) ROS_DEBUG("Going to pick up station %d from station %d, distance to go %d m", dropoff, pickup, station_distance);
+		if(vehstatus == VEHICLE_POB) ROS_DEBUG("Going to drop off station %d from station %d, distance to go %d m", dropoff, pickup, station_distance);
 
 		RoutePlannerNode::waypoint_pub();
 		ros::spinOnce();
