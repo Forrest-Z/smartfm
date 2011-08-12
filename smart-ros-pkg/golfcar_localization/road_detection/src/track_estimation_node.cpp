@@ -20,7 +20,9 @@ namespace estimation{
     Rreinitial_(false),
     Lreinitial_(false),
     Rtrack_output_cred_(true),
-    Ltrack_output_cred_(true)	    	
+    Ltrack_output_cred_(true),
+    RcrossHandle_(true),
+    LcrossHandle_(true)    	
 	{
 		ros::NodeHandle nh;
 		
@@ -132,8 +134,15 @@ namespace estimation{
 		Rtx_ = -odom_old_new.getOrigin().y();
 		Rty_ =  odom_old_new.getOrigin().x();
 		float mov_dis = sqrtf(Rtx_*Rtx_ + Rty_*Rty_);
-		
+		float mov_dis_tresh =0.05; 		
 		temp_infoPt.distoFormer_=mov_dis;
+		
+		if(mov_dis>mov_dis_tresh) {RcrossHandle_=true;}
+		/*
+		double deltyaw, ttemp;
+		odom_old_new.getBasis().getEulerYPR(deltyaw, ttemp, ttemp);
+		float rotate_dis_tresh = 0.09  //about 5 degree;
+		*/
 		
 		if((!R_filter_.isInitialized())||Rreinitial_)
 		{
@@ -153,9 +162,9 @@ namespace estimation{
 				temp_infoPt.covY_ = R_filter_.estimate_covariance_(2,2);
 				temp_infoPt.firstPt_=true;		
 				
-				right_point.x = Rcurb_line_.points[0].x;
-				right_point.y = Rcurb_line_.points[0].y;	
-				right_point.z = Rcurb_line_.points[0].z;
+				right_point.x = Rcurb_line_.points.back().x;
+				right_point.y = Rcurb_line_.points.back().y;	
+				right_point.z = Rcurb_line_.points.back().z;
 				right_point_.points.push_back(right_point);
 				Raw_Rpt_.points.push_back(right_point);
 				
@@ -184,6 +193,8 @@ namespace estimation{
 			}
 			else
 			{
+				if(RcrossHandle_) {Rodom_meas_old_  = Rodom_meas_; RcrossHandle_=false;}
+				
 				max_dis_point_.x = R_filter_.old_forward_dis_;
 				max_dis_point_.y = -MAX_DISTANCE;
 				hybrid_Rpt_.points.push_back(max_dis_point_);
@@ -201,12 +212,8 @@ namespace estimation{
 			//float mov_dis = sqrtf(Rtx_*Rtx_ + Rty_*Rty_);
 			
 			//update controlled by "mov_dis"; this is optional;
-			float mov_dis_tresh =0.05; 
-			if(mov_dis<mov_dis_tresh)
-			{
-				//ROS_INFO("R:mov_dis less than mov_dis_tresh");
-				return;
-			}
+			
+			if(mov_dis<mov_dis_tresh){ROS_INFO("R:mov_dis less than mov_dis_tresh");return;}
 
 			double tmp = 0;
 			double temp_delt_phi;
@@ -255,10 +262,11 @@ namespace estimation{
 			//always remember to change coordinates;
 			right_point.x = R_filter_.estimate_value_.y;
 			right_point.y =-R_filter_.estimate_value_.x;
-			right_point.z = Rcurb_line_.points[0].z;			
+			right_point.z = Rcurb_line_.points.back().z;			
 			right_point_.points.push_back(right_point);
 			
 			R_window_.rollingProcess(temp_infoPt, Rtrack_output_cred_);
+			
 			if(Rtrack_output_cred_)
 			{
 					right_Ptcred_.points.push_back(right_point);
@@ -276,9 +284,9 @@ namespace estimation{
 				if(!R_filter_.vehicles_flag_)
 				{
 					geometry_msgs::Point32 raw_right_point;
-					raw_right_point.x = Rcurb_line_.points[0].x;
-					raw_right_point.y = Rcurb_line_.points[0].y;	
-					raw_right_point.z = Rcurb_line_.points[0].z;
+					raw_right_point.x = Rcurb_line_.points.back().x;
+					raw_right_point.y = Rcurb_line_.points.back().y;	
+					raw_right_point.z = Rcurb_line_.points.back().z;
 					Raw_Rpt_.points.push_back(raw_right_point);
 					
 					if(raw_right_point.y<MAX_DISTANCE && raw_right_point.y>-MAX_DISTANCE)
@@ -303,9 +311,16 @@ namespace estimation{
 		}
 		right_point_pub_.publish(right_point_);
 		//right_Ptcred_pub_.publish(right_Ptcred_);		
-		//cred_full_right_pub_.publish(cred_full_right_curb_);		
-		Raw_Rpt_pub_.publish(Raw_Rpt_);
-		hybrid_Rpt_pub_.publish(hybrid_Rpt_);
+		//cred_full_right_pub_.publish(cred_full_right_curb_);
+		
+		
+		
+		if(mov_dis<mov_dis_tresh){return;}		
+		else
+		{
+			Raw_Rpt_pub_.publish(Raw_Rpt_);
+			hybrid_Rpt_pub_.publish(hybrid_Rpt_);
+		}
 	}
 	
 	
@@ -321,6 +336,7 @@ namespace estimation{
 		else
 		{	
 			//aways Remeber to change coordinate;
+			//pay attention for "begin" and "end" in right curbline;
 			float end_x = -Rcurb_line_.points[0].y;
 			float end_y =  Rcurb_line_.points[0].x;
 			float begin_x   = -Rcurb_line_.points.back().y;
@@ -355,7 +371,7 @@ namespace estimation{
 		
 		Lmeas_update_ = true;
 		Lmeas_exist_  = true;		
-		Lcurb_line_= * Lcurb;
+		Lcurb_line_   = * Lcurb;
 		
 		left_point_.header = Lcurb_line_.header;
 		left_point_.points.clear();
@@ -392,7 +408,10 @@ namespace estimation{
 		Ltx_ = -odom_old_new.getOrigin().y();
 		Lty_ =  odom_old_new.getOrigin().x();
 		float mov_dis = sqrtf(Ltx_*Ltx_ + Lty_*Lty_);
+		float mov_dis_tresh =0.05;
 		temp_infoPt.distoFormer_=mov_dis;
+		
+		if(mov_dis>mov_dis_tresh) {LcrossHandle_=true;}
 		
 		if((!L_filter_.isInitialized())||Lreinitial_)
 		{
@@ -405,6 +424,7 @@ namespace estimation{
 				Lodom_meas_old_ = Lodom_meas_;
 				Lodom_meas_2old_ = Lodom_meas_;
 				Lodom_meas_3old_ = Lodom_meas_;
+				
 				Lreinitial_ = false;	
 				
 				temp_infoPt.vecPt_= L_filter_.estimate_value_;
@@ -445,6 +465,8 @@ namespace estimation{
 			}
 			else
 			{
+				if(LcrossHandle_) {Lodom_meas_old_  = Lodom_meas_; LcrossHandle_=false;}
+				
 				max_dis_point_.x = L_filter_.old_forward_dis_;
 				max_dis_point_.y = MAX_DISTANCE;
 				hybrid_Lpt_.points.push_back(max_dis_point_);
@@ -464,7 +486,7 @@ namespace estimation{
 			//Lty_ =  odom_old_new.getOrigin().x();
 			//float mov_dis = sqrtf(Ltx_*Ltx_ + Lty_*Lty_);
 			
-			float mov_dis_tresh =0.05;
+			
 			if(mov_dis<mov_dis_tresh){ROS_INFO("L: mov_dis less than mov_dis_tresh");return;}
 			
 			odom_old_new.getBasis().getEulerYPR(temp_delt_phi, tmp, tmp);
@@ -532,8 +554,7 @@ namespace estimation{
 					}
 					*/ 
 			}
-			
-			
+
 			if(Lmeas_exist_)
 			{
 				if(!L_filter_.vehicles_flag_)
@@ -563,12 +584,19 @@ namespace estimation{
 				hybrid_Lpt_.points.push_back(max_dis_point_);
 			}						
 		}
-		
+
 		left_point_pub_.publish(left_point_);
 		//left_Ptcred_pub_.publish(left_Ptcred_);
 		//cred_full_left_pub_.publish(cred_full_left_curb_);
-		Raw_Lpt_pub_.publish(Raw_Lpt_);
-		hybrid_Lpt_pub_.publish(hybrid_Lpt_);
+		
+			
+		if(mov_dis<mov_dis_tresh){return;}
+		else
+		{
+			Raw_Lpt_pub_.publish(Raw_Lpt_);
+			hybrid_Lpt_pub_.publish(hybrid_Lpt_);
+		}
+		
 	}
 	
 	
@@ -582,18 +610,18 @@ namespace estimation{
 		 }
 
 		else
-		{	//aways Remeber to change coordinate;
-			//in "road_detect", the serial or sequence of "begin" and "end" will be changed here because of "push_back";
-			float end_x = -Lcurb_line_.points[0].y;
-			float end_y =  Lcurb_line_.points[0].x;
-			float begin_x   = -Lcurb_line_.points.back().y;
-			float begin_y   =  Lcurb_line_.points.back().x;
+		{	
+			//aways Remeber to change coordinate;
+			float begin_x = -Lcurb_line_.points[0].y;
+			float begin_y =  Lcurb_line_.points[0].x;
+			float end_x   = -Lcurb_line_.points.back().y;
+			float end_y   =  Lcurb_line_.points.back().x;
 			float beginthetha=0;
 			float dx=begin_x-end_x;
 			float dy=begin_y-end_y;
 			
-			float end_z = Lcurb_line_.points[0].z;
 			float beg_z = Lcurb_line_.points[0].z;
+			float end_z = Lcurb_line_.points.back().z;
 			float dz = end_z - beg_z;
 			
 			if(dz >CURB_HEIGHT||dz <-CURB_HEIGHT)

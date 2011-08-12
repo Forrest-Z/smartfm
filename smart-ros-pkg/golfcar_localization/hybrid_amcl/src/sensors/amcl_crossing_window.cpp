@@ -66,6 +66,8 @@ double AMCLCrossing::BeamModel(AMCLCrossingData *data, pf_sample_set_t* set)
   self = (AMCLCrossing*) data->sensor;
   total_weight = 0.0;
   
+  double meas_total_score=0.0;
+  
   // Compute the sample weights
   for (j = 0; j < set->sample_count; j++)
   {
@@ -109,14 +111,14 @@ double AMCLCrossing::BeamModel(AMCLCrossingData *data, pf_sample_set_t* set)
       // works well, though...
       p += pz*pz*pz;
     }
+    meas_total_score = meas_total_score + p;
     
     sample->weight *= p;
-    
     total_weight += sample->weight;
   }
- 
-  //always use "crossing" to update;
-  set->meas_score = 1.0; 
+  
+  set->meas_score = meas_total_score/(set->sample_count)-1; 
+  
   return(total_weight);
 }
 

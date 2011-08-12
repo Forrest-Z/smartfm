@@ -417,7 +417,11 @@ void pf_update_resample(pf_t *pf)
   {
      w_diff = 0.0;	
   }
-  if(w_diff >0.02)
+  else if(w_diff <=0.2)
+  {
+	w_diff = 0.0;
+  }
+  if(w_diff >0.2)
   {
 	  pf->w_slow = pf->w_fast;
 	  w_diff = 0.02;	    

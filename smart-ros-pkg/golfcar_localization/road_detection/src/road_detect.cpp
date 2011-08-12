@@ -25,10 +25,11 @@ namespace road_detection{
 		//------------parameters of function "CurbSideLine"----------------
 		private_nh_.param("curbLow_tresh_", curbLow_tresh_, 0.05);
 		private_nh_.param("curbheigh_tresh_", curbheigh_tresh_, 4.0);
+		
 		// "curbTan_tresh_" need to be adjusted to be a bigger value;
 		//a small value may ignore some points, but will help to reduce noise as for pure "curb_track"; 
-		//a big value get more points when relying on raw points for "curb_amcl";
-		private_nh_.param("curbTan_tresh_", curbTan_tresh_, 3.0);
+		//a big value get more points when relying on raw points for "curb_amcl"; but yield lots of noise in some cases;
+		private_nh_.param("curbTan_tresh_", curbTan_tresh_, 5.0);
 		
 		ros::NodeHandle nh;
 		
@@ -212,8 +213,8 @@ namespace road_detection{
 			
 			//ROS_INFO("begin pid %d; end pid %d", line_begin_PID,line_end_PID);
 			//ROS_INFO("distance %5f", temp_line_distance);
-						
-			bool C1_flag=(line_end_PID-line_begin_PID>ptNum_tresh_)&&(temp_line_distance>rdLength_tresh_);
+			int tempint= line_end_PID-line_begin_PID;
+			bool C1_flag=(tempint > ptNum_tresh_)&&(temp_line_distance>rdLength_tresh_);
 			
 			//Criterion 2: slope <30 degree;
 			float delt_line_x=temp_x1-temp_x0;
@@ -308,7 +309,8 @@ namespace road_detection{
 	    right_curb_line_.header=laser_cloud_.header;
         
         //find PID for each points.	    
-        unsigned int right_line_begin_PID = begin_end_PID_[0]; //pay attention here,left_line_begin_PID is bigger than left_line_end_PID;
+        //pay attention here,left_line_begin_PID is bigger than left_line_end_PID;
+        unsigned int right_line_begin_PID = begin_end_PID_[0]; 
 		unsigned int right_line_end_PID=0;
 		unsigned int right_backup_end=0;
 		unsigned int left_line_begin_PID  = begin_end_PID_[1];   
@@ -366,7 +368,9 @@ namespace road_detection{
 			bool temp_left_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&curbTan_tresh_*temp_delt_x>temp_delt_y)||(temp_delt_y<0&&curbTan_tresh_*temp_delt_x>-temp_delt_y));
 			temp_left_slope=(temp_left_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x*curbTan_tresh_>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x*curbTan_tresh_>-temp_delt_y)));
 			
-			if(temp_left_height&&temp_left_slope)
+			bool distY = temp_delt_y > -0.5 && temp_delt_y < 0.5 ;
+			
+			if(temp_left_height&&temp_left_slope&& distY)
 			{temp_left_flag=true;ROS_INFO("left_curb true");}
 			else{ROS_INFO("left1: not satisfied");}
 	    }
@@ -391,7 +395,9 @@ namespace road_detection{
 			bool temp_left_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&curbTan_tresh_*temp_delt_x>temp_delt_y)||(temp_delt_y<0&&curbTan_tresh_*temp_delt_x>-temp_delt_y));
 			temp_left_slope=(temp_left_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x*curbTan_tresh_>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x*curbTan_tresh_>-temp_delt_y)));
 			
-			if(temp_left_height&&temp_left_slope)
+			bool distY = temp_delt_y > -0.5 && temp_delt_y < 0.5 ;
+			
+			if(temp_left_height&&temp_left_slope&&distY)
 			{temp_left_backup_flag=true;ROS_INFO("left_curb backup true");}
 			else{ROS_INFO("left2: not satisfied");}
 		}
@@ -416,7 +422,9 @@ namespace road_detection{
 			bool temp_right_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&curbTan_tresh_*temp_delt_x>temp_delt_y)||(temp_delt_y<0&&curbTan_tresh_*temp_delt_x>-temp_delt_y));
 			temp_right_slope=(temp_right_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x*curbTan_tresh_>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x*curbTan_tresh_>-temp_delt_y)));
 			
-			if(temp_right_height&&temp_right_slope)
+			bool distY = temp_delt_y > -0.5 && temp_delt_y < 0.5 ;
+			
+			if(temp_right_height&&temp_right_slope&&distY)
 			{temp_right_flag=true;ROS_INFO("right curb true");}
 
 	    }
@@ -438,8 +446,9 @@ namespace road_detection{
 			float temp_delt_y=temp_right_begin_Point.y-temp_right_end_Point.y;
 			bool temp_right_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&curbTan_tresh_*temp_delt_x>temp_delt_y)||(temp_delt_y<0&&curbTan_tresh_*temp_delt_x>-temp_delt_y));
 			temp_right_slope=(temp_right_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x*curbTan_tresh_>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x*curbTan_tresh_>-temp_delt_y)));
+			bool distY = temp_delt_y > -0.5 && temp_delt_y < 0.5 ;
 			
-			if(temp_right_height&&temp_right_slope)
+			if(temp_right_height&&temp_right_slope&&distY)
 			{temp_right_backup_flag=true;ROS_INFO("right curb backup true");}
 		}
 		
@@ -487,7 +496,7 @@ namespace road_detection{
 		sick_local.point.x=point_para.x;
 		sick_local.point.y=point_para.y;
 		sick_local.point.z=0;
-		sick_to_baselink_.transformPoint("base_link",sick_local, stampedpoint_para);
+		sick_to_baselink_.transformPoint("base_link", sick_local, stampedpoint_para);
 	}
 	
 	

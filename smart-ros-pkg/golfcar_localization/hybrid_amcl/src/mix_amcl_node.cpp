@@ -42,12 +42,12 @@
 
 using namespace amcl;
 
-#define RANDOM_SAMPLE_BOX_X 5.0
-#define RANDOM_SAMPLE_BOX_Y 5.0
+#define RANDOM_SAMPLE_BOX_X 7.0
+#define RANDOM_SAMPLE_BOX_Y 7.0
 #define RANDOM_SAMPLE_BOX_THETHA M_PI/3.0
 
 #define MAX_DISTANCE 15.0
-#define CROSSING_TRESH 8
+#define CROSSING_TRESH 10
 
 // Pose hypothesis
 typedef struct
@@ -169,6 +169,7 @@ class MixAmclNode
     
     bool LaserUseFlag_;	
     bool CurbUseFlag_; 
+    bool CrossingUseFlag_; 
     bool LaserOn_;
     
     pf_vector_t pf_odom_pose_;
@@ -402,6 +403,7 @@ MixAmclNode::MixAmclNode() :
   
   LaserUseFlag_= true;	
   CurbUseFlag_ = true;
+  CrossingUseFlag_ = true;
   LaserOn_ = true;
   // Instantiate the sensor objects
   // Odometry
@@ -835,7 +837,7 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 		bool update2 = (curbdata_->accumNum_) > numTresh_;
 		bool update3 = (curbdata_->accumNum_>10) && (distTolastOdom>0.6||odom_delta.v[2]> M_PI/6.0);
 		
-		bool update4 = (LeftCroData_->FakeSensorPose_.size()+RightCroData_->FakeSensorPose_.size())> CROSSING_TRESH;
+		bool update4 = (LeftCroData_->FakeSensorPose_.size()+RightCroData_->FakeSensorPose_.size())> CROSSING_TRESH || LeftCroData_->FakeSensorPose_.size()>5 || RightCroData_->FakeSensorPose_.size()>5 ;
 		if(update4){ROS_INFO("~~~Using Crossing Information~~");}
 		
 		bool updateAction = (update1 && (update2||update4))||update3;
@@ -996,20 +998,18 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 				if(LaserUseFlag_){numTresh_ = 15;}
 				else{numTresh_ = 15;}
 				
-				bool tempflag;
-				bool *tempflagpointer = &tempflag;
-				
-				
-				
-				
-				LeftCroData_->sensor = crossing_;
-				crossing_->UpdateSensor(pf_, (AMCLSensorData*) LeftCroData_, tempflagpointer);
-				RightCroData_->sensor = crossing_;
-				crossing_->UpdateSensor(pf_, (AMCLSensorData*) RightCroData_, tempflagpointer);
-				
-				if(CurbUseFlag_)
+				bool *tempflagpointer = &CrossingUseFlag_;
+				if(!LaserUseFlag_)
 				{
-					ROS_INFO("----------Curb Curb Curb---------");
+					LeftCroData_->sensor = crossing_;
+					crossing_->UpdateSensor(pf_, (AMCLSensorData*) LeftCroData_, tempflagpointer);
+					RightCroData_->sensor = crossing_;
+					crossing_->UpdateSensor(pf_, (AMCLSensorData*) RightCroData_, tempflagpointer);
+				}
+			
+				if(CurbUseFlag_||CrossingUseFlag_)
+				{
+					ROS_INFO("----------Curb Crossing Curb---------");
 					if(!(++resample_count_ % resample_interval_))
 					{
 						pf_update_resample(pf_);

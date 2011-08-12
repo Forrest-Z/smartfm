@@ -71,7 +71,8 @@ namespace estimation{
 		bool 												Rmeas_exist_, Lmeas_exist_;
 		bool 												Rreinitial_, Lreinitial_; 
 		bool                                   Rtrack_output_cred_, Ltrack_output_cred_;
-		
+		bool 												RcrossHandle_, LcrossHandle_;	
+
 		//"right_point_" and "left_point_" are output of EKF tracker;
 		//"right_Ptcred_"and "left_Ptcred_" are credible but conservative output of EKF tracker that we can use for localization;
 		sensor_msgs::PointCloud  				   right_point_, left_point_, right_Ptcred_, left_Ptcred_;
