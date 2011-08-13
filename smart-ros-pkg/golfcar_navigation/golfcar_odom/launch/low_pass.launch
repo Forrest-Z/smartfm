@@ -1,5 +1,4 @@
 <launch>	
 	<rosparam command="load" file="$(find golfcar_odom)/launch/low_pass.yaml"/>
-	<param name="/speed_controller/FCL_File" value="/home/demian/Dropbox/Stacks/speed_controller/fcl/mamdani.fcl"/>
-
+	<node pkg="golfcar_odom" type="speedFilter" name="speedFilter"/>
 </launch>
