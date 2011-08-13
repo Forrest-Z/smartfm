@@ -4,7 +4,7 @@
 #include <lse_xsens_mti/imu_rpy.h>
 #include <golfcar_halstreamer/throttle.h>
 #include <golfcar_halstreamer/brakepedal.h>
-
+#include <golfcar_odom/gcSpeedFilter.h>
 namespace PID_Speed{
   class PID_Speed
   {
@@ -16,8 +16,10 @@ namespace PID_Speed{
       ros::Subscriber cmd_vel_sub_;
 	  ros::Subscriber sampler_sub_;
       ros::Subscriber rpy_sub_;
+	  ros::Subscriber speedFilter_sub_;
       ros::Publisher throttle_pub_;
       ros::Publisher brakepedal_pub_;
+	  double speed_filtered_;
 
       double kp_, ki_, ki_sat_, coeff_th_, coeff_bp_;
       double throttle_zero_thres_, brake_zero_thres_, full_brake_thres_;
@@ -34,5 +36,6 @@ namespace PID_Speed{
       void cmdVelCallBack(geometry_msgs::Twist cmd_vel);
       void rpyCallBack(lse_xsens_mti::imu_rpy rpy);
       void samplerCallBack(golfcar_halsampler::odo sampler);
+	  void speedCallBack(golfcar_odom::gcSpeedFilter gcsf);
   };
 };

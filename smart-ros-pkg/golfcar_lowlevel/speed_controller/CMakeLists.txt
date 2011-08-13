@@ -18,7 +18,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 
 #uncomment if you have defined messages
-#rosbuild_genmsg()
+rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 # g++ -c -pipe -O2 -Wall -W -D_REENTRANT -DQT_NO_DEBUG -DQT_CORE_LIB -DQT_SHARED -I/usr/share/qt4/mkspecs/linux-g++ -I. -I/usr/include/qt4/QtCore -I/usr/include/qt4
@@ -29,4 +29,6 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 #rosbuild_add_executable(speed_controller src/speed_controller.cpp)
 rosbuild_add_executable(speed_controller_PI src/speed_controller_PI.cpp)
+rosbuild_add_executable(speed_controller_PI_filtered src/speed_controller_PI_filtered.cpp)
+rosbuild_add_executable(agg src/aggregator.cpp)
 #rosbuild_add_link_flags(speed_controller -pipe -O2 -Wall -W -D_REENTRANT -DQT_NO_DEBUG -DQT_CORE_LIB -DQT_SHARED -lQtCore -ljfuzzyqt)
