@@ -1,7 +1,7 @@
 <launch>
 	
 	<node pkg="golfcar_steeringcontrol" type="local_controller" name="local_controller"/> 
-	<node name="speed_controller" pkg="speed_controller" type="speed_controller_PI">
+	<node name="speed_controller" pkg="speed_controller" type="speed_controller_PI_filtered">
 		<param name="autoControl" value="false"/>
 	</node>
 	<node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">

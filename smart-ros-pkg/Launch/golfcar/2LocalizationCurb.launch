@@ -1,4 +1,6 @@
 <launch>
+	<rosparam command="load" file="$(find golfcar_odom)/launch/low_pass.yaml"/>
+	<node pkg="golfcar_odom" type="speedFilter" name="speedFilter"/>
 	<node pkg="golfcar_odom" type="golfcar_odom_imu2" name="golfcar_odom">
 		<remap from="/imu/data" to="/ms/imu/data"/>
 	</node>
