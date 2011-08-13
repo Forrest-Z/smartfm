@@ -368,7 +368,7 @@ namespace road_detection{
 			bool temp_left_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&curbTan_tresh_*temp_delt_x>temp_delt_y)||(temp_delt_y<0&&curbTan_tresh_*temp_delt_x>-temp_delt_y));
 			temp_left_slope=(temp_left_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x*curbTan_tresh_>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x*curbTan_tresh_>-temp_delt_y)));
 			
-			bool distY = temp_delt_y > -0.5 && temp_delt_y < 0.5 ;
+			bool distY = temp_delt_y > -10 && temp_delt_y < 10 ;
 			
 			if(temp_left_height&&temp_left_slope&& distY)
 			{temp_left_flag=true;ROS_INFO("left_curb true");}
@@ -395,7 +395,7 @@ namespace road_detection{
 			bool temp_left_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&curbTan_tresh_*temp_delt_x>temp_delt_y)||(temp_delt_y<0&&curbTan_tresh_*temp_delt_x>-temp_delt_y));
 			temp_left_slope=(temp_left_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x*curbTan_tresh_>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x*curbTan_tresh_>-temp_delt_y)));
 			
-			bool distY = temp_delt_y > -0.5 && temp_delt_y < 0.5 ;
+			bool distY = temp_delt_y > -10 && temp_delt_y < 10 ;
 			
 			if(temp_left_height&&temp_left_slope&&distY)
 			{temp_left_backup_flag=true;ROS_INFO("left_curb backup true");}
@@ -422,7 +422,7 @@ namespace road_detection{
 			bool temp_right_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&curbTan_tresh_*temp_delt_x>temp_delt_y)||(temp_delt_y<0&&curbTan_tresh_*temp_delt_x>-temp_delt_y));
 			temp_right_slope=(temp_right_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x*curbTan_tresh_>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x*curbTan_tresh_>-temp_delt_y)));
 			
-			bool distY = temp_delt_y > -0.5 && temp_delt_y < 0.5 ;
+			bool distY = temp_delt_y > -10 && temp_delt_y < 10 ;
 			
 			if(temp_right_height&&temp_right_slope&&distY)
 			{temp_right_flag=true;ROS_INFO("right curb true");}
@@ -446,7 +446,7 @@ namespace road_detection{
 			float temp_delt_y=temp_right_begin_Point.y-temp_right_end_Point.y;
 			bool temp_right_slope =(temp_delt_x>=0)&&((temp_delt_y>0&&curbTan_tresh_*temp_delt_x>temp_delt_y)||(temp_delt_y<0&&curbTan_tresh_*temp_delt_x>-temp_delt_y));
 			temp_right_slope=(temp_right_slope)||((temp_delt_x<0)&&((temp_delt_y>0&&-temp_delt_x*curbTan_tresh_>temp_delt_y)||(temp_delt_y<0&&-temp_delt_x*curbTan_tresh_>-temp_delt_y)));
-			bool distY = temp_delt_y > -0.5 && temp_delt_y < 0.5 ;
+			bool distY = temp_delt_y > -10 && temp_delt_y < 10 ;
 			
 			if(temp_right_height&&temp_right_slope&&distY)
 			{temp_right_backup_flag=true;ROS_INFO("right curb backup true");}
