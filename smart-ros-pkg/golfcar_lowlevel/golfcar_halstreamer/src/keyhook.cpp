@@ -1,14 +1,17 @@
+/*
+Reads the keyboard, translates it into velocity commands, and sends
+it to the golfcar_vel channel.
+*/
+
 #include <signal.h>
 #include <termios.h>
 #include <stdio.h>
 #include <stdlib.h>
-//#include <string.h>
-#include <ros/ros.h>
-#include "golfcar_halstreamer/vel.h"
-#include <sstream>
-#include "joy/Joy.h"
 
-#define KEYCODE_R 0x43 
+#include <ros/ros.h>
+#include <golfcar_halstreamer/vel.h>
+
+#define KEYCODE_R 0x43
 #define KEYCODE_L 0x44
 #define KEYCODE_U 0x41
 #define KEYCODE_D 0x42
@@ -26,21 +29,15 @@ void quit(int sig)
 
 int main(int argc, char **argv)
 {
-	
-	ros::init(argc, argv, "keyhook");
-	ros::NodeHandle n;
-	
-	ros::Publisher chatter_pub = n.advertise<golfcar_halstreamer::vel>("golfcar_vel", 1000);
-	signal(SIGINT,quit);
-  char c;
+  ros::init(argc, argv, "keyhook");
+  ros::NodeHandle n;
+  ros::Publisher chatter_pub = n.advertise<golfcar_halstreamer::vel>("golfcar_vel", 1000);
   
-  const float s_factor=0.05, t_factor=5;
-  int turning=0, speed=8;
-  // get the console in raw mode                                                              
+  // get the console in raw mode
+  signal(SIGINT,quit);
   tcgetattr(kfd, &cooked);
   memcpy(&raw, &cooked, sizeof(struct termios));
   raw.c_lflag &=~ (ICANON | ECHO);
-  // Setting a new line, then end of file                         
   raw.c_cc[VEOL] = 1;
   raw.c_cc[VEOF] = 2;
   tcsetattr(kfd, TCSANOW, &raw);
@@ -50,9 +47,13 @@ int main(int argc, char **argv)
   puts("Use arrow keys to move car.");
 
 
+  char c;
+  const float s_factor=0.05, t_factor=5;
+  int turning=0, speed=8;
+
   for(;;)
   {
-    // get the next event from the keyboard  
+    // get the next event from the keyboard
     if(read(kfd, &c, 1) < 0)
     {
       perror("read():");
@@ -61,7 +62,7 @@ int main(int argc, char **argv)
 
     //linear_=angular_=0;
     //ROS_DEBUG("value: 0x%02X\n", c);
-  
+
     switch(c)
     {
       case KEYCODE_L:
@@ -77,25 +78,21 @@ int main(int argc, char **argv)
         speed++;
         break;
       case KEYCODE_D:
-       // ROS_DEBUG("DOWN");
+        // ROS_DEBUG("DOWN");
         speed--;
         break;
       case KEYCODE_Q:
-		speed=0;
-		turning=0;
-		break;
+        speed=0;
+        turning=0;
+        break;
     }
-    //std::stringstream ss;
-    //ss << "%lf %lf",speed*s_factor, turning*t_factor << count;
-	//char ss[100];
-	//sprintf(ss,"%lf %lf",speed*s_factor, turning*t_factor );
-	//msg.data = ss;
-	golfcar_halstreamer::vel velocity;
-	velocity.speed=speed*s_factor;
-	//velocity.angle=turning*t_factor;
-	ROS_INFO("Speed=%lf, Angle=%d", velocity.speed, (int)velocity.angle);
-	
-	chatter_pub.publish(velocity);
+
+    golfcar_halstreamer::vel velocity;
+    velocity.speed = speed*s_factor;
+    //velocity.angle=turning*t_factor;
+    ROS_INFO("Speed=%lf, Angle=%d", velocity.speed, (int)velocity.angle);
+
+    chatter_pub.publish(velocity);
   }
 
 
