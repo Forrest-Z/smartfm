@@ -35,6 +35,7 @@ namespace PID_Speed{
     ei_ = 0;
     v_filtered_ = 0;
     pitch_last_ = 0;
+	speed_filtered_ = 0;
   }
 
  void PID_Speed::speedCallBack(golfcar_odom::gcSpeedFilter gcsf)
@@ -68,7 +69,7 @@ namespace PID_Speed{
       ros::Duration time_diff_ = time_now_ - time_pre_;
       double dt_ = time_diff_.toSec();
       double e_now_ = cmd_vel_ - speed_filtered_;
-      v_filtered_ += (speed_filtered_ - v_filtered_) * dt_ / tau_v_;
+      //v_filtered_ += (speed_filtered_ - v_filtered_) * dt_ / tau_v_;
 
       ei_ += (0.5 * dt_ * (e_pre_ + e_now_));
       if(ki_ * ei_ > ki_sat_)
@@ -76,7 +77,7 @@ namespace PID_Speed{
       else if(ki_ * ei_ < -ki_sat_)
 	ei_ = -ki_sat_ / ki_;
 
-      double u = kp_ * (cmd_vel_ - v_filtered_) + ki_ * ei_;
+      double u = kp_ * (cmd_vel_ - speed_filtered_) + ki_ * ei_;
       if(u > 1.0)
 	u = 1.0;
       else if(u < -1.0)
