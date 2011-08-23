@@ -136,7 +136,9 @@ typedef struct _pf_t
 
   // Function used to draw random pose samples
   pf_init_model_fn_t random_pose_fn;
-    
+  
+  double w_diff_tresh;
+  double w_diff_setvalue;
 
   void *random_pose_data;
 } pf_t;

@@ -75,6 +75,9 @@ pf_t *pf_alloc(int min_samples, int max_samples,
   pf->Pos_Est.v[1] = 0.0;
   pf->Pos_Est.v[2] = 0.0;
 
+  pf->w_diff_tresh=0.0;
+  pf->w_diff_setvalue=0.0;
+
   for (j = 0; j < 2; j++)
   {
     set = pf->sets + j;
@@ -290,7 +293,8 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
 	 ///// the following block deserves much attention;
 	 ///// how to control resampled particles;
 	 ///////////////////////////////////////////////////////
-	 /*
+
+    // step 1. to guarantee rapid response;
 	 if(pf->w_fast > 1.5*pf->w_slow)
 	 {
 		 if(w_avg>pf->w_fast) pf->alpha_fast = 0.01;   //0.2
@@ -301,9 +305,9 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
 		 if(w_avg>pf->w_fast) pf->alpha_fast = 0.4;   //0.2
 		 else pf->alpha_fast = 0.2;  //0.05
 	 }
-	 */
 	 
 	 // step 1. to guarantee rapid response;
+	 /*
 	 if(pf->w_fast > 1.2*pf->w_slow)
 	 {
 		 if(w_avg>pf->w_fast) 
@@ -344,7 +348,7 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
 		 }  
 	 }
 
-
+    */
 
     if(pf->w_slow == 0.0)
       pf->w_slow = w_avg;
@@ -417,14 +421,14 @@ void pf_update_resample(pf_t *pf)
   {
      w_diff = 0.0;	
   }
-  else if(w_diff <=0.2)
+  else if(w_diff <= pf->w_diff_tresh)
   {
-	w_diff = 0.0;
+   if(pf->w_diff_tresh==0.2) w_diff = 0.0;
   }
-  if(w_diff >0.2)
+  else if(w_diff > pf->w_diff_tresh)
   {
-	  pf->w_slow = pf->w_fast;
-	  w_diff = 0.02;	    
+	  if(pf->w_diff_tresh==0.2 || w_diff>0.4) pf->w_slow = pf->w_fast;
+	  w_diff = pf->w_diff_setvalue;	    
   } 
 
   //printf("w_diff: %9.6f\n", w_diff);

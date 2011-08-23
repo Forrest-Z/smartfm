@@ -1009,9 +1009,12 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 			
 				if(CurbUseFlag_||CrossingUseFlag_)
 				{
-					ROS_INFO("----------Curb Crossing Curb---------");
+					ROS_INFO("----------Curb--Crossing--Curb---------");
 					if(!(++resample_count_ % resample_interval_))
 					{
+						pf_->w_diff_tresh=0.2;
+						pf_->w_diff_setvalue=0.02;
+						
 						pf_update_resample(pf_);
 						resampled = true;
 					}
@@ -1486,6 +1489,10 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 			if(!(++resample_count_ % resample_interval_))
 			{
 				ROS_INFO("resample the particles");
+				
+				pf_->w_diff_tresh=0.02;
+				pf_->w_diff_setvalue=0.02;
+				
 				pf_update_resample(pf_);
 				resampled = true;
 			}
