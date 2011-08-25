@@ -1,29 +1,38 @@
-//step_pwm_lights.pde
-// -*- mode: C++ -*-
-//
-//       1         2         3         4         5         6         7         8
-//345678901234567890123456789012345678901234567890123456789012345678901234567890
-//
-// Performs stepper motors control (brake and steering), PWM (throttle) and
-// lights control (blinkers and stop light).
-//
-// - Stepper motor control is done using the AccelStepper library:
-//     http://www.open.com.au/mikem/arduino/AccelStepper
-//     Number of pulses per seconds (velocity) is limited to approx 1,000
-// - PWM is a direct function of Arduino
-// - Lights control is with IOs
-// - Communication with ROS is handled by rosserial:
-//     http://www.ros.org/wiki/rosserial
-//
-// Author: Brice Rebsamen (August 2011)
+/** step_pwm_lights.pde
+-*- mode: C++ -*-
+
+         1         2         3         4         5         6         7         8
+12345678901234567890123456789012345678901234567890123456789012345678901234567890
+
+Performs stepper motors control (brake and steering), PWM (throttle) and
+lights control (blinkers and stop light). Also monitors the state of the
+emergency button.
+
+Subscribers:
+- arduino_cmd (type: lowlevel::Arduino)
+
+Publishers:
+- emergency (type: std_msgs::Bool)
+
+
+
+- Stepper motor control is done using the AccelStepper library:
+   http://www.open.com.au/mikem/arduino/AccelStepper
+   Number of pulses per seconds (velocity) is limited to approx 1,000
+- PWM is a direct function of Arduino
+- Lights control is with IOs
+- Communication with ROS is handled by rosserial:
+    http://www.ros.org/wiki/rosserial
+
+Author: Brice Rebsamen (August 2011)
+*/
+
 
 #include <AccelStepper.h>
 
 #include <ros.h>
-#include <std_msgs/Float64.h>
 #include <std_msgs/Bool.h>
-
-#define BOUND(x,m,M) ( (x)>(M) ? (M) : (x)<(m) ? (m) : (x) )
+#include <lowlevel/Arduino.h>
 
 
 //------------------------------------------------------------------------------
@@ -66,24 +75,31 @@ class Blinker {
       pinMode(pin, OUTPUT);
       half_period(blinkers_default_half_period);
     }
-    
+
     void blink() {
+      if( _blink ) return; //already blinking
       digitalWrite(_pin, HIGH);
       _lastTime = millis();
       _blink = 1;
       _state = 1;
     }
-    
+
     void off() {
+      if( !_blink ) return; //already off
       digitalWrite(_pin, LOW);
       _blink = 0;
       _state = 0;
     }
 
+    void set(int b) {
+      b ? blink() : off();
+    }
+
     void half_period(float sec) {
       _half_period = (unsigned long) (sec*1000);
     }
-    
+
+
     void run() {
       if( !_blink )
         return;
@@ -97,10 +113,11 @@ class Blinker {
           digitalWrite(_pin, LOW);
       }
     }
-    
+
   private:
     uint8_t _pin;
-    int _blink, _state;
+    int _blink; // are we in blinking mode
+    int _state; // is the light on or off
     unsigned long _lastTime;
     unsigned long _half_period; //in micro seconds
 };
@@ -119,6 +136,38 @@ AccelStepper stepper_brake(1, brake_pulse_pin, brake_dir_pin);
 Blinker left_blinker(left_blinker_pin), right_blinker(right_blinker_pin);
 
 
+//------------------------------------------------------------------------------
+// Some helper functions
+
+void set_throttle(float v) {
+  // The golfcar is expecting a max of 3.3V (to be verified). The Arduino's
+  // normal output is 5V. 2 solutions: use a voltage divider (2 resistors), or
+  // limit the PWM duty cycle.
+  // - voltage divider, might do a RC circuit which might slow down the pulse...
+  // - scale: 255 ~ 5V ==>  168 ~ 3.3V
+  v = v>3.3 ? 3.3 : v<0 ? 0 : v;
+  int cycle = (int) ( v / 3.3 * 168 );
+  analogWrite(throttle_pin, cycle);
+}
+
+void set_brake(float a) {
+  stepper_brake.moveTo( (long) ( a * step_scale ) );
+  if( a >= 5 )
+    digitalWrite(stop_light_pin, HIGH);
+  else
+    digitalWrite(stop_light_pin, LOW);
+}
+
+void set_steer(float a) {
+  stepper_steer.moveTo( (long) ( a * step_scale ) );
+}
+
+
+//------------------------------------------------------------------------------
+// ROS publisher
+std_msgs::Bool emergency_msg;
+ros::Publisher emergency_pub("emergency", &emergency_msg);
+
 
 //------------------------------------------------------------------------------
 // Some callback functions for our subscribers.
@@ -127,40 +176,15 @@ Blinker left_blinker(left_blinker_pin), right_blinker(right_blinker_pin);
 // 3 parameters: the name of the callback function to create, the type of the
 // message, and the name you wish to refer to the message by within the callback
 
-ROS_CALLBACK(throttleCb, std_msgs::Float64, throttle_msg)
-  // The golfcar is expecting a max of 3.3V (to be verified). The Arduino's
-  // normal output is 5V. 2 solutions: use a voltage divider (2 resistors), or
-  // limit the PWM duty cycle.
-  // - voltage divider, might do a RC circuit which might slow down the pulse...
-  // - scale: 255 ~ 5V ==>  168 ~ 3.3V
-  int v = (int) (BOUND(throttle_msg.data, 0, 3.3) / 3.3 * 168);
-  analogWrite(throttle_pin, v );
-}
-
-ROS_CALLBACK(brakeCb, std_msgs::Float64, brake_msg)
-  stepper_brake.moveTo((long)(brake_msg.data*step_scale));
-  if( brake_msg.data >= 5 )
-    digitalWrite(stop_light_pin, HIGH);
-  else
-    digitalWrite(stop_light_pin, LOW);
-}
-
-ROS_CALLBACK(steerCb, std_msgs::Float64, steer_msg)
-  stepper_steer.moveTo((long)(steer_msg.data*step_scale));
-}
-
-ROS_CALLBACK(leftBlinkerCb, std_msgs::Bool, leftBlinker_msg)
-  if( leftBlinker_msg.data )
-    left_blinker.blink();
-  else
-    left_blinker.off();
-}
-
-ROS_CALLBACK(rightBlinkerCb, std_msgs::Bool, rightBlinker_msg)
-  if( rightBlinker_msg.data )
-    right_blinker.blink();
-  else
-    right_blinker.off();
+ROS_CALLBACK(cmd_CB, lowlevel::Arduino, cmd_msg)
+  set_throttle(cmd_msg.throttle_volt);
+  set_steer(cmd_msg.steer_angle);
+  set_brake(cmd_msg.brake_angle);
+  left_blinker.set(cmd_msg.left_blinker);
+  right_blinker.set(cmd_msg.right_blinker);
+  
+  emergency_msg.data = digitalRead(emergency_pin)==LOW;
+  emergency_pub.publish( &emergency_msg );
 }
 
 
@@ -168,15 +192,7 @@ ROS_CALLBACK(rightBlinkerCb, std_msgs::Bool, rightBlinker_msg)
 // ROS stuffs
 
 ros::NodeHandle nh;
-
-ros::Subscriber throttle_sub("throttle_volt", &throttle_msg, throttleCb );
-ros::Subscriber brake_sub("brake_angle", &brake_msg, brakeCb );
-ros::Subscriber steer_sub("steer_angle", &steer_msg, steerCb );
-ros::Subscriber lblink_sub("left_blinker", &leftBlinker_msg, leftBlinkerCb );
-ros::Subscriber rblink_sub("right_blinker", &rightBlinker_msg, rightBlinkerCb );
-
-std_msgs::Bool emergency_msg;
-ros::Publisher emergency_pub("emergency", &emergency_msg);
+ros::Subscriber arduino_cmd_sub("arduino_cmd", &cmd_msg, cmd_CB );
 
 
 //------------------------------------------------------------------------------
@@ -199,11 +215,7 @@ void setup()
   digitalWrite(emergency_pin, HIGH); // turn on pullup resistors --> input defaults to HIGH
   
   nh.initNode();
-  nh.subscribe(throttle_sub);
-  nh.subscribe(brake_sub);
-  nh.subscribe(steer_sub);
-  nh.subscribe(lblink_sub);
-  nh.subscribe(rblink_sub);
+  nh.subscribe(arduino_cmd_sub);
   nh.advertise(emergency_pub);
 }
 
@@ -218,11 +230,9 @@ void loop()
   left_blinker.run();
   right_blinker.run();
 
-  unsigned long time = millis();
-  if( time - old_time > 50 ) {
-    emergency_msg.data = digitalRead(emergency_pin)==LOW;
-    emergency_pub.publish( &emergency_msg );
-    nh.spinOnce();
-    old_time = time;
-  }
+  //unsigned long time = millis();
+  //if( time - old_time > 50 ) {
+  nh.spinOnce();
+    //old_time = time;
+  //}
 }

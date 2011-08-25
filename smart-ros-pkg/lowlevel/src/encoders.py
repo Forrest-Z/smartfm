@@ -8,7 +8,7 @@ odometry messages (pose and vel) on the "encoders" topic.
 
 import roslib; roslib.load_manifest('lowlevel')
 import rospy
-from lowlevel.msg import odo as OdometryMessage
+from lowlevel.msg import Odo as OdometryMessage
 
 from Phidgets.PhidgetException import *
 from Phidgets.Events.Events import *
