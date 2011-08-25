@@ -1,0 +1,22 @@
+<package>
+  <description brief="lowlevel">
+
+     lowlevel
+
+  </description>
+  <author>brice rebsamen</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/lowlevel</url>
+
+  <depend package="rospy"/>
+  <depend package="roscpp"/>
+  <depend package="lse_xsens_mti"/>
+  <depend package="joy"/>
+  <depend package="geometry_msgs"/>
+  <depend package="std_msgs"/>
+  <depend package="nav_msgs"/>
+
+</package>
+
+

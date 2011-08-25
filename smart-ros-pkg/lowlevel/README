@@ -1,0 +1,53 @@
+ 
+ABOUT PHIDGETS
+
+The encoders.py code is a python ROS node that interfaces with the Phidget
+encoders device. In order to run this code, libphidget21 and the python wrapper
+must be installed, and certain permissions must be set:
+
+- libphidget21
+Download the library from http://www.phidgets.com/drivers.php (i.e. the linux
+source package). Unpack it to a directory of your choice and cd into that
+directory. Then type:
+  ./configure
+  make
+  sudo make install
+If that does not work: RTFM
+
+- permissions
+In order to enable non-root access to the Phidget, udev must be configured to
+give r/w access to the port. From the libphidget21 directory
+  sudo cp udev/99-phidgets.rules /etc/udev/rules.d/
+  sudo restart udev
+
+- python wrapper
+Download the python module from
+http://www.phidgets.com/programming_resources.php
+Unpack the archive to a directory of your choice and cd into that directory.
+Then type:
+  python setup.py build
+  sudo python setup.py install
+If that does not work: RTFM
+
+
+
+ABOUT ARDUINO
+
+The code in the arduino repository is meant to be uploaded to the arduino
+platform. It allows to interface the Arduino with ROS.
+
+- installation of the Arduino IDE
+(Tested with Ubuntu 10.04 LTS and Ubuntu 10.10, but should work with older
+releases.)
+  * download and install the latest release from
+    http://arduino.cc/en/Main/Software
+  * install the compiler (gcc-avr) and the libraries (avr-libc) packages:
+    sudo apt-get install gcc-avr avr-libc
+  * if you use the USB port to dialog, you should add yourself to the group
+    'dialout' in order to have write permissions on that port:
+    sudo usermod -aG dialout <myuser>
+
+- testing
+  * roscore
+  * rosrun rosserial_python serial_node.py /dev/ttyACM0
+  * rostopic pub /steer_angle std_msgs/Float64 20
