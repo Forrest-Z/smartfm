@@ -1472,9 +1472,12 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 			//pf_->w_fast = 0.0;
 		}
 		
-		
 		bool *FlagPointer = &LaserUseFlag_;
-		lasers_[laser_index]->UpdateSensor(pf_, (AMCLSensorData*)&ldata, FlagPointer);
+		
+		//3 degree corresponds to 0.05236; 4 degree corresponds to  0.0698; 5 degree corresponds to 0.08727; 
+		if(pitch>0.08727||pitch<-0.08727) 
+		{LaserUseFlag_=false;ROS_INFO("Planar Laser  Skip!!!!!!!!!!!!!!!!!!");}
+		else {lasers_[laser_index]->UpdateSensor(pf_, (AMCLSensorData*)&ldata, FlagPointer);}
 
 		lasers_update_[laser_index] = false;
 		

@@ -347,7 +347,6 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
 			pf->alpha_slow = 0.001;
 		 }  
 	 }
-
     */
 
     if(pf->w_slow == 0.0)
