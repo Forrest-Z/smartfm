@@ -44,15 +44,14 @@ uint8_t brake_dir_pin = 12;
 
 
 // Angle to number of steps conversion factor
-// 1440 pulses / rev
-float step_scale = 160.0/360;
+float step_scale = 800.0/360;
 
 //max speed (in steps per second). Becomes unreliable above 1000
 //in steps per second per second
 float brake_max_speed = 1000;
-float brake_acc = 100;
+float brake_acc = 1000;
 float steer_max_speed = 1000;
-float steer_acc = 100;
+float steer_acc = 1000;
 
 float blinkers_default_half_period = 0.5;
 
