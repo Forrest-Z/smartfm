@@ -50,9 +50,18 @@ namespace road_detection{
 		tf_filter_->setTolerance(ros::Duration(0.05));
 
 		begin_end_PID_[0]=0;
-		begin_end_PID_[1]=0;				
+		begin_end_PID_[1]=0;
+
+
+		curbPCIDLeft_pub_ = nh.advertise<road_detection::curbPointCloudID>("svm_leftCurbPoint_id",2);
+		curbPCIDRight_pub_ = nh.advertise<road_detection::curbPointCloudID>("svm_rightCurbPoint_id",2);
+
 	}
 	
+	road_detect::~road_detect()
+	{
+
+	}
 	void road_detect::scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_in)
 	{	
 		//LaserScan to PointCloud, stored in laser_cloud_;
@@ -451,18 +460,35 @@ namespace road_detection{
 			if(temp_right_height&&temp_right_slope&&distY)
 			{temp_right_backup_flag=true;ROS_INFO("right curb backup true");}
 		}
-		
-	    //push back left curb line
+
+
+		sensor_msgs::PointCloud svm_curb_data_set;
+		svm_curb_data_set.header = left_curb_line_.header;
+
+		//push back left curb line
+
+		road_detection::curbPointCloudID cpcID;
+
 	    if(temp_left_flag==true)
 	    {
 			//the serial or sequence of "begin" and "end" will be changed here because of "push_back";
 			for(unsigned int i=left_line_begin_PID; i<=left_line_end_PID;i++)
 			{left_curb_line_.points.push_back(laser_cloud_.points[i]);}
+			cpcID.pc = laser_cloud_;
+			cpcID.id_start = left_line_begin_PID;
+			cpcID.id_end = left_line_end_PID;
+			curbPCIDLeft_pub_.publish(cpcID);
+			//road_detect::svmLeftCurbFeatures(laser_cloud_,left_line_begin_PID, left_line_end_PID);
 		}
 		if(temp_left_backup_flag==true)
 	    {
 			for(unsigned int i=left_line_end_PID; i<=left_backup_end;i++)
 			{left_curb_line_.points.push_back(laser_cloud_.points[i]);}
+			cpcID.pc = laser_cloud_;
+			cpcID.id_start = left_line_end_PID;
+			cpcID.id_end = left_backup_end;
+			curbPCIDLeft_pub_.publish(cpcID);
+			//road_detect::svmLeftCurbFeatures(laser_cloud_,left_line_end_PID, left_backup_end);
 		}
 		
 		//push back right curb line
@@ -470,11 +496,21 @@ namespace road_detection{
 	    {
 			for(unsigned int i=right_line_end_PID; i<=right_line_begin_PID;i++)
 			{right_curb_line_.points.push_back(laser_cloud_.points[i]);}
+			cpcID.pc = laser_cloud_;
+			cpcID.id_start = right_line_end_PID;
+			cpcID.id_end = right_line_begin_PID;
+			curbPCIDRight_pub_.publish(cpcID);
+			//road_detect::svmRightCurbFeatures(laser_cloud_,right_line_end_PID, right_line_begin_PID);
 		}
 		if(temp_right_backup_flag==true)
 	    {
 			for(unsigned int i=right_backup_end; i<=right_line_end_PID;i++)
 			{right_curb_line_.points.push_back(laser_cloud_.points[i]);}
+			cpcID.pc = laser_cloud_;
+			cpcID.id_start = right_backup_end;
+			cpcID.id_end = right_line_end_PID;
+			curbPCIDRight_pub_.publish(cpcID);
+			//road_detect::svmRightCurbFeatures(laser_cloud_,right_backup_end, right_line_end_PID);
 		}
 		
 		sensor_msgs::PointCloud baselink_leftline_;
@@ -499,8 +535,11 @@ namespace road_detection{
 		sick_to_baselink_.transformPoint("base_link", sick_local, stampedpoint_para);
 	}
 	
+
+
+
 	
-}
+};
 
 
 
