@@ -32,11 +32,15 @@ Author: Brice Rebsamen (August 2011)
 
 #include <ros.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Float64.h>
 #include <lowlevel/Arduino.h>
 
 
 //------------------------------------------------------------------------------
 // Some parameters
+
+// If defined, ROS is not used and a state machine is controlling the hardware.
+//#define testing_mode
 
 // pin connection
 uint8_t left_blinker_pin = 2;
@@ -53,14 +57,17 @@ uint8_t brake_dir_pin = 12;
 
 
 // Angle to number of steps conversion factor
-float step_scale = 800.0/360;
+float n_steps_per_rev = 800;
+float step_scale = n_steps_per_rev / 360.0;
 
 //max speed (in steps per second). Becomes unreliable above 1000
 //in steps per second per second
-float brake_max_speed = 1000;
-float brake_acc = 1000;
-float steer_max_speed = 1000;
-float steer_acc = 1000;
+float brake_max_speed = n_steps_per_rev;
+float brake_acc = 6000;
+float steer_max_speed = n_steps_per_rev;
+float steer_acc = 6000;
+
+float full_brake = 220;
 
 float blinkers_default_half_period = 0.5;
 
@@ -135,6 +142,8 @@ AccelStepper stepper_brake(1, brake_pulse_pin, brake_dir_pin);
 
 Blinker left_blinker(left_blinker_pin), right_blinker(right_blinker_pin);
 
+bool emergency = false;
+
 
 //------------------------------------------------------------------------------
 // Some helper functions
@@ -147,10 +156,12 @@ void set_throttle(float v) {
   // - scale: 255 ~ 5V ==>  168 ~ 3.3V
   v = v>3.3 ? 3.3 : v<0 ? 0 : v;
   int cycle = (int) ( v / 3.3 * 168 );
+  if( emergency ) cycle = 0;
   analogWrite(throttle_pin, cycle);
 }
 
 void set_brake(float a) {
+  if( emergency ) a = full_brake;
   stepper_brake.moveTo( (long) ( a * step_scale ) );
   if( a >= 5 )
     digitalWrite(stop_light_pin, HIGH);
@@ -163,11 +174,7 @@ void set_steer(float a) {
 }
 
 
-//------------------------------------------------------------------------------
-// ROS publisher
-std_msgs::Bool emergency_msg;
-ros::Publisher emergency_pub("emergency", &emergency_msg);
-
+#ifndef testing_mode
 
 //------------------------------------------------------------------------------
 // Some callback functions for our subscribers.
@@ -182,9 +189,6 @@ ROS_CALLBACK(cmd_CB, lowlevel::Arduino, cmd_msg)
   set_brake(cmd_msg.brake_angle);
   left_blinker.set(cmd_msg.left_blinker);
   right_blinker.set(cmd_msg.right_blinker);
-  
-  emergency_msg.data = digitalRead(emergency_pin)==LOW;
-  emergency_pub.publish( &emergency_msg );
 }
 
 
@@ -193,6 +197,12 @@ ROS_CALLBACK(cmd_CB, lowlevel::Arduino, cmd_msg)
 
 ros::NodeHandle nh;
 ros::Subscriber arduino_cmd_sub("arduino_cmd", &cmd_msg, cmd_CB );
+
+std_msgs::Bool emergency_msg;
+ros::Publisher emergency_pub("emergency", &emergency_msg);
+
+
+#endif
 
 
 //------------------------------------------------------------------------------
@@ -213,14 +223,18 @@ void setup()
   
   pinMode(emergency_pin, INPUT);
   digitalWrite(emergency_pin, HIGH); // turn on pullup resistors --> input defaults to HIGH
+  emergency = digitalRead(emergency_pin)==LOW;
   
+#ifndef testing_mode
   nh.initNode();
-  nh.subscribe(arduino_cmd_sub);
   nh.advertise(emergency_pub);
+  nh.subscribe(arduino_cmd_sub);
+#endif
 }
 
 
 unsigned long old_time = 0;
+int state = 0;
 
 void loop()
 {
@@ -230,9 +244,37 @@ void loop()
   left_blinker.run();
   right_blinker.run();
 
-  //unsigned long time = millis();
-  //if( time - old_time > 50 ) {
+#if defined testing_mode
+  unsigned long time = millis();
+  if( time - old_time > 2000 ) {
+    switch(state++) {
+      case 0: set_brake(180); break;
+      case 1: set_brake(0); break;
+      case 2: set_steer(180); break;
+      case 3: set_steer(0); break;
+      case 4: set_brake(180); set_steer(-180); break;
+      case 5: set_brake(0); set_steer(0); state=0; break;
+    }
+    old_time = time;
+  }
+#else
+  if( !emergency && digitalRead(emergency_pin)==LOW ) {
+    set_throttle(0);
+    set_brake(full_brake);
+    emergency = true;
+  }
+  else if( digitalRead(emergency_pin)==HIGH ) {
+    emergency = false;
+  }
+  
+  unsigned long time = millis();
+  if( time - old_time > 250 ) {
+    emergency_msg.data = emergency;
+    emergency_pub.publish( &emergency_msg );
+  }
+
   nh.spinOnce();
-    //old_time = time;
-  //}
+
+#endif
+  
 }
