@@ -84,7 +84,7 @@ interval_sim 30  # simulation timestep in milliseconds
 
 window
 ( 
-  size [ 843.000 706.000 ] 
+  size [ 587.000 681.000 ] 
  #center [327.990 371.960] 
   center [-103.308 115.533]
 #rotate [ 0.000 -1.560 ]

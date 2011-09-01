@@ -1,0 +1,6 @@
+<launch>
+	<node name="curb_svm" pkg="road_detection" type="curb_svm">
+		<param name="svm_scale_file" value="$(find road_detection)/svm_model/range1"/>
+		<param name="svm_model_file" value="$(find road_detection)/svm_model/set1.scale.model"/>
+	</node>
+</launch>
