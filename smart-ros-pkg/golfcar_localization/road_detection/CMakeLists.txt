@@ -32,7 +32,7 @@ rosbuild_add_executable(curb_track
 						src/rolling_window.cpp
 						src/track_estimation_node.cpp)						
 rosbuild_link_boost(curb_track thread)
-
+rosbuild_add_executable(curb_svm src/curb_svm.cpp include/svm.cpp)
 #rosbuild_add_executable(example examples/example.cpp)
 rosbuild_add_executable(road_detect src/road_detect.cpp)
 #rosbuild_add_executable(curb_track src/curb_track.cpp)
