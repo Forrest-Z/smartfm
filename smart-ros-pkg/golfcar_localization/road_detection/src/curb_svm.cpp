@@ -66,12 +66,15 @@ namespace curb_svm
 	{
 		ros::NodeHandle nh;
 		string svm_model_file;
-		write_file_ = false;
+
 
 		private_nh_.param("svm_scale_file",svm_scale_file_,string());
 		private_nh_.param("svm_model_file",svm_model_file,string());
+		private_nh_.param("svm_write_file", write_file_, false);
+
 		if(write_file_)
 		{
+			cout<<"Write file start!"<<endl;
 			time_t t1 = std::time(0);
 			if (t1 == time_t(-1))
 			{
@@ -92,15 +95,30 @@ namespace curb_svm
 			restore_scalefile(svm_scale_file_, feature_min_, feature_max_, feature_index_);
 			svm_model_ = svm_load_model(svm_model_file.c_str());
 			int nr_class= svm_model_->nr_class;
+			cout<<"Number of classes detected:"<<nr_class<<endl;
+
 			//setup ROS messages for final classified curbs
-			for(int i=0;i<nr_class;i++)
+			if(nr_class>2)
 			{
-				ros::Publisher pub;
-				stringstream ss;
-				if(svm_model_->label[i]==-1)ss<<"svm_curb_neg";
-				else ss<<"svm_curb_"<<svm_model_->label[i];
-				pub = nh.advertise<sensor_msgs::PointCloud>(ss.str().c_str(),1);
-				svm_curb_pubs_.push_back(pub);
+				for(int i=0;i<nr_class;i++)
+				{
+					ros::Publisher pub;
+					stringstream ss;
+					cout<<svm_model_->label[i]<<endl;
+					if(svm_model_->label[i]==-1)ss<<"svm_curb_neg";
+					else ss<<"svm_curb_"<<svm_model_->label[i];
+					pub = nh.advertise<sensor_msgs::PointCloud>(ss.str().c_str(),1);
+					svm_curb_pubs_.push_back(pub);
+				}
+			}
+			//handle the case where only 2 classes is being categorized or using one class svm
+			else
+			{
+				ros::Publisher pub1,pub2;
+				pub1 = nh.advertise<sensor_msgs::PointCloud>("svm_curb_neg",1);
+				svm_curb_pubs_.push_back(pub1);
+				pub2 = nh.advertise<sensor_msgs::PointCloud>("svm_curb_1",1);
+				svm_curb_pubs_.push_back(pub2);
 			}
 
 		}
@@ -115,30 +133,34 @@ namespace curb_svm
 	{
 		sensor_msgs::PointCloud curb_segment;
 		curb_segment.header = cpcID->pc.header;
-		for(int i=cpcID->id_start;i<cpcID->id_end;i++)
+		/*for(int i=cpcID->id_start;i<cpcID->id_end;i++)
 		{
 			curb_segment.points.push_back(cpcID->pc.points[i]);
-		}
+		}*/
+		curb_segment.points.push_back(cpcID->pc.points[(cpcID->id_start+cpcID->id_end)/2]);
 		sensor_msgs::PointCloud pc = cpcID->pc;
 		int id_start = cpcID->id_start;
 		int id_end = cpcID->id_end;
 		int predicted_feature= svmLeftCurbFeatures(pc, id_start, id_end);
-		cout<<"left"<<predicted_feature<<endl;
+		//cout<<"left"<<predicted_feature<<endl;
+		if(!write_file_)
 		publishClassifiedCurb(curb_segment,predicted_feature);
 	}
 	void curb_svm::rightCurbIDCallback(const road_detection::curbPointCloudID::ConstPtr &cpcID)
 	{
 		sensor_msgs::PointCloud curb_segment;
 		curb_segment.header = cpcID->pc.header;
-		for(int i=cpcID->id_start;i<cpcID->id_end;i++)
+		/*for(int i=cpcID->id_start;i<cpcID->id_end;i++)
 		{
 			curb_segment.points.push_back(cpcID->pc.points[i]);
-		}
+		}*/
+		curb_segment.points.push_back(cpcID->pc.points[(cpcID->id_start+cpcID->id_end)/2]);
 		sensor_msgs::PointCloud pc = cpcID->pc;
 		int id_start = cpcID->id_start;
 		int id_end = cpcID->id_end;
 		int predicted_feature = svmRightCurbFeatures(pc, id_start, id_end);
-		cout<<"right"<<predicted_feature<<endl;
+		//cout<<"right"<<predicted_feature<<endl;
+		if(!write_file_)
 		publishClassifiedCurb(curb_segment,predicted_feature);
 	}
 
@@ -146,12 +168,20 @@ namespace curb_svm
 	{
 		//search through the list of labels exhaustively, not efficient but it get the job done
 		int i=0;
-		for(i; i<svm_model_->nr_class;i++)
+		if(svm_model_->nr_class>2)
 		{
-			if(svm_model_->label[i]==predicted_class) {
-				svm_curb_pubs_[i].publish(pc);
-				break;
+			for(i; i<svm_model_->nr_class;i++)
+			{
+				if(svm_model_->label[i]==predicted_class) {
+					svm_curb_pubs_[i].publish(pc);
+					break;
+				}
 			}
+		}
+		else
+		{
+			if(predicted_class == -1) svm_curb_pubs_[0].publish(pc);
+			else svm_curb_pubs_[1].publish(pc);
 		}
 
 	}
@@ -311,7 +341,7 @@ namespace curb_svm
 
 	int curb_svm::svmLeftCurbFeatures(sensor_msgs::PointCloud &laser_cloud, int PID_begin, int PID_end)
 	{
-		ROS_INFO("svnLeftCurb start");
+		ROS_DEBUG("svnLeftCurb start");
 		//push data set with an amount of features
 		const unsigned int svm_features = 16;
 		int svm_curb_center = (PID_begin + PID_end)/2;
@@ -320,7 +350,7 @@ namespace curb_svm
 		svm_curb_data.header.stamp = ros::Time(0);
 		int svm_curb_left = svm_curb_center-svm_features/2;
 		//take care the case where the middle point of the curb has less than half the number of specified svm features
-		ROS_INFO("svnLeftCurb 1");
+		ROS_DEBUG("svnLeftCurb 1");
 		if(svm_curb_left<0)
 		{
 			//simply take the point starting from most left
@@ -328,7 +358,7 @@ namespace curb_svm
 			{
 				svm_curb_data.points.push_back(laser_cloud.points[i]);
 			}
-			ROS_INFO("svnLeftCurb 2");
+			ROS_DEBUG("svnLeftCurb 2");
 		}
 		else
 		{
@@ -337,14 +367,14 @@ namespace curb_svm
 			{
 				svm_curb_data.points.push_back(laser_cloud.points[i]);
 			}
-			ROS_INFO("svnLeftCurb 3");
+			ROS_DEBUG("svnLeftCurb 3");
 		}
 		sick_to_baselink_.transformPointCloud("base_link", svm_curb_data, svm_curb_data);
-		ROS_INFO("svnLeftCurb 4");
+		ROS_DEBUG("svnLeftCurb 4");
 		//normalised everything to start from zero to +ve so that it is invariant to x and y axis
 		double y_point = svm_curb_data.points[0].y;
 		double x_point = svm_curb_data.points[0].x;
-		if(write_file_)	myfileleftx_<<"11 ";
+		if(write_file_)	myfileleftx_<<"1 ";
 		//myfilelefty_<<"1 ";
 		//myfileleftz_<<"1 ";
 		for(int i=0; i<svm_curb_data.points.size();i++)
@@ -359,9 +389,9 @@ namespace curb_svm
 					<<(3*i)+3<<":"<<svm_curb_data.points[i].z<<' ';
 
 		}
-		ROS_INFO("svnLeftCurb 5");
+		ROS_DEBUG("svnLeftCurb 5");
 		svm_leftFeature_pub_.publish(svm_curb_data);
-		ROS_INFO("svnLeftCurb end");
+		ROS_DEBUG("svnLeftCurb end");
 		if(write_file_)
 		{
 			myfileleftx_<<endl;
@@ -374,7 +404,7 @@ namespace curb_svm
 
 	int curb_svm::svmRightCurbFeatures(sensor_msgs::PointCloud &laser_cloud, int PID_begin, int PID_end)
 	{
-		ROS_INFO("svnRightCurb start");
+		ROS_DEBUG("svnRightCurb start");
 		//push data set with an amount of features
 		const unsigned int svm_features = 16;
 		int svm_curb_center = (PID_begin + PID_end)/2;
@@ -388,7 +418,7 @@ namespace curb_svm
 
 		if(svm_curb_right>=laser_cloud.points.size())
 		{
-			ROS_INFO("svm_curb_right>=laser_cloud.points.size()");
+			ROS_DEBUG("svm_curb_right>=laser_cloud.points.size()");
 			//simply take the point ending with right most point
 			for(unsigned int i=laser_cloud.points.size()-1-svm_features; i<laser_cloud.points.size()-1;i++)
 			{
@@ -402,7 +432,7 @@ namespace curb_svm
 			//there are possibilities that right curb given is too much towards the left scan
 			svm_curb_right=svm_curb_right-svm_features;
 			if(svm_curb_right<0) svm_curb_right = 0;
-			ROS_INFO("else.. %d",svm_curb_right);
+			ROS_DEBUG("else.. %d",svm_curb_right);
 			for(unsigned int i=svm_curb_right;i<svm_curb_right+svm_features;i++ )
 			{
 				svm_curb_data.points.push_back(laser_cloud.points[i]);
@@ -414,7 +444,7 @@ namespace curb_svm
 		double y_point = svm_curb_data.points[svm_curb_data.points.size()-1].y;
 		double x_point = svm_curb_data.points[svm_curb_data.points.size()-1].x;
 
-		if(write_file_)myfilerightx_<<"12 ";
+		if(write_file_)myfilerightx_<<"1 ";
 		//myfilerighty_<<"1 ";
 		//myfilerightz_<<"1 ";
 		for(int i=0; i<svm_curb_data.points.size();i++)
@@ -429,7 +459,7 @@ namespace curb_svm
 					<<(3*i)+3<<":"<<svm_curb_data.points[i].z<<' ';
 
 		}
-		ROS_INFO("svnRightCurb end");
+		ROS_DEBUG("svnRightCurb end");
 		svm_rightFeature_pub_.publish(svm_curb_data);
 		if(write_file_)
 		{

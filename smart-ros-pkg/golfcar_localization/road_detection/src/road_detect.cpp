@@ -65,7 +65,7 @@ namespace road_detection{
 	void road_detect::scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_in)
 	{	
 		//LaserScan to PointCloud, stored in laser_cloud_;
-		ROS_INFO("laser callback begin");	
+		ROS_DEBUG("laser callback begin");
 		std::string target_frame = scan_in->header.frame_id;
 		try
 		{
@@ -73,7 +73,7 @@ namespace road_detection{
 		}
 		catch (tf::TransformException& e)
 		{
-			ROS_INFO("Wrong!!!!!!!!!!!!!");
+			ROS_DEBUG("Wrong!!!!!!!!!!!!!");
 			std::cout << e.what();
 			return;
 		}
@@ -84,11 +84,11 @@ namespace road_detection{
 	
 	void road_detect::ProcessSingleScan()
 	{
-		ROS_INFO("Begin ProcessSingleScan");
+		ROS_DEBUG("Begin ProcessSingleScan");
 		road_detect::CurbEtraction();
 		road_detect::RoadSelection();
 		road_detect::CurbSideLine();
-		ROS_INFO("End ProcessSingleScan");
+		ROS_DEBUG("End ProcessSingleScan");
 	}
 	
 	//Sub Fun1: to find all discontinuous points in the filter response; 
@@ -190,7 +190,7 @@ namespace road_detection{
 			}
 			else {}
 		}
-		//ROS_INFO("1------Curb candidate numbers %d", curb_candidate_PIDs_.size());		
+		//ROS_DEBUG("1------Curb candidate numbers %d", curb_candidate_PIDs_.size());
 		curb_pub_.publish(curb_candidates_);
 		show_curb_pub_.publish(show_curb_candidates_);
 	}
@@ -203,12 +203,12 @@ namespace road_detection{
 	    
 	    //store pairs of points, with each pair of points corresponding to one road segment candidate.
 	    std::vector<unsigned int> temp_C1C2;     	    
-		//ROS_INFO("2------Curb candidate numbers %d",curb_candidate_PIDs_.size());
+		//ROS_DEBUG("2------Curb candidate numbers %d",curb_candidate_PIDs_.size());
 		
 		//pay attention to "i<(curb_candidate_PIDs_.size()-1)";
 		for(unsigned int i=0; i<(curb_candidate_PIDs_.size()-1);i++)     
 		{
-			//ROS_INFO("2-------curb candidate PIDs %d---------",i);
+			//ROS_DEBUG("2-------curb candidate PIDs %d---------",i);
 			unsigned int line_begin_PID=curb_candidate_PIDs_[i];
 			unsigned int line_end_PID=curb_candidate_PIDs_[i+1];
 						
@@ -220,23 +220,23 @@ namespace road_detection{
 			//Criterion 1: numbers threshold 30; distances threshold 2m;
 			float temp_line_distance=sqrt(float((temp_x0-temp_x1)*(temp_x0-temp_x1)+(temp_y0-temp_y1)*(temp_y0-temp_y1)));
 			
-			//ROS_INFO("begin pid %d; end pid %d", line_begin_PID,line_end_PID);
-			//ROS_INFO("distance %5f", temp_line_distance);
+			//ROS_DEBUG("begin pid %d; end pid %d", line_begin_PID,line_end_PID);
+			//ROS_DEBUG("distance %5f", temp_line_distance);
 			int tempint= line_end_PID-line_begin_PID;
 			bool C1_flag=(tempint > ptNum_tresh_)&&(temp_line_distance>rdLength_tresh_);
 			
 			//Criterion 2: slope <30 degree;
 			float delt_line_x=temp_x1-temp_x0;
 			float delt_line_y=temp_y1-temp_y0;
-			//ROS_INFO("delt x %3f; delt y %3f", delt_line_x,delt_line_y);			
+			//ROS_DEBUG("delt x %3f; delt y %3f", delt_line_x,delt_line_y);
 			bool C2_flag=(-delt_line_y*slopeSin_tresh_<delt_line_x && delt_line_x<delt_line_y*slopeSin_tresh_);
 						
-			//if(C1_flag==false){ROS_INFO("C1 fail");}
-			//if(C2_flag==false){ROS_INFO("C2 fail");}
+			//if(C1_flag==false){ROS_DEBUG("C1 fail");}
+			//if(C2_flag==false){ROS_DEBUG("C2 fail");}
 			
 			if(C1_flag&&C2_flag)
 			{
-				ROS_INFO("C1&&C2 Pass!");
+				ROS_DEBUG("C1&&C2 Pass!");
 				temp_C1C2.push_back(line_begin_PID);
 				temp_C1C2.push_back(line_end_PID);
 			}	
@@ -244,7 +244,7 @@ namespace road_detection{
 		
 		//determine  "begin_end_PID_[2]";
 		bool temp_curb_exist=true;
-		if(temp_C1C2.size()==0){ROS_INFO("NO Curbs Extracted");temp_curb_exist=false;}  //impossible in general cases;
+		if(temp_C1C2.size()==0){ROS_DEBUG("NO Curbs Extracted");temp_curb_exist=false;}  //impossible in general cases;
 		else if(temp_C1C2.size()==2)
 		{
 		 begin_end_PID_[0]=temp_C1C2[0];
@@ -298,7 +298,7 @@ namespace road_detection{
 		//publish the "pair" of curbs;
 		if(temp_curb_exist)
 		{
-			ROS_INFO("Curbs Extracted");
+			ROS_DEBUG("Curbs Extracted");
 			unsigned int temp_curb_begin=begin_end_PID_[0];
 			unsigned int temp_curb_end=begin_end_PID_[1];
 			road_boundary_.points.push_back(laser_cloud_.points[temp_curb_begin]);
@@ -368,7 +368,7 @@ namespace road_detection{
 			
 			//criterion 4: curb is higher than 0.05, lower than 0.5 meter;
 			float temp_delt_z=left_begin_Point_base.point.z-left_end_Point_base.point.z;
-			ROS_INFO("left1: %3f",temp_delt_z);
+			ROS_DEBUG("left1: %3f",temp_delt_z);
 			bool temp_left_height=(temp_delt_z>curbLow_tresh_ && temp_delt_z< curbheigh_tresh_)||(temp_delt_z<-curbLow_tresh_ && temp_delt_z>-curbheigh_tresh_);
 			
 			//criterion 5: the curb should be somewhat orthorgnal to the road, say, 45 degree;
@@ -380,8 +380,8 @@ namespace road_detection{
 			bool distY = temp_delt_y > -10 && temp_delt_y < 10 ;
 			
 			if(temp_left_height&&temp_left_slope&& distY)
-			{temp_left_flag=true;ROS_INFO("left_curb true");}
-			else{ROS_INFO("left1: not satisfied");}
+			{temp_left_flag=true;ROS_DEBUG("left_curb true");}
+			else{ROS_DEBUG("left1: not satisfied");}
 	    }
 	    //backup case;
 	    if((temp_left_flag==false)&&(left_line_end_PID!=0)&&(left_backup_end!=0))
@@ -407,8 +407,8 @@ namespace road_detection{
 			bool distY = temp_delt_y > -10 && temp_delt_y < 10 ;
 			
 			if(temp_left_height&&temp_left_slope&&distY)
-			{temp_left_backup_flag=true;ROS_INFO("left_curb backup true");}
-			else{ROS_INFO("left2: not satisfied");}
+			{temp_left_backup_flag=true;ROS_DEBUG("left_curb backup true");}
+			else{ROS_DEBUG("left2: not satisfied");}
 		}
 	    
 	    
@@ -434,7 +434,7 @@ namespace road_detection{
 			bool distY = temp_delt_y > -10 && temp_delt_y < 10 ;
 			
 			if(temp_right_height&&temp_right_slope&&distY)
-			{temp_right_flag=true;ROS_INFO("right curb true");}
+			{temp_right_flag=true;ROS_DEBUG("right curb true");}
 
 	    }
 	    //backup case;
@@ -458,7 +458,7 @@ namespace road_detection{
 			bool distY = temp_delt_y > -10 && temp_delt_y < 10 ;
 			
 			if(temp_right_height&&temp_right_slope&&distY)
-			{temp_right_backup_flag=true;ROS_INFO("right curb backup true");}
+			{temp_right_backup_flag=true;ROS_DEBUG("right curb backup true");}
 		}
 
 
