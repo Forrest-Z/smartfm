@@ -10,7 +10,7 @@ namespace PID_Speed{
     rpy_sub_ = n.subscribe("imu/rpy", 1, &PID_Speed::rpyCallBack, this);
     throttle_pub_ = n.advertise<golfcar_halstreamer::throttle>("golfcar_speed", 1);
     brakepedal_pub_ = n.advertise<golfcar_halstreamer::brakepedal>("golfcar_brake", 1);
-
+	pid_pub_ = n.advertise<speed_controller::pid>("pid_gain",1);
     ros::NodeHandle private_nh("~");
     if(!private_nh.getParam("kp",kp_)) kp_ = 0.15;
     if(!private_nh.getParam("ki",ki_)) ki_ = 0.2;
@@ -41,7 +41,7 @@ namespace PID_Speed{
   {
     golfcar_halstreamer::throttle th;
     golfcar_halstreamer::brakepedal bp;
-
+	speed_controller::pid pid;
     if(sampler.emergency || (cmd_vel_ <= 0 && sampler.vel <= full_brake_thres_))
     {
       th.volt = 0; bp.angle = -1 * coeff_bp_;
@@ -71,8 +71,15 @@ namespace PID_Speed{
 	ei_ = ki_sat_ / ki_;
       else if(ki_ * ei_ < -ki_sat_)
 	ei_ = -ki_sat_ / ki_;
+		
+		//added to publish individual gain value
+		pid.p_gain = kp_ * (cmd_vel_ - v_filtered_);
+		pid.i_gain = ki_ * ei_;
+		pid.d_gain= 0;
+		pid.v_filter = v_filtered_;
+		pid_pub_.publish(pid);
 
-      double u = kp_ * (cmd_vel_ - v_filtered_) + ki_ * ei_;
+      double u = pid.p_gain+pid.i_gain;
       if(u > 1.0)
 	u = 1.0;
       else if(u < -1.0)

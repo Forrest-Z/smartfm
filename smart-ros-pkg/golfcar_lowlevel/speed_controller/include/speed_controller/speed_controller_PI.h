@@ -5,6 +5,8 @@
 #include <golfcar_halstreamer/throttle.h>
 #include <golfcar_halstreamer/brakepedal.h>
 #include <golfcar_odom/gcSpeedFilter.h>
+#include <speed_controller/pid.h>
+
 namespace PID_Speed{
   class PID_Speed
   {
@@ -19,6 +21,7 @@ namespace PID_Speed{
 	  ros::Subscriber speedFilter_sub_;
       ros::Publisher throttle_pub_;
       ros::Publisher brakepedal_pub_;
+	  ros::Publisher pid_pub_;
 	  double speed_filtered_;
 
       double kp_, ki_, ki_sat_, coeff_th_, coeff_bp_;
