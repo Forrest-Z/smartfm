@@ -8,14 +8,16 @@
 		<remap from="static_map" to="static_curb_map"/>
 		<remap from="map" to= "curb_map"/>
 	</node>
-
-	<node pkg="map_server" type="map_server" name="map_server2" args="$(find hybrid_amcl)/worlds/planar_map.yaml">
-		<remap from="static_map" to="static_planar_map"/>
-		<remap from="map" to= "planar_map"/>
-	</node>
 	<node pkg="road_detection" type="road_detect" name="road_detect"/>
-	<node pkg="road_detection" type="curb_track" name="curb_track"/>
+	<node pkg="road_detection" type="curb_svm" name="curb_svm">
+		<param name="svm_scale_file" value="$(find road_detection)/svm_model/LeftRightBad2AddSomeDataFromSet1.t.range"/>
+		<param name="svm_model_file" value="$(find road_detection)/svm_model/AddodomC3Set/easyTrained/LeftRightBad2AddSomeDataFromSet1.t.model"/>
+		<param name="svm_write_file" value="false"/>
+	</node>
+	<node pkg="road_detection" type="curb_track" name="curb_track">
+		<remap from="left_curbline_pub_" to="svm_leftcurbline"/>
+		<remap from="right_curbline_pub_" to="svm_rightcurbline"/>
+	</node>
 	<node pkg="curb_amcl" type="curb_crossing" name="curb_crossing"/>
-
 </launch>
 
