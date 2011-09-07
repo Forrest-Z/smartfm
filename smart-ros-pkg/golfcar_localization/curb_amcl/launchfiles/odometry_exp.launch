@@ -1,0 +1,15 @@
+<launch>
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_hokuyolaser" args="1.14, 0.0, 1.83 0.05 0 0 /base_link /laser 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_xsens" args="0.01, 0.0, 0 0 0 0 /base_link /base_imu 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser" args="1.7, 0.0, 1.45 0 .33 0 /base_link /sick_laser 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="0.92, 0, 1.83 0 0 0 /base_link /sick_laser2 100" />
+	<!--node pkg="golfcar_odom" type="golfcar_odom_imu" name="golfcar_odom"/-->
+	
+	<node pkg="golfcar_odom" type="golfcar_odom_imu" name="golfcar_odom">
+	<remap from="/imu/data" to="/ms/imu/data"/>
+	</node>
+
+	<rosparam command="load" file="$(find golfcar_odom)/launch/low_pass.yaml"/>
+
+</launch>
+	

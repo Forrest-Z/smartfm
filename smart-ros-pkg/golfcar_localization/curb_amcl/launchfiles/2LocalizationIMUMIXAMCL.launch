@@ -1,0 +1,16 @@
+<launch>
+
+	<node name="map_server" pkg="map_server" type="map_server" args="$(find mix_amcl)/worlds/curb_map.yaml">
+		<remap from="static_map" to="static_curb_map"/>
+		<remap from="map" to= "curb_map"/>
+	</node>
+
+	<node pkg="road_detection" type="road_detect" name="road_detect"/>
+	<node pkg="road_detection" type="curb_track" name="curb_track"/>
+	
+	<!--node name="rviz" pkg="rviz" type="rviz" respawn="false"/>
+
+	<node pkg="image_view" type="image_view" name="image_view">
+		<remap from="image" to="image_raw"/>
+	</node-->
+</launch>

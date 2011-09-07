@@ -41,6 +41,8 @@ namespace curb_svm{
 		vector<ros::Publisher> svm_curb_pubs_;
 		ros::Publisher svm_leftFeature_pub_;
 		ros::Publisher svm_rightFeature_pub_;
+		ros::Publisher svm_leftclassified_pub_;
+		ros::Publisher svm_rightclassified_pub_;
 		ros::Subscriber svm_left_sub_, svm_right_sub_;
 		string svm_scale_file_;
 		void output_target(double value);
@@ -126,42 +128,68 @@ namespace curb_svm
 		svm_left_sub_ = nh.subscribe("svm_leftCurbPoint_id", 1000, &curb_svm::leftCurbIDCallback, this);
 		svm_leftFeature_pub_ = nh.advertise<sensor_msgs::PointCloud>("svm_left_feature",2);
 		svm_rightFeature_pub_ = nh.advertise<sensor_msgs::PointCloud>("svm_right_feature",2);
-
+		svm_leftclassified_pub_=nh.advertise<sensor_msgs::PointCloud>("svm_leftcurbline",2);
+		svm_rightclassified_pub_=nh.advertise<sensor_msgs::PointCloud>("svm_rightcurbline",2);
 
 	}
 	void curb_svm::leftCurbIDCallback(const road_detection::curbPointCloudID::ConstPtr &cpcID)
 	{
 		sensor_msgs::PointCloud curb_segment;
 		curb_segment.header = cpcID->pc.header;
-		/*for(int i=cpcID->id_start;i<cpcID->id_end;i++)
+		if(cpcID->pc.points.size()>0)
 		{
-			curb_segment.points.push_back(cpcID->pc.points[i]);
-		}*/
-		curb_segment.points.push_back(cpcID->pc.points[(cpcID->id_start+cpcID->id_end)/2]);
-		sensor_msgs::PointCloud pc = cpcID->pc;
-		int id_start = cpcID->id_start;
-		int id_end = cpcID->id_end;
-		int predicted_feature= svmLeftCurbFeatures(pc, id_start, id_end);
-		//cout<<"left"<<predicted_feature<<endl;
-		if(!write_file_)
-		publishClassifiedCurb(curb_segment,predicted_feature);
+
+			curb_segment.points.push_back(cpcID->pc.points[(cpcID->id_start+cpcID->id_end)/2]);
+			sensor_msgs::PointCloud pc = cpcID->pc;
+			int id_start = cpcID->id_start;
+			int id_end = cpcID->id_end;
+			int predicted_feature= svmLeftCurbFeatures(pc, id_start, id_end);
+
+			if(!write_file_) publishClassifiedCurb(curb_segment,predicted_feature);
+			//signal for the noisy input to the temporal filter
+			if(predicted_feature!=1)
+			{
+				curb_segment.points.clear();
+				for(int i=cpcID->id_start;i<cpcID->id_end;i++)
+				{
+					curb_segment.points.push_back(cpcID->pc.points[i]);
+				}
+				curb_segment.points.front().z=0;
+				curb_segment.points.back().z=1.1;
+			}
+		}
+
+		svm_leftclassified_pub_.publish(curb_segment);
+
 	}
 	void curb_svm::rightCurbIDCallback(const road_detection::curbPointCloudID::ConstPtr &cpcID)
 	{
 		sensor_msgs::PointCloud curb_segment;
 		curb_segment.header = cpcID->pc.header;
-		/*for(int i=cpcID->id_start;i<cpcID->id_end;i++)
+		if(cpcID->pc.points.size()>0)
 		{
-			curb_segment.points.push_back(cpcID->pc.points[i]);
-		}*/
-		curb_segment.points.push_back(cpcID->pc.points[(cpcID->id_start+cpcID->id_end)/2]);
-		sensor_msgs::PointCloud pc = cpcID->pc;
-		int id_start = cpcID->id_start;
-		int id_end = cpcID->id_end;
-		int predicted_feature = svmRightCurbFeatures(pc, id_start, id_end);
-		//cout<<"right"<<predicted_feature<<endl;
-		if(!write_file_)
-		publishClassifiedCurb(curb_segment,predicted_feature);
+			curb_segment.header = cpcID->pc.header;
+			curb_segment.points.push_back(cpcID->pc.points[(cpcID->id_start+cpcID->id_end)/2]);
+			sensor_msgs::PointCloud pc = cpcID->pc;
+			int id_start = cpcID->id_start;
+			int id_end = cpcID->id_end;
+			int predicted_feature = svmRightCurbFeatures(pc, id_start, id_end);
+			//cout<<"right"<<predicted_feature<<endl;
+			if(!write_file_) publishClassifiedCurb(curb_segment,predicted_feature);
+
+			if(predicted_feature!=2)
+			{
+				curb_segment.points.clear();
+				for(int i=cpcID->id_start;i<cpcID->id_end;i++)
+				{
+					curb_segment.points.push_back(cpcID->pc.points[i]);
+				}
+				curb_segment.points.front().z=0;
+				curb_segment.points.back().z=1.1;
+			}
+		}
+
+		svm_rightclassified_pub_.publish(curb_segment);
 	}
 
 	void curb_svm::publishClassifiedCurb(sensor_msgs::PointCloud &pc, int predicted_class)
@@ -362,7 +390,8 @@ namespace curb_svm
 		}
 		else
 		{
-
+			if(svm_features+svm_curb_left>laser_cloud.points.size()-1)
+				svm_curb_left = laser_cloud.points.size() - svm_curb_left - 1;
 			for(unsigned int i=svm_curb_left;i<svm_features+svm_curb_left;i++ )
 			{
 				svm_curb_data.points.push_back(laser_cloud.points[i]);
