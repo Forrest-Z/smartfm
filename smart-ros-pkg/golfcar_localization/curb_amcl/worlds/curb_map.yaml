@@ -1,7 +1,0 @@
-image: curb_map20.png
-resolution: 0.100000
-origin: [0.000000, 0.00000, 0.000000]
-negate: 0
-occupied_thresh: 0.30
-free_thresh: 0.10
-
