@@ -94,7 +94,7 @@ namespace estimation{
 		Rmeas_update_ = true;
 		Rmeas_exist_  = true;		
 		Rcurb_line_= * Rcurb;
-		
+		R_filter_.vehicles_flag_=false;
 		right_point_.header = Rcurb_line_.header;
 		right_point_.points.clear();
 		
@@ -354,6 +354,7 @@ namespace estimation{
 			{
 				ROS_INFO("vehicle: dz %3f", dz);
 				R_filter_.vehicles_flag_=true;
+				Rmeas_update_ =false;
 			}
 			
 			if((dx<0.01&&dx>0.0)||(dx>-0.01&&dx<0.0)){beginthetha = M_PI_2;}
@@ -372,7 +373,7 @@ namespace estimation{
 		Lmeas_update_ = true;
 		Lmeas_exist_  = true;		
 		Lcurb_line_   = * Lcurb;
-		
+		L_filter_.vehicles_flag_=false;
 		left_point_.header = Lcurb_line_.header;
 		left_point_.points.clear();
 		
@@ -628,6 +629,7 @@ namespace estimation{
 			{
 				ROS_INFO("vehicle: dz %3f", dz);
 				L_filter_.vehicles_flag_=true;
+				Lmeas_update_ =false;
 			}
 			
 			if((dx<0.01&&dx>0.0)||(dx>-0.01&&dx<0.0)){beginthetha = M_PI_2;}

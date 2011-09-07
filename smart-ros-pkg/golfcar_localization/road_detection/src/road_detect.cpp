@@ -469,6 +469,8 @@ namespace road_detection{
 
 		road_detection::curbPointCloudID cpcIDleft;
 		road_detection::curbPointCloudID cpcIDright;
+		cpcIDleft.pc.header = left_curb_line_.header;
+		cpcIDright.pc.header = right_curb_line_.header;
 	    if(temp_left_flag==true)
 	    {
 			//the serial or sequence of "begin" and "end" will be changed here because of "push_back";
@@ -516,9 +518,10 @@ namespace road_detection{
 		sensor_msgs::PointCloud baselink_leftline_;
 		sensor_msgs::PointCloud baselink_rightline_;
 
-		sick_to_baselink_.transformPointCloud("base_link", left_curb_line_, baselink_leftline_);
-		sick_to_baselink_.transformPointCloud("base_link", right_curb_line_, baselink_rightline_);
-		
+		sick_to_baselink_.transformPointCloud("/base_link", left_curb_line_, baselink_leftline_);
+		sick_to_baselink_.transformPointCloud("/base_link", right_curb_line_, baselink_rightline_);
+		//sick_to_baselink_.transformPointCloud("/base_link", cpcIDleft.pc, cpcIDleft.pc);
+		//sick_to_baselink_.transformPointCloud("/base_link", cpcIDright.pc, cpcIDright.pc);
 		//publish two lines;
 		left_curbline_pub_.publish(baselink_leftline_);		
 		right_curbline_pub_.publish(baselink_rightline_);

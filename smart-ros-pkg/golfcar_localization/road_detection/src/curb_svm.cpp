@@ -155,7 +155,7 @@ namespace curb_svm
 					curb_segment.points.push_back(cpcID->pc.points[i]);
 				}
 				curb_segment.points.front().z=0;
-				curb_segment.points.back().z=1.1;
+				curb_segment.points.back().z=1;
 			}
 		}
 
@@ -185,7 +185,7 @@ namespace curb_svm
 					curb_segment.points.push_back(cpcID->pc.points[i]);
 				}
 				curb_segment.points.front().z=0;
-				curb_segment.points.back().z=1.1;
+				curb_segment.points.back().z=1;
 			}
 		}
 
