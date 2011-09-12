@@ -225,7 +225,7 @@ namespace curb_svm
 	{
 		//scaling
 		//cout<<"scaling"<<endl;
-		sensor_msgs::PointCloud pc_ori = pc;
+
 		for(int i=0;i<pc.points.size();i++)
 		{
 			int idx = (3*i)+1;
@@ -240,16 +240,19 @@ namespace curb_svm
 		int max_nr_attr = 64;
 		x = (struct svm_node *) realloc(x,max_nr_attr*sizeof(struct svm_node));
 		//cout<<"after allocate"<<endl;
-		for(int i=0;i<pc.points.size();i++)
+
+		//reduce number of features for svm, for 16 features originally, reducing 2 (2*2 left and right) become only 12 features
+		int skip_features = 0;
+		for(int i=0;i<pc.points.size()-2*skip_features;i++)
 		{
-			x[(3*i)].index=(3*i)+1;
-			x[(3*i+1)].index=(3*i)+2;
-			x[(3*i+2)].index=(3*i)+3;
-			x[(3*i)].value = pc.points[i].x;
-			x[(3*i)+1].value = pc.points[i].y;
-			x[(3*i)+2].value = pc.points[i].z;
+			x[(3*i)].index=(3*i)+1+(3*skip_features);
+			x[(3*i+1)].index=(3*i)+2+(3*skip_features);
+			x[(3*i+2)].index=(3*i)+3+(3*skip_features);
+			x[(3*i)].value = pc.points[i+skip_features].x;
+			x[(3*i)+1].value = pc.points[i+skip_features].y;
+			x[(3*i)+2].value = pc.points[i+skip_features].z;
 		}
-		x[3*pc.points.size()].index=-1;
+		x[3*(pc.points.size()-2*skip_features)].index=-1;
 		return svm_predict(svm_model_,x);
 		//if(svm_predict(svm_model_,x)>0)
 		//classified_curb_pub_.publish(pc_ori);
