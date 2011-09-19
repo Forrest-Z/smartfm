@@ -16,13 +16,11 @@ to run the joystick node:
 #include <std_msgs/Bool.h>
 
 
-#define MAX_VOLT 3.3
-#define STEER_ANG_MAX (-540)
+#define STEER_ANG_MAX 540
 #define FULL_BRAKE 180
 
 ros::Publisher throttle_pub, steering_pub, brake_pub, lblinker_pub, rblinker_pub;
 
-int counter = 0;
 
 void joyCallBack(joy::Joy joy_msg)
 {
@@ -31,10 +29,6 @@ void joyCallBack(joy::Joy joy_msg)
   // axes[1] is the longitudinal axis: positive to the front
   // axes[2] is the wheel axis: positive upward.
 
-  if( ++counter<80 )
-    return;
-  counter = 0;
-
   float lat = joy_msg.axes[0];
   float lon = joy_msg.axes[1];
 
@@ -42,8 +36,8 @@ void joyCallBack(joy::Joy joy_msg)
            joy_msg.axes[0], joy_msg.axes[1], joy_msg.axes[2]);
 
   std_msgs::Float64 V, B;
-  V.data = lon>0 ? lon * MAX_VOLT : 0;
-  B.data = lon>0 ? 0 : -lon * FULL_BRAKE;
+  V.data = lon>0 ? lon : 0;
+  B.data = lon>0 ? 0 : -lon*FULL_BRAKE;
   throttle_pub.publish(V);
   brake_pub.publish(B);
 

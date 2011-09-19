@@ -29,34 +29,34 @@ Author: Brice Rebsamen (August 2011)
 
 
 #include <AccelStepper.h>
+#include <Blinkers.h>
 
 #include <ros.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float64.h>
 #include <lowlevel/Arduino.h>
+#include <lowlevel/ButtonState.h>
 
 
 //------------------------------------------------------------------------------
 // Some parameters
 
 // If defined, ROS is not used and a state machine is controlling the hardware.
-//#define testing_mode
 
 // pin connection
-uint8_t left_blinker_pin = 2;
-uint8_t right_blinker_pin = 3;
-uint8_t stop_light_pin = 4;
-uint8_t throttle_pin = 6;
-uint8_t emergency_pin = 7;
-uint8_t steer_pulse_pin = 8;
-uint8_t steer_dir_pin = 9;
-//uint8_t steer_enbl_pin = 10;
-uint8_t brake_pulse_pin = 11;
-uint8_t brake_dir_pin = 12;
-//uint8_t brake_enbl_pin = 13;
+enum { emergency_pin = 2, throttle_pin,
+  l293_3_pin, l293_2_pin, l293_4_pin, l293_1_pin,
+  motors_enable_pin, steer_pulse_pin, steer_dir_pin, brake_pulse_pin, brake_dir_pin,
+  auto_mode_pin };
+
+uint8_t right_blinker_pin = l293_1_pin;
+uint8_t left_blinker_pin = l293_2_pin;
+uint8_t stop_light_pin = l293_3_pin;
+
 
 
 // Angle to number of steps conversion factor
+// alpha: 32767, beta: 5
 float n_steps_per_rev = 800;
 float step_scale = n_steps_per_rev / 360.0;
 
@@ -67,67 +67,9 @@ float brake_acc = 6000;
 float steer_max_speed = n_steps_per_rev;
 float steer_acc = 6000;
 
-float full_brake = 220;
 
-float blinkers_default_half_period = 0.5;
+float full_brake = 180;
 
-
-//------------------------------------------------------------------------------
-// Blinker class
-
-class Blinker {
-
-  public:
-    Blinker(uint8_t pin) : _pin(pin), _blink(0), _state(0) {
-      pinMode(pin, OUTPUT);
-      half_period(blinkers_default_half_period);
-    }
-
-    void blink() {
-      if( _blink ) return; //already blinking
-      digitalWrite(_pin, HIGH);
-      _lastTime = millis();
-      _blink = 1;
-      _state = 1;
-    }
-
-    void off() {
-      if( !_blink ) return; //already off
-      digitalWrite(_pin, LOW);
-      _blink = 0;
-      _state = 0;
-    }
-
-    void set(int b) {
-      b ? blink() : off();
-    }
-
-    void half_period(float sec) {
-      _half_period = (unsigned long) (sec*1000);
-    }
-
-
-    void run() {
-      if( !_blink )
-        return;
-      unsigned long t = millis();
-      if( t - _lastTime > _half_period ) {
-        _lastTime = t;
-        _state = !_state;
-        if( _state )
-          digitalWrite(_pin, HIGH);
-        else
-          digitalWrite(_pin, LOW);
-      }
-    }
-
-  private:
-    uint8_t _pin;
-    int _blink; // are we in blinking mode
-    int _state; // is the light on or off
-    unsigned long _lastTime;
-    unsigned long _half_period; //in micro seconds
-};
 
 
 //------------------------------------------------------------------------------
@@ -142,22 +84,23 @@ AccelStepper stepper_brake(1, brake_pulse_pin, brake_dir_pin);
 
 Blinker left_blinker(left_blinker_pin), right_blinker(right_blinker_pin);
 
-bool emergency = false;
+bool emergency = false, motorsEnabled = false;
+unsigned long time = 0, old_time = 0, last_msg_time = 0;
 
 
 //------------------------------------------------------------------------------
 // Some helper functions
 
 void set_throttle(float v) {
-  // The golfcar is expecting a max of 3.3V (to be verified). The Arduino's
-  // normal output is 5V. 2 solutions: use a voltage divider (2 resistors), or
-  // limit the PWM duty cycle.
-  // - voltage divider, might do a RC circuit which might slow down the pulse...
-  // - scale: 255 ~ 5V ==>  168 ~ 3.3V
-  v = v>3.3 ? 3.3 : v<0 ? 0 : v;
-  int cycle = (int) ( v / 3.3 * 168 );
-  if( emergency ) cycle = 0;
-  analogWrite(throttle_pin, cycle);
+  // v is supposed to be between 0 and 1: 1 corresponds to max speed.
+
+  if( ! emergency ) {
+    int cycle = (int) ( (v>1.0 ? 1.0 : v<0.0 ? 0.0 : v) * 255.0 );
+    analogWrite(throttle_pin, cycle);
+  }
+  else {
+    analogWrite(throttle_pin, 0);
+  }
 }
 
 void set_brake(float a) {
@@ -174,7 +117,6 @@ void set_steer(float a) {
 }
 
 
-#ifndef testing_mode
 
 //------------------------------------------------------------------------------
 // Some callback functions for our subscribers.
@@ -184,11 +126,24 @@ void set_steer(float a) {
 // message, and the name you wish to refer to the message by within the callback
 
 ROS_CALLBACK(cmd_CB, lowlevel::Arduino, cmd_msg)
+  last_msg_time = millis();
+
+  if( !motorsEnabled ) {
+    digitalWrite(motors_enable_pin, HIGH);
+    motorsEnabled = true;
+  }
+
   set_throttle(cmd_msg.throttle_volt);
   set_steer(cmd_msg.steer_angle);
   set_brake(cmd_msg.brake_angle);
-  left_blinker.set(cmd_msg.left_blinker);
-  right_blinker.set(cmd_msg.right_blinker);
+
+  if( emergency ) {
+    left_blinker.blink();
+    right_blinker.blink();
+  } else {
+    left_blinker.set(cmd_msg.left_blinker);
+    right_blinker.set(cmd_msg.right_blinker);
+  }
 }
 
 
@@ -198,11 +153,9 @@ ROS_CALLBACK(cmd_CB, lowlevel::Arduino, cmd_msg)
 ros::NodeHandle nh;
 ros::Subscriber arduino_cmd_sub("arduino_cmd", &cmd_msg, cmd_CB );
 
-std_msgs::Bool emergency_msg;
-ros::Publisher emergency_pub("emergency", &emergency_msg);
+lowlevel::ButtonState button_state_msg;
+ros::Publisher button_state_pub("button_state", &button_state_msg);
 
-
-#endif
 
 
 //------------------------------------------------------------------------------
@@ -214,67 +167,70 @@ void setup()
   stepper_brake.setAcceleration(brake_acc);
   stepper_steer.setMaxSpeed(steer_max_speed);
   stepper_steer.setAcceleration(steer_acc);
-  
+
   pinMode(throttle_pin, OUTPUT);
   analogWrite(throttle_pin, 0);
-  
+
   pinMode(stop_light_pin, OUTPUT);
   digitalWrite(stop_light_pin, LOW);
-  
+
+  pinMode(motors_enable_pin, OUTPUT);
+  digitalWrite(motors_enable_pin, LOW);
+
   pinMode(emergency_pin, INPUT);
-  digitalWrite(emergency_pin, HIGH); // turn on pullup resistors --> input defaults to HIGH
-  emergency = digitalRead(emergency_pin)==LOW;
-  
-#ifndef testing_mode
+  pinMode(auto_mode_pin, INPUT);
+  emergency = digitalRead(emergency_pin)==HIGH;
+  button_state_msg.automode = digitalRead(emergency_pin)==HIGH;
+
   nh.initNode();
-  nh.advertise(emergency_pub);
+  nh.advertise(button_state_pub);
   nh.subscribe(arduino_cmd_sub);
-#endif
 }
 
-
-unsigned long old_time = 0;
-int state = 0;
-
-void loop()
+void button_state()
 {
-  stepper_brake.run();
-  stepper_steer.run();
-  
-  left_blinker.run();
-  right_blinker.run();
-
-#if defined testing_mode
-  unsigned long time = millis();
-  if( time - old_time > 2000 ) {
-    switch(state++) {
-      case 0: set_brake(180); break;
-      case 1: set_brake(0); break;
-      case 2: set_steer(180); break;
-      case 3: set_steer(0); break;
-      case 4: set_brake(180); set_steer(-180); break;
-      case 5: set_brake(0); set_steer(0); state=0; break;
-    }
-    old_time = time;
-  }
-#else
-  if( !emergency && digitalRead(emergency_pin)==LOW ) {
+  if( !emergency && digitalRead(emergency_pin)==HIGH ) {
     set_throttle(0);
     set_brake(full_brake);
     emergency = true;
+    button_state_msg.emergency = emergency;
+    button_state_pub.publish( &button_state_msg );
+    old_time = time;
   }
-  else if( digitalRead(emergency_pin)==HIGH ) {
+  else if( emergency && digitalRead(emergency_pin)==LOW ) {
     emergency = false;
+    set_brake(0);
+    button_state_msg.emergency = emergency;
+    button_state_pub.publish( &button_state_msg );
+    old_time = time;
   }
-  
-  unsigned long time = millis();
-  if( time - old_time > 250 ) {
-    emergency_msg.data = emergency;
-    emergency_pub.publish( &emergency_msg );
+  else {
+    if( time - old_time > 250 ) {
+      button_state_msg.emergency = emergency;
+      button_state_msg.automode = digitalRead(auto_mode_pin)==HIGH;
+      button_state_pub.publish( &button_state_msg );
+      old_time = time;
+    }
   }
+}
 
+
+void loop()
+{
+  time = millis();
+  button_state();
   nh.spinOnce();
 
-#endif
-  
+  if( motorsEnabled && time - last_msg_time > 5000 ) {
+    digitalWrite(motors_enable_pin, LOW);
+    motorsEnabled = false;
+  }
+
+  if( motorsEnabled ) {
+    stepper_brake.run();
+    stepper_steer.run();
+  }
+
+  left_blinker.run();
+  right_blinker.run();
 }

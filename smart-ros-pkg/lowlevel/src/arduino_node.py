@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-''' 
+'''
 ROS node in charge of interfacing with the arduino.
 '''
 
@@ -34,12 +34,21 @@ def cmd_msg_CB(event):
     arduino_pub.publish( arduino_cmd_msg )
 
 
-throttle_sub = rospy.Subscriber('throttle_volt', Float64, throttleCB)
-brake_sub = rospy.Subscriber('brake_angle', Float64, brakeCB)
-steer_sub = rospy.Subscriber('steer_angle', Float64, steerCB)
-lblinker_sub = rospy.Subscriber('left_blinker', Float64, lblinkerCB)
-rblinker_sub = rospy.Subscriber('right_blinker', Float64, rblinkerCB)
+def setupPub(topic,msg_t,cb):
+    sub = rospy.Subscriber(topic, msg_t, cb)
+    rospy.loginfo('Setup Subscriber on %s [%s]' % (topic, msg_t._type))
+    return sub
 
-rospy.Timer(rospy.Duration(0.25), cmd_msg_CB)
 
-rospy.spin()
+throttle_sub = setupPub('throttle_volt', Float64, throttleCB)
+brake_sub = setupPub('brake_angle', Float64, brakeCB)
+steer_sub = setupPub('steer_angle', Float64, steerCB)
+lblinker_sub = setupPub('left_blinker', Bool, lblinkerCB)
+rblinker_sub = setupPub('right_blinker', Bool, rblinkerCB)
+
+period_sec = 0.25;
+rospy.loginfo('Sending messages to the Arduino board every %dms' % (period_sec*1000))
+
+while not rospy.is_shutdown():
+    arduino_pub.publish( arduino_cmd_msg )
+    rospy.sleep(period_sec)
