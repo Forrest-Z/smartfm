@@ -116,6 +116,10 @@ void set_steer(float a) {
   stepper_steer.moveTo( (long) ( a * step_scale ) );
 }
 
+void setMotorsEnabled(bool b) {
+  digitalWrite(motors_enable_pin, b?HIGH:LOW);
+  motorsEnabled = b;
+}
 
 
 //------------------------------------------------------------------------------
@@ -128,10 +132,8 @@ void set_steer(float a) {
 ROS_CALLBACK(cmd_CB, lowlevel::Arduino, cmd_msg)
   last_msg_time = millis();
 
-  if( !motorsEnabled ) {
-    digitalWrite(motors_enable_pin, HIGH);
-    motorsEnabled = true;
-  }
+  if( !motorsEnabled )
+    setMotorsEnabled(true);
 
   set_throttle(cmd_msg.throttle_volt);
   set_steer(cmd_msg.steer_angle);
@@ -221,10 +223,9 @@ void loop()
   button_state();
   nh.spinOnce();
 
-  if( motorsEnabled && time - last_msg_time > 5000 ) {
-    digitalWrite(motors_enable_pin, LOW);
-    motorsEnabled = false;
-  }
+  if( motorsEnabled && (time - last_msg_time > 5000) )
+    setMotorsEnabled(false);
+  
 
   if( motorsEnabled ) {
     stepper_brake.run();
