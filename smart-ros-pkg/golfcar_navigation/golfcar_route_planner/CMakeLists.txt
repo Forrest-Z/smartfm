@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.4.6)
-include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+include ($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 
 # Set the build type.  Options are:
 #  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
@@ -16,6 +16,9 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
+set(SOCKET_HANDLER_DIR ../../socket_handler)
+set(SOCKET_HANDLER_INC_DIR ../..)
+
 #uncomment if you have defined messages
 #rosbuild_genmsg()
 #uncomment if you have defined services
@@ -27,9 +30,10 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 #rosbuild_add_executable(route_planner src/route_planner.cpp)
+include_directories(${SOCKET_HANDLER_INC_DIR})
 rosbuild_add_executable(simple_goal src/simple_goal.cpp)
-rosbuild_add_executable(route_planner_node src/route_planner_node.cpp src/RoutePlanner.cc include/socket_handler/ClientSocket.cc include/socket_handler/Socket.cc include/socket_handler/SocketException.cc)
-rosbuild_add_executable(simple_server src/simple_server_main.cpp src/RoutePlanner.cc include/socket_handler/ClientSocket.cc include/socket_handler/Socket.cc include/socket_handler/SocketException.cc include/socket_handler/ServerSocket.cc)
-rosbuild_add_executable(route_planner_standalone src/route_planner_node_standalone.cpp src/RoutePlanner.cc include/socket_handler/ClientSocket.cc include/socket_handler/Socket.cc include/socket_handler/SocketException.cc include/socket_handler/ServerSocket.cc)
+rosbuild_add_executable(route_planner_node src/route_planner_node.cpp src/RoutePlanner.cc ${SOCKET_HANDLER_DIR}/ClientSocket.cc ${SOCKET_HANDLER_DIR}/Socket.cc ${SOCKET_HANDLER_DIR}/SocketException.cc)
+rosbuild_add_executable(simple_server src/simple_server_main.cpp src/RoutePlanner.cc ${SOCKET_HANDLER_DIR}/ClientSocket.cc ${SOCKET_HANDLER_DIR}/Socket.cc ${SOCKET_HANDLER_DIR}/SocketException.cc ${SOCKET_HANDLER_DIR}/ServerSocket.cc)
+rosbuild_add_executable(route_planner_standalone src/route_planner_node_standalone.cpp src/RoutePlanner.cc ${SOCKET_HANDLER_DIR}/ClientSocket.cc ${SOCKET_HANDLER_DIR}/Socket.cc ${SOCKET_HANDLER_DIR}/SocketException.cc ${SOCKET_HANDLER_DIR}/ServerSocket.cc)
 rosbuild_add_executable(svg_path_manipulator src/svg_path_manipulator.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
