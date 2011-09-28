@@ -20,16 +20,15 @@ namespace golfcar_odometry{
 		acc_.push_back(0);
 		speed_.push_back(0);
 	}
-	
-		
+
+
 	void golfcar_odometry::samplerCallBack(golfcar_halsampler::odo sampler)
 	{
 	        golfcar_odom::gcSpeedFilter gcsf;
-		
+
 		if(pose_init==0)
 		{
 			//initialize position as zero and take first reading of yaw_rate
-			pose_pre = sampler.pose;
 			time_pre = ros::Time::now().toSec();
 			speed_pre_ = sampler.vel;
 			pose_init++;
@@ -37,7 +36,7 @@ namespace golfcar_odometry{
 		}
 		speed_[0] = sampler.vel;
 		speed_filter_->update(speed_, speed_);
-		
+
 		gcsf.speed=sampler.vel;
 		gcsf.speedFiltered=speed_[0];
 		gcsf.acc=(speed_[0]-speed_pre_)*sampling_rate;
@@ -46,26 +45,25 @@ namespace golfcar_odometry{
 		acc_filter_->update(acc_, acc_);
 		gcsf.accFiltered =acc_[0];
 
-		
+
 		filter_pub.publish(gcsf);
 	}
-	
-	
+
+
   };
-	
-	
+
+
 
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "golfcar_odom");
 	ros::NodeHandle nh_;
 	golfcar_odometry::golfcar_odometry *odom_ = new golfcar_odometry::golfcar_odometry(nh_);
-	
+
 	odom_->pose_init =0;
-	odom_->pose_pre=0.0;
 	odom_->pose_zero=0.0;
-	
+
 	ros::spin();
-	
+
 	return 0;
 }

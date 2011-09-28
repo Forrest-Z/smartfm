@@ -30,7 +30,6 @@ public:
 
         ros::Publisher filter_pub;
         int pose_init;
-        double pose_pre;
         double pose_zero;
         double yaw_rate_pre;
         double time_pre;
@@ -45,12 +44,12 @@ public:
         double speed_pre_;
 
         golfcar_odometry(ros::NodeHandle nh_);
-        
+
         ~golfcar_odometry();
         void samplerCallBack(golfcar_halsampler::odo sampler);
 
         geometry_msgs::Quaternion imuQ;
-        
+
 private:
   ros::NodeHandle n;
   ros::Subscriber sub;
