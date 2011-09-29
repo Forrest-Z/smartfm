@@ -1,16 +1,60 @@
-#include <speed_controller/speed_controller_PI.h>
+#include <ros/ros.h>
 
-namespace PID_Speed{
+#include <geometry_msgs/Twist.h>
 
-  PID_Speed::PID_Speed()
-  {
-    ros::NodeHandle n;
+#include <lse_xsens_mti/imu_rpy.h>
+
+#include <golfcar_halsampler/odo.h>
+#include <golfcar_halstreamer/throttle.h>
+#include <golfcar_halstreamer/brakepedal.h>
+
+#include <speed_controller/pid.h>
+
+
+
+class PID_Speed
+{
+    public:
+        PID_Speed(ros::NodeHandle);
+
+    private:
+        ros::NodeHandle n;
+        ros::Subscriber cmd_vel_sub_;
+        ros::Subscriber sampler_sub_;
+        ros::Subscriber rpy_sub_;
+        ros::Subscriber speedFilter_sub_;
+        ros::Publisher throttle_pub_;
+        ros::Publisher brakepedal_pub_;
+        ros::Publisher pid_pub_;
+
+        void cmdVelCallBack(geometry_msgs::Twist cmd_vel);
+        void rpyCallBack(lse_xsens_mti::imu_rpy rpy);
+        void samplerCallBack(golfcar_halsampler::odo sampler);
+
+        double kp_, ki_, ki_sat_, coeff_th_, coeff_bp_;
+        double throttle_zero_thres_, brake_zero_thres_, full_brake_thres_;
+        double tau_v_;
+        double pitch_param1_, pitch_param2_;
+
+        double cmd_vel_;
+        ros::Time time_pre_;
+        double e_pre_;
+        double ei_;
+        double v_filtered_;
+        double pitch_last_;
+};
+
+
+
+PID_Speed::PID_Speed(ros::NodeHandle nh) : n(nh)
+{
     cmd_vel_sub_= n.subscribe("cmd_vel", 1, &PID_Speed::cmdVelCallBack, this);
     sampler_sub_= n.subscribe("golfcar_sampler", 1, &PID_Speed::samplerCallBack, this);
     rpy_sub_ = n.subscribe("imu/rpy", 1, &PID_Speed::rpyCallBack, this);
     throttle_pub_ = n.advertise<golfcar_halstreamer::throttle>("golfcar_speed", 1);
     brakepedal_pub_ = n.advertise<golfcar_halstreamer::brakepedal>("golfcar_brake", 1);
-	pid_pub_ = n.advertise<speed_controller::pid>("pid_gain",1);
+    pid_pub_ = n.advertise<speed_controller::pid>("pid_gain",1);
+
     ros::NodeHandle private_nh("~");
     if(!private_nh.getParam("kp",kp_)) kp_ = 0.15;
     if(!private_nh.getParam("ki",ki_)) ki_ = 0.2;
@@ -35,101 +79,100 @@ namespace PID_Speed{
     ei_ = 0;
     v_filtered_ = 0;
     pitch_last_ = 0;
-  }
+}
 
-  void PID_Speed::samplerCallBack(golfcar_halsampler::odo sampler)
-  {
+
+void PID_Speed::cmdVelCallBack(geometry_msgs::Twist cmd_vel)
+{
+    cmd_vel_ = cmd_vel.linear.x;
+}
+
+
+void PID_Speed::rpyCallBack(lse_xsens_mti::imu_rpy rpy)
+{
+    pitch_last_ = rpy.pitch;
+}
+
+
+void PID_Speed::samplerCallBack(golfcar_halsampler::odo sampler)
+{
     golfcar_halstreamer::throttle th;
     golfcar_halstreamer::brakepedal bp;
-	speed_controller::pid pid;
+    speed_controller::pid pid;
+
     if(sampler.emergency || (cmd_vel_ <= 0 && sampler.vel <= full_brake_thres_))
     {
-      th.volt = 0; bp.angle = -1 * coeff_bp_;
-      cmd_vel_ = 0; time_pre_ = ros::Time::now(); e_pre_ = 0;
+        th.volt = 0; bp.angle = -1 * coeff_bp_;
+        cmd_vel_ = 0; time_pre_ = ros::Time::now(); e_pre_ = 0;
 
-      // when starting from a stopped position, initialization is important
-      // especially, uphill is tricky
-      if(pitch_last_ >= pitch_param1_)
-	ei_ = -ki_sat_ / ki_;
-      else if(pitch_last_ > pitch_param2_)
-	ei_ = -ki_sat_ / ki_ * (pitch_last_ - pitch_param2_) / (pitch_param1_ - pitch_param2_);
-      else
-	ei_ = 0;
+        // when starting from a stopped position, initialization is important
+        // especially, uphill is tricky
+        if(pitch_last_ >= pitch_param1_)
+            ei_ = -ki_sat_ / ki_;
+        else if(pitch_last_ > pitch_param2_)
+            ei_ = -ki_sat_ / ki_ * (pitch_last_ - pitch_param2_) / (pitch_param1_ - pitch_param2_);
+        else
+            ei_ = 0;
 
-      v_filtered_ = 0;
+        v_filtered_ = 0;
     }
     else
     {
-      ros::Time time_now_ = ros::Time::now();
-      ros::Duration time_diff_ = time_now_ - time_pre_;
-      double dt_ = time_diff_.toSec();
-      double e_now_ = cmd_vel_ - sampler.vel;
-      v_filtered_ += (sampler.vel - v_filtered_) * dt_ / tau_v_;
+        ros::Time time_now_ = ros::Time::now();
+        ros::Duration time_diff_ = time_now_ - time_pre_;
+        double dt_ = time_diff_.toSec();
+        double e_now_ = cmd_vel_ - sampler.vel;
+        v_filtered_ += (sampler.vel - v_filtered_) * dt_ / tau_v_;
 
-      ei_ += (0.5 * dt_ * (e_pre_ + e_now_));
-      if(ki_ * ei_ > ki_sat_)
-	ei_ = ki_sat_ / ki_;
-      else if(ki_ * ei_ < -ki_sat_)
-	ei_ = -ki_sat_ / ki_;
-		
-		//added to publish individual gain value
-		pid.p_gain = kp_ * (cmd_vel_ - v_filtered_);
-		pid.i_gain = ki_ * ei_;
-		pid.d_gain= 0;
-		pid.v_filter = v_filtered_;
-		pid_pub_.publish(pid);
+        ei_ += (0.5 * dt_ * (e_pre_ + e_now_));
+        if(ki_ * ei_ > ki_sat_)
+            ei_ = ki_sat_ / ki_;
+        else if(ki_ * ei_ < -ki_sat_)
+            ei_ = -ki_sat_ / ki_;
 
-      double u = pid.p_gain+pid.i_gain;
-      if(u > 1.0)
-	u = 1.0;
-      else if(u < -1.0)
-	u = -1.0;
+        //added to publish individual gain value
+        pid.p_gain = kp_ * (cmd_vel_ - v_filtered_);
+        pid.i_gain = ki_ * ei_;
+        pid.d_gain= 0;
+        pid.v_filter = v_filtered_;
+        pid_pub_.publish(pid);
 
-      if(u > throttle_zero_thres_/coeff_th_)
-      {
-	th.volt = coeff_th_ * u;
-	bp.angle = 0;
-      }
-      else if(u < -brake_zero_thres_/coeff_bp_)
-      {
-	th.volt = 0;
-	bp.angle = coeff_bp_ * u;
-      }
-      else
-      {
-	th.volt = 0; bp.angle = 0;
-      }
+        double u = pid.p_gain+pid.i_gain;
+        if(u > 1.0)
+            u = 1.0;
+        else if(u < -1.0)
+            u = -1.0;
 
-      time_pre_ = time_now_;
-      e_pre_ = e_now_;
+        if(u > throttle_zero_thres_/coeff_th_)
+        {
+            th.volt = coeff_th_ * u;
+            bp.angle = 0;
+        }
+        else if(u < -brake_zero_thres_/coeff_bp_)
+        {
+            th.volt = 0;
+            bp.angle = coeff_bp_ * u;
+        }
+        else
+        {
+            th.volt = 0; bp.angle = 0;
+        }
+
+        time_pre_ = time_now_;
+        e_pre_ = e_now_;
     }
 
     throttle_pub_.publish(th);
     brakepedal_pub_.publish(bp);
-  }
-	
-  void PID_Speed::cmdVelCallBack(geometry_msgs::Twist cmd_vel)
-  {
-    cmd_vel_ = cmd_vel.linear.x;
-  }
-
-  void PID_Speed::rpyCallBack(lse_xsens_mti::imu_rpy rpy)
-  {
-    pitch_last_ = rpy.pitch;
-  }
 }
+
 
 
 int main(int argc, char**argv)
 {
-  ros::init(argc, argv, "speed_controller");
-  PID_Speed::PID_Speed *pidc = new PID_Speed::PID_Speed();
-  if(!pidc) {
-    ROS_ERROR("failed to start the process\n");
-    return 1;
-  }
-
-  ros::spin();
-
-  return 0;
+    ros::init(argc, argv, "speed_controller");
+    ros::NodeHandle n;
+    PID_Speed pidc(n);
+    ros::spin();
+    return 0;
 }
