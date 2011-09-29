@@ -6,13 +6,13 @@
 
 Performs stepper motors control (brake and steering), PWM (throttle) and
 lights control (blinkers and stop light). Also monitors the state of the
-emergency button.
+emergency and auto mode button.
 
 Subscribers:
 - arduino_cmd (type: lowlevel::Arduino)
 
 Publishers:
-- emergency (type: std_msgs::Bool)
+- button_state (type: lowlevel::ButtonState)
 
 
 
@@ -46,8 +46,8 @@ Author: Brice Rebsamen (August 2011)
 // pin connection
 enum { emergency_pin = 2, throttle_pin,
   l293_3_pin, l293_2_pin, l293_4_pin, l293_1_pin,
-  motors_enable_pin, steer_pulse_pin, steer_dir_pin, brake_pulse_pin, brake_dir_pin,
-  auto_mode_pin };
+  auto_mode_pin, steer_pulse_pin, steer_dir_pin, brake_pulse_pin, brake_dir_pin,
+  motors_enable_pin };
 
 uint8_t right_blinker_pin = l293_1_pin;
 uint8_t left_blinker_pin = l293_2_pin;
@@ -130,12 +130,12 @@ void setMotorsEnabled(bool b) {
 // message, and the name you wish to refer to the message by within the callback
 
 ROS_CALLBACK(cmd_CB, lowlevel::Arduino, cmd_msg)
-  last_msg_time = millis();
+  last_msg_time = time;
 
   if( !motorsEnabled )
     setMotorsEnabled(true);
 
-  set_throttle(cmd_msg.throttle_volt);
+  set_throttle(cmd_msg.throttle);
   set_steer(cmd_msg.steer_angle);
   set_brake(cmd_msg.brake_angle);
 
@@ -182,7 +182,7 @@ void setup()
   pinMode(emergency_pin, INPUT);
   pinMode(auto_mode_pin, INPUT);
   emergency = digitalRead(emergency_pin)==HIGH;
-  button_state_msg.automode = digitalRead(emergency_pin)==HIGH;
+  button_state_msg.automode = digitalRead(auto_mode_pin)==HIGH;
 
   nh.initNode();
   nh.advertise(button_state_pub);
@@ -191,6 +191,8 @@ void setup()
 
 void button_state()
 {
+  button_state_msg.automode = digitalRead(auto_mode_pin)==HIGH;
+  
   if( !emergency && digitalRead(emergency_pin)==HIGH ) {
     set_throttle(0);
     set_brake(full_brake);
@@ -209,7 +211,6 @@ void button_state()
   else {
     if( time - old_time > 250 ) {
       button_state_msg.emergency = emergency;
-      button_state_msg.automode = digitalRead(auto_mode_pin)==HIGH;
       button_state_pub.publish( &button_state_msg );
       old_time = time;
     }
@@ -223,7 +224,7 @@ void loop()
   button_state();
   nh.spinOnce();
 
-  if( motorsEnabled && (time - last_msg_time > 5000) )
+  if( motorsEnabled && (time > last_msg_time + 5000) )
     setMotorsEnabled(false);
   
 

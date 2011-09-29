@@ -45,7 +45,7 @@ void joyCallBack(joy::Joy joy_msg)
   W.data = lat * STEER_ANG_MAX;
   steering_pub.publish(W);
 
-  ROS_INFO("Resulting commands: throttle_volt=%f, brake_angle=%f, steer_angle=%f",
+  ROS_INFO("Resulting commands: throttle=%f, brake_angle=%f, steer_angle=%f",
            V.data, B.data, W.data);
 
   std_msgs::Bool L, R;
@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 
   ros::Subscriber sub = n.subscribe("joy", 1000, joyCallBack);
 
-  throttle_pub = n.advertise<std_msgs::Float64>("throttle_volt", 1000);
+  throttle_pub = n.advertise<std_msgs::Float64>("throttle", 1000);
   steering_pub = n.advertise<std_msgs::Float64>("steer_angle", 1000);
   brake_pub = n.advertise<std_msgs::Float64>("brake_angle", 1000);
   lblinker_pub = n.advertise<std_msgs::Bool>("left_blinker", 1000);

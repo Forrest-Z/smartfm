@@ -16,7 +16,7 @@ arduino_cmd_msg = Arduino()
 arduino_pub = rospy.Publisher('arduino_cmd', Arduino)
 
 def throttleCB(msg):
-    arduino_cmd_msg.throttle_volt = msg.data
+    arduino_cmd_msg.throttle = msg.data
 
 def brakeCB(msg):
     arduino_cmd_msg.brake_angle = msg.data
@@ -40,7 +40,7 @@ def setupPub(topic,msg_t,cb):
     return sub
 
 
-throttle_sub = setupPub('throttle_volt', Float64, throttleCB)
+throttle_sub = setupPub('throttle', Float64, throttleCB)
 brake_sub = setupPub('brake_angle', Float64, brakeCB)
 steer_sub = setupPub('steer_angle', Float64, steerCB)
 lblinker_sub = setupPub('left_blinker', Bool, lblinkerCB)
