@@ -34,28 +34,32 @@ def err(e):
 
 
 class CountBuffer:
-    def __init__(self):
+    def __init__(self, wheelSize, counts=6000):
+        self.wheelSize = wheelSize
+        self.counts = counts
         self.reset()
 
     def reset(self):
-        self.dp = 0 #dist
-        self.dt = 0 #time
+        self.dp = 0.0 #dist (m)
+        self.dt = 0.0 #time (sec)
 
-    def add(self,e):
-        self.dp += e.positionChange
-        self.dt += e.time
+    def add(self, e):
+        self.dp += e.positionChange * self.wheelSize / self.counts
+        self.dt += e.time * 1e-6 #usec to sec
+        return self.dt
+
 
 
 class PhidgetEncoder:
     '''Monitor the pose of each encoders'''
 
-    def __init__(self, scale, distBtwWheels):
-        self.scale = scale
-        self.distBtwWheels = distBtwWheels
+    def __init__(self):
+        self.distBtwWheels = 1.0
+        wheelSize = 1.38
 
         self.left = 0
         self.right = 1
-        self.countBufs = {self.left: CountBuffer(), self.right: CountBuffer()}
+        self.countBufs = {self.left: CountBuffer(wheelSize*1.011), self.right: CountBuffer(-wheelSize)}
 
         self.x = 0.0
         self.y = 0.0
@@ -118,14 +122,13 @@ class PhidgetEncoder:
     def encoderPositionChange(self, e):
         '''A callback function called whenever the position changed'''
 
-        rospy.loginfo("Encoder %i: Encoder %i -- Change: %i -- Time: %i -- Position: %i" % (e.device.getSerialNum(), e.index, e.positionChange, e.time, self.encoder.getPosition(e.index)))
+        #rospy.loginfo("Encoder %i: Encoder %i -- Change: %i -- Time: %i -- Position: %i" % (e.device.getSerialNum(), e.index, e.positionChange, e.time, self.encoder.getPosition(e.index)))
 
         if e.index in self.countBufs.keys():
-            self.countBufs[e.index].add(e)
-            dt = self.countBufs[e.index].dt
-            if dt > 50000: #in milliseconds
-                dl = self.countBufs[self.left].dp * self.scale
-                dr = self.countBufs[self.right].dp * self.scale
+            dt = self.countBufs[e.index].add(e)
+            if dt > .05:
+                dl = self.countBufs[self.left].dp
+                dr = self.countBufs[self.right].dp
                 d_dist = (dl+dr)/2
                 d_th = (dr-dl)/self.distBtwWheels
 
@@ -136,6 +139,9 @@ class PhidgetEncoder:
                 self.th += d_th
                 self.v = d_dist/dt
                 self.w = d_th/dt
+
+                rospy.loginfo('dt=%f, counts: l=%i, -r=%i' % (dt, self.encoder.getPosition(self.left), -self.encoder.getPosition(self.right)))
+                rospy.loginfo('pose (x,y,th_deg)=(%.2f, %.2f, %+d), (v,w)=(%.2f, %.2f)' % (self.x, self.y, int(self.th*180.0/3.1415), self.v, self.w))
 
                 self.pubOdo()
 
@@ -183,7 +189,7 @@ class PhidgetEncoder:
 
 if __name__=='__main__':
     rospy.init_node('encoders_node')
-    enc = PhidgetEncoder(1.3/4000, 1.0)
+    enc = PhidgetEncoder()
     rospy.loginfo('Spinning...')
 
     while not rospy.is_shutdown():
