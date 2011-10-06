@@ -9,12 +9,15 @@ We are reading from 2 encoders (left and right) so we can get the 2D pose of
 the vehicle (x,y,theta) and velocities (v,w). This will be published as a
 nav_msgs/Odometry and tf broadcast (as recommended by the navigation stacks
 tutorials).
+
+Since this information is not very accurate, we are also publishing the distance
+traveled and the linear velocity (averaged over the 2 encoders). This is
+published as a custom lowlevel/Odometry msg on the odom_linear channel.
 '''
 
 import roslib; roslib.load_manifest('lowlevel')
 import rospy
-from math import sin,cos,pi
-from datetime import datetime
+from math import sin, cos, pi
 
 from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import Twist
@@ -25,6 +28,12 @@ from Phidgets.PhidgetException import *
 from Phidgets.Events.Events import *
 from Phidgets.Devices.Encoder import Encoder
 
+import lowlevel.msg.Odometry as SimpleOdo
+
+
+# Configuration of the output topic / tf
+frameID = 'odom'      #TF frame ID
+odoTopicID  = 'odom'  #Output topic frame ID
 
 
 def err(e):
@@ -66,17 +75,18 @@ class PhidgetEncoder:
         self.th = 0.0
         self.v = 0.0
         self.w = 0.0
+        self.totalDist = 0.0
 
-        self.initialize()
+        self.initPhidget()
         self.encoder.setEnabled(self.left, True)
         self.encoder.setEnabled(self.right, True)
 
-        self.odomPub = rospy.Publisher('odom',Odometry)
+        self.odomPub = rospy.Publisher(odoTopicID, Odometry)
         self.odomBroadcaster = TransformBroadcaster()
-        self.then = None
+        self.simpleOdoPub = rospy.Publisher('odom_linear', SimpleOdo)
 
 
-    def initialize(self):
+    def initPhidget(self):
         '''Connect to the phidget and init communication.'''
 
         #Create an encoder object (from the Phidget library)
@@ -111,7 +121,7 @@ class PhidgetEncoder:
             exit(1)
 
 
-    def close(self):
+    def closePhidget(self):
         rospy.loginfo("Closing...")
         try:
             self.encoder.closePhidget()
@@ -134,6 +144,7 @@ class PhidgetEncoder:
 
                 d_x = cos(d_th) * d_dist
                 d_y = -sin(d_th) * d_dist
+                self.totalDist += d_dist
                 self.x += cos(self.th)*d_x - sin(self.th)*d_y
                 self.y += sin(self.th)*d_x + cos(self.th)*d_y
                 self.th += d_th
@@ -141,7 +152,12 @@ class PhidgetEncoder:
                 self.w = d_th/dt
 
                 rospy.loginfo('dt=%f, counts: l=%i, -r=%i' % (dt, self.encoder.getPosition(self.left), -self.encoder.getPosition(self.right)))
-                rospy.loginfo('pose (x,y,th_deg)=(%.2f, %.2f, %+d), (v,w)=(%.2f, %.2f)' % (self.x, self.y, int(self.th*180.0/3.1415), self.v, self.w))
+                rospy.loginfo('pose (x,y,th_deg)=(%.2f, %.2f, %+d), (v,w)=(%.2f, %.2f)' % (self.x, self.y, int(self.th*180.0/pi), self.v, self.w))
+
+                simpleOdoMsg = SimpleOdo()
+                simpleOdoMsg.pose = self.totalDist
+                simpleOdoMsg.vel = self.v
+                self.simpleOdoPub.publish(simpleOdoMsg)
 
                 self.pubOdo()
 
@@ -150,11 +166,6 @@ class PhidgetEncoder:
 
 
     def pubOdo(self):
-        now = datetime.now()
-        if self.then is None:
-            self.then = now
-            return
-
         quaternion = Quaternion()
         quaternion.x = 0.0
         quaternion.y = 0.0
@@ -166,13 +177,13 @@ class PhidgetEncoder:
             (quaternion.x, quaternion.y, quaternion.z, quaternion.w),
             rospy.Time.now(),
             "base_link",
-            "odom"
+            frameID
             )
 
         odom = Odometry()
         odom.header.stamp = rospy.Time.now()
-        odom.header.frame_id = "odom"
-        odom.child_frame_id = "base_link"
+        odom.header.frame_id = frameID
+        odom.child_frame_id = 'base_link'
 
         odom.pose.pose.position.x = self.x
         odom.pose.pose.position.y = self.y
@@ -195,6 +206,6 @@ if __name__=='__main__':
     while not rospy.is_shutdown():
         rospy.sleep(0.2)
 
-    enc.close()
+    enc.closePhidget()
     rospy.loginfo("Done.")
     exit(0)
