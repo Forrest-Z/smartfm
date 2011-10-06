@@ -140,7 +140,9 @@ ROS_CALLBACK(cmd_CB, lowlevel::Arduino, cmd_msg)
   set_brake(cmd_msg.brake_angle);
 
   if( emergency ) {
+    left_blinker.off();
     left_blinker.blink();
+    right_blinker.off();
     right_blinker.blink();
   } else {
     left_blinker.set(cmd_msg.left_blinker);
@@ -192,7 +194,7 @@ void setup()
 void button_state()
 {
   button_state_msg.automode = digitalRead(auto_mode_pin)==HIGH;
-  
+
   if( !emergency && digitalRead(emergency_pin)==HIGH ) {
     set_throttle(0);
     set_brake(full_brake);
@@ -226,7 +228,7 @@ void loop()
 
   if( motorsEnabled && (time > last_msg_time + 5000) )
     setMotorsEnabled(false);
-  
+
 
   if( motorsEnabled ) {
     stepper_brake.run();
