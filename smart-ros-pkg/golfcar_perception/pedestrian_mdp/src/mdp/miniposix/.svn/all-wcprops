@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/motion/proj/appl2/!svn/ver/17/trunk/src/miniposix
+END
+getopt_int.h
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/motion/proj/appl2/!svn/ver/17/trunk/src/miniposix/getopt_int.h
+END
+getopt.c
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/motion/proj/appl2/!svn/ver/17/trunk/src/miniposix/getopt.c
+END
+getopt1.c
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/motion/proj/appl2/!svn/ver/17/trunk/src/miniposix/getopt1.c
+END
+getopt_init.c
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/motion/proj/appl2/!svn/ver/17/trunk/src/miniposix/getopt_init.c
+END
+getopt.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/motion/proj/appl2/!svn/ver/17/trunk/src/miniposix/getopt.h
+END

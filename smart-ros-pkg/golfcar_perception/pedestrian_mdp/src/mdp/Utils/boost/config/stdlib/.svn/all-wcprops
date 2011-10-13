@@ -1,0 +1,59 @@
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/motion/proj/appl2/!svn/ver/328/trunk/src/Utils/boost/config/stdlib
+END
+vacpp.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/motion/proj/appl2/!svn/ver/328/trunk/src/Utils/boost/config/stdlib/vacpp.hpp
+END
+msl.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/motion/proj/appl2/!svn/ver/328/trunk/src/Utils/boost/config/stdlib/msl.hpp
+END
+sgi.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/motion/proj/appl2/!svn/ver/328/trunk/src/Utils/boost/config/stdlib/sgi.hpp
+END
+modena.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/motion/proj/appl2/!svn/ver/328/trunk/src/Utils/boost/config/stdlib/modena.hpp
+END
+libcomo.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/motion/proj/appl2/!svn/ver/328/trunk/src/Utils/boost/config/stdlib/libcomo.hpp
+END
+roguewave.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/motion/proj/appl2/!svn/ver/328/trunk/src/Utils/boost/config/stdlib/roguewave.hpp
+END
+dinkumware.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/motion/proj/appl2/!svn/ver/328/trunk/src/Utils/boost/config/stdlib/dinkumware.hpp
+END
+libstdcpp3.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 82
+/motion/proj/appl2/!svn/ver/328/trunk/src/Utils/boost/config/stdlib/libstdcpp3.hpp
+END
+stlport.hpp
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/motion/proj/appl2/!svn/ver/328/trunk/src/Utils/boost/config/stdlib/stlport.hpp
+END

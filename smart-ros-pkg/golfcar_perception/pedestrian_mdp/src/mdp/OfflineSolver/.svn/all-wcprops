@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/motion/proj/appl2/!svn/ver/514/trunk/src/OfflineSolver
+END
+OfflineSolver.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/motion/proj/appl2/!svn/ver/378/trunk/src/OfflineSolver/OfflineSolver.vcproj
+END
+solverUtils.h
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/motion/proj/appl2/!svn/ver/328/trunk/src/OfflineSolver/solverUtils.h
+END
+GlobalResource.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/motion/proj/appl2/!svn/ver/435/trunk/src/OfflineSolver/GlobalResource.cpp
+END
+solver.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/motion/proj/appl2/!svn/ver/514/trunk/src/OfflineSolver/solver.cpp
+END
+solverUtils.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/motion/proj/appl2/!svn/ver/449/trunk/src/OfflineSolver/solverUtils.cpp
+END
+GlobalResource.h
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/motion/proj/appl2/!svn/ver/473/trunk/src/OfflineSolver/GlobalResource.h
+END
