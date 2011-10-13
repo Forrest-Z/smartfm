@@ -33,12 +33,13 @@ class OdoIMU
         ros::Subscriber odoSub;
         ros::Subscriber imuSub;
         ros::Publisher odoImuPub;
+        tf::TransformBroadcaster tfBroadcaster;
 
         geometry_msgs::Point position;
 
         bool initialized;
         double roll, pitch, yaw;
-        double pose_pre;
+        double dist_pre;
         double yaw_pre, yaw_drift, yaw_minus;
 };
 
@@ -76,7 +77,7 @@ void OdoIMU::odoCallBack(lowlevel::Odometry odoMsg)
     {
         yaw_pre = yaw;
         yaw_minus = yaw;
-        pose_pre = odoMsg.pose;
+        dist_pre = odoMsg.dist;
         initialized = true;
         return;
     }
@@ -90,8 +91,8 @@ void OdoIMU::odoCallBack(lowlevel::Odometry odoMsg)
     yaw -= yaw_pre + yaw_drift;
     //std::cout <<yaw <<' ' <<yaw_drift <<std::endl;
 
-    double distance = odoMsg.pose - pose_pre;
-    pose_pre = odoMsg.pose;
+    double distance = odoMsg.dist - dist_pre;
+    dist_pre = odoMsg.dist;
 
     double r11 = cos(yaw)*cos(pitch);
     double r21 = sin(yaw)*cos(pitch);
@@ -122,7 +123,6 @@ void OdoIMU::publishOdo()
 
 
     // Broadcast the TF
-    tf::TransformBroadcaster tfBroadcaster;
     tf::StampedTransform trans(tf::Transform(), odoImuMsg.header.stamp, odoImuMsg.header.frame_id, odoImuMsg.child_frame_id);
     tf::poseMsgToTF(odoImuMsg.pose.pose, trans);
     tfBroadcaster.sendTransform(trans);

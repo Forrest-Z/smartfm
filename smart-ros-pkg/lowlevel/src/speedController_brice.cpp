@@ -8,13 +8,16 @@
 
 #include <lowlevel/PID.h>
 #include <lowlevel/ButtonState.h>
+#include <fmutil/fmMath.h>
 
 
 class Parameters
 {
     public:
         double kp; ///< Proportional gain
+        double kd; ///< Derivative gain
         double ki; ///< Integral gain
+
         double ki_sat; ///< Saturation value of the integral term
         double coeff_bp; ///< Brake angle corresponding to a full brake
         double throttle_zero_thres; ///< Only apply the throttle if the control signal is above that value
@@ -53,6 +56,7 @@ class PID_Speed
         double e_pre; ///< previous error (velocity) --> used for some kind of filtering of the error term
         double ei; ///< the integrated error
         double vFiltered; ///< filtered velocity
+        double uCtrl; ///< output of the controller
 
 };
 
@@ -65,8 +69,9 @@ void Parameters::getParam()
 {
     ros::NodeHandle nh("~");
 
-    GETP( "kp", kp, 0.15 );
-    GETP( "ki", ki, 0.2 );
+    GETP( "kp", kp, 0.05 );
+    GETP( "ki", ki, 0.0 );
+    GETP( "kd", kd, 0.0 );
     GETP( "ki_sat", ki_sat, 0.7 );
     GETP( "coeff_brakepedal", coeff_bp, 120 );
     GETP( "throttleZeroThres", throttle_zero_thres, 0.1 );
@@ -97,7 +102,7 @@ PID_Speed::PID_Speed(ros::NodeHandle nh) : n(nh)
     param.getParam();
 
     time_pre = NAN;
-    cmdVel = e_pre = ei = vFiltered = pitch = 0;
+    cmdVel = e_pre = ei = vFiltered = pitch = uCtrl = 0;
     emergency = false;
     automode = false;
 }
@@ -106,6 +111,7 @@ PID_Speed::PID_Speed(ros::NodeHandle nh) : n(nh)
 void PID_Speed::cmdVelCallBack(geometry_msgs::Twist cmd_vel)
 {
     cmdVel = cmd_vel.linear.x;
+    ROS_INFO("Setting the desired velocity to %.2f m/s", cmdVel);
 }
 
 
@@ -137,12 +143,13 @@ void PID_Speed::odoCallBack(nav_msgs::Odometry odom)
         bp.data = -1 * param.coeff_bp;
         time_pre = ros::Time::now().toSec();
         e_pre = 0;
+        uCtrl = 0;
 
         // when starting from a stopped position, initialization is important
         // especially, uphill is tricky
-        if( pitch >= param.pitch1 )
+        if( param.ki != 0 && pitch >= param.pitch1 )
             ei = -param.ki_sat / param.ki;
-        else if( pitch > param.pitch2 )
+        else if( param.ki != 0 && pitch > param.pitch2 )
             ei = -param.ki_sat / param.ki * (pitch - param.pitch2) / (param.pitch1 - param.pitch2);
         else
             ei = 0;
@@ -151,39 +158,37 @@ void PID_Speed::odoCallBack(nav_msgs::Odometry odom)
     }
     else
     {
-        double time_now_ = ros::Time::now().toSec();
-        double dt_ = time_now_ - time_pre;
-        double e_now_ = cmdVel - odovel;
-        vFiltered += (odovel - vFiltered) * dt_ / param.tau_v;
+        double time_now = ros::Time::now().toSec();
+        double dt = time_now - time_pre;
+        vFiltered += (odovel - vFiltered) * dt / param.tau_v;
+        double e_now = cmdVel - vFiltered;
 
-        ei += (0.5 * dt_ * (e_pre + e_now_));
-        if(param.ki * ei > param.ki_sat)
-            ei = param.ki_sat / param.ki;
-        else if(param.ki * ei < -param.ki_sat)
-            ei = -param.ki_sat / param.ki;
+        // Accumulate integral error and limit its range
+        if( param.ki !=0 ) {
+            ei += 0.5 * dt * (e_pre + e_now);
+            ei = BOUND(-param.ki_sat / param.ki, ei, param.ki_sat / param.ki);
+        }
 
-        //added to publish individual gain value
-        pid.p_gain = param.kp * (cmdVel - vFiltered);
+        pid.p_gain = param.kp * e_now;
         pid.i_gain = param.ki * ei;
-        pid.d_gain= 0;
+        pid.d_gain = param.kd * (e_now - e_pre) / dt;
         pid.v_filter = vFiltered;
         pidPub.publish(pid);
 
-        double u = pid.p_gain+pid.i_gain;
-        if(u > 1.0)
-            u = 1.0;
-        else if(u < -1.0)
-            u = -1.0;
+        uCtrl += pid.p_gain + pid.i_gain + pid.d_gain;
+        uCtrl = BOUND(-1.0, uCtrl, 1.0);
 
-        if(u > param.throttle_zero_thres)
+        ROS_INFO("Velocity error: %.2f, uCtrl=%.2f", e_now, uCtrl);
+
+        if(uCtrl > param.throttle_zero_thres)
         {
-            th.data = u;
+            th.data = uCtrl;
             bp.data = 0;
         }
-        else if(u < -param.brake_zero_thres/param.coeff_bp)
+        else if(uCtrl < -param.brake_zero_thres/param.coeff_bp)
         {
             th.data = 0;
-            bp.data = param.coeff_bp * u;
+            bp.data = param.coeff_bp * uCtrl;
         }
         else
         {
@@ -191,8 +196,8 @@ void PID_Speed::odoCallBack(nav_msgs::Odometry odom)
             bp.data = 0;
         }
 
-        time_pre = time_now_;
-        e_pre = e_now_;
+        time_pre = time_now;
+        e_pre = e_now;
     }
 
     throttlePub.publish(th);

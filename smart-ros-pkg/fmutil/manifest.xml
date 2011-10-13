@@ -1,0 +1,18 @@
+<package>
+  <description brief="fmutil">
+
+     fmutil
+
+  </description>
+  <author>brice rebsamen</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/fmutil</url>
+
+  <export>
+    <cpp cflags="-I${prefix}/include"/>
+  </export>
+
+</package>
+
+

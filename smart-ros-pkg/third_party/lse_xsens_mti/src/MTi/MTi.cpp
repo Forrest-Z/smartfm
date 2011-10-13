@@ -46,28 +46,28 @@ float hexa2float(unsigned char * buffer)
 	{
 		float value;
 		unsigned char buffer[4];
-		
+
 	}floatUnion;
-	
+
 	floatUnion.buffer[0] = buffer[3];
 	floatUnion.buffer[1] = buffer[2];
 	floatUnion.buffer[2] = buffer[1];
 	floatUnion.buffer[3] = buffer[0];
-	
+
 	return floatUnion.value;
 }
 
 Xsens::MTi::MTi() : serial_port()
 {
 	numOfBytes = 4;
-	
+
 	// Serial Port Settings
 	this->resetPackage();
-	
+
 	// Queue Settings
 	queueIsWaiting = false;
 	queueIsRunning = false;
-	
+
 	accX = accY = accZ = 0.0;
 	gyrX = gyrY = gyrZ = 0.0;
 	magX = magY = magZ = 0.0;
@@ -86,32 +86,32 @@ bool Xsens::MTi::setOutputModeAndSettings(outputMode mode, outputSettings settin
 {
 	this->outputModeData.clear();
 	this->outputSettingsData.clear();
-	
+
 	char byte;
 	char temperatureData = mode.temperatureData;
 	char calibratedData = mode.calibratedData;
-	char orientationData = mode.orientationData;	
+	char orientationData = mode.orientationData;
 	char auxiliaryData = mode.auxiliaryData;
 	char positionData = mode.positionData;
 	char velocityData = mode.velocityData;
 	char statusData = mode.statusData;
 	char rawGPSData = mode.rawGPSData;
 	char rawInertialData = mode.rawInertialData;
-	
+
 	byte = 0;
-	byte = statusData<<3 | rawGPSData<<4 | rawInertialData<<6;  
+	byte = statusData<<3 | rawGPSData<<4 | rawInertialData<<6;
 	outputModeData.push_back(byte);
 	byte = 0;
 	byte = temperatureData | calibratedData<<1 | orientationData<<2 |  auxiliaryData<<3 | positionData<<4 | velocityData<<5;
 	outputModeData.push_back(byte);
-	
+
 	outputSettingsData.push_back(0x00);
 	outputSettingsData.push_back(0x00);
 	outputSettingsData.push_back(0x00);
 	byte = 0;
 	byte = settings.timeStamp | settings.orientationMode<<2;
 	outputSettingsData.push_back(byte);
-	
+
 	// Go into config mode, set our preferences and go back to measuring
 	this->addMessageToQueue(GoToConfig, NULL, GoToConfigAck);
 	this->addMessageToQueue(SetOutputMode, &outputModeData, SetOutputModeAck);
@@ -119,7 +119,7 @@ bool Xsens::MTi::setOutputModeAndSettings(outputMode mode, outputSettings settin
 	this->addMessageToQueue(ReqOutputMode, NULL, ReqOutputModeAck);
 	this->addMessageToQueue(ReqOutputSettings, NULL, ReqOutputSettingsAck);
 	this->addMessageToQueue(GoToMeasurement, NULL, GoToMeasurementAck);
-	
+
 	return this->waitForQueueToFinish(timeout);
 }
 
@@ -144,7 +144,7 @@ void Xsens::MTi::manageQueue()
 	{
 		this->queue.erase(queue.begin());
 		queueIsWaiting = false;
-		
+
 		if(this->queue.size() == 0) queueIsRunning = false;
 	}
 	if(queueIsWaiting == false && queueIsRunning == true)
@@ -165,13 +165,13 @@ bool Xsens::MTi::waitForQueueToFinish(int timeout)
 		usleep(1000);	// sleep for 1ms
 		if(queueIsRunning == false) return true;
 	}
-	
+
 	queue.clear();
 	queueIsWaiting = false;
 	queueIsRunning = false;
-	
+
 	this->resetPackage();
-	
+
 	return false;
 }
 
@@ -180,7 +180,8 @@ bool Xsens::MTi::openPort(char * name, int baudrate)
 	try{ serial_port.open(name, baudrate); }
 	catch(cereal::Exception& e)
 	{
-		return false;
+		fprintf(stderr, "MTi -- %s\n", e.what());
+                return false;
 	}
 	return serial_port.startReadStream(boost::bind(&Xsens::MTi::serialPortReadData, this, _1, _2));
 }
@@ -189,7 +190,7 @@ bool Xsens::MTi::closePort()
 {
 	try{ serial_port.close(); }
 	catch(cereal::Exception& e)
-	{ 
+	{
 		return false;
 	}
 	return true;
@@ -200,13 +201,13 @@ bool Xsens::MTi::serialPortSendData(std::vector<unsigned char> * data)
 	/*printf("Sending data -");
 	for(int i=0 ; i<data->size() ; i++) printf(" 0x%X", data->at(i));
 	printf("\n");*/
-	
+
 	char buffer[data->size()];
-	
+
 	int i;
 	std::vector<unsigned char>::iterator it;
 	for(i=0, it=data->begin() ; it!=data->end() ; i++, it++) buffer[i] = (char)*it;
-	
+
 	try{ serial_port.write(buffer, data->size()); }
 	catch(cereal::Exception& e)
 	{
@@ -216,7 +217,7 @@ bool Xsens::MTi::serialPortSendData(std::vector<unsigned char> * data)
 }
 
 void Xsens::MTi::serialPortReadData(char * data, int length)
-{	
+{
 	if(length > 0)
 	{
 		// Manage the received data...
@@ -224,7 +225,7 @@ void Xsens::MTi::serialPortReadData(char * data, int length)
 		for(int i=0 ; i<length ; i++)
 		{
 			buffer = (unsigned char)data[i];
-			
+
 			// PREAMBLE
 			if(packageInTransit == false)
 			{
@@ -235,9 +236,9 @@ void Xsens::MTi::serialPortReadData(char * data, int length)
 					packageInTransit = true;
 					packageIndex = 1;
 				}
-				
+
 			} else {
-				
+
 				// CHECKSUM
 				if( (packageIsExtended == true && packageIndex == 6+packageLength) || (packageIsExtended == false && packageIndex == 4+packageLength) )
 				{
@@ -269,12 +270,12 @@ void Xsens::MTi::serialPortReadData(char * data, int length)
 				{
 					this->package.push_back(buffer);
 					packageIndex = 6;
-					
+
 					union
 					{
 						unsigned int value;
 						unsigned char buffer[2];
-					
+
 					} intUnion;
 					intUnion.buffer[0] = this->package[4];
 					intUnion.buffer[1] = this->package[5];
@@ -285,10 +286,10 @@ void Xsens::MTi::serialPortReadData(char * data, int length)
 				{
 					this->package.push_back(buffer);
 					packageIndex = 4;
-					
+
 					if(buffer == 0xFF) packageIsExtended = true;
 					else
-					{	
+					{
 						packageIsExtended = false;
 						packageLength = (int)buffer;
 					}
@@ -308,54 +309,54 @@ void Xsens::MTi::serialPortReadData(char * data, int length)
 				if(packageIndex == 1 && buffer != BID)
 				{
 					this->resetPackage();
-				}				
+				}
 			}
 		}
 	}
 }
 
 void Xsens::MTi::manageIncomingData(std::vector<unsigned char> * incomingData, bool dataIsExtended)
-{	
+{
 	/*printf("Getting data -");
 	for(int i=0 ; i<incomingData->size() ; i++) printf(" 0x%X", incomingData->at(i));
 	printf("\n");*/
 
 	int dataIndex = 4;
 	if(dataIsExtended) dataIndex = 6;
-	
+
 	// And now finnaly actualy manage the data
 	std::vector<unsigned char> data;
-	
+
 	std::vector<unsigned char>::iterator it;
 	for(it=incomingData->begin()+dataIndex ; it!=incomingData->end() ; it++)
 	{
 		data.push_back((unsigned char)*it);
 	}
-	
+
 	unsigned char MID;
 	MID = incomingData->at(2);
-	
+
 	this->resetPackage();
-	
+
 	if(queueIsWaiting == true && MID == queueAck) this->manageQueue();
-	
+
 	// Variables useful to manage the data
 	unsigned char floatBuffer[numOfBytes];
 	unsigned char buffer;
 	unsigned char mask;
 	int index;
-	
+
 	// Switch case for managing the various MIDs that might arrive
 	switch(MID)
 	{
 		case GoToConfigAck:
 			ConfigState = true;
 			break;
-			
+
 		case GoToMeasurementAck:
 			ConfigState = false;
 			break;
-			
+
 		case ReqOutputModeAck:
 			if(data.size()>0)
 			{
@@ -390,7 +391,7 @@ void Xsens::MTi::manageIncomingData(std::vector<unsigned char> * incomingData, b
 				else output_mode.rawInertialData = false;
 			}
 			break;
-			
+
 		case ReqOutputSettingsAck:
 			if(data.size()>0)
 			{
@@ -404,7 +405,7 @@ void Xsens::MTi::manageIncomingData(std::vector<unsigned char> * incomingData, b
 				if((buffer>>2 & mask) == 0x02) output_settings.orientationMode = Matrix;
 			}
 			break;
-			
+
 		// Read incoming data according to mode and settings data
 		case MTData:
 			index = 0;
@@ -517,7 +518,7 @@ void Xsens::MTi::manageIncomingData(std::vector<unsigned char> * incomingData, b
 				index += 2*numOfBytes;
 			}
 			break;
-		
+
 		case ResetOrientationAck:
 			// Reset ok.
 			break;
@@ -529,7 +530,7 @@ void Xsens::MTi::makeMessage(MTMessageIdentifier mid, std::vector<unsigned char>
 	int dataLength = 0;
 	if(data!=NULL) dataLength = data->size();
 	unsigned char byte;
-	
+
 	message->clear();
 	// PREAMBLE
 	message->push_back(PRE);
@@ -543,18 +544,18 @@ void Xsens::MTi::makeMessage(MTMessageIdentifier mid, std::vector<unsigned char>
 	{
 		byte = (unsigned char)dataLength;
 		message->push_back(byte);
-		
+
 	} else {
-	
+
 		byte = 0xFF;
 		message->push_back(byte);
-		
+
 		union
 		{
 			int length;
 			unsigned char buffer[2];
 		}lengthUnion;
-		
+
 		lengthUnion.length = dataLength;
 		message->push_back(lengthUnion.buffer[0]);
 		message->push_back(lengthUnion.buffer[1]);
@@ -578,9 +579,9 @@ void Xsens::MTi::makeMessage(MTMessageIdentifier mid, std::vector<unsigned char>
 	if(dataLength < 0xFF)
 	{
 		checksum += message->at(3);
-		
+
 	} else {
-		
+
 		checksum += message->at(3);
 		checksum += message->at(4);
 		checksum += message->at(5);
@@ -600,7 +601,7 @@ void Xsens::MTi::makeMessage(MTMessageIdentifier mid, std::vector<unsigned char>
 /*void Xsens::MTi::resetOrientation()
 {
 	std::vector<unsigned char> buffer;
-	
+
 	// Align reset
 	buffer.push_back(0x00);
 	buffer.push_back(0x04);

@@ -28,12 +28,16 @@ from Phidgets.PhidgetException import *
 from Phidgets.Events.Events import *
 from Phidgets.Devices.Encoder import Encoder
 
-import lowlevel.msg.Odometry as SimpleOdo
+from lowlevel.msg import Odometry as SimpleOdo
 
 
 # Configuration of the output topic / tf
 frameID = 'odom'      #TF frame ID
 odoTopicID  = 'odom'  #Output topic frame ID
+
+MIN_PUB_PERIOD = 0.2
+
+
 
 
 def err(e):
@@ -63,12 +67,14 @@ class PhidgetEncoder:
     '''Monitor the pose of each encoders'''
 
     def __init__(self):
-        self.distBtwWheels = 1.0
-        wheelSize = 1.38
+        self.distBtwWheels = 0.995
+        wheelSize = 1.335
+        leftCorrectionFactor = 1.011
 
         self.left = 0
         self.right = 1
-        self.countBufs = {self.left: CountBuffer(wheelSize*1.011), self.right: CountBuffer(-wheelSize)}
+        self.countBufs = {self.left: CountBuffer(wheelSize*leftCorrectionFactor), self.right: CountBuffer(-wheelSize)}
+        self.lastPub = None
 
         self.x = 0.0
         self.y = 0.0
@@ -132,7 +138,7 @@ class PhidgetEncoder:
     def encoderPositionChange(self, e):
         '''A callback function called whenever the position changed'''
 
-        #rospy.loginfo("Encoder %i: Encoder %i -- Change: %i -- Time: %i -- Position: %i" % (e.device.getSerialNum(), e.index, e.positionChange, e.time, self.encoder.getPosition(e.index)))
+        #rospy.logdebug("Encoder %i: Encoder %i -- Change: %i -- Time: %i -- Position: %i" % (e.device.getSerialNum(), e.index, e.positionChange, e.time, self.encoder.getPosition(e.index)))
 
         if e.index in self.countBufs.keys():
             dt = self.countBufs[e.index].add(e)
@@ -151,13 +157,7 @@ class PhidgetEncoder:
                 self.v = d_dist/dt
                 self.w = d_th/dt
 
-                rospy.loginfo('dt=%f, counts: l=%i, -r=%i' % (dt, self.encoder.getPosition(self.left), -self.encoder.getPosition(self.right)))
-                rospy.loginfo('pose (x,y,th_deg)=(%.2f, %.2f, %+d), (v,w)=(%.2f, %.2f)' % (self.x, self.y, int(self.th*180.0/pi), self.v, self.w))
-
-                simpleOdoMsg = SimpleOdo()
-                simpleOdoMsg.pose = self.totalDist
-                simpleOdoMsg.vel = self.v
-                self.simpleOdoPub.publish(simpleOdoMsg)
+                rospy.logdebug('dt=%f, counts: l=%i, -r=%i' % (dt, self.encoder.getPosition(self.left), -self.encoder.getPosition(self.right)))
 
                 self.pubOdo()
 
@@ -166,22 +166,34 @@ class PhidgetEncoder:
 
 
     def pubOdo(self):
+        simpleOdoMsg = SimpleOdo()
+        simpleOdoMsg.x = self.x
+        simpleOdoMsg.y = self.y
+        simpleOdoMsg.theta = self.th
+        simpleOdoMsg.dist = self.totalDist
+        simpleOdoMsg.vel = self.v
+        simpleOdoMsg.w = self.w
+        self.simpleOdoPub.publish(simpleOdoMsg)
+
         quaternion = Quaternion()
         quaternion.x = 0.0
         quaternion.y = 0.0
         quaternion.z = sin(self.th/2)
         quaternion.w = cos(self.th/2)
 
+        now = rospy.Time.now()
+        self.lastPub = now
+
+        rospy.logdebug('pose (x,y,th_deg)=(%.2f, %.2f, %+d), (v,w)=(%.2f, %.2f)' % (self.x, self.y, int(self.th*180.0/pi), self.v, self.w))
+
         self.odomBroadcaster.sendTransform(
             (self.x, self.y, 0),
             (quaternion.x, quaternion.y, quaternion.z, quaternion.w),
-            rospy.Time.now(),
-            "base_link",
-            frameID
-            )
+            now, "base_link", frameID
+        )
 
         odom = Odometry()
-        odom.header.stamp = rospy.Time.now()
+        odom.header.stamp = now
         odom.header.frame_id = frameID
         odom.child_frame_id = 'base_link'
 
@@ -197,6 +209,17 @@ class PhidgetEncoder:
         self.odomPub.publish(odom)
 
 
+    def loop(self):
+        now = rospy.Time.now()
+        if self.lastPub is None or (now-self.lastPub).to_sec() > MIN_PUB_PERIOD:
+            self.v = 0
+            self.w = 0
+            self.pubOdo()
+            self.countBufs[self.left].reset()
+            self.countBufs[self.right].reset()
+
+
+
 
 if __name__=='__main__':
     rospy.init_node('encoders_node')
@@ -204,7 +227,8 @@ if __name__=='__main__':
     rospy.loginfo('Spinning...')
 
     while not rospy.is_shutdown():
-        rospy.sleep(0.2)
+        rospy.sleep(MIN_PUB_PERIOD)
+        enc.loop()
 
     enc.closePhidget()
     rospy.loginfo("Done.")
