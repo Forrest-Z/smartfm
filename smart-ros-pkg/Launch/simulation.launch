@@ -3,11 +3,11 @@
 	</node>
 	 <node pkg="stage" type="stageros" name="stageros" args="$(find golfcar_ppc)/worlds/golfcar_smp_0.05.world" respawn="false">
    		 <param name="base_watchdog_timeout" value="0.2"/>
-   		 <remap from="base_scan" to="sick_scan2"/>
+   		 <remap from="base_scan" to="scan"/>
   	</node>
   	<param name="use_sim_time" value="true"/>
 	<node name="map_server" pkg="map_server" type="map_server" args="$(find golfcar_ppc)/worlds/McDonald0.05.pgm 0.05" />
-	<include file="$(find Launch)/move_base.launch"/>
+	<include file="$(find Launch)/move_base_tut.launch"/>
 	<node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find Launch)/nav_simulation.vcg"/>
 </launch>
 
