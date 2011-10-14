@@ -1,0 +1,10 @@
+<launch>
+    <master auto="start"/>
+    <include file="$(find Launch)/golfcar/sensors/gps.launch"/>
+    <include file="$(find Launch)/golfcar/sensors/sicks.launch"/>
+    <!--include file="$(find Launch)/golfcar/sensors/hokuyo.launch"/-->
+    <include file="$(find Launch)/golfcar/sensors/mti_imu.launch"/>
+    <include file="$(find Launch)/golfcar/sensors/usbcam.launch"/>
+    <include file="$(find Launch)/golfcar/sensors/ms_imu.launch"/>
+</launch>
+

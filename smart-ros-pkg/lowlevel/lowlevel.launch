@@ -1,7 +1,8 @@
 <launch>
     <node name="serial_node" pkg="rosserial_python" type="serial_node.py" output="screen">
-        <param name="port" value="/dev/ttyACM0"/>
+        <param name="port" value="/dev/arduino"/>
     </node>
     <node name="arduino_node" pkg="lowlevel" type="arduino_node.py" output="screen"/>
     <node name="encoders_odo_node" pkg="lowlevel" type="encoders_odo_node.py" output="screen"/>
+    <node name="odomImu" pkg="lowlevel" type="odomImu" output="screen"/>
 </launch>
