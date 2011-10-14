@@ -1,0 +1,209 @@
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/motion/proj/appl2/!svn/ver/522/trunk/src/Bounds
+END
+BeliefValuePairPool.h
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/BeliefValuePairPool.h
+END
+AlphaPlanePool.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/motion/proj/appl2/!svn/ver/520/trunk/src/Bounds/AlphaPlanePool.cpp
+END
+BeliefValuePair.h
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/BeliefValuePair.h
+END
+AlphaPlane.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/motion/proj/appl2/!svn/ver/454/trunk/src/Bounds/AlphaPlane.cpp
+END
+BackupBeliefValuePairMOMDPLite.h
+K 25
+svn:wc:ra_dav:version-url
+V 81
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/BackupBeliefValuePairMOMDPLite.h
+END
+FullObsUBInitializer.h
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/FullObsUBInitializer.h
+END
+BackupAlphaPlaneMOMDPLite.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/BackupAlphaPlaneMOMDPLite.cpp
+END
+BeliefValuePairPoolSet.h
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/BeliefValuePairPoolSet.h
+END
+AlphaPlanePoolSet.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/motion/proj/appl2/!svn/ver/455/trunk/src/Bounds/AlphaPlanePoolSet.cpp
+END
+PruneBeliefValuePair.h
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/motion/proj/appl2/!svn/ver/38/trunk/src/Bounds/PruneBeliefValuePair.h
+END
+PruneAlphaPlane.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/PruneAlphaPlane.cpp
+END
+BlindLBInitializer.h
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/BlindLBInitializer.h
+END
+BackupBeliefValuePairMOMDP.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/BackupBeliefValuePairMOMDP.cpp
+END
+FastInfUBInitializer.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/motion/proj/appl2/!svn/ver/520/trunk/src/Bounds/FastInfUBInitializer.cpp
+END
+AlphaVectorPolicy.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/motion/proj/appl2/!svn/ver/522/trunk/src/Bounds/AlphaVectorPolicy.cpp
+END
+BeliefValuePairPool.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/BeliefValuePairPool.cpp
+END
+BackupAlphaPlaneMOMDP.h
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/motion/proj/appl2/!svn/ver/515/trunk/src/Bounds/BackupAlphaPlaneMOMDP.h
+END
+BeliefValuePair.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/motion/proj/appl2/!svn/ver/47/trunk/src/Bounds/BeliefValuePair.cpp
+END
+BackupBeliefValuePairMOMDPLite.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 83
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/BackupBeliefValuePairMOMDPLite.cpp
+END
+FullObsUBInitializer.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/motion/proj/appl2/!svn/ver/520/trunk/src/Bounds/FullObsUBInitializer.cpp
+END
+AlphaPlanePool.h
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/AlphaPlanePool.h
+END
+BeliefValuePairPoolSet.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/BeliefValuePairPoolSet.cpp
+END
+PruneBeliefValuePair.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/PruneBeliefValuePair.cpp
+END
+BlindLBInitializer.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/motion/proj/appl2/!svn/ver/520/trunk/src/Bounds/BlindLBInitializer.cpp
+END
+AlphaPlane.h
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/motion/proj/appl2/!svn/ver/454/trunk/src/Bounds/AlphaPlane.h
+END
+BackupAlphaPlaneMOMDPLite.h
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/BackupAlphaPlaneMOMDPLite.h
+END
+AlphaPlanePoolSet.h
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/motion/proj/appl2/!svn/ver/454/trunk/src/Bounds/AlphaPlanePoolSet.h
+END
+xml_parse_lib.c
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/motion/proj/appl2/!svn/ver/456/trunk/src/Bounds/xml_parse_lib.c
+END
+PruneAlphaPlane.h
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/PruneAlphaPlane.h
+END
+xml_parse_lib.h
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/motion/proj/appl2/!svn/ver/456/trunk/src/Bounds/xml_parse_lib.h
+END
+BackupBeliefValuePairMOMDP.h
+K 25
+svn:wc:ra_dav:version-url
+V 77
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/BackupBeliefValuePairMOMDP.h
+END
+BackupAlphaPlaneMOMDP.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 74
+/motion/proj/appl2/!svn/ver/520/trunk/src/Bounds/BackupAlphaPlaneMOMDP.cpp
+END
+FastInfUBInitializer.h
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/motion/proj/appl2/!svn/ver/328/trunk/src/Bounds/FastInfUBInitializer.h
+END
+AlphaVectorPolicy.h
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/motion/proj/appl2/!svn/ver/482/trunk/src/Bounds/AlphaVectorPolicy.h
+END

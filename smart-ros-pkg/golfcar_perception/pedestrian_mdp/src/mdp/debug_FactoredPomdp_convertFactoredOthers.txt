@@ -1,0 +1,6 @@
+
+discount: 0.9
+num actions: 3
+num observations: 41
+num states obs: 1353
+num states unobs: 4
