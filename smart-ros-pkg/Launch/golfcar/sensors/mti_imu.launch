@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="lse_xsens_mti" type="mti_node" name="mti_node" ns="xs" output="screen">
+        <param name="port" type="string" value="/dev/xsens"/>
+    </node>
+</launch>
