@@ -17,6 +17,7 @@
 #include <geometry_msgs/Quaternion.h>
 
 #include <fmutil/SimpleOdo.h>
+#include <fmutil/fmMath.h>
 
 
 class OdoIMU
@@ -48,7 +49,7 @@ class OdoIMU
 OdoIMU::OdoIMU(ros::NodeHandle nh_) : n(nh_)
 {
     odoSub = n.subscribe("odom_linear", 1000, &OdoIMU::odoCallBack, this);
-    imuSub = n.subscribe("imu/data", 1000, &OdoIMU::imuCallBack, this);
+    imuSub = n.subscribe("ms/imu/data", 1000, &OdoIMU::imuCallBack, this);
     odoImuPub = n.advertise<nav_msgs::Odometry>("odo_imu", 100);
 
     initialized = false;
@@ -56,6 +57,7 @@ OdoIMU::OdoIMU(ros::NodeHandle nh_) : n(nh_)
     roll = pitch = yaw = NAN;
 }
 
+#define R2D(a) ( (int)(fmutil::r2d( fmutil::angModPI(a) )) )
 
 void OdoIMU::imuCallBack(sensor_msgs::Imu imuMsg)
 {
@@ -63,7 +65,7 @@ void OdoIMU::imuCallBack(sensor_msgs::Imu imuMsg)
     tf::Quaternion qt;
     tf::quaternionMsgToTF(imuMsg.orientation, qt);
     btMatrix3x3(qt).getRPY(roll, pitch, yaw);
-    //std::cout<<"rpy: " << roll <<" " <<pitch <<" " <<yaw <<std::endl;
+    ROS_DEBUG("rpy: %d, %d, %d (degrees)", R2D(roll), R2D(pitch), R2D(yaw));
 }
 
 
@@ -102,7 +104,7 @@ void OdoIMU::odoCallBack(fmutil::SimpleOdo odoMsg)
     position.y += distance * r21;
     position.z -= distance * r31;
 
-    ROS_INFO("Pose: x=%.2f, y=%.2f, th=%ddeg", position.x, position.y, (int)(yaw*180/M_PI));
+    ROS_DEBUG("Pose: x=%.2f, y=%.2f, th=%ddeg", position.x, position.y, (int)(yaw*180/M_PI));
 
     publishOdo();
 }

@@ -111,7 +111,7 @@ Planner_node::Planner_node()
 
     // init periodic planner
     planner_timer = nh.createTimer(ros::Duration(0.5), &Planner_node::on_planner_timer, this);
-    tree_pub_timer = nh.createTimer(ros::Duration(2.0), &Planner_node::on_tree_pub_timer, this);
+    tree_pub_timer = nh.createTimer(ros::Duration(0.5), &Planner_node::on_tree_pub_timer, this);
 
     // subscribe to points
     odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", 5, &Planner_node::on_odom, this);

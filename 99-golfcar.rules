@@ -13,5 +13,7 @@ ACTION=="add", ATTRS{idVendor}=="0403", ATTRS{serial}=="A1001akA", MODE="664", G
 ACTION=="add", ATTRS{product}=="3DM-GX3-25 Orientation Sensor", ATTRS{serial}=="6223.05093______", MODE="664", GROUP="plugdev" SYMLINK+="msimu"
 
 # MTi IMU: linking /dev/xsens to /dev/ttyUSBx
-SUBSYSTEM=="tty", KERNEL=="ttyUSB[0-9]*", ATTRS{manufacturer}=="Xsens", ATTRS{product}=="Xsens USB-serial converter", SYMLINK="xsens", GROUP="plugdev", MODE="0664"
+SUBSYSTEM=="tty", KERNEL=="ttyUSB[0-9]*", ATTRS{manufacturer}=="Xsens", ATTRS{product}=="Xsens USB-serial converter", SYMLINK+="xsens", GROUP="plugdev", MODE="0664"
 
+# Arduino Board
+SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", ATTRS{product}=="Arduino Uno", SYMLINK+="arduino"
