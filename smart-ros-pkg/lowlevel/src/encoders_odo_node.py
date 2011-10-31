@@ -28,16 +28,7 @@ from Phidgets.PhidgetException import *
 from Phidgets.Events.Events import *
 from Phidgets.Devices.Encoder import Encoder
 
-from lowlevel.msg import Odometry as SimpleOdo
-
-
-# Configuration of the output topic / tf
-frameID = 'odom'      #TF frame ID
-odoTopicID  = 'odom'  #Output topic frame ID
-
-MIN_PUB_PERIOD = 0.2
-
-
+from fmutil.msg import SimpleOdo
 
 
 def err(e):
@@ -67,27 +58,28 @@ class PhidgetEncoder:
     '''Monitor the pose of each encoders'''
 
     def __init__(self):
-        self.distBtwWheels = 0.995
-        wheelSize = 1.335
-        leftCorrectionFactor = 1.011
+        self.distBtwWheels = rospy.get_param('dist_btw_wheels',0.995)
+        wheelSize = rospy.get_param('wheel_size', 1.335)
+        leftCorrectionFactor = rospy.get_param('left_correction_factor', 1.011)
+
+        # Configuration of the output topic / tf
+        self.frameID = rospy.get_param('frame_id', 'odom') #TF frame ID
+        self.odoTopicID  = rospy.get_param('odo_topic_name', 'odom') #Output topic frame ID
+
+        self.minPubPeriod = rospy.get_param('min_pub_period', 0.2)
 
         self.left = 0
         self.right = 1
         self.countBufs = {self.left: CountBuffer(wheelSize*leftCorrectionFactor), self.right: CountBuffer(-wheelSize)}
         self.lastPub = None
 
-        self.x = 0.0
-        self.y = 0.0
-        self.th = 0.0
-        self.v = 0.0
-        self.w = 0.0
-        self.totalDist = 0.0
+        self.simpleOdoMsg = SimpleOdo()
 
         self.initPhidget()
         self.encoder.setEnabled(self.left, True)
         self.encoder.setEnabled(self.right, True)
 
-        self.odomPub = rospy.Publisher(odoTopicID, Odometry)
+        self.odomPub = rospy.Publisher(self.odoTopicID, Odometry)
         self.odomBroadcaster = TransformBroadcaster()
         self.simpleOdoPub = rospy.Publisher('odom_linear', SimpleOdo)
 
@@ -150,12 +142,12 @@ class PhidgetEncoder:
 
                 d_x = cos(d_th) * d_dist
                 d_y = -sin(d_th) * d_dist
-                self.totalDist += d_dist
-                self.x += cos(self.th)*d_x - sin(self.th)*d_y
-                self.y += sin(self.th)*d_x + cos(self.th)*d_y
-                self.th += d_th
-                self.v = d_dist/dt
-                self.w = d_th/dt
+                self.simpleOdoMsg.dist += d_dist
+                self.simpleOdoMsg.x += cos(self.simpleOdoMsg.th)*d_x - sin(self.simpleOdoMsg.th)*d_y
+                self.simpleOdoMsg.y += sin(self.simpleOdoMsg.th)*d_x + cos(self.simpleOdoMsg.th)*d_y
+                self.simpleOdoMsg.th += d_th
+                self.simpleOdoMsg.v = d_dist/dt
+                self.simpleOdoMsg.w = d_th/dt
 
                 rospy.logdebug('dt=%f, counts: l=%i, -r=%i' % (dt, self.encoder.getPosition(self.left), -self.encoder.getPosition(self.right)))
 
@@ -166,58 +158,53 @@ class PhidgetEncoder:
 
 
     def pubOdo(self):
-        simpleOdoMsg = SimpleOdo()
-        simpleOdoMsg.x = self.x
-        simpleOdoMsg.y = self.y
-        simpleOdoMsg.theta = self.th
-        simpleOdoMsg.dist = self.totalDist
-        simpleOdoMsg.vel = self.v
-        simpleOdoMsg.w = self.w
         self.simpleOdoPub.publish(simpleOdoMsg)
 
         quaternion = Quaternion()
         quaternion.x = 0.0
         quaternion.y = 0.0
-        quaternion.z = sin(self.th/2)
-        quaternion.w = cos(self.th/2)
+        quaternion.z = sin(self.simpleOdoMsg.th/2)
+        quaternion.w = cos(self.simpleOdoMsg.th/2)
 
         now = rospy.Time.now()
         self.lastPub = now
 
-        rospy.logdebug('pose (x,y,th_deg)=(%.2f, %.2f, %+d), (v,w)=(%.2f, %.2f)' % (self.x, self.y, int(self.th*180.0/pi), self.v, self.w))
+        rospy.logdebug('pose (x,y,th_deg)=(%.2f, %.2f, %+d), (v,w)=(%.2f, %.2f)' % (self.simpleOdoMsg.x, self.simpleOdoMsg.y, int(self.simpleOdoMsg.th*180.0/pi), self.simpleOdoMsg.v, self.simpleOdoMsg.w))
 
         self.odomBroadcaster.sendTransform(
-            (self.x, self.y, 0),
+            (self.simpleOdoMsg.x, self.simpleOdoMsg.y, 0),
             (quaternion.x, quaternion.y, quaternion.z, quaternion.w),
-            now, "base_link", frameID
+            now, "base_link", self.frameID
         )
 
         odom = Odometry()
         odom.header.stamp = now
-        odom.header.frame_id = frameID
+        odom.header.frame_id = self.frameID
         odom.child_frame_id = 'base_link'
 
-        odom.pose.pose.position.x = self.x
-        odom.pose.pose.position.y = self.y
+        odom.pose.pose.position.x = self.simpleOdoMsg.x
+        odom.pose.pose.position.y = self.simpleOdoMsg.y
         odom.pose.pose.position.z = 0
         odom.pose.pose.orientation = quaternion
 
-        odom.twist.twist.linear.x = self.v
+        odom.twist.twist.linear.x = self.simpleOdoMsg.v
         odom.twist.twist.linear.y = 0
-        odom.twist.twist.angular.z = self.w
+        odom.twist.twist.angular.z = self.simpleOdoMsg.w
 
         self.odomPub.publish(odom)
 
 
     def loop(self):
         now = rospy.Time.now()
-        if self.lastPub is None or (now-self.lastPub).to_sec() > MIN_PUB_PERIOD:
-            self.v = 0
-            self.w = 0
+
+        if self.lastPub is None or (now-self.lastPub).to_sec() > self.minPubPeriod:
+            self.simpleOdoMsg.v = 0
+            self.simpleOdoMsg.w = 0
             self.pubOdo()
             self.countBufs[self.left].reset()
             self.countBufs[self.right].reset()
 
+        rospy.sleep(self.minPubPeriod)
 
 
 
@@ -227,7 +214,6 @@ if __name__=='__main__':
     rospy.loginfo('Spinning...')
 
     while not rospy.is_shutdown():
-        rospy.sleep(MIN_PUB_PERIOD)
         enc.loop()
 
     enc.closePhidget()

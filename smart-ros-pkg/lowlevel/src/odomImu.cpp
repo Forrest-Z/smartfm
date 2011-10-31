@@ -16,7 +16,7 @@
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Quaternion.h>
 
-#include <lowlevel/Odometry.h>
+#include <fmutil/SimpleOdo.h>
 
 
 class OdoIMU
@@ -25,7 +25,7 @@ class OdoIMU
         OdoIMU(ros::NodeHandle);
 
     private:
-        void odoCallBack(lowlevel::Odometry);
+        void odoCallBack(fmutil::SimpleOdo);
         void imuCallBack(sensor_msgs::Imu);
         void publishOdo();
 
@@ -67,7 +67,7 @@ void OdoIMU::imuCallBack(sensor_msgs::Imu imuMsg)
 }
 
 
-void OdoIMU::odoCallBack(lowlevel::Odometry odoMsg)
+void OdoIMU::odoCallBack(fmutil::SimpleOdo odoMsg)
 {
     //handle the nan issue. This occurs when the imu is restarted
     if( isnan(roll) || isnan(pitch) || isnan(yaw) )
@@ -85,7 +85,7 @@ void OdoIMU::odoCallBack(lowlevel::Odometry odoMsg)
     //That's the assumption made for odometry calculation
 
     // Only integrate yaw when the car is moving
-    if( fabs(odoMsg.vel) < 0.01 ) //the car is not moving
+    if( fabs(odoMsg.v) < 0.01 ) //the car is not moving
         yaw_drift += yaw - yaw_minus;
     yaw_minus = yaw;
     yaw -= yaw_pre + yaw_drift;
