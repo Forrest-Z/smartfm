@@ -91,7 +91,6 @@ public class Server implements Runnable {
 		// if not, add the new one that is to add the ClientData into CentralDataBase
 		
     	synchronized(db.clients) {
-			if (userData instanceof UserData) {
 			
 				int cidx = -1;
 				for( int i=0; i<db.clients.size(); i++ ) {
@@ -116,7 +115,6 @@ public class Server implements Runnable {
 					}
 				}	
 				System.out.println("Number of clients: " + db.clients.size() );
-			}
 		}
     }
     
@@ -124,7 +122,7 @@ public class Server implements Runnable {
     private class UserDataHandler extends Thread{
     	private UserData userData = null;
     	
-    	public UserDataHandler(UserData userData) throws IOException {
+    	public UserDataHandler(UserData userData) {
     		this.userData = userData;
     	}
     	
@@ -195,7 +193,7 @@ public class Server implements Runnable {
     private class SchedulerDataHandler extends Thread{
     	private SchedulerData schedulerData = null;
     	
-    	public SchedulerDataHandler(SchedulerData schedulerData) throws IOException {
+    	public SchedulerDataHandler(SchedulerData schedulerData) {
     		this.schedulerData = schedulerData;
     	}
     	
@@ -250,7 +248,7 @@ public class Server implements Runnable {
     private class CarDataHandler extends Thread{
     	private CarData carData = null;
     	
-    	public CarDataHandler(CarData carData) throws IOException {
+    	public CarDataHandler(CarData carData) {
     		this.carData= carData;
     	}
     	
@@ -289,7 +287,7 @@ public class Server implements Runnable {
     private class WebpageDataHandler extends Thread{
     	private WebpageData webpageData = null;
     	
-    	public WebpageDataHandler(WebpageData webpageData) throws IOException {
+    	public WebpageDataHandler(WebpageData webpageData) {
     		this.webpageData = webpageData;
     	}
     	
