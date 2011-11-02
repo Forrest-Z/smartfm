@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 '''
-ROS node in charge of interfacing with the arduino.
+ROS node in charge of interfacing with the arduino. Messages from the different
+arduino topics are cached and sent to the arduino at a fixed rate. This rate can
+be specified by parameter 'rate' (defaults to 10Hz).
 '''
 
 import roslib; roslib.load_manifest('lowlevel')
@@ -46,9 +48,9 @@ steer_sub = setupPub('steer_angle', Float64, steerCB)
 lblinker_sub = setupPub('left_blinker', Bool, lblinkerCB)
 rblinker_sub = setupPub('right_blinker', Bool, rblinkerCB)
 
-period_sec = 0.25;
-rospy.loginfo('Sending messages to the Arduino board every %dms' % (period_sec*1000))
+rate = rospy.get_param('rate',10)
+rospy.loginfo('Sending messages to the Arduino board every %dms' % int(1000.0/rate))
 
 while not rospy.is_shutdown():
-    arduino_pub.publish( arduino_cmd_msg )
-    rospy.sleep(period_sec)
+    arduino_pub.publish(arduino_cmd_msg)
+    rospy.sleep(1.0/rate)
