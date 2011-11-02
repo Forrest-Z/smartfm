@@ -15,13 +15,13 @@ EXECNAME=scheduler
 all: $(EXECNAME) dummyrp
 
 $(EXECNAME): SchedulerMain.o SchedulerUI.o SchedulerTalker.o VehicleTalker.o Scheduler.o StationNetwork.o $(SOCKET_DIR)/socket.a
-	$(CPP) $(CPPFLAGS) $(LDFLAGS) $^ -o $@
+	$(CPP) $(CPPFLAGS) $^ $(LDFLAGS) -o $@
 
 dummyrp: RoutePlanner.o DummyRoutePlannerMain.o $(SOCKET_DIR)/socket.a
-	$(CPP) $(CPPFLAGS) $(LDFLAGS) $^ -o $@
+	$(CPP) $(CPPFLAGS) $^ $(LDFLAGS) -o $@
 
 dep:
 	makedepend -Y -- $(CPPFLAGS) $(CFLAGS) -- $(SRCS) 2>/dev/null
 
-clean: 
+clean:
 	rm -f *.o $(EXECNAME) dummyrp *~ \#*
