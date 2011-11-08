@@ -1,27 +1,26 @@
 INCLUDE_PATH = ../socket_handler
-SOCKET_DIR = ../socket_handler
+SOCKET_LIB = ../socket_handler/socket.a
 
 # Tool definitions
-CC = gcc
-CPP= g++
+CC =gcc
+CPP=g++
 INCLUDE=-I$(INCLUDE_PATH)
-CFLAGS += -g $(INCLUDE)
-#CFLAGS += -g -Wall $(INCLUDE)
-CPPFLAGS+= -pthread $(CFLAGS)
-LDFLAGS+=-lcurses -lncurses
+CFLAGS +=-g $(INCLUDE)
+#CFLAGS +=-g -Wall $(INCLUDE)
+CPPFLAGS+=$(CFLAGS)
+LDFLAGS+=-lcurses -lncurses -lpthread
 SRCS=StationNetwork.cc Scheduler.cc SchedulerUI.cc SchedulerTalker.cc VehicleTalker.cc SchedulerMain.cc
-EXECNAME=scheduler
 
-all: $(EXECNAME) dummyrp
+all: scheduler dummyrp
 
-$(EXECNAME): SchedulerMain.o SchedulerUI.o SchedulerTalker.o VehicleTalker.o Scheduler.o StationNetwork.o $(SOCKET_DIR)/socket.a
-	$(CPP) $(CPPFLAGS) $^ $(LDFLAGS) -o $@
+scheduler: SchedulerMain.o SchedulerUI.o SchedulerTalker.o VehicleTalker.o Scheduler.o StationNetwork.o $(SOCKET_LIB)
+	$(CPP) $^ $(LDFLAGS) -o $@
 
-dummyrp: RoutePlanner.o DummyRoutePlannerMain.o $(SOCKET_DIR)/socket.a
-	$(CPP) $(CPPFLAGS) $^ $(LDFLAGS) -o $@
+dummyrp: RoutePlanner.o DummyRoutePlannerMain.o $(SOCKET_LIB)
+	$(CPP) $^ $(LDFLAGS) -o $@
 
 dep:
-	makedepend -Y -- $(CPPFLAGS) $(CFLAGS) -- $(SRCS) 2>/dev/null
+	makedepend -Y -- $(CPPFLAGS) -- $(SRCS) 2>/dev/null
 
 clean:
-	rm -f *.o $(EXECNAME) dummyrp *~ \#*
+	rm -f *.o scheduler dummyrp *~ \#*

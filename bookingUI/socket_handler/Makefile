@@ -4,8 +4,8 @@ CPP= g++
 
 all: socket.a
 
-socket.a: ClientSocket.o ServerSocket.o Socket.o SocketException.o
+socket.a: ClientSocket.o ServerSocket.o Socket.o
 	ar r $@ $^
 
-clean: 
+clean:
 	rm -f *.o *.a *~

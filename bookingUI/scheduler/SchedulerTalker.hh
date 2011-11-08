@@ -2,8 +2,7 @@
 #define SCHEDULERTALKER_HH_
 
 #include <stdio.h>
-#include "ClientSocket.hh"
-#include "SocketException.hh"
+#include "socket_handler.hh"
 
 class SchedulerTalker
 {

@@ -5,7 +5,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #include "VehicleTalker.hh"
-#include "SocketException.hh"
+#include "socket_handler.hh"
 
 using namespace std;
 
@@ -35,8 +35,8 @@ VehicleTalker::VehicleTalker(int port, int verbosityLevel)
   oss  << "log_vtalker" << "." << timestr << ".log";
   string logFileName = oss.str();
   string suffix = "";
-  
-  // if it exists already, append .1, .2, .3 ... 
+
+  // if it exists already, append .1, .2, .3 ...
   for (int i = 1; stat((logFileName + suffix).c_str(), &st) == 0; i++) {
     ostringstream tmp;
     tmp << '.' << i;
@@ -48,7 +48,6 @@ VehicleTalker::VehicleTalker(int port, int verbosityLevel)
   //logFile = fopen ("log_vtalker.txt","w");
   try {
     m_server.init(port);
-    m_server.setSocketBlocking(true);
     m_server.accept ( m_socket );
     m_isconnected = true;
   }
@@ -59,7 +58,7 @@ VehicleTalker::VehicleTalker(int port, int verbosityLevel)
   }
 }
 
-VehicleTalker::~VehicleTalker() 
+VehicleTalker::~VehicleTalker()
 {
   pthread_mutex_destroy(&m_statusMutex);
   fclose (logFile);
@@ -133,9 +132,9 @@ void VehicleTalker::runVehicleReceiver()
 	  statusStr = msg.substr(0, msg.length());
 	  msg.clear();
 	}
-	
+
 	int spacePos = statusStr.find ("\n", 0);
-	
+
 	while (spacePos >= 0 && spacePos < statusStr.length()-1) {
 	  if (spacePos > 0) {
 	    string str1 = statusStr.substr(0, spacePos);
@@ -146,7 +145,7 @@ void VehicleTalker::runVehicleReceiver()
 	    statusStr = statusStr.substr(spacePos+1, statusStr.length());
 	  spacePos = statusStr.find ("\n", 0);
 	}
-	
+
 	if (spacePos > 0 && spacePos == statusStr.length()-1) {
 	  statusStr = statusStr.substr(0, spacePos);
 	}
@@ -156,12 +155,12 @@ void VehicleTalker::runVehicleReceiver()
 	  fprintf(logFile, "\n%d: incomplete msg: %s", (int) time(NULL), msg.c_str());
 	  continue;
 	}
-	
+
 	if (m_verbosity > 0) {
 	  MSG("Received status %s", statusStr.c_str());
 	  MSG("msg: %s", msg.c_str());
 	}
-	
+
 	int firstColon = statusStr.find(":", 0);
 	int secondColon = statusStr.find(":", firstColon+1);
 	if (firstColon < 0 || secondColon <= firstColon) {
@@ -184,7 +183,7 @@ void VehicleTalker::runVehicleReceiver()
 	  }
 	  if (statusValid) {
 	    for (int i = 0; i < vehStatusStr.length(); i++) {
-	      if (vehStatusStr.at(i) != ' ' && 
+	      if (vehStatusStr.at(i) != ' ' &&
 		  (vehStatusStr.at(i) < '0' || vehStatusStr.at(i) > '9')) {
 		statusValid = false;
 		ERROR("Invalid status: %s", vehStatusStr.c_str());

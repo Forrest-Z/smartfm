@@ -1,62 +1,22 @@
-// Implementation of the ClientSocket class
-
-#include "ClientSocket.hh"
-#include "SocketException.hh"
+#include <errno.h>
 #include <iostream>
 #include <sstream>
+#include "socket_handler.hh"
 
-ClientSocket::ClientSocket()
+void ClientSocket::connect ( const std::string & host, int port )
 {
-}
+    Socket::create();
 
-ClientSocket::ClientSocket ( std::string host, int port )
-{
-  this->init(host, port);
-}
+    std::ostringstream ss;
+    ss << "Cannot connect to " << host << ":" << port;
+    SocketException e( SOCKET_CONNECT_ERROR, ss.str() );
 
-void ClientSocket::init ( std::string host, int port )
-{
-  if ( !Socket::create() )
-    {
-      throw SocketException ( SOCKET_CREATE_ERROR, "Socket cannot be created." );
-    }
+    m_addr.sin_family = AF_INET;
+    m_addr.sin_port = htons ( port );
 
-  if ( !Socket::connect ( host, port ) )
-    {
-      std::ostringstream ss;
-      ss << "Cannot connect to " << host << ":" << port;
-      throw SocketException ( SOCKET_CONNECT_ERROR, ss.str() );
-    }
-}
+    int status = inet_pton ( AF_INET, host.c_str(), &m_addr.sin_addr );
+    if ( errno == EAFNOSUPPORT ) throw e;
 
-const ClientSocket& ClientSocket::operator << ( const std::string& s ) const
-{
-  //Socket::send(s);
-  
-  if ( !Socket::send ( s ) )
-    {
-      throw SocketException ( SOCKET_SEND_ERROR, "Cannot send message to to socket." );
-    }
-  
-  return *this;
-
-}
-
-
-const ClientSocket& ClientSocket::operator >> ( std::string& s ) const
-{
-  //Socket::recv(s);
-  
-  if ( ! Socket::recv ( s ) )
-    {
-      throw SocketException ( SOCKET_RECV_ERROR, "Cannot receive message from socket." );
-    }
-  
-  return *this;
-}
-
-
-bool ClientSocket::setSocketBlocking(const bool blocking)
-{
-  return Socket::setSocketBlocking(blocking);
+    status = ::connect ( m_sock, ( sockaddr * ) &m_addr, sizeof ( m_addr ) );
+    if ( status != 0 ) throw e;
 }

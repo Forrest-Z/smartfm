@@ -2,8 +2,10 @@
 #include <stdlib.h>
 #include <iostream>
 #include <sstream>
+
+#include "socket_handler.hh"
+
 #include "RoutePlanner.hh"
-#include "socket_handler/SocketException.hh"
 
 using namespace std;
 
@@ -39,7 +41,7 @@ RoutePlanner::RoutePlanner(string schHost, int schPort, string locHost, int locP
 void RoutePlanner::initSchComm(string host, int port)
 {
   try {
-    m_schSocket.init(host, port);
+    m_schSocket.connect(host, port);
     m_schSocket.setSocketBlocking(true);
     m_schConnected = true;
   }
@@ -52,7 +54,7 @@ void RoutePlanner::initSchComm(string host, int port)
 void RoutePlanner::initLocComm(string host, int port)
 {
   try {
-    m_locSocket.init(host, port);
+    m_locSocket.connect(host, port);
     m_locSocket.setSocketBlocking(true);
     m_locSocket << ";car:0:0:0\n";
     m_locConnected = true;
@@ -139,7 +141,7 @@ bool RoutePlanner::getNewTask(int &usrID, int &pickup, int &dropoff)
 	taskStr = taskStr.substr(spacePos+1, taskStr.length());
       spacePos = taskStr.find ("\n", 0);
     }
-	
+
     if (spacePos > 0 && spacePos == taskStr.length()-1) {
       taskStr = taskStr.substr(0, spacePos);
     }
@@ -169,7 +171,7 @@ bool RoutePlanner::getNewTask(int &usrID, int &pickup, int &dropoff)
       }
       if (taskValid) {
 	for (int i = 0; i < pickupStr.length(); i++) {
-	  if (pickupStr.at(i) != ' ' && 
+	  if (pickupStr.at(i) != ' ' &&
 	      (pickupStr.at(i) < '0' || pickupStr.at(i) > '9')) {
 	    taskValid = false;
 	    ERROR("Invalid pickup: %s", pickupStr.c_str());
@@ -179,7 +181,7 @@ bool RoutePlanner::getNewTask(int &usrID, int &pickup, int &dropoff)
       }
       if (taskValid) {
 	for (int i = 0; i < dropoffStr.length(); i++) {
-	  if (dropoffStr.at(i) != ' ' && 
+	  if (dropoffStr.at(i) != ' ' &&
 	      (dropoffStr.at(i) < '0' || dropoffStr.at(i) > '9')) {
 	    taskValid = false;
 	    ERROR("Invalid dropoff: %s (%c)", dropoffStr.c_str(), dropoffStr.at(i));

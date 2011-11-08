@@ -4,8 +4,8 @@
 #include <sstream>
 #include <time.h>
 #include <sys/stat.h>
+#include "socket_handler.hh"
 #include "SchedulerTalker.hh"
-#include "SocketException.hh"
 
 using namespace std;
 
@@ -35,8 +35,8 @@ SchedulerTalker::SchedulerTalker(string host, int port, int verbosityLevel)
   oss  << "log_stalker" << "." << timestr << ".log";
   string logFileName = oss.str();
   string suffix = "";
-  
-  // if it exists already, append .1, .2, .3 ... 
+
+  // if it exists already, append .1, .2, .3 ...
   for (int i = 1; stat((logFileName + suffix).c_str(), &st) == 0; i++) {
     ostringstream tmp;
     tmp << '.' << i;
@@ -47,7 +47,7 @@ SchedulerTalker::SchedulerTalker(string host, int port, int verbosityLevel)
 
   //logFile = fopen ("log_stalker.txt","w");
   try {
-    m_socket.init(host, port);
+    m_socket.connect(host, port);
     m_socket.setSocketBlocking(true);
     m_isconnected = true;
     m_socket << ";0:0:0:0:0\n";
@@ -60,7 +60,7 @@ SchedulerTalker::SchedulerTalker(string host, int port, int verbosityLevel)
   }
 }
 
-SchedulerTalker::~SchedulerTalker() 
+SchedulerTalker::~SchedulerTalker()
 {
   fclose (logFile);
 }
@@ -148,7 +148,7 @@ void SchedulerTalker::runMobileReceiver()
 	    taskStr = taskStr.substr(spacePos+1, taskStr.length());
 	  spacePos = taskStr.find ("\n", 0);
 	}
-	
+
 	if (spacePos > 0 && spacePos == taskStr.length()-1) {
 	  taskStr = taskStr.substr(0, spacePos);
 	}
@@ -203,7 +203,7 @@ void SchedulerTalker::runMobileReceiver()
 	  }
 	  if (taskValid) {
 	    for (int i = 0; i < taskIDStr.length(); i++) {
-	      if (taskIDStr.at(i) != ' ' && 
+	      if (taskIDStr.at(i) != ' ' &&
 		  (taskIDStr.at(i) < '0' || taskIDStr.at(i) > '9')) {
 		taskValid = false;
 		ERROR("Invalid taskID: %s", taskIDStr.c_str());

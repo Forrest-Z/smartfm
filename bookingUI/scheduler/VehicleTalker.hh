@@ -4,8 +4,7 @@
 #include <pthread.h>
 #include <stdio.h>
 #include "Scheduler.hh"
-#include "ServerSocket.hh"
-#include "SocketException.hh"
+#include "socket_handler.hh"
 
 struct VehicleInfo
 {
@@ -49,7 +48,8 @@ public:
 private:
   VehicleInfo m_vehInfo;
   pthread_mutex_t m_statusMutex;
-  ServerSocket m_server, m_socket;
+  ServerSocket m_server;
+  Socket m_socket;
   bool m_quit, m_isconnected;
   bool m_newStatusRecv;
   int m_verbosity;
