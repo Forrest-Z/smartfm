@@ -2,9 +2,9 @@
 CC = gcc
 CPP= g++
 
-all: socket.a
+all: libsocket.a
 
-socket.a: ClientSocket.o ServerSocket.o Socket.o
+libsocket.a: ClientSocket.o ServerSocket.o Socket.o
 	ar r $@ $^
 
 clean:
