@@ -3,18 +3,18 @@ package fmui;
 import java.util.*;
 import java.io.IOException;
 
-class CentralDataBase {
-    
+public class CentralDataBase {
+
     /** Central data base on the server.
-	 Creates several server instances on various ports. Maintains
-	 a list of known clients.
-	 */
-	
+    Creates several server instances on various ports. Maintains
+    a list of known clients.
+    */
+
     public List<UserData> clients = Collections.synchronizedList(new ArrayList<UserData>());
     List<Thread> serverThreads = new ArrayList<Thread>();
-	private String dataFromCarToWeb = null;
-	private String dataFromCarToUser = null;
-    
+    private String dataFromCarToWeb = null;
+    private String dataFromCarToUser = null;
+
     public CentralDataBase(int[] ports) {
         for( int p:ports ) {
             Server s = null;
@@ -30,39 +30,39 @@ class CentralDataBase {
             }
         }
     }
-    
-    public void updatePickupAndDropoff(int dataFromServerToSchedulerID, DataFromUserToServer dataFromUserToServer) {
-    	for( int i=0; i<clients.size(); i++ ) {
-			if( clients.get(i).getID() == dataFromServerToSchedulerID) {
-				clients.get(i).setPickupOption(dataFromUserToServer.pickupOption);
-				clients.get(i).setDropoffOption(dataFromUserToServer.dropoffOption);
-				break;
-			}
-		}
+
+    public void updatePickupAndDropoff(int id, DataFromUserToServer d) {
+        for( int i=0; i<clients.size(); i++ ) {
+            if( clients.get(i).getID() == id) {
+                clients.get(i).setPickupOption(d.pickupOption);
+                clients.get(i).setDropoffOption(d.dropoffOption);
+                break;
+            }
+        }
     }
-    
-    public void updateWaitTimeAndCarID(int dataFromSchedulerToServerID, DataFromSchedulerToServer dataToServer) {
-    	for( int i=0; i<clients.size(); i++ ) {
-			if( clients.get(i).getID() == dataFromSchedulerToServerID) {
-				clients.get(i).setTaskIDAndWaitTimeAndCarID(dataToServer.taskID,dataToServer.waitTime, dataToServer.carID);				
-				break;
-			}
-		}
+
+    public void updateWaitTimeAndCarID(int id, DataFromSchedulerToServer d) {
+        for( int i=0; i<clients.size(); i++ ) {
+            if( clients.get(i).getID() == id ) {
+                clients.get(i).setTaskIDAndWaitTimeAndCarID(d.taskID, d.waitTime, d.carID);
+                break;
+            }
+        }
     }
-    
-    public void setDataFromCarToWeb(String dataFromCarToWeb) {
-    	this.dataFromCarToWeb = dataFromCarToWeb;
+
+    public void setDataFromCarToWeb(String s) {
+        this.dataFromCarToWeb = s;
     }
-    
-    public void setDataFromCarToUser(String dataFromCarToUser) {
-    	this.dataFromCarToUser = dataFromCarToUser;
+
+    public void setDataFromCarToUser(String s) {
+        this.dataFromCarToUser = s;
     }
-    
+
     public String getDataFromCarToWeb(){
-    	return dataFromCarToWeb;
+        return dataFromCarToWeb;
     }
-    
+
     public String getDataFromCarToUser(){
-    	return dataFromCarToUser;
+        return dataFromCarToUser;
     }
 }
