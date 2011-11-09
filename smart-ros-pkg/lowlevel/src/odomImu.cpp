@@ -1,7 +1,7 @@
 /** Combines odometry (distance travelled) and IMU (yaw rate) to get position
  *  estimate.
  *
- * Gets the input from odometry ('odoImuMsg') and IMU ('imu/data', yaw rate only),
+ * Gets the input from encoders and IMU ('imu/data', yaw rate only),
  * publishes the resulting pose estimate as a tf broadcast (odomImu / base_link)
  * and as a Odometry message on the 'odom_imu' channel.
  */
@@ -16,9 +16,8 @@
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Quaternion.h>
 
-#include <fmutil/SimpleOdo.h>
 #include <fmutil/fmMath.h>
-
+#include <lowlevel/Encoders.h>
 
 class OdoIMU
 {
@@ -26,12 +25,12 @@ class OdoIMU
         OdoIMU(ros::NodeHandle);
 
     private:
-        void odoCallBack(fmutil::SimpleOdo);
+        void encodersCallBack(lowlevel::Encoders);
         void imuCallBack(sensor_msgs::Imu);
         void publishOdo();
 
         ros::NodeHandle n;
-        ros::Subscriber odoSub;
+        ros::Subscriber encSub;
         ros::Subscriber imuSub;
         ros::Publisher odoImuPub;
         tf::TransformBroadcaster tfBroadcaster;
@@ -48,8 +47,8 @@ class OdoIMU
 
 OdoIMU::OdoIMU(ros::NodeHandle nh_) : n(nh_)
 {
-    odoSub = n.subscribe("odom_linear", 1000, &OdoIMU::odoCallBack, this);
-    imuSub = n.subscribe("ms/imu/data", 1000, &OdoIMU::imuCallBack, this);
+    encSub = n.subscribe("/encoders", 1000, &OdoIMU::encodersCallBack, this);
+    imuSub = n.subscribe("/ms/imu/data", 1000, &OdoIMU::imuCallBack, this);
     odoImuPub = n.advertise<nav_msgs::Odometry>("odo_imu", 100);
 
     initialized = false;
@@ -69,7 +68,7 @@ void OdoIMU::imuCallBack(sensor_msgs::Imu imuMsg)
 }
 
 
-void OdoIMU::odoCallBack(fmutil::SimpleOdo odoMsg)
+void OdoIMU::encodersCallBack(lowlevel::Encoders encMsg)
 {
     //handle the nan issue. This occurs when the imu is restarted
     if( isnan(roll) || isnan(pitch) || isnan(yaw) )
@@ -79,7 +78,6 @@ void OdoIMU::odoCallBack(fmutil::SimpleOdo odoMsg)
     {
         yaw_pre = yaw;
         yaw_minus = yaw;
-        dist_pre = odoMsg.dist;
         initialized = true;
         return;
     }
@@ -87,22 +85,19 @@ void OdoIMU::odoCallBack(fmutil::SimpleOdo odoMsg)
     //That's the assumption made for odometry calculation
 
     // Only integrate yaw when the car is moving
-    if( fabs(odoMsg.v) < 0.01 ) //the car is not moving
+    if( fabs(encMsg.v) < 0.01 ) //the car is not moving
         yaw_drift += yaw - yaw_minus;
     yaw_minus = yaw;
     yaw -= yaw_pre + yaw_drift;
     //std::cout <<yaw <<' ' <<yaw_drift <<std::endl;
 
-    double distance = odoMsg.dist - dist_pre;
-    dist_pre = odoMsg.dist;
-
     double r11 = cos(yaw)*cos(pitch);
     double r21 = sin(yaw)*cos(pitch);
     double r31 = sin(pitch);
 
-    position.x += distance * r11;
-    position.y += distance * r21;
-    position.z -= distance * r31;
+    position.x += encMsg.d_dist * r11;
+    position.y += encMsg.d_dist * r21;
+    position.z -= encMsg.d_dist * r31;
 
     ROS_DEBUG("Pose: x=%.2f, y=%.2f, th=%ddeg", position.x, position.y, (int)(yaw*180/M_PI));
 

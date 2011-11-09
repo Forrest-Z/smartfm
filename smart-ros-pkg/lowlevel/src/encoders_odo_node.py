@@ -28,7 +28,6 @@ from Phidgets.PhidgetException import *
 from Phidgets.Events.Events import *
 from Phidgets.Devices.Encoder import Encoder
 
-from fmutil.msg import SimpleOdo
 from lowlevel.msg import Encoders as EncodersMsg
 
 
@@ -74,7 +73,14 @@ class PhidgetEncoder:
         self.countBufs = {self.left: CountBuffer(wheelSize*leftCorrectionFactor), self.right: CountBuffer(-wheelSize)}
         self.lastPub = None
 
-        self.simpleOdoMsg = SimpleOdo()
+        self.x = 0.0
+        self.y = 0.0
+        self.th = 0.0
+        self.v = 0.0
+        self.w = 0.0
+        self.dt = 0.0
+        self.d_th = 0.0
+        self.d_dist = 0.0
 
         self.initPhidget()
         self.encoder.setEnabled(self.left, True)
@@ -137,86 +143,87 @@ class PhidgetEncoder:
         if e.index in self.countBufs.keys():
             self.dt = self.countBufs[e.index].add(e)
             if self.dt > .05:
-                self.now = rospy.Time.now()
-                dl = self.countBufs[self.left].dp
-                dr = self.countBufs[self.right].dp
-                self.d_dist = (dl+dr)/2
-                self.d_th = (dr-dl)/self.distBtwWheels
+                self.process()
 
-                self.pubEncodersMsg()
-                self.integratePos()
-                #rospy.logdebug('dt=%f, counts: l=%i, -r=%i' % (dt, self.encoder.getPosition(self.left), -self.encoder.getPosition(self.right)))
-                self.pubOdo(self.now)
-                self.lastPub = self.now
-                rospy.logdebug('pose (x,y,th_deg)=(%.2f, %.2f, %+d), (v,w)=(%.2f, %.2f)' % (self.simpleOdoMsg.x, self.simpleOdoMsg.y, int(self.simpleOdoMsg.th*180.0/pi), self.simpleOdoMsg.v, self.simpleOdoMsg.w))
-
-                self.countBufs[self.left].reset()
-                self.countBufs[self.right].reset()
-
+    def process(self):
+        self.now = rospy.Time.now()
+        self.pubEncodersMsg()
+        self.integratePos()
+        self.pubOdo()
+        self.lastPub = self.now
 
     def pubEncodersMsg(self):
+        dl = self.countBufs[self.left].dp
+        dr = self.countBufs[self.right].dp
+        self.d_dist = (dl+dr)/2
+        self.d_th = (dr-dl)/self.distBtwWheels
+
         EncodersMsg encodersMsg
         encodersMsg.stamp = self.now
-        encodersMsg.dt = dt
-        encodersMsg.d_dist = d_dist
-        encodersMsg.d_th = d_th
-        encodersMsg.v = d_dist/dt
-        encodersMsg.w = d_th/dt
+        encodersMsg.dt = self.dt
+        encodersMsg.d_dist = self.d_dist
+        encodersMsg.d_th = self.d_th
+        if self.dt>0:
+            encodersMsg.v = self.d_dist/self.dt
+            encodersMsg.w = self.d_th/self.dt
+        else:
+            encodersMsg.v = 0
+            encodersMsg.w = 0
+
         self.encodersPub.publish(encodersMsg)
 
+        self.countBufs[self.left].reset()
+        self.countBufs[self.right].reset()
 
     def integratePos(self):
         d_x = cos(self.d_th) * self.d_dist
         d_y = -sin(self.d_th) * self.d_dist
-        self.simpleOdoMsg.dist += self.d_dist
-        self.simpleOdoMsg.x += cos(self.simpleOdoMsg.th)*d_x - sin(self.simpleOdoMsg.th)*d_y
-        self.simpleOdoMsg.y += sin(self.simpleOdoMsg.th)*d_x + cos(self.simpleOdoMsg.th)*d_y
-        self.simpleOdoMsg.th += self.d_th
-        self.simpleOdoMsg.v = self.d_dist/self.dt
-        self.simpleOdoMsg.w = self.d_th/self.dt
-        self.simpleOdoPub.publish(simpleOdoMsg)
+        self.x += cos(self.th)*d_x - sin(self.th)*d_y
+        self.y += sin(self.th)*d_x + cos(self.th)*d_y
+        self.th += self.d_th
+        self.v = self.d_dist/self.dt
+        self.w = self.d_th/self.dt
 
+        rospy.logdebug('pose (x,y,th_deg)=(%.2f, %.2f, %+d), (v,w)=(%.2f, %.2f)' % (self.x, self.y, int(self.th*180.0/pi), self.v, self.w))
 
-    def pubOdo(self, now):
+    def pubOdo(self):
         quaternion = Quaternion()
         quaternion.x = 0.0
         quaternion.y = 0.0
-        quaternion.z = sin(self.simpleOdoMsg.th/2)
-        quaternion.w = cos(self.simpleOdoMsg.th/2)
+        quaternion.z = sin(self.th/2)
+        quaternion.w = cos(self.th/2)
 
         self.odomBroadcaster.sendTransform(
-            (self.simpleOdoMsg.x, self.simpleOdoMsg.y, 0),
+            (self.x, self.y, 0),
             (quaternion.x, quaternion.y, quaternion.z, quaternion.w),
             now, "base_link", self.frameID
         )
 
         odom = Odometry()
-        odom.header.stamp = now
+        odom.header.stamp = self.now
         odom.header.frame_id = self.frameID
         odom.child_frame_id = 'base_link'
 
-        odom.pose.pose.position.x = self.simpleOdoMsg.x
-        odom.pose.pose.position.y = self.simpleOdoMsg.y
-        odom.pose.pose.position.z = 0
+        odom.pose.pose.position.x = self.x
+        odom.pose.pose.position.y = self.y
+        odom.pose.pose.position.z = 0(rospy.Time.now()-self.lastPub).to_sec() > self.minPubPeriod
         odom.pose.pose.orientation = quaternion
 
-        odom.twist.twist.linear.x = self.simpleOdoMsg.v
+        odom.twist.twist.linear.x = self.v
         odom.twist.twist.linear.y = 0
-        odom.twist.twist.angular.z = self.simpleOdoMsg.w
+        odom.twist.twist.angular.z = self.w
 
         self.odomPub.publish(odom)
 
 
     def loop(self):
-        now = rospy.Time.now()
-
-        if self.lastPub is None or (now-self.lastPub).to_sec() > self.minPubPeriod:
-            self.simpleOdoMsg.v = 0
-            self.simpleOdoMsg.w = 0
-            self.pubOdo(now)
-            self.countBufs[self.left].reset()
-            self.countBufs[self.right].reset()
-
+        dt = (rospy.Time.now()-self.lastPub).to_sec()
+        if self.lastPub is None or dt > self.minPubPeriod:
+            if self.lastPub is None:
+                self.dt = 0
+            else:
+                self.dt = dt
+            self.process()
         rospy.sleep(self.minPubPeriod)
 
 

@@ -26,7 +26,6 @@ using std::string;
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/Imu.h>
 
-#include <fmutil/SimpleOdo.h>
 #include <lowlevel/Encoders.h>
 
 #include <boost/random.hpp>
@@ -56,7 +55,6 @@ public:
 class State : public StampedData
 {
 public:
-    fmutil::SimpleOdo m;
     float l, dl; //total distance travelled
     float x, y, th; //pose
     float v, w; //vel
@@ -86,42 +84,34 @@ public:
         return time;
     }
 
-    fmutil::SimpleOdo simpleOdoMsg() const
-    {
-        fmutil::SimpleOdo m;
-        m.stamp = ros::Time(time);
-        m.x = x;
-        m.y = y;
-        m.dist = l;
-        m.th = th;
-        m.v = v;
-        m.w = w;
-        return m;
-    }
-
     nav_msgs::Odometry odometryMsg() const
     {
         nav_msgs::Odometry odomsg;
         odomsg.header.stamp = ros::Time(time);
-        odomsg.header.frame_id = "ground_truth";
-        odomsg.child_frame_id = "base_link";
+        odomsg.header.frame_id = "/ground_truth";
+        odomsg.child_frame_id = "/base_link";
         odomsg.pose.pose.position.x = x;
         odomsg.pose.pose.position.y = y;
-        odomsg.pose.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, 0, th);
+        odomsg.pose.pose.orientation = tf::createQuaternionMsgFromYaw(th);
+        odomsg.twist.twist.linear.x = v;
+        odomsg.twist.twist.angular.z = w;
         return odomsg;
     }
 
-    tf::StampedTransform stampedTransform(const nav_msgs::Odometry & odomsg) const
+    geometry_msgs::TransformStamped tf() const
     {
-        tf::StampedTransform trans(tf::Transform(), odomsg.header.stamp, odomsg.header.frame_id, odomsg.child_frame_id);
-        tf::poseMsgToTF(odomsg.pose.pose, trans);
-        return trans;
+        geometry_msgs::TransformStamped odom_trans;
+        odom_trans.header.stamp = ros::Time(time);
+        odom_trans.header.frame_id = "/ground_truth";
+        odom_trans.child_frame_id = "/base_link";
+
+        odom_trans.transform.translation.x = x;
+        odom_trans.transform.translation.y = y;
+        odom_trans.transform.rotation = tf::createQuaternionMsgFromYaw(th);
+
+        return odom_trans;
     }
 
-    tf::StampedTransform stampedTransform() const
-    {
-        return stampedTransform( odometryMsg() );
-    }
 };
 
 
@@ -289,9 +279,9 @@ class Profile
 public:
     /// This function can be used to create the profile, by adding acceleration
     /// profiles bits by bits (duration, acceleration, angular acceleration).
-    void add(float d, float a, float dw)
+    void add(float duration, float acc, float dw)
     {
-        steps.push_back( ProfileStep(d,a,dw) );
+        steps.push_back( ProfileStep(duration,acc,dw) );
     }
 
     /// Generate all the data, sort it, and return it.
@@ -303,7 +293,7 @@ public:
         cout <<"Computed " <<states.size() <<" states" <<endl;
         for( unsigned i=0; i<states.size(); i++ ) data.push_back( &states[i] );
 
-        imudata = ImuData::generate(states, 0, 0.01, 0.05, "base_link"); //start time, period and noise level
+        imudata = ImuData::generate(states, 0, 0.01, 0.05, "/base_link"); //start time, period and noise level
         cout <<"Computed " <<imudata.size() <<" imu data" <<endl;
         for( unsigned i=0; i<imudata.size(); i++ ) data.push_back( &imudata[i] );
 
@@ -321,39 +311,43 @@ public:
 Profile makeLoopProfile()
 {
     Profile profile;
+    float dw = M_PI/60;
 
     profile.add(60,0,0); //stand still for the first 60 secs
     // start first loop
-    profile.add(2,0.5,0); //acceleration for 2 secs --> 0 to 1 m/s
-    profile.add(30,0,0); //maintain for 30 secs
-    profile.add(2,0,0.3); //start turning to the left: 0 to 0.6 rad/s in 2 secs.
-    profile.add(30,0,0); //maintain for 30 secs
-    profile.add(2,0,-0.3); //stop turning
+    profile.add(2,0.5,0); //acceleration for 2 secs --> 0 to 1 m/s in 1 m
+    profile.add(29,0,0); //maintain for 29 secs --> 29 m
+    profile.add(2,0,dw); //start turning to the left
+    profile.add(28,0,0); //maintain for 28 secs
+    profile.add(2,0,-dw); //stop turning
     profile.add(60,0,0); //maintain for 60 secs
-    profile.add(2,0,0.3); //start turning to the left: 0 to 0.6 rad/s in 2 secs.
-    profile.add(30,0,0); //maintain for 30 secs
-    profile.add(2,0,-0.3); //stop turning
+    profile.add(2,0,dw); //start turning to the left
+    profile.add(28,0,0); //maintain for 28 secs
+    profile.add(2,0,-dw); //stop turning
     profile.add(30,0,0); //maintain for 30 secs
     // one loop
     profile.add(30,0,0); //maintain for 30 secs
-    profile.add(2,0,0.3); //start turning to the left: 0 to 0.6 rad/s in 2 secs.
-    profile.add(30,0,0); //maintain for 30 secs
-    profile.add(2,0,-0.3); //stop turning
+    profile.add(2,0,dw); //start turning to the left
+    profile.add(28,0,0); //maintain for 28 secs
+    profile.add(2,0,-dw); //stop turning
     profile.add(60,0,0); //maintain for 60 secs
-    profile.add(2,0,0.3); //start turning to the left: 0 to 0.6 rad/s in 2 secs.
-    profile.add(30,0,0); //maintain for 30 secs
-    profile.add(2,0,-0.3); //stop turning
+    profile.add(2,0,dw); //start turning to the left
+    profile.add(28,0,0); //maintain for 28 secs
+    profile.add(2,0,-dw); //stop turning
     profile.add(30,0,0); //maintain for 30 secs
     // one loop
     profile.add(30,0,0); //maintain for 30 secs
-    profile.add(2,0,0.3); //start turning to the left: 0 to 0.6 rad/s in 2 secs.
-    profile.add(30,0,0); //maintain for 30 secs
-    profile.add(2,0,-0.3); //stop turning
+    profile.add(2,0,dw); //start turning to the left
+    profile.add(28,0,0); //maintain for 28 secs
+    profile.add(2,0,-dw); //stop turning
     profile.add(60,0,0); //maintain for 60 secs
-    profile.add(2,0,0.3); //start turning to the left: 0 to 0.6 rad/s in 2 secs.
-    profile.add(30,0,0); //maintain for 30 secs
-    profile.add(2,0,-0.3); //stop turning
-    profile.add(30,0,0); //maintain for 30 secs
+    profile.add(2,0,dw); //start turning to the left
+    profile.add(28,0,0); //maintain for 28 secs
+    profile.add(2,0,-dw); //stop turning
+    profile.add(29,0,0); //maintain for 29 secs
+    // stop
+    profile.add(2,-0.5,0);
+    profile.add(10,0,0); //stand still for 10 secs
 
     return profile;
 }
@@ -366,31 +360,53 @@ Profile makeLoopProfile()
 
 int main(int argc, char **argv)
 {
+    // Init ROS
+    ros::init(argc, argv, "sensorSimulator");
+
+    // Parse command line arguments
+    bool realtime = false;
+    for( int i=1; i<argc; i++ )
+    {
+        //cout <<"argv[" <<i <<"] is \"" <<argv[i] <<"\"" <<endl;
+        if( strcmp(argv[i],"--rt")==0 ) {
+            realtime = true;
+        }
+        else if( strcmp(argv[i],"--help")==0 ) {
+            cout <<"sensorSimulation: publish fake sensor data and ground truth" <<endl;
+            cout <<"Options:" <<endl;
+            cout <<"\t--help: prints this help message and exit" <<endl;
+            cout <<"\t--rt  : run in real time" <<endl;
+            return 0;
+        }
+    }
+
+    // Generate the data
     Profile profile = makeLoopProfile();
     vector<StampedData *> data = profile.generateData();
 
-    ros::init(argc, argv, "sensorSimulator");
+    // Create the ROS topics
     ros::NodeHandle n;
     ros::Publisher imuPub = n.advertise<sensor_msgs::Imu>("/ms/imu/data", 0);
     ros::Publisher clockPub = n.advertise<rosgraph_msgs::Clock>("/clock", 0);
     ros::Publisher encodersPub = n.advertise<lowlevel::Encoders>("/encoders", 0);
-    ros::Publisher groundTruthSimpleOdoPub = n.advertise<fmutil::SimpleOdo>("/ground_truth_linear", 0);
     ros::Publisher groundTruthOdometryPub= n.advertise<nav_msgs::Odometry>("/ground_truth", 0);
     tf::TransformBroadcaster groundTruthTfBroadcaster;
 
-    for( unsigned i=0; i<data.size(); i++ )
+    // Publish the data
+    cout <<"Publishing the data" <<endl;
+    for( unsigned i=0; i<data.size() && ros::ok(); i++ )
     {
+        //cout <<i <<" : " <<data[i]->time <<endl;
         rosgraph_msgs::Clock clockmsg;
         clockmsg.clock = ros::Time(data[i]->time);
         clockPub.publish( clockmsg );
 
         if( data[i]->type == state_t ) {
             State *s = static_cast<State *>(data[i]);
-            nav_msgs::Odometry odomsg = s->odometryMsg();
-            groundTruthSimpleOdoPub.publish( s->simpleOdoMsg() );
-            groundTruthOdometryPub.publish( odomsg );
-            groundTruthTfBroadcaster.sendTransform( s->stampedTransform(odomsg) );
-            ros::Duration(0.01).sleep();
+            groundTruthOdometryPub.publish( s->odometryMsg() );
+            groundTruthTfBroadcaster.sendTransform( s->tf() );
+            if( realtime )
+                ros::WallDuration(0.01).sleep();
         }
         else if( data[i]->type == imu_t ) {
             ImuData *d = static_cast<ImuData *>(data[i]);
