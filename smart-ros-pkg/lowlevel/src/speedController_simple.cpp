@@ -63,23 +63,21 @@ class PID_Speed
 
 using namespace std;
 
-#define GETP(name,var,val)  if(!nh.getParam(name, var)) var=val
-
 void Parameters::getParam()
 {
     ros::NodeHandle nh("~");
 
-    GETP( "kp", kp, 0.0 );
-    GETP( "ki", ki, 0.01 );
-    GETP( "kd", kd, 0.0 );
-    GETP( "ki_sat", ki_sat, 0.7 );
-    GETP( "coeff_brakepedal", coeff_bp, 120 );
-    GETP( "throttleZeroThres", throttle_zero_thres, 0.1 );
-    GETP( "brakeZeroThres", brake_zero_thres, 5 );
-    GETP( "fullBrakeThres", full_brake_thres, 0.25 );
-    GETP( "tau_v", tau_v, 0.2 );
-    GETP( "pitch_param1", pitch1, 0 );
-    GETP( "pitch_param2", pitch2, -4 );
+    nh.param<double>("kp", kp, 0.0 );
+    nh.param<double>("ki", ki, 0.01 );
+    nh.param<double>("kd", kd, 0.0 );
+    nh.param<double>("ki_sat", ki_sat, 0.7 );
+    nh.param<double>("coeff_brakepedal", coeff_bp, 120 );
+    nh.param<double>("throttleZeroThres", throttle_zero_thres, 0.1 );
+    nh.param<double>("brakeZeroThres", brake_zero_thres, 5 );
+    nh.param<double>("fullBrakeThres", full_brake_thres, 0.25 );
+    nh.param<double>("tau_v", tau_v, 0.2 );
+    nh.param<double>("pitch_param1", pitch1, 0 );
+    nh.param<double>("pitch_param2", pitch2, -4 );
 
     cout <<"kp: " <<kp <<" ki: " <<ki <<" ki_sat: " <<ki_sat <<"\n";
     cout <<"coeff_bp: " <<coeff_bp <<" tau_v: " <<tau_v  <<"\n";
@@ -145,7 +143,7 @@ void PID_Speed::odoCallBack(nav_msgs::Odometry odom)
         e_pre = 0;
         uCtrl = 0;
 
-      
+
 
         vFiltered = 0;
     }
@@ -155,7 +153,7 @@ void PID_Speed::odoCallBack(nav_msgs::Odometry odom)
         double dt = time_now - time_pre;
         vFiltered += (odovel - vFiltered) * dt / param.tau_v;
         double e_now = cmdVel - vFiltered;
-		
+
 		//the output control is u(k)=u(k-1)+k*del(u)
         // Accumulate integral error
         uCtrl += param.ki*(e_now);
@@ -165,7 +163,7 @@ void PID_Speed::odoCallBack(nav_msgs::Odometry odom)
         pid.v_filter = vFiltered;
         pidPub.publish(pid);
 
-        
+
         uCtrl = BOUND(-1.0, uCtrl, 1.0);
 
         ROS_INFO("Velocity error: %.2f, uCtrl=%.2f", e_now, uCtrl);

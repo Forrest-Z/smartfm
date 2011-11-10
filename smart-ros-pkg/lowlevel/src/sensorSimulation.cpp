@@ -41,6 +41,9 @@ using std::string;
  * sorted using the std::sort function.
  */
 
+const double DEFAULT_NOISE_LEVEL = 0.05;
+const double DEFAULT_PERIOD = 0.01;
+
 enum StampedDataType {state_t, odo_t, imu_t};
 string type2str(StampedDataType t)
 {
@@ -63,7 +66,7 @@ string type2str(StampedDataType t)
 class StampedData
 {
 public:
-    float time;
+    double time;
     StampedDataType type;
     StampedData(StampedDataType t) : time(0), type(t) { }
     string typestr() const { return type2str(type); }
@@ -74,11 +77,11 @@ public:
 class State : public StampedData
 {
 public:
-    float l, dl; //total distance travelled
-    float x, y, th; //pose
-    float v, w; //vel
-    float a, dw; //acc
-    float dt; //period
+    double l, dl; //total distance travelled
+    double x, y, th; //pose
+    double v, w; //vel
+    double a, dw; //acc
+    double dt; //period
 
     State() : StampedData(state_t),
     l(0.0), x(0.0), y(0.0), th(0.0), v(0.0), w(0.0), a(0.0), dw(0.0)
@@ -87,7 +90,7 @@ public:
     }
 
     /// Integrate given a time step, an acceleration and an angular acceleration.
-    float integrate(float dt, float a, float dw)
+    double integrate(double dt, double a, double dw)
     {
         time += dt;
         this->dt = dt;
@@ -135,7 +138,7 @@ public:
 
 
 /// Search the state vector to find the state that corresponds to a give time.
-unsigned find(const vector<State> & states, unsigned start, float time)
+unsigned find(const vector<State> & states, unsigned start, double time)
 {
     unsigned i = start;
     for( ; i<states.size(); i++ )
@@ -152,7 +155,7 @@ class NoiseGenerator
     boost::variate_generator<boost::mt19937&, boost::normal_distribution<> > var_nor;
 
 public:
-    NoiseGenerator(float noiseLevel) : nd(0.0, noiseLevel), var_nor(rng, nd) { }
+    NoiseGenerator(double noiseLevel) : nd(0.0, noiseLevel), var_nor(rng, nd) { }
     double operator()() { return (nd.sigma()==0.0 ? 0.0 : var_nor()); }
 };
 
@@ -165,7 +168,7 @@ public:
 
     ImuData() : StampedData(imu_t) { }
 
-    ImuData(float t, const string & frame_id, const State & s, NoiseGenerator & ng)
+    ImuData(double t, const string & frame_id, const State & s, NoiseGenerator & ng)
         : StampedData(imu_t)
     {
         time = t;
@@ -177,17 +180,32 @@ public:
         imumsg.linear_acceleration.y = s.v * s.w + ng();
     }
 
-    static vector<ImuData> generate(const vector<State> & states, float startTime, float period, float noiseLevel, string frame_id)
+    static vector<ImuData> generate(const vector<State> & states)
     {
+        ros::NodeHandle nh("~");
+
+        double noiseLevel;
+        nh.param<double>("noiseLevel", noiseLevel, DEFAULT_NOISE_LEVEL);
+        nh.param<double>("imuNoiseLevel", noiseLevel, noiseLevel);
         NoiseGenerator ng(noiseLevel);
-        float t = startTime==0 ? period : startTime;
+
+        double startTime, period, imuPeriod;
+        nh.param<double>("period", period, DEFAULT_PERIOD);
+        nh.param<double>("imuPeriod", imuPeriod, period);
+        if( imuPeriod<period )
+            ROS_WARN("Imu period < period. This is not recommended.");
+        period = imuPeriod;
+        nh.param<double>("imuStartTime", startTime, period);
+        double t = startTime==0.0 ? period : startTime;
+
+        string frameID = "/base_link";
         vector<ImuData> data;
         unsigned i=0;
         while( true ) {
             i = find(states, i, t);
             if( i==states.size() )
                 break;
-            data.push_back( ImuData(t, frame_id, states[i], ng) );
+            data.push_back( ImuData(t, frameID, states[i], ng) );
             //cout <<"Generating: " <<data.size() <<"(" <<i <<"/" <<states.size() <<")" <<endl;
             t += period;
         }
@@ -203,12 +221,12 @@ public:
 
     OdoData() : StampedData(odo_t) { }
 
-    OdoData(float t, const State & s, NoiseGenerator & ng, float period)
+    OdoData(double t, const State & s, NoiseGenerator & ng, double period)
         : StampedData(odo_t)
     {
         time = t;
-        float v = s.v + ng();
-        float w = s.w + ng();
+        double v = s.v + ng();
+        double w = s.w + ng();
 
         encodermsg.stamp = ros::Time(t);
         encodermsg.dt = period;
@@ -218,10 +236,24 @@ public:
         encodermsg.d_th = w*period;
     }
 
-    static vector<OdoData> generate(const vector<State> & states, float startTime, float period, float noiseLevel)
+    static vector<OdoData> generate(const vector<State> & states)
     {
+        ros::NodeHandle nh("~");
+
+        double noiseLevel;
+        nh.param<double>("noiseLevel", noiseLevel, DEFAULT_NOISE_LEVEL);
+        nh.param<double>("encNoiseLevel", noiseLevel, noiseLevel);
         NoiseGenerator ng(noiseLevel);
-        float t = startTime==0 ? period : startTime;
+
+        double startTime, period, encPeriod;
+        nh.param<double>("period", period, DEFAULT_PERIOD);
+        nh.param<double>("encPeriod", encPeriod, period);
+        if( encPeriod<period )
+            ROS_WARN("Encoders period < period. This is not recommended.");
+        period = encPeriod;
+        nh.param<double>("encStartTime", startTime, period);
+        double t = startTime==0.0 ? period : startTime;
+
         vector<OdoData> data;
         unsigned i=0;
         while( true ) {
@@ -240,10 +272,10 @@ public:
 class ProfileStep
 {
 public:
-    float duration;
-    float a;
-    float dw;
-    ProfileStep(float _duration, float _a, float _dw) : duration(_duration), a(_a), dw(_dw) { }
+    double duration;
+    double a;
+    double dw;
+    ProfileStep(double _duration, double _a, double _dw) : duration(_duration), a(_a), dw(_dw) { }
 };
 
 class Profile
@@ -266,11 +298,15 @@ class Profile
 
     /// A helper function to compute the states from the profile. Read all the
     /// profile steps and integrate the accelerations.
-    void computeStates(float period)
+    void computeStates()
     {
+        ros::NodeHandle nh("~");
+        double period;
+        nh.param<double>("period", period, DEFAULT_PERIOD);
+
         unsigned i = 0; //current profile step
-        float t = period; //time counter
-        float T = steps[0].duration;
+        double t = period; //time counter
+        double T = steps[0].duration;
 
         states.clear();
         State s;
@@ -297,26 +333,26 @@ class Profile
 public:
     /// This function can be used to create the profile, by adding acceleration
     /// profiles bits by bits (duration, acceleration, angular acceleration).
-    void add(float duration, float acc, float dw)
+    void add(double duration, double acc, double dw)
     {
         steps.push_back( ProfileStep(duration,acc,dw) );
     }
 
     /// Generate all the data, sort it, and return it.
-    vector<StampedData *> generateData()
+    const vector<StampedData *> & generateData()
     {
         data.clear();
 
-        computeStates(0.01);
-        cout <<"Computed " <<states.size() <<" states" <<endl;
+        computeStates();
+        //cout <<"Computed " <<states.size() <<" states" <<endl;
         for( unsigned i=0; i<states.size(); i++ ) data.push_back( &states[i] );
 
-        imudata = ImuData::generate(states, 0, 0.01, 0.05, "/base_link"); //start time, period and noise level
-        cout <<"Computed " <<imudata.size() <<" imu data" <<endl;
+        imudata = ImuData::generate(states);
+        //cout <<"Computed " <<imudata.size() <<" imu data" <<endl;
         for( unsigned i=0; i<imudata.size(); i++ ) data.push_back( &imudata[i] );
 
-        ododata = OdoData::generate(states, 0, 0.01, 0.05); //start time, period and noise level
-        cout <<"Computed " <<ododata.size() <<" odo data" <<endl;
+        ododata = OdoData::generate(states);
+        //cout <<"Computed " <<ododata.size() <<" odo data" <<endl;
         for( unsigned i=0; i<ododata.size(); i++ ) data.push_back( &ododata[i] );
 
         std::sort(data.begin(), data.end(), comp );
@@ -329,7 +365,7 @@ public:
 Profile makeLoopProfile()
 {
     Profile profile;
-    float dw = M_PI/60;
+    double dw = M_PI/60;
 
     profile.add(60,0,0); //stand still for the first 60 secs
     // start first loop
@@ -382,6 +418,7 @@ private:
     tf::TransformBroadcaster groundTruthTfBroadcaster;
     rosbag::Bag bag;
     bool realtime;
+    double period;
 
     void publish(const State *s)
     {
@@ -422,6 +459,7 @@ public:
         encodersPub = n.advertise<lowlevel::Encoders>("/encoders", 0);
         groundTruthOdometryPub= n.advertise<nav_msgs::Odometry>("/ground_truth", 0);
         realtime = true;
+        n.param<double>("period", period, DEFAULT_PERIOD);
     }
 
     SensorPublisher(string name)
@@ -456,44 +494,66 @@ public:
 };
 
 
+void printHelp()
+{
+    cout <<"sensorSimulation: publish fake sensor data and ground truth" <<endl;
+    cout <<"Options:" <<endl;
+    cout <<"\t --help, -h: prints this help message and exit" <<endl;
+    cout <<"\t -O bagname: sets to bag mode and the output to the given bag file." <<endl;
+    cout <<"\t     In this mode, data is written to a bag instead of being published" <<endl;
+    cout <<"\t     in realtime. As a result it goes very fast, but no data is published on any topic." <<endl;
+    cout <<endl;
+    cout <<"Parameters:" <<endl;
+    cout <<"\t period: period of the sensors. Default value is " <<DEFAULT_PERIOD <<'.' <<endl;
+    cout <<"\t encPeriod: period for the encoders." <<endl;
+    cout <<"\t imuPeriod: period for the IMU." <<endl;
+    cout <<endl;
+    cout <<"\t encStartTime: starting time for the encoders. Default is 0." <<endl;
+    cout <<"\t imuStartTime: starting time for the IMU. Default is 0." <<endl;
+    cout <<endl;
+    cout <<"\t noiseLevel: default noise level. Default value is " <<DEFAULT_NOISE_LEVEL <<'.' <<endl;
+    cout <<"\t encNoiseLevel: noise level for the encoders." <<endl;
+    cout <<"\t imuNoiseLevel: noise level for the IMU." <<endl;
+    cout <<endl;
+    cout <<"Example:" <<endl;
+    cout <<"rosrun lowlevel sensorSimulation -O ~/sensorSimulation.bag _period:=0.001 _imuPeriod:=0.005 _encPeriod:=0.004 _imuNoiseLevel:=0.01 _encNoiseLevel:=0.01" <<endl;
+
+}
+
+
+
 int main(int argc, char **argv)
 {
     // Init ROS
     ros::init(argc, argv, "sensorSimulator");
 
     // Parse command line arguments
-    bool realtime = false;
-    string bagname = "sensorSimulation.bag";
+    bool realtime = true;
+    string bagname;
 
     for( int i=1; i<argc; i++ )
     {
-        //cout <<"argv[" <<i <<"] is \"" <<argv[i] <<"\"" <<endl;
-        if( strcmp(argv[i],"--rt")==0 ) {
-            realtime = true;
-        }
-        else if( strcmp(argv[i],"--help")==0 ) {
-            cout <<"sensorSimulation: publish fake sensor data and ground truth" <<endl;
-            cout <<"Options:" <<endl;
-            cout <<"\t--help: prints this help message and exit" <<endl;
-            cout <<"\t--rt  : run in real time" <<endl;
-            return 0;
-        }
-        else if( strcmp(argv[i],"-O")==0 && i+1<argc ) {
+        if( strcmp(argv[i],"-O")==0 && i+1<argc ) {
             realtime = false;
             bagname = argv[++i];
+        }
+        else if( strcmp(argv[i],"--help")==0 || strcmp(argv[i],"-h")==0) {
+            printHelp();
+            return 0;
         }
     }
 
     // Generate the data
     Profile profile = makeLoopProfile();
-    vector<StampedData *> data = profile.generateData();
+    const vector<StampedData *> & data = profile.generateData();
+    ROS_INFO("Generated the data");
 
     SensorPublisher *publisher;
     if( realtime ) publisher = new SensorPublisher();
     else publisher = new SensorPublisher(bagname);
 
     // Publish the data
-    cout <<"Publishing the data" <<endl;
+    ROS_INFO("Publishing the data");
     publisher->publish(data);
 
     delete publisher;
