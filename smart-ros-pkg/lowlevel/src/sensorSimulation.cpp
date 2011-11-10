@@ -19,6 +19,7 @@ using std::string;
 
 
 #include <ros/ros.h>
+#include <rosbag/bag.h>
 
 #include <rosgraph_msgs/Clock.h>
 #include <geometry_msgs/Quaternion.h>
@@ -41,6 +42,23 @@ using std::string;
  */
 
 enum StampedDataType {state_t, odo_t, imu_t};
+string type2str(StampedDataType t)
+{
+    string s;
+    switch( t )
+    {
+        case state_t:
+            s = "state";
+            break;
+        case odo_t:
+            s = "odo";
+            break;
+        case imu_t:
+            s = "imu";
+            break;
+    }
+    return s;
+}
 
 class StampedData
 {
@@ -48,6 +66,7 @@ public:
     float time;
     StampedDataType type;
     StampedData(StampedDataType t) : time(0), type(t) { }
+    string typestr() const { return type2str(type); }
 };
 
 
@@ -161,7 +180,7 @@ public:
     static vector<ImuData> generate(const vector<State> & states, float startTime, float period, float noiseLevel, string frame_id)
     {
         NoiseGenerator ng(noiseLevel);
-        float t = startTime;
+        float t = startTime==0 ? period : startTime;
         vector<ImuData> data;
         unsigned i=0;
         while( true ) {
@@ -202,7 +221,7 @@ public:
     static vector<OdoData> generate(const vector<State> & states, float startTime, float period, float noiseLevel)
     {
         NoiseGenerator ng(noiseLevel);
-        float t = startTime;
+        float t = startTime==0 ? period : startTime;
         vector<OdoData> data;
         unsigned i=0;
         while( true ) {
@@ -255,7 +274,6 @@ class Profile
 
         states.clear();
         State s;
-        states.push_back(s);
 
         while( true ) {
             while( t<T ) {
@@ -353,9 +371,89 @@ Profile makeLoopProfile()
 }
 
 
+class SensorPublisher
+{
+private:
+    ros::NodeHandle n;
+    ros::Publisher imuPub;
+    ros::Publisher clockPub;
+    ros::Publisher encodersPub;
+    ros::Publisher groundTruthOdometryPub;
+    tf::TransformBroadcaster groundTruthTfBroadcaster;
+    rosbag::Bag bag;
+    bool realtime;
 
+    void publish(const State *s)
+    {
+        if( realtime )
+        {
+            groundTruthOdometryPub.publish( s->odometryMsg() );
+            groundTruthTfBroadcaster.sendTransform( s->tf() );
+            ros::WallDuration(0.01).sleep();
+        }
+        else
+        {
+            bag.write("/ground_truth", ros::Time(s->time), s->odometryMsg() );
+        }
+    }
 
+    void publish(const ImuData *d)
+    {
+        if( realtime )
+            imuPub.publish( d->imumsg );
+        else
+            bag.write("/ms/imu/data", ros::Time(d->time), d->imumsg);
+    }
 
+    void publish(const OdoData *d)
+    {
+        if( realtime )
+            encodersPub.publish( d->encodermsg );
+        else
+            bag.write("/encoders", ros::Time(d->time), d->encodermsg);
+    }
+
+public:
+    SensorPublisher()
+    {
+        // Create the ROS topics
+        imuPub = n.advertise<sensor_msgs::Imu>("/ms/imu/data", 0);
+        clockPub = n.advertise<rosgraph_msgs::Clock>("/clock", 0);
+        encodersPub = n.advertise<lowlevel::Encoders>("/encoders", 0);
+        groundTruthOdometryPub= n.advertise<nav_msgs::Odometry>("/ground_truth", 0);
+        realtime = true;
+    }
+
+    SensorPublisher(string name)
+    {
+        bag.open(name, rosbag::bagmode::Write);
+        bag.setCompression(rosbag::compression::BZ2);
+        realtime = false;
+    }
+
+    ~SensorPublisher() { if( !realtime ) bag.close(); }
+
+    void publish(const vector<StampedData *> & data)
+    {
+        for( unsigned i=0; i<data.size() && ros::ok(); i++ )
+        {
+            //cout <<"i="<<i <<", time=" <<data[i]->time <<", type=" <<data[i]->typestr() <<endl;
+            if( realtime )
+            {
+                rosgraph_msgs::Clock clockmsg;
+                clockmsg.clock = ros::Time(data[i]->time);
+                clockPub.publish( clockmsg );
+            }
+
+            if( data[i]->type == state_t )
+                publish( static_cast<State *>(data[i]) );
+            else if( data[i]->type == imu_t )
+                publish( static_cast<ImuData *>(data[i]) );
+            else if( data[i]->type == odo_t )
+                publish( static_cast<OdoData *>(data[i]) );
+        }
+    }
+};
 
 
 int main(int argc, char **argv)
@@ -365,6 +463,8 @@ int main(int argc, char **argv)
 
     // Parse command line arguments
     bool realtime = false;
+    string bagname = "sensorSimulation.bag";
+
     for( int i=1; i<argc; i++ )
     {
         //cout <<"argv[" <<i <<"] is \"" <<argv[i] <<"\"" <<endl;
@@ -378,45 +478,25 @@ int main(int argc, char **argv)
             cout <<"\t--rt  : run in real time" <<endl;
             return 0;
         }
+        else if( strcmp(argv[i],"-O")==0 && i+1<argc ) {
+            realtime = false;
+            bagname = argv[++i];
+        }
     }
 
     // Generate the data
     Profile profile = makeLoopProfile();
     vector<StampedData *> data = profile.generateData();
 
-    // Create the ROS topics
-    ros::NodeHandle n;
-    ros::Publisher imuPub = n.advertise<sensor_msgs::Imu>("/ms/imu/data", 0);
-    ros::Publisher clockPub = n.advertise<rosgraph_msgs::Clock>("/clock", 0);
-    ros::Publisher encodersPub = n.advertise<lowlevel::Encoders>("/encoders", 0);
-    ros::Publisher groundTruthOdometryPub= n.advertise<nav_msgs::Odometry>("/ground_truth", 0);
-    tf::TransformBroadcaster groundTruthTfBroadcaster;
+    SensorPublisher *publisher;
+    if( realtime ) publisher = new SensorPublisher();
+    else publisher = new SensorPublisher(bagname);
 
     // Publish the data
     cout <<"Publishing the data" <<endl;
-    for( unsigned i=0; i<data.size() && ros::ok(); i++ )
-    {
-        //cout <<i <<" : " <<data[i]->time <<endl;
-        rosgraph_msgs::Clock clockmsg;
-        clockmsg.clock = ros::Time(data[i]->time);
-        clockPub.publish( clockmsg );
+    publisher->publish(data);
 
-        if( data[i]->type == state_t ) {
-            State *s = static_cast<State *>(data[i]);
-            groundTruthOdometryPub.publish( s->odometryMsg() );
-            groundTruthTfBroadcaster.sendTransform( s->tf() );
-            if( realtime )
-                ros::WallDuration(0.01).sleep();
-        }
-        else if( data[i]->type == imu_t ) {
-            ImuData *d = static_cast<ImuData *>(data[i]);
-            imuPub.publish( d->imumsg );
-        }
-        else if( data[i]->type == odo_t ) {
-            OdoData *d = static_cast<OdoData *>(data[i]);
-            encodersPub.publish( d->encodermsg );
-        }
-    }
+    delete publisher;
 
     return 0;
 }
