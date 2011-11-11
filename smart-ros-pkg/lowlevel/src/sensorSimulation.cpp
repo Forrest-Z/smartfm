@@ -434,7 +434,7 @@ private:
             tf::StampedTransform stf = s->tf();
             geometry_msgs::TransformStamped m;
             tf::transformStampedTFToMsg(stf,m);
-            bag.write("/tf", ros::Time(s->time), m );
+            //bag.write("/tf", ros::Time(s->time), m );
         }
     }
 

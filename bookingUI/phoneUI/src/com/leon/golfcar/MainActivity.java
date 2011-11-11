@@ -44,14 +44,14 @@ public class MainActivity extends MapActivity  {
     /** Called when the activity is first created. */
 	private static class theLock extends Object{ }
     static public theLock lockObject = new theLock();
-    
+
     private static final String REMOTE_HOSTNAME = "172.29.146.10";
     private static final String TASK_CANCEL_CONFIRM = "-6";
     private static final String TASK_CANCEL_INVALID = "-5";
     private static final String PICKUP_CANCEL_CONFIRM = "-1";
     private static final String DROPOFF_CANCEL_CONFIRM = "-1";
     private static final int LOCAL_SERVERPORT = 4440;
-    private static String LOCAL_HOSTNAME = "172.17.184.92"; 
+    private static String LOCAL_HOSTNAME = null;
     private final int REQUEST_CODE = 1;
     private double dropoffLatitude = 0.0;
     private double dropoffLongitude = 0.0;
@@ -63,7 +63,7 @@ public class MainActivity extends MapActivity  {
     private boolean isNetworkConnectted = false;
     private int userID;
     private int taskID = 1;
-    private int cancelTaskID = 0;    
+    private int cancelTaskID = 0;
 	private MapView mapView = null;
     private MapController mapController = null;
     private GeoPoint initGeoPoint = null;
@@ -76,35 +76,35 @@ public class MainActivity extends MapActivity  {
     private drawLocationOverlay car_overlay = null;
     private drawLocationOverlay dest_overlay = null;
     private Thread networkListener = null;
-	
+
     private Handler handler = new Handler(){
     	@Override
     	public void handleMessage(Message msg) {
     		overlayList.clear();
 			overlayList.add(dest_overlay);
 			mapView.invalidate();
-    		
+
     		mapController.animateTo(carGeoPoint);
 			overlayList.add(car_overlay);
 			mapView.invalidate();
     	}
     };
-    
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 		setTitle("Google Map");
-		
+
 		initializeGoogleMap();
         initializeUserIp();
         initializeUserID();
         runNetworkListener();
     }
-	
+
 	private void initializeGoogleMap(){
 		initGeoPoint = new GeoPoint ((int)(1.299292 * 1000000), (int)(103.770596 * 1000000));
-		
+
 		mapView = (MapView) findViewById(R.id.mapView);
         mapView.setSatellite(true);
         mapView.setEnabled(true);
@@ -116,30 +116,30 @@ public class MainActivity extends MapActivity  {
 		mapController.setZoom(19);
         overlayList = mapView.getOverlays();
 	}
-	
+
 	private void initializeUserIp()
 	{
 		LOCAL_HOSTNAME = getLocalIpAddress();
 	}
-	
+
 	private void initializeUserID()
 	{
-		String serialNumberOfPhone = null; 
-		
+		String serialNumberOfPhone = null;
+
 		try {
 		    Class<?> c = Class.forName("android.os.SystemProperties");
 		    Method get = c.getMethod("get", String.class);
 		    serialNumberOfPhone = (String) get.invoke(c, "ro.serialno");
 		} catch (Exception ignored) {
 		}
-		
+
 		userID = generateUserID(serialNumberOfPhone);
 	}
-	
+
 	private int generateUserID(String serialNumberOfPhone){
 		return serialNumberOfPhone.hashCode() > 0 ? serialNumberOfPhone.hashCode() : -serialNumberOfPhone.hashCode();
 	}
-	
+
 	private void runNetworkListener()
 	{
 		if (LOCAL_HOSTNAME!= null) {
@@ -147,33 +147,33 @@ public class MainActivity extends MapActivity  {
 			networkListener = new Thread(new NetworkListener());
 			networkListener.start();
 			} catch (Exception e) {
-				
+
 			}
 		} else
 			displayNetworkError();
 	}
-	
+
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.service, menu);
 		return true;
 	}
-	
+
 	@Override
 	public boolean onPrepareOptionsMenu(Menu menu) {
 		MenuItem setting = menu.findItem(R.id.check_setting);
 		CharSequence on = "Connection: ON";
 		CharSequence off = "Connection: OFF";
-		
+
 		if(isNetworkConnectted)
 			setting.setTitle(on);
 		else
 			setting.setTitle(off);
-		
+
 		return super.onPrepareOptionsMenu(menu);
 	}
-	
+
 	//define Option Menu, including set_pickup, set_destination, get_status, cancel task
 	@Override
 	public boolean onOptionsItemSelected(MenuItem item) {
@@ -183,27 +183,27 @@ public class MainActivity extends MapActivity  {
 				startActivityForResult(intent_bookCar, REQUEST_CODE);
 				return true;
 			case R.id.service_info:
-				Intent intent_serviceInfo = new Intent(MainActivity.this,TaskListInfoActivity.class);		
+				Intent intent_serviceInfo = new Intent(MainActivity.this,TaskListInfoActivity.class);
 				ArrayList<String> taskListInString = null;
-				
+
 				taskListInString = convertTaskListToStringFormat(taskList);
 				intent_serviceInfo.putStringArrayListExtra("tmp", taskListInString);
 				startActivity(intent_serviceInfo);
 				return true;
 			case R.id.cancel_service:
-				
+
 				Intent intent_cancelOrder = new Intent(MainActivity.this, TaskCancelActivity.class);
 				ArrayList<String> taskListInStringToCancel = null;
-				
+
 				taskListInStringToCancel = convertTaskListToStringFormat(taskList);
 				intent_cancelOrder.putStringArrayListExtra("tmp", taskListInStringToCancel);
 				startActivityForResult(intent_cancelOrder, REQUEST_CODE);
-				return true;	
+				return true;
 			default:
 				return super.onOptionsItemSelected(item);
 		}
 	}
-	
+
 	@Override
 	public boolean onKeyDown(int keyCode, KeyEvent event) {
 	    //Handle the back button
@@ -214,39 +214,39 @@ public class MainActivity extends MapActivity  {
 	        .setTitle(R.string.quit)
 	        .setMessage(R.string.really_quit)
 	        .setPositiveButton(R.string.yes, new DialogInterface.OnClickListener() {
-				
-	            public void onClick(DialogInterface dialog, int which) {	
+
+	            public void onClick(DialogInterface dialog, int which) {
 	                //Stop the activity
-	            	MainActivity.this.finish();    
+	            	MainActivity.this.finish();
 	            }
 	        })
 	        .setNegativeButton(R.string.no, null)
 	        .show();
-			
+
 	        return true;
 	    }
 	    else {
 	        return super.onKeyDown(keyCode, event);
 	    }
-		
+
 	}
-	
+
 	private ArrayList<String> convertTaskListToStringFormat(List<Task> taskList) {
 		ArrayList<String> taskListInStringFormat = new ArrayList<String>();
-		
+
 		for (int i=0;i<taskList.size();i++)
 		{
 			taskListInStringFormat.add(taskList.get(i).ID+":"+taskList.get(i).taskID+":"+taskList.get(i).pickupOption+":"+taskList.get(i).dropoffOption
 									   +":"+taskList.get(i).waitTime+":"+taskList.get(i).carID+":"+taskList.get(i).pickupLocation+":"
 									   +taskList.get(i).dropoffLocation);
 		}
-		
-		return taskListInStringFormat;	
+
+		return taskListInStringFormat;
 	}
-	
+
 	//handle return value from RadioGroupActivity and RadioGroupActivity
 	@Override
-	protected void onActivityResult(int requestCode, int resultCode, Intent data) {		
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		if (requestCode == REQUEST_CODE) {
 			if (resultCode == RESULT_OK){
 	    		Bundle extras = data.getExtras();
@@ -255,40 +255,40 @@ public class MainActivity extends MapActivity  {
 					if (extras.getInt("actionType")==1)
 					{
 						cancelTaskID = extras.getInt("cancelTaskID");
-						
+
 						if(cancelTaskID!=0)
 						{
 							isCancelTask = true;
 						}
 					}
 					else {
-						//ServiceMsg 
+						//ServiceMsg
 						//get data from BookCarActivity.java
 						//pickupLatitude = extras.getDouble("pickup_lat");
 						//pickupLongitude = extras.getDouble("pickup_longi");
 						dropoffLatitude = extras.getDouble("dest_lat");
-						dropoffLongitude = extras.getDouble("dest_longi");	
-						
+						dropoffLongitude = extras.getDouble("dest_longi");
+
 						if (extras.getInt("pickup_op")!=extras.getInt("dest_op"))
 						{
 							// draw destination pin on Map
-							dropoffGeoPoint = new GeoPoint ((int)(dropoffLatitude * 1000000), (int)(dropoffLongitude * 1000000));        
+							dropoffGeoPoint = new GeoPoint ((int)(dropoffLatitude * 1000000), (int)(dropoffLongitude * 1000000));
 							mapController.animateTo(dropoffGeoPoint);
 							dest_overlay = new drawLocationOverlay(dropoffGeoPoint, R.drawable.cabin);
 							overlayList.add(dest_overlay);
 							mapView.invalidate();
-							
-							// add new task to services 
+
+							// add new task to services
 							Task s = new Task(Integer.toString(userID),Integer.toString(taskID++),Integer.toString(extras.getInt("pickup_op")),
 											  Integer.toString(extras.getInt("dest_op")),"--","--",extras.getString("pickup_location"),extras.getString("dest_location"));
 							taskList.add(s);
-							
+
 							isSetTask = true;
 						} else {
 							Context context = getApplicationContext();
 				        	CharSequence text = "Service cannot be deliveried. Pick-up location and Drop-off location cannot be the same.";
 				        	int duration = Toast.LENGTH_LONG;
-				        	
+
 				        	Toast toast = Toast.makeText(context, text, duration);
 				        	toast.show();
 						}
@@ -297,17 +297,17 @@ public class MainActivity extends MapActivity  {
 			}
 		}
 	}
-	
+
 	class drawLocationOverlay extends Overlay
-	{		
+	{
 		private GeoPoint locationGeoPoint = null;
 		private int marker = 0;
-		
+
 		public drawLocationOverlay(GeoPoint locationGeoPoint, int marker){
 			this.locationGeoPoint = locationGeoPoint;
 			this.marker = marker;
 		}
-		
+
 		public boolean draw(Canvas canvas, MapView mapView, boolean shadow, long when)
 		{
 			synchronized(lockObject) {
@@ -316,29 +316,29 @@ public class MainActivity extends MapActivity  {
 			Point myScreenCoords = new Point();
 			Bitmap bmp;
 			//convert
-			
+
 			mapView.getProjection().toPixels(locationGeoPoint, myScreenCoords);
 			paint.setStrokeWidth(1);
 			paint.setARGB(255, 255, 0, 0);
 			paint.setStyle(Paint.Style.STROKE);
-			
-			bmp = BitmapFactory.decodeResource(getResources(),marker);			
+
+			bmp = BitmapFactory.decodeResource(getResources(),marker);
 			canvas.drawBitmap(bmp, myScreenCoords.x, myScreenCoords.y,paint);
 			}
-			return true;	
+			return true;
 		}
-		
+
 		public void disableCompass() {
 			// TODO Auto-generated method stub
-			
+
 		}
-		
+
 		public void enableCompass() {
 			// TODO Auto-generated method stub
-			
+
 		}
 	}
-	
+
     private String getLocalIpAddress() {
         try {
             for (Enumeration<NetworkInterface> en = NetworkInterface.getNetworkInterfaces(); en.hasMoreElements();) {
@@ -349,11 +349,11 @@ public class MainActivity extends MapActivity  {
                 }
             }
         } catch (SocketException ex) {
-			
+
         }
         return null;
     }
-	
+
     @Override
     protected void onStop() {
         super.onStop();
@@ -365,21 +365,21 @@ public class MainActivity extends MapActivity  {
 			e.printStackTrace();
 		}
     }
-	
+
 	@Override
 	protected boolean isRouteDisplayed() {
 		// TODO Auto-generated method stub
 		return false;
 	}
-	
+
 	private void displayNetworkError(){
-		String errMsg = "Attention\n" 
+		String errMsg = "Attention\n"
 		+ "A network error has occured. Please exit the app, and try again.";
-		
+
 		for (int i=0;i<1;i++)
-			Toast.makeText(MainActivity.this, errMsg, Toast.LENGTH_LONG).show();  
+			Toast.makeText(MainActivity.this, errMsg, Toast.LENGTH_LONG).show();
     }
-	
+
     class NetworkListener implements Runnable {
     	private final int[] ports = {4440, 4441, 1024, 8080};
 		private PrintWriter out = null;
@@ -390,9 +390,9 @@ public class MainActivity extends MapActivity  {
 			try {
 				serverSocket = new ServerSocket(LOCAL_SERVERPORT);
 
-				initNetwork();				
+				initNetwork();
 				if (socket != null) {
-                    isNetworkConnectted = true;                    
+                    isNetworkConnectted = true;
                 	while(true){
                 		dataTransfer();
                 		sleep();
@@ -406,7 +406,7 @@ public class MainActivity extends MapActivity  {
 				displayServerError();
 			}
         }
-        
+
         private void initNetwork() throws IOException{
         	for( int p: ports ) {
 				socket = new Socket(REMOTE_HOSTNAME,p);
@@ -418,7 +418,7 @@ public class MainActivity extends MapActivity  {
 				}
 			}
         }
-        
+
         private void dataTransfer(){
         	if (isInitNetwork) {
     			sendInitInfo();
@@ -427,58 +427,58 @@ public class MainActivity extends MapActivity  {
     		} else if (isCancelTask) {
     			sendCancellingTaskInfo();
     		} else {
-    			getDataFromServer();	        
+    			getDataFromServer();
     		}
         }
-        
+
         private void sendInitInfo(){
         	String data = ";" + userID + ":0:0:0";
-    		
+
         	out.println(data);
     		isInitNetwork = false;
         }
-        
+
         private void sendSettingTaskInfo(){
-        	String setTaskData = ";" + taskList.get(taskList.size()-1).ID + ":" 
-					+ taskList.get(taskList.size()-1).taskID + ":" 
-					+ taskList.get(taskList.size()-1).pickupOption + ":" 
-					+ taskList.get(taskList.size()-1).dropoffOption; 
-        			
+        	String setTaskData = ";" + taskList.get(taskList.size()-1).ID + ":"
+					+ taskList.get(taskList.size()-1).taskID + ":"
+					+ taskList.get(taskList.size()-1).pickupOption + ":"
+					+ taskList.get(taskList.size()-1).dropoffOption;
+
         	out.println(setTaskData);
         	isSetTask = false;
         }
-        
+
         private void sendCancellingTaskInfo(){
         	String cancelTaskData = ";" + Integer.toString(userID) + ":"
 					+ cancelTaskID + ":"
-					+ "-1:-1"; 
-        			
+					+ "-1:-1";
+
         	out.println(cancelTaskData);
         	isCancelTask = false;
         }
-        
+
         private void getDataFromServer(){
         	try {
                 String msg = null;
                 //;task_id:wait:carID
-                while (in.ready()&&(msg = in.readLine()) != null) {        
+                while (in.ready()&&(msg = in.readLine()) != null) {
                     if (msg.startsWith(";")) {
                     	readDataFromScheduler(msg);
-                    	
+
                     } else if (msg.startsWith("/")){ //data format: "/latitude:longitude"
                     	readDataFromCar(msg);
                     }
                 }
             } catch (Exception e) {
             	e.printStackTrace();
-            }            
+            }
         }
-        
+
         private void readDataFromScheduler(String msg) {
         	int f = msg.indexOf(":");
         	int s = msg.indexOf(":",f+1);
-        	String temp_taskID = msg.substring(1,f);		
-        	
+        	String temp_taskID = msg.substring(1,f);
+
         	// check taskID
         	int sidx = -1;
         	for (int i=0;i<taskList.size();i++)
@@ -486,9 +486,9 @@ public class MainActivity extends MapActivity  {
         		if(taskList.get(i).taskID.compareTo(temp_taskID)==0){
         			sidx = i;
         			break;
-        		}		
+        		}
         	}
-        	
+
         	if(sidx==-1){
         		System.out.println("No TaskID in TaskList: "+temp_taskID);
         	} else {
@@ -502,19 +502,19 @@ public class MainActivity extends MapActivity  {
         			taskList.get(sidx).waitTime = msg.substring(f+1, s);
         			taskList.get(sidx).carID = msg.substring(s+1);
         		}
-        	}         
+        	}
         }
-        
+
         private void readDataFromCar(String msg){
         	int f = msg.indexOf(":");
         	double latitude = 0.0;
         	double longitude = 0.0;
-        	
+
         	latitude = Double.parseDouble(msg.substring(1,f));
         	longitude = Double.parseDouble(msg.substring(f+1));
-        	
-        	if (latitude != 0.0 && longitude != 0.0) {        		
-        		carGeoPoint = new GeoPoint ((int)(latitude* 1000000), (int)(longitude* 1000000));  
+
+        	if (latitude != 0.0 && longitude != 0.0) {
+        		carGeoPoint = new GeoPoint ((int)(latitude* 1000000), (int)(longitude* 1000000));
 				car_overlay = new drawLocationOverlay(carGeoPoint, R.drawable.cab);
 
 				Message myMsg = handler.obtainMessage();
@@ -522,26 +522,26 @@ public class MainActivity extends MapActivity  {
         		handler.sendMessage(myMsg);
         	}
         }
-        
+
         private void sleep(){
         	try {
                 Thread.sleep(500);
-            } catch( InterruptedException e ) { 
+            } catch( InterruptedException e ) {
             	e.printStackTrace();
             }
         }
-        
+
         private void displayServerError(){
         	MainActivity.this.runOnUiThread(new Runnable() {
 				public void run() {
-					String errMsg = "Attention\n" 
+					String errMsg = "Attention\n"
 					+ "The app cannot connect to Server. Please exit the app, and try again.";
 					for (int i=0;i<1;i++)
-						Toast.makeText(MainActivity.this, errMsg, Toast.LENGTH_LONG).show();   
+						Toast.makeText(MainActivity.this, errMsg, Toast.LENGTH_LONG).show();
 				}
 			});
         }
-        
+
     	private void close() throws IOException{
     		in.close();
     		out.close();
