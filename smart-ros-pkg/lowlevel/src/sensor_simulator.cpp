@@ -529,7 +529,7 @@ void printHelp()
 int main(int argc, char **argv)
 {
     // Init ROS
-    ros::init(argc, argv, "sensorSimulator");
+    ros::init(argc, argv, "sensor_simulator");
 
     // Parse command line arguments
     bool realtime = true;

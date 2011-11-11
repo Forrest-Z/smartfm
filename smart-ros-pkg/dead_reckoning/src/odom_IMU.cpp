@@ -16,7 +16,7 @@
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Quaternion.h>
 
-#include <fmutil/fmMath.h>
+#include <fmutil/fm_math.h>
 #include <lowlevel/Encoders.h>
 
 class OdoIMU

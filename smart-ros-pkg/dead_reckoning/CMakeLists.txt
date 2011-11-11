@@ -30,4 +30,4 @@ rosbuild_genmsg()
 #target_link_libraries(example ${PROJECT_NAME})
 
 rosbuild_add_executable(simple_odo_node src/simple_odo_node.cpp)
-rosbuild_add_executable(odomImu src/odomImu.cpp)
+rosbuild_add_executable(odom_IMU src/odom_IMU.cpp)

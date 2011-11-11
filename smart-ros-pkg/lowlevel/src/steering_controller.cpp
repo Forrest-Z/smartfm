@@ -70,7 +70,7 @@ void SteeringController::cmdVelCallBack(geometry_msgs::Twist cmd_vel)
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "SteeringController");
+    ros::init(argc, argv, "steering_controller");
     ros::NodeHandle nh_;
     SteeringController steeringController(nh_);
     ros::spin();

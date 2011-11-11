@@ -9,7 +9,7 @@
 #include <string>
 #include <iostream>
 
-#include <fmutil/fmMath.h>
+#include <fmutil/fm_math.h>
 
 namespace fmutil {
 
