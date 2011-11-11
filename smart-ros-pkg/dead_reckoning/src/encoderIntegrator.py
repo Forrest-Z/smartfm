@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import roslib; roslib.load_manifest('lowlevel')
+import roslib; roslib.load_manifest('dead_reckoning')
 import rospy
 
 from math import sin, cos, pi

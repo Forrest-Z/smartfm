@@ -8,7 +8,7 @@
 #include <LinearMath/btQuaternion.h>
 
 #include <nav_msgs/Odometry.h>
-#include <lowlevel/SimpleOdo.h>
+#include <dead_reckoning/SimpleOdo.h>
 
 using namespace std;
 
@@ -22,13 +22,13 @@ class SimpleOdoNode
 public:
     SimpleOdoNode(const string & topic_name)
     {
-        pub = n.advertise<lowlevel::SimpleOdo>(topic_name+"_simple", 0);
+        pub = n.advertise<dead_reckoning::SimpleOdo>(topic_name+"_simple", 0);
         sub = n.subscribe(topic_name, 1, &SimpleOdoNode::callback, this);
     }
 
     void callback(const nav_msgs::Odometry &odomsg)
     {
-        lowlevel::SimpleOdo m;
+        dead_reckoning::SimpleOdo m;
         m.stamp = odomsg.header.stamp;
         m.x = odomsg.pose.pose.position.x;
         m.y = odomsg.pose.pose.position.y;
