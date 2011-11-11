@@ -20,10 +20,11 @@ using std::string;
 
 #include <ros/ros.h>
 #include <rosbag/bag.h>
+#include <ros/console.h>
 
 #include <rosgraph_msgs/Clock.h>
-#include <geometry_msgs/Quaternion.h>
 #include <tf/transform_broadcaster.h>
+#include <tf/transform_datatypes.h>
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/Imu.h>
 
@@ -110,8 +111,8 @@ public:
     {
         nav_msgs::Odometry odomsg;
         odomsg.header.stamp = ros::Time(time);
-        odomsg.header.frame_id = "/ground_truth";
-        odomsg.child_frame_id = "/base_link";
+        odomsg.header.frame_id = "ground_truth";
+        odomsg.child_frame_id = "base_link";
         odomsg.pose.pose.position.x = x;
         odomsg.pose.pose.position.y = y;
         odomsg.pose.pose.orientation = tf::createQuaternionMsgFromYaw(th);
@@ -120,18 +121,12 @@ public:
         return odomsg;
     }
 
-    geometry_msgs::TransformStamped tf() const
+    tf::StampedTransform tf() const
     {
-        geometry_msgs::TransformStamped odom_trans;
-        odom_trans.header.stamp = ros::Time(time);
-        odom_trans.header.frame_id = "/ground_truth";
-        odom_trans.child_frame_id = "/base_link";
-
-        odom_trans.transform.translation.x = x;
-        odom_trans.transform.translation.y = y;
-        odom_trans.transform.rotation = tf::createQuaternionMsgFromYaw(th);
-
-        return odom_trans;
+        tf::Transform trans;
+        trans.setOrigin( tf::Vector3(x,y,0) );
+        trans.setRotation( tf::createQuaternionFromRPY(0, 0, th) );
+        return tf::StampedTransform(trans, ros::Time(time), "ground_truth", "base_link");
     }
 
 };
@@ -198,7 +193,7 @@ public:
         nh.param<double>("imuStartTime", startTime, period);
         double t = startTime==0.0 ? period : startTime;
 
-        string frameID = "/base_link";
+        string frameID = "base_link";
         vector<ImuData> data;
         unsigned i=0;
         while( true ) {
@@ -221,21 +216,6 @@ public:
 
     OdoData() : StampedData(odo_t) { }
 
-    OdoData(double t, const State & s, NoiseGenerator & ng, double period)
-        : StampedData(odo_t)
-    {
-        time = t;
-        double v = s.v + ng();
-        double w = s.w + ng();
-
-        encodermsg.stamp = ros::Time(t);
-        encodermsg.dt = period;
-        encodermsg.v = v;
-        encodermsg.w = w;
-        encodermsg.d_dist = v*period;
-        encodermsg.d_th = w*period;
-    }
-
     static vector<OdoData> generate(const vector<State> & states)
     {
         ros::NodeHandle nh("~");
@@ -254,13 +234,29 @@ public:
         nh.param<double>("encStartTime", startTime, period);
         double t = startTime==0.0 ? period : startTime;
 
+        OdoData d;
+        d.encodermsg.dt = period;
         vector<OdoData> data;
         unsigned i=0;
-        while( true ) {
+
+        while( true )
+        {
             i = find(states, i, t);
             if( i==states.size() )
                 break;
-            data.push_back( OdoData(t, states[i], ng, period) );
+
+            const State & s = states[i];
+            d.time = t;
+            double v = s.v + ng();
+            double w = s.w + ng();
+
+            d.encodermsg.stamp = ros::Time(t);
+            d.encodermsg.v = v;
+            d.encodermsg.w = w;
+            d.encodermsg.d_dist = v * period;
+            d.encodermsg.d_th = w * period;
+
+            data.push_back(d);
             //cout <<"Generating: " <<data.size() <<"(" <<i <<"/" <<states.size() <<")" <<endl;
             t += period;
         }
@@ -430,7 +426,15 @@ private:
         }
         else
         {
-            bag.write("/ground_truth", ros::Time(s->time), s->odometryMsg() );
+            bag.write("ground_truth", ros::Time(s->time), s->odometryMsg() );
+            // How to write transforms to the bag?
+            // 1- write a tf:StampedTransform --> compilation error
+            //bag.write("/tf", ros::Time(s->time), s->tf() );
+            // 2- Write a geometry_msgs::TransformStamped --> frame does not exist (in rviz)
+            tf::StampedTransform stf = s->tf();
+            geometry_msgs::TransformStamped m;
+            tf::transformStampedTFToMsg(stf,m);
+            bag.write("/tf", ros::Time(s->time), m );
         }
     }
 
@@ -439,7 +443,7 @@ private:
         if( realtime )
             imuPub.publish( d->imumsg );
         else
-            bag.write("/ms/imu/data", ros::Time(d->time), d->imumsg);
+            bag.write("ms/imu/data", ros::Time(d->time), d->imumsg);
     }
 
     void publish(const OdoData *d)
@@ -447,17 +451,17 @@ private:
         if( realtime )
             encodersPub.publish( d->encodermsg );
         else
-            bag.write("/encoders", ros::Time(d->time), d->encodermsg);
+            bag.write("encoders", ros::Time(d->time), d->encodermsg);
     }
 
 public:
     SensorPublisher()
     {
         // Create the ROS topics
-        imuPub = n.advertise<sensor_msgs::Imu>("/ms/imu/data", 0);
-        clockPub = n.advertise<rosgraph_msgs::Clock>("/clock", 0);
-        encodersPub = n.advertise<lowlevel::Encoders>("/encoders", 0);
-        groundTruthOdometryPub= n.advertise<nav_msgs::Odometry>("/ground_truth", 0);
+        imuPub = n.advertise<sensor_msgs::Imu>("ms/imu/data", 1000);
+        clockPub = n.advertise<rosgraph_msgs::Clock>("/clock", 1000);
+        encodersPub = n.advertise<lowlevel::Encoders>("encoders", 1000);
+        groundTruthOdometryPub= n.advertise<nav_msgs::Odometry>("ground_truth", 1000);
         realtime = true;
         n.param<double>("period", period, DEFAULT_PERIOD);
     }

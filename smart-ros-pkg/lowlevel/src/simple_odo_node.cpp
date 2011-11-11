@@ -8,7 +8,7 @@
 #include <LinearMath/btQuaternion.h>
 
 #include <nav_msgs/Odometry.h>
-#include <fmutil/SimpleOdo.h>
+#include <lowlevel/SimpleOdo.h>
 
 using namespace std;
 
@@ -22,13 +22,13 @@ class SimpleOdoNode
 public:
     SimpleOdoNode(const string & topic_name)
     {
-        pub = n.advertise<fmutil::SimpleOdo>(topic_name+"_simpleodo", 0);
+        pub = n.advertise<lowlevel::SimpleOdo>(topic_name+"_simple", 0);
         sub = n.subscribe(topic_name, 1, &SimpleOdoNode::callback, this);
     }
 
     void callback(const nav_msgs::Odometry &odomsg)
     {
-        fmutil::SimpleOdo m;
+        lowlevel::SimpleOdo m;
         m.stamp = odomsg.header.stamp;
         m.x = odomsg.pose.pose.position.x;
         m.y = odomsg.pose.pose.position.y;

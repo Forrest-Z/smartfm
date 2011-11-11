@@ -36,17 +36,17 @@ def cmd_msg_CB(event):
     arduino_pub.publish( arduino_cmd_msg )
 
 
-def setupPub(topic,msg_t,cb):
+def setupSub(topic,msg_t,cb):
     sub = rospy.Subscriber(topic, msg_t, cb)
     rospy.loginfo('Setup Subscriber on %s [%s]' % (topic, msg_t._type))
     return sub
 
 
-throttle_sub = setupPub('throttle', Float64, throttleCB)
-brake_sub = setupPub('brake_angle', Float64, brakeCB)
-steer_sub = setupPub('steer_angle', Float64, steerCB)
-lblinker_sub = setupPub('left_blinker', Bool, lblinkerCB)
-rblinker_sub = setupPub('right_blinker', Bool, rblinkerCB)
+throttle_sub = setupSub('throttle', Float64, throttleCB)
+brake_sub = setupSub('brake_angle', Float64, brakeCB)
+steer_sub = setupSub('steer_angle', Float64, steerCB)
+lblinker_sub = setupSub('left_blinker', Bool, lblinkerCB)
+rblinker_sub = setupSub('right_blinker', Bool, rblinkerCB)
 
 rate = rospy.get_param('rate',10)
 rospy.loginfo('Sending messages to the Arduino board every %dms' % int(1000.0/rate))
