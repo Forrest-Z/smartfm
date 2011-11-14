@@ -1,0 +1,21 @@
+<package>
+  <description brief="laser_maxrange_republish">
+
+     laser_maxrange_republish
+
+  </description>
+  <author>golfcar</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/laser_maxrange_republish</url>
+  <depend package="nav_msgs"/>
+  <depend package="rosconsole"/>
+  <depend package="roscpp"/>
+  <depend package="rospy" />
+  <depend package="sensor_msgs"/>
+  <depend package="tf"/>
+  <depend package="laser_geometry"/>
+  <depend package="geometry_msgs"/>
+</package>
+
+
