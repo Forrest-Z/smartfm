@@ -1,0 +1,16 @@
+<package>
+  <description brief="microstrain_rpy">
+
+     microstrain_rpy
+
+  </description>
+  <author>golfcar</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/microstrain_rpy</url>
+  <depend package="roscpp"/>
+  <depend package="sensor_msgs"/>
+  <depend package="tf"/>
+</package>
+
+
