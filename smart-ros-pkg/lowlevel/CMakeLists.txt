@@ -7,7 +7,7 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE RelWithDebInfo)
+set(ROS_BUILD_TYPE Coverage)
 
 rosbuild_init()
 
@@ -33,7 +33,7 @@ rosbuild_genmsg()
 # rosbuild_add_executable(keyhook_cmdvel src/keyhook_cmdvel.cpp)
 rosbuild_add_executable(joy src/joy.cpp)
 rosbuild_add_executable(joy_cmd_vel src/joy_cmd_vel.cpp)
-rosbuild_add_executable(odomImu src/odomImu.cpp)
-rosbuild_add_executable(speedController_jhjeon src/speedController_jhjeon.cpp)
-rosbuild_add_executable(speedController_brice src/speedController_brice.cpp)
-rosbuild_add_executable(steeringController src/steeringController.cpp)
+rosbuild_add_executable(speed_controller_jhjeon src/speed_controller_jhjeon.cpp)
+rosbuild_add_executable(speed_controller_brice src/speed_controller_brice.cpp)
+rosbuild_add_executable(steering_controller src/steering_controller.cpp)
+rosbuild_add_executable(sensor_simulator src/sensor_simulator.cpp)

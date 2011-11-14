@@ -1,9 +1,0 @@
-prefix=/usr/local
-exec_prefix=${prefix}
-libdir=${exec_prefix}/lib
-includedir=${prefix}/include
-
-Name: GPSD
-Description: GPS Daemon communication library
-Version: 2.95
-Libs: -L${libdir} -lgps

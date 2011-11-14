@@ -2,42 +2,30 @@
 # -*- coding: utf-8 -*-
 
 '''
-ROS node in charge of interfacing with the encoders phidget, and publishing
-odometry messages on the "encoders" topic.
+ROS node in charge of interfacing with the encoders phidget, and Encoders messages
+on the "encoders" topic.
 
-We are reading from 2 encoders (left and right) so we can get the 2D pose of
-the vehicle (x,y,theta) and velocities (v,w). This will be published as a
-nav_msgs/Odometry and tf broadcast (as recommended by the navigation stacks
-tutorials).
-
-Since this information is not very accurate, we are also publishing the distance
-traveled and the linear velocity (averaged over the 2 encoders). This is
-published as a custom lowlevel/Odometry msg on the odom_linear channel.
+Parameters:
+- dist_btw_wheels: distance between wheels (default value: 0.995).
+- wheel_size: size (perimeter) of the wheels (default value: 1.335).
+- left_correction_factor: correction factor to balance the 2 wheels
+  (default value: 1.011). Increase it when the vehicle drifts to the left
+  (to be verified).
+- period: publish only after this period has elapsed (default value: 0.01).
+  This limits the publishing rate.
+- min_pub_period: if set, we want to publish messages with this period, even if
+  encoders are not changing. Otherwise, publish only when the encoders value is
+  changing.
 '''
 
 import roslib; roslib.load_manifest('lowlevel')
 import rospy
-from math import sin, cos, pi
-
-from geometry_msgs.msg import Quaternion
-from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry
-from tf.broadcaster import TransformBroadcaster
 
 from Phidgets.PhidgetException import *
 from Phidgets.Events.Events import *
 from Phidgets.Devices.Encoder import Encoder
 
-from lowlevel.msg import Odometry as SimpleOdo
-
-
-# Configuration of the output topic / tf
-frameID = 'odom'      #TF frame ID
-odoTopicID  = 'odom'  #Output topic frame ID
-
-MIN_PUB_PERIOD = 0.2
-
-
+from lowlevel.msg import Encoders as EncodersMsg
 
 
 def err(e):
@@ -62,34 +50,35 @@ class CountBuffer:
         return self.dt
 
 
-
 class PhidgetEncoder:
     '''Monitor the pose of each encoders'''
 
     def __init__(self):
-        self.distBtwWheels = 0.995
-        wheelSize = 1.335
-        leftCorrectionFactor = 1.011
+        self.distBtwWheels = rospy.get_param('dist_btw_wheels',0.995)
+        wheelSize = rospy.get_param('wheel_size', 1.335)
+        leftCorrectionFactor = rospy.get_param('left_correction_factor', 1.011)
+
+        if rospy.has_param('min_pub_period')
+            self.minPubPeriod = rospy.get_param('min_pub_period')
+        else:
+            self.minPubPeriod = None
+
+        self.period = rospy.get_param('period', 0.01)
 
         self.left = 0
         self.right = 1
         self.countBufs = {self.left: CountBuffer(wheelSize*leftCorrectionFactor), self.right: CountBuffer(-wheelSize)}
         self.lastPub = None
 
-        self.x = 0.0
-        self.y = 0.0
-        self.th = 0.0
-        self.v = 0.0
-        self.w = 0.0
-        self.totalDist = 0.0
+        self.dt = 0.0
+        self.d_th = 0.0
+        self.d_dist = 0.0
 
         self.initPhidget()
         self.encoder.setEnabled(self.left, True)
         self.encoder.setEnabled(self.right, True)
 
-        self.odomPub = rospy.Publisher(odoTopicID, Odometry)
-        self.odomBroadcaster = TransformBroadcaster()
-        self.simpleOdoPub = rospy.Publisher('odom_linear', SimpleOdo)
+        self.encodersPub = rospy.Publisher('encoders', EncodersMsg)
 
 
     def initPhidget(self):
@@ -141,83 +130,55 @@ class PhidgetEncoder:
         #rospy.logdebug("Encoder %i: Encoder %i -- Change: %i -- Time: %i -- Position: %i" % (e.device.getSerialNum(), e.index, e.positionChange, e.time, self.encoder.getPosition(e.index)))
 
         if e.index in self.countBufs.keys():
-            dt = self.countBufs[e.index].add(e)
-            if dt > .05:
-                dl = self.countBufs[self.left].dp
-                dr = self.countBufs[self.right].dp
-                d_dist = (dl+dr)/2
-                d_th = (dr-dl)/self.distBtwWheels
-
-                d_x = cos(d_th) * d_dist
-                d_y = -sin(d_th) * d_dist
-                self.totalDist += d_dist
-                self.x += cos(self.th)*d_x - sin(self.th)*d_y
-                self.y += sin(self.th)*d_x + cos(self.th)*d_y
-                self.th += d_th
-                self.v = d_dist/dt
-                self.w = d_th/dt
-
-                rospy.logdebug('dt=%f, counts: l=%i, -r=%i' % (dt, self.encoder.getPosition(self.left), -self.encoder.getPosition(self.right)))
-
-                self.pubOdo()
-
-                self.countBufs[self.left].reset()
-                self.countBufs[self.right].reset()
+            self.dt = self.countBufs[e.index].add(e)
+            if self.dt > self.period:
+                self.process()
 
 
-    def pubOdo(self):
-        simpleOdoMsg = SimpleOdo()
-        simpleOdoMsg.x = self.x
-        simpleOdoMsg.y = self.y
-        simpleOdoMsg.theta = self.th
-        simpleOdoMsg.dist = self.totalDist
-        simpleOdoMsg.vel = self.v
-        simpleOdoMsg.w = self.w
-        self.simpleOdoPub.publish(simpleOdoMsg)
+    def process(self):
+        self.now = rospy.Time.now()
+        self.pubEncodersMsg()
+        self.lastPub = self.now
 
-        quaternion = Quaternion()
-        quaternion.x = 0.0
-        quaternion.y = 0.0
-        quaternion.z = sin(self.th/2)
-        quaternion.w = cos(self.th/2)
 
-        now = rospy.Time.now()
-        self.lastPub = now
+    def pubEncodersMsg(self):
+        dl = self.countBufs[self.left].dp
+        dr = self.countBufs[self.right].dp
+        self.d_dist = (dl+dr)/2
+        self.d_th = (dr-dl)/self.distBtwWheels
 
-        rospy.logdebug('pose (x,y,th_deg)=(%.2f, %.2f, %+d), (v,w)=(%.2f, %.2f)' % (self.x, self.y, int(self.th*180.0/pi), self.v, self.w))
+        EncodersMsg encodersMsg
+        encodersMsg.stamp = self.now
+        encodersMsg.dt = self.dt
+        encodersMsg.d_dist = self.d_dist
+        encodersMsg.d_th = self.d_th
+        if self.dt>0:
+            encodersMsg.v = self.d_dist/self.dt
+            encodersMsg.w = self.d_th/self.dt
+        else:
+            encodersMsg.v = 0
+            encodersMsg.w = 0
 
-        self.odomBroadcaster.sendTransform(
-            (self.x, self.y, 0),
-            (quaternion.x, quaternion.y, quaternion.z, quaternion.w),
-            now, "base_link", frameID
-        )
+        self.encodersPub.publish(encodersMsg)
 
-        odom = Odometry()
-        odom.header.stamp = now
-        odom.header.frame_id = frameID
-        odom.child_frame_id = 'base_link'
-
-        odom.pose.pose.position.x = self.x
-        odom.pose.pose.position.y = self.y
-        odom.pose.pose.position.z = 0
-        odom.pose.pose.orientation = quaternion
-
-        odom.twist.twist.linear.x = self.v
-        odom.twist.twist.linear.y = 0
-        odom.twist.twist.angular.z = self.w
-
-        self.odomPub.publish(odom)
+        self.countBufs[self.left].reset()
+        self.countBufs[self.right].reset()
 
 
     def loop(self):
-        now = rospy.Time.now()
-        if self.lastPub is None or (now-self.lastPub).to_sec() > MIN_PUB_PERIOD:
-            self.v = 0
-            self.w = 0
-            self.pubOdo()
-            self.countBufs[self.left].reset()
-            self.countBufs[self.right].reset()
+        ''' We want to publish messages even if the vehicle is not moving. '''
 
+        if self.minPubPeriod is None:
+            return
+
+        dt = (rospy.Time.now()-self.lastPub).to_sec()
+        if self.lastPub is None or dt > self.minPubPeriod:
+            if self.lastPub is None:
+                self.dt = 0
+            else:
+                self.dt = dt
+            self.process()
+        rospy.sleep(self.minPubPeriod)
 
 
 
@@ -227,7 +188,6 @@ if __name__=='__main__':
     rospy.loginfo('Spinning...')
 
     while not rospy.is_shutdown():
-        rospy.sleep(MIN_PUB_PERIOD)
         enc.loop()
 
     enc.closePhidget()

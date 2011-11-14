@@ -36,6 +36,7 @@
 * Notes: Original code in Cocoa from 07/08/2009, went C++ on 10/11/2010
 *********************************************************************/
 #include "MTMessage.h"
+#include <stdio.h> // defines NULL
 
 Xsens::MTMessage::MTMessage(MTMessageIdentifier newMessageID, std::vector<unsigned char> * newData, MTMessageIdentifier ack) : data()
 {
