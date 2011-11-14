@@ -54,16 +54,12 @@ class PhidgetEncoder:
     '''Monitor the pose of each encoders'''
 
     def __init__(self):
-        self.distBtwWheels = rospy.get_param('dist_btw_wheels',0.995)
-        wheelSize = rospy.get_param('wheel_size', 1.335)
-        leftCorrectionFactor = rospy.get_param('left_correction_factor', 1.011)
+        self.distBtwWheels = rospy.get_param('~dist_btw_wheels',0.995)
+        wheelSize = rospy.get_param('~wheel_size', 1.335)
+        leftCorrectionFactor = rospy.get_param('~left_correction_factor', 1.011)
 
-        if rospy.has_param('min_pub_period')
-            self.minPubPeriod = rospy.get_param('min_pub_period')
-        else:
-            self.minPubPeriod = None
-
-        self.period = rospy.get_param('period', 0.01)
+        self.minPubPeriod = rospy.get_param('~min_pub_period', None)
+        self.period = rospy.get_param('~period', 0.01)
 
         self.left = 0
         self.right = 1
@@ -147,7 +143,7 @@ class PhidgetEncoder:
         self.d_dist = (dl+dr)/2
         self.d_th = (dr-dl)/self.distBtwWheels
 
-        EncodersMsg encodersMsg
+        encodersMsg = EncodersMsg()
         encodersMsg.stamp = self.now
         encodersMsg.dt = self.dt
         encodersMsg.d_dist = self.d_dist
@@ -171,13 +167,15 @@ class PhidgetEncoder:
         if self.minPubPeriod is None:
             return
 
-        dt = (rospy.Time.now()-self.lastPub).to_sec()
-        if self.lastPub is None or dt > self.minPubPeriod:
-            if self.lastPub is None:
-                self.dt = 0
-            else:
-                self.dt = dt
+        if self.lastPub is None:
+            self.dt = 0
             self.process()
+        else:
+            dt = (rospy.Time.now()-self.lastPub).to_sec()
+            if dt > self.minPubPeriod:
+                self.dt = dt
+                self.process()
+
         rospy.sleep(self.minPubPeriod)
 
 

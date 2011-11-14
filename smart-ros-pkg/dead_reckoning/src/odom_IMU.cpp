@@ -9,7 +9,7 @@
 #include <math.h>
 
 #include <ros/ros.h>
-//#include <ros/console.h>
+#include <ros/console.h>
 
 #include <sensor_msgs/Imu.h>
 #include <tf/transform_broadcaster.h>
@@ -22,7 +22,7 @@
 class OdoIMU
 {
     public:
-        OdoIMU(ros::NodeHandle);
+        OdoIMU();
 
     private:
         void encodersCallBack(lowlevel::Encoders);
@@ -45,7 +45,7 @@ class OdoIMU
 
 
 
-OdoIMU::OdoIMU(ros::NodeHandle nh_) : n(nh_)
+OdoIMU::OdoIMU()
 {
     encSub = n.subscribe("/encoders", 1000, &OdoIMU::encodersCallBack, this);
     imuSub = n.subscribe("/ms/imu/data", 1000, &OdoIMU::imuCallBack, this);
@@ -133,8 +133,7 @@ void OdoIMU::publishOdo()
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "odomImu");
-    ros::NodeHandle nh_;
-    OdoIMU odomimu(nh_);
+    OdoIMU odomimu();
     ros::spin();
     return 0;
 }

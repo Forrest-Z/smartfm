@@ -8,5 +8,5 @@
         <param name="intensity" type="bool" value="false"/>
     </node>
 
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_hokuyolaser" args="1.83, 0.0, 0.57 0.00 0 0 /base_link /laser 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_hokuyolaser" args="1.58, 0.0, 1.89 0.00 0 0 /base_link /laser 100" />
 </launch>

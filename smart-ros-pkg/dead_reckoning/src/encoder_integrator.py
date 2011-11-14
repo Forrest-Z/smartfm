@@ -29,11 +29,11 @@ Parameters:
 class EncoderIntegrator:
 
     def __init__(self):
-        self.frameID = rospy.get_param('frame_id', 'odom') #TF frame ID
+        self.frameID = rospy.get_param('~frame_id', 'odom') #TF frame ID
 
-        self.x = rospy.get_param('x', 0.0)
-        self.y = rospy.get_param('y', 0.0)
-        self.th = rospy.get_param('th', 0.0)
+        self.x = rospy.get_param('~x', 0.0)
+        self.y = rospy.get_param('~y', 0.0)
+        self.th = rospy.get_param('~th', 0.0)
 
         self.odomPub = rospy.Publisher('odom', Odometry)
         self.odomBroadcaster = TransformBroadcaster()

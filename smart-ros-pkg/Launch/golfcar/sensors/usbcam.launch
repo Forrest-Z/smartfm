@@ -1,5 +1,5 @@
 <launch>
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camerabase" args="1.7, 0.0, 1.45 0 0.15 0 /base_link /camera_base 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camerabase" args="1.795, 0.0, 1.08 0 0 0 /base_link /usb_cam 100" />
 
     <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
         <param name="video_device" value="/dev/video0" />

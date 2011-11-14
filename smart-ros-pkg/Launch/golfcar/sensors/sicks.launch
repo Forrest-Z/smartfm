@@ -13,6 +13,7 @@
         <param name="frame_id" value="sick_laser"/>
         <param name="baud" value="500000"/>
     </node>
+    <!--
     <node pkg="sicktoolbox_wrapper" type="sicklms" name="sicklms3">
         <param name="port" value="/dev/ftdi3"/>
         <remap from ="scan" to="scan"/>
@@ -20,8 +21,9 @@
         <param name="frame_id" value="laser"/>
         <param name="baud" value="38400"/>
     </node>
+    -->
 
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser" args="1.7, 0.0, 1.45 0 0.35 0 /base_link /sick_laser 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser" args="1.7, 0.0, 0.92 0 0 0 /base_link /sick_laser 100" />
     <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="1.83, -0.36, 0.86 0 0 0 /base_link /sick_laser2 100" /-->
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="1.7, 0, 1.85 0 0 0 /base_link /sick_laser2 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="1.7, 0.0, 1.53 0 0.436 0 /base_link /sick_laser2 100" />
 </launch>
