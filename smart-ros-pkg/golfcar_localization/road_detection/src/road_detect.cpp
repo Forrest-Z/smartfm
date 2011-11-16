@@ -44,7 +44,7 @@ namespace road_detection{
 		left_curbline_pub_ = nh.advertise<sensor_msgs::PointCloud>("left_curbline_pub_", 2);
 		right_curbline_pub_ = nh.advertise<sensor_msgs::PointCloud>("right_curbline_pub_", 2);
 
-	    laser_sub_.subscribe(nh, "sick_scan", 2);
+	    laser_sub_.subscribe(nh, "sick_scan2", 2);
 		tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, "odom", 10);
 		tf_filter_->registerCallback(boost::bind(&road_detect::scanCallback, this, _1));
 		tf_filter_->setTolerance(ros::Duration(0.05));

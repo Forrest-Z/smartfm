@@ -461,7 +461,7 @@ MixAmclNode::MixAmclNode() :
   curb_filter_->registerCallback(boost::bind(&MixAmclNode::curbReceived, this, _1));
   
   
-  laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, "sick_scan2", 10);         //200
+  laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, "scan", 10);         //200
   laser_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_, *tf_, odom_frame_id_, 100);
   laser_scan_filter_->registerCallback(boost::bind(&MixAmclNode::laserReceived,this, _1));
   

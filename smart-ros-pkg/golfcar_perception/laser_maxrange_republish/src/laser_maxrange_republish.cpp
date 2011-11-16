@@ -34,9 +34,9 @@ int main(int argc, char **argv)
 
   ros::init(argc, argv, "listener");
   ros::NodeHandle n;
-  ros::Publisher laser_pub= n.advertise<sensor_msgs::LaserScan>("sick_scan2_maxrange",1);
+  ros::Publisher laser_pub= n.advertise<sensor_msgs::LaserScan>("scan_maxrange",1);
   laser_pub_ = &laser_pub;
-  ros::Subscriber sub = n.subscribe("sick_scan2", 1, scanCallback);
+  ros::Subscriber sub = n.subscribe("sick_scan", 1, scanCallback);
   ros::spin();
 
   return 0;
