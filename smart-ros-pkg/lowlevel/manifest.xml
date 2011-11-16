@@ -11,7 +11,10 @@
 
   <depend package="rospy"/>
   <depend package="roscpp"/>
+  <depend package="rosconsole"/>
+  <depend package="rosbag"/>
   <depend package="lse_xsens_mti"/>
+  <depend package="tf"/>
   <depend package="joy"/>
   <depend package="geometry_msgs"/>
   <depend package="std_msgs"/>

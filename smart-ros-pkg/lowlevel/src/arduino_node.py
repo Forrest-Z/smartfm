@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 '''
-ROS node in charge of interfacing with the arduino.
+ROS node in charge of interfacing with the arduino. Messages from the different
+arduino topics are cached and sent to the arduino at a fixed rate. This rate can
+be specified by parameter 'rate' (defaults to 10Hz).
 '''
 
 import roslib; roslib.load_manifest('lowlevel')
@@ -34,21 +36,21 @@ def cmd_msg_CB(event):
     arduino_pub.publish( arduino_cmd_msg )
 
 
-def setupPub(topic,msg_t,cb):
+def setupSub(topic,msg_t,cb):
     sub = rospy.Subscriber(topic, msg_t, cb)
     rospy.loginfo('Setup Subscriber on %s [%s]' % (topic, msg_t._type))
     return sub
 
 
-throttle_sub = setupPub('throttle', Float64, throttleCB)
-brake_sub = setupPub('brake_angle', Float64, brakeCB)
-steer_sub = setupPub('steer_angle', Float64, steerCB)
-lblinker_sub = setupPub('left_blinker', Bool, lblinkerCB)
-rblinker_sub = setupPub('right_blinker', Bool, rblinkerCB)
+throttle_sub = setupSub('throttle', Float64, throttleCB)
+brake_sub = setupSub('brake_angle', Float64, brakeCB)
+steer_sub = setupSub('steer_angle', Float64, steerCB)
+lblinker_sub = setupSub('left_blinker', Bool, lblinkerCB)
+rblinker_sub = setupSub('right_blinker', Bool, rblinkerCB)
 
-period_sec = 0.25;
-rospy.loginfo('Sending messages to the Arduino board every %dms' % (period_sec*1000))
+rate = rospy.get_param('rate',10)
+rospy.loginfo('Sending messages to the Arduino board every %dms' % int(1000.0/rate))
 
 while not rospy.is_shutdown():
-    arduino_pub.publish( arduino_cmd_msg )
-    rospy.sleep(period_sec)
+    arduino_pub.publish(arduino_cmd_msg)
+    rospy.sleep(1.0/rate)

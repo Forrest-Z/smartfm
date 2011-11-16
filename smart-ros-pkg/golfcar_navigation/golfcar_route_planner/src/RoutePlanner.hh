@@ -1,8 +1,7 @@
 #ifndef ROUTEPLANNER_HH_
 #define ROUTEPLANNER_HH_
 
-#include "socket_handler/ClientSocket.hh"
-#include "socket_handler/SocketException.hh"
+#include "socket_handler.hh"
 
 enum VehicleStatus
   {
@@ -18,7 +17,7 @@ class RoutePlanner
 public:
   // Constructors
   // Only communication with the scheduler. Do not report current location.
-  RoutePlanner(std::string schHost, int schPort); 
+  RoutePlanner(std::string schHost, int schPort);
   // Use the same host to communicate with the scheduler and to report current location.
   RoutePlanner(std::string host, int schPort, int locPort);
   RoutePlanner(std::string schHost, int schPort, std::string locHost, int locPort);
@@ -29,9 +28,6 @@ public:
   // Communication with the scheduler
   // Send new status to the server
   bool sendStatus(int vehicleID, VehicleStatus vehStatus, int tremain);
-//available should be sent only once
-//update pob, on call just keep sending it
-
   // Get a new task
   bool getNewTask(int &usrID, int &pickup, int &dropoff);
 
