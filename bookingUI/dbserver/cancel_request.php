@@ -3,7 +3,9 @@ require("funcs.php");
 
 $con = connect_to_DB();
 
-$customerID = $_REQUEST["CustomerID"] or fatal('CustomerID missing');
+$xmlres = new XMLRes();
+
+$customerID = $_REQUEST["CustomerID"] or $xmlres->fatal('CustomerID missing');
 
 $requestID = $_REQUEST["RequestID"];
 if( isset($requestID) )
@@ -11,10 +13,10 @@ if( isset($requestID) )
 else
     $sql = "UPDATE requests SET status = 'Cancelled' WHERE CustomerID = '$customerID'";
 
-$result = mysql_query($sql, $con) or fatal('Update error: ' . mysql_error());
+$result = mysql_query($sql, $con) or $xmlres->fatal('Update error: ' . mysql_error());
 
 $n = mysql_affected_rows();
 
 mysql_close($con);
-success("Cancelled $n rows");
+$xmlres->success("Cancelled $n rows");
 ?>

@@ -4,22 +4,32 @@ require("funcs.php");
 $con = connect_to_DB();
 
 $customerID = $_REQUEST["CustomerID"];
+$vehicleID = $_REQUEST["VehicleID"];
+$requestID = $_REQUEST["RequestID"];
+
+$setvar = array();
 if( isset($customerID) )
-    $sql = "SELECT * FROM requests WHERE CustomerID = '$customerID'";
+    $setvar[] = "CustomerID='$customerID'";
+if( isset($vehicleID) )
+    $setvar[] = "VehicleID='$vehicleID'";
+if( isset($requestID) )
+    $setvar[] = "RequestID='$requestID'";
+
+if( sizeof($setvar) )
+    $sql = "SELECT * FROM requests WHERE " . join(',', $setvar);
 else
     $sql = "SELECT * FROM requests";
-$result = mysql_query($sql, $con) or fatal('Select error: ' . mysql_error());
 
-// Start XML file, create parent node
-$doc = new DOMDocument("1.0");
-$node = $doc->createElement("requestList");
-$parnode = $doc->appendChild($node);
+$xmlres = new XMLRes();
 
-// Iterate through the rows, adding XML nodes for each
-while ($row = @mysql_fetch_assoc($result)) {
-    // ADD TO XML DOCUMENT NODE
-    $node = $doc->createElement("request");
-    $newnode = $parnode->appendChild($node);
+$result = mysql_query($sql, $con) or $xmlres->fatal('Select error: ' . mysql_error());
+
+
+$parnode = $xmlres->addNode( $xmlres->createElement("requestList") );
+
+while ($row = @mysql_fetch_assoc($result))
+{
+    $newnode = $parnode->appendChild( $xmlres->createElement("request") );
     $newnode->setAttribute("requestID", $row['requestID']);
     $newnode->setAttribute("customerID", $row['customerID']);
     $newnode->setAttribute("status", $row['status']);
@@ -38,8 +48,6 @@ while ($row = @mysql_fetch_assoc($result)) {
     }
 }
 
-header("Content-type: text/xml");
-echo $doc->saveXML();
-
 mysql_close($con);
+$xmlres->success();
 ?>

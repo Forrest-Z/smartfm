@@ -1,14 +1,14 @@
 <?php
 require("funcs.php");
-
-$name = $_REQUEST["Name"] or fatal('Name missing.');
+$xmlres = new XMLRes();
+$name = $_REQUEST["Name"] or $xmlres->fatal('Name missing.');
 
 $con = connect_to_DB();
 
+$res = "Station $name does not exist.";
 if (station_exists($con, $name))
-    success("Station $name exists.");
-else
-    success("Station $name does not exist.");
+    $res = "Station $name exists.";
 
 mysql_close($con);
+$xmlres->success($res);
 ?>

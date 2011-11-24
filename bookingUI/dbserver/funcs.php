@@ -4,25 +4,56 @@ require("credentials.php");
 //ini_set('display_errors', 'On');
 //error_reporting(E_ALL | E_STRICT);
 
-function fatal($msg=NULL)
+class XMLRes
 {
-    header("Content-type: text/xml");
-    if( $msg )
-        echo("<status code='err' msg='$msg'/>");
-    else
-        echo("<status code='err'/>");
-    exit(1);
+    public $doc;
+    public $root;
+
+    public function __construct()
+    {
+        header("Content-type: text/xml");
+        $this->doc = new DOMDocument("1.0");
+        $this->doc->formatOutput = true;
+        $this->root = $this->doc->appendChild( $this->doc->createElement("rootxml") );
+    }
+
+    public function createElement($name)
+    {
+        return $this->doc->createElement($name);
+    }
+
+    public function addNode($node)
+    {
+        return $this->root->appendChild($node);
+    }
+
+
+    private function appendStatusNode($status, $msg="")
+    {
+        $node = $this->addNode( $this->createElement("status") );
+        if( $status )
+            $node->setAttribute("code", "ok");
+        else
+            $node->setAttribute("code", "err");
+        $node->setAttribute("msg", $msg);
+        return $node;
+    }
+
+    public function fatal($msg="")
+    {
+        $this->appendStatusNode(0,$msg);
+        echo $this->doc->saveXML();
+        exit(1);
+    }
+
+    public function success($msg="")
+    {
+        $this->appendStatusNode(1,$msg);
+        echo $this->doc->saveXML();
+        exit(0);
+    }
 }
 
-function success($msg=NULL)
-{
-    header("Content-type: text/xml");
-    if( $msg )
-        echo "<status code='ok' msg='$msg'/>";
-    else
-        echo "<status code='ok'/>";
-    exit(0);
-}
 
 function connect_to_DB()
 {

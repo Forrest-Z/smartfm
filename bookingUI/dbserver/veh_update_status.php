@@ -1,7 +1,8 @@
 <?php
 require("funcs.php");
+$xmlres = new XMLRes();
 
-$vehicleID = $_REQUEST["VehicleID"] or fatal('VehicleID missing');
+$vehicleID = $_REQUEST["VehicleID"] or $xmlres->fatal('VehicleID missing');
 $status = $_REQUEST["Status"];
 $longitude = $_REQUEST["Longitude"];
 $latitude = $_REQUEST["Latitude"];
@@ -19,13 +20,13 @@ if( isset($latitude) )
 if( isset($eta) )
     $setvar[] = "eta='$eta'";
 
-sizeof($setvar)>0 or fatal('Arguments missing');
+sizeof($setvar)>0 or $xmlres->fatal('Arguments missing');
 
 $sql = "UPDATE vehicles SET " . join(', ', $setvar) . " WHERE VehicleID='$vehicleID'";
 
-mysql_query($sql, $con) or fatal('Update error: ' . mysql_error());
+mysql_query($sql, $con) or $xmlres->fatal('Update error: ' . mysql_error());
 
 $n = mysql_affected_rows();
 mysql_close($con);
-success("Cancelled $n rows");
+$xmlres->success("Cancelled $n rows");
 ?>

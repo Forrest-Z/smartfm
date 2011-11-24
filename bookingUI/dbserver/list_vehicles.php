@@ -2,24 +2,20 @@
 require("funcs.php");
 
 $con = connect_to_DB();
+$xmlres = new XMLRes();
 
 $vehicleID = $_REQUEST["VehicleID"];
 if( isset($vehicleID) )
     $sql = "SELECT * FROM vehicles WHERE VehicleID = '$vehicleID'";
 else
     $sql = "SELECT * FROM vehicles";
-$result = mysql_query($sql, $con) or fatal('Select error: ' . mysql_error());
+$result = mysql_query($sql, $con) or $xmlres->fatal('Select error: ' . mysql_error());
 
-// Start XML file, create parent node
-$doc = new DOMDocument("1.0");
-$node = $doc->createElement("vehicleList");
-$parnode = $doc->appendChild($node);
+$parnode = $xmlres->addNode( $xmlres->createElement("vehicleList") );
 
-// Iterate through the rows, adding XML nodes for each
-while ($row = @mysql_fetch_assoc($result)) {
-    // ADD TO XML DOCUMENT NODE
-    $node = $doc->createElement("vehicle");
-    $newnode = $parnode->appendChild($node);
+while ($row = @mysql_fetch_assoc($result))
+{
+    $newnode = $parnode->appendChild( $xmlres->createElement("vehicle") );
     $newnode->setAttribute("vehicleID", $row['vehicleID']);
     $newnode->setAttribute("status", $row['status']);
     $newnode->setAttribute("latitude", $row['latitude']);
@@ -28,8 +24,6 @@ while ($row = @mysql_fetch_assoc($result)) {
     $newnode->setAttribute("eta", $row['eta']);
 }
 
-header("Content-type: text/xml");
-echo $doc->saveXML();
-
 mysql_close($con);
+$xmlres->success($doc);
 ?>
