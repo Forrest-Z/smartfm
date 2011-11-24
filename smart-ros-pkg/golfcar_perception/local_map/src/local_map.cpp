@@ -63,7 +63,8 @@ void Local_map::put_laser(vector<Point> &points)
 {
     points_per_laser = points.size();
     map_points.insert(map_points.end(), points.begin(), points.end());
-    if(map_points.size() > 10*points_per_laser)
+    
+    if(map_points.size() > (unsigned int)10*points_per_laser)
     {
         map_points.erase(map_points.begin(), map_points.begin()+points_per_laser);
     }
@@ -74,6 +75,7 @@ void Local_map::create_map()
     // set everything to zero
     memset(map, 0, xsize*ysize);
 
+    ROS_DEBUG("map_size: %d", map_points.size());
     for(unsigned int i=0; i< map_points.size(); i++)
     {
         // put points in gridmap
@@ -87,15 +89,15 @@ void Local_map::create_map()
         int res = get_cell_num(ptmp, xnum, ynum);
         if(res == 0)
         {
-            if( (map_points[i].z - pose.position.z) > 0.4 )
+            if( (map_points[i].z - pose.position.z) > -0.4 )
             {
                 int map_loc = CELL_LIN(xnum, ynum);
                 map[map_loc] = 250;
-
             }
         }
     }
-
+    
+    /*
     for(unsigned int i=0; i< left_curb_points.size(); i++)
     {
         for(unsigned int j=0; j< left_curb_points[i].points.size(); j++)
@@ -132,6 +134,7 @@ void Local_map::create_map()
             }
         }
     }
+    */
 }
 
 

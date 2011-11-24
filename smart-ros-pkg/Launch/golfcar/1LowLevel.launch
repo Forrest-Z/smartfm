@@ -1,5 +1,8 @@
 <launch>
-	<node pkg="golfcar_halstreamer" type="golfcar_halstreamer_3channel" name="golfcar_halstreamer_3channel"/>
-	<node pkg="golfcar_halsampler" type="halsampler" name="halsampler"/>
+	<!--node pkg="golfcar_halstreamer" type="golfcar_halstreamer_3channel" name="golfcar_halstreamer_3channel"/>
+	<node pkg="golfcar_halsampler" type="halsampler" name="halsampler"/-->
+	<include file="$(find dead_reckoning)/encoderOdom.launch"/>
+	<include file="$(find lowlevel)/encoders.launch"/>
+	<include file="$(find lowlevel)/arduino.launch"/>
 </launch>
 
