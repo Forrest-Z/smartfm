@@ -13,7 +13,7 @@ Communication with the database is through server side PHP scripts.
 
 import roslib; roslib.load_manifest('dbserver_comm')
 import rospy
-from sensor_msgs.msg import NavSatFix
+from sensor_msgs.msg import NavSatFix, NavSatStatus
 
 from dbserver_comm import DBServerComm
 
@@ -25,8 +25,11 @@ gpsPubPeriod = rospy.get_param('~gpsPubPeriod', 10)
 
 
 def gpsCB(gpsmsg):
-    gpsPose = {'Latitude':gpsmsg.latitude, 'Longitude':gpsmsg.longitude}
-    dbserverComm.calldb("veh_update_status.php", gpsPose)
+    if gpsmsg.status.status == NavSatStatus.STATUS_NO_FIX:
+        rospy.loginfo("No fix.")
+    else:
+        gpsPose = {'Latitude':gpsmsg.latitude, 'Longitude':gpsmsg.longitude}
+        dbserverComm.calldb("veh_update_status.php", gpsPose)
 
 gpsSub = rospy.Subscriber('fix', NavSatFix, gpsCB)
 rospy.spin()

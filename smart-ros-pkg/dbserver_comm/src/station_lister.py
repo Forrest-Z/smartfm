@@ -25,14 +25,6 @@ from dbserver_comm import DBServerComm
 import time
 
 
-def nodeToStationMsg(node):
-    msg = Station()
-    msg.name = str(node.getAttribute('name'))
-    msg.longitude = float(node.getAttribute('longitude'))
-    msg.latitude = float(node.getAttribute('latitude'))
-    return msg
-
-
 
 rospy.init_node('station_lister')
 
@@ -49,9 +41,7 @@ msg = Stations()
 
 while not rospy.is_shutdown():
     if rospy.get_time() > lastCheck + checkPeriod:
-        dom = dbserverComm.calldb('list_stations.php')
-        nodes = dom.getElementsByTagName('station')
-        msg.stations = [nodeToStationMsg(n) for n in nodes]
+        msg.stations = [Station(**s) for s in dbserverComm.listStations()]
 
     pub.publish(msg)
     time.sleep(pubPeriod)
