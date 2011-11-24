@@ -1,17 +1,21 @@
 <launch>
-	<node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
-		<remap from="/cmd_vel" to="/move_vel"/>
-		<param name="footprint_padding" value="0.1" />
-		<param name="controller_frequency" value="10.0" />
-		<param name="controller_patience" value="100.0" />
-		<param name="base_global_planner" value="golfcar_gp/GlobalPlan"/>
-		<param name="base_local_planner" value="golfcar_purepursuit/PurePursuitBase"/>
-		<param name="PurePursuitBase/slow_speed" value="0.7"/>
-		<param name="PurePursuitBase/maximum_speed" value="1.2"/>
-		<rosparam file="$(find golfcar_ppc)/launch/move_base_scheduler/costmap_common_params.yaml" command="load" ns="global_costmap" />
-		<rosparam file="$(find golfcar_ppc)/launch/move_base_scheduler/costmap_common_params.yaml" command="load" ns="local_costmap" />
-		<rosparam file="$(find golfcar_ppc)/launch/move_base_scheduler/local_costmap_params_close.yaml" command="load" />
-		<rosparam file="$(find golfcar_ppc)/launch/move_base_scheduler/global_costmap_params_static.yaml" command="load" />
-  	</node>
+
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
+        <remap from="/cmd_vel" to="/move_vel"/>
+
+        <param name="footprint_padding" value="0.1" />
+        <param name="controller_frequency" value="10.0" />
+        <param name="controller_patience" value="100.0" />
+        <param name="base_global_planner" value="golfcar_gp/GlobalPlan"/>
+        <param name="base_local_planner" value="golfcar_purepursuit/PurePursuitBase"/>
+        <param name="PurePursuitBase/slow_speed" value="0.7"/>
+        <param name="PurePursuitBase/maximum_speed" value="1.2"/>
+
+        <rosparam file="$(find golfcar_ppc)/launch/move_base_scheduler/costmap_common_params.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base_scheduler/costmap_common_params.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base_scheduler/local_costmap_params_close.yaml" command="load" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base_scheduler/global_costmap_params_static.yaml" command="load" />
+    </node>
+
 </launch>
 
