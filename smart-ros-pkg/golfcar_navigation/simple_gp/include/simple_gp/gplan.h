@@ -1,3 +1,7 @@
+#ifndef __G_PLAN_H__
+#define __G_PLAN_H__
+
+
 #include <ros/ros.h>
 #include <ros/console.h>
 #include <nav_msgs/Path.h>
@@ -11,25 +15,30 @@
 #include <costmap_2d/cost_values.h>
 #include <geometry_msgs/Point32.h>
 
-using namespace costmap_2d;
-namespace simple_gp{
-	
-	class GlobalPlan : public nav_core::BaseGlobalPlanner {
 
-		public:
-		void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
-		bool makePlan(const geometry_msgs::PoseStamped&  start,	const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan) ;
-		ros::Publisher g_plan_pub_;
-		ros::Publisher direction_pub_;
-		ros::Subscriber stage_sub_;
-		
-		bool firstpart_;
-		bool part1a_;
-		bool firstpart;
-		int stage_;
-		void missionStage(geometry_msgs::Point32 stage);
-	};
+namespace simple_gp
+{
+
+class GlobalPlan : public nav_core::BaseGlobalPlanner {
+
+public:
+    void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
+    bool makePlan(const geometry_msgs::PoseStamped& start,
+                  const geometry_msgs::PoseStamped& goal,
+                  std::vector<geometry_msgs::PoseStamped>& plan);
+
+    ros::Publisher g_plan_pub_;
+    ros::Publisher direction_pub_;
+    ros::Subscriber stage_sub_;
+
+    bool firstpart_;
+    bool part1a_;
+    bool firstpart;
+    int stage_;
+
+    void missionStage(geometry_msgs::Point32 stage);
 };
-			
-				
-	
+
+} //namespace simple_gp
+
+#endif //__G_PLAN_H__

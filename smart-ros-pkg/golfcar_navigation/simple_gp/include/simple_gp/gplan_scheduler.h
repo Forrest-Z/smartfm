@@ -8,9 +8,6 @@
 #ifndef GPLAN_SCHEDULER_H_
 #define GPLAN_SCHEDULER_H_
 
-
-#endif /* GPLAN_SCHEDULER_H_ */
-
 #include <ros/ros.h>
 #include <ros/console.h>
 #include <nav_msgs/Path.h>
@@ -23,25 +20,28 @@
 #include <nav_msgs/Odometry.h>
 #include <costmap_2d/cost_values.h>
 #include <geometry_msgs/Point32.h>
+
 #include <golfcar_route_planner/station_path.h>
 
-using namespace costmap_2d;
-namespace golfcar_gp{
 
-	class GlobalPlan : public nav_core::BaseGlobalPlanner {
+namespace golfcar_gp
+{
 
-		public:
-		void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
-		bool makePlan(const geometry_msgs::PoseStamped&  start,	const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan) ;
-		ros::Publisher g_plan_pub_;
-		ros::Publisher direction_pub_;
-		ros::Subscriber stage_sub_;
+class GlobalPlan : public nav_core::BaseGlobalPlanner {
 
-		station_path::stationPath sp_;
+public:
+    void initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros);
+    bool makePlan(const geometry_msgs::PoseStamped& start,
+                  const geometry_msgs::PoseStamped& goal,
+                  std::vector<geometry_msgs::PoseStamped>& plan);
 
+    ros::Publisher g_plan_pub_;
+    ros::Publisher direction_pub_;
+    ros::Subscriber stage_sub_;
 
-	};
+    StationPaths sp_;
 };
 
+} //golfcar_gp
 
-
+#endif /* GPLAN_SCHEDULER_H_ */
