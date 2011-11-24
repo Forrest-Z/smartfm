@@ -1,25 +1,29 @@
 <launch>
-	
-	<node pkg="golfcar_steeringcontrol" type="local_controller" name="local_controller"/> 
-	<node name="speed_controller" pkg="lowlevel" type="speed_controller_simple" output="screen">
-		<remap from="/odom" to="/encoder_odom"/>
-	</node>
-	<node name="laser_republish" pkg="laser_maxrange_republish" type="laser_repub"/>
-	<node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
-		<remap from="cmd_vel" to="move_vel"/>
-		<param name="footprint_padding" value="0.01" />
-		<param name="controller_frequency" value="10.0" />
-		<param name="controller_patience" value="100.0" />
-		<param name="base_global_planner" value="golfcar_gp/GlobalPlan"/>
-		<param name="base_local_planner" value="golfcar_purepursuit/PurePursuitBase"/>
-		<param name="PurePursuitBase/slow_speed" value="1.0"/>
-		<param name="PurePursuitBase/maximum_speed" value="2.0"/>
-		<rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params.yaml" command="load" ns="global_costmap" />
-		<rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params.yaml" command="load" ns="local_costmap" />
-		<rosparam file="$(find golfcar_ppc)/launch/move_base/local_costmap_params_close.yaml" command="load" />
-		<rosparam file="$(find golfcar_ppc)/launch/move_base/global_costmap_params.yaml" command="load" />
-		<rosparam file="$(find golfcar_ppc)/launch/move_base/sbpl_global_params.yaml" command="load" />
-		<remap from="map" to="curb_map"/>
-  	</node>
-</launch>
 
+    <node pkg="golfcar_steeringcontrol" type="local_controller" name="local_controller"/>
+    <node name="speed_controller" pkg="lowlevel" type="speed_controller_simple" output="screen">
+        <remap from="/odom" to="/encoder_odom"/>
+    </node>
+
+    <node name="laser_republish" pkg="laser_maxrange_republish" type="laser_repub"/>
+
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
+        <remap from="cmd_vel" to="move_vel"/>
+        <remap from="map" to="curb_map"/>
+
+        <param name="footprint_padding" value="0.01" />
+        <param name="controller_frequency" value="10.0" />
+        <param name="controller_patience" value="100.0" />
+        <param name="base_global_planner" value="golfcar_gp/GlobalPlan"/>
+        <param name="base_local_planner" value="golfcar_purepursuit/PurePursuitBase"/>
+        <param name="PurePursuitBase/slow_speed" value="1.0"/>
+        <param name="PurePursuitBase/maximum_speed" value="2.0"/>
+
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/local_costmap_params_close.yaml" command="load" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/global_costmap_params.yaml" command="load" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/sbpl_global_params.yaml" command="load" />
+    </node>
+
+</launch>

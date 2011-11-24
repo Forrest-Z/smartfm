@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+<style type="text/css">
+  html { height: 100% }
+  body { height: 100%; margin: 0; padding: 0 }
+  #map_canvas { height: 100% }
+</style>
+<script type="text/javascript"
+    src="http://maps.google.com/maps/api/js?sensor=false&key=ABQIAAAApddPJj_vdhIoBY3ZPftQjhSTODZW-iihFqgLw8FZRSH__6cQxBRqxvEPXZr-AvMDh0A6davMpcW5fQ">
+</script>
+<script type="text/javascript" src="getxml.js"></script>
+
+<script type="text/javascript">
+
+/*
+var iconBlue = new google.maps.MarkerImage();
+iconBlue.image = 'http://labs.google.com/ridefinder/images/mm_20_blue.png';
+iconBlue.shadow = 'http://labs.google.com/ridefinder/images/mm_20_shadow.png';
+iconBlue.iconSize = new google.maps.Size(12, 20);
+iconBlue.shadowSize = new google.maps.Size(22, 20);
+iconBlue.iconAnchor = new google.maps.Point(6, 20);
+iconBlue.infoWindowAnchor = new google.maps.Point(5, 1);
+
+var iconRed = new google.maps.MarkerImage();
+iconRed.image = 'http://labs.google.com/ridefinder/images/mm_20_red.png';
+iconRed.shadow = 'http://labs.google.com/ridefinder/images/mm_20_shadow.png';
+iconRed.iconSize = new google.maps.Size(12, 20);
+iconRed.shadowSize = new google.maps.Size(22, 20);
+iconRed.iconAnchor = new google.maps.Point(6, 20);
+iconRed.infoWindowAnchor = new google.maps.Point(5, 1);
+*/
+
+var vehicleMarkers = {};
+
+var map;
+
+function initialize() {
+    var latlng = new google.maps.LatLng(1.3, 103.77);
+    var myOptions = {
+        zoom: 16,
+        center: latlng,
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+    };
+    map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+
+    showStations();
+    showCars();
+}
+
+function showStations() {
+    downloadUrl("list_stations.php", function(xml) {
+        var stationNodes = xml.documentElement.getElementsByTagName("station");
+        for (var i = 0; i < stationNodes.length; i++) {
+            var name = stationNodes[i].getAttribute("name");
+            var point = new google.maps.LatLng(
+                parseFloat(stationNodes[i].getAttribute("latitude")),
+                parseFloat(stationNodes[i].getAttribute("longitude")) );
+            //var marker = new google.maps.Marker({position: point, map: map, icon: iconBlue, title: name});
+            var marker = new google.maps.Marker({position: point, map: map, title: name});
+        }
+    });
+}
+
+function showCars() {
+    downloadUrl("list_vehicles.php", function(xml) {
+        var vehicleNodes = xml.documentElement.getElementsByTagName("vehicle");
+        var tmp = {};
+        for (var i = 0; i < vehicleNodes.length; i++) {
+            var vehicleID = vehicleNodes[i].getAttribute("vehicleID");
+            var lat = vehicleNodes[i].getAttribute("latitude");
+            var lng = vehicleNodes[i].getAttribute("longitude");
+            if( lat=="" || lng=="" )
+                continue;
+            var point = new google.maps.LatLng(parseFloat(lat), parseFloat(lng));
+            var status = vehicleNodes[i].getAttribute("status");
+            var eta = vehicleNodes[i].getAttribute("eta");
+            var requestID = vehicleNodes[i].getAttribute("requestID");
+
+            if( vehicleID in vehicleMarkers ) {
+                vehicleMarkers[vehicleID].setPosition(point);
+            }
+            else {
+                var html = "<b>vehicle ID:</b>" + vehicleID + "<br/>";
+                html += "status: " + status + "<br/>";
+                html += "requestID: " + requestID + "<br/>";
+                html += "eta: " + eta + "<br/>";
+                var marker = new google.maps.Marker({position: point, map: map, title: html});
+                vehicleMarkers[vehicleID] = marker;
+            }
+
+            tmp[vehicleID] = vehicleMarkers[vehicleID];
+        }
+
+        var tmp2 = {};
+        for( var key in vehicleMarkers ) {
+            if( key in tmp )
+                tmp2[key] = vehicleMarkers[key];
+            else
+                vehicleMarkers[key].setVisible(false);
+        }
+        vehicleMarkers = tmp2;
+    });
+
+    setTimeout("showCars()", 2000);
+}
+
+</script>
+</head>
+
+<body onload="initialize()">
+  <div id="map_canvas" style="width:100%; height:100%"></div>
+</body>
+</html>

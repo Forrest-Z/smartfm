@@ -1,0 +1,19 @@
+<package>
+  <description brief="dbserver_comm">
+
+     dbserver_comm
+
+  </description>
+  <author>brice rebsamen</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/dbserver_comm</url>
+
+  <depend package="rospy"/>
+  <depend package="rosconsole"/>
+  <depend package="std_msgs"/>
+  <depend package="sensor_msgs"/>
+
+</package>
+
+

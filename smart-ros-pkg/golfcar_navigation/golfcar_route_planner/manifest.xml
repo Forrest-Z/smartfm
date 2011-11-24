@@ -18,8 +18,9 @@
   <depend package="sensor_msgs"/>
   <depend package="actionlib"/>
   <depend package="move_base_msgs"/>
+  <depend package="dbserver_comm"/>
 <export>
-    <cpp cflags="-I${prefix}/include"/>
+    <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -lgolfcar_route_planner"/>
 </export>
 </package>
 
