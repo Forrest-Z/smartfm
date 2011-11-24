@@ -1,39 +1,37 @@
-#include "ros/ros.h"
-#include "geometry_msgs/PoseStamped.h"
-#include "geometry_msgs/PointStamped.h"
+#include <ros/ros.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PointStamped.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
 
-class simple_goal
+class SimpleGoal
 {
-    public:
-        simple_goal();
-        ~simple_goal();
-        void goalCallback(geometry_msgs::PoseStamped map_pose);
-        void on_goal_timer(const ros::TimerEvent& e);
+public:
+    SimpleGoal();
+    void goalCallback(geometry_msgs::PoseStamped map_pose);
+    void on_goal_timer(const ros::TimerEvent& e);
 
-        ros::Timer goal_timer;
-        tf::TransformListener listener;
-        ros::Subscriber sub;
-        ros::Publisher waypoint_pub_;
-        ros::NodeHandle n;
+    ros::NodeHandle n;
+    ros::Subscriber sub;
+    ros::Publisher waypoint_pub_;
+    ros::Timer goal_timer;
+    tf::TransformListener listener;
 
-        bool first_goal_rec;
-        geometry_msgs::PointStamped odom_point;
+    bool first_goal_rec;
+    geometry_msgs::PointStamped odom_point;
 };
 
-simple_goal::simple_goal()
+
+
+SimpleGoal::SimpleGoal()
 {
     first_goal_rec = false;
-    sub = n.subscribe("move_base_simple/goal",1,&simple_goal::goalCallback, this);
+    sub = n.subscribe("move_base_simple/goal", 1, &SimpleGoal::goalCallback, this);
     waypoint_pub_ = n.advertise<geometry_msgs::PointStamped>("pnc_waypoint", 100);
-
-    goal_timer = n.createTimer(ros::Duration(0.5), &simple_goal::on_goal_timer, this);
+    goal_timer = n.createTimer(ros::Duration(0.5), &SimpleGoal::on_goal_timer, this);
 }
 
-simple_goal::~simple_goal(){}
-
-void simple_goal::on_goal_timer(const ros::TimerEvent& e)
+void SimpleGoal::on_goal_timer(const ros::TimerEvent& e)
 {
     if(first_goal_rec)
     {
@@ -44,7 +42,7 @@ void simple_goal::on_goal_timer(const ros::TimerEvent& e)
 }
 
 
-void simple_goal::goalCallback(geometry_msgs::PoseStamped map_pose)
+void SimpleGoal::goalCallback(geometry_msgs::PoseStamped map_pose)
 {
     geometry_msgs::PoseStamped odom_pose;
 
@@ -78,9 +76,7 @@ void simple_goal::goalCallback(geometry_msgs::PoseStamped map_pose)
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "goal_listener");
-    ros::NodeHandle n;
-    simple_goal sg;
-
+    SimpleGoal sg;
     ros::spin();
     return 0;
 }
