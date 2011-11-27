@@ -21,13 +21,16 @@ private:
     friend class StationList;
     std::string name_;
     unsigned number_;
-    Station(const std::string & name, unsigned number) : name_(name), number_(number) { }
+    bool valid_;
+    Station(const std::string & name, unsigned number) : name_(name), number_(number), valid_(true) { }
 
 public:
+    Station() : valid_(false) { }
     unsigned number() const throw() { return number_; }
     const std::string & str() const throw() { return name_; }
     const char * c_str() const throw() { return name_.c_str(); }
-    bool operator== (const Station & s) { return s.number_==number_; }
+    bool operator== (const Station & s) const { return s.valid_ && valid_ && s.number_==number_; }
+    bool operator!= (const Station & s) const { return !(s==*this); }
 };
 
 
@@ -73,6 +76,10 @@ public:
 
     /// Returns the list of known stations
     const std::vector<Station> & stations() const { return knownStations_; }
+
+    typedef std::vector<Station>::const_iterator StationIterator;
+    StationIterator begin() const { return knownStations_.begin(); }
+    StationIterator end() const { return knownStations_.end(); }
 };
 
 

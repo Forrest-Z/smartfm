@@ -3,3 +3,4 @@ string customerID
 string status
 string pickUpLocation
 string dropOffLocation
+string vehicleStatus

@@ -38,7 +38,7 @@ throw(StationDoesNotExistException)
 
 bool StationList::exists(const Station & s) const throw()
 {
-    return s.number() < knownStations_.size();
+    return s.valid_ && s.number() < knownStations_.size();
 }
 
 bool StationList::exists(unsigned i) const throw()
@@ -234,6 +234,8 @@ StationPaths::StationPaths()
 
 const StationPath & StationPaths::getPath(const Station & pickup, const Station & dropoff) const
 {
+    if( ! knownStations_.exists(pickup) || ! knownStations_.exists(dropoff) )
+        throw StationDoesNotExistException("Invalid station");
     return stationPaths_[pickup.number()][dropoff.number()];
 }
 
