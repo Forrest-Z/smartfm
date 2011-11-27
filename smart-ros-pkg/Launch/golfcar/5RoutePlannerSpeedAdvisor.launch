@@ -1,6 +1,17 @@
 <launch>
-    <node pkg="golfcar_ppc" type="speed_advisor" name="speed_advisor" output="screen"/>
+    <node pkg="golfcar_ppc" type="speed_advisor" name="speed_advisor" output="screen">
+        <param name="acc" value="0.5"/>
+        <param name="max_dec" value="2"/>
+        <param name="norm_dec" value="1"/>
+        <param name="max_speed" value="3"/>
+        <param name="frequency" value="20"/>
+    </node>
+
     <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen">
         <param name="standalone" value="true"/>
+    </node>
+    
+    <node pkg="golfcar_ppc" type="stop_at_junction" name="stop_at_junction" output="screen">
+        <param name="stopping_distance" value="12"/>
     </node>
 </launch>

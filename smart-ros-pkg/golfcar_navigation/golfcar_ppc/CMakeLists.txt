@@ -17,7 +17,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 #uncomment if you have defined messages
-#rosbuild_genmsg()
+rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
@@ -29,5 +29,6 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 rosbuild_add_library(${PROJECT_NAME} src/trajector_planner.cpp src/golfcar_purepursuit.cpp)
 rosbuild_add_executable(golfcar_pp src/golfcar_pp.cpp)
 rosbuild_add_executable(speed_advisor src/speed_advisor.cpp)
+rosbuild_add_executable(stop_at_junction src/stop_at_junction.cpp)
 #rosbuild_add_executable(controller_path src/controller_path.cpp)
 #target_link_libraries(example ${PROJECT_NAME})

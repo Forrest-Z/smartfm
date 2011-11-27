@@ -1,5 +1,5 @@
 #include "golfcar_purepursuit.h"
-
+using namespace std;
 namespace golfcar_purepursuit
 {
 
@@ -18,10 +18,9 @@ PurePursuit::PurePursuit()
 }
 
 
-bool PurePursuit::steering_control(double& wheel_angle)
+bool PurePursuit::steering_control(double& wheel_angle, double &dist_to_goal)
 {
     geometry_msgs::Point pt;
-
     if(!initialized_)
     {
         current_point_ = vehicle_base_.position;
@@ -30,8 +29,7 @@ bool PurePursuit::steering_control(double& wheel_angle)
     }
     double heading_lh=0;
 
-
-    if(heading_lookahead(heading_lh))
+    if(heading_lookahead(heading_lh,dist_to_goal))
     {
         wheel_angle = atan((car_length * sin(heading_lh))/(Lfw_/2+lfw_*cos(heading_lh)));
         if(wheel_angle > 0.65) wheel_angle = 0.65;
@@ -44,7 +42,7 @@ bool PurePursuit::steering_control(double& wheel_angle)
 }
 
 
-bool PurePursuit::heading_lookahead(double &heading_la)
+bool PurePursuit::heading_lookahead(double &heading_la, double &dist_to_goal)
 {
     double vehicle_heading = tf::getYaw(vehicle_base_.orientation);
     geometry_msgs::Point anchor_pt;
@@ -58,16 +56,28 @@ bool PurePursuit::heading_lookahead(double &heading_la)
     path_n_=0;
     current_point_ = path_.poses[path_n_].pose.position;
     next_point_ = path_.poses[path_n_+1].pose.position;
+    //std::cout<<current_point_<<next_point_<<std::endl;
+    dist_to_goal=0;
     while(!circle_line_collision(anchor_pt,collided_pt))
     {
         path_n_++;
+
         if(path_n_+1<path_.poses.size()){
             current_point_ = path_.poses[path_n_].pose.position;
             next_point_ = path_.poses[path_n_+1].pose.position;
+            //std::cout<<current_point_<<next_point_<<std::endl;
             //ROS_DEBUG("Updating points");
+            dist_to_goal=sqrt_distance(vehicle_base_.position, path_.poses[path_n_+1].pose.position);
+            for(int i=path_.poses.size()-1;i>path_n_+1;i--)
+            {
+                dist_to_goal+=sqrt_distance(path_.poses[i].pose.position,path_.poses[i-1].pose.position);
+            }
         }
         else
+        {
+            dist_to_goal=sqrt_distance(vehicle_base_.position, path_.poses[path_.poses.size()-1].pose.position);
             return false;
+        }
     }
     ros::Time t2 = ros::Time::now();
     //ROS_INFO("Search time %d", (t2-t1).toNSec());
@@ -107,7 +117,7 @@ bool PurePursuit::circle_line_collision(geometry_msgs::Point& anchor_point,
     geometry_msgs::PolygonStamped polyStamped;
     polyStamped.header.frame_id = "/map";
     polyStamped.header.stamp = ros::Time::now();
-
+    //ROS_INFO("cur:x=%lf y%lf, next:x=%lf y=%lf, anchor_point:x=%lf y=%lf r=%lf", Ex,Ey,Lx,Ly,Cx,Cy,r);
     if(discriminant < 0)
     {
         ROS_DEBUG("No intersection, cur:x=%lf y%lf, next:x=%lf y=%lf, anchor_point:x=%lf y=%lf", Ex,Ey,Lx,Ly,Cx,Cy);
