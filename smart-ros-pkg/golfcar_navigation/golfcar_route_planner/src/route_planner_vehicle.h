@@ -26,47 +26,32 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 class RoutePlannerVehicle : public RoutePlanner
 {
 public:
-    RoutePlannerVehicle();
-    void spin();
+    RoutePlannerVehicle(StationPaths & sp);
 
 private:
     ros::NodeHandle n;
     ros::Publisher waypoint_pub_;
     ros::Publisher g_plan_pub_;
     ros::Publisher pointCloud_pub_;
-    ros::Publisher poseStamped_pub_;
     ros::Publisher nextpose_pub_;
-    ros::Subscriber gps_sub_;
 
-    ros::Timer timer_;
     tf::TransformListener tf_;
-
-    StationPaths sp_;
-    StationPath targets_;
-
     tf::Stamped<tf::Pose> global_pose_;
 
     MoveBaseClient ac_;
+    StationPath path_;
 
-    bool standalone_;
-    bool debugMode_;
     unsigned waypointNo_;
 
-    string usrID_;
-    Station currentStationID_, dropoff_, pickup_;
+    bool goToDest();
+    void initDest();
 
-    void pubWaypoint();
     void pubPathVis();
-    void clearScreen();
-    void publishGoal(const Station & start, const Station & end);
+    void publishGoal();
     bool getRobotGlobalPose();
     void transformMapToOdom(geometry_msgs::PoseStamped *map_pose,
                             geometry_msgs::PointStamped *odom_point);
     double distanceToGoal();
-    void waypointLoop(VehicleStatus::Status,
-                      const Station & start, const Station & end);
-    void printStationList() const;
-    Station promptForStation( const string & prompt ) const;
 };
 
 #endif

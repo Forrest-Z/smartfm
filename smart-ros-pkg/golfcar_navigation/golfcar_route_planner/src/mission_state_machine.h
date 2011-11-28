@@ -16,53 +16,11 @@ class MissionStateMachine : public Threaded
     friend class DBMissionComm;
 
 public:
-    MissionStateMachine(RoutePlanner & rp)
-        : rp_(rp), stationList_(rp.stationList_), state_(sWaitingMission)
-    {
+    MissionStateMachine(RoutePlanner & rp);
 
-    }
-
-    void receivedNewMission(Mission m)
-    {
-        if( state_ != sWaitingMission ) {
-            ROS_DEBUG("Wrong transition");
-            return;
-        }
-        rp_.pickup_ = StationList(m.pickUpLocation);
-        rp_.dropoff_ = StationList(m.dropOffLocation);
-        if( rp_.currentStation_ !=  rp_.pickup_ ) {
-            state_ = sGoingToPickup;
-            rp_.state_ = RoutePlanner::sGoingToPickupLocation;
-        }
-        else {
-            state_ = sAtPickup;
-            rp_.state_ = RoutePlanner::sAtPickupLocation;
-        }
-    }
-
-    void reachedStation()
-    {
-        if( state_ == sGoingToPickup ) {
-            state_ = sAtPickup;
-            rp_.state_ = RoutePlanner::sAtPickupLocation;
-        }
-        else if( state_ == sGoingToDropoff ) {
-            state_ = sWaitingMission;
-            rp_state_ = RoutePlanner::sWaitingForAMission;
-        }
-        else
-            ROS_DEBUG("Wrong transition");
-    }
-
-    void passengerBoarded()
-    {
-        if( state_ == sAtPickup ) {
-            state_ = sGoingToDropoff;
-            rp_.state_ = RoutePlanner::sGoingToDropOffLocation;
-        }
-        else
-            ROS_DEBUG("Wrong transition");
-    }
+    void receivedNewMission(dbserver_comm::Mission m);
+    void reachedStation();
+    void passengerBoarded();
 
 
 protected:
@@ -76,6 +34,8 @@ protected:
     RoutePlanner & rp_;
     const StationList & stationList_;
     State state_;
+
+    Station & current_, pickup_, dropoff_;
 };
 
 

@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <exception>
+#include <string>
 
 #include <geometry_msgs/Point.h>
 
@@ -80,6 +81,9 @@ public:
     typedef std::vector<Station>::const_iterator StationIterator;
     StationIterator begin() const { return knownStations_.begin(); }
     StationIterator end() const { return knownStations_.end(); }
+
+    void print() const;
+    Station prompt(const std::string & prompt) const;
 };
 
 
@@ -99,7 +103,7 @@ class StationPaths
 public:
     StationPaths();
 
-    /// Returns the list of know stations
+    /// Returns the list of known stations
     const StationList & knownStations() const { return knownStations_; }
 
     /// Returns the path between 2 stations

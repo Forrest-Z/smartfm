@@ -5,6 +5,7 @@
 #include <iostream>
 using namespace std;
 
+#include <ros/ros.h>
 #include <golfcar_route_planner/station_path.h>
 
 
@@ -52,6 +53,31 @@ bool StationList::exists(const std::string & s) const throw()
         if( s==knownStations_[i].str() )
             return true;
     return false;
+}
+
+
+void StationList::print() const
+{
+    cout << "Station list:" <<endl;
+    for( StationIterator s=begin(); s<end(); ++s )
+        cout <<"    " <<s->number() <<") - " <<s->str() <<endl;
+}
+
+
+Station StationList::prompt(const string & prompt) const
+{
+    while( ros::ok() )
+    {
+        cout <<prompt;
+        string temp = "";
+        getline(cin, temp);
+        int n = atoi(temp.c_str());
+        if( exists(n) )
+            return knownStations_[n];
+        else
+            cout <<"You have entered an invalid station." <<endl;
+    }
+    return Station();
 }
 
 

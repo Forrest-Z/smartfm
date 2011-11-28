@@ -2,8 +2,9 @@
 #define __ROUTE_PLANNER__H__
 
 
+#include <golfcar_route_planner/station_path.h>
+
 #include "threaded.h"
-#include "station_path.h"
 
 
 class MissionStateMachine;
@@ -16,22 +17,30 @@ class RoutePlanner : public Threaded
     friend class DBMissionComm;
 
 public:
-    const StationList & stationList_;
+    RoutePlanner(StationPaths & sp) : sp_(sp), state_(sIdle) { }
+    void setDestination(const Station & s);
+    bool hasReached() const { return state_ == sIdle; }
 
-    RoutePlanner(StationPaths & sp) : sp_(sp), stationList_(sp.knowStations()) { }
 
 protected:
-    enum State {
-        sNotAvailable,
-        sGoingToPickupLocation,
-        sGoingToDropOffLocation,
-        sAtPickupLocation,
-        sWaitingForAMission
-    };
+    enum State { sUninit, sIdle, sMoving };
 
     StationPaths & sp_;
-    Station currentStation_, pickup_, dropoff_;
+    Station currentStation_, destination_;
     State state_;
+
+    virtual void initDest() = 0;
+    virtual bool goToDest() = 0;
+    void run();
+};
+
+
+class DummyRoutePlanner : public RoutePlanner
+{
+    DummyRoutePlanner(StationPaths & sp) : RoutePlanner(sp) { }
+protected:
+    bool goToDest() { return true; }
+    void initDest() { }
 };
 
 #endif
