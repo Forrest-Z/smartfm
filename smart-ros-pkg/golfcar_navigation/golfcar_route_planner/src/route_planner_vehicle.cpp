@@ -63,7 +63,7 @@ bool RoutePlannerVehicle::goToDest()
 
     if( waypointNo_ < path_.size()-1 && d < 4 )
         waypointNo_++;
-    else if( waypointNo_ == path_.size()-1 && d < 1 )
+    else if( waypointNo_ == path_.size()-1 )
         return true;
 
     return false;
