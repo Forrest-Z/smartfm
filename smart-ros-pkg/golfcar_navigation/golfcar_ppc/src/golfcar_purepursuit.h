@@ -23,7 +23,7 @@ public:
 
     PurePursuit();
 
-    bool steering_control(double& wheel_angle);
+    bool steering_control(double& wheel_angle, double &dist_to_goal);
     geometry_msgs::Point current_point_, next_point_;
 
     ros::Publisher pp_vis_;
@@ -38,7 +38,7 @@ public:
     double dist_to_final_point;
 
 private:
-    bool heading_lookahead(double &heading_la);
+    bool heading_lookahead(double &heading_la, double &dist_to_goal);
     bool circle_line_collision(geometry_msgs::Point& anchor_point, geometry_msgs::Point& intersect_point);
     double sqrt_distance(geometry_msgs::Point wp_a, geometry_msgs::Point wp_b);
 

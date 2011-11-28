@@ -13,8 +13,8 @@ using namespace std;
 #include <geometry_msgs/Point.h>
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PolygonStamped.h>
-
-
+#include <std_msgs/Bool.h>
+#include <golfcar_ppc/move_status.h>
 
 class SpeedAdvisor
 {
@@ -26,67 +26,118 @@ public:
     ros::Publisher recommend_speed_;
     ros::Subscriber move_base_speed_;
     ros::Subscriber global_plan_;
-
-    geometry_msgs::Twist move_speed_;
-    int lastStop_;
-
-    bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
-    void moveSpeedCallback(geometry_msgs::Twist cmd_vel);
-    void globalPlanCallback(nav_msgs::Path path);
+    ros::Subscriber junction_sub_;
+    double max_speed_;
+    double acc_;
+    double max_dec_, norm_dec_;
+    double frequency_;
+    double tolerance_; //to track for last update from move_base package
+    double e_zone_; //apply full brake if there exist an obstacles within this distance from base link
+private:
+    bool junction_stop_;
+    ros::Time last_update_;
+    double stopping_distance_; //automatic calculate based on the maximum speed and normal deceleration
+    bool use_sim_time_;
+    void moveSpeedCallback(golfcar_ppc::move_status status);
+    void junctionCallback(std_msgs::BoolConstPtr junction);
     double sqrtDistance(double x1, double y1, double x2, double y2);
+    void ControlLoop(const ros::TimerEvent& event);
+    geometry_msgs::Twist move_speed_;
+    golfcar_ppc::move_status move_status_;
+    vector<geometry_msgs::Point> stoppingPoint_;
 };
 
 
 SpeedAdvisor::SpeedAdvisor()
 {
     recommend_speed_= n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-    move_base_speed_=n.subscribe("/move_vel",1, &SpeedAdvisor::moveSpeedCallback, this);
-    global_plan_=n.subscribe("/global_plan",1,&SpeedAdvisor::globalPlanCallback,this);
-    vector<geometry_msgs::Point> stoppingPoint;
-    geometry_msgs::Point p;
-    p.x = 322; p.y = 2300; stoppingPoint.push_back(p);
-    p.x = 636; p.y = 538; stoppingPoint.push_back(p);
-    double res = 0.1;
-    int y_pixels = 3536;
-    double stoppingDistance = 8;
-    lastStop_ = -1;
-    //to do, simply subscribe to cmd_vel from move_base then republish it, cmd_vel from move_base must renamed
-    while( ros::ok() )
-    {
-        tf::Stamped<tf::Pose> robot_pose;
-        getRobotGlobalPose(robot_pose);
-        double robot_x = robot_pose.getOrigin().x();
-        double robot_y = robot_pose.getOrigin().y();
+    move_base_speed_=n.subscribe("/move_status",1, &SpeedAdvisor::moveSpeedCallback, this);
+    junction_sub_=n.subscribe("nav_junction",1,&SpeedAdvisor::junctionCallback,this);
+    ros::NodeHandle nh("~");
+    nh.param("max_speed", max_speed_, 2.0);
+    nh.param("acc", acc_, 0.5);
+    nh.param("max_dec", max_dec_, 2.0);
+    nh.param("norm_dec", norm_dec_, 1.0);
+    nh.param("frequency", frequency_,20.0);
+    nh.param("tolerance", tolerance_, 0.5);
+    nh.param("emergency_zone", e_zone_, 4.0);
+    n.param("use_sim_time", use_sim_time_, false);
+    ROS_INFO_STREAM("Simulated time is "<<use_sim_time_);
+    stopping_distance_ = e_zone_ + max_speed_ * max_speed_ / (2 * norm_dec_);
+    junction_stop_ = false;
+    ros::Timer timer = n.createTimer(ros::Duration(1.0/frequency_),&SpeedAdvisor::ControlLoop,this);
 
-        //loop through all the points for stopping
-        for(int i=0; i<stoppingPoint.size();i++)
-        {
-            double sp_x = stoppingPoint[i].x *res;
-            double sp_y = (y_pixels-stoppingPoint[i].y) *res;
-            if(sqrtDistance(robot_x,robot_y,sp_x, sp_y)<=stoppingDistance && lastStop_!=i)
-            {
-                move_speed_.linear.x = 0;
-                lastStop_ = i;
-                recommend_speed_.publish(move_speed_);
-                ros::Duration(0.1).sleep();
-                ros::spinOnce();
-                string temp = "";
-                cout<<"Clear to go?"<<endl;
-                getline(cin, temp);
-                cout<<"Continue"<<endl;
-            }
-        }
-        recommend_speed_.publish(move_speed_);
-        ros::Duration(0.1).sleep();
-        ros::spinOnce();
-    }
+    ros::spin();
 }
 
-
-void SpeedAdvisor::globalPlanCallback(nav_msgs::Path path)
+void SpeedAdvisor::junctionCallback(std_msgs::BoolConstPtr junction)
 {
-    //listen to any new path is given, if it is, simply reset the last stopping record so that all stops can be reevaluate again
-    lastStop_=-1;
+    junction_stop_=junction->data;
+    if(junction_stop_) ROS_INFO("Approaching Junction");
+}
+void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
+{
+
+    //precompute the amount of change in speed
+    double max_neg_speed = -max_dec_ / frequency_;
+    double pos_speed = acc_ / frequency_;
+    double norm_neg_speed = -norm_dec_ / frequency_;
+
+    if((ros::Time::now()-last_update_).toSec()>tolerance_)
+    {
+        ROS_DEBUG("No response from move base package, stopping....");
+        move_speed_.linear.x += max_neg_speed;
+    }
+    else
+    {
+        //linear.z represent the car should keep going or stop. 1 for green, 0 for red, -1 for emergency
+        vector<double> speed_delta;
+        if(move_status_.acc_dec)
+        {
+            //system all go but need to watch out for obstacles
+
+            double obs_dist;
+            obs_dist = move_status_.obstacles_dist;
+            if(obs_dist<stopping_distance_)
+            {
+
+                double deceleration_required = max_speed_*max_speed_/(2*obs_dist);
+                ROS_INFO_STREAM("Calculated deceleration: "<<deceleration_required<<"Obs dist: "<<obs_dist);
+                if(deceleration_required>norm_dec_)
+                {
+                    if(deceleration_required>max_dec_) deceleration_required=max_dec_;
+                    speed_delta.push_back(-deceleration_required/frequency_);
+                }
+                else
+                    speed_delta.push_back(norm_neg_speed);
+            }
+            else
+                speed_delta.push_back(pos_speed);
+        }
+        else speed_delta.push_back(norm_neg_speed);
+
+        if(move_status_.emergency) speed_delta.push_back(max_neg_speed);
+
+        if(junction_stop_) speed_delta.push_back(norm_neg_speed);
+        else speed_delta.push_back(pos_speed);
+
+        double min_speed_delta = *(min_element(speed_delta.begin(), speed_delta.end()));
+        //continue beautification later....
+        ROS_DEBUG_STREAM("min_speed: "<<min_speed_delta<<" Emergency "<<int(move_status_.emergency)<<" Junction: "<<junction_stop_);
+        move_speed_.linear.x+=min_speed_delta;
+    }
+
+    if(move_speed_.linear.x>max_speed_) move_speed_.linear.x=max_speed_;
+    if(move_speed_.linear.x<0) move_speed_.linear.x=0;
+    move_speed_.angular.z = move_status_.steer_angle;
+    ROS_DEBUG_STREAM(move_speed_.linear.x<<" Distance to goal: "<<move_status_.dist_to_goal);
+    geometry_msgs::Twist move_speed;
+    move_speed = move_speed_;
+    double speed_compensation = 1.0;
+    //it was found that the although commanded to travel 2 m/s, it is actually travelling at 3.33x faster in simulation with stage, compensation is needed
+    if(use_sim_time_) speed_compensation=0.3;
+    move_speed.linear.x = move_speed_.linear.x * speed_compensation;
+    recommend_speed_.publish(move_speed);
 }
 
 double SpeedAdvisor::sqrtDistance(double x1, double y1, double x2, double y2)
@@ -94,37 +145,12 @@ double SpeedAdvisor::sqrtDistance(double x1, double y1, double x2, double y2)
     return sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
 }
 
-void SpeedAdvisor::moveSpeedCallback(geometry_msgs::Twist cmd_vel)
+void SpeedAdvisor::moveSpeedCallback(golfcar_ppc::move_status status)
 {
-    move_speed_ = cmd_vel;
+    last_update_ = ros::Time::now();
+    move_status_ = status;
 }
 
-bool SpeedAdvisor::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const
-{
-    odom_pose.setIdentity();
-    tf::Stamped<tf::Pose> robot_pose;
-    robot_pose.setIdentity();
-    robot_pose.frame_id_ = "/base_link";
-    robot_pose.stamp_ = ros::Time();
-    ros::Time current_time = ros::Time::now(); // save time for checking tf delay later
-
-    try {
-        tf_.transformPose("/map", robot_pose, odom_pose);
-    }
-    catch(tf::LookupException& ex) {
-        ROS_ERROR("No Transform available Error: %s\n", ex.what());
-        return false;
-    }
-    catch(tf::ConnectivityException& ex) {
-        ROS_ERROR("Connectivity Error: %s\n", ex.what());
-        return false;
-    }
-    catch(tf::ExtrapolationException& ex) {
-        ROS_ERROR("Extrapolation Error: %s\n", ex.what());
-        return false;
-    }
-    return true;
-}
 
 
 int main(int argc, char **argv)
