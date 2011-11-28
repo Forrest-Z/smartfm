@@ -29,8 +29,8 @@ protected:
     State state_;
 
     void run();
-    void setMission(const Station &s, const Station &e);
     virtual void updateStatus() = 0;
+    virtual void waitForMission() = 0;
 };
 
 
@@ -41,6 +41,7 @@ public:
 
 private:
     void updateStatus();
+    void waitForMission();
 };
 
 
@@ -55,6 +56,7 @@ private:
 
     void missionCB( const dbserver_comm::Mission & m );
     void updateStatus();
+    void waitForMission();
 };
 
 #endif //__DB_MISSION_COMM__H__

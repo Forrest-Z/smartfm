@@ -15,26 +15,22 @@ DBMissionComm::DBMissionComm( RoutePlanner & rp )
     startThread();
 }
 
-void DBMissionComm::setMission(const Station &s, const Station &e)
-{
-    if( state_!=sWaitingMission )
-        return;
-    pickup_ = s;
-    dropoff_ = e;
-    if( currentStation_ != pickup_ ) {
-        routePlanner_.setDestination(pickup_);
-        state_ = sGoingToPickup;
-    }
-    else {
-        state_ = sAtPickup;
-    }
-    updateStatus();
-}
-
 void DBMissionComm::run()
 {
     switch( state_ )
     {
+    case sWaitingMission:
+        waitForMission();
+        if( currentStation_ != pickup_ ) {
+            routePlanner_.setDestination(pickup_);
+            state_ = sGoingToPickup;
+        }
+        else {
+            state_ = sAtPickup;
+        }
+        updateStatus();
+        break;
+
     case sGoingToPickup:
         if( routePlanner_.hasReached() ) {
             state_ = sAtPickup;
@@ -54,19 +50,25 @@ void DBMissionComm::run()
         state_ = sGoingToDropoff;
         updateStatus();
         break;
-
-    default:
-        break;
     }
 
     ros::Duration(1).sleep();
 }
 
 
+
+void PromptMissionComm::waitForMission()
+{
+    stationList_.print();
+    pickup_ = stationList_.prompt("Pickup station? ");
+    dropoff_ = stationList_.prompt("Dropoff station? ");
+}
+
 void PromptMissionComm::updateStatus()
 {
     ROS_INFO("New status: %s", stateStr_[state_].c_str());
 }
+
 
 
 DBServerMissionComm::DBServerMissionComm(RoutePlanner & rp)
@@ -82,6 +84,11 @@ void DBServerMissionComm::missionCB( const dbserver_comm::Mission & m )
 }
 
 void DBServerMissionComm::updateStatus()
+{
+
+}
+
+void DBServerMissionComm::waitForMission()
 {
 
 }

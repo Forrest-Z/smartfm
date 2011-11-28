@@ -7,7 +7,8 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "route_planner_node");
 
     StationPaths sp;
-    DummyRoutePlanner rp(sp);
+    //DummyRoutePlanner rp(sp);
+    RoutePlannerVehicle rp(sp);
     PromptMissionComm comm(rp);
 
     ros::spin();

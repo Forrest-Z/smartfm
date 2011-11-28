@@ -39,7 +39,12 @@ class DummyRoutePlanner : public RoutePlanner
 public:
     DummyRoutePlanner(StationPaths & sp) : RoutePlanner(sp) { }
 protected:
-    bool goToDest() { return true; }
+    bool goToDest()
+    {
+        ROS_INFO("Moving from %s to %s", currentStation_.c_str(), destination_.c_str());
+        return true;
+    }
+
     void initDest() { }
 };
 

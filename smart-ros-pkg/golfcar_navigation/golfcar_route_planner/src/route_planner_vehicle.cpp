@@ -60,6 +60,7 @@ bool RoutePlannerVehicle::goToDest()
     double mapx = map_pose.pose.position.x, mapy = map_pose.pose.position.y;
     double robotx = global_pose_.getOrigin().x(), roboty = global_pose_.getOrigin().y();
     double d = sqrt((mapx-robotx)*(mapx-robotx)+(mapy-roboty)*(mapy-roboty));
+
     if( waypointNo_ < path_.size()-1 && d < 4 )
         waypointNo_++;
     else if( waypointNo_ == path_.size()-1 && d < 1 )
