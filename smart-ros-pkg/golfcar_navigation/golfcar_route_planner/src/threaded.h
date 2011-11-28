@@ -2,6 +2,7 @@
 #define __THREADED__H__
 
 #include <pthread.h>
+#include <ros/ros.h>
 
 class Threaded
 {
@@ -19,7 +20,7 @@ private:
     static void * runner(void *a)
     {
         Threaded & thread( *((Threaded *)a) );
-        while( true )
+        while( ros::ok() )
             thread.run();
         return (void *)0;
     }

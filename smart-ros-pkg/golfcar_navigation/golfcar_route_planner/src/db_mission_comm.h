@@ -1,58 +1,60 @@
 #ifndef __DB_MISSION_COMM__H__
 #define __DB_MISSION_COMM__H__
 
+#include <vector>
+#include <string>
+
 #include <golfcar_route_planner/station_path.h>
 #include <dbserver_comm/Mission.h>
 
 #include "threaded.h"
-#include "mission_state_machine.h"
+#include "route_planner.h"
 
 /// A base class to get and receive missions.
-class DBMissionComm : public Threaded
+class DBMissionComm : protected Threaded
 {
 public:
-    DBMissionComm( MissionStateMachine & sm )
-        : stateMachine_(sm), stationList_(sm.stationList_),
-          current_(sm.current_), pickup_(sm.pickup_), dropoff_(sm.dropoff_)
-    {
-
-    }
+    DBMissionComm( RoutePlanner & rp );
 
 protected:
-    MissionStateMachine & stateMachine_;
+    enum State { sWaitingMission, sGoingToPickup, sGoingToDropoff, sAtPickup };
+
+    ros::NodeHandle n;
+    RoutePlanner & routePlanner_;
     const StationList & stationList_;
-    Station & current_, pickup_, dropoff_;
+    const Station & currentStation_;
+
+    std::vector<std::string> stateStr_;
+    Station pickup_, dropoff_;
+    State state_;
+
+    void run();
+    void setMission(const Station &s, const Station &e);
+    virtual void updateStatus() = 0;
 };
 
 
 class PromptMissionComm : public DBMissionComm
 {
 public:
-    dbserver_comm::Mission waitForNewMission()
-    {
-        dbserver_comm::Mission m;
-        return m;
-    }
+    PromptMissionComm(RoutePlanner & rp) : DBMissionComm(rp) { }
 
-    void run();
+private:
+    void updateStatus();
 };
 
 
 class DBServerMissionComm : public DBMissionComm
 {
 public:
-
-    DBServerMissionComm(MissionStateMachine & sm);
-
-    void missionCB( const dbserver_comm::Mission & m );
-
-    dbserver_comm::Mission waitForNewMission();
-
+    DBServerMissionComm(RoutePlanner &);
 
 private:
-    ros::NodeHandle n;
     ros::Publisher pub;
     ros::Subscriber sub;
+
+    void missionCB( const dbserver_comm::Mission & m );
+    void updateStatus();
 };
 
 #endif //__DB_MISSION_COMM__H__

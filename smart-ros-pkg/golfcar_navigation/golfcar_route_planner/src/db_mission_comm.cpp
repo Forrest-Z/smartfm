@@ -3,27 +3,74 @@
 #include "db_mission_comm.h"
 
 
-
-void PromptMissionComm::run()
+DBMissionComm::DBMissionComm( RoutePlanner & rp )
+    : routePlanner_(rp), stationList_(rp.sp_.knownStations()),
+      currentStation_(rp.currentStation_), state_(sWaitingMission)
 {
-    stationList_.print();
-    current_ = stationList_.prompt("Current station? ");
-    ROS_INFO("Current station set to %s. READY!", current_.c_str());
+    stateStr_.push_back("WaitingForAMission");
+    stateStr_.push_back("GoingToPickup");
+    stateStr_.push_back("GoingToDropoff");
+    stateStr_.push_back("AtPickup");
 
-    while( ros::ok() )
-    {
-        stationList_.print();
-        pickup_ = stationList_.prompt("Pickup station? ");
-        dropoff_ = stationList_.prompt("Drop off station? ");
+    startThread();
+}
+
+void DBMissionComm::setMission(const Station &s, const Station &e)
+{
+    if( state_!=sWaitingMission )
+        return;
+    pickup_ = s;
+    dropoff_ = e;
+    if( currentStation_ != pickup_ ) {
+        routePlanner_.setDestination(pickup_);
+        state_ = sGoingToPickup;
     }
+    else {
+        state_ = sAtPickup;
+    }
+    updateStatus();
+}
+
+void DBMissionComm::run()
+{
+    switch( state_ )
+    {
+    case sGoingToPickup:
+        if( routePlanner_.hasReached() ) {
+            state_ = sAtPickup;
+            updateStatus();
+        }
+        break;
+
+    case sGoingToDropoff:
+        if( routePlanner_.hasReached() ) {
+            state_ = sWaitingMission;
+            updateStatus();
+        }
+        break;
+
+    case sAtPickup:
+        routePlanner_.setDestination(dropoff_);
+        state_ = sGoingToDropoff;
+        updateStatus();
+        break;
+
+    default:
+        break;
+    }
+
+    ros::Duration(1).sleep();
 }
 
 
+void PromptMissionComm::updateStatus()
+{
+    ROS_INFO("New status: %s", stateStr_[state_].c_str());
+}
 
 
-
-DBServerMissionComm::DBServerMissionComm(MissionStateMachine & sm)
-    : DBMissionComm(sm)
+DBServerMissionComm::DBServerMissionComm(RoutePlanner & rp)
+    : DBMissionComm(rp)
 {
     sub = n.subscribe("missions/assignments", 1, &DBServerMissionComm::missionCB, this);
     pub = n.advertise<dbserver_comm::Mission>("missions/feedback", 1);
@@ -34,10 +81,7 @@ void DBServerMissionComm::missionCB( const dbserver_comm::Mission & m )
 
 }
 
-dbserver_comm::Mission DBServerMissionComm::waitForNewMission()
+void DBServerMissionComm::updateStatus()
 {
-    dbserver_comm::Mission m;
-    while( ros::ok() /* && !currentMission_ */ )
-        ros::Duration(1).sleep();
-    return m;
+
 }

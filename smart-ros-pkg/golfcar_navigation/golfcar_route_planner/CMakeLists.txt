@@ -30,5 +30,6 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 rosbuild_add_library(${PROJECT_NAME} src/station_path.cpp src/db_mission_comm.cpp src/route_planner.cpp src/route_planner_vehicle.cpp)
 rosbuild_add_executable(simple_goal src/simple_goal.cpp)
-# rosbuild_add_executable(route_planner_node src/route_planner_node.cpp)
+rosbuild_add_executable(route_planner_node src/route_planner_node.cpp)
+target_link_libraries(route_planner_node ${PROJECT_NAME})
 rosbuild_add_executable(svg_path_manipulator src/svg_path_manipulator.cpp)

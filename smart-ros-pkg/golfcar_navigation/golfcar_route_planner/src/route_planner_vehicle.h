@@ -29,7 +29,6 @@ public:
     RoutePlannerVehicle(StationPaths & sp);
 
 private:
-    ros::NodeHandle n;
     ros::Publisher waypoint_pub_;
     ros::Publisher g_plan_pub_;
     ros::Publisher pointCloud_pub_;

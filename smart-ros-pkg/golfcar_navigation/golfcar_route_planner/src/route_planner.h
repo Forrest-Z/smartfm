@@ -1,23 +1,21 @@
 #ifndef __ROUTE_PLANNER__H__
 #define __ROUTE_PLANNER__H__
 
-
+#include <ros/ros.h>
 #include <golfcar_route_planner/station_path.h>
 
 #include "threaded.h"
 
 
-class MissionStateMachine;
 class DBMissionComm;
 
 /// A base class for route planners
-class RoutePlanner : public Threaded
+class RoutePlanner : protected Threaded
 {
-    friend class MissionStateMachine;
     friend class DBMissionComm;
 
 public:
-    RoutePlanner(StationPaths & sp) : sp_(sp), state_(sIdle) { }
+    RoutePlanner(StationPaths & sp);
     void setDestination(const Station & s);
     bool hasReached() const { return state_ == sIdle; }
 
@@ -25,6 +23,7 @@ public:
 protected:
     enum State { sUninit, sIdle, sMoving };
 
+    ros::NodeHandle n;
     StationPaths & sp_;
     Station currentStation_, destination_;
     State state_;
@@ -37,6 +36,7 @@ protected:
 
 class DummyRoutePlanner : public RoutePlanner
 {
+public:
     DummyRoutePlanner(StationPaths & sp) : RoutePlanner(sp) { }
 protected:
     bool goToDest() { return true; }

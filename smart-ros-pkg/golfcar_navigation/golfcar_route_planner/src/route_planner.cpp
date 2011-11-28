@@ -1,5 +1,13 @@
 #include "route_planner.h"
 
+RoutePlanner::RoutePlanner(StationPaths & sp)
+    : sp_(sp), state_(sIdle)
+{
+    sp_.knownStations().print();
+    currentStation_ = sp_.knownStations().prompt("Current station? ");
+    startThread();
+}
+
 void RoutePlanner::setDestination(const Station & s)
 {
     destination_ = s;
@@ -12,9 +20,7 @@ void RoutePlanner::run()
     switch( state_ )
     {
     case sUninit:
-        if( sp_.knownStations().exists(currentStation_) )
-            state_ = sIdle;
-        ros::Duration(1).sleep();
+        state_ = sIdle;
         break;
 
     case sIdle:
