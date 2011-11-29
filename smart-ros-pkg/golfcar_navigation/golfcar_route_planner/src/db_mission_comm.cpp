@@ -1,5 +1,6 @@
 #include <ros/ros.h>
-
+#include <dbserver_comm/Mission.h>
+#include <dbserver_comm/MissionRequest.h>
 #include "db_mission_comm.h"
 
 
@@ -40,12 +41,14 @@ void DBMissionComm::run()
 
     case sGoingToDropoff:
         if( routePlanner_.hasReached() ) {
+            // TODO: wait for passenger to alight
             state_ = sWaitingMission;
             updateStatus();
         }
         break;
 
     case sAtPickup:
+        // TODO: wait for passenger to board
         routePlanner_.setDestination(dropoff_);
         state_ = sGoingToDropoff;
         updateStatus();
@@ -72,23 +75,31 @@ void PromptMissionComm::updateStatus()
 
 
 DBServerMissionComm::DBServerMissionComm(RoutePlanner & rp)
-    : DBMissionComm(rp)
+    : DBMissionComm(rp), currentMission_(0)
 {
-    sub = n.subscribe("missions/assignments", 1, &DBServerMissionComm::missionCB, this);
+    client = n.serviceClient<dbserver_comm::MissionRequest>("missions/assignments");
     pub = n.advertise<dbserver_comm::Mission>("missions/feedback", 1);
-}
-
-void DBServerMissionComm::missionCB( const dbserver_comm::Mission & m )
-{
-
 }
 
 void DBServerMissionComm::updateStatus()
 {
-
+    //TODO: update the dbserver: publish on missions/feedback
+    if( state_ == sWaitingMission ) {
+        delete currentMission_;
+        currentMission_ = 0;
+    }
 }
 
 void DBServerMissionComm::waitForMission()
 {
-
+    client.waitForExistence();
+    dbserver_comm::MissionRequest srv;
+    srv.request.blocking = true;
+    srv.request.checkStatus = false;
+    while( currentMission_==0 )
+        if( client.call(srv) )
+            currentMission_ = new dbserver_comm::Mission(srv.response.mission);
+    ROS_INFO("Got a new mission: from %s to %s", currentMission_->pickUpLocation.c_str(), currentMission_->dropOffLocation.c_str());
+    pickup_ = stationList_(currentMission_->pickUpLocation);
+    dropoff_ = stationList_(currentMission_->dropOffLocation);
 }

@@ -63,6 +63,12 @@ public:
     /// Returns the code of a station from its name
     const Station & operator() (const std::string & name) const throw(StationDoesNotExistException);
 
+    /// Returns a station from its code
+    const Station & get(unsigned i) const throw(StationDoesNotExistException);
+
+    /// Returns the code of a station from its name
+    const Station & get(const std::string & name) const throw(StationDoesNotExistException);
+
     /// Checks whether a station exists
     bool exists(const Station &) const throw();
 
@@ -83,7 +89,7 @@ public:
     StationIterator end() const { return knownStations_.end(); }
 
     void print() const;
-    Station prompt(const std::string & prompt) const;
+    const Station & prompt(const std::string & prompt) const throw(StationDoesNotExistException);
 };
 
 

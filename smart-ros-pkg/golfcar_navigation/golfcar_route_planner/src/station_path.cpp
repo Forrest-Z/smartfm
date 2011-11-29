@@ -20,21 +20,30 @@ StationList::StationList()
 const Station & StationList::operator () (unsigned i) const
 throw(StationDoesNotExistException)
 {
-    if( i>=knownStations_.size() ) throw StationDoesNotExistException(i);
-    return knownStations_[i];
+    return get(i);
 }
 
 const Station & StationList::operator() (const std::string & name) const
 throw(StationDoesNotExistException)
 {
-    bool found = false;
-    unsigned i=0;
-    for( ; i<knownStations_.size() && !found; i++ )
-        if( name==knownStations_[i].str() )
-            found = true;
-    if( !found )
-        throw StationDoesNotExistException(name);
+    return get(name);
+}
+
+const Station & StationList::get(unsigned i) const
+throw(StationDoesNotExistException)
+{
+    if( i>=knownStations_.size() ) throw StationDoesNotExistException(i);
     return knownStations_[i];
+}
+
+const Station & StationList::get(const std::string & name) const
+throw(StationDoesNotExistException)
+{
+    for( StationIterator i=begin(); i!=end(); ++i )
+        if( name == i->str() )
+            return *i;
+    throw StationDoesNotExistException(name);
+    return knownStations_[0]; //this is never reached, but needed to avoid compiler warning
 }
 
 bool StationList::exists(const Station & s) const throw()
@@ -64,7 +73,8 @@ void StationList::print() const
 }
 
 
-Station StationList::prompt(const string & prompt) const
+const Station & StationList::prompt(const string & prompt) const
+throw(StationDoesNotExistException)
 {
     while( ros::ok() )
     {
@@ -72,12 +82,15 @@ Station StationList::prompt(const string & prompt) const
         string temp = "";
         getline(cin, temp);
         int n = atoi(temp.c_str());
-        if( exists(n) )
-            return knownStations_[n];
-        else
+        try {
+            return get((unsigned)n);
+        }
+        catch( StationDoesNotExistException & e ) {
             cout <<"You have entered an invalid station." <<endl;
+        }
     }
-    return Station();
+
+    return get("invalid");
 }
 
 

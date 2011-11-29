@@ -52,9 +52,10 @@ public:
 
 private:
     ros::Publisher pub;
-    ros::Subscriber sub;
+    ros::ServiceClient client;
 
-    void missionCB( const dbserver_comm::Mission & m );
+    dbserver_comm::Mission *currentMission_;
+
     void updateStatus();
     void waitForMission();
 };
