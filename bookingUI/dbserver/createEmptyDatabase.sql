@@ -13,7 +13,7 @@ insert into stations values ('McDonald', 1.298116, 103.771209);
 drop table if exists vehicles;
 create table vehicles (
     vehicleID char(10) not null,
-    status enum('WaitingForAMission', 'GoingToPickupLocation', 'GoingToDropOffLocation', 'AtPickupLocation', 'NotAvailable') not null,
+    status enum('WaitingForAMission', 'GoingToPickupLocation', 'GoingToDropoffLocation', 'AtPickupLocation', 'NotAvailable') not null,
     latitude float(10,6),
     longitude float(10,6),
     eta int(6),

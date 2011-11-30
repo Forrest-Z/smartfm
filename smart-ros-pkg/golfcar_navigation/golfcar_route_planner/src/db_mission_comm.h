@@ -58,6 +58,7 @@ private:
 
     void updateStatus();
     void waitForMission();
+    void updateMission(const std::string &, const std::string &);
 };
 
 #endif //__DB_MISSION_COMM__H__

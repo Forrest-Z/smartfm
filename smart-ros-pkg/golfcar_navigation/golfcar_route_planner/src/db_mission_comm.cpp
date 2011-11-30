@@ -3,6 +3,7 @@
 #include <dbserver_comm/MissionRequest.h>
 #include "db_mission_comm.h"
 
+using std::string;
 
 DBMissionComm::DBMissionComm( RoutePlanner & rp )
     : routePlanner_(rp), stationList_(rp.sp_.knownStations()),
@@ -33,10 +34,20 @@ void DBMissionComm::run()
         break;
 
     case sGoingToPickup:
+        // TODO: check for mission cancel
+
         if( routePlanner_.hasReached() ) {
             state_ = sAtPickup;
             updateStatus();
         }
+        break;
+
+    case sAtPickup:
+        // TODO: check for mission cancel
+        // TODO: wait for passenger to board
+        routePlanner_.setDestination(dropoff_);
+        state_ = sGoingToDropoff;
+        updateStatus();
         break;
 
     case sGoingToDropoff:
@@ -45,13 +56,6 @@ void DBMissionComm::run()
             state_ = sWaitingMission;
             updateStatus();
         }
-        break;
-
-    case sAtPickup:
-        // TODO: wait for passenger to board
-        routePlanner_.setDestination(dropoff_);
-        state_ = sGoingToDropoff;
-        updateStatus();
         break;
     }
 
@@ -81,12 +85,34 @@ DBServerMissionComm::DBServerMissionComm(RoutePlanner & rp)
     pub = n.advertise<dbserver_comm::Mission>("missions/feedback", 1);
 }
 
+void DBServerMissionComm::updateMission(const string & status, const string & vehicleStatus)
+{
+    currentMission_->status = status;
+    currentMission_->vehicleStatus = vehicleStatus;
+    pub.publish(*currentMission_);
+}
+
 void DBServerMissionComm::updateStatus()
 {
-    //TODO: update the dbserver: publish on missions/feedback
-    if( state_ == sWaitingMission ) {
+    switch( state_ )
+    {
+    case sWaitingMission:
+        updateMission("Completed", "WaitingForAMission");
         delete currentMission_;
         currentMission_ = 0;
+        break;
+
+    case sGoingToPickup:
+        updateMission("Processing", "GoingToPickupLocation");
+        break;
+
+    case sGoingToDropoff:
+        updateMission("GoingToDropoffLocation", "Processing");
+        break;
+
+    case sAtPickup:
+        updateMission("AtPickupLocation", "Processing");
+        break;
     }
 }
 

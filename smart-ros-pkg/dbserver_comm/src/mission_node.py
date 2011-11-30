@@ -97,11 +97,11 @@ class MissionNode:
         with self.lock:
             if self.currentMission is None:
                 rospy.logdebug('Received a mission feedback but not following any mission now!')
-            elif self.currentMission.missionID != mission.missionID:
+            elif self.currentMission.requestID != mission.requestID:
                 rospy.logdebug('Received a mission feedback for a mission other than the one I am following now!')
             else:
                 self.dbserverComm.calldb('veh_update_status.php', {'Status': mission.vehicleStatus})
-                self.dbserverComm.calldb('veh_update_request.php', {'MissionID': mission.missionID, 'Status': mission.status})
+                self.dbserverComm.calldb('veh_update_request.php', {'RequestID': mission.requestID, 'Status': mission.status})
                 self.currentMission.status = mission.status
                 self.currentMission.vehicleStatus = mission.vehicleStatus
                 if self.currentMission.status == 'Completed':
