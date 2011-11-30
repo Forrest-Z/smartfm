@@ -39,7 +39,7 @@ while ($row = @mysql_fetch_assoc($result))
         $vid = $row['vehicleID'];
         $newnode->setAttribute("vehicleID", $vid);
         $sql = "SELECT * FROM vehicles WHERE VehicleID = '$vid'";
-        $res = mysql_query($sql, $con) or fatal('Select error: ' . mysql_error());
+        $res = mysql_query($sql, $con) or $xmlres->fatal('Select error: ' . mysql_error());
         while ($r = @mysql_fetch_assoc($res)) {
             $newnode->setAttribute("latitude", $r['latitude']);
             $newnode->setAttribute("longitude", $r['longitude']);

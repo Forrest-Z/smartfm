@@ -1,0 +1,2 @@
+rsync -avz -e ssh *.php *.sql FMAutonomy:/var/www/dbserver/
+ssh FMAutonomy "chmod a+r /var/www/dbserver/*"
