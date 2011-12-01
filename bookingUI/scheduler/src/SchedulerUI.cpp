@@ -3,7 +3,10 @@
 #include <string.h>
 #include <errno.h>
 #include <sys/poll.h>
-#include "SchedulerUI.hh"
+
+#include "SchedulerUI.h"
+
+#define DEFAULT_VEHICLE_ID 0
 
 using namespace std;
 
@@ -88,41 +91,41 @@ void SchedulerUI::initConsole()
     "                                                                                                    [%QUIT(Q)%]  \n";
     */
 
-  this->textFields[VEHICLE_ID].row = 3; 
+  this->textFields[VEHICLE_ID].row = 3;
   this->textFields[VEHICLE_ID].col = 10;
-  this->textFields[VEHICLE_STATUS].row = this->textFields[VEHICLE_ID].row; 
+  this->textFields[VEHICLE_STATUS].row = this->textFields[VEHICLE_ID].row;
   this->textFields[VEHICLE_STATUS].col = this->textFields[VEHICLE_ID].col + 33;
-  this->textFields[CURRENT_TASK_ID].row = this->textFields[VEHICLE_ID].row + 2; 
+  this->textFields[CURRENT_TASK_ID].row = this->textFields[VEHICLE_ID].row + 2;
   this->textFields[CURRENT_TASK_ID].col = 22;
-  this->textFields[CURRENT_TASK_PICKUP].row = this->textFields[CURRENT_TASK_ID].row + 1; 
+  this->textFields[CURRENT_TASK_PICKUP].row = this->textFields[CURRENT_TASK_ID].row + 1;
   this->textFields[CURRENT_TASK_PICKUP].col = 22;
-  this->textFields[CURRENT_TASK_DROPOFF].row = this->textFields[CURRENT_TASK_PICKUP].row + 1; 
+  this->textFields[CURRENT_TASK_DROPOFF].row = this->textFields[CURRENT_TASK_PICKUP].row + 1;
   this->textFields[CURRENT_TASK_DROPOFF].col = 22;
-  this->textFields[CURRENT_TASK_TIME_REMAINING].row = this->textFields[CURRENT_TASK_DROPOFF].row + 1; 
+  this->textFields[CURRENT_TASK_TIME_REMAINING].row = this->textFields[CURRENT_TASK_DROPOFF].row + 1;
   this->textFields[CURRENT_TASK_TIME_REMAINING].col = 22;
 
-  this->buttons[NEW_PICKUP].row = this->textFields[CURRENT_TASK_TIME_REMAINING].row + 3; 
+  this->buttons[NEW_PICKUP].row = this->textFields[CURRENT_TASK_TIME_REMAINING].row + 3;
   this->buttons[NEW_PICKUP].col = 17;
   strncpy(this->buttons[NEW_PICKUP].text, " ", sizeof(this->buttons[NEW_PICKUP].text) - 1);
-  this->buttons[NEW_DROPOFF].row = this->buttons[NEW_PICKUP].row; 
+  this->buttons[NEW_DROPOFF].row = this->buttons[NEW_PICKUP].row;
   this->buttons[NEW_DROPOFF].col = this->buttons[NEW_PICKUP].col + 26;
   strncpy(this->buttons[NEW_DROPOFF].text, " ", sizeof(this->buttons[NEW_DROPOFF].text) - 1);
-  this->buttons[VC_TASK_ID].row = this->buttons[NEW_PICKUP].row + 3; 
+  this->buttons[VC_TASK_ID].row = this->buttons[NEW_PICKUP].row + 3;
   this->buttons[VC_TASK_ID].col = 10;
   strncpy(this->buttons[VC_TASK_ID].text, " ", sizeof(this->buttons[VC_TASK_ID].text) - 1);
 
   this->textFields[NEW_TASK_ID].row = this->buttons[NEW_PICKUP].row + 1;
   this->textFields[NEW_TASK_ID].col = 3;
-  this->textFields[VC_TASK_VEHICLE_ID].row = this->buttons[VC_TASK_ID].row + 1; 
+  this->textFields[VC_TASK_VEHICLE_ID].row = this->buttons[VC_TASK_ID].row + 1;
   this->textFields[VC_TASK_VEHICLE_ID].col = 3;
-  this->textFields[VC_TASK_TIME_WAIT].row = this->textFields[VC_TASK_VEHICLE_ID].row + 1; 
+  this->textFields[VC_TASK_TIME_WAIT].row = this->textFields[VC_TASK_VEHICLE_ID].row + 1;
   this->textFields[VC_TASK_TIME_WAIT].col = 3;
 
   for(int i = 0; i < NUM_TASK_DISPLAY; i++) {
     this->textFields[TASK_LIST_START + i].row = 5+i;
     this->textFields[TASK_LIST_START + i].col = 64;
   }
-  
+
   this->buttons[ADD_TASK].row = this->buttons[NEW_PICKUP].row;
   this->buttons[ADD_TASK].col = this->buttons[NEW_DROPOFF].col + 10;
   strncpy(this->buttons[ADD_TASK].text, "ADD(A)", sizeof(this->buttons[ADD_TASK].text) - 1);
@@ -170,7 +173,7 @@ void SchedulerUI::initConsole()
   // Draw buttons
   this->drawButtons();
 
-  // Set up a stderr scrolling region  
+  // Set up a stderr scrolling region
   //int maxx, maxy;
   //getmaxyx(this->win, maxy, maxx);
   //this->stderrRowEnd = maxy - 3;
@@ -259,14 +262,14 @@ void SchedulerUI::updateStderr()
 
 void SchedulerUI::updateTaskList()
 {
-  list<Task> taskList = scheduler->getVehicleRemainingTasks();
+  list<Task> taskList = scheduler->getVehicleRemainingTasks(DEFAULT_VEHICLE_ID);
   int i = 0;
   list<Task>::iterator it;
   for ( it=taskList.begin(); it != taskList.end(); it++ ) {
     if (i < NUM_TASK_DISPLAY) {
       if (i%2 == 1)
 	wattrset(this->win, COLOR_PAIR(UI_CYAN_HIGHLIGHT));
-      mvwprintw(this->win, this->textFields[TASK_LIST_START + i].row, this->textFields[TASK_LIST_START + i].col, 
+      mvwprintw(this->win, this->textFields[TASK_LIST_START + i].row, this->textFields[TASK_LIST_START + i].col,
 		"%3d   %010d   %2d        %2d        %4d     ", it->id, it->customerID, it->pickup, it->dropoff, it->twait);
       wattrset(this->win, A_NORMAL);
     }
@@ -276,62 +279,62 @@ void SchedulerUI::updateTaskList()
   }
 
   for (; i < NUM_TASK_DISPLAY; i++) {
-    mvwprintw(this->win, this->textFields[TASK_LIST_START + i].row, this->textFields[TASK_LIST_START + i].col, 
+    mvwprintw(this->win, this->textFields[TASK_LIST_START + i].row, this->textFields[TASK_LIST_START + i].col,
 	     "%*s", 48, "");
   }
 }
 
 void SchedulerUI::updateVehicleStatus()
 {
-  int vehicleID = DEFAULT_VEHICLE_ID;
-  VehicleStatus vehStatus = scheduler->getVehicleStatus();
+  unsigned vehicleID = DEFAULT_VEHICLE_ID;
+  Scheduler::VehicleStatus vehStatus = scheduler->getVehicleStatus(DEFAULT_VEHICLE_ID);
   char vehStatusStr[64];
-  Task currentTask = scheduler->getVehicleCurrentTask();
-  
-  mvwprintw(this->win, this->textFields[VEHICLE_ID].row, this->textFields[VEHICLE_ID].col, 
+  Task currentTask = scheduler->getVehicleCurrentTask(DEFAULT_VEHICLE_ID);
+
+  mvwprintw(this->win, this->textFields[VEHICLE_ID].row, this->textFields[VEHICLE_ID].col,
 	    "%d", vehicleID);
-  if (vehStatus == VEHICLE_NOT_AVAILABLE)
+  if (vehStatus == Scheduler::VEHICLE_NOT_AVAILABLE)
     strncpy(vehStatusStr, "NOT AVAILABLE", sizeof(vehStatusStr) - 1);
-  else if (vehStatus == VEHICLE_ON_CALL)
+  else if (vehStatus == Scheduler::VEHICLE_ON_CALL)
     strncpy(vehStatusStr, "ON CALL      ", sizeof(vehStatusStr) - 1);
-  else if (vehStatus == VEHICLE_POB)
+  else if (vehStatus == Scheduler::VEHICLE_POB)
     strncpy(vehStatusStr, "POB          ", sizeof(vehStatusStr) - 1);
-  else if (vehStatus == VEHICLE_BUSY)
+  else if (vehStatus == Scheduler::VEHICLE_BUSY)
     strncpy(vehStatusStr, "BUSY         ", sizeof(vehStatusStr) - 1);
-  else if (vehStatus == VEHICLE_AVAILABLE)
+  else if (vehStatus == Scheduler::VEHICLE_AVAILABLE)
     strncpy(vehStatusStr, "AVAILABLE    ", sizeof(vehStatusStr) - 1);
   else
     strncpy(vehStatusStr, "UNKNOWN      ", sizeof(vehStatusStr) - 1);
 
-  mvwprintw(this->win, this->textFields[VEHICLE_STATUS].row, this->textFields[VEHICLE_STATUS].col, 
+  mvwprintw(this->win, this->textFields[VEHICLE_STATUS].row, this->textFields[VEHICLE_STATUS].col,
 	    "%s", vehStatusStr);
 
   if (currentTask.id > 0) {
-    mvwprintw(this->win, this->textFields[CURRENT_TASK_ID].row, 
-	      this->textFields[CURRENT_TASK_ID].col, 
+    mvwprintw(this->win, this->textFields[CURRENT_TASK_ID].row,
+	      this->textFields[CURRENT_TASK_ID].col,
 	      "%3d      ", currentTask.id);
-    mvwprintw(this->win, this->textFields[CURRENT_TASK_PICKUP].row, 
-	      this->textFields[CURRENT_TASK_PICKUP].col, 
+    mvwprintw(this->win, this->textFields[CURRENT_TASK_PICKUP].row,
+	      this->textFields[CURRENT_TASK_PICKUP].col,
 	      "%3d      ", currentTask.pickup);
-    mvwprintw(this->win, this->textFields[CURRENT_TASK_DROPOFF].row, 
-	      this->textFields[CURRENT_TASK_DROPOFF].col, 
+    mvwprintw(this->win, this->textFields[CURRENT_TASK_DROPOFF].row,
+	      this->textFields[CURRENT_TASK_DROPOFF].col,
 	      "%3d      ", currentTask.dropoff);
-    mvwprintw(this->win, this->textFields[CURRENT_TASK_TIME_REMAINING].row, 
-	      this->textFields[CURRENT_TASK_TIME_REMAINING].col, 
+    mvwprintw(this->win, this->textFields[CURRENT_TASK_TIME_REMAINING].row,
+	      this->textFields[CURRENT_TASK_TIME_REMAINING].col,
 	      "%3d      ", currentTask.tpickup + currentTask.ttask);
   }
   else {
-    mvwprintw(this->win, this->textFields[CURRENT_TASK_ID].row, 
-	      this->textFields[CURRENT_TASK_ID].col, 
+    mvwprintw(this->win, this->textFields[CURRENT_TASK_ID].row,
+	      this->textFields[CURRENT_TASK_ID].col,
 	      "         ");
-    mvwprintw(this->win, this->textFields[CURRENT_TASK_PICKUP].row, 
-	      this->textFields[CURRENT_TASK_PICKUP].col, 
+    mvwprintw(this->win, this->textFields[CURRENT_TASK_PICKUP].row,
+	      this->textFields[CURRENT_TASK_PICKUP].col,
 	      "         ");
-    mvwprintw(this->win, this->textFields[CURRENT_TASK_DROPOFF].row, 
-	      this->textFields[CURRENT_TASK_DROPOFF].col, 
+    mvwprintw(this->win, this->textFields[CURRENT_TASK_DROPOFF].row,
+	      this->textFields[CURRENT_TASK_DROPOFF].col,
 	      "         ");
-    mvwprintw(this->win, this->textFields[CURRENT_TASK_TIME_REMAINING].row, 
-	      this->textFields[CURRENT_TASK_TIME_REMAINING].col, 
+    mvwprintw(this->win, this->textFields[CURRENT_TASK_TIME_REMAINING].row,
+	      this->textFields[CURRENT_TASK_TIME_REMAINING].col,
 	      "         ");
   }
 }
@@ -349,11 +352,11 @@ void SchedulerUI::processKeyboard(int ch)
     }
   }
   else if (ch == KEY_DOWN) {
-    if (this->focusButtonInd == NEW_PICKUP || this->focusButtonInd == NEW_DROPOFF 
+    if (this->focusButtonInd == NEW_PICKUP || this->focusButtonInd == NEW_DROPOFF
 	|| this->focusButtonInd == ADD_TASK) {
       this->focusButtonInd += 3;
     }
-    else if (this->focusButtonInd == VC_TASK_ID || this->focusButtonInd == VIEW_TASK 
+    else if (this->focusButtonInd == VC_TASK_ID || this->focusButtonInd == VIEW_TASK
 	     || this->focusButtonInd == CANCEL_TASK) {
       this->focusButtonInd = QUIT_SCHEDULER;
     }
@@ -362,12 +365,12 @@ void SchedulerUI::processKeyboard(int ch)
     if (this->focusButtonInd == QUIT_SCHEDULER) {
       this->focusButtonInd = CANCEL_TASK;
     }
-    else if (this->focusButtonInd == VC_TASK_ID || this->focusButtonInd == VIEW_TASK 
+    else if (this->focusButtonInd == VC_TASK_ID || this->focusButtonInd == VIEW_TASK
 	     || this->focusButtonInd == CANCEL_TASK) {
       this->focusButtonInd -= 3;
     }
   }
-    
+
   if (this->focusButtonInd != NEW_PICKUP)
     this->focusNewPickup = false;
   if (this->focusButtonInd != NEW_DROPOFF)
@@ -393,7 +396,7 @@ void SchedulerUI::processKeyboard(int ch)
        this->focusButtonInd == VC_TASK_ID) &&
       strlen(this->buttons[this->focusButtonInd].text) > 0) {
     this->buttons[this->focusButtonInd].text[strlen(this->buttons[this->focusButtonInd].text) - 1] = 0;
-    mvwprintw(this->win, this->buttons[this->focusButtonInd].row, this->buttons[this->focusButtonInd].col, 
+    mvwprintw(this->win, this->buttons[this->focusButtonInd].row, this->buttons[this->focusButtonInd].col,
 	      "%s ", this->buttons[this->focusButtonInd].text);
   }
 
@@ -409,71 +412,71 @@ void SchedulerUI::processKeyboard(int ch)
 
   // Get new pick up location
   if (this->focusButtonInd == NEW_PICKUP && ch >= '0' && ch <= '9') {
-    if (!this->focusNewPickup || 
+    if (!this->focusNewPickup ||
 	(strlen(this->buttons[NEW_PICKUP].text) == 1 && this->buttons[NEW_PICKUP].text[0] == ' ')) {
       this->buttons[NEW_PICKUP].text[0] = ch;
       for (int i = 1; i < sizeof(this->buttons[NEW_PICKUP].text); i++)
 	this->buttons[NEW_PICKUP].text[i] = 0;
-      mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
+      mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col,
 		"                                            ");
     }
     else if (strlen(this->buttons[NEW_PICKUP].text) < sizeof(this->buttons[NEW_PICKUP].text))
       this->buttons[NEW_PICKUP].text[strlen(this->buttons[NEW_PICKUP].text)] = ch;
 
     this->focusNewPickup = true;
-    mvwprintw(this->win, this->buttons[NEW_PICKUP].row, this->buttons[NEW_PICKUP].col, 
+    mvwprintw(this->win, this->buttons[NEW_PICKUP].row, this->buttons[NEW_PICKUP].col,
 	      this->buttons[NEW_PICKUP].text);
     if (strlen(this->buttons[NEW_PICKUP].text) < this->newPickupTextSize)
-      mvwprintw(this->win, this->buttons[NEW_PICKUP].row, 
-		this->buttons[NEW_PICKUP].col+strlen(this->buttons[NEW_PICKUP].text), 
+      mvwprintw(this->win, this->buttons[NEW_PICKUP].row,
+		this->buttons[NEW_PICKUP].col+strlen(this->buttons[NEW_PICKUP].text),
 		"%*s", this->newPickupTextSize - strlen(this->buttons[NEW_PICKUP].text) , "");
     this->newPickupTextSize = strlen(this->buttons[NEW_PICKUP].text);
   }
 
   // Get new dropoff location
   if (this->focusButtonInd == NEW_DROPOFF && ch >= '0' && ch <= '9') {
-    if (!this->focusNewDropoff || 
+    if (!this->focusNewDropoff ||
 	(strlen(this->buttons[NEW_DROPOFF].text) == 1 && this->buttons[NEW_DROPOFF].text[0] == ' ')) {
       this->buttons[NEW_DROPOFF].text[0] = ch;
       for (int i = 1; i < sizeof(this->buttons[NEW_DROPOFF].text); i++)
 	this->buttons[NEW_DROPOFF].text[i] = 0;
-      mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
+      mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col,
 		"                                            ");
     }
     else if (strlen(this->buttons[NEW_DROPOFF].text) < sizeof(this->buttons[NEW_DROPOFF].text))
       this->buttons[NEW_DROPOFF].text[strlen(this->buttons[NEW_DROPOFF].text)] = ch;
 
     this->focusNewDropoff = true;
-    mvwprintw(this->win, this->buttons[NEW_DROPOFF].row, this->buttons[NEW_DROPOFF].col, 
+    mvwprintw(this->win, this->buttons[NEW_DROPOFF].row, this->buttons[NEW_DROPOFF].col,
 	      this->buttons[NEW_DROPOFF].text);
     if (strlen(this->buttons[NEW_DROPOFF].text) < this->newDropoffTextSize)
-      mvwprintw(this->win, this->buttons[NEW_DROPOFF].row, 
-		this->buttons[NEW_DROPOFF].col+strlen(this->buttons[NEW_DROPOFF].text), 
+      mvwprintw(this->win, this->buttons[NEW_DROPOFF].row,
+		this->buttons[NEW_DROPOFF].col+strlen(this->buttons[NEW_DROPOFF].text),
 		"%*s", this->newDropoffTextSize - strlen(this->buttons[NEW_DROPOFF].text) , "");
     this->newDropoffTextSize = strlen(this->buttons[NEW_DROPOFF].text);
   }
 
   // Get task ID to be viewed or cancelled
   if (this->focusButtonInd == VC_TASK_ID && ch >= '0' && ch <= '9') {
-    if (!this->focusTaskID || 
+    if (!this->focusTaskID ||
 	(strlen(this->buttons[VC_TASK_ID].text) == 1 && this->buttons[VC_TASK_ID].text[0] == ' ')) {
       this->buttons[VC_TASK_ID].text[0] = ch;
       for (int i = 1; i < sizeof(this->buttons[VC_TASK_ID].text); i++)
 	this->buttons[VC_TASK_ID].text[i] = 0;
-      mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col, 
+      mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col,
 		"                                                          ");
-      mvwprintw(this->win, this->textFields[VC_TASK_TIME_WAIT].row, this->textFields[VC_TASK_TIME_WAIT].col, 
+      mvwprintw(this->win, this->textFields[VC_TASK_TIME_WAIT].row, this->textFields[VC_TASK_TIME_WAIT].col,
 		"                                                          ");
     }
     else if (strlen(this->buttons[VC_TASK_ID].text) < sizeof(this->buttons[VC_TASK_ID].text))
       this->buttons[VC_TASK_ID].text[strlen(this->buttons[VC_TASK_ID].text)] = ch;
 
     this->focusTaskID = true;
-    mvwprintw(this->win, this->buttons[VC_TASK_ID].row, this->buttons[VC_TASK_ID].col, 
+    mvwprintw(this->win, this->buttons[VC_TASK_ID].row, this->buttons[VC_TASK_ID].col,
 	      this->buttons[VC_TASK_ID].text);
     if (strlen(this->buttons[VC_TASK_ID].text) < this->taskIDTextSize)
-      mvwprintw(this->win, this->buttons[VC_TASK_ID].row, 
-		this->buttons[VC_TASK_ID].col+strlen(this->buttons[VC_TASK_ID].text), 
+      mvwprintw(this->win, this->buttons[VC_TASK_ID].row,
+		this->buttons[VC_TASK_ID].col+strlen(this->buttons[VC_TASK_ID].text),
 		"%*s", this->taskIDTextSize - strlen(this->buttons[VC_TASK_ID].text) , "");
     this->taskIDTextSize = strlen(this->buttons[VC_TASK_ID].text);
   }
@@ -484,7 +487,7 @@ void SchedulerUI::onUserViewTask()
   // Check that all the characters are between 0 and 9
   if (strlen(this->buttons[VC_TASK_ID].text) == 0) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-    mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col, 
+    mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col,
 	      "Invalid Task ID!                                           ");
     wattrset(this->win, A_NORMAL);
     return;
@@ -493,27 +496,27 @@ void SchedulerUI::onUserViewTask()
     if (this->buttons[VC_TASK_ID].text[i] < '0' ||
 	this->buttons[VC_TASK_ID].text[i] > '9') {
       wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-      mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col, 
+      mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col,
 		"Invalid Task ID!                                           ");
       wattrset(this->win, A_NORMAL);
       return;
     }
   }
-  
+
   int taskID = atoi(this->buttons[VC_TASK_ID].text);
   int waitTime = scheduler->getWaitTime(taskID);
   if (waitTime >= 0) {
     Task task = scheduler->getTask(taskID);
-    mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col, 
+    mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col,
 	      "Vehicle ID:   %2d\t\tPickup station:  %2d        ", DEFAULT_VEHICLE_ID, task.pickup);
-    mvwprintw(this->win, this->textFields[VC_TASK_TIME_WAIT].row, this->textFields[VC_TASK_TIME_WAIT].col, 
+    mvwprintw(this->win, this->textFields[VC_TASK_TIME_WAIT].row, this->textFields[VC_TASK_TIME_WAIT].col,
 	      "Waiting time: %2d\t\tDropoff station: %2d        ", waitTime, task.dropoff);
   }
   else {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-    mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col, 
+    mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col,
 	      "Invalid Task ID!                                           ");
-    mvwprintw(this->win, this->textFields[VC_TASK_TIME_WAIT].row, this->textFields[VC_TASK_TIME_WAIT].col, 
+    mvwprintw(this->win, this->textFields[VC_TASK_TIME_WAIT].row, this->textFields[VC_TASK_TIME_WAIT].col,
 	      "                                                           ");
     wattrset(this->win, A_NORMAL);
   }
@@ -524,7 +527,7 @@ void SchedulerUI::onUserCancelTask()
   // Check that all the characters are between 0 and 9
   if (strlen(this->buttons[VC_TASK_ID].text) == 0) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-    mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col, 
+    mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col,
 	      "Invalid Task ID!                                           ");
     wattrset(this->win, A_NORMAL);
     return;
@@ -533,28 +536,28 @@ void SchedulerUI::onUserCancelTask()
     if (this->buttons[VC_TASK_ID].text[i] < '0' ||
 	this->buttons[VC_TASK_ID].text[i] > '9') {
       wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-      mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col, 
+      mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col,
 		"Invalid Task ID!                                           ");
       wattrset(this->win, A_NORMAL);
       return;
     }
   }
-  
+
   int taskID = atoi(this->buttons[VC_TASK_ID].text);
   bool ret = scheduler->removeTask(taskID);
   if (ret) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_GREEN) | A_BOLD);
-    mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col, 
+    mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col,
 	      "Task %d removed!                                           ", taskID);
     wattrset(this->win, A_NORMAL);
   }
   else {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-    mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col, 
+    mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col,
 	      "Invalid Task ID!                                           ");
     wattrset(this->win, A_NORMAL);
   }
-  mvwprintw(this->win, this->textFields[VC_TASK_TIME_WAIT].row, this->textFields[VC_TASK_TIME_WAIT].col, 
+  mvwprintw(this->win, this->textFields[VC_TASK_TIME_WAIT].row, this->textFields[VC_TASK_TIME_WAIT].col,
 	    "                                                           ");
 }
 
@@ -563,7 +566,7 @@ void SchedulerUI::onUserAddTask()
   // Check that all the characters are between 0 and 9
   if (strlen(this->buttons[NEW_PICKUP].text) == 0) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
+    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col,
 	      "Invalid pickup station!             ");
     wattrset(this->win, A_NORMAL);
     return;
@@ -572,16 +575,16 @@ void SchedulerUI::onUserAddTask()
     if (this->buttons[NEW_PICKUP].text[i] < '0' ||
 	this->buttons[NEW_PICKUP].text[i] > '9') {
       wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-      mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
+      mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col,
 		"Invalid pickup station!           ");
       wattrset(this->win, A_NORMAL);
       return;
     }
   }
-  
+
   if (strlen(this->buttons[NEW_DROPOFF].text) == 0) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
+    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col,
 	      "Invalid dropoff station!            ");
     wattrset(this->win, A_NORMAL);
     return;
@@ -590,7 +593,7 @@ void SchedulerUI::onUserAddTask()
     if (this->buttons[NEW_DROPOFF].text[i] < '0' ||
 	this->buttons[NEW_DROPOFF].text[i] > '9') {
       wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-      mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
+      mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col,
 		"Invalid dropoff station!          ");
       wattrset(this->win, A_NORMAL);
       return;
@@ -599,35 +602,35 @@ void SchedulerUI::onUserAddTask()
 
   int pickup = atoi(this->buttons[NEW_PICKUP].text);
   int dropoff = atoi(this->buttons[NEW_DROPOFF].text);
-  int ret = scheduler->addTask(OPERATOR_ID, OPERATOR_TASK_ID, pickup, dropoff);
+  int ret = scheduler->addTask(0, 0, pickup, dropoff);
 
   if (ret > 0) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_GREEN) | A_BOLD);
-    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
+    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col,
 	      "Added task ID %d: <%d, %d>          ", ret, pickup, dropoff);
     wattrset(this->win, A_NORMAL);
   }
   else if (ret == INVALID_PICKUP) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
+    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col,
 	      "Invalid pickup station!             ");
     wattrset(this->win, A_NORMAL);
   }
   else if (ret == INVALID_DROPOFF) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
+    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col,
 	      "Invalid dropoff station!            ");
     wattrset(this->win, A_NORMAL);
   }
   else if (ret == INVALID_PICKUP_DROPOFF_PAIR) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
+    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col,
 	      "Invalid pickup-dropoff pair!        ");
     wattrset(this->win, A_NORMAL);
   }
   else if (ret == NO_AVAILABLE_VEHICLE) {
     wattrset(this->win, COLOR_PAIR(UI_TEXT_COLOR_RED) | A_BOLD);
-    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col, 
+    mvwprintw(this->win, this->textFields[NEW_TASK_ID].row, this->textFields[NEW_TASK_ID].col,
 	      "Vehicles not available!             ");
     wattrset(this->win, A_NORMAL);
   }

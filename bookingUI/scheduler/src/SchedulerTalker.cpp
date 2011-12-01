@@ -4,8 +4,8 @@
 #include <sstream>
 #include <time.h>
 #include <sys/stat.h>
-#include "socket_handler.hh"
-#include "SchedulerTalker.hh"
+
+#include "SchedulerTalker.h"
 
 using namespace std;
 

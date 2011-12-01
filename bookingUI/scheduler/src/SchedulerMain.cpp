@@ -7,10 +7,11 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <string.h>
-#include "Scheduler.hh"
-#include "SchedulerUI.hh"
-#include "SchedulerTalker.hh"
-#include "VehicleTalker.hh"
+
+#include "Scheduler.h"
+#include "SchedulerUI.h"
+#include "SchedulerTalker.h"
+#include "VehicleTalker.h"
 
 using namespace std;
 
@@ -96,21 +97,21 @@ void sigintHandler(int /*sig*/)
 }
 
 
-/* Prints usage information for this program to STREAM (typically stdout 
+/* Prints usage information for this program to STREAM (typically stdout
    or stderr), and exit the program with EXIT_CODE. Does not return. */
 void print_usage (FILE* stream, int exit_code)
 {
   fprintf( stream, "Usage:  %s [options]\n", PROGRAM_NAME );
-  fprintf( stream, "  --host hostname   Specify the IP address of the server for talking to mobile phone. The default is localhost.\n");  
-  fprintf( stream, "  --mport mport     Specify the port for talking to mobile phones (any number between 2000 and 65535). The default is 4440.\n");  
-  fprintf( stream, "  --vport vport     Specify the port for talking to the vehicle (any number between 2000 and 65535). The default is 4444.\n");  
-  fprintf( stream, "  --verbose         See the status of the program at every step.\n");    
-  fprintf( stream, "  --nogui           Run in plain text mode.\n");    
-  fprintf( stream, "  --nomobile        Do not receive request from mobile phones.\n");  
-  fprintf( stream, "  --simmobile       Simulate mobile phone users.\n");  
-  fprintf( stream, "  --simvehicle      Simulate vehicles' status.\n");   
-  fprintf( stream, "  --simtime         Simulate remaining time of current task.\n"); 
-  fprintf( stream, "  --noop            Do not interact with operator when --nogui option is given.\n");   
+  fprintf( stream, "  --host hostname   Specify the IP address of the server for talking to mobile phone. The default is localhost.\n");
+  fprintf( stream, "  --mport mport     Specify the port for talking to mobile phones (any number between 2000 and 65535). The default is 4440.\n");
+  fprintf( stream, "  --vport vport     Specify the port for talking to the vehicle (any number between 2000 and 65535). The default is 4444.\n");
+  fprintf( stream, "  --verbose         See the status of the program at every step.\n");
+  fprintf( stream, "  --nogui           Run in plain text mode.\n");
+  fprintf( stream, "  --nomobile        Do not receive request from mobile phones.\n");
+  fprintf( stream, "  --simmobile       Simulate mobile phone users.\n");
+  fprintf( stream, "  --simvehicle      Simulate vehicles' status.\n");
+  fprintf( stream, "  --simtime         Simulate remaining time of current task.\n");
+  fprintf( stream, "  --noop            Do not interact with operator when --nogui option is given.\n");
   fprintf( stream, "  --help            Display this message.\n");
   exit(exit_code);
 }
@@ -177,7 +178,7 @@ int main(int argc, char **argv)
   const char* const short_options = "hp:H:";
 
   /* An array describing valid long options. */
-  static struct option long_options[] = 
+  static struct option long_options[] =
   {
     // first: long option (--option) string
     // second: 0 = no_argument, 1 = required_argument, 2 = optional_argument
@@ -209,17 +210,17 @@ int main(int argc, char **argv)
     {
     case 'h':
       /* User has requested usage information. Print it to standard
-	 output, and exit with exit code zero (normal 
+	 output, and exit with exit code zero (normal
 	 termination). */
       print_usage(stdout, 0);
       break;
-      
+
     case '?': /* The user specified an invalid option. */
       /* Print usage information to standard error, and exit with exit
 	 code one (indicating abnormal termination). */
       print_usage(stderr, 1);
       break;
-      
+
     case 'H':
       HOST_NAME = optarg;
       break;
@@ -252,8 +253,8 @@ int main(int argc, char **argv)
   oss  << "log_scheduler" << "." << timestr << ".log";
   string logFileName = oss.str();
   string suffix = "";
-  
-  // if it exists already, append .1, .2, .3 ... 
+
+  // if it exists already, append .1, .2, .3 ...
   for (int i = 1; stat((logFileName + suffix).c_str(), &st) == 0; i++) {
     ostringstream tmp;
     tmp << '.' << i;
@@ -292,7 +293,7 @@ int main(int argc, char **argv)
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    int ret = pthread_create(&talkerThread, &attr, 
+    int ret = pthread_create(&talkerThread, &attr,
 			     thunk<SchedulerTalker, &SchedulerTalker::runMobileReceiver>,
 			     schedulerTalker);
     if (ret != 0)
@@ -307,7 +308,7 @@ int main(int argc, char **argv)
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    int ret = pthread_create(&vehicleThread, &attr, 
+    int ret = pthread_create(&vehicleThread, &attr,
 			     thunk<VehicleTalker, &VehicleTalker::runVehicleReceiver>,
 			     vehicleTalker);
     MSG("Vehicle ready.");
@@ -317,7 +318,7 @@ int main(int argc, char **argv)
   previousTime = time(NULL);
 
   while(QUIT == 0)
-  {   
+  {
     if (!NOOP && NOGUI)
       pthread_mutex_lock(&schedulerMutex);
     else if (!NOGUI)
@@ -345,7 +346,7 @@ int main(int argc, char **argv)
 
     // Update vehicle status, waiting time and send new task to vehicle if it has completes the previous task.
     update();
-  
+
     // Report waiting time
     if (time(NULL) - prevTimeTaskInfo > NUM_SEC_TASK_INFO_SENT) {
       prevTimeTaskInfo = time(NULL);
@@ -394,9 +395,9 @@ int main(int argc, char **argv)
 void reportInvalidMobileTask(Task task, int errorCode)
 {
   if (!NOMOBILE && !SIMULATE_MOBILE) {
-    schedulerTalker->sendTaskStatus(task.customerID, task.taskID, 
+    schedulerTalker->sendTaskStatus(task.customerID, task.taskID,
 				    -1, errorCode);
-    fprintf (logFile, "\n%d: Sending status: %d:%d:%d:%d to the server", (int) time(NULL), task.customerID, task.taskID, 
+    fprintf (logFile, "\n%d: Sending status: %d:%d:%d:%d to the server", (int) time(NULL), task.customerID, task.taskID,
 	     -1, errorCode);
   }
   else {
@@ -411,7 +412,7 @@ void reportInvalidMobileTask(Task task, int errorCode)
       strncpy(errMessage, "Vehicles not available", sizeof(errMessage) - 1);
     else
       strncpy(errMessage, "Task not exist", sizeof(errMessage) - 1);
-    
+
     ERROR("Task %d <%d,%d> from customer %d is invalid: %s", task.id, task.pickup, task.dropoff, task.customerID, errMessage);
   }
 }
@@ -424,9 +425,9 @@ void sendMobileTaskStatus()
     list<Task> tasks = scheduler->getVehicleRemainingTasks();
 
     if (vehStatus == VEHICLE_ON_CALL && currentTask.customerID != OPERATOR_ID) {
-      schedulerTalker->sendTaskStatus(currentTask.customerID, currentTask.taskID, 
+      schedulerTalker->sendTaskStatus(currentTask.customerID, currentTask.taskID,
 				      currentTask.tpickup, currentTask.vehicleID);
-      fprintf (logFile, "\n%d: Sending status: %d:%d:%d:%d to the server", (int) time(NULL), currentTask.customerID, currentTask.taskID, 
+      fprintf (logFile, "\n%d: Sending status: %d:%d:%d:%d to the server", (int) time(NULL), currentTask.customerID, currentTask.taskID,
 	       currentTask.tpickup, currentTask.vehicleID);
     }
 
@@ -497,7 +498,7 @@ VehicleInfo getVehicleInfo(int vehicleID)
   info.vehicleID = DEFAULT_VEHICLE_ID;
   time_t currentTime = time(NULL);
   time_t timeDiff = (currentTime - previousTime)/NUM_SECONDS_IN_MIN;
-  
+
   if (timeDiff > 0)
     previousTime = currentTime;
 
@@ -568,10 +569,10 @@ int addTask(Task task)
 {
   if (VERBOSITY_LEVEL > 0 && NOGUI)
     cout << endl;
-  
+
   int ret = scheduler->addTask(task.customerID, task.taskID, task.pickup, task.dropoff);
   fprintf (logFile, "\n%d: Added task %d:%d:%d:%d to the scheduler", (int) time(NULL), task.customerID, task.taskID, task.pickup, task.dropoff);
-  
+
   if (VERBOSITY_LEVEL > 0 && NOGUI) {
     cout << "After adding task..." << endl;
     cout << "Task queue:" << endl;
@@ -599,11 +600,11 @@ void update()
     if (scheduler->checkTask()) {
       if (VERBOSITY_LEVEL > 0 && NOGUI)
 	cout << endl;
-      
+
       currentTask = scheduler->getVehicleNextTask();
       sendTask2Vehicle(currentTask);
       vehicleIsAvailable = false;
-      
+
       if (VERBOSITY_LEVEL > 0 && NOGUI) {
 	cout << endl;
 	cout << "After task sent..." << endl;
@@ -623,19 +624,19 @@ void update()
     scheduler->updateTCurrent(vehInfo.tremain);
     currentTask = scheduler->getVehicleCurrentTask();
     fprintf (logFile, "\n%d: Updated vehicle status to %d", (int) time(NULL), vehStatus, vehInfo.tremain);
-    
+
     if (VERBOSITY_LEVEL > 0 && NOGUI) {
       cout << endl;
       cout << "Updated remaining time to " << vehInfo.tremain << endl;
     }
   }
-  
+
   // Update waiting time
   if (VERBOSITY_LEVEL > 0 && NOGUI)
     cout << endl;
-  
+
   scheduler->updateWaitTime();
-  
+
   if (VERBOSITY_LEVEL > 0 && NOGUI) {
     cout << "After updating waiting time..." << endl;
     cout << "Task queue:" << endl;
@@ -662,9 +663,9 @@ Task getOpTaskInfo()
   Task task;
   int pickup, dropoff;
   task.id = 0;
-  printf ("  Enter the pick-up location: "); 
-  scanf ("%d",&pickup); 
-  printf ("  Enter the drop-off location: "); 
+  printf ("  Enter the pick-up location: ");
+  scanf ("%d",&pickup);
+  printf ("  Enter the drop-off location: ");
   scanf ("%d",&dropoff);
   task.pickup = pickup;
   task.dropoff = dropoff;
@@ -676,7 +677,7 @@ int getOpRemoveTaskID()
 {
   int id;
   printf ("  Enter id of task to be removed: ");
-  scanf ("%d", &id); 
+  scanf ("%d", &id);
   return id;
 }
 
@@ -685,9 +686,9 @@ bool opRemoveTask(int taskID)
 {
   if (VERBOSITY_LEVEL > 0 && NOGUI)
     cout << endl;
-  
+
   bool taskRemoved = scheduler->removeTask(taskID);
-  
+
   if (VERBOSITY_LEVEL > 0 && NOGUI) {
     cout << "After removing task..." << endl;
     cout << "Task queue:" << endl;

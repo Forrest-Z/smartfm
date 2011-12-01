@@ -1,9 +1,9 @@
 #ifndef SCHEDULERUI_HH_
 #define SCHEDULERUI_HH_
 
-#include <pthread.h>
 #include <ncurses.h>
-#include "Scheduler.hh"
+
+#include "Scheduler.h"
 
 namespace std
 {

@@ -4,8 +4,8 @@
 #include <sstream>
 #include <time.h>
 #include <sys/stat.h>
-#include "VehicleTalker.hh"
-#include "socket_handler.hh"
+
+#include "VehicleTalker.h"
 
 using namespace std;
 
