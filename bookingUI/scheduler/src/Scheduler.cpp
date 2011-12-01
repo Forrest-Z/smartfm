@@ -76,7 +76,7 @@ Scheduler::Scheduler(unsigned verbosity_level)
     this->nextTaskID = 1;
 }
 
-void Scheduler::addTask(unsigned customerID, unsigned taskID, Station pickup, Station dropoff)
+unsigned Scheduler::addTask(unsigned customerID, unsigned taskID, Station pickup, Station dropoff)
 {
     /*
     if(pickup == -1 || dropoff == -1)
@@ -160,6 +160,7 @@ void Scheduler::addTask(unsigned customerID, unsigned taskID, Station pickup, St
             updateWaitTime(task.vehicleID);
         }
     }
+    return task.id;
 }
 
 void Scheduler::removeTask(unsigned id)

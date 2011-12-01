@@ -92,11 +92,13 @@ public:
         VEHICLE_AVAILABLE = 4
     };
 
+    const StationPaths stationPaths;
+
+
 private:
     /// The ordered sequence of tasks
     Task currentTask[NUM_VEHICLES];
     std::list<Task> taskAssignment[NUM_VEHICLES];
-    StationPaths stationPaths;
     VehicleStatus vehStatus[NUM_VEHICLES];
     unsigned nextTaskID;
 
@@ -107,9 +109,9 @@ public:
     /// Default Constructor
     Scheduler(unsigned verbosity_level);
 
-    /// Method to add a task
-    void addTask(unsigned customerID, unsigned taskID,
-                 Station pickup, Station dropoff);
+    /// Method to add a task. Returns the taskid.
+    unsigned addTask(unsigned customerID, unsigned taskID,
+                     Station pickup, Station dropoff);
 
     /// Method to remove a task
     void removeTask(unsigned taskID);

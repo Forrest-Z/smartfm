@@ -1,19 +1,17 @@
-#ifndef SCHEDULERUI_HH_
-#define SCHEDULERUI_HH_
+#ifndef __SCHEDULER_UI__H__
+#define __SCHEDULER_UI__H__
 
 #include <ncurses.h>
 
 #include "Scheduler.h"
 
-namespace std
-{
 
 const int NUM_TASK_DISPLAY = 12;
 const int CURSOR_ROW = 21;
 const int CURSOR_COL = 0;
 
 enum UITextToken
-  {
+{
     VEHICLE_ID = 0,
     VEHICLE_STATUS,
     CURRENT_TASK_ID,
@@ -26,10 +24,10 @@ enum UITextToken
     UI_USER_FIELD_LAST,
     TASK_LIST_START,
     UI_TEXT_TOKEN_LAST
-  };
+};
 
 enum UIButtonToken
-  {
+{
     NEW_PICKUP = 0,
     NEW_DROPOFF,
     ADD_TASK,
@@ -38,13 +36,21 @@ enum UIButtonToken
     CANCEL_TASK,
     QUIT_SCHEDULER,
     UI_BUTTON_TOKEN_LAST
-  };
+};
 
 enum SchedulerStatus
-  {
+{
     SCHEDULER_RUNNING,
     SCHEDULER_QUIT
-  };
+};
+
+enum UITextColor {
+    UI_TEXT_COLOR_RED=1,
+    UI_TEXT_COLOR_GREEN,
+    UI_TEXT_COLOR_MAGENTA,
+    UI_CYAN_HIGHLIGHT
+};
+
 
 struct UIText
 {
@@ -58,71 +64,73 @@ struct UIButton
   char key;        // Bound key
 };
 
+
 class SchedulerUI
 {
-  // Window handle
-  WINDOW *win;
+    // Window handle
+    WINDOW *win;
 
-  // Scheduler
-  Scheduler* scheduler;
+    // Scheduler
+    Scheduler* scheduler;
 
-  // Fields in the UI
-  UIText textFields[UI_TEXT_TOKEN_LAST + NUM_TASK_DISPLAY - 1];
-  UIButton buttons[UI_BUTTON_TOKEN_LAST];
-  int focusButtonInd;
-  bool focusNewPickup, focusNewDropoff, focusTaskID;
-  int newPickupTextSize, newDropoffTextSize, taskIDTextSize;
+    // Fields in the UI
+    UIText textFields[UI_TEXT_TOKEN_LAST + NUM_TASK_DISPLAY - 1];
+    UIButton buttons[UI_BUTTON_TOKEN_LAST];
+    int focusButtonInd;
+    bool focusNewPickup, focusNewDropoff, focusTaskID;
+    int newPickupTextSize, newDropoffTextSize, taskIDTextSize;
 
-  // Region for for stderr (scrolling)
-  int stderrRowBegin;
-  int stderrRowEnd;
+    // Region for for stderr (scrolling)
+    int stderrRowBegin;
+    int stderrRowEnd;
 
-  // Re-directed file descriptors for stderr
-  int stderrFDS[2];
+    // Re-directed file descriptors for stderr
+    int stderrFDS[2];
 
-  // Status of the scheduler
-  SchedulerStatus schedulerStatus;
+    // Status of the scheduler
+    SchedulerStatus schedulerStatus;
 
 public:
-  // Default constructor
-  SchedulerUI(Scheduler* scheduler);
+    // Default constructor
+    SchedulerUI(Scheduler* scheduler);
 
-  // Default destructor
-  ~SchedulerUI();
+    // Default destructor
+    ~SchedulerUI();
 
-  // Initialize console display
-  void initConsole();
+    // Initialize console display
+    void initConsole();
 
-  // Finalize console display
-  void finishConsole();
+    // Finalize console display
+    void finishConsole();
 
-  // Update console
-  void updateConsole();
+    // Update console
+    void updateConsole();
 
-  // Get status of scheduler
-  SchedulerStatus getSchedulerStatus();
+    // Get status of scheduler
+    SchedulerStatus getSchedulerStatus();
 
 private:
-  // Draw button
-  void drawButtons();
+    // Draw button
+    void drawButtons();
 
-  // Update stderr
-  void updateStderr();
+    // Update stderr
+    void updateStderr();
 
-  // Update task list
-  void updateTaskList();
+    // Update task list
+    void updateTaskList();
 
-  // Update vehicle status, including current task
-  void updateVehicleStatus();
+    // Update vehicle status, including current task
+    void updateVehicleStatus();
 
-  // Update keyboard
-  void processKeyboard(int);
+    // Update keyboard
+    void processKeyboard(int);
 
-  void onUserViewTask();
-  void onUserCancelTask();
-  void onUserAddTask();
+    void onUserViewTask();
+    void onUserCancelTask();
+    void onUserAddTask();
+
+    void printText(UITextToken field, UITextColor c, const char *fmt, ...);
+    void printButton(UIButtonToken field, UITextColor c, const char *fmt, ...);
 };
 
-} // namespace std
-
-#endif /*SCHEDULERUI_HH_*/
+#endif /*__SCHEDULER_UI__H__*/
