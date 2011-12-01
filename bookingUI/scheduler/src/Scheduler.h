@@ -5,7 +5,7 @@
 #include <list>
 #include <exception>
 
-#include "station_path.h"
+#include "StationNetwork.h"
 
 #define NUM_VEHICLES 1
 
