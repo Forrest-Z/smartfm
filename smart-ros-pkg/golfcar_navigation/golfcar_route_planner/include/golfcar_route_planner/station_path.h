@@ -10,8 +10,6 @@
 #include <exception>
 #include <string>
 
-#include <geometry_msgs/Point.h>
-
 
 class StationList;
 
@@ -93,15 +91,19 @@ public:
 };
 
 
-
-
-typedef std::vector<geometry_msgs::Point> StationPath;
-
-
-namespace station_path
+class PathPoint
 {
-double distance(const geometry_msgs::Point &p1, const geometry_msgs::Point &p2);
-}
+public:
+    double x_, y_;
+
+    PathPoint() : x_(0), y_(0) { }
+    PathPoint(double x, double y) : x_(x), y_(y) { }
+
+    static double distance(const PathPoint &p1, const PathPoint &p2);
+};
+
+typedef std::vector<PathPoint> StationPath;
+
 
 /// A class that holds the paths between the different stations.
 class StationPaths

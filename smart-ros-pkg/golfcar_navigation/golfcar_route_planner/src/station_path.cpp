@@ -64,7 +64,6 @@ bool StationList::exists(const std::string & s) const throw()
     return false;
 }
 
-
 void StationList::print() const
 {
     cout << "Station list:" <<endl;
@@ -94,6 +93,13 @@ throw(StationDoesNotExistException)
 }
 
 
+double PathPoint::distance(const PathPoint &p1, const PathPoint &p2)
+{
+    return sqrt( pow(p1.x_-p2.x_,2) + pow(p1.y_-p2.y_,2) );
+}
+
+
+
 #define /*7*/DCC_MCD {1046,2220},{1066,2271},{1448,3116},{1575, 3153}, {1600,3218}, {1566, 3278}, {1496,3266}//{1471,3094},{1526,3108},{1590,3130},{1608,3185},{1574,3230},{1526,3229}
 #define /*8*/MCD_DCC/* {1526,3229},{1490,3177},{1430,3062},{1118,2406},*/{1464,3215}, {1447, 3116}, {1382,3029}, {1169,2556},{1104,2348},{1066,2271},{1046,2220}
 
@@ -101,8 +107,6 @@ throw(StationDoesNotExistException)
 #define /*33*/EA_DCC {1008, 276}, {1006,284},{960,266},{900,248},{853,233},{817,244},{794,266},{776,294},{746,353},{675,481},{639,561},{588,683},{497,912},{410,1175},{399,1229},{374,1721},{325,2217},{334,2270},{368,2296},{420,2293},{472,2250},{522,2186},{558,2131},{588,2084},{622,2047},{663,2010},{720,1986},{776,1980},{833,1982},{892,2008},{943,2044},{983,2099},{1009,2130}
 #define /*6*/E3A_EA {1833,650},{1800,610},{1789,573},{1740,545},{1415,434},{1298,400}
 #define /*8*/EA_E3A {1423,415},{1856,563},{1938,596},{1966,619},{1976,654},{1948,682},/*{1946,676},*/{1909,682},{1868,670}
-
-
 
 int dcc_mcd[][2] = {DCC_MCD};
 int mcd_dcc[][2] = {MCD_DCC};
@@ -129,16 +133,6 @@ int path_points_32[][2] = {E3A_EA, {1206, 442}, {1172, 432}, {1116, 412}};
 
 #define NPTS(v) sizeof(v)/sizeof(v[0])
 
-namespace station_path
-{
-
-double distance(const geometry_msgs::Point &p1, const geometry_msgs::Point &p2)
-{
-    return sqrt((p1.x-p2.x)*(p1.x-p2.x)+(p1.y-p2.y)*(p1.y-p2.y));
-}
-
-} //namespace station_path
-
 
 ///Stores an array of points into the given path. Point coordinates are
 ///converted from pixel number to map coordinates.
@@ -150,13 +144,13 @@ void storeIntoStationPaths(int path_points[][2], StationPath *path, unsigned siz
     cout <<"Path size: " <<size <<". ";
     for(unsigned i=0; i<size; i++)
     {
-        geometry_msgs::Point p;
-        p.x = path_points[i][0]*res;
-        p.y = (y_pixels - path_points[i][1])*res;
+        PathPoint p;
+        p.x_ = path_points[i][0]*res;
+        p.y_ = (y_pixels - path_points[i][1])*res;
         path->push_back(p);
 
         if(i>0)
-            distance += station_path::distance(path->at(i),path->at(i-1));
+            distance += PathPoint::distance(path->at(i),path->at(i-1));
     }
     cout <<"Distance= " <<distance <<endl;
 }
@@ -179,7 +173,7 @@ void printInterPointsDistance()
     {
         cout <<endl;
         for(unsigned j=1; j<main_paths[0][i].size(); j++) {
-            double d = station_path::distance(main_paths[0][i][j-1], main_paths[0][i][j]);
+            double d = PathPoint::distance(main_paths[0][i][j-1], main_paths[0][i][j]);
             cout <<d <<endl;
         }
         cout <<endl;
@@ -190,7 +184,7 @@ void printInterPointsDistance()
 void printPath(const StationPath &p)
 {
     for(unsigned i=0; i<p.size(); i++)
-        cout <<p[i].x <<',' <<p[i].y <<'\t';
+        cout <<p[i].x_ <<',' <<p[i].y_ <<'\t';
     cout <<endl;
 }
 
@@ -205,7 +199,7 @@ void addPointsInPath(StationPath *p)
 
     for(StationPath::iterator it = path.begin(); it<path.end()-1; it++)
     {
-        double dist = station_path::distance(*it, *(it+1));
+        double dist = PathPoint::distance(*it, *(it+1));
         //cout<<dist<<endl;
         if(dist>max_straight)
         {
@@ -213,14 +207,14 @@ void addPointsInPath(StationPath *p)
             //cout<<endl<<"Start x y "<< it->x<<' '<<it->y<<" End x y "<< (it+1)->x<<' '<<(it+1)->y<<":"<<endl;
             double inc = max_straight/dist;
             //cout<<"adding segment with inc "<<inc<<" with distance of "<<dist<<"path size "<<path.size()<<endl;
-            double x_1 = it->x, y_1 = it->y;
-            double x_2 = (it+1)->x, y_2 = (it+1)->y;
+            double x_1 = it->x_, y_1 = it->y_;
+            double x_2 = (it+1)->x_, y_2 = (it+1)->y_;
             for(double t=inc; t<1; t+=inc)
             {
                 it++;
-                geometry_msgs::Point p;
-                p.x = x_1 + t * (x_2 - x_1);
-                p.y = y_1 + t * (y_2 - y_1);
+                PathPoint p;
+                p.x_ = x_1 + t * (x_2 - x_1);
+                p.y_ = y_1 + t * (y_2 - y_1);
                 it = path.insert(it, p);
 
                 //cout<<p.x<<' '<<p.y<<'\t';
@@ -239,7 +233,7 @@ void addPointsInPath(StationPath *p)
 
 StationPaths::StationPaths()
 {
-    const unsigned NSTATIONS( knownStations_.size() );
+    const unsigned NSTATIONS = knownStations_.size();
     stationPaths_.resize(NSTATIONS);
     for(unsigned i=0; i<NSTATIONS; i++)
         stationPaths_[i].resize(NSTATIONS);
@@ -277,4 +271,3 @@ const StationPath & StationPaths::getPath(const Station & pickup, const Station 
         throw StationDoesNotExistException("Invalid station");
     return stationPaths_[pickup.number()][dropoff.number()];
 }
-

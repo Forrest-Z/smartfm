@@ -30,14 +30,15 @@ bool RoutePlannerVehicle::goToDest()
     ROS_INFO_THROTTLE(3, "Going to %s. Distance=%.0f.", destination_.c_str(), distanceToGoal());
 
     geometry_msgs::PoseStamped map_pose;
-    map_pose.pose.position = path_[waypointNo_];
+    map_pose.pose.position.x = path_[waypointNo_].x_;
+    map_pose.pose.position.y = path_[waypointNo_].y_;
     double map_yaw = 0;
     if( waypointNo_ < path_.size()-1 ) {
-        map_yaw = atan2(path_[waypointNo_+1].y - path_[waypointNo_].y, path_[waypointNo_+1].x - path_[waypointNo_].x);
+        map_yaw = atan2(path_[waypointNo_+1].y_ - path_[waypointNo_].y_, path_[waypointNo_+1].x_ - path_[waypointNo_].x_);
     }
     else {
         assert(waypointNo_!=0);
-        map_yaw = atan2(path_[waypointNo_].y - path_[waypointNo_-1].y, path_[waypointNo_].x - path_[waypointNo_-1].x);
+        map_yaw = atan2(path_[waypointNo_].y_ - path_[waypointNo_-1].y_, path_[waypointNo_].x_ - path_[waypointNo_-1].x_);
     }
 
     map_pose.pose.orientation = tf::createQuaternionMsgFromYaw(map_yaw);
@@ -59,7 +60,7 @@ bool RoutePlannerVehicle::goToDest()
     //get how near it is to the goal point, if reaches the threshold, send the next point
     double mapx = map_pose.pose.position.x, mapy = map_pose.pose.position.y;
     double robotx = global_pose_.getOrigin().x(), roboty = global_pose_.getOrigin().y();
-    double d = sqrt((mapx-robotx)*(mapx-robotx)+(mapy-roboty)*(mapy-roboty));
+    double d = sqrt(pow(mapx-robotx,2)+pow(mapy-roboty,2));
 
     if( waypointNo_ < path_.size()-1 && d < 4 )
         waypointNo_++;
@@ -78,8 +79,8 @@ void RoutePlannerVehicle::pubPathVis()
     p.poses.resize(path_.size());
     for( unsigned i=0; i<path_.size(); i++ )
     {
-        p.poses[i].pose.position.x = path_[i].x;
-        p.poses[i].pose.position.y = path_[i].y;
+        p.poses[i].pose.position.x = path_[i].x_;
+        p.poses[i].pose.position.y = path_[i].y_;
         p.poses[i].pose.orientation.w = 1.0;
     }
     g_plan_pub_.publish(p);
@@ -91,12 +92,10 @@ double RoutePlannerVehicle::distanceToGoal()
     double d = 0;
 
     for( unsigned i = waypointNo_+1; i<path_.size(); i++ )
-        d += station_path::distance(path_[i-1], path_[i]);
+        d += PathPoint::distance(path_[i-1], path_[i]);
 
-    geometry_msgs::Point p;
-    p.x = global_pose_.getOrigin().x();
-    p.y = global_pose_.getOrigin().y();
-    d += station_path::distance(p, path_[waypointNo_]);
+    PathPoint p(global_pose_.getOrigin().x(), global_pose_.getOrigin().y());
+    d += PathPoint::distance(p, path_[waypointNo_]);
 
     return d;
 }
