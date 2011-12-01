@@ -102,7 +102,14 @@ public:
     static double distance(const PathPoint &p1, const PathPoint &p2);
 };
 
-typedef std::vector<PathPoint> StationPath;
+class StationPath : public std::vector<PathPoint>
+{
+    double length_;
+public:
+    StationPath() : length_(0.0) { }
+    double recomputeLength();
+    double length() const { return length_; }
+};
 
 
 /// A class that holds the paths between the different stations.

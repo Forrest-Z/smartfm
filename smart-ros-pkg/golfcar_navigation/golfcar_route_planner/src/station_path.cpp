@@ -101,6 +101,15 @@ double PathPoint::distance(const PathPoint &p1, const PathPoint &p2)
 
 
 
+double StationPath::recomputeLength()
+{
+    length_ = 0.0;
+    for( unsigned i=1; i<size(); i++ )
+        length_ += PathPoint::distance(this->at(i-1), this->at(i));
+    return length_;
+}
+
+
 #define /*7*/DCC_MCD {1046,2220},{1066,2271},{1448,3116},{1575, 3153}, {1600,3218}, {1566, 3278}, {1496,3266}//{1471,3094},{1526,3108},{1590,3130},{1608,3185},{1574,3230},{1526,3229}
 #define /*8*/MCD_DCC/* {1526,3229},{1490,3177},{1430,3062},{1118,2406},*/{1464,3215}, {1447, 3116}, {1382,3029}, {1169,2556},{1104,2348},{1066,2271},{1046,2220}
 
@@ -141,7 +150,6 @@ void storeIntoStationPaths(int path_points[][2], StationPath *path, unsigned siz
 {
     double res = 0.1;
     int y_pixels = 3536;
-    double distance=0;
     cout <<"Path size: " <<size <<". ";
     for(unsigned i=0; i<size; i++)
     {
@@ -149,11 +157,8 @@ void storeIntoStationPaths(int path_points[][2], StationPath *path, unsigned siz
         p.x_ = path_points[i][0]*res;
         p.y_ = (y_pixels - path_points[i][1])*res;
         path->push_back(p);
-
-        if(i>0)
-            distance += PathPoint::distance(path->at(i),path->at(i-1));
     }
-    cout <<"Distance= " <<distance <<endl;
+    cout <<"Length= " <<path->recomputeLength() <<endl;
 }
 
 
@@ -228,6 +233,7 @@ void addPointsInPath(StationPath *p)
             }
         }
     }
+    path.recomputeLength();
 }
 
 
