@@ -5,7 +5,7 @@
 #include <list>
 #include <exception>
 
-#include "StationNetwork.h"
+#include <station_path.h>
 
 #define NUM_VEHICLES 1
 
@@ -31,10 +31,10 @@ public:
     unsigned vehicleID;
 
     /// ID of the pick-up (origin) station
-    StationNetwork::StationID pickup;
+    Station pickup;
 
     /// ID of the drop-off (destination) station
-    StationNetwork::StationID dropoff;
+    Station dropoff;
 
     /// Time from this pickup to dropoff
     Duration ttask;
@@ -49,7 +49,7 @@ public:
 public:
     Task() : valid(false) { }
 
-    Task(unsigned id, unsigned customerID, unsigned taskID, unsigned vehicleID, StationNetwork::StationID pickup, StationNetwork::StationID dropoff);
+    Task(unsigned id, unsigned customerID, unsigned taskID, unsigned vehicleID, Station pickup, Station dropoff);
 
     std::string toString() const;
 
@@ -62,7 +62,6 @@ class SchedulerException : public std::exception
 public:
     enum SchedulerExceptionTypes
     {
-        INVALID_PICKUP_DROPOFF_PAIR,
         NO_AVAILABLE_VEHICLE,
         TASK_NOT_EXIST,
         INVALID_VEHICLE_ID,
@@ -97,7 +96,7 @@ private:
     /// The ordered sequence of tasks
     Task currentTask[NUM_VEHICLES];
     std::list<Task> taskAssignment[NUM_VEHICLES];
-    StationNetwork stNetwork;
+    StationPaths stationPaths;
     VehicleStatus vehStatus[NUM_VEHICLES];
     unsigned nextTaskID;
 
@@ -110,7 +109,7 @@ public:
 
     /// Method to add a task
     void addTask(unsigned customerID, unsigned taskID,
-                 StationNetwork::StationID pickup, StationNetwork::StationID dropoff);
+                 Station pickup, Station dropoff);
 
     /// Method to remove a task
     void removeTask(unsigned taskID);
@@ -162,7 +161,7 @@ public:
 
 private:
     /// Returns travel time. Throws SchedulerException if stations or route cannot be found.
-    unsigned travelTime(StationNetwork::StationID pickup, StationNetwork::StationID dropoff);
+    unsigned travelTime(Station pickup, Station dropoff);
 };
 
 

@@ -32,7 +32,6 @@ SchedulerException::SchedulerException(SchedulerExceptionTypes t) throw()
     type_ = t;
     switch(type_)
     {
-        __CASE(INVALID_PICKUP_DROPOFF_PAIR);
         __CASE(NO_AVAILABLE_VEHICLE);
         __CASE(TASK_NOT_EXIST);
         __CASE(INVALID_VEHICLE_ID);
@@ -43,7 +42,7 @@ SchedulerException::SchedulerException(SchedulerExceptionTypes t) throw()
 
 
 Task::Task(unsigned id, unsigned customerID, unsigned taskID, unsigned vehicleID,
-           StationNetwork::StationID pickup, StationNetwork::StationID dropoff)
+           Station pickup, Station dropoff)
 {
     this->id = id;
     this->customerID = customerID;
@@ -62,7 +61,7 @@ Task::Task(unsigned id, unsigned customerID, unsigned taskID, unsigned vehicleID
 string Task::toString() const
 {
     stringstream s("");
-    s << "<" <<  id << "," << customerID << "," << taskID << "," << pickup << "," << dropoff << ","
+    s << "<" <<  id << "," << customerID << "," << taskID << "," << pickup.str() << "," << dropoff.str() << ","
     << tpickup << "," << ttask << "," << twait << ">";
     return s.str();
 }
@@ -77,9 +76,7 @@ Scheduler::Scheduler(unsigned verbosity_level)
     this->nextTaskID = 1;
 }
 
-void Scheduler::addTask(unsigned customerID, unsigned taskID,
-                        StationNetwork::StationID pickup,
-                        StationNetwork::StationID dropoff)
+void Scheduler::addTask(unsigned customerID, unsigned taskID, Station pickup, Station dropoff)
 {
     /*
     if(pickup == -1 || dropoff == -1)
@@ -107,7 +104,7 @@ void Scheduler::addTask(unsigned customerID, unsigned taskID,
     Task task(this->nextTaskID++, customerID, taskID, DEFAULT_VEHICLE_ID, pickup, dropoff);
 
     if (this->verbosity_level > 0)
-        MSG("Adding task <%u,%u,%d,%d>", task.id, task.customerID, task.pickup, task.dropoff);
+        MSG("Adding task <%u,%u,%s,%s>", task.id, task.customerID, task.pickup.c_str(), task.dropoff.c_str());
 
     task.ttask = travelTime(task.pickup, task.dropoff);
 
@@ -125,7 +122,7 @@ void Scheduler::addTask(unsigned customerID, unsigned taskID,
         unsigned tdp1 = 0;
         // Time from this task dropoff to next task pickup
         unsigned tdp2 = 0;
-        StationNetwork::StationID prevDropoff = this->currentTask[task.vehicleID].dropoff;
+        Station prevDropoff = this->currentTask[task.vehicleID].dropoff;
 
         list<Task>::iterator it = this->taskAssignment[task.vehicleID].begin();
         for ( ; it != this->taskAssignment[task.vehicleID].end(); ++it )
@@ -172,7 +169,7 @@ void Scheduler::removeTask(unsigned id)
 
     for (unsigned i = 0; i < NUM_VEHICLES; i++)
     {
-        StationNetwork::StationID prevDropoff = this->currentTask[i].dropoff;
+        Station prevDropoff = this->currentTask[i].dropoff;
         list<Task>::iterator it = this->taskAssignment[i].begin();
         for ( ; it != this->taskAssignment[i].end(); it++ )
         {
@@ -199,7 +196,7 @@ void Scheduler::removeTask(unsigned customerID, unsigned taskID)
 
     for (unsigned i = 0; i < NUM_VEHICLES; i++)
     {
-        StationNetwork::StationID prevDropoff = this->currentTask[i].dropoff;
+        Station prevDropoff = this->currentTask[i].dropoff;
         list<Task>::iterator it = this->taskAssignment[i].begin();
         for ( ; it != this->taskAssignment[i].end(); it++ )
         {
@@ -248,7 +245,7 @@ Task Scheduler::getVehicleNextTask(unsigned vehicleID)
     this->vehStatus[vehicleID] = VEHICLE_ON_CALL;
     updateWaitTime(vehicleID);
     if (this->verbosity_level > 0)
-        MSG("Giving task <%u,%d,%d> to vehicle %u", task.id, task.pickup, task.dropoff, vehicleID);
+        MSG("Giving task <%u,%s,%s> to vehicle %u", task.id, task.pickup.c_str(), task.dropoff.c_str(), vehicleID);
     return task;
 }
 
@@ -409,12 +406,9 @@ void Scheduler::printTasks()
     }
 }
 
-Duration Scheduler::travelTime(StationNetwork::StationID pickup, StationNetwork::StationID dropoff)
+Duration Scheduler::travelTime(Station pickup, Station dropoff)
 {
-    int taskTime = this->stNetwork.travelTime(pickup, dropoff);
-    if (taskTime < 0) {
-        ERROR("Invalid pickup-dropoff pair (%d, %d)", pickup , dropoff);
-        throw SchedulerException(SchedulerException::INVALID_PICKUP_DROPOFF_PAIR);
-    }
-    return (Duration)taskTime;
+    double vel = 1.0;
+    double length = this->stationPaths.getPath(pickup, dropoff).length();
+    return (Duration)(length*vel);
 }
