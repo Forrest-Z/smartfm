@@ -42,14 +42,14 @@ bool GlobalPlan::makePlan(const geometry_msgs::PoseStamped&  start,
     {
         p.poses[i].header.frame_id = "/map";
         p.poses[i].header.stamp = ros::Time::now();
-        p.poses[i].pose.position.x = station_path[i].x;
-        p.poses[i].pose.position.y = station_path[i].y;
+        p.poses[i].pose.position.x = station_path[i].x_;
+        p.poses[i].pose.position.y = station_path[i].y_;
         p.poses[i].pose.orientation.w = 1.0;
         geometry_msgs::PoseStamped pl;
         pl.header.frame_id = "/map";
         pl.header.stamp = ros::Time::now();
-        pl.pose.position.x = station_path[i].x;
-        pl.pose.position.y = station_path[i].y;
+        pl.pose.position.x = station_path[i].x_;
+        pl.pose.position.y = station_path[i].y_;
         pl.pose.orientation.w = 1.0;
         plan.push_back(pl);
     }

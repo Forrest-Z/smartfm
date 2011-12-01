@@ -1,11 +1,12 @@
 /** Paths between the different stations are encoded here as lists of waypoints. */
 
+#include <stdlib.h>
+#include <math.h>
 
 #include <vector>
 #include <iostream>
 using namespace std;
 
-#include <ros/ros.h>
 #include <golfcar_route_planner/station_path.h>
 
 
@@ -75,7 +76,7 @@ void StationList::print() const
 const Station & StationList::prompt(const string & prompt) const
 throw(StationDoesNotExistException)
 {
-    while( ros::ok() )
+    while( true )
     {
         cout <<prompt;
         string temp = "";
