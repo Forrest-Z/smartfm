@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string>
 
+#include "socket_handler.h"
 
 class SchedulerTalker
 {

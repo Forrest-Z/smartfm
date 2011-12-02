@@ -8,5 +8,5 @@ set(STATION_PATH_DIR "../../smart-ros-pkg/golfcar_navigation/golfcar_route_plann
 include_directories("${STATION_PATH_DIR}/include/golfcar_route_planner")
 LINK_DIRECTORIES( ${LINK_DIRECTORIES} "${STATION_PATH_DIR}/lib" )
 
-add_executable(scheduler src/Scheduler.cpp src/SchedulerUI.cpp src/SchedulerTalker.cpp src/VehicleTalker.cpp src/SchedulerMain.cpp)
+add_executable(scheduler src/Socket.cpp src/ClientSocket.cpp src/ServerSocket.cpp src/Scheduler.cpp src/SchedulerUI.cpp src/SchedulerTalker.cpp src/VehicleTalker.cpp src/SchedulerMain.cpp)
 target_link_libraries(scheduler stationpath)

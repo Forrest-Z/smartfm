@@ -22,7 +22,7 @@ VehicleTalker::VehicleTalker(int port, int verbosityLevel)
 {
     m_quit = false;
     m_newStatusRecv = false;
-    m_vehInfo.status = VEHICLE_NOT_AVAILABLE;
+    m_vehInfo.status = Scheduler::VEHICLE_NOT_AVAILABLE;
     m_vehInfo.tremain = 1000000;
     m_verbosity = verbosityLevel;
     pthread_mutex_init(&m_statusMutex, NULL);
@@ -222,19 +222,19 @@ void VehicleTalker::runVehicleReceiver()
                         pthread_mutex_lock(&m_statusMutex);
                         m_vehInfo.vehicleID = atoi(vehIDStr.c_str());
                         int vehStatus = atoi(vehStatusStr.c_str());
-                        if (vehStatus == VEHICLE_NOT_AVAILABLE)
-                            m_vehInfo.status = VEHICLE_NOT_AVAILABLE;
-                        else if (vehStatus == VEHICLE_ON_CALL)
-                            m_vehInfo.status = VEHICLE_ON_CALL;
-                        else if (vehStatus == VEHICLE_POB)
-                            m_vehInfo.status = VEHICLE_POB;
-                        else if (vehStatus == VEHICLE_BUSY)
-                            m_vehInfo.status = VEHICLE_BUSY;
-                        else if (vehStatus == VEHICLE_AVAILABLE)
-                            m_vehInfo.status = VEHICLE_AVAILABLE;
+                        if (vehStatus == Scheduler::VEHICLE_NOT_AVAILABLE)
+                            m_vehInfo.status = Scheduler::VEHICLE_NOT_AVAILABLE;
+                        else if (vehStatus == Scheduler::VEHICLE_ON_CALL)
+                            m_vehInfo.status = Scheduler::VEHICLE_ON_CALL;
+                        else if (vehStatus == Scheduler::VEHICLE_POB)
+                            m_vehInfo.status = Scheduler::VEHICLE_POB;
+                        else if (vehStatus == Scheduler::VEHICLE_BUSY)
+                            m_vehInfo.status = Scheduler::VEHICLE_BUSY;
+                        else if (vehStatus == Scheduler::VEHICLE_AVAILABLE)
+                            m_vehInfo.status = Scheduler::VEHICLE_AVAILABLE;
                         else {
                             ERROR("Invalid vehicle status: %s", vehStatusStr.c_str());
-                            m_vehInfo.status = VEHICLE_NOT_AVAILABLE;
+                            m_vehInfo.status = Scheduler::VEHICLE_NOT_AVAILABLE;
                         }
                         m_vehInfo.tremain = atoi(tremainStr.c_str());
                         m_newStatusRecv = true;

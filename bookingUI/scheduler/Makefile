@@ -1,2 +1,5 @@
 all:
-	make -C build
+	$(MAKE) -C build
+
+clean:
+	$(MAKE) clean -C build

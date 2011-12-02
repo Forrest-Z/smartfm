@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include "Scheduler.h"
+#include "socket_handler.h"
 
 
 struct VehicleInfo
@@ -13,7 +14,7 @@ struct VehicleInfo
     int vehicleID;
 
     // Status of the vehicle
-    VehicleStatus status;
+    Scheduler::VehicleStatus status;
 
     // Whether this is a new status
     bool isNew;
