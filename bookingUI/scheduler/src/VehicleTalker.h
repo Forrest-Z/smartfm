@@ -6,19 +6,20 @@
 
 #include "Scheduler.h"
 
+
 struct VehicleInfo
 {
-  // ID of the vehicle
-  int vehicleID;
+    // ID of the vehicle
+    int vehicleID;
 
-  // Status of the vehicle
-  std::VehicleStatus status;
+    // Status of the vehicle
+    VehicleStatus status;
 
-  // Whether this is a new status
-  bool isNew;
+    // Whether this is a new status
+    bool isNew;
 
-  // Time to dropoff (if status is POB) or to pickup (if status is ON_CALL)
-  int tremain;
+    // Time to dropoff (if status is POB) or to pickup (if status is ON_CALL)
+    int tremain;
 };
 
 
