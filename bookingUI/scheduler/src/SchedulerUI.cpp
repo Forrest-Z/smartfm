@@ -37,7 +37,7 @@ void SchedulerUI::initConsole()
     " Vehicle Scheduler \n"
     "-----------------------------------------------------------------------------------------------------------------\n"
     " Vehicle:                          Status:                    |                       Tasks                      \n"
-    "   Current task                                               |  ID    Customer  Pick-Up  Drop-Off  Waiting Time \n"
+    "   Current task                                               |  ID | Customer |  Pick-Up   |  Drop-Off  | tWait \n"
     "     ID:                                                      |                                                  \n"
     "     Pickup station:                                          |                                                  \n"
     "     Dropoff station:                                         |                                                  \n"
@@ -264,9 +264,10 @@ void SchedulerUI::updateTaskList()
             //if (i%2 == 1) wattrset(this->win, COLOR_PAIR(UI_CYAN_HIGHLIGHT));
             mvwprintw(this->win, this->textFields[TASK_LIST_START + i].row,
                       this->textFields[TASK_LIST_START + i].col,
-                      "%3d   %010d   %10s       %10s       %4d     ",
-                      it->id, it->customerID, it->pickup.c_str(),
-                      it->dropoff.c_str(), it->twait);
+                      /*|  ID | Customer |  Pick-Up   |  Drop-Off  | tWait \n*/
+                      "%3d | %8d | %10s | %10s | %5d",
+                      it->id, it->customerID, it->pickup.str().substr(0,10).c_str(),
+                      it->dropoff.str().substr(0,10).c_str(), it->twait);
             wattrset(this->win, A_NORMAL);
         }
         else
