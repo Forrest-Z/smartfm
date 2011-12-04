@@ -34,7 +34,7 @@ public:
     virtual ~VehicleTalker();
 
     // Send new task to the vehicle (server)
-    bool sendNewTask(unsigned customerID, const Station & pickup, const Station & dropoff);
+    bool sendNewTask(std::string customerID, const Station & pickup, const Station & dropoff);
 
     // Check whether there is new info
     bool checkNewInfo();

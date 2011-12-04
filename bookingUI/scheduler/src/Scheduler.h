@@ -19,13 +19,10 @@ public:
     bool valid;
 
     /// ID of this object. This is internal to the scheduler.
-    unsigned id;
+    unsigned taskID;
 
     /// ID of customer
-    unsigned customerID;
-
-    /// ID of customer task
-    unsigned taskID;
+    std::string customerID;
 
     /// ID of vehicle
     unsigned vehicleID;
@@ -49,7 +46,7 @@ public:
 public:
     Task() : valid(false) { }
 
-    Task(unsigned id, unsigned customerID, unsigned taskID, unsigned vehicleID, Station pickup, Station dropoff);
+    Task(unsigned taskID, std::string customerID, unsigned vehicleID, Station pickup, Station dropoff);
 
     std::string toString() const;
 
@@ -111,12 +108,10 @@ public:
     Scheduler(unsigned verbosity_level);
 
     /// Method to add a task. Returns the taskid.
-    unsigned addTask(unsigned customerID, unsigned taskID,
-                     Station pickup, Station dropoff);
+    unsigned addTask(std::string customerID, Station pickup, Station dropoff);
 
     /// Method to remove a task
     void removeTask(unsigned taskID);
-    void removeTask(unsigned customerID, unsigned taskID);
 
     /// Method to check whether there is a task in the queue
     bool hasPendingTasks(unsigned vehicleID);

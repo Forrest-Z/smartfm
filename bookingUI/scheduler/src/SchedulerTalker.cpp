@@ -63,7 +63,7 @@ SchedulerTalker::~SchedulerTalker()
     fclose (logFile);
 }
 
-bool SchedulerTalker::sendTaskStatus(unsigned usrID, unsigned taskID, Duration twait, unsigned vehicleID)
+bool SchedulerTalker::sendTaskStatus(unsigned taskID, Duration twait, unsigned vehicleID)
 {
     if (!m_isconnected)
         return false;
@@ -73,8 +73,8 @@ bool SchedulerTalker::sendTaskStatus(unsigned usrID, unsigned taskID, Duration t
     {
         try {
             std::ostringstream ss;
-            ss << ";" << "0:" << usrID << ":" << taskID << ":" << twait << ":" << vehicleID << "\n";
-            //ss << ";" << "server:" << usrID << ":" << taskID << ":" << twait << ":" << vehicleID << "\n";
+            ss << ";" << "0:" << taskID << ":" << twait << ":" << vehicleID << "\n";
+            //ss << ";" << "server:" << taskID << ":" << twait << ":" << vehicleID << "\n";
             m_socket << ss.str();
             fprintf (logFile, "\n%d: sending status: %s", (int) time(NULL), ss.str().c_str());
             msgSent = true;
@@ -94,15 +94,14 @@ bool SchedulerTalker::checkTask()
     return m_newTaskRecv;
 }
 
-bool SchedulerTalker::recvTask(unsigned &usrID, unsigned &taskID, Station &pickup, Station &dropoff)
+bool SchedulerTalker::recvTask(std::string &usrID, Station &pickup, Station &dropoff)
 {
     bool ret = m_newTaskRecv;
     usrID = m_usrID;
-    taskID = m_taskID;
     pickup = m_pickup;
     dropoff = m_dropoff;
-    fprintf (logFile, "\n%d: returning task: %u:%u:%s:%s:%d", (int) time(NULL),
-             usrID, taskID, pickup.c_str(), dropoff.c_str(), ret);
+    fprintf (logFile, "\n%d: returning task: %s:%s:%s:%d", (int) time(NULL),
+             usrID.c_str(), pickup.c_str(), dropoff.c_str(), ret);
     m_newTaskRecv = false;
     return ret;
 }
@@ -249,12 +248,11 @@ void SchedulerTalker::runMobileReceiver()
                     if (taskValid)
                     {
                         m_usrID = atoi(usrIDStr.c_str());
-                        m_taskID = atoi(taskIDStr.c_str());
                         m_pickup = m_stationList(atoi(pickupStr.c_str()));
                         m_dropoff = m_stationList(atoi(dropoffStr.c_str()));
                         m_newTaskRecv = true;
-                        fprintf (logFile, "\n%d: new task: %u:%u:%s:%s",
-                                 (int) time(NULL), m_usrID, m_taskID,
+                        fprintf (logFile, "\n%d: new task: %s:%s:%s",
+                                 (int) time(NULL), m_usrID.c_str(),
                                  m_pickup.c_str(), m_dropoff.c_str());
                     }
                     else

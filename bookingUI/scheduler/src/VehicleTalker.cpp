@@ -63,7 +63,7 @@ VehicleTalker::~VehicleTalker()
     fclose (logFile);
 }
 
-bool VehicleTalker::sendNewTask(unsigned customerID, const Station & pickup, const Station & dropoff)
+bool VehicleTalker::sendNewTask(std::string customerID, const Station & pickup, const Station & dropoff)
 {
     if (!m_isconnected)
         return false;

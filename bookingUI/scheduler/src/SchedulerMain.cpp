@@ -411,19 +411,18 @@ bool checkMobileTask()
 Task getMobileTask()
 {
     Task task;
-    task.id = 0;
+    task.taskID = 0;
     if (optVerbosityLevel > 0)
         MSG("\nGetting task from mobile phone...");
 
     if (!optSimulateMobile)
     {
-        gSchedulerTalker->recvTask(task.customerID, task.taskID, task.pickup, task.dropoff);
+        gSchedulerTalker->recvTask(task.customerID, task.pickup, task.dropoff);
     }
     else
     {
         //srand ( time(NULL) );
-        task.customerID = 1234;
-        task.taskID = 1;
+        task.customerID = "cust1";
         task.pickup = stationList(rand() % stationList.size());
         do
             task.dropoff = stationList(rand() % stationList.size());
@@ -431,10 +430,10 @@ Task getMobileTask()
 
     }
 
-    MSG("Got task <%u,%u,%s,%s> from mobile phone",
-        task.customerID, task.taskID, task.pickup.c_str(), task.dropoff.c_str());
-    fprintf(gLogFile, "\n%d: Got task <%u,%u,%s,%s> from mobile phone",
-            (int) time(NULL), task.customerID, task.taskID,
+    MSG("Got task <%s,%s,%s> from mobile phone",
+        task.customerID.c_str(), task.pickup.c_str(), task.dropoff.c_str());
+    fprintf(gLogFile, "\n%d: Got task <%s,%s,%s> from mobile phone",
+            (int) time(NULL), task.customerID.c_str(),
             task.pickup.c_str(), task.dropoff.c_str());
 
     return task;
@@ -447,11 +446,10 @@ unsigned addTask(Task task)
     if (optVerbosityLevel > 0 && optNoGUI)
         cout << endl;
 
-    unsigned taskid = gScheduler->addTask(task.customerID, task.taskID,
-                                          task.pickup, task.dropoff);
+    unsigned taskid = gScheduler->addTask(task.customerID, task.pickup, task.dropoff);
 
-    fprintf (gLogFile, "\n%d: Added task %u:%u:%s:%s to the scheduler",
-             (int) time(NULL), task.customerID, task.taskID,
+    fprintf (gLogFile, "\n%d: Added task %s:%s:%s to the scheduler",
+             (int) time(NULL), task.customerID.c_str(),
              task.pickup.c_str(), task.dropoff.c_str());
 
     if (optVerbosityLevel > 0 && optNoGUI)
@@ -480,37 +478,28 @@ void addMobileTask()
 
             if (!optSimulateMobile)
             {
-                gSchedulerTalker->sendTaskStatus(task.customerID, task.taskID, task.twait, task.vehicleID);
-                fprintf (gLogFile, "\n%d: Sending status: %d:%d:%d:%d to the server",
-                        (int) time(NULL), task.customerID, task.taskID, task.twait, task.vehicleID);
+                gSchedulerTalker->sendTaskStatus(task.taskID, task.twait, task.vehicleID);
+                fprintf (gLogFile, "\n%d: Sending status: %u:%d:%d to the server",
+                        (int) time(NULL), task.taskID, task.twait, task.vehicleID);
             }
-
-            /* NOTEBRICE: When pickup and dropoff are -1, it means remove the task.
-            else if (ret >= 0 && task.pickup == -1 && task.dropoff == -1 && !optSimulateMobile) {
-                gSchedulerTalker->sendTaskStatus(task.customerID, task.taskID, -1, TASK_REMOVED);
-                fprintf (gLogFile, "\n%d: Sending status: %d:%d:%d:%d to the server",
-                        (int) time(NULL), task.customerID, task.taskID, -1, TASK_REMOVED);
-            }
-            */
         }
         catch( StationDoesNotExistException & e )
         {
-            ERROR("Task %d <%s,%s> from customer %d is invalid: station %s does not exist.", task.id,
-                  task.pickup.c_str(), task.dropoff.c_str(), task.customerID, e.what());
+            ERROR("Task %d <%s,%s> from customer %s is invalid: station %s does not exist.", task.taskID,
+                  task.pickup.c_str(), task.dropoff.c_str(), task.customerID.c_str(), e.what());
         }
         catch( SchedulerException & e )
         {
             /* NOTEBRICE: is this necessary?
             if (!optNoMobile && !optSimulateMobile)
             {
-                gSchedulerTalker->sendTaskStatus(task.customerID, task.taskID,
-                                                -1, errorCode);
-                fprintf (gLogFile, "\n%d: Sending status: %d:%d:%d:%d to the server",
-                        (int) time(NULL), task.customerID, task.taskID, -1, errorCode);
+                gSchedulerTalker->sendTaskStatus(task.taskID, -1, errorCode);
+                fprintf (gLogFile, "\n%d: Sending status: %u:-1:%d to the server",
+                        (int) time(NULL), task.taskID, errorCode);
             }
             */
-            ERROR("Task %d <%s,%s> from customer %d is invalid: %s", task.id,
-                  task.pickup.c_str(), task.dropoff.c_str(), task.customerID, e.what());
+            ERROR("Task %d <%s,%s> from customer %s is invalid: %s", task.taskID,
+                  task.pickup.c_str(), task.dropoff.c_str(), task.customerID.c_str(), e.what());
         }
     }
 }
@@ -525,18 +514,17 @@ void sendMobileTaskStatus()
 
         if( vehStatus == Scheduler::VEHICLE_ON_CALL )
         {
-            gSchedulerTalker->sendTaskStatus(gCurrentTask.customerID, gCurrentTask.taskID,
-                                             gCurrentTask.tpickup, gCurrentTask.vehicleID);
-            fprintf (gLogFile, "\n%d: Sending status: %d:%d:%d:%d to the server",
-                     (int) time(NULL), gCurrentTask.customerID, gCurrentTask.taskID,
+            gSchedulerTalker->sendTaskStatus(gCurrentTask.taskID, gCurrentTask.tpickup, gCurrentTask.vehicleID);
+            fprintf (gLogFile, "\n%d: Sending status: %u:%u:%u to the server",
+                     (int) time(NULL), gCurrentTask.taskID,
                      gCurrentTask.tpickup, gCurrentTask.vehicleID);
         }
 
         for ( list<Task>::iterator it=tasks.begin(); it != tasks.end(); it++ )
         {
-            gSchedulerTalker->sendTaskStatus(it->customerID, it->taskID, it->twait, it->vehicleID);
-            fprintf (gLogFile, "\n%d: Sending status: %d:%d:%d:%d to the server",
-                     (int) time(NULL), it->customerID, it->taskID, it->twait, it->vehicleID);
+            gSchedulerTalker->sendTaskStatus(it->taskID, it->twait, it->vehicleID);
+            fprintf (gLogFile, "\n%d: Sending status: %u:%u:%d to the server",
+                     (int) time(NULL), it->taskID, it->twait, it->vehicleID);
         }
     }
 }
@@ -595,7 +583,7 @@ VehicleInfo getVehicleInfo(unsigned vehicleID)
     else // if(!optSimulateVehicle)
     {
         info.isNew = true;
-        if (gCurrentTask.id < 0 || gCurrentTask.ttask <= 0)
+        if (gCurrentTask.taskID < 0 || gCurrentTask.ttask <= 0)
         {
             info.status = Scheduler::VEHICLE_AVAILABLE;
             info.tremain = 0;
@@ -622,10 +610,11 @@ VehicleInfo getVehicleInfo(unsigned vehicleID)
 
 void sendTaskToVehicle(Task task)
 {
-    MSG("Sending task %d: <%s,%s> from customer %d to vehicle",
-        task.id, task.pickup.c_str(), task.dropoff.c_str(), task.customerID);
-    fprintf (gLogFile, "\n%d: Sending task %d: <%s,%s> from customer %d to vehicle",
-             (int) time(NULL), task.id, task.pickup.c_str(), task.dropoff.c_str(), task.customerID);
+    MSG("Sending task %d: <%s,%s> from customer %s to vehicle",
+        task.taskID, task.pickup.c_str(), task.dropoff.c_str(), task.customerID.c_str());
+    fprintf (gLogFile, "\n%d: Sending task %d: <%s,%s> from customer %s to vehicle",
+             (int) time(NULL), task.taskID, task.pickup.c_str(),
+             task.dropoff.c_str(), task.customerID.c_str());
 
     if (!optSimulateVehicle)
         gVehicleTalker->sendNewTask(task.customerID, task.pickup, task.dropoff);
@@ -756,12 +745,11 @@ void *operatorLoop(void* arg)
             if (opOption == OPERATOR_ADD_TASK)
             {
                 Task task;
-                task.id = 0;
+                task.taskID = 0;
                 stationList.print();
                 task.pickup = stationList.prompt("  Enter the pick-up location: ");
                 task.dropoff = stationList.prompt("  Enter the drop-off location: ");
-                task.customerID = 0;
-                task.taskID = 1;
+                task.customerID = "cust1";
                 addTask(task);
             }
             else if (opOption == OPERATOR_REMOVE_TASK)

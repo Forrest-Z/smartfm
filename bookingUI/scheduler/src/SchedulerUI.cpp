@@ -265,8 +265,9 @@ void SchedulerUI::updateTaskList()
             mvwprintw(this->win, this->textFields[TASK_LIST_START + i].row,
                       this->textFields[TASK_LIST_START + i].col,
                       /*|  ID | Customer |  Pick-Up   |  Drop-Off  | tWait \n*/
-                      "%3d | %8d | %10s | %10s | %5d",
-                      it->id, it->customerID, it->pickup.str().substr(0,10).c_str(),
+                      "%3d | %8s | %10s | %10s | %5d",
+                      it->taskID, it->customerID.substr(0,8).c_str(),
+                      it->pickup.str().substr(0,10).c_str(),
                       it->dropoff.str().substr(0,10).c_str(), it->twait);
             wattrset(this->win, A_NORMAL);
         }
@@ -307,10 +308,10 @@ void SchedulerUI::updateVehicleStatus()
     mvwprintw(this->win, this->textFields[VEHICLE_STATUS].row, this->textFields[VEHICLE_STATUS].col,
               "%s", vehStatusStr);
 
-    if (currentTask.id > 0) {
+    if (currentTask.taskID > 0) {
         mvwprintw(this->win, this->textFields[CURRENT_TASK_ID].row,
                   this->textFields[CURRENT_TASK_ID].col,
-                  "%3d      ", currentTask.id);
+                  "%3d      ", currentTask.taskID);
         mvwprintw(this->win, this->textFields[CURRENT_TASK_PICKUP].row,
                   this->textFields[CURRENT_TASK_PICKUP].col,
                   "%10s     ", currentTask.pickup.c_str());
@@ -668,7 +669,7 @@ void SchedulerUI::onUserAddTask()
 
     try
     {
-        unsigned id = scheduler.addTask(0, 0, pickup, dropoff);
+        unsigned id = scheduler.addTask("cust1", pickup, dropoff);
         printText(NEW_TASK_ID, UI_TEXT_COLOR_GREEN,
                   "Added task ID %u: <%s, %s>          ",
                   id, pickup.c_str(), dropoff.c_str());

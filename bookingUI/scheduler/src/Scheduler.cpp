@@ -40,12 +40,11 @@ SchedulerException::SchedulerException(SchedulerExceptionTypes t) throw()
 
 
 
-Task::Task(unsigned id, unsigned customerID, unsigned taskID, unsigned vehicleID,
+Task::Task(unsigned taskID, string customerID, unsigned vehicleID,
            Station pickup, Station dropoff)
 {
-    this->id = id;
-    this->customerID = customerID;
     this->taskID = taskID;
+    this->customerID = customerID;
     this->vehicleID = vehicleID;
     this->pickup = pickup;
     this->dropoff = dropoff;
@@ -60,7 +59,7 @@ Task::Task(unsigned id, unsigned customerID, unsigned taskID, unsigned vehicleID
 string Task::toString() const
 {
     stringstream s("");
-    s << "<id:" <<  id << ", custID:" << customerID << ", taskId:" << taskID;
+    s << "<taskID:" <<  taskID << ", custID:" << customerID;
     s << ", pickup:" << pickup.str() << ", dropoff:" << dropoff.str();
     s << ", tpickup:" << tpickup << ", ttask:" << ttask << ", twait:" << twait << ">";
     return s.str();
@@ -76,24 +75,15 @@ Scheduler::Scheduler(unsigned verbosity_level)
     this->nextTaskID = 1;
 }
 
-unsigned Scheduler::addTask(unsigned customerID, unsigned taskID, Station pickup, Station dropoff)
+unsigned Scheduler::addTask(string customerID, Station pickup, Station dropoff)
 {
-    /* NOTEBRICE: When pickup and dropoff are -1, it means remove the task.
-    if(pickup == -1 || dropoff == -1)
-    {
-        bool taskRemoved = this->removeTask(customerID, taskID);
-        if (!taskRemoved)
-            return TASK_DOES_NOT_EXIST;
-        else
-            return ADD_TASK_NO_ERROR;
-    }
-    */
     bool vehicleAvailable = false;
     for (unsigned i = 0; i < NUM_VEHICLES && !vehicleAvailable; i++)
         if (this->vehStatus[i] != VEHICLE_NOT_AVAILABLE)
             vehicleAvailable = true;
 
-    if (!vehicleAvailable) {
+    if (!vehicleAvailable)
+    {
         ERROR("Cannot add task. No vehicle available!");
         throw SchedulerException(SchedulerException::NO_AVAILABLE_VEHICLE);
     }
@@ -101,10 +91,12 @@ unsigned Scheduler::addTask(unsigned customerID, unsigned taskID, Station pickup
     // Currently we don't have any procedure to assign a vehile to the task,
     // so we just assign to this vehicle:
     unsigned DEFAULT_VEHICLE_ID = 0;
-    Task task(this->nextTaskID++, customerID, taskID, DEFAULT_VEHICLE_ID, pickup, dropoff);
+    Task task(this->nextTaskID++, customerID, DEFAULT_VEHICLE_ID, pickup, dropoff);
 
-    if (this->verbosity_level > 0)
-        MSG("Adding task <%u,%u,%s,%s>", task.id, task.customerID, task.pickup.c_str(), task.dropoff.c_str());
+    if (this->verbosity_level > 0) {
+        MSG("Adding task <%u,%s,%s,%s>", task.taskID, task.customerID.c_str(),
+            task.pickup.c_str(), task.dropoff.c_str());
+    }
 
     task.ttask = travelTime(task.pickup, task.dropoff);
 
@@ -162,18 +154,18 @@ unsigned Scheduler::addTask(unsigned customerID, unsigned taskID, Station pickup
             updateWaitTime(task.vehicleID);
         }
     }
-    return task.id;
+    return task.taskID;
 }
 
 
-void Scheduler::removeTask(unsigned id)
+void Scheduler::removeTask(unsigned taskID)
 {
     if (this->verbosity_level > 0)
-        MSG("Removing task %u", id);
+        MSG("Removing task %u", taskID);
 
     for (unsigned i = 0; i < NUM_VEHICLES; i++)
     {
-        if( this->currentTask[i].id == id )
+        if( this->currentTask[i].taskID == taskID )
         {
             //Trying to cancel the current task. This is only possible if the
             //vehicle is currently going to the pickup location, not when going
@@ -188,7 +180,7 @@ void Scheduler::removeTask(unsigned id)
         list<Task> & tasks = this->taskAssignment[i];
         for ( list<Task>::iterator it = tasks.begin() ; it != tasks.end(); it++ )
         {
-            if(it->id == id)
+            if(it->taskID == taskID)
             {
                 it = tasks.erase(it);
                 if( it != tasks.end() )
@@ -203,36 +195,8 @@ void Scheduler::removeTask(unsigned id)
             prevDropoff = it->dropoff;
         }
     }
-    ERROR("Task %u does not exist", id);
+    ERROR("Task %u does not exist", taskID);
     throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
-}
-
-
-void Scheduler::removeTask(unsigned customerID, unsigned taskID)
-{
-    if (this->verbosity_level > 0)
-        MSG("Removing task from customer %d:%d", customerID, taskID);
-
-    try
-    {
-        for (unsigned i = 0; i < NUM_VEHICLES; i++)
-        {
-            if( this->currentTask[i].customerID == customerID
-                && this->currentTask[i].taskID == taskID )
-                removeTask(this->currentTask[i].id);
-
-            list<Task> & tasks = this->taskAssignment[i];
-            for ( list<Task>::iterator it = tasks.begin(); it != tasks.end(); it++ )
-                if(it->customerID == customerID && it->taskID == taskID)
-                    removeTask(it->id);
-        }
-    }
-    catch( SchedulerException & e )
-    {
-        if( e.type()==SchedulerException::TASK_DOES_NOT_EXIST )
-            ERROR("Task from customer %d:%d does not exist", customerID, taskID);
-        throw;
-    }
 }
 
 bool Scheduler::hasPendingTasks(unsigned vehicleID)
@@ -264,7 +228,7 @@ Task Scheduler::getVehicleNextTask(unsigned vehicleID)
     this->vehStatus[vehicleID] = VEHICLE_ON_CALL;
     updateWaitTime(vehicleID);
     if (this->verbosity_level > 0)
-        MSG("Giving task <%u,%s,%s> to vehicle %u", task.id, task.pickup.c_str(), task.dropoff.c_str(), vehicleID);
+        MSG("Giving task <%u,%s,%s> to vehicle %u", task.taskID, task.pickup.c_str(), task.dropoff.c_str(), vehicleID);
     return task;
 }
 
@@ -291,7 +255,7 @@ Duration Scheduler::getWaitTime(unsigned taskID)
     for (unsigned i = 0; i < NUM_VEHICLES; i++) {
         list<Task>::iterator it = this->taskAssignment[i].begin();
         for ( ; it != this->taskAssignment[i].end(); it++ )
-            if(it->id == taskID)
+            if(it->taskID == taskID)
                 return it->twait;
     }
     throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
@@ -302,11 +266,11 @@ Task Scheduler::getTask(unsigned taskID)
 {
     for(unsigned i = 0; i < NUM_VEHICLES; i++)
     {
-        if (currentTask[i].id == taskID)
+        if (currentTask[i].taskID == taskID)
             return currentTask[i];
         list<Task>::iterator it = this->taskAssignment[i].begin();
         for( ; it != this->taskAssignment[i].end(); it++ )
-            if(it->id == taskID)
+            if(it->taskID == taskID)
                 return *it;
     }
     throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
