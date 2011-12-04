@@ -12,6 +12,9 @@ using namespace std;
 
 
 
+#define VERBOSE 0 //whether to print path coordinates and info about paths (for testing)
+
+
 Station::Station(const std::string & name, unsigned number)
 : name_(name), number_(number), valid_(true)
 {
@@ -225,7 +228,7 @@ void storeIntoStationPaths(int path_points[][2], StationPath *path, unsigned siz
 {
     double res = 0.1;
     int y_pixels = 3536;
-    cout <<"Path size: " <<size <<". ";
+    if( VERBOSE ) cout <<"Path size: " <<size <<". ";
     for(unsigned i=0; i<size; i++)
     {
         PathPoint p;
@@ -233,7 +236,7 @@ void storeIntoStationPaths(int path_points[][2], StationPath *path, unsigned siz
         p.y_ = (y_pixels - path_points[i][1])*res;
         path->push_back(p);
     }
-    cout <<"Length= " <<path->recomputeLength() <<endl;
+    if( VERBOSE ) cout <<"Length= " <<path->recomputeLength() <<endl;
 }
 
 
@@ -334,16 +337,16 @@ StationPaths::StationPaths()
     storeIntoStationPaths(path_points_32, &stationPaths_[3][2], NPTS(path_points_32));
 
 
-    printInterPointsDistance();
-
-
-    printPath(stationPaths_[0][2]);
+    if( VERBOSE ) {
+        printInterPointsDistance();
+        printPath(stationPaths_[0][2]);
+    }
 
     for(unsigned i=0; i<NSTATIONS;i++)
         for(unsigned j=0; j<NSTATIONS; j++)
             addPointsInPath( & stationPaths_[i][j] );
 
-    printPath(stationPaths_[0][2]);
+    if( VERBOSE ) printPath(stationPaths_[0][2]);
 }
 
 
