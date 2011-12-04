@@ -13,7 +13,7 @@
 
 class StationList;
 
-/// A Class to represent a station (name and code)
+/// A class to represent a station (name and code)
 class Station
 {
 private:
@@ -21,15 +21,30 @@ private:
     std::string name_;
     unsigned number_;
     bool valid_;
-    Station(const std::string & name, unsigned number) : name_(name), number_(number), valid_(true) { }
+
+private:
+    /// Create a station with name and number. It's private, because stations
+    /// are created by StationList (which is a friend class).
+    Station(const std::string & name, unsigned number);
 
 public:
-    Station() : valid_(false) { }
-    unsigned number() const throw() { return number_; }
-    const std::string & str() const throw() { return name_; }
-    const char * c_str() const throw() { return name_.c_str(); }
-    bool operator== (const Station & s) const { return s.valid_ && valid_ && s.number_==number_; }
-    bool operator!= (const Station & s) const { return !(s==*this); }
+    /// Creates an invalid station.
+    Station();
+
+    /// Returns the station's number
+    unsigned number() const throw();
+
+    /// Returns the station's name as a string
+    const std::string & str() const throw();
+
+    /// Returns the station's name as a char pointer
+    const char * c_str() const throw();
+
+    /// Tests equality between stations
+    bool operator== (const Station & s) const;
+
+    /// Tests inequality between stations
+    bool operator!= (const Station & s) const;
 };
 
 
@@ -37,11 +52,11 @@ class StationDoesNotExistException : public std::exception
 {
     std::string msg;
 public:
-    StationDoesNotExistException() throw() : std::exception() { }
-    StationDoesNotExistException(const std::string & s) throw() : std::exception(), msg(s) { }
-    StationDoesNotExistException(unsigned i) throw() : std::exception(), msg(""+i) { }
-    ~StationDoesNotExistException() throw() { }
-    const char* what() const throw() { return msg.c_str(); }
+    StationDoesNotExistException() throw();
+    StationDoesNotExistException(const std::string & s) throw();
+    StationDoesNotExistException(unsigned i) throw();
+    ~StationDoesNotExistException() throw();
+    const char* what() const throw();
 };
 
 

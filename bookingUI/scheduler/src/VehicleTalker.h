@@ -28,13 +28,13 @@ class VehicleTalker
 {
 public:
     // Default Constructor
-    VehicleTalker(int port, int verbosity_level);
+    VehicleTalker(unsigned port, int verbosity_level);
 
     // Default destructor
     virtual ~VehicleTalker();
 
     // Send new task to the vehicle (server)
-    bool sendNewTask(int customerID, int pickup, int dropoff);
+    bool sendNewTask(unsigned customerID, const Station & pickup, const Station & dropoff);
 
     // Check whether there is new info
     bool checkNewInfo();
@@ -46,7 +46,7 @@ public:
     void runVehicleReceiver();
 
     // Stop running talker
-    bool quit();
+    void quit();
 
 private:
     VehicleInfo m_vehInfo;

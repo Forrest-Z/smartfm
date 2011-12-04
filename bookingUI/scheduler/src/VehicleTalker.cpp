@@ -11,14 +11,12 @@
 using namespace std;
 
 // Error handling
-#define MSG(fmt, ...) \
-  (fprintf(stderr, fmt "\n", ##__VA_ARGS__) ? 0 : 0)
-#define ERROR(fmt, ...) \
-  (fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__) ? -1 : 0)
+#define MSG(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
+#define ERROR(fmt, ...) fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 
 const int UNINIT_INT = -2011;
 
-VehicleTalker::VehicleTalker(int port, int verbosityLevel)
+VehicleTalker::VehicleTalker(unsigned port, int verbosityLevel)
 {
     m_quit = false;
     m_newStatusRecv = false;
@@ -65,7 +63,7 @@ VehicleTalker::~VehicleTalker()
     fclose (logFile);
 }
 
-bool VehicleTalker::sendNewTask(int customerID, int pickup, int dropoff)
+bool VehicleTalker::sendNewTask(unsigned customerID, const Station & pickup, const Station & dropoff)
 {
     if (!m_isconnected)
         return false;
@@ -75,7 +73,7 @@ bool VehicleTalker::sendNewTask(int customerID, int pickup, int dropoff)
     {
         try {
             std::ostringstream ss;
-            ss << ";" << customerID << ":" << pickup << ":" << dropoff << "\n";
+            ss << ";" << customerID << ":" << pickup.str() << ":" << dropoff.str() << "\n";
             m_socket << ss.str();
             fprintf (logFile, "\n%d: sending task: %s", (int) time(NULL), ss.str().c_str());
             msgSent = true;
@@ -139,7 +137,7 @@ void VehicleTalker::runVehicleReceiver()
                     msg.clear();
                 }
 
-                int spacePos = statusStr.find ("\n", 0);
+                unsigned spacePos = statusStr.find ("\n", 0);
 
                 while (spacePos >= 0 && spacePos < statusStr.length()-1)
                 {
@@ -168,8 +166,8 @@ void VehicleTalker::runVehicleReceiver()
                     MSG("msg: %s", msg.c_str());
                 }
 
-                int firstColon = statusStr.find(":", 0);
-                int secondColon = statusStr.find(":", firstColon+1);
+                unsigned firstColon = statusStr.find(":", 0);
+                unsigned secondColon = statusStr.find(":", firstColon+1);
                 if (firstColon < 0 || secondColon <= firstColon)
                 {
                     msgIncomplete = true;
@@ -181,7 +179,7 @@ void VehicleTalker::runVehicleReceiver()
                     string vehIDStr = statusStr.substr(1, firstColon-1);
                     string vehStatusStr = statusStr.substr(firstColon+1, secondColon-firstColon-1);
                     string tremainStr = statusStr.substr(secondColon+1, statusStr.length());
-                    for (int i = 0; i < vehIDStr.length(); i++)
+                    for (unsigned i = 0; i < vehIDStr.length(); i++)
                     {
                         if (vehIDStr.at(i) != '+' && vehIDStr.at(i) != '-' && vehIDStr.at(i) != ' ' &&
                             (vehIDStr.at(i) < '0' || vehIDStr.at(i) > '9')) {
@@ -192,7 +190,7 @@ void VehicleTalker::runVehicleReceiver()
                             }
                     }
                     if (statusValid) {
-                        for (int i = 0; i < vehStatusStr.length(); i++)
+                        for (unsigned i = 0; i < vehStatusStr.length(); i++)
                         {
                             if (vehStatusStr.at(i) != ' ' &&
                                 (vehStatusStr.at(i) < '0' || vehStatusStr.at(i) > '9'))
@@ -205,7 +203,7 @@ void VehicleTalker::runVehicleReceiver()
                         }
                     }
                     if (statusValid) {
-                        for (int i = 0; i < tremainStr.length(); i++)
+                        for (unsigned i = 0; i < tremainStr.length(); i++)
                         {
                             if (tremainStr.at(i) != ' ' &&
                                 (tremainStr.at(i) < '0' || tremainStr.at(i) > '9'))
@@ -271,7 +269,7 @@ void VehicleTalker::runVehicleReceiver()
     }
 }
 
-bool VehicleTalker::quit()
+void VehicleTalker::quit()
 {
     m_quit = true;
 }

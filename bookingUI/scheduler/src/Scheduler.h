@@ -63,7 +63,8 @@ public:
     enum SchedulerExceptionTypes
     {
         NO_AVAILABLE_VEHICLE,
-        TASK_NOT_EXIST,
+        TASK_DOES_NOT_EXIST,
+        TASK_CANNOT_BE_CANCELLED,
         INVALID_VEHICLE_ID,
         NO_PENDING_TASKS
     };

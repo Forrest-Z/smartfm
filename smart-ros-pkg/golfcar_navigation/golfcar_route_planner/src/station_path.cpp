@@ -5,9 +5,82 @@
 
 #include <vector>
 #include <iostream>
+#include <sstream>
 using namespace std;
 
 #include <golfcar_route_planner/station_path.h>
+
+
+
+Station::Station(const std::string & name, unsigned number)
+: name_(name), number_(number), valid_(true)
+{
+
+}
+
+Station::Station()
+: name_("INVALID STATION"), number_(-1), valid_(false)
+{
+
+}
+
+unsigned Station::number() const throw()
+{
+    return number_;
+}
+
+const std::string & Station::str() const throw()
+{
+    return name_;
+}
+
+const char * Station::c_str() const throw()
+{
+    return name_.c_str();
+}
+
+bool Station::operator== (const Station & s) const
+{
+    return s.valid_ && valid_ && s.number_==number_;
+}
+
+bool Station::operator!= (const Station & s) const
+{
+    return !(s==*this);
+}
+
+
+
+StationDoesNotExistException::StationDoesNotExistException() throw()
+: std::exception()
+{
+
+}
+
+StationDoesNotExistException::StationDoesNotExistException(const std::string & s) throw()
+: std::exception(), msg(s)
+{
+
+}
+
+StationDoesNotExistException::StationDoesNotExistException(unsigned i) throw()
+: std::exception()
+{
+    stringstream s;
+    s <<i;
+    msg = s.str();
+}
+
+StationDoesNotExistException::~StationDoesNotExistException() throw()
+{
+
+}
+
+const char* StationDoesNotExistException::what() const throw()
+{
+    return msg.c_str();
+}
+
 
 
 StationList::StationList()
@@ -79,14 +152,16 @@ throw(StationDoesNotExistException)
     while( true )
     {
         cout <<prompt;
-        string temp = "";
-        getline(cin, temp);
-        int n = atoi(temp.c_str());
         try {
+            unsigned n;
+            cin >>n;
             return get((unsigned)n);
         }
         catch( StationDoesNotExistException & e ) {
-            cout <<"You have entered an invalid station." <<endl;
+            cout <<"You have entered an invalid station: " <<e.what() <<endl;
+        }
+        catch( exception & e ) {
+            cout <<"Unkwown exception: " <<e.what() <<endl;
         }
     }
 
@@ -274,7 +349,9 @@ StationPaths::StationPaths()
 
 const StationPath & StationPaths::getPath(const Station & pickup, const Station & dropoff) const
 {
-    if( ! knownStations_.exists(pickup) || ! knownStations_.exists(dropoff) )
-        throw StationDoesNotExistException("Invalid station");
+    if( ! knownStations_.exists(pickup) )
+        throw StationDoesNotExistException("StationPaths::getPath: Invalid pickup station \"" + pickup.str() + "\"");
+    if( ! knownStations_.exists(dropoff) )
+        throw StationDoesNotExistException("StationPaths::getPath: Invalid dropoff station \"" + dropoff.str() + "\"");
     return stationPaths_[pickup.number()][dropoff.number()];
 }

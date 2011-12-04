@@ -4,37 +4,41 @@
 #include <stdio.h>
 #include <string>
 
+#include <station_path.h>
 #include "socket_handler.h"
+#include "Scheduler.h"
 
 class SchedulerTalker
 {
 public:
     // Default Constructor
-    SchedulerTalker(std::string host, int port, int verbosity_level);
+    SchedulerTalker(std::string host, unsigned port, int verbosity_level);
 
     // Default destructor
     virtual ~SchedulerTalker();
 
     // Send task status to the server
-    bool sendTaskStatus(int usrID, int taskID, int twait, int vehicleID);
+    bool sendTaskStatus(unsigned usrID, unsigned taskID, Duration twait, unsigned vehicleID);
 
     // Check whether there is a new task
     bool checkTask();
 
     // Receive the latest task. Return true if this message is new. Otherwise, return false
-    bool recvTask(int &usrID, int &taskID, int &pickup, int &dropoff);
+    bool recvTask(unsigned &usrID, unsigned &taskID, Station &pickup, Station &dropoff);
 
     // An infinite loop that keep listening for new task
     void runMobileReceiver();
 
     // Stop running talker
-    bool quit();
+    void quit();
 
 private:
+    StationList m_stationList;
     ClientSocket m_socket;
     bool m_quit, m_isconnected;
     bool m_newTaskRecv;
-    int m_usrID, m_taskID, m_pickup, m_dropoff;
+    unsigned m_usrID, m_taskID;
+    Station m_pickup, m_dropoff;
     int m_verbosity;
     FILE * logFile;
 };

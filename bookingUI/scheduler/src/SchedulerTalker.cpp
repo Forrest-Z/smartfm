@@ -14,20 +14,14 @@ using namespace std;
 
 
 // Error handling
-#define MSG(fmt, ...) \
-  (fprintf(stderr, fmt "\n", ##__VA_ARGS__) ? 0 : 0)
-#define ERROR(fmt, ...) \
-  (fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__) ? -1 : 0)
+#define MSG(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
+#define ERROR(fmt, ...) fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 
-const int UNINIT_INT = -2011;
 
-SchedulerTalker::SchedulerTalker(string host, int port, int verbosityLevel)
+SchedulerTalker::SchedulerTalker(string host, unsigned port, int verbosityLevel)
 {
     m_quit = false;
     m_newTaskRecv = false;
-    m_usrID = UNINIT_INT;
-    m_pickup = UNINIT_INT;
-    m_dropoff = UNINIT_INT;
     m_verbosity = verbosityLevel;
 
     // log file
@@ -69,7 +63,7 @@ SchedulerTalker::~SchedulerTalker()
     fclose (logFile);
 }
 
-bool SchedulerTalker::sendTaskStatus(int usrID, int taskID, int twait, int vehicleID)
+bool SchedulerTalker::sendTaskStatus(unsigned usrID, unsigned taskID, Duration twait, unsigned vehicleID)
 {
     if (!m_isconnected)
         return false;
@@ -100,14 +94,15 @@ bool SchedulerTalker::checkTask()
     return m_newTaskRecv;
 }
 
-bool SchedulerTalker::recvTask(int &usrID, int &taskID, int &pickup, int &dropoff)
+bool SchedulerTalker::recvTask(unsigned &usrID, unsigned &taskID, Station &pickup, Station &dropoff)
 {
     bool ret = m_newTaskRecv;
     usrID = m_usrID;
     taskID = m_taskID;
     pickup = m_pickup;
     dropoff = m_dropoff;
-    fprintf (logFile, "\n%d: returning task: %d:%d:%d:%d:%d", (int) time(NULL), usrID, taskID, pickup, dropoff, ret);
+    fprintf (logFile, "\n%d: returning task: %u:%u:%s:%s:%d", (int) time(NULL),
+             usrID, taskID, pickup.c_str(), dropoff.c_str(), ret);
     m_newTaskRecv = false;
     return ret;
 }
@@ -145,7 +140,7 @@ void SchedulerTalker::runMobileReceiver()
                     msg.clear();
                 }
 
-                int spacePos = taskStr.find ("\n", 0);
+                unsigned spacePos = taskStr.find ("\n", 0);
 
                 while (spacePos >= 0 && spacePos < taskStr.length()-1)
                 {
@@ -189,9 +184,9 @@ void SchedulerTalker::runMobileReceiver()
                     MSG("msg: %s", msg.c_str());
                 }
 
-                int firstColon = taskStr.find(":", 0);
-                int secondColon = taskStr.find(":", firstColon+1);
-                int thirdColon = taskStr.find(":", secondColon+1);
+                unsigned firstColon = taskStr.find(":", 0);
+                unsigned secondColon = taskStr.find(":", firstColon+1);
+                unsigned thirdColon = taskStr.find(":", secondColon+1);
                 if (firstColon < 0 || secondColon <= firstColon
                     || thirdColon <= secondColon || thirdColon == msg.length()-1)
                 {
@@ -205,7 +200,7 @@ void SchedulerTalker::runMobileReceiver()
                     string taskIDStr = taskStr.substr(firstColon+1, secondColon-firstColon-1);
                     string pickupStr = taskStr.substr(secondColon+1, thirdColon-secondColon-1);
                     string dropoffStr = taskStr.substr(thirdColon+1, taskStr.length());
-                    for (int i = 0; i < usrIDStr.length(); i++)
+                    for (unsigned i = 0; i < usrIDStr.length(); i++)
                     {
                         if (usrIDStr.at(i) != '+' && usrIDStr.at(i) != '-' && usrIDStr.at(i) != ' ' &&
                             (usrIDStr.at(i) < '0' || usrIDStr.at(i) > '9')) {
@@ -217,7 +212,7 @@ void SchedulerTalker::runMobileReceiver()
                     }
                     if (taskValid)
                     {
-                        for (int i = 0; i < taskIDStr.length(); i++) {
+                        for (unsigned i = 0; i < taskIDStr.length(); i++) {
                             if (taskIDStr.at(i) != ' ' &&
                                 (taskIDStr.at(i) < '0' || taskIDStr.at(i) > '9')) {
                                     taskValid = false;
@@ -229,7 +224,7 @@ void SchedulerTalker::runMobileReceiver()
                     }
                     if (taskValid)
                     {
-                        for (int i = 0; i < pickupStr.length(); i++) {
+                        for (unsigned i = 0; i < pickupStr.length(); i++) {
                             if (pickupStr.at(i) != ' ' && pickupStr.at(i) != '-' &&
                                 (pickupStr.at(i) < '0' || pickupStr.at(i) > '9')) {
                                     taskValid = false;
@@ -241,7 +236,7 @@ void SchedulerTalker::runMobileReceiver()
                     }
                     if (taskValid)
                     {
-                        for (int i = 0; i < dropoffStr.length(); i++) {
+                        for (unsigned i = 0; i < dropoffStr.length(); i++) {
                             if (dropoffStr.at(i) != ' ' && dropoffStr.at(i) != '-' &&
                                 (dropoffStr.at(i) < '0' || dropoffStr.at(i) > '9')) {
                                     taskValid = false;
@@ -255,10 +250,12 @@ void SchedulerTalker::runMobileReceiver()
                     {
                         m_usrID = atoi(usrIDStr.c_str());
                         m_taskID = atoi(taskIDStr.c_str());
-                        m_pickup = atoi(pickupStr.c_str());
-                        m_dropoff = atoi(dropoffStr.c_str());
+                        m_pickup = m_stationList(atoi(pickupStr.c_str()));
+                        m_dropoff = m_stationList(atoi(dropoffStr.c_str()));
                         m_newTaskRecv = true;
-                        fprintf (logFile, "\n%d: new task: %d:%d:%d:%d", (int) time(NULL), m_usrID, m_taskID, m_pickup, m_dropoff);
+                        fprintf (logFile, "\n%d: new task: %u:%u:%s:%s",
+                                 (int) time(NULL), m_usrID, m_taskID,
+                                 m_pickup.c_str(), m_dropoff.c_str());
                     }
                     else
                         msgIncomplete = false;
@@ -282,7 +279,7 @@ void SchedulerTalker::runMobileReceiver()
     }
 }
 
-bool SchedulerTalker::quit()
+void SchedulerTalker::quit()
 {
     m_quit = true;
 }

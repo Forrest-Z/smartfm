@@ -11,10 +11,8 @@
 using namespace std;
 
 // Error handling
-#define MSG(fmt, ...) \
-  (fprintf(stderr, fmt "\n", ##__VA_ARGS__) ? 0 : 0)
-#define ERROR(fmt, ...) \
-  (fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__) ? -1 : 0)
+#define MSG(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
+#define ERROR(fmt, ...) fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 /*
 #define MSG(fmt, ...) \
   (fprintf(stderr, "\033[0;32m" fmt "\033[0m\n", ##__VA_ARGS__) ? 0 : 0)
@@ -33,7 +31,8 @@ SchedulerException::SchedulerException(SchedulerExceptionTypes t) throw()
     switch(type_)
     {
         __CASE(NO_AVAILABLE_VEHICLE);
-        __CASE(TASK_NOT_EXIST);
+        __CASE(TASK_DOES_NOT_EXIST);
+        __CASE(TASK_CANNOT_BE_CANCELLED);
         __CASE(INVALID_VEHICLE_ID);
         __CASE(NO_PENDING_TASKS);
     }
@@ -61,8 +60,9 @@ Task::Task(unsigned id, unsigned customerID, unsigned taskID, unsigned vehicleID
 string Task::toString() const
 {
     stringstream s("");
-    s << "<" <<  id << "," << customerID << "," << taskID << "," << pickup.str() << "," << dropoff.str() << ","
-    << tpickup << "," << ttask << "," << twait << ">";
+    s << "<id:" <<  id << ", custID:" << customerID << ", taskId:" << taskID;
+    s << ", pickup:" << pickup.str() << ", dropoff:" << dropoff.str();
+    s << ", tpickup:" << tpickup << ", ttask:" << ttask << ", twait:" << twait << ">";
     return s.str();
 }
 
@@ -78,12 +78,12 @@ Scheduler::Scheduler(unsigned verbosity_level)
 
 unsigned Scheduler::addTask(unsigned customerID, unsigned taskID, Station pickup, Station dropoff)
 {
-    /*
+    /* NOTEBRICE: When pickup and dropoff are -1, it means remove the task.
     if(pickup == -1 || dropoff == -1)
     {
         bool taskRemoved = this->removeTask(customerID, taskID);
         if (!taskRemoved)
-            return TASK_NOT_EXIST;
+            return TASK_DOES_NOT_EXIST;
         else
             return ADD_TASK_NO_ERROR;
     }
@@ -108,12 +108,14 @@ unsigned Scheduler::addTask(unsigned customerID, unsigned taskID, Station pickup
 
     task.ttask = travelTime(task.pickup, task.dropoff);
 
-    if (this->taskAssignment[task.vehicleID].empty())
+    list<Task> & tasks = this->taskAssignment[task.vehicleID];
+    Task & curTask = this->currentTask[task.vehicleID];
+    if (tasks.empty())
     {
         task.tpickup = 0;
-        if (this->currentTask[task.vehicleID].dropoff != task.pickup)
-            task.tpickup = travelTime(this->currentTask[task.vehicleID].dropoff, task.pickup);
-        this->taskAssignment[task.vehicleID].push_back(task);
+        if ( curTask.isValid() && curTask.dropoff != task.pickup )
+            task.tpickup = travelTime(curTask.dropoff, task.pickup);
+        tasks.push_back(task);
         updateWaitTime(task.vehicleID);
     }
     else
@@ -122,10 +124,10 @@ unsigned Scheduler::addTask(unsigned customerID, unsigned taskID, Station pickup
         unsigned tdp1 = 0;
         // Time from this task dropoff to next task pickup
         unsigned tdp2 = 0;
-        Station prevDropoff = this->currentTask[task.vehicleID].dropoff;
+        Station prevDropoff = curTask.dropoff;
 
-        list<Task>::iterator it = this->taskAssignment[task.vehicleID].begin();
-        for ( ; it != this->taskAssignment[task.vehicleID].end(); ++it )
+        list<Task>::iterator it = tasks.begin();
+        for ( ; it != tasks.end(); ++it )
         {
             if (prevDropoff != task.pickup)
                 tdp1 = travelTime(prevDropoff, task.pickup);
@@ -143,7 +145,7 @@ unsigned Scheduler::addTask(unsigned customerID, unsigned taskID, Station pickup
             if (tdp1 + task.ttask + tdp2 <= it->tpickup + MAX_ADDITIONAL_TIME) {
                 task.tpickup = tdp1;
                 it->tpickup = tdp2;
-                this->taskAssignment[task.vehicleID].insert(it, task);
+                tasks.insert(it, task);
                 updateWaitTime(task.vehicleID);
                 break;
             }
@@ -151,32 +153,34 @@ unsigned Scheduler::addTask(unsigned customerID, unsigned taskID, Station pickup
                 prevDropoff = it->dropoff;
         }
 
-        if( it == this->taskAssignment[task.vehicleID].end() )
+        if( it == tasks.end() )
         {
             task.tpickup = 0;
             if (prevDropoff != task.pickup)
                 task.tpickup = travelTime(prevDropoff, task.pickup);
-            this->taskAssignment[task.vehicleID].push_back(task);
+            tasks.push_back(task);
             updateWaitTime(task.vehicleID);
         }
     }
     return task.id;
 }
 
+
+//TODO: throw a TASK_CANNOT_BE_CANCELLED exception when the task is the current task
 void Scheduler::removeTask(unsigned id)
 {
     if (this->verbosity_level > 0)
-        MSG("Removing task %d", id);
+        MSG("Removing task %u", id);
 
     for (unsigned i = 0; i < NUM_VEHICLES; i++)
     {
         Station prevDropoff = this->currentTask[i].dropoff;
-        list<Task>::iterator it = this->taskAssignment[i].begin();
-        for ( ; it != this->taskAssignment[i].end(); it++ )
+        list<Task> & tasks = this->taskAssignment[i];
+        for ( list<Task>::iterator it = tasks.begin() ; it != tasks.end(); it++ )
         {
             if(it->id == id)
             {
-                it = this->taskAssignment[i].erase(it);
+                it = tasks.erase(it);
                 it->tpickup = 0;
                 if (prevDropoff != it->pickup)
                     it->tpickup = travelTime(prevDropoff, it->pickup);
@@ -186,10 +190,11 @@ void Scheduler::removeTask(unsigned id)
             prevDropoff = it->dropoff;
         }
     }
-    ERROR("Task %d does not exist", id);
-    throw SchedulerException(SchedulerException::TASK_NOT_EXIST);
+    ERROR("Task %u does not exist", id);
+    throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
 }
 
+//TODO: throw a TASK_CANNOT_BE_CANCELLED exception when the task is the current task
 void Scheduler::removeTask(unsigned customerID, unsigned taskID)
 {
     if (this->verbosity_level > 0)
@@ -214,7 +219,7 @@ void Scheduler::removeTask(unsigned customerID, unsigned taskID)
         }
     }
     ERROR("Task from customer %d:%d does not exist", customerID, taskID);
-    throw SchedulerException(SchedulerException::TASK_NOT_EXIST);
+    throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
 }
 
 bool Scheduler::hasPendingTasks(unsigned vehicleID)
@@ -276,7 +281,7 @@ Duration Scheduler::getWaitTime(unsigned taskID)
             if(it->id == taskID)
                 return it->twait;
     }
-    throw SchedulerException(SchedulerException::TASK_NOT_EXIST);
+    throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
     return 0;
 }
 
@@ -291,7 +296,7 @@ Task Scheduler::getTask(unsigned taskID)
             if(it->id == taskID)
                 return *it;
     }
-    throw SchedulerException(SchedulerException::TASK_NOT_EXIST);
+    throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
     return Task();
 }
 
@@ -400,10 +405,18 @@ void Scheduler::printTasks()
                 cout << "AVAILABLE";
         }
 
-        cout << "): " << this->currentTask[i].toString() << endl;
-        list<Task>::iterator it;
-        for ( it=this->taskAssignment[i].begin() ; it != this->taskAssignment[i].end(); it++ )
-            cout << "  " << it->toString() << endl;
+        cout << "): ";
+        if( ! this->currentTask[i].isValid() )
+        {
+            cout <<" no tasks." <<endl;
+        }
+        else
+        {
+            cout << this->currentTask[i].toString() << endl;
+            list<Task>::iterator it;
+            for ( it=this->taskAssignment[i].begin() ; it != this->taskAssignment[i].end(); it++ )
+                cout << "  " << it->toString() << endl;
+        }
     }
 }
 
