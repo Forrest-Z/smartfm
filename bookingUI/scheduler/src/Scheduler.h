@@ -86,11 +86,11 @@ class Scheduler
 public:
     enum VehicleStatus
     {
-        VEHICLE_NOT_AVAILABLE = 0,
-        VEHICLE_ON_CALL = 1,
-        VEHICLE_POB = 2,
-        VEHICLE_BUSY = 3, // either not available, on call, or pob
-        VEHICLE_AVAILABLE = 4
+        VEHICLE_NOT_AVAILABLE,
+        VEHICLE_ON_CALL,
+        VEHICLE_POB,
+        VEHICLE_BUSY, // either not available, on call, or pob
+        VEHICLE_AVAILABLE
     };
 
     const StationPaths stationPaths;

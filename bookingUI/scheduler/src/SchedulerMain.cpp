@@ -738,6 +738,7 @@ void printMenu()
     printf ("  (%d) View task list\n", OPERATOR_VIEW_TASK_LIST);
     printf ("  (%d) Update\n", OPERATOR_UPDATE);
     printf ("  (%d) Quit\n", OPERATOR_QUIT);
+    printf ("Your choice: ");
 }
 
 
@@ -745,11 +746,10 @@ void *operatorLoop(void* arg)
 {
     while (gQuit == 0)
     {
-        printMenu();
-
         // Options for operator
         if (optNoGUI && !optNoOP)
         {
+            printMenu();
             OperatorOption opOption = (OperatorOption) getNumeric(OPERATOR_OPTION_FIRST+1, OPERATOR_OPTION_LAST-1);
 
             pthread_mutex_lock(&gSchedulerMutex);
@@ -766,13 +766,25 @@ void *operatorLoop(void* arg)
             }
             else if (opOption == OPERATOR_REMOVE_TASK)
             {
-                printf ("  Enter id of task to be removed: \n");
-                gScheduler->removeTask((unsigned) getNumeric());
+                printf ("  Enter id of task to be removed: ");
 
-                if (optVerbosityLevel > 0 && optNoGUI) {
-                    cout << "After removing task..." << endl;
-                    cout << "Task queue:" << endl;
-                    gScheduler->printTasks();
+                try
+                {
+                    gScheduler->removeTask((unsigned) getNumeric());
+
+                    if (optVerbosityLevel > 0 && optNoGUI)
+                    {
+                        cout << "After removing task..." << endl;
+                        cout << "Task queue:" << endl;
+                        gScheduler->printTasks();
+                    }
+                }
+                catch( SchedulerException & e )
+                {
+                    if( e.type()==SchedulerException::TASK_DOES_NOT_EXIST )
+                        ERROR("This task does not exist.");
+                    else if( e.type()==SchedulerException::TASK_CANNOT_BE_CANCELLED )
+                        ERROR("This task cannot be removed (current task).");
                 }
             }
             else if (opOption == OPERATOR_VIEW_TASK_LIST)

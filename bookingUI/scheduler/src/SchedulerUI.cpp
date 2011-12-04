@@ -261,8 +261,7 @@ void SchedulerUI::updateTaskList()
     list<Task>::iterator it;
     for ( it=taskList.begin(); it != taskList.end(); it++ ) {
         if (i < NUM_TASK_DISPLAY) {
-            if (i%2 == 1)
-                wattrset(this->win, COLOR_PAIR(UI_CYAN_HIGHLIGHT));
+            //if (i%2 == 1) wattrset(this->win, COLOR_PAIR(UI_CYAN_HIGHLIGHT));
             mvwprintw(this->win, this->textFields[TASK_LIST_START + i].row,
                       this->textFields[TASK_LIST_START + i].col,
                       "%3d   %010d   %10s       %10s       %4d     ",
@@ -610,6 +609,7 @@ void SchedulerUI::onUserCancelTask()
     }
     catch( SchedulerException & e ) {
         printText(VC_TASK_VEHICLE_ID, UI_TEXT_COLOR_RED, "Invalid Task ID!                                           ");
+        return;
     }
     mvwprintw(this->win, this->textFields[VC_TASK_TIME_WAIT].row,
               this->textFields[VC_TASK_TIME_WAIT].col,
@@ -652,6 +652,7 @@ void SchedulerUI::onUserAddTask()
     catch( StationDoesNotExistException & e )
     {
         printText(NEW_TASK_ID, UI_TEXT_COLOR_RED, "Invalid pickup station!             ");
+        return;
     }
 
     try
@@ -661,6 +662,7 @@ void SchedulerUI::onUserAddTask()
     catch( StationDoesNotExistException & e )
     {
         printText(NEW_TASK_ID, UI_TEXT_COLOR_RED, "Invalid dropoff station!            ");
+        return;
     }
 
     try
@@ -674,6 +676,7 @@ void SchedulerUI::onUserAddTask()
     {
         if( e.type() == SchedulerException::NO_AVAILABLE_VEHICLE )
             printText(NEW_TASK_ID, UI_TEXT_COLOR_RED, "Vehicles not available!             ");
+        return;
     }
 }
 

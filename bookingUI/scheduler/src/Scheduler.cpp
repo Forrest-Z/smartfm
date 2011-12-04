@@ -166,7 +166,6 @@ unsigned Scheduler::addTask(unsigned customerID, unsigned taskID, Station pickup
 }
 
 
-//TODO: throw a TASK_CANNOT_BE_CANCELLED exception when the task is the current task
 void Scheduler::removeTask(unsigned id)
 {
     if (this->verbosity_level > 0)
@@ -174,6 +173,17 @@ void Scheduler::removeTask(unsigned id)
 
     for (unsigned i = 0; i < NUM_VEHICLES; i++)
     {
+        if( this->currentTask[i].id == id )
+        {
+            //Trying to cancel the current task. This is only possible if the
+            //vehicle is currently going to the pickup location, not when going
+            //to dropoff.
+            //TODO: detect that and update task times, and other appropriate
+            //actions. For now: current task cannot be cancelled.
+
+            throw SchedulerException(SchedulerException::TASK_CANNOT_BE_CANCELLED);
+        }
+
         Station prevDropoff = this->currentTask[i].dropoff;
         list<Task> & tasks = this->taskAssignment[i];
         for ( list<Task>::iterator it = tasks.begin() ; it != tasks.end(); it++ )
@@ -181,9 +191,12 @@ void Scheduler::removeTask(unsigned id)
             if(it->id == id)
             {
                 it = tasks.erase(it);
-                it->tpickup = 0;
-                if (prevDropoff != it->pickup)
-                    it->tpickup = travelTime(prevDropoff, it->pickup);
+                if( it != tasks.end() )
+                {
+                    it->tpickup = 0;
+                    if (prevDropoff != it->pickup)
+                        it->tpickup = travelTime(prevDropoff, it->pickup);
+                }
                 updateWaitTime(i);
                 return;
             }
@@ -194,32 +207,32 @@ void Scheduler::removeTask(unsigned id)
     throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
 }
 
-//TODO: throw a TASK_CANNOT_BE_CANCELLED exception when the task is the current task
+
 void Scheduler::removeTask(unsigned customerID, unsigned taskID)
 {
     if (this->verbosity_level > 0)
         MSG("Removing task from customer %d:%d", customerID, taskID);
 
-    for (unsigned i = 0; i < NUM_VEHICLES; i++)
+    try
     {
-        Station prevDropoff = this->currentTask[i].dropoff;
-        list<Task>::iterator it = this->taskAssignment[i].begin();
-        for ( ; it != this->taskAssignment[i].end(); it++ )
+        for (unsigned i = 0; i < NUM_VEHICLES; i++)
         {
-            if(it->customerID == customerID && it->taskID == taskID)
-            {
-                it = this->taskAssignment[i].erase(it);
-                it->tpickup = 0;
-                if (prevDropoff != it->pickup)
-                    it->tpickup = travelTime(prevDropoff, it->pickup);
-                updateWaitTime(i);
-                return;
-            }
-            prevDropoff = it->dropoff;
+            if( this->currentTask[i].customerID == customerID
+                && this->currentTask[i].taskID == taskID )
+                removeTask(this->currentTask[i].id);
+
+            list<Task> & tasks = this->taskAssignment[i];
+            for ( list<Task>::iterator it = tasks.begin(); it != tasks.end(); it++ )
+                if(it->customerID == customerID && it->taskID == taskID)
+                    removeTask(it->id);
         }
     }
-    ERROR("Task from customer %d:%d does not exist", customerID, taskID);
-    throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
+    catch( SchedulerException & e )
+    {
+        if( e.type()==SchedulerException::TASK_DOES_NOT_EXIST )
+            ERROR("Task from customer %d:%d does not exist", customerID, taskID);
+        throw;
+    }
 }
 
 bool Scheduler::hasPendingTasks(unsigned vehicleID)
