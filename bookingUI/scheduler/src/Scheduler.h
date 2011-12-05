@@ -103,9 +103,6 @@ public:
 
 class Scheduler
 {
-public:
-    const StationPaths stationPaths;
-
 private:
     std::vector<Vehicle> vehicles;
 
@@ -117,23 +114,32 @@ private:
 
     typedef std::vector<Vehicle>::iterator VIT;
 
+
 public:
+    const StationPaths stationPaths;
+
     /// Default Constructor
     Scheduler(unsigned verbosity_level);
 
-    /// Method to add a task. Returns the task.
+
+public:
+    /// Method to add a task. Returns the task. Throws a SchedulerException if
+    /// no vehicle is available.
     Task addTask(std::string customerID, Station pickup, Station dropoff);
 
-    /// Method to remove a task
+    /// Method to remove a task. Throws a SchedulerException if the task does
+    /// not exist or cannot be cancelled.
     void removeTask(unsigned taskID);
 
+    /// Sets the next pending task as the current task and returns it. Throws a
+    /// SchedulerException if there is no pending task or if the vehicle does not
+    /// exist.
+    Task & vehicleSwitchToNextTask(unsigned vehicleID);
+
+
+public:
     /// Method to check whether there is a task in the queue
     bool hasPendingTasks(unsigned vehicleID);
-
-    /// Method to get the next task for a specified vehicle.
-    /// Once this function is called, it's assumed that the current task
-    /// is finished.
-    Task getVehicleNextTask(unsigned vehicleID);
 
     /// Method to get the current task for a specified vehicle
     Task & getVehicleCurrentTask(unsigned vehicleID);
@@ -141,18 +147,20 @@ public:
     /// Method to get all tasks for a specified vehicle
     std::list<Task> & getVehicleTasks(unsigned vehicleID);
 
-    /// Method to get all remaining tasks for a specified vehicle
-    std::list<Task> getVehicleRemainingTasks(unsigned vehicleID);
-
     /// Method to get the waiting time of the specified task
-    unsigned getWaitTime(unsigned taskID);
+    Duration getWaitTime(unsigned taskID);
 
     /// Method to get a specified task
-    Task getTask(unsigned taskID);
+    Task & getTask(unsigned taskID);
 
     /// Method to get the status of the vehicles
     VehicleStatus & getVehicleStatus(unsigned vehicleID);
 
+    /// Method to print all the tasks
+    void printTasks();
+
+
+public:
     /// Method to update waiting time for a specified vehicle.
     /// timeCurrentTask is the estimated time from current position of the car
     /// to the drop off of current task (i.e., the sum of remaining tpickup and remaining ttask).
@@ -171,13 +179,10 @@ public:
     /// Method to update vehicle status
     void updateVehicleStatus(unsigned vehicleID, VehicleStatus status);
 
-    /// Method to print all the tasks
-    void printTasks();
-
+private:
     /// Returns the vehicle, throws a SchedulerException if it does not exist.
     VIT checkVehicleExist(unsigned vehicleID);
 
-private:
     /// Returns travel time. Throws SchedulerException if stations or route cannot be found.
     unsigned travelTime(Station pickup, Station dropoff);
 

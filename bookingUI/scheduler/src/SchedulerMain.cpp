@@ -63,7 +63,7 @@ SchedulerUI* gSchedulerUI = NULL;
 // Threads
 pthread_t gOperatorThread, gTalkerThread, gVehicleThread;
 
-time_t gPreviousTime;
+time_t gPreviousTime = 0;
 
 /// The name of this program
 const char * gProgramName;
@@ -156,7 +156,6 @@ int main(int argc, char **argv)
     openLogFile();
     launchThreads();
     time_t prevTimeTaskInfo = time(NULL);
-    gPreviousTime = time(NULL);
 
     while(gQuit == 0)
     {
@@ -305,22 +304,12 @@ void openLogFile()
 {
     char timestr[64];
     time_t t = time(NULL);
-    strftime(timestr, sizeof(timestr), "%F-%a-%H-%M", localtime(&t));
+    strftime(timestr, sizeof(timestr), "%F-%a-%H-%M-%S", localtime(&t));
 
     ostringstream oss;
-    oss  << "log_scheduler" << "." << timestr << ".log";
+    oss  << "log_scheduler" << "." << timestr <<".log";
     string logFileName = oss.str();
 
-    // if it exists already, append .1, .2, .3 ...
-    string suffix = "";
-    struct stat st;
-    for (int i = 1; stat((logFileName + suffix).c_str(), &st) == 0; i++)
-    {
-        ostringstream tmp;
-        tmp << '.' << i;
-        suffix = tmp.str();
-    }
-    logFileName += suffix;
     gLogFile = fopen(logFileName.c_str(), "w");
 }
 
@@ -495,18 +484,20 @@ void sendMobileTaskStatus()
     if (!optNoMobile && !optSimulateMobile)
     {
         VehicleStatus vehStatus = gScheduler->getVehicleStatus(DEFAULT_VEHICLE_ID);
-        Task & curTask = gScheduler->getVehicleCurrentTask(DEFAULT_VEHICLE_ID);
-        list<Task> tasks = gScheduler->getVehicleRemainingTasks(DEFAULT_VEHICLE_ID);
+        list<Task> & tasks = gScheduler->getVehicleTasks(DEFAULT_VEHICLE_ID);
 
         if( vehStatus == VEHICLE_ON_CALL )
         {
+            Task & curTask = tasks.front();
             gSchedulerTalker->sendTaskStatus(curTask.taskID, curTask.tpickup, curTask.vehicleID);
             fprintf (gLogFile, "\n%d: Sending status: %u:%u:%u to the server",
                      (int) time(NULL), curTask.taskID,
                      curTask.tpickup, curTask.vehicleID);
         }
 
-        for ( list<Task>::iterator it=tasks.begin(); it != tasks.end(); it++ )
+        list<Task>::iterator it=tasks.begin();
+        ++it;
+        for ( ; it != tasks.end(); it++ )
         {
             gSchedulerTalker->sendTaskStatus(it->taskID, it->twait, it->vehicleID);
             fprintf (gLogFile, "\n%d: Sending status: %u:%u:%d to the server",
@@ -524,6 +515,7 @@ VehicleInfo getVehicleInfo(unsigned vehicleID)
     VehicleInfo info;
     info.vehicleID = vehicleID;
     time_t currentTime = time(NULL);
+    if( gPreviousTime==0 ) gPreviousTime = time(NULL);
     time_t timeDiff = (currentTime - gPreviousTime);
     Task & curTask = gScheduler->getVehicleCurrentTask(vehicleID);
 
@@ -621,7 +613,7 @@ void update()
             if (optVerbosityLevel > 0 && optNoGUI)
                 cout << endl;
 
-            sendTaskToVehicle( gScheduler->getVehicleNextTask(DEFAULT_VEHICLE_ID) );
+            sendTaskToVehicle( gScheduler->vehicleSwitchToNextTask(DEFAULT_VEHICLE_ID) );
 
             if (optVerbosityLevel > 0 && optNoGUI) {
                 cout << endl;
@@ -633,6 +625,7 @@ void update()
         else
         {
             gScheduler->getVehicleTasks(DEFAULT_VEHICLE_ID).clear();
+            gPreviousTime = 0;
         }
     }
     // Otherwise, update the remaining task time (POB) or pickup time (other status)

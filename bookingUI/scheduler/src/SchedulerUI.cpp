@@ -256,30 +256,33 @@ void SchedulerUI::updateStderr()
 
 void SchedulerUI::updateTaskList()
 {
-    list<Task> taskList = scheduler.getVehicleRemainingTasks(DEFAULT_VEHICLE_ID);
-    int i = 0;
-    list<Task>::iterator it;
-    for ( it=taskList.begin(); it != taskList.end(); it++ ) {
-        if (i < NUM_TASK_DISPLAY) {
-            //if (i%2 == 1) wattrset(this->win, COLOR_PAIR(UI_CYAN_HIGHLIGHT));
-            mvwprintw(this->win, this->textFields[TASK_LIST_START + i].row,
-                      this->textFields[TASK_LIST_START + i].col,
-                      /*|  ID | Customer |  Pick-Up   |  Drop-Off  | tWait \n*/
-                      "%3d | %8s | %10s | %10s | %5d",
-                      it->taskID, it->customerID.substr(0,8).c_str(),
-                      it->pickup.str().substr(0,10).c_str(),
-                      it->dropoff.str().substr(0,10).c_str(), it->twait);
-            wattrset(this->win, A_NORMAL);
-        }
-        else
+    list<Task> & tasks = scheduler.getVehicleTasks(DEFAULT_VEHICLE_ID);
+    list<Task>::iterator it = tasks.begin();
+    unsigned i = 0;
+
+    for ( ++it; it != tasks.end(); it++ )
+    {
+        if (i >= NUM_TASK_DISPLAY)
             break;
+        //if (i%2 == 1) wattrset(this->win, COLOR_PAIR(UI_CYAN_HIGHLIGHT));
+        mvwprintw(this->win, this->textFields[TASK_LIST_START + i].row,
+                    this->textFields[TASK_LIST_START + i].col,
+                    /*|  ID | Customer |  Pick-Up   |  Drop-Off  | tWait \n*/
+                    "%3d | %8s | %10s | %10s | %5d",
+                    it->taskID, it->customerID.substr(0,8).c_str(),
+                    it->pickup.str().substr(0,10).c_str(),
+                    it->dropoff.str().substr(0,10).c_str(), it->twait);
+        wattrset(this->win, A_NORMAL);
         i++;
     }
 
-    for (; i < NUM_TASK_DISPLAY; i++) {
+    // Clear remaining rows
+    for (; i < NUM_TASK_DISPLAY; i++)
+    {
         mvwprintw(this->win, this->textFields[TASK_LIST_START + i].row,
                   this->textFields[TASK_LIST_START + i].col,
-                  "%*s", 48, "");
+               /*|  ID | Customer |  Pick-Up   |  Drop-Off  | tWait \n*/
+                  "                                                 ");
     }
 }
 
@@ -288,7 +291,6 @@ void SchedulerUI::updateVehicleStatus()
     unsigned vehicleID = DEFAULT_VEHICLE_ID;
     VehicleStatus vehStatus = scheduler.getVehicleStatus(DEFAULT_VEHICLE_ID);
     char vehStatusStr[64];
-    Task currentTask = scheduler.getVehicleCurrentTask(DEFAULT_VEHICLE_ID);
 
     mvwprintw(this->win, this->textFields[VEHICLE_ID].row, this->textFields[VEHICLE_ID].col,
               "%d", vehicleID);
@@ -306,33 +308,36 @@ void SchedulerUI::updateVehicleStatus()
     mvwprintw(this->win, this->textFields[VEHICLE_STATUS].row, this->textFields[VEHICLE_STATUS].col,
               "%s", vehStatusStr);
 
-    if (currentTask.taskID > 0) {
+    if( scheduler.getVehicleTasks(DEFAULT_VEHICLE_ID).empty() )
+    {
         mvwprintw(this->win, this->textFields[CURRENT_TASK_ID].row,
                   this->textFields[CURRENT_TASK_ID].col,
-                  "%3d      ", currentTask.taskID);
+                  "                ");
         mvwprintw(this->win, this->textFields[CURRENT_TASK_PICKUP].row,
                   this->textFields[CURRENT_TASK_PICKUP].col,
-                  "%10s     ", currentTask.pickup.c_str());
+                  "                ");
         mvwprintw(this->win, this->textFields[CURRENT_TASK_DROPOFF].row,
                   this->textFields[CURRENT_TASK_DROPOFF].col,
-                  "%10s     ", currentTask.dropoff.c_str());
+                  "                ");
         mvwprintw(this->win, this->textFields[CURRENT_TASK_TIME_REMAINING].row,
                   this->textFields[CURRENT_TASK_TIME_REMAINING].col,
-                  "%3d      ", currentTask.tpickup + currentTask.ttask);
+                  "                ");
     }
-    else {
+    else
+    {
+        Task t = scheduler.getVehicleCurrentTask(DEFAULT_VEHICLE_ID);
         mvwprintw(this->win, this->textFields[CURRENT_TASK_ID].row,
                   this->textFields[CURRENT_TASK_ID].col,
-                  "         ");
+                  "%3d      ", t.taskID);
         mvwprintw(this->win, this->textFields[CURRENT_TASK_PICKUP].row,
                   this->textFields[CURRENT_TASK_PICKUP].col,
-                  "         ");
+                  "%10s     ", t.pickup.c_str());
         mvwprintw(this->win, this->textFields[CURRENT_TASK_DROPOFF].row,
                   this->textFields[CURRENT_TASK_DROPOFF].col,
-                  "         ");
+                  "%10s     ", t.dropoff.c_str());
         mvwprintw(this->win, this->textFields[CURRENT_TASK_TIME_REMAINING].row,
                   this->textFields[CURRENT_TASK_TIME_REMAINING].col,
-                  "         ");
+                  "%3d      ", t.tpickup + t.ttask);
     }
 }
 

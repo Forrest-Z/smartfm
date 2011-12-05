@@ -230,7 +230,7 @@ bool Scheduler::hasPendingTasks(unsigned vehicleID)
     return getVehicleTasks(vehicleID).size() > 1;
 }
 
-Task Scheduler::getVehicleNextTask(unsigned vehicleID)
+Task & Scheduler::vehicleSwitchToNextTask(unsigned vehicleID)
 {
     VIT vit = checkVehicleExist(vehicleID);
     vit->status = VEHICLE_AVAILABLE;
@@ -242,7 +242,7 @@ Task Scheduler::getVehicleNextTask(unsigned vehicleID)
     }
 
     vit->tasks.pop_front();
-    Task task = vit->tasks.front();
+    Task & task = vit->tasks.front();
     vit->status = VEHICLE_ON_CALL;
     updateWaitTime(vehicleID);
     if (verbosity_level > 0)
@@ -264,13 +264,7 @@ Task & Scheduler::getVehicleCurrentTask(unsigned vehicleID)
     return tasks.front();
 }
 
-list<Task> Scheduler::getVehicleRemainingTasks(unsigned vehicleID)
-{
-    VIT vit = checkVehicleExist(vehicleID);
-    return list<Task>(vit->tasks.begin(), vit->tasks.end());
-}
-
-Task Scheduler::getTask(unsigned taskID)
+Task & Scheduler::getTask(unsigned taskID)
 {
     list<Task>::iterator jt;
     for(VIT vit = vehicles.begin(); vit != vehicles.end(); ++vit)
@@ -278,7 +272,7 @@ Task Scheduler::getTask(unsigned taskID)
             if(jt->taskID == taskID)
                 return *jt;
     throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
-    return Task();
+    return *jt;
 }
 
 Duration Scheduler::getWaitTime(unsigned taskID)
