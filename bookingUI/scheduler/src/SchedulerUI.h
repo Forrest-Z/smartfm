@@ -4,6 +4,7 @@
 #include <ncurses.h>
 
 #include "Scheduler.h"
+#include "DBTalker.h"
 
 #define NUM_TASK_DISPLAY 12
 
@@ -70,6 +71,8 @@ private:
     // Scheduler
     Scheduler & scheduler;
 
+    DBTalker & dbTalker;
+
     // Fields in the UI
     UIText textFields[UI_TEXT_TOKEN_LAST + NUM_TASK_DISPLAY - 1];
     UIButton buttons[UI_BUTTON_TOKEN_LAST];
@@ -89,7 +92,7 @@ private:
 
 public:
     // Default constructor
-    SchedulerUI(Scheduler & scheduler);
+    SchedulerUI(Scheduler &, DBTalker &);
 
     // Initialize console display
     void initConsole();

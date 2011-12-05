@@ -2,6 +2,8 @@ cmake_minimum_required (VERSION 2.8)
 cmake_policy(SET CMP0015 NEW)
 project (Scheduler)
 
+set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
+
 set(CURSES_NEED_NCURSES TRUE)
 find_package(Curses REQUIRED)
 
@@ -14,5 +16,5 @@ link_directories( ${STATION_PATH_DIR}/lib )
 add_executable(MySQLConnectorC++Client src/MySQLConnectorC++Client.cpp)
 target_link_libraries(MySQLConnectorC++Client mysqlcppconn)
 
-add_executable(scheduler src/Socket.cpp src/ClientSocket.cpp src/ServerSocket.cpp src/Scheduler.cpp src/SchedulerUI.cpp src/SchedulerTalker.cpp src/VehicleTalker.cpp src/SchedulerMain.cpp)
-target_link_libraries(scheduler stationpath ncurses)
+add_executable(scheduler src/Scheduler.cpp src/DBTalker.cpp src/SchedulerUI.cpp src/SchedulerMain.cpp)
+target_link_libraries(scheduler stationpath ncurses mysqlcppconn)

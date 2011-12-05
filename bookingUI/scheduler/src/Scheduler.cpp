@@ -13,7 +13,7 @@
 using namespace std;
 
 // Error handling
-#define MSG(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
+#define MSG(fmt, ...) do{ if(verbosity_level>0) fprintf(stderr, fmt "\n", ##__VA_ARGS__); }while(0)
 #define ERROR(fmt, ...) fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 /*
 #define MSG(fmt, ...) \
@@ -76,8 +76,6 @@ Scheduler::Scheduler(unsigned verbosity_level)
 
     // Add a vehicle. TODO: get the list of vehicles from the database.
     vehicles.push_back( Vehicle(0,VEHICLE_AVAILABLE) );
-
-    this->nextTaskID = 1;
 }
 
 Scheduler::VIT Scheduler::checkVehicleAvailable()
@@ -89,7 +87,7 @@ Scheduler::VIT Scheduler::checkVehicleAvailable()
     return vit;
 }
 
-Task Scheduler::addTask(string customerID, Station pickup, Station dropoff)
+Task Scheduler::addTask(Task task)
 {
     VIT vit = checkVehicleAvailable();
     if( vit==vehicles.end() )
@@ -97,13 +95,10 @@ Task Scheduler::addTask(string customerID, Station pickup, Station dropoff)
 
     // Currently we don't have any procedure to assign a vehicle to the task,
     // so we just assign to vehicle 0:
-    Task task(nextTaskID++, customerID, 0, pickup, dropoff);
+    task = Task(task.taskID, task.customerID, 0, task.pickup, task.dropoff);
 
-    if (verbosity_level > 0)
-    {
-        MSG("Adding task <%u,%s,%s,%s> to vehicle %u", task.taskID, task.customerID.c_str(),
-            task.pickup.c_str(), task.dropoff.c_str(), task.vehicleID);
-    }
+    MSG("Adding task <%u,%s,%s,%s> to vehicle %u", task.taskID, task.customerID.c_str(),
+        task.pickup.c_str(), task.dropoff.c_str(), task.vehicleID);
 
     task.ttask = travelTime(task.pickup, task.dropoff);
 
@@ -111,7 +106,7 @@ Task Scheduler::addTask(string customerID, Station pickup, Station dropoff)
 
     if( tasks.empty() )
     {
-        if( verbosity_level>0 ) MSG("no current task. Adding as current.");
+        MSG("no current task. Adding as current.");
         assert( vit->status == VEHICLE_AVAILABLE );
         vit->status = VEHICLE_ON_CALL;
         task.tpickup = 0; //TODO: this should be the time from the current station to the pickup station
@@ -170,8 +165,7 @@ Task Scheduler::addTask(string customerID, Station pickup, Station dropoff)
 
 void Scheduler::removeTask(unsigned taskID)
 {
-    if (verbosity_level > 0)
-        MSG("Removing task %u", taskID);
+    MSG("Removing task %u", taskID);
 
     for (VIT vit = vehicles.begin(); vit != vehicles.end(); ++vit)
     {
@@ -245,8 +239,7 @@ Task & Scheduler::vehicleSwitchToNextTask(unsigned vehicleID)
     Task & task = vit->tasks.front();
     vit->status = VEHICLE_ON_CALL;
     updateWaitTime(vehicleID);
-    if (verbosity_level > 0)
-        MSG("Giving task <%u,%s,%s> to vehicle %u", task.taskID, task.pickup.c_str(), task.dropoff.c_str(), vehicleID);
+    MSG("Giving task <%u,%s,%s> to vehicle %u", task.taskID, task.pickup.c_str(), task.dropoff.c_str(), vehicleID);
     return task;
 }
 

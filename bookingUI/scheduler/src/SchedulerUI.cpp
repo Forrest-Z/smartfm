@@ -15,9 +15,8 @@ using namespace std;
 const int CURSOR_ROW = 21;
 const int CURSOR_COL = 0;
 
-
 // Default constructor
-SchedulerUI::SchedulerUI(Scheduler & s) : scheduler(s)
+SchedulerUI::SchedulerUI(Scheduler & s, DBTalker & db_talker) : scheduler(s), dbTalker(db_talker)
 {
     this->focusButtonInd = NEW_PICKUP;
     this->focusNewPickup = true;
@@ -672,7 +671,9 @@ void SchedulerUI::onUserAddTask()
 
     try
     {
-        Task task = scheduler.addTask("cust1", pickup, dropoff);
+        unsigned tid = dbTalker.makeBooking("cust1", pickup, dropoff);
+        Task task(tid, "cust1", 0, pickup, dropoff);
+        task = scheduler.addTask(task);
         printText(NEW_TASK_ID, UI_TEXT_COLOR_GREEN,
                   "Added task ID %u: <%s, %s>          ",
                   task.taskID, pickup.c_str(), dropoff.c_str());

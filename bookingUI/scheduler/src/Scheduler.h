@@ -104,19 +104,17 @@ public:
 class Scheduler
 {
 private:
-    std::vector<Vehicle> vehicles;
-
-    /// Task id, incremented each time a new task is added.
-    unsigned nextTaskID;
-
     /// Level of verbosity
     unsigned verbosity_level;
-
-    typedef std::vector<Vehicle>::iterator VIT;
 
 
 public:
     const StationPaths stationPaths;
+
+    /// The pool of vehicles. Each entry has its own list of tasks.
+    std::vector<Vehicle> vehicles;
+
+    typedef std::vector<Vehicle>::iterator VIT;
 
     /// Default Constructor
     Scheduler(unsigned verbosity_level);
@@ -125,7 +123,7 @@ public:
 public:
     /// Method to add a task. Returns the task. Throws a SchedulerException if
     /// no vehicle is available.
-    Task addTask(std::string customerID, Station pickup, Station dropoff);
+    Task addTask(Task);
 
     /// Method to remove a task. Throws a SchedulerException if the task does
     /// not exist or cannot be cancelled.
