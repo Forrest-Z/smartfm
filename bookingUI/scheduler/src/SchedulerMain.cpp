@@ -101,7 +101,11 @@ enum OperatorOption
 // Function declarations
 
 // Error handling
-#define MSG(fmt, ...) if (optVerbosityLevel > 0) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
+#define MSG(fmt, ...) do { \
+    if (optVerbosityLevel > 0) fprintf(stderr, fmt "\n", ##__VA_ARGS__); \
+    fprintf(gLogFile, "time %u: " fmt "\n", (unsigned)time(NULL), ##__VA_ARGS__); \
+    fflush(gLogFile); } while(0)
+
 #define ERROR(fmt, ...) fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 
 
@@ -158,6 +162,7 @@ int main(int argc, char **argv)
     signal(SIGHUP, sigintHandler);
     */
 
+    srand ( time(NULL) );
     parseOptions(argc, argv);
 
     //cout << "Connecting to " << optHostName << ":" << optMobilePort << endl;
@@ -169,11 +174,12 @@ int main(int argc, char **argv)
 
     while(gQuit == 0)
     {
-        if (!optNoOP && optNoGUI)
+        if( optNoGUI )
         {
-            textUI();
+            if( ! optNoOP )
+                textUI();
         }
-        else if (!optNoGUI)
+        else if( ! optNoGUI )
         {
             gSchedulerUI->updateConsole();
         }
@@ -183,11 +189,13 @@ int main(int argc, char **argv)
             addMobileTask();
         }
 
-        // Update vehicle status, waiting time and send new task to vehicle if it has completes the previous task.
+        // Update vehicle status, waiting time and send new task to vehicle if
+        // it has completes the previous task.
         update();
 
         // Report waiting time
-        if (time(NULL) - prevTimeTaskInfo > NUM_SEC_TASK_INFO_SENT) {
+        if (time(NULL) - prevTimeTaskInfo > NUM_SEC_TASK_INFO_SENT)
+        {
             prevTimeTaskInfo = time(NULL);
             sendMobileTaskStatus();
         }
@@ -200,7 +208,8 @@ int main(int argc, char **argv)
             if (!optSimulateVehicle)
                 gVehicleTalker->quit();
         }
-        usleep(100000);
+
+        usleep( (unsigned)( (optNoOP ? 1 : 0.1) *1e6) );
     }
 
     fclose (gLogFile);
@@ -216,22 +225,23 @@ int main(int argc, char **argv)
 
 void print_usage (FILE* stream, int exit_code)
 {
-    fprintf( stream, "Usage:  %s [options]\n", gProgramName );
-    fprintf( stream, "  --host hostname   Specify the IP address of the server "
-            "for talking to mobile phone. The default is localhost.\n");
-    fprintf( stream, "  --mport mport     Specify the port for talking to mobile "
-            "phones (any number between 2000 and 65535). The default is 4440.\n");
-    fprintf( stream, "  --vport vport     Specify the port for talking to the "
-            "vehicle (any number between 2000 and 65535). The default is 4444.\n");
-    fprintf( stream, "  --verbose lvl     Set verbosity level to lvl.\n");
-    fprintf( stream, "  --nogui           Run in plain text mode.\n");
-    fprintf( stream, "  --nomobile        Do not receive request from mobile phones.\n");
-    fprintf( stream, "  --simmobile       Simulate mobile phone users.\n");
-    fprintf( stream, "  --simvehicle      Simulate vehicles' status.\n");
-    fprintf( stream, "  --timefactor tf   Control speed of time when simulating the vehicle (default is 1).\n");
-    fprintf( stream, "  --simtime         Simulate remaining time of current task.\n");
-    fprintf( stream, "  --noop            Do not interact with operator when --nogui option is given.\n");
-    fprintf( stream, "  --help            Display this message.\n");
+    stringstream ss;
+    ss <<"Usage:  " <<gProgramName <<" [options]" <<endl;
+    ss <<"  --host hostname   Specify the IP address of the server. The default is localhost." <<endl;
+    ss <<"  --mport mport     Specify the port for talking to mobile phones (any number between 2000 and 65535). The default is 4440." <<endl;
+    ss <<"  --vport vport     Specify the port for talking to the vehicle (any number between 2000 and 65535). The default is 4444." <<endl;
+    ss <<"  --verbose lvl     Set verbosity level to lvl." <<endl;
+    ss <<"  --nogui           Run in plain text mode (as opposed to using the NCurse interface)." <<endl;
+    ss <<"  --nomobile        Do not intend to communicate with mobile phones. Get tasks from the user interface instead." <<endl;
+    ss <<"  --simmobile       Do not intend to communicate with mobile phones. Simulate mobile phone users instead (automatically generate random tasks)." <<endl;
+    ss <<"  --simvehicle      Simulate vehicles' status." <<endl;
+    ss <<"  --timefactor tf   Control speed of time when simulating the vehicle (default is 1)." <<endl;
+    ss <<"  --simtime         Simulate remaining time of current task." <<endl;
+    ss <<"  --noop            Sets --nogui --simmobile --simvehicle. In this mode, everything is automatic." <<endl;
+    ss <<"  --help            Display this message." <<endl;
+
+    fprintf( stream, "%s", ss.str().c_str());
+
     exit(exit_code);
 }
 
@@ -255,7 +265,7 @@ void parseOptions(int argc, char **argv)
         {"simvehicle",  no_argument,       &optSimulateVehicle,       1},
         {"simtime",     no_argument,       &optSimulateTime,          1},
         {"timefactor",  required_argument, 0,                       'F'},
-        {"noop",        no_argument,       &optNoOP,                  1},
+        {"noop",        no_argument,       0,                       'N'},
         {"host",        required_argument, 0,                       'H'},
         {"mport",       required_argument, 0,                       'm'},
         {"vport",       required_argument, 0,                       'v'},
@@ -302,6 +312,12 @@ void parseOptions(int argc, char **argv)
         case 'F':
             optTimeFactor = atof(optarg);
             break;
+
+        case 'N':
+            optNoOP = 1;
+            optNoGUI = 1;
+            optSimulateMobile = 1;
+            optSimulateVehicle = 1;
 
         case -1: /* Done with options. */
             break;
@@ -386,11 +402,10 @@ bool checkMobileTask()
         return gSchedulerTalker->checkTask();
     }
     else {
-        srand ( time(NULL) );
-        if (rand() % 45 != 0)
-            return false;
-        else
+        if( (float)rand()/RAND_MAX < 0.1)
             return true;
+        else
+            return false;
     }
 }
 
@@ -409,19 +424,17 @@ Task getMobileTask()
     {
         //srand ( time(NULL) );
         task.customerID = "cust1";
-        task.pickup = stationList(rand() % stationList.size());
+        unsigned s1 = (unsigned)((float)rand()/RAND_MAX*stationList.size());
+        unsigned s2;
         do
-            task.dropoff = stationList(rand() % stationList.size());
-        while (task.dropoff == task.pickup);
-
+            s2 = (unsigned)((float)rand()/RAND_MAX*stationList.size());
+        while (s1==s2);
+        task.pickup = stationList(s1);
+        task.dropoff = stationList(s2);
     }
 
     MSG("Got task <%s,%s,%s> from mobile phone",
         task.customerID.c_str(), task.pickup.c_str(), task.dropoff.c_str());
-    fprintf(gLogFile, "\n%d: Got task <%s,%s,%s> from mobile phone",
-            (int) time(NULL), task.customerID.c_str(),
-            task.pickup.c_str(), task.dropoff.c_str());
-
     return task;
 }
 
@@ -434,16 +447,11 @@ Task addTask(Task task)
 
     task = gScheduler->addTask(task.customerID, task.pickup, task.dropoff);
 
-    fprintf (gLogFile, "\n%d: Added task %u:%s:%s:%s to the scheduler",
-             (int) time(NULL), task.taskID, task.customerID.c_str(),
-             task.pickup.c_str(), task.dropoff.c_str());
+    MSG("Added task %u:%s:%s:%s to the scheduler", task.taskID,
+        task.customerID.c_str(), task.pickup.c_str(), task.dropoff.c_str());
 
     if (optVerbosityLevel > 0 && optNoGUI)
-    {
-        cout << "After adding task..." << endl;
-        cout << "Task queue:" << endl;
-        gScheduler->printTasks();
-    }
+        MSG("After adding task...\nTask queue:\n%s", gScheduler->toString().c_str());
 
     return task;
 }
@@ -463,8 +471,7 @@ void addMobileTask()
             if (!optSimulateMobile)
             {
                 gSchedulerTalker->sendTaskStatus(task.taskID, task.twait, task.vehicleID);
-                fprintf (gLogFile, "\n%d: Sending status: %u:%d:%d to the server",
-                        (int) time(NULL), task.taskID, task.twait, task.vehicleID);
+                MSG("Sending status: %u:%d:%d to the server", task.taskID, task.twait, task.vehicleID);
             }
         }
         catch( StationDoesNotExistException & e )
@@ -478,8 +485,7 @@ void addMobileTask()
             if (!optNoMobile && !optSimulateMobile)
             {
                 gSchedulerTalker->sendTaskStatus(task.taskID, -1, errorCode);
-                fprintf (gLogFile, "\n%d: Sending status: %u:-1:%d to the server",
-                        (int) time(NULL), task.taskID, errorCode);
+                MSG("Sending status: %u:-1:%d to the server", task.taskID, errorCode);
             }
             */
             ERROR("Task %d <%s,%s> from customer %s is invalid: %s", task.taskID,
@@ -500,9 +506,8 @@ void sendMobileTaskStatus()
         {
             Task & curTask = tasks.front();
             gSchedulerTalker->sendTaskStatus(curTask.taskID, curTask.tpickup, curTask.vehicleID);
-            fprintf (gLogFile, "\n%d: Sending status: %u:%u:%u to the server",
-                     (int) time(NULL), curTask.taskID,
-                     curTask.tpickup, curTask.vehicleID);
+            MSG("Sending status: %u:%u:%u to the server", curTask.taskID,
+                curTask.tpickup, curTask.vehicleID);
         }
 
         list<Task>::iterator it=tasks.begin();
@@ -510,8 +515,7 @@ void sendMobileTaskStatus()
         for ( ; it != tasks.end(); it++ )
         {
             gSchedulerTalker->sendTaskStatus(it->taskID, it->twait, it->vehicleID);
-            fprintf (gLogFile, "\n%d: Sending status: %u:%u:%d to the server",
-                     (int) time(NULL), it->taskID, it->twait, it->vehicleID);
+            MSG("Sending status: %u:%u:%d to the server", it->taskID, it->twait, it->vehicleID);
         }
     }
 }
@@ -588,14 +592,11 @@ void sendTaskToVehicle(Task task)
 {
     MSG("Sending task %d: <%s,%s> from customer %s to vehicle",
         task.taskID, task.pickup.c_str(), task.dropoff.c_str(), task.customerID.c_str());
-    fprintf (gLogFile, "\n%d: Sending task %d: <%s,%s> from customer %s to vehicle",
-             (int) time(NULL), task.taskID, task.pickup.c_str(),
-             task.dropoff.c_str(), task.customerID.c_str());
 
     if (!optSimulateVehicle)
         gVehicleTalker->sendNewTask(task.customerID, task.pickup, task.dropoff);
 
-    fprintf (gLogFile, "\n%d: Task sent", (int) time(NULL));
+    MSG("Task sent");
 }
 
 
@@ -611,8 +612,7 @@ void update()
     VehicleInfo vehInfo = getVehicleInfo(DEFAULT_VEHICLE_ID);
     VehicleStatus vehStatus = vehInfo.status;
 
-    fprintf (gLogFile, "\n%d: got status: %d:%d:%d",
-             (int) time(NULL), vehInfo.status, vehInfo.tremain, vehInfo.isNew);
+    MSG("Got status: %d:%d:%d", vehInfo.status, vehInfo.tremain, vehInfo.isNew);
 
     // Get the next task and send to the vehicle if the vehicle is available
     if (vehStatus == VEHICLE_AVAILABLE && vehInfo.isNew)
@@ -625,12 +625,8 @@ void update()
 
             sendTaskToVehicle( gScheduler->vehicleSwitchToNextTask(DEFAULT_VEHICLE_ID) );
 
-            if (optVerbosityLevel > 0 && optNoGUI) {
-                cout << endl;
-                cout << "After task sent..." << endl;
-                cout << "Task queue:" << endl;
-                gScheduler->printTasks();
-            }
+            if (optVerbosityLevel > 0 && optNoGUI)
+                MSG("\nAfter task sent...\nTask queue:\n%s", gScheduler->toString().c_str());
         }
         else
         {
@@ -643,7 +639,7 @@ void update()
     {
         gScheduler->updateVehicleStatus(DEFAULT_VEHICLE_ID, vehStatus);
         gScheduler->updateTCurrent(DEFAULT_VEHICLE_ID, vehInfo.tremain);
-        fprintf (gLogFile, "\n%d: Updated vehicle status to %d", (int) time(NULL), vehStatus);
+        MSG("Updated vehicle status to %d", vehStatus);
 
         if (optVerbosityLevel > 0 && optNoGUI) {
             cout << endl;
@@ -659,11 +655,7 @@ void update()
         gScheduler->updateWaitTime(DEFAULT_VEHICLE_ID);
 
     if (optVerbosityLevel > 0 && optNoGUI)
-    {
-        cout << "After updating waiting time..." << endl;
-        cout << "Task queue:" << endl;
-        gScheduler->printTasks();
-    }
+        MSG("After updating waiting time...\nTask queue:\n%s", gScheduler->toString().c_str());
 }
 
 
@@ -729,11 +721,7 @@ void textUI()
             gScheduler->removeTask((unsigned) getNumeric());
 
             if (optVerbosityLevel > 0 && optNoGUI)
-            {
-                cout << "After removing task..." << endl;
-                cout << "Task queue:" << endl;
-                gScheduler->printTasks();
-            }
+                MSG("After removing task...\nTask queue:\n%s", gScheduler->toString().c_str());
         }
         catch( SchedulerException & e )
         {
@@ -745,8 +733,7 @@ void textUI()
     }
     else if (opOption == OPERATOR_VIEW_TASK_LIST)
     {
-        cout << endl;
-        gScheduler->printTasks();
+        MSG("\n%s", gScheduler->toString().c_str());
     }
     else if (opOption == OPERATOR_QUIT)
     {

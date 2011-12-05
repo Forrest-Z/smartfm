@@ -157,7 +157,7 @@ public:
     VehicleStatus & getVehicleStatus(unsigned vehicleID);
 
     /// Method to print all the tasks
-    void printTasks();
+    std::string toString() const;
 
 
 public:

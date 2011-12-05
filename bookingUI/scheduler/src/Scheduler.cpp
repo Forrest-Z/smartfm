@@ -341,35 +341,37 @@ void Scheduler::updateVehicleStatus(unsigned vehicleID, VehicleStatus status)
         getVehicleCurrentTask(vehicleID).tpickup = 0;
 }
 
-void Scheduler::printTasks()
+string Scheduler::toString() const
 {
-    for( VIT vit = vehicles.begin(); vit != vehicles.end(); ++vit )
+    stringstream ss;
+    for( vector<Vehicle>::const_iterator vit = vehicles.begin(); vit != vehicles.end(); ++vit )
     {
-        cout << "Vehicle " << vit->id << " (";
+        ss << "Vehicle " << vit->id << " (";
 
         switch( vit->status )
         {
             case VEHICLE_NOT_AVAILABLE:
-                cout << "NOT AVAILABLE";
+                ss << "NOT AVAILABLE";
                 break;
             case VEHICLE_ON_CALL:
-                cout << "ON CALL";
+                ss << "ON CALL";
                 break;
             case VEHICLE_POB:
-                cout << "POB";
+                ss << "POB";
                 break;
             case VEHICLE_AVAILABLE:
-                cout << "AVAILABLE";
+                ss << "AVAILABLE";
         }
 
-        cout << "): ";
-        list<Task> & tasks = vit->tasks;
+        ss << "): ";
+        const list<Task> & tasks = vit->tasks;
         if( tasks.empty() )
-            cout <<" no tasks." <<endl;
+            ss <<" no tasks." <<endl;
         else
-            for ( list<Task>::iterator jt=tasks.begin(); jt != tasks.end(); ++jt )
-                cout << "  " << jt->toString() << endl;
+            for ( list<Task>::const_iterator jt=tasks.begin(); jt != tasks.end(); ++jt )
+                ss << "  " << jt->toString() << endl;
     }
+    return ss.str();
 }
 
 Duration Scheduler::travelTime(Station pickup, Station dropoff)
