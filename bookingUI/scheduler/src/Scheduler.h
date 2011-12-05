@@ -3,11 +3,10 @@
 
 #include <string>
 #include <list>
+#include <map>
 #include <exception>
 
 #include <station_path.h>
-
-#define NUM_VEHICLES 1
 
 
 typedef unsigned Duration;
@@ -63,7 +62,8 @@ public:
         TASK_DOES_NOT_EXIST,
         TASK_CANNOT_BE_CANCELLED,
         INVALID_VEHICLE_ID,
-        NO_PENDING_TASKS
+        NO_PENDING_TASKS,
+        NO_CURRENT_TASK
     };
 
 private:
@@ -78,37 +78,51 @@ public:
 };
 
 
+enum VehicleStatus
+{
+    VEHICLE_NOT_AVAILABLE,
+    VEHICLE_ON_CALL,
+    VEHICLE_POB,
+    VEHICLE_AVAILABLE
+};
+
+
+class Vehicle
+{
+public:
+    unsigned id;
+    VehicleStatus status;
+    std::list<Task> tasks;
+
+    Vehicle() : id(0), status(VEHICLE_AVAILABLE) { }
+    Vehicle(VehicleStatus s) : id(0), status(s) { }
+    Vehicle(unsigned i) : id(i), status(VEHICLE_AVAILABLE) { }
+    Vehicle(unsigned i, VehicleStatus s) : id(i), status(s) { }
+};
+
+
 class Scheduler
 {
 public:
-    enum VehicleStatus
-    {
-        VEHICLE_NOT_AVAILABLE,
-        VEHICLE_ON_CALL,
-        VEHICLE_POB,
-        VEHICLE_BUSY, // either not available, on call, or pob
-        VEHICLE_AVAILABLE
-    };
-
     const StationPaths stationPaths;
 
-
 private:
-    /// The ordered sequence of tasks
-    Task currentTask[NUM_VEHICLES];
-    std::list<Task> taskAssignment[NUM_VEHICLES];
-    VehicleStatus vehStatus[NUM_VEHICLES];
+    std::vector<Vehicle> vehicles;
+
+    /// Task id, incremented each time a new task is added.
     unsigned nextTaskID;
 
     /// Level of verbosity
     unsigned verbosity_level;
 
+    typedef std::vector<Vehicle>::iterator VIT;
+
 public:
     /// Default Constructor
     Scheduler(unsigned verbosity_level);
 
-    /// Method to add a task. Returns the taskid.
-    unsigned addTask(std::string customerID, Station pickup, Station dropoff);
+    /// Method to add a task. Returns the task.
+    Task addTask(std::string customerID, Station pickup, Station dropoff);
 
     /// Method to remove a task
     void removeTask(unsigned taskID);
@@ -122,7 +136,10 @@ public:
     Task getVehicleNextTask(unsigned vehicleID);
 
     /// Method to get the current task for a specified vehicle
-    Task getVehicleCurrentTask(unsigned vehicleID);
+    Task & getVehicleCurrentTask(unsigned vehicleID);
+
+    /// Method to get all tasks for a specified vehicle
+    std::list<Task> & getVehicleTasks(unsigned vehicleID);
 
     /// Method to get all remaining tasks for a specified vehicle
     std::list<Task> getVehicleRemainingTasks(unsigned vehicleID);
@@ -134,7 +151,7 @@ public:
     Task getTask(unsigned taskID);
 
     /// Method to get the status of the vehicles
-    VehicleStatus getVehicleStatus(unsigned vehicleID);
+    VehicleStatus & getVehicleStatus(unsigned vehicleID);
 
     /// Method to update waiting time for a specified vehicle.
     /// timeCurrentTask is the estimated time from current position of the car
@@ -157,9 +174,15 @@ public:
     /// Method to print all the tasks
     void printTasks();
 
+    /// Returns the vehicle, throws a SchedulerException if it does not exist.
+    VIT checkVehicleExist(unsigned vehicleID);
+
 private:
     /// Returns travel time. Throws SchedulerException if stations or route cannot be found.
     unsigned travelTime(Station pickup, Station dropoff);
+
+    /// Returns the first available vehicle.
+    VIT checkVehicleAvailable();
 };
 
 

@@ -1,11 +1,13 @@
 #include "Scheduler.h"
 
 #include <unistd.h>
+#include <stdio.h>
+#include <assert.h>
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <stdio.h>
 #include <string>
 
 using namespace std;
@@ -35,6 +37,7 @@ SchedulerException::SchedulerException(SchedulerExceptionTypes t) throw()
         __CASE(TASK_CANNOT_BE_CANCELLED);
         __CASE(INVALID_VEHICLE_ID);
         __CASE(NO_PENDING_TASKS);
+        __CASE(NO_CURRENT_TASK);
     }
 }
 
@@ -70,48 +73,54 @@ string Task::toString() const
 Scheduler::Scheduler(unsigned verbosity_level)
 {
     this->verbosity_level = verbosity_level;
-    for (unsigned i=0; i<NUM_VEHICLES; i++)
-        this->vehStatus[i] = VEHICLE_NOT_AVAILABLE;
+
+    // Add a vehicle. TODO: get the list of vehicles from the database.
+    vehicles.push_back( Vehicle(0,VEHICLE_AVAILABLE) );
+
     this->nextTaskID = 1;
 }
 
-unsigned Scheduler::addTask(string customerID, Station pickup, Station dropoff)
+Scheduler::VIT Scheduler::checkVehicleAvailable()
 {
-    bool vehicleAvailable = false;
-    for (unsigned i = 0; i < NUM_VEHICLES && !vehicleAvailable; i++)
-        if (this->vehStatus[i] != VEHICLE_NOT_AVAILABLE)
-            vehicleAvailable = true;
+    VIT vit;
+    for ( vit = vehicles.begin(); vit != vehicles.end(); ++vit)
+        if (vit->status != VEHICLE_NOT_AVAILABLE)
+            break;
+    return vit;
+}
 
-    if (!vehicleAvailable)
-    {
-        ERROR("Cannot add task. No vehicle available!");
+Task Scheduler::addTask(string customerID, Station pickup, Station dropoff)
+{
+    VIT vit = checkVehicleAvailable();
+    if( vit==vehicles.end() )
         throw SchedulerException(SchedulerException::NO_AVAILABLE_VEHICLE);
-    }
 
-    // Currently we don't have any procedure to assign a vehile to the task,
-    // so we just assign to this vehicle:
-    unsigned DEFAULT_VEHICLE_ID = 0;
-    Task task(this->nextTaskID++, customerID, DEFAULT_VEHICLE_ID, pickup, dropoff);
+    // Currently we don't have any procedure to assign a vehicle to the task,
+    // so we just assign to vehicle 0:
+    Task task(nextTaskID++, customerID, 0, pickup, dropoff);
 
-    if (this->verbosity_level > 0) {
-        MSG("Adding task <%u,%s,%s,%s>", task.taskID, task.customerID.c_str(),
-            task.pickup.c_str(), task.dropoff.c_str());
+    if (verbosity_level > 0)
+    {
+        MSG("Adding task <%u,%s,%s,%s> to vehicle %u", task.taskID, task.customerID.c_str(),
+            task.pickup.c_str(), task.dropoff.c_str(), task.vehicleID);
     }
 
     task.ttask = travelTime(task.pickup, task.dropoff);
 
-    list<Task> & tasks = this->taskAssignment[task.vehicleID];
-    Task & curTask = this->currentTask[task.vehicleID];
-    if (tasks.empty())
+    list<Task> & tasks = getVehicleTasks(task.vehicleID);
+
+    if( tasks.empty() )
     {
-        task.tpickup = 0;
-        if ( curTask.isValid() && curTask.dropoff != task.pickup )
-            task.tpickup = travelTime(curTask.dropoff, task.pickup);
+        if( verbosity_level>0 ) MSG("no current task. Adding as current.");
+        assert( vit->status == VEHICLE_AVAILABLE );
+        vit->status = VEHICLE_ON_CALL;
+        task.tpickup = 0; //TODO: this should be the time from the current station to the pickup station
         tasks.push_back(task);
         updateWaitTime(task.vehicleID);
     }
     else
     {
+        Task & curTask = tasks.front();
         // Time from previous task dropoff to this task pickup
         unsigned tdp1 = 0;
         // Time from this task dropoff to next task pickup
@@ -119,6 +128,7 @@ unsigned Scheduler::addTask(string customerID, Station pickup, Station dropoff)
         Station prevDropoff = curTask.dropoff;
 
         list<Task>::iterator it = tasks.begin();
+        ++it;
         for ( ; it != tasks.end(); ++it )
         {
             if (prevDropoff != task.pickup)
@@ -131,7 +141,7 @@ unsigned Scheduler::addTask(string customerID, Station pickup, Station dropoff)
             else
                 tdp2 = 0;
 
-            if (this->verbosity_level > 3)
+            if (verbosity_level > 3)
                 MSG("(%u+%u+%u) VS %d\n", tdp1, task.ttask, tdp2, it->tpickup);
 
             if (tdp1 + task.ttask + tdp2 <= it->tpickup + MAX_ADDITIONAL_TIME) {
@@ -154,18 +164,22 @@ unsigned Scheduler::addTask(string customerID, Station pickup, Station dropoff)
             updateWaitTime(task.vehicleID);
         }
     }
-    return task.taskID;
+    return task;
 }
 
 
 void Scheduler::removeTask(unsigned taskID)
 {
-    if (this->verbosity_level > 0)
+    if (verbosity_level > 0)
         MSG("Removing task %u", taskID);
 
-    for (unsigned i = 0; i < NUM_VEHICLES; i++)
+    for (VIT vit = vehicles.begin(); vit != vehicles.end(); ++vit)
     {
-        if( this->currentTask[i].taskID == taskID )
+        list<Task> & tasks = vit->tasks;
+        if( tasks.empty() )
+            continue;
+
+        if( tasks.front().taskID == taskID )
         {
             //Trying to cancel the current task. This is only possible if the
             //vehicle is currently going to the pickup location, not when going
@@ -176,140 +190,124 @@ void Scheduler::removeTask(unsigned taskID)
             throw SchedulerException(SchedulerException::TASK_CANNOT_BE_CANCELLED);
         }
 
-        Station prevDropoff = this->currentTask[i].dropoff;
-        list<Task> & tasks = this->taskAssignment[i];
-        for ( list<Task>::iterator it = tasks.begin() ; it != tasks.end(); it++ )
+        Station prevDropoff = tasks.front().dropoff;
+        list<Task>::iterator jt = tasks.begin();
+        ++jt;
+        for( ; jt != tasks.end(); ++jt )
         {
-            if(it->taskID == taskID)
+            if(jt->taskID == taskID)
             {
-                it = tasks.erase(it);
-                if( it != tasks.end() )
+                jt = tasks.erase(jt);
+                if( jt != tasks.end() )
                 {
-                    it->tpickup = 0;
-                    if (prevDropoff != it->pickup)
-                        it->tpickup = travelTime(prevDropoff, it->pickup);
+                    jt->tpickup = 0;
+                    if (prevDropoff != jt->pickup)
+                        jt->tpickup = travelTime(prevDropoff, jt->pickup);
                 }
-                updateWaitTime(i);
+                updateWaitTime(vit->id);
                 return;
             }
-            prevDropoff = it->dropoff;
+            prevDropoff = jt->dropoff;
         }
     }
     ERROR("Task %u does not exist", taskID);
     throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
 }
 
+Scheduler::VIT Scheduler::checkVehicleExist(unsigned vehicleID)
+{
+    VIT vit;
+    for( vit=vehicles.begin(); vit!=vehicles.end(); ++vit )
+        if( vit->id == vehicleID )
+            break;
+    if( vit==vehicles.end() )
+        throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
+    return vit;
+}
+
 bool Scheduler::hasPendingTasks(unsigned vehicleID)
 {
-    if (vehicleID >= NUM_VEHICLES) {
-        ERROR("Invalid vehicle");
-        throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
-    }
-    return ! this->taskAssignment[vehicleID].empty();
+    return getVehicleTasks(vehicleID).size() > 1;
 }
 
 Task Scheduler::getVehicleNextTask(unsigned vehicleID)
 {
-    if (vehicleID >= NUM_VEHICLES) {
-        ERROR("Invalid vehicle");
-        throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
-    }
+    VIT vit = checkVehicleExist(vehicleID);
+    vit->status = VEHICLE_AVAILABLE;
 
-    this->vehStatus[vehicleID] = VEHICLE_AVAILABLE;
-
-    if( this->taskAssignment[vehicleID].empty() ) {
+    if( ! hasPendingTasks(vehicleID) )
+    {
         MSG("No more task for vehicle %u\n", vehicleID);
         throw SchedulerException(SchedulerException::NO_PENDING_TASKS);
     }
 
-    Task task( this->taskAssignment[vehicleID].front() );
-    this->currentTask[vehicleID] = task;
-    this->taskAssignment[vehicleID].pop_front();
-    this->vehStatus[vehicleID] = VEHICLE_ON_CALL;
+    vit->tasks.pop_front();
+    Task task = vit->tasks.front();
+    vit->status = VEHICLE_ON_CALL;
     updateWaitTime(vehicleID);
-    if (this->verbosity_level > 0)
+    if (verbosity_level > 0)
         MSG("Giving task <%u,%s,%s> to vehicle %u", task.taskID, task.pickup.c_str(), task.dropoff.c_str(), vehicleID);
     return task;
 }
 
-Task Scheduler::getVehicleCurrentTask(unsigned vehicleID)
+list<Task> & Scheduler::getVehicleTasks(unsigned vehicleID)
 {
-    if (vehicleID >= NUM_VEHICLES){
-        ERROR("Invalid vehicle");
-        throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
-    }
-    return currentTask[vehicleID];
+    VIT vit = checkVehicleExist(vehicleID);
+    return vit->tasks;
+}
+
+Task & Scheduler::getVehicleCurrentTask(unsigned vehicleID)
+{
+    list<Task> & tasks = getVehicleTasks(vehicleID);
+    if( tasks.empty() )
+        throw SchedulerException(SchedulerException::NO_CURRENT_TASK);
+    return tasks.front();
 }
 
 list<Task> Scheduler::getVehicleRemainingTasks(unsigned vehicleID)
 {
-    if (vehicleID >= NUM_VEHICLES){
-        ERROR("Invalid vehicle");
-        throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
-    }
-    return this->taskAssignment[vehicleID];
-}
-
-Duration Scheduler::getWaitTime(unsigned taskID)
-{
-    for (unsigned i = 0; i < NUM_VEHICLES; i++) {
-        list<Task>::iterator it = this->taskAssignment[i].begin();
-        for ( ; it != this->taskAssignment[i].end(); it++ )
-            if(it->taskID == taskID)
-                return it->twait;
-    }
-    throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
-    return 0;
+    VIT vit = checkVehicleExist(vehicleID);
+    return list<Task>(vit->tasks.begin(), vit->tasks.end());
 }
 
 Task Scheduler::getTask(unsigned taskID)
 {
-    for(unsigned i = 0; i < NUM_VEHICLES; i++)
-    {
-        if (currentTask[i].taskID == taskID)
-            return currentTask[i];
-        list<Task>::iterator it = this->taskAssignment[i].begin();
-        for( ; it != this->taskAssignment[i].end(); it++ )
-            if(it->taskID == taskID)
-                return *it;
-    }
+    list<Task>::iterator jt;
+    for(VIT vit = vehicles.begin(); vit != vehicles.end(); ++vit)
+        for( jt = vit->tasks.begin(); jt != vit->tasks.end(); ++jt )
+            if(jt->taskID == taskID)
+                return *jt;
     throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
     return Task();
 }
 
-Scheduler::VehicleStatus Scheduler::getVehicleStatus(unsigned vehicleID)
+Duration Scheduler::getWaitTime(unsigned taskID)
 {
-    if (vehicleID >= NUM_VEHICLES) {
-        ERROR("Invalid vehicle");
-        throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
-    }
-    return this->vehStatus[vehicleID];
+    return getTask(taskID).twait;
+}
+
+VehicleStatus & Scheduler::getVehicleStatus(unsigned vehicleID)
+{
+    VIT vit = checkVehicleExist(vehicleID);
+    return vit->status;
 }
 
 void Scheduler::updateWaitTime(unsigned vehicleID)
 {
-    if (vehicleID >= NUM_VEHICLES) {
-        ERROR("Invalid vehicle");
-        throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
-    }
-    Duration d = this->currentTask[vehicleID].tpickup + this->currentTask[vehicleID].ttask;
-    this->updateWaitTime(vehicleID, d);
+    Task & t = getVehicleCurrentTask(vehicleID);
+    updateWaitTime(vehicleID, t.tpickup + t.ttask);
 }
 
 void Scheduler::updateWaitTime(unsigned vehicleID, Duration timeCurrentTask)
 {
-    if (vehicleID >= NUM_VEHICLES) {
-        ERROR("Invalid vehicle");
-        throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
-    }
+    list<Task> & tasks = getVehicleTasks(vehicleID);
+    Duration waittime = timeCurrentTask;
 
-    if (this->verbosity_level > 1)
-        MSG("Updating waiting time for vehicle %d with current task completion time %d",
+    if (verbosity_level > 1)
+        MSG("Updating waiting time for vehicle %u with current task completion time %u",
             vehicleID, timeCurrentTask);
 
-    Duration waittime = timeCurrentTask;
-    list<Task>::iterator it = this->taskAssignment[vehicleID].begin();
-    for( ; it != this->taskAssignment[vehicleID].end(); ++it )
+    for( list<Task>::iterator it = tasks.begin(); it != tasks.end(); ++it )
     {
         waittime += it->tpickup;
         it->twait = waittime;
@@ -319,53 +317,44 @@ void Scheduler::updateWaitTime(unsigned vehicleID, Duration timeCurrentTask)
 
 void Scheduler::updateTCurrent(unsigned vehicleID, Duration tremain)
 {
-    if (vehicleID >= NUM_VEHICLES) {
-        ERROR("Invalid vehicle");
-        throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
-    }
-    if (vehStatus[vehicleID] == VEHICLE_POB) {
-        this->currentTask[vehicleID].ttask = tremain;
-        this->currentTask[vehicleID].tpickup = 0;
+    Task & t = getVehicleCurrentTask(vehicleID);
+    if (getVehicleStatus(vehicleID) == VEHICLE_POB)
+    {
+        t.ttask = tremain;
+        t.tpickup = 0;
     }
     else
-        this->currentTask[vehicleID].tpickup = tremain;
+    {
+        t.tpickup = tremain;
+    }
 }
 
 void Scheduler::updateTPickupCurrent(unsigned vehicleID, Duration tpickup)
 {
-    if (vehicleID >= NUM_VEHICLES) {
-        ERROR("Invalid vehicle");
-        throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
-    }
-    this->currentTask[vehicleID].tpickup = tpickup;
+    getVehicleCurrentTask(vehicleID).tpickup = tpickup;
 }
 
 void Scheduler::updateTTaskCurrent(unsigned vehicleID, Duration ttask)
 {
-    if (vehicleID >= NUM_VEHICLES) {
-        ERROR("Invalid vehicle");
-        throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
-    }
-    this->currentTask[vehicleID].ttask = ttask;
+    getVehicleCurrentTask(vehicleID).ttask = ttask;
 }
 
 void Scheduler::updateVehicleStatus(unsigned vehicleID, VehicleStatus status)
 {
-    if (vehicleID >= NUM_VEHICLES) {
-        ERROR("Invalid vehicle");
-        throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
-    }
-    this->vehStatus[vehicleID] = status;
+    checkVehicleExist(vehicleID);
+    getVehicleStatus(vehicleID) = status;
     if (status == VEHICLE_POB)
-        this->currentTask[vehicleID].tpickup = 0;
+        getVehicleCurrentTask(vehicleID).tpickup = 0;
 }
 
 void Scheduler::printTasks()
 {
-    for (unsigned i = 0; i < NUM_VEHICLES; i++) {
-        cout << "Vehicle " << i << " (";
+    for( VIT vit = vehicles.begin(); vit != vehicles.end(); ++vit )
+    {
+        cout << "Vehicle " << vit->id << " (";
 
-        switch  (this->vehStatus[i]) {
+        switch( vit->status )
+        {
             case VEHICLE_NOT_AVAILABLE:
                 cout << "NOT AVAILABLE";
                 break;
@@ -375,31 +364,23 @@ void Scheduler::printTasks()
             case VEHICLE_POB:
                 cout << "POB";
                 break;
-            case VEHICLE_BUSY:
-                cout << "BUSY";
-                break;
             case VEHICLE_AVAILABLE:
                 cout << "AVAILABLE";
         }
 
         cout << "): ";
-        if( ! this->currentTask[i].isValid() )
-        {
+        list<Task> & tasks = vit->tasks;
+        if( tasks.empty() )
             cout <<" no tasks." <<endl;
-        }
         else
-        {
-            cout << this->currentTask[i].toString() << endl;
-            list<Task>::iterator it;
-            for ( it=this->taskAssignment[i].begin() ; it != this->taskAssignment[i].end(); it++ )
-                cout << "  " << it->toString() << endl;
-        }
+            for ( list<Task>::iterator jt=tasks.begin(); jt != tasks.end(); ++jt )
+                cout << "  " << jt->toString() << endl;
     }
 }
 
 Duration Scheduler::travelTime(Station pickup, Station dropoff)
 {
     double vel = 1.0;
-    double length = this->stationPaths.getPath(pickup, dropoff).length();
+    double length = stationPaths.getPath(pickup, dropoff).length();
     return (Duration)(length*vel);
 }

@@ -26,12 +26,6 @@ using namespace std;
 /// has been implemented, so we will use vehicle 0 only for now.
 const unsigned DEFAULT_VEHICLE_ID = 0;
 
-/// Number of station
-const int NUM_STATIONS = 3;
-
-/// Number of seconds in minutes (for testing purpose)
-const int NUM_SECONDS_IN_MIN = 1;
-
 /// Number of seconds between two successive task info
 const int NUM_SEC_TASK_INFO_SENT = 10;
 
@@ -50,6 +44,8 @@ int optNoOP = 0;
 string optHostName = "localhost";
 int optMobilePort = 4440;
 int optVehiclePort = 8888;
+float optTimeFactor = 1; ///< control the speed of time in simulation mode
+
 
 
 //------------------------------------------------------------------------------
@@ -64,12 +60,9 @@ SchedulerTalker* gSchedulerTalker = NULL;
 VehicleTalker* gVehicleTalker = NULL;
 SchedulerUI* gSchedulerUI = NULL;
 
-// Threads and mutex
+// Threads
 pthread_t gOperatorThread, gTalkerThread, gVehicleThread;
-pthread_mutex_t gSchedulerMutex;
 
-// Current task
-Task gCurrentTask;
 time_t gPreviousTime;
 
 /// The name of this program
@@ -98,7 +91,7 @@ enum OperatorOption
 // Function declarations
 
 // Error handling
-#define MSG(fmt, ...) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
+#define MSG(fmt, ...) if (optVerbosityLevel > 0) fprintf(stderr, fmt "\n", ##__VA_ARGS__)
 #define ERROR(fmt, ...) fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 
 
@@ -137,8 +130,8 @@ void addMobileTask();
 /// Update all the information
 void update();
 
-/// A thread that get command from operator
-void *operatorLoop(void*);
+/// get commands from operator in text mode
+void textUI();
 
 
 
@@ -160,24 +153,26 @@ int main(int argc, char **argv)
     //cout << "Connecting to " << optHostName << ":" << optMobilePort << endl;
 
     gScheduler = new Scheduler(optVerbosityLevel);
-    gCurrentTask = gScheduler->getVehicleCurrentTask(DEFAULT_VEHICLE_ID);
-
     openLogFile();
-
     launchThreads();
-
     time_t prevTimeTaskInfo = time(NULL);
     gPreviousTime = time(NULL);
 
     while(gQuit == 0)
     {
         if (!optNoOP && optNoGUI)
-            pthread_mutex_lock(&gSchedulerMutex);
+        {
+            textUI();
+        }
         else if (!optNoGUI)
+        {
             gSchedulerUI->updateConsole();
+        }
 
         if( ! optNoMobile )
+        {
             addMobileTask();
+        }
 
         // Update vehicle status, waiting time and send new task to vehicle if it has completes the previous task.
         update();
@@ -188,15 +183,13 @@ int main(int argc, char **argv)
             sendMobileTaskStatus();
         }
 
-        if (!optNoOP && optNoGUI)
-            pthread_mutex_unlock(&gSchedulerMutex);
-
-        if (!optNoGUI && gSchedulerUI->getSchedulerStatus() == SchedulerUI::SCHEDULER_QUIT) {
+        if (!optNoGUI && gSchedulerUI->getSchedulerStatus() == SchedulerUI::SCHEDULER_QUIT)
+        {
             gQuit = 1;
-        if (!optNoMobile && !optSimulateMobile)
-            gSchedulerTalker->quit();
-        if (!optSimulateVehicle)
-            gVehicleTalker->quit();
+            if (!optNoMobile && !optSimulateMobile)
+                gSchedulerTalker->quit();
+            if (!optSimulateVehicle)
+                gVehicleTalker->quit();
         }
         usleep(100000);
     }
@@ -221,11 +214,12 @@ void print_usage (FILE* stream, int exit_code)
             "phones (any number between 2000 and 65535). The default is 4440.\n");
     fprintf( stream, "  --vport vport     Specify the port for talking to the "
             "vehicle (any number between 2000 and 65535). The default is 4444.\n");
-    fprintf( stream, "  --verbose         See the status of the program at every step.\n");
+    fprintf( stream, "  --verbose lvl     Set verbosity level to lvl.\n");
     fprintf( stream, "  --nogui           Run in plain text mode.\n");
     fprintf( stream, "  --nomobile        Do not receive request from mobile phones.\n");
     fprintf( stream, "  --simmobile       Simulate mobile phone users.\n");
     fprintf( stream, "  --simvehicle      Simulate vehicles' status.\n");
+    fprintf( stream, "  --timefactor tf   Control speed of time when simulating the vehicle (default is 1).\n");
     fprintf( stream, "  --simtime         Simulate remaining time of current task.\n");
     fprintf( stream, "  --noop            Do not interact with operator when --nogui option is given.\n");
     fprintf( stream, "  --help            Display this message.\n");
@@ -246,12 +240,13 @@ void parseOptions(int argc, char **argv)
         // third: if pointer, set variable to value of fourth argument
         //        if NULL, getopt_long returns fourth argument
         {"verbose",     no_argument,       &optVerbosityLevel,        1},
-        {"nogui",       no_argument,       &optNoGUI,                  1},
-        {"nomobile",    no_argument,       &optNoMobile,               1},
+        {"nogui",       no_argument,       &optNoGUI,                 1},
+        {"nomobile",    no_argument,       &optNoMobile,              1},
         {"simmobile",   no_argument,       &optSimulateMobile,        1},
         {"simvehicle",  no_argument,       &optSimulateVehicle,       1},
         {"simtime",     no_argument,       &optSimulateTime,          1},
-        {"noop",        no_argument,       &optNoOP,                   1},
+        {"timefactor",  required_argument, 0,                       'F'},
+        {"noop",        no_argument,       &optNoOP,                  1},
         {"host",        required_argument, 0,                       'H'},
         {"mport",       required_argument, 0,                       'm'},
         {"vport",       required_argument, 0,                       'v'},
@@ -295,6 +290,10 @@ void parseOptions(int argc, char **argv)
             optVehiclePort = atoi(optarg);
             break;
 
+        case 'F':
+            optTimeFactor = atof(optarg);
+            break;
+
         case -1: /* Done with options. */
             break;
         }
@@ -328,14 +327,7 @@ void openLogFile()
 
 void launchThreads()
 {
-    if (!optNoOP && optNoGUI)
-    {
-        pthread_mutex_init(&gSchedulerMutex, NULL);
-        int ret = pthread_create(&gOperatorThread, NULL, &operatorLoop, NULL);
-        if (ret != 0)
-            ERROR("return code from pthread_create(): %d", ret);
-    }
-    else if (!optNoGUI)
+    if (!optNoGUI)
     {
         gSchedulerUI = new SchedulerUI(*gScheduler);
         gSchedulerUI->initConsole();
@@ -374,11 +366,7 @@ void launchThreads()
 
 void terminateThreads()
 {
-    if (!optNoOP && optNoGUI) {
-        pthread_join(gOperatorThread, 0);
-        pthread_mutex_destroy(&gSchedulerMutex);
-    }
-    else if (!optNoGUI) {
+    if (!optNoGUI) {
         gSchedulerUI->finishConsole();
         delete gSchedulerUI;
     }
@@ -412,8 +400,7 @@ Task getMobileTask()
 {
     Task task;
     task.taskID = 0;
-    if (optVerbosityLevel > 0)
-        MSG("\nGetting task from mobile phone...");
+    MSG("\nGetting task from mobile phone...");
 
     if (!optSimulateMobile)
     {
@@ -440,16 +427,16 @@ Task getMobileTask()
 }
 
 
-/// Add new task to gScheduler and returns its id
-unsigned addTask(Task task)
+/// Add new task to gScheduler and returns it
+Task addTask(Task task)
 {
     if (optVerbosityLevel > 0 && optNoGUI)
         cout << endl;
 
-    unsigned taskid = gScheduler->addTask(task.customerID, task.pickup, task.dropoff);
+    task = gScheduler->addTask(task.customerID, task.pickup, task.dropoff);
 
-    fprintf (gLogFile, "\n%d: Added task %s:%s:%s to the scheduler",
-             (int) time(NULL), task.customerID.c_str(),
+    fprintf (gLogFile, "\n%d: Added task %u:%s:%s:%s to the scheduler",
+             (int) time(NULL), task.taskID, task.customerID.c_str(),
              task.pickup.c_str(), task.dropoff.c_str());
 
     if (optVerbosityLevel > 0 && optNoGUI)
@@ -459,7 +446,7 @@ unsigned addTask(Task task)
         gScheduler->printTasks();
     }
 
-    return taskid;
+    return task;
 }
 
 
@@ -472,9 +459,7 @@ void addMobileTask()
         try
         {
             // Get a new task from mobile phone and add to the scheduler
-            task = getMobileTask();
-            unsigned taskid = addTask(task);
-            task = gScheduler->getTask(taskid);
+            task = addTask( getMobileTask() );
 
             if (!optSimulateMobile)
             {
@@ -509,15 +494,16 @@ void sendMobileTaskStatus()
 {
     if (!optNoMobile && !optSimulateMobile)
     {
-        Scheduler::VehicleStatus vehStatus = gScheduler->getVehicleStatus(DEFAULT_VEHICLE_ID);
+        VehicleStatus vehStatus = gScheduler->getVehicleStatus(DEFAULT_VEHICLE_ID);
+        Task & curTask = gScheduler->getVehicleCurrentTask(DEFAULT_VEHICLE_ID);
         list<Task> tasks = gScheduler->getVehicleRemainingTasks(DEFAULT_VEHICLE_ID);
 
-        if( vehStatus == Scheduler::VEHICLE_ON_CALL )
+        if( vehStatus == VEHICLE_ON_CALL )
         {
-            gSchedulerTalker->sendTaskStatus(gCurrentTask.taskID, gCurrentTask.tpickup, gCurrentTask.vehicleID);
+            gSchedulerTalker->sendTaskStatus(curTask.taskID, curTask.tpickup, curTask.vehicleID);
             fprintf (gLogFile, "\n%d: Sending status: %u:%u:%u to the server",
-                     (int) time(NULL), gCurrentTask.taskID,
-                     gCurrentTask.tpickup, gCurrentTask.vehicleID);
+                     (int) time(NULL), curTask.taskID,
+                     curTask.tpickup, curTask.vehicleID);
         }
 
         for ( list<Task>::iterator it=tasks.begin(); it != tasks.end(); it++ )
@@ -533,13 +519,13 @@ void sendMobileTaskStatus()
 /// TODO: Get the status of the vehicle
 VehicleInfo getVehicleInfo(unsigned vehicleID)
 {
-    if (optVerbosityLevel > 0 && optNoGUI)
-        MSG("Getting vehicle information...");
+    MSG("Getting vehicle information...");
 
     VehicleInfo info;
     info.vehicleID = vehicleID;
     time_t currentTime = time(NULL);
-    time_t timeDiff = (currentTime - gPreviousTime)/NUM_SECONDS_IN_MIN;
+    time_t timeDiff = (currentTime - gPreviousTime);
+    Task & curTask = gScheduler->getVehicleCurrentTask(vehicleID);
 
     if (timeDiff > 0)
         gPreviousTime = currentTime;
@@ -549,32 +535,19 @@ VehicleInfo getVehicleInfo(unsigned vehicleID)
         info = gVehicleTalker->getVehicleInfo();
         if (optSimulateTime)
         {
-            if (info.status == Scheduler::VEHICLE_AVAILABLE)
+            if (info.status == VEHICLE_AVAILABLE)
             {
                 info.tremain = 0;
             }
-            else if (info.status == Scheduler::VEHICLE_ON_CALL)
+            else if (info.status == VEHICLE_ON_CALL)
             {
-                info.tremain = gCurrentTask.tpickup - timeDiff;
+                info.tremain = curTask.tpickup - timeDiff;
                 if (info.tremain < 0)
                     info.tremain = 0;
             }
-            else if (info.status == Scheduler::VEHICLE_POB)
+            else if (info.status == VEHICLE_POB)
             {
-                info.tremain = gCurrentTask.ttask - timeDiff;
-                if (info.tremain < 0)
-                    info.tremain = 0;
-            }
-            else if (info.status == Scheduler::VEHICLE_BUSY)
-            {
-                if (gCurrentTask.tpickup > 0) {
-                    info.status = Scheduler::VEHICLE_ON_CALL;
-                    info.tremain = gCurrentTask.tpickup - timeDiff;
-                }
-                else {
-                    info.status = Scheduler::VEHICLE_POB;
-                    info.tremain = gCurrentTask.ttask - timeDiff;
-                }
+                info.tremain = curTask.ttask - timeDiff;
                 if (info.tremain < 0)
                     info.tremain = 0;
             }
@@ -583,23 +556,24 @@ VehicleInfo getVehicleInfo(unsigned vehicleID)
     else // if(!optSimulateVehicle)
     {
         info.isNew = true;
-        if (gCurrentTask.taskID < 0 || gCurrentTask.ttask <= 0)
+        Duration dt = timeDiff * optTimeFactor;
+        if ( curTask.ttask <= dt)
         {
-            info.status = Scheduler::VEHICLE_AVAILABLE;
+            info.status = VEHICLE_AVAILABLE;
             info.tremain = 0;
         }
-        else if (gCurrentTask.tpickup > 0)
+        else if (curTask.tpickup > dt)
         {
-            info.status = Scheduler::VEHICLE_ON_CALL;
-            info.tremain = gCurrentTask.tpickup - timeDiff;
-            if (info.tremain < 0)
+            info.status = VEHICLE_ON_CALL;
+            info.tremain = curTask.tpickup - dt;
+            if (info.tremain < dt)
                 info.tremain = 0;
         }
         else
         {
-            info.status = Scheduler::VEHICLE_POB;
-            info.tremain = gCurrentTask.ttask - timeDiff;
-            if (info.tremain < 0)
+            info.status = VEHICLE_POB;
+            info.tremain = curTask.ttask - dt;
+            if (info.tremain < dt)
                 info.tremain = 0;
         }
     }
@@ -625,20 +599,21 @@ void sendTaskToVehicle(Task task)
 
 void update()
 {
-    bool vehicleIsAvailable = false;
+    if( gScheduler->getVehicleTasks(DEFAULT_VEHICLE_ID).empty() )
+        return;
 
     // Check the vehicle status
     if (optVerbosityLevel > 0 && optNoGUI)
         cout << endl;
 
     VehicleInfo vehInfo = getVehicleInfo(DEFAULT_VEHICLE_ID);
-    Scheduler::VehicleStatus vehStatus = vehInfo.status;
+    VehicleStatus vehStatus = vehInfo.status;
 
     fprintf (gLogFile, "\n%d: got status: %d:%d:%d",
              (int) time(NULL), vehInfo.status, vehInfo.tremain, vehInfo.isNew);
 
     // Get the next task and send to the vehicle if the vehicle is available
-    if (vehStatus == Scheduler::VEHICLE_AVAILABLE && (vehicleIsAvailable || vehInfo.isNew))
+    if (vehStatus == VEHICLE_AVAILABLE && vehInfo.isNew)
     {
         gScheduler->updateVehicleStatus(DEFAULT_VEHICLE_ID, vehStatus);
         if (gScheduler->hasPendingTasks(DEFAULT_VEHICLE_ID))
@@ -646,9 +621,7 @@ void update()
             if (optVerbosityLevel > 0 && optNoGUI)
                 cout << endl;
 
-            gCurrentTask = gScheduler->getVehicleNextTask(DEFAULT_VEHICLE_ID);
-            sendTaskToVehicle(gCurrentTask);
-            vehicleIsAvailable = false;
+            sendTaskToVehicle( gScheduler->getVehicleNextTask(DEFAULT_VEHICLE_ID) );
 
             if (optVerbosityLevel > 0 && optNoGUI) {
                 cout << endl;
@@ -659,17 +632,14 @@ void update()
         }
         else
         {
-            gScheduler->updateTPickupCurrent(DEFAULT_VEHICLE_ID, 0);
-            gScheduler->updateTTaskCurrent(DEFAULT_VEHICLE_ID, 0);
-            vehicleIsAvailable = true;
+            gScheduler->getVehicleTasks(DEFAULT_VEHICLE_ID).clear();
         }
     }
     // Otherwise, update the remaining task time (POB) or pickup time (other status)
-    else if (vehStatus != Scheduler::VEHICLE_AVAILABLE)
+    else if (vehStatus != VEHICLE_AVAILABLE)
     {
         gScheduler->updateVehicleStatus(DEFAULT_VEHICLE_ID, vehStatus);
         gScheduler->updateTCurrent(DEFAULT_VEHICLE_ID, vehInfo.tremain);
-        gCurrentTask = gScheduler->getVehicleCurrentTask(DEFAULT_VEHICLE_ID);
         fprintf (gLogFile, "\n%d: Updated vehicle status to %d", (int) time(NULL), vehStatus);
 
         if (optVerbosityLevel > 0 && optNoGUI) {
@@ -682,7 +652,8 @@ void update()
     if (optVerbosityLevel > 0 && optNoGUI)
         cout << endl;
 
-    gScheduler->updateWaitTime(DEFAULT_VEHICLE_ID);
+    if( vehStatus != VEHICLE_AVAILABLE )
+        gScheduler->updateWaitTime(DEFAULT_VEHICLE_ID);
 
     if (optVerbosityLevel > 0 && optNoGUI)
     {
@@ -705,11 +676,11 @@ int getNumeric(int min=0, int max=INT_MAX)
             if( val >= min && val <= max )
                 break;
             else
-                MSG("Please enter a value between %d and %d", min, max);
+                cout <<"Please enter a value between " <<min <<"and " <<max <<".\n";
         }
         else
         {
-            MSG("Please enter a numeric value.");
+            cout <<"Please enter a numeric value." <<endl;
             cin.clear();
             cin.ignore(80, '\n');
         }
@@ -731,64 +702,53 @@ void printMenu()
 }
 
 
-void *operatorLoop(void* arg)
+void textUI()
 {
-    while (gQuit == 0)
+    printMenu();
+    OperatorOption opOption = (OperatorOption) getNumeric(OPERATOR_OPTION_FIRST+1, OPERATOR_OPTION_LAST-1);
+
+    if (opOption == OPERATOR_ADD_TASK)
     {
-        // Options for operator
-        if (optNoGUI && !optNoOP)
+        Task task;
+        task.taskID = 0;
+        stationList.print();
+        task.pickup = stationList.prompt("  Enter the pick-up location: ");
+        task.dropoff = stationList.prompt("  Enter the drop-off location: ");
+        task.customerID = "cust1";
+        task = addTask(task);
+    }
+    else if (opOption == OPERATOR_REMOVE_TASK)
+    {
+        printf ("  Enter id of task to be removed: ");
+
+        try
         {
-            printMenu();
-            OperatorOption opOption = (OperatorOption) getNumeric(OPERATOR_OPTION_FIRST+1, OPERATOR_OPTION_LAST-1);
+            gScheduler->removeTask((unsigned) getNumeric());
 
-            pthread_mutex_lock(&gSchedulerMutex);
-            if (opOption == OPERATOR_ADD_TASK)
+            if (optVerbosityLevel > 0 && optNoGUI)
             {
-                Task task;
-                task.taskID = 0;
-                stationList.print();
-                task.pickup = stationList.prompt("  Enter the pick-up location: ");
-                task.dropoff = stationList.prompt("  Enter the drop-off location: ");
-                task.customerID = "cust1";
-                addTask(task);
-            }
-            else if (opOption == OPERATOR_REMOVE_TASK)
-            {
-                printf ("  Enter id of task to be removed: ");
-
-                try
-                {
-                    gScheduler->removeTask((unsigned) getNumeric());
-
-                    if (optVerbosityLevel > 0 && optNoGUI)
-                    {
-                        cout << "After removing task..." << endl;
-                        cout << "Task queue:" << endl;
-                        gScheduler->printTasks();
-                    }
-                }
-                catch( SchedulerException & e )
-                {
-                    if( e.type()==SchedulerException::TASK_DOES_NOT_EXIST )
-                        ERROR("This task does not exist.");
-                    else if( e.type()==SchedulerException::TASK_CANNOT_BE_CANCELLED )
-                        ERROR("This task cannot be removed (current task).");
-                }
-            }
-            else if (opOption == OPERATOR_VIEW_TASK_LIST)
-            {
-                cout << endl;
+                cout << "After removing task..." << endl;
+                cout << "Task queue:" << endl;
                 gScheduler->printTasks();
             }
-            else if (opOption == OPERATOR_QUIT)
-            {
-                gQuit = 1;
-                break;
-            }
-            update();
-            pthread_mutex_unlock(&gSchedulerMutex);
+        }
+        catch( SchedulerException & e )
+        {
+            if( e.type()==SchedulerException::TASK_DOES_NOT_EXIST )
+                ERROR("This task does not exist.");
+            else if( e.type()==SchedulerException::TASK_CANNOT_BE_CANCELLED )
+                ERROR("This task cannot be removed (current task).");
         }
     }
-    cout << "Operator thread stops\n";
-    return 0;
+    else if (opOption == OPERATOR_VIEW_TASK_LIST)
+    {
+        cout << endl;
+        gScheduler->printTasks();
+    }
+    else if (opOption == OPERATOR_QUIT)
+    {
+        gQuit = 1;
+        return;
+    }
+    update();
 }

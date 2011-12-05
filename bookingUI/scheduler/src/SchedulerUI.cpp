@@ -286,21 +286,19 @@ void SchedulerUI::updateTaskList()
 void SchedulerUI::updateVehicleStatus()
 {
     unsigned vehicleID = DEFAULT_VEHICLE_ID;
-    Scheduler::VehicleStatus vehStatus = scheduler.getVehicleStatus(DEFAULT_VEHICLE_ID);
+    VehicleStatus vehStatus = scheduler.getVehicleStatus(DEFAULT_VEHICLE_ID);
     char vehStatusStr[64];
     Task currentTask = scheduler.getVehicleCurrentTask(DEFAULT_VEHICLE_ID);
 
     mvwprintw(this->win, this->textFields[VEHICLE_ID].row, this->textFields[VEHICLE_ID].col,
               "%d", vehicleID);
-    if (vehStatus == Scheduler::VEHICLE_NOT_AVAILABLE)
+    if (vehStatus == VEHICLE_NOT_AVAILABLE)
         strncpy(vehStatusStr, "NOT AVAILABLE", sizeof(vehStatusStr) - 1);
-    else if (vehStatus == Scheduler::VEHICLE_ON_CALL)
+    else if (vehStatus == VEHICLE_ON_CALL)
         strncpy(vehStatusStr, "ON CALL      ", sizeof(vehStatusStr) - 1);
-    else if (vehStatus == Scheduler::VEHICLE_POB)
+    else if (vehStatus == VEHICLE_POB)
         strncpy(vehStatusStr, "POB          ", sizeof(vehStatusStr) - 1);
-    else if (vehStatus == Scheduler::VEHICLE_BUSY)
-        strncpy(vehStatusStr, "BUSY         ", sizeof(vehStatusStr) - 1);
-    else if (vehStatus == Scheduler::VEHICLE_AVAILABLE)
+    else if (vehStatus == VEHICLE_AVAILABLE)
         strncpy(vehStatusStr, "AVAILABLE    ", sizeof(vehStatusStr) - 1);
     else
         strncpy(vehStatusStr, "UNKNOWN      ", sizeof(vehStatusStr) - 1);
@@ -669,10 +667,10 @@ void SchedulerUI::onUserAddTask()
 
     try
     {
-        unsigned id = scheduler.addTask("cust1", pickup, dropoff);
+        Task task = scheduler.addTask("cust1", pickup, dropoff);
         printText(NEW_TASK_ID, UI_TEXT_COLOR_GREEN,
                   "Added task ID %u: <%s, %s>          ",
-                  id, pickup.c_str(), dropoff.c_str());
+                  task.taskID, pickup.c_str(), dropoff.c_str());
     }
     catch( SchedulerException & e )
     {

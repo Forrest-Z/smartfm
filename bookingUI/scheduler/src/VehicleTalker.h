@@ -11,16 +11,16 @@
 struct VehicleInfo
 {
     // ID of the vehicle
-    int vehicleID;
+    unsigned vehicleID;
 
     // Status of the vehicle
-    Scheduler::VehicleStatus status;
+    VehicleStatus status;
 
     // Whether this is a new status
     bool isNew;
 
     // Time to dropoff (if status is POB) or to pickup (if status is ON_CALL)
-    int tremain;
+    Duration tremain;
 };
 
 
