@@ -5,7 +5,6 @@
 #include <signal.h>
 #include <pthread.h>
 #include <time.h>
-#include <sys/stat.h>
 #include <string.h>
 
 #include <iostream>
@@ -17,7 +16,18 @@ using namespace std;
 #include "SchedulerUI.h"
 #include "SchedulerTalker.h"
 #include "VehicleTalker.h"
+
 #include <station_path.h>
+
+
+/** BUG list
+ * Apparently the time of tasks (twait) is wrong. Ask Nok to check.
+ */
+
+/** TODO
+ * Support more than one vehicle (low priority).
+ */
+
 
 //------------------------------------------------------------------------------
 // Global constants
