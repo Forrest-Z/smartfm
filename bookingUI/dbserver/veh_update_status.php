@@ -7,6 +7,7 @@ $status = $_REQUEST["Status"];
 $longitude = $_REQUEST["Longitude"];
 $latitude = $_REQUEST["Latitude"];
 $eta = $_REQUEST["ETA"];
+$currentLocation = $_REQUEST["CurrentLocation"];
 
 $con = connect_to_DB();
 
@@ -19,6 +20,9 @@ if( isset($latitude) )
     $setvar[] = "latitude='$latitude'";
 if( isset($eta) )
     $setvar[] = "eta='$eta'";
+if( isset($currentLocation) )
+    $setvar[] = "CurrentLocation='$currentLocation'";
+
 
 sizeof($setvar)>0 or $xmlres->fatal('Arguments missing');
 

@@ -1,0 +1,98 @@
+This folder contains a number of scripts to interface with the DB used as the
+central piece of the booking system.
+
+There is a SQL script to create the database, bash scripts to make life easier,
+and PHP scrits for interfacing with the database.
+
+Although it would have been possible to interact with the database
+directly (using a python or C API), it was chosen to interact through the
+PHP interface. Mostly because it is generally recommended to avoid
+connecting directly to the database when on a non permanent connection.
+
+Besides, Android does not provide an API for direct communication with MySQL,
+so it is recommended to use a PHP interface.
+
+
+SQL scripts:
+------------
+
+- createEmptyDatabase.sql: A SQL script to create the database (empty).
+    It can be used with the following command:
+    mysql -h <hostname> -u fmauto -psmartfm fmauto < createEmptyDatabase.sql
+    See also "clearDB"
+
+
+Bash scripts:
+-------------
+
+- clearDB: a script to clear the database using createEmptyDatabase.sql
+    USAGE: clearDB <hostname>
+    where <hostname> defaults to <localhost> if it is not set.
+
+- upload: a rsync based script to upload all the files in the directory to the
+    server fmautonomy
+
+
+PHP scripts:
+------------
+
+1) Generic: Used by most other scripts.
+
+- credentials.php: Contains the login information for the database. Kept
+separated from the rest of the code.
+
+- funcs.php: a collection of useful functions.
+
+
+2) Administration: A web page to manage requests. For observation and management
+    purpose.
+
+- administration.php: A PHP webpage to see the content of the database, make a
+    booking or cancel it.
+
+- cancel_request_adm.php: A PHP script that is called upon cancelling a task in
+    administration.php. Returns to administration.php.
+
+- make_booking.php: A PHP script that is called upon adding a task in
+    administration.php. Returns to administration.php. <CustomerID>,
+    <PickUpLocation>, <DropOffLocation>, <Status>, <VehicleID> are required.
+
+
+3) Customer side:
+
+- cancel_request.php: A PHP script that can be used by a client to cancel a
+    request. <CustomerID> must be given, and optionally <RequestID> too.
+
+- list_requests.php: list requests associated with <vehicleID>, <customerID>,
+    or <requestID> or any combination of those.
+
+- list_stations.php: list all known stations.
+
+- new_request.php: A PHP script to make a new request. <CustomerID>,
+    <PickUpLocation>, <DropOffLocation> are required.
+
+- station_exists.php: Checks whether a station exists.
+
+
+4) Vehicle side:
+
+- delete_vehicle.php: remove a vehicle entry from the database. Requires the
+    <vehicleID>.
+
+- list_vehicles.php: if <vehicleID> is given, it returns the corresponding row
+    in table vehicles. If not it returns all rows.
+
+- new_vehicle.php: Add an entry to the vehicles table, with given <vehicleID>
+    and sets its status to WaitingForAMission.
+
+- veh_update_request.php: For the vehicle to update the status of the request.
+    <RequestID> and <Status> are required.
+
+- veh_update_status.php: For the vehicle to update its status. <VehicleID> is
+    required, and any combination of <Status>, <Longitude>, <Latitude>, <ETA>
+    and <CurrentLocation> can also be given.
+
+
+5) Misc:
+
+- phpinfo.php: A script that reports on the status of the installation.

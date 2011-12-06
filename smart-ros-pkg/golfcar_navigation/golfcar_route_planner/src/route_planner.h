@@ -24,16 +24,28 @@ protected:
     enum State { sUninit, sIdle, sMoving };
 
     ros::NodeHandle n;
+    ros::Publisher pub;
+
     StationPaths & sp_;
     Station currentStation_, destination_;
     State state_;
 
+    /// Called when the destination is received. Loads the path, etc. ...
     virtual void initDest() = 0;
+
+    /// Called at each loop step. Performs the task of moving the vehicle.
+    /// Returns whether the destination has been reached yet.
     virtual bool goToDest() = 0;
+
     void run();
+
+private:
+    void pubCurrentLoc();
+    void pubNoCurrentLoc();
 };
 
 
+/// Simulates the vehicle (moves instantaneously from A to B).
 class DummyRoutePlanner : public RoutePlanner
 {
 public:

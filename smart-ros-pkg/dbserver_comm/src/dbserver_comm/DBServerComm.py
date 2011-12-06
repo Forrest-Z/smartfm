@@ -43,6 +43,9 @@ class DBServerComm:
     def deleteVehicle(self):
         self.calldb('delete_vehicle.php')
 
+    def setCurrentLocation(self, currentLocation):
+        self.calldb('veh_update_status.php', {'CurrentLocation': currentLocation})
+
     def listStations(self):
         dom = self.calldb('list_stations.php')
         nodes = dom.getElementsByTagName('station')

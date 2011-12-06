@@ -10,7 +10,7 @@ $dropoff = $_REQUEST["DropOffLocation"] or $xmlres->fatal('DropOffLocation missi
 $con = connect_to_DB();
 
 station_exists($con, $pickup) or $xmlres->fatal('PickUpLocation does not exist');
-station_exists($con, $dropoff)) or $xmlres->fatal('DropOffLocation does not exist');
+station_exists($con, $dropoff) or $xmlres->fatal('DropOffLocation does not exist');
 
 $sql = "INSERT INTO requests (CustomerID, Status, PickUpLocation, DropOffLocation) VALUES ('$customerID', 'Requested', '$pickup', '$dropoff')";
 mysql_query($sql, $con) or $xmlres->fatal('Insert error: ' . mysql_error());

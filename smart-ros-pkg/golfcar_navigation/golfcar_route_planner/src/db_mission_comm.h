@@ -29,11 +29,16 @@ protected:
     State state_;
 
     void run();
+
+    /// Updates the DB with the current status of the vehicle and mission
     virtual void updateStatus() = 0;
+
+    /// Checks the DB for any pending mission.
     virtual void waitForMission() = 0;
 };
 
 
+/// Interface with the user via a text interface (simulates a DB access).
 class PromptMissionComm : public DBMissionComm
 {
 public:
@@ -45,6 +50,7 @@ private:
 };
 
 
+/// Implements communication with the database via the Python ROS node.
 class DBServerMissionComm : public DBMissionComm
 {
 public:

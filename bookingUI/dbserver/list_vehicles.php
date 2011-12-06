@@ -22,6 +22,7 @@ while ($row = @mysql_fetch_assoc($result))
     $newnode->setAttribute("longitude", $row['longitude']);
     $newnode->setAttribute("requestID", $row['requestID']);
     $newnode->setAttribute("eta", $row['eta']);
+    $newnode->setAttribute("currentLocation", $row['currentLocation']);
 }
 
 mysql_close($con);

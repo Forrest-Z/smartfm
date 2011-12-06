@@ -23,6 +23,7 @@
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 
+/// Drives the vehicle from A to B by feeding it a sequence of waypoints.
 class RoutePlannerVehicle : public RoutePlanner
 {
 public:
