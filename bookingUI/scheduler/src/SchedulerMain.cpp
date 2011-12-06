@@ -2,10 +2,10 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <getopt.h>
-#include <signal.h>
-#include <pthread.h>
 #include <time.h>
 #include <string.h>
+#include <signal.h>
+#include <math.h>
 
 #include <iostream>
 #include <sstream>
@@ -51,6 +51,7 @@ int optSimulateTime = 0;
 int optNoOP = 0;
 string optHostName = "localhost";
 float optTimeFactor = 1; ///< control the speed of time in simulation mode
+float optNewTaskProba = 0.001; ///< control the probability of a new task in optSimulateMobile mode
 
 
 
@@ -90,24 +91,34 @@ enum OperatorOption
 
 
 //------------------------------------------------------------------------------
-// Function declarations
+// Macros declarations
 
 
 #define LOG(fmt, ...) do { \
-    fprintf(gLogFile, "time %u: " fmt "\n", (unsigned)time(NULL), ##__VA_ARGS__); \
-    fflush(gLogFile); \
+        fprintf(gLogFile, "%s#%d, time %u, " fmt "\n", \
+                __FUNCTION__, __LINE__, (unsigned)time(NULL), ##__VA_ARGS__); \
+        fflush(gLogFile); \
     } while(0)
 
 #define MSG(fmt, ...) do { \
-    if (optVerbosityLevel > 0) fprintf(stderr, fmt "\n", ##__VA_ARGS__); \
-     } while(0)
+        if (optVerbosityLevel > 0) { \
+            fprintf(stderr, "%s#%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
+            fflush(stderr); \
+            }\
+    } while(0)
 
 #define MSGLOG(fmt, ...) do { MSG(fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
 
 #define MSGLOGQUIET(fmt, ...) do { if(optNoGUI) MSG(fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
 
-#define ERROR(fmt, ...) fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#define ERROR(fmt, ...) do { \
+        fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
+        fflush(stderr); \
+    } while(0)
 
+
+//------------------------------------------------------------------------------
+// Function declarations
 
 /// Prints usage information for this program to STREAM (typically stdout
 /// or stderr), and exit the program with EXIT_CODE. Does not return.
@@ -127,55 +138,98 @@ void update();
 void textUI();
 
 
+void sigintHandler(int sig)
+{
+    //First time: raise the QUIT flag
+    //second time: abort
+    if( ++gQuit > 1 )
+        abort();
+}
+
+
 
 //------------------------------------------------------------------------------
 // Main function
 
 int main(int argc, char **argv)
 {
+    int exit_code = 0;
+
+    // catch CTRL-C and exit cleanly, if possible
+    signal(SIGINT, sigintHandler);
+    // and SIGTERM, i.e. when someone types "kill <pid>" or the like
+    signal(SIGTERM, sigintHandler);
+    signal(SIGHUP, sigintHandler);
+
     srand ( time(NULL) );
     parseOptions(argc, argv);
 
-    gScheduler = new Scheduler(optVerbosityLevel);
     openLogFile();
     time_t prevTimeTaskInfo = time(NULL);
 
-    string username = "fmauto", passwd = "smartfm", dbname = "fmauto";
-    gDBTalker = new DBTalker(optHostName, username, passwd, dbname);
-
-    if (!optNoGUI)
+    try
     {
-        gSchedulerUI = new SchedulerUI(*gScheduler, *gDBTalker);
-        gSchedulerUI->initConsole();
-        gSchedulerUI->updateConsole();
-    }
+        gScheduler = new Scheduler();
+        gScheduler->setVerbosityLevel(optVerbosityLevel);
+        gScheduler->setLogFile(gLogFile);
 
-    while(gQuit == 0)
-    {
-        if( optNoGUI ) {
-            if( ! optNoOP )
-                textUI();
-        }
-        else {
+        string username = "fmauto", passwd = "smartfm", dbname = "fmauto";
+        gDBTalker = new DBTalker(optHostName, username, passwd, dbname);
+        gDBTalker->setLogFile(gLogFile);
+        gDBTalker->setVerbosityLevel(optVerbosityLevel);
+
+        if( optSimulateVehicle )
+            gDBTalker->createVehicleEntry("golfcart1");
+
+        if (!optNoGUI)
+        {
+            gSchedulerUI = new SchedulerUI(*gScheduler, *gDBTalker);
+            gSchedulerUI->initConsole();
             gSchedulerUI->updateConsole();
         }
 
-        addMobileTask();
+        while(gQuit == 0)
+        {
+            if( optNoGUI ) {
+                if( ! optNoOP )
+                    textUI();
+            }
+            else {
+                gSchedulerUI->updateConsole();
+            }
 
-        // Update vehicle status, waiting time and send new task to vehicle if
-        // it has completes the previous task.
-        update();
+            addMobileTask();
 
-        // Report waiting time
-        if (time(NULL) - prevTimeTaskInfo > NUM_SEC_TASK_INFO_SENT) {
-            prevTimeTaskInfo = time(NULL);
-            gDBTalker->update(gScheduler->vehicles);
-        }
+            // Update vehicle status, waiting time and send new task to vehicle if
+            // it has completes the previous task.
+            update();
 
-        if (!optNoGUI && gSchedulerUI->getSchedulerStatus() == SchedulerUI::SCHEDULER_QUIT)
-            gQuit = 1;
+            // Report waiting time
+            if (time(NULL) - prevTimeTaskInfo > NUM_SEC_TASK_INFO_SENT) {
+                prevTimeTaskInfo = time(NULL);
+                gDBTalker->update(gScheduler->vehicles);
+            }
 
-        usleep( (unsigned)( (optNoOP ? 1 : 0.1) *1e6) );
+            if (!optNoGUI && gSchedulerUI->getSchedulerStatus() == SchedulerUI::SCHEDULER_QUIT)
+                gQuit = 1;
+
+            usleep( (unsigned)(0.1 *1e6) );
+
+        } //while(gQuit == 0)
+
+    } //try
+    catch( StationDoesNotExistException & e ) {
+        MSGLOG("ERROR: Caught StationDoesNotExistException: station %s does not exist.", e.what());
+        exit_code = 1;
+    }
+    catch( SchedulerException & e ) {
+        MSGLOG("ERROR: Caught SchedulerException: %s.", e.what());
+        exit_code = 1;
+    }
+    catch( exception & e )
+    {
+        MSGLOG("ERROR: Caught exception: %s", e.what());
+        exit_code = 1;
     }
 
     fclose (gLogFile);
@@ -190,6 +244,7 @@ int main(int argc, char **argv)
     if( gDBTalker!=NULL )
         delete gDBTalker;
 
+    return exit_code;
 } //main()
 
 
@@ -204,10 +259,11 @@ void print_usage (FILE* stream, int exit_code)
     ss <<"  --verbose lvl     Set verbosity level to lvl." <<endl;
     ss <<"  --nogui           Run in plain text mode (as opposed to using the NCurse interface)." <<endl;
     ss <<"  --simmobile       Do not intend to communicate with mobile phones. Simulate mobile phone users instead (automatically generate random tasks)." <<endl;
+    ss <<"  --taskproba p     Sets the probability of a new task (only used when simmobile is on, default value is " <<optNewTaskProba <<")." <<endl;
     ss <<"  --simvehicle      Simulate vehicles' status." <<endl;
     ss <<"  --timefactor tf   Control speed of time when simulating the vehicle (default is 1)." <<endl;
     ss <<"  --simtime         Simulate remaining time of current task." <<endl;
-    ss <<"  --noop            Sets --nogui --simmobile --simvehicle. In this mode, everything is automatic." <<endl;
+    ss <<"  --noop            No interaction with user. (daemon mode)." <<endl;
     ss <<"  --help            Display this message." <<endl;
 
     fprintf( stream, "%s", ss.str().c_str());
@@ -233,8 +289,9 @@ void parseOptions(int argc, char **argv)
         {"simmobile",   no_argument,       &optSimulateMobile,        1},
         {"simvehicle",  no_argument,       &optSimulateVehicle,       1},
         {"simtime",     no_argument,       &optSimulateTime,          1},
+        {"noop",        no_argument,       &optNoOP,                  1},
         {"timefactor",  required_argument, 0,                       'F'},
-        {"noop",        no_argument,       0,                       'N'},
+        {"taskproba",   required_argument, 0,                       'P'},
         {"host",        required_argument, 0,                       'H'},
         {"help",        no_argument,       0,                       'h'},
         {0,0,0,0}
@@ -272,11 +329,9 @@ void parseOptions(int argc, char **argv)
             optTimeFactor = atof(optarg);
             break;
 
-        case 'N':
-            optNoOP = 1;
-            optNoGUI = 1;
-            optSimulateMobile = 1;
-            optSimulateVehicle = 1;
+        case 'P':
+            optNewTaskProba = atof(optarg);
+            break;
 
         case -1: /* Done with options. */
             break;
@@ -303,6 +358,7 @@ void openLogFile()
 Task addTask(Task task)
 {
     task = gScheduler->addTask(task);
+    gDBTalker->update(gScheduler->vehicles);
 
     MSGLOG("Added task %u:%s:%s:%s to the scheduler", task.taskID,
         task.customerID.c_str(), task.pickup.c_str(), task.dropoff.c_str());
@@ -311,21 +367,42 @@ Task addTask(Task task)
     return task;
 }
 
-/// Get any new tasks from the server. Alternatively, if optSimulateMobile is
-/// set, generate a random task.
+double random_(double min, double max)
+{
+    return (((double)rand())/RAND_MAX) * (max-min) + min;
+}
+
+double random_()
+{
+    return random_(0,1);
+}
+
+unsigned randu_(unsigned max)
+{
+    return (unsigned) random_(0,max);
+}
+
+/// Gets any new tasks from the server. Alternatively, if optSimulateMobile is
+/// set, generates some random tasks.
 vector<Task> getMobileTask()
 {
     if( optSimulateMobile )
     {
-        unsigned i = 1;
-        while( (float)rand()/RAND_MAX < 0.1/(i++) )
+        /* Adding some radom tasks to the database.
+         * The proba of a random task is equal to optNewTaskProba multiplied by
+         * optTimeFactor (to scale for fast simulations).
+         * Several tasks can be issued. The probability of a new task is half
+         * the probability of the previous task.
+         * For each task, pickup and dropoff stations are picked at random.
+         */
+        unsigned i = 0;
+        while( random_() < optNewTaskProba*optTimeFactor/pow(2,i++) )
         {
-            unsigned s1 = (unsigned)((float)rand()/RAND_MAX*stationList.size());
+            unsigned s1 = randu_(stationList.size());
             unsigned s2;
             do
-                s2 = (unsigned)((float)rand()/RAND_MAX*stationList.size());
+                s2 = randu_(stationList.size());
             while (s1==s2);
-            MSGLOGQUIET("Adding a task to DB");
             gDBTalker->makeBooking("cust1", stationList(s1), stationList(s2));
         }
     }
@@ -436,9 +513,9 @@ void update()
     // Get the next task and send to the vehicle if the vehicle is available
     if( info.first == VEHICLE_AVAILABLE )
     {
-        /* TODO: mark current task as terminated and pop it. If there are more tasks, update the DB.
-
         gScheduler->updateVehicleStatus(DEFAULT_VEHICLE_ID, VEHICLE_AVAILABLE);
+        gDBTalker->update(gScheduler->vehicles);
+
         if( gScheduler->hasPendingTasks(DEFAULT_VEHICLE_ID) )
         {
             gScheduler->vehicleSwitchToNextTask(DEFAULT_VEHICLE_ID);
@@ -450,7 +527,7 @@ void update()
             gScheduler->getVehicleTasks(DEFAULT_VEHICLE_ID).clear();
             gPreviousTime = 0;
         }
-        */
+        gDBTalker->update(gScheduler->vehicles);
     }
     // Otherwise, update the remaining task time (POB) or pickup time (other status)
     else

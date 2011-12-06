@@ -107,6 +107,8 @@ private:
     /// Level of verbosity
     unsigned verbosity_level;
 
+    FILE * logFile;
+
 
 public:
     const StationPaths stationPaths;
@@ -117,7 +119,10 @@ public:
     typedef std::vector<Vehicle>::iterator VIT;
 
     /// Default Constructor
-    Scheduler(unsigned verbosity_level);
+    Scheduler();
+
+    void setLogFile(FILE *);
+    void setVerbosityLevel(unsigned);
 
 
 public:

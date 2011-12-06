@@ -1,4 +1,10 @@
+#include <stdio.h>
+
+#include <string>
 #include <sstream>
+#include <vector>
+#include <list>
+#include <exception>
 
 #include <cppconn/statement.h>
 #include <cppconn/prepared_statement.h>
@@ -9,7 +15,39 @@
 using namespace std;
 using namespace sql;
 
+
+//------------------------------------------------------------------------------
+// Macros declarations
+
+
+#define LOG(fmt, ...) do { \
+        if( logFile ) { \
+            fprintf(logFile, "%s#%d, time %u, " fmt "\n", \
+                    __func__, __LINE__, (unsigned)time(NULL), ##__VA_ARGS__); \
+            fflush(logFile); \
+        } \
+    } while(0)
+
+#define MSG(fmt, ...) do { \
+        if (verbosity_level > 0) { \
+            fprintf(stderr, "%s#%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
+            fflush(stderr); \
+            }\
+    } while(0)
+
+#define MSGLOG(fmt, ...) do { MSG(fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
+
+#define ERROR(fmt, ...) do { \
+        fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
+        fflush(stderr); \
+    } while(0)
+
+
+//------------------------------------------------------------------------------
+
+
 DBTalker::DBTalker(string hostname, string username, string passwd, string dbname)
+: verbosity_level(0), logFile(NULL)
 {
     this->hostname = hostname;
     this->username = username;
@@ -23,7 +61,17 @@ DBTalker::DBTalker(string hostname, string username, string passwd, string dbnam
 
 DBTalker::~DBTalker()
 {
+    delete con;
+}
 
+void DBTalker::setLogFile(FILE *f)
+{
+    this->logFile = f;
+}
+
+void DBTalker::setVerbosityLevel(unsigned lvl)
+{
+    this->verbosity_level = lvl;
 }
 
 void DBTalker::connect()
@@ -50,16 +98,58 @@ vector<Task> DBTalker::getRequestedBookings()
             )
         );
 
+    if( !tasks.empty() )
+        MSGLOG("Retrieved %u  requested bookings.", tasks.size());
+
     delete res;
     delete stmt;
-    cout <<"Retrieved " <<tasks.size() <<" requested bookings." <<endl;
     return tasks;
 }
 
 // Update task status (from scheduler to DB)
 void DBTalker::update(const vector<Vehicle> & vehicles)
 {
+    PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET Status=?, VehicleID=? WHERE RequestID=?");
 
+    vector<Vehicle>::const_iterator vit = vehicles.begin();
+    for( ; vit != vehicles.end(); ++vit )
+    {
+        list<Task>::const_iterator tit = vit->tasks.begin();
+        for( ; tit != vit->tasks.end(); ++tit )
+        {
+            string status;
+            //One of 'Requested', 'Acknowledged', 'Confirmed', 'Processing',
+            //'Completed', 'Cancelled'
+            //vit->status is one of VEHICLE_NOT_AVAILABLE, VEHICLE_ON_CALL,
+            //VEHICLE_POB, VEHICLE_AVAILABLE
+
+            if( tit==vit->tasks.begin() )
+            { //current task
+                if( vit->status==VEHICLE_ON_CALL )
+                    status = "Confirmed";
+                else if( vit->status==VEHICLE_POB )
+                    status = "Processing";
+                else if( vit->status==VEHICLE_AVAILABLE )
+                    status = "Completed";
+                else {
+                    stringstream ss;
+                    ss <<"Unexpected status (current task): " <<vit->status;
+                    throw logic_error(ss.str());
+                }
+            }
+            else
+            {
+                status = "Acknowledged";
+            }
+
+            stmt->setString(1, status);
+            stmt->setInt(2, vit->id);
+            stmt->setInt(3, tit->taskID);
+            stmt->execute();
+        }
+    }
+
+    delete stmt;
 }
 
 // Update task status (from DB to scheduler)
@@ -123,12 +213,45 @@ pair<VehicleStatus, Duration> DBTalker::getVehicleStatus(unsigned vehicleID)
 // Useful for testing without mobile phone.
 unsigned DBTalker::makeBooking(string customerID, Station pickup, Station dropoff)
 {
-    PreparedStatement *stmt = con->prepareStatement("INSERT INTO requests (status, customerID, pickupLocation, dropoffLocation) VALUES ('Requested',?,?,?)");
-    stmt->setString(1, customerID);
-    stmt->setString(2, pickup.str());
-    stmt->setString(3, dropoff.str());
-    unsigned i = stmt->executeUpdate();
-    cout <<"DBTalker::makeBooking: Added task " <<i <<endl;
+    PreparedStatement *pstmt = con->prepareStatement(
+        "INSERT INTO requests "
+        "(status, customerID, pickupLocation, dropoffLocation) "
+        "VALUES ('Requested', ?, ?, ?)"
+    );
+    pstmt->setString(1, customerID);
+    pstmt->setString(2, pickup.str());
+    pstmt->setString(3, dropoff.str());
+    pstmt->execute();
+    delete pstmt;
+
+    unsigned i=0;
+    Statement *stmt = con->createStatement();
+    ResultSet *res = stmt->executeQuery("SELECT LAST_INSERT_ID()");
+    while (res->next()) i = res->getInt("LAST_INSERT_ID()");
+
+    MSGLOG("Added task %u.", i);
+
+    delete res;
     delete stmt;
     return i;
+}
+
+void DBTalker::createVehicleEntry(std::string VehicleID)
+{
+    /*
+     vehicleID char(10) not null,
+     status enum('WaitingForAMission', 'GoingToPickupLocation', 'GoingToDropoffLocation', 'AtPickupLocation', 'NotAvailable') not null,
+     latitude float(10,6),
+     longitude float(10,6),
+     eta int(6),
+     requestID int
+    */
+    PreparedStatement *pstmt = con->prepareStatement(
+        "INSERT INTO vehicles "
+        "(vehicleID, status) "
+        "VALUES (?, 'WaitingForAMission')"
+    );
+    pstmt->setString(1, VehicleID);
+    pstmt->execute();
+    delete pstmt;
 }

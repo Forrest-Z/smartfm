@@ -1,6 +1,6 @@
 drop table if exists stations;
 create table stations (
-    name char(50) not null,
+    name varchar(50) not null,
     latitude float(10,6) not null,
     longitude float(10,6) not null
 );
@@ -12,21 +12,22 @@ insert into stations values ('McDonald', 1.298116, 103.771209);
 
 drop table if exists vehicles;
 create table vehicles (
-    vehicleID char(10) not null,
+    vehicleID varchar(10) not null,
     status enum('WaitingForAMission', 'GoingToPickupLocation', 'GoingToDropoffLocation', 'AtPickupLocation', 'NotAvailable') not null,
-    latitude float(10,6),
-    longitude float(10,6),
-    eta int(6),
-    requestID int
+    latitude float(10,6) default null,
+    longitude float(10,6) default null,
+    eta int(6) default null,
+    requestID int default null,
+    currentLocation varchar(50) default null
 );
 
 drop table if exists requests;
 create table requests (
     requestID int not null auto_increment,
-    customerID char(10) not null,
+    customerID varchar(10) not null,
     status enum('Requested', 'Acknowledged', 'Confirmed', 'Processing', 'Completed', 'Cancelled') not null,
-    pickUpLocation char(50) not null,
-    dropOffLocation char(50) not null,
-    vehicleID char(10),
+    pickUpLocation varchar(50) not null,
+    dropOffLocation varchar(50) not null,
+    vehicleID varchar(10) default null,
     primary key(requestID)
 );

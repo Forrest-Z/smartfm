@@ -12,18 +12,37 @@
 
 using namespace std;
 
-// Error handling
-#define MSG(fmt, ...) do{ if(verbosity_level>0) fprintf(stderr, fmt "\n", ##__VA_ARGS__); }while(0)
-#define ERROR(fmt, ...) fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
-/*
-#define MSG(fmt, ...) \
-  (fprintf(stderr, "\033[0;32m" fmt "\033[0m\n", ##__VA_ARGS__) ? 0 : 0)
-#define ERROR(fmt, ...) \
-  (fprintf(stderr, "\033[0;31mERROR %s:%d: " fmt "\033[0m\n", __FILE__, __LINE__, ##__VA_ARGS__) ? -1 : 0)
-*/
+//------------------------------------------------------------------------------
+// Macros declarations
+
+
+#define LOG(fmt, ...) do { \
+        if( logFile ) { \
+            fprintf(logFile, "%s#%d, time %u, " fmt "\n", \
+                    __func__, __LINE__, (unsigned)time(NULL), ##__VA_ARGS__); \
+            fflush(logFile); \
+        } \
+    } while(0)
+
+#define MSG(fmt, ...) do { \
+        if (verbosity_level > 0) { \
+            fprintf(stderr, "%s#%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
+            fflush(stderr); \
+            }\
+    } while(0)
+
+#define MSGLOG(fmt, ...) do { MSG(fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
+
+#define ERROR(fmt, ...) do { \
+        fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
+        fflush(stderr); \
+    } while(0)
+
+
+//------------------------------------------------------------------------------
+
 
 #define MAX_ADDITIONAL_TIME 5
-#define INF_TIME 10000
 
 
 #define __CASE(t) case t: msg=#t; break
@@ -41,6 +60,8 @@ SchedulerException::SchedulerException(SchedulerExceptionTypes t) throw()
     }
 }
 
+
+//------------------------------------------------------------------------------
 
 
 Task::Task(unsigned taskID, string customerID, unsigned vehicleID,
@@ -69,13 +90,24 @@ string Task::toString() const
 }
 
 
+//------------------------------------------------------------------------------
 
-Scheduler::Scheduler(unsigned verbosity_level)
+
+Scheduler::Scheduler()
+: verbosity_level(0), logFile(NULL)
 {
-    this->verbosity_level = verbosity_level;
-
     // Add a vehicle. TODO: get the list of vehicles from the database.
     vehicles.push_back( Vehicle(0,VEHICLE_AVAILABLE) );
+}
+
+void Scheduler::setLogFile(FILE *logfile)
+{
+    this->logFile = logfile;
+}
+
+void Scheduler::setVerbosityLevel(unsigned lvl)
+{
+    this->verbosity_level = lvl;
 }
 
 Scheduler::VIT Scheduler::checkVehicleAvailable()
@@ -97,8 +129,9 @@ Task Scheduler::addTask(Task task)
     // so we just assign to vehicle 0:
     task = Task(task.taskID, task.customerID, 0, task.pickup, task.dropoff);
 
-    MSG("Adding task <%u,%s,%s,%s> to vehicle %u", task.taskID, task.customerID.c_str(),
-        task.pickup.c_str(), task.dropoff.c_str(), task.vehicleID);
+    MSGLOG("Adding task <%u,%s,%s,%s> to vehicle %u",
+            task.taskID, task.customerID.c_str(),
+            task.pickup.c_str(), task.dropoff.c_str(), task.vehicleID);
 
     task.ttask = travelTime(task.pickup, task.dropoff);
 
@@ -106,7 +139,7 @@ Task Scheduler::addTask(Task task)
 
     if( tasks.empty() )
     {
-        MSG("no current task. Adding as current.");
+        MSGLOG("Adding as current.");
         assert( vit->status == VEHICLE_AVAILABLE );
         vit->status = VEHICLE_ON_CALL;
         task.tpickup = 0; //TODO: this should be the time from the current station to the pickup station
@@ -137,7 +170,7 @@ Task Scheduler::addTask(Task task)
                 tdp2 = 0;
 
             if (verbosity_level > 3)
-                MSG("(%u+%u+%u) VS %d\n", tdp1, task.ttask, tdp2, it->tpickup);
+                MSGLOG("(%u+%u+%u) VS %d\n", tdp1, task.ttask, tdp2, it->tpickup);
 
             if (tdp1 + task.ttask + tdp2 <= it->tpickup + MAX_ADDITIONAL_TIME) {
                 task.tpickup = tdp1;
@@ -165,7 +198,7 @@ Task Scheduler::addTask(Task task)
 
 void Scheduler::removeTask(unsigned taskID)
 {
-    MSG("Removing task %u", taskID);
+    MSGLOG("Removing task %u", taskID);
 
     for (VIT vit = vehicles.begin(); vit != vehicles.end(); ++vit)
     {
@@ -231,7 +264,7 @@ Task & Scheduler::vehicleSwitchToNextTask(unsigned vehicleID)
 
     if( ! hasPendingTasks(vehicleID) )
     {
-        MSG("No more task for vehicle %u\n", vehicleID);
+        MSGLOG("No more task for vehicle %u\n", vehicleID);
         throw SchedulerException(SchedulerException::NO_PENDING_TASKS);
     }
 
@@ -239,7 +272,8 @@ Task & Scheduler::vehicleSwitchToNextTask(unsigned vehicleID)
     Task & task = vit->tasks.front();
     vit->status = VEHICLE_ON_CALL;
     updateWaitTime(vehicleID);
-    MSG("Giving task <%u,%s,%s> to vehicle %u", task.taskID, task.pickup.c_str(), task.dropoff.c_str(), vehicleID);
+    MSGLOG("Giving task <%u,%s,%s> to vehicle %u",
+           task.taskID, task.pickup.c_str(), task.dropoff.c_str(), vehicleID);
     return task;
 }
 
@@ -291,8 +325,8 @@ void Scheduler::updateWaitTime(unsigned vehicleID, Duration timeCurrentTask)
     Duration waittime = timeCurrentTask;
 
     if (verbosity_level > 1)
-        MSG("Updating waiting time for vehicle %u with current task completion time %u",
-            vehicleID, timeCurrentTask);
+        MSGLOG("Updating waiting time for vehicle %u with current task "
+                "completion time %u", vehicleID, timeCurrentTask);
 
     for( list<Task>::iterator it = tasks.begin(); it != tasks.end(); ++it )
     {

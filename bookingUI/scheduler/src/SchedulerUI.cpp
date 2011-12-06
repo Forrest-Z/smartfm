@@ -115,7 +115,7 @@ void SchedulerUI::initConsole()
     this->textFields[VC_TASK_TIME_WAIT].row = this->textFields[VC_TASK_VEHICLE_ID].row + 1;
     this->textFields[VC_TASK_TIME_WAIT].col = 3;
 
-    for(int i = 0; i < NUM_TASK_DISPLAY; i++) {
+    for(unsigned i = 0; i < NUM_TASK_DISPLAY; i++) {
         this->textFields[TASK_LIST_START + i].row = 5+i;
         this->textFields[TASK_LIST_START + i].col = 64;
     }
@@ -212,7 +212,7 @@ void SchedulerUI::updateConsole()
 void SchedulerUI::drawButtons()
 {
     int attr, len;
-    for (int i = 0; i < UI_BUTTON_TOKEN_LAST; i++) {
+    for (unsigned i = 0; i < UI_BUTTON_TOKEN_LAST; i++) {
         attr = A_NORMAL;
         if (i == this->focusButtonInd)
             attr |= A_STANDOUT;
@@ -259,7 +259,7 @@ void SchedulerUI::updateTaskList()
     list<Task>::iterator it = tasks.begin();
     unsigned i = 0;
 
-    for ( ++it; it != tasks.end(); it++ )
+    for ( ++it; it != tasks.end(); ++it )
     {
         if (i >= NUM_TASK_DISPLAY)
             break;
@@ -673,7 +673,6 @@ void SchedulerUI::onUserAddTask()
     {
         unsigned tid = dbTalker.makeBooking("cust1", pickup, dropoff);
         Task task(tid, "cust1", 0, pickup, dropoff);
-        task = scheduler.addTask(task);
         printText(NEW_TASK_ID, UI_TEXT_COLOR_GREEN,
                   "Added task ID %u: <%s, %s>          ",
                   task.taskID, pickup.c_str(), dropoff.c_str());

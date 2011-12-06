@@ -33,6 +33,9 @@ private:
     sql::Connection *con;
     std::string hostname, username, passwd, dbname;
     StationList stationList;
+    unsigned verbosity_level;
+    FILE * logFile;
+
 
 public:
     struct TaskStatus
@@ -43,6 +46,9 @@ public:
 
     DBTalker(std::string hostname, std::string username, std::string passwd, std::string dbname);
     ~DBTalker();
+
+    void setLogFile(FILE *);
+    void setVerbosityLevel(unsigned);
 
     /// Check the DB for bookings that haven't been scheduled yet
     std::vector<Task> getRequestedBookings();
@@ -59,6 +65,10 @@ public:
     /// Make a booking: add an entry in the database. Returns the task ID.
     /// Useful for testing without mobile phone.
     unsigned makeBooking(std::string customerID, Station pickup, Station dropoff);
+
+    /// Inserts a vehicle entry in the database. Useful for testing in simulated
+    /// mode.
+    void createVehicleEntry(std::string VehicleID);
 
 private:
     void connect();
