@@ -7,6 +7,9 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(CURSES_NEED_NCURSES TRUE)
 find_package(Curses REQUIRED)
 
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}")
+FIND_PACKAGE(MySQLCppConn REQUIRED)
+
 # boost/variant.hpp required by cppconn/driver.h
 # Install it from debian package libboost-dev
 FIND_PACKAGE(Boost REQUIRED)
