@@ -6,7 +6,7 @@
 #include <map>
 #include <exception>
 
-#include <station_path.h>
+#include <golfcar_route_planner/station_path.h>
 
 
 typedef unsigned Duration;
