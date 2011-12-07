@@ -7,6 +7,14 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(CURSES_NEED_NCURSES TRUE)
 find_package(Curses REQUIRED)
 
+# boost/variant.hpp required by cppconn/driver.h
+# Install it from debian package libboost-dev
+FIND_PACKAGE(Boost REQUIRED)
+IF (BOOST_FOUND)
+    INCLUDE_DIRECTORIES(${BOOST_INCLUDE_DIR})
+    ADD_DEFINITIONS( "-DHAS_BOOST" )
+ENDIF()
+
 set(CMAKE_CXX_FLAGS "-g -Wall")
 
 set(STATION_PATH_DIR ../../smart-ros-pkg/golfcar_navigation/golfcar_route_planner)

@@ -23,6 +23,8 @@
 #include <string>
 #include <stdexcept>
 
+#include <stdlib.h>
+
 /* MySQL Connector/C++ specific headers */
 #include <cppconn/driver.h>
 #include <cppconn/connection.h>
