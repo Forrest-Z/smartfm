@@ -33,6 +33,7 @@ public:
     double frequency_;
     double tolerance_; //to track for last update from move_base package
     double e_zone_; //apply full brake if there exist an obstacles within this distance from base link
+    double high_speed_,slow_zone_,slow_speed_;
 private:
     bool junction_stop_;
     ros::Time last_update_;
@@ -50,20 +51,27 @@ private:
 
 SpeedAdvisor::SpeedAdvisor()
 {
+    /* the speed_advisor receive message from move_base package and perform neccessary speed profile generation
+     * Currently only trapezoidal profile is implemented, and the speed regulation largely seperated into 2 zone:
+     * slow-down and stopping zone.
+     *
+     */
+
     recommend_speed_= n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
     move_base_speed_=n.subscribe("/move_status",1, &SpeedAdvisor::moveSpeedCallback, this);
     junction_sub_=n.subscribe("nav_junction",1,&SpeedAdvisor::junctionCallback,this);
     ros::NodeHandle nh("~");
-    nh.param("max_speed", max_speed_, 2.0);
+    nh.param("max_speed", high_speed_, 2.0);
     nh.param("acc", acc_, 0.5);
     nh.param("max_dec", max_dec_, 2.0);
     nh.param("norm_dec", norm_dec_, 1.0);
     nh.param("frequency", frequency_,20.0);
     nh.param("tolerance", tolerance_, 0.5);
-    nh.param("emergency_zone", e_zone_, 4.0);
+    nh.param("emergency_zone", e_zone_, 2.0);
+    nh.param("slow_zone", slow_zone_, 10.0);
+    nh.param("slow_speed",slow_speed_, 1.0);
     n.param("use_sim_time", use_sim_time_, false);
-    ROS_INFO_STREAM("Simulated time is "<<use_sim_time_);
-    stopping_distance_ = e_zone_ + max_speed_ * max_speed_ / (2 * norm_dec_);
+    ROS_DEBUG_STREAM("Simulated time is "<<use_sim_time_);
     junction_stop_ = false;
     ros::Timer timer = n.createTimer(ros::Duration(1.0/frequency_),&SpeedAdvisor::ControlLoop,this);
 
@@ -94,25 +102,41 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
         vector<double> speed_delta;
         if(move_status_.acc_dec)
         {
-            //system all go but need to watch out for obstacles
+            /* In this speed design, situations that need to be taken care of are
+             * 1: Stopping: must apply deceleration make sure no collision should happen
+             * 2: Junction = reach goal: must apply deceleration slowly
+             * 3: Slow speed: max speed limit at slow speed
+             * 4: Normal: max speed limit at normal speed
+             */
 
+            //try a more general solution
             double obs_dist;
             obs_dist = move_status_.obstacles_dist;
-            if(obs_dist<stopping_distance_)
+            if(obs_dist<10)
             {
-
-                double deceleration_required = max_speed_*max_speed_/(2*obs_dist);
-                ROS_INFO_STREAM("Calculated deceleration: "<<deceleration_required<<"Obs dist: "<<obs_dist);
-                if(deceleration_required>norm_dec_)
+                max_speed_ = slow_speed_;
+                if(obs_dist<e_zone_)
                 {
-                    if(deceleration_required>max_dec_) deceleration_required=max_dec_;
-                    speed_delta.push_back(-deceleration_required/frequency_);
+                    speed_delta.push_back(max_neg_speed);
                 }
                 else
-                    speed_delta.push_back(norm_neg_speed);
+                {
+                    double deceleration_required = move_speed_.linear.x*move_speed_.linear.x/(2*(obs_dist-e_zone_));
+                    ROS_DEBUG_STREAM("Calculated deceleration: "<<deceleration_required<<"Obs dist: "<<obs_dist);
+                    if(deceleration_required>=norm_dec_)
+                    {
+                        if(deceleration_required>max_dec_) deceleration_required=max_dec_;
+                        speed_delta.push_back(-deceleration_required/frequency_);
+                    }
+                    else speed_delta.push_back(pos_speed);
+                }
             }
             else
-                speed_delta.push_back(pos_speed);
+            {
+                max_speed_ = high_speed_;
+            }
+
+
         }
         else speed_delta.push_back(norm_neg_speed);
 
@@ -122,13 +146,17 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
         else speed_delta.push_back(pos_speed);
 
         double min_speed_delta = *(min_element(speed_delta.begin(), speed_delta.end()));
-        //continue beautification later....
-        ROS_DEBUG_STREAM("min_speed: "<<min_speed_delta<<" Emergency "<<int(move_status_.emergency)<<" Junction: "<<junction_stop_);
+
+        ROS_DEBUG_STREAM("min_speed_delta: "<<min_speed_delta<<" Emergency "<<int(move_status_.emergency)<<" Junction: "<<junction_stop_);
         move_speed_.linear.x+=min_speed_delta;
     }
-
-    if(move_speed_.linear.x>max_speed_) move_speed_.linear.x=max_speed_;
-    if(move_speed_.linear.x<0) move_speed_.linear.x=0;
+    if(move_speed_.linear.x>max_speed_)
+    {
+        //respect the acceleration and deceleration
+        if((move_speed_.linear.x-max_speed_)>-norm_neg_speed) move_speed_.linear.x+=norm_neg_speed;
+        else move_speed_.linear.x=max_speed_;
+    }
+    else if(move_speed_.linear.x<0) move_speed_.linear.x=0;
     move_speed_.angular.z = move_status_.steer_angle;
     ROS_DEBUG_STREAM(move_speed_.linear.x<<" Distance to goal: "<<move_status_.dist_to_goal);
     geometry_msgs::Twist move_speed;
