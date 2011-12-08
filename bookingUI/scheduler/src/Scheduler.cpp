@@ -24,18 +24,19 @@ using namespace std;
         } \
     } while(0)
 
-#define MSG(fmt, ...) do { \
-        if (verbosity_level > 0) { \
+#define MSG(lvl, fmt, ...) do { \
+        if (verbosity_level >= lvl) { \
             fprintf(stderr, "%s#%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
             fflush(stderr); \
             }\
     } while(0)
 
-#define MSGLOG(fmt, ...) do { MSG(fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
+#define MSGLOG(lvl, fmt, ...) do { MSG(lvl, fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
 
 #define ERROR(fmt, ...) do { \
         fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
         fflush(stderr); \
+        LOG("\nERROR: " fmt "\n", ##__VA_ARGS__); \
     } while(0)
 
 
@@ -64,7 +65,7 @@ SchedulerException::SchedulerException(SchedulerExceptionTypes t) throw()
 //------------------------------------------------------------------------------
 
 
-Task::Task(unsigned taskID, string customerID, unsigned vehicleID,
+Task::Task(unsigned taskID, string customerID, string vehicleID,
            Station pickup, Station dropoff)
 {
     this->taskID = taskID;
@@ -97,7 +98,7 @@ Scheduler::Scheduler()
 : verbosity_level(0), logFile(NULL)
 {
     // Add a vehicle. TODO: get the list of vehicles from the database.
-    vehicles.push_back( Vehicle(0,VEHICLE_AVAILABLE) );
+    vehicles.push_back( Vehicle("golfcart1", VEHICLE_AVAILABLE) );
 }
 
 void Scheduler::setLogFile(FILE *logfile)
@@ -127,11 +128,12 @@ Task Scheduler::addTask(Task task)
 
     // Currently we don't have any procedure to assign a vehicle to the task,
     // so we just assign to vehicle 0:
-    task = Task(task.taskID, task.customerID, 0, task.pickup, task.dropoff);
+    // TODO: support more vehicles
+    task = Task(task.taskID, task.customerID, vehicles[0].id, task.pickup, task.dropoff);
 
-    MSGLOG("Adding task <%u,%s,%s,%s> to vehicle %u",
+    MSGLOG(2, "Adding task <%u,%s,%s,%s> to vehicle %s",
             task.taskID, task.customerID.c_str(),
-            task.pickup.c_str(), task.dropoff.c_str(), task.vehicleID);
+            task.pickup.c_str(), task.dropoff.c_str(), task.vehicleID.c_str());
 
     task.ttask = travelTime(task.pickup, task.dropoff);
 
@@ -139,7 +141,7 @@ Task Scheduler::addTask(Task task)
 
     if( tasks.empty() )
     {
-        MSGLOG("Adding as current.");
+        MSGLOG(2, "Adding as current.");
         assert( vit->status == VEHICLE_AVAILABLE );
         vit->status = VEHICLE_ON_CALL;
         task.tpickup = 0; //TODO: this should be the time from the current station to the pickup station
@@ -169,8 +171,7 @@ Task Scheduler::addTask(Task task)
             else
                 tdp2 = 0;
 
-            if (verbosity_level > 3)
-                MSGLOG("(%u+%u+%u) VS %d\n", tdp1, task.ttask, tdp2, it->tpickup);
+            MSGLOG(4, "(%u+%u+%u) VS %d\n", tdp1, task.ttask, tdp2, it->tpickup);
 
             if (tdp1 + task.ttask + tdp2 <= it->tpickup + MAX_ADDITIONAL_TIME) {
                 task.tpickup = tdp1;
@@ -198,7 +199,7 @@ Task Scheduler::addTask(Task task)
 
 void Scheduler::removeTask(unsigned taskID)
 {
-    MSGLOG("Removing task %u", taskID);
+    MSGLOG(2, "Removing task %u", taskID);
 
     for (VIT vit = vehicles.begin(); vit != vehicles.end(); ++vit)
     {
@@ -231,7 +232,7 @@ void Scheduler::removeTask(unsigned taskID)
                     if (prevDropoff != jt->pickup)
                         jt->tpickup = travelTime(prevDropoff, jt->pickup);
                 }
-                updateWaitTime(vit->id);
+                updateWaitTime(vit->id.c_str());
                 return;
             }
             prevDropoff = jt->dropoff;
@@ -241,7 +242,7 @@ void Scheduler::removeTask(unsigned taskID)
     throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
 }
 
-Scheduler::VIT Scheduler::checkVehicleExist(unsigned vehicleID)
+Scheduler::VIT Scheduler::checkVehicleExist(string vehicleID)
 {
     VIT vit;
     for( vit=vehicles.begin(); vit!=vehicles.end(); ++vit )
@@ -252,19 +253,19 @@ Scheduler::VIT Scheduler::checkVehicleExist(unsigned vehicleID)
     return vit;
 }
 
-bool Scheduler::hasPendingTasks(unsigned vehicleID)
+bool Scheduler::hasPendingTasks(string vehicleID)
 {
     return getVehicleTasks(vehicleID).size() > 1;
 }
 
-Task & Scheduler::vehicleSwitchToNextTask(unsigned vehicleID)
+Task & Scheduler::vehicleSwitchToNextTask(string vehicleID)
 {
     VIT vit = checkVehicleExist(vehicleID);
     vit->status = VEHICLE_AVAILABLE;
 
     if( ! hasPendingTasks(vehicleID) )
     {
-        MSGLOG("No more task for vehicle %u\n", vehicleID);
+        MSGLOG(2, "No more task for vehicle %s\n", vehicleID.c_str());
         throw SchedulerException(SchedulerException::NO_PENDING_TASKS);
     }
 
@@ -272,18 +273,18 @@ Task & Scheduler::vehicleSwitchToNextTask(unsigned vehicleID)
     Task & task = vit->tasks.front();
     vit->status = VEHICLE_ON_CALL;
     updateWaitTime(vehicleID);
-    MSGLOG("Giving task <%u,%s,%s> to vehicle %u",
-           task.taskID, task.pickup.c_str(), task.dropoff.c_str(), vehicleID);
+    MSGLOG(2, "Giving task <%u,%s,%s> to vehicle %s",
+           task.taskID, task.pickup.c_str(), task.dropoff.c_str(), vehicleID.c_str());
     return task;
 }
 
-list<Task> & Scheduler::getVehicleTasks(unsigned vehicleID)
+list<Task> & Scheduler::getVehicleTasks(string vehicleID)
 {
     VIT vit = checkVehicleExist(vehicleID);
     return vit->tasks;
 }
 
-Task & Scheduler::getVehicleCurrentTask(unsigned vehicleID)
+Task & Scheduler::getVehicleCurrentTask(string vehicleID)
 {
     list<Task> & tasks = getVehicleTasks(vehicleID);
     if( tasks.empty() )
@@ -307,26 +308,24 @@ Duration Scheduler::getWaitTime(unsigned taskID)
     return getTask(taskID).twait;
 }
 
-VehicleStatus & Scheduler::getVehicleStatus(unsigned vehicleID)
+VehicleStatus Scheduler::getVehicleStatus(string vehicleID)
 {
-    VIT vit = checkVehicleExist(vehicleID);
-    return vit->status;
+    return checkVehicleExist(vehicleID)->status;
 }
 
-void Scheduler::updateWaitTime(unsigned vehicleID)
+void Scheduler::updateWaitTime(string vehicleID)
 {
     Task & t = getVehicleCurrentTask(vehicleID);
     updateWaitTime(vehicleID, t.tpickup + t.ttask);
 }
 
-void Scheduler::updateWaitTime(unsigned vehicleID, Duration timeCurrentTask)
+void Scheduler::updateWaitTime(string vehicleID, Duration timeCurrentTask)
 {
     list<Task> & tasks = getVehicleTasks(vehicleID);
     Duration waittime = timeCurrentTask;
 
-    if (verbosity_level > 1)
-        MSGLOG("Updating waiting time for vehicle %u with current task "
-                "completion time %u", vehicleID, timeCurrentTask);
+	MSGLOG(3, "Updating waiting time for vehicle %s with current task "
+			"completion time %u", vehicleID.c_str(), timeCurrentTask);
 
     for( list<Task>::iterator it = tasks.begin(); it != tasks.end(); ++it )
     {
@@ -336,7 +335,7 @@ void Scheduler::updateWaitTime(unsigned vehicleID, Duration timeCurrentTask)
     }
 }
 
-void Scheduler::updateTCurrent(unsigned vehicleID, Duration tremain)
+void Scheduler::updateTCurrent(string vehicleID, Duration tremain)
 {
     Task & t = getVehicleCurrentTask(vehicleID);
     if (getVehicleStatus(vehicleID) == VEHICLE_POB)
@@ -350,22 +349,37 @@ void Scheduler::updateTCurrent(unsigned vehicleID, Duration tremain)
     }
 }
 
-void Scheduler::updateTPickupCurrent(unsigned vehicleID, Duration tpickup)
+void Scheduler::updateTPickupCurrent(string vehicleID, Duration tpickup)
 {
     getVehicleCurrentTask(vehicleID).tpickup = tpickup;
 }
 
-void Scheduler::updateTTaskCurrent(unsigned vehicleID, Duration ttask)
+void Scheduler::updateTTaskCurrent(string vehicleID, Duration ttask)
 {
     getVehicleCurrentTask(vehicleID).ttask = ttask;
 }
 
-void Scheduler::updateVehicleStatus(unsigned vehicleID, VehicleStatus status)
+void Scheduler::updateVehicleStatus(string vehicleID, VehicleStatus status)
 {
-    checkVehicleExist(vehicleID);
-    getVehicleStatus(vehicleID) = status;
+	VIT vit = checkVehicleExist(vehicleID);
+    vit->status = status;
     if (status == VEHICLE_POB)
         getVehicleCurrentTask(vehicleID).tpickup = 0;
+}
+
+string vehicleStatusStr(VehicleStatus vs)
+{
+	switch( vs )
+	{
+	case VEHICLE_NOT_AVAILABLE:
+		return "NOT AVAILABLE";
+	case VEHICLE_ON_CALL:
+		return "ON CALL";
+	case VEHICLE_POB:
+		return "POB";
+	case VEHICLE_AVAILABLE:
+		return "AVAILABLE";
+	}
 }
 
 string Scheduler::toString() const
@@ -373,24 +387,7 @@ string Scheduler::toString() const
     stringstream ss;
     for( vector<Vehicle>::const_iterator vit = vehicles.begin(); vit != vehicles.end(); ++vit )
     {
-        ss << "Vehicle " << vit->id << " (";
-
-        switch( vit->status )
-        {
-            case VEHICLE_NOT_AVAILABLE:
-                ss << "NOT AVAILABLE";
-                break;
-            case VEHICLE_ON_CALL:
-                ss << "ON CALL";
-                break;
-            case VEHICLE_POB:
-                ss << "POB";
-                break;
-            case VEHICLE_AVAILABLE:
-                ss << "AVAILABLE";
-        }
-
-        ss << "): ";
+        ss << "Vehicle " << vit->id << " (" <<vehicleStatusStr(vit->status) << "): ";
         const list<Task> & tasks = vit->tasks;
         if( tasks.empty() )
             ss <<" no tasks." <<endl;

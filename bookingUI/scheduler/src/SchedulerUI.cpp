@@ -7,7 +7,7 @@
 
 #include "SchedulerUI.h"
 
-#define DEFAULT_VEHICLE_ID 0
+#define DEFAULT_VEHICLE_ID "golfcart1"
 
 using namespace std;
 
@@ -287,12 +287,12 @@ void SchedulerUI::updateTaskList()
 
 void SchedulerUI::updateVehicleStatus()
 {
-    unsigned vehicleID = DEFAULT_VEHICLE_ID;
+	std::string vehicleID = DEFAULT_VEHICLE_ID;
     VehicleStatus vehStatus = scheduler.getVehicleStatus(DEFAULT_VEHICLE_ID);
     char vehStatusStr[64];
 
     mvwprintw(this->win, this->textFields[VEHICLE_ID].row, this->textFields[VEHICLE_ID].col,
-              "%d", vehicleID);
+              "%s", vehicleID.c_str());
     if (vehStatus == VEHICLE_NOT_AVAILABLE)
         strncpy(vehStatusStr, "NOT AVAILABLE", sizeof(vehStatusStr) - 1);
     else if (vehStatus == VEHICLE_ON_CALL)

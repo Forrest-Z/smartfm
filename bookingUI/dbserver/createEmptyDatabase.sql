@@ -6,7 +6,7 @@ create table stations (
 );
 
 insert into stations values ('E3A', 1.30073, 103.77166);
-insert into stations values ('E3', 1.300730, 103.770844);
+insert into stations values ('EA', 1.300730, 103.770844);
 insert into stations values ('DCC Workshop', 1.299121, 103.770788);
 insert into stations values ('McDonald', 1.298116, 103.771209);
 

@@ -78,12 +78,17 @@ function listStations()
     return $stations;
 }
 
-function selectStation($fieldname)
+function selectStation($fieldname,$default)
 {
     $stations = listStations();
     echo "<select name=\"$fieldname\">";
     foreach( $stations as $station )
-        echo "<option value=\"$station\">$station</option>";
+    {
+        if( isset($default) && $default==$station )
+            echo "<option value=\"$station\" selected=\"selected\">$station</option>";
+        else
+            echo "<option value=\"$station\">$station</option>";
+    }
     echo "</select>";
 }
 
@@ -116,14 +121,15 @@ padding: 5px;
 
 <p>Status :
 <select name="Status">
-<option value="Requested">Requested</option>
-<option value="Acknowledged" selected="selected">Acknowledged</option>
+<option value="Requested" selected="selected">Requested</option>
+<option value="Acknowledged">Acknowledged</option>
+<option value="Confirmed">Confirmed</option>
 </select>
 </p>
 
-<p>Pickup location: <?php selectStation("PickUpLocation"); ?></p>
-<p>Dropoff location: <?php selectStation("DropOffLocation"); ?></p>
-<p>VehicleID: <input type="text" name="VehicleID" value="golfcart1"/></p>
+<p>Pickup location: <?php selectStation("PickUpLocation","DCC Workshop"); ?></p>
+<p>Dropoff location: <?php selectStation("DropOffLocation","McDonald"); ?></p>
+<p>VehicleID: <input type="text" name="VehicleID" value=""/></p>
 
 <input type="submit" value="Submit" />
 </form>

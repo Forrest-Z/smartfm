@@ -15,6 +15,7 @@ typedef unsigned Duration;
 class Task
 {
 public:
+
     bool valid;
 
     /// ID of this object. This is internal to the scheduler.
@@ -24,7 +25,7 @@ public:
     std::string customerID;
 
     /// ID of vehicle
-    unsigned vehicleID;
+    std::string vehicleID;
 
     /// ID of the pick-up (origin) station
     Station pickup;
@@ -45,7 +46,7 @@ public:
 public:
     Task() : valid(false) { }
 
-    Task(unsigned taskID, std::string customerID, unsigned vehicleID, Station pickup, Station dropoff);
+    Task(unsigned taskID, std::string customerID, std::string vehicleID, Station pickup, Station dropoff);
 
     std::string toString() const;
 
@@ -86,18 +87,20 @@ enum VehicleStatus
     VEHICLE_AVAILABLE
 };
 
+std::string vehicleStatusStr(VehicleStatus vs);
+
 
 class Vehicle
 {
 public:
-    unsigned id;
+    std::string id;
     VehicleStatus status;
     std::list<Task> tasks;
 
     Vehicle() : id(0), status(VEHICLE_AVAILABLE) { }
     Vehicle(VehicleStatus s) : id(0), status(s) { }
-    Vehicle(unsigned i) : id(i), status(VEHICLE_AVAILABLE) { }
-    Vehicle(unsigned i, VehicleStatus s) : id(i), status(s) { }
+    Vehicle(std::string i) : id(i), status(VEHICLE_AVAILABLE) { }
+    Vehicle(std::string i, VehicleStatus s) : id(i), status(s) { }
 };
 
 
@@ -137,18 +140,18 @@ public:
     /// Sets the next pending task as the current task and returns it. Throws a
     /// SchedulerException if there is no pending task or if the vehicle does not
     /// exist.
-    Task & vehicleSwitchToNextTask(unsigned vehicleID);
+    Task & vehicleSwitchToNextTask(std::string vehicleID);
 
 
 public:
     /// Method to check whether there is a task in the queue
-    bool hasPendingTasks(unsigned vehicleID);
+    bool hasPendingTasks(std::string vehicleID);
 
     /// Method to get the current task for a specified vehicle
-    Task & getVehicleCurrentTask(unsigned vehicleID);
+    Task & getVehicleCurrentTask(std::string vehicleID);
 
     /// Method to get all tasks for a specified vehicle
-    std::list<Task> & getVehicleTasks(unsigned vehicleID);
+    std::list<Task> & getVehicleTasks(std::string vehicleID);
 
     /// Method to get the waiting time of the specified task
     Duration getWaitTime(unsigned taskID);
@@ -157,7 +160,7 @@ public:
     Task & getTask(unsigned taskID);
 
     /// Method to get the status of the vehicles
-    VehicleStatus & getVehicleStatus(unsigned vehicleID);
+    VehicleStatus getVehicleStatus(std::string vehicleID);
 
     /// Method to print all the tasks
     std::string toString() const;
@@ -167,24 +170,24 @@ public:
     /// Method to update waiting time for a specified vehicle.
     /// timeCurrentTask is the estimated time from current position of the car
     /// to the drop off of current task (i.e., the sum of remaining tpickup and remaining ttask).
-    void updateWaitTime(unsigned vehicleID);
-    void updateWaitTime(unsigned vehicleID, Duration timeCurrentTask);
+    void updateWaitTime(std::string vehicleID);
+    void updateWaitTime(std::string vehicleID, Duration timeCurrentTask);
 
     /// Method to update remaining task time (POB) or pickup time (other status)
-    void updateTCurrent(unsigned vehicleID, Duration tremain);
+    void updateTCurrent(std::string vehicleID, Duration tremain);
 
     /// Method to update remaining pickup time of current task
-    void updateTPickupCurrent(unsigned vehicleID, Duration tpickup);
+    void updateTPickupCurrent(std::string vehicleID, Duration tpickup);
 
     /// Method to update remaining task time from pickup to drop off of current task
-    void updateTTaskCurrent(unsigned vehicleID, Duration ttask);
+    void updateTTaskCurrent(std::string vehicleID, Duration ttask);
 
     /// Method to update vehicle status
-    void updateVehicleStatus(unsigned vehicleID, VehicleStatus status);
+    void updateVehicleStatus(std::string vehicleID, VehicleStatus status);
 
 private:
     /// Returns the vehicle, throws a SchedulerException if it does not exist.
-    VIT checkVehicleExist(unsigned vehicleID);
+    VIT checkVehicleExist(std::string vehicleID);
 
     /// Returns travel time. Throws SchedulerException if stations or route cannot be found.
     unsigned travelTime(Station pickup, Station dropoff);

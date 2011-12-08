@@ -51,8 +51,7 @@ class MissionNode:
         #print dom.toxml()
         for node in dom.getElementsByTagName('request'):
             m = nodeToMission(node)
-            if m.status=='Acknowledged':
-                print 'Acknowledged mission:', m
+            if m.status=='Confirmed':
                 with self.lock: self.currentMission = m
                 return True
         return False

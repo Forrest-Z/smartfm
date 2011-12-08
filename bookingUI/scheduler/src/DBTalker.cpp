@@ -28,18 +28,19 @@ using namespace sql;
         } \
     } while(0)
 
-#define MSG(fmt, ...) do { \
-        if (verbosity_level > 0) { \
+#define MSG(lvl, fmt, ...) do { \
+        if (verbosity_level >= lvl) { \
             fprintf(stderr, "%s#%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
             fflush(stderr); \
             }\
     } while(0)
 
-#define MSGLOG(fmt, ...) do { MSG(fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
+#define MSGLOG(lvl, fmt, ...) do { MSG(lvl, fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
 
 #define ERROR(fmt, ...) do { \
         fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
         fflush(stderr); \
+        LOG("\nERROR: " fmt "\n", ##__VA_ARGS__); \
     } while(0)
 
 
@@ -92,14 +93,14 @@ vector<Task> DBTalker::getRequestedBookings()
             Task(
                 res->getInt("requestID"),
                 res->getString("customerID"),
-                0, //vehicle ID (dummy value, will be assigned by scheduler)
+                "", //vehicle ID (dummy value, will be assigned by scheduler)
                 stationList(res->getString("pickupLocation")),
                 stationList(res->getString("dropoffLocation"))
             )
         );
 
     if( !tasks.empty() )
-        MSGLOG("Retrieved %u  requested bookings.", tasks.size());
+        MSGLOG(2, "Retrieved %u requested bookings.", (unsigned)tasks.size());
 
     delete res;
     delete stmt;
@@ -143,7 +144,7 @@ void DBTalker::update(const vector<Vehicle> & vehicles)
             }
 
             stmt->setString(1, status);
-            stmt->setInt(2, vit->id);
+            stmt->setString(2, vit->id);
             stmt->setInt(3, tit->taskID);
             stmt->execute();
         }
@@ -165,7 +166,7 @@ DBTalker::TaskStatus DBTalker::getTaskStatus(unsigned taskID)
         info.task = Task(
             taskID,
             res->getString("customerID"),
-            0, //TODO: this should be a string. res->getString("vehicleID"),
+            res->getString("vehicleID"),
             stationList(res->getString("pickupLocation")),
             stationList(res->getString("dropoffLocation"))
         );
@@ -178,13 +179,12 @@ DBTalker::TaskStatus DBTalker::getTaskStatus(unsigned taskID)
 }
 
 // Update vehicle status
-//TODO: vehicleID should be a string rather than an int
-pair<VehicleStatus, Duration> DBTalker::getVehicleStatus(unsigned vehicleID)
+pair<VehicleStatus, Duration> DBTalker::getVehicleStatus(string vehicleID)
 {
     pair<VehicleStatus, Duration> info;
 
     PreparedStatement *stmt = con->prepareStatement("SELECT status, eta FROM vehicles WHERE vehicleID=?");
-    stmt->setString(1,"golfcart1");
+    stmt->setString(1, vehicleID);
     ResultSet *res = stmt->executeQuery();
 
     while (res->next())
@@ -229,7 +229,7 @@ unsigned DBTalker::makeBooking(string customerID, Station pickup, Station dropof
     ResultSet *res = stmt->executeQuery("SELECT LAST_INSERT_ID()");
     while (res->next()) i = res->getInt("LAST_INSERT_ID()");
 
-    MSGLOG("Added task %u.", i);
+    MSGLOG(2, "Added task <%u,%s,%s,%s>", i, customerID.c_str(), pickup.c_str(), dropoff.c_str());
 
     delete res;
     delete stmt;
@@ -238,14 +238,6 @@ unsigned DBTalker::makeBooking(string customerID, Station pickup, Station dropof
 
 void DBTalker::createVehicleEntry(std::string VehicleID)
 {
-    /*
-     vehicleID char(10) not null,
-     status enum('WaitingForAMission', 'GoingToPickupLocation', 'GoingToDropoffLocation', 'AtPickupLocation', 'NotAvailable') not null,
-     latitude float(10,6),
-     longitude float(10,6),
-     eta int(6),
-     requestID int
-    */
     PreparedStatement *pstmt = con->prepareStatement(
         "INSERT INTO vehicles "
         "(vehicleID, status) "

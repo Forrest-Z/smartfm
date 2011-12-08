@@ -33,7 +33,7 @@ using namespace std;
 
 /// Although the system is intended to support several vehicles, not everything
 /// has been implemented, so we will use vehicle 0 only for now.
-const unsigned DEFAULT_VEHICLE_ID = 0;
+const char DEFAULT_VEHICLE_ID[] = "golfcart1";
 
 /// Number of seconds between two successive task info
 const int NUM_SEC_TASK_INFO_SENT = 1;
@@ -47,7 +47,6 @@ int optVerbosityLevel = 0;
 int optNoGUI = 0;
 int optSimulateMobile = 0;
 int optSimulateVehicle = 0;
-int optSimulateTime = 0;
 int optNoOP = 0;
 string optHostName = "localhost";
 float optTimeFactor = 1; ///< control the speed of time in simulation mode
@@ -100,20 +99,21 @@ enum OperatorOption
         fflush(gLogFile); \
     } while(0)
 
-#define MSG(fmt, ...) do { \
-        if (optVerbosityLevel > 0) { \
+#define MSG(lvl, fmt, ...) do { \
+        if (optVerbosityLevel >= lvl) { \
             fprintf(stderr, "%s#%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
             fflush(stderr); \
             }\
     } while(0)
 
-#define MSGLOG(fmt, ...) do { MSG(fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
+#define MSGLOG(lvl, fmt, ...) do { MSG(lvl, fmt, ##__VA_ARGS__); LOG(fmt, ##__VA_ARGS__); } while(0)
 
-#define MSGLOGQUIET(fmt, ...) do { if(optNoGUI) MSG(fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
+#define MSGLOGNOGUI(lvl, fmt, ...) do { if(optNoGUI) MSG(lvl, fmt, ##__VA_ARGS__); LOG(fmt, ##__VA_ARGS__); } while(0)
 
 #define ERROR(fmt, ...) do { \
         fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
         fflush(stderr); \
+        LOG("\nERROR: " fmt "\n", ##__VA_ARGS__); \
     } while(0)
 
 
@@ -219,16 +219,16 @@ int main(int argc, char **argv)
 
     } //try
     catch( StationDoesNotExistException & e ) {
-        MSGLOG("ERROR: Caught StationDoesNotExistException: station %s does not exist.", e.what());
+        MSGLOG(1, "ERROR: Caught StationDoesNotExistException: station %s does not exist.", e.what());
         exit_code = 1;
     }
     catch( SchedulerException & e ) {
-        MSGLOG("ERROR: Caught SchedulerException: %s.", e.what());
+        MSGLOG(1, "ERROR: Caught SchedulerException: %s.", e.what());
         exit_code = 1;
     }
     catch( exception & e )
     {
-        MSGLOG("ERROR: Caught exception: %s", e.what());
+        MSGLOG(1, "ERROR: Caught exception: %s", e.what());
         exit_code = 1;
     }
 
@@ -262,7 +262,6 @@ void print_usage (FILE* stream, int exit_code)
     ss <<"  --taskproba p     Sets the probability of a new task (only used when simmobile is on, default value is " <<optNewTaskProba <<")." <<endl;
     ss <<"  --simvehicle      Simulate vehicles' status." <<endl;
     ss <<"  --timefactor tf   Control speed of time when simulating the vehicle (default is 1)." <<endl;
-    ss <<"  --simtime         Simulate remaining time of current task." <<endl;
     ss <<"  --noop            No interaction with user. (daemon mode)." <<endl;
     ss <<"  --help            Display this message." <<endl;
 
@@ -288,7 +287,6 @@ void parseOptions(int argc, char **argv)
         {"nogui",       no_argument,       &optNoGUI,                 1},
         {"simmobile",   no_argument,       &optSimulateMobile,        1},
         {"simvehicle",  no_argument,       &optSimulateVehicle,       1},
-        {"simtime",     no_argument,       &optSimulateTime,          1},
         {"noop",        no_argument,       &optNoOP,                  1},
         {"timefactor",  required_argument, 0,                       'F'},
         {"taskproba",   required_argument, 0,                       'P'},
@@ -360,9 +358,9 @@ Task addTask(Task task)
     task = gScheduler->addTask(task);
     gDBTalker->update(gScheduler->vehicles);
 
-    MSGLOG("Added task %u:%s:%s:%s to the scheduler", task.taskID,
+    MSGLOG(1, "Added task %u:%s:%s:%s to the scheduler", task.taskID,
         task.customerID.c_str(), task.pickup.c_str(), task.dropoff.c_str());
-    MSGLOGQUIET("After adding task...\nTask queue:\n%s", gScheduler->toString().c_str());
+    MSGLOGNOGUI(2, "After adding task...\nTask queue:\n%s", gScheduler->toString().c_str());
 
     return task;
 }
@@ -438,66 +436,66 @@ void addMobileTask()
 }
 
 
-pair<VehicleStatus, Duration> getVehicleInfo(unsigned vehicleID)
+struct VehicleTaskInfo
 {
-    pair<VehicleStatus, Duration> info;
-    MSGLOGQUIET("Getting vehicle information...");
+	VehicleStatus vehicleStatus;
+	Duration duration;
+	Task task;
+	string taskStatus;
+};
 
-    time_t currentTime = time(NULL);
-    if( gPreviousTime==0 ) gPreviousTime = time(NULL);
-    time_t timeDiff = (currentTime - gPreviousTime);
-    Task & curTask = gScheduler->getVehicleCurrentTask(vehicleID);
-
-    if (timeDiff > 0)
-        gPreviousTime = currentTime;
+VehicleTaskInfo getVehicleTaskInfo(string vehicleID)
+{
+    VehicleTaskInfo info;
+    info.task = gScheduler->getVehicleCurrentTask(vehicleID);
 
     if( optSimulateVehicle )
     {
-        Duration dt = timeDiff * optTimeFactor;
-        if ( curTask.ttask <= dt)
+        time_t currentTime = time(NULL);
+        if( gPreviousTime==0 ) gPreviousTime = time(NULL);
+        Duration dt = (currentTime - gPreviousTime) * optTimeFactor;
+        gPreviousTime = currentTime;
+
+        if ( info.task.ttask <= dt)
         {
-            info.first = VEHICLE_AVAILABLE;
-            info.second = 0;
+            info.vehicleStatus = VEHICLE_AVAILABLE;
+            info.duration = 0;
+            info.taskStatus = "Completed";
         }
-        else if (curTask.tpickup > dt)
+        else if (info.task.tpickup > dt)
         {
-            info.first = VEHICLE_ON_CALL;
-            info.second = curTask.tpickup - dt;
-            if (info.second < dt)
-                info.second = 0;
+            info.vehicleStatus = VEHICLE_ON_CALL;
+            info.duration = info.task.tpickup - dt;
+            info.taskStatus = "Processing";
+        }
+        else if( info.task.tpickup <= dt )
+        {
+        	info.vehicleStatus = VEHICLE_POB;
+        	info.task.tpickup = 0;
+        	info.taskStatus = "Processing";
+        }
+        else if( info.task.ttask > dt )
+        {
+        	info.vehicleStatus = VEHICLE_POB;
+            info.duration = info.task.ttask - dt;
+            info.taskStatus = "Processing";
         }
         else
         {
-            info.first = VEHICLE_POB;
-            info.second = curTask.ttask - dt;
-            if (info.second < dt)
-                info.second = 0;
+        	throw logic_error("getVehicleTaskInfo");
         }
     }
     else // if(optSimulateVehicle)
     {
-        info = gDBTalker->getVehicleStatus(vehicleID);
-        Duration dt = timeDiff;
-        if (optSimulateTime)
-        {
-            if (info.first == VEHICLE_AVAILABLE)
-            {
-                info.second = 0;
-            }
-            else if (info.first == VEHICLE_ON_CALL)
-            {
-                info.second = curTask.tpickup - timeDiff;
-                if (info.second < dt)
-                    info.second = 0;
-            }
-            else if (info.first == VEHICLE_POB)
-            {
-                info.second = curTask.ttask - timeDiff;
-                if (info.second < dt)
-                    info.second = 0;
-            }
-        }
+    	pair<VehicleStatus, Duration> vs = gDBTalker->getVehicleStatus(vehicleID);
+    	info.vehicleStatus = vs.first;
+    	info.duration = vs.second;
+        DBTalker::TaskStatus ts = gDBTalker->getTaskStatus(info.task.taskID);
+        info.taskStatus = ts.status;
     }
+
+	MSGLOGNOGUI(2, "vehicle status: %s, task status: %s, duration: %u",
+			vehicleStatusStr(info.vehicleStatus).c_str(), info.taskStatus.c_str(), info.duration);
 
     return info;
 }
@@ -507,40 +505,42 @@ void update()
     if( gScheduler->getVehicleTasks(DEFAULT_VEHICLE_ID).empty() )
         return;
 
-    pair<VehicleStatus, Duration> info = getVehicleInfo(DEFAULT_VEHICLE_ID);
-    MSGLOGQUIET("Got status: %d:%u", info.first, info.second);
+    VehicleTaskInfo info = getVehicleTaskInfo(DEFAULT_VEHICLE_ID);
 
-    // Get the next task and send to the vehicle if the vehicle is available
-    if( info.first == VEHICLE_AVAILABLE )
+    if( string("Completed, Processing, Confirmed").find(info.taskStatus)!=string::npos )
     {
-        gScheduler->updateVehicleStatus(DEFAULT_VEHICLE_ID, VEHICLE_AVAILABLE);
-        gDBTalker->update(gScheduler->vehicles);
+		if( info.taskStatus == "Completed" )
+		{
+			gScheduler->updateVehicleStatus(DEFAULT_VEHICLE_ID, VEHICLE_AVAILABLE);
 
-        if( gScheduler->hasPendingTasks(DEFAULT_VEHICLE_ID) )
-        {
-            gScheduler->vehicleSwitchToNextTask(DEFAULT_VEHICLE_ID);
-            if( optNoGUI )
-                MSGLOGQUIET("\nAfter task sent...\nTask queue:\n%s", gScheduler->toString().c_str());
-        }
-        else
-        {
-            gScheduler->getVehicleTasks(DEFAULT_VEHICLE_ID).clear();
-            gPreviousTime = 0;
-        }
-        gDBTalker->update(gScheduler->vehicles);
+			if( gScheduler->hasPendingTasks(DEFAULT_VEHICLE_ID) )
+			{
+				gScheduler->vehicleSwitchToNextTask(DEFAULT_VEHICLE_ID);
+				MSGLOGNOGUI(1, "Switching to next task.\nTask queue:\n%s", gScheduler->toString().c_str());
+			}
+			else
+			{
+				gScheduler->getVehicleTasks(DEFAULT_VEHICLE_ID).clear();
+				gPreviousTime = 0;
+			}
+			gDBTalker->update(gScheduler->vehicles);
+		}
+		else if( info.taskStatus=="Processing" )
+		{
+			gScheduler->updateVehicleStatus(DEFAULT_VEHICLE_ID, info.vehicleStatus);
+			gScheduler->updateTCurrent(DEFAULT_VEHICLE_ID, info.duration);
+			gScheduler->updateWaitTime(DEFAULT_VEHICLE_ID);
+		}
     }
-    // Otherwise, update the remaining task time (POB) or pickup time (other status)
     else
     {
-        gScheduler->updateVehicleStatus(DEFAULT_VEHICLE_ID, info.first);
-        gScheduler->updateTCurrent(DEFAULT_VEHICLE_ID, info.second);
-        MSGLOGQUIET("Updated vehicle status to %d and remaining time to %u", info.first, info.second);
+    	stringstream ss;
+    	ss <<"SchedulerMain.cpp update(): task status is " <<info.taskStatus <<". ";
+    	ss <<"This case has not been implemented yet.";
+    	throw logic_error(ss.str());
     }
 
-    if( info.first != VEHICLE_AVAILABLE )
-        gScheduler->updateWaitTime(DEFAULT_VEHICLE_ID);
-
-    MSGLOGQUIET("After updating waiting time...\nTask queue:\n%s", gScheduler->toString().c_str());
+   	MSGLOGNOGUI(3, "After updating waiting time...\nTask queue:\n%s", gScheduler->toString().c_str());
 }
 
 
@@ -604,10 +604,10 @@ void textUI()
 
         try
         {
-            gScheduler->removeTask((unsigned) getNumeric());
-
-            if (optVerbosityLevel > 0 && optNoGUI)
-                MSGLOGQUIET("After removing task...\nTask queue:\n%s", gScheduler->toString().c_str());
+        	unsigned i = getNumeric();
+        	MSGLOGNOGUI(1, "Removing task %u.", i);
+            gScheduler->removeTask(i);
+            MSGLOGNOGUI(2, "Removed task %u.\nTask queue:\n%s", i, gScheduler->toString().c_str());
         }
         catch( SchedulerException & e )
         {
@@ -619,7 +619,7 @@ void textUI()
     }
     else if (opOption == OPERATOR_VIEW_TASK_LIST)
     {
-        MSGLOGQUIET("\n%s", gScheduler->toString().c_str());
+        cout <<endl << gScheduler->toString() <<endl <<endl;
     }
     else if (opOption == OPERATOR_QUIT)
     {

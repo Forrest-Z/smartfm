@@ -76,7 +76,7 @@ private:
     // Fields in the UI
     UIText textFields[UI_TEXT_TOKEN_LAST + NUM_TASK_DISPLAY - 1];
     UIButton buttons[UI_BUTTON_TOKEN_LAST];
-    int focusButtonInd;
+    unsigned focusButtonInd;
     bool focusNewPickup, focusNewDropoff, focusTaskID;
     unsigned newPickupTextSize, newDropoffTextSize, taskIDTextSize;
 

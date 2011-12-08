@@ -6,6 +6,8 @@ then
     HOST="-h $1"
 fi
 
-mysql $HOST -u fmauto -psmartfm fmauto < createEmptyDatabase.sql
+d=`dirname $0`
+
+mysql $HOST -u fmauto -psmartfm fmauto < $d/createEmptyDatabase.sql
 
 exit 0

@@ -60,7 +60,7 @@ public:
     TaskStatus getTaskStatus(unsigned taskID);
 
     /// Update vehicle status
-    std::pair<VehicleStatus, Duration> getVehicleStatus(unsigned vehicleID);
+    std::pair<VehicleStatus, Duration> getVehicleStatus(std::string vehicleID);
 
     /// Make a booking: add an entry in the database. Returns the task ID.
     /// Useful for testing without mobile phone.

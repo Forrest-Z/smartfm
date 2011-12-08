@@ -8,9 +8,10 @@
     </node>
 
     <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen">
-        <param name="standalone" value="true"/>
+        <param name="dummy_vehicle" value="false"/>
+        <param name="use_dbserver" value="true"/>
     </node>
-    
+
     <node pkg="golfcar_ppc" type="stop_at_junction" name="stop_at_junction" output="screen">
         <param name="stopping_distance" value="12"/>
     </node>

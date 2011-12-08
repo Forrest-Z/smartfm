@@ -5,9 +5,12 @@
 RoutePlanner::RoutePlanner(StationPaths & sp)
     : sp_(sp), state_(sIdle)
 {
+    pub = n.advertise<std_msgs::String>("missions/currentLocation", 1);
+
     sp_.knownStations().print();
     currentStation_ = sp_.knownStations().prompt("Current station? ");
-    pub = n.advertise<std_msgs::String>("missions/currentLocation", 1);
+    pubCurrentLoc();
+
     startThread();
 }
 
