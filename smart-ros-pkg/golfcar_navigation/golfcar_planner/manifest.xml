@@ -19,7 +19,6 @@
   <depend package="geometry_msgs"/>
   <depend package="local_map"/>
   <depend package="golfcar_ppc" />
-  <depend package="golfcar_route_planner" />
 </package>
 
 

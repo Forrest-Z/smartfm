@@ -16,7 +16,7 @@ using namespace std;
 #include "SchedulerUI.h"
 #include "DBTalker.h"
 
-#include <golfcar_route_planner/station_path.h>
+#include <StationPath.h>
 
 
 /** BUG list

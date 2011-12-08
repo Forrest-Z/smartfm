@@ -23,7 +23,7 @@
 #include <costmap_2d/cost_values.h>
 #include <geometry_msgs/Point32.h>
 
-#include <golfcar_route_planner/station_path.h>
+#include <StationPath.h>
 
 
 namespace golfcar_gp

@@ -8,15 +8,15 @@ int main(int argc, char **argv)
     ros::NodeHandle nh("~");
 
     StationPaths sp;
-    RoutePlanner *rp;
-    DBMissionComm *comm;
+    ROSRoutePlanner *rp;
+    MissionComm *comm;
 
     bool dummy_vehicle = false;
     nh.getParam("dummy_vehicle", dummy_vehicle);
     if( dummy_vehicle )
     {
         ROS_INFO("Using the dummy route planner (fake vehicle).");
-        rp = new DummyRoutePlanner(sp);
+        rp = new DummyROSRoutePlanner(sp);
     }
     else
     {
@@ -36,6 +36,9 @@ int main(int argc, char **argv)
         ROS_INFO("Directly prompting for missions in the terminal.");
         comm = new PromptMissionComm(*rp);
     }
+
+    rp->startThread();
+    comm->startThread();
 
     ros::spin();
 

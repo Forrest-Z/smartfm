@@ -1,1 +1,0 @@
-../../../../smart-ros-pkg/golfcar_navigation/golfcar_route_planner/include/golfcar_route_planner/station_path.h

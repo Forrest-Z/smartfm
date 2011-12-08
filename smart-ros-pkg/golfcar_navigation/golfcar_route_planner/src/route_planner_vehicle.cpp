@@ -2,7 +2,7 @@
 
 
 RoutePlannerVehicle::RoutePlannerVehicle(StationPaths & sp)
-    : RoutePlanner(sp), ac_("move_base", true)
+    : ROSRoutePlanner(sp), ac_("move_base", true)
 {
     while( ! ac_.waitForServer(ros::Duration(5.0)) && ros::ok() )
         ROS_INFO("Waiting for the move_base action server to come up");

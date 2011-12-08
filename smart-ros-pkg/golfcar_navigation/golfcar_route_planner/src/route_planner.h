@@ -1,55 +1,30 @@
-#ifndef __ROUTE_PLANNER__H__
-#define __ROUTE_PLANNER__H__
+#ifndef __ROS_ROUTE_PLANNER__H__
+#define __ROS_ROUTE_PLANNER__H__
 
 #include <ros/ros.h>
-#include <golfcar_route_planner/station_path.h>
 
-#include "threaded.h"
+#include <StationPath.h>
+#include <RoutePlanner.h>
 
-
-class DBMissionComm;
-
-/// A base class for route planners
-class RoutePlanner : protected Threaded
+class ROSRoutePlanner : public RoutePlanner
 {
-    friend class DBMissionComm;
-
 public:
-    RoutePlanner(StationPaths & sp);
-    void setDestination(const Station & s);
-    bool hasReached() const { return state_ == sIdle; }
-
+    ROSRoutePlanner(StationPaths & sp);
 
 protected:
-    enum State { sUninit, sIdle, sMoving };
-
     ros::NodeHandle n;
     ros::Publisher pub;
 
-    StationPaths & sp_;
-    Station currentStation_, destination_;
-    State state_;
-
-    /// Called when the destination is received. Loads the path, etc. ...
-    virtual void initDest() = 0;
-
-    /// Called at each loop step. Performs the task of moving the vehicle.
-    /// Returns whether the destination has been reached yet.
-    virtual bool goToDest() = 0;
-
-    void run();
-
-private:
     void pubCurrentLoc();
     void pubNoCurrentLoc();
 };
 
 
 /// Simulates the vehicle (moves instantaneously from A to B).
-class DummyRoutePlanner : public RoutePlanner
+class DummyROSRoutePlanner : public ROSRoutePlanner
 {
 public:
-    DummyRoutePlanner(StationPaths & sp) : RoutePlanner(sp) { }
+    DummyROSRoutePlanner(StationPaths & sp) : ROSRoutePlanner(sp) { }
 protected:
     bool goToDest()
     {

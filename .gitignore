@@ -7,3 +7,6 @@ srv_gen
 *.o
 *.pyc
 .*.kate-swp
+.project
+.cproject
+

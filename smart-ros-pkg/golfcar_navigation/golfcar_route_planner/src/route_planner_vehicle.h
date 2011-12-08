@@ -24,7 +24,7 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 
 
 /// Drives the vehicle from A to B by feeding it a sequence of waypoints.
-class RoutePlannerVehicle : public RoutePlanner
+class RoutePlannerVehicle : public ROSRoutePlanner
 {
 public:
     RoutePlannerVehicle(StationPaths & sp);
