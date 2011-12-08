@@ -34,11 +34,11 @@ void DBServerMissionComm::updateStatus()
         break;
 
     case sGoingToDropoff:
-        updateMission("GoingToDropoffLocation", "Processing");
+        updateMission("Processing", "GoingToDropoffLocation");
         break;
 
     case sAtPickup:
-        updateMission("AtPickupLocation", "Processing");
+        updateMission("Processing", "AtPickupLocation");
         break;
     }
 }

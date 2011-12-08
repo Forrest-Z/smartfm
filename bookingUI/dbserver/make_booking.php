@@ -6,6 +6,7 @@ $pickup = $_REQUEST["PickUpLocation"] or die('PickUpLocation missing');
 $dropoff = $_REQUEST["DropOffLocation"] or die('DropOffLocation missing');
 $status = $_REQUEST["Status"] or die('Status missing');
 $vehicleID = $_REQUEST["VehicleID"];
+$filter = $_REQUEST['filter'];
 
 $con = connect_to_DB();
 
@@ -31,5 +32,7 @@ mysql_query($sql, $con) or die('Insert error: ' . mysql_error());
 
 mysql_close($con);
 
-header( 'Location: administration.php' ) ;
+if( !isset($filter) || $filter!='yes' )
+    $filter = 'no';
+header( "Location: administration.php?filter=$filter" );
 ?>

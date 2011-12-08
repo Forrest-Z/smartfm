@@ -12,39 +12,13 @@
 
 #include "DBTalker.h"
 
+
+#define DEBUG_LOGFILE logFile
+#define DEBUG_VERBOSITY_VAR verbosity_level
+#include "debug_macros.h"
+
 using namespace std;
 using namespace sql;
-
-
-//------------------------------------------------------------------------------
-// Macros declarations
-
-
-#define LOG(fmt, ...) do { \
-        if( logFile ) { \
-            fprintf(logFile, "%s#%d, time %u, " fmt "\n", \
-                    __func__, __LINE__, (unsigned)time(NULL), ##__VA_ARGS__); \
-            fflush(logFile); \
-        } \
-    } while(0)
-
-#define MSG(lvl, fmt, ...) do { \
-        if (verbosity_level >= lvl) { \
-            fprintf(stderr, "%s#%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
-            fflush(stderr); \
-            }\
-    } while(0)
-
-#define MSGLOG(lvl, fmt, ...) do { MSG(lvl, fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
-
-#define ERROR(fmt, ...) do { \
-        fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
-        fflush(stderr); \
-        LOG("\nERROR: " fmt "\n", ##__VA_ARGS__); \
-    } while(0)
-
-
-//------------------------------------------------------------------------------
 
 
 DBTalker::DBTalker(string hostname, string username, string passwd, string dbname)
@@ -81,7 +55,6 @@ void DBTalker::connect()
     con->setSchema(dbname);
 }
 
-// Check the DB for bookings that haven't been scheduled yet
 vector<Task> DBTalker::getRequestedBookings()
 {
     vector<Task> tasks;
@@ -107,53 +80,34 @@ vector<Task> DBTalker::getRequestedBookings()
     return tasks;
 }
 
-// Update task status (from scheduler to DB)
-void DBTalker::update(const vector<Vehicle> & vehicles)
+void DBTalker::acknowledgeTask(Task task)
 {
-    PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET Status=?, VehicleID=? WHERE RequestID=?");
+	PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET Status='Acknowledged', VehicleID=? WHERE RequestID=?");
+	stmt->setString(1, task.vehicleID);
+	stmt->setInt(2, task.taskID);
+	stmt->execute();
+	delete stmt;
+}
 
-    vector<Vehicle>::const_iterator vit = vehicles.begin();
-    for( ; vit != vehicles.end(); ++vit )
-    {
-        list<Task>::const_iterator tit = vit->tasks.begin();
-        for( ; tit != vit->tasks.end(); ++tit )
-        {
-            string status;
-            //One of 'Requested', 'Acknowledged', 'Confirmed', 'Processing',
-            //'Completed', 'Cancelled'
-            //vit->status is one of VEHICLE_NOT_AVAILABLE, VEHICLE_ON_CALL,
-            //VEHICLE_POB, VEHICLE_AVAILABLE
+void DBTalker::confirmTask(Task task)
+{
+	PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET Status='Confirmed', VehicleID=? WHERE RequestID=?");
+	stmt->setString(1, task.vehicleID);
+	stmt->setInt(2, task.taskID);
+	stmt->execute();
+	delete stmt;
+}
 
-            if( tit==vit->tasks.begin() )
-            { //current task
-                if( vit->status==VEHICLE_ON_CALL )
-                    status = "Confirmed";
-                else if( vit->status==VEHICLE_POB )
-                    status = "Processing";
-                else if( vit->status==VEHICLE_AVAILABLE )
-                    status = "Completed";
-                else {
-                    stringstream ss;
-                    ss <<"Unexpected status (current task): " <<vit->status;
-                    throw logic_error(ss.str());
-                }
-            }
-            else
-            {
-                status = "Acknowledged";
-            }
-
-            stmt->setString(1, status);
-            stmt->setString(2, vit->id);
-            stmt->setInt(3, tit->taskID);
-            stmt->execute();
-        }
-    }
-
+void DBTalker::updateTime(unsigned taskID, Duration duration)
+{
+	return; //TODO: table requests needs an ETA field
+    PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET eta=? WHERE RequestID=?");
+	stmt->setInt(1, duration);
+	stmt->setInt(2, taskID);
+	stmt->execute();
     delete stmt;
 }
 
-// Update task status (from DB to scheduler)
 DBTalker::TaskStatus DBTalker::getTaskStatus(unsigned taskID)
 {
     PreparedStatement *stmt = con->prepareStatement("SELECT customerID, status, vehicleID, pickupLocation, dropoffLocation FROM requests WHERE requestID=?");
@@ -178,7 +132,6 @@ DBTalker::TaskStatus DBTalker::getTaskStatus(unsigned taskID)
     return info;
 }
 
-// Update vehicle status
 pair<VehicleStatus, Duration> DBTalker::getVehicleStatus(string vehicleID)
 {
     pair<VehicleStatus, Duration> info;
@@ -209,8 +162,6 @@ pair<VehicleStatus, Duration> DBTalker::getVehicleStatus(string vehicleID)
     return info;
 }
 
-// Make a booking: add an entry in the database. Returns the task ID.
-// Useful for testing without mobile phone.
 unsigned DBTalker::makeBooking(string customerID, Station pickup, Station dropoff)
 {
     PreparedStatement *pstmt = con->prepareStatement(

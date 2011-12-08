@@ -53,8 +53,14 @@ public:
     /// Check the DB for bookings that haven't been scheduled yet
     std::vector<Task> getRequestedBookings();
 
-    /// Update task status (from scheduler to DB)
-    void update(const std::vector<Vehicle> &);
+    /// Update task ETA (from scheduler to DB)
+    void updateTime(unsigned taskID, Duration duration);
+
+    /// Set the task status as 'Acknowledged' in the DB
+    void acknowledgeTask(Task task);
+
+    /// Set the task status as 'Confirmed' in the DB
+	void confirmTask(Task task);
 
     /// Update task status (from DB to scheduler)
     TaskStatus getTaskStatus(unsigned taskID);
