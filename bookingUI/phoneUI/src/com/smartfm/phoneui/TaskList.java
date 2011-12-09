@@ -1,4 +1,4 @@
-package com.steve.smartfm;
+package com.smartfm.phoneui;
 
 import java.util.ArrayList;
 
@@ -20,18 +20,18 @@ public class TaskList extends Activity implements OnClickListener{
     private double pickupLongitude = 0.0;
     private String pickupLocation, dropoffLocation;
     ArrayList<String> taskListInStringToCancel = null;
-	
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		// TODO Auto-generated method stub
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.info);
-		
+
 		bookbutton = (Button) findViewById(R.id.bookbutton);
 		bookbutton.setOnClickListener(this);
 		cancelbutton = (Button) findViewById(R.id.cancelbutton);
 		cancelbutton.setOnClickListener(this);
-		
+
 		this.pickupLatitude = getIntent().getDoubleExtra("pickup_lat", 0.0);
 		this.pickupLongitude = getIntent().getDoubleExtra("pickup_longi", 0.0);
 		this.dropoffLatitude = getIntent().getDoubleExtra("dest_lat", 0.0);
@@ -39,7 +39,7 @@ public class TaskList extends Activity implements OnClickListener{
 		this.pickupLocation = getIntent().getStringExtra("pickup_location");
 		this.dropoffLocation = getIntent().getStringExtra("dest_location");
 		this.taskListInStringToCancel = getIntent().getStringArrayListExtra("tmp");
-		
+
 		useridText = (TextView) findViewById(R.id.useridtext);
 		useridText.setText("");
 		taskidText = (TextView) findViewById(R.id.taskidtext);

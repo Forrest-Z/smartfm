@@ -1,4 +1,4 @@
-package com.steve.smartfm;
+package com.smartfm.phoneui;
 
 import com.google.android.maps.GeoPoint;
 import com.google.android.maps.MapActivity;
@@ -16,26 +16,26 @@ import android.os.Bundle;
 
 
 public class TaskBookingMap extends MapActivity {
-	
+
     MapController mc;
 	MapView mapView;
 	Bitmap pin;
 	MapLocation Macs, WS, EA, E3A;
 	Point pointMacs = new Point(), pointWS = new Point(), pointEA = new Point(), pointE3A = new Point();
-	
+
 	/** Called when the activity is first created. */
     @Override
     public void onCreate(Bundle bundle) {
         super.onCreate(bundle);
         setContentView(R.layout.bookingmap);
-                
+
         initializeMapView();
         defineGeoPoints();
         placePin();
     }
-    
+
     public class MapLocationOverlay extends Overlay{
-		
+
 		@Override
 		public void draw(Canvas canvas, MapView mapView, boolean shadow) {
 			// TODO Auto-generated method stub
@@ -50,13 +50,13 @@ public class TaskBookingMap extends MapActivity {
 			canvas.drawBitmap(pin, pointEA.x-pin.getWidth()/2, pointEA.y-pin.getHeight(), null);
 			canvas.drawBitmap(pin, pointE3A.x-pin.getWidth()/2, pointE3A.y-pin.getHeight(), null);
 		}
-		
-		
+
+
 		@Override
 		public boolean onTap(GeoPoint hit, MapView mapView) {
 			// TODO Auto-generated method stub
-			
-			
+
+
 			Intent intent = new Intent(getApplicationContext(), TaskBooking.class);
 			switch(userHitLocation(mapView, hit)){
 			case 0: intent.putExtra("location", 1); setResult(RESULT_OK, intent); finish(); break;
@@ -65,7 +65,7 @@ public class TaskBookingMap extends MapActivity {
 			case 3: intent.putExtra("location", 3); setResult(RESULT_OK, intent); finish(); break;
 			default: break;
 			}
-			
+
 			return super.onTap(hit, mapView);
 		}
 
@@ -77,9 +77,9 @@ public class TaskBookingMap extends MapActivity {
 			mapView.getProjection().toPixels(WS.getLocation(), pointWS);
 			mapView.getProjection().toPixels(EA.getLocation(), pointEA);
 			mapView.getProjection().toPixels(E3A.getLocation(), pointE3A);
-			Point[] point = {pointMacs, pointWS, pointEA, pointE3A,new Point(0,0)}; 
+			Point[] point = {pointMacs, pointWS, pointEA, pointE3A,new Point(0,0)};
 			int i;
-			
+
 			for (i=0; i<=3; i++){
 				hitTestRect.set(-pin.getWidth()/2, -pin.getHeight(), pin.getWidth()/2, 0);
 				hitTestRect.offset(point[i].x, point[i].y);
@@ -88,7 +88,7 @@ public class TaskBookingMap extends MapActivity {
 					hitLocation = i;
 				}
 			}
-			
+
 			return hitLocation;
 		}
     }
@@ -124,20 +124,20 @@ public class TaskBookingMap extends MapActivity {
 		// TODO Auto-generated method stub
 		return false;
 	}
-	
+
 	public class MapLocation{
 		String name = "";
 		GeoPoint location = null;
-		
+
 		public MapLocation(String name, GeoPoint location){
 			this.name = name;
 			this.location = location;
 		}
-		
+
 		public String getName(){
 			return name;
 		}
-		
+
 		public GeoPoint getLocation(){
 			return location;
 		}

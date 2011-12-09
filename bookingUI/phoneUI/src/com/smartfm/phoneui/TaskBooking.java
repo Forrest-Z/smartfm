@@ -1,4 +1,4 @@
-package com.steve.smartfm;
+package com.smartfm.phoneui;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,16 +23,16 @@ public class TaskBooking extends Activity implements OnClickListener{
 	private ArrayAdapter<String> aspnDests;
 	private List<String> allPickups;
 	private List<String> allDests;
-	
+
 	private static final String[] pickupLocations = { "Workshop","Mcdonalds","EA","E3A"};
 	private static final String[] destLocations = { "Workshop","Mcdonalds","EA","E3A"};
-	
+
 	private Double pickupLatitude = 0.0, pickupLongitude = 0.0 , destLatitude = 0.0, destLongitude = 0.0;
 	int pickupOption = 0;
 	int destOption = 0;
 	String pickupLocation = "0";
 	String destLocation = "0";
-	
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		// TODO Auto-generated method stub
@@ -47,7 +47,7 @@ public class TaskBooking extends Activity implements OnClickListener{
 		destinationButton.setOnClickListener(this);
 		confirmButton.setOnClickListener(this);
 		cancelButton.setOnClickListener(this);
-		
+
 		// choose pickup
 		pickupSp = (Spinner) findViewById(R.id.spinner1);
 		pickupSp.setOnItemSelectedListener(new PickupSelectedListener());
@@ -68,14 +68,14 @@ public class TaskBooking extends Activity implements OnClickListener{
 		}
 		aspnDests = new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item, allDests);
 		aspnDests.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-		destSp.setAdapter(aspnDests);	
+		destSp.setAdapter(aspnDests);
 	}
 
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		// TODO Auto-generated method stub
 		super.onActivityResult(requestCode, resultCode, data);
-		
+
 		//pickup result
 		if(requestCode ==1 & resultCode == RESULT_OK){
 			//CHANGE SPINNER
@@ -102,7 +102,7 @@ public class TaskBooking extends Activity implements OnClickListener{
 				pickupLocation = "E3A";
 			}
 		}
-		
+
 		//destination result
 		if(requestCode == 2 & resultCode == RESULT_OK){
 			//CHANGE SPINNER
@@ -151,7 +151,7 @@ public class TaskBooking extends Activity implements OnClickListener{
 			bundle.putDouble("pickup_longi", pickupLongitude);
 			bundle.putDouble("dest_lat", destLatitude);
 			bundle.putDouble("dest_longi", destLongitude);
-			
+
 			Intent intent = new Intent(TaskBooking.this, MainActivity.class);
 			intent.putExtras(bundle);
 			startActivity(intent);
@@ -160,14 +160,14 @@ public class TaskBooking extends Activity implements OnClickListener{
 			startActivity(new Intent(getApplicationContext(), MainActivity.class));
 		}
 	}
-	
+
 	public class PickupSelectedListener implements OnItemSelectedListener {
 
 	    public void onItemSelected(AdapterView<?> parent,
 	        View view, int pos, long id) {
 
 	    String op = parent.getItemAtPosition(pos).toString();
-	    
+
 		    if (op=="Workshop")
 		    {
 		    	pickupOption = 1;
@@ -199,13 +199,13 @@ public class TaskBooking extends Activity implements OnClickListener{
 	      // Do nothing.
 	    }
 	}
-	
+
 	public class DestSelectedListener implements OnItemSelectedListener {
 
 	    public void onItemSelected(AdapterView<?> parent,
 	        View view, int pos, long id) {
 	    String op = parent.getItemAtPosition(pos).toString();
-	    
+
 	    if (op=="Workshop")
 	    {
 	    	destOption = 1;

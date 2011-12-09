@@ -1,4 +1,4 @@
-package com.steve.smartfm;
+package com.smartfm.phoneui;
 
 import android.app.Activity;
 import android.net.Uri;
@@ -17,9 +17,9 @@ public class LiveCamera extends Activity {
 //	private String path = "rtsp://184.72.239.149/vod/mp4:BigBuckBunny_175k.mov";
 	private String path = "rtsp://192.168.1.136:5544/stream.sdp";
 
-//	
+//
     private VideoView videoView;
-    
+
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
