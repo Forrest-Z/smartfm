@@ -17,6 +17,7 @@ using namespace std;
 
 //definition of the svg file
 #define SVG_FOLDER "/home/golfcar/smartfm/bookingUI/shared/SvgPath/"
+
 #define DCC_MCD "01_dcc_mcd"
 #define MCD_DCC "10_mcd_dcc"
 #define DCC_EA "02_dcc_ea"
