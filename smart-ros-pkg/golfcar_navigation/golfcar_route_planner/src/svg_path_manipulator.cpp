@@ -1,69 +1,235 @@
+#include <tinyxml.h>
 #include <iostream>
-#include <vector>
-
-//DCC_EA
-//#define PATH {1171.00,316.00}, {894.00,217.00}, {894.00,217.00}, {894.00,217.00}, {832.67,206.67}, {832.67,206.67}, {832.67,206.67}, {801.33,221.33}, {801.33,221.33}, {801.33,221.33}, {781.00,245.00}, {781.00,245.00}, {781.00,245.00}, {724.00,343.33}, {724.00,343.33}, {724.00,343.33}, {641.33,493.33}, {641.33,493.33}, {641.33,493.33}, {597.33,588.67}, {597.33,588.67}, {597.33,588.67}, {563.00,672.00}, {563.00,672.00}, {563.00,672.00}, {489.33,856.67}, {489.33,856.67}, {489.33,856.67}, {386.00,1165.00}, {386.00,1165.00}, {386.00,1165.00}, {374.00,1224.00}, {374.00,1224.00}, {374.00,1224.00}, {346.00,1722.00}, {346.00,1722.00}, {346.00,1722.00}, {300.00,2216.00}, {300.00,2216.00}, {300.00,2216.00}, {302.00,2285.00}, {302.00,2285.00}, {302.00,2285.00}, {324.00,2331.00}, {324.00,2331.00}, {324.00,2331.00}, {363.00,2347.00}, {363.00,2347.00}, {363.00,2347.00}, {412.00,2334.00}, {412.00,2334.00}, {412.00,2334.00}, {469.00,2318.00}, {469.00,2318.00}, {469.00,2318.00}, {507.00,2271.00}, {507.00,2271.00}, {507.00,2271.00}, {517.00,2239.00}, {517.00,2239.00}, {517.00,2239.00}, {536.00,2192.00}, {536.00,2192.00}, {536.00,2192.00}, {566.00,2147.00}, {566.00,2147.00}, {566.00,2147.00}, {601.33,2100.67}, {601.33,2100.67}, {601.33,2100.67}, {631.33,2068.67}, {631.33,2068.67}, {631.33,2068.67}, {675.33,2033.33}, {675.33,2033.33}, {675.33,2033.33}, {717.33,2012.67}, {717.33,2012.67}, {717.33,2012.67}, {768.67,2000.00}, {768.67,2000.00}, {768.67,2000.00}, {828.67,2004.00}, {828.67,2004.00}, {828.67,2004.00}, {882.67,2024.00}, {882.67,2024.00}, {882.67,2024.00}, {930.00,2060.67}, {930.00,2060.67}, {930.00,2060.67}, {970.00,2109.00}, {970.00,2109.00}, {970.00,2109.00}, {1014.00,2178.00}, {1014.00,2178.00}, {1014.00,2178.00}, {1014.00,2178.00}, {1014.00,2178.00}
-//EA_DCC #define PATH {1009.00,2130.00}, {983.00,2099.00}, {983.00,2099.00}, {983.00,2099.00}, {943.00,2044.00}, {943.00,2044.00}, {943.00,2044.00}, {892.00,2008.00}, {892.00,2008.00}, {892.00,2008.00}, {833.00,1982.00}, {833.00,1982.00}, {833.00,1982.00}, {776.00,1980.00}, {776.00,1980.00}, {776.00,1980.00}, {720.00,1986.00}, {720.00,1986.00}, {720.00,1986.00}, {663.00,2010.00}, {663.00,2010.00}, {663.00,2010.00}, {622.00,2047.00}, {622.00,2047.00}, {622.00,2047.00}, {588.00,2084.00}, {588.00,2084.00}, {588.00,2084.00}, {558.00,2131.00}, {558.00,2131.00}, {558.00,2131.00}, {522.00,2186.00}, {522.00,2186.00}, {522.00,2186.00}, {472.00,2250.67}, {472.00,2250.67}, {472.00,2250.67}, {420.67,2293.33}, {420.67,2293.33}, {420.67,2293.33}, {368.67,2296.67}, {368.67,2296.67}, {368.67,2296.67}, {334.00,2270.00}, {334.00,2270.00}, {334.00,2270.00}, {325.00,2217.00}, {325.00,2217.00}, {325.00,2217.00}, {374.00,1721.00}, {374.00,1721.00}, {374.00,1721.00}, {399.00,1229.00}, {399.00,1229.00}, {399.00,1229.00}, {410.00,1175.00}, {410.00,1175.00}, {410.00,1175.00}, {497.00,912.00}, {497.00,912.00}, {497.00,912.00}, {588.00,683.00}, {588.00,683.00}, {588.00,683.00}, {639.00,561.00}, {639.00,561.00}, {639.00,561.00}, {675.33,481.33}, {675.33,481.33}, {675.33,481.33}, {746.00,353.00}, {746.00,353.00}, {746.00,353.00}, {776.67,294.67}, {776.67,294.67}, {776.67,294.67}, {794.00,266.67}, {794.00,266.67}, {794.00,266.67}, {817.33,244.00}, {817.33,244.00}, {817.33,244.00}, {853.33,233.33}, {853.33,233.33}, {853.33,233.33}, {900.67,248.00}, {900.67,248.00}, {900.67,248.00}, {960.00,266.67}, {960.00,266.67}, {960.00,266.67}, {1006.67,284.67}, {1006.67,284.67}, {1006.67,284.67}, {1028.67,306.67}, {1028.67,306.67}
-//MCD_DCC
-#define PATH {1046.00,2220.00}, {1066.00,2271.00}, {1066.00,2271.00}, {1066.00,2271.00}, {1104.00,2348.67}, {1104.00,2348.67}, {1104.00,2348.67}, {1118.00,2406.00}, {1118.00,2406.00}, {1118.00,2406.00}, {1430.00,3062.00}, {1430.00,3062.00}, {1430.00,3062.00}, {1490.00,3177.00}, {1490.00,3177.00}, {1490.00,3177.00}, {1526.00,3229.00}, {1526.00,3229.00}, {1526.00,3229.00}, {1526.00,3229.00}, {1526.00,3229.00}
-//DCC_MCD !#define PATH {1526.00,3229.00}, {1574.67,3230.67}, {1574.67,3230.67}, {1574.67,3230.67}, {1608.00,3185.00}, {1608.00,3185.00}, {1608.00,3185.00}, {1590.67,3130.67}, {1590.67,3130.67}, {1590.67,3130.67}, {1526.00,3108.00}, {1526.00,3108.00}, {1526.00,3108.00}, {1471.33,3094.00}, {1471.33,3094.00}, {1471.33,3094.00}, {1066.00,2271.00}, {1066.00,2271.00}, {1066.00,2271.00}, {1046.00,2220.00}, {1046.00,2220.00}, {1046.00,2220.00}, {1046.00,2220.00}, {1046.00,2220.00}
-//EA_E3A #define PATH {1868.00,670.00}, {1909.00,682.00}, {1909.00,682.00}, {1909.00,682.00}, {1946.00,676.00}, {1946.00,676.00}, {1946.00,676.00}, {1976.67,654.67}, {1976.67,654.67}, {1976.67,654.67}, {1966.67,619.33}, {1966.67,619.33}, {1966.67,619.33}, {1938.00,596.00}, {1938.00,596.00}, {1938.00,596.00}, {1856.00,563.00}, {1856.00,563.00}, {1856.00,563.00}, {1423.00,415.00}, {1423.00,415.00}, {1423.00,415.00}, {1423.00,415.00}, {1423.00,415.00}
-//E3A_EA #define PATH {1298.00,400.00}, {1415.00,434.00}, {1415.00,434.00}, {1415.00,434.00}, {1740.00,545.00}, {1740.00,545.00}, {1740.00,545.00}, {1789.00,573.00}, {1789.00,573.00}, {1789.00,573.00}, {1800.00,610.00}, {1800.00,610.00}, {1800.00,610.00}, {1833.00,650.00}, {1833.00,650.00}, {1833.00,650.00}, {1833.00,650.00}, {1833.00,650.00}
-
-
+#include <sstream>
 using namespace std;
+#include <stdio.h>
+#include <StationPath.h>
 
-class point
+class position
 {
 public:
-    int x, y;
+    double x;
+    double y;
+    position(){x=0;y=0;}
 };
 
-
-int main()
+class svg_path
 {
-    int path[][2] = {PATH};
-    int path_size = sizeof(path)/sizeof(path[0]);
-
-    vector<point> points;
-    bool normal = false;
-    if(normal)
+    
+public:
+    
+    svg_path(const char* pFilename,vector<position>* pose, position *size)
     {
-        for(int i=0; i<path_size;i++)
+        TiXmlDocument doc(pFilename);
+        foundPath=0;
+        bool loadOkay = doc.LoadFile();
+        if (loadOkay)
         {
-            //convert into vector, make it somewhat easier to access the member
-            point p;
-            p.x = path[i][0];
-            p.y = path[i][1];
-            points.push_back(p);
+            cout<<pFilename<<endl;
+            unsigned int npoints=0;
+            svg_path::findPathElements( pose, size, &npoints, &doc );
+            if(foundPath>1) cout<<foundPath<<" paths found, only the first one will be used"<<endl;
+            if(pose->size()==npoints) cout<<"Path with "<<npoints<<" points successfully loaded"<<endl;
+        }
+        else
+        {
+            throw string_error("Failed to load file", pFilename);
         }
     }
-    else
+   
+private:
+    unsigned int foundPath;
+    void findPathElements(vector<position>* pose, position* size, unsigned int *npoints, TiXmlNode* pParent)
     {
-        //reverse order
-        for(int i=path_size-1; i>=0;i--)
+        if ( !pParent ) return;
+
+        TiXmlNode* pChild;
+        
+        stringstream ss;
+        //only look for elements
+        int t = pParent->Type();
+        switch (t)
         {
-            //convert into vector, make it somewhat easier to access the member
-            point p;
-            p.x = path[i][0];
-            p.y = path[i][1];
-            points.push_back(p);
+        case TiXmlNode::TINYXML_ELEMENT:
+            ss<<pParent->Value();
+            if(ss.str()=="svg") 
+            {
+                position width_height;
+                if(find_size_attributes(pParent->ToElement(),&width_height)==0)
+                {
+                    throw "No width height information found, is correct svg file used?";
+                }
+                else
+                {
+                    *size = width_height;
+                    cout<<"Width: "<<size->x<<" Height: "<<size->y<<endl;
+                }
+            }
+            else if(ss.str()=="path") 
+            {
+                if(foundPath<1) 
+                {
+                    unsigned int num = find_path_attributes(pParent->ToElement(),pose);
+                    cout<<"Found points "<<num<<endl;
+                    *npoints=num;   
+                }
+                foundPath++;
+            }
+            break;
+        case TiXmlNode::TINYXML_TEXT:
+            break;        
         }
+        for ( pChild = pParent->FirstChild(); pChild != 0; pChild = pChild->NextSibling()) 
+        {
+            findPathElements( pose,size,npoints,pChild);
+        }
+        return;
     }
-    //only output the non duplicated data
-    int count=0;
-    for(unsigned int i=0; i<points.size()-1; i++)
+    string string_error(string description, string details)
     {
-
-        if(points[i+1].x!=points[i].x && points[i+1].y!=points[i].y)
-        {
-            cout<<'{'<<points[i].x<<','<<points[i].y<<"},";
-            count++;
-        }
-
+        stringstream s;
+        s<<description<<' '<< details;
+        return s.str();
     }
-    cout<<'{'<<points[points.size()-1].x<<','<<points[points.size()-1].y<<"},";
-    count++;
-    cout<<endl<<count<<endl;
+        
+    int find_size_attributes(TiXmlElement* pElement, position *width_height)
+    {
+        if ( !pElement ) return 0;
+        TiXmlAttribute* pAttrib=pElement->FirstAttribute();
+        unsigned int width=0, height=0;
+        while (pAttrib)
+        {
+            stringstream ss;
+            ss<<pAttrib->Name();
+            string data_str=pAttrib->Value();
+            const char cset[] = "1234567890.";
+            if(ss.str()=="width") 
+            {
+                if(strspn (data_str.c_str(),cset)==data_str.length() || data_str.find("px")!=string::npos)
+                {
+                    width_height->x = atof(data_str.c_str());
+                    width++;
+                }
+                else
+                {
+                    throw string_error("Width unit not supported, please use px, given",data_str);
+                }
+            }
+            if(ss.str()=="height") 
+            {
+                if(strspn (data_str.c_str(),cset)==data_str.length() || data_str.find("px")!=string::npos)
+                {
+                    width_height->y = atof(data_str.c_str());
+                    height++;
+                }
+                else
+                {
+                    throw string_error("Height unit not supported, please use px, given",data_str);
+                }
+            }
+            if(height==1&&width==1) return 1;
+            pAttrib=pAttrib->Next();
+        }
+        return 0;
+    }
+    
+    int find_path_attributes(TiXmlElement* pElement, vector<position>* pose)
+    {
+        if ( !pElement ) return 0;
+
+        TiXmlAttribute* pAttrib=pElement->FirstAttribute();
+        int found_points=0;
+        vector<position> positions;
+        while (pAttrib)
+        {
+            stringstream ss;
+            ss<<pAttrib->Name();
+            
+            if(ss.str()=="d")
+            {
+                string data_str=pAttrib->Value();
+                //split the data assuming the delimiter is either space or comma
+                char *str, *pch;
+                str = new char[data_str.size()+1];
+                strcpy(str,data_str.c_str());
+                pch = strtok(str, " ,");
+                vector<string> data_s;
+                while (pch != NULL)
+                {
+                    stringstream pchss;
+                    pchss<<pch;
+                    data_s.push_back(pchss.str());
+                    pch = strtok(NULL, ", ");
+                }
+                
+                //a path must start with m or M
+                if(data_s[0].find_first_of("Mm")==string::npos) 
+                    throw string_error("Unexpected data start character, expected M or m but received",data_s[0]);
+                    
+                vector<position> positions;
+                position pos;
+                pos.x = atof(data_s[1].c_str());
+                pos.y = atof(data_s[2].c_str());
+                found_points++;
+                positions.push_back(pos);
+                for(unsigned int i=3; i<data_s.size(); i++)
+                {
+                    if(data_s[i].find_first_of("L")!=string::npos)
+                    {
+                        pos.x = atof(data_s[++i].c_str());
+                        pos.y = atof(data_s[++i].c_str());
+                        found_points++;
+                        positions.push_back(pos);
+                    }
+                    else if(data_s[i].find_first_of("MmHhVvCcSsQqTtAa")!=string::npos)
+                    {
+                        throw string_error("Only line path is supported, given",data_s[i]);
+                    }
+                    else
+                    {
+                        if(data_s[i].find_first_of("Zz")!=string::npos)
+                        {
+                            cout<<"Closepath command ignored."<<endl;
+                        }
+                        else
+                        {
+                            if(data_s[i].find_first_of("l")==string::npos) i--;
+                            pos.x = atof(data_s[++i].c_str())+positions[positions.size()-1].x;
+                            pos.y = atof(data_s[++i].c_str())+positions[positions.size()-1].y;
+                            found_points++;
+                            positions.push_back(pos);
+                        }
+                    }
+                }
+                *pose = positions;
+            }
+            
+            pAttrib=pAttrib->Next();
+        }
+        return found_points;
+    }
+    
+
+    
+};
+
+int main(int argc, char *argv[] )
+{
+    vector<position> positions;
+    position size;
+    try
+    {
+        svg_path svgPath(argv[1],&positions,&size);
+        cout<<"Size: "<<size.x<<' '<<size.y<<endl;
+        for(unsigned int i=0;i<positions.size();i++)
+        {
+            cout<<positions[i].x<<","<<positions[i].y<<' ';
+        }
+        cout<<endl;
+    }
+    catch (string error)
+    {
+        cout<<"Error: "<<error<<endl;
+    }
     return 0;
 }
