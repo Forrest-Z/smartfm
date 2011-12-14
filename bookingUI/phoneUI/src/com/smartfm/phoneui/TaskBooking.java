@@ -8,40 +8,34 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.Toast;
 import android.widget.AdapterView.OnItemSelectedListener;
 
 public class TaskBooking extends Activity implements OnClickListener {
 
-	private StationList stations = new StationList();
-	private Station pickupStation, dropoffStation;
+	StationList stations = new StationList();
+	String pickupStation, dropoffStation;
 
-	private static final int STATION_TYPE_PICKUP = 1;
-	private static final int STATION_TYPE_DROPOFF = 2;
+	static final int STATION_TYPE_PICKUP = 1;
+	static final int STATION_TYPE_DROPOFF = 2;
 
 	// initialize variables
-	Button pickupButton, destinationButton, confirmButton, cancelButton;
+	ArrayAdapter<String> aspnPickups;
+	ArrayAdapter<String> aspnDests;
 	Spinner pickupSp, destSp;
-	private ArrayAdapter<String> aspnPickups;
-	private ArrayAdapter<String> aspnDests;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.booking);
 
-		pickupButton = (Button) findViewById(R.id.pickupmapbutton);
-		destinationButton = (Button) findViewById(R.id.destinationmapbutton);
-		confirmButton = (Button) findViewById(R.id.confirmbutton);
-		cancelButton = (Button) findViewById(R.id.cancelbutton);
-		pickupButton.setOnClickListener(this);
-		destinationButton.setOnClickListener(this);
-		confirmButton.setOnClickListener(this);
-		cancelButton.setOnClickListener(this);
+		findViewById(R.id.pickupmapbutton).setOnClickListener(this);
+		findViewById(R.id.destinationmapbutton).setOnClickListener(this);
+		findViewById(R.id.confirmbutton).setOnClickListener(this);
+		findViewById(R.id.cancelbutton).setOnClickListener(this);
 
-		// choose pickup
+		// pickup spinner
 		pickupSp = (Spinner) findViewById(R.id.spinner1);
 		pickupSp.setOnItemSelectedListener(new PickupSelectedListener());
 		aspnPickups = new ArrayAdapter<String>(this,
@@ -50,7 +44,7 @@ public class TaskBooking extends Activity implements OnClickListener {
 				.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		pickupSp.setAdapter(aspnPickups);
 
-		// choose destination
+		// destination spinner
 		destSp = (Spinner) findViewById(R.id.spinner2);
 		destSp.setOnItemSelectedListener(new DestSelectedListener());
 		aspnDests = new ArrayAdapter<String>(this,
@@ -65,29 +59,34 @@ public class TaskBooking extends Activity implements OnClickListener {
 		super.onActivityResult(requestCode, resultCode, data);
 		if (resultCode == RESULT_OK) {
 			if (requestCode == STATION_TYPE_PICKUP) {
-				String stationName = data
+				pickupStation = data
 						.getStringExtra("com.smartfm.phoneui.stationName");
-				pickupSp.setSelection(stations.getStationNumber(stationName));
-				pickupStation = stations.getStation(stationName);
+				pickupSp.setSelection(stations.getStationNumber(pickupStation));
 			} else if (requestCode == STATION_TYPE_DROPOFF) {
-				String stationName = data
+				dropoffStation = data
 						.getStringExtra("com.smartfm.phoneui.stationName");
-				destSp.setSelection(stations.getStationNumber(stationName));
-				dropoffStation = stations.getStation(stationName);
+				destSp.setSelection(stations.getStationNumber(dropoffStation));
 			}
 		}
 	}
 
 	@Override
 	public void onClick(View v) {
-		if (v == pickupButton) {
-			startActivityForResult(new Intent(TaskBooking.this,
-					TaskBookingMap.class), STATION_TYPE_PICKUP);
-		} else if (v == destinationButton) {
-			startActivityForResult(new Intent(TaskBooking.this,
-					TaskBookingMap.class), STATION_TYPE_DROPOFF);
-		} else if (v == confirmButton) {
-			if (pickupStation.name == dropoffStation.name) {
+		switch(v.getId()) {
+		
+		case R.id.pickupmapbutton:
+			startActivityForResult(
+					new Intent(this,TaskBookingMap.class), 
+					STATION_TYPE_PICKUP);
+			break;
+			
+		case R.id.destinationmapbutton:
+			startActivityForResult(
+					new Intent(this,TaskBookingMap.class), 
+					STATION_TYPE_DROPOFF);
+		
+		case R.id.confirmbutton:
+			if ( pickupStation.compareTo(dropoffStation)==0 ) {
 				Context context = getApplicationContext();
 				CharSequence text = "Service cannot be delivered. Pick-up location and Drop-off location cannot be the same.";
 				Toast toast = Toast.makeText(context, text,
@@ -95,27 +94,26 @@ public class TaskBooking extends Activity implements OnClickListener {
 				toast.show();
 			} else {
 				try {
-					DBInterface.addTask(pickupStation.name, dropoffStation.name);
+					DBInterface.addTask(pickupStation, dropoffStation);
 				} catch (Exception e) {
 					Context context = getApplicationContext();
 					CharSequence text = "Error while creating the task (RPC call failed).";
 					Toast toast = Toast.makeText(context, text, Toast.LENGTH_LONG);
 					toast.show();
 				}
-				startActivity(new Intent(this, MainActivity.class));
 				finish();
 			}
-		} else if (v == cancelButton) {
-			startActivity(new Intent(this,
-					MainActivity.class));
+			break;
+			
+		case R.id.cancelbutton:
+			finish();
 		}
 	}
 
 	public class PickupSelectedListener implements OnItemSelectedListener {
 		public void onItemSelected(AdapterView<?> parent, View view, int pos,
 				long id) {
-			String op = parent.getItemAtPosition(pos).toString();
-			pickupStation = stations.getStation(op);
+			pickupStation = parent.getItemAtPosition(pos).toString();
 		}
 
 		public void onNothingSelected(AdapterView<?> parent) {
@@ -126,8 +124,7 @@ public class TaskBooking extends Activity implements OnClickListener {
 	public class DestSelectedListener implements OnItemSelectedListener {
 		public void onItemSelected(AdapterView<?> parent, View view, int pos,
 				long id) {
-			String op = parent.getItemAtPosition(pos).toString();
-			dropoffStation = stations.getStation(op);
+			dropoffStation = parent.getItemAtPosition(pos).toString();
 		}
 
 		public void onNothingSelected(AdapterView<?> parent) {

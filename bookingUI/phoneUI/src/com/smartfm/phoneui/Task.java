@@ -4,16 +4,17 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 
 public class Task {
-	public int requestID;
-	public String customerID;
-    public String status;
-    public String pickup;
-    public String dropoff;
-    public String vehicleID;
-	public double latitude;
-	public double longitude;
-	public int eta;
-	
+
+	public int requestID = 0;
+	public String customerID = "";
+    public String status = "";
+    public String pickup = "";
+    public String dropoff = "";
+    public String vehicleID = "";
+	public double latitude = 0.0;
+	public double longitude = 0.0;
+	public int eta = 0;
+		
 	@Override 
 	public boolean equals(Object aThat) {
 	    if ( this == aThat ) return true;
@@ -36,5 +37,26 @@ public class Task {
 	        toHashCode();
         return hashcode;
     }
-
+	
+	public String toString() {
+		String ser = "" + requestID + "," + customerID;
+		ser += "," + status + "," + pickup + "," + dropoff;
+		ser += "," + vehicleID + "," + latitude + "," + longitude + "," + eta;
+		return ser;
+	}
+	
+	public static Task fromString(String ser) {
+		Task task = new Task();
+		String[] tokens = ser.split(",");
+		task.requestID = Integer.parseInt(tokens[0]);
+		task.customerID = tokens[1];
+		task.status = tokens[2];
+		task.pickup = tokens[3];
+		task.dropoff = tokens[4];
+		task.vehicleID = tokens[5];
+		task.latitude = Double.parseDouble(tokens[6]);
+		task.longitude = Double.parseDouble(tokens[7]);
+		task.eta = Integer.parseInt(tokens[8]);
+		return task;
+	}
 }

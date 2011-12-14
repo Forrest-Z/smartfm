@@ -16,12 +16,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name="LiveCamera"></activity>
-        <activity android:name="MapLocations"></activity>
         <activity android:name="TaskBooking"></activity>
-        <activity android:name="TaskList"></activity>
         <activity android:name="TaskBookingMap"></activity><uses-library android:required="true" android:name="com.google.android.maps"></uses-library>
-        <activity android:name="TaskCancel"></activity>
-
+        <activity android:name="TaskDetailActivity"></activity>
     </application>
 </manifest>

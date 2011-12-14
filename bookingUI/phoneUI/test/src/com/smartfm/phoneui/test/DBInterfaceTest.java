@@ -52,6 +52,19 @@ public class DBInterfaceTest extends AndroidTestCase {
 		assertFalse(t11.hashCode()==t12.hashCode());
 	}
 	
+	public void testTaskSerialize() {
+		Task t11 = new Task();
+		t11.requestID = 1;
+		t11.pickup = names.get(0);
+		t11.dropoff = names.get(1);
+		t11.customerID = DBInterface.CustomerID;
+		
+		String ser = t11.toString();
+		Task t12 = Task.fromString(ser);
+		
+		assertEquals(t11, t12);
+	}
+	
 	public void testTaskSets() {
 		Task t11 = new Task();
 		t11.requestID = 1;
