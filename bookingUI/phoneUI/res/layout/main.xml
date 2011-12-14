@@ -2,42 +2,43 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
-    android:orientation="vertical">
-    
-    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-	    android:layout_width="match_parent"
-	    android:layout_height="wrap_content"
-	    android:orientation="horizontal">
-	    
-	    <Button
-	            android:id="@+id/makebookingbutton"
-	            android:layout_width="match_parent"
-	            android:layout_height="wrap_content"
-	            android:layout_weight="1"
-	            android:text="Make a booking" >
-	    </Button>
-	    
-	    <Button
-	            android:id="@+id/refreshbookingsbutton"
-	            android:layout_width="match_parent"
-	            android:layout_height="wrap_content"
-	            android:layout_weight="1"
-	            android:text="Refresh" >
-	    </Button>
-	    
-    </LinearLayout>
-    
-    <TextView
-            android:id="@+id/textView_currentbookings"
-            android:layout_width="fill_parent"
+    android:orientation="vertical" >
+
+    <LinearLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal" >
+
+        <Button
+            android:id="@+id/makebookingbutton"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="No current bookings" >
-    </TextView>
-        
-	<ListView xmlns:android="http://schemas.android.com/apk/res/android"
-	    android:layout_width="fill_parent"
-	    android:layout_height="wrap_content"
-	    android:id="@+id/bookingslistview" >
-	</ListView>
-	
+            android:layout_weight="1"
+            android:text="Make a booking" >
+        </Button>
+
+        <Button
+            android:id="@+id/refreshbookingsbutton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Refresh" >
+        </Button>
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/nocurrentbookings"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="No current bookings"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <ListView
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/bookingslistview"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content" >
+    </ListView>
+
 </LinearLayout>

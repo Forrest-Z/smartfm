@@ -19,25 +19,13 @@ public class TaskBookingMap extends MapActivity {
 	MapController mc;
 	MapView mapView;
 	StationList stations;
-
-	/** Called when the activity is first created. */
-	@Override
-	public void onCreate(Bundle bundle) {
-		super.onCreate(bundle);
-		setContentView(R.layout.bookingmap);
-
-		initializeMapView();
-		placePin();
-	}
-
-	public class MapLocationOverlay extends Overlay {
+	Bitmap pin;
+	
+	class MapLocationOverlay extends Overlay {
 		
-		Bitmap pin;
-
 		@Override
 		public void draw(Canvas canvas, MapView mapView, boolean shadow) {
 			super.draw(canvas, mapView, shadow);
-			pin = BitmapFactory.decodeResource(getResources(), R.drawable.pin);
 			for( Station s: stations.getStations() ) {
 				Point p = mapView.getProjection().toPixels(s.latlon, null);
 				canvas.drawBitmap(pin, p.x - pin.getWidth() / 2,
@@ -46,38 +34,45 @@ public class TaskBookingMap extends MapActivity {
 		}
 
 		@Override
-		public boolean onTap(GeoPoint hit, MapView mapView) {
-			Intent intent = new Intent(getApplicationContext(),
-					TaskBooking.class);
+		public boolean onTap(GeoPoint hit, MapView mapView) {	
+			Point p_hit = mapView.getProjection().toPixels(hit, null);
 			
 			for( Station s: stations.getStations() ) {
-				Point p = mapView.getProjection().toPixels(s.latlon, null);
-				RectF hitTestRect = new RectF(p.x-pin.getWidth() / 2, 
-						p.y-pin.getHeight(), p.y+pin.getWidth() / 2, p.y);
-				Point pt = mapView.getProjection().toPixels(hit, null);
-				if ( hitTestRect.contains(pt.x, pt.y) ) {
+				
+				Point p_s = mapView.getProjection().toPixels(s.latlon, null);
+				RectF hitTestRect = new RectF(p_s.x-pin.getWidth() / 2, 
+						p_s.y-pin.getHeight(), p_s.y+pin.getWidth() / 2, p_s.y);
+				
+				if ( hitTestRect.contains(p_hit.x, p_hit.y) ) {
+					Intent intent = new Intent();
 					intent.putExtra("com.smartfm.phoneui.stationName", s.name);
+					setResult(RESULT_OK, intent);
 					finish();
 				}
 			}
-
 			return super.onTap(hit, mapView);
 		}
 	}
 
-	private void placePin() {
-		MapLocationOverlay mapLocationOverlay = new MapLocationOverlay();
-		mapView.getOverlays().clear();
-		mapView.getOverlays().add(mapLocationOverlay);
-		mapView.invalidate();
-	}
+	/** Called when the activity is first created. */
+	@Override
+	public void onCreate(Bundle bundle) {
+		super.onCreate(bundle);
+		setContentView(R.layout.bookingmap);
+		pin = BitmapFactory.decodeResource(getResources(), R.drawable.pin);
+		
+		stations = new StationList();
 
-	private void initializeMapView() {
 		mapView = (MapView) findViewById(R.id.mapView);
 		mapView.setBuiltInZoomControls(true);
 		mc = mapView.getController();
 		mc.animateTo(new GeoPoint(1299631, 103771007));
 		mc.setZoom(18);
+		
+		MapLocationOverlay mapLocationOverlay = new MapLocationOverlay();
+		mapView.getOverlays().clear();
+		mapView.getOverlays().add(mapLocationOverlay);
+		mapView.invalidate();
 	}
 
 	@Override
