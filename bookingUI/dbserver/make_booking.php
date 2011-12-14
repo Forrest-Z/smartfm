@@ -1,14 +1,14 @@
 <?php
 require("funcs.php");
 
+$con = connect_to_DB();
+
 $customerID = $_REQUEST["CustomerID"] or die('CustomerID missing');
 $pickup = $_REQUEST["PickUpLocation"] or die('PickUpLocation missing');
 $dropoff = $_REQUEST["DropOffLocation"] or die('DropOffLocation missing');
 $status = $_REQUEST["Status"] or die('Status missing');
 $vehicleID = $_REQUEST["VehicleID"];
 $filter = $_REQUEST['filter'];
-
-$con = connect_to_DB();
 
 station_exists($con, $pickup) or die('PickUpLocation does not exist');
 station_exists($con, $dropoff) or die('DropOffLocation does not exist');

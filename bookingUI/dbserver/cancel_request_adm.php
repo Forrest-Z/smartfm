@@ -1,11 +1,12 @@
 <?php
 require("funcs.php");
 
-$requestID = htmlspecialchars($_REQUEST["RequestID"]) or die('RequestID missing');
-$filter = htmlspecialchars($_REQUEST['filter']);
-
 $con = connect_to_DB() or die('Connect error: ' . mysql_error());
-$sql = "UPDATE requests SET status = 'Cancelled' WHERE RequestID = '$requestID'";
+
+$requestID = $_REQUEST["RequestID"] or die('RequestID missing');
+$filter = $_REQUEST['filter'];
+
+$sql = "UPDATE requests SET status='Cancelled' WHERE RequestID=$requestID";
 $result = mysql_query($sql, $con) or die('Update error: ' . mysql_error());
 mysql_close($con);
 

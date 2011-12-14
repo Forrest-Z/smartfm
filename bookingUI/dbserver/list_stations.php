@@ -5,7 +5,7 @@ $xmlres = new XMLRes();
 
 $con = connect_to_DB();
 $query = "SELECT * FROM stations";
-$result = mysql_query($query) or $xmlres->fatal('Select error: ' . mysql_error());
+$result = mysql_query($query) or $xmlres->fatalSqlError($query);
 
 $parnode = $xmlres->addNode( $xmlres->createElement("stationList") );
 

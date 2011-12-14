@@ -9,8 +9,8 @@ function echoInCell($txt) { echoInTag("td", $txt); }
 
 function listRequests()
 {
-    $filter = isset($_GET['filter']) && $_GET['filter']=='yes';
     $con = connect_to_DB();
+    $filter = isset($_GET['filter']) && $_GET['filter']=='yes';
     $sql = "SELECT * FROM requests";
     $result = mysql_query($sql, $con) or die ('Select error: ' . mysql_error());
     echo "<table>";

@@ -52,6 +52,13 @@ class XMLRes
         echo $this->doc->saveXML();
         exit(0);
     }
+
+    public function fatalSqlError($query)
+    {
+        $message = 'Invalid SQL operation: ' . mysql_error();
+        $message .= '. Whole query: ' . $query;
+        $this->fatal($message);
+    }
 }
 
 
@@ -60,6 +67,17 @@ function connect_to_DB()
     global $username, $password, $database;
     $con = mysql_connect ('localhost', $username, $password) or fatal('Not connected : ' . mysql_error());
     mysql_select_db($database, $con) or fatal('Can\'t use db : ' . mysql_error());
+
+    //This stops SQL Injection in POST vars
+    foreach ($_POST as $key => $value) {
+        $_POST[$key] = mysql_real_escape_string($value);
+    }
+
+    //This stops SQL Injection in GET vars
+    foreach ($_GET as $key => $value) {
+        $_GET[$key] = mysql_real_escape_string($value);
+    }
+
     return $con;
 }
 
