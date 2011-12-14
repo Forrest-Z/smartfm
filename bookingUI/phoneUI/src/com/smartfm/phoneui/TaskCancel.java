@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -12,19 +13,19 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
+import android.widget.Toast;
 import android.widget.AdapterView.OnItemSelectedListener;
 
 public class TaskCancel extends Activity {
+	
+	//TODO: find another display than a spinner, for instance a 
+	// list with a summary / cancel / info button for each item.
+
 	Button confirmButton;
-	OnClickListener dataTransferListener = null;
 	Spinner cancelSp;
-	private List<String> allTasks;
-	private ArrayAdapter<String> aspnTasks;
-	private int cancelTaskID = 0;
-
-
-	private List<Task> userOrders = new ArrayList<Task>();
-	private ArrayList<String> tmp = new ArrayList<String>();
+	
+	List<Task> tasks = new ArrayList<Task>();
+	int cancelTaskID = -1;
 
 	/** Called when the activity is first created. */
 	@Override
@@ -32,105 +33,69 @@ public class TaskCancel extends Activity {
 		super.onCreate(savedInstanceState);
 		setTitle("CancelTaskActivity");
 		setContentView(R.layout.spinnercanceltask);
-
-
-		Bundle extras = getIntent().getExtras();
-
-        if (extras != null)
-        {
-        	//totalTaskNumber = extras.getInt("totalTaskNumber");
-
-        	tmp = extras.getStringArrayList("tmp");
-
-            for (int i=0;i<tmp.size();i++)
-            {
-            	Task s = new  Task();
-
-            	int[] count;
-            	count = new int[10];
-            	count[0] = 0;
-            	for (int j=1;j<8;j++)
-            		count[j] = tmp.get(i).indexOf(":",count[j-1]+1);
-
-            	s.ID = tmp.get(i).substring(count[0], count[1]);
-            	s.taskID = tmp.get(i).substring(count[1]+1,count[2]);
-            	s.pickupOption = tmp.get(i).substring(count[2]+1, count[3]);
-            	s.dropoffOption = tmp.get(i).substring(count[3]+1, count[4]);
-            	s.waitTime = tmp.get(i).substring(count[4]+1, count[5]);
-            	s.carID = tmp.get(i).substring(count[5]+1, count[6]);
-            	s.pickupLocation = tmp.get(i).substring(count[6]+1, count[7]);
-            	s.dropoffLocation = tmp.get(i).substring(count[7]+1);
-
-            	userOrders.add(s);
-            }
-
-        }
-		cancelTask();
-		transferData();
+		createTaskSpinner();
+		createConfirmButton();
+		updateTaskList();		
 	}
-
-	private void cancelTask() {
-
+	
+	void createTaskSpinner() {
 		cancelSp = (Spinner) findViewById(R.id.spinnerCancel);
-		cancelSp.setOnItemSelectedListener(new CancelListener());
-		allTasks = new ArrayList<String>();
-
-		if (userOrders.size()==0)
-			allTasks.add("No task to cancel");
-		else
-			for (int i=0;i<userOrders.size();i++) {
-				if (userOrders.get(i).pickupOption.compareTo("-1")!=0)
-					//allTasks.add("Task ID: " + userOrders.get(i).taskID + "Pick-up: "
-						//	+ userOrders.get(i).pickup_location + "Drop-off: " + userOrders.get(i).dest_location);
-					allTasks.add("Task ID: " + userOrders.get(i).taskID);
-
+		cancelSp.setOnItemSelectedListener( new OnItemSelectedListener() {
+			public void onItemSelected(AdapterView<?> parent, View view, int pos,
+					long id) {
+				String op = parent.getItemAtPosition(pos).toString();
+				for (Task task: tasks)
+					if (op.compareTo("" + task.requestID) == 0)
+						cancelTaskID = task.requestID;
 			}
 
-
-
-		aspnTasks = new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item, allTasks);
-		aspnTasks.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-		cancelSp.setAdapter(aspnTasks);
-
+			public void onNothingSelected(AdapterView<?> parent) {
+				// Do nothing.
+			}
+		});
 	}
-
-	private void transferData() {
-		// version 2, transfer data
-        dataTransferListener = new OnClickListener() {
-			public void onClick(View v) {
-				// Intent: change from one Activity to another. Activity->ActivityFrameLayout
-				Bundle bundle = new Bundle();
-				bundle.putInt("actionType", 1);
-				bundle.putInt("cancelTaskID", cancelTaskID);
-				Intent intent = new Intent(TaskCancel.this, MainActivity.class);
-				intent.putExtras(bundle);
-				startActivity(intent);
-			}
-		};
-
+	
+	void createConfirmButton() {
 		confirmButton = (Button) findViewById(R.id.ConfirmCancel);
-		confirmButton.setOnClickListener(dataTransferListener);
+		confirmButton.setOnClickListener( new OnClickListener() {
+			public void onClick(View v) {
+				if( cancelTaskID>=0 ) {
+					try {
+						DBInterface.cancelTask(cancelTaskID);
+					} catch (Exception e) {
+						Context context = getApplicationContext();
+						CharSequence text = "Error while cancelling the task (RPC call failed).";
+						Toast toast = Toast.makeText(context, text, Toast.LENGTH_LONG);
+						toast.show();
+					}
+				}
+				startActivity(new Intent(TaskCancel.this, MainActivity.class));
+			}
+		});
 	}
-
-
-	public class CancelListener implements OnItemSelectedListener {
-
-	    public void onItemSelected(AdapterView<?> parent,
-	        View view, int pos, long id) {
-	    String op = parent.getItemAtPosition(pos).toString();
-
-
-	    for (int i=0;i<userOrders.size();i++){
-	    	if (op.compareTo("Task ID: "+userOrders.get(i).taskID)==0)
-	    		cancelTaskID = i+1;
-	    }
-
-
-
-	    }
-
-	    public void onNothingSelected(AdapterView<?> parent) {
-	      // Do nothing.
-	    }
+	
+	void updateTaskList() {
+		try {
+			tasks = DBInterface.listTasks();
+		} catch (Exception e) {
+			Context context = getApplicationContext();
+			CharSequence text = "Error while retrieving your bookings (RPC call failed).";
+			Toast toast = Toast.makeText(context, text, Toast.LENGTH_LONG);
+			toast.show();
+		}
+		
+		List<String> allTasks = new ArrayList<String>();
+		if (tasks.isEmpty()) {
+			allTasks.add("No task to cancel");
+		} else {
+			for (Task task: tasks) {
+				// TODO: display more that just the ID.
+				allTasks.add("" + task.requestID);
+			}
+		}
+		ArrayAdapter<String> aspnTasks = new ArrayAdapter<String>(this,
+				android.R.layout.simple_spinner_item, allTasks);
+		aspnTasks.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);		
+		cancelSp.setAdapter(aspnTasks);
 	}
 }

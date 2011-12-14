@@ -1,81 +1,65 @@
 package com.smartfm.phoneui;
 
-import java.util.ArrayList;
+import java.util.List;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
-public class TaskList extends Activity implements OnClickListener{
+public class TaskList extends Activity implements OnClickListener {
 
-	TextView useridText, taskidText, pickupText, dropoffText, etaText, caridText;
+	TextView useridText, taskidText, pickupText, dropoffText, etaText,
+			caridText;
 	Button bookbutton, cancelbutton;
-	private double dropoffLatitude = 0.0;
-    private double dropoffLongitude = 0.0;
-    private double pickupLatitude = 0.0;
-    private double pickupLongitude = 0.0;
-    private String pickupLocation, dropoffLocation;
-    ArrayList<String> taskListInStringToCancel = null;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
-		// TODO Auto-generated method stub
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.info);
-
+		
 		bookbutton = (Button) findViewById(R.id.bookbutton);
 		bookbutton.setOnClickListener(this);
 		cancelbutton = (Button) findViewById(R.id.cancelbutton);
 		cancelbutton.setOnClickListener(this);
-
-		this.pickupLatitude = getIntent().getDoubleExtra("pickup_lat", 0.0);
-		this.pickupLongitude = getIntent().getDoubleExtra("pickup_longi", 0.0);
-		this.dropoffLatitude = getIntent().getDoubleExtra("dest_lat", 0.0);
-		this.dropoffLongitude = getIntent().getDoubleExtra("dest_longi", 0.0);
-		this.pickupLocation = getIntent().getStringExtra("pickup_location");
-		this.dropoffLocation = getIntent().getStringExtra("dest_location");
-		this.taskListInStringToCancel = getIntent().getStringArrayListExtra("tmp");
 
 		useridText = (TextView) findViewById(R.id.useridtext);
 		useridText.setText("");
 		taskidText = (TextView) findViewById(R.id.taskidtext);
 		taskidText.setText("");
 		pickupText = (TextView) findViewById(R.id.pickupinfotext);
-		pickupText.setText(pickupLocation);
+		pickupText.setText("");
 		dropoffText = (TextView) findViewById(R.id.dropoffinfotext);
-		dropoffText.setText(dropoffLocation);
+		dropoffText.setText("");
 		etaText = (TextView) findViewById(R.id.etatext);
 		etaText.setText("");
 		caridText = (TextView) findViewById(R.id.caridtext);
 		caridText.setText("");
 	}
-
-	@Override
-	protected void onPause() {
-		// TODO Auto-generated method stub
-		super.onPause();
-	}
-
-	@Override
-	protected void onResume() {
-		// TODO Auto-generated method stub
-		super.onResume();
+	
+	void update() {
+		try {
+			List<Task> tasks = DBInterface.listTasks();
+			//TODO find current task and fill in the text fields
+		} catch (Exception e) {
+			Context context = getApplicationContext();
+			CharSequence text = "Error while retrieving your bookings (RPC call failed).";
+			Toast toast = Toast.makeText(context, text, Toast.LENGTH_LONG);
+			toast.show();
+		}
 	}
 
 	@Override
 	public void onClick(View v) {
-		// TODO Auto-generated method stub
-		if(v==bookbutton){
-			Intent intent = new Intent(TaskList.this, TaskBooking.class);
-			startActivity(intent);
-		}else if(v==cancelbutton){
-			Intent intent = new Intent(TaskList.this, TaskCancel.class);
-			intent.putStringArrayListExtra("tmp", taskListInStringToCancel);
-			startActivity(intent);
+		if (v == bookbutton) {
+			startActivity(new Intent(TaskList.this, TaskBooking.class));
+		} else if (v == cancelbutton) {
+			startActivity(new Intent(TaskList.this, TaskCancel.class));
 		}
 	}
 }
