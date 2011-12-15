@@ -18,7 +18,7 @@ import android.widget.AdapterView.OnItemSelectedListener;
 public class TaskBooking extends Activity implements OnClickListener {
 
 	StationList stations;
-	String pickupStation, dropoffStation;
+	String pickupStation=null, dropoffStation=null;
 
 	static final int STATION_TYPE_PICKUP = 1;
 	static final int STATION_TYPE_DROPOFF = 2;
@@ -69,30 +69,30 @@ public class TaskBooking extends Activity implements OnClickListener {
 		
 		case R.id.pickupbutton:
 			new AlertDialog.Builder(this)
-	  				.setTitle("Pick a station")
-	  				.setAdapter(aspnPickups, new DialogInterface.OnClickListener() {
+  				.setTitle("Pick a station")
+  				.setAdapter(aspnPickups, new DialogInterface.OnClickListener() {
 
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-				    	pickupStation = aspnPickups.getItem(which);
-				    	((Button)findViewById(R.id.pickupbutton)).setText(pickupStation);
-						dialog.dismiss();
-				    }
-  				}).create().show();
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+			    	pickupStation = aspnPickups.getItem(which);
+			    	((Button)findViewById(R.id.pickupbutton)).setText(pickupStation);
+					dialog.dismiss();
+			    }
+			}).create().show();
 			break;
 
 		case R.id.dropoffbutton:
 			new AlertDialog.Builder(this)
-	  				.setTitle("Pick a station")
-	  				.setAdapter(aspnDests, new DialogInterface.OnClickListener() {
+  				.setTitle("Pick a station")
+  				.setAdapter(aspnDests, new DialogInterface.OnClickListener() {
 
-					@Override
-					public void onClick(DialogInterface dialog, int which) {
-				    	dropoffStation = aspnDests.getItem(which);
-				    	((Button)findViewById(R.id.dropoffbutton)).setText(dropoffStation);
-						dialog.dismiss();
-				    }
-  				}).create().show();
+				@Override
+				public void onClick(DialogInterface dialog, int which) {
+			    	dropoffStation = aspnDests.getItem(which);
+			    	((Button)findViewById(R.id.dropoffbutton)).setText(dropoffStation);
+					dialog.dismiss();
+			    }
+			}).create().show();
 			break;
 		
 		case R.id.pickupmapbutton:
@@ -105,13 +105,16 @@ public class TaskBooking extends Activity implements OnClickListener {
 			startActivityForResult(
 					new Intent(TaskBooking.this,TaskBookingMap.class), 
 					STATION_TYPE_DROPOFF);
+			break;
 		
 		case R.id.confirmbutton:
-			if ( pickupStation==null || dropoffStation==null ) {
-				return;
-			} else if ( pickupStation.compareTo(dropoffStation)==0 ) {
-				ErrDialog.show(this, "Pick-up location and Drop-off location cannot be the same.");
-			} else {
+			if( pickupStation==null )
+				ErrDialog.show(this, "Choose a pickup station first!");
+			else if( dropoffStation==null )
+				ErrDialog.show(this, "Choose a dropoff station first!");
+			else if ( pickupStation.compareTo(dropoffStation)==0 )
+				ErrDialog.show(this, "Pick-up location and Drop-off location cannot be the same!");
+			else {
 				try {
 					DBInterface.addTask(pickupStation, dropoffStation);
 				} catch (Exception e) {
@@ -123,6 +126,7 @@ public class TaskBooking extends Activity implements OnClickListener {
 			
 		case R.id.cancelbutton:
 			finish();
+			break;
 		}
 	}
 

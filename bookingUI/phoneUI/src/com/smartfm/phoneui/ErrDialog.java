@@ -7,7 +7,8 @@ import android.content.DialogInterface;
 public class ErrDialog {
 
 	public static AlertDialog show(Context context, String msg) {
-		return new AlertDialog.Builder(context)
+		AlertDialog d = new AlertDialog.Builder(context)
+			.setTitle("Error")
 			.setMessage(msg)
 			.setCancelable(false)
 			.setNeutralButton("OK", new DialogInterface.OnClickListener() {
@@ -15,5 +16,7 @@ public class ErrDialog {
 					dialog.dismiss();
 				}
 			}).create();
+		d.show();
+		return d;
 	}
 }
