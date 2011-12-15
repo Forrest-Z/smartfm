@@ -1,17 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="hello">Hello World, MainActivity!</string>
     <string name="app_name">Mobility on Demand</string>
     <string name="pickup">Pickup:</string>
-    <string name="empty"> </string>
     <string name="destination">Destination:</string>
     <string name="pickonmap">Pick on map</string>
     <string name="confirm">Confirm</string>
     <string name="cancel">Cancel</string>
     <string name="book">Book</string>
-    <string name="id">User ID</string>
-    <string name="carid">Car ID:</string>
-    <string name="taskid">Task ID:</string>
     <string name="dropoff">Drop off:</string>
-    <string name="waittime">ETA:</string>
 </resources>

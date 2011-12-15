@@ -1,2 +1,11 @@
+echo "Uploading to FMAutonomy"
+echo "-----------------------"
+echo ""
 rsync -avz -e ssh *.php FMAutonomy:/var/www/dbserver/
-rsync -a *.php /var/www/dbserver/
+
+echo ""
+echo ""
+echo "Uploading to localhost"
+echo "----------------------"
+echo ""
+rsync -av *.php /var/www/dbserver/

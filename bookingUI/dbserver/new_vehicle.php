@@ -1,11 +1,12 @@
 <?php
 require("funcs.php");
+$con = connect_to_DB();
 $xmlres = new XMLRes();
+
 $vehicleID = $_REQUEST["VehicleID"] or $xmlres->fatal('VehicleID missing');
 
-$con = connect_to_DB();
-$sql = "INSERT INTO vehicles (VehicleID, Status) VALUES ('$vehicleID', 'WaitingForAMission')";
-mysql_query($sql, $con) or $xmlres->fatal('Insert error: ' . mysql_error());
+$query = "INSERT INTO vehicles (VehicleID, Status) VALUES ('$vehicleID', 'WaitingForAMission')";
+mysql_query($query, $con) or $xmlres->fatalSqlError($query);
 mysql_close($con);
 $xmlres->success();
 ?>

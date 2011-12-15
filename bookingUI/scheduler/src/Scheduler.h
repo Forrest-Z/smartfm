@@ -140,7 +140,7 @@ public:
     /// Sets the next pending task as the current task and returns it. Throws a
     /// SchedulerException if there is no pending task or if the vehicle does not
     /// exist.
-    Task & vehicleSwitchToNextTask(std::string vehicleID);
+    Task vehicleSwitchToNextTask(std::string vehicleID);
 
 
 public:

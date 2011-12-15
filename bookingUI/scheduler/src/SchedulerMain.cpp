@@ -16,6 +16,13 @@ using namespace std;
 #include "SchedulerUI.h"
 #include "DBTalker.h"
 
+#define DEBUG_LOGFILE gLogFile
+#define DEBUG_VERBOSITY_VAR optVerbosityLevel
+#include "debug_macros.h"
+#define MSGLOGNOGUI(lvl, fmt, ...) do { if(optNoGUI) MSG(lvl, fmt, ##__VA_ARGS__); LOG(fmt, ##__VA_ARGS__); } while(0)
+
+
+
 #include <StationPath.h>
 
 
@@ -87,34 +94,6 @@ enum OperatorOption
     OPERATOR_QUIT = 5,
     OPERATOR_OPTION_LAST = 6
 };
-
-
-//------------------------------------------------------------------------------
-// Macros declarations
-
-
-#define LOG(fmt, ...) do { \
-        fprintf(gLogFile, "%s#%d, time %u, " fmt "\n", \
-                __FUNCTION__, __LINE__, (unsigned)time(NULL), ##__VA_ARGS__); \
-        fflush(gLogFile); \
-    } while(0)
-
-#define MSG(lvl, fmt, ...) do { \
-        if (optVerbosityLevel >= lvl) { \
-            fprintf(stderr, "%s#%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
-            fflush(stderr); \
-            }\
-    } while(0)
-
-#define MSGLOG(lvl, fmt, ...) do { MSG(lvl, fmt, ##__VA_ARGS__); LOG(fmt, ##__VA_ARGS__); } while(0)
-
-#define MSGLOGNOGUI(lvl, fmt, ...) do { if(optNoGUI) MSG(lvl, fmt, ##__VA_ARGS__); LOG(fmt, ##__VA_ARGS__); } while(0)
-
-#define ERROR(fmt, ...) do { \
-        fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
-        fflush(stderr); \
-        LOG("\nERROR: " fmt "\n", ##__VA_ARGS__); \
-    } while(0)
 
 
 //------------------------------------------------------------------------------
@@ -207,7 +186,17 @@ int main(int argc, char **argv)
             // Report waiting time
             if (time(NULL) - prevTimeTaskInfo > NUM_SEC_TASK_INFO_SENT) {
                 prevTimeTaskInfo = time(NULL);
-                gDBTalker->update(gScheduler->vehicles);
+
+                vector<Vehicle>::const_iterator vit = gScheduler->vehicles.begin();
+                for( ; vit != gScheduler->vehicles.end(); ++vit )
+                {
+                    list<Task>::const_iterator tit = vit->tasks.begin();
+                    for( ++tit; tit != vit->tasks.end(); ++tit )
+                    {
+                    	gDBTalker->updateTime(tit->taskID, tit->tpickup);
+                    }
+                }
+
             }
 
             if (!optNoGUI && gSchedulerUI->getSchedulerStatus() == SchedulerUI::SCHEDULER_QUIT)
@@ -356,7 +345,10 @@ void openLogFile()
 Task addTask(Task task)
 {
     task = gScheduler->addTask(task);
-    gDBTalker->update(gScheduler->vehicles);
+    if( task.taskID == gScheduler->getVehicleCurrentTask(task.vehicleID).taskID )
+    	gDBTalker->confirmTask(task);
+    else
+    	gDBTalker->acknowledgeTask(task);
 
     MSGLOG(1, "Added task %u:%s:%s:%s to the scheduler", task.taskID,
         task.customerID.c_str(), task.pickup.c_str(), task.dropoff.c_str());
@@ -515,15 +507,15 @@ void update()
 
 			if( gScheduler->hasPendingTasks(DEFAULT_VEHICLE_ID) )
 			{
-				gScheduler->vehicleSwitchToNextTask(DEFAULT_VEHICLE_ID);
+				Task task = gScheduler->vehicleSwitchToNextTask(DEFAULT_VEHICLE_ID);
 				MSGLOGNOGUI(1, "Switching to next task.\nTask queue:\n%s", gScheduler->toString().c_str());
+				gDBTalker->confirmTask(task);
 			}
 			else
 			{
 				gScheduler->getVehicleTasks(DEFAULT_VEHICLE_ID).clear();
 				gPreviousTime = 0;
 			}
-			gDBTalker->update(gScheduler->vehicles);
 		}
 		else if( info.taskStatus=="Processing" )
 		{

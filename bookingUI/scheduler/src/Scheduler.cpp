@@ -1,5 +1,3 @@
-#include "Scheduler.h"
-
 #include <unistd.h>
 #include <stdio.h>
 #include <assert.h>
@@ -10,37 +8,14 @@
 #include <iomanip>
 #include <string>
 
+#include "Scheduler.h"
+
+#define DEBUG_LOGFILE logFile
+#define DEBUG_VERBOSITY_VAR verbosity_level
+#include "debug_macros.h"
+
 using namespace std;
 
-//------------------------------------------------------------------------------
-// Macros declarations
-
-
-#define LOG(fmt, ...) do { \
-        if( logFile ) { \
-            fprintf(logFile, "%s#%d, time %u, " fmt "\n", \
-                    __func__, __LINE__, (unsigned)time(NULL), ##__VA_ARGS__); \
-            fflush(logFile); \
-        } \
-    } while(0)
-
-#define MSG(lvl, fmt, ...) do { \
-        if (verbosity_level >= lvl) { \
-            fprintf(stderr, "%s#%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
-            fflush(stderr); \
-            }\
-    } while(0)
-
-#define MSGLOG(lvl, fmt, ...) do { MSG(lvl, fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
-
-#define ERROR(fmt, ...) do { \
-        fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
-        fflush(stderr); \
-        LOG("\nERROR: " fmt "\n", ##__VA_ARGS__); \
-    } while(0)
-
-
-//------------------------------------------------------------------------------
 
 
 #define MAX_ADDITIONAL_TIME 5
@@ -258,7 +233,7 @@ bool Scheduler::hasPendingTasks(string vehicleID)
     return getVehicleTasks(vehicleID).size() > 1;
 }
 
-Task & Scheduler::vehicleSwitchToNextTask(string vehicleID)
+Task Scheduler::vehicleSwitchToNextTask(string vehicleID)
 {
     VIT vit = checkVehicleExist(vehicleID);
     vit->status = VEHICLE_AVAILABLE;
@@ -270,11 +245,11 @@ Task & Scheduler::vehicleSwitchToNextTask(string vehicleID)
     }
 
     vit->tasks.pop_front();
-    Task & task = vit->tasks.front();
+    Task task = vit->tasks.front();
     vit->status = VEHICLE_ON_CALL;
-    updateWaitTime(vehicleID);
+    updateWaitTime(task.vehicleID);
     MSGLOG(2, "Giving task <%u,%s,%s> to vehicle %s",
-           task.taskID, task.pickup.c_str(), task.dropoff.c_str(), vehicleID.c_str());
+           task.taskID, task.pickup.c_str(), task.dropoff.c_str(), task.vehicleID.c_str());
     return task;
 }
 

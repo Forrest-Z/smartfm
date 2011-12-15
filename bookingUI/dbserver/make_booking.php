@@ -1,13 +1,14 @@
 <?php
 require("funcs.php");
 
+$con = connect_to_DB();
+
 $customerID = $_REQUEST["CustomerID"] or die('CustomerID missing');
 $pickup = $_REQUEST["PickUpLocation"] or die('PickUpLocation missing');
 $dropoff = $_REQUEST["DropOffLocation"] or die('DropOffLocation missing');
 $status = $_REQUEST["Status"] or die('Status missing');
 $vehicleID = $_REQUEST["VehicleID"];
-
-$con = connect_to_DB();
+$filter = $_REQUEST['filter'];
 
 station_exists($con, $pickup) or die('PickUpLocation does not exist');
 station_exists($con, $dropoff) or die('DropOffLocation does not exist');
@@ -31,5 +32,7 @@ mysql_query($sql, $con) or die('Insert error: ' . mysql_error());
 
 mysql_close($con);
 
-header( 'Location: administration.php' ) ;
+if( !isset($filter) || $filter!='yes' )
+    $filter = 'no';
+header( "Location: administration.php?filter=$filter" );
 ?>

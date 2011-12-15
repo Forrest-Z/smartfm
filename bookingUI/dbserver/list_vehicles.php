@@ -5,11 +5,12 @@ $con = connect_to_DB();
 $xmlres = new XMLRes();
 
 $vehicleID = $_REQUEST["VehicleID"];
+
+$query = "SELECT * FROM vehicles";
 if( isset($vehicleID) )
-    $sql = "SELECT * FROM vehicles WHERE VehicleID = '$vehicleID'";
-else
-    $sql = "SELECT * FROM vehicles";
-$result = mysql_query($sql, $con) or $xmlres->fatal('Select error: ' . mysql_error());
+    $query .= " WHERE VehicleID='$vehicleID'";
+
+$result = mysql_query($query, $con) or $xmlres->fatalSqlError($query);
 
 $parnode = $xmlres->addNode( $xmlres->createElement("vehicleList") );
 

@@ -13,17 +13,15 @@ if( isset($customerID) )
 if( isset($vehicleID) )
     $setvar[] = "VehicleID='$vehicleID'";
 if( isset($requestID) )
-    $setvar[] = "RequestID='$requestID'";
+    $setvar[] = "RequestID=$requestID";
 
+$query = "SELECT * FROM requests";
 if( sizeof($setvar) )
-    $sql = "SELECT * FROM requests WHERE " . join(',', $setvar);
-else
-    $sql = "SELECT * FROM requests";
+    $query .= " WHERE " . join(' and ', $setvar);
 
 $xmlres = new XMLRes();
 
-$result = mysql_query($sql, $con) or $xmlres->fatal('Select error: ' . mysql_error());
-
+$result = mysql_query($query, $con) or $xmlres->fatalSqlError($query);
 
 $parnode = $xmlres->addNode( $xmlres->createElement("requestList") );
 

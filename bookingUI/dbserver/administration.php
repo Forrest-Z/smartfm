@@ -9,8 +9,8 @@ function echoInCell($txt) { echoInTag("td", $txt); }
 
 function listRequests()
 {
-    $filter = isset($_GET['filter']) && $_GET['filter']=='yes';
     $con = connect_to_DB();
+    $filter = isset($_GET['filter']) && $_GET['filter']=='yes';
     $sql = "SELECT * FROM requests";
     $result = mysql_query($sql, $con) or die ('Select error: ' . mysql_error());
     echo "<table>";
@@ -30,21 +30,27 @@ function listRequests()
 
     while ($row = @mysql_fetch_assoc($result))
     {
-        $status = $row['status'];
-        if( ($status=='Cancelled' || $status=='Completed') && $filter )
+        if( $filter && ($row['status']=='Cancelled' || $row['status']=='Completed') )
             continue;
         echo "<tr>";
         $rid = $row['requestID'];
-        echoInCell("<form action=\"cancel_request_adm.php\" method=\"post\"><input type=\"hidden\" name=\"RequestID\" value=\"$rid\"/><input type=\"submit\" value=\"X\"/></form>");
+
+        $cancelBtnForm = '<form action="cancel_request_adm.php" method="post">';
+        $cancelBtnForm = $cancelBtnForm . '<input type="hidden" name="RequestID" value="' . $rid . '"/>';
+        if(isset($_GET['filter']) && $_GET['filter']=='yes')
+            $cancelBtnForm = $cancelBtnForm . '<input type="hidden" name="filter" value="yes"/>';
+        $cancelBtnForm = $cancelBtnForm . '<input type="submit" value="X"/></form>';
+        echoInCell($cancelBtnForm);
+
         echoInCell($row['requestID']);
         echoInCell($row['customerID']);
-        echoInCell($status);
+        echoInCell($row['status']);
         echoInCell($row['pickUpLocation']);
         echoInCell($row['dropOffLocation']);
+        echoInCell($row['vehicleID']);
 
         if( $row['status']=="Confirmed" || $row['status']=="Processing" ) {
             $vid = $row['vehicleID'];
-            echoInCell($vid);
             $sql = "SELECT * FROM vehicles WHERE VehicleID = '$vid'";
             $res = mysql_query($sql, $con) or die('Select error: ' . mysql_error());
             $r = @mysql_fetch_assoc($res);
@@ -54,7 +60,6 @@ function listRequests()
             echoInCell($r['eta']);
         }
         else {
-            echoInCell("");
             echoInCell("");
             echoInCell("");
             echoInCell("");
@@ -130,11 +135,10 @@ padding: 5px;
 <p>Pickup location: <?php selectStation("PickUpLocation","DCC Workshop"); ?></p>
 <p>Dropoff location: <?php selectStation("DropOffLocation","McDonald"); ?></p>
 <p>VehicleID: <input type="text" name="VehicleID" value=""/></p>
-
+<?php if(isset($_GET['filter']) && $_GET['filter']=='yes') {?><input type="hidden" name="filter" value="yes"/><?php }?>
 <input type="submit" value="Submit" />
 </form>
 
 
 </body>
 </html>
-
