@@ -98,7 +98,6 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     }
     else
     {
-        //linear.z represent the car should keep going or stop. 1 for green, 0 for red, -1 for emergency
         vector<double> speed_delta;
         if(move_status_.acc_dec)
         {

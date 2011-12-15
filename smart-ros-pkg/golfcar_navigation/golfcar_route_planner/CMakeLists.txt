@@ -33,6 +33,6 @@ INCLUDE_DIRECTORIES(${BookingCommonRootDir}/src)
 LINK_DIRECTORIES (${LINK_DIRECTORIES} ${BookingCommonRootDir})
 
 rosbuild_add_executable(route_planner_node src/DBMissionComm.cpp src/ROSRoutePlanner.cpp src/RoutePlannerVehicle.cpp src/DummyROSRoutePlanner.cpp src/route_planner_node.cpp)
-target_link_libraries(route_planner_node bookingcommon)
+target_link_libraries(route_planner_node bookingcommon tinyxml curl)
 rosbuild_add_executable(simple_goal src/simple_goal.cpp)
-rosbuild_add_executable(svg_path_manipulator src/svg_path_manipulator.cpp)
+#rosbuild_add_executable(svg_path_manipulator src/svg_path_manipulator.cpp)
