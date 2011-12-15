@@ -15,7 +15,7 @@ namespace road_detection{
 	{
 		//------------parameters of function "CurbEtraction"----------------
 		//"max_min_tresh_" should be carefully learned from filter response, which may change according to different laser sensors;
-		private_nh_.param("max_min_tresh_", max_min_tresh_, 0.6);
+		private_nh_.param("max_min_tresh_", max_min_tresh_, 0.8);
 		
 		//------------parameters of function "RoadSelection"----------------
 		private_nh_.param("ptNum_tresh_", ptNum_tresh_, 40);
@@ -173,8 +173,8 @@ namespace road_detection{
 					for(int j=-5; j<6;j++)
 					{
 						temp_substraction=show_filter_response_.points[i].x-show_filter_response_.points[i+j].x;
-						if(temp_maxima&&(temp_substraction>max_min_tresh_)) {maxima2=true;}
-						else if(temp_minima&&(temp_substraction< -max_min_tresh_)) {minima2=true;}
+						if(temp_maxima&&(temp_responsei>max_min_tresh_)) {maxima2=true;}
+						else if(temp_minima&&(temp_responsei< -max_min_tresh_)) {minima2=true;}
 						else{}
 					}	   						   						
 				}
