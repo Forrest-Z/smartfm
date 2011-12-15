@@ -27,6 +27,7 @@ public:
             ss <<'&';
         ss <<name <<'=' <<value;
         urlEncodedParameters = ss.str();
+        return *this;
     }
 
     /// Connect to the server and retrieve the data.

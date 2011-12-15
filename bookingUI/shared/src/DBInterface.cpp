@@ -16,8 +16,8 @@ std::string vehicleID;
 
 DBInterface::DBInterface(std::string url, std::string vehicleID)
 {
-    this.url = url;
-    this.vehicleID = vehicleID;
+    this->url = url;
+    this->vehicleID = vehicleID;
 }
 
 // Adds this vehicle to the database.
@@ -54,7 +54,7 @@ DBInterface::Task * DBInterface::checkForNewMission()
 // @arg period: check period in seconds (defaults to 1).
 DBInterface::Task waitForNewMission(float period)
 {
-    return Task();
+    return DBInterface::Task();
 }
 
 // Sets the GPS coordinates.

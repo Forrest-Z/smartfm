@@ -5,7 +5,7 @@ SET (CMAKE_CXX_FLAGS "-g -Wall -ltinyxml")
 
 INCLUDE_DIRECTORIES (src)
 
-SET (LIB_SRCS src/Station.cpp src/StationDoesNotExist.cpp src/StationList.cpp src/StationPath.cpp src/Threaded.cpp src/RoutePlanner.cpp src/MissionComm.cpp src/SvgPath.cpp src/HTTPClient.cpp src/DBInterface.cpp)
+SET (LIB_SRCS src/Station.cpp src/StationDoesNotExist.cpp src/StationList.cpp src/StationPath.cpp src/Threaded.cpp src/RoutePlanner.cpp src/MissionComm.cpp src/HTTPClient.cpp src/DBInterface.cpp src/SvgPath.cpp)
 
 ADD_LIBRARY (bookingcommon SHARED ${LIB_SRCS})
 ADD_LIBRARY(bookingcommon-static STATIC ${LIB_SRCS})

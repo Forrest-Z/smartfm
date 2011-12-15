@@ -1,9 +1,10 @@
 #include "HTTPClient.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 #include <string>
-#include <exception>
+#include <stdexcept>
 
 // libcurl is used for the heavy lifting.
 #include <curl/curl.h>
@@ -15,12 +16,12 @@ std::string url;
 std::string urlEncodedParameters;
 */
 
-HTTPClient(string baseurl, string scriptname)
+HTTPClient::HTTPClient(string baseurl, string scriptname)
 {
-    this.url = baseurl + "/" + scriptname;
+    this->url = baseurl + "/" + scriptname;
 }
 
-~HTTPClient()
+HTTPClient::~HTTPClient()
 {
 
 }
@@ -40,7 +41,7 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
     size_t realsize = size * nmemb;
     struct MemoryStruct *mem = (struct MemoryStruct *)userp;
 
-    mem->memory = realloc(mem->memory, mem->size + realsize + 1);
+    mem->memory = (char *)realloc(mem->memory, mem->size + realsize + 1);
     if (mem->memory == NULL) {
         /* out of memory! */
         printf("not enough memory (realloc returned NULL)\n");
@@ -54,19 +55,18 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
     return realsize;
 }
 
-std::string connect()
+std::string HTTPClient::connect()
 {
     CURL *curl = curl_easy_init();
     if( curl==0 )
-        throw runtime_exception();
+        throw runtime_error("Failed to initialize a CURL handle");
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_POST, 1);
-    curl_easy_setopt(curl, CURLOPT_GET, 0);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, urlEncodedParameters.c_str());
 
     struct MemoryStruct chunk;
-    chunk.memory = malloc(1);  /* will be grown as needed by the realloc above */
+    chunk.memory = (char *)malloc(1);  /* will be grown as needed by the realloc above */
     chunk.size = 0;    /* no data at this point */
     chunk.memory[0] = 0;
 
