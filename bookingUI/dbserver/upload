@@ -1,11 +1,15 @@
+#!/bin/bash
+
+FILES="*.php webviewer.htm getxml.js"
+
 echo "Uploading to FMAutonomy"
 echo "-----------------------"
 echo ""
-rsync -avz -e ssh *.php FMAutonomy:/var/www/dbserver/
+rsync -avz -e ssh $FILES FMAutonomy:/var/www/dbserver/
 
 echo ""
 echo ""
 echo "Uploading to localhost"
 echo "----------------------"
 echo ""
-rsync -av *.php /var/www/dbserver/
+rsync -av $FILES /var/www/dbserver/
