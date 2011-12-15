@@ -55,7 +55,7 @@ class PhidgetEncoder:
 
     def __init__(self):
         self.distBtwWheels = rospy.get_param('~dist_btw_wheels',0.995)
-        wheelSize = rospy.get_param('~wheel_size', 1.335)
+        wheelSize = rospy.get_param('~wheel_size', 1.32212398060626)#original:1.335)
         leftCorrectionFactor = rospy.get_param('~left_correction_factor', 1.011)
 
         self.minPubPeriod = rospy.get_param('~min_pub_period', None)

@@ -1,6 +1,9 @@
 <launch>
-    <node name="encoder_integrator" pkg="dead_reckoning" type="encoder_integrator.py" output="screen">
+    <!--node name="encoder_integrator" pkg="dead_reckoning" type="encoder_integrator.py" output="screen">
         <remap from="odom" to="encoder_odom"/>
+    </node-->
+    <node name="encoderImu_integrator" pkg="dead_reckoning" type="odom_IMU" output="screen">
+        <remap from="odo_imu" to="encoder_odom"/>
     </node>
     <node name="simple_odo_node" pkg="dead_reckoning" type="simple_odo_node" args="encoder_odom" output="screen"/>
 </launch>

@@ -1,6 +1,8 @@
 <launch>
 	<rosparam command="load" file="$(find golfcar_odom)/launch/low_pass.yaml"/>
 	<node pkg="golfcar_odom" type="speedFilter" name="speedFilter"/>
+    <node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
+    <node pkg="scan_verti"    type="scan_verti"    name="scan_verti"/>
 	<!--node pkg="golfcar_odom" type="golfcar_odom_imu2" name="golfcar_odom">
 		<remap from="/imu/data" to="/ms/imu/data"/>
 	</node-->
@@ -13,10 +15,8 @@
 		<remap from="static_map" to="static_planar_map"/>
 		<remap from="map" to= "planar_map"/>
 	</node>
-	<node pkg="road_detection" type="road_detect" name="road_detect">
-		<remap from="/sick_scan" to ="/sick_scan2"/>
+    <node pkg="robust_road_detection" type="curb_detect" name="curb_detect">
 	</node>
-	<node pkg="road_detection" type="curb_track" name="curb_track"/>
 	<!--node pkg="curb_amcl" type="curb_crossing" name="curb_crossing"/-->
 	<node pkg="hybrid_amcl" type="mix_amcl" name="mix_amcl" output="screen"/>
 </launch>

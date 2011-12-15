@@ -1,0 +1,17 @@
+K 25
+svn:wc:ra_dav:version-url
+V 86
+/karaman/!svn/ver/352/code/fm/smart-ros-pkg/golfcar_perception/people_detector/include
+END
+people_detect.h
+K 25
+svn:wc:ra_dav:version-url
+V 102
+/karaman/!svn/ver/239/code/fm/smart-ros-pkg/golfcar_perception/people_detector/include/people_detect.h
+END
+camera_project.h
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/karaman/!svn/ver/352/code/fm/smart-ros-pkg/golfcar_perception/people_detector/include/camera_project.h
+END

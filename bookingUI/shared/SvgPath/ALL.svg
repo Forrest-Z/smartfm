@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   version="1.1"
+   id="svg2"
+   inkscape:version="0.47 r22583"
+   width="3057"
+   height="3536"
+   sodipodi:docname="ALL.svg">
+  <metadata
+     id="metadata36">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title>Example triangle01- simple example of a 'path'</dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <defs
+     id="defs34">
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 1768 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="3057 : 1768 : 1"
+       inkscape:persp3d-origin="1528.5 : 1178.6667 : 1"
+       id="perspective38" />
+    <inkscape:perspective
+       id="perspective2947"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective2824"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective2960"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3024"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3088"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3152"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3216"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3280"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3344"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3408"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+  </defs>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1440"
+     inkscape:window-height="823"
+     id="namedview32"
+     showgrid="false"
+     inkscape:zoom="1.0678733"
+     inkscape:cx="1182.866"
+     inkscape:cy="3277.3166"
+     inkscape:window-x="1366"
+     inkscape:window-y="25"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2" />
+  <title
+     id="title4">Paths of the golfcar</title>
+  <desc
+     id="desc6">The paths consist of all the possible route that can be taken by the golfcart to serve 4 stations: DCC, MCD, EA and E3A</desc>
+  <image
+     y="0"
+     x="0"
+     id="image2949"
+     height="3536"
+     width="3057"
+     xlink:href="file:///home/golfcar/smartfm/bookingUI/shared/SvgPath/curb_map1213d.png" />
+  <path
+     d="m 1014, 2178 L 1031, 2141 L 1064, 2134 L 1077, 2159"
+     fill="none"
+     stroke="red"
+     stroke-width="5"
+     id="DCC_END" />
+  <path
+     style="fill:none;stroke:#00ffff;stroke-width:5;stroke-opacity:1"
+     d="m 1053,2122 24,37"
+     id="DCC_END2" />
+  <path
+     style="fill:none;stroke:#43ff00;stroke-width:5;stroke-opacity:1"
+     d="m 1046,2220 20,51 382,845 127,37 25,65 -34,60 -70,-12"
+     id="DCC_MCD"
+     inkscape:label="#path8" />
+  <path
+     style="fill:none;stroke:#ffa300;stroke-width:5;stroke-opacity:1"
+     d="m 1014,2178 -44,-69 -40,-49 -48,-36 -54,-20 -60,-4 -51,12 -42,21 -44,35 -30,32 -35,47 -30,45 -19,47 -10,32 -38,47 -57,16 -49,13 -39,-16 -22,-46 -2,-69 46,-494 28,-498 12,-59 103,-309 74,-184 34,-84 44,-95 83,-150 57,-98 20,-24 31,-15 62,11 141.2161,51.24153"
+     id="DCC_EA"
+     inkscape:label="#path8-6"
+     sodipodi:nodetypes="ccccccccccccccccccccccccccccccccc" />
+  <path
+     style="fill:none;stroke:#ff0000;stroke-width:5"
+     d="m 1223,339 13,50"
+     id="EA_END" />
+  <path
+     style="fill:none;stroke:#ff0000;stroke-width:5"
+     d="m 1206,442 -36,-10 -54,-20.00002"
+     id="EA_END2"
+     inkscape:label="#ea_end-0" />
+  <path
+     d="m 1079,394 -30.6186,-47.87288 -2.445,-31.83263 20.9661,-27.15042"
+     fill="none"
+     stroke="red"
+     stroke-width="5"
+     id="EA_START"
+     sodipodi:nodetypes="cccc" />
+  <path
+     style="fill:none;stroke:#1f00ff;stroke-width:5;stroke-opacity:1"
+     d="m 1464,3215 -17,-99 -65,-87 -213,-473 -65,-208 -38,-77 -20,-51"
+     id="MCD_DCC"
+     inkscape:label="#path8-4" />
+  <path
+     style="fill:none;stroke:#ff0000;stroke-width:5"
+     d="m 1006,284.00004 -46,-18 -60,-18 -47,-15 -36,11 -23,22 -18,28 -30,59 -71,128 -36,80 -51,122 -91,229 L 410,1175 l -11,54 -25,492 -49,496 9,53 34,26 52,-3 52,-43 50,-64 36,-55 30,-47 34,-37 41,-37 57,-24 56,-6 57,2 59,26 51,36 40,55 26,31"
+     id="EA_DCC"
+     sodipodi:nodetypes="cccccccccccccccccccccccccccccccc"
+     inkscape:label="#path8-8" />
+  <path
+     style="fill:none;stroke:#ff0000;stroke-width:5"
+     d="M 1248.822,347.57627 1856,563 l 82,33 28,23 10,35 -28,28 -39,0 -41,-12"
+     id="EA_E3A"
+     inkscape:label="#path8-88"
+     sodipodi:nodetypes="cccccccc" />
+  <path
+     style="fill:none;stroke:#ff0000;stroke-width:5"
+     d="m 1833,650 -33,-40 -11,-37 -49,-28 -325,-111 -117,-34"
+     id="E3A_EA"
+     inkscape:label="#path8-0" />
+  <path
+     d="m 1063, 2175"
+     fill="none"
+     stroke="red"
+     stroke-width="5"
+     id="DCC_START" />
+</svg>

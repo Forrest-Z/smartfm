@@ -108,7 +108,7 @@ PID_Speed::PID_Speed(ros::NodeHandle nh) : n(nh)
     time_pre = NAN;
     cmdVel = e_pre = ei = vFiltered = pitch = uCtrl = 0;
     emergency = false;
-    automode = false;
+    automode = true;
 }
 
 

@@ -6,7 +6,7 @@ using namespace std;
 #include <StationPath.h>
 #include <SvgPath.h>
  
-SvgPath::SvgPath(const char* pFilename, StationPath* pose, PathPoint *size)
+SvgPath::SvgPath(const char* pFilename, StationPath* pose, PathPoint *size, const char* id)
 {
     TiXmlDocument doc(pFilename);
     foundPath=0;
@@ -15,8 +15,8 @@ SvgPath::SvgPath(const char* pFilename, StationPath* pose, PathPoint *size)
     {
         cout<<pFilename<<endl;
         unsigned int npoints=0;
-        SvgPath::findPathElements( pose, size, &npoints, &doc );
-        if(foundPath>1) cout<<foundPath<<" paths found, only the first one will be used"<<endl;
+        SvgPath::findPathElements( pose, size, &npoints, &doc, id);
+        cout<<id<<" path found at "<<foundPath<<"th path"<<endl;
         if(pose->size()==npoints) cout<<"Path with "<<npoints<<" points successfully loaded"<<endl;
     }
     else
@@ -26,10 +26,10 @@ SvgPath::SvgPath(const char* pFilename, StationPath* pose, PathPoint *size)
 }
    
 
-void SvgPath::findPathElements(StationPath* pose, PathPoint* size, unsigned int *npoints, TiXmlNode* pParent)
+void SvgPath::findPathElements(StationPath* pose, PathPoint* size, unsigned int *npoints, TiXmlNode* pParent, const char* id)
 {
-    if ( !pParent ) return;
-
+    if ( !pParent || *npoints>0) return;
+ 
     TiXmlNode* pChild;
     
     stringstream ss;
@@ -54,23 +54,23 @@ void SvgPath::findPathElements(StationPath* pose, PathPoint* size, unsigned int 
         }
         else if(ss.str()=="path") 
         {
-            if(foundPath<1) 
-            {
-                unsigned int num = find_path_attributes(pParent->ToElement(),pose);
-                cout<<"Found points "<<num<<endl;
-                *npoints=num;   
-            }
+            unsigned int num = find_path_attributes(pParent->ToElement(),pose, id);
+            //cout<<"Found points "<<num<<endl;
             foundPath++;
+            *npoints=num;   
+           
         }
         break;
     case TiXmlNode::TINYXML_TEXT:
         break;        
     }
+   
     for ( pChild = pParent->FirstChild(); pChild != 0; pChild = pChild->NextSibling()) 
     {
-        findPathElements( pose,size,npoints,pChild);
+        findPathElements( pose,size,npoints,pChild, id);
     }
-    return;
+    
+    //return;
 }
 string SvgPath::string_error(string description, string details)
 {
@@ -129,7 +129,7 @@ void SvgPath::convert_to_meter(StationPath* pose, PathPoint &size, double res)
     }
 }
     
-int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose)
+int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose, const char* id)
 {
     if ( !pElement ) return 0;
 
@@ -157,10 +157,18 @@ int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose)
                 data_s.push_back(pchss.str());
                 pch = strtok(NULL, ", ");
             }
-            
+            bool abs_rel;
             //a path must start with m or M
             if(data_s[0].find_first_of("Mm")==string::npos) 
+            {
                 throw string_error("Unexpected data start character, expected M or m but received",data_s[0]);
+            }
+            else
+            {
+                //need to differentiate if it is abs or rel
+                if(data_s[0].find_first_of("M")!=string::npos) abs_rel = true;
+                else abs_rel = false;
+            }
                 
             StationPath positions;
             PathPoint pos;
@@ -170,34 +178,38 @@ int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose)
             positions.push_back(pos);
             for(unsigned int i=3; i<data_s.size(); i++)
             {
-                if(data_s[i].find_first_of("L")!=string::npos)
-                {
-                    pos.x_ = atof(data_s[++i].c_str());
-                    pos.y_ = atof(data_s[++i].c_str());
-                    found_points++;
-                    positions.push_back(pos);
-                }
-                else if(data_s[i].find_first_of("MmHhVvCcSsQqTtAa")!=string::npos)
+                if(data_s[i].find_first_of("MmHhVvCcSsQqTtAa")!=string::npos)
                 {
                     throw string_error("Only line path is supported, given",data_s[i]);
                 }
-                else
+                else if(data_s[i].find_first_of("Zz")==string::npos)
                 {
-                    if(data_s[i].find_first_of("Zz")!=string::npos)
+                    if(data_s[i].find_first_of("L")!=string::npos) abs_rel=true;
+                    else if(data_s[i].find_first_of("l")!=string::npos) abs_rel=false;
+                    else i--;
+                    
+                    double offsetx=0, offsety=0;
+                    if(!abs_rel)
                     {
-                        cout<<"Closepath command ignored."<<endl;
+                        offsetx = positions[positions.size()-1].x_;
+                        offsety = positions[positions.size()-1].y_;
                     }
-                    else
-                    {
-                        if(data_s[i].find_first_of("l")==string::npos) i--;
-                        pos.x_ = atof(data_s[++i].c_str())+positions[positions.size()-1].x_;
-                        pos.y_ = atof(data_s[++i].c_str())+positions[positions.size()-1].y_;
-                        found_points++;
-                        positions.push_back(pos);
-                    }
+                    pos.x_ = atof(data_s[++i].c_str())+offsetx;
+                    pos.y_ = atof(data_s[++i].c_str())+offsety;
+                    found_points++;
+                    positions.push_back(pos);
                 }
+                else cout<<"Closepath command ignored."<<endl;
+
             }
             *pose = positions;
+        }
+        if(ss.str()=="id")
+        {
+            //cout<<pAttrib->Value()<<endl;
+            stringstream s; s<<pAttrib->Value();
+            if(s.str().compare(id)!=0) found_points=0;
+             return found_points;
         }
         
         pAttrib=pAttrib->Next();
@@ -206,23 +218,3 @@ int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose)
 }
 
 
-int main(int argc, char *argv[] )
-{
-    StationPath positions;
-    PathPoint size;
-    try
-    {
-        SvgPath svgPath(argv[1],&positions,&size);
-        cout<<"Size: "<<size.x_<<' '<<size.y_<<endl;
-        for(unsigned int i=0;i<positions.size();i++)
-        {
-            cout<<positions[i].x_<<","<<positions[i].y_<<' ';
-        }
-        cout<<endl;
-    }
-    catch (string error)
-    {
-        cout<<"Error: "<<error<<endl;
-    }
-    return 0;
-}

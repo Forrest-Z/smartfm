@@ -5,10 +5,10 @@
  */
 int state = 0;
 float rate = 0.01;
-float acceleration=1.0;
+float acceleration=1;
 float speed=0;
 float max_speed = 2;
-float constant_time = 2; 
+float constant_time = 3; 
 float cool_period = 2;
 int count=0;
 ros::Publisher speed_pub;

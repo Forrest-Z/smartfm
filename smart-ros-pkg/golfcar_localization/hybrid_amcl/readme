@@ -1,0 +1,1 @@
+Last update 2011-12-14: replace particle angle with Pose_Est angle when using crossing data to weight samples;

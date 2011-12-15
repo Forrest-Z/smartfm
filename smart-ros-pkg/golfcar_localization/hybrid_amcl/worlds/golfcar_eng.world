@@ -87,19 +87,20 @@ window
 ( 
   size [ 490.000 428.000 ] 
  #center [327.990 371.960] 
-  center [-99.218 178.509]
+  center [-127.416 95.681]
 #rotate [ 0.000 -1.560 ]
   rotate [ 0 90.000 ]
-  scale 1.304 
+  scale 4.093 
 )
 
 # load an environment bitmap
 floorplan
 ( 
   name "willow"
-  bitmap "stage_curb_map12.png"
+#  bitmap "stage_curb_map1213d.png"
+#size [272.800 332.300 1.000]
 #  bitmap "mcdonald3.pgm"
- size [272.800 332.300 1.000]
+ 
 # size [147.950 44.450 1.000] #for mcdonald3.pgm
 #  size [177.650 57.650 1.000]
 pose [-176.333 160.001 0 90.000]  #for amcl_hokuyo
@@ -108,7 +109,7 @@ pose [-176.333 160.001 0 90.000]  #for amcl_hokuyo
 )
 
 # throw in a robot
-gc1( pose [-18.570 197.159 0 173.974] name "gc1" color "red")
+gc1( pose [-138.884 105.912 0 13.546] name "gc1" color "red")
 #gc2( pose [-95.109 181.515 0 90.763] name "gc2" color "green")
 #gc3( pose [-95.109 177.739 0 90.763] name "gc3" color "blue")
 block( pose [ -104.223 98.740 0 0 ] color "red")
