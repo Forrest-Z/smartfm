@@ -7,8 +7,8 @@
 #include "SvgPath.h"
 
 #ifdef TINYXML_API_PRE26
-#define TIXML_ELEMENT ELEMENT
-#define TIXML_TEXT TEXT
+#define TINYXML_ELEMENT ELEMENT
+#define TINYXML_TEXT TEXT
 #endif
 
 using namespace std;
@@ -44,7 +44,7 @@ void SvgPath::findPathElements(StationPath* pose, PathPoint* size, unsigned int 
     int t = pParent->Type();
     switch (t)
     {
-    case TiXmlNode::TIXML_ELEMENT:
+    case TiXmlNode::TINYXML_ELEMENT:
         ss<<pParent->Value();
         if(ss.str()=="svg")
         {
@@ -68,7 +68,7 @@ void SvgPath::findPathElements(StationPath* pose, PathPoint* size, unsigned int 
 
         }
         break;
-    case TiXmlNode::TIXML_TEXT:
+    case TiXmlNode::TINYXML_TEXT:
         break;
     }
 
