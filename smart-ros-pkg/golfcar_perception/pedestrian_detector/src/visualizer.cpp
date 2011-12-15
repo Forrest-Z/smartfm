@@ -13,29 +13,29 @@ namespace HOG_Classifier {
 		cvNamedWindow("Image window");
 	}
 	HOGClassifier::~HOGClassifier(){}
-	void HOGClassifier::peopleVerifiedCallback(people_detector::people_rects pr)
+	void HOGClassifier::peopleVerifiedCallback(sensing_on_road::pedestrian_vision_batch pr)
 	{
 		if(started)
 		{
-			verified_rects_.pr_vector.clear();
+			verified_rects_.pd_vector.clear();
 			verified_rects_=pr;
 		}
 	}
-	void HOGClassifier::peopleRoiCallback(people_detector::people_rects pr)
+	void HOGClassifier::peopleRoiCallback(sensing_on_road::pedestrian_vision_batch pr)
 	{
 		if(started)
 		{
-			roi_rects_.pr_vector.clear();
-			//for(int i=0;i<roi_rects_.pr_vector.size();i++)
-				//roi_rects_.pr_vector.push_back(pr);		
+			roi_rects_.pd_vector.clear();
+			//for(int i=0;i<roi_rects_.pd_vector.size();i++)
+				//roi_rects_.pd_vector.push_back(pr);		
 			roi_rects_=pr;
 		}
 	}
-	void HOGClassifier::peopleDetectCallback(people_detector::people_rects pr)
+	void HOGClassifier::peopleDetectCallback(sensing_on_road::pedestrian_vision_batch pr)
 	{
 		if(started)
 		{
-			detect_rects_.pr_vector.clear();
+			detect_rects_.pd_vector.clear();
 			detect_rects_=pr;		
 		}
 	}	
@@ -43,22 +43,23 @@ namespace HOG_Classifier {
 	void HOGClassifier::imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr)
 	{
 		cv::Mat img;
+        cv_bridge::CvImagePtr cv_image;
 		try
 		{
-			cv_image = bridge_.imgMsgToCv(msg_ptr, "bgra8");
+			cv_image = cv_bridge::toCvCopy(msg_ptr, "bgra8");
 		}
-		catch (sensor_msgs::CvBridgeException error)
+		catch (cv_bridge::Exception& e)
 		{
-			ROS_ERROR("error");
+			ROS_ERROR("cv_bridge exception: %s", e.what());
 		}
-		cv::Mat l_img(cv_image);
+		cv::Mat l_img(cv_image->image);
 		img = l_img;
-		for(int i=0;i<detect_rects_.pr_vector.size();i++)
-			cv::rectangle(img,cv::Point(detect_rects_.pr_vector[i].cvRect_x1, detect_rects_.pr_vector[i].cvRect_y1) , cv::Point(detect_rects_.pr_vector[i].cvRect_x2, detect_rects_.pr_vector[i].cvRect_y2), cv::Scalar(0,255,0), 1);
-		for(int i=0;i<roi_rects_.pr_vector.size();i++)
-			cv::rectangle(img,cv::Point(roi_rects_.pr_vector[i].cvRect_x1, roi_rects_.pr_vector[i].cvRect_y1) , cv::Point(roi_rects_.pr_vector[i].cvRect_x2, roi_rects_.pr_vector[i].cvRect_y2), cv::Scalar(255,0,0), 1);
-		for(int i=0;i<verified_rects_.pr_vector.size();i++)
-			cv::rectangle(img,cv::Point(verified_rects_.pr_vector[i].cvRect_x1, verified_rects_.pr_vector[i].cvRect_y1) , cv::Point(verified_rects_.pr_vector[i].cvRect_x2, verified_rects_.pr_vector[i].cvRect_y2), cv::Scalar(0,0,255), 5);
+		for(unsigned int i=0;i<detect_rects_.pd_vector.size();i++)
+			cv::rectangle(img,cv::Point(detect_rects_.pd_vector[i].cvRect_x1, detect_rects_.pd_vector[i].cvRect_y1) , cv::Point(detect_rects_.pd_vector[i].cvRect_x2, detect_rects_.pd_vector[i].cvRect_y2), cv::Scalar(0,255,0), 1);
+		for(unsigned int i=0;i<roi_rects_.pd_vector.size();i++)
+			cv::rectangle(img,cv::Point(roi_rects_.pd_vector[i].cvRect_x1, roi_rects_.pd_vector[i].cvRect_y1) , cv::Point(roi_rects_.pd_vector[i].cvRect_x2, roi_rects_.pd_vector[i].cvRect_y2), cv::Scalar(255,0,0), 1);
+		for(unsigned int i=0;i<verified_rects_.pd_vector.size();i++)
+			cv::rectangle(img,cv::Point(verified_rects_.pd_vector[i].cvRect_x1, verified_rects_.pd_vector[i].cvRect_y1) , cv::Point(verified_rects_.pd_vector[i].cvRect_x2, verified_rects_.pd_vector[i].cvRect_y2), cv::Scalar(0,0,255), 5);
 		started = true;
 		imshow("Image window", img);
 		cvWaitKey(3);

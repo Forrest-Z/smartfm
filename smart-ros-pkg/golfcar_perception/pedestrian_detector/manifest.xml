@@ -21,8 +21,8 @@
   <depend package="visualization_msgs" />
   <depend package="image_transport" />
   <!--depend package="people_msgs" /-->
-  <depend package="cv_bridge"/>
-  <depend package="people_detector"/>
+  <depend package="sensing_on_road"/>
+  <rosdep name="opencv2.3"/>
   <platform os="ubuntu" version="9.04"/>
   <platform os="ubuntu" version="9.10"/>
   <platform os="ubuntu" version="10.04"/>
