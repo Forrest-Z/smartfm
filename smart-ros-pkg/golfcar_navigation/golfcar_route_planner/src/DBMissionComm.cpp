@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include <dbserver_comm/Mission.h>
 #include <dbserver_comm/MissionRequest.h>
-#include "db_mission_comm.h"
+#include "DBMissionComm.h"
 
 using std::string;
 

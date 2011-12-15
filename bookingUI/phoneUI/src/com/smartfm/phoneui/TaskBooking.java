@@ -1,20 +1,23 @@
 package com.smartfm.phoneui;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.Spinner;
 import android.widget.Toast;
 import android.widget.AdapterView.OnItemSelectedListener;
 
 public class TaskBooking extends Activity implements OnClickListener {
 
-	StationList stations = new StationList();
+	StationList stations;
 	String pickupStation, dropoffStation;
 
 	static final int STATION_TYPE_PICKUP = 1;
@@ -30,28 +33,18 @@ public class TaskBooking extends Activity implements OnClickListener {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.booking);
 
+		findViewById(R.id.pickupbutton).setOnClickListener(this);
 		findViewById(R.id.pickupmapbutton).setOnClickListener(this);
+		findViewById(R.id.dropoffbutton).setOnClickListener(this);
 		findViewById(R.id.destinationmapbutton).setOnClickListener(this);
 		findViewById(R.id.confirmbutton).setOnClickListener(this);
 		findViewById(R.id.cancelbutton).setOnClickListener(this);
 
-		// pickup spinner
-		pickupSp = (Spinner) findViewById(R.id.spinner1);
-		pickupSp.setOnItemSelectedListener(new PickupSelectedListener());
+		stations = new StationList();
 		aspnPickups = new ArrayAdapter<String>(this,
-				android.R.layout.simple_spinner_item, stations.allNames());
-		aspnPickups
-				.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-		pickupSp.setAdapter(aspnPickups);
-
-		// destination spinner
-		destSp = (Spinner) findViewById(R.id.spinner2);
-		destSp.setOnItemSelectedListener(new DestSelectedListener());
+				android.R.layout.simple_spinner_dropdown_item, stations.allNames());
 		aspnDests = new ArrayAdapter<String>(this,
-				android.R.layout.simple_spinner_item, stations.allNames());
-		aspnDests
-				.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-		destSp.setAdapter(aspnDests);
+				android.R.layout.simple_spinner_dropdown_item, stations.allNames());
 	}
 
 	@Override
@@ -61,11 +54,11 @@ public class TaskBooking extends Activity implements OnClickListener {
 			if (requestCode == STATION_TYPE_PICKUP) {
 				pickupStation = data
 						.getStringExtra("com.smartfm.phoneui.stationName");
-				pickupSp.setSelection(stations.getStationNumber(pickupStation));
+				((Button)findViewById(R.id.pickupbutton)).setText(pickupStation);
 			} else if (requestCode == STATION_TYPE_DROPOFF) {
 				dropoffStation = data
 						.getStringExtra("com.smartfm.phoneui.stationName");
-				destSp.setSelection(stations.getStationNumber(dropoffStation));
+				((Button)findViewById(R.id.dropoffbutton)).setText(dropoffStation);
 			}
 		}
 	}
@@ -74,32 +67,55 @@ public class TaskBooking extends Activity implements OnClickListener {
 	public void onClick(View v) {
 		switch(v.getId()) {
 		
+		case R.id.pickupbutton:
+			new AlertDialog.Builder(this)
+	  				.setTitle("Pick a station")
+	  				.setAdapter(aspnPickups, new DialogInterface.OnClickListener() {
+
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+				    	pickupStation = aspnPickups.getItem(which);
+				    	((Button)findViewById(R.id.pickupbutton)).setText(pickupStation);
+						dialog.dismiss();
+				    }
+  				}).create().show();
+			break;
+
+		case R.id.dropoffbutton:
+			new AlertDialog.Builder(this)
+	  				.setTitle("Pick a station")
+	  				.setAdapter(aspnDests, new DialogInterface.OnClickListener() {
+
+					@Override
+					public void onClick(DialogInterface dialog, int which) {
+				    	dropoffStation = aspnDests.getItem(which);
+				    	((Button)findViewById(R.id.dropoffbutton)).setText(dropoffStation);
+						dialog.dismiss();
+				    }
+  				}).create().show();
+			break;
+		
 		case R.id.pickupmapbutton:
 			startActivityForResult(
-					new Intent(this,TaskBookingMap.class), 
+					new Intent(TaskBooking.this,TaskBookingMap.class), 
 					STATION_TYPE_PICKUP);
 			break;
 			
 		case R.id.destinationmapbutton:
 			startActivityForResult(
-					new Intent(this,TaskBookingMap.class), 
+					new Intent(TaskBooking.this,TaskBookingMap.class), 
 					STATION_TYPE_DROPOFF);
 		
 		case R.id.confirmbutton:
-			if ( pickupStation.compareTo(dropoffStation)==0 ) {
-				Context context = getApplicationContext();
-				CharSequence text = "Service cannot be delivered. Pick-up location and Drop-off location cannot be the same.";
-				Toast toast = Toast.makeText(context, text,
-						Toast.LENGTH_LONG);
-				toast.show();
+			if ( pickupStation==null || dropoffStation==null ) {
+				return;
+			} else if ( pickupStation.compareTo(dropoffStation)==0 ) {
+				ErrDialog.show(this, "Pick-up location and Drop-off location cannot be the same.");
 			} else {
 				try {
 					DBInterface.addTask(pickupStation, dropoffStation);
 				} catch (Exception e) {
-					Context context = getApplicationContext();
-					CharSequence text = "Error while creating the task (RPC call failed).";
-					Toast toast = Toast.makeText(context, text, Toast.LENGTH_LONG);
-					toast.show();
+					ErrDialog.show(this, "Error while creating the task (RPC call failed).\n" + e);
 				}
 				finish();
 			}
@@ -114,6 +130,7 @@ public class TaskBooking extends Activity implements OnClickListener {
 		public void onItemSelected(AdapterView<?> parent, View view, int pos,
 				long id) {
 			pickupStation = parent.getItemAtPosition(pos).toString();
+			((Button)findViewById(R.id.pickupbutton)).setText(pickupStation);
 		}
 
 		public void onNothingSelected(AdapterView<?> parent) {
@@ -125,6 +142,7 @@ public class TaskBooking extends Activity implements OnClickListener {
 		public void onItemSelected(AdapterView<?> parent, View view, int pos,
 				long id) {
 			dropoffStation = parent.getItemAtPosition(pos).toString();
+			((Button)findViewById(R.id.dropoffbutton)).setText(dropoffStation);
 		}
 
 		public void onNothingSelected(AdapterView<?> parent) {

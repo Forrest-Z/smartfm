@@ -92,6 +92,20 @@ public class DBInterface {
 	
 	public static final String BaseURI = "http://fmautonomy.no-ip.info/dbserver/";
 	public static final String CustomerID = "cust1";
+	
+	
+	// A function to safely parse a numeric attribute
+	static double parseDoubleAttr(Element item, String attr) {
+		double val = 0;
+		if( item.hasAttribute(attr) ) {
+			try {
+				val = Double.parseDouble(item.getAttribute(attr));
+			} catch (NumberFormatException e) {
+				// nothing here
+			}
+		}
+		return val;
+	}
 
 
 	public static List<Task> listTasks() throws Exception {
@@ -110,9 +124,9 @@ public class DBInterface {
 
 			if (item.hasAttribute("vehicleID")) {
 				task.vehicleID = item.getAttribute("vehicleID");
-				task.latitude = Double.parseDouble(item.getAttribute("latitude"));
-				task.longitude = Double.parseDouble(item.getAttribute("longitude"));
-				task.eta = Integer.parseInt(item.getAttribute("eta"));
+				task.latitude = parseDoubleAttr(item, "latitude");
+				task.longitude = parseDoubleAttr(item, "longitude");
+				task.eta = (int) parseDoubleAttr(item, "eta");
 			}
 
 			tasks.add(task);

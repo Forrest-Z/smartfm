@@ -38,7 +38,7 @@ public class TaskDetailActivity extends Activity implements OnClickListener {
 			DBInterface.cancelTask(task.requestID);
 			finish();
 		} catch (Exception e) {
-			// TODO report the error
+			ErrDialog.show(this, "Error while creating the task (RPC call failed).\n" + e);
 		}
 	}
 

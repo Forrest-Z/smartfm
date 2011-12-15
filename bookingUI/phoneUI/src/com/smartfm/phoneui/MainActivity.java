@@ -33,9 +33,11 @@ public class MainActivity extends Activity implements OnClickListener,
 				.setOnClickListener(this);
 
 		tasks = new ArrayList<Task>();
-		ListView lv = (ListView) findViewById(R.id.bookingslistview);
 		tasksDescriptions = new ArrayAdapter<String>(this,
 				android.R.layout.simple_list_item_1);
+		updateBookings();
+		
+		ListView lv = (ListView) findViewById(R.id.bookingslistview);		
 		lv.setAdapter(tasksDescriptions);
 		lv.setOnItemClickListener(this);
 	}
@@ -62,7 +64,7 @@ public class MainActivity extends Activity implements OnClickListener,
 					tasks.isEmpty() ? View.VISIBLE : View.GONE);
 
 		} catch (Exception e) {
-			// TODO report the error
+			ErrDialog.show(this, "An error occured while retrieving the current bookings.\n"+e);
 		}
 	}
 
@@ -73,7 +75,7 @@ public class MainActivity extends Activity implements OnClickListener,
 		case R.id.makebookingbutton:
 			// Ask for a result, so that we can call updateBookings on returns.
 			// (see onActivityResult). Actually the activity returns nothing.
-			startActivityForResult(new Intent(this, TaskBooking.class), 1);
+			startActivityForResult(new Intent(MainActivity.this, TaskBooking.class), 1);
 			break;
 
 		case R.id.refreshbookingsbutton:
@@ -94,7 +96,7 @@ public class MainActivity extends Activity implements OnClickListener,
 		// A list item has been clicked: show the details of this task in
 		// the TaskDetailActivity activity.
 		Task task = tasks.get(position);
-		Intent intent = new Intent(this, TaskDetailActivity.class);
+		Intent intent = new Intent(MainActivity.this, TaskDetailActivity.class);
 		intent.putExtra("com.smartfm.phoneui.taskstring", task.toString());
 
 		// Ask for a result, so that we can call updateBookings on returns.

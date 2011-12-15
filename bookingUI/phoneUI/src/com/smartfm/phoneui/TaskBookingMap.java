@@ -44,10 +44,10 @@ public class TaskBookingMap extends MapActivity {
 						p_s.y-pin.getHeight(), p_s.y+pin.getWidth() / 2, p_s.y);
 				
 				if ( hitTestRect.contains(p_hit.x, p_hit.y) ) {
-					Intent intent = new Intent();
-					intent.putExtra("com.smartfm.phoneui.stationName", s.name);
-					setResult(RESULT_OK, intent);
+					setResult(RESULT_OK, new Intent().
+							putExtra("com.smartfm.phoneui.stationName", s.name));
 					finish();
+					return true;
 				}
 			}
 			return super.onTap(hit, mapView);

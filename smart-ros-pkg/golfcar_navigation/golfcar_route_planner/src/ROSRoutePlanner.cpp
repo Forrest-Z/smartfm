@@ -1,6 +1,6 @@
 #include <std_msgs/String.h>
 
-#include "route_planner.h"
+#include "ROSRoutePlanner.h"
 
 ROSRoutePlanner::ROSRoutePlanner(StationPaths & sp)
     : RoutePlanner(sp)

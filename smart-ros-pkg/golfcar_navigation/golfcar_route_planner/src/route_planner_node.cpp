@@ -1,5 +1,6 @@
-#include "route_planner_vehicle.h"
-#include "db_mission_comm.h"
+#include "RoutePlannerVehicle.h"
+#include "DummyROSRoutePlanner.h"
+#include "DBMissionComm.h"
 
 
 int main(int argc, char **argv)

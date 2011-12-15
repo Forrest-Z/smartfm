@@ -19,11 +19,12 @@
                 android:text="@string/pickup" >
             </TextView>
 
-            <Spinner
-                android:id="@+id/spinner1"
+            <Button
+                android:id="@+id/pickupbutton"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" >
-            </Spinner>
+                android:layout_height="wrap_content"
+                android:text="Pick a station" >
+            </Button>
 
             <Button
                 android:id="@+id/pickupmapbutton"
@@ -41,11 +42,12 @@
                 android:text="@string/destination" >
             </TextView>
 
-            <Spinner
-                android:id="@+id/spinner2"
+            <Button
+                android:id="@+id/dropoffbutton"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content" >
-            </Spinner>
+                android:layout_height="wrap_content"
+                android:text="Pick a station" >
+            </Button>
 
             <Button
                 android:id="@+id/destinationmapbutton"

@@ -38,15 +38,15 @@ public final class R {
         public static final int detail_eta=0x7f050012;
         public static final int detail_pickup=0x7f05000f;
         public static final int detail_status=0x7f050011;
+        public static final int dropoffbutton=0x7f050002;
         public static final int mainlayout=0x7f050006;
         public static final int makebookingbutton=0x7f05000a;
         public static final int mapView=0x7f050007;
         public static final int mapview=0x7f05000e;
         public static final int nocurrentbookings=0x7f05000c;
+        public static final int pickupbutton=0x7f050000;
         public static final int pickupmapbutton=0x7f050001;
         public static final int refreshbookingsbutton=0x7f05000b;
-        public static final int spinner1=0x7f050000;
-        public static final int spinner2=0x7f050002;
         public static final int videoview=0x7f050009;
         public static final int webView1=0x7f050014;
     }
