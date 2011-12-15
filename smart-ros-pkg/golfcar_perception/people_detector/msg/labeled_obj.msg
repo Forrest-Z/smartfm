@@ -1,2 +1,0 @@
-int32 object_label
-geometry_msgs/Point32 pedestrian_point

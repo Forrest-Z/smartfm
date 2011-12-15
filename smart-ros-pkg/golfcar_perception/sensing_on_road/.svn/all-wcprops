@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/karaman/!svn/ver/355/code/fm/smart-ros-pkg/golfcar_perception/people_detector
+END
+laser_filter.launch
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/karaman/!svn/ver/239/code/fm/smart-ros-pkg/golfcar_perception/people_detector/laser_filter.launch
+END
+manifest.xml
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/karaman/!svn/ver/239/code/fm/smart-ros-pkg/golfcar_perception/people_detector/manifest.xml
+END
+mainpage.dox
+K 25
+svn:wc:ra_dav:version-url
+V 91
+/karaman/!svn/ver/239/code/fm/smart-ros-pkg/golfcar_perception/people_detector/mainpage.dox
+END
+filter_config.yaml
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/karaman/!svn/ver/239/code/fm/smart-ros-pkg/golfcar_perception/people_detector/filter_config.yaml
+END
+CMakeLists.txt
+K 25
+svn:wc:ra_dav:version-url
+V 93
+/karaman/!svn/ver/239/code/fm/smart-ros-pkg/golfcar_perception/people_detector/CMakeLists.txt
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/karaman/!svn/ver/239/code/fm/smart-ros-pkg/golfcar_perception/people_detector/Makefile
+END

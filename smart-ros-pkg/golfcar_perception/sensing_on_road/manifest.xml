@@ -1,0 +1,19 @@
+<package>
+  <description brief="sensing_on_road">
+     sensing_on_road
+  </description>
+  <author>Baoxing</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/sensing_on_road</url>
+  <depend package="nav_msgs"/>
+  <depend package="rosconsole"/>
+  <depend package="roscpp"/>
+  <depend package="rospy" />
+  <depend package="sensor_msgs"/>
+  <depend package="tf"/>
+  <depend package="laser_geometry"/>
+  <depend package="geometry_msgs"/>
+</package>
+
+
