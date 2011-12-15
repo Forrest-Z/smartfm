@@ -12,6 +12,12 @@ if( NOT TINYXML26_FOUND )
     SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTINYXML_API_PRE26")
     MESSAGE("Using old tinyxml API (pre 2.6). Setting the compilation flag TINYXML_API_PRE26.")
 endif( NOT TINYXML26_FOUND )
+include_directories(${TINYXML_INCLUDE_DIRS})
+link_directories(${TINYXML_LIBRARY_DIRS})
+
+find_package(CURL REQUIRED)
+include_directories(${CURL_INCLUDE_DIRS})
+link_directories(${CURL_LIBRARY_DIRS})
 
 
 INCLUDE_DIRECTORIES (src)
@@ -19,10 +25,8 @@ INCLUDE_DIRECTORIES (src)
 SET (LIB_SRCS src/Station.cpp src/StationDoesNotExist.cpp src/StationList.cpp src/StationPath.cpp src/Threaded.cpp src/RoutePlanner.cpp src/MissionComm.cpp src/HTTPClient.cpp src/DBInterface.cpp src/SvgPath.cpp)
 
 ADD_LIBRARY (bookingcommon SHARED ${LIB_SRCS})
-ADD_LIBRARY(bookingcommon-static STATIC ${LIB_SRCS})
-SET_TARGET_PROPERTIES(bookingcommon-static PROPERTIES OUTPUT_NAME "bookingcommon")
-SET_TARGET_PROPERTIES(bookingcommon-static PROPERTIES PREFIX "lib")
+target_link_libraries(bookingcommon ${TINYXML_LIBRARIES})
+target_link_libraries(bookingcommon ${CURL_LIBRARIES})
 
-# Help CMake 2.6.x and lower (not necessary for 2.8 and above, but doesn't hurt):
-SET_TARGET_PROPERTIES(bookingcommon PROPERTIES CLEAN_DIRECT_OUTPUT 1)
-SET_TARGET_PROPERTIES(bookingcommon-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+ADD_EXECUTABLE(test_DBInterface src/test_DBInterface.cpp)
+target_link_libraries(test_DBInterface bookingcommon)

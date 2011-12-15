@@ -1,5 +1,3 @@
-#include "HTTPClient.h"
-
 #include <stdlib.h>
 #include <string.h>
 
@@ -8,6 +6,9 @@
 
 // libcurl is used for the heavy lifting.
 #include <curl/curl.h>
+
+#include "DBInterfaceException.h"
+#include "HTTPClient.h"
 
 using namespace std;
 
@@ -42,11 +43,8 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
     struct MemoryStruct *mem = (struct MemoryStruct *)userp;
 
     mem->memory = (char *)realloc(mem->memory, mem->size + realsize + 1);
-    if (mem->memory == NULL) {
-        /* out of memory! */
-        printf("not enough memory (realloc returned NULL)\n");
-        exit(EXIT_FAILURE);
-    }
+    if (mem->memory == NULL)
+        throw HTTPClientException("not enough memory (realloc returned NULL)");
 
     memcpy(&(mem->memory[mem->size]), contents, realsize);
     mem->size += realsize;
@@ -58,8 +56,7 @@ WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
 std::string HTTPClient::connect()
 {
     CURL *curl = curl_easy_init();
-    if( curl==0 )
-        throw runtime_error("Failed to initialize a CURL handle");
+    if( curl==0 ) throw HTTPClientException("Failed to initialize a CURL handle");
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(curl, CURLOPT_POST, 1);
@@ -67,12 +64,15 @@ std::string HTTPClient::connect()
 
     struct MemoryStruct chunk;
     chunk.memory = (char *)malloc(1);  /* will be grown as needed by the realloc above */
+    if( chunk.memory==NULL )
+        throw HTTPClientException("Failed to allocate chunk.memory");
     chunk.size = 0;    /* no data at this point */
     chunk.memory[0] = 0;
 
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
     CURLcode res = curl_easy_perform(curl);
+    if( res!=0 ) throw HTTPClientException("curl_easy_perform Failed");
 
     string data;
     if(chunk.memory) {
