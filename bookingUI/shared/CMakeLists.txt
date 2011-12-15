@@ -1,7 +1,18 @@
 cmake_minimum_required (VERSION 2.8)
 project (BookingCommon)
 
-SET (CMAKE_CXX_FLAGS "-g -Wall -ltinyxml")
+SET (CMAKE_CXX_FLAGS "-g -Wall")
+
+# TinyXml is required. Since there was an API change at 2.6 we need to check
+# the version number and define a flag accordingly
+include(FindPkgConfig)
+pkg_check_modules(TINYXML REQUIRED tinyxml)
+pkg_check_modules(TINYXML26 QUIET tinyxml>=2.6)
+if( NOT TINYXML26_FOUND )
+    SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTINYXML_API_PRE26")
+    MESSAGE("Using old tinyxml API (pre 2.6). Setting the compilation flag TINYXML_API_PRE26.")
+endif( NOT TINYXML26_FOUND )
+
 
 INCLUDE_DIRECTORIES (src)
 
