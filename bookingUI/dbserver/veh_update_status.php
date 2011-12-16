@@ -4,6 +4,11 @@ $xmlres = new XMLRes();
 $con = connect_to_DB();
 
 $vehicleID = $_REQUEST["VehicleID"] or $xmlres->fatal('VehicleID missing');
+$query = "SELECT * FROM vehicles WHERE VehicleID='$vehicleID'";
+$result = mysql_query($query, $con) or $xmlres->fatalSqlError($query);
+if( mysql_num_rows($result)==0 )
+    $xmlres->fatal("No vehicle found with id $vehicleID");
+
 $status = $_REQUEST["Status"];
 $longitude = $_REQUEST["Longitude"];
 $latitude = $_REQUEST["Latitude"];
@@ -30,5 +35,5 @@ mysql_query($query, $con) or $xmlres->fatalSqlError($query);
 
 $n = mysql_affected_rows();
 mysql_close($con);
-$xmlres->success("Cancelled $n rows");
+$xmlres->success("Updated $n rows");
 ?>

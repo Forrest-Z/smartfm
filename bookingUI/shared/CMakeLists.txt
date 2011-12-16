@@ -15,11 +15,12 @@ endif( NOT TINYXML26_FOUND )
 include_directories(${TINYXML_INCLUDE_DIRS})
 link_directories(${TINYXML_LIBRARY_DIRS})
 
+# We also need libcurl
 find_package(CURL REQUIRED)
 include_directories(${CURL_INCLUDE_DIRS})
 link_directories(${CURL_LIBRARY_DIRS})
 
-
+    
 INCLUDE_DIRECTORIES (src)
 
 SET (LIB_SRCS src/Station.cpp src/StationDoesNotExist.cpp src/StationList.cpp src/StationPath.cpp src/Threaded.cpp src/RoutePlanner.cpp src/MissionComm.cpp src/HTTPClient.cpp src/DBInterface.cpp src/SvgPath.cpp)

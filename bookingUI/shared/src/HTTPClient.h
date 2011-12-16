@@ -22,11 +22,11 @@ public:
     template<class T>
     HTTPClient & addParam(std::string name, T value)
     {
-        std::stringstream ss(urlEncodedParameters);
+        std::stringstream ss;
         if( urlEncodedParameters.length()>0 )
             ss <<'&';
         ss <<name <<'=' <<value;
-        urlEncodedParameters = ss.str();
+        urlEncodedParameters = urlEncodedParameters + ss.str();
         return *this;
     }
 

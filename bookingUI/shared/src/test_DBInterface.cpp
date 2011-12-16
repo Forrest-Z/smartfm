@@ -7,13 +7,19 @@
 
 using namespace std;
 
+unsigned ntests = 0, nsuccess = 0;
+
 void dotest(bool (*test)(void), const char *testname)
 {
+	ntests ++;
     try {
-        if( test() )
+        if( test() ) {
+        	nsuccess ++;
             cout <<"SUCCESS: ";
-        else
+        }
+        else {
             cout <<"FAILED : ";
+        }
         cout <<testname <<endl;
     } catch( DBInterfaceException & e ) {
         cout <<"FAILED : " <<testname <<":" <<endl <<"\t" <<e.what() <<endl;
@@ -43,7 +49,40 @@ bool testIdentify()
 bool testDeleteVehicle()
 {
     dbi->deleteVehicle();
-    return true;
+    try {
+        DBInterface::Vehicle v = dbi->getVehicleEntry();
+    } catch( VehicleNotFoundException & e ) {
+        return true;
+    }
+    return false;
+}
+
+bool testSetCurrentLocation()
+{
+    dbi->setCurrentLocation("DUMMY");
+    DBInterface::Vehicle v = dbi->getVehicleEntry();
+    return strcasecmp(v.currentLocation.c_str(), "DUMMY")==0;
+}
+
+bool testSetVehicleStatus()
+{
+    dbi->setVehicleStatus("NotAvailable");
+    DBInterface::Vehicle v = dbi->getVehicleEntry();
+    return strcasecmp(v.status.c_str(), "NotAvailable")==0;
+}
+
+bool testSetGeoLocation()
+{
+    dbi->setGeoLocation(1, 103);
+    DBInterface::Vehicle v = dbi->getVehicleEntry();
+    return v.latitude==1 && v.longitude==103;
+}
+
+bool testSetETA()
+{
+    dbi->setETA(10);
+    DBInterface::Vehicle v = dbi->getVehicleEntry();
+    return v.eta==10;
 }
 
 
@@ -51,8 +90,16 @@ int main()
 {
     TEST(testCreateInterface);
     TEST(testIdentify);
-
+    
+    TEST(testSetCurrentLocation);
+    TEST(testSetVehicleStatus);
+    TEST(testSetGeoLocation);
+    TEST(testSetETA);
+    
     TEST(testDeleteVehicle);
+
+    cout <<"DONE. PASSED " <<nsuccess <<" TESTS OUT OF " <<ntests <<"." <<endl;
+
     if(dbi) delete dbi;
     return 0;
 }

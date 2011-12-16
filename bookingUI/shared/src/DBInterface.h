@@ -2,6 +2,7 @@
 #define __DB_INTERFACE_H__
 
 #include <string>
+#include <vector>
 
 #include <tinyxml.h>
 
@@ -54,45 +55,63 @@ private:
     /// Returns a client with the url and vehicleID set.
     HTTPClient getHTTPClient(std::string php);
 
+    /// Call the client connect function, parse the result, and throw an exception
+    /// if there was an error. Returns the document.
+    TiXmlDocument rpc(HTTPClient & client);
+
+// Some helper functions (made public for testing purpose).
 public:
+    /// Returns the vehicle entry.
+    Vehicle getVehicleEntry();
+    
+    /// Returns all tasks for this vehicle.
+    std::vector<DBInterface::Task> getAllTasks();
+
+    /// Returns the task entry.
+    Task getTaskEntry(unsigned id);
+    
+public:
+    /// Creates an interface
+    ///@arg url is the URL of the server with the path to the PHP scripts
+    ///@arg vehicleID is the vehicle ID
     DBInterface(std::string url, std::string vehicleID);
 
+// Some function related to vehicle's status
+public:
     /// Adds this vehicle to the database.
     void identify();
 
+    /// Removes this vehicle from the database.
+    void deleteVehicle();
+    
     /// Sets the current location.
     void setCurrentLocation(std::string loc);
 
-    /// Removes this vehicle from the database.
-    void deleteVehicle();
+    /// Sets the vehicle's status.
+    void setVehicleStatus(std::string status);
+    
+    /// Sets the GPS coordinates.
+    void setGeoLocation(float lat, float lon);
+    
+    /// Sets the estimated time of arrival
+    void setETA(float eta);
 
+    
+// Some functions related to the requests.
+public:
     /// Returns true if the mission has been cancelled.
     bool checkMissionCancelled(unsigned id);
 
-    /// Returns NULL if no new mission, Task pointer otherwise.
-    /// @return only the id, pickup and dropoff fields are filled in.
-    Task * checkForNewMission();
+    /// Checks whether a new mission is available, in which case it is copied
+    /// in the task pointer passed as argument.
+    bool checkForNewMission(Task *t);
 
     /// Waits for a new mission and returns it.
     /// @arg period: check period in seconds (defaults to 1).
     /// @return only the id, pickup and dropoff fields are filled in.
     Task waitForNewMission(float period = 1);
 
-    /// Sets the GPS coordinates.
-    void setGeoLocation(float lat, float lon);
-
-    /// Sets the estimated time of arrival
-    void setETA(float eta);
-
     void setMissionStatus(std::string status);
-
-    void setVehicleStatus(std::string status);
-
-    /// Returns the vehicle entry
-    Vehicle getVehicleEntry();
-
-    /// Returns the task entry
-    Task getTaskEntry(unsigned id);
 };
 
 
