@@ -1,8 +1,8 @@
 #include <ros/ros.h>
 #include "sensor_msgs/Image.h"
 #include "image_transport/image_transport.h"
-#include "cv_bridge/CvBridge.h"
-#include "people_detector/people_rects.h"
+#include "cv_bridge/cv_bridge.h"
+#include "sensing_on_road/pedestrian_vision_batch.h"
 #include "opencv2/gpu/gpu.hpp"
 #include "opencv2/highgui/highgui.hpp"
 
@@ -28,12 +28,12 @@ private:
 	ros::Publisher people_roi_pub_;
 	ros::Publisher people_detect_pub_;
 	ros::Publisher people_ver_pub_;
-	sensor_msgs::CvBridge bridge_;
+	//sensor_msgs::CvBridge bridge_;
 	image_transport::Publisher image_pub_;
 	void imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr);
-	void peopleRectsCallback(people_detector::people_rects pr);
+	void peopleRectsCallback(sensing_on_road::pedestrian_vision_batch pr);
 	cv::Mat img;
-	IplImage *cv_image;
+	//IplImage *cv_image;
 	
 	bool new_image;
 };

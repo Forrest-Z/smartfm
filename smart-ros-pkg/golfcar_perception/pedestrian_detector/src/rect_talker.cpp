@@ -1,8 +1,8 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
 #include <sstream>
-#include "people_detector/people_rects.h"
-#include "people_detector/people_rect.h"
+#include "sensing_on_road/pedestrian_vision_batch.h"
+#include "sensing_on_road/pedestrian_vision.h"
 int main(int argc, char **argv)
 {
  
@@ -10,18 +10,18 @@ int main(int argc, char **argv)
 
   ros::NodeHandle n;
 
-  ros::Publisher chatter_pub = n.advertise<people_detector::people_rects>("chatter", 2);
+  ros::Publisher chatter_pub = n.advertise<sensing_on_road::pedestrian_vision_batch>("pd_vision_batch", 2);
   ros::Rate loop_rate(40);
 
   while (ros::ok())
   {
-	people_detector::people_rect pr;
-	pr.scaled_x = 0;
-	pr.scaled_y = 0;
-	pr.scaled_width = 640;
-	pr.scaled_height = 480;
-	people_detector::people_rects prs;
-	prs.pr_vector.push_back(pr);
+	sensing_on_road::pedestrian_vision pr;
+	pr.x = 0;
+	pr.y = 0;
+	pr.width = 640;
+	pr.height = 360;
+	sensing_on_road::pedestrian_vision_batch prs;
+	prs.pd_vector.push_back(pr);
 	
     chatter_pub.publish(prs);
 

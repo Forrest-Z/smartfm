@@ -10,7 +10,7 @@
 #define TINYXML_ELEMENT ELEMENT
 #define TINYXML_TEXT TEXT
 #endif
-
+#define VERBOSE 0
 using namespace std;
 
 SvgPath::SvgPath(const char* pFilename, StationPath* pose, PathPoint *size, const char* id)
@@ -20,11 +20,18 @@ SvgPath::SvgPath(const char* pFilename, StationPath* pose, PathPoint *size, cons
     bool loadOkay = doc.LoadFile();
     if (loadOkay)
     {
-        cout<<pFilename<<endl;
+        
         unsigned int npoints=0;
         SvgPath::findPathElements( pose, size, &npoints, &doc, id);
-        cout<<id<<" path found at "<<foundPath<<"th path"<<endl;
-        if(pose->size()==npoints) cout<<"Path with "<<npoints<<" points successfully loaded"<<endl;
+        if(VERBOSE)
+        {
+            cout<<pFilename<<endl;
+            cout<<id<<" path found at "<<foundPath<<"th path"<<endl;
+        }
+        if(pose->size()==npoints) 
+        {
+            if(VERBOSE) cout<<"Path with "<<npoints<<" points successfully loaded"<<endl;
+        }
     }
     else
     {
@@ -56,7 +63,7 @@ void SvgPath::findPathElements(StationPath* pose, PathPoint* size, unsigned int 
             else
             {
                 *size = width_height;
-                cout<<"Width: "<<size->x_<<" Height: "<<size->y_<<endl;
+                if(VERBOSE) cout<<"Width: "<<size->x_<<" Height: "<<size->y_<<endl;
             }
         }
         else if(ss.str()=="path")
@@ -206,14 +213,16 @@ int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose, con
                     found_points++;
                     positions.push_back(pos);
                 }
-                else cout<<"Closepath command ignored."<<endl;
+                else
+                {
+                    if(VERBOSE) cout<<"Closepath command ignored."<<endl;
+                }
 
             }
             *pose = positions;
         }
         if(ss.str()=="id")
         {
-            //cout<<pAttrib->Value()<<endl;
             stringstream s; s<<pAttrib->Value();
             if(s.str().compare(id)!=0) found_points=0;
              return found_points;

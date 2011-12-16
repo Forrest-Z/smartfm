@@ -1,8 +1,8 @@
 #include <ros/ros.h>
 #include "sensor_msgs/Image.h"
 #include "image_transport/image_transport.h"
-#include "cv_bridge/CvBridge.h"
-#include "people_detector/people_rects.h"
+#include "cv_bridge/cv_bridge.h"
+#include "sensing_on_road/pedestrian_vision_batch.h"
 #include "opencv2/gpu/gpu.hpp"
 #include "opencv2/highgui/highgui.hpp"
 
@@ -27,17 +27,17 @@ private:
 	ros::Subscriber people_roi_sub_;
 	ros::Subscriber people_detect_sub_;
 	ros::Subscriber people_verified_sub_;
-	sensor_msgs::CvBridge bridge_;
+	//sensor_msgs::cv_bridge bridge_;
 	image_transport::Publisher image_pub_;
 	void imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr);
-	void peopleRoiCallback(people_detector::people_rects pr);
-	void peopleDetectCallback(people_detector::people_rects pr);
-	void peopleVerifiedCallback(people_detector::people_rects pr);
-	people_detector::people_rects roi_rects_;
-	people_detector::people_rects detect_rects_;
-	people_detector::people_rects verified_rects_;
+	void peopleRoiCallback(sensing_on_road::pedestrian_vision_batch pr);
+	void peopleDetectCallback(sensing_on_road::pedestrian_vision_batch pr);
+	void peopleVerifiedCallback(sensing_on_road::pedestrian_vision_batch pr);
+	sensing_on_road::pedestrian_vision_batch roi_rects_;
+	sensing_on_road::pedestrian_vision_batch detect_rects_;
+	sensing_on_road::pedestrian_vision_batch verified_rects_;
 	
-	IplImage *cv_image;
+	
 	bool started;
 };
 };
