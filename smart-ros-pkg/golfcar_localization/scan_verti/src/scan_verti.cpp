@@ -31,7 +31,7 @@ namespace road_detection{
     
     void scan_verti::scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_in)
 	{	
-        ROS_INFO("Scan CallBack");
+        ROS_DEBUG("Scan CallBack");
         laser_frame_id_ = scan_in->header.frame_id;
         laser_time_     = scan_in->header.stamp;
         raw_scan_ = *scan_in;
@@ -45,18 +45,18 @@ namespace road_detection{
     //function: set related tf relationship into "transformer_", which will be used later;
     void scan_verti::imuCallback (const sensor_msgs::Imu::ConstPtr& imu_msg)
     {
-        ROS_INFO("imuCallback");
+        ROS_DEBUG("imuCallback");
         latest_imu_msg_ = * imu_msg;
     }
     
     void scan_verti::tfGeneration()
     {
-        ROS_INFO("tfGeneration");
+        ROS_DEBUG("tfGeneration");
         
         //naming way: from "source" to "target";
         
         //step 1: store transform between vertiBase and base;
-        ROS_INFO("step 1");
+        ROS_DEBUG("step 1");
         btTransform vertiBase_to_base;
         btVector3 origin;
         origin.setValue (0.0, 0.0, 0.0);
@@ -72,7 +72,7 @@ namespace road_detection{
         vertiBase_to_base.setRotation(rotation);
         transformer_.setTransform(StampedTransform(vertiBase_to_base, laser_time_, verti_base_frame_id_, base_frame_id_));
         //step 2: store transform between vertiBase and vertiSick;
-        ROS_INFO("step 2");
+        ROS_DEBUG("step 2");
         StampedTransform BasetoSick;
         try{tf_.lookupTransform(base_frame_id_, laser_frame_id_, laser_time_, BasetoSick);}
         catch (tf::TransformException ex){ROS_ERROR("%s",ex.what());}
@@ -141,11 +141,11 @@ namespace road_detection{
             pointStampedTFToMsg (vertiLaserPt, verti_laser_pt);
             addPttoScan(verti_laser_pt, verti_scan_);
         }
-        ROS_INFO("lowPtNum %d", lowPtNum);
+        ROS_DEBUG("lowPtNum %d", lowPtNum);
         
         if(lowPtNum > UseNum_Thresh_)
         {
-            ROS_INFO("Scan Hit Ground");
+            ROS_DEBUG("Scan Hit Ground");
             verti_scan_.ranges.clear();
         }
         
@@ -169,12 +169,12 @@ namespace road_detection{
             angle = atan2f((float)verti_pt.point.y, (float)verti_pt.point.x);
         }
         
-        ROS_INFO("x, y, angle: %5f, %5f, %5f", verti_pt.point.x, verti_pt.point.y, angle);
+        ROS_DEBUG("x, y, angle: %5f, %5f, %5f", verti_pt.point.x, verti_pt.point.y, angle);
         if(angle < verti_scan.angle_min ||angle > verti_scan.angle_max) return;
         float delt_angle = angle - verti_scan.angle_min;
         unsigned int serial_tmp = (unsigned int)floor(delt_angle/verti_scan.angle_increment);
         
-        ROS_INFO("delt_angle %5f, verti_scan.angle_increment %5f, serial_tmp: %d", delt_angle, verti_scan.angle_increment, serial_tmp);
+        ROS_DEBUG("delt_angle %5f, verti_scan.angle_increment %5f, serial_tmp: %d", delt_angle, verti_scan.angle_increment, serial_tmp);
         
         unsigned int back_serial, delt;
         if(verti_scan.ranges.size()==0)
@@ -186,7 +186,7 @@ namespace road_detection{
         {
             back_serial = verti_scan.ranges.size()-1;
             if(back_serial>serial_tmp) {ROS_ERROR("Unexpected ERROR!!!!!!");return;}
-            else if(back_serial == serial_tmp){ROS_INFO("two points fall into one beam");return;}
+            else if(back_serial == serial_tmp){ROS_DEBUG("two points fall into one beam");return;}
             
             delt = serial_tmp - back_serial;
             for(unsigned int i=1; i<delt; i++)

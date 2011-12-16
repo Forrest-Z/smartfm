@@ -2,14 +2,16 @@
     <node pkg="golfcar_ppc" type="speed_advisor" name="speed_advisor" output="screen">
         <param name="acc" value="0.5"/>
         <param name="max_dec" value="2"/>
-        <param name="norm_dec" value="1"/>
-        <param name="max_speed" value="3"/>
+        <param name="norm_dec" value="1.5"/><!--Dec06 Distance to obstacles 1.5m @ 2 m/s, 1.5 m/s^2-->
+        <param name="max_speed" value="2"/> <!--Dec06 Distance to obstacles 2.7m @ 1 m/s, 1.5 m/s^2-->
         <param name="frequency" value="20"/>
+    	<param name="emergency_zone" value="3"/>    
+        <param name="slow_zone" value="8"/>
     </node>
 
     <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen">
         <param name="dummy_vehicle" value="false"/>
-        <param name="use_dbserver" value="true"/>
+        <param name="use_dbserver" value="false"/>
     </node>
 
     <node pkg="golfcar_ppc" type="stop_at_junction" name="stop_at_junction" output="screen">

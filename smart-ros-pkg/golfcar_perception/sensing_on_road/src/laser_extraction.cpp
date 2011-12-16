@@ -31,7 +31,7 @@ namespace sensing_on_road{
 
     void laser_extraction::scan_callback(const sensor_msgs::LaserScan::ConstPtr& scan_in)
     {
-        //ROS_INFO("--------scan_callback--------");
+        ROS_INFO("--------scan_callback--------");
         laser_scan_ = *scan_in;
         angle_resolution_ = scan_in->angle_increment;
         /*

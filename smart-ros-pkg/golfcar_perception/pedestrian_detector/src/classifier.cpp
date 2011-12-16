@@ -7,7 +7,7 @@ namespace HOG_Classifier {
 		image_pub_ = it_.advertise("pedestrian_detector",1);
 		image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &HOGClassifier::imageCallback, this);
 		people_rects_sub_ = n.subscribe("pd_vision_batch", 1, &HOGClassifier::peopleRectsCallback, this);
-		people_roi_pub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("verified_objects", 1);
+		people_roi_pub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("veri_pd_vision", 1);
 		people_detect_pub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("pedestrian_detect",1);
 		//people_ver_pub_ = n.advertise<people_detector::verified_objs>("verified_objects",1);
 		//initializing classifier
