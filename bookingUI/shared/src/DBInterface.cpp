@@ -6,6 +6,15 @@
 #include <vector>
 #include <iostream>
 
+#ifdef TINYXML_API_PRE26
+#define TINYXML_ELEMENT ELEMENT
+#define TINYXML_TEXT TEXT
+#define TINYXML_DOCUMENT DOCUMENT
+#define TINYXML_COMMENT COMMENT
+#define TINYXML_UNKNOWN UNKNOWN
+#define TINYXML_DECLARATION DECLARATION
+#endif
+
 using namespace std;
 
 
@@ -105,7 +114,7 @@ void findNodes(TiXmlNode *pNode, const char *name, vector<TiXmlElement *> & resu
     cout <<endl <<endl;
     */
 
-    if( pNode->Type()==TiXmlNode::ELEMENT && strcasecmp(pNode->Value(),name)==0 )
+    if( pNode->Type()==TiXmlNode::TINYXML_ELEMENT && strcasecmp(pNode->Value(),name)==0 )
         result.push_back(pNode->ToElement());
 
     for ( TiXmlNode * pChild = pNode->FirstChild(); pChild != 0; pChild = pChild->NextSibling() )
@@ -343,11 +352,11 @@ void dump_to_stdout( TiXmlNode* pParent, unsigned int indent )
     
     switch ( t )
     {
-        case TiXmlNode::DOCUMENT:
+        case TiXmlNode::TINYXML_DOCUMENT:
             printf( "Document" );
             break;
             
-        case TiXmlNode::ELEMENT:
+        case TiXmlNode::TINYXML_ELEMENT:
             printf( "Element [%s]", pParent->Value() );
             num=dump_attribs_to_stdout(pParent->ToElement(), indent+1);
             switch(num)
@@ -358,20 +367,20 @@ void dump_to_stdout( TiXmlNode* pParent, unsigned int indent )
             }
             break;
             
-                case TiXmlNode::COMMENT:
+                case TiXmlNode::TINYXML_COMMENT:
                     printf( "Comment: [%s]", pParent->Value());
                     break;
                     
-                case TiXmlNode::UNKNOWN:
+                case TiXmlNode::TINYXML_UNKNOWN:
                     printf( "Unknown" );
                     break;
                     
-                case TiXmlNode::TEXT:
+                case TiXmlNode::TINYXML_TEXT:
                     pText = pParent->ToText();
                     printf( "Text: [%s]", pText->Value() );
                     break;
                     
-                case TiXmlNode::DECLARATION:
+                case TiXmlNode::TINYXML_DECLARATION:
                     printf( "Declaration" );
                     break;
                 default:
