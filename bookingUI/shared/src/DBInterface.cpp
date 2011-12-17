@@ -232,9 +232,10 @@ void DBInterface::setETA(float eta)
     rpc(client);
 }
 
-void DBInterface::setMissionStatus(string status)
+void DBInterface::setMissionStatus(unsigned id, string status)
 {
 	HTTPClient client = getHTTPClient("veh_update_request.php");
+	client.addParam<unsigned>("RequestID",id);
 	client.addParam<string>("Status",status);
 	rpc(client);
 }

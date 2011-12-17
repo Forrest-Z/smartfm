@@ -17,19 +17,20 @@
 #include <move_base_msgs/MoveBaseAction.h>
 #include <actionlib/client/simple_action_client.h>
 
-#include "ROSRoutePlanner.h"
+#include "RoutePlanner.h"
 
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
 
 
 /// Drives the vehicle from A to B by feeding it a sequence of waypoints.
-class RoutePlannerVehicle : public ROSRoutePlanner
+class RoutePlannerVehicle : public RoutePlanner
 {
 public:
     RoutePlannerVehicle(StationPaths & sp);
 
 private:
+    ros::NodeHandle n;
     ros::Publisher waypoint_pub_;
     ros::Publisher g_plan_pub_;
     ros::Publisher pointCloud_pub_;

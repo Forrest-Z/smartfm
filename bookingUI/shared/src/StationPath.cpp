@@ -16,7 +16,11 @@ using namespace std;
 #define VERBOSE 0 //whether to print path coordinates and info about paths (for testing)
 
 //definition of the svg file
-#define SVG_FILE "/home/golfcar/smartfm/bookingUI/shared/SvgPath/ALL_1215.svg"
+//(BRICE) using a more flexible path definition so that it can work on several machines.
+//   --> Use a symlink
+// TODO: find a more flexible method. For instance, this could be passed at construcion
+// time, or rely on an environment variable, etc.
+#define SVG_FILE "~/SvgPath/ALL_1215.svg"
 
 double PathPoint::distance(const PathPoint &p1, const PathPoint &p2)
 {
@@ -33,6 +37,18 @@ double StationPath::recomputeLength()
     return length_;
 }
 
+#include <wordexp.h>
+string tilde_expand(const char *path)
+{
+	wordexp_t p;
+	wordexp(path, &p, 0);
+	char **w = p.we_wordv;
+	assert(p.we_wordc==1);
+	string res = w[0];
+	wordfree(&p);
+	return res;
+}
+
 ///Stores an array of points into the given path. Point coordinates are
 ///converted from pixel number to map coordinates.
 void storeIntoStationPaths(StationPath *stationpath, const char* id)
@@ -42,7 +58,8 @@ void storeIntoStationPaths(StationPath *stationpath, const char* id)
     
     try
     {
-        SvgPath svg(SVG_FILE, &path, &height_width, id);
+
+        SvgPath svg(tilde_expand(SVG_FILE).c_str(), &path, &height_width, id);
         svg.convert_to_meter(&path, height_width, 0.1);
         if( VERBOSE ) cout <<"Path size: " <<path.size() <<". ";
         stationpath->insert(stationpath->end(), path.begin(), path.end());

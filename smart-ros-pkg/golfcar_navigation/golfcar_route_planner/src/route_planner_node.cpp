@@ -1,7 +1,10 @@
-#include "RoutePlannerVehicle.h"
-#include "DummyROSRoutePlanner.h"
-#include "DBMissionComm.h"
+#include <ros/ros.h>
 
+#include "RoutePlannerVehicle.h"
+#include "SimulatedRoutePlanner.h"
+#include "MissionComm.h"
+
+using std::string;
 
 int main(int argc, char **argv)
 {
@@ -9,15 +12,18 @@ int main(int argc, char **argv)
     ros::NodeHandle nh("~");
 
     StationPaths sp;
-    ROSRoutePlanner *rp;
+    RoutePlanner *rp;
     MissionComm *comm;
 
     bool dummy_vehicle = false;
     nh.getParam("dummy_vehicle", dummy_vehicle);
     if( dummy_vehicle )
     {
-        ROS_INFO("Using the dummy route planner (fake vehicle).");
-        rp = new DummyROSRoutePlanner(sp);
+        double speed = 0;
+        nh.getParam("vehicle_speed", speed);
+        ROS_INFO("Using the simulated route planner (fake vehicle).");
+        rp = new SimulatedRoutePlanner(sp,speed);
+        ((SimulatedRoutePlanner *)rp)->verbose = true;
     }
     else
     {
@@ -29,8 +35,12 @@ int main(int argc, char **argv)
     nh.getParam("use_dbserver", use_dbserver);
     if( use_dbserver )
     {
-        ROS_INFO("Retrieving mission requests from the DBServer (via topic missions/assignments).");
-        comm = new DBServerMissionComm(*rp);
+        string url = "http://fmautonomy.no-ip.info/dbserver", vehicleID="golfcart1";
+        nh.getParam("/dbserver/url", url);
+        nh.getParam("vehicleID", vehicleID);
+        ROS_INFO("Connecting to database at URL %s with ID %s.",
+                 url.c_str(), vehicleID.c_str());
+        comm = new DBMissionComm(*rp, url, vehicleID);
     }
     else
     {

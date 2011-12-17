@@ -3,13 +3,14 @@
 #include <iostream>
 
 #include "RoutePlanner.h"
+#include "MissionComm.h"
 
 using namespace std;
 
 
 
 RoutePlanner::RoutePlanner(StationPaths & sp)
-    : sp_(sp), state_(sUninit)
+    : sp_(sp), state_(sIdle), latitude_(0.0), longitude_(0.0), eta_(-1.0)
 {
 
 }
@@ -18,7 +19,6 @@ void RoutePlanner::setDestination(const Station & s)
 {
     destination_ = s;
     initDest();
-    pubNoCurrentLoc();
     state_ = sMoving;
 }
 
@@ -26,13 +26,6 @@ void RoutePlanner::run()
 {
     switch( state_ )
     {
-    case sUninit:
-        sp_.knownStations().print();
-        currentStation_ = sp_.knownStations().prompt("Current station? ");
-        pubCurrentLoc();
-        state_ = sIdle;
-        break;
-
     case sIdle:
         sleep(1);
         break;
@@ -41,7 +34,6 @@ void RoutePlanner::run()
         if( goToDest() ) {
             state_ = sIdle;
             currentStation_ = destination_;
-            pubCurrentLoc();
         }
         else {
             usleep(100000);

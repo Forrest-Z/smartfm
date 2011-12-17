@@ -1,8 +1,9 @@
 #include "RoutePlannerVehicle.h"
 
+///TODO: publish GPS and ETA
 
 RoutePlannerVehicle::RoutePlannerVehicle(StationPaths & sp)
-    : ROSRoutePlanner(sp), ac_("move_base", true)
+    : RoutePlanner(sp), ac_("move_base", true)
 {
     while( ! ac_.waitForServer(ros::Duration(5.0)) && ros::ok() )
         ROS_INFO("Waiting for the move_base action server to come up");

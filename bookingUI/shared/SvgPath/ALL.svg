@@ -136,7 +136,7 @@
      id="image2949"
      height="3536"
      width="3057"
-     xlink:href="file:///home/golfcar/smartfm/bookingUI/shared/SvgPath/curb_map1213d.png" />
+     xlink:href="file://~/SvgPath/curb_map1213d.png" />
   <path
      d="m 1014, 2178 L 1031, 2141 L 1064, 2134 L 1077, 2159"
      fill="none"
