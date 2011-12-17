@@ -33,6 +33,7 @@ namespace camera_projector{
 	
 	void camera_project::project_to_image(const sensing_on_road::pedestrian_laser_batch &pd_laser_para)
 	{
+        ROS_INFO("Camera project to image");
         pd_vision_batch_.header = pd_laser_para.header;
 		pd_vision_batch_.pd_vector.clear();
 		
@@ -42,7 +43,8 @@ namespace camera_projector{
             
             //transform from "sick_laser" to "webcam" of ROS-convension coordinate; 
             geometry_msgs::PointStamped stamped_point;
-            tf_.transformPoint(camera_frame_id_, pd_laser_para.pedestrian_laser_features[i].pedestrian_laser, stamped_point);
+            try{ tf_.transformPoint(camera_frame_id_, pd_laser_para.pedestrian_laser_features[i].pedestrian_laser, stamped_point);}
+            catch (tf::TransformException& e){ROS_INFO("camera project tf error");std::cout << e.what();return;}
             
             //"webcam" further tranform from ROS-convension to Vision-convension;
             geometry_msgs::Point32 centroid_point;
