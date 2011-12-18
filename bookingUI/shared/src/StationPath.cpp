@@ -16,7 +16,7 @@ using namespace std;
 #define VERBOSE 0 //whether to print path coordinates and info about paths (for testing)
 
 //definition of the svg file
-#define SVG_FILE "/home/golfcar/smartfm/bookingUI/shared/SvgPath/ALL_1215.svg"
+#define SVG_FILE "/home/golfcar/smartfm/bookingUI/shared/SvgPath/ALL_1217.svg"
 
 double PathPoint::distance(const PathPoint &p1, const PathPoint &p2)
 {

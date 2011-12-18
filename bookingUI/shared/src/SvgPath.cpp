@@ -10,7 +10,7 @@
 #define TINYXML_ELEMENT ELEMENT
 #define TINYXML_TEXT TEXT
 #endif
-#define VERBOSE 0
+#define VERBOSE 1
 using namespace std;
 
 SvgPath::SvgPath(const char* pFilename, StationPath* pose, PathPoint *size, const char* id)
@@ -68,8 +68,16 @@ void SvgPath::findPathElements(StationPath* pose, PathPoint* size, unsigned int 
         }
         else if(ss.str()=="path")
         {
-            unsigned int num = find_path_attributes(pParent->ToElement(),pose, id);
-            //cout<<"Found points "<<num<<endl;
+            unsigned int num=0;
+            try
+            {
+                num = find_path_attributes(pParent->ToElement(),pose, id);
+            }
+            catch (string error)
+            {
+                throw error;
+            }
+            
             foundPath++;
             *npoints=num;
 
@@ -194,7 +202,7 @@ int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose, con
             {
                 if(data_s[i].find_first_of("MmHhVvCcSsQqTtAa")!=string::npos)
                 {
-                    throw string_error("Only line path is supported, given",data_s[i]);
+                    throw string_error("Only line path is supported, given ",data_s[i]);
                 }
                 else if(data_s[i].find_first_of("Zz")==string::npos)
                 {
@@ -224,8 +232,13 @@ int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose, con
         if(ss.str()=="id")
         {
             stringstream s; s<<pAttrib->Value();
-            if(s.str().compare(id)!=0) found_points=0;
-             return found_points;
+            
+            if(s.str().compare(id)!=0) 
+            {
+                //just skip the rest of the attributes, it is not the path we want to find
+                return 0;
+            }
+            if(VERBOSE) cout<<"ID found: "<<s.str()<<endl;
         }
 
         pAttrib=pAttrib->Next();
