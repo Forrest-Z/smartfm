@@ -111,7 +111,7 @@ public:
     /// @return only the id, pickup and dropoff fields are filled in.
     Task waitForNewMission(float period = 1);
 
-    void setMissionStatus(std::string status);
+    void setMissionStatus(unsigned id, std::string status);
 };
 
 

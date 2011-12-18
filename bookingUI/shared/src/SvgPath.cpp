@@ -6,12 +6,18 @@
 #include "StationPath.h"
 #include "SvgPath.h"
 
+using namespace std;
+
+
+// There was an API change in tinyxml 2.6. Installed version is detected by CMAKE.
+// The following defines are for API version <2.6
 #ifdef TINYXML_API_PRE26
 #define TINYXML_ELEMENT ELEMENT
 #define TINYXML_TEXT TEXT
 #endif
-#define VERBOSE 1
-using namespace std;
+
+// Whether or not to pring some debugging info about paths.
+#define VERBOSE 0
 
 SvgPath::SvgPath(const char* pFilename, StationPath* pose, PathPoint *size, const char* id)
 {
