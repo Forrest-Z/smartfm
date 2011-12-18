@@ -53,16 +53,17 @@ bool PurePursuit::heading_lookahead(double &heading_la, double &dist_to_goal)
 
     //search through all the path segments
     ros::Time t1 = ros::Time::now();
-    path_n_=0;
+    path_n_=path_.poses.size()-2;
     current_point_ = path_.poses[path_n_].pose.position;
     next_point_ = path_.poses[path_n_+1].pose.position;
     //std::cout<<current_point_<<next_point_<<std::endl;
     dist_to_goal=0;
+    //reverse search to ensure that the pursuing point will always be the one in front of the vehicle
     while(!circle_line_collision(anchor_pt,collided_pt))
     {
-        path_n_++;
+        path_n_--;
 
-        if(path_n_+1<path_.poses.size()){
+        if(path_n_+1>1){
             current_point_ = path_.poses[path_n_].pose.position;
             next_point_ = path_.poses[path_n_+1].pose.position;
             //std::cout<<current_point_<<next_point_<<std::endl;
@@ -93,7 +94,8 @@ double PurePursuit::sqrt_distance(geometry_msgs::Point wp_a, geometry_msgs::Poin
     return sqrt((wp_a.x - wp_b.x)*(wp_a.x - wp_b.x)+(wp_a.y - wp_b.y)*(wp_a.y - wp_b.y));
 }
 
-
+//add to search for the latest collision path as the colliding point to avoid the path
+//behind being followed
 bool PurePursuit::circle_line_collision(geometry_msgs::Point& anchor_point,
                                         geometry_msgs::Point& intersect_point){
     //http://stackoverflow.com/questions/1073336/circle-line-collision-detection

@@ -286,7 +286,8 @@ bool PurePursuitBase::setPlan(const vector<geometry_msgs::PoseStamped>& orig_glo
     it = pp_->path_.poses.begin();
     //fix me: not ideal if the vehicle is already travel some path,
     //it will follow the shortest path from current pos to the first point!
-    pp_-> path_.poses.insert(it, robot_pose);
+    //fixed: changes to path by extending the next start point and overlap with previous path
+    //pp_-> path_.poses.insert(it, robot_pose);
 
     pp_-> initialized_ = false;
     pp_-> dist_to_final_point = 100;

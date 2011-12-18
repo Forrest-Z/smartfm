@@ -33,7 +33,7 @@ public:
     double frequency_;
     double tolerance_; //to track for last update from move_base package
     double e_zone_; //apply full brake if there exist an obstacles within this distance from base link
-    double high_speed_,slow_zone_,slow_speed_;
+    double high_speed_,slow_zone_,slow_speed_,enterstation_speed_,stationspeed_dist_;
 private:
     bool junction_stop_;
     ros::Time last_update_;
@@ -69,7 +69,9 @@ SpeedAdvisor::SpeedAdvisor()
     nh.param("tolerance", tolerance_, 0.5);
     nh.param("emergency_zone", e_zone_, 2.0);
     nh.param("slow_zone", slow_zone_, 10.0);
-    nh.param("slow_speed",slow_speed_, 1.0);
+    nh.param("slow_speed", slow_speed_, 1.0);
+    nh.param("enterstation_speed",enterstation_speed_, slow_speed_); //by default, enterstation speed is the same as slow speed
+    nh.param("stationspeed_dist", stationspeed_dist_, 20.0);
     n.param("use_sim_time", use_sim_time_, false);
     ROS_DEBUG_STREAM("Simulated time is "<<use_sim_time_);
     junction_stop_ = false;
@@ -111,7 +113,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
             //try a more general solution
             double obs_dist;
             obs_dist = move_status_.obstacles_dist;
-            if(obs_dist<10)
+            if(obs_dist<slow_zone_||move_status_.dist_to_goal<stationspeed_dist_)
             {
                 max_speed_ = slow_speed_;
                 if(obs_dist<e_zone_)
@@ -154,6 +156,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
         //respect the acceleration and deceleration
         if((move_speed_.linear.x-max_speed_)>-norm_neg_speed) move_speed_.linear.x+=norm_neg_speed;
         else move_speed_.linear.x=max_speed_;
+        if(max_speed_ == slow_speed_) ROS_INFO("Max speed reduced, speed now %lf", move_speed_.linear.x);
     }
     else if(move_speed_.linear.x<0) move_speed_.linear.x=0;
     move_speed_.angular.z = move_status_.steer_angle;
