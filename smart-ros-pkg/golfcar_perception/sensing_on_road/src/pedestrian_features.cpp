@@ -13,12 +13,14 @@
 #define HISTORY_SIZE 100
 #define STALE_THRESH 3.0
 
-#define MOVING_BELIEF 0.6
-#define SIZE_BELIEF 0.3
+#define MOVING_BELIEF 0.5
+#define SIZE_BELIEF 0.2
 
 #define PERSON_SENSE_PERSON         0.7
 #define NOT_PERSON_SENSE_PERSON     0.2
-#define PROBABILITY_THRESHOLD     0.8
+#define PROBABILITY_THRESHOLD       0.8
+#define ONCE_FOR_ALL_THRESHOLD      0.95
+#define ONCE_FOR_ALL_RESTTIME       1.0
 
 namespace sensing_on_road{
     
@@ -82,7 +84,7 @@ namespace sensing_on_road{
                 history_temp.single_segment_history.push_back(filtered_segment_batch_.segments[is]);
                 history_pool_.push_back(history_temp);
             }
-            ROS_DEBUG("History Initialized: %d", (int)history_pool_.size());
+            ROS_INFO("History Initialized: %d", (int)history_pool_.size());
         }
         else
         {
@@ -122,8 +124,8 @@ namespace sensing_on_road{
                 history_pool_[ih].nearest_distance = disSpace-compensate_dis;
                  
                  
-                 ROS_DEBUG("1--history obj_label %d, serial %d, %3f, %3f; segment %d, %3f, %3f, shortest dis2d_tmp, distance: %3f, %3f", 
-                          history_pool_[ih].object_label, ih, last_history_x, last_history_y, 
+                 ROS_INFO("1--history obj_label %d, serial %d, %3f, %3f, merged size %d; segment %d, %3f, %3f, shortest dis2d_tmp, distance: %3f, %3f", 
+                          history_pool_[ih].object_label, ih, last_history_x, last_history_y, (int)history_pool_[ih].merged_labels.size(),
                           history_pool_[ih].nearest_segment_serial, 
                           (float)filtered_segment_batch_.segments[history_pool_[ih].nearest_segment_serial].segment_centroid_odom.point.x, 
                           (float)filtered_segment_batch_.segments[history_pool_[ih].nearest_segment_serial].segment_centroid_odom.point.y,
@@ -158,7 +160,7 @@ namespace sensing_on_road{
                     }
                 }
                 
-                ROS_DEBUG("2--segment %d, %3f, %3f; history %d, %3f, %3f, shortest dis2d_tmp, distance: %3f, %3f", 
+                ROS_INFO("2--segment %d, %3f, %3f; history %d, %3f, %3f, shortest dis2d_tmp, distance: %3f, %3f", 
                           is, 
                           segment_x, segment_y, 
                           filtered_segment_batch_.segments[is].nearest_history_serial,
@@ -188,7 +190,7 @@ namespace sensing_on_road{
                     {
                         history_pool_[ih].history_status = 1;
                         filtered_segment_batch_.segments[segment_serial].segment_status = 1;
-                        ROS_DEBUG("Real Mutual Match ---- history %d, segment %d",ih,segment_serial);
+                        ROS_INFO("Real Mutual Match ---- history %d, segment %d",ih,segment_serial);
                     }
                 }
             }
@@ -225,7 +227,7 @@ namespace sensing_on_road{
                         {
                             history_pool_[ih].history_status = 1; 
                             filtered_segment_batch_.segments[segment_serial].segment_status=1;
-                            ROS_DEBUG("Add Mutual Match ---- history: %d, segment %d, dis %3f", ih, segment_serial, nearest_dis);
+                            ROS_INFO("Add Mutual Match ---- history: %d, segment %d, dis %3f", ih, segment_serial, nearest_dis);
                         }
                     }
                     else {history_pool_[ih].history_status = 4;}
@@ -266,17 +268,17 @@ namespace sensing_on_road{
                         {
                             //"3" means split, need special operation;
                             filtered_segment_batch_.segments[is].segment_status=3;
-                            ROS_DEBUG("Split ---- history: %d, segment %d", history_serial, is);
+                            ROS_INFO("Split ---- history: %d, segment %d", history_serial, is);
                         }
                         else if(history_pool_[history_serial].history_status == 2)
                         {
-                            ROS_DEBUG("Add2 Mutual Match ---- history: %d, segment %d", history_serial, is);
+                            ROS_INFO("Add2 Mutual Match ---- history: %d, segment %d", history_serial, is);
                             history_pool_[history_serial].history_status = 1;
                             filtered_segment_batch_.segments[is].segment_status=1;
                         }
                         else if(history_pool_[history_serial].history_status == 4 )
                         {
-                            ROS_DEBUG("Add3 Mutual Match ---- history: %d, segment %d", history_serial, is);
+                            ROS_INFO("Add3 Mutual Match ---- history: %d, segment %d", history_serial, is);
                             history_pool_[history_serial].history_status = 1;
                             filtered_segment_batch_.segments[is].segment_status=1;
                         }
@@ -284,14 +286,14 @@ namespace sensing_on_road{
                         {
                             if(filtered_segment_batch_.segments[is].segment_status ==10)
                             {
-                                ROS_DEBUG("Add3 Mutual Match ---- history: %d, segment %d", history_serial, is);
+                                ROS_INFO("Add3 Mutual Match ---- history: %d, segment %d", history_serial, is);
                                 history_pool_[history_serial].history_status = 1;
                                 filtered_segment_batch_.segments[is].segment_status=1;
                             }
                             else
                             {
                                 filtered_segment_batch_.segments[is].segment_status=3;
-                                ROS_DEBUG("Split ---- history: %d, segment %d", history_serial, is);
+                                ROS_INFO("Split ---- history: %d, segment %d", history_serial, is);
                             }
                         }
                     }
@@ -309,13 +311,13 @@ namespace sensing_on_road{
                         
                         if(partial_occlusion)
                         {
-                            ROS_DEBUG("Add OCCLU Mutual Match ---- history: %d, segment %d", history_serial, is);
+                            ROS_INFO("Add OCCLU Mutual Match ---- history: %d, segment %d", history_serial, is);
                             history_pool_[history_serial].history_status = 1;
                             filtered_segment_batch_.segments[is].segment_status=1;
                         }
                         else
                         {
-                            ROS_DEBUG("Segment Generate new history; segment: %d", is);
+                            ROS_INFO("Segment Generate new history; segment: %d", is);
                             //"4" will initiate new history.
                             filtered_segment_batch_.segments[is].segment_status=4;
                         }
@@ -340,6 +342,7 @@ namespace sensing_on_road{
                 else if(history_pool_[ih].history_status==2)
                 {
                     ROS_INFO("Merge ---- history: %d, segment %d", ih, segment_serial);
+                    
                     int history_serial = filtered_segment_batch_.segments[segment_serial].nearest_history_serial;
                     
                     if(history_pool_[ih].fastest_velocity > history_pool_[history_serial].fastest_velocity)
@@ -360,7 +363,7 @@ namespace sensing_on_road{
                     {
                         int object_label = history_pool_[ih].merged_labels[io];
                         int label_serial = -1;
-                        if( history_pool_[history_serial].merged_labels.size()>10) break;
+                        if( history_pool_[history_serial].merged_labels.size()>5) break;
                         for(unsigned int ioo=0; ioo < history_pool_[history_serial].merged_labels.size(); ioo++)
                         {
                             if(object_label==history_pool_[history_serial].merged_labels[ioo]) 
@@ -404,6 +407,7 @@ namespace sensing_on_road{
                 if(filtered_segment_batch_.segments[is].segment_status==3)
                 {
                     pedestrian_laser_history history_tmp = history_pool_[history_serial];
+                    history_tmp.once_for_all = false;
                     history_tmp.single_segment_history.pop_back();
                     history_tmp.single_segment_history.push_back(filtered_segment_batch_.segments[is]);
                     unsigned int label_position_tmp = 0;
@@ -599,12 +603,20 @@ namespace sensing_on_road{
         veri_show_pcl_.points.clear();  
         veri_show_batch_.header = veri_batch_.header;
         veri_show_batch_.pd_vector.clear();  
+        ros::Time segment_time = filtered_segment_batch_.header.stamp;
         
         for(unsigned int ih=0; ih!=history_pool_.size(); ih++) 
         {
             //add highest probility...like fastest_velocity...to make verification more stable...if necessary...
-            if(history_pool_[ih].pedestrian_belief > PROBABILITY_THRESHOLD)
+            if(history_pool_[ih].pedestrian_belief > PROBABILITY_THRESHOLD || history_pool_[ih].once_for_all)
             {
+                if(history_pool_[ih].pedestrian_belief > ONCE_FOR_ALL_THRESHOLD){history_pool_[ih].once_for_all=true;}
+                
+                
+                ros::Time history_time = history_pool_[ih].latest_update_time;
+                if(segment_time.toSec()-history_time.toSec()> ONCE_FOR_ALL_RESTTIME) {history_pool_[ih].once_for_all=false; continue;}
+
+                
                 geometry_msgs::Point32 veri_point;
                 veri_point.x = (float)history_pool_[ih].single_segment_history.back().segment_centroid_laser.point.x;
                 veri_point.y = (float)history_pool_[ih].single_segment_history.back().segment_centroid_laser.point.y;

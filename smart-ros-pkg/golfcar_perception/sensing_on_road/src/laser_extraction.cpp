@@ -1,3 +1,6 @@
+//Last Update: 2011-12-18
+//Change function block where nearby segments are merged with each other;
+
 #include "laser_extraction.h"
 
 #define DIS_RANGE 10
@@ -13,7 +16,6 @@ namespace sensing_on_road{
     
     laser_extraction::laser_extraction()
     {
-        
         private_nh_.param("laser_frame_id",     ldmrs_single_id_,      std::string("ldmrsAssemb"));
         private_nh_.param("odom_frame_id",      odom_frame_id_,        std::string("odom"));
         
@@ -33,7 +35,7 @@ namespace sensing_on_road{
     {
         ROS_INFO("--------scan_callback--------");
         laser_scan_ = *scan_in;
-        angle_resolution_ = scan_in->angle_increment;
+        angle_resolution_ = fabsf(scan_in->angle_increment);
         /*
         ROS_INFO("angle_increment %lf", scan_in->angle_increment);
         if(scan_in->angle_increment < 0.00437 && scan_in->angle_increment > 0.00436)        serial_multiple_=4;
@@ -85,14 +87,14 @@ namespace sensing_on_road{
                 range_temp = laser_scan_.ranges[last_serial_temp];
                 if(range_temp< DIS_RANGE){dis_threshold = ASSOCIATE_WITHIN_RNAGE_THRESH;}
                 //else{ dis_threshold = ASSOCIATE_OVER_5_THRESH;}
-                else{dis_threshold = ASSOCIATE_OVER_RANGE_MULTI * range_temp * laser_scan_.angle_increment;}
+                else{dis_threshold = ASSOCIATE_OVER_RANGE_MULTI * range_temp * fabsf(laser_scan_.angle_increment);}
                 
                 dis_px  =laser_cloud_laser_.points[ip].x-laser_cloud_laser_.points[ip-1].x;
                 dis_py  =laser_cloud_laser_.points[ip].y-laser_cloud_laser_.points[ip-1].y;
                 dis_pxy =sqrtf(dis_px*dis_px+dis_py*dis_py);
                 
                 bool connect_flag = true;
-                if(dis_pxy < dis_threshold) {connect_flag = true; }
+                if(dis_pxy < dis_threshold) {connect_flag = true; ROS_DEBUG("---connect by dis---");}
                 //else{connect_flag = false;ROS_INFO("Disconnect");}
                 else 
                 {
@@ -124,7 +126,7 @@ namespace sensing_on_road{
                         
                         //check if the point is on the same line, with angle difference +-5 degree;
                         if(thetha21_temp-thetha32_temp>0.0872||thetha21_temp-thetha32_temp<-0.0872){connect_flag = false;}
-                        else{ROS_INFO("connect!!!");}                                       
+                        else{ROS_DEBUG("connect by angle!!!");}                                       
                     }
                 }
                                                     
@@ -137,12 +139,12 @@ namespace sensing_on_road{
                     {
                         extracted_segments_laser_.segments.push_back(segment_temp);
                     }
-                    
                 }
                 else
                 {
-                    //ROS_INFO("segment %d", extracted_segments_laser_.segments.size()-1+1);
-                    //ROS_INFO("----------------New Segment----------");
+                    ROS_DEBUG("segment %d", extracted_segments_laser_.segments.size()-1+1);
+                    ROS_DEBUG("----------------New Segment----------");
+                    
                     extracted_segments_laser_.segments.push_back(segment_temp);
                     segment_temp.beam_serials.clear();
                     segment_temp.point_serials.clear();
@@ -157,7 +159,7 @@ namespace sensing_on_road{
                     }
                 }
                 
-                //ROS_INFO("x, y, dis_pxy: %5f, %5f, %5f", laser_cloud_laser_.points[ip].x, laser_cloud_laser_.points[ip].y, dis_pxy);  
+                //ROS_DEBUG("x, y, dis_pxy: %5f, %5f, %5f", laser_cloud_laser_.points[ip].x, laser_cloud_laser_.points[ip].y, dis_pxy);  
             }           
         }
         
@@ -165,11 +167,13 @@ namespace sensing_on_road{
         //----------------------------------------------------------------------------------------
         //-------------try to connect segments that are segmented by holes, if any;---------------
         //----------------------------------------------------------------------------------------
-        //ROS_INFO("1.Try to connect segments");
+        //------- possible segmentation fault in this block -----
+        
+        //ROS_DEBUG("1.Try to connect segments");
         for(unsigned int is=0; is< extracted_segments_laser_.segments.size(); is++)
         {
             extracted_segments_laser_.segments[is].connect_front_segment =-1;
-            extracted_segments_laser_.segments[is].connect_back_segment =-1;
+            extracted_segments_laser_.segments[is].connect_back_segment  =-1;
         }
         
         for(unsigned int is=0; is< extracted_segments_laser_.segments.size()-1; is++)
@@ -179,7 +183,7 @@ namespace sensing_on_road{
                 last_serial_temp = extracted_segments_laser_.segments[is].beam_serials.back();
                 range_temp = laser_scan_.ranges[last_serial_temp];
                 if(range_temp<DIS_RANGE){dis_threshold = ASSOCIATE_WITHIN_RNAGE_THRESH;}
-                else{dis_threshold = ASSOCIATE_OVER_RANGE_MULTI * range_temp * laser_scan_.angle_increment;}
+                else{dis_threshold = ASSOCIATE_OVER_RANGE_MULTI * range_temp * fabsf(laser_scan_.angle_increment);}
                 
                 unsigned int serial_number1 = extracted_segments_laser_.segments[is].point_serials.back();
                 unsigned int serial_number2 = extracted_segments_laser_.segments[ic].point_serials.front();
@@ -188,32 +192,64 @@ namespace sensing_on_road{
                 dis_px  =right_seg_last.x-left_seg_first.x;
                 dis_py  =right_seg_last.y-left_seg_first.y;
                 dis_pxy =sqrtf(dis_px*dis_px+dis_py*dis_py);
+                
                 if(dis_pxy < dis_threshold)
                 {
                     extracted_segments_laser_.segments[is].connect_back_segment = ic; 
-                    extracted_segments_laser_.segments[ic].connect_front_segment = is; 
+                    
+                    if(extracted_segments_laser_.segments[ic].connect_front_segment  == -1)
+                    {
+                        ROS_INFO("A");
+                        if(extracted_segments_laser_.segments[is].connect_front_segment ==-1)
+                        {
+                            extracted_segments_laser_.segments[ic].connect_front_segment = is;
+                        }
+                        else
+                        {
+                            extracted_segments_laser_.segments[ic].connect_front_segment = extracted_segments_laser_.segments[is].connect_front_segment;
+                        }
+                        ROS_INFO("END A");
+                    } 
+                    else
+                    {
+                        ROS_INFO("B");
+                        //meaning already get connected by front segments;
+                        int most_front_serial = extracted_segments_laser_.segments[ic].connect_front_segment;
+                        //remember to set process its connected predecessor;
+                        //record its front connected segment before chaning;
+                        int front_serial      = extracted_segments_laser_.segments[is].connect_front_segment;
+                        //set the connect_front_segment to the most front one, serving as type label in later processing;
+                        extracted_segments_laser_.segments[is].connect_front_segment = most_front_serial;
+                        
+                        while (front_serial != -1)
+                        {
+                            int current_serial = front_serial;
+                            front_serial = extracted_segments_laser_.segments[front_serial].connect_front_segment;
+                            extracted_segments_laser_.segments[current_serial].connect_front_segment = most_front_serial; 
+                        }
+                        ROS_INFO("END B");
+                    }
+                    
                     ROS_INFO("Connect is %d: (%5f, %5f) and ic %d: (%5f, %5f)", is, right_seg_last.x, right_seg_last.y, ic, left_seg_first.x, left_seg_first.y);
                     break;
                 }
             }
         }
         
-        //ROS_INFO("2. to merge segments");
+        ROS_INFO("2. to merge segments");
         std::vector<int> delete_connected_segments;
         for(unsigned int is=0; is< extracted_segments_laser_.segments.size(); is++)
         {
-            if(extracted_segments_laser_.segments[is].connect_front_segment != -1) continue;
-            else
+            if(extracted_segments_laser_.segments[is].connect_front_segment == -1)
             {
                 std::vector<int> connected_segments;
-                int front_seg = is;
-                int back_seg =  extracted_segments_laser_.segments[is].connect_back_segment;
-                while(back_seg !=-1)
+                for(unsigned int iss=0; iss< extracted_segments_laser_.segments.size(); iss++)
                 {
-                    front_seg = back_seg;
-                    back_seg  = extracted_segments_laser_.segments[front_seg].connect_back_segment;
-                    connected_segments.push_back(front_seg);
-                    delete_connected_segments.push_back(front_seg);
+                    if(extracted_segments_laser_.segments[iss].connect_front_segment == (int) is)
+                    {
+                        connected_segments.push_back(iss);
+                        delete_connected_segments.push_back(iss);
+                    }
                 }
                 
                 for(unsigned int cs=0; cs<connected_segments.size(); cs++)
@@ -228,9 +264,10 @@ namespace sensing_on_road{
                     }
                 }
             }
+            else {continue;}
         }
-        
-        //ROS_INFO("3. to delete segments");
+
+        ROS_INFO("3. to delete segments");
         //bubble_sorting, from large to small; preparing for "delete" operation;
         for(unsigned int y = 0; y < delete_connected_segments.size(); y++)
         {
@@ -244,11 +281,14 @@ namespace sensing_on_road{
                 }
             }
         }
+        
         for(unsigned int dc=0; dc<delete_connected_segments.size(); dc++)
         {
-            //ROS_INFO("delete segment: %d", delete_connected_segments[dc]);
-            if(delete_connected_segments[dc]<0){ROS_INFO("Unexpected Scenario");}
+            ROS_DEBUG("delete segment: %d", delete_connected_segments[dc]);
+            if(delete_connected_segments[dc]<0){ROS_DEBUG("Unexpected Scenario");}
             unsigned int delete_seg_serial = (unsigned int)delete_connected_segments[dc];
+            
+            //erase...
             extracted_segments_laser_.segments.erase(extracted_segments_laser_.segments.begin()+delete_seg_serial);
         }
         
@@ -259,8 +299,8 @@ namespace sensing_on_road{
         }
         
         
-        //int segment_number_temp = extracted_segments_laser_.segments.size();
-        //ROS_INFO("segments number: %d", segment_number_temp);
+        int segment_number_temp = extracted_segments_laser_.segments.size();
+        ROS_INFO("segments number: %d", segment_number_temp);
         segment_border_pub_.publish(segment_border);
     }
 
@@ -270,7 +310,7 @@ namespace sensing_on_road{
         segment_centroids_.header = laser_cloud_laser_.header;
         segment_centroids_.points.clear();
         
-        //ROS_INFO("segments_processing");
+        //ROS_DEBUG("segments_processing");
         for(std::vector<sensing_on_road::scan_segment>::size_type is=0; is!=extracted_segments_laser_.segments.size(); is++)
         {
             unsigned int temp_serial;
@@ -337,10 +377,10 @@ namespace sensing_on_road{
              */ 
             single_segment_processing(extracted_segments_laser_.segments[is]);
         }
-        //ROS_INFO("Publish Begin");
+        //ROS_DEBUG("Publish Begin");
         segment_processed_pub_.publish(extracted_segments_laser_);
         segment_centroids_pub_.publish(segment_centroids_);
-        //ROS_INFO("Publish Over");
+        //ROS_DEBUG("Publish Over");
     }
     
 
@@ -441,7 +481,10 @@ namespace sensing_on_road{
         centroid_laser.point.x = x_sum_temp/((float)segment_para.point_serials.size());
         centroid_laser.point.y = y_sum_temp/((float)segment_para.point_serials.size());
         centroid_laser.point.z = laser_cloud_laser_.points[segment_para.point_serials[0]].z;
-        tf_.transformPoint("odom", centroid_laser, centroid_odom);
+        
+        try{tf_.transformPoint("odom", centroid_laser, centroid_odom);}
+        catch (tf::TransformException& e){ROS_INFO("tf transform point wrong");std::cout << e.what();return;}
+        
 
         geometry_msgs::Point32 centroid_tmp;
         centroid_tmp.x = x_sum_temp/((float)segment_para.point_serials.size());

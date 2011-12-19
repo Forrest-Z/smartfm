@@ -46,18 +46,19 @@ class  pedestrian_laser_history
 	float nearest_distance;
 	float velocity;
 	float fastest_velocity;
-	
+	bool once_for_all;
 	std::vector<sensing_on_road::scan_segment> single_segment_history;
 	
 	float pedestrian_belief;
 
-
+;
 	pedestrian_laser_history()
 	{
 	 object_label = 0;
 	 velocity = 0.0;
 	 fastest_velocity  = 0.0;
 	 pedestrian_belief = 0.1;
+     once_for_all = false;
 	}
 	~pedestrian_laser_history(){}	
 };
