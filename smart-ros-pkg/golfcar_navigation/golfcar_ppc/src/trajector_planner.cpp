@@ -106,9 +106,10 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
     golfcar_ppc::move_status move_status;
     pp_->vehicle_base_ = robot_pose.pose;
 
-    double steer_angle,dist_to_goal;
-    path_flag_= pp_->steering_control(steer_angle,dist_to_goal);
+    double steer_angle,dist_to_goal, dist_to_ints;
+    path_flag_= pp_->steering_control(steer_angle,dist_to_goal,dist_to_ints);
     move_status.dist_to_goal = dist_to_goal;
+    move_status.dist_to_ints = dist_to_ints;
     if(path_flag_){
         steer_angle_=steer_angle;
         goalreached_=false;

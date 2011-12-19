@@ -29,13 +29,14 @@ public:
     ros::Subscriber junction_sub_;
     double max_speed_;
     double acc_;
-    double max_dec_, norm_dec_;
+    double max_dec_, norm_dec_, dec_ints_;
+    double stop_ints_dist_;
     double frequency_;
     double tolerance_; //to track for last update from move_base package
     double e_zone_; //apply full brake if there exist an obstacles within this distance from base link
     double high_speed_,slow_zone_,slow_speed_,enterstation_speed_,stationspeed_dist_;
 private:
-    bool junction_stop_;
+    bool junction_stop_,through_ints_;
     ros::Time last_update_;
     double stopping_distance_; //automatic calculate based on the maximum speed and normal deceleration
     bool use_sim_time_;
@@ -65,6 +66,12 @@ SpeedAdvisor::SpeedAdvisor()
     nh.param("acc", acc_, 0.5);
     nh.param("max_dec", max_dec_, 2.0);
     nh.param("norm_dec", norm_dec_, 1.0);
+
+    nh.param("dec_ints", dec_ints_, 0.8);
+    nh.param("stop_ints_dist", stop_ints_dist_,5.0); //the stopping distance from obstacles.
+    //It was found that the distance given by move_status will reach as small as 4 meter
+    //Hence, stopping distance should be at least larger than 4 for the stopping manoeuvre to work
+
     nh.param("frequency", frequency_,20.0);
     nh.param("tolerance", tolerance_, 0.5);
     nh.param("emergency_zone", e_zone_, 2.0);
@@ -75,6 +82,7 @@ SpeedAdvisor::SpeedAdvisor()
     n.param("use_sim_time", use_sim_time_, false);
     ROS_DEBUG_STREAM("Simulated time is "<<use_sim_time_);
     junction_stop_ = false;
+    through_ints_ = true;
     ros::Timer timer = n.createTimer(ros::Duration(1.0/frequency_),&SpeedAdvisor::ControlLoop,this);
 
     ros::spin();
@@ -111,8 +119,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
              */
 
             //try a more general solution
-            double obs_dist;
-            obs_dist = move_status_.obstacles_dist;
+            double obs_dist = move_status_.obstacles_dist;
             if(obs_dist<slow_zone_||move_status_.dist_to_goal<stationspeed_dist_)
             {
                 max_speed_ = slow_speed_;
@@ -137,6 +144,35 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
                 max_speed_ = high_speed_;
             }
 
+            //to slow down at intersection, dist_to_ints = -1 if there is no intersection
+            if(move_status_.dist_to_ints>0 && through_ints_)
+            {
+                double stopping_dist_ints = move_status_.dist_to_ints-stop_ints_dist_;
+                double recommended_speed=0;
+                if(stopping_dist_ints>0)
+                {
+                    recommended_speed= sqrt(2*dec_ints_*stopping_dist_ints);
+                    if(recommended_speed<high_speed_) max_speed_ = recommended_speed;
+                }
+                else
+                {
+                    move_speed_.angular.z = move_status_.steer_angle;
+                    move_speed_.linear.x = 0;
+                    recommend_speed_.publish(move_speed_);
+                    ros::spinOnce();
+                    string temp = "";
+                    cout<<"Clear to go?"<<endl;
+                    getline(cin, temp);
+                    cout<<"Continue"<<endl;
+                    through_ints_ = false;
+                }
+                ROS_DEBUG_STREAM("Stopping dist: "<<stopping_dist_ints<<" recommended_speed: "<<recommended_speed);
+            }
+            //reset the through_ints by making sure that the previous stop has passed
+            //this assume that the stopping distance between intersection is more than 2 meter a part
+            if(!through_ints_ && move_status_.dist_to_ints> stop_ints_dist_+2) through_ints_ = true;
+            //also reset the through_ints if there is no long an intersection
+            if(move_status_.dist_to_ints == -1) through_ints_ = true;
 
         }
         else speed_delta.push_back(norm_neg_speed);
@@ -149,14 +185,16 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
         double min_speed_delta = *(min_element(speed_delta.begin(), speed_delta.end()));
 
         ROS_DEBUG_STREAM("min_speed_delta: "<<min_speed_delta<<" Emergency "<<int(move_status_.emergency)<<" Junction: "<<junction_stop_);
-        move_speed_.linear.x+=min_speed_delta;
+        //racing with the max_speed_ specification by the if condition is not added
+        if(move_speed_.linear.x<max_speed_) move_speed_.linear.x+=min_speed_delta;
     }
     if(move_speed_.linear.x>max_speed_)
     {
         //respect the acceleration and deceleration
-        if((move_speed_.linear.x-max_speed_)>-norm_neg_speed) move_speed_.linear.x+=norm_neg_speed;
+        if(move_speed_.linear.x>max_speed_) move_speed_.linear.x+=norm_neg_speed;
         else move_speed_.linear.x=max_speed_;
-        if(max_speed_ == slow_speed_) ROS_INFO("Max speed reduced, speed now %lf", move_speed_.linear.x);
+        //if(max_speed_ == slow_speed_)
+            ROS_DEBUG("Max speed reduced, speed now %lf, %lf", move_speed_.linear.x, norm_neg_speed);
     }
     else if(move_speed_.linear.x<0) move_speed_.linear.x=0;
     move_speed_.angular.z = move_status_.steer_angle;

@@ -206,9 +206,28 @@ int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose, con
             positions.push_back(pos);
             for(unsigned int i=3; i<data_s.size(); i++)
             {
-                if(data_s[i].find_first_of("MmHhVvCcSsQqTtAa")!=string::npos)
+                if(data_s[i].find_first_of("MmHhVvSsQqTtAa")!=string::npos)
                 {
                     throw string_error("Only line path is supported, given ",data_s[i]);
+                }
+                else if(data_s[i].find_first_of("Cc")!=string::npos)
+                {
+                    if(data_s[i].find_first_of("C")!=string::npos) abs_rel=true;
+                    else if(data_s[i].find_first_of("c")!=string::npos) abs_rel=false;
+                    //only take the third point
+                    i+=4;
+                    double offsetx=0, offsety=0;
+                    if(!abs_rel)
+                    {
+                        offsetx = positions[positions.size()-1].x_;
+                        offsety = positions[positions.size()-1].y_;
+                    }
+                    pos.x_ = atof(data_s[++i].c_str())+offsetx;
+                    pos.y_ = atof(data_s[++i].c_str())+offsety;
+                    found_points++;
+                    positions.push_back(pos);
+                    //The stop point
+                    positions.push_back(pos);
                 }
                 else if(data_s[i].find_first_of("Zz")==string::npos)
                 {
@@ -231,6 +250,7 @@ int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose, con
                 {
                     if(VERBOSE) cout<<"Closepath command ignored."<<endl;
                 }
+                
 
             }
             *pose = positions;

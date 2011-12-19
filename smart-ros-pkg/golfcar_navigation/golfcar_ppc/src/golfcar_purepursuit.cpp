@@ -18,7 +18,7 @@ PurePursuit::PurePursuit()
 }
 
 
-bool PurePursuit::steering_control(double& wheel_angle, double &dist_to_goal)
+bool PurePursuit::steering_control(double& wheel_angle, double &dist_to_goal, double &dist_to_ints)
 {
     geometry_msgs::Point pt;
     if(!initialized_)
@@ -29,7 +29,7 @@ bool PurePursuit::steering_control(double& wheel_angle, double &dist_to_goal)
     }
     double heading_lh=0;
 
-    if(heading_lookahead(heading_lh,dist_to_goal))
+    if(heading_lookahead(heading_lh,dist_to_goal,dist_to_ints))
     {
         wheel_angle = atan((car_length * sin(heading_lh))/(Lfw_/2+lfw_*cos(heading_lh)));
         if(wheel_angle > 0.65) wheel_angle = 0.65;
@@ -42,7 +42,7 @@ bool PurePursuit::steering_control(double& wheel_angle, double &dist_to_goal)
 }
 
 
-bool PurePursuit::heading_lookahead(double &heading_la, double &dist_to_goal)
+bool PurePursuit::heading_lookahead(double &heading_la, double &dist_to_goal, double &dist_to_ints)
 {
     double vehicle_heading = tf::getYaw(vehicle_base_.orientation);
     geometry_msgs::Point anchor_pt;
@@ -52,37 +52,41 @@ bool PurePursuit::heading_lookahead(double &heading_la, double &dist_to_goal)
     geometry_msgs::Point collided_pt;
 
     //search through all the path segments
-    ros::Time t1 = ros::Time::now();
-    path_n_=path_.poses.size()-2;
-    current_point_ = path_.poses[path_n_].pose.position;
-    next_point_ = path_.poses[path_n_+1].pose.position;
-    //std::cout<<current_point_<<next_point_<<std::endl;
+    double dist = 0;
     dist_to_goal=0;
+    dist_to_ints=0;
+    bool ints_found=false;
     //reverse search to ensure that the pursuing point will always be the one in front of the vehicle
-    while(!circle_line_collision(anchor_pt,collided_pt))
+    for(path_n_=(int)path_.poses.size()-2;path_n_>=0;path_n_--)
     {
-        path_n_--;
-
-        if(path_n_+1>1){
-            current_point_ = path_.poses[path_n_].pose.position;
-            next_point_ = path_.poses[path_n_+1].pose.position;
-            //std::cout<<current_point_<<next_point_<<std::endl;
-            //ROS_DEBUG("Updating points");
-            dist_to_goal=sqrt_distance(vehicle_base_.position, path_.poses[path_n_+1].pose.position);
-            for(int i=path_.poses.size()-1;i>path_n_+1;i--)
-            {
-                dist_to_goal+=sqrt_distance(path_.poses[i].pose.position,path_.poses[i-1].pose.position);
-            }
-        }
-        else
-        {
-            dist_to_goal=sqrt_distance(vehicle_base_.position, path_.poses[path_.poses.size()-1].pose.position);
-            return false;
-        }
+        current_point_ = path_.poses[path_n_].pose.position;
+        next_point_ = path_.poses[path_n_+1].pose.position;
+        if(circle_line_collision(anchor_pt,collided_pt)) break;
     }
-    ros::Time t2 = ros::Time::now();
-    //ROS_INFO("Search time %d", (t2-t1).toNSec());
-    //std::cout<<"Search time "<< (t2-t1).toNSec()<<std::endl;
+
+    //calculate distance to goal and intersection if any
+    if(path_n_<0)
+    {
+        dist_to_goal=sqrt_distance(vehicle_base_.position, path_.poses[path_.poses.size()-1].pose.position);
+        dist_to_ints=-1;
+        return false;
+    }
+    else
+    {
+        for(unsigned int i=path_n_+1;i<path_.poses.size()-1;i++)
+        {
+            dist=sqrt_distance(path_.poses[i].pose.position,path_.poses[i+1].pose.position);
+            dist_to_goal+=dist;
+            if(dist==0) ints_found=true;
+            if(!ints_found) dist_to_ints+=dist;
+        }
+        dist = sqrt_distance(collided_pt,path_.poses[path_n_+1].pose.position);
+        dist += sqrt_distance(collided_pt,vehicle_base_.position);
+        dist_to_goal+=dist;
+        dist_to_ints+=dist;
+        if(!ints_found) dist_to_ints = -1;
+    }
+
     //heading_la = -1 indicate the controller couldn't find a path to follow, it has to be handle by trajectory_planner
     heading_la = atan2(collided_pt.y-anchor_pt.y, collided_pt.x-anchor_pt.x) - vehicle_heading;
     return true;
