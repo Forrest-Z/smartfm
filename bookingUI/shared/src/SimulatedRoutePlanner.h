@@ -20,7 +20,7 @@ class SimulatedRoutePlanner : public RoutePlanner
     double last_time, last_disp_time;
 
 public:
-    SimulatedRoutePlanner(StationPaths & sp, float vehicle_speed);
+    SimulatedRoutePlanner(const StationPaths & sp, float vehicle_speed);
 
     bool verbose;
 

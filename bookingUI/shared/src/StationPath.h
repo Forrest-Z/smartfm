@@ -31,6 +31,8 @@ public:
     /// Creates an invalid station.
     Station();
 
+    bool isValid() const {return valid_; }
+
     /// Returns the station's number
     unsigned number() const throw();
 

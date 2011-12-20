@@ -29,7 +29,12 @@ public class TaskDetailActivity extends Activity implements OnClickListener {
 		((TextView) findViewById(R.id.detail_pickup)).setText(task.pickup);
 		((TextView) findViewById(R.id.detail_dropoff)).setText(task.dropoff);
 		((TextView) findViewById(R.id.detail_status)).setText(task.status);
-		((TextView) findViewById(R.id.detail_eta)).setText(Integer.toString(task.eta));
+		if( task.status.compareToIgnoreCase("Acknowledged") == 0 ||
+				task.status.compareToIgnoreCase("Confirmed") == 0 ||
+				task.status.compareToIgnoreCase("Processing") == 0 )
+			((TextView) findViewById(R.id.detail_eta)).setText(Integer.toString(task.eta));
+		else
+			((TextView) findViewById(R.id.detail_eta)).setText("");
 	}
 
 	@Override

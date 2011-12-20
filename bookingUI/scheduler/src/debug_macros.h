@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 
+// SchedulerUI displays what is printed on stderr
 #ifndef DEBUG_STREAM
 #define DEBUG_STREAM stderr
 #endif
@@ -27,16 +28,16 @@
 
 #define MSG(lvl, fmt, ...) do { \
         if (DEBUG_VERBOSITY_VAR >= lvl) { \
-            fprintf(stderr, "%s#%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
-            fflush(stderr); \
+            fprintf(DEBUG_STREAM, "%s#%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
+            fflush(DEBUG_STREAM); \
             }\
     } while(0)
 
 #define MSGLOG(lvl, fmt, ...) do { MSG(lvl, fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
 
 #define ERROR(fmt, ...) do { \
-        fprintf(stderr, "ERROR %s:%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
-        fflush(stderr); \
+        fprintf(DEBUG_STREAM, "ERROR %s:%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \
+        fflush(DEBUG_STREAM); \
         LOG("\nERROR: " fmt "\n", ##__VA_ARGS__); \
     } while(0)
 

@@ -110,21 +110,18 @@ void DBTalker::updateTime(unsigned taskID, Duration duration)
 
 DBTalker::TaskStatus DBTalker::getTaskStatus(unsigned taskID)
 {
-    PreparedStatement *stmt = con->prepareStatement("SELECT customerID, status, vehicleID, pickupLocation, dropoffLocation FROM requests WHERE requestID=?");
+    PreparedStatement *stmt = con->prepareStatement(
+    		"SELECT customerID, status, vehicleID, pickupLocation, dropoffLocation, "
+    		"custCancelled, vehicleAcknowledgedCancel FROM requests WHERE requestID=?");
     stmt->setInt(1, taskID);
     ResultSet *res = stmt->executeQuery();
 
     TaskStatus info;
     while (res->next())
     {
-        info.task = Task(
-            taskID,
-            res->getString("customerID"),
-            res->getString("vehicleID"),
-            stationList(res->getString("pickupLocation")),
-            stationList(res->getString("dropoffLocation"))
-        );
         info.status = res->getString("status");
+        info.custCancelled = res->getBoolean("custCancelled");
+        info.vehAcknowledgedCancel = res->getString("vehicleAcknowledgedCancel");
         break;
     }
     delete res;
@@ -132,11 +129,11 @@ DBTalker::TaskStatus DBTalker::getTaskStatus(unsigned taskID)
     return info;
 }
 
-pair<VehicleStatus, Duration> DBTalker::getVehicleStatus(string vehicleID)
+DBTalker::VehicleInfo DBTalker::getVehicleInfo(string vehicleID)
 {
-    pair<VehicleStatus, Duration> info;
+	VehicleInfo info;
 
-    PreparedStatement *stmt = con->prepareStatement("SELECT status, eta FROM vehicles WHERE vehicleID=?");
+    PreparedStatement *stmt = con->prepareStatement("SELECT status, eta, currentLocation FROM vehicles WHERE vehicleID=?");
     stmt->setString(1, vehicleID);
     ResultSet *res = stmt->executeQuery();
 
@@ -144,17 +141,18 @@ pair<VehicleStatus, Duration> DBTalker::getVehicleStatus(string vehicleID)
     {
         string status = res->getString("status");
         if( status=="WaitingForAMission" )
-            info.first = VEHICLE_AVAILABLE;
+            info.status = VEHICLE_AVAILABLE;
         else if( status=="GoingToPickupLocation" )
-            info.first = VEHICLE_ON_CALL;
+            info.status = VEHICLE_ON_CALL;
         else if( status=="GoingToDropoffLocation" )
-            info.first = VEHICLE_POB;
+            info.status = VEHICLE_POB;
         else if( status=="AtPickupLocation" )
-            info.first = VEHICLE_ON_CALL;
+            info.status = VEHICLE_ON_CALL;
         else if( status=="NotAvailable" )
-            info.first = VEHICLE_NOT_AVAILABLE;
+            info.status = VEHICLE_NOT_AVAILABLE;
 
-        info.second = res->getInt("eta");
+        info.eta = res->getInt("eta");
+        info.currentLocation = res->getString("currentLocation");
         break;
     }
     delete res;

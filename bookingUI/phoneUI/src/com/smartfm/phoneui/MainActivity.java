@@ -54,8 +54,11 @@ public class MainActivity extends Activity implements OnClickListener,
 					String description = "";
 					description += "From " + task.pickup + " To "
 							+ task.dropoff + "\n";
-					description += "Status: " + task.status + ", ETA="
-							+ task.eta;
+					description += "Status: " + task.status;
+					if( task.status.compareToIgnoreCase("Acknowledged") == 0 ||
+							task.status.compareToIgnoreCase("Confirmed") == 0 ||
+							task.status.compareToIgnoreCase("Processing") == 0 )
+						description += ", ETA=" + task.eta;
 					tasksDescriptions.add(description);
 				}
 			}

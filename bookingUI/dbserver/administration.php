@@ -22,9 +22,6 @@ function listRequests()
     echoInTag("th","Pickup");
     echoInTag("th","Dropoff");
     echoInTag("th","VehicleID");
-    echoInTag("th","VehicleStatus");
-    echoInTag("th","Latitude");
-    echoInTag("th","Longitude");
     echoInTag("th","ETA");
     echo "</tr>";
 
@@ -47,24 +44,16 @@ function listRequests()
         echoInCell($row['status']);
         echoInCell($row['pickUpLocation']);
         echoInCell($row['dropOffLocation']);
-        echoInCell($row['vehicleID']);
 
-        if( $row['status']=="Confirmed" || $row['status']=="Processing" ) {
-            $vid = $row['vehicleID'];
-            $sql = "SELECT * FROM vehicles WHERE VehicleID = '$vid'";
-            $res = mysql_query($sql, $con) or die('Select error: ' . mysql_error());
-            $r = @mysql_fetch_assoc($res);
-            echoInCell($r['status']);
-            echoInCell($r['latitude']);
-            echoInCell($r['longitude']);
-            echoInCell($r['eta']);
-        }
-        else {
-            echoInCell("");
-            echoInCell("");
-            echoInCell("");
-            echoInCell("");
-        }
+        $vehicleID = "";
+        if( $row['status']=="Acknowledged" || $row['status']=="Confirmed" || $row['status']=="Processing" )
+            $vehicleID = $row['vehicleID'];
+        echoInCell($vehicleID);
+
+        $eta = "";
+        if( $row['status']=="Confirmed" || $row['status']=="Processing" )
+            $eta = $row['eta'];
+        echoInCell($eta);
         echo "</tr>";
     }
     echo "</table>";

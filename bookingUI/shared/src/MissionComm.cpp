@@ -34,6 +34,7 @@ void MissionComm::run()
             state_ = sGoingToPickup;
             updateVehicleStatus("GoingToPickupLocation");
             updateCurrentLocation("");
+            routePlanner_.start();
         }
         else {
             state_ = sAtPickup;
@@ -62,6 +63,7 @@ void MissionComm::run()
         state_ = sGoingToDropoff;
         updateVehicleStatus("GoingToDropoffLocation");
         updateCurrentLocation("");
+        routePlanner_.start();
         break;
 
     case sGoingToDropoff:

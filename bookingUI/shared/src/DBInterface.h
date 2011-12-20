@@ -27,6 +27,7 @@ public:
         std::string customerID;
         std::string status;
         std::string vehicleID;
+        bool custCancelled;
 
         Task();
         static Task fromXML(TiXmlElement *);
@@ -101,6 +102,8 @@ public:
 public:
     /// Returns true if the mission has been cancelled.
     bool checkMissionCancelled(unsigned id);
+
+    void acceptMissionCancel(unsigned id, bool accept);
 
     /// Checks whether a new mission is available, in which case it is copied
     /// in the task pointer passed as argument.

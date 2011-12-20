@@ -7,6 +7,10 @@
 
 #include "SchedulerUI.h"
 
+#define DEBUG_LOGFILE logFile
+#define DEBUG_VERBOSITY_VAR verbosity_level
+#include "debug_macros.h"
+
 #define DEFAULT_VEHICLE_ID "golfcart1"
 
 using namespace std;
@@ -26,6 +30,21 @@ SchedulerUI::SchedulerUI(Scheduler & s, DBTalker & db_talker) : scheduler(s), db
     this->newDropoffTextSize = 0;
     this->taskIDTextSize = 0;
     this->schedulerStatus = SCHEDULER_RUNNING;
+}
+
+SchedulerUI::~SchedulerUI()
+{
+
+}
+
+void SchedulerUI::setLogFile(FILE *logfile)
+{
+    this->logFile = logfile;
+}
+
+void SchedulerUI::setVerbosityLevel(unsigned lvl)
+{
+    this->verbosity_level = lvl;
 }
 
 // Initialize console display
@@ -195,6 +214,7 @@ void SchedulerUI::finishConsole()
 
 void SchedulerUI::updateConsole()
 {
+	MSGLOG(2, "");
     int ch = getch();
     if (ch != ERR)
         processKeyboard(ch);
@@ -211,6 +231,7 @@ void SchedulerUI::updateConsole()
 
 void SchedulerUI::drawButtons()
 {
+	MSGLOG(2, "");
     int attr, len;
     for (unsigned i = 0; i < UI_BUTTON_TOKEN_LAST; i++) {
         attr = A_NORMAL;
@@ -229,6 +250,7 @@ void SchedulerUI::drawButtons()
 // Update stderr
 void SchedulerUI::updateStderr()
 {
+	MSGLOG(2, "");
     struct pollfd fds[1];
     char data[1024];
 
@@ -255,6 +277,7 @@ void SchedulerUI::updateStderr()
 
 void SchedulerUI::updateTaskList()
 {
+	MSGLOG(2, "");
     list<Task> & tasks = scheduler.getVehicleTasks(DEFAULT_VEHICLE_ID);
     list<Task>::iterator it = tasks.begin();
     unsigned i = 0;
@@ -287,6 +310,7 @@ void SchedulerUI::updateTaskList()
 
 void SchedulerUI::updateVehicleStatus()
 {
+	MSGLOG(2, "");
 	std::string vehicleID = DEFAULT_VEHICLE_ID;
     VehicleStatus vehStatus = scheduler.getVehicleStatus(DEFAULT_VEHICLE_ID);
     char vehStatusStr[64];
@@ -672,7 +696,7 @@ void SchedulerUI::onUserAddTask()
     try
     {
         unsigned tid = dbTalker.makeBooking("cust1", pickup, dropoff);
-        Task task(tid, "cust1", 0, pickup, dropoff);
+        Task task(tid, "cust1", DEFAULT_VEHICLE_ID, pickup, dropoff);
         printText(NEW_TASK_ID, UI_TEXT_COLOR_GREEN,
                   "Added task ID %u: <%s, %s>          ",
                   task.taskID, pickup.c_str(), dropoff.c_str());

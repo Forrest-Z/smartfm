@@ -90,9 +90,19 @@ private:
     // Status of the scheduler
     SchedulerStatus schedulerStatus;
 
+private:
+    /// Level of verbosity
+    unsigned verbosity_level;
+
+    FILE * logFile;
+
 public:
     // Default constructor
     SchedulerUI(Scheduler &, DBTalker &);
+    ~SchedulerUI();
+
+    void setLogFile(FILE *);
+	void setVerbosityLevel(unsigned);
 
     // Initialize console display
     void initConsole();

@@ -18,7 +18,7 @@ public:
 
     bool valid;
 
-    /// ID of this object. This is internal to the scheduler.
+    /// Each task is associated an ID by the database.
     unsigned taskID;
 
     /// ID of customer
@@ -27,13 +27,14 @@ public:
     /// ID of vehicle
     std::string vehicleID;
 
-    /// ID of the pick-up (origin) station
+    /// The pick-up (origin) station
     Station pickup;
 
-    /// ID of the drop-off (destination) station
+    /// The drop-off (destination) station
     Station dropoff;
 
     /// Time from this pickup to dropoff
+    /// depends on path length and vehicle speed
     Duration ttask;
 
     /// Time from previous dropoff to this pickup

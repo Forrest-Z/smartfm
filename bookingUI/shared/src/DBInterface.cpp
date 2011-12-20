@@ -22,7 +22,8 @@ void dump_to_stdout( TiXmlNode* pParent, unsigned int indent = 0 );
 
 
 DBInterface::Task::Task()
-: id(0), pickup(""), dropoff(""), customerID(""), status(""), vehicleID("")
+: id(0), pickup(""), dropoff(""), customerID(""), status(""),
+  custCancelled(false)
 {
 
 }
@@ -47,8 +48,9 @@ DBInterface::Task DBInterface::Task::fromXML(TiXmlElement *pElement)
             t.customerID = pAttrib->Value();
         else if( strcasecmp(pAttrib->Name(), "status")==0 )
             t.status = pAttrib->Value();
-        else if( strcasecmp(pAttrib->Name(), "vehicleID")==0 )
-            t.vehicleID = pAttrib->Value();
+        else if( strcasecmp(pAttrib->Name(), "custCancelled")==0 &&
+                pAttrib->QueryIntValue(&ival)==TIXML_SUCCESS )
+            t.custCancelled = bool(ival);
         pAttrib=pAttrib->Next();
     }
     return t;
@@ -198,7 +200,14 @@ void DBInterface::deleteVehicle()
 // Returns true if the mission has been cancelled.
 bool DBInterface::checkMissionCancelled(unsigned id)
 {
-    return strcasecmp(getTaskEntry(id).status.c_str(),"cancelled")==0;
+    return getTaskEntry(id).custCancelled;
+}
+
+void DBInterface::acceptMissionCancel(unsigned id, bool accept) {
+	string script = accept ? "veh_accept_cancel.php" : "veh_reject_cancel.php";
+	HTTPClient client = getHTTPClient(script);
+	client.addParam<unsigned>("RequestID",id);
+	rpc(client);
 }
 
 // Returns NULL if no new mission, Task pointer otherwise.

@@ -40,8 +40,16 @@ private:
 public:
     struct TaskStatus
     {
-        Task task;
         std::string status;
+        bool custCancelled;
+        std::string vehAcknowledgedCancel;
+    };
+
+    struct VehicleInfo
+    {
+    	VehicleStatus status;
+    	Duration eta;
+    	std::string currentLocation;
     };
 
     DBTalker(std::string hostname, std::string username, std::string passwd, std::string dbname);
@@ -63,10 +71,10 @@ public:
 	void confirmTask(Task task);
 
     /// Update task status (from DB to scheduler)
-    TaskStatus getTaskStatus(unsigned taskID);
+	DBTalker::TaskStatus getTaskStatus(unsigned taskID);
 
     /// Update vehicle status
-    std::pair<VehicleStatus, Duration> getVehicleStatus(std::string vehicleID);
+    DBTalker::VehicleInfo getVehicleInfo(std::string vehicleID);
 
     /// Make a booking: add an entry in the database. Returns the task ID.
     /// Useful for testing without mobile phone.

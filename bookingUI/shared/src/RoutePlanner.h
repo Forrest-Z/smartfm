@@ -10,15 +10,17 @@ class RoutePlanner : public Threaded
     friend class MissionComm;
 
 public:
-    RoutePlanner(StationPaths & sp);
+    explicit RoutePlanner(const StationPaths & sp);
     void setDestination(const Station & s);
-    bool hasReached() const { return state_ == sIdle; }
+    bool hasReached() const { return state_ == sReached; }
+    void start();
+    const Station & getCurrentStation() const { return currentStation_; }
 
 
 protected:
-    enum State { sIdle, sMoving };
+    enum State { sUninit, sReady, sMoving, sReached };
 
-    StationPaths & sp_;
+    const StationPaths & sp_;
     Station currentStation_, destination_;
     State state_;
 

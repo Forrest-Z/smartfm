@@ -4,7 +4,7 @@ project (Scheduler)
 
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-set(CMAKE_CXX_FLAGS "-g -Wall")
+set(CMAKE_CXX_FLAGS "-g -Wall -O0")
 
 
 set(CURSES_NEED_NCURSES TRUE)

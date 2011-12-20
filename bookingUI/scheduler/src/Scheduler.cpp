@@ -125,26 +125,14 @@ Task Scheduler::addTask(Task task)
     }
     else
     {
-        Task & curTask = tasks.front();
-        // Time from previous task dropoff to this task pickup
-        unsigned tdp1 = 0;
-        // Time from this task dropoff to next task pickup
-        unsigned tdp2 = 0;
-        Station prevDropoff = curTask.dropoff;
-
+        Station prevDropoff = tasks.front().dropoff;
         list<Task>::iterator it = tasks.begin();
-        ++it;
-        for ( ; it != tasks.end(); ++it )
+        for ( ++it; it != tasks.end(); ++it )
         {
-            if (prevDropoff != task.pickup)
-                tdp1 = travelTime(prevDropoff, task.pickup);
-            else
-                tdp1 = 0;
-
-            if (task.dropoff != it->pickup)
-                tdp2 = travelTime(task.dropoff, it->pickup);
-            else
-                tdp2 = 0;
+        	// Time from previous task dropoff to this task pickup
+        	unsigned tdp1 = (prevDropoff != task.pickup) ? travelTime(prevDropoff, task.pickup) : 0;
+        	// Time from this task dropoff to next task pickup
+        	unsigned tdp2 = (task.dropoff != it->pickup) ? travelTime(task.dropoff, it->pickup) : 0;
 
             MSGLOG(4, "(%u+%u+%u) VS %d\n", tdp1, task.ttask, tdp2, it->tpickup);
 
@@ -161,9 +149,7 @@ Task Scheduler::addTask(Task task)
 
         if( it == tasks.end() )
         {
-            task.tpickup = 0;
-            if (prevDropoff != task.pickup)
-                task.tpickup = travelTime(prevDropoff, task.pickup);
+            task.tpickup = (prevDropoff != task.pickup) ? travelTime(prevDropoff, task.pickup) : 0;
             tasks.push_back(task);
             updateWaitTime(task.vehicleID);
         }
@@ -202,11 +188,7 @@ void Scheduler::removeTask(unsigned taskID)
             {
                 jt = tasks.erase(jt);
                 if( jt != tasks.end() )
-                {
-                    jt->tpickup = 0;
-                    if (prevDropoff != jt->pickup)
-                        jt->tpickup = travelTime(prevDropoff, jt->pickup);
-                }
+                    jt->tpickup = (prevDropoff != jt->pickup) ? travelTime(prevDropoff, jt->pickup) : 0;
                 updateWaitTime(vit->id.c_str());
                 return;
             }
