@@ -16,11 +16,12 @@ using namespace std;
 #define VERBOSE 0 //whether to print path coordinates and info about paths (for testing)
 
 //definition of the svg file
+
 //(BRICE) using a more flexible path definition so that it can work on several machines.
 //   --> Use a symlink
 // TODO: find a more flexible method. For instance, this could be passed at construcion
 // time, or rely on an environment variable, etc.
-#define SVG_FILE "~/SvgPath/ALL_1215.svg"
+#define SVG_FILE "~/SvgPath/ALL_1217.svg"
 
 double PathPoint::distance(const PathPoint &p1, const PathPoint &p2)
 {

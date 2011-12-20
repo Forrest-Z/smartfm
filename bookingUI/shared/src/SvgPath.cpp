@@ -16,12 +16,8 @@ using namespace std;
 #define TINYXML_TEXT TEXT
 #endif
 
-
 // Whether or not to pring some debugging info about paths.
 #define VERBOSE 0
-
-
-
 
 SvgPath::SvgPath(const char* pFilename, StationPath* pose, PathPoint *size, const char* id)
 {
@@ -78,8 +74,16 @@ void SvgPath::findPathElements(StationPath* pose, PathPoint* size, unsigned int 
         }
         else if(ss.str()=="path")
         {
-            unsigned int num = find_path_attributes(pParent->ToElement(),pose, id);
-            //cout<<"Found points "<<num<<endl;
+            unsigned int num=0;
+            try
+            {
+                num = find_path_attributes(pParent->ToElement(),pose, id);
+            }
+            catch (string error)
+            {
+                throw error;
+            }
+            
             foundPath++;
             *npoints=num;
 
@@ -202,9 +206,28 @@ int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose, con
             positions.push_back(pos);
             for(unsigned int i=3; i<data_s.size(); i++)
             {
-                if(data_s[i].find_first_of("MmHhVvCcSsQqTtAa")!=string::npos)
+                if(data_s[i].find_first_of("MmHhVvSsQqTtAa")!=string::npos)
                 {
-                    throw string_error("Only line path is supported, given",data_s[i]);
+                    throw string_error("Only line path is supported, given ",data_s[i]);
+                }
+                else if(data_s[i].find_first_of("Cc")!=string::npos)
+                {
+                    if(data_s[i].find_first_of("C")!=string::npos) abs_rel=true;
+                    else if(data_s[i].find_first_of("c")!=string::npos) abs_rel=false;
+                    //only take the third point
+                    i+=4;
+                    double offsetx=0, offsety=0;
+                    if(!abs_rel)
+                    {
+                        offsetx = positions[positions.size()-1].x_;
+                        offsety = positions[positions.size()-1].y_;
+                    }
+                    pos.x_ = atof(data_s[++i].c_str())+offsetx;
+                    pos.y_ = atof(data_s[++i].c_str())+offsety;
+                    found_points++;
+                    positions.push_back(pos);
+                    //The stop point
+                    positions.push_back(pos);
                 }
                 else if(data_s[i].find_first_of("Zz")==string::npos)
                 {
@@ -227,6 +250,7 @@ int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose, con
                 {
                     if(VERBOSE) cout<<"Closepath command ignored."<<endl;
                 }
+                
 
             }
             *pose = positions;
@@ -234,8 +258,13 @@ int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose, con
         if(ss.str()=="id")
         {
             stringstream s; s<<pAttrib->Value();
-            if(s.str().compare(id)!=0) found_points=0;
-             return found_points;
+            
+            if(s.str().compare(id)!=0) 
+            {
+                //just skip the rest of the attributes, it is not the path we want to find
+                return 0;
+            }
+            if(VERBOSE) cout<<"ID found: "<<s.str()<<endl;
         }
 
         pAttrib=pAttrib->Next();

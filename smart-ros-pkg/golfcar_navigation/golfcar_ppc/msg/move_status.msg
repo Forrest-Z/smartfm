@@ -3,3 +3,4 @@ bool emergency
 float64 steer_angle
 float64 obstacles_dist
 float64 dist_to_goal
+float64 dist_to_ints
