@@ -1,6 +1,7 @@
 #include <stdlib.h>
 
 #include <iostream>
+#include <stdexcept>
 
 #include "MissionComm.h"
 
@@ -8,10 +9,11 @@ MissionComm::MissionComm( RoutePlanner & rp )
     : routePlanner_(rp), stationList_(rp.sp_.knownStations()),
       currentStation_(rp.currentStation_), state_(sUninit)
 {
-    stateStr_.push_back("WaitingForAMission");
-    stateStr_.push_back("GoingToPickup");
-    stateStr_.push_back("GoingToDropoff");
-    stateStr_.push_back("AtPickup");
+    stateStr_[sWaitingMission] = "WaitingForAMission";
+    stateStr_[sGoingToPickup] = "GoingToPickupLocation";
+    stateStr_[sAtPickup] = "AtPickupLocation";
+    stateStr_[sGoingToDropoff] = "GoingToDropoffLocation";
+    stateStr_[sAtDropoff] = "AtDropoffLocation";
 }
 
 void MissionComm::run()
@@ -28,17 +30,17 @@ void MissionComm::run()
         break;
         
     case sWaitingMission:
-        waitForMission();
+        waitForMissionRequested();
         if( currentStation_ != pickup_ ) {
             routePlanner_.setDestination(pickup_);
             state_ = sGoingToPickup;
-            updateVehicleStatus("GoingToPickupLocation");
+            updateVehicleStatus(stateStr_[state_]);
             updateCurrentLocation("");
             routePlanner_.start();
         }
         else {
             state_ = sAtPickup;
-            updateVehicleStatus("AtPickupLocation");
+            updateVehicleStatus(stateStr_[state_]);
             updateCurrentLocation(pickup_.str());
         }
         break;
@@ -51,7 +53,7 @@ void MissionComm::run()
 
         if( routePlanner_.hasReached() ) {
             state_ = sAtPickup;
-            updateVehicleStatus("AtPickupLocation");
+            updateVehicleStatus(stateStr_[state_]);
             updateCurrentLocation(pickup_.str());
         }
         break;
@@ -61,7 +63,7 @@ void MissionComm::run()
         // TODO: wait for passenger to board
         routePlanner_.setDestination(dropoff_);
         state_ = sGoingToDropoff;
-        updateVehicleStatus("GoingToDropoffLocation");
+        updateVehicleStatus(stateStr_[state_]);
         updateCurrentLocation("");
         routePlanner_.start();
         break;
@@ -71,11 +73,22 @@ void MissionComm::run()
     	updateGeoLocation(routePlanner_.latitude_, routePlanner_.longitude_);
         if( routePlanner_.hasReached() ) {
             // TODO: wait for passenger to alight
-        	updateMissionStatus("Completed");
+            state_ = sAtDropoff;
+        	updateVehicleStatus(stateStr_[state_]);
         	updateCurrentLocation(dropoff_.str());
-            state_ = sWaitingMission;
         }
         break;
+
+    case sAtDropoff:
+    	if( checkMissionCompleted() ) {
+			state_ = sWaitingMission;
+			updateVehicleStatus(stateStr_[state_]);
+    	}
+    	break;
+
+    default:
+    	throw std::runtime_error("This state should not happen.");
+
     }
 
     sleep(1);
@@ -93,7 +106,7 @@ void PromptMissionComm::waitForMission()
 
 void PromptMissionComm::updateStatus()
 {
-    std::cout <<"New status: " <<stateStr_[state_] <<std::endl;
+    std::cout << "New status: " << stateStr_[state_] <<std::endl;
 }
 
 
@@ -105,11 +118,16 @@ DBMissionComm::DBMissionComm(RoutePlanner & rp, std::string url, std::string veh
 
 }
 
-void DBMissionComm::waitForMission()
+void DBMissionComm::waitForMissionRequested()
 {
 	DBInterface::Task task = dbi.waitForNewMission();
     pickup_ = stationList_(task.pickup);
     dropoff_ = stationList_(task.dropoff);
     currentTaskID_ = task.id;
     dbi.setVehicleCurrReq(task.id);
+}
+
+bool DBMissionComm::checkMissionCompleted()
+{
+	return strcasecmp(dbi.getTaskEntry(currentTaskID_).status.c_str(),"completed")==0;
 }

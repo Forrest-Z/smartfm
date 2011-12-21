@@ -13,7 +13,7 @@ insert into stations values ('McDonald', 1.298116, 103.771209);
 drop table if exists vehicles;
 create table vehicles (
     vehicleID varchar(20) not null,
-    status enum('WaitingForAMission', 'GoingToPickupLocation', 'GoingToDropoffLocation', 'AtPickupLocation', 'NotAvailable') not null,
+    status enum('WaitingForAMission', 'GoingToPickupLocation', 'AtPickupLocation', 'GoingToDropoffLocation', 'AtDropoffLocation', 'NotAvailable') not null,
     latitude float(10,6) default null,
     longitude float(10,6) default null,
     eta int(6) default null, /*estimate time of arrival to current dest (pick or drop)*/

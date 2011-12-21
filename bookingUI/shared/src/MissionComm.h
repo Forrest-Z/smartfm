@@ -1,7 +1,7 @@
 #ifndef __MISSION_COMM_H__
 #define __MISSION_COMM_H__
 
-#include <vector>
+#include <map>
 #include <string>
 
 #include "RoutePlanner.h"
@@ -16,7 +16,7 @@ public:
     MissionComm( RoutePlanner & rp );
 
 protected:
-    enum State { sUninit, sWaitingMission, sGoingToPickup, sGoingToDropoff, sAtPickup };
+    enum State { sUninit, sWaitingMission, sGoingToPickup, sAtPickup, sGoingToDropoff, sAtDropoff };
 
     RoutePlanner & routePlanner_;
     const StationList & stationList_;
@@ -24,10 +24,15 @@ protected:
 
     State state_;
     Station pickup_, dropoff_;
-    std::vector<std::string> stateStr_;
+    std::map<State, std::string> stateStr_;
 
     void run();
 
+    /// Blocks until a mission is available. When a mission is obtained,
+    /// set pickup_ and dropoff_.
+    virtual void waitForMissionRequested() = 0;
+
+    virtual bool checkMissionCompleted() { return true; }
     virtual void identify() { };
     virtual void deidentify() { };
     virtual void updateMissionStatus(std::string status) { }
@@ -36,10 +41,6 @@ protected:
     virtual void updateETA(float eta) { }
     virtual void updateCurrentLocation(std::string loc) { }
     virtual bool checkMissionCancelled(unsigned id) { return false; }
-    
-    /// Blocks until a mission is available. When a mission is obtained,
-    /// set pickup_ and dropoff_.
-    virtual void waitForMission() = 0;
 };
 
 
@@ -72,7 +73,8 @@ private:
     void updateETA(float eta) { dbi.setETA(eta); }
     void updateCurrentLocation(std::string loc) { dbi.setCurrentLocation(loc); }
     bool checkMissionCancelled(unsigned id) { return dbi.checkMissionCancelled(id); }
-    void waitForMission();
+    void waitForMissionRequested();
+    bool checkMissionCompleted();
 };
 
 #endif
