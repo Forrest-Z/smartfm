@@ -11,7 +11,7 @@ function listRequests()
 {
     $con = connect_to_DB();
     $filter = isset($_GET['filter']) && $_GET['filter']=='yes';
-    $sql = "SELECT * FROM requests";
+    $sql = "SELECT * FROM requests ORDER BY RequestID";
     $result = mysql_query($sql, $con) or die ('Select error: ' . mysql_error());
     echo "<table>";
     echo "<tr>";

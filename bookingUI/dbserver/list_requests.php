@@ -18,6 +18,7 @@ if( isset($requestID) )
 $query = "SELECT * FROM requests";
 if( sizeof($setvar) )
     $query .= " WHERE " . join(' and ', $setvar);
+$query .= " ORDER BY RequestID";
 
 $xmlres = new XMLRes();
 
