@@ -2,6 +2,7 @@
 #define __SCHEDULER_TYPES_H__
 
 #include <string>
+#include <map>
 
 #include <StationPath.h>
 
@@ -56,14 +57,17 @@ public:
 
 enum VehicleStatus
 {
-    VEHICLE_NOT_AVAILABLE,
-    VEHICLE_ON_CALL,
-    VEHICLE_POB,
-    VEHICLE_AVAILABLE
+	VEH_STAT_WAITING,
+	VEH_STAT_GOING_TO_PICKUP,
+	VEH_STAT_AT_PICKUP,
+	VEH_STAT_GOING_TO_DROPOFF,
+	VEH_STAT_AT_DROPOFF,
+	VEH_STAT_NOT_AVAILABLE
 };
 
 std::string vehicleStatusStr(VehicleStatus vs);
-
+const std::map<VehicleStatus,std::string> & getVehicleStatusStrMap();
+VehicleStatus vehicleStatusFromStr(std::string);
 
 struct TaskStatus
 {
@@ -77,6 +81,7 @@ struct VehicleInfo
 	VehicleStatus status;
 	Duration eta;
 	std::string currentLocation;
+	unsigned requestID;
 };
 
 } //namespace SchedulerTypes

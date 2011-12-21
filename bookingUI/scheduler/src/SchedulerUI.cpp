@@ -318,22 +318,14 @@ void SchedulerUI::updateVehicleStatus()
 	//MSGLOG(4, "");
 	std::string vehicleID = DEFAULT_VEHICLE_ID;
 	Scheduler::CVIT vit = scheduler.checkVehicleExist(vehicleID);
-	SchedulerTypes::VehicleStatus vehStatus = vit->getStatus();
-    char vehStatusStr[64];
 
     mvwprintw(this->win, this->textFields[VEHICLE_ID].row, this->textFields[VEHICLE_ID].col,
               "%s", vehicleID.c_str());
-    if (vehStatus == SchedulerTypes::VEHICLE_NOT_AVAILABLE)
-        strncpy(vehStatusStr, "NOT AVAILABLE", sizeof(vehStatusStr) - 1);
-    else if (vehStatus == SchedulerTypes::VEHICLE_ON_CALL)
-        strncpy(vehStatusStr, "ON CALL      ", sizeof(vehStatusStr) - 1);
-    else if (vehStatus == SchedulerTypes::VEHICLE_POB)
-        strncpy(vehStatusStr, "POB          ", sizeof(vehStatusStr) - 1);
-    else if (vehStatus == SchedulerTypes::VEHICLE_AVAILABLE)
-        strncpy(vehStatusStr, "AVAILABLE    ", sizeof(vehStatusStr) - 1);
-    else
-        strncpy(vehStatusStr, "UNKNOWN      ", sizeof(vehStatusStr) - 1);
 
+    char vehStatusStr[64];
+	SchedulerTypes::VehicleStatus vehStatus = vit->getStatus();
+	string vss = SchedulerTypes::vehicleStatusStr(vehStatus) + "                  ";
+	strncpy(vehStatusStr, vss.c_str(), sizeof(vehStatusStr) - 1);
     mvwprintw(this->win, this->textFields[VEHICLE_STATUS].row, this->textFields[VEHICLE_STATUS].col,
               "%s", vehStatusStr);
 

@@ -1,6 +1,5 @@
 #include <string>
 #include <list>
-#include <sstream>
 
 #include "SchedulerTypes.h"
 #include "Vehicle.h"
@@ -55,7 +54,7 @@ void Vehicle::updateWaitTime(Duration timeCurrentTask)
 void Vehicle::updateTCurrent(Duration tremain)
 {
     Task & t = getCurrentTask();
-    if( status == SchedulerTypes::VEHICLE_POB )
+    if( status == SchedulerTypes::VEH_STAT_GOING_TO_DROPOFF )
     {
         t.ttask = tremain;
         t.tpickup = 0;
@@ -79,7 +78,7 @@ void Vehicle::updateTTaskCurrent(Duration ttask)
 void Vehicle::updateStatus(SchedulerTypes::VehicleStatus status)
 {
 	this->status = status;
-    if (status == SchedulerTypes::VEHICLE_POB)
+    if( status == SchedulerTypes::VEH_STAT_GOING_TO_DROPOFF )
         getCurrentTask().tpickup = 0;
 }
 
@@ -90,53 +89,60 @@ Task Vehicle::switchToNextTask()
 
     tasks.pop_front();
     Task task = tasks.front();
-    updateStatus(SchedulerTypes::VEHICLE_ON_CALL);
+    updateStatus(SchedulerTypes::VEH_STAT_GOING_TO_PICKUP);
     updateWaitTime();
     return task;
 }
 
 void Vehicle::update()
 {
+	string vehicleID = id;
+	SchedulerTypes::VehicleInfo vi = dbTalker.getVehicleInfo(vehicleID);
+	updateStatus(vi.status);
+
 	if( tasks.empty() )
 		return;
 
-	string vehicleID = id;
 	Task curTask = tasks.front();
-	SchedulerTypes::VehicleInfo vi = dbTalker.getVehicleInfo(vehicleID);
-	SchedulerTypes::TaskStatus ts = dbTalker.getTaskStatus(curTask.taskID);
-	updateStatus(vi.status);
 
 	switch(vi.status)
 	{
-	case SchedulerTypes::VEHICLE_AVAILABLE:
-		dbTalker.updateTime(curTask.taskID, 0);
-		dbTalker.updateTaskStatus(curTask.taskID, "Completed");
-		if( tasks.size()>1 )
-		{
-			Task task = switchToNextTask();
-			dbTalker.confirmTask(task);
-		}
-		else
-		{
-			tasks.clear();
-		}
-		break;
+	case SchedulerTypes::VEH_STAT_WAITING:
+		break; //nothing to do here
 
-	case SchedulerTypes::VEHICLE_ON_CALL:
-	case SchedulerTypes::VEHICLE_POB:
+	case SchedulerTypes::VEH_STAT_GOING_TO_PICKUP:
+	case SchedulerTypes::VEH_STAT_AT_PICKUP:
+	case SchedulerTypes::VEH_STAT_GOING_TO_DROPOFF:
 		updateTCurrent(vi.eta);
 		updateWaitTime();
 		break;
 
+	case SchedulerTypes::VEH_STAT_AT_DROPOFF:
+		if( vi.requestID == curTask.taskID )
+		{
+			dbTalker.updateTime(curTask.taskID, 0);
+			dbTalker.updateTaskStatus(curTask.taskID, "Completed");
+			if( tasks.size()>1 )
+			{
+				Task task = switchToNextTask();
+				dbTalker.confirmTask(task);
+			}
+			else
+			{
+				tasks.clear();
+			}
+		}
+	break;
+
 	default:
-		stringstream ss;
-		ss <<"Scheduler::update(): task status is " <<ts.status <<". ";
-		ss <<"This case has not been implemented yet.";
-		throw logic_error(ss.str());
+		throw logic_error(string("Scheduler::update(): vehicle status is ") +
+				SchedulerTypes::vehicleStatusStr(vi.status) +
+				"This case has not been implemented yet.");
 	}
 
 	// Report waiting time
 	list<Task>::const_iterator tit = tasks.begin();
+	dbTalker.updateTime(tit->taskID, tit->ttask);
 	for( ++tit; tit != tasks.end(); ++tit )
 		dbTalker.updateTime(tit->taskID, tit->tpickup);
 }

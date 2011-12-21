@@ -30,7 +30,7 @@ protected:
 
     /// Blocks until a mission is available. When a mission is obtained,
     /// set pickup_ and dropoff_.
-    virtual void waitForMissionRequested() = 0;
+    virtual void waitForMissionConfirmed() = 0;
 
     virtual bool checkMissionCompleted() { return true; }
     virtual void identify() { };
@@ -73,7 +73,7 @@ private:
     void updateETA(float eta) { dbi.setETA(eta); }
     void updateCurrentLocation(std::string loc) { dbi.setCurrentLocation(loc); }
     bool checkMissionCancelled(unsigned id) { return dbi.checkMissionCancelled(id); }
-    void waitForMissionRequested();
+    void waitForMissionConfirmed();
     bool checkMissionCompleted();
 };
 

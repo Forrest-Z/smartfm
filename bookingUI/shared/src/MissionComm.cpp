@@ -30,7 +30,7 @@ void MissionComm::run()
         break;
         
     case sWaitingMission:
-        waitForMissionRequested();
+        waitForMissionConfirmed();
         if( currentStation_ != pickup_ ) {
             routePlanner_.setDestination(pickup_);
             state_ = sGoingToPickup;
@@ -118,7 +118,7 @@ DBMissionComm::DBMissionComm(RoutePlanner & rp, std::string url, std::string veh
 
 }
 
-void DBMissionComm::waitForMissionRequested()
+void DBMissionComm::waitForMissionConfirmed()
 {
 	DBInterface::Task task = dbi.waitForNewMission();
     pickup_ = stationList_(task.pickup);

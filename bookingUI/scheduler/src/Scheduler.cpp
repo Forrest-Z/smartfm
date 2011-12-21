@@ -26,7 +26,7 @@ Scheduler::Scheduler(DBTalker &dbt)
 : verbosity_level(0), logFile(NULL), dbTalker(dbt)
 {
     // Add a vehicle. TODO: get the list of vehicles from the database.
-    vehicles.push_back( Vehicle(dbt, "golfcart1", SchedulerTypes::VEHICLE_AVAILABLE) );
+    vehicles.push_back( Vehicle(dbt, "golfcart1", SchedulerTypes::VEH_STAT_WAITING) );
 }
 
 void Scheduler::setLogFile(FILE *logfile)
@@ -43,12 +43,12 @@ Scheduler::VIT Scheduler::checkVehicleAvailable()
 {
     VIT vit;
     for ( vit = vehicles.begin(); vit != vehicles.end(); ++vit)
-        if (vit->status != SchedulerTypes::VEHICLE_NOT_AVAILABLE)
+        if ( vit->status != SchedulerTypes::VEH_STAT_NOT_AVAILABLE )
             break;
     return vit;
 }
 
-Task Scheduler::addTask(Task task)
+void Scheduler::addTask(Task task)
 {
     // Currently we don't have any procedure to assign a vehicle to the task,
     // so we just assign to the first available vehicle:
@@ -68,9 +68,12 @@ Task Scheduler::addTask(Task task)
 
     if( vit->tasks.empty() )
     {
+        if( vit->status != SchedulerTypes::VEH_STAT_WAITING ) {
+        	MSGLOG(2, "Vehicle is not ready yet, skipping.");
+        	return;
+        }
         MSGLOG(2, "Adding as current.");
-        assert( vit->status == SchedulerTypes::VEHICLE_AVAILABLE );
-        vit->status = SchedulerTypes::VEHICLE_ON_CALL;
+        vit->status = SchedulerTypes::VEH_STAT_GOING_TO_PICKUP;
         task.tpickup = 0; //TODO: this should be the time from the current station to the pickup station
         vit->tasks.push_back(task);
         dbTalker.confirmTask(task);
@@ -108,7 +111,6 @@ Task Scheduler::addTask(Task task)
 
         dbTalker.acknowledgeTask(task);
     }
-    return task;
 }
 
 

@@ -147,7 +147,7 @@ SchedulerTypes::VehicleInfo DBTalker::getVehicleInfo(string vehicleID)
 {
 	SchedulerTypes::VehicleInfo info;
 
-    PreparedStatement *stmt = con->prepareStatement("SELECT status, eta, currentLocation FROM vehicles WHERE vehicleID=?");
+    PreparedStatement *stmt = con->prepareStatement("SELECT status, eta, currentLocation, requestID FROM vehicles WHERE vehicleID=?");
     stmt->setString(1, vehicleID);
     ResultSet *res = stmt->executeQuery();
     string status = "";
@@ -155,25 +155,16 @@ SchedulerTypes::VehicleInfo DBTalker::getVehicleInfo(string vehicleID)
     while (res->next())
     {
         status = res->getString("status");
-        if( status=="WaitingForAMission" )
-            info.status = SchedulerTypes::VEHICLE_AVAILABLE;
-        else if( status=="GoingToPickupLocation" )
-            info.status = SchedulerTypes::VEHICLE_ON_CALL;
-        else if( status=="GoingToDropoffLocation" )
-            info.status = SchedulerTypes::VEHICLE_POB;
-        else if( status=="AtPickupLocation" )
-            info.status = SchedulerTypes::VEHICLE_ON_CALL;
-        else if( status=="NotAvailable" )
-            info.status = SchedulerTypes::VEHICLE_NOT_AVAILABLE;
-
+		info.status = SchedulerTypes::vehicleStatusFromStr(status);
         info.eta = res->getInt("eta");
         info.currentLocation = res->getString("currentLocation");
+        info.requestID = res->getInt("requestID");
         break;
     }
     delete res;
     delete stmt;
-    MSGLOG(2,"Got vehicle info: vehicle=%s, status=%s, eta=%u, currentLoc=%s",
-    		vehicleID.c_str(), status.c_str(), info.eta, info.currentLocation.c_str());
+    MSGLOG(2,"Got vehicle info: vehicle=%s, status=%s, eta=%u, currentLoc=%s, requestID=%u",
+    		vehicleID.c_str(), status.c_str(), info.eta, info.currentLocation.c_str(), info.requestID);
     return info;
 }
 

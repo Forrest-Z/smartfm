@@ -65,9 +65,7 @@ public:
 private:
     /// Add the task to one of the vehicles' queue. Update the status of the task
     /// in the DB (Acknowledged or Confirmed).
-    /// Returns the task with extra information (ETA, vehicleID, etc.).
-    /// Throws a SchedulerException if no vehicle is available.
-    SchedulerTypes::Task addTask(SchedulerTypes::Task);
+    void addTask(SchedulerTypes::Task);
 
     /// Method to remove a task. Throws a SchedulerException if the task does
     /// not exist or cannot be cancelled.

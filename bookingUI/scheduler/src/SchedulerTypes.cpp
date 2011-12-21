@@ -1,5 +1,8 @@
+#include <cassert>
 #include <string>
 #include <sstream>
+#include <cstring>
+#include <stdexcept>
 
 #include "SchedulerTypes.h"
 
@@ -33,19 +36,40 @@ string Task::toString() const
     return s.str();
 }
 
+map<VehicleStatus,string> * vehicleStatusStrMap__ = 0;
+
 string vehicleStatusStr(VehicleStatus vs)
 {
-	switch( vs )
+	const map<VehicleStatus,string> & m = getVehicleStatusStrMap();
+	map<VehicleStatus,string>::const_iterator mit = m.find(vs);
+	assert(mit!=m.end());
+	return mit->second;
+}
+
+const map<VehicleStatus,string> & getVehicleStatusStrMap()
+{
+	if( vehicleStatusStrMap__==0 )
 	{
-	case VEHICLE_NOT_AVAILABLE:
-		return "NOT AVAILABLE";
-	case VEHICLE_ON_CALL:
-		return "ON CALL";
-	case VEHICLE_POB:
-		return "POB";
-	case VEHICLE_AVAILABLE:
-		return "AVAILABLE";
+		vehicleStatusStrMap__ = new map<VehicleStatus,string>();
+		map<VehicleStatus,string> & m = *vehicleStatusStrMap__;
+		m[VEH_STAT_WAITING] = "WaitingForAMission";
+		m[VEH_STAT_GOING_TO_PICKUP] = "GoingToPickupLocation";
+		m[VEH_STAT_AT_PICKUP] = "AtPickupLocation";
+		m[VEH_STAT_GOING_TO_DROPOFF] = "GoingToDropoffLocation";
+		m[VEH_STAT_AT_DROPOFF] = "AtDropoffLocation";
+		m[VEH_STAT_NOT_AVAILABLE] = "NotAvailable";
 	}
+	return *vehicleStatusStrMap__;
+}
+
+VehicleStatus vehicleStatusFromStr(std::string s)
+{
+	const map<VehicleStatus,string> & m = getVehicleStatusStrMap();
+	map<VehicleStatus,string>::const_iterator mit;
+	for( mit = m.begin(); mit!=m.end(); ++mit )
+		if( strcasecmp(mit->second.c_str(), s.c_str())==0 )
+			return mit->first;
+	throw runtime_error(string("VehicleStatus ")+s+" is invalid.");
 }
 
 } //namespace SchedulerTypes
