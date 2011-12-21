@@ -3,6 +3,7 @@
 
 #include <ncurses.h>
 
+#include "SchedulerTypes.h"
 #include "Scheduler.h"
 #include "DBTalker.h"
 
@@ -69,7 +70,7 @@ private:
     WINDOW *win;
 
     // Scheduler
-    Scheduler & scheduler;
+    const Scheduler & scheduler;
 
     DBTalker & dbTalker;
 
@@ -98,7 +99,7 @@ private:
 
 public:
     // Default constructor
-    SchedulerUI(Scheduler &, DBTalker &);
+    SchedulerUI(const Scheduler &, DBTalker &);
     ~SchedulerUI();
 
     void setLogFile(FILE *);
@@ -135,6 +136,8 @@ private:
     void onUserViewTask();
     void onUserCancelTask();
     void onUserAddTask();
+
+    bool getStation(UIButtonToken button, Station *station);
 
     void printText(UITextToken field, UITextColor c, const char *fmt, ...);
     void printButton(UIButtonToken field, UITextColor c, const char *fmt, ...);

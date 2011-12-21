@@ -21,6 +21,7 @@ void MissionComm::run()
     case sUninit:
         stationList_.print();
         currentStation_ = stationList_.prompt("Current station? ");
+        deidentify();
         identify();
         updateCurrentLocation(currentStation_.str());
         state_ = sWaitingMission;
@@ -28,7 +29,6 @@ void MissionComm::run()
         
     case sWaitingMission:
         waitForMission();
-        updateMissionStatus("Processing");
         if( currentStation_ != pickup_ ) {
             routePlanner_.setDestination(pickup_);
             state_ = sGoingToPickup;
@@ -73,7 +73,6 @@ void MissionComm::run()
             // TODO: wait for passenger to alight
         	updateMissionStatus("Completed");
         	updateCurrentLocation(dropoff_.str());
-        	updateVehicleStatus("WaitingForAMission");
             state_ = sWaitingMission;
         }
         break;
@@ -112,4 +111,5 @@ void DBMissionComm::waitForMission()
     pickup_ = stationList_(task.pickup);
     dropoff_ = stationList_(task.dropoff);
     currentTaskID_ = task.id;
+    dbi.setVehicleCurrReq(task.id);
 }

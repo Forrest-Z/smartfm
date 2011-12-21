@@ -97,6 +97,8 @@ public:
     /// Sets the estimated time of arrival
     void setETA(float eta);
 
+    void setVehicleCurrReq(unsigned id);
+
     
 // Some functions related to the requests.
 public:

@@ -19,6 +19,7 @@
 
 using namespace std;
 using namespace sql;
+using SchedulerTypes::Task;
 
 
 DBTalker::DBTalker(string hostname, string username, string passwd, string dbname)
@@ -63,7 +64,7 @@ vector<Task> DBTalker::getRequestedBookings()
 
     while (res->next())
         tasks.push_back(
-            Task(
+			Task(
                 res->getInt("requestID"),
                 res->getString("customerID"),
                 "", //vehicle ID (dummy value, will be assigned by scheduler)
@@ -87,6 +88,7 @@ void DBTalker::acknowledgeTask(Task task)
 	stmt->setInt(2, task.taskID);
 	stmt->execute();
 	delete stmt;
+	MSGLOG(2,"Acknowledged request");
 }
 
 void DBTalker::confirmTask(Task task)
@@ -96,19 +98,30 @@ void DBTalker::confirmTask(Task task)
 	stmt->setInt(2, task.taskID);
 	stmt->execute();
 	delete stmt;
+	MSGLOG(2,"Confirmed request");
 }
 
-void DBTalker::updateTime(unsigned taskID, Duration duration)
+void DBTalker::updateTaskStatus(unsigned taskID, string status)
 {
-	return; //TODO: table requests needs an ETA field
+	PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET status=? WHERE RequestID=?");
+	stmt->setString(1, status);
+	stmt->setInt(2, taskID);
+	stmt->execute();
+	delete stmt;
+	MSGLOG(2, "Updated task status: task %d, status %s", taskID, status.c_str());
+}
+
+void DBTalker::updateTime(unsigned taskID, SchedulerTypes::Duration duration)
+{
     PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET eta=? WHERE RequestID=?");
 	stmt->setInt(1, duration);
 	stmt->setInt(2, taskID);
 	stmt->execute();
     delete stmt;
+	MSGLOG(2, "Updated task ETA: task %d, ETA %u", taskID, duration);
 }
 
-DBTalker::TaskStatus DBTalker::getTaskStatus(unsigned taskID)
+SchedulerTypes::TaskStatus DBTalker::getTaskStatus(unsigned taskID)
 {
     PreparedStatement *stmt = con->prepareStatement(
     		"SELECT customerID, status, vehicleID, pickupLocation, dropoffLocation, "
@@ -116,7 +129,7 @@ DBTalker::TaskStatus DBTalker::getTaskStatus(unsigned taskID)
     stmt->setInt(1, taskID);
     ResultSet *res = stmt->executeQuery();
 
-    TaskStatus info;
+    SchedulerTypes::TaskStatus info;
     while (res->next())
     {
         info.status = res->getString("status");
@@ -126,30 +139,32 @@ DBTalker::TaskStatus DBTalker::getTaskStatus(unsigned taskID)
     }
     delete res;
     delete stmt;
+    MSGLOG(2,"Got task status: task %u, status=%s", taskID, info.status.c_str());
     return info;
 }
 
-DBTalker::VehicleInfo DBTalker::getVehicleInfo(string vehicleID)
+SchedulerTypes::VehicleInfo DBTalker::getVehicleInfo(string vehicleID)
 {
-	VehicleInfo info;
+	SchedulerTypes::VehicleInfo info;
 
     PreparedStatement *stmt = con->prepareStatement("SELECT status, eta, currentLocation FROM vehicles WHERE vehicleID=?");
     stmt->setString(1, vehicleID);
     ResultSet *res = stmt->executeQuery();
+    string status = "";
 
     while (res->next())
     {
-        string status = res->getString("status");
+        status = res->getString("status");
         if( status=="WaitingForAMission" )
-            info.status = VEHICLE_AVAILABLE;
+            info.status = SchedulerTypes::VEHICLE_AVAILABLE;
         else if( status=="GoingToPickupLocation" )
-            info.status = VEHICLE_ON_CALL;
+            info.status = SchedulerTypes::VEHICLE_ON_CALL;
         else if( status=="GoingToDropoffLocation" )
-            info.status = VEHICLE_POB;
+            info.status = SchedulerTypes::VEHICLE_POB;
         else if( status=="AtPickupLocation" )
-            info.status = VEHICLE_ON_CALL;
+            info.status = SchedulerTypes::VEHICLE_ON_CALL;
         else if( status=="NotAvailable" )
-            info.status = VEHICLE_NOT_AVAILABLE;
+            info.status = SchedulerTypes::VEHICLE_NOT_AVAILABLE;
 
         info.eta = res->getInt("eta");
         info.currentLocation = res->getString("currentLocation");
@@ -157,6 +172,8 @@ DBTalker::VehicleInfo DBTalker::getVehicleInfo(string vehicleID)
     }
     delete res;
     delete stmt;
+    MSGLOG(2,"Got vehicle info: vehicle=%s, status=%s, eta=%u, currentLoc=%s",
+    		vehicleID.c_str(), status.c_str(), info.eta, info.currentLocation.c_str());
     return info;
 }
 
@@ -185,14 +202,7 @@ unsigned DBTalker::makeBooking(string customerID, Station pickup, Station dropof
     return i;
 }
 
-void DBTalker::createVehicleEntry(std::string VehicleID)
+void DBTalker::custCancel(unsigned taskID)
 {
-    PreparedStatement *pstmt = con->prepareStatement(
-        "INSERT INTO vehicles "
-        "(vehicleID, status) "
-        "VALUES (?, 'WaitingForAMission')"
-    );
-    pstmt->setString(1, VehicleID);
-    pstmt->execute();
-    delete pstmt;
+	//TODO: implement custCancel
 }

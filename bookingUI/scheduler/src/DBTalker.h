@@ -9,8 +9,7 @@
 #include <cppconn/driver.h>
 #include <cppconn/connection.h>
 
-#include "Scheduler.h"
-
+#include "SchedulerTypes.h"
 
 
 /*
@@ -25,7 +24,6 @@
  */
 
 
-
 class DBTalker
 {
 private:
@@ -38,19 +36,6 @@ private:
 
 
 public:
-    struct TaskStatus
-    {
-        std::string status;
-        bool custCancelled;
-        std::string vehAcknowledgedCancel;
-    };
-
-    struct VehicleInfo
-    {
-    	VehicleStatus status;
-    	Duration eta;
-    	std::string currentLocation;
-    };
 
     DBTalker(std::string hostname, std::string username, std::string passwd, std::string dbname);
     ~DBTalker();
@@ -59,30 +44,34 @@ public:
     void setVerbosityLevel(unsigned);
 
     /// Check the DB for bookings that haven't been scheduled yet
-    std::vector<Task> getRequestedBookings();
+    std::vector<SchedulerTypes::Task> getRequestedBookings();
+
+    /// Update task status (from scheduler to DB)
+    void updateTaskStatus(unsigned taskID, std::string status);
 
     /// Update task ETA (from scheduler to DB)
-    void updateTime(unsigned taskID, Duration duration);
+    void updateTime(unsigned taskID, SchedulerTypes::Duration duration);
 
     /// Set the task status as 'Acknowledged' in the DB
-    void acknowledgeTask(Task task);
+    void acknowledgeTask(SchedulerTypes::Task task);
 
     /// Set the task status as 'Confirmed' in the DB
-	void confirmTask(Task task);
+	void confirmTask(SchedulerTypes::Task task);
 
     /// Update task status (from DB to scheduler)
-	DBTalker::TaskStatus getTaskStatus(unsigned taskID);
+	SchedulerTypes::TaskStatus getTaskStatus(unsigned taskID);
 
     /// Update vehicle status
-    DBTalker::VehicleInfo getVehicleInfo(std::string vehicleID);
+	SchedulerTypes::VehicleInfo getVehicleInfo(std::string vehicleID);
 
+
+// Functions to create tasks and vehicle in the database for simulated mode
+public:
     /// Make a booking: add an entry in the database. Returns the task ID.
-    /// Useful for testing without mobile phone.
     unsigned makeBooking(std::string customerID, Station pickup, Station dropoff);
 
-    /// Inserts a vehicle entry in the database. Useful for testing in simulated
-    /// mode.
-    void createVehicleEntry(std::string VehicleID);
+    /// Requests for the task to be cancelled.
+    void custCancel(unsigned taskID);
 
 private:
     void connect();

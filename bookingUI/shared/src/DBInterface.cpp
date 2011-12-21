@@ -265,6 +265,13 @@ void DBInterface::setVehicleStatus(string status)
     rpc(client);
 }
 
+void DBInterface::setVehicleCurrReq(unsigned id)
+{
+    HTTPClient client = getHTTPClient("veh_update_status.php");
+    client.addParam<unsigned>("RequestID", id);
+    rpc(client);
+}
+
 // Returns the vehicle entry
 DBInterface::Vehicle DBInterface::getVehicleEntry()
 {

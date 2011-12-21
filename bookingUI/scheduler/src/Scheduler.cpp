@@ -15,65 +15,18 @@
 #include "debug_macros.h"
 
 using namespace std;
-
+using SchedulerTypes::Task;
+using SchedulerTypes::Duration;
 
 
 #define MAX_ADDITIONAL_TIME 5
 
 
-#define __CASE(t) case t: msg=#t; break
-SchedulerException::SchedulerException(SchedulerExceptionTypes t) throw()
-{
-    type_ = t;
-    switch(type_)
-    {
-        __CASE(NO_AVAILABLE_VEHICLE);
-        __CASE(TASK_DOES_NOT_EXIST);
-        __CASE(TASK_CANNOT_BE_CANCELLED);
-        __CASE(INVALID_VEHICLE_ID);
-        __CASE(NO_PENDING_TASKS);
-        __CASE(NO_CURRENT_TASK);
-    }
-}
-
-
-//------------------------------------------------------------------------------
-
-
-Task::Task(unsigned taskID, string customerID, string vehicleID,
-           Station pickup, Station dropoff)
-{
-    this->taskID = taskID;
-    this->customerID = customerID;
-    this->vehicleID = vehicleID;
-    this->pickup = pickup;
-    this->dropoff = dropoff;
-
-    this->ttask = 0;
-    this->tpickup = 0;
-    this->twait = 0;
-
-    this->valid = true;
-}
-
-string Task::toString() const
-{
-    stringstream s("");
-    s << "<taskID:" <<  taskID << ", custID:" << customerID;
-    s << ", pickup:" << pickup.str() << ", dropoff:" << dropoff.str();
-    s << ", tpickup:" << tpickup << ", ttask:" << ttask << ", twait:" << twait << ">";
-    return s.str();
-}
-
-
-//------------------------------------------------------------------------------
-
-
-Scheduler::Scheduler()
-: verbosity_level(0), logFile(NULL)
+Scheduler::Scheduler(DBTalker &dbt)
+: verbosity_level(0), logFile(NULL), dbTalker(dbt)
 {
     // Add a vehicle. TODO: get the list of vehicles from the database.
-    vehicles.push_back( Vehicle("golfcart1", VEHICLE_AVAILABLE) );
+    vehicles.push_back( Vehicle(dbt, "golfcart1", SchedulerTypes::VEHICLE_AVAILABLE) );
 }
 
 void Scheduler::setLogFile(FILE *logfile)
@@ -90,21 +43,22 @@ Scheduler::VIT Scheduler::checkVehicleAvailable()
 {
     VIT vit;
     for ( vit = vehicles.begin(); vit != vehicles.end(); ++vit)
-        if (vit->status != VEHICLE_NOT_AVAILABLE)
+        if (vit->status != SchedulerTypes::VEHICLE_NOT_AVAILABLE)
             break;
     return vit;
 }
 
 Task Scheduler::addTask(Task task)
 {
-    VIT vit = checkVehicleAvailable();
+    // Currently we don't have any procedure to assign a vehicle to the task,
+    // so we just assign to the first available vehicle:
+    // TODO: support more vehicles
+
+	VIT vit = checkVehicleAvailable();
     if( vit==vehicles.end() )
         throw SchedulerException(SchedulerException::NO_AVAILABLE_VEHICLE);
 
-    // Currently we don't have any procedure to assign a vehicle to the task,
-    // so we just assign to vehicle 0:
-    // TODO: support more vehicles
-    task = Task(task.taskID, task.customerID, vehicles[0].id, task.pickup, task.dropoff);
+    task = Task(task.taskID, task.customerID, vit->id, task.pickup, task.dropoff);
 
     MSGLOG(2, "Adding task <%u,%s,%s,%s> to vehicle %s",
             task.taskID, task.customerID.c_str(),
@@ -112,22 +66,20 @@ Task Scheduler::addTask(Task task)
 
     task.ttask = travelTime(task.pickup, task.dropoff);
 
-    list<Task> & tasks = getVehicleTasks(task.vehicleID);
-
-    if( tasks.empty() )
+    if( vit->tasks.empty() )
     {
         MSGLOG(2, "Adding as current.");
-        assert( vit->status == VEHICLE_AVAILABLE );
-        vit->status = VEHICLE_ON_CALL;
+        assert( vit->status == SchedulerTypes::VEHICLE_AVAILABLE );
+        vit->status = SchedulerTypes::VEHICLE_ON_CALL;
         task.tpickup = 0; //TODO: this should be the time from the current station to the pickup station
-        tasks.push_back(task);
-        updateWaitTime(task.vehicleID);
+        vit->tasks.push_back(task);
+        dbTalker.confirmTask(task);
     }
     else
     {
-        Station prevDropoff = tasks.front().dropoff;
-        list<Task>::iterator it = tasks.begin();
-        for ( ++it; it != tasks.end(); ++it )
+        Station prevDropoff = vit->tasks.front().dropoff;
+        list<Task>::iterator it = vit->tasks.begin();
+        for ( ++it; it != vit->tasks.end(); ++it )
         {
         	// Time from previous task dropoff to this task pickup
         	unsigned tdp1 = (prevDropoff != task.pickup) ? travelTime(prevDropoff, task.pickup) : 0;
@@ -139,20 +91,22 @@ Task Scheduler::addTask(Task task)
             if (tdp1 + task.ttask + tdp2 <= it->tpickup + MAX_ADDITIONAL_TIME) {
                 task.tpickup = tdp1;
                 it->tpickup = tdp2;
-                tasks.insert(it, task);
-                updateWaitTime(task.vehicleID);
+                vit->tasks.insert(it, task);
+                vit->updateWaitTime();
                 break;
             }
             else
                 prevDropoff = it->dropoff;
         }
 
-        if( it == tasks.end() )
+        if( it == vit->tasks.end() )
         {
             task.tpickup = (prevDropoff != task.pickup) ? travelTime(prevDropoff, task.pickup) : 0;
-            tasks.push_back(task);
-            updateWaitTime(task.vehicleID);
+            vit->tasks.push_back(task);
+            vit->updateWaitTime();
         }
+
+        dbTalker.acknowledgeTask(task);
     }
     return task;
 }
@@ -189,7 +143,7 @@ void Scheduler::removeTask(unsigned taskID)
                 jt = tasks.erase(jt);
                 if( jt != tasks.end() )
                     jt->tpickup = (prevDropoff != jt->pickup) ? travelTime(prevDropoff, jt->pickup) : 0;
-                updateWaitTime(vit->id.c_str());
+                vit->updateWaitTime();
                 return;
             }
             prevDropoff = jt->dropoff;
@@ -210,43 +164,15 @@ Scheduler::VIT Scheduler::checkVehicleExist(string vehicleID)
     return vit;
 }
 
-bool Scheduler::hasPendingTasks(string vehicleID)
+Scheduler::CVIT Scheduler::checkVehicleExist(std::string vehicleID) const
 {
-    return getVehicleTasks(vehicleID).size() > 1;
-}
-
-Task Scheduler::vehicleSwitchToNextTask(string vehicleID)
-{
-    VIT vit = checkVehicleExist(vehicleID);
-    vit->status = VEHICLE_AVAILABLE;
-
-    if( ! hasPendingTasks(vehicleID) )
-    {
-        MSGLOG(2, "No more task for vehicle %s\n", vehicleID.c_str());
-        throw SchedulerException(SchedulerException::NO_PENDING_TASKS);
-    }
-
-    vit->tasks.pop_front();
-    Task task = vit->tasks.front();
-    vit->status = VEHICLE_ON_CALL;
-    updateWaitTime(task.vehicleID);
-    MSGLOG(2, "Giving task <%u,%s,%s> to vehicle %s",
-           task.taskID, task.pickup.c_str(), task.dropoff.c_str(), task.vehicleID.c_str());
-    return task;
-}
-
-list<Task> & Scheduler::getVehicleTasks(string vehicleID)
-{
-    VIT vit = checkVehicleExist(vehicleID);
-    return vit->tasks;
-}
-
-Task & Scheduler::getVehicleCurrentTask(string vehicleID)
-{
-    list<Task> & tasks = getVehicleTasks(vehicleID);
-    if( tasks.empty() )
-        throw SchedulerException(SchedulerException::NO_CURRENT_TASK);
-    return tasks.front();
+	CVIT vit;
+	for( vit=vehicles.begin(); vit!=vehicles.end(); ++vit )
+		if( vit->id == vehicleID )
+			break;
+	if( vit==vehicles.end() )
+		throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
+	return vit;
 }
 
 Task & Scheduler::getTask(unsigned taskID)
@@ -260,83 +186,20 @@ Task & Scheduler::getTask(unsigned taskID)
     return *jt;
 }
 
-Duration Scheduler::getWaitTime(unsigned taskID)
+const Task & Scheduler::getTask(unsigned taskID) const
+{
+	list<Task>::const_iterator jt;
+	for(CVIT vit = vehicles.begin(); vit != vehicles.end(); ++vit)
+		for( jt = vit->tasks.begin(); jt != vit->tasks.end(); ++jt )
+			if(jt->taskID == taskID)
+				return *jt;
+	throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
+	return *jt;
+}
+
+Duration Scheduler::getWaitTime(unsigned taskID) const
 {
     return getTask(taskID).twait;
-}
-
-VehicleStatus Scheduler::getVehicleStatus(string vehicleID)
-{
-    return checkVehicleExist(vehicleID)->status;
-}
-
-void Scheduler::updateWaitTime(string vehicleID)
-{
-    Task & t = getVehicleCurrentTask(vehicleID);
-    updateWaitTime(vehicleID, t.tpickup + t.ttask);
-}
-
-void Scheduler::updateWaitTime(string vehicleID, Duration timeCurrentTask)
-{
-    list<Task> & tasks = getVehicleTasks(vehicleID);
-    Duration waittime = timeCurrentTask;
-
-	MSGLOG(3, "Updating waiting time for vehicle %s with current task "
-			"completion time %u", vehicleID.c_str(), timeCurrentTask);
-
-    for( list<Task>::iterator it = tasks.begin(); it != tasks.end(); ++it )
-    {
-        waittime += it->tpickup;
-        it->twait = waittime;
-        waittime += it->ttask;
-    }
-}
-
-void Scheduler::updateTCurrent(string vehicleID, Duration tremain)
-{
-    Task & t = getVehicleCurrentTask(vehicleID);
-    if (getVehicleStatus(vehicleID) == VEHICLE_POB)
-    {
-        t.ttask = tremain;
-        t.tpickup = 0;
-    }
-    else
-    {
-        t.tpickup = tremain;
-    }
-}
-
-void Scheduler::updateTPickupCurrent(string vehicleID, Duration tpickup)
-{
-    getVehicleCurrentTask(vehicleID).tpickup = tpickup;
-}
-
-void Scheduler::updateTTaskCurrent(string vehicleID, Duration ttask)
-{
-    getVehicleCurrentTask(vehicleID).ttask = ttask;
-}
-
-void Scheduler::updateVehicleStatus(string vehicleID, VehicleStatus status)
-{
-	VIT vit = checkVehicleExist(vehicleID);
-    vit->status = status;
-    if (status == VEHICLE_POB)
-        getVehicleCurrentTask(vehicleID).tpickup = 0;
-}
-
-string vehicleStatusStr(VehicleStatus vs)
-{
-	switch( vs )
-	{
-	case VEHICLE_NOT_AVAILABLE:
-		return "NOT AVAILABLE";
-	case VEHICLE_ON_CALL:
-		return "ON CALL";
-	case VEHICLE_POB:
-		return "POB";
-	case VEHICLE_AVAILABLE:
-		return "AVAILABLE";
-	}
 }
 
 string Scheduler::toString() const
@@ -361,3 +224,16 @@ Duration Scheduler::travelTime(Station pickup, Station dropoff)
     double length = stationPaths.getPath(pickup, dropoff).length();
     return (Duration)(length*vel);
 }
+
+void Scheduler::update()
+{
+	vector<Task> newTasks = dbTalker.getRequestedBookings();
+	for( vector<Task>::const_iterator tit=newTasks.begin(); tit!=newTasks.end(); ++tit )
+		addTask(*tit);
+
+	for( VIT vit=vehicles.begin(); vit!=vehicles.end(); ++vit )
+		vit->update();
+
+   	MSGLOG(3, "After updating waiting time...\nTask queue:\n%s", toString().c_str());
+}
+

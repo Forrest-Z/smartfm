@@ -37,7 +37,8 @@ protected:
     virtual void updateCurrentLocation(std::string loc) { }
     virtual bool checkMissionCancelled(unsigned id) { return false; }
     
-    /// Checks the DB for any pending mission.
+    /// Blocks until a mission is available. When a mission is obtained,
+    /// set pickup_ and dropoff_.
     virtual void waitForMission() = 0;
 };
 

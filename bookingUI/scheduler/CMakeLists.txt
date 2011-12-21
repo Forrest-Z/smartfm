@@ -29,5 +29,5 @@ SET( BookingCommonRootDir ../shared )
 INCLUDE_DIRECTORIES(${BookingCommonRootDir}/src)
 LINK_DIRECTORIES (${LINK_DIRECTORIES} ${BookingCommonRootDir})
 
-add_executable(scheduler src/Scheduler.cpp src/DBTalker.cpp src/SchedulerUI.cpp src/SchedulerMain.cpp)
+add_executable(scheduler src/SchedulerTypes.cpp src/Vehicle.cpp src/Scheduler.cpp src/DBTalker.cpp src/SchedulerUI.cpp src/SchedulerMain.cpp)
 target_link_libraries(scheduler ncurses mysqlcppconn bookingcommon)

@@ -14,13 +14,14 @@
 #define DEFAULT_VEHICLE_ID "golfcart1"
 
 using namespace std;
+using SchedulerTypes::Task;
 
 
 const int CURSOR_ROW = 21;
 const int CURSOR_COL = 0;
 
 // Default constructor
-SchedulerUI::SchedulerUI(Scheduler & s, DBTalker & db_talker) : scheduler(s), dbTalker(db_talker)
+SchedulerUI::SchedulerUI(const Scheduler & s, DBTalker & db_talker) : scheduler(s), dbTalker(db_talker)
 {
     this->focusButtonInd = NEW_PICKUP;
     this->focusNewPickup = true;
@@ -214,7 +215,7 @@ void SchedulerUI::finishConsole()
 
 void SchedulerUI::updateConsole()
 {
-	MSGLOG(2, "");
+	//MSGLOG(4, "");
     int ch = getch();
     if (ch != ERR)
         processKeyboard(ch);
@@ -231,7 +232,7 @@ void SchedulerUI::updateConsole()
 
 void SchedulerUI::drawButtons()
 {
-	MSGLOG(2, "");
+	//MSGLOG(4, "");
     int attr, len;
     for (unsigned i = 0; i < UI_BUTTON_TOKEN_LAST; i++) {
         attr = A_NORMAL;
@@ -250,7 +251,7 @@ void SchedulerUI::drawButtons()
 // Update stderr
 void SchedulerUI::updateStderr()
 {
-	MSGLOG(2, "");
+	//MSGLOG(4, "");
     struct pollfd fds[1];
     char data[1024];
 
@@ -277,26 +278,30 @@ void SchedulerUI::updateStderr()
 
 void SchedulerUI::updateTaskList()
 {
-	MSGLOG(2, "");
-    list<Task> & tasks = scheduler.getVehicleTasks(DEFAULT_VEHICLE_ID);
-    list<Task>::iterator it = tasks.begin();
-    unsigned i = 0;
+	//MSGLOG(4, "");
+	unsigned i = 0;
+	const vector<Vehicle> & vehicles = scheduler.getVehicles();
+	for( Scheduler::CVIT vit=vehicles.begin(); vit!=vehicles.end(); ++vit )
+	{
+		const list<Task> & tasks = vit->getTasks();
+		list<Task>::const_iterator it = tasks.begin();
 
-    for ( ++it; it != tasks.end(); ++it )
-    {
-        if (i >= NUM_TASK_DISPLAY)
-            break;
-        //if (i%2 == 1) wattrset(this->win, COLOR_PAIR(UI_CYAN_HIGHLIGHT));
-        mvwprintw(this->win, this->textFields[TASK_LIST_START + i].row,
-                    this->textFields[TASK_LIST_START + i].col,
-                    /*|  ID | Customer |  Pick-Up   |  Drop-Off  | tWait \n*/
-                    "%3d | %8s | %10s | %10s | %5d",
-                    it->taskID, it->customerID.substr(0,8).c_str(),
-                    it->pickup.str().substr(0,10).c_str(),
-                    it->dropoff.str().substr(0,10).c_str(), it->twait);
-        wattrset(this->win, A_NORMAL);
-        i++;
-    }
+		for ( ++it; it != tasks.end(); ++it )
+		{
+			if (i >= NUM_TASK_DISPLAY)
+				break;
+			//if (i%2 == 1) wattrset(this->win, COLOR_PAIR(UI_CYAN_HIGHLIGHT));
+			mvwprintw(this->win, this->textFields[TASK_LIST_START + i].row,
+						this->textFields[TASK_LIST_START + i].col,
+						/*|  ID | Customer |  Pick-Up   |  Drop-Off  | tWait \n*/
+						"%3d | %8s | %10s | %10s | %5d",
+						it->taskID, it->customerID.substr(0,8).c_str(),
+						it->pickup.str().substr(0,10).c_str(),
+						it->dropoff.str().substr(0,10).c_str(), it->twait);
+			wattrset(this->win, A_NORMAL);
+			i++;
+		}
+	}
 
     // Clear remaining rows
     for (; i < NUM_TASK_DISPLAY; i++)
@@ -310,20 +315,21 @@ void SchedulerUI::updateTaskList()
 
 void SchedulerUI::updateVehicleStatus()
 {
-	MSGLOG(2, "");
+	//MSGLOG(4, "");
 	std::string vehicleID = DEFAULT_VEHICLE_ID;
-    VehicleStatus vehStatus = scheduler.getVehicleStatus(DEFAULT_VEHICLE_ID);
+	Scheduler::CVIT vit = scheduler.checkVehicleExist(vehicleID);
+	SchedulerTypes::VehicleStatus vehStatus = vit->getStatus();
     char vehStatusStr[64];
 
     mvwprintw(this->win, this->textFields[VEHICLE_ID].row, this->textFields[VEHICLE_ID].col,
               "%s", vehicleID.c_str());
-    if (vehStatus == VEHICLE_NOT_AVAILABLE)
+    if (vehStatus == SchedulerTypes::VEHICLE_NOT_AVAILABLE)
         strncpy(vehStatusStr, "NOT AVAILABLE", sizeof(vehStatusStr) - 1);
-    else if (vehStatus == VEHICLE_ON_CALL)
+    else if (vehStatus == SchedulerTypes::VEHICLE_ON_CALL)
         strncpy(vehStatusStr, "ON CALL      ", sizeof(vehStatusStr) - 1);
-    else if (vehStatus == VEHICLE_POB)
+    else if (vehStatus == SchedulerTypes::VEHICLE_POB)
         strncpy(vehStatusStr, "POB          ", sizeof(vehStatusStr) - 1);
-    else if (vehStatus == VEHICLE_AVAILABLE)
+    else if (vehStatus == SchedulerTypes::VEHICLE_AVAILABLE)
         strncpy(vehStatusStr, "AVAILABLE    ", sizeof(vehStatusStr) - 1);
     else
         strncpy(vehStatusStr, "UNKNOWN      ", sizeof(vehStatusStr) - 1);
@@ -331,7 +337,7 @@ void SchedulerUI::updateVehicleStatus()
     mvwprintw(this->win, this->textFields[VEHICLE_STATUS].row, this->textFields[VEHICLE_STATUS].col,
               "%s", vehStatusStr);
 
-    if( scheduler.getVehicleTasks(DEFAULT_VEHICLE_ID).empty() )
+    if( vit->getTasks().empty() )
     {
         mvwprintw(this->win, this->textFields[CURRENT_TASK_ID].row,
                   this->textFields[CURRENT_TASK_ID].col,
@@ -348,7 +354,7 @@ void SchedulerUI::updateVehicleStatus()
     }
     else
     {
-        Task t = scheduler.getVehicleCurrentTask(DEFAULT_VEHICLE_ID);
+        Task t = vit->getCurrentTask();
         mvwprintw(this->win, this->textFields[CURRENT_TASK_ID].row,
                   this->textFields[CURRENT_TASK_ID].col,
                   "%3d      ", t.taskID);
@@ -600,18 +606,13 @@ void SchedulerUI::onUserViewTask()
     }
 
     int taskID = atoi(this->buttons[VC_TASK_ID].text);
-    Duration waitTime = scheduler.getWaitTime(taskID);
-    if (waitTime >= 0) {
-        Task task = scheduler.getTask(taskID);
-        mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col,
-                  "Vehicle ID:   %2d\t\tPickup station:  %10s       ", DEFAULT_VEHICLE_ID, task.pickup.c_str());
-        mvwprintw(this->win, this->textFields[VC_TASK_TIME_WAIT].row, this->textFields[VC_TASK_TIME_WAIT].col,
-                  "Waiting time: %2u\t\tDropoff station: %10s       ", waitTime, task.dropoff.c_str());
-    }
-    else {
-        printText(VC_TASK_VEHICLE_ID, UI_TEXT_COLOR_RED, "Invalid Task ID!                                           ");
-        printText(VC_TASK_TIME_WAIT, UI_TEXT_COLOR_RED, "                                                           ");
-    }
+    SchedulerTypes::Duration waitTime = scheduler.getWaitTime(taskID);
+	Task task = scheduler.getTask(taskID);
+	mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col,
+			  "Vehicle ID:   %2d\t\tPickup station:  %10s       ", DEFAULT_VEHICLE_ID, task.pickup.c_str());
+	mvwprintw(this->win, this->textFields[VC_TASK_TIME_WAIT].row, this->textFields[VC_TASK_TIME_WAIT].col,
+			  "Waiting time: %2u\t\tDropoff station: %10s       ", waitTime, task.dropoff.c_str());
+
 }
 
 void SchedulerUI::onUserCancelTask()
@@ -632,7 +633,7 @@ void SchedulerUI::onUserCancelTask()
 
     int taskID = atoi(this->buttons[VC_TASK_ID].text);
     try {
-        scheduler.removeTask(taskID);
+        dbTalker.custCancel(taskID);
         printText(VC_TASK_VEHICLE_ID, UI_TEXT_COLOR_GREEN, "Task %d removed!                                           ", taskID);
     }
     catch( SchedulerException & e ) {
@@ -644,62 +645,49 @@ void SchedulerUI::onUserCancelTask()
               "                                                           ");
 }
 
+bool SchedulerUI::getStation(UIButtonToken button, Station *station)
+{
+	assert( button==NEW_PICKUP || button==NEW_DROPOFF );
+
+	const char * buttonstr = button==NEW_PICKUP ? "pickup" : "dropoff";
+
+	// Check that all the characters are between 0 and 9
+	if (strlen(this->buttons[button].text) == 0) {
+		printButton(button, UI_TEXT_COLOR_RED, "Invalid %s station!             ", buttonstr);
+		return false;
+	}
+	for (unsigned i = 0; i < strlen(this->buttons[button].text); i++) {
+		if (this->buttons[button].text[i] < '0' || this->buttons[button].text[i] > '9') {
+			printText(NEW_TASK_ID, UI_TEXT_COLOR_RED, "Invalid %s station!           ", buttonstr);
+			return false;
+		}
+	}
+
+	const StationList & sl = scheduler.stationPaths.knownStations();
+	try
+	{
+		*station = sl(atoi(this->buttons[button].text));
+	}
+	catch( StationDoesNotExistException & e )
+	{
+		printText(NEW_TASK_ID, UI_TEXT_COLOR_RED, "Invalid %s station!             ", buttonstr);
+		return false;
+	}
+	return true;
+}
+
 void SchedulerUI::onUserAddTask()
 {
-    // Check that all the characters are between 0 and 9
-    if (strlen(this->buttons[NEW_PICKUP].text) == 0) {
-        printButton(NEW_PICKUP, UI_TEXT_COLOR_RED, "Invalid pickup station!             ");
-        return;
-    }
-    for (unsigned i = 0; i < strlen(this->buttons[NEW_PICKUP].text); i++) {
-        if (this->buttons[NEW_PICKUP].text[i] < '0' || this->buttons[NEW_PICKUP].text[i] > '9') {
-            printText(NEW_TASK_ID, UI_TEXT_COLOR_RED, "Invalid pickup station!           ");
-            return;
-        }
-    }
-
-    if (strlen(this->buttons[NEW_DROPOFF].text) == 0) {
-        printText(NEW_TASK_ID, UI_TEXT_COLOR_RED, "Invalid dropoff station!            ");
-        return;
-    }
-    for (unsigned i = 0; i < strlen(this->buttons[NEW_DROPOFF].text); i++)
-    {
-        if (this->buttons[NEW_DROPOFF].text[i] < '0' || this->buttons[NEW_DROPOFF].text[i] > '9')
-        {
-            printText(NEW_TASK_ID, UI_TEXT_COLOR_RED, "Invalid dropoff station!          ");
-            return;
-        }
-    }
-
-    const StationList & sl = scheduler.stationPaths.knownStations();
-    Station pickup, dropoff;
-    try
-    {
-        pickup = sl(atoi(this->buttons[NEW_PICKUP].text));
-    }
-    catch( StationDoesNotExistException & e )
-    {
-        printText(NEW_TASK_ID, UI_TEXT_COLOR_RED, "Invalid pickup station!             ");
-        return;
-    }
-
-    try
-    {
-        dropoff = sl(atoi(this->buttons[NEW_DROPOFF].text));
-    }
-    catch( StationDoesNotExistException & e )
-    {
-        printText(NEW_TASK_ID, UI_TEXT_COLOR_RED, "Invalid dropoff station!            ");
-        return;
-    }
+	Station pickup, dropoff;
+	if( !getStation(NEW_PICKUP,&pickup) || !getStation(NEW_DROPOFF,&dropoff) )
+		return;
 
     try
     {
         unsigned tid = dbTalker.makeBooking("cust1", pickup, dropoff);
-        Task task(tid, "cust1", DEFAULT_VEHICLE_ID, pickup, dropoff);
         printText(NEW_TASK_ID, UI_TEXT_COLOR_GREEN,
                   "Added task ID %u: <%s, %s>          ",
-                  task.taskID, pickup.c_str(), dropoff.c_str());
+                  tid, pickup.c_str(), dropoff.c_str());
     }
     catch( SchedulerException & e )
     {
