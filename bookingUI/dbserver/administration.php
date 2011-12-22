@@ -44,16 +44,8 @@ function listRequests()
         echoInCell($row['status']);
         echoInCell($row['pickUpLocation']);
         echoInCell($row['dropOffLocation']);
-
-        $vehicleID = "";
-        if( $row['status']=="Acknowledged" || $row['status']=="Confirmed" || $row['status']=="Processing" )
-            $vehicleID = $row['vehicleID'];
-        echoInCell($vehicleID);
-
-        $eta = "";
-        if( $row['status']=="Confirmed" || $row['status']=="Processing" )
-            $eta = $row['eta'];
-        echoInCell($eta);
+        echoInCell($row['vehicleID']);
+        echoInCell($row['eta']);
         echo "</tr>";
     }
     echo "</table>";

@@ -20,7 +20,6 @@ class Vehicle
 
     SchedulerTypes::Task & getCurrentTask();
     void update();
-    SchedulerTypes::Task switchToNextTask();
 
 public:
     Vehicle(DBTalker & dbt, std::string name, SchedulerTypes::VehicleStatus s)
@@ -32,6 +31,8 @@ public:
     const SchedulerTypes::Task & getCurrentTask() const;
     SchedulerTypes::VehicleStatus getStatus() const { return status; }
     std::string getID() const { return id; }
+
+    void switchToNextTask();
 
     void updateWaitTime();
     void updateWaitTime(SchedulerTypes::Duration timeCurrentTask);

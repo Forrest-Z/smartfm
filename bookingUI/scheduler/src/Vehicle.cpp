@@ -82,16 +82,16 @@ void Vehicle::updateStatus(SchedulerTypes::VehicleStatus status)
         getCurrentTask().tpickup = 0;
 }
 
-Task Vehicle::switchToNextTask()
+void Vehicle::switchToNextTask()
 {
-    if( tasks.size()<=1 )
-        throw SchedulerException(SchedulerException::NO_PENDING_TASKS);
-
+    if( tasks.empty() ) return;
     tasks.pop_front();
+
+    if( tasks.empty() ) return;
     Task task = tasks.front();
+    dbTalker.confirmTask(task);
     updateStatus(SchedulerTypes::VEH_STAT_GOING_TO_PICKUP);
     updateWaitTime();
-    return task;
 }
 
 void Vehicle::update()
@@ -122,15 +122,7 @@ void Vehicle::update()
         {
             dbTalker.updateTime(curTask.taskID, 0);
             dbTalker.updateTaskStatus(curTask.taskID, "Completed");
-            if( tasks.size()>1 )
-            {
-                Task task = switchToNextTask();
-                dbTalker.confirmTask(task);
-            }
-            else
-            {
-                tasks.clear();
-            }
+            switchToNextTask();
         }
     break;
 
@@ -141,8 +133,6 @@ void Vehicle::update()
     }
 
     // Report waiting time
-    list<Task>::const_iterator tit = tasks.begin();
-    dbTalker.updateTime(tit->taskID, tit->ttask);
-    for( ++tit; tit != tasks.end(); ++tit )
-        dbTalker.updateTime(tit->taskID, tit->tpickup);
+    for( list<Task>::const_iterator tit = tasks.begin(); tit != tasks.end(); ++tit )
+        dbTalker.updateTime(tit->taskID, tit->twait);
 }
