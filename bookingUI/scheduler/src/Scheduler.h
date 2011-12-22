@@ -87,6 +87,9 @@ private:
 
     /// Returns the first available vehicle.
     VIT checkVehicleAvailable();
+
+    /// Check the list of vehicles in the DB and update the internal pool of vehicles.
+    void updateVehicleList();
 };
 
 

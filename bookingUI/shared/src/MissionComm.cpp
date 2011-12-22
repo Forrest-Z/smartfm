@@ -97,7 +97,7 @@ void MissionComm::run()
 
 
 
-void PromptMissionComm::waitForMission()
+void PromptMissionComm::waitForMissionConfirmed()
 {
     stationList_.print();
     pickup_ = stationList_.prompt("Pickup station? ");

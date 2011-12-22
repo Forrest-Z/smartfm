@@ -78,6 +78,7 @@ struct TaskStatus
 
 struct VehicleInfo
 {
+	std::string id;
 	VehicleStatus status;
 	Duration eta;
 	std::string currentLocation;

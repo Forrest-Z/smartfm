@@ -143,29 +143,45 @@ SchedulerTypes::TaskStatus DBTalker::getTaskStatus(unsigned taskID)
     return info;
 }
 
-SchedulerTypes::VehicleInfo DBTalker::getVehicleInfo(string vehicleID)
+vector<SchedulerTypes::VehicleInfo> DBTalker::getVehiclesInfo(string vehicleID)
 {
-	SchedulerTypes::VehicleInfo info;
+	vector<SchedulerTypes::VehicleInfo> infos;
 
-    PreparedStatement *stmt = con->prepareStatement("SELECT status, eta, currentLocation, requestID FROM vehicles WHERE vehicleID=?");
-    stmt->setString(1, vehicleID);
+	PreparedStatement *stmt = 0;
+	if( vehicleID.length()==0 ) {
+		// Get all vehicles
+		stmt = con->prepareStatement("SELECT vehicleID, status, eta, currentLocation, requestID FROM vehicles");
+	}
+	else {
+		// Get only the one we are interested in
+		stmt = con->prepareStatement("SELECT vehicleID, status, eta, currentLocation, requestID FROM vehicles WHERE vehicleID=?");
+		stmt->setString(1, vehicleID);
+	}
+
     ResultSet *res = stmt->executeQuery();
-    string status = "";
-
     while (res->next())
     {
-        status = res->getString("status");
+    	SchedulerTypes::VehicleInfo info;
+        info.id = res->getString("vehicleID");
+        string status = res->getString("status");
 		info.status = SchedulerTypes::vehicleStatusFromStr(status);
         info.eta = res->getInt("eta");
         info.currentLocation = res->getString("currentLocation");
         info.requestID = res->getInt("requestID");
-        break;
+        MSGLOG(2,"Got vehicle info: vehicle=%s, status=%s, eta=%u, currentLoc=%s, requestID=%u",
+        		info.id.c_str(), status.c_str(), info.eta, info.currentLocation.c_str(), info.requestID);
+        infos.push_back(info);
     }
     delete res;
     delete stmt;
-    MSGLOG(2,"Got vehicle info: vehicle=%s, status=%s, eta=%u, currentLoc=%s, requestID=%u",
-    		vehicleID.c_str(), status.c_str(), info.eta, info.currentLocation.c_str(), info.requestID);
-    return info;
+	return infos;
+}
+
+SchedulerTypes::VehicleInfo DBTalker::getVehicleInfo(string vehicleID)
+{
+	vector<SchedulerTypes::VehicleInfo> infos = getVehiclesInfo(vehicleID);
+	if( infos.empty() ) throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
+    return infos.front();
 }
 
 unsigned DBTalker::makeBooking(string customerID, Station pickup, Station dropoff)

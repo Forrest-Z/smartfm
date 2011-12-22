@@ -231,7 +231,7 @@ void print_usage (FILE* stream, int exit_code)
     ss <<"  --taskproba p     Sets the probability of a new task (only used when simmobile is on, default value is " <<optNewTaskProba <<")." <<endl;
     ss <<"  --simvehicle      Simulate vehicles' status." <<endl;
     ss <<"  --simspeed tf     Speed of the vehicle in m/s (default is 1m/s)." <<endl;
-    ss <<"  --noop            No interaction with user. (daemon mode)." <<endl;
+    ss <<"  --noop            No interaction with user. (daemon mode). Only active when --nogui is set." <<endl;
     ss <<"  --help            Display this message." <<endl;
 
     fprintf( stream, "%s", ss.str().c_str());
@@ -252,11 +252,11 @@ void parseOptions(int argc, char **argv)
         // second: 0 = no_argument, 1 = required_argument, 2 = optional_argument
         // third: if pointer, set variable to value of fourth argument
         //        if NULL, getopt_long returns fourth argument
-        {"verbose",     no_argument,       &optVerbosityLevel,        1},
         {"nogui",       no_argument,       &optNoGUI,                 1},
         {"simmobile",   no_argument,       &optSimulateMobile,        1},
         {"simvehicle",  no_argument,       &optSimulateVehicle,       1},
         {"noop",        no_argument,       &optNoOP,                  1},
+        {"verbose",     required_argument, 0,                       'V'},
         {"simspeed",    required_argument, 0,                       'F'},
         {"taskproba",   required_argument, 0,                       'P'},
         {"host",        required_argument, 0,                       'H'},
@@ -298,6 +298,10 @@ void parseOptions(int argc, char **argv)
 
         case 'P':
             optNewTaskProba = atof(optarg);
+            break;
+
+        case 'V':
+            optVerbosityLevel = atoi(optarg);
             break;
 
         case -1: /* Done with options. */

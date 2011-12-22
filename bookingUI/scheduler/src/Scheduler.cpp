@@ -1,12 +1,13 @@
 #include <unistd.h>
 #include <stdio.h>
-#include <assert.h>
 
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <iomanip>
 #include <string>
+#include <cassert>
+#include <cstring>
 
 #include "Scheduler.h"
 
@@ -25,8 +26,6 @@ using SchedulerTypes::Duration;
 Scheduler::Scheduler(DBTalker &dbt)
 : verbosity_level(0), logFile(NULL), dbTalker(dbt)
 {
-    // Add a vehicle. TODO: get the list of vehicles from the database.
-    vehicles.push_back( Vehicle(dbt, "golfcart1", SchedulerTypes::VEH_STAT_WAITING) );
 }
 
 void Scheduler::setLogFile(FILE *logfile)
@@ -56,7 +55,7 @@ void Scheduler::addTask(Task task)
 
 	VIT vit = checkVehicleAvailable();
     if( vit==vehicles.end() )
-        throw SchedulerException(SchedulerException::NO_AVAILABLE_VEHICLE);
+        return; // no vehicle available.
 
     task = Task(task.taskID, task.customerID, vit->id, task.pickup, task.dropoff);
 
@@ -227,8 +226,51 @@ Duration Scheduler::travelTime(Station pickup, Station dropoff)
     return (Duration)(length*vel);
 }
 
+void Scheduler::updateVehicleList()
+{
+    vector<SchedulerTypes::VehicleInfo> infos = dbTalker.getVehiclesInfo();
+    vector<SchedulerTypes::VehicleInfo>::const_iterator it;
+
+    // check if there is any new vehicle
+    for( it=infos.begin(); it!=infos.end(); ++it )
+    {
+        CVIT vit = vehicles.begin();
+        for( ; vit!=vehicles.end(); ++vit )
+            if( strcmp(vit->id.c_str(), it->id.c_str())==0 )
+                break;
+        if( vit==vehicles.end() ) {
+            // This is a new vehicle
+            MSGLOG(2, "Found new vehicle %s.", it->id.c_str());
+            assert( it->status==SchedulerTypes::VEH_STAT_WAITING );
+            vehicles.push_back( Vehicle(dbTalker, it->id, SchedulerTypes::VEH_STAT_WAITING) );
+        }
+    }
+
+    //check if any of the known vehicle disapeared
+    // use a list for efficiency
+    list<Vehicle> vehiclelist = list<Vehicle>(vehicles.begin(), vehicles.end());
+    list<Vehicle>::iterator vit = vehiclelist.begin();
+    while( vit!=vehiclelist.end() )
+    {
+        for( it=infos.begin(); it!=infos.end(); ++it )
+            if( strcmp(vit->id.c_str(), it->id.c_str())==0 )
+                break;
+        if( it==infos.end() ) {
+            // The vehicle disappeared
+            // TODO: reschedule its tasks
+            MSGLOG(2, "Vehicle %s is no longer present in the DB.", vit->id.c_str());
+            vit = vehiclelist.erase(vit);
+        }
+        else
+            ++vit;
+    }
+    vehicles = vector<Vehicle>(vehiclelist.begin(), vehiclelist.end());
+}
+
 void Scheduler::update()
 {
+    updateVehicleList();
+
 	vector<Task> newTasks = dbTalker.getRequestedBookings();
 	for( vector<Task>::const_iterator tit=newTasks.begin(); tit!=newTasks.end(); ++tit )
 		addTask(*tit);

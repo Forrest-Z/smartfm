@@ -52,7 +52,7 @@ public:
 
 private:
     void updateStatus();
-    void waitForMission();
+    void waitForMissionConfirmed();
 };
 
 /// Interface with the database using a DBInterface object
