@@ -65,9 +65,9 @@ SpeedAdvisor::SpeedAdvisor()
     nh.param("max_speed", high_speed_, 2.0);
     nh.param("acc", acc_, 0.5);
     nh.param("max_dec", max_dec_, 2.0);
-    nh.param("norm_dec", norm_dec_, 1.0);
+    nh.param("norm_dec", norm_dec_, 0.5);
 
-    nh.param("dec_ints", dec_ints_, 0.8);
+    nh.param("dec_ints", dec_ints_, 0.4);
     nh.param("stop_ints_dist", stop_ints_dist_,5.0); //the stopping distance from obstacles.
     //It was found that the distance given by move_status will reach as small as 4 meter
     //Hence, stopping distance should be at least larger than 4 for the stopping manoeuvre to work
