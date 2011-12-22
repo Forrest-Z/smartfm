@@ -31,12 +31,12 @@ using SchedulerTypes::Duration;
 
 
 /** BUG list
- * Apparently the time of tasks (twait) is wrong.
- */
+* Apparently the time of tasks (twait) is wrong.
+*/
 
 /** TODO
- * Support more than one vehicle (low priority).
- */
+* Support more than one vehicle (low priority).
+*/
 
 
 //------------------------------------------------------------------------------
@@ -51,11 +51,11 @@ const char DEFAULT_VEHICLE_ID[] = "golfcart1";
 // A vehicle class for simulated vehicles
 class SimulatedVehicle {
 public:
-	SimulatedRoutePlanner rp;
-	DBMissionComm comm;
+    SimulatedRoutePlanner rp;
+    DBMissionComm comm;
 
-	SimulatedVehicle(StationPaths & sp, string vname, float speed, string hostname)
-	  : rp(sp,speed), comm(rp, hostname+"/dbserver", vname) { }
+    SimulatedVehicle(StationPaths & sp, string vname, float speed, string hostname)
+    : rp(sp,speed), comm(rp, hostname+"/dbserver", vname) { }
 };
 
 
@@ -160,25 +160,25 @@ int main(int argc, char **argv)
 
     try
     {
-    	createObjects();
+        createObjects();
 
         while(gQuit == 0)
         {
             if( optNoGUI && ! optNoOP )
-				textUI();
+                textUI();
             else if( !optNoGUI )
                 gSchedulerUI->updateConsole();
 
-			if( optSimulateMobile )
-				addMobileTask();
+            if( optSimulateMobile )
+                addMobileTask();
 
             // Update vehicle status, waiting time and send new task to vehicle if
             // it has completes the previous task.
-			time_t currentTime = time(NULL);
-			if( currentTime - prevTimeTaskInfo >= 3 ) {
-				prevTimeTaskInfo = currentTime;
-				gScheduler->update();
-			}
+            time_t currentTime = time(NULL);
+            if( currentTime - prevTimeTaskInfo >= 3 ) {
+                prevTimeTaskInfo = currentTime;
+                gScheduler->update();
+            }
 
             if (!optNoGUI && gSchedulerUI->getSchedulerStatus() == SchedulerUI::SCHEDULER_QUIT)
                 gQuit = 1;
@@ -209,7 +209,7 @@ int main(int argc, char **argv)
     }
 
     delete gScheduler;
-	delete gDBTalker;
+    delete gDBTalker;
 
     fclose (gLogFile);
 
@@ -340,7 +340,7 @@ void createObjects()
         gSimulatedVehicle->comm.startThread();
         gSimulatedVehicle->rp.startThread();
         while( ! gSimulatedVehicle->rp.getCurrentStation().isValid() )
-        	sleep(1);
+            sleep(1);
     }
 
     if (!optNoGUI)
@@ -370,23 +370,23 @@ unsigned randu_(unsigned max)
 
 void addMobileTask()
 {
-	/* Adding some random tasks to the database.
-	 * The proba of a random task is equal to optNewTaskProba multiplied by
-	 * optTimeFactor (to scale for fast simulations).
-	 * Several tasks can be issued. The probability of a new task is half
-	 * the probability of the previous task.
-	 * For each task, pickup and dropoff stations are picked at random.
-	 */
-	unsigned i = 0;
-	while( random_() < optNewTaskProba*optSimVehicleSpeed/pow(2,i++) )
-	{
-		unsigned s1 = randu_(gStationList.size());
-		unsigned s2;
-		do
-			s2 = randu_(gStationList.size());
-		while (s1==s2);
-		gDBTalker->makeBooking("cust1", gStationList(s1), gStationList(s2));
-	}
+    /* Adding some random tasks to the database.
+    * The proba of a random task is equal to optNewTaskProba multiplied by
+    * optTimeFactor (to scale for fast simulations).
+    * Several tasks can be issued. The probability of a new task is half
+    * the probability of the previous task.
+    * For each task, pickup and dropoff stations are picked at random.
+    */
+    unsigned i = 0;
+    while( random_() < optNewTaskProba*optSimVehicleSpeed/pow(2,i++) )
+    {
+        unsigned s1 = randu_(gStationList.size());
+        unsigned s2;
+        do
+            s2 = randu_(gStationList.size());
+        while (s1==s2);
+        gDBTalker->makeBooking("cust1", gStationList(s1), gStationList(s2));
+    }
 }
 
 
@@ -444,9 +444,9 @@ void textUI()
     else if (opOption == OPERATOR_REMOVE_TASK)
     {
         printf ("  Enter id of task to be cancelled: ");
-		unsigned id = getNumeric();
-		gDBTalker->custCancel(id);
-		MSGLOGNOGUI(1, "Cancelled task %u.", id);
+        unsigned id = getNumeric();
+        gDBTalker->custCancel(id);
+        MSGLOGNOGUI(1, "Cancelled task %u.", id);
     }
     else if (opOption == OPERATOR_VIEW_TASK_LIST)
     {

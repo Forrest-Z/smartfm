@@ -11,9 +11,9 @@ class Scheduler;
 
 class Vehicle
 {
-	friend class Scheduler;
+    friend class Scheduler;
 
-	DBTalker & dbTalker;
+    DBTalker & dbTalker;
     std::string id;
     SchedulerTypes::VehicleStatus status;
     std::list<SchedulerTypes::Task> tasks;
@@ -24,7 +24,7 @@ class Vehicle
 
 public:
     Vehicle(DBTalker & dbt, std::string name, SchedulerTypes::VehicleStatus s)
-		: dbTalker(dbt), id(name), status(s) { }
+        : dbTalker(dbt), id(name), status(s) { }
 
     Vehicle & operator=( const Vehicle & v);
 

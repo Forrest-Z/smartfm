@@ -7,7 +7,7 @@
 
 MissionComm::MissionComm( RoutePlanner & rp )
     : routePlanner_(rp), stationList_(rp.sp_.knownStations()),
-      currentStation_(rp.currentStation_), state_(sUninit)
+    currentStation_(rp.currentStation_), state_(sUninit)
 {
     stateStr_[sWaitingMission] = "WaitingForAMission";
     stateStr_[sGoingToPickup] = "GoingToPickupLocation";
@@ -28,7 +28,7 @@ void MissionComm::run()
         updateCurrentLocation(currentStation_.str());
         state_ = sWaitingMission;
         break;
-        
+
     case sWaitingMission:
         waitForMissionConfirmed();
         if( currentStation_ != pickup_ ) {
@@ -48,8 +48,8 @@ void MissionComm::run()
     case sGoingToPickup:
         // TODO: check for mission cancel
 
-    	updateETA(routePlanner_.eta_);
-    	updateGeoLocation(routePlanner_.latitude_, routePlanner_.longitude_);
+        updateETA(routePlanner_.eta_);
+        updateGeoLocation(routePlanner_.latitude_, routePlanner_.longitude_);
 
         if( routePlanner_.hasReached() ) {
             state_ = sAtPickup;
@@ -69,25 +69,25 @@ void MissionComm::run()
         break;
 
     case sGoingToDropoff:
-    	updateETA(routePlanner_.eta_);
-    	updateGeoLocation(routePlanner_.latitude_, routePlanner_.longitude_);
+        updateETA(routePlanner_.eta_);
+        updateGeoLocation(routePlanner_.latitude_, routePlanner_.longitude_);
         if( routePlanner_.hasReached() ) {
             // TODO: wait for passenger to alight
             state_ = sAtDropoff;
-        	updateVehicleStatus(stateStr_[state_]);
-        	updateCurrentLocation(dropoff_.str());
+            updateVehicleStatus(stateStr_[state_]);
+            updateCurrentLocation(dropoff_.str());
         }
         break;
 
     case sAtDropoff:
-    	if( checkMissionCompleted() ) {
-			state_ = sWaitingMission;
-			updateVehicleStatus(stateStr_[state_]);
-    	}
-    	break;
+        if( checkMissionCompleted() ) {
+            state_ = sWaitingMission;
+            updateVehicleStatus(stateStr_[state_]);
+        }
+        break;
 
     default:
-    	throw std::runtime_error("This state should not happen.");
+        throw std::runtime_error("This state should not happen.");
 
     }
 
@@ -113,14 +113,14 @@ void PromptMissionComm::updateStatus()
 
 
 DBMissionComm::DBMissionComm(RoutePlanner & rp, std::string url, std::string vehicleID)
-  : MissionComm(rp), dbi(url,vehicleID)
+: MissionComm(rp), dbi(url,vehicleID)
 {
 
 }
 
 void DBMissionComm::waitForMissionConfirmed()
 {
-	DBInterface::Task task = dbi.waitForNewMission();
+    DBInterface::Task task = dbi.waitForNewMission();
     pickup_ = stationList_(task.pickup);
     dropoff_ = stationList_(task.dropoff);
     currentTaskID_ = task.id;
@@ -129,5 +129,5 @@ void DBMissionComm::waitForMissionConfirmed()
 
 bool DBMissionComm::checkMissionCompleted()
 {
-	return strcasecmp(dbi.getTaskEntry(currentTaskID_).status.c_str(),"completed")==0;
+    return strcasecmp(dbi.getTaskEntry(currentTaskID_).status.c_str(),"completed")==0;
 }

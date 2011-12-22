@@ -10,15 +10,15 @@
 #include "SchedulerTypes.h"
 
 /*
- * Necessary actions (i.e. interface)
- * - check DB for new task to schedule (REQUESTED), schedule them and update
- * their status to ACKNOWLEDGED, or PROCESSING.
- * - check info of vehicles (i.e. status, time to arrival)
- *
- * Mode of operation:
- * The main will poll the DB for new tasks, and check status of scheduled tasks and
- * vehicles, then take actions
- */
+* Necessary actions (i.e. interface)
+* - check DB for new task to schedule (REQUESTED), schedule them and update
+* their status to ACKNOWLEDGED, or PROCESSING.
+* - check info of vehicles (i.e. status, time to arrival)
+*
+* Mode of operation:
+* The main will poll the DB for new tasks, and check status of scheduled tasks and
+* vehicles, then take actions
+*/
 
 class DBTalker
 {

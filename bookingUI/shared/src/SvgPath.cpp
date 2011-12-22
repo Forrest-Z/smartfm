@@ -26,7 +26,7 @@ SvgPath::SvgPath(const char* pFilename, StationPath* pose, PathPoint *size, cons
     bool loadOkay = doc.LoadFile();
     if (loadOkay)
     {
-        
+
         unsigned int npoints=0;
         SvgPath::findPathElements( pose, size, &npoints, &doc, id);
         if(VERBOSE)
@@ -34,7 +34,7 @@ SvgPath::SvgPath(const char* pFilename, StationPath* pose, PathPoint *size, cons
             cout<<pFilename<<endl;
             cout<<id<<" path found at "<<foundPath<<"th path"<<endl;
         }
-        if(pose->size()==npoints) 
+        if(pose->size()==npoints)
         {
             if(VERBOSE) cout<<"Path with "<<npoints<<" points successfully loaded"<<endl;
         }
@@ -83,7 +83,7 @@ void SvgPath::findPathElements(StationPath* pose, PathPoint* size, unsigned int 
             {
                 throw error;
             }
-            
+
             foundPath++;
             *npoints=num;
 
@@ -250,7 +250,7 @@ int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose, con
                 {
                     if(VERBOSE) cout<<"Closepath command ignored."<<endl;
                 }
-                
+
 
             }
             *pose = positions;
@@ -258,8 +258,8 @@ int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose, con
         if(ss.str()=="id")
         {
             stringstream s; s<<pAttrib->Value();
-            
-            if(s.str().compare(id)!=0) 
+
+            if(s.str().compare(id)!=0)
             {
                 //just skip the rest of the attributes, it is not the path we want to find
                 return 0;

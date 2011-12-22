@@ -6,7 +6,7 @@
 /// Provides the time elapsed since initialization time
 class GlobalClock
 {
-  public:
+public:
     /// Returns the time in seconds since program started.
     static double time();
 
@@ -17,25 +17,25 @@ class GlobalClock
     static std::string timeStr(double);
 
     /** Sleep for t seconds. Uses nanosleep.
-     * @param t the amount of time to sleep in seconds.
-     * @returns On successfully sleeping for the requested interval, sleep()
-     * returns 0.  If the call is interrupted by a signal handler or encounters
-     * an error,  then  it  returns -1, with errno set to indicate the error.
-     */
+    * @param t the amount of time to sleep in seconds.
+    * @returns On successfully sleeping for the requested interval, sleep()
+    * returns 0.  If the call is interrupted by a signal handler or encounters
+    * an error,  then  it  returns -1, with errno set to indicate the error.
+    */
     static int sleep(float t);
 
     /** Sleep for t milliseconds. Uses nanosleep.
-     * @param t the amount of time to sleep in milliseconds.
-     * @returns On successfully sleeping for the requested interval, sleep()
-     * returns 0.  If the call is interrupted by a signal handler or encounters
-     * an error,  then  it  returns -1, with errno set to indicate the error.
-     */
+    * @param t the amount of time to sleep in milliseconds.
+    * @returns On successfully sleeping for the requested interval, sleep()
+    * returns 0.  If the call is interrupted by a signal handler or encounters
+    * an error,  then  it  returns -1, with errno set to indicate the error.
+    */
     static int sleep_ms(float t) { return GlobalClock::sleep(0.001*t); }
 
-  private:
+private:
     static void timeval_subtract (struct timeval *result,
-                                  const struct timeval *x,
-                                  const struct timeval *y);
+                                const struct timeval *x,
+                                const struct timeval *y);
     GlobalClock() { }
     GlobalClock(const GlobalClock&) { }
     GlobalClock& operator=(const GlobalClock&) { return *this; }

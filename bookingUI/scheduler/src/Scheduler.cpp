@@ -53,7 +53,7 @@ void Scheduler::addTask(Task task)
     // so we just assign to the first available vehicle:
     // TODO: support more vehicles
 
-	VIT vit = checkVehicleAvailable();
+    VIT vit = checkVehicleAvailable();
     if( vit==vehicles.end() )
         return; // no vehicle available.
 
@@ -68,8 +68,8 @@ void Scheduler::addTask(Task task)
     if( vit->tasks.empty() )
     {
         if( vit->status != SchedulerTypes::VEH_STAT_WAITING ) {
-        	MSGLOG(2, "Vehicle is not ready yet, skipping.");
-        	return;
+            MSGLOG(2, "Vehicle is not ready yet, skipping.");
+            return;
         }
         MSGLOG(2, "Adding as current.");
         vit->status = SchedulerTypes::VEH_STAT_GOING_TO_PICKUP;
@@ -83,10 +83,10 @@ void Scheduler::addTask(Task task)
         list<Task>::iterator it = vit->tasks.begin();
         for ( ++it; it != vit->tasks.end(); ++it )
         {
-        	// Time from previous task dropoff to this task pickup
-        	unsigned tdp1 = (prevDropoff != task.pickup) ? travelTime(prevDropoff, task.pickup) : 0;
-        	// Time from this task dropoff to next task pickup
-        	unsigned tdp2 = (task.dropoff != it->pickup) ? travelTime(task.dropoff, it->pickup) : 0;
+            // Time from previous task dropoff to this task pickup
+            unsigned tdp1 = (prevDropoff != task.pickup) ? travelTime(prevDropoff, task.pickup) : 0;
+            // Time from this task dropoff to next task pickup
+            unsigned tdp2 = (task.dropoff != it->pickup) ? travelTime(task.dropoff, it->pickup) : 0;
 
             MSGLOG(4, "(%u+%u+%u) VS %d\n", tdp1, task.ttask, tdp2, it->tpickup);
 
@@ -167,13 +167,13 @@ Scheduler::VIT Scheduler::checkVehicleExist(string vehicleID)
 
 Scheduler::CVIT Scheduler::checkVehicleExist(std::string vehicleID) const
 {
-	CVIT vit;
-	for( vit=vehicles.begin(); vit!=vehicles.end(); ++vit )
-		if( vit->id == vehicleID )
-			break;
-	if( vit==vehicles.end() )
-		throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
-	return vit;
+    CVIT vit;
+    for( vit=vehicles.begin(); vit!=vehicles.end(); ++vit )
+        if( vit->id == vehicleID )
+            break;
+    if( vit==vehicles.end() )
+        throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
+    return vit;
 }
 
 Task & Scheduler::getTask(unsigned taskID)
@@ -189,13 +189,13 @@ Task & Scheduler::getTask(unsigned taskID)
 
 const Task & Scheduler::getTask(unsigned taskID) const
 {
-	list<Task>::const_iterator jt;
-	for(CVIT vit = vehicles.begin(); vit != vehicles.end(); ++vit)
-		for( jt = vit->tasks.begin(); jt != vit->tasks.end(); ++jt )
-			if(jt->taskID == taskID)
-				return *jt;
-	throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
-	return *jt;
+    list<Task>::const_iterator jt;
+    for(CVIT vit = vehicles.begin(); vit != vehicles.end(); ++vit)
+        for( jt = vit->tasks.begin(); jt != vit->tasks.end(); ++jt )
+            if(jt->taskID == taskID)
+                return *jt;
+    throw SchedulerException(SchedulerException::TASK_DOES_NOT_EXIST);
+    return *jt;
 }
 
 Duration Scheduler::getWaitTime(unsigned taskID) const
@@ -271,13 +271,13 @@ void Scheduler::update()
 {
     updateVehicleList();
 
-	vector<Task> newTasks = dbTalker.getRequestedBookings();
-	for( vector<Task>::const_iterator tit=newTasks.begin(); tit!=newTasks.end(); ++tit )
-		addTask(*tit);
+    vector<Task> newTasks = dbTalker.getRequestedBookings();
+    for( vector<Task>::const_iterator tit=newTasks.begin(); tit!=newTasks.end(); ++tit )
+        addTask(*tit);
 
-	for( VIT vit=vehicles.begin(); vit!=vehicles.end(); ++vit )
-		vit->update();
+    for( VIT vit=vehicles.begin(); vit!=vehicles.end(); ++vit )
+        vit->update();
 
-   	MSGLOG(3, "After updating waiting time...\nTask queue:\n%s", toString().c_str());
+    MSGLOG(3, "After updating waiting time...\nTask queue:\n%s", toString().c_str());
 }
 

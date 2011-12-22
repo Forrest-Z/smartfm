@@ -103,7 +103,7 @@ public:
     ~SchedulerUI();
 
     void setLogFile(FILE *);
-	void setVerbosityLevel(unsigned);
+    void setVerbosityLevel(unsigned);
 
     // Initialize console display
     void initConsole();
