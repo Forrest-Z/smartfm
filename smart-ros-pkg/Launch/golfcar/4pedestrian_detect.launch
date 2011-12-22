@@ -1,5 +1,7 @@
 <launch>
-	<node pkg="pedestrian_detector" type="classifier" name="classifier">
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrsAssemb" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrsAssemb 100" />    
+    <node pkg="scan_ldmrs_assemble" type="scan_ldmrs_assemble" name="scan_ldmrs_assemble"/>
+    <node pkg="pedestrian_detector" type="classifier" name="classifier">
 	<param name="image_transport" value="compressed"/>
 	<remap from="image_raw" to="usb_cam/image_raw"/>
 	</node>
@@ -7,10 +9,10 @@
 	<param name="image_transport" value="compressed"/>
 	<remap from="image_raw" to="usb_cam/image_raw"/>
 	</node>
-	<node pkg="people_detector" type="people_detect" name="people_detect">
-	</node>
-	<node pkg="people_detector" type="camera_project" name="camera_project"/>
-	<!--node pkg="tf" type="static_transform_publisher" name="pedestrian_sensor_to_map" args="196.5 100 0.0 0 0 0 /map /pedestrian_sensor 100" />
-	<node pkg="pedestrian_crossing_sensor" type="pedestrian_crossing" name="pedestrian_crossing"/-->
+	<node pkg="sensing_on_road" type="laser_extraction" name="laser_extraction"/>
+	<node pkg="sensing_on_road" type="pedestrian_features" name="pedestrian_features"/>
+	<node pkg="sensing_on_road" type="camera_project" name="camera_project"/>
+
+	<!--node pkg="pedestrian_crossing_sensor" type="pedestrian_crossing" name="pedestrian_crossing"/-->
 </launch>
 

@@ -5,13 +5,14 @@
  */
 int state = 0;
 float rate = 0.01;
-float acceleration=1.0;
+float acceleration=1;
 float speed=0;
 float max_speed = 2;
-float constant_time = 2; 
+float constant_time = 3; 
 float cool_period = 2;
 int count=0;
 ros::Publisher speed_pub;
+bool use_sim_time_=false;
 void callback(const ros::TimerEvent&)
 {
   switch (state)
@@ -48,16 +49,18 @@ void callback(const ros::TimerEvent&)
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "talker");
-  ros::NodeHandle n;
-  /**
-   * Timers allow you to get a callback at a specified rate.  Here we create
-   * two timers at different rates as a demonstration.
-   */
-  speed_pub = n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-  ros::Timer timer = n.createTimer(ros::Duration(rate), callback);
+    ros::init(argc, argv, "speed_profile");
+    ros::NodeHandle n;
+    n.param("use_sim_time", use_sim_time_, false);
+    ROS_INFO_STREAM("Simulated time is "<<use_sim_time_);
+    /**
+    * Timers allow you to get a callback at a specified rate.  Here we create
+    * two timers at different rates as a demonstration.
+    */
+    speed_pub = n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+    ros::Timer timer = n.createTimer(ros::Duration(rate), callback);
 
-  ros::spin();
+    ros::spin();
 
-  return 0;
+    return 0;
 }

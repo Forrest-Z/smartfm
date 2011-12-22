@@ -23,7 +23,7 @@ class AMCLCrossingData : public AMCLSensorData
 
 	//"tracyingAngle_" differs according to "left" and "right";
 	double 											tracyingAngle_;
-
+    pf_vector_t                                     Pose_Est_;
 	// "crossing" uses "reinit_" in "curb", because curb will be used to update at the same time;
 	//bool                                   reinit_;
 

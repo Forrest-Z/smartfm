@@ -46,7 +46,7 @@ using namespace amcl;
 #define RANDOM_SAMPLE_BOX_Y 7.0
 #define RANDOM_SAMPLE_BOX_THETHA M_PI/3.0
 
-#define MAX_DISTANCE 15.0
+#define MAX_DISTANCE 10.0
 #define CROSSING_TRESH 10
 
 // Pose hypothesis
@@ -285,7 +285,7 @@ MixAmclNode::MixAmclNode() :
   private_nh_.param("laser_max_range", laser_max_range_, -1.0);
   private_nh_.param("min_particles", min_particles, 1000);
   private_nh_.param("max_particles", max_particles, 5000);
-  private_nh_.param("laser_max_beams", max_beams, 20);
+  private_nh_.param("laser_max_beams", max_beams, 30);
   private_nh_.param("kld_err", pf_err, 0.01);
   private_nh_.param("kld_z", pf_z, 0.99);
   private_nh_.param("odom_alpha1", alpha1_, 0.2);
@@ -300,7 +300,7 @@ MixAmclNode::MixAmclNode() :
   private_nh_.param("curb_sigma_hit", curb_sigma_hit, 0.25);
   
   //this value depends on your threshold in "road_detection" pkg;
-  private_nh_.param("curb_rand_range", curb_rand_range, 15.0);
+  private_nh_.param("curb_rand_range", curb_rand_range, 10.0);
   
   double cro_z_hit, cro_z_short, cro_z_max, cro_z_rand, cro_sigma_hit, cro_lambda_short;
   private_nh_.param("cro_z_hit", cro_z_hit, 0.95);
@@ -461,7 +461,7 @@ MixAmclNode::MixAmclNode() :
   curb_filter_->registerCallback(boost::bind(&MixAmclNode::curbReceived, this, _1));
   
   
-  laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, "scan", 10);         //200
+  laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, "verti_scan", 10);         //200
   laser_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_, *tf_, odom_frame_id_, 100);
   laser_scan_filter_->registerCallback(boost::bind(&MixAmclNode::laserReceived,this, _1));
   
@@ -849,7 +849,7 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 		// Prediction Step;
 		if(updateAction)
 		{
-			if(!LaserUseFlag_)
+			if(!update4)
 			{
 				double temp_alpha1=0.04;	//0.09
 				double temp_alpha2=0.04;	//0.09
@@ -858,6 +858,17 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 				double temp_alpha6=0.01;
 				odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
 			}
+            else
+            {
+                //added on 2011-12-13;
+                //later after changing the crossing data type, this can be further improved;
+                double temp_alpha1=0.0009;	
+				double temp_alpha2=0.0009;	
+				double temp_alpha3=0.2;
+				double temp_alpha4=0.2;
+				double temp_alpha6=0.01;
+				odom_->SetModelDiff(temp_alpha1, temp_alpha2, temp_alpha3, temp_alpha4, temp_alpha6);
+            }
 			
 			if(Shift_Flag)
 			{
@@ -911,6 +922,9 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 			ROS_INFO("---------------------update Meas----------------");
 			ROS_INFO("distTolastCurb: %5f, curb accumNum: %d, left crossing: %d, right crossing: %d", distTolastCurb, curbdata_->accumNum_, LeftCroData_->FakeSensorPose_.size(), RightCroData_->FakeSensorPose_.size());
 			
+            LeftCroData_->Pose_Est_ = pf_->Pos_Est;
+            RightCroData_->Pose_Est_ = pf_->Pos_Est;
+            
 			//this is quite important!!!
 			//Because in the beginning I missed this command, the whole program cannot work properly;
 			curbdata_->reinit_ = true;
@@ -1001,8 +1015,11 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 				bool *tempflagpointer = &CrossingUseFlag_;
 				if(!LaserUseFlag_)
 				{
+                    
 					LeftCroData_->sensor = crossing_;
 					crossing_->UpdateSensor(pf_, (AMCLSensorData*) LeftCroData_, tempflagpointer);
+                    
+                    
 					RightCroData_->sensor = crossing_;
 					crossing_->UpdateSensor(pf_, (AMCLSensorData*) RightCroData_, tempflagpointer);
 				}
@@ -1229,7 +1246,20 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan)
 {
 	ros::Time laserRece_time = laser_scan->header.stamp;
-	
+    
+    //add on 2011-12-12;
+    if(laser_scan->ranges.size()==0)
+    {
+        LaserUseFlag_ = false;
+        if(latest_tf_valid_)
+        {
+            ros::Time transform_expiration = (laser_scan->header.stamp + transform_tolerance_);
+            tf::StampedTransform tmp_tf_stamped(latest_tf_.inverse(), transform_expiration, global_frame_id_, odom_frame_id_);
+            this->tfb_->sendTransform(tmp_tf_stamped);
+        }
+        return;
+    }
+    
 	ros::Time now2 = ros::Time::now();
 	//ROS_INFO("2. Laser Received: Time now %lf, laserRece_time %lf", now2.toSec(), laserRece_time.toSec());
 	

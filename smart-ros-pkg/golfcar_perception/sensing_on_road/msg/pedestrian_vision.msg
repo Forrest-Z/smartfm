@@ -1,0 +1,12 @@
+int32 object_label
+bool complete_flag
+bool decision_flag
+int32 x
+int32 y
+int32 height
+int32 width
+float32 disz
+float32 cvRect_x1
+float32 cvRect_y1
+float32 cvRect_x2
+float32 cvRect_y2

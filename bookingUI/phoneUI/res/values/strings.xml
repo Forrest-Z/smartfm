@@ -1,19 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="hello">Hello World, main!</string>
-    <string name="app_name">GolfCart</string>
-    <string name="schedule">hellooooo</string>
-    <string name="stop">Stoppppp</string>
-    <string name="new_destination">Type Destination</string>
-    <string name="get_statuse">Get Status</string>
+    <string name="app_name">Mobility on Demand</string>
+    <string name="pickup">Pickup:</string>
+    <string name="destination">Destination:</string>
+    <string name="pickonmap">Pick on map</string>
+    <string name="confirm">Confirm</string>
     <string name="cancel">Cancel</string>
-    <string name="new_pickup">Chooise Pickup Location</string>
-    <string name="cancel_service">Cancel Service</string>
-    <string name="book_car">Book Car</string>
-    <string name="service_info">Service Information</string>
-    <string name="check_setting">Setting</string>
-    <string name="quit">Quit Application</string>
-    <string name="really_quit">Are you sure you want to quit application?</string>
-    <string name="yes">Yes</string>
-    <string name="no">No</string>
+    <string name="book">Book</string>
+    <string name="dropoff">Drop off:</string>
 </resources>

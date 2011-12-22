@@ -26,7 +26,12 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
-
-rosbuild_add_library(golfcar_gp src/gplan_scheduler.cpp)
 #rosbuild_add_executable(golfcar_purepursuitwp src/golfcar_purepursuitwp.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
+
+SET( BookingCommonRootDir ${PROJECT_SOURCE_DIR}/../../../bookingUI/shared )
+INCLUDE_DIRECTORIES(${BookingCommonRootDir}/src)
+LINK_DIRECTORIES (${LINK_DIRECTORIES} ${BookingCommonRootDir})
+
+rosbuild_add_library(${PROJECT_NAME} src/gplan_scheduler.cpp)
+target_link_libraries(${PROJECT_NAME} bookingcommon)

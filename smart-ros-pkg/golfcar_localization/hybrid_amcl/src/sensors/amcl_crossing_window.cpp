@@ -7,7 +7,7 @@
 
 #include "amcl_crossing_window.h"
 
-#define MAX_DISTANCE 15.0
+#define MAX_DISTANCE 10.0
 
 using namespace amcl;
 
@@ -81,7 +81,14 @@ double AMCLCrossing::BeamModel(AMCLCrossingData *data, pf_sample_set_t* set)
     for (i = 0; i < data->FakeSensorPose_.size(); i ++)
     {
 		pf_vector_t fakepose;
-		fakepose = pf_vector_coord_add(data->FakeSensorPose_[i], pose);
+		
+        //fakepose = pf_vector_coord_add(data->FakeSensorPose_[i], pose);
+        
+        fakepose.v[0] = data->FakeSensorPose_[i].v[0]+ pose.v[0];
+        fakepose.v[1] = data->FakeSensorPose_[i].v[1]+ pose.v[1];
+        //replace pose.v[2] with data->Pose_Est_.v[2], when using crossing data to weigh particles;
+        fakepose.v[2] = data->FakeSensorPose_[i].v[2]+ data->Pose_Est_.v[2];
+        
 		map_range = map_calc_range(self->map_, fakepose.v[0], fakepose.v[1], fakepose.v[2] + obs_bearing, MAX_DISTANCE);
 
 		pz = 0.0;

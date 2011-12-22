@@ -18,9 +18,7 @@
   <depend package="sensor_msgs"/>
   <depend package="actionlib"/>
   <depend package="move_base_msgs"/>
-<export>
-    <cpp cflags="-I${prefix}/include"/>
-</export>
+  <rosdep name="tinyxml" />
 </package>
 
 

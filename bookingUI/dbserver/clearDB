@@ -1,0 +1,13 @@
+#!/bin/bash
+
+HOST=
+if [ $# -gt 0 ]
+then
+    HOST="-h $1"
+fi
+
+d=`dirname $0`
+
+mysql $HOST -u fmauto -psmartfm fmauto < $d/createEmptyDatabase.sql
+
+exit 0

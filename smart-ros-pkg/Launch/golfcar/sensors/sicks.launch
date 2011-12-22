@@ -8,11 +8,12 @@
     </node>
     <node pkg="sicktoolbox_wrapper" type="sicklms" name="sicklms">
         <param name="port" value="/dev/ftdi2"/>
-        <remap from ="scan" to="sick_scan"/>
+        <remap from ="scan" to="scan"/>
         <param name="resolution" value="0.5"/>
         <param name="frame_id" value="sick_laser"/>
         <param name="baud" value="500000"/>
     </node>
+    <node pkg="sick_ldmrs" type="sickldmrs.py" name="sickldmrs"/>
     <!--
     <node pkg="sicktoolbox_wrapper" type="sicklms" name="sicklms3">
         <param name="port" value="/dev/ftdi3"/>
@@ -23,7 +24,4 @@
     </node>
     -->
 
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser" args="1.7, 0.0, 0.92 0 0 0 /base_link /sick_laser 100" />
-    <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="1.83, -0.36, 0.86 0 0 0 /base_link /sick_laser2 100" /-->
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="1.7, 0.0, 1.53 0 0.26 0 /base_link /sick_laser2 100" />
 </launch>

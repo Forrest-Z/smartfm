@@ -4,6 +4,7 @@
 #include "cv_bridge/CvBridge.h"
 
 #include "opencv2/gpu/gpu.hpp"
+
 #include "opencv2/highgui/highgui.hpp"
 class HOGClissifier {
 
@@ -44,7 +45,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr)
   IplImage *cv_image = NULL;
   try
   {
-    cv_image = bridge_.imgMsgToCv(msg_ptr, "bgra8");
+    cv_image = bridge_.imgMsgToCv(msg_ptr);
   }
   catch (sensor_msgs::CvBridgeException error)
   {
@@ -56,7 +57,9 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr)
 	
     
     cv::vector<cv::Rect> found;
-    cv::gpu::GpuMat gpu_img(img);
+    //cv::gpu::GpuMat gpu_img(img);
+	cv::gpu::GpuMat gpu_img;
+	gpu_img.upload(img);
     double t = (double)cv::getTickCount();
     // run the detector with default parameters. to get a higher hit-rate
     // (and more false alarms, respectively), decrease the hitThreshold and

@@ -1,0 +1,12 @@
+build
+bin
+lib
+msg_gen
+srv_gen
+
+*.o
+*.pyc
+.*.kate-swp
+.project
+.cproject
+core

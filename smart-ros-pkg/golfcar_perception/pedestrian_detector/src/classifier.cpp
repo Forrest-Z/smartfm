@@ -6,9 +6,9 @@ namespace HOG_Classifier {
 	{
 		image_pub_ = it_.advertise("pedestrian_detector",1);
 		image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &HOGClassifier::imageCallback, this);
-		people_rects_sub_ = n.subscribe("pr_vector", 1, &HOGClassifier::peopleRectsCallback, this);
-		people_roi_pub_ = n.advertise<people_detector::people_rects>("verified_objects", 1);
-		people_detect_pub_ = n.advertise<people_detector::people_rects>("pedestrian_detect",1);
+		people_rects_sub_ = n.subscribe("pd_vision_batch", 1, &HOGClassifier::peopleRectsCallback, this);
+		people_roi_pub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("veri_pd_vision", 1);
+		people_detect_pub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("pedestrian_detect",1);
 		//people_ver_pub_ = n.advertise<people_detector::verified_objs>("verified_objects",1);
 		//initializing classifier
 		detector = cv::gpu::HOGDescriptor::getDefaultPeopleDetector();
@@ -21,21 +21,21 @@ namespace HOG_Classifier {
 	}
 	HOGClassifier::~HOGClassifier(){}
 	
-	void HOGClassifier::peopleRectsCallback(people_detector::people_rects pr)
+	void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch pr)
 	{
 		if(new_image)
 		{
 			std::cout<<"Inside people rect\n";
 			int image_width = 640;
-			int image_height = 480;
+			int image_height = 360;
 			cv::resize(img, img, cv::Size(image_width, image_height));
 			cv::vector<cv::Rect> found;
 			
-			people_detector::people_rects roi_rects;
-			people_detector::people_rects detect_rects;
-			people_detector::people_rect temp_rect;
+			sensing_on_road::pedestrian_vision_batch roi_rects;
+			sensing_on_road::pedestrian_vision_batch detect_rects;
+			sensing_on_road::pedestrian_vision temp_rect;
 			
-			for(int i=0;i<(unsigned int)pr.pr_vector.size();i++)
+			for(unsigned int i=0;i<pr.pd_vector.size();i++)
 			{
 				
 				
@@ -43,15 +43,15 @@ namespace HOG_Classifier {
 				
 				temp_rect.decision_flag = false;
 				
-				int img_x = pr.pr_vector[i].scaled_x;//>image_width)?image_width:pr.pr_vector[i].scaled_x;
-				int img_y = pr.pr_vector[i].scaled_y;//>image_height)?image_height:pr.pr_vector[i].scaled_y;
+				int img_x = pr.pd_vector[i].x;//>image_width)?image_width:pr.pr_vector[i].x;
+				int img_y = pr.pd_vector[i].y;//>image_height)?image_height:pr.pr_vector[i].y;
 				
 				if(img_x > image_width || img_y > image_height) return;
 				if(img_x<0)img_x=0;
 				if(img_y<0)img_y=0;
 				
-				int img_width = ((pr.pr_vector[i].scaled_width+img_x)>image_width)?(image_width-img_x):pr.pr_vector[i].scaled_width;
-				int img_height =  ((pr.pr_vector[i].scaled_height+img_y)>image_height)?(image_height-img_y):pr.pr_vector[i].scaled_height;
+				int img_width = ((pr.pd_vector[i].width+img_x)>image_width)?(image_width-img_x):pr.pd_vector[i].width;
+				int img_height =  ((pr.pd_vector[i].height+img_y)>image_height)?(image_height-img_y):pr.pd_vector[i].height;
 				
 				//the minimum rectangle size that is accepted is 64x128
 				if(img_width<64)
@@ -71,7 +71,7 @@ namespace HOG_Classifier {
 				//img = img(roi);//cv::Rect(0,0,640,480));
 				cv::gpu::GpuMat gpu_img(img(roi));
 				double t = (double)cv::getTickCount();   
-				gpu_hog.detectMultiScale(gpu_img, found, 0.2, cv::Size(8,8), cv::Size(0,0), 1.05, 1);
+				gpu_hog.detectMultiScale(gpu_img, found, 0.2, cv::Size(8,8), cv::Size(0,0), 2.4, 0);
 				
 				t = (double)cv::getTickCount() - t;
 				printf("Detection time = %gms\n", t*1000./cv::getTickFrequency());
@@ -84,31 +84,19 @@ namespace HOG_Classifier {
 					cv::rectangle(img,topleftPoint , bottomrightPoint, cv::Scalar(0,255,0), 1);
 					temp_rect.cvRect_x1=topleftPoint.x;temp_rect.cvRect_y1=topleftPoint.y;
 					temp_rect.cvRect_x2=bottomrightPoint.x;temp_rect.cvRect_y2=bottomrightPoint.y;
-					detect_rects.pr_vector.push_back(temp_rect);
+					detect_rects.pd_vector.push_back(temp_rect);
 				}
 				cv::rectangle(img, offset, offset+cv::Point(img_width, img_height), cv::Scalar(255,0,0),1);
-				temp_rect = pr.pr_vector[i];
+				temp_rect = pr.pd_vector[i];
 				temp_rect.cvRect_x1=img_x;temp_rect.cvRect_y1=img_y;
 				temp_rect.cvRect_x2=img_x+img_width;temp_rect.cvRect_y2=img_y+img_height;
 				if((int)found.size()>0) temp_rect.decision_flag = true;
 				
-				roi_rects.pr_vector.push_back(temp_rect);
-				//IplImage *cv = &frame;
+				roi_rects.pd_vector.push_back(temp_rect);
 				
 			}
 			people_roi_pub_.publish(roi_rects);
 			people_detect_pub_.publish(detect_rects);
-			//imshow("Image window", img);
-			//cvWaitKey(3);
-			/*
-			try
-				{
-					image_pub_.publish(bridge_.cvToImgMsg(cv_image, "bgra8"));
-				}
-			catch (sensor_msgs::CvBridgeException error)
-				{
-					ROS_ERROR("error");
-				}*/
 			new_image = false;
 		}
 	}
@@ -117,16 +105,16 @@ namespace HOG_Classifier {
 	void HOGClassifier::imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr)
 	{
 		std::cout<<"Inside image call\n";
-		
+		cv_bridge::CvImagePtr cv_image;
 		try
 		{
-			cv_image = bridge_.imgMsgToCv(msg_ptr, "bgra8");
+			cv_image = cv_bridge::toCvCopy(msg_ptr, "bgra8");
 		}
-		catch (sensor_msgs::CvBridgeException error)
+		catch (cv_bridge::Exception& e)
 		{
-			ROS_ERROR("error");
+			ROS_ERROR("cv_bridge exception: %s", e.what());
 		}
-		cv::Mat l_img(cv_image);
+		cv::Mat l_img(cv_image->image);
 		img = l_img;
 		new_image = true;
 		

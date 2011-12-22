@@ -16,15 +16,6 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-set(SOCKET_HANDLER_ROOT_DIR ../../../bookingUI)
-set(SOCKET_HANDLER_SRC_DIR ${SOCKET_HANDLER_ROOT_DIR}/socket_handler)
-set(SOCKET_HANDLER_INC_DIR ${SOCKET_HANDLER_ROOT_DIR})
-
-# Instead of recompiling all the source files, it would be better to link with
-# the static library, but I don't know how to do that in cmake...
-FILE(GLOB SOCKET_HANDLER_SRCS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "${SOCKET_HANDLER_SRC_DIR}/*.cc")
-
 #uncomment if you have defined messages
 #rosbuild_genmsg()
 #uncomment if you have defined services
@@ -35,11 +26,13 @@ FILE(GLOB SOCKET_HANDLER_SRCS RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
-#rosbuild_add_executable(route_planner src/route_planner.cpp)
-include_directories(${SOCKET_HANDLER_INC_DIR})
-rosbuild_add_executable(simple_goal src/simple_goal.cpp)
-rosbuild_add_executable(route_planner_node src/route_planner_node.cpp src/RoutePlanner.cc ${SOCKET_HANDLER_SRCS})
-rosbuild_add_executable(simple_server src/simple_server_main.cpp src/RoutePlanner.cc ${SOCKET_HANDLER_SRCS})
-rosbuild_add_executable(route_planner_standalone src/route_planner_node_standalone.cpp src/RoutePlanner.cc ${SOCKET_HANDLER_SRCS})
-rosbuild_add_executable(svg_path_manipulator src/svg_path_manipulator.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
+
+SET( BookingCommonRootDir ${PROJECT_SOURCE_DIR}/../../../bookingUI/shared )
+INCLUDE_DIRECTORIES(${BookingCommonRootDir}/src)
+LINK_DIRECTORIES (${LINK_DIRECTORIES} ${BookingCommonRootDir})
+
+rosbuild_add_executable(route_planner_node src/RoutePlannerVehicle.cpp src/route_planner_node.cpp)
+target_link_libraries(route_planner_node bookingcommon)
+rosbuild_add_executable(simple_goal src/simple_goal.cpp)
+#rosbuild_add_executable(svg_path_manipulator src/svg_path_manipulator.cpp)

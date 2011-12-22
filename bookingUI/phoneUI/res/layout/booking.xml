@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical" >
+
+    <TableLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="wrap_content"
+        android:layout_height="fill_parent"
+        android:orientation="vertical"
+        android:stretchColumns="1" >
+
+        <TableRow android:gravity="center_vertical" >
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/pickup" >
+            </TextView>
+
+            <Button
+                android:id="@+id/pickupbutton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pick a station" >
+            </Button>
+
+            <Button
+                android:id="@+id/pickupmapbutton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/pickonmap" >
+            </Button>
+        </TableRow>
+
+        <TableRow android:gravity="center_vertical" >
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/destination" >
+            </TextView>
+
+            <Button
+                android:id="@+id/dropoffbutton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pick a station" >
+            </Button>
+
+            <Button
+                android:id="@+id/destinationmapbutton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/pickonmap" >
+            </Button>
+        </TableRow>
+    </TableLayout>
+
+    <LinearLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal" >
+
+        <Button
+            android:id="@+id/confirmbutton"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="@string/confirm" >
+        </Button>
+
+        <Button
+            android:id="@+id/cancelbutton"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="@string/cancel" >
+        </Button>
+    </LinearLayout>
+
+</LinearLayout>
