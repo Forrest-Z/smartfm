@@ -90,7 +90,7 @@ namespace road_detection{
             if(laser_cloud_base_.points[ip].y>0)
             {
                 looking_forward_distance_ = laser_cloud_base_.points[ip].x;
-                ROS_INFO("%5f", looking_forward_distance_);
+                ROS_DEBUG("%5f", looking_forward_distance_);
                 break;
             }
         }
@@ -221,7 +221,7 @@ namespace road_detection{
             unsigned int serial_ipn5 = (unsigned int)(laser_cloud_.channels.front().values[temp_ip-5]);
             if((serial_ipp5-serial_ipp0==5)&&(serial_ipn5-serial_ipn5==-5))
             {
-                ROS_INFO("DP pass");
+                ROS_DEBUG("DP pass");
                 DP_RA_pcl_.points.push_back(FR_RA_pcl_.points[temp_ip]);
 				DP_pcl_.points.push_back(laser_cloud_.points[temp_ip]);
             }
@@ -270,7 +270,7 @@ namespace road_detection{
                 }
             }
         }
-        ROS_INFO("Road_Cand size %d", road_cands.size());
+        ROS_DEBUG("Road_Cand size %d", road_cands.size());
         
         //b. choose the best road candidate relying on several criteria;
         if(road_cands.size()==0){road_extracted_ = false;}
@@ -327,7 +327,7 @@ namespace road_detection{
         bool C1_flag = (delt_y       > rdWidth_thresh_);
 		bool C2_flag = (delt_serial  > rdPtNum_thresh_);
 		bool C3_flag = (delt_x       < delt_y * tan(slope_thresh_));
-        //ROS_INFO("dis_x %5f, dis_y %5f, delt_serial %d, delty*slope %5f", delt_x, delt_y, delt_serial, delt_y * tanf(slope_thresh_));
+        //ROS_DEBUG("dis_x %5f, dis_y %5f, delt_serial %d, delty*slope %5f", delt_x, delt_y, delt_serial, delt_y * tanf(slope_thresh_));
         
         if(C1_flag&&C2_flag&&C3_flag) return true;
         else return false;
@@ -369,7 +369,7 @@ namespace road_detection{
                 else
                 {
                     if(right_DP2_serial != 0)right_curb_tmp.front_id = DP2_IDs_[right_DP2_serial-1];
-                    else{ right_curb_tmp.front_id = 0; right_go_on_merging = false; ROS_INFO("to the very front");}
+                    else{ right_curb_tmp.front_id = 0; right_go_on_merging = false; ROS_DEBUG("to the very front");}
                 }
                 
                 if(Merge_Road_Curb(road_surface_, right_curb_tmp)){road_surface_.front_id = right_curb_tmp.front_id;}
@@ -391,7 +391,7 @@ namespace road_detection{
                 if(left_DP2_serial == -1) {left_crossing_ = true; break;}
                 else{
                     if(left_DP2_serial != (int)DP2_IDs_.size()-1) left_curb_tmp.back_id = DP2_IDs_[left_DP2_serial+1];
-                    else{ left_curb_tmp.back_id = laser_cloud_laser_.points.size()-1 ; left_go_on_merging = false; ROS_INFO("to the very back");}
+                    else{ left_curb_tmp.back_id = laser_cloud_laser_.points.size()-1 ; left_go_on_merging = false; ROS_DEBUG("to the very back");}
                 }
                 
                 if(Merge_Road_Curb(road_surface_, left_curb_tmp)){road_surface_.back_id = left_curb_tmp.back_id;}
@@ -483,13 +483,13 @@ namespace road_detection{
                     if(right_pt.y<-crossing_thresh_){right_crossing_=true;}
                     else
                     {
-                        ROS_INFO("verify right curb");
+                        ROS_DEBUG("verify right curb");
                         if(Curb_Cand_Verify(road_surface_, rightCurb_cand_))
                         {   
                             //for curb, its filter response is local minimum; utilize this knowledge;
                             if(FR_RA_pcl_.points[right_serial_temp].x < 0)
                             {
-                                ROS_INFO("FR_RA: %5f", FR_RA_pcl_.points[right_serial_temp].x);
+                                ROS_DEBUG("FR_RA: %5f", FR_RA_pcl_.points[right_serial_temp].x);
                                 right_curb_ = true;
                             }
                         }
@@ -511,12 +511,12 @@ namespace road_detection{
                     if(left_pt.y > crossing_thresh_){left_crossing_ = true;}
                     else
                     {
-                        ROS_INFO("verify left curb");
+                        ROS_DEBUG("verify left curb");
                         if(Curb_Cand_Verify(road_surface_, leftCurb_cand_)) 
                         {
                             if(FR_RA_pcl_.points[left_serial_temp].x < 0) 
                             {
-                                ROS_INFO("FR_RA: %5f", FR_RA_pcl_.points[left_serial_temp].x);
+                                ROS_DEBUG("FR_RA: %5f", FR_RA_pcl_.points[left_serial_temp].x);
                                 left_curb_ = true;
                             }
                         }
@@ -578,7 +578,7 @@ namespace road_detection{
              int right_DP1 = DP1_Find(rightCurb_cand_);
              if(right_DP1 != -1)
              {
-                 ROS_INFO("right curb DP1");
+                 ROS_DEBUG("right curb DP1");
                  //use the upper point as curb point when DP1;
                  right_curb_serial = (unsigned int)(right_DP1-1);
              }
@@ -605,7 +605,7 @@ namespace road_detection{
              int left_DP1 = DP1_Find(leftCurb_cand_);
              if(left_DP1 != -1)
              {
-                 ROS_INFO("left curb DP1");
+                 ROS_DEBUG("left curb DP1");
                  left_curb_serial = (unsigned int)left_DP1;
              }
              else {left_curb_serial = road_surface_.back_id;}
@@ -683,8 +683,8 @@ namespace road_detection{
         else cb_angle = atan2f(cbBack_pt.y-cbFront_pt.y, cbBack_pt.x-cbFront_pt.x);
         if(rd_angle<0) cb_angle = cb_angle + (float)M_PI;
         
-        ROS_INFO("cbBack_pt.x %5f, cbFront_pt.x %5f", cbBack_pt.x, cbFront_pt.x);
-        ROS_INFO("rd_angle %5f, cb_angle %5f", rd_angle, cb_angle);
+        ROS_DEBUG("cbBack_pt.x %5f, cbFront_pt.x %5f", cbBack_pt.x, cbFront_pt.x);
+        ROS_DEBUG("rd_angle %5f, cb_angle %5f", rd_angle, cb_angle);
         
         float delt_angle = fabsf(cb_angle-rd_angle);
         bool angle_flag  = delt_angle > curbAngle_thresh_;
@@ -697,8 +697,8 @@ namespace road_detection{
         int serial_back  = (int)(laser_cloud_laser_.channels.front().values[curb_line.back_id]);
         if(serial_back - serial_front > (int)curb_line.back_id - (int)curb_line.front_id) conti_flag = false;
         
-        ROS_INFO("road front back: %d, %d; curb front back: %d, %d", road_line.front_id, road_line.back_id, curb_line.front_id, curb_line.back_id );
-        ROS_INFO("angle diff: %5f, height diff: %5f", delt_angle, fabsf(cbFront_pt_base.z-cbBack_pt_base.z));
+        ROS_DEBUG("road front back: %d, %d; curb front back: %d, %d", road_line.front_id, road_line.back_id, curb_line.front_id, curb_line.back_id );
+        ROS_DEBUG("angle diff: %5f, height diff: %5f", delt_angle, fabsf(cbFront_pt_base.z-cbBack_pt_base.z));
         
         if(angle_flag && height_flag && conti_flag &&yLength_flag) return true;
         else return false;
@@ -744,8 +744,8 @@ namespace road_detection{
         else if(curb_line.size() == 10)
         {
             float nearest_dis = Pt_Line_Dis(curb_line, meas_pt);
-            ROS_INFO("Nearest Distance %5f", nearest_dis);
-            ROS_INFO("---------curb baselink:%5f, %5f; odom: %5f, %5f", laser_cloud_laser_.points[serial_num].x, laser_cloud_laser_.points[serial_num].y, laser_cloud_odom_.points[serial_num].x, laser_cloud_odom_.points[serial_num].y);
+            ROS_DEBUG("Nearest Distance %5f", nearest_dis);
+            ROS_DEBUG("---------curb baselink:%5f, %5f; odom: %5f, %5f", laser_cloud_laser_.points[serial_num].x, laser_cloud_laser_.points[serial_num].y, laser_cloud_odom_.points[serial_num].x, laser_cloud_odom_.points[serial_num].y);
             if(nearest_dis < curbFilter_assoc_thresh_ ) 
             {
                 curb_line.erase(curb_line.begin());
@@ -756,7 +756,7 @@ namespace road_detection{
             else
             {
                 //--------------2nd step: check whether curb point can be eliminated by other sensors;
-                ROS_INFO("--------------------to be further checked---------------------------------");
+                ROS_DEBUG("--------------------to be further checked---------------------------------");
                 if(Eliminate_noise_other_sensors(serial_num) == false) return false;
                 else return true; 
             }
@@ -772,7 +772,7 @@ namespace road_detection{
         float y1_temp = line.front().y;
         float x2_temp = line.back().x;
         float y2_temp = line.back().y;
-        ROS_INFO("x1_temp, y1_temp:  (%5f, %5f); x2_temp, y2_temp: (%5f, %5f); pt.x, pt.y: (%5f, %5f)", x1_temp, y1_temp, x2_temp, y2_temp, pt.x, pt.y);
+        ROS_DEBUG("x1_temp, y1_temp:  (%5f, %5f); x2_temp, y2_temp: (%5f, %5f); pt.x, pt.y: (%5f, %5f)", x1_temp, y1_temp, x2_temp, y2_temp, pt.x, pt.y);
         float para_A1 = y2_temp-y1_temp;
         float para_B1 = x1_temp-x2_temp;
         float para_C1 = para_A1*x1_temp+para_B1*y1_temp;
@@ -784,7 +784,7 @@ namespace road_detection{
         
         //c. calculate the intersection;
         float det =  para_A1*para_B2 - para_A2*para_B1;
-        if(det==0) {ROS_INFO("not likely happen"); return 0.0;}
+        if(det==0) {ROS_DEBUG("not likely happen"); return 0.0;}
         else
         {
             float x_intersection = (para_B2 * para_C1 - para_B1 * para_C2)/det;
@@ -828,8 +828,8 @@ namespace road_detection{
         publish_flag_ = false;
         ros::Time meas_time = hybrid_pcl_.header.stamp;
 		if (!transformer_.canTransform("base_link","odom", meas_time))
-		{ROS_INFO("curb_time older than odom message buffer");return;}
-		else {ROS_INFO("odom OK");}
+		{ROS_DEBUG("curb_time older than odom message buffer");return;}
+		else {ROS_DEBUG("odom OK");}
 		transformer_.lookupTransform("odom", "base_link", meas_time, odom_meas_);
 		
         if(pub_init_)
@@ -862,7 +862,7 @@ namespace road_detection{
     
     void curb_detect::odomCallback(const OdomConstPtr& odom)
 	{
-		//ROS_INFO("odom call_back");
+		//ROS_DEBUG("odom call_back");
 		ros::Time odom_time = odom->header.stamp;
 		Quaternion q;
 		tf::quaternionMsgToTF(odom->pose.pose.orientation, q);
