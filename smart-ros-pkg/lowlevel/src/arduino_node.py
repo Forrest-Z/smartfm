@@ -48,7 +48,7 @@ steer_sub = setupSub('steer_angle', Float64, steerCB)
 lblinker_sub = setupSub('left_blinker', Bool, lblinkerCB)
 rblinker_sub = setupSub('right_blinker', Bool, rblinkerCB)
 
-rate = rospy.get_param('rate',10)
+rate = rospy.get_param('~rate',10)
 rospy.loginfo('Sending messages to the Arduino board every %dms' % int(1000.0/rate))
 
 while not rospy.is_shutdown():
