@@ -21,6 +21,7 @@
   <depend package="nav_msgs"/>
   <depend package="rosserial_python"/>
   <depend package="fmutil"/>
+  <depend package="golfcar_halstreamer"/>
 
 </package>
 
