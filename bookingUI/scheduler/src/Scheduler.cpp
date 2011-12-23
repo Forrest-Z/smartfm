@@ -59,19 +59,19 @@ void Scheduler::addTask(Task task)
 
     task = Task(task.taskID, task.customerID, vit->id, task.pickup, task.dropoff);
 
-    MSGLOG(2, "Adding task <%u,%s,%s,%s> to vehicle %s",
-            task.taskID, task.customerID.c_str(),
-            task.pickup.c_str(), task.dropoff.c_str(), task.vehicleID.c_str());
+    stringstream ss;
+    ss <<"Adding task <" <<task.taskID <<"," <<task.customerID <<",";
+    ss <<task.pickup.str() <<"," <<task.dropoff.str() <<"> to vehicle " <<task.vehicleID;
 
     task.ttask = travelTime(task.pickup, task.dropoff);
 
     if( vit->tasks.empty() )
     {
         if( vit->status != SchedulerTypes::VEH_STAT_WAITING ) {
-            MSGLOG(2, "Vehicle is not ready yet, skipping.");
+            MSGLOG(1, "%s but it is not ready yet. Skipping.", ss.str().c_str());
             return;
         }
-        MSGLOG(2, "Adding as current.");
+        MSGLOG(1, "%s as current task.", ss.str().c_str());
         vit->status = SchedulerTypes::VEH_STAT_GOING_TO_PICKUP;
         task.tpickup = 0; //TODO: this should be the time from the current station to the pickup station
         vit->tasks.push_back(task);
@@ -79,6 +79,7 @@ void Scheduler::addTask(Task task)
     }
     else
     {
+        MSGLOG(1, "%s. Adding it as a pending task.", ss.str().c_str());
         Station prevDropoff = vit->tasks.front().dropoff;
         list<Task>::iterator it = vit->tasks.begin();
         for ( ++it; it != vit->tasks.end(); ++it )
@@ -115,7 +116,7 @@ void Scheduler::addTask(Task task)
 
 void Scheduler::removeTask(unsigned taskID)
 {
-    MSGLOG(2, "Removing task %u", taskID);
+    MSGLOG(1, "Removing task %u", taskID);
 
     for (VIT vit = vehicles.begin(); vit != vehicles.end(); ++vit)
     {
@@ -240,7 +241,7 @@ void Scheduler::updateVehicleList()
                 break;
         if( vit==vehicles.end() ) {
             // This is a new vehicle
-            MSGLOG(2, "Found new vehicle %s.", it->id.c_str());
+            MSGLOG(1, "Found new vehicle %s.", it->id.c_str());
             assert( it->status==SchedulerTypes::VEH_STAT_WAITING );
             vehicles.push_back( Vehicle(dbTalker, it->id, SchedulerTypes::VEH_STAT_WAITING) );
         }
@@ -258,7 +259,7 @@ void Scheduler::updateVehicleList()
         if( it==infos.end() ) {
             // The vehicle disappeared
             // TODO: reschedule its tasks
-            MSGLOG(2, "Vehicle %s is no longer present in the DB.", vit->id.c_str());
+            MSGLOG(1, "Vehicle %s is no longer present in the DB.", vit->id.c_str());
             vit = vehiclelist.erase(vit);
         }
         else
@@ -278,6 +279,6 @@ void Scheduler::update()
     for( VIT vit=vehicles.begin(); vit!=vehicles.end(); ++vit )
         vit->update();
 
-    MSGLOG(3, "After updating waiting time...\nTask queue:\n%s", toString().c_str());
+    MSGLOG(2, "After updating...\nTask queue:\n%s", toString().c_str());
 }
 

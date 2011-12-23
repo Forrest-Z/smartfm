@@ -7,7 +7,7 @@ SET (CMAKE_CXX_FLAGS "-g -Wall")
 # the version number and define a flag accordingly
 include(FindPkgConfig)
 pkg_check_modules(TINYXML REQUIRED tinyxml)
-pkg_check_modules(TINYXML26 QUIET tinyxml>=2.6)
+pkg_check_modules(TINYXML26 tinyxml>=2.6) #QUIET only works with cmake>=2.8.2
 if( NOT TINYXML26_FOUND )
     SET (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DTINYXML_API_PRE26")
     MESSAGE("Using old tinyxml API (pre 2.6). Setting the compilation flag TINYXML_API_PRE26.")

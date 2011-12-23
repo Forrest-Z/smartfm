@@ -33,7 +33,7 @@
             }\
     } while(0)
 
-#define MSGLOG(lvl, fmt, ...) do { MSG(lvl, fmt,##__VA_ARGS__); LOG(fmt,##__VA_ARGS__); } while(0)
+#define MSGLOG(lvl, fmt, ...) do { MSG(lvl, fmt, ##__VA_ARGS__); LOG(fmt, ##__VA_ARGS__); } while(0)
 
 #define ERROR(fmt, ...) do { \
         fprintf(DEBUG_STREAM, "ERROR %s:%d: " fmt "\n", __FUNCTION__, __LINE__, ##__VA_ARGS__); \

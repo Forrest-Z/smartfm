@@ -120,6 +120,7 @@ void Vehicle::update()
     case SchedulerTypes::VEH_STAT_AT_DROPOFF:
         if( vi.requestID == curTask.taskID )
         {
+            //MSGLOG(1, "Vehicle reached destination. Switching to next task.");
             dbTalker.updateTime(curTask.taskID, 0);
             dbTalker.updateTaskStatus(curTask.taskID, "Completed");
             switchToNextTask();

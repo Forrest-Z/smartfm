@@ -40,14 +40,6 @@ using SchedulerTypes::Duration;
 
 
 //------------------------------------------------------------------------------
-// Global constants
-
-/// Although the system is intended to support several vehicles, not everything
-/// has been implemented, so we will use vehicle 0 only for now.
-const char DEFAULT_VEHICLE_ID[] = "golfcart1";
-
-
-//------------------------------------------------------------------------------
 // A vehicle class for simulated vehicles
 class SimulatedVehicle {
 public:
@@ -189,16 +181,16 @@ int main(int argc, char **argv)
 
     } //try
     catch( StationDoesNotExistException & e ) {
-        MSGLOG(1, "ERROR: Caught StationDoesNotExistException: station %s does not exist.", e.what());
+        MSGLOG(0, "ERROR: Caught StationDoesNotExistException: station %s does not exist.", e.what());
         exit_code = 1;
     }
     catch( SchedulerException & e ) {
-        MSGLOG(1, "ERROR: Caught SchedulerException: %s.", e.what());
+        MSGLOG(0, "ERROR: Caught SchedulerException: %s.", e.what());
         exit_code = 1;
     }
     catch( exception & e )
     {
-        MSGLOG(1, "ERROR: Caught exception: %s", e.what());
+        MSGLOG(0, "ERROR: Caught exception: %s", e.what());
         exit_code = 1;
     }
 
@@ -335,8 +327,9 @@ void createObjects()
     gScheduler->setVerbosityLevel(optVerbosityLevel);
     gScheduler->setLogFile(gLogFile);
 
-    if( optSimulateVehicle ) {
-        gSimulatedVehicle = new SimulatedVehicle(gStationPaths, DEFAULT_VEHICLE_ID, optSimVehicleSpeed, optHostName);
+    if( optSimulateVehicle )
+    {
+        gSimulatedVehicle = new SimulatedVehicle(gStationPaths, "simulatedvehicle", optSimVehicleSpeed, optHostName);
         gSimulatedVehicle->comm.startThread();
         gSimulatedVehicle->rp.startThread();
         while( ! gSimulatedVehicle->rp.getCurrentStation().isValid() )
@@ -385,7 +378,13 @@ void addMobileTask()
         do
             s2 = randu_(gStationList.size());
         while (s1==s2);
-        gDBTalker->makeBooking("cust1", gStationList(s1), gStationList(s2));
+
+        string customer = "cust1";
+        Station st1( gStationList(s1) );
+        Station st2( gStationList(s2) );
+        MSGLOGNOGUI(1,"Adding simulated mobile task: %s,%s,%s",
+                customer.c_str(), st1.c_str(), st2.c_str());
+        gDBTalker->makeBooking(customer, st1, st2);
     }
 }
 
@@ -439,14 +438,14 @@ void textUI()
         Station pickup = gStationList.prompt("  Enter the pick-up location: ");
         Station dropoff = gStationList.prompt("  Enter the drop-off location: ");
         unsigned id = gDBTalker->makeBooking("cust1", pickup, dropoff);
-        MSGLOGNOGUI(1, "Created request %u.", id);
+        MSGLOG(1, "Created request %u.", id);
     }
     else if (opOption == OPERATOR_REMOVE_TASK)
     {
         printf ("  Enter id of task to be cancelled: ");
         unsigned id = getNumeric();
         gDBTalker->custCancel(id);
-        MSGLOGNOGUI(1, "Cancelled task %u.", id);
+        MSGLOG(1, "Cancelled task %u.", id);
     }
     else if (opOption == OPERATOR_VIEW_TASK_LIST)
     {
