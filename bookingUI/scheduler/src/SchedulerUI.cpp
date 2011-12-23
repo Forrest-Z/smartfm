@@ -7,10 +7,6 @@
 
 #include "SchedulerUI.h"
 
-#define DEBUG_LOGFILE logFile
-#define DEBUG_VERBOSITY_VAR verbosity_level
-#include "debug_macros.h"
-
 #define DEFAULT_VEHICLE_ID "golfcart1"
 
 using namespace std;
@@ -36,16 +32,6 @@ SchedulerUI::SchedulerUI(const Scheduler & s, DBTalker & db_talker) : scheduler(
 SchedulerUI::~SchedulerUI()
 {
 
-}
-
-void SchedulerUI::setLogFile(FILE *logfile)
-{
-    this->logFile = logfile;
-}
-
-void SchedulerUI::setVerbosityLevel(unsigned lvl)
-{
-    this->verbosity_level = lvl;
 }
 
 // Initialize console display

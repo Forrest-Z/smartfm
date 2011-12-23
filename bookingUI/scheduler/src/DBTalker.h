@@ -7,6 +7,8 @@
 #include <cppconn/driver.h>
 #include <cppconn/connection.h>
 
+#include <DebugLogger.h>
+
 #include "SchedulerTypes.h"
 
 /*
@@ -20,24 +22,19 @@
 * vehicles, then take actions
 */
 
-class DBTalker
+class DBTalker : public DebugLogger
 {
 private:
     sql::Driver *driver;
     sql::Connection *con;
     std::string hostname, username, passwd, dbname;
     StationList stationList;
-    unsigned verbosity_level;
-    FILE * logFile;
 
 public:
 
     DBTalker(std::string hostname, std::string username, std::string passwd,
             std::string dbname);
     ~DBTalker();
-
-    void setLogFile(FILE *);
-    void setVerbosityLevel(unsigned);
 
     /// Check the DB for bookings that haven't been scheduled yet
     std::vector<SchedulerTypes::Task> getRequestedBookings();

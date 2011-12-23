@@ -11,10 +11,6 @@
 
 #include "Scheduler.h"
 
-#define DEBUG_LOGFILE logFile
-#define DEBUG_VERBOSITY_VAR verbosity_level
-#include "debug_macros.h"
-
 using namespace std;
 using SchedulerTypes::Task;
 using SchedulerTypes::Duration;
@@ -23,19 +19,8 @@ using SchedulerTypes::Duration;
 #define MAX_ADDITIONAL_TIME 5
 
 
-Scheduler::Scheduler(DBTalker &dbt)
-: verbosity_level(0), logFile(NULL), dbTalker(dbt)
+Scheduler::Scheduler(DBTalker &dbt) : dbTalker(dbt)
 {
-}
-
-void Scheduler::setLogFile(FILE *logfile)
-{
-    this->logFile = logfile;
-}
-
-void Scheduler::setVerbosityLevel(unsigned lvl)
-{
-    this->verbosity_level = lvl;
 }
 
 Scheduler::VIT Scheduler::checkVehicleAvailable()

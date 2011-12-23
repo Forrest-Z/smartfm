@@ -20,23 +20,8 @@ using namespace std;
 #include "SchedulerUI.h"
 #include "DBTalker.h"
 
-#define DEBUG_LOGFILE gLogFile
-#define DEBUG_VERBOSITY_VAR optVerbosityLevel
-#include "debug_macros.h"
-#define MSGLOGNOGUI(lvl, fmt, ...) do { if(optNoGUI) MSG(lvl, fmt, ##__VA_ARGS__); LOG(fmt, ##__VA_ARGS__); } while(0)
-
 using SchedulerTypes::Task;
 using SchedulerTypes::Duration;
-
-
-
-/** BUG list
-* Apparently the time of tasks (twait) is wrong.
-*/
-
-/** TODO
-* Support more than one vehicle (low priority).
-*/
 
 
 //------------------------------------------------------------------------------
@@ -81,8 +66,8 @@ time_t gPreviousTime = 0;
 /// The name of this program
 const char * gProgramName;
 
-// Log file
-FILE* gLogFile = NULL;
+// logger
+DebugLogger logger;
 
 StationPaths gStationPaths;
 const StationList & gStationList = gStationPaths.knownStations();
@@ -110,7 +95,6 @@ enum OperatorOption
 void print_usage (FILE* stream, int exit_code);
 
 void parseOptions(int argc, char **argv);
-void openLogFile();
 
 /// Create random tasks and make requests
 void addMobileTask();
@@ -147,7 +131,6 @@ int main(int argc, char **argv)
     srand ( time(NULL) );
     parseOptions(argc, argv);
 
-    openLogFile();
     time_t prevTimeTaskInfo = time(NULL);
 
     try
@@ -181,16 +164,16 @@ int main(int argc, char **argv)
 
     } //try
     catch( StationDoesNotExistException & e ) {
-        MSGLOG(0, "ERROR: Caught StationDoesNotExistException: station %s does not exist.", e.what());
+        ERROR_(logger, "Caught StationDoesNotExistException: station %s does not exist.", e.what());
         exit_code = 1;
     }
     catch( SchedulerException & e ) {
-        MSGLOG(0, "ERROR: Caught SchedulerException: %s.", e.what());
+        ERROR_(logger, "Caught SchedulerException: %s.", e.what());
         exit_code = 1;
     }
     catch( exception & e )
     {
-        MSGLOG(0, "ERROR: Caught exception: %s", e.what());
+        ERROR_(logger, "Caught exception: %s", e.what());
         exit_code = 1;
     }
 
@@ -202,8 +185,7 @@ int main(int argc, char **argv)
 
     delete gScheduler;
     delete gDBTalker;
-
-    fclose (gLogFile);
+    logger.close();
 
     return exit_code;
 } //main()
@@ -302,34 +284,27 @@ void parseOptions(int argc, char **argv)
     }
 }
 
-
-void openLogFile()
+void createObjects()
 {
     char timestr[64];
     time_t t = time(NULL);
     strftime(timestr, sizeof(timestr), "%F-%a-%H-%M-%S", localtime(&t));
-
     ostringstream oss;
-    oss  << "log_scheduler" << "." << timestr <<".log";
-    string logFileName = oss.str();
+    oss  << "log-" << "." << timestr <<".log";
+    logger.setLogFile(oss.str());
+    logger.setVerbosityLevel(optVerbosityLevel);
+    logger.setConsoleStream(stderr);
 
-    gLogFile = fopen(logFileName.c_str(), "w");
-}
-
-void createObjects()
-{
     string username = "fmauto", passwd = "smartfm", dbname = "fmauto";
     gDBTalker = new DBTalker(optHostName, username, passwd, dbname);
-    gDBTalker->setLogFile(gLogFile);
-    gDBTalker->setVerbosityLevel(optVerbosityLevel);
+    gDBTalker->copyLoggingSettings(logger);
 
     gScheduler = new Scheduler(*gDBTalker);
-    gScheduler->setVerbosityLevel(optVerbosityLevel);
-    gScheduler->setLogFile(gLogFile);
+    gScheduler->copyLoggingSettings(logger);
 
     if( optSimulateVehicle )
     {
-        gSimulatedVehicle = new SimulatedVehicle(gStationPaths, "simulatedvehicle", optSimVehicleSpeed, optHostName);
+        gSimulatedVehicle = new SimulatedVehicle(gStationPaths, "golfcart1", optSimVehicleSpeed, optHostName);
         gSimulatedVehicle->comm.startThread();
         gSimulatedVehicle->rp.startThread();
         while( ! gSimulatedVehicle->rp.getCurrentStation().isValid() )
@@ -339,8 +314,7 @@ void createObjects()
     if (!optNoGUI)
     {
         gSchedulerUI = new SchedulerUI(*gScheduler, *gDBTalker);
-        gSchedulerUI->setVerbosityLevel(optVerbosityLevel);
-        gSchedulerUI->setLogFile(gLogFile);
+        gSchedulerUI->copyLoggingSettings(logger);
         gSchedulerUI->initConsole();
         gSchedulerUI->updateConsole();
     }
@@ -382,7 +356,7 @@ void addMobileTask()
         string customer = "cust1";
         Station st1( gStationList(s1) );
         Station st2( gStationList(s2) );
-        MSGLOGNOGUI(1,"Adding simulated mobile task: %s,%s,%s",
+        MSGLOG_(logger, 1, "Adding simulated mobile task: %s,%s,%s",
                 customer.c_str(), st1.c_str(), st2.c_str());
         gDBTalker->makeBooking(customer, st1, st2);
     }
@@ -438,14 +412,14 @@ void textUI()
         Station pickup = gStationList.prompt("  Enter the pick-up location: ");
         Station dropoff = gStationList.prompt("  Enter the drop-off location: ");
         unsigned id = gDBTalker->makeBooking("cust1", pickup, dropoff);
-        MSGLOG(1, "Created request %u.", id);
+        MSGLOG_(logger, 1, "Created request %u.", id);
     }
     else if (opOption == OPERATOR_REMOVE_TASK)
     {
         printf ("  Enter id of task to be cancelled: ");
         unsigned id = getNumeric();
         gDBTalker->custCancel(id);
-        MSGLOG(1, "Cancelled task %u.", id);
+        MSGLOG_(logger, 1, "Cancelled task %u.", id);
     }
     else if (opOption == OPERATOR_VIEW_TASK_LIST)
     {

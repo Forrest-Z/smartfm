@@ -4,12 +4,14 @@
 #include <string>
 #include <list>
 
+#include <DebugLogger.h>
+
 #include "SchedulerTypes.h"
 #include "DBTalker.h"
 
 class Scheduler;
 
-class Vehicle
+class Vehicle : public DebugLogger
 {
     friend class Scheduler;
 

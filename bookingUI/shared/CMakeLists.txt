@@ -29,7 +29,7 @@ ENDIF()
     
 INCLUDE_DIRECTORIES (src)
 
-SET (LIB_SRCS src/Station.cpp src/StationDoesNotExist.cpp src/StationList.cpp src/StationPath.cpp src/Threaded.cpp src/RoutePlanner.cpp src/MissionComm.cpp src/HTTPClient.cpp src/DBInterface.cpp src/SvgPath.cpp src/GlobalClock.cpp src/SimulatedRoutePlanner.cpp)
+SET (LIB_SRCS src/DebugLogger.cpp src/Station.cpp src/StationDoesNotExist.cpp src/StationList.cpp src/StationPath.cpp src/Threaded.cpp src/RoutePlanner.cpp src/MissionComm.cpp src/HTTPClient.cpp src/DBInterface.cpp src/SvgPath.cpp src/GlobalClock.cpp src/SimulatedRoutePlanner.cpp)
 
 ADD_LIBRARY (bookingcommon SHARED ${LIB_SRCS})
 target_link_libraries(bookingcommon ${TINYXML_LIBRARIES} ${CURL_LIBRARIES} ${Boost_FILESYSTEM_LIBRARY})

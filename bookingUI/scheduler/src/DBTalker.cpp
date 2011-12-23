@@ -12,18 +12,12 @@
 
 #include "DBTalker.h"
 
-
-#define DEBUG_LOGFILE logFile
-#define DEBUG_VERBOSITY_VAR verbosity_level
-#include "debug_macros.h"
-
 using namespace std;
 using namespace sql;
 using SchedulerTypes::Task;
 
 
 DBTalker::DBTalker(string hostname, string username, string passwd, string dbname)
-: verbosity_level(0), logFile(NULL)
 {
     this->hostname = hostname;
     this->username = username;
@@ -38,16 +32,6 @@ DBTalker::DBTalker(string hostname, string username, string passwd, string dbnam
 DBTalker::~DBTalker()
 {
     delete con;
-}
-
-void DBTalker::setLogFile(FILE *f)
-{
-    this->logFile = f;
-}
-
-void DBTalker::setVerbosityLevel(unsigned lvl)
-{
-    this->verbosity_level = lvl;
 }
 
 void DBTalker::connect()

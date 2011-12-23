@@ -3,6 +3,8 @@
 
 #include <ncurses.h>
 
+#include <DebugLogger.h>
+
 #include "SchedulerTypes.h"
 #include "Scheduler.h"
 #include "DBTalker.h"
@@ -10,7 +12,7 @@
 #define NUM_TASK_DISPLAY 12
 
 
-class SchedulerUI
+class SchedulerUI : public DebugLogger
 {
 public:
     enum SchedulerStatus
@@ -90,12 +92,6 @@ private:
 
     // Status of the scheduler
     SchedulerStatus schedulerStatus;
-
-private:
-    /// Level of verbosity
-    unsigned verbosity_level;
-
-    FILE * logFile;
 
 public:
     // Default constructor

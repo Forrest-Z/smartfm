@@ -7,20 +7,16 @@
 #include <exception>
 
 #include <StationPath.h>
+#include <DebugLogger.h>
 
 #include "SchedulerTypes.h"
 #include "DBTalker.h"
 #include "Vehicle.h"
 
 
-class Scheduler
+class Scheduler : public DebugLogger
 {
 private:
-    /// Level of verbosity
-    unsigned verbosity_level;
-
-    FILE * logFile;
-
     typedef std::vector<Vehicle>::iterator VIT;
 
     /// The pool of vehicles. Each entry has its own list of tasks.
