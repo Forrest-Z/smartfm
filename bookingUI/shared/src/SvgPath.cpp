@@ -16,28 +16,27 @@ using namespace std;
 #define TINYXML_TEXT TEXT
 #endif
 
-// Whether or not to pring some debugging info about paths.
+// Whether or not to print some debugging info about paths.
 #define VERBOSE 0
 
-SvgPath::SvgPath(const char* pFilename, StationPath* pose, PathPoint *size, const char* id)
+SvgPath::SvgPath(){}
+
+void SvgPath::loadFile(const char* pFilename, double res)
 {
-    TiXmlDocument doc(pFilename);
-    foundPath=0;
-    bool loadOkay = doc.LoadFile();
+    TiXmlElement* svgElement;
+    bool loadOkay = svgDoc_.LoadFile(pFilename);
     if (loadOkay)
     {
-        
-        unsigned int npoints=0;
-        SvgPath::findPathElements( pose, size, &npoints, &doc, id);
-        if(VERBOSE)
+        svgElement = svgDoc_.FirstChildElement();
+        stringstream s;
+        s<<svgElement->Value();
+        if(s.str() == "svg")
         {
-            cout<<pFilename<<endl;
-            cout<<id<<" path found at "<<foundPath<<"th path"<<endl;
+            if(VERBOSE) cout<<"Svg file "<<pFilename<<" loaded!"<<endl;
+            size_ = getSize();
+            res_ = res;
         }
-        if(pose->size()==npoints) 
-        {
-            if(VERBOSE) cout<<"Path with "<<npoints<<" points successfully loaded"<<endl;
-        }
+        else throw string_error("Is SVG file loaded? The value found is ",s.str() );
     }
     else
     {
@@ -45,231 +44,267 @@ SvgPath::SvgPath(const char* pFilename, StationPath* pose, PathPoint *size, cons
     }
 }
 
-
-void SvgPath::findPathElements(StationPath* pose, PathPoint* size, unsigned int *npoints, TiXmlNode* pParent, const char* id)
+SvgPath::SvgPath(const char* pFilename, double res)
 {
-    if ( !pParent || *npoints>0) return;
-
-    TiXmlNode* pChild;
-
-    stringstream ss;
-    //only look for elements
-    int t = pParent->Type();
-    switch (t)
-    {
-    case TiXmlNode::TINYXML_ELEMENT:
-        ss<<pParent->Value();
-        if(ss.str()=="svg")
-        {
-            PathPoint width_height;
-            if(find_size_attributes(pParent->ToElement(),&width_height)==0)
-            {
-                throw "No width height information found, is correct svg file used?";
-            }
-            else
-            {
-                *size = width_height;
-                if(VERBOSE) cout<<"Width: "<<size->x_<<" Height: "<<size->y_<<endl;
-            }
-        }
-        else if(ss.str()=="path")
-        {
-            unsigned int num=0;
-            try
-            {
-                num = find_path_attributes(pParent->ToElement(),pose, id);
-            }
-            catch (string error)
-            {
-                throw error;
-            }
-            
-            foundPath++;
-            *npoints=num;
-
-        }
-        break;
-    case TiXmlNode::TINYXML_TEXT:
-        break;
-    }
-
-    for ( pChild = pParent->FirstChild(); pChild != 0; pChild = pChild->NextSibling())
-    {
-        findPathElements( pose,size,npoints,pChild, id);
-    }
-
-    //return;
+    loadFile(pFilename, res);
 }
-string SvgPath::string_error(string description, string details)
+
+vector<SlowZone> SvgPath::getSlowZone()
+{
+    TiXmlElement* svgElement;
+    svgElement = svgDoc_.FirstChildElement();
+    TiXmlNode* pChild;
+    vector<SlowZone> szs;
+    for ( pChild = svgElement->FirstChild(); pChild != 0; pChild = pChild->NextSibling())
+    {
+        TiXmlElement* childElement= pChild->ToElement();
+        if((string)childElement->Value()=="path")
+        {
+            string value;
+            childElement->QueryStringAttribute("sodipodi:type",&value);
+            if(value=="arc")
+            {
+                double cx,cy,rx,ry;
+                GetDoubleAttribute(childElement, "sodipodi:cx",&cx);
+                GetDoubleAttribute(childElement, "sodipodi:cy",&cy);
+                GetDoubleAttribute(childElement, "sodipodi:rx",&rx);
+                GetDoubleAttribute(childElement, "sodipodi:ry",&ry);
+                SlowZone sz;
+                if(rx==ry)
+                {
+                    PathPoint tf=GetTransform(childElement);
+                    sz.r_ = rx;
+                    sz.x_ = cx+tf.x_;
+                    sz.y_ = cy+tf.y_;
+                    szs.push_back(sz);
+                }
+                else
+                {
+                    cout<<"Only circle is supported"<<endl;
+                    return szs;
+                }
+
+            }
+        }
+    }
+    for(unsigned int i=0;i<szs.size();i++)
+    {
+
+        szs[i].x_=szs[i].x_*res_;
+        szs[i].y_=(size_.y_-szs[i].y_)*res_;
+        szs[i].r_=szs[i].r_*res_;
+        if(VERBOSE) cout<<"SlowZone"<<i<<" x y r: "<< szs[i].x_<<' '<<szs[i].y_<<' '<<szs[i].r_<<endl;
+    }
+
+    return szs;
+}
+
+void SvgPath::GetDoubleAttribute(TiXmlElement* childElement, const char* attributeName, double* value)
+{
+    if(childElement->QueryDoubleAttribute(attributeName,value)==TIXML_NO_ATTRIBUTE)
+        throw string_error("Attribute not found, requested ", (string)attributeName );
+    if(VERBOSE) cout<<"Attribute "<<attributeName<<" Value "<< *value<<endl;
+}
+
+PathPoint SvgPath::GetTransform(TiXmlElement* childElement)
+{
+    PathPoint tf;
+    string value;
+    if(childElement->QueryStringAttribute("transform",&value)==TIXML_NO_ATTRIBUTE)
+    {
+        tf.x_=0; tf.y_=0;
+    }
+    vector<string> data = SplitString(value, "(,)");
+    if(data.size()==3 && data[0]=="translate")
+    {
+        tf.x_ = atof(data[1].c_str());
+        tf.y_ = atof(data[2].c_str());
+        if(VERBOSE) cout<<"Transform x: "<<tf.x_<<" y: "<<tf.y_<<endl;
+        return tf;
+    }
+    else throw (string)"Unexpected transform data format";
+}
+
+PathPoint SvgPath::getSize()//(TiXmlDocument* svgDoc)//PathPoint* size)
+{
+    TiXmlElement* svgElement;
+    svgElement = svgDoc_.FirstChildElement();
+
+    double width,height;
+    if(svgElement->QueryDoubleAttribute("width", &width)==TIXML_NO_ATTRIBUTE||svgElement->QueryDoubleAttribute("height", &height)==TIXML_NO_ATTRIBUTE)
+    {
+        throw string("Height or width information not found");
+    }
+    else
+    {
+        if(VERBOSE)
+        {
+            cout<<"Width found "<<width<<endl;
+            cout<<"Height found "<<height<<endl;
+        }
+    }
+    PathPoint pp;
+    pp.x_=width;
+    pp.y_=height;
+    return pp;
+}
+
+StationPath SvgPath::getPath(string id)
+{
+    TiXmlElement* svgElement;
+    svgElement = svgDoc_.FirstChildElement();
+    TiXmlNode* pChild;
+    for ( pChild = svgElement->FirstChild(); pChild != 0; pChild = pChild->NextSibling())
+    {
+        TiXmlElement* childElement= pChild->ToElement();
+        if((string)childElement->Value()=="path")
+        {
+            string value;
+            childElement->QueryStringAttribute("id",&value);
+            if(id==value)
+            {
+                childElement->QueryStringAttribute("d",&value);
+                StationPath path = SvgPath::StringToPath(value);
+                convert_to_meter(&path);
+                return path;
+
+            }
+        }
+    }
+    throw (string)"Path id not found";
+}
+
+string SvgPath::string_error(string description, string  details)
 {
     stringstream s;
     s<<description<<' '<< details;
     return s.str();
 }
 
-int SvgPath::find_size_attributes(TiXmlElement* pElement, PathPoint *width_height)
-{
-    if ( !pElement ) return 0;
-    TiXmlAttribute* pAttrib=pElement->FirstAttribute();
-    unsigned int width=0, height=0;
-    while (pAttrib)
-    {
-        stringstream ss;
-        ss<<pAttrib->Name();
-        string data_str=pAttrib->Value();
-        const char cset[] = "1234567890.";
-        if(ss.str()=="width")
-        {
-            if(strspn (data_str.c_str(),cset)==data_str.length() || data_str.find("px")!=string::npos)
-            {
-                width_height->x_ = atof(data_str.c_str());
-                width++;
-            }
-            else
-            {
-                throw string_error("Width unit not supported, please use px, given",data_str);
-            }
-        }
-        if(ss.str()=="height")
-        {
-            if(strspn (data_str.c_str(),cset)==data_str.length() || data_str.find("px")!=string::npos)
-            {
-                width_height->y_ = atof(data_str.c_str());
-                height++;
-            }
-            else
-            {
-                throw string_error("Height unit not supported, please use px, given",data_str);
-            }
-        }
-        if(height==1&&width==1) return 1;
-        pAttrib=pAttrib->Next();
-    }
-    return 0;
-}
-
-void SvgPath::convert_to_meter(StationPath* pose, PathPoint &size, double res)
+void SvgPath::convert_to_meter(StationPath* pose)
 {
     for(unsigned i=0; i<pose->size(); i++)
     {
-        (*pose)[i].x_ = (*pose)[i].x_*res;
-        (*pose)[i].y_ = (size.y_ - (*pose)[i].y_)*res;
+        (*pose)[i].x_ = (*pose)[i].x_*res_;
+        (*pose)[i].y_ = (size_.y_ - (*pose)[i].y_)*res_;
     }
 }
 
-int SvgPath::find_path_attributes(TiXmlElement* pElement, StationPath* pose, const char* id)
+vector<string> SvgPath::SplitString(string &data, const char* delimiter)
 {
-    if ( !pElement ) return 0;
 
-    TiXmlAttribute* pAttrib=pElement->FirstAttribute();
-    int found_points=0;
-
-    while (pAttrib)
+    char *str, *pch;
+    str = new char[data.size()+1];
+    strcpy(str,data.c_str());
+    pch = strtok(str, delimiter);
+    vector<string> data_s;
+    while (pch != NULL)
     {
-        stringstream ss;
-        ss<<pAttrib->Name();
+        stringstream pchss;
+        pchss<<pch;
+        data_s.push_back(pchss.str());
+        pch = strtok(NULL, delimiter);
+    }
+    return data_s;
+}
+StationPath SvgPath::StringToPath(string data)
+{
+    unsigned int found_points=0;
+    //split the data assuming the delimiter is either space or comma
+    if(VERBOSE) cout<<"Data received: "<<data<<endl;
+    vector<string> data_s=SplitString(data, " ,");
+    bool abs_rel;
+    //a path must start with m or M
+    if(data_s[0].find_first_of("Mm")==string::npos)
+    {
+        throw string_error("Unexpected data start character, expected M or m but received",data_s[0]);
+    }
+    else
+    {
+        //need to differentiate if it is abs or rel
+        if(data_s[0].find_first_of("M")!=string::npos) abs_rel = true;
+        else abs_rel = false;
+    }
 
-        if(ss.str()=="d")
+    StationPath positions;
+    PathPoint pos;
+    pos.x_ = atof(data_s[1].c_str());
+    pos.y_ = atof(data_s[2].c_str());
+    found_points++;
+    positions.push_back(pos);
+    for(unsigned int i=3; i<data_s.size(); i++)
+    {
+        if(data_s[i].find_first_of("MmHhVvSsQqTtAa")!=string::npos)
         {
-            string data_str=pAttrib->Value();
-            //split the data assuming the delimiter is either space or comma
-            char *str, *pch;
-            str = new char[data_str.size()+1];
-            strcpy(str,data_str.c_str());
-            pch = strtok(str, " ,");
-            vector<string> data_s;
-            while (pch != NULL)
+            throw string_error("Only line path is supported, given ",data_s[i]);
+        }
+        else if(data_s[i].find_first_of("Cc")!=string::npos)
+        {
+            if(data_s[i].find_first_of("C")!=string::npos) abs_rel=true;
+            else if(data_s[i].find_first_of("c")!=string::npos) abs_rel=false;
+            //only take the third point
+            i+=4;
+            double offsetx=0, offsety=0;
+            if(!abs_rel)
             {
-                stringstream pchss;
-                pchss<<pch;
-                data_s.push_back(pchss.str());
-                pch = strtok(NULL, ", ");
+                offsetx = positions[positions.size()-1].x_;
+                offsety = positions[positions.size()-1].y_;
             }
-            bool abs_rel;
-            //a path must start with m or M
-            if(data_s[0].find_first_of("Mm")==string::npos)
-            {
-                throw string_error("Unexpected data start character, expected M or m but received",data_s[0]);
-            }
-            else
-            {
-                //need to differentiate if it is abs or rel
-                if(data_s[0].find_first_of("M")!=string::npos) abs_rel = true;
-                else abs_rel = false;
-            }
-
-            StationPath positions;
-            PathPoint pos;
-            pos.x_ = atof(data_s[1].c_str());
-            pos.y_ = atof(data_s[2].c_str());
+            pos.x_ = atof(data_s[++i].c_str())+offsetx;
+            pos.y_ = atof(data_s[++i].c_str())+offsety;
             found_points++;
             positions.push_back(pos);
-            for(unsigned int i=3; i<data_s.size(); i++)
-            {
-                if(data_s[i].find_first_of("MmHhVvSsQqTtAa")!=string::npos)
-                {
-                    throw string_error("Only line path is supported, given ",data_s[i]);
-                }
-                else if(data_s[i].find_first_of("Cc")!=string::npos)
-                {
-                    if(data_s[i].find_first_of("C")!=string::npos) abs_rel=true;
-                    else if(data_s[i].find_first_of("c")!=string::npos) abs_rel=false;
-                    //only take the third point
-                    i+=4;
-                    double offsetx=0, offsety=0;
-                    if(!abs_rel)
-                    {
-                        offsetx = positions[positions.size()-1].x_;
-                        offsety = positions[positions.size()-1].y_;
-                    }
-                    pos.x_ = atof(data_s[++i].c_str())+offsetx;
-                    pos.y_ = atof(data_s[++i].c_str())+offsety;
-                    found_points++;
-                    positions.push_back(pos);
-                    //The stop point
-                    positions.push_back(pos);
-                }
-                else if(data_s[i].find_first_of("Zz")==string::npos)
-                {
-                    if(data_s[i].find_first_of("L")!=string::npos) abs_rel=true;
-                    else if(data_s[i].find_first_of("l")!=string::npos) abs_rel=false;
-                    else i--;
-
-                    double offsetx=0, offsety=0;
-                    if(!abs_rel)
-                    {
-                        offsetx = positions[positions.size()-1].x_;
-                        offsety = positions[positions.size()-1].y_;
-                    }
-                    pos.x_ = atof(data_s[++i].c_str())+offsetx;
-                    pos.y_ = atof(data_s[++i].c_str())+offsety;
-                    found_points++;
-                    positions.push_back(pos);
-                }
-                else
-                {
-                    if(VERBOSE) cout<<"Closepath command ignored."<<endl;
-                }
-                
-
-            }
-            *pose = positions;
+            found_points++;
+            //The stop point
+            positions.push_back(pos);
         }
-        if(ss.str()=="id")
+        else if(data_s[i].find_first_of("Zz")==string::npos)
         {
-            stringstream s; s<<pAttrib->Value();
-            
-            if(s.str().compare(id)!=0) 
+            if(data_s[i].find_first_of("L")!=string::npos) abs_rel=true;
+            else if(data_s[i].find_first_of("l")!=string::npos) abs_rel=false;
+            else i--;
+
+            double offsetx=0, offsety=0;
+            if(!abs_rel)
             {
-                //just skip the rest of the attributes, it is not the path we want to find
-                return 0;
+                offsetx = positions[positions.size()-1].x_;
+                offsety = positions[positions.size()-1].y_;
             }
-            if(VERBOSE) cout<<"ID found: "<<s.str()<<endl;
+            pos.x_ = atof(data_s[++i].c_str())+offsetx;
+            pos.y_ = atof(data_s[++i].c_str())+offsety;
+            found_points++;
+            positions.push_back(pos);
+        }
+        else
+        {
+            if(VERBOSE) cout<<"Closepath command ignored."<<endl;
         }
 
-        pAttrib=pAttrib->Next();
+
     }
-    return found_points;
+    if(VERBOSE)
+    {
+        cout<<"Found points: "<< found_points<<" . Size of path: "<< positions.size()<<endl;
+        cout<<"The above should match for a successful parse"<<endl;
+    }
+    if(found_points!=positions.size()) throw (string)"Size not match";
+    return positions;
 }
 
-
+int main(int argc, char* argcv[])
+{
+    try
+    {
+        SvgPath sp;
+        sp.loadFile(argcv[1], 0.1);
+        StationPath pose= sp.getPath("DCC_EA");
+        StationPath pose2= sp.getPath("EA_DCC");
+        cout<<"Size DCC_MCD="<<pose.size()<<' '<<" Size MCD_DCC="<<pose2.size()<<endl;
+        vector<SlowZone> sz = sp.getSlowZone();
+        cout<<sz[0].x_<<' '<<sz[0].y_<<' '<<sz[0].r_<<endl;
+    }
+    catch (string error)
+    {
+        cout<<"Error: "<<error<<endl;
+    }
+}

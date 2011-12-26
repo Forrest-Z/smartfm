@@ -38,7 +38,7 @@ public:
                   std::vector<geometry_msgs::PoseStamped>& plan);
 
     ros::Publisher g_plan_pub_;
-    ros::Publisher direction_pub_;
+    ros::Publisher slowZone_pub_;
     ros::Subscriber stage_sub_;
 
     StationPaths sp_;

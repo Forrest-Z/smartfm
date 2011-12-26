@@ -1,4 +1,4 @@
-# Install script for directory: /home/golfcar/svn2/fm/smart-ros-pkg/golfcar_navigation/golfcar_gp
+# Install script for directory: /home/golfcar/smartfm/smart-ros-pkg/golfcar_navigation/golfcar_gp
 
 # Set the install prefix
 IF(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -38,7 +38,7 @@ ELSE(CMAKE_INSTALL_COMPONENT)
   SET(CMAKE_INSTALL_MANIFEST "install_manifest.txt")
 ENDIF(CMAKE_INSTALL_COMPONENT)
 
-FILE(WRITE "/home/golfcar/svn2/fm/smart-ros-pkg/golfcar_navigation/golfcar_gp/${CMAKE_INSTALL_MANIFEST}" "")
+FILE(WRITE "/home/golfcar/smartfm/smart-ros-pkg/golfcar_navigation/golfcar_gp/${CMAKE_INSTALL_MANIFEST}" "")
 FOREACH(file ${CMAKE_INSTALL_MANIFEST_FILES})
-  FILE(APPEND "/home/golfcar/svn2/fm/smart-ros-pkg/golfcar_navigation/golfcar_gp/${CMAKE_INSTALL_MANIFEST}" "${file}\n")
+  FILE(APPEND "/home/golfcar/smartfm/smart-ros-pkg/golfcar_navigation/golfcar_gp/${CMAKE_INSTALL_MANIFEST}" "${file}\n")
 ENDFOREACH(file)
