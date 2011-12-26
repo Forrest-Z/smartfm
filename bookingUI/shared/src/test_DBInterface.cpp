@@ -11,10 +11,10 @@ unsigned ntests = 0, nsuccess = 0;
 
 void dotest(bool (*test)(void), const char *testname)
 {
-	ntests ++;
+    ntests ++;
     try {
         if( test() ) {
-        	nsuccess ++;
+            nsuccess ++;
             cout <<"SUCCESS: ";
         }
         else {
@@ -90,12 +90,12 @@ int main()
 {
     TEST(testCreateInterface);
     TEST(testIdentify);
-    
+
     TEST(testSetCurrentLocation);
     TEST(testSetVehicleStatus);
     TEST(testSetGeoLocation);
     TEST(testSetETA);
-    
+
     TEST(testDeleteVehicle);
 
     cout <<"DONE. PASSED " <<nsuccess <<" TESTS OUT OF " <<ntests <<"." <<endl;

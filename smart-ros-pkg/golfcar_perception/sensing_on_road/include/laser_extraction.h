@@ -23,66 +23,78 @@
 namespace sensing_on_road{
 
 /*
- **************************************************************
- **following two classes have been represented as .msg files.
- **************************************************************
+**************************************************************
+**following two classes have been represented as .msg files.
+**************************************************************
 class scan_segment
 {
-	public:
+    public:
 
-	//way to refer to raw information;
-	std::vector<unsigned int> 	beam_serial;
-	//processed features to use;
-	geometry_msgs::Point32		segment_centroid;
-	float 							centroid_range_to_laser;
-	float								normalized_dimension;
-	float								internal_std;
-	float								mean_average_deviation;
-};	
+    //way to refer to raw information;
+    std::vector<unsigned int> 	beam_serial;
+    //processed features to use;
+    geometry_msgs::Point32		segment_centroid;
+    float 							centroid_range_to_laser;
+    float								normalized_dimension;
+    float								internal_std;
+    float								mean_average_deviation;
+};
 
 class segments_one_batch
 {
-	public:
-	Header header;
-	std::vector<scan_segment> segments;
+    public:
+    Header header;
+    std::vector<scan_segment> segments;
 };
 */
 
 class laser_extraction
 {
-	public:
-	laser_extraction();
-	~laser_extraction();
+public:
+    laser_extraction();
+    ~laser_extraction();
 
-	private:
-    ros::NodeHandle nh_, private_nh_;	
+private:
+    ros::NodeHandle nh_, private_nh_;
     std::string     ldmrs_single_id_, odom_frame_id_;
-	laser_geometry::LaserProjection projector_;   
-	message_filters::Subscriber<sensor_msgs::LaserScan> laser_sub_;
-    tf::TransformListener tf_; 
+    laser_geometry::LaserProjection projector_;
+    message_filters::Subscriber<sensor_msgs::LaserScan> laser_sub_;
+    tf::TransformListener tf_;
     tf::MessageFilter<sensor_msgs::LaserScan> * tf_filter_;
 
-	float 												angle_resolution_;	
-	sensing_on_road::segments_one_batch			extracted_segments_laser_;
-	sensing_on_road::segments_one_batch			extracted_segments_odom_;
-	sensor_msgs::LaserScan							laser_scan_;
-	
-	//segmentation and data association are conducted in different frames;
-	sensor_msgs::PointCloud 						laser_cloud_laser_;
-	sensor_msgs::PointCloud 						laser_cloud_odom_;
-	sensor_msgs::PointCloud 						segment_centroids_;
+    float 												angle_resolution_;
+    sensing_on_road::segments_one_batch			extracted_segments_laser_;
+    sensing_on_road::segments_one_batch			extracted_segments_odom_;
+    sensor_msgs::LaserScan							laser_scan_;
 
-	ros::Publisher 									laser_pub_;   
-	ros::Publisher 									segment_border_pub_;  
-	ros::Publisher 									segment_processed_pub_; 
-   ros::Publisher 									perpendicular_pub_;
-   ros::Publisher 									segment_centroids_pub_;
-	void scan_callback(const sensor_msgs::LaserScan::ConstPtr& scan_in);
-	void segmentation();
-	void segments_processing();
-	void single_segment_processing(sensing_on_road::scan_segment &segment_para);
-   void line_piece_calculation(sensing_on_road::line_piece &line_piece_para);
+    //segmentation and data association are conducted in different frames;
+    sensor_msgs::PointCloud 						laser_cloud_laser_;
+    sensor_msgs::PointCloud 						laser_cloud_odom_;
+    sensor_msgs::PointCloud 						segment_centroids_;
+
+    ros::Publisher 									laser_pub_;
+    ros::Publisher 									segment_border_pub_;
+    ros::Publisher 									segment_processed_pub_;
+    ros::Publisher 									perpendicular_pub_;
+    ros::Publisher 									segment_centroids_pub_;
+
+    std::vector<int> delete_connected_segments_;
+
+    void scan_callback(const sensor_msgs::LaserScan::ConstPtr& scan_in);
+    void segmentation();
+    void segments_processing();
+    void single_segment_processing(sensing_on_road::scan_segment &segment_para);
+    void line_piece_calculation(sensing_on_road::line_piece &line_piece_para);
+    bool extract_segments(sensor_msgs::PointCloud *segment_border);
+    bool isOnSameLine(const sensing_on_road::scan_segment & segment_temp,
+                      const geometry_msgs::Point32 & testPoint) const;
+    bool isConnected(const sensing_on_road::scan_segment & segment_temp,
+                     const unsigned ip) const;
+    void connect_segments();
+    void merge_segments();
+    void delete_segments();
 };
+
 };
 #endif
 

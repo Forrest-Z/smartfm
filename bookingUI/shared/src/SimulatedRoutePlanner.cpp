@@ -4,10 +4,10 @@
 #include "GlobalClock.h"
 
 SimulatedRoutePlanner::SimulatedRoutePlanner(const StationPaths & sp, float speed)
-  : RoutePlanner(sp), vehicle_speed(speed), last_time(0.0), last_disp_time(0.0),
+: RoutePlanner(sp), vehicle_speed(speed), last_time(0.0), last_disp_time(0.0),
     verbose(false)
 {
-    
+
 }
 
 bool SimulatedRoutePlanner::goToDest()

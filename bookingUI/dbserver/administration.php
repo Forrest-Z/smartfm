@@ -11,7 +11,7 @@ function listRequests()
 {
     $con = connect_to_DB();
     $filter = isset($_GET['filter']) && $_GET['filter']=='yes';
-    $sql = "SELECT * FROM requests";
+    $sql = "SELECT * FROM requests ORDER BY RequestID";
     $result = mysql_query($sql, $con) or die ('Select error: ' . mysql_error());
     echo "<table>";
     echo "<tr>";
@@ -44,16 +44,8 @@ function listRequests()
         echoInCell($row['status']);
         echoInCell($row['pickUpLocation']);
         echoInCell($row['dropOffLocation']);
-
-        $vehicleID = "";
-        if( $row['status']=="Acknowledged" || $row['status']=="Confirmed" || $row['status']=="Processing" )
-            $vehicleID = $row['vehicleID'];
-        echoInCell($vehicleID);
-
-        $eta = "";
-        if( $row['status']=="Confirmed" || $row['status']=="Processing" )
-            $eta = $row['eta'];
-        echoInCell($eta);
+        echoInCell($row['vehicleID']);
+        echoInCell($row['eta']);
         echo "</tr>";
     }
     echo "</table>";

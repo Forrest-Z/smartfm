@@ -4,27 +4,28 @@
 #include <string>
 #include <list>
 
+#include <DebugLogger.h>
+
 #include "SchedulerTypes.h"
 #include "DBTalker.h"
 
 class Scheduler;
 
-class Vehicle
+class Vehicle : public DebugLogger
 {
-	friend class Scheduler;
+    friend class Scheduler;
 
-	DBTalker & dbTalker;
+    DBTalker & dbTalker;
     std::string id;
     SchedulerTypes::VehicleStatus status;
     std::list<SchedulerTypes::Task> tasks;
 
     SchedulerTypes::Task & getCurrentTask();
     void update();
-    SchedulerTypes::Task switchToNextTask();
 
 public:
     Vehicle(DBTalker & dbt, std::string name, SchedulerTypes::VehicleStatus s)
-		: dbTalker(dbt), id(name), status(s) { }
+        : dbTalker(dbt), id(name), status(s) { }
 
     Vehicle & operator=( const Vehicle & v);
 
@@ -32,6 +33,8 @@ public:
     const SchedulerTypes::Task & getCurrentTask() const;
     SchedulerTypes::VehicleStatus getStatus() const { return status; }
     std::string getID() const { return id; }
+
+    void switchToNextTask();
 
     void updateWaitTime();
     void updateWaitTime(SchedulerTypes::Duration timeCurrentTask);

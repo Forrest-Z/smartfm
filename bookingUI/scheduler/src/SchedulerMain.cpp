@@ -20,42 +20,19 @@ using namespace std;
 #include "SchedulerUI.h"
 #include "DBTalker.h"
 
-#define DEBUG_LOGFILE gLogFile
-#define DEBUG_VERBOSITY_VAR optVerbosityLevel
-#include "debug_macros.h"
-#define MSGLOGNOGUI(lvl, fmt, ...) do { if(optNoGUI) MSG(lvl, fmt, ##__VA_ARGS__); LOG(fmt, ##__VA_ARGS__); } while(0)
-
 using SchedulerTypes::Task;
 using SchedulerTypes::Duration;
-
-
-
-/** BUG list
- * Apparently the time of tasks (twait) is wrong.
- */
-
-/** TODO
- * Support more than one vehicle (low priority).
- */
-
-
-//------------------------------------------------------------------------------
-// Global constants
-
-/// Although the system is intended to support several vehicles, not everything
-/// has been implemented, so we will use vehicle 0 only for now.
-const char DEFAULT_VEHICLE_ID[] = "golfcart1";
 
 
 //------------------------------------------------------------------------------
 // A vehicle class for simulated vehicles
 class SimulatedVehicle {
 public:
-	SimulatedRoutePlanner rp;
-	DBMissionComm comm;
+    SimulatedRoutePlanner rp;
+    DBMissionComm comm;
 
-	SimulatedVehicle(StationPaths & sp, string vname, float speed, string hostname)
-	  : rp(sp,speed), comm(rp, hostname+"/dbserver", vname) { }
+    SimulatedVehicle(StationPaths & sp, string vname, float speed, string hostname)
+    : rp(sp,speed), comm(rp, hostname+"/dbserver", vname) { }
 };
 
 
@@ -89,8 +66,8 @@ time_t gPreviousTime = 0;
 /// The name of this program
 const char * gProgramName;
 
-// Log file
-FILE* gLogFile = NULL;
+// logger
+DebugLogger logger;
 
 StationPaths gStationPaths;
 const StationList & gStationList = gStationPaths.knownStations();
@@ -118,7 +95,6 @@ enum OperatorOption
 void print_usage (FILE* stream, int exit_code);
 
 void parseOptions(int argc, char **argv);
-void openLogFile();
 
 /// Create random tasks and make requests
 void addMobileTask();
@@ -155,30 +131,29 @@ int main(int argc, char **argv)
     srand ( time(NULL) );
     parseOptions(argc, argv);
 
-    openLogFile();
     time_t prevTimeTaskInfo = time(NULL);
 
     try
     {
-    	createObjects();
+        createObjects();
 
         while(gQuit == 0)
         {
             if( optNoGUI && ! optNoOP )
-				textUI();
+                textUI();
             else if( !optNoGUI )
                 gSchedulerUI->updateConsole();
 
-			if( optSimulateMobile )
-				addMobileTask();
+            if( optSimulateMobile )
+                addMobileTask();
 
             // Update vehicle status, waiting time and send new task to vehicle if
             // it has completes the previous task.
-			time_t currentTime = time(NULL);
-			if( currentTime - prevTimeTaskInfo >= 3 ) {
-				prevTimeTaskInfo = currentTime;
-				gScheduler->update();
-			}
+            time_t currentTime = time(NULL);
+            if( currentTime - prevTimeTaskInfo >= 3 ) {
+                prevTimeTaskInfo = currentTime;
+                gScheduler->update();
+            }
 
             if (!optNoGUI && gSchedulerUI->getSchedulerStatus() == SchedulerUI::SCHEDULER_QUIT)
                 gQuit = 1;
@@ -189,16 +164,16 @@ int main(int argc, char **argv)
 
     } //try
     catch( StationDoesNotExistException & e ) {
-        MSGLOG(1, "ERROR: Caught StationDoesNotExistException: station %s does not exist.", e.what());
+        ERROR_(logger, "Caught StationDoesNotExistException: station %s does not exist.", e.what());
         exit_code = 1;
     }
     catch( SchedulerException & e ) {
-        MSGLOG(1, "ERROR: Caught SchedulerException: %s.", e.what());
+        ERROR_(logger, "Caught SchedulerException: %s.", e.what());
         exit_code = 1;
     }
     catch( exception & e )
     {
-        MSGLOG(1, "ERROR: Caught exception: %s", e.what());
+        ERROR_(logger, "Caught exception: %s", e.what());
         exit_code = 1;
     }
 
@@ -209,9 +184,8 @@ int main(int argc, char **argv)
     }
 
     delete gScheduler;
-	delete gDBTalker;
-
-    fclose (gLogFile);
+    delete gDBTalker;
+    logger.close();
 
     return exit_code;
 } //main()
@@ -231,7 +205,7 @@ void print_usage (FILE* stream, int exit_code)
     ss <<"  --taskproba p     Sets the probability of a new task (only used when simmobile is on, default value is " <<optNewTaskProba <<")." <<endl;
     ss <<"  --simvehicle      Simulate vehicles' status." <<endl;
     ss <<"  --simspeed tf     Speed of the vehicle in m/s (default is 1m/s)." <<endl;
-    ss <<"  --noop            No interaction with user. (daemon mode)." <<endl;
+    ss <<"  --noop            No interaction with user. (daemon mode). Only active when --nogui is set." <<endl;
     ss <<"  --help            Display this message." <<endl;
 
     fprintf( stream, "%s", ss.str().c_str());
@@ -252,11 +226,11 @@ void parseOptions(int argc, char **argv)
         // second: 0 = no_argument, 1 = required_argument, 2 = optional_argument
         // third: if pointer, set variable to value of fourth argument
         //        if NULL, getopt_long returns fourth argument
-        {"verbose",     no_argument,       &optVerbosityLevel,        1},
         {"nogui",       no_argument,       &optNoGUI,                 1},
         {"simmobile",   no_argument,       &optSimulateMobile,        1},
         {"simvehicle",  no_argument,       &optSimulateVehicle,       1},
         {"noop",        no_argument,       &optNoOP,                  1},
+        {"verbose",     required_argument, 0,                       'V'},
         {"simspeed",    required_argument, 0,                       'F'},
         {"taskproba",   required_argument, 0,                       'P'},
         {"host",        required_argument, 0,                       'H'},
@@ -300,50 +274,47 @@ void parseOptions(int argc, char **argv)
             optNewTaskProba = atof(optarg);
             break;
 
+        case 'V':
+            optVerbosityLevel = atoi(optarg);
+            break;
+
         case -1: /* Done with options. */
             break;
         }
     }
 }
 
-
-void openLogFile()
+void createObjects()
 {
     char timestr[64];
     time_t t = time(NULL);
     strftime(timestr, sizeof(timestr), "%F-%a-%H-%M-%S", localtime(&t));
-
     ostringstream oss;
-    oss  << "log_scheduler" << "." << timestr <<".log";
-    string logFileName = oss.str();
+    oss  << "log-" << "." << timestr <<".log";
+    logger.setLogFile(oss.str());
+    logger.setVerbosityLevel(optVerbosityLevel);
+    logger.setConsoleStream(stderr);
 
-    gLogFile = fopen(logFileName.c_str(), "w");
-}
-
-void createObjects()
-{
     string username = "fmauto", passwd = "smartfm", dbname = "fmauto";
     gDBTalker = new DBTalker(optHostName, username, passwd, dbname);
-    gDBTalker->setLogFile(gLogFile);
-    gDBTalker->setVerbosityLevel(optVerbosityLevel);
+    gDBTalker->copyLoggingSettings(logger);
 
     gScheduler = new Scheduler(*gDBTalker);
-    gScheduler->setVerbosityLevel(optVerbosityLevel);
-    gScheduler->setLogFile(gLogFile);
+    gScheduler->copyLoggingSettings(logger);
 
-    if( optSimulateVehicle ) {
-        gSimulatedVehicle = new SimulatedVehicle(gStationPaths, DEFAULT_VEHICLE_ID, optSimVehicleSpeed, optHostName);
+    if( optSimulateVehicle )
+    {
+        gSimulatedVehicle = new SimulatedVehicle(gStationPaths, "golfcart1", optSimVehicleSpeed, optHostName);
         gSimulatedVehicle->comm.startThread();
         gSimulatedVehicle->rp.startThread();
         while( ! gSimulatedVehicle->rp.getCurrentStation().isValid() )
-        	sleep(1);
+            sleep(1);
     }
 
     if (!optNoGUI)
     {
         gSchedulerUI = new SchedulerUI(*gScheduler, *gDBTalker);
-        gSchedulerUI->setVerbosityLevel(optVerbosityLevel);
-        gSchedulerUI->setLogFile(gLogFile);
+        gSchedulerUI->copyLoggingSettings(logger);
         gSchedulerUI->initConsole();
         gSchedulerUI->updateConsole();
     }
@@ -366,23 +337,29 @@ unsigned randu_(unsigned max)
 
 void addMobileTask()
 {
-	/* Adding some random tasks to the database.
-	 * The proba of a random task is equal to optNewTaskProba multiplied by
-	 * optTimeFactor (to scale for fast simulations).
-	 * Several tasks can be issued. The probability of a new task is half
-	 * the probability of the previous task.
-	 * For each task, pickup and dropoff stations are picked at random.
-	 */
-	unsigned i = 0;
-	while( random_() < optNewTaskProba*optSimVehicleSpeed/pow(2,i++) )
-	{
-		unsigned s1 = randu_(gStationList.size());
-		unsigned s2;
-		do
-			s2 = randu_(gStationList.size());
-		while (s1==s2);
-		gDBTalker->makeBooking("cust1", gStationList(s1), gStationList(s2));
-	}
+    /* Adding some random tasks to the database.
+    * The proba of a random task is equal to optNewTaskProba multiplied by
+    * optTimeFactor (to scale for fast simulations).
+    * Several tasks can be issued. The probability of a new task is half
+    * the probability of the previous task.
+    * For each task, pickup and dropoff stations are picked at random.
+    */
+    unsigned i = 0;
+    while( random_() < optNewTaskProba*optSimVehicleSpeed/pow(2,i++) )
+    {
+        unsigned s1 = randu_(gStationList.size());
+        unsigned s2;
+        do
+            s2 = randu_(gStationList.size());
+        while (s1==s2);
+
+        string customer = "cust1";
+        Station st1( gStationList(s1) );
+        Station st2( gStationList(s2) );
+        MSGLOG_(logger, 1, "Adding simulated mobile task: %s,%s,%s",
+                customer.c_str(), st1.c_str(), st2.c_str());
+        gDBTalker->makeBooking(customer, st1, st2);
+    }
 }
 
 
@@ -435,14 +412,14 @@ void textUI()
         Station pickup = gStationList.prompt("  Enter the pick-up location: ");
         Station dropoff = gStationList.prompt("  Enter the drop-off location: ");
         unsigned id = gDBTalker->makeBooking("cust1", pickup, dropoff);
-        MSGLOGNOGUI(1, "Created request %u.", id);
+        MSGLOG_(logger, 1, "Created request %u.", id);
     }
     else if (opOption == OPERATOR_REMOVE_TASK)
     {
         printf ("  Enter id of task to be cancelled: ");
-		unsigned id = getNumeric();
-		gDBTalker->custCancel(id);
-		MSGLOGNOGUI(1, "Cancelled task %u.", id);
+        unsigned id = getNumeric();
+        gDBTalker->custCancel(id);
+        MSGLOG_(logger, 1, "Cancelled task %u.", id);
     }
     else if (opOption == OPERATOR_VIEW_TASK_LIST)
     {

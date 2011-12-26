@@ -18,22 +18,22 @@ RoutePlanner::RoutePlanner(const StationPaths & sp)
 
 void RoutePlanner::setDestination(const Station & s)
 {
-	if( state_==sUninit || state_==sReached ) {
-		destination_ = s;
-		initDest();
-		state_ = sReady;
-	}
-	else {
-		throw runtime_error("Attempting to set destination at the wrong time");
-	}
+    if( state_==sUninit || state_==sReached ) {
+        destination_ = s;
+        initDest();
+        state_ = sReady;
+    }
+    else {
+        throw runtime_error("Attempting to set destination at the wrong time");
+    }
 }
 
 void RoutePlanner::start()
 {
-	if( state_==sReady )
-		state_ = sMoving;
-	else
-		throw runtime_error("Attempting to start when not ready");
+    if( state_==sReady )
+        state_ = sMoving;
+    else
+        throw runtime_error("Attempting to start when not ready");
 }
 
 void RoutePlanner::run()

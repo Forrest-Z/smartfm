@@ -10,13 +10,13 @@ using namespace std;
 
 
 Vehicle & Vehicle::operator=( const Vehicle & v) {
-	if( this!=&v ) {
-		dbTalker = v.dbTalker;
-		id = v.id;
-		status = v.status;
-		tasks = v.tasks;
-	}
-	return *this;
+    if( this!=&v ) {
+        dbTalker = v.dbTalker;
+        id = v.id;
+        status = v.status;
+        tasks = v.tasks;
+    }
+    return *this;
 }
 
 const Task & Vehicle::getCurrentTask() const
@@ -77,72 +77,63 @@ void Vehicle::updateTTaskCurrent(Duration ttask)
 
 void Vehicle::updateStatus(SchedulerTypes::VehicleStatus status)
 {
-	this->status = status;
+    this->status = status;
     if( status == SchedulerTypes::VEH_STAT_GOING_TO_DROPOFF )
         getCurrentTask().tpickup = 0;
 }
 
-Task Vehicle::switchToNextTask()
+void Vehicle::switchToNextTask()
 {
-    if( tasks.size()<=1 )
-        throw SchedulerException(SchedulerException::NO_PENDING_TASKS);
-
+    if( tasks.empty() ) return;
     tasks.pop_front();
+
+    if( tasks.empty() ) return;
     Task task = tasks.front();
+    dbTalker.confirmTask(task);
     updateStatus(SchedulerTypes::VEH_STAT_GOING_TO_PICKUP);
     updateWaitTime();
-    return task;
 }
 
 void Vehicle::update()
 {
-	string vehicleID = id;
-	SchedulerTypes::VehicleInfo vi = dbTalker.getVehicleInfo(vehicleID);
-	updateStatus(vi.status);
+    string vehicleID = id;
+    SchedulerTypes::VehicleInfo vi = dbTalker.getVehicleInfo(vehicleID);
+    updateStatus(vi.status);
 
-	if( tasks.empty() )
-		return;
+    if( tasks.empty() )
+        return;
 
-	Task curTask = tasks.front();
+    Task curTask = tasks.front();
 
-	switch(vi.status)
-	{
-	case SchedulerTypes::VEH_STAT_WAITING:
-		break; //nothing to do here
+    switch(vi.status)
+    {
+    case SchedulerTypes::VEH_STAT_WAITING:
+        break; //nothing to do here
 
-	case SchedulerTypes::VEH_STAT_GOING_TO_PICKUP:
-	case SchedulerTypes::VEH_STAT_AT_PICKUP:
-	case SchedulerTypes::VEH_STAT_GOING_TO_DROPOFF:
-		updateTCurrent(vi.eta);
-		updateWaitTime();
-		break;
+    case SchedulerTypes::VEH_STAT_GOING_TO_PICKUP:
+    case SchedulerTypes::VEH_STAT_AT_PICKUP:
+    case SchedulerTypes::VEH_STAT_GOING_TO_DROPOFF:
+        updateTCurrent(vi.eta);
+        updateWaitTime();
+        break;
 
-	case SchedulerTypes::VEH_STAT_AT_DROPOFF:
-		if( vi.requestID == curTask.taskID )
-		{
-			dbTalker.updateTime(curTask.taskID, 0);
-			dbTalker.updateTaskStatus(curTask.taskID, "Completed");
-			if( tasks.size()>1 )
-			{
-				Task task = switchToNextTask();
-				dbTalker.confirmTask(task);
-			}
-			else
-			{
-				tasks.clear();
-			}
-		}
-	break;
+    case SchedulerTypes::VEH_STAT_AT_DROPOFF:
+        if( vi.requestID == curTask.taskID )
+        {
+            //MSGLOG(1, "Vehicle reached destination. Switching to next task.");
+            dbTalker.updateTime(curTask.taskID, 0);
+            dbTalker.updateTaskStatus(curTask.taskID, "Completed");
+            switchToNextTask();
+        }
+    break;
 
-	default:
-		throw logic_error(string("Scheduler::update(): vehicle status is ") +
-				SchedulerTypes::vehicleStatusStr(vi.status) +
-				"This case has not been implemented yet.");
-	}
+    default:
+        throw logic_error(string("Scheduler::update(): vehicle status is ") +
+                SchedulerTypes::vehicleStatusStr(vi.status) +
+                "This case has not been implemented yet.");
+    }
 
-	// Report waiting time
-	list<Task>::const_iterator tit = tasks.begin();
-	dbTalker.updateTime(tit->taskID, tit->ttask);
-	for( ++tit; tit != tasks.end(); ++tit )
-		dbTalker.updateTime(tit->taskID, tit->tpickup);
+    // Report waiting time
+    for( list<Task>::const_iterator tit = tasks.begin(); tit != tasks.end(); ++tit )
+        dbTalker.updateTime(tit->taskID, tit->twait);
 }

@@ -1,7 +1,7 @@
 /** Stores and provides access to the paths between stations.
- *
- * Paths are hard coded in station_path.cc
- */
+*
+* Paths are hard coded in station_path.cc
+*/
 
 #ifndef STATION_PATH_H_
 #define STATION_PATH_H_

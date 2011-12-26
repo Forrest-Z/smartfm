@@ -12,18 +12,12 @@
 
 #include "DBTalker.h"
 
-
-#define DEBUG_LOGFILE logFile
-#define DEBUG_VERBOSITY_VAR verbosity_level
-#include "debug_macros.h"
-
 using namespace std;
 using namespace sql;
 using SchedulerTypes::Task;
 
 
 DBTalker::DBTalker(string hostname, string username, string passwd, string dbname)
-: verbosity_level(0), logFile(NULL)
 {
     this->hostname = hostname;
     this->username = username;
@@ -40,16 +34,6 @@ DBTalker::~DBTalker()
     delete con;
 }
 
-void DBTalker::setLogFile(FILE *f)
-{
-    this->logFile = f;
-}
-
-void DBTalker::setVerbosityLevel(unsigned lvl)
-{
-    this->verbosity_level = lvl;
-}
-
 void DBTalker::connect()
 {
     con = driver->connect(hostname, username, passwd);
@@ -64,7 +48,7 @@ vector<Task> DBTalker::getRequestedBookings()
 
     while (res->next())
         tasks.push_back(
-			Task(
+            Task(
                 res->getInt("requestID"),
                 res->getString("customerID"),
                 "", //vehicle ID (dummy value, will be assigned by scheduler)
@@ -83,49 +67,49 @@ vector<Task> DBTalker::getRequestedBookings()
 
 void DBTalker::acknowledgeTask(Task task)
 {
-	PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET Status='Acknowledged', VehicleID=? WHERE RequestID=?");
-	stmt->setString(1, task.vehicleID);
-	stmt->setInt(2, task.taskID);
-	stmt->execute();
-	delete stmt;
-	MSGLOG(2,"Acknowledged request");
+    PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET Status='Acknowledged', VehicleID=? WHERE RequestID=?");
+    stmt->setString(1, task.vehicleID);
+    stmt->setInt(2, task.taskID);
+    stmt->execute();
+    delete stmt;
+    MSGLOG(2,"Acknowledged request");
 }
 
 void DBTalker::confirmTask(Task task)
 {
-	PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET Status='Confirmed', VehicleID=? WHERE RequestID=?");
-	stmt->setString(1, task.vehicleID);
-	stmt->setInt(2, task.taskID);
-	stmt->execute();
-	delete stmt;
-	MSGLOG(2,"Confirmed request");
+    PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET Status='Confirmed', VehicleID=? WHERE RequestID=?");
+    stmt->setString(1, task.vehicleID);
+    stmt->setInt(2, task.taskID);
+    stmt->execute();
+    delete stmt;
+    MSGLOG(2,"Confirmed request");
 }
 
 void DBTalker::updateTaskStatus(unsigned taskID, string status)
 {
-	PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET status=? WHERE RequestID=?");
-	stmt->setString(1, status);
-	stmt->setInt(2, taskID);
-	stmt->execute();
-	delete stmt;
-	MSGLOG(2, "Updated task status: task %d, status %s", taskID, status.c_str());
+    PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET status=? WHERE RequestID=?");
+    stmt->setString(1, status);
+    stmt->setInt(2, taskID);
+    stmt->execute();
+    delete stmt;
+    MSGLOG(2, "Updated task status: task %d, status %s", taskID, status.c_str());
 }
 
 void DBTalker::updateTime(unsigned taskID, SchedulerTypes::Duration duration)
 {
     PreparedStatement *stmt = con->prepareStatement("UPDATE requests SET eta=? WHERE RequestID=?");
-	stmt->setInt(1, duration);
-	stmt->setInt(2, taskID);
-	stmt->execute();
+    stmt->setInt(1, duration);
+    stmt->setInt(2, taskID);
+    stmt->execute();
     delete stmt;
-	MSGLOG(2, "Updated task ETA: task %d, ETA %u", taskID, duration);
+    MSGLOG(2, "Updated task ETA: task %d, ETA %u", taskID, duration);
 }
 
 SchedulerTypes::TaskStatus DBTalker::getTaskStatus(unsigned taskID)
 {
     PreparedStatement *stmt = con->prepareStatement(
-    		"SELECT customerID, status, vehicleID, pickupLocation, dropoffLocation, "
-    		"custCancelled, vehicleAcknowledgedCancel FROM requests WHERE requestID=?");
+            "SELECT customerID, status, vehicleID, pickupLocation, dropoffLocation, "
+            "custCancelled, vehicleAcknowledgedCancel FROM requests WHERE requestID=?");
     stmt->setInt(1, taskID);
     ResultSet *res = stmt->executeQuery();
 
@@ -143,29 +127,45 @@ SchedulerTypes::TaskStatus DBTalker::getTaskStatus(unsigned taskID)
     return info;
 }
 
-SchedulerTypes::VehicleInfo DBTalker::getVehicleInfo(string vehicleID)
+vector<SchedulerTypes::VehicleInfo> DBTalker::getVehiclesInfo(string vehicleID)
 {
-	SchedulerTypes::VehicleInfo info;
+    vector<SchedulerTypes::VehicleInfo> infos;
 
-    PreparedStatement *stmt = con->prepareStatement("SELECT status, eta, currentLocation, requestID FROM vehicles WHERE vehicleID=?");
-    stmt->setString(1, vehicleID);
+    PreparedStatement *stmt = 0;
+    if( vehicleID.length()==0 ) {
+        // Get all vehicles
+        stmt = con->prepareStatement("SELECT vehicleID, status, eta, currentLocation, requestID FROM vehicles");
+    }
+    else {
+        // Get only the one we are interested in
+        stmt = con->prepareStatement("SELECT vehicleID, status, eta, currentLocation, requestID FROM vehicles WHERE vehicleID=?");
+        stmt->setString(1, vehicleID);
+    }
+
     ResultSet *res = stmt->executeQuery();
-    string status = "";
-
     while (res->next())
     {
-        status = res->getString("status");
-		info.status = SchedulerTypes::vehicleStatusFromStr(status);
+        SchedulerTypes::VehicleInfo info;
+        info.id = res->getString("vehicleID");
+        string status = res->getString("status");
+        info.status = SchedulerTypes::vehicleStatusFromStr(status);
         info.eta = res->getInt("eta");
         info.currentLocation = res->getString("currentLocation");
         info.requestID = res->getInt("requestID");
-        break;
+        MSGLOG(2,"Got vehicle info: vehicle=%s, status=%s, eta=%u, currentLoc=%s, requestID=%u",
+                info.id.c_str(), status.c_str(), info.eta, info.currentLocation.c_str(), info.requestID);
+        infos.push_back(info);
     }
     delete res;
     delete stmt;
-    MSGLOG(2,"Got vehicle info: vehicle=%s, status=%s, eta=%u, currentLoc=%s, requestID=%u",
-    		vehicleID.c_str(), status.c_str(), info.eta, info.currentLocation.c_str(), info.requestID);
-    return info;
+    return infos;
+}
+
+SchedulerTypes::VehicleInfo DBTalker::getVehicleInfo(string vehicleID)
+{
+    vector<SchedulerTypes::VehicleInfo> infos = getVehiclesInfo(vehicleID);
+    if( infos.empty() ) throw SchedulerException(SchedulerException::INVALID_VEHICLE_ID);
+    return infos.front();
 }
 
 unsigned DBTalker::makeBooking(string customerID, Station pickup, Station dropoff)
@@ -195,5 +195,5 @@ unsigned DBTalker::makeBooking(string customerID, Station pickup, Station dropof
 
 void DBTalker::custCancel(unsigned taskID)
 {
-	//TODO: implement custCancel
+    //TODO: implement custCancel
 }

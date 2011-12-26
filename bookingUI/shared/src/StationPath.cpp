@@ -40,13 +40,13 @@ double StationPath::recomputeLength()
 #include <wordexp.h>
 string tilde_expand(const char *path)
 {
-	wordexp_t p;
-	wordexp(path, &p, 0);
-	char **w = p.we_wordv;
-	assert(p.we_wordc==1);
-	string res = w[0];
-	wordfree(&p);
-	return res;
+    wordexp_t p;
+    wordexp(path, &p, 0);
+    char **w = p.we_wordv;
+    assert(p.we_wordc==1);
+    string res = w[0];
+    wordfree(&p);
+    return res;
 }
 
 ///Stores an array of points into the given path. Point coordinates are
@@ -54,7 +54,7 @@ string tilde_expand(const char *path)
 void storeIntoStationPaths(StationPath *stationpath, const char* id)
 {
     StationPath path;
-    
+
     try
     {
         path = svgpath_.getPath((string)id);
@@ -173,11 +173,11 @@ StationPaths::StationPaths()
     storeFromMultipleSVGs(&stationPaths_[0][1], "DCC_START", "DCC_MCD");
     storeFromMultipleSVGs(&stationPaths_[0][2], "DCC_START2", "DCC_EA", "EA_END3","EA_END2");
     storeFromMultipleSVGs(&stationPaths_[0][3], "DCC_START2", "DCC_EA", "EA_E3A");
-    
+
     storeFromMultipleSVGs(&stationPaths_[1][0], "MCD_DCC", "DCC_END");
     storeFromMultipleSVGs(&stationPaths_[1][2], "MCD_DCC", "DCC_EA", "EA_END3", "EA_END2");
     storeFromMultipleSVGs(&stationPaths_[1][3], "MCD_DCC", "DCC_EA", "EA_E3A");
-    
+
     storeFromMultipleSVGs(&stationPaths_[2][0], "EA_START", "EA_DCC", "DCC_END2");
     storeFromMultipleSVGs(&stationPaths_[2][1], "EA_START", "EA_DCC", "DCC_MCD");
     storeFromMultipleSVGs(&stationPaths_[2][3], "EA_START2", "EA_E3A");
@@ -188,6 +188,7 @@ StationPaths::StationPaths()
     
     slowZones_ = sp.getSlowZone();
     cout<<slowZones_[0].x_<<' '<<slowZones_[0].y_<<' '<<slowZones_[0].r_<<endl;
+
     if( VERBOSE ) {
         printInterPointsDistance();
         printPath(stationPaths_[0][2]);

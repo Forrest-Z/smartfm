@@ -7,20 +7,16 @@
 #include <exception>
 
 #include <StationPath.h>
+#include <DebugLogger.h>
 
 #include "SchedulerTypes.h"
 #include "DBTalker.h"
 #include "Vehicle.h"
 
 
-class Scheduler
+class Scheduler : public DebugLogger
 {
 private:
-    /// Level of verbosity
-    unsigned verbosity_level;
-
-    FILE * logFile;
-
     typedef std::vector<Vehicle>::iterator VIT;
 
     /// The pool of vehicles. Each entry has its own list of tasks.
@@ -52,11 +48,11 @@ public:
 
     CVIT checkVehicleExist(std::string vehicleID) const;
 
-	/// Method to get a specified task
-	const SchedulerTypes::Task & getTask(unsigned taskID) const;
+    /// Method to get a specified task
+    const SchedulerTypes::Task & getTask(unsigned taskID) const;
 
     /// Method to get the waiting time of the specified task
-	SchedulerTypes::Duration getWaitTime(unsigned taskID) const;
+    SchedulerTypes::Duration getWaitTime(unsigned taskID) const;
 
     /// Method to print all the tasks
     std::string toString() const;
@@ -87,6 +83,9 @@ private:
 
     /// Returns the first available vehicle.
     VIT checkVehicleAvailable();
+
+    /// Check the list of vehicles in the DB and update the internal pool of vehicles.
+    void updateVehicleList();
 };
 
 

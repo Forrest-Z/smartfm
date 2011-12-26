@@ -57,12 +57,12 @@ public:
 
 enum VehicleStatus
 {
-	VEH_STAT_WAITING,
-	VEH_STAT_GOING_TO_PICKUP,
-	VEH_STAT_AT_PICKUP,
-	VEH_STAT_GOING_TO_DROPOFF,
-	VEH_STAT_AT_DROPOFF,
-	VEH_STAT_NOT_AVAILABLE
+    VEH_STAT_WAITING,
+    VEH_STAT_GOING_TO_PICKUP,
+    VEH_STAT_AT_PICKUP,
+    VEH_STAT_GOING_TO_DROPOFF,
+    VEH_STAT_AT_DROPOFF,
+    VEH_STAT_NOT_AVAILABLE
 };
 
 std::string vehicleStatusStr(VehicleStatus vs);
@@ -78,10 +78,11 @@ struct TaskStatus
 
 struct VehicleInfo
 {
-	VehicleStatus status;
-	Duration eta;
-	std::string currentLocation;
-	unsigned requestID;
+    std::string id;
+    VehicleStatus status;
+    Duration eta;
+    std::string currentLocation;
+    unsigned requestID;
 };
 
 } //namespace SchedulerTypes

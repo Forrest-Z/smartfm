@@ -83,7 +83,6 @@ vector<SlowZone> SvgPath::getSlowZone()
                     cout<<"Only circle is supported"<<endl;
                     return szs;
                 }
-
             }
         }
     }
@@ -254,6 +253,7 @@ StationPath SvgPath::StringToPath(string data)
             pos.y_ = atof(data_s[++i].c_str())+offsety;
             found_points++;
             positions.push_back(pos);
+
             found_points++;
             //The stop point
             positions.push_back(pos);

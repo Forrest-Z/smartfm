@@ -10,7 +10,7 @@
 /// A base class to get and receive missions.
 class MissionComm : public Threaded
 {
-	friend class RoutePlanner;
+    friend class RoutePlanner;
 
 public:
     MissionComm( RoutePlanner & rp );
@@ -52,7 +52,7 @@ public:
 
 private:
     void updateStatus();
-    void waitForMission();
+    void waitForMissionConfirmed();
 };
 
 /// Interface with the database using a DBInterface object
