@@ -2,7 +2,7 @@
 
 #include <pluginlib/class_list_macros.h>
 #include <geometry_msgs/Pose2D.h>
-
+#include <geometry_msgs/PoseArray.h>
 #include <golfcar_gp/gplan_scheduler.h>
 
 using namespace std;
@@ -18,7 +18,7 @@ namespace golfcar_gp
 void GlobalPlan::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros){
     ros::NodeHandle global_node;
     g_plan_pub_ = global_node.advertise<nav_msgs::Path>("global_plan", 1);
-    direction_pub_ = global_node.advertise<geometry_msgs::Point32>("direction", 1);
+    slowZone_pub_ = global_node.advertise<geometry_msgs::PoseArray>("slowZone", 1, true);
 
     ROS_INFO("gplan initialized");
 }
@@ -32,7 +32,21 @@ bool GlobalPlan::makePlan(const geometry_msgs::PoseStamped&  start,
     geometry_msgs::Pose2D target;
     StationPath station_path = sp_.getPath(sp_.knownStations()((int)goal.pose.position.x),
                                            sp_.knownStations()((int)goal.pose.position.y));
+    geometry_msgs::PoseArray slowZones;
+    slowZones.header.frame_id = "/map";
+    slowZones.header.stamp = ros::Time::now();
 
+    for(unsigned int i=0;i<sp_.slowZones_.size();i++)
+    {
+        geometry_msgs::Pose pose;
+        pose.orientation.w = 1.0;
+        pose.position.x = sp_.slowZones_[i].x_;
+        pose.position.y = sp_.slowZones_[i].y_;
+        pose.position.z = sp_.slowZones_[i].r_;
+        slowZones.poses.push_back(pose);
+    }
+
+    slowZone_pub_.publish(slowZones);
     vector<geometry_msgs::PoseStamped> final_targets;
     geometry_msgs::PoseStamped ps;
 

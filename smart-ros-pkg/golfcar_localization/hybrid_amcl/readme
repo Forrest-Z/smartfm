@@ -1,1 +1,4 @@
 Last update 2011-12-14: replace particle angle with Pose_Est angle when using crossing data to weight samples;
+Last update 2011-12-27: (1)add "sensor validation" function in "sensor update", with a "switch" parameter to activate or inactive it;
+                        (2)currently only curb measurement is validated, while leave validation of other  measurements open to complete;
+                        (3)because of validation function, we need a relatively accurate initial pose, otherwise curb measurements will be ignored;

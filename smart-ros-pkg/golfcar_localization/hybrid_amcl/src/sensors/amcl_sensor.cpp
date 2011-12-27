@@ -61,9 +61,14 @@ bool AMCLSensor::InitSensor(pf_t *pf, AMCLSensorData *data)
 
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the sensor model
-bool AMCLSensor::UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag)
+bool AMCLSensor::UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, bool ValidSwitch)
 {
   return false;
+}
+
+void AMCLSensor::ValidateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag)
+{
+  return;
 }
 
 

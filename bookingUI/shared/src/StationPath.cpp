@@ -9,12 +9,11 @@
 
 #include "StationPath.h"
 #include "SvgPath.h"
-
 using namespace std;
 
 
 #define VERBOSE 0 //whether to print path coordinates and info about paths (for testing)
-
+#define RESOLUTION 0.1 //resolution of the SVG file in pixel/meter
 //definition of the svg file
 
 //(BRICE) using a more flexible path definition so that it can work on several machines.
@@ -22,7 +21,7 @@ using namespace std;
 // TODO: find a more flexible method. For instance, this could be passed at construcion
 // time, or rely on an environment variable, etc.
 #define SVG_FILE "~/SvgPath/ALL_1217.svg"
-
+SvgPath svgpath_;
 double PathPoint::distance(const PathPoint &p1, const PathPoint &p2)
 {
     return sqrt( pow(p1.x_-p2.x_,2) + pow(p1.y_-p2.y_,2) );
@@ -55,13 +54,10 @@ string tilde_expand(const char *path)
 void storeIntoStationPaths(StationPath *stationpath, const char* id)
 {
     StationPath path;
-    PathPoint height_width;
 
     try
     {
-
-        SvgPath svg(tilde_expand(SVG_FILE).c_str(), &path, &height_width, id);
-        svg.convert_to_meter(&path, height_width, 0.1);
+        path = svgpath_.getPath((string)id);
         if( VERBOSE ) cout <<"Path size: " <<path.size() <<". ";
         stationpath->insert(stationpath->end(), path.begin(), path.end());
         if( VERBOSE ) cout <<"Length= " <<stationpath->recomputeLength() <<endl;
@@ -172,7 +168,8 @@ StationPaths::StationPaths()
     stationPaths_.resize(NSTATIONS);
     for(unsigned i=0; i<NSTATIONS; i++)
         stationPaths_[i].resize(NSTATIONS);
-
+    SvgPath sp((tilde_expand(SVG_FILE).c_str()),RESOLUTION);
+    svgpath_ = sp;
     storeFromMultipleSVGs(&stationPaths_[0][1], "DCC_START", "DCC_MCD");
     storeFromMultipleSVGs(&stationPaths_[0][2], "DCC_START2", "DCC_EA", "EA_END3","EA_END2");
     storeFromMultipleSVGs(&stationPaths_[0][3], "DCC_START2", "DCC_EA", "EA_E3A");
@@ -188,6 +185,9 @@ StationPaths::StationPaths()
     storeFromMultipleSVGs(&stationPaths_[3][0], "E3A_EA", "EA_DCC", "DCC_END2");
     storeFromMultipleSVGs(&stationPaths_[3][1], "E3A_EA", "EA_DCC", "DCC_MCD");
     storeFromMultipleSVGs(&stationPaths_[3][2], "E3A_EA", "EA_END", "EA_END2");
+    
+    slowZones_ = sp.getSlowZone();
+    cout<<slowZones_[0].x_<<' '<<slowZones_[0].y_<<' '<<slowZones_[0].r_<<endl;
 
     if( VERBOSE ) {
         printInterPointsDistance();
