@@ -4,26 +4,28 @@
 #include "Threaded.h"
 #include "StationPath.h"
 
-
-class MissionComm;
-
 /// A base class for route planners
 class RoutePlanner : public Threaded
 {
     friend class MissionComm;
 
 public:
-    RoutePlanner(StationPaths & sp);
+    explicit RoutePlanner(const StationPaths & sp);
     void setDestination(const Station & s);
-    bool hasReached() const { return state_ == sIdle; }
+    bool hasReached() const { return state_ == sReached; }
+    void start();
+    const Station & getCurrentStation() const { return currentStation_; }
 
 
 protected:
-    enum State { sUninit, sIdle, sMoving };
+    enum State { sUninit, sReady, sMoving, sReached };
 
-    StationPaths & sp_;
+    const StationPaths & sp_;
     Station currentStation_, destination_;
     State state_;
+
+    float latitude_, longitude_;
+    float eta_;
 
     /// Called when the destination is received. Loads the path, etc. ...
     virtual void initDest() = 0;
@@ -33,9 +35,6 @@ protected:
     virtual bool goToDest() = 0;
 
     void run();
-
-    virtual void pubCurrentLoc() = 0;
-    virtual void pubNoCurrentLoc() = 0;
 };
 
 #endif

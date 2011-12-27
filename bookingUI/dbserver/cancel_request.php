@@ -7,7 +7,7 @@ $xmlres = new XMLRes();
 $customerID = $_REQUEST["CustomerID"] or $xmlres->fatal('CustomerID missing');
 $requestID = $_REQUEST["RequestID"];
 
-$query = "UPDATE requests SET status='Cancelled' WHERE CustomerID='$customerID'";
+$query = "UPDATE requests SET custCancelled=1 WHERE CustomerID='$customerID'";
 if( isset($requestID) )
     $query .= " and RequestID=$requestID";
 

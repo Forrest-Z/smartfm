@@ -14,6 +14,7 @@ $longitude = $_REQUEST["Longitude"];
 $latitude = $_REQUEST["Latitude"];
 $eta = $_REQUEST["ETA"];
 $currentLocation = $_REQUEST["CurrentLocation"];
+$requestID = $_REQUEST["RequestID"];
 
 $setvar = array();
 if( isset($status) )
@@ -26,6 +27,8 @@ if( isset($eta) )
     $setvar[] = "eta=$eta";
 if( isset($currentLocation) )
     $setvar[] = "CurrentLocation='$currentLocation'";
+if( isset($requestID) )
+    $setvar[] = "RequestID='$requestID'";
 
 sizeof($setvar)>0 or $xmlres->fatal('Arguments missing');
 

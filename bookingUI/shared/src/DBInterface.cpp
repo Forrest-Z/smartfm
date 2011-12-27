@@ -22,7 +22,8 @@ void dump_to_stdout( TiXmlNode* pParent, unsigned int indent = 0 );
 
 
 DBInterface::Task::Task()
-: id(0), pickup(""), dropoff(""), customerID(""), status(""), vehicleID("")
+: id(0), pickup(""), dropoff(""), customerID(""), status(""),
+custCancelled(false)
 {
 
 }
@@ -31,7 +32,7 @@ DBInterface::Task DBInterface::Task::fromXML(TiXmlElement *pElement)
 {
     assert(pElement!=0);
     Task t;
-    
+
     TiXmlAttribute* pAttrib=pElement->FirstAttribute();
     int ival;
     while (pAttrib)
@@ -47,8 +48,9 @@ DBInterface::Task DBInterface::Task::fromXML(TiXmlElement *pElement)
             t.customerID = pAttrib->Value();
         else if( strcasecmp(pAttrib->Name(), "status")==0 )
             t.status = pAttrib->Value();
-        else if( strcasecmp(pAttrib->Name(), "vehicleID")==0 )
-            t.vehicleID = pAttrib->Value();
+        else if( strcasecmp(pAttrib->Name(), "custCancelled")==0 &&
+                pAttrib->QueryIntValue(&ival)==TIXML_SUCCESS )
+            t.custCancelled = bool(ival);
         pAttrib=pAttrib->Next();
     }
     return t;
@@ -58,7 +60,7 @@ DBInterface::Task DBInterface::Task::fromXML(TiXmlElement *pElement)
 DBInterface::Vehicle::Vehicle()
 : vehicleID(""), status(""), requestID(0), currentLocation(""), latitude(0.0), longitude(0.0), eta(0)
 {
-    
+
 }
 
 DBInterface::Vehicle DBInterface::Vehicle::fromXML(TiXmlElement *pElement)
@@ -95,10 +97,10 @@ DBInterface::Vehicle DBInterface::Vehicle::fromXML(TiXmlElement *pElement)
         else if( strcasecmp(pAttrib->Name(), "eta")==0 &&
             pAttrib->QueryIntValue(&ival)==TIXML_SUCCESS )
             v.eta = (unsigned) ival;
-        
+
         pAttrib=pAttrib->Next();
     }
-    
+
     return v;
 }
 
@@ -123,9 +125,9 @@ void findNodes(TiXmlNode *pNode, const char *name, vector<TiXmlElement *> & resu
 
 vector<TiXmlElement *> findNodes(TiXmlNode *pNode, const char *name)
 {
-	vector<TiXmlElement *> result;
-	findNodes(pNode, name, result);
-	return result;
+    vector<TiXmlElement *> result;
+    findNodes(pNode, name, result);
+    return result;
 }
 
 
@@ -144,33 +146,33 @@ HTTPClient DBInterface::getHTTPClient(string php)
 
 TiXmlDocument DBInterface::rpc(HTTPClient & client)
 {
-	string xml = client.connect();
+    string xml = client.connect();
 
-	TiXmlDocument doc;
-	doc.Parse(xml.c_str());
+    TiXmlDocument doc;
+    doc.Parse(xml.c_str());
 
-	vector<TiXmlElement *> nodes = findNodes(&doc, "status");
-	if( nodes.empty() )
-		throw DBInterfaceException("No return status");
+    vector<TiXmlElement *> nodes = findNodes(&doc, "status");
+    if( nodes.empty() )
+        throw DBInterfaceException("No return status");
 
-	TiXmlElement *statusNode = nodes[0];
-	const char *value;
+    TiXmlElement *statusNode = nodes[0];
+    const char *value;
 
-	value = statusNode->Attribute("code");
-	if( value==0 )
-		throw DBInterfaceException("No return status");
-	if( strcasecmp(value,"err")==0 )
-	{
-		value = statusNode->Attribute("msg");
-		if( value==0 ) {
-			throw DBInterfaceException("RPC call failed");
-		}
-		else {
-			throw DBInterfaceException("RPC call failed:" + string(value));
-		}
-	}
+    value = statusNode->Attribute("code");
+    if( value==0 )
+        throw DBInterfaceException("No return status");
+    if( strcasecmp(value,"err")==0 )
+    {
+        value = statusNode->Attribute("msg");
+        if( value==0 ) {
+            throw DBInterfaceException("RPC call failed");
+        }
+        else {
+            throw DBInterfaceException("RPC call failed:" + string(value));
+        }
+    }
 
-	return doc;
+    return doc;
 }
 
 // Adds this vehicle to the database.
@@ -198,19 +200,26 @@ void DBInterface::deleteVehicle()
 // Returns true if the mission has been cancelled.
 bool DBInterface::checkMissionCancelled(unsigned id)
 {
-    return strcasecmp(getTaskEntry(id).status.c_str(),"cancelled")==0;
+    return getTaskEntry(id).custCancelled;
+}
+
+void DBInterface::acceptMissionCancel(unsigned id, bool accept) {
+    string script = accept ? "veh_accept_cancel.php" : "veh_reject_cancel.php";
+    HTTPClient client = getHTTPClient(script);
+    client.addParam<unsigned>("RequestID",id);
+    rpc(client);
 }
 
 // Returns NULL if no new mission, Task pointer otherwise.
 bool DBInterface::checkForNewMission(Task *t)
 {
-	vector<Task> tasks = getAllTasks();
-	for( vector<Task>::iterator it=tasks.begin(); it!=tasks.end(); ++it ) {
-		if( strcasecmp(it->status.c_str(),"confirmed")==0 ) {
-			*t = *it;
-			return true;
-		}
-	}
+    vector<Task> tasks = getAllTasks();
+    for( vector<Task>::iterator it=tasks.begin(); it!=tasks.end(); ++it ) {
+        if( strcasecmp(it->status.c_str(),"confirmed")==0 ) {
+            *t = *it;
+            return true;
+        }
+    }
     return false;
 }
 
@@ -220,7 +229,7 @@ DBInterface::Task DBInterface::waitForNewMission(float period)
 {
     Task t;
     while( ! checkForNewMission(&t) )
-    	usleep((time_t)(period*1e6));
+        usleep((time_t)(period*1e6));
     return t;
 }
 
@@ -241,11 +250,12 @@ void DBInterface::setETA(float eta)
     rpc(client);
 }
 
-void DBInterface::setMissionStatus(string status)
+void DBInterface::setMissionStatus(unsigned id, string status)
 {
-	HTTPClient client = getHTTPClient("veh_update_request.php");
-	client.addParam<string>("Status",status);
-	rpc(client);
+    HTTPClient client = getHTTPClient("veh_update_request.php");
+    client.addParam<unsigned>("RequestID",id);
+    client.addParam<string>("Status",status);
+    rpc(client);
 }
 
 void DBInterface::setVehicleStatus(string status)
@@ -255,12 +265,19 @@ void DBInterface::setVehicleStatus(string status)
     rpc(client);
 }
 
+void DBInterface::setVehicleCurrReq(unsigned id)
+{
+    HTTPClient client = getHTTPClient("veh_update_status.php");
+    client.addParam<unsigned>("RequestID", id);
+    rpc(client);
+}
+
 // Returns the vehicle entry
 DBInterface::Vehicle DBInterface::getVehicleEntry()
 {
     HTTPClient client = getHTTPClient("list_vehicles.php");
     TiXmlDocument doc = rpc(client);
-    
+
     vector<TiXmlElement *> vehicles = findNodes(&doc, "vehicle");
     if( vehicles.empty() ) throw VehicleNotFoundException(vehicleID);
     return Vehicle::fromXML(vehicles[0]);
@@ -270,19 +287,19 @@ vector<DBInterface::Task> DBInterface::getAllTasks()
 {
     HTTPClient client = getHTTPClient("list_requests.php");
     TiXmlDocument doc = rpc(client);
-    
+
     vector<Task> tasks;
     vector<TiXmlElement *> tasksEls = findNodes(&doc, "request");
     for( vector<TiXmlElement *>::iterator it = tasksEls.begin(); it!=tasksEls.end(); ++it )
-    	tasks.push_back(Task::fromXML(*it));
-	return tasks;
+        tasks.push_back(Task::fromXML(*it));
+    return tasks;
 }
 
 // Returns the task entry
 DBInterface::Task DBInterface::getTaskEntry(unsigned id)
 {
-	vector<Task> tasks = getAllTasks();
-	for( vector<Task>::iterator it=tasks.begin(); it!=tasks.end(); ++it )
+    vector<Task> tasks = getAllTasks();
+    for( vector<Task>::iterator it=tasks.begin(); it!=tasks.end(); ++it )
         if( it->id==id )
             return *it;
     throw TaskNotFoundException(id);
@@ -302,7 +319,7 @@ const char * getIndent( unsigned int numIndents )
     static const unsigned int LENGTH=strlen( pINDENT );
     unsigned int n=numIndents*NUM_INDENTS_PER_SPACE;
     if ( n > LENGTH ) n = LENGTH;
-    
+
     return &pINDENT[ LENGTH-n ];
 }
 
@@ -313,14 +330,14 @@ const char * getIndentAlt( unsigned int numIndents )
     static const unsigned int LENGTH=strlen( pINDENT );
     unsigned int n=numIndents*NUM_INDENTS_PER_SPACE;
     if ( n > LENGTH ) n = LENGTH;
-    
+
     return &pINDENT[ LENGTH-n ];
 }
 
 int dump_attribs_to_stdout(TiXmlElement* pElement, unsigned int indent)
 {
     if ( !pElement ) return 0;
-    
+
     TiXmlAttribute* pAttrib=pElement->FirstAttribute();
     int i=0;
     int ival;
@@ -330,7 +347,7 @@ int dump_attribs_to_stdout(TiXmlElement* pElement, unsigned int indent)
     while (pAttrib)
     {
         printf( "%s%s: value=[%s]", pIndent, pAttrib->Name(), pAttrib->Value());
-        
+
         if (pAttrib->QueryIntValue(&ival)==TIXML_SUCCESS)    printf( " int=%d", ival);
         if (pAttrib->QueryDoubleValue(&dval)==TIXML_SUCCESS) printf( " d=%1.1f", dval);
         printf( "\n" );
@@ -343,19 +360,19 @@ int dump_attribs_to_stdout(TiXmlElement* pElement, unsigned int indent)
 void dump_to_stdout( TiXmlNode* pParent, unsigned int indent )
 {
     if ( !pParent ) return;
-    
+
     TiXmlNode* pChild;
     TiXmlText* pText;
     int t = pParent->Type();
     printf( "%s", getIndent(indent));
     int num;
-    
+
     switch ( t )
     {
         case TiXmlNode::TINYXML_DOCUMENT:
             printf( "Document" );
             break;
-            
+
         case TiXmlNode::TINYXML_ELEMENT:
             printf( "Element [%s]", pParent->Value() );
             num=dump_attribs_to_stdout(pParent->ToElement(), indent+1);
@@ -366,20 +383,20 @@ void dump_to_stdout( TiXmlNode* pParent, unsigned int indent )
                 default: printf( "%s%d attributes", getIndentAlt(indent), num); break;
             }
             break;
-            
+
                 case TiXmlNode::TINYXML_COMMENT:
                     printf( "Comment: [%s]", pParent->Value());
                     break;
-                    
+
                 case TiXmlNode::TINYXML_UNKNOWN:
                     printf( "Unknown" );
                     break;
-                    
+
                 case TiXmlNode::TINYXML_TEXT:
                     pText = pParent->ToText();
                     printf( "Text: [%s]", pText->Value() );
                     break;
-                    
+
                 case TiXmlNode::TINYXML_DECLARATION:
                     printf( "Declaration" );
                     break;

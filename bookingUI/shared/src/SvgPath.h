@@ -7,17 +7,31 @@
 class SvgPath
 {
 public:
-    SvgPath(const char* pFilename, StationPath* pose, PathPoint *size, const char* id);
-    void convert_to_meter(StationPath* pose, PathPoint &size, double resolution);
+    SvgPath();
+    SvgPath(const char* pFilename, double resolution);
+    void loadFile(const char* pFilename, double resolution);
+    void getSlowZones(std::vector<SlowZone>* slowZones);
+
+
+    StationPath getPath(std::string id);
+    std::vector<SlowZone> getSlowZone();
+    void GetDoubleAttribute(TiXmlElement* childElement, const char* attributeName, double* value);
 
 private:
-    unsigned int foundPath;
+    TiXmlDocument svgDoc_;
+    double res_;
+    PathPoint size_;
+    unsigned int foundPath, foundSlowZone;
 
-    void findPathElements(StationPath* pose, PathPoint* size, unsigned int *npoints, TiXmlNode* pParent, const char* id);
+    StationPath StringToPath(std::string value);
 
     std::string string_error(std::string description, std::string details);
 
-    int find_size_attributes(TiXmlElement* pElement, PathPoint *width_height);
+    void convert_to_meter(StationPath* pose);
 
-    int find_path_attributes(TiXmlElement* pElement, StationPath* pose, const char* id);
+    PathPoint GetTransform(TiXmlElement* childElement);
+
+    std::vector<std::string> SplitString(std::string &data, const char* delimiter);
+
+    PathPoint getSize();
 };

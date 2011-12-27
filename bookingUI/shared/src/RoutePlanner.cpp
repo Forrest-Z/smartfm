@@ -1,25 +1,39 @@
 #include <stdlib.h>
 
 #include <iostream>
+#include <stdexcept>
 
 #include "RoutePlanner.h"
+#include "MissionComm.h"
 
 using namespace std;
 
 
 
-RoutePlanner::RoutePlanner(StationPaths & sp)
-    : sp_(sp), state_(sUninit)
+RoutePlanner::RoutePlanner(const StationPaths & sp)
+    : sp_(sp), state_(sUninit), latitude_(0.0), longitude_(0.0), eta_(-1.0)
 {
 
 }
 
 void RoutePlanner::setDestination(const Station & s)
 {
-    destination_ = s;
-    initDest();
-    pubNoCurrentLoc();
-    state_ = sMoving;
+    if( state_==sUninit || state_==sReached ) {
+        destination_ = s;
+        initDest();
+        state_ = sReady;
+    }
+    else {
+        throw runtime_error("Attempting to set destination at the wrong time");
+    }
+}
+
+void RoutePlanner::start()
+{
+    if( state_==sReady )
+        state_ = sMoving;
+    else
+        throw runtime_error("Attempting to start when not ready");
 }
 
 void RoutePlanner::run()
@@ -27,21 +41,15 @@ void RoutePlanner::run()
     switch( state_ )
     {
     case sUninit:
-        sp_.knownStations().print();
-        currentStation_ = sp_.knownStations().prompt("Current station? ");
-        pubCurrentLoc();
-        state_ = sIdle;
-        break;
-
-    case sIdle:
+    case sReady:
+    case sReached:
         sleep(1);
         break;
 
     case sMoving:
         if( goToDest() ) {
-            state_ = sIdle;
+            state_ = sReached;
             currentStation_ = destination_;
-            pubCurrentLoc();
         }
         else {
             usleep(100000);

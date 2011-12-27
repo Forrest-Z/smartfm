@@ -18,6 +18,7 @@ if( isset($requestID) )
 $query = "SELECT * FROM requests";
 if( sizeof($setvar) )
     $query .= " WHERE " . join(' and ', $setvar);
+$query .= " ORDER BY RequestID";
 
 $xmlres = new XMLRes();
 
@@ -33,17 +34,10 @@ while ($row = @mysql_fetch_assoc($result))
     $newnode->setAttribute("status", $row['status']);
     $newnode->setAttribute("pickup", $row['pickUpLocation']);
     $newnode->setAttribute("dropoff", $row['dropOffLocation']);
-    if( $row['status']=="Confirmed" || $row['status']=="Processing" ) {
-        $vid = $row['vehicleID'];
-        $newnode->setAttribute("vehicleID", $vid);
-        $sql = "SELECT * FROM vehicles WHERE VehicleID = '$vid'";
-        $res = mysql_query($sql, $con) or $xmlres->fatal('Select error: ' . mysql_error());
-        while ($r = @mysql_fetch_assoc($res)) {
-            $newnode->setAttribute("latitude", $r['latitude']);
-            $newnode->setAttribute("longitude", $r['longitude']);
-            $newnode->setAttribute("eta", $r['eta']);
-        }
-    }
+    $newnode->setAttribute("vehicleID", $row['vehicleID']);
+    $newnode->setAttribute("eta", $row['eta']);
+    $newnode->setAttribute("custCancelled", $row['custCancelled']);
+    $newnode->setAttribute("vehicleAcknowledgedCancel", $row['vehicleAcknowledgedCancel']);
 }
 
 mysql_close($con);

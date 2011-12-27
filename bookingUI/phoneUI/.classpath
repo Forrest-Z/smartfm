@@ -2,12 +2,12 @@
 <classpath>
 	<classpathentry kind="src" path="gen"/>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="com.android.ide.eclipse.adt.ANDROID_FRAMEWORK"/>
 	<classpathentry kind="lib" path="/media/data/Documents/dev/org.apache.commons.lang3/commons-lang3-3.1.jar" sourcepath="/media/data/Documents/dev/org.apache.commons.lang3/commons-lang3-3.1-sources.jar">
 		<attributes>
 			<attribute name="javadoc_location" value="file:/media/data/Documents/dev/org.apache.commons.lang3/apidocs/"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="con" path="com.android.ide.eclipse.adt.LIBRARIES"/>
 	<classpathentry kind="output" path="bin/classes"/>
 </classpath>

@@ -12,39 +12,28 @@
 #include <string>
 using namespace std;
 
+#include <StationPath.h>
+#include <SimulatedRoutePlanner.h>
+#include <MissionComm.h>
+
 #include "Scheduler.h"
 #include "SchedulerUI.h"
 #include "DBTalker.h"
 
-#define DEBUG_LOGFILE gLogFile
-#define DEBUG_VERBOSITY_VAR optVerbosityLevel
-#include "debug_macros.h"
-#define MSGLOGNOGUI(lvl, fmt, ...) do { if(optNoGUI) MSG(lvl, fmt, ##__VA_ARGS__); LOG(fmt, ##__VA_ARGS__); } while(0)
-
-
-
-#include <StationPath.h>
-
-
-/** BUG list
- * Apparently the time of tasks (twait) is wrong. Ask Nok to check.
- */
-
-/** TODO
- * Support more than one vehicle (low priority).
- */
+using SchedulerTypes::Task;
+using SchedulerTypes::Duration;
 
 
 //------------------------------------------------------------------------------
-// Global constants
+// A vehicle class for simulated vehicles
+class SimulatedVehicle {
+public:
+    SimulatedRoutePlanner rp;
+    DBMissionComm comm;
 
-/// Although the system is intended to support several vehicles, not everything
-/// has been implemented, so we will use vehicle 0 only for now.
-const char DEFAULT_VEHICLE_ID[] = "golfcart1";
-
-/// Number of seconds between two successive task info
-const int NUM_SEC_TASK_INFO_SENT = 1;
-
+    SimulatedVehicle(StationPaths & sp, string vname, float speed, string hostname)
+    : rp(sp,speed), comm(rp, hostname+"/dbserver", vname) { }
+};
 
 
 //------------------------------------------------------------------------------
@@ -56,7 +45,7 @@ int optSimulateMobile = 0;
 int optSimulateVehicle = 0;
 int optNoOP = 0;
 string optHostName = "localhost";
-float optTimeFactor = 1; ///< control the speed of time in simulation mode
+float optSimVehicleSpeed = 1; ///< control the speed of the simulated vehicle
 float optNewTaskProba = 0.001; ///< control the probability of a new task in optSimulateMobile mode
 
 
@@ -77,11 +66,13 @@ time_t gPreviousTime = 0;
 /// The name of this program
 const char * gProgramName;
 
-// Log file
-FILE* gLogFile = NULL;
+// logger
+DebugLogger logger;
 
-StationList stationList;
+StationPaths gStationPaths;
+const StationList & gStationList = gStationPaths.knownStations();
 
+SimulatedVehicle * gSimulatedVehicle = 0;
 
 //------------------------------------------------------------------------------
 enum OperatorOption
@@ -104,14 +95,11 @@ enum OperatorOption
 void print_usage (FILE* stream, int exit_code);
 
 void parseOptions(int argc, char **argv);
-void openLogFile();
 
-/// Checks if there is a new task from the mobile customer. If there is, add it
-/// to the scheduler.
+/// Create random tasks and make requests
 void addMobileTask();
 
-/// Update all the information
-void update();
+void createObjects();
 
 /// get commands from operator in text mode
 void textUI();
@@ -143,60 +131,28 @@ int main(int argc, char **argv)
     srand ( time(NULL) );
     parseOptions(argc, argv);
 
-    openLogFile();
     time_t prevTimeTaskInfo = time(NULL);
 
     try
     {
-        gScheduler = new Scheduler();
-        gScheduler->setVerbosityLevel(optVerbosityLevel);
-        gScheduler->setLogFile(gLogFile);
-
-        string username = "fmauto", passwd = "smartfm", dbname = "fmauto";
-        gDBTalker = new DBTalker(optHostName, username, passwd, dbname);
-        gDBTalker->setLogFile(gLogFile);
-        gDBTalker->setVerbosityLevel(optVerbosityLevel);
-
-        if( optSimulateVehicle )
-            gDBTalker->createVehicleEntry("golfcart1");
-
-        if (!optNoGUI)
-        {
-            gSchedulerUI = new SchedulerUI(*gScheduler, *gDBTalker);
-            gSchedulerUI->initConsole();
-            gSchedulerUI->updateConsole();
-        }
+        createObjects();
 
         while(gQuit == 0)
         {
-            if( optNoGUI ) {
-                if( ! optNoOP )
-                    textUI();
-            }
-            else {
+            if( optNoGUI && ! optNoOP )
+                textUI();
+            else if( !optNoGUI )
                 gSchedulerUI->updateConsole();
-            }
 
-            addMobileTask();
+            if( optSimulateMobile )
+                addMobileTask();
 
             // Update vehicle status, waiting time and send new task to vehicle if
             // it has completes the previous task.
-            update();
-
-            // Report waiting time
-            if (time(NULL) - prevTimeTaskInfo > NUM_SEC_TASK_INFO_SENT) {
-                prevTimeTaskInfo = time(NULL);
-
-                vector<Vehicle>::const_iterator vit = gScheduler->vehicles.begin();
-                for( ; vit != gScheduler->vehicles.end(); ++vit )
-                {
-                    list<Task>::const_iterator tit = vit->tasks.begin();
-                    for( ++tit; tit != vit->tasks.end(); ++tit )
-                    {
-                    	gDBTalker->updateTime(tit->taskID, tit->tpickup);
-                    }
-                }
-
+            time_t currentTime = time(NULL);
+            if( currentTime - prevTimeTaskInfo >= 3 ) {
+                prevTimeTaskInfo = currentTime;
+                gScheduler->update();
             }
 
             if (!optNoGUI && gSchedulerUI->getSchedulerStatus() == SchedulerUI::SCHEDULER_QUIT)
@@ -208,20 +164,18 @@ int main(int argc, char **argv)
 
     } //try
     catch( StationDoesNotExistException & e ) {
-        MSGLOG(1, "ERROR: Caught StationDoesNotExistException: station %s does not exist.", e.what());
+        ERROR_(logger, "Caught StationDoesNotExistException: station %s does not exist.", e.what());
         exit_code = 1;
     }
     catch( SchedulerException & e ) {
-        MSGLOG(1, "ERROR: Caught SchedulerException: %s.", e.what());
+        ERROR_(logger, "Caught SchedulerException: %s.", e.what());
         exit_code = 1;
     }
     catch( exception & e )
     {
-        MSGLOG(1, "ERROR: Caught exception: %s", e.what());
+        ERROR_(logger, "Caught exception: %s", e.what());
         exit_code = 1;
     }
-
-    fclose (gLogFile);
 
     if (!optNoGUI)
     {
@@ -230,8 +184,8 @@ int main(int argc, char **argv)
     }
 
     delete gScheduler;
-    if( gDBTalker!=NULL )
-        delete gDBTalker;
+    delete gDBTalker;
+    logger.close();
 
     return exit_code;
 } //main()
@@ -250,8 +204,8 @@ void print_usage (FILE* stream, int exit_code)
     ss <<"  --simmobile       Do not intend to communicate with mobile phones. Simulate mobile phone users instead (automatically generate random tasks)." <<endl;
     ss <<"  --taskproba p     Sets the probability of a new task (only used when simmobile is on, default value is " <<optNewTaskProba <<")." <<endl;
     ss <<"  --simvehicle      Simulate vehicles' status." <<endl;
-    ss <<"  --timefactor tf   Control speed of time when simulating the vehicle (default is 1)." <<endl;
-    ss <<"  --noop            No interaction with user. (daemon mode)." <<endl;
+    ss <<"  --simspeed tf     Speed of the vehicle in m/s (default is 1m/s)." <<endl;
+    ss <<"  --noop            No interaction with user. (daemon mode). Only active when --nogui is set." <<endl;
     ss <<"  --help            Display this message." <<endl;
 
     fprintf( stream, "%s", ss.str().c_str());
@@ -272,12 +226,12 @@ void parseOptions(int argc, char **argv)
         // second: 0 = no_argument, 1 = required_argument, 2 = optional_argument
         // third: if pointer, set variable to value of fourth argument
         //        if NULL, getopt_long returns fourth argument
-        {"verbose",     no_argument,       &optVerbosityLevel,        1},
         {"nogui",       no_argument,       &optNoGUI,                 1},
         {"simmobile",   no_argument,       &optSimulateMobile,        1},
         {"simvehicle",  no_argument,       &optSimulateVehicle,       1},
         {"noop",        no_argument,       &optNoOP,                  1},
-        {"timefactor",  required_argument, 0,                       'F'},
+        {"verbose",     required_argument, 0,                       'V'},
+        {"simspeed",    required_argument, 0,                       'F'},
         {"taskproba",   required_argument, 0,                       'P'},
         {"host",        required_argument, 0,                       'H'},
         {"help",        no_argument,       0,                       'h'},
@@ -313,11 +267,15 @@ void parseOptions(int argc, char **argv)
             break;
 
         case 'F':
-            optTimeFactor = atof(optarg);
+            optSimVehicleSpeed = atof(optarg);
             break;
 
         case 'P':
             optNewTaskProba = atof(optarg);
+            break;
+
+        case 'V':
+            optVerbosityLevel = atoi(optarg);
             break;
 
         case -1: /* Done with options. */
@@ -326,35 +284,40 @@ void parseOptions(int argc, char **argv)
     }
 }
 
-
-void openLogFile()
+void createObjects()
 {
     char timestr[64];
     time_t t = time(NULL);
     strftime(timestr, sizeof(timestr), "%F-%a-%H-%M-%S", localtime(&t));
-
     ostringstream oss;
-    oss  << "log_scheduler" << "." << timestr <<".log";
-    string logFileName = oss.str();
+    oss  << "log-" << "." << timestr <<".log";
+    logger.setLogFile(oss.str());
+    logger.setVerbosityLevel(optVerbosityLevel);
+    logger.setConsoleStream(stderr);
 
-    gLogFile = fopen(logFileName.c_str(), "w");
-}
+    string username = "fmauto", passwd = "smartfm", dbname = "fmauto";
+    gDBTalker = new DBTalker(optHostName, username, passwd, dbname);
+    gDBTalker->copyLoggingSettings(logger);
 
+    gScheduler = new Scheduler(*gDBTalker);
+    gScheduler->copyLoggingSettings(logger);
 
-/// Add new task to gScheduler and returns it
-Task addTask(Task task)
-{
-    task = gScheduler->addTask(task);
-    if( task.taskID == gScheduler->getVehicleCurrentTask(task.vehicleID).taskID )
-    	gDBTalker->confirmTask(task);
-    else
-    	gDBTalker->acknowledgeTask(task);
+    if( optSimulateVehicle )
+    {
+        gSimulatedVehicle = new SimulatedVehicle(gStationPaths, "golfcart1", optSimVehicleSpeed, optHostName);
+        gSimulatedVehicle->comm.startThread();
+        gSimulatedVehicle->rp.startThread();
+        while( ! gSimulatedVehicle->rp.getCurrentStation().isValid() )
+            sleep(1);
+    }
 
-    MSGLOG(1, "Added task %u:%s:%s:%s to the scheduler", task.taskID,
-        task.customerID.c_str(), task.pickup.c_str(), task.dropoff.c_str());
-    MSGLOGNOGUI(2, "After adding task...\nTask queue:\n%s", gScheduler->toString().c_str());
-
-    return task;
+    if (!optNoGUI)
+    {
+        gSchedulerUI = new SchedulerUI(*gScheduler, *gDBTalker);
+        gSchedulerUI->copyLoggingSettings(logger);
+        gSchedulerUI->initConsole();
+        gSchedulerUI->updateConsole();
+    }
 }
 
 double random_(double min, double max)
@@ -372,167 +335,31 @@ unsigned randu_(unsigned max)
     return (unsigned) random_(0,max);
 }
 
-/// Gets any new tasks from the server. Alternatively, if optSimulateMobile is
-/// set, generates some random tasks.
-vector<Task> getMobileTask()
-{
-    if( optSimulateMobile )
-    {
-        /* Adding some radom tasks to the database.
-         * The proba of a random task is equal to optNewTaskProba multiplied by
-         * optTimeFactor (to scale for fast simulations).
-         * Several tasks can be issued. The probability of a new task is half
-         * the probability of the previous task.
-         * For each task, pickup and dropoff stations are picked at random.
-         */
-        unsigned i = 0;
-        while( random_() < optNewTaskProba*optTimeFactor/pow(2,i++) )
-        {
-            unsigned s1 = randu_(stationList.size());
-            unsigned s2;
-            do
-                s2 = randu_(stationList.size());
-            while (s1==s2);
-            gDBTalker->makeBooking("cust1", stationList(s1), stationList(s2));
-        }
-    }
-    return gDBTalker->getRequestedBookings();
-}
-
-
-///TODO: Add a mechanism to report error to the mobile phone customer.
 void addMobileTask()
 {
-    vector<Task> tasks = getMobileTask();
-    if( tasks.empty() )
-        return;
-
-    for( unsigned i=0; i<tasks.size(); i++ )
+    /* Adding some random tasks to the database.
+    * The proba of a random task is equal to optNewTaskProba multiplied by
+    * optTimeFactor (to scale for fast simulations).
+    * Several tasks can be issued. The probability of a new task is half
+    * the probability of the previous task.
+    * For each task, pickup and dropoff stations are picked at random.
+    */
+    unsigned i = 0;
+    while( random_() < optNewTaskProba*optSimVehicleSpeed/pow(2,i++) )
     {
-        Task & task = tasks[i];
-        try
-        {
-            task = addTask( task );
-        }
-        catch( StationDoesNotExistException & e )
-        {
-            ERROR("Task %d <%s,%s> from customer %s is invalid: station %s does not exist.", task.taskID,
-                    task.pickup.c_str(), task.dropoff.c_str(), task.customerID.c_str(), e.what());
-        }
-        catch( SchedulerException & e )
-        {
-            ERROR("Task %d <%s,%s> from customer %s is invalid: %s", task.taskID,
-                    task.pickup.c_str(), task.dropoff.c_str(), task.customerID.c_str(), e.what());
-        }
+        unsigned s1 = randu_(gStationList.size());
+        unsigned s2;
+        do
+            s2 = randu_(gStationList.size());
+        while (s1==s2);
+
+        string customer = "cust1";
+        Station st1( gStationList(s1) );
+        Station st2( gStationList(s2) );
+        MSGLOG_(logger, 1, "Adding simulated mobile task: %s,%s,%s",
+                customer.c_str(), st1.c_str(), st2.c_str());
+        gDBTalker->makeBooking(customer, st1, st2);
     }
-}
-
-
-struct VehicleTaskInfo
-{
-	VehicleStatus vehicleStatus;
-	Duration duration;
-	Task task;
-	string taskStatus;
-};
-
-VehicleTaskInfo getVehicleTaskInfo(string vehicleID)
-{
-    VehicleTaskInfo info;
-    info.task = gScheduler->getVehicleCurrentTask(vehicleID);
-
-    if( optSimulateVehicle )
-    {
-        time_t currentTime = time(NULL);
-        if( gPreviousTime==0 ) gPreviousTime = time(NULL);
-        Duration dt = (currentTime - gPreviousTime) * optTimeFactor;
-        gPreviousTime = currentTime;
-
-        if ( info.task.ttask <= dt)
-        {
-            info.vehicleStatus = VEHICLE_AVAILABLE;
-            info.duration = 0;
-            info.taskStatus = "Completed";
-        }
-        else if (info.task.tpickup > dt)
-        {
-            info.vehicleStatus = VEHICLE_ON_CALL;
-            info.duration = info.task.tpickup - dt;
-            info.taskStatus = "Processing";
-        }
-        else if( info.task.tpickup <= dt )
-        {
-        	info.vehicleStatus = VEHICLE_POB;
-        	info.task.tpickup = 0;
-        	info.taskStatus = "Processing";
-        }
-        else if( info.task.ttask > dt )
-        {
-        	info.vehicleStatus = VEHICLE_POB;
-            info.duration = info.task.ttask - dt;
-            info.taskStatus = "Processing";
-        }
-        else
-        {
-        	throw logic_error("getVehicleTaskInfo");
-        }
-    }
-    else // if(optSimulateVehicle)
-    {
-    	pair<VehicleStatus, Duration> vs = gDBTalker->getVehicleStatus(vehicleID);
-    	info.vehicleStatus = vs.first;
-    	info.duration = vs.second;
-        DBTalker::TaskStatus ts = gDBTalker->getTaskStatus(info.task.taskID);
-        info.taskStatus = ts.status;
-    }
-
-	MSGLOGNOGUI(2, "vehicle status: %s, task status: %s, duration: %u",
-			vehicleStatusStr(info.vehicleStatus).c_str(), info.taskStatus.c_str(), info.duration);
-
-    return info;
-}
-
-void update()
-{
-    if( gScheduler->getVehicleTasks(DEFAULT_VEHICLE_ID).empty() )
-        return;
-
-    VehicleTaskInfo info = getVehicleTaskInfo(DEFAULT_VEHICLE_ID);
-
-    if( string("Completed, Processing, Confirmed").find(info.taskStatus)!=string::npos )
-    {
-		if( info.taskStatus == "Completed" )
-		{
-			gScheduler->updateVehicleStatus(DEFAULT_VEHICLE_ID, VEHICLE_AVAILABLE);
-
-			if( gScheduler->hasPendingTasks(DEFAULT_VEHICLE_ID) )
-			{
-				Task task = gScheduler->vehicleSwitchToNextTask(DEFAULT_VEHICLE_ID);
-				MSGLOGNOGUI(1, "Switching to next task.\nTask queue:\n%s", gScheduler->toString().c_str());
-				gDBTalker->confirmTask(task);
-			}
-			else
-			{
-				gScheduler->getVehicleTasks(DEFAULT_VEHICLE_ID).clear();
-				gPreviousTime = 0;
-			}
-		}
-		else if( info.taskStatus=="Processing" )
-		{
-			gScheduler->updateVehicleStatus(DEFAULT_VEHICLE_ID, info.vehicleStatus);
-			gScheduler->updateTCurrent(DEFAULT_VEHICLE_ID, info.duration);
-			gScheduler->updateWaitTime(DEFAULT_VEHICLE_ID);
-		}
-    }
-    else
-    {
-    	stringstream ss;
-    	ss <<"SchedulerMain.cpp update(): task status is " <<info.taskStatus <<". ";
-    	ss <<"This case has not been implemented yet.";
-    	throw logic_error(ss.str());
-    }
-
-   	MSGLOGNOGUI(3, "After updating waiting time...\nTask queue:\n%s", gScheduler->toString().c_str());
 }
 
 
@@ -581,33 +408,18 @@ void textUI()
 
     if (opOption == OPERATOR_ADD_TASK)
     {
-        stationList.print();
-        Task task;
-        task.customerID = "cust1";
-        task.pickup = stationList.prompt("  Enter the pick-up location: ");
-        task.dropoff = stationList.prompt("  Enter the drop-off location: ");
-        unsigned id = gDBTalker->makeBooking(task.customerID, task.pickup, task.dropoff);
-        task.taskID = id;
-        task = addTask(task);
+        gStationList.print();
+        Station pickup = gStationList.prompt("  Enter the pick-up location: ");
+        Station dropoff = gStationList.prompt("  Enter the drop-off location: ");
+        unsigned id = gDBTalker->makeBooking("cust1", pickup, dropoff);
+        MSGLOG_(logger, 1, "Created request %u.", id);
     }
     else if (opOption == OPERATOR_REMOVE_TASK)
     {
-        printf ("  Enter id of task to be removed: ");
-
-        try
-        {
-        	unsigned i = getNumeric();
-        	MSGLOGNOGUI(1, "Removing task %u.", i);
-            gScheduler->removeTask(i);
-            MSGLOGNOGUI(2, "Removed task %u.\nTask queue:\n%s", i, gScheduler->toString().c_str());
-        }
-        catch( SchedulerException & e )
-        {
-            if( e.type()==SchedulerException::TASK_DOES_NOT_EXIST )
-                ERROR("This task does not exist.");
-            else if( e.type()==SchedulerException::TASK_CANNOT_BE_CANCELLED )
-                ERROR("This task cannot be removed (current task).");
-        }
+        printf ("  Enter id of task to be cancelled: ");
+        unsigned id = getNumeric();
+        gDBTalker->custCancel(id);
+        MSGLOG_(logger, 1, "Cancelled task %u.", id);
     }
     else if (opOption == OPERATOR_VIEW_TASK_LIST)
     {
@@ -618,5 +430,4 @@ void textUI()
         gQuit = 1;
         return;
     }
-    update();
 }

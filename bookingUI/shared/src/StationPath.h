@@ -1,7 +1,7 @@
 /** Stores and provides access to the paths between stations.
- *
- * Paths are hard coded in station_path.cc
- */
+*
+* Paths are hard coded in station_path.cc
+*/
 
 #ifndef STATION_PATH_H_
 #define STATION_PATH_H_
@@ -9,6 +9,7 @@
 #include <vector>
 #include <exception>
 #include <string>
+
 
 
 class StationList;
@@ -30,6 +31,8 @@ private:
 public:
     /// Creates an invalid station.
     Station();
+
+    bool isValid() const {return valid_; }
 
     /// Returns the station's number
     unsigned number() const throw();
@@ -105,6 +108,15 @@ public:
     const Station & prompt(const std::string & prompt) const throw(StationDoesNotExistException);
 };
 
+class SlowZone
+{
+public:
+    double x_, y_, r_;
+
+    SlowZone() : x_(0), y_(0), r_(0) { }
+    SlowZone(double x, double y, double r) : x_(x), y_(y), r_(r) { }
+};
+
 
 class PathPoint
 {
@@ -120,6 +132,7 @@ public:
 class StationPath : public std::vector<PathPoint>
 {
     double length_;
+
 public:
     StationPath() : length_(0.0) { }
     double recomputeLength();
@@ -139,9 +152,13 @@ public:
     /// Returns the path between 2 stations
     const StationPath & getPath(const Station & pickup, const Station & dropoff) const;
 
+    /// Store the slow zone from SVG represented by a circle
+    std::vector<SlowZone> slowZones_;
+
 private:
     std::vector< std::vector<StationPath> > stationPaths_;
     StationList knownStations_; ///< The list of know stations
+
 };
 
 

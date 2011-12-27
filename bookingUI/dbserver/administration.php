@@ -11,7 +11,7 @@ function listRequests()
 {
     $con = connect_to_DB();
     $filter = isset($_GET['filter']) && $_GET['filter']=='yes';
-    $sql = "SELECT * FROM requests";
+    $sql = "SELECT * FROM requests ORDER BY RequestID";
     $result = mysql_query($sql, $con) or die ('Select error: ' . mysql_error());
     echo "<table>";
     echo "<tr>";
@@ -22,9 +22,6 @@ function listRequests()
     echoInTag("th","Pickup");
     echoInTag("th","Dropoff");
     echoInTag("th","VehicleID");
-    echoInTag("th","VehicleStatus");
-    echoInTag("th","Latitude");
-    echoInTag("th","Longitude");
     echoInTag("th","ETA");
     echo "</tr>";
 
@@ -48,23 +45,7 @@ function listRequests()
         echoInCell($row['pickUpLocation']);
         echoInCell($row['dropOffLocation']);
         echoInCell($row['vehicleID']);
-
-        if( $row['status']=="Confirmed" || $row['status']=="Processing" ) {
-            $vid = $row['vehicleID'];
-            $sql = "SELECT * FROM vehicles WHERE VehicleID = '$vid'";
-            $res = mysql_query($sql, $con) or die('Select error: ' . mysql_error());
-            $r = @mysql_fetch_assoc($res);
-            echoInCell($r['status']);
-            echoInCell($r['latitude']);
-            echoInCell($r['longitude']);
-            echoInCell($r['eta']);
-        }
-        else {
-            echoInCell("");
-            echoInCell("");
-            echoInCell("");
-            echoInCell("");
-        }
+        echoInCell($row['eta']);
         echo "</tr>";
     }
     echo "</table>";

@@ -15,6 +15,7 @@ using namespace std;
 #include <geometry_msgs/PolygonStamped.h>
 #include <std_msgs/Bool.h>
 #include <golfcar_ppc/move_status.h>
+#include <geometry_msgs/PoseArray.h>
 
 class SpeedAdvisor
 {
@@ -26,26 +27,29 @@ public:
     ros::Publisher recommend_speed_;
     ros::Subscriber move_base_speed_;
     ros::Subscriber global_plan_;
-    ros::Subscriber junction_sub_;
+    ros::Subscriber slowzone_sub_;
     double max_speed_;
     double acc_;
-    double max_dec_, norm_dec_;
+    double max_dec_, norm_dec_, dec_ints_;
+    double stop_ints_dist_;
     double frequency_;
     double tolerance_; //to track for last update from move_base package
     double e_zone_; //apply full brake if there exist an obstacles within this distance from base link
-    double high_speed_,slow_zone_,slow_speed_;
+    double high_speed_,slow_zone_,slow_speed_,enterstation_speed_,stationspeed_dist_;
 private:
-    bool junction_stop_;
+    bool through_ints_;
     ros::Time last_update_;
     double stopping_distance_; //automatic calculate based on the maximum speed and normal deceleration
     bool use_sim_time_;
     void moveSpeedCallback(golfcar_ppc::move_status status);
-    void junctionCallback(std_msgs::BoolConstPtr junction);
+    void slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones);
     double sqrtDistance(double x1, double y1, double x2, double y2);
     void ControlLoop(const ros::TimerEvent& event);
+    bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
     geometry_msgs::Twist move_speed_;
     golfcar_ppc::move_status move_status_;
     vector<geometry_msgs::Point> stoppingPoint_;
+    geometry_msgs::PoseArray slowZone_;
 };
 
 
@@ -59,29 +63,36 @@ SpeedAdvisor::SpeedAdvisor()
 
     recommend_speed_= n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
     move_base_speed_=n.subscribe("/move_status",1, &SpeedAdvisor::moveSpeedCallback, this);
-    junction_sub_=n.subscribe("nav_junction",1,&SpeedAdvisor::junctionCallback,this);
+    slowzone_sub_=n.subscribe("slowZone",1,&SpeedAdvisor::slowZoneCallback,this);
     ros::NodeHandle nh("~");
     nh.param("max_speed", high_speed_, 2.0);
     nh.param("acc", acc_, 0.5);
     nh.param("max_dec", max_dec_, 2.0);
-    nh.param("norm_dec", norm_dec_, 1.0);
+    nh.param("norm_dec", norm_dec_, 0.5);
+
+    nh.param("dec_ints", dec_ints_, 0.4);
+    nh.param("stop_ints_dist", stop_ints_dist_,5.0); //the stopping distance from obstacles.
+    //It was found that the distance given by move_status will reach as small as 4 meter
+    //Hence, stopping distance should be at least larger than 4 for the stopping manoeuvre to work
+
     nh.param("frequency", frequency_,20.0);
     nh.param("tolerance", tolerance_, 0.5);
     nh.param("emergency_zone", e_zone_, 2.0);
     nh.param("slow_zone", slow_zone_, 10.0);
-    nh.param("slow_speed",slow_speed_, 1.0);
+    nh.param("slow_speed", slow_speed_, 1.5);
+    nh.param("enterstation_speed",enterstation_speed_, slow_speed_); //by default, enterstation speed is the same as slow speed
+    nh.param("stationspeed_dist", stationspeed_dist_, 20.0);
     n.param("use_sim_time", use_sim_time_, false);
     ROS_DEBUG_STREAM("Simulated time is "<<use_sim_time_);
-    junction_stop_ = false;
+    through_ints_ = true;
     ros::Timer timer = n.createTimer(ros::Duration(1.0/frequency_),&SpeedAdvisor::ControlLoop,this);
 
     ros::spin();
 }
 
-void SpeedAdvisor::junctionCallback(std_msgs::BoolConstPtr junction)
+void SpeedAdvisor::slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones)
 {
-    junction_stop_=junction->data;
-    if(junction_stop_) ROS_INFO("Approaching Junction");
+    slowZone_.poses=slowzones->poses;
 }
 void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
 {
@@ -109,9 +120,30 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
              */
 
             //try a more general solution
-            double obs_dist;
-            obs_dist = move_status_.obstacles_dist;
-            if(obs_dist<10)
+            max_speed_ = high_speed_;
+            double obs_dist = move_status_.obstacles_dist;
+            tf::Stamped<tf::Pose> robot_pose;
+            getRobotGlobalPose(robot_pose);
+            double robot_x = robot_pose.getOrigin().x();
+            double robot_y = robot_pose.getOrigin().y();
+            for(unsigned int i=0; i<slowZone_.poses.size();i++)
+            {
+                //ROS_INFO_THROTTLE(1, "slow x %lf, y %lf, robotx %lf, roboty %lf", slowZone_.poses[i].position.x, slowZone_.poses[i].position.y, robot_x, robot_y);
+                double dist=sqrtDistance(robot_x, robot_y, slowZone_.poses[i].position.x, slowZone_.poses[i].position.y);
+                if(dist<slowZone_.poses[i].position.z)
+                {
+                    max_speed_ = slow_speed_;
+
+                    ROS_INFO_THROTTLE(1, "Slow zone dist %lf, given dist %lf", dist, slowZone_.poses[i].position.z);
+                }
+
+            }
+
+
+
+
+
+            if(obs_dist<slow_zone_||move_status_.dist_to_goal<stationspeed_dist_)
             {
                 max_speed_ = slow_speed_;
                 if(obs_dist<e_zone_)
@@ -130,30 +162,58 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
                     else speed_delta.push_back(pos_speed);
                 }
             }
-            else
-            {
-                max_speed_ = high_speed_;
-            }
 
+
+            //to slow down at intersection, dist_to_ints = -1 if there is no intersection
+            if(move_status_.dist_to_ints>0 && through_ints_)
+            {
+                double stopping_dist_ints = move_status_.dist_to_ints-stop_ints_dist_;
+                double recommended_speed=0;
+                if(stopping_dist_ints>0)
+                {
+                    recommended_speed= sqrt(2*dec_ints_*stopping_dist_ints);
+                    if(recommended_speed<high_speed_) max_speed_ = recommended_speed;
+                }
+                else
+                {
+                    move_speed_.angular.z = move_status_.steer_angle;
+                    move_speed_.linear.x = 0;
+                    recommend_speed_.publish(move_speed_);
+                    ros::spinOnce();
+                    string temp = "";
+                    cout<<"Clear to go?"<<endl;
+                    getline(cin, temp);
+                    cout<<"Continue"<<endl;
+                    through_ints_ = false;
+                }
+                ROS_DEBUG_STREAM("Stopping dist: "<<stopping_dist_ints<<" recommended_speed: "<<recommended_speed);
+            }
+            //reset the through_ints by making sure that the previous stop has passed
+            //this assume that the stopping distance between intersection is more than 2 meter a part
+            if(!through_ints_ && move_status_.dist_to_ints> stop_ints_dist_+2) through_ints_ = true;
+            //also reset the through_ints if there is no long an intersection
+            if(move_status_.dist_to_ints == -1) through_ints_ = true;
 
         }
         else speed_delta.push_back(norm_neg_speed);
 
         if(move_status_.emergency) speed_delta.push_back(max_neg_speed);
 
-        if(junction_stop_) speed_delta.push_back(norm_neg_speed);
-        else speed_delta.push_back(pos_speed);
+        speed_delta.push_back(pos_speed);
 
         double min_speed_delta = *(min_element(speed_delta.begin(), speed_delta.end()));
 
-        ROS_DEBUG_STREAM("min_speed_delta: "<<min_speed_delta<<" Emergency "<<int(move_status_.emergency)<<" Junction: "<<junction_stop_);
-        move_speed_.linear.x+=min_speed_delta;
+        ROS_DEBUG_STREAM("min_speed_delta: "<<min_speed_delta<<" Emergency "<<int(move_status_.emergency));
+        //racing with the max_speed_ specification by the if condition is not added
+        if(move_speed_.linear.x<max_speed_) move_speed_.linear.x+=min_speed_delta;
     }
     if(move_speed_.linear.x>max_speed_)
     {
         //respect the acceleration and deceleration
-        if((move_speed_.linear.x-max_speed_)>-norm_neg_speed) move_speed_.linear.x+=norm_neg_speed;
+        if(move_speed_.linear.x>max_speed_) move_speed_.linear.x+=norm_neg_speed;
         else move_speed_.linear.x=max_speed_;
+        //if(max_speed_ == slow_speed_)
+            ROS_DEBUG("Max speed reduced, speed now %lf, %lf", move_speed_.linear.x, norm_neg_speed);
     }
     else if(move_speed_.linear.x<0) move_speed_.linear.x=0;
     move_speed_.angular.z = move_status_.steer_angle;
@@ -178,7 +238,32 @@ void SpeedAdvisor::moveSpeedCallback(golfcar_ppc::move_status status)
     move_status_ = status;
 }
 
+bool SpeedAdvisor::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const
+{
+    odom_pose.setIdentity();
+    tf::Stamped<tf::Pose> robot_pose;
+    robot_pose.setIdentity();
+    robot_pose.frame_id_ = "/base_link";
+    robot_pose.stamp_ = ros::Time();
+    ros::Time current_time = ros::Time::now(); // save time for checking tf delay later
 
+    try {
+        tf_.transformPose("/map", robot_pose, odom_pose);
+    }
+    catch(tf::LookupException& ex) {
+        ROS_ERROR("No Transform available Error: %s\n", ex.what());
+        return false;
+    }
+    catch(tf::ConnectivityException& ex) {
+        ROS_ERROR("Connectivity Error: %s\n", ex.what());
+        return false;
+    }
+    catch(tf::ExtrapolationException& ex) {
+        ROS_ERROR("Extrapolation Error: %s\n", ex.what());
+        return false;
+    }
+    return true;
+}
 
 int main(int argc, char **argv)
 {

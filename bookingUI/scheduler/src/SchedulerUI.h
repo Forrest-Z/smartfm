@@ -3,13 +3,16 @@
 
 #include <ncurses.h>
 
+#include <DebugLogger.h>
+
+#include "SchedulerTypes.h"
 #include "Scheduler.h"
 #include "DBTalker.h"
 
 #define NUM_TASK_DISPLAY 12
 
 
-class SchedulerUI
+class SchedulerUI : public DebugLogger
 {
 public:
     enum SchedulerStatus
@@ -69,7 +72,7 @@ private:
     WINDOW *win;
 
     // Scheduler
-    Scheduler & scheduler;
+    const Scheduler & scheduler;
 
     DBTalker & dbTalker;
 
@@ -92,7 +95,11 @@ private:
 
 public:
     // Default constructor
-    SchedulerUI(Scheduler &, DBTalker &);
+    SchedulerUI(const Scheduler &, DBTalker &);
+    ~SchedulerUI();
+
+    void setLogFile(FILE *);
+    void setVerbosityLevel(unsigned);
 
     // Initialize console display
     void initConsole();
@@ -125,6 +132,8 @@ private:
     void onUserViewTask();
     void onUserCancelTask();
     void onUserAddTask();
+
+    bool getStation(UIButtonToken button, Station *station);
 
     void printText(UITextToken field, UITextColor c, const char *fmt, ...);
     void printButton(UIButtonToken field, UITextColor c, const char *fmt, ...);

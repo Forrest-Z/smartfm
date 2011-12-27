@@ -10,10 +10,10 @@
 #include "DBInterfaceException.h"
 
 /** A class to allow the vehicle to interact with the database.
- *
- * Access to the database is through the PHP layer (see HTTPClient).
- * XML parsing is handled by TinyXML.
- */
+*
+* Access to the database is through the PHP layer (see HTTPClient).
+* XML parsing is handled by TinyXML.
+*/
 class DBInterface
 {
 public:
@@ -27,6 +27,7 @@ public:
         std::string customerID;
         std::string status;
         std::string vehicleID;
+        bool custCancelled;
 
         Task();
         static Task fromXML(TiXmlElement *);
@@ -63,13 +64,13 @@ private:
 public:
     /// Returns the vehicle entry.
     Vehicle getVehicleEntry();
-    
+
     /// Returns all tasks for this vehicle.
     std::vector<DBInterface::Task> getAllTasks();
 
     /// Returns the task entry.
     Task getTaskEntry(unsigned id);
-    
+
 public:
     /// Creates an interface
     ///@arg url is the URL of the server with the path to the PHP scripts
@@ -83,24 +84,28 @@ public:
 
     /// Removes this vehicle from the database.
     void deleteVehicle();
-    
+
     /// Sets the current location.
     void setCurrentLocation(std::string loc);
 
     /// Sets the vehicle's status.
     void setVehicleStatus(std::string status);
-    
+
     /// Sets the GPS coordinates.
     void setGeoLocation(float lat, float lon);
-    
+
     /// Sets the estimated time of arrival
     void setETA(float eta);
 
-    
+    void setVehicleCurrReq(unsigned id);
+
+
 // Some functions related to the requests.
 public:
     /// Returns true if the mission has been cancelled.
     bool checkMissionCancelled(unsigned id);
+
+    void acceptMissionCancel(unsigned id, bool accept);
 
     /// Checks whether a new mission is available, in which case it is copied
     /// in the task pointer passed as argument.
@@ -111,7 +116,7 @@ public:
     /// @return only the id, pickup and dropoff fields are filled in.
     Task waitForNewMission(float period = 1);
 
-    void setMissionStatus(std::string status);
+    void setMissionStatus(unsigned id, std::string status);
 };
 
 
