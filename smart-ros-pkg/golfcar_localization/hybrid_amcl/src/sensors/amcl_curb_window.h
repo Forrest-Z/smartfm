@@ -22,10 +22,14 @@ class AMCLCurbData : public AMCLSensorData
     AMCLCurbData () {accumNum_ = 0; reinit_=true; };
     virtual ~AMCLCurbData(){};
 
-	int 												accumNum_;
-	bool                                   reinit_;
+	int 										accumNum_;
+	bool                                        reinit_;
 	sensor_msgs::PointCloud 					curbSegment_;
-   tf::StampedTransform 						beginningTf_;
+    pf_vector_t                                 Pose_Est_;
+    sensor_msgs::PointCloud 					validCurbSeg_;
+    sensor_msgs::PointCloud 					invalidCurbSeg_;
+
+    tf::StampedTransform 						beginningTf_;
 };
 
 
@@ -45,7 +49,9 @@ class AMCLCurb : public AMCLSensor
   
   // Update the filter based on the sensor model.  Returns true if the
   // filter has been updated.
-  public: virtual bool UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag);
+  public: virtual bool UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, bool ValidSwitch);
+
+  public: virtual void ValidateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag);
 
   // Determine the probability for the given pose
   private: static double LikelihoodFieldModel(AMCLCurbData *data, 

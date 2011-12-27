@@ -34,6 +34,7 @@
 #include "pf_pdf.h"
 #include "pf_kdtree.h"
 
+#define MEAS_SCORE_THRESH 0.5
 
 // Compute the required number of samples, given that there are k bins
 // with samples in them.
@@ -250,15 +251,13 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
     worksample->pose = sample->pose;
   }
 
-
   // Compute the sample weights
   total = (*sensor_fn) (sensor_data, workset);
   
-  printf("meas_score: %e; total: %e\n", workset->meas_score, total);
+  //printf("meas_score: %e; total: %e\n", workset->meas_score, total);
 
-  double meas_score_threshold = 0.5;
-
-  if(workset->meas_score < meas_score_threshold) 
+  //whether to use or not...
+  if(workset->meas_score < MEAS_SCORE_THRESH) 
   {
    *UseFlag=false;	
   return;
@@ -287,7 +286,7 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
     // Update running averages of likelihood of samples (Prob Rob p258)
     w_avg /= set->sample_count;
 
-	 printf("before: w_avg: %e slow: %e fast: %e total: %e sample count: %d \n",w_avg, pf->w_slow, pf->w_fast, total, set->sample_count);
+	//printf("before: w_avg: %e slow: %e fast: %e total: %e sample count: %d \n",w_avg, pf->w_slow, pf->w_fast, total, set->sample_count);
 	 
 	 ///////////////////////////////////////////////////////
 	 ///// the following block deserves much attention;
@@ -359,7 +358,7 @@ void pf_update_sensor(pf_t *pf, pf_sensor_model_fn_t sensor_fn, void *sensor_dat
     else
       pf->w_fast += pf->alpha_fast * (w_avg - pf->w_fast);
 
-     printf("after: w_avg: %e slow: %e fast: %e\n",w_avg, pf->w_slow, pf->w_fast);
+    // printf("after: w_avg: %e slow: %e fast: %e\n",w_avg, pf->w_slow, pf->w_fast);
   }
   else
   {
@@ -412,7 +411,7 @@ void pf_update_resample(pf_t *pf)
   set_b->sample_count = 0;
 
   w_diff = 1.0 - pf->w_fast / pf->w_slow;
-  printf("w_diff %e\n", w_diff);
+  //printf("w_diff %e\n", w_diff);
 
 
   //step 2. to prevent randomness blow-up, which may be caused by "w_slow < w_fast" for a long time;
@@ -442,6 +441,7 @@ void pf_update_resample(pf_t *pf)
   i = 0;
   m = 0;
   */
+
   while(set_b->sample_count < pf->max_samples)
   {
     sample_b = set_b->samples + set_b->sample_count++;

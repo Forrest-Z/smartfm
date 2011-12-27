@@ -59,7 +59,7 @@ class AMCLCrossing : public AMCLSensor
 
   // Update the filter based on the sensor model.  Returns true if the
   // filter has been updated.
-  public: virtual bool UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag);
+  public: virtual bool UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, bool ValidSwitch);
 
   // Determine the probability for the given pose
   private: static double BeamModel(AMCLCrossingData *data, pf_sample_set_t* set);
