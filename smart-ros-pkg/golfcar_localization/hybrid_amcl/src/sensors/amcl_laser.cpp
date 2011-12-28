@@ -86,7 +86,7 @@ AMCLLaser::SetModelLikelihoodField(double z_hit,
 
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the laser sensor model
-bool AMCLLaser::UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag)
+bool AMCLLaser::UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, bool ValidSwitch)
 {
   AMCLLaserData *ndata;
 

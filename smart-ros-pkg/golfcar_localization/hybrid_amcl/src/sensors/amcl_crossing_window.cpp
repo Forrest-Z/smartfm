@@ -38,7 +38,7 @@ AMCLCrossing::SetCrossingModelBeam(	double z_hit,
 
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the curb sensor model
-bool AMCLCrossing::UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag)
+bool AMCLCrossing::UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, bool ValidSwitch)
 {
   AMCLCrossingData *ndata;
 
@@ -51,7 +51,8 @@ bool AMCLCrossing::UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag)
 double AMCLCrossing::BeamModel(AMCLCrossingData *data, pf_sample_set_t* set)
 {
   AMCLCrossing *self;
-  int i, j;
+  unsigned int i;
+  int j;
   double z, pz;
   double p;
   double map_range;
@@ -123,9 +124,7 @@ double AMCLCrossing::BeamModel(AMCLCrossingData *data, pf_sample_set_t* set)
     sample->weight *= p;
     total_weight += sample->weight;
   }
-  
   set->meas_score = meas_total_score/(set->sample_count)-1; 
-  
   return(total_weight);
 }
 

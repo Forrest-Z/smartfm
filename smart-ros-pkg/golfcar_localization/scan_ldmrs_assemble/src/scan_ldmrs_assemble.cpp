@@ -1,10 +1,13 @@
 //NUS GolfCart, 2011-12-15
+//last modified 2011-12-19, add MAX_RANGE;
 
 #include <scan_ldmrs_assemble.h>
 #include <cmath>
 
 using namespace std;
 using namespace ros;
+
+#define MAX_RANGE 30.0
 
 namespace road_detection{
 	
@@ -61,7 +64,9 @@ namespace road_detection{
             assembled_scan_.angle_increment =   scan1_.angle_increment;
             assembled_scan_.scan_time       =   scan1_.scan_time*2.0;
             assembled_scan_.range_min       =   scan1_.range_min;
-            assembled_scan_.range_max       =   scan1_.range_max;
+            
+            //assembled_scan_.range_max       =   scan1_.range_max;
+            assembled_scan_.range_max       =   MAX_RANGE;
             assembled_scan_.ranges.clear();
             
             for(unsigned int ib=0; ib< scan1_.ranges.size(); ib++)

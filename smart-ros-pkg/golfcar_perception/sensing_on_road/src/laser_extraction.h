@@ -55,7 +55,6 @@ public:
     ~laser_extraction();
 
 private:
-    ros::NodeHandle nh_, private_nh_;
     std::string     ldmrs_single_id_, odom_frame_id_;
     laser_geometry::LaserProjection projector_;
     message_filters::Subscriber<sensor_msgs::LaserScan> laser_sub_;
@@ -84,7 +83,7 @@ private:
     void segmentation();
     void segments_processing();
     void single_segment_processing(sensing_on_road::scan_segment &segment_para);
-    void line_piece_calculation(sensing_on_road::line_piece &line_piece_para);
+    void line_piece_calculation(sensing_on_road::line_piece &line_piece_para) const;
     bool extract_segments(sensor_msgs::PointCloud *segment_border);
     bool isOnSameLine(const sensing_on_road::scan_segment & segment_temp,
                       const geometry_msgs::Point32 & testPoint) const;
@@ -93,6 +92,10 @@ private:
     void connect_segments();
     void merge_segments();
     void delete_segments();
+    void check_right_condition(unsigned is);
+    void check_left_condition(unsigned is);
+    void segment_dimensions(sensing_on_road::scan_segment & segment_para,
+                            float *x_sum, float *y_sum) const;
 };
 
 };

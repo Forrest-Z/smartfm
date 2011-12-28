@@ -48,6 +48,7 @@ class AMCLLaserData : public AMCLSensorData
     AMCLLaserData () {ranges=NULL;};
     virtual ~AMCLLaserData() {delete [] ranges;};
   // Laser range data (range, bearing tuples)
+  public: pf_vector_t      Pose_Est_;
   public: int range_count;
   public: double range_max;
   public: double (*ranges)[2];
@@ -75,7 +76,7 @@ class AMCLLaser : public AMCLSensor
   
   // Update the filter based on the sensor model.  Returns true if the
   // filter has been updated.
-  public: virtual bool UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag);
+  public: virtual bool UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, bool ValidSwitch);
 
   // Set the laser's pose after construction
   public: void SetLaserPose(pf_vector_t& laser_pose) 
