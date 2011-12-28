@@ -55,7 +55,6 @@ public:
     ~laser_extraction();
 
 private:
-    ros::NodeHandle nh_, private_nh_;
     std::string     ldmrs_single_id_, odom_frame_id_;
     laser_geometry::LaserProjection projector_;
     message_filters::Subscriber<sensor_msgs::LaserScan> laser_sub_;
@@ -95,8 +94,8 @@ private:
     void delete_segments();
     void check_right_condition(unsigned is);
     void check_left_condition(unsigned is);
-    void single_segment_processing_1(sensing_on_road::scan_segment & segment_para,
-                                     float *x_sum, float *y_sum) const;
+    void segment_dimensions(sensing_on_road::scan_segment & segment_para,
+                            float *x_sum, float *y_sum) const;
 };
 
 };

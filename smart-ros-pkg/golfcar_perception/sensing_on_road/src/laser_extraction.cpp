@@ -1,7 +1,10 @@
 #include <vector>
-using std::vector;
+
+#include <fmutil/fm_math.h>
 
 #include "laser_extraction.h"
+
+using std::vector;
 
 #define DIS_RANGE 10
 #define ASSOCIATE_WITHIN_RANGE_THRESH 0.6
@@ -17,21 +20,26 @@ namespace sensing_on_road
 
 laser_extraction::laser_extraction()
 {
+    ros::NodeHandle nh;
+    nh.param("laser_frame_id",     ldmrs_single_id_,      std::string("ldmrsAssemb"));
+    nh.param("odom_frame_id",      odom_frame_id_,        std::string("odom"));
 
-    private_nh_.param("laser_frame_id",     ldmrs_single_id_,      std::string("ldmrsAssemb"));
-    private_nh_.param("odom_frame_id",      odom_frame_id_,        std::string("odom"));
-
-    laser_sub_.subscribe(nh_, "sickldmrs/assembled", 10);
+    laser_sub_.subscribe(nh, "sickldmrs/assembled", 10);
     tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, ldmrs_single_id_, 10);
     tf_filter_->registerCallback(boost::bind(&laser_extraction::scan_callback, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
-    laser_pub_ = nh_.advertise<sensor_msgs::PointCloud>("laser_cloud", 2);
-    segment_border_pub_ = nh_.advertise<sensor_msgs::PointCloud>("segment_border", 2);
-    segment_processed_pub_ = nh_.advertise<sensing_on_road::segments_one_batch>("segment_processed", 2);
-    perpendicular_pub_ = nh_.advertise<sensor_msgs::PointCloud>("perpendicular", 2);
-    segment_centroids_pub_ = nh_.advertise<sensor_msgs::PointCloud>("segments_centroids", 2);
+    
+    laser_pub_ = nh.advertise<sensor_msgs::PointCloud>("laser_cloud", 2);
+    segment_border_pub_ = nh.advertise<sensor_msgs::PointCloud>("segment_border", 2);
+    segment_processed_pub_ = nh.advertise<sensing_on_road::segments_one_batch>("segment_processed", 2);
+    perpendicular_pub_ = nh.advertise<sensor_msgs::PointCloud>("perpendicular", 2);
+    segment_centroids_pub_ = nh.advertise<sensor_msgs::PointCloud>("segments_centroids", 2);
 }
-laser_extraction::~laser_extraction(){}
+
+laser_extraction::~laser_extraction()
+{
+    
+}
 
 void laser_extraction::scan_callback(const sensor_msgs::LaserScan::ConstPtr& scan_in)
 {
@@ -59,12 +67,12 @@ void laser_extraction::scan_callback(const sensor_msgs::LaserScan::ConstPtr& sca
 bool laser_extraction::isOnSameLine(const sensing_on_road::scan_segment & segment_temp,
     const geometry_msgs::Point32 & testPoint ) const
 {
-    unsigned int size_temp = segment_temp.point_serials.size();
+    unsigned size_temp = segment_temp.point_serials.size();
     if(size_temp<2)
         return false;
 
-    unsigned int serial1_temp = segment_temp.point_serials[size_temp-1];
-    unsigned int serial2_temp = segment_temp.point_serials[size_temp-2];
+    unsigned serial1_temp = segment_temp.point_serials[size_temp-1];
+    unsigned serial2_temp = segment_temp.point_serials[size_temp-2];
     float x1_temp = laser_cloud_laser_.points[serial1_temp].x;
     float y1_temp = laser_cloud_laser_.points[serial1_temp].y;
     float x2_temp = laser_cloud_laser_.points[serial2_temp].x;
@@ -78,28 +86,22 @@ bool laser_extraction::isOnSameLine(const sensing_on_road::scan_segment & segmen
     float delt_y32_temp = y3_temp-y2_temp;
     float delt_y21_temp = y2_temp-y1_temp;
 
-    // I think it is useless to check for x==0, atan2 takes care of that.
-    // besides if we only want the result on [0,pi] then we could simplify
-    // as follow: theta = atan2(fabs(y),x)
-    float thetha32_temp, thetha21_temp;
-    if(delt_x32_temp==0.0){thetha32_temp = (float)M_PI_2;}
-    else {thetha32_temp=atan2f(delt_y32_temp,delt_x32_temp);}
-    if(delt_x21_temp==0.0){thetha21_temp = (float)M_PI_2;}
-    else {thetha21_temp=atan2f(delt_y21_temp,delt_x21_temp);}
-    if(thetha32_temp<0) thetha32_temp=thetha32_temp+(float)M_PI;
-    if(thetha21_temp<0) thetha21_temp=thetha21_temp+(float)M_PI;
+    // we only want the result on [0,pi], hence fabs(y)
+    float thetha32_temp = atan2f(fabsf(delt_y32_temp),delt_x32_temp);
+    float thetha21_temp = atan2f(fabsf(delt_y21_temp),delt_x21_temp);
 
     //check if the point is on the same line, with angle difference +-5 degree;
-    if( fabs(thetha21_temp-thetha32_temp) > 5.0/180*M_PI )
+    if( fabs(thetha21_temp-thetha32_temp) > fmutil::d2r(5) )
         return false;
 
     ROS_INFO("connect!!!");
     return true;
 }
 
+/// distance between 2 geometry_msgs::Point32 points
 float pt_distance(const geometry_msgs::Point32 & p1, const geometry_msgs::Point32 & p2)
 {
-    return sqrtf(powf(p1.x-p2.x,2)+powf(p1.y-p2.y,2));
+    return fmutil::distance(p1.x, p1.y, p2.x, p2.y);
 }
 
 /// Connection criteria: points must either be close from one another,
@@ -185,13 +187,13 @@ void laser_extraction::connect_segments()
     vector<sensing_on_road::scan_segment> & segments = extracted_segments_laser_.segments;
     for(unsigned is=0; is< segments.size(); is++)
     {
-        segments[is].connect_front_segment =-1;
-        segments[is].connect_back_segment =-1;
+        segments[is].connect_front_segment = -1;
+        segments[is].connect_back_segment  = -1;
     }
 
-    for(unsigned is=0; is< segments.size()-1; is++)
+    for(unsigned is=0; is<segments.size()-1; is++)
     {
-        for(unsigned ic = is+1; ic< segments.size(); ic++)
+        for(unsigned ic = is+1; ic<segments.size(); ic++)
         {
             unsigned last_serial_temp = segments[is].beam_serials.back();
             float range_temp = laser_scan_.ranges[last_serial_temp];
@@ -201,14 +203,16 @@ void laser_extraction::connect_segments()
 
             unsigned serial_number1 = segments[is].point_serials.back();
             unsigned serial_number2 = segments[ic].point_serials.front();
-            geometry_msgs::Point32 right_seg_last = laser_cloud_laser_.points[serial_number1];
-            geometry_msgs::Point32 left_seg_first = laser_cloud_laser_.points[serial_number2];
+            const geometry_msgs::Point32 & right_seg_last = laser_cloud_laser_.points[serial_number1];
+            const geometry_msgs::Point32 & left_seg_first = laser_cloud_laser_.points[serial_number2];
             float dis_pxy = pt_distance(right_seg_last, left_seg_first);
             if(dis_pxy < dis_threshold)
             {
                 segments[is].connect_back_segment = ic;
                 segments[ic].connect_front_segment = is;
-                ROS_INFO("Connect is %d: (%5f, %5f) and ic %d: (%5f, %5f)", is, right_seg_last.x, right_seg_last.y, ic, left_seg_first.x, left_seg_first.y);
+                ROS_INFO("Connect is %d: (%5f, %5f) and ic %d: (%5f, %5f)",
+                         is, right_seg_last.x, right_seg_last.y,
+                         ic, left_seg_first.x, left_seg_first.y);
                 break;
             }
         }
@@ -219,7 +223,7 @@ void laser_extraction::merge_segments()
 {
     vector<sensing_on_road::scan_segment> & segments = extracted_segments_laser_.segments;
     delete_connected_segments_.clear();
-    for(unsigned is=0; is< segments.size(); is++)
+    for(unsigned is=0; is<segments.size(); is++)
     {
         if(segments[is].connect_front_segment != -1)
             continue;
@@ -236,13 +240,13 @@ void laser_extraction::merge_segments()
                 delete_connected_segments_.push_back(front_seg);
             }
 
-            for(unsigned int cs=0; cs<connected_segments.size(); cs++)
+            for(unsigned cs=0; cs<connected_segments.size(); cs++)
             {
-                unsigned int connect_seg_serial = connected_segments[cs];
-                for(unsigned int ipp=0; ipp< segments[connect_seg_serial].point_serials.size(); ipp++)
+                unsigned connect_seg_serial = connected_segments[cs];
+                for(unsigned ipp=0; ipp<segments[connect_seg_serial].point_serials.size(); ipp++)
                 {
-                    unsigned int P_serial_tmp = segments[connect_seg_serial].point_serials[ipp];
-                    unsigned int B_serial_tmp = segments[connect_seg_serial].beam_serials[ipp];
+                    unsigned P_serial_tmp = segments[connect_seg_serial].point_serials[ipp];
+                    unsigned B_serial_tmp = segments[connect_seg_serial].beam_serials[ipp];
                     segments[is].point_serials.push_back(P_serial_tmp);
                     segments[is].beam_serials.push_back(B_serial_tmp);
                 }
@@ -266,16 +270,16 @@ void laser_extraction::delete_segments()
             }
         }
     }
+    
     for(unsigned dc=0; dc<delete_connected_segments_.size(); dc++)
     {
         //ROS_INFO("delete segment: %d", delete_connected_segments_[dc]);
         if( delete_connected_segments_[dc]<0 )
             ROS_INFO("Unexpected Scenario");
 
-        // Note:
-        // erasing from a vector is very inefficient !
-        // fixing this would require using a list
-        // since we cannot modify the class (it's a message), we can convert
+        // Note: erasing from a vector is very inefficient !
+        // Fixing this would require using a list.
+        // Since we cannot modify the class (it's a message), we can convert
         // to list first, then convert back to vector.
         // However, if this is not executed too much, it won't affect the speed
         // so much...
@@ -309,9 +313,10 @@ void laser_extraction::segmentation()
     delete_segments();
 
 
-    for(unsigned int is=0; is< extracted_segments_laser_.segments.size(); is++)
+    for(unsigned int is=0; is<extracted_segments_laser_.segments.size(); is++)
     {
-        segment_border.points.push_back(laser_cloud_laser_.points[extracted_segments_laser_.segments[is].point_serials.front()]);
+        unsigned i = extracted_segments_laser_.segments[is].point_serials.front();
+        segment_border.points.push_back(laser_cloud_laser_.points[i]);
     }
 
 
@@ -341,7 +346,7 @@ void laser_extraction::check_right_condition(unsigned is)
         unsigned serial1_temp = segment.beam_serials.front();
         unsigned serial1_p_temp = segment.point_serials.front();
         unsigned serial2_temp = (unsigned) laser_cloud_laser_.channels.front().values[serial1_p_temp-1];
-        
+
         if(serial1_temp==serial2_temp-1)
         {
             if(laser_scan_.ranges[serial1_temp]<=laser_scan_.ranges[serial2_temp])
@@ -417,21 +422,13 @@ float orientation(const geometry_msgs::Point32 &p1, const geometry_msgs::Point32
 {
     float delt_x_temp = p2.x - p1.x;
     float delt_y_temp = p2.y - p1.y;
-    float a = atan2f(delt_y_temp,delt_x_temp);
-    if(a<0) a += (float)M_PI;
-    return a;
+    return atan2f(fabsf(delt_y_temp),delt_x_temp);
 }
 
 /// returns orientation of line
 float orientation(const sensing_on_road::line_piece & line)
 {
-    if( line.para_B == 0.0 )
-        return (float)M_PI_2;
-
-    float theta = atan2f(-line.para_A/line.para_B, 1.0);
-    if( theta<0 )
-        theta += (float)M_PI;
-    return theta;
+    return atan2f(fabsf(line.para_A),line.para_B);
 }
 
 bool check_perpendicular(const sensing_on_road::scan_segment & segment,
@@ -445,7 +442,7 @@ bool check_perpendicular(const sensing_on_road::scan_segment & segment,
     float thetha0 = orientation(line_temp0);
     float thetha1 = orientation(line_temp1);
         
-    if( fabsf(thetha0-thetha1-M_PI_2) > 10.0*M_PI/180.0 )
+    if( fabsf(thetha0-thetha1-M_PI_2) > fmutil::d2r(10) )
         return false;
 
     //to deal with the situation where two far-away line segments perpendicular to each other;
@@ -466,11 +463,11 @@ bool check_perpendicular(const sensing_on_road::scan_segment & segment,
 std::vector<unsigned> getLongLines(const sensing_on_road::scan_segment &segment)
 {
     std::vector<unsigned> long_lines;
-    
+
     for(unsigned il=0; il<segment.line_pieces.size(); il++)
         if(segment.line_pieces[il].point_serials.size() >=3 )
             long_lines.push_back(il);
-        
+
     if( ! long_lines.empty() )
     {
         //bubble-sorting;
@@ -489,7 +486,7 @@ std::vector<unsigned> getLongLines(const sensing_on_road::scan_segment &segment)
             }
         }
     }
-    
+
     return long_lines;
 }
 
@@ -516,7 +513,7 @@ public:
 
 
 /// TODO: find a better name (ask baoxing)
-void laser_extraction::single_segment_processing_1(sensing_on_road::scan_segment &segment_para,
+void laser_extraction::segment_dimensions(sensing_on_road::scan_segment &segment_para,
     float *x_sum, float *y_sum) const
 {
     SegmentDimensions sDim;
@@ -555,7 +552,7 @@ void laser_extraction::single_segment_processing_1(sensing_on_road::scan_segment
         float new_angle_temp = orientation(point_temp0, point_temp1);
         float last_angle_temp = orientation(point_temp0, point_temp2);
         
-        if( fabs(new_angle_temp-last_angle_temp) < 5.0/180.0*M_PI )
+        if( fabs(new_angle_temp-last_angle_temp) < fmutil::d2r(5) )
         {
             line_temp.point_serials.push_back(serial_temp1);
         }
@@ -572,11 +569,7 @@ void laser_extraction::single_segment_processing_1(sensing_on_road::scan_segment
     line_piece_calculation(line_temp);
     segment_para.line_pieces.push_back(line_temp);
 
-    float x_dimension_temp = sDim.max_x - sDim.min_x;
-    float y_dimension_temp = sDim.max_y - sDim.min_y;
-    //segment_para.max_dimension = (x_dimension_temp >y_dimension_temp)? x_dimension_temp : y_dimension_temp;
-    segment_para.max_dimension = sqrtf(powf(x_dimension_temp,2)+powf(y_dimension_temp,2));
-
+    segment_para.max_dimension = fmutil::mag(sDim.max_x-sDim.min_x, sDim.max_y-sDim.min_y);
     *x_sum = sDim.x_sum;
     *y_sum = sDim.y_sum;
 }
@@ -584,7 +577,7 @@ void laser_extraction::single_segment_processing_1(sensing_on_road::scan_segment
 void laser_extraction::single_segment_processing(sensing_on_road::scan_segment &segment_para)
 {
     float x_sum=0, y_sum=0;
-    single_segment_processing_1(segment_para, &x_sum, &y_sum);
+    segment_dimensions(segment_para, &x_sum, &y_sum);
     
     geometry_msgs::PointStamped centroid_laser, centroid_odom;
     centroid_laser.header = laser_cloud_laser_.header;
@@ -642,7 +635,7 @@ void laser_extraction::line_piece_calculation(sensing_on_road::line_piece &line)
     line.para_A = y2_temp-y1_temp;
     line.para_B = x1_temp-x2_temp;
     line.para_C = line.para_A*x1_temp+line.para_B*y1_temp;
-    line.length = sqrtf( powf(x2_temp-x1_temp,2) + powf(y2_temp-y1_temp,2) );
+    line.length = fmutil::mag(line.para_A, line.para_B);
 }
 
 } //namespace
