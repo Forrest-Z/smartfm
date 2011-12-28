@@ -37,7 +37,7 @@ void laser_extraction::scan_callback(const sensor_msgs::LaserScan::ConstPtr& sca
 {
     ROS_INFO("--------scan_callback--------");
     laser_scan_ = *scan_in;
-    angle_resolution_ = scan_in->angle_increment;
+    angle_resolution_ = fabsf(scan_in->angle_increment);
     /*
     ROS_INFO("angle_increment %lf", scan_in->angle_increment);
     if(scan_in->angle_increment < 0.00437 && scan_in->angle_increment > 0.00436)        serial_multiple_=4;
