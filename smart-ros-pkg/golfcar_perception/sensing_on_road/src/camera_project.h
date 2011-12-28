@@ -56,7 +56,6 @@ class camera_project
 {
 public:
     camera_project();
-    ~camera_project();
 
 private:
     std::string ldmrs_single_id_, camera_frame_id_;
