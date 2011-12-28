@@ -450,11 +450,11 @@
   <path
      sodipodi:type="arc"
      style="fill:none;stroke:#78ff00;stroke-width:1;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
-     id="path2872"
-     sodipodi:cx="1462.9545"
-     sodipodi:cy="446.91629"
-     sodipodi:rx="67.657837"
-     sodipodi:ry="67.657837"
-     d="m 1530.6123,446.91629 a 67.657837,67.657837 0 1 1 -135.3157,0 67.657837,67.657837 0 1 1 135.3157,0 z"
-     transform="matrix(1.1923756,0,0,1.1854551,-236.01931,-70.709197)" />
+     id="path2869"
+     sodipodi:cx="1583.2871"
+     sodipodi:cy="530.72772"
+     sodipodi:rx="77.022247"
+     sodipodi:ry="77.022247"
+     d="m 1660.3094,530.72772 a 77.022247,77.022247 0 1 1 -154.0445,0 77.022247,77.022247 0 1 1 154.0445,0 z"
+     transform="translate(-76.319916,-71.637712)" />
 </svg>
