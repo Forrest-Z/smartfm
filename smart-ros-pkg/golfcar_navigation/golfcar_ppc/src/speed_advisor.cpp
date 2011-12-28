@@ -39,7 +39,7 @@ SpeedAdvisor::SpeedAdvisor()
     speed_now_ = 0;
 
     //visualization
-    interactive_markers::InteractiveMarkerServer server("bed_interactive");
+    interactive_markers::InteractiveMarkerServer server("intersection");
     marker_server_ = &server;
     through_ints_ = false;
     ros::spin();
