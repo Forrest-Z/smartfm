@@ -168,7 +168,8 @@ StationPaths::StationPaths()
     stationPaths_.resize(NSTATIONS);
     for(unsigned i=0; i<NSTATIONS; i++)
         stationPaths_[i].resize(NSTATIONS);
-    SvgPath sp((tilde_expand(SVG_FILE).c_str()),RESOLUTION);
+    SvgPath sp;
+    sp.loadFile((tilde_expand(SVG_FILE).c_str()),RESOLUTION);
     svgpath_ = sp;
     storeFromMultipleSVGs(&stationPaths_[0][1], "DCC_START", "DCC_MCD");
     storeFromMultipleSVGs(&stationPaths_[0][2], "DCC_START2", "DCC_EA", "EA_END3","EA_END2");
