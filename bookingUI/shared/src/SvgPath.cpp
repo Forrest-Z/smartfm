@@ -65,8 +65,8 @@ vector<SlowZone> SvgPath::getSlowZone()
             // instead for compatibility with older API versions.
             const char * value;
             value = childElement->Attribute("sodipodi:type");
-            assert( value != NULL );
-            if(strcmp(value,"arc")==0)
+
+            if(value!=NULL && strcmp(value,"arc")==0)
             {
                 double cx,cy,rx,ry;
                 GetDoubleAttribute(childElement, "sodipodi:cx",&cx);
