@@ -4,8 +4,7 @@ using namespace std;
 
 class Echo 
 { 
-
-  public:
+public:
     int sec_a_func(int value)
     {
         cout<< "Sec A function called with value: "<<value<<endl;
@@ -31,11 +30,6 @@ class Echo
         cout<<"Double received"<<endl;
         first_func(sec_b_func, 2);
     }
-    
-    
-    
-
-
 }; 
 
 

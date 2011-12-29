@@ -25,8 +25,6 @@ private:
 
     StationPath StringToPath(std::string value);
 
-    std::string string_error(std::string description, std::string details);
-
     void convert_to_meter(StationPath* pose);
 
     PathPoint GetTransform(TiXmlElement* childElement);
