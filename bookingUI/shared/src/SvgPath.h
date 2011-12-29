@@ -31,7 +31,5 @@ private:
 
     PathPoint GetTransform(TiXmlElement* childElement);
 
-    std::vector<std::string> SplitString(std::string &data, const char* delimiter);
-
     PathPoint getSize();
 };

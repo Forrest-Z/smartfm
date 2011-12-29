@@ -60,9 +60,12 @@ vector<SlowZone> SvgPath::getSlowZone()
         TiXmlElement* childElement= pChild->ToElement();
         if((string)childElement->Value()=="path")
         {
-            string value;
-            childElement->QueryStringAttribute("sodipodi:type",&value);
-            if(value=="arc")
+            // Note: QueryStringAttribute was introduced in 2.6. Using Attribute
+            // instead for compatibility with older API versions.
+            const char * value;
+            value = childElement->Attribute("sodipodi:type");
+            assert( value != NULL );
+            if(strcmp(value,"arc")==0)
             {
                 double cx,cy,rx,ry;
                 GetDoubleAttribute(childElement, "sodipodi:cx",&cx);
@@ -105,11 +108,25 @@ void SvgPath::GetDoubleAttribute(TiXmlElement* childElement, const char* attribu
     if(VERBOSE) cout<<"Attribute "<<attributeName<<" Value "<< *value<<endl;
 }
 
+vector<string> SplitString(const char *data, const char* delimiter)
+{
+    char *str = strdup(data);
+    char *pch = strtok(str, delimiter);
+    vector<string> data_s;
+    while (pch != NULL)
+    {
+        data_s.push_back(string(pch));
+        pch = strtok(NULL, delimiter);
+    }
+    free(str);
+    return data_s;
+}
+
 PathPoint SvgPath::GetTransform(TiXmlElement* childElement)
 {
     PathPoint tf;
-    string value;
-    if(childElement->QueryStringAttribute("transform",&value)==TIXML_NO_ATTRIBUTE)
+    const char * value;
+    if( (value = childElement->Attribute("transform"))==NULL)
     {
         tf.x_=0; tf.y_=0;
     }
@@ -156,27 +173,27 @@ StationPath SvgPath::getPath(string id)
     for ( pChild = svgElement->FirstChild(); pChild != 0; pChild = pChild->NextSibling())
     {
         TiXmlElement* childElement= pChild->ToElement();
-        if((string)childElement->Value()=="path")
+        if( strcmp(childElement->Value(),"path")==0 )
         {
-            string value;
-            childElement->QueryStringAttribute("id",&value);
-            if(id==value)
+            const char * value = childElement->Attribute("id");
+            assert( value!=NULL );
+            if( strcmp(id.c_str(),value)==0 )
             {
-                childElement->QueryStringAttribute("d",&value);
-                StationPath path = SvgPath::StringToPath(value);
+                value = childElement->Attribute("d");
+                assert( value!=NULL );
+                StationPath path = StringToPath(value);
                 convert_to_meter(&path);
                 return path;
-
             }
         }
     }
-    throw (string)"Path id not found";
+    throw string("Path id not found");
 }
 
 string SvgPath::string_error(string description, string  details)
 {
     stringstream s;
-    s<<description<<' '<< details;
+    s <<description <<' ' << details;
     return s.str();
 }
 
@@ -189,29 +206,12 @@ void SvgPath::convert_to_meter(StationPath* pose)
     }
 }
 
-vector<string> SvgPath::SplitString(string &data, const char* delimiter)
-{
-
-    char *str, *pch;
-    str = new char[data.size()+1];
-    strcpy(str,data.c_str());
-    pch = strtok(str, delimiter);
-    vector<string> data_s;
-    while (pch != NULL)
-    {
-        stringstream pchss;
-        pchss<<pch;
-        data_s.push_back(pchss.str());
-        pch = strtok(NULL, delimiter);
-    }
-    return data_s;
-}
 StationPath SvgPath::StringToPath(string data)
 {
     unsigned int found_points=0;
     //split the data assuming the delimiter is either space or comma
-    if(VERBOSE) cout<<"Data received: "<<data<<endl;
-    vector<string> data_s=SplitString(data, " ,");
+    if(VERBOSE) cout <<"Data received: " <<data <<endl;
+    vector<string> data_s = SplitString(data.c_str(), " ,");
     bool abs_rel;
     //a path must start with m or M
     if(data_s[0].find_first_of("Mm")==string::npos)
