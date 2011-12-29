@@ -18,6 +18,9 @@
     <node pkg="robust_road_detection" type="curb_detect" name="curb_detect">
 	</node>
 	<!--node pkg="curb_amcl" type="curb_crossing" name="curb_crossing"/-->
-	<node pkg="hybrid_amcl" type="mix_amcl" name="mix_amcl" output="screen"/>
+	<node pkg="hybrid_amcl" type="mix_amcl" name="mix_amcl" output="screen">
+            <param name="max_particles" value="1000"/>
+            <param name="min_particles" value="200"/>
+        </node>
 </launch>
 
