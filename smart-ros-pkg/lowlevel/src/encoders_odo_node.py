@@ -146,6 +146,8 @@ class PhidgetEncoder:
         encodersMsg = EncodersMsg()
         encodersMsg.stamp = self.now
         encodersMsg.dt = self.dt
+        encodersMsg.d_left = dl;
+        encodersMsg.d_right = dr;
         encodersMsg.d_dist = self.d_dist
         encodersMsg.d_th = self.d_th
         if self.dt>0:
