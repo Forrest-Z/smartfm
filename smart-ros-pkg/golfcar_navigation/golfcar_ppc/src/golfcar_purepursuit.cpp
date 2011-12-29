@@ -18,7 +18,7 @@ PurePursuit::PurePursuit()
 }
 
 
-bool PurePursuit::steering_control(double& wheel_angle, double &dist_to_goal, double &dist_to_ints)
+bool PurePursuit::steering_control(double& wheel_angle, double &dist_to_goal, double &dist_to_ints, geometry_msgs::Point &int_point)
 {
     geometry_msgs::Point pt;
     if(!initialized_)
@@ -29,7 +29,7 @@ bool PurePursuit::steering_control(double& wheel_angle, double &dist_to_goal, do
     }
     double heading_lh=0;
 
-    if(heading_lookahead(heading_lh,dist_to_goal,dist_to_ints))
+    if(heading_lookahead(heading_lh,dist_to_goal,dist_to_ints,int_point))
     {
         wheel_angle = atan((car_length * sin(heading_lh))/(Lfw_/2+lfw_*cos(heading_lh)));
         if(wheel_angle > 0.65) wheel_angle = 0.65;
@@ -42,7 +42,7 @@ bool PurePursuit::steering_control(double& wheel_angle, double &dist_to_goal, do
 }
 
 
-bool PurePursuit::heading_lookahead(double &heading_la, double &dist_to_goal, double &dist_to_ints)
+bool PurePursuit::heading_lookahead(double &heading_la, double &dist_to_goal, double &dist_to_ints, geometry_msgs::Point &int_point)
 {
     double vehicle_heading = tf::getYaw(vehicle_base_.orientation);
     geometry_msgs::Point anchor_pt;
@@ -65,6 +65,7 @@ bool PurePursuit::heading_lookahead(double &heading_la, double &dist_to_goal, do
     }
 
     //calculate distance to goal and intersection if any
+    vector<geometry_msgs::Point> int_points;
     if(path_n_<0)
     {
         dist_to_goal=sqrt_distance(vehicle_base_.position, path_.poses[path_.poses.size()-1].pose.position);
@@ -77,7 +78,11 @@ bool PurePursuit::heading_lookahead(double &heading_la, double &dist_to_goal, do
         {
             dist=sqrt_distance(path_.poses[i].pose.position,path_.poses[i+1].pose.position);
             dist_to_goal+=dist;
-            if(dist==0) ints_found=true;
+            if(dist==0)
+            {
+                int_points.push_back(path_.poses[i].pose.position);
+                ints_found=true;
+            }
             if(!ints_found) dist_to_ints+=dist;
         }
         dist = sqrt_distance(collided_pt,path_.poses[path_n_+1].pose.position);
@@ -86,7 +91,8 @@ bool PurePursuit::heading_lookahead(double &heading_la, double &dist_to_goal, do
         dist_to_ints+=dist;
         if(!ints_found) dist_to_ints = -1;
     }
-
+    //always get the nearest intersection point and publish it
+    if(int_points.size()>0) int_point = int_points[0];
     //heading_la = -1 indicate the controller couldn't find a path to follow, it has to be handle by trajectory_planner
     heading_la = atan2(collided_pt.y-anchor_pt.y, collided_pt.x-anchor_pt.x) - vehicle_heading;
     return true;

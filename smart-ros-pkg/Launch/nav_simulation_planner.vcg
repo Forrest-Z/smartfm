@@ -1,0 +1,108 @@
+Background\ ColorR=0
+Background\ ColorG=0
+Background\ ColorB=0
+Fixed\ Frame=/map
+Target\ Frame=/base_link
+Grid\ Cells.Alpha=1
+Grid\ Cells.ColorR=0.1
+Grid\ Cells.ColorG=1
+Grid\ Cells.ColorB=0
+Grid\ Cells.Enabled=1
+Grid\ Cells.Topic=/move_base_node/local_costmap/obstacles
+Interactive\ Markers.Enabled=1
+Interactive\ Markers.Show\ Axes=0
+Interactive\ Markers.Show\ Descriptions=1
+Interactive\ Markers.Show\ Tool\ Tips=1
+Interactive\ Markers.Update\ Topic=/intersection/update
+Map.Alpha=0.7
+Map.Draw\ Behind=0
+Map.Enabled=1
+Map.Topic=/map
+Odometry3.Angle\ Tolerance=0.1
+Odometry3.ColorR=1
+Odometry3.ColorG=0.1
+Odometry3.ColorB=0
+Odometry3.Enabled=1
+Odometry3.Keep=1000
+Odometry3.Position\ Tolerance=0.1
+Odometry3.Topic=/odom
+Path.Alpha=1
+Path.ColorR=0.1
+Path.ColorG=1
+Path.ColorB=0
+Path.Enabled=1
+Path.Topic=/global_plan
+Polygon.Alpha=1
+Polygon.ColorR=0.1
+Polygon.ColorG=1
+Polygon.ColorB=0
+Polygon.Enabled=0
+Polygon.Topic=/clear_space
+Polygon2.Alpha=1
+Polygon2.ColorR=0.1
+Polygon2.ColorG=1
+Polygon2.ColorB=0
+Polygon2.Enabled=1
+Polygon2.Topic=/move_base_node/local_costmap/robot_footprint
+Polygon3.Alpha=1
+Polygon3.ColorR=1
+Polygon3.ColorG=0
+Polygon3.ColorB=0.0941176
+Polygon3.Enabled=1
+Polygon3.Topic=/pp_vis
+Polygon4.Alpha=1
+Polygon4.ColorR=0.1
+Polygon4.ColorG=1
+Polygon4.ColorB=0
+Polygon4.Enabled=1
+Polygon4.Topic=/move_base_node/local_costmap/robot_footprint
+Pose\ Array.ColorR=1
+Pose\ Array.ColorG=0.1
+Pose\ Array.ColorB=0
+Pose\ Array.Enabled=1
+Pose\ Array.Topic=/particlecloud
+Tool\ 2D\ Nav\ GoalTopic=goal
+Tool\ 2D\ Pose\ EstimateTopic=initialpose
+Camera\ Type=rviz::FixedOrientationOrthoViewController
+Camera\ Config=8.05523 1.64708 7.07108 13.8201 -0.697211 -0.117887 -0.117887 0.697211
+Property\ Grid\ State=selection=;expanded=.Global Options;scrollpos=0,0;splitterpos=142,301;ispageselected=1
+[Display0]
+Name=Map
+Package=rviz
+ClassName=rviz::MapDisplay
+[Display1]
+Name=Pose Array
+Package=rviz
+ClassName=rviz::PoseArrayDisplay
+[Display2]
+Name=Path
+Package=rviz
+ClassName=rviz::PathDisplay
+[Display3]
+Name=Polygon
+Package=rviz
+ClassName=rviz::PolygonDisplay
+[Display4]
+Name=Polygon2
+Package=rviz
+ClassName=rviz::PolygonDisplay
+[Display5]
+Name=Grid Cells
+Package=rviz
+ClassName=rviz::GridCellsDisplay
+[Display6]
+Name=Polygon3
+Package=rviz
+ClassName=rviz::PolygonDisplay
+[Display7]
+Name=Odometry3
+Package=rviz
+ClassName=rviz::OdometryDisplay
+[Display8]
+Name=Polygon4
+Package=rviz
+ClassName=rviz::PolygonDisplay
+[Display9]
+Name=Interactive Markers
+Package=rviz
+ClassName=rviz::InteractiveMarkerDisplay

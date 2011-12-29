@@ -107,9 +107,11 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
     pp_->vehicle_base_ = robot_pose.pose;
 
     double steer_angle,dist_to_goal, dist_to_ints;
-    path_flag_= pp_->steering_control(steer_angle,dist_to_goal,dist_to_ints);
+    geometry_msgs::Point int_point;
+    path_flag_= pp_->steering_control(steer_angle,dist_to_goal,dist_to_ints,int_point);
     move_status.dist_to_goal = dist_to_goal;
     move_status.dist_to_ints = dist_to_ints;
+    move_status.int_point = int_point;
     if(path_flag_){
         steer_angle_=steer_angle;
         goalreached_=false;
