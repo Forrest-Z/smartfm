@@ -257,7 +257,7 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
             move_status.steer_angle = 0;
             if(!goalreached_)
             {
-                ROS_INFO("Goal reached!");
+                ROS_INFO("No path found");
                 goalreached_=true;
             }
         }
