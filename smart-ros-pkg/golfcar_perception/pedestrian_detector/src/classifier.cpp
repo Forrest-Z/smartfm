@@ -70,7 +70,7 @@ void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch
             temp_rect = pr.pd_vector[i];
             temp_rect.cvRect_x1=img_x;temp_rect.cvRect_y1=img_y;
             temp_rect.cvRect_x2=img_x+img_width;temp_rect.cvRect_y2=img_y+img_height;
-            if((int)found.size()>0) temp_rect.decision_flag = true;
+            if((int)detect_rects.pd_vector.size()>0) temp_rect.decision_flag = true;
             roi_rects.pd_vector.push_back(temp_rect);
 
 
