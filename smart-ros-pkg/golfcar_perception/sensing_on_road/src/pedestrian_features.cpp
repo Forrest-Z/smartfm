@@ -583,6 +583,7 @@ void pedestrian_features::Bayesfilter(const sensing_on_road::pedestrian_vision_b
             {
                 if(veri_pd_para.pd_vector[i].complete_flag==true)
                 {
+                    //2011-12-31: need Demian to check the verification result, which all shows "false"...
                     if(veri_pd_para.pd_vector[i].decision_flag==true)
                     {
                         float sense_person;
@@ -599,12 +600,14 @@ void pedestrian_features::Bayesfilter(const sensing_on_road::pedestrian_vision_b
             }
         }
     }
+    
     ProbabilityCheck();
 }
 
 void pedestrian_features::ProbabilityCheck()
 {
     veri_show_pcl_.header   = veri_batch_.header;
+    veri_show_pcl_.header.frame_id   = filtered_segment_batch_.header.frame_id;
     veri_show_pcl_.points.clear();
     veri_show_batch_.header = veri_batch_.header;
     veri_show_batch_.pd_vector.clear();
