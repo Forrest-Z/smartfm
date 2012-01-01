@@ -7,7 +7,7 @@
 using namespace std;
 using namespace ros;
 
-#define MAX_RANGE 30.0
+#define MAX_RANGE 15.0
 
 namespace road_detection{
 	

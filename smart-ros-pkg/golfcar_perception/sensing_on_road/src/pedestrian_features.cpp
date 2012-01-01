@@ -13,12 +13,12 @@
 #define HISTORY_SIZE 100
 #define STALE_THRESH 3.0
 
-#define MOVING_BELIEF 0.5
+#define MOVING_BELIEF 0.4
 #define SIZE_BELIEF 0.2
 
-#define PERSON_SENSE_PERSON         0.7
-#define NOT_PERSON_SENSE_PERSON     0.2
-#define PROBABILITY_THRESHOLD       0.8
+#define PERSON_SENSE_PERSON         0.9
+#define NOT_PERSON_SENSE_PERSON     0.4
+#define PROBABILITY_THRESHOLD       0.9
 #define ONCE_FOR_ALL_THRESHOLD      0.95
 #define ONCE_FOR_ALL_RESTTIME       1.0
 
@@ -128,7 +128,7 @@ void pedestrian_features::data_association()
             if(history_pool_[ih].fastest_velocity>0.3) compensate_dis = time_distance*1.0;
             history_pool_[ih].nearest_distance = disSpace-compensate_dis;
 
-
+            /*
             ROS_INFO("1--history obj_label %d, serial %d, %3f, %3f, merged size %d; segment %d, %3f, %3f, shortest dis2d_tmp, distance: %3f, %3f",
                     history_pool_[ih].object_label, ih, last_history_x, last_history_y, (int)history_pool_[ih].merged_labels.size(),
                     history_pool_[ih].nearest_segment_serial,
@@ -136,7 +136,7 @@ void pedestrian_features::data_association()
                     (float)filtered_segment_batch_.segments[history_pool_[ih].nearest_segment_serial].segment_centroid_odom.point.y,
                     dis2d, disSpace
                     );
-
+                    */ 
 
         }
 
@@ -164,7 +164,8 @@ void pedestrian_features::data_association()
                     disSpace=sqrtf(dis_x*dis_x+dis_y*dis_y);
                 }
             }
-
+            
+            /*
             ROS_INFO("2--segment %d, %3f, %3f; history %d, %3f, %3f, shortest dis2d_tmp, distance: %3f, %3f",
                     is,
                     segment_x, segment_y,
@@ -173,6 +174,7 @@ void pedestrian_features::data_association()
                     (float)history_pool_[filtered_segment_batch_.segments[is].nearest_history_serial].single_segment_history.back().segment_centroid_odom.point.y,
                     dis2d, disSpace
                     );
+                    */ 
         }
 
         //2 mutual matching is given highest priority;
@@ -195,7 +197,7 @@ void pedestrian_features::data_association()
                 {
                     history_pool_[ih].history_status = 1;
                     filtered_segment_batch_.segments[segment_serial].segment_status = 1;
-                    ROS_INFO("Real Mutual Match ---- history %d, segment %d",ih,segment_serial);
+                    //ROS_INFO("Real Mutual Match ---- history %d, segment %d",ih,segment_serial);
                 }
             }
         }
@@ -232,7 +234,7 @@ void pedestrian_features::data_association()
                     {
                         history_pool_[ih].history_status = 1;
                         filtered_segment_batch_.segments[segment_serial].segment_status=1;
-                        ROS_INFO("Add Mutual Match ---- history: %d, segment %d, dis %3f", ih, segment_serial, nearest_dis);
+                        //ROS_INFO("Add Mutual Match ---- history: %d, segment %d, dis %3f", ih, segment_serial, nearest_dis);
                     }
                 }
                 else {history_pool_[ih].history_status = 4;}
@@ -273,17 +275,17 @@ void pedestrian_features::data_association()
                     {
                         //"3" means split, need special operation;
                         filtered_segment_batch_.segments[is].segment_status=3;
-                        ROS_INFO("Split ---- history: %d, segment %d", history_serial, is);
+                        //ROS_INFO("Split ---- history: %d, segment %d", history_serial, is);
                     }
                     else if(history_pool_[history_serial].history_status == 2)
                     {
-                        ROS_INFO("Add2 Mutual Match ---- history: %d, segment %d", history_serial, is);
+                        //ROS_INFO("Add2 Mutual Match ---- history: %d, segment %d", history_serial, is);
                         history_pool_[history_serial].history_status = 1;
                         filtered_segment_batch_.segments[is].segment_status=1;
                     }
                     else if(history_pool_[history_serial].history_status == 4 )
                     {
-                        ROS_INFO("Add3 Mutual Match ---- history: %d, segment %d", history_serial, is);
+                        //ROS_INFO("Add3 Mutual Match ---- history: %d, segment %d", history_serial, is);
                         history_pool_[history_serial].history_status = 1;
                         filtered_segment_batch_.segments[is].segment_status=1;
                     }
@@ -291,14 +293,14 @@ void pedestrian_features::data_association()
                     {
                         if(filtered_segment_batch_.segments[is].segment_status ==10)
                         {
-                            ROS_INFO("Add3 Mutual Match ---- history: %d, segment %d", history_serial, is);
+                            //ROS_INFO("Add3 Mutual Match ---- history: %d, segment %d", history_serial, is);
                             history_pool_[history_serial].history_status = 1;
                             filtered_segment_batch_.segments[is].segment_status=1;
                         }
                         else
                         {
                             filtered_segment_batch_.segments[is].segment_status=3;
-                            ROS_INFO("Split ---- history: %d, segment %d", history_serial, is);
+                            //ROS_INFO("Split ---- history: %d, segment %d", history_serial, is);
                         }
                     }
                 }
@@ -316,13 +318,13 @@ void pedestrian_features::data_association()
 
                     if(partial_occlusion)
                     {
-                        ROS_INFO("Add OCCLU Mutual Match ---- history: %d, segment %d", history_serial, is);
+                        //ROS_INFO("Add OCCLU Mutual Match ---- history: %d, segment %d", history_serial, is);
                         history_pool_[history_serial].history_status = 1;
                         filtered_segment_batch_.segments[is].segment_status=1;
                     }
                     else
                     {
-                        ROS_INFO("Segment Generate new history; segment: %d", is);
+                        //ROS_INFO("Segment Generate new history; segment: %d", is);
                         //"4" will initiate new history.
                         filtered_segment_batch_.segments[is].segment_status=4;
                     }
@@ -335,7 +337,7 @@ void pedestrian_features::data_association()
         //3.a check history;
         //define to erase merged history later, from end to beginning;
         std::vector<unsigned> merged_history_label;
-        ROS_INFO("3.a check history");
+        //ROS_INFO("3.a check history");
         for(unsigned ih=0; ih!=history_pool_.size(); ih++)
         {
             int segment_serial = history_pool_[ih].nearest_segment_serial;
@@ -346,7 +348,7 @@ void pedestrian_features::data_association()
             }
             else if(history_pool_[ih].history_status==2)
             {
-                ROS_INFO("Merge ---- history: %d, segment %d", ih, segment_serial);
+                //ROS_INFO("Merge ---- history: %d, segment %d", ih, segment_serial);
 
                 int history_serial = filtered_segment_batch_.segments[segment_serial].nearest_history_serial;
 
@@ -363,7 +365,7 @@ void pedestrian_features::data_association()
                 //--------deal with labeling problem when merging-----------;
                 //-----------------------------------------------------------
                 //1. recording all possible object_label;
-                ROS_INFO("Record all possible label");
+                //ROS_INFO("Record all possible label");
                 for(unsigned io=0; io < history_pool_[ih].merged_labels.size(); io++)
                 {
                     int object_label = history_pool_[ih].merged_labels[io];
@@ -378,7 +380,7 @@ void pedestrian_features::data_association()
                 }
 
                 //2. bubble-sorting for "object_label", from small to large;
-                ROS_INFO("Bubble sorting %d", history_pool_[history_serial].merged_labels.size());
+                //ROS_INFO("Bubble sorting %d", history_pool_[history_serial].merged_labels.size());
                 for(unsigned y = 0; y < history_pool_[history_serial].merged_labels.size(); y++)
                 {
                     for(unsigned k = 0; k < history_pool_[history_serial].merged_labels.size()-1-y; k++)
@@ -405,7 +407,7 @@ void pedestrian_features::data_association()
         }
 
         //3.b check segments
-        ROS_INFO("3.b check segments");
+        //ROS_INFO("3.b check segments");
         for(unsigned is=0; is!=filtered_segment_batch_.segments.size(); is++)
         {
             int history_serial = filtered_segment_batch_.segments[is].nearest_history_serial;
@@ -444,7 +446,7 @@ void pedestrian_features::data_association()
         }
 
         //3.c delete merged history, pay attention the sequence: use "object_label" rather than "vector serial" to delete here;
-        ROS_INFO("3.c delete merged history");
+        //ROS_INFO("3.c delete merged history");
         for(unsigned im=0; im!=merged_history_label.size(); im++)
         {
             for(unsigned ih=0; ih!=history_pool_.size(); ih++)
