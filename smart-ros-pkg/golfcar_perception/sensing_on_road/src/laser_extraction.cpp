@@ -43,7 +43,7 @@ laser_extraction::~laser_extraction()
 
 void laser_extraction::scan_callback(const sensor_msgs::LaserScan::ConstPtr& scan_in)
 {
-    ROS_INFO("--------scan_callback--------");
+    //ROS_INFO("--------scan_callback--------");
     laser_scan_ = *scan_in;
     angle_resolution_ = fabsf(scan_in->angle_increment);
     /*
@@ -94,7 +94,7 @@ bool laser_extraction::isOnSameLine(const sensing_on_road::scan_segment & segmen
     if( fabs(thetha21_temp-thetha32_temp) > fmutil::d2r(5) )
         return false;
 
-    ROS_INFO("connect!!!");
+    //ROS_INFO("connect!!!");
     return true;
 }
 
@@ -115,7 +115,7 @@ bool laser_extraction::isConnected(const sensing_on_road::scan_segment & segment
     float dis_threshold = 0;
     if(range_temp< DIS_RANGE){dis_threshold = ASSOCIATE_WITHIN_RANGE_THRESH;}
     //else{ dis_threshold = ASSOCIATE_OVER_5_THRESH;}
-    else{dis_threshold = ASSOCIATE_OVER_RANGE_MULTI * range_temp * laser_scan_.angle_increment;}
+    else{dis_threshold = ASSOCIATE_OVER_RANGE_MULTI * range_temp * fabsf(laser_scan_.angle_increment);}
 
     float d = pt_distance(laser_cloud_laser_.points[ip], laser_cloud_laser_.points[ip-1]);
     if(d < dis_threshold)
@@ -199,20 +199,46 @@ void laser_extraction::connect_segments()
             float range_temp = laser_scan_.ranges[last_serial_temp];
             float dis_threshold = 0;
             if(range_temp<DIS_RANGE){dis_threshold = ASSOCIATE_WITHIN_RANGE_THRESH;}
-            else{dis_threshold = ASSOCIATE_OVER_RANGE_MULTI * range_temp * laser_scan_.angle_increment;}
+            else{dis_threshold = ASSOCIATE_OVER_RANGE_MULTI * range_temp * fabsf(laser_scan_.angle_increment);}
 
             unsigned serial_number1 = segments[is].point_serials.back();
             unsigned serial_number2 = segments[ic].point_serials.front();
             const geometry_msgs::Point32 & right_seg_last = laser_cloud_laser_.points[serial_number1];
             const geometry_msgs::Point32 & left_seg_first = laser_cloud_laser_.points[serial_number2];
             float dis_pxy = pt_distance(right_seg_last, left_seg_first);
+            
             if(dis_pxy < dis_threshold)
-            {
-                segments[is].connect_back_segment = ic;
-                segments[ic].connect_front_segment = is;
-                ROS_INFO("Connect is %d: (%5f, %5f) and ic %d: (%5f, %5f)",
-                         is, right_seg_last.x, right_seg_last.y,
-                         ic, left_seg_first.x, left_seg_first.y);
+            {                
+                segments[is].connect_back_segment = ic; 
+                    
+                if(segments[ic].connect_front_segment  == -1)
+                {
+                    if(segments[is].connect_front_segment ==-1)
+                    {
+                        segments[ic].connect_front_segment = is;
+                    }
+                    else
+                    {
+                       segments[ic].connect_front_segment = segments[is].connect_front_segment;
+                    }
+                } 
+                else
+                {
+                    //meaning already get connected by front segments;
+                    int most_front_serial = segments[ic].connect_front_segment;
+                    //remember to set process its connected predecessor;
+                    //record its front connected segment before chaning;
+                    int front_serial      = segments[is].connect_front_segment;
+                    //set the connect_front_segment to the most front one, serving as type label in later processing;
+                    segments[is].connect_front_segment = most_front_serial;
+                    
+                    while (front_serial != -1)
+                    {
+                        int current_serial = front_serial;
+                        front_serial = segments[front_serial].connect_front_segment;
+                        segments[current_serial].connect_front_segment = most_front_serial; 
+                    }
+                }
                 break;
             }
         }
@@ -223,44 +249,43 @@ void laser_extraction::merge_segments()
 {
     vector<sensing_on_road::scan_segment> & segments = extracted_segments_laser_.segments;
     delete_connected_segments_.clear();
-    for(unsigned is=0; is<segments.size(); is++)
+
+    for(unsigned int is=0; is< segments.size(); is++)
     {
-        if(segments[is].connect_front_segment != -1)
-            continue;
-        else
+        if(segments[is].connect_front_segment == -1)
         {
             std::vector<int> connected_segments;
-            int front_seg = is;
-            int back_seg =  segments[is].connect_back_segment;
-            while(back_seg !=-1)
+            for(unsigned int iss=0; iss< segments.size(); iss++)
             {
-                front_seg = back_seg;
-                back_seg  = segments[front_seg].connect_back_segment;
-                connected_segments.push_back(front_seg);
-                delete_connected_segments_.push_back(front_seg);
-            }
-
-            for(unsigned cs=0; cs<connected_segments.size(); cs++)
-            {
-                unsigned connect_seg_serial = connected_segments[cs];
-                for(unsigned ipp=0; ipp<segments[connect_seg_serial].point_serials.size(); ipp++)
+                if(segments[iss].connect_front_segment == (int) is)
                 {
-                    unsigned P_serial_tmp = segments[connect_seg_serial].point_serials[ipp];
-                    unsigned B_serial_tmp = segments[connect_seg_serial].beam_serials[ipp];
+                    connected_segments.push_back(iss);
+                    delete_connected_segments_.push_back(iss);
+                }
+            }
+            
+            for(unsigned int cs=0; cs<connected_segments.size(); cs++)
+            {
+                unsigned int connect_seg_serial = connected_segments[cs];
+                for(unsigned int ipp=0; ipp< segments[connect_seg_serial].point_serials.size(); ipp++)
+                {
+                    unsigned int P_serial_tmp = segments[connect_seg_serial].point_serials[ipp];
+                    unsigned int B_serial_tmp = segments[connect_seg_serial].beam_serials[ipp];
                     segments[is].point_serials.push_back(P_serial_tmp);
                     segments[is].beam_serials.push_back(B_serial_tmp);
                 }
             }
         }
+        else {continue;}
     }
 }
 
 void laser_extraction::delete_segments()
 {
     //bubble_sorting, from large to small; preparing for "delete" operation;
-    for(unsigned y = 0; y < delete_connected_segments_.size(); y++)
+    for(unsigned int y = 0; y < delete_connected_segments_.size(); y++)
     {
-        for(unsigned k = 0; k < delete_connected_segments_.size()-1-y; k++)
+        for(unsigned int k = 0; k < delete_connected_segments_.size()-1-y; k++)
         {
             if(delete_connected_segments_[k] < delete_connected_segments_[k+1])
             {
@@ -271,21 +296,21 @@ void laser_extraction::delete_segments()
         }
     }
     
-    for(unsigned dc=0; dc<delete_connected_segments_.size(); dc++)
+    for(unsigned int dc=0; dc<delete_connected_segments_.size(); dc++)
     {
-        //ROS_INFO("delete segment: %d", delete_connected_segments_[dc]);
-        if( delete_connected_segments_[dc]<0 )
-            ROS_INFO("Unexpected Scenario");
-
+        ROS_DEBUG("delete segment: %d", delete_connected_segments_[dc]);
+        if(delete_connected_segments_[dc]<0){ROS_DEBUG("Unexpected Scenario");}
+        unsigned int delete_seg_serial = (unsigned int)delete_connected_segments_[dc];
+        
+        //erase...
         // Note: erasing from a vector is very inefficient !
         // Fixing this would require using a list.
         // Since we cannot modify the class (it's a message), we can convert
         // to list first, then convert back to vector.
         // However, if this is not executed too much, it won't affect the speed
         // so much...
-        extracted_segments_laser_.segments.erase(
-            extracted_segments_laser_.segments.begin() +
-            delete_connected_segments_[dc] );
+        
+        extracted_segments_laser_.segments.erase(extracted_segments_laser_.segments.begin()+delete_seg_serial);
     }
 }
 

@@ -6,35 +6,36 @@
 #include "opencv2/gpu/gpu.hpp"
 #include "opencv2/highgui/highgui.hpp"
 
-namespace HOG_Classifier{
+using namespace std;
+using namespace cv;
+
 class HOGClassifier {
 
 public:
 
 
-	HOGClassifier(ros::NodeHandle &n);
-	~HOGClassifier();
+    HOGClassifier(ros::NodeHandle &n);
+    ~HOGClassifier();
 
 
 
 private:
-	std::vector<float> detector;
-	cv::gpu::HOGDescriptor gpu_hog;
-	cv::HOGDescriptor cpu_hog;
-	ros::NodeHandle n_;
-	image_transport::ImageTransport it_;
-	image_transport::Subscriber image_sub_;
-	ros::Subscriber people_rects_sub_;
-	ros::Publisher people_roi_pub_;
-	ros::Publisher people_detect_pub_;
-	ros::Publisher people_ver_pub_;
-	//sensor_msgs::CvBridge bridge_;
-	image_transport::Publisher image_pub_;
-	void imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr);
-	void peopleRectsCallback(sensing_on_road::pedestrian_vision_batch pr);
-	cv::Mat img;
-	//IplImage *cv_image;
-	
-	bool new_image;
+    cv::HOGDescriptor cpu_hog;
+    ros::NodeHandle n_;
+    image_transport::ImageTransport it_;
+    image_transport::Subscriber image_sub_;
+    ros::Subscriber people_rects_sub_;
+    ros::Publisher people_roi_pub_;
+    ros::Publisher people_detect_pub_;
+    ros::Publisher people_ver_pub_;
+    //sensor_msgs::CvBridge bridge_;
+    image_transport::Publisher image_pub_;
+    void imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr);
+    void peopleRectsCallback(sensing_on_road::pedestrian_vision_batch pr);
+    void ScaleWithDistanceRatio(Mat *img, double disz, double norm_distance, Size img_size, Size smallest_size, double *ratio);
+    void detectPedestrian(Point offset, double ratio, gpu::GpuMat& gpu_img, sensing_on_road::pedestrian_vision_batch *detect_rects);
+    cv::Mat img;
+
+    bool new_image;
 };
-};
+
