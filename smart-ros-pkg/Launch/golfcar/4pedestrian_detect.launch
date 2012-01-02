@@ -1,13 +1,17 @@
 <launch>
     <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrsAssemb" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrsAssemb 100" />    
     <node pkg="scan_ldmrs_assemble" type="scan_ldmrs_assemble" name="scan_ldmrs_assemble"/>
-    <node pkg="pedestrian_detector" type="classifier" name="classifier">
-	<param name="image_transport" value="compressed"/>
-	<remap from="image_raw" to="usb_cam/image_raw"/>
+    <node pkg="pedestrian_detector" type="classifier" name="classifier" output="screen">
+    	<param name="image_transport" value="compressed"/>
+    	<remap from="image_raw" to="usb_cam/image_raw"/>
+	    <param name="hit_threshold" value="1.65"/>
+	    <param name="scale" value="1.05"/>
+	    <param name="group_threshold" value="1.0"/>
+	    <param name="norm_dist" value="5.0"/>
 	</node>
 	<node pkg="pedestrian_detector" type="visualizer" name="visualizer">
-	<param name="image_transport" value="compressed"/>
-	<remap from="image_raw" to="usb_cam/image_raw"/>
+	    <param name="image_transport" value="compressed"/>
+	    <remap from="image_raw" to="usb_cam/image_raw"/>
 	</node>
 	<node pkg="sensing_on_road" type="laser_extraction" name="laser_extraction"/>
 	<node pkg="sensing_on_road" type="pedestrian_features" name="pedestrian_features"/>
