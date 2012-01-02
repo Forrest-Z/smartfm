@@ -19,7 +19,7 @@ public:
     SimpleGoal(const StationPaths & sp);
 
 private:
-    ros::NodeHandle n;
+    ros::NodeHandle nh;
     ros::Publisher goal_pub_;
     ros::Subscriber move_status_sub_;
 
