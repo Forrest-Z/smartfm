@@ -60,6 +60,7 @@ class PID_Speed
         double kdd; //we are switching between PID and PI need another term
         double ei; ///< the integrated error
         double vFiltered; ///< filtered velocity
+        double dgain_pre;
 };
 
 
@@ -154,6 +155,7 @@ void PID_Speed::odoCallBack(lowlevel::Encoders enc)
             e_pre = 0;
             pid.u_ctrl = 0;
             vFiltered = 0;
+            dgain_pre = 0;
         }
         else
         {
@@ -173,6 +175,9 @@ void PID_Speed::odoCallBack(lowlevel::Encoders enc)
             pid.i_gain = param.ki * ei;
             pid.d_gain = kdd * (e_now - e_pre) / dt;
             pid.v_filter = vFiltered;
+            
+            if(fabs(dgain_pre - pid.d_gain)>0.2) pid.d_gain = dgain_pre;
+            dgain_pre = pid.d_gain;
 
             pid.u_ctrl = pid.p_gain + pid.i_gain + pid.d_gain;
             pid.u_ctrl = BOUND(-1.0, pid.u_ctrl, 1.0);
@@ -181,12 +186,14 @@ void PID_Speed::odoCallBack(lowlevel::Encoders enc)
 
             if(pid.u_ctrl > param.throttle_zero_thres)
             {
+                
                 th.volt = pid.u_ctrl*3.33;//2.95+0.35; we can eliminate the constant 0.35 since we are taking into consideration of pid.u_ctrl
                 bp.angle = 0;
                 kdd = param.kd;
             }
             else if(pid.u_ctrl < -param.brake_zero_thres/param.coeff_bp)
             {
+                dgain_pre = 0;
                 th.volt = 0;
                 bp.angle = param.coeff_bp * pid.u_ctrl;
                 kdd = 0;

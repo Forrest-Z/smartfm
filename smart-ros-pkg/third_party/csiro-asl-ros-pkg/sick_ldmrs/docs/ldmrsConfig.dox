@@ -1,0 +1,15 @@
+\subsubsection parameters ROS parameters
+
+Reads and maintains the following parameters on the ROS server
+
+- \b "~start_angle" : \b [int] The angle of the first range measurement. min: -59, default: 50, max: 50
+- \b "~end_angle" : \b [int] The angle of the last range measurement. min: -60, default: -50, max: 49
+- \b "~scan_frequency" : \b [int] Scan frequency, 0 = 12.5Hz, 1 = 25 Hz, 2 = 50 Hz min: 0, default: 2, max: 2
+- \b "~sync_angle_offset" : \b [int] Sychronization offset angle in degrees min: -180, default: 0, max: 179
+- \b "~constant_angular_res" : \b [bool] Constant or focussed angular resolution type (focussed valid for 12.5Hz scan freq only) min: False, default: True, max: True
+- \b "~frame_id_prefix" : \b [str] Frame id of the sensor. Scan messages append scan number (0-3) to this min: , default: /ldmrs, max: 
+- \b "~use_first_echo" : \b [bool] Scan messages will use first echo if true, last echo otherwise min: False, default: False, max: True
+- \b "~time_smoothing_factor" : \b [double] high values will smooth time more, low values will track noisy time more min: 0.0, default: 0.97, max: 1.0
+- \b "~time_error_threshold" : \b [int] allowed error (miliseconds) between smooth time and noisy time before step correction is applied, -1 disables time correction min: -1, default: 10, max: 500
+- \b "~apply_changes" : \b [bool] Issues a restart with the new parameter value. Note: none of the changes will take effect until this is set min: False, default: False, max: True
+
