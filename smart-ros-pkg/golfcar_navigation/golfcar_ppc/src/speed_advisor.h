@@ -74,6 +74,7 @@ public:
     double speed_dec_;
     double final_speed_;
     double speed_now_;
+
 };
 
 class SpeedSettings : public vector<SpeedAttribute>
@@ -123,6 +124,7 @@ private:
     double stopping_distance_; //automatic calculate based on the maximum speed and normal deceleration
     double speed_now_;
     bool use_sim_time_;
+    int element_pre_, element_now_;
     void moveSpeedCallback(golfcar_ppc::move_status status);
     void slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones);
     double sqrtDistance(double x1, double y1, double x2, double y2);
