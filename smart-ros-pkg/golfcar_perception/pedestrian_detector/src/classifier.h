@@ -37,5 +37,6 @@ private:
     cv::Mat img;
 
     bool new_image;
+    double hit_threshold, scale, group_threshold, norm_dist;
 };
 
