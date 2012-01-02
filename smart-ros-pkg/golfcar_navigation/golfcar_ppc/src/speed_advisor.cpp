@@ -9,7 +9,7 @@ SpeedAdvisor::SpeedAdvisor()
      *
      */
     recommend_speed_= n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-    speed_contribute_ = n.advertise<golfcar_ppc::speed_contribute>("speed_contribute",1);
+    speed_contribute_ = n.advertise<golfcar_ppc::speed_contribute>("speed_status",1);
     move_base_speed_=n.subscribe("/move_status",1, &SpeedAdvisor::moveSpeedCallback, this);
     slowzone_sub_=n.subscribe("slowZone",1,&SpeedAdvisor::slowZoneCallback,this);
     ros::NodeHandle nh("~");
