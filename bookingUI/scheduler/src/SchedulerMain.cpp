@@ -217,7 +217,7 @@ void print_usage (FILE* stream, int exit_code)
 void parseOptions(int argc, char **argv)
 {
     int ch;
-    const char* const short_options = "hp:H:";
+    const char* const short_options = "h";
 
     /* An array describing valid long options. */
     static struct option long_options[] =
