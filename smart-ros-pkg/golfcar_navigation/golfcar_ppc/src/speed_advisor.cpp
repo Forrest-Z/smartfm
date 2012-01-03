@@ -1,4 +1,4 @@
-#include <golfcar_ppc/speed_advisor.h>
+#include "speed_advisor.h"
 
 
 SpeedAdvisor::SpeedAdvisor()
@@ -9,7 +9,7 @@ SpeedAdvisor::SpeedAdvisor()
      *
      */
     recommend_speed_= n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-    speed_contribute_ = n.advertise<golfcar_ppc::speed_contribute>("speed_contribute",1);
+    speed_contribute_ = n.advertise<golfcar_ppc::speed_contribute>("speed_status",1);
     move_base_speed_=n.subscribe("/move_status",1, &SpeedAdvisor::moveSpeedCallback, this);
     slowzone_sub_=n.subscribe("slowZone",1,&SpeedAdvisor::slowZoneCallback,this);
     ros::NodeHandle nh("~");
@@ -159,6 +159,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     if(net_dist<0) recommended_speed = 0;
     speed_att.final_speed("Goal",speed_att.goal,pos_speed, norm_neg_speed, recommended_speed);
     speed_settings.push_back(speed_att);
+
     //find out whats the min speed is and publish that speed
     SpeedAttribute* sa = speed_settings.find_min_speed();
     speed_now_ = sa->final_speed_;// speed_settings.min_speed;
@@ -172,6 +173,16 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     move_speed.linear.x = speed_now_*speed_compensation;
     recommend_speed_.publish(move_speed);
     sc.speed_now = speed_now_;
+    sc.dist_goal = move_status_.dist_to_goal;
+    //determine if goal has reached
+    if(element_now_!=sc.element)
+    {
+        element_pre_ = element_now_;
+        element_now_ = sc.element;
+    }
+    if((sc.element == speed_att.goal || element_pre_ == speed_att.goal)
+            && sc.speed_now == 0 && sc.dist_goal < 7) sc.goal = true;
+
     speed_contribute_.publish(sc);
 }
 

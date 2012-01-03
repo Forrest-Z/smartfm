@@ -1,10 +1,5 @@
-#include <classifier.h>
+#include "classifier.h"
 
-
-#define HIT_THRESHOLD 1.15
-#define SCALE 1.05
-#define GROUP_THRESHOLD 1
-#define NORM_DIST 5
 #define WIN_SIZE Size(48,96)
 
 HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
@@ -15,12 +10,20 @@ HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
     people_roi_pub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("veri_pd_vision", 1);
     people_detect_pub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("pedestrian_detect",1);
     //people_ver_pub_ = n.advertise<people_detector::verified_objs>("verified_objects",1);
-
+    ros::NodeHandle nh("~");
+    nh.param("hit_threshold", hit_threshold, 1.65);
+    nh.param("scale", scale, 1.05);
+    nh.param("group_threshold", group_threshold, 1.0);
+    nh.param("norm_dist", norm_dist, 5.0);
     //First call to hog to ready the CUDA
      cv::gpu::HOGDescriptor g_hog;
 
     new_image = false;
     cout<<"Classifier started"<<endl;
+    cout<<"Parameter: hit_threshold   "<<hit_threshold<<endl;
+    cout<<"           scale           "<<scale<<endl;
+    cout<<"           group_threshold "<<group_threshold<<endl;
+    cout<<"           norm_dist       "<<norm_dist<<endl;
 }
 HOGClassifier::~HOGClassifier(){}
 
@@ -60,7 +63,7 @@ void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch
 
             Mat mat_img(img(roi));
             double ratio;
-            ScaleWithDistanceRatio(&mat_img, pr.pd_vector[i].disz, 5, Size(img_width, img_height),WIN_SIZE, &ratio);
+            ScaleWithDistanceRatio(&mat_img, pr.pd_vector[i].disz, norm_dist, Size(img_width, img_height),WIN_SIZE, &ratio);
             gpu::GpuMat gpu_img(mat_img);
             vector<Rect> found;
             Point offset(img_x, img_y);
@@ -112,7 +115,7 @@ void HOGClassifier::detectPedestrian(Point offset, double ratio, gpu::GpuMat& gp
                                    cv::gpu::HOGDescriptor::DEFAULT_WIN_SIGMA, 0.2, gamma_corr,
                                    cv::gpu::HOGDescriptor::DEFAULT_NLEVELS);
     gpu_hog.setSVMDetector(gpu::HOGDescriptor::getPeopleDetector48x96());
-    gpu_hog.detectMultiScale(gpu_img, found, HIT_THRESHOLD, Size(8,8), Size(0,0), SCALE, GROUP_THRESHOLD);
+    gpu_hog.detectMultiScale(gpu_img, found, hit_threshold, Size(8,8), Size(0,0), scale, group_threshold);
 
     t = (double)getTickCount() - t;
     ROS_DEBUG("Detection time = %gms", t*1000./getTickFrequency());
