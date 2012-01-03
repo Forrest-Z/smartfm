@@ -246,7 +246,7 @@ void DBInterface::setGeoLocation(float lat, float lon)
 void DBInterface::setETA(float eta)
 {
     HTTPClient client = getHTTPClient("veh_update_status.php");
-    client.addParam<unsigned>("ETA", (unsigned)eta);
+    client.addParam<int>("ETA", (int)eta);
     rpc(client);
 }
 

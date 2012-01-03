@@ -23,7 +23,7 @@ private:
     ros::Publisher goal_pub_;
     ros::Subscriber speed_status_sub_;
 
-    bool has_reached;
+    bool has_reached_;
 
     bool goToDest();
     void initDest();
