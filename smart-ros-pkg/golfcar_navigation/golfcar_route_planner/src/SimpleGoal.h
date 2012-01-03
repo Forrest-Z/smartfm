@@ -5,7 +5,7 @@
 
 #include <ros/ros.h>
 
-#include <golfcar_ppc/move_status.h>
+#include <golfcar_ppc/speed_contribute.h>
 
 #include "RoutePlanner.h"
 
@@ -21,13 +21,13 @@ public:
 private:
     ros::NodeHandle nh;
     ros::Publisher goal_pub_;
-    ros::Subscriber move_status_sub_;
+    ros::Subscriber speed_status_sub_;
 
     bool has_reached;
 
     bool goToDest();
     void initDest();
-    void moveStatusCallBack(const golfcar_ppc::move_status &);
+    void speedStatusCallBack(const golfcar_ppc::speed_contribute &);
 };
 
 #endif

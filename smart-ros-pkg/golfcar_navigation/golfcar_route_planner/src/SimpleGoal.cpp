@@ -9,7 +9,7 @@ using namespace std;
 SimpleGoal::SimpleGoal(const StationPaths & sp) : RoutePlanner(sp)
 {
     goal_pub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal", 100);
-    move_status_sub_ = nh.subscribe("move_status", 1, &SimpleGoal::moveStatusCallBack, this);
+    speed_status_sub_ = nh.subscribe("speed_status", 1, &SimpleGoal::speedStatusCallBack, this);
     has_reached = false;
 }
 
@@ -28,9 +28,9 @@ void SimpleGoal::initDest()
     ROS_INFO("sent goal: [%f %f]", goal.pose.position.x, goal.pose.position.y);
 }
 
-void SimpleGoal::moveStatusCallBack(const golfcar_ppc::move_status &msg)
+void SimpleGoal::speedStatusCallBack(const golfcar_ppc::speed_contribute &msg)
 {
-    has_reached = msg.has_reached;
+    has_reached = msg.goal;
 }
 
 bool SimpleGoal::goToDest()
