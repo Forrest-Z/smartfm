@@ -32,10 +32,5 @@ SET( BookingCommonRootDir ${PROJECT_SOURCE_DIR}/../../../bookingUI/shared )
 INCLUDE_DIRECTORIES(${BookingCommonRootDir}/src)
 LINK_DIRECTORIES (${LINK_DIRECTORIES} ${BookingCommonRootDir})
 
-rosbuild_add_executable(route_planner_node src/RoutePlannerVehicle.cpp src/route_planner_node.cpp)
+rosbuild_add_executable(route_planner_node src/RoutePlannerVehicle.cpp src/SimpleGoal.cpp src/route_planner_node.cpp)
 target_link_libraries(route_planner_node bookingcommon)
-
-rosbuild_add_executable(simple_goal src/simple_goal.cpp)
-target_link_libraries(simple_goal bookingcommon)
-
-#rosbuild_add_executable(svg_path_manipulator src/svg_path_manipulator.cpp)

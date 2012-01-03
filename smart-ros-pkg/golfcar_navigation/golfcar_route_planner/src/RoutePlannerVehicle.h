@@ -27,7 +27,7 @@ typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseCl
 class RoutePlannerVehicle : public RoutePlanner
 {
 public:
-    RoutePlannerVehicle(StationPaths & sp);
+    explicit RoutePlannerVehicle(const StationPaths & sp);
 
 private:
     ros::NodeHandle n;

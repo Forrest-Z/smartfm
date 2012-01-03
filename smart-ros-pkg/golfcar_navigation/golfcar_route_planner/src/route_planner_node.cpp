@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 
 #include "RoutePlannerVehicle.h"
+#include "SimpleGoal.h"
 #include "SimulatedRoutePlanner.h"
 #include "MissionComm.h"
 
@@ -28,7 +29,8 @@ int main(int argc, char **argv)
     else
     {
         ROS_INFO("Using the real vehicle route planner.");
-        rp = new RoutePlannerVehicle(sp);
+        //rp = new RoutePlannerVehicle(sp);
+        rp = new SimpleGoal(sp);
     }
 
     bool use_dbserver = true;
