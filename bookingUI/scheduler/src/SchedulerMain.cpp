@@ -290,7 +290,7 @@ void createObjects()
     time_t t = time(NULL);
     strftime(timestr, sizeof(timestr), "%F-%a-%H-%M-%S", localtime(&t));
     ostringstream oss;
-    oss  << "log-" << "." << timestr <<".log";
+    oss  << "log-" << timestr <<".log";
     logger.setLogFile(oss.str());
     logger.setVerbosityLevel(optVerbosityLevel);
     logger.setConsoleStream(stderr);

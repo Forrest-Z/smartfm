@@ -188,7 +188,7 @@ StationPaths::StationPaths()
     storeFromMultipleSVGs(&stationPaths_[3][2], "E3A_EA", "EA_END", "EA_END2");
     
     slowZones_ = sp.getSlowZone();
-    cout<<slowZones_[0].x_<<' '<<slowZones_[0].y_<<' '<<slowZones_[0].r_<<endl;
+    if( VERBOSE ) cout<<"slowZones[0]: "<<slowZones_[0].x_<<' '<<slowZones_[0].y_<<' '<<slowZones_[0].r_<<endl;
 
     if( VERBOSE ) {
         printInterPointsDistance();
