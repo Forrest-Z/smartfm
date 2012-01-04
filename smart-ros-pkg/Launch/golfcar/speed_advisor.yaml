@@ -10,4 +10,5 @@ emergency_zone: 3.0
 slow_zone: 7.0
 slow_speed: 1.5
 enterstation_speed: 1.5
-stationspeed_dist: 20.0
+stationspeed_dist: 30.0
+baselink_carfront_length: 2.0

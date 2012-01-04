@@ -1,6 +1,5 @@
 #include "speed_advisor.h"
 
-
 SpeedAdvisor::SpeedAdvisor()
 {
     /* the speed_advisor receive message from move_base package and perform neccessary speed profile generation
@@ -29,6 +28,7 @@ SpeedAdvisor::SpeedAdvisor()
     nh.param("emergency_zone", e_zone_, 2.0);
     nh.param("slow_zone", slow_zone_, 10.0);
     nh.param("slow_speed", slow_speed_, 1.5);
+    nh.param("baselink_carfront_length", baselink_carfront_length_, 2.0);
     nh.param("enterstation_speed",enterstation_speed_, slow_speed_); //by default, enterstation speed is the same as slow speed
     nh.param("stationspeed_dist", stationspeed_dist_, 20.0);
     n.param("use_sim_time", use_sim_time_, false);
@@ -88,8 +88,9 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     {
         tf::Stamped<tf::Pose> robot_pose;
         getRobotGlobalPose(robot_pose);
-        double robot_x = robot_pose.getOrigin().x();
-        double robot_y = robot_pose.getOrigin().y();
+
+        double robot_x = robot_pose.getOrigin().x() + baselink_carfront_length_ * cos(robot_pose.getRotation().getAngle());
+        double robot_y = robot_pose.getOrigin().y() + baselink_carfront_length_ * sin(robot_pose.getRotation().getAngle());
         double dist=fmutil::distance(robot_x, robot_y, slowZone_.poses[i].position.x, slowZone_.poses[i].position.y);
         if(dist<slowZone_.poses[i].position.z)
         {

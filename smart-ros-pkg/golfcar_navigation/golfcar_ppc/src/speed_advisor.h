@@ -122,7 +122,7 @@ private:
     bool junction_stop_,through_ints_;
     int attribute_, zone_;
     ros::Time last_update_;
-    double stopping_distance_; //automatic calculate based on the maximum speed and normal deceleration
+    double stopping_distance_, baselink_carfront_length_; //automatic calculate based on the maximum speed and normal deceleration
     double speed_now_, last_ints_dist_;
     bool use_sim_time_;
     int element_pre_, element_now_;
