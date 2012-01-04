@@ -6,14 +6,13 @@
 
 #include "RoutePlanner.h"
 #include "DBInterface.h"
+#include "PassengerComm.h"
 
 /// A base class to get and receive missions.
 class MissionComm : public Threaded
 {
-    friend class RoutePlanner;
-
 public:
-    MissionComm( RoutePlanner & rp );
+    MissionComm( RoutePlanner & rp, PassengerComm & pc );
 
 protected:
     enum State { sUninit, sWaitingMission, sGoingToPickup, sAtPickup, sGoingToDropoff, sAtDropoff };
@@ -21,6 +20,8 @@ protected:
     RoutePlanner & routePlanner_;
     const StationList & stationList_;
     Station & currentStation_;
+
+    PassengerComm & passengerComm_;
 
     State state_;
     Station pickup_, dropoff_;
@@ -48,7 +49,7 @@ protected:
 class PromptMissionComm : public MissionComm
 {
 public:
-    PromptMissionComm(RoutePlanner & rp) : MissionComm(rp) { }
+    PromptMissionComm(RoutePlanner & rp, PassengerComm & pc) : MissionComm(rp,pc) { }
 
 private:
     void updateStatus();
@@ -62,7 +63,7 @@ class DBMissionComm : public MissionComm
     unsigned currentTaskID_;
 
 public:
-    DBMissionComm(RoutePlanner & rp, std::string url, std::string vehicleID);
+    DBMissionComm(RoutePlanner & rp, PassengerComm & pc, std::string url, std::string vehicleID);
 
 private:
     void identify() { dbi.identify(); }

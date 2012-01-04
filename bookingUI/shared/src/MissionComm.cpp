@@ -5,9 +5,9 @@
 
 #include "MissionComm.h"
 
-MissionComm::MissionComm( RoutePlanner & rp )
+MissionComm::MissionComm( RoutePlanner & rp, PassengerComm & pc )
     : routePlanner_(rp), stationList_(rp.sp_.knownStations()),
-    currentStation_(rp.currentStation_), state_(sUninit)
+    currentStation_(rp.currentStation_), passengerComm_(pc), state_(sUninit)
 {
     stateStr_[sWaitingMission] = "WaitingForAMission";
     stateStr_[sGoingToPickup] = "GoingToPickupLocation";
@@ -60,7 +60,7 @@ void MissionComm::run()
 
     case sAtPickup:
         // TODO: check for mission cancel
-        // TODO: wait for passenger to board
+        passengerComm_.waitForPassengerInAtPickup();
         routePlanner_.setDestination(dropoff_);
         state_ = sGoingToDropoff;
         updateVehicleStatus(stateStr_[state_]);
@@ -72,7 +72,6 @@ void MissionComm::run()
         updateETA(routePlanner_.eta_);
         updateGeoLocation(routePlanner_.latitude_, routePlanner_.longitude_);
         if( routePlanner_.hasReached() ) {
-            // TODO: wait for passenger to alight
             state_ = sAtDropoff;
             updateVehicleStatus(stateStr_[state_]);
             updateCurrentLocation(dropoff_.str());
@@ -80,6 +79,7 @@ void MissionComm::run()
         break;
 
     case sAtDropoff:
+        passengerComm_.waitForPassengerOutAtDropoff();
         if( checkMissionCompleted() ) {
             state_ = sWaitingMission;
             updateVehicleStatus(stateStr_[state_]);
@@ -112,8 +112,8 @@ void PromptMissionComm::updateStatus()
 
 
 
-DBMissionComm::DBMissionComm(RoutePlanner & rp, std::string url, std::string vehicleID)
-: MissionComm(rp), dbi(url,vehicleID)
+DBMissionComm::DBMissionComm(RoutePlanner & rp, PassengerComm & pc, std::string url, std::string vehicleID)
+: MissionComm(rp,pc), dbi(url,vehicleID)
 {
 
 }

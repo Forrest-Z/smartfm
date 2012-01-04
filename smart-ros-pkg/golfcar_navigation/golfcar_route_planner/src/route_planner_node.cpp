@@ -13,8 +13,9 @@ int main(int argc, char **argv)
     ros::NodeHandle nh("~");
 
     StationPaths sp;
-    RoutePlanner *rp;
-    MissionComm *comm;
+    RoutePlanner *rp = 0;
+    MissionComm *comm = 0;
+    PassengerComm *pc = 0;
 
     bool dummy_vehicle = false;
     nh.getParam("dummy_vehicle", dummy_vehicle);
@@ -33,6 +34,9 @@ int main(int argc, char **argv)
         rp = new SimpleGoal(sp);
     }
 
+    //pc = new DummyPassengerComm();
+    pc = new SimplePassengerComm();
+
     bool use_dbserver = true;
     nh.getParam("use_dbserver", use_dbserver);
     if( use_dbserver )
@@ -42,12 +46,12 @@ int main(int argc, char **argv)
         nh.getParam("vehicleID", vehicleID);
         ROS_INFO("Connecting to database at URL %s with ID %s.",
                  url.c_str(), vehicleID.c_str());
-        comm = new DBMissionComm(*rp, url, vehicleID);
+        comm = new DBMissionComm(*rp, *pc, url, vehicleID);
     }
     else
     {
         ROS_INFO("Directly prompting for missions in the terminal.");
-        comm = new PromptMissionComm(*rp);
+        comm = new PromptMissionComm(*rp, *pc);
     }
 
     rp->startThread();
@@ -57,6 +61,7 @@ int main(int argc, char **argv)
 
     delete comm;
     delete rp;
+    delete pc;
 
     return 0;
 }

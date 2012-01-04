@@ -30,9 +30,10 @@ class SimulatedVehicle {
 public:
     SimulatedRoutePlanner rp;
     DBMissionComm comm;
+    DummyPassengerComm pc;
 
     SimulatedVehicle(StationPaths & sp, string vname, float speed, string hostname)
-    : rp(sp,speed), comm(rp, hostname+"/dbserver", vname) { }
+    : rp(sp,speed), comm(rp, pc, hostname+"/dbserver", vname) { }
 };
 
 
