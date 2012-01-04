@@ -1,6 +1,6 @@
 <launch>
-	<rosparam command="load" file="$(find golfcar_odom)/launch/low_pass.yaml"/>
-	<node pkg="golfcar_odom" type="speedFilter" name="speedFilter"/>
+	<!--rosparam command="load" file="$(find golfcar_odom)/launch/low_pass.yaml"/-->
+	<!--node pkg="golfcar_odom" type="speedFilter" name="speedFilter"/-->
     <node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
     <node pkg="scan_verti"    type="scan_verti"    name="scan_verti"/>
 	<!--node pkg="golfcar_odom" type="golfcar_odom_imu2" name="golfcar_odom">
