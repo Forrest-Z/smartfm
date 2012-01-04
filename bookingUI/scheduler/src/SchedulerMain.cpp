@@ -30,9 +30,10 @@ class SimulatedVehicle {
 public:
     SimulatedRoutePlanner rp;
     DBMissionComm comm;
+    DummyPassengerComm pc;
 
     SimulatedVehicle(StationPaths & sp, string vname, float speed, string hostname)
-    : rp(sp,speed), comm(rp, hostname+"/dbserver", vname) { }
+    : rp(sp,speed), comm(rp, pc, hostname+"/dbserver", vname) { }
 };
 
 
@@ -217,7 +218,7 @@ void print_usage (FILE* stream, int exit_code)
 void parseOptions(int argc, char **argv)
 {
     int ch;
-    const char* const short_options = "hp:H:";
+    const char* const short_options = "h";
 
     /* An array describing valid long options. */
     static struct option long_options[] =
@@ -290,7 +291,7 @@ void createObjects()
     time_t t = time(NULL);
     strftime(timestr, sizeof(timestr), "%F-%a-%H-%M-%S", localtime(&t));
     ostringstream oss;
-    oss  << "log-" << "." << timestr <<".log";
+    oss  << "log-" << timestr <<".log";
     logger.setLogFile(oss.str());
     logger.setVerbosityLevel(optVerbosityLevel);
     logger.setConsoleStream(stderr);

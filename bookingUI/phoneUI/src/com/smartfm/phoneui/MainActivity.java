@@ -6,13 +6,13 @@ import java.util.List;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.AdapterView.OnItemClickListener;
 
 public class MainActivity extends Activity implements OnClickListener,
@@ -20,6 +20,8 @@ public class MainActivity extends Activity implements OnClickListener,
 
 	ArrayAdapter<String> tasksDescriptions = null;
 	List<Task> tasks = null;
+	
+	private Handler handler = new Handler();
 
 	/** Called when the activity is first created. */
 	@Override
@@ -35,7 +37,8 @@ public class MainActivity extends Activity implements OnClickListener,
 		tasks = new ArrayList<Task>();
 		tasksDescriptions = new ArrayAdapter<String>(this,
 				android.R.layout.simple_list_item_1);
-		updateBookings();
+//		updateBookings();
+		periodicUpdate();
 		
 		ListView lv = (ListView) findViewById(R.id.bookingslistview);		
 		lv.setAdapter(tasksDescriptions);
@@ -105,5 +108,18 @@ public class MainActivity extends Activity implements OnClickListener,
 		// Ask for a result, so that we can call updateBookings on returns.
 		// (see onActivityResult). Actually the activity returns nothing.
 		startActivityForResult(intent, 1);
+	}
+	
+	public void periodicUpdate() {
+		Runnable periodicUpdateProcess = new Runnable(){
+			@Override
+			public void run() {
+				updateBookings();
+				handler.postDelayed(this, 3000);
+			}
+		};
+		
+		handler.removeCallbacks(periodicUpdateProcess);
+		handler.postDelayed(periodicUpdateProcess, 1000);
 	}
 }

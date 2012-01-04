@@ -2,7 +2,7 @@ package com.smartfm.phoneui;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -12,7 +12,6 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
-import android.widget.Toast;
 import android.widget.AdapterView.OnItemSelectedListener;
 
 public class TaskBooking extends Activity implements OnClickListener {
@@ -108,12 +107,18 @@ public class TaskBooking extends Activity implements OnClickListener {
 			break;
 		
 		case R.id.confirmbutton:
-			if( pickupStation==null )
-				ErrDialog.show(this, "Choose a pickup station first!");
-			else if( dropoffStation==null )
-				ErrDialog.show(this, "Choose a dropoff station first!");
-			else if ( pickupStation.compareTo(dropoffStation)==0 )
-				ErrDialog.show(this, "Pick-up location and Drop-off location cannot be the same!");
+			ProgressDialog dialog = ProgressDialog.show(TaskBooking.this, "", 
+                    "Loading. Please wait...", true);
+			dialog.show();
+			if( pickupStation==null ){
+				dialog.cancel();
+				ErrDialog.show(this, "Choose a pickup station first!");}
+			else if( dropoffStation==null ){
+				dialog.cancel();
+				ErrDialog.show(this, "Choose a dropoff station first!");}
+			else if ( pickupStation.compareTo(dropoffStation)==0 ){
+				dialog.cancel();
+				ErrDialog.show(this, "Pick-up location and Drop-off location cannot be the same!");}
 			else {
 				try {
 					DBInterface.addTask(pickupStation, dropoffStation);

@@ -2,6 +2,8 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <cstdlib>
+#include <cassert>
 
 #include "StationPath.h"
 
@@ -75,13 +77,21 @@ void StationList::print() const
 const Station & StationList::prompt(const string & prompt) const
 throw(StationDoesNotExistException)
 {
+    unsigned n;
+    char temp[100];
+    char *endptr;
+
     while( true )
     {
         cout <<prompt;
+        cin.getline(temp,100);
+        n = (unsigned) strtol(temp,&endptr,10);
+        if( endptr==temp ) {
+            cout <<"Please enter a number." <<endl;
+            continue;
+        }
         try {
-            unsigned n;
-            cin >>n;
-            return get((unsigned)n);
+            return get(n);
         }
         catch( StationDoesNotExistException & e ) {
             cout <<"You have entered an invalid station: " <<e.what() <<endl;
@@ -91,5 +101,7 @@ throw(StationDoesNotExistException)
         }
     }
 
-    return get("invalid");
+    // this should never be reached but is required by the compiler.
+    assert(0);
+    return get("__invalid__");
 }

@@ -2,7 +2,7 @@
 
 ///TODO: publish GPS and ETA
 
-RoutePlannerVehicle::RoutePlannerVehicle(StationPaths & sp)
+RoutePlannerVehicle::RoutePlannerVehicle(const StationPaths & sp)
     : RoutePlanner(sp), ac_("move_base", true)
 {
     while( ! ac_.waitForServer(ros::Duration(5.0)) && ros::ok() )

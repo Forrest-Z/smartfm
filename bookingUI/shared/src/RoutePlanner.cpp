@@ -4,16 +4,17 @@
 #include <stdexcept>
 
 #include "RoutePlanner.h"
-#include "MissionComm.h"
 
 using namespace std;
 
 
 
-RoutePlanner::RoutePlanner(const StationPaths & sp)
-    : sp_(sp), state_(sUninit), latitude_(0.0), longitude_(0.0), eta_(-1.0)
+RoutePlanner::RoutePlanner(const StationPaths & sp) : sp_(sp)
 {
-
+    state_ = sUninit;
+    latitude_ = 0.0;
+    longitude_ = 0.0;
+    eta_ = -1.0;
 }
 
 void RoutePlanner::setDestination(const Station & s)

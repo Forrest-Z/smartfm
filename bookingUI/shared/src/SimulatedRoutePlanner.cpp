@@ -52,5 +52,5 @@ void SimulatedRoutePlanner::initDest()
     distance_travelled = 0;
     distance_to_travel = sp_.getPath(currentStation_, destination_).length();
     last_time = 0;
-    printf("Moving from %s to %s", currentStation_.c_str(), destination_.c_str());
+    printf("Moving from %s to %s\n", currentStation_.c_str(), destination_.c_str());
 }

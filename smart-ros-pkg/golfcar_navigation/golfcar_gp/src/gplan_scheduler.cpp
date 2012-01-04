@@ -17,7 +17,7 @@ namespace golfcar_gp
 
 void GlobalPlan::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros){
     ros::NodeHandle global_node;
-    g_plan_pub_ = global_node.advertise<nav_msgs::Path>("global_plan", 1);
+    g_plan_pub_ = global_node.advertise<nav_msgs::Path>("global_plan", 1, true);
     slowZone_pub_ = global_node.advertise<geometry_msgs::PoseArray>("slowZone", 1, true);
 
     ROS_INFO("gplan initialized");

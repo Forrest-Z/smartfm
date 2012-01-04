@@ -1,5 +1,4 @@
-#include <golfcar_ppc/speed_advisor.h>
-
+#include "speed_advisor.h"
 
 SpeedAdvisor::SpeedAdvisor()
 {
@@ -9,7 +8,7 @@ SpeedAdvisor::SpeedAdvisor()
      *
      */
     recommend_speed_= n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-    speed_contribute_ = n.advertise<golfcar_ppc::speed_contribute>("speed_contribute",1);
+    speed_contribute_ = n.advertise<golfcar_ppc::speed_contribute>("speed_status",1);
     move_base_speed_=n.subscribe("/move_status",1, &SpeedAdvisor::moveSpeedCallback, this);
     slowzone_sub_=n.subscribe("slowZone",1,&SpeedAdvisor::slowZoneCallback,this);
     ros::NodeHandle nh("~");
@@ -29,6 +28,7 @@ SpeedAdvisor::SpeedAdvisor()
     nh.param("emergency_zone", e_zone_, 2.0);
     nh.param("slow_zone", slow_zone_, 10.0);
     nh.param("slow_speed", slow_speed_, 1.5);
+    nh.param("baselink_carfront_length", baselink_carfront_length_, 2.0);
     nh.param("enterstation_speed",enterstation_speed_, slow_speed_); //by default, enterstation speed is the same as slow speed
     nh.param("stationspeed_dist", stationspeed_dist_, 20.0);
     n.param("use_sim_time", use_sim_time_, false);
@@ -41,7 +41,6 @@ SpeedAdvisor::SpeedAdvisor()
     //visualization
     interactive_markers::InteractiveMarkerServer server("intersection");
     marker_server_ = &server;
-    through_ints_ = false;
     ros::spin();
 }
 
@@ -89,9 +88,10 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     {
         tf::Stamped<tf::Pose> robot_pose;
         getRobotGlobalPose(robot_pose);
-        double robot_x = robot_pose.getOrigin().x();
-        double robot_y = robot_pose.getOrigin().y();
-        double dist=sqrtDistance(robot_x, robot_y, slowZone_.poses[i].position.x, slowZone_.poses[i].position.y);
+
+        double robot_x = robot_pose.getOrigin().x() + baselink_carfront_length_ * cos(robot_pose.getRotation().getAngle());
+        double robot_y = robot_pose.getOrigin().y() + baselink_carfront_length_ * sin(robot_pose.getRotation().getAngle());
+        double dist=fmutil::distance(robot_x, robot_y, slowZone_.poses[i].position.x, slowZone_.poses[i].position.y);
         if(dist<slowZone_.poses[i].position.z)
         {
             stringstream ss;
@@ -137,14 +137,19 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     }
 
     double net_dist;
-    if(move_status_.dist_to_ints>0 && !through_ints_)
+    //only change the dist_to_ints to the next station when through_ints has set to true
+    if(!through_ints_)//move_status_.dist_to_ints>0 &&
     {
         net_dist = move_status_.dist_to_ints-ppc_stop_dist_;
         sc.int_rec=recommended_speed = sqrt(2*dec_ints_*net_dist);
-        if(net_dist<0) recommended_speed = 0;
+        if(net_dist<0 || last_ints_dist_ < ppc_stop_dist_) recommended_speed = 0;
         speed_att.final_speed("Intersection",speed_att.intersection,pos_speed, norm_neg_speed, recommended_speed);
         speed_settings.push_back(speed_att);
     }
+    else last_ints_dist_ = move_status_.dist_to_ints;
+
+    if(move_status_.dist_to_ints - last_ints_dist_ < ppc_stop_dist_) last_ints_dist_ = move_status_.dist_to_ints;
+
     //reset the intersection flag to allow vehicle to stop for next intersection
     //this assumed that the distance between intersections are at least 10 m.
     if(move_status_.dist_to_ints>10) through_ints_ = false;
@@ -159,6 +164,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     if(net_dist<0) recommended_speed = 0;
     speed_att.final_speed("Goal",speed_att.goal,pos_speed, norm_neg_speed, recommended_speed);
     speed_settings.push_back(speed_att);
+
     //find out whats the min speed is and publish that speed
     SpeedAttribute* sa = speed_settings.find_min_speed();
     speed_now_ = sa->final_speed_;// speed_settings.min_speed;
@@ -172,12 +178,17 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     move_speed.linear.x = speed_now_*speed_compensation;
     recommend_speed_.publish(move_speed);
     sc.speed_now = speed_now_;
-    speed_contribute_.publish(sc);
-}
+    sc.dist_goal = move_status_.dist_to_goal;
+    //determine if goal has reached
+    if(element_now_!=sc.element)
+    {
+        element_pre_ = element_now_;
+        element_now_ = sc.element;
+    }
+    if((sc.element == speed_att.goal || element_pre_ == speed_att.goal)
+            && sc.speed_now == 0 && sc.dist_goal < 7) sc.goal = true;
 
-double SpeedAdvisor::sqrtDistance(double x1, double y1, double x2, double y2)
-{
-    return sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
+    speed_contribute_.publish(sc);
 }
 
 void SpeedAdvisor::moveSpeedCallback(golfcar_ppc::move_status status)
@@ -185,15 +196,20 @@ void SpeedAdvisor::moveSpeedCallback(golfcar_ppc::move_status status)
     last_update_ = ros::Time::now();
     move_status_ = status;
 
-    if(int_point_.x!=status.int_point.x &&int_point_.y!=status.int_point.y)
-    {//interactive_markers::InteractiveMarkerServer &server, geometry_msgs::Vector3 scale, std_msgs::ColorRGBA color, geometry_msgs::Pose pose, std::string name, std::string description)
-        int_point_ = status.int_point;
-        geometry_msgs::Vector3 size; size.x=1.0; size.y=1.0;
-        std_msgs::ColorRGBA color; color.a=1;color.r=0.5;
-        geometry_msgs::Pose pose; pose.position =int_point_ ;pose.orientation.w=1;
-        add_button_marker(*marker_server_,size, color, pose, "Int", "Intersection" );
+    //only change the button when the speed element is not from intersection
+    SpeedAttribute sa;
+    if(element_now_==sa.norm_zone || element_now_ == sa.slow_zone)
+    {
+        if(int_point_.x!=status.int_point.x &&int_point_.y!=status.int_point.y)
+        {//interactive_markers::InteractiveMarkerServer &server, geometry_msgs::Vector3 scale, std_msgs::ColorRGBA color, geometry_msgs::Pose pose, std::string name, std::string description)
+            int_point_ = status.int_point;
+            geometry_msgs::Vector3 size; size.x=1.0; size.y=1.0;
+            std_msgs::ColorRGBA color; color.a=1;color.r=0.5;
+            geometry_msgs::Pose pose; pose.position =int_point_ ;pose.orientation.w=1;
+            add_button_marker(*marker_server_,size, color, pose, "Int", "Intersection" );
+        }
+        marker_server_->applyChanges();
     }
-    marker_server_->applyChanges();
 }
 
 bool SpeedAdvisor::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const

@@ -115,6 +115,7 @@ void Vehicle::update()
     case SchedulerTypes::VEH_STAT_GOING_TO_DROPOFF:
         updateTCurrent(vi.eta);
         updateWaitTime();
+        dbTalker.updateTaskStatus(curTask.taskID, "Processing");
         break;
 
     case SchedulerTypes::VEH_STAT_AT_DROPOFF:
@@ -125,7 +126,7 @@ void Vehicle::update()
             dbTalker.updateTaskStatus(curTask.taskID, "Completed");
             switchToNextTask();
         }
-    break;
+        break;
 
     default:
         throw logic_error(string("Scheduler::update(): vehicle status is ") +

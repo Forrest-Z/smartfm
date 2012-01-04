@@ -5,6 +5,6 @@
     </node-->
     <node pkg="golfcar_route_planner" type="simple_goal" name="simple_goal" output="screen"/>
     <node pkg="golfcar_ppc" type="speed_advisor" name="speed_advisor" output="screen">
-        <rosparam file="$(find golfcar_ppc)/launch/move_base/speed_advisor.yaml" command="load"/>
+        <rosparam file="$(find Launch)/golfcar/speed_advisor.yaml" command="load"/>
     </node>
 </launch>
