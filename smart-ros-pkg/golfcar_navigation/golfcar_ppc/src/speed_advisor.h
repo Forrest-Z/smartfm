@@ -27,6 +27,7 @@
 #include <geometry_msgs/PoseArray.h>
 #include <golfcar_ppc/speed_contribute.h>
 #include <interactive_markers/interactive_marker_server.h>
+#include <fmutil/fm_math.h>
 
 using namespace std;
 using namespace visualization_msgs;
@@ -39,7 +40,7 @@ public:
         emergency, max_brake, need_brake, e_zone, warn_brake,
         intersection, app_goal, goal 
     };
-
+    SpeedAttribute(){};
     SpeedAttribute(double speed_now)
     {
         speed_now_ = speed_now;
@@ -121,13 +122,12 @@ private:
     bool junction_stop_,through_ints_;
     int attribute_, zone_;
     ros::Time last_update_;
-    double stopping_distance_; //automatic calculate based on the maximum speed and normal deceleration
-    double speed_now_;
+    double stopping_distance_, baselink_carfront_length_; //automatic calculate based on the maximum speed and normal deceleration
+    double speed_now_, last_ints_dist_;
     bool use_sim_time_;
     int element_pre_, element_now_;
     void moveSpeedCallback(golfcar_ppc::move_status status);
     void slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones);
-    double sqrtDistance(double x1, double y1, double x2, double y2);
     void ControlLoop(const ros::TimerEvent& event);
     geometry_msgs::Twist move_speed_;
     golfcar_ppc::move_status move_status_;

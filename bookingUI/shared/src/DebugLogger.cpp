@@ -51,15 +51,17 @@ void DebugLogger::close()
 
 void DebugLogger::msglog(int lvl, const char *fmt, ...)
 {
-    va_list ap;
-    va_start(ap,fmt);
+    va_list ap1, ap2;
+    va_start(ap1,fmt);
+    va_copy(ap2,ap1);
     if( logfile!=NULL ) {
-        vfprintf(logfile, fmt, ap);
+        vfprintf(logfile, fmt, ap1);
         fflush(logfile);
     }
     if( lvl<=verbosity_lvl ) {
-        vfprintf(console_stream, fmt, ap);
+        vfprintf(console_stream, fmt, ap2);
         fflush(console_stream);
     }
-    va_end(ap);
+    va_end(ap1);
+    va_end(ap2);
 }
