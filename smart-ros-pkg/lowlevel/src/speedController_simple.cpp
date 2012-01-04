@@ -12,7 +12,7 @@
 #include <fmutil/fm_math.h>
 #include <golfcar_halstreamer/throttle.h>
 #include <golfcar_halstreamer/brakepedal.h>
-#include <golfcar_halsampler/odo.h>
+
 
 class Parameters
 {
@@ -42,9 +42,8 @@ class PID_Speed
         void cmdVelCallBack(geometry_msgs::Twist);
         void rpyCallBack(lse_xsens_mti::imu_rpy);
         void odoCallBack(lowlevel::Encoders);
-        //void buttonCallBack(lowlevel::ButtonState);
-        void buttonCallBack(golfcar_halsampler::odo);
-        
+        void buttonCallBack(lowlevel::ButtonState);
+
         ros::NodeHandle n;
         ros::Subscriber cmdVelSub, odoSub, rpySub, buttonSub;
         ros::Publisher throttlePub, brakePedalPub, pidPub;
@@ -97,8 +96,7 @@ PID_Speed::PID_Speed(ros::NodeHandle nh) : n(nh)
     cmdVelSub = n.subscribe("cmd_vel", 1, &PID_Speed::cmdVelCallBack, this);
     odoSub = n.subscribe("encoders", 1, &PID_Speed::odoCallBack, this);
     rpySub = n.subscribe("imu/rpy", 1, &PID_Speed::rpyCallBack, this);
-    //buttonSub = n.subscribe("button_state", 1, &PID_Speed::buttonCallBack, this);
-    buttonSub = n.subscribe("golfcar_sampler", 1, &PID_Speed::buttonCallBack, this);
+    buttonSub = n.subscribe("button_state", 1, &PID_Speed::buttonCallBack, this);
 
 //    throttlePub = n.advertise<std_msgs::Float64>("throttle", 1);
 //    brakePedalPub = n.advertise<std_msgs::Float64>("brake_angle", 1);
@@ -127,14 +125,12 @@ void PID_Speed::rpyCallBack(lse_xsens_mti::imu_rpy rpy)
     pitch = rpy.pitch;
 }
 
-void PID_Speed::buttonCallBack(golfcar_halsampler::odo bs)//lowlevel::ButtonState bs)
+void PID_Speed::buttonCallBack(lowlevel::ButtonState bs)
 {
     // Would be nice here to define some action when there is a transition from
     // one state to another, e.g. reset the integral term, etc.
     emergency = bs.emergency;
     automode = bs.automode;
-    //automode signal to be added later. Now it is always true
-    automode = true;
 }
 
 
@@ -180,7 +176,7 @@ void PID_Speed::odoCallBack(lowlevel::Encoders enc)
             pid.d_gain = kdd * (e_now - e_pre) / dt;
             pid.v_filter = vFiltered;
             
-            if(fabs(dgain_pre - pid.d_gain)>0.3) pid.d_gain = dgain_pre;
+            if(fabs(dgain_pre - pid.d_gain)>0.2) pid.d_gain = dgain_pre;
             dgain_pre = pid.d_gain;
 
             pid.u_ctrl = pid.p_gain + pid.i_gain + pid.d_gain;
