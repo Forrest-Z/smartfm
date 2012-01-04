@@ -270,6 +270,7 @@ int main(int argc, char **argv)
 	golfcar_halsampler::odo odometer;
 	for ( n = 0 ; n < fifo->num_pins ; n++ ) {
 	    switch ( fifo->type[n] ) {
+		printf("num_pins %d", fifo->num_pins);
 	    case HAL_FLOAT:
 	    {
 	    	if(n==0)
@@ -281,11 +282,14 @@ int main(int argc, char **argv)
 		}
 		break;
 	    case HAL_BIT:
+		if(n==3){
 		if ( buf[n].b ) {
-		    printf ( "1 " );
+		    //printf ( "1 " );
+		    odometer.emergency = 1;
 		} else {
-		    printf ( "0 " );
-		}
+		    //printf ( "0 " );
+		    odometer.emergency = 0;
+		}}
 		break;
 	    case HAL_U32:
 		printf ( "%lu ", (unsigned long)buf[n].u);
@@ -299,7 +303,7 @@ int main(int argc, char **argv)
 	    }
 	}
 	printf ( "\n" );
-	ROS_INFO("Pose=%lf m, Vel=%lf m/s", odometer.pose,odometer.vel);
+	//ROS_INFO("Pose=%lf m, Vel=%lf m/s", odometer.pose,odometer.vel);
 	chatter_pub.publish(odometer);
 	if ( samples > 0 ) {
 	    samples--;
