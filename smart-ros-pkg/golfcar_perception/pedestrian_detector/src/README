@@ -1,0 +1,2 @@
+- classifier.cpp is used for HOG GPU
+- visualizer.cpp is used for visualization
