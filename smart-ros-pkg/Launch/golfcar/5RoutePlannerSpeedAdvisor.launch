@@ -1,9 +1,8 @@
 <launch>
-    <!--node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen">
+    <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen">
         <param name="dummy_vehicle" value="false"/>
-        <param name="use_dbserver" value="false"/>
-    </node-->
-    <node pkg="golfcar_route_planner" type="simple_goal" name="simple_goal" output="screen"/>
+        <param name="use_dbserver" value="true"/>
+    </node>
     <node pkg="golfcar_ppc" type="speed_advisor" name="speed_advisor" output="screen">
         <rosparam file="$(find Launch)/golfcar/speed_advisor.yaml" command="load"/>
     </node>
