@@ -8,7 +8,8 @@ $pickup = $_REQUEST["PickUpLocation"] or die('PickUpLocation missing');
 $dropoff = $_REQUEST["DropOffLocation"] or die('DropOffLocation missing');
 $status = $_REQUEST["Status"] or die('Status missing');
 $vehicleID = $_REQUEST["VehicleID"];
-$filter = $_REQUEST['filter'];
+$filter = $_REQUEST["filter"];
+$returnScript = $_REQUEST["ReturnScript"];
 
 station_exists($con, $pickup) or die('PickUpLocation does not exist');
 station_exists($con, $dropoff) or die('DropOffLocation does not exist');
@@ -32,7 +33,7 @@ mysql_query($sql, $con) or die('Insert error: ' . mysql_error());
 
 mysql_close($con);
 
-if( !isset($filter) || $filter!='yes' )
-    $filter = 'no';
-header( "Location: administration.php?filter=$filter" );
+if( !isset($filter) || $filter!='yes' ) $filter = 'no';
+if( !isset($returnScript) ) $returnScript = 'administration';
+header( "Location: $returnScript.php?filter=$filter" );
 ?>

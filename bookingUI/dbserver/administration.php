@@ -23,6 +23,8 @@ function listRequests()
     echoInTag("th","Dropoff");
     echoInTag("th","VehicleID");
     echoInTag("th","ETA");
+    echoInTag("th","Customer Cancelled");
+    echoInTag("th","Cancel Acknowledged");
     echo "</tr>";
 
     while ($row = @mysql_fetch_assoc($result))
@@ -33,11 +35,16 @@ function listRequests()
         $rid = $row['requestID'];
 
         $cancelBtnForm = '<form action="cancel_request_adm.php" method="post">';
-        $cancelBtnForm = $cancelBtnForm . '<input type="hidden" name="RequestID" value="' . $rid . '"/>';
+        $cancelBtnForm .= '<input type="hidden" name="RequestID" value="' . $rid . '"/>';
         if(isset($_GET['filter']) && $_GET['filter']=='yes')
-            $cancelBtnForm = $cancelBtnForm . '<input type="hidden" name="filter" value="yes"/>';
-        $cancelBtnForm = $cancelBtnForm . '<input type="submit" value="X"/></form>';
-        echoInCell($cancelBtnForm);
+            $cancelBtnForm .= '<input type="hidden" name="filter" value="yes"/>';
+        $cancelBtnForm .= '<input type="hidden" name="ReturnScript" value="administration"/>';
+        $cancelBtnForm .= '<input type="submit" value="X"/></form>';
+
+        if(!$row['custCancelled'])
+            echoInCell($cancelBtnForm);
+        else
+            echoInCell("Cancelling");
 
         echoInCell($row['requestID']);
         echoInCell($row['customerID']);
@@ -46,7 +53,39 @@ function listRequests()
         echoInCell($row['dropOffLocation']);
         echoInCell($row['vehicleID']);
         echoInCell($row['eta']);
+        echoInCell($row['custCancelled']);
+        echoInCell($row['vehicleAcknowledgedCancel']);
         echo "</tr>";
+    }
+    echo "</table>";
+    mysql_close($con);
+}
+
+function listVehicles()
+{
+    $con = connect_to_DB();
+    $sql = "SELECT * FROM vehicles";
+    $result = mysql_query($sql, $con) or die ('Select error: ' . mysql_error());
+    echo "<table>";
+    echo "<tr>";
+    echoInTag("th","VehicleID");
+    echoInTag("th","Status");
+    echoInTag("th","Latitude");
+    echoInTag("th","Longitude");
+    echoInTag("th","ETA");
+    echoInTag("th","RequestID");
+    echoInTag("th","Current Location");
+    echo "</tr>";
+
+    while( $row = @mysql_fetch_assoc($result) )
+    {
+        echoInCell($row['requestID']);
+        echoInCell($row['status']);
+        echoInCell($row['latitude']);
+        echoInCell($row['longitude']);
+        echoInCell($row['eta']);
+        echoInCell($row['requestID']);
+        echoInCell($row['currentLocation']);
     }
     echo "</table>";
     mysql_close($con);
@@ -101,6 +140,9 @@ padding: 5px;
 </form>
 <?php listRequests(); ?>
 
+<h1>Vehicles List</h1>
+<?php listVehicles(); ?>
+
 <h1>Make a booking</h1>
 <form action="make_booking.php" method="post">
 <p>CustomerID: <input type="text" name="CustomerID" value="dummy"/></p>
@@ -117,6 +159,7 @@ padding: 5px;
 <p>Dropoff location: <?php selectStation("DropOffLocation","McDonald"); ?></p>
 <p>VehicleID: <input type="text" name="VehicleID" value=""/></p>
 <?php if(isset($_GET['filter']) && $_GET['filter']=='yes') {?><input type="hidden" name="filter" value="yes"/><?php }?>
+<input type="hidden" name="ReturnScript" value="administration"/>
 <input type="submit" value="Submit" />
 </form>
 
