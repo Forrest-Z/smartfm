@@ -131,16 +131,20 @@ PathPoint SvgPath::GetTransform(TiXmlElement* childElement)
     {
         tf.x_=0; tf.y_=0;
     }
-    vector<string> data = SplitString(value, "(,)");
-    if(data.size()==3 && data[0]=="translate")
-    {
-        tf.x_ = atof(data[1].c_str());
-        tf.y_ = atof(data[2].c_str());
-        if(VERBOSE) cout <<"Transform x: " <<tf.x_ <<" y: " <<tf.y_ <<endl;
-        return tf;
-    }
     else
-        throw runtime_error("Unexpected transform data format");
+    {
+        vector<string> data = SplitString(value, "(,)");
+        if(data.size()==3 && data[0]=="translate")
+        {
+            tf.x_ = atof(data[1].c_str());
+            tf.y_ = atof(data[2].c_str());
+            
+        }
+        else
+            throw runtime_error("Unexpected transform data format");
+    }
+    if(VERBOSE) cout <<"Transform x: " <<tf.x_ <<" y: " <<tf.y_ <<endl;
+    return tf;
 }
 
 PathPoint SvgPath::getSize()//(TiXmlDocument* svgDoc)//PathPoint* size)
