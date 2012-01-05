@@ -29,10 +29,10 @@ HOGClassifier::~HOGClassifier(){}
 
 void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch pr)
 {
-
+	/// HOG classification of laser rects
+	
     if(new_image)
     {
-
 
         ROS_DEBUG("Inside people rect");
 
@@ -62,14 +62,16 @@ void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch
             Rect roi(img_x,img_y,img_width,img_height);
 
             Mat mat_img(img(roi));
-            double ratio;
+            double ratio; /// to scale image            
             ScaleWithDistanceRatio(&mat_img, pr.pd_vector[i].disz, norm_dist, Size(img_width, img_height),WIN_SIZE, &ratio);
             gpu::GpuMat gpu_img(mat_img);
             vector<Rect> found;
             Point offset(img_x, img_y);
             detectPedestrian(offset, ratio, gpu_img, &detect_rects);
 
-            //Send ROI to visualizer
+            /// Send ROI to visualizer
+            
+            /// Add confidence level
             temp_rect = pr.pd_vector[i];
             temp_rect.cvRect_x1=img_x;temp_rect.cvRect_y1=img_y;
             temp_rect.cvRect_x2=img_x+img_width;temp_rect.cvRect_y2=img_y+img_height;
@@ -116,6 +118,8 @@ void HOGClassifier::detectPedestrian(Point offset, double ratio, gpu::GpuMat& gp
                                    cv::gpu::HOGDescriptor::DEFAULT_NLEVELS);
     gpu_hog.setSVMDetector(gpu::HOGDescriptor::getPeopleDetector48x96());
     gpu_hog.detectMultiScale(gpu_img, found, hit_threshold, Size(8,8), Size(0,0), scale, group_threshold);
+    
+    /// does it give confidence level ?  
 
     t = (double)getTickCount() - t;
     ROS_DEBUG("Detection time = %gms", t*1000./getTickFrequency());
@@ -123,6 +127,8 @@ void HOGClassifier::detectPedestrian(Point offset, double ratio, gpu::GpuMat& gp
     for( int j = 0; j < (int)(found).size(); j++ )
     {
         sensing_on_road::pedestrian_vision temp_rect;
+        /// add the confidence level : float32 confidence
+        
         Rect r = (found)[j];
         Point topleftPoint = Point(r.tl().x/ratio, r.tl().y/ratio)+offset;
         Point bottomrightPoint =  Point(r.br().x/ratio, r.br().y/ratio)+offset;

@@ -1,2 +1,5 @@
 - classifier.cpp is used for HOG GPU
+-- receive coord from laser and do a HOG Detection
+
 - visualizer.cpp is used for visualization
+-- UI stuff
