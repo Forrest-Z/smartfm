@@ -176,6 +176,7 @@ void PID_Speed::odoCallBack(lowlevel::Encoders enc)
             }
 
             pid.p_gain = param.kp * e_now;
+            pid.p_gain = BOUND( -0.7, pid.p_gain, 1.0);
             pid.i_gain = param.ki * ei;
             pid.d_gain = kdd * (e_now - e_pre) / dt;
             pid.v_filter = vFiltered;
