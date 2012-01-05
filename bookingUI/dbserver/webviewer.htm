@@ -14,23 +14,21 @@
 
 <script type="text/javascript">
 
-/*
-var iconBlue = new google.maps.MarkerImage();
-iconBlue.image = 'http://labs.google.com/ridefinder/images/mm_20_blue.png';
+
+var iconBlue = new google.maps.MarkerImage('http://labs.google.com/ridefinder/images/mm_20_blue.png');
 iconBlue.shadow = 'http://labs.google.com/ridefinder/images/mm_20_shadow.png';
 iconBlue.iconSize = new google.maps.Size(12, 20);
 iconBlue.shadowSize = new google.maps.Size(22, 20);
 iconBlue.iconAnchor = new google.maps.Point(6, 20);
 iconBlue.infoWindowAnchor = new google.maps.Point(5, 1);
 
-var iconRed = new google.maps.MarkerImage();
-iconRed.image = 'http://labs.google.com/ridefinder/images/mm_20_red.png';
+var iconRed = new google.maps.MarkerImage('http://labs.google.com/ridefinder/images/mm_20_red.png');
 iconRed.shadow = 'http://labs.google.com/ridefinder/images/mm_20_shadow.png';
 iconRed.iconSize = new google.maps.Size(12, 20);
 iconRed.shadowSize = new google.maps.Size(22, 20);
 iconRed.iconAnchor = new google.maps.Point(6, 20);
 iconRed.infoWindowAnchor = new google.maps.Point(5, 1);
-*/
+
 
 var vehicleMarkers = {};
 
@@ -57,8 +55,7 @@ function showStations() {
             var point = new google.maps.LatLng(
                 parseFloat(stationNodes[i].getAttribute("latitude")),
                 parseFloat(stationNodes[i].getAttribute("longitude")) );
-            //var marker = new google.maps.Marker({position: point, map: map, icon: iconBlue, title: name});
-            var marker = new google.maps.Marker({position: point, map: map, title: name});
+            var marker = new google.maps.Marker({position: point, map: map, title: name, icon: iconRed});
         }
     });
 }
@@ -86,7 +83,7 @@ function showCars() {
                 html += "status: " + status + "<br/>";
                 html += "requestID: " + requestID + "<br/>";
                 html += "eta: " + eta + "<br/>";
-                var marker = new google.maps.Marker({position: point, map: map, title: html});
+                var marker = new google.maps.Marker({position: point, map: map, title: html, icon: iconBlue});
                 vehicleMarkers[vehicleID] = marker;
             }
 
