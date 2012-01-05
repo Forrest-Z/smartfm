@@ -35,7 +35,8 @@ void SimplePassengerComm::waitForPassengerInAtPickup()
 void SimplePassengerComm::waitForPassengerOutAtDropoff()
 {
     std::cout <<"At dropoff station. Waiting for passenger to exit..." <<std::endl;
-    std::cout <<"Press ENTER when you are ready.";
+    std::cout <<"Press ENTER when you are out of the car.";
     std::cin.ignore( std::numeric_limits<std::streamsize>::max(), '\n' );
-    std::cout <<"Please stand clear from the car, it may move." <<std::endl;
+    std::cout <<"Please stand clear from the car, as it may move at any time now." <<std::endl;
+    sleep(5);
 }
