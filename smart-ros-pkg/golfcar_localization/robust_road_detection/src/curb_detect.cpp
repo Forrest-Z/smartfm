@@ -1,6 +1,6 @@
 //NUS GolfCart
 //firt version  2011-11-30
-//last update   2011-12-12
+//last update   2012-01-04
 //add DP1_Find function;
 
 #include <curb_detect.h>
@@ -539,6 +539,21 @@ namespace road_detection{
             rightCrossing_pt.y = - crossing_thresh_;
             rightCrossing_pt.z = 0.0;
             right_crossing_pcl_.points.push_back(rightCrossing_pt);
+            
+            /////////////////////////////////////////////////////////////////////////
+            //20120104 update:
+            //changed to counter non-verticle fact of crossing beam to base_link x;
+            //corresponding to changes in "amcl" part;
+            //store beam angle in "rightCrossing_pt.z";
+            /////////////////////////////////////////////////////////////////////////
+            float delt_x = rightCrossing_pt.x - looking_forward_distance_;
+            float delt_y = rightCrossing_pt.y - 0.0;
+            float angle_tmp;
+            if(delt_x ==0) delt_x =0.01;
+            angle_tmp = atan2f(delt_y, delt_x);
+            rightCrossing_pt.x = looking_forward_distance_;
+            rightCrossing_pt.y = rightCrossing_pt.y;
+            rightCrossing_pt.z = angle_tmp;
             hybrid_pcl_.points.push_back(rightCrossing_pt);
             
             //help reset right curb things;
@@ -561,6 +576,19 @@ namespace road_detection{
              leftCrossing_pt.y  = crossing_thresh_;
              leftCrossing_pt.z  = 0.0;
              left_crossing_pcl_.points.push_back(leftCrossing_pt);
+             
+             /////////////////////////////////////////////////////////////////////////
+             //20120104 update:
+             //changed to counter non-verticle fact of crossing beam to base_link x;
+             //corresponding to changes in "amcl" part;
+             /////////////////////////////////////////////////////////////////////////
+             float delt_x = leftCrossing_pt.x - looking_forward_distance_;
+             float delt_y = leftCrossing_pt.y - 0.0;
+             if(delt_x ==0) delt_x =0.01;
+             float angle_tmp = atan2f(delt_y, delt_x);
+             leftCrossing_pt.x = looking_forward_distance_;
+             leftCrossing_pt.y = leftCrossing_pt.y;
+             leftCrossing_pt.z = angle_tmp;
              hybrid_pcl_.points.push_back(leftCrossing_pt);
              
              //help reset left curb things;

@@ -9,15 +9,18 @@
 using namespace std;
 using namespace cv;
 
+
+
 class HOGClassifier {
 
 public:
 
 
     HOGClassifier(ros::NodeHandle &n);
+    //HOGClassifier(){};
     ~HOGClassifier();
-
-
+    
+    bool fillRoiRectangle(Size img_size, Size* roi_size, Point* roi_point, sensing_on_road::pedestrian_vision& pd);
 
 private:
     cv::HOGDescriptor cpu_hog;

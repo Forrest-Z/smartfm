@@ -22,8 +22,7 @@ class PurePursuit
 public:
 
     PurePursuit();
-
-    bool steering_control(double& wheel_angle, double &dist_to_goal, double &dist_to_ints, geometry_msgs::Point &int_point);
+    bool steering_control(double& wheel_angle, double &dist_to_goal);
     geometry_msgs::Point current_point_, next_point_;
 
     ros::Publisher pp_vis_;
@@ -36,12 +35,14 @@ public:
     int nextPathCount_;
     bool initialized_;
     double dist_to_final_point;
+    bool current_pos_to_point_dist(int end_point, double* path_dist);
 
 private:
-    bool heading_lookahead(double &heading_la, double &dist_to_goal, double &dist_to_ints, geometry_msgs::Point &int_point);
+    bool heading_lookahead(double &heading_la, double &dist_to_goal);
     bool circle_line_collision(geometry_msgs::Point& anchor_point, geometry_msgs::Point& intersect_point);
     double sqrt_distance(geometry_msgs::Point wp_a, geometry_msgs::Point wp_b);
 
+    geometry_msgs::Point collided_pt;
     double car_length;
 
 };

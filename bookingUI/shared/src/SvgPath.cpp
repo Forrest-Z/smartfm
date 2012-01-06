@@ -5,7 +5,7 @@
 #include <tinyxml.h>
 
 #include "StationPath.h"
-#include "SvgPath.h"
+
 
 using namespace std;
 
@@ -233,9 +233,44 @@ StationPath SvgPath::StringToPath(string data)
     positions.push_back(pos);
     for(unsigned int i=3; i<data_s.size(); i++)
     {
-        if(data_s[i].find_first_of("MmHhVvSsQqTtAa")!=string::npos)
+        if(data_s[i].find_first_of("HhVvSsQqTtAa")!=string::npos)
         {
             throw runtime_error(string("Only line path is supported, given ")+data_s[i]);
+        }
+        else if(data_s[i].find_first_of("Mm")!=string::npos)
+        {
+            //the start of another node on the same path represent the turning signals
+            bool right_signal=true;
+            if(i+5<data_s.size())
+            {
+                //turn left signal
+                if(data_s[i+5].find_first_of("Mm")!=string::npos)
+                {
+                    if(data_s[i+5].find_first_of("M")!=string::npos) data_s[i+5] = string("L");
+                    else if(data_s[i+5].find_first_of("m")!=string::npos) data_s[i+5] = string("l");
+                    if(VERBOSE) cout<<"left_signal found at "<<i<<" points"<<endl;
+                    positions.leftsig_pts_.push_back(found_points);
+                    right_signal=false;
+                }
+                else if(data_s[i+5].find_first_of("Cc")!=string::npos)
+                {
+                    if(data_s[i+5].find_first_of("C")!=string::npos) data_s[i+5] = string("L");
+                    else if(data_s[i+5].find_first_of("c")!=string::npos) data_s[i+5] = string("l");
+                    //only take the third point by removing the 2nd and 3rd points
+                    for(int j=i+5;j<i+9;j++) data_s.erase(data_s.begin()+j);
+
+                    cout<<"off_signal found at "<<i<<" points"<<endl;
+                    positions.offsig_pts_.push_back(found_points);
+                    right_signal=false;
+                }
+            }
+
+            if(right_signal)
+            {
+                if(VERBOSE) cout<<"right_signal found at "<<i<<" points"<<endl;
+                positions.rightsig_pts_.push_back(found_points);
+            }
+
         }
         else if(data_s[i].find_first_of("Cc")!=string::npos)
         {
@@ -254,9 +289,8 @@ StationPath SvgPath::StringToPath(string data)
             found_points++;
             positions.push_back(pos);
 
-            found_points++;
-            //The stop point
-            positions.push_back(pos);
+            //the intersection points
+            positions.ints_pts_.push_back(found_points);
         }
         else if(data_s[i].find_first_of("Zz")==string::npos)
         {

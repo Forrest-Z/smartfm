@@ -4,6 +4,7 @@
 #include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/PoseArray.h>
 #include <golfcar_gp/gplan_scheduler.h>
+#include <pnc_msgs/poi.h>
 
 using namespace std;
 
@@ -19,10 +20,21 @@ void GlobalPlan::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_
     ros::NodeHandle global_node;
     g_plan_pub_ = global_node.advertise<nav_msgs::Path>("global_plan", 1, true);
     slowZone_pub_ = global_node.advertise<geometry_msgs::PoseArray>("slowZone", 1, true);
+    poi_pub_ = global_node.advertise<pnc_msgs::poi>("poi", 1, true);
 
     ROS_INFO("gplan initialized");
 }
 
+void add_pts(vector<int>& pts, vector<pnc_msgs::sig_pt>* poi, int type)
+{
+    pnc_msgs::sig_pt sig_pt;
+    for(unsigned int i=0; i<pts.size(); i++)
+    {
+        sig_pt.points = pts[i];
+        sig_pt.type = type;
+        poi->push_back(sig_pt);
+    }
+}
 
 bool GlobalPlan::makePlan(const geometry_msgs::PoseStamped&  start,
                           const geometry_msgs::PoseStamped& goal,
@@ -47,6 +59,19 @@ bool GlobalPlan::makePlan(const geometry_msgs::PoseStamped&  start,
     }
 
     slowZone_pub_.publish(slowZones);
+
+    //publish point of interest
+    pnc_msgs::poi poi;
+    add_pts(station_path.leftsig_pts_, &poi.sig_pts, 0);
+    add_pts(station_path.rightsig_pts_, &poi.sig_pts, 1);
+    add_pts(station_path.offsig_pts_, &poi.sig_pts, 2);
+
+    //poi.rightsig_pts.insert(poi.rightsig_pts.begin(),station_path.rightsig_pts_.begin(),station_path.rightsig_pts_.end());
+    //poi.offsig_pts.insert(poi.offsig_pts.begin(),station_path.offsig_pts_.begin(),station_path.offsig_pts_.end());// = station_path.leftsig_pts_;
+    poi.int_pts.insert(poi.int_pts.begin(),station_path.ints_pts_.begin(),station_path.ints_pts_.end());// = station_path.leftsig_pts_;
+
+    poi_pub_.publish(poi);
+
     vector<geometry_msgs::PoseStamped> final_targets;
     geometry_msgs::PoseStamped ps;
 

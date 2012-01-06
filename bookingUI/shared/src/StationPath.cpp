@@ -8,7 +8,7 @@
 #include <sstream>
 
 #include "StationPath.h"
-#include "SvgPath.h"
+
 using namespace std;
 
 
@@ -21,7 +21,7 @@ using namespace std;
 // TODO: find a more flexible method. For instance, this could be passed at construcion
 // time, or rely on an environment variable, etc.
 #define SVG_FILE "~/SvgPath/ALL_1217.svg"
-SvgPath svgpath_;
+
 double PathPoint::distance(const PathPoint &p1, const PathPoint &p2)
 {
     return sqrt( pow(p1.x_-p2.x_,2) + pow(p1.y_-p2.y_,2) );
@@ -49,9 +49,15 @@ string tilde_expand(const char *path)
     return res;
 }
 
+void extendVectors(vector<int>* original, vector<int>& addition, int previous_path_size)
+{
+    vector<int> addition_plus_offset;
+    for(int i=0; i<addition.size();i++) addition_plus_offset.push_back(addition[i]+previous_path_size);
+    original->insert(original->end(), addition_plus_offset.begin(), addition_plus_offset.end());
+}
 ///Stores an array of points into the given path. Point coordinates are
 ///converted from pixel number to map coordinates.
-void storeIntoStationPaths(StationPath *stationpath, const char* id)
+void StationPaths::storeIntoStationPaths(StationPath *stationpath, const char* id)
 {
     StationPath path;
 
@@ -59,7 +65,13 @@ void storeIntoStationPaths(StationPath *stationpath, const char* id)
     {
         path = svgpath_.getPath((string)id);
         if( VERBOSE ) cout <<"Path size: " <<path.size() <<". ";
+        int previous_path_size = stationpath->size();
         stationpath->insert(stationpath->end(), path.begin(), path.end());
+        extendVectors(&stationpath->ints_pts_, path.ints_pts_, previous_path_size);
+        extendVectors(&stationpath->rightsig_pts_, path.rightsig_pts_, previous_path_size);// previous_path_size);
+        extendVectors(&stationpath->leftsig_pts_, path.leftsig_pts_, previous_path_size);
+        extendVectors(&stationpath->offsig_pts_, path.offsig_pts_, previous_path_size);//previous_path_size);
+        //cout<<previous_path_size<<" Previous size of id "<<id<<endl;
         if( VERBOSE ) cout <<"Length= " <<stationpath->recomputeLength() <<endl;
     }
     catch (string error)
@@ -69,7 +81,7 @@ void storeIntoStationPaths(StationPath *stationpath, const char* id)
 }
 
 
-void printInterPointsDistance()
+void StationPaths::printInterPointsDistance()
 {
     vector< vector<StationPath> > main_paths;
     main_paths.resize(1);
@@ -144,19 +156,19 @@ void addPointsInPath(StationPath *p)
 }
 
 
-void storeFromMultipleSVGs(StationPath *stationpath, const char *svg_file1, const char *svg_file2)
+void StationPaths::storeFromMultipleSVGs(StationPath *stationpath, const char *svg_file1, const char *svg_file2)
 {
     storeIntoStationPaths(stationpath, svg_file1);
     storeIntoStationPaths(stationpath, svg_file2);
 }
 
-void storeFromMultipleSVGs(StationPath *stationpath, const char *svg_file1, const char *svg_file2, const char *svg_file3)
+void StationPaths::storeFromMultipleSVGs(StationPath *stationpath, const char *svg_file1, const char *svg_file2, const char *svg_file3)
 {
     storeFromMultipleSVGs(stationpath, svg_file1, svg_file2);
     storeIntoStationPaths(stationpath, svg_file3);
 }
 
-void storeFromMultipleSVGs(StationPath *stationpath, const char *svg_file1, const char *svg_file2, const char *svg_file3, const char *svg_file4)
+void StationPaths::storeFromMultipleSVGs(StationPath *stationpath, const char *svg_file1, const char *svg_file2, const char *svg_file3, const char *svg_file4)
 {
     storeFromMultipleSVGs(stationpath, svg_file1, svg_file2, svg_file3);
     storeIntoStationPaths(stationpath, svg_file4);

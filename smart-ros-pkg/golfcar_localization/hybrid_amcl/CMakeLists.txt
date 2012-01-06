@@ -29,8 +29,12 @@ target_link_libraries(amcl_sensors amcl_map amcl_pf)
 
 rosbuild_add_executable(bin/mix_amcl
                        src/mix_amcl_node.cpp)
-                       
+                             
 target_link_libraries(bin/mix_amcl amcl_sensors amcl_map amcl_pf)
+
+rosbuild_add_executable(bin/curb_intersection_amcl
+                       src/curb_intersection_node.cpp)   
+target_link_libraries(bin/curb_intersection_amcl amcl_sensors amcl_map amcl_pf)
 
 ## Tests are failing on OSX for an unknown reason
 #include(CMakeDetermineSystem)
