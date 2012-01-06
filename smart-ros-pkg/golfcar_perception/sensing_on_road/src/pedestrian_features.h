@@ -46,6 +46,7 @@ public:
     float nearest_distance;
     float velocity;
     float fastest_velocity;
+    float maximum_size;
     bool once_for_all;
     std::vector<sensing_on_road::scan_segment> single_segment_history;
 
@@ -91,6 +92,10 @@ private:
     ros::Subscriber veri_vision_sub_;
     void Bayesfilter(const sensing_on_road::pedestrian_vision_batch &veri_pd_para);
     sensing_on_road::pedestrian_vision_batch veri_batch_;
+    
+    ros::Subscriber laser_show_sub_;
+    void laserRectShow(const sensing_on_road::pedestrian_vision_batch &laser_show_para);
+    sensing_on_road::pedestrian_vision_batch laser_show_batch_;
 
     void ProbabilityCheck();
     sensing_on_road::pedestrian_vision_batch veri_show_batch_;

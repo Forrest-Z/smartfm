@@ -288,8 +288,8 @@ MixAmclNode::MixAmclNode() :
   save_pose_period = ros::Duration(1.0/tmp);
   private_nh_.param("laser_min_range", laser_min_range_, -1.0);
   private_nh_.param("laser_max_range", laser_max_range_, -1.0);
-  private_nh_.param("min_particles", min_particles, 1000);
-  private_nh_.param("max_particles", max_particles, 5000);
+  private_nh_.param("min_particles", min_particles, 200);
+  private_nh_.param("max_particles", max_particles, 1000);
   private_nh_.param("laser_max_beams", max_beams, 30);
   private_nh_.param("kld_err", pf_err, 0.01);
   private_nh_.param("kld_z", pf_z, 0.99);
@@ -742,7 +742,8 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 			pf_vector_t fakepose;
 			fakepose.v[0]= leftCrossing.points[ip].x;
 			fakepose.v[1]= 0.0;
-			fakepose.v[2]= 0.0;
+            //20120104 update;
+			fakepose.v[2]= leftCrossing.points[ip].z;
 			LeftCroData_->FakeSensorPose_.push_back(fakepose);
 		}
 		
@@ -751,9 +752,11 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 			pf_vector_t fakepose;
 			fakepose.v[0]= rightCrossing.points[ip].x;
 			fakepose.v[1]= 0.0;
+            
 			//fakepose.v[2] is the angle;
-			fakepose.v[2]= 0.0;
-			
+            //20120104 update;
+			fakepose.v[2]= rightCrossing.points[ip].z;
+            
 			RightCroData_->FakeSensorPose_.push_back(fakepose);
 		}
 		
@@ -781,9 +784,15 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 		for(unsigned int ip=0; ip<curbpoints.points.size(); ip++)
 		{
 			ROS_DEBUG("curb accumulated");
+            
+            /////////////////////////////////////////////////////////////////////////
 			//remember this, to eliminate "crossing" noise;
-			if(curbpoints.points[ip].y>0) {LeftCroData_->FakeSensorPose_.clear();}
-			else {RightCroData_->FakeSensorPose_.clear();}
+            /////////////////////////////////////////////////////////////////////////
+            //20120104: seems no need;
+            /////////////////////////////////////////////////////////////////////////
+			//if(curbpoints.points[ip].y>0) {LeftCroData_->FakeSensorPose_.clear();}
+			//else {RightCroData_->FakeSensorPose_.clear();}
+            /////////////////////////////////////////////////////////////////////////
 			
 			temppose.position.x = curbpoints.points[ip].x;
 			temppose.position.y = curbpoints.points[ip].y;
@@ -823,7 +832,8 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 			
 			double yyaw,ttemp;
 			baselink_old_new.getBasis().getEulerYPR(yyaw, ttemp, ttemp);
-			fakepose.v[2] = yyaw;
+            //20120104 update;
+			fakepose.v[2] = leftCrossing.points[ip].z + yyaw;
 			
 			LeftCroData_->FakeSensorPose_.push_back(fakepose);
 		}
@@ -846,7 +856,8 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 			
 			double yyaw,ttemp;
 			baselink_old_new.getBasis().getEulerYPR(yyaw, ttemp, ttemp);
-			fakepose.v[2] = yyaw;
+            //20120104 update;
+			fakepose.v[2] = rightCrossing.points[ip].z+ yyaw;
 			
 			RightCroData_->FakeSensorPose_.push_back(fakepose);
 		}
@@ -858,7 +869,6 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 		curb_delta.v[0] = pose.v[0] - pf_curb_odom_pose_.v[0];
 		curb_delta.v[1] = pose.v[1] - pf_curb_odom_pose_.v[1];
 		curb_delta.v[2] = angle_diff(pose.v[2], pf_curb_odom_pose_.v[2]);
-		
 
 		// served as the normalizer when doing analysis;
 		double distTolastCurb 	  = sqrt(curb_delta.v[0]*curb_delta.v[0]+curb_delta.v[1]*curb_delta.v[1]);
@@ -873,7 +883,7 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 		bool update3 = (curbdata_->accumNum_>10) && (distTolastOdom>0.6||odom_delta.v[2]> M_PI/6.0);
 		
 		bool update4 = (LeftCroData_->FakeSensorPose_.size()+RightCroData_->FakeSensorPose_.size())> CROSSING_TRESH || LeftCroData_->FakeSensorPose_.size()>5 || RightCroData_->FakeSensorPose_.size()>5 ;
-		if(update4){ROS_DEBUG("~~~Using Crossing Information~~");}
+		if(update4){ROS_INFO("~~~Using Crossing Information~~");}
 		
 		bool updateAction = (update1 && (update2||update4))||update3;
 		bool updateMeas= (update1 && (update2||update4))||update3;
@@ -896,8 +906,10 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
             {
                 //added on 2011-12-13;
                 //later after changing the crossing data type, this can be further improved;
-                double temp_alpha1=0.0009;	
-				double temp_alpha2=0.0009;	
+                //double temp_alpha1=0.0009;	
+				//double temp_alpha2=0.0009;	
+                double temp_alpha1=0.04;	
+				double temp_alpha2=0.04;	
 				double temp_alpha3=0.2;
 				double temp_alpha4=0.2;
 				double temp_alpha6=0.01;
@@ -963,8 +975,8 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 
 		if(updateMeas)
 		{
-			ROS_DEBUG("---------------------update Meas----------------");
-			ROS_DEBUG("distTolastCurb: %5f, curb accumNum: %d, left crossing: %d, right crossing: %d", distTolastCurb, curbdata_->accumNum_, LeftCroData_->FakeSensorPose_.size(), RightCroData_->FakeSensorPose_.size());
+			ROS_INFO("---------------------update Meas----------------");
+			ROS_INFO("distTolastCurb: %5f, curb accumNum: %d, left crossing: %d, right crossing: %d", distTolastCurb, curbdata_->accumNum_, LeftCroData_->FakeSensorPose_.size(), RightCroData_->FakeSensorPose_.size());
 			
             LeftCroData_->Pose_Est_ = pf_->Pos_Est;
             RightCroData_->Pose_Est_ = pf_->Pos_Est;
@@ -1062,13 +1074,10 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
             else{numTresh_ = 15;}
             
             bool *tempflagpointer = &CrossingUseFlag_;
-            if(!LaserUseFlag_)
-            {
-                LeftCroData_->sensor = crossing_;
-                crossing_->UpdateSensor(pf_, (AMCLSensorData*) LeftCroData_, tempflagpointer, validate_function_switch);
-                RightCroData_->sensor = crossing_;
-                crossing_->UpdateSensor(pf_, (AMCLSensorData*) RightCroData_, tempflagpointer, validate_function_switch);
-            }
+            LeftCroData_->sensor = crossing_;
+            crossing_->UpdateSensor(pf_, (AMCLSensorData*) LeftCroData_, tempflagpointer, validate_function_switch);
+            RightCroData_->sensor = crossing_;
+            crossing_->UpdateSensor(pf_, (AMCLSensorData*) RightCroData_, tempflagpointer, validate_function_switch);
         
             if(CurbUseFlag_||CrossingUseFlag_)
             {

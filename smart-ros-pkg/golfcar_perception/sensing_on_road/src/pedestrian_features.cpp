@@ -1,5 +1,6 @@
 #include "pedestrian_features.h"
 
+#define MAX_SEG_SIZE 1.5
 #define ASSO_TIME_COEF 0.1
 #define NEAREST_THRESH 1.0
 #define MERGE_DIST 0.30
@@ -30,6 +31,9 @@ pedestrian_features::pedestrian_features()
     ros::NodeHandle nh;
     segments_batch_sub_    = nh.subscribe("segment_processed", 1, &pedestrian_features::pedestrian_filtering, this);
     veri_vision_sub_       = nh.subscribe("veri_pd_vision", 1, &pedestrian_features::Bayesfilter, this);
+    
+    laser_show_sub_        = nh.subscribe("pd_vision_batch", 1, &pedestrian_features::laserRectShow, this);
+    
     laser_pedestrians_pub_ = nh.advertise<sensing_on_road::pedestrian_laser_batch>("ped_laser_batch", 2);
     pedestrians_pcl_pub_   = nh.advertise<sensor_msgs::PointCloud>("ped_laser_pcl", 2);
     veri_show_batch_pub_   = nh.advertise<sensing_on_road::pedestrian_vision_batch>("veri_show_batch", 2);
@@ -39,7 +43,6 @@ pedestrian_features::pedestrian_features()
 
 pedestrian_features::~pedestrian_features()
 {
-
 }
 
 //Function "pedestrian_filtering" open to change;
@@ -49,14 +52,25 @@ pedestrian_features::~pedestrian_features()
 void pedestrian_features::pedestrian_filtering(const sensing_on_road::segments_one_batch& batch_para)
 {
     filtered_segment_batch_ = batch_para;
-
-    /*
+    
+    
+    //update 20120106, filter irrelevant segments;
+    std::vector<unsigned int> erase_seg;
     for(unsigned is =0; is <filtered_segment_batch_.segments.size(); is++)
     {
-        if(filtered_segment_batch_.segments[is].max_dimension < 0.30)
-        filtered_segment_batch_.segments.erase(filtered_segment_batch_.segments.begin()+is);
+        if(filtered_segment_batch_.segments[is].max_dimension > MAX_SEG_SIZE)
+        erase_seg.push_back(is);
     }
-    */
+    //erase from back;
+    for(unsigned ie = erase_seg.size(); ie > 0; ie--)
+    {
+        unsigned int erase_serial = erase_seg[ie-1];
+        filtered_segment_batch_.segments.erase(filtered_segment_batch_.segments.begin() + erase_serial);
+    }
+    if(filtered_segment_batch_.segments.size()==0){return;}
+    
+    
+    
     ROS_DEBUG("Before data_association");
     data_association();
     ROS_DEBUG("After data_association");
@@ -119,7 +133,7 @@ void pedestrian_features::data_association()
 
 
                 dis2d_tmp = sqrtf(dis_x*dis_x+dis_y*dis_y)+fabsf(time_distance)*ASSO_TIME_COEF;
-
+            
                 if(dis2d_tmp<dis2d){dis2d = dis2d_tmp; disSpace = sqrtf(dis_x*dis_x+dis_y*dis_y); history_pool_[ih].nearest_segment_serial = is;}
             }
             //refer to "if(history_pool_[ih].nearest_distance >= NEAREST_THRESH)"
@@ -183,7 +197,7 @@ void pedestrian_features::data_association()
         {
             int segment_serial = history_pool_[ih].nearest_segment_serial;
             if( segment_serial < 0 || segment_serial >= (int)(filtered_segment_batch_.segments.size()))
-            {ROS_ERROR("Unexpected Overflow");return;}
+            {ROS_ERROR("Unexpected Overflow, segment_serial %d, size %d", segment_serial, filtered_segment_batch_.segments.size());return;}
             //check if mutual nearest;
             if(filtered_segment_batch_.segments[segment_serial].nearest_history_serial == (int)ih)
             {
@@ -573,6 +587,11 @@ void pedestrian_features::pedestrian_extraction()
     laser_pedestrians_pub_.publish(new_laser_pedestrians_);
     pedestrians_pcl_pub_.publish(pedestrians_cloud_);
 }
+void pedestrian_features::laserRectShow(const sensing_on_road::pedestrian_vision_batch &laser_show_para)
+{
+    laser_show_batch_ = laser_show_para;
+    ProbabilityCheck();
+}
 
 void pedestrian_features::Bayesfilter(const sensing_on_road::pedestrian_vision_batch& veri_pd_para)
 {
@@ -585,7 +604,6 @@ void pedestrian_features::Bayesfilter(const sensing_on_road::pedestrian_vision_b
             {
                 if(veri_pd_para.pd_vector[i].complete_flag==true)
                 {
-                    //2011-12-31: need Demian to check the verification result, which all shows "false"...
                     if(veri_pd_para.pd_vector[i].decision_flag==true)
                     {
                         float sense_person;
@@ -602,16 +620,14 @@ void pedestrian_features::Bayesfilter(const sensing_on_road::pedestrian_vision_b
             }
         }
     }
-    
-    ProbabilityCheck();
 }
 
 void pedestrian_features::ProbabilityCheck()
 {
-    veri_show_pcl_.header   = veri_batch_.header;
+    veri_show_pcl_.header   = laser_show_batch_.header;
     veri_show_pcl_.header.frame_id   = filtered_segment_batch_.header.frame_id;
     veri_show_pcl_.points.clear();
-    veri_show_batch_.header = veri_batch_.header;
+    veri_show_batch_.header = laser_show_batch_.header;
     veri_show_batch_.pd_vector.clear();
     ros::Time segment_time = filtered_segment_batch_.header.stamp;
 
@@ -633,11 +649,12 @@ void pedestrian_features::ProbabilityCheck()
             veri_point.z = (float)history_pool_[ih].single_segment_history.back().segment_centroid_laser.point.z;
             veri_show_pcl_.points.push_back(veri_point);
 
-            for(unsigned ib=0; ib<veri_batch_.pd_vector.size(); ib++)
+            //update 20120106, fine-tune visualization;
+            for(unsigned ib=0; ib<laser_show_batch_.pd_vector.size(); ib++)
             {
-                if(history_pool_[ih].object_label==veri_batch_.pd_vector[ib].object_label)
+                if(history_pool_[ih].object_label==laser_show_batch_.pd_vector[ib].object_label)
                 {
-                    veri_show_batch_.pd_vector.push_back(veri_batch_.pd_vector[ib]);
+                    veri_show_batch_.pd_vector.push_back(laser_show_batch_.pd_vector[ib]);
                     break;
                 }
             }

@@ -1,6 +1,9 @@
 #include "classifier.h"
+#include "cv_helper.h"
 
 #define WIN_SIZE Size(48,96)
+
+
 
 HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
 {
@@ -27,6 +30,8 @@ HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
 }
 HOGClassifier::~HOGClassifier(){}
 
+
+
 void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch pr)
 {
 	/// HOG classification of laser rects
@@ -35,29 +40,23 @@ void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch
     {
 
         ROS_DEBUG("Inside people rect");
-
+        int image_width = 640;
+        int image_height = 360;
         sensing_on_road::pedestrian_vision_batch roi_rects;
         sensing_on_road::pedestrian_vision_batch detect_rects;
         sensing_on_road::pedestrian_vision temp_rect;
 
         for(unsigned int i=0;i<pr.pd_vector.size();i++)
         {
-
-            int image_width = 640;
-            int image_height = 360;
-            //added for bayesian filter
-
+            Size roi_size;
+            Point roi_point;
             temp_rect.decision_flag = false;
-
-            int img_x = pr.pd_vector[i].x;
-            int img_y = pr.pd_vector[i].y;
-
-            if(img_x > image_width || img_y > image_height) return;
-            if(img_x<0)img_x=0;
-            if(img_y<0)img_y=0;
-
-            int img_width = ((pr.pd_vector[i].width+img_x)>image_width)?(image_width-img_x):pr.pd_vector[i].width;
-            int img_height =  ((pr.pd_vector[i].height+img_y)>image_height)?(image_height-img_y):pr.pd_vector[i].height;
+            Cv_helper cv_help;
+            if(!cv_help.fillRoiRectangle(Size(image_width, image_height), &roi_size, &roi_point, pr.pd_vector[i])) return;
+            int img_width  = roi_size.width;
+            int img_height = roi_size.height;
+            int img_x = roi_point.x;
+            int img_y = roi_point.y;
             ROS_DEBUG_STREAM(img_x<<" "<<img_y<<" "<<img_width<<" "<<img_height);
             Rect roi(img_x,img_y,img_width,img_height);
 
