@@ -6,14 +6,13 @@
 #include "opencv2/gpu/gpu.hpp"
 #include "opencv2/highgui/highgui.hpp"
 
-namespace HOG_Classifier{
-class HOGClassifier {
+class HOGVisualizer {
 
 public:
 
 
-	HOGClassifier(ros::NodeHandle &n);
-	~HOGClassifier();
+	HOGVisualizer(ros::NodeHandle &n);
+	~HOGVisualizer();
 
 
 
@@ -40,4 +39,4 @@ private:
 	
 	bool started;
 };
-};
+

@@ -6,8 +6,8 @@
 
 using std::vector;
 
-#define DIS_RANGE 10
-#define ASSOCIATE_WITHIN_RANGE_THRESH 0.6
+#define DIS_RANGE 15
+#define ASSOCIATE_WITHIN_RANGE_THRESH 1.0
 #define ASSOCIATE_OVER_RANGE_MULTI 7
 
 /*
