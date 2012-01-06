@@ -17,14 +17,6 @@
             android:layout_weight="1"
             android:text="Make a booking" >
         </Button>
-
-        <Button
-            android:id="@+id/refreshbookingsbutton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Refresh" >
-        </Button>
     </LinearLayout>
 
     <TextView

@@ -153,12 +153,24 @@ public class DBInterface {
 		task.status = item.getAttribute("status");
 		task.pickup = item.getAttribute("pickup");
 		task.dropoff = item.getAttribute("dropoff");
+		task.eta = Integer.parseInt(item.getAttribute("eta"));
 
 		if (item.hasAttribute("vehicleID")) {
 			task.vehicleID = item.getAttribute("vehicleID");
-			task.latitude = Double.parseDouble(item.getAttribute("latitude"));
-			task.longitude = Double.parseDouble(item.getAttribute("longitude"));
-			task.eta = Integer.parseInt(item.getAttribute("eta"));
+			
+			Document vdom = new RPC("list_vehicles.php")
+						.addParameter("VehicleID", ""+task.vehicleID)
+						.call();
+			NodeList vitems = vdom.getDocumentElement().getElementsByTagName("vehicles");
+			if( vitems.getLength()==0 )
+				throw new RuntimeException("Task " + taskID + " not found.");
+			if( vitems.getLength()>1 )
+				throw new RuntimeException("Too many tasks returned.");
+			Element vitem = (Element) vitems.item(0);
+			
+			task.latitude = Double.parseDouble(vitem.getAttribute("latitude"));
+			task.longitude = Double.parseDouble(vitem.getAttribute("longitude"));
+			task.vehicleStatus = vitem.getAttribute("status");
 		}
 
 		return task;
