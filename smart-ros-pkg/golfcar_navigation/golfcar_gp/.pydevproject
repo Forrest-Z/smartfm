@@ -77,6 +77,7 @@
 <path>/opt/ros/electric/stacks/bond_core/smclib/src</path>
 <path>/opt/ros/electric/stacks/driver_common/dynamic_reconfigure/src</path>
 <path>/opt/ros/electric/stacks/driver_common/dynamic_reconfigure/lib</path>
+<path>/home/golfcar/smartfm/smart-ros-pkg/golfcar_navigation/pnc_msgs/src</path>
 <path>/opt/ros/electric/ros/core/mk</path>
 <path>/usr/local/lib/python2.6/dist-packages/rosinstall-0.5.16-py2.6.egg</path>
 <path>/opt/ros/electric/ros/core/roslib/src</path>

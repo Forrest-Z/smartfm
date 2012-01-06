@@ -39,6 +39,7 @@ public:
 
     ros::Publisher g_plan_pub_;
     ros::Publisher slowZone_pub_;
+    ros::Publisher poi_pub_;
     ros::Subscriber stage_sub_;
 
     StationPaths sp_;
