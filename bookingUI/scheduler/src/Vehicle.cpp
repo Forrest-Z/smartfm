@@ -70,14 +70,20 @@ void Vehicle::updateStatus(SchedulerTypes::VehicleStatus status)
 
 void Vehicle::switchToNextTask()
 {
-    if( tasks.empty() ) return;
+    assert( ! tasks.empty() );
     tasks.pop_front();
 
-    if( tasks.empty() ) return;
-    Task task = tasks.front();
-    dbTalker.confirmTask(task);
-    updateStatus(SchedulerTypes::VEH_STAT_GOING_TO_PICKUP);
-    updateWaitTime();
+    if( tasks.empty() )
+    {
+        updateStatus(SchedulerTypes::VEH_STAT_WAITING);
+    }
+    else
+    {
+        Task task = tasks.front();
+        dbTalker.confirmTask(task);
+        updateStatus(SchedulerTypes::VEH_STAT_GOING_TO_PICKUP);
+        updateWaitTime();
+    }
 }
 
 void Vehicle::update()
