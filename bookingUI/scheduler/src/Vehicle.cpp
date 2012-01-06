@@ -96,12 +96,11 @@ void Vehicle::switchToNextTask()
 
 void Vehicle::update()
 {
-    string vehicleID = id;
-    SchedulerTypes::VehicleInfo vi = dbTalker.getVehicleInfo(vehicleID);
-    updateStatus(vi.status);
-
     if( tasks.empty() )
         return;
+
+    SchedulerTypes::VehicleInfo vi = dbTalker.getVehicleInfo(this->id);
+    updateStatus(vi.status);
 
     Task curTask = tasks.front();
 
@@ -132,6 +131,19 @@ void Vehicle::update()
         throw logic_error(string("Scheduler::update(): vehicle status is ") +
                 SchedulerTypes::vehicleStatusStr(vi.status) +
                 "This case has not been implemented yet.");
+    }
+
+    // Check pending tasks whether custommer cancelled.
+    list<Task>::iterator tit = tasks.begin();
+    ++tit;
+    while( tit != tasks.end() ) {
+        SchedulerTypes::TaskStatus ts = dbTalker.getTaskStatus(tit->taskID);
+        if( ts.custCancelled ) {
+            dbTalker.updateTaskStatus(tit->taskID, "Cancelled");
+            tit = tasks.erase(tit);
+        }
+        else
+            ++tit;
     }
 
     // Report waiting time
