@@ -1,7 +1,8 @@
 <launch>
-	<include file="$(find Launch)/golfcar/sensors/ms_imu.launch"/>
-	<include file="$(find dead_reckoning)/encoderOdom.launch"/>
-	<include file="$(find lowlevel)/encoders.launch"/>
-	<!--include file="$(find lowlevel)/arduino.launch"/-->
+    <include file="$(find Launch)/golfcar/sensors/ms_imu.launch"/>
+    <include file="$(find dead_reckoning)/encoderOdom.launch"/>
+    <include file="$(find lowlevel)/encoders.launch"/>
+    <include file="$(find lowlevel)/arduino.launch"/>
+    <node name="stop_light_node" pkg="lowlevel" type="stop_light_node.py" output="screen"/>
 </launch>
 

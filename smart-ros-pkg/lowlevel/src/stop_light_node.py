@@ -9,7 +9,7 @@ This will turn on/off the stop lights.
 import roslib; roslib.load_manifest('lowlevel')
 import rospy
 from std_msgs.msg import Float64
-from golfcar_lowlevel.msg import breakpedal as BrakePedalMsg
+from golfcar_halstreamer.msg import brakepedal as BrakePedalMsg
 
 
 rospy.init_node('stop_light_node')
@@ -18,7 +18,7 @@ arduino_pub = rospy.Publisher('brake_angle', Float64)
 def callback(msg):
     # in golfcar_lowlevel, braking is given as a negative angle.
     # in arduino, it is given as a positive angle.
-    arduino_pub.publish(Float64(-msg.data));
+    arduino_pub.publish(Float64(-msg.angle));
 
-sub = rospy.Subscriber(golfcar_brake, BrakePedalMsg, callback)
+sub = rospy.Subscriber('golfcar_brake', BrakePedalMsg, callback)
 rospy.spin()
