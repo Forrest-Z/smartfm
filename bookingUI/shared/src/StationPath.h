@@ -11,7 +11,6 @@
 #include <string>
 
 
-
 class StationList;
 
 /// A class to represent a station (name and code)
@@ -137,15 +136,17 @@ public:
     StationPath() : length_(0.0) { }
     double recomputeLength();
     double length() const { return length_; }
+    std::vector<int> ints_pts_, rightsig_pts_, leftsig_pts_, offsig_pts_;
 };
 
 
+#include "SvgPath.h"
 /// A class that holds the paths between the different stations.
 class StationPaths
 {
 public:
     StationPaths();
-
+    SvgPath svgpath_;
     /// Returns the list of known stations
     const StationList & knownStations() const { return knownStations_; }
 
@@ -155,10 +156,17 @@ public:
     /// Store the slow zone from SVG represented by a circle
     std::vector<SlowZone> slowZones_;
 
+
 private:
     std::vector< std::vector<StationPath> > stationPaths_;
     StationList knownStations_; ///< The list of know stations
+    void storeIntoStationPaths(StationPath *stationpath, const char* id);
 
+    void storeFromMultipleSVGs(StationPath *stationpath, const char *svg_file1, const char *svg_file2);
+    void storeFromMultipleSVGs(StationPath *stationpath, const char *svg_file1, const char *svg_file2, const char *svg_file3);
+    void storeFromMultipleSVGs(StationPath *stationpath, const char *svg_file1, const char *svg_file2, const char *svg_file3, const char *svg_file4);
+
+    void printInterPointsDistance();
 };
 
 
