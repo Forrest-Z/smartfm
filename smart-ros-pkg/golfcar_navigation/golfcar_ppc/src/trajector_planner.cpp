@@ -21,6 +21,8 @@
 
 #include "golfcar_purepursuit.h"
 #include "golfcar_ppc/move_status.h"
+#include <pnc_msgs/poi.h>
+
 using namespace std;
 using namespace costmap_2d;
 
@@ -39,7 +41,7 @@ public:
     PurePursuit* pp_;
 
 private:
-    ros::Subscriber golfcar_direction_;
+    ros::Subscriber poi_sub_;
     ros::Time expected_end_;
     tf::TransformListener* tf_;
     ros::Subscriber odom_sub_;
@@ -63,6 +65,11 @@ private:
     void UpdatePosition();
     void golfcar_direction(geometry_msgs::Point32 p);
     void getFillCells(vector<MapLocation>& footprint);
+
+    void PoiCallback(pnc_msgs::poi poi);
+    double getSigDist(int *type);
+    double getIntDist(geometry_msgs::Point* int_point);
+    pnc_msgs::poi poi_;
 };
 
 
@@ -79,6 +86,7 @@ void PurePursuitBase::initialize(string name, tf::TransformListener* tf,
     g_plan_pub_ = global_node.advertise<nav_msgs::Path>("global_plan", 1);
     clear_space_pub_ = global_node.advertise<geometry_msgs::PolygonStamped>("clear_space",1);
     move_status_pub_ = global_node.advertise<golfcar_ppc::move_status>("move_status",1);
+    poi_sub_ = global_node.subscribe("/poi", 1, &PurePursuitBase::PoiCallback, this);
     tf_ = tf;
     costmap_ros_ = costmap_ros;
 
@@ -91,6 +99,10 @@ void PurePursuitBase::initialize(string name, tf::TransformListener* tf,
     cout <<name <<endl;
 }
 
+void PurePursuitBase::PoiCallback(pnc_msgs::poi poi)
+{
+    poi_ = poi;
+}
 
 void PurePursuitBase::UpdatePosition()
 {
@@ -99,7 +111,49 @@ void PurePursuitBase::UpdatePosition()
     tf::poseStampedTFToMsg(global_pose, robot_pose);
 }
 
+double PurePursuitBase::getIntDist(geometry_msgs::Point* int_point)
+{
+    //the intersections points is strictly increasing, getting the distance is easier
+    for(int i=0; i<poi_.int_pts.size();i++)
+    {
+        if(poi_.int_pts[i] >= pp_->path_n_)
+        {
+            double dist;
+            (*int_point) = pp_->path_.poses[poi_.int_pts[i]].pose.position;
+            if(pp_->current_pos_to_point_dist(poi_.int_pts[i], &dist)) return dist;
+            else return -1;
+        }
+    }
+    return -1;
+}
+double PurePursuitBase::getSigDist(int *type)
+{
+    if(poi_.sig_pts.size()==0) return -1;
+    vector<double> distances;
+    for(int i=0; i<poi_.sig_pts.size();i++)
+    {
 
+        if(poi_.sig_pts[i].points>=pp_->path_n_)
+        {
+            double dist;
+            if(pp_->current_pos_to_point_dist(poi_.sig_pts[i].points, &dist)) distances.push_back(dist);
+            else distances.push_back(numeric_limits<double>::max());
+        }
+        else distances.push_back(numeric_limits<double>::max());
+    }
+    double min_dist = distances[0];
+    *type = poi_.sig_pts[0].type;
+    for(int i=1; i<distances.size();i++)
+    {
+        if(distances[i]<min_dist)
+        {
+            min_dist = distances[i];
+            *type = poi_.sig_pts[i].type;
+        }
+    }
+    if(min_dist == numeric_limits<double>::max()) return -1;
+    else return min_dist;
+}
 bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
     PurePursuitBase::UpdatePosition();
     vector<double> proposed_velocities;
@@ -108,11 +162,16 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
 
     double steer_angle,dist_to_goal, dist_to_ints;
     geometry_msgs::Point int_point;
-    path_flag_= pp_->steering_control(steer_angle,dist_to_goal,dist_to_ints,int_point);
+    path_flag_= pp_->steering_control(steer_angle,dist_to_goal);
     move_status.dist_to_goal = dist_to_goal;
-    move_status.dist_to_ints = dist_to_ints;
+    move_status.dist_to_ints = getIntDist(&int_point);
+    int sig_type=-1;
+    move_status.dist_to_sig = getSigDist(&sig_type);
+    move_status.sig_type = sig_type;
     move_status.int_point = int_point;
     if(path_flag_){
+
+
         steer_angle_=steer_angle;
         goalreached_=false;
 
