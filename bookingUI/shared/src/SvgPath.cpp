@@ -240,6 +240,8 @@ StationPath SvgPath::StringToPath(string data)
         else if(data_s[i].find_first_of("Mm")!=string::npos)
         {
             //the start of another node on the same path represent the turning signals
+            for(int k=i; k<i+15; k++) cout<<data_s[k]<<' ';
+            cout<<endl;
             bool right_signal=true;
             if(i+5<data_s.size())
             {
@@ -257,12 +259,12 @@ StationPath SvgPath::StringToPath(string data)
                     if(data_s[i+5].find_first_of("C")!=string::npos) data_s[i+5] = string("L");
                     else if(data_s[i+5].find_first_of("c")!=string::npos) data_s[i+5] = string("l");
                     //only take the third point by removing the 2nd and 3rd points
-                    for(int j=i+5;j<i+9;j++) data_s.erase(data_s.begin()+j);
-
-                    cout<<"off_signal found at "<<i<<" points"<<endl;
+                    data_s.erase(data_s.begin()+i+6, data_s.begin()+i+10);
+                    if(VERBOSE) cout<<"off_signal found at "<<i<<" points"<<endl;
                     positions.offsig_pts_.push_back(found_points);
                     right_signal=false;
                 }
+
             }
 
             if(right_signal)
@@ -270,7 +272,8 @@ StationPath SvgPath::StringToPath(string data)
                 if(VERBOSE) cout<<"right_signal found at "<<i<<" points"<<endl;
                 positions.rightsig_pts_.push_back(found_points);
             }
-
+            for(int k=i; k<i+15; k++) cout<<data_s[k]<<' ';
+            cout<<endl<<endl;
         }
         else if(data_s[i].find_first_of("Cc")!=string::npos)
         {
