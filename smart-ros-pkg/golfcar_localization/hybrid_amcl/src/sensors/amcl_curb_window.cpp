@@ -7,7 +7,10 @@
 
 #include "amcl_curb_window.h"
 
-#define CURB_VALID_THRESH 1.5
+#define CURB_VALID_THRESH_1 1.5
+#define CURB_VALID_THRESH_2 0.7
+#define SRC_HEIGHT_THRESH   0.6
+#define SRC_NEAR_THRESH     0.5
 #define RATE_VALID_THRESH 0.3
 
 using namespace amcl;
@@ -39,14 +42,14 @@ AMCLCurb::SetCurbModelLikelihoodField(double z_hit,
 
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the curb sensor model
-bool AMCLCurb::UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, bool ValidSwitch)
+bool AMCLCurb::UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, bool ValidSwitch, void *otherSensingSource)
 {
   AMCLCurbData *ndata;
   ndata = (AMCLCurbData*) data;  
   
   if(ValidSwitch)
   {
-      ValidateSensor(pf, data, UseFlag);
+      ValidateSensor(pf, data, UseFlag, otherSensingSource);
       if(*UseFlag == false){return false;}
   }
   
@@ -54,7 +57,7 @@ bool AMCLCurb::UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, bool 
   return true;
 }
 
-void AMCLCurb::ValidateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag)
+void AMCLCurb::ValidateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, void *otherSensingSource)
 {
     AMCLCurb *self;
     unsigned int i;
@@ -66,6 +69,7 @@ void AMCLCurb::ValidateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag)
 
     AMCLCurbData *ndata = (AMCLCurbData*) data;
     self = (AMCLCurb*) ndata->sensor;
+    sensor_msgs::PointCloud otherSource_pcl_ = *((sensor_msgs::PointCloud*) otherSensingSource);
     
     pose = pf->Pos_Est;
     
@@ -83,8 +87,8 @@ void AMCLCurb::ValidateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag)
     {
       pz = 0.0;
       
-      double xtemp = ndata->curbSegment_.points[i].x;
-      double ytemp = ndata->curbSegment_.points[i].y;
+      float xtemp = ndata->curbSegment_.points[i].x;
+      float ytemp = ndata->curbSegment_.points[i].y;
       obs_range = sqrt(xtemp*xtemp+ytemp*ytemp);
       obs_bearing = atan2(ytemp,xtemp); 
       
@@ -106,14 +110,32 @@ void AMCLCurb::ValidateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag)
         z = self->map_->cells[MAP_INDEX(self->map_,mi,mj)].occ_dist;
         
       ROS_DEBUG("curb nearest dis %3f", z);
+      
       //here "CURB_VALID_THRESH" can be changed into Mahalanobis distance;
-      if(z < CURB_VALID_THRESH)
+      if(z > CURB_VALID_THRESH_1)
       {
-          ndata->validCurbSeg_.points.push_back(ndata->curbSegment_.points[i]);
+          ndata->invalidCurbSeg_.points.push_back(ndata->curbSegment_.points[i]);
+      }
+      else if(z <= CURB_VALID_THRESH_1 && z > CURB_VALID_THRESH_2)
+      {
+         bool filter_or_not = false;
+         for(unsigned int ip = 0; ip < otherSource_pcl_.points.size(); ip++)
+         {
+            float disx = xtemp - otherSource_pcl_.points[ip].x;
+            float disy = ytemp - otherSource_pcl_.points[ip].y;
+            float dist = sqrtf(disx*disx+disy*disy);
+            if(dist < SRC_NEAR_THRESH)
+            {
+                if(otherSource_pcl_.points[ip].z > SRC_HEIGHT_THRESH)
+                {filter_or_not=true;break;}
+            }
+         }
+         if(filter_or_not){ROS_INFO("Eliminate by OtherSrc"); ndata->invalidCurbSeg_.points.push_back(ndata->curbSegment_.points[i]);}
+         else {ndata->validCurbSeg_.points.push_back(ndata->curbSegment_.points[i]);}
       }
       else
       {
-          ndata->invalidCurbSeg_.points.push_back(ndata->curbSegment_.points[i]);
+          ndata->validCurbSeg_.points.push_back(ndata->curbSegment_.points[i]);
       }
     }
     

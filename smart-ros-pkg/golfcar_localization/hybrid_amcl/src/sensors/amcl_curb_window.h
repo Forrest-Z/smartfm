@@ -49,9 +49,9 @@ class AMCLCurb : public AMCLSensor
   
   // Update the filter based on the sensor model.  Returns true if the
   // filter has been updated.
-  public: virtual bool UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, bool ValidSwitch);
+  public: virtual bool UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, bool ValidSwitch, void *otherSensingSource);
 
-  public: virtual void ValidateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag);
+  public: virtual void ValidateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, void *otherSensingSource);
 
   // Determine the probability for the given pose
   private: static double LikelihoodFieldModel(AMCLCurbData *data, 
