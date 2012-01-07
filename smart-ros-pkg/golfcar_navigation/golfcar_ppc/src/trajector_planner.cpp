@@ -20,7 +20,7 @@
 #include <pluginlib/class_list_macros.h>
 
 #include "golfcar_purepursuit.h"
-#include "golfcar_ppc/move_status.h"
+#include <pnc_msgs/move_status.h>
 #include <pnc_msgs/poi.h>
 
 using namespace std;
@@ -85,7 +85,7 @@ void PurePursuitBase::initialize(string name, tf::TransformListener* tf,
     l_plan_pub_ = global_node.advertise<nav_msgs::Path>("local_plan", 1);
     g_plan_pub_ = global_node.advertise<nav_msgs::Path>("global_plan", 1);
     clear_space_pub_ = global_node.advertise<geometry_msgs::PolygonStamped>("clear_space",1);
-    move_status_pub_ = global_node.advertise<golfcar_ppc::move_status>("move_status",1);
+    move_status_pub_ = global_node.advertise<pnc_msgs::move_status>("move_status",1);
     poi_sub_ = global_node.subscribe("/poi", 1, &PurePursuitBase::PoiCallback, this);
     tf_ = tf;
     costmap_ros_ = costmap_ros;
@@ -157,7 +157,7 @@ double PurePursuitBase::getSigDist(int *type)
 bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
     PurePursuitBase::UpdatePosition();
     vector<double> proposed_velocities;
-    golfcar_ppc::move_status move_status;
+    pnc_msgs::move_status move_status;
     pp_->vehicle_base_ = robot_pose.pose;
 
     double steer_angle,dist_to_goal, dist_to_ints;
