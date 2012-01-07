@@ -1,0 +1,16 @@
+<package>
+  <description brief="lowlevel_arduino">
+
+     lowlevel_arduino
+
+  </description>
+  <author>brice rebsamen</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/lowlevel_arduino</url>
+  <depend package="rosserial_arduino"/>
+  <depend package="std_msgs"/>
+
+</package>
+
+
