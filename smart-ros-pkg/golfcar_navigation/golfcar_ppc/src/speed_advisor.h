@@ -23,11 +23,12 @@
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <std_msgs/Bool.h>
-#include <golfcar_ppc/move_status.h>
+
 #include <geometry_msgs/PoseArray.h>
-#include <golfcar_ppc/speed_contribute.h>
 #include <interactive_markers/interactive_marker_server.h>
 #include <fmutil/fm_math.h>
+#include <pnc_msgs/speed_contribute.h>
+#include <pnc_msgs/move_status.h>
 
 using namespace std;
 using namespace visualization_msgs;
@@ -102,13 +103,7 @@ class SpeedAdvisor
 public:
     SpeedAdvisor();
 
-    ros::NodeHandle n;
-    tf::TransformListener tf_;
-    ros::Publisher recommend_speed_;
-    ros::Publisher speed_contribute_;
-    ros::Subscriber move_base_speed_;
-    ros::Subscriber global_plan_;
-    ros::Subscriber slowzone_sub_;
+
     double max_speed_;
     double acc_;
     double max_dec_, norm_dec_, dec_ints_, dec_station_;
@@ -119,26 +114,37 @@ public:
     double high_speed_,slow_zone_,slow_speed_,enterstation_speed_,ppc_stop_dist_,stationspeed_dist_;
 
 private:
+    ros::NodeHandle n;
+    tf::TransformListener tf_;
+    ros::Publisher recommend_speed_;
+    ros::Publisher speed_contribute_;
+    ros::Publisher left_blinker_pub_, right_blinker_pub_;
+    ros::Subscriber move_base_speed_;
+    ros::Subscriber global_plan_;
+    ros::Subscriber slowzone_sub_;
+
     bool junction_stop_,through_ints_;
     int attribute_, zone_;
     ros::Time last_update_;
     double stopping_distance_, baselink_carfront_length_; //automatic calculate based on the maximum speed and normal deceleration
     double speed_now_, last_ints_dist_;
     bool use_sim_time_;
-    int element_pre_, element_now_;
-    void moveSpeedCallback(golfcar_ppc::move_status status);
-    void slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones);
-    void ControlLoop(const ros::TimerEvent& event);
+    int element_pre_, element_now_, signal_type_;
+
     geometry_msgs::Twist move_speed_;
-    golfcar_ppc::move_status move_status_;
+    pnc_msgs::move_status move_status_;
     vector<geometry_msgs::Point> stoppingPoint_;
     geometry_msgs::PoseArray slowZone_;
-    bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
-
-    void add_button_marker(interactive_markers::InteractiveMarkerServer &server, geometry_msgs::Vector3 scale, std_msgs::ColorRGBA color, geometry_msgs::Pose pose, std::string name, std::string description);
-    void processFeedback(const InteractiveMarkerFeedbackConstPtr &feedback );
     interactive_markers::InteractiveMarkerServer *marker_server_;
     geometry_msgs::Point int_point_;
+
+    bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
+    void moveSpeedCallback(pnc_msgs::move_status status);
+    void slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones);
+    void ControlLoop(const ros::TimerEvent& event);
+    void add_button_marker(interactive_markers::InteractiveMarkerServer &server, geometry_msgs::Vector3 scale, std_msgs::ColorRGBA color, geometry_msgs::Pose pose, std::string name, std::string description);
+    void processFeedback(const InteractiveMarkerFeedbackConstPtr &feedback );
+
 };
 
 
