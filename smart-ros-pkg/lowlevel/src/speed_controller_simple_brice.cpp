@@ -13,7 +13,7 @@
 #include <lse_xsens_mti/imu_rpy.h>
 
 #include <lowlevel/PID.h>
-#include <lowlevel/ButtonState.h>
+#include <lowlevel_arduino/ButtonState.h>
 #include <lowlevel/Encoders.h>
 
 #include <fmutil/fm_math.h>
@@ -52,7 +52,7 @@ class PID_Speed
         void cmdVelCallBack(geometry_msgs::Twist);
         void rpyCallBack(lse_xsens_mti::imu_rpy);
         void odoCallBack(lowlevel::Encoders);
-        void buttonCallBack(lowlevel::ButtonState);
+        void buttonCallBack(lowlevel_arduino::ButtonState);
 
         void pub(float brake, float throttle);
 
@@ -109,8 +109,8 @@ PID_Speed::PID_Speed()
     rpySub = n.subscribe("imu/rpy", 1, &PID_Speed::rpyCallBack, this);
     buttonSub = n.subscribe("button_state", 1, &PID_Speed::buttonCallBack, this);
 
-    throttlePub = n.advertise<std_msgs::Float64>("throttle", 1);
-    brakePedalPub = n.advertise<std_msgs::Float64>("brake_angle", 1);
+    throttlePub = n.advertise<std_msgs::Float64>("arduino/throttle", 1);
+    brakePedalPub = n.advertise<std_msgs::Float64>("arduino/brake_angle", 1);
     pidPub = n.advertise<lowlevel::PID>("pid_gain", 1);
 
     param.getParam();
@@ -135,7 +135,7 @@ void PID_Speed::rpyCallBack(lse_xsens_mti::imu_rpy rpy)
 }
 
 
-void PID_Speed::buttonCallBack(lowlevel::ButtonState bs)
+void PID_Speed::buttonCallBack(lowlevel_arduino::ButtonState bs)
 {
     // Would be nice here to define some action when there is a transition from
     // one state to another, e.g. reset the integral term, etc.

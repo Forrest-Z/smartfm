@@ -13,7 +13,7 @@ from golfcar_halstreamer.msg import brakepedal as BrakePedalMsg
 
 
 rospy.init_node('stop_light_node')
-arduino_pub = rospy.Publisher('brake_angle', Float64)
+arduino_pub = rospy.Publisher('arduino/brake_angle', Float64)
 
 def callback(msg):
     # in golfcar_lowlevel, braking is given as a negative angle.
