@@ -9,8 +9,6 @@ SpeedAdvisor::SpeedAdvisor()
      */
     recommend_speed_= n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
     speed_contribute_ = n.advertise<pnc_msgs::speed_contribute>("speed_status",1);
-    left_blinker_pub_ = n.advertise<std_msgs::Bool>("arduino/left_blinker",1);
-    right_blinker_pub_ = n.advertise<std_msgs::Bool>("arduino/right_blinker",1);
     move_base_speed_=n.subscribe("/move_status",1, &SpeedAdvisor::moveSpeedCallback, this);
     slowzone_sub_=n.subscribe("slowZone",1,&SpeedAdvisor::slowZoneCallback,this);
     ros::NodeHandle nh("~");
@@ -39,7 +37,7 @@ SpeedAdvisor::SpeedAdvisor()
     through_ints_ = true;
     ros::Timer timer = n.createTimer(ros::Duration(1.0/frequency_),&SpeedAdvisor::ControlLoop,this);
     speed_now_ = 0;
-    signal_type_ = -1;
+
     //visualization
     interactive_markers::InteractiveMarkerServer server("intersection");
     marker_server_ = &server;
@@ -211,39 +209,6 @@ void SpeedAdvisor::moveSpeedCallback(pnc_msgs::move_status status)
             add_button_marker(*marker_server_,size, color, pose, "Int", "Intersection" );
         }
         marker_server_->applyChanges();
-    }
-
-    if(status.dist_to_sig<ppc_stop_dist_ && status.dist_to_sig>0)
-    {
-        if(status.sig_type!=signal_type_)
-        {
-            signal_type_ = status.sig_type;
-            bool left_blinker(false), right_blinker(false);
-            switch (signal_type_)
-            {
-                /*
-                 * 0: left_signal
-                 * 1: right_signal
-                 * 2: off_signals
-                 */
-                case 0:
-                    left_blinker = true;
-                    right_blinker = false;
-                    break;
-                case 1:
-                    left_blinker = false;
-                    right_blinker = true;
-                    break;
-                case 2:
-                    left_blinker = right_blinker = false;
-                    break;
-            }
-            std_msgs::Bool blinker;
-            blinker.data = left_blinker;
-            left_blinker_pub_.publish(blinker);
-            blinker.data = right_blinker;
-            right_blinker_pub_.publish(blinker);
-        }
     }
 }
 
