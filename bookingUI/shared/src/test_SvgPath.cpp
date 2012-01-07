@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
         print_signals(&pose2);
 */
         StationPaths complete;
-        complete.svgpath_.loadFile(argv[1], 0.1);
+        //complete.svgpath_.loadFile(argv[1], 0.1);
         StationList sl;
         for (int i=0; i<sl.size(); i++)
         {
