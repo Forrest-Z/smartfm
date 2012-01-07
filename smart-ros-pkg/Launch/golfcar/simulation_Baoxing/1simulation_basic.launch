@@ -24,6 +24,8 @@
     <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrs3" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrs2 100" />
     <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrs4" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrs3 100" />
 
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrsAssemb" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrsAssemb 100" />    
+    <node pkg="scan_ldmrs_assemble" type="scan_ldmrs_assemble" name="scan_ldmrs_assemble"/>
 
     <node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
     <node pkg="scan_verti"    type="scan_verti"    name="scan_verti"/>

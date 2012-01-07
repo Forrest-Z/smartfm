@@ -1067,7 +1067,11 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 				
             curbdata_->sensor = curb_;
             bool *FlagPointer = &CurbUseFlag_;
-            curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer, validate_function_switch);
+            
+            sensor_msgs::PointCloud temp;
+            void *src = &temp;
+            
+            curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer, validate_function_switch, src);
             invalid_curb_pub_.publish(curbdata_->invalidCurbSeg_);
             
             if(LaserUseFlag_){numTresh_ = 15;}
@@ -1075,9 +1079,9 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
             
             bool *tempflagpointer = &CrossingUseFlag_;
             LeftCroData_->sensor = crossing_;
-            crossing_->UpdateSensor(pf_, (AMCLSensorData*) LeftCroData_, tempflagpointer, validate_function_switch);
+            crossing_->UpdateSensor(pf_, (AMCLSensorData*) LeftCroData_, tempflagpointer, validate_function_switch, src);
             RightCroData_->sensor = crossing_;
-            crossing_->UpdateSensor(pf_, (AMCLSensorData*) RightCroData_, tempflagpointer, validate_function_switch);
+            crossing_->UpdateSensor(pf_, (AMCLSensorData*) RightCroData_, tempflagpointer, validate_function_switch, src);
         
             if(CurbUseFlag_||CrossingUseFlag_)
             {

@@ -22,7 +22,7 @@
   <depend package="message_filters" />
   <depend package="nav_msgs" />
   <depend package="std_srvs" />
-  
+  <depend package="laser_geometry"/> 
   <!-- For tests -->
   <depend package="map_server"/>
   <depend package="rostest"/>
