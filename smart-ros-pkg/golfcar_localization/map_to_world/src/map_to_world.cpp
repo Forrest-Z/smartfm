@@ -56,14 +56,6 @@ void MapToWorld::UpdateLoop(const ros::TimerEvent& event)
             cd.longtitude = utmLL.response.longitude;
             coordinate_pub_.publish(cd);
 
-            if(publish_tf_)
-            {
-                static tf::TransformBroadcaster br;
-                tf::Transform transform;
-                transform.setOrigin( tf::Vector3(cd.easting, cd.northing, 0.0) );
-                transform.setRotation( robot_pose.getRotation() );
-                br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "map"));
-            }
         }
         else
         {
@@ -71,6 +63,14 @@ void MapToWorld::UpdateLoop(const ros::TimerEvent& event)
         }
     }
 
+    if(publish_tf_)
+    {
+        static tf::TransformBroadcaster br;
+        tf::Transform transform;
+        transform.setOrigin( tf::Vector3(offset_x_, offset_y_, 0.0) );
+        transform.setRotation( tf::Quaternion(0, 0, 0, 1));
+        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "world"));
+    }
 }
 
 bool MapToWorld::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const
