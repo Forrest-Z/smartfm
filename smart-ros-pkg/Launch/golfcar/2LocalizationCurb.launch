@@ -21,6 +21,8 @@
 	<node pkg="hybrid_amcl" type="mix_amcl" name="mix_amcl" output="screen">
             <param name="max_particles" value="1000"/>
             <param name="min_particles" value="200"/>
-        </node>
+    </node>
+    <node pkg="fmutil" type="utm_to_latlon.py" name="utm_to_latlon"/>
+    <node pkg="map_to_world" type="map_to_world" name="map_to_world"/>
 </launch>
 

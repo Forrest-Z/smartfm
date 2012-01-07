@@ -23,11 +23,12 @@
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PolygonStamped.h>
 #include <std_msgs/Bool.h>
-#include <golfcar_ppc/move_status.h>
+
 #include <geometry_msgs/PoseArray.h>
-#include <golfcar_ppc/speed_contribute.h>
 #include <interactive_markers/interactive_marker_server.h>
 #include <fmutil/fm_math.h>
+#include <pnc_msgs/speed_contribute.h>
+#include <pnc_msgs/move_status.h>
 
 using namespace std;
 using namespace visualization_msgs;
@@ -126,11 +127,11 @@ private:
     double speed_now_, last_ints_dist_;
     bool use_sim_time_;
     int element_pre_, element_now_;
-    void moveSpeedCallback(golfcar_ppc::move_status status);
+    void moveSpeedCallback(pnc_msgs::move_status status);
     void slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones);
     void ControlLoop(const ros::TimerEvent& event);
     geometry_msgs::Twist move_speed_;
-    golfcar_ppc::move_status move_status_;
+    pnc_msgs::move_status move_status_;
     vector<geometry_msgs::Point> stoppingPoint_;
     geometry_msgs::PoseArray slowZone_;
     bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;

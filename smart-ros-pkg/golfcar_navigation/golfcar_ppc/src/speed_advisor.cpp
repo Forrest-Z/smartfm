@@ -8,7 +8,7 @@ SpeedAdvisor::SpeedAdvisor()
      *
      */
     recommend_speed_= n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-    speed_contribute_ = n.advertise<golfcar_ppc::speed_contribute>("speed_status",1);
+    speed_contribute_ = n.advertise<pnc_msgs::speed_contribute>("speed_status",1);
     move_base_speed_=n.subscribe("/move_status",1, &SpeedAdvisor::moveSpeedCallback, this);
     slowzone_sub_=n.subscribe("slowZone",1,&SpeedAdvisor::slowZoneCallback,this);
     ros::NodeHandle nh("~");
@@ -100,7 +100,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
             speed_settings.push_back(speed_att);
         }
     }
-    golfcar_ppc::speed_contribute sc;
+    pnc_msgs::speed_contribute sc;
     //obstacles
         //There are 2 kind of situations possible when dealing with obstacles
     double obs_dist = move_status_.obstacles_dist;
@@ -191,7 +191,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     speed_contribute_.publish(sc);
 }
 
-void SpeedAdvisor::moveSpeedCallback(golfcar_ppc::move_status status)
+void SpeedAdvisor::moveSpeedCallback(pnc_msgs::move_status status)
 {
     last_update_ = ros::Time::now();
     move_status_ = status;
