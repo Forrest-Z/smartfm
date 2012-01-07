@@ -1,0 +1,5 @@
+float64 throttle
+float64 brake_angle
+float64 steer_angle
+bool left_blinker
+bool right_blinker

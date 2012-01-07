@@ -1,0 +1,6 @@
+string zone
+float64 easting
+float64 northing
+---
+float64 latitude
+float64 longitude

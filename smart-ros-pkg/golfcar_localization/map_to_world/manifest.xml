@@ -1,0 +1,16 @@
+<package>
+  <description brief="world_utm_lat_lon">
+
+     world_utm_lat_lon
+
+  </description>
+  <author>golfcar</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/world_utm_lat_lon</url>
+  <depend package="tf"/>
+  <depend package="fmutil"/>
+
+</package>
+
+

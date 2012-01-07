@@ -1,0 +1,2 @@
+cp `rospack find rosserial_arduino`/libraries/ros_lib -r `rospack find lowlevel_arduino`/src/arduino/libraries/
+rosrun rosserial_client make_library.py `rospack find lowlevel_arduino`/src/arduino/libraries/ lowlevel_arduino
