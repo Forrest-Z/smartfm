@@ -53,7 +53,7 @@ void MapToWorld::UpdateLoop(const ros::TimerEvent& event)
             cd.easting = utmLL.request.easting;
             cd.northing = utmLL.request.northing;
             cd.latitude = utmLL.response.latitude;
-            cd.longtitude = utmLL.response.longitude;
+            cd.longitude = utmLL.response.longitude;
             coordinate_pub_.publish(cd);
 
         }
