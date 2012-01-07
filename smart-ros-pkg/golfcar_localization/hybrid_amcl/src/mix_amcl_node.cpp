@@ -730,6 +730,7 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 	if(!pf_init_)
 	{
 		pf_odom_pose_ = pose; 
+        force_publication  = true;
 		pf_init_ = true;
 	}
 	
@@ -1124,8 +1125,6 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
                 set = pf_->sets + pf_->current_set;
                 sample = set->samples;
 
-                // Publish the resulting cloud
-                // TODO: set maximum rate for publishing
                 geometry_msgs::PoseArray cloud_msg;
                 cloud_msg.header.stamp = ros::Time::now();
                 cloud_msg.header.frame_id = global_frame_id_;
@@ -1140,6 +1139,23 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
             }
         }
 	}
+    
+    //visualize the partilces from the very beginning;
+    if(force_publication)
+    {
+        pf_sample_set_t* set = pf_->sets + pf_->current_set;
+        geometry_msgs::PoseArray cloud_msg;
+        cloud_msg.header.stamp = ros::Time::now();
+        cloud_msg.header.frame_id = global_frame_id_;
+        cloud_msg.poses.resize(set->sample_count);
+        for(int i=0;i<set->sample_count;i++)
+        {
+            tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose.v[2]),
+                            btVector3(set->samples[i].pose.v[0],set->samples[i].pose.v[1], 0)),
+                            cloud_msg.poses[i]);
+        }
+        particlecloud_pub_.publish(cloud_msg);
+    }
 	
 	if(resampled||force_publication)
 	{
@@ -1419,10 +1435,13 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 	pf_vector_t odom_delta = pf_vector_zero();
 	double distTolastOdom=0;
 	double distTolastLaser=0;
-	
+    
+	bool force_publication = false;
+    
 	if(!pf_init_) 
 	{
 		pf_odom_pose_ = pose;
+        force_publication = true;
 		pf_init_ = true;
 	}
 	
@@ -1472,8 +1491,6 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 		}
 	}
 	
-	bool force_publication = false;
-	
 	if(!laser_init_)
 	{
 		// Pose at last filter update
@@ -1511,7 +1528,6 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
             pf_->Pos_Est.v[1] = float(y_tmp);
             pf_->Pos_Est.v[2] = float(yaw_tmp);
         }
-        
 	}
 	
 	bool resampled = false;
@@ -1652,7 +1668,22 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 		
 	}
 	
-	
+	if(force_publication)
+    {
+        pf_sample_set_t* set = pf_->sets + pf_->current_set;
+        geometry_msgs::PoseArray cloud_msg;
+        cloud_msg.header.stamp = ros::Time::now();
+        cloud_msg.header.frame_id = global_frame_id_;
+        cloud_msg.poses.resize(set->sample_count);
+        for(int i=0;i<set->sample_count;i++)
+        {
+            tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose.v[2]),
+                            btVector3(set->samples[i].pose.v[0],set->samples[i].pose.v[1], 0)),
+                            cloud_msg.poses[i]);
+        }
+        particlecloud_pub_.publish(cloud_msg);
+    }
+    
 	 if(resampled || force_publication)
 	{
 		ROS_DEBUG("----------Laser Resampled---------");
