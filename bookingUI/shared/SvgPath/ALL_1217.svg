@@ -27,9 +27,9 @@
      inkscape:window-height="823"
      id="namedview32"
      showgrid="false"
-     inkscape:zoom="1.0683227"
-     inkscape:cx="2087.3457"
-     inkscape:cy="2916.4284"
+     inkscape:zoom="0.37770911"
+     inkscape:cx="-183.11526"
+     inkscape:cy="1085.1542"
      inkscape:window-x="1366"
      inkscape:window-y="25"
      inkscape:window-maximized="1"
@@ -632,7 +632,7 @@
        y="2746.4065"
        style="font-size:20px">Legend</tspan></text>
   <path
-     style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#DotM-5);marker-mid:url(#Arrow1Send)"
+     style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#DotM-5);marker-mid:none"
      d="m 29.303023,2774.2055 19.468582,0 19.468581,0 19.468582,0 19.468582,0"
      id="path9036"
      inkscape:connector-curvature="0"
@@ -649,11 +649,6 @@
        x="22.933142"
        y="2797.9272"
        style="font-size:12px">Dot: Start of path</tspan><tspan
-       sodipodi:role="line"
-       x="22.933142"
-       y="2812.9272"
-       id="tspan9434"
-       style="font-size:12px">Arrow: Direction of path</tspan><tspan
        sodipodi:role="line"
        x="22.933142"
        y="2827.9272"
@@ -686,4 +681,11 @@
      height="176.91283"
      x="9.360467"
      y="2719.7673" />
+  <path
+     style="fill:none;stroke:#000000;stroke-width:30;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+     d="m 592.243,527.4891 77.90926,31.0599"
+     id="crossing"
+     inkscape:connector-curvature="0"
+     sodipodi:nodetypes="cc"
+     inkscape:label="#path3993" />
 </svg>
