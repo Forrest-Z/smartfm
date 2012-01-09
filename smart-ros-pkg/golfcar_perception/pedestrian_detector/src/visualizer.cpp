@@ -89,7 +89,7 @@ void HOGVisualizer::imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr)
         rectangle(img,UL, BR, Scalar(255,0,0), 1);
         std::stringstream ss;
         ss<<detect_rects_.pd_vector[i].object_label;
-        putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_DUPLEX, 0.5, cvScalar(255,0,0));
+        putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_DUPLEX, 0.5, cvScalar(0,255,255));
     }
 
     //need to refill the cvRect points;
