@@ -149,7 +149,6 @@ void HOGClassifier::detectPedestrian(Point offset, double ratio, gpu::GpuMat& gp
                                    cv::gpu::HOGDescriptor::DEFAULT_WIN_SIGMA, 0.2, gamma_corr,
                                    cv::gpu::HOGDescriptor::DEFAULT_NLEVELS);
     gpu_hog.setSVMDetector(gpu::HOGDescriptor::getPeopleDetector48x96());
-    gpu_hog.nlevels = 40;
     gpu_hog.detectMultiScale(gpu_img, found, hit_threshold, Size(8,8), Size(0,0), scale, group_threshold);
     
     /// does it give confidence level ?  
