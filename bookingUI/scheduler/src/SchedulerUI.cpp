@@ -584,12 +584,11 @@ void SchedulerUI::onUserViewTask()
     }
 
     int taskID = atoi(this->buttons[VC_TASK_ID].text);
-    SchedulerTypes::Duration waitTime = scheduler.getWaitTime(taskID);
     Task task = scheduler.getTask(taskID);
     mvwprintw(this->win, this->textFields[VC_TASK_VEHICLE_ID].row, this->textFields[VC_TASK_VEHICLE_ID].col,
             "Vehicle ID:   %2d\t\tPickup station:  %10s       ", DEFAULT_VEHICLE_ID, task.pickup.c_str());
     mvwprintw(this->win, this->textFields[VC_TASK_TIME_WAIT].row, this->textFields[VC_TASK_TIME_WAIT].col,
-            "Waiting time: %2u\t\tDropoff station: %10s       ", waitTime, task.dropoff.c_str());
+            "Waiting time: %2u\t\tDropoff station: %10s       ", task.twait, task.dropoff.c_str());
 
 }
 

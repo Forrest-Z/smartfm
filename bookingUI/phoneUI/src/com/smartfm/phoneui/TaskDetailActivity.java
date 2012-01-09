@@ -51,10 +51,7 @@ public class TaskDetailActivity extends Activity implements OnClickListener {
 	
 	void updateTask() {
 		try {
-			List<Task> tasks = DBInterface.listTasks();
-			for (Task t : tasks)
-				if( t.requestID==task.requestID )
-					task = t;
+			task = DBInterface.getTask(task.requestID);
 			displayTask();
 		} catch (Exception e) {
 			ErrDialog.show(this, "An error occured while retrieving the task info.\n"+e);
