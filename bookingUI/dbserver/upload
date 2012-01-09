@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FILES="*.php webviewer.htm getxml.js"
+FILES="*.php *.htm getxml.js"
 
 echo "Uploading to FMAutonomy"
 echo "-----------------------"
