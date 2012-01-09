@@ -3,6 +3,7 @@
 #include "image_transport/image_transport.h"
 #include "cv_bridge/cv_bridge.h"
 #include "sensing_on_road/pedestrian_vision_batch.h"
+#include "sensing_on_road/pedestrian_vision.h"
 #include "opencv2/gpu/gpu.hpp"
 #include "opencv2/highgui/highgui.hpp"
 

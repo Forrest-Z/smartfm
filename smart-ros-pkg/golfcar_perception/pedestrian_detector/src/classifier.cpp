@@ -14,7 +14,7 @@ HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
     people_detect_pub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("pedestrian_detect",1);
     //people_ver_pub_ = n.advertise<people_detector::verified_objs>("verified_objects",1);
     ros::NodeHandle nh("~");
-    nh.param("hit_threshold", hit_threshold, 1.65);
+    nh.param("hit_threshold", hit_threshold, -1.0);
     nh.param("scale", scale, 1.05);
     nh.param("group_threshold", group_threshold, 1.0);
     nh.param("norm_dist", norm_dist, 5.0);
@@ -53,7 +53,8 @@ void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch
         sensing_on_road::pedestrian_vision temp_rect;
 
         sort(pr.pd_vector.begin(), pr.pd_vector.end(), sort_pv);
-        detect_rects.pd_vector = pr.pd_vector;
+        //detect_rects.pd_vector = pr.pd_vector;
+        roi_rects.pd_vector = pr.pd_vector;
         //get a deep copy
         cv::Mat img_clone(img.clone());
 
@@ -62,7 +63,7 @@ void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch
         {
             Size roi_size;
             Point roi_point;
-            temp_rect.decision_flag = false;
+            roi_rects.pd_vector[i].decision_flag = false;
             Cv_helper cv_help;
             if(!cv_help.fillRoiRectangle(Size(image_width, image_height), &roi_size, &roi_point, pr.pd_vector[i])) return;
             int img_width  = roi_size.width;
@@ -87,9 +88,10 @@ void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch
             /// Add confidence level
             temp_rect = pr.pd_vector[i];
             temp_rect.cvRect_x1=img_x;temp_rect.cvRect_y1=img_y;
-            temp_rect.cvRect_x2=img_x+img_width;temp_rect.cvRect_y2=img_y+img_height;
+            temp_rect.cvRect_x2=img_x+img_width-1;temp_rect.cvRect_y2=img_y+img_height-1;
+
             if((int)detect_rects.pd_vector.size()>0) temp_rect.decision_flag = true;
-            roi_rects.pd_vector.push_back(temp_rect);
+            roi_rects.pd_vector[i] = temp_rect;
 
 
             //fill the roi with black
@@ -147,6 +149,7 @@ void HOGClassifier::detectPedestrian(Point offset, double ratio, gpu::GpuMat& gp
                                    cv::gpu::HOGDescriptor::DEFAULT_WIN_SIGMA, 0.2, gamma_corr,
                                    cv::gpu::HOGDescriptor::DEFAULT_NLEVELS);
     gpu_hog.setSVMDetector(gpu::HOGDescriptor::getPeopleDetector48x96());
+    gpu_hog.nlevels = 40;
     gpu_hog.detectMultiScale(gpu_img, found, hit_threshold, Size(8,8), Size(0,0), scale, group_threshold);
     
     /// does it give confidence level ?  

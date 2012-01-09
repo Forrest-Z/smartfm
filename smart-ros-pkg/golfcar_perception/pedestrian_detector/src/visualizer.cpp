@@ -1,7 +1,10 @@
 #include "visualizer.h"
 #include "cv_helper.h"
+#include <iomanip>
+#include <iostream>
 
 using namespace cv;
+using namespace std;
 
 HOGVisualizer::HOGVisualizer(ros::NodeHandle &n) : n_(n), it_(n_)
 {
@@ -81,16 +84,7 @@ void HOGVisualizer::imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr)
         rectangle(img, Point(detect_rects_.pd_vector[i].cvRect_x1, detect_rects_.pd_vector[i].cvRect_y1) , Point(detect_rects_.pd_vector[i].cvRect_x2, detect_rects_.pd_vector[i].cvRect_y2), Scalar(0,255,0), 1);
 
     }
-    for(unsigned int i=0;i<roi_rects_.pd_vector.size();i++)
-    {
-        Point UL = Point(roi_rects_.pd_vector[i].cvRect_x1, roi_rects_.pd_vector[i].cvRect_y1);
-        Point BR = Point(roi_rects_.pd_vector[i].cvRect_x2, roi_rects_.pd_vector[i].cvRect_y2);
-        Point BL = Point(UL.x, BR.y);
-        rectangle(img,UL, BR, Scalar(255,0,0), 1);
-        std::stringstream ss;
-        ss<<detect_rects_.pd_vector[i].object_label;
-        putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_DUPLEX, 0.5, cvScalar(0,255,255));
-    }
+
 
     //need to refill the cvRect points;
 
@@ -104,6 +98,19 @@ void HOGVisualizer::imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr)
         temp_rect.cvRect_x1=roi_point.x;temp_rect.cvRect_y1=roi_point.y;
         temp_rect.cvRect_x2=roi_point.x+roi_size.width;temp_rect.cvRect_y2=roi_point.y+roi_size.height;
         rectangle(img,Point(temp_rect.cvRect_x1, temp_rect.cvRect_y1) , Point(temp_rect.cvRect_x2, temp_rect.cvRect_y2), Scalar(0,0,255), 2);
+    }
+
+    for(unsigned int i=0;i<roi_rects_.pd_vector.size();i++)
+    {
+      Point UL = Point(roi_rects_.pd_vector[i].cvRect_x1, roi_rects_.pd_vector[i].cvRect_y1);
+      Point BR = Point(roi_rects_.pd_vector[i].cvRect_x2, roi_rects_.pd_vector[i].cvRect_y2);
+      Point BL = Point(UL.x, BR.y);
+      rectangle(img,UL, BR, Scalar(255,0,0), 1);
+      std::stringstream ss,ss2;
+      ss<<" "<<roi_rects_.pd_vector[i].object_label;
+      putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
+      ss2<<" "<<setprecision(2)<<fixed<<roi_rects_.pd_vector[i].confidence*100.0;
+      putText(img, ss2.str(), BR+Point(-40,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
     }
     started = true;
     imshow("Image window", img);
