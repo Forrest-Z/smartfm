@@ -44,4 +44,6 @@ void SimpleGoal::worldCoordCallBack(const map_to_world::coordinate & msg)
 {
     latitude_ = msg.latitude;
     longitude_ = msg.longitude;
+    //printf("msg.longitude: %.9f\n", msg.longitude);
+    //cout <<"msg.longitude: " <<setprecision(12) <<msg.longitude << " longitude_: " <<setprecision(12) <<longitude_ <<endl;
 }
