@@ -31,11 +31,14 @@ public class MainActivity extends Activity implements OnClickListener,
 
 		((Button) findViewById(R.id.makebookingbutton))
 				.setOnClickListener(this);
-		
+		((Button) findViewById(R.id.refreshbookingsbutton))
+				.setOnClickListener(this);
+
 		tasks = new ArrayList<Task>();
 		tasksDescriptions = new ArrayAdapter<String>(this,
 				android.R.layout.simple_list_item_1);
-		startPeriodicUpdate();
+//		updateBookings();
+		periodicUpdate();
 		
 		ListView lv = (ListView) findViewById(R.id.bookingslistview);		
 		lv.setAdapter(tasksDescriptions);
@@ -48,12 +51,19 @@ public class MainActivity extends Activity implements OnClickListener,
 			tasks.clear();
 			tasksDescriptions.clear();
 			for (Task task : tasks_) {
-				if (task.status.compareToIgnoreCase("Cancelled") == 0
-						|| task.status.compareToIgnoreCase("Completed") == 0)
-					continue;
-				
-				tasks.add(task);
-				tasksDescriptions.add( task.formattedDescription() );
+				if (task.status.compareToIgnoreCase("Cancelled") != 0
+						&& task.status.compareToIgnoreCase("Completed") != 0) {
+					tasks.add(task);
+					String description = "";
+					description += "From " + task.pickup + " To "
+							+ task.dropoff + "\n";
+					description += "Status: " + task.status;
+					if( task.status.compareToIgnoreCase("Acknowledged") == 0 ||
+							task.status.compareToIgnoreCase("Confirmed") == 0 ||
+							task.status.compareToIgnoreCase("Processing") == 0 )
+						description += ", ETA=" + task.eta;
+					tasksDescriptions.add(description);
+				}
 			}
 
 			findViewById(R.id.nocurrentbookings).setVisibility(
@@ -67,11 +77,17 @@ public class MainActivity extends Activity implements OnClickListener,
 	@Override
 	public void onClick(View v) {
 		switch (v.getId()) {
+
 		case R.id.makebookingbutton:
 			// Ask for a result, so that we can call updateBookings on returns.
 			// (see onActivityResult). Actually the activity returns nothing.
 			startActivityForResult(new Intent(MainActivity.this, TaskBooking.class), 1);
 			break;
+
+		case R.id.refreshbookingsbutton:
+			updateBookings();
+			break;
+
 		}
 	}
 
@@ -94,7 +110,7 @@ public class MainActivity extends Activity implements OnClickListener,
 		startActivityForResult(intent, 1);
 	}
 	
-	public void startPeriodicUpdate() {
+	public void periodicUpdate() {
 		Runnable periodicUpdateProcess = new Runnable(){
 			@Override
 			public void run() {

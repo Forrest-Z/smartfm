@@ -1,0 +1,32 @@
+<launch>
+    <param name="use_sim_time" value="true"/>
+    
+    <include file="$(find dead_reckoning)/encoderOdom.launch"/>
+
+	<node name="map_server" pkg="map_server" type="map_server" args="$(find hybrid_amcl)/worlds/curb_map.yaml">
+		<remap from="static_map" to="static_curb_map"/>
+		<remap from="map" to= "curb_map"/>
+	</node>
+
+	<node pkg="map_server" type="map_server" name="map_server2" args="$(find hybrid_amcl)/worlds/planar_map.yaml">
+		<remap from="static_map" to="static_planar_map"/>
+		<remap from="map" to= "planar_map"/>
+	</node>
+
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camerabase" args="1.795, 0.0, 1.08 0 0 0 /base_link /usb_cam 100" />
+   
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_topSick" args="1.58, 0.0, 1.89 0.00 0 0 /base_link /sick_laser 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="1.7, 0.0, 1.53 0 0.26 0 /base_link /sick_laser2 100" />
+
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrsPCL" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrs 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrs1" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrs1 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrs2" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrs1 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrs3" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrs2 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrs4" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrs3 100" />
+
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrsAssemb" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrsAssemb 100" />    
+    <node pkg="scan_ldmrs_assemble" type="scan_ldmrs_assemble" name="scan_ldmrs_assemble"/>
+
+    <node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
+    <node pkg="scan_verti"    type="scan_verti"    name="scan_verti"/>
+</launch>

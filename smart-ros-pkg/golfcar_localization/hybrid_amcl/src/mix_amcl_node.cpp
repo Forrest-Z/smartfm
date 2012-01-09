@@ -39,6 +39,7 @@
 #include "tf/transform_listener.h"
 #include "tf/message_filter.h"
 #include "message_filters/subscriber.h"
+#include <laser_geometry/laser_geometry.h>
 
 using namespace amcl;
 
@@ -171,6 +172,7 @@ class MixAmclNode
     bool CurbUseFlag_; 
     bool CrossingUseFlag_; 
     bool LaserOn_;
+    bool otherSrcAvailable_;
     
     pf_vector_t pf_odom_pose_;
     pf_vector_t pf_curb_odom_pose_;
@@ -186,6 +188,8 @@ class MixAmclNode
     double laser_min_range_;
     double laser_max_range_;
 
+    double srcUse_thresh_;
+    
     AMCLOdom* odom_;
     AMCLCurb* curb_;
     AMCLCurbData* curbdata_; 
@@ -243,6 +247,13 @@ class MixAmclNode
      
     //add on 20111222, to publish invalid curb data;
     ros::Publisher invalid_curb_pub_;
+    
+    //add on 20120106, use other sensors to eliminate noise;
+    laser_geometry::LaserProjection                         projector_;
+    message_filters::Subscriber<sensor_msgs::LaserScan>     otherSource_sub_;
+    tf::MessageFilter<sensor_msgs::LaserScan>               *tf_filter_;
+    void otherSourceCallback(const sensor_msgs::LaserScan::ConstPtr& scan_in);
+    sensor_msgs::PointCloud                     otherSource_pcl_;
 };
 
 #define USAGE "USAGE: amcl"
@@ -279,6 +290,8 @@ MixAmclNode::MixAmclNode() :
   double laser_z_hit, laser_z_short, laser_z_max, laser_z_rand, laser_sigma_hit, laser_lambda_short;
   double curb_likelihood_max_dist, laser_likelihood_max_dist;
   double pf_err, pf_z;
+  
+
 
   //not used;
   double tmp;
@@ -288,8 +301,8 @@ MixAmclNode::MixAmclNode() :
   save_pose_period = ros::Duration(1.0/tmp);
   private_nh_.param("laser_min_range", laser_min_range_, -1.0);
   private_nh_.param("laser_max_range", laser_max_range_, -1.0);
-  private_nh_.param("min_particles", min_particles, 1000);
-  private_nh_.param("max_particles", max_particles, 5000);
+  private_nh_.param("min_particles", min_particles, 200);
+  private_nh_.param("max_particles", max_particles, 1000);
   private_nh_.param("laser_max_beams", max_beams, 30);
   private_nh_.param("kld_err", pf_err, 0.01);
   private_nh_.param("kld_z", pf_z, 0.99);
@@ -324,6 +337,8 @@ MixAmclNode::MixAmclNode() :
   
   private_nh_.param("curb_likelihood_max_dist",curb_likelihood_max_dist, 3.0);
   private_nh_.param("laser_likelihood_max_dist",laser_likelihood_max_dist, 2.0);
+  
+  private_nh_.param("srcUse_thresh_",srcUse_thresh_, 0.05);
   
   std::string tmp_model_type;
   laser_model_t laser_model_type;
@@ -410,6 +425,9 @@ MixAmclNode::MixAmclNode() :
   CurbUseFlag_ = true;
   CrossingUseFlag_ = true;
   LaserOn_ = true;
+  
+  otherSrcAvailable_= false;
+  
   // Instantiate the sensor objects
   // Odometry
   odom_ = new AMCLOdom();
@@ -476,8 +494,16 @@ MixAmclNode::MixAmclNode() :
   initial_pose_filter_->registerCallback(boost::bind(&MixAmclNode::initialPoseReceived, this, _1));
 
   initial_pose_sub_old_ = nh_.subscribe("initialpose", 2, &MixAmclNode::initialPoseReceivedOld, this);
-  
   invalid_curb_pub_ = nh_.advertise<sensor_msgs::PointCloud>("invalid_curb", 2);
+  
+  //otherSource_sub_ = nh_.subscribe("sickldmrs/assembled", 10, &MixAmclNode::otherSourceCallback, this); 
+  
+  otherSource_sub_.subscribe(nh_, "sickldmrs/assembled", 10);
+  tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(otherSource_sub_, *tf_, base_frame_id_, 10);
+  
+  tf_filter_->registerCallback(boost::bind(&MixAmclNode::otherSourceCallback, this, _1));
+  tf_filter_->setTolerance(ros::Duration(0.05));
+  
   
   ROS_INFO("Construction Finished");
 }
@@ -616,6 +642,14 @@ bool MixAmclNode::globalLocalizationCallback(std_srvs::Empty::Request& req,std_s
 	return true;
 }
 
+void MixAmclNode::otherSourceCallback (const sensor_msgs::LaserScan::ConstPtr& scan_in)
+{
+    std::string laser_frame_id = scan_in->header.frame_id;
+    try{projector_.transformLaserScanToPointCloud(base_frame_id_, *scan_in, otherSource_pcl_, *tf_);}
+    catch (tf::TransformException& e){ROS_WARN("Other Souce Wrong!!!!!!!!!!!!!"); std::cout << e.what();return;}
+    otherSrcAvailable_ = true;
+}
+
 void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_in)
 {
 	pf_sample_set_t* set = pf_->sets + pf_->current_set;
@@ -696,6 +730,7 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 	if(!pf_init_)
 	{
 		pf_odom_pose_ = pose; 
+        force_publication  = true;
 		pf_init_ = true;
 	}
 	
@@ -1052,7 +1087,15 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 				
             curbdata_->sensor = curb_;
             bool *FlagPointer = &CurbUseFlag_;
-            curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer, validate_function_switch);
+            
+            if(otherSrcAvailable_)
+            {
+                double time_dis = otherSource_pcl_.header.stamp.toSec() - curbRece_time.toSec();
+                if(time_dis > srcUse_thresh_){ROS_ERROR("other source too old"); otherSource_pcl_.points.clear();}
+            }
+            void *src = &otherSource_pcl_;
+            
+            curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer, validate_function_switch, src);
             invalid_curb_pub_.publish(curbdata_->invalidCurbSeg_);
             
             if(LaserUseFlag_){numTresh_ = 15;}
@@ -1062,9 +1105,9 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
             if(!LaserUseFlag_)
             {
                 LeftCroData_->sensor = crossing_;
-                crossing_->UpdateSensor(pf_, (AMCLSensorData*) LeftCroData_, tempflagpointer, validate_function_switch);
+                crossing_->UpdateSensor(pf_, (AMCLSensorData*) LeftCroData_, tempflagpointer, validate_function_switch, src);
                 RightCroData_->sensor = crossing_;
-                crossing_->UpdateSensor(pf_, (AMCLSensorData*) RightCroData_, tempflagpointer, validate_function_switch);
+                crossing_->UpdateSensor(pf_, (AMCLSensorData*) RightCroData_, tempflagpointer, validate_function_switch, src);
             }
         
             if(CurbUseFlag_||CrossingUseFlag_)
@@ -1082,8 +1125,6 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
                 set = pf_->sets + pf_->current_set;
                 sample = set->samples;
 
-                // Publish the resulting cloud
-                // TODO: set maximum rate for publishing
                 geometry_msgs::PoseArray cloud_msg;
                 cloud_msg.header.stamp = ros::Time::now();
                 cloud_msg.header.frame_id = global_frame_id_;
@@ -1098,6 +1139,23 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
             }
         }
 	}
+    
+    //visualize the partilces from the very beginning;
+    if(force_publication)
+    {
+        pf_sample_set_t* set = pf_->sets + pf_->current_set;
+        geometry_msgs::PoseArray cloud_msg;
+        cloud_msg.header.stamp = ros::Time::now();
+        cloud_msg.header.frame_id = global_frame_id_;
+        cloud_msg.poses.resize(set->sample_count);
+        for(int i=0;i<set->sample_count;i++)
+        {
+            tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose.v[2]),
+                            btVector3(set->samples[i].pose.v[0],set->samples[i].pose.v[1], 0)),
+                            cloud_msg.poses[i]);
+        }
+        particlecloud_pub_.publish(cloud_msg);
+    }
 	
 	if(resampled||force_publication)
 	{
@@ -1377,10 +1435,13 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 	pf_vector_t odom_delta = pf_vector_zero();
 	double distTolastOdom=0;
 	double distTolastLaser=0;
-	
+    
+	bool force_publication = false;
+    
 	if(!pf_init_) 
 	{
 		pf_odom_pose_ = pose;
+        force_publication = true;
 		pf_init_ = true;
 	}
 	
@@ -1430,8 +1491,6 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 		}
 	}
 	
-	bool force_publication = false;
-	
 	if(!laser_init_)
 	{
 		// Pose at last filter update
@@ -1469,7 +1528,6 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
             pf_->Pos_Est.v[1] = float(y_tmp);
             pf_->Pos_Est.v[2] = float(yaw_tmp);
         }
-        
 	}
 	
 	bool resampled = false;
@@ -1551,10 +1609,13 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 		
 		bool *FlagPointer = &LaserUseFlag_;
 		
+        sensor_msgs::PointCloud temp;
+        void *src = &temp;
+        
 		//3 degree corresponds to 0.05236; 4 degree corresponds to  0.0698; 5 degree corresponds to 0.08727; 
 		if(pitch>0.08727||pitch<-0.08727) 
 		{LaserUseFlag_=false;ROS_DEBUG("Planar Laser  Skip!!!!!!!!!!!!!!!!!!");}
-		else {lasers_[laser_index]->UpdateSensor(pf_, (AMCLSensorData*)&ldata, FlagPointer, validate_function_switch);}
+		else {lasers_[laser_index]->UpdateSensor(pf_, (AMCLSensorData*)&ldata, FlagPointer, validate_function_switch, src);}
 
 		lasers_update_[laser_index] = false;
 		
@@ -1607,7 +1668,22 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 		
 	}
 	
-	
+	if(force_publication)
+    {
+        pf_sample_set_t* set = pf_->sets + pf_->current_set;
+        geometry_msgs::PoseArray cloud_msg;
+        cloud_msg.header.stamp = ros::Time::now();
+        cloud_msg.header.frame_id = global_frame_id_;
+        cloud_msg.poses.resize(set->sample_count);
+        for(int i=0;i<set->sample_count;i++)
+        {
+            tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(set->samples[i].pose.v[2]),
+                            btVector3(set->samples[i].pose.v[0],set->samples[i].pose.v[1], 0)),
+                            cloud_msg.poses[i]);
+        }
+        particlecloud_pub_.publish(cloud_msg);
+    }
+    
 	 if(resampled || force_publication)
 	{
 		ROS_DEBUG("----------Laser Resampled---------");

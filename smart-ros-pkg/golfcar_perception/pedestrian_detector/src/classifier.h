@@ -3,6 +3,7 @@
 #include "image_transport/image_transport.h"
 #include "cv_bridge/cv_bridge.h"
 #include "sensing_on_road/pedestrian_vision_batch.h"
+#include "sensing_on_road/pedestrian_vision.h"
 #include "opencv2/gpu/gpu.hpp"
 #include "opencv2/highgui/highgui.hpp"
 
@@ -37,9 +38,10 @@ private:
     void peopleRectsCallback(sensing_on_road::pedestrian_vision_batch pr);
     void ScaleWithDistanceRatio(Mat *img, double disz, double norm_distance, Size img_size, Size smallest_size, double *ratio);
     void detectPedestrian(Point offset, double ratio, gpu::GpuMat& gpu_img, sensing_on_road::pedestrian_vision_batch *detect_rects);
+
     cv::Mat img;
 
-    bool new_image;
+    bool new_image, show_processed_image, black_front_roi;
     double hit_threshold, scale, group_threshold, norm_dist;
 };
 

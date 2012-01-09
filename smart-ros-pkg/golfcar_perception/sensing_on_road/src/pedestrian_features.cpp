@@ -23,6 +23,8 @@
 #define ONCE_FOR_ALL_THRESHOLD      0.95
 #define ONCE_FOR_ALL_RESTTIME       1.0
 
+#define MAX_SPEED 10.0
+
 namespace sensing_on_road
 {
 
@@ -547,12 +549,12 @@ void pedestrian_features::pedestrian_extraction()
         {
             sensing_on_road::pedestrian_laser ped_laser;
             //size criteria && speed criteria
-            if(history_pool_[ih].fastest_velocity<3.0 && history_pool_[ih].single_segment_history.back().max_dimension<3.0 )
+            if(history_pool_[ih].fastest_velocity<MAX_SPEED && history_pool_[ih].single_segment_history.back().max_dimension<3.0 )
             {
                 ped_laser.object_label       =  history_pool_[ih].object_label;
                 ped_laser.size               =  history_pool_[ih].single_segment_history.back().max_dimension;
                 ped_laser.pedestrian_laser   =   history_pool_[ih].single_segment_history.back().segment_centroid_laser;
-
+                ped_laser.confidence         =  history_pool_[ih].pedestrian_belief;
                 bool ped_pub = false;
                 if(history_pool_[ih].fastest_velocity>0.5)
                 {
@@ -654,6 +656,7 @@ void pedestrian_features::ProbabilityCheck()
             {
                 if(history_pool_[ih].object_label==laser_show_batch_.pd_vector[ib].object_label)
                 {
+                    laser_show_batch_.pd_vector[ib].confidence = history_pool_[ih].pedestrian_belief;
                     veri_show_batch_.pd_vector.push_back(laser_show_batch_.pd_vector[ib]);
                     break;
                 }

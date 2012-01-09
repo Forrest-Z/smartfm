@@ -1,0 +1,9 @@
+bool acc_dec
+bool emergency
+float64 steer_angle
+float64 obstacles_dist
+float64 dist_to_goal
+float64 dist_to_ints
+float64 dist_to_sig
+int64 sig_type
+geometry_msgs/Point int_point

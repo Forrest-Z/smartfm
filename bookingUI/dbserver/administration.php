@@ -79,7 +79,7 @@ function listVehicles()
 
     while( $row = @mysql_fetch_assoc($result) )
     {
-        echoInCell($row['vehicleID']);
+        echoInCell($row['requestID']);
         echoInCell($row['status']);
         echoInCell($row['latitude']);
         echoInCell($row['longitude']);

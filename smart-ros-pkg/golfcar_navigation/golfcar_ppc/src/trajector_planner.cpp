@@ -60,7 +60,7 @@ private:
 
     bool stopped_;
     bool goalreached_;
-    unsigned int waypointPassed_;
+    int waypointPassed_;
 
     void UpdatePosition();
     void golfcar_direction(geometry_msgs::Point32 p);
@@ -114,7 +114,7 @@ void PurePursuitBase::UpdatePosition()
 double PurePursuitBase::getIntDist(geometry_msgs::Point* int_point)
 {
     //the intersections points is strictly increasing, getting the distance is easier
-    for(int i=0; i<poi_.int_pts.size();i++)
+    for(unsigned int i=0; i<poi_.int_pts.size();i++)
     {
         if(poi_.int_pts[i] >= pp_->path_n_)
         {
@@ -130,7 +130,7 @@ double PurePursuitBase::getSigDist(int *type)
 {
     if(poi_.sig_pts.size()==0) return -1;
     vector<double> distances;
-    for(int i=0; i<poi_.sig_pts.size();i++)
+    for(unsigned int i=0; i<poi_.sig_pts.size();i++)
     {
 
         if(poi_.sig_pts[i].points>=pp_->path_n_)
@@ -143,7 +143,7 @@ double PurePursuitBase::getSigDist(int *type)
     }
     double min_dist = distances[0];
     *type = poi_.sig_pts[0].type;
-    for(int i=1; i<distances.size();i++)
+    for(unsigned int i=1; i<distances.size();i++)
     {
         if(distances[i]<min_dist)
         {
@@ -160,7 +160,7 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
     pnc_msgs::move_status move_status;
     pp_->vehicle_base_ = robot_pose.pose;
 
-    double steer_angle,dist_to_goal, dist_to_ints;
+    double steer_angle,dist_to_goal;
     geometry_msgs::Point int_point;
     path_flag_= pp_->steering_control(steer_angle,dist_to_goal);
     move_status.dist_to_goal = dist_to_goal;
@@ -251,7 +251,6 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
         //get fill cells using function from base_local_planner
         PurePursuitBase::getFillCells(observed_polygon_cells);
 
-        int obstacle(0), observed_obstacle(0);
         //initialize obstacles as 99 meter
         double wx=99,wy=99;
         for(unsigned int i=0;i<observed_polygon_cells.size();i++)
@@ -296,7 +295,7 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
         move_status.acc_dec = true;
         if(waypointPassed_!=pp_->path_n_)
         {
-            ROS_INFO("Path %d/%u", pp_->path_n_, pp_->path_.poses.size()-1);
+            ROS_INFO("Path %d/%d", pp_->path_n_, (int)pp_->path_.poses.size()-1);
             waypointPassed_=pp_->path_n_;
         }
 
@@ -304,7 +303,7 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
     else{
 
 
-        if(pp_->path_n_<pp_->path_.poses.size()-1)
+        if(pp_->path_n_<(int)pp_->path_.poses.size()-1)
         {
             move_status.emergency=-1;
             move_status.steer_angle = steer_angle_;
@@ -330,13 +329,13 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
 
 
 bool PurePursuitBase::isGoalReached(){
-    if(!path_flag_ && pp_->path_n_<pp_->path_.poses.size()-1)
+    if(!path_flag_ && pp_->path_n_<(int)pp_->path_.poses.size()-1)
     {
         ROS_INFO("Goal reached");
         return true;
     }
     else return false;
-    ROS_INFO("Goal %d/%u",pp_->path_n_,pp_->path_.poses.size()-1);
+    ROS_INFO("Goal %d/%d",pp_->path_n_,(int)pp_->path_.poses.size()-1);
 }
 
 

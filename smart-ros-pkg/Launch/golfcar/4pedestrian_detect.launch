@@ -8,12 +8,14 @@
 	    <param name="scale" value="1.05"/>
 	    <param name="group_threshold" value="1.0"/>
 	    <param name="norm_dist" value="5.0"/>
+	    <param name="show_processed_image" value="false"/>
+	    <param name="black_front_roi" value="true"/>
 	</node>
 	<node pkg="pedestrian_detector" type="visualizer" name="visualizer">
 	    <param name="image_transport" value="compressed"/>
 	    <remap from="image_raw" to="usb_cam/image_raw"/>
 	</node>
-	<node pkg="sensing_on_road" type="laser_extraction" name="laser_extraction"/>
+	<node pkg="sensing_on_road" type="laser_extraction" name="laser_extraction" output="screen"/>
 	<node pkg="sensing_on_road" type="pedestrian_features" name="pedestrian_features"/>
 	<node pkg="sensing_on_road" type="camera_project" name="camera_project"/>
 

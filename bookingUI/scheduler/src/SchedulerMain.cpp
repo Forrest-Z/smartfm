@@ -46,7 +46,7 @@ int optSimulateMobile = 0;
 int optSimulateVehicle = 0;
 int optNoOP = 0;
 string optHostName = "localhost";
-float optSimVehicleSpeed = Scheduler::NOMINAL_VEL; ///< control the speed of the simulated vehicle
+float optSimVehicleSpeed = 1; ///< control the speed of the simulated vehicle
 float optNewTaskProba = 0.001; ///< control the probability of a new task in optSimulateMobile mode
 
 

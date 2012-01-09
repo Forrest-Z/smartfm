@@ -38,7 +38,7 @@ AMCLCrossing::SetCrossingModelBeam(	double z_hit,
 
 ////////////////////////////////////////////////////////////////////////////////
 // Apply the curb sensor model
-bool AMCLCrossing::UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, bool ValidSwitch)
+bool AMCLCrossing::UpdateSensor(pf_t *pf, AMCLSensorData *data, bool *UseFlag, bool ValidSwitch, void *otherSensingSource)
 {
   AMCLCrossingData *ndata;
 

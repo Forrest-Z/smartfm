@@ -5,7 +5,7 @@
 #include <std_msgs/Float64.h>
 #include <geometry_msgs/Twist.h>
 
-#include <lowlevel_arduino/ButtonState.h>
+#include <lowlevel/ButtonState.h>
 
 #define points_num 9
 
@@ -15,7 +15,7 @@ class SteeringController
         SteeringController(ros::NodeHandle nh_);
 
     private:
-        void buttonStateCB(lowlevel_arduino::ButtonState);
+        void buttonStateCB(lowlevel::ButtonState);
         void cmdVelCallBack(geometry_msgs::Twist);
 
         ros::NodeHandle n;
@@ -40,7 +40,7 @@ SteeringController::SteeringController(ros::NodeHandle nh_) : n(nh_)
 }
 
 
-void SteeringController::buttonStateCB(lowlevel_arduino::ButtonState bstate)
+void SteeringController::buttonStateCB(lowlevel::ButtonState bstate)
 {
     if( bstate.emergency )
         emergency = true;

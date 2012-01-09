@@ -65,7 +65,7 @@ void camera_project::project_to_image(const sensing_on_road::pedestrian_laser_ba
         {
             //tempprcorner represents a rectangle box with corner.x, corner,y, height and width;
             sensing_on_road::pedestrian_vision tempprcorner;
-
+            tempprcorner.confidence = pd_laser_para.pedestrian_laser_features[i].confidence;
             tempprcorner.decision_flag = false;
             tempprcorner.complete_flag = true;
             tempprcorner.object_label  = pd_laser_para.pedestrian_laser_features[i].object_label;

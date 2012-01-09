@@ -7,7 +7,7 @@
 #include <lse_xsens_mti/imu_rpy.h>
 
 #include <lowlevel/PID.h>
-#include <lowlevel_arduino/ButtonState.h>
+#include <lowlevel/ButtonState.h>
 #include <fmutil/fm_math.h>
 
 
@@ -93,8 +93,8 @@ PID_Speed::PID_Speed(ros::NodeHandle nh) : n(nh)
     rpySub = n.subscribe("imu/rpy", 1, &PID_Speed::rpyCallBack, this);
     buttonSub = n.subscribe("button_state", 1, &PID_Speed::buttonCallBack, this);
 
-    throttlePub = n.advertise<std_msgs::Float64>("arduino/throttle", 1);
-    brakePedalSub = n.advertise<std_msgs::Float64>("arduino/brake_angle", 1);
+    throttlePub = n.advertise<std_msgs::Float64>("throttle", 1);
+    brakePedalSub = n.advertise<std_msgs::Float64>("brake_angle", 1);
     pidPub = n.advertise<lowlevel::PID>("pid_gain",1);
 
     param.getParam();

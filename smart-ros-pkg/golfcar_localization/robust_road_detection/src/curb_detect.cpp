@@ -748,7 +748,9 @@ namespace road_detection{
     
     bool curb_detect::Curb_Noise_Filtering(tf::StampedTransform &odom_meas_curb_old, std::vector <geometry_msgs::Point32> &curb_line, geometry_msgs::Point32 &meas_pt, unsigned int serial_num)
     {   
-        //--------------1st step: check whether curb point within predicted line;
+        //--------------1st step: check whether curb point within predicted line; a method similar to EKF ---------------
+        //to disable/de-activate this function, just give a small value to "curbFilter_reinit_thresh_";
+        
         //a. check if reach reinit_thresh;
         tf::Transform odom_curb_old_new  = odom_meas_curb_old.inverse() * odom_meas_;
         float tx, ty;
@@ -827,10 +829,13 @@ namespace road_detection{
     void curb_detect::scanSource (const sensor_msgs::LaserScan::ConstPtr& scan_in)
     {
         std::string laser_frame_id = scan_in->header.frame_id;
+        
         try{projector_.transformLaserScanToPointCloud(laser_frame_id, *scan_in, otherSource_pcl_, tf_);}
 		catch (tf::TransformException& e){ROS_DEBUG("Other Souce Wrong!!!!!!!!!!!!!"); std::cout << e.what();return;}    
     }
     
+    //The function here is open to change in the future; plays no effect here;
+    //should transform into baselink... here in laser_frame_id, z (height) is always 0 below threshold...
     bool curb_detect::Eliminate_noise_other_sensors(unsigned int serial)
     {
         double time_dis = otherSource_pcl_.header.stamp.toSec() - laser_cloud_laser_.header.stamp.toSec();

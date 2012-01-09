@@ -18,8 +18,7 @@
   <depend package="sensor_msgs"/>
   <depend package="actionlib"/>
   <depend package="move_base_msgs"/>
-  <depend package="pnc_msgs"/>
-  <depend package="map_to_world"/>
+  <depend package="golfcar_ppc"/>
   <rosdep name="tinyxml" />
 </package>
 

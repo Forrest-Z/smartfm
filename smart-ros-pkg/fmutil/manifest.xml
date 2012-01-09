@@ -9,8 +9,6 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/fmutil</url>
 
-  <depend package="rospy"/>
-
   <export>
     <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -lfmutil"/>
   </export>

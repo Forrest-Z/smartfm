@@ -18,6 +18,8 @@ HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
     nh.param("scale", scale, 1.05);
     nh.param("group_threshold", group_threshold, 1.0);
     nh.param("norm_dist", norm_dist, 5.0);
+    nh.param("show_processed_image", show_processed_image, false);
+    nh.param("black_front_roi", black_front_roi, true);
     //First call to hog to ready the CUDA
      cv::gpu::HOGDescriptor g_hog;
 
@@ -27,11 +29,15 @@ HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
     cout<<"           scale           "<<scale<<endl;
     cout<<"           group_threshold "<<group_threshold<<endl;
     cout<<"           norm_dist       "<<norm_dist<<endl;
+
+    cv::namedWindow("processed_image");
 }
 HOGClassifier::~HOGClassifier(){}
 
-
-
+bool sort_pv(sensing_on_road::pedestrian_vision const &a, sensing_on_road::pedestrian_vision const &b)
+{
+    return a.disz < b.disz;
+}
 void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch pr)
 {
 	/// HOG classification of laser rects
@@ -45,6 +51,12 @@ void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch
         sensing_on_road::pedestrian_vision_batch roi_rects;
         sensing_on_road::pedestrian_vision_batch detect_rects;
         sensing_on_road::pedestrian_vision temp_rect;
+
+        sort(pr.pd_vector.begin(), pr.pd_vector.end(), sort_pv);
+        detect_rects.pd_vector = pr.pd_vector;
+        //get a deep copy
+        cv::Mat img_clone(img.clone());
+
 
         for(unsigned int i=0;i<pr.pd_vector.size();i++)
         {
@@ -60,7 +72,9 @@ void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch
             ROS_DEBUG_STREAM(img_x<<" "<<img_y<<" "<<img_width<<" "<<img_height);
             Rect roi(img_x,img_y,img_width,img_height);
 
-            Mat mat_img(img(roi));
+            //obtain the roi
+            Mat mat_img(img_clone(roi));
+
             double ratio; /// to scale image            
             ScaleWithDistanceRatio(&mat_img, pr.pd_vector[i].disz, norm_dist, Size(img_width, img_height),WIN_SIZE, &ratio);
             gpu::GpuMat gpu_img(mat_img);
@@ -77,6 +91,23 @@ void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch
             if((int)detect_rects.pd_vector.size()>0) temp_rect.decision_flag = true;
             roi_rects.pd_vector.push_back(temp_rect);
 
+
+            //fill the roi with black
+            if(black_front_roi)
+            {
+                cv::Mat Mask(img_clone.size(), CV_8UC1, cv::Scalar(0));
+                cv::Mat MaskROI = Mask(roi);
+                MaskROI = cv::Scalar(1);
+
+                //Set the image to 0 in places where the mask is 1
+                img_clone.setTo(cv::Scalar(0), Mask);
+            }
+
+            if(show_processed_image)
+            {
+                cv::imshow("processed_image", img_clone);
+                cvWaitKey(3);
+            }
 
         }
         people_roi_pub_.publish(roi_rects);

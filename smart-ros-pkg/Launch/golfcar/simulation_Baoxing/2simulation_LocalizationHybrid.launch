@@ -1,0 +1,10 @@
+<launch>
+	<rosparam command="load" file="$(find golfcar_odom)/launch/low_pass.yaml"/>
+	<node pkg="golfcar_odom" type="speedFilter" name="speedFilter"/>
+
+    <node pkg="robust_road_detection" type="curb_detect" name="curb_detect">
+	</node>
+	
+	<node pkg="hybrid_amcl" type="mix_amcl" name="mix_amcl" output="screen"/>
+</launch>
+

@@ -8,7 +8,6 @@ using SchedulerTypes::Task;
 using SchedulerTypes::Duration;
 using namespace std;
 
-const float Vehicle::INTER_TASK_EXTRA_TIME = 20;
 
 Vehicle & Vehicle::operator=( const Vehicle & v) {
     if( this!=&v ) {
@@ -36,14 +35,19 @@ Task & Vehicle::getCurrentTask()
 
 void Vehicle::updateWaitTime()
 {
-    list<Task>::iterator it = tasks.begin();
-    Duration waittime = it->tpickup + it->ttask + INTER_TASK_EXTRA_TIME;
+    Task & t = getCurrentTask();
+    updateWaitTime(t.tpickup + t.ttask);
+}
 
-    for( ++it; it != tasks.end(); ++it )
+void Vehicle::updateWaitTime(Duration timeCurrentTask)
+{
+    Duration waittime = timeCurrentTask;
+
+    for( list<Task>::iterator it = tasks.begin(); it != tasks.end(); ++it )
     {
         waittime += it->tpickup;
         it->twait = waittime;
-        waittime += it->ttask + INTER_TASK_EXTRA_TIME;
+        waittime += it->ttask;
     }
 }
 
@@ -52,13 +56,23 @@ void Vehicle::updateTCurrent(Duration tremain)
     Task & t = getCurrentTask();
     if( status == SchedulerTypes::VEH_STAT_GOING_TO_DROPOFF )
     {
-        t.ttask = t.twait = tremain;
+        t.ttask = tremain;
         t.tpickup = 0;
     }
     else
     {
-        t.tpickup = t.twait = tremain;
+        t.tpickup = tremain;
     }
+}
+
+void Vehicle::updateTPickupCurrent(Duration tpickup)
+{
+    getCurrentTask().tpickup = tpickup;
+}
+
+void Vehicle::updateTTaskCurrent(Duration ttask)
+{
+    getCurrentTask().ttask = ttask;
 }
 
 void Vehicle::updateStatus(SchedulerTypes::VehicleStatus status)
@@ -70,29 +84,24 @@ void Vehicle::updateStatus(SchedulerTypes::VehicleStatus status)
 
 void Vehicle::switchToNextTask()
 {
-    assert( ! tasks.empty() );
+    if( tasks.empty() ) return;
     tasks.pop_front();
 
-    if( tasks.empty() )
-    {
-        updateStatus(SchedulerTypes::VEH_STAT_WAITING);
-    }
-    else
-    {
-        Task task = tasks.front();
-        dbTalker.confirmTask(task);
-        updateStatus(SchedulerTypes::VEH_STAT_GOING_TO_PICKUP);
-        updateWaitTime();
-    }
+    if( tasks.empty() ) return;
+    Task task = tasks.front();
+    dbTalker.confirmTask(task);
+    updateStatus(SchedulerTypes::VEH_STAT_GOING_TO_PICKUP);
+    updateWaitTime();
 }
 
 void Vehicle::update()
 {
+    string vehicleID = id;
+    SchedulerTypes::VehicleInfo vi = dbTalker.getVehicleInfo(vehicleID);
+    updateStatus(vi.status);
+
     if( tasks.empty() )
         return;
-
-    SchedulerTypes::VehicleInfo vi = dbTalker.getVehicleInfo(this->id);
-    updateStatus(vi.status);
 
     Task curTask = tasks.front();
 
@@ -123,19 +132,6 @@ void Vehicle::update()
         throw logic_error(string("Scheduler::update(): vehicle status is ") +
                 SchedulerTypes::vehicleStatusStr(vi.status) +
                 "This case has not been implemented yet.");
-    }
-
-    // Check pending tasks whether custommer cancelled.
-    list<Task>::iterator tit = tasks.begin();
-    ++tit;
-    while( tit != tasks.end() ) {
-        SchedulerTypes::TaskStatus ts = dbTalker.getTaskStatus(tit->taskID);
-        if( ts.custCancelled ) {
-            dbTalker.updateTaskStatus(tit->taskID, "Cancelled");
-            tit = tasks.erase(tit);
-        }
-        else
-            ++tit;
     }
 
     // Report waiting time

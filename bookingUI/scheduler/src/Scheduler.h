@@ -16,10 +16,6 @@
 
 class Scheduler : public DebugLogger
 {
-public:
-    /// Vehicle's nominal velocity used to compute task time
-    static const float NOMINAL_VEL;
-
 private:
     typedef std::vector<Vehicle>::iterator VIT;
 
@@ -54,6 +50,9 @@ public:
 
     /// Method to get a specified task
     const SchedulerTypes::Task & getTask(unsigned taskID) const;
+
+    /// Method to get the waiting time of the specified task
+    SchedulerTypes::Duration getWaitTime(unsigned taskID) const;
 
     /// Method to print all the tasks
     std::string toString() const;

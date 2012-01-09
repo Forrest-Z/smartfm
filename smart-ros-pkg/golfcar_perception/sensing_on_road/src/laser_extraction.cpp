@@ -181,16 +181,19 @@ bool laser_extraction::extract_segments(sensor_msgs::PointCloud *segment_border)
 
     return true;
 }
-
+using namespace std;
 void laser_extraction::connect_segments()
 {
+
     vector<sensing_on_road::scan_segment> & segments = extracted_segments_laser_.segments;
+
     for(unsigned is=0; is< segments.size(); is++)
     {
         segments[is].connect_front_segment = -1;
         segments[is].connect_back_segment  = -1;
     }
 
+    if(segments.size()==0) return;
     for(unsigned is=0; is<segments.size()-1; is++)
     {
         for(unsigned ic = is+1; ic<segments.size(); ic++)

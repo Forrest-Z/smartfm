@@ -110,7 +110,7 @@ void SvgPath::GetDoubleAttribute(TiXmlElement* childElement, const char* attribu
 }
 
 vector<string> SplitString(const char *data, const char* delimiter)
-{
+        {
     char *str = strdup(data);
     char *pch = strtok(str, delimiter);
     vector<string> data_s;
@@ -121,7 +121,7 @@ vector<string> SplitString(const char *data, const char* delimiter)
     }
     free(str);
     return data_s;
-}
+        }
 
 PathPoint SvgPath::GetTransform(TiXmlElement* childElement)
 {
@@ -138,7 +138,7 @@ PathPoint SvgPath::GetTransform(TiXmlElement* childElement)
         {
             tf.x_ = atof(data[1].c_str());
             tf.y_ = atof(data[2].c_str());
-            
+
         }
         else
             throw runtime_error("Unexpected transform data format");
@@ -240,8 +240,14 @@ StationPath SvgPath::StringToPath(string data)
         else if(data_s[i].find_first_of("Mm")!=string::npos)
         {
             //the start of another node on the same path represent the turning signals
+            if(VERBOSE)
+            {
+                for(int k=i; k<i+17; k++) cout<<data_s[k]<<' ';
+                cout<<endl;
+            }
+
             bool right_signal=true;
-            if(i+5<data_s.size())
+            if(i+3<data_s.size())
             {
                 //turn left signal
                 if(data_s[i+5].find_first_of("Mm")!=string::npos)
@@ -252,23 +258,33 @@ StationPath SvgPath::StringToPath(string data)
                     positions.leftsig_pts_.push_back(found_points);
                     right_signal=false;
                 }
-                else if(data_s[i+5].find_first_of("Cc")!=string::npos)
+                else if(data_s[i+3].find_first_of("Cc")!=string::npos)
                 {
-                    if(data_s[i+5].find_first_of("C")!=string::npos) data_s[i+5] = string("L");
-                    else if(data_s[i+5].find_first_of("c")!=string::npos) data_s[i+5] = string("l");
-                    //only take the third point by removing the 2nd and 3rd points
-                    for(int j=i+5;j<i+9;j++) data_s.erase(data_s.begin()+j);
+                    if(data_s[i+ 16].find_first_of("Ll")==string::npos)
+                        throw runtime_error("Unexpected end of turning signal.\n"
+                                "Please check if the SVG path is drawn with symmetric nodes at the end of a turning signal.");
+                    if(data_s[i+3].find_first_of("C")!=string::npos) data_s[i+3] = string("L");
+                    else if(data_s[i+3].find_first_of("c")!=string::npos) data_s[i+3] = string("l");
 
-                    cout<<"off_signal found at "<<i<<" points"<<endl;
+                    //only take the third point by removing the 2nd and 3rd points twice
+                    data_s.erase(data_s.begin()+i+4, data_s.begin()+i+8);
+                    data_s.erase(data_s.begin()+i+6, data_s.begin()+i+10);
+                    if(VERBOSE) cout<<"off_signal found at "<<i<<" points"<<endl;
                     positions.offsig_pts_.push_back(found_points);
                     right_signal=false;
                 }
+
             }
 
             if(right_signal)
             {
                 if(VERBOSE) cout<<"right_signal found at "<<i<<" points"<<endl;
                 positions.rightsig_pts_.push_back(found_points);
+            }
+            if(VERBOSE)
+            {
+                for(int k=i; k<i+17; k++) cout<<data_s[k]<<' ';
+                cout<<endl<<endl;
             }
 
         }
