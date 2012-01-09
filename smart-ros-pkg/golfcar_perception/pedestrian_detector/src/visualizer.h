@@ -3,6 +3,7 @@
 #include "image_transport/image_transport.h"
 #include "cv_bridge/cv_bridge.h"
 #include "sensing_on_road/pedestrian_vision_batch.h"
+#include "sensing_on_road/pedestrian_vision.h"
 #include "opencv2/gpu/gpu.hpp"
 #include "opencv2/highgui/highgui.hpp"
 
@@ -32,11 +33,12 @@ private:
 	void peopleRoiCallback(sensing_on_road::pedestrian_vision_batch pr);
 	void peopleDetectCallback(sensing_on_road::pedestrian_vision_batch pr);
 	void peopleVerifiedCallback(sensing_on_road::pedestrian_vision_batch pr);
+	void drawIDandConfidence(cv::Mat& img, sensing_on_road::pedestrian_vision& pv);
 	sensing_on_road::pedestrian_vision_batch roi_rects_;
 	sensing_on_road::pedestrian_vision_batch detect_rects_;
 	sensing_on_road::pedestrian_vision_batch verified_rects_;
 	
 	
-	bool started;
+	bool started, ROI_text, verified_text, vision_rect, verified_rect, ROI_rect;
 };
 

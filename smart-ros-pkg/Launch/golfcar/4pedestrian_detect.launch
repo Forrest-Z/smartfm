@@ -14,6 +14,11 @@
 	<node pkg="pedestrian_detector" type="visualizer" name="visualizer">
 	    <param name="image_transport" value="compressed"/>
 	    <remap from="image_raw" to="usb_cam/image_raw"/>
+	    <param name="ROI_text" value="true"/>
+	    <param name="verified_text" value="false"/>
+	    <param name="vision_rect" value="false"/>
+	    <param name="ROI_rect" value="false"/>
+	    <param name="verified_rect" value="true"/>
 	</node>
 	<node pkg="sensing_on_road" type="laser_extraction" name="laser_extraction" output="screen"/>
 	<node pkg="sensing_on_road" type="pedestrian_features" name="pedestrian_features"/>
