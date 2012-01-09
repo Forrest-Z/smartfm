@@ -118,8 +118,13 @@ public class DBInterface {
 		task.dropoff = item.getAttribute("dropoff");
 		task.custCancelled = Boolean.parseBoolean( item.getAttribute("custCancelled") );
 		
-		if (item.hasAttribute("eta"))
-			task.eta = Integer.parseInt(item.getAttribute("eta"));
+		if (item.hasAttribute("eta") ) {
+			try {
+				task.eta = Integer.parseInt(item.getAttribute("eta"));
+			} catch (NumberFormatException e) {
+				// nothing here
+			}
+		}
 
 		if (item.hasAttribute("vehicleID")) {
 			task.vehicleID = item.getAttribute("vehicleID");

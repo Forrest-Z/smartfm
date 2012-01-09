@@ -8,6 +8,7 @@ import com.google.android.maps.ItemizedOverlay;
 import com.google.android.maps.MapActivity;
 import com.google.android.maps.MapController;
 import com.google.android.maps.MapView;
+import com.google.android.maps.MyLocationOverlay;
 import com.google.android.maps.Overlay;
 import com.google.android.maps.OverlayItem;
 
@@ -22,6 +23,7 @@ public class TaskBookingMap extends MapActivity {
 	MapController mc;
 	MapView mapView;
 	StationList stations;
+	MyLocationOverlay userlocation;
 	
 	class StationOverlayItem extends OverlayItem {
 		public Station mStation;
@@ -68,22 +70,45 @@ public class TaskBookingMap extends MapActivity {
 	@Override
 	public void onCreate(Bundle bundle) {
 		super.onCreate(bundle);
-		setContentView(R.layout.bookingmap);
+		setContentView(R.layout.mapview);
 		
 		stations = new StationList();
 
-		mapView = (MapView) findViewById(R.id.mapView);
+		mapView = (MapView) findViewById(R.id.mapview);
 		mapView.setBuiltInZoomControls(true);
 		mc = mapView.getController();
 		mc.animateTo(new GeoPoint(1299631, 103771007));
 		mc.setZoom(18);
 		
+		userlocation = new MyLocationOverlay(this, mapView);
+		userlocation.enableMyLocation();
+		userlocation.enableCompass();
+		
 		List<Overlay> mapOverlays = mapView.getOverlays();
+		mapOverlays.clear();
+		mapOverlays.add(userlocation);
+		
 		Drawable drawable = this.getResources().getDrawable(R.drawable.pin);
 		StationItemizedOverlay itemizedoverlay = new StationItemizedOverlay(drawable);
 		for( Station s: stations.getStations())
 			itemizedoverlay.addOverlay(new StationOverlayItem(s));
 		mapOverlays.add(itemizedoverlay);
+				
+		mapView.invalidate();
+	}
+	
+	@Override
+	protected void onPause() {
+		super.onPause();
+		userlocation.disableCompass();
+		userlocation.disableMyLocation();
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		userlocation.enableCompass();
+		userlocation.enableMyLocation();
 	}
 
 	@Override
