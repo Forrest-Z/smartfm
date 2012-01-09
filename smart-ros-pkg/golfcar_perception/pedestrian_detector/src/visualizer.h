@@ -33,11 +33,12 @@ private:
 	void peopleRoiCallback(sensing_on_road::pedestrian_vision_batch pr);
 	void peopleDetectCallback(sensing_on_road::pedestrian_vision_batch pr);
 	void peopleVerifiedCallback(sensing_on_road::pedestrian_vision_batch pr);
+	void drawIDandConfidence(cv::Mat& img, sensing_on_road::pedestrian_vision& pv);
 	sensing_on_road::pedestrian_vision_batch roi_rects_;
 	sensing_on_road::pedestrian_vision_batch detect_rects_;
 	sensing_on_road::pedestrian_vision_batch verified_rects_;
 	
 	
-	bool started;
+	bool started, ROI_text, verified_text, vision_rect, verified_rect, ROI_rect;
 };
 

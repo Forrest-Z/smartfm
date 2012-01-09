@@ -8,6 +8,12 @@ using namespace std;
 
 HOGVisualizer::HOGVisualizer(ros::NodeHandle &n) : n_(n), it_(n_)
 {
+    ros::NodeHandle nh("~");
+    nh.param("ROI_text", ROI_text, true);
+    nh.param("verified_text", verified_text, false);
+    nh.param("vision_rect", vision_rect, false);
+    nh.param("ROI_rect", ROI_rect, false);
+    nh.param("verified_rect", verified_rect, true);
     /// get image from the USB cam
     image_sub_ = it_.subscribe("usb_cam/image_raw", 1, &HOGVisualizer::imageCallback, this);
     /// start processign only after the first image is present
@@ -80,9 +86,7 @@ void HOGVisualizer::imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr)
 
     for(unsigned int i=0;i<detect_rects_.pd_vector.size();i++)
     {
-
-        rectangle(img, Point(detect_rects_.pd_vector[i].cvRect_x1, detect_rects_.pd_vector[i].cvRect_y1) , Point(detect_rects_.pd_vector[i].cvRect_x2, detect_rects_.pd_vector[i].cvRect_y2), Scalar(0,255,0), 1);
-
+        if(vision_rect) rectangle(img, Point(detect_rects_.pd_vector[i].cvRect_x1, detect_rects_.pd_vector[i].cvRect_y1) , Point(detect_rects_.pd_vector[i].cvRect_x2, detect_rects_.pd_vector[i].cvRect_y2), Scalar(0,255,0), 1);
     }
 
 
@@ -94,23 +98,19 @@ void HOGVisualizer::imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr)
         Size roi_size; Point roi_point;
         Cv_helper cv_help;
         cv_help.fillRoiRectangle(Size(640, 360), &roi_size, &roi_point, verified_rects_.pd_vector[i]);
-        sensing_on_road::pedestrian_vision temp_rect;
+        sensing_on_road::pedestrian_vision temp_rect = verified_rects_.pd_vector[i];
         temp_rect.cvRect_x1=roi_point.x;temp_rect.cvRect_y1=roi_point.y;
         temp_rect.cvRect_x2=roi_point.x+roi_size.width;temp_rect.cvRect_y2=roi_point.y+roi_size.height;
-        rectangle(img,Point(temp_rect.cvRect_x1, temp_rect.cvRect_y1) , Point(temp_rect.cvRect_x2, temp_rect.cvRect_y2), Scalar(0,0,255), 2);
+        if(verified_rect) rectangle(img,Point(temp_rect.cvRect_x1, temp_rect.cvRect_y1) , Point(temp_rect.cvRect_x2, temp_rect.cvRect_y2), Scalar(0,0,255), 2);
+        if(verified_text) drawIDandConfidence(img, temp_rect);
     }
 
     for(unsigned int i=0;i<roi_rects_.pd_vector.size();i++)
     {
       Point UL = Point(roi_rects_.pd_vector[i].cvRect_x1, roi_rects_.pd_vector[i].cvRect_y1);
       Point BR = Point(roi_rects_.pd_vector[i].cvRect_x2, roi_rects_.pd_vector[i].cvRect_y2);
-      Point BL = Point(UL.x, BR.y);
-      rectangle(img,UL, BR, Scalar(255,0,0), 1);
-      std::stringstream ss,ss2;
-      ss<<" "<<roi_rects_.pd_vector[i].object_label;
-      putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
-      ss2<<" "<<setprecision(2)<<fixed<<roi_rects_.pd_vector[i].confidence*100.0;
-      putText(img, ss2.str(), BR+Point(-40,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
+      if(ROI_rect) rectangle(img,UL, BR, Scalar(255,0,0), 1);
+      if(ROI_text) drawIDandConfidence(img, roi_rects_.pd_vector[i]);
     }
     started = true;
     imshow("Image window", img);
@@ -118,6 +118,16 @@ void HOGVisualizer::imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr)
 
 }	
 
+void HOGVisualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_vision& pv)
+{
+    std::stringstream ss,ss2;
+    ss<<pv.object_label;
+    Point BR = Point(pv.cvRect_x2, pv.cvRect_y2);
+    Point BL = Point(pv.cvRect_x1, pv.cvRect_y2);
+    putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
+    ss2<<setprecision(2)<<fixed<<pv.confidence*100.0;
+    putText(img, ss2.str(), BR+Point(-45,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
+}
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "HOGVisualizerVis");
