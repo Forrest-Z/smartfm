@@ -554,7 +554,7 @@ void pedestrian_features::pedestrian_extraction()
                 ped_laser.object_label       =  history_pool_[ih].object_label;
                 ped_laser.size               =  history_pool_[ih].single_segment_history.back().max_dimension;
                 ped_laser.pedestrian_laser   =   history_pool_[ih].single_segment_history.back().segment_centroid_laser;
-
+                ped_laser.confidence         =  history_pool_[ih].pedestrian_belief;
                 bool ped_pub = false;
                 if(history_pool_[ih].fastest_velocity>0.5)
                 {
@@ -656,6 +656,7 @@ void pedestrian_features::ProbabilityCheck()
             {
                 if(history_pool_[ih].object_label==laser_show_batch_.pd_vector[ib].object_label)
                 {
+                    laser_show_batch_.pd_vector[ib].confidence = history_pool_[ih].pedestrian_belief;
                     veri_show_batch_.pd_vector.push_back(laser_show_batch_.pd_vector[ib]);
                     break;
                 }

@@ -10,3 +10,4 @@ float32 cvRect_x1
 float32 cvRect_y1
 float32 cvRect_x2
 float32 cvRect_y2
+float32 confidence
