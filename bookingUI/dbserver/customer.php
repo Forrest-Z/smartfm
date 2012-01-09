@@ -6,11 +6,6 @@ require("funcs.php");
 
 $CUSTOMER_ID = 'cust2';
 
-function formatETA($eta)
-{
-    return "in " . $eta . " seconds";
-}
-
 function listRequests()
 {
     global $CUSTOMER_ID;
@@ -64,7 +59,7 @@ function listRequests()
             else
                 echo "<p>Vehicle $vehicleID will be at pickup location " . formatETA($row['eta']) . ".</p>";
         }
-        elseif( $vrow['status']=='GoingToPickupLocation' ) {
+        elseif( $vrow['status']=='AtPickupLocation' ) {
             echo "<p>Vehicle $vehicleID is at pickup location.</p>";
         }
         else {
