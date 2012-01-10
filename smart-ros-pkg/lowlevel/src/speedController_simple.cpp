@@ -179,9 +179,10 @@ void PID_Speed::odoCallBack(lowlevel::Encoders enc)
             pid.p_gain = BOUND( -0.7, pid.p_gain, 1.0);
             pid.i_gain = param.ki * ei;
             pid.d_gain = kdd * (e_now - e_pre) / dt;
+            pid.d_gain = BOUND( -0.3, pid.d_gain, 0.3);
             pid.v_filter = vFiltered;
             
-            if(fabs(dgain_pre - pid.d_gain)>0.3) pid.d_gain = dgain_pre;
+            if(fabs(dgain_pre - pid.d_gain)>0.2) pid.d_gain = dgain_pre;
             dgain_pre = pid.d_gain;
 
             pid.u_ctrl = pid.p_gain + pid.i_gain + pid.d_gain;
