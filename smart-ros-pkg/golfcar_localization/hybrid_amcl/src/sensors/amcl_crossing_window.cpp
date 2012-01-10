@@ -80,7 +80,7 @@ double AMCLCrossing::BeamModel(AMCLCrossingData *data, pf_sample_set_t* set)
     
     //20120104 update
     //p = 1.0;
-     p = 0.0;
+     p =1.0;
      
     for (i = 0; i < data->FakeSensorPose_.size(); i ++)
     {
@@ -126,7 +126,8 @@ double AMCLCrossing::BeamModel(AMCLCrossingData *data, pf_sample_set_t* set)
       //      p *= pz;
       // here we have an ad-hoc weighting scheme for combining beam probs
       // works well, though...
-      p += pz;
+      
+      p += pz*pz*pz;
     }
     meas_total_score = meas_total_score + p;
     
