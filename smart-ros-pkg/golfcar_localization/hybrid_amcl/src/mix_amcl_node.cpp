@@ -771,9 +771,8 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 			pf_vector_t fakepose;
 			fakepose.v[0]= leftCrossing.points[ip].x;
 			fakepose.v[1]= 0.0;
-            fakepose.v[2]= 0.0;
             //20120104 update;
-			//fakepose.v[2]= leftCrossing.points[ip].z;
+			fakepose.v[2]= leftCrossing.points[ip].z;
 			LeftCroData_->FakeSensorPose_.push_back(fakepose);
 		}
 		
@@ -782,9 +781,9 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 			pf_vector_t fakepose;
 			fakepose.v[0]= rightCrossing.points[ip].x;
 			fakepose.v[1]= 0.0;
-            fakepose.v[2]= 0.0;
 			//20120104 update;
-			//fakepose.v[2]= rightCrossing.points[ip].z;
+			fakepose.v[2]= rightCrossing.points[ip].z;
+			
 			RightCroData_->FakeSensorPose_.push_back(fakepose);
 		}
 		
@@ -854,10 +853,8 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 			
 			double yyaw,ttemp;
 			baselink_old_new.getBasis().getEulerYPR(yyaw, ttemp, ttemp);
-            
-            fakepose.v[2] = yyaw;
 			//20120104 update;
-			//fakepose.v[2] = leftCrossing.points[ip].z + yyaw;
+			fakepose.v[2] = leftCrossing.points[ip].z + yyaw;
 			
 			LeftCroData_->FakeSensorPose_.push_back(fakepose);
 		}
@@ -880,10 +877,9 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
 			
 			double yyaw,ttemp;
 			baselink_old_new.getBasis().getEulerYPR(yyaw, ttemp, ttemp);
-            fakepose.v[2] = yyaw;
-            
 			//20120104 update;
-			//fakepose.v[2] = rightCrossing.points[ip].z+ yyaw;
+			fakepose.v[2] = rightCrossing.points[ip].z+ yyaw;
+			
 			RightCroData_->FakeSensorPose_.push_back(fakepose);
 		}
 	
@@ -1120,9 +1116,7 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
                 if(!(++resample_count_ % resample_interval_))
                 {
                     pf_->w_diff_tresh=0.2;
-                    
-                    //no random particle injection when using curb-crossing features;
-                    pf_->w_diff_setvalue=0.0;
+                    pf_->w_diff_setvalue=0.02;
                     
                     pf_update_resample(pf_);
                     resampled = true;

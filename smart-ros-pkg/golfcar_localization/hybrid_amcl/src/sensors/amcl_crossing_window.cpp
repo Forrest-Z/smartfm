@@ -78,11 +78,9 @@ double AMCLCrossing::BeamModel(AMCLCrossingData *data, pf_sample_set_t* set)
     // Take account of the laser pose relative to the robot
 	
     
-    //20120104 update seems to be too radical.
     //20120104 update
-    //p = 0.0;
-    
-     p = 1.0;
+    //p = 1.0;
+     p =1.0;
      
     for (i = 0; i < data->FakeSensorPose_.size(); i ++)
     {
@@ -95,11 +93,10 @@ double AMCLCrossing::BeamModel(AMCLCrossingData *data, pf_sample_set_t* set)
         //replace pose.v[2] with data->Pose_Est_.v[2], when using crossing data to weigh particles;
         fakepose.v[2] = data->FakeSensorPose_[i].v[2]+ data->Pose_Est_.v[2];
         
-        map_range = map_calc_range(self->map_, fakepose.v[0], fakepose.v[1], fakepose.v[2] + obs_bearing, MAX_DISTANCE);
-        
         //20120104 update:
         //since the obs_bearing angle is already in fakepose.v[2], no need to do add obs_bearing as M_PI_2 or -M_PI_2, which is not accurate;
-        //map_range = map_calc_range(self->map_, fakepose.v[0], fakepose.v[1], fakepose.v[2], MAX_DISTANCE);
+		//map_range = map_calc_range(self->map_, fakepose.v[0], fakepose.v[1], fakepose.v[2] + obs_bearing, MAX_DISTANCE);
+        map_range = map_calc_range(self->map_, fakepose.v[0], fakepose.v[1], fakepose.v[2], MAX_DISTANCE);
         
 		pz = 0.0;
 
@@ -126,7 +123,9 @@ double AMCLCrossing::BeamModel(AMCLCrossingData *data, pf_sample_set_t* set)
       
       
       //20120104 update
-      //      p += pz;
+      //      p *= pz;
+      // here we have an ad-hoc weighting scheme for combining beam probs
+      // works well, though...
       
       p += pz*pz*pz;
     }

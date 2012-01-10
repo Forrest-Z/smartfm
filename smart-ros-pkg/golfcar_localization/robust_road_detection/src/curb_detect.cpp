@@ -546,7 +546,6 @@ namespace road_detection{
             //corresponding to changes in "amcl" part;
             //store beam angle in "rightCrossing_pt.z";
             /////////////////////////////////////////////////////////////////////////
-            /*
             float delt_x = rightCrossing_pt.x - looking_forward_distance_;
             float delt_y = rightCrossing_pt.y - 0.0;
             float angle_tmp;
@@ -555,8 +554,6 @@ namespace road_detection{
             rightCrossing_pt.x = looking_forward_distance_;
             rightCrossing_pt.y = rightCrossing_pt.y;
             rightCrossing_pt.z = angle_tmp;
-            */
-            
             hybrid_pcl_.points.push_back(rightCrossing_pt);
             
             //help reset right curb things;
@@ -585,7 +582,6 @@ namespace road_detection{
              //changed to counter non-verticle fact of crossing beam to base_link x;
              //corresponding to changes in "amcl" part;
              /////////////////////////////////////////////////////////////////////////
-             /*
              float delt_x = leftCrossing_pt.x - looking_forward_distance_;
              float delt_y = leftCrossing_pt.y - 0.0;
              if(delt_x ==0) delt_x =0.01;
@@ -593,7 +589,6 @@ namespace road_detection{
              leftCrossing_pt.x = looking_forward_distance_;
              leftCrossing_pt.y = leftCrossing_pt.y;
              leftCrossing_pt.z = angle_tmp;
-             */
              hybrid_pcl_.points.push_back(leftCrossing_pt);
              
              //help reset left curb things;
