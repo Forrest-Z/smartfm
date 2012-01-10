@@ -1120,7 +1120,9 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
                 if(!(++resample_count_ % resample_interval_))
                 {
                     pf_->w_diff_tresh=0.2;
-                    pf_->w_diff_setvalue=0.02;
+                    
+                    //no random particle injection when using curb-crossing features;
+                    pf_->w_diff_setvalue=0.0;
                     
                     pf_update_resample(pf_);
                     resampled = true;
