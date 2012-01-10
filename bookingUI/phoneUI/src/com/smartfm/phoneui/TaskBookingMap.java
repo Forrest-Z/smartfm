@@ -1,62 +1,68 @@
 package com.smartfm.phoneui;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.google.android.maps.GeoPoint;
+import com.google.android.maps.ItemizedOverlay;
 import com.google.android.maps.MapActivity;
 import com.google.android.maps.MapController;
 import com.google.android.maps.MapView;
+import com.google.android.maps.MyLocationOverlay;
 import com.google.android.maps.Overlay;
+import com.google.android.maps.OverlayItem;
 
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.Point;
-import android.graphics.RectF;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 
 public class TaskBookingMap extends MapActivity {
 	
 	//TODO add current location to the map and center it there (check that this does not violate the terms of use).
 	
-	//TODO it seems that the proper method of adding overlays is to use ItemizedOverlays. 
-	// (see http://developer.android.com/resources/tutorials/views/hello-mapview.html)
-
 	MapController mc;
 	MapView mapView;
 	StationList stations;
-	Bitmap pin;
+	MyLocationOverlay userlocation;
 	
-	class MapLocationOverlay extends Overlay {
+	class StationOverlayItem extends OverlayItem {
+		public Station mStation;
+		StationOverlayItem(Station station) {
+			super(station.latlon, station.name, station.name);
+			mStation = station;
+		}
+	}
+	
+	class StationItemizedOverlay extends ItemizedOverlay<StationOverlayItem> {
 		
-		@Override
-		public void draw(Canvas canvas, MapView mapView, boolean shadow) {
-			super.draw(canvas, mapView, shadow);
-			for( Station s: stations.getStations() ) {
-				Point p = mapView.getProjection().toPixels(s.latlon, null);
-				canvas.drawBitmap(pin, p.x - pin.getWidth() / 2,
-						p.y - pin.getHeight(), null);
-			}
+		private ArrayList<StationOverlayItem> mOverlays = new ArrayList<StationOverlayItem>();
+		
+		public StationItemizedOverlay(Drawable defaultMarker) {
+			super(boundCenterBottom(defaultMarker));
 		}
 		
-		boolean test(GeoPoint hit, Station s) {
-			Point p_hit = mapView.getProjection().toPixels(hit, null);
-			RectF r = new RectF(-pin.getWidth()/2, -pin.getHeight(), pin.getWidth()/2, 0);
-			Point p_s = mapView.getProjection().toPixels(s.latlon, null);
-			r.offset(p_s.x, p_s.y);
-			return r.contains(p_hit.x, p_hit.y);
+		public void addOverlay(StationOverlayItem overlay) {
+		    mOverlays.add(overlay);
+		    populate();
 		}
-
+		
 		@Override
-		public boolean onTap(GeoPoint hit, MapView mapView) {
-			for( Station s: stations.getStations() ) {
-				if ( test(hit, s) ) {
-					setResult(RESULT_OK, new Intent().
-							putExtra("com.smartfm.phoneui.stationName", s.name));
-					finish();
-					return true;
-				}
-			}
-			return super.onTap(hit, mapView);
+		protected StationOverlayItem createItem(int i) {
+		  return mOverlays.get(i);
+		}
+		
+		@Override
+		public int size() {
+		  return mOverlays.size();
+		}
+		
+		@Override
+		protected boolean onTap(int index) {
+			StationOverlayItem item = mOverlays.get(index);
+		 	setResult(RESULT_OK, new Intent().
+		 			putExtra("com.smartfm.phoneui.stationName", item.mStation.name));
+		 	finish();
+		 	return true;
 		}
 	}
 
@@ -64,21 +70,45 @@ public class TaskBookingMap extends MapActivity {
 	@Override
 	public void onCreate(Bundle bundle) {
 		super.onCreate(bundle);
-		setContentView(R.layout.bookingmap);
-		pin = BitmapFactory.decodeResource(getResources(), R.drawable.pin);
+		setContentView(R.layout.mapview);
 		
 		stations = new StationList();
 
-		mapView = (MapView) findViewById(R.id.mapView);
+		mapView = (MapView) findViewById(R.id.mapview);
 		mapView.setBuiltInZoomControls(true);
 		mc = mapView.getController();
 		mc.animateTo(new GeoPoint(1299631, 103771007));
 		mc.setZoom(18);
 		
-		MapLocationOverlay mapLocationOverlay = new MapLocationOverlay();
-		mapView.getOverlays().clear();
-		mapView.getOverlays().add(mapLocationOverlay);
+		userlocation = new MyLocationOverlay(this, mapView);
+		userlocation.enableMyLocation();
+		userlocation.enableCompass();
+		
+		List<Overlay> mapOverlays = mapView.getOverlays();
+		mapOverlays.clear();
+		mapOverlays.add(userlocation);
+		
+		Drawable drawable = this.getResources().getDrawable(R.drawable.pin);
+		StationItemizedOverlay itemizedoverlay = new StationItemizedOverlay(drawable);
+		for( Station s: stations.getStations())
+			itemizedoverlay.addOverlay(new StationOverlayItem(s));
+		mapOverlays.add(itemizedoverlay);
+				
 		mapView.invalidate();
+	}
+	
+	@Override
+	protected void onPause() {
+		super.onPause();
+		userlocation.disableCompass();
+		userlocation.disableMyLocation();
+	}
+
+	@Override
+	protected void onResume() {
+		super.onResume();
+		userlocation.enableCompass();
+		userlocation.enableMyLocation();
 	}
 
 	@Override

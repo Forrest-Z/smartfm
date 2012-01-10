@@ -22,7 +22,8 @@ class Cv_helper
         int image_height = img_size.height;
         int img_x = pd.x;
         int img_y = pd.y;
-
+        //pd.width = 640;
+        //pd.height = 360;
         if(img_x > image_width || img_y > image_height) return false;
         if(img_x<0)img_x=0;
         if(img_y<0)img_y=0;

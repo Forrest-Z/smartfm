@@ -25,6 +25,7 @@ public class MapLocations extends MapActivity {
 		mapcontroller = mapview.getController();
 		mapcontroller.animateTo(new GeoPoint(1299631, 103771007));
 		mapcontroller.setZoom(18);
+		
 		userlocation = new MyLocationOverlay(this, mapview);
 		mapview.getOverlays().clear();
 		userlocation.enableMyLocation();
@@ -49,11 +50,6 @@ public class MapLocations extends MapActivity {
 	@Override
 	protected boolean isRouteDisplayed() {
 		return false;
-	}
-
-	// ADD CAR LOCATION OVERLAY - receive data from server
-	private class CarLocationOverlay extends Overlay {
-		//TODO: is this useful and for what?
 	}
 
 }

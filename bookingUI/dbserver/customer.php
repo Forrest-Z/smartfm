@@ -6,64 +6,75 @@ require("funcs.php");
 
 $CUSTOMER_ID = 'cust2';
 
-function echoInTag($tag, $txt) { echo "<$tag>$txt</$tag>"; }
-function echoInCell($txt) { echoInTag("td", $txt); }
-
 function listRequests()
 {
     global $CUSTOMER_ID;
     $con = connect_to_DB();
-    $filter = isset($_GET['filter']) && $_GET['filter']=='yes';
     $sql = "SELECT * FROM requests WHERE CustomerID='" . $CUSTOMER_ID . "' ORDER BY RequestID";
     $result = mysql_query($sql, $con) or die ('Select error: ' . mysql_error());
-    echo "<table>";
-
-    echo "<tr>";
-    echoInTag("th","CANCEL");
-    echoInTag("th","Status");
-    echoInTag("th","Pickup");
-    echoInTag("th","Dropoff");
-    echoInTag("th","VehicleID");
-    echoInTag("th","ETA");
-    echo "</tr>";
+    $counter = 0;
 
     while ($row = @mysql_fetch_assoc($result))
     {
-        if( $filter && ($row['status']=='Cancelled' || $row['status']=='Completed') )
+        if( $row['status']=='Cancelled' || $row['status']=='Completed' )
             continue;
-        echo "<tr>";
-        $rid = $row['requestID'];
 
         $cancelBtnForm = '<form action="cancel_request_adm.php" method="post">';
-        $cancelBtnForm .= '<input type="hidden" name="RequestID" value="' . $rid . '"/>';
-        if(isset($_GET['filter']) && $_GET['filter']=='yes')
-            $cancelBtnForm .= '<input type="hidden" name="filter" value="yes"/>';
+        $cancelBtnForm .= '<input type="hidden" name="RequestID" value="' . $row['requestID'] . '"/>';
         $cancelBtnForm .= '<input type="hidden" name="ReturnScript" value="customer"/>';
-        $cancelBtnForm .= '<input type="submit" value="X"/></form>';
+        $cancelBtnForm .= '<input type="submit" value="Cancel this booking"/></form>';
 
-        if(!$row['custCancelled'])
-            echoInCell($cancelBtnForm);
-        else
-            echoInCell("Cancelling");
+        if( $counter++ )
+            echo "<hr/>";
 
-        echoInCell($row['status']);
-        echoInCell($row['pickUpLocation']);
-        echoInCell($row['dropOffLocation']);
+        echo "<h2>From " . $row['pickUpLocation'] . " to " . $row['dropOffLocation'] . "</h2>";
 
-        $vehicleID = "";
-        if( $row['status']=="Acknowledged" || $row['status']=="Confirmed" || $row['status']=="Processing" )
-            $vehicleID = $row['vehicleID'];
-        echoInCell($vehicleID);
+        if( $row['custCancelled'] ) {
+            echo "<p>We are cancelling your booking...</p>";
+            continue;
+        }
 
-        $eta = "";
-        if( $row['status']=="Confirmed" || $row['status']=="Processing" )
-            $eta = $row['eta'];
-        echoInCell($eta);
+        if( $row['status']!="Acknowledged" && $row['status']!="Confirmed" && $row['status']!="Processing" ) {
+            echo "<p>We are processing your booking.</p>";
+            echo $cancelBtnForm;
+            continue;
+        }
 
-        echo "</tr>";
+        $vehicleID = $row['vehicleID'];
+        if( $row['status']!='Processing' ) {
+            if( $row['eta']==0 )
+                echo "<p>We are processing your booking.</p>";
+            else
+                echo "<p>Vehicle $vehicleID will be at pickup location " . formatETA($row['eta']) . ".</p>";
+            echo $cancelBtnForm;
+            continue;
+        }
+
+        $vsql = "SELECT * FROM vehicles WHERE VehicleID='" . $vehicleID . "'";
+        $vresult = mysql_query($vsql, $con) or die ('Select error: ' . mysql_error());
+        $vrow = @mysql_fetch_assoc($vresult);
+        if( $vrow['status']=='GoingToPickupLocation' ) {
+            if( $row['eta']==0 )
+                echo "<p>Vehicle $vehicleID on the way to pickup location.</p>";
+            else
+                echo "<p>Vehicle $vehicleID will be at pickup location " . formatETA($row['eta']) . ".</p>";
+        }
+        elseif( $vrow['status']=='AtPickupLocation' ) {
+            echo "<p>Vehicle $vehicleID is at pickup location.</p>";
+        }
+        else {
+            if( $row['eta']==0 )
+                echo "<p>Going to destination.</p>";
+            else
+                echo "<p>Arriving to destination " . formatETA($row['eta']) . ".</p>";
+        }
+
+        echo $cancelBtnForm;
     }
-    echo "</table>";
     mysql_close($con);
+
+    if( $counter==0 )
+        echo "<p>You do not have any booking.</p>";
 }
 
 function listStations()
@@ -107,13 +118,14 @@ padding: 5px;
 </style>
 
 </head>
+
+
+
+
+
+
 <body>
 
-<h1>Current requests</h1>
-<form action="customer.php" method="get">
-<p><input type="checkbox" name="filter" value="yes" onclick="this.form.submit();" <?php if(isset($_GET['filter']) && $_GET['filter']=='yes') echo "checked"?>/> Do not display cancelled and completed requests</p>
-</form>
-<?php listRequests(); ?>
 
 <h1>Make a booking</h1>
 <form action="make_booking.php" method="post">
@@ -127,6 +139,10 @@ padding: 5px;
 <input type="submit" value="Submit" />
 </form>
 
+
+
+<h1>Current requests</h1>
+<?php listRequests(); ?>
 
 </body>
 </html>

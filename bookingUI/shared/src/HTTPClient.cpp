@@ -3,6 +3,7 @@
 
 #include <string>
 #include <stdexcept>
+#include <iostream>
 
 // libcurl is used for the heavy lifting.
 #include <curl/curl.h>
@@ -62,6 +63,8 @@ std::string HTTPClient::connect()
     curl_easy_setopt(curl, CURLOPT_POST, 1);
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, urlEncodedParameters.c_str());
 
+    //cout <<"Calling " <<url <<" with parameters " <<urlEncodedParameters <<endl;
+
     struct MemoryStruct chunk;
     chunk.memory = (char *)malloc(1);  /* will be grown as needed by the realloc above */
     if( chunk.memory==NULL )
@@ -84,5 +87,6 @@ std::string HTTPClient::connect()
     curl_easy_cleanup(curl);
     curl_global_cleanup();
 
+    //cout <<"Got response " <<data <<endl <<endl;
     return data;
 }

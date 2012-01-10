@@ -23,6 +23,8 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 
+import android.R.bool;
+
 
 /** A helper class to call the PHP scripts used to interface with the database. */
 class RPC {
@@ -106,31 +108,52 @@ public class DBInterface {
 		}
 		return val;
 	}
+	
+	public static Task taskFromElement(Element item) throws Exception {
+		Task task = new Task();
+		task.customerID = item.getAttribute("customerID");
+		task.requestID = Integer.parseInt(item.getAttribute("requestID"));
+		task.status = item.getAttribute("status");
+		task.pickup = item.getAttribute("pickup");
+		task.dropoff = item.getAttribute("dropoff");
+		task.custCancelled = Boolean.parseBoolean( item.getAttribute("custCancelled") );
+		
+		if (item.hasAttribute("eta") ) {
+			try {
+				task.eta = Integer.parseInt(item.getAttribute("eta"));
+			} catch (NumberFormatException e) {
+				// nothing here
+			}
+		}
+
+		if (item.hasAttribute("vehicleID")) {
+			task.vehicleID = item.getAttribute("vehicleID");
+			
+			Document vdom = new RPC("list_vehicles.php")
+						.addParameter("VehicleID", ""+task.vehicleID)
+						.call();
+			NodeList vitems = vdom.getDocumentElement().getElementsByTagName("vehicleList");
+			
+			if( vitems.getLength()==0 )
+				throw new RuntimeException("Vehicle " + task.vehicleID + " not found.");
+			if( vitems.getLength()>1 )
+				throw new RuntimeException("Too many tasks returned.");
+			Element vitem = (Element) vitems.item(0);
+			
+			task.latitude = parseDoubleAttr(vitem, "latitude");
+			task.longitude = parseDoubleAttr(vitem, "longitude");
+			task.vehicleStatus = vitem.getAttribute("status");
+		}
+		return task;
+	}
 
 
 	public static List<Task> listTasks() throws Exception {
 		List<Task> tasks = new ArrayList<Task>();
 		Document dom = new RPC("list_requests.php").call();
 		NodeList items = dom.getDocumentElement().getElementsByTagName("request");
-		for (int i = 0; i < items.getLength(); i++) {
-			Task task = new Task();
-			Element item = (Element) items.item(i);
-
-			task.customerID = item.getAttribute("customerID");
-			task.requestID = Integer.parseInt(item.getAttribute("requestID"));
-			task.status = item.getAttribute("status");
-			task.pickup = item.getAttribute("pickup");
-			task.dropoff = item.getAttribute("dropoff");
-
-			if (item.hasAttribute("vehicleID")) {
-				task.vehicleID = item.getAttribute("vehicleID");
-				task.latitude = parseDoubleAttr(item, "latitude");
-				task.longitude = parseDoubleAttr(item, "longitude");
-				task.eta = (int) parseDoubleAttr(item, "eta");
-			}
-
-			tasks.add(task);
-		}
+		for (int i = 0; i < items.getLength(); i++)
+			tasks.add( taskFromElement((Element) items.item(i)) );
 		return tasks;
 	}
 	
@@ -145,23 +168,7 @@ public class DBInterface {
 		if( items.getLength()>1 )
 			throw new RuntimeException("Too many tasks returned.");
 		
-		Task task = new Task();
-		Element item = (Element) items.item(0);
-
-		task.customerID = item.getAttribute("customerID");
-		task.requestID = Integer.parseInt(item.getAttribute("requestID"));
-		task.status = item.getAttribute("status");
-		task.pickup = item.getAttribute("pickup");
-		task.dropoff = item.getAttribute("dropoff");
-
-		if (item.hasAttribute("vehicleID")) {
-			task.vehicleID = item.getAttribute("vehicleID");
-			task.latitude = Double.parseDouble(item.getAttribute("latitude"));
-			task.longitude = Double.parseDouble(item.getAttribute("longitude"));
-			task.eta = Integer.parseInt(item.getAttribute("eta"));
-		}
-
-		return task;
+		return taskFromElement((Element) items.item(0));		
 	}
 	
 	public static int addTask(String pickup, String dropoff) throws Exception {

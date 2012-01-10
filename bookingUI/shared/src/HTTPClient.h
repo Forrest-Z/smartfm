@@ -3,6 +3,7 @@
 
 #include <string>
 #include <sstream>
+#include <iomanip>
 
 /// A HTTP client
 class HTTPClient
@@ -25,10 +26,11 @@ public:
         std::stringstream ss;
         if( urlEncodedParameters.length()>0 )
             ss <<'&';
-        ss <<name <<'=' <<value;
+        ss <<name <<'=' <<std::setprecision(12) <<value;
         urlEncodedParameters = urlEncodedParameters + ss.str();
         return *this;
     }
+
 
     /// Connect to the server and retrieve the data.
     std::string connect();
