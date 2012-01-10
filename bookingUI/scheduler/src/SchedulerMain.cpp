@@ -287,33 +287,42 @@ void parseOptions(int argc, char **argv)
 
 void createObjects()
 {
+    // Create a log file name
     char timestr[64];
-    time_t t = time(NULL);
-    strftime(timestr, sizeof(timestr), "%F-%a-%H-%M-%S", localtime(&t));
+    time_t now = time(NULL);
+    strftime(timestr, sizeof(timestr), "%F-%a-%H-%M-%S", localtime(&now));
     ostringstream oss;
     oss  << "log-" << timestr <<".log";
+
+    // Create the logger object
     logger.setLogFile(oss.str());
     logger.setVerbosityLevel(optVerbosityLevel);
     logger.setConsoleStream(stderr);
 
+    // Create the database talker object
     string username = "fmauto", passwd = "smartfm", dbname = "fmauto";
     gDBTalker = new DBTalker(optHostName, username, passwd, dbname);
     gDBTalker->copyLoggingSettings(logger);
 
+    // Create the scheduler
     gScheduler = new Scheduler(*gDBTalker);
     gScheduler->copyLoggingSettings(logger);
 
     if( optSimulateVehicle )
     {
+        // Create a simulated vehicle
         gSimulatedVehicle = new SimulatedVehicle(gStationPaths, "golfcart1", optSimVehicleSpeed, optHostName);
         gSimulatedVehicle->comm.startThread();
         gSimulatedVehicle->rp.startThread();
+
+        // Wait for current station input
         while( ! gSimulatedVehicle->rp.getCurrentStation().isValid() )
             sleep(1);
     }
 
     if (!optNoGUI)
     {
+        // Create the NCurse based UI
         gSchedulerUI = new SchedulerUI(*gScheduler, *gDBTalker);
         gSchedulerUI->copyLoggingSettings(logger);
         gSchedulerUI->initConsole();
