@@ -1,0 +1,18 @@
+#get access to the device:
+sudo adb kill-server
+sudo adb start-server
+sudo adb devices
+
+#uninstall the app
+adb uninstall com.smartfm.phoneui
+
+#install the app:
+adb install /path/to/APK
+
+#update:
+adb install -r /path/to/APK
+
+#Getting the MD5 Fingerprint of the SDK Debug Certificate:
+keytool -list -alias androiddebugkey -keystore /home/brice/.android/debug.keystore -storepass android -keypass android
+
+#use it to get an API key and put it in the app (res.layout.mapview.xml)

@@ -6,7 +6,7 @@
 #include <lse_xsens_mti/imu_rpy.h>
 
 #include <lowlevel/PID.h>
-#include <lowlevel/ButtonState.h>
+#include <lowlevel_arduino/ButtonState.h>
 #include <lowlevel/Encoders.h>
 
 #include <fmutil/fm_math.h>
@@ -42,9 +42,9 @@ class PID_Speed
         void cmdVelCallBack(geometry_msgs::Twist);
         void rpyCallBack(lse_xsens_mti::imu_rpy);
         void odoCallBack(lowlevel::Encoders);
-        //void buttonCallBack(lowlevel::ButtonState);
+        //void buttonCallBack(lowlevel_arduino::ButtonState);
         void buttonCallBack(golfcar_halsampler::odo);
-        
+
         ros::NodeHandle n;
         ros::Subscriber cmdVelSub, odoSub, rpySub, buttonSub;
         ros::Publisher throttlePub, brakePedalPub, pidPub;
@@ -127,7 +127,7 @@ void PID_Speed::rpyCallBack(lse_xsens_mti::imu_rpy rpy)
     pitch = rpy.pitch;
 }
 
-void PID_Speed::buttonCallBack(golfcar_halsampler::odo bs)//lowlevel::ButtonState bs)
+void PID_Speed::buttonCallBack(golfcar_halsampler::odo bs)//lowlevel_arduino::ButtonState bs)
 {
     // Would be nice here to define some action when there is a transition from
     // one state to another, e.g. reset the integral term, etc.
@@ -180,7 +180,7 @@ void PID_Speed::odoCallBack(lowlevel::Encoders enc)
             pid.i_gain = param.ki * ei;
             pid.d_gain = kdd * (e_now - e_pre) / dt;
             pid.v_filter = vFiltered;
-            
+
             if(fabs(dgain_pre - pid.d_gain)>0.3) pid.d_gain = dgain_pre;
             dgain_pre = pid.d_gain;
 
@@ -191,7 +191,7 @@ void PID_Speed::odoCallBack(lowlevel::Encoders enc)
 
             if(pid.u_ctrl > param.throttle_zero_thres)
             {
-                
+
                 th.volt = pid.u_ctrl*3.33;//2.95+0.35; we can eliminate the constant 0.35 since we are taking into consideration of pid.u_ctrl
                 bp.angle = 0;
                 kdd = param.kd;

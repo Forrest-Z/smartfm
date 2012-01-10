@@ -1,6 +1,7 @@
 #include "pedestrian_features.h"
 
 #define MAX_SEG_SIZE 1.5
+#define MIN_SEG_SIZE 0.2
 #define ASSO_TIME_COEF 0.1
 #define NEAREST_THRESH 1.0
 #define MERGE_DIST 0.30
@@ -10,7 +11,7 @@
 #define SPLIT_TIME 0.2
 #define OCCLU_DIST 0.8
 #define OCCLU_TIME 3.0
-#define SPEED_DURATION 1.0
+#define SPEED_DURATION 0.5
 #define HISTORY_SIZE 100
 #define STALE_THRESH 3.0
 
@@ -60,7 +61,7 @@ void pedestrian_features::pedestrian_filtering(const sensing_on_road::segments_o
     std::vector<unsigned int> erase_seg;
     for(unsigned is =0; is <filtered_segment_batch_.segments.size(); is++)
     {
-        if(filtered_segment_batch_.segments[is].max_dimension > MAX_SEG_SIZE)
+        if(filtered_segment_batch_.segments[is].max_dimension > MAX_SEG_SIZE && filtered_segment_batch_.segments[is].max_dimension < MIN_SEG_SIZE)
         erase_seg.push_back(is);
     }
     //erase from back;

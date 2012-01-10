@@ -61,13 +61,14 @@ public:
     std::vector<SchedulerTypes::VehicleInfo> getVehiclesInfo(
             std::string vehicleID = "");
 
+
     // Functions to create tasks and vehicle in the database for simulated mode
 public:
     /// Make a booking: add an entry in the database. Returns the task ID.
     unsigned makeBooking(std::string customerID, Station pickup,
             Station dropoff);
 
-    /// Requests for the task to be cancelled.
+    /// Requests for the task to be cancelled. Not implemented yet.
     void custCancel(unsigned taskID);
 
 private:
