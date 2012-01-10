@@ -77,7 +77,7 @@ void Parameters::getParam()
     GETP( "ki", ki, 0.08 ); //0.007 was ok for Marcelo's
     GETP( "kd", kd, 0.4 );
     GETP( "ki_sat", ki_sat, 0.7 );
-    GETP( "coeff_brakepedal", coeff_bp, 190 ); //120
+    GETP( "coeff_brakepedal", coeff_bp, 120 ); //120
     GETP( "throttleZeroThres", throttle_zero_thres, 0.1 ); //to eliminate the unstable behavior after braking
     GETP( "brakeZeroThres", brake_zero_thres, 5 );
     GETP( "fullBrakeThres", full_brake_thres, 0.25 );
