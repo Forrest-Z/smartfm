@@ -116,7 +116,7 @@ public class DBInterface {
 		task.status = item.getAttribute("status");
 		task.pickup = item.getAttribute("pickup");
 		task.dropoff = item.getAttribute("dropoff");
-		task.custCancelled = Boolean.parseBoolean( item.getAttribute("custCancelled") );
+		task.custCancelled = Integer.parseInt( item.getAttribute("custCancelled") )!=0 ? true : false;
 		
 		if (item.hasAttribute("eta") ) {
 			try {

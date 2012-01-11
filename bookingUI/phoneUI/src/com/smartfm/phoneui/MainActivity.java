@@ -21,7 +21,7 @@ public class MainActivity extends Activity implements OnClickListener,
 	ArrayAdapter<String> tasksDescriptions = null;
 	List<Task> tasks = null;
 	
-	private Handler handler = new Handler();
+	Handler handler = new Handler();
 
 	/** Called when the activity is first created. */
 	@Override

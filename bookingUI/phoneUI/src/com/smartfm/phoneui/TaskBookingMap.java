@@ -88,7 +88,7 @@ public class TaskBookingMap extends MapActivity {
 		mapOverlays.clear();
 		mapOverlays.add(userlocation);
 		
-		Drawable drawable = this.getResources().getDrawable(R.drawable.pin);
+		Drawable drawable = this.getResources().getDrawable(R.drawable.pinred);
 		StationItemizedOverlay itemizedoverlay = new StationItemizedOverlay(drawable);
 		for( Station s: stations.getStations())
 			itemizedoverlay.addOverlay(new StationOverlayItem(s));
