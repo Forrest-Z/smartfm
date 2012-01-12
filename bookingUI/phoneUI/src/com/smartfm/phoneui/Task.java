@@ -10,15 +10,11 @@ public class Task {
     public String status = "";
     public String pickup = "";
     public String dropoff = "";
-    public String vehicleID = "";
-    public String vehicleStatus = "";
-	public double latitude = 0.0;
-	public double longitude = 0.0;
-	public int eta = 0;
 	public boolean custCancelled = false;
+	public VehicleInfo vehicle = null;
 	
 	public String formattedETA() {
-		return "in about " + eta + " seconds";
+		return "in about " + vehicle.eta + " seconds";
 	}
 	
 	public String formattedDescription() {
@@ -37,26 +33,26 @@ public class Task {
 			description += "We are processing your booking...\n";
 			return description;
 		}
-		
+				
 		if( status.compareToIgnoreCase("Processing")!=0 ) {
-			if( eta==0 )
+			if( vehicle.eta==0 )
 				description += "We are processing your booking...\n";
 			else
-				description += "Vehicle " + vehicleID + " will be at pickup location " + formattedETA() + ".\n";
+				description += "Vehicle " + vehicle.vehicleID + " will be at pickup location " + formattedETA() + ".\n";
 			return description;
 		}
 			
-		if( vehicleStatus.compareToIgnoreCase("GoingToPickupLocation")==0 ) {
-            if( eta==0 )
+		if( vehicle.status.compareToIgnoreCase("GoingToPickupLocation")==0 ) {
+            if( vehicle.eta==0 )
             	description += "Vehicle $vehicleID on the way to pickup location.</p>";
             else
-            	description += "Vehicle " + vehicleID + " will be at pickup location " + formattedETA() + ".\n";
+            	description += "Vehicle " + vehicle.vehicleID + " will be at pickup location " + formattedETA() + ".\n";
         }
-        else if( vehicleStatus.compareToIgnoreCase("GoingToPickupLocation")==0 ) {
-        	description += "Vehicle " + vehicleID + " is at pickup location.\n";
+        else if( vehicle.status.compareToIgnoreCase("GoingToPickupLocation")==0 ) {
+        	description += "Vehicle " + vehicle.vehicleID + " is at pickup location.\n";
         }
         else {
-            if( eta==0 )
+            if( vehicle.eta==0 )
             	description += "Going to destination.";
             else
             	description += "Arriving to destination " + formattedETA() + ".\n";
@@ -89,9 +85,11 @@ public class Task {
 	
 	public String toString() {
 		String ser = "" + requestID + "," + customerID;
-		ser += "," + status + "," + pickup + "," + dropoff;
-		ser += "," + vehicleID + "," + latitude + "," + longitude;
-		ser += "," + vehicleStatus + "," + eta + "," + custCancelled;
+		ser += "," + status + "," + pickup + "," + dropoff + "," + custCancelled;
+		if( vehicle!=null ) {
+			ser += "," + vehicle.vehicleID + "," + vehicle.latitude + "," + vehicle.longitude;
+			ser += "," + vehicle.status + "," + vehicle.eta;
+		}
 		return ser;
 	}
 	
@@ -99,17 +97,22 @@ public class Task {
 		Task task = new Task();
 		String[] tokens = ser.split(",");
 		int i=0;
+		
 		task.requestID = Integer.parseInt(tokens[i++]);
 		task.customerID = tokens[i++];
 		task.status = tokens[i++];
 		task.pickup = tokens[i++];
 		task.dropoff = tokens[i++];
-		task.vehicleID = tokens[i++];
-		task.latitude = Double.parseDouble(tokens[i++]);
-		task.longitude = Double.parseDouble(tokens[i++]);
-		task.vehicleStatus = tokens[i++];
-		task.eta = Integer.parseInt(tokens[i++]);
 		task.custCancelled = Boolean.parseBoolean(tokens[i++]);
+		
+		if( i<tokens.length ) {
+			task.vehicle = new VehicleInfo();
+			task.vehicle.vehicleID = tokens[i++];
+			task.vehicle.latitude = Double.parseDouble(tokens[i++]);
+			task.vehicle.longitude = Double.parseDouble(tokens[i++]);
+			task.vehicle.status = tokens[i++];
+			task.vehicle.eta = Integer.parseInt(tokens[i++]);
+		}
 		return task;
 	}
 }
