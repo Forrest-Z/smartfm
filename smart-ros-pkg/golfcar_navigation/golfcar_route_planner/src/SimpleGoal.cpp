@@ -32,7 +32,7 @@ void SimpleGoal::initDest()
 void SimpleGoal::speedStatusCallBack(const pnc_msgs::speed_contribute &msg)
 {
     has_reached_ = msg.goal;
-    eta_ = msg.dist_goal / 2; //velocity is taken as constant 2m/s
+    eta_ = has_reached_ ? 0 : msg.dist_goal / 2; //velocity is taken as constant 2m/s
 }
 
 bool SimpleGoal::goToDest()
