@@ -9,7 +9,7 @@
 
 using namespace std;
 using namespace cv;
-
+using namespace gpu;
 
 
 class HOGClassifier {
@@ -40,8 +40,9 @@ private:
     void detectPedestrian(Point offset, double ratio, gpu::GpuMat& gpu_img, sensing_on_road::pedestrian_vision_batch *detect_rects);
 
     cv::Mat img;
-
-    bool new_image, show_processed_image, black_front_roi;
+    int count;
+    bool new_image, show_processed_image, black_front_roi,write_image;
     double hit_threshold, scale, group_threshold, norm_dist;
+    std::string path;
 };
 

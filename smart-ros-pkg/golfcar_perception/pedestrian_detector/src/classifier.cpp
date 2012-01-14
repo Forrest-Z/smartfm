@@ -15,13 +15,15 @@ HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
     //people_ver_pub_ = n.advertise<people_detector::verified_objs>("verified_objects",1);
     ros::NodeHandle nh("~");
     nh.param("hit_threshold", hit_threshold, -1.0);
-    nh.param("scale", scale, 1.05);
+    nh.param("scale", scale, 1.00);
     nh.param("group_threshold", group_threshold, 1.0);
     nh.param("norm_dist", norm_dist, 5.0);
     nh.param("show_processed_image", show_processed_image, false);
     nh.param("black_front_roi", black_front_roi, true);
+    nh.param("write_image", write_image, false);
+    nh.param("path", path, string(""));
     //First call to hog to ready the CUDA
-     cv::gpu::HOGDescriptor g_hog;
+    cv::gpu::HOGDescriptor g_hog;
 
     new_image = false;
     cout<<"Classifier started"<<endl;
@@ -31,6 +33,7 @@ HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
     cout<<"           norm_dist       "<<norm_dist<<endl;
 
     cv::namedWindow("processed_image");
+    count=0;
 }
 HOGClassifier::~HOGClassifier(){}
 
@@ -40,10 +43,24 @@ bool sort_pv(sensing_on_road::pedestrian_vision const &a, sensing_on_road::pedes
 }
 void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch pr)
 {
-	/// HOG classification of laser rects
-	
+    /// HOG classification of laser rects
+
     if(new_image)
     {
+        ros::NodeHandle nh("~");
+        nh.param("hit_threshold", hit_threshold, -1.0);
+        nh.param("scale", scale, 1.00);
+        nh.param("group_threshold", group_threshold, 1.0);
+        nh.param("norm_dist", norm_dist, 5.0);
+        nh.param("show_processed_image", show_processed_image, false);
+        nh.param("black_front_roi", black_front_roi, true);
+        nh.param("write_image", write_image, false);
+        nh.param("path", path, string(""));
+
+        cout<<"Parameter: hit_threshold   "<<hit_threshold<<endl;
+        cout<<"           scale           "<<scale<<endl;
+        cout<<"           group_threshold "<<group_threshold<<endl;
+        cout<<"           norm_dist       "<<norm_dist<<endl;
 
         ROS_DEBUG("Inside people rect");
         int image_width = 640;
@@ -84,7 +101,7 @@ void HOGClassifier::peopleRectsCallback(sensing_on_road::pedestrian_vision_batch
             detectPedestrian(offset, ratio, gpu_img, &detect_rects);
 
             /// Send ROI to visualizer
-            
+
             /// Add confidence level
             temp_rect = pr.pd_vector[i];
             temp_rect.cvRect_x1=img_x;temp_rect.cvRect_y1=img_y;
@@ -138,6 +155,20 @@ void HOGClassifier::ScaleWithDistanceRatio(Mat *img, double disz, double norm_di
     Size norm_size(round(new_width),round(new_height));
     ROS_DEBUG_STREAM("Resized: "<<norm_size.height<<' '<<norm_size.width);
     resize(*img, *img, norm_size);
+    if(write_image)
+    {
+        if(path.empty())
+        {
+            ROS_WARN("No path given, please specify under path parameter");
+        }
+        else
+        {
+            stringstream ss;
+            ss<<path<<"/"<<count++<<".jpg";
+            imwrite(ss.str(),*img);
+            ROS_DEBUG_STREAM("Saved image path: "<<ss.str());
+        }
+    }
 }
 
 void HOGClassifier::detectPedestrian(Point offset, double ratio, gpu::GpuMat& gpu_img, sensing_on_road::pedestrian_vision_batch *detect_rects)
@@ -149,8 +180,14 @@ void HOGClassifier::detectPedestrian(Point offset, double ratio, gpu::GpuMat& gp
                                    cv::gpu::HOGDescriptor::DEFAULT_WIN_SIGMA, 0.2, gamma_corr,
                                    cv::gpu::HOGDescriptor::DEFAULT_NLEVELS);
     gpu_hog.setSVMDetector(gpu::HOGDescriptor::getPeopleDetector48x96());
-    gpu_hog.detectMultiScale(gpu_img, found, hit_threshold, Size(8,8), Size(0,0), scale, group_threshold);
-    
+    vector<Point> found_location;
+    gpu_hog.detect(gpu_img, found_location, hit_threshold, Size(8,8), Size(0,0));
+    //detectMultiScale(gpu_img, found, hit_threshold, Size(8,8), Size(0,0), scale, group_threshold);
+
+    Size win_size = WIN_SIZE;
+    for (size_t j = 0; j < found_location.size(); j++)
+        found.push_back(Rect(Point2d((CvPoint)found_location[j]), win_size));
+    gpu_hog.nlevels = 1;
     /// does it give confidence level ?  
 
     t = (double)getTickCount() - t;
@@ -160,7 +197,7 @@ void HOGClassifier::detectPedestrian(Point offset, double ratio, gpu::GpuMat& gp
     {
         sensing_on_road::pedestrian_vision temp_rect;
         /// add the confidence level : float32 confidence
-        
+
         Rect r = (found)[j];
         Point topleftPoint = Point(r.tl().x/ratio, r.tl().y/ratio)+offset;
         Point bottomrightPoint =  Point(r.br().x/ratio, r.br().y/ratio)+offset;
@@ -169,6 +206,7 @@ void HOGClassifier::detectPedestrian(Point offset, double ratio, gpu::GpuMat& gp
         detect_rects->pd_vector.push_back(temp_rect);
     }
 }
+
 
 void HOGClassifier::imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr)
 {
@@ -196,3 +234,4 @@ int main(int argc, char** argv)
     ros::spin();
     return 0;
 }
+
