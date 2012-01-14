@@ -44,7 +44,7 @@ public class TaskDetailActivity extends Activity implements OnClickListener {
 		if( task.status.compareToIgnoreCase("Acknowledged") == 0 ||
 				task.status.compareToIgnoreCase("Confirmed") == 0 ||
 				task.status.compareToIgnoreCase("Processing") == 0 )
-			((TextView) findViewById(R.id.detail_eta)).setText(Integer.toString(task.eta));
+			((TextView) findViewById(R.id.detail_eta)).setText(Integer.toString(task.vehicle.eta));
 		else
 			((TextView) findViewById(R.id.detail_eta)).setText("");
 	}

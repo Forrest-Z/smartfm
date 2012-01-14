@@ -3,6 +3,8 @@ package com.smartfm.phoneui.test;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+
 import com.smartfm.phoneui.*;
 
 import android.test.AndroidTestCase;
@@ -40,8 +42,8 @@ public class DBInterfaceTest extends AndroidTestCase {
 		
 		// When only irrelevant fields are different, 
 		// equality should be maintained.
-		t11.eta = 90;
-		t12.eta = 100;
+		t11.status = "a";
+		t12.status = "b";
 		assertTrue(t11.equals(t12));
 		assertEquals(t11, t12);
 		assertTrue(t11.hashCode()==t12.hashCode());
@@ -78,7 +80,7 @@ public class DBInterfaceTest extends AndroidTestCase {
 		t12.dropoff = names.get(1);
 		t12.customerID = DBInterface.CustomerID;
 		
-		HashSet<Task> set = new HashSet<Task>();
+		Set<Task> set = new HashSet<Task>();
 		set.add(t11);
 		set.add(t12);
 		assertTrue(set.size()==1);

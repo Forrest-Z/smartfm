@@ -21,7 +21,7 @@ public class MainActivity extends Activity implements OnClickListener,
 	ArrayAdapter<String> tasksDescriptions = null;
 	List<Task> tasks = null;
 	
-	private Handler handler = new Handler();
+	Handler handler = new Handler();
 
 	/** Called when the activity is first created. */
 	@Override
@@ -30,6 +30,8 @@ public class MainActivity extends Activity implements OnClickListener,
 		setContentView(R.layout.main);
 
 		((Button) findViewById(R.id.makebookingbutton))
+				.setOnClickListener(this);
+		((Button) findViewById(R.id.viewvehiclesonmapbutton))
 				.setOnClickListener(this);
 		
 		tasks = new ArrayList<Task>();
@@ -72,6 +74,8 @@ public class MainActivity extends Activity implements OnClickListener,
 			// (see onActivityResult). Actually the activity returns nothing.
 			startActivityForResult(new Intent(MainActivity.this, TaskBooking.class), 1);
 			break;
+		case R.id.viewvehiclesonmapbutton:
+			startActivity(new Intent(MainActivity.this, MapLocations.class));
 		}
 	}
 

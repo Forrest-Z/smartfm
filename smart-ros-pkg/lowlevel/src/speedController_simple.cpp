@@ -77,7 +77,7 @@ void Parameters::getParam()
     GETP( "ki", ki, 0.08 ); //0.007 was ok for Marcelo's
     GETP( "kd", kd, 0.4 );
     GETP( "ki_sat", ki_sat, 0.7 );
-    GETP( "coeff_brakepedal", coeff_bp, 190 ); //120
+    GETP( "coeff_brakepedal", coeff_bp, 120 ); //120
     GETP( "throttleZeroThres", throttle_zero_thres, 0.1 ); //to eliminate the unstable behavior after braking
     GETP( "brakeZeroThres", brake_zero_thres, 5 );
     GETP( "fullBrakeThres", full_brake_thres, 0.25 );
@@ -179,9 +179,10 @@ void PID_Speed::odoCallBack(lowlevel::Encoders enc)
             pid.p_gain = BOUND( -0.7, pid.p_gain, 1.0);
             pid.i_gain = param.ki * ei;
             pid.d_gain = kdd * (e_now - e_pre) / dt;
+            pid.d_gain = BOUND( -0.3, pid.d_gain, 0.3);
             pid.v_filter = vFiltered;
-
-            if(fabs(dgain_pre - pid.d_gain)>0.3) pid.d_gain = dgain_pre;
+            
+            if(fabs(dgain_pre - pid.d_gain)>0.2) pid.d_gain = dgain_pre;
             dgain_pre = pid.d_gain;
 
             pid.u_ctrl = pid.p_gain + pid.i_gain + pid.d_gain;

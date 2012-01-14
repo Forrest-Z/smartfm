@@ -1,6 +1,8 @@
 <html>
 <head>
 <title>FM SMART Booking</title>
+
+
 <?php
 require("funcs.php");
 
@@ -106,16 +108,40 @@ function selectStation($fieldname,$default)
 ?>
 
 <style type="text/css">
-table
-{
-border-collapse:collapse;
+.layout {
+    border: none;
 }
-table, td, th
-{
-border: 1px solid black;
-padding: 5px;
+
+#layout_table {
+    width: 100%;
+    height: 100%;
+    vertical-align: top;
 }
+
+#booking_ctrl_cell {
+    width: 50%;
+    vertical-align: top;
+    min-width: 20em;
+    /*border: solid;*/
+}
+
+#mapview_cell {
+    /*border: solid;*/
+}
+
+#map_canvas {
+    min-height: 300px;
+    min-width: 400px;
+    height: 100%;
+}
+
 </style>
+
+<script type="text/javascript"
+    src="http://maps.google.com/maps/api/js?sensor=false">
+</script>
+<script type="text/javascript" src="getxml.js"></script>
+<script type="text/javascript" src="mapview.js"></script>
 
 </head>
 
@@ -124,8 +150,12 @@ padding: 5px;
 
 
 
-<body>
+<body onload="initialize()">
 
+
+<table class="layout" id="layout_table">
+<tr class="layout">
+<td class="layout" id="booking_ctrl_cell">
 
 <h1>Make a booking</h1>
 <form action="make_booking.php" method="post">
@@ -139,10 +169,17 @@ padding: 5px;
 <input type="submit" value="Submit" />
 </form>
 
-
-
 <h1>Current requests</h1>
 <?php listRequests(); ?>
+
+</td>
+
+<td class="layout" id="mapview_cell">
+<div id="map_canvas"/>
+</td>
+
+</tr>
+</table>
 
 </body>
 </html>

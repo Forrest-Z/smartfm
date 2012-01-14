@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -22,8 +23,6 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
-
-import android.R.bool;
 
 
 /** A helper class to call the PHP scripts used to interface with the database. */
@@ -96,19 +95,6 @@ public class DBInterface {
 	public static final String CustomerID = "cust1";
 	
 	
-	// A function to safely parse a numeric attribute
-	static double parseDoubleAttr(Element item, String attr) {
-		double val = 0;
-		if( item.hasAttribute(attr) ) {
-			try {
-				val = Double.parseDouble(item.getAttribute(attr));
-			} catch (NumberFormatException e) {
-				// nothing here
-			}
-		}
-		return val;
-	}
-	
 	public static Task taskFromElement(Element item) throws Exception {
 		Task task = new Task();
 		task.customerID = item.getAttribute("customerID");
@@ -116,40 +102,52 @@ public class DBInterface {
 		task.status = item.getAttribute("status");
 		task.pickup = item.getAttribute("pickup");
 		task.dropoff = item.getAttribute("dropoff");
-		task.custCancelled = Boolean.parseBoolean( item.getAttribute("custCancelled") );
+		task.custCancelled = Integer.parseInt( item.getAttribute("custCancelled") )!=0 ? true : false;
 		
-		if (item.hasAttribute("eta") ) {
+		task.vehicle = new VehicleInfo();
+		task.vehicle.vehicleID = item.getAttribute("vehicleID");
+		return task;
+	}
+	
+	public static VehicleInfo vehicleFromElement(Element item) throws Exception {
+		VehicleInfo vehicle = new VehicleInfo();
+		vehicle.vehicleID = item.getAttribute("vehicleID");
+		vehicle.status = item.getAttribute("Status");
+
+		if( item.hasAttribute("latitude") && item.hasAttribute("longitude") ) {
 			try {
-				task.eta = Integer.parseInt(item.getAttribute("eta"));
+				vehicle.latitude = Double.parseDouble(item.getAttribute("latitude"));
+				vehicle.longitude = Double.parseDouble(item.getAttribute("longitude"));
 			} catch (NumberFormatException e) {
-				// nothing here
+				vehicle.latitude = 0;
+				vehicle.longitude = 0;
+			}
+		}
+		
+		if( item.hasAttribute("requestID") ) {
+			try {
+				vehicle.requestID = Integer.parseInt(item.getAttribute("requestID"));
+			} catch (NumberFormatException e) {
+				//nothing
+			}
+		}
+		
+		if( item.hasAttribute("eta") ) {
+			try {
+				vehicle.eta = Integer.parseInt(item.getAttribute("eta"));
+			} catch (NumberFormatException e) {
+				//nothing
 			}
 		}
 
-		if (item.hasAttribute("vehicleID")) {
-			task.vehicleID = item.getAttribute("vehicleID");
-			
-			Document vdom = new RPC("list_vehicles.php")
-						.addParameter("VehicleID", ""+task.vehicleID)
-						.call();
-			NodeList vitems = vdom.getDocumentElement().getElementsByTagName("vehicleList");
-			
-			if( vitems.getLength()==0 )
-				throw new RuntimeException("Vehicle " + task.vehicleID + " not found.");
-			if( vitems.getLength()>1 )
-				throw new RuntimeException("Too many tasks returned.");
-			Element vitem = (Element) vitems.item(0);
-			
-			task.latitude = parseDoubleAttr(vitem, "latitude");
-			task.longitude = parseDoubleAttr(vitem, "longitude");
-			task.vehicleStatus = vitem.getAttribute("status");
-		}
-		return task;
+		vehicle.currentLocation = item.getAttribute("currentLocation");
+		vehicle.tooltip = item.getAttribute("tooltip");
+		return vehicle;
 	}
 
 
-	public static List<Task> listTasks() throws Exception {
-		List<Task> tasks = new ArrayList<Task>();
+	public static LinkedList<Task> listTasks() throws Exception {
+		LinkedList<Task> tasks = new LinkedList<Task>();
 		Document dom = new RPC("list_requests.php").call();
 		NodeList items = dom.getDocumentElement().getElementsByTagName("request");
 		for (int i = 0; i < items.getLength(); i++)
@@ -195,4 +193,29 @@ public class DBInterface {
 			.addParameter("RequestID", ""+taskID)
 			.call();
 	}
+
+	public static LinkedList<VehicleInfo> listVehicles() throws Exception {
+		LinkedList<VehicleInfo> vehicles = new LinkedList<VehicleInfo>();
+		Document dom = new RPC("list_vehicles.php").call();
+		NodeList items = dom.getDocumentElement().getElementsByTagName("vehicle");
+		for (int i = 0; i < items.getLength(); i++)
+			vehicles.add( vehicleFromElement((Element) items.item(i)) );
+		return vehicles;
+	}
+	
+	public static VehicleInfo getVehicle(int vehicleID) throws Exception {
+		Document dom = new RPC("list_vehicles.php")
+						.addParameter("VehicleID", ""+vehicleID)
+						.call();
+		NodeList items = dom.getDocumentElement().getElementsByTagName("vehicle");
+		
+		if( items.getLength()==0 )
+			throw new RuntimeException("Vehicle " + vehicleID + " not found.");
+		if( items.getLength()>1 )
+			throw new RuntimeException("Too many tasks returned.");
+		
+		return vehicleFromElement((Element) items.item(0));		
+	}
+	
+
 }
