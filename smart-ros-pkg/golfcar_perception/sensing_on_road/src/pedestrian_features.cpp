@@ -1,7 +1,7 @@
 #include "pedestrian_features.h"
 
 #define MAX_SEG_SIZE 1.5
-#define MIN_SEG_SIZE 0.2
+#define MIN_SEG_SIZE 0.0
 #define ASSO_TIME_COEF 0.1
 #define NEAREST_THRESH 1.0
 #define MERGE_DIST 0.30
