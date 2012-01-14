@@ -8,10 +8,8 @@
 
 using namespace cv;
 
-class Cv_helper
+namespace Cv_helper
 {
-    public:
-    Cv_helper(){};
     bool fillRoiRectangle(Size img_size, Size* roi_size, Point* roi_point, sensing_on_road::pedestrian_vision& pd)
     {
         
@@ -37,5 +35,21 @@ class Cv_helper
         roi_point->y = img_y;
         
         return true;
+    };
+
+    void sensormsgsToCv(const sensor_msgs::ImageConstPtr& msg_ptr, Mat &img)
+    {
+        ROS_DEBUG("SensorMsgs to CV");
+        cv_bridge::CvImagePtr cv_image;
+        try
+        {
+            cv_image = cv_bridge::toCvCopy(msg_ptr, "bgra8");
+        }
+        catch (cv_bridge::Exception& e)
+        {
+            ROS_ERROR("cv_bridge exception: %s", e.what());
+        }
+        Mat l_img(cv_image->image);
+        img = l_img;
     };
 };

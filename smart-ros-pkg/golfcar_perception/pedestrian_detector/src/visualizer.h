@@ -7,6 +7,14 @@
 #include "opencv2/gpu/gpu.hpp"
 #include "opencv2/highgui/highgui.hpp"
 
+#include "classifier.h"
+#include "image_transport/subscriber_filter.h"
+#include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+
+using namespace sensing_on_road;
+using namespace message_filters;
 class HOGVisualizer {
 
 public:
@@ -23,21 +31,17 @@ private:
 	cv::HOGDescriptor cpu_hog;
 	ros::NodeHandle n_;
 	image_transport::ImageTransport it_;
-	image_transport::Subscriber image_sub_;
-	ros::Subscriber people_roi_sub_;
-	ros::Subscriber people_detect_sub_;
-	ros::Subscriber people_verified_sub_;
+	image_transport::SubscriberFilter image_sub_;
+	message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> people_roi_sub_;
+	message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> people_detect_sub_;
+	message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> people_verified_sub_;
 	//sensor_msgs::cv_bridge bridge_;
 	image_transport::Publisher image_pub_;
-	void imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr);
+	void peopleCallback(const sensor_msgs::ImageConstPtr image, const pedestrian_vision_batchConstPtr laser_detect, const pedestrian_vision_batchConstPtr vision_roi, const pedestrian_vision_batchConstPtr verified);
 	void peopleRoiCallback(sensing_on_road::pedestrian_vision_batch pr);
 	void peopleDetectCallback(sensing_on_road::pedestrian_vision_batch pr);
 	void peopleVerifiedCallback(sensing_on_road::pedestrian_vision_batch pr);
 	void drawIDandConfidence(cv::Mat& img, sensing_on_road::pedestrian_vision& pv);
-	sensing_on_road::pedestrian_vision_batch roi_rects_;
-	sensing_on_road::pedestrian_vision_batch detect_rects_;
-	sensing_on_road::pedestrian_vision_batch verified_rects_;
-	
 	
 	bool started, ROI_text, verified_text, vision_rect, verified_rect, ROI_rect;
 };
