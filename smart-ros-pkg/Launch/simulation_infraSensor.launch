@@ -1,0 +1,5 @@
+<launch>
+	<include file="$(find Launch)/simulation_eng.launch"/>
+	<include file="$(find infrastructure_sensor)/ped_crossing.launch"/>
+</launch>
+
