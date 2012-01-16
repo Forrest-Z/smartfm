@@ -1,0 +1,4 @@
+<launch>
+	<node pkg="tf" type="static_transform_publisher" name="map_to_ped_crossing" args="141, 52.6, 0. 0 0 0 /map /infra_sensor 100" />
+	<node pkg="infrastructure_sensor" type="ped_crossing" name="ped_crossing_svr" output="screen"/>
+</launch>
