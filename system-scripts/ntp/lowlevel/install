@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cp ntp.conf /etc/
+cp ntpserver /etc/init.d
+chmod a+x /etc/init.d/ntpserver
+update-rc.d ntpserver defaults
+
+exit 0
