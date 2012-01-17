@@ -1,0 +1,7 @@
+#!/bin/bash
+
+cp temp_logger /etc/init.d
+chmod a+x /etc/init.d/temp_logger
+update-rc.d temp_logger defaults
+
+exit 0

@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# Temperature sensors:
+#
+#/sys/devices/platform/it87.656/temp1_input
+#/sys/devices/platform/it87.656/temp3_input
+#/sys/devices/platform/it87.656/temp2_input
+#
+# These give the temperature in celsius times 1000
+#
+#
+# nvidia-settings gives the temperature of the GPU in celsius, using the
+# following command:
+# nvidia-settings -q [gpu:0]/GPUCoreTemp | grep "Attribute" ...
+#                                        ... | sed -e "s/.*: //g" -e "s/\.//g"
+
+
+mkdir -p /var/log/temp_logger_data
+logfilename=/var/log/temp_logger_data/temperature_`date +%Y_%m_%d_%H_%M_%S`.csv
+
+echo "date,timeEpoch,gpu,temp0,temp1,temp2,temp3" > $logfilename
+
+while [ 1 ]
+do
+
+timedate=`date +%Y_%m_%d_%H_%M_%S`
+time=`date +%s`
+gpuTemp=`nvidia-settings -q [gpu:0]/GPUCoreTemp | grep "Attribute" | sed -e "s/.*: //g" -e "s/\.//g"`
+
+#temp1=$(expr `cat /sys/devices/platform/it87.656/temp1_input` / 1000)
+#temp2=$(expr `cat /sys/devices/platform/it87.656/temp2_input` / 1000)
+#temp3=$(expr `cat /sys/devices/platform/it87.656/temp3_input` / 1000)
+
+temp0=$(expr `cat /sys/devices/platform/coretemp.0/temp1_input` / 1000)
+temp1=$(expr `cat /sys/devices/platform/coretemp.1/temp1_input` / 1000)
+temp2=$(expr `cat /sys/devices/platform/coretemp.2/temp1_input` / 1000)
+temp3=$(expr `cat /sys/devices/platform/coretemp.3/temp1_input` / 1000)
+
+echo "$timedate,$time,$gpuTemp,$temp0,$temp1,$temp2,$temp3" >> $logfilename
+
+sleep 1
+
+done
+
