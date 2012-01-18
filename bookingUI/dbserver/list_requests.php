@@ -38,6 +38,15 @@ while ($row = @mysql_fetch_assoc($result))
     $newnode->setAttribute("eta", $row['eta']);
     $newnode->setAttribute("custCancelled", $row['custCancelled']);
     $newnode->setAttribute("vehicleAcknowledgedCancel", $row['vehicleAcknowledgedCancel']);
+
+    $vstatus = "";
+    if( isset($row['vehicleID']) and $row['vehicleID']!="" ) {
+        $query = "SELECT status FROM vehicles WHERE vehicleID='" . $row['vehicleID'] . "'";
+        $vresult = mysql_query($query, $con) or $xmlres->fatalSqlError($query);
+        $vrow = @mysql_fetch_assoc($vresult);
+        $vstatus = $vrow['status'];
+    }
+    $newnode->setAttribute("vehicleStatus", $vstatus);
 }
 
 mysql_close($con);

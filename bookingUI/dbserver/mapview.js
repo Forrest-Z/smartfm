@@ -20,13 +20,13 @@ var map;
 
 
 
-function initialize() {
+function initMap(mapCanvaElementID) {
     var myOptions = {
         zoom: 18,
         center: new google.maps.LatLng(1.2995, 103.77),
         mapTypeId: google.maps.MapTypeId.HYBRID
     };
-    map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+    map = new google.maps.Map(document.getElementById(mapCanvaElementID), myOptions);
 
     showStations();
     showCars();

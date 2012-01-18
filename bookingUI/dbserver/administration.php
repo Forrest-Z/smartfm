@@ -38,7 +38,7 @@ function listRequests()
         $cancelBtnForm .= '<input type="hidden" name="RequestID" value="' . $rid . '"/>';
         if(isset($_GET['filter']) && $_GET['filter']=='yes')
             $cancelBtnForm .= '<input type="hidden" name="filter" value="yes"/>';
-        $cancelBtnForm .= '<input type="hidden" name="ReturnScript" value="administration"/>';
+        $cancelBtnForm .= '<input type="hidden" name="ReturnScript" value="administration.php"/>';
         $cancelBtnForm .= '<input type="submit" value="X"/></form>';
 
         if(!$row['custCancelled'])

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MAIN_FILES="administration.php customer.php webviewer.htm"
+MAIN_FILES="administration.php customer.htm webviewer.htm"
 
 PATTERN=""
 for f in $MAIN_FILES; do
@@ -14,4 +14,4 @@ rm -Rf $dest/*
 cp $MAIN_FILES $dest
 cp $SCRIPT_FILES $dest
 
-rsync -avz --delete $dest/ -e ssh FMAutonomy:/var/www/dbserver/
+#rsync -avz --delete $dest/ -e ssh FMAutonomy:/var/www/dbserver/
