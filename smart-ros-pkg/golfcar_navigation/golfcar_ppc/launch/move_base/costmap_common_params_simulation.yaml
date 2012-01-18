@@ -5,8 +5,8 @@ mark_threshold: 0
 #END VOXEL STUFF
 transform_tolerance: 1.0
 obstacle_range: 30
-update_frequency: 25
-publish_frequency: 25
+update_frequency: 15
+publish_frequency: 15
 max_obstacle_height: 2.0
 raytrace_range: 3.0
 footprint: [[-0.45, -0.6], [1.83, -0.6], [1.83, 0.6], [-0.45, 0.6]]

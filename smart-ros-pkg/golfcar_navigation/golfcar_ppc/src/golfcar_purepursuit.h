@@ -13,6 +13,8 @@
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PolygonStamped.h>
 
+using namespace std;
+
 namespace golfcar_purepursuit
 {
 
@@ -21,7 +23,7 @@ class PurePursuit
 
 public:
 
-    PurePursuit();
+    PurePursuit(string global_frameID);
     bool steering_control(double& wheel_angle, double &dist_to_goal);
     geometry_msgs::Point current_point_, next_point_;
 
@@ -35,6 +37,7 @@ public:
     int nextPathCount_;
     bool initialized_;
     double dist_to_final_point;
+    string global_frameID_;
     bool current_pos_to_point_dist(int end_point, double* path_dist);
 
 private:
