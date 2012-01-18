@@ -131,6 +131,8 @@ private:
     bool use_sim_time_;
     int element_pre_, element_now_, signal_type_;
 
+    string base_link_, map_id_;
+    
     geometry_msgs::Twist move_speed_;
     pnc_msgs::move_status move_status_;
     vector<geometry_msgs::Point> stoppingPoint_;
