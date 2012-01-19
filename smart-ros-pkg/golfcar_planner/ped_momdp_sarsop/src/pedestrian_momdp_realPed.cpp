@@ -362,14 +362,14 @@ int pedestrian_momdp::pomdp_initialize()
     cout << "Initial state" << endl;
     //int currSVal = getCurrentState();
 
-    //for(int ii=0; ii<NUM_PED; ii++)
+    //for(int ii=0; ii<num_ped; ii++)
     //currSVal[ii] = getCurrentState(ii);
 
-    int currSVal[NUM_PED];
+    int currSVal[num_ped];
     vector< SharedPointer<BeliefWithState> > lcurrBelSt;
-    int currAction[NUM_PED];
+    int currAction[num_ped];
 
-    for(int ii=0; ii<NUM_PED; ii++)
+    for(int ii=0; ii<num_ped; ii++)
     {
         cout<<"Final loop: "<<ii<<endl;
 
@@ -411,7 +411,7 @@ void pedestrian_momdp::publish_belief()
 {
 
     ped_momdp_sarsop::peds_believes peds_believes;
-    for( int ii=0; ii< NUM_PED; ii++)
+    for( int ii=0; ii< num_ped; ii++)
     {
         ped_momdp_sarsop::ped_belief ped_belief;
         /// Publish ped id
@@ -451,7 +451,7 @@ void pedestrian_momdp::pedInitPose()
     fstream pedinitfile;
     pedinitfile.open(ped_id_file.c_str());
 
-    for (int ii=0; ii< NUM_PED; ii++)
+    for (int ii=0; ii< num_ped; ii++)
     {
         PED ped1;
         pedinitfile >> ped1.id;
@@ -484,7 +484,7 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv) {
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("robot_0/cmd_vel",1);
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
     initPedGoal();
-    pedInitPose();
+    //pedInitPose();
 
     /////pomdp initialize configuration
     //fstream  variablefile;
@@ -523,35 +523,25 @@ void pedestrian_momdp::pedPoseCallback(sensing_on_road::pedestrian_laser_batch l
     /// change code TBP
     //pedx_ = -pc.points[0].y;
     //pedy_ = pc.points[0].x;
-    ROS_DEBUG_STREAM("Laser batch size "<<laser_batch.pedestrian_laser_features.size()<<"lPedInView size "<<lPedInView.size());
-    for(int jj=0; jj < lPedInView.size(); jj++)
-    //for(int jj=0; jj < NUM_PED; jj++)
+
+    //direct initialization since it is taken care by transformPedtoMap
+    if(!obs_flag)
     {
-        for(int ii=0; ii< laser_batch.pedestrian_laser_features.size(); ii++)
-        {
-            //cout<<"Label from stage "<<laser_batch.pedestrian_laser_features[ii].object_label<<endl;
-            //cout<<"id of lPedInView "<<lPedInView[jj].id<<endl;
-            if(laser_batch.pedestrian_laser_features[ii].object_label ==  lPedInView[jj].id)
-            {
-                //filters the jumpy behavior of the pedestrian laser batch detection
-                if(obs_flag)
-                {
-                    if(fabs(lPedInView[jj].pedx_ - laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.x)< 1.0) 
-                        lPedInView[jj].pedx_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.x;
-                    if(fabs(lPedInView[jj].pedy_ - laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.y)< 1.0) 
-                        lPedInView[jj].pedy_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.y;
-                }
-                else
-                {
-                        lPedInView[jj].pedx_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.x;
-                        lPedInView[jj].pedy_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.y;
-                }
-                ROS_DEBUG_STREAM("PedX "<<lPedInView[jj].pedx_ << " PedY "<<lPedInView[jj].pedy_);
-                obs_flag = true;
-                break;
-            }
-        }
+        num_ped = laser_batch.pedestrian_laser_features.size();
+        lPedInView.resize(num_ped);
+        currSVal.resize(num_ped);
+        currAction.resize(num_ped);
     }
+    ROS_DEBUG_STREAM("Laser batch size "<<laser_batch.pedestrian_laser_features.size()<<" lPedInView size "<<lPedInView.size());
+    for(int ii=0; ii< laser_batch.pedestrian_laser_features.size(); ii++)
+    {
+        lPedInView[ii].pedx_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.x;
+        lPedInView[ii].pedy_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.y;
+        lPedInView[ii].id = laser_batch.pedestrian_laser_features[ii].object_label;
+        ROS_INFO_STREAM(ii<<": PedX "<<lPedInView[ii].pedx_ << " PedY "<<lPedInView[ii].pedy_);
+        obs_flag = true;
+    }
+
 
 
 }
@@ -567,7 +557,7 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
     {
 
         pomdp_initialize();
-        for(int ii=0; ii<NUM_PED; ii++)
+        for(int ii=0; ii<num_ped; ii++)
         {
 
             SharedPointer<BeliefWithState> currBelSt (new BeliefWithState());
@@ -606,8 +596,8 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
 
 
     //int currAction = policy->getBestActionLookAhead(*currBelSt);
-    int mlcurrAction[NUM_PED];
-    for(int ii=0; ii<NUM_PED; ii++)
+    int mlcurrAction[num_ped];
+    for(int ii=0; ii<num_ped; ii++)
     {
         currAction[ii] = policy->getBestActionLookAhead(*(lcurrBelSt[ii]));
 
@@ -641,7 +631,7 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
     /// combining the actions by picking the safest action
 
     int safeAction=1; /// actions : cru=0, acc=1, decc=2
-    for(int ii=0; ii<NUM_PED; ii++)
+    for(int ii=0; ii<num_ped; ii++)
     {
         if( (currAction[ii]!=safeAction) && (safeAction!=2) )
         {
@@ -673,11 +663,11 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
     publish_belief();
 
 
-    //for(int ii=0; ii<NUM_PED; ii++)
+    //for(int ii=0; ii<num_ped; ii++)
     //gp[ii]->Clear();
 
     /// update belief
-    for(int ii=0; ii<NUM_PED; ii++)
+    for(int ii=0; ii<num_ped; ii++)
     {
         cout << "---- subproblem update  #" << ii << " ---- " << endl;
         cout << "Next state " << endl;
@@ -715,7 +705,7 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
 
 
 
-    //for(int ii=0; ii<NUM_PED; ii++)
+    //for(int ii=0; ii<num_ped; ii++)
     //{
     //cout << "---- subproblem update  #" << ii << " ---- " << endl;
     //cout << "Next state " << endl;

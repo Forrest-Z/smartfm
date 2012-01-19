@@ -55,6 +55,7 @@ void publish_ped()
     sensing_on_road::pedestrian_laser_batch psglaser_batch;
     sensing_on_road::pedestrian_laser psglaser;
 
+    psglaser.pedestrian_laser.header.frame_id = "/map";
     psglaser.pedestrian_laser.point = ped1;
     psglaser.object_label = 1;
     psglaser_batch.pedestrian_laser_features.push_back(psglaser);
@@ -155,7 +156,7 @@ int main(int argc, char** argv)
     ros::NodeHandle n;
 
     server.reset( new interactive_markers::InteractiveMarkerServer("basic_controls","",false) );
-    Pedpub_ = n.advertise<sensing_on_road::pedestrian_laser_batch>("ped_map_laser_batch", 2);
+    Pedpub_ = n.advertise<sensing_on_road::pedestrian_laser_batch>("ped_laser_batch", 2);
     ros::Duration(0.1).sleep();
     std_msgs::ColorRGBA color;
     ped1.x = 1.0; ped1.y = 1.0;

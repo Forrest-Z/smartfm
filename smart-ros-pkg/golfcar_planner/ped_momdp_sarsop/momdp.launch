@@ -14,7 +14,9 @@
 		<remap from="static_map" to="static_planar_map"/>
 		<remap from="map" to= "momdp_map"/>
 	</node>
-	<node name="transform_ped_to_map" type="TransformPedtoMap" pkg="dummyPed"/>
+	<node name="transform_ped_to_map" type="TransformPedtoMap" pkg="dummyPed" output="screen">
+		<param name="ped_id" type="str" value="2"/>
+	</node>
 	<node name="speed_controller_momdp" pkg="lowlevel" type="speed_controller_simple" output="screen">
         <param name="kp" value="1.5"/>        
         <param name="ki" value="0.08"/>

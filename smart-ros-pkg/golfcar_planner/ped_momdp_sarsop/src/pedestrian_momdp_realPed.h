@@ -33,7 +33,7 @@ bool mostLikelyAlgo; /// read from config.txt
 
 struct GOAL
 {
-	int x, y;
+    int x, y;
 };
 vector<GOAL> lPedGoal;
 
@@ -41,24 +41,24 @@ vector<GOAL> lPedGoal;
 //int currRobVel;
 
 
-#define NUM_PED 1
+//#define NUM_PED 1
 
 /// for visualization
 #define NUM_GOAL 4
 
 struct player_point_2d_t
 {
-	double px;
-	double py;
+    double px;
+    double py;
 };
 
-player_point_2d_t pedPt[NUM_PED]; /// current pos
-player_point_2d_t goalPt[NUM_GOAL]; /// all goal points
+//player_point_2d_t pedPt[NUM_PED]; /// current pos
+//player_point_2d_t goalPt[NUM_GOAL]; /// all goal points
 
 
 /// simulation run
-int pedGoal_x[NUM_PED];// = 9;
-int pedGoal_y[NUM_PED];// = 7;
+//int pedGoal_x[NUM_PED];// = 9;
+//int pedGoal_y[NUM_PED];// = 7;
 
 //double dY=64.0/Y_SIZE;
 //double dX=16.0/X_SIZE;
@@ -96,48 +96,49 @@ int num_steps=0;
 //double closest_dist=0;
 class pedestrian_momdp {
 public:
-	pedestrian_momdp(int argc, char** argv);
-	virtual ~pedestrian_momdp();
-	void robotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
-	void speedCallback(nav_msgs::Odometry odo);
-	void pedPoseCallback(sensing_on_road::pedestrian_laser_batch laser_batch);
-	void controlLoop(const ros::TimerEvent &e);
-	void publish_belief();
-	int getCurrentState(int id);
-	int getCurrObs(int id);
-	int getXGrid(double x);
-	int getYGrid(double y);
-	void initPedGoal();
+    pedestrian_momdp(int argc, char** argv);
+    virtual ~pedestrian_momdp();
+    void robotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
+    void speedCallback(nav_msgs::Odometry odo);
+    void pedPoseCallback(sensing_on_road::pedestrian_laser_batch laser_batch);
+    void controlLoop(const ros::TimerEvent &e);
+    void publish_belief();
+    int getCurrentState(int id);
+    int getCurrObs(int id);
+    int getXGrid(double x);
+    int getYGrid(double y);
+    void initPedGoal();
 
-	ros::Subscriber robotSub_, speedSub_, pedSub_, scanSub_;
-	ros::Publisher cmdPub_, believesPub_;
-	double robotx_, roboty_, robotspeedx_;//pedx_, pedy_;
-	int simLen, simNum;
-	string  ped_id_file, policy_file, model_file;
-	void parse_simul_config( fstream& configfile);
-	int pomdp_initialize();
-	void pedInitPose();
+    ros::Subscriber robotSub_, speedSub_, pedSub_, scanSub_;
+    ros::Publisher cmdPub_, believesPub_;
+    double robotx_, roboty_, robotspeedx_;//pedx_, pedy_;
+    int simLen, simNum;
+    string  ped_id_file, policy_file, model_file;
+    void parse_simul_config( fstream& configfile);
+    int pomdp_initialize();
+    void pedInitPose();
 
-	ofstream* foutStream;
-	
-	struct PED
-	{
-		int id;
-		double pedx_;
-		double pedy_;
-	};
-	vector<PED> lPedInView;
-	
-	geometry_msgs::Twist cmd;
-	//int currAction[];
-	SolverParams* p;
-	SharedPointer<MOMDP> problem;
-	SharedPointer<AlphaVectorPolicy> policy;
-	PSG_SimulationEngine engine;
+    ofstream* foutStream;
 
-    int currSVal[NUM_PED];
+    struct PED
+    {
+        int id;
+        double pedx_;
+        double pedy_;
+    };
+    vector<PED> lPedInView;
+
+    geometry_msgs::Twist cmd;
+    //int currAction[];
+    SolverParams* p;
+    SharedPointer<MOMDP> problem;
+    SharedPointer<AlphaVectorPolicy> policy;
+    PSG_SimulationEngine engine;
+
+    int num_ped;
+    vector<int> currSVal;
     vector< SharedPointer<BeliefWithState> > lcurrBelSt;
-    int currAction[NUM_PED];
+    vector<int> currAction;
 
     double mult;
     double gamma;

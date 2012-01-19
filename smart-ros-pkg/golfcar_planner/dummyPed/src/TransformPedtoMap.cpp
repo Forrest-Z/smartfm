@@ -37,7 +37,7 @@ vector<string> SplitString(const char *data, const char* delimiter)
 transform_ped::transform_ped()
 {
     ros::NodeHandle nh;
-    transformed_ped_pub_ = nh.advertise<sensing_on_road::pedestrian_laser_batch>("ped_map_laser_batch1", 2);
+    transformed_ped_pub_ = nh.advertise<sensing_on_road::pedestrian_laser_batch>("ped_map_laser_batch", 2);
     ped_sub_ = nh.subscribe("ped_laser_batch", 1, &transform_ped::PedPoseCallback, this);
     ros::NodeHandle n("~");
     n.param("ped_id", ped_str_, string(""));
@@ -74,7 +74,7 @@ bool transform_ped::transformPoint(geometry_msgs::PointStamped& in, geometry_msg
         return true;
     }
     catch(tf::TransformException& ex){
-        ROS_ERROR("Received an exception trying to transform a point from \"ldmrs\" to \"map\": %s", ex.what());
+        ROS_ERROR("Received an exception trying to transform a point from \"%s\" to \"map\": %s",in.header.frame_id.c_str(), ex.what());
         return false;
     }
 }
@@ -94,10 +94,14 @@ void transform_ped::PedPoseCallback(sensing_on_road::pedestrian_laser_batch ped)
             if(ped.pedestrian_laser_features[i].object_label == ped_id_[j])
             {
                 if(!transformPoint(ped.pedestrian_laser_features[i].pedestrian_laser, ped_poses_[j])) return;
-                ped_number++;
+
             }
 
         }
+        //increment the number as long as the position is non-zero,
+        //which is a good measure to tell that pedestrian_id is locked
+        if(ped_poses_[j].point.x>0 && ped_poses_[j].point.y>0) ped_number++;
+
         ped_laser.object_label = ped_id_[j];
         ped_laser.pedestrian_laser = ped_poses_[j];
         ped_map_laser_batch.pedestrian_laser_features.push_back(ped_laser);

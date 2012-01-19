@@ -1,12 +1,14 @@
 <launch>
 	 <node name="fake_localization" pkg="fake_localization" type="fake_localization" respawn="false">
 	</node>
-	 <node pkg="stage" type="stageros" name="stageros" args="$(find ped_momdp_sarsop)/world/golfcar_blank.world" respawn="false">
+	<node pkg="stage" type="stageros" name="stageros" args="$(find hybrid_amcl)/worlds/golfcar_eng.world" respawn="false">
    		 <param name="base_watchdog_timeout" value="0.2"/>
-		<param name="frame_id" value="odom"/>
+   		 <remap from="base_scan" to="sick_scan2"/>
+   		 <remap from="cmd_vel" to="momdp_vel"/>
   	</node>
-	<node pkg="map_server" type="map_server" name="map_server" args="$(find ped_momdp_sarsop)/world/map.yaml"/>
   	<param name="use_sim_time" value="true"/>
-	
+	<node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find ped_momdp_sarsop)/simulation_full.vcg"/>
+	<include file="$(find Launch)/move_base.launch"/>
+	<node name="dummyPed_marker" pkg="dummyPed" type="dummyPed_marker" respawn="false"/>
 </launch>
 
