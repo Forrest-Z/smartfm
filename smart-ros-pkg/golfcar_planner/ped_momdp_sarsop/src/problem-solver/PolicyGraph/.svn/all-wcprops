@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/motion/proj/appl2/!svn/ver/523/trunk/src/PolicyGraph
+END
+PolicyGraph.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/motion/proj/appl2/!svn/ver/433/trunk/src/PolicyGraph/PolicyGraph.cpp
+END
+PolicyGraph.vcproj
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/motion/proj/appl2/!svn/ver/378/trunk/src/PolicyGraph/PolicyGraph.vcproj
+END
+PolicyGraphGenerator.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 78
+/motion/proj/appl2/!svn/ver/523/trunk/src/PolicyGraph/PolicyGraphGenerator.cpp
+END
+PolicyGraphGenerator.h
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/motion/proj/appl2/!svn/ver/328/trunk/src/PolicyGraph/PolicyGraphGenerator.h
+END
