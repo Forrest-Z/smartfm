@@ -41,7 +41,7 @@ vector<GOAL> lPedGoal;
 //int currRobVel;
 
 
-#define NUM_PED 3
+#define NUM_PED 1
 
 /// for visualization
 #define NUM_GOAL 4
@@ -72,7 +72,7 @@ int Y_SIZE=10;
 //double ROS_Y=;
 //double ROS_X=;
 
-double dY= 3;//ROS_Y/Y_SIZE; /// step size in Y
+double dY= 2;//ROS_Y/Y_SIZE; /// step size in Y
 double dX= 2;//ROS_X/X_SIZE; /// step size in X
 //double Y_OFFSET=PSG_Y/2.0;  /// getting zero to bot-left
 //double X_OFFSET=PSG_X/2.0;

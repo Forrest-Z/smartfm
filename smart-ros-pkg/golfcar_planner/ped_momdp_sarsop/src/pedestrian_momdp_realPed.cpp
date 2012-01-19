@@ -416,7 +416,8 @@ void pedestrian_momdp::publish_belief()
         ped_momdp_sarsop::ped_belief ped_belief;
         /// Publish ped id
         ped_belief.ped_id = lPedInView[ii].id;
-
+        ped_belief.x = getXGrid(lPedInView[ii].pedx_);
+        ped_belief.y = getYGrid(lPedInView[ii].pedy_);
         ///Publish belief
         int belief_size = lcurrBelSt[ii]->bvec->data.size();
         assert(belief_size<=4);
@@ -428,8 +429,8 @@ void pedestrian_momdp::publish_belief()
 
             ped_belief.belief_value[belief_id] = belief_value;
         }
-
-
+        
+        
         ///Publish actions
         int temp_action;
         if(currAction[ii]==2) temp_action = -1;
@@ -439,6 +440,8 @@ void pedestrian_momdp::publish_belief()
         peds_believes.believes.push_back(ped_belief);
     }
     peds_believes.cmd_vel = cmd.linear.x;
+    peds_believes.robotx = getXGrid(robotx_);
+    peds_believes.roboty = getYGrid(roboty_);
     believesPub_.publish(peds_believes);
 }
 
@@ -493,7 +496,7 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv) {
 
 
 
-    timer_ = nh.createTimer(ros::Duration(0.5), &pedestrian_momdp::controlLoop, this);
+    timer_ = nh.createTimer(ros::Duration(1.0), &pedestrian_momdp::controlLoop, this);
     ros::spin();
 }
 
@@ -530,9 +533,19 @@ void pedestrian_momdp::pedPoseCallback(sensing_on_road::pedestrian_laser_batch l
             //cout<<"id of lPedInView "<<lPedInView[jj].id<<endl;
             if(laser_batch.pedestrian_laser_features[ii].object_label ==  lPedInView[jj].id)
             {
-
-                lPedInView[jj].pedx_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.x;
-                lPedInView[jj].pedy_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.y;
+                //filters the jumpy behavior of the pedestrian laser batch detection
+                if(obs_flag)
+                {
+                    if(fabs(lPedInView[jj].pedx_ - laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.x)< 1.0) 
+                        lPedInView[jj].pedx_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.x;
+                    if(fabs(lPedInView[jj].pedy_ - laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.y)< 1.0) 
+                        lPedInView[jj].pedy_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.y;
+                }
+                else
+                {
+                        lPedInView[jj].pedx_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.x;
+                        lPedInView[jj].pedy_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.y;
+                }
                 ROS_DEBUG_STREAM("PedX "<<lPedInView[jj].pedx_ << " PedY "<<lPedInView[jj].pedy_);
                 obs_flag = true;
                 break;
@@ -547,7 +560,7 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
 {
 
     /// Start after 3 pedestrians are detected
-    cout<<obs_flag<<' '<<robot_pose<<endl;
+    cout<<"Pedestrian: "<<obs_flag<<" Robot: "<<robot_pose<<endl;
     if(!obs_flag || !robot_pose)return;
 
     if(obs_first)
@@ -816,7 +829,11 @@ int pedestrian_momdp::getCurrentState(int id)
 
 
     //dj: discretization of robot speed into 3 int levels (0,1,2)
-    double rvel_double =  currRobSpeed/1.5*2;//dSpeed;
+    double rvel_double;
+    if(currRobSpeed < 0.1) rvel_double = 0;
+    else if(currRobSpeed > 0.1 && currRobSpeed < 1) rvel_double = 1;
+    else if(currRobSpeed > 1) rvel_double = 2;
+    //double rvel_double =  currRobSpeed/1.5*2;//dSpeed;
     int rvel= (int) rvel_double;
     //if(rvel_double < 0.0001 )
     //rvel = (int) rvel_double + 1; /// the int takes floor value
@@ -850,6 +867,8 @@ int pedestrian_momdp::getCurrentState(int id)
 int pedestrian_momdp::getXGrid(double x)
 {
     int px = (int) (x)/dX ;
+    if(px> 3) px = 3;
+    else if (px<0) px = 0;
     return px;
 }
 

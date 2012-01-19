@@ -7,14 +7,15 @@
 	    <param name="simLen" value="100"/>
 	    <param name="simNum" value="100"/>	    
 	    <remap from="robot_0/amcl_pose" to="amcl_pose"/>
-	    <remap from="robot_0/cmd_vel" to="cmd_vel"/>
+	    <remap from="robot_0/cmd_vel" to="momdp_vel"/>
+        <remap from="odom" to="encoder_odom"/>
 	 </node>
      <node pkg="map_server" type="map_server" name="map_server2" args="$(find dummyPed)/worlds/momdp_map.yaml">
 		<remap from="static_map" to="static_planar_map"/>
 		<remap from="map" to= "momdp_map"/>
 	</node>
 	<node name="transform_ped_to_map" type="TransformPedtoMap" pkg="dummyPed"/>
-	<node name="speed_controller" pkg="lowlevel" type="speed_controller_simple" output="screen">
+	<node name="speed_controller_momdp" pkg="lowlevel" type="speed_controller_simple" output="screen">
         <param name="kp" value="1.5"/>        
         <param name="ki" value="0.08"/>
         <param name="kd" value="0.4"/>
@@ -22,7 +23,7 @@
         <remap from="/odom" to="/encoder_odom"/>
         <remap from="/cmd_vel" to="momdp_vel"/>
     </node>
-    <!--node pkg="golfcar_ppc" type="speed_advisor" name="speed_advisor" output="screen">
+    <node pkg="golfcar_ppc" type="speed_advisor" name="speed_advisor" output="screen">
         <rosparam file="$(find ped_momdp_sarsop)/speed_advisor.yaml" command="load"/>
-    </node-->
+    </node>
 </launch>    
