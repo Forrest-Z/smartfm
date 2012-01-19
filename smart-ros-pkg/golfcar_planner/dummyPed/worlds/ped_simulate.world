@@ -1,0 +1,91 @@
+define block model
+(
+  size [0.500 0.500 0.750]
+  gui_nose 0
+)
+
+define topurg laser
+(
+  range_min 0.0
+  range_max 80.0
+  fov 180
+  samples 360
+  # generic model properties
+  color "black"
+  size [ 0.050 0.050 0.100 ]
+)
+
+define gc position
+(
+  #size [0.65 0.65 0.25]
+  #origin [-0.05 0 0 0]
+  size [2.385 1.200 0.250]
+  
+  origin [0.792 0 0 0]
+  gui_nose 1
+  drive "car"
+  localization "gps"
+
+  topurg(pose [1.985 0 0 0])
+)
+
+define ped position
+(
+  #size [0.65 0.65 0.25]
+  #origin [-0.05 0 0 0]
+  size [1.200 1.200 0.250]
+  
+  origin [0.600 0.600 0 0]
+  gui_nose 1
+  drive "car"
+  localization "gps"
+
+  topurg(pose [0 0 0 0])
+)
+
+define floorplan model
+(
+  # sombre, sensible, artistic
+  color "gray30"
+
+  # most maps will need a bounding box
+  boundary 1
+
+  gui_nose 0
+  gui_grid 0
+#gui_movemask 0
+  gui_outline 0
+  gripper_return 0
+  fiducial_return 0
+  laser_return 1
+)
+
+# set the resolution of the underlying raytrace model in meters
+resolution 0.01
+
+interval_sim 30  # simulation timestep in milliseconds
+#interval_real 100  # real-time interval between simulation updates in milliseconds 
+
+floorplan
+( 
+  name "willow"
+  bitmap "map.png"
+  size [8.000 30.000 0.100]
+  pose [-14.932 1.064 0 90.000] 
+)
+window
+( 
+  size [ 672.000 574.000 ] 
+ #center [327.990 371.960] 
+  center [-13.305 -3.448]
+#rotate [ 0.000 -1.560 ]
+  rotate [ 3.000 90.000 ]
+  scale 15.541 
+)
+
+# throw in a robot
+gc( pose [-27.876 0.242 0 -180.000] name "gc1" color "red")
+ped( pose [-22.725 3.521 0 0] name "ped1" color "green")
+ped( pose [-4.175 -2.530 0 0] name "ped2" color "blue")
+ped( pose [-9.513 -2.501 0 0] name "ped3" color "yellow")
+#block( pose [ -104.223 98.740 0 0 ] color "red")
