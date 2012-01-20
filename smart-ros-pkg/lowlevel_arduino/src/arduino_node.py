@@ -26,15 +26,6 @@ def brakeCB(msg):
 def steerCB(msg):
     arduino_cmd_msg.steer_angle = msg.data
 
-def lblinkerCB(msg):
-    arduino_cmd_msg.left_blinker = msg.data
-
-def rblinkerCB(msg):
-    arduino_cmd_msg.right_blinker = msg.data
-
-def cmd_msg_CB(event):
-    arduino_pub.publish( arduino_cmd_msg )
-
 
 def setupSub(topic,msg_t,cb):
     sub = rospy.Subscriber(topic, msg_t, cb)
@@ -45,8 +36,6 @@ def setupSub(topic,msg_t,cb):
 throttle_sub = setupSub('arduino/throttle', Float64, throttleCB)
 brake_sub = setupSub('arduino/brake_angle', Float64, brakeCB)
 steer_sub = setupSub('arduino/steer_angle', Float64, steerCB)
-lblinker_sub = setupSub('arduino/left_blinker', Bool, lblinkerCB)
-rblinker_sub = setupSub('arduino/right_blinker', Bool, rblinkerCB)
 
 rate = rospy.get_param('~rate',10)
 rospy.loginfo('Sending messages to the Arduino board every %dms' % int(1000.0/rate))

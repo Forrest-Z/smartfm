@@ -9,10 +9,12 @@ lights control (blinkers and stop light). Also monitors the state of the
 emergency and auto mode button.
 
 Subscribers:
-- arduino/arduino_cmd (type: lowlevel_arduino::Arduino)
+- arduino_cmd (type: lowlevel_arduino::Arduino)
+- right_blinker (type: std_msgs::Bool)
+- left_blinker (type: std_msgs::Bool)
 
 Publishers:
-- arduino/button_state (type: lowlevel_arduino::ButtonState)
+- button_state (type: lowlevel_arduino::ButtonState)
 
 
 
@@ -85,7 +87,8 @@ AccelStepper stepper_brake(1, brake_pulse_pin, brake_dir_pin);
 
 Blinker left_blinker(left_blinker_pin), right_blinker(right_blinker_pin);
 
-bool emergency = false, motorsEnabled = false;
+lowlevel_arduino::ButtonState button_state_msg;
+bool motorsEnabled = false;
 unsigned long time = 0, old_time = 0, last_msg_time = 0;
 
 
@@ -95,7 +98,7 @@ unsigned long time = 0, old_time = 0, last_msg_time = 0;
 void set_throttle(float v) {
   // v is supposed to be between 0 and 1: 1 corresponds to max speed.
 
-  if( ! emergency ) {
+  if( ! button_state_msg.emergency ) {
     int cycle = (int) ( (v>1.0 ? 1.0 : v<0.0 ? 0.0 : v) * 255.0 );
     analogWrite(throttle_pin, cycle);
   }
@@ -105,7 +108,8 @@ void set_throttle(float v) {
 }
 
 void set_brake(float a) {
-  if( emergency ) a = full_brake;
+  if( button_state_msg.emergency ) a = full_brake;
+  else if( ! button_state_msg.automode ) a = 0;
   stepper_brake.moveTo( (long) ( a * step_scale ) );
   digitalWrite(stop_light_pin, a>=5 ? HIGH : LOW);
 }
@@ -117,6 +121,13 @@ void set_steer(float a) {
 void setMotorsEnabled(bool b) {
   digitalWrite(motors_enable_pin, b?HIGH:LOW);
   motorsEnabled = b;
+}
+
+void set_blinkers_emergency_mode() {
+  left_blinker.off();
+  left_blinker.blink();
+  right_blinker.off();
+  right_blinker.blink();
 }
 
 
@@ -136,27 +147,31 @@ void cmd_CB(const lowlevel_arduino::Arduino & cmd_msg) {
   set_throttle(cmd_msg.throttle);
   set_steer(cmd_msg.steer_angle);
   set_brake(cmd_msg.brake_angle);
-
-  if( emergency ) {
-    left_blinker.off();
-    left_blinker.blink();
-    right_blinker.off();
-    right_blinker.blink();
-  } else {
-    left_blinker.set(cmd_msg.left_blinker);
-    right_blinker.set(cmd_msg.right_blinker);
-  }
 }
 
+void lBlinkerCB(const std_msgs::Bool & msg) {
+  if( msg.data && left_blinker.isOff() && right_blinker.isOn() )
+    set_blinkers_emergency_mode();
+  else
+    left_blinker.set(msg.data);
+}
+
+void rBlinkerCB(const std_msgs::Bool & msg) {
+  if( msg.data && right_blinker.isOff() && left_blinker.isOn() )
+    set_blinkers_emergency_mode();
+  else
+    right_blinker.set(msg.data);
+}
 
 //------------------------------------------------------------------------------
 // ROS stuffs
 
 ros::NodeHandle nh;
-ros::Subscriber<lowlevel_arduino::Arduino> arduino_cmd_sub("arduino/arduino_cmd", &cmd_CB );
+ros::Subscriber<lowlevel_arduino::Arduino> arduino_cmd_sub("arduino_cmd", &cmd_CB );
+ros::Subscriber<std_msgs::Bool> lblinker_sub("left_blinker", &lBlinkerCB );
+ros::Subscriber<std_msgs::Bool> rblinker_sub("right_blinker", &rBlinkerCB );
 
-lowlevel_arduino::ButtonState button_state_msg;
-ros::Publisher button_state_pub("arduino/button_state", &button_state_msg);
+ros::Publisher button_state_pub("button_state", &button_state_msg);
 
 
 
@@ -181,40 +196,42 @@ void setup()
 
   pinMode(emergency_pin, INPUT);
   pinMode(auto_mode_pin, INPUT);
-  emergency = digitalRead(emergency_pin)==HIGH;
+  button_state_msg.emergency = digitalRead(emergency_pin)==HIGH;
   button_state_msg.automode = digitalRead(auto_mode_pin)==HIGH;
 
   nh.initNode();
   nh.advertise(button_state_pub);
   nh.subscribe(arduino_cmd_sub);
+  nh.subscribe(lblinker_sub);
+  nh.subscribe(rblinker_sub);
 }
 
 void button_state()
 {
   button_state_msg.automode = digitalRead(auto_mode_pin)==HIGH;
-
-  if( !emergency && digitalRead(emergency_pin)==HIGH ) {
+  
+  bool emergency = digitalRead(emergency_pin)==HIGH;
+  if( !button_state_msg.emergency && emergency ) {
     set_throttle(0);
     set_brake(full_brake);
-    emergency = true;
-    button_state_msg.emergency = emergency;
+    button_state_msg.emergency = true;
     button_state_pub.publish( &button_state_msg );
     old_time = time;
+    set_blinkers_emergency_mode();
   }
-  else if( emergency && digitalRead(emergency_pin)==LOW ) {
-    emergency = false;
+  else if( button_state_msg.emergency && !emergency ) {
     set_brake(0);
-    button_state_msg.emergency = emergency;
+    button_state_msg.emergency = false;
     button_state_pub.publish( &button_state_msg );
     old_time = time;
   }
   else {
     if( time - old_time > 250 ) {
-      button_state_msg.emergency = emergency;
       button_state_pub.publish( &button_state_msg );
       old_time = time;
     }
   }
+
 }
 
 

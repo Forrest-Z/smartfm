@@ -22,13 +22,12 @@ class Blinker {
       _state = 0;
     }
 
-    void set(int b) {
-      b ? blink() : off();
-    }
+    void set(int b) { b ? blink() : off(); }
 
-    void half_period(float sec) {
-      _half_period = (unsigned long) (sec*1000);
-    }
+    bool isOn() { return _state!=0; }
+    bool isOff() { return _state==0; }
+
+    void half_period(float sec) { _half_period = (unsigned long) (sec*1000); }
 
 
     void run() {
