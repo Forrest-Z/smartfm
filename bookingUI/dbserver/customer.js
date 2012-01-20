@@ -102,46 +102,57 @@ function displayRequestList()
     setTimeout("displayRequestList()", 2000);
 }
 
-/*
-function listStations()
+
+function stationOptions(stationList)
 {
-    $con = connect_to_DB();
-    $query = "SELECT * FROM stations";
-    $result = mysql_query($query) or die('Select error: ' . mysql_error());
-    $stations = array();
-    while( $row = @mysql_fetch_assoc($result) )
-        $stations[] = $row['name'];
-    mysql_close($con);
-    return $stations;
+    var html = '<option value="0"></option>';
+    for (var i = 0; i < stationList.length; i++)
+        html += '<option value="' + i + '">' + stationList[i] + '</option>';
+    return html;
 }
 
-
-function selectStation($fieldname,$default)
+function makeBooking()
 {
-    $stations = listStations();
-    $str = '<select name="' . $fieldname . '">';
-    foreach( $stations as $station )
-    {
-        if( isset($default) && $default==$station )
-            $str .= '<option value="' . $station .'" selected="selected">' . $station .'</option>';
-        else
-            $str .= '<option value="' . $station .'">' . $station . '</option>';
+    var pEl = document.getElementById("sPickup");
+    var pIt = pEl.options[pEl.selectedIndex];
+    var dEl = document.getElementById("sDropoff");
+    var dIt = dEl.options[dEl.selectedIndex];
+    if( pIt.value>0 && dIt.value>0 && pIt.value!=dIt.value ) {
+        var url = 'new_request.php?CustomerID=' + CUSTOMER_ID;
+        url += '&PickUpLocation=' + pIt.text;
+        url += '&DropOffLocation=' + dIt.text;
+        downloadUrl(url, function(xml) {
+            var statusNode = xml.documentElement.getElementsByTagName("status")[0];
+            if( statusNode.getAttribute("code")=="ok" ) {
+                document.getElementById("bookingErr").innerHTML = "";
+                displayRequestList();
+                window.location="#bottom";
+            }
+            else {
+                document.getElementById("bookingErr").innerHTML = "Error while placing your booking. Please try again. " + statusNode.getAttribute("msg");
+            }
+        } );
     }
-    return $str . '</select>';
+    else {
+        document.getElementById("bookingErr").innerHTML = "Incorrect station choice";
+    }
 }
 
-function bookingForm()
+function makeBookingForm()
 {
-    echo '<form action="make_booking.php" method="post">';
-    echo '<p>CustomerID: '. $CUSTOMER_ID . ' <input type="hidden" name="CustomerID" value="' . $CUSTOMER_ID .'"/></p>';
-    echo '<p>Pickup location: ' . selectStation("PickUpLocation","DCC Workshop") . '</p>';
-    echo '<p>Dropoff location: ' . selectStation("DropOffLocation","McDonald") . '</p>';
-
-    if(isset($_GET['filter']) && $_GET['filter']=='yes')
-        echo '<input type="hidden" name="filter" value="yes"/>';
-    echo '<input type="hidden" name="ReturnScript" value="customer"/>';
-    echo '<input type="hidden" name="Status" value="Requested"/>';
-    echo '<input type="submit" value="Submit" />';
-    echo '</form>';
+    downloadUrl("list_stations.php", function(xml) {
+        var nodes = xml.documentElement.getElementsByTagName("station");
+        var stationList = new Array(nodes.length);
+        for (var i = 0; i < nodes.length; i++)
+            stationList[i] = nodes[i].getAttribute("name");
+        var html = '<form action="javascript:void()">';
+        html += '<p>CustomerID: ' + CUSTOMER_ID + '</p>';
+        html += '<p>Pickup location: <select id="sPickup">';
+        html += stationOptions(stationList) + '</select></p>';
+        html += '<p>Dropoff location: <select id="sDropoff">';
+        html += stationOptions(stationList) + '</select></p>';
+        html += '<input type="button" value="Send" onclick="makeBooking()"/>';
+        html += '</form>';
+        document.getElementById("makeBooking").innerHTML = html;
+    });
 }
-*/

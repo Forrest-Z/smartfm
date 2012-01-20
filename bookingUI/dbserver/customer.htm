@@ -30,6 +30,10 @@
     height: 100%;
 }
 
+#bookingErr {
+    color: red;
+}
+
 </style>
 
 <script type="text/javascript"
@@ -41,6 +45,7 @@
 
 <script type="text/javascript">
 function initialize() {
+    makeBookingForm();
     displayRequestList();
     initMap("map_canvas");
 }
@@ -57,10 +62,12 @@ function initialize() {
 <td class="layout" id="booking_ctrl_cell">
 
 <h1>Make a booking</h1>
+<p id="bookingErr">&nbsp;</p>
 <div id="makeBooking"></div>
 
 <h1>Current requests</h1>
 <div id="requestList"></div>
+<a name="bottom"/>
 
 </td>
 
