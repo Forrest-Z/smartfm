@@ -102,10 +102,10 @@ void HOGVisualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_vi
         if(ped_bel[i].id == pv.object_label)
         {
             cout<<ped_bel[i].id<<" "<<int(255.0*ped_bel[i].left_side)<<" "<<int(255.0*ped_bel[i].right_side)<<endl;
-            int left_gradient = 255.0*ped_bel[i].left_side;
-            int right_gradient = 255.0*ped_bel[i].right_side;
-            rectangle(img,UL, UP_C_OFF, Scalar(int(255.0*ped_bel[i].left_side),255,255), CV_FILLED);
-            rectangle(img,UC, UR_OFF, Scalar(int(255.0*ped_bel[i].right_side),int(255.0*ped_bel[i].right_side),int(255.0*ped_bel[i].right_side)), CV_FILLED);
+            int left_gradient = 255-(255.0*ped_bel[i].left_side);
+            int right_gradient = 255-(255.0*ped_bel[i].right_side);
+            rectangle(img,UL, UP_C_OFF, Scalar(left_gradient,left_gradient, 255), CV_FILLED);
+            rectangle(img,UC, UR_OFF, Scalar(right_gradient,right_gradient, 255), CV_FILLED);
             if(ped_bel[i].decision==-1) rectangle(img,UL_OFF, UR_2OFF, Scalar(0,0,255), CV_FILLED);
             else rectangle(img,UL_OFF, UR_2OFF, Scalar(0,255,0), CV_FILLED);
         }
