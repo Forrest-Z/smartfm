@@ -440,6 +440,7 @@ void pedestrian_momdp::publish_belief()
         peds_believes.believes.push_back(ped_belief);
     }
     peds_believes.cmd_vel = cmd.linear.x;
+    peds_believes.robotv = robotspeedx_;
     peds_believes.robotx = getXGrid(robotx_);
     peds_believes.roboty = getYGrid(roboty_);
     believesPub_.publish(peds_believes);
@@ -538,7 +539,7 @@ void pedestrian_momdp::pedPoseCallback(sensing_on_road::pedestrian_laser_batch l
         lPedInView[ii].pedx_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.x;
         lPedInView[ii].pedy_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.y;
         lPedInView[ii].id = laser_batch.pedestrian_laser_features[ii].object_label;
-        ROS_INFO_STREAM(ii<<": PedX "<<lPedInView[ii].pedx_ << " PedY "<<lPedInView[ii].pedy_);
+        ROS_DEBUG_STREAM(ii<<": PedX "<<lPedInView[ii].pedx_ << " PedY "<<lPedInView[ii].pedy_);
         obs_flag = true;
     }
 
