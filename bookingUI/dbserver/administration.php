@@ -15,6 +15,7 @@ function listRequests()
     $result = mysql_query($sql, $con) or die ('Select error: ' . mysql_error());
     echo "<table>";
     echo "<tr>";
+    echoInTag("th","DELETE");
     echoInTag("th","CANCEL");
     echoInTag("th","RequestID");
     echoInTag("th","CustomerID");
@@ -33,6 +34,15 @@ function listRequests()
             continue;
         echo "<tr>";
         $rid = $row['requestID'];
+
+        $delBtnForm = '<form action="del_request_adm.php" method="post">';
+        $delBtnForm .= '<input type="hidden" name="RequestID" value="' . $rid . '"/>';
+        if(isset($_GET['filter']) && $_GET['filter']=='yes')
+            $delBtnForm .= '<input type="hidden" name="filter" value="yes"/>';
+        $delBtnForm .= '<input type="hidden" name="ReturnScript" value="administration.php"/>';
+        $delBtnForm .= '<input type="submit" value="X"/></form>';
+
+        echoInCell($delBtnForm);
 
         $cancelBtnForm = '<form action="cancel_request_adm.php" method="post">';
         $cancelBtnForm .= '<input type="hidden" name="RequestID" value="' . $rid . '"/>';
