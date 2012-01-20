@@ -29,6 +29,8 @@ target_link_libraries(amcl_sensors amcl_map amcl_pf)
 
 rosbuild_add_executable(bin/mix_amcl
                        src/mix_amcl_node.cpp)
+
+rosbuild_add_link_flags(bin/mix_amcl -lm)
                              
 target_link_libraries(bin/mix_amcl amcl_sensors amcl_map amcl_pf)
 

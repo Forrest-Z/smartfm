@@ -1,0 +1,5 @@
+<launch>
+	<node pkg="golfcar_halstreamer" type="golfcar_halstreamer_3channel" name="golfcar_halstreamer_3channel"/>
+	<node pkg="golfcar_halsampler" type="halsampler" name="halsampler"/>
+</launch>
+
