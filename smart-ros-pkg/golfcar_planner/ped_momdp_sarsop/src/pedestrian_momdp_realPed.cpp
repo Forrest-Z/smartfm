@@ -483,6 +483,7 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv) {
     //scanSub_ = nh.subscribe("clock", 1, &pedestrian_momdp::scanCallback, this);
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("robot_0/cmd_vel",1);
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
+    move_base_speed_=nh.subscribe("/move_status",1, &pedestrian_momdp::moveSpeedCallback, this);
     initPedGoal();
     //pedInitPose();
 
@@ -500,8 +501,11 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv) {
     ros::spin();
 }
 
-pedestrian_momdp::~pedestrian_momdp() {
-
+pedestrian_momdp::~pedestrian_momdp()
+{
+    cmd.angular.z = 0;
+    cmd.linear.x = 0;
+    cmdPub_.publish(cmd);
 }
 
 void pedestrian_momdp::speedCallback(nav_msgs::Odometry odo)
@@ -516,6 +520,18 @@ void pedestrian_momdp::robotPoseCallback(geometry_msgs::PoseWithCovarianceStampe
 
 
     if(robotx_>0 && roboty_>0) robot_pose = true;
+}
+
+void pedestrian_momdp::moveSpeedCallback(pnc_msgs::move_status status)
+{
+    cmd.angular.z = status.steer_angle;
+    if(roboty_>20)
+    {
+        cmd.angular.z = 0;
+        cmd.linear.x = 0;
+    }
+
+    cmdPub_.publish(cmd);
 }
 
 void pedestrian_momdp::pedPoseCallback(sensing_on_road::pedestrian_laser_batch laser_batch)
@@ -651,12 +667,12 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
     if(moveRob)
     {
 
-        if(safeAction==0) cmd.linear.x = 0;
+        if(safeAction==0) cmd.linear.x += 0;
         else if(safeAction==1) cmd.linear.x += 0.5;
         else if(safeAction==2) cmd.linear.x -= 0.5;
         if(cmd.linear.x<=0) cmd.linear.x = 0;
         if(cmd.linear.x>=1.5) cmd.linear.x = 1.5;
-        cmdPub_.publish(cmd);
+
     }
 
 

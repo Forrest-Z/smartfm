@@ -21,7 +21,7 @@
 #include <rosgraph_msgs/Clock.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <ped_momdp_sarsop/peds_believes.h>
-
+#include <pnc_msgs/move_status.h>
 //bool lane=true;
 //bool cross=!lane;
 
@@ -97,10 +97,11 @@ int num_steps=0;
 class pedestrian_momdp {
 public:
     pedestrian_momdp(int argc, char** argv);
-    virtual ~pedestrian_momdp();
+    ~pedestrian_momdp();
     void robotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
     void speedCallback(nav_msgs::Odometry odo);
     void pedPoseCallback(sensing_on_road::pedestrian_laser_batch laser_batch);
+    void moveSpeedCallback(pnc_msgs::move_status status);
     void controlLoop(const ros::TimerEvent &e);
     void publish_belief();
     int getCurrentState(int id);
@@ -109,7 +110,7 @@ public:
     int getYGrid(double y);
     void initPedGoal();
 
-    ros::Subscriber robotSub_, speedSub_, pedSub_, scanSub_;
+    ros::Subscriber robotSub_, speedSub_, pedSub_, scanSub_, move_base_speed_;
     ros::Publisher cmdPub_, believesPub_;
     double robotx_, roboty_, robotspeedx_;//pedx_, pedy_;
     int simLen, simNum;

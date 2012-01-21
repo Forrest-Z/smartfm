@@ -16,6 +16,7 @@
   <depend package="laser_geometry"/>
   <depend package="geometry_msgs"/>
   <depend package="rosgraph_msgs"/>
+  <depend package="pnc_msgs"/>
 </package>
 
 

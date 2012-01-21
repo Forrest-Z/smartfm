@@ -1,13 +1,12 @@
 <launch>
-	 <node name="ped_momdp" pkg="ped_momdp_sarsop" type="ped-momdp-sarsop" respawn="false" output="screen"
-	    args="--simLen 100 --simNum 100 --policy-file /home/rss-lane-700.policy /home/rss-lane.pomdpx">
+	 <node name="ped_momdp" pkg="ped_momdp_sarsop" type="ped-momdp-sarsop" respawn="false" output="screen">
 	    <param name="pedestrian_id_file" value="$(find ped_momdp_sarsop)/pedinit.txt"/>
-	    <param name="model_file" value="$(find ped_momdp_sarsop)/bin/rss-lane.pomdpx"/>	    
-	    <param name="policy_file" value="$(find ped_momdp_sarsop)/bin/rss-lane-700.policy"/>
+	    <param name="model_file" value="$(find ped_momdp_sarsop)/rss-lane.pomdpx"/>	    
+	    <param name="policy_file" value="$(find ped_momdp_sarsop)/rss-lane-700.policy"/>
 	    <param name="simLen" value="100"/>
 	    <param name="simNum" value="100"/>	    
 	    <remap from="robot_0/amcl_pose" to="amcl_pose"/>
-	    <remap from="robot_0/cmd_vel" to="momdp_vel"/>
+	    <remap from="robot_0/cmd_vel" to="cmd_vel"/>
         <remap from="odom" to="encoder_odom"/>
 	 </node>
      <node pkg="map_server" type="map_server" name="map_server2" args="$(find dummyPed)/worlds/momdp_map.yaml">
@@ -15,17 +14,6 @@
 		<remap from="map" to= "momdp_map"/>
 	</node>
 	<node name="transform_ped_to_map" type="TransformPedtoMap" pkg="dummyPed" output="screen">
-		<param name="ped_id" type="str" value="2"/>
+		<param name="ped_id" type="str" value="1,2,3"/>
 	</node>
-	<node name="speed_controller_momdp" pkg="lowlevel" type="speed_controller_simple" output="screen">
-        <param name="kp" value="1.5"/>        
-        <param name="ki" value="0.08"/>
-        <param name="kd" value="0.4"/>
-        <param name="tau_v" value="0.2"/>
-        <remap from="/odom" to="/encoder_odom"/>
-        <remap from="/cmd_vel" to="momdp_vel"/>
-    </node>
-    <node pkg="golfcar_ppc" type="speed_advisor" name="speed_advisor" output="screen">
-        <rosparam file="$(find ped_momdp_sarsop)/speed_advisor.yaml" command="load"/>
-    </node>
 </launch>    
