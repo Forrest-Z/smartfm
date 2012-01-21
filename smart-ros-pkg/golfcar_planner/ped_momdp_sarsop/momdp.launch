@@ -1,6 +1,5 @@
 <launch>
 	 <node name="ped_momdp" pkg="ped_momdp_sarsop" type="ped-momdp-sarsop" respawn="false" output="screen">
-	    <param name="pedestrian_id_file" value="$(find ped_momdp_sarsop)/pedinit.txt"/>
 	    <param name="model_file" value="$(find ped_momdp_sarsop)/rss-lane.pomdpx"/>	    
 	    <param name="policy_file" value="$(find ped_momdp_sarsop)/rss-lane-700.policy"/>
 	    <param name="simLen" value="100"/>
@@ -9,10 +8,6 @@
 	    <remap from="robot_0/cmd_vel" to="cmd_vel"/>
         <remap from="odom" to="encoder_odom"/>
 	 </node>
-     <node pkg="map_server" type="map_server" name="map_server2" args="$(find dummyPed)/worlds/momdp_map.yaml">
-		<remap from="static_map" to="static_planar_map"/>
-		<remap from="map" to= "momdp_map"/>
-	</node>
 	<node name="transform_ped_to_map" type="TransformPedtoMap" pkg="dummyPed" output="screen">
 		<param name="ped_id" type="str" value="1,2,3"/>
 	</node>

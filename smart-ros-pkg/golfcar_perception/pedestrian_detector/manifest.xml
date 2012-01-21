@@ -22,6 +22,7 @@
   <depend package="image_transport" />
   <!--depend package="people_msgs" /-->
   <depend package="sensing_on_road"/>
+  <depend package="ped_momdp_sarsop"/>
   <rosdep name="opencv2.3"/>
   <platform os="ubuntu" version="9.04"/>
   <platform os="ubuntu" version="9.10"/>
