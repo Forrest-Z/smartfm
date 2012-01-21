@@ -478,6 +478,7 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv) {
     n.param("model_file", model_file, string(""));
     n.param("simLen", simLen, 100);
     n.param("simNum", simNum, 100);
+    nh.param("use_sim_time", use_sim_time_, false);
     //add the simLen parameter and correct the coordinate system!
 
     //subscribe as heartbeat of the robot
@@ -485,6 +486,7 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv) {
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("robot_0/cmd_vel",1);
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
     move_base_speed_=nh.subscribe("/move_status",1, &pedestrian_momdp::moveSpeedCallback, this);
+    goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
     initPedGoal();
     //pedInitPose();
 
@@ -532,7 +534,10 @@ void pedestrian_momdp::moveSpeedCallback(pnc_msgs::move_status status)
         cmd.linear.x = 0;
     }
 
-    cmdPub_.publish(cmd);
+    geometry_msgs::Twist cmd_temp;
+    cmd_temp = cmd;
+    if(use_sim_time_) cmd_temp.linear.x = cmd.linear.x * 0.3;
+    cmdPub_.publish(cmd_temp);
 }
 
 void pedestrian_momdp::pedPoseCallback(sensing_on_road::pedestrian_laser_batch laser_batch)
@@ -569,6 +574,15 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
     /// Start after 3 pedestrians are detected
     cout<<"Pedestrian: "<<obs_flag<<" Robot: "<<robot_pose<<endl;
     if(!obs_flag || !robot_pose)return;
+
+    //publish goal point at 25 meter in global frame
+    geometry_msgs::PoseStamped ps;
+    ps.header.stamp = ros::Time::now();
+    ps.header.frame_id = "/map";
+    ps.pose.position.x = 3;
+    ps.pose.position.y = 25;
+    ps.pose.orientation.w = 1.0;
+    goalPub_.publish(ps);
 
     if(obs_first)
     {
@@ -838,8 +852,8 @@ int pedestrian_momdp::getCurrentState(int id)
     //dj: discretization of robot speed into 3 int levels (0,1,2)
     double rvel_double;
     if(currRobSpeed < 0.1) rvel_double = 0;
-    else if(currRobSpeed > 0.1 && currRobSpeed < 1) rvel_double = 1;
-    else if(currRobSpeed > 1) rvel_double = 2;
+    else if(currRobSpeed > 0.1 && currRobSpeed < 2) rvel_double = 1;
+    else if(currRobSpeed > 2) rvel_double = 2;
     //double rvel_double =  currRobSpeed/1.5*2;//dSpeed;
     int rvel= (int) rvel_double;
     //if(rvel_double < 0.0001 )

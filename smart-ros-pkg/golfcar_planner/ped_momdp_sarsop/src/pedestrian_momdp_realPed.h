@@ -20,6 +20,7 @@
 #include "GlobalResource.h"
 #include <rosgraph_msgs/Clock.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <ped_momdp_sarsop/peds_believes.h>
 #include <pnc_msgs/move_status.h>
 //bool lane=true;
@@ -111,7 +112,8 @@ public:
     void initPedGoal();
 
     ros::Subscriber robotSub_, speedSub_, pedSub_, scanSub_, move_base_speed_;
-    ros::Publisher cmdPub_, believesPub_;
+    ros::Publisher cmdPub_, believesPub_, goalPub_;
+    bool use_sim_time_;
     double robotx_, roboty_, robotspeedx_;//pedx_, pedy_;
     int simLen, simNum;
     string  ped_id_file, policy_file, model_file;
