@@ -4,10 +4,7 @@
 #include "cv_bridge/cv_bridge.h"
 #include "sensing_on_road/pedestrian_vision_batch.h"
 #include "sensing_on_road/pedestrian_vision.h"
-#include "opencv2/gpu/gpu.hpp"
 #include "opencv2/highgui/highgui.hpp"
-
-#include "classifier.h"
 #include "image_transport/subscriber_filter.h"
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
@@ -27,8 +24,6 @@ public:
 
 private:
 	std::vector<float> detector;
-	cv::gpu::HOGDescriptor gpu_hog;
-	cv::HOGDescriptor cpu_hog;
 	ros::NodeHandle n_;
 	image_transport::ImageTransport it_;
 	image_transport::SubscriberFilter image_sub_;

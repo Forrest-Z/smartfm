@@ -24,7 +24,7 @@ HOGVisualizer::HOGVisualizer(ros::NodeHandle &n) : n_(n), it_(n_)
     Synchronizer<MySyncPolicy> sync(MySyncPolicy(20), image_sub_, people_roi_sub_);
     sync.registerCallback(boost::bind(&HOGVisualizer::peopleCallback,this, _1, _2));
 
-    cvNamedWindow("Image window");
+    cvNamedWindow("MOMDP Visualizer");
 
     ros::spin();
 }
@@ -51,7 +51,7 @@ void HOGVisualizer::peopleCallback(const sensor_msgs::ImageConstPtr image, const
 
     }
     started = true;
-    imshow("Image window", img);
+    imshow("MOMDP Visualizer", img);
     cvWaitKey(3);
 }
 
@@ -104,8 +104,8 @@ void HOGVisualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_vi
             cout<<ped_bel[i].id<<" "<<int(255.0*ped_bel[i].left_side)<<" "<<int(255.0*ped_bel[i].right_side)<<endl;
             int left_gradient = 255-(255.0*ped_bel[i].left_side);
             int right_gradient = 255-(255.0*ped_bel[i].right_side);
-            rectangle(img,UL, UP_C_OFF, Scalar(left_gradient,left_gradient, 255), CV_FILLED);
-            rectangle(img,UC, UR_OFF, Scalar(right_gradient,right_gradient, 255), CV_FILLED);
+            rectangle(img,UL, UP_C_OFF, Scalar(255,left_gradient,left_gradient), CV_FILLED);
+            rectangle(img,UC, UR_OFF, Scalar(255,right_gradient,right_gradient), CV_FILLED);
             if(ped_bel[i].decision==-1) rectangle(img,UL_OFF, UR_2OFF, Scalar(0,0,255), CV_FILLED);
             else rectangle(img,UL_OFF, UR_2OFF, Scalar(0,255,0), CV_FILLED);
         }
@@ -117,7 +117,7 @@ void HOGVisualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_vi
 }
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "HOGVisualizerVis");
+    ros::init(argc, argv, "MOMDP_Visualizer");
     ros::NodeHandle n;
     HOGVisualizer ic(n);
     ros::spin();
