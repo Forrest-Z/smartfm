@@ -1,0 +1,43 @@
+Launch sequence for MOMDP experiment:
+
+|**************|
+| For golfcar: |
+****************
+
+High level computer
+-------------------
+./run-core
+roslaunch Launch 0GolfcarSensors.launch 
+
+Low level computer
+------------------
+./run-lowlevel
+roslaunch Launch 1LowLevel.launch 
+roslaunch Launch 12StartControl.launch
+
+High level computer
+-------------------
+roslaunch Launch 2LocalizationFake.launch
+roslaunch ped_momdp_sarsop 3Autonomous.launch
+(Re-position the golfcar position using RViz's 2D Pose Estimate when necessary)
+roslaunch Launch 4pedestrian_detect.launch
+
+Rinse and repeat steps below at high level computer:
+----------------------------------------------------
+(Specify the pedestrian ID at ped_momdp_sarsop's momdp.launch and start recording)
+(Turn on autonomous mode )
+roslaunch ped_momdp_sarsop momdp.launch
+(Goal position will be automatically given by momdp at (3,25) in "map" frame)
+
+|***********************|
+| For stage simulation: |
+*************************
+
+roslaunch ped_momdp_sarsop simulation.launch
+roslaunch ped_momdp_sarsop 3Autonomous.launch
+(Re-position the golfcar position using RViz's 2D Pose Estimate when necessary)
+(Make sure that the pedestrian ID at ped_momdp_sarsop's momdp.launch is "1, 2, 3")
+roslaunch ped_momdp_sarsop momdp.launch
+(Goal position will be automatically given by momdp at (3,25) in "map" frame)
+
+
