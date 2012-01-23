@@ -1,0 +1,18 @@
+<package>
+  <description brief="dummyPed">
+
+     dummyPed
+
+  </description>
+  <author>tirtha</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/dummyPed</url>
+  <depend package="nav_msgs"/>
+  <depend package="sensing_on_road"/>
+  <depend package="message_filters"/>
+  <depend package="tf"/>
+  <depend package="interactive_markers"/>
+</package>
+
+

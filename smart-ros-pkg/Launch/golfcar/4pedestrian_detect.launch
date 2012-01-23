@@ -24,9 +24,14 @@
 	    <param name="ROI_rect" value="true"/>
 	    <param name="verified_rect" value="true"/>
 	</node>
-	<node pkg="sensing_on_road" type="laser_extraction" name="laser_extraction" output="screen">
-	    <!--remap from="sickldmrs/assembled" to="sickldmrs/sync"/-->
+	<node pkg="pedestrian_detector" type="visualizer_momdp" name="visualizer_momdp" output="screen">
+	    <param name="image_transport" value="compressed"/>
 	</node>
+	<node pkg="sensing_on_road" type="laser_extraction" name="laser_extraction" output="screen">
+	    <remap from="sickldmrs/assembled" to="sick_scan3"/>
+	    <param name="laser_frame_id" value="sick_laser3"/>
+	</node>
+	<param name="laser_frame_id" value="sick_laser3"/>
 	<node pkg="sensing_on_road" type="pedestrian_features" name="pedestrian_features"/>
 	<node pkg="sensing_on_road" type="camera_project" name="camera_project"/>
 

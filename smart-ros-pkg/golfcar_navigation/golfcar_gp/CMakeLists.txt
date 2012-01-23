@@ -33,5 +33,6 @@ SET( BookingCommonRootDir ${PROJECT_SOURCE_DIR}/../../../bookingUI/shared )
 INCLUDE_DIRECTORIES(${BookingCommonRootDir}/src)
 LINK_DIRECTORIES (${LINK_DIRECTORIES} ${BookingCommonRootDir})
 
-rosbuild_add_library(${PROJECT_NAME} src/gplan_scheduler.cpp)
+#rosbuild_add_library(${PROJECT_NAME} src/gplan_scheduler.cpp)
+rosbuild_add_library(${PROJECT_NAME} src/gplan.cpp)
 target_link_libraries(${PROJECT_NAME} bookingcommon)
