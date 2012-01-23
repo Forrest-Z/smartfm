@@ -34,7 +34,7 @@ HOGVisualizer::HOGVisualizer(ros::NodeHandle &n) : n_(n), it_(n_)
     Synchronizer<MySyncPolicy> sync(MySyncPolicy(20), image_sub_, people_detect_sub_, people_roi_sub_, people_verified_sub_);
     sync.registerCallback(boost::bind(&HOGVisualizer::peopleCallback,this, _1, _2, _3, _4));
 
-    cvNamedWindow("Image window");
+    cvNamedWindow("HOG Visualizer");
 
     ros::spin();
 }
@@ -82,7 +82,7 @@ void HOGVisualizer::peopleCallback(const sensor_msgs::ImageConstPtr image, const
         if(ROI_text) drawIDandConfidence(img, temp_rect);
     }
     started = true;
-    imshow("Image window", img);
+    imshow("HOG Visualizer", img);
     cvWaitKey(3);
 }
 
