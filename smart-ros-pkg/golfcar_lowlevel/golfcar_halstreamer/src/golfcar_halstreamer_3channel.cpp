@@ -77,9 +77,9 @@
 #include "streamer.h"
 
 #include "ros/ros.h"
-#include "golfcar_lowlevel/breakpedal.h"
-#include "golfcar_lowlevel/steering.h"
-#include "golfcar_lowlevel/throttle.h"
+#include "golfcar_halstreamer/brakepedal.h"
+#include "golfcar_halstreamer/steering.h"
+#include "golfcar_halstreamer/throttle.h"
 #include "joy/Joy.h"
 
 /***********************************************************************
@@ -285,7 +285,7 @@ void fifo_out(char *fifodata)
 	
 }
 
-void golfcar_break(golfcar_lowlevel::breakpedal bp)
+void golfcar_break(golfcar_halstreamer::brakepedal bp)
 {
   //ROS_INFO("Speed=%lf, Angle=%lf", vel_.speed, vel_.angle);//-joy_.axes[0]*180.0);//(int)velocity.angle);
   char incoming[100];
@@ -295,7 +295,7 @@ void golfcar_break(golfcar_lowlevel::breakpedal bp)
   fifo_out(incoming);
 }
 
-void golfcar_speed(golfcar_lowlevel::throttle sp)
+void golfcar_speed(golfcar_halstreamer::throttle sp)
 {
   //ROS_INFO("Speed=%lf, Angle=%lf", vel_.speed, vel_.angle);//-joy_.axes[0]*180.0);//(int)velocity.angle);
   char incoming[100];
@@ -305,7 +305,7 @@ void golfcar_speed(golfcar_lowlevel::throttle sp)
   fifo_out(incoming);
 }
 
-void golfcar_steering(golfcar_lowlevel::steering st)
+void golfcar_steering(golfcar_halstreamer::steering st)
 {
   //ROS_INFO("Speed=%lf, Angle=%lf", vel_.speed, vel_.angle);//-joy_.axes[0]*180.0);//(int)velocity.angle);
   char incoming[100];
