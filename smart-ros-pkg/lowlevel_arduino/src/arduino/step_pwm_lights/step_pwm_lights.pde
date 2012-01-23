@@ -14,7 +14,8 @@ Subscribers:
 - left_blinker (type: std_msgs::Bool)
 
 Publishers:
-- button_state (type: lowlevel_arduino::ButtonState)
+- button_state_emergency (type: std_msgs::Bool)
+- button_state_automode (type: std_msgs::Bool)
 
 
 
@@ -38,7 +39,6 @@ Revised Jan 2012 to adapt to new rosserial API (ros electric)
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float64.h>
 #include <lowlevel_arduino/Arduino.h>
-#include <lowlevel_arduino/ButtonState.h>
 
 
 //------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ AccelStepper stepper_brake(1, brake_pulse_pin, brake_dir_pin);
 
 Blinker left_blinker(left_blinker_pin), right_blinker(right_blinker_pin);
 
-lowlevel_arduino::ButtonState button_state_msg;
+std_msgs::Bool emergency_msg, automode_msg;
 bool motorsEnabled = false;
 unsigned long time = 0, old_time = 0, last_msg_time = 0;
 
@@ -98,7 +98,7 @@ unsigned long time = 0, old_time = 0, last_msg_time = 0;
 void set_throttle(float v) {
   // v is supposed to be between 0 and 1: 1 corresponds to max speed.
 
-  if( ! button_state_msg.emergency ) {
+  if( ! emergency_msg.data ) {
     int cycle = (int) ( (v>1.0 ? 1.0 : v<0.0 ? 0.0 : v) * 255.0 );
     analogWrite(throttle_pin, cycle);
   }
@@ -108,8 +108,8 @@ void set_throttle(float v) {
 }
 
 void set_brake(float a) {
-  if( button_state_msg.emergency ) a = full_brake;
-  else if( ! button_state_msg.automode ) a = 0;
+  if( emergency_msg.data ) a = full_brake;
+  else if( ! automode_msg.data ) a = 0;
   stepper_brake.moveTo( (long) ( a * step_scale ) );
   digitalWrite(stop_light_pin, a>=5 ? HIGH : LOW);
 }
@@ -171,7 +171,8 @@ ros::Subscriber<lowlevel_arduino::Arduino> arduino_cmd_sub("arduino_cmd", &cmd_C
 ros::Subscriber<std_msgs::Bool> lblinker_sub("left_blinker", &lBlinkerCB );
 ros::Subscriber<std_msgs::Bool> rblinker_sub("right_blinker", &rBlinkerCB );
 
-ros::Publisher button_state_pub("button_state", &button_state_msg);
+ros::Publisher emergency_pub("button_state_emergency", &emergency_msg);
+ros::Publisher automode_pub("button_state_automode", &automode_msg);
 
 
 
@@ -196,11 +197,12 @@ void setup()
 
   pinMode(emergency_pin, INPUT);
   pinMode(auto_mode_pin, INPUT);
-  button_state_msg.emergency = digitalRead(emergency_pin)==HIGH;
-  button_state_msg.automode = digitalRead(auto_mode_pin)==HIGH;
+  emergency_msg.data = digitalRead(emergency_pin)==HIGH;
+  automode_msg.data = digitalRead(auto_mode_pin)==HIGH;
 
   nh.initNode();
-  nh.advertise(button_state_pub);
+  nh.advertise(emergency_pub);
+  nh.advertise(automode_pub);
   nh.subscribe(arduino_cmd_sub);
   nh.subscribe(lblinker_sub);
   nh.subscribe(rblinker_sub);
@@ -208,30 +210,25 @@ void setup()
 
 void button_state()
 {
-  button_state_msg.automode = digitalRead(auto_mode_pin)==HIGH;
-  
-  bool emergency = digitalRead(emergency_pin)==HIGH;
-  if( !button_state_msg.emergency && emergency ) {
-    set_throttle(0);
-    set_brake(full_brake);
-    button_state_msg.emergency = true;
-    button_state_pub.publish( &button_state_msg );
-    old_time = time;
-    set_blinkers_emergency_mode();
-  }
-  else if( button_state_msg.emergency && !emergency ) {
-    set_brake(0);
-    button_state_msg.emergency = false;
-    button_state_pub.publish( &button_state_msg );
-    old_time = time;
-  }
-  else {
-    if( time - old_time > 250 ) {
-      button_state_pub.publish( &button_state_msg );
-      old_time = time;
-    }
+  bool automode = digitalRead(auto_mode_pin)==HIGH;
+  if( automode_msg.data != automode ) {
+    automode_msg.data = automode;
+    automode_pub.publish( &automode_msg );
   }
 
+  bool emergency = digitalRead(emergency_pin)==HIGH;
+  if( emergency!=emergency_msg.data ) {
+    if( emergency ) {
+      set_throttle(0);
+      set_brake(full_brake);
+      set_blinkers_emergency_mode();
+    }
+    else {
+      set_brake(0);
+    }
+    emergency_msg.data = emergency;
+    emergency_pub.publish( &emergency_msg );
+  }
 }
 
 
