@@ -24,9 +24,6 @@ rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
-#linuxcnc compatibility
-include_directories(/usr/include/emc2)
-
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
@@ -40,6 +37,9 @@ rosbuild_add_executable(keyhook_cmdvel src/keyhook_cmdvel.cpp)
 rosbuild_add_executable(joy src/joy.cpp)
 rosbuild_add_executable(joy_cmd_vel src/joy_cmd_vel.cpp)
 rosbuild_add_executable(joy_multichannel src/joy_multichannel.cpp)
+
+
+# Uncomment the following lines on the lowlevel computer only
 #rosbuild_add_executable(golfcar_halstreamer_3channel src/golfcar_halstreamer_3channel.cpp)
-#rosbuild_add_compile_flags(golfcar_halstreamer_3channel -DULAPI -lemchal)
+#rosbuild_add_compile_flags(golfcar_halstreamer_3channel -DULAPI)
 #rosbuild_add_link_flags(golfcar_halstreamer_3channel -lemchal)

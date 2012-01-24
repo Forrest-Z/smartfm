@@ -106,7 +106,7 @@ void OdoIMU::encodersCallBack(lowlevel::Encoders encMsg)
     angular_speed = encMsg.w;
 
     ROS_DEBUG("Pose: x=%.2f, y=%.2f, th=%ddeg", position.x, position.y, (int)(yaw_now*180/M_PI));
-    std::cout<<accumulated_dist<<std::endl;
+    //std::cout<<accumulated_dist<<std::endl;
     publishOdo();
 }
 
