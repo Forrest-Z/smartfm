@@ -29,7 +29,9 @@ include_directories(/usr/include/emc2)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
-#rosbuild_add_executable(halsampler src/sampler_usr.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
-#rosbuild_add_compile_flags(halsampler -DULAPI -lemchal)
+
+# Uncomment only on the lowlevel computer
+#rosbuild_add_executable(halsampler src/sampler_usr.cpp)
+#rosbuild_add_compile_flags(halsampler -DULAPI)
 #rosbuild_add_link_flags(halsampler -lemchal)
