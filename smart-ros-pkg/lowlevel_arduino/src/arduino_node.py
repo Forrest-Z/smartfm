@@ -15,7 +15,7 @@ from lowlevel_arduino.msg import Arduino
 
 rospy.init_node('arduino_node')
 arduino_cmd_msg = Arduino()
-arduino_pub = rospy.Publisher('arduino/arduino_cmd', Arduino)
+arduino_pub = rospy.Publisher('arduino_cmd', Arduino)
 
 def throttleCB(msg):
     arduino_cmd_msg.throttle = msg.data
@@ -33,9 +33,9 @@ def setupSub(topic,msg_t,cb):
     return sub
 
 
-throttle_sub = setupSub('arduino/throttle', Float64, throttleCB)
-brake_sub = setupSub('arduino/brake_angle', Float64, brakeCB)
-steer_sub = setupSub('arduino/steer_angle', Float64, steerCB)
+throttle_sub = setupSub('throttle', Float64, throttleCB)
+brake_sub = setupSub('brake_angle', Float64, brakeCB)
+steer_sub = setupSub('steer_angle', Float64, steerCB)
 
 rate = rospy.get_param('~rate',10)
 rospy.loginfo('Sending messages to the Arduino board every %dms' % int(1000.0/rate))
