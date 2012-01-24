@@ -20,7 +20,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 include_directories(/usr/include/emc2)
 
 #uncomment if you have defined messages
-rosbuild_genmsg()
+#rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
@@ -31,12 +31,6 @@ rosbuild_genmsg()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
-#rosbuild_add_executable(golfcar_halstreamer src/golfcar_halstreamer.cpp)
-rosbuild_add_executable(keyhook src/keyhook.cpp)
-rosbuild_add_executable(keyhook_cmdvel src/keyhook_cmdvel.cpp)
-rosbuild_add_executable(joy src/joy.cpp)
-rosbuild_add_executable(joy_cmd_vel src/joy_cmd_vel.cpp)
-rosbuild_add_executable(joy_multichannel src/joy_multichannel.cpp)
 
 
 # Uncomment the following lines on the lowlevel computer only
