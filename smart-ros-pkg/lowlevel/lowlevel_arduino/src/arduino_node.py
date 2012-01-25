@@ -21,7 +21,7 @@ def throttleCB(msg):
     arduino_cmd_msg.throttle = msg.data
 
 def brakeCB(msg):
-    arduino_cmd_msg.brake_angle = msg.data
+    arduino_cmd_msg.brake_angle = -msg.data
 
 def steerCB(msg):
     arduino_cmd_msg.steer_angle = msg.data
