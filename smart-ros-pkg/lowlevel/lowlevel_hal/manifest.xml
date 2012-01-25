@@ -1,0 +1,17 @@
+<package>
+  <description brief="lowlevel_hal">
+
+     lowlevel_hal
+
+  </description>
+  <author>brice rebsamen</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/lowlevel_hal</url>
+
+  <depend package="std_msgs"/>
+  <depend package="roscpp"/>
+
+</package>
+
+

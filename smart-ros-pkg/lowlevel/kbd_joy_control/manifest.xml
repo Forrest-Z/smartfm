@@ -1,0 +1,17 @@
+<package>
+  <description brief="kbd_joy_control">
+
+     kbd_joy_control
+
+  </description>
+  <author>brice rebsamen</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/kbd_joy_control</url>
+
+  <depend package="roscpp"/>
+  <depend package="joy"/>
+
+</package>
+
+
