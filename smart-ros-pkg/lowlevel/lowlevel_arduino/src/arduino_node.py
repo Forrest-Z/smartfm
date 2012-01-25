@@ -14,6 +14,9 @@ from lowlevel_arduino.msg import Arduino
 
 
 rospy.init_node('arduino_node')
+
+brake_change_threshold = rospy.get_param('~brake_change_threshold', 0)
+
 arduino_cmd_msg = Arduino()
 arduino_pub = rospy.Publisher('arduino_cmd', Arduino)
 
@@ -21,7 +24,16 @@ def throttleCB(msg):
     arduino_cmd_msg.throttle = msg.data
 
 def brakeCB(msg):
-    arduino_cmd_msg.brake_angle = -msg.data
+    # in speed controller, braking is done in the negative direction,
+    # but in arduino it is in the positive direction.
+    a = -msg.data
+
+    # Reduce a bit the amount of changes on the brake: fine positioning is not
+    # required, and the brake makes strange noise when there are many small
+    # steps
+    # TODO: verify that this works fine.
+    if abs(arduino_cmd_msg.brake_angle-a) > brake_change_threshold:
+        arduino_cmd_msg.brake_angle = a
 
 def steerCB(msg):
     arduino_cmd_msg.steer_angle = msg.data
