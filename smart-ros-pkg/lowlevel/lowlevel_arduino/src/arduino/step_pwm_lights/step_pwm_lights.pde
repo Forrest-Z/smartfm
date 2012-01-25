@@ -8,6 +8,14 @@ Performs stepper motors control (brake and steering), PWM (throttle) and
 lights control (blinkers and stop light). Also monitors the state of the
 emergency and auto mode button.
 
+Button states are published immediately after a state change and periodically
+every 500ms.
+
+Throttle is expected to be between 0 (motors stopped) to 1 (full speed).
+
+Brake angle is in degrees. positive rotation clockwise (when looking from the 
+right hand side of the car).
+
 Subscribers:
 - arduino_cmd (type: lowlevel_arduino::Arduino)
 - right_blinker (type: std_msgs::Bool)
@@ -71,7 +79,7 @@ float steer_max_speed = n_steps_per_rev;
 float steer_acc = 6000;
 
 
-float full_brake = 180;
+float full_brake = 120;
 
 
 
@@ -89,7 +97,7 @@ Blinker left_blinker(left_blinker_pin), right_blinker(right_blinker_pin);
 
 std_msgs::Bool emergency_msg, automode_msg;
 bool motorsEnabled = false;
-unsigned long time = 0, old_time = 0, last_msg_time = 0;
+unsigned long time = 0, prev_pub_time = 0, prev_in_msg_time = 0;
 
 
 //------------------------------------------------------------------------------
@@ -139,7 +147,7 @@ void set_blinkers_emergency_mode() {
 // message, and the name you wish to refer to the message by within the callback
 
 void cmd_CB(const lowlevel_arduino::Arduino & cmd_msg) {
-  last_msg_time = time;
+  prev_in_msg_time = time;
 
   if( !motorsEnabled )
     setMotorsEnabled(true);
@@ -199,6 +207,8 @@ void setup()
   pinMode(auto_mode_pin, INPUT);
   emergency_msg.data = digitalRead(emergency_pin)==HIGH;
   automode_msg.data = digitalRead(auto_mode_pin)==HIGH;
+  
+  setMotorsEnabled(false);
 
   nh.initNode();
   nh.advertise(emergency_pub);
@@ -212,12 +222,14 @@ void button_state()
 {
   bool automode = digitalRead(auto_mode_pin)==HIGH;
   if( automode_msg.data != automode ) {
+    // state transition
     automode_msg.data = automode;
     automode_pub.publish( &automode_msg );
   }
 
   bool emergency = digitalRead(emergency_pin)==HIGH;
   if( emergency!=emergency_msg.data ) {
+    // state transition
     if( emergency ) {
       set_throttle(0);
       set_brake(full_brake);
@@ -229,6 +241,13 @@ void button_state()
     emergency_msg.data = emergency;
     emergency_pub.publish( &emergency_msg );
   }
+
+  // republish messages periodically even if there was no changes  
+  if( prev_pub_time==0 || time > prev_pub_time + 500 ) {
+    automode_pub.publish( &automode_msg );
+    emergency_pub.publish( &emergency_msg );
+    prev_pub_time = time;
+  }
 }
 
 
@@ -238,7 +257,7 @@ void loop()
   button_state();
   nh.spinOnce();
 
-  if( motorsEnabled && (time > last_msg_time + 5000) )
+  if( motorsEnabled && (prev_in_msg_time==0 || time > prev_in_msg_time + 5000) )
     setMotorsEnabled(false);
 
 
