@@ -3,6 +3,6 @@
         <param name="port" value="/dev/arduino"/>
     </node>
     <node name="arduino_node" pkg="lowlevel_arduino" type="arduino_node.py" output="screen">
-        <param name="rate" value="100"/>
+        <param name="rate" value="20"/>
     </node>
 </launch>
