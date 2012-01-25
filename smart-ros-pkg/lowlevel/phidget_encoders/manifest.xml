@@ -9,6 +9,8 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/phidget_encoders</url>
 
+  <depend package="rospy"/>
+
 </package>
 
 

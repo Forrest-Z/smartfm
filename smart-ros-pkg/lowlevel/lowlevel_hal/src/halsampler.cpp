@@ -120,6 +120,8 @@ fifo_t *fifo;
 shmem_data_t *data, *dptr, buf[MAX_PINS];
 int tmpout, newout;
 struct timespec delay;
+ros::Publisher odo_pub, emergency_pub;
+std_msgs::Bool emergency_msg;
 
 
 void getOptions(int argc, char **argv)
@@ -182,7 +184,7 @@ void getOptions(int argc, char **argv)
     }
 }
 
-void connectToHal()
+bool connectToHal()
 {
     /* create a unique module name, to allow for multiple samplers */
     snprintf(comp_name, HAL_NAME_LEN-1, "halsampler%d", getpid());
@@ -193,7 +195,7 @@ void connectToHal()
     /* check result */
     if (comp_id < 0) {
         fprintf(stderr, "ERROR: hal_init() failed: %d\n", comp_id );
-        goto out;
+        return false;
     }
     hal_ready(comp_id);
 
@@ -202,17 +204,17 @@ void connectToHal()
     shmem_id = rtapi_shmem_new(SAMPLER_SHMEM_KEY+channel, comp_id, sizeof(fifo_t));
     if ( shmem_id < 0 ) {
         fprintf(stderr, "ERROR: couldn't allocate user/RT shared memory\n");
-        goto out;
+        return false;
     }
     retval = rtapi_shmem_getptr(shmem_id, &shmem_ptr);
     if ( retval < 0 ) {
         fprintf(stderr, "ERROR: couldn't map user/RT shared memory\n");
-        goto out;
+        return false;
     }
     fifo = (fifo_t*)shmem_ptr;
     if ( fifo->magic != FIFO_MAGIC_NUM ) {
         fprintf(stderr, "ERROR: channel %d realtime part is not loaded\n", channel );
-        goto out;
+        return false;
     }
     /* now use data in fifo structure to calculate proper shmem size */
     size = sizeof(fifo_t) + (1+fifo->num_pins) * fifo->depth * sizeof(shmem_data_t);
@@ -221,15 +223,16 @@ void connectToHal()
     shmem_id = rtapi_shmem_new(SAMPLER_SHMEM_KEY+channel, comp_id, size);
     if ( shmem_id < 0 ) {
         fprintf(stderr, "ERROR: couldn't re-allocate user/RT shared memory\n");
-        goto out;
+        return false;
     }
     retval = rtapi_shmem_getptr(shmem_id, &shmem_ptr);
     if ( retval < 0 ) {
         fprintf(stderr, "ERROR: couldn't re-map user/RT shared memory\n");
-        goto out;
+        return false;
     }
     fifo = (fifo_t*)shmem_ptr;
     data = fifo->data;
+    return true;
 }
 
 bool waitForData()
@@ -249,7 +252,7 @@ bool waitForData()
     }
     dptr = &data[tmpout * (fifo->num_pins+1)];
     /* read data from shmem into buffer */
-    for ( n = 0 ; n < fifo->num_pins ; n++ ) {
+    for ( int n = 0 ; n < fifo->num_pins ; n++ ) {
         buf[n] = *(dptr++);
     }
     /* and read sample number */
@@ -278,7 +281,7 @@ bool waitForData()
 bool readAndPublish()
 {
     lowlevel_hal::odo odo_msg;
-    bool emergency;
+    bool emergency = false;
 
     printf("num_pins %d", fifo->num_pins);
     for ( int n = 0 ; n < fifo->num_pins ; n++ )
@@ -321,8 +324,8 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "halsampler");
     ros::NodeHandle n_;
-    ros::Publisher odo_pub = n_.advertise<golfcar_halsampler::odo>("halsampler", 1000);
-    ros::Publisher emergency_pub = n_.advertise<std_msgs::Bool>("button_state_emergency", 1000);
+    odo_pub = n_.advertise<lowlevel_hal::odo>("halsampler", 1000);
+    emergency_pub = n_.advertise<std_msgs::Bool>("button_state_emergency", 1000);
 
     /* register signal handlers - if the process is killed
        we need to call hal_exit() to free the shared memory */
@@ -332,9 +335,8 @@ int main(int argc, char **argv)
 
     getOptions(argc,argv);
 
-    connectToHal();
+    if( !connectToHal() ) goto out;
 
-    std_msgs::Bool emergency_msg;
     emergency_msg.data = false;
 
     while ( samples != 0 )

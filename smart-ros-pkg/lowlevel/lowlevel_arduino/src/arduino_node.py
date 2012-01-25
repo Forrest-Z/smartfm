@@ -7,7 +7,7 @@ arduino topics are cached and sent to the arduino at a fixed rate. This rate can
 be specified by parameter 'rate' (defaults to 10Hz).
 '''
 
-import roslib; roslib.load_manifest('lowlevel')
+import roslib; roslib.load_manifest('lowlevel_arduino')
 import rospy
 from std_msgs.msg import Bool, Float64
 from lowlevel_arduino.msg import Arduino

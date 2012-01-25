@@ -18,14 +18,14 @@ Parameters:
   changing.
 '''
 
-import roslib; roslib.load_manifest('lowlevel')
+import roslib; roslib.load_manifest('phidget_encoders')
 import rospy
 
 from Phidgets.PhidgetException import *
 from Phidgets.Events.Events import *
 from Phidgets.Devices.Encoder import Encoder
 
-from lowlevel.msg import Encoders as EncodersMsg
+from phidget_encoders.msg import Encoders as EncodersMsg
 
 
 def err(e):
