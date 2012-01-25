@@ -150,14 +150,14 @@ void cmd_CB(const lowlevel_arduino::Arduino & cmd_msg) {
 }
 
 void lBlinkerCB(const std_msgs::Bool & msg) {
-  if( msg.data && left_blinker.isOff() && right_blinker.isOn() )
+  if( msg.data && right_blinker.isOn() )
     set_blinkers_emergency_mode();
   else
     left_blinker.set(msg.data);
 }
 
 void rBlinkerCB(const std_msgs::Bool & msg) {
-  if( msg.data && right_blinker.isOff() && left_blinker.isOn() )
+  if( msg.data && left_blinker.isOn() )
     set_blinkers_emergency_mode();
   else
     right_blinker.set(msg.data);

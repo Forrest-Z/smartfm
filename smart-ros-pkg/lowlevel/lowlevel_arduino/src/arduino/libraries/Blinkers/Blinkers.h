@@ -24,8 +24,8 @@ class Blinker {
 
     void set(int b) { b ? blink() : off(); }
 
-    bool isOn() { return _state!=0; }
-    bool isOff() { return _state==0; }
+    bool isOn() { return _blink!=0; }
+    bool isOff() { return _blink==0; }
 
     void half_period(float sec) { _half_period = (unsigned long) (sec*1000); }
 
