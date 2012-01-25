@@ -11,21 +11,22 @@ Parameters:
 - left_correction_factor: correction factor to balance the 2 wheels
   (default value: 1.011). Increase it when the vehicle drifts to the left
   (to be verified).
-- period: publish only after this period has elapsed (default value: 0.01).
-  This limits the publishing rate.
+- period: publish only after this period has elapsed (default value: 0.02).
+  This limits the publishing rate. It seems the phidget publishes a count 
+  change every 8ms.
 - min_pub_period: if set, we want to publish messages with this period, even if
   encoders are not changing. Otherwise, publish only when the encoders value is
   changing.
 '''
 
-import roslib; roslib.load_manifest('lowlevel')
+import roslib; roslib.load_manifest('phidget_encoders')
 import rospy
 
 from Phidgets.PhidgetException import *
 from Phidgets.Events.Events import *
 from Phidgets.Devices.Encoder import Encoder
 
-from lowlevel.msg import Encoders as EncodersMsg
+from phidget_encoders.msg import Encoders as EncodersMsg
 
 
 def err(e):
@@ -43,11 +44,12 @@ class CountBuffer:
     def reset(self):
         self.dp = 0.0 #dist (m)
         self.dt = 0.0 #time (sec)
+        self.n = 0 #number of values cumulated
 
     def add(self, e):
         self.dp += e.positionChange * self.wheelSize / self.counts
         self.dt += e.time * 1e-6 #usec to sec
-        return self.dt
+        self.n += 1
 
 
 class PhidgetEncoder:
@@ -59,7 +61,7 @@ class PhidgetEncoder:
         leftCorrectionFactor = rospy.get_param('~left_correction_factor', 1.011)
 
         self.minPubPeriod = rospy.get_param('~min_pub_period', None)
-        self.period = rospy.get_param('~period', 0.01)
+        self.period = rospy.get_param('~period', 0.02)
 
         self.left = 0
         self.right = 1
@@ -123,12 +125,17 @@ class PhidgetEncoder:
     def encoderPositionChange(self, e):
         '''A callback function called whenever the position changed'''
 
-        #rospy.logdebug("Encoder %i: Encoder %i -- Change: %i -- Time: %i -- Position: %i" % (e.device.getSerialNum(), e.index, e.positionChange, e.time, self.encoder.getPosition(e.index)))
+        rospy.loginfo("Encoder %i: Encoder %i -- Change: %i -- Time: %i -- Position: %i" % (e.device.getSerialNum(), e.index, e.positionChange, e.time, self.encoder.getPosition(e.index)))
 
         if e.index in self.countBufs.keys():
-            self.dt = self.countBufs[e.index].add(e)
-            if self.dt > self.period:
-                self.process()
+            self.countBufs[e.index].add(e)
+            dts = [b.dt for b in self.countBufs.values()];
+	    if min(dts) >= self.period:
+                if self.countBufs[self.left].n == self.countBufs[self.right].n:
+                    self.dt = sum(dts)/len(dts)
+                    self.process()
+                else:
+                    rospy.logwarn("time criteria met, but not count criteria")
 
 
     def process(self):

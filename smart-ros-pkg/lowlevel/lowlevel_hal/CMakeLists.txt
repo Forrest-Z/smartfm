@@ -25,11 +25,11 @@ rosbuild_genmsg()
 include_directories(/usr/include/emc2)
 
 # Uncomment only on the lowlevel computer
-#rosbuild_add_executable(halsampler src/halsampler.cpp)
-#rosbuild_add_compile_flags(halsampler -DULAPI)
-#rosbuild_add_link_flags(halsampler -lemchal)
+rosbuild_add_executable(halsampler src/halsampler.cpp)
+rosbuild_add_compile_flags(halsampler -DULAPI)
+rosbuild_add_link_flags(halsampler -lemchal)
 
 # Uncomment only on the lowlevel computer
-#rosbuild_add_executable(halstreamer src/halstreamer.cpp)
-#rosbuild_add_compile_flags(halstreamer -DULAPI)
-#rosbuild_add_link_flags(halstreamer -lemchal)
+rosbuild_add_executable(halstreamer src/halstreamer.cpp)
+rosbuild_add_compile_flags(halstreamer -DULAPI)
+rosbuild_add_link_flags(halstreamer -lemchal)

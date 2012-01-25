@@ -1,5 +1,5 @@
 <launch>
-    <node name="encoders_odo_node" pkg="lowlevel" type="encoders_odo_node.py" output="screen">
+    <node name="encoders_odo_node" pkg="phidget_encoders" type="encoders_odo_node.py" output="screen">
         <param name="min_pub_period" value="0.05"/>
     </node>
 </launch>
