@@ -25,7 +25,8 @@
 	    <param name="verified_rect" value="true"/>
 	</node>
 	<node pkg="sensing_on_road" type="laser_extraction" name="laser_extraction" output="screen">
-	    <!--remap from="sickldmrs/assembled" to="sickldmrs/sync"/-->
+	    <remap from="sickldmrs/assembled" to="sick_scan3"/>
+            <param name="laser_frame_id" value="sick_laser3"/>
 	</node>
 	<node pkg="sensing_on_road" type="pedestrian_features" name="pedestrian_features"/>
 	<node pkg="sensing_on_road" type="camera_project" name="camera_project"/>

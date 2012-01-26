@@ -497,7 +497,7 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv) {
 
 
 
-    timer_ = nh.createTimer(ros::Duration(1.0), &pedestrian_momdp::controlLoop, this);
+    timer_ = nh.createTimer(ros::Duration(0.5), &pedestrian_momdp::controlLoop, this);
     ros::spin();
 }
 
@@ -652,11 +652,12 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
     if(moveRob)
     {
 
-        if(safeAction==0) cmd.linear.x = 0;
+        if(safeAction==0) cmd.linear.x += 0;
         else if(safeAction==1) cmd.linear.x += 0.5;
         else if(safeAction==2) cmd.linear.x -= 0.5;
         if(cmd.linear.x<=0) cmd.linear.x = 0;
         if(cmd.linear.x>=1.5) cmd.linear.x = 1.5;
+        if(roboty_>20) cmd.linear.x = 0;
         cmdPub_.publish(cmd);
     }
 
@@ -822,8 +823,8 @@ int pedestrian_momdp::getCurrentState(int id)
     //dj: discretization of robot speed into 3 int levels (0,1,2)
     double rvel_double;
     if(currRobSpeed < 0.1) rvel_double = 0;
-    else if(currRobSpeed > 0.1 && currRobSpeed < 1) rvel_double = 1;
-    else if(currRobSpeed > 1) rvel_double = 2;
+    else if(currRobSpeed > 0.1 && currRobSpeed < 2) rvel_double = 1;
+    else if(currRobSpeed > 2) rvel_double = 2;
     //double rvel_double =  currRobSpeed/1.5*2;//dSpeed;
     int rvel= (int) rvel_double;
     //if(rvel_double < 0.0001 )

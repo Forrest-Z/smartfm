@@ -6,14 +6,14 @@
 	    <param name="simNum" value="100"/>	    
 	    <remap from="robot_0/amcl_pose" to="amcl_pose"/>
 	    <remap from="robot_0/cmd_vel" to="momdp_vel"/>
-        <!--remap from="odom" to="encoder_odom"/-->
+            <remap from="odom" to="encoder_odom"/>
 	 </node>
      <node pkg="map_server" type="map_server" name="map_server2" args="$(find dummyPed)/worlds/momdp_map.yaml">
 		<remap from="static_map" to="static_planar_map"/>
 		<remap from="map" to= "momdp_map"/>
 	</node>
 	<node name="transform_ped_to_map" type="TransformPedtoMap" pkg="dummyPed" output="screen">
-		<param name="ped_id" type="str" value="1,2,3"/>
+		<param name="ped_id" type="str" value="7163, 6914, 6868 "/>
 	</node>
 	<node name="speed_controller_momdp" pkg="lowlevel" type="speed_controller_simple" output="screen">
         <param name="kp" value="1.5"/>        

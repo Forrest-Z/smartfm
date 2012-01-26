@@ -79,7 +79,7 @@ private:
 
     std::vector<int> delete_connected_segments_;
 
-    void scan_callback(const sensor_msgs::LaserScan::ConstPtr& scan_in);
+    void scan_callback(const sensor_msgs::LaserScanConstPtr& scan_in);
     void segmentation();
     void segments_processing();
     void single_segment_processing(sensing_on_road::scan_segment &segment_para);

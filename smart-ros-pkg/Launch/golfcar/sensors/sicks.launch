@@ -14,14 +14,12 @@
         <param name="baud" value="500000"/>
     </node>
     <node pkg="sick_ldmrs" type="sickldmrs.py" name="sickldmrs"/>
-    <!--
     <node pkg="sicktoolbox_wrapper" type="sicklms" name="sicklms3">
         <param name="port" value="/dev/ftdi3"/>
-        <remap from ="scan" to="scan"/>
+        <remap from ="scan" to="sick_scan3"/>
         <param name="resolution" value="0.5"/>
-        <param name="frame_id" value="laser"/>
-        <param name="baud" value="38400"/>
+        <param name="frame_id" value="sick_laser3"/>
+        <param name="baud" value="500000"/>
     </node>
-    -->
 
 </launch>
