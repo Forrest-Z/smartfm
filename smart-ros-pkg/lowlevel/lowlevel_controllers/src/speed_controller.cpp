@@ -168,6 +168,7 @@ void PID_Speed::odoCallBack(phidget_encoders::Encoders enc)
         // reset controller
         e_pre = vFiltered = dgain_pre = iTerm = 0.0;
         if( safetyBrake_ ) ROS_INFO("safety brake");
+        brake_msg.data = -param.coeff_bp;
     }
     else
     {
