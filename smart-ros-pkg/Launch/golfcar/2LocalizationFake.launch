@@ -1,3 +1,5 @@
 <launch>
-	 <node name="fake_localization" pkg="fake_localization" type="fake_localization" respawn="false"/>
+	 <node name="fake_localization" pkg="fake_localization" type="fake_localization" respawn="false">
+        <remap from="base_pose_ground_truth" to="encoder_odom"/>
+     </node>
 </launch>

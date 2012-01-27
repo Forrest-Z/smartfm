@@ -429,8 +429,8 @@ void pedestrian_momdp::publish_belief()
 
             ped_belief.belief_value[belief_id] = belief_value;
         }
-        
-        
+
+
         ///Publish actions
         int temp_action;
         if(currAction[ii]==2) temp_action = -1;
@@ -500,7 +500,7 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv) {
 
 
 
-    timer_ = nh.createTimer(ros::Duration(1.0), &pedestrian_momdp::controlLoop, this);
+    timer_ = nh.createTimer(ros::Duration(0.5), &pedestrian_momdp::controlLoop, this);
     ros::spin();
 }
 
@@ -688,6 +688,8 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
         if(cmd.linear.x<=0) cmd.linear.x = 0;
         if(cmd.linear.x>=1.5) cmd.linear.x = 1.5;
 
+        if(roboty_>20) cmd.linear.x = 0;
+        cmdPub_.publish(cmd);
     }
 
 
