@@ -7,7 +7,7 @@ ACTION=="add", ATTRS{manufacturer}=="Hokuyo Data Flex for USB", ATTRS{idVendor}=
 # Sick Lasers
 ACTION=="add", ATTRS{idVendor}=="0403", ATTRS{serial}=="FTF6S0H5", MODE="664", GROUP="plugdev" SYMLINK+="ftdi1"
 ACTION=="add", ATTRS{idVendor}=="0403", ATTRS{serial}=="FTF6S1NG", MODE="664", GROUP="plugdev" SYMLINK+="ftdi2"
-ACTION=="add", ATTRS{idVendor}=="0403", ATTRS{serial}=="A1001akA", MODE="664", GROUP="plugdev" SYMLINK+="ftdi3"
+ACTION=="add", ATTRS{idVendor}=="0403", ATTRS{serial}=="FTFQPT20", MODE="664", GROUP="plugdev" SYMLINK+="ftdi3"
 
 # Microstrain IMU
 ACTION=="add", ATTRS{product}=="3DM-GX3-25 Orientation Sensor", ATTRS{serial}=="6223.05093______", MODE="664", GROUP="plugdev" SYMLINK+="msimu"

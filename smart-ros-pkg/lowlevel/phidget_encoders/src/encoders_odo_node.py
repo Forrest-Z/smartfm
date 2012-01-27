@@ -12,7 +12,7 @@ Parameters:
   (default value: 1.011). Increase it when the vehicle drifts to the left
   (to be verified).
 - period: publish only after this period has elapsed (default value: 0.02).
-  This limits the publishing rate. It seems the phidget publishes a count 
+  This limits the publishing rate. It seems the phidget publishes a count
   change every 8ms.
 - min_pub_period: if set, we want to publish messages with this period, even if
   encoders are not changing. Otherwise, publish only when the encoders value is
@@ -125,17 +125,18 @@ class PhidgetEncoder:
     def encoderPositionChange(self, e):
         '''A callback function called whenever the position changed'''
 
-        rospy.loginfo("Encoder %i: Encoder %i -- Change: %i -- Time: %i -- Position: %i" % (e.device.getSerialNum(), e.index, e.positionChange, e.time, self.encoder.getPosition(e.index)))
+        rospy.logdebug("Encoder %i: Encoder %i -- Change: %i -- Time: %i -- Position: %i" % (e.device.getSerialNum(), e.index, e.positionChange, e.time, self.encoder.getPosition(e.index)))
 
         if e.index in self.countBufs.keys():
             self.countBufs[e.index].add(e)
             dts = [b.dt for b in self.countBufs.values()];
 	    if min(dts) >= self.period:
                 if self.countBufs[self.left].n == self.countBufs[self.right].n:
+                    rospy.logdebug("Encoders: got equal number of counts.")
                     self.dt = sum(dts)/len(dts)
                     self.process()
                 else:
-                    rospy.logwarn("time criteria met, but not count criteria")
+                    rospy.logdebug("encoders: time criteria met, but not count criteria")
 
 
     def process(self):
@@ -174,6 +175,7 @@ class PhidgetEncoder:
         ''' We want to publish messages even if the vehicle is not moving. '''
 
         if self.minPubPeriod is None:
+            rospy.sleep(10)
             return
 
         if self.lastPub is None:
@@ -190,9 +192,9 @@ class PhidgetEncoder:
 
 
 if __name__=='__main__':
-    rospy.init_node('encoders_node')
+    rospy.init_node('encoders_node', log_level=rospy.DEBUG)
     enc = PhidgetEncoder()
-    rospy.loginfo('Spinning...')
+    rospy.loginfo('encoders: Spinning...')
 
     while not rospy.is_shutdown():
         enc.loop()

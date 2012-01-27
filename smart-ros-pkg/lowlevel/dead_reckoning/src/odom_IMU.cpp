@@ -140,7 +140,6 @@ void OdoIMU::publishOdo()
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "odomImu");
-    ROS_INFO("hallooooo");
     ros::NodeHandle nh_;
     OdoIMU odomimu(nh_);
     ros::spin();

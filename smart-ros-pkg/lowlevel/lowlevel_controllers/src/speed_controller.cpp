@@ -46,9 +46,10 @@ class PID_Speed
         void odoCallBack(phidget_encoders::Encoders);
         void emergencyBtnCB(std_msgs::Bool);
         void automodeBtnCB(std_msgs::Bool);
+        void safetyBrakeCallBack(std_msgs::Bool);
 
         ros::NodeHandle n;
-        ros::Subscriber cmdVelSub, odoSub, imuSub, emergencyBtnSub, automodeBtnSub;
+        ros::Subscriber cmdVelSub, odoSub, imuSub, emergencyBtnSub, automodeBtnSub, safetyBrakeSub;
         ros::Publisher throttlePub, brakePedalPub, pidPub;
 
         Parameters param; ///< parameters of the controller, neatly packed together
@@ -57,6 +58,7 @@ class PID_Speed
         double pitch; ///< current pitch (set by imuCallBack)
         bool emergency; ///< is the emergency button pressed (set by emergencyBtnCB)
         bool automode; ///< is the auto mode button pressed (set by automodeBtnCB)
+        bool safetyBrake_;
 
         double e_pre; ///< previous error (velocity) --> used for some kind of filtering of the error term
         double kdd; //we are switching between PID and PI need another term
@@ -107,6 +109,7 @@ PID_Speed::PID_Speed(ros::NodeHandle nh) : n(nh)
     imuSub = n.subscribe("imu/rpy", 1, &PID_Speed::imuCallBack, this);
     emergencyBtnSub = n.subscribe("button_state_emergency", 1, &PID_Speed::emergencyBtnCB, this);
     automodeBtnSub = n.subscribe("button_state_automode", 1, &PID_Speed::automodeBtnCB, this);
+    safetyBrakeSub = n.subscribe("safety_stop", 1, &PID_Speed::safetyBrakeCallBack, this);
 
     throttlePub = n.advertise<std_msgs::Float64>("throttle", 1);
     brakePedalPub = n.advertise<std_msgs::Float64>("brake_angle", 1);
@@ -117,6 +120,7 @@ PID_Speed::PID_Speed(ros::NodeHandle nh) : n(nh)
     cmdVel = e_pre = iTerm = vFiltered = pitch = 0.0;
     emergency = false;
     automode = false;
+    safetyBrake_ = false;
 }
 
 
@@ -146,16 +150,25 @@ void PID_Speed::automodeBtnCB(std_msgs::Bool msg)
     automode = msg.data;
 }
 
+void PID_Speed::safetyBrakeCallBack(std_msgs::Bool m)
+{
+    safetyBrake_ = m.data;
+    if( safetyBrake_ ) ROS_INFO("turning ON safety brake");
+    else ROS_INFO("turning OFF safety brake");
+}
+
 void PID_Speed::odoCallBack(phidget_encoders::Encoders enc)
 {
     std_msgs::Float64 throttle_msg, brake_msg;
     lowlevel_controllers::PID pid;
 
     double odovel = enc.v;
-    if( emergency || !automode || (cmdVel <= 0 && odovel <= param.full_brake_thres) )
+    if( emergency || !automode || (cmdVel <= 0 && odovel <= param.full_brake_thres) || safetyBrake_ )
     {
         // reset controller
         e_pre = vFiltered = dgain_pre = iTerm = 0.0;
+        if( safetyBrake_ ) ROS_INFO("safety brake");
+        brake_msg.data = -param.coeff_bp;
     }
     else
     {
