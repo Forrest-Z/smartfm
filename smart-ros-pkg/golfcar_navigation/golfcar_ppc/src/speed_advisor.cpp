@@ -9,8 +9,8 @@ SpeedAdvisor::SpeedAdvisor()
      */
     recommend_speed_= n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
     speed_contribute_ = n.advertise<pnc_msgs::speed_contribute>("speed_status",1);
-    left_blinker_pub_ = n.advertise<std_msgs::Bool>("arduino/left_blinker",1);
-    right_blinker_pub_ = n.advertise<std_msgs::Bool>("arduino/right_blinker",1);
+    left_blinker_pub_ = n.advertise<std_msgs::Bool>("left_blinker",1);
+    right_blinker_pub_ = n.advertise<std_msgs::Bool>("right_blinker",1);
     move_base_speed_=n.subscribe("/move_status",1, &SpeedAdvisor::moveSpeedCallback, this);
     slowzone_sub_=n.subscribe("slowZone",1,&SpeedAdvisor::slowZoneCallback,this);
     ros::NodeHandle nh("~");
