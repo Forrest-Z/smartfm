@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="lowlevel_hal" type="halstreamer" name="halstreamer"/>
+    <node pkg="lowlevel_hal" type="halsampler" name="halsampler"/>
+</launch>
+

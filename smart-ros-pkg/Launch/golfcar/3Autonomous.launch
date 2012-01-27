@@ -1,11 +1,11 @@
 <launch>
 
-    <node pkg="golfcar_steeringcontrol" type="local_controller" name="local_controller"/>
-    <node name="speed_controller" pkg="lowlevel" type="speed_controller_simple" output="screen">
-        <param name="kp" value="1.5"/>        
-        <param name="ki" value="0.08"/>
-        <param name="kd" value="0.4"/>
-        <param name="tau_v" value="0.2"/>
+    <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller"/>
+    <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller_simple" output="screen">
+        <param name="kp" value="0.8"/>
+        <param name="ki" value="1.2"/>
+        <param name="kd" value="0.1"/>
+        <param name="tau_v" value="0.1"/>
         <remap from="/odom" to="/encoder_odom"/>
     </node>
 

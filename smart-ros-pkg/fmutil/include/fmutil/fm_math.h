@@ -6,6 +6,7 @@
 
 
 #define BOUND(m,x,M) ((x)<(m) ? (m) : (x)>(M) ? (M) : (x))
+#define SYMBOUND(x,m) BOUND(-(m),x,m)
 
 #define SIGN(a) ( (a)>0 ? 1 : (a)<0 ? -1 : 0)
 
