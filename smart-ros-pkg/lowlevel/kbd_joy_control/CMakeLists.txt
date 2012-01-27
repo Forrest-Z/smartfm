@@ -17,22 +17,11 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 #uncomment if you have defined messages
-rosbuild_genmsg()
+#rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
-#common commands for building c++ executables and libraries
-#rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
-#target_link_libraries(${PROJECT_NAME} another_library)
-#rosbuild_add_boost_directories()
-#rosbuild_link_boost(${PROJECT_NAME} thread)
-#rosbuild_add_executable(golfcar_purepursuitwp src/golfcar_purepursuitwp.cpp)
-#target_link_libraries(example ${PROJECT_NAME})
-
-SET( BookingCommonRootDir ${PROJECT_SOURCE_DIR}/../../../bookingUI/shared )
-INCLUDE_DIRECTORIES(${BookingCommonRootDir}/src)
-LINK_DIRECTORIES (${LINK_DIRECTORIES} ${BookingCommonRootDir})
-
-rosbuild_add_library(${PROJECT_NAME} src/gplan_scheduler.cpp)
-#rosbuild_add_library(${PROJECT_NAME} src/gplan.cpp)
-target_link_libraries(${PROJECT_NAME} bookingcommon)
+rosbuild_add_executable(keyhook src/keyhook.cpp)
+rosbuild_add_executable(keyhook_cmdvel src/keyhook_cmdvel.cpp)
+rosbuild_add_executable(joy src/joy.cpp)
+rosbuild_add_executable(joy_cmd_vel src/joy_cmd_vel.cpp)

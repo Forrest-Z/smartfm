@@ -7,7 +7,7 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE RelWithDebInfo)
+set(ROS_BUILD_TYPE Coverage)
 
 rosbuild_init()
 
@@ -26,13 +26,9 @@ rosbuild_genmsg()
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
-#rosbuild_add_executable(golfcar_purepursuitwp src/golfcar_purepursuitwp.cpp)
+#rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
-SET( BookingCommonRootDir ${PROJECT_SOURCE_DIR}/../../../bookingUI/shared )
-INCLUDE_DIRECTORIES(${BookingCommonRootDir}/src)
-LINK_DIRECTORIES (${LINK_DIRECTORIES} ${BookingCommonRootDir})
-
-rosbuild_add_library(${PROJECT_NAME} src/gplan_scheduler.cpp)
-#rosbuild_add_library(${PROJECT_NAME} src/gplan.cpp)
-target_link_libraries(${PROJECT_NAME} bookingcommon)
+rosbuild_add_executable(steering_controller src/steering_controller.cpp)
+rosbuild_add_executable(speed_controller_simple src/speed_controller.cpp)
+rosbuild_add_executable(speed_profile_generator src/speed_profile_generator.cpp)

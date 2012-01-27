@@ -1,0 +1,9 @@
+<stack>
+  <description brief="lowlevel">lowlevel</description>
+  <author>Maintained by brice rebsamen</author>
+  <license>BSD</license>  
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/lowlevel</url>
+  <depend stack="ros" />
+
+</stack>
