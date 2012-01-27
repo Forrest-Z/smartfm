@@ -33,7 +33,7 @@ if [ $ncpus -gt 2 ]; then
     cmd="$cmd --threads=$ncpus"
 fi
 
-logfile=`mktemp make_all_log.XXXXXX`
+logfile=`mktemp --tmpdir=/tmp make_all_log.XXXXXX`
 $cmd $packages | tee $logfile
 
 echo
