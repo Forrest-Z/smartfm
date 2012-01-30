@@ -111,7 +111,7 @@ void HOGVisualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_vi
         }
     }
 
-    putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
+    putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,0,255), 1, 8);
     //ss2<<setprecision(2)<<fixed<<pv.confidence*100.0;
     //putText(img, ss2.str(), BR+Point(-45,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
 }

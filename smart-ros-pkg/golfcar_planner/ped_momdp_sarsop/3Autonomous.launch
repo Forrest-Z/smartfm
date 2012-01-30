@@ -3,13 +3,15 @@
 		<remap from="static_map" to="static_planar_map"/>
 		<remap from="map" to= "momdp_map"/>
 	</node>
-	<node pkg="golfcar_steeringcontrol" type="local_controller" name="local_controller"/>
-    <node name="speed_controller" pkg="lowlevel" type="speed_controller_simple" output="screen">
-        <param name="kp" value="1.5"/>        
-        <param name="ki" value="0.08"/>
-        <param name="kd" value="0.4"/>
-        <param name="tau_v" value="0.2"/>
+	<node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller">
+    </node>
+    <node name="speed_controller_simple" pkg="lowlevel_controllers" type="speed_controller_simple" output="screen">
+        <param name="kp" value="0.8"/>
+        <param name="ki" value="1.2"/>
+        <param name="kd" value="0.1"/>
+        <param name="tau_v" value="0.1"/>
         <remap from="/odom" to="/encoder_odom"/>
+        <remap from="cmd_vel" to="momdp_vel"/>
     </node>
    <node name="laser_republish" pkg="laser_maxrange_republish" type="laser_repub"/>
    <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
