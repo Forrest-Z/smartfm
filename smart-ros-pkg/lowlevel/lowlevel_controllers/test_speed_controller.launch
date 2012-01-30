@@ -1,5 +1,5 @@
 <launch>
-    <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller_simple" output="screen">
+    <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
         <param name="kp" value="0.6"/>
         <param name="ki" value="0.8"/>
         <param name="kd" value="0.1"/>
