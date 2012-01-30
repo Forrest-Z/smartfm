@@ -1,9 +1,6 @@
 <launch>
     <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
-        <param name="kp" value="0.6"/>
-        <param name="ki" value="0.8"/>
-        <param name="kd" value="0.1"/>
-        <param name="tau_v" value="0.1"/>
+        <rosparam file="$(find lowlevel_controllers)/speed_controller.yaml" command="load" />
         <remap from="/odom" to="/encoder_odom"/>
     </node>
     <node name="vel_cmd" pkg="rostopic" type="rostopic" args="pub cmd_vel geometry_msgs/Twist -r 10 '[2,0,0]' '[0,0,0]'" output="screen"/>
