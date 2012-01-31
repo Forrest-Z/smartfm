@@ -1,0 +1,7 @@
+#!/bin/bash
+
+rm /etc/init.d/load_iptables
+update-rc.d load_iptables remove
+
+exit 0
+

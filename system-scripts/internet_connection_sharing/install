@@ -1,0 +1,8 @@
+#!/bin/bash
+
+cp load_iptables /etc/init.d/
+chmod a+x /etc/init.d/load_iptables
+update-rc.d load_iptables defaults
+
+exit 0
+
