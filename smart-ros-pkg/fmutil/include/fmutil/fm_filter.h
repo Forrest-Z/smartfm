@@ -3,7 +3,7 @@
 
 /// Author: Brice Rebsamen, Feb 2012
 
-#include <cassert>
+#include <stdexcept>
 
 namespace fmutil {
 
@@ -19,13 +19,27 @@ class LowPassFilter
 
 public:
 
+    LowPassFilter()
+    {
+        this->tau = 0;
+        reset();
+    }
+
     /// Construct the filter
     /// @arg tau: the time constant of the filter
     LowPassFilter(double tau)
     {
-        assert(tau>0);
+        if( tau>0 )
+            throw std::invalid_argument("Filter's time constant (tau) must be > 0");
         this->tau = tau;
         reset();
+    }
+
+    double value() const
+    {
+        if( ! this->initialized )
+            throw std::runtime_error("Trying to get the value from an uninitialized filter");
+        return this->y;
     }
 
     /// Reset the filter
@@ -40,6 +54,9 @@ public:
     /// @return the filtered value
     double filter(double t, double x)
     {
+        if( this->tau==0 )
+            throw std::runtime_error("Filter's time constant (tau) was not set");
+
         if( ! this->initialized ) {
             this->initialized = true;
             this->y = x;
@@ -67,6 +84,9 @@ public:
     /// @return the filtered value
     double filter_dt(double dt, double x)
     {
+        if( this->tau==0 )
+            throw std::runtime_error("Filter's time constant (tau) was not set");
+
         if( ! this->initialized ) {
             this->initialized = true;
             this->t = 0;
