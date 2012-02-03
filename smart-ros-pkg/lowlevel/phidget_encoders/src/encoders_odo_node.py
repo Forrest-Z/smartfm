@@ -125,18 +125,20 @@ class PhidgetEncoder:
     def encoderPositionChange(self, e):
         '''A callback function called whenever the position changed'''
 
-        rospy.logdebug("Encoder %i: Encoder %i -- Change: %i -- Time: %i -- Position: %i" % (e.device.getSerialNum(), e.index, e.positionChange, e.time, self.encoder.getPosition(e.index)))
+        #rospy.loginfo("Encoder %i: Encoder %i -- Change: %i -- Time: %i -- Position: %i" % (e.device.getSerialNum(), e.index, e.positionChange, e.time, self.encoder.getPosition(e.index)))
 
         if e.index in self.countBufs.keys():
             self.countBufs[e.index].add(e)
             dts = [b.dt for b in self.countBufs.values()];
 	    if min(dts) >= self.period:
                 if self.countBufs[self.left].n == self.countBufs[self.right].n:
-                    rospy.logdebug("Encoders: got equal number of counts.")
+                    #rospy.loginfo("Encoders: got equal number of counts.")
                     self.dt = sum(dts)/len(dts)
+                    #rospy.loginfo("Encoders: dt1 = %f, dt2 = %f --> dt=%f" % (dts[0], dts[1], self.dt))
                     self.process()
                 else:
-                    rospy.logdebug("encoders: time criteria met, but not count criteria")
+                    pass
+                    #rospy.loginfo("encoders: time criteria met, but not count criteria")
 
 
     def process(self):
