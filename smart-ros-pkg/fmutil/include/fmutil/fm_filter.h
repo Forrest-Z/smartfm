@@ -29,7 +29,7 @@ public:
     /// @arg tau: the time constant of the filter
     LowPassFilter(double tau)
     {
-        if( tau>0 )
+        if( tau<=0 )
             throw std::invalid_argument("Filter's time constant (tau) must be > 0");
         this->tau = tau;
         reset();
@@ -74,7 +74,7 @@ public:
             return x;
         }
 
-        this->y = (x - this->y) * dt / this->tau;
+        this->y += (x - this->y) * dt / this->tau;
         return this->y;
     }
 
