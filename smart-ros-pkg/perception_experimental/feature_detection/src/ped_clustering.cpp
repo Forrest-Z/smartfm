@@ -22,6 +22,13 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <fmutil/fm_math.h>
 #include <std_msgs/Int64.h>
+
+#include <sensor_msgs/LaserScan.h>
+#include <sensor_msgs/point_cloud_conversion.h>
+#include <laser_geometry/laser_geometry.h>
+#include <tf/message_filter.h>
+#include <message_filters/subscriber.h>
+
 using namespace std;
 
 class ped_clustering
@@ -30,38 +37,125 @@ public:
     ped_clustering();
 private:
     void scanCallback(const sensor_msgs::PointCloud2ConstPtr& pc2);
-    void clustering(const sensor_msgs::PointCloud2ConstPtr& pc2);
+    void clustering(const sensor_msgs::PointCloud2& pc2);
     void filterLines(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered);
     void extractCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered, std::vector<pcl::PointIndices>& cluster_indices);
+    void laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in);
     ros::Subscriber cloud_sub_;
+    message_filters::Subscriber<sensor_msgs::LaserScan> laser_sub_;
     ros::Publisher cloud_pub_;
     ros::Publisher poi_pub_, line_filtered_pub_;
     ros::Publisher ped_candNo_pub_;
+
+    tf::TransformListener tf_;
+    tf::MessageFilter<sensor_msgs::LaserScan> * tf_filter_;
+
+    laser_geometry::LaserProjection projector_;
+    string laser_frame_id_;
 };
 
 ped_clustering::ped_clustering()
 {
     ros::NodeHandle nh;
-    cloud_sub_ = nh.subscribe("sickldmrs/cloud", 10, &ped_clustering::scanCallback, this);
+    cloud_sub_ = nh.subscribe("sickldmrs/cloud2", 10, &ped_clustering::scanCallback, this);
     cloud_pub_ = nh.advertise<sensor_msgs::PointCloud>("pedestrian_cluster", 1);
     poi_pub_= nh.advertise<sensor_msgs::PointCloud>("pedestrian_poi",1);
     line_filtered_pub_ = nh.advertise<sensor_msgs::PointCloud2>("line_filtered",1);
     ped_candNo_pub_ = nh.advertise<std_msgs::Int64>("ped_candNo",1);
+    laser_frame_id_ = "ldmrs0";
+    laser_sub_.subscribe(nh, "sickldmrs/scan0", 10);
+    tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, laser_frame_id_, 10);
+    tf_filter_->registerCallback(boost::bind(&ped_clustering::laserCallback, this, _1));
+    tf_filter_->setTolerance(ros::Duration(0.05));
     ros::spin();
 }
 
 void ped_clustering::scanCallback(const sensor_msgs::PointCloud2ConstPtr& pc2)
 {
 
-    clustering(pc2);
+    clustering(*pc2);
 }
 
-void ped_clustering::clustering(const sensor_msgs::PointCloud2ConstPtr& pc)
+inline geometry_msgs::Point32 getCenterPoint(geometry_msgs::Point32 start_pt, geometry_msgs::Point32 end_pt)
+{
+    geometry_msgs::Point32 center;
+    center.x = (start_pt.x + end_pt.x)/2;
+    center.y = (start_pt.y + end_pt.y)/2;
+    center.z = (start_pt.z + end_pt.z)/2;
+    return center;
+}
+void ped_clustering::laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in)
+{
+    sensor_msgs::PointCloud pc;
+    try{projector_.transformLaserScanToPointCloud(laser_frame_id_, *scan_in, pc, tf_);}
+            catch (tf::TransformException& e){ROS_INFO_STREAM(e.what());return;}
+    /* Tried with min_size=1, tolerance=1.5, the result is not encouraging. It shows a different
+     * cluster each with single point although there are spearted by less than 0.5 m
+     * sensor_msgs::PointCloud2 pc2;
+
+    sensor_msgs::convertPointCloudToPointCloud2(pc,pc2);
+    clustering(pc2);
+    */
+    /* Todo: add points into those known centroid*/
+    double diff_t = 1.0;
+    double seconddiff_t = 1.0;
+    double z = 0;
+    pc.points[0].z = 0;
+    sensor_msgs::PointCloud centroid;
+    centroid.header = pc.header;
+    geometry_msgs::Point32 start_pt, center_pt;
+    start_pt = pc.points[0];
+    for(int i=1; i<pc.points.size(); i++)
+    {
+        if(fmutil::distance(pc.points[i-1].x, pc.points[i-1].y, pc.points[i].x, pc.points[i].y)>diff_t)
+        {
+            centroid.points.push_back(getCenterPoint(pc.points[i-1],start_pt));
+
+            start_pt = pc.points[i];
+            z++;
+        }
+        pc.points[i].z=z;
+    }
+    centroid.points.push_back(getCenterPoint(pc.points[pc.points.size()-1],start_pt));
+
+    //compare the centroids, join them if there are near together
+    //for now it will just look through exhaustively, more efficient method e.g. kNN search can be implemented
+    sensor_msgs::PointCloud centroid2;
+    centroid2.header = centroid.header;
+    start_pt = centroid.points[0];
+    //ROS_INFO("1st pass: %d", centroid.points.size());
+    cloud_pub_.publish(centroid);
+    vector<geometry_msgs::Point32>::iterator it;
+    int first_loop = 0;
+    for( it=centroid.points.begin(); it<centroid.points.end()-1; it++)
+    {
+        int second_loop = 0;
+        cout<<"1L: "<<first_loop++<<endl;
+        vector<geometry_msgs::Point32>::iterator it2;
+        for(it2=it+1; it2<centroid.points.end(); it2++)
+        {
+            cout<<"2L: ";
+            cout<<second_loop++<<endl;
+            if(fmutil::distance(it->x, it->y, it2->x, it2->y)<seconddiff_t)
+            {
+                cout<<"Erasing "<<second_loop<<endl;
+                geometry_msgs::Point32 cp = getCenterPoint(*it,*it2);
+                it->x = cp.x; it->y = cp.y; it->z = cp.z;
+                centroid.points.erase(it2);
+            }
+        }
+
+    }
+    poi_pub_.publish(centroid);
+
+}
+
+void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc)
 {
     // Create the filtering object: downsample the dataset using a leaf size of 1cm
 
     pcl::PointCloud<pcl::PointXYZ> cloud_temp;
-    pcl::fromROSMsg(*pc, cloud_temp);
+    pcl::fromROSMsg(pc, cloud_temp);
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered = cloud_temp.makeShared();
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
     int i = 0;
@@ -82,7 +176,7 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2ConstPtr& pc)
     filterLines(cloud_cluster);
     sensor_msgs::PointCloud2 line_filtered;
     pcl::toROSMsg(*cloud_cluster, line_filtered);
-    line_filtered.header = pc->header;
+    line_filtered.header = pc.header;
     line_filtered_pub_.publish(line_filtered);
 
     //then cluster again
@@ -102,7 +196,7 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2ConstPtr& pc)
 
         bool max_dist = fmutil::distance(mid_pt[0], mid_pt[1], 0, 0)<20;
         //just take all the clusters
-        if(true)//abs_distance[0]< 1.5 && abs_distance[1]<1.5 && abs_distance[2]>0.1 && max_dist)
+        if(abs_distance[0]< 1.5 && abs_distance[1]<1.5 && abs_distance[2]>0.1 && max_dist)
         {
             geometry_msgs::Point32 p;
             p.x = mid_pt[0];
@@ -124,8 +218,8 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2ConstPtr& pc)
         i++;
     }
     cout<<"After bounding box filtering = "<<bounded_filter<<endl;
-    total_clusters.header = pc->header;
-    ped_poi.header = pc->header;
+    total_clusters.header = pc.header;
+    ped_poi.header = pc.header;
     cloud_pub_.publish(total_clusters);
     poi_pub_.publish(ped_poi);
     std_msgs::Int64 ped_no;
