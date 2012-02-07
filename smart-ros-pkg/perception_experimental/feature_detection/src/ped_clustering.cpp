@@ -101,7 +101,8 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2ConstPtr& pc)
         mid_pt = (max_pt + min_pt)/2.0;
 
         bool max_dist = fmutil::distance(mid_pt[0], mid_pt[1], 0, 0)<20;
-        if(abs_distance[0]< 1.5 && abs_distance[1]<1.5 && abs_distance[2]>0.1 && max_dist)
+        //just take all the clusters
+        if(true)//abs_distance[0]< 1.5 && abs_distance[1]<1.5 && abs_distance[2]>0.1 && max_dist)
         {
             geometry_msgs::Point32 p;
             p.x = mid_pt[0];
@@ -149,8 +150,7 @@ void ped_clustering::extractCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_fi
 {
     if(cloud_filtered->size()==0) return;
     // Creating the KdTree object for the search method of the extraction
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
-
+    pcl::KdTreeFLANN<pcl::PointXYZ>::Ptr tree (new pcl::KdTreeFLANN<pcl::PointXYZ>);
     tree->setInputCloud (cloud_filtered);
 
 
