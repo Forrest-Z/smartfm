@@ -1,21 +1,8 @@
 <launch>
 
     <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller"/>
-    <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller_simple" output="screen">
-
-        <!-- PARAMETERS USED WITH HAL LOWLEVEL SYSTEM
-        <param name="kp" value="1.5"/>
-        <param name="ki" value="0.08"/>
-        <param name="kd" value="0.4"/>
-        <param name="tau_v" value="0.2"/>
-        -->
-
-        <!-- PARAMETERS USED WITH ARDUINO LOWLEVEL SYSTEM -->
-        <param name="kp" value="0.8"/>
-        <param name="ki" value="1.2"/>
-        <param name="kd" value="0.1"/>
-        <param name="tau_v" value="0.1"/>
-
+    <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
+        <rosparam file="$(find lowlevel_controllers)/speed_controller.yaml" command="load" />
         <remap from="/odom" to="/encoder_odom"/>
     </node>
 

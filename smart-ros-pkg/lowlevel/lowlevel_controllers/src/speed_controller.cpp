@@ -10,6 +10,7 @@
 #include <phidget_encoders/Encoders.h>
 
 #include <fmutil/fm_math.h>
+#include <fmutil/fm_filter.h>
 
 class Parameters
 {
@@ -63,8 +64,9 @@ class PID_Speed
         double e_pre; ///< previous error (velocity) --> used for some kind of filtering of the error term
         double kdd; //we are switching between PID and PI need another term
         double iTerm; ///< the integral term
-        double vFiltered; ///< filtered velocity
         double dgain_pre;
+
+        fmutil::LowPassFilter vFilter;
 };
 
 
@@ -117,10 +119,12 @@ PID_Speed::PID_Speed(ros::NodeHandle nh) : n(nh)
 
     param.getParam();
 
-    cmdVel = e_pre = iTerm = vFiltered = pitch = 0.0;
+    cmdVel = e_pre = iTerm = pitch = 0.0;
     emergency = false;
-    automode = false;
+    automode = true; //init as true as long as arduino is not here.
     safetyBrake_ = false;
+
+    vFilter = fmutil::LowPassFilter(param.tau_v);
 }
 
 
@@ -166,18 +170,16 @@ void PID_Speed::odoCallBack(phidget_encoders::Encoders enc)
     if( emergency || !automode || (cmdVel <= 0 && odovel <= param.full_brake_thres) || safetyBrake_ )
     {
         // reset controller
-        e_pre = vFiltered = dgain_pre = iTerm = 0.0;
+        e_pre = dgain_pre = iTerm = 0.0;
+        vFilter.reset();
         if( safetyBrake_ ) ROS_INFO("safety brake");
         brake_msg.data = -param.coeff_bp;
     }
     else
     {
-        //cout <<"vFiltered=" <<vFiltered <<", odovel=" <<odovel <<", dt=" <<enc.dt;
-        vFiltered += (odovel - vFiltered) * enc.dt / param.tau_v;
-        //cout <<" => vFiltered=" <<vFiltered <<endl;
-        pid.v_filter = vFiltered;
+        pid.v_filter = vFilter.filter_dt(enc.dt, odovel);
 
-        double e_now = cmdVel - vFiltered;
+        double e_now = cmdVel - pid.v_filter;
         pid.p_gain = SYMBOUND(param.kp * e_now, param.kp_sat);
 
         // Accumulate integral error and limit its range

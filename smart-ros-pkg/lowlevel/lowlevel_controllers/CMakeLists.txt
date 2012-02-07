@@ -30,5 +30,5 @@ rosbuild_genmsg()
 #target_link_libraries(example ${PROJECT_NAME})
 
 rosbuild_add_executable(steering_controller src/steering_controller.cpp)
-rosbuild_add_executable(speed_controller_simple src/speed_controller.cpp)
+rosbuild_add_executable(speed_controller src/speed_controller.cpp)
 rosbuild_add_executable(speed_profile_generator src/speed_profile_generator.cpp)
