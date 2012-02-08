@@ -4,23 +4,13 @@
 #include "AlphaVectorPolicy.h"
 #include "CPTimer.h"
 #include "solverUtils.h"
+#include "PrintTuple.h"
 
 using namespace std;
 using namespace momdp;
 
 namespace momdp
 {
-    void printTuple(map<string, string> tuple, ofstream* streamOut){
-	*streamOut << "(";
-	for(map<string, string>::iterator iter = tuple.begin() ; iter != tuple.end() ; )
-	{
-	    *streamOut << iter->second;
-	    if(++iter!=tuple.end())
-		*streamOut << ",";
-	}
-	*streamOut<<")" << endl;
-    }
-
     SimulationEngine::SimulationEngine()
     {
     }
@@ -52,7 +42,7 @@ namespace momdp
         for (int i=0;i<(int)fhout.size();i++){
             temp.push_back(fhout[i]);
         }
-        
+
         for (int i=1; i<(int)temp.size();i++){
             if (temp[i]>currBest) {
                 currBest = temp[i];
@@ -70,19 +60,19 @@ namespace momdp
         this->solverParams = solverParams;
     }
 
-    void SimulationEngine::performActionObs(belief_vector& outBelObs, int action, const BeliefWithState& belSt) const 
+    void SimulationEngine::performActionObs(belief_vector& outBelObs, int action, const BeliefWithState& belSt) const
     {
         // DEBUG_SIMSPEED_270409 skip calculating outprobs for x when there is only one possible x value
-        if (problem->XStates->size() == 1) 
+        if (problem->XStates->size() == 1)
         {
             // clear out the entries
             outBelObs.resize(1);
-            outBelObs.push_back(0,1.0); 
-        } 
-        else 
+            outBelObs.push_back(0,1.0);
+        }
+        else
         {
             //problem->getTransitionMatrixX(action, belSt.sval);
-	    const SharedPointer<SparseMatrix>  transMatX = problem->XTrans->getMatrix(action, belSt.sval); 
+	    const SharedPointer<SparseMatrix>  transMatX = problem->XTrans->getMatrix(action, belSt.sval);
             mult(outBelObs, *belSt.bvec, *transMatX);
 	}
     }
@@ -110,7 +100,7 @@ namespace momdp
 
     string SimulationEngine::toString()
     {
-        std::ostringstream mystrm; 
+        std::ostringstream mystrm;
         mystrm << "action selector: (replaced by Policy) ";
         return mystrm.str();
     }
@@ -124,7 +114,7 @@ namespace momdp
     }
 
     int SimulationEngine::runFor(int iters, ofstream* streamOut, double& reward, double& expReward)
-    { 
+    {
         DEBUG_TRACE(cout << "runFor" << endl; );
         DEBUG_TRACE(cout << "iters " << iters << endl; );
         // DEBUG_TRACE(cout << "startVec sval " << startVec.sval << endl; );
@@ -206,7 +196,7 @@ namespace momdp
         vector<int> bhout(xDim,0);
         vector<int> fhout(xDim,0);
         for(int timeIter = 0; timeIter < iters; timeIter++)
-        { 
+        {
             DEBUG_TRACE( cout << "timeIter " << timeIter << endl; );
 
             if(enableFiling && timeIter == 0)
@@ -224,24 +214,24 @@ namespace momdp
                 {
 					if (currBelSt->sval == -1) // special case for first time step where X is a distribution
 						currAction = policy->getBestActionLookAhead(currBelSt->bvec, currBelX);
-					else 
+					else
 						currAction = policy->getBestActionLookAhead(*currBelSt); /// TBP : get action from policy using lookahead
                 }
                 else
                 {
 					if (currBelSt->sval == -1) // special case for first time step where X is a distribution
 						currAction = policy->getBestAction(currBelSt->bvec, currBelX);
-					else 
+					else
 						currAction = policy->getBestAction(*currBelSt); /// TBP : get action from policy and belief
                 }
-            }   
+            }
             else
             {
 
                 if(solverParams->useLookahead)
                 {
 					currAction = policy->getBestActionLookAhead(*currBelSt);
-		 	
+
                 }
                 else
                 {
@@ -283,7 +273,7 @@ namespace momdp
 
 	    // actualActionUpdObs is belief of the fully observered state
             belief_vector actualActionUpdUnobs(belSize), actualActionUpdObs(problem->XStates->size()) ;
-            performActionObs(actualActionUpdObs, currAction, *actStateCompl); 
+            performActionObs(actualActionUpdObs, currAction, *actStateCompl);
 
             DEBUG_TRACE( cout << "actualActionUpdObs " << endl; );
             DEBUG_TRACE( actualActionUpdObs.write(cout) << endl; );
@@ -294,12 +284,12 @@ namespace momdp
 	    // now update actualActionUpdUnobs, which is the belief of unobserved states,
 	    // based on prev belif and curr observed state
 			performActionUnobs(actualActionUpdUnobs, currAction, *actStateCompl, actNewStateCompl->sval); /// TBP : update bel Y
-	    
+
 	    DEBUG_TRACE( cout << "actualActionUpdUnobs " << endl; );
             DEBUG_TRACE( actualActionUpdUnobs.write(cout) << endl; );
 
             // the actual next state for the unobserved variable
-            int newUnobsState = chooseFromDistribution(actualActionUpdUnobs, ((double)rand()/RAND_MAX)); 
+            int newUnobsState = chooseFromDistribution(actualActionUpdUnobs, ((double)rand()/RAND_MAX));
             DEBUG_TRACE( cout << "newUnobsState "<< newUnobsState << endl; );
 
             actNewStateCompl->bvec->resize(belSize);
@@ -310,7 +300,7 @@ namespace momdp
 
             // get observations based on actual next states for observed and unobserved variable
             belief_vector obsPoss;
-            getPossibleObservations(obsPoss, currAction, *actNewStateCompl);  
+            getPossibleObservations(obsPoss, currAction, *actNewStateCompl);
 
 
             DEBUG_TRACE( cout << "obsPoss"<< endl; );
@@ -350,30 +340,30 @@ cout << "currObservation "<< currObservation << endl;
             if(enableFiling)
             {
 			//initial states and belief, before any action
-                if (timeIter == 0) 
+                if (timeIter == 0)
                 {
 				//actual X state, X might be a distribution at first time step
                     map<string, string> obsState = problem->getFactoredObservedStatesSymbols(actStateCompl->sval);
 					if(obsState.size()>0)
 					{
 						streamOut->width(4);*streamOut<<left<<"X"<<":";
-						printTuple(obsState, streamOut);
+						printTuple(obsState, *streamOut);
 					}
 
     		    //actual Y state
 					streamOut->width(4);*streamOut<<left<<"Y"<<":";
 							map<string, string> unobsState = problem->getFactoredUnobservedStatesSymbols(currUnobsState);
-					printTuple(unobsState, streamOut);
+					printTuple(unobsState, *streamOut);
 
 				// if initial belief X is a distribution at first time step
-					if (currBelSt->sval == -1) 
+					if (currBelSt->sval == -1)
 					{
 						SparseVector currBelXSparse;
 						copy(currBelXSparse, currBelX);
 						int mostProbX  = currBelXSparse.argmax(); 	//get the most probable Y state
 						streamOut->width(4);*streamOut<<left<<"ML X"<<":";
 						map<string, string> mostProbXState = problem->getFactoredObservedStatesSymbols(mostProbX);
-						printTuple(mostProbXState, streamOut);
+						printTuple(mostProbXState, *streamOut);
 					}
 
 				//initial belief Y state
@@ -381,8 +371,8 @@ cout << "currObservation "<< currObservation << endl;
 					double prob = currBelSt->bvec->operator()(mostProbY);	//get its probability
 					streamOut->width(4);*streamOut<<left<<"ML Y"<<":";
 							map<string, string> mostProbYState = problem->getFactoredUnobservedStatesSymbols(mostProbY);
-					printTuple(mostProbYState, streamOut);
-					
+					printTuple(mostProbYState, *streamOut);
+
 				/// -> TBP
 					streamOut->width(4);*streamOut << left << "BL Y"<<":(";
 					//printTuple(currBelSt->bvec, *streamOut);
@@ -407,27 +397,27 @@ cout << "currObservation "<< currObservation << endl;
 
 				streamOut->width(4);*streamOut<<left<<"A"<<":";
 						map<string, string> actState = problem->getActionsSymbols(currAction);
-				printTuple(actState, streamOut);	
-				
+				printTuple(actState, *streamOut);
+
 				streamOut->width(4);*streamOut<<left<<"R"<<":";
 				*streamOut << currReward<<endl;
             }
 
             // now that we have the action, state of observed variable, and observation,
             // we can update the belief of unobserved variable
-			if (timeIter == 0) 
-			{  
+			if (timeIter == 0)
+			{
 				// check to see if the initial X is a distribution or a known state
 				if (currBelSt->sval == -1) // special case for first time step where X is a distribution
 					nextBelSt = problem->beliefTransition->nextBelief(currBelSt->bvec, currBelX, currAction, currObservation, actNewStateCompl->sval);
 				else
 					nextBelSt = problem->beliefTransition->nextBelief(currBelSt, currAction, currObservation, actNewStateCompl->sval);
-			} 
-			else 
+			}
+			else
 				nextBelSt = problem->beliefTransition->nextBelief(currBelSt, currAction, currObservation, actNewStateCompl->sval);
 
             //problem->getNextBeliefStval(nextBelSt, currBelSt, currAction, currObservation, actNewStateCompl->sval);
-			
+
 
 
 
@@ -442,43 +432,43 @@ cout << "currObservation "<< currObservation << endl;
 		map<string, string> obsState = problem->getFactoredObservedStatesSymbols(actNewStateCompl->sval);
 		if(obsState.size()>0){
 		    streamOut->width(4);*streamOut<<left<<"X"<<":";
-		    printTuple(obsState, streamOut);
+		    printTuple(obsState, *streamOut);
 		}
 
 		//actual Y state after action
 		streamOut->width(4);*streamOut<<left<<"Y"<<":";
 		map<string, string> unobsState = problem->getFactoredUnobservedStatesSymbols(newUnobsState);
-		printTuple(unobsState, streamOut);
-		
+		printTuple(unobsState, *streamOut);
+
 		//observation after action
 		streamOut->width(4);*streamOut<<left<<"O"<<":";
                 map<string, string> obs = problem->getObservationsSymbols(currObservation);
-		printTuple(obs, streamOut);
-		
-		//get most probable Y state from belief after applying action A	
+		printTuple(obs, *streamOut);
+
+		//get most probable Y state from belief after applying action A
 		int mostProbY  = currBelSt->bvec->argmax(); 	//get the most probable Y state
 		double prob = nextBelSt->bvec->operator()(mostProbY);	//get its probability
 		streamOut->width(4);*streamOut<<left<<"ML Y"<<":";
                 map<string, string> mostProbYState = problem->getFactoredUnobservedStatesSymbols(mostProbY);
-		printTuple(mostProbYState, streamOut);
+		printTuple(mostProbYState, *streamOut);
 
                 if(timeIter == iters - 1)
                 {
-                    //timeval timeInRunFor = getTime() - prevTime;				
+                    //timeval timeInRunFor = getTime() - prevTime;
                     //*streamOut << "----- time: " << timevalToSeconds(timeInRunFor) <<endl;
                     double lapTime = lapTimer.elapsed();
                     *streamOut << "----- time: " << lapTime <<endl;
                 }
-            } 
+            }
 	    //actual states
             currUnobsState = newUnobsState; //Y state, hidden
 	    actStateCompl->sval = actNewStateCompl->sval;
             copy(*actStateCompl->bvec, *actNewStateCompl->bvec);
-	    
+
 	    //belief states
             copy(*currBelSt->bvec, *nextBelSt->bvec);
             currBelSt->sval = nextBelSt->sval;
-            
+
 			/// -> TBP
 				streamOut->width(4);*streamOut << left << "BL Y"<<":(";
 				//printTuple(currBelSt->bvec, *streamOut);

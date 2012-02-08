@@ -900,12 +900,12 @@ int pedestrian_momdp::getYGrid(double y)
     int py = (int) (y+Y_OFFSET)/dY ;
     return py;
 }
+
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "mdp");
 
-    pedestrian_momdp::pedestrian_momdp* mdp_node;
-    mdp_node = new pedestrian_momdp::pedestrian_momdp(argc, argv);
+    pedestrian_momdp *mdp_node = new pedestrian_momdp(argc, argv);
 
     ros::spin();
 }
