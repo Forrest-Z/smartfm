@@ -22,15 +22,29 @@ rosbuild_genmsg()
 #rosbuild_gensrv()
 
 #common commands for building c++ executables and libraries
-INCLUDE_DIRECTORIES(src/problem-solver src/problem-solver/Core src/problem-solver/Models/MOMDP src/problem-solver/Bounds src/problem-solver/Algorithms src/problem-solver/Algorithms/SARSOP src/problem-solver/MathLib src/problem-solver/Parser src/problem-solver/Parser/Cassandra src/problem-solver/Parser/POMDPX src/problem-solver/Utils src/problem-solver/OfflineSolver)
+INCLUDE_DIRECTORIES(
+    src/problem-solver
+    src/problem-solver/Core
+    src/problem-solver/Models/MOMDP
+    src/problem-solver/Bounds
+    src/problem-solver/Algorithms
+    src/problem-solver/Algorithms/SARSOP
+    src/problem-solver/MathLib
+    src/problem-solver/Parser
+    src/problem-solver/Parser/Cassandra
+    src/problem-solver/Parser/POMDPX
+    src/problem-solver/Utils
+    src/problem-solver/OfflineSolver
+)
 
 rosbuild_add_executable(ped-momdp-sarsop src/pedestrian_momdp_realPed.cpp src/PSG_SimulationEngine.cpp)
 
 # There are too many compiler warnings with problem-solver code, so let's disable some:
 rosbuild_add_compile_flags(ped-momdp-sarsop -Wno-unused-variable -Wno-ignored-qualifiers)
 
-# In order to link with libappl, first build it and install it:
+# In order to link with libappl, first build it:
 #    cd src/problem-solver
 #    make
-#    sudo cp libappl.a /usr/local/lib
-target_link_libraries(ped-momdp-sarsop appl tinyxml)
+SET(LIBAPPL ${PROJECT_SOURCE_DIR}/src/problem-solver/libappl.a)
+
+target_link_libraries(ped-momdp-sarsop ${LIBAPPL} tinyxml)
