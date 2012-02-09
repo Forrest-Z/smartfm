@@ -16,12 +16,14 @@
 #include "MOMDP.h"
 #include "ParserSelector.h"
 #include "AlphaVectorPolicy.h"
-#include "SimulationEngine.h"
+#include "ROS_SimulationEngine.h"
 #include "GlobalResource.h"
 #include <rosgraph_msgs/Clock.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <ped_momdp_sarsop/peds_believes.h>
+#include <ped_momdp_sarsop/ped_local_frame.h>
+#include <ped_momdp_sarsop/ped_local_frame_vector.h>
 #include <pnc_msgs/move_status.h>
 //bool lane=true;
 //bool cross=!lane;
@@ -102,11 +104,14 @@ public:
     ~pedestrian_momdp();
     void robotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
     void speedCallback(nav_msgs::Odometry odo);
-    void pedPoseCallback(sensing_on_road::pedestrian_laser_batch laser_batch);
+    //void pedPoseCallback(sensing_on_road::pedestrian_laser_batch laser_batch);
+    void pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector);   
     void moveSpeedCallback(pnc_msgs::move_status status);
     void controlLoop(const ros::TimerEvent &e);
     void publish_belief();
-    int getCurrentState(int id);
+    
+    //int getCurrentState(int id);
+	int getCurrentState(double currRobSpeed, double roby, double pedx, double pedy);    
     int getCurrObs(int id);
     int getXGrid(double x);
     int getYGrid(double y);
@@ -116,14 +121,17 @@ public:
     ros::Publisher cmdPub_, believesPub_, goalPub_;
     bool use_sim_time_;
     double robotx_, roboty_, robotspeedx_;//pedx_, pedy_;
+    
+    //double robotspeedx_;
     int simLen, simNum;
     string  ped_id_file, policy_file, model_file;
     void parse_simul_config( fstream& configfile);
     
     int policy_initialize();
-    void pedInitPose();
-    void initMOMDPPed();
-    void updateBelief(int id);
+    //void pedInitPose();
+    
+    void initPedMOMDP(ped_momdp_sarsop::ped_local_frame ped_local);
+    void updateBelief(int id, int safeAction);
 
     ofstream* foutStream;
 
@@ -138,24 +146,23 @@ public:
     {
         int id;        
 		POSE ped_pose;
+		double rob_pose;
          
         SharedPointer<BeliefWithState> currBelSt;
         int currAction;
         int currSVal; /// observed variable
         
-        double rob_pose;
-        
         /// some grid representation
         //frame id 
     };
-    vector<PED> lPedInView;
+    vector<PED_MOMDP> lPedInView;
 
     geometry_msgs::Twist cmd;
     //int currAction[];
     SolverParams* p;
     SharedPointer<MOMDP> problem;
     SharedPointer<AlphaVectorPolicy> policy;
-    SimulationEngine engine;
+    ROS_SimulationEngine engine;
 
     //int num_ped;
     //vector<int> currSVal;

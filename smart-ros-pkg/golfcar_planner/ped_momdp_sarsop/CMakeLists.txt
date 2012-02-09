@@ -173,6 +173,6 @@ rosbuild_add_executable(pomdpconvert src/problem-solver/PomdpConvertor/convertor
 rosbuild_add_compile_flags(pomdpconvert ${WARNING_FLAGS})
 target_link_libraries(pomdpconvert appl tinyxml)
 
-rosbuild_add_executable(ped-momdp-sarsop src/pedestrian_momdp_realPed.cpp src/PSG_SimulationEngine.cpp)
+rosbuild_add_executable(ped-momdp-sarsop src/pedestrian_momdp_realPed.cpp src/ROS_SimulationEngine.cpp)
 rosbuild_add_compile_flags(ped-momdp-sarsop ${WARNING_FLAGS})
 target_link_libraries(ped-momdp-sarsop appl tinyxml)
