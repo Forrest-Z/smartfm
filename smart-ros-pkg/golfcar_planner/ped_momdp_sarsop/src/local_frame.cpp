@@ -41,7 +41,7 @@ local_frame::local_frame()
     ros::NodeHandle n("~");
     n.param("global_frame", global_frame_, string("/odom"));
     timer_ = nh.createTimer(ros::Duration(0.01), &local_frame::publishTransform, this);
-
+    ros::spin();
 }
 
 void local_frame::pedCallback(sensing_on_road::pedestrian_laser_batchConstPtr ped_batch)
@@ -52,11 +52,12 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_laser_batchConstPtr pe
         //find if the transform is already available
         size_t matched_ped;
         bool matched=false;
-        for(size_t matched_ped=0; matched_ped<ped_transforms_.size(); matched_ped++)
+        for(size_t j=0; j<ped_transforms_.size(); j++)
         {
-            if(ped_batch->pedestrian_laser_features[i].object_label == ped_transforms_[matched_ped].label)
+            if(ped_batch->pedestrian_laser_features[i].object_label == ped_transforms_[j].label)
             {
                 matched = true;
+                matched_ped = j;
                 continue;
             }
 
@@ -69,6 +70,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_laser_batchConstPtr pe
             stringstream frame_id;
             frame_id<<"ped_"<<ped_transforms_[matched_ped].label;
             plf.header.frame_id = frame_id.str();
+
             tf::Stamped<tf::Pose> in_pose, out_pose;
 
             //start with pedestrian. no interest on the orientation of ped for now
@@ -77,7 +79,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_laser_batchConstPtr pe
             geometry_msgs::Point ped_point = ped_batch->pedestrian_laser_features[i].pedestrian_laser.point;
             in_pose.setOrigin(tf::Vector3(ped_point.x, ped_point.y, ped_point.z));
             getObjectPose(plf.header.frame_id, in_pose, out_pose);
-
+            plf.ped_id = ped_transforms_[matched_ped].label;
             plf.ped_pose.x = out_pose.getOrigin().getX();
             plf.ped_pose.y = out_pose.getOrigin().getY();
             plf.ped_pose.z = out_pose.getOrigin().getZ();
@@ -95,7 +97,8 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_laser_batchConstPtr pe
         }
         else
         {
-
+            ROS_INFO("New pedestrian received, creating new transform");
+            ROS_INFO("%d transformations", ped_transforms_.size());
             //transform not found, add a new transform
             tf::Transform transform;
             tf::Stamped<tf::Pose> in_pose, out_pose;
@@ -149,7 +152,7 @@ void local_frame::publishTransform(const ros::TimerEvent& event)
 }
 int main(int argc, char** argv){
     ros::init(argc, argv, "local_frame");
-
+    local_frame *lf = new local_frame();
     //
 
     return 0;

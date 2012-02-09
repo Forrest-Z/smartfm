@@ -176,3 +176,6 @@ target_link_libraries(pomdpconvert appl tinyxml)
 rosbuild_add_executable(ped-momdp-sarsop src/pedestrian_momdp_realPed.cpp src/ROS_SimulationEngine.cpp)
 rosbuild_add_compile_flags(ped-momdp-sarsop ${WARNING_FLAGS})
 target_link_libraries(ped-momdp-sarsop appl tinyxml)
+
+rosbuild_add_executable(local_frame src/local_frame.cpp)
+rosbuild_add_compile_flags(local_frame -std=c++0x)
