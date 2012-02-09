@@ -28,7 +28,8 @@
 #include <laser_geometry/laser_geometry.h>
 #include <tf/message_filter.h>
 #include <message_filters/subscriber.h>
-#include <feature_detection/pointcloud_clusters.h>
+#include <feature_detection/clusters.h>
+#include <feature_detection/cluster.h>
 
 using namespace std;
 
@@ -66,14 +67,14 @@ ped_clustering::ped_clustering()
     cloud_pub_ = nh.advertise<sensor_msgs::PointCloud>("pedestrian_cluster", 1);
     poi_pub_= nh.advertise<sensor_msgs::PointCloud>("pedestrian_poi",1);
     line_filtered_pub_ = nh.advertise<sensor_msgs::PointCloud2>("line_filtered",1);
-    clusters_pub_ = nh.advertise<feature_detection::pointcloud_clusters>("clusters_vector",1);
+    clusters_pub_ = nh.advertise<feature_detection::clusters>("pedestrian_clusters",1);
     laser_frame_id_ = "ldmrs0";
     laser_sub_.subscribe(nh, "sickldmrs/scan0", 10);
     tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, laser_frame_id_, 10);
     tf_filter_->registerCallback(boost::bind(&ped_clustering::laserCallback, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
 
-    sequential_clustering_ = true;
+    sequential_clustering_ = false;
 
     ros::spin();
 }
@@ -183,13 +184,13 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
     extractCluster(cloud_filtered, cluster_indices, tolerance, minSize, maxSize);
 
     ped_poi.points.clear();
-    feature_detection::pointcloud_clusters pc_clusters;
-    pc_clusters.header = pc.header;
+    feature_detection::clusters clusters;
+    clusters.header = pc.header;
     for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
     {
         Eigen::Vector4f min_pt, max_pt,mid_pt, abs_distance;
         pcl:getMinMax3D(*cloud_filtered, it->indices, min_pt, max_pt);
-
+        feature_detection::cluster cluster;
         abs_distance = max_pt - min_pt;
         mid_pt = (max_pt + min_pt)/2.0;
         geometry_msgs::Point32 p;
@@ -197,8 +198,11 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
         p.y = mid_pt[1];
         p.z = mid_pt[2];
         ped_poi.points.push_back(p);
-        sensor_msgs::PointCloud pc_temp;
-        pc_temp.header = pc.header;
+        cluster.centroid = p;
+        cluster.width = abs_distance[1];
+        cluster.height = abs_distance[2];
+        cluster.depth = abs_distance[0];
+        std::vector<geometry_msgs::Point32> cluster_points;
         for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
         {
             pcl::PointXYZ pclpt_temp;
@@ -207,12 +211,13 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
             p_temp.x = pclpt_temp.x;
             p_temp.y = pclpt_temp.y;
             p_temp.z = pclpt_temp.z;
-            pc_temp.points.push_back(p_temp);
+            cluster_points.push_back(p_temp);
             pclpt_temp.z = i;
 
             cloud_cluster->points.push_back (pclpt_temp);
         }
-        pc_clusters.pc.push_back(pc_temp);
+        cluster.points = cluster_points;
+        clusters.clusters.push_back(cluster);
         i++;
     }
 
@@ -227,7 +232,7 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
     {
         cloud_pub_.publish(total_clusters);
         poi_pub_.publish(ped_poi);
-        clusters_pub_.publish(pc_clusters);
+        clusters_pub_.publish(clusters);
     }
 
 }
