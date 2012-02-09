@@ -16,7 +16,7 @@
 #include "MOMDP.h"
 #include "ParserSelector.h"
 #include "AlphaVectorPolicy.h"
-#include "PSG_SimulationEngine.h"
+#include "SimulationEngine.h"
 #include "GlobalResource.h"
 #include <rosgraph_msgs/Clock.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
@@ -95,7 +95,8 @@ int num_steps=0;
 //int YXSwitch; /// place where trajectory changes from vertical to Horizontal
 //int XYSwitch; /// from horizontal to vertical
 //double closest_dist=0;
-class pedestrian_momdp {
+class pedestrian_momdp 
+{
 public:
     pedestrian_momdp(int argc, char** argv);
     ~pedestrian_momdp();
@@ -118,16 +119,34 @@ public:
     int simLen, simNum;
     string  ped_id_file, policy_file, model_file;
     void parse_simul_config( fstream& configfile);
-    int pomdp_initialize();
+    
+    int policy_initialize();
     void pedInitPose();
+    void initMOMDPPed();
+    void updateBelief(int id);
 
     ofstream* foutStream;
 
-    struct PED
+	struct POSE
+	{
+		double x;
+		double y;
+		double yaw;
+	};
+	
+    struct PED_MOMDP
     {
-        int id;
-        double pedx_;
-        double pedy_;
+        int id;        
+		POSE ped_pose;
+         
+        SharedPointer<BeliefWithState> currBelSt;
+        int currAction;
+        int currSVal; /// observed variable
+        
+        double rob_pose;
+        
+        /// some grid representation
+        //frame id 
     };
     vector<PED> lPedInView;
 
@@ -136,12 +155,12 @@ public:
     SolverParams* p;
     SharedPointer<MOMDP> problem;
     SharedPointer<AlphaVectorPolicy> policy;
-    PSG_SimulationEngine engine;
+    SimulationEngine engine;
 
-    int num_ped;
-    vector<int> currSVal;
-    vector< SharedPointer<BeliefWithState> > lcurrBelSt;
-    vector<int> currAction;
+    //int num_ped;
+    //vector<int> currSVal;
+    //vector< SharedPointer<BeliefWithState> > lcurrBelSt;
+    //vector<int> currAction;
 
     double mult;
     double gamma;

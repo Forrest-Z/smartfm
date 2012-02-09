@@ -205,8 +205,42 @@ void pedestrian_momdp::parse_simul_config( fstream& configfile )
     //statfile.open (name);
 
 }
+void pedestrian_momdp::initPedMOMDP( int id)
+{
+	PED pedProblem;
+	
+	pedProblem.currBelSt = (new BeliefWithState());
+	
+	pedProblem.currSVal = getCurrentState(id);
 
-int pedestrian_momdp::pomdp_initialize()
+	//currSVal[ii] = getCurrentState(id);
+
+	SharedPointer<SparseVector> startBeliefVec;
+	if (problem->initialBeliefStval->bvec)
+	  startBeliefVec = problem->initialBeliefStval->bvec;
+	else
+	  startBeliefVec = problem->initialBeliefYByX[currSVal[ii]];
+
+
+	/// TBP : initializing belief for Y
+	int currUnobsState = chooseFromDistribution(*startBeliefVec);
+	int belSize = startBeliefVec->size();
+
+
+	pedProblem.currBelSt->sval = pedProblem.currSVal;
+	copy(*(pedProblem.currBelSt)s->bvec, *startBeliefVec);
+	
+	cout << "Starting Belief " << endl;
+	pedProblem.currBelSt->bvec->write(cout);
+	cout << endl;
+
+	
+	pedProblem.currAction = policy->getBestActionLookAhead(*(pedProblem.currBelSt));
+	
+	lPedInView.push_back(pedProblem);
+
+}
+int pedestrian_momdp::policy_initialize()
 {
     p = &GlobalResource::getInstance()->solverParams;
 
@@ -365,9 +399,10 @@ int pedestrian_momdp::pomdp_initialize()
     //for(int ii=0; ii<num_ped; ii++)
     //currSVal[ii] = getCurrentState(ii);
 
-    int currSVal[num_ped];
-    vector< SharedPointer<BeliefWithState> > lcurrBelSt;
-    int currAction[num_ped];
+	/// must initialize in real time
+    //int currSVal[num_ped];
+    //vector< SharedPointer<BeliefWithState> > lcurrBelSt;
+    //int currAction[num_ped];
 
     for(int ii=0; ii<num_ped; ii++)
     {
@@ -466,12 +501,17 @@ void pedestrian_momdp::pedInitPose()
     pedinitfile.close();
 }
 
-pedestrian_momdp::pedestrian_momdp(int argc, char** argv) {
+pedestrian_momdp::pedestrian_momdp(int argc, char** argv) 
+{
+	ROS_INFO("Starting Pedestrian Avoidance ... ");
+	
+	/// Setting up subsciption 
     ros::NodeHandle nh;
     robotSub_ = nh.subscribe("robot_0/amcl_pose", 1, &pedestrian_momdp::robotPoseCallback, this);
     speedSub_ = nh.subscribe("odom", 1, &pedestrian_momdp::speedCallback, this);
     pedSub_ = nh.subscribe("ped_map_laser_batch", 1, &pedestrian_momdp::pedPoseCallback, this);
     ros::NodeHandle n("~");
+    
     /// subscribe to
     n.param("pedestrian_id_file", ped_id_file, string(""));
     n.param("policy_file", policy_file, string(""));
@@ -479,25 +519,18 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv) {
     n.param("simLen", simLen, 100);
     n.param("simNum", simNum, 100);
     nh.param("use_sim_time", use_sim_time_, false);
-    //add the simLen parameter and correct the coordinate system!
+    ///add the simLen parameter and correct the coordinate system!
 
     //subscribe as heartbeat of the robot
     //scanSub_ = nh.subscribe("clock", 1, &pedestrian_momdp::scanCallback, this);
+    /// Setting up publishing
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("robot_0/cmd_vel",1);
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
     move_base_speed_=nh.subscribe("/move_status",1, &pedestrian_momdp::moveSpeedCallback, this);
     goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
-    initPedGoal();
-    //pedInitPose();
 
-    /////pomdp initialize configuration
-    //fstream  variablefile;
-    //variablefile.open("config-simul-rss-psg.txt");
-    //assert (!variablefile.fail( ));
-    //cout << " done opening " << endl;
-    //parse_simul_config(variablefile);
-    //cout << " done parsing " << endl;
-
+	/// Initialize pedestrian goals
+	initPedGoal();
 
 
     timer_ = nh.createTimer(ros::Duration(0.5), &pedestrian_momdp::controlLoop, this);
@@ -547,25 +580,72 @@ void pedestrian_momdp::pedPoseCallback(sensing_on_road::pedestrian_laser_batch l
     //pedy_ = pc.points[0].x;
 
     //direct initialization since it is taken care by transformPedtoMap
-    if(!obs_flag)
-    {
-        num_ped = laser_batch.pedestrian_laser_features.size();
-        lPedInView.resize(num_ped);
-        currSVal.resize(num_ped);
-        currAction.resize(num_ped);
-    }
+    //if(!obs_flag)
+    //{
+        //num_ped = laser_batch.pedestrian_laser_features.size();
+        //lPedInView.resize(num_ped);
+        //currSVal.resize(num_ped);
+        //currAction.resize(num_ped);
+    //}
+
     ROS_DEBUG_STREAM("Laser batch size "<<laser_batch.pedestrian_laser_features.size()<<" lPedInView size "<<lPedInView.size());
     for(int ii=0; ii< laser_batch.pedestrian_laser_features.size(); ii++)
     {
-        lPedInView[ii].pedx_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.x;
-        lPedInView[ii].pedy_ = laser_batch.pedestrian_laser_features[ii].pedestrian_laser.point.y;
-        lPedInView[ii].id = laser_batch.pedestrian_laser_features[ii].object_label;
-        ROS_DEBUG_STREAM(ii<<": PedX "<<lPedInView[ii].pedx_ << " PedY "<<lPedInView[ii].pedy_);
-        obs_flag = true;
+		/// search for proper pedestrian to update
+		int laser_id = laser_batch.pedestrian_laser_features[ii].object_label;
+		
+		for(int jj=0; jj< lPedInView.size(); jj++)
+		{
+			if(lPedInView[jj].id==laser_id)
+			{
+				lPedInView[jj].pose.x = laser_batch.pedestrian_laser_features[laser_id].pedestrian_laser.point.x;
+				lPedInView[jj].pose.y = laser_batch.pedestrian_laser_features[laser_id].pedestrian_laser.point.y;
+				//lPedInView[ii].id = laser_batch.pedestrian_laser_features[ii].object_label;
+			}
+			ROS_DEBUG_STREAM(ii<<": PedX "<<lPedInView[ii].pose.x << " PedY "<<lPedInView[ii].pose.y);
+		}
+        
+        //obs_flag = true;
     }
 
 
 
+}
+
+void pedestrian_momdp::updateBelief(int id)
+{
+		cout << "---- subproblem update  #" << ii << " ---- " << endl;
+        cout << "Next state " << endl;
+        int nextSVal = getCurrentState(id);
+        int currObservation = getCurrObs(id);
+
+        //double currReward = engine.getReward(*currBelSt, currAction);
+        //expReward += mult*currReward;
+        //mult *= gamma;
+        //reward += currReward;
+
+        //cout << "CurrReward " << currReward << " ExpReward " << expReward << endl;
+
+
+
+        cout << "before update belief" << endl;
+        (lcurrBelSt[ii])->bvec->write(cout); cout << endl;
+        cout << "curr bel sval " << (lcurrBelSt[ii])->sval << endl;
+
+        SharedPointer<BeliefWithState> nextBelSt;
+        engine.runStep((lcurrBelSt[ii]), safeAction, currObservation, nextSVal, nextBelSt );
+
+        copy(*(lcurrBelSt[ii])->bvec, *nextBelSt->bvec);
+        (lcurrBelSt[ii])->sval = nextSVal;
+
+        cout << "next belief" << endl;
+        (lcurrBelSt[ii])->bvec->write(cout); cout << endl;
+        cout << "next bel sval " << (lcurrBelSt[ii])->sval << endl;
+        //map<string, string> aa = problem->getActionsSymbols(currAction);
+        map<string, string> aa = problem->getActionsSymbols(safeAction);
+        cout << "safe action " << aa["action_robot"] << endl;
+
+        ROS_INFO ("next bel sval %d", (lcurrBelSt[ii])->sval);
 }
 
 void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
@@ -587,88 +667,89 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
     if(obs_first)
     {
 
-        pomdp_initialize();
-        for(int ii=0; ii<num_ped; ii++)
-        {
+        policy_initialize();
+        //for(int ii=0; ii<num_ped; ii++)
+        //{
 
-            SharedPointer<BeliefWithState> currBelSt (new BeliefWithState());
+            //SharedPointer<BeliefWithState> currBelSt (new BeliefWithState());
 
-            currSVal[ii] = getCurrentState(ii);
+            //currSVal[ii] = getCurrentState(ii);
 
-            SharedPointer<SparseVector> startBeliefVec;
-            cout<<"ControlLoop: startBelief"<<endl;
-            if (problem->initialBeliefStval->bvec)
-                startBeliefVec = problem->initialBeliefStval->bvec;
-            else
-                startBeliefVec = problem->initialBeliefYByX[currSVal[ii]];
+            //SharedPointer<SparseVector> startBeliefVec;
+            //cout<<"ControlLoop: startBelief"<<endl;
+            //if (problem->initialBeliefStval->bvec)
+                //startBeliefVec = problem->initialBeliefStval->bvec;
+            //else
+                //startBeliefVec = problem->initialBeliefYByX[currSVal[ii]];
 
-            cout<<"ControlLoop: EndStartBelief"<<endl;
-            /// TBP : initializing belief for Y
-            int currUnobsState = chooseFromDistribution(*startBeliefVec);
-            int belSize = startBeliefVec->size();
+            //cout<<"ControlLoop: EndStartBelief"<<endl;
+            ///// TBP : initializing belief for Y
+            //int currUnobsState = chooseFromDistribution(*startBeliefVec);
+            //int belSize = startBeliefVec->size();
 
 
-            currBelSt->sval = currSVal[ii];
-            copy(*currBelSt->bvec, *startBeliefVec);
-            cout << "Starting Belief " << endl;
-            currBelSt->bvec->write(cout);//, *streamOut);
-            cout << endl;
+            //currBelSt->sval = currSVal[ii];
+            //copy(*currBelSt->bvec, *startBeliefVec);
+            //cout << "Starting Belief " << endl;
+            //currBelSt->bvec->write(cout);//, *streamOut);
+            //cout << endl;
 
-            lcurrBelSt.push_back(currBelSt);
-            currAction[ii] = policy->getBestActionLookAhead(*currBelSt);
-        }
-        obs_first = false;
-        return;
+            //lcurrBelSt.push_back(currBelSt);
+            //currAction[ii] = policy->getBestActionLookAhead(*currBelSt);
+        //}
+        //obs_first = false;
+        //return;
     }
-    //Start pomdp stuff
+    
+    ///Start pomdp stuff
     cout << "=====================================================================" << endl;
     num_steps++;
     cout << "Curr State in loop : " << endl; //getCurrentState();/// Just to print current state
 
 
     //int currAction = policy->getBestActionLookAhead(*currBelSt);
-    int mlcurrAction[num_ped];
-    for(int ii=0; ii<num_ped; ii++)
-    {
-        currAction[ii] = policy->getBestActionLookAhead(*(lcurrBelSt[ii]));
+    //int mlcurrAction[num_ped];
+    //for(int ii=0; ii<num_ped; ii++)
+    //{
+        //currAction[ii] = policy->getBestActionLookAhead(*(lcurrBelSt[ii]));
 
-        if(mostLikelyAlgo)
-        {
-            cout << " Most Likely algorithm " << endl;
-            int mostProbY  = (lcurrBelSt[ii])->bvec->argmax(); 	//get the most probable Y state
-            double prob = (lcurrBelSt[ii])->bvec->operator()(mostProbY);	//get its probability
+        //if(mostLikelyAlgo)
+        //{
+            //cout << " Most Likely algorithm " << endl;
+            //int mostProbY  = (lcurrBelSt[ii])->bvec->argmax(); 	//get the most probable Y state
+            //double prob = (lcurrBelSt[ii])->bvec->operator()(mostProbY);	//get its probability
 
-            SharedPointer<BeliefWithState> currMLBel (new BeliefWithState());
-            //SparseVector currMLBel;
-            //copy(currMLBel, currBelSt);
-            copy(*currMLBel->bvec, *(lcurrBelSt[ii])->bvec);
+            //SharedPointer<BeliefWithState> currMLBel (new BeliefWithState());
+            ////SparseVector currMLBel;
+            ////copy(currMLBel, currBelSt);
+            //copy(*currMLBel->bvec, *(lcurrBelSt[ii])->bvec);
 
-            int resize = (lcurrBelSt[ii])->bvec->size();
-            currMLBel->bvec->resize(resize);
-            currMLBel->bvec->push_back(mostProbY, 1.0);
-            currMLBel->sval = (lcurrBelSt[ii])->sval;
+            //int resize = (lcurrBelSt[ii])->bvec->size();
+            //currMLBel->bvec->resize(resize);
+            //currMLBel->bvec->push_back(mostProbY, 1.0);
+            //currMLBel->sval = (lcurrBelSt[ii])->sval;
 
-            mlcurrAction[ii] = policy->getBestActionLookAhead(*currMLBel);
+            //mlcurrAction[ii] = policy->getBestActionLookAhead(*currMLBel);
 
-            if(mlcurrAction[ii]==currAction[ii])
-            {
-                cout << "Same actions " << endl;
-            }
-            else
-                currAction[ii] = mlcurrAction[ii];
-        }
-    }
+            //if(mlcurrAction[ii]==currAction[ii])
+            //{
+                //cout << "Same actions " << endl;
+            //}
+            //else
+                //currAction[ii] = mlcurrAction[ii];
+        //}
+    //}
 
     /// combining the actions by picking the safest action
 
-    int safeAction=1; /// actions : cru=0, acc=1, decc=2
-    for(int ii=0; ii<num_ped; ii++)
+    int safeAction=1; /// actions : cru=0, acc=1, decc=2    
+    for(int ii=0; ii<lPedInView.size(); ii++)
     {
-        if( (currAction[ii]!=safeAction) && (safeAction!=2) )
+        if( (lPedInView[ii].currAction!=safeAction) && (safeAction!=2) )
         {
-            if(currAction[ii]==2)
+            if(lPedInView[ii].currAction==2)
                 safeAction = 2;
-            else if (currAction[ii]==0)
+            else if (lPedInView[ii].currAction==0)
                 safeAction =0;
         }
     }
@@ -702,38 +783,7 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
     /// update belief
     for(int ii=0; ii<num_ped; ii++)
     {
-        cout << "---- subproblem update  #" << ii << " ---- " << endl;
-        cout << "Next state " << endl;
-        int nextSVal = getCurrentState(ii);
-        int currObservation = getCurrObs(ii);
-
-        //double currReward = engine.getReward(*currBelSt, currAction);
-        //expReward += mult*currReward;
-        //mult *= gamma;
-        //reward += currReward;
-
-        //cout << "CurrReward " << currReward << " ExpReward " << expReward << endl;
-
-
-
-        cout << "before update belief" << endl;
-        (lcurrBelSt[ii])->bvec->write(cout); cout << endl;
-        cout << "curr bel sval " << (lcurrBelSt[ii])->sval << endl;
-
-        SharedPointer<BeliefWithState> nextBelSt;
-        engine.runStep((lcurrBelSt[ii]), safeAction, currObservation, nextSVal, nextBelSt );
-
-        copy(*(lcurrBelSt[ii])->bvec, *nextBelSt->bvec);
-        (lcurrBelSt[ii])->sval = nextSVal;
-
-        cout << "next belief" << endl;
-        (lcurrBelSt[ii])->bvec->write(cout); cout << endl;
-        cout << "next bel sval " << (lcurrBelSt[ii])->sval << endl;
-        //map<string, string> aa = problem->getActionsSymbols(currAction);
-        map<string, string> aa = problem->getActionsSymbols(safeAction);
-        cout << "safe action " << aa["action_robot"] << endl;
-
-        ROS_INFO ("next bel sval %d", (lcurrBelSt[ii])->sval);
+		updateBelief(ii);
     }
 
 
@@ -829,8 +879,8 @@ int pedestrian_momdp::getCurrentState(int id)
 
     /// Bin continuous values to get discrete values
 
-    int px = getXGrid(lPedInView[id].pedx_);
-    int py = getYGrid(lPedInView[id].pedy_);
+    int px = getXGrid(lPedInView[id].pose.x);
+    int py = getYGrid(lPedInView[id].pose.y);
     char ped_str[30];
     sprintf(ped_str,"sx%02dy%02d",px,py);
     //if(myDebug)
