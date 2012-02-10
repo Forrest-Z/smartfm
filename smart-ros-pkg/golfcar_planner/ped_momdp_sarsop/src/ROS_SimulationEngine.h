@@ -1,5 +1,5 @@
-#ifndef PSG_SimulationEngine_H
-#define PSG_SimulationEngine_H
+#ifndef ROS_SimulationEngine_H
+#define ROS_SimulationEngine_H
 
 #include <vector>
 #include <string>
@@ -12,7 +12,7 @@ namespace momdp
     class AlphaVectorPolicy;
     class SolverParams;
 
-    class PSG_SimulationEngine
+    class ROS_SimulationEngine
     {
         private:
             SharedPointer<MOMDP> problem;
@@ -21,7 +21,7 @@ namespace momdp
 
 
         public:
-            PSG_SimulationEngine();
+            ROS_SimulationEngine();
             void setup(SharedPointer<MOMDP> problem, SharedPointer<AlphaVectorPolicy> policy, SolverParams * solverParams);
             
             void performActionObs(belief_vector& outBelObs, int action, const BeliefWithState& belSt) const;
@@ -43,7 +43,7 @@ namespace momdp
 			
 
 
-            virtual ~PSG_SimulationEngine(void);
+            virtual ~ROS_SimulationEngine(void);
     };
 
 

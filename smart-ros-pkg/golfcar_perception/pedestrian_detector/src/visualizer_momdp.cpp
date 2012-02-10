@@ -89,29 +89,72 @@ void HOGVisualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_vi
     std::stringstream ss,ss2;
     float offset = 10.0;
     ss<<pv.object_label;
-    Point UL = Point(pv.cvRect_x1, pv.cvRect_y1);
-    Point UC = Point((pv.cvRect_x2+pv.cvRect_x1)/2, pv.cvRect_y1);
-    Point UP_C_OFF = Point((pv.cvRect_x1+pv.cvRect_x2)/2, pv.cvRect_y1+offset);
-    Point UL_OFF = Point(pv.cvRect_x1, pv.cvRect_y1+offset);
-    Point UR_2OFF = Point(pv.cvRect_x2, pv.cvRect_y1+(2*offset));
-    Point UR_OFF = Point(pv.cvRect_x2, pv.cvRect_y1+offset);
-    Point BR = Point(pv.cvRect_x2, pv.cvRect_y2);
-    Point BL = Point(pv.cvRect_x1, pv.cvRect_y2);
+    /// first row
+    Point UL = Point(pv.cvRect_x1, pv.cvRect_y1); /// top left
+    Point UR = Point(pv.cvRect_x2, pv.cvRect_y1); /// top left
+    Point UR_UP = Point(pv.cvRect_x2, pv.cvRect_y1-offset); /// top left
+    Point UC = Point((pv.cvRect_x2+pv.cvRect_x1)/2, pv.cvRect_y1); /// top mid
+    Point UP_C_OFF = Point((pv.cvRect_x1+pv.cvRect_x2)/2, pv.cvRect_y1+offset); /// top thickness
+    Point UL_OFF = Point(pv.cvRect_x1, pv.cvRect_y1+offset); /// topleft thickness
+    //Point UR_OFF = Point(pv.cvRect_x2, pv.cvRect_y1+offset); /// topright thickness
+    
+    /// second row
+    Point UR_2OFF = Point(pv.cvRect_x2, pv.cvRect_y1+(2*offset)); /// 2nd row mid thickness
+    Point UR_OFF = Point(pv.cvRect_x2, pv.cvRect_y1+offset); 
+    Point BR = Point(pv.cvRect_x2, pv.cvRect_y2); /// bot left
+    Point BL = Point(pv.cvRect_x1, pv.cvRect_y2); /// bot right
+    
     for(size_t i=0; i<ped_bel.size(); i++)
     {
+		
         if(ped_bel[i].id == pv.object_label)
         {
-            cout<<ped_bel[i].id<<" "<<int(255.0*ped_bel[i].left_side)<<" "<<int(255.0*ped_bel[i].right_side)<<endl;
-            int left_gradient = 255-(255.0*ped_bel[i].left_side);
-            int right_gradient = 255-(255.0*ped_bel[i].right_side);
-            rectangle(img,UL, UP_C_OFF, Scalar(255,left_gradient,left_gradient), CV_FILLED);
-            rectangle(img,UC, UR_OFF, Scalar(255,right_gradient,right_gradient), CV_FILLED);
-            if(ped_bel[i].decision==-1) rectangle(img,UL_OFF, UR_2OFF, Scalar(0,0,255), CV_FILLED);
-            else rectangle(img,UL_OFF, UR_2OFF, Scalar(0,255,0), CV_FILLED);
+            cout<<ped_bel[i].id<<" "<<ped_bel[i].left_side<<" "<<ped_bel[i].right_side<<endl;
+            
+            //cout << " x " << pv.cvRect_x1 << " y " << pv.cvRect_y1; 
+            //cout << " x " << pv.cvRect_x2 << " y " << pv.cvRect_y2 << endl;; 
+            
+			/// Gradient Coding
+            //int left_gradient = 255-(255.0*ped_bel[i].left_side);
+            //int right_gradient = 255-(255.0*ped_bel[i].right_side);
+
+            //rectangle(img,UL, UP_C_OFF, Scalar(255,left_gradient,left_gradient), CV_FILLED);
+            //rectangle(img,UL, UP_C_OFF, Scalar(255,left_gradient,left_gradient), CV_FILLED);
+            //rectangle(img,UC, UR_OFF, Scalar(255,right_gradient,right_gradient), CV_FILLED);
+            
+            /// size encoding
+            //rectangle(img,UL, UP_C_OFF, Scalar(255,255,255), CV_FILLED);
+            /// fill with white
+            //rectangle(img,UL, UR_OFF, Scalar(255,255,255), CV_FILLED);
+            /// left bar
+            double length = 40;//(pv.cvRect_x2 - pv.cvRect_x1);
+            //Point leftP = Point(pv.cvRect_x1, -ped_bel[i].left_side*length+ pv.cvRect_y1);
+            Point leftP = Point(pv.cvRect_x1, ped_bel[i].left_side*length+ pv.cvRect_y1);
+            rectangle(img,leftP, UC, Scalar(255,0,0), CV_FILLED);
+			//Point leftP2 = Point(pv.cvRect_x2, -30+ pv.cvRect_y1);
+            //rectangle(img,leftP2, UC, Scalar(255,255,255), CV_FILLED);
+
+            
+            /// right bar
+            Point rightP = Point(pv.cvRect_x2,  ped_bel[i].right_side*length + pv.cvRect_y1);
+            rectangle(img, rightP, UC, Scalar(255,0,0), CV_FILLED);
+            
+            
+            
+            
+            
+            /// lower panel
+            if(ped_bel[i].decision==-1) 
+				rectangle(img,UL, UR_UP, Scalar(0,0,255), CV_FILLED); /// red
+            else 
+				rectangle(img,UL, UR_UP, Scalar(0,255,0), CV_FILLED); /// green
+            
+            
+            
         }
     }
 
-    putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,0,255), 1, 8);
+    putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
     //ss2<<setprecision(2)<<fixed<<pv.confidence*100.0;
     //putText(img, ss2.str(), BR+Point(-45,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
 }
