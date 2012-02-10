@@ -1,7 +1,9 @@
-#include "camera_project.h"
+#include "camera_project_node.h"
+
+#include <sensing_on_road/pedestrian_laser_batch.h>
 
 
-class camera_project_baoxing : protected camera_project
+class camera_project_baoxing : protected camera_project_node
 {
 public:
     camera_project_baoxing();
@@ -45,9 +47,9 @@ void camera_project_baoxing::ped_laser_batch_CB(const sensing_on_road::pedestria
         if( ! fmutil::isWithin(ped_laser.pedestrian_laser.point.x, 0.5, 20) )
             continue;
 
-        Rectangle rect;
+        camera_project::CvRectangle rect;
         try {
-            rect = makeRectangle(ped_laser.pedestrian_laser, ped_laser.size);
+            rect = project(ped_laser.pedestrian_laser, ped_laser.size, object_height_);
         } catch( std::out_of_range & e ) {
             ROS_WARN("out of range: %s", e.what());
             continue;
@@ -65,7 +67,7 @@ void camera_project_baoxing::ped_laser_batch_CB(const sensing_on_road::pedestria
         msg.complete_flag = true;
         msg.object_label = ped_laser.object_label;
         msg.disz = ped_laser.pedestrian_laser.point.x;
-        setRectMsg(rect, msg);
+        setRectMsg(rect, &msg);
         ped_vision_batch_msg.pd_vector.push_back(msg);
     }
 

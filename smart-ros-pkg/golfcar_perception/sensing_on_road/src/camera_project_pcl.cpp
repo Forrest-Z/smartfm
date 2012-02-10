@@ -1,6 +1,12 @@
-#include "camera_project.h"
+#include "camera_project_node.h"
 
-class camera_project_pcl : protected camera_project
+#include <tf/message_filter.h>
+#include <message_filters/subscriber.h>
+
+#include <feature_detection/clusters.h>
+
+
+class camera_project_pcl : protected camera_project_node
 {
 public:
     camera_project_pcl();
@@ -51,9 +57,9 @@ void camera_project_pcl::pcl_in_CB(const boost::shared_ptr<const feature_detecti
         pt_src.point.y = clusters_ptr->clusters[i].centroid.y;
         pt_src.point.z = clusters_ptr->clusters[i].centroid.z;
 
-        Rectangle rect;
+        camera_project::CvRectangle rect;
         try {
-            rect = makeRectangle(pt_src, clusters_ptr->clusters[i].width);
+            rect = project(pt_src, clusters_ptr->clusters[i].width, object_height_);
         } catch( std::out_of_range & e ) {
             ROS_WARN("out of range: %s", e.what());
             continue;
@@ -67,7 +73,7 @@ void camera_project_pcl::pcl_in_CB(const boost::shared_ptr<const feature_detecti
         msg.decision_flag = false;
         msg.complete_flag = true;
         msg.disz = clusters_ptr->clusters[i].centroid.x;
-        setRectMsg(rect, msg);
+        setRectMsg(rect, &msg);
         ped_vision_batch_msg.pd_vector.push_back(msg);
     }
 
@@ -78,7 +84,7 @@ void camera_project_pcl::pcl_in_CB(const boost::shared_ptr<const feature_detecti
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "camera_project_pclor");
+    ros::init(argc, argv, "camera_project_pcl");
     camera_project_pcl * camera_project_pcl_node = new camera_project_pcl();
     ros::spin();
     delete camera_project_pcl_node;

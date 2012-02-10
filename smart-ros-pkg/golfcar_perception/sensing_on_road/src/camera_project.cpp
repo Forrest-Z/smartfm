@@ -1,6 +1,9 @@
 #include "camera_project.h"
 
 
+namespace camera_project
+{
+
 const double PIXEL_ALLOWANCE = 30;
 const double LASER_MOUNTING_HEIGHT = 1.0;
 
@@ -26,28 +29,30 @@ CameraCalibrationParameters::CameraCalibrationParameters()
 }
 
 
-camera_project::camera_project()
+camera_projector::camera_projector() : camera_frame_id_("usb_cam")
 {
-    nh_.param("camera_frame_id", camera_frame_id_, std::string("usb_cam"));
-    nh_.param("object_height", object_height_, 2.0);
-    ped_vision_pub_ = nh_.advertise<sensing_on_road::pedestrian_vision_batch>("camera_project_out", 2);
+}
+
+void camera_projector::setCameraFrameID(const std::string & id)
+{
+    camera_frame_id_ = id;
 }
 
 
 // A helper function to make a rectangle from the centroid position and width
-Rectangle camera_project::makeRectangle (
+CvRectangle camera_projector::project(
     const geometry_msgs::PointStamped & centroid_in,
-    double width)
+    double width, double height) const
 {
     //transform from source frame to camera frame
-    geometry_msgs::PointStamped ped_camera;
-    tf_.transformPoint(camera_frame_id_, centroid_in, ped_camera);
+    geometry_msgs::PointStamped pt_camera;
+    tf_.transformPoint(camera_frame_id_, centroid_in, pt_camera);
 
     //tranform from ROS-convention to Vision-convention;
     geometry_msgs::Point32 tmp;
-    tmp.x = -ped_camera.point.y;
-    tmp.y =  ped_camera.point.z;
-    tmp.z =  ped_camera.point.x;
+    tmp.x = -pt_camera.point.y;
+    tmp.y =  pt_camera.point.z;
+    tmp.z =  pt_camera.point.x;
 
     // project to frame (pixel coordinates)
     IntPoint centroid = projection(tmp);
@@ -60,23 +65,23 @@ Rectangle camera_project::makeRectangle (
     float dx_coef  = cam_param_.fc[0]/tmp.z;
     float dy_coef  = cam_param_.fc[1]/tmp.z;
 
-    int lower_x = centroid.x - dx_coef*width/2 - PIXEL_ALLOWANCE;
-    int lower_y = centroid.y - dx_coef*LASER_MOUNTING_HEIGHT - PIXEL_ALLOWANCE;
-    int upper_x = centroid.x + dy_coef*width/2 + PIXEL_ALLOWANCE;
-    int upper_y = centroid.y + dy_coef*(object_height_-LASER_MOUNTING_HEIGHT) + PIXEL_ALLOWANCE;
+    float x1 = centroid.x - dx_coef*width/2 - PIXEL_ALLOWANCE;
+    float y1 = centroid.y - dx_coef*LASER_MOUNTING_HEIGHT - PIXEL_ALLOWANCE;
+    float x2 = centroid.x + dy_coef*width/2 + PIXEL_ALLOWANCE;
+    float y2 = centroid.y + dy_coef*(height-LASER_MOUNTING_HEIGHT) + PIXEL_ALLOWANCE;
 
-    Rectangle rect;
-    rect.upper_left.x = lower_x<0 ? 0 : lower_x;
-    rect.size.x = (upper_x>cam_param_.width ? cam_param_.width : upper_x) - rect.upper_left.x;
-    rect.upper_left.y = lower_y<0 ? 0 : lower_y;
-    rect.size.y = (upper_y>cam_param_.height ? cam_param_.height : upper_y) - rect.upper_left.y;
+    CvRectangle rect;
+    rect.upper_left.x = x1<0 ? 0 : x1;
+    rect.upper_left.y = y1<0 ? 0 : y1;
+    rect.lower_right.x = x2>cam_param_.width ? cam_param_.width : x2;
+    rect.lower_right.y = y2>cam_param_.height ? cam_param_.height : y2;
     return rect;
 }
 
 
 // A helper function. transform a 3D point in camera coordinates into a
 // 2D point in pixel coordinates. Takes into account the camera parameters.
-IntPoint camera_project::projection(const geometry_msgs::Point32 &pt)
+IntPoint camera_projector::projection(const geometry_msgs::Point32 &pt) const
 {
     if(pt.z <= 0.0) throw std::out_of_range("z<0");
 
@@ -103,15 +108,25 @@ IntPoint camera_project::projection(const geometry_msgs::Point32 &pt)
 }
 
 
-void setRectMsg(const Rectangle & rect, sensing_on_road::pedestrian_vision & msg)
+CvRectangle convertRect(const Rectangle & r)
 {
-    msg.x          = rect.upper_left.x;
-    msg.y          = rect.upper_left.y;
-    msg.width      = rect.size.x;
-    msg.height     = rect.size.y;
-
-    msg.cvRect_x1  = msg.x;
-    msg.cvRect_y1  = msg.y;
-    msg.cvRect_x2  = msg.x + msg.width;
-    msg.cvRect_y2  = msg.y + msg.height;
+    CvRectangle cvr;
+    cvr.upper_left.x  = r.upper_left.x;
+    cvr.upper_left.y  = r.upper_left.y;
+    cvr.lower_right.x  = r.upper_left.x + r.width;
+    cvr.lower_right.y  = r.upper_left.y + r.height;
+    return cvr;
 }
+
+Rectangle convertRect(const CvRectangle & r)
+{
+    Rectangle rect;
+    rect.upper_left.x = r.upper_left.x;
+    rect.upper_left.y = r.upper_left.y;
+    rect.width = r.lower_right.x - r.upper_left.x;
+    rect.height = r.lower_right.y - r.lower_right.x;
+    return rect;
+}
+
+
+} //namespace camera_project

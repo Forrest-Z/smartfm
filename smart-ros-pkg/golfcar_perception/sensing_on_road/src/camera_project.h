@@ -10,22 +10,14 @@
 #include <cmath>
 
 #include <ros/ros.h>
-#include <geometry_msgs/Point32.h>
-#include <sensor_msgs/PointCloud.h>
 #include <tf/transform_listener.h>
-#include <tf/message_filter.h>
-#include <message_filters/subscriber.h>
+#include <geometry_msgs/Point32.h>
+#include <geometry_msgs/PointStamped.h>
 
 #include <fmutil/fm_math.h>
 
-#include <sensing_on_road/pedestrian_laser.h>
-#include <sensing_on_road/pedestrian_laser_batch.h>
-#include <sensing_on_road/pedestrian_vision.h>
-#include <sensing_on_road/pedestrian_vision_batch.h>
-
-#include <feature_detection/cluster.h>
-#include <feature_detection/clusters.h>
-
+namespace camera_project
+{
 
 /// A structure that holds the camera calibration parameters.
 struct CameraCalibrationParameters
@@ -51,52 +43,62 @@ struct IntPoint {
 /// A structure to represent a rectangle in the image (pixel coords)
 struct Rectangle {
     IntPoint upper_left; ///< lower left corner
-    IntPoint size; ///< width and height
+    int width;
+    int height;
+};
+
+struct FloatPoint {
+    float x, y;
+};
+
+struct CvRectangle {
+    FloatPoint upper_left;
+    FloatPoint lower_right;
 };
 
 
-class camera_project
+/// Convert a Rectangle to a CvRectangle
+CvRectangle convertRect(const Rectangle & r);
+
+/// Convert a CvRectangle to a Rectangle
+Rectangle convertRect(const CvRectangle & r);
+
+
+class camera_projector
 {
 public:
-    camera_project();
+    /// constructor with default parameter values
+    camera_projector();
+
+    void setCameraFrameID(const std::string &);
+
+    /// Project a rectangle from real world to camera.
+    ///
+    /// The input rectangle is defined by its centroid position and its size.
+    /// The output rectangle is defined by the position of its upper left corner
+    /// and its size.
+    /// @param centroid: the centroid of the input rectangle (and its frame)
+    /// @param width: the width of the input rectangle.
+    /// @param height: the height of the input rectangle.
+    /// @return the rectangle in pixel coordinates
+    CvRectangle project(const geometry_msgs::PointStamped & centroid, double width, double height) const;
+
 
 protected:
-    ros::NodeHandle nh_;
-
-    /// Frame ID of the camera (where to project)
+    /// Frame ID of the camera (where to project). Defaults to "usb_cam"
     std::string camera_frame_id_;
-
-    /// We need to know a priori the height of the object we want to detect
-    double object_height_;
-
-
 
     /// Parameters of the camera
     CameraCalibrationParameters cam_param_;
 
-
-
-    /// Publishes result of projection on topic 'ped_vision_batch' (type
-    /// pedestrian_vision_batch). Messages on this topic describe the position
-    /// of a set of pedestrians as detected by the laser, in camera coordinates
-    /// (pixels).
-    ros::Publisher ped_vision_pub_;
-
-
-
     tf::TransformListener tf_;
-
-    /// A helper function to make a rectangle from the centroid position and width
-    Rectangle makeRectangle(const geometry_msgs::PointStamped & centroid_in, double width);
 
     /// A helper function. transform a 3D point in camera coordinates into a
     /// 2D point in pixel coordinates. Takes into account the camera parameters.
-    IntPoint projection(const geometry_msgs::Point32 &pt);
+    IntPoint projection(const geometry_msgs::Point32 &pt) const;
 };
 
 
-/// A helper function to fill in the rectangle part in the pedestrian_vision
-/// message from the Rectangle information.
-void setRectMsg(const Rectangle & rect, sensing_on_road::pedestrian_vision & msg);
+} //namespace camera_project
 
 #endif
