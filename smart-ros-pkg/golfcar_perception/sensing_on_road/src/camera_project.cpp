@@ -23,7 +23,6 @@
 #include <feature_detection/clusters.h>
 
 
-const double MAX_HEIGHT = 2.0;
 const double PIXEL_ALLOWANCE = 30;
 const double LASER_MOUNTING_HEIGHT = 1.0;
 
@@ -86,6 +85,17 @@ private:
     /// Frame ID of the camera (where to project)
     std::string camera_frame_id_;
 
+    /// We need to know a priori the height of the object we want to detect
+    double object_height_;
+
+    /// Publishes result of projection on topic 'ped_vision_batch' (type
+    /// pedestrian_vision_batch). Messages on this topic describe the position
+    /// of a set of pedestrians as detected by the laser, in camera coordinates
+    /// (pixels).
+    ros::Publisher ped_vision_pub_;
+
+
+
     /// Subscribes to the 'ped_laser_batch' topic (type pedestrian_laser_batch).
     /// Messages on this topic describe the position of a set of pedestrians as
     /// detected by the laser.
@@ -93,11 +103,10 @@ private:
     /// ped_vision_pub_.
     ros::Subscriber ped_laser_batch_sub_;
 
-    /// Publishes result of projection on topic 'ped_vision_batch' (type
-    /// pedestrian_vision_batch). Messages on this topic describe the position
-    /// of a set of pedestrians as detected by the laser, in camera coordinates
-    /// (pixels).
-    ros::Publisher ped_vision_pub_;
+    /// Callback function for ped_laser_batch_sub_
+    void ped_laser_batch_CB(const sensing_on_road::pedestrian_laser_batch &);
+
+
 
     /// Subscribes to the 'camera_project_pcl_in' topic (type feature_detection/clusters).
     /// Messages on this topic describe the position of a set of pedestrians as
@@ -107,17 +116,16 @@ private:
     /// ped_vision_pub_.
     message_filters::Subscriber<feature_detection::clusters> ped_pcl_sub_;
 
-    tf::TransformListener tf_;
-
     /// We use a tf::MessageFilter, connected to ped_pcl_sub_, so that messages
     /// are cached until a transform is available.
     tf::MessageFilter<feature_detection::clusters> * ped_pcl_sub_tf_filter_;
 
-    /// Callback function for ped_laser_batch_sub_
-    void ped_laser_batch_CB(const sensing_on_road::pedestrian_laser_batch &);
-
     /// Callback function for ped_pcl_sub_tf_filter_
     void pcl_in_CB(const boost::shared_ptr<const feature_detection::clusters> &);
+
+
+
+    tf::TransformListener tf_;
 
     /// A helper function to make a rectangle from the centroid position and width
     Rectangle makeRectangle(const geometry_msgs::PointStamped & centroid_in, double width);
@@ -128,10 +136,15 @@ private:
 };
 
 
+
+
+
 camera_project::camera_project()
 {
     ros::NodeHandle nh;
+
     nh.param("camera_frame_id", camera_frame_id_, std::string("usb_cam"));
+    nh.param("object_height", object_height_, 2.0);
 
     // setup the PointCloud channel
     ped_pcl_sub_.subscribe(nh, "pedestrian_clusters", 10);
@@ -145,10 +158,6 @@ camera_project::camera_project()
     // setup the result publisher
     ped_vision_pub_ = nh.advertise<sensing_on_road::pedestrian_vision_batch>("ped_vision_batch", 2);
 }
-
-
-
-
 
 
 // A helper function to make a rectangle from the centroid position and width
@@ -180,7 +189,7 @@ Rectangle camera_project::makeRectangle (
     int lower_x = centroid.x - dx_coef*width/2 - PIXEL_ALLOWANCE;
     int lower_y = centroid.y - dx_coef*LASER_MOUNTING_HEIGHT - PIXEL_ALLOWANCE;
     int upper_x = centroid.x + dy_coef*width/2 + PIXEL_ALLOWANCE;
-    int upper_y = centroid.y + dy_coef*(MAX_HEIGHT-LASER_MOUNTING_HEIGHT) + PIXEL_ALLOWANCE;
+    int upper_y = centroid.y + dy_coef*(object_height_-LASER_MOUNTING_HEIGHT) + PIXEL_ALLOWANCE;
 
     Rectangle rect;
     rect.upper_left.x = lower_x<0 ? 0 : lower_x;
@@ -234,9 +243,6 @@ void setRectMsg(const Rectangle & rect, sensing_on_road::pedestrian_vision & msg
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-
-
 void camera_project::pcl_in_CB(const boost::shared_ptr<const feature_detection::clusters> & clusters_ptr)
 {
     // For each cluster detected by the sensor, create a corresponding ROI
@@ -268,9 +274,10 @@ void camera_project::pcl_in_CB(const boost::shared_ptr<const feature_detection::
         }
 
         sensing_on_road::pedestrian_vision msg;
+        msg.cluster = clusters_ptr->clusters[i];
         msg.decision_flag = false;
         msg.complete_flag = true;
-        msg.disz   = clusters_ptr->clusters[i].centroid.x;
+        msg.disz = clusters_ptr->clusters[i].centroid.x;
         setRectMsg(rect, msg);
         ped_vision_batch_msg.pd_vector.push_back(msg);
     }
@@ -311,6 +318,9 @@ void camera_project::ped_laser_batch_CB(const sensing_on_road::pedestrian_laser_
         }
 
         sensing_on_road::pedestrian_vision msg;
+        msg.cluster.centroid.x = ped_laser.pedestrian_laser.point.x;
+        msg.cluster.centroid.y = ped_laser.pedestrian_laser.point.y;
+        msg.cluster.centroid.z = ped_laser.pedestrian_laser.point.z;
         msg.confidence = ped_laser.confidence;
         msg.decision_flag = false;
         msg.complete_flag = true;

@@ -1,7 +1,13 @@
+# Which cluster are we considering?
+feature_detection/cluster cluster
+
+# baoxing's stuffs
 int32 object_label
 bool complete_flag
-bool decision_flag
 float32 confidence
+
+# result from the vision
+bool decision_flag
 
 # distance from the camera to the pedestrian
 float32 disz
