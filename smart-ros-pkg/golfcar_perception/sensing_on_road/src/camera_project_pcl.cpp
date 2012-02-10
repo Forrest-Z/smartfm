@@ -25,7 +25,7 @@ private:
 
 camera_project_pcl::camera_project_pcl()
 {
-    ped_pcl_sub_.subscribe(nh_, "pedestrian_clusters", 10);
+    ped_pcl_sub_.subscribe(nh_, "camera_project_in", 10);
     ped_pcl_sub_tf_filter_ = new tf::MessageFilter<feature_detection::clusters>(ped_pcl_sub_, tf_, camera_frame_id_, 10);
     ped_pcl_sub_tf_filter_->registerCallback(boost::bind(&camera_project_pcl::pcl_in_CB, this, _1));
     ped_pcl_sub_tf_filter_->setTolerance(ros::Duration(0.05));
