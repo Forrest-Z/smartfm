@@ -29,183 +29,6 @@ void pedestrian_momdp::initPedGoal()
     return;
 }
 
-
-void pedestrian_momdp::parse_simul_config( fstream& configfile )
-{
-    ///// simulation variables are ped pos, ped uncert
-
-    ////char input[50]; /// collect input params, white space separator
-
-    //lane = false;
-    //bool crosssmall = false;
-    //bool crosslarge = false;
-    //ell = false;
-
-    //int env, ulevel;
-
-    //string input;
-
-    //cout << " Parsing input " ;
-    //while(!configfile.eof())
-    //{
-    //configfile >> input;
-
-    ////cout << " Parsing input " << input << endl;
-
-    //if(input.find("env:") != string::npos)
-    //{
-    //sscanf(input.c_str(), " env:%d ", &env);
-    //cout << " env:" ;
-
-    //if(env==0)
-    //{
-    //lane=true;
-    //cout << " lane " ;
-    //}
-    //else if( env==1 )
-    //{
-    //crosssmall=true;
-    //cout << " crosssmall " ;
-    //cross=true;
-    //}
-    //else if ( env==2)
-    //{
-    //crosslarge=true;
-    //cout << " crosslarge " ;
-    //cross=true;
-    //}
-    //else if ( env==3)
-    //{
-    //ell = true;
-    //cout << " ell ";
-    //}
-    //}
-    //else if(input.find("algo:") != string::npos)
-    //{
-    //sscanf(input.c_str(), " algo:%d ", &mostLikelyAlgo);
-    //cout << " algo: " << mostLikelyAlgo;
-    //}
-    //else if(input.find("X:") != string::npos)
-    //{
-    //sscanf(input.c_str(), " X:%d ", &X_SIZE);
-    //cout << " X: " << X_SIZE;
-    //}
-    //else if(input.find("Y:") != string::npos)
-    //{
-    //sscanf(input.c_str(), " Y:%d ", &Y_SIZE);
-    //cout << " Y: " << Y_SIZE;
-    //}
-    //else if(input.find("robx:") != string::npos)
-    //{
-    //sscanf(input.c_str(), " robx:%d ", &robx);
-    //cout << " robx: " << robx;
-    //}
-    ////else if(input.find("Y_INTER:") != string::npos)
-    ////{
-    ////sscanf(input.c_str(), " Y_INTER:%d ", &Y_INTER);
-    ////}
-    ////else if(input.find("simul:") != string::npos)
-    ////{
-    ////sscanf(input.c_str(), " simul:%d ", &simul);
-    ////}
-    //else if(input.find("pedx:") != string::npos)
-    //{
-    //sscanf(input.c_str(), " pedx:%d ", &pedx);
-    //cout << " pedx: " << pedx;
-    //}
-    //else if(input.find("pedy:") != string::npos)
-    //{
-    //sscanf(input.c_str(), " pedy:%d ", &pedy);
-    //cout << " pedy: " << pedy;
-    //}
-    //else if(input.find("pedU:") != string::npos)
-    //{
-    //sscanf(input.c_str(), " pedU:%d ", &ulevel);
-    //cout << " pedU: " << ulevel;
-    //}
-    //else if(input.find("lx:") != string::npos)
-    //{
-    //sscanf(input.c_str(), " lx:%d ", &l_x);
-    //cout << " lx: " << l_x;
-    //}
-    //else if(input.find("ly:") != string::npos)
-    //{
-    //sscanf(input.c_str(), " ly:%d ", &l_y);
-    //cout << " ly: " << l_y;
-    //}
-    //else if(input.find("rx:") != string::npos)
-    //{
-    //sscanf(input.c_str(), " rx:%d ", &r_x);
-    //cout << " rx: " << r_x;
-    //}
-    //else if(input.find("ry:") != string::npos)
-    //{
-    //sscanf(input.c_str(), " ry:%d ", &r_y);
-    //cout << " ry: " << r_y;
-    //}
-    //else
-    //{
-    //cout << endl << " unused input " << input << "  " << endl;
-    //}
-    //} /// end parsing
-
-    //cout << endl << " out of parsing " << endl;
-
-    ///// Player stage mapping
-    //if(lane)
-    //{
-    //PSG_Y=60;
-    //PSG_X=14;
-    ////X_SIZE=4;
-    ////Y_SIZE=10;
-    ////NUM_GOAL=4;
-    //}
-    //else //if(cross)
-    //{
-    //PSG_X=44.0;
-    //PSG_Y=64.0;
-    ////X_SIZE=12;
-    ////Y_SIZE=17;
-    ////NUM_GOAL=6;
-    //}
-
-    //char type[10];
-    //char name[100];
-    //if(mostLikelyAlgo)
-    //sprintf(type,"ML");
-    //else
-    //sprintf(type,"momdp");
-
-    //cout << endl << " Problem " << env << " pedx:" << pedx << " pedy:" << pedy << " robx:" << robx << endl << endl;
-
-    //if(lane)
-    //{
-    //sprintf(name,"stats-lane-%s-x%02d-y%02d-r%02d-u%02d.dat",type,pedx,pedy,robx,ulevel);
-    ////rx_i = 1;
-    //}
-    //else if(crosssmall)
-    //{
-    //sprintf(name,"stats-cross-small-%s-x%02d-y%02d-r%02d-u%02d.dat",type,pedx,pedy,robx,ulevel);
-    ////rx_i = 5;
-    //}
-    //else if(crosslarge)
-    //{
-    //sprintf(name,"stats-cross-large-%s-x%02d-y%02d-r%02d-u%02d.dat",type,pedx,pedy,robx,ulevel);
-    ////rx_i = 5;
-    //}
-    //else if(ell)
-    //{
-    //sprintf(name,"stats-ell-%s-x%02d-y%02d-r%02d-u%02d.dat",type,pedx,pedy,robx,ulevel);
-    ////sprintf(name,"stats-ell-%s.dat",type);
-    //}
-    //else
-    //{
-    //cout << " unknown environment " << endl;
-    //exit(1);
-    //}
-    //statfile.open (name);
-
-}
 void pedestrian_momdp::initPedMOMDP(ped_momdp_sarsop::ped_local_frame ped_local)
 {
 	PED_MOMDP pedProblem;
@@ -222,7 +45,7 @@ void pedestrian_momdp::initPedMOMDP(ped_momdp_sarsop::ped_local_frame ped_local)
 	  startBeliefVec = problem->initialBeliefYByX[pedProblem.currSVal];
 
 
-	/// TBP : initializing belief for Y
+	/// initializing belief for Y
 	int currUnobsState = chooseFromDistribution(*startBeliefVec);
 	int belSize = startBeliefVec->size();
 
@@ -230,16 +53,19 @@ void pedestrian_momdp::initPedMOMDP(ped_momdp_sarsop::ped_local_frame ped_local)
 	pedProblem.currBelSt->sval = pedProblem.currSVal;
 	copy(*(pedProblem.currBelSt)->bvec, *startBeliefVec);
 	
-	cout << "Starting Belief " << endl;
-	pedProblem.currBelSt->bvec->write(cout);
-	cout << endl;
+	//cout << "Starting Belief " << endl;
+	//pedProblem.currBelSt->bvec->write(cout);
+	//cout << endl;
 
 	
 	pedProblem.currAction = policy->getBestActionLookAhead(*(pedProblem.currBelSt));
 	
 	lPedInView.push_back(pedProblem);
 
+	return;
 }
+
+
 int pedestrian_momdp::policy_initialize()
 {
     p = &GlobalResource::getInstance()->solverParams;
@@ -373,72 +199,8 @@ int pedestrian_momdp::policy_initialize()
         }
         ObsSymbolMapping[obs_str]=i;
     }
-
-
-
-
-
-
-
-    /// Initialize online execution
-
-    /// policy follower state
-    /// belief with state
-
-    //SharedPointer<BeliefWithState> nextBelSt;
-    //SharedPointer<BeliefWithState> currBelSt (new BeliefWithState());/// for policy follower based on known x value
-    /// set sval to -1 if x value is not known
-
-    /// belief over x. May not be used depending on model type and commandline flags, but declared here anyways.
-    //DenseVector currBelX; /// belief over x
-
-    /// now choose a starting unobserved state for the actual system
-    cout << "Initial state" << endl;
-    //int currSVal = getCurrentState();
-
-    //for(int ii=0; ii<num_ped; ii++)
-    //currSVal[ii] = getCurrentState(ii);
-
-	///// must initialize in real time
-    //int currSVal[num_ped];
-    //vector< SharedPointer<BeliefWithState> > lcurrBelSt;
-    //int currAction[num_ped];
-
-    //for(int ii=0; ii<num_ped; ii++)
-    //{
-        //cout<<"Final loop: "<<ii<<endl;
-
-        //SharedPointer<BeliefWithState> currBelSt (new BeliefWithState());
-
-        //currSVal[ii] = getCurrentState(ii);
-
-        //SharedPointer<SparseVector> startBeliefVec;
-        //if (problem->initialBeliefStval->bvec)
-            //startBeliefVec = problem->initialBeliefStval->bvec;
-        //else
-            //startBeliefVec = problem->initialBeliefYByX[currSVal[ii]];
-        //cout<<"After belief started"<<endl;
-
-        ///// TBP : initializing belief for Y
-        //int currUnobsState = chooseFromDistribution(*startBeliefVec);
-        //int belSize = startBeliefVec->size();
-
-
-        //currBelSt->sval = currSVal[ii];
-        //copy(*currBelSt->bvec, *startBeliefVec);
-        //cout << "Starting Belief " << endl;
-        //cout<<"Just before write"<<endl;
-        //currBelSt->bvec->write(cout);//, *streamOut);
-        //cout << endl;
-
-        //lcurrBelSt.push_back(currBelSt);
-        //cout<<"Get best action"<<endl;
-        //currAction[ii] = policy->getBestActionLookAhead(*currBelSt);
-    //}
-    //double mult=1;
-    //double gamma = problem->getDiscount();
-
-
+	
+	return 1;
 
 }
 
@@ -531,6 +293,7 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv)
 
     //subscribe as heartbeat of the robot
     //scanSub_ = nh.subscribe("clock", 1, &pedestrian_momdp::scanCallback, this);
+    
     /// Setting up publishing
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("robot_0/cmd_vel",1);
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
@@ -563,13 +326,15 @@ void pedestrian_momdp::robotPoseCallback(geometry_msgs::PoseWithCovarianceStampe
     roboty_ = odo.pose.pose.position.y;
 
 
-    if(robotx_>0 && roboty_>0) robot_pose = true;
+    if(robotx_>0 && roboty_>0) 
+		robot_pose = true;
 }
 
 void pedestrian_momdp::moveSpeedCallback(pnc_msgs::move_status status)
 {
     cmd.angular.z = status.steer_angle;
-    if(roboty_>20)
+    
+    if(roboty_>20) /// TBP change numbers into parameters
     {
         cmd.angular.z = 0;
         cmd.linear.x = 0;
@@ -577,13 +342,14 @@ void pedestrian_momdp::moveSpeedCallback(pnc_msgs::move_status status)
 
     geometry_msgs::Twist cmd_temp;
     cmd_temp = cmd;
-    if(use_sim_time_) cmd_temp.linear.x = cmd.linear.x * 0.3;
+    if(use_sim_time_) 
+		cmd_temp.linear.x = cmd.linear.x * 0.3; /// TBP change numbers into parameters
     cmdPub_.publish(cmd_temp);
 }
 
 void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector lPedLocal)
 {
-    //direct initialization since it is taken care by transformPedtoMap
+    ///TBP direct initialization since it is taken care by transformPedtoMap ??? 
     //if(!obs_flag)
     //{
         //num_ped = laser_batch.pedestrian_laser_features.size();
@@ -592,7 +358,7 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
         //currAction.resize(num_ped);
     //}
 
-    ROS_DEBUG_STREAM("Laser batch size "<<lPedLocal.ped_local.size()<<" lPedInView size "<<lPedInView.size());
+    ROS_DEBUG_STREAM("lPedLocal size "<<lPedLocal.ped_local.size()<<" lPedInView size "<<lPedInView.size());
     for(int ii=0; ii< lPedLocal.ped_local.size(); ii++)
     {
 		/// search for proper pedestrian to update
@@ -615,7 +381,7 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 		
 		if(!foundPed)
 		{
-			//if laser_id does not match the old one create a new pomdp problem.
+			///if ped_id does not match the old one create a new pomdp problem.
 			ROS_INFO(" Creating  a new pedestrian problem #%d", ped_id);
 			initPedMOMDP(lPedLocal.ped_local[ped_id]);
 		}		
@@ -628,15 +394,6 @@ void pedestrian_momdp::updateBelief(int id, int safeAction)
         cout << "Next state " << endl;
         int nextSVal = getCurrentState(robotspeedx_, lPedInView[id].rob_pose, lPedInView[id].ped_pose.x, lPedInView[id].ped_pose.y);
         int currObservation = getCurrObs(id);
-
-        //double currReward = engine.getReward(*currBelSt, currAction);
-        //expReward += mult*currReward;
-        //mult *= gamma;
-        //reward += currReward;
-
-        //cout << "CurrReward " << currReward << " ExpReward " << expReward << endl;
-
-
 
         cout << "before update belief" << endl;
         (lPedInView[id].currBelSt)->bvec->write(cout); cout << endl;
@@ -714,8 +471,6 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
     ///Start pomdp stuff
     cout << "=====================================================================" << endl;
     num_steps++;
-    cout << "Curr State in loop : " << endl; //getCurrentState();/// Just to print current state
-
 
 	/// Get new action
     for(int ii=0; ii<lPedInView.size(); ii++)
@@ -744,7 +499,7 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
 
     if(moveRob)
     {
-
+		/// TBP : Change numbers to parameters
         if(safeAction==0) cmd.linear.x += 0;
         else if(safeAction==1) cmd.linear.x += 0.5;
         else if(safeAction==2) cmd.linear.x -= 0.5;
@@ -757,10 +512,6 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
 
 
     publish_belief();
-
-
-    //for(int ii=0; ii<num_ped; ii++)
-    //gp[ii]->Clear();
 
     /// update belief based on the action taken
     for(int ii=0; ii<lPedInView.size(); ii++)
