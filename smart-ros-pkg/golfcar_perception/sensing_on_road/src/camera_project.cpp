@@ -4,64 +4,76 @@
  * http://www.ri.cmu.edu/publication_view.html?pub_id=5293
  */
 
+#include <vector>
+#include <cmath>
 
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud.h>
 #include <geometry_msgs/Point32.h>
-#include <vector>
 #include <tf/transform_listener.h>
-#include <cmath>
-
 #include <tf/message_filter.h>
 #include <message_filters/subscriber.h>
 
-#include "sensing_on_road/pedestrian_laser.h"
-#include "sensing_on_road/pedestrian_laser_batch.h"
-#include "sensing_on_road/pedestrian_vision.h"
-#include "sensing_on_road/pedestrian_vision_batch.h"
+#include <fmutil/fm_math.h>
+#include <sensing_on_road/pedestrian_laser.h>
+#include <sensing_on_road/pedestrian_laser_batch.h>
+#include <sensing_on_road/pedestrian_vision.h>
+#include <sensing_on_road/pedestrian_vision_batch.h>
+#include <feature_detection/cluster.h>
+#include <feature_detection/clusters.h>
 
 
-using namespace std;
-using namespace ros;
-
-#define MAX_HEIGHT 2.0
-#define PIXEL_ALLOWANCE 30
-#define LASER_MOUNTING_HEIGHT 1.0
+const double MAX_HEIGHT = 2.0;
+const double PIXEL_ALLOWANCE = 30;
+const double LASER_MOUNTING_HEIGHT = 1.0;
 
 
-
-class camera_calib
+/// A structure that holds the camera calibration parameters.
+struct CameraCalibrationParameters
 {
-public:
-    double fc[2];   //focal_length
-    double cc[2];   //principal_point
-    double alpha_c; //skew_coeff
-    double kc[5];   //distortions
+    double fc[2];   ///< focal_length
+    double cc[2];   ///< principal_point
+    double alpha_c; ///< skew_coeff
+    double kc[5];   ///< distortions
 
-    float raw_image_width;
-    float raw_image_height;
-    float scaled_image_width;
-    float scaled_image_height;
+    int width;  ///< frame's width
+    int height; ///< frame's height
 
-    camera_calib()
+    CameraCalibrationParameters()
     {
-        fc[0]=471.21783;
-        fc[1]=476.11993;
-        cc[0]=322.35359;
-        cc[1]=183.44632;
-        alpha_c=0;
+        fc[0]   = 471.21783;
+        fc[1]   = 476.11993;
 
-        kc[0]=0.00083;
-        kc[1]=-0.03521;
-        kc[2]=0.00135;
-        kc[3]=0.00048;
-        kc[4]=0;
+        cc[0]   = 322.35359;
+        cc[1]   = 183.44632;
 
-        raw_image_width=640;
-        raw_image_height=360;
+        kc[0]   = 0.00083;
+        kc[1]   = -0.03521;
+        kc[2]   = 0.00135;
+        kc[3]   = 0.00048;
+        kc[4]   = 0;
+
+        alpha_c = 0;
+
+        width  = 640;
+        height = 360;
     }
 
-    ~camera_calib() {}
+};
+
+
+CameraCalibrationParameters gCamera;
+
+
+/// A structure to represent integer point (pixel)
+struct IntPoint {
+    int x, y;
+};
+
+/// A structure to represent a rectangle in the image (pixel coords)
+struct Rectangle {
+    IntPoint upper_left; ///< lower left corner
+    IntPoint size; ///< width and height
 };
 
 
@@ -71,140 +83,253 @@ public:
     camera_project();
 
 private:
-    std::string ldmrs_single_id_, camera_frame_id_;
-    camera_calib webcam_;
-    ros::Subscriber pd_laser_batch_sub_;
-    void project_to_image(const sensing_on_road::pedestrian_laser_batch &pd_laser_para);
-    void projection (const geometry_msgs::Point32 &temp3Dpara, sensing_on_road::pedestrian_vision &tempprpara);
-    ros::Publisher pd_vision_pub_;
-    sensing_on_road::pedestrian_vision_batch pd_vision_batch_;
+    /// Frame ID of the camera (where to project)
+    std::string camera_frame_id_;
 
-    void pcl_callback(const sensor_msgs::PointCloud::ConstPtr& pcl_in);
-    message_filters::Subscriber<sensor_msgs::PointCloud> pd_pcl_sub_;
+    /// Subscribes to the 'ped_laser_batch' topic (type pedestrian_laser_batch).
+    /// Messages on this topic describe the position of a set of pedestrians as
+    /// detected by the laser.
+    /// They will be projected to camera coordinates (pixels) and published by
+    /// ped_vision_pub_.
+    ros::Subscriber ped_laser_batch_sub_;
+
+    /// Publishes result of projection on topic 'ped_vision_batch' (type
+    /// pedestrian_vision_batch). Messages on this topic describe the position
+    /// of a set of pedestrians as detected by the laser, in camera coordinates
+    /// (pixels).
+    ros::Publisher ped_vision_pub_;
+
+    /// Subscribes to the 'camera_project_pcl_in' topic (type feature_detection/clusters).
+    /// Messages on this topic describe the position of a set of pedestrians as
+    /// detected by the source sensor (laser, kinect, stereo camera, etc.).
+    /// Each pedestrian is represented as a PointCloud.
+    /// They will be projected to camera coordinates (pixels) and published by
+    /// ped_vision_pub_.
+    message_filters::Subscriber<feature_detection::clusters> ped_pcl_sub_;
+
     tf::TransformListener tf_;
-    tf::MessageFilter<sensor_msgs::PointCloud> * tf_filter_;
+
+    /// We use a tf::MessageFilter, connected to ped_pcl_sub_, so that messages
+    /// are cached until a transform is available.
+    tf::MessageFilter<feature_detection::clusters> * ped_pcl_sub_tf_filter_;
+
+    /// Callback function for ped_laser_batch_sub_
+    void ped_laser_batch_CB(const sensing_on_road::pedestrian_laser_batch &);
+
+    /// Callback function for ped_pcl_sub_tf_filter_
+    void pcl_in_CB(const boost::shared_ptr<const feature_detection::clusters> &);
+
+    /// A helper function to make a rectangle from the centroid position and width
+    Rectangle makeRectangle(const geometry_msgs::PointStamped & centroid_in, double width);
+
+    /// A helper function. transform a 3D point in camera coordinates into a
+    /// 2D point in pixel coordinates. Takes into account the camera parameters.
+    IntPoint projection(const geometry_msgs::Point32 &pt);
 };
 
 
 camera_project::camera_project()
 {
     ros::NodeHandle nh;
+    nh.param("camera_frame_id", camera_frame_id_, std::string("usb_cam"));
 
-    nh.param("laser_frame_id",     ldmrs_single_id_,      std::string("ldmrsAssemb"));
-    nh.param("camera_frame_id",    camera_frame_id_,      std::string("usb_cam"));
+    // setup the PointCloud channel
+    ped_pcl_sub_.subscribe(nh, "pedestrian_clusters", 10);
+    ped_pcl_sub_tf_filter_ = new tf::MessageFilter<feature_detection::clusters>(ped_pcl_sub_, tf_, camera_frame_id_, 10);
+    ped_pcl_sub_tf_filter_->registerCallback(boost::bind(&camera_project::pcl_in_CB, this, _1));
+    ped_pcl_sub_tf_filter_->setTolerance(ros::Duration(0.05));
 
-    pd_pcl_sub_.subscribe(nh, "ped_laser_pcl", 10);
-    tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(pd_pcl_sub_, tf_, camera_frame_id_, 10);
-    tf_filter_->registerCallback(boost::bind(&camera_project::pcl_callback, this, _1));
-    tf_filter_->setTolerance(ros::Duration(0.05));
+    // setup the ped_laser_batch channel
+    ped_laser_batch_sub_ = nh.subscribe("ped_laser_batch", 2, &camera_project::ped_laser_batch_CB, this);
 
-    pd_laser_batch_sub_ = nh.subscribe("ped_laser_batch", 2, &camera_project::project_to_image, this);
-    pd_vision_pub_ = nh.advertise<sensing_on_road::pedestrian_vision_batch>("pd_vision_batch", 2);
+    // setup the result publisher
+    ped_vision_pub_ = nh.advertise<sensing_on_road::pedestrian_vision_batch>("ped_vision_batch", 2);
 }
 
-void camera_project::pcl_callback(const sensor_msgs::PointCloud::ConstPtr& pcl_in)
-{
 
+
+
+
+
+// A helper function to make a rectangle from the centroid position and width
+Rectangle camera_project::makeRectangle (
+    const geometry_msgs::PointStamped & centroid_in,
+    double width)
+{
+    //transform from source frame to camera frame
+    geometry_msgs::PointStamped ped_camera;
+    tf_.transformPoint(camera_frame_id_, centroid_in, ped_camera);
+
+    //tranform from ROS-convention to Vision-convention;
+    geometry_msgs::Point32 tmp;
+    tmp.x = -ped_camera.point.y;
+    tmp.y =  ped_camera.point.z;
+    tmp.z =  ped_camera.point.x;
+
+    // project to frame (pixel coordinates)
+    IntPoint centroid = projection(tmp);
+
+    //the central point should fall inside of the picture.
+    if( ! fmutil::isWithin(centroid.x, 0, gCamera.width) ||
+        ! fmutil::isWithin(centroid.y, 0, gCamera.height) )
+        throw std::out_of_range("centroid does not fall inside the picture");
+
+    float dx_coef  = gCamera.fc[0]/tmp.z;
+    float dy_coef  = gCamera.fc[1]/tmp.z;
+
+    int lower_x = centroid.x - dx_coef*width/2 - PIXEL_ALLOWANCE;
+    int lower_y = centroid.y - dx_coef*LASER_MOUNTING_HEIGHT - PIXEL_ALLOWANCE;
+    int upper_x = centroid.x + dy_coef*width/2 + PIXEL_ALLOWANCE;
+    int upper_y = centroid.y + dy_coef*(MAX_HEIGHT-LASER_MOUNTING_HEIGHT) + PIXEL_ALLOWANCE;
+
+    Rectangle rect;
+    rect.upper_left.x = lower_x<0 ? 0 : lower_x;
+    rect.size.x = (upper_x>gCamera.width ? gCamera.width : upper_x) - rect.upper_left.x;
+    rect.upper_left.y = lower_y<0 ? 0 : lower_y;
+    rect.size.y = (upper_y>gCamera.height ? gCamera.height : upper_y) - rect.upper_left.y;
+    return rect;
 }
 
-void camera_project::project_to_image(const sensing_on_road::pedestrian_laser_batch &pd_laser_para)
-{
-    ROS_INFO("Camera project to image");
-    pd_vision_batch_.header = pd_laser_para.header;
-    pd_vision_batch_.pd_vector.clear();
 
+// A helper function. transform a 3D point in camera coordinates into a
+// 2D point in pixel coordinates. Takes into account the camera parameters.
+IntPoint camera_project::projection(const geometry_msgs::Point32 &pt)
+{
+    if(pt.z <= 0.0) throw std::out_of_range("z<0");
+
+    double xn0 = pt.x / pt.z;
+    double xn1 = pt.y / pt.z;
+
+    double r2power = pow(xn0,2) + pow(xn1,2);
+
+    double dx0 = 2*gCamera.kc[2]*xn0*xn1 + gCamera.kc[3]*(r2power+2*pow(xn0,2));
+    double dx1 = gCamera.kc[2]*(r2power+2*pow(xn0,2))*2*gCamera.kc[3]*xn0*xn1;
+
+    double xd0 = ( 1 + gCamera.kc[0]*r2power + gCamera.kc[1]*pow(r2power,2)
+                     + gCamera.kc[4]*pow(r2power,3) ) * xn0 + dx0;
+    double xd1 = ( 1 + gCamera.kc[0]*r2power + gCamera.kc[1]*pow(r2power,2)
+                     + gCamera.kc[4]*pow(r2power,3) ) * xn1 + dx1;
+
+    int pixel_x = gCamera.fc[0]*xd0 + gCamera.alpha_c*gCamera.fc[0]*xd1 + gCamera.cc[0];
+    int pixel_y = gCamera.fc[1]*xd1 + gCamera.cc[1];
+
+    IntPoint res;
+    res.x = pixel_x;
+    res.y = gCamera.height - pixel_y; //remember to change coordinate upside-down;
+    return res;
+}
+
+
+void setRectMsg(const Rectangle & rect, sensing_on_road::pedestrian_vision & msg)
+{
+    msg.x         = rect.upper_left.x;
+    msg.y         = rect.upper_left.y;
+    msg.width     = rect.size.x;
+    msg.height    = rect.size.y;
+
+    msg.cvRect_x1 = msg.x;
+    msg.cvRect_y1 = msg.y;
+    msg.cvRect_x2 = msg.x + msg.width;
+    msg.cvRect_y2 = msg.y + msg.height;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+
+void camera_project::pcl_in_CB(const boost::shared_ptr<const feature_detection::clusters> & clusters_ptr)
+{
+    // For each cluster detected by the sensor, create a corresponding ROI
+    // (a rectangle) in the camera image
+
+    sensing_on_road::pedestrian_vision_batch ped_vision_batch_msg;
+    ped_vision_batch_msg.header = clusters_ptr->header;
+
+    geometry_msgs::PointStamped pt_src, pt_dest;
+    pt_src.header = clusters_ptr->header;
+
+    // For each
+    for( unsigned i=0; i<clusters_ptr->clusters.size(); i++ )
+    {
+        // Convert to PointStamped
+        pt_src.point.x = clusters_ptr->clusters[i].centroid.x;
+        pt_src.point.y = clusters_ptr->clusters[i].centroid.y;
+        pt_src.point.z = clusters_ptr->clusters[i].centroid.z;
+
+        Rectangle rect;
+        try {
+            rect = makeRectangle(pt_src, clusters_ptr->clusters[i].width);
+        } catch( std::out_of_range & e ) {
+            ROS_WARN("out of range: %s", e.what());
+            continue;
+        } catch( tf::TransformException & e ) {
+            ROS_WARN("camera project tf error: %s", e.what());
+            return;
+        }
+
+        sensing_on_road::pedestrian_vision msg;
+        msg.decision_flag = false;
+        msg.complete_flag = true;
+        msg.disz   = clusters_ptr->clusters[i].centroid.x;
+        setRectMsg(rect, msg);
+        ped_vision_batch_msg.pd_vector.push_back(msg);
+    }
+
+    if( ! ped_vision_batch_msg.pd_vector.empty() )
+        ped_vision_pub_.publish(ped_vision_batch_msg);
+}
+
+
+void camera_project::ped_laser_batch_CB(const sensing_on_road::pedestrian_laser_batch &pd_laser_para)
+{
+    // For each pedestrian detected by the laser, create a corresponding ROI
+    // (a rectangle) in the camera image.
+
+    sensing_on_road::pedestrian_vision_batch ped_vision_batch_msg;
+    ped_vision_batch_msg.header = pd_laser_para.header;
+
+    // For each pedestrian detected by the laser
     for(unsigned i=0; i<pd_laser_para.pedestrian_laser_features.size(); i++)
     {
-        sensing_on_road::pedestrian_vision temppr;
+        // a shortcut
+        const sensing_on_road::pedestrian_laser & ped_laser =
+                                    pd_laser_para.pedestrian_laser_features[i];
 
-        //transform from "sick_laser" to "webcam" of ROS-convension coordinate;
-        geometry_msgs::PointStamped stamped_point;
-        try{ tf_.transformPoint(camera_frame_id_, pd_laser_para.pedestrian_laser_features[i].pedestrian_laser, stamped_point);}
-        catch (tf::TransformException& e){ROS_INFO("camera project tf error");std::cout << e.what();return;}
+        // we are only interested in pedestrians that are not too close and not too far
+        if( ! fmutil::isWithin(ped_laser.pedestrian_laser.point.x, 0.5, 20) )
+            continue;
 
-        //"webcam" further tranform from ROS-convension to Vision-convension;
-        geometry_msgs::Point32 centroid_point;
-        centroid_point.x   =   -stamped_point.point.y;
-        centroid_point.y   =    stamped_point.point.z;
-        centroid_point.z   =    stamped_point.point.x;
-        camera_project::projection(centroid_point, temppr);
-        ROS_INFO("temppr %d, %d, %3f", temppr.x, temppr.y, temppr.disz);
-        //the central point should fall inside of the picture.
-        if(temppr.x>0&&temppr.x<webcam_.raw_image_width &&temppr.y>0&&temppr.y<webcam_.raw_image_height)
-        {
-            //tempprcorner represents a rectangle box with corner.x, corner,y, height and width;
-            sensing_on_road::pedestrian_vision tempprcorner;
-            tempprcorner.confidence = pd_laser_para.pedestrian_laser_features[i].confidence;
-            tempprcorner.decision_flag = false;
-            tempprcorner.complete_flag = true;
-            tempprcorner.object_label  = pd_laser_para.pedestrian_laser_features[i].object_label;
-
-            float dx_coef     =  webcam_.fc[0]/temppr.disz;
-            float dy_coef     =  webcam_.fc[1]/temppr.disz;
-            float size_dim    =  pd_laser_para.pedestrian_laser_features[i].size;
-
-            int   conner_x    =  temppr.x - (int)(dx_coef*size_dim/2) - PIXEL_ALLOWANCE;
-            int   conner_y    =  temppr.y - (int)(dx_coef*LASER_MOUNTING_HEIGHT) - PIXEL_ALLOWANCE;
-            int   upper_x     =  temppr.x + (int)(dy_coef*size_dim/2) + PIXEL_ALLOWANCE;
-            int   upper_y     =  temppr.y + (int)(dy_coef*(MAX_HEIGHT-LASER_MOUNTING_HEIGHT)) + PIXEL_ALLOWANCE;
-
-            if(conner_x<0){tempprcorner.x=0;}
-            else {tempprcorner.x=conner_x;}
-            if(upper_x>webcam_.raw_image_width){tempprcorner.width=webcam_.raw_image_width-tempprcorner.x;}
-            else{tempprcorner.width=upper_x-tempprcorner.x;}
-
-            if(conner_y<0){tempprcorner.y=0;}
-            else {tempprcorner.y = conner_y;}
-            if(upper_y>webcam_.raw_image_height) {tempprcorner.height = webcam_.raw_image_height-tempprcorner.y;}
-            else{tempprcorner.height=upper_y-tempprcorner.y;}
-
-            tempprcorner.disz=temppr.disz;
-
-            if(tempprcorner.disz>=20||tempprcorner.disz<=0.5){tempprcorner.complete_flag = false;}
-            if(tempprcorner.complete_flag==true){pd_vision_batch_.pd_vector.push_back(tempprcorner);}
+        Rectangle rect;
+        try {
+            rect = makeRectangle(ped_laser.pedestrian_laser, ped_laser.size);
+        } catch( std::out_of_range & e ) {
+            ROS_WARN("out of range: %s", e.what());
+            continue;
+        } catch( tf::TransformException & e ) {
+            ROS_WARN("camera project tf error: %s", e.what());
+            return;
         }
+
+        sensing_on_road::pedestrian_vision msg;
+        msg.confidence = ped_laser.confidence;
+        msg.decision_flag = false;
+        msg.complete_flag = true;
+        msg.object_label = ped_laser.object_label;
+        msg.disz = ped_laser.pedestrian_laser.point.x;
+        setRectMsg(rect, msg);
+        ped_vision_batch_msg.pd_vector.push_back(msg);
     }
-    pd_vision_pub_.publish(pd_vision_batch_);
+
+    if( ! ped_vision_batch_msg.pd_vector.empty() )
+        ped_vision_pub_.publish(ped_vision_batch_msg);
 }
-
-void camera_project::projection(const geometry_msgs::Point32 &temp3Dpara, sensing_on_road::pedestrian_vision &tempprpara)
-{
-    if(temp3Dpara.z >0.0)
-    {
-        double xn[2]={0,0};
-        xn[0]=temp3Dpara.x/temp3Dpara.z;
-        xn[1]=temp3Dpara.y/temp3Dpara.z;
-
-        double r2power=xn[0]*xn[0]+xn[1]*xn[1];
-        double dx[2]={0,0};
-        dx[0]=2*(webcam_.kc[2])*xn[0]*xn[1]+(webcam_.kc[3])*(r2power+2*xn[0]*xn[0]);
-        dx[1]=(webcam_.kc[2])*(r2power+2*xn[0]*xn[0])*2*(webcam_.kc[3])*xn[0]*xn[1];
-        double xd[2]={0,0};
-        xd[0]=(1+webcam_.kc[0]*r2power+webcam_.kc[1]*r2power*r2power+webcam_.kc[4]*r2power*r2power*r2power)*xn[0]+dx[0];
-        xd[1]=(1+webcam_.kc[0]*r2power+webcam_.kc[1]*r2power*r2power+webcam_.kc[4]*r2power*r2power*r2power)*xn[1]+dx[1];
-
-        int pixel_x, pixel_y;
-        pixel_x=(int)(webcam_.fc[0]*xd[0]+webcam_.alpha_c*webcam_.fc[0]*xd[1]+webcam_.cc[0]);
-        pixel_y=(int)(webcam_.fc[1]*xd[1]+webcam_.cc[1]);
-
-        tempprpara.x    = pixel_x;
-        tempprpara.y    = webcam_.raw_image_height-pixel_y;        //remember to change coordinate upside-down;
-        tempprpara.disz = temp3Dpara.z;
-    }
-    else
-    {
-        tempprpara.x=10000;
-        tempprpara.y=10000;
-    }
-}
-
-
 
 
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "camera_projector");
-    camera_project camera_project_node;
+    camera_project * camera_project_node = new camera_project();
     ros::spin();
+    delete camera_project_node;
 }
 
