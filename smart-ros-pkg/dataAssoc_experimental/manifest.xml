@@ -1,0 +1,17 @@
+<package>
+  <description brief="dataAssoc_experimental">
+
+     dataAssoc_experimental
+
+  </description>
+  <author>tirtha</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/dataAssoc_experimental</url>
+  <depend package="std_msgs"/>
+  <depend package="rospy"/>
+  <depend package="roscpp"/>
+
+</package>
+
+
