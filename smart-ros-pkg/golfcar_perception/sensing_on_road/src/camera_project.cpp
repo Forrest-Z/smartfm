@@ -1,142 +1,132 @@
-/*
- * This class is to project object position in 3D world onto 2D image;
- * Reference: "Fast Extrinsic Calibration of a Laser Rangefinder to a Camera"
- * http://www.ri.cmu.edu/publication_view.html?pub_id=5293
- */ 
-
-
 #include "camera_project.h"
 
-using namespace std;
-using namespace ros;
 
-#define MAX_HEIGHT 2.0
-#define PIXEL_ALLOWANCE 30
-#define LASER_MOUNTING_HEIGHT 1.0
-
-namespace camera_projector
+namespace camera_project
 {
 
-camera_project::camera_project()
-{
-    ros::NodeHandle nh;
-    
-    nh.param("laser_frame_id",     ldmrs_single_id_,      std::string("ldmrsAssemb"));
-    nh.param("camera_frame_id",    camera_frame_id_,      std::string("usb_cam"));
+const double PIXEL_ALLOWANCE = 30;
+const double LASER_MOUNTING_HEIGHT = 1.0;
 
-    pd_pcl_sub_.subscribe(nh, "ped_laser_pcl", 10);
-    tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(pd_pcl_sub_, tf_, camera_frame_id_, 10);
-    tf_filter_->registerCallback(boost::bind(&camera_project::pcl_callback, this, _1));
-    tf_filter_->setTolerance(ros::Duration(0.05));
-    
-    pd_laser_batch_sub_ = nh.subscribe("ped_laser_batch", 2, &camera_project::project_to_image, this);
-    pd_vision_pub_ = nh.advertise<sensing_on_road::pedestrian_vision_batch>("pd_vision_batch", 2);
+
+CameraCalibrationParameters::CameraCalibrationParameters()
+{
+    fc[0]   = 471.21783;
+    fc[1]   = 476.11993;
+
+    cc[0]   = 322.35359;
+    cc[1]   = 183.44632;
+
+    kc[0]   = 0.00083;
+    kc[1]   = -0.03521;
+    kc[2]   = 0.00135;
+    kc[3]   = 0.00048;
+    kc[4]   = 0;
+
+    alpha_c = 0;
+
+    width  = 640;
+    height = 360;
 }
 
-void camera_project::pcl_callback(const sensor_msgs::PointCloud::ConstPtr& pcl_in)
+
+camera_projector::camera_projector() : camera_frame_id_("usb_cam")
 {
-    
 }
 
-void camera_project::project_to_image(const sensing_on_road::pedestrian_laser_batch &pd_laser_para)
+void camera_projector::setCameraFrameID(const std::string & id)
 {
-    ROS_INFO("Camera project to image");
-    pd_vision_batch_.header = pd_laser_para.header;
-    pd_vision_batch_.pd_vector.clear();
-
-    for(unsigned i=0; i<pd_laser_para.pedestrian_laser_features.size(); i++)
-    {
-        sensing_on_road::pedestrian_vision temppr;
-
-        //transform from "sick_laser" to "webcam" of ROS-convension coordinate;
-        geometry_msgs::PointStamped stamped_point;
-        try{ tf_.transformPoint(camera_frame_id_, pd_laser_para.pedestrian_laser_features[i].pedestrian_laser, stamped_point);}
-        catch (tf::TransformException& e){ROS_INFO("camera project tf error");std::cout << e.what();return;}
-
-        //"webcam" further tranform from ROS-convension to Vision-convension;
-        geometry_msgs::Point32 centroid_point;
-        centroid_point.x   =   -stamped_point.point.y;
-        centroid_point.y   =    stamped_point.point.z;
-        centroid_point.z   =    stamped_point.point.x;
-        camera_project::projection(centroid_point, temppr);
-        ROS_INFO("temppr %d, %d, %3f", temppr.x, temppr.y, temppr.disz);
-        //the central point should fall inside of the picture.
-        if(temppr.x>0&&temppr.x<webcam_.raw_image_width &&temppr.y>0&&temppr.y<webcam_.raw_image_height)
-        {
-            //tempprcorner represents a rectangle box with corner.x, corner,y, height and width;
-            sensing_on_road::pedestrian_vision tempprcorner;
-            tempprcorner.confidence = pd_laser_para.pedestrian_laser_features[i].confidence;
-            tempprcorner.decision_flag = false;
-            tempprcorner.complete_flag = true;
-            tempprcorner.object_label  = pd_laser_para.pedestrian_laser_features[i].object_label;
-
-            float dx_coef     =  webcam_.fc[0]/temppr.disz;
-            float dy_coef     =  webcam_.fc[1]/temppr.disz;
-            float size_dim    =  pd_laser_para.pedestrian_laser_features[i].size;
-
-            int   conner_x    =  temppr.x - (int)(dx_coef*size_dim/2) - PIXEL_ALLOWANCE;
-            int   conner_y    =  temppr.y - (int)(dx_coef*LASER_MOUNTING_HEIGHT) - PIXEL_ALLOWANCE;
-            int   upper_x     =  temppr.x + (int)(dy_coef*size_dim/2) + PIXEL_ALLOWANCE;
-            int   upper_y     =  temppr.y + (int)(dy_coef*(MAX_HEIGHT-LASER_MOUNTING_HEIGHT)) + PIXEL_ALLOWANCE;
-
-            if(conner_x<0){tempprcorner.x=0;}
-            else {tempprcorner.x=conner_x;}
-            if(upper_x>webcam_.raw_image_width){tempprcorner.width=webcam_.raw_image_width-tempprcorner.x;}
-            else{tempprcorner.width=upper_x-tempprcorner.x;}
-
-            if(conner_y<0){tempprcorner.y=0;}
-            else {tempprcorner.y = conner_y;}
-            if(upper_y>webcam_.raw_image_height) {tempprcorner.height = webcam_.raw_image_height-tempprcorner.y;}
-            else{tempprcorner.height=upper_y-tempprcorner.y;}
-
-            tempprcorner.disz=temppr.disz;
-
-            if(tempprcorner.disz>=20||tempprcorner.disz<=0.5){tempprcorner.complete_flag = false;}
-            if(tempprcorner.complete_flag==true){pd_vision_batch_.pd_vector.push_back(tempprcorner);}
-        }
-    }
-    pd_vision_pub_.publish(pd_vision_batch_);
+    camera_frame_id_ = id;
 }
 
-void camera_project::projection(const geometry_msgs::Point32 &temp3Dpara, sensing_on_road::pedestrian_vision &tempprpara)
+
+// A helper function to make a rectangle from the centroid position and width
+CvRectangle camera_projector::project(
+    const geometry_msgs::PointStamped & centroid_in,
+    double width, double height) const
 {
-    if(temp3Dpara.z >0.0)
-    {
-        double xn[2]={0,0};
-        xn[0]=temp3Dpara.x/temp3Dpara.z;
-        xn[1]=temp3Dpara.y/temp3Dpara.z;
+    //transform from source frame to camera frame
+    geometry_msgs::PointStamped pt_camera;
+    tf_.transformPoint(camera_frame_id_, centroid_in, pt_camera);
 
-        double r2power=xn[0]*xn[0]+xn[1]*xn[1];
-        double dx[2]={0,0};
-        dx[0]=2*(webcam_.kc[2])*xn[0]*xn[1]+(webcam_.kc[3])*(r2power+2*xn[0]*xn[0]);
-        dx[1]=(webcam_.kc[2])*(r2power+2*xn[0]*xn[0])*2*(webcam_.kc[3])*xn[0]*xn[1];
-        double xd[2]={0,0};
-        xd[0]=(1+webcam_.kc[0]*r2power+webcam_.kc[1]*r2power*r2power+webcam_.kc[4]*r2power*r2power*r2power)*xn[0]+dx[0];
-        xd[1]=(1+webcam_.kc[0]*r2power+webcam_.kc[1]*r2power*r2power+webcam_.kc[4]*r2power*r2power*r2power)*xn[1]+dx[1];
+    //tranform from ROS-convention to Vision-convention;
+    geometry_msgs::Point32 tmp;
+    tmp.x = -pt_camera.point.y;
+    tmp.y =  pt_camera.point.z;
+    tmp.z =  pt_camera.point.x;
 
-        int pixel_x, pixel_y;
-        pixel_x=(int)(webcam_.fc[0]*xd[0]+webcam_.alpha_c*webcam_.fc[0]*xd[1]+webcam_.cc[0]);
-        pixel_y=(int)(webcam_.fc[1]*xd[1]+webcam_.cc[1]);
+    // project to frame (pixel coordinates)
+    IntPoint centroid = projection(tmp);
 
-        tempprpara.x    = pixel_x;
-        tempprpara.y    = webcam_.raw_image_height-pixel_y;        //remember to change coordinate upside-down;
-        tempprpara.disz = temp3Dpara.z;
-    }
-    else
-    {
-        tempprpara.x=10000;
-        tempprpara.y=10000;
-    }
+    //the central point should fall inside of the picture.
+    if( ! fmutil::isWithin(centroid.x, 0, cam_param_.width) ||
+        ! fmutil::isWithin(centroid.y, 0, cam_param_.height) )
+        throw std::out_of_range("centroid does not fall inside the picture");
+
+    float dx_coef  = cam_param_.fc[0]/tmp.z;
+    float dy_coef  = cam_param_.fc[1]/tmp.z;
+
+    float x1 = centroid.x - dx_coef*width/2 - PIXEL_ALLOWANCE;
+    float y1 = centroid.y - dx_coef*LASER_MOUNTING_HEIGHT - PIXEL_ALLOWANCE;
+    float x2 = centroid.x + dy_coef*width/2 + PIXEL_ALLOWANCE;
+    float y2 = centroid.y + dy_coef*(height-LASER_MOUNTING_HEIGHT) + PIXEL_ALLOWANCE;
+
+    CvRectangle rect;
+    rect.upper_left.x = x1<0 ? 0 : x1;
+    rect.upper_left.y = y1<0 ? 0 : y1;
+    rect.lower_right.x = x2>cam_param_.width ? cam_param_.width : x2;
+    rect.lower_right.y = y2>cam_param_.height ? cam_param_.height : y2;
+    return rect;
 }
 
-} //namespace
 
-
-
-int main(int argc, char** argv)
+// A helper function. transform a 3D point in camera coordinates into a
+// 2D point in pixel coordinates. Takes into account the camera parameters.
+IntPoint camera_projector::projection(const geometry_msgs::Point32 &pt) const
 {
-    ros::init(argc, argv, "camera_projector");
-    camera_projector::camera_project camera_project_node;
-    ros::spin();
+    if(pt.z <= 0.0) throw std::out_of_range("z<0");
+
+    double xn0 = pt.x / pt.z;
+    double xn1 = pt.y / pt.z;
+
+    double r2power = pow(xn0,2) + pow(xn1,2);
+
+    double dx0 = 2*cam_param_.kc[2]*xn0*xn1 + cam_param_.kc[3]*(r2power+2*pow(xn0,2));
+    double dx1 = cam_param_.kc[2]*(r2power+2*pow(xn0,2))*2*cam_param_.kc[3]*xn0*xn1;
+
+    double xd0 = ( 1 + cam_param_.kc[0]*r2power + cam_param_.kc[1]*pow(r2power,2)
+                     + cam_param_.kc[4]*pow(r2power,3) ) * xn0 + dx0;
+    double xd1 = ( 1 + cam_param_.kc[0]*r2power + cam_param_.kc[1]*pow(r2power,2)
+                     + cam_param_.kc[4]*pow(r2power,3) ) * xn1 + dx1;
+
+    int pixel_x = cam_param_.fc[0]*xd0 + cam_param_.alpha_c*cam_param_.fc[0]*xd1 + cam_param_.cc[0];
+    int pixel_y = cam_param_.fc[1]*xd1 + cam_param_.cc[1];
+
+    IntPoint res;
+    res.x = pixel_x;
+    res.y = cam_param_.height - pixel_y; //remember to change coordinate upside-down;
+    return res;
 }
 
+
+CvRectangle convertRect(const Rectangle & r)
+{
+    CvRectangle cvr;
+    cvr.upper_left.x  = r.upper_left.x;
+    cvr.upper_left.y  = r.upper_left.y;
+    cvr.lower_right.x  = r.upper_left.x + r.width;
+    cvr.lower_right.y  = r.upper_left.y + r.height;
+    return cvr;
+}
+
+Rectangle convertRect(const CvRectangle & r)
+{
+    Rectangle rect;
+    rect.upper_left.x = r.upper_left.x;
+    rect.upper_left.y = r.upper_left.y;
+    rect.width = r.lower_right.x - r.upper_left.x;
+    rect.height = r.lower_right.y - r.lower_right.x;
+    return rect;
+}
+
+
+} //namespace camera_project

@@ -1,75 +1,104 @@
-#include <ros/ros.h>
-#include <sensor_msgs/PointCloud.h>
-#include <geometry_msgs/Point32.h>
-#include <vector>
-#include <tf/transform_listener.h>
+#ifndef __CAMERA_PROJECT_H__
+#define __CAMERA_PROJECT_H__
+
+/*
+ * This class is to project object position in 3D world onto 2D image;
+ * Reference: "Fast Extrinsic Calibration of a Laser Rangefinder to a Camera"
+ * http://www.ri.cmu.edu/publication_view.html?pub_id=5293
+ */
+
 #include <cmath>
 
-#include <tf/message_filter.h>
-#include <message_filters/subscriber.h>
+#include <ros/ros.h>
+#include <tf/transform_listener.h>
+#include <geometry_msgs/Point32.h>
+#include <geometry_msgs/PointStamped.h>
 
-#include "sensing_on_road/pedestrian_laser.h"
-#include "sensing_on_road/pedestrian_laser_batch.h"
-#include "sensing_on_road/pedestrian_vision.h"
-#include "sensing_on_road/pedestrian_vision_batch.h"
+#include <fmutil/fm_math.h>
 
-
-namespace camera_projector
+namespace camera_project
 {
 
-class camera_calib
+/// A structure that holds the camera calibration parameters.
+struct CameraCalibrationParameters
 {
-public:
-    double fc[2];   //focal_length
-    double cc[2];   //principal_point
-    double alpha_c; //skew_coeff
-    double kc[5];   //distortions
+    double fc[2];   ///< focal_length
+    double cc[2];   ///< principal_point
+    double alpha_c; ///< skew_coeff
+    double kc[5];   ///< distortions
 
-    float raw_image_width;
-    float raw_image_height;
-    float scaled_image_width;
-    float scaled_image_height;
+    int width;  ///< frame's width
+    int height; ///< frame's height
 
-    camera_calib()
-    {
-        fc[0]=471.21783;
-        fc[1]=476.11993;
-        cc[0]=322.35359;
-        cc[1]=183.44632;
-        alpha_c=0;
-
-        kc[0]=0.00083;
-        kc[1]=-0.03521;
-        kc[2]=0.00135;
-        kc[3]=0.00048;
-        kc[4]=0;
-
-        raw_image_width=640;
-        raw_image_height=360;
-    }
-
-    ~camera_calib() {}
+    /// constructor (sets the values of the parameters).
+    CameraCalibrationParameters();
 };
 
 
-class camera_project
+/// A structure to represent integer point (pixel)
+struct IntPoint {
+    int x, y;
+};
+
+/// A structure to represent a rectangle in the image (pixel coords)
+struct Rectangle {
+    IntPoint upper_left; ///< lower left corner
+    int width;
+    int height;
+};
+
+struct FloatPoint {
+    float x, y;
+};
+
+struct CvRectangle {
+    FloatPoint upper_left;
+    FloatPoint lower_right;
+};
+
+
+/// Convert a Rectangle to a CvRectangle
+CvRectangle convertRect(const Rectangle & r);
+
+/// Convert a CvRectangle to a Rectangle
+Rectangle convertRect(const CvRectangle & r);
+
+
+class camera_projector
 {
 public:
-    camera_project();
+    /// constructor with default parameter values
+    camera_projector();
 
-private:
-    std::string ldmrs_single_id_, camera_frame_id_;
-    camera_calib webcam_;
-    ros::Subscriber pd_laser_batch_sub_;
-    void project_to_image(const sensing_on_road::pedestrian_laser_batch &pd_laser_para);
-    void projection (const geometry_msgs::Point32 &temp3Dpara, sensing_on_road::pedestrian_vision &tempprpara);
-    ros::Publisher pd_vision_pub_;
-    sensing_on_road::pedestrian_vision_batch pd_vision_batch_;
+    void setCameraFrameID(const std::string &);
 
-    void pcl_callback(const sensor_msgs::PointCloud::ConstPtr& pcl_in);
-    message_filters::Subscriber<sensor_msgs::PointCloud> pd_pcl_sub_;
+    /// Project a rectangle from real world to camera.
+    ///
+    /// The input rectangle is defined by its centroid position and its size.
+    /// The output rectangle is defined by the position of its upper left corner
+    /// and its size.
+    /// @param centroid: the centroid of the input rectangle (and its frame)
+    /// @param width: the width of the input rectangle.
+    /// @param height: the height of the input rectangle.
+    /// @return the rectangle in pixel coordinates
+    CvRectangle project(const geometry_msgs::PointStamped & centroid, double width, double height) const;
+
+
+protected:
+    /// Frame ID of the camera (where to project). Defaults to "usb_cam"
+    std::string camera_frame_id_;
+
+    /// Parameters of the camera
+    CameraCalibrationParameters cam_param_;
+
     tf::TransformListener tf_;
-    tf::MessageFilter<sensor_msgs::PointCloud> * tf_filter_;
+
+    /// A helper function. transform a 3D point in camera coordinates into a
+    /// 2D point in pixel coordinates. Takes into account the camera parameters.
+    IntPoint projection(const geometry_msgs::Point32 &pt) const;
 };
 
-} //namespace
+
+} //namespace camera_project
+
+#endif
