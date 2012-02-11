@@ -123,7 +123,7 @@ void VisualizeMomdp::pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel_c
         }
         else
         {
-			cout << "Strange action " << ped_bel_cb.believes[i].action << endl;
+			std::cout << "Strange action " << ped_bel_cb.believes[i].action << std::endl;
 			decision=-1;
 		}
 
@@ -161,7 +161,7 @@ void VisualizeMomdp::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_v
         if(ped_bel[i].id == pv.object_label)
         {
 
-            cout<<ped_bel[i].id<<" "<<ped_bel[i].left_side<<" "<<ped_bel[i].right_side << " decision " << ped_bel[i].decision <<endl;
+            std::cout<<ped_bel[i].id<<" "<<ped_bel[i].left_side<<" "<<ped_bel[i].right_side << " decision " << ped_bel[i].decision <<std::endl;
             
             //cout << " x " << pv.cvRect_x1 << " y " << pv.cvRect_y1; 
             //cout << " x " << pv.cvRect_x2 << " y " << pv.cvRect_y2 << endl;; 
