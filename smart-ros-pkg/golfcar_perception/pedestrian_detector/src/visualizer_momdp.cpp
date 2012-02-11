@@ -20,8 +20,13 @@
 
 #include "cv_helper.h"
 
-using namespace std;
+#include <message_filters/subscriber.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
 
+using namespace std;
+using namespace message_filters;
+using namespace sensing_on_road;
 struct pedBelife_vis
 {
     double left_side, right_side;
@@ -38,17 +43,13 @@ private:
     ros::NodeHandle n_;
 
     image_transport::ImageTransport it_;
-    image_transport::Subscriber image_sub_;
-    ros::Subscriber ped_bel_sub_, people_roi_sub_;
-
+    image_transport::SubscriberFilter image_sub_;
+    ros::Subscriber ped_bel_sub_;
+    message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> people_roi_sub_;
     bool started, ROI_text, verified_text, vision_rect, verified_rect, ROI_rect, publish_verified;
     vector<pedBelife_vis> ped_bel;
 
-    ros::Time vision_roi_time_;
-    sensing_on_road::pedestrian_vision_batch vision_roi_;
-
-    void imageCallback(const sensor_msgs::ImageConstPtr image);
-    void roiCallback(const sensing_on_road::pedestrian_vision_batchConstPtr vision_roi);
+    void syncCallback(const sensor_msgs::ImageConstPtr image, const sensing_on_road::pedestrian_vision_batchConstPtr vision_roi);
     void drawIDandConfidence(cv::Mat& img, sensing_on_road::pedestrian_vision& pv);
     void pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel);
 };
@@ -61,24 +62,24 @@ VisualizeMomdp::VisualizeMomdp(ros::NodeHandle &n) : n_(n), it_(n_)
     nh.param("Publish_verified", publish_verified, true);
 
     // get image from the USB cam
-    image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, boost::bind(&VisualizeMomdp::imageCallback, this, _1));
+    image_sub_.subscribe(it_, "/usb_cam/image_raw", 20);
 
     // start processign only after the first image is present
     started = false;
 
     // from laser (green rect)
-    people_roi_sub_ = n.subscribe("veri_pd_vision", 1, &VisualizeMomdp::roiCallback, this);
+    people_roi_sub_.subscribe(n, "veri_pd_vision", 20);
+
+    typedef sync_policies::ApproximateTime<sensor_msgs::Image, pedestrian_vision_batch> MySyncPolicy;
+    Synchronizer<MySyncPolicy> sync(MySyncPolicy(20), image_sub_, people_roi_sub_);
+    sync.registerCallback(boost::bind(&VisualizeMomdp::syncCallback,this, _1, _2));
 
     ped_bel_sub_ = n.subscribe("peds_believes", 1, &VisualizeMomdp::pedBeliefCallback, this);
+
+    ros::spin();
 }
 
-void VisualizeMomdp::roiCallback(const sensing_on_road::pedestrian_vision_batchConstPtr vision_roi)
-{
-    vision_roi_ = *vision_roi;
-    vision_roi_time_ = vision_roi->header.stamp;
-}
-
-void VisualizeMomdp::imageCallback(const sensor_msgs::ImageConstPtr image)
+void VisualizeMomdp::syncCallback(const sensor_msgs::ImageConstPtr image, const sensing_on_road::pedestrian_vision_batchConstPtr vision_roi)
 {
     ROS_INFO("imageCallback");
     Mat img;
@@ -88,26 +89,24 @@ void VisualizeMomdp::imageCallback(const sensor_msgs::ImageConstPtr image)
     /// roi_rects_ : laser based ( blue )
     /// detect_rects_ : vision based detection ( green )
     /// verified_rects_ : final confirmation  (red )
-
-    if( image->header.stamp - vision_roi_time_ < ros::Duration(0.5) ) {
-        for(unsigned int i=0; i<vision_roi_.pd_vector.size(); i++)
+    for(unsigned int i=0; i<vision_roi->pd_vector.size(); i++)
+    {
+        Point UL = Point(vision_roi->pd_vector[i].cvRect_x1, vision_roi->pd_vector[i].cvRect_y1);
+        Point BR = Point(vision_roi->pd_vector[i].cvRect_x2, vision_roi->pd_vector[i].cvRect_y2);
+        sensing_on_road::pedestrian_vision temp_rect = vision_roi->pd_vector[i];
+        if(ROI_rect)
         {
-            Point UL = Point(vision_roi_.pd_vector[i].cvRect_x1, vision_roi_.pd_vector[i].cvRect_y1);
-            Point BR = Point(vision_roi_.pd_vector[i].cvRect_x2, vision_roi_.pd_vector[i].cvRect_y2);
-            sensing_on_road::pedestrian_vision temp_rect = vision_roi_.pd_vector[i];
-            if(ROI_rect)
+            if(publish_verified)
             {
-                if(publish_verified)
-                {
-                    if(vision_roi_.pd_vector[i].decision_flag)
-                        rectangle(img,UL, BR, Scalar(255,0,0), 1);
-                }
-                else rectangle(img,UL, BR, Scalar(255,0,0), 1);
-
+                if(vision_roi->pd_vector[i].decision_flag)
+                    rectangle(img,UL, BR, Scalar(255,0,0), 1);
             }
-            if(ROI_text) drawIDandConfidence(img, temp_rect);
+            else rectangle(img,UL, BR, Scalar(255,0,0), 1);
+
         }
+        if(ROI_text) drawIDandConfidence(img, temp_rect);
     }
+
 
     started = true;
     imshow("MOMDP Visualizer", img);
