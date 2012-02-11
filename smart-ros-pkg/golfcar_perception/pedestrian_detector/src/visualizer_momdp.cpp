@@ -96,6 +96,7 @@ void VisualizeMomdp::syncCallback(const sensor_msgs::ImageConstPtr image, const 
         sensing_on_road::pedestrian_vision temp_rect = vision_roi->pd_vector[i];
         if(ROI_rect)
         {
+            ROS_INFO("Decision flag: %d", vision_roi->pd_vector[i].decision_flag);
             if(publish_verified)
             {
                 if(vision_roi->pd_vector[i].decision_flag)
@@ -109,7 +110,7 @@ void VisualizeMomdp::syncCallback(const sensor_msgs::ImageConstPtr image, const 
 
 
     started = true;
-    imshow("MOMDP Visualizer", img);
+    imshow(ros::this_node::getName().c_str(), img);
     cvWaitKey(3);
 }
 

@@ -123,8 +123,9 @@ void HOGClassifier::syncCallback(const feature_detection::clustersConstPtr cl_pt
         vector<Rect> found;
         Point offset(img_x, img_y);
         ROS_DEBUG("ROI image size: x=%d y=%d",gpu_img.cols, gpu_img.rows);
+        sensing_on_road::pedestrian_vision_batch detected_peds;
         if(gpu_img.cols>=WIN_SIZE.width && gpu_img.rows>=WIN_SIZE.height)
-            detectPedestrian(offset, ratio, gpu_img, &detect_rects);
+            detectPedestrian(offset, ratio, gpu_img, &detected_peds);
 
         /// Send ROI to visualizer
 
@@ -132,9 +133,10 @@ void HOGClassifier::syncCallback(const feature_detection::clustersConstPtr cl_pt
         temp_rect = pr.pd_vector[i];
         temp_rect.cvRect_x1=img_x;temp_rect.cvRect_y1=img_y;
         temp_rect.cvRect_x2=img_x+img_width-1;temp_rect.cvRect_y2=img_y+img_height-1;
-
-        if((int)detect_rects.pd_vector.size()>0) temp_rect.decision_flag = true;
+        ROS_INFO("Vision detected pedestrian %d", detect_rects.pd_vector.size());
+        if((int)detected_peds.pd_vector.size()>0) temp_rect.decision_flag = true;
         roi_rects.pd_vector[i] = temp_rect;
+
 
 
         //fill the roi with black
@@ -147,6 +149,9 @@ void HOGClassifier::syncCallback(const feature_detection::clustersConstPtr cl_pt
             //Set the image to 0 in places where the mask is 1
             img_clone.setTo(cv::Scalar(0), Mask);
         }
+
+        //add detected pedestrian for visualization
+        detect_rects.pd_vector.insert(detect_rects.pd_vector.begin(), detected_peds.pd_vector.begin(), detected_peds.pd_vector.end());
 
         if(show_processed_image)
         {
@@ -262,7 +267,7 @@ void HOGClassifier::detectPedestrian(Point offset, double ratio, gpu::GpuMat& gp
 
     t = (double)getTickCount() - t;
     ROS_DEBUG("Detection time = %gms", t*1000./getTickFrequency());
-
+    detect_rects->pd_vector.clear();
     for( int j = 0; j < (int)(found).size(); j++ )
     {
         sensing_on_road::pedestrian_vision temp_rect;
