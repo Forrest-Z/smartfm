@@ -1,0 +1,38 @@
+<launch>
+    <!--node pkg="feature_detection" type="cluster_filter.py" pame="cluster_filter" output="screen" args="width<1.5 and depth<15 and dist<25"/-->
+    <node pkg="feature_detection" type="ped_clustering" name="ped_clustering">
+        <remap from="sickldmrs/scan0" to="sickldmrs/scan4"/>
+    </node>
+    <node pkg="pedestrian_detector" type="classifier" name="classifier" output="screen">
+    	<param name="image_transport" value="compressed"/>
+    	<remap from="image_raw" to="usb_cam/image_raw"/>
+	    <param name="hit_threshold" value="0.25"/><!--1.65"/-->
+	    <param name="scale" value="1.05"/>
+	    <param name="group_threshold" value="1.0"/>
+	    <param name="show_processed_image" value="false"/>
+	    <param name="black_front_roi" value="true"/>
+	    <param name="write_image" value="false"/>
+	    <param name="path" value="/media/MyPassport/ped_cand"/>
+	    <remap from="pd_vision_batch" to="pedestrian_clusters_filtered"/>
+	</node>
+	<node pkg="pedestrian_detector" type="visualizer_momdp" name="visualizer_vision" output="screen">
+	    <param name="image_transport" value="compressed"/>
+	    <remap from="image_raw" to="usb_cam/image_raw"/>
+	    <param name="ROI_text" value="false"/>
+	    <param name="ROI_rect" value="true"/>
+	    <param name="Publish_verified" value="false"/>
+	    <remap from="veri_pd_vision" to="pedestrian_detect"/>
+	</node>
+		<node pkg="pedestrian_detector" type="visualizer_momdp" name="visualizer_laser" output="screen">
+	    <param name="image_transport" value="compressed"/>
+	    <remap from="image_raw" to="usb_cam/image_raw"/>
+	    <param name="ROI_text" value="false"/>
+	    <param name="ROI_rect" value="true"/>
+	    <param name="Publish_verified" value="false"/>
+	    <remap from="veri_pd_vision" to="camera_project_out"/>
+	</node>
+	<node pkg="sensing_on_road" type="camera_project_pcl" name="camera_project_pcl">
+	    <remap from="camera_project_in" to="pedestrian_clusters_filtered"/>
+	</node>
+</launch>
+
