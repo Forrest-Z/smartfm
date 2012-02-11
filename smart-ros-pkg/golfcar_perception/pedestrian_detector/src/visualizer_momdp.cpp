@@ -62,7 +62,7 @@ void HOGVisualizer::pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel_cb
     {
         double left =  ped_bel_cb.believes[i].belief_value[0] + ped_bel_cb.believes[i].belief_value[3];
         double right =  ped_bel_cb.believes[i].belief_value[1] + ped_bel_cb.believes[i].belief_value[2];
-        int decision;
+        int decision=-2;
 
         if(ped_bel_cb.believes[i].action==1)
             decision=1;
@@ -70,11 +70,18 @@ void HOGVisualizer::pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel_cb
             decision=-1;
         else if(ped_bel_cb.believes[i].action==0)
         {
-            if(ped_bel_cb.robotv>0.1)
-                decision=1;
-            else if( ped_bel_cb.robotv < 0.1)
-                decision=-1;
+            //if(ped_bel_cb.robotv>0.1)
+                //decision=1;
+            //else if( ped_bel_cb.robotv < 0.1)
+                //decision=-1;
+                
+            decision =0;
         }
+        else
+        {
+			cout << "Strange action " << ped_bel_cb.believes[i].action << endl;
+			decision=-1;
+		}
 
         ped_bel[i].decision = decision;
         ped_bel[i].left_side = left;
@@ -109,7 +116,7 @@ void HOGVisualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_vi
 		
         if(ped_bel[i].id == pv.object_label)
         {
-            cout<<ped_bel[i].id<<" "<<ped_bel[i].left_side<<" "<<ped_bel[i].right_side<<endl;
+            cout<<ped_bel[i].id<<" "<<ped_bel[i].left_side<<" "<<ped_bel[i].right_side << " decision " << ped_bel[i].decision <<endl;
             
             //cout << " x " << pv.cvRect_x1 << " y " << pv.cvRect_y1; 
             //cout << " x " << pv.cvRect_x2 << " y " << pv.cvRect_y2 << endl;; 
@@ -146,9 +153,11 @@ void HOGVisualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_vi
             /// lower panel
             if(ped_bel[i].decision==-1) 
 				rectangle(img,UL, UR_UP, Scalar(0,0,255), CV_FILLED); /// red
-            else 
+            else if (ped_bel[i].decision==1) 
 				rectangle(img,UL, UR_UP, Scalar(0,255,0), CV_FILLED); /// green
-            
+			else
+				rectangle(img,UL, UR_UP, Scalar(0,0,255), CV_FILLED); /// red
+				//rectangle(img,UL, UR_UP, Scalar(0,255,255), CV_FILLED); /// yellow ( cruise )
             
             
         }
