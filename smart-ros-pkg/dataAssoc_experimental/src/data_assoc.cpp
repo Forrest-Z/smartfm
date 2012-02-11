@@ -13,7 +13,9 @@ data_assoc::data_assoc(int argc, char** argv)
 	/// Setting up subsciption 
     ros::NodeHandle nh;
     
-    pedSub_ = nh.subscribe("ped_local_frame_vector", 1, &data_assoc::pedClustCallback, this); how to add multiple subscription to same call back ????
+    pedSub_ = nh.subscribe("ped_local_frame_vector", 1, &data_assoc::pedClustCallback, this); 
+    visionSub_ = nh.subscribe("pedestrian_vision_batch", 1, &data_assoc::pedVisionCallback, this); 
+    /// TBP : how to add multiple subscription to same call back ????
     
     ros::NodeHandle n("~");
     
@@ -51,6 +53,36 @@ double dist(geometry_msgs::Point32 A, geometry_msgs::Point32 B)
 	return distance;
 }
 
+void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batch pedestrian_vision)
+{
+	/// loop over clusters to match with existing lPedInView
+	for(int jj=0; jj< lPedInView.size(); jj++)
+	{
+		double minDist=10000;
+		int minID=-1;
+		for(int ii=0; ii < cluster_vector.clusters.size(); ii++)
+		{
+			double currDist = dist(lPedInView[jj].ped_pose, cluster_vector.clusters[ii].centroid);
+			if(currDist < minDist)
+			{
+				minDist = currDist;
+				minID = ii;
+			}
+		}		
+		/// if cluster matched, remove from contention
+		if(-1 != minID)
+		{
+			lPedInView[ii].ped_pose = cluster_vector.clusters[minID].centroid;
+
+			/// remove minID element
+			if(cluster_vector.clusters.size())
+				cluster_vector.clusters.erase(cluster_vector.clusters.begin()+minID);
+		}
+		
+	}
+	
+}
+
 void data_assoc::pedClustCallback(ped_momdp_sarsop::ped_local_frame_vector ped_local_vector, perception_experimental::clusters cluster_vector)
 {
 
@@ -80,10 +112,11 @@ void data_assoc::pedClustCallback(ped_momdp_sarsop::ped_local_frame_vector ped_l
 		
 	}
 	/// Add remaining clusters as new pedestrians
-	/// check with caveat ....
+	/// check with caveat .... Or just ignore new clusters
 	for(int ii=0; ii< cluster_vector.clusters.size(); ii++)
 	{
-		If satisfies some criterion
+		If satisfies some criterion  or should we ignore and 
+		let the HoG find proper pedestrians.
 		
 		PED_DATA_ASSOC ped;
 		ped.id = assign some id; 
