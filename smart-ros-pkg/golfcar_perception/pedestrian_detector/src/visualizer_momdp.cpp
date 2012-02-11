@@ -1,5 +1,5 @@
 #include "visualizer_momdp.h"
-#include "cv_helper.h"
+//#include "cv_helper.h"
 #include <iomanip>
 #include <iostream>
 
@@ -11,6 +11,7 @@ HOGVisualizer::HOGVisualizer(ros::NodeHandle &n) : n_(n), it_(n_)
     ros::NodeHandle nh("~");
     nh.param("ROI_text", ROI_text, true);
     nh.param("ROI_rect", ROI_rect, false);
+    nh.param("Publish_verified", publish_verified, true);
     /// get image from the USB cam
     image_sub_.subscribe(it_,"/usb_cam/image_raw",20);
 
@@ -46,7 +47,17 @@ void HOGVisualizer::peopleCallback(const sensor_msgs::ImageConstPtr image, const
         Point UL = Point(vision_roi->pd_vector[i].cvRect_x1, vision_roi->pd_vector[i].cvRect_y1);
         Point BR = Point(vision_roi->pd_vector[i].cvRect_x2, vision_roi->pd_vector[i].cvRect_y2);
         sensing_on_road::pedestrian_vision temp_rect = vision_roi->pd_vector[i];
-        if(ROI_rect) rectangle(img,UL, BR, Scalar(255,0,0), 1);
+
+        if(ROI_rect)
+        {
+            if(publish_verified)
+            {
+                if(vision_roi->pd_vector[i].decision_flag)
+                    rectangle(img,UL, BR, Scalar(255,0,0), 1);
+            }
+            else rectangle(img,UL, BR, Scalar(255,0,0), 1);
+
+        }
         if(ROI_text) drawIDandConfidence(img, temp_rect);
 
     }

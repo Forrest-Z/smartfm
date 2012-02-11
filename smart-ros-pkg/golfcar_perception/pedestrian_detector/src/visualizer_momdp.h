@@ -45,7 +45,7 @@ private:
 	void peopleCallback(const sensor_msgs::ImageConstPtr image, const pedestrian_vision_batchConstPtr vision_roi);
 	void drawIDandConfidence(cv::Mat& img, sensing_on_road::pedestrian_vision& pv);
 	void pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel);
-	bool started, ROI_text, verified_text, vision_rect, verified_rect, ROI_rect;
+	bool started, ROI_text, verified_text, vision_rect, verified_rect, ROI_rect, publish_verified;
 	vector<pedBelife_vis>  ped_bel;
 };
 
