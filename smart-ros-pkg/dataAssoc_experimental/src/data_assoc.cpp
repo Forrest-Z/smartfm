@@ -49,7 +49,9 @@ data_assoc::~data_assoc()
 
 double dist(geometry_msgs::Point32 A, geometry_msgs::Point32 B)
 {
-	double distance = sqrt( (A.x -B.x) *(A.x-B.x) + (A.y -B.y) *(A.y-B.y));
+	double distance = -1;
+	if(A.x || B.x || A.y || B.y)
+	 distance = sqrt( (A.x -B.x) *(A.x-B.x) + (A.y -B.y) *(A.y-B.y));
 	return distance;
 }
 
@@ -64,7 +66,7 @@ void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batch pede
 		for(int ii=0; ii < pedestrian_vision_vector.pd_vector.size(); ii++)
 		{
 			double currDist = dist(lPedInView[jj].ped_pose, pedestrian_vision_vector.pd_vector[ii].cluster.centroid);
-			if(currDist < minDist)
+			if( (currDist < minDist) && currDist>-1)
 			{
 				minDist = currDist;
 				minID = ii;
@@ -89,6 +91,7 @@ void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batch pede
 		PED_DATA_ASSOC newPed;
 		newPed.id = latest_id++;
 		newPed.ped_pose = pedestrian_vision_vector.pd_vector[ii].cluster.centroid;
+		cout << "Creating new pedestrian with id" << latest_id;
 		lPedInView.push_back(newPed);
 	}
 	
@@ -107,7 +110,7 @@ void data_assoc::pedClustCallback(feature_detection::clusters cluster_vector)
 		for(int ii=0; ii < cluster_vector.clusters.size(); ii++)
 		{
 			double currDist = dist(lPedInView[jj].ped_pose, cluster_vector.clusters[ii].centroid);
-			if(currDist < minDist)
+			if( (currDist < minDist) && currDist>-1)
 			{
 				minDist = currDist;
 				minID = ii;
