@@ -15,22 +15,7 @@
 	    <param name="path" value="/media/MyPassport/ped_cand"/>
 	    <remap from="pd_vision_batch" to="pedestrian_clusters_filtered"/>
 	</node>
-	<node pkg="pedestrian_detector" type="visualizer_momdp" name="visualizer_vision" output="screen">
-	    <param name="image_transport" value="compressed"/>
-	    <remap from="image_raw" to="usb_cam/image_raw"/>
-	    <param name="ROI_text" value="false"/>
-	    <param name="ROI_rect" value="true"/>
-	    <param name="Publish_verified" value="false"/>
-	    <remap from="veri_pd_vision" to="pedestrian_detect"/>
-	</node>
-		<node pkg="pedestrian_detector" type="visualizer_momdp" name="visualizer_laser" output="screen">
-	    <param name="image_transport" value="compressed"/>
-	    <remap from="image_raw" to="usb_cam/image_raw"/>
-	    <param name="ROI_text" value="false"/>
-	    <param name="ROI_rect" value="true"/>
-	    <param name="Publish_verified" value="false"/>
-	    <remap from="veri_pd_vision" to="camera_project_out"/>
-	</node>
+	<include file="$(find feature_detection)/visualizer.launch"/>
 	<node pkg="sensing_on_road" type="camera_project_pcl" name="camera_project_pcl">
 	    <remap from="camera_project_in" to="pedestrian_clusters_filtered"/>
 	</node>
