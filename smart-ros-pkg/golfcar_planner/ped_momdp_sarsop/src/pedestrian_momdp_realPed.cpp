@@ -33,9 +33,9 @@ void pedestrian_momdp::initPedMOMDP(ped_momdp_sarsop::ped_local_frame ped_local)
 {
 	PED_MOMDP pedProblem;
 	pedProblem.id = ped_local.ped_id;
-	
+	cout<<"create new belief state"<<endl;
 	pedProblem.currBelSt = (new BeliefWithState());
-	
+	cout<<ped_local.rob_pose<<endl;
 	pedProblem.currSVal = getCurrentState(robotspeedx_, ped_local.rob_pose.y, ped_local.ped_pose.x, ped_local.ped_pose.y);
 
 	SharedPointer<SparseVector> startBeliefVec;
@@ -214,9 +214,12 @@ void pedestrian_momdp::publish_belief()
         
         /// Publish ped id
         ped_belief.ped_id = lPedInView[ii].id;
-        ped_belief.x = getXGrid(lPedInView[ii].ped_pose.x);
-        ped_belief.y = getYGrid(lPedInView[ii].ped_pose.y);
+        ped_belief.ped_x = getXGrid(lPedInView[ii].ped_pose.x);
+        ped_belief.ped_y = getYGrid(lPedInView[ii].ped_pose.y);
         
+        /// Publish rob
+        ped_belief.rob_x = 1;//getXGrid(lPedInView[ii].rob_pose.x);
+        ped_belief.rob_y = getYGrid(lPedInView[ii].rob_pose);
         ///Publish belief
         int belief_size = lPedInView[ii].currBelSt->bvec->data.size();
         
@@ -230,6 +233,7 @@ void pedestrian_momdp::publish_belief()
             double belief_value = lPedInView[ii].currBelSt->bvec->data[jj].value;
 
             ped_belief.belief_value[belief_id] = belief_value;
+
         }
 
 
@@ -243,8 +247,7 @@ void pedestrian_momdp::publish_belief()
     }
     peds_believes.cmd_vel = cmd.linear.x;
     peds_believes.robotv = robotspeedx_;
-    peds_believes.robotx = getXGrid(robotx_);
-    peds_believes.roboty = getYGrid(roboty_);
+
     believesPub_.publish(peds_believes);
 }
 
@@ -302,6 +305,7 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv)
 
 	/// Initialize pedestrian goals
 	initPedGoal();
+    policy_initialize();
 
 
     timer_ = nh.createTimer(ros::Duration(0.5), &pedestrian_momdp::controlLoop, this);
@@ -383,7 +387,7 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 		{
 			///if ped_id does not match the old one create a new pomdp problem.
 			ROS_INFO(" Creating  a new pedestrian problem #%d", ped_id);
-			initPedMOMDP(lPedLocal.ped_local[ped_id]);
+			initPedMOMDP(lPedLocal.ped_local[ii]);
 		}		
     }
 }
@@ -433,38 +437,6 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
 
     if(obs_first)
     {
-
-        policy_initialize();
-        //for(int ii=0; ii<num_ped; ii++)
-        //{
-
-            //SharedPointer<BeliefWithState> currBelSt (new BeliefWithState());
-
-            //currSVal[ii] = getCurrentState(ii);
-
-            //SharedPointer<SparseVector> startBeliefVec;
-            //cout<<"ControlLoop: startBelief"<<endl;
-            //if (problem->initialBeliefStval->bvec)
-                //startBeliefVec = problem->initialBeliefStval->bvec;
-            //else
-                //startBeliefVec = problem->initialBeliefYByX[currSVal[ii]];
-
-            //cout<<"ControlLoop: EndStartBelief"<<endl;
-            ///// TBP : initializing belief for Y
-            //int currUnobsState = chooseFromDistribution(*startBeliefVec);
-            //int belSize = startBeliefVec->size();
-
-
-            //currBelSt->sval = currSVal[ii];
-            //copy(*currBelSt->bvec, *startBeliefVec);
-            //cout << "Starting Belief " << endl;
-            //currBelSt->bvec->write(cout);//, *streamOut);
-            //cout << endl;
-
-            //lcurrBelSt.push_back(currBelSt);
-            //currAction[ii] = policy->getBestActionLookAhead(*currBelSt);
-        //}
-        obs_first = false;
         return;
     }
     
@@ -675,7 +647,7 @@ int pedestrian_momdp::getCurrentState(double currRobSpeed, double roby, double p
 int pedestrian_momdp::getXGrid(double x)
 {
     int px = (int) (x)/dX ;
-    if(px> 3) px = 3;
+    if(px> (X_SIZE-1)) px = (X_SIZE-1);
     else if (px<0) px = 0;
     return px;
 }
@@ -683,6 +655,9 @@ int pedestrian_momdp::getXGrid(double x)
 int pedestrian_momdp::getYGrid(double y)
 {
     int py = (int) (y+Y_OFFSET)/dY ;
+    if(py> (Y_SIZE-1)) py = (Y_SIZE-1);
+    else if (py<0) py = 0;
+
     return py;
 }
 
