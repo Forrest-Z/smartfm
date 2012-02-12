@@ -16,9 +16,9 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-FIND_PACKAGE( OpenCV REQUIRED )
+#FIND_PACKAGE( OpenCV REQUIRED )
 
-include_directories( ${OpenCV_INCLUDE_DIR} )
+#include_directories( ${OpenCV_INCLUDE_DIR} )
 
 #uncomment if you have defined messages
 #rosbuild_genmsg()
@@ -39,9 +39,10 @@ rosbuild_add_executable(classifier src/classifier.cpp)
 rosbuild_add_link_flags(classifier -lopencv_gpu)
 
 rosbuild_add_executable(visualizer src/visualizer.cpp)
-target_link_libraries(visualizer ${OpenCV_LIBS})
+rosbuild_add_link_flags(visualizer -lopencv_gpu)
 
 rosbuild_add_executable(visualizer_momdp src/visualizer_momdp.cpp)
-target_link_libraries(visualizer_momdp ${OpenCV_LIBS})
+rosbuild_add_link_flags(visualizer_momdp -lopencv_gpu)
 
 rosbuild_add_executable(rect_talker src/rect_talker.cpp)
+rosbuild_add_link_flags(rect_talker -lopencv_gpu)

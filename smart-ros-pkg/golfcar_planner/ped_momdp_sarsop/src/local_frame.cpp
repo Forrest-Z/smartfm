@@ -36,7 +36,7 @@ local_frame::local_frame()
 {
     ros::NodeHandle nh;
     ped_sub_ = nh.subscribe("ped_map_laser_batch", 1, &local_frame::pedCallback, this);
-    local_pub_ = nh.advertise<ped_momdp_sarsop::ped_local_frame_vector>("ped_local", 1);
+    local_pub_ = nh.advertise<ped_momdp_sarsop::ped_local_frame_vector>("ped_local_frame_vector", 1);
 
     ros::NodeHandle n("~");
     n.param("global_frame", global_frame_, string("/odom"));
