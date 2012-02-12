@@ -8,5 +8,5 @@
 	    <remap from="robot_0/cmd_vel" to="momdp_vel"/>
             <remap from="odom" to="encoder_odom"/>
 	 </node>
-	
+
 </launch>

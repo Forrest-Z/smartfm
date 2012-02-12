@@ -35,7 +35,7 @@ void pedestrian_momdp::initPedMOMDP(ped_momdp_sarsop::ped_local_frame ped_local)
 	pedProblem.id = ped_local.ped_id;
 	cout<<"create new belief state"<<endl;
 	pedProblem.currBelSt = (new BeliefWithState());
-	cout<<ped_local.rob_pose<<endl;
+	cout<<"Ped pose: "<<ped_local.ped_pose<<endl;
 	pedProblem.currSVal = getCurrentState(robotspeedx_, ped_local.rob_pose.y, ped_local.ped_pose.x, ped_local.ped_pose.y);
 
 	SharedPointer<SparseVector> startBeliefVec;
@@ -59,7 +59,11 @@ void pedestrian_momdp::initPedMOMDP(ped_momdp_sarsop::ped_local_frame ped_local)
 
 	
 	pedProblem.currAction = policy->getBestActionLookAhead(*(pedProblem.currBelSt));
-	
+
+	//the forgotten part
+	pedProblem.rob_pose = (double)ped_local.rob_pose.y;
+	pedProblem.ped_pose.x = (double)ped_local.ped_pose.x;
+	pedProblem.ped_pose.y = (double)ped_local.ped_pose.y;
 	lPedInView.push_back(pedProblem);
 
 	return;
@@ -362,25 +366,28 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
         //currAction.resize(num_ped);
     //}
 
-    ROS_DEBUG_STREAM("lPedLocal size "<<lPedLocal.ped_local.size()<<" lPedInView size "<<lPedInView.size());
+    ROS_INFO_STREAM("lPedLocal size "<<lPedLocal.ped_local.size()<<" lPedInView size "<<lPedInView.size());
+
     for(int ii=0; ii< lPedLocal.ped_local.size(); ii++)
     {
 		/// search for proper pedestrian to update
 		int ped_id = lPedLocal.ped_local[ii].ped_id;
-		
+
 		bool foundPed=false;
 		for(int jj=0; jj< lPedInView.size(); jj++)
 		{
 			if(lPedInView[jj].id==ped_id)
 			{
-				lPedInView[jj].ped_pose.x = lPedLocal.ped_local[ped_id].ped_pose.x;
-				lPedInView[jj].ped_pose.y = lPedLocal.ped_local[ped_id].ped_pose.y;
-								
+			    //given in ROS coordinate, convert to momdp compatible format
+				lPedInView[jj].ped_pose.x = -lPedLocal.ped_local[ii].ped_pose.y;
+				lPedInView[jj].ped_pose.y = lPedLocal.ped_local[ii].ped_pose.x;
+				lPedInView[jj].rob_pose = lPedLocal.ped_local[ii].rob_pose.x;
 				foundPed=true;
+				cout << "Updated ped info "<<lPedInView[jj].ped_pose.x<<' '<<lPedInView[jj].ped_pose.y<<endl;
 				break;
 				
 			}
-			ROS_DEBUG_STREAM(ii<<": PedX "<<lPedInView[jj].ped_pose.x << " PedY "<<lPedInView[jj].ped_pose.y);
+			ROS_INFO_STREAM(ii<<": PedX "<<lPedInView[jj].ped_pose.x << " PedY "<<lPedInView[jj].ped_pose.y);
 		}
 		
 		if(!foundPed)
@@ -388,7 +395,8 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 			///if ped_id does not match the old one create a new pomdp problem.
 			ROS_INFO(" Creating  a new pedestrian problem #%d", ped_id);
 			initPedMOMDP(lPedLocal.ped_local[ii]);
-		}		
+		}
+		//cout << "ped info "<<(double)lPedInView[ii].ped_pose.x<<' '<<(double)lPedInView[ii].ped_pose.y<<endl;
     }
 }
 
@@ -396,6 +404,7 @@ void pedestrian_momdp::updateBelief(int id, int safeAction)
 {
 		cout << "---- subproblem update  #" << id << " ---- " << endl;
         cout << "Next state " << endl;
+        cout << "First ped info "<<lPedInView[0].ped_pose.x<<' '<<lPedInView[0].ped_pose.y<<endl;
         int nextSVal = getCurrentState(robotspeedx_, lPedInView[id].rob_pose, lPedInView[id].ped_pose.x, lPedInView[id].ped_pose.y);
         int currObservation = getCurrObs(id);
 
@@ -424,7 +433,7 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
 
     /// Start after 3 pedestrians are detected
     cout<<"Pedestrian: "<<obs_flag<<" Robot: "<<robot_pose<<endl;
-    if(!obs_flag || !robot_pose)return;
+    if(!robot_pose)return;
 
     //publish goal point at 25 meter in global frame
     geometry_msgs::PoseStamped ps;
@@ -435,7 +444,7 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
     ps.pose.orientation.w = 1.0;
     goalPub_.publish(ps);
 
-    if(obs_first)
+    if(lPedInView.size()==0)
     {
         return;
     }

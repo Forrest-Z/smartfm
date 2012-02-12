@@ -35,7 +35,7 @@ private:
 local_frame::local_frame()
 {
     ros::NodeHandle nh;
-    ped_sub_ = nh.subscribe("ped_map_laser_batch", 1, &local_frame::pedCallback, this);
+    ped_sub_ = nh.subscribe("ped_laser_batch", 1, &local_frame::pedCallback, this);
     local_pub_ = nh.advertise<ped_momdp_sarsop::ped_local_frame_vector>("ped_local_frame_vector", 1);
 
     ros::NodeHandle n("~");
@@ -105,6 +105,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_laser_batchConstPtr pe
             //use the current base_link pose as the new frame
             in_pose.frame_id_ = "base_link";
             in_pose.setIdentity();
+            in_pose.setOrigin(btVector3(0.0,3.0,0.0));
             getObjectPose(global_frame_, in_pose, out_pose);
             transform.setOrigin( out_pose.getOrigin() );
             transform.setRotation( out_pose.getRotation() );
