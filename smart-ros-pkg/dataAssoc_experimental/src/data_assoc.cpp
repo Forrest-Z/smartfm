@@ -13,8 +13,8 @@ data_assoc::data_assoc(int argc, char** argv)
 	/// Setting up subsciption 
     ros::NodeHandle nh;
     
-    pedSub_ = nh.subscribe("ped_local_frame_vector", 1, &data_assoc::pedClustCallback, this); 
-    visionSub_ = nh.subscribe("pedestrian_vision_batch", 1, &data_assoc::pedVisionCallback, this); 
+    pedClustSub_ = nh.subscribe("ped_laser_cluster", 1, &data_assoc::pedClustCallback, this); 
+    pedVisionSub_ = nh.subscribe("ped_vision", 1, &data_assoc::pedVisionCallback, this); 
     /// TBP : how to add multiple subscription to same call back ????
     
     ros::NodeHandle n("~");
@@ -32,11 +32,11 @@ data_assoc::data_assoc(int argc, char** argv)
     //scanSub_ = nh.subscribe("clock", 1, &data_assoc::scanCallback, this);
     
     /// Setting up publishing
-    pedPub_ = nh.advertise<geometry_msgs::Twist>("???",1);
+    pedPub_ = nh.advertise<dataAssoc_experimental::PedDataAssoc>("ped_data_assoc",1); /// topic name
 
+	latest_id=0;
 
-
-    timer_ = nh.createTimer(ros::Duration(0.5), &data_assoc::??, this);
+    //timer_ = nh.createTimer(ros::Duration(0.5), &data_assoc::??, this); /// control loop ??
     ros::spin();
 }
 
@@ -49,41 +49,62 @@ data_assoc::~data_assoc()
 
 double dist(geometry_msgs::Point32 A, geometry_msgs::Point32 B)
 {
-	double distance = sqrt( (A.x -B.x) *(A.x-B.x) + (A.y -B.y) *(A.y-B.y));
+	double distance = -1;
+	//if(A.x || B.x || A.y || B.y)
+	 distance = sqrt( (A.x -B.x) *(A.x-B.x) + (A.y -B.y) *(A.y-B.y));
+	 
 	return distance;
 }
 
-void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batch pedestrian_vision)
+void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batch pedestrian_vision_vector)
 {
+	cout << " Entering vision call back with lPedInView " << lPedInView.size() << endl;
+	//pedestrian_vision_vector.pd_vector[].cluster.centroid;
 	/// loop over clusters to match with existing lPedInView
 	for(int jj=0; jj< lPedInView.size(); jj++)
 	{
 		double minDist=10000;
 		int minID=-1;
-		for(int ii=0; ii < cluster_vector.clusters.size(); ii++)
+		for(int ii=0; ii < pedestrian_vision_vector.pd_vector.size(); ii++)
 		{
-			double currDist = dist(lPedInView[jj].ped_pose, cluster_vector.clusters[ii].centroid);
-			if(currDist < minDist)
+			double currDist = dist(lPedInView[jj].ped_pose, pedestrian_vision_vector.pd_vector[ii].cluster.centroid);
+			if( (currDist < minDist) && currDist>-1)
 			{
 				minDist = currDist;
 				minID = ii;
 			}
 		}		
-		/// if cluster matched, remove from contention
-		if(-1 != minID)
+		maybe we can add image features to check similarity
+		if(minDist < NN_MATCH_THRESHOLD)
 		{
-			lPedInView[ii].ped_pose = cluster_vector.clusters[minID].centroid;
-
-			/// remove minID element
-			if(cluster_vector.clusters.size())
-				cluster_vector.clusters.erase(cluster_vector.clusters.begin()+minID);
+			/// if cluster matched, remove from contention
+			if(-1 != minID)
+			{
+				/// remove minID element
+				if(pedestrian_vision_vector.pd_vector.size())
+					pedestrian_vision_vector.pd_vector.erase(pedestrian_vision_vector.pd_vector.begin()+minID);
+			}
 		}
 		
 	}
+    
+    for(int ii=0 ; ii<pedestrian_vision_vector.pd_vector.size(); ii++)
+    {
+		if(pedestrian_vision_vector.pd_vector[ii].cluster.centroid.x!=0 || pedestrian_vision_vector.pd_vector[ii].cluster.centroid.y!=0)
+		{
+			PED_DATA_ASSOC newPed;
+			newPed.id = latest_id++;
+			newPed.ped_pose = pedestrian_vision_vector.pd_vector[ii].cluster.centroid;
+			cout << "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.ped_pose.x << " y:" << newPed.ped_pose.y << endl;
+			lPedInView.push_back(newPed);
+		}
+	}
+	
+	publishPed();
 	
 }
 
-void data_assoc::pedClustCallback(ped_momdp_sarsop::ped_local_frame_vector ped_local_vector, perception_experimental::clusters cluster_vector)
+void data_assoc::pedClustCallback(feature_detection::clusters cluster_vector)
 {
 
 	/// loop over clusters to match with existing lPedInView
@@ -94,41 +115,60 @@ void data_assoc::pedClustCallback(ped_momdp_sarsop::ped_local_frame_vector ped_l
 		for(int ii=0; ii < cluster_vector.clusters.size(); ii++)
 		{
 			double currDist = dist(lPedInView[jj].ped_pose, cluster_vector.clusters[ii].centroid);
-			if(currDist < minDist)
+			if( (currDist < minDist) && currDist>-1)
 			{
 				minDist = currDist;
 				minID = ii;
 			}
 		}		
-		/// if cluster matched, remove from contention
-		if(-1 != minID)
+		
+		if(minDist < NN_MATCH_THRESHOLD)
 		{
-			lPedInView[ii].ped_pose = cluster_vector.clusters[minID].centroid;
+			
+			/// if cluster matched, remove from contention
+			if(-1 != minID)
+			{
+				cout << " Cluster matched with ped id #" << minID << endl;
+				
+				lPedInView[jj].ped_pose = cluster_vector.clusters[minID].centroid;
 
-			/// remove minID element
-			if(cluster_vector.clusters.size())
-				cluster_vector.clusters.erase(cluster_vector.clusters.begin()+minID);
+				/// remove minID element
+				if(cluster_vector.clusters.size())
+					cluster_vector.clusters.erase(cluster_vector.clusters.begin()+minID);
+			}
 		}
 		
 	}
-	/// Add remaining clusters as new pedestrians
-	/// check with caveat .... Or just ignore new clusters
-	for(int ii=0; ii< cluster_vector.clusters.size(); ii++)
-	{
-		If satisfies some criterion  or should we ignore and 
-		let the HoG find proper pedestrians.
+	///// Add remaining clusters as new pedestrians
+	///// check with caveat .... Or just ignore new clusters
+	//for(int ii=0; ii< cluster_vector.clusters.size(); ii++)
+	//{
+		//If satisfies some criterion  or should we ignore and 
+		//let the HoG find proper pedestrians.
 		
-		PED_DATA_ASSOC ped;
-		ped.id = assign some id; 
-		ped.ped_pose = cluster_vector.clusters[ii].centroid;
-	}
+		//PED_DATA_ASSOC ped;
+		//ped.id = assign some id; 
+		//ped.ped_pose = cluster_vector.clusters[ii].centroid;
+	//}
 	
-	
+	publishPed();
 }
 
 void data_assoc::publishPed()
 {
-    is there a new data association pedestrian structure ??
+    dataAssoc_experimental::PedDataAssoc_vector lPed;
+    
+    for(int ii=0; ii <lPedInView.size(); ii++)
+    {
+		dataAssoc_experimental::PedDataAssoc ped;
+		ped.id = lPedInView[ii].id;
+		ped.ped_pose = lPedInView[ii].ped_pose;
+		
+		lPed.ped_vector.push_back(ped);
+	}
+    
+    pedPub_.publish(lPed);
+    
 }
 
 
@@ -136,7 +176,7 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "data_assoc");
 
-    data_assoc *data_assoc_node = new data_assoc();//argc, argv);
+    data_assoc *data_assoc_node = new data_assoc(argc, argv);
 
     ros::spin();
 }
