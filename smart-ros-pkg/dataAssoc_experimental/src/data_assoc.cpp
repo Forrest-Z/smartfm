@@ -50,13 +50,15 @@ data_assoc::~data_assoc()
 double dist(geometry_msgs::Point32 A, geometry_msgs::Point32 B)
 {
 	double distance = -1;
-	if(A.x || B.x || A.y || B.y)
+	//if(A.x || B.x || A.y || B.y)
 	 distance = sqrt( (A.x -B.x) *(A.x-B.x) + (A.y -B.y) *(A.y-B.y));
+	 
 	return distance;
 }
 
 void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batch pedestrian_vision_vector)
 {
+	cout << " Entering vision call back with lPedInView " << lPedInView.size() << endl;
 	//pedestrian_vision_vector.pd_vector[].cluster.centroid;
 	/// loop over clusters to match with existing lPedInView
 	for(int jj=0; jj< lPedInView.size(); jj++)
@@ -72,7 +74,7 @@ void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batch pede
 				minID = ii;
 			}
 		}		
-		
+		maybe we can add image features to check similarity
 		if(minDist < NN_MATCH_THRESHOLD)
 		{
 			/// if cluster matched, remove from contention
@@ -88,11 +90,14 @@ void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batch pede
     
     for(int ii=0 ; ii<pedestrian_vision_vector.pd_vector.size(); ii++)
     {
-		PED_DATA_ASSOC newPed;
-		newPed.id = latest_id++;
-		newPed.ped_pose = pedestrian_vision_vector.pd_vector[ii].cluster.centroid;
-		cout << "Creating new pedestrian with id" << latest_id;
-		lPedInView.push_back(newPed);
+		if(pedestrian_vision_vector.pd_vector[ii].cluster.centroid.x!=0 || pedestrian_vision_vector.pd_vector[ii].cluster.centroid.y!=0)
+		{
+			PED_DATA_ASSOC newPed;
+			newPed.id = latest_id++;
+			newPed.ped_pose = pedestrian_vision_vector.pd_vector[ii].cluster.centroid;
+			cout << "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.ped_pose.x << " y:" << newPed.ped_pose.y << endl;
+			lPedInView.push_back(newPed);
+		}
 	}
 	
 	publishPed();
@@ -119,9 +124,12 @@ void data_assoc::pedClustCallback(feature_detection::clusters cluster_vector)
 		
 		if(minDist < NN_MATCH_THRESHOLD)
 		{
+			
 			/// if cluster matched, remove from contention
 			if(-1 != minID)
 			{
+				cout << " Cluster matched with ped id #" << minID << endl;
+				
 				lPedInView[jj].ped_pose = cluster_vector.clusters[minID].centroid;
 
 				/// remove minID element
