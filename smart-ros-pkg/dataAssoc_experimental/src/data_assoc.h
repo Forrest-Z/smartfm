@@ -45,7 +45,8 @@ public:
     ros::Subscriber pedVisionSub_;
     ros::Subscriber pedClustSub_;
     ros::Publisher pedPub_;
-    
+    ros::Publisher visualizer_;
+    string frame_id_;
     bool use_sim_time_;
     //double robotx_, roboty_, robotspeedx_;//pedx_, pedy_;
     
