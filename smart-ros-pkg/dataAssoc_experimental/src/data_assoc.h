@@ -13,7 +13,10 @@
 #include <sensing_on_road/pedestrian_laser_batch.h>
 #include <sensing_on_road/pedestrian_vision_batch.h>
 #include <feature_detection/clusters.h>
-#include <geometry_msgs/Point32.h>
+#include <geometry_msgs/Point.h>
+#include <tf/transform_listener.h>
+#include <tf/message_filter.h>
+#include <message_filters/subscriber.h>
 #include <dataAssoc_experimental/PedDataAssoc.h>
 #include <dataAssoc_experimental/PedDataAssoc_vector.h>
 using namespace std;
@@ -23,7 +26,7 @@ using namespace std;
 struct PED_DATA_ASSOC
 {
 	int id;        
-	geometry_msgs::Point32 ped_pose; /// updated from the centroid                 
+	geometry_msgs::Point32 ped_pose; /// updated from the centroid
 };
 
 vector<PED_DATA_ASSOC> lPedInView;
@@ -35,19 +38,22 @@ public:
     //data_assoc();
     ~data_assoc();
     
-	void pedClustCallback(feature_detection::clusters cluster_vector); 
-    void pedVisionCallback(sensing_on_road::pedestrian_vision_batch pedestrian_vision_vector);
+	void pedClustCallback(feature_detection::clustersConstPtr cluster_vector);
+    void pedVisionCallback(sensing_on_road::pedestrian_vision_batchConstPtr pedestrian_vision_vector);
     
     void publishPed();
-    
+    bool transformPointToGlobal(std_msgs::Header header, geometry_msgs::Point32 input_point, geometry_msgs::Point32& output_point);
     
 
-    ros::Subscriber pedVisionSub_;
-    ros::Subscriber pedClustSub_;
     ros::Publisher pedPub_;
     ros::Publisher visualizer_;
-    string frame_id_;
+    string frame_id_, global_frame_;
     bool use_sim_time_;
+    tf::TransformListener *listener_;
+    tf::MessageFilter<feature_detection::clusters> * laser_tf_filter_;
+    tf::MessageFilter<sensing_on_road::pedestrian_vision_batch> * vision_tf_filter_;
+    message_filters::Subscriber<feature_detection::clusters> pedClustSub_;
+    message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> pedVisionSub_;
     //double robotx_, roboty_, robotspeedx_;//pedx_, pedy_;
     
     //double robotspeedx_;
