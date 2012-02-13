@@ -18,7 +18,7 @@
 #include <dataAssoc_experimental/PedDataAssoc_vector.h>
 using namespace std;
 
-#define NN_MATCH_THRESHOLD 0.5
+#define NN_MATCH_THRESHOLD 1.0
 
 struct PED_DATA_ASSOC
 {

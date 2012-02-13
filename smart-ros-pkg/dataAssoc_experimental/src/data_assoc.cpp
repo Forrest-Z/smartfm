@@ -90,7 +90,8 @@ void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batch pede
     
     for(int ii=0 ; ii<pedestrian_vision_vector.pd_vector.size(); ii++)
     {
-		if(pedestrian_vision_vector.pd_vector[ii].cluster.centroid.x!=0 || pedestrian_vision_vector.pd_vector[ii].cluster.centroid.y!=0)
+
+		if(pedestrian_vision_vector.pd_vector[ii].decision_flag)//(pedestrian_vision_vector.pd_vector[ii].cluster.centroid.x!=0 || pedestrian_vision_vector.pd_vector[ii].cluster.centroid.y!=0)
 		{
 			PED_DATA_ASSOC newPed;
 			newPed.id = latest_id++;
