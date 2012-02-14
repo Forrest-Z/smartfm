@@ -222,9 +222,12 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
 
             ROS_DEBUG("%.4lf %.4lf %.4lf\n", p_temp.x, p_temp.y, p_temp.z);
             cluster_points.push_back(p_temp);
-            pclpt_temp.z = i;
 
+            //only the horizontal plane pca info is useful to us
+            pclpt_temp.z = 0;
             pca_input.points.push_back(pclpt_temp);
+
+            pclpt_temp.z = i;
             cloud_cluster->points.push_back (pclpt_temp);
         }
         cluster.points = cluster_points;

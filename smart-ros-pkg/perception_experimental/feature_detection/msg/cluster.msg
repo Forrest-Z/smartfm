@@ -10,3 +10,5 @@ float64 eigen3
 float64 projected_l1
 float64 projected_l2
 float64 projected_l3
+int64 id
+time last_update
