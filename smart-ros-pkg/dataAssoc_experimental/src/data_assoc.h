@@ -25,25 +25,26 @@ using namespace std;
 
 struct PED_DATA_ASSOC
 {
-	int id;        
+	int id;
 	geometry_msgs::Point32 ped_pose; /// updated from the centroid
+	ros::Time last_update;
 };
 
-vector<PED_DATA_ASSOC> lPedInView;
 
-class data_assoc 
+
+class data_assoc
 {
 public:
     data_assoc(int argc, char** argv);
     //data_assoc();
     ~data_assoc();
-    
+
 	void pedClustCallback(feature_detection::clustersConstPtr cluster_vector);
     void pedVisionCallback(sensing_on_road::pedestrian_vision_batchConstPtr pedestrian_vision_vector);
-    
+
     void publishPed();
     bool transformPointToGlobal(std_msgs::Header header, geometry_msgs::Point32 input_point, geometry_msgs::Point32& output_point);
-    
+    void cleanUp();
 
     ros::Publisher pedPub_;
     ros::Publisher visualizer_;
@@ -54,18 +55,20 @@ public:
     tf::MessageFilter<sensing_on_road::pedestrian_vision_batch> * vision_tf_filter_;
     message_filters::Subscriber<feature_detection::clusters> pedClustSub_;
     message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> pedVisionSub_;
+    feature_detection::clusters lPedInView;
+    double time_out_;
     //double robotx_, roboty_, robotspeedx_;//pedx_, pedy_;
-    
+
     //double robotspeedx_;
     //int simLen, simNum;
     //string  ped_id_file, policy_file, model_file;
     //void parse_simul_config( fstream& configfile);
-    
+
     //int policy_initialize();
     //void pedInitPose();
-    
+
     //void initPedMOMDP(ped_momdp_sarsop::ped_local_frame ped_local);
-    
+
 
     //ofstream* foutStream;
 
@@ -75,9 +78,9 @@ public:
 		//double y;
 		//double yaw;
 	//};
-	
+
 	int latest_id;
-    
+
 
     //ros::Timer timer_;
 };
