@@ -70,6 +70,7 @@ void camera_project_pcl::pcl_in_CB(const boost::shared_ptr<const feature_detecti
 
         sensing_on_road::pedestrian_vision msg;
         msg.cluster = clusters_ptr->clusters[i];
+        msg.object_label = clusters_ptr->clusters[i].id;
         msg.decision_flag = false;
         msg.complete_flag = true;
         msg.disz = clusters_ptr->clusters[i].centroid.x;
