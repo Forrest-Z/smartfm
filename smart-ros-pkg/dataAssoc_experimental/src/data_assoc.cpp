@@ -22,7 +22,7 @@ data_assoc::data_assoc(int argc, char** argv)
     n.param("global_frame", global_frame_, string("odom"));
     n.param("time_out", time_out_, 3.0);
     /// Setting up publishing
-    pedPub_ = nh.advertise<feature_detection::clusters>("ped_data_assoc",1); /// topic name
+    pedPub_ = nh.advertise<sensing_on_road::pedestrian_vision_batch>("ped_data_assoc",1); /// topic name
     visualizer_ = nh.advertise<sensor_msgs::PointCloud>("ped_data_assoc_visual",1);
 	latest_id=0;
 
@@ -76,11 +76,11 @@ bool data_assoc::transformPointToGlobal(std_msgs::Header header, geometry_msgs::
 void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batchConstPtr pedestrian_vision_vector)
 {
     std::vector<sensing_on_road::pedestrian_vision> pd_vector = pedestrian_vision_vector->pd_vector;
-    ROS_DEBUG(" Entering vision call back with lPedInView %d and ped vector size of %d", lPedInView.clusters.size(), pd_vector.size());
+    ROS_INFO(" Entering vision call back with lPedInView %d and ped vector size of %d", lPedInView.pd_vector.size(), pd_vector.size());
 
 	//pedestrian_vision_vector.pd_vector[].cluster.centroid;
 	/// loop over clusters to match with existing lPedInView
-	for(int jj=0; jj< lPedInView.clusters.size(); jj++)
+	for(int jj=0; jj< lPedInView.pd_vector.size(); jj++)
 	{
 		double minDist=10000;
 		int minID=-1;
@@ -89,7 +89,7 @@ void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batchConst
 		    geometry_msgs::Point32 global_point;
 		    bool transformed = transformPointToGlobal(pedestrian_vision_vector->header, pd_vector[ii].cluster.centroid, global_point);
 		    if(!transformed) return;
-			double currDist = dist(lPedInView.clusters[jj].centroid, global_point);
+			double currDist = dist(lPedInView.pd_vector[jj].cluster.centroid, global_point);
 			if( (currDist < minDist) && currDist>-1)
 			{
 				minDist = currDist;
@@ -99,10 +99,29 @@ void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batchConst
 		//maybe we can add image features to check similarity
 		if(minDist < NN_MATCH_THRESHOLD)
 		{
+
+
 			/// if cluster matched, remove from contention
 			if(-1 != minID)
 			{
-			    ROS_DEBUG("From Vision: Cluster %d matched with dist %lf with decision flag %d", lPedInView.clusters[jj].id, minDist, pd_vector[minID].decision_flag);
+			    ROS_DEBUG("From Vision: Cluster %d matched with dist %lf with decision flag %d", lPedInView.pd_vector[jj].object_label, minDist, pd_vector[minID].decision_flag);
+			    //polling added to filter out some noise
+			    if(lPedInView.pd_vector[jj].confidence>=0.5)
+			    {
+			        if(pd_vector[minID].decision_flag)
+			        {
+			            if(lPedInView.pd_vector[jj].confidence+0.1<=1.0) lPedInView.pd_vector[jj].confidence+=0.1;
+			        }
+			        else
+			        {
+			            if(lPedInView.pd_vector[jj].confidence-0.1>=0.5) lPedInView.pd_vector[jj].confidence-=0.1;
+			        }
+			    }
+			    else
+			    {
+			        if(pd_vector[minID].decision_flag) lPedInView.pd_vector[jj].confidence+=0.1;
+			        else if(lPedInView.pd_vector[jj].confidence-0.1>=0) lPedInView.pd_vector[jj].confidence-=0.1;
+			    }
 				/// remove minID element
 				if(pd_vector.size())
 					pd_vector.erase(pd_vector.begin()+minID);
@@ -116,30 +135,31 @@ void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batchConst
 
 		if(pd_vector[ii].decision_flag)//(pedestrian_vision_vector.pd_vector[ii].cluster.centroid.x!=0 || pedestrian_vision_vector.pd_vector[ii].cluster.centroid.y!=0)
 		{
-			feature_detection::cluster newPed;
-			newPed.id = latest_id++;
-			bool transformed = transformPointToGlobal(pedestrian_vision_vector->header, pd_vector[ii].cluster.centroid, newPed.centroid);
+			sensing_on_road::pedestrian_vision newPed;
+			newPed.object_label = latest_id++;
+			bool transformed = transformPointToGlobal(pedestrian_vision_vector->header, pd_vector[ii].cluster.centroid, newPed.cluster.centroid);
 			if(!transformed) return;
-			ROS_INFO_STREAM( "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.centroid.x << " y:" << newPed.centroid.y);
-			lPedInView.clusters.push_back(newPed);
+			ROS_INFO_STREAM( "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.cluster.centroid.x << " y:" << newPed.cluster.centroid.y);
+			lPedInView.pd_vector.push_back(newPed);
 		}
 	}
 	
 	publishPed();
+	cout<<"pedVision callback end"<<endl;
 	
 }
 
 void data_assoc::pedClustCallback(feature_detection::clustersConstPtr cluster_vector)
 {
     frame_id_ = cluster_vector->header.frame_id;
-    ROS_DEBUG_STREAM( " Entering pedestrian call back with lPedInView " << lPedInView.clusters.size() );
+    ROS_INFO_STREAM( " Entering pedestrian call back with lPedInView " << lPedInView.pd_vector.size() );
 	/// loop over clusters to match with existing lPedInView
     std::vector<feature_detection::cluster> clusters = cluster_vector->clusters;
     feature_detection::clusters clusters_visualize;
     clusters_visualize.header = cluster_vector->header;
     lPedInView.header = cluster_vector->header;
     lPedInView.header.frame_id = global_frame_;
-	for(int jj=0; jj< lPedInView.clusters.size(); jj++)
+	for(int jj=0; jj< lPedInView.pd_vector.size(); jj++)
 	{
 		double minDist=10000;
 		int minID=-1;
@@ -148,7 +168,7 @@ void data_assoc::pedClustCallback(feature_detection::clustersConstPtr cluster_ve
 		    geometry_msgs::Point32 global_point;
 		    bool transformed = transformPointToGlobal(cluster_vector->header, clusters[ii].centroid, global_point);
 		    if(!transformed) return;
-			double currDist = dist(lPedInView.clusters[jj].centroid, global_point);
+			double currDist = dist(lPedInView.pd_vector[jj].cluster.centroid, global_point);
 			if( (currDist < minDist) && currDist>-1)
 			{
 				minDist = currDist;
@@ -162,16 +182,16 @@ void data_assoc::pedClustCallback(feature_detection::clustersConstPtr cluster_ve
 			/// if cluster matched, remove from contention
 			if(-1 != minID)
 			{
-				ROS_DEBUG_STREAM(" Cluster matched with ped id #" << lPedInView.clusters[jj].id );
+				ROS_DEBUG_STREAM(" Cluster matched with ped id #" << lPedInView.pd_vector[jj].object_label );
 				geometry_msgs::Point32 global_point;
 				bool transformed = transformPointToGlobal(cluster_vector->header, clusters[minID].centroid,global_point);
 				if(!transformed) return;
 				//we are update everything except the id;
-				int id = lPedInView.clusters[jj].id;
-				lPedInView.clusters[jj] = clusters[minID];
-				lPedInView.clusters[jj].id = id;
-				lPedInView.clusters[jj].centroid = global_point;
-				lPedInView.clusters[jj].last_update = ros::Time::now();
+
+				lPedInView.pd_vector[jj].cluster = clusters[minID];
+				lPedInView.pd_vector[jj].cluster.id = lPedInView.pd_vector[jj].object_label;
+				lPedInView.pd_vector[jj].cluster.centroid = global_point;
+				lPedInView.pd_vector[jj].cluster.last_update = ros::Time::now();
 				/// remove minID element
 				if(clusters.size())
 					clusters.erase(clusters.begin()+minID);
@@ -193,42 +213,69 @@ void data_assoc::pedClustCallback(feature_detection::clustersConstPtr cluster_ve
 	//}
 	cleanUp();
 	publishPed();
+	cout<<"PedCluster callback end"<<endl;
 }
 
 void data_assoc::cleanUp()
 {
-    for(int jj=0; jj< lPedInView.clusters.size(); )
+    cout<<"cleanUp start"<<endl;
+    for(int jj=0; jj< lPedInView.pd_vector.size(); )
     {
-        ros::Duration unseen_time = ros::Time::now() - lPedInView.clusters[jj].last_update;
-        ROS_DEBUG("ped with ID %d unseen time = %lf", lPedInView.clusters[jj].id, unseen_time.toSec());
+        ros::Duration unseen_time = ros::Time::now() - lPedInView.pd_vector[jj].cluster.last_update;
+        ROS_DEBUG("ped with ID %d unseen time = %lf", lPedInView.pd_vector[jj].cluster.id, unseen_time.toSec());
         if(unseen_time.toSec()>time_out_)
         {
-            ROS_INFO("Erase ped with ID %d due to time out", lPedInView.clusters[jj].id);
-            lPedInView.clusters.erase(lPedInView.clusters.begin()+jj);
+            ROS_INFO("Erase ped with ID %d due to time out", lPedInView.pd_vector[jj].object_label);
+            lPedInView.pd_vector.erase(lPedInView.pd_vector.begin()+jj);
 
         }
         else
             jj++;
 
     }
+    cout<<"cleanup end"<<endl;
 }
 
 void data_assoc::publishPed()
 {
     dataAssoc_experimental::PedDataAssoc_vector lPed;
     sensor_msgs::PointCloud pc;
-    
+    cout<<"publishPed start"<<endl;
     pc.header.frame_id = global_frame_;
     pc.header.stamp = ros::Time::now();
-    for(int ii=0; ii <lPedInView.clusters.size(); ii++)
+    for(int ii=0; ii <lPedInView.pd_vector.size(); ii++)
     {
-		geometry_msgs::Point32 p;
-		p = lPedInView.clusters[ii].centroid;
-		p.z = lPedInView.clusters[ii].id;
-		pc.points.push_back(p);
+        if(lPedInView.pd_vector[ii].confidence>=0.5)
+        {
+            geometry_msgs::Point32 p;
+            p = lPedInView.pd_vector[ii].cluster.centroid;
+            p.z = lPedInView.pd_vector[ii].object_label;
+            pc.points.push_back(p);
+
+            camera_project::CvRectangle rect;
+            geometry_msgs::PointStamped pt_src, pt_dest;
+            pt_src.header = lPedInView.header;
+            pt_src.point.x = lPedInView.pd_vector[ii].cluster.centroid.x;
+            pt_src.point.y = lPedInView.pd_vector[ii].cluster.centroid.y;
+            pt_src.point.z = lPedInView.pd_vector[ii].cluster.centroid.z;
+            try {
+                rect = projector.project(pt_src, lPedInView.pd_vector[ii].cluster.width, 2);
+            } catch( std::out_of_range & e ) {
+                ROS_WARN("out of range: %s", e.what());
+                continue;
+            } catch( tf::TransformException & e ) {
+                ROS_WARN("camera project tf error: %s", e.what());
+                return;
+            }
+            lPedInView.pd_vector[ii].cvRect_x1 = rect.upper_left.x;
+            lPedInView.pd_vector[ii].cvRect_y1 = rect.upper_left.y;
+            lPedInView.pd_vector[ii].cvRect_x2 = rect.lower_right.x;
+            lPedInView.pd_vector[ii].cvRect_y2 = rect.lower_right.y;
+        }
 	}
     pedPub_.publish(lPedInView);
     visualizer_.publish(pc);
+    cout<<"publishPed end"<<endl;
 }
 
 

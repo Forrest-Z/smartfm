@@ -12,6 +12,7 @@
 #include <sensor_msgs/PointCloud.h>
 #include <sensing_on_road/pedestrian_laser_batch.h>
 #include <sensing_on_road/pedestrian_vision_batch.h>
+#include <sensing_on_road/camera_project.h>
 #include <feature_detection/clusters.h>
 #include <geometry_msgs/Point.h>
 #include <tf/transform_listener.h>
@@ -55,8 +56,9 @@ public:
     tf::MessageFilter<sensing_on_road::pedestrian_vision_batch> * vision_tf_filter_;
     message_filters::Subscriber<feature_detection::clusters> pedClustSub_;
     message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> pedVisionSub_;
-    feature_detection::clusters lPedInView;
+    sensing_on_road::pedestrian_vision_batch lPedInView;
     double time_out_;
+    camera_project::camera_projector projector;
     //double robotx_, roboty_, robotspeedx_;//pedx_, pedy_;
 
     //double robotspeedx_;
