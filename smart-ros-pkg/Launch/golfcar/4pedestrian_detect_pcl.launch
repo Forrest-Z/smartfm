@@ -6,16 +6,17 @@
     <node pkg="pedestrian_detector" type="classifier" name="classifier" output="screen">
     	<param name="image_transport" value="compressed"/>
     	<remap from="image_raw" to="usb_cam/image_raw"/>
-	    <param name="hit_threshold" value="0.25"/><!--1.65"/-->
+	    <param name="hit_threshold" value="1.5"/><!--1.65"/-->
 	    <param name="scale" value="1.05"/>
-	    <param name="group_threshold" value="1.0"/>
+	    <param name="group_threshold" value="2.0"/>
 	    <param name="show_processed_image" value="false"/>
 	    <param name="black_front_roi" value="true"/>
 	    <param name="write_image" value="false"/>
 	    <param name="path" value="/media/MyPassport/ped_cand"/>
-	    <remap from="pd_vision_batch" to="pedestrian_clusters_filtered"/>
+	    <remap from="pd_vision_batch" to="pedestrian_clusters"/>
 	</node>
 	<include file="$(find feature_detection)/visualizer.launch"/>
+	<include file="$(find dataAssoc_experimental)/dataAssoc_withVisualizer.launch"/>
 	<node pkg="sensing_on_road" type="camera_project_pcl" name="camera_project_pcl">
 	    <remap from="camera_project_in" to="pedestrian_clusters_filtered"/>
 	</node>

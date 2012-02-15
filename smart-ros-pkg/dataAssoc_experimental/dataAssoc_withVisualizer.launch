@@ -1,0 +1,19 @@
+<launch>
+	<node pkg="pedestrian_detector" type="visualizer_momdp" name="visualizer_dataAssoc">
+	    <param name="image_transport" value="compressed"/>
+	    <param name="ROI_text" value="true"/>
+	    <param name="ROI_rect" value="true"/>
+	    <param name="Publish_verified" value="false"/>
+	    <remap from="image_raw" to="usb_cam/image_raw"/>
+	    <remap from="veri_pd_vision" to="pedestrian_detect"/>
+	</node>
+	<node pkg="dataAssoc_experimental" type="dataAssoc" name="dataAssoc">
+	    <param name="global_frame" value="odom"/>
+	    <param name="time_out" value="3.0"/>
+	    <param name="poll_increment" value="0.1"/>
+	    <param name="poll_decrement" value="0.05"/>
+	    <param name="confirm_threshold" value="0.3"/>
+	    <remap from="ped_laser_cluster" to="pedestrian_clusters_filtered"/>
+	    <remap from="ped_vision" to="veri_pd_vision"/>
+	</node>
+</launch>
