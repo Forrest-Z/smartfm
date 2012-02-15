@@ -8,7 +8,7 @@ using namespace std;
 
 data_assoc::data_assoc(int argc, char** argv) 
 {
-	ROS_INFO("Starting Pedestrian Avoidance ... ");
+	ROS_DEBUG("Starting Pedestrian Avoidance ... ");
 	
 	/// Setting up subsciption 
     ros::NodeHandle nh;
@@ -21,6 +21,9 @@ data_assoc::data_assoc(int argc, char** argv)
     
     n.param("global_frame", global_frame_, string("odom"));
     n.param("time_out", time_out_, 3.0);
+    n.param("poll_increment", poll_inc_, 0.1);
+    n.param("poll_decrement", poll_dec_, 0.05);
+    n.param("confirm_threshold", threshold_, 0.3);
     /// Setting up publishing
     pedPub_ = nh.advertise<sensing_on_road::pedestrian_vision_batch>("ped_data_assoc",1); /// topic name
     visualizer_ = nh.advertise<sensor_msgs::PointCloud>("ped_data_assoc_visual",1);
@@ -76,7 +79,7 @@ bool data_assoc::transformPointToGlobal(std_msgs::Header header, geometry_msgs::
 void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batchConstPtr pedestrian_vision_vector)
 {
     std::vector<sensing_on_road::pedestrian_vision> pd_vector = pedestrian_vision_vector->pd_vector;
-    ROS_INFO(" Entering vision call back with lPedInView %d and ped vector size of %d", lPedInView.pd_vector.size(), pd_vector.size());
+    ROS_DEBUG(" Entering vision call back with lPedInView %d and ped vector size of %d", lPedInView.pd_vector.size(), pd_vector.size());
 
 	//pedestrian_vision_vector.pd_vector[].cluster.centroid;
 	/// loop over clusters to match with existing lPedInView
@@ -106,21 +109,21 @@ void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batchConst
 			{
 			    ROS_DEBUG("From Vision: Cluster %d matched with dist %lf with decision flag %d", lPedInView.pd_vector[jj].object_label, minDist, pd_vector[minID].decision_flag);
 			    //polling added to filter out some noise
-			    if(lPedInView.pd_vector[jj].confidence>=0.5)
+			    if(lPedInView.pd_vector[jj].confidence>=threshold_)
 			    {
 			        if(pd_vector[minID].decision_flag)
 			        {
-			            if(lPedInView.pd_vector[jj].confidence+0.1<=1.0) lPedInView.pd_vector[jj].confidence+=0.1;
+			            if(lPedInView.pd_vector[jj].confidence+poll_inc_<=1.0) lPedInView.pd_vector[jj].confidence+=poll_inc_;
 			        }
 			        else
 			        {
-			            if(lPedInView.pd_vector[jj].confidence-0.1>=0.5) lPedInView.pd_vector[jj].confidence-=0.1;
+			            if(lPedInView.pd_vector[jj].confidence-poll_dec_>=threshold_) lPedInView.pd_vector[jj].confidence-=poll_dec_;
 			        }
 			    }
 			    else
 			    {
-			        if(pd_vector[minID].decision_flag) lPedInView.pd_vector[jj].confidence+=0.1;
-			        else if(lPedInView.pd_vector[jj].confidence-0.1>=0) lPedInView.pd_vector[jj].confidence-=0.1;
+			        if(pd_vector[minID].decision_flag) lPedInView.pd_vector[jj].confidence+=poll_inc_;
+			        else if(lPedInView.pd_vector[jj].confidence-poll_dec_>=0) lPedInView.pd_vector[jj].confidence-=poll_inc_;
 			    }
 				/// remove minID element
 				if(pd_vector.size())
@@ -139,20 +142,20 @@ void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batchConst
 			newPed.object_label = latest_id++;
 			bool transformed = transformPointToGlobal(pedestrian_vision_vector->header, pd_vector[ii].cluster.centroid, newPed.cluster.centroid);
 			if(!transformed) return;
-			ROS_INFO_STREAM( "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.cluster.centroid.x << " y:" << newPed.cluster.centroid.y);
+			ROS_DEBUG_STREAM( "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.cluster.centroid.x << " y:" << newPed.cluster.centroid.y);
 			lPedInView.pd_vector.push_back(newPed);
 		}
 	}
 	
 	publishPed();
-	cout<<"pedVision callback end"<<endl;
+	ROS_DEBUG_STREAM("pedVision callback end");
 	
 }
 
 void data_assoc::pedClustCallback(feature_detection::clustersConstPtr cluster_vector)
 {
     frame_id_ = cluster_vector->header.frame_id;
-    ROS_INFO_STREAM( " Entering pedestrian call back with lPedInView " << lPedInView.pd_vector.size() );
+    ROS_DEBUG_STREAM( " Entering pedestrian call back with lPedInView " << lPedInView.pd_vector.size() );
 	/// loop over clusters to match with existing lPedInView
     std::vector<feature_detection::cluster> clusters = cluster_vector->clusters;
     feature_detection::clusters clusters_visualize;
@@ -213,19 +216,19 @@ void data_assoc::pedClustCallback(feature_detection::clustersConstPtr cluster_ve
 	//}
 	cleanUp();
 	publishPed();
-	cout<<"PedCluster callback end"<<endl;
+	ROS_DEBUG_STREAM("PedCluster callback end");
 }
 
 void data_assoc::cleanUp()
 {
-    cout<<"cleanUp start"<<endl;
+    ROS_DEBUG_STREAM("cleanUp start");
     for(int jj=0; jj< lPedInView.pd_vector.size(); )
     {
         ros::Duration unseen_time = ros::Time::now() - lPedInView.pd_vector[jj].cluster.last_update;
         ROS_DEBUG("ped with ID %d unseen time = %lf", lPedInView.pd_vector[jj].cluster.id, unseen_time.toSec());
         if(unseen_time.toSec()>time_out_)
         {
-            ROS_INFO("Erase ped with ID %d due to time out", lPedInView.pd_vector[jj].object_label);
+            ROS_DEBUG("Erase ped with ID %d due to time out", lPedInView.pd_vector[jj].object_label);
             lPedInView.pd_vector.erase(lPedInView.pd_vector.begin()+jj);
 
         }
@@ -233,19 +236,19 @@ void data_assoc::cleanUp()
             jj++;
 
     }
-    cout<<"cleanup end"<<endl;
+    ROS_DEBUG_STREAM("cleanup end");
 }
 
 void data_assoc::publishPed()
 {
     dataAssoc_experimental::PedDataAssoc_vector lPed;
     sensor_msgs::PointCloud pc;
-    cout<<"publishPed start"<<endl;
+    ROS_DEBUG_STREAM("publishPed start");
     pc.header.frame_id = global_frame_;
     pc.header.stamp = ros::Time::now();
     for(int ii=0; ii <lPedInView.pd_vector.size(); ii++)
     {
-        if(lPedInView.pd_vector[ii].confidence>=0.5)
+        if(lPedInView.pd_vector[ii].confidence>=threshold_)
         {
             geometry_msgs::Point32 p;
             p = lPedInView.pd_vector[ii].cluster.centroid;
@@ -275,7 +278,7 @@ void data_assoc::publishPed()
 	}
     pedPub_.publish(lPedInView);
     visualizer_.publish(pc);
-    cout<<"publishPed end"<<endl;
+    ROS_DEBUG_STREAM("publishPed end");
 }
 
 

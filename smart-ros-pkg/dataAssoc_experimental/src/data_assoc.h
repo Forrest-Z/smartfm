@@ -57,7 +57,7 @@ public:
     message_filters::Subscriber<feature_detection::clusters> pedClustSub_;
     message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> pedVisionSub_;
     sensing_on_road::pedestrian_vision_batch lPedInView;
-    double time_out_;
+    double time_out_, poll_inc_, poll_dec_, threshold_;
     camera_project::camera_projector projector;
     //double robotx_, roboty_, robotspeedx_;//pedx_, pedy_;
 
