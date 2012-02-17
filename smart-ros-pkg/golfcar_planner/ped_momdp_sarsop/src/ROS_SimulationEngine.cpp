@@ -1,6 +1,6 @@
 #include <sstream>
 #include <fstream>
-#include "PSG_SimulationEngine.h"
+#include "ROS_SimulationEngine.h"
 #include "AlphaVectorPolicy.h"
 #include "CPTimer.h"
 #include "solverUtils.h"
@@ -21,15 +21,15 @@ namespace momdp
 	*streamOut<<")" << endl;
     }
 
-    PSG_SimulationEngine::PSG_SimulationEngine()
+    ROS_SimulationEngine::ROS_SimulationEngine()
     {
     }
 
-    PSG_SimulationEngine::~PSG_SimulationEngine(void)
+    ROS_SimulationEngine::~ROS_SimulationEngine(void)
     {
     }
 
-    void PSG_SimulationEngine::checkTerminal(string p, string s, vector<int> &bhout, vector<int> &fhout) {
+    void ROS_SimulationEngine::checkTerminal(string p, string s, vector<int> &bhout, vector<int> &fhout) {
         if (s.substr(0,3) == "bt2") {
             if (s.substr(9,2) == "FH") {
                 int ind = atoi(p.substr(4,1).c_str());
@@ -41,7 +41,7 @@ namespace momdp
         }
     }
 
-    int PSG_SimulationEngine::getGreedyAction(vector<int> &bhout, vector<int> &fhout) {
+    int ROS_SimulationEngine::getGreedyAction(vector<int> &bhout, vector<int> &fhout) {
         int greedyAction = 2; //start with BHL
         int currBest = bhout[0];
 
@@ -63,14 +63,14 @@ namespace momdp
         return greedyAction;
     }
 
-    void PSG_SimulationEngine::setup(SharedPointer<MOMDP> problem, SharedPointer<AlphaVectorPolicy> policy, SolverParams * solverParams)
+    void ROS_SimulationEngine::setup(SharedPointer<MOMDP> problem, SharedPointer<AlphaVectorPolicy> policy, SolverParams * solverParams)
     {
         this->policy = policy;
         this->problem = problem;
         this->solverParams = solverParams;
     }
 
-    void PSG_SimulationEngine::performActionObs(belief_vector& outBelObs, int action, const BeliefWithState& belSt) const 
+    void ROS_SimulationEngine::performActionObs(belief_vector& outBelObs, int action, const BeliefWithState& belSt) const 
     {
         // DEBUG_SIMSPEED_270409 skip calculating outprobs for x when there is only one possible x value
         if (problem->XStates->size() == 1) 
@@ -87,13 +87,13 @@ namespace momdp
 	}
     }
 
-  void PSG_SimulationEngine::performActionUnobs(belief_vector& outBelUnobs, int action, const BeliefWithState& belSt, int currObsState) const
+  void ROS_SimulationEngine::performActionUnobs(belief_vector& outBelUnobs, int action, const BeliefWithState& belSt, int currObsState) const
   {
         const SharedPointer<SparseMatrix>  transMatY = problem->YTrans->getMatrix(action, belSt.sval, currObsState);
         mult(outBelUnobs, *belSt.bvec, *transMatY);
   }
 
-    void PSG_SimulationEngine::getPossibleObservations(belief_vector& possObs, int action, 	const BeliefWithState& belSt) const
+    void ROS_SimulationEngine::getPossibleObservations(belief_vector& possObs, int action, 	const BeliefWithState& belSt) const
     {
         //const SparseMatrix obsMat = problem->getObservationMatrix(action, belSt.sval);
 		const SharedPointer<SparseMatrix>  obsMat = problem->obsProb->getMatrix(action, belSt.sval);
@@ -101,21 +101,21 @@ namespace momdp
     }
 
 
-    double PSG_SimulationEngine::getReward(const BeliefWithState& belst, int action)
+    double ROS_SimulationEngine::getReward(const BeliefWithState& belst, int action)
     {
         //const SparseMatrix rewMat = problem->getRewardMatrix(belst.sval);
 		const SharedPointer<SparseMatrix>  rewMat = problem->rewards->getMatrix(belst.sval);
         return inner_prod_column(*rewMat, action, *belst.bvec);
     }
 
-    string PSG_SimulationEngine::toString()
+    string ROS_SimulationEngine::toString()
     {
         std::ostringstream mystrm; 
         mystrm << "action selector: (replaced by Policy) ";
         return mystrm.str();
     }
 
-    void PSG_SimulationEngine::display(belief_vector& b, ostream& s)
+    void ROS_SimulationEngine::display(belief_vector& b, ostream& s)
     {
         for(unsigned int i = 0; i < b.filled(); i++)
         {
@@ -124,11 +124,11 @@ namespace momdp
     }
 
 
-	//int PSG_SimulationEngine::getPSGObservation()
+	//int ROS_SimulationEngine::getPSGObservation()
 	//{
 	//}
 	
-	//int PSG_SimulationEngine::getPSGState()
+	//int ROS_SimulationEngine::getPSGState()
 	//{
 	//}
 
@@ -172,7 +172,7 @@ namespace momdp
 			
 	}
 
-	void PSG_SimulationEngine::runStep(SharedPointer<BeliefWithState>& currBelSt, int currAction, int currObservation, int nextSVal,  SharedPointer<BeliefWithState>& nextBelSt )
+	void ROS_SimulationEngine::runStep(SharedPointer<BeliefWithState>& currBelSt, int currAction, int currObservation, int nextSVal,  SharedPointer<BeliefWithState>& nextBelSt )
 	{
 		cout << " runStep ------------------------ " << endl;
 		

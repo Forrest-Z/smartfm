@@ -4,7 +4,7 @@
 #include "cv_bridge/cv_bridge.h"
 #include "sensing_on_road/pedestrian_vision_batch.h"
 #include "opencv2/highgui/highgui.hpp"
-
+#define WIN_SIZE Size(48,96)
 using namespace cv;
 
 namespace Cv_helper
@@ -17,6 +17,8 @@ namespace Cv_helper
         
         int image_width = img_size.width;
         int image_height = img_size.height;
+        if(image_width < WIN_SIZE.width) image_width = WIN_SIZE.width;
+        if(image_height< WIN_SIZE.height) image_height = WIN_SIZE.height;
         int img_x = pd.x;
         int img_y = pd.y;
         //pd.width = 640;

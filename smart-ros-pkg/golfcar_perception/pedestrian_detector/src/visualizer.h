@@ -17,27 +17,27 @@ class HOGVisualizer {
 public:
 
 
-	HOGVisualizer(ros::NodeHandle &n);
-	~HOGVisualizer();
+    HOGVisualizer(ros::NodeHandle &n);
+    ~HOGVisualizer();
 
 
 
 private:
-	std::vector<float> detector;
-	ros::NodeHandle n_;
-	image_transport::ImageTransport it_;
-	image_transport::SubscriberFilter image_sub_;
-	message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> people_roi_sub_;
-	message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> people_detect_sub_;
-	message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> people_verified_sub_;
-	//sensor_msgs::cv_bridge bridge_;
-	image_transport::Publisher image_pub_;
-	void peopleCallback(const sensor_msgs::ImageConstPtr image, const pedestrian_vision_batchConstPtr laser_detect, const pedestrian_vision_batchConstPtr vision_roi, const pedestrian_vision_batchConstPtr verified);
-	void peopleRoiCallback(sensing_on_road::pedestrian_vision_batch pr);
-	void peopleDetectCallback(sensing_on_road::pedestrian_vision_batch pr);
-	void peopleVerifiedCallback(sensing_on_road::pedestrian_vision_batch pr);
-	void drawIDandConfidence(cv::Mat& img, sensing_on_road::pedestrian_vision& pv);
-	
-	bool started, ROI_text, verified_text, vision_rect, verified_rect, ROI_rect;
+    std::vector<float> detector;
+    ros::NodeHandle n_;
+    image_transport::ImageTransport it_;
+    image_transport::SubscriberFilter image_sub_;
+    message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> people_roi_sub_;
+    message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> people_detect_sub_;
+    message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> people_verified_sub_;
+    //sensor_msgs::cv_bridge bridge_;
+    image_transport::Publisher image_pub_;
+    void peopleCallback(const sensor_msgs::ImageConstPtr image, const pedestrian_vision_batchConstPtr laser_detect, const pedestrian_vision_batchConstPtr vision_roi, const pedestrian_vision_batchConstPtr verified);
+    void peopleRoiCallback(sensing_on_road::pedestrian_vision_batch pr);
+    void peopleDetectCallback(sensing_on_road::pedestrian_vision_batch pr);
+    void peopleVerifiedCallback(sensing_on_road::pedestrian_vision_batch pr);
+    void drawIDandConfidence(cv::Mat& img, sensing_on_road::pedestrian_vision& pv);
+
+    bool started, ROI_text, verified_text, vision_rect, verified_rect, ROI_rect;
 };
 
