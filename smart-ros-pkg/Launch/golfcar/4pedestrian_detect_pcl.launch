@@ -1,7 +1,8 @@
 <launch>
     <!--node pkg="feature_detection" type="cluster_filter.py" pame="cluster_filter" output="screen" args="width<1.5 and depth<15 and dist<25"/-->
     <node pkg="feature_detection" type="ped_clustering" name="ped_clustering">
-        <remap from="sickldmrs/scan0" to="sickldmrs/scan4"/>
+        <remap from="sickldmrs/scan0" to="sick_scan3"/>
+        <remap from="sickldmrs/cloud" to="sickldmrs_"/>
     </node>
     <node pkg="pedestrian_detector" type="classifier" name="classifier" output="screen">
     	<param name="image_transport" value="compressed"/>
@@ -13,7 +14,7 @@
 	    <param name="black_front_roi" value="true"/>
 	    <param name="write_image" value="false"/>
 	    <param name="path" value="/media/MyPassport/ped_cand"/>
-	    <remap from="pd_vision_batch" to="pedestrian_clusters"/>
+	    <remap from="pd_vision_batch" to="pedestrian_clusters_filtered"/>
 	</node>
 	<include file="$(find feature_detection)/visualizer.launch"/>
 	<include file="$(find dataAssoc_experimental)/dataAssoc_withVisualizer.launch"/>

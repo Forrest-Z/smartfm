@@ -94,8 +94,10 @@ void HOGClassifier::syncCallback(const feature_detection::clustersConstPtr cl_pt
     Mat temp;
     Cv_helper::sensormsgsToCv(image, temp);
     cv::Mat img_clone(temp.clone());
-
-    for(unsigned int i=0;i<pr.pd_vector.size();i++)
+    int pd_vector;
+    if(pr.pd_vector.size()>0) pd_vector = 1;
+    else pd_vector=0;
+    for(unsigned int i=0;i<pd_vector;i++)//pr.pd_vector.size();i++)
     {
         Size roi_size;
         Point roi_point;
@@ -111,6 +113,7 @@ void HOGClassifier::syncCallback(const feature_detection::clustersConstPtr cl_pt
         ROS_DEBUG_STREAM(img_x<<" "<<img_y<<" "<<img_width<<" "<<img_height);
         ROS_DEBUG_STREAM(img_x+img_width<<" "<<img_y+img_height);
         Mat m = img_clone;
+        img_x=img_y=0; img_width=640; img_height=360;
         Rect roi(img_x,img_y,img_width,img_height);
 
         //obtain the roi
