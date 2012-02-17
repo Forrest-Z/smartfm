@@ -15,6 +15,7 @@ data_assoc::data_assoc(int argc, char** argv)
     
     pedClustSub_.subscribe(nh, "ped_laser_cluster", 10);
     pedVisionSub_.subscribe(nh, "ped_vision", 10);
+    pedVisionAngularSub_.subscribe(nh, "pedestrian_detect_visual", 10);
     /// TBP : how to add multiple subscription to same call back ????
     
     ros::NodeHandle n("~");
@@ -38,6 +39,93 @@ data_assoc::data_assoc(int argc, char** argv)
 	vision_tf_filter_ = new tf::MessageFilter<sensing_on_road::pedestrian_vision_batch>(pedVisionSub_, *listener_, global_frame_, 10);
 	vision_tf_filter_ ->registerCallback(boost::bind(&data_assoc::pedVisionCallback, this, _1));
 
+	vision_angular_tf_filter_ = new tf::MessageFilter<geometry_msgs::PolygonStamped>(pedVisionAngularSub_, *listener_, global_frame_, 10);
+	vision_angular_tf_filter_ -> registerCallback(boost::bind(&data_assoc::pedVisionAngularCallback, this, _1));
+
+}
+
+void data_assoc::pedVisionAngularCallback(geometry_msgs::PolygonStampedConstPtr pedestrian_vision_angular)
+{
+
+
+    for(int jj=0; jj< lPedInView.pd_vector.size(); jj++)
+     {
+         double minAng=10000;
+         int minID=-1;
+         geometry_msgs::PointStamped global_point, local_point;
+         global_point.header = lPedInView.header;
+         global_point.point = lPedInView.pd_vector[jj].cluster.centroid;
+         local_point.header = lPedInView.header;
+         //todo: frame_id at param
+         local_point.header.frame_id = "usb_cam";
+         transformGlobalToLocal(global_point, local_point);
+         double laser_cluster_angular = atan2(local_point.y, local_point.x);
+         std::vector<geometry_msgs::Point32> vision_point = pedestrian_vision_angular->polygon.points;
+         for(size_t i=0; i<vision_point.size(); i+=2)
+         {
+             double vision_angluar = atan2(vision_point[i].y, vision_point[i].x);
+             double currAng = fabs(vision_angular - laser_cluster_angular);
+             if(currAng < minAng)
+             {
+                 minAng = currAng;
+                 minID = i;
+             }
+         }
+        if(minAng < NN_ANG_MATCH_THRESHOLD)
+        {
+            if(vision_point.size()) vision_point.erase(vision_point.begin()+minID);
+        }
+         //maybe we can add image features to check similarity
+
+
+     }
+    //todo: match it with the current list of clusters from laser, then create new ID if neccessary
+/*
+    for(int jj=0; jj< lPedInView.pd_vector.size(); jj++)
+         {
+             double minAng=10000;
+             int minID=-1;
+             geometry_msgs::PointStamped global_point, local_point;
+             global_point.header = lPedInView.header;
+             global_point.point = lPedInView.pd_vector[jj].cluster.centroid;
+             local_point.header = lPedInView.header;
+             //todo: frame_id at param
+             local_point.header.frame_id = "usb_cam";
+             transformGlobalToLocal(global_point, local_point);
+             double laser_cluster_angular = atan2(local_point.y, local_point.x);
+             std::vector<geometry_msgs::Point32> vision_point = pedestrian_vision_angular->polygon.points;
+             for(size_t i=0; i<vision_point.size(); i+=2)
+             {
+                 double vision_angluar = atan2(vision_point[i].y, vision_point[i].x);
+                 double currAng = fabs(vision_angular - laser_cluster_angular);
+                 if(currAng < minAng)
+                 {
+                     minAng = currAng;
+                     minID = i;
+                 }
+             }
+            if(minAng < NN_ANG_MATCH_THRESHOLD)
+            {
+                if(vision_point.size()) vision_point.erase(vision_point.begin()+minID);
+            }
+             //maybe we can add image features to check similarity
+
+
+         }*/
+     for(int ii=0 ; ii<vision_point.size(); ii++)
+     {
+
+
+             sensing_on_road::pedestrian_vision newPed;
+             newPed.object_label = latest_id++;
+             bool transformed = transformPointToGlobal(pedestrian_vision_vector->header, pd_vector[ii].cluster.centroid, newPed.cluster.centroid);
+             if(!transformed) return;
+             ROS_DEBUG_STREAM( "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.cluster.centroid.x << " y:" << newPed.cluster.centroid.y);
+             lPedInView.pd_vector.push_back(newPed);
+
+     }
+
+     publishPed();
 }
 
 data_assoc::~data_assoc()
@@ -56,6 +144,20 @@ double dist(geometry_msgs::Point32 A, geometry_msgs::Point32 B)
 	return distance;
 }
 
+bool data_assoc::transformGlobalToLocal(geometry_msgs::PointStamped& global_point, geometry_msgs::PointStamped& local_point)
+{
+    try{
+
+    listener_->transformPoint(local_point.header, global_point, local_point);
+    }
+    catch(tf::TransformException& ex){
+        ROS_ERROR("Received an exception trying to transform point: %s", ex.what());
+        return false;
+    }
+
+    return true;
+}
+
 bool data_assoc::transformPointToGlobal(std_msgs::Header header, geometry_msgs::Point32 input_point, geometry_msgs::Point32& output_point)
 {
     //why there is geometry_msgs::Point32 and geometry_msgs??
@@ -72,6 +174,7 @@ bool data_assoc::transformPointToGlobal(std_msgs::Header header, geometry_msgs::
     }
     catch(tf::TransformException& ex){
         ROS_ERROR("Received an exception trying to transform point: %s", ex.what());
+        return false;
     }
 
     return true;
@@ -83,73 +186,75 @@ void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batchConst
 
 	//pedestrian_vision_vector.pd_vector[].cluster.centroid;
 	/// loop over clusters to match with existing lPedInView
-	for(int jj=0; jj< lPedInView.pd_vector.size(); jj++)
-	{
-		double minDist=10000;
-		int minID=-1;
-		for(int ii=0; ii < pd_vector.size(); ii++)
-		{
-		    geometry_msgs::Point32 global_point;
-		    bool transformed = transformPointToGlobal(pedestrian_vision_vector->header, pd_vector[ii].cluster.centroid, global_point);
-		    if(!transformed) return;
-			double currDist = dist(lPedInView.pd_vector[jj].cluster.centroid, global_point);
-			if( (currDist < minDist) && currDist>-1)
-			{
-				minDist = currDist;
-				minID = ii;
-			}
-		}		
-		//maybe we can add image features to check similarity
-		if(minDist < NN_MATCH_THRESHOLD)
-		{
+    for(int jj=0; jj< lPedInView.pd_vector.size(); jj++)
+    {
+        double minDist=10000;
+        int minID=-1;
+        for(int ii=0; ii < pd_vector.size(); ii++)
+        {
+            geometry_msgs::Point32 global_point;
+            //change the distance metric to angular based
+
+            bool transformed = transformPointToGlobal(pedestrian_vision_vector->header, pd_vector[ii].cluster.centroid, global_point);
+            if(!transformed) return;
+            double currDist = dist(lPedInView.pd_vector[jj].cluster.centroid, global_point);
+            if( (currDist < minDist) && currDist>-1)
+            {
+                minDist = currDist;
+                minID = ii;
+            }
+        }
+        //maybe we can add image features to check similarity
+        if(minDist < NN_MATCH_THRESHOLD)
+        {
 
 
-			/// if cluster matched, remove from contention
-			if(-1 != minID)
-			{
-			    ROS_DEBUG("From Vision: Cluster %d matched with dist %lf with decision flag %d", lPedInView.pd_vector[jj].object_label, minDist, pd_vector[minID].decision_flag);
-			    //polling added to filter out some noise
-			    if(lPedInView.pd_vector[jj].confidence>=threshold_)
-			    {
-			        if(pd_vector[minID].decision_flag)
-			        {
-			            if(lPedInView.pd_vector[jj].confidence+poll_inc_<=1.0) lPedInView.pd_vector[jj].confidence+=poll_inc_;
-			        }
-			        else
-			        {
-			            if(lPedInView.pd_vector[jj].confidence-poll_dec_>=threshold_) lPedInView.pd_vector[jj].confidence-=poll_dec_;
-			        }
-			    }
-			    else
-			    {
-			        if(pd_vector[minID].decision_flag) lPedInView.pd_vector[jj].confidence+=poll_inc_;
-			        else if(lPedInView.pd_vector[jj].confidence-poll_dec_>=0) lPedInView.pd_vector[jj].confidence-=poll_inc_;
-			    }
-				/// remove minID element
-				if(pd_vector.size())
-					pd_vector.erase(pd_vector.begin()+minID);
-			}
-		}
-		
-	}
+            /// if cluster matched, remove from contention
+            if(-1 != minID)
+            {
+                ROS_DEBUG("From Vision: Cluster %d matched with dist %lf with decision flag %d", lPedInView.pd_vector[jj].object_label, minDist, pd_vector[minID].decision_flag);
+                //polling added to filter out some noise
+                if(lPedInView.pd_vector[jj].confidence>=threshold_)
+                {
+                    if(pd_vector[minID].decision_flag)
+                    {
+                        if(lPedInView.pd_vector[jj].confidence+poll_inc_<=1.0) lPedInView.pd_vector[jj].confidence+=poll_inc_;
+                    }
+                    else
+                    {
+                        if(lPedInView.pd_vector[jj].confidence-poll_dec_>=threshold_) lPedInView.pd_vector[jj].confidence-=poll_dec_;
+                    }
+                }
+                else
+                {
+                    if(pd_vector[minID].decision_flag) lPedInView.pd_vector[jj].confidence+=poll_inc_;
+                    else if(lPedInView.pd_vector[jj].confidence-poll_dec_>=0) lPedInView.pd_vector[jj].confidence-=poll_inc_;
+                }
+                /// remove minID element
+                if(pd_vector.size())
+                    pd_vector.erase(pd_vector.begin()+minID);
+            }
+        }
+
+    }
 
     for(int ii=0 ; ii<pd_vector.size(); ii++)
     {
 
-		if(pd_vector[ii].decision_flag)//(pedestrian_vision_vector.pd_vector[ii].cluster.centroid.x!=0 || pedestrian_vision_vector.pd_vector[ii].cluster.centroid.y!=0)
-		{
-			sensing_on_road::pedestrian_vision newPed;
-			newPed.object_label = latest_id++;
-			bool transformed = transformPointToGlobal(pedestrian_vision_vector->header, pd_vector[ii].cluster.centroid, newPed.cluster.centroid);
-			if(!transformed) return;
-			ROS_DEBUG_STREAM( "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.cluster.centroid.x << " y:" << newPed.cluster.centroid.y);
-			lPedInView.pd_vector.push_back(newPed);
-		}
-	}
-	
-	publishPed();
-	ROS_DEBUG_STREAM("pedVision callback end");
-	
+        if(pd_vector[ii].decision_flag)//(pedestrian_vision_vector.pd_vector[ii].cluster.centroid.x!=0 || pedestrian_vision_vector.pd_vector[ii].cluster.centroid.y!=0)
+        {
+            sensing_on_road::pedestrian_vision newPed;
+            newPed.object_label = latest_id++;
+            bool transformed = transformPointToGlobal(pedestrian_vision_vector->header, pd_vector[ii].cluster.centroid, newPed.cluster.centroid);
+            if(!transformed) return;
+            ROS_DEBUG_STREAM( "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.cluster.centroid.x << " y:" << newPed.cluster.centroid.y);
+            lPedInView.pd_vector.push_back(newPed);
+        }
+    }
+
+    publishPed();
+    ROS_DEBUG_STREAM("pedVision callback end");
+
 }
 
 void data_assoc::pedClustCallback(feature_detection::clustersConstPtr cluster_vector)
@@ -248,7 +353,7 @@ void data_assoc::publishPed()
     pc.header.stamp = ros::Time::now();
     for(int ii=0; ii <lPedInView.pd_vector.size(); ii++)
     {
-        if(lPedInView.pd_vector[ii].confidence>=threshold_)
+        //if(lPedInView.pd_vector[ii].confidence>=threshold_)
         {
             geometry_msgs::Point32 p;
             p = lPedInView.pd_vector[ii].cluster.centroid;
