@@ -16,7 +16,7 @@
 #include <message_filters/sync_policies/approximate_time.h>
 #include <feature_detection/clusters.h>
 #include "cv_helper.h"
-
+#include <geometry_msgs/PolygonStamped.h>
 #define WIN_SIZE Size(48,96)
 
 using namespace std;
@@ -39,17 +39,18 @@ private:
     cv::HOGDescriptor cpu_hog;
     ros::NodeHandle n_;
     image_transport::ImageTransport it_;
-    image_transport::SubscriberFilter image_sub_;
+    image_transport::Subscriber image_sub_;
     message_filters::Subscriber<feature_detection::clusters> people_rects_sub_;
     ros::Publisher people_roi_pub_;
     ros::Publisher people_detect_pub_;
     ros::Publisher people_ver_pub_;
+    ros::Publisher polygon_pub_;
     //sensor_msgs::CvBridge bridge_;
     image_transport::Publisher image_pub_;
 
     void ScaleWithDistanceRatio(Mat *img, double disz, double norm_distance, Size img_size, Size smallest_size, double *ratio);
     void detectPedestrian(Point offset, double ratio, gpu::GpuMat& gpu_img, sensing_on_road::pedestrian_vision_batch *detect_rects);
-    void syncCallback(const feature_detection::clustersConstPtr pr_ptr, const sensor_msgs::ImageConstPtr image);
+    void imageCallback(const sensor_msgs::ImageConstPtr& image);
     void updateParameter();
     template <class T>
     void checkParamChanged(T &a, T &b);
