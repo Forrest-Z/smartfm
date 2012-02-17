@@ -20,7 +20,7 @@ using namespace std;
 //   --> Use a symlink
 // TODO: find a more flexible method. For instance, this could be passed at construcion
 // time, or rely on an environment variable, etc.
-#define SVG_FILE "~/SvgPath/ALL_1217.svg"
+#define SVG_FILE "~/SvgPath/ALL_1217_t-junction.svg"
 
 double PathPoint::distance(const PathPoint &p1, const PathPoint &p2)
 {
