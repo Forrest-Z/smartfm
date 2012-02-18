@@ -1,12 +1,5 @@
 <launch>
-	<node pkg="pedestrian_detector" type="visualizer_momdp" name="visualizer_dataAssoc" output="screen">
-	    <param name="image_transport" value="compressed"/>
-	    <param name="ROI_text" value="true"/>
-	    <param name="ROI_rect" value="true"/>
-	    <param name="Publish_verified" value="false"/>
-	    <remap from="image_raw" to="usb_cam/image_raw"/>
-	    <remap from="veri_pd_vision" to="ped_data_assoc"/>
-	</node>
+	<include file="$(find dataAssoc_experimental)/dataAssoc_visualizer.launch"/>
 	<node pkg="dataAssoc_experimental" type="dataAssoc" name="dataAssoc" output="screen">
 	    <param name="global_frame" value="odom"/>
 	    <param name="time_out" value="3.0"/>
