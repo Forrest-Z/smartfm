@@ -13,7 +13,7 @@ data_assoc::data_assoc(int argc, char** argv)
     /// Setting up subsciption
     ros::NodeHandle nh;
 
-    pedClustSub_.subscribe(nh, "pedestrian_clusters_filtered", 10);
+    pedClustSub_.subscribe(nh, "pedestrian_clusters", 10);
     pedVisionSub_.subscribe(nh, "ped_vision", 10);
     pedVisionAngularSub_.subscribe(nh, "pedestrian_roi", 10);
     /// TBP : how to add multiple subscription to same call back ????
@@ -44,81 +44,91 @@ data_assoc::data_assoc(int argc, char** argv)
 
 }
 
+bool sort_clg(centroid_local_global const &a, centroid_local_global const &b)
+{
+    return a.local_centroid.x < b.local_centroid.x;
+}
+
+bool sort_point(geometry_msgs::PointStamped const &a, geometry_msgs::PointStamped const&b)
+{
+    return a.point.y < b.point.y;
+}
+
 void data_assoc::pedVisionAngularCallback(sensor_msgs::PointCloudConstPtr pedestrian_vision_angular)
 {
     ROS_INFO(" Entering vision call back with lPedInView %d", lPedInView.pd_vector.size());
     std::vector<geometry_msgs::Point32> vision_point = pedestrian_vision_angular->points;
-    for(int jj=0; jj< lPedInView.pd_vector.size(); jj++)
+    ROS_INFO("Getting new id if any. Vision roi points received=%d", vision_point.size());
+
+    //get a copy lPedInView in local frame and sort it
+    vector<geometry_msgs::PointStamped> lPedInView_local;
+    for(size_t i=0; i < lPedInView.pd_vector.size(); i++)
     {
-        double minAng=10000;
-        int minID=-1;
         geometry_msgs::PointStamped global_point, local_point;
         global_point.header = lPedInView.header;
-        global_point.point.x = lPedInView.pd_vector[jj].cluster.centroid.x;
-        global_point.point.y = lPedInView.pd_vector[jj].cluster.centroid.y;
-        global_point.point.z = lPedInView.pd_vector[jj].cluster.centroid.z;
+        global_point.point.x = lPedInView.pd_vector[i].cluster.centroid.x;
+        global_point.point.y = lPedInView.pd_vector[i].cluster.centroid.y;
+        global_point.point.z = lPedInView.pd_vector[i].cluster.centroid.z;
         local_point.header = lPedInView.header;
         //todo: frame_id at param
         local_point.header.frame_id = "usb_cam";
         transformGlobalToLocal(global_point, local_point);
-        double laser_cluster_angular = atan2(local_point.point.y, local_point.point.x);
-
-        for(size_t i=0; i<vision_point.size(); i++)
-        {
-            double vision_angular = atan2(vision_point[i].y, vision_point[i].x);
-            double currAng = fabs(vision_angular - laser_cluster_angular);
-            if(currAng < minAng)
-            {
-                minAng = currAng;
-                minID = i;
-            }
-        }
-        if(minAng < NN_ANG_MATCH_THRESHOLD)
-        {
-            if(vision_point.size()) vision_point.erase(vision_point.begin()+minID);
-        }
-        //maybe we can add image features to check similarity
-
+        //reset all the local_point.z to zero
+        //this will be used to determine if the cluster has been flagged by vision
+        local_point.point.z = 0;
+        lPedInView_local.push_back(local_point);
     }
-    //match it with the current list of clusters from laser, then create new ID if neccessary
-    //get a copy of the latest available set of clusters
-    ROS_INFO("Getting new id if any. Vision roi points received=%d", vision_point.size());
-    std::vector<geometry_msgs::Point32> laser_global, laser_local;
-    getLatestLaserCluster(laser_global, laser_local);
-    if(laser_global.size()==0||laser_local.size()==0) return;
-    ROS_INFO("Laser copy obtained, global=%d, local=%d", laser_global.size(), laser_local.size());
-    for(size_t i=0; i<vision_point.size(); i++)
+    sort(lPedInView_local.begin(), lPedInView_local.end(), sort_point);
+
+    //whatever tracking cluster that is in view is erased from the vision points
+    for(size_t i=0; i < lPedInView_local.size(); i++)
     {
-        double minAng=10000;
-        int minID=-1;
-        double vision_angular = atan2(vision_point[i].y, vision_point[i].x);
-        for(size_t j=0; j<laser_local.size(); j++)
+        double laser_cluster_angular = fmutil::r2d(atan2(lPedInView_local[i].point.x, -lPedInView_local[i].point.y));
+
+        for(size_t j=0; j < vision_point.size(); )
         {
-            double laser_angular = atan2(laser_local[j].y, laser_local[j].x);
-            double currAng = fabs(vision_angular - laser_angular);
-            if(currAng < minAng)
+            double vision_angular1 =fmutil::r2d(atan2(vision_point[j].x, -vision_point[j].y));
+            double vision_angular2 = fmutil::r2d(atan2(vision_point[j+1].x, -vision_point[j+1].y));
+            printf("laser_angular %lf, vision_angular1 %lf, vision_angular2 %lf\n", laser_cluster_angular, vision_angular1, vision_angular2);
+            if(fmutil::isWithin(laser_cluster_angular, vision_angular1, vision_angular2))
             {
-                minAng = currAng;
-                minID = j;
+                printf("Vision at %lf %lf will be erased, size = %d\n", vision_angular1, vision_angular2, vision_point.size());
+                printf("Matched with tracking lPedInView at %lf %lf\n", lPedInView_local[i].point.x, lPedInView_local[i].point.y);
+                vision_point.erase(vision_point.begin()+j, vision_point.begin()+j+2);
             }
+            else j+=2;
         }
-        ROS_INFO("Vision point at angular dist %lf match with cluster at %lf, %lf with an angle of %lf", vision_angular, laser_local[minID].x, laser_local[minID].y, minAng);
-        if(minAng < NN_ANG_MATCH_THRESHOLD)
+    }
+
+    vector<centroid_local_global> clg;
+    getLatestLaserCluster(clg);
+    if(clg.size()==0) return;
+    ROS_INFO("Laser copy of %d obtained and remaining %d vision_points", clg.size(), vision_point.size());
+    //sort the cluster according to the distance from local frame
+    sort(clg.begin(), clg.end(), sort_clg);
+    //add the possible vision recognised pedestrian into lPedInView
+    for(size_t i=0; i<vision_point.size(); i+=2)
+    {
+        double vision_angular1 = fmutil::r2d(atan2(vision_point[i].x, -vision_point[i].y));
+        double vision_angular2 = fmutil::r2d(atan2(vision_point[i+1].x, -vision_point[i+1].y));
+        for(size_t j=0; j<clg.size(); j++)
         {
-            //new laser cluster that match with vision proposal found, proceed to assign a new id
-            ROS_INFO("New pedestrian associated with laser cluster found");
-            if(laser_local.size())
+            double laser_angular = fmutil::r2d(atan2(clg[j].local_centroid.x, -clg[j].local_centroid.y));
+            //printf("laser_angular %lf, vision_angular1 %lf, vision_angular2 %lf\n", laser_angular, vision_angular1, vision_angular2);
+            if(fmutil::isWithin(laser_angular, vision_angular1, vision_angular2))
             {
-                //todo: noticeable mismatch in poi and data_assoc points
-                //calibration is important, or may use ray tracing method
-                sensing_on_road::pedestrian_vision newPed;
-                newPed.object_label = latest_id++;
-                newPed.cluster.centroid = laser_global[minID];
-                newPed.cluster.last_update = ros::Time::now();
-                ROS_INFO_STREAM( "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.cluster.centroid.x << " y:" << newPed.cluster.centroid.y);
-                lPedInView.pd_vector.push_back(newPed);
-                laser_local.erase(laser_local.begin()+minID);
-                laser_global.erase(laser_global.begin()+minID);
+                //new laser cluster that match with vision proposal found, proceed to assign a new id
+                if(clg.size())
+                {
+                    //calibration is important, or may use ray tracing method
+                    sensing_on_road::pedestrian_vision newPed;
+                    newPed.object_label = latest_id++;
+                    newPed.cluster.centroid = clg[j].global_centroid;
+                    newPed.cluster.last_update = ros::Time::now();
+                    ROS_INFO_STREAM( "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.cluster.centroid.x << " y:" << newPed.cluster.centroid.y);
+                    lPedInView.pd_vector.push_back(newPed);
+                    clg.erase(clg.begin()+j);
+                }
             }
         }
     }
@@ -178,10 +188,15 @@ bool data_assoc::transformPointToGlobal(std_msgs::Header header, geometry_msgs::
     return true;
 }
 
-void data_assoc::getLatestLaserCluster(std::vector<geometry_msgs::Point32>& global_copy, std::vector<geometry_msgs::Point32>& local_copy)
+void data_assoc::getLatestLaserCluster(vector<centroid_local_global> &clg_copy)
 {
-    global_copy.insert(global_copy.begin(), laser_latest_global_.begin(), laser_latest_global_.end());
-    local_copy.insert(local_copy.begin(), laser_latest_local_.begin(), laser_latest_local_.end());
+    for(size_t i=0;i<laser_latest_global_.size();i++)
+    {
+        centroid_local_global clg;
+        clg.global_centroid = laser_latest_global_[i];
+        clg.local_centroid = laser_latest_local_[i];
+        clg_copy.push_back(clg);
+    }
 }
 
 void data_assoc::pedVisionCallback(sensing_on_road::pedestrian_vision_batchConstPtr pedestrian_vision_vector)

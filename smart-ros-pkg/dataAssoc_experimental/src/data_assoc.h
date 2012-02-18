@@ -21,6 +21,7 @@
 #include <dataAssoc_experimental/PedDataAssoc.h>
 #include <dataAssoc_experimental/PedDataAssoc_vector.h>
 #include <geometry_msgs/PolygonStamped.h>
+#include <fmutil/fm_math.h>
 
 using namespace std;
 
@@ -33,7 +34,11 @@ struct PED_DATA_ASSOC
 	ros::Time last_update;
 };
 
-
+struct centroid_local_global
+{
+    geometry_msgs::Point32 global_centroid;
+    geometry_msgs::Point32 local_centroid;
+};
 
 class data_assoc
 {
@@ -47,7 +52,7 @@ public:
     void publishPed();
     bool transformPointToGlobal(std_msgs::Header header, geometry_msgs::Point32 input_point, geometry_msgs::Point32& output_point);
     bool transformGlobalToLocal(geometry_msgs::PointStamped& global_point, geometry_msgs::PointStamped& local_point);
-    void getLatestLaserCluster(std::vector<geometry_msgs::Point32>& global_copy, std::vector<geometry_msgs::Point32>& local_copy);
+    void getLatestLaserCluster(vector<centroid_local_global> &clg_copy);
     void cleanUp();
 
     ros::Publisher pedPub_;
@@ -88,7 +93,6 @@ public:
 	//};
 
 	int latest_id;
-
 
     //ros::Timer timer_;
 };
