@@ -12,6 +12,7 @@
   <depend package="rospy" />
   <depend package="sensor_msgs"/>
   <depend package="sensing_on_road"/>
+  <depend package="dataAssoc_experimental"/>
   <depend package="tf"/>
   <depend package="laser_geometry"/>
   <depend package="geometry_msgs"/>

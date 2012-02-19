@@ -70,6 +70,47 @@ void pedestrian_momdp::initPedMOMDP(ped_momdp_sarsop::ped_local_frame ped_local)
 }
 
 
+
+void pedestrian_momdp::initPedMOMDP_DataAssoc(dataAssoc_experimental::PedDataAssoc PedData)//, int ped_id)
+{
+	PED_MOMDP pedProblem;
+	pedProblem.id = PedData.id;
+	cout<<"create new belief state"<<endl;
+	pedProblem.currBelSt = (new BeliefWithState());
+	cout<<"Ped pose: "<<PedData.ped_pose<<endl;
+	pedProblem.currSVal = getCurrentState(robotspeedx_, roboty_, PedData.ped_pose.x, PedData.ped_pose.y);
+
+	SharedPointer<SparseVector> startBeliefVec;
+	if (problem->initialBeliefStval->bvec)
+	  startBeliefVec = problem->initialBeliefStval->bvec;
+	else
+	  startBeliefVec = problem->initialBeliefYByX[pedProblem.currSVal];
+
+
+	///// initializing belief for Y
+	//int currUnobsState = chooseFromDistribution(*startBeliefVec);
+	//int belSize = startBeliefVec->size();
+
+
+	pedProblem.currBelSt->sval = pedProblem.currSVal;
+	copy(*(pedProblem.currBelSt)->bvec, *startBeliefVec);
+	
+	//cout << "Starting Belief " << endl;
+	//pedProblem.currBelSt->bvec->write(cout);
+	//cout << endl;
+
+	
+	pedProblem.currAction = policy->getBestActionLookAhead(*(pedProblem.currBelSt));
+
+	//the forgotten part
+	pedProblem.rob_pose = roboty_;
+	pedProblem.ped_pose.x = (double)PedData.ped_pose.x;
+	pedProblem.ped_pose.y = (double)PedData.ped_pose.y;
+	lPedInView.push_back(pedProblem);
+
+	return;
+}
+
 int pedestrian_momdp::policy_initialize()
 {
     p = &GlobalResource::getInstance()->solverParams;
@@ -285,7 +326,9 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv)
     speedSub_ = nh.subscribe("odom", 1, &pedestrian_momdp::speedCallback, this);
     //pedSub_ = nh.subscribe("ped_map_laser_batch", 1, &pedestrian_momdp::pedPoseCallback, this);
     
-    pedSub_ = nh.subscribe("ped_local_frame_vector", 1, &pedestrian_momdp::pedPoseCallback, this); 
+    //pedSub_ = nh.subscribe("ped_local_frame_vector", 1, &pedestrian_momdp::pedPoseCallback, this); 
+    
+    pedSub_ = nh.subscribe("ped_data_assoc", 1, &pedestrian_momdp::pedDataAssocPoseCallback, this); 
     
     ros::NodeHandle n("~");
     
@@ -311,7 +354,6 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv)
 	initPedGoal();
     policy_initialize();
 
-
     timer_ = nh.createTimer(ros::Duration(0.5), &pedestrian_momdp::controlLoop, this);
     ros::spin();
 }
@@ -336,6 +378,9 @@ void pedestrian_momdp::robotPoseCallback(geometry_msgs::PoseWithCovarianceStampe
 
     if(robotx_>0 && roboty_>0) 
 		robot_pose = true;
+		
+	/// For quad expt
+	robot_pose = true;
 }
 
 void pedestrian_momdp::moveSpeedCallback(pnc_msgs::move_status status)
@@ -353,6 +398,46 @@ void pedestrian_momdp::moveSpeedCallback(pnc_msgs::move_status status)
     if(use_sim_time_) 
 		cmd_temp.linear.x = cmd.linear.x * 0.3; /// TBP change numbers into parameters
     cmdPub_.publish(cmd_temp);
+}
+
+void pedestrian_momdp::pedDataAssocPoseCallback(dataAssoc_experimental::PedDataAssoc_vector lPedDataAssoc)
+{
+    ROS_INFO_STREAM("lPedDataAssoc size "<<lPedDataAssoc.ped_vector.size()<<" lPedInView size "<<lPedInView.size());
+
+    for(int ii=0; ii< lPedDataAssoc.ped_vector.size(); ii++)
+    {
+		/// search for proper pedestrian to update
+		int ped_id = lPedDataAssoc.ped_vector[ii].id;
+
+		bool foundPed=false;
+		for(int jj=0; jj< lPedInView.size(); jj++)
+		{
+			if(lPedInView[jj].id==ped_id)
+			{
+			    //given in ROS coordinate, convert to momdp compatible format
+				lPedInView[jj].ped_pose.x = -lPedDataAssoc.ped_vector[ii].ped_pose.y;
+				lPedInView[jj].ped_pose.y = lPedDataAssoc.ped_vector[ii].ped_pose.x;
+				
+				/// stationary pedestrians
+				lPedInView[jj].rob_pose = 0;//lPedDataAssoc.ped_vector[ii].rob_pose.x;  
+				foundPed=true;
+				cout << "Updated ped info "<<lPedInView[jj].ped_pose.x<<' '<<lPedInView[jj].ped_pose.y<<endl;
+				break;
+				
+			}
+			ROS_INFO_STREAM(ii<<": PedX "<<lPedInView[jj].ped_pose.x << " PedY "<<lPedInView[jj].ped_pose.y);
+		}
+		
+		if(!foundPed)
+		{
+			///if ped_id does not match the old one create a new pomdp problem.
+			ROS_INFO(" Creating  a new pedestrian problem #%d", ped_id);
+			
+			//initPedMOMDP(lPedLocal.ped_local[ii]);
+			initPedMOMDP_DataAssoc(lPedDataAssoc.ped_vector[ii]);//, ped_id);
+		}
+		//cout << "ped info "<<(double)lPedInView[ii].ped_pose.x<<' '<<(double)lPedInView[ii].ped_pose.y<<endl;
+    }
 }
 
 void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector lPedLocal)
