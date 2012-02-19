@@ -2,7 +2,7 @@
     <!--node pkg="feature_detection" type="cluster_filter.py" pame="cluster_filter" output="screen" args="width<1.5 and depth<15 and dist<25"/-->
     <node pkg="feature_detection" type="ped_clustering" name="ped_clustering">
         <remap from="sickldmrs/scan0" to="sick_scan3"/>
-        <remap from="sickldmrs/cloud" to="sickldmrs_"/>
+        <remap from="sickldmrs/cloud" to="sickldmrs/cloud1"/>
     </node>
     <node pkg="pedestrian_detector" type="classifier" name="classifier" output="screen">
     	<param name="image_transport" value="compressed"/>

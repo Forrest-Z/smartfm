@@ -4,7 +4,7 @@
 #include <tf/transform_listener.h>
 #include <sensing_on_road/pedestrian_laser_batch.h>
 #include <ped_momdp_sarsop/ped_local_frame_vector.h>
-
+#include <sensing_on_road/pedestrian_vision_batch.h>
 using namespace std;
 struct ped_transforms
 {
@@ -21,7 +21,7 @@ public:
 
 private:
     void publishTransform(const ros::TimerEvent& event);
-    void pedCallback(sensing_on_road::pedestrian_laser_batchConstPtr ped_batch);
+    void pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr ped_batch);
     bool getObjectPose(string& target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
     vector<ped_transforms> ped_transforms_;
     tf::TransformBroadcaster br_;
@@ -35,7 +35,7 @@ private:
 local_frame::local_frame()
 {
     ros::NodeHandle nh;
-    ped_sub_ = nh.subscribe("ped_laser_batch", 1, &local_frame::pedCallback, this);
+    ped_sub_ = nh.subscribe("ped_data_assoc", 1, &local_frame::pedCallback, this);
     local_pub_ = nh.advertise<ped_momdp_sarsop::ped_local_frame_vector>("ped_local_frame_vector", 1);
 
     ros::NodeHandle n("~");
@@ -44,17 +44,17 @@ local_frame::local_frame()
     ros::spin();
 }
 
-void local_frame::pedCallback(sensing_on_road::pedestrian_laser_batchConstPtr ped_batch)
+void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr ped_batch)
 {
     ped_momdp_sarsop::ped_local_frame_vector plf_vector;
-    for(size_t i=0;i<ped_batch->pedestrian_laser_features.size();i++)
+    for(size_t i=0;i<ped_batch->pd_vector.size();i++)
     {
         //find if the transform is already available
         size_t matched_ped;
         bool matched=false;
         for(size_t j=0; j<ped_transforms_.size(); j++)
         {
-            if(ped_batch->pedestrian_laser_features[i].object_label == ped_transforms_[j].label)
+            if(ped_batch->pd_vector[i].object_label == ped_transforms_[j].label)
             {
                 matched = true;
                 matched_ped = j;
@@ -75,8 +75,8 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_laser_batchConstPtr pe
 
             //start with pedestrian. no interest on the orientation of ped for now
             in_pose.setIdentity();
-            in_pose.frame_id_ = ped_batch->pedestrian_laser_features[i].pedestrian_laser.header.frame_id;
-            geometry_msgs::Point ped_point = ped_batch->pedestrian_laser_features[i].pedestrian_laser.point;
+            in_pose.frame_id_ = ped_batch->header.frame_id;
+            geometry_msgs::Point32 ped_point = ped_batch->pd_vector[i].cluster.centroid;
             in_pose.setOrigin(tf::Vector3(ped_point.x, ped_point.y, ped_point.z));
             getObjectPose(plf.header.frame_id, in_pose, out_pose);
             plf.ped_id = ped_transforms_[matched_ped].label;
@@ -93,7 +93,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_laser_batchConstPtr pe
             plf.rob_pose.y = out_pose.getOrigin().getY();
             plf.rob_pose.z = out_pose.getOrigin().getZ();
             plf_vector.ped_local.push_back(plf);
-            ped_transforms_[matched_ped].last_update = ped_batch->pedestrian_laser_features[i].pedestrian_laser.header.stamp;
+            ped_transforms_[matched_ped].last_update = ped_batch->header.stamp;
         }
         else
         {
@@ -110,8 +110,8 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_laser_batchConstPtr pe
             transform.setOrigin( out_pose.getOrigin() );
             transform.setRotation( out_pose.getRotation() );
             ped_transforms ped_tr;
-            ped_tr.label = ped_batch->pedestrian_laser_features[i].object_label;
-            ped_tr.last_update = ped_batch->pedestrian_laser_features[i].pedestrian_laser.header.stamp;
+            ped_tr.label = ped_batch->pd_vector[i].object_label;
+            ped_tr.last_update = ped_batch->header.stamp;
             ped_tr.transform = transform;
             ped_transforms_.push_back(ped_tr);
         }
