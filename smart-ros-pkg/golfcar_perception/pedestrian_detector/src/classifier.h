@@ -45,9 +45,10 @@ private:
     ros::Publisher people_detect_pub_;
     ros::Publisher people_ver_pub_;
     ros::Publisher polygon_pub_;
+
     //sensor_msgs::CvBridge bridge_;
     image_transport::Publisher image_pub_;
-
+    double getAngularDistance(double x);
     void ScaleWithDistanceRatio(Mat *img, double disz, double norm_distance, Size img_size, Size smallest_size, double *ratio);
     void detectPedestrian(Point offset, double ratio, gpu::GpuMat& gpu_img, sensing_on_road::pedestrian_vision_batch *detect_rects);
     void imageCallback(const sensor_msgs::ImageConstPtr& image);

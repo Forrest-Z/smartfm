@@ -8,7 +8,7 @@ HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
     //image_pub_ = it_.advertise("pedestrian_detector",1);
     //image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &HOGClassifier::imageCallback, this);
     //people_rects_sub_ = n.subscribe("pd_vision_batch", 1, &HOGClassifier::peopleRectsCallback, this);
-    people_roi_pub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("veri_pd_vision", 1);
+    people_roi_pub_ = n.advertise<sensor_msgs::PointCloud>("pedestrian_roi", 1);
     people_detect_pub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("pedestrian_detect",1);
     //people_ver_pub_ = n.advertise<people_detector::verified_objs>("verified_objects",1);
     polygon_pub_ = n.advertise<geometry_msgs::PolygonStamped>("pedestrian_detect_visual",1);
@@ -78,8 +78,7 @@ void HOGClassifier::imageCallback(const sensor_msgs::ImageConstPtr& image)
     updateParameter();
 
     ROS_DEBUG("Inside people rect");
-    int image_width = 640;
-    int image_height = 360;
+
     sensing_on_road::pedestrian_vision_batch roi_rects;
     sensing_on_road::pedestrian_vision_batch detect_rects;
     sensing_on_road::pedestrian_vision temp_rect;
@@ -117,30 +116,50 @@ void HOGClassifier::imageCallback(const sensor_msgs::ImageConstPtr& image)
 
     //to project into angular distance
     geometry_msgs::PolygonStamped polyStamped;
+    sensor_msgs::PointCloud pc;
     geometry_msgs::Point32 p;
     polyStamped.header = image->header;
+    pc.header = image->header;
     for(size_t i=0; i< detect_rects.pd_vector.size(); i++)
     {
         double center_x = (detect_rects.pd_vector[i].cvRect_x1 + detect_rects.pd_vector[i].cvRect_x2)/2.0;
         double center_y = (detect_rects.pd_vector[i].cvRect_y1 + detect_rects.pd_vector[i].cvRect_y2)/2.0;
-        //here assume a perfectly calibrated camera and using simple atan model of the camera
-        //the logitech c910 has fov of 70 degree
-        double fov = 70.0;
-        double multiplier = (image_width/2.0) / tan(fov/360*M_PI);
 
-        double angular_dist = atan((center_x - image_width/2.0)/multiplier);//395.1671);
-
-        ROS_INFO("Estimated angular dist %lf", angular_dist/M_PI*180);
+        //draw the polygon
         p.x=p.y=p.z=0;
         polyStamped.polygon.points.push_back(p);
-        //then draw the polygon
         p.x = 25;
-        p.y = -tan(angular_dist)*25;
+        p.y = -tan(getAngularDistance(detect_rects.pd_vector[i].cvRect_x1))*25;
         polyStamped.polygon.points.push_back(p);
+        pc.points.push_back(p);
+        p.x=p.y=p.z=0;
+        polyStamped.polygon.points.push_back(p);
+        p.x = 25;
+        p.y = -tan(getAngularDistance(detect_rects.pd_vector[i].cvRect_x2))*25;
+        polyStamped.polygon.points.push_back(p);
+        pc.points.push_back(p);
     }
     polygon_pub_.publish(polyStamped);
+    people_roi_pub_.publish(pc);
 }
 
+double HOGClassifier::getAngularDistance(double x)
+{
+    int image_width = 640;
+    int image_height = 360;
+    //this function translate x coordinate pixels from camera frame to angular distance in 3D space
+    //center around the camera frame
+    //here assume a perfectly calibrated camera and using simple atan model of the camera
+    //the logitech c910 has fov of 70 degree
+    double fov = 70.0;
+    double multiplier = (image_width/2.0) / tan(fov/360*M_PI);
+
+    double angular_dist = atan((x - image_width/2.0)/multiplier);
+
+    ROS_INFO("Estimated angular dist %lf", angular_dist/M_PI*180);
+
+    return angular_dist;
+}
 void HOGClassifier::updateParameter()
 {
     ros::NodeHandle nh("~");
