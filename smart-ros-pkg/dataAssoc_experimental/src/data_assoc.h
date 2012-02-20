@@ -27,12 +27,6 @@ using namespace std;
 
 #define NN_MATCH_THRESHOLD 1.0
 #define NN_ANG_MATCH_THRESHOLD 0.0873 //5 degree
-struct PED_DATA_ASSOC
-{
-	int id;
-	geometry_msgs::Point32 ped_pose; /// updated from the centroid
-	ros::Time last_update;
-};
 
 struct centroid_local_global
 {
@@ -40,6 +34,11 @@ struct centroid_local_global
     geometry_msgs::Point32 local_centroid;
 };
 
+struct local_lPedInView
+{
+    int id;
+    geometry_msgs::PointStamped location;
+};
 class data_assoc
 {
 public:
@@ -54,10 +53,10 @@ public:
     bool transformGlobalToLocal(geometry_msgs::PointStamped& global_point, geometry_msgs::PointStamped& local_point);
     void getLatestLaserCluster(vector<centroid_local_global> &clg_copy);
     void cleanUp();
-
+    void increaseConfidence(int id);
     ros::Publisher pedPub_;
     ros::Publisher visualizer_;
-    string frame_id_, global_frame_;
+    string frame_id_, global_frame_, camera_frame_;
     bool use_sim_time_;
     tf::TransformListener *listener_;
     tf::MessageFilter<feature_detection::clusters> * laser_tf_filter_;

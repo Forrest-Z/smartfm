@@ -174,7 +174,7 @@ namespace momdp
 
 	void ROS_SimulationEngine::runStep(SharedPointer<BeliefWithState>& currBelSt, int currAction, int currObservation, int nextSVal,  SharedPointer<BeliefWithState>& nextBelSt )
 	{
-		cout << " runStep ------------------------ " << endl;
+		cout << " runStep <<------------------------ " << endl;
 		
 		cout << "Curr bel state " << endl;
 		
@@ -202,7 +202,7 @@ namespace momdp
 		cout << "Next bel state " << endl;
 		nextBelSt->bvec->write(cout); cout << endl;
 		
-		cout << " runStep ------------------------ " << endl;
+		cout << " runStep ------------------------>> " << endl;
 		
 		//return 0;
 		return;
