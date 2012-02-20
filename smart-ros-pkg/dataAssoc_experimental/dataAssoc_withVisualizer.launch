@@ -1,0 +1,12 @@
+<launch>
+	<include file="$(find dataAssoc_experimental)/dataAssoc_visualizer.launch"/>
+	<node pkg="dataAssoc_experimental" type="dataAssoc" name="dataAssoc" output="screen">
+	    <param name="global_frame" value="odom"/>
+	    <param name="time_out" value="3.0"/>
+	    <param name="poll_increment" value="0.1"/>
+	    <param name="poll_decrement" value="0.05"/>
+	    <param name="confirm_threshold" value="0.3"/>
+	    <remap from="pedestrian_clusters" to="pedestrian_clusters_filtered"/>
+	    <remap from="ped_vision" to="veri_pd_vision"/>
+	</node>
+</launch>

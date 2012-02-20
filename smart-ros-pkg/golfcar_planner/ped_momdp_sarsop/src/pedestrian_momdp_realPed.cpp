@@ -33,10 +33,16 @@ void pedestrian_momdp::initPedMOMDP(ped_momdp_sarsop::ped_local_frame ped_local)
 {
 	PED_MOMDP pedProblem;
 	pedProblem.id = ped_local.ped_id;
+	
 	cout<<"create new belief state"<<endl;
 	pedProblem.currBelSt = (new BeliefWithState());
-	cout<<"Ped pose: "<<ped_local.ped_pose<<endl;
-	pedProblem.currSVal = getCurrentState(robotspeedx_, ped_local.rob_pose.y, ped_local.ped_pose.x, ped_local.ped_pose.y);
+	
+	//cout<<"Ped pose: "<<ped_local.ped_pose<<endl;
+	
+	pedProblem.currSVal = getCurrentState(robotspeedx_, ped_local.rob_pose.x, -ped_local.ped_pose.y, ped_local.ped_pose.x);
+	/// Debug
+	//pedProblem.currSVal = getCurrentState(0, 0, -ped_local.ped_pose.y, ped_local.ped_pose.x);
+	cout << "Current SVal " << pedProblem.currSVal << endl;
 
 	SharedPointer<SparseVector> startBeliefVec;
 	if (problem->initialBeliefStval->bvec)
@@ -45,9 +51,9 @@ void pedestrian_momdp::initPedMOMDP(ped_momdp_sarsop::ped_local_frame ped_local)
 	  startBeliefVec = problem->initialBeliefYByX[pedProblem.currSVal];
 
 
-	/// initializing belief for Y
-	int currUnobsState = chooseFromDistribution(*startBeliefVec);
-	int belSize = startBeliefVec->size();
+	///// initializing belief for Y
+	//int currUnobsState = chooseFromDistribution(*startBeliefVec);
+	//int belSize = startBeliefVec->size();
 
 
 	pedProblem.currBelSt->sval = pedProblem.currSVal;
@@ -61,14 +67,60 @@ void pedestrian_momdp::initPedMOMDP(ped_momdp_sarsop::ped_local_frame ped_local)
 	pedProblem.currAction = policy->getBestActionLookAhead(*(pedProblem.currBelSt));
 
 	//the forgotten part
-	pedProblem.rob_pose = (double)ped_local.rob_pose.y;
-	pedProblem.ped_pose.x = (double)ped_local.ped_pose.x;
-	pedProblem.ped_pose.y = (double)ped_local.ped_pose.y;
+	pedProblem.rob_pose = (double)ped_local.rob_pose.x;
+	pedProblem.ped_pose.x = -(double)ped_local.ped_pose.y;
+	pedProblem.ped_pose.y = (double)ped_local.ped_pose.x;
 	lPedInView.push_back(pedProblem);
 
 	return;
 }
 
+
+
+void pedestrian_momdp::initPedMOMDP_DataAssoc(dataAssoc_experimental::PedDataAssoc PedData)//, int ped_id)
+{
+	PED_MOMDP pedProblem;
+	pedProblem.id = PedData.id;
+	cout<<"create new belief state"<<endl;
+	pedProblem.currBelSt = (new BeliefWithState());
+	cout<<"Ped pose: "<<PedData.ped_pose<<endl;
+	
+	
+	
+	
+	pedProblem.currSVal = getCurrentState(robotspeedx_, roboty_, PedData.ped_pose.x, PedData.ped_pose.y);
+	
+
+	SharedPointer<SparseVector> startBeliefVec;
+	if (problem->initialBeliefStval->bvec)
+	  startBeliefVec = problem->initialBeliefStval->bvec;
+	else
+	  startBeliefVec = problem->initialBeliefYByX[pedProblem.currSVal];
+
+
+	///// initializing belief for Y
+	//int currUnobsState = chooseFromDistribution(*startBeliefVec);
+	//int belSize = startBeliefVec->size();
+
+
+	pedProblem.currBelSt->sval = pedProblem.currSVal;
+	copy(*(pedProblem.currBelSt)->bvec, *startBeliefVec);
+	
+	//cout << "Starting Belief " << endl;
+	//pedProblem.currBelSt->bvec->write(cout);
+	//cout << endl;
+
+	
+	pedProblem.currAction = policy->getBestActionLookAhead(*(pedProblem.currBelSt));
+
+	//the forgotten part
+	pedProblem.rob_pose = roboty_;
+	pedProblem.ped_pose.x = (double)PedData.ped_pose.x;
+	pedProblem.ped_pose.y = (double)PedData.ped_pose.y;
+	lPedInView.push_back(pedProblem);
+
+	return;
+}
 
 int pedestrian_momdp::policy_initialize()
 {
@@ -287,6 +339,8 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv)
     
     pedSub_ = nh.subscribe("ped_local_frame_vector", 1, &pedestrian_momdp::pedPoseCallback, this); 
     
+    //pedSub_ = nh.subscribe("ped_data_assoc", 1, &pedestrian_momdp::pedDataAssocPoseCallback, this); 
+    
     ros::NodeHandle n("~");
     
     /// subscribe to
@@ -311,6 +365,7 @@ pedestrian_momdp::pedestrian_momdp(int argc, char** argv)
 	initPedGoal();
     policy_initialize();
 
+	
 
     timer_ = nh.createTimer(ros::Duration(0.5), &pedestrian_momdp::controlLoop, this);
     ros::spin();
@@ -336,6 +391,8 @@ void pedestrian_momdp::robotPoseCallback(geometry_msgs::PoseWithCovarianceStampe
 
     if(robotx_>0 && roboty_>0) 
 		robot_pose = true;
+		
+
 }
 
 void pedestrian_momdp::moveSpeedCallback(pnc_msgs::move_status status)
@@ -355,23 +412,16 @@ void pedestrian_momdp::moveSpeedCallback(pnc_msgs::move_status status)
     cmdPub_.publish(cmd_temp);
 }
 
-void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector lPedLocal)
+void pedestrian_momdp::pedDataAssocPoseCallback(dataAssoc_experimental::PedDataAssoc_vector lPedDataAssoc)
 {
-    ///TBP direct initialization since it is taken care by transformPedtoMap ??? 
-    //if(!obs_flag)
-    //{
-        //num_ped = laser_batch.pedestrian_laser_features.size();
-        //lPedInView.resize(num_ped);
-        //currSVal.resize(num_ped);
-        //currAction.resize(num_ped);
-    //}
+	//cout << "lPedDataAssoc size "<<lPedDataAssoc.ped_vector.size()<<" lPedInView size "<<lPedInView.size() << endl;
+	
+    //ROS_INFO_STREAM("lPedDataAssoc size "<<lPedDataAssoc.ped_vector.size()<<" lPedInView size "<<lPedInView.size());
 
-    ROS_INFO_STREAM("lPedLocal size "<<lPedLocal.ped_local.size()<<" lPedInView size "<<lPedInView.size());
-
-    for(int ii=0; ii< lPedLocal.ped_local.size(); ii++)
+    for(int ii=0; ii< lPedDataAssoc.ped_vector.size(); ii++)
     {
 		/// search for proper pedestrian to update
-		int ped_id = lPedLocal.ped_local[ii].ped_id;
+		int ped_id = lPedDataAssoc.ped_vector[ii].id;
 
 		bool foundPed=false;
 		for(int jj=0; jj< lPedInView.size(); jj++)
@@ -379,9 +429,11 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 			if(lPedInView[jj].id==ped_id)
 			{
 			    //given in ROS coordinate, convert to momdp compatible format
-				lPedInView[jj].ped_pose.x = -lPedLocal.ped_local[ii].ped_pose.y;
-				lPedInView[jj].ped_pose.y = lPedLocal.ped_local[ii].ped_pose.x;
-				lPedInView[jj].rob_pose = lPedLocal.ped_local[ii].rob_pose.x;
+				lPedInView[jj].ped_pose.x = -lPedDataAssoc.ped_vector[ii].ped_pose.y;
+				lPedInView[jj].ped_pose.y = lPedDataAssoc.ped_vector[ii].ped_pose.x;
+				
+				/// stationary pedestrians
+				lPedInView[jj].rob_pose = 0;//lPedDataAssoc.ped_vector[ii].rob_pose.x;  
 				foundPed=true;
 				cout << "Updated ped info "<<lPedInView[jj].ped_pose.x<<' '<<lPedInView[jj].ped_pose.y<<endl;
 				break;
@@ -394,45 +446,128 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 		{
 			///if ped_id does not match the old one create a new pomdp problem.
 			ROS_INFO(" Creating  a new pedestrian problem #%d", ped_id);
+			
+			//initPedMOMDP(lPedLocal.ped_local[ii]);
+			initPedMOMDP_DataAssoc(lPedDataAssoc.ped_vector[ii]);//, ped_id);
+		}
+		//cout << "ped info "<<(double)lPedInView[ii].ped_pose.x<<' '<<(double)lPedInView[ii].ped_pose.y<<endl;
+    }
+}
+
+void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector lPedLocal)
+{
+    ///TBP direct initialization since it is taken care by transformPedtoMap ??? 
+    //if(!obs_flag)
+    //{
+        //num_ped = laser_batch.pedestrian_laser_features.size();
+        //lPedInView.resize(num_ped);
+        //currSVal.resize(num_ped);
+        //currAction.resize(num_ped);
+    //}
+
+    //ROS_INFO_STREAM("lPedLocal size "<<lPedLocal.ped_local.size()<<" lPedInView size "<<lPedInView.size());
+
+    for(int ii=0; ii< lPedLocal.ped_local.size(); ii++)
+    {
+		/// search for proper pedestrian to update
+		int ped_id = lPedLocal.ped_local[ii].ped_id;
+
+//if( (ped_id == 69) || (ped_id == 70)) /// debug : ignore stationary pedestrian
+//{
+		bool foundPed=false;
+		for(int jj=0; jj< lPedInView.size(); jj++)
+		{
+			
+			if(lPedInView[jj].id==ped_id)
+			{
+			    //given in ROS coordinate, convert to momdp compatible format
+				lPedInView[jj].ped_pose.x = -lPedLocal.ped_local[ii].ped_pose.y;
+				lPedInView[jj].ped_pose.y = lPedLocal.ped_local[ii].ped_pose.x;
+				lPedInView[jj].rob_pose = lPedLocal.ped_local[ii].rob_pose.y;
+				///// Debug
+				//lPedInView[jj].rob_pose = 0;
+				foundPed=true;
+				ROS_INFO_STREAM( "Updated ped #" << ped_id << " " <<lPedInView[jj].ped_pose.x<<' '<<lPedInView[jj].ped_pose.y);
+				break;
+				
+			}
+			//ROS_INFO_STREAM(ii<<": PedX "<<lPedInView[jj].ped_pose.x << " PedY "<<lPedInView[jj].ped_pose.y);
+		}
+		
+		if(!foundPed)
+		{
+			///if ped_id does not match the old one create a new pomdp problem.
+			ROS_INFO(" Creating  a new pedestrian problem #%d", ped_id);
 			initPedMOMDP(lPedLocal.ped_local[ii]);
 		}
+//}		
 		//cout << "ped info "<<(double)lPedInView[ii].ped_pose.x<<' '<<(double)lPedInView[ii].ped_pose.y<<endl;
     }
 }
 
 void pedestrian_momdp::updateBelief(int id, int safeAction)
 {
-		cout << "---- subproblem update  #" << id << " ---- " << endl;
-        cout << "Next state " << endl;
-        cout << "First ped info "<<lPedInView[0].ped_pose.x<<' '<<lPedInView[0].ped_pose.y<<endl;
-        int nextSVal = getCurrentState(robotspeedx_, lPedInView[id].rob_pose, lPedInView[id].ped_pose.x, lPedInView[id].ped_pose.y);
-        int currObservation = getCurrObs(id);
+		cout << "---- subproblem update  #" << id << "  safeAction " << safeAction << " ---- " << endl;
+        //cout << "Next state " << endl;
+        
+        int ii=-1;
+        for(int jj=0; jj<lPedInView.size(); jj++)
+        {
+			if(lPedInView[jj].id == id)
+			{
+				ii = jj;
+				
+				cout << "lPedInView list position " << ii << endl;
+				break;
+				
+			}
+		}
+		
+		if(ii==-1)
+		{
+			cout << "Cannot do belief update ids dont match ... " << endl;
+			return;
+		}
+        
+                
+        //int nextSVal = getCurrentState(robotspeedx_, lPedInView[ii].rob_pose, lPedInView[ii].ped_pose.x, lPedInView[ii].ped_pose.y);
+        
+        /// Debug 
+        int nextSVal = getCurrentState(0, 0, lPedInView[ii].ped_pose.x, lPedInView[ii].ped_pose.y);
+        int currObservation = getCurrObs(ii);
 
         cout << "before update belief" << endl;
-        (lPedInView[id].currBelSt)->bvec->write(cout); cout << endl;
-        cout << "curr bel sval " << (lPedInView[id].currBelSt)->sval << endl;
+        (lPedInView[ii].currBelSt)->bvec->write(cout); cout << endl;
+        cout << "curr bel sval " << (lPedInView[ii].currBelSt)->sval << endl;
 
         SharedPointer<BeliefWithState> nextBelSt;
-        engine.runStep((lPedInView[id].currBelSt), safeAction, currObservation, nextSVal, nextBelSt );
+        engine.runStep((lPedInView[ii].currBelSt), safeAction, currObservation, nextSVal, nextBelSt );
 
-        copy(*(lPedInView[id].currBelSt)->bvec, *nextBelSt->bvec);
-        (lPedInView[id].currBelSt)->sval = nextSVal;
+        copy(*(lPedInView[ii].currBelSt)->bvec, *nextBelSt->bvec);
+        (lPedInView[ii].currBelSt)->sval = nextSVal;
 
         cout << "next belief" << endl;
-        (lPedInView[id].currBelSt)->bvec->write(cout); cout << endl;
-        cout << "next bel sval " << (lPedInView[id].currBelSt)->sval << endl;
+        (lPedInView[ii].currBelSt)->bvec->write(cout); cout << endl;
+        cout << "next bel sval " << (lPedInView[ii].currBelSt)->sval << endl;
         
         //map<string, string> aa = problem->getActionsSymbols(safeAction);
         //cout << "safe action " << aa["action_robot"] << endl;
 
-        ROS_INFO ("next bel sval %d", (lPedInView[id].currBelSt)->sval);
+        ROS_INFO ("next bel sval %d", (lPedInView[ii].currBelSt)->sval);
 }
 
 void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
 {
 
     /// Start after 3 pedestrians are detected
-    cout<<"Pedestrian: "<<obs_flag<<" Robot: "<<robot_pose<<endl;
+    //cout<<"Pedestrian: "<<obs_flag<<" Robot: "<<robot_pose<<endl;
+
+    /// For quad stationary expt
+	robot_pose = true;
+    
+    cout << "Control loop .. Robot:" << robot_pose << " lPedInView " << lPedInView.size() << endl;
+    
+	
     if(!robot_pose)return;
 
     //publish goal point at 25 meter in global frame
@@ -497,7 +632,8 @@ void pedestrian_momdp::controlLoop(const ros::TimerEvent &e)
     /// update belief based on the action taken
     for(int ii=0; ii<lPedInView.size(); ii++)
     {
-		updateBelief(ii,safeAction);
+		int id = lPedInView[ii].id;
+		updateBelief(id,safeAction);
     }
 
 
@@ -602,7 +738,9 @@ int pedestrian_momdp::getCurrentState(double currRobSpeed, double roby, double p
     //if(myDebug)
     //sprintf(ped_str,"sx%02dy%02d",1,10);
 
-
+	//roboty_=0;
+	/// debug : TBP force robot pos to zero
+	roby=0;
     int ry = getYGrid(roby);
     char rob_str[30];
     sprintf(rob_str,"sR%02d",ry);
@@ -610,7 +748,7 @@ int pedestrian_momdp::getCurrentState(double currRobSpeed, double roby, double p
     //if(myDebug)
     //sprintf(rob_str,"sR%02d",currRobY);
 
-    cout<<"rob_str"<<endl;
+    //cout<<"rob_str"<<endl;
     if(ry>Y_SIZE-1)
     {
         exit(1);
@@ -641,7 +779,7 @@ int pedestrian_momdp::getCurrentState(double currRobSpeed, double roby, double p
     state_str.append(ped_str);
     state_str.append(rob_str);
     state_str.append(rob_vel_str);
-    cout<<" Before state lookup"<<endl;
+    //cout<<" Before state lookup"<<endl;
     /// Lookup State id
     StateVal = ObsStateMapping[state_str];
 

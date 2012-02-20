@@ -81,7 +81,7 @@ VisualizeMomdp::VisualizeMomdp(ros::NodeHandle &n) : n_(n), it_(n_)
 
 void VisualizeMomdp::syncCallback(const sensor_msgs::ImageConstPtr image, const sensing_on_road::pedestrian_vision_batchConstPtr vision_roi)
 {
-    ROS_INFO("imageCallback");
+    ROS_INFO("imageCallback with roi rect %d", ROI_rect);
     Mat img;
     Cv_helper::sensormsgsToCv(image, img);
 
@@ -94,15 +94,15 @@ void VisualizeMomdp::syncCallback(const sensor_msgs::ImageConstPtr image, const 
         Point UL = Point(vision_roi->pd_vector[i].cvRect_x1, vision_roi->pd_vector[i].cvRect_y1);
         Point BR = Point(vision_roi->pd_vector[i].cvRect_x2, vision_roi->pd_vector[i].cvRect_y2);
         sensing_on_road::pedestrian_vision temp_rect = vision_roi->pd_vector[i];
-        if(ROI_rect)
+        //if(ROI_rect)
         {
             ROS_INFO("Decision flag: %d", vision_roi->pd_vector[i].decision_flag);
-            if(publish_verified)
+            /*if(publish_verified)
             {
                 if(vision_roi->pd_vector[i].decision_flag)
                     rectangle(img,UL, BR, Scalar(255,0,0), 1);
             }
-            else rectangle(img,UL, BR, Scalar(255,0,0), 1);
+            else*/ rectangle(img,UL, BR, Scalar(255,0,0), 1);
 
         }
         if(ROI_text) drawIDandConfidence(img, temp_rect);
@@ -225,8 +225,8 @@ void VisualizeMomdp::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_v
     }
 
     putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
-    //ss2<<setprecision(2)<<fixed<<pv.confidence*100.0;
-    //putText(img, ss2.str(), BR+Point(-45,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
+    ss2<<setprecision(2)<<fixed<<pv.confidence*100.0;
+    putText(img, ss2.str(), BR+Point(-45,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
 }
 
 

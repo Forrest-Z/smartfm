@@ -54,8 +54,12 @@
 		<Parent>  null </Parent>
 		<Parameter type = "TBL">
 			<Entry>
-				<Instance>  sR00  </Instance> 
-				<ProbTable>  1.0  </ProbTable> 
+				<Instance>  sR00   </Instance> 
+				<ProbTable>  0.5   </ProbTable> 
+			</Entry>
+			<Entry>
+				<Instance>  sR01   </Instance> 
+				<ProbTable>  0.5   </ProbTable> 
 			</Entry>
 		</Parameter>
 	</CondProb>
@@ -65,8 +69,8 @@
 		<Parent>  null </Parent>
 		<Parameter type = "TBL">
 			<Entry>
-				<Instance>  sV0  </Instance> 
-				<ProbTable>  1.0  </ProbTable> 
+				<Instance>  -  </Instance> 
+				<ProbTable>  uniform  </ProbTable> 
 			</Entry>
 		</Parameter>
 	</CondProb>

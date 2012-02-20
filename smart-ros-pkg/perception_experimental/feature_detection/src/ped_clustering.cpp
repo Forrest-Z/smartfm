@@ -32,6 +32,7 @@
 #include <feature_detection/clusters.h>
 #include <feature_detection/cluster.h>
 
+#include <pcl/filters/radius_outlier_removal.h>
 using namespace std;
 
 class ped_clustering
@@ -42,13 +43,13 @@ private:
     void scanCallback(const sensor_msgs::PointCloud2ConstPtr& pc2);
     void clustering(const sensor_msgs::PointCloud2& pc2, sensor_msgs::PointCloud &ped_poi,
                     double tolerance, int minSize, int maxSize, bool publish);
-    void filterLines(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered);
+    void filterLines(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointXYZ>& cloud_out);
     void extractCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered, std::vector<pcl::PointIndices>& cluster_indices,
                         double clusterTolerance, int minSize,int maxSize);
     void laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in);
     ros::Subscriber cloud_sub_;
     message_filters::Subscriber<sensor_msgs::LaserScan> laser_sub_;
-    ros::Publisher cloud_pub_;
+    ros::Publisher cloud_pub_, filter_pub_, after_line_filter_pub_;
     ros::Publisher poi_pub_, line_filtered_pub_;
     ros::Publisher clusters_pub_;
 
@@ -68,6 +69,8 @@ ped_clustering::ped_clustering()
     cloud_pub_ = nh.advertise<sensor_msgs::PointCloud>("pedestrian_cluster", 1);
     poi_pub_= nh.advertise<sensor_msgs::PointCloud>("pedestrian_poi",1);
     line_filtered_pub_ = nh.advertise<sensor_msgs::PointCloud2>("line_filtered",1);
+    after_line_filter_pub_ = nh.advertise<sensor_msgs::PointCloud2>("after_line_filtered",1);
+    filter_pub_ = nh.advertise<sensor_msgs::PointCloud2>("cloud_filtered",1);
     clusters_pub_ = nh.advertise<feature_detection::clusters>("pedestrian_clusters",1);
     laser_frame_id_ = "ldmrs0";
     laser_sub_.subscribe(nh, "sickldmrs/scan0", 10);
@@ -78,6 +81,155 @@ ped_clustering::ped_clustering()
     sequential_clustering_ = false;
 
     ros::spin();
+}
+
+void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs::PointCloud &ped_poi,
+                                double tolerance, int minSize, int maxSize, bool publish)
+{
+    sensor_msgs::PointCloud2 pc_temp;
+    pcl::PointCloud<pcl::PointXYZ> cloud_outremoved, cloud_without_line;
+    pcl::PointCloud<pcl::PointXYZ> cloud_temp;
+    pcl::fromROSMsg(pc, cloud_temp);
+    for(int i=0; i<cloud_temp.points.size(); i++) cloud_temp.points[i].z = 0;
+    //start with plane filter
+    filterLines(cloud_temp.makeShared(), cloud_without_line);
+    pcl::toROSMsg(cloud_without_line, pc_temp);
+    after_line_filter_pub_.publish(pc_temp);
+
+    //then clean up the point using radius outlier
+    pcl::RadiusOutlierRemoval<pcl::PointXYZ> outrem;
+    outrem.setInputCloud(cloud_without_line.makeShared());
+    outrem.setRadiusSearch(0.5);
+    outrem.setMinNeighborsInRadius(4);
+    outrem.filter(cloud_outremoved);
+    pcl::toROSMsg(cloud_outremoved, pc_temp);
+    filter_pub_.publish(pc_temp);
+
+    //finally do the segmentation
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered = cloud_outremoved.makeShared();
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
+    int i = 0;
+
+    std::vector<pcl::PointIndices> cluster_indices;
+    extractCluster(cloud_filtered, cluster_indices, tolerance, minSize, maxSize);
+
+    ped_poi.points.clear();
+    feature_detection::clusters clusters;
+    clusters.header = pc.header;
+
+    for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
+    {
+        feature_detection::cluster cluster;
+        Eigen::Vector4f min_pt, max_pt,mid_pt, abs_distance;
+
+
+        pcl:getMinMax3D(*cloud_filtered, it->indices, min_pt, max_pt);
+
+        abs_distance = max_pt - min_pt;
+        mid_pt = (max_pt + min_pt)/2.0;
+        geometry_msgs::Point32 p;
+        p.x = mid_pt[0];
+        p.y = mid_pt[1];
+        p.z = mid_pt[2];
+        ped_poi.points.push_back(p);
+        cluster.centroid = p;
+        cluster.width = abs_distance[1];
+        cluster.height = abs_distance[2];
+        cluster.depth = abs_distance[0];
+        std::vector<geometry_msgs::Point32> cluster_points;
+        pcl::PointCloud<pcl::PointXYZ> pca_input = cloud_temp;
+        pca_input.points.clear();
+        ROS_DEBUG("Start of cluster %d\n", i);
+        for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
+        {
+            pcl::PointXYZ pclpt_temp;
+            pclpt_temp = cloud_filtered->points[*pit];
+            geometry_msgs::Point32 p_temp;
+            p_temp.x = pclpt_temp.x;
+            p_temp.y = pclpt_temp.y;
+            p_temp.z = pclpt_temp.z;
+
+            ROS_DEBUG("%.4lf %.4lf %.4lf\n", p_temp.x, p_temp.y, p_temp.z);
+            cluster_points.push_back(p_temp);
+
+            //only the horizontal plane pca info is useful to us
+            pclpt_temp.z = 0;
+            pca_input.points.push_back(pclpt_temp);
+
+            pclpt_temp.z = i;
+            cloud_cluster->points.push_back (pclpt_temp);
+        }
+        cluster.points = cluster_points;
+
+        pcl::PCA<pcl::PointXYZ> pca(pca_input);
+        Eigen::VectorXf eigen_values = pca.getEigenValues();
+        cluster.eigen1 = eigen_values[0];
+        cluster.eigen2 = eigen_values[1];
+        cluster.eigen3 = eigen_values[2];
+        std::vector<geometry_msgs::Point32> projected_points;
+        pcl::PointCloud<pcl::PointXYZ> minmax_pcl;
+        ROS_DEBUG("-----------------");
+        for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
+        {
+            pcl::PointXYZ pclpt_in, pclpt_out;
+            pclpt_in = cloud_filtered->points[*pit];
+            pca.project(pclpt_in,pclpt_out);
+            geometry_msgs::Point32 p_temp;
+            p_temp.x = pclpt_out.x;
+            p_temp.y = pclpt_out.y;
+            p_temp.z = pclpt_out.z;
+            ROS_DEBUG("%.4lf %.4lf %.4lf\n", p_temp.x, p_temp.y, p_temp.z);
+            projected_points.push_back(p_temp);
+            minmax_pcl.points.push_back(pclpt_out);
+        }
+        pcl::getMinMax3D(minmax_pcl,min_pt, max_pt);
+
+        abs_distance = max_pt - min_pt;
+        // since this is already a projected point onto eigen space,
+        // need to find out which projected axis is the most prominent
+        // i.e. maximum eigen value
+        Eigen::Vector4f sorted_eigen_values;
+        int sorting[] = {0,1,2};
+        for(int i=0; i<3; i++)
+        {
+            int min = i;
+            for(int j=i+1; j<3; j++)
+            {
+                if(eigen_values[j]<eigen_values[min]) min = j;
+            }
+            double t1 = eigen_values[min];
+            eigen_values[min] = eigen_values[i];
+            eigen_values[i] = t1;
+            int t2 = sorting[min];
+            sorting[min] = sorting[i];
+            sorting[i] = t2;
+        }
+
+        cluster.projected_l1 = abs_distance[sorting[2]];
+        cluster.projected_l2 = abs_distance[sorting[1]];
+        cluster.projected_l3 = abs_distance[sorting[0]];
+        cluster.projected_points = projected_points;
+
+
+        clusters.clusters.push_back(cluster);
+        ROS_DEBUG("End of cluster %d\n", i);
+        i++;
+    }
+
+    sensor_msgs::PointCloud2 total_clusters2;
+
+    pcl::toROSMsg(*cloud_cluster, total_clusters2);
+    sensor_msgs::PointCloud total_clusters;
+    sensor_msgs::convertPointCloud2ToPointCloud(total_clusters2, total_clusters);
+    total_clusters.header = pc.header;
+    ped_poi.header = pc.header;
+    if(publish)
+    {
+        cloud_pub_.publish(total_clusters);
+        poi_pub_.publish(ped_poi);
+        clusters_pub_.publish(clusters);
+    }
+
 }
 
 void ped_clustering::scanCallback(const sensor_msgs::PointCloud2ConstPtr& pc2)
@@ -172,134 +324,6 @@ void ped_clustering::laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in
 
 }
 
-void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs::PointCloud &ped_poi,
-                                double tolerance, int minSize, int maxSize, bool publish)
-{
-    pcl::PointCloud<pcl::PointXYZ> cloud_temp;
-    pcl::fromROSMsg(pc, cloud_temp);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered = cloud_temp.makeShared();
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
-    int i = 0;
-
-    std::vector<pcl::PointIndices> cluster_indices;
-    extractCluster(cloud_filtered, cluster_indices, tolerance, minSize, maxSize);
-
-    ped_poi.points.clear();
-    feature_detection::clusters clusters;
-    clusters.header = pc.header;
-
-    for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
-    {
-        feature_detection::cluster cluster;
-        Eigen::Vector4f min_pt, max_pt,mid_pt, abs_distance;
-
-
-        pcl:getMinMax3D(*cloud_filtered, it->indices, min_pt, max_pt);
-
-        abs_distance = max_pt - min_pt;
-        mid_pt = (max_pt + min_pt)/2.0;
-        geometry_msgs::Point32 p;
-        p.x = mid_pt[0];
-        p.y = mid_pt[1];
-        p.z = mid_pt[2];
-        ped_poi.points.push_back(p);
-        cluster.centroid = p;
-        cluster.width = abs_distance[1];
-        cluster.height = abs_distance[2];
-        cluster.depth = abs_distance[0];
-        std::vector<geometry_msgs::Point32> cluster_points;
-        pcl::PointCloud<pcl::PointXYZ> pca_input = cloud_temp;
-        pca_input.points.clear();
-        ROS_DEBUG("Start of cluster %d\n", i);
-        for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
-        {
-            pcl::PointXYZ pclpt_temp;
-            pclpt_temp = cloud_filtered->points[*pit];
-            geometry_msgs::Point32 p_temp;
-            p_temp.x = pclpt_temp.x;
-            p_temp.y = pclpt_temp.y;
-            p_temp.z = pclpt_temp.z;
-
-            ROS_DEBUG("%.4lf %.4lf %.4lf\n", p_temp.x, p_temp.y, p_temp.z);
-            cluster_points.push_back(p_temp);
-            pclpt_temp.z = i;
-
-            pca_input.points.push_back(pclpt_temp);
-            cloud_cluster->points.push_back (pclpt_temp);
-        }
-        cluster.points = cluster_points;
-
-        pcl::PCA<pcl::PointXYZ> pca(pca_input);
-        Eigen::VectorXf eigen_values = pca.getEigenValues();
-        cluster.eigen1 = eigen_values[0];
-        cluster.eigen2 = eigen_values[1];
-        cluster.eigen3 = eigen_values[2];
-        std::vector<geometry_msgs::Point32> projected_points;
-        pcl::PointCloud<pcl::PointXYZ> minmax_pcl;
-        ROS_DEBUG("-----------------");
-        for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
-        {
-            pcl::PointXYZ pclpt_in, pclpt_out;
-            pclpt_in = cloud_filtered->points[*pit];
-            pca.project(pclpt_in,pclpt_out);
-            geometry_msgs::Point32 p_temp;
-            p_temp.x = pclpt_out.x;
-            p_temp.y = pclpt_out.y;
-            p_temp.z = pclpt_out.z;
-            ROS_DEBUG("%.4lf %.4lf %.4lf\n", p_temp.x, p_temp.y, p_temp.z);
-            projected_points.push_back(p_temp);
-            minmax_pcl.points.push_back(pclpt_out);
-        }
-        pcl::getMinMax3D(minmax_pcl,min_pt, max_pt);
-
-        abs_distance = max_pt - min_pt;
-        // since this is already a projected point onto eigen space,
-        // need to find out which projected axis is the most prominent
-        // i.e. maximum eigen value
-        Eigen::Vector4f sorted_eigen_values;
-        int sorting[] = {0,1,2};
-        for(int i=0; i<3; i++)
-        {
-            int min = i;
-            for(int j=i+1; j<3; j++)
-            {
-                if(eigen_values[j]<eigen_values[min]) min = j;
-            }
-            double t1 = eigen_values[min];
-            eigen_values[min] = eigen_values[i];
-            eigen_values[i] = t1;
-            int t2 = sorting[min];
-            sorting[min] = sorting[i];
-            sorting[i] = t2;
-        }
-
-        cluster.projected_l1 = abs_distance[sorting[2]];
-        cluster.projected_l2 = abs_distance[sorting[1]];
-        cluster.projected_l3 = abs_distance[sorting[0]];
-        cluster.projected_points = projected_points;
-
-
-        clusters.clusters.push_back(cluster);
-        ROS_DEBUG("End of cluster %d\n", i);
-        i++;
-    }
-
-    sensor_msgs::PointCloud2 total_clusters2;
-
-    pcl::toROSMsg(*cloud_cluster, total_clusters2);
-    sensor_msgs::PointCloud total_clusters;
-    sensor_msgs::convertPointCloud2ToPointCloud(total_clusters2, total_clusters);
-    total_clusters.header = pc.header;
-    ped_poi.header = pc.header;
-    if(publish)
-    {
-        cloud_pub_.publish(total_clusters);
-        poi_pub_.publish(ped_poi);
-        clusters_pub_.publish(clusters);
-    }
-
-}
-
 void ped_clustering::extractCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered, std::vector<pcl::PointIndices>& cluster_indices,
                                     double clusterTolerance, int minSize,int maxSize)
 {
@@ -318,7 +342,7 @@ void ped_clustering::extractCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_fi
 
     ec.extract (cluster_indices);
 }
-void ped_clustering::filterLines(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered)
+void ped_clustering::filterLines(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointXYZ>& cloud_out)
 {
     // Create the segmentation object for the planar model and set all the parameters
     pcl::SACSegmentation<pcl::PointXYZ> seg;
@@ -330,34 +354,40 @@ void ped_clustering::filterLines(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filte
     seg.setModelType (pcl::SACMODEL_LINE);
     seg.setMethodType (pcl::SAC_RANSAC);
     seg.setMaxIterations (100);
-    seg.setDistanceThreshold (0.05);
+    seg.setDistanceThreshold (0.1);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_f (new pcl::PointCloud<pcl::PointXYZ>);
 
-    int i=0, nr_points = (int) cloud_filtered->points.size ();
-    while (cloud_filtered->points.size () > 0.3 * nr_points)
+    // Segment the largest planar component from the remaining cloud
+    int i=0, nr_points = (int) cloud_in->points.size ();
+    for(int i=0; i<1; i++)
     {
-        // Segment the largest planar component from the remaining cloud
-        seg.setInputCloud(cloud_filtered);
+        seg.setInputCloud(cloud_in);
         seg.segment (*inliers, *coefficients); //*
         if (inliers->indices.size () == 0)
         {
             std::cout << "Could not estimate a planar model for the given dataset." << std::endl;
-            break;
+            return;
         }
 
         // Extract the planar inliers from the input cloud
         pcl::ExtractIndices<pcl::PointXYZ> extract;
-        extract.setInputCloud (cloud_filtered);
+        extract.setInputCloud (cloud_in);
         extract.setIndices (inliers);
         extract.setNegative (false);
 
         // Write the planar inliers to disk
         extract.filter (*cloud_plane); //*
+        sensor_msgs::PointCloud2 pc_temp;
+        pcl::toROSMsg(*cloud_plane, pc_temp);
+        line_filtered_pub_.publish(pc_temp);
         //std::cout << "PointCloud representing the planar component: " << cloud_plane->points.size () << " data points." << std::endl;
 
         // Remove the planar inliers, extract the rest
         extract.setNegative (true);
-        extract.filter (*cloud_filtered); //*
+        extract.filter (*cloud_f);
+        cloud_in = cloud_f;
     }
+    cloud_out = *cloud_in;
 }
 int
 main (int argc, char** argv)

@@ -1,0 +1,10 @@
+<launch>
+    <node pkg="pedestrian_detector" type="visualizer_momdp" name="visualizer_dataAssoc">
+	    <param name="image_transport" value="compressed"/>
+	    <param name="ROI_text" value="true"/>
+	    <param name="ROI_rect" value="true"/>
+	    <param name="Publish_verified" value="false"/>
+	    <remap from="image_raw" to="usb_cam/image_raw"/>
+	    <remap from="veri_pd_vision" to="ped_data_assoc"/>
+	</node>
+</launch>

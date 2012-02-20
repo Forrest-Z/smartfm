@@ -13,6 +13,8 @@
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/PointCloud.h>
 #include <sensing_on_road/pedestrian_laser_batch.h>
+#include <dataAssoc_experimental/PedDataAssoc_vector.h>
+#include <dataAssoc_experimental/PedDataAssoc.h>
 #include "MOMDP.h"
 #include "ParserSelector.h"
 #include "AlphaVectorPolicy.h"
@@ -131,6 +133,9 @@ public:
     //void pedInitPose();
     
     void initPedMOMDP(ped_momdp_sarsop::ped_local_frame ped_local);
+    void initPedMOMDP_DataAssoc(dataAssoc_experimental::PedDataAssoc PedData);//, int ped_id);
+    void pedDataAssocPoseCallback(dataAssoc_experimental::PedDataAssoc_vector lPedDataAssoc);
+    
     void updateBelief(int id, int safeAction);
 
     ofstream* foutStream;
@@ -156,6 +161,7 @@ public:
         //frame id 
     };
     vector<PED_MOMDP> lPedInView;
+    
 
     geometry_msgs::Twist cmd;
     //int currAction[];
