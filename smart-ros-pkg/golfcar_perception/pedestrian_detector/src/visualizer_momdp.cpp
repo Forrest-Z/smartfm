@@ -48,7 +48,7 @@ private:
     message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> people_roi_sub_;
     bool started, ROI_text, verified_text, vision_rect, verified_rect, ROI_rect, publish_verified;
     vector<pedBelife_vis> ped_bel;
-
+    double threshold_;
     void syncCallback(const sensor_msgs::ImageConstPtr image, const sensing_on_road::pedestrian_vision_batchConstPtr vision_roi);
     void drawIDandConfidence(cv::Mat& img, sensing_on_road::pedestrian_vision& pv);
     void pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel);
@@ -59,8 +59,8 @@ VisualizeMomdp::VisualizeMomdp(ros::NodeHandle &n) : n_(n), it_(n_)
     ros::NodeHandle nh("~");
     nh.param("ROI_text", ROI_text, true);
     nh.param("ROI_rect", ROI_rect, false);
-    nh.param("Publish_verified", publish_verified, true);
-
+    //nh.param("Publish_verified", publish_verified, true);
+    nh.param("threshold", threshold_, 0.0);
     // get image from the USB cam
     image_sub_.subscribe(it_, "/usb_cam/image_raw", 20);
 
@@ -96,13 +96,13 @@ void VisualizeMomdp::syncCallback(const sensor_msgs::ImageConstPtr image, const 
         sensing_on_road::pedestrian_vision temp_rect = vision_roi->pd_vector[i];
         //if(ROI_rect)
         {
-            ROS_INFO("Decision flag: %d", vision_roi->pd_vector[i].decision_flag);
-            /*if(publish_verified)
+            ROS_INFO("Confidence: %lf", vision_roi->pd_vector[i].confidence);
+            if(threshold_ > 0)
             {
-                if(vision_roi->pd_vector[i].decision_flag)
+                if(vision_roi->pd_vector[i].confidence*100 > threshold_)
                     rectangle(img,UL, BR, Scalar(255,0,0), 1);
             }
-            else*/ rectangle(img,UL, BR, Scalar(255,0,0), 1);
+            else rectangle(img,UL, BR, Scalar(255,0,0), 1);
 
         }
         if(ROI_text) drawIDandConfidence(img, temp_rect);
