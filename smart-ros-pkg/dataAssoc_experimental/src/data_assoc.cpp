@@ -21,10 +21,12 @@ data_assoc::data_assoc(int argc, char** argv)
     ros::NodeHandle n("~");
 
     n.param("global_frame", global_frame_, string("odom"));
+    n.param("camera_frame", camera_frame_, string("usb_cam"));
     n.param("time_out", time_out_, 3.0);
     n.param("poll_increment", poll_inc_, 0.1);
     n.param("poll_decrement", poll_dec_, 0.05);
     n.param("confirm_threshold", threshold_, 0.3);
+
     /// Setting up publishing
     pedPub_ = nh.advertise<sensing_on_road::pedestrian_vision_batch>("ped_data_assoc",1); /// topic name
     visualizer_ = nh.advertise<sensor_msgs::PointCloud>("ped_data_assoc_visual",1);
@@ -49,9 +51,17 @@ bool sort_clg(centroid_local_global const &a, centroid_local_global const &b)
     return a.local_centroid.x < b.local_centroid.x;
 }
 
-bool sort_point(geometry_msgs::PointStamped const &a, geometry_msgs::PointStamped const&b)
+bool sort_point(local_lPedInView const &a, local_lPedInView const&b)
 {
-    return a.point.y < b.point.y;
+    return a.location.point.x < b.location.point.x;
+}
+
+void data_assoc::increaseConfidence(int id)
+{
+    for(size_t i=0; i < lPedInView.pd_vector.size(); i++)
+    {
+        if(lPedInView.pd_vector[i].object_label == id) lPedInView.pd_vector[i].confidence+=0.01;
+    }
 }
 
 void data_assoc::pedVisionAngularCallback(sensor_msgs::PointCloudConstPtr pedestrian_vision_angular)
@@ -61,29 +71,29 @@ void data_assoc::pedVisionAngularCallback(sensor_msgs::PointCloudConstPtr pedest
     ROS_INFO("Getting new id if any. Vision roi points received=%d", vision_point.size());
 
     //get a copy lPedInView in local frame and sort it
-    vector<geometry_msgs::PointStamped> lPedInView_local;
+    vector<local_lPedInView> lPedInView_local;
     for(size_t i=0; i < lPedInView.pd_vector.size(); i++)
     {
-        geometry_msgs::PointStamped global_point, local_point;
+        local_lPedInView ped_temp;
+        geometry_msgs::PointStamped global_point;
         global_point.header = lPedInView.header;
         global_point.point.x = lPedInView.pd_vector[i].cluster.centroid.x;
         global_point.point.y = lPedInView.pd_vector[i].cluster.centroid.y;
         global_point.point.z = lPedInView.pd_vector[i].cluster.centroid.z;
-        local_point.header = lPedInView.header;
+        ped_temp.location.header = lPedInView.header;
+        ped_temp.id = lPedInView.pd_vector[i].object_label;
         //todo: frame_id at param
-        local_point.header.frame_id = "usb_cam";
-        transformGlobalToLocal(global_point, local_point);
-        //reset all the local_point.z to zero
-        //this will be used to determine if the cluster has been flagged by vision
-        local_point.point.z = 0;
-        lPedInView_local.push_back(local_point);
+        ped_temp.location.header.frame_id = camera_frame_;
+        transformGlobalToLocal(global_point, ped_temp.location);
+
+        lPedInView_local.push_back(ped_temp);
     }
     sort(lPedInView_local.begin(), lPedInView_local.end(), sort_point);
 
     //whatever tracking cluster that is in view is erased from the vision points
     for(size_t i=0; i < lPedInView_local.size(); i++)
     {
-        double laser_cluster_angular = fmutil::r2d(atan2(lPedInView_local[i].point.x, -lPedInView_local[i].point.y));
+        double laser_cluster_angular = fmutil::r2d(atan2(lPedInView_local[i].location.point.x, -lPedInView_local[i].location.point.y));
 
         for(size_t j=0; j < vision_point.size(); )
         {
@@ -93,7 +103,8 @@ void data_assoc::pedVisionAngularCallback(sensor_msgs::PointCloudConstPtr pedest
             if(fmutil::isWithin(laser_cluster_angular, vision_angular1, vision_angular2))
             {
                 printf("Vision at %lf %lf will be erased, size = %d\n", vision_angular1, vision_angular2, vision_point.size());
-                printf("Matched with tracking lPedInView at %lf %lf\n", lPedInView_local[i].point.x, lPedInView_local[i].point.y);
+                printf("Matched with tracking lPedInView at %lf %lf\n", lPedInView_local[i].location.point.x, lPedInView_local[i].location.point.y);
+                increaseConfidence(lPedInView_local[i].id);
                 vision_point.erase(vision_point.begin()+j, vision_point.begin()+j+2);
             }
             else j+=2;
