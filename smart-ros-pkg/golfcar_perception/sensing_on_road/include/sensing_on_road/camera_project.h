@@ -72,6 +72,8 @@ public:
 
     void setCameraFrameID(const std::string &);
 
+    void setCameraFOV(const double &fov);
+
     /// Project a rectangle from real world to camera.
     ///
     /// The input rectangle is defined by its centroid position and its size.
@@ -88,6 +90,8 @@ protected:
     /// Frame ID of the camera (where to project). Defaults to "usb_cam"
     std::string camera_frame_id_;
 
+    // Field of view of the camera. Defaults to 70 degree
+    double fov_;
     /// Parameters of the camera
     CameraCalibrationParameters cam_param_;
 
