@@ -29,7 +29,7 @@ CameraCalibrationParameters::CameraCalibrationParameters()
 }
 
 
-camera_projector::camera_projector() : camera_frame_id_("usb_cam")
+camera_projector::camera_projector() : camera_frame_id_("usb_cam"), fov_(70)
 {
 }
 
@@ -38,7 +38,10 @@ void camera_projector::setCameraFrameID(const std::string & id)
     camera_frame_id_ = id;
 }
 
-
+void camera_projector::setCameraFOV(const double &fovInDegree)
+{
+    fov_ = fovInDegree;
+}
 // A helper function to make a rectangle from the centroid position and width
 CvRectangle camera_projector::project(
     const geometry_msgs::PointStamped & centroid_in,
@@ -56,10 +59,12 @@ CvRectangle camera_projector::project(
 
     // project to frame (pixel coordinates)
     IntPoint centroid = projection(tmp);
-
+    double angular_dist = atan2(pt_camera.point.x, -pt_camera.point.y);
+    angular_dist = angular_dist/M_PI*180;
     //the central point should fall inside of the picture.
     if( ! fmutil::isWithin(centroid.x, 0, cam_param_.width) ||
-        ! fmutil::isWithin(centroid.y, 0, cam_param_.height) )
+        ! fmutil::isWithin(centroid.y, 0, cam_param_.height) ||
+        ! fmutil::isWithin(angular_dist, fov_/2.0, 180-fov_/2.0))
         throw std::out_of_range("centroid does not fall inside the picture");
 
     float dx_coef  = cam_param_.fc[0]/tmp.z;
