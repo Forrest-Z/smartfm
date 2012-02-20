@@ -404,6 +404,10 @@ void data_assoc::publishPed()
                 rect = projector.project(pt_src, lPedInView.pd_vector[ii].cluster.width, 2);
             } catch( std::out_of_range & e ) {
                 ROS_WARN("out of range: %s", e.what());
+                lPedInView.pd_vector[ii].cvRect_x1 = 0;
+                lPedInView.pd_vector[ii].cvRect_y1 = 0;
+                lPedInView.pd_vector[ii].cvRect_x2 = 0;
+                lPedInView.pd_vector[ii].cvRect_y2 = 0;
                 continue;
             } catch( tf::TransformException & e ) {
                 ROS_WARN("camera project tf error: %s", e.what());
