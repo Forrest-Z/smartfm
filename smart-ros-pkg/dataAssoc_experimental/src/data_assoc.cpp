@@ -25,7 +25,6 @@ data_assoc::data_assoc(int argc, char** argv)
     n.param("time_out", time_out_, 3.0);
     n.param("poll_increment", poll_inc_, 0.1);
     n.param("poll_decrement", poll_dec_, 0.05);
-    n.param("confirm_threshold", threshold_, 0.3);
 
     /// Setting up publishing
     pedPub_ = nh.advertise<sensing_on_road::pedestrian_vision_batch>("ped_data_assoc",1); /// topic name
@@ -398,37 +397,36 @@ void data_assoc::publishPed()
     pc.header.stamp = ros::Time::now();
     for(int ii=0; ii <lPedInView.pd_vector.size(); ii++)
     {
-        //if(lPedInView.pd_vector[ii].confidence>=threshold_)
-        {
-            geometry_msgs::Point32 p;
-            p = lPedInView.pd_vector[ii].cluster.centroid;
-            p.z = lPedInView.pd_vector[ii].object_label;
-            pc.points.push_back(p);
 
-            camera_project::CvRectangle rect;
-            geometry_msgs::PointStamped pt_src, pt_dest;
-            pt_src.header = lPedInView.header;
-            pt_src.point.x = lPedInView.pd_vector[ii].cluster.centroid.x;
-            pt_src.point.y = lPedInView.pd_vector[ii].cluster.centroid.y;
-            pt_src.point.z = lPedInView.pd_vector[ii].cluster.centroid.z;
-            try {
-                rect = projector.project(pt_src, lPedInView.pd_vector[ii].cluster.width, 2);
-            } catch( std::out_of_range & e ) {
-                ROS_WARN("out of range: %s", e.what());
-                lPedInView.pd_vector[ii].cvRect_x1 = 0;
-                lPedInView.pd_vector[ii].cvRect_y1 = 0;
-                lPedInView.pd_vector[ii].cvRect_x2 = 0;
-                lPedInView.pd_vector[ii].cvRect_y2 = 0;
-                continue;
-            } catch( tf::TransformException & e ) {
-                ROS_WARN("camera project tf error: %s", e.what());
-                return;
-            }
-            lPedInView.pd_vector[ii].cvRect_x1 = rect.upper_left.x;
-            lPedInView.pd_vector[ii].cvRect_y1 = rect.upper_left.y;
-            lPedInView.pd_vector[ii].cvRect_x2 = rect.lower_right.x;
-            lPedInView.pd_vector[ii].cvRect_y2 = rect.lower_right.y;
+        geometry_msgs::Point32 p;
+        p = lPedInView.pd_vector[ii].cluster.centroid;
+        p.z = lPedInView.pd_vector[ii].object_label;
+        pc.points.push_back(p);
+
+        camera_project::CvRectangle rect;
+        geometry_msgs::PointStamped pt_src, pt_dest;
+        pt_src.header = lPedInView.header;
+        pt_src.point.x = lPedInView.pd_vector[ii].cluster.centroid.x;
+        pt_src.point.y = lPedInView.pd_vector[ii].cluster.centroid.y;
+        pt_src.point.z = lPedInView.pd_vector[ii].cluster.centroid.z;
+        try {
+            rect = projector.project(pt_src, lPedInView.pd_vector[ii].cluster.width, 2);
+        } catch( std::out_of_range & e ) {
+            ROS_WARN("out of range: %s", e.what());
+            lPedInView.pd_vector[ii].cvRect_x1 = 0;
+            lPedInView.pd_vector[ii].cvRect_y1 = 0;
+            lPedInView.pd_vector[ii].cvRect_x2 = 0;
+            lPedInView.pd_vector[ii].cvRect_y2 = 0;
+            continue;
+        } catch( tf::TransformException & e ) {
+            ROS_WARN("camera project tf error: %s", e.what());
+            return;
         }
+        lPedInView.pd_vector[ii].cvRect_x1 = rect.upper_left.x;
+        lPedInView.pd_vector[ii].cvRect_y1 = rect.upper_left.y;
+        lPedInView.pd_vector[ii].cvRect_x2 = rect.lower_right.x;
+        lPedInView.pd_vector[ii].cvRect_y2 = rect.lower_right.y;
+
     }
     pedPub_.publish(lPedInView);
     visualizer_.publish(pc);
