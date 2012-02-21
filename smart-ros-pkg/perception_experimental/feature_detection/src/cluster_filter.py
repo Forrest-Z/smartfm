@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 
-'''A node to filter clusters according to their size and distance.'''
+''' A node to filter clusters according to their size and distance.
+
+To pass the expression from a launch file: use the 'args' parameter, and surround the
+expression by quotes (string) and use html type escaped characters for < and >:
+args="'dist &gt; 1 and dist &lt; 25'"
+'''
 
 # Implementation inspired from rosbag filter (see rosbag/src/rosbag/rosbag_main.py)
 
@@ -20,6 +25,7 @@ def get_filter(argv):
     # expr is evaluated to return a boolean according to conditions on 'width'
     # and 'dist'.
     def expr_eval(expr):
+        rospy.loginfo("cluster filter: " + expr)
         def eval_fn(width, depth, dist):
             return eval(expr)
         return eval_fn
@@ -37,8 +43,8 @@ def get_filter(argv):
     options, args = parser.parse_args(argv)
     if len(args) == 0:
         parser.error('You must specify an expression.')
-    elif len(args) > 1:
-        parser.error("Too many arguments.")
+    #elif len(args) > 1:
+    #    parser.error("Too many arguments.")
 
     return expr_eval(args[0])
 

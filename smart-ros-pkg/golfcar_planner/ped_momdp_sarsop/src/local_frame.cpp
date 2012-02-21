@@ -30,6 +30,7 @@ private:
     ros::Subscriber ped_sub_;
     ros::Publisher local_pub_;
     string global_frame_;
+    double threshold_;
 };
 
 local_frame::local_frame()
@@ -40,6 +41,7 @@ local_frame::local_frame()
 
     ros::NodeHandle n("~");
     n.param("global_frame", global_frame_, string("/odom"));
+    n.param("threshold", threshold_, 3.0);
     timer_ = nh.createTimer(ros::Duration(0.01), &local_frame::publishTransform, this);
     ros::spin();
 }
@@ -65,35 +67,38 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
         if(matched)
         {
             //transform found, just update the position
-            ped_momdp_sarsop::ped_local_frame plf;
-            plf.header.stamp = ped_batch->header.stamp;
-            stringstream frame_id;
-            frame_id<<"ped_"<<ped_transforms_[matched_ped].label;
-            plf.header.frame_id = frame_id.str();
+            if(ped_batch->pd_vector[i].confidence > threshold_/100)
+            {
+                ped_momdp_sarsop::ped_local_frame plf;
+                plf.header.stamp = ped_batch->header.stamp;
+                stringstream frame_id;
+                frame_id<<"ped_"<<ped_transforms_[matched_ped].label;
+                plf.header.frame_id = frame_id.str();
 
-            tf::Stamped<tf::Pose> in_pose, out_pose;
+                tf::Stamped<tf::Pose> in_pose, out_pose;
 
-            //start with pedestrian. no interest on the orientation of ped for now
-            in_pose.setIdentity();
-            in_pose.frame_id_ = ped_batch->header.frame_id;
-            geometry_msgs::Point32 ped_point = ped_batch->pd_vector[i].cluster.centroid;
-            in_pose.setOrigin(tf::Vector3(ped_point.x, ped_point.y, ped_point.z));
-            getObjectPose(plf.header.frame_id, in_pose, out_pose);
-            plf.ped_id = ped_transforms_[matched_ped].label;
-            plf.ped_pose.x = out_pose.getOrigin().getX();
-            plf.ped_pose.y = out_pose.getOrigin().getY();
-            plf.ped_pose.z = out_pose.getOrigin().getZ();
+                //start with pedestrian. no interest on the orientation of ped for now
+                in_pose.setIdentity();
+                in_pose.frame_id_ = ped_batch->header.frame_id;
+                geometry_msgs::Point32 ped_point = ped_batch->pd_vector[i].cluster.centroid;
+                in_pose.setOrigin(tf::Vector3(ped_point.x, ped_point.y, ped_point.z));
+                getObjectPose(plf.header.frame_id, in_pose, out_pose);
+                plf.ped_id = ped_transforms_[matched_ped].label;
+                plf.ped_pose.x = out_pose.getOrigin().getX();
+                plf.ped_pose.y = out_pose.getOrigin().getY();
+                plf.ped_pose.z = out_pose.getOrigin().getZ();
 
-            //then update the robot pose with the same frame
-            in_pose.setIdentity();
-            in_pose.frame_id_ = "base_link";
-            getObjectPose(plf.header.frame_id, in_pose, out_pose);
+                //then update the robot pose with the same frame
+                in_pose.setIdentity();
+                in_pose.frame_id_ = "base_link";
+                getObjectPose(plf.header.frame_id, in_pose, out_pose);
 
-            plf.rob_pose.x = out_pose.getOrigin().getX();
-            plf.rob_pose.y = out_pose.getOrigin().getY();
-            plf.rob_pose.z = out_pose.getOrigin().getZ();
-            plf_vector.ped_local.push_back(plf);
-            ped_transforms_[matched_ped].last_update = ped_batch->header.stamp;
+                plf.rob_pose.x = out_pose.getOrigin().getX();
+                plf.rob_pose.y = out_pose.getOrigin().getY();
+                plf.rob_pose.z = out_pose.getOrigin().getZ();
+                plf_vector.ped_local.push_back(plf);
+                ped_transforms_[matched_ped].last_update = ped_batch->header.stamp;
+            }
         }
         else
         {
