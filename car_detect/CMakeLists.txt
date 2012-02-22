@@ -14,6 +14,7 @@ SET( SRCS
 	src/BlobExtractor.cpp
 	src/BlobFilter.cpp 
 	src/BlobTracker.cpp
+	src/CarDetector.cpp
 )
 			
 ADD_LIBRARY(cardetect ${SRCS})
@@ -29,3 +30,6 @@ target_link_libraries(test_detection cardetect ${OpenCV_LIBS})
 
 ADD_EXECUTABLE(test_playback_time src/test_playback_time.cpp)
 target_link_libraries(test_playback_time cardetect ${OpenCV_LIBS})
+
+ADD_EXECUTABLE(multi_cam_detect src/multi_cam_detect.cpp)
+target_link_libraries(multi_cam_detect cardetect ${OpenCV_LIBS})

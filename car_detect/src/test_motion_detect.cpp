@@ -1,21 +1,5 @@
-/* code from
- * http://stackoverflow.com/questions/8354037/opencv-findcontours-issue
- */
-
-#include <stdio.h>
-
-#include <iostream>
-#include <vector>
-#include <sstream>
-
-#include <cv.h>
-#include <highgui.h>
-
 #include "GlobalClock.h"
-#include "MovingObjectDetector.h"
-#include "BlobExtractor.h"
-#include "BlobFilter.h"
-#include "BlobTracker.h"
+#include "CarDetector.h"
 
 using namespace std;
 
@@ -23,57 +7,13 @@ using namespace std;
 string format_time_frame(double t);
 string format_time_file(double t);
 
-int frame_width, frame_height;
-
-
-double adaptiveThresholdFn(const Track & track, const Blob & b)
-{
-    vector<Observation>::const_reverse_iterator rit;
-    for( rit=track.observations.rbegin(); rit!=track.observations.rend(); ++rit )
-        if( rit->observed && rit->timestamp < b.timestamp )
-            break;
-    double dt = b.timestamp - rit->timestamp;
-
-    double alpha_y = 1 + (double)b.centroid.y / frame_height;
-    double th = dt * 150 * pow(alpha_y,5);
-
-
-
-    cout <<"dt=" <<dt <<", th=" <<th <<endl;
-    assert(dt>0);
-    return th;
-}
-
-
 int main( int argc, char **argv )
 {
-    /******************************/
-    /* Objects used for detection */
-    /******************************/
-
-    Background background;
-    background.alpha = 0.005;
-
-    MovingObjectDetector detector;
-    detector.diff_thresh = 70;
-    detector.dilate_size = 40;
-    detector.erode_size  = 40;
-
-    BlobExtractor blob_extractor;
-    BlobFilterArea areaFilter(500);
-
-    Tracks tracks;
-    TrackMatcherNNT::ThresholdFn f = adaptiveThresholdFn;
-    TrackMatcherNNT trackMatcher(tracks, f);
-    BlobTracker tracker(tracks);
-    tracker.matcher = &trackMatcher;
-    tracker.unobserved_threshold_remove = 10;
-
-
-    /******************************/
+    CarDetector detector;
 
     cv::VideoCapture cap(argv[1]);
-    if ( !cap.isOpened() ) return 1;
+    if ( !cap.isOpened() )
+        throw runtime_error(string("Could not open ") + string(argv[1]));
 
     double fps = cap.get(CV_CAP_PROP_FPS);
     cout <<"FPS: " <<fps <<endl;
@@ -81,21 +21,21 @@ int main( int argc, char **argv )
     double inv_fps = 1.0/fps;
     double time=0;
 
-    frame_width = (int)cap.get(CV_CAP_PROP_FRAME_WIDTH);
-    frame_height = (int)cap.get(CV_CAP_PROP_FRAME_HEIGHT);
+    detector.frame_width = (int)cap.get(CV_CAP_PROP_FRAME_WIDTH);
+    detector.frame_height = (int)cap.get(CV_CAP_PROP_FRAME_HEIGHT);
 
     bool quit = false;
 
-    cv::namedWindow("car detection", CV_WINDOW_NORMAL);
-    cv::namedWindow("background", CV_WINDOW_NORMAL);
-    cv::namedWindow("diff", CV_WINDOW_NORMAL);
+    cv::namedWindow("car detect", CV_WINDOW_NORMAL);
+    //cv::namedWindow("background", CV_WINDOW_NORMAL);
+    //cv::namedWindow("diff", CV_WINDOW_NORMAL);
 
-    cv::Mat frame, displayImg;
+    cv::Mat frame;
 
     // init the background with some frames
     for( unsigned i=0; i<fps; i++ ) {
         cap >> frame;
-        background.add(frame);
+        detector.background.add(frame);
     }
 
 
@@ -104,15 +44,18 @@ int main( int argc, char **argv )
 
         // always capture one frame. If fast forwarding (i.e. speedFactor>0)
         // then capture more. Update background each time.
-        // cannot rely on cap.get(CV_CAP_PROP_FPS) to get the time....
+        // cannot rely on cap.get(CV_CAP_PROP_POS_MSEC) to get the time....
         for( unsigned i=0; 1; i++ ) {
             cap >> frame;
-            background.add(frame);
+            detector.background.add(frame);
             time += inv_fps;
             if( speedFactor<=0 || i>=pow(speedFactor,2) )
                 break;
         }
-        displayImg = frame.clone();
+
+        cv::Mat displayImg = frame.clone();
+
+        detector.update(frame, time);
 
         // add timestamp
         //cout <<"Current camera time: " <<time <<endl;
@@ -120,39 +63,11 @@ int main( int argc, char **argv )
                 cv::FONT_HERSHEY_COMPLEX_SMALL, 2,
                 CV_RGB(0,255,555), 1, CV_AA);
 
+        detector.display(displayImg);
+        cv::imshow("car detect", displayImg);
+        //cv::imshow("background", background.getImg());
+        //cv::imshow("diff", detector.diffImg);
 
-        detector.diff(frame, background.getImg());
-
-        blob_extractor.extract(detector.diffImg, time);
-        areaFilter.filter(blob_extractor.blobs);
-        blob_extractor.display(displayImg, CV_RGB(255, 0, 0));
-
-        tracker.update(blob_extractor.blobs);
-        tracker.display(displayImg, CV_RGB(255,0,0));
-
-
-        for(Tracks::iterator it=tracker.tracks.begin(); it!=tracker.tracks.end(); ++it ) {
-            try {
-                double vx = it->vel_x.value(), vy = it->vel_y.value();
-                cout <<"TrackInfo: " <<it->id <<": pos=(" <<it->latest_blob_info.centroid.x
-                        <<"," <<it->latest_blob_info.centroid.y <<"), vel=("
-                        <<vx <<"," <<vy <<"), "
-                        <<"observed: " <<it->observations.back().observed;
-                if( vx<0 && (vy<0 || it->latest_blob_info.centroid.y<180) ) {
-                    it->latest_blob_info.drawContour(displayImg, CV_RGB(0, 255, 0)); //green
-                    cout <<", green";
-                }
-                cout <<endl;
-            } catch( runtime_error & e ) {
-
-            }
-
-        }
-
-
-        cv::imshow("car detection", displayImg);
-        cv::imshow("background", background.getImg());
-        cv::imshow("diff", detector.diffImg);
 
 
         // listen to user input; control playback speed
@@ -168,7 +83,7 @@ int main( int argc, char **argv )
             else if( key=='d' ) speedFactor = 0;
             else if( key=='c' ) {
                 string t = format_time_file(time);
-                cv::imwrite("images/" + t + "_background.png", background.getImg());
+                cv::imwrite("images/" + t + "_background.png", detector.background.getImg());
                 cv::imwrite("images/" + t +"_frame.png", frame);
             }
 

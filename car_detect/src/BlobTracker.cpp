@@ -99,7 +99,6 @@ void Track::addObservation(const Blob & blob)
         vel_x.filter_dt(dt, obs.disp.x);
         vel_y.filter_dt(dt, obs.disp.y);
     }
-    latest_blob_info = blob;
 }
 
 
