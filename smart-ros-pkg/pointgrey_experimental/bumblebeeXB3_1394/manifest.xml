@@ -1,0 +1,19 @@
+<package>
+  <description brief="bumblebeeXB3_1394">
+
+     bumblebeeXB3_1394
+
+  </description>
+  <author>golfcar</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/bumblebeeXB3_1394</url>
+  <depend package="roscpp" />
+  <depend package="rospy" />
+  <depend package="std_msgs" />
+  <depend package="sensor_msgs" />
+  <depend package="image_transport" />
+  <depend package="triclops" />
+</package>
+
+
