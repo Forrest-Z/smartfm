@@ -397,13 +397,13 @@ int main( int argc, char *argv[] )
     //
 
     //for ( int i = 0; i < 100; i++ )
-    for ( int i = 0; i < 10; i++ )
+    for ( int i = 0; i < 2; i++ )
     {
 
         printf( "Grab %d\n", i );
 
         TriclopsInput wideInput, shortInput;
-        if ( stereoCamera.bColor )
+        assert(stereoCamera.bColor);
         {
             // get the images from the capture buffer and do all required
             // processing
@@ -417,87 +417,38 @@ int main( int argc, char *argv[] )
                                    &pucCenterRGB,
                                    &shortInput,
                                    &wideInput );
-            // save the raw images
-            /*char filename[100];
-     sprintf( filename, "right-raw-02%d.ppm", i );
-     writePpm( filename, pucRightRGB, 1280, 960 );
-     sprintf( filename, "center-raw-02%d.ppm", i );
-     writePpm( filename, pucCenterRGB, 1280, 960 );
-     sprintf( filename, "left-raw-02%d.ppm", i );
-     writePpm( filename, pucLeftRGB, 1280, 960 );*/
-        }
-        else
-        {
-            // get the images from the capture buffer and do all required
-            // processing
-            extractImagesMonoXB3( &stereoCamera,
-                                  pucDeInterlacedBuffer,
-                                  &pucRightMono,
-                                  &pucLeftMono,
-                                  &pucCenterMono,
-                                  &shortInput,
-                                  &wideInput );
         }
 
-        // do stereo processing on both image sets
-        e = triclopsRectify( wideTriclops, &wideInput );
-        if ( e != TriclopsErrorOk )
-        {
-            fprintf( stderr, "triclopsRectify failed!\n" );
-            break;
-        }
 
-        e = triclopsRectify( shortTriclops, &shortInput );
-        if ( e != TriclopsErrorOk )
-        {
-            fprintf( stderr, "triclopsRectify failed!\n" );
-            break;
-        }
+        // rectify the left and right image with both the short and wide contexts
+        TriclopsColorImage shortRectLeft, shortRectCenter, shortRectRight;
+        TriclopsColorImage wideRectLeft, wideRectCenter, wideRectRight;
+        // copy the RGB buffer into an input structure
+        convertColorTriclopsInput( &colorInput, pucLeftRGB );
+        triclopsRectifyColorImage( shortTriclops, TriCam_LEFT, &colorInput, &shortRectLeft );
+        triclopsRectifyColorImage( wideTriclops, TriCam_LEFT, &colorInput, &wideRectLeft );
 
-        // get pointers to all the images for your own processing requirements
-        TriclopsImage shortRectifiedRight, shortRectifiedLeft;
-        TriclopsImage wideRectifiedRight, wideRectifiedLeft;
-        //TriclopsImage16 shortDisparity, wideDisparity;
+        convertColorTriclopsInput( &colorInput, pucCenterRGB );
+        triclopsRectifyColorImage( shortTriclops, TriCam_TOP, &colorInput, &shortRectCenter );
+        triclopsRectifyColorImage( wideTriclops, TriCam_TOP, &colorInput, &wideRectCenter );
 
-        triclopsGetImage( shortTriclops, TriImg_RECTIFIED,
-                          TriCam_RIGHT, &shortRectifiedRight );
-        triclopsGetImage( shortTriclops, TriImg_RECTIFIED,
-                          TriCam_LEFT, &shortRectifiedLeft );
-        triclopsGetImage( wideTriclops, TriImg_RECTIFIED,
-                          TriCam_RIGHT, &wideRectifiedRight );
-        triclopsGetImage( wideTriclops, TriImg_RECTIFIED,
-                          TriCam_LEFT, &wideRectifiedLeft );
-        /*triclopsGetImage16( shortTriclops, TriImg16_DISPARITY,
-              TriCam_REFERENCE, &shortDisparity );
-      triclopsGetImage16( wideTriclops, TriImg16_DISPARITY,
-              TriCam_REFERENCE, &wideDisparity );*/
+        convertColorTriclopsInput( &colorInput, pucRightRGB );
+        triclopsRectifyColorImage( shortTriclops, TriCam_RIGHT, &colorInput, &shortRectRight );
+        triclopsRectifyColorImage( wideTriclops, TriCam_RIGHT, &colorInput, &wideRectRight );
 
-        // now - what to do with all these images?  Well, for now to prove
-        // that they are actually valid, lets save them
-
-        // rectify the right image with both the short and wide contexts
-        if ( stereoCamera.bColor )
-        {
-
-            TriclopsColorImage shortRectifiedColor;
-            TriclopsColorImage wideRectifiedColor;
-            // copy the RGB buffer into an input structure
-            convertColorTriclopsInput( &colorInput, pucRightRGB );
-            triclopsRectifyColorImage( shortTriclops,
-                                       TriCam_RIGHT,
-                                       &colorInput,
-                                       &shortRectifiedColor );
-            triclopsRectifyColorImage( wideTriclops,
-                                       TriCam_RIGHT,
-                                       &colorInput,
-                                       &wideRectifiedColor );
-            char filename[100];
-            sprintf( filename, "short-color-right-%02d.pgm", i );
-            ppmWriteFromTriclopsColorImage( filename, &shortRectifiedColor );
-            sprintf( filename, "wide-color-right-%02d.pgm", i );
-            ppmWriteFromTriclopsColorImage( filename, &wideRectifiedColor );
-
-        }
+        char filename[100];
+        sprintf( filename, "short-left-%02d.pgm", i );
+        ppmWriteFromTriclopsColorImage( filename, &shortRectLeft );
+        sprintf( filename, "wide-left-%02d.pgm", i );
+        ppmWriteFromTriclopsColorImage( filename, &wideRectLeft );
+        sprintf( filename, "short-center-%02d.pgm", i );
+        ppmWriteFromTriclopsColorImage( filename, &shortRectCenter);
+        sprintf( filename, "wide-center-%02d.pgm", i );
+        ppmWriteFromTriclopsColorImage( filename, &wideRectCenter);
+        sprintf( filename, "short-right-%02d.pgm", i );
+        ppmWriteFromTriclopsColorImage( filename, &shortRectRight );
+        sprintf( filename, "wide-right-%02d.pgm", i );
+        ppmWriteFromTriclopsColorImage( filename, &wideRectRight );
     }
 
     printf( "Done processing loops\n" );
