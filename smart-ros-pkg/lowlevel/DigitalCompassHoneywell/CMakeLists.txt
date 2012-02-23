@@ -16,20 +16,10 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-
-# NOTE: It's not necessary to search for OpenCV or even link with OpenCV:
-# this package depends on cv_bridge, so it will automatically be linked.
-# However we can look for CUDA, and compile the classifier only if CUDA is
-# present, and link with opencv_gpu
-
-FIND_PACKAGE(CUDA 4.0)
-
-
-
 #uncomment if you have defined messages
-#rosbuild_genmsg()
+rosbuild_genmsg()
 #uncomment if you have defined services
-rosbuild_gensrv()
+#rosbuild_gensrv()
 
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
@@ -39,13 +29,6 @@ rosbuild_gensrv()
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
-#rosbuild_add_executable(pedestrian_detector_HOG src/pedestrian_detector_HOG.cpp)
-
-IF(CUDA_FOUND)
-rosbuild_add_executable(classifier src/classifier.cpp)
-target_link_libraries(classifier opencv_gpu)
-ENDIF(CUDA_FOUND)
-
-rosbuild_add_executable(visualizer src/visualizer.cpp)
-rosbuild_add_executable(visualizer_momdp src/visualizer_momdp.cpp)
-rosbuild_add_executable(rect_talker src/rect_talker.cpp)
+#rosbuild_add_library( libserial src/compass.cpp)
+rosbuild_add_executable(compass src/compass.cpp)
+rosbuild_add_link_flags(compass -lserial)

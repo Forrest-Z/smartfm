@@ -41,7 +41,6 @@ public:
 public:
     std::vector<Observation> observations;
     unsigned id;
-    Blob latest_blob_info;
     LowPassFilter vel_x, vel_y;
 
 

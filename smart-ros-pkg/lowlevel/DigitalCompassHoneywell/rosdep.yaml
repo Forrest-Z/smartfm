@@ -1,0 +1,2 @@
+libserial:
+    ubuntu: libserial-dev
