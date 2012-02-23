@@ -27,7 +27,7 @@ laser_extraction::laser_extraction()
     laser_sub_.subscribe(nh, "sickldmrs/assembled", 10);
     tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, ldmrs_single_id_, 10);
     tf_filter_->registerCallback(boost::bind(&laser_extraction::scan_callback, this, _1));
-    tf_filter_->setTolerance(ros::Duration(0.05));
+    tf_filter_->setTolerance(ros::Duration(0.2));
     
     laser_pub_ = nh.advertise<sensor_msgs::PointCloud>("laser_cloud", 2);
     segment_border_pub_ = nh.advertise<sensor_msgs::PointCloud>("segment_border", 2);
@@ -40,8 +40,8 @@ laser_extraction::~laser_extraction()
 {
     
 }
-
-void laser_extraction::scan_callback(const sensor_msgs::LaserScan::ConstPtr& scan_in)
+using namespace std;
+void laser_extraction::scan_callback(const sensor_msgs::LaserScanConstPtr& scan_in)
 {
     //ROS_INFO("--------scan_callback--------");
     laser_scan_ = *scan_in;
@@ -53,14 +53,20 @@ void laser_extraction::scan_callback(const sensor_msgs::LaserScan::ConstPtr& sca
     else if(scan_in->angle_increment < 0.01746 && scan_in->angle_increment > 0.01745)   serial_multiple_ =1;
     else {ROS_ERROR("LIDAR Angle Resolution Not In List."); return;}
     */
-    try{projector_.transformLaserScanToPointCloud(ldmrs_single_id_, *scan_in, laser_cloud_laser_, tf_);}
+    sensor_msgs::LaserScan ls_temp(*scan_in);
+    //to rectify extrapolation into the future
+    ls_temp.header.stamp = ros::Time::now()-ros::Duration(0.1);
+    tf_.waitForTransform(ls_temp.header.frame_id, odom_frame_id_,
+                                  ls_temp.header.stamp, ros::Duration(3.0));
+    try{projector_.transformLaserScanToPointCloud(ldmrs_single_id_, ls_temp, laser_cloud_laser_, tf_);}
     catch (tf::TransformException& e){ROS_INFO("transform wrong");std::cout << e.what();return;}
-    try{projector_.transformLaserScanToPointCloud(odom_frame_id_, *scan_in, laser_cloud_odom_, tf_);}
+    try{projector_.transformLaserScanToPointCloud(odom_frame_id_, ls_temp, laser_cloud_odom_, tf_);}
     catch (tf::TransformException& e){ROS_INFO("transform wrong");std::cout << e.what();return;}
-
+    //cout<<"publish laser"<<endl;
     laser_pub_.publish(laser_cloud_laser_);
-
+    //cout<<"Segmentation"<<endl;
     segmentation();
+    //cout<<"segments process"<<endl;
     segments_processing();
 }
 

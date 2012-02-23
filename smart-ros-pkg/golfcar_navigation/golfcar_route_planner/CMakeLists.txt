@@ -33,4 +33,4 @@ INCLUDE_DIRECTORIES(${BookingCommonRootDir}/src)
 LINK_DIRECTORIES (${LINK_DIRECTORIES} ${BookingCommonRootDir})
 
 rosbuild_add_executable(route_planner_node src/RoutePlannerVehicle.cpp src/SimpleGoal.cpp src/route_planner_node.cpp)
-target_link_libraries(route_planner_node bookingcommon)
+target_link_libraries(route_planner_node bookingcommon tinyxml)

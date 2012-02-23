@@ -8,4 +8,5 @@
     <node pkg="tf" type="static_transform_publisher" name="base_link_to_topSick" args="1.58, 0.0, 1.89 0.00 0 0 /base_link /sick_laser 100" />
     <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="1.83, -0.36, 0.86 0 0 0 /base_link /sick_laser2 100" /-->
     <node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="1.7, 0.0, 1.53 0 0.26 0 /base_link /sick_laser2 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser3" args="1.7, 0.0, 0.92 0 0 0 /base_link /sick_laser3 100" />
 </launch>

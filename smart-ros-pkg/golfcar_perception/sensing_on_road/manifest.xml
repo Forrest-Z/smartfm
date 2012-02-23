@@ -6,6 +6,7 @@
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/sensing_on_road</url>
+
   <depend package="nav_msgs"/>
   <depend package="rosconsole"/>
   <depend package="roscpp"/>
@@ -15,6 +16,12 @@
   <depend package="laser_geometry"/>
   <depend package="geometry_msgs"/>
   <depend package="fmutil"/>
+  <depend package="feature_detection"/>
+
+  <export>
+    <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -lcamera_project"/>
+  </export>
+
 </package>
 
 

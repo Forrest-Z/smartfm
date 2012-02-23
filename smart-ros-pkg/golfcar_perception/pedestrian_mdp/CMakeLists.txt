@@ -28,4 +28,4 @@ INCLUDE_DIRECTORIES(src/mdp/Core src/mdp/Models/MOMDP src/mdp/Bounds src/mdp/Alg
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 rosbuild_add_executable(mdp src/pedestrian_mdp_realPed.cpp src/PSG_SimulationEngine.cpp)
-target_link_libraries(mdp appl)
+target_link_libraries(mdp appl tinyxml)

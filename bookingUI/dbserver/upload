@@ -1,15 +1,17 @@
 #!/bin/bash
 
-FILES="*.php webviewer.htm getxml.js"
+MAIN_FILES="administration.php customer.htm webviewer.htm"
 
-echo "Uploading to FMAutonomy"
-echo "-----------------------"
-echo ""
-rsync -avz -e ssh $FILES FMAutonomy:/var/www/dbserver/
+PATTERN=""
+for f in $MAIN_FILES; do
+    PATTERN="$PATTERN -e $f"
+done
 
-echo ""
-echo ""
-echo "Uploading to localhost"
-echo "----------------------"
-echo ""
-rsync -av $FILES /var/www/dbserver/
+SCRIPT_FILES=`ls *.php *.htm *.js | grep -v $PATTERN`
+
+dest=/var/www/dbserver
+rm -Rf $dest/*
+cp $MAIN_FILES $dest
+cp $SCRIPT_FILES $dest
+
+#rsync -avz --delete $dest/ -e ssh FMAutonomy:/var/www/dbserver/

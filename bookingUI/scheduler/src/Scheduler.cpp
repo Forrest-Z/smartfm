@@ -18,6 +18,8 @@ using SchedulerTypes::Duration;
 
 #define MAX_ADDITIONAL_TIME 5
 
+const float Scheduler::NOMINAL_VEL = 2.0;
+
 
 Scheduler::Scheduler(DBTalker &dbt) : dbTalker(dbt)
 {
@@ -58,7 +60,9 @@ void Scheduler::addTask(Task task)
         }
         MSGLOG(1, "%s as current task.", ss.str().c_str());
         vit->status = SchedulerTypes::VEH_STAT_GOING_TO_PICKUP;
-        task.tpickup = 0; //TODO: this should be the time from the current station to the pickup station
+        //TODO: this should be the time from the current station to the pickup station.
+        MSGLOG(0, "WARNING: using station 0 (DCC) as current station for now.");
+        task.tpickup = travelTime(stationPaths.knownStations().get(0) ,task.pickup);
         vit->tasks.push_back(task);
         dbTalker.confirmTask(task);
     }
@@ -184,11 +188,6 @@ const Task & Scheduler::getTask(unsigned taskID) const
     return *jt;
 }
 
-Duration Scheduler::getWaitTime(unsigned taskID) const
-{
-    return getTask(taskID).twait;
-}
-
 string Scheduler::toString() const
 {
     stringstream ss;
@@ -207,9 +206,9 @@ string Scheduler::toString() const
 
 Duration Scheduler::travelTime(Station pickup, Station dropoff)
 {
-    double vel = 1.0;
+    double vel = Scheduler::NOMINAL_VEL;
     double length = stationPaths.getPath(pickup, dropoff).length();
-    return (Duration)(length*vel);
+    return (Duration)(length/vel);
 }
 
 void Scheduler::updateVehicleList()

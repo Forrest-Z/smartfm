@@ -1,0 +1,26 @@
+<launch>    
+    <node pkg="pedestrian_detector" type="visualizer_momdp" name="visualizer_vision" output="screen">
+	    <param name="image_transport" value="compressed"/>
+	    <remap from="image_raw" to="usb_cam/image_raw"/>
+	    <param name="ROI_text" value="false"/>
+	    <param name="ROI_rect" value="true"/>
+	    <param name="Publish_verified" value="false"/>
+	    <remap from="veri_pd_vision" to="pedestrian_detect"/>
+	</node>
+		<node pkg="pedestrian_detector" type="visualizer_momdp" name="visualizer_laser">
+	    <param name="image_transport" value="compressed"/>
+	    <remap from="image_raw" to="usb_cam/image_raw"/>
+	    <param name="ROI_text" value="false"/>
+	    <param name="ROI_rect" value="true"/>
+	    <param name="Publish_verified" value="false"/>
+	    <remap from="veri_pd_vision" to="camera_project_out"/>
+	</node>
+    <node pkg="pedestrian_detector" type="visualizer_momdp" name="visualizer_laser_filtered">
+	    <param name="image_transport" value="compressed"/>
+	    <remap from="image_raw" to="usb_cam/image_raw"/>
+	    <param name="ROI_text" value="false"/>
+	    <param name="ROI_rect" value="true"/>
+	    <param name="Publish_verified" value="true"/>
+	    <!--remap from="veri_pd_vision" to="pedestrian_detect"/-->
+	</node>
+</launch>

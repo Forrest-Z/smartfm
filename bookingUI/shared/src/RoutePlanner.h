@@ -24,7 +24,7 @@ protected:
     Station currentStation_, destination_;
     State state_;
 
-    float latitude_, longitude_;
+    double latitude_, longitude_;
     float eta_;
 
     /// Called when the destination is received. Loads the path, etc. ...

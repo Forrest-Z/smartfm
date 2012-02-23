@@ -16,8 +16,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name="TaskBooking"></activity>
-        <activity android:name="TaskBookingMap"></activity><uses-library android:required="true" android:name="com.google.android.maps"></uses-library>
-        <activity android:name="TaskDetailActivity"></activity>
+        <activity android:name="TaskBooking"/>
+        <activity android:name="TaskBookingMap"/>
+        <activity android:name="TaskDetailActivity"/>
+        <activity android:name="MapLocations"/>
+        <uses-library android:required="true" android:name="com.google.android.maps"/>
     </application>
 </manifest>

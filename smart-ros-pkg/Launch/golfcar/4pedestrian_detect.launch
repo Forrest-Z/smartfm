@@ -1,21 +1,37 @@
 <launch>
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrsAssemb" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrsAssemb 100" />    
-    <node pkg="scan_ldmrs_assemble" type="scan_ldmrs_assemble" name="scan_ldmrs_assemble"/>
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrsAssemb" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrsAssemb 100" />
+    <node pkg="scan_ldmrs_assemble" type="scan_assemble_sync" name="scan_ldmrs_assemble">
+	<remap from="sickldmrs/sync" to="sickldmrs/assembled"/>
+    </node>
     <node pkg="pedestrian_detector" type="classifier" name="classifier" output="screen">
     	<param name="image_transport" value="compressed"/>
     	<remap from="image_raw" to="usb_cam/image_raw"/>
-	    <param name="hit_threshold" value="1.65"/>
-	    <param name="scale" value="1.05"/>
-	    <param name="group_threshold" value="1.0"/>
-	    <param name="norm_dist" value="5.0"/>
+	    <param name="hit_threshold" value="0.5"/><!--1.65"/-->
+	    <param name="scale" value="1.0"/>
+	    <param name="group_threshold" value="2.0"/>
+	    <param name="norm_dist" value="10.0"/><!--11.0"/-->
 	    <param name="show_processed_image" value="false"/>
 	    <param name="black_front_roi" value="true"/>
+	    <param name="write_image" value="false"/>
+	    <param name="path" value="/media/MyPassport/ped_cand"/>
 	</node>
-	<node pkg="pedestrian_detector" type="visualizer" name="visualizer">
+	<node pkg="pedestrian_detector" type="visualizer" name="visualizer" output="screen">
 	    <param name="image_transport" value="compressed"/>
 	    <remap from="image_raw" to="usb_cam/image_raw"/>
+	    <param name="ROI_text" value="true"/>
+	    <param name="verified_text" value="false"/>
+	    <param name="vision_rect" value="true"/>
+	    <param name="ROI_rect" value="true"/>
+	    <param name="verified_rect" value="true"/>
 	</node>
-	<node pkg="sensing_on_road" type="laser_extraction" name="laser_extraction" output="screen"/>
+	<node pkg="pedestrian_detector" type="visualizer_momdp" name="visualizer_momdp" output="screen">
+	    <param name="image_transport" value="compressed"/>
+	</node>
+	<node pkg="sensing_on_road" type="laser_extraction" name="laser_extraction" output="screen">
+	    <remap from="sickldmrs/assembled" to="sick_scan3"/>
+	    <param name="laser_frame_id" value="sick_laser3"/>
+	</node>
+	<param name="laser_frame_id" value="sick_laser3"/>
 	<node pkg="sensing_on_road" type="pedestrian_features" name="pedestrian_features"/>
 	<node pkg="sensing_on_road" type="camera_project" name="camera_project"/>
 

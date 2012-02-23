@@ -1,0 +1,32 @@
+<launch>
+    <node pkg="map_server" type="map_server" name="map_server" args="$(find dummyPed)/worlds/momdp_map.yaml">
+        <remap from="static_map" to="static_planar_map"/>
+        <remap from="map" to= "momdp_map"/>
+    </node>
+    <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller">
+    </node>
+    <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
+        <rosparam file="$(find lowlevel_controllers)/speed_controller.yaml" command="load" />
+        <remap from="/odom" to="/encoder_odom"/>
+        <remap from="cmd_vel" to="momdp_vel"/>
+    </node>
+   <node name="laser_republish" pkg="laser_maxrange_republish" type="laser_repub"/>
+   <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
+        <remap from="cmd_vel" to="move_vel"/>
+        <remap from="map" to="curb_map"/>
+
+        <param name="footprint_padding" value="0.01" />
+        <param name="controller_frequency" value="20.0" />
+        <param name="controller_patience" value="100.0" />
+        <param name="base_global_planner" value="simple_gp/GlobalPlan"/>
+        <param name="base_local_planner" value="golfcar_purepursuit/PurePursuitBase"/>
+        <param name="PurePursuitBase/tracking_distance" value="15.0"/>
+
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params_simulation.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params_simulation.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/local_costmap_params_close.yaml" command="load" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/global_costmap_params.yaml" command="load" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/sbpl_global_params.yaml" command="load" />
+    </node>
+</launch>
+

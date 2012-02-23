@@ -11,6 +11,7 @@ SimpleGoal::SimpleGoal(const StationPaths & sp) : RoutePlanner(sp)
     goal_pub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal", 100);
     speed_status_sub_ = nh.subscribe("speed_status", 1, &SimpleGoal::speedStatusCallBack, this);
     has_reached_ = false;
+    world_coord_sub_ = nh.subscribe("/world_utm_latlon", 1, &SimpleGoal::worldCoordCallBack, this);
 }
 
 void SimpleGoal::initDest()
@@ -28,13 +29,21 @@ void SimpleGoal::initDest()
     ROS_INFO("sent goal: [%f %f]", goal.pose.position.x, goal.pose.position.y);
 }
 
-void SimpleGoal::speedStatusCallBack(const golfcar_ppc::speed_contribute &msg)
+void SimpleGoal::speedStatusCallBack(const pnc_msgs::speed_contribute &msg)
 {
     has_reached_ = msg.goal;
-    eta_ = msg.dist_goal / 2; //velocity is taken as constant 2m/s
+    eta_ = has_reached_ ? 0 : msg.dist_goal / 2; //velocity is taken as constant 2m/s
 }
 
 bool SimpleGoal::goToDest()
 {
     return has_reached_;
+}
+
+void SimpleGoal::worldCoordCallBack(const map_to_world::coordinate & msg)
+{
+    latitude_ = msg.latitude;
+    longitude_ = msg.longitude;
+    //printf("msg.longitude: %.9f\n", msg.longitude);
+    //cout <<"msg.longitude: " <<setprecision(12) <<msg.longitude << " longitude_: " <<setprecision(12) <<longitude_ <<endl;
 }

@@ -34,6 +34,6 @@ mysql_query($sql, $con) or die('Insert error: ' . mysql_error());
 mysql_close($con);
 
 if( !isset($filter) || $filter!='yes' ) $filter = 'no';
-if( !isset($returnScript) ) $returnScript = 'administration';
-header( "Location: $returnScript.php?filter=$filter" );
+if( !isset($returnScript) ) $returnScript = 'administration.php';
+header( "Location: $returnScript?filter=$filter" );
 ?>

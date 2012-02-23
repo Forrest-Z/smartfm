@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# this script runs periodically. It checks whether ntp is still running (ntpd
+# sometimes hangs ...) and restarts if it is not running.
+
+# First sync with ntpdate -b. NTP must be turned off...
+service ntp stop
+ntpdate -b golfcart-master
+service ntp start
+
+while [ 1 ]; do
+    if [ "`service ntp status | grep not`" ]; then
+        #ntp is not working
+        #run ntpdate to get rough sync and start ntp
+        ntpdate -b golfcart-master
+        service ntp start
+    fi
+    sleep 10
+done

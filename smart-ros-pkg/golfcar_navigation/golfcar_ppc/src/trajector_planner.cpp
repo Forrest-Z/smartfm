@@ -90,7 +90,7 @@ void PurePursuitBase::initialize(string name, tf::TransformListener* tf,
     tf_ = tf;
     costmap_ros_ = costmap_ros;
 
-    pp_ = new PurePursuit();
+    pp_ = new PurePursuit(costmap_ros_->getGlobalFrameID());
     forward_ = true;
     stopped_ = false;
     goalreached_=false;
@@ -195,7 +195,7 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel){
         pointst.point = robot_FP_UR;  lookahead_points.push_back(pointst);
 
         clear_space_.header.stamp = ros::Time();
-        clear_space_.header.frame_id = "map";
+        clear_space_.header.frame_id = costmap_ros_->getGlobalFrameID();
         clear_space_.polygon.points.clear();
 
         geometry_msgs::PointStamped temp;

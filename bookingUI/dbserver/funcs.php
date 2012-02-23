@@ -91,4 +91,19 @@ function station_exists($con, $name)
     return false;
 }
 
+// Returns a plain english string to express ETA
+function formatETA($eta)
+{
+    $min = (int)($eta/60)+1;
+    if( $eta > 90 )
+        $etastr = "in about " . $min . " minutes";
+    elseif( $eta > 45 )
+        $etastr = "in about one minute";
+    else {
+        $tens = ((int)($eta/10)+1)*10;
+        $etastr = "in about " . $tens . " seconds";
+    }
+    return $etastr;
+}
+
 ?>

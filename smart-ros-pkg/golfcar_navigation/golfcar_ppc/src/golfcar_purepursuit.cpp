@@ -1,10 +1,11 @@
 #include "golfcar_purepursuit.h"
-using namespace std;
+
 namespace golfcar_purepursuit
 {
 
-PurePursuit::PurePursuit()
+PurePursuit::PurePursuit(string global_frameID)
 {
+    global_frameID_ = global_frameID;
     Lfw_ = 3;
     lfw_ = 1;
     car_length = 1.632;
@@ -123,7 +124,7 @@ bool PurePursuit::circle_line_collision(geometry_msgs::Point& anchor_point,
 
     geometry_msgs::Point32 p;
     geometry_msgs::PolygonStamped polyStamped;
-    polyStamped.header.frame_id = "/map";
+    polyStamped.header.frame_id = global_frameID_;
     polyStamped.header.stamp = ros::Time::now();
     //ROS_INFO("cur:x=%lf y%lf, next:x=%lf y=%lf, anchor_point:x=%lf y=%lf r=%lf", Ex,Ey,Lx,Ly,Cx,Cy,r);
     if(discriminant < 0)

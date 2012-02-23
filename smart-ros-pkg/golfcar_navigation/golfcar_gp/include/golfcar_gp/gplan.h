@@ -35,7 +35,7 @@ public:
     bool part1a_;
     bool firstpart;
     int stage_;
-
+    costmap_2d::Costmap2DROS* costmap_;
     void missionStage(geometry_msgs::Point32 stage);
 };
 

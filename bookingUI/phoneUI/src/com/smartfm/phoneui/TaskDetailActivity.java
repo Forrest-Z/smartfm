@@ -1,8 +1,7 @@
 package com.smartfm.phoneui;
 
-import java.util.List;
-
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.view.View;
@@ -25,6 +24,7 @@ public class TaskDetailActivity extends Activity implements OnClickListener {
 		displayTask();
 
 		((Button) findViewById(R.id.canceltaskbutton)).setOnClickListener(this);
+		((Button) findViewById(R.id.viewtaskonmapbutton)).setOnClickListener(this);
 		
 		Runnable periodicUpdateProcess = new Runnable(){
 			@Override
@@ -44,17 +44,14 @@ public class TaskDetailActivity extends Activity implements OnClickListener {
 		if( task.status.compareToIgnoreCase("Acknowledged") == 0 ||
 				task.status.compareToIgnoreCase("Confirmed") == 0 ||
 				task.status.compareToIgnoreCase("Processing") == 0 )
-			((TextView) findViewById(R.id.detail_eta)).setText(Integer.toString(task.eta));
+			((TextView) findViewById(R.id.detail_eta)).setText(Integer.toString(task.vehicle.eta));
 		else
 			((TextView) findViewById(R.id.detail_eta)).setText("");
 	}
 	
 	void updateTask() {
 		try {
-			List<Task> tasks = DBInterface.listTasks();
-			for (Task t : tasks)
-				if( t.requestID==task.requestID )
-					task = t;
+			task = DBInterface.getTask(task.requestID);
 			displayTask();
 		} catch (Exception e) {
 			ErrDialog.show(this, "An error occured while retrieving the task info.\n"+e);
@@ -63,11 +60,19 @@ public class TaskDetailActivity extends Activity implements OnClickListener {
 
 	@Override
 	public void onClick(View v) {
-		try {
-			DBInterface.cancelTask(task.requestID);
-			finish();
-		} catch (Exception e) {
-			ErrDialog.show(this, "Error while creating the task (RPC call failed).\n" + e);
+		switch(v.getId()) {
+		case R.id.canceltaskbutton:
+			try {
+				DBInterface.cancelTask(task.requestID);
+				finish();
+			} catch (Exception e) {
+				ErrDialog.show(this, "Error while creating the task (RPC call failed).\n" + e);
+			}
+			break;
+
+		case R.id.viewtaskonmapbutton:
+			startActivity(new Intent(this,MapLocations.class));
+			break;
 		}
 	}
 	

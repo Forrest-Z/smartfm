@@ -1,0 +1,57 @@
+#! /bin/sh
+
+# Author: Brice Rebsamen, Jan 2012
+
+# Comply with LSB
+# depend on network, i.e. execute only after network has been started
+
+### BEGIN INIT INFO
+# Provides:          load_iptables
+# Required-Start:    $remote_fs $syslog $network
+# Required-Stop:     $remote_fs $syslog $network
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Load custom iptables rules at boot
+# Description:       Load custom iptables rules at boot, for internet connection
+#    sharing with the LAN
+### END INIT INFO
+
+
+# Load some standard functions for logging
+[ -f /etc/default/rcS ] && . /etc/default/rcS
+. /lib/lsb/init-functions
+
+case "$1" in
+    start)
+        log_begin_msg "Loading iptables for internet connection sharing on ppp0"
+
+        # delete existing rules
+        iptables -F
+        iptables -t nat -F
+        iptables -t mangle -F
+        iptables -X
+        iptables -t nat -X
+        iptables -t mangle -X
+
+        # enable ip forwarding
+        echo "1" > /proc/sys/net/ipv4/ip_forward
+
+        # set up masquerading
+        iptables -t nat -A POSTROUTING -o ppp0 -j MASQUERADE
+
+        # save these rules
+        iptables-save > /dev/null
+
+        log_end_msg 0
+        ;;
+    restart|reload|force-reload)
+        echo "Error: argument '$1' not supported" >&2
+        exit 3
+        ;;
+    stop)
+        ;;
+    *)
+        echo "Usage: $0 start|stop" >&2
+        exit 3
+        ;;
+esac

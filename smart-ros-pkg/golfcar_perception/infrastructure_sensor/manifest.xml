@@ -1,0 +1,15 @@
+<package>
+  <description brief="infrastructure_sensor">
+
+     infrastructure_sensor
+
+  </description>
+  <author>golfcar</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/infrastructure_sensor</url>
+  <depend package="sensor_msgs"/>
+  <depend package="std_msgs"/>
+</package>
+
+

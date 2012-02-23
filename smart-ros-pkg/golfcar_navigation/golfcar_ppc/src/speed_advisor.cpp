@@ -9,8 +9,8 @@ SpeedAdvisor::SpeedAdvisor()
      */
     recommend_speed_= n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
     speed_contribute_ = n.advertise<pnc_msgs::speed_contribute>("speed_status",1);
-    left_blinker_pub_ = n.advertise<std_msgs::Bool>("arduino/left_blinker",1);
-    right_blinker_pub_ = n.advertise<std_msgs::Bool>("arduino/right_blinker",1);
+    left_blinker_pub_ = n.advertise<std_msgs::Bool>("left_blinker",1);
+    right_blinker_pub_ = n.advertise<std_msgs::Bool>("right_blinker",1);
     move_base_speed_=n.subscribe("/move_status",1, &SpeedAdvisor::moveSpeedCallback, this);
     slowzone_sub_=n.subscribe("slowZone",1,&SpeedAdvisor::slowZoneCallback,this);
     ros::NodeHandle nh("~");
@@ -18,7 +18,8 @@ SpeedAdvisor::SpeedAdvisor()
     nh.param("acc", acc_, 0.5);
     nh.param("max_dec", max_dec_, 2.0);
     nh.param("norm_dec", norm_dec_, 0.7);
-
+    nh.param("robot_frame_id", base_link_, string("base_link"));
+    nh.param("map_frame_id", map_id_, string("map"));
     nh.param("dec_ints", dec_ints_, 0.5);
     nh.param("dec_station", dec_station_, 0.5);
     nh.param("ppc_stop_dist", ppc_stop_dist_,5.0); //the stopping distance from ppc.
@@ -252,12 +253,12 @@ bool SpeedAdvisor::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const
     odom_pose.setIdentity();
     tf::Stamped<tf::Pose> robot_pose;
     robot_pose.setIdentity();
-    robot_pose.frame_id_ = "/base_link";
+    robot_pose.frame_id_ =  base_link_;
     robot_pose.stamp_ = ros::Time();
     ros::Time current_time = ros::Time::now(); // save time for checking tf delay later
 
     try {
-        tf_.transformPose("/map", robot_pose, odom_pose);
+        tf_.transformPose(map_id_, robot_pose, odom_pose);
     }
     catch(tf::LookupException& ex) {
         ROS_ERROR("No Transform available Error: %s\n", ex.what());

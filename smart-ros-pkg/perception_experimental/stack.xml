@@ -1,0 +1,9 @@
+<stack>
+  <description brief="perception_experimental">perception_experimental</description>
+  <author>Maintained by golfcar</author>
+  <license>BSD</license>  
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/perception_experimental</url>
+  <depend stack="ros" />
+
+</stack>

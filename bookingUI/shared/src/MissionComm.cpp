@@ -49,8 +49,6 @@ void MissionComm::run()
         // TODO: check for mission cancel
 
         updateETA(routePlanner_.eta_);
-        updateGeoLocation(routePlanner_.latitude_, routePlanner_.longitude_);
-
         if( routePlanner_.hasReached() ) {
             state_ = sAtPickup;
             updateVehicleStatus(stateStr_[state_]);
@@ -70,7 +68,6 @@ void MissionComm::run()
 
     case sGoingToDropoff:
         updateETA(routePlanner_.eta_);
-        updateGeoLocation(routePlanner_.latitude_, routePlanner_.longitude_);
         if( routePlanner_.hasReached() ) {
             state_ = sAtDropoff;
             updateVehicleStatus(stateStr_[state_]);
@@ -90,6 +87,8 @@ void MissionComm::run()
         throw std::runtime_error("This state should not happen.");
 
     }
+
+    updateGeoLocation(routePlanner_.latitude_, routePlanner_.longitude_);
 
     sleep(1);
 }

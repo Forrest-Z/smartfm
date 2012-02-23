@@ -1,0 +1,11 @@
+<launch>
+    <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
+        <rosparam file="$(find lowlevel_controllers)/speed_controller.yaml" command="load" />
+        <remap from="/odom" to="/encoder_odom"/>
+    </node>
+    <node name="vel_cmd" pkg="rostopic" type="rostopic" args="pub cmd_vel geometry_msgs/Twist -r 10 '[2,0,0]' '[0,0,0]'" output="screen"/>
+    <node name="rxplot" pkg="rxtools" type="rxplot" args="-p 30 /encoders/v,/cmd_vel/linear/x,/pid_gain/v_filter /pid_gain/p_gain,/pid_gain/i_gain,/pid_gain/d_gain,/pid_gain/prior,/pid_gain/u_ctrl" output="screen"/>
+
+    <!-- bag is saved in ~/.ros/ -->
+    <node name="bag" pkg="rosbag" type="record" args="-a" output="screen"/>
+</launch>

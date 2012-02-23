@@ -1,11 +1,8 @@
 <launch>
 
-    <node pkg="golfcar_steeringcontrol" type="local_controller" name="local_controller"/>
-    <node name="speed_controller" pkg="lowlevel" type="speed_controller_simple" output="screen">
-        <param name="kp" value="1.5"/>        
-        <param name="ki" value="0.08"/>
-        <param name="kd" value="0.4"/>
-        <param name="tau_v" value="0.2"/>
+    <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller"/>
+    <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
+        <rosparam file="$(find lowlevel_controllers)/speed_controller.yaml" command="load" />
         <remap from="/odom" to="/encoder_odom"/>
     </node>
 
@@ -20,8 +17,7 @@
         <param name="controller_patience" value="100.0" />
         <param name="base_global_planner" value="golfcar_gp/GlobalPlan"/>
         <param name="base_local_planner" value="golfcar_purepursuit/PurePursuitBase"/>
-        <param name="PurePursuitBase/slow_speed" value="1.0"/>
-        <param name="PurePursuitBase/maximum_speed" value="2.0"/>
+        <param name="PurePursuitBase/tracking_distance" value="15.0"/>
 
         <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params.yaml" command="load" ns="global_costmap" />
         <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params.yaml" command="load" ns="local_costmap" />

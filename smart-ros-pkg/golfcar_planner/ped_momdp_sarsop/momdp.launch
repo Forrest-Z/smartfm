@@ -1,0 +1,15 @@
+<launch>
+	 <node name="ped_momdp" pkg="ped_momdp_sarsop" type="ped-momdp-sarsop" respawn="false" output="screen">
+	    <param name="model_file" value="$(find ped_momdp_sarsop)/policy-files/rss-lane-u2.pomdpx"/>
+	    <param name="policy_file" value="$(find ped_momdp_sarsop)/policy-files/rss-lane-u2.policy"/>
+	    <param name="simLen" value="30"/>
+	    <param name="simNum" value="1"/>
+	    <remap from="robot_0/amcl_pose" to="amcl_pose"/>
+	    <remap from="robot_0/cmd_vel" to="momdp_vel"/>
+            <remap from="odom" to="encoder_odom"/>
+	 </node>
+	 <!--node name="ped_momdp_local_transform" pkg="ped_momdp_sarsop" type="local_frame" output="screen">
+	    <param name="global_frame" value="/map"/>
+	</node-->
+
+</launch>

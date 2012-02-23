@@ -53,7 +53,7 @@ namespace road_detection{
             if( time_dis > assemble_time_thresh_)
             {
                 ROS_WARN("time between two ldmrs scans too long");
-                return;
+                //return;
             }
             
             assembled_scan_.header          =   scan1_.header;
