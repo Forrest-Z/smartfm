@@ -418,13 +418,13 @@ int main( int argc, char *argv[] )
                 &shortInput,
                 &wideInput );
      // save the raw images
-     char filename[100];
+     /*char filename[100];
      sprintf( filename, "right-raw-02%d.ppm", i );
      writePpm( filename, pucRightRGB, 1280, 960 );
      sprintf( filename, "center-raw-02%d.ppm", i );
      writePpm( filename, pucCenterRGB, 1280, 960 );
      sprintf( filename, "left-raw-02%d.ppm", i );
-     writePpm( filename, pucLeftRGB, 1280, 960 );
+     writePpm( filename, pucLeftRGB, 1280, 960 );*/
       }
       else
       {
@@ -447,26 +447,12 @@ int main( int argc, char *argv[] )
      break;
       }
 
-      e = triclopsStereo( wideTriclops );
+     e = triclopsRectify( shortTriclops, &shortInput );
       if ( e != TriclopsErrorOk )
       {
      fprintf( stderr, "triclopsRectify failed!\n" );
      break;
       }
-
-      e = triclopsRectify( shortTriclops, &shortInput );
-      if ( e != TriclopsErrorOk )
-      {
-     fprintf( stderr, "triclopsRectify failed!\n" );
-     break;
-      }
-
-      /*e = triclopsStereo( shortTriclops );
-      if ( e != TriclopsErrorOk )
-      {
-     fprintf( stderr, "triclopsRectify failed!\n" );
-     break;
-      }*/
 
       // get pointers to all the images for your own processing requirements
       TriclopsImage shortRectifiedRight, shortRectifiedLeft;
@@ -488,24 +474,6 @@ int main( int argc, char *argv[] )
 
       // now - what to do with all these images?  Well, for now to prove
       // that they are actually valid, lets save them
-
-      char filename[100];
-      sprintf( filename, "short-right-rectified-%02d.pgm", i );
-      pgmWriteFromTriclopsImage( filename, &shortRectifiedRight );
-      sprintf( filename, "short-left-rectified-%02d.pgm", i );
-      pgmWriteFromTriclopsImage( filename, &shortRectifiedLeft );
-      sprintf( filename, "wide-right-rectified-%02d.pgm", i );
-      pgmWriteFromTriclopsImage( filename, &wideRectifiedRight );
-      sprintf( filename, "wide-left-rectified-%02d.pgm", i );
-      pgmWriteFromTriclopsImage( filename, &wideRectifiedLeft );
-
-      /*sprintf( filename, "short-disparity-%02d.pgm", i );
-      pgmWriteFromTriclopsImage16( filename, &shortDisparity );
-      sprintf( filename, "wide-disparity-%02d.pgm", i );
-      pgmWriteFromTriclopsImage16( filename, &wideDisparity );*/
-
-
-
 
       // rectify the right image with both the short and wide contexts
       if ( stereoCamera.bColor )
