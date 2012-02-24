@@ -78,100 +78,378 @@
 #include "pgr_stereocam.h"
 #include <triclops/pnmutils.h>
 
-//=============================================================================
-// Copy an RGB buffer to a TriclopsInput
-//
-// NOTE: this is unfortunate and inefficient.  All libdc1394 functions
-// that deal with RGB images expect them to be RGB only.  I.e. RGBRGBRGB...
-// Triclops library expects RGB images to be RGBU (where U is unused).
-// The advantage of RGBU is that the pixels are word aligned.
-// The disadvantage is obviously they take 33% more memory.
-//
-// Ideally, to make things more efficient, one should convert either
-// the libdc1394 color conversions to be able to make RGBU images, or
-// change the Triclops library to accept RGB images.
-//
-// For now, we are saddled with this extra copy! :(
-//
-// NOTE: it is also assumed that the TriclopsInput contains valid size
-// information so it knows how big the RGB buffer is.  And that the
-// TriclopsInput is of type RGB_32BIT_PACKED and that its memory is
-// already allocated
-//
-void
-convertColorTriclopsInput( TriclopsInput* colorInput,
-                           unsigned char* pucRGB )
-{
-    unsigned char* pucInputData = (unsigned char*) colorInput->u.rgb32BitPacked.data;
-    for ( int i = 0, j = 0; i < colorInput->nrows * colorInput->ncols*3; )
-    {
-        // get R, G and B
-        pucInputData[j+2] = pucRGB[i++];
-        pucInputData[j+1] = pucRGB[i++];
-        pucInputData[j] = pucRGB[i++];
-        // increment the Input counter once more to skip the "U" byte
-        j += 4;
-    }
-    return;
-}
+#include <ros/ros.h>
+#include <sensor_msgs/image_encodings.h>
+#include <sensor_msgs/Image.h>
+#include <image_transport/image_transport.h>
 
-//=============================================================================
-// a simple function to write a .pgm file
-int
-writePgm( char*     szFilename,
-          unsigned char* pucBuffer,
-          int        width,
-          int        height )
+#include <cv_bridge/cv_bridge.h>
+#include <opencv/cv.h>
+#include <opencv2/highgui/highgui.hpp>
+
+using namespace std;
+
+class xb3
 {
-    FILE* stream;
-    stream = fopen( szFilename, "wb" );
-    if( stream == NULL)
+public:
+
+    string short_cal_, wide_cal_;
+    TriclopsContext wideTriclops_, shortTriclops_;
+    dc1394camera_t*  camera_;
+    string camera_name_;
+    PGRStereoCamera_t stereoCamera_;
+    ros::NodeHandle nh_;
+    image_transport::ImageTransport it_;
+    image_transport::Publisher left_pub_, center_pub_, right_pub_;
+    xb3() : it_(nh_)
     {
-        perror( "Can't open image file" );
-        return 1;
+        ros::NodeHandle n("~");
+        camera_name_ = string("bumblebee/");
+        left_pub_ = it_.advertise(camera_name_+"left", 1);
+        center_pub_ = it_.advertise(camera_name_+"center", 1);
+        right_pub_ = it_.advertise(camera_name_+"right", 1);
+        n.param("short_calibration_file", short_cal_, string(""));
+        n.param("wide_calibration_file", wide_cal_, string(""));
+        if(!initialize()) return;
+        publish_image();
+
     }
 
-    fprintf( stream, "P5\n%u %u 255\n", width, height );
-    fwrite( pucBuffer, width, height, stream );
-    fclose( stream );
-    return 0;
-}
-
-//=============================================================================
-// a simple function to write a .ppm file
-int
-writePpm( char*     szFilename,
-          unsigned char* pucBuffer,
-          int        width,
-          int        height )
-{
-    FILE* stream;
-    stream = fopen( szFilename, "wb" );
-    if( stream == NULL)
+    ~xb3()
     {
-        perror( "Can't open image file" );
-        return 1;
+        printf( "Stop transmission\n" );
+        //  Stop data transmission
+        if ( dc1394_video_set_transmission( stereoCamera_.camera, DC1394_OFF ) != DC1394_SUCCESS )
+        {
+            fprintf( stderr, "Couldn't stop the camera?\n" );
+        }
+
+        // close camera
+        cleanup_and_exit( camera_ );
     }
 
-    fprintf( stream, "P6\n%u %u 255\n", width, height );
-    fwrite( pucBuffer, 3*width, height, stream );
-    fclose( stream );
-    return 0;
-}
+private:
+
+    void publish_image()
+    {
+        // size of buffer for all images at mono8
+        unsigned int   nBufferSize = stereoCamera_.nRows *
+                stereoCamera_.nCols *
+                stereoCamera_.nBytesPerPixel;
+
+        // allocate a buffer to hold the de-interleaved images
+        unsigned char* pucDeInterlacedBuffer = new unsigned char[ nBufferSize ];
 
 
-//=============================================================================
-// cleanup_and_exit()
-// This is called when the program exits and destroys the existing connections
-// to the 1394 drivers
-void
-cleanup_and_exit( dc1394camera_t* camera )
-{
-    dc1394_capture_stop( camera );
-    dc1394_video_set_transmission( camera, DC1394_OFF );
-    dc1394_camera_free( camera );
-    exit( 0 );
-}
+
+        // define all the buffers you could ever want, color or mono
+        // leave allocation till later
+        // color buffers
+        // buffer for the 3 color images color processed and stacked
+        unsigned char* pucRGBBuffer      = NULL;
+        // buffer for the green channel that approximates the mono signal
+        unsigned char* pucGreenBuffer    = NULL;
+        unsigned char* pucRightRGB       = NULL;
+        unsigned char* pucLeftRGB        = NULL;
+        unsigned char* pucCenterRGB      = NULL;
+
+
+        TriclopsInput  colorInput;
+
+        // allocation color processing buffers
+        if ( stereoCamera_.bColor )
+        {
+            pucRGBBuffer      = new unsigned char[ 3 * nBufferSize ];
+            pucGreenBuffer        = new unsigned char[ nBufferSize ];
+            // allocate a color input for color image rectification
+            colorInput.nrows      = stereoCamera_.nRows;
+            colorInput.ncols      = stereoCamera_.nCols;
+            colorInput.rowinc     = stereoCamera_.nCols*4;
+            colorInput.inputType  = TriInp_RGB_32BIT_PACKED;
+            colorInput.u.rgb32BitPacked.data
+            = (void*) (new unsigned char[colorInput.nrows*colorInput.rowinc]);
+        }
+
+        int i=0;
+        while(nh_.ok())
+        {
+            i++;
+
+            printf( "Grab %d\n", i );
+
+            TriclopsInput wideInput, shortInput;
+            assert(stereoCamera_.bColor);
+            {
+                // get the images from the capture buffer and do all required
+                // processing
+                extractImagesColorXB3( &stereoCamera_,
+                                       DC1394_BAYER_METHOD_NEAREST,
+                                       pucDeInterlacedBuffer,
+                                       pucRGBBuffer,
+                                       pucGreenBuffer,
+                                       &pucRightRGB,
+                                       &pucLeftRGB,
+                                       &pucCenterRGB,
+                                       &shortInput,
+                                       &wideInput );
+            }
+
+
+            // rectify the left and right image with both the short and wide contexts
+            TriclopsColorImage rectLeft, rectCenter, rectRight;
+
+
+            // copy the RGB buffer into an input structure
+            convertColorTriclopsInput( &colorInput, pucLeftRGB );
+            triclopsRectifyColorImage( wideTriclops_, TriCam_LEFT, &colorInput, &rectLeft );
+
+
+            convertColorTriclopsInput( &colorInput, pucCenterRGB );;
+            triclopsRectifyColorImage( shortTriclops_, TriCam_LEFT, &colorInput, &rectCenter );
+
+            //the right cam appears to be the same no matter which triclops context is used
+            //to save bandwidth, we will not publish this
+            convertColorTriclopsInput( &colorInput, pucRightRGB );
+            triclopsRectifyColorImage( wideTriclops_, TriCam_RIGHT, &colorInput, &rectRight );
+
+            cv::Mat tmp;
+            ros::Time time = ros::Time::now();
+            triclopsColorImageToCvImage( rectLeft, tmp, "left", false);
+            publishImage(left_pub_, tmp, camera_name_+"left", time);
+            triclopsColorImageToCvImage( rectCenter, tmp, "center", false);
+            publishImage(center_pub_, tmp, camera_name_+"center", time);
+            triclopsColorImageToCvImage( rectRight, tmp, "right", false);
+            publishImage(right_pub_, tmp, camera_name_+"right", time);
+
+            ros::spinOnce();
+        }
+
+    }
+
+    void triclopsColorImageToCvImage (TriclopsColorImage& input, cv::Mat& img, string text, bool show_image)
+    {
+        cv::Mat tmp_img(input.nrows, input.ncols,CV_8UC1);
+
+        std::vector<cv::Mat> merge_img;
+
+        tmp_img.data = (uchar*)input.blue; merge_img.push_back(tmp_img);
+        tmp_img.data = (uchar*)input.green; merge_img.push_back(tmp_img);
+        tmp_img.data = (uchar*)input.red; merge_img.push_back(tmp_img);
+        cv::merge( merge_img, img );
+        if(show_image)
+        {
+            cv::imshow(text, img);
+            cvWaitKey(2);
+        }
+
+    }
+    void publishImage(const image_transport::Publisher& pub, cv::Mat& img, string frame_id, const ros::Time& stamp)
+    {
+        sensor_msgs::Image image;
+        cv_bridge::CvImage cvImage;
+        cvImage.image = img;
+        cvImage.toImageMsg(image);
+        image.encoding = sensor_msgs::image_encodings::BGR8;
+        image.header.stamp = stamp;
+        image.header.frame_id = frame_id;
+        pub.publish(image);
+    }
+
+    bool initialize()
+    {
+        char*        szShortCal  = (char*)short_cal_.c_str();
+        char*        szWideCal   = (char*)wide_cal_.c_str();
+
+        TriclopsError e;
+
+        printf( "Getting TriclopsContexts from files... \n" );
+        e = triclopsGetDefaultContextFromFile( &shortTriclops_,  szShortCal);
+        if ( e != TriclopsErrorOk )
+        {
+            fprintf( stderr, "Can't get short context from file\n" );
+            return false;
+        }
+
+        e = triclopsGetDefaultContextFromFile( &wideTriclops_, szWideCal);
+        if ( e != TriclopsErrorOk )
+        {
+            fprintf( stderr, "Can't get wide context from file\n" );
+            return false;
+        }
+        printf( "...done\n" );
+
+        // make sure we are in subpixel mode
+        triclopsSetSubpixelInterpolation( wideTriclops_, 1 );
+        triclopsSetSubpixelInterpolation( shortTriclops_, 1 );
+
+
+        //===================================================================
+        // Find cameras on the 1394 buses
+        dc1394_t * d;
+        dc1394camera_list_t * list;
+        dc1394error_t    err;
+        unsigned int nThisCam;
+
+
+        d = dc1394_new ();
+
+        // Enumerate cameras connected to the PC
+        err = dc1394_camera_enumerate (d, &list);
+
+        if ( err != DC1394_SUCCESS )
+        {
+            fprintf( stderr, "Unable to look for cameras\n\n"
+                     "Please check \n"
+                     "  - if the kernel modules `ieee1394',`raw1394' and `ohci1394' are loaded \n"
+                     "  - if you have read/write access to /dev/raw1394\n\n");
+            return false;
+        }
+
+        //  get the camera nodes and describe them as we find them
+        if (list->num == 0)
+        {
+            fprintf( stderr, "No cameras found!\n");
+            return false;
+        }
+
+
+        printf( "There were %d camera(s) found attached to your PC\n", list->num  );
+
+        // Identify cameras. Use the first stereo camera that is found
+        for ( nThisCam = 0; nThisCam < list->num; nThisCam++ )
+        {
+            camera_ = dc1394_camera_new(d, list->ids[nThisCam].guid);
+
+            if(!camera_)
+            {
+                printf("Failed to initialize camera with guid %lx", list->ids[nThisCam].guid);
+                continue;
+            }
+
+            printf( "Camera %d model = '%s'\n", nThisCam, camera_->model );
+
+            if ( isStereoCamera(camera_))
+            {
+
+                printf( "Using this camera\n" );
+                break;
+            }
+
+            dc1394_camera_free(camera_);
+        }
+
+        if ( nThisCam == list->num )
+        {
+            printf( "No stereo cameras were detected\n" );
+            return 0;
+        }
+
+        if (DC1394_SUCCESS != dc1394_camera_reset(camera_))
+        {
+            cleanup_and_exit( camera_ );
+            fprintf( stderr, "Unable to reset camera.\n");
+            return 0;
+        }
+
+
+        // query information about this stereo camera
+        err = queryStereoCamera( camera_, &stereoCamera_ );
+        if ( err != DC1394_SUCCESS )
+        {
+            fprintf( stderr, "Cannot query all information from camera\n" );
+            cleanup_and_exit( camera_ );
+        }
+
+        if ( stereoCamera_.model != BUMBLEBEEXB3 )
+        {
+            fprintf( stderr, "Stereo camera found was not a BB XB3\n" );
+            cleanup_and_exit( camera_ );
+        }
+
+        // override the default nBytesPerPixel to be 3, because we really do
+        // want to run at 3 camera mode
+        stereoCamera_.nBytesPerPixel = 3;
+
+        // set the capture mode
+        printf( "Setting stereo video capture mode\n" );
+        err = setStereoVideoCapture( &stereoCamera_ );
+        if ( err != DC1394_SUCCESS )
+        {
+            fprintf( stderr, "Could not set up video capture mode\n" );
+            cleanup_and_exit( stereoCamera_.camera );
+        }
+
+        // have the camera start sending us data
+        printf( "Start transmission\n" );
+        err = startTransmission( &stereoCamera_ );
+        if ( err != DC1394_SUCCESS )
+        {
+            fprintf( stderr, "Unable to start camera iso transmission\n" );
+            cleanup_and_exit( stereoCamera_.camera );
+        }
+
+        return true;
+    }
+
+    void convertColorTriclopsInput( TriclopsInput* colorInput, unsigned char* pucRGB )
+    {
+        unsigned char* pucInputData = (unsigned char*) colorInput->u.rgb32BitPacked.data;
+        for ( int i = 0, j = 0; i < colorInput->nrows * colorInput->ncols*3; )
+        {
+            // get R, G and B
+            pucInputData[j+2] = pucRGB[i++];
+            pucInputData[j+1] = pucRGB[i++];
+            pucInputData[j] = pucRGB[i++];
+            // increment the Input counter once more to skip the "U" byte
+            j += 4;
+        }
+        return;
+    }
+
+    int writePgm( char* szFilename, unsigned char* pucBuffer, int width, int height )
+    {
+        FILE* stream;
+        stream = fopen( szFilename, "wb" );
+        if( stream == NULL)
+        {
+            perror( "Can't open image file" );
+            return 1;
+        }
+
+        fprintf( stream, "P5\n%u %u 255\n", width, height );
+        fwrite( pucBuffer, width, height, stream );
+        fclose( stream );
+        return 0;
+    }
+
+    int writePpm( char* szFilename, unsigned char* pucBuffer, int width, int height )
+    {
+        FILE* stream;
+        stream = fopen( szFilename, "wb" );
+        if( stream == NULL)
+        {
+            perror( "Can't open image file" );
+            return 1;
+        }
+
+        fprintf( stream, "P6\n%u %u 255\n", width, height );
+        fwrite( pucBuffer, 3*width, height, stream );
+        fclose( stream );
+        return 0;
+    }
+
+    void cleanup_and_exit( dc1394camera_t* camera )
+    {
+        dc1394_capture_stop( camera );
+        dc1394_video_set_transmission( camera, DC1394_OFF );
+        dc1394_camera_free( camera );
+        exit( 0 );
+    }
+};
+
+
+
+
 
 
 
@@ -180,295 +458,8 @@ cleanup_and_exit( dc1394camera_t* camera )
 //
 int main( int argc, char *argv[] )
 {
-
-
-    dc1394camera_t*  camera;
-    dc1394error_t    err;
-
-    char*        szShortCal  = NULL;
-    char*        szWideCal   = NULL;
-    char*        szShortDisp = NULL;
-    char*        szWideDisp  = NULL;
-    char*        szColorRect = NULL;
-
-    switch( argc )
-    {
-        default:
-            printf( "Usage: %s <short.cal> <wide.cal> "
-                    "[wide-disp-out short-disp-out col-rect-out]\n",
-                    argv[0] );
-            return 1;
-        case 6:
-            szWideDisp = argv[3];
-            szShortDisp    = argv[4];
-            szColorRect    = argv[5];
-            // fall through to case 3 is deliberate
-        case 3:
-            szShortCal = argv[1];
-            szWideCal  = argv[2];
-            break;
-    }
-
-    //===================================================================
-    // read in the TriclopsContexts
-    TriclopsError e;
-    TriclopsContext wideTriclops;
-    TriclopsContext shortTriclops;
-    printf( "Getting TriclopsContexts from files... \n" );
-    e = triclopsGetDefaultContextFromFile( &shortTriclops,
-                                           szShortCal );
-    if ( e != TriclopsErrorOk )
-    {
-        fprintf( stderr, "Can't get short context from file\n" );
-        return 1;
-    }
-
-    e = triclopsGetDefaultContextFromFile( &wideTriclops,
-                                           szWideCal );
-    if ( e != TriclopsErrorOk )
-    {
-        fprintf( stderr, "Can't get wide context from file\n" );
-        return 1;
-    }
-    printf( "...done\n" );
-
-    // make sure we are in subpixel mode
-    triclopsSetSubpixelInterpolation( wideTriclops, 1 );
-    triclopsSetSubpixelInterpolation( shortTriclops, 1 );
-
-
-    //===================================================================
-    // Find cameras on the 1394 buses
-    dc1394_t * d;
-    dc1394camera_list_t * list;
-    unsigned int nThisCam;
-
-
-    d = dc1394_new ();
-
-    // Enumerate cameras connected to the PC
-    err = dc1394_camera_enumerate (d, &list);
-
-    if ( err != DC1394_SUCCESS )
-    {
-        fprintf( stderr, "Unable to look for cameras\n\n"
-                 "Please check \n"
-                 "  - if the kernel modules `ieee1394',`raw1394' and `ohci1394' are loaded \n"
-                 "  - if you have read/write access to /dev/raw1394\n\n");
-        return 1;
-    }
-
-    //  get the camera nodes and describe them as we find them
-    if (list->num == 0)
-    {
-        fprintf( stderr, "No cameras found!\n");
-        return 1;
-    }
-
-
-
-    printf( "There were %d camera(s) found attached to your PC\n", list->num  );
-
-    // Identify cameras. Use the first stereo camera that is found
-    for ( nThisCam = 0; nThisCam < list->num; nThisCam++ )
-    {
-        camera = dc1394_camera_new(d, list->ids[nThisCam].guid);
-
-        if(!camera)
-        {
-            printf("Failed to initialize camera with guid %llx", list->ids[nThisCam].guid);
-            continue;
-        }
-
-        printf( "Camera %d model = '%s'\n", nThisCam, camera->model );
-
-        if ( isStereoCamera(camera))
-        {
-
-            printf( "Using this camera\n" );
-            break;
-        }
-
-        dc1394_camera_free(camera);
-    }
-
-    if ( nThisCam == list->num )
-    {
-        printf( "No stereo cameras were detected\n" );
-        return 0;
-    }
-
-
-    PGRStereoCamera_t stereoCamera;
-
-    // query information about this stereo camera
-    err = queryStereoCamera( camera, &stereoCamera );
-    if ( err != DC1394_SUCCESS )
-    {
-        fprintf( stderr, "Cannot query all information from camera\n" );
-        cleanup_and_exit( camera );
-    }
-
-    if ( stereoCamera.model != BUMBLEBEEXB3 )
-    {
-        fprintf( stderr, "Stereo camera found was not a BB XB3\n" );
-        cleanup_and_exit( camera );
-    }
-
-    // override the default nBytesPerPixel to be 3, because we really do
-    // want to run at 3 camera mode
-    stereoCamera.nBytesPerPixel = 3;
-
-    // set the capture mode
-    printf( "Setting stereo video capture mode\n" );
-    err = setStereoVideoCapture( &stereoCamera );
-    if ( err != DC1394_SUCCESS )
-    {
-        fprintf( stderr, "Could not set up video capture mode\n" );
-        cleanup_and_exit( stereoCamera.camera );
-    }
-
-    // have the camera start sending us data
-    printf( "Start transmission\n" );
-    err = startTransmission( &stereoCamera );
-    if ( err != DC1394_SUCCESS )
-    {
-        fprintf( stderr, "Unable to start camera iso transmission\n" );
-        cleanup_and_exit( stereoCamera.camera );
-    }
-
-    //===================================================================
-    // Allocate all the buffers.
-    // Unfortunately color processing is a bit inefficient because of the
-    // number of data copies.  Color data needs to be
-    // - de-interleaved into separate bayer tile images
-    // - color processed into RGB images
-    // - de-interleaved to extract the green channel for stereo (or other
-    //   mono conversion)
-
-    // size of buffer for all images at mono8
-    unsigned int   nBufferSize = stereoCamera.nRows *
-            stereoCamera.nCols *
-            stereoCamera.nBytesPerPixel;
-
-    // allocate a buffer to hold the de-interleaved images
-    unsigned char* pucDeInterlacedBuffer = new unsigned char[ nBufferSize ];
-
-
-
-    // define all the buffers you could ever want, color or mono
-    // leave allocation till later
-    // color buffers
-    // buffer for the 3 color images color processed and stacked
-    unsigned char* pucRGBBuffer      = NULL;
-    // buffer for the green channel that approximates the mono signal
-    unsigned char* pucGreenBuffer    = NULL;
-    unsigned char* pucRightRGB       = NULL;
-    unsigned char* pucLeftRGB        = NULL;
-    unsigned char* pucCenterRGB      = NULL;
-
-    // mono buffers
-    unsigned char* pucRightMono      = NULL;
-    unsigned char* pucLeftMono       = NULL;
-    unsigned char* pucCenterMono     = NULL;
-    TriclopsInput  colorInput;
-
-    // allocation color processing buffers
-    if ( stereoCamera.bColor )
-    {
-        pucRGBBuffer      = new unsigned char[ 3 * nBufferSize ];
-        pucGreenBuffer        = new unsigned char[ nBufferSize ];
-        // allocate a color input for color image rectification
-        colorInput.nrows      = stereoCamera.nRows;
-        colorInput.ncols      = stereoCamera.nCols;
-        colorInput.rowinc     = stereoCamera.nCols*4;
-        colorInput.inputType  = TriInp_RGB_32BIT_PACKED;
-        colorInput.u.rgb32BitPacked.data
-        = (void*) (new unsigned char[colorInput.nrows*colorInput.rowinc]);
-    }
-
-
-
-    //===================================================================
-    //
-    //
-    // MAIN PROCESSING LOOP
-    //
-    //
-
-    //for ( int i = 0; i < 100; i++ )
-    for ( int i = 0; i < 2; i++ )
-    {
-
-        printf( "Grab %d\n", i );
-
-        TriclopsInput wideInput, shortInput;
-        assert(stereoCamera.bColor);
-        {
-            // get the images from the capture buffer and do all required
-            // processing
-            extractImagesColorXB3( &stereoCamera,
-                                   DC1394_BAYER_METHOD_NEAREST,
-                                   pucDeInterlacedBuffer,
-                                   pucRGBBuffer,
-                                   pucGreenBuffer,
-                                   &pucRightRGB,
-                                   &pucLeftRGB,
-                                   &pucCenterRGB,
-                                   &shortInput,
-                                   &wideInput );
-        }
-
-
-        // rectify the left and right image with both the short and wide contexts
-        TriclopsColorImage shortRectLeft, shortRectCenter, shortRectRight;
-        TriclopsColorImage wideRectLeft, wideRectCenter, wideRectRight;
-        // copy the RGB buffer into an input structure
-        convertColorTriclopsInput( &colorInput, pucLeftRGB );
-        triclopsRectifyColorImage( shortTriclops, TriCam_LEFT, &colorInput, &shortRectLeft );
-        triclopsRectifyColorImage( wideTriclops, TriCam_LEFT, &colorInput, &wideRectLeft );
-
-        convertColorTriclopsInput( &colorInput, pucCenterRGB );
-        triclopsRectifyColorImage( shortTriclops, TriCam_TOP, &colorInput, &shortRectCenter );
-        triclopsRectifyColorImage( wideTriclops, TriCam_TOP, &colorInput, &wideRectCenter );
-
-        convertColorTriclopsInput( &colorInput, pucRightRGB );
-        triclopsRectifyColorImage( shortTriclops, TriCam_RIGHT, &colorInput, &shortRectRight );
-        triclopsRectifyColorImage( wideTriclops, TriCam_RIGHT, &colorInput, &wideRectRight );
-
-        char filename[100];
-        sprintf( filename, "short-left-%02d.pgm", i );
-        ppmWriteFromTriclopsColorImage( filename, &shortRectLeft );
-        sprintf( filename, "wide-left-%02d.pgm", i );
-        ppmWriteFromTriclopsColorImage( filename, &wideRectLeft );
-        sprintf( filename, "short-center-%02d.pgm", i );
-        ppmWriteFromTriclopsColorImage( filename, &shortRectCenter);
-        sprintf( filename, "wide-center-%02d.pgm", i );
-        ppmWriteFromTriclopsColorImage( filename, &wideRectCenter);
-        sprintf( filename, "short-right-%02d.pgm", i );
-        ppmWriteFromTriclopsColorImage( filename, &shortRectRight );
-        sprintf( filename, "wide-right-%02d.pgm", i );
-        ppmWriteFromTriclopsColorImage( filename, &wideRectRight );
-    }
-
-    printf( "Done processing loops\n" );
-    printf( "Stop transmission\n" );
-    //  Stop data transmission
-    if ( dc1394_video_set_transmission( stereoCamera.camera, DC1394_OFF ) != DC1394_SUCCESS )
-    {
-        fprintf( stderr, "Couldn't stop the camera?\n" );
-    }
-
-
-    delete[] pucDeInterlacedBuffer;
-    // delete color processing buffers if req'd
-    if ( pucRGBBuffer )
-        delete[] pucRGBBuffer;
-    if ( pucGreenBuffer )
-        delete[] pucGreenBuffer;
-
-    // close camera
-    cleanup_and_exit( camera );
+    ros::init(argc, argv, "xb3");
+    xb3 xb3;
 
     return 0;
 }

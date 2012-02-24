@@ -14,6 +14,7 @@
   <depend package="sensor_msgs" />
   <depend package="image_transport" />
   <depend package="triclops" />
+  <depend package="cv_bridge" />
 </package>
 
 
