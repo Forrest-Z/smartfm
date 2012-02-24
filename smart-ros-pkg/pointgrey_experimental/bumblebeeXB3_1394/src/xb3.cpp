@@ -81,11 +81,14 @@
 #include <ros/ros.h>
 #include <sensor_msgs/image_encodings.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/CameraInfo.h>
 #include <image_transport/image_transport.h>
 
 #include <cv_bridge/cv_bridge.h>
 #include <opencv/cv.h>
 #include <opencv2/highgui/highgui.hpp>
+
+#include <camera_info_manager/camera_info_manager.h>
 
 using namespace std;
 
@@ -100,14 +103,32 @@ public:
     PGRStereoCamera_t stereoCamera_;
     ros::NodeHandle nh_;
     image_transport::ImageTransport it_;
-    image_transport::Publisher left_pub_, center_pub_, right_pub_;
-    xb3() : it_(nh_)
+    image_transport::Publisher wide_left_pub_, narrow_left_pub_, wide_right_pub_, narrow_right_pub_;
+    camera_info_manager::CameraInfoManager c_info_narrow_left_, c_info_narrow_right_, c_info_wide_left_, c_info_wide_right_;
+    string uri_nl_, uri_nr_, uri_wl_, uri_wr_;
+    ros::Publisher info_nl_pub_, info_nr_pub_, info_wl_pub_, info_wr_pub_;
+    xb3() : it_(nh_), c_info_narrow_left_(nh_, string("bumblebee/narrow_left")),
+            c_info_narrow_right_(nh_, string("bumblebee/narrow_right")),
+            c_info_wide_left_(nh_, string("bumblebee/wide_left")),
+            c_info_wide_right_(nh_, string("bumblebee/wide_right"))
     {
         ros::NodeHandle n("~");
         camera_name_ = string("bumblebee/");
-        left_pub_ = it_.advertise(camera_name_+"left", 1);
-        center_pub_ = it_.advertise(camera_name_+"center", 1);
-        right_pub_ = it_.advertise(camera_name_+"right", 1);
+        narrow_left_pub_ = it_.advertise(camera_name_+"narrow_left/image_raw", 1);
+        wide_left_pub_ = it_.advertise(camera_name_+"wide_left/image_raw", 1);
+        narrow_right_pub_ = it_.advertise(camera_name_+"narrow_right/image_raw", 1);
+        wide_right_pub_ = it_.advertise(camera_name_+"wide_right/image_raw", 1);
+
+        info_nl_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"narrow_left/camera_info", 1);
+        info_nr_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"narrow_right/camera_info", 1);
+        info_wl_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"wide_left/camera_info", 1);
+        info_wr_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"wide_right/camera_info", 1);
+
+        n.param("uri_nl", uri_nl_, string("package://bumblebeeXB3_1394/narrow_left.yaml"));
+        n.param("uri_nr", uri_nr_, string("package://bumblebeeXB3_1394/narrow_right.yaml"));
+        n.param("uri_wl", uri_wl_, string("package://bumblebeeXB3_1394/wide_left.yaml"));
+        n.param("uri_wr", uri_wr_, string("package://bumblebeeXB3_1394/wide_right.yaml"));
+
         n.param("short_calibration_file", short_cal_, string(""));
         n.param("wide_calibration_file", wide_cal_, string(""));
         if(!initialize()) return;
@@ -196,7 +217,7 @@ private:
 
 
             // rectify the left and right image with both the short and wide contexts
-            TriclopsColorImage rectLeft, rectCenter, rectRight;
+            TriclopsColorImage rectLeft, rectCenter, rectShortRight, rectWideRight;
 
 
             // copy the RGB buffer into an input structure
@@ -210,20 +231,39 @@ private:
             //the right cam appears to be the same no matter which triclops context is used
             //to save bandwidth, we will not publish this
             convertColorTriclopsInput( &colorInput, pucRightRGB );
-            triclopsRectifyColorImage( wideTriclops_, TriCam_RIGHT, &colorInput, &rectRight );
+            triclopsRectifyColorImage( wideTriclops_, TriCam_RIGHT, &colorInput, &rectWideRight);
+            convertColorTriclopsInput( &colorInput, pucRightRGB );
+            triclopsRectifyColorImage( shortTriclops_, TriCam_RIGHT, &colorInput, &rectShortRight);
 
             cv::Mat tmp;
             ros::Time time = ros::Time::now();
-            triclopsColorImageToCvImage( rectLeft, tmp, "left", false);
-            publishImage(left_pub_, tmp, camera_name_+"left", time);
-            triclopsColorImageToCvImage( rectCenter, tmp, "center", false);
-            publishImage(center_pub_, tmp, camera_name_+"center", time);
-            triclopsColorImageToCvImage( rectRight, tmp, "right", false);
-            publishImage(right_pub_, tmp, camera_name_+"right", time);
 
+            triclopsColorImageToCvImage( rectLeft, tmp, "wide_left", false);
+            publishImage(wide_left_pub_, tmp, camera_name_+"wide_left", time);
+            publishCInfo(info_wl_pub_, uri_wl_, c_info_wide_left_);
+
+            triclopsColorImageToCvImage( rectCenter, tmp, "narrow_left", false);
+            publishImage(narrow_left_pub_, tmp, camera_name_+"narrow_left", time);
+            publishCInfo(info_nl_pub_, uri_nl_, c_info_narrow_left_);
+
+            triclopsColorImageToCvImage( rectWideRight, tmp, "wide_right", false);
+            publishImage(wide_right_pub_, tmp, camera_name_+"wide_right", time);
+            publishCInfo(info_wr_pub_, uri_wr_, c_info_wide_right_);
+
+            triclopsColorImageToCvImage( rectShortRight, tmp, "narrow_right", false);
+            publishImage(wide_right_pub_, tmp, camera_name_+"narrow_right", time);
+            publishCInfo(info_nr_pub_, uri_wl_, c_info_narrow_right_);
             ros::spinOnce();
         }
 
+    }
+
+    void publishCInfo(ros::Publisher& pub, string uri, camera_info_manager::CameraInfoManager& manager)
+    {
+        sensor_msgs::CameraInfo c_info;
+        manager.loadCameraInfo(uri_wl_);
+        c_info = manager.getCameraInfo();
+        pub.publish(c_info);
     }
 
     void triclopsColorImageToCvImage (TriclopsColorImage& input, cv::Mat& img, string text, bool show_image)
