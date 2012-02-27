@@ -77,6 +77,7 @@
 #include "pgr_registers.h"
 #include "pgr_stereocam.h"
 #include <triclops/pnmutils.h>
+#include <triclops/triclopsimageio.h>
 
 #include <ros/ros.h>
 #include <sensor_msgs/image_encodings.h>
@@ -87,7 +88,268 @@
 #include <opencv/cv.h>
 #include <opencv2/highgui/highgui.hpp>
 
+#include <sensor_msgs/PointCloud.h>
+
 using namespace std;
+
+static unsigned char dmap[768] =
+{ 150, 150, 150,
+  107, 0, 12,
+  106, 0, 18,
+  105, 0, 24,
+  103, 0, 30,
+  102, 0, 36,
+  101, 0, 42,
+  99, 0, 48,
+  98, 0, 54,
+  97, 0, 60,
+  96, 0, 66,
+  94, 0, 72,
+  93, 0, 78,
+  92, 0, 84,
+  91, 0, 90,
+  89, 0, 96,
+  88, 0, 102,
+  87, 0, 108,
+  85, 0, 114,
+  84, 0, 120,
+  83, 0, 126,
+  82, 0, 131,
+  80, 0, 137,
+  79, 0, 143,
+  78, 0, 149,
+  77, 0, 155,
+  75, 0, 161,
+  74, 0, 167,
+  73, 0, 173,
+  71, 0, 179,
+  70, 0, 185,
+  69, 0, 191,
+  68, 0, 197,
+  66, 0, 203,
+  65, 0, 209,
+  64, 0, 215,
+  62, 0, 221,
+  61, 0, 227,
+  60, 0, 233,
+  59, 0, 239,
+  57, 0, 245,
+  56, 0, 251,
+  55, 0, 255,
+  54, 0, 255,
+  52, 0, 255,
+  51, 0, 255,
+  50, 0, 255,
+  48, 0, 255,
+  47, 0, 255,
+  46, 0, 255,
+  45, 0, 255,
+  43, 0, 255,
+  42, 0, 255,
+  41, 0, 255,
+  40, 0, 255,
+  38, 0, 255,
+  37, 0, 255,
+  36, 0, 255,
+  34, 0, 255,
+  33, 0, 255,
+  32, 0, 255,
+  31, 0, 255,
+  29, 0, 255,
+  28, 0, 255,
+  27, 0, 255,
+  26, 0, 255,
+  24, 0, 255,
+  23, 0, 255,
+  22, 0, 255,
+  20, 0, 255,
+  19, 0, 255,
+  18, 0, 255,
+  17, 0, 255,
+  15, 0, 255,
+  14, 0, 255,
+  13, 0, 255,
+  11, 0, 255,
+  10, 0, 255,
+  9, 0, 255,
+  8, 0, 255,
+  6, 0, 255,
+  5, 0, 255,
+  4, 0, 255,
+  3, 0, 255,
+  1, 0, 255,
+  0, 4, 255,
+  0, 10, 255,
+  0, 16, 255,
+  0, 22, 255,
+  0, 28, 255,
+  0, 34, 255,
+  0, 40, 255,
+  0, 46, 255,
+  0, 52, 255,
+  0, 58, 255,
+  0, 64, 255,
+  0, 70, 255,
+  0, 76, 255,
+  0, 82, 255,
+  0, 88, 255,
+  0, 94, 255,
+  0, 100, 255,
+  0, 106, 255,
+  0, 112, 255,
+  0, 118, 255,
+  0, 124, 255,
+  0, 129, 255,
+  0, 135, 255,
+  0, 141, 255,
+  0, 147, 255,
+  0, 153, 255,
+  0, 159, 255,
+  0, 165, 255,
+  0, 171, 255,
+  0, 177, 255,
+  0, 183, 255,
+  0, 189, 255,
+  0, 195, 255,
+  0, 201, 255,
+  0, 207, 255,
+  0, 213, 255,
+  0, 219, 255,
+  0, 225, 255,
+  0, 231, 255,
+  0, 237, 255,
+  0, 243, 255,
+  0, 249, 255,
+  0, 255, 255,
+  0, 255, 249,
+  0, 255, 243,
+  0, 255, 237,
+  0, 255, 231,
+  0, 255, 225,
+  0, 255, 219,
+  0, 255, 213,
+  0, 255, 207,
+  0, 255, 201,
+  0, 255, 195,
+  0, 255, 189,
+  0, 255, 183,
+  0, 255, 177,
+  0, 255, 171,
+  0, 255, 165,
+  0, 255, 159,
+  0, 255, 153,
+  0, 255, 147,
+  0, 255, 141,
+  0, 255, 135,
+  0, 255, 129,
+  0, 255, 124,
+  0, 255, 118,
+  0, 255, 112,
+  0, 255, 106,
+  0, 255, 100,
+  0, 255, 94,
+  0, 255, 88,
+  0, 255, 82,
+  0, 255, 76,
+  0, 255, 70,
+  0, 255, 64,
+  0, 255, 58,
+  0, 255, 52,
+  0, 255, 46,
+  0, 255, 40,
+  0, 255, 34,
+  0, 255, 28,
+  0, 255, 22,
+  0, 255, 16,
+  0, 255, 10,
+  0, 255, 4,
+  2, 255, 0,
+  8, 255, 0,
+  14, 255, 0,
+  20, 255, 0,
+  26, 255, 0,
+  32, 255, 0,
+  38, 255, 0,
+  44, 255, 0,
+  50, 255, 0,
+  56, 255, 0,
+  62, 255, 0,
+  68, 255, 0,
+  74, 255, 0,
+  80, 255, 0,
+  86, 255, 0,
+  92, 255, 0,
+  98, 255, 0,
+  104, 255, 0,
+  110, 255, 0,
+  116, 255, 0,
+  122, 255, 0,
+  128, 255, 0,
+  133, 255, 0,
+  139, 255, 0,
+  145, 255, 0,
+  151, 255, 0,
+  157, 255, 0,
+  163, 255, 0,
+  169, 255, 0,
+  175, 255, 0,
+  181, 255, 0,
+  187, 255, 0,
+  193, 255, 0,
+  199, 255, 0,
+  205, 255, 0,
+  211, 255, 0,
+  217, 255, 0,
+  223, 255, 0,
+  229, 255, 0,
+  235, 255, 0,
+  241, 255, 0,
+  247, 255, 0,
+  253, 255, 0,
+  255, 251, 0,
+  255, 245, 0,
+  255, 239, 0,
+  255, 233, 0,
+  255, 227, 0,
+  255, 221, 0,
+  255, 215, 0,
+  255, 209, 0,
+  255, 203, 0,
+  255, 197, 0,
+  255, 191, 0,
+  255, 185, 0,
+  255, 179, 0,
+  255, 173, 0,
+  255, 167, 0,
+  255, 161, 0,
+  255, 155, 0,
+  255, 149, 0,
+  255, 143, 0,
+  255, 137, 0,
+  255, 131, 0,
+  255, 126, 0,
+  255, 120, 0,
+  255, 114, 0,
+  255, 108, 0,
+  255, 102, 0,
+  255, 96, 0,
+  255, 90, 0,
+  255, 84, 0,
+  255, 78, 0,
+  255, 72, 0,
+  255, 66, 0,
+  255, 60, 0,
+  255, 54, 0,
+  255, 48, 0,
+  255, 42, 0,
+  255, 36, 0,
+  255, 30, 0,
+  255, 24, 0,
+  255, 18, 0,
+  255, 12, 0,
+  255,  6, 0,
+  255,  0, 0,
+};
 
 class xb3
 {
@@ -101,6 +363,7 @@ public:
     ros::NodeHandle nh_;
     image_transport::ImageTransport it_;
     image_transport::Publisher left_pub_, center_pub_, right_pub_;
+    ros::Publisher pc_pub_;
     xb3() : it_(nh_)
     {
         ros::NodeHandle n("~");
@@ -108,6 +371,7 @@ public:
         left_pub_ = it_.advertise(camera_name_+"left", 1);
         center_pub_ = it_.advertise(camera_name_+"center", 1);
         right_pub_ = it_.advertise(camera_name_+"right", 1);
+        pc_pub_ = nh_.advertise<sensor_msgs::PointCloud>(camera_name_+"points", 1);
         n.param("short_calibration_file", short_cal_, string(""));
         n.param("wide_calibration_file", wide_cal_, string(""));
         if(!initialize()) return;
@@ -212,18 +476,81 @@ private:
             convertColorTriclopsInput( &colorInput, pucRightRGB );
             triclopsRectifyColorImage( wideTriclops_, TriCam_RIGHT, &colorInput, &rectRight );
 
-            cv::Mat tmp;
+            cv::Mat tmp, right;
             ros::Time time = ros::Time::now();
             triclopsColorImageToCvImage( rectLeft, tmp, "left", false);
             publishImage(left_pub_, tmp, camera_name_+"left", time);
             triclopsColorImageToCvImage( rectCenter, tmp, "center", false);
             publishImage(center_pub_, tmp, camera_name_+"center", time);
-            triclopsColorImageToCvImage( rectRight, tmp, "right", false);
-            publishImage(right_pub_, tmp, camera_name_+"right", time);
+            triclopsColorImageToCvImage( rectRight, right, "right", false);
+            sensor_msgs::Image right_image = publishImage(right_pub_, tmp, camera_name_+"right", time);
 
+            //now the stereo processing
+            triclopsRectify( shortTriclops_, &shortInput);
+            triclopsRectify( wideTriclops_, &wideInput);
+            triclopsStereo( shortTriclops_ );
+            triclopsStereo( wideTriclops_ );
+            TriclopsImage16 shortDisparity, wideDisparity;
+            triclopsGetImage16( shortTriclops_, TriImg16_DISPARITY,
+                                TriCam_REFERENCE, &shortDisparity );
+            triclopsGetImage16( wideTriclops_, TriImg16_DISPARITY,
+                                TriCam_REFERENCE, &wideDisparity );
+            sensor_msgs::PointCloud pc;
+            pc.header.seq = i;
+            pc.header.stamp = ros::Time::now();
+            pc.header.frame_id = "bumblebee";
+            disparityToPointCloud (shortDisparity, shortTriclops_, right_image, pc);
+            /*char filename[100];
+            sprintf( filename, "short-disparity-%02d.pgm", i );
+            printf("Disparity columns: %d rows: %d\n", shortDisparity.ncols, shortDisparity.nrows);
+            triclopsSaveImage16( &shortDisparity,filename );*/
+            pc_pub_.publish(pc);
             ros::spinOnce();
         }
 
+    }
+
+    void disparityToPointCloud(TriclopsImage16& depthImage16_, TriclopsContext& triclops_, sensor_msgs::Image& right_image, sensor_msgs::PointCloud& cloud_)
+    {
+        //cv::imshow("right_image", right_image);
+        //cvWaitKey(2);
+        unsigned short* disparityPixel = depthImage16_.data;
+        //unsigned char* rectPixel = &right_image.data;
+
+        geometry_msgs::Point32 p;
+
+        cloud_.channels.resize(1);
+        cloud_.channels[0].name = "rgb";
+
+
+        for( int row=0; row<depthImage16_.nrows; ++row ){
+            for( int col=0; col<depthImage16_.ncols; ++col ){
+                if ( *disparityPixel < 0xFF00 && *disparityPixel>0)
+                {
+                    triclopsRCD16ToXYZ( triclops_, row, col, *disparityPixel, &p.y, &p.z, &p.x );
+                    p.z = - p.z;
+                    p.y = - p.y;
+                    cloud_.points.push_back(p);
+
+                    /*cloud_.channels[1].values.push_back(*disparityPixel);
+                    cloud_.channels[2].values.push_back(col);
+                    cloud_.channels[3].values.push_back(row);*/
+                }
+                else
+                {
+                    p.x = 0.0;
+                    p.y = 0.0;
+                    p.z = 0.0;
+                }
+                int rgb = (right_image.data[row*320+col+2] << 16) | (right_image.data[row*320+col+1] << 8) | right_image.data[row*320+col+0];
+                float float_rgb = *(float*)&rgb;
+                cloud_.channels[0].values.push_back(float_rgb);
+
+                disparityPixel++;
+                //rectPixel += 3;
+            }
+            //rectPixel += (right_image.step-depthImage16_.ncols*3);
+        }
     }
 
     void triclopsColorImageToCvImage (TriclopsColorImage& input, cv::Mat& img, string text, bool show_image)
@@ -243,7 +570,8 @@ private:
         }
 
     }
-    void publishImage(const image_transport::Publisher& pub, cv::Mat& img, string frame_id, const ros::Time& stamp)
+
+    sensor_msgs::Image publishImage(const image_transport::Publisher& pub, cv::Mat& img, string frame_id, const ros::Time& stamp)
     {
         sensor_msgs::Image image;
         cv_bridge::CvImage cvImage;
@@ -253,6 +581,7 @@ private:
         image.header.stamp = stamp;
         image.header.frame_id = frame_id;
         pub.publish(image);
+        return image;
     }
 
     bool initialize()
@@ -282,6 +611,9 @@ private:
         triclopsSetSubpixelInterpolation( wideTriclops_, 1 );
         triclopsSetSubpixelInterpolation( shortTriclops_, 1 );
 
+        // make sure we are only using one thread. Triclops crash with multiple threads
+        triclopsSetMaxThreadCount( wideTriclops_, 1);
+        triclopsSetMaxThreadCount( shortTriclops_, 1);
 
         //===================================================================
         // Find cameras on the 1394 buses
@@ -343,14 +675,14 @@ private:
             printf( "No stereo cameras were detected\n" );
             return 0;
         }
-
+        ROS_INFO("Resetting 1394 bus");
         if (DC1394_SUCCESS != dc1394_camera_reset(camera_))
         {
             cleanup_and_exit( camera_ );
             fprintf( stderr, "Unable to reset camera.\n");
             return 0;
         }
-
+        ROS_INFO("Reset Complete");
 
         // query information about this stereo camera
         err = queryStereoCamera( camera_, &stereoCamera_ );
