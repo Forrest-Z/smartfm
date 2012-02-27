@@ -15,6 +15,7 @@
   <depend package="image_transport" />
   <depend package="triclops" />
   <depend package="cv_bridge" />
+  <depend package="camera_info_manager" />
 </package>
 
 
