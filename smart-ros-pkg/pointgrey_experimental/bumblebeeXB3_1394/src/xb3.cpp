@@ -368,7 +368,7 @@ public:
     image_transport::Publisher wide_left_pub_, narrow_left_pub_, wide_right_pub_, narrow_right_pub_;
     camera_info_manager::CameraInfoManager c_info_narrow_left_, c_info_narrow_right_, c_info_wide_left_, c_info_wide_right_;
     string uri_nl_, uri_nr_, uri_wl_, uri_wr_;
-    ros::Publisher info_nl_pub_, info_nr_pub_, info_wl_pub_, info_wr_pub_;
+    ros::Publisher info_nl_pub_, info_nr_pub_, info_wl_pub_, info_wr_pub_, narrow_pc_pub_, wide_pc_pub_;
     xb3() : it_(nh_), c_info_narrow_left_(nh_, string("bumblebee/narrow_left")),
             c_info_narrow_right_(nh_, string("bumblebee/narrow_right")),
             c_info_wide_left_(nh_, string("bumblebee/wide_left")),
@@ -380,7 +380,8 @@ public:
         wide_left_pub_ = it_.advertise(camera_name_+"wide_left/image_raw", 1);
         narrow_right_pub_ = it_.advertise(camera_name_+"narrow_right/image_raw", 1);
         wide_right_pub_ = it_.advertise(camera_name_+"wide_right/image_raw", 1);
-
+        narrow_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud>(camera_name_+"narrow_points", 1);
+        wide_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud>(camera_name_+"wide_points", 1);
         info_nl_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"narrow_left/camera_info", 1);
         info_nr_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"narrow_right/camera_info", 1);
         info_wl_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"wide_left/camera_info", 1);
@@ -457,8 +458,6 @@ private:
         {
             i++;
 
-            printf( "Grab %d\n", i );
-
             TriclopsInput wideInput, shortInput;
             assert(stereoCamera_.bColor);
             {
@@ -486,7 +485,7 @@ private:
             triclopsRectifyColorImage( wideTriclops_, TriCam_LEFT, &colorInput, &rectLeft );
 
 
-            convertColorTriclopsInput( &colorInput, pucCenterRGB );;
+            convertColorTriclopsInput( &colorInput, pucCenterRGB );
             triclopsRectifyColorImage( shortTriclops_, TriCam_LEFT, &colorInput, &rectCenter );
 
             //the right cam appears to be the same no matter which triclops context is used
@@ -510,8 +509,8 @@ private:
             publishImage(wide_right_pub_, tmp, camera_name_+"wide_right", time);
             publishCInfo(info_wr_pub_, uri_wr_, c_info_wide_right_);
 
-            triclopsColorImageToCvImage( rectShortRight, tmp, "narrow_right", false);
-            sensor_msgs::Image right_image = publishImage(wide_right_pub_, tmp, camera_name_+"narrow_right", time);
+            triclopsColorImageToCvImage( rectShortRight, right, "narrow_right", false);
+            publishImage(wide_right_pub_, tmp, camera_name_+"narrow_right", time);
             publishCInfo(info_nr_pub_, uri_wl_, c_info_narrow_right_);
 
             //now the stereo processing
@@ -524,18 +523,22 @@ private:
                                 TriCam_REFERENCE, &shortDisparity );
             triclopsGetImage16( wideTriclops_, TriImg16_DISPARITY,
                                 TriCam_REFERENCE, &wideDisparity );
-            sensor_msgs::PointCloud pc;
-            pc.header.seq = i;
-            pc.header.stamp = ros::Time::now();
-            pc.header.frame_id = "bumblebee";
-            disparityToPointCloud (shortDisparity, shortTriclops_, right_image, pc);
-            /*char filename[100];
-            sprintf( filename, "short-disparity-%02d.pgm", i );
-            printf("Disparity columns: %d rows: %d\n", shortDisparity.ncols, shortDisparity.nrows);
-            triclopsSaveImage16( &shortDisparity,filename );*/
-            pc_pub_.publish(pc);
 
+            //now process and publish narrow point cloud
+            sensor_msgs::PointCloud narrow_pc;
+            narrow_pc.header.seq = i;
+            narrow_pc.header.stamp = time;
+            narrow_pc.header.frame_id = "bumblebee";
+            disparityToPointCloud (shortDisparity, shortTriclops_, right, narrow_pc);
+            narrow_pc_pub_.publish(narrow_pc);
 
+            //and wide point cloud
+            sensor_msgs::PointCloud wide_pc;
+            wide_pc.header.seq = i;
+            wide_pc.header.stamp = time;
+            wide_pc.header.frame_id = "bumblebee";
+            disparityToPointCloud (wideDisparity, wideTriclops_, right, wide_pc);
+            wide_pc_pub_.publish(wide_pc);
 
             ros::spinOnce();
         }
@@ -543,10 +546,9 @@ private:
     }
 
 
-    void disparityToPointCloud(TriclopsImage16& depthImage16_, TriclopsContext& triclops_, sensor_msgs::Image& right_image, sensor_msgs::PointCloud& cloud_)
+    void disparityToPointCloud(TriclopsImage16& depthImage16_, TriclopsContext& triclops_, cv::Mat& right_image, sensor_msgs::PointCloud& cloud_)
     {
-        //cv::imshow("right_image", right_image);
-        //cvWaitKey(2);
+
         unsigned short* disparityPixel = depthImage16_.data;
         //unsigned char* rectPixel = &right_image.data;
 
@@ -554,20 +556,28 @@ private:
 
         cloud_.channels.resize(1);
         cloud_.channels[0].name = "rgb";
+        cloud_.points.clear();
+        //only process CV_8U with 3 channel
+        assert( right_image.type() == CV_8UC3);
 
-
+        vector<cv::Mat> right_image_3ch;
+        cv::split(right_image, right_image_3ch);
+        uchar* blue = right_image_3ch[0].data;
+        uchar* green = right_image_3ch[1].data;
+        uchar* red = right_image_3ch[2].data;
+        assert(right_image.cols == depthImage16_.ncols && right_image.rows == depthImage16_.nrows);
         for( int row=0; row<depthImage16_.nrows; ++row ){
             for( int col=0; col<depthImage16_.ncols; ++col ){
                 if ( *disparityPixel < 0xFF00 && *disparityPixel>0)
                 {
                     triclopsRCD16ToXYZ( triclops_, row, col, *disparityPixel, &p.y, &p.z, &p.x );
+                    int array_ptr = row*right_image.cols+col;
                     p.z = - p.z;
                     p.y = - p.y;
                     cloud_.points.push_back(p);
-
-                    /*cloud_.channels[1].values.push_back(*disparityPixel);
-                    cloud_.channels[2].values.push_back(col);
-                    cloud_.channels[3].values.push_back(row);*/
+                    int rgb = (red[array_ptr] << 16) | (green[array_ptr] << 8) | blue[array_ptr];
+                    float float_rgb = *reinterpret_cast<float*>(&rgb);
+                    cloud_.channels[0].values.push_back(float_rgb);
                 }
                 else
                 {
@@ -575,23 +585,20 @@ private:
                     p.y = 0.0;
                     p.z = 0.0;
                 }
-                int rgb = (right_image.data[row*320+col+2] << 16) | (right_image.data[row*320+col+1] << 8) | right_image.data[row*320+col+0];
-                float float_rgb = *(float*)&rgb;
-                cloud_.channels[0].values.push_back(float_rgb);
+
 
                 disparityPixel++;
-                //rectPixel += 3;
             }
-            //rectPixel += (right_image.step-depthImage16_.ncols*3);
         }
+    }
 
     void publishCInfo(ros::Publisher& pub, string uri, camera_info_manager::CameraInfoManager& manager)
-    {
+    {/*
         sensor_msgs::CameraInfo c_info;
         manager.loadCameraInfo(uri_wl_);
         c_info = manager.getCameraInfo();
         pub.publish(c_info);
-
+     */
     }
 
     void triclopsColorImageToCvImage (TriclopsColorImage& input, cv::Mat& img, string text, bool show_image)
