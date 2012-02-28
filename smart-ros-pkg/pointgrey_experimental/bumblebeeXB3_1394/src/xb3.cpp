@@ -478,12 +478,28 @@ private:
             }
 
 
+
+            ros::Time time = ros::Time::now();
+            sensor_msgs::Image image_pub;
+            cv::Mat original_left(stereoCamera_.nRows, stereoCamera_.nCols,CV_8UC3);
+            original_left.data = (uchar*)pucCenterRGB;
+            cv::cvtColor(original_left, original_left, CV_BGR2RGB);
+            cv::resize(original_left, original_left, cv::Size(320, 240));
+            image_pub = publishImage(narrow_left_pub_, original_left, camera_name_+"narrow", time);
+            publishCInfo(info_nl_pub_, uri_nl_, c_info_narrow_left_, image_pub);
+
+            cv::Mat original_right(stereoCamera_.nRows, stereoCamera_.nCols,CV_8UC3);
+            original_right.data = (uchar*)pucRightRGB;
+            cv::cvtColor(original_right, original_right, CV_BGR2RGB);
+            cv::resize(original_right, original_right, cv::Size(320, 240));
+            image_pub = publishImage(narrow_right_pub_, original_right, camera_name_+"narrow", time);
+            publishCInfo(info_nr_pub_, uri_nr_, c_info_narrow_right_, image_pub);
+
             // rectify the left and right image with both the short and wide contexts
             TriclopsColorImage rectLeft, rectCenter, rectShortRight, rectWideRight;
 
-
             // copy the RGB buffer into an input structure
-            convertColorTriclopsInput( &colorInput, pucLeftRGB );
+ /*           convertColorTriclopsInput( &colorInput, pucLeftRGB );
             triclopsRectifyColorImage( wideTriclops_, TriCam_LEFT, &colorInput, &rectLeft );
 
 
@@ -498,8 +514,8 @@ private:
             triclopsRectifyColorImage( shortTriclops_, TriCam_RIGHT, &colorInput, &rectShortRight);
 
             cv::Mat tmp, right;
-            ros::Time time = ros::Time::now();
-            sensor_msgs::Image image_pub;
+
+
             triclopsColorImageToCvImage( rectLeft, tmp, "wide_left", false);
             publishImage(wide_left_pub_, tmp, camera_name_+"wide", time);
             //publishCInfo(info_wl_pub_, uri_wl_, c_info_wide_left_);
@@ -514,8 +530,8 @@ private:
 
             triclopsColorImageToCvImage( rectShortRight, right, "narrow_right", false);
             image_pub = publishImage(narrow_right_pub_, tmp, camera_name_+"narrow", time);
-            publishCInfo(info_nr_pub_, uri_nr_, c_info_narrow_right_, image_pub);
-
+            publishCInfo(info_nr_pub_, uri_nr_, c_info_narrow_right_, image_pub);*/
+/*
             //now the stereo processing
             triclopsRectify( shortTriclops_, &shortInput);
             triclopsRectify( wideTriclops_, &wideInput);
@@ -542,7 +558,7 @@ private:
             wide_pc.header.frame_id = "bumblebee";
             disparityToPointCloud (wideDisparity, wideTriclops_, right, wide_pc);
             wide_pc_pub_.publish(wide_pc);
-
+*/
             ros::spinOnce();
         }
 
