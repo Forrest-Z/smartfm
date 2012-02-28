@@ -7,7 +7,7 @@ SensorResolution 1280 960
 Date 04-Jan-2012 11:02:13
 Debug off
 
-Resolution 120 160
+Resolution 240 320
 LowPass on
 Rectify on
 EdgeCorrelation on

@@ -362,37 +362,39 @@ public:
     dc1394camera_t*  camera_;
     string camera_name_;
     PGRStereoCamera_t stereoCamera_;
-    ros::NodeHandle nh_;
+    ros::NodeHandle nh_, priv_nh_;
     image_transport::ImageTransport it_;
 
     image_transport::Publisher wide_left_pub_, narrow_left_pub_, wide_right_pub_, narrow_right_pub_;
     camera_info_manager::CameraInfoManager c_info_narrow_left_, c_info_narrow_right_, c_info_wide_left_, c_info_wide_right_;
     string uri_nl_, uri_nr_, uri_wl_, uri_wr_;
     ros::Publisher info_nl_pub_, info_nr_pub_, info_wl_pub_, info_wr_pub_, narrow_pc_pub_, wide_pc_pub_;
-    xb3() : it_(nh_), c_info_narrow_left_(nh_, string("bumblebee/narrow_left")),
-            c_info_narrow_right_(nh_, string("bumblebee/narrow_right")),
-            c_info_wide_left_(nh_, string("bumblebee/wide_left")),
-            c_info_wide_right_(nh_, string("bumblebee/wide_right"))
+    xb3() : priv_nh_("~"), it_(nh_),  c_info_narrow_left_(ros::NodeHandle(nh_, "bumblebee/left"),"bumblebee/narrow_left"),
+            c_info_narrow_right_(ros::NodeHandle(nh_,"bumblebee/right"),"bumblebee/narrow_right"),
+            c_info_wide_left_(nh_, "bumblebee/wide_left"),
+            c_info_wide_right_(nh_, "bumblebee/wide_right")
     {
-        ros::NodeHandle n("~");
+
         camera_name_ = string("bumblebee/");
-        narrow_left_pub_ = it_.advertise(camera_name_+"narrow_left/image_raw", 1);
+        narrow_left_pub_ = it_.advertise(camera_name_+"left/image_raw", 1);
         wide_left_pub_ = it_.advertise(camera_name_+"wide_left/image_raw", 1);
-        narrow_right_pub_ = it_.advertise(camera_name_+"narrow_right/image_raw", 1);
+        narrow_right_pub_ = it_.advertise(camera_name_+"right/image_raw", 1);
         wide_right_pub_ = it_.advertise(camera_name_+"wide_right/image_raw", 1);
         narrow_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud>(camera_name_+"narrow_points", 1);
         wide_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud>(camera_name_+"wide_points", 1);
-        info_nl_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"narrow_left/camera_info", 1);
-        info_nr_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"narrow_right/camera_info", 1);
+
+
+        info_nl_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"left/camera_info", 1);
+        info_nr_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"right/camera_info", 1);
         info_wl_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"wide_left/camera_info", 1);
         info_wr_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"wide_right/camera_info", 1);
 
-        n.param("uri_nl", uri_nl_, string("package://bumblebeeXB3_1394/narrow_left.yaml"));
-        n.param("uri_nr", uri_nr_, string("package://bumblebeeXB3_1394/narrow_right.yaml"));
-        n.param("uri_wl", uri_wl_, string("package://bumblebeeXB3_1394/wide_left.yaml"));
-        n.param("uri_wr", uri_wr_, string("package://bumblebeeXB3_1394/wide_right.yaml"));
-        n.param("short_calibration_file", short_cal_, string(""));
-        n.param("wide_calibration_file", wide_cal_, string(""));
+        priv_nh_.param("uri_nl", uri_nl_, string("package://bumblebeeXB3_1394/narrow_left.ini"));
+        priv_nh_.param("uri_nr", uri_nr_, string("package://bumblebeeXB3_1394/narrow_right.ini"));
+        priv_nh_.param("uri_wl", uri_wl_, string("package://bumblebeeXB3_1394/wide_left.ini"));
+        priv_nh_.param("uri_wr", uri_wr_, string("package://bumblebeeXB3_1394/wide_right.ini"));
+        priv_nh_.param("short_calibration_file", short_cal_, string(""));
+        priv_nh_.param("wide_calibration_file", wide_cal_, string(""));
         if(!initialize()) return;
         publish_image();
 
@@ -497,21 +499,22 @@ private:
 
             cv::Mat tmp, right;
             ros::Time time = ros::Time::now();
+            sensor_msgs::Image image_pub;
             triclopsColorImageToCvImage( rectLeft, tmp, "wide_left", false);
-            publishImage(wide_left_pub_, tmp, camera_name_+"wide_left", time);
-            publishCInfo(info_wl_pub_, uri_wl_, c_info_wide_left_);
+            publishImage(wide_left_pub_, tmp, camera_name_+"wide", time);
+            //publishCInfo(info_wl_pub_, uri_wl_, c_info_wide_left_);
 
             triclopsColorImageToCvImage( rectCenter, tmp, "narrow_left", false);
-            publishImage(narrow_left_pub_, tmp, camera_name_+"narrow_left", time);
-            publishCInfo(info_nl_pub_, uri_nl_, c_info_narrow_left_);
+            image_pub = publishImage(narrow_left_pub_, tmp, camera_name_+"narrow", time);
+            publishCInfo(info_nl_pub_, uri_nl_, c_info_narrow_left_, image_pub);
 
             triclopsColorImageToCvImage( rectWideRight, tmp, "wide_right", false);
-            publishImage(wide_right_pub_, tmp, camera_name_+"wide_right", time);
-            publishCInfo(info_wr_pub_, uri_wr_, c_info_wide_right_);
+            publishImage(wide_right_pub_, tmp, camera_name_+"wide", time);
+            //publishCInfo(info_wr_pub_, uri_wr_, c_info_wide_right_);
 
             triclopsColorImageToCvImage( rectShortRight, right, "narrow_right", false);
-            publishImage(wide_right_pub_, tmp, camera_name_+"narrow_right", time);
-            publishCInfo(info_nr_pub_, uri_wl_, c_info_narrow_right_);
+            image_pub = publishImage(narrow_right_pub_, tmp, camera_name_+"narrow", time);
+            publishCInfo(info_nr_pub_, uri_nr_, c_info_narrow_right_, image_pub);
 
             //now the stereo processing
             triclopsRectify( shortTriclops_, &shortInput);
@@ -592,13 +595,15 @@ private:
         }
     }
 
-    void publishCInfo(ros::Publisher& pub, string uri, camera_info_manager::CameraInfoManager& manager)
-    {/*
+    void publishCInfo(ros::Publisher& pub, string uri, camera_info_manager::CameraInfoManager& manager, sensor_msgs::Image img)
+    {
         sensor_msgs::CameraInfo c_info;
-        manager.loadCameraInfo(uri_wl_);
+        manager.loadCameraInfo(uri);
+        assert(manager.isCalibrated());
         c_info = manager.getCameraInfo();
+        c_info.header = img.header;
         pub.publish(c_info);
-     */
+
     }
 
     void triclopsColorImageToCvImage (TriclopsColorImage& input, cv::Mat& img, string text, bool show_image)
