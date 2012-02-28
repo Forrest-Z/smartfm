@@ -5,60 +5,6 @@
  *      Author: golfcar
  */
 
-/**************************************************************************
- *
- * Title:   xb3stereo
- * Copyright:   (C) 2006,2007,2008 Don Murray donm@ptgrey.com
- *
- * Description:
- *
- *    Get an image set from a Bumblebee or Bumblebee2 via DMA transfer
- *    using libdc1394 and process it with the Triclops stereo
- *    library. Based loosely on 'grab_gray_image' from libdc1394 examples.
- *
- *-------------------------------------------------------------------------
- *     License: LGPL
- *
- *  This library is free software; you can redistribute it and/or
- *  modify it under the terms of the GNU Lesser General Public
- *  License as published by the Free Software Foundation; either
- *  version 2.1 of the License, or (at your option) any later version.
- *
- *  This library is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  Lesser General Public License for more details.
- *
- *  You should have received a copy of the GNU Lesser General Public
- *  License along with this library; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- *
- *************************************************************************/
-
-//=============================================================================
-// Copyright © 2006,2007,2008 Point Grey Research, Inc. All Rights Reserved.
-//
-// This software is the confidential and proprietary information of Point
-// Grey Research, Inc. ("Confidential Information").  You shall not
-// disclose such Confidential Information and shall use it only in
-// accordance with the terms of the license agreement you entered into
-// with Point Grey Research Inc.
-//
-// PGR MAKES NO REPRESENTATIONS OR WARRANTIES ABOUT THE SUITABILITY OF THE
-// SOFTWARE, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-// PURPOSE, OR NON-INFRINGEMENT. PGR SHALL NOT BE LIABLE FOR ANY DAMAGES
-// SUFFERED BY LICENSEE AS A RESULT OF USING, MODIFYING OR DISTRIBUTING
-// THIS SOFTWARE OR ITS DERIVATIVES.
-//
-//=============================================================================
-
-//=============================================================================
-//
-// xb3stereo.cpp
-//
-//=============================================================================
-
 //=============================================================================
 // System Includes
 //=============================================================================
@@ -94,271 +40,10 @@
 
 using namespace std;
 
-static unsigned char dmap[768] =
-{ 150, 150, 150,
-  107, 0, 12,
-  106, 0, 18,
-  105, 0, 24,
-  103, 0, 30,
-  102, 0, 36,
-  101, 0, 42,
-  99, 0, 48,
-  98, 0, 54,
-  97, 0, 60,
-  96, 0, 66,
-  94, 0, 72,
-  93, 0, 78,
-  92, 0, 84,
-  91, 0, 90,
-  89, 0, 96,
-  88, 0, 102,
-  87, 0, 108,
-  85, 0, 114,
-  84, 0, 120,
-  83, 0, 126,
-  82, 0, 131,
-  80, 0, 137,
-  79, 0, 143,
-  78, 0, 149,
-  77, 0, 155,
-  75, 0, 161,
-  74, 0, 167,
-  73, 0, 173,
-  71, 0, 179,
-  70, 0, 185,
-  69, 0, 191,
-  68, 0, 197,
-  66, 0, 203,
-  65, 0, 209,
-  64, 0, 215,
-  62, 0, 221,
-  61, 0, 227,
-  60, 0, 233,
-  59, 0, 239,
-  57, 0, 245,
-  56, 0, 251,
-  55, 0, 255,
-  54, 0, 255,
-  52, 0, 255,
-  51, 0, 255,
-  50, 0, 255,
-  48, 0, 255,
-  47, 0, 255,
-  46, 0, 255,
-  45, 0, 255,
-  43, 0, 255,
-  42, 0, 255,
-  41, 0, 255,
-  40, 0, 255,
-  38, 0, 255,
-  37, 0, 255,
-  36, 0, 255,
-  34, 0, 255,
-  33, 0, 255,
-  32, 0, 255,
-  31, 0, 255,
-  29, 0, 255,
-  28, 0, 255,
-  27, 0, 255,
-  26, 0, 255,
-  24, 0, 255,
-  23, 0, 255,
-  22, 0, 255,
-  20, 0, 255,
-  19, 0, 255,
-  18, 0, 255,
-  17, 0, 255,
-  15, 0, 255,
-  14, 0, 255,
-  13, 0, 255,
-  11, 0, 255,
-  10, 0, 255,
-  9, 0, 255,
-  8, 0, 255,
-  6, 0, 255,
-  5, 0, 255,
-  4, 0, 255,
-  3, 0, 255,
-  1, 0, 255,
-  0, 4, 255,
-  0, 10, 255,
-  0, 16, 255,
-  0, 22, 255,
-  0, 28, 255,
-  0, 34, 255,
-  0, 40, 255,
-  0, 46, 255,
-  0, 52, 255,
-  0, 58, 255,
-  0, 64, 255,
-  0, 70, 255,
-  0, 76, 255,
-  0, 82, 255,
-  0, 88, 255,
-  0, 94, 255,
-  0, 100, 255,
-  0, 106, 255,
-  0, 112, 255,
-  0, 118, 255,
-  0, 124, 255,
-  0, 129, 255,
-  0, 135, 255,
-  0, 141, 255,
-  0, 147, 255,
-  0, 153, 255,
-  0, 159, 255,
-  0, 165, 255,
-  0, 171, 255,
-  0, 177, 255,
-  0, 183, 255,
-  0, 189, 255,
-  0, 195, 255,
-  0, 201, 255,
-  0, 207, 255,
-  0, 213, 255,
-  0, 219, 255,
-  0, 225, 255,
-  0, 231, 255,
-  0, 237, 255,
-  0, 243, 255,
-  0, 249, 255,
-  0, 255, 255,
-  0, 255, 249,
-  0, 255, 243,
-  0, 255, 237,
-  0, 255, 231,
-  0, 255, 225,
-  0, 255, 219,
-  0, 255, 213,
-  0, 255, 207,
-  0, 255, 201,
-  0, 255, 195,
-  0, 255, 189,
-  0, 255, 183,
-  0, 255, 177,
-  0, 255, 171,
-  0, 255, 165,
-  0, 255, 159,
-  0, 255, 153,
-  0, 255, 147,
-  0, 255, 141,
-  0, 255, 135,
-  0, 255, 129,
-  0, 255, 124,
-  0, 255, 118,
-  0, 255, 112,
-  0, 255, 106,
-  0, 255, 100,
-  0, 255, 94,
-  0, 255, 88,
-  0, 255, 82,
-  0, 255, 76,
-  0, 255, 70,
-  0, 255, 64,
-  0, 255, 58,
-  0, 255, 52,
-  0, 255, 46,
-  0, 255, 40,
-  0, 255, 34,
-  0, 255, 28,
-  0, 255, 22,
-  0, 255, 16,
-  0, 255, 10,
-  0, 255, 4,
-  2, 255, 0,
-  8, 255, 0,
-  14, 255, 0,
-  20, 255, 0,
-  26, 255, 0,
-  32, 255, 0,
-  38, 255, 0,
-  44, 255, 0,
-  50, 255, 0,
-  56, 255, 0,
-  62, 255, 0,
-  68, 255, 0,
-  74, 255, 0,
-  80, 255, 0,
-  86, 255, 0,
-  92, 255, 0,
-  98, 255, 0,
-  104, 255, 0,
-  110, 255, 0,
-  116, 255, 0,
-  122, 255, 0,
-  128, 255, 0,
-  133, 255, 0,
-  139, 255, 0,
-  145, 255, 0,
-  151, 255, 0,
-  157, 255, 0,
-  163, 255, 0,
-  169, 255, 0,
-  175, 255, 0,
-  181, 255, 0,
-  187, 255, 0,
-  193, 255, 0,
-  199, 255, 0,
-  205, 255, 0,
-  211, 255, 0,
-  217, 255, 0,
-  223, 255, 0,
-  229, 255, 0,
-  235, 255, 0,
-  241, 255, 0,
-  247, 255, 0,
-  253, 255, 0,
-  255, 251, 0,
-  255, 245, 0,
-  255, 239, 0,
-  255, 233, 0,
-  255, 227, 0,
-  255, 221, 0,
-  255, 215, 0,
-  255, 209, 0,
-  255, 203, 0,
-  255, 197, 0,
-  255, 191, 0,
-  255, 185, 0,
-  255, 179, 0,
-  255, 173, 0,
-  255, 167, 0,
-  255, 161, 0,
-  255, 155, 0,
-  255, 149, 0,
-  255, 143, 0,
-  255, 137, 0,
-  255, 131, 0,
-  255, 126, 0,
-  255, 120, 0,
-  255, 114, 0,
-  255, 108, 0,
-  255, 102, 0,
-  255, 96, 0,
-  255, 90, 0,
-  255, 84, 0,
-  255, 78, 0,
-  255, 72, 0,
-  255, 66, 0,
-  255, 60, 0,
-  255, 54, 0,
-  255, 48, 0,
-  255, 42, 0,
-  255, 36, 0,
-  255, 30, 0,
-  255, 24, 0,
-  255, 18, 0,
-  255, 12, 0,
-  255,  6, 0,
-  255,  0, 0,
-};
-
 class xb3
 {
 public:
 
-    string short_cal_, wide_cal_;
-    TriclopsContext wideTriclops_, shortTriclops_;
     dc1394camera_t*  camera_;
     string camera_name_;
     PGRStereoCamera_t stereoCamera_;
@@ -371,8 +56,8 @@ public:
     ros::Publisher info_nl_pub_, info_nr_pub_, info_wl_pub_, info_wr_pub_, narrow_pc_pub_, wide_pc_pub_;
     xb3() : priv_nh_("~"), it_(nh_),  c_info_narrow_left_(ros::NodeHandle(nh_, "bumblebee/left"),"bumblebee/narrow_left"),
             c_info_narrow_right_(ros::NodeHandle(nh_,"bumblebee/right"),"bumblebee/narrow_right"),
-            c_info_wide_left_(nh_, "bumblebee/wide_left"),
-            c_info_wide_right_(nh_, "bumblebee/wide_right")
+            c_info_wide_left_(ros::NodeHandle(nh_, "bumblebee/wide_left"), "bumblebee/wide_left"),
+            c_info_wide_right_(ros::NodeHandle(nh_, "bumblebee/wide_right"), "bumblebee/wide_right")
     {
 
         camera_name_ = string("bumblebee/");
@@ -380,8 +65,6 @@ public:
         wide_left_pub_ = it_.advertise(camera_name_+"wide_left/image_raw", 1);
         narrow_right_pub_ = it_.advertise(camera_name_+"right/image_raw", 1);
         wide_right_pub_ = it_.advertise(camera_name_+"wide_right/image_raw", 1);
-        narrow_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud>(camera_name_+"narrow_points", 1);
-        wide_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud>(camera_name_+"wide_points", 1);
 
 
         info_nl_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"left/camera_info", 1);
@@ -393,8 +76,7 @@ public:
         priv_nh_.param("uri_nr", uri_nr_, string("package://bumblebeeXB3_1394/narrow_right.ini"));
         priv_nh_.param("uri_wl", uri_wl_, string("package://bumblebeeXB3_1394/wide_left.ini"));
         priv_nh_.param("uri_wr", uri_wr_, string("package://bumblebeeXB3_1394/wide_right.ini"));
-        priv_nh_.param("short_calibration_file", short_cal_, string(""));
-        priv_nh_.param("wide_calibration_file", wide_cal_, string(""));
+
         if(!initialize()) return;
         publish_image();
 
@@ -481,134 +163,33 @@ private:
 
             ros::Time time = ros::Time::now();
             sensor_msgs::Image image_pub;
+            cv::Size image_size(640, 480);
+
             cv::Mat original_left(stereoCamera_.nRows, stereoCamera_.nCols,CV_8UC3);
             original_left.data = (uchar*)pucCenterRGB;
             cv::cvtColor(original_left, original_left, CV_BGR2RGB);
-            cv::resize(original_left, original_left, cv::Size(320, 240));
+            cv::resize(original_left, original_left, image_size);
             image_pub = publishImage(narrow_left_pub_, original_left, camera_name_+"narrow", time);
             publishCInfo(info_nl_pub_, uri_nl_, c_info_narrow_left_, image_pub);
+
+            cv::Mat original_wide_left(stereoCamera_.nRows, stereoCamera_.nCols,CV_8UC3);
+            original_wide_left.data = (uchar*)pucLeftRGB;
+            cv::cvtColor(original_wide_left, original_wide_left, CV_BGR2RGB);
+            cv::resize(original_wide_left, original_wide_left, image_size);
+            image_pub = publishImage(narrow_right_pub_, original_wide_left, camera_name_+"wide", time);
+            publishCInfo(info_wl_pub_, uri_wl_, c_info_wide_left_, image_pub);
 
             cv::Mat original_right(stereoCamera_.nRows, stereoCamera_.nCols,CV_8UC3);
             original_right.data = (uchar*)pucRightRGB;
             cv::cvtColor(original_right, original_right, CV_BGR2RGB);
-            cv::resize(original_right, original_right, cv::Size(320, 240));
+            cv::resize(original_right, original_right, image_size);
             image_pub = publishImage(narrow_right_pub_, original_right, camera_name_+"narrow", time);
             publishCInfo(info_nr_pub_, uri_nr_, c_info_narrow_right_, image_pub);
-
-            // rectify the left and right image with both the short and wide contexts
-            TriclopsColorImage rectLeft, rectCenter, rectShortRight, rectWideRight;
-
-            // copy the RGB buffer into an input structure
- /*           convertColorTriclopsInput( &colorInput, pucLeftRGB );
-            triclopsRectifyColorImage( wideTriclops_, TriCam_LEFT, &colorInput, &rectLeft );
-
-
-            convertColorTriclopsInput( &colorInput, pucCenterRGB );
-            triclopsRectifyColorImage( shortTriclops_, TriCam_LEFT, &colorInput, &rectCenter );
-
-            //the right cam appears to be the same no matter which triclops context is used
-            //to save bandwidth, we will not publish this
-            convertColorTriclopsInput( &colorInput, pucRightRGB );
-            triclopsRectifyColorImage( wideTriclops_, TriCam_RIGHT, &colorInput, &rectWideRight);
-            convertColorTriclopsInput( &colorInput, pucRightRGB );
-            triclopsRectifyColorImage( shortTriclops_, TriCam_RIGHT, &colorInput, &rectShortRight);
-
-            cv::Mat tmp, right;
-
-
-            triclopsColorImageToCvImage( rectLeft, tmp, "wide_left", false);
-            publishImage(wide_left_pub_, tmp, camera_name_+"wide", time);
-            //publishCInfo(info_wl_pub_, uri_wl_, c_info_wide_left_);
-
-            triclopsColorImageToCvImage( rectCenter, tmp, "narrow_left", false);
-            image_pub = publishImage(narrow_left_pub_, tmp, camera_name_+"narrow", time);
-            publishCInfo(info_nl_pub_, uri_nl_, c_info_narrow_left_, image_pub);
-
-            triclopsColorImageToCvImage( rectWideRight, tmp, "wide_right", false);
-            publishImage(wide_right_pub_, tmp, camera_name_+"wide", time);
-            //publishCInfo(info_wr_pub_, uri_wr_, c_info_wide_right_);
-
-            triclopsColorImageToCvImage( rectShortRight, right, "narrow_right", false);
-            image_pub = publishImage(narrow_right_pub_, tmp, camera_name_+"narrow", time);
-            publishCInfo(info_nr_pub_, uri_nr_, c_info_narrow_right_, image_pub);*/
-/*
-            //now the stereo processing
-            triclopsRectify( shortTriclops_, &shortInput);
-            triclopsRectify( wideTriclops_, &wideInput);
-            triclopsStereo( shortTriclops_ );
-            triclopsStereo( wideTriclops_ );
-            TriclopsImage16 shortDisparity, wideDisparity;
-            triclopsGetImage16( shortTriclops_, TriImg16_DISPARITY,
-                                TriCam_REFERENCE, &shortDisparity );
-            triclopsGetImage16( wideTriclops_, TriImg16_DISPARITY,
-                                TriCam_REFERENCE, &wideDisparity );
-
-            //now process and publish narrow point cloud
-            sensor_msgs::PointCloud narrow_pc;
-            narrow_pc.header.seq = i;
-            narrow_pc.header.stamp = time;
-            narrow_pc.header.frame_id = "bumblebee";
-            disparityToPointCloud (shortDisparity, shortTriclops_, right, narrow_pc);
-            narrow_pc_pub_.publish(narrow_pc);
-
-            //and wide point cloud
-            sensor_msgs::PointCloud wide_pc;
-            wide_pc.header.seq = i;
-            wide_pc.header.stamp = time;
-            wide_pc.header.frame_id = "bumblebee";
-            disparityToPointCloud (wideDisparity, wideTriclops_, right, wide_pc);
-            wide_pc_pub_.publish(wide_pc);
-*/
+            image_pub = publishImage(narrow_right_pub_, original_right, camera_name_+"wide", time);
+            publishCInfo(info_wr_pub_, uri_wr_, c_info_wide_right_, image_pub);
             ros::spinOnce();
         }
 
-    }
-
-
-    void disparityToPointCloud(TriclopsImage16& depthImage16_, TriclopsContext& triclops_, cv::Mat& right_image, sensor_msgs::PointCloud& cloud_)
-    {
-
-        unsigned short* disparityPixel = depthImage16_.data;
-        //unsigned char* rectPixel = &right_image.data;
-
-        geometry_msgs::Point32 p;
-
-        cloud_.channels.resize(1);
-        cloud_.channels[0].name = "rgb";
-        cloud_.points.clear();
-        //only process CV_8U with 3 channel
-        assert( right_image.type() == CV_8UC3);
-
-        vector<cv::Mat> right_image_3ch;
-        cv::split(right_image, right_image_3ch);
-        uchar* blue = right_image_3ch[0].data;
-        uchar* green = right_image_3ch[1].data;
-        uchar* red = right_image_3ch[2].data;
-        assert(right_image.cols == depthImage16_.ncols && right_image.rows == depthImage16_.nrows);
-        for( int row=0; row<depthImage16_.nrows; ++row ){
-            for( int col=0; col<depthImage16_.ncols; ++col ){
-                if ( *disparityPixel < 0xFF00 && *disparityPixel>0)
-                {
-                    triclopsRCD16ToXYZ( triclops_, row, col, *disparityPixel, &p.y, &p.z, &p.x );
-                    int array_ptr = row*right_image.cols+col;
-                    p.z = - p.z;
-                    p.y = - p.y;
-                    cloud_.points.push_back(p);
-                    int rgb = (red[array_ptr] << 16) | (green[array_ptr] << 8) | blue[array_ptr];
-                    float float_rgb = *reinterpret_cast<float*>(&rgb);
-                    cloud_.channels[0].values.push_back(float_rgb);
-                }
-                else
-                {
-                    p.x = 0.0;
-                    p.y = 0.0;
-                    p.z = 0.0;
-                }
-
-
-                disparityPixel++;
-            }
-        }
     }
 
     void publishCInfo(ros::Publisher& pub, string uri, camera_info_manager::CameraInfoManager& manager, sensor_msgs::Image img)
@@ -619,24 +200,6 @@ private:
         c_info = manager.getCameraInfo();
         c_info.header = img.header;
         pub.publish(c_info);
-
-    }
-
-    void triclopsColorImageToCvImage (TriclopsColorImage& input, cv::Mat& img, string text, bool show_image)
-    {
-        cv::Mat tmp_img(input.nrows, input.ncols,CV_8UC1);
-
-        std::vector<cv::Mat> merge_img;
-
-        tmp_img.data = (uchar*)input.blue; merge_img.push_back(tmp_img);
-        tmp_img.data = (uchar*)input.green; merge_img.push_back(tmp_img);
-        tmp_img.data = (uchar*)input.red; merge_img.push_back(tmp_img);
-        cv::merge( merge_img, img );
-        if(show_image)
-        {
-            cv::imshow(text, img);
-            cvWaitKey(2);
-        }
 
     }
 
@@ -655,35 +218,6 @@ private:
 
     bool initialize()
     {
-        char*        szShortCal  = (char*)short_cal_.c_str();
-        char*        szWideCal   = (char*)wide_cal_.c_str();
-
-        TriclopsError e;
-
-        printf( "Getting TriclopsContexts from files... \n" );
-        e = triclopsGetDefaultContextFromFile( &shortTriclops_,  szShortCal);
-        if ( e != TriclopsErrorOk )
-        {
-            fprintf( stderr, "Can't get short context from file\n" );
-            return false;
-        }
-
-        e = triclopsGetDefaultContextFromFile( &wideTriclops_, szWideCal);
-        if ( e != TriclopsErrorOk )
-        {
-            fprintf( stderr, "Can't get wide context from file\n" );
-            return false;
-        }
-        printf( "...done\n" );
-
-        // make sure we are in subpixel mode
-        triclopsSetSubpixelInterpolation( wideTriclops_, 1 );
-        triclopsSetSubpixelInterpolation( shortTriclops_, 1 );
-
-        // make sure we are only using one thread. Triclops crash with multiple threads
-        triclopsSetMaxThreadCount( wideTriclops_, 1);
-        triclopsSetMaxThreadCount( shortTriclops_, 1);
-
         //===================================================================
         // Find cameras on the 1394 buses
         dc1394_t * d;
@@ -792,52 +326,6 @@ private:
         return true;
     }
 
-    void convertColorTriclopsInput( TriclopsInput* colorInput, unsigned char* pucRGB )
-    {
-        unsigned char* pucInputData = (unsigned char*) colorInput->u.rgb32BitPacked.data;
-        for ( int i = 0, j = 0; i < colorInput->nrows * colorInput->ncols*3; )
-        {
-            // get R, G and B
-            pucInputData[j+2] = pucRGB[i++];
-            pucInputData[j+1] = pucRGB[i++];
-            pucInputData[j] = pucRGB[i++];
-            // increment the Input counter once more to skip the "U" byte
-            j += 4;
-        }
-        return;
-    }
-
-    int writePgm( char* szFilename, unsigned char* pucBuffer, int width, int height )
-    {
-        FILE* stream;
-        stream = fopen( szFilename, "wb" );
-        if( stream == NULL)
-        {
-            perror( "Can't open image file" );
-            return 1;
-        }
-
-        fprintf( stream, "P5\n%u %u 255\n", width, height );
-        fwrite( pucBuffer, width, height, stream );
-        fclose( stream );
-        return 0;
-    }
-
-    int writePpm( char* szFilename, unsigned char* pucBuffer, int width, int height )
-    {
-        FILE* stream;
-        stream = fopen( szFilename, "wb" );
-        if( stream == NULL)
-        {
-            perror( "Can't open image file" );
-            return 1;
-        }
-
-        fprintf( stream, "P6\n%u %u 255\n", width, height );
-        fwrite( pucBuffer, 3*width, height, stream );
-        fclose( stream );
-        return 0;
-    }
 
     void cleanup_and_exit( dc1394camera_t* camera )
     {
@@ -849,14 +337,6 @@ private:
 };
 
 
-
-
-
-
-
-//=============================================================================
-// MAIN
-//
 int main( int argc, char *argv[] )
 {
     ros::init(argc, argv, "xb3");
