@@ -1,15 +1,3 @@
-CMakeCache.txt
-CMakeFiles/
-Makefile
-cmake_install.cmake
-images/
-libcardetect.a
-multi_cam_detect
-test_background
-test_detection
-test_motion_detect
-test_playback_time
-.pydevproject
 cfg/*.cfgc
 cfg/cpp/
 docs/

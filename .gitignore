@@ -10,3 +10,4 @@ srv_gen
 .project
 .cproject
 core
+.pydevproject
