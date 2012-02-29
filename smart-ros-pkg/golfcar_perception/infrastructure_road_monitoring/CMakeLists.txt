@@ -63,3 +63,9 @@ target_link_libraries(blob_area_filter ${PROJECT_NAME})
 
 ADD_EXECUTABLE(blob_display src/nodes/blob_display.cpp src/data_msg_conv.cpp)
 target_link_libraries(blob_display ${PROJECT_NAME})
+
+ADD_EXECUTABLE(blob_tracker src/nodes/blob_tracker.cpp src/data_msg_conv.cpp)
+target_link_libraries(blob_tracker ${PROJECT_NAME})
+
+ADD_EXECUTABLE(track_display src/nodes/track_display.cpp src/data_msg_conv.cpp)
+target_link_libraries(track_display ${PROJECT_NAME})

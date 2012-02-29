@@ -35,11 +35,21 @@ public:
         reset();
     }
 
+    /// Returns the current value of the filter. Throws a runtime_error if
+    /// the filter has not been initialized.
     double value() const
     {
         if( ! this->initialized )
             throw std::runtime_error("Trying to get the value from an uninitialized filter");
         return this->y;
+    }
+
+    /// Sets the current value of the filter (and time to 0)
+    double value(double x)
+    {
+        this->initialized = true;
+        this->t = 0;
+        this->y = x;
     }
 
     /// Reset the filter
