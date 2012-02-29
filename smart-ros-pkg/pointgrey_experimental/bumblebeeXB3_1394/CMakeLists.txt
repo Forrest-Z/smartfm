@@ -30,3 +30,5 @@ rosbuild_add_executable(xb3 src/xb3.cpp src/pgr_conversions.cpp src/pgr_register
 #rosbuild_add_link_flags(xb3 -ldc1394)
 target_link_libraries(xb3 pnmutils ${OpenCV_LIBS} triclops dc1394)
 rosbuild_add_executable(time_server src/time_server.cpp)
+rosbuild_add_executable(triclops_stereo src/triclopsStereo.cpp)
+target_link_libraries(triclops_stereo pnmutils ${OpenCV_LIBS} triclops dc1394)
