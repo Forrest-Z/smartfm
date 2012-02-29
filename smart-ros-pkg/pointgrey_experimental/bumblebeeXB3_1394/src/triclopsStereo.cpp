@@ -5,44 +5,12 @@
  *      Author: golfcar
  */
 
-//=============================================================================
-// System Includes
-//=============================================================================
-#include <stdlib.h>
-#include <stdio.h>
-#include <assert.h>
+#include <xb3.h>
 
-#include <dc1394/conversions.h>
-#include <dc1394/control.h>
-#include <dc1394/utils.h>
-
-
-//=============================================================================
-// PGR Includes
-//=============================================================================
-#include "pgr_registers.h"
-#include "pgr_stereocam.h"
-#include <triclops/pnmutils.h>
-#include <triclops/triclopsimageio.h>
-
-#include <ros/ros.h>
-#include <sensor_msgs/image_encodings.h>
-#include <sensor_msgs/Image.h>
-#include <sensor_msgs/CameraInfo.h>
-#include <image_transport/image_transport.h>
-
-#include <cv_bridge/cv_bridge.h>
-#include <opencv/cv.h>
-#include <opencv2/highgui/highgui.hpp>
-
-#include <sensor_msgs/PointCloud.h>
-#include <camera_info_manager/camera_info_manager.h>
-#include <message_filters/subscriber.h>
-#include <message_filters/time_synchronizer.h>
-#include <image_transport/subscriber_filter.h>
 using namespace std;
+using namespace xb3;
 
-class triclops_stereo
+class triclops_rect
 {
 public:
 
@@ -57,7 +25,7 @@ public:
     //image_transport::Publisher wide_left_pub_, narrow_left_pub_, wide_right_pub_, narrow_right_pub_;
     ros::Publisher narrow_pc_pub_, wide_pc_pub_;
     image_transport::SubscriberFilter left_sub_, center_sub_, right_sub_;
-    triclops_stereo() : priv_nh_("~"), it_(nh_)
+    triclops_rect() : priv_nh_("~"), it_(nh_)
     {
 
         camera_name_ = string("bumblebee/");
@@ -178,144 +146,6 @@ private:
 
     }
 
-    void disparityToPointCloud(TriclopsImage16& depthImage16_, TriclopsContext& triclops_, cv::Mat& right_image, sensor_msgs::PointCloud& cloud_)
-    {
-
-        unsigned short* disparityPixel = depthImage16_.data;
-        //unsigned char* rectPixel = &right_image.data;
-
-        geometry_msgs::Point32 p;
-
-        cloud_.channels.resize(1);
-        cloud_.channels[0].name = "rgb";
-        cloud_.points.clear();
-        //only process CV_8U with 3 channel
-        assert( right_image.type() == CV_8UC3);
-
-        vector<cv::Mat> right_image_3ch;
-        cv::split(right_image, right_image_3ch);
-        uchar* blue = right_image_3ch[0].data;
-        uchar* green = right_image_3ch[1].data;
-        uchar* red = right_image_3ch[2].data;
-        assert(right_image.cols == depthImage16_.ncols && right_image.rows == depthImage16_.nrows);
-        for( int row=0; row<depthImage16_.nrows; ++row ){
-            for( int col=0; col<depthImage16_.ncols; ++col ){
-                if ( *disparityPixel < 0xFF00 && *disparityPixel>0)
-                {
-                    triclopsRCD16ToXYZ( triclops_, row, col, *disparityPixel, &p.y, &p.z, &p.x );
-                    int array_ptr = row*right_image.cols+col;
-                    p.z = - p.z;
-                    p.y = - p.y;
-                    cloud_.points.push_back(p);
-                    int rgb = (red[array_ptr] << 16) | (green[array_ptr] << 8) | blue[array_ptr];
-                    float float_rgb = *reinterpret_cast<float*>(&rgb);
-                    cloud_.channels[0].values.push_back(float_rgb);
-                }
-                else
-                {
-                    p.x = 0.0;
-                    p.y = 0.0;
-                    p.z = 0.0;
-                }
-
-
-                disparityPixel++;
-            }
-        }
-    }
-
-    void publishCInfo(ros::Publisher& pub, string uri, camera_info_manager::CameraInfoManager& manager, sensor_msgs::Image img)
-    {
-        sensor_msgs::CameraInfo c_info;
-        manager.loadCameraInfo(uri);
-        assert(manager.isCalibrated());
-        c_info = manager.getCameraInfo();
-        c_info.header = img.header;
-        pub.publish(c_info);
-
-    }
-
-    void triclopsColorImageToCvImage (TriclopsColorImage& input, cv::Mat& img, string text, bool show_image)
-    {
-        cv::Mat tmp_img(input.nrows, input.ncols,CV_8UC1);
-
-        std::vector<cv::Mat> merge_img;
-
-        tmp_img.data = (uchar*)input.blue; merge_img.push_back(tmp_img);
-        tmp_img.data = (uchar*)input.green; merge_img.push_back(tmp_img);
-        tmp_img.data = (uchar*)input.red; merge_img.push_back(tmp_img);
-        cv::merge( merge_img, img );
-        if(show_image)
-        {
-            cv::imshow(text, img);
-            cvWaitKey(2);
-        }
-
-    }
-
-    sensor_msgs::Image publishImage(const image_transport::Publisher& pub, cv::Mat& img, string frame_id, const ros::Time& stamp)
-    {
-        sensor_msgs::Image image;
-        cv_bridge::CvImage cvImage;
-        cvImage.image = img;
-        cvImage.toImageMsg(image);
-        image.encoding = sensor_msgs::image_encodings::BGR8;
-        image.header.stamp = stamp;
-        image.header.frame_id = frame_id;
-        pub.publish(image);
-        return image;
-    }
-
-    bool initialize()
-    {
-        char*        szShortCal  = (char*)short_cal_.c_str();
-        char*        szWideCal   = (char*)wide_cal_.c_str();
-
-        TriclopsError e;
-
-        printf( "Getting TriclopsContexts from files... \n" );
-        e = triclopsGetDefaultContextFromFile( &shortTriclops_,  szShortCal);
-        if ( e != TriclopsErrorOk )
-        {
-            fprintf( stderr, "Can't get short context from file\n" );
-            return false;
-        }
-
-        e = triclopsGetDefaultContextFromFile( &wideTriclops_, szWideCal);
-        if ( e != TriclopsErrorOk )
-        {
-            fprintf( stderr, "Can't get wide context from file\n" );
-            return false;
-        }
-        printf( "...done\n" );
-
-        // make sure we are in subpixel mode
-        triclopsSetSubpixelInterpolation( wideTriclops_, 1 );
-        triclopsSetSubpixelInterpolation( shortTriclops_, 1 );
-
-        // make sure we are only using one thread. Triclops crash with multiple threads
-        triclopsSetMaxThreadCount( wideTriclops_, 1);
-        triclopsSetMaxThreadCount( shortTriclops_, 1);
-
-
-        return true;
-    }
-
-    void convertColorTriclopsInput( TriclopsInput* colorInput, unsigned char* pucRGB )
-    {
-        unsigned char* pucInputData = (unsigned char*) colorInput->u.rgb32BitPacked.data;
-        for ( int i = 0, j = 0; i < colorInput->nrows * colorInput->ncols*3; )
-        {
-            // get R, G and B
-            pucInputData[j+2] = pucRGB[i++];
-            pucInputData[j+1] = pucRGB[i++];
-            pucInputData[j] = pucRGB[i++];
-            // increment the Input counter once more to skip the "U" byte
-            j += 4;
-        }
-        return;
-    }
-
     int writePgm( char* szFilename, unsigned char* pucBuffer, int width, int height )
     {
         FILE* stream;
@@ -347,14 +177,6 @@ private:
         fclose( stream );
         return 0;
     }
-
-    void cleanup_and_exit( dc1394camera_t* camera )
-    {
-        dc1394_capture_stop( camera );
-        dc1394_video_set_transmission( camera, DC1394_OFF );
-        dc1394_camera_free( camera );
-        exit( 0 );
-    }
 };
 
 
@@ -368,8 +190,8 @@ private:
 //
 int main( int argc, char *argv[] )
 {
-    ros::init(argc, argv, "triclopsStereo");
-    triclops_stereo TriclopsStereo;
+    ros::init(argc, argv, "triclopsRect");
+    triclops_rect TriclopsRect;
 
     return 0;
 }
