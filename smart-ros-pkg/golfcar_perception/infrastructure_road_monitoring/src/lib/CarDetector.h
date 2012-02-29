@@ -26,7 +26,6 @@ public:
     MovingObjectDetector detector;
     BlobExtractor blob_extractor;
     BlobFilterArea areaFilter;
-    Tracks tracks;
     TrackMatcherNNT trackMatcher;
     BlobTracker tracker;
 

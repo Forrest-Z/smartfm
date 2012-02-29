@@ -9,3 +9,8 @@ test_background
 test_detection
 test_motion_detect
 test_playback_time
+.pydevproject
+cfg/*.cfgc
+cfg/cpp/
+docs/
+src/infrastructure_road_monitoring/
