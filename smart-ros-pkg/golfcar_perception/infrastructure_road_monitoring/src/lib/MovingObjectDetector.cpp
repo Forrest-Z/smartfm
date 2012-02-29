@@ -45,17 +45,17 @@ cv::Mat Background::getImg()
 
 MovingObjectDetector::MovingObjectDetector()
 : diff_thresh(70),
-  dilate_size(10),
-  erode_size(10)
+  dilate_size(40),
+  erode_size(40)
 {
 
 }
 
-void MovingObjectDetector::diff(cv::Mat frame, cv::Mat backImage)
+void MovingObjectDetector::diff(cv::Mat frame, cv::Mat background)
 {
     // compute difference between current image and background
     cv::Mat tmp;
-    cv::absdiff(backImage, frame, tmp);
+    cv::absdiff(background, frame, tmp);
 
     cvtColor(tmp, tmp, CV_BGR2GRAY);
 

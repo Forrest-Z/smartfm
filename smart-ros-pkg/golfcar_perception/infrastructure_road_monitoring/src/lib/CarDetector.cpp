@@ -2,34 +2,40 @@
 
 using namespace std;
 
+class AdaptiveMatcherThreshold : public MatcherThreshold
+{
+public:
+    double threshold(const Track & track, const Blob & b)
+    {
+        vector<Observation>::const_reverse_iterator rit;
+        for( rit=track.observations.rbegin(); rit!=track.observations.rend(); ++rit )
+            if( rit->observed && rit->timestamp < b.timestamp )
+                break;
+        double dt = b.timestamp - rit->timestamp;
+
+        double alpha_y = 1 + (double)b.centroid.y / 720; //frame height is 720
+        double th = dt * 150 * pow(alpha_y,5);
+
+        cout <<"dt=" <<dt <<", th=" <<th <<endl;
+        assert(dt>0);
+        return th;
+    }
+};
+
 CarDetector::CarDetector()
-: areaFilter(500), trackMatcher(tracks), tracker(tracks)
+: areaFilter(500)
 
 {
     background.alpha = 0.005;
     detector.diff_thresh = 70;
     detector.dilate_size = 40;
     detector.erode_size  = 40;
-    trackMatcher.match_threshold = boost::bind(&CarDetector::adaptiveThresholdFn, this, _1, _2);
+    trackMatcher.match_threshold = new AdaptiveMatcherThreshold();
     tracker.matcher = &trackMatcher;
     tracker.unobserved_threshold_remove = 10;
 }
 
-double CarDetector::adaptiveThresholdFn(const Track & track, const Blob & b)
-{
-    vector<Observation>::const_reverse_iterator rit;
-    for( rit=track.observations.rbegin(); rit!=track.observations.rend(); ++rit )
-        if( rit->observed && rit->timestamp < b.timestamp )
-            break;
-    double dt = b.timestamp - rit->timestamp;
 
-    double alpha_y = 1 + (double)b.centroid.y / frame_height;
-    double th = dt * 150 * pow(alpha_y,5);
-
-    cout <<"dt=" <<dt <<", th=" <<th <<endl;
-    assert(dt>0);
-    return th;
-}
 
 bool CarDetector::update(cv::Mat frame, double time)
 {

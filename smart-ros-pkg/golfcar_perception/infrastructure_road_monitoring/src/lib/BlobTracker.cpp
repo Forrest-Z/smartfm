@@ -103,78 +103,55 @@ void Track::addObservation(const Blob & blob)
 
 
 
-
-
-
-TrackMatcher::TrackMatcher(Tracks & t)
-: tracks(t), matched_track_it(t.end())
-{
-
-}
-
-TrackMatcherNNT::FixedThreshold::FixedThreshold()
+FixedMatcherThreshold::FixedMatcherThreshold()
 : th( std::numeric_limits<double>::infinity() )
 {
 
 }
 
-TrackMatcherNNT::FixedThreshold::FixedThreshold(double t) : th(t)
+FixedMatcherThreshold::FixedMatcherThreshold(double t) : th(t)
 {
 
 }
 
-double TrackMatcherNNT::FixedThreshold::operator() (const Track & track, const Blob & b)
+double FixedMatcherThreshold::threshold(const Track & track, const Blob & b)
 {
     return th;
 }
 
-TrackMatcherNNT::TrackMatcherNNT(Tracks & t)
-: TrackMatcher(t), match_threshold(TrackMatcherNNT::FixedThreshold())
+TrackMatcherNNT::TrackMatcherNNT()
+: match_threshold(0)
 {
 
 }
 
-TrackMatcherNNT::TrackMatcherNNT(Tracks & t, double threshold)
-: TrackMatcher(t), match_threshold(TrackMatcherNNT::FixedThreshold(threshold))
+Tracks::iterator TrackMatcherNNT::match(Tracks & tracks, const Blob & blob)
 {
-
-}
-
-TrackMatcherNNT::TrackMatcherNNT(Tracks & t, TrackMatcherNNT::ThresholdFn & f)
-: TrackMatcher(t), match_threshold(f)
-{
-
-}
-
-bool TrackMatcherNNT::match(const Blob & blob)
-{
-    if( tracks.empty() )
-        return false;
+    assert( match_threshold!=0 );
 
     match_distance = numeric_limits<double>::infinity();
-    matched_track_it = tracks.end();
+    Tracks::iterator matched_track_it = tracks.end();
 
-    for( Tracks::iterator it=tracks.begin(); it!=tracks.end(); ++it )
+    for( Tracks::iterator it = tracks.begin(); it!=tracks.end(); ++it )
     {
         double d = it->distance(blob);
         cout <<"distance to track " <<it->id <<": " <<d <<endl;
-        if( d < match_distance && d < match_threshold(*it, blob) )
+        if( d < match_distance && d < match_threshold->threshold(*it, blob) )
         {
             match_distance = d;
             matched_track_it = it;
         }
     }
 
-    return matched_track_it != tracks.end();
+    return matched_track_it;
 }
 
 
 
 
 
-BlobTracker::BlobTracker(Tracks & t)
-: tracks(t),
-  unobserved_threshold_remove(UINT_MAX)
+BlobTracker::BlobTracker()
+: matcher(0), unobserved_threshold_remove(UINT_MAX)
 {
 
 }
@@ -206,9 +183,10 @@ void BlobTracker::update(const vector<Blob> & in_blobs)
     //  - no : create a new track
     for( unsigned i=0; i<in_blobs.size(); i++ ) {
         cout <<"Matching blob " <<i <<endl;
-        if( matcher->match(in_blobs[i]) ) {
-            cout <<"blob " <<i <<" matched with track " <<matcher->matched_track_it->id <<endl;
-            matcher->matched_track_it->addObservation(in_blobs[i]);
+        Tracks::iterator it = matcher->match(tracks, in_blobs[i]);
+        if( it!=tracks.end() ) {
+            cout <<"blob " <<i <<" matched with track " <<it->id <<endl;
+            it->addObservation(in_blobs[i]);
         }
         else {
             tracks.push_back( Track::newTrack(in_blobs[i]) );
