@@ -43,3 +43,36 @@ void blobMsgToData(Blob * data, const infrastructure_road_monitoring::Blob & msg
     data->centroid.y = (int) msg.centroid.y;
     data->timestamp = time;
 }
+
+
+
+
+infrastructure_road_monitoring::Track trackDataToMsg(const Track & data)
+{
+    infrastructure_road_monitoring::Track msg;
+    trackDataToMsg(&msg, data);
+    return msg;
+}
+
+void trackDataToMsg(infrastructure_road_monitoring::Track *msg, const Track & data)
+{
+    msg->id = data.id;
+    try { msg->xvel = data.vel_x.value(); } catch(std::runtime_error & e) { msg->xvel=0; }
+    try { msg->yvel = data.vel_y.value(); } catch(std::runtime_error & e) { msg->yvel=0; }
+    blobDataToMsg(&(msg->blob), data.latestObserved());
+}
+
+Track trackMsgToData(const infrastructure_road_monitoring::Track & msg)
+{
+    Track data;
+    trackMsgToData(&data, msg);
+    return data;
+}
+
+void trackMsgToData(Track * data, const infrastructure_road_monitoring::Track & msg)
+{
+    data->id = msg.id;
+    data->vel_x.value(msg.xvel);
+    data->vel_y.value(msg.yvel);
+    data->observations.push_back( blobMsgToData(msg.blob, 0) );
+}

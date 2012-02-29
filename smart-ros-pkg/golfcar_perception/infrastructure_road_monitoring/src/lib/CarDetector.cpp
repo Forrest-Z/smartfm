@@ -2,25 +2,6 @@
 
 using namespace std;
 
-class AdaptiveMatcherThreshold : public MatcherThreshold
-{
-public:
-    double threshold(const Track & track, const Blob & b)
-    {
-        vector<Observation>::const_reverse_iterator rit;
-        for( rit=track.observations.rbegin(); rit!=track.observations.rend(); ++rit )
-            if( rit->observed && rit->timestamp < b.timestamp )
-                break;
-        double dt = b.timestamp - rit->timestamp;
-
-        double alpha_y = 1 + (double)b.centroid.y / 720; //frame height is 720
-        double th = dt * 150 * pow(alpha_y,5);
-
-        cout <<"dt=" <<dt <<", th=" <<th <<endl;
-        assert(dt>0);
-        return th;
-    }
-};
 
 CarDetector::CarDetector()
 : areaFilter(500)

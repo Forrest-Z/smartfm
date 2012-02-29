@@ -65,6 +65,8 @@ public:
 
     Observation & latestObserved();
     const Observation & latestObserved() const;
+
+    void display(cv::Mat displayFrame, cv::Scalar color=CV_RGB(255,0,0));
 };
 
 
@@ -97,6 +99,12 @@ public:
     double threshold(const Track & track, const Blob & b);
 };
 
+class AdaptiveMatcherThreshold : public MatcherThreshold
+{
+public:
+    double threshold(const Track & track, const Blob & b);
+};
+
 /// Search all tracks for one that matches a given Blob. Abstract base class.
 class TrackMatcher
 {
@@ -126,6 +134,10 @@ public:
 
     TrackMatcherNNT();
 
+    /// Searches all tracks for one that matches a given Blob. If one is found
+    /// then returns an iterator to it, otherwise returns the end iterator.
+    /// A blob is matched to the nearest track, if the distance is smaller
+    /// than a threshold (see match_treshold).
     Tracks::iterator match(Tracks & tracks, const Blob & blob);
 };
 

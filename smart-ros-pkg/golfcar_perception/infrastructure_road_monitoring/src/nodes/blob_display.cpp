@@ -13,9 +13,6 @@
 #include <message_filters/time_synchronizer.h>
 #include <opencv2/highgui/highgui.hpp>
 
-#include <dynamic_reconfigure/server.h>
-#include <infrastructure_road_monitoring/BlobExtractorConfig.h>
-
 #include <infrastructure_road_monitoring/Blobs.h>
 
 #include "Blob.h"

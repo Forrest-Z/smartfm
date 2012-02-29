@@ -101,6 +101,15 @@ void Track::addObservation(const Blob & blob)
     }
 }
 
+void Track::display(cv::Mat displayFrame, cv::Scalar color)
+{
+    stringstream ss;
+    ss << id;
+    cv::putText(displayFrame, ss.str(), latestObserved().centroid,
+                    cv::FONT_HERSHEY_COMPLEX_SMALL, 2,
+                    color, 1, CV_AA);
+}
+
 
 
 FixedMatcherThreshold::FixedMatcherThreshold()
@@ -116,6 +125,22 @@ FixedMatcherThreshold::FixedMatcherThreshold(double t) : th(t)
 
 double FixedMatcherThreshold::threshold(const Track & track, const Blob & b)
 {
+    return th;
+}
+
+double AdaptiveMatcherThreshold::threshold(const Track & track, const Blob & b)
+{
+    vector<Observation>::const_reverse_iterator rit;
+    for( rit=track.observations.rbegin(); rit!=track.observations.rend(); ++rit )
+        if( rit->observed && rit->timestamp < b.timestamp )
+            break;
+    double dt = b.timestamp - rit->timestamp;
+
+    double alpha_y = 1 + (double)b.centroid.y / 720; //frame height is 720
+    double th = dt * 150 * pow(alpha_y,5);
+
+    cout <<"dt=" <<dt <<", th=" <<th <<endl;
+    assert(dt>0);
     return th;
 }
 
@@ -151,7 +176,7 @@ Tracks::iterator TrackMatcherNNT::match(Tracks & tracks, const Blob & blob)
 
 
 BlobTracker::BlobTracker()
-: matcher(0), unobserved_threshold_remove(UINT_MAX)
+: matcher(0), unobserved_threshold_remove(10)
 {
 
 }
@@ -181,51 +206,54 @@ void BlobTracker::update(const vector<Blob> & in_blobs)
     // For each blob in in_blobs, check whether it is already tracked.
     //  - yes: update
     //  - no : create a new track
+    // updatedTracks holds the iterator to the tracks that have been updated
+    vector<Tracks::iterator> updatedTracks;
     for( unsigned i=0; i<in_blobs.size(); i++ ) {
         cout <<"Matching blob " <<i <<endl;
         Tracks::iterator it = matcher->match(tracks, in_blobs[i]);
         if( it!=tracks.end() ) {
             cout <<"blob " <<i <<" matched with track " <<it->id <<endl;
             it->addObservation(in_blobs[i]);
+            updatedTracks.push_back(it);
         }
         else {
-            tracks.push_back( Track::newTrack(in_blobs[i]) );
+            it = tracks.insert( tracks.end(), Track::newTrack(in_blobs[i]) );
+            updatedTracks.push_back(it);
             cout <<"blob " <<i <<" cannot be matched. Creating a new track: " <<tracks.back().id <<endl;
         }
     }
 
-    /// Wherever there was no update, create an unobserved observation
-    /// and delete the track if necessary
-    for( Tracks::iterator it=tracks.begin(); it!=tracks.end(); )
+    // Wherever there was no update, create an unobserved observation
+    for( Tracks::iterator it=tracks.begin(); it!=tracks.end(); ++it )
     {
-        if( it->observations.back().timestamp < in_blobs.front().timestamp )
+        if( find(updatedTracks.begin(), updatedTracks.end(), it)==updatedTracks.end() )
         {
             cout <<"Track " <<it->id <<" unobserved" <<endl;
             Observation obs;
-            obs.timestamp = in_blobs.front().timestamp;
+            obs.timestamp = in_blobs.empty() ? 0 : in_blobs.front().timestamp;
             it->observations.push_back( obs );
-
-            vector<Observation>::const_reverse_iterator rit;
-            for( rit=it->observations.rbegin(); rit!=it->observations.rend() && ! rit->observed; ++rit );
-
-            if( rit - it->observations.rbegin() > (int)unobserved_threshold_remove ) {
-                cout <<"Removing track " <<it->id <<endl;
-                it = tracks.erase(it);
-                continue;
-            }
         }
-        ++it;
+    }
+
+    // remove tracks that haven't been updated in a long time
+    for( Tracks::iterator it=tracks.begin(); it!=tracks.end(); )
+    {
+        // Find the last observed observation
+        vector<Observation>::const_reverse_iterator rit;
+        for( rit=it->observations.rbegin(); rit!=it->observations.rend() && ! rit->observed; ++rit );
+
+        if( rit - it->observations.rbegin() > (int)unobserved_threshold_remove ) {
+            cout <<"Removing track " <<it->id <<endl;
+            it = tracks.erase(it);
+        }
+        else {
+            ++it;
+        }
     }
 }
 
 void BlobTracker::display(cv::Mat & displayFrame, cv::Scalar color)
 {
     for( Tracks::iterator it=tracks.begin(); it!=tracks.end(); ++it )
-    {
-        stringstream ss;
-        ss << it->id;
-        cv::putText(displayFrame, ss.str(), it->latestObserved().centroid,
-                        cv::FONT_HERSHEY_COMPLEX_SMALL, 2,
-                        color, 1, CV_AA);
-    }
+        it->display(displayFrame, color);
 }
