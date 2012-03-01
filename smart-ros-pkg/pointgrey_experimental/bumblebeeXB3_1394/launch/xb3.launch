@@ -1,0 +1,33 @@
+<launch>
+    <node pkg="tf" type="static_transform_publisher" name="bumblebee_wide_to_xb3base" args="0 0 0 0 -1.5796327 1.570796327 bumblebee/wide xb3_base 1" />
+    <node pkg="tf" type="static_transform_publisher" name="bumblebee_narrow_to_xb3base" args="0 0 0 0 -1.5796327 1.570796327 bumblebee/narrow xb3_base 1" />
+    <node pkg="bumblebeeXB3_1394" type="triclopsRect" name="triclopsRect">
+        <param name="short_calibration_file" value="$(find bumblebeeXB3_1394)/calibration/narrow.cal"/>
+        <param name="wide_calibration_file" value="$(find bumblebeeXB3_1394)/calibration/wide.cal"/>
+    </node>
+    <node pkg="bumblebeeXB3_1394" type="xb3" name="xb3_1394"/>
+    <node pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc_raw_narrow" ns="bumblebee/raw_narrow">
+        <remap from="left/image_raw" to="/bumblebee/left/image_raw"/>
+        <remap from="right/image_raw" to="/bumblebee/right/image_raw"/>
+        <remap from="left/camera_info" to="/bumblebee/left/camera_info"/>
+        <remap from="right/camera_info" to="/bumblebee/right/camera_info"/>
+    </node>
+    <node pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc_raw_wide" ns="bumblebee/raw_wide">
+        <remap from="left/image_raw" to="/bumblebee/wide_left/image_raw"/>
+        <remap from="right/image_raw" to="/bumblebee/wide_right/image_raw"/>
+        <remap from="left/camera_info" to="/bumblebee/wide_left/camera_info"/>
+        <remap from="right/camera_info" to="/bumblebee/wide_right/camera_info"/>
+    </node>
+    <node pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc_rect_narrow" ns="bumblebee/rect_narrow">
+        <remap from="left/image_raw" to="/bumblebee/tri_left/image_raw"/>
+        <remap from="right/image_raw" to="/bumblebee/tri_right/image_raw"/>
+        <remap from="left/camera_info" to="/bumblebee/tri_left/camera_info"/>
+        <remap from="right/camera_info" to="/bumblebee/tri_right/camera_info"/>
+    </node>
+    <node pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc_rect_wide" ns="bumblebee/rect_wide">
+        <remap from="left/image_raw" to="/bumblebee/tri_wide_left/image_raw"/>
+        <remap from="right/image_raw" to="/bumblebee/tri_wide_right/image_raw"/>
+        <remap from="left/camera_info" to="/bumblebee/tri_wide_left/camera_info"/>
+        <remap from="right/camera_info" to="/bumblebee/tri_wide_right/camera_info"/>
+    </node>
+</launch>
