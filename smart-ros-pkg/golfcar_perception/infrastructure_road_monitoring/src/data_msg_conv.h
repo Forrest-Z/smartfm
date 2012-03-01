@@ -1,9 +1,7 @@
 #ifndef DATA_MSG_CONV_H_
 #define DATA_MSG_CONV_H_
 
-#include "Blob.h"
-#include "BlobTracker.h"
-
+#include <infrastructure_road_monitoring/data_def.h>
 #include <infrastructure_road_monitoring/Blobs.h>
 #include <infrastructure_road_monitoring/Tracks.h>
 

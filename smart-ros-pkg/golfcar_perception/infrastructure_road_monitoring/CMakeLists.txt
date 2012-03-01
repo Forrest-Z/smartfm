@@ -34,10 +34,9 @@ include_directories(src/lib)
 
 rosbuild_add_library(${PROJECT_NAME}
     src/lib/MovingObjectDetector.cpp
-    src/lib/Blob.cpp
+    src/lib/data_def.cpp
     src/lib/BlobExtractor.cpp
     src/lib/BlobFilter.cpp
-    src/lib/Tracks.cpp
 )
 
 #add dynamic reconfigure api

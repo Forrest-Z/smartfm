@@ -1,12 +1,25 @@
-#ifndef TRACKS_H_
-#define TRACKS_H_
+#ifndef DATA_DEF_H_
+#define DATA_DEF_H_
 
 #include <vector>
 #include <list>
-
 #include <cv.h>
 
-#include "Blob.h"
+#include <fmutil/fm_filter.h>
+
+class Blob
+{
+public:
+    std::vector<cv::Point> contour;
+    cv::Point centroid;
+    double timestamp; ///< time in seconds when this blob was extracted
+
+    Blob();
+
+    void drawContour(cv::Mat & displayFrame, cv::Scalar color) const;
+    void drawCentroid(cv::Mat & displayFrame, cv::Scalar color, int radius=5, int thickness=-1) const;
+};
+
 
 /// A class to hold Observation data
 class Observation : public Blob
@@ -25,7 +38,9 @@ public:
     Observation(const Blob & blob, const Observation & pre);
 };
 
+
 typedef std::vector<Observation> Observations;
+
 
 /// A class to hold history of observations
 class Track
@@ -40,7 +55,6 @@ public:
     Observations observations;
     unsigned id;
     fmutil::LowPassFilter vel_x, vel_y;
-
 
 public:
     /// Creates a Track with an ID of 0
@@ -72,4 +86,4 @@ public:
 typedef std::list<Track> Tracks;
 
 
-#endif /* TRACKS_H_ */
+#endif /* DATA_DEF_H_ */

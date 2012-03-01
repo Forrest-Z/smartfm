@@ -7,10 +7,10 @@
 
 #include <fmutil/fm_filter.h>
 
-#include "Tracks.h"
+#include <infrastructure_road_monitoring/data_def.h>
 
 
-/// Generates a threshold for the nearest neighbors matcher, given a blob and
+/// Generates a threshold for the nearest neighbours matcher, given a blob and
 /// a track. Abstract base class.
 class MatcherThreshold
 {
@@ -65,7 +65,7 @@ public:
     /// is smaller than this threshold
     MatcherThreshold * match_threshold;
 
-    /// Once a match occured, this is the distance to the closest match
+    /// Once a match occurred, this is the distance to the closest match
     double match_distance;
 
     TrackMatcherNNT();

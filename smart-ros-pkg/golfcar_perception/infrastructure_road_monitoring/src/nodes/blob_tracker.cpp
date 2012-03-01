@@ -2,8 +2,8 @@
 
 #include <infrastructure_road_monitoring/Tracks.h>
 #include <infrastructure_road_monitoring/Blobs.h>
+#include <infrastructure_road_monitoring/BlobTracker.h>
 
-#include "BlobTracker.h"
 #include "data_msg_conv.h"
 
 class BlobTrackerNode : public BlobTracker
