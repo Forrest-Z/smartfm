@@ -59,7 +59,7 @@ void trackDataToMsg(infrastructure_road_monitoring::Track *msg, const Track & da
     msg->id = data.id;
     try { msg->xvel = data.vel_x.value(); } catch(std::runtime_error & e) { msg->xvel=0; }
     try { msg->yvel = data.vel_y.value(); } catch(std::runtime_error & e) { msg->yvel=0; }
-    blobDataToMsg(&(msg->blob), data.latestObserved());
+    blobDataToMsg(&(msg->blob), *(data.latestObserved()));
 }
 
 Track trackMsgToData(const infrastructure_road_monitoring::Track & msg)

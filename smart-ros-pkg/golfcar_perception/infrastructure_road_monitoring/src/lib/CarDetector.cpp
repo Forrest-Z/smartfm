@@ -28,25 +28,21 @@ bool CarDetector::update(cv::Mat frame, double time)
     tracker.update(blob_extractor.blobs);
 
     bool road_is_clear = true;
-    for(Tracks::iterator it=tracker.tracks.begin(); it!=tracker.tracks.end(); ++it ) {
-        try {
-            double vx = it->vel_x.value(), vy = it->vel_y.value();
-            cout <<"TrackInfo: " <<it->id <<": pos=(" <<it->latestObserved().centroid.x
-                    <<"," <<it->latestObserved().centroid.y <<"), vel=("
-                    <<vx <<"," <<vy <<"), "
-                    <<"observed: " <<it->observations.back().observed;
+    for(Tracks::const_iterator it=tracker.tracks.begin(); it!=tracker.tracks.end(); ++it )
+    {
+        Observations::const_reverse_iterator latest = it->latestObserved();
+        double vx = it->vel_x.value(), vy = it->vel_y.value();
+        cout <<"TrackInfo: " <<it->id <<": pos=(" <<latest->centroid.x
+                <<"," <<latest->centroid.y <<"), vel=("
+                <<vx <<"," <<vy <<"), "
+                <<"observed: " <<it->observations.back().observed;
 
-            if( vx<0 && (vy<0 || it->latestObserved().centroid.y<180) )
-                cout <<", green";
-            else
-                road_is_clear = false;
+        if( vx<0 && (vy<0 || latest->centroid.y < 180) )
+            cout <<", green";
+        else
+            road_is_clear = false;
 
-            cout <<endl;
-
-        } catch( runtime_error & e ) {
-
-        }
-
+        cout <<endl;
     }
 
     return road_is_clear;
@@ -56,13 +52,12 @@ void CarDetector::display(cv::Mat & displayImg)
 {
     blob_extractor.display(displayImg, CV_RGB(255, 0, 0));
     tracker.display(displayImg, CV_RGB(255,0,0));
-    for(Tracks::iterator it=tracker.tracks.begin(); it!=tracker.tracks.end(); ++it ) {
-        try {
-            double vx = it->vel_x.value(), vy = it->vel_y.value();
-            if( vx<0 && (vy<0 || it->latestObserved().centroid.y<180) ) {
-                it->latestObserved().drawContour(displayImg, CV_RGB(0, 255, 0)); //green
-            }
-        } catch( runtime_error & e ) {
-        }
+
+    for(Tracks::const_iterator it=tracker.tracks.begin(); it!=tracker.tracks.end(); ++it )
+    {
+        Observations::const_reverse_iterator latest = it->latestObserved();
+        double vx = it->vel_x.value(), vy = it->vel_y.value();
+        if( vx<0 && (vy<0 || latest->centroid.y < 180) )
+            latest->drawContour(displayImg, CV_RGB(0, 255, 0)); //green
     }
 }

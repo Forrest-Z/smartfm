@@ -29,6 +29,8 @@ public:
     Observation(const Blob & blob, const Observation & pre);
 };
 
+typedef std::vector<Observation> Observations;
+
 /// A class to hold history of observations
 class Track
 {
@@ -39,7 +41,7 @@ public:
     static double vel_filter_tau;
 
 public:
-    std::vector<Observation> observations;
+    Observations observations;
     unsigned id;
     fmutil::LowPassFilter vel_x, vel_y;
 
@@ -63,8 +65,8 @@ public:
 
     void addObservation(const Blob & blob);
 
-    Observation & latestObserved();
-    const Observation & latestObserved() const;
+    Observations::reverse_iterator latestObserved();
+    Observations::const_reverse_iterator latestObserved() const;
 
     void display(cv::Mat displayFrame, cv::Scalar color=CV_RGB(255,0,0));
 };

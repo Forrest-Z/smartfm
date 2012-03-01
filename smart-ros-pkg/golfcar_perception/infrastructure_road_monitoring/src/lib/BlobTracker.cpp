@@ -61,29 +61,31 @@ Track Track::newTrack(const Blob & blob)
 
 double Track::distance(const Blob & blob) const
 {
-    const Observation & o = latestObserved();
-    return sqrt( pow(o.centroid.x - blob.centroid.x, 2)
-                + pow(o.centroid.y - blob.centroid.y, 2) );
+    const Observation & latest = * latestObserved();
+    return sqrt( pow(latest.centroid.x - blob.centroid.x, 2)
+               + pow(latest.centroid.y - blob.centroid.y, 2) );
 }
 
-Observation & Track::latestObserved()
+Observations::reverse_iterator Track::latestObserved()
 {
-    vector<Observation>::reverse_iterator rit;
+    Observations::reverse_iterator rit;
     for( rit=observations.rbegin(); rit!=observations.rend(); ++rit )
         if( rit->observed )
-            return *rit;
-    throw runtime_error("no observed observation in track");
-    return observations[0];
+            return rit;
+    cerr <<"Track::latestObserved(): No observed observation in Track." <<endl;
+    abort();
+    return observations.rend();
 }
 
-const Observation & Track::latestObserved() const
+Observations::const_reverse_iterator Track::latestObserved() const
 {
-    vector<Observation>::const_reverse_iterator rit;
+    Observations::const_reverse_iterator rit;
     for( rit=observations.rbegin(); rit!=observations.rend(); ++rit )
         if( rit->observed )
-            return *rit;
-    throw runtime_error("no observed observation in track");
-    return observations[0];
+            return rit;
+    cerr <<"Track::latestObserved(): No observed observation in Track." <<endl;
+    abort();
+    return observations.rend();
 }
 
 void Track::addObservation(const Blob & blob)
@@ -92,7 +94,7 @@ void Track::addObservation(const Blob & blob)
         observations.push_back(Observation(blob));
     }
     else {
-        Observation & latest = latestObserved();
+        Observation & latest = * latestObserved();
         Observation obs(blob, latest);
         observations.push_back(obs);
         double dt = obs.timestamp - latest.timestamp;
@@ -105,7 +107,7 @@ void Track::display(cv::Mat displayFrame, cv::Scalar color)
 {
     stringstream ss;
     ss << id;
-    cv::putText(displayFrame, ss.str(), latestObserved().centroid,
+    cv::putText(displayFrame, ss.str(), latestObserved()->centroid,
                     cv::FONT_HERSHEY_COMPLEX_SMALL, 2,
                     color, 1, CV_AA);
 }
@@ -130,7 +132,7 @@ double FixedMatcherThreshold::threshold(const Track & track, const Blob & b)
 
 double AdaptiveMatcherThreshold::threshold(const Track & track, const Blob & b)
 {
-    vector<Observation>::const_reverse_iterator rit;
+    Observations::const_reverse_iterator rit;
     for( rit=track.observations.rbegin(); rit!=track.observations.rend(); ++rit )
         if( rit->observed && rit->timestamp < b.timestamp )
             break;
@@ -238,11 +240,7 @@ void BlobTracker::update(const vector<Blob> & in_blobs)
     // remove tracks that haven't been updated in a long time
     for( Tracks::iterator it=tracks.begin(); it!=tracks.end(); )
     {
-        // Find the last observed observation
-        vector<Observation>::const_reverse_iterator rit;
-        for( rit=it->observations.rbegin(); rit!=it->observations.rend() && ! rit->observed; ++rit );
-
-        if( rit - it->observations.rbegin() > (int)unobserved_threshold_remove ) {
+        if( it->latestObserved() - it->observations.rbegin() > (int)unobserved_threshold_remove ) {
             cout <<"Removing track " <<it->id <<endl;
             it = tracks.erase(it);
         }
