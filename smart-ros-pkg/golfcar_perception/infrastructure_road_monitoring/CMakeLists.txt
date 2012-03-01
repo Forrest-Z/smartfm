@@ -37,8 +37,7 @@ rosbuild_add_library(${PROJECT_NAME}
     src/lib/Blob.cpp
     src/lib/BlobExtractor.cpp
     src/lib/BlobFilter.cpp
-    src/lib/BlobTracker.cpp
-    src/lib/CarDetector.cpp
+    src/lib/Tracks.cpp
 )
 
 #add dynamic reconfigure api
@@ -64,7 +63,7 @@ target_link_libraries(blob_area_filter ${PROJECT_NAME})
 ADD_EXECUTABLE(blob_display src/nodes/blob_display.cpp src/data_msg_conv.cpp)
 target_link_libraries(blob_display ${PROJECT_NAME})
 
-ADD_EXECUTABLE(blob_tracker src/nodes/blob_tracker.cpp src/data_msg_conv.cpp)
+ADD_EXECUTABLE(blob_tracker src/nodes/blob_tracker.cpp src/data_msg_conv.cpp src/BlobTracker.cpp)
 target_link_libraries(blob_tracker ${PROJECT_NAME})
 
 ADD_EXECUTABLE(track_display src/nodes/track_display.cpp src/data_msg_conv.cpp)
