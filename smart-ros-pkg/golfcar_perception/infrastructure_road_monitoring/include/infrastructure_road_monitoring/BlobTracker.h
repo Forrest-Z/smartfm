@@ -1,80 +1,16 @@
 #ifndef BLOBTRACKER_H_
 #define BLOBTRACKER_H_
 
-#include <vector>
-#include <list>
 #include <limits>
 
 #include <boost/function.hpp>
 
-#include <cv.h>
-
-#include "Blob.h"
 #include <fmutil/fm_filter.h>
 
-/// A class to hold Observation data
-class Observation : public Blob
-{
-public:
-    bool observed;  ///< was it observed
-    cv::Point disp; ///< displacement w.r.t. prev position
-
-    /// Creates an unobserved Observation
-    Observation();
-
-    /// Creates an observation from a Blob
-    Observation(const Blob & blob);
-
-    /// Creates an Observation from current Blob information and previous observation
-    Observation(const Blob & blob, const Observation & pre);
-};
-
-/// A class to hold history of observations
-class Track
-{
-    /// ID counter
-    static unsigned counter;
-
-public:
-    static double vel_filter_tau;
-
-public:
-    std::vector<Observation> observations;
-    unsigned id;
-    fmutil::LowPassFilter vel_x, vel_y;
+#include <infrastructure_road_monitoring/data_def.h>
 
 
-public:
-    /// Creates a Track with an ID of 0
-    Track();
-
-    /// Creates a Track with a given ID
-    Track(unsigned);
-
-    /// Creates a new Track with next available ID
-    static Track newTrack();
-
-    /// Creates a new Track with next available ID, and fill with
-    // an observation from the blob
-    static Track newTrack(const Blob & blob);
-
-    /// computes the distance between a blob and the latest observed Observation in the track
-    double distance(const Blob & blob) const;
-
-    void addObservation(const Blob & blob);
-
-    Observation & latestObserved();
-    const Observation & latestObserved() const;
-
-    void display(cv::Mat displayFrame, cv::Scalar color=CV_RGB(255,0,0));
-};
-
-
-/// A typedef for collection of tracks
-typedef std::list<Track> Tracks;
-
-
-/// Generates a threshold for the nearest neighbors matcher, given a blob and
+/// Generates a threshold for the nearest neighbours matcher, given a blob and
 /// a track. Abstract base class.
 class MatcherThreshold
 {
@@ -129,7 +65,7 @@ public:
     /// is smaller than this threshold
     MatcherThreshold * match_threshold;
 
-    /// Once a match occured, this is the distance to the closest match
+    /// Once a match occurred, this is the distance to the closest match
     double match_distance;
 
     TrackMatcherNNT();

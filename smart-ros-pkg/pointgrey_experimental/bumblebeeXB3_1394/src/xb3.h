@@ -127,19 +127,20 @@ namespace xb3
 
     void cleanup_and_exit( dc1394camera_t* camera )
     {
-        dc1394_capture_stop( camera );
         dc1394_video_set_transmission( camera, DC1394_OFF );
+        dc1394_capture_stop( camera );
         dc1394_camera_free( camera );
         exit( 0 );
     }
 
-    bool initialize_camera(dc1394camera_t*  camera_, PGRStereoCamera_t& stereoCamera_)
+    bool initialize_camera(PGRStereoCamera_t& stereoCamera_)
     {
         //===================================================================
         // Find cameras on the 1394 buses
         dc1394_t * d;
         dc1394camera_list_t * list;
         dc1394error_t    err;
+        dc1394camera_t* camera_;
         unsigned int nThisCam;
 
 
@@ -170,27 +171,31 @@ namespace xb3
         // Identify cameras. Use the first stereo camera that is found
         for ( nThisCam = 0; nThisCam < list->num; nThisCam++ )
         {
-            camera_ = dc1394_camera_new(d, list->ids[nThisCam].guid);
 
+            camera_ = dc1394_camera_new(d, list->ids[nThisCam].guid);
+//            dc1394_cleanup_iso_channels_and_bandwidth(camera_);
+            //camera_ = dc1394_camera_new(d, list->ids[nThisCam].guid);
             if(!camera_)
             {
                 printf("Failed to initialize camera with guid %lx", list->ids[nThisCam].guid);
                 continue;
             }
 
+            ROS_INFO("Resetting 1394 bus");
+            if (DC1394_SUCCESS != dc1394_camera_reset(camera_))
+            {
+                cleanup_and_exit( camera_ );
+                fprintf( stderr, "Unable to reset camera.\n");
+                return 0;
+            }
+            ROS_INFO("Reset Complete");
+
             printf( "Camera %d model = '%s'\n", nThisCam, camera_->model );
 
             if ( isStereoCamera(camera_))
             {
                 printf( "Using this camera\n" );
-                ROS_INFO("Resetting 1394 bus");
-                if (DC1394_SUCCESS != dc1394_camera_reset(camera_))
-                {
-                    cleanup_and_exit( camera_ );
-                    fprintf( stderr, "Unable to reset camera.\n");
-                    return 0;
-                }
-                ROS_INFO("Reset Complete");
+
                 break;
             }
 
@@ -202,14 +207,6 @@ namespace xb3
             printf( "No stereo cameras were detected\n" );
             return 0;
         }
-        /*        ROS_INFO("Resetting 1394 bus");
-            if (DC1394_SUCCESS != dc1394_camera_reset(camera_))
-            {
-                cleanup_and_exit( camera_ );
-                fprintf( stderr, "Unable to reset camera.\n");
-                return 0;
-            }
-            ROS_INFO("Reset Complete");*/
 
         // query information about this stereo camera
         err = queryStereoCamera( camera_, &stereoCamera_ );

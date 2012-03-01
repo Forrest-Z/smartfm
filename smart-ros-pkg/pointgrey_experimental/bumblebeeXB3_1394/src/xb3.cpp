@@ -13,7 +13,7 @@ class xb3_main
 {
 public:
 
-    dc1394camera_t*  camera_;
+    //dc1394camera_t*  camera_;
     string camera_name_, short_cal_, wide_cal_;
     PGRStereoCamera_t stereoCamera_;
     ros::NodeHandle nh_, priv_nh_;
@@ -65,7 +65,7 @@ public:
         priv_nh_.param("short_calibration_file", short_cal_, string(""));
         priv_nh_.param("wide_calibration_file", wide_cal_, string(""));
         pub_count_ = 0;
-        if(!initialize_camera(camera_, stereoCamera_)) return;
+        if(!initialize_camera(stereoCamera_)) return;
         start_process();
         ros::spin();
     }
@@ -73,14 +73,9 @@ public:
     ~xb3_main()
     {
         printf( "Stop transmission\n" );
-        //  Stop data transmission
-        if ( dc1394_video_set_transmission( stereoCamera_.camera, DC1394_OFF ) != DC1394_SUCCESS )
-        {
-            fprintf( stderr, "Couldn't stop the camera?\n" );
-        }
 
         // close camera
-        cleanup_and_exit( camera_ );
+        cleanup_and_exit( stereoCamera_.camera );
     }
 
 private:

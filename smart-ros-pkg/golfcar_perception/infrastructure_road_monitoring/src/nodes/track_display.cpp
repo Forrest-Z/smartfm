@@ -14,8 +14,8 @@
 #include <opencv2/highgui/highgui.hpp>
 
 #include <infrastructure_road_monitoring/Tracks.h>
+#include <infrastructure_road_monitoring/BlobTracker.h>
 
-#include "BlobTracker.h"
 #include "data_msg_conv.h"
 
 

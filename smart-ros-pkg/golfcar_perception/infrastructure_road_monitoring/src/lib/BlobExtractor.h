@@ -4,7 +4,7 @@
 #include <vector>
 #include <cv.h>
 
-#include "Blob.h"
+#include <infrastructure_road_monitoring/data_def.h>
 
 class BlobExtractor
 {

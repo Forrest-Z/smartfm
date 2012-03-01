@@ -15,7 +15,6 @@
 
 #include <infrastructure_road_monitoring/Blobs.h>
 
-#include "Blob.h"
 #include "data_msg_conv.h"
 
 
