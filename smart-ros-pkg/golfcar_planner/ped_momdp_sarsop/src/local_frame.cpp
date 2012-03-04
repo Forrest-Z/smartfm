@@ -30,7 +30,7 @@ private:
     ros::Subscriber ped_sub_;
     ros::Publisher local_pub_;
     string global_frame_;
-    double threshold_;
+    double threshold_, offsetx_, offsety_;
 };
 
 local_frame::local_frame()
@@ -42,6 +42,8 @@ local_frame::local_frame()
     ros::NodeHandle n("~");
     n.param("global_frame", global_frame_, string("/odom"));
     n.param("threshold", threshold_, 3.0);
+    n.param("offsetx", offsetx_, 0.0);
+    n.param("offsety", offsety_, 3.0);
     timer_ = nh.createTimer(ros::Duration(0.01), &local_frame::publishTransform, this);
     ros::spin();
 }
@@ -110,7 +112,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
             //use the current base_link pose as the new frame
             in_pose.frame_id_ = "base_link";
             in_pose.setIdentity();
-            in_pose.setOrigin(btVector3(0.0,3.0,0.0));
+            in_pose.setOrigin(btVector3(offsetx_,offsety_,0.0));
             getObjectPose(global_frame_, in_pose, out_pose);
             transform.setOrigin( out_pose.getOrigin() );
             transform.setRotation( out_pose.getRotation() );
