@@ -19,6 +19,7 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/common/common.h>
 #include <pcl/common/pca.h>
+#include <pcl/octree/octree.h>
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <fmutil/fm_math.h>
@@ -32,6 +33,9 @@
 #include <feature_detection/clusters.h>
 #include <feature_detection/cluster.h>
 
+#include <octomap_ros/OctomapROS.h>
+#include <octomap_ros/GetOctomap.h>
+#include <octomap/octomap.h>
 #include <pcl/filters/radius_outlier_removal.h>
 using namespace std;
 
@@ -47,42 +51,163 @@ private:
     void extractCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered, std::vector<pcl::PointIndices>& cluster_indices,
                         double clusterTolerance, int minSize,int maxSize);
     void laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in);
-    ros::Subscriber cloud_sub_;
+    void filterPriorMap(octomap::OcTree& priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub_, double threshold);
+    void octomapTreeToPCLoctree(octomap_ros::OctomapBinary& octomap, pcl::octree::OctreePointCloud<pcl::PointXYZ>* pcl_octree);
+    void filterPCLOctreeNN(pcl::octree::OctreePointCloud<pcl::PointXYZ> &priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub_, double threshold);
+    message_filters::Subscriber<sensor_msgs::PointCloud2> cloud_sub_;
     message_filters::Subscriber<sensor_msgs::LaserScan> laser_sub_;
-    ros::Publisher cloud_pub_, filter_pub_, after_line_filter_pub_;
+    ros::Publisher cloud_pub_, filter_pub_, after_line_filter_pub_, after_prior_filter_pub_;
     ros::Publisher poi_pub_, line_filtered_pub_;
     ros::Publisher clusters_pub_;
 
     tf::TransformListener tf_;
     tf::MessageFilter<sensor_msgs::LaserScan> * tf_filter_;
-
+    tf::MessageFilter<sensor_msgs::PointCloud2>* tf_pc2_filter_;
+    double prior_distance_filter_;
     laser_geometry::LaserProjection projector_;
-    string laser_frame_id_;
+    string laser_frame_id_, global_frame_;
     bool bounding_box_filter_, line_filter_;
     bool sequential_clustering_;
+    octomap::OcTree* global_octMap;
+    pcl::octree::OctreePointCloud<pcl::PointXYZ>* global_pclOctree_;
 };
 
 ped_clustering::ped_clustering()
 {
-    ros::NodeHandle nh;
-    cloud_sub_ = nh.subscribe("sickldmrs/cloud", 10, &ped_clustering::scanCallback, this);
+    ros::NodeHandle nh, private_nh("~");
+
+    private_nh.param("gloabl_frame", global_frame_, string("map"));
+    private_nh.param("laser_frame", laser_frame_id_, string("ldmrs0"));
+    private_nh.param("prior_distance_filter", prior_distance_filter_, 0.4);
+    cloud_sub_ .subscribe(nh, "sickldmrs/cloud", 10);
+    tf_pc2_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(cloud_sub_, tf_, global_frame_, 10);
+    tf_pc2_filter_->registerCallback(boost::bind(&ped_clustering::scanCallback, this, _1));
+    tf_pc2_filter_->setTolerance(ros::Duration(0.05));
+
     cloud_pub_ = nh.advertise<sensor_msgs::PointCloud>("pedestrian_cluster", 1);
     poi_pub_= nh.advertise<sensor_msgs::PointCloud>("pedestrian_poi",1);
     line_filtered_pub_ = nh.advertise<sensor_msgs::PointCloud2>("line_filtered",1);
     after_line_filter_pub_ = nh.advertise<sensor_msgs::PointCloud2>("after_line_filtered",1);
     filter_pub_ = nh.advertise<sensor_msgs::PointCloud2>("cloud_filtered",1);
     clusters_pub_ = nh.advertise<feature_detection::clusters>("pedestrian_clusters",1);
-    laser_frame_id_ = "ldmrs0";
+    after_prior_filter_pub_ = nh.advertise<sensor_msgs::PointCloud>("prior_filtered", 1);
+
     laser_sub_.subscribe(nh, "sickldmrs/scan0", 10);
     tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, laser_frame_id_, 10);
     tf_filter_->registerCallback(boost::bind(&ped_clustering::laserCallback, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
 
+    const static std::string servname = "octomap_binary";
+    ROS_INFO("Requesting the map from %s...", nh.resolveName(servname).c_str());
+    octomap_ros::GetOctomap::Request req;
+    octomap_ros::GetOctomap::Response resp;
+    while(nh.ok() && !ros::service::call(servname, req, resp))
+    {
+        ROS_WARN("Request to %s failed; trying again...", nh.resolveName(servname).c_str());
+        usleep(1000000);
+    }
+    global_octMap = new octomap::OcTree(0.1);
+    octomap::octomapMsgToMap(resp.map, *global_octMap);//->octree);
+    double x, y, z;
+    global_octMap->getMetricMax(x, y, z);
+    //global_octMap->octree.getMetricMax(x,y,z);
+    ROS_INFO("Map received. Size of map = %lf, %lf, %lf with resolution %lf", x, y, z, global_octMap->getResolution());
     sequential_clustering_ = false;
-
+    octomapTreeToPCLoctree(resp.map, global_pclOctree_);
     ros::spin();
 }
 
+void ped_clustering::octomapTreeToPCLoctree(octomap_ros::OctomapBinary& octomap, pcl::octree::OctreePointCloud<pcl::PointXYZ>* pcl_octree)
+{
+    std::list<octomap::point3d> all_cells;
+    int level=15;
+    octomap::OcTree octree(0.1);
+    octomap::octomapMsgToMap(octomap, octree);
+    octree.getOccupied(all_cells, level);
+    std::list<octomap::point3d>::iterator it;
+    pcl::PointCloud<pcl::PointXYZ> pcl_out;
+    pcl_out.header.frame_id = "/map";
+    pcl_out.header.stamp = ros::Time::now();
+
+    for (it = all_cells.begin(); it != all_cells.end(); ++it)
+    {
+        pcl::PointXYZ cube_center;
+        cube_center.x = it->x();
+        cube_center.y = it->y();
+        cube_center.z = it->z();
+        pcl_out.points.push_back(cube_center);
+    }
+
+    double resolution = octree.getResolution();
+    global_pclOctree_ = new pcl::octree::OctreePointCloud<pcl::PointXYZ>(resolution);
+
+    global_pclOctree_->setInputCloud(pcl_out.makeShared());
+    global_pclOctree_->addPointsFromInputCloud();
+
+    ROS_INFO("pcl_octree ready with size leaft %d and depth %d", global_pclOctree_->getLeafCount(), global_pclOctree_->getTreeDepth());
+
+    srand ((unsigned int) time (NULL));
+
+    int K = 10;
+
+    pcl::PointXYZ searchPoint;
+
+    searchPoint.x = 100;
+    searchPoint.y = 100;
+    searchPoint.z = 1.0;
+    std::vector<int> pointIdxNKNSearch;
+    std::vector<float> pointNKNSquaredDistance;
+
+    std::cout << "K nearest neighbor search at (" << searchPoint.x
+            << " " << searchPoint.y
+            << " " << searchPoint.z
+            << ") with K=" << K << std::endl;
+
+    if (global_pclOctree_->nearestKSearch (searchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0)
+    {
+        for (size_t i = 0; i < pointIdxNKNSearch.size (); ++i)
+            std::cout
+            << " (distance: " << sqrt(pointNKNSquaredDistance[i]) << ")" << std::endl;
+    }
+}
+
+void ped_clustering::filterPCLOctreeNN(pcl::octree::OctreePointCloud<pcl::PointXYZ> &priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub_, double threshold)
+{
+    cout<<"Filtering with points "<< pc_in.points.size()<<endl;
+    int missed = 0;
+    for(size_t i=0; i<pc_in.points.size();)
+    {
+
+        pcl::PointXYZ searchPoint;
+        searchPoint.x = pc_in.points[i].x;
+        searchPoint.y = pc_in.points[i].y;
+        searchPoint.z = pc_in.points[i].z;
+
+        int K = 1;
+
+        vector<int> pointIdxNKNSearch;
+        vector<float> pointNKNSquaredDistance;
+
+        if (global_pclOctree_->nearestKSearch(searchPoint, K, pointIdxNKNSearch, pointNKNSquaredDistance) > 0)
+        {
+            if(sqrt(pointNKNSquaredDistance[0])<threshold)
+            {
+                pc_in.points.erase(pc_in.points.begin()+i);
+                continue;
+            }
+
+        }
+        else
+        {
+            missed++;
+        }
+        i++;
+    }
+
+    cout<<"After filtering points = "<<pc_in.points.size()<<" with missed point = "<< missed<<endl;
+    pub_.publish(pc_in);
+    pc_out = pc_in;
+}
 void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs::PointCloud &ped_poi,
                                 double tolerance, int minSize, int maxSize, bool publish)
 {
@@ -90,25 +215,30 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
     pcl::PointCloud<pcl::PointXYZ> cloud_outremoved, cloud_without_line;
     pcl::PointCloud<pcl::PointXYZ> cloud_temp;
     pcl::fromROSMsg(pc, cloud_temp);
-    for(int i=0; i<cloud_temp.points.size(); i++) cloud_temp.points[i].z = 0;
+    for(size_t i=0; i<cloud_temp.points.size(); i++) cloud_temp.points[i].z = 0;
     //start with plane filter
-    filterLines(cloud_temp.makeShared(), cloud_without_line);
-    pcl::toROSMsg(cloud_without_line, pc_temp);
-    after_line_filter_pub_.publish(pc_temp);
 
+    //filterLines(cloud_temp.makeShared(), cloud_without_line);
+    //pcl::toROSMsg(cloud_without_line, pc_temp);
+    //after_line_filter_pub_.publish(pc_temp);
+    //ROS_DEBUG("Plane filter %d", cloud_without_line.points.size());
+    //if(cloud_without_line.points.size() == 0) return;
     //then clean up the point using radius outlier
+    after_line_filter_pub_.publish(pc);
     pcl::RadiusOutlierRemoval<pcl::PointXYZ> outrem;
-    outrem.setInputCloud(cloud_without_line.makeShared());
+    outrem.setInputCloud(cloud_temp.makeShared());
     outrem.setRadiusSearch(0.5);
     outrem.setMinNeighborsInRadius(4);
     outrem.filter(cloud_outremoved);
     pcl::toROSMsg(cloud_outremoved, pc_temp);
+    ROS_DEBUG("Radius filter %d", cloud_outremoved.points.size());
+    if(cloud_outremoved.points.size()==0) return;
     filter_pub_.publish(pc_temp);
 
     //finally do the segmentation
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered = cloud_outremoved.makeShared();
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
-    int i = 0;
+    int cluster_number = 0;
 
     std::vector<pcl::PointIndices> cluster_indices;
     extractCluster(cloud_filtered, cluster_indices, tolerance, minSize, maxSize);
@@ -139,7 +269,7 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
         std::vector<geometry_msgs::Point32> cluster_points;
         pcl::PointCloud<pcl::PointXYZ> pca_input = cloud_temp;
         pca_input.points.clear();
-        ROS_DEBUG("Start of cluster %d\n", i);
+        ROS_DEBUG("Start of cluster %d\n", cluster_number);
         for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
         {
             pcl::PointXYZ pclpt_temp;
@@ -156,7 +286,7 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
             pclpt_temp.z = 0;
             pca_input.points.push_back(pclpt_temp);
 
-            pclpt_temp.z = i;
+            pclpt_temp.z = cluster_number;
             cloud_cluster->points.push_back (pclpt_temp);
         }
         cluster.points = cluster_points;
@@ -212,8 +342,8 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
 
 
         clusters.clusters.push_back(cluster);
-        ROS_DEBUG("End of cluster %d\n", i);
-        i++;
+        ROS_DEBUG("End of cluster %d\n", cluster_number);
+        cluster_number++;
     }
 
     sensor_msgs::PointCloud2 total_clusters2;
@@ -237,10 +367,45 @@ void ped_clustering::scanCallback(const sensor_msgs::PointCloud2ConstPtr& pc2)
     double clusterTolerance = 0.7;
     int minClusterSize = 3;
     int maxClusterSize = 1000;
-    sensor_msgs::PointCloud pc;
-    clustering(*pc2, pc, clusterTolerance, minClusterSize, maxClusterSize, true);
+    sensor_msgs::PointCloud pc, temp, global_pc, octreeFiltered, pcloctreeFiltered;
+    sensor_msgs::convertPointCloud2ToPointCloud(*pc2, pc);
+    try{tf_.transformPointCloud(global_frame_, pc, global_pc);}
+    catch(tf::TransformException& e){ROS_INFO_STREAM(e.what());return;}
+    //filterPriorMap(*global_octMap, global_pc, octreeFiltered, after_prior_filter_pub_, prior_distance_filter_);
+
+    //when using "new" keyword, it has to be directly used with the variable
+    //if not seg fault occur
+    filterPCLOctreeNN(*global_pclOctree_, global_pc, pcloctreeFiltered, after_prior_filter_pub_, prior_distance_filter_);
+
+    //tranfrom back to the original frame. This is because the cluster filter need to be at the sensor frame
+    try{tf_.transformPointCloud(pc2->header.frame_id, pcloctreeFiltered, pcloctreeFiltered);}
+    catch(tf::TransformException& e){ROS_INFO_STREAM(e.what());return;}
+    sensor_msgs::PointCloud2 filtered_pc2;
+    sensor_msgs::convertPointCloudToPointCloud2(pcloctreeFiltered, filtered_pc2);
+
+    clustering(filtered_pc2, temp, clusterTolerance, minClusterSize, maxClusterSize, true);
 }
 
+void ped_clustering::filterPriorMap(octomap::OcTree& priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub, double threshold)
+{
+    pc_out = pc_in;
+    for(size_t i=0; i<pc_out.points.size(); )
+    {
+        octomap::point3d pt(pc_out.points[i].x, pc_out.points[i].y, pc_out.points[i].z);
+        octomap::OcTreeROS::NodeType* treeNode = priorMap.search(pt);
+        if(treeNode)
+        {
+            ROS_INFO("Occupancy at %lf, %lf, %lf is %lf", pt.x(),pt.y(), pt.z(),  treeNode->getOccupancy());
+            if(treeNode->getOccupancy()>threshold)
+            {
+                pc_out.points.erase(pc_out.points.begin()+i);
+                continue;
+            }
+        }
+        i++;
+    }
+    pub.publish(pc_out);
+}
 inline geometry_msgs::Point32 getCenterPoint(geometry_msgs::Point32 start_pt, geometry_msgs::Point32 end_pt)
 {
     geometry_msgs::Point32 center;
@@ -255,7 +420,7 @@ void ped_clustering::laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in
     sensor_msgs::PointCloud pc;
 
     try{projector_.transformLaserScanToPointCloud(laser_frame_id_, *scan_in, pc, tf_);}
-            catch (tf::TransformException& e){ROS_INFO_STREAM(e.what());return;}
+    catch (tf::TransformException& e){ROS_INFO_STREAM(e.what());return;}
 
     if(sequential_clustering_)
     {
