@@ -1,0 +1,14 @@
+<package>
+  <description brief="octomap_maps">
+
+     octomap_maps
+
+  </description>
+  <author>golfcar</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/octomap_maps</url>
+
+</package>
+
+
