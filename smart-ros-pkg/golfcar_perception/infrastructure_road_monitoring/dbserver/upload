@@ -1,0 +1,5 @@
+#!/bin/bash
+
+rm /var/www/intersections/*
+cp *.php /var/www/intersections/
+rsync -acvz --delete /var/www/intersections/ -e ssh FMAutonomy:/var/www/intersections/

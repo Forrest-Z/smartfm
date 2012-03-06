@@ -2,6 +2,9 @@
  * Extract blobs from current frame and background image. Publishes extracted
  * blobs as an infrastructure_road_monitoring/Blobs message on topic "blobs".
  * Also publishes the diff image on topic "diff".
+ * It is possible to control the output rate by skipping some frames by either
+ * specifying the desired period (parameter "period") or the number of frames
+ * to skip (parameter "skip").
  */
 
 #include <ros/ros.h>
@@ -45,6 +48,9 @@ private:
     MovingObjectDetector detector;
     BlobExtractor blob_extractor;
 
+    int skip_frames_, skip_frames_count_;
+    double period_, last_time_;
+
     dynamic_reconfigure::Server<infrastructure_road_monitoring::BlobExtractorConfig> server;
 
     void imgCallback(const sensor_msgs::Image::ConstPtr &  frame,
@@ -57,7 +63,11 @@ BlobExtractorNode::BlobExtractorNode()
 : it_(nh_),
   frame_sub_(it_, "camera", 20),
   bgnd_sub_(it_, "background", 20),
-  synchronizer(MySyncPolicy(20), frame_sub_, bgnd_sub_)
+  synchronizer(MySyncPolicy(20), frame_sub_, bgnd_sub_),
+  skip_frames_(0),
+  skip_frames_count_(0),
+  period_(0.0),
+  last_time_(0.0)
 {
     synchronizer.registerCallback( boost::bind(&BlobExtractorNode::imgCallback, this, _1, _2) );
 
@@ -70,11 +80,25 @@ BlobExtractorNode::BlobExtractorNode()
 void BlobExtractorNode::imgCallback(const sensor_msgs::Image::ConstPtr & frame,
         const sensor_msgs::Image::ConstPtr & background)
 {
+	double t_now = frame->header.stamp.toSec();
+	if( last_time_==0.0 ||
+			(++skip_frames_count_ > skip_frames_ && t_now>last_time_+period_) )
+	{
+		//ROS_INFO("processing");
+		skip_frames_count_ = 0;
+		last_time_ = t_now;
+	}
+	else
+	{
+		//ROS_INFO("skipping");
+		return;
+	}
+
     cv_bridge::CvImageConstPtr cvImgFrame = cv_bridge::toCvShare(frame, "bgr8");
     cv_bridge::CvImageConstPtr cvImgBgnd = cv_bridge::toCvShare(background, "bgr8");
 
     detector.diff(cvImgFrame->image, cvImgBgnd->image);
-    blob_extractor.extract(detector.diffImg, frame->header.stamp.toSec());
+    blob_extractor.extract(detector.diffImg, t_now);
 
     infrastructure_road_monitoring::Blobs msg;
     msg.header = frame->header;
@@ -98,6 +122,8 @@ void BlobExtractorNode::configCallback(infrastructure_road_monitoring::BlobExtra
     detector.diff_thresh = config.diff_threshold;
     detector.dilate_size = config.dilate_size;
     detector.erode_size = config.erode_size;
+    if( level&8 ) { skip_frames_ = config.skip; skip_frames_count_=0; }
+    if( level&16 ) { period_=config.period; last_time_=0.0; }
 }
 
 int main(int argc, char **argv)
