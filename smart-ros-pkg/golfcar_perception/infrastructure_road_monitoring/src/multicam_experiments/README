@@ -1,0 +1,19 @@
+When attempting to connect to several USB cameras at the same time, we run into
+the VIDIOC_STREAMON problem:
+   libv4l2: error turning on stream: No space left on device
+   VIDIOC_STREAMON: No space left on device
+
+It happens when the cams are on the same bus.
+
+
+
+grabcam.cpp opens one cam and displays its image. Attempting to launch it twice
+in different process triggers the VIDIOC_STREAMON problem.
+
+multicam.cpp grabs an image from a camera, then an image from the other camera
+and so on. It still triggers the VIDIOC_STREAMON problem.
+
+multicamclose.cpp does the same as multicam.cpp, except that it opens the camera,
+grabs the frame and closes the camera each time. As a result, it does not trigger
+the VIDIOC_STREAMON problem, but frame rate is quite slow (1-2 fps). Besides,
+the white balance mechanism does not work anymore.
