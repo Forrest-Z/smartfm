@@ -1,0 +1,106 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+'''
+Assumes two cameras monitoring the T-junction, one looking towards EA (tracksEA),
+the other towards SDE (tracksSDE). Outputs a boolean telling the car whether it's
+safe to cross the junction (from DCC to EA). This boolean is written in a
+database on FMAutonomy.
+'''
+
+import roslib; roslib.load_manifest('infrastructure_road_monitoring')
+import rospy
+from std_msgs.msg import Bool
+from infrastructure_road_monitoring.msg import Blob, Blobs, Track, Tracks
+
+import urllib, urllib2
+from xml.dom import minidom
+
+
+# from http://www.ariel.com.au/a/python-point-int-poly.html
+def point_inside_polygon(x, y, poly):
+    '''Determines if a point is inside a given polygon or not.
+    Polygon is a list of (x,y) pairs.
+    '''
+    n = len(poly)
+    inside = False
+
+    p1x,p1y = poly[0]
+    for i in range(n+1):
+        p2x,p2y = poly[i % n]
+        if y > min(p1y,p2y):
+            if y <= max(p1y,p2y):
+                if x <= max(p1x,p2x):
+                    if p1y != p2y:
+                        xinters = (y-p1y)*(p2x-p1x)/(p2y-p1y)+p1x
+                    if p1x == p2x or x <= xinters:
+                        inside = not inside
+        p1x,p1y = p2x,p2y
+
+    return inside
+
+
+class Node:
+    def __init__(self):
+        self.server = rospy.get_param('/intersections_dbserver_url', 'http://fmautonomy.no-ip.info/intersections')
+        self.delay = rospy.get_param('delay', 3)
+        self.subEA = rospy.Subscriber('tracksEA', Tracks, self.EA_Callback)
+        self.subSDE = rospy.Subscriber('tracksSDE', Tracks, self.SDE_Callback)
+        self.pub = rospy.Publisher('tjunction_go', Bool)
+        self.last_unsafe = rospy.Time.now().to_sec()
+        self.last_decision = False
+        self.update_db(False)
+
+    def EA_Callback(self, msg):
+        poly = [[130,120], [250,120], [250,350], [0,576], [0,275]]
+        for track in msg.tracks:
+            cx = track.blob.centroid.x
+            cy = track.blob.centroid.y
+            vx = track.xvel
+            vy = track.yvel
+            if point_inside_polygon(cx,cy,poly) and vy>0:
+                self.last_unsafe = rospy.Time.now().to_sec()
+                break
+        self.pub_result()
+
+    def SDE_Callback(self, msg):
+        poly = [[115,250], [330,190], [720,445], [720,576], [350,576]]
+        for track in msg.tracks:
+            cx = track.blob.centroid.x
+            cy = track.blob.centroid.y
+            vx = track.xvel
+            vy = track.yvel
+            if point_inside_polygon(cx,cy,poly) and vy>0:
+                self.last_unsafe = rospy.Time.now().to_sec()
+                break
+        self.pub_result()
+
+    def update_db(self, status):
+        f = urllib2.urlopen(self.server+"/update.php", urllib.urlencode({"Status":status}))
+        xml = f.read()
+        f.close()
+        #print xml
+        dom = minidom.parseString(xml)
+        nodes = dom.getElementsByTagName('status')
+        if len(nodes)>0 and nodes[0].getAttribute('code') == 'err':
+            msg = 'Error while calling ' + "update.php"
+            if nodes[0].hasAttribute('msg') and nodes[0].getAttribute('msg')!='':
+                msg = msg + ': ' + nodes[0].getAttribute('msg')
+            raise Exception( msg )
+
+    def pub_result(self):
+        go = rospy.Time.now().to_sec() > self.last_unsafe + self.delay
+        if self.last_decision != go:
+            self.update_db(go)
+            self.last_decision = go
+            if go:
+                rospy.loginfo("safe to go")
+            else:
+                rospy.loginfo("not safe to go")
+        self.pub.publish(Bool(go))
+
+
+if __name__=='__main__':
+    rospy.init_node('t_junction_go')
+    node = Node()
+    rospy.spin()
