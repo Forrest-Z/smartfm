@@ -11,7 +11,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 
-#include "MovingObjectDetector.h"
+#include "BackgroundExtraction.h"
 
 #include <opencv2/highgui/highgui.hpp>
 

@@ -24,26 +24,4 @@ public:
 };
 
 
-
-class MovingObjectDetector
-{
-public:
-
-    unsigned diff_thresh; ///< threshold used when converting diff image to binary
-    int dilate_size; ///< how much dilation should be applied
-    int erode_size;  ///< how much erosion should be applied
-    cv::Mat diffImg; ///< the resulting binary image.
-
-    MovingObjectDetector();
-
-    /// Computes the difference between frame and background, convert to grayscale,
-    /// apply threshold, then dilate and erode. The resulting binary image is
-    /// stored in diffImg.
-    void diff(cv::Mat frame, cv::Mat background);
-
-private:
-    void dilate();
-    void erode();
-};
-
 #endif /* MOVINGOBJECTDETECTOR_H_ */

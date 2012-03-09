@@ -5,7 +5,7 @@
 
 #include <cv.h>
 
-#include "BlobExtractor.h"
+#include <infrastructure_road_monitoring/data_def.h>
 
 
 class BlobFilter
