@@ -130,17 +130,17 @@ void VisualizeMomdp::pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel_c
         else if(ped_bel_cb.believes[i].action==0)
         {
             //if(ped_bel_cb.robotv>0.1)
-                //decision=1;
+            //decision=1;
             //else if( ped_bel_cb.robotv < 0.1)
-                //decision=-1;
-                
+            //decision=-1;
+
             decision =0;
         }
         else
         {
-			std::cout << "Strange action " << ped_bel_cb.believes[i].action << std::endl;
-			decision=-1;
-		}
+            std::cout << "Strange action " << ped_bel_cb.believes[i].action << std::endl;
+            decision=-1;
+        }
 
         ped_bel[i].decision = decision;
         ped_bel[i].left_side = left;
@@ -155,78 +155,158 @@ void VisualizeMomdp::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_v
     std::stringstream ss,ss2;
     float offset = 10.0;
     ss<<pv.object_label;
-    /// first row
-    Point UL = Point(pv.cvRect_x1, pv.cvRect_y1); /// top left
-    Point UR = Point(pv.cvRect_x2, pv.cvRect_y1); /// top left
-    Point UR_UP = Point(pv.cvRect_x2, pv.cvRect_y1-offset); /// top left
-    Point UC = Point((pv.cvRect_x2+pv.cvRect_x1)/2, pv.cvRect_y1); /// top mid
-    Point UP_C_OFF = Point((pv.cvRect_x1+pv.cvRect_x2)/2, pv.cvRect_y1+offset); /// top thickness
-    Point UL_OFF = Point(pv.cvRect_x1, pv.cvRect_y1+offset); /// topleft thickness
-    //Point UR_OFF = Point(pv.cvRect_x2, pv.cvRect_y1+offset); /// topright thickness
 
-    /// second row
-    Point UR_2OFF = Point(pv.cvRect_x2, pv.cvRect_y1+(2*offset)); /// 2nd row mid thickness
-    Point UR_OFF = Point(pv.cvRect_x2, pv.cvRect_y1+offset);
-    Point BR = Point(pv.cvRect_x2, pv.cvRect_y2); /// bot left
-    Point BL = Point(pv.cvRect_x1, pv.cvRect_y2); /// bot right
+    /// Set visualizer geometry
+    double D_panel_width = 35;//pv.cvRect_x2 - pv.cvRect_x1;
+    double D_panel_height = 10;//pv.cvRect_y1 - pv.cvRect_y2;
+    ///flipped because of image coord
+
+    /// decision panel
+    Point D_TopLeft = Point(pv.cvRect_x1, pv.cvRect_y1);
+    Point D_BotRight =
+            Point(pv.cvRect_x1+D_panel_width,pv.cvRect_y1+D_panel_height);
+
+    //if(ped_bel[i].decision==-1)
+    //rectangle(img,UL, UR_UP, Scalar(0,0,255), CV_FILLED); /// red
+    //else
+
+
+    /// belief panel
+    double gap=5;
+    double Bbox_width = 35;//pv.cvRect_x2 - pv.cvRect_x1;
+    double Bbox_height = 30;
+
+    Point B_TopLeft = Point(pv.cvRect_x1, pv.cvRect_y1+D_panel_height + gap);
+    Point B_TopRight = Point(pv.cvRect_x1+Bbox_width,
+                             pv.cvRect_y1+D_panel_height + gap);
+
+    Point B_BotLeft = Point(pv.cvRect_x1, pv.cvRect_y1+D_panel_height
+                            +Bbox_height + gap);
+    Point B_BotRight = Point(pv.cvRect_x1+Bbox_width,
+                             pv.cvRect_y1+D_panel_height+Bbox_height + gap);
+
+    //rectangle(img,B_BotRight, B_TopLeft, Scalar(0,0,0),1);
+
+    /// belief bar
+    double bar_width=10;
+    double bar_buff=5;
+    double min_height=5;
+
+
+    ///// first row
+    ////Point UL =
+    //Point UR = Point(pv.cvRect_x2, pv.cvRect_y1); /// top left
+    //Point UR_UP = Point(pv.cvRect_x2, pv.cvRect_y1-offset); /// top left
+    //Point UC = Point((pv.cvRect_x2+pv.cvRect_x1)/2, pv.cvRect_y1); /// top mid
+    //Point UP_C_OFF = Point((pv.cvRect_x1+pv.cvRect_x2)/2,    pv.cvRect_y1+offset); /// top thickness
+    //Point UL_OFF = Point(pv.cvRect_x1, pv.cvRect_y1+offset);
+    ///topleft thickness
+    ////Point UR_OFF = Point(pv.cvRect_x2, pv.cvRect_y1+offset);
+    ///topright thickness
+
+    ///// second row
+    //Point UR_2OFF = Point(pv.cvRect_x2, pv.cvRect_y1+(2*offset));
+    /// 2nd row mid thickness
+    //Point UR_OFF = Point(pv.cvRect_x2, pv.cvRect_y1+offset);
+    //Point BR = Point(pv.cvRect_x2, pv.cvRect_y2); /// bot left
+    //Point BL = Point(pv.cvRect_x1, pv.cvRect_y2); /// bot right
+
+    ////Point LeftMid = Point((pv.cvRect_x1+UC.x)/2, pv.cvRect_y1);
+    ////Point RightMid = Point((pv.cvRect_x2+UC.x)/2, pv.cvRect_y1);
+    //Point LeftMid = Point((pv.cvRect_x1+10, pv.cvRect_y2);
+    //Point RightMid = Point((pv.cvRect_x2-10, pv.cvRect_y2);
 
     for(size_t i=0; i<ped_bel.size(); i++)
     {
 
         if(ped_bel[i].id == pv.object_label)
         {
+            // if((ped_bel[i].id==61) || (ped_bel[i].id==62)) /// ISER 2ped  bag file fixed pedestrians
+            //   return;
 
-            std::cout<<ped_bel[i].id<<" "<<ped_bel[i].left_side<<" "<<ped_bel[i].right_side << " decision " << ped_bel[i].decision <<std::endl;
-            
-            //cout << " x " << pv.cvRect_x1 << " y " << pv.cvRect_y1; 
-            //cout << " x " << pv.cvRect_x2 << " y " << pv.cvRect_y2 << endl;; 
-            
-			/// Gradient Coding
+            std::cout<<ped_bel[i].id<<" "<<ped_bel[i].left_side<<" "<<ped_bel[i].right_side << " decision " << ped_bel[i].decision
+                    <<std::endl;
+
+            if (ped_bel[i].decision==1)
+                rectangle(img,D_TopLeft, D_BotRight, Scalar(0,255,0), CV_FILLED); /// green
+            else
+                rectangle(img,D_TopLeft, D_BotRight, Scalar(0,0,255), CV_FILLED);
+            /// red and blue are flipped WTF ????
+
+
+            //cout << " x " << pv.cvRect_x1 << " y " << pv.cvRect_y1;
+            //cout << " x " << pv.cvRect_x2 << " y " << pv.cvRect_y2 << endl;;
+
+            /// Gradient Coding
 
             //int left_gradient = 255-(255.0*ped_bel[i].left_side);
             //int right_gradient = 255-(255.0*ped_bel[i].right_side);
 
-            //rectangle(img,UL, UP_C_OFF, Scalar(255,left_gradient,left_gradient), CV_FILLED);
-            //rectangle(img,UL, UP_C_OFF, Scalar(255,left_gradient,left_gradient), CV_FILLED);
-            //rectangle(img,UC, UR_OFF, Scalar(255,right_gradient,right_gradient), CV_FILLED);
+            //rectangle(img,UL, UP_C_OFF,    Scalar(255,left_gradient,left_gradient), CV_FILLED);
+            //rectangle(img,UL, UP_C_OFF,    Scalar(255,left_gradient,left_gradient), CV_FILLED);
+            //rectangle(img,UC, UR_OFF,    Scalar(255,right_gradient,right_gradient), CV_FILLED);
 
             /// size encoding
             //rectangle(img,UL, UP_C_OFF, Scalar(255,255,255), CV_FILLED);
-            /// fill with white
+            ///// fill with white
             //rectangle(img,UL, UR_OFF, Scalar(255,255,255), CV_FILLED);
+
             /// left bar
-            double length = 40;//(pv.cvRect_x2 - pv.cvRect_x1);
-            //Point leftP = Point(pv.cvRect_x1, -ped_bel[i].left_side*length+ pv.cvRect_y1);
-            Point leftP = Point(pv.cvRect_x1, ped_bel[i].left_side*length+ pv.cvRect_y1);
-            rectangle(img,leftP, UC, Scalar(255,0,0), CV_FILLED);
-            //Point leftP2 = Point(pv.cvRect_x2, -30+ pv.cvRect_y1);
-            //rectangle(img,leftP2, UC, Scalar(255,255,255), CV_FILLED);
+            //double length = 40;//(pv.cvRect_x2 - pv.cvRect_x1);
+            ////Point leftP = Point(pv.cvRect_x1,    -ped_bel[i].left_side*length+ pv.cvRect_y1);
+            //Point leftP = Point(pv.cvRect_x1,    ped_bel[i].left_side*length+ pv.cvRect_y2);
+            //rectangle(img,leftP, LeftMid, Scalar(255,0,0), CV_FILLED);
+            ////Point leftP2 = Point(pv.cvRect_x2, -30+ pv.cvRect_y1);
+            ////rectangle(img,leftP2, UC, Scalar(255,255,255), CV_FILLED);
+
+
+            ///// right bar
+            //Point rightP = Point(pv.cvRect_x2,    ped_bel[i].right_side*length + pv.cvRect_y2);
+            //rectangle(img, rightP, RightMid, Scalar(255,0,0), CV_FILLED);
+
+
+            /// clean up background
+            rectangle(img,B_TopLeft, B_BotRight, Scalar(255,255,255,150),CV_FILLED);
+
+            /// left bar
+            double lvalue = ped_bel[i].left_side*Bbox_height;
+            if(lvalue < min_height)
+                lvalue = min_height;
+            Point lbar_TopRight = Point(B_TopLeft.x+bar_width+bar_buff,
+                                        B_BotLeft.y- lvalue);
+            /// fill
+            rectangle(img, Point(B_BotLeft.x+bar_buff, B_BotLeft.y),
+                      lbar_TopRight, Scalar(255,0,0,0.7),CV_FILLED);
+            /// outline
+            rectangle(img,Point(B_BotLeft.x+bar_buff, B_BotLeft.y),
+                      lbar_TopRight, Scalar(0,0,0),1);
 
 
             /// right bar
-            Point rightP = Point(pv.cvRect_x2,  ped_bel[i].right_side*length + pv.cvRect_y1);
-            rectangle(img, rightP, UC, Scalar(255,0,0), CV_FILLED);
+            double rvalue = ped_bel[i].right_side*Bbox_height;
+            if(rvalue < min_height)
+                rvalue = min_height;
+            Point rbar_TopLeft = Point(B_TopRight.x-bar_width-bar_buff,
+                                       B_BotRight.y- rvalue);
+            /// fill
+            rectangle(img,Point(B_BotRight.x-bar_buff, B_BotRight.y),
+                      rbar_TopLeft, Scalar(255,0,0,0.7),CV_FILLED);
+            /// outline
+            rectangle(img,Point(B_BotRight.x-bar_buff, B_BotRight.y),
+                      rbar_TopLeft, Scalar(0,0,0),1);
 
+            //rectangle(img,UL, UR_UP, Scalar(0,255,255), CV_FILLED);
+            ///yellow ( cruise )
 
-
-
-
-            /// lower panel
-
-            if(ped_bel[i].decision==-1) 
-				rectangle(img,UL, UR_UP, Scalar(0,0,255), CV_FILLED); /// red
-            else if (ped_bel[i].decision==1) 
-				rectangle(img,UL, UR_UP, Scalar(0,255,0), CV_FILLED); /// green
-			else
-				rectangle(img,UL, UR_UP, Scalar(0,0,255), CV_FILLED); /// red
-				//rectangle(img,UL, UR_UP, Scalar(0,255,255), CV_FILLED); /// yellow ( cruise )
-                        
         }
     }
 
-    putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
-    ss2<<setprecision(2)<<fixed<<pv.confidence*100.0;
-    putText(img, ss2.str(), BR+Point(-45,-2), FONT_HERSHEY_PLAIN, 0.8, cvScalar(0,255,255), 1, 8);
+
+    Point BL = Point(pv.cvRect_x1, pv.cvRect_y2); /// bot left
+    putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_PLAIN,
+            0.8,cvScalar(0,255,255), 1, 8);
+    //ss2<<setprecision(2)<<fixed<<pv.confidence*100.0;
+    //putText(img, ss2.str(), BR+Point(-45,-2), FONT_HERSHEY_PLAIN,0.8,    cvScalar(0,255,255), 1, 8);
 }
 
 

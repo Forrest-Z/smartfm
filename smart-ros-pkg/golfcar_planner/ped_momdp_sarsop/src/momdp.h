@@ -485,11 +485,13 @@ private:
 
         int px = getXGrid(pedx);
         int py = getYGrid(pedy);
+        if(py==Y_SIZE-1) py=Y_SIZE-2;
         char ped_str[30];
         sprintf(ped_str,"sx%02dy%02d",px,py);
 
 
         int ry = getYGrid(roby);
+        if(ry==Y_SIZE-1) ry=Y_SIZE-2;
         char rob_str[30];
         sprintf(rob_str,"sR%02d",ry);
 
@@ -542,6 +544,7 @@ private:
         int px = getXGrid(lPedInView[id].ped_pose.x);
         int py = getYGrid(lPedInView[id].ped_pose.y);
         char ped_str[10];
+        if(py == Y_SIZE-1) py=Y_SIZE-2;
         sprintf(ped_str,"ox%02dy%02d",px,py);
 
         ObsVal = ObsSymbolMapping[ped_str];
