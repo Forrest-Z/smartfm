@@ -1,7 +1,7 @@
 #ifndef MOVINGOBJECTDETECTOR_H_
 #define MOVINGOBJECTDETECTOR_H_
 
-#include <cv.h>
+#include <opencv2/opencv.hpp>
 
 class Background
 {

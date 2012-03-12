@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <list>
-#include <cv.h>
+#include <opencv2/opencv.hpp>
 
 #include <fmutil/fm_filter.h>
 

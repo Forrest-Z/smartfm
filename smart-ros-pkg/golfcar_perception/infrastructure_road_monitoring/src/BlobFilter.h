@@ -3,7 +3,7 @@
 
 #include <vector>
 
-#include <cv.h>
+#include <opencv2/opencv.hpp>
 
 #include <infrastructure_road_monitoring/data_def.h>
 
