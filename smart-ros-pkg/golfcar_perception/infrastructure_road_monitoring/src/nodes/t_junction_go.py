@@ -45,20 +45,19 @@ def point_inside_polygon(x, y, poly):
 
 class Node:
     def __init__(self):
-        self.cfgsrv = Server(TJunctionGoConfig, self.config_Callback)
         self.delay = rospy.get_param('delay', 3)
+
+        self.get_poly_defs()
+
         self.subEA = rospy.Subscriber('tracksEA', Tracks, self.EA_Callback)
         self.subSDE = rospy.Subscriber('tracksSDE', Tracks, self.SDE_Callback)
         self.pub = rospy.Publisher('tjunction_go', Bool)
+
+        self.timer = rospy.Timer(rospy.Duration(1), self.timer_Callback)
+
         self.last_unsafe = rospy.Time.now().to_sec()
         self.last_decision = False
         self.update_db(False)
-
-    def config_Callback(self, config, level):
-        self.url = config.url
-        self.ea_poly = eval(config.ea_poly)
-        self.sde_poly = eval(config.sde_poly)
-        return config
 
     def EA_Callback(self, msg):
         for track in msg.tracks:
@@ -81,6 +80,15 @@ class Node:
                 self.last_unsafe = rospy.Time.now().to_sec()
                 break
         self.pub_result()
+
+    def get_poly_defs(self):
+        ea_poly_str = rospy.get_param('ea_poly', "[]")
+        sde_poly_str = rospy.get_param('sde_poly', "[]")
+        self.ea_poly = eval(ea_poly_str)
+        self.sde_poly = eval(sde_poly_str)
+
+    def timer_Callback(self, event):
+        self.get_poly_defs()
 
     def update_db(self, status):
         try:

@@ -159,6 +159,60 @@ void mouse_callback(int event, int x, int y, int flags, void *param)
 }
 
 
+#define ERR(msg) do{ ROS_ERROR(msg); return vector<cv::Point>(); } while(0)
+vector<cv::Point> parse_contour_string(string s)
+{
+    vector<cv::Point> contour;
+    unsigned state = 0;
+    stringstream ss;
+    int x, y;
+    for( unsigned i=0; i<s.length(); i++ )
+    {
+        char c = s[i];
+        if( c==' ' ) continue;
+        switch( state )
+        {
+        case 0:
+            if( c=='[' ) state++;
+            else ERR("state 0");
+            break;
+        case 1:
+            if( c=='[' ) {
+                state++;
+                ss.str(string(""));
+            }
+            else ERR("state 1");
+            break;
+        case 2:
+            if( c>='0' && c<='9' ) {
+                ss <<c;
+            } else if( c==',') {
+                ss >> x;
+                ss.str(string(""));
+                state++;
+            } else ERR("state 2");
+            break;
+        case 3:
+            if( c>='0' && c<='9' ) {
+                ss <<c;
+            } else if( c==']') {
+                ss >> y;
+                ss.str(string(""));
+                state++;
+                contour.push_back(cv::Point(x,y));
+            } else ERR("state 3");
+            break;
+        case 4:
+            if( c==',' ) state = 1;
+            else if( c==']' ) return contour;
+            else ERR("state 4");
+            break;
+        }
+    }
+    return vector<cv::Point>();
+}
+
+
 class RoiSelectNode
 {
 public:
@@ -169,17 +223,29 @@ private:
     ros::NodeHandle nh_;
     image_transport::ImageTransport it_;
     image_transport::Subscriber frame_sub_;
-    void callback(const sensor_msgs::Image::ConstPtr & frame);
+    ros::Timer timer_;
+    string poly_param_; // the name of the parameter to set
+    void img_callback(const sensor_msgs::Image::ConstPtr&);
+    void timer_callback(const ros::TimerEvent&);
 };
 
 
 RoiSelectNode::RoiSelectNode()
 : it_(nh_)
 {
-	frame_sub_ = it_.subscribe("image", 1, boost::bind(&RoiSelectNode::callback, this, _1));
+	// retrieve the name of the parameter where we can read and set the poly definition
+	ROS_ASSERT(ros::param::get("poly", poly_param_));
+
+	// retrieve any existing definition to use as starting polygon
+	string s;
+	if( ros::param::get(poly_param_, s) )
+		g_contour = parse_contour_string(s);
+
+	frame_sub_ = it_.subscribe("image", 1, boost::bind(&RoiSelectNode::img_callback, this, _1));
+	timer_ = nh_.createTimer(ros::Duration(0.1), timerCallback);
 }
 
-void RoiSelectNode::callback(const sensor_msgs::Image::ConstPtr & frame)
+void RoiSelectNode::img_callback(const sensor_msgs::Image::ConstPtr & frame)
 {
     if( g_window_name.length()==0 ) {
     	g_window_name = frame_sub_.getTopic();
@@ -190,6 +256,11 @@ void RoiSelectNode::callback(const sensor_msgs::Image::ConstPtr & frame)
     g_frame = cvImgFrame->image;
 
     draw_roi();
+}
+
+void RoiSelectNode::timer_callback(const ros::TimerEvent & e)
+{
+	ros::param::set(poly_param_, contour_to_string());
 }
 
 void RoiSelectNode::spin()
@@ -208,7 +279,7 @@ void RoiSelectNode::spin()
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "track_display", ros::init_options::AnonymousName);
+    ros::init(argc, argv, "roi_select", ros::init_options::AnonymousName);
     RoiSelectNode node;
     node.spin();
     return 0;
