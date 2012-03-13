@@ -40,7 +40,7 @@ private:
     void timer_callback(const ros::TimerEvent&);
 
     PIT find_closest_point(int x, int y);
-    PIT find_closest_segment(int x, int y);
+    float dist_to_segment(int x, int y, const PIT & it, const PIT & jt);
     PIT add_to_countour(int x, int y);
 
     void init();
@@ -192,53 +192,47 @@ PIT RoiSelectNode::find_closest_point(int x, int y)
 	return closest;
 }
 
-PIT RoiSelectNode::find_closest_segment(int x, int y)
+
+/** Check all lines of the polygon for the one closest to (x,y)
+ *
+ * Returns an iterator to the point
+*/
+float RoiSelectNode::dist_to_segment(int x, int y, const PIT & it, const PIT & jt)
+{
+	float aa = fmutil::angle(it->x, it->y, jt->x, jt->y);
+	float ab = fmutil::angle(it->x, it->y, x, y);
+	float ad = fmutil::angDist(aa,ab);
+	if( ad>M_PI_2 ) return -1;
+
+	float da = fmutil::distance(it->x, it->y, jt->x, jt->y);
+	float db = fmutil::distance(it->x, it->y, x, y);
+	if( db>da ) return -1;
+
+	return db * sin(ad);
+}
+
+PIT RoiSelectNode::add_to_countour(int x, int y)
 {
 	PIT closest = contour_.end();
 	float dmin = 10000;
-	for( PIT it = contour_.begin(); it!=contour_.end()-1; ++it )
+	for( PIT it = contour_.begin(); it!=contour_.end(); ++it )
 	{
-		PIT jt = it+1;
-		float aa = fmutil::angle(it->x, it->y, jt->x, jt->y);
-		float ab = fmutil::angle(it->x, it->y, x, y);
-		float ad = fmutil::angDist(aa,ab);
-		if( ad>M_PI_2 ) continue;
+		PIT jt;
+		if( it!=contour_.end()-1 )
+			jt = it+1;
+		else
+			jt = contour_.begin();
 
-		float da = fmutil::distance(it->x, it->y, jt->x, jt->y);
-		float db = fmutil::distance(it->x, it->y, x, y);
-		if( db>da ) continue;
-
-		float d = db * sin(ad);
-		if( d<dmin )
+		float d = dist_to_segment(x,y,it,jt);
+		if( d>=0 && d<dmin )
 		{
 			dmin = d;
 			closest = jt;
 		}
 	}
 
-	return closest;
-}
-
-PIT RoiSelectNode::add_to_countour(int x, int y)
-{
-	if( contour_.size() < 2 ) {
-		contour_.push_back(cv::Point(x,y));
-		return contour_.end()-1;
-	}
-
-	//check if the new point is between 2 existing points
-	PIT closest = find_closest_segment(x,y);
-	if( closest == contour_.end() )
-	{
-		contour_.push_back(cv::Point(x,y));
-		return contour_.end()-1;
-	}
-	else
-	{
-		return contour_.insert(closest, cv::Point(x,y));
-	}
-
-	return contour_.begin(); //for syntax
+	if( closest==contour_.begin() ) closest = contour_.end();
+	return contour_.insert(closest, cv::Point(x,y));
 }
 
 
