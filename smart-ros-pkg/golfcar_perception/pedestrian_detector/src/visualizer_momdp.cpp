@@ -105,7 +105,15 @@ void VisualizeMomdp::syncCallback(const sensor_msgs::ImageConstPtr image, const 
             else rectangle(img,UL, BR, Scalar(255,0,0), 1);
 
         }
-        if(ROI_text) drawIDandConfidence(img, temp_rect);
+        if(ROI_text)
+        {
+            if(threshold_ > 0)
+            {
+                if(vision_roi->pd_vector[i].confidence*100 > threshold_)
+                    drawIDandConfidence(img, temp_rect);
+            }
+            else drawIDandConfidence(img, temp_rect);
+        }
     }
 
 
