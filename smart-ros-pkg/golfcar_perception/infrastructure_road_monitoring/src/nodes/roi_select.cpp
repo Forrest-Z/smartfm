@@ -242,7 +242,7 @@ RoiSelectNode::RoiSelectNode()
 		g_contour = parse_contour_string(s);
 
 	frame_sub_ = it_.subscribe("image", 1, boost::bind(&RoiSelectNode::img_callback, this, _1));
-	timer_ = nh_.createTimer(ros::Duration(0.1), timerCallback);
+	timer_ = nh_.createTimer(ros::Duration(0.1), boost::bind(&RoiSelectNode::timer_callback, this, _1));
 }
 
 void RoiSelectNode::img_callback(const sensor_msgs::Image::ConstPtr & frame)
