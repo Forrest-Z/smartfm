@@ -20,33 +20,32 @@ namespace golfcar_purepursuit
 
 class PurePursuit
 {
-
 public:
-
     PurePursuit(string global_frameID);
-    bool steering_control(double& wheel_angle, double &dist_to_goal);
-    geometry_msgs::Point current_point_, next_point_;
 
-    ros::Publisher pp_vis_;
+    bool steering_control(double *wheel_angle, double *dist_to_goal);
+    bool current_pos_to_point_dist(int end_point, double* path_dist);
 
     nav_msgs::Path path_;
     geometry_msgs::Pose vehicle_base_;
-    double Lfw_, lfw_;
     int path_n_;
-    int nextPathThres_;
-    int nextPathCount_;
     bool initialized_;
     double dist_to_final_point;
-    string global_frameID_;
-    bool current_pos_to_point_dist(int end_point, double* path_dist);
 
 private:
-    bool heading_lookahead(double &heading_la, double &dist_to_goal);
-    bool circle_line_collision(geometry_msgs::Point& anchor_point, geometry_msgs::Point& intersect_point);
-    double sqrt_distance(geometry_msgs::Point wp_a, geometry_msgs::Point wp_b);
+    geometry_msgs::Point current_point_, next_point_;
 
-    geometry_msgs::Point collided_pt;
-    double car_length;
+    ros::Publisher pp_vis_pub_;
+
+    double Lfw_, lfw_;
+    int nextPathThres_;
+    int nextPathCount_;
+    string global_frameID_;
+    geometry_msgs::Point collided_pt_;
+    double car_length_;
+
+    bool heading_lookahead(double *heading_la, double *dist_to_goal);
+    bool circle_line_collision(geometry_msgs::Point anchor_point, geometry_msgs::Point *intersect_point);
 
 };
 
