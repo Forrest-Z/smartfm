@@ -10,8 +10,11 @@ database on FMAutonomy.
 
 import roslib; roslib.load_manifest('infrastructure_road_monitoring')
 import rospy
+from dynamic_reconfigure.server import Server
+
 from std_msgs.msg import Bool
 from infrastructure_road_monitoring.msg import Blob, Blobs, Track, Tracks
+from infrastructure_road_monitoring.cfg import TJunctionGoConfig
 
 import urllib, urllib2
 from xml.dom import minidom
@@ -42,51 +45,68 @@ def point_inside_polygon(x, y, poly):
 
 class Node:
     def __init__(self):
-        self.server = rospy.get_param('/intersections_dbserver_url', 'http://fmautonomy.no-ip.info/intersections')
         self.delay = rospy.get_param('delay', 3)
+        self.url = rospy.get_param('url', 'http://fmautonomy.no-ip.info/intersections')
+
+        self.get_poly_defs()
+
         self.subEA = rospy.Subscriber('tracksEA', Tracks, self.EA_Callback)
         self.subSDE = rospy.Subscriber('tracksSDE', Tracks, self.SDE_Callback)
         self.pub = rospy.Publisher('tjunction_go', Bool)
+
+        self.timer = rospy.Timer(rospy.Duration(1), self.timer_Callback)
+
         self.last_unsafe = rospy.Time.now().to_sec()
         self.last_decision = False
         self.update_db(False)
 
     def EA_Callback(self, msg):
-        poly = [[130,120], [250,120], [250,350], [0,576], [0,275]]
         for track in msg.tracks:
             cx = track.blob.centroid.x
             cy = track.blob.centroid.y
             vx = track.xvel
             vy = track.yvel
-            if point_inside_polygon(cx,cy,poly) and vy>0:
+            if point_inside_polygon(cx,cy,self.ea_poly) and vy>0:
                 self.last_unsafe = rospy.Time.now().to_sec()
                 break
         self.pub_result()
 
     def SDE_Callback(self, msg):
-        poly = [[115,250], [330,190], [720,445], [720,576], [350,576]]
         for track in msg.tracks:
             cx = track.blob.centroid.x
             cy = track.blob.centroid.y
             vx = track.xvel
             vy = track.yvel
-            if point_inside_polygon(cx,cy,poly) and vy>0:
+            if point_inside_polygon(cx,cy,self.sde_poly) and vy>0:
                 self.last_unsafe = rospy.Time.now().to_sec()
                 break
         self.pub_result()
 
+    def get_poly_defs(self):
+        #ea_poly_str = rospy.get_param('ea_poly', '[]')
+        #sde_poly_str = rospy.get_param('sde_poly', '[]')
+        self.ea_poly = rospy.get_param('ea_poly', [])
+        self.sde_poly = rospy.get_param('sde_poly', [])
+
+    def timer_Callback(self, event):
+        self.get_poly_defs()
+
     def update_db(self, status):
-        f = urllib2.urlopen(self.server+"/update.php", urllib.urlencode({"Status":status}))
-        xml = f.read()
-        f.close()
-        #print xml
-        dom = minidom.parseString(xml)
-        nodes = dom.getElementsByTagName('status')
-        if len(nodes)>0 and nodes[0].getAttribute('code') == 'err':
-            msg = 'Error while calling ' + "update.php"
-            if nodes[0].hasAttribute('msg') and nodes[0].getAttribute('msg')!='':
-                msg = msg + ': ' + nodes[0].getAttribute('msg')
-            raise Exception( msg )
+        try:
+            f = urllib2.urlopen(self.url+'/update.php', urllib.urlencode({'Status':status}))
+            xml = f.read()
+            f.close()
+        except urllib2.URLError:
+            rospy.logwarn('Could not contact DB server')
+        else:
+            #print xml
+            dom = minidom.parseString(xml)
+            nodes = dom.getElementsByTagName('status')
+            if len(nodes)>0 and nodes[0].getAttribute('code') == 'err':
+                emsg = 'Error while calling update.php'
+                if nodes[0].hasAttribute('msg') and nodes[0].getAttribute('msg')!='':
+                    emsg += ': ' + nodes[0].getAttribute('msg')
+                raise Exception( emsg )
 
     def pub_result(self):
         go = rospy.Time.now().to_sec() > self.last_unsafe + self.delay
@@ -94,9 +114,9 @@ class Node:
             self.update_db(go)
             self.last_decision = go
             if go:
-                rospy.loginfo("safe to go")
+                rospy.loginfo('safe to go')
             else:
-                rospy.loginfo("not safe to go")
+                rospy.loginfo('not safe to go')
         self.pub.publish(Bool(go))
 
 

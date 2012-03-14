@@ -66,3 +66,6 @@ target_link_libraries(blob_tracker ${PROJECT_NAME})
 
 ADD_EXECUTABLE(track_display src/nodes/track_display.cpp src/data_msg_conv.cpp)
 target_link_libraries(track_display ${PROJECT_NAME})
+
+ADD_EXECUTABLE(roi_select src/nodes/roi_select.cpp)
+target_link_libraries(roi_select ${PROJECT_NAME})

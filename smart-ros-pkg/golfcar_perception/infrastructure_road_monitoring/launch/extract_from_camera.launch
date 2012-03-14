@@ -13,7 +13,7 @@
         <remap from="camera" to="camera/image_raw" />
     </node>
 
-    <include file="$(find infrastructure_road_monitoring)/Launch/motion_detect.launch">
+    <include file="$(find infrastructure_road_monitoring)/launch/motion_detect.launch">
         <arg name="camera_topic" value="camera/image_raw" />
     </include>
 
