@@ -13,74 +13,80 @@
 
 namespace fmutil {
 
-float angMod180(float ang) {
-  float a = ang;
+double angMod180(double ang) {
+  double a = ang;
   while( a <= -180 ) a+=360.0;
   while( a > 180 )   a-=360.0;
   return a;
 }
 
-float angMod360(float ang) {
-  float a = ang;
+double angMod360(double ang) {
+  double a = ang;
   while( a < 0 ) a+=360.0;
   while( a >= 360 ) a-=360.0;
   return a;
 }
 
-float angModPI(float ang) {
-  float a = ang;
+double angModPI(double ang) {
+  double a = ang;
   while( a <= -M_PI ) a+=2.0*M_PI;
   while( a > M_PI )   a-=2.0*M_PI;
   return a;
 }
 
-float angModPI2(float ang) {
-  float a = ang;
+double angModPI2(double ang) {
+  double a = ang;
   while( a <= -M_PI_2 ) a+=M_PI;
   while( a > M_PI_2 )   a-=M_PI;
   return a;
 }
 
-float angMod2PI(float ang) {
-  float a = ang;
+double angMod2PI(double ang) {
+  double a = ang;
   while( a <= 0 ) a+=2.0*M_PI;
   while( a > 2*M_PI ) a-=2.0*M_PI;
   return a;
 }
 
-float angDist(float a, float b) {
+double angDist(double a, double b) {
   return fabs(angModPI(a-b));
 }
 
-float d2r(float ang) {
+double d2r(double ang) {
   return ang/180.0*M_PI;
 }
 
-float r2d(float ang) {
+double r2d(double ang) {
   return ang/M_PI*180.0;
 }
 
-float mag(float a, float b, float c) {
+double mag(double a, double b, double c) {
   return sqrt(a*a + b*b + c*c);
 }
 
-float distance(float x1, float y1, float x2, float y2) {
+double distance(double x1, double y1, double x2, double y2) {
   return mag(x1-x2, y1-y2);
 }
 
-float angle(float x1, float y1, float x2, float y2) {
+double distance(const geometry_msgs::Point & p1,
+		const geometry_msgs::Point & p2)
+{
+	return mag(p1.x-p2.x, p1.y-p2.y);
+}
+
+double angle(double x1, double y1, double x2, double y2) {
   return atan2f(y1-y2, x1-x2);
 }
 
-float min(float a, float b, float c) {
+double min(double a, double b, double c) {
   return a<b ? (a<c ? a : c) : (b<c ? b : c);
 }
 
-float max(float a, float b, float c) {
+double max(double a, double b, double c) {
   return a>b ? (a>c ? a : c) : (b>c ? b : c);
 }
 
-bool isWithin(float x, float a, float b)  {
+bool isWithin(double x, double a, double b)  {
   return min(a,b)<x && x<max(a,b);
 }
 
