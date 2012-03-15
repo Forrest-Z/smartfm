@@ -194,6 +194,12 @@ unsigned char data_assoc::color_downsample(unsigned char color)
 
 void data_assoc::updatelPedInViewWithNewCluster(feature_detection::clusters& cluster_vector, cv::Mat& img)
 {
+    cout<<"Current ped list: ";
+    for(size_t i = 0; i < lPedInView.pd_vector.size(); i++)
+    {
+        cout<<lPedInView.pd_vector[i].object_label<<" "<<lPedInView.pd_vector[i].cluster.centroid.x<<" "<<lPedInView.pd_vector[i].cluster.centroid.y<<" ";
+    }
+    cout<<endl;
     for(size_t i = 0; i < cluster_vector.clusters.size(); )
     {
 
@@ -207,11 +213,12 @@ void data_assoc::updatelPedInViewWithNewCluster(feature_detection::clusters& clu
         cluster_vision.cluster = cluster_vector.clusters[i];
         std_msgs::Header cluster_header = cluster_vector.header;
         imageProjection(img, cluster_header, cluster_vision, true);
-        cout<<i<<" cluster, size of image hashing = "<<cluster_vision.image_hash.size()<<endl;
+        //cout<<i<<" cluster, size of image hashing = "<<cluster_vision.image_hash.size()<<endl;
 
         double minCost = numeric_limits<double>::max();
         int minID = -1;
-        cout << "img diff ";
+        double img_score = 0, dist_score = 0;
+        //cout << "img diff ";
         for( size_t j = 0; j < lPedInView.pd_vector.size(); j++)
         {
             double imgdiff, currDist;
@@ -220,15 +227,23 @@ void data_assoc::updatelPedInViewWithNewCluster(feature_detection::clusters& clu
 
             // Get the total cost with a simple linear function
             double currCost = color_cost_ * imgdiff + dist_cost_ * currDist;
+            //cout <<"ID: "<<lPedInView.pd_vector[j].object_label<<" "<< imgdiff << " "<<currDist<<" ";
             if( (currCost < minCost))
             {
                 minCost = currCost;
                 minID = j;
+                img_score = color_cost_ * imgdiff;
+                dist_score = dist_cost_ * currDist;
             }
-            cout << imgdiff << " ";
+            //cout << imgdiff << " ";
         }
+        //cout<<endl;
         if(minID>-1)
-            cout<<"Min cost for ped ID "<<lPedInView.pd_vector[minID].cluster.id <<" is "<<minCost<<endl;
+        {
+            cout<<"New cluster matched ped ID "<<lPedInView.pd_vector[minID].cluster.id <<endl;
+            cout<<"Score details: "<<img_score <<" + "<<dist_score<<" = "<<minCost<<endl;
+            cout<<"At location xy "<<global_point.x<<" "<<global_point.y<<endl;
+        }
         if(minCost < cost_threshold_ && minID > -1)
         {
             // Found the matching pedestrian, update the lPedInView accordingly
@@ -263,7 +278,7 @@ void data_assoc::checkMergedlPedInView(Mat& img)
         for(int j=0; j < lPedInView.pd_vector.size(); j++)
         {
             if(!lPedInView.pd_vector[j].decision_flag) continue;
-
+            //get the measurement of the 2 points and use it to determine if we want to merge them together
             double currDist = dist(lPedInView.pd_vector[j].cluster.centroid, lPedInView.pd_vector[i].cluster.centroid);
             if( (currDist < minDist) && currDist>-1)
             {
@@ -272,9 +287,10 @@ void data_assoc::checkMergedlPedInView(Mat& img)
             }
         }
         bool update_image_hash = true;
-        cout<<"Ped in view with id "<<lPedInView.pd_vector[minID].object_label<<" has min dist of "<<minDist <<" with id "<<lPedInView.pd_vector[i].object_label;
+
         if(minDist < merge_dist_)
         {
+            cout<<"Ped in view with id "<<lPedInView.pd_vector[minID].object_label<<" has min dist of "<<minDist <<" with id "<<lPedInView.pd_vector[i].object_label;
             cout<<" merging those 2 id"<<endl;
             PedImgHash src, dest;
             src.id = lPedInView.pd_vector[minID].object_label;
@@ -283,10 +299,7 @@ void data_assoc::checkMergedlPedInView(Mat& img)
             merge_lists.create_merge_lists(src, dest);
             update_image_hash = false;
         }
-        else
-        {
-            cout<<" not going to merge"<<endl;
-        }
+
     }
 }
 
@@ -302,6 +315,7 @@ void data_assoc::updateImageHash(Mat& img)
                 if(lPedInView.pd_vector[i].object_label == merge_lists.merged_ids[j].peds[k].id) merge_existed = true;
         //update image hash here
         imageProjection(img,lPedInView.header, lPedInView.pd_vector[i], !merge_existed);
+        if(merge_existed) cout<<"Ped id "<<lPedInView.pd_vector[i].object_label<<" is a merged ped, not going to update image hash"<<endl;
     }
 }
 
@@ -324,20 +338,42 @@ void data_assoc::updateMergeList()//feature_detection::clusters cluster_vector)
         if(id_updated.size()>1)
         {
             for(size_t j = 0; j<id_updated.size(); j++)
+            {
                 merge_lists.erase_merge_lists(id_updated[j]);
+                cout<<"Merged ped id "<<id_updated[j]<<" split, erased from merge list"<<endl;
+            }
         }
     }
     //update merge list
     for(size_t i=0; i<merge_lists.merged_ids.size();i++)
     {
-        //the first element is the active element
         for(size_t j=0; j<lPedInView.pd_vector.size(); j++)
         {
-            if(lPedInView.pd_vector[j].cluster.id == merge_lists.merged_ids[i].peds[0].id)
+            //only update those lPedInView that's updated on this cycle
+            if(!lPedInView.pd_vector[j].decision_flag) continue;
+
+            bool match_merge = false;
+            for(size_t k=0;k<merge_lists.merged_ids[i].peds.size();k++)
             {
-                //the merge list should have at least 2 elements
-                assert(merge_lists.merged_ids[i].peds.size()>1);
-                for(size_t k=1; k<merge_lists.merged_ids[i].peds.size();k++) updatelPedInViewWithID(merge_lists.merged_ids[i].peds[k].id, lPedInView.pd_vector[j]);
+                if(lPedInView.pd_vector[j].object_label == merge_lists.merged_ids[i].peds[k].id)
+                {
+                    match_merge = true;
+                    break;
+                }
+            }
+            if(match_merge)
+            {
+                for(size_t k=0;k<merge_lists.merged_ids[i].peds.size();k++)
+                {
+                    //the merge list should have at least 2 elements
+                    assert(merge_lists.merged_ids[i].peds.size()>1);
+
+                    //update the merged id. Note that the decision_flag will not be altered
+                    updatelPedInViewWithID(merge_lists.merged_ids[i].peds[k].id, lPedInView.pd_vector[j]);
+                    cout<<"Update merged list with size "<<merge_lists.merged_ids[i].peds.size()<<" of ped id "<<merge_lists.merged_ids[i].peds[k].id<<" triggered by lPedInView id"<<lPedInView.pd_vector[j].object_label<<endl;
+
+                }
+                break;
             }
         }
     }
@@ -358,18 +394,21 @@ void data_assoc::pedClustCallback(sensor_msgs::ImageConstPtr image, feature_dete
     lPedInView.header = cluster_vector.header;
     lPedInView.header.frame_id = global_frame_;
     resetLPedInViewDecisionflag();
-
+    cout<<"****Update lPedInView****"<<endl;
     //update the new cluster with the existing lPedInView
     updatelPedInViewWithNewCluster(cluster_vector, img);
 
     //then update the merge list, check if any pair in the merge list has already been updated (split cluster)
     //if just update the position of the clusters according to the merge list
+    cout<<"****Update Merge List****"<<endl;
     updateMergeList();
 
     //check any remaining lPedInView for possible merged cluster
+    cout<<"****Check for merged clusters****"<<endl;
     checkMergedlPedInView(img);
 
     // Add any remaining clusters as new lPedInView
+    cout<<"****Add new lPedInView****"<<endl;
     for(size_t i=0; i<cluster_vector.clusters.size(); i++)
     {
         geometry_msgs::Point32 global_point;
@@ -379,7 +418,7 @@ void data_assoc::pedClustCallback(sensor_msgs::ImageConstPtr image, feature_dete
         newPed.object_label = latest_id++;
         newPed.cluster.centroid = global_point;
         newPed.cluster.last_update = ros::Time::now();
-        ROS_DEBUG_STREAM( "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.cluster.centroid.x << " y:" << newPed.cluster.centroid.y);
+        cout<< "Creating new pedestrian with id #" << latest_id << " at x:" << newPed.cluster.centroid.x << " y:" << newPed.cluster.centroid.y<<endl;
         //imageProjection(img, lPedInView.header, newPed, true);
         lPedInView.pd_vector.push_back(newPed);
     }
@@ -394,9 +433,10 @@ void data_assoc::getColorDiff(vector<double>& first, vector<double>& second, dou
 {
 
     diff = 0.0;
+
     // In this model, the cost will be effective when the pedestrian come in view
     // Since we are taking the average difference, it can be thought as percentage color matched
-    if(first.size() == second.size())
+    if(first.size() == second.size() && first.size()>0)
     {
         for(size_t i=0; i<first.size(); i++)
         {
@@ -438,7 +478,7 @@ void data_assoc::updatelPedInViewWithID(int id, sensing_on_road::pedestrian_visi
 void data_assoc::updatelPedInView(sensing_on_road::pedestrian_vision& update_source, sensing_on_road::pedestrian_vision& update_dest)
 {
     update_dest.cluster.centroid = update_source.cluster.centroid;
-    update_dest.decision_flag = true;
+    //update_dest.decision_flag = true;
     update_dest.cluster.last_update = ros::Time::now();
     update_dest.cluster.width = update_source.cluster.width;
 }
@@ -451,7 +491,8 @@ void data_assoc::cleanUp()
         ROS_DEBUG("ped with ID %d unseen time = %lf", lPedInView.pd_vector[jj].cluster.id, unseen_time.toSec());
         if(unseen_time.toSec()>time_out_)
         {
-            ROS_DEBUG("Erase ped with ID %d due to time out", lPedInView.pd_vector[jj].object_label);
+            printf("Erase ped with ID %d due to time out", lPedInView.pd_vector[jj].object_label);
+            merge_lists.erase_merge_lists(lPedInView.pd_vector[jj].object_label);
             lPedInView.pd_vector.erase(lPedInView.pd_vector.begin()+jj);
 
         }

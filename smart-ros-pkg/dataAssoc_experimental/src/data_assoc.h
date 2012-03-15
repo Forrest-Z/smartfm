@@ -102,22 +102,20 @@ public:
         //search for current merge list and update the list accordingly
         //will create new list when the merged cluster not found
         MergeID new_merge_id;
-        //check if the parent list is already exist
-        bool merge_list_exist = false;
+        //check if the parent list or dest_id is already exist
+        bool src_exist = false, dest_exist = false;
+        int merge_no;
         for(size_t j=0; j<merged_ids.size(); j++)
-        {
             for(size_t k=0; k<merged_ids[j].peds.size(); k++)
-            {
-                if(merged_ids[j].peds[k].id==source_id.id)
-                {
-                    merge_list_exist = true;
-                    merged_ids[j].peds.push_back(dest_id);
-                    k = merged_ids[j].peds.size();
-                }
-            }
-            if(merge_list_exist) j = merged_ids.size();
-        }
-        if(!merge_list_exist)
+                if(merged_ids[j].peds[k].id==source_id.id) { src_exist = true; merge_no = j;break;}
+        for(size_t j=0; j<merged_ids.size(); j++)
+                    for(size_t k=0; k<merged_ids[j].peds.size(); k++)
+                        if(merged_ids[j].peds[k].id==dest_id.id) dest_exist = true;
+
+        if(!dest_exist && src_exist) merged_ids[merge_no].peds.push_back(dest_id);
+
+
+        if(!src_exist)
         {
             new_merge_id.peds.push_back(source_id);
             new_merge_id.peds.push_back(dest_id);
@@ -188,7 +186,7 @@ private:
     void getColorDiff(vector<double>& first, vector<double>& second, double& diff);
     void colorHist(cv::Mat& src, vector<double>& image_hash)
     {
-        cout<<"Start colorHist"<<endl;
+        //cout<<"Start colorHist"<<endl;
         /*vector<Mat> split_bgr;
         split_bgr.resize(3);
         split(src, split_bgr);
@@ -205,7 +203,13 @@ private:
             }
         for(size_t i=0; i<image_hash.size(); i++) cout<<image_hash[i]<<" ";
         cout<<endl<<"End colorHist"<<endl;*/
-
+        int image_size = src.cols * src.rows;
+        //no histogram is available when image_size is zero
+        if(image_size == 0)
+        {
+            //image_hash.clear();
+            return;
+        }
         Mat hsv;
         cvtColor(src, hsv, CV_BGR2HSV);
 
@@ -234,18 +238,17 @@ private:
         int scale = 10;
         Mat histImg = Mat::zeros(sbins*scale, hbins*10, CV_8UC3);
         image_hash.clear();
-        int image_size = src.cols * src.rows;
+
+
         //cout <<"Image size "<< image_size<<" "<<src.cols<<" "<<src.rows;
-        double accumulated_binval=0;
+
+
         for( int h = 0; h < hbins; h++ )
             for( int s = 0; s < sbins; s++ )
             {
                 float binVal = hist.at<float>(h, s);
-                //int intensity = cvRound(binVal*255/maxVal);
                 image_hash.push_back(binVal/image_size);
-                accumulated_binval+=binVal;
                 //cout << image_hash[image_hash.size()-1] << ' ';
-
             }
 
         //cout<<"Accumulated: "<<accumulated_binval<<endl;
