@@ -177,18 +177,41 @@ private:
     dynamic_reconfigure::Server<dataAssoc_experimental::CameraParamConfig>::CallbackType dynamic_cb;
     void dynamic_callback(dataAssoc_experimental::CameraParamConfig &config, uint32_t level);
     int pixel_padding_;
-    double laser_height_;
-
+    double laser_height_, color_cost_, dist_cost_, cost_threshold_, merge_dist_;
+    unsigned char color_downsample(unsigned char color);
+    void updatelPedInViewWithNewCluster(feature_detection::clusters& cluster_vector, Mat& img);
+    void updateMergeList();
+    void updateImageHash(Mat& img);
+    void checkMergedlPedInView(Mat& img);
     void syncCallback(const sensor_msgs::ImageConstPtr image, const feature_detection::clustersConstPtr cluster_vector);
-    bool imageProjection(Mat& img, sensing_on_road::pedestrian_vision& ped, bool generate_image_hash);
+    bool imageProjection(Mat& img, std_msgs::Header& header, sensing_on_road::pedestrian_vision& ped, bool generate_image_hash);
+    void getColorDiff(vector<double>& first, vector<double>& second, double& diff);
     void colorHist(cv::Mat& src, vector<double>& image_hash)
     {
+        cout<<"Start colorHist"<<endl;
+        /*vector<Mat> split_bgr;
+        split_bgr.resize(3);
+        split(src, split_bgr);
+        image_hash.erase(image_hash.begin(), image_hash.end());
+        image_hash.resize(7*7*7);
+        for(int i=0; i<split_bgr[1].cols; i++)
+            for(int j=0; j<split_bgr[1].rows; j++)
+            {
+                int b = split_bgr[0].at<uchar>(j, i); b/36;
+                int g = split_bgr[1].at<uchar>(j, i); g/36;
+                int r = split_bgr[2].at<uchar>(j, i); r/36;
+                cout<<"B: "<<b<<" G "<<g<<" R "<<r<<endl;
+                image_hash[b*49+g*7+r]+=1.0;
+            }
+        for(size_t i=0; i<image_hash.size(); i++) cout<<image_hash[i]<<" ";
+        cout<<endl<<"End colorHist"<<endl;*/
+
         Mat hsv;
         cvtColor(src, hsv, CV_BGR2HSV);
 
         // let's quantize the hue to 30 levels
         // and the saturation to 32 levels
-        int hbins = 10, sbins = 1;
+        int hbins = 15, sbins = 16;
         int histSize[] = {hbins, sbins};
         // hue varies from 0 to 179, see cvtColor
         float hranges[] = { 0, 180 };
@@ -205,25 +228,27 @@ private:
                   true, // the histogram is uniform
                   false );
         double maxVal=0;
-        minMaxLoc(hist, 0, &maxVal, 0, 0);
+
+        //minMaxLoc(hist, 0, &maxVal, 0, 0);
 
         int scale = 10;
         Mat histImg = Mat::zeros(sbins*scale, hbins*10, CV_8UC3);
         image_hash.clear();
+        int image_size = src.cols * src.rows;
+        //cout <<"Image size "<< image_size<<" "<<src.cols<<" "<<src.rows;
+        double accumulated_binval=0;
         for( int h = 0; h < hbins; h++ )
             for( int s = 0; s < sbins; s++ )
             {
                 float binVal = hist.at<float>(h, s);
                 //int intensity = cvRound(binVal*255/maxVal);
-                image_hash.push_back(binVal/maxVal);
+                image_hash.push_back(binVal/image_size);
+                accumulated_binval+=binVal;
                 //cout << image_hash[image_hash.size()-1] << ' ';
-                /*cvRectangle( histImg, Point(h*scale, s*scale),
-                                     Point( (h+1)*scale - 1, (s+1)*scale - 1),
-                                     Scalar::all(intensity),
-                                     CV_FILLED );*/
+
             }
 
-        //cout<<endl;
+        //cout<<"Accumulated: "<<accumulated_binval<<endl;
     }
 };
 

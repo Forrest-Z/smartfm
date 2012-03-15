@@ -53,6 +53,10 @@ void data_assoc::dynamic_callback(dataAssoc_experimental::CameraParamConfig &con
 {
     laser_height_ = config.laser_height;
     pixel_padding_ = config.pixel_padding;
+    color_cost_ = config.color_cost;
+    dist_cost_ = config.dist_cost;
+    cost_threshold_ = config.cost_threhold;
+    merge_dist_ = config.merge_dist;
 }
 bool sort_clg(centroid_local_global const &a, centroid_local_global const &b)
 {
@@ -135,7 +139,7 @@ data_assoc::~data_assoc()
 
 double dist(geometry_msgs::Point32 A, geometry_msgs::Point32 B)
 {
-    double distance = -1;
+    double distance = numeric_limits<double>::max();
     //if(A.x || B.x || A.y || B.y)
     distance = sqrt( (A.x -B.x) *(A.x-B.x) + (A.y -B.y) *(A.y-B.y));
 
@@ -177,94 +181,79 @@ bool data_assoc::transformPointToGlobal(std_msgs::Header header, geometry_msgs::
 
     return true;
 }
-
-void data_assoc::pedClustCallback(sensor_msgs::ImageConstPtr image, feature_detection::clustersConstPtr cluster_vector)
+unsigned char data_assoc::color_downsample(unsigned char color)
 {
 
-    cv_bridge::CvImagePtr cv_image;
-    try
-    {
-        cv_image = cv_bridge::toCvCopy(image, "bgra8");
-    }
-    catch (cv_bridge::Exception& e)
-    {
-        ROS_ERROR("cv_bridge exception: %s", e.what());
-        return;
-    }
-    Mat img(cv_image->image);
-    //imshow("data_assoc",img);
-    //waitKey(2);
-    frame_id_ = cluster_vector->header.frame_id;
-    ROS_DEBUG_STREAM( " Entering pedestrian call back with lPedInView " << lPedInView.pd_vector.size() << " With frame id "<< frame_id_ );
-    /// loop over clusters to match with existing lPedInView
-    std::vector<feature_detection::cluster> clusters = cluster_vector->clusters;
+    int data_i = color;
 
-    feature_detection::clusters clusters_visualize;
-    clusters_visualize.header = cluster_vector->header;
-    lPedInView.header = cluster_vector->header;
-    lPedInView.header.frame_id = global_frame_;
-    resetLPedInViewDecisionflag();
-    cout<<endl;
-    for(int jj=0; jj< lPedInView.pd_vector.size(); jj++)
+    data_i += int(data_i / 255.0 * 7)*36;
+    if(data_i>255) data_i = 255;
+    unsigned char data_c = data_i;
+    return data_c;
+}
+
+void data_assoc::updatelPedInViewWithNewCluster(feature_detection::clusters& cluster_vector, cv::Mat& img)
+{
+    for(size_t i = 0; i < cluster_vector.clusters.size(); )
     {
-        cout<<"Width: "<<lPedInView.pd_vector[jj].object_label<<" "<< lPedInView.pd_vector[jj].cluster.width<<endl;
-        cout<<"ProjE: "<<lPedInView.pd_vector[jj].object_label<<" "<< lPedInView.pd_vector[jj].cluster.projected_l1<<endl;
-        double minDist=10000;
-        int minID=-1;
-        lPedInView.pd_vector[jj].decision_flag = false;
-        for(int ii=0; ii < clusters.size(); ii++)
+
+        // Get the cluster's centroid in global position
+        geometry_msgs::Point32 global_point;
+        bool transformed = transformPointToGlobal(cluster_vector.header, cluster_vector.clusters[i].centroid, global_point);
+        if(!transformed) return;
+
+        // Get the cluster's image hash
+        sensing_on_road::pedestrian_vision cluster_vision;
+        cluster_vision.cluster = cluster_vector.clusters[i];
+        std_msgs::Header cluster_header = cluster_vector.header;
+        imageProjection(img, cluster_header, cluster_vision, true);
+        cout<<i<<" cluster, size of image hashing = "<<cluster_vision.image_hash.size()<<endl;
+
+        double minCost = numeric_limits<double>::max();
+        int minID = -1;
+        cout << "img diff ";
+        for( size_t j = 0; j < lPedInView.pd_vector.size(); j++)
         {
-            geometry_msgs::Point32 global_point;
-            bool transformed = transformPointToGlobal(cluster_vector->header, clusters[ii].centroid, global_point);
-            if(!transformed) return;
-            double currDist = dist(lPedInView.pd_vector[jj].cluster.centroid, global_point);
-            if( (currDist < minDist) && currDist>-1)
+            double imgdiff, currDist;
+            getColorDiff(cluster_vision.image_hash, lPedInView.pd_vector[j].image_hash, imgdiff);
+            currDist = dist(lPedInView.pd_vector[j].cluster.centroid, global_point);
+
+            // Get the total cost with a simple linear function
+            double currCost = color_cost_ * imgdiff + dist_cost_ * currDist;
+            if( (currCost < minCost))
             {
-                minDist = currDist;
-                minID = ii;
+                minCost = currCost;
+                minID = j;
             }
+            cout << imgdiff << " ";
+        }
+        if(minID>-1)
+            cout<<"Min cost for ped ID "<<lPedInView.pd_vector[minID].cluster.id <<" is "<<minCost<<endl;
+        if(minCost < cost_threshold_ && minID > -1)
+        {
+            // Found the matching pedestrian, update the lPedInView accordingly
+            lPedInView.pd_vector[minID].cluster = cluster_vector.clusters[i];
+            lPedInView.pd_vector[minID].cluster.id = lPedInView.pd_vector[minID].object_label;
+            lPedInView.pd_vector[minID].cluster.centroid = global_point;
+            lPedInView.pd_vector[minID].cluster.last_update = ros::Time::now();
+            lPedInView.pd_vector[minID].decision_flag = true;
+            cluster_vector.clusters.erase(cluster_vector.clusters.begin()+i);
+
+
+        }
+        else
+        {
+            // No match found, just increment the count
+            i++;
         }
 
-        if(minDist < NN_MATCH_THRESHOLD)
-        {
-
-            /// if cluster matched, remove from contention
-            if(-1 != minID)
-            {
-                ROS_DEBUG_STREAM(" Cluster matched with ped id #" << lPedInView.pd_vector[jj].object_label );
-                geometry_msgs::Point32 global_point;
-                bool transformed = transformPointToGlobal(cluster_vector->header, clusters[minID].centroid,global_point);
-                if(!transformed) return;
-                //we are update everything except the id;
-
-                lPedInView.pd_vector[jj].cluster = clusters[minID];
-                lPedInView.pd_vector[jj].cluster.id = lPedInView.pd_vector[jj].object_label;
-                lPedInView.pd_vector[jj].cluster.centroid = global_point;
-                lPedInView.pd_vector[jj].cluster.last_update = ros::Time::now();
-                lPedInView.pd_vector[jj].decision_flag = true;
-
-                //update the merge list
-                bool merge_exist = false;
-                for(size_t j=0; j<merge_lists.merged_ids.size();j++)
-                {
-                    //the first element is the active element
-                    if(lPedInView.pd_vector[jj].cluster.id == merge_lists.merged_ids[j].peds[0].id)
-                    {
-                        //the merge list should have at least 2 elements
-                        assert(merge_lists.merged_ids[j].peds.size()>1);
-                        for(size_t k=1; k<merge_lists.merged_ids[j].peds.size();k++) updatelPedInViewWithID(merge_lists.merged_ids[j].peds[k].id, lPedInView.pd_vector[jj]);
-                    }
-                }
-                //if not under the merge list update the image_hash
-
-                /// remove minID element
-                if(clusters.size()) clusters.erase(clusters.begin()+minID);
-            }
-        }
 
     }
 
+}
 
+void data_assoc::checkMergedlPedInView(Mat& img)
+{
     //check for possible merged clusters
     for(size_t i=0; i<lPedInView.pd_vector.size();i++)
     {
@@ -283,80 +272,139 @@ void data_assoc::pedClustCallback(sensor_msgs::ImageConstPtr image, feature_dete
             }
         }
         bool update_image_hash = true;
-        if(minDist < NN_MATCH_THRESHOLD)
+        cout<<"Ped in view with id "<<lPedInView.pd_vector[minID].object_label<<" has min dist of "<<minDist <<" with id "<<lPedInView.pd_vector[i].object_label;
+        if(minDist < merge_dist_)
         {
+            cout<<" merging those 2 id"<<endl;
             PedImgHash src, dest;
             src.id = lPedInView.pd_vector[minID].object_label;
             dest.id = lPedInView.pd_vector[i].object_label;
+
             merge_lists.create_merge_lists(src, dest);
             update_image_hash = false;
         }
-        if(!imageProjection(img, lPedInView.pd_vector[i], update_image_hash)) continue;
-    }
-    ROS_DEBUG("Remaining clusters %d", clusters.size());
-    for(size_t i=0; i<clusters.size(); i++)
-    {
-        geometry_msgs::Point32 global_point;
-        bool transformed = transformPointToGlobal(cluster_vector->header, clusters[i].centroid,global_point);
-        if(!transformed) continue;
-
-        //check for possible split cluster
-
-        double minDist=10000;
-        int minID=-1;
-        ROS_DEBUG("Check for possible split cluster from merge list");
-        for(size_t j=0; j<merge_lists.merged_ids.size(); j++)
-        {
-            for(size_t k=1; k<merge_lists.merged_ids[j].peds.size(); k++)
-            {
-                geometry_msgs::Point32 merge_centroid;
-                if(getlPedInViewCentroid(merge_lists.merged_ids[j].peds[k].id, merge_centroid))
-                {
-                    double currDist = dist(merge_centroid, global_point);
-                    if( (currDist < minDist) && currDist>-1)
-                    {
-                        minDist = currDist;
-                        minID = merge_lists.merged_ids[j].peds[k].id;
-                        ROS_DEBUG("minID %d minDist %lf", minID, minDist);
-                    }
-                }
-            }
-        }
-        if(minDist < 1.5)
-        {
-            ROS_WARN("Giving the new cluster the previous id");
-            merge_lists.erase_merge_lists(minID);
-            //erase_merge_lists(minID);
-            sensing_on_road::pedestrian_vision oldPed;
-            oldPed.cluster = clusters[i];
-            oldPed.cluster.centroid = global_point;
-            updatelPedInViewWithID(minID, oldPed);
-        }
         else
         {
-            sensing_on_road::pedestrian_vision newPed;
-            newPed.object_label = latest_id++;
-            newPed.cluster.centroid = global_point;
-            newPed.cluster.last_update = ros::Time::now();
-            ROS_DEBUG_STREAM( "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.cluster.centroid.x << " y:" << newPed.cluster.centroid.y);
-            lPedInView.pd_vector.push_back(newPed);
+            cout<<" not going to merge"<<endl;
         }
     }
+}
 
-    ///// Add remaining clusters as new pedestrians
-    ///// check with caveat .... Or just ignore new clusters
-    //for(int ii=0; ii< cluster_vector.clusters.size(); ii++)
-    //{
-    //If satisfies some criterion  or should we ignore and
-    //let the HoG find proper pedestrians.
+void data_assoc::updateImageHash(Mat& img)
+{
+    //only update those lPedInView that is not in the merge list
+    //this is to retain the color histogram before the merging occur for better discriminative features
+    for(size_t i=0; i<lPedInView.pd_vector.size();i++)
+    {
+        bool merge_existed=false;
+        for(size_t j = 0; j<merge_lists.merged_ids.size(); j++)
+            for(size_t k = 0; k<merge_lists.merged_ids[j].peds.size();k++)
+                if(lPedInView.pd_vector[i].object_label == merge_lists.merged_ids[j].peds[k].id) merge_existed = true;
+        //update image hash here
+        imageProjection(img,lPedInView.header, lPedInView.pd_vector[i], !merge_existed);
+    }
+}
 
-    //PED_DATA_ASSOC ped;
-    //ped.id = assign some id;
-    //ped.ped_pose = cluster_vector.clusters[ii].centroid;
-    //}
+void data_assoc::updateMergeList()//feature_detection::clusters cluster_vector)
+{
+    //check for split list
+    for(size_t i=0; i<merge_lists.merged_ids.size();i++)
+    {
+        vector<int> id_updated;
+        for(size_t j = 0; j<merge_lists.merged_ids[i].peds.size(); j++)
+        {
+            for(size_t k = 0; k<lPedInView.pd_vector.size();k++)
+            {
+                if(!lPedInView.pd_vector[k].decision_flag) continue;
+                if(lPedInView.pd_vector[k].object_label == merge_lists.merged_ids[i].peds[j].id)
+                    id_updated.push_back(lPedInView.pd_vector[k].object_label);
+            }
+
+        }
+        if(id_updated.size()>1)
+        {
+            for(size_t j = 0; j<id_updated.size(); j++)
+                merge_lists.erase_merge_lists(id_updated[j]);
+        }
+    }
+    //update merge list
+    for(size_t i=0; i<merge_lists.merged_ids.size();i++)
+    {
+        //the first element is the active element
+        for(size_t j=0; j<lPedInView.pd_vector.size(); j++)
+        {
+            if(lPedInView.pd_vector[j].cluster.id == merge_lists.merged_ids[i].peds[0].id)
+            {
+                //the merge list should have at least 2 elements
+                assert(merge_lists.merged_ids[i].peds.size()>1);
+                for(size_t k=1; k<merge_lists.merged_ids[i].peds.size();k++) updatelPedInViewWithID(merge_lists.merged_ids[i].peds[k].id, lPedInView.pd_vector[j]);
+            }
+        }
+    }
+}
+
+void data_assoc::pedClustCallback(sensor_msgs::ImageConstPtr image, feature_detection::clustersConstPtr cluster_vector_ptr)
+{
+    ROS_DEBUG_STREAM( " Entering pedestrian call back with lPedInView " << lPedInView.pd_vector.size() << " With frame id "<< frame_id_ );
+
+    cv_bridge::CvImagePtr cv_image;
+    try{cv_image = cv_bridge::toCvCopy(image, "bgra8");}
+    catch (cv_bridge::Exception& e){ROS_ERROR("cv_bridge exception: %s", e.what());return;}
+    Mat img(cv_image->image);
+    feature_detection::clusters cluster_vector = *cluster_vector_ptr;
+    /// loop over clusters to match with existing lPedInView
+    //std::vector<feature_detection::cluster> clusters = cluster_vector.clusters;
+
+    lPedInView.header = cluster_vector.header;
+    lPedInView.header.frame_id = global_frame_;
+    resetLPedInViewDecisionflag();
+
+    //update the new cluster with the existing lPedInView
+    updatelPedInViewWithNewCluster(cluster_vector, img);
+
+    //then update the merge list, check if any pair in the merge list has already been updated (split cluster)
+    //if just update the position of the clusters according to the merge list
+    updateMergeList();
+
+    //check any remaining lPedInView for possible merged cluster
+    checkMergedlPedInView(img);
+
+    // Add any remaining clusters as new lPedInView
+    for(size_t i=0; i<cluster_vector.clusters.size(); i++)
+    {
+        geometry_msgs::Point32 global_point;
+        bool transformed = transformPointToGlobal(cluster_vector.header, cluster_vector.clusters[i].centroid,global_point);
+        if(!transformed) continue;
+        sensing_on_road::pedestrian_vision newPed;
+        newPed.object_label = latest_id++;
+        newPed.cluster.centroid = global_point;
+        newPed.cluster.last_update = ros::Time::now();
+        ROS_DEBUG_STREAM( "Creating new pedestrian from vision with id #" << latest_id << " at x:" << newPed.cluster.centroid.x << " y:" << newPed.cluster.centroid.y);
+        //imageProjection(img, lPedInView.header, newPed, true);
+        lPedInView.pd_vector.push_back(newPed);
+    }
+    updateImageHash(img);
+
     cleanUp();
     publishPed(img);
     ROS_DEBUG_STREAM("PedCluster callback end");
+}
+
+void data_assoc::getColorDiff(vector<double>& first, vector<double>& second, double& diff)
+{
+
+    diff = 0.0;
+    // In this model, the cost will be effective when the pedestrian come in view
+    // Since we are taking the average difference, it can be thought as percentage color matched
+    if(first.size() == second.size())
+    {
+        for(size_t i=0; i<first.size(); i++)
+        {
+            diff += (first[i]-second[i])*(first[i]-second[i]);
+        }
+
+        diff = sqrt(diff/(int)first.size());
+    }
 }
 
 bool data_assoc::getlPedInViewCentroid(int id, geometry_msgs::Point32& centroid)
@@ -368,11 +416,14 @@ bool data_assoc::getlPedInViewCentroid(int id, geometry_msgs::Point32& centroid)
             centroid = lPedInView.pd_vector[i].cluster.centroid;
         }
     }
+    return true;
 }
+
 void data_assoc::resetLPedInViewDecisionflag()
 {
     for(size_t i=0; i < lPedInView.pd_vector.size(); i++) lPedInView.pd_vector[i].decision_flag = false;
 }
+
 void data_assoc::updatelPedInViewWithID(int id, sensing_on_road::pedestrian_vision& pd_vector)
 {
     for(size_t i=0; i < lPedInView.pd_vector.size(); i++)
@@ -426,7 +477,7 @@ void data_assoc::publishPed(Mat img)
         p.z = lPedInView.pd_vector[ii].object_label;
         pc.points.push_back(p);
         ROS_DEBUG("lPenInView.pd_vector confidence = %lf ", lPedInView.pd_vector[ii].confidence);
-        if(!imageProjection(img, lPedInView.pd_vector[ii], false)) continue;
+        if(!imageProjection(img, lPedInView.header, lPedInView.pd_vector[ii], false)) continue;
 
     }
 
@@ -435,14 +486,14 @@ void data_assoc::publishPed(Mat img)
     ROS_DEBUG_STREAM("publishPed end");
 }
 
-bool data_assoc::imageProjection(Mat& img, sensing_on_road::pedestrian_vision& ped, bool generate_image_hash)
+bool data_assoc::imageProjection(Mat& img, std_msgs::Header& source_header, sensing_on_road::pedestrian_vision& ped, bool generate_image_hash)
 {
     //Do all the projection for all the elements in lPenInView
     //Perform image hash if necessary
 
     camera_project::CvRectangle rect;
     geometry_msgs::PointStamped pt_src;
-    pt_src.header = lPedInView.header;
+    pt_src.header = source_header;
     pt_src.point.x = ped.cluster.centroid.x;
     pt_src.point.y = ped.cluster.centroid.y;
     pt_src.point.z = ped.cluster.centroid.z;
@@ -468,10 +519,12 @@ bool data_assoc::imageProjection(Mat& img, sensing_on_road::pedestrian_vision& p
     Point UL = Point(rect.upper_left.x, rect.upper_left.y);
     Point BR = Point(rect.lower_right.x, rect.lower_right.y);
 
-    vector<double> img_hash;
-    Mat ped_img = Mat(img, Rect(UL,BR));
+
     if(generate_image_hash)
     {
+        vector<double> img_hash;
+        Mat ped_img = Mat(img, Rect(UL,BR));
+        //imshow("before sending to colorHist", ped_img);
         //cout<<ped.object_label<<": ";
         colorHist(ped_img, img_hash);
         ped.image_hash = img_hash;
@@ -485,5 +538,5 @@ int main(int argc, char** argv)
 
     data_assoc *data_assoc_node = new data_assoc(argc, argv);
 
-    ;
+
 }
