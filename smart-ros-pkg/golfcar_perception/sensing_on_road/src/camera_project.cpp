@@ -29,7 +29,9 @@ CameraCalibrationParameters::CameraCalibrationParameters()
 }
 
 
-camera_projector::camera_projector() : camera_frame_id_("usb_cam"), fov_(70)
+camera_projector::camera_projector() : camera_frame_id_("usb_cam"), fov_(70), pixel_allowance_(PIXEL_ALLOWANCE),
+        laser_mounting_height_(LASER_MOUNTING_HEIGHT)
+
 {
 }
 
@@ -38,6 +40,15 @@ void camera_projector::setCameraFrameID(const std::string & id)
     camera_frame_id_ = id;
 }
 
+void camera_projector::setPixelAllowance(const double pixel)
+{
+    pixel_allowance_ = pixel;
+}
+
+void camera_projector::setLaserMountingHeight(const double height)
+{
+    laser_mounting_height_ = height;
+}
 void camera_projector::setCameraFOV(const double &fovInDegree)
 {
     fov_ = fovInDegree;
@@ -47,6 +58,7 @@ CvRectangle camera_projector::project(
     const geometry_msgs::PointStamped & centroid_in,
     double width, double height) const
 {
+
     //transform from source frame to camera frame
     geometry_msgs::PointStamped pt_camera;
     tf_.transformPoint(camera_frame_id_, centroid_in, pt_camera);
@@ -70,10 +82,10 @@ CvRectangle camera_projector::project(
     float dx_coef  = cam_param_.fc[0]/tmp.z;
     float dy_coef  = cam_param_.fc[1]/tmp.z;
 
-    float x1 = centroid.x - dx_coef*width/2 - PIXEL_ALLOWANCE;
-    float y1 = centroid.y - dx_coef*LASER_MOUNTING_HEIGHT - PIXEL_ALLOWANCE;
-    float x2 = centroid.x + dy_coef*width/2 + PIXEL_ALLOWANCE;
-    float y2 = centroid.y + dy_coef*(height-LASER_MOUNTING_HEIGHT) + PIXEL_ALLOWANCE;
+    float x1 = centroid.x - dx_coef*width/2 - pixel_allowance_;
+    float y1 = centroid.y - dx_coef*laser_mounting_height_ - pixel_allowance_;
+    float x2 = centroid.x + dy_coef*width/2 + pixel_allowance_;
+    float y2 = centroid.y + dy_coef*(height-laser_mounting_height_) + pixel_allowance_;
 
     CvRectangle rect;
     rect.upper_left.x = x1<0 ? 0 : x1;

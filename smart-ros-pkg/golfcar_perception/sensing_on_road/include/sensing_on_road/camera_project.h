@@ -84,8 +84,8 @@ public:
     /// @param height: the height of the input rectangle.
     /// @return the rectangle in pixel coordinates
     CvRectangle project(const geometry_msgs::PointStamped & centroid, double width, double height) const;
-
-
+    void setPixelAllowance(const double pixel);
+    void setLaserMountingHeight(const double height);
 protected:
     /// Frame ID of the camera (where to project). Defaults to "usb_cam"
     std::string camera_frame_id_;
@@ -97,6 +97,7 @@ protected:
 
     tf::TransformListener tf_;
 
+    double pixel_allowance_, laser_mounting_height_;
     /// A helper function. transform a 3D point in camera coordinates into a
     /// 2D point in pixel coordinates. Takes into account the camera parameters.
     IntPoint projection(const geometry_msgs::Point32 &pt) const;
