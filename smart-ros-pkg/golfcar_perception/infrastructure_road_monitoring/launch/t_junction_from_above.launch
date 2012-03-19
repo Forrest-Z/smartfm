@@ -11,8 +11,7 @@
     <node pkg="infrastructure_road_monitoring" type="t_junction_go.py" name="t_junction_go" output="screen">
         <remap from="tracksSDE" to="SDE/tracks"/>
         <remap from="tracksEA" to="EA/tracks"/>
-        <param name="ea_poly" value="[[130,120], [250,120], [250,350], [0,576], [0,275]]"/>
-        <param name="sde_poly" value="[[115,250], [330,190], [720,445], [720,576], [350,576]]"/>
+        <rosparam command="load" file="$(find infrastructure_road_monitoring)/launch/t_junction_from_above.yaml"/>
     </node>
 
 </launch>

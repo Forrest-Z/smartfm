@@ -61,7 +61,15 @@ RoiSelectNode::RoiSelectNode()
 
 void RoiSelectNode::img_callback(const sensor_msgs::Image::ConstPtr & frame)
 {
-    if( window_name_.length()==0 ) init();
+    if( window_name_.length()==0 )
+    {
+        init();
+        for( unsigned i=0; i<contour_.size(); i++ )
+        {
+            contour_[i].x = BOUND(0, contour_[i].x, frame->width);
+            contour_[i].y = BOUND(0, contour_[i].y, frame->height);
+        }
+    }
 
     cv_bridge::CvImageConstPtr cvImgFrame = cv_bridge::toCvCopy(frame, "bgr8");
     frame_ = cvImgFrame->image;
@@ -99,7 +107,9 @@ void RoiSelectNode::init()
 		  contour_.push_back( cv::Point(static_cast<int>(my_list[i][0]),
 				  static_cast<int>(my_list[i][1])));
 		}
-	} else {
+	}
+	else
+	{
 		ROS_INFO("No initial polygon definition found.");
 	}
 
@@ -107,7 +117,8 @@ void RoiSelectNode::init()
 	cv::namedWindow(window_name_, CV_WINDOW_NORMAL);
 	cv::setMouseCallback(window_name_, RoiSelectNode::mouse_callback, this);
 
-	timer_ = nh_.createTimer(ros::Duration(0.1), boost::bind(&RoiSelectNode::timer_callback, this, _1));
+	timer_ = nh_.createTimer(ros::Duration(0.1),
+	        boost::bind(&RoiSelectNode::timer_callback, this, _1));
 }
 
 void RoiSelectNode::spin()
