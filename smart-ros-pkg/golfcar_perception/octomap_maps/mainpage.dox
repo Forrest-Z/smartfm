@@ -2,11 +2,7 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b octomap_maps is ... 
-
-<!-- 
-Provide an overview of your package.
--->
+\b octomap_maps is a data package that contains octomap data (3D maps) for the macdonald area.
 
 
 \section codeapi Code API

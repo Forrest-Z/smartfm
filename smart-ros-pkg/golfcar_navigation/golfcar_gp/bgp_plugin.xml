@@ -1,7 +1,17 @@
-<library path="lib/libgolfcar_gp">
-  <class name="golfcar_gp/GlobalPlan" type="golfcar_gp::GlobalPlan" base_class_type="nav_core::BaseGlobalPlanner">
-    <description>
-      A lazy implementation of a waypoint planner for purepursuit controller.
-    </description>
-  </class>
-</library>
+<class_libraries>
+    <library path="lib/libgolfcar_gp">
+        <class name="golfcar_gp/GlobalPlan" type="golfcar_gp::GlobalPlan" base_class_type="nav_core::BaseGlobalPlanner">
+            <description>
+            A lazy implementation of a waypoint planner for purepursuit controller.
+            </description>
+        </class>
+    </library>
+
+    <library path="lib/libgolfcar_gp">
+    <class name="golfcar_gp/SimpleGlobalPlan" type="golfcar_gp::SimpleGlobalPlan" base_class_type="nav_core::BaseGlobalPlanner">
+        <description>
+        Generates a 2 points path (start and goal).
+        </description>
+    </class>
+    </library>
+</class_libraries>

@@ -1,8 +1,0 @@
-/**
-\mainpage
-\htmlinclude manifest.html
-
-\section codeapi WifiComm Code API
-- \link wifi_comm::WifiComm WifiComm (C++) \endlink
-
-*/
