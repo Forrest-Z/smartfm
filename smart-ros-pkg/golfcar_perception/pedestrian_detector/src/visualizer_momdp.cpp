@@ -52,6 +52,7 @@ private:
     void syncCallback(const sensor_msgs::ImageConstPtr image, const sensing_on_road::pedestrian_vision_batchConstPtr vision_roi);
     void drawIDandConfidence(cv::Mat& img, sensing_on_road::pedestrian_vision& pv);
     void pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel);
+    void colorHist(cv::Mat src);
 };
 
 VisualizeMomdp::VisualizeMomdp(ros::NodeHandle &n) : n_(n), it_(n_)
@@ -85,6 +86,14 @@ void VisualizeMomdp::syncCallback(const sensor_msgs::ImageConstPtr image, const 
     Mat img;
     Cv_helper::sensormsgsToCv(image, img);
 
+    /*SURF surf;
+    Mat mask;
+    Mat bw_img;
+    vector<KeyPoint>  keypoints;
+    cv::cvtColor(img, bw_img, CV_BGRA2GRAY);
+    assert(bw_img.type()==CV_8UC1);
+    surf(bw_img,mask,keypoints);
+    drawKeypoints(img, keypoints, img, Scalar(0,255,0));*/
 
     /// roi_rects_ : laser based ( blue )
     /// detect_rects_ : vision based detection ( green )
@@ -309,21 +318,67 @@ void VisualizeMomdp::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_v
         }
     }
 
-
+    Point UL = Point(pv.cvRect_x1, pv.cvRect_y1);
+    Point BR = Point(pv.cvRect_x2, pv.cvRect_y2);
     Point BL = Point(pv.cvRect_x1, pv.cvRect_y2); /// bot left
     putText(img, ss.str(), BL+Point(2,-2), FONT_HERSHEY_PLAIN,
             0.8,cvScalar(0,255,255), 1, 8);
+    cout<<ss.str();
+
+
+    colorHist(Mat(img, Rect(UL,BR)));
     //ss2<<setprecision(2)<<fixed<<pv.confidence*100.0;
     //putText(img, ss2.str(), BR+Point(-45,-2), FONT_HERSHEY_PLAIN,0.8,    cvScalar(0,255,255), 1, 8);
 }
 
+void VisualizeMomdp::colorHist(cv::Mat src)
+{
+    Mat hsv;
+    cvtColor(src, hsv, CV_BGR2HSV);
+
+    // let's quantize the hue to 30 levels
+    // and the saturation to 32 levels
+    int hbins = 10, sbins = 1;
+    int histSize[] = {hbins, sbins};
+    // hue varies from 0 to 179, see cvtColor
+    float hranges[] = { 0, 180 };
+    // saturation varies from 0 (black-gray-white) to
+    // 255 (pure spectrum color)
+    float sranges[] = { 0, 256 };
+    const float* ranges[] = { hranges, sranges };
+    MatND hist;
+    // we compute the histogram from the 0-th and 1-st channels
+    int channels[] = {0, 1};
+
+    calcHist( &hsv, 1, channels, Mat(), // do not use mask
+              hist, 2, histSize, ranges,
+              true, // the histogram is uniform
+              false );
+    double maxVal=0;
+    minMaxLoc(hist, 0, &maxVal, 0, 0);
+
+    int scale = 10;
+    Mat histImg = Mat::zeros(sbins*scale, hbins*10, CV_8UC3);
+
+    for( int h = 0; h < hbins; h++ )
+        for( int s = 0; s < sbins; s++ )
+        {
+            float binVal = hist.at<float>(h, s);
+            int intensity = cvRound(binVal*255/maxVal);
+            cout << intensity << ' ';
+            /*cvRectangle( histImg, Point(h*scale, s*scale),
+                         Point( (h+1)*scale - 1, (s+1)*scale - 1),
+                         Scalar::all(intensity),
+                         CV_FILLED );*/
+        }
+
+    cout<<endl;
+}
 
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "MOMDP_Visualizer");
     ros::NodeHandle n;
     VisualizeMomdp * ic = new VisualizeMomdp(n);
-    ros::spin();
-    delete ic;
     return 0;
 }

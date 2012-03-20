@@ -4,6 +4,7 @@
 #include "cv_bridge/cv_bridge.h"
 #include "sensing_on_road/pedestrian_vision_batch.h"
 #include "opencv2/highgui/highgui.hpp"
+#include "opencv2/opencv.hpp"
 #define WIN_SIZE Size(48,96)
 using namespace cv;
 
