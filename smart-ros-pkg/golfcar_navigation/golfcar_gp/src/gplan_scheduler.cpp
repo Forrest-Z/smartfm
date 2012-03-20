@@ -9,7 +9,6 @@
 using namespace std;
 
 
-PLUGINLIB_DECLARE_CLASS(golfcar_gp, GlobalPlan, golfcar_gp::GlobalPlan, nav_core::BaseGlobalPlanner)
 
 
 namespace golfcar_gp
@@ -104,3 +103,6 @@ bool GlobalPlan::makePlan(const geometry_msgs::PoseStamped&  start,
 }
 
 };
+
+PLUGINLIB_DECLARE_CLASS(golfcar_gp, GlobalPlan, golfcar_gp::GlobalPlan, nav_core::BaseGlobalPlanner)
+

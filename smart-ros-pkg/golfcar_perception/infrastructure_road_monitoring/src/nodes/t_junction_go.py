@@ -19,6 +19,8 @@ from infrastructure_road_monitoring.cfg import TJunctionGoConfig
 import urllib, urllib2
 from xml.dom import minidom
 
+import threading
+
 
 # from http://www.ariel.com.au/a/python-point-int-poly.html
 def point_inside_polygon(x, y, poly):
@@ -47,8 +49,10 @@ class Node:
     def __init__(self):
         self.delay = rospy.get_param('delay', 3)
         self.url = rospy.get_param('url', 'http://fmautonomy.no-ip.info/intersections')
-
         self.get_poly_defs()
+
+        self.lock = threading.Lock()
+
 
         self.subEA = rospy.Subscriber('tracksEA', Tracks, self.EA_Callback)
         self.subSDE = rospy.Subscriber('tracksSDE', Tracks, self.SDE_Callback)
@@ -85,8 +89,8 @@ class Node:
     def get_poly_defs(self):
         #ea_poly_str = rospy.get_param('ea_poly', '[]')
         #sde_poly_str = rospy.get_param('sde_poly', '[]')
-        self.ea_poly = rospy.get_param('ea_poly', [])
-        self.sde_poly = rospy.get_param('sde_poly', [])
+        self.ea_poly = rospy.get_param('~ea_poly', [])
+        self.sde_poly = rospy.get_param('~sde_poly', [])
 
     def timer_Callback(self, event):
         self.get_poly_defs()
@@ -109,6 +113,7 @@ class Node:
                 raise Exception( emsg )
 
     def pub_result(self):
+        self.lock.acquire()
         go = rospy.Time.now().to_sec() > self.last_unsafe + self.delay
         if self.last_decision != go:
             self.update_db(go)
@@ -117,6 +122,7 @@ class Node:
                 rospy.loginfo('safe to go')
             else:
                 rospy.loginfo('not safe to go')
+        self.lock.release()
         self.pub.publish(Bool(go))
 
 

@@ -1,5 +1,8 @@
 <launch>
 
+    <!-- This launch file does not extract the background from the camera,
+         so that it can be used with play_video and play_image. -->
+
     <arg name="camera_topic" />
 
     <node pkg="infrastructure_road_monitoring" type="blob_extractor" name="blob_extractor" output="screen">
@@ -21,7 +24,7 @@
         <!--param name="area_threshold" value="100" /-->
     </node>
 
-    <node pkg="infrastructure_road_monitoring" type="blob_tracker" name="blob_tracker" output="screen" />
+    <node pkg="infrastructure_road_monitoring" type="blob_tracker" name="blob_tracker" output="screen" respawn="true" />
 
     <node pkg="infrastructure_road_monitoring" type="track_display" name="track_display" output="screen">
         <remap from="image" to="$(arg camera_topic)" />

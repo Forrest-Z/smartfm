@@ -107,7 +107,7 @@ function stationOptions(stationList)
 {
     var html = '<option value="0"></option>';
     for (var i = 0; i < stationList.length; i++)
-        html += '<option value="' + i + '">' + stationList[i] + '</option>';
+        html += '<option value="' + i+1 + '">' + stationList[i] + '</option>';
     return html;
 }
 
