@@ -66,8 +66,8 @@ void RoiSelectNode::img_callback(const sensor_msgs::Image::ConstPtr & frame)
         init();
         for( unsigned i=0; i<contour_.size(); i++ )
         {
-            contour_[i].x = BOUND(0, contour_[i].x, frame->width);
-            contour_[i].y = BOUND(0, contour_[i].y, frame->height);
+            fmutil::bound<int>(0, &(contour_[i].x), frame->width);
+            fmutil::bound<int>(0, &(contour_[i].y), frame->height);
         }
     }
 

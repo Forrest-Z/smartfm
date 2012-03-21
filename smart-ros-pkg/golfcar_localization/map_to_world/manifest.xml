@@ -1,15 +1,16 @@
 <package>
-  <description brief="world_utm_lat_lon">
+  <description brief="map_to_world">
 
-     world_utm_lat_lon
+     map_to_world
 
   </description>
   <author>golfcar</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/world_utm_lat_lon</url>
+  <url>http://ros.org/wiki/map_to_world</url>
+
   <depend package="tf"/>
-  <depend package="fmutil"/>
+  <depend package="rospy"/>
 
 </package>
 

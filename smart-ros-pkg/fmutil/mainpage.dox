@@ -2,9 +2,14 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b fmutil is ... 
+\b fmutil provides a collection of tools that should be used across all other packages. For now it includes the following:
 
-<!-- 
+- a collection of handy math functions, such as maximum/minimum of 2 or 3 values, distance between 2 points, conversion from radian to degrees, etc.
+
+- an implementation of a lowpass filter, both in python and C++.
+
+
+<!--
 Provide an overview of your package.
 -->
 

@@ -55,7 +55,7 @@ void SteeringController::cmdVelCallBack(geometry_msgs::Twist cmd_vel)
                                 - 0.0032 * pow(wheel_angle,2)
                                 + 16.648 * wheel_angle
                                 - 1.3232;
-        steering_angle = BOUND(-540, steering_angle, 540);
+        fmutil::bound<double>(-540, &steering_angle, 540);
         st = -steering_angle;
     }
 

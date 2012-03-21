@@ -6,7 +6,7 @@
  * and as a Odometry message on the 'odom_imu' channel.
  */
 
-#include <math.h>
+#include <cmath>
 
 #include <ros/ros.h>
 #include <ros/console.h>
@@ -101,7 +101,7 @@ void OdoIMU::encodersCallBack(phidget_encoders::Encoders encMsg)
     position.x += encMsg.d_dist * r11;
     position.y += encMsg.d_dist * r21;
     position.z -= encMsg.d_dist * r31;
-    
+
     linear_speed = encMsg.v;
     angular_speed = encMsg.w;
 
