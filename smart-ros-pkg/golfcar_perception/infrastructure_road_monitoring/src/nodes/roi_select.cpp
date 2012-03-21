@@ -42,6 +42,7 @@ private:
     PIT find_closest_point(int x, int y);
     float dist_to_segment(int x, int y, const PIT & it, const PIT & jt);
     PIT add_to_countour(int x, int y);
+    string contour_to_str() const;
 
     void init();
     void draw_roi();
@@ -77,6 +78,19 @@ void RoiSelectNode::img_callback(const sensor_msgs::Image::ConstPtr & frame)
     draw_roi();
 }
 
+string RoiSelectNode::contour_to_str() const
+{
+    stringstream ss;
+    ss << '[';
+    for( unsigned i=0; i<contour_.size(); i++ )
+    {
+        if( i!=0 ) ss <<", ";
+        ss <<'[' <<contour_[i].x <<',' <<contour_[i].y <<']';
+    }
+    ss <<']';
+    return ss.str();
+}
+
 void RoiSelectNode::timer_callback(const ros::TimerEvent & e)
 {
 	XmlRpc::XmlRpcValue my_list;
@@ -86,7 +100,7 @@ void RoiSelectNode::timer_callback(const ros::TimerEvent & e)
 		my_list[i][0] = contour_[i].x;
 		my_list[i][1] = contour_[i].y;
 	}
-	//ROS_INFO_STREAM("Setting poly " <<poly_param_ <<" to " <<my_list);
+	ROS_INFO_STREAM("Setting poly " <<poly_param_ <<" to " <<contour_to_str());
 	ros::param::set(poly_param_, my_list);
 }
 
