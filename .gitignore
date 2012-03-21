@@ -3,6 +3,7 @@ bin
 lib
 msg_gen
 srv_gen
+cmake_install.cmake
 
 *.o
 *.pyc
@@ -11,3 +12,4 @@ srv_gen
 .cproject
 core
 .pydevproject
+*.cfgc

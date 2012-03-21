@@ -1,0 +1,33 @@
+<launch>
+
+    <!-- This launch file does not extract the background from the camera,
+         so that it can be used with play_video and play_image. -->
+
+    <arg name="camera_topic" />
+
+    <node pkg="infrastructure_road_monitoring" type="blob_extractor" name="blob_extractor" output="screen">
+        <remap from="camera" to="$(arg camera_topic)" />
+        <remap from="blobs" to="all_blobs" />
+        <!--
+        <param name="blurring_size" value="2" />
+        <param name="diff_threshold" value="30" />
+        <param name="dilate_size" value="5" />
+        <param name="erode_size" value="5" />
+        <param name="skip" value="0" />
+        <param name="period" value="0" />
+        -->
+    </node>
+
+    <node pkg="infrastructure_road_monitoring" type="blob_area_filter" name="blob_area_filter" output="screen">
+        <remap from="in" to="all_blobs" />
+        <remap from="out" to="blobs" />
+        <!--param name="area_threshold" value="100" /-->
+    </node>
+
+    <node pkg="infrastructure_road_monitoring" type="blob_tracker" name="blob_tracker" output="screen" respawn="true" />
+
+    <node pkg="infrastructure_road_monitoring" type="track_display" name="track_display" output="screen">
+        <remap from="image" to="$(arg camera_topic)" />
+    </node>
+
+</launch>

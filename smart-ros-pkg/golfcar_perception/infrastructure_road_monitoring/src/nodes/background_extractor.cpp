@@ -3,7 +3,7 @@
 #include <image_transport/image_transport.h>
 #include <image_transport/subscriber.h>
 
-#include "MovingObjectDetector.h"
+#include "BackgroundExtraction.h"
 
 
 class BackgroundExtractor

@@ -31,6 +31,4 @@ rosbuild_add_executable(pedestrian_features src/pedestrian_features.cpp)
 rosbuild_add_library(camera_project src/camera_project.cpp)
 rosbuild_add_executable(camera_project_baoxing src/camera_project.cpp src/camera_project_node.cpp src/camera_project_baoxing.cpp)
 rosbuild_add_executable(camera_project_pcl src/camera_project.cpp src/camera_project_node.cpp src/camera_project_pcl.cpp)
-#rosbuild_add_executable(vision_processing src/vision_processing.cpp)
-#rosbuild_add_executable(tracking_classification src/tracking_classification.cpp)
-#target_link_libraries(example ${PROJECT_NAME})
+

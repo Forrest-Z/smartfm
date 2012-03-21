@@ -2,7 +2,18 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b road_detection is ... 
+\b  robust_road_detection is the package to detect curb and intersection features; 
+
+    input topic is "/assembled_sick_scan2"; odometry information "/encoder_odom" is also subscribed to control measurement publishing;
+    output topic is "/left_curbline_pcl", "/right_curbline_pcl", "/left_crossing_pcl", "/right_crossing_pcl";
+    other topics are published for debugging purpose to monitor results from each step, for example "/road_boundary_pcl";
+
+    DP1 denotes discontinous points happen in range, which will happen at intersections due to blockage by curb itself; 
+    DP2 denotes discontinous points happen in 2nd order deravitives of range values;
+    These two types of discontinuous are extracted as potential road boundaries. They are then connected if possible to reduce segment pieces.
+    Some segments remain from above operation will be checked and classified. 
+    More details can be found in our paper "curb-intersection feature based monte carlo localization".
+    
 
 <!-- 
 Provide an overview of your package.

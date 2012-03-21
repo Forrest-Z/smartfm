@@ -1,2 +1,0 @@
-1 0 5 7 2
-# mostlikelyalgo px_i py_i YXSwitch XYSwitch

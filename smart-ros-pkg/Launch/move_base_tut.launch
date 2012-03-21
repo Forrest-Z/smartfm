@@ -3,7 +3,7 @@
 		<param name="footprint_padding" value="0.1" />
 		<param name="controller_frequency" value="10.0" />
 		<param name="controller_patience" value="100.0" />
-		<param name="base_global_planner" value="simple_gp/GlobalPlan"/>
+		<param name="base_global_planner" value="golfcar_gp/SimpleGlobalPlan"/>
 		<param name="base_local_planner" value="golfcar_purepursuit/PurePursuitBase"/>
 		<param name="PurePursuitBase/slow_speed" value="0.7"/>
 		<param name="PurePursuitBase/maximum_speed" value="1.2"/>

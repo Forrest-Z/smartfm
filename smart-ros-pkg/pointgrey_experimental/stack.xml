@@ -1,9 +1,0 @@
-<stack>
-  <description brief="pointgrey_experimental">pointgrey_experimental</description>
-  <author>Maintained by golfcar</author>
-  <license>BSD</license>  
-  <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/pointgrey_experimental</url>
-  <depend stack="ros" />
-
-</stack>

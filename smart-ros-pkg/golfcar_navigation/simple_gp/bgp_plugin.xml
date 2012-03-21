@@ -1,7 +1,0 @@
-<library path="lib/libsimple_gp">
-  <class name="simple_gp/GlobalPlan" type="simple_gp::GlobalPlan" base_class_type="nav_core::BaseGlobalPlanner">
-    <description>
-      A lazy implementation of a waypoint planner for purepursuit controller.
-    </description>
-  </class>
-</library>

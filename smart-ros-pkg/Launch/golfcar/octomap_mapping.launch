@@ -1,0 +1,16 @@
+<!-- Launch octomap_server for mapping: Listens to incoming PointCloud2 data 
+and incrementally builds an octomap. The data is sent out in different representations. -->
+<launch>
+	<node pkg="octomap_server" type="octomap_server_node" name="octomap_server" args="$(find octomap_maps)/map3/2-auto1.bt">
+		<param name="resolution" value="0.05" />
+		<param name="frame_id" type="string" value="map" />
+		<param name="sensor_model/max_range" value="25.0" />
+        <param name="sensor_model/min" value="0.4"/>
+        <param name="sensor_model/max" value="0.98"/>
+        <param name="filter_ground" value="false"/>
+		<!-- data source to integrate (PointCloud2) -->
+		<remap from="cloud_in" to="/sickldmrs/cloud1" />
+		
+	
+	</node>
+</launch>

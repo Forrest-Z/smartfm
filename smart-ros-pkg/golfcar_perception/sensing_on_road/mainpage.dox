@@ -2,12 +2,13 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b people_detector is ... 
+\b sensing_on_road is made of 3 parts:
 
-<!-- 
-Provide an overview of your package.
--->
+- a library (libcamera_project.so camera_project.h/cpp) to project a real world point into the image frame.
 
+- This library is also implemented as a node (camera_project_pcl.cpp).
+
+- old code by Baoxing to extract pedestrians from laser.
 
 \section codeapi Code API
 

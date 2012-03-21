@@ -1,10 +1,11 @@
 # Which cluster are we considering?
 feature_detection/cluster cluster
 
-# baoxing's stuffs
+# data association
 int32 object_label
 bool complete_flag
 float32 confidence
+float64[] image_hash
 
 # result from the vision
 bool decision_flag

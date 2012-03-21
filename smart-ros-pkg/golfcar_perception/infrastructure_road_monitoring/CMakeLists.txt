@@ -33,10 +33,9 @@ include_directories(src)
 include_directories(src/lib)
 
 rosbuild_add_library(${PROJECT_NAME}
-    src/lib/MovingObjectDetector.cpp
-    src/lib/data_def.cpp
-    src/lib/BlobExtractor.cpp
-    src/lib/BlobFilter.cpp
+    src/BackgroundExtraction.cpp
+    src/data_def.cpp
+    src/BlobFilter.cpp
 )
 
 #add dynamic reconfigure api
@@ -67,3 +66,6 @@ target_link_libraries(blob_tracker ${PROJECT_NAME})
 
 ADD_EXECUTABLE(track_display src/nodes/track_display.cpp src/data_msg_conv.cpp)
 target_link_libraries(track_display ${PROJECT_NAME})
+
+ADD_EXECUTABLE(roi_select src/nodes/roi_select.cpp)
+target_link_libraries(roi_select ${PROJECT_NAME})

@@ -84,7 +84,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
                 in_pose.frame_id_ = ped_batch->header.frame_id;
                 geometry_msgs::Point32 ped_point = ped_batch->pd_vector[i].cluster.centroid;
                 in_pose.setOrigin(tf::Vector3(ped_point.x, ped_point.y, ped_point.z));
-                getObjectPose(plf.header.frame_id, in_pose, out_pose);
+                if(!getObjectPose(plf.header.frame_id, in_pose, out_pose)) continue;
                 plf.ped_id = ped_transforms_[matched_ped].label;
                 plf.ped_pose.x = out_pose.getOrigin().getX();
                 plf.ped_pose.y = out_pose.getOrigin().getY();
@@ -93,7 +93,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
                 //then update the robot pose with the same frame
                 in_pose.setIdentity();
                 in_pose.frame_id_ = "base_link";
-                getObjectPose(plf.header.frame_id, in_pose, out_pose);
+                if(!getObjectPose(plf.header.frame_id, in_pose, out_pose)) continue;
 
                 plf.rob_pose.x = out_pose.getOrigin().getX();
                 plf.rob_pose.y = out_pose.getOrigin().getY();
@@ -113,7 +113,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
             in_pose.frame_id_ = "base_link";
             in_pose.setIdentity();
             in_pose.setOrigin(btVector3(offsetx_,offsety_,0.0));
-            getObjectPose(global_frame_, in_pose, out_pose);
+            if(!getObjectPose(global_frame_, in_pose, out_pose)) continue;
             transform.setOrigin( out_pose.getOrigin() );
             transform.setRotation( out_pose.getRotation() );
             ped_transforms ped_tr;

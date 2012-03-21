@@ -52,7 +52,7 @@ public:
 
 
 
-/// Nearest neighbor threshold track matcher
+/// Nearest neighbour threshold track matcher
 class TrackMatcherNNT : public TrackMatcher
 {
 public:
@@ -75,26 +75,6 @@ public:
     /// A blob is matched to the nearest track, if the distance is smaller
     /// than a threshold (see match_treshold).
     Tracks::iterator match(Tracks & tracks, const Blob & blob);
-};
-
-
-
-/// Performs tracking: match current observations with known tracks
-class BlobTracker
-{
-public:
-    Tracks tracks;
-
-    TrackMatcher * matcher;
-
-    unsigned unobserved_threshold_remove;
-
-    BlobTracker();
-
-    void update(const std::vector<Blob> & blobs);
-
-    /// Display the track ID next to the centroid
-    void display(cv::Mat & displayFrame, cv::Scalar color=CV_RGB(255,0,0));
 };
 
 #endif /* BLOBTRACKER_H_ */

@@ -2,11 +2,7 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b laser_maxrange_republish is ... 
-
-<!-- 
-Provide an overview of your package.
--->
+\b laser_maxrange_republish helps with clearing the costmap from fake obstacles.
 
 
 \section codeapi Code API
