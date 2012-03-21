@@ -6,7 +6,7 @@ import rospy
 
 from math import sin, cos, pi
 
-from lowlevel.msg import Encoders
+from phidget_encoders.msg import Encoders
 from geometry_msgs.msg import Quaternion
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry

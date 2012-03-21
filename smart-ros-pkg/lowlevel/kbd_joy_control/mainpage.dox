@@ -2,12 +2,20 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b kbd_joy_control is ... 
+\b kbd_joy_control provides nodes to control the vehicle from either the keyboard
+or a joystick:
 
-<!-- 
-Provide an overview of your package.
--->
+- joy: Reads position of the joystick, translates it into velocity commands, and
+  sends it to the lowlevel controls of the golfcar: throttle, steer_angle,
+  brake_angle, etc.
 
+- joy_cmd_vel: sends a geometry_msgs/Twist message on cmd_vel instead
+
+- keyhook: reads the keyboard (arrow keys), translates it into velocity commands, and
+  sends it to the lowlevel controls of the golfcar: throttle, steer_angle,
+  brake_angle, etc.
+
+- keyhook_cmd_vel: sends a geometry_msgs/Twist message on cmd_vel instead
 
 \section codeapi Code API
 

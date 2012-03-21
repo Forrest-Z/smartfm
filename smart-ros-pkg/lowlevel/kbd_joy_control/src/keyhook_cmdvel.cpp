@@ -1,6 +1,5 @@
-/*
-Reads velocity commands from the keyboard and sends it to the cmd_vel topic.
-*/
+/// Reads velocity commands from the keyboard and sends it to the cmd_vel topic.
+
 
 #include <iostream>
 

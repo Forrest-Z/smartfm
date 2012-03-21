@@ -2,11 +2,10 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b infrastructure_road_monitoring is ... 
-
-<!-- 
-Provide an overview of your package.
--->
+\b infrastructure_road_monitoring is a collection of code and nodes to do the
+infrastructure road monitoring. Infrastructure cameras look at the junction,
+vehicles are detected. This info is used by the golfcar to decide when to cross
+the junction.
 
 
 \section codeapi Code API

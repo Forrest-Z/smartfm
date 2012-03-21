@@ -1,3 +1,7 @@
+/** Speed controller (PID).
+ *
+ */
+
 #include <ros/ros.h>
 
 #include <std_msgs/Float64.h>
@@ -39,7 +43,7 @@ class Parameters
 class PID_Speed
 {
     public:
-        PID_Speed(ros::NodeHandle);
+        PID_Speed();
 
     private:
         void cmdVelCallBack(geometry_msgs::Twist);
@@ -62,7 +66,7 @@ class PID_Speed
         bool safetyBrake_;
 
         double e_pre; ///< previous error (velocity) --> used for some kind of filtering of the error term
-        double kdd; //we are switching between PID and PI need another term
+        double kdd; ///<we are switching between PID and PI
         double iTerm; ///< the integral term
         double dgain_pre;
 
@@ -104,7 +108,7 @@ void Parameters::getParam()
 }
 
 
-PID_Speed::PID_Speed(ros::NodeHandle nh) : n(nh)
+PID_Speed::PID_Speed()
 {
     cmdVelSub = n.subscribe("cmd_vel", 1, &PID_Speed::cmdVelCallBack, this);
     odoSub = n.subscribe("encoders", 1, &PID_Speed::odoCallBack, this);
@@ -238,8 +242,7 @@ void PID_Speed::odoCallBack(phidget_encoders::Encoders enc)
 int main(int argc, char**argv)
 {
     ros::init(argc, argv, "speed_controller");
-    ros::NodeHandle n;
-    PID_Speed pidc(n);
+    PID_Speed pidc;
     ros::spin();
     return 0;
 }

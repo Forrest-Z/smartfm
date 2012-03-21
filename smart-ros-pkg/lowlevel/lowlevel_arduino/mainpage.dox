@@ -2,11 +2,12 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b lowlevel_arduino is ... 
+\b lowlevel_arduino is a package to deal with the arduino interface to the
+golfcart's hardware. It allows to turn on and off blinkers and tail light,
+control the brake and steering motors, the throttle, and to monitor the state of
+the emergency and automode switches.
 
-<!-- 
-Provide an overview of your package.
--->
+To communicate with the Arduino, it uses package rosserial_arduino.
 
 
 \section codeapi Code API
