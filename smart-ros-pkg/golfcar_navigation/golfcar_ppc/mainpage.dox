@@ -2,7 +2,9 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b golfcar_ppc is ... 
+\b golfcar_ppc is the implementation of purepursuit controller as the local_planner plugin for ROS's move_base package.
+The golfcar_ppc also contains speed advisor that listen to messages from the controller to generate appropriate speed profile.
+The golfcar_pp is another implementation of purepursuit controller that is developed by Jeon Hwan during July 2011 that is interfaced with RRT planner
 
 <!-- 
 Provide an overview of your package.
