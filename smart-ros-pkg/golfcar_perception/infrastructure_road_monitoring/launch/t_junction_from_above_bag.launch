@@ -10,4 +10,14 @@
         <rosparam command="load" file="$(find infrastructure_road_monitoring)/launch/t_junction_from_above.yaml"/>
     </node>
 
+    <node pkg="infrastructure_road_monitoring" type="roi_select" name="ea_roi_select" output="screen">
+        <remap from="image" to="/EA/cam_repub" />
+        <param name="poly" value="/t_junction_go/ea_poly" />
+    </node>
+
+    <node pkg="infrastructure_road_monitoring" type="roi_select" name="sde_roi_select" output="screen">
+        <remap from="image" to="/SDE/cam_repub" />
+        <param name="poly" value="/t_junction_go/sde_poly" />
+    </node>
+
 </launch>

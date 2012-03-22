@@ -35,6 +35,7 @@ private:
     std::string window_name_;
     PIT selected_point_;
     bool drag_;
+    bool contour_changed_;
 
     void img_callback(const sensor_msgs::Image::ConstPtr&);
     void timer_callback(const ros::TimerEvent&);
@@ -52,7 +53,7 @@ private:
 
 
 RoiSelectNode::RoiSelectNode()
-: it_(nh_), drag_(false)
+: it_(nh_), drag_(false), contour_changed_(false)
 {
 	// retrieve the name of the parameter where we can read and set the poly definition
 	ROS_ASSERT(ros::param::get("~poly", poly_param_));
@@ -93,15 +94,22 @@ string RoiSelectNode::contour_to_str() const
 
 void RoiSelectNode::timer_callback(const ros::TimerEvent & e)
 {
-	XmlRpc::XmlRpcValue my_list;
-	my_list.setSize(contour_.size());
-	for( unsigned i=0; i<contour_.size(); i++ ) {
-		my_list[i].setSize(2);
-		my_list[i][0] = contour_[i].x;
-		my_list[i][1] = contour_[i].y;
-	}
-	ROS_INFO_STREAM("Setting poly " <<poly_param_ <<" to " <<contour_to_str());
-	ros::param::set(poly_param_, my_list);
+    if( contour_changed_ )
+    {
+        // convert the countour into an XmlRpcValue
+        XmlRpc::XmlRpcValue my_list;
+        my_list.setSize(contour_.size());
+        for( unsigned i=0; i<contour_.size(); i++ ) {
+            my_list[i].setSize(2);
+            my_list[i][0] = contour_[i].x;
+            my_list[i][1] = contour_[i].y;
+        }
+
+        // send to parameter server
+        ROS_INFO_STREAM("Setting poly " <<poly_param_ <<" to " <<contour_to_str());
+        ros::param::set(poly_param_, my_list);
+        contour_changed_ = false;
+    }
 }
 
 void RoiSelectNode::init()
@@ -180,6 +188,7 @@ void RoiSelectNode::on_mouse(int event, int x, int y, int flags)
 	{
 		//cout <<"button up" <<endl;
 		drag_ = 0;
+		contour_changed_ = true;
 	}
 
 	if( event == CV_EVENT_LBUTTONDBLCLK )
@@ -189,16 +198,16 @@ void RoiSelectNode::on_mouse(int event, int x, int y, int flags)
 		if( closest==contour_.end() ) {
 			//cout <<"adding new point" <<endl;
 			add_to_countour(x,y);
+		    contour_changed_ = true;
 		}
 		else {
 			//cout <<"erasing point" <<endl;
 			contour_.erase(closest);
+			contour_changed_ = true;
 		}
 	}
 
 	draw_roi();
-
-	//cout <<contour_to_string(contour_) <<endl;
 }
 
 PIT RoiSelectNode::find_closest_point(int x, int y)
