@@ -1,19 +1,27 @@
-#include <math.h>
+/** A node that prompts the passenger (text mode) whether it is safe to go
+ * at a junction. Stopping points are hard coded.
+ *
+ */
 
 #include <string>
 #include <cmath>
 
-using namespace std;
-
 #include <ros/ros.h>
+
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
-#include <nav_msgs/Odometry.h>
+
+#include <std_msgs/Bool.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Point.h>
-#include <nav_msgs/Path.h>
 #include <geometry_msgs/PolygonStamped.h>
-#include <std_msgs/Bool.h>
+#include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
+
+#include <fmutil/fm_math.h>
+
+
+using namespace std;
 
 
 class StopJunction
@@ -27,31 +35,39 @@ public:
     ros::Subscriber global_plan_;
 
 private:
+    vector<geometry_msgs::Point> stoppingPoint_;
+    double stopping_distance_;
     int lastStop_;
+
     bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
     void globalPlanCallback(nav_msgs::Path path);
-    double sqrtDistance(double x1, double y1, double x2, double y2);
-    double stopping_distance_;
     void UILoop();
-    vector<geometry_msgs::Point> stoppingPoint_;
 };
 
 
 StopJunction::StopJunction()
 {
-    junction_pub= n.advertise<std_msgs::Bool>("/nav_junction", 1);
-    global_plan_=n.subscribe("/global_plan",1,&StopJunction::globalPlanCallback,this);
+    junction_pub = n.advertise<std_msgs::Bool>("/nav_junction", 1);
+    global_plan_ = n.subscribe("/global_plan", 1,
+            &StopJunction::globalPlanCallback, this);
 
     ros::NodeHandle nh("~");
     nh.param("stopping_distance", stopping_distance_, 8.0);
 
     lastStop_ = -1;
 
+
+
+    //-------------------------------------------------------------------------
+    // hard coded stopping points
+
     geometry_msgs::Point p;
     p.x = 322; p.y = 2300; stoppingPoint_.push_back(p);
     p.x = 636; p.y = 538; stoppingPoint_.push_back(p);
-    StopJunction::UILoop();
 
+    //-------------------------------------------------------------------------
+
+    StopJunction::UILoop();
 }
 
 void StopJunction::UILoop()
@@ -59,32 +75,39 @@ void StopJunction::UILoop()
     ros::Rate loop(10);
     double res = 0.1;
     int y_pixels = 3536;
-    while(ros::ok())
+
+    while( ros::ok() )
     {
         tf::Stamped<tf::Pose> robot_pose;
         getRobotGlobalPose(robot_pose);
         double robot_x = robot_pose.getOrigin().x();
         double robot_y = robot_pose.getOrigin().y();
-        std_msgs::Bool junction;
-        for(int i=0; i<stoppingPoint_.size();i++)
+
+        std_msgs::Bool msg;
+
+        for( unsigned i=0; i<stoppingPoint_.size(); i++ )
         {
-            double sp_x = stoppingPoint_[i].x *res;
-            double sp_y = (y_pixels-stoppingPoint_[i].y) *res;
-            if(sqrtDistance(robot_x,robot_y,sp_x, sp_y)<=stopping_distance_ && lastStop_!=i)
+            double sp_x = stoppingPoint_[i].x * res;
+            double sp_y = (y_pixels - stoppingPoint_[i].y) * res;
+            double d = fmutil::distance(robot_x,robot_y,sp_x, sp_y);
+            if( d<=stopping_distance_ && lastStop_!=i )
             {
                 lastStop_ = i;
 
-                junction.data = true;
-                junction_pub.publish(junction);
+                msg.data = true;
+                junction_pub.publish(msg);
                 ros::spinOnce();
+
                 string temp = "";
-                cout<<"Clear to go?"<<endl;
+                cout <<"Clear to go ?" <<endl;
                 getline(cin, temp);
-                cout<<"Continue"<<endl;
+                cout <<"Continue" <<endl;
             }
         }
-        junction.data=false;
-        junction_pub.publish(junction);
+
+        msg.data = false;
+        junction_pub.publish(msg);
+
         ros::spinOnce();
         loop.sleep();
     }
@@ -92,13 +115,9 @@ void StopJunction::UILoop()
 
 void StopJunction::globalPlanCallback(nav_msgs::Path path)
 {
-    //listen to any new path is given, if it is, simply reset the last stopping record so that all stops can be reevaluate again
-    lastStop_=-1;
-}
-
-double StopJunction::sqrtDistance(double x1, double y1, double x2, double y2)
-{
-    return sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2));
+    //listen to any new path. Simply reset the last stopping record so
+    //that all stops can be reevaluated again
+    lastStop_ = -1;
 }
 
 bool StopJunction::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const
