@@ -1,5 +1,6 @@
-drop table if exists tjunction;
-create table tjunction (
-    go boolean not null default false
+drop table if exists infrastructure;
+create table infrastructure (
+    id varchar(30) not null,
+    status int not null default false,
+    primary key(id)
 );
-insert into tjunction values (0);

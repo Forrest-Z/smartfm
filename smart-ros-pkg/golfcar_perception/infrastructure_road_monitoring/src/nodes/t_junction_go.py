@@ -48,7 +48,7 @@ def point_inside_polygon(x, y, poly):
 class Node:
     def __init__(self):
         self.delay = rospy.get_param('delay', 3)
-        self.url = rospy.get_param('url', 'http://fmautonomy.no-ip.info/intersections')
+        self.url = rospy.get_param('url', 'http://fmautonomy.no-ip.info/infrastructure')
         self.get_poly_defs()
 
         self.lock = threading.Lock()
@@ -97,7 +97,7 @@ class Node:
 
     def update_db(self, status):
         try:
-            f = urllib2.urlopen(self.url+'/update.php', urllib.urlencode({'Status':status}))
+            f = urllib2.urlopen(self.url+'/update.php', urllib.urlencode({'Id':'tjunc', 'Status':status}))
             xml = f.read()
             f.close()
         except urllib2.URLError:
