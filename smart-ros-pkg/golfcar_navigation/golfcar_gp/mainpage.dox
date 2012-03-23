@@ -2,7 +2,11 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b golfcar_gp is ... 
+\b golfcar_gp has 2 global_planner plugin for ROS's move_base package.
+
+1. golfcar_gp/GlobalPlan - This global plan uses the pair of goal.x and goal.y to retrieve the predefined path from SvgPath, (Source code located at bookingUI/shared) and pass the path to local planner. The planner also publishes slow zones, intersection points and left/right signals.
+
+2. golfcar_gp/SimpleGlobalPlan - Generates a simple path that assumes a straight path that consist of 2 points path (start and goal).
 
 <!-- 
 Provide an overview of your package.

@@ -1,5 +1,5 @@
 <launch>
-    <node pkg="pedestrian_detector" type="visualizer_momdp" name="visualizer_dataAssoc" output="screen">
+    <node pkg="pedestrian_detector" type="visualizer" name="visualizer_dataAssoc" output="screen">
 	    <param name="image_transport" value="compressed"/>
 	    <param name="ROI_text" value="true"/>
 	    <param name="ROI_rect" value="true"/>

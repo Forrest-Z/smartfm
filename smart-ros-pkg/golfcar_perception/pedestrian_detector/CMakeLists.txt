@@ -29,7 +29,7 @@ find_package(OpenCV REQUIRED)
 #uncomment if you have defined messages
 #rosbuild_genmsg()
 #uncomment if you have defined services
-rosbuild_gensrv()
+#rosbuild_gensrv()
 
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
@@ -47,10 +47,4 @@ target_link_libraries(classifier ${OpenCV_LIBS})
 ENDIF(CUDA_FOUND)
 
 rosbuild_add_executable(visualizer src/visualizer.cpp)
-rosbuild_add_executable(visualizer_momdp src/visualizer_momdp.cpp)
-rosbuild_add_executable(visualizer_curb src/visualizer_curb.cpp)
-rosbuild_add_executable(rect_talker src/rect_talker.cpp)
-target_link_libraries(rect_talker ${OpenCV_LIBS})
 target_link_libraries(visualizer ${OpenCV_LIBS})
-target_link_libraries(visualizer_momdp ${OpenCV_LIBS})
-target_link_libraries(visualizer_curb ${OpenCV_LIBS})
