@@ -2,7 +2,7 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b bumblebeeXB3_1394 is ... 
+\b bumblebeeXB3_1394 is an experimental driver for bumblebee XB3 where it publishes raw images and camera info and it is tested to work properly with the stereo_image_proc. A launch file is provided.
 
 <!-- 
 Provide an overview of your package.

@@ -2,7 +2,7 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b dataAssoc_experimental is ... 
+\b dataAssoc_experimental contains implementation of pedestrian association with observations from both laser and images. It uses image classification result from pedestrian_detection and potential laser clusters from feature_detection. Association now uses simple linear function as the cost to differentiate 2 different pedestrians.
 
 <!-- 
 Provide an overview of your package.
