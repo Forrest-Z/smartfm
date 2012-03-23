@@ -2,7 +2,10 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b dummyPed is ... 
+\b dummyPed has 3 programs, dummyPed, dummyPed_marker, TransformPedtoMap
+1. dummyPed: Takes 3 simulated robots from ROS's stage and publish it as the sensing_on_road compatible messages for momdp simulation
+2. dummyPed_marker: Display 3 interactive markers that can move around in RViz and publish the sensing_on_road compatible messages for momdp simulation whenever the marker is being moved.
+3. TransformPedtoMap: Obtain the pedestrians detected from the result of clustering-association/simulation and create a local TF for each new ID 
 
 <!-- 
 Provide an overview of your package.

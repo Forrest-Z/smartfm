@@ -2,7 +2,7 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b pedestrian_mdp is ... 
+\b ped_momdp_sarsop is an implementation of pompdp that gives high level command (Accelerate, Coasting, Deccelerate) under different predicted pedestrian intention.
 
 <!-- 
 Provide an overview of your package.
