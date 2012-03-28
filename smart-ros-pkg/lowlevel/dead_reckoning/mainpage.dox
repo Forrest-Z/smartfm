@@ -2,9 +2,18 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b dead_reckoning is ... 
+\b dead_reckoning groups nodes that deal with odometry:
 
-<!-- 
+- simple_odo_node translates Odometry messages into a more human readable
+  message type: dead_reckoning/SimpleOdo
+
+- encoder_integrator: estimates position from encoders only. See package
+  phidget_encoders and the phidget_encoders/Encoders message definition.
+
+- odom_IMU: estimates position from encoders and IMU. Encoders give the
+  longitudinal motion, and the IMU gives the rotation.
+
+<!--
 Provide an overview of your package.
 -->
 

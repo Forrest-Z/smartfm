@@ -35,14 +35,14 @@ bool PurePursuit::steering_control(double *wheel_angle, double *dist_to_goal)
     if( heading_lookahead(&heading_lh, dist_to_goal) )
     {
         double a = atan((car_length_ * sin(heading_lh))/(Lfw_/2+lfw_*cos(heading_lh)));
-        *wheel_angle = SYMBOUND(a, 0.65);
+        *wheel_angle = fmutil::symbound<double>(a, 0.65);
         ROS_DEBUG("pursuing point: current=(%lf,%lf), next=(%lf,%lf)",
-        		current_point_.x, current_point_.y,
-        		next_point_.x, next_point_.y);
+                    current_point_.x, current_point_.y,
+                    next_point_.x, next_point_.y);
         return true;
     }
 
-	return false;
+    return false;
 }
 
 
@@ -79,20 +79,21 @@ bool PurePursuit::current_pos_to_point_dist(int end_point, double* path_dist)
     if(path_n_<0)
     {
         *path_dist = fmutil::distance(vehicle_base_.position,
-        		path_.poses[end_point].pose.position);
+                                        path_.poses[end_point].pose.position);
         return false;
     }
 
-	for( unsigned i=path_n_+1; i<end_point; i++ )
-	{
-		*path_dist += fmutil::distance(path_.poses[i].pose.position,
-				path_.poses[i+1].pose.position);
-	}
+    for( unsigned i=path_n_+1; i<end_point; i++ )
+    {
+        *path_dist += fmutil::distance(path_.poses[i].pose.position,
+                                        path_.poses[i+1].pose.position);
+    }
 
-	*path_dist += fmutil::distance(collided_pt_, path_.poses[path_n_+1].pose.position)
-		+ fmutil::distance(collided_pt_, vehicle_base_.position);
+    *path_dist +=
+        fmutil::distance(collided_pt_, path_.poses[path_n_+1].pose.position)
+        + fmutil::distance(collided_pt_, vehicle_base_.position);
 
-	return true;
+    return true;
 }
 
 //add to search for the latest collision path as the colliding point to avoid the path
@@ -129,26 +130,26 @@ bool PurePursuit::circle_line_collision(geometry_msgs::Point anchor_point,
     }
 
 
-	discriminant = sqrt(discriminant);
-	float t1 = (-b + discriminant)/(2*a);
-	float t2 = (-b - discriminant)/(2*a);
-	geometry_msgs::Point intersect_point2;
-	p.x = intersect_point2.x = Ex+t2*dx;
-	p.y = intersect_point2.y = Ey+t2*dy;
+    discriminant = sqrt(discriminant);
+    float t1 = (-b + discriminant)/(2*a);
+    float t2 = (-b - discriminant)/(2*a);
+    geometry_msgs::Point intersect_point2;
+    p.x = intersect_point2.x = Ex+t2*dx;
+    p.y = intersect_point2.y = Ey+t2*dy;
 
-	if(t1 >=0 && t1 <=1)
-	{
-		p.x = intersect_point->x = Ex+t1*dx;
-		p.y = intersect_point->y = Ey+t1*dy;
-		polyStamped.polygon.points.push_back(p);
-		p.x = Cx; p.y = Cy;
-		polyStamped.polygon.points.push_back(p);
-		pp_vis_pub_.publish(polyStamped);
-		return true;
-	}
+    if(t1 >=0 && t1 <=1)
+    {
+        p.x = intersect_point->x = Ex+t1*dx;
+        p.y = intersect_point->y = Ey+t1*dy;
+        polyStamped.polygon.points.push_back(p);
+        p.x = Cx; p.y = Cy;
+        polyStamped.polygon.points.push_back(p);
+        pp_vis_pub_.publish(polyStamped);
+        return true;
+    }
 
-	ROS_DEBUG("No solution, cur:x=%lf y=%lf, next:x=%lf y=%lf", Ex, Ey, Lx, Ly);
-	return false;
+    ROS_DEBUG("No solution, cur:x=%lf y=%lf, next:x=%lf y=%lf", Ex, Ey, Lx, Ly);
+    return false;
 }
 
 } //namespace golfcar_purepursuit

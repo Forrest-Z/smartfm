@@ -2,11 +2,8 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b leaflabs_adc is ... 
-
-<!-- 
-Provide an overview of your package.
--->
+\b leaflabs_adc contains some old code written to control the pan tilt head
+for the mobile laser. It uses the maple device to interface with the motors...
 
 
 \section codeapi Code API

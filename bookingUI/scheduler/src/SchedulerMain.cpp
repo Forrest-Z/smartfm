@@ -33,7 +33,7 @@ public:
     DummyPassengerComm pc;
 
     SimulatedVehicle(StationPaths & sp, string vname, float speed, string hostname)
-    : rp(sp,speed), comm(rp, pc, hostname+"/dbserver", vname) { }
+    : rp(sp,speed), comm(rp, pc, hostname+"/booking", vname) { }
 };
 
 
@@ -300,7 +300,7 @@ void createObjects()
     logger.setConsoleStream(stderr);
 
     // Create the database talker object
-    string username = "fmauto", passwd = "smartfm", dbname = "fmauto";
+    string username = "fmauto", passwd = "smartfm", dbname = "booking";
     gDBTalker = new DBTalker(optHostName, username, passwd, dbname);
     gDBTalker->copyLoggingSettings(logger);
 

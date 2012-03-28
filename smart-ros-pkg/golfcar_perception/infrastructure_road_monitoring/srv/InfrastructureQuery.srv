@@ -1,0 +1,6 @@
+# The id of the infrastructure sensor to query
+string id
+
+---
+
+bool clear_to_go

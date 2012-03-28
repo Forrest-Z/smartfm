@@ -1,26 +1,29 @@
+/** Interface between ROS (user space) and HAL (kernel space). Streamer part:
+ * writes the values to the DAQ card.
+ *
+ * Subscribes to "throttle", "brake_angle" and "steer_angle" and writes the
+ * requested values on the DAQ card.
+ *
+ * Based on streamer_usr.c by John Kasunich
+ */
+
 /********************************************************************
-* Description:  streamer_gc.c
+* Description:  streamer_usr.c
 *               User space part of "streamer", a HAL component that
 *               can be used to stream data from a file onto HAL pins
 *               at a specific realtime sample rate. This code is modified
 *               from the original streamer_usr.c to allow command to be sent
 *               using ROS messaging facility
 *
-* Author: Demian Chong <chongzj at nus dot edu dot sg>
+* Author: John Kasunich <jmkasunich at sourceforge dot net>
 * License: GPL Version 2
 *
 * Copyright (c) 2010 All rights reserved.
 *
 ********************************************************************/
 
-/* Modified by Brice (24 Jan 2012):
- *   - using std_msgs/Float64 instead of custom messages
- *   - changed topic names
- *   - throttle value is now supposed to be between 0 and 1
- */
 
-/* Note for myself
- *    To compile, use:
+/* Note: to compile, use:
  *      sudo comp --compile --userspace streamer_gc.c
  *      which is a script that produce this compilation:
  *      gcc -Os -g -I. -I/usr/realtime-2.6.32-122-rtai/include -I.

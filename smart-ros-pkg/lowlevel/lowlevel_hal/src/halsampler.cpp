@@ -1,3 +1,12 @@
+/** Interface between ROS (user space) and HAL (kernel space). Sampling part:
+ * reads the values from the DAQ card.
+ *
+ * Currently, only reads the state of the emergency state button. Publishes it
+ * as a bool on topic "button_state_emergency".
+ *
+ * Based on sampler_usr.c from John Kasunich
+ */
+
 /********************************************************************
 * Description:  sampler_usr.c
 *               User space part of "sampler", a HAL component that
@@ -10,30 +19,6 @@
 * Copyright (c) 2006 All rights reserved.
 *
 ********************************************************************/
-
-/*  This file, 'sampler_usr.c', is the user part of a HAL component
-    that allows values to be sampled from HAL pins at a uniform
-    realtime sample rate, and writes them to a stdout (from which
-    they can be redirected to a file).  When the realtime module
-    is loaded, it creates a fifo in shared memory and begins capturing
-    samples to the fifo.  Then, the user space program 'hal_ssampler'
-    is invoked to read from the fifo and print to stdout.
-
-    Invoking:
-
-    halsampler [-c chan_num] [-n num_samples] [-t]
-
-    'chan_num', if present, specifies the sampler channel to use.
-    The default is channel zero.
-
-    'num_samples', if present, specifies the number of samples
-    to be printed, after which the program will exit.  If ommitted
-    it will print continuously until killed.
-
-    '-t' tells sampler to print the sample number at the start
-    of each line.
-
-*/
 
 /*  This program is free software; you can redistribute it and/or
     modify it under the terms of version 2 of the GNU General

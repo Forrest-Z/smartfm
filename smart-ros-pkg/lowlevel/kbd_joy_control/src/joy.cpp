@@ -1,6 +1,6 @@
-/*
- * Reads position of the joystick, translates it into velocity commands, and sends
- * it to the golfcar_vel channel.
+/** Reads position of the joystick, translates it into velocity commands, and
+ * sends it to the lowlevel controls of the golfcar: throttle, steer_angle,
+ * brake_angle, etc.
  *
  * NOTE:
  * to run the joystick node:

@@ -1,3 +1,7 @@
+/** Speed controller (PID).
+ *
+ */
+
 #include <ros/ros.h>
 
 #include <std_msgs/Float64.h>
@@ -39,7 +43,7 @@ class Parameters
 class PID_Speed
 {
     public:
-        PID_Speed(ros::NodeHandle);
+        PID_Speed();
 
     private:
         void cmdVelCallBack(geometry_msgs::Twist);
@@ -62,7 +66,7 @@ class PID_Speed
         bool safetyBrake_;
 
         double e_pre; ///< previous error (velocity) --> used for some kind of filtering of the error term
-        double kdd; //we are switching between PID and PI need another term
+        double kdd; ///<we are switching between PID and PI
         double iTerm; ///< the integral term
         double dgain_pre;
 
@@ -104,7 +108,7 @@ void Parameters::getParam()
 }
 
 
-PID_Speed::PID_Speed(ros::NodeHandle nh) : n(nh)
+PID_Speed::PID_Speed()
 {
     cmdVelSub = n.subscribe("cmd_vel", 1, &PID_Speed::cmdVelCallBack, this);
     odoSub = n.subscribe("encoders", 1, &PID_Speed::odoCallBack, this);
@@ -180,15 +184,15 @@ void PID_Speed::odoCallBack(phidget_encoders::Encoders enc)
         pid.v_filter = vFilter.filter_dt(enc.dt, odovel);
 
         double e_now = cmdVel - pid.v_filter;
-        pid.p_gain = SYMBOUND(param.kp * e_now, param.kp_sat);
+        pid.p_gain = fmutil::symbound<double>(param.kp * e_now, param.kp_sat);
 
         // Accumulate integral error and limit its range
         iTerm += param.ki * (e_pre + e_now)/2 * enc.dt;
-        iTerm = SYMBOUND(iTerm, param.ki_sat);
+        iTerm = fmutil::symbound<double>(iTerm, param.ki_sat);
         pid.i_gain = iTerm;
 
         double dTerm = kdd * (e_now - e_pre) / enc.dt;
-        pid.d_gain = SYMBOUND(dTerm, param.kd_sat);
+        pid.d_gain = fmutil::symbound<double>(dTerm, param.kd_sat);
 
         // filter out spikes in d_gain
         if( fabs(dgain_pre - pid.d_gain)>0.2 )
@@ -196,7 +200,7 @@ void PID_Speed::odoCallBack(phidget_encoders::Encoders enc)
         dgain_pre = pid.d_gain;
 
         double u = pid.p_gain + pid.i_gain + pid.d_gain;
-        pid.u_ctrl = SYMBOUND(u, 1.0);
+        pid.u_ctrl = fmutil::symbound<double>(u, 1.0);
 
         ROS_INFO("Velocity error: %.2f, u_ctrl=%.2f", e_now, pid.u_ctrl);
 
@@ -238,8 +242,7 @@ void PID_Speed::odoCallBack(phidget_encoders::Encoders enc)
 int main(int argc, char**argv)
 {
     ros::init(argc, argv, "speed_controller");
-    ros::NodeHandle n;
-    PID_Speed pidc(n);
+    PID_Speed pidc;
     ros::spin();
     return 0;
 }

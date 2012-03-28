@@ -2,11 +2,9 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b world_utm_lat_lon is ... 
-
-<!-- 
-Provide an overview of your package.
--->
+\b map_to_world provides conversion between the UTM and GeoLocation (lat,lon)
+coordinate systems (implemented as a service), and a node that publishes
+the robot's position in UTM coordinates.
 
 
 \section codeapi Code API

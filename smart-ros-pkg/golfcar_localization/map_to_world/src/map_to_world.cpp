@@ -1,7 +1,29 @@
-#include "ros/ros.h"
-#include <fmutil/UtmToLatLon.h>
+/** A node that publishes the robot's position in UTM and lat,lon coordinates.
+ *
+ * The robot position is first retrieved in the /map frame (via tf). An offset
+ * is then applied to obtain the UTM coordinates. The /utm_to_latlon service
+ * is used to retrieve latitude and longitude. The result is published on topic
+ * world_utm_latlon (type map_to_world/coordinate).
+ *
+ * The node also broadcasts the transform between the map frame and the world
+ * frame. This is a constant transform, defined by the offset.
+ *
+ * parameters:
+ *  - update_frequency (default 20)
+ *  - zone (default 48N)
+ *  - offset_x (default 363133)
+ *  - offset_y (default 143485)
+ *  - publish_tf (default true): whether to publish the transform from map to
+ *    world
+ *
+ */
+
+
+#include <ros/ros.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
+
+#include <map_to_world/UtmToLatLon.h>
 #include <map_to_world/coordinate.h>
 
 class MapToWorld
@@ -13,11 +35,13 @@ private:
     tf::TransformListener tf_;
     ros::ServiceClient client_;
     ros::Publisher coordinate_pub_;
-    void UpdateLoop(const ros::TimerEvent& event);
-    bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
+
     std::string zone_;
     double offset_x_, offset_y_;
     bool publish_tf_;
+
+    void timerCallback(const ros::TimerEvent& event);
+    bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
 };
 
 MapToWorld::MapToWorld()
@@ -30,18 +54,19 @@ MapToWorld::MapToWorld()
     nh.param("offset_x", offset_x_, 363133.0);
     nh.param("offset_y", offset_y_, 143485.0);
     nh.param("publish_tf", publish_tf_, true);
-    client_ = nh.serviceClient<fmutil::UtmToLatLon>("/utm_to_latlon");
+
+    client_ = nh.serviceClient<map_to_world::UtmToLatLon>("/utm_to_latlon");
     coordinate_pub_ = nh.advertise<map_to_world::coordinate>("/world_utm_latlon", 1);
-    ros::Timer timer = nh.createTimer(ros::Duration(1.0/frequency),&MapToWorld::UpdateLoop,this);
-    ros::spin();
+    ros::Timer timer = nh.createTimer(ros::Duration(1.0/frequency),
+                                      &MapToWorld::timerCallback, this);
 }
 
-void MapToWorld::UpdateLoop(const ros::TimerEvent& event)
+void MapToWorld::timerCallback(const ros::TimerEvent& event)
 {
     tf::Stamped<tf::Pose> robot_pose;
     if(getRobotGlobalPose(robot_pose))
     {
-        fmutil::UtmToLatLon utmLL;
+        map_to_world::UtmToLatLon utmLL;
         utmLL.request.zone = zone_;
         utmLL.request.easting = offset_x_ + robot_pose.getOrigin().x();
         utmLL.request.northing = offset_y_ + robot_pose.getOrigin().y();

@@ -1,5 +1,5 @@
 <?php
 $username="fmauto";
 $password="smartfm";
-$database="intersections";
+$database="infrastructure";
 ?>

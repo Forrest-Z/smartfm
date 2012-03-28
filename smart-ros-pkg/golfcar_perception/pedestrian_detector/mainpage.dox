@@ -2,7 +2,9 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b pedestrian_detector_HOG is ... 
+\b pedestrian_detector:
+classifier: implementation of pedestrian detection using HOG
+visualizer: visualizer that can display rectangles as published by sensing_on_road/pedestrian_vision_batch and also pedestrian belief published by ped_momdp_sarsop
 
 <!-- 
 Provide an overview of your package.

@@ -2,9 +2,15 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b pnc_msgs is ... 
+\b pnc_msgs contains the messages used by the golfcar_navigation. pnc stands for
+planning and control.
 
-<!-- 
+- move_status.msg: Message that is published by golfcar_ppc to support speed advisor
+- poi.msg: Array of sig_pts
+- sig_pt.msg: Encode a turning point with waypoint number on the path and the type of point
+- speed_contribute.msg: Message published by speed advisor that can be used to know the status of the current speed status and right now subscribed by SimpleGoal
+
+<!--
 Provide an overview of your package.
 -->
 

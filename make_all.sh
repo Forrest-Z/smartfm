@@ -7,9 +7,6 @@
 # top directory of the git repository
 gitrootdir=`git rev-parse --show-toplevel`
 
-# record the current dir so that we can come back to it later
-curdir=`pwd`
-
 # How many processors do we have? Will be used to speed up compilation.
 # NOTE: there might be a more portable way of doing this...
 ncpus=`cat /proc/cpuinfo | grep processor | wc -l`
@@ -18,6 +15,7 @@ ncpus=`cat /proc/cpuinfo | grep processor | wc -l`
 ncpus=$(($ncpus-1))
 
 # Build the bookingUI/shared library
+(
 cd $gitrootdir/bookingUI/shared
 cmake .
 # the -j flag allows to parallelize the process
@@ -26,6 +24,7 @@ if [ $ncpus -gt 2 ]; then
 else
     make
 fi
+)
 
 packages=`rospack list | grep smart-ros-pkg | cut -d' ' -f1 | grep -v Launch | xargs echo`
 cmd="rosmake --robust"
@@ -44,5 +43,3 @@ echo FAILED: `grep FAIL $logfile | cut -d'<' -f4 | cut -d' ' -f2 | xargs echo`
 echo PASS: `grep PASS $logfile | cut -d'<' -f4 | cut -d' ' -f2 | xargs echo`
 echo
 echo logged in $logfile
-
-cd $curdir

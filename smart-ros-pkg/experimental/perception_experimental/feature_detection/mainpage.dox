@@ -2,7 +2,7 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b feature_detection is ... 
+\b feature_detection receives point cloud/laser information and perform clustering using ROS PCL to find potential object of interest. The feature_detection can also be used together with a 3D map from octomap as a prior to effectively filter away known objects of the environment. This way, only dynamic objects is used for clustering, reducing the number of false positives.
 
 <!-- 
 Provide an overview of your package.

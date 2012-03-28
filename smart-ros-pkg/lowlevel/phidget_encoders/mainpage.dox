@@ -2,9 +2,15 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b phidget_encoders is ... 
+\b phidget_encoders allows to interface with the phidget board for encoders.
 
-<!-- 
+The phidget board interfaces with the rotary encoders and does the counting. It
+comes with a USB interface, and an API (the phidget library).
+
+encoders_odo_node connects with the phidget, and publishes Encoders messages
+with info about displacement.
+
+<!--
 Provide an overview of your package.
 -->
 

@@ -1,19 +1,68 @@
 #ifndef __FMUTIL_MATH_H__
 #define __FMUTIL_MATH_H__
 
-#include <math.h>
-#include <string>
+#include <cmath>
 
 #include <geometry_msgs/Point.h>
 
 
-#define BOUND(m,x,M) ((x)<(m) ? (m) : (x)>(M) ? (M) : (x))
-#define SYMBOUND(x,m) BOUND(-(m),x,m)
+namespace fmutil
+{
 
-#define SIGN(a) ( (a)>0 ? 1 : (a)<0 ? -1 : 0)
+/** Bounds the argument between a max and a minimum
+ *
+ * @param m the lower bound
+ * @param x the value to be bounded
+ * @param M the upper bound
+ * @return m if x is lower than m, M if x is greater than M, x otherwise.
+ */
+template<typename T>
+T bound(T m, T x, T M)
+{
+    return x<m ? m : x>M ? M : x;
+}
 
+/** Bounds the argument between -m and m
+ *
+ * @param x the value to be bounded
+ * @param b the upper bound
+ * @return -m if x is lower than -m, m if x is greater than m, x otherwise.
+ */
+template<typename T>
+T symbound(T x, T m)
+{
+    return x<-m ? -m : x>m ? m : x;
+}
 
-namespace fmutil {
+/** Bounds the argument between a max and a minimum.
+ *
+ * @param m the lower bound
+ * @param x the value to be bounded
+ * @param M the upper bound
+ * @return -m if x is lower than -m, m if x is greater than m, x otherwise.
+ */
+template<typename T>
+T bound(T m, T *x, T M)
+{
+    *x = *x<m ? m : *x>M ? M : *x;
+    return *x;
+}
+
+/** Bounds the value between -m and m
+ *
+ * @param x the value to be bounded
+ * @param b the upper bound
+ * @return -m if x is lower than -m, m if x is greater than m, x otherwise.
+ */
+template<typename T>
+T symbound(T *x, T m)
+{
+    *x = *x<-m ? -m : *x>m ? m : *x;
+    return *x;
+}
+
+/// Returns the sign of the argument
+double sign(double a);
 
 /// Computes the corresponding angle on ]-180,180].
 double angMod180(double ang);
@@ -56,7 +105,7 @@ double distance(double x1, double y1, double x2, double y2);
 
 /// returns the euclidian distance between points
 double distance(const geometry_msgs::Point & p1,
-		const geometry_msgs::Point & p2);
+                const geometry_msgs::Point & p2);
 
 /// returns the angle of the vector from (x1,y1) to (x2,y2)
 /// i.e. atan2f(y1-y2,x1-x2)
@@ -70,11 +119,6 @@ double max(double a, double b, double c=-INFINITY);
 
 /// checks whether x is within min(a,b) and max(a,b)
 bool isWithin(double x, double a, double b);
-
-/// works like printf but returns a string with the formatted output instead of
-/// printing to stdout
-std::string stringPrintf(const char *fmt, ...);
-
 
 } //namespace fmutil
 

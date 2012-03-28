@@ -91,7 +91,7 @@ class RPC {
  */
 public class DBInterface {
 	
-	public static final String BaseURI = "http://fmautonomy.no-ip.info/dbserver/";
+	public static final String BaseURI = "http://fmautonomy.no-ip.info/booking/";
 	public static final String CustomerID = "cust1";
 	
 	

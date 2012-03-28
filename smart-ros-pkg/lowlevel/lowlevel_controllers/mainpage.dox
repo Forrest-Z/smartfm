@@ -2,11 +2,10 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b lowlevel is ... 
+\b lowlevel_controllers contains the speed controller and the steering controller.
 
-<!-- 
-Provide an overview of your package.
--->
+It also contains speed_profile_generator that can be used to test the speed
+controller.
 
 
 \section codeapi Code API

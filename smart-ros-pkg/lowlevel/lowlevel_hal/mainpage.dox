@@ -2,12 +2,17 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b lowlevel_hal is ... 
+\b lowlevel_hal contains the code to control the golfcar's lowlevel (throttle,
+brake, steering, etc.) from the HAL board. Real-time linux + DAQ.
 
-<!-- 
-Provide an overview of your package.
--->
+- the 5i20.hal file is a configuration file for the system. It configures the IOs
+and parameters for the steppers, pwm, etc.
 
+- halsampler and halstreamer provide the interface with the kernel space real
+time code and the user space ROS code. halsampler reads the values from the card
+and publishes them as ros topics (now only emergency button state). halstreamer
+receives values from ROS and writes them to the card (throttle, brake angle,
+steering angle).
 
 \section codeapi Code API
 

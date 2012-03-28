@@ -1,7 +1,6 @@
-/*
-Reads position of the joystick, translates it into velocity commands, and sends
-it to the cmd_vel channel.
-*/
+/** Reads position of the joystick, translates it into velocity commands, and
+ * sends it to the cmd_vel channel.
+ */
 
 #include <stdio.h>
 #include <math.h>

@@ -1,7 +1,7 @@
-/*
-Reads the keyboard, translates it into velocity commands, and sends
-it to the golfcar_vel channel.
-*/
+/** Reads the keyboard, translates it into velocity commands, and sends
+ * it to the lowlevel controls of the golfcar: throttle, steer_angle,
+ * brake_angle, etc.
+ */
 
 #include <signal.h>
 #include <termios.h>
