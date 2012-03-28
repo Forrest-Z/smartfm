@@ -17,7 +17,7 @@
 #include "pcl_ros/point_cloud.h"
 #include "pcl/point_types.h"
 #include "pcl/ros/conversions.h"
-
+#include <laser_geometry/laser_geometry.h>
 using namespace std;
 
 class curb_to_laser
@@ -29,6 +29,7 @@ private:
     ros::NodeHandle n_;
     ros::Timer timer_;
     message_filters::Subscriber<sensor_msgs::PointCloud> left_curb_sub_, right_curb_sub_;
+    message_filters::Subscriber<sensor_msgs::LaserScan> laser_scan_sub_;
     ros::Publisher curb_points_pub_, curb_laser_pub_, curb_points2_pub_;
     sensor_msgs::PointCloud curb_points_;
 
@@ -37,12 +38,16 @@ private:
 
     tf::TransformListener tf_;
     tf::MessageFilter<sensor_msgs::PointCloud> *left_curb_filter_, *right_curb_filter_;
+    tf::MessageFilter<sensor_msgs::LaserScan> *laser_scan_filter_;
+    laser_geometry::LaserProjection projector_;
+    sensor_msgs::PointCloud laser_cloud_;
     void leftCurbCallback(sensor_msgs::PointCloudConstPtr left_pc);
     void rightCurbCallback(sensor_msgs::PointCloudConstPtr right_pc);
     void addCurbPoints(sensor_msgs::PointCloudConstPtr pc);
     void publishCurb(const ros::TimerEvent& event);
     typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
     void pointcloudsToLaser(PointCloud& input_pc, sensor_msgs::LaserScan& output);
+    void scanCallback(const sensor_msgs::LaserScanConstPtr scan_in);
 };
 
 curb_to_laser::curb_to_laser() : tf_()
@@ -57,14 +62,31 @@ curb_to_laser::curb_to_laser() : tf_()
     right_curb_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(right_curb_sub_, tf_, target_frame_, 10);
     right_curb_filter_->registerCallback(boost::bind(&curb_to_laser::rightCurbCallback, this, _1));
 
+    laser_scan_sub_.subscribe(n_, "scan", 10);
+    laser_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_scan_sub_, tf_, "base_link", 10);
+    laser_scan_filter_->registerCallback(boost::bind(&curb_to_laser::scanCallback, this, _1));
+
     curb_points_pub_ = n_.advertise<sensor_msgs::PointCloud>("curb_points", 10);
     curb_laser_pub_ = n_.advertise<sensor_msgs::LaserScan>("curb_laser", 10);
     curb_points2_pub_ = n_.advertise<sensor_msgs::PointCloud2>("curb_points2", 10);
+
     max_curb_points_ = 300;
 
     ros::spin();
 }
 
+void curb_to_laser::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
+{
+    sensor_msgs::LaserScan scan_copy = *scan_in;
+    scan_copy.range_min = 8.0;
+    try{
+    projector_.transformLaserScanToPointCloud("base_link",scan_copy,
+                                              laser_cloud_,tf_);
+    }
+    catch (tf::TransformException& e){
+        printf("%s",e.what());
+    }
+}
 void curb_to_laser::pointcloudsToLaser(PointCloud& cloud, sensor_msgs::LaserScan& output)
 {
     //adapted from turtlebot's cloud_to_scan.cpp
@@ -75,7 +97,7 @@ void curb_to_laser::pointcloudsToLaser(PointCloud& cloud, sensor_msgs::LaserScan
     output.time_increment = 0.0;
     output.scan_time = 1.0/30.0;
     output.range_min = 0.1;
-    output.range_max = 100.0;
+    output.range_max = 15.0;
 
     uint32_t ranges_size = std::ceil((output.angle_max - output.angle_min) / output.angle_increment);
     output.ranges.assign(ranges_size, output.range_max + 1.0);
@@ -155,6 +177,16 @@ void curb_to_laser::publishCurb(const ros::TimerEvent& event)
         return;
     }
     PointCloud pcl_xyz;
+    sensor_msgs::PointCloud curb_points_with_lasers;
+    //cout<<laser_cloud_.header.frame_id<<" "<<curb_point_baselink.header.frame_id<<endl;
+
+    if(laser_cloud_.header.frame_id!=curb_point_baselink.header.frame_id) return;
+
+    //combine both observation
+    curb_points_with_lasers.header = curb_point_baselink.header;
+    curb_points_with_lasers.points.insert(curb_points_with_lasers.points.begin(), curb_point_baselink.points.begin(), curb_point_baselink.points.end());
+    curb_points_with_lasers.points.insert(curb_points_with_lasers.points.begin(), laser_cloud_.points.begin(), laser_cloud_.points.end());
+    sensor_msgs::convertPointCloudToPointCloud2(curb_points_with_lasers, curb_points2);
     pcl::fromROSMsg(curb_points2, pcl_xyz);
     sensor_msgs::LaserScan curb_laser;
     pointcloudsToLaser(pcl_xyz, curb_laser);
