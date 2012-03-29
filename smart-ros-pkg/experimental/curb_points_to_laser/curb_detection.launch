@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
+    <node pkg="scan_verti"    type="scan_verti"    name="scan_verti"/>
+    <node pkg="robust_road_detection" type="curb_detect" name="curb_detect"/>
+</launch>    
