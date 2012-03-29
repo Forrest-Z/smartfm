@@ -15,7 +15,7 @@ service ntp start
 # The threshold: if the offset becomes larger than this value, then resync
 offsetMax=50
 
-# Start by a resync
+logger "ntpdwrapperd: starting with a resync"
 resync
 
 while [ 1 ]
@@ -26,13 +26,17 @@ do
     # http://www.zabbix.com/forum/showthread.php?t=7755
     # gives the offset to the golfcart-master
     offset=`ntpq -p | awk 'BEGIN { offset=1000 } $1 ~ /golfcart-master/ { offset=$9 } END { print offset }'`
+
+    # absolute value: remove any minus sign:
     offset=${offset#-}
 
+    # check whether ntp is still working
     if [ "`service ntp status | grep not`" ]
     then
         logger "ntpdwrapperd: ntpd is not working"
         resync
 
+    # check the offset
     elif [[ $offset > $offsetMax ]]
     then
         logger "ntpdwrapperd: Offset is too high: $offset>$offsetMax"
