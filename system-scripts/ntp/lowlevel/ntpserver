@@ -1,19 +1,40 @@
 #!/bin/bash
 
 # this script runs periodically. It checks whether ntp is still running (ntpd
-# sometimes hangs ...) and restarts if it is not running.
+# sometimes hangs ...) and restarts if it is not running. It also checks the
+# offset and resynchronize with ntpdate if the offset is larger than a threshold
 
-# First sync with ntpdate -b. NTP must be turned off...
+# The resync function: sync with ntpdate -b. NTP must be turned off...
+resync() {
 service ntp stop
 ntpdate -b golfcart-master
 service ntp start
+}
 
-while [ 1 ]; do
-    if [ "`service ntp status | grep not`" ]; then
-        #ntp is not working
-        #run ntpdate to get rough sync and start ntp
-        ntpdate -b golfcart-master
-        service ntp start
-    fi
+# The threshold: if the offset becomes larger than this value, then resync
+offsetMax=50
+
+# Start by a resync
+resync
+
+while [ 1 ]
+do
     sleep 10
+
+    # awesome awk command found here:
+    # http://www.zabbix.com/forum/showthread.php?t=7755
+    # finds the smallest offset with all servers
+    offset=`ntpq -pn | awk 'BEGIN { offset=1000 } $1 ~ /\*/ { offset=$9 } END { print offset }'`
+
+    if [ "`service ntp status | grep not`" ]
+    then
+        #ntp is not working
+        resync
+
+    elif [[ $offset>$offsetMax ]]
+    then
+        resync
+
+    fi
+
 done
