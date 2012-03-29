@@ -24,8 +24,8 @@ do
 
     # awesome awk command found here:
     # http://www.zabbix.com/forum/showthread.php?t=7755
-    # finds the smallest offset with all servers
-    offset=`ntpq -pn | awk 'BEGIN { offset=1000 } $1 { offset=$9 } END { print offset }'`
+    # gives the offset to the golfcart-master
+    offset=`ntpq -p | awk 'BEGIN { offset=1000 } $1 ~ /golfcart-master/ { offset=$9 } END { print offset }'`
     offset=${offset#-}
 
     if [ "`service ntp status | grep not`" ]
