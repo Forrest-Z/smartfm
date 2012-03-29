@@ -1,8 +1,10 @@
 #!/bin/bash
 
 cp ntp.conf /etc/
-cp ntpserver /etc/init.d
-chmod a+x /etc/init.d/ntpserver
-update-rc.d ntpserver defaults
+cp ntpdwrapperd /usr/local/bin/
+cp ntpdwrapper /etc/init.d/
+chmod a+x /etc/init.d/ntpdwrapper /usr/local/bin/ntpdwrapperd
+update-rc.d ntpdwrapper defaults
 
 exit 0
+
