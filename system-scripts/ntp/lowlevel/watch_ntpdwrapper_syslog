@@ -1,0 +1,1 @@
+watch "grep ntpdwrapper /var/log/syslog | tail"
