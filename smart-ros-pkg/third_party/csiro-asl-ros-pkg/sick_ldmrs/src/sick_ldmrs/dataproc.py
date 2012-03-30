@@ -117,6 +117,7 @@ class ProcessLDMRSData:
         self.rads_per_tick = None
         self.seq_num = -1
         self.time_delta = rospy.Duration()
+        self.n_points = 0
         # timestamp smoothing
         self.smoothtime = None
         self.smoothtime_prev = None
@@ -237,57 +238,62 @@ class ProcessLDMRSData:
         self.scan_start_time = self.smoothtime #util.NTP64_to_ROStime(self.header['ScanStartTimeNTP']) + self.time_delta
 
         # check that the input string has the correct number of bytes
-        n_points = self.header['NumScanPoints']
+        self.n_points = self.header['NumScanPoints']
 
         # Check we have enough bytes in the buffer
         n_data_bytes = len(msg) - self.num_header_bytes
         n_points_in_buffer = int(n_data_bytes/self.num_point_bytes)
-        if n_points_in_buffer != n_points:
-            rospy.logwarn("Number of point indicated by header (",  n_points,
+        if n_points_in_buffer != self.n_points:
+            rospy.logwarn("Number of point indicated by header (",  self.n_points,
                           ") is more than number of points in buffer (",  n_points_in_buffer,  ")")
-            n_points = n_points_in_buffer
+            self.n_points = n_points_in_buffer
 
         # tick frequency (Hz*32)
         # Observed to vary by 1-2 percent from nominal frequency
         self.tick_freq = self.compute_tick_freq()
 
-        # Make a bytearray from the point data in the input string
-        uint16le = np.dtype(np.uint16, align='<') # force little endian
-        self.point_data = np.frombuffer(msg, dtype=uint16le,
-                                    count =  n_points * self.num_point_bytes/2, #/2 accounts for 16bit view
-                                    offset = self.num_header_bytes)
+        if self.n_points is 0:
+            # No data to unpack
+            self.point_data = np.array([], dtype=uint16le)
+        else:
 
-        # reshape array as 2D array of uint16 (n rows * num_point_bytes/2 cols)
-        self.point_data = np.reshape(self.point_data, [n_points, -1])
+            # Make a bytearray from the point data in the input string
+            uint16le = np.dtype(np.uint16, align='<') # force little endian
+            self.point_data = np.frombuffer(msg, dtype=uint16le,
+                                            count =  self.n_points * self.num_point_bytes/2, #/2 accounts for 16bit view
+                                            offset = self.num_header_bytes)
 
-        # now array has format:
-        # Name:    Layer/Echo/Flags | H Angle | Rdist | Echo Width | Reserved |
-        # Column:  0                | 1       | 2     | 3          | 4        |
-        
-        # Pull out data as 16bit fields using slices and views
-        self.h_angle_ticks = self.point_data[:, 1].view(np.int16)
-        # adjust the start time to account for the tick shift
+            # reshape array as 2D array of uint16 (n rows * num_point_bytes/2 cols)
+            self.point_data = np.reshape(self.point_data, [self.n_points, -1])
 
-        # compute number of scanner ticks since start angle tick for each sample
-        self.ticknum = -(self.h_angle_ticks - self.header['StartAngle'])
-        # radial distance to each point (in metres)
-        self.r_dist = (self.point_data[:, 2]/100.0).astype(np.float32)
-        # echo width (in cm!)
-        self.echo_w = self.point_data[:, 3].copy()
+            # now array has format:
+            # Name:    Layer/Echo/Flags | H Angle | Rdist | Echo Width | Reserved |
+            # Column:  0                | 1       | 2     | 3          | 4        |
+            
+            # Pull out data as 16bit fields using slices and views
+            self.h_angle_ticks = self.point_data[:, 1].view(np.int16)
+            # adjust the start time to account for the tick shift
 
-        # Pull out echo layer and flags fields from echo_layer_flags
-        # need to copy so we can view as two byte arrays
-        layer_echo_flags = self.point_data.view(dtype=np.uint8) # view as 2D byte array
-        self.layer = layer_echo_flags[:,0].copy()
-        self.layer &= np.array([3], dtype=np.uint8) # extract bits 0-1
-        self.echo = layer_echo_flags[:,0].copy()
-        self.echo = (self.echo & np.array([48], dtype=np.uint8)) >> 4 # extract bits 4,5 and shift
+            # compute number of scanner ticks since start angle tick for each sample
+            self.ticknum = -(self.h_angle_ticks - self.header['StartAngle'])
+            # radial distance to each point (in metres)
+            self.r_dist = (self.point_data[:, 2]/100.0).astype(np.float32)
+            # echo width (in cm!)
+            self.echo_w = self.point_data[:, 3].copy()
 
-        # Valid Flags bits are 0,1,3 -- want to move bit 3 to bit 2
-        #   so we can put layer,echo and flags into one byte for point cloud later
-        self.flags = layer_echo_flags[:,1].copy()
-        self.flags |= ((self.flags & np.array([8], dtype=np.uint16)) >> 1) # copy bit 3 to bit 2
-        self.flags &= np.array([7], dtype=np.uint8)  # mask off bit 3 keeping bits 0-2
+            # Pull out echo layer and flags fields from echo_layer_flags
+            # need to copy so we can view as two byte arrays
+            layer_echo_flags = self.point_data.view(dtype=np.uint8) # view as 2D byte array
+            self.layer = layer_echo_flags[:,0].copy()
+            self.layer &= np.array([3], dtype=np.uint8) # extract bits 0-1
+            self.echo = layer_echo_flags[:,0].copy()
+            self.echo = (self.echo & np.array([48], dtype=np.uint8)) >> 4 # extract bits 4,5 and shift
+
+            # Valid Flags bits are 0,1,3 -- want to move bit 3 to bit 2
+            #   so we can put layer,echo and flags into one byte for point cloud later
+            self.flags = layer_echo_flags[:,1].copy()
+            self.flags |= ((self.flags & np.array([8], dtype=np.uint16)) >> 1) # copy bit 3 to bit 2
+            self.flags &= np.array([7], dtype=np.uint8)  # mask off bit 3 keeping bits 0-2
 
 
     def publish_point_cloud(self):
@@ -324,122 +330,134 @@ class ProcessLDMRSData:
             Note you must call unpack_data before invoking this method
         """
 
-        # compute x,y,z coordinates in metres
-        h_angle_rads = self.h_angle_ticks * self.rads_per_tick
-        v_sines = self.v_sin_lut[self.layer]   # lookup cosines for elevation angle
-        v_cosines = self.v_cos_lut[self.layer] # lookup cosines for elevation angle
-
-        # x is in direction of travel
-        # z is up
-        # y is left
-        # note that the scan direction is clockwise from y-axis toward x-axis
-        #   this is the reverse of the expected scan direction for this coordinate system.
-        # We account for this explicitly in the LaserScan messages (see _fill_laser_scans())
-        self.x = (v_cosines * (np.cos(h_angle_rads) * self.r_dist)).astype(np.float32)
-        self.y = (v_cosines * (np.sin(h_angle_rads) * self.r_dist)).astype(np.float32)
-        self.z = (v_sines   * self.r_dist).astype(np.float32)
-
-        # store delta from start time
-        self.time_deltas = (self.ticknum * 1.0/self.tick_freq).astype(np.float32)
-
-        # pack layer/echo/flags bytes into a single byte field
-        # Bit:      0,1,  | 2,3  | 4,5,6 |
-        # Meaning:  Layer | Echo | Flags |
-        self.layer_echo_flags = self.layer | (self.echo << 2) | (self.flags << 4)
-
-        # concatenate the numpy arrays in the correct order for the PointCloud2 message
-        # need to pack as 2D array, then flatten since fields have varying byte widths
-        data = np.hstack((self.x.view(np.uint8).T.reshape(-1, 4),
-                          self.y.view(np.uint8).T.reshape(-1, 4),
-                          self.z.view(np.uint8).T.reshape(-1, 4),
-                          self.time_deltas.view(np.uint8).T.reshape(-1, 4),
-                          self.echo_w.view(np.uint8).T.reshape(-1, 2),
-                          self.layer_echo_flags.reshape(-1, 1)))   # already uint8
-        data = data.reshape(-1) # 1D view with points correctly aligned
-
-        # convert to byte string for serialization and transmission
-        # The serialize_numpy method in _PointCloud2.py *should* (but doesn't)
-        # take care of this when the message is published;
-        # i.e. we should be able to leave this as a numpy array here.
-        # This is (probably) an oversight by the developer in this instance
-        self.pc_data = data.tostring()
-
+        if self.n_points is 0:
+            # No points
+            self.pc_data = ""    
+        else:
+            # compute x,y,z coordinates in metres
+            h_angle_rads = self.h_angle_ticks * self.rads_per_tick
+            v_sines = self.v_sin_lut[self.layer]   # lookup cosines for elevation angle
+            v_cosines = self.v_cos_lut[self.layer] # lookup cosines for elevation angle
+    
+            # x is in direction of travel
+            # z is up
+            # y is left
+            # note that the scan direction is clockwise from y-axis toward x-axis
+            #   this is the reverse of the expected scan direction for this coordinate system.
+            # We account for this explicitly in the LaserScan messages (see _fill_laser_scans())
+            self.x = (v_cosines * (np.cos(h_angle_rads) * self.r_dist)).astype(np.float32)
+            self.y = (v_cosines * (np.sin(h_angle_rads) * self.r_dist)).astype(np.float32)
+            self.z = (v_sines   * self.r_dist).astype(np.float32)
+    
+            # store delta from start time
+            self.time_deltas = (self.ticknum * 1.0/self.tick_freq).astype(np.float32)
+    
+            # pack layer/echo/flags bytes into a single byte field
+            # Bit:      0,1,  | 2,3  | 4,5,6 |
+            # Meaning:  Layer | Echo | Flags |
+            self.layer_echo_flags = self.layer | (self.echo << 2) | (self.flags << 4)
+    
+            # concatenate the numpy arrays in the correct order for the PointCloud2 message
+            # need to pack as 2D array, then flatten since fields have varying byte widths
+            data = np.hstack((self.x.view(np.uint8).T.reshape(-1, 4),
+                              self.y.view(np.uint8).T.reshape(-1, 4),
+                              self.z.view(np.uint8).T.reshape(-1, 4),
+                              self.time_deltas.view(np.uint8).T.reshape(-1, 4),
+                              self.echo_w.view(np.uint8).T.reshape(-1, 2),
+                              self.layer_echo_flags.reshape(-1, 1)))   # already uint8
+            data = data.reshape(-1) # 1D view with points correctly aligned
+    
+            # convert to byte string for serialization and transmission
+            # The serialize_numpy method in _PointCloud2.py *should* (but doesn't)
+            # take care of this when the message is published;
+            # i.e. we should be able to leave this as a numpy array here.
+            # This is (probably) an oversight by the developer in this instance
+            self.pc_data = data.tostring()
+    
         # finished computing data, now fill out the fields in the message ready for transmission
         self._fill_point_cloud()
-
-
+    
+    
     def make_scans(self):
         """ Generate laser scan messages from previously unpacked data
                 the ROS parameter value of 'use_first_echo' in the ROS parameter
                 server determines if first or last echo is used
         """
-        # number of points to allocate per scan message
-        # (depends on angular resolution and scan angle)
-        self.npoints_scan = abs((self.header['StartAngle'] - self.header['EndAngle'])/self.ticknum2ind)
 
-        # Now get indices of first and last echos...
-        # this is non-trivial since:
-        # 1. each point has 0-3 echoes (no guarantee about order is given)
-        # 2. points are interlaced by scan plane
-        # ... so we need to lexical sort by: echo, then tick number, then layer
-        # to get data in the right order.
-        # Next we need to compute the indices for the
-        # first/last echo for each sample using index differencing
-
-        # do lexical sort to preserve order of previous sorts.
-        # The echo sort may be redundant but SICK gives no guarantees on how
-        #   the echoes are organized within the scan
-        sort_inds = np.lexsort((self.echo, self.ticknum,  self.layer))
-        # find where h_angle_ticks changes
-        ind_diff = np.diff(self.h_angle_ticks[sort_inds])
-        breaks = ind_diff.nonzero()[0]  # [0] due to singleton tuple return from nonzero()
-
-        if self.params[LDMRSParams.use_first_echo]:
-            # get indices of first echoes
-            # breaks +1 indexes the first echo of each sample
-            # prepend 0 since diff result has length n-1 and
-            # first sample is always the first echo
-            inds = np.hstack((np.array([0]),  breaks + 1)) # sorted indices of first echoes
+        if self.n_points is 0:
+            # slot ranges into their correct location within the scan array
+            # and separate out each layer using the layer breaks computed earlier
+            self.scan_data = np.zeros([4,0], dtype=np.float32)
+                
         else:
-            # get indices of last echoes
-            # breaks indexes the last echo
-            # append last index since diff result has length n-1 and
-            # last sample is always the last echo
-            last_ind = np.array([self.r_dist.size-1])
-            inds = np.hstack((breaks, last_ind)) #sorted indices of last echoes
-
-        # back out to unsorted inds so we can filter the required data
-        inds = sort_inds[inds]
-
-        #select first/last echo entries (elements remain sorted by ticknum and layer)
-        layers = self.layer[inds]
-        ranges = self.r_dist[inds]
-        ticks = self.ticknum[inds]
-
-        # Finally we need to find the layer breaks and store each layer separately
-        # in a zero padded array of the correct size.
-
-        # find the indices of the layer breaks
-        layer_breaks = np.diff(layers).nonzero()[0]
-        #index of first entry for each layer
-        firsts = np.hstack((np.array([0]), layer_breaks + 1))
-        #index of last entry for each layer
-        lasts = np.hstack((layer_breaks,  np.array([ranges.size -1])))
-
-        # !!! NOTE: When scan frequency is 50 Hz this shifts the scan clockwise by 1/16th degree
-        # a better solution would be to move the start angle and start time correspondingly
-        tick_inds = np.round(((ticks - self.tick_ind_adjust)/self.ticknum2ind)).astype(np.int16) # integer division
-
-        # slot ranges into their correct location within the scan array
-        # and separate out each layer using the layer breaks computed earlier
-        self.scan_data = np.zeros((4,  self.npoints_scan),  dtype = np.float32)
-
-        for i in range(0, 4):
-            self.scan_data[i, tick_inds[firsts[i]:(lasts[i]+1)]] = ranges[firsts[i]:(lasts[i]+1)]
-
+        
+            # number of points to allocate per scan message
+            # (depends on angular resolution and scan angle)
+            self.npoints_scan = abs((self.header['StartAngle'] - self.header['EndAngle'])/self.ticknum2ind)
+    
+            # Now get indices of first and last echos...
+            # this is non-trivial since:
+            # 1. each point has 0-3 echoes (no guarantee about order is given)
+            # 2. points are interlaced by scan plane
+            # ... so we need to lexical sort by: echo, then tick number, then layer
+            # to get data in the right order.
+            # Next we need to compute the indices for the
+            # first/last echo for each sample using index differencing
+    
+            # do lexical sort to preserve order of previous sorts.
+            # The echo sort may be redundant but SICK gives no guarantees on how
+            #   the echoes are organized within the scan
+            sort_inds = np.lexsort((self.echo, self.ticknum,  self.layer))
+            # find where h_angle_ticks changes
+            ind_diff = np.diff(self.h_angle_ticks[sort_inds])
+            breaks = ind_diff.nonzero()[0]  # [0] due to singleton tuple return from nonzero()
+    
+            if self.params[LDMRSParams.use_first_echo]:
+                # get indices of first echoes
+                # breaks +1 indexes the first echo of each sample
+                # prepend 0 since diff result has length n-1 and
+                # first sample is always the first echo
+                inds = np.hstack((np.array([0]),  breaks + 1)) # sorted indices of first echoes
+            else:
+                # get indices of last echoes
+                # breaks indexes the last echo
+                # append last index since diff result has length n-1 and
+                # last sample is always the last echo
+                last_ind = np.array([self.r_dist.size-1])
+                inds = np.hstack((breaks, last_ind)) #sorted indices of last echoes
+    
+            # back out to unsorted inds so we can filter the required data
+            inds = sort_inds[inds]
+    
+            #select first/last echo entries (elements remain sorted by ticknum and layer)
+            layers = self.layer[inds]
+            ranges = self.r_dist[inds]
+            ticks = self.ticknum[inds]
+    
+            # Finally we need to find the layer breaks and store each layer separately
+            # in a zero padded array of the correct size.
+    
+            # find the indices of the layer breaks
+            layer_breaks = np.diff(layers).nonzero()[0]
+            #index of first entry for each layer
+            firsts = np.hstack((np.array([0]), layer_breaks + 1))
+            #index of last entry for each layer
+            lasts = np.hstack((layer_breaks,  np.array([ranges.size -1])))
+    
+            # !!! NOTE: When scan frequency is 50 Hz this shifts the scan clockwise by 1/16th degree
+            # a better solution would be to move the start angle and start time correspondingly
+            tick_inds = np.round(((ticks - self.tick_ind_adjust)/self.ticknum2ind)).astype(np.int16) # integer division
+    
+            # slot ranges into their correct location within the scan array
+            # and separate out each layer using the layer breaks computed earlier
+            self.scan_data = np.zeros((4,  self.npoints_scan),  dtype = np.float32)
+    
+            for i in range(0, 4):
+                self.scan_data[i, tick_inds[firsts[i]:(lasts[i]+1)]] = ranges[firsts[i]:(lasts[i]+1)]
+    
         # finished marsahlling the range data, now it's time to fill in the details
         self._fill_scans()
-
+    
 #--------------------------------------------------------------------------
 # Private methods
 
