@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/ros-pkg/!svn/ver/38987/stacks/laser_drivers/trunk/sicktoolbox
+END
+stdlib_include.patch
+K 25
+svn:wc:ra_dav:version-url
+V 87
+/svn/ros-pkg/!svn/ver/26436/stacks/laser_drivers/trunk/sicktoolbox/stdlib_include.patch
+END
+manifest.xml
+K 25
+svn:wc:ra_dav:version-url
+V 79
+/svn/ros-pkg/!svn/ver/38011/stacks/laser_drivers/trunk/sicktoolbox/manifest.xml
+END
+power_delay.patch
+K 25
+svn:wc:ra_dav:version-url
+V 84
+/svn/ros-pkg/!svn/ver/38987/stacks/laser_drivers/trunk/sicktoolbox/power_delay.patch
+END
+sicktoolbox-1.0.tar.gz.md5sum
+K 25
+svn:wc:ra_dav:version-url
+V 96
+/svn/ros-pkg/!svn/ver/26436/stacks/laser_drivers/trunk/sicktoolbox/sicktoolbox-1.0.tar.gz.md5sum
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 75
+/svn/ros-pkg/!svn/ver/38987/stacks/laser_drivers/trunk/sicktoolbox/Makefile
+END

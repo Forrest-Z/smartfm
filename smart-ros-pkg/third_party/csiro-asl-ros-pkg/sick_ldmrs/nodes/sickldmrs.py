@@ -330,7 +330,7 @@ def ros_main():
         try:
             # these two are not in the dynamic config as they are expected to be
             # statically mapped via launch file
-            host = rospy.get_param('~host',  '192.168.1.200')
+            host = rospy.get_param('~host',  '192.168.0.1')
             port = rospy.get_param('~port',  12002)
             xport = XPort(host,  port)
 
