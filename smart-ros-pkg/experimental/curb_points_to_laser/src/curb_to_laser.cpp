@@ -18,6 +18,7 @@
 #include "pcl/point_types.h"
 #include "pcl/ros/conversions.h"
 #include <laser_geometry/laser_geometry.h>
+
 using namespace std;
 
 class curb_to_laser
@@ -48,6 +49,9 @@ private:
     typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
     void pointcloudsToLaser(PointCloud& input_pc, sensor_msgs::LaserScan& output);
     void scanCallback(const sensor_msgs::LaserScanConstPtr scan_in);
+    void curbPointsDistanceThreshold(sensor_msgs::PointCloud& curb_pts, double distance);
+
+    double curb_dist_, scan_dist_;
 };
 
 curb_to_laser::curb_to_laser() : tf_()
@@ -71,21 +75,34 @@ curb_to_laser::curb_to_laser() : tf_()
     curb_points2_pub_ = n_.advertise<sensor_msgs::PointCloud2>("curb_points2", 10);
 
     max_curb_points_ = 300;
-
+    curb_dist_ = 8.0;
+    scan_dist_ = 30.0;
     ros::spin();
 }
 
 void curb_to_laser::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
 {
     sensor_msgs::LaserScan scan_copy = *scan_in;
-    scan_copy.range_min = 8.0;
+    scan_copy.range_max = scan_dist_;
+    sensor_msgs::PointCloud laser_cloud;
     try{
-    projector_.transformLaserScanToPointCloud("base_link",scan_copy,
-                                              laser_cloud_,tf_);
+    projector_.transformLaserScanToPointCloud("base_link", scan_copy,
+                                              laser_cloud, tf_);
     }
     catch (tf::TransformException& e){
-        printf("%s",e.what());
+        ROS_DEBUG("%s",e.what());
+        return;
     }
+    /*for(size_t i=0; i<laser_cloud.points.size();)
+    {
+        if(laser_cloud.points[i].z<1.0)//y<3 or laser_cloud.points[i].y>-5)
+        {
+            laser_cloud.points.erase(laser_cloud.points.begin()+i);
+        }
+        else i++;
+    }
+    cout<<laser_cloud.points.size()<<endl;*/
+    laser_cloud_ = laser_cloud;
 }
 void curb_to_laser::pointcloudsToLaser(PointCloud& cloud, sensor_msgs::LaserScan& output)
 {
@@ -97,7 +114,7 @@ void curb_to_laser::pointcloudsToLaser(PointCloud& cloud, sensor_msgs::LaserScan
     output.time_increment = 0.0;
     output.scan_time = 1.0/30.0;
     output.range_min = 0.1;
-    output.range_max = 15.0;
+    output.range_max = 80.0;
 
     uint32_t ranges_size = std::ceil((output.angle_max - output.angle_min) / output.angle_increment);
     output.ranges.assign(ranges_size, output.range_max + 1.0);
@@ -146,7 +163,7 @@ void curb_to_laser::addCurbPoints(sensor_msgs::PointCloudConstPtr pc)
     }
     catch (tf::TransformException &ex)
     {
-        printf ("Failure %s\n", ex.what()); //Print exception which was caught
+        ROS_DEBUG("Failure %s\n", ex.what()); //Print exception which was caught
     }
 }
 void curb_to_laser::leftCurbCallback(sensor_msgs::PointCloudConstPtr left_pc)
@@ -159,6 +176,17 @@ void curb_to_laser::rightCurbCallback(sensor_msgs::PointCloudConstPtr right_pc)
     addCurbPoints(right_pc);
 }
 
+void curb_to_laser::curbPointsDistanceThreshold(sensor_msgs::PointCloud& curb_pts, double distance)
+{
+    for(size_t i=0; i<curb_pts.points.size();)
+    {
+        double x = curb_pts.points[i].x;
+        double y = curb_pts.points[i].y;
+        if(sqrt(x*x+y*y) > curb_dist_) curb_pts.points.erase(curb_pts.points.begin()+i);
+        else i++;
+    }
+}
+
 void curb_to_laser::publishCurb(const ros::TimerEvent& event)
 {
     sensor_msgs::PointCloud2 curb_points2;
@@ -168,6 +196,10 @@ void curb_to_laser::publishCurb(const ros::TimerEvent& event)
     {
 
         tf_.transformPointCloud("base_link", curb_points_, curb_point_baselink);
+
+        //thresholding the distance of curb points to adjust the weighting
+        curbPointsDistanceThreshold(curb_point_baselink, 10);
+
         sensor_msgs::convertPointCloudToPointCloud2(curb_point_baselink, curb_points2);
         curb_points2_pub_.publish(curb_points2);
     }
