@@ -36,6 +36,7 @@ rosbuild_add_library(${PROJECT_NAME}
     src/BackgroundExtraction.cpp
     src/data_def.cpp
     src/BlobFilter.cpp
+    src/polygon.cpp
 )
 
 #add dynamic reconfigure api

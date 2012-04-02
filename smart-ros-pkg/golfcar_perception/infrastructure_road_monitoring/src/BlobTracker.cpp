@@ -24,6 +24,10 @@ double AdaptiveMatcherThreshold::threshold(const Track & track, const Blob & b)
     for( rit=track.observations.rbegin(); rit!=track.observations.rend(); ++rit )
         if( rit->observed && rit->timestamp < b.timestamp )
             break;
+
+    if( rit==track.observations.rend() )
+        return -1;
+
     double dt = b.timestamp - rit->timestamp;
 
     double alpha_y = 1 + (double)b.centroid.y / 720; //frame height is 720
@@ -50,7 +54,7 @@ Tracks::iterator TrackMatcherNNT::match(Tracks & tracks, const Blob & blob)
     for( Tracks::iterator it = tracks.begin(); it!=tracks.end(); ++it )
     {
         double d = it->distance(blob);
-        //cout <<"distance to track " <<it->id <<": " <<d <<endl;
+        cout <<"   distance to track " <<it->id <<": " <<d <<endl;
         if( d < match_distance && d < match_threshold->threshold(*it, blob) )
         {
             match_distance = d;

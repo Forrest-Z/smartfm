@@ -59,23 +59,30 @@ void BlobTrackerNode::blobsCallback(const infrastructure_road_monitoring::Blobs 
 
 void BlobTrackerNode::update(const vector<Blob> & in_blobs)
 {
+    bool debug = true;
+
     if( tracks.empty() && in_blobs.empty() ) return;
 
-    /* cout <<"--- Processing " <<in_blobs.size() <<" blobs. Following " <<tracks.size() <<" tracks" <<endl;
-    for( unsigned i=0; i<in_blobs.size(); i++ ) {
-        cout <<"Blob " <<i <<": centroid=(" <<in_blobs[i].centroid.x
-                <<"," <<in_blobs[i].centroid.y <<"), timestamp="
-                <<in_blobs[i].timestamp <<endl;
-    } */
+    if( debug )
+    {
+        cout <<"--- Processing " <<in_blobs.size() <<" blobs. Following " <<tracks.size() <<" tracks" <<endl;
+        for( unsigned i=0; i<in_blobs.size(); i++ ) {
+            cout <<"Blob " <<i <<": centroid=(" <<in_blobs[i].centroid.x
+                    <<"," <<in_blobs[i].centroid.y <<"), timestamp="
+                    <<in_blobs[i].timestamp <<endl;
+        }
+    }
 
     if( tracks.empty() ) {
-        //cout <<"Adding blobs to tracker: creating tracks [";
+        if(debug) cout <<"Adding blobs to tracker: creating tracks [";
         for( unsigned i=0; i<in_blobs.size(); i++ ) {
             tracks.push_back( Track::newTrack(in_blobs[i]) );
-            //if( i!=0 ) cout <<", ";
-            //cout <<tracks.back().id;
+            if(debug) {
+                if( i!=0 ) cout <<", ";
+                cout <<tracks.back().id;
+            }
         }
-        //cout <<']' <<endl;
+        if(debug) cout <<']' <<endl;
         return;
     }
 
@@ -83,19 +90,21 @@ void BlobTrackerNode::update(const vector<Blob> & in_blobs)
     //  - yes: update
     //  - no : create a new track
     // updatedTracks holds the iterator to the tracks that have been updated
+    // newTracks holds the new tracks. These must be added later. If not,
+    // next blob matching will bug (dt<0)
     vector<Tracks::iterator> updatedTracks;
+    vector<Track> newTracks;
     for( unsigned i=0; i<in_blobs.size(); i++ ) {
-        //cout <<"Matching blob " <<i <<endl;
+        if(debug) cout <<"Matching blob " <<i <<endl;
         Tracks::iterator it = matcher->match(tracks, in_blobs[i]);
         if( it!=tracks.end() ) {
-            //cout <<"blob " <<i <<" matched with track " <<it->id <<endl;
+            if(debug) cout <<"blob " <<i <<" matched with track " <<it->id <<endl;
             it->addObservation(in_blobs[i]);
             updatedTracks.push_back(it);
         }
         else {
-            it = tracks.insert( tracks.end(), Track::newTrack(in_blobs[i]) );
-            updatedTracks.push_back(it);
-            //cout <<"blob " <<i <<" cannot be matched. Creating a new track: " <<tracks.back().id <<endl;
+            newTracks.push_back( Track::newTrack(in_blobs[i]) );
+            if(debug) cout <<"blob " <<i <<" cannot be matched. Creating a new track: " <<tracks.back().id <<endl;
         }
     }
 
@@ -104,7 +113,7 @@ void BlobTrackerNode::update(const vector<Blob> & in_blobs)
     {
         if( find(updatedTracks.begin(), updatedTracks.end(), it)==updatedTracks.end() )
         {
-            //cout <<"Track " <<it->id <<" unobserved" <<endl;
+            if(debug) cout <<"Track " <<it->id <<" unobserved" <<endl;
             Observation obs;
             obs.timestamp = in_blobs.empty() ? 0 : in_blobs.front().timestamp;
             it->observations.push_back( obs );
@@ -115,7 +124,7 @@ void BlobTrackerNode::update(const vector<Blob> & in_blobs)
     for( Tracks::iterator it=tracks.begin(); it!=tracks.end(); )
     {
         if( it->latestObserved() - it->observations.rbegin() > (int)unobserved_threshold_remove ) {
-            //cout <<"Removing track " <<it->id <<endl;
+            if(debug) cout <<"Removing track " <<it->id <<endl;
             it = tracks.erase(it);
         }
         else {
@@ -123,21 +132,25 @@ void BlobTrackerNode::update(const vector<Blob> & in_blobs)
         }
     }
 
-    /*
-    // Display pos and vel of each track
-    for( Tracks::iterator it=tracks.begin(); it!=tracks.end(); ++it ) {
-    	const cv::Point & p = it->latestObserved()->centroid;
-    	double vx=0, vy=0;
-    	try {
-    		vx = it->vel_x.value();
-    		vy = it->vel_y.value();
-    	} catch (runtime_error & e) {
-    	}
-    	ROS_INFO("Track %d: pos=(%03d, %03d), vel=(%+.3f, %+.3f)",
-    			it->id, p.x, p.y, vx, vy);
+    // add new tracks
+    tracks.insert(tracks.end(), newTracks.begin(), newTracks.end());
+
+    if(debug)
+    {
+        // Display pos and vel of each track
+        for( Tracks::iterator it=tracks.begin(); it!=tracks.end(); ++it ) {
+            const cv::Point & p = it->latestObserved()->centroid;
+            double vx=0, vy=0;
+            try {
+                vx = it->vel_x.value();
+                vy = it->vel_y.value();
+            } catch (runtime_error & e) {
+            }
+            ROS_INFO("Track %d: pos=(%03d, %03d), vel=(%+.3f, %+.3f)",
+                    it->id, p.x, p.y, vx, vy);
+        }
+        ROS_INFO("---");
     }
-    ROS_INFO("---");
-    */
 }
 
 int main(int argc, char **argv)
