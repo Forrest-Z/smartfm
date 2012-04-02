@@ -35,6 +35,7 @@ private:
     tf::TransformListener tf_;
     ros::ServiceClient client_;
     ros::Publisher coordinate_pub_;
+    ros::Timer timer_;
 
     std::string zone_;
     double offset_x_, offset_y_;
@@ -57,15 +58,17 @@ MapToWorld::MapToWorld()
 
     client_ = nh.serviceClient<map_to_world::UtmToLatLon>("/utm_to_latlon");
     coordinate_pub_ = nh.advertise<map_to_world::coordinate>("/world_utm_latlon", 1);
-    ros::Timer timer = nh.createTimer(ros::Duration(1.0/frequency),
-                                      &MapToWorld::timerCallback, this);
+    timer_ = nh.createTimer(ros::Duration(1.0/frequency),
+                            &MapToWorld::timerCallback, this);
 }
 
 void MapToWorld::timerCallback(const ros::TimerEvent& event)
 {
+    //ROS_DEBUG("timer callback");
     tf::Stamped<tf::Pose> robot_pose;
     if(getRobotGlobalPose(robot_pose))
     {
+        //ROS_DEBUG("global pose: %f, %f", robot_pose.getOrigin().x(), robot_pose.getOrigin().y());
         map_to_world::UtmToLatLon utmLL;
         utmLL.request.zone = zone_;
         utmLL.request.easting = offset_x_ + robot_pose.getOrigin().x();
@@ -73,6 +76,9 @@ void MapToWorld::timerCallback(const ros::TimerEvent& event)
 
         if(client_.call(utmLL))
         {
+            //ROS_DEBUG("world coordinates: utm=(%f,%f), geo=(%f,%f)",
+            //          utmLL.request.easting, utmLL.request.northing,
+            //          utmLL.response.latitude, utmLL.response.longitude);
             map_to_world::coordinate cd;
             cd.zone = zone_;
             cd.easting = utmLL.request.easting;
@@ -106,6 +112,7 @@ bool MapToWorld::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const
     robot_pose.frame_id_ = "/base_link";
     robot_pose.stamp_ = ros::Time();
     ros::Time current_time = ros::Time::now(); // save time for checking tf delay later
+    //ros::Time current_time = ros::Time(); //get the latest available transform without checking for the time
 
     try {
         tf_.transformPose("/map", robot_pose, odom_pose);

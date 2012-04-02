@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/ros-pkg/!svn/ver/38989/stacks/laser_drivers/trunk
+END
+stack.xml
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/ros-pkg/!svn/ver/37877/stacks/laser_drivers/trunk/stack.xml
+END
+CMakeLists.txt
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/ros-pkg/!svn/ver/38665/stacks/laser_drivers/trunk/CMakeLists.txt
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/ros-pkg/!svn/ver/37468/stacks/laser_drivers/trunk/Makefile
+END

@@ -5,6 +5,8 @@
 
 #include "BackgroundExtraction.h"
 
+//TODO: add a reconfigure interface to change the background alpha value
+
 
 class BackgroundExtractor
 {

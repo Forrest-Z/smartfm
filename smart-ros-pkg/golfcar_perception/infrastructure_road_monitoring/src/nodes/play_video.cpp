@@ -4,6 +4,9 @@
  * to a file. Also publishes clock messages.
  */
 
+//TODO: add a reconfigure interface to change the background alpha value
+//TODO: add a pause / play function to the speed control
+
 #include <ros/ros.h>
 #include <ros/time.h>
 

@@ -1,11 +1,12 @@
 #include <ros/ros.h>
+#include <ros/console.h>
 
 #include "RoutePlannerVehicle.h"
 #include "SimpleGoal.h"
 #include "SimulatedRoutePlanner.h"
 #include "MissionComm.h"
 
-using std::string;
+
 
 int main(int argc, char **argv)
 {
@@ -37,11 +38,12 @@ int main(int argc, char **argv)
     //pc = new DummyPassengerComm();
     pc = new SimplePassengerComm();
 
+
     bool use_dbserver = true;
     nh.getParam("use_dbserver", use_dbserver);
     if( use_dbserver )
     {
-        string url = "http://fmautonomy.no-ip.info/dbserver", vehicleID="golfcart1";
+        std::string url = "http://fmautonomy.no-ip.info/booking", vehicleID="golfcart1";
         nh.getParam("/dbserver/url", url);
         nh.getParam("vehicleID", vehicleID);
         ROS_INFO("Connecting to database at URL %s with ID %s.",
