@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="tf" type="static_transform_publisher" name="bumblebee_wide_to_xb3base" args="0 0 0 -1.570796327 0 -1.570796327 xb3_base bumblebee/wide 100" />
+        <node pkg="tf" type="static_transform_publisher" name="bumblebee_narrow_to_xb3base" args="0 0 0 -1.570796327 0 -1.570796327 xb3_base bumblebee/narrow 100" />
+</launch>
