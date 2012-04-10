@@ -60,7 +60,7 @@ SpeedAdvisor::SpeedAdvisor()
     nh.param("baselink_carfront_length", baselink_carfront_length_, 2.0);
     nh.param("enterstation_speed",enterstation_speed_, slow_speed_); //by default, enterstation speed is the same as slow speed
     nh.param("stationspeed_dist", stationspeed_dist_, 20.0);
-
+    nh.param("kinematic_acceleration", kinematics_acc_, true);
 
     nh_.param("use_sim_time", use_sim_time_, false);
     ROS_DEBUG_STREAM("Simulated time is "<<use_sim_time_);
@@ -176,13 +176,15 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     // from occurring. The following algorithm also ensure smooth
     // transition of stopping behaviour
     sc.dec_req = pow(speed_now_,2)/(2*(obs_dist-e_zone_));
-    if( sc.dec_req > max_dec_ )
-        BRAKE("Obs 1st: Max brake", SpeedAttribute::max_brake);
-    else if( sc.dec_req >= norm_dec_ )
-        speed_settings.push_back( SpeedAttribute::generate(
-                "Obs 1st: really need to brake", SpeedAttribute::need_brake,
-                speed_now_, 0, pos_speed, -sc.dec_req/frequency_) );
-
+    if(kinematics_acc_)
+    {
+        if( sc.dec_req > max_dec_ )
+            BRAKE("Obs 1st: Max brake", SpeedAttribute::max_brake);
+        else if( sc.dec_req >= norm_dec_ )
+            speed_settings.push_back( SpeedAttribute::generate(
+                    "Obs 1st: really need to brake", SpeedAttribute::need_brake,
+                    speed_now_, 0, pos_speed, -sc.dec_req/frequency_) );
+    }
 
     //
     // Intersections
