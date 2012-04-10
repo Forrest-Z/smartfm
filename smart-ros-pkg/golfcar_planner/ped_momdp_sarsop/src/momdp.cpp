@@ -12,13 +12,13 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("robot_0/cmd_vel",1);
     timer_ = nh.createTimer(ros::Duration(1.0/frequency), &ped_momdp::controlLoop, this);
-
     initPedGoal();
     policy_initialize(model_file, policy_file, simLen, simNum);
 }
 
 ped_momdp::~ped_momdp()
 {
+    geometry_msgs::Twist cmd;
     cmd.angular.z = 0;
     cmd.linear.x = 0;
     cmdPub_.publish(cmd);
@@ -58,20 +58,20 @@ bool ped_momdp::updatePedRobPose(ped_momdp_sarsop::ped_local_frame &ped)
     return foundPed;
 }
 
-void ped_momdp::updateSteerAnglePublishSpeed(pnc_msgs::move_status status)
+void ped_momdp::updateSteerAnglePublishSpeed(geometry_msgs::Twist speed)
 {
-    cmd.angular.z = status.steer_angle;
+    geometry_msgs::Twist cmd;
+    cmd.angular.z = speed.angular.z;
+    double momdp_speed = momdp_speed_;
+    //need correction here for the speed compensation for simulation
+    if(use_sim_time_) momdp_speed = momdp_speed * 0.3; /// TBP change numbers into parameters
 
-    if(roboty_>100) /// TBP change numbers into parameters
-    {
-        cmd.angular.z = 0;
-        cmd.linear.x = 0;
-    }
+    if(speed.linear.x < momdp_speed_) cmd.linear.x = speed.linear.x;
+    else cmd.linear.x = momdp_speed_;
 
     geometry_msgs::Twist cmd_temp;
     cmd_temp = cmd;
-    if(use_sim_time_)
-        cmd_temp.linear.x = cmd.linear.x * 0.3; /// TBP change numbers into parameters
+
     cmdPub_.publish(cmd_temp);
 }
 
@@ -152,8 +152,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 
     if(lPedInView.size()==0)
     {
-        cout<<"Publish cmd"<<endl;
-        cmdPub_.publish(cmd);
+        momdp_speed_ = 1.5;
         return;
     }
 
@@ -188,15 +187,11 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
     if(!stationary_)
     {
         /// TBP : Change numbers to parameters
-        if(safeAction==0) cmd.linear.x += 0;
-        else if(safeAction==1) cmd.linear.x += 0.5;
-        else if(safeAction==2) cmd.linear.x -= 0.5;
-        if(cmd.linear.x<=0) cmd.linear.x = 0;
-        if(cmd.linear.x>=1.5) cmd.linear.x = 1.5;
-
-        if(roboty_>100) cmd.linear.x = 0;
-        cout<<"publish cmd_vel"<<endl;
-        cmdPub_.publish(cmd);
+        if(safeAction==0) momdp_speed_ += 0;
+        else if(safeAction==1) momdp_speed_ += 0.5;
+        else if(safeAction==2) momdp_speed_ -= 0.5;
+        if(momdp_speed_<=0) momdp_speed_ = 0;
+        if(momdp_speed_>=1.5) momdp_speed_ = 1.5;
     }
 
 
@@ -282,7 +277,7 @@ void ped_momdp::publish_belief()
 
         peds_believes.believes.push_back(ped_belief);
     }
-    peds_believes.cmd_vel = cmd.linear.x;
+    peds_believes.cmd_vel = momdp_speed_;
     peds_believes.robotv = robotspeedx_;
 
     believesPub_.publish(peds_believes);

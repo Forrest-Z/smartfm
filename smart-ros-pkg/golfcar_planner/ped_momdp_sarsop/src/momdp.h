@@ -27,7 +27,7 @@
 #include <ped_momdp_sarsop/peds_believes.h>
 #include <ped_momdp_sarsop/ped_local_frame.h>
 #include <ped_momdp_sarsop/ped_local_frame_vector.h>
-#include <pnc_msgs/move_status.h>
+#include <pnc_msgs/speed_contribute.h>
 
 using namespace std;
 
@@ -74,14 +74,14 @@ public:
 
     bool updatePedRobPose(ped_momdp_sarsop::ped_local_frame &ped);
 
-    void updateSteerAnglePublishSpeed(pnc_msgs::move_status status);
+    void updateSteerAnglePublishSpeed(geometry_msgs::Twist speed);
 
 private:
     int X_SIZE, Y_SIZE;
     double dX, dY;
     double momdp_problem_timeout;
     bool robot_pose_available;
-    double robotx_, roboty_, robotspeedx_;
+    double robotx_, roboty_, robotspeedx_, momdp_speed_;
     bool use_sim_time_, stationary_;
     ros::Timer timer_;
     vector<GOAL> lPedGoal;
@@ -92,7 +92,6 @@ private:
     map<string, int> ObsStateMapping;
     map<string, int> ObsSymbolMapping;
     ros::Publisher believesPub_, cmdPub_;
-    geometry_msgs::Twist cmd;
 
     void initPedGoal();
     void initPedMOMDP(ped_momdp_sarsop::ped_local_frame& ped_local);

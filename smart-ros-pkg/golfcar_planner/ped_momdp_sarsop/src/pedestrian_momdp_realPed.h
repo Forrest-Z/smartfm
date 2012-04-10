@@ -18,7 +18,7 @@ public:
     void robotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
     void speedCallback(nav_msgs::Odometry odo);
     void pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector);   
-    void moveSpeedCallback(pnc_msgs::move_status status);
+    void moveSpeedCallback(geometry_msgs::Twist speed);
 
     ros::Subscriber speedSub_, pedSub_, scanSub_, move_base_speed_;
     ped_momdp* momdp;
