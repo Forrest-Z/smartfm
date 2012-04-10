@@ -344,7 +344,7 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
                     <<": " <<pmin.x <<' ' <<pmin.y <<". robot_FP_UL.x=" <<robot_FP_UL.x
                     <<". obstacles_dist=" <<move_status.obstacles_dist);
 
-	        move_status.acc_dec = true;
+	        move_status.path_exist = true;
 	        if( waypointPassed_ != pp_->path_n_ )
 	        {
 	            ROS_INFO("Path %d/%d", pp_->path_n_, (int)pp_->path_.poses.size()-1);
@@ -358,15 +358,16 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
     }
     else
     {
+        move_status.path_exist = false;
         if( pp_->path_n_ < (int) pp_->path_.poses.size()-1 )
         {
-            move_status.emergency = -1;
+            //move_status.emergency = -1;
             move_status.steer_angle = steer_angle_;
             ROS_WARN("Steering control at unknown state");
         }
         else
         {
-            move_status.acc_dec = false;
+
             move_status.steer_angle = 0;
             if(!goalreached_)
             {
@@ -385,13 +386,18 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 /// Required by the BaseLocalPlanner interface.
 bool PurePursuitBase::isGoalReached()
 {
-    if(!path_flag_ && pp_->path_n_<(int)pp_->path_.poses.size()-1)
-    {
-        ROS_INFO("Goal reached");
-        return true;
-    }
-    //ROS_INFO("Goal %d/%d",pp_->path_n_,(int)pp_->path_.poses.size()-1);
-    return false;
+       UpdatePosition();
+       pp_->vehicle_base_ = robot_pose_.pose;
+
+       double steer_angle, dist_to_goal;
+       pp_->steering_control(&steer_angle, &dist_to_goal);
+       //ROS_INFO("Distance to goal: %lf", dist_to_goal);
+       if( dist_to_goal< 5.0)
+       {
+           ROS_INFO("Goal Reached");
+           return true;
+       }
+       return false;
 }
 
 /// Required by the BaseLocalPlanner interface.

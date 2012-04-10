@@ -113,12 +113,12 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
             speed_now_, high_speed_, pos_speed, norm_neg_speed) );
 
     // Problem with the navigation node (move_base) --> brake
-    if( (ros::Time::now()-last_update_).toSec() > tolerance_ )
+    if( fabs((ros::Time::now()-last_update_).toSec()) > tolerance_ )
         BRAKE("no response from move_base", SpeedAttribute::no_response);
 
-    // What is that? doc needed
-    if( ! move_status_.acc_dec )
-        BRAKE("deceleration command from move_base", SpeedAttribute::movebase_dec);
+    // PPC couldn't find a path to follow, it may due to localisation error or illegal path received
+    if( ! move_status_.path_exist )
+        BRAKE("move_base reports no path", SpeedAttribute::path_exist);
 
     if(move_status_.emergency)
         BRAKE("Emergency!", SpeedAttribute::emergency);
@@ -168,8 +168,13 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
 
     // Compute some deceleration value based on the distance to the
     // nearest obstacle
-    // TODO: document this. Aren't those covered by the e_zone and slow_zone
-    // situation above already?
+
+    // Although this is covered by the e_zone and slow_zone,
+    // the algorithm below take into account the real kinematics of
+    // the vehicle that should ensure that no collision would occur even
+    // when slow_zone/e_zone specified is not enough to prevent collision
+    // from occurring. The following algorithm also ensure smooth
+    // transition of stopping behaviour
     sc.dec_req = pow(speed_now_,2)/(2*(obs_dist-e_zone_));
     if( sc.dec_req > max_dec_ )
         BRAKE("Obs 1st: Max brake", SpeedAttribute::max_brake);
@@ -184,15 +189,23 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     //
 
     //only change the dist_to_ints to the next station when through_ints has set to true
-    //TODO what's the use of last_ints_dist?
+
+    //last_ints_dist make sure that the car has come to complete stop before the button is pressed
+    //this may occur when the vehicle has overshoot its stopping point and move_status_.dist_to_ints
+    //become a large value, making the car accelerate instead of stopping.
+
     if( ! through_ints_ )//move_status_.dist_to_ints>0 &&
     {
         // Approaching an intersection, and the flag has not been cleared yet.
         // --> needs to stop.
         // The target velocity (sc.int_rec) is recommended based on the distance
         // to the intersection stop point (move_status_.dist_to_ints)
-        if( move_status_.dist_to_ints < ppc_stop_dist_
-                || last_ints_dist_ < ppc_stop_dist_ )
+
+        //only update the last_ints_dist_ by ensuring the value is strictly reducing
+        if( move_status_.dist_to_ints < last_ints_dist_)
+            last_ints_dist_ = move_status_.dist_to_ints;
+
+        if( last_ints_dist_ < ppc_stop_dist_ )
             sc.int_rec = 0;
         else
             sc.int_rec = sqrt(2 * dec_ints_ * (move_status_.dist_to_ints - ppc_stop_dist_));
@@ -204,9 +217,6 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     {
         last_ints_dist_ = move_status_.dist_to_ints;
     }
-
-    if( move_status_.dist_to_ints - last_ints_dist_ < ppc_stop_dist_ )
-        last_ints_dist_ = move_status_.dist_to_ints;
 
     //reset the intersection flag to allow vehicle to stop for next intersection
     //this assumed that the distance between intersections are at least 10 m.

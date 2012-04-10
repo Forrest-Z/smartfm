@@ -41,7 +41,7 @@ class SpeedAttribute
 public:
     enum SpeedAttributeDescription
     {
-        no_response, movebase_dec, norm_zone, slow_zone,
+        no_response, path_exist, norm_zone, slow_zone,
         emergency, max_brake, need_brake, e_zone, warn_brake,
         intersection, app_goal, goal
     };
