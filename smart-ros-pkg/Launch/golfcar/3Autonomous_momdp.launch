@@ -1,4 +1,5 @@
 <launch>
+    <!-- Only use for simple case: straight line momdp -->
     <node pkg="map_server" type="map_server" name="map_server" args="$(find dummyPed)/worlds/momdp_map.yaml">
         <remap from="static_map" to="static_planar_map"/>
         <remap from="map" to= "momdp_map"/>
