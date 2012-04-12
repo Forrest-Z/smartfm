@@ -65,8 +65,8 @@ class cluster_filter:
             if filter_fn(cluster.width, cluster.depth, dist):
                 msg_out.clusters.append(cluster)
 
-        if len(msg_out.clusters) > 0:
-            self.pub.publish(msg_out)
+        #if len(msg_out.clusters) > 0:
+        self.pub.publish(msg_out)
 
 
 

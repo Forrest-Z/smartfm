@@ -78,7 +78,7 @@ void camera_project_pcl::pcl_in_CB(const boost::shared_ptr<const feature_detecti
         ped_vision_batch_msg.pd_vector.push_back(msg);
     }
 
-    if( ! ped_vision_batch_msg.pd_vector.empty() )
+   // if( ! ped_vision_batch_msg.pd_vector.empty() )
         ped_vision_pub_.publish(ped_vision_batch_msg);
 }
 
