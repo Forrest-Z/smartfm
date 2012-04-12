@@ -1,6 +1,5 @@
 <launch>
-    <node pkg="tf" type="static_transform_publisher" name="bumblebee_wide_to_xb3base" args="0 0 0 0 -1.5796327 1.570796327 bumblebee/wide xb3_base 1" />
-    <node pkg="tf" type="static_transform_publisher" name="bumblebee_narrow_to_xb3base" args="0 0 0 0 -1.5796327 1.570796327 bumblebee/narrow xb3_base 1" />
+    
     <node pkg="bumblebeeXB3_1394" type="triclopsRect" name="triclopsRect">
         <param name="short_calibration_file" value="$(find bumblebeeXB3_1394)/calibration/narrow.cal"/>
         <param name="wide_calibration_file" value="$(find bumblebeeXB3_1394)/calibration/wide.cal"/>

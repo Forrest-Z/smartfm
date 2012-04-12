@@ -41,7 +41,7 @@ class SpeedAttribute
 public:
     enum SpeedAttributeDescription
     {
-        no_response, movebase_dec, norm_zone, slow_zone,
+        no_response, path_exist, norm_zone, slow_zone,
         emergency, max_brake, need_brake, e_zone, warn_brake,
         intersection, app_goal, goal
     };
@@ -105,7 +105,7 @@ private:
     ros::Subscriber slowzone_sub_;
     ros::Timer timer_;
 
-    bool junction_stop_,through_ints_;
+    bool junction_stop_,through_ints_, kinematics_acc_;
     int attribute_, zone_;
     ros::Time last_update_;
     double stopping_distance_, baselink_carfront_length_; //automatic calculate based on the maximum speed and normal deceleration

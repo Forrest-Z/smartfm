@@ -31,7 +31,7 @@ pedestrian_momdp::pedestrian_momdp()
     n.param("stationary",stationary, false);
     nh.param("use_sim_time", use_sim_time, false);
 
-    move_base_speed_=nh.subscribe("/move_status",1, &pedestrian_momdp::moveSpeedCallback, this);
+    move_base_speed_=nh.subscribe("/speed_advisor_cmdvel",1, &pedestrian_momdp::moveSpeedCallback, this);
     //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
 
     momdp = new ped_momdp(model_file, policy_file, simLen, simNum, stationary, frequency, use_sim_time, nh);
@@ -49,9 +49,9 @@ void pedestrian_momdp::speedCallback(nav_msgs::Odometry odo)
     momdp->updateRobotSpeed(odo.twist.twist.linear.x);
 }
 
-void pedestrian_momdp::moveSpeedCallback(pnc_msgs::move_status status)
+void pedestrian_momdp::moveSpeedCallback(geometry_msgs::Twist speed)
 {
-    momdp->updateSteerAnglePublishSpeed(status);
+    momdp->updateSteerAnglePublishSpeed(speed);
 
 }
 
