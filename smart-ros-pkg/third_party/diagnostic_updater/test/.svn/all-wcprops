@@ -1,0 +1,17 @@
+K 25
+svn:wc:ra_dav:version-url
+V 76
+/svn/ros-pkg/!svn/ver/29026/stacks/diagnostics/trunk/diagnostic_updater/test
+END
+diagnostic_updater_test.xml
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/svn/ros-pkg/!svn/ver/24392/stacks/diagnostics/trunk/diagnostic_updater/test/diagnostic_updater_test.xml
+END
+diagnostic_updater_test.cpp
+K 25
+svn:wc:ra_dav:version-url
+V 104
+/svn/ros-pkg/!svn/ver/29026/stacks/diagnostics/trunk/diagnostic_updater/test/diagnostic_updater_test.cpp
+END

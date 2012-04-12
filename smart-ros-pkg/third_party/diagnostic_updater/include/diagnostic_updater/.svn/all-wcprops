@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 98
+/svn/ros-pkg/!svn/ver/37678/stacks/diagnostics/trunk/diagnostic_updater/include/diagnostic_updater
+END
+DiagnosticStatusWrapper.h
+K 25
+svn:wc:ra_dav:version-url
+V 124
+/svn/ros-pkg/!svn/ver/28047/stacks/diagnostics/trunk/diagnostic_updater/include/diagnostic_updater/DiagnosticStatusWrapper.h
+END
+update_functions.h
+K 25
+svn:wc:ra_dav:version-url
+V 117
+/svn/ros-pkg/!svn/ver/37678/stacks/diagnostics/trunk/diagnostic_updater/include/diagnostic_updater/update_functions.h
+END
+publisher.h
+K 25
+svn:wc:ra_dav:version-url
+V 110
+/svn/ros-pkg/!svn/ver/37517/stacks/diagnostics/trunk/diagnostic_updater/include/diagnostic_updater/publisher.h
+END
+diagnostic_updater.h
+K 25
+svn:wc:ra_dav:version-url
+V 119
+/svn/ros-pkg/!svn/ver/30629/stacks/diagnostics/trunk/diagnostic_updater/include/diagnostic_updater/diagnostic_updater.h
+END
