@@ -1,0 +1,9 @@
+<launch>
+	<include file="$(find Launch)/golfcar/octomap_mapping.launch"/>
+    <node pkg="feature_detection" type="ped_clustering" name="ped_clustering" output="screen">
+        <remap from="sickldmrs/scan0" to="sick_scan4"/>
+        <remap from="sickldmrs/cloud" to="sickldmrs/cloud"/>
+        <param name="prior_distance_filter" value="0.2"/>
+    </node>
+</launch>
+

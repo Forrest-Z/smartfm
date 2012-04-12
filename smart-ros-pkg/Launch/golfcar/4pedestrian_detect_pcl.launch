@@ -3,16 +3,12 @@
         <remap from="cluster_filter_in" to="pedestrian_clusters"/>
         <remap from="cluster_filter_out" to="pedestrian_clusters_filtered"/>
     </node>
-    <node pkg="feature_detection" type="ped_clustering" name="ped_clustering" output="screen">
-        <remap from="sickldmrs/scan0" to="sick_scan4"/>
-        <remap from="sickldmrs/cloud" to="sickldmrs/cloud"/>
-        <param name="prior_distance_filter" value="0.2"/>
-    </node>
+    
     <include file="$(find feature_detection)/visualizer.launch"/>
     <node pkg="sensing_on_road" type="camera_project_pcl" name="camera_project_pcl">
 	    <remap from="camera_project_in" to="pedestrian_clusters_filtered"/>
 	</node>
-	<include file="$(find Launch)/golfcar/octomap_mapping.launch"/>
+	<include file="$(find Launch)/golfcar/pedestrian_detection_laser.launch"/>
     <node pkg="pedestrian_detector" type="classifier" name="classifier" output="screen">
     	<param name="image_transport" value="compressed"/>
     	<remap from="image_raw" to="usb_cam/image_raw"/>
@@ -25,7 +21,7 @@
 	    <param name="path" value="/media/MyPassport/ped_cand"/>
 	    <remap from="pd_vision_batch" to="pedestrian_clusters_filtered"/>
 	</node>
-	<include file="$(find dataAssoc_experimental)/dataAssoc_withVisualizer.launch"/>
+	<include file="$(find dataAssoc_experimental)/dataAssoc.launch"/>
 	
 </launch>
 
