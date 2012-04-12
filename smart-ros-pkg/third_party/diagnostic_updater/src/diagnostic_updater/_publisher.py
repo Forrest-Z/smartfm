@@ -100,7 +100,7 @@ class DiagnosedPublisher(TopicDiagnostic):
         computing statistics.
         """
         TopicDiagnostic.__init__(self, pub.getTopic(), diag, freq, stamp)
-        self.publisher(pub)
+        self.publisher = pub
 
     def publish(self, message):
         """Collects statistics and publishes the message.

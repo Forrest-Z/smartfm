@@ -117,8 +117,6 @@ class TimeStampStatusParam:
         self.min_acceptable = min_acceptable
 
 
-
-
 class TimeStampStatus(DiagnosticTask):
     """Diagnostic task to monitor the interval between events.
 
