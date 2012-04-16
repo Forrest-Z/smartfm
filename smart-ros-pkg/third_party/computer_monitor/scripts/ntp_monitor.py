@@ -48,7 +48,46 @@ import re
 
 NAME = 'ntp_monitor'
 
-def ntp_monitor(ntp_hostname, offset=500, self_offset=500, diag_hostname = None, error_offset = 5000000):
+
+def ntp_diag(st, host, off):
+    try:
+        p = Popen(["ntpdate", "-q", host], stdout=PIPE, stdin=PIPE, stderr=PIPE)
+        res = p.wait()
+        (o,e) = p.communicate()
+    except OSError, (errno, msg):
+        if errno == 4:
+            return None #ctrl-c interrupt
+        else:
+            raise
+    if (res == 0):
+        measured_offset = float(re.search("offset (.*),", o).group(1))*1000000
+
+        st.level = DiagnosticStatus.OK
+        st.message = "OK"
+        st.values = [ KeyValue("Offset (us)", str(measured_offset)),
+                        KeyValue("Offset tolerance (us)", str(off)),
+                        KeyValue("Offset tolerance (us) for Error", str(error_offset)) ]
+
+        if (abs(measured_offset) > off):
+            st.level = DiagnosticStatus.WARN
+            st.message = "NTP Offset Too High"
+        if (abs(measured_offset) > error_offset):
+            st.level = DiagnosticStatus.ERROR
+            st.message = "NTP Offset Too High"
+
+    else:
+        st.level = DiagnosticStatus.ERROR
+        st.message = "Error Running ntpdate. Returned %d" % res
+        st.values = [ KeyValue("Offset (us)", "N/A"),
+                        KeyValue("Offset tolerance (us)", str(off)),
+                        KeyValue("Offset tolerance (us) for Error", str(error_offset)),
+                        KeyValue("Output", o),
+                        KeyValue("Errors", e) ]
+
+    return st
+
+
+def ntp_monitor(ntp_hostname, offset=500, self_offset=500, diag_hostname = None, error_offset = 5000000, do_self_test=True):
     pub = rospy.Publisher("/diagnostics", DiagnosticArray)
     rospy.init_node(NAME, anonymous=True)
 
@@ -57,7 +96,7 @@ def ntp_monitor(ntp_hostname, offset=500, self_offset=500, diag_hostname = None,
         diag_hostname = hostname
 
     stat = DiagnosticStatus()
-    stat.level = 0
+    stat.level = DiagnosticStatus.OK
     stat.name = "NTP offset from "+ diag_hostname + " to " + ntp_hostname
     stat.message = "OK"
     stat.hardware_id = hostname
@@ -71,45 +110,18 @@ def ntp_monitor(ntp_hostname, offset=500, self_offset=500, diag_hostname = None,
     self_stat.values = []
 
     while not rospy.is_shutdown():
-        for st,host,off in [(stat,ntp_hostname,offset), (self_stat, hostname,self_offset)]:
-            try:
-                p = Popen(["ntpdate", "-q", host], stdout=PIPE, stdin=PIPE, stderr=PIPE)
-                res = p.wait()
-                (o,e) = p.communicate()
-            except OSError, (errno, msg):
-                if errno == 4:
-                    break #ctrl-c interrupt
-                else:
-                    raise
-            if (res == 0):
-                measured_offset = float(re.search("offset (.*),", o).group(1))*1000000
-
-                st.level = DiagnosticStatus.OK
-                st.message = "OK"
-                st.values = [ KeyValue("Offset (us)", str(measured_offset)),
-                              KeyValue("Offset tolerance (us)", str(off)),
-                              KeyValue("Offset tolerance (us) for Error", str(error_offset)) ]
-
-                if (abs(measured_offset) > off):
-                    st.level = DiagnosticStatus.WARN
-                    st.message = "NTP Offset Too High"
-                if (abs(measured_offset) > error_offset):
-                    st.level = DiagnosticStatus.ERROR
-                    st.message = "NTP Offset Too High"
-
-            else:
-                st.level = DiagnosticStatus.ERROR
-                st.message = "Error Running ntpdate. Returned %d" % res
-                st.values = [ KeyValue("Offset (us)", "N/A"),
-                              KeyValue("Offset tolerance (us)", str(off)),
-                              KeyValue("Offset tolerance (us) for Error", str(error_offset)),
-                              KeyValue("Output", o),
-                              KeyValue("Errors", e) ]
-
-
         msg = DiagnosticArray()
         msg.header.stamp = rospy.get_rostime()
-        msg.status = [stat, self_stat]
+
+        st = ntp_diag(stat, ntp_hostname, offset)
+        if st is not None:
+            msg.status.append(st)
+
+        if do_self_test:
+            st = ntp_diag(self_stat, hostname,self_offset)
+            if st is not None:
+                msg.status.append(st)
+
         pub.publish(msg)
         time.sleep(1)
 
@@ -129,6 +141,9 @@ def ntp_monitor_main(argv=sys.argv):
                       help="Computer name in diagnostics output (ex: 'c1')",
                       metavar="DIAG_HOSTNAME",
                       action="store", default=None)
+    parser.add_option("--no-self-test", dest="do_self_test",
+                      help="Disable self test",
+                      action="store_false", default=True)
     options, args = parser.parse_args(rospy.myargv())
 
     if (len(args) != 2):
@@ -142,7 +157,7 @@ def ntp_monitor_main(argv=sys.argv):
     except:
         parser.error("Offsets must be numbers")
 
-    ntp_monitor(args[1], offset, self_offset, options.diag_hostname, error_offset)
+    ntp_monitor(args[1], offset, self_offset, options.diag_hostname, error_offset, options.do_self_test)
 
 
 if __name__ == "__main__":
