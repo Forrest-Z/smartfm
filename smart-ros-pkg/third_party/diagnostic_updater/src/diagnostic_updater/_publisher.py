@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 """ diagnostic_updater for Python.
 @author Brice Rebsamen <brice [dot] rebsamen [gmail]>
@@ -31,6 +32,7 @@ class HeaderlessTopicDiagnostic(CompositeDiagnosticTask):
         computing statistics.
         """
         CompositeDiagnosticTask.__init__(self, name + " topic status")
+        self.diag = diag
         self.freq = FrequencyStatus(freq)
         self.addTask(self.freq)
         self.diag.add(self)

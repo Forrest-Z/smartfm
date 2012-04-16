@@ -130,7 +130,8 @@ class ProcessLDMRSData:
 
         # For diagnostics:
         self.diag_updater = diagnostic_updater.Updater()
-        self.freq_bound = {'min': 100, 'max': 100} #TODO: get those from config
+        self.diag_updater.setHardwareID('none')
+        self.freq_bound = {'min': 50, 'max': 50} #TODO: get those from config
         fs_params = diagnostic_updater.FrequencyStatusParam(self.freq_bound, 0.1, 5)
         self.fs_diag = diagnostic_updater.HeaderlessTopicDiagnostic('ldmrs', self.diag_updater, fs_params)
 
