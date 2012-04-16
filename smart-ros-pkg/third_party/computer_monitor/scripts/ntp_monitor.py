@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # Software License Agreement (BSD License)
 #
 # Copyright (c) 2008, Willow Garage, Inc.
@@ -32,7 +33,7 @@
 # POSSIBILITY OF SUCH DAMAGE.
 
 import roslib
-roslib.load_manifest('pr2_computer_monitor')
+roslib.load_manifest('computer_monitor')
 
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
 
@@ -50,7 +51,7 @@ NAME = 'ntp_monitor'
 def ntp_monitor(ntp_hostname, offset=500, self_offset=500, diag_hostname = None, error_offset = 5000000):
     pub = rospy.Publisher("/diagnostics", DiagnosticArray)
     rospy.init_node(NAME, anonymous=True)
-    
+
     hostname = socket.gethostname()
     if diag_hostname is None:
         diag_hostname = hostname
@@ -68,7 +69,7 @@ def ntp_monitor(ntp_hostname, offset=500, self_offset=500, diag_hostname = None,
     self_stat.message = "OK"
     self_stat.hardware_id = hostname
     self_stat.values = []
-    
+
     while not rospy.is_shutdown():
         for st,host,off in [(stat,ntp_hostname,offset), (self_stat, hostname,self_offset)]:
             try:
@@ -88,14 +89,14 @@ def ntp_monitor(ntp_hostname, offset=500, self_offset=500, diag_hostname = None,
                 st.values = [ KeyValue("Offset (us)", str(measured_offset)),
                               KeyValue("Offset tolerance (us)", str(off)),
                               KeyValue("Offset tolerance (us) for Error", str(error_offset)) ]
-            
+
                 if (abs(measured_offset) > off):
                     st.level = DiagnosticStatus.WARN
                     st.message = "NTP Offset Too High"
                 if (abs(measured_offset) > error_offset):
                     st.level = DiagnosticStatus.ERROR
                     st.message = "NTP Offset Too High"
-                                
+
             else:
                 st.level = DiagnosticStatus.ERROR
                 st.message = "Error Running ntpdate. Returned %d" % res
@@ -121,7 +122,7 @@ def ntp_monitor_main(argv=sys.argv):
     parser.add_option("--error-offset-tolerance", dest="error_offset_tol",
                       action="store", default=5000000,
                       help="Offset from NTP host. Above this is error", metavar="OFFSET-TOL")
-    parser.add_option("--self_offset-tolerance", dest="self_offset_tol", 
+    parser.add_option("--self_offset-tolerance", dest="self_offset_tol",
                       action="store", default=500,
                       help="Offset from self", metavar="SELF_OFFSET-TOL")
     parser.add_option("--diag-hostname", dest="diag_hostname",
@@ -139,10 +140,10 @@ def ntp_monitor_main(argv=sys.argv):
         self_offset = int(options.self_offset_tol)
         error_offset = int(options.error_offset_tol)
     except:
-        parser.error("Offsets must be numbers")        
-    
+        parser.error("Offsets must be numbers")
+
     ntp_monitor(args[1], offset, self_offset, options.diag_hostname, error_offset)
-    
+
 
 if __name__ == "__main__":
     try:
