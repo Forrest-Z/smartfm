@@ -49,7 +49,7 @@ import re
 NAME = 'ntp_monitor'
 
 
-def ntp_diag(st, host, off):
+def ntp_diag(st, host, off, error_offset):
     try:
         p = Popen(["ntpdate", "-q", host], stdout=PIPE, stdin=PIPE, stderr=PIPE)
         res = p.wait()
@@ -113,12 +113,12 @@ def ntp_monitor(ntp_hostname, offset=500, self_offset=500, diag_hostname = None,
         msg = DiagnosticArray()
         msg.header.stamp = rospy.get_rostime()
 
-        st = ntp_diag(stat, ntp_hostname, offset)
+        st = ntp_diag(stat, ntp_hostname, offset, error_offset)
         if st is not None:
             msg.status.append(st)
 
         if do_self_test:
-            st = ntp_diag(self_stat, hostname,self_offset)
+            st = ntp_diag(self_stat, hostname, self_offset, error_offset)
             if st is not None:
                 msg.status.append(st)
 
