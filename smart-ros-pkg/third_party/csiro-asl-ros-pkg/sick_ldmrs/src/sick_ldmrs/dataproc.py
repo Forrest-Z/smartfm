@@ -43,7 +43,7 @@ from sensor_msgs.msg import *
 import utils as util
 from rospy.numpy_msg import numpy_msg
 from params import LDMRSParams
-
+import diagnostic_updater
 
 class ProcessLDMRSData:
     """
@@ -54,17 +54,17 @@ class ProcessLDMRSData:
     You will also need to call set_timestamp_delta() to set the difference between the
     current time and the LD-MRS on-board time (which you can extract from the message header)
     """
-    
+
     header_format = '<HHHQQHhhHhhhhhhH' # format string for data header
     header_struct = Struct(header_format)  # precompile for speed
     # setup structure for pulling out header components
-    header_keys = ['ScanNumber', 'ScannerStatus', 
-                   'SyncPhaseOffset', 'ScanStartTimeNTP', 
-                   'ScanEndTimeNTP', 'AngleTicksPerRot', 
-                   'StartAngle', 'EndAngle', 
-                   'NumScanPoints', 'Reserved1', 
-                   'Reserved2', 'Reserved3', 
-                   'Reserved4', 'Reserved5', 
+    header_keys = ['ScanNumber', 'ScannerStatus',
+                   'SyncPhaseOffset', 'ScanStartTimeNTP',
+                   'ScanEndTimeNTP', 'AngleTicksPerRot',
+                   'StartAngle', 'EndAngle',
+                   'NumScanPoints', 'Reserved1',
+                   'Reserved2', 'Reserved3',
+                   'Reserved4', 'Reserved5',
                    'Reserved6', 'Reserved7']
 
     num_header_bytes = 44  # 44 bytes for the header
@@ -80,7 +80,7 @@ class ProcessLDMRSData:
             @param topics: dictionary mapping topic names to publisher handles
                 valid topic names are {"cloud", "scan0", "scan1", "scan2", "scan3"}
             @type topics: dict {topic_name:publisher_handle}
-            @param params: dictionary mapping parameter names to values. 
+            @param params: dictionary mapping parameter names to values.
                 Where applicable, the parameters must be in device units (e.g. ticks)
             @type params: dict {ros_parameter_string:value}
         """
@@ -128,6 +128,14 @@ class ProcessLDMRSData:
         self.total_err = 0.0  #integrate errors
         self.header = {}.fromkeys(self.header_keys)
 
+        # For diagnostics:
+        self.diag_updater = diagnostic_updater.Updater()
+        self.diag_updater.setHardwareID('none')
+        self.freq_bound = {'min': 50, 'max': 50} #TODO: get those from config
+        fs_params = diagnostic_updater.FrequencyStatusParam(self.freq_bound, 0.1, 5)
+        self.fs_diag = diagnostic_updater.HeaderlessTopicDiagnostic('ldmrs', self.diag_updater, fs_params)
+
+
     def process_msg(self,  msg, recv_time):
         """ Process an incoming data message. Convert to (and publish)
             PointCloud2 and LaserScan ROS messages depending
@@ -137,9 +145,9 @@ class ProcessLDMRSData:
             @param msg: the scan data message from the LD-MRS to be processed
             @type msg: read-only byte buffer (e.g. a python string)
         """
-        # smooth the timestamp using the expected rate 
+        # smooth the timestamp using the expected rate
         self.smooth_timestamp(recv_time)
-        
+
         self.msg = msg
         subscribers = self.num_subscribers()
 
@@ -154,7 +162,11 @@ class ProcessLDMRSData:
             if any(["scan" in topic and num_subs > 0 for topic, num_subs in subscribers.iteritems()]):
                 self.make_scans()
                 self.publish_scans()
-            
+
+        # diagnostics
+        self.fs_diag.tick()
+        self.diag_updater.update()
+
         return None
 
 
@@ -186,16 +198,16 @@ class ProcessLDMRSData:
             @type time_delta: a rostime.Duration object
         """
         self.time_delta = time_delta
-        
+
     def smooth_timestamp(self, recv_time):
         """ Smooth the timestamp to track the expected scan rate.
             Parameter time_smoothing_factor controls
             Small errors between rostime and smoothed time are corrected by
             applying a correction weighted by the time_smoothong_gain
-            Large errors above the time_error_threshold are corrected to 
-            recv_time by a step adjustment 
+            Large errors above the time_error_threshold are corrected to
+            recv_time by a step adjustment
             @param recv_time: ros timestamp when the message was recieved
-            @type ldmrs_time: rostime.Time object    
+            @type ldmrs_time: rostime.Time object
         """
 
         if not self.smoothtime_prev:
@@ -212,7 +224,7 @@ class ProcessLDMRSData:
                 self.smoothtime = recv_time
             #print 'delta_smoothtime: %f, err: %f'%((self.smoothtime - self.smoothtime_prev).to_sec(), err)
         self.smoothtime_prev = self.smoothtime
-          
+
 
     def unpack_data(self, msg):
         """ Unpack the data from an LD-MRS scan data message
@@ -233,7 +245,7 @@ class ProcessLDMRSData:
         header_tuple = self.header_struct.unpack_from(msg)
         for index, value in enumerate(header_tuple):
             self.header[self.header_keys[index]] = value
-        
+
         self.rads_per_tick = (2.0 * np.pi) / self.header['AngleTicksPerRot']
         self.scan_start_time = self.smoothtime #util.NTP64_to_ROStime(self.header['ScanStartTimeNTP']) + self.time_delta
 
@@ -269,7 +281,7 @@ class ProcessLDMRSData:
             # now array has format:
             # Name:    Layer/Echo/Flags | H Angle | Rdist | Echo Width | Reserved |
             # Column:  0                | 1       | 2     | 3          | 4        |
-            
+
             # Pull out data as 16bit fields using slices and views
             self.h_angle_ticks = self.point_data[:, 1].view(np.int16)
             # adjust the start time to account for the tick shift
@@ -332,13 +344,13 @@ class ProcessLDMRSData:
 
         if self.n_points is 0:
             # No points
-            self.pc_data = ""    
+            self.pc_data = ""
         else:
             # compute x,y,z coordinates in metres
             h_angle_rads = self.h_angle_ticks * self.rads_per_tick
             v_sines = self.v_sin_lut[self.layer]   # lookup cosines for elevation angle
             v_cosines = self.v_cos_lut[self.layer] # lookup cosines for elevation angle
-    
+
             # x is in direction of travel
             # z is up
             # y is left
@@ -348,15 +360,15 @@ class ProcessLDMRSData:
             self.x = (v_cosines * (np.cos(h_angle_rads) * self.r_dist)).astype(np.float32)
             self.y = (v_cosines * (np.sin(h_angle_rads) * self.r_dist)).astype(np.float32)
             self.z = (v_sines   * self.r_dist).astype(np.float32)
-    
+
             # store delta from start time
             self.time_deltas = (self.ticknum * 1.0/self.tick_freq).astype(np.float32)
-    
+
             # pack layer/echo/flags bytes into a single byte field
             # Bit:      0,1,  | 2,3  | 4,5,6 |
             # Meaning:  Layer | Echo | Flags |
             self.layer_echo_flags = self.layer | (self.echo << 2) | (self.flags << 4)
-    
+
             # concatenate the numpy arrays in the correct order for the PointCloud2 message
             # need to pack as 2D array, then flatten since fields have varying byte widths
             data = np.hstack((self.x.view(np.uint8).T.reshape(-1, 4),
@@ -366,18 +378,18 @@ class ProcessLDMRSData:
                               self.echo_w.view(np.uint8).T.reshape(-1, 2),
                               self.layer_echo_flags.reshape(-1, 1)))   # already uint8
             data = data.reshape(-1) # 1D view with points correctly aligned
-    
+
             # convert to byte string for serialization and transmission
             # The serialize_numpy method in _PointCloud2.py *should* (but doesn't)
             # take care of this when the message is published;
             # i.e. we should be able to leave this as a numpy array here.
             # This is (probably) an oversight by the developer in this instance
             self.pc_data = data.tostring()
-    
+
         # finished computing data, now fill out the fields in the message ready for transmission
         self._fill_point_cloud()
-    
-    
+
+
     def make_scans(self):
         """ Generate laser scan messages from previously unpacked data
                 the ROS parameter value of 'use_first_echo' in the ROS parameter
@@ -388,13 +400,13 @@ class ProcessLDMRSData:
             # slot ranges into their correct location within the scan array
             # and separate out each layer using the layer breaks computed earlier
             self.scan_data = np.zeros([4,0], dtype=np.float32)
-                
+
         else:
-        
+
             # number of points to allocate per scan message
             # (depends on angular resolution and scan angle)
             self.npoints_scan = abs((self.header['StartAngle'] - self.header['EndAngle'])/self.ticknum2ind)
-    
+
             # Now get indices of first and last echos...
             # this is non-trivial since:
             # 1. each point has 0-3 echoes (no guarantee about order is given)
@@ -403,7 +415,7 @@ class ProcessLDMRSData:
             # to get data in the right order.
             # Next we need to compute the indices for the
             # first/last echo for each sample using index differencing
-    
+
             # do lexical sort to preserve order of previous sorts.
             # The echo sort may be redundant but SICK gives no guarantees on how
             #   the echoes are organized within the scan
@@ -411,7 +423,7 @@ class ProcessLDMRSData:
             # find where h_angle_ticks changes
             ind_diff = np.diff(self.h_angle_ticks[sort_inds])
             breaks = ind_diff.nonzero()[0]  # [0] due to singleton tuple return from nonzero()
-    
+
             if self.params[LDMRSParams.use_first_echo]:
                 # get indices of first echoes
                 # breaks +1 indexes the first echo of each sample
@@ -425,39 +437,39 @@ class ProcessLDMRSData:
                 # last sample is always the last echo
                 last_ind = np.array([self.r_dist.size-1])
                 inds = np.hstack((breaks, last_ind)) #sorted indices of last echoes
-    
+
             # back out to unsorted inds so we can filter the required data
             inds = sort_inds[inds]
-    
+
             #select first/last echo entries (elements remain sorted by ticknum and layer)
             layers = self.layer[inds]
             ranges = self.r_dist[inds]
             ticks = self.ticknum[inds]
-    
+
             # Finally we need to find the layer breaks and store each layer separately
             # in a zero padded array of the correct size.
-    
+
             # find the indices of the layer breaks
             layer_breaks = np.diff(layers).nonzero()[0]
             #index of first entry for each layer
             firsts = np.hstack((np.array([0]), layer_breaks + 1))
             #index of last entry for each layer
             lasts = np.hstack((layer_breaks,  np.array([ranges.size -1])))
-    
+
             # !!! NOTE: When scan frequency is 50 Hz this shifts the scan clockwise by 1/16th degree
             # a better solution would be to move the start angle and start time correspondingly
             tick_inds = np.round(((ticks - self.tick_ind_adjust)/self.ticknum2ind)).astype(np.int16) # integer division
-    
+
             # slot ranges into their correct location within the scan array
             # and separate out each layer using the layer breaks computed earlier
             self.scan_data = np.zeros((4,  self.npoints_scan),  dtype = np.float32)
-    
+
             for i in range(0, 4):
                 self.scan_data[i, tick_inds[firsts[i]:(lasts[i]+1)]] = ranges[firsts[i]:(lasts[i]+1)]
-    
+
         # finished marsahlling the range data, now it's time to fill in the details
         self._fill_scans()
-    
+
 #--------------------------------------------------------------------------
 # Private methods
 
@@ -512,7 +524,7 @@ class ProcessLDMRSData:
         # ------------------Header----------------------------
         pc.header.stamp = self.smoothtime
         pc.header.seq = self.seq_num
-        
+
         # ----------------- Other ----------------------------
         num_points = len(self.x)
         pc.width = num_points
@@ -528,7 +540,7 @@ class ProcessLDMRSData:
         # conversion factors from tick num to scan index used in make_scans
         tick_freq = self.params[LDMRSParams.scan_frequency]
         self.ticknum2ind = tick_freq/800  # 4, 8, 16 which corresponds to 1/8, 1/4, and 1/2 degree for 12.5, 25, 50 Hz
-        
+
         # convert ticks to indices with a coarser resolution base
         # to conserve space in the scan message. Original base is 1/32 degree.
         # Otherwise there would be a lot of zero padding in between points
@@ -555,13 +567,13 @@ class ProcessLDMRSData:
     def _fill_scans(self):
         """Add scan data to the scans and set up per-message parameter values
         """
-        # adjust start time and start angle if using 50 Hz to compensate 
+        # adjust start time and start angle if using 50 Hz to compensate
         # for 2 sample offset of first sample
         #tick2rad = 2*np.pi/11520
         #start_angle_adjust = self.tick_ind_adjust*tick2rad
-        #start_time_adjust = self.tick_ind_adjust/12800.0 
+        #start_time_adjust = self.tick_ind_adjust/12800.0
         #start_time = self.scan_start_time + rospy.Duration(start_time_adjust)
-        
+
         # compute the time since the last scan started
         if self.smoothtime_prev is None:
             time_between_scans = 0.0

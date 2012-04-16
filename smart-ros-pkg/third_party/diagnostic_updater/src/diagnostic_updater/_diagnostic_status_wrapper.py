@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 """ diagnostic_updater for Python.
 @author Brice Rebsamen <brice [dot] rebsamen [gmail]>

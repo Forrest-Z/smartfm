@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 """ diagnostic_updater for Python.
 @author Brice Rebsamen <brice [dot] rebsamen [gmail]>
@@ -115,8 +116,6 @@ class TimeStampStatusParam:
         """Creates a filled-out TimeStampStatusParam."""
         self.max_acceptable = max_acceptable
         self.min_acceptable = min_acceptable
-
-
 
 
 class TimeStampStatus(DiagnosticTask):
