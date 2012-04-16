@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 """ diagnostic_updater for Python.
 @author Brice Rebsamen <brice [dot] rebsamen [gmail]>
@@ -211,8 +212,8 @@ class Updater(DiagnosticTaskVector):
         has been exceeded.
         """
         if rospy.Time.now() < self.next_time:
-          # @todo put this back in after fix of #2157 update_diagnostic_period(); // Will be checked in force_update otherwise.
-          pass
+            # @todo put this back in after fix of #2157 update_diagnostic_period(); // Will be checked in force_update otherwise.
+            pass
         else:
             self.force_update()
 
@@ -223,37 +224,39 @@ class Updater(DiagnosticTaskVector):
         published immediately.
         """
         self.update_diagnostic_period()
-        self.next_time = rospy.Time.now() + rospy.Duration.fromSec(self.period)
+        self.next_time = rospy.Time.now() + rospy.Duration.from_sec(self.period)
 
-        if self.node_handle.ok():
-            warn_nohwid = len(self.hwid)==0
+        warn_nohwid = len(self.hwid)==0
 
-            status_vec = []
+        status_vec = []
 
-            self.lock.acquire() # Make sure no adds happen while we are processing here.
-            for task in tasks:
-                status = DiagnosticStatusWrapper()
-                status.name = task.getName()
-                status.level = 2
-                status.message = "No message was set"
-                status.hardware_id = self.hwid
+        self.lock.acquire() # Make sure no adds happen while we are processing here.
 
-                stat = task.run(status)
+        for task in self.tasks:
+            status = DiagnosticStatusWrapper()
+            status.name = task.name
+            status.level = 2
+            status.message = "No message was set"
+            status.hardware_id = self.hwid
 
-                status_vec.append(status)
+            stat = task.run(status)
 
-                if status.level:
-                    warn_nohwid = false
+            status_vec.append(status)
 
-                if self.verbose and status.level:
-                    ROS_WARN("Non-zero diagnostic status. Name: '%s', status %i: '%s'" %
-                                (status.name, status.level, status.message))
+            if status.level:
+                warn_nohwid = False
 
-            if warn_nohwid and not self.warn_nohwid_done:
-                ROS_WARN("diagnostic_updater: No HW_ID was set. This is probably a bug. Please report it. For devices that do not have a HW_ID, set this value to 'none'. This warning only occurs once all diagnostics are OK so it is okay to wait until the device is open before calling setHardwareID.");
-                self.warn_nohwid_done = True
+            if self.verbose and status.level:
+                rospy.logwarn("Non-zero diagnostic status. Name: '%s', status %i: '%s'" %
+                            (status.name, status.level, status.message))
 
-            self.publish(status_vec)
+        self.lock.release()
+
+        if warn_nohwid and not self.warn_nohwid_done:
+            rospy.logwarn("diagnostic_updater: No HW_ID was set. This is probably a bug. Please report it. For devices that do not have a HW_ID, set this value to 'none'. This warning only occurs once all diagnostics are OK so it is okay to wait until the device is open before calling setHardwareID.");
+            self.warn_nohwid_done = True
+
+        self.publish(status_vec)
 
     def getPeriod(self):
         """Returns the interval between updates."""
@@ -270,7 +273,7 @@ class Updater(DiagnosticTaskVector):
 
         status_vec = []
 
-        for task in tasks:
+        for task in self.tasks:
             status = DiagnosticStatusWrapper()
             status.name = task.name
             status.summary(lvl, msg)
