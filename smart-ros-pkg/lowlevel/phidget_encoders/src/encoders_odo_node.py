@@ -87,8 +87,8 @@ class PhidgetEncoder:
         if self.minPubPeriod is not None:
             f2 = 1.0/self.minPubPeriod
         f = {'min': min([f1,f2]), 'max': max([f1,f2])}
-        fs_params = diagnostic_updater.FrequencyStatusParam(f, 0.1, 20)
-        self.fs_diag = diagnostic_updater.HeaderlessTopicDiagnostic('encoders', self.diag_updater, fs_params)
+        fs_params = DIAG.FrequencyStatusParam(f, 0.1, 20)
+        self.fs_diag = DIAG.HeaderlessTopicDiagnostic('encoders', self.diag_updater, fs_params)
 
 
     def initPhidget(self):
