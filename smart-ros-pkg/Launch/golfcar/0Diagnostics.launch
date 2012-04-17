@@ -1,9 +1,11 @@
 <launch>
-    <node name="cpu_monitor" pkg="computer_monitor" type="cpu_monitor.py">
+
+    <!-- this does not seem to report anything useful -->
+    <!--node name="cpu_monitor" pkg="computer_monitor" type="cpu_monitor.py">
         <param name="check_ipmi_tool" value="false" type="bool" />
         <param name="enforce_clock_speed" value="false" type="bool" />
         <param name="num_cores" value="-1" type="int" />
-    </node>
+    </node-->
 
     <node name="hd_monitor" pkg="computer_monitor" type="hd_monitor.py"
             args="$(optenv HOME /home)" />

@@ -12,68 +12,40 @@ import re
 from StringIO import StringIO
 
 class Sensor(object):
-    def __init__(self, line):
-        line = line.lstrip()
-        [name, reading] = line.split(":")
-        [self.name, self.type] = name.rsplit(" ",1)
-        
-        if self.name == "Core":
-            self.name = name
-            self.type = "Temperature"
-        
-        [reading, params] = reading.lstrip().split("(")
-        
-        self.alarm = False
-        if line.find("ALARM") != -1:
-            self.alarm = True
-
-        self.input = None
+    def __init__(self):
         self.critical = None
         self.min = None
         self.max = None
+        self.input = None
+        self.name = None
+        self.type = None
         self.high = None
-        
-        if reading.find("\xc2\xb0C") == -1:
-            self.input = float(reading.split()[0])
-        else:
-            self.input = float(reading.split("\xc2\xb0C")[0])
-        
-        params = params.split(",")
-        for param in params:
-            m = re.search("[0-9]+.[0-9]*", param)
-            if param.find("min") != -1:
-                self.min = float(m.group(0))
-            elif param.find("max") != -1:
-                self.max = float(m.group(0))
-            elif param.find("high") != -1:
-                self.high = float(m.group(0))
-            elif param.find("crit") != -1:
-                self.critical = float(m.group(0))  
-    
+        self.alarm = None
+
     def getCrit(self):
         return self.critical
-    
+
     def getMin(self):
         return self.min
-    
+
     def getMax(self):
         return self.max
-    
+
     def getInput(self):
         return self.input
-    
+
     def getName(self):
         return self.name
-    
+
     def getType(self):
         return self.type
-    
+
     def getHigh(self):
         return self.high
-    
+
     def getAlarm(self):
         return self.alarm
-    
+
     def __str__(self):
         lines = []
         lines.append(str(self.name))
@@ -91,6 +63,50 @@ class Sensor(object):
         lines.append("\t" + "Alarm: " + str(self.alarm))
         return "\n".join(lines)
 
+
+def parse_sensor_line(line):
+    sensor = Sensor()
+    line = line.lstrip()
+    [name, reading] = line.split(":")
+
+    #hack for when the name is temp1
+    if name.find("temp") != -1:
+        return None
+    else:
+        [sensor.name, sensor.type] = name.rsplit(" ",1)
+
+    if sensor.name == "Core":
+        sensor.name = name
+        sensor.type = "Temperature"
+    elif sensor.name.find("Physical id") != -1:
+        sensor.name = name
+        sensor.type = "Temperature"
+
+    [reading, params] = reading.lstrip().split("(")
+
+    sensor.alarm = False
+    if line.find("ALARM") != -1:
+        sensor.alarm = True
+
+    if reading.find("\xc2\xb0C") == -1:
+        sensor.input = float(reading.split()[0])
+    else:
+        sensor.input = float(reading.split("\xc2\xb0C")[0])
+
+    params = params.split(",")
+    for param in params:
+        m = re.search("[0-9]+.[0-9]*", param)
+        if param.find("min") != -1:
+            sensor.min = float(m.group(0))
+        elif param.find("max") != -1:
+            sensor.max = float(m.group(0))
+        elif param.find("high") != -1:
+            sensor.high = float(m.group(0))
+        elif param.find("crit") != -1:
+            sensor.critical = float(m.group(0))
+
+    return sensor
+
 def _rads_to_rpm(rads):
     return rads / (2 * math.pi) * 60
 
@@ -99,12 +115,14 @@ def _rpm_to_rads(rpm):
 
 def parse_sensors_output(output):
     out = StringIO(output)
-    
+
     sensorList = []
     for line in out.readlines():
         # Check for a colon
         if line.find(":") != -1 and line.find("Adapter") == -1:
-            sensorList.append(Sensor(line))
+            s = parse_sensor_line(line)
+            if s is not None:
+                sensorList.append(s)
     return sensorList
 
 def sensor_status_to_diag(sensorList, hostname='localhost', ignore_fans=False):
@@ -113,7 +131,7 @@ def sensor_status_to_diag(sensorList, hostname='localhost', ignore_fans=False):
     stat.message = 'OK'
     stat.level = DiagnosticStatus.OK
     stat.hardware_id = hostname
-    
+
     for sensor in sensorList:
         if sensor.getType() == "Temperature":
             if sensor.getInput() > sensor.getCrit():
@@ -122,7 +140,7 @@ def sensor_status_to_diag(sensorList, hostname='localhost', ignore_fans=False):
             elif sensor.getInput() > sensor.getHigh():
                 stat.level = max(stat.level, DiagnosticStatus.WARN)
                 stat.message = "High Temperature"
-            stat.values.append(KeyValue(key=" ".join([sensor.getName(), sensor.getType()]), 
+            stat.values.append(KeyValue(key=" ".join([sensor.getName(), sensor.getType()]),
                                                      value=str(sensor.getInput())))
         elif sensor.getType() == "Voltage":
             if sensor.getInput() < sensor.getMin():
@@ -131,18 +149,18 @@ def sensor_status_to_diag(sensorList, hostname='localhost', ignore_fans=False):
             elif sensor.getInput() > sensor.getMax():
                 stat.level = max(stat.level, DiagnosticStatus.ERROR)
                 stat.message = "High Voltage"
-            stat.values.append(KeyValue(key=" ".join([sensor.getName(), sensor.getType()]), 
+            stat.values.append(KeyValue(key=" ".join([sensor.getName(), sensor.getType()]),
                                                      value=str(sensor.getInput())))
         elif sensor.getType() == "Speed":
             if not ignore_fans:
                 if sensor.getInput() < sensor.getMin():
                     stat.level = max(stat.level, DiagnosticStatus.ERROR)
                     stat.message = "No Fan Speed"
-            stat.values.append(KeyValue(key=" ".join([sensor.getName(), sensor.getType()]), 
+            stat.values.append(KeyValue(key=" ".join([sensor.getName(), sensor.getType()]),
                                                      value=str(sensor.getInput())))
-            
-    return stat 
- 
+
+    return stat
+
 def get_sensors():
     p = subprocess.Popen('sensors', stdout = subprocess.PIPE,
                          stderr = subprocess.PIPE, shell = True)
@@ -157,4 +175,3 @@ if __name__ == '__main__':
     output = get_sensors()
     sensorsList = parse_sensors_output(output)
     sensor_status_to_diag(sensorsList)
-    
