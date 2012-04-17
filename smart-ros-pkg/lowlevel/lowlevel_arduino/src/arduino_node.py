@@ -11,6 +11,7 @@ import roslib; roslib.load_manifest('lowlevel_arduino')
 import rospy
 from std_msgs.msg import Bool, Float64
 from lowlevel_arduino.msg import Arduino
+import diagnostic_updater as DIAG
 
 
 rospy.init_node('arduino_node')
@@ -60,6 +61,15 @@ steer_sub = setupSub('steer_angle', Float64, steerCB)
 rate = rospy.get_param('~rate',10)
 rospy.loginfo('Sending messages to the Arduino board every %dms' % int(1000.0/rate))
 
+# diagnostics
+self.diag_updater = DIAG.Updater()
+self.diag_updater.setHardwareID('none')
+fs_params = DIAG.FrequencyStatusParam({'min': rate, 'max': rate}, 0.1, 20)
+self.fs_diag = DIAG.HeaderlessTopicDiagnostic('arduino', self.diag_updater, fs_params)
+
+
 while not rospy.is_shutdown():
     arduino_pub.publish(arduino_cmd_msg)
+    self.fs_diag.tick()
+    self.diag_updater.update()
     rospy.sleep(1.0/rate)
