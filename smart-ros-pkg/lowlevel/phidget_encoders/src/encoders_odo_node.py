@@ -27,6 +27,7 @@ from Phidgets.Events.Events import *
 from Phidgets.Devices.Encoder import Encoder
 
 from phidget_encoders.msg import Encoders as EncodersMsg
+import diagnostic_updater as DIAG
 
 
 def err(e):
@@ -77,6 +78,17 @@ class PhidgetEncoder:
         self.encoder.setEnabled(self.right, True)
 
         self.encodersPub = rospy.Publisher('encoders', EncodersMsg)
+
+        # diagnostics
+        self.diag_updater = DIAG.Updater()
+        self.diag_updater.setHardwareID('none')
+        f1 = 1.0/self.period
+        f2 = 0
+        if self.minPubPeriod is not None:
+            f2 = 1.0/self.minPubPeriod
+        f = {'min': min([f1,f2]), 'max': max([f1,f2])}
+        fs_params = diagnostic_updater.FrequencyStatusParam(f, 0.1, 20)
+        self.fs_diag = diagnostic_updater.HeaderlessTopicDiagnostic('encoders', self.diag_updater, fs_params)
 
 
     def initPhidget(self):
@@ -168,6 +180,10 @@ class PhidgetEncoder:
             encodersMsg.w = 0
 
         self.encodersPub.publish(encodersMsg)
+
+        # diagnostics
+        self.fs_diag.tick()
+        self.diag_updater.update()
 
         self.countBufs[self.left].reset()
         self.countBufs[self.right].reset()
