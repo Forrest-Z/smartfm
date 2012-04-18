@@ -10,7 +10,7 @@
   <url>http://ros.org/wiki/lowlevel_arduino</url>
   <depend package="rosserial_arduino"/>
   <depend package="std_msgs"/>
-
+  <depend package="diagnostic_updater"/>
 </package>
 
 
