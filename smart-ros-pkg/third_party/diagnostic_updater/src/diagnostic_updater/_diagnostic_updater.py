@@ -153,10 +153,9 @@ class DiagnosticTaskVector:
         elif len(args)==2:
             task = DiagnosticTaskVector.DiagnosticTaskInternal(args[0], args[1])
 
-        self.lock.acquire()
-        self.tasks.append(task)
-        self.addedTaskCallback(task)
-        self.lock.release()
+        with self.lock:
+            self.tasks.append(task)
+            self.addedTaskCallback(task)
 
     def removeByName(self, name):
         """Removes a task based on its name.
@@ -168,13 +167,12 @@ class DiagnosticTaskVector:
         @return Returns true if a task matched and was removed.
         """
         found = False
-        self.lock.acquire()
-        for i in range(len(self.tasks)):
-            if self.tasks[i].name == name:
-                self.tasks.pop(i)
-                found = True
-                break
-        self.lock.release()
+        with self.lock:
+            for i in range(len(self.tasks)):
+                if self.tasks[i].name == name:
+                    self.tasks.pop(i)
+                    found = True
+                    break
         return found
 
 
@@ -230,27 +228,24 @@ class Updater(DiagnosticTaskVector):
 
         status_vec = []
 
-        self.lock.acquire() # Make sure no adds happen while we are processing here.
+        with self.lock: # Make sure no adds happen while we are processing here.
+            for task in self.tasks:
+                status = DiagnosticStatusWrapper()
+                status.name = task.name
+                status.level = 2
+                status.message = "No message was set"
+                status.hardware_id = self.hwid
 
-        for task in self.tasks:
-            status = DiagnosticStatusWrapper()
-            status.name = task.name
-            status.level = 2
-            status.message = "No message was set"
-            status.hardware_id = self.hwid
+                stat = task.run(status)
 
-            stat = task.run(status)
+                status_vec.append(status)
 
-            status_vec.append(status)
+                if status.level:
+                    warn_nohwid = False
 
-            if status.level:
-                warn_nohwid = False
-
-            if self.verbose and status.level:
-                rospy.logwarn("Non-zero diagnostic status. Name: '%s', status %i: '%s'" %
-                            (status.name, status.level, status.message))
-
-        self.lock.release()
+                if self.verbose and status.level:
+                    rospy.logwarn("Non-zero diagnostic status. Name: '%s', status %i: '%s'" %
+                                (status.name, status.level, status.message))
 
         if warn_nohwid and not self.warn_nohwid_done:
             rospy.logwarn("diagnostic_updater: No HW_ID was set. This is probably a bug. Please report it. For devices that do not have a HW_ID, set this value to 'none'. This warning only occurs once all diagnostics are OK so it is okay to wait until the device is open before calling setHardwareID.");

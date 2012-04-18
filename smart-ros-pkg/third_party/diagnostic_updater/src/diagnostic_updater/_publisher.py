@@ -101,7 +101,7 @@ class DiagnosedPublisher(TopicDiagnostic):
         @param stamp The parameters for the TimeStampStatus class that will be
         computing statistics.
         """
-        TopicDiagnostic.__init__(self, pub.getTopic(), diag, freq, stamp)
+        TopicDiagnostic.__init__(self, pub.name, diag, freq, stamp)
         self.publisher = pub
 
     def publish(self, message):
