@@ -1,5 +1,4 @@
 <launch>
-    <node pkg="computer_monitor" type="ntp_monitor.py" name="ntp_monitor_lowlevel" args="--no-self-test golfcart-master" />
     <include file="$(find Launch)/golfcar/sensors/ms_imu.launch"/>
     <include file="$(find dead_reckoning)/encoderOdom.launch"/>
     <include file="$(find phidget_encoders)/encoders.launch"/>

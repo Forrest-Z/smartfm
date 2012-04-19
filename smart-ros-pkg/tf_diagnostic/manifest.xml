@@ -1,0 +1,17 @@
+<package>
+  <description brief="tf_diagnostic">
+
+     tf_diagnostic
+
+  </description>
+  <author>brice rebsamen</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/tf_diagnostic</url>
+
+  <depend package="tf" />
+  <depend package="diagnostic_updater" />
+
+</package>
+
+

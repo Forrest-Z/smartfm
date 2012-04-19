@@ -18,5 +18,7 @@
         <param name="xml" value="True"/>
     </node>
 
+    <node name="tf_monitor" pkg="tf_diagnostic" type="tf_monitor.py" />
+
     <node name="monitor" pkg="runtime_monitor" type="monitor" />
 </launch>
