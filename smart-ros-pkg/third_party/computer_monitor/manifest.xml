@@ -1,6 +1,6 @@
 <package>
   <description brief='Generic updates to the pr2_computer monitor stack'>
-    Monitors the computer's processor and hard drives of the PR2 and publishes data to diagnostics. 
+    Monitors the computer's processor and hard drives of the PR2 and publishes data to diagnostics.
   </description>
   <author>Kevin Watts (watts@willowgarage.com) and Michael Carroll</author>
   <license>BSD</license>
@@ -13,7 +13,6 @@
   <url>http://www.ros.org/wiki/pr2_computer_monitor</url>
   <rosdep name="hddtemp" />
   <rosdep name="sysstat" />
-  <platform os="ubuntu" version="9.04"/>
-  <platform os="ubuntu" version="9.10"/>
-  <platform os="ubuntu" version="10.04"/>
+  <rosdep name="ipmitool" />
+  <rosdep name="ntpdate" />
 </package>

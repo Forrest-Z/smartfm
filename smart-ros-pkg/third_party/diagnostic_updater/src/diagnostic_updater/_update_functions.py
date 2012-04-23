@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 """ diagnostic_updater for Python.
 @author Brice Rebsamen <brice [dot] rebsamen [gmail]>
@@ -54,53 +55,50 @@ class FrequencyStatus(DiagnosticTask):
 
     def clear(self):
         """Resets the statistics."""
-        self.lock.acquire()
-        self.count = 0
-        curtime = rospy.Time.now()
-        self.times = [curtime for i in range(self.params.window_size)]
-        self.seq_nums = [0 for i in range(self.params.window_size)]
-        self.hist_indx = 0
-        self.lock.release()
+        with self.lock:
+            self.count = 0
+            curtime = rospy.Time.now()
+            self.times = [curtime for i in range(self.params.window_size)]
+            self.seq_nums = [0 for i in range(self.params.window_size)]
+            self.hist_indx = 0
 
     def tick(self):
         """Signals that an event has occurred."""
-        self.lock.acquire()
-        #rospy.logdebug("TICK %i" % self.count)
-        self.count += 1
-        self.lock.release()
+        with self.lock:
+            #rospy.logdebug("TICK %i" % self.count)
+            self.count += 1
 
     def run(self, stat):
-        self.lock.acquire()
-        curtime = rospy.Time.now()
-        curseq = self.count
-        events = curseq - self.seq_nums[self.hist_indx]
-        window = (curtime - self.times[self.hist_indx]).to_sec()
-        freq = events / window
-        self.seq_nums[self.hist_indx] = curseq
-        self.times[self.hist_indx] = curtime
-        self.hist_indx = (self.hist_indx + 1) % self.params.window_size
+        with self.lock:
+            curtime = rospy.Time.now()
+            curseq = self.count
+            events = curseq - self.seq_nums[self.hist_indx]
+            window = (curtime - self.times[self.hist_indx]).to_sec()
+            freq = events / window
+            self.seq_nums[self.hist_indx] = curseq
+            self.times[self.hist_indx] = curtime
+            self.hist_indx = (self.hist_indx + 1) % self.params.window_size
 
-        if events == 0:
-            stat.summary(2, "No events recorded.")
-        elif freq < self.params.freq_bound['min'] * (1 - self.params.tolerance):
-            stat.summary(1, "Frequency too low.")
-        elif freq > self.params.freq_bound['max'] * (1 + self.params.tolerance):
-            stat.summary(1, "Frequency too high.")
-        else:
-            stat.summary(0, "Desired frequency met")
+            if events == 0:
+                stat.summary(2, "No events recorded.")
+            elif freq < self.params.freq_bound['min'] * (1 - self.params.tolerance):
+                stat.summary(1, "Frequency too low.")
+            elif freq > self.params.freq_bound['max'] * (1 + self.params.tolerance):
+                stat.summary(1, "Frequency too high.")
+            else:
+                stat.summary(0, "Desired frequency met")
 
-        stat.add("Events in window", "%d" % events)
-        stat.add("Events since startup", "%d" % self.count)
-        stat.add("Duration of window (s)", "%f" % window)
-        stat.add("Actual frequency (Hz)", "%f" % freq)
-        if self.params.freq_bound['min'] == self.params.freq_bound['max']:
-            stat.add("Target frequency (Hz)", "%f" % self.params.freq_bound['min'])
-        if self.params.freq_bound['min'] > 0:
-            stat.add("Minimum acceptable frequency (Hz)", "%f" % (self.params.freq_bound['min'] * (1 - self.params.tolerance)))
-        if self.params.freq_bound['max']:
-            stat.add("Maximum acceptable frequency (Hz)", "%f" % (self.params.freq_bound['max'] * (1 + self.params.tolerance)))
+            stat.add("Events in window", "%d" % events)
+            stat.add("Events since startup", "%d" % self.count)
+            stat.add("Duration of window (s)", "%f" % window)
+            stat.add("Actual frequency (Hz)", "%f" % freq)
+            if self.params.freq_bound['min'] == self.params.freq_bound['max']:
+                stat.add("Target frequency (Hz)", "%f" % self.params.freq_bound['min'])
+            if self.params.freq_bound['min'] > 0:
+                stat.add("Minimum acceptable frequency (Hz)", "%f" % (self.params.freq_bound['min'] * (1 - self.params.tolerance)))
+            if self.params.freq_bound['max']:
+                stat.add("Maximum acceptable frequency (Hz)", "%f" % (self.params.freq_bound['max'] * (1 + self.params.tolerance)))
 
-        self.lock.release()
         return stat
 
 
@@ -115,8 +113,6 @@ class TimeStampStatusParam:
         """Creates a filled-out TimeStampStatusParam."""
         self.max_acceptable = max_acceptable
         self.min_acceptable = min_acceptable
-
-
 
 
 class TimeStampStatus(DiagnosticTask):
@@ -151,47 +147,45 @@ class TimeStampStatus(DiagnosticTask):
         if isinstance(stamp, rospy.Time):
             stamp = stamp.to_sec()
 
-        self.lock.acquire()
-        if stamp == 0:
-            self.zero_seen = True
-        else:
-            delta = rospy.Time.now().to_sec() - stamp
-            if not self.deltas_valid or delta > self.max_delta:
-                self.max_delta = delta
-            if not self.deltas_valid or delta < self.min_delta:
-                self.min_delta = delta
-            self.deltas_valid = True
-        self.lock.release()
+        with self.lock:
+            if stamp == 0:
+                self.zero_seen = True
+            else:
+                delta = rospy.Time.now().to_sec() - stamp
+                if not self.deltas_valid or delta > self.max_delta:
+                    self.max_delta = delta
+                if not self.deltas_valid or delta < self.min_delta:
+                    self.min_delta = delta
+                self.deltas_valid = True
 
     def run(self, stat):
-        self.lock.acquire()
+        with self.lock:
 
-        stat.summary(0, "Timestamps are reasonable.")
-        if not self.deltas_valid:
-            stat.summary(1, "No data since last update.")
-        else:
-            if self.min_delta < self.params.min_acceptable:
-                stat.summary(2, "Timestamps too far in future seen.")
-                self.early_count += 1
-            if self.max_delta > self.params.max_acceptable:
-                stat.summary(2, "Timestamps too far in past seen.")
-                self.late_count += 1
-            if self.zero_seen:
-                stat.summary(2, "Zero timestamp seen.")
-                self.zero_count += 1
+            stat.summary(0, "Timestamps are reasonable.")
+            if not self.deltas_valid:
+                stat.summary(1, "No data since last update.")
+            else:
+                if self.min_delta < self.params.min_acceptable:
+                    stat.summary(2, "Timestamps too far in future seen.")
+                    self.early_count += 1
+                if self.max_delta > self.params.max_acceptable:
+                    stat.summary(2, "Timestamps too far in past seen.")
+                    self.late_count += 1
+                if self.zero_seen:
+                    stat.summary(2, "Zero timestamp seen.")
+                    self.zero_count += 1
 
-        stat.add("Earliest timestamp delay:", "%f" % self.min_delta)
-        stat.add("Latest timestamp delay:", "%f" % self.max_delta)
-        stat.add("Earliest acceptable timestamp delay:", "%f" % self.params.min_acceptable)
-        stat.add("Latest acceptable timestamp delay:", "%f" % self.params.max_acceptable)
-        stat.add("Late diagnostic update count:", "%i" % self.late_count)
-        stat.add("Early diagnostic update count:", "%i" % self.early_count)
-        stat.add("Zero seen diagnostic update count:", "%i" % self.zero_count)
+            stat.add("Earliest timestamp delay:", "%f" % self.min_delta)
+            stat.add("Latest timestamp delay:", "%f" % self.max_delta)
+            stat.add("Earliest acceptable timestamp delay:", "%f" % self.params.min_acceptable)
+            stat.add("Latest acceptable timestamp delay:", "%f" % self.params.max_acceptable)
+            stat.add("Late diagnostic update count:", "%i" % self.late_count)
+            stat.add("Early diagnostic update count:", "%i" % self.early_count)
+            stat.add("Zero seen diagnostic update count:", "%i" % self.zero_count)
 
-        self.deltas_valid = False
-        self.min_delta = 0
-        self.max_delta = 0
-        self.zero_seen = False
+            self.deltas_valid = False
+            self.min_delta = 0
+            self.max_delta = 0
+            self.zero_seen = False
 
-        self.lock.release()
         return stat

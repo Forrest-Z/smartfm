@@ -66,12 +66,15 @@ class NVidiaTempMonitor(object):
             import traceback
             rospy.logerr('Unable to process nVidia GPU data')
             rospy.logerr(traceback.format_exc())
+            stat.name = '%s GPU Status' % self.hostname
+            stat.message = 'Could not get GPU information'
+            stat.level = DiagnosticStatus.ERROR
 
         gpu_stat.header.stamp = rospy.get_rostime()
 
         array = DiagnosticArray()
         array.header.stamp = rospy.get_rostime()
-        
+
         array.status = [ stat ]
 
         self._pub.publish(array)
@@ -80,11 +83,11 @@ class NVidiaTempMonitor(object):
 if __name__ == '__main__':
     hostname = socket.gethostname()
     rospy.init_node('nvidia_temp_monitor_%s'%hostname)
-    
+
     monitor = NVidiaTempMonitor(hostname)
     my_rate = rospy.Rate(1.0)
     while not rospy.is_shutdown():
         monitor.pub_status()
         my_rate.sleep()
 
-                        
+

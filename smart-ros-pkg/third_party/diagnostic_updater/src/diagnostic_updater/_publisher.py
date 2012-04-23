@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 
 """ diagnostic_updater for Python.
 @author Brice Rebsamen <brice [dot] rebsamen [gmail]>
@@ -31,6 +32,7 @@ class HeaderlessTopicDiagnostic(CompositeDiagnosticTask):
         computing statistics.
         """
         CompositeDiagnosticTask.__init__(self, name + " topic status")
+        self.diag = diag
         self.freq = FrequencyStatus(freq)
         self.addTask(self.freq)
         self.diag.add(self)
@@ -99,8 +101,8 @@ class DiagnosedPublisher(TopicDiagnostic):
         @param stamp The parameters for the TimeStampStatus class that will be
         computing statistics.
         """
-        TopicDiagnostic.__init__(self, pub.getTopic(), diag, freq, stamp)
-        self.publisher(pub)
+        TopicDiagnostic.__init__(self, pub.name, diag, freq, stamp)
+        self.publisher = pub
 
     def publish(self, message):
         """Collects statistics and publishes the message.

@@ -1,0 +1,8 @@
+ipmitool:
+    ubuntu: ipmitool
+hddtemp:
+    ubuntu: hddtemp
+sysstat:
+    ubuntu: sysstat
+ntpdate:
+    ubuntu: ntpdate

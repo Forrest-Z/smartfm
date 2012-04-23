@@ -1,0 +1,6 @@
+#!/bin/bash
+
+cp chrony.conf /etc/chrony/chrony.conf
+
+exit 0
+
