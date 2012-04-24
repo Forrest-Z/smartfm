@@ -30,9 +30,9 @@ def parse(xml):
             emsg += ': ' + nodes[0].getAttribute('msg')
         return emsg
     else:
-        nodes = dom.getElementsByTagName('go')
+        nodes = dom.getElementsByTagName('infrastructure')
         if len(nodes)==0:
-            return 'Error occurred while calling query.php'
+            return 'Error occurred while calling query.php: no match'
         elif nodes[0].hasAttribute('status'):
             s = nodes[0].getAttribute('status')
             if s=='1':
@@ -40,7 +40,7 @@ def parse(xml):
             else:
                 return False
         else:
-            return 'Error occurred while calling query.php'
+            return 'Error occurred while calling query.php: no status attribute'
 
 
 def query(req):
@@ -62,6 +62,6 @@ def query(req):
 
 
 rospy.init_node('infrastructure_query_service')
-rospy.get_param('url', 'http://fmautonomy.no-ip.info/infrastructure')
+url = rospy.get_param('url', 'http://fmautonomy.no-ip.info/infrastructure')
 s = rospy.Service('infrastructure_query', InfrastructureQuery, query)
 rospy.spin()
