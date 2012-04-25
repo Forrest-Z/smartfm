@@ -260,7 +260,8 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     //it was found that, in simulation with stage, although commanded to
     //travel at 2 m/s, it is actually travelling at 3.33x faster,
     //compensation is needed
-    if( use_sim_time_ ) move_speed.linear.x *= 0.3;
+    //fixed ros-pkg ticket #5432
+    //if( use_sim_time_ ) move_speed.linear.x *= 0.3;
 
     recommend_speed_pub_.publish(move_speed);
 

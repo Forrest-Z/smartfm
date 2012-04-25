@@ -64,7 +64,8 @@ void ped_momdp::updateSteerAnglePublishSpeed(geometry_msgs::Twist speed)
     cmd.angular.z = speed.angular.z;
     double momdp_speed = momdp_speed_;
     //need correction here for the speed compensation for simulation
-    if(use_sim_time_) momdp_speed = momdp_speed * 0.3; /// TBP change numbers into parameters
+    //fixed ros-pkg ticket #5432
+    //if(use_sim_time_) momdp_speed = momdp_speed * 0.3; /// TBP change numbers into parameters
 
     if(speed.linear.x < momdp_speed_) cmd.linear.x = speed.linear.x;
     else cmd.linear.x = momdp_speed_;
