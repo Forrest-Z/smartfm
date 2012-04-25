@@ -1,0 +1,16 @@
+<package>
+  <description brief="tencon_sim">
+
+     tencon_sim
+
+  </description>
+  <author>brice rebsamen</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/tencon_sim</url>
+
+  <depend package="rospy" />
+
+</package>
+
+
