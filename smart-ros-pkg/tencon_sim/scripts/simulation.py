@@ -7,14 +7,13 @@ import copy
 
 
 def base_vehicle(x0, **kwargs):
-    d = kwargs['ped_crossing_length']
-    return Vehicle(x0, v_max=kwargs['veh_max_vel'],
+    return BaseVehicle(x0, v_max=kwargs['veh_max_vel'],
                 a=kwargs['veh_acc'], v0=kwargs['veh_max_vel'], 
-                sensor=Sensor([-d,d]), **kwargs)
+                **kwargs)
 
 def infra_vehicle(x0, **kwargs):
     sensor = Sensor([-params['infra_fov_dist'], kwargs['ped_crossing_length']])
-    return Vehicle(x0, v_max=kwargs['veh_max_vel'],
+    return InfraVehicle(x0, v_max=kwargs['veh_max_vel'],
                     a=kwargs['veh_acc'], v0=kwargs['veh_max_vel'], 
                     sensor=sensor, **kwargs)
 
@@ -22,13 +21,13 @@ def infra_vehicle(x0, **kwargs):
 def one_vehicle(px, **kwargs):
 
     def sim(v):
-        peds = [Pedestrian(x0=x, v_max=kwargs['ped_vel'], v0=kwargs['ped_vel'], **kwargs) for x in px]
+        peds = [Mobile(x0=x, v_max=kwargs['ped_vel'], v0=kwargs['ped_vel'], **kwargs) for x in px]
         t = 0
         records = [Record(t, [v], peds, [None])]
         while v.x <= 4:
-            msg = v.update([], peds)
+            a, msg = v.update([v], peds)
             for p in peds:
-                p.update([v])
+                p.update()
             t = t + kwargs['sim_time_step']
             
             record = Record(t, [v], peds, [msg])
@@ -50,16 +49,16 @@ def one_vehicle(px, **kwargs):
 def many_vehicles(vx, px, **kwargs):
 
     def sim(vehs):
-        peds = [Pedestrian(x0=x, v_max=kwargs['ped_vel'], v0=kwargs['ped_vel'], **kwargs) for x in px]
+        peds = [Mobile(x0=x, v_max=kwargs['ped_vel'], v0=kwargs['ped_vel'], **kwargs) for x in px]
         t = 0
         records = [Record(t, vehs, peds, [None for v in vehs])]
         while vehs[-1].x <= 4:
             msgs = []
             for v in vehs:
-                msg = v.update(vehs, peds)
+                a, msg = v.update(vehs, peds)
                 msgs.append(msg)
             for p in peds:
-                p.update(vehs)
+                p.update()
             t = t + kwargs['sim_time_step']
             
             record = Record(t, vehs, peds, msgs)
