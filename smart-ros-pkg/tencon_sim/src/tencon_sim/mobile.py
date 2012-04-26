@@ -23,6 +23,7 @@ class Mobile(object):
         (infinite) acceleration/deceleration.
         @param v0 initial velocity (defaults to 0)
         '''
+        #print 'Mobile:', kwargs
         self.x = x0
         self.v_max = v_max
         self.a = a
@@ -37,6 +38,17 @@ class Mobile(object):
         self.v_target = bound(v_target, 0, self.v_max)
         if self.a is None:
             self.v = self.v_target
+            
+    def acc(self, a):
+        '''brake, accelerate or cruise.
+        @param a: 0: cruise, -1: brake, 1: accelerate
+        '''
+        if a==-1:
+            self.throttle(0)
+        elif a==1:
+            self.throttle(self.v_max)
+        else:
+            self.throttle(self.v)
 
     def update(self):
         '''Updates the velocity and position.'''
@@ -100,8 +112,31 @@ class Mobile(object):
             raise RuntimeError('Mobile is not moving')
         return (y-self.x) / self.v
 
-    def future_pos(self, dt):
-        '''Returns the position of the mobile dt seconds into the future,
-        assuming speed will not change.
+    def future_pos(self, dt, a=0):
+        '''Returns the position of the mobile some time into the future.
+        If an acceleration command is given, take it into account, otherwise
+        assume that the same speed will be maintained.
+        @param dt the duration of the future to investigate
+        @param a the acceleration command: -1 to brake, 0 to cruise, 1 to accelerate.
         '''
-        return self.x + self.v * dt
+        if a==0:
+            return self.x + self.v * dt
+        
+        if a==-1:
+            if self.time_to_stop() < dt:
+                return self.x + self.dist_to_stop()
+            return self.x + self.v * dt - self.a * pow(dt,2) / 2
+
+        t_acc = 0
+        if self.a!=0:
+            t_acc = (self.v_max-self.v)/self.a
+        
+        if t_acc > dt:
+            return self.x + self.v * dt + self.a * pow(dt,2) / 2
+        
+        d_acc = 0
+        if self.a != 0:
+            d_acc = (pow(self.v_max,2)-pow(self.v,2)) / (2 * self.a )
+        
+        d_v_max = self.v_max * (dt-t_acc)
+        return self.x + d_acc + d_v_max

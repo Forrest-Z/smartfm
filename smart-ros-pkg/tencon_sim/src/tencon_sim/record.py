@@ -41,9 +41,9 @@ class Record:
 
         
     def __str__(self):
-        sv = 'vehs:[' + ', '.join(['(x=%.1g, v=%.1g)'  % (v['x'], v['v']) for v in self.vehs]) + ']'
-        sp = 'peds:[' + ', '.join(['%.1g' % p['x'] for p in self.peds]) + ']'
-        s = ', '.join(['t=%.1g' % self.t, sv, sp])
+        sv = 'vehs:[' + ', '.join(['(x=%g, v=%g)'  % (round(v['x'],1), round(v['v'],1)) for v in self.vehs]) + ']'
+        sp = 'peds:[' + ', '.join(['%g' % round(p['x'],1) for p in self.peds]) + ']'
+        s = ', '.join(['t=%g' % round(self.t,1), sv, sp])
         sm = ['%i: %s' % (i,m) for i,m in enumerate(self.msg) if m is not None]
         if len(sm)>0:
             s = s + '. ' + ', '.join(sm)
@@ -69,7 +69,7 @@ class Records:
         dts = []
         for r in self.records:
             dts.append(r['base'][-1].t - r['infra'][-1].t)
-        print 'dt: avg=%.1g, std=%.1g' % (np.mean(dts), np.std(dts))
+        print 'dt: avg=%g, std=%g' % (round(np.mean(dts),1), round(np.std(dts),1))
        
     def to_xml(self):
         root_ = ET.Element("xml")
@@ -86,21 +86,21 @@ class Records:
                 # for each time step
                 for r in rec:
                     step_ = ET.SubElement(record_, 'step')
-                    step_.set('t', '%.3g' % r.t)
+                    step_.set('t', '%g' % round(r.t,3))
                     
                     # log info for each vehicle
                     for i,v in enumerate(r.vehs):
                         veh_ = ET.SubElement(step_, 'vehicle')
-                        veh_.set('x', '%.3g' % v['x'])
-                        veh_.set('v', '%.3g' % v['v'])
+                        veh_.set('x', '%g' % round(v['x'],3))
+                        veh_.set('v', '%g' % round(v['v'],3))
                         if r.msg[i] is not None:
                             veh_.set('msg', r.msg[i])
                             
                     # log info for each pedestrian
                     for p in r.peds:
                         ped_ = ET.SubElement(step_, 'pedestrian')
-                        ped_.set('x', '%.3g' % p['x'])
-                        ped_.set('v', '%.3g' % p['v'])
+                        ped_.set('x', '%g' % round(p['x'],3))
+                        ped_.set('v', '%g' % round(p['v'],3))
                         
         return ET.ElementTree(root_)
          

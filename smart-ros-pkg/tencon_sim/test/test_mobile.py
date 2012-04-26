@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 
+import sys
+sys.path.append('src')
 
 import unittest
-from mobile import Mobile
+from tencon_sim import Mobile
 
 
 class TestMobile(unittest.TestCase):
@@ -59,6 +61,19 @@ class TestMobile(unittest.TestCase):
         self.assertTrue( m.must_decelerate_to_stop_at_pos(0.49) )
         self.assertFalse( m.must_decelerate_to_stop_at_pos(0.6) )
 
+    def test_future_pos(self):
+        m0 = Mobile(0, 1, 1, v0=1)
+        
+        # The vehicle is already going full speed, so acceleration should
+        # have no effect
+        self.assertAlmostEqual(m0.future_pos(10,1), m0.future_pos(10,0))
+        self.assertAlmostEqual(m0.future_pos(10,1), 10)
+        
+        # with enough time, the future pos when braking should be equal to the
+        # the braking distance
+        self.assertAlmostEqual(m0.future_pos(10,-1), m0.dist_to_stop())
+        
+                
 
 
 if __name__=='__main__':

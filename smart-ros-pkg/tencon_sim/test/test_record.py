@@ -1,7 +1,12 @@
+#!/usr/bin/env python
+
+import sys
+sys.path.append('src')
+
 import unittest
 from StringIO import StringIO
 import difflib
-from record import *
+from tencon_sim.record import *
 
 
 log='''<xml>
