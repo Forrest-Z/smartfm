@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+'''Continuous flow simulation with direct output to ROS for visualization.'''
+
 import time
 import sys
 

@@ -1,4 +1,15 @@
 # -*- coding: utf-8 -*-
+'''This is code to simulate a flow of vehicles and a flow of pedestrians
+interacting at the pedestrian crossing.
+
+Actually we are simulating 2 parallel but independent flows of vehicles: one
+flow of BaseVehicle vehicles and one flow of InfraVehicle vehicles. They are
+simulated together but the 2 simulations are totally independent. They just share
+the same pedestrians and the same initial conditions.
+
+The simulation is collecting results along the way:
+- the time it takes each vehicle to complete the course
+'''
 
 import math
 import numpy as np

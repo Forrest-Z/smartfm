@@ -1,5 +1,15 @@
+# -*- coding: utf-8 -*-
+'''A class to collect data from the simulation, save it to a xml file, and
+load it from an xml file.
+
+Information collected is:
+- vehicles position, velocity and messages
+- pedestrians position and velocity
+'''
+
 import numpy as np
 import xml.etree.cElementTree as ET
+
 
 class Record:
     '''Container for the result of a simulation.
@@ -106,7 +116,17 @@ class Records:
          
     def save_as_xml(self, file_or_filename):
         '''Save the record as XML into a file.'''
+        
         def indent(elem, level=0):
+            '''Indent the tree for pretty printing.
+            
+            Taken from ElementTree's documentation: 
+            http://effbot.org/zone/element-lib.htm
+            
+            FIX: With very large trees, such as the ones we are dealing
+            with here, the recursive model fails (MemoryError).
+            '''
+            
             i = "\n" + level*"  "
             if len(elem):
                 if not elem.text or not elem.text.strip():

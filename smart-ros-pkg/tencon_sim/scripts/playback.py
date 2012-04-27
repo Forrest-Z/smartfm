@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+'''Script to playback simulation data for visualization purpose.
+
+Reads the data recorded during simulation from an XML file. Play it back as ROS
+messages so that it can be visualized in ROS.
+'''
+
 import time
 
 import roslib; roslib.load_manifest('tencon_sim')

@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+'''Script to simulate vehicles and pedestrians, and save the results in an xml
+document.
+'''
+
 import roslib; roslib.load_manifest('tencon_sim')
 from tencon_sim import *
 import copy
@@ -114,8 +118,8 @@ if __name__=='__main__':
                 vx.append(x)
                 if len(vx)==100:
                     break
-        #base, infra = one_vehicle(px, **params)
-        base, infra = many_vehicles(vx, px, **params)
+        base, infra = one_vehicle(px, **params)
+        #base, infra = many_vehicles(vx, px, **params)
         records.append(base, infra)
         
     records.print_dt_stats()

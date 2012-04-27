@@ -1,20 +1,16 @@
+# -*- coding: utf-8 -*-
+'''Some specialized classes of Mobile to do the decision making, given other
+mobiles.
+
+- Vehicles drive on the road and avoid collision with other vehicles
+- BaseVehicles have to stop at the pedestrian crossing
+- InfraVehicles have access to the infrastructure sensor and stop at the
+  pedestrian crossing only if they need to.
+- Pedestrians stop before crossing if a car is already on the pedestrian 
+  crossing
+'''
+
 from mobile import Mobile
-
-
-class Sensor:
-    '''A sensor to sense pedestrians.'''
-
-    def __init__(self, fov):
-        '''Constructor:
-        @param fov is the field of view, an array with 2 numbers. The sensor 
-        can see pedestrians between the 2 values of the array.
-        '''
-        assert isinstance(fov, (list,tuple))
-        self.fov = [min(fov), max(fov)]
-
-    def visible(self, p):
-        '''Returns whether the sensor can see the pedestrian p.'''
-        return p.x >= self.fov[0] and p.x <= self.fov[1]
 
 
 class Vehicle(Mobile):
@@ -24,7 +20,6 @@ class Vehicle(Mobile):
     in front.
     '''
     def __init__(self, x0, v_max, a, v0=0, safety_dist=1, **kwargs):
-        #print 'Vehicle:', kwargs
         super(Vehicle, self).__init__(x0, v_max, a, v0, **kwargs)
         self.safety_dist = safety_dist
         
@@ -43,11 +38,72 @@ class Vehicle(Mobile):
             
         self.acc(1)
         return 1, 'Accelerating because no vehicle in front'
+
+
+class BaseVehicle(Vehicle):
+    def __init__(self, x0, v_max, a, ped_crossing_length, ped_crossing_width, v0=0, **kwargs):
+        super(BaseVehicle, self).__init__(x0, v_max, a, v0, **kwargs)
+        self.state = 'before'
+        self.ped_crossing_length = ped_crossing_length
+        self.ped_crossing_width = ped_crossing_width
+
+
+    def acc_peds(self, pedestrians):
+        if self.state == 'before':
+            if self.x >= -self.ped_crossing_width-0.1 and round(self.v, 3)==0:
+                self.state = 'stopped'
+                return -1, 'Stopped at ped crossing, looking'
+
+            if self.must_decelerate_to_stop_at_pos(-self.ped_crossing_width):
+                return -1, 'Stopping at ped crossing'
+            
+            return 1, 'Accelerating because still very far'
+        
+        if self.state == 'stopped':
+            for p in pedestrians:
+                if p.x > -self.ped_crossing_length and p.x < self.ped_crossing_length:
+                    return -1, 'Stopped at ped crossing, there is a pedestrian'
+            self.state = 'passing'
+            return 1, 'Stopped at ped crossing, there is no pedestrian'
+        
+        if self.state == 'passing':
+            if self.x > self.ped_crossing_width:
+                self.state = 'passed'
+            return 1, 'Passing through the crossing'
+        
+        if self.state == 'passed':
+            return 1, 'Passed the crossing'
+        
+        raise RuntimeError("Logic error: should not reach this point")
     
+    def update(self, all_vehicles, pedestrians):
+        a0, m0 = super(BaseVehicle, self).update(all_vehicles)
+        if a0>=0:
+            a1, m1 = self.acc_peds(pedestrians)
+            if a1<a0:
+                self.acc(a1)
+                return a1, m1
+        return a0, m0
+
+
+class Sensor:
+    '''A sensor to sense pedestrians.'''
+
+    def __init__(self, fov):
+        '''Constructor:
+        @param fov is the field of view, an array with 2 numbers. The sensor 
+        can see pedestrians between the 2 values of the array.
+        '''
+        assert isinstance(fov, (list,tuple))
+        self.fov = [min(fov), max(fov)]
+
+    def visible(self, p):
+        '''Returns whether the sensor can see the pedestrian p.'''
+        return p.x >= self.fov[0] and p.x <= self.fov[1]
+
 
 class InfraVehicle(Vehicle):
     def __init__(self, x0, v_max, a, ped_crossing_length, ped_crossing_width, sensor, ped_vel, v0=0, **kwargs):
-        #print 'InfraVehicle:', kwargs
         super(InfraVehicle, self).__init__(x0, v_max, a, v0, **kwargs)
         self.sensor = sensor
         self.ped_vel = ped_vel
@@ -101,12 +157,6 @@ class InfraVehicle(Vehicle):
         
         if not self.must_decelerate_to_stop_at_pos(-self.ped_crossing_width):
             return 1, 'Accelerating because still very far.'
-        
-#        if self.force_through:
-#            return 1, 'Accelerating (forcing through)'
-#        
-#        if self.x > 0 and round(self.v,3)==0:
-#            self.force_through = True
 
         profile = None        
         for i, p in enumerate(pedestrians):
@@ -145,54 +195,6 @@ class InfraVehicle(Vehicle):
                 self.acc(a1)
                 return a1, m1
         return a0, m0
-
-
-class BaseVehicle(Vehicle):
-    def __init__(self, x0, v_max, a, ped_crossing_length, ped_crossing_width, v0=0, **kwargs):
-        #print 'BaseVehicle:', kwargs
-        super(BaseVehicle, self).__init__(x0, v_max, a, v0, **kwargs)
-        self.state = 'before'
-        self.ped_crossing_length = ped_crossing_length
-        self.ped_crossing_width = ped_crossing_width
-
-
-    def acc_peds(self, pedestrians):
-        if self.state == 'before':
-            if self.x >= -self.ped_crossing_width-0.1 and round(self.v, 3)==0:
-                self.state = 'stopped'
-                return -1, 'Stopped at ped crossing, looking'
-
-            if self.must_decelerate_to_stop_at_pos(-self.ped_crossing_width):
-                return -1, 'Stopping at ped crossing'
-            
-            return 1, 'Accelerating because still very far'
-        
-        if self.state == 'stopped':
-            for p in pedestrians:
-                if p.x > -self.ped_crossing_length and p.x < self.ped_crossing_length:
-                    return -1, 'Stopped at ped crossing, there is a pedestrian'
-            self.state = 'passing'
-            return 1, 'Stopped at ped crossing, there is no pedestrian'
-        
-        if self.state == 'passing':
-            if self.x > self.ped_crossing_width:
-                self.state = 'passed'
-            return 1, 'Passing through the crossing'
-        
-        if self.state == 'passed':
-            return 1, 'Passed the crossing'
-        
-        raise RuntimeError("Logic error: should not reach this point")
-    
-    def update(self, all_vehicles, pedestrians):
-        a0, m0 = super(BaseVehicle, self).update(all_vehicles)
-        if a0>=0:
-            a1, m1 = self.acc_peds(pedestrians)
-            if a1<a0:
-                self.acc(a1)
-                return a1, m1
-        return a0, m0
-
 
 
 class Pedestrian(Mobile):
