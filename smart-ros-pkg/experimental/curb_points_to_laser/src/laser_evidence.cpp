@@ -24,8 +24,8 @@
 #include "pcl/ros/conversions.h"
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/filters/radius_outlier_removal.h>
-#include <pcl/features/normal_3d.h>
-#include <pcl_visualization/cloud_viewer.h>
+#include <pcl/features/normal_3d_omp.h>
+
 #include <laser_geometry/laser_geometry.h>
 
 #include <fmutil/fm_math.h>
@@ -43,6 +43,7 @@ private:
     ros::NodeHandle n_;
 
     message_filters::Subscriber<sensor_msgs::LaserScan> laser_scan_sub_;
+    message_filters::Subscriber<sensor_msgs::PointCloud2> cloud_scan_sub_;
     ros::Publisher accumulated_pc2_pub_, filtered_pc2_pub_, filtered_laser_pub_,
     filtered_pc_pub_, normals_marker_array_publisher_, normals_poses_pub_;
 
@@ -50,15 +51,19 @@ private:
 
     tf::TransformListener tf_;
     tf::MessageFilter<sensor_msgs::LaserScan> *laser_scan_filter_;
+    tf::MessageFilter<sensor_msgs::PointCloud2> *cloud_scan_filter_;
     laser_geometry::LaserProjection projector_;
 
     typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
     void scanCallback(const sensor_msgs::LaserScanConstPtr scan_in);
+    void cloudCallback(const sensor_msgs::PointCloud2ConstPtr cloud_in);
     void pointcloudsToLaser(sensor_msgs::PointCloud& cloud, sensor_msgs::LaserScan& output);
     void convertToLaser(sensor_msgs::PointCloud2 pointcloud2_in, sensor_msgs::LaserScan& laser_out);
     void normalEstimation(PointCloud input);
     void publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_cloud);
+    void mainLoop(geometry_msgs::PointStamped& laser_pose);
+
     size_t sample_size_;
     double static_prob_;
     vector<sensor_msgs::PointCloud> sample_data_;
@@ -70,12 +75,16 @@ private:
 laser_evidence::laser_evidence() : tf_()
 {
     target_frame_ = "/odom";
-    sample_size_ = 200;
+    sample_size_ = 50; //75
     //filter_prob_ = 0.8;
     search_radius_ = 0.3;
     laser_scan_sub_.subscribe(n_, "scan_in", 10);
     laser_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_scan_sub_, tf_, target_frame_, 10);
     laser_scan_filter_->registerCallback(boost::bind(&laser_evidence::scanCallback, this, _1));
+
+    cloud_scan_sub_.subscribe(n_, "cloud_in", 10);
+    cloud_scan_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(cloud_scan_sub_, tf_, target_frame_, 10);
+    cloud_scan_filter_->registerCallback(boost::bind(&laser_evidence::cloudCallback, this, _1));
 
     accumulated_pc2_pub_ = n_.advertise<sensor_msgs::PointCloud2>("accumulated_pts", 10);
     filtered_pc2_pub_ = n_.advertise<sensor_msgs::PointCloud2>("filtered_pts2", 10);
@@ -135,6 +144,29 @@ void laser_evidence::pointcloudsToLaser(sensor_msgs::PointCloud& cloud, sensor_m
     }
 }
 
+void laser_evidence::cloudCallback(const sensor_msgs::PointCloud2ConstPtr cloud_in)
+{
+    sensor_msgs::PointCloud laser_cloud;
+    geometry_msgs::PointStamped laser_pose;
+    PointCloud laser_pcl;
+    pcl::fromROSMsg(*cloud_in, laser_pcl);
+    sensor_msgs::PointCloud2 laser_cloud2;
+    pcl::toROSMsg(laser_pcl, laser_cloud2);
+
+    sensor_msgs::convertPointCloud2ToPointCloud(laser_cloud2, laser_cloud);
+    laser_pose.header = cloud_in->header;
+
+    try{
+        tf_.transformPointCloud(target_frame_, laser_cloud, laser_cloud);
+        tf_.transformPoint("odom", laser_pose, laser_pose);
+    }
+    catch(tf::TransformException& e){
+        ROS_DEBUG("%s",e.what());
+        return;
+    }
+    mainLoop(laser_pose);
+    sample_data_.insert(sample_data_.begin(), laser_cloud);
+}
 void laser_evidence::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
 {
     sensor_msgs::LaserScan scan_copy = *scan_in;
@@ -155,7 +187,15 @@ void laser_evidence::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
         ROS_DEBUG("%s",e.what());
         return;
     }
-    if(fmutil::distance(laser_pose_pre_.point, laser_pose.point)<0.01) return;
+
+    mainLoop(laser_pose);
+    sample_data_.insert(sample_data_.begin(), laser_cloud);
+
+}
+
+void laser_evidence::mainLoop(geometry_msgs::PointStamped& laser_pose)
+{
+    if(fmutil::distance(laser_pose_pre_.point, laser_pose.point)<0.03) return;
     else laser_pose_pre_ = laser_pose;
     //only start filtering when there is enough samples
     if(sample_data_.size()>sample_size_)
@@ -176,28 +216,15 @@ void laser_evidence::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
 
         //estimate normal
         normalEstimation(accumulated_pcl);
-       /* //perform density based filtering
-        pcl::RadiusOutlierRemoval<pcl::PointXYZ> outrem;
-        outrem.setInputCloud(accumulated_pcl.makeShared());
-        outrem.setRadiusSearch(0.2);
-        outrem.setMinNeighborsInRadius(10);
-        outrem.filter(accumulated_filtered);
-        sensor_msgs::PointCloud2 accumulated_filtered_pc2;
-        pcl::toROSMsg(accumulated_filtered, accumulated_filtered_pc2);
-        sensor_msgs::LaserScan filtered_laser;
-        convertToLaser(accumulated_filtered_pc2, filtered_laser);
-        //filtered_pc2_pub_.publish(accumulated_filtered_pc2);
-        filtered_laser_pub_.publish(filtered_laser);*/
+
+
     }
-
-    sample_data_.insert(sample_data_.begin(), laser_cloud);
-
 }
 
 void laser_evidence::normalEstimation(PointCloud input)
 {
       // Create the normal estimation class, and pass the input dataset to it
-      pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+      pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> ne;
       ne.setInputCloud (input.makeShared());
 
       // Create an empty kdtree representation, and pass it to the normal estimation object.
@@ -233,7 +260,7 @@ void laser_evidence::publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_cloud)
       for(size_t i=0; i<pcl_cloud.points.size();)
       {
 
-          if(pcl_cloud.points[i].normal_z>0.85)//, , fmutil::d2r(-355)))
+          if(fabs(pcl_cloud.points[i].normal_z)>0.60)//up to 0.9 is alright for tilted laser //, , fmutil::d2r(-355)))
           {
               pcl_cloud.points.erase(pcl_cloud.points.begin()+i);
               if(pcl_cloud.width>1) pcl_cloud.width --;
@@ -251,76 +278,63 @@ void laser_evidence::publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_cloud)
           count_raw++;
       }
       ROS_INFO("raw size: %i, passed size: %i, filtered size: %i", count_raw, count_correct, count_filtered);
-      sensor_msgs::PointCloud2 filtered_pc2;
-      pcl::toROSMsg(pcl_cloud, filtered_pc2);
-      filtered_pc2_pub_.publish(filtered_pc2);
+      //sensor_msgs::PointCloud2 filtered_pc2;
+      //pcl::toROSMsg(pcl_cloud, filtered_pc2);
+      //filtered_pc2_pub_.publish(filtered_pc2);
       //if (size >= lastsize) {
       //    normals_marker_array_msg.markers.resize(size);
       //}
-      normals_marker_array_msg_.markers.clear();
-      geometry_msgs::PoseArray normals_poses;
-      normals_poses.header = pcl_cloud.header;
-      for(unsigned int i=0; i<pcl_cloud.points.size(); i++)
+
+
+
+       //perform density based filtering
+      pcl::PointCloud<pcl::PointNormal> radius_filtered_pcl2;
+      pcl::RadiusOutlierRemoval<pcl::PointNormal> outrem;
+      outrem.setInputCloud(pcl_cloud.makeShared());
+      outrem.setRadiusSearch(0.4);
+      outrem.setMinNeighborsInRadius(8);
+      outrem.filter(radius_filtered_pcl2);
+      sensor_msgs::PointCloud2 radius_filtered_pc2;
+      pcl::toROSMsg(radius_filtered_pcl2, radius_filtered_pc2);
+      sensor_msgs::LaserScan filtered_laser;
+      convertToLaser(radius_filtered_pc2, filtered_laser);
+      filtered_pc2_pub_.publish(radius_filtered_pc2);
+      filtered_laser_pub_.publish(filtered_laser);
+
+      // publish normal as posearray for visualization
+      bool publish_normals = false;
+      if(publish_normals)
       {
+          geometry_msgs::PoseArray normals_poses;
+          normals_poses.header = pcl_cloud.header;
+          for(unsigned int i=0; i<pcl_cloud.points.size(); i++)
+          {
 
-          geometry_msgs::Pose normals_pose;
-          geometry_msgs::Point pos;
-          pos.x = pcl_cloud.points[i].x; pos.y = pcl_cloud.points[i].y; pos.z = pcl_cloud.points[i].z;
+              geometry_msgs::Pose normals_pose;
+              geometry_msgs::Point pos;
+              pos.x = pcl_cloud.points[i].x; pos.y = pcl_cloud.points[i].y; pos.z = pcl_cloud.points[i].z;
 
-          normals_pose.position = pos;
-          btVector3 axis(pcl_cloud.points[i].normal[0],pcl_cloud.points[i].normal[1],pcl_cloud.points[i].normal[2]);
-          if(isnan(pcl_cloud.points[i].normal[0])||isnan(pcl_cloud.points[i].normal[1])||isnan(pcl_cloud.points[i].normal[2])) continue;
-          //cout<<axis.x()<<" "<<axis.y()<<" "<<axis.z()<<" "<<axis.w()<<endl;
-          btVector3 marker_axis(1, 0, 0);
-          btQuaternion qt(marker_axis.cross(axis.normalize()), marker_axis.angle(axis.normalize()));
-          double yaw, pitch, roll;
-          btMatrix3x3(qt).getEulerYPR(yaw, pitch, roll);
-          geometry_msgs::Quaternion quat_msg;
-          tf::quaternionTFToMsg(qt, quat_msg);
-          if(isnan(qt.x())||isnan(qt.y())||isnan(qt.z())||isnan(qt.w())) continue;
-          normals_pose.orientation.x = qt.x();// = quat_msg;
-          normals_pose.orientation.y = qt.y();
-          normals_pose.orientation.z = qt.z();
-          normals_pose.orientation.w = qt.w();
+              normals_pose.position = pos;
+              btVector3 axis(pcl_cloud.points[i].normal[0],pcl_cloud.points[i].normal[1],pcl_cloud.points[i].normal[2]);
+              if(isnan(pcl_cloud.points[i].normal[0])||isnan(pcl_cloud.points[i].normal[1])||isnan(pcl_cloud.points[i].normal[2])) continue;
+              //cout<<axis.x()<<" "<<axis.y()<<" "<<axis.z()<<" "<<axis.w()<<endl;
+              btVector3 marker_axis(1, 0, 0);
+              btQuaternion qt(marker_axis.cross(axis.normalize()), marker_axis.angle(axis.normalize()));
+              double yaw, pitch, roll;
+              btMatrix3x3(qt).getEulerYPR(yaw, pitch, roll);
+              geometry_msgs::Quaternion quat_msg;
+              tf::quaternionTFToMsg(qt, quat_msg);
+              if(isnan(qt.x())||isnan(qt.y())||isnan(qt.z())||isnan(qt.w())) continue;
+              normals_pose.orientation.x = qt.x();// = quat_msg;
+              normals_pose.orientation.y = qt.y();
+              normals_pose.orientation.z = qt.z();
+              normals_pose.orientation.w = qt.w();
 
-          normals_poses.poses.push_back(normals_pose);
+              normals_poses.poses.push_back(normals_pose);
+          }
+          normals_poses_pub_.publish(normals_poses);
       }
-      normals_poses_pub_.publish(normals_poses);
-     /* for (unsigned int i = 0; i < pcl_cloud.points.size(); i++)
-        {
 
-          marker_array_msg.pose.position = pos;
-          //axis-angle rotation
-          btVector3 axis(pcl_cloud.points[i].normal[0],pcl_cloud.points[i].normal[1],pcl_cloud.points[i].normal[2]);
-          btVector3 marker_axis(1, 0, 0);
-          btQuaternion qt(marker_axis.cross(axis.normalize()), marker_axis.angle(axis.normalize()));
-          double yaw, pitch, roll;
-          btMatrix3x3(qt).getEulerYPR(yaw, pitch, roll);
-          geometry_msgs::Quaternion quat_msg;
-          tf::quaternionTFToMsg(qt, quat_msg);
-          marker_array_msg.pose.orientation = quat_msg;
-
-          marker_array_msg.header.frame_id = pcl_cloud.header.frame_id;
-          marker_array_msg.header.stamp = pcl_cloud.header.stamp;
-          marker_array_msg.id = i;
-          marker_array_msg.ns = "Normals";
-          marker_array_msg.color.r = 1.0f;
-          marker_array_msg.color.g = 0.0f;
-          marker_array_msg.color.b = 0.0f;
-          marker_array_msg.color.a = 0.5f;
-          marker_array_msg.lifetime = ros::Duration::Duration();
-          marker_array_msg.type = visualization_msgs::Marker::ARROW;
-          marker_array_msg.scale.x = 0.2;
-          marker_array_msg.scale.y = 0.2;
-          marker_array_msg.scale.z = 0.2;
-
-          marker_array_msg.action = visualization_msgs::Marker::ADD;
-          normals_marker_array_msg_.markers.push_back(marker_array_msg);
-        }
-
-
-
-      normals_marker_array_publisher_.publish(normals_marker_array_msg_);*/
 }
 void laser_evidence::convertToLaser(sensor_msgs::PointCloud2 pointcloud2_in, sensor_msgs::LaserScan& laser_out)
 {
