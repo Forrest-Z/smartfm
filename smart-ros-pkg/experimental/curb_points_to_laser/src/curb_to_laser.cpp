@@ -31,7 +31,7 @@ private:
     ros::Timer timer_;
     message_filters::Subscriber<sensor_msgs::PointCloud> left_curb_sub_, right_curb_sub_;
     message_filters::Subscriber<sensor_msgs::LaserScan> laser_scan_sub_;
-    ros::Publisher curb_points_pub_, curb_laser_pub_, curb_points2_pub_;
+    ros::Publisher curb_points_pub_, curb_laser_pub_, curb_points2_pub_, laser_points_pub_;
     sensor_msgs::PointCloud curb_points_;
 
     int max_curb_points_;
@@ -73,7 +73,7 @@ curb_to_laser::curb_to_laser() : tf_()
     curb_points_pub_ = n_.advertise<sensor_msgs::PointCloud>("curb_points", 10);
     curb_laser_pub_ = n_.advertise<sensor_msgs::LaserScan>("curb_laser", 10);
     curb_points2_pub_ = n_.advertise<sensor_msgs::PointCloud2>("curb_points2", 10);
-
+    laser_points_pub_ = n_.advertise<sensor_msgs::PointCloud>("scan_points", 10);
     max_curb_points_ = 300;
     curb_dist_ = 8.0;
     scan_dist_ = 30.0;
@@ -93,6 +93,7 @@ void curb_to_laser::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
         ROS_DEBUG("%s",e.what());
         return;
     }
+    laser_points_pub_.publish(laser_cloud_);
     /*for(size_t i=0; i<laser_cloud.points.size();)
     {
         if(laser_cloud.points[i].z<1.0)//y<3 or laser_cloud.points[i].y>-5)

@@ -18,5 +18,7 @@
   <depend package="pcl"/>
   <depend package="pcl_ros"/>
   <depend package="laser_geometry"/>
+  <depend package="fmutil"/>
+  <!--depend package="pcl_visualization"/-->
 </package>
 

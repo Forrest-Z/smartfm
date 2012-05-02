@@ -1,4 +1,3 @@
-/* This file is from the uvc_cam package by Morgan Quigley */
 #include <cstring>
 #include <string>
 #include <cstdio>
@@ -10,28 +9,60 @@
 #include <fcntl.h>
 #include <errno.h>
 #include "uvc_cam/uvc_cam.h"
-#include <sstream>
 
 using std::string;
 using namespace uvc_cam;
 
 Cam::Cam(const char *_device, mode_t _mode, int _width, int _height, int _fps)
-: mode(_mode), device(_device),
-  motion_threshold_luminance(100), motion_threshold_count(-1),
-  width(_width), height(_height), fps(_fps), rgb_frame(NULL)
+: mode(_mode), device(_device), width(_width), height(_height), fps(_fps), rgb_frame(NULL)
 {
+/// opening device
+
   printf("opening %s\n", _device);
   if ((fd = open(_device, O_RDWR)) == -1)
     throw std::runtime_error("couldn't open " + device);
+
+
+
+
+/*
+v4l2_input input;
+memset(&input,0,sizeof(input));
+
+int index;
+if(-1==ioctl(fd,VIDIOC_G_INPUT,&index)){
+	perror("vidioc blah");
+}
+
+input.index=index;
+
+if(ioctl(fd,VIDIOC_ENUMINPUT, &input)==0){
+	printf("input: %s\n",input.name);
+}else{
+printf("faiiiiiled\n");
+perror("");}
+*/
+
+
+
+
+/// clearing structs
+
   memset(&fmt, 0, sizeof(v4l2_format));
   memset(&cap, 0, sizeof(v4l2_capability));
+
+
+///grabbing and checking device capabilities
+
   if (ioctl(fd, VIDIOC_QUERYCAP, &cap) < 0)
     throw std::runtime_error("couldn't query " + device);
   if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE))
     throw std::runtime_error(device + " does not support capture");
   if (!(cap.capabilities & V4L2_CAP_STREAMING))
     throw std::runtime_error(device + " does not support streaming");
-  // enumerate formats
+  printf("capabilities %x\n",cap.capabilities);
+
+ /// enumerate formats
   v4l2_fmtdesc f;
   memset(&f, 0, sizeof(f));
   f.index = 0;
@@ -39,27 +70,45 @@ Cam::Cam(const char *_device, mode_t _mode, int _width, int _height, int _fps)
   int ret;
   while ((ret = ioctl(fd, VIDIOC_ENUM_FMT, &f)) == 0)
   {
-    printf("pixfmt %d = '%4s' desc = '%s'\n",
+		format_info f_info;
+  	
+		printf("pixfmt %d = '%4s' desc = '%s'\n",
            f.index++, (char *)&f.pixelformat, f.description);
+
+		f_info.pixelformat=f.pixelformat;
+		memcpy(f_info.description,f.description,32);
+
     // enumerate frame sizes
     v4l2_frmsizeenum fsize;
     fsize.index = 0;
     fsize.pixel_format = f.pixelformat;
     while ((ret = ioctl(fd, VIDIOC_ENUM_FRAMESIZES, &fsize)) == 0)
     {
+			size_info s_info;
+			s_info.type=fsize.type;
       fsize.index++;
       if (fsize.type == V4L2_FRMSIZE_TYPE_DISCRETE)
       {
+
         printf("  discrete: %ux%u:   ",
                fsize.discrete.width, fsize.discrete.height);
+
+				s_info.discrete.width= fsize.discrete.width;
+				s_info.discrete.height= fsize.discrete.height;
+
         // enumerate frame rates
+
         v4l2_frmivalenum fival;
         fival.index = 0;
         fival.pixel_format = f.pixelformat;
         fival.width = fsize.discrete.width;
         fival.height = fsize.discrete.height;
+
         while ((ret = ioctl(fd, VIDIOC_ENUM_FRAMEINTERVALS, &fival)) == 0)
         {
+					frame_rate_info frmrate_info;
+					frmrate_info.type=fival.type;
+					frmrate_info.discrete=fival.discrete;
           fival.index++;
           if (fival.type == V4L2_FRMIVAL_TYPE_DISCRETE)
           {
@@ -68,47 +117,68 @@ Cam::Cam(const char *_device, mode_t _mode, int _width, int _height, int _fps)
           }
           else
             printf("I only handle discrete frame intervals...\n");
+
+					s_info.frame_rates.push_back(frmrate_info);
         }
         printf("\n");
       }
       else if (fsize.type == V4L2_FRMSIZE_TYPE_CONTINUOUS)
       {
+				s_info.stepwise=fsize.stepwise;
         printf("  continuous: %ux%u to %ux%u\n",
                fsize.stepwise.min_width, fsize.stepwise.min_height,
                fsize.stepwise.max_width, fsize.stepwise.max_height);
+				//why is there no method of determining frame intervals for continuous frame sizes
       }
       else if (fsize.type == V4L2_FRMSIZE_TYPE_STEPWISE)
       {
+				s_info.stepwise=fsize.stepwise;
         printf("  stepwise: %ux%u to %ux%u step %ux%u\n",
                fsize.stepwise.min_width,  fsize.stepwise.min_height,
                fsize.stepwise.max_width,  fsize.stepwise.max_height,
                fsize.stepwise.step_width, fsize.stepwise.step_height);
+				//why is there no method of determining frame intervals for stepwise frame sizes				
       }
       else
       {
         printf("  fsize.type not supported: %d\n", fsize.type);
       }
-    }
+
+			f_info.sizes_supported.push_back(s_info);   
+		}		
+		formats_supported.push_back(f_info);
   }
   if (errno != EINVAL)
     throw std::runtime_error("error enumerating frame formats");
+
+
+	display_formats_supported();
+
+
+///set the video format
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   fmt.fmt.pix.width = width;
   fmt.fmt.pix.height = height;
   if (mode == MODE_RGB || mode == MODE_YUYV) // we'll convert later
     fmt.fmt.pix.pixelformat = 'Y' | ('U' << 8) | ('Y' << 16) | ('V' << 24);
   else
-    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG;
+    fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG; 
   fmt.fmt.pix.field = V4L2_FIELD_ANY;
   if ((ret = ioctl(fd, VIDIOC_S_FMT, &fmt)) < 0)
     throw std::runtime_error("couldn't set format");
   if (fmt.fmt.pix.width != width || fmt.fmt.pix.height != height)
     throw std::runtime_error("pixel format unavailable");
+
+//set the framerate and stream parameters
   streamparm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   streamparm.parm.capture.timeperframe.numerator = 1;
   streamparm.parm.capture.timeperframe.denominator = fps;
   if ((ret = ioctl(fd, VIDIOC_S_PARM, &streamparm)) < 0)
     throw std::runtime_error("unable to set framerate");
+
+
+
+//query all controls
   v4l2_queryctrl queryctrl;
   memset(&queryctrl, 0, sizeof(queryctrl));
   uint32_t i = V4L2_CID_BASE;
@@ -118,6 +188,8 @@ Cam::Cam(const char *_device, mode_t _mode, int _width, int _height, int _fps)
     if ((ret = ioctl(fd, VIDIOC_QUERYCTRL, &queryctrl)) == 0 &&
         !(queryctrl.flags & V4L2_CTRL_FLAG_DISABLED))
     {
+			control_info c_info;
+			c_info.ctrl.type=queryctrl.type;
       const char *ctrl_type = NULL;
       if (queryctrl.type == V4L2_CTRL_TYPE_INTEGER)
         ctrl_type = "int";
@@ -127,9 +199,9 @@ Cam::Cam(const char *_device, mode_t _mode, int _width, int _height, int _fps)
         ctrl_type = "button";
       else if (queryctrl.type == V4L2_CTRL_TYPE_MENU)
         ctrl_type = "menu";
-      printf("  %s (%s, %d, id = %d): %d to %d (%d)\n",
-             ctrl_type,
-             queryctrl.name, queryctrl.flags, queryctrl.id,
+      printf("  %s (%s, %d, id = %x): %d to %d (%d)\n", 
+             ctrl_type, 
+             queryctrl.name, queryctrl.flags, queryctrl.id, 
              queryctrl.minimum, queryctrl.maximum, queryctrl.step);
       if (queryctrl.type == V4L2_CTRL_TYPE_MENU)
       {
@@ -140,10 +212,11 @@ Cam::Cam(const char *_device, mode_t _mode, int _width, int _height, int _fps)
         while (ioctl(fd, VIDIOC_QUERYMENU, &querymenu) == 0)
         {
           printf("    %d: %s\n", querymenu.index, querymenu.name);
+					c_info.menu_list.push_back(querymenu);
           querymenu.index++;
         }
       }
-
+			controls.push_back(c_info);
     }
     else if (errno != EINVAL)
       throw std::runtime_error("couldn't query control");
@@ -156,33 +229,27 @@ Cam::Cam(const char *_device, mode_t _mode, int _width, int _height, int _fps)
       i = V4L2_CID_BASE_EXTCTR;
   }
 
-  try
+  try 
   {
-    // the commented labels correspond to the controls in guvcview and uvcdynctrl
-
     //set_control(V4L2_CID_EXPOSURE_AUTO_NEW, 2);
-    set_control(10094851, 2); // Exposure, Auto Priority
-    set_control(10094849, 3); // Exposure, Auto
-    //set_control(10094850, 500); // Absolute Exposure
-    //set_control(168062321, 0); //Disable video processing
+   // set_control(10094851, 0);
+   // set_control(10094849, 1);
     //set_control(0x9a9010, 100);
-    //set_control(V4L2_CID_EXPOSURE_ABSOLUTE_NEW, 300);
-    //set_control(V4L2_CID_BRIGHTNESS, 140);
-    //set_control(V4L2_CID_CONTRAST, 40);
+  //  set_control(V4L2_CID_EXPOSURE_ABSOLUTE_NEW, 500);
+ //   set_control(V4L2_CID_BRIGHTNESS, 135);
+ //   set_control(V4L2_CID_CONTRAST, 40);
+ //   printf("set contrast\n");
     //set_control(V4L2_CID_WHITE_BALANCE_TEMP_AUTO_OLD, 0);
-    set_control(9963776, 128); //Brightness
-    set_control(9963777, 32); //Contrast
-    set_control(9963788, 1); // White Balance Temperature, Auto
-    //set_control(9963802, 5984); // White Balance Temperature
-    set_control(9963800, 2);  // power line frequency to 60 hz
-    set_control(9963795, 300); // Gain
-    set_control(9963803, 224); // Sharpness
-    set_control(9963804, 1); //Backlight Compensation
-    //set_control(10094850, 50); // Exposure (Absolute)
-    //set_control(168062212, 16); //Focus (absolute)
-    //set_control(168062213, 3); //LED1 Mode
-    //set_control(168062214, 0); //LED1 Frequency
-    //set_control(9963778, 32); // Saturation
+  //  set_control(9963788, 1); // auto white balance
+    //set_control(9963802, 500); // color temperature
+    //set_control(9963800, 2);  // power line frequency to 60 hz
+//    set_control(9963795, 120); // gain
+ //   set_control(9963803, 140); // sharpness
+ //   set_control(9963778, 45); // saturation
+ //    set_control(0x9a0901, 1); //exposure mode
+   //  set_control(0x9a0902, 8);
+    //set_control(0x9a0901, 1); // aperture priority exposure mode
+    //set_control(0x9a0903, 1); // auto exposure
   }
   catch (std::runtime_error &ex)
   {
@@ -284,7 +351,7 @@ void Cam::enumerate()
     printf("driver = [%s]\n", v4l2_cap.driver);
     printf("location = [%s]\n", v4l2_cap.bus_info);
     close(fd);
-    string v4l_dev_path = v4l_path + string("/") + string(ent->d_name) +
+    string v4l_dev_path = v4l_path + string("/") + string(ent->d_name) + 
                           string("/device");
     // my kernel is using /sys/class/video4linux/videoN/device/inputX/id
     DIR *d2 = opendir(v4l_dev_path.c_str());
@@ -308,17 +375,17 @@ void Cam::enumerate()
         }
       }
       if (!output_set)
-        input_dir = ent2->d_name;
+        input_dir = ent2->d_name; 
       break;
     }
     closedir(d2);
     if (!input_dir.length())
       throw std::runtime_error("couldn't find input dir in " + v4l_dev_path);
-    string vid_fname = v4l_dev_path + string("/") + input_dir +
+    string vid_fname = v4l_dev_path + string("/") + input_dir + 
                        string("/id/vendor");
-    string pid_fname = v4l_dev_path + string("/") + input_dir +
+    string pid_fname = v4l_dev_path + string("/") + input_dir + 
                        string("/id/product");
-    string ver_fname = v4l_dev_path + string("/") + input_dir +
+    string ver_fname = v4l_dev_path + string("/") + input_dir + 
                        string("/id/version");
     char vid[5], pid[5], ver[5];
     FILE *vid_fp = fopen(vid_fname.c_str(), "r");
@@ -350,7 +417,7 @@ void Cam::enumerate()
 // saturate input into [0, 255]
 inline unsigned char sat(float f)
 {
-  return (unsigned char)( f >= 255 ? 255 : (f < 0 ? 0 : f));
+  return (unsigned char)( f >= 255 ? 255 : (f < 0 ? 0 : f)); 
 }
 
 int Cam::grab(unsigned char **frame, uint32_t &bytes_used)
@@ -380,49 +447,37 @@ int Cam::grab(unsigned char **frame, uint32_t &bytes_used)
   memset(&buf, 0, sizeof(buf));
   buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
   buf.memory = V4L2_MEMORY_MMAP;
+  //This call will block until there is a buffer that has pixel info in it
   if (ioctl(fd, VIDIOC_DQBUF, &buf) < 0)
     throw std::runtime_error("couldn't dequeue buffer");
   bytes_used = buf.bytesused;
   if (mode == MODE_RGB)
   {
-    int num_pixels_different = 0; // just look at the Y channel
     unsigned char *pyuv = (unsigned char *)mem[buf.index];
     // yuyv is 2 bytes per pixel. step through every pixel pair.
     unsigned char *prgb = rgb_frame;
     unsigned char *pyuv_last = last_yuv_frame;
     for (unsigned i = 0; i < width * height * 2; i += 4)
     {
-      *prgb++ = sat(pyuv[i]+1.402f  *(pyuv[i+3]-128));
-      *prgb++ = sat(pyuv[i]-0.34414f*(pyuv[i+1]-128)-0.71414f*(pyuv[i+3]-128));
-      *prgb++ = sat(pyuv[i]+1.772f  *(pyuv[i+1]-128));
-      *prgb++ = sat(pyuv[i+2]+1.402f*(pyuv[i+3]-128));
-      *prgb++ = sat(pyuv[i+2]-0.34414f*(pyuv[i+1]-128)-0.71414f*(pyuv[i+3]-128));
-      *prgb++ = sat(pyuv[i+2]+1.772f*(pyuv[i+1]-128));
-      if ((int)pyuv[i] - (int)pyuv_last[i] > motion_threshold_luminance ||
-          (int)pyuv_last[i] - (int)pyuv[i] > motion_threshold_luminance)
-        num_pixels_different++;
-      if ((int)pyuv[i+2] - (int)pyuv_last[i+2] > motion_threshold_luminance ||
-          (int)pyuv_last[i+2] - (int)pyuv[i+2] > motion_threshold_luminance)
-        num_pixels_different++;
-
+    	// this gives rgb images
+//      *prgb++ = sat(pyuv[i]+1.402f  *(pyuv[i+3]-128));
+//      *prgb++ = sat(pyuv[i]-0.34414f*(pyuv[i+1]-128)-0.71414f*(pyuv[i+3]-128));
+//      *prgb++ = sat(pyuv[i]+1.772f  *(pyuv[i+1]-128));
+//      *prgb++ = sat(pyuv[i+2]+1.402f*(pyuv[i+3]-128));
+//      *prgb++ = sat(pyuv[i+2]-0.34414f*(pyuv[i+1]-128)-0.71414f*(pyuv[i+3]-128));
+//      *prgb++ = sat(pyuv[i+2]+1.772f*(pyuv[i+1]-128));
+    
       // this gives bgr images...
-      /*
       *prgb++ = sat(pyuv[i]+1.772f  *(pyuv[i+1]-128));
       *prgb++ = sat(pyuv[i]-0.34414f*(pyuv[i+1]-128)-0.71414f*(pyuv[i+3]-128));
       *prgb++ = sat(pyuv[i]+1.402f  *(pyuv[i+3]-128));
+
       *prgb++ = sat(pyuv[i+2]+1.772f*(pyuv[i+1]-128));
       *prgb++ = sat(pyuv[i+2]-0.34414f*(pyuv[i+1]-128)-0.71414f*(pyuv[i+3]-128));
       *prgb++ = sat(pyuv[i+2]+1.402f*(pyuv[i+3]-128));
-      */
     }
     memcpy(last_yuv_frame, pyuv, width * height * 2);
-    if (num_pixels_different > motion_threshold_count) // default: always true
-      *frame = rgb_frame;
-    else
-    {
-      *frame = NULL; // not enough luminance change
-      release(buf.index); // let go of this image
-    }
+    *frame = rgb_frame;
   }
   else if (mode == MODE_YUYV)
   {
@@ -445,29 +500,78 @@ void Cam::release(unsigned buf_idx)
 
 void Cam::set_control(uint32_t id, int val)
 {
+  printf("setting control %x\n",id);
   v4l2_control c;
   c.id = id;
-
   if (ioctl(fd, VIDIOC_G_CTRL, &c) == 0)
   {
-    printf("current value of %d is %d\n", id, c.value);
-    /*
-    perror("unable to get control");
-    throw std::runtime_error("unable to get control");
-    */
+    printf("current value of %x is %d\n", id, c.value);
+  }
+	else{
+		perror("unable to get control\n");
+    throw Exception("unable to get control\n");
   }
   c.value = val;
   if (ioctl(fd, VIDIOC_S_CTRL, &c) < 0)
   {
-      std::stringstream ss; ss<<"Unable to set control for id "<<id;
-    perror(ss.str().c_str());
-    throw std::runtime_error(ss.str().c_str());
+    perror("unable to set control\n");
+    throw Exception("unable to set control\n");
+  }else{
+    printf("new value of %x is %d\n", id, val);  
   }
 }
 
-void Cam::set_motion_thresholds(int lum, int count)
-{
-  motion_threshold_luminance = lum;
-  motion_threshold_count = count;
+std::vector <format_info> Cam::get_formats_supported(){
+	return formats_supported;
+}
+void Cam::display_formats_supported(){
+	printf("camera formats supported\n");
+	for(int i=0;i<formats_supported.size();i++){
+		unsigned char format[5];
+		memcpy(format,&(formats_supported[i].pixelformat),4);
+		format[4]=0;
+
+    printf("format %d = '%4s' desc = '%s'\n",i, (format), formats_supported[i].description);
+		
+		for(int j=0; j<formats_supported[i].sizes_supported.size();j++){
+			formats_supported[i].sizes_supported[j];
+
+      if (formats_supported[i].sizes_supported[j].type == V4L2_FRMSIZE_TYPE_DISCRETE)
+      {
+        printf("  discrete: %ux%u:   ",formats_supported[i].sizes_supported[j].discrete.width, formats_supported[i].sizes_supported[j].discrete.height);
+
+				for(int k=0;k<formats_supported[i].sizes_supported[j].frame_rates.size();k++){
+            printf("%u/%u ",formats_supported[i].sizes_supported[j].frame_rates[k].discrete.numerator, formats_supported[i].sizes_supported[j].frame_rates[k].discrete.denominator);
+				}
+				printf("\n");
+			} else if (formats_supported[i].sizes_supported[j].type == V4L2_FRMSIZE_TYPE_CONTINUOUS)
+      {
+        printf("  continuous: %ux%u to %ux%u\n",
+               formats_supported[i].sizes_supported[j].stepwise.min_width, formats_supported[i].sizes_supported[j].stepwise.min_height,
+               formats_supported[i].sizes_supported[j].stepwise.max_width, formats_supported[i].sizes_supported[j].stepwise.max_height);
+				//why is there no method of determining frame intervals for continuous frame sizes
+      }
+      else if (formats_supported[i].sizes_supported[j].type == V4L2_FRMSIZE_TYPE_STEPWISE)
+      {
+        printf("  stepwise: %ux%u to %ux%u step %ux%u\n",
+               formats_supported[i].sizes_supported[j].stepwise.min_width,  formats_supported[i].sizes_supported[j].stepwise.min_height,
+               formats_supported[i].sizes_supported[j].stepwise.max_width,  formats_supported[i].sizes_supported[j].stepwise.max_height,
+               formats_supported[i].sizes_supported[j].stepwise.step_width, formats_supported[i].sizes_supported[j].stepwise.step_height);
+				//why is there no method of determining frame intervals for stepwise frame sizes				
+      }
+      else
+      {
+        printf("  fsize.type not supported: %d\n", formats_supported[i].sizes_supported[j].type);
+      }
+
+		}
+	}
 }
 
+std::vector <control_info> Cam::get_controls_supported(){
+	return controls;
+}
+
+void Cam::display_controls_supported(){
+	printf("controls\n");
+}

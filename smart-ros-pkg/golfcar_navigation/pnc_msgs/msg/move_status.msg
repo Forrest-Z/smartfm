@@ -1,4 +1,4 @@
-bool acc_dec
+bool path_exist
 bool emergency
 float64 steer_angle
 float64 obstacles_dist
