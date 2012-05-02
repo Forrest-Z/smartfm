@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 94
+/svn/ros-pkg/!svn/ver/39365/stacks/diagnostics/trunk/diagnostic_updater/src/diagnostic_updater
+END
+_update_functions.py
+K 25
+svn:wc:ra_dav:version-url
+V 115
+/svn/ros-pkg/!svn/ver/39365/stacks/diagnostics/trunk/diagnostic_updater/src/diagnostic_updater/_update_functions.py
+END
+_publisher.py
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svn/ros-pkg/!svn/ver/39365/stacks/diagnostics/trunk/diagnostic_updater/src/diagnostic_updater/_publisher.py
+END
+__init__.py
+K 25
+svn:wc:ra_dav:version-url
+V 106
+/svn/ros-pkg/!svn/ver/39365/stacks/diagnostics/trunk/diagnostic_updater/src/diagnostic_updater/__init__.py
+END
+_diagnostic_status_wrapper.py
+K 25
+svn:wc:ra_dav:version-url
+V 124
+/svn/ros-pkg/!svn/ver/39365/stacks/diagnostics/trunk/diagnostic_updater/src/diagnostic_updater/_diagnostic_status_wrapper.py
+END
+_diagnostic_updater.py
+K 25
+svn:wc:ra_dav:version-url
+V 117
+/svn/ros-pkg/!svn/ver/39365/stacks/diagnostics/trunk/diagnostic_updater/src/diagnostic_updater/_diagnostic_updater.py
+END

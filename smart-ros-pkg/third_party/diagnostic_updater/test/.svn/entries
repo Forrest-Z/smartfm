@@ -1,15 +1,15 @@
 10
 
 dir
-39292
+39365
 https://code.ros.org/svn/ros-pkg/stacks/diagnostics/trunk/diagnostic_updater/test
 https://code.ros.org/svn/ros-pkg
 
 
 
-2010-04-23T01:33:10.809058Z
-29026
-watts
+2012-05-02T07:19:52.054138Z
+39365
+bricerebsamen
 
 
 
@@ -25,6 +25,40 @@ watts
 
 
 eb33c2ac-9c88-4c90-87e0-44a10359b0c3
+
+test_DiagnosticStatusWrapper.py
+file
+
+
+
+
+2012-05-02T07:23:30.000000Z
+2e9f19251ed57b0a6ca0a8946f92fc2b
+2012-05-02T07:19:52.054138Z
+39365
+bricerebsamen
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2315
 
 diagnostic_updater_test.xml
 file
@@ -93,4 +127,38 @@ watts
 
 
 6637
+
+diagnostic_updater_test.py
+file
+
+
+
+
+2012-05-02T07:23:30.000000Z
+9589f5ade0088bee6872232b9791efb4
+2012-05-02T07:19:52.054138Z
+39365
+bricerebsamen
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+5055
 

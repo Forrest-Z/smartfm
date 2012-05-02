@@ -1,7 +1,13 @@
 K 25
 svn:wc:ra_dav:version-url
 V 76
-/svn/ros-pkg/!svn/ver/29026/stacks/diagnostics/trunk/diagnostic_updater/test
+/svn/ros-pkg/!svn/ver/39365/stacks/diagnostics/trunk/diagnostic_updater/test
+END
+test_DiagnosticStatusWrapper.py
+K 25
+svn:wc:ra_dav:version-url
+V 108
+/svn/ros-pkg/!svn/ver/39365/stacks/diagnostics/trunk/diagnostic_updater/test/test_DiagnosticStatusWrapper.py
 END
 diagnostic_updater_test.xml
 K 25
@@ -14,4 +20,10 @@ K 25
 svn:wc:ra_dav:version-url
 V 104
 /svn/ros-pkg/!svn/ver/29026/stacks/diagnostics/trunk/diagnostic_updater/test/diagnostic_updater_test.cpp
+END
+diagnostic_updater_test.py
+K 25
+svn:wc:ra_dav:version-url
+V 103
+/svn/ros-pkg/!svn/ver/39365/stacks/diagnostics/trunk/diagnostic_updater/test/diagnostic_updater_test.py
 END

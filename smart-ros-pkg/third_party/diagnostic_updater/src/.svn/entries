@@ -1,15 +1,15 @@
 10
 
 dir
-39292
+39365
 https://code.ros.org/svn/ros-pkg/stacks/diagnostics/trunk/diagnostic_updater/src
 https://code.ros.org/svn/ros-pkg
 
 
 
-2011-07-13T23:49:06.760717Z
-37519
-straszheim
+2012-05-02T07:19:52.054138Z
+39365
+bricerebsamen
 
 
 
@@ -25,6 +25,9 @@ straszheim
 
 
 eb33c2ac-9c88-4c90-87e0-44a10359b0c3
+
+diagnostic_updater
+dir
 
 example.cpp
 file
