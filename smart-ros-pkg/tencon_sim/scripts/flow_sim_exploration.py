@@ -3,7 +3,6 @@
 
 '''Run a number of flow simulations with different parameters values.'''
 
-import time
 import sys
 import cPickle as pickle
 
@@ -46,14 +45,14 @@ params['lambda_veh'] = 0.3
 #
 
 lambda_veh = [0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1]
-lambda_ped = [0.01, 0.05, 0.1, 0.25, 0.5]
+lambda_ped = [0.01, 0.05, 0.1, 0.25, 0.35, 0.5]
 
 # Each cell holds the results of one 
 # parameter configuration as a dictionary.
 results = []
 for lv in lambda_veh:
     for lp in lambda_ped:
-            results.append({'lambda_veh':lv, 'lambda_ped': lp})
+        results.append({'lambda_veh':lv, 'lambda_ped': lp})
 
 
 
@@ -67,7 +66,7 @@ for r in results:
     params['lambda_ped'] = r['lambda_ped']
     params['lambda_veh'] = r['lambda_veh']
     flow_sim = FlowSim(params)
-    while True:
+    while ok:
         try:
             flow_sim.step()
             ndtb = len(flow_sim.dt['base'])
@@ -76,7 +75,6 @@ for r in results:
                 break
         except KeyboardInterrupt:
             ok = False
-            break
         except:
             print 'Caught exception', sys.exc_info()[0]
     if not ok:

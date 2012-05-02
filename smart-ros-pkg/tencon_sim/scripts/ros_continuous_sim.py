@@ -54,7 +54,7 @@ params['safety_dist'] = 2
 params['infra_fov_dist']= 30
 
 params['lambda_ped'] = 0.1
-params['lambda_veh'] = 0.3
+params['lambda_veh'] = 0.8
 
 
 flow_sim = FlowSim(params)
