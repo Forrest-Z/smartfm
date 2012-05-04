@@ -20,7 +20,7 @@ echo logging to $logfile
 
 
 
-tee $logfile <<EOF
+tee -a $logfile <<EOF
 
 Building the bookingUI/shared library
 -------------------------------------
@@ -42,14 +42,14 @@ fi
 
 $makecmd
 
-) 2>&1 | tee $logfile
+) 2>&1 | tee -a $logfile
 
 
 if [ ${PIPESTATUS[0]} -eq 0 ] ; then
     compiling_bookinUI_share=0
 else
     compiling_bookinUI_share=1
-    cat <<EOF
+    tee -a $logfile <<EOF
 
 
 Error: Could not compile bookingUI/share
@@ -59,17 +59,17 @@ EOF
 
     read -p "Ignore and continue [y/n]?"
     if [ $REPLY != "y" ] ; then
-        echo Aborting | tee $logfile
+        echo Aborting | tee -a $logfile
         exit 1
     else
-        echo Ignoring | tee $logfile
+        echo Ignoring | tee -a $logfile
     fi
 fi
 
 
 
 
-tee $logfile <<EOF
+tee -a $logfile <<EOF
 
 ================================================================================
 
@@ -85,7 +85,7 @@ if [ $ncpus -gt 2 ]; then
     cmd="$cmd --threads=$ncpus"
 fi
 
-$cmd $packages | tee $logfile
+$cmd $packages | tee -a $logfile
 
 
 # [rosmake-0] Finished <<< pkg_name [PASS/FAIL] [ x.xx seconds ]
@@ -99,7 +99,7 @@ else
 fi
 
 
-tee $logfile <<EOF
+tee -a $logfile <<EOF
 
 
 ================================================================================
