@@ -17,6 +17,8 @@
   <depend package="bfl" />
   <depend package="std_msgs" />
   <depend package="nav_msgs" />
+  <depend package="common_rosdeps" />
+  <rosdep name="eigen" />
 </package>
 
 
