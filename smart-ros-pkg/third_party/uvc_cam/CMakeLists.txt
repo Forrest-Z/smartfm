@@ -16,6 +16,8 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
+find_package(OpenCV REQUIRED)
+
 #add_definitions("-D_FILE_OFFSET_BITS=64") #No idea what this is for... maybe something for the SDL library?
 
 # auto-generated dynamic reconfiguration GUI
@@ -47,7 +49,7 @@ rosbuild_add_library(uvc_cam src/uvc_cam/uvc_cam.cpp)
 #target_link_libraries(sender uvc_cam)
 
 rosbuild_add_executable(uvc_cam_node src/uvc_cam_node.cpp)
-target_link_libraries(uvc_cam_node uvc_cam)
+target_link_libraries(uvc_cam_node uvc_cam ${OpenCV_LIBS})
 
 #rosbuild_add_executable(senderStereo src/stereo_sender.cpp)
 #target_link_libraries(senderStereo uvc_cam)
