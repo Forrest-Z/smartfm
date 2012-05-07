@@ -1,6 +1,8 @@
 #!/bin/bash
 
-. ${ROS_ROOT}/../rosbash/rosbash
+echo $ROS_ROOT | grep fuerte >/dev/null 2>&1 \
+&& . ${ROS_ROOT}/../rosbash/rosbash \
+|| . ${ROS_ROOT}/tools/rosbash/rosbash
 
 gitrootdir=`git rev-parse --show-toplevel`
 
