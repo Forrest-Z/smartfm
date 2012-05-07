@@ -30,4 +30,4 @@ rosbuild_genmsg()
 
 rosbuild_add_library(${PROJECT_NAME} src/trajector_planner.cpp src/golfcar_purepursuit.cpp)
 rosbuild_add_executable(golfcar_pp src/golfcar_pp.cpp)
-rosbuild_add_executable(speed_advisor src/speed_advisor.cpp)
+rosbuild_add_executable(speed_advisor src/speed_advisor.cpp src/intersection_handler.cpp)
