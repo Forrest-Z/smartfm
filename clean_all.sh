@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. ${ROS_ROOT}/tools/rosbash/rosbash
+. ${ROS_ROOT}/../rosbash/rosbash
 
 gitrootdir=`git rev-parse --show-toplevel`
 
