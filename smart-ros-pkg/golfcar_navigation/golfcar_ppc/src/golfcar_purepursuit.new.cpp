@@ -133,12 +133,15 @@ bool PurePursuit::circle_line_collision(geometry_msgs::Point anchor_point,
     discriminant = sqrt(discriminant);
     float t1 = (-b + discriminant)/(2*a);
     float t2 = (-b - discriminant)/(2*a);
+
+    //Brice: This is not used, why not remove it?
     geometry_msgs::Point intersect_point2;
     p.x = intersect_point2.x = Ex+t2*dx;
     p.y = intersect_point2.y = Ey+t2*dy;
 
     if(t1 >=0 && t1 <=1)
     {
+        // the first solution is on the segment
         p.x = intersect_point->x = Ex+t1*dx;
         p.y = intersect_point->y = Ey+t1*dy;
         polyStamped.polygon.points.push_back(p);
@@ -147,6 +150,8 @@ bool PurePursuit::circle_line_collision(geometry_msgs::Point anchor_point,
         pp_vis_pub_.publish(polyStamped);
         return true;
     }
+
+    // What about the second solution?
 
     ROS_DEBUG("No solution, cur:x=%lf y=%lf, next:x=%lf y=%lf", Ex, Ey, Lx, Ly);
     return false;

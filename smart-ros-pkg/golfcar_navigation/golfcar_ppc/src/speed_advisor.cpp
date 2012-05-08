@@ -186,35 +186,20 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     //
     // Intersections
     //
-
-    //only change the dist_to_ints to the next station when through_ints has set to true
-
-    //last_ints_dist make sure that the car has come to complete stop before the button is pressed
-    //this may occur when the vehicle has overshoot its stopping point and move_status_.dist_to_ints
-    //become a large value, making the car accelerate instead of stopping.
-
-    if( ! int_h_.is_clear_to_go() )//move_status_.dist_to_ints>0 &&
+    if( ! int_h_.is_clear_to_go() )
     {
         // Approaching an intersection, and the flag has not been cleared yet.
         // --> needs to stop.
-        // The target velocity (sc.int_rec) is recommended based on the distance
-        // to the intersection stop point (move_status_.dist_to_ints)
+        // The target velocity (sc.int_rec) is computed based on the distance
+        // to the intersection stop point
+        sc.int_rec = sqrt(2 * dec_ints_ * int_h_.dist_to_int());
 
-        //only update the last_ints_dist_ by ensuring the value is strictly reducing
-        if( move_status_.dist_to_ints < int_h_.last_ints_dist_)
-            int_h_.last_ints_dist_ = move_status_.dist_to_ints;
+        ROS_DEBUG_STREAM("Intersection not clear. dist=" << int_h_.dist_to_int()
+                <<". Recommended speed: " <<sc.int_rec);
 
-        if( int_h_.last_ints_dist_ < ppc_stop_dist_ )
-            sc.int_rec = 0;
-        else
-            sc.int_rec = sqrt(2 * dec_ints_ * (move_status_.dist_to_ints - ppc_stop_dist_));
         speed_settings.push_back( SpeedAttribute::generate(
                 "Intersection", SpeedAttribute::intersection,
                 speed_now_, sc.int_rec, pos_speed, norm_neg_speed) );
-    }
-    else
-    {
-        int_h_.last_ints_dist_ = move_status_.dist_to_ints;
     }
 
 
@@ -278,11 +263,11 @@ void SpeedAdvisor::moveSpeedCallback(pnc_msgs::move_status status)
     move_status_ = status;
 
     //only change the button when the speed element is not from intersection
-    // why? removing for now (BRICE)
+    // BRICE: Why? removing for now !
     //if( element_now_==SpeedAttribute::norm_zone
     //        || element_now_ == SpeedAttribute::slow_zone )
     //{
-    int_h_.update_int(status.int_point);
+    int_h_.update(status);
     //}
 
 
