@@ -5,9 +5,8 @@ $con = connect_to_DB();
 
 $query = "select * from infrastructure";
 
-$id = $_REQUEST["Id"];
-if( isset($id) )
-    $query .= " where id='$id'";
+if( isset($_REQUEST["Id"]) )
+    $query .= " where id='" . $_REQUEST["Id"] . "'";
 
 $result = mysql_query($query, $con) or $xmlres->fatalSqlError($query);
 while ($row = @mysql_fetch_assoc($result))
