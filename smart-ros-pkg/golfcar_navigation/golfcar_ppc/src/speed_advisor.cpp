@@ -47,7 +47,7 @@ SpeedAdvisor::SpeedAdvisor()
     nh.param("map_frame_id", map_id_, string("map"));
     nh.param("dec_ints", dec_ints_, 0.5);
     nh.param("dec_station", dec_station_, 0.5);
-    nh.param("ppc_stop_dist", ppc_stop_dist_,5.0); //the stopping distance from ppc.
+    nh.param("ppc_stop_dist", ppc_stop_dist_, 5.0); //the stopping distance from ppc.
     //It was found that the distance given by move_status will reach as small as 4 meter
     //Hence, stopping distance should be at least larger than 4 for the stopping manoeuvre to work
 
@@ -192,7 +192,8 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
         // --> needs to stop.
         // The target velocity (sc.int_rec) is computed based on the distance
         // to the intersection stop point
-        sc.int_rec = sqrt(2 * dec_ints_ * int_h_.dist_to_int());
+        float d = int_h_.dist_to_int() - ppc_stop_dist_;
+        sc.int_rec = d<=0 ? 0 : sqrt(2 * dec_ints_ * d);
 
         ROS_DEBUG_STREAM("Intersection not clear. dist=" << int_h_.dist_to_int()
                 <<". Recommended speed: " <<sc.int_rec);

@@ -36,7 +36,7 @@ void IntersectionHandler::update(const pnc_msgs::move_status & status)
      */
     if( !initialised_ || (new_int && is_clear_to_go()) )
     {
-        ROS_DEBUG("Dealing with new intersection");
+        ROS_DEBUG_STREAM("Dealing with new intersection. " << status);
         initialised_ = true;
         marker_clicked_ = false;
         infra_clear_ = false;
