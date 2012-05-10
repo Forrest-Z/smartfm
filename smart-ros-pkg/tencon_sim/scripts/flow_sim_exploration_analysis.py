@@ -24,10 +24,11 @@ class PlotResults:
         self.t_dt = [scipy.stats.ttest_ind(r['dt']['base'], r['dt']['infra'])[0] for r in self.results]
 
 
-    def plot_3D_hist(self, zvar, name=''):
+    def plot_3D_hist(self, zvar, name='', fig=None, subplot=111):
         '''Plots the dt results as a 3D histogram.'''
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
+        if fig is None:
+            fig = plt.figure()
+        ax = fig.add_subplot(subplot, projection='3d')
         ax.set_title(name)
         
         # position of the bars origin
@@ -42,17 +43,20 @@ class PlotResults:
         dz = np.asarray(zvar)
         
         ax.bar3d(xpos, ypos, zpos, dx, dy, dz, color='b')
-        ax.set_xlabel('ped')
-        ax.set_ylabel('veh')
+        ax.set_xlabel('lambda_ped')
+        ax.set_ylabel('lambda_veh')
+        #TODO: put the values for lp and lv
         #ax.set_xticks(range(len(self.lp)))
         #ax.set_yticks(range(len(self.lv)))
         #ax.set_xticklabels([str(l) for l in self.lp])
         #ax.set_yticklabels([str(l) for l in self.lv])
     
         
-    def plot_color(self, zvar, name=''):
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+    def plot_color(self, zvar, name='', fig=None, subplot=111):
+        '''Plots the dt results as a color plot.'''
+        if fig is None:
+            fig = plt.figure()
+        ax = fig.add_subplot(subplot)
         ax.set_title(name)
         
         def linspace(v):
@@ -71,16 +75,24 @@ class PlotResults:
         ax.plot(self.lps, self.lvs, 'ko', ms=3)
         ax.set_xlim(min(self.lp),max(self.lp))
         ax.set_ylim(min(self.lv),max(self.lv))
+        ax.set_xlabel('lambda_ped')
+        ax.set_ylabel('lambda_veh')
     
     
     
 if __name__=='__main__':
     results = PlotResults('result.pickle.dat')
     
-    results.plot_3D_hist(results.t_dt, 'time gain (t value)')
-    results.plot_3D_hist(results.dt, 'time gain (raw value)')
+    #results.plot_3D_hist(results.t_dt, 'time gain (t value)')
+    #results.plot_3D_hist(results.dt, 'time gain (raw value)')
     
-    results.plot_color(results.t_dt, 'time gain (t value)')
-    results.plot_color(results.dt, 'time gain (raw value)')
+    #results.plot_color(results.t_dt, 'time gain (t value)')
+    #results.plot_color(results.dt, 'time gain (raw value)')
 
+    fig = plt.figure()
+    results.plot_3D_hist(results.t_dt, 'time gain (t value)', fig, 221)
+    results.plot_3D_hist(results.dt, 'time gain (raw value)', fig, 222)    
+    results.plot_color(results.t_dt, 'time gain (t value)', fig, 223)
+    results.plot_color(results.dt, 'time gain (raw value)', fig, 224)
+    
     plt.show()

@@ -109,12 +109,13 @@ class InfraVehicle(Vehicle):
         self.ped_vel = ped_vel
         self.ped_crossing_length = ped_crossing_length
         self.ped_crossing_width = ped_crossing_width
+        self.force_through = False
         
     def _acc_one_ped(self, p):
-        if p.x > self.ped_crossing_length:
+        if p.x >= self.ped_crossing_length:
             return 1, 'The pedestrian has crossed already.'
 
-        elif p.x < -self.ped_crossing_length:
+        elif p.x <= -self.ped_crossing_length:
             m = 'The pedestrian has not entered the crossing yet. '
             t1 = p.time_to_pos(-self.ped_crossing_length)
             t2 = p.time_to_pos(self.ped_crossing_length)
@@ -154,6 +155,26 @@ class InfraVehicle(Vehicle):
     def acc_peds(self, pedestrians):
         if self.x > 0:
             return 1, 'The vehicle has passed the pedestrian crossing already.'
+        
+        if self.force_through:
+            return 1, 'Forcing through.'
+        
+        if self.x > -self.ped_crossing_width-0.5 and round(self.v,2)==0:
+            # Stopped at pedestrian crossing. If none of the pedestrian is on
+            # the crossing then force through (to mimic the behavior of the 
+            # BaseVehicle).
+            self.force_through = True
+            for p in pedestrians:
+                if p.x>-self.ped_crossing_length and p.x<self.ped_crossing_length:
+                    self.force_through = False
+                    break
+                if p.x <= -self.ped_crossing_length:
+                    # pedestrians are sorted by order of arrival. All subsequent
+                    # pedestrians will be further than this one. Can skip
+                    # checking if they are on the pedestrian crossing.
+                    break
+            if self.force_through:
+                return 1, 'Stopped at pedestrian crossing and nobody on it. Forcing through.'
         
         if not self.must_decelerate_to_stop_at_pos(-self.ped_crossing_width):
             return 1, 'Accelerating because still very far.'
