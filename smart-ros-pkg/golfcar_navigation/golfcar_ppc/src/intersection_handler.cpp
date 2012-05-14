@@ -7,11 +7,11 @@ using infrastructure_road_monitoring::InfrastructureQuery;
 
 
 IntersectionHandler::IntersectionHandler()
-: initialised_(false), marker_server_ ("intersection"), dist_to_int_(10000)
+: initialised_(false), dist_to_int_(10000), marker_server_ ("intersection")
 {
     client_ = nh_.serviceClient<InfrastructureQuery>("infrastructure_query");
-    infra_timer_ = nh_.createTimer(ros::Duration(1),
-            &IntersectionHandler::infra_timer_callback, this);
+    infra_srv_thread_ = boost::thread( boost::bind(
+            &IntersectionHandler::infra_thread_fun, this) );
 }
 
 bool IntersectionHandler::is_clear_to_go() const
@@ -26,6 +26,13 @@ double IntersectionHandler::dist_to_int() const
 
 void IntersectionHandler::update(const pnc_msgs::move_status & status)
 {
+    if( status.int_point.x==0 && status.int_point.y==0 )
+    {
+        initialised_ = false;
+        dist_to_int_ = 100000;
+        return;
+    }
+
     bool new_int = ( int_point_.x!=status.int_point.x && int_point_.y!=status.int_point.y );
 
     /* If not initialised yet, then initialise with the new intersection info.
@@ -61,22 +68,28 @@ void IntersectionHandler::update(const pnc_msgs::move_status & status)
     }
 }
 
-void IntersectionHandler::infra_timer_callback(const ros::TimerEvent & dummy)
+void IntersectionHandler::infra_thread_fun()
 {
-    if( ! monitoring_ )
-        return;
+    while( true )
+    {
+        if( ! monitoring_ )
+        {
+            boost::this_thread::sleep( boost::posix_time::seconds(1) );
+            continue;
+        }
 
-    InfrastructureQuery srv;
-    srv.request.id = "tjunc";
-    if( client_.call(srv) )
-    {
-        infra_clear_ = srv.response.clear_to_go;
-        ROS_DEBUG("Service infrastructure_query returned %s", (infra_clear_ ? "true" : "false"));
-    }
-    else
-    {
-        ROS_WARN("Failed to call service infrastructure_query");
-        infra_clear_ = false;
+        InfrastructureQuery srv;
+        srv.request.id = "tjunc";
+        if( client_.call(srv) )
+        {
+            infra_clear_ = srv.response.clear_to_go;
+            ROS_DEBUG("Service infrastructure_query returned %s", (infra_clear_ ? "true" : "false"));
+        }
+        else
+        {
+            ROS_WARN("Failed to call service infrastructure_query");
+            infra_clear_ = false;
+        }
     }
 }
 

@@ -6,6 +6,8 @@
 #include <geometry_msgs/Point.h>
 #include <pnc_msgs/move_status.h>
 
+#include <boost/thread/thread.hpp>
+
 
 /** A class to handle going through intersections.
  *
@@ -58,7 +60,12 @@ private:
 
     ros::NodeHandle nh_;
     ros::ServiceClient client_;
+
+    // It is not wise to use a timer to call the service as the call mechanism is
+    // darn slow. Since the timer is in the same queue as other messages, it
+    // will slow down the whole speed_advisor. Use a thread instead
     ros::Timer infra_timer_;
+    boost::thread infra_srv_thread_;
 
     /// Marker server
     interactive_markers::InteractiveMarkerServer marker_server_;
@@ -69,8 +76,8 @@ private:
     /// Called when the marker is clickeddd
     void process_feedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &);
 
-    /// Timer callback for the infrastructure sensor monitoring
-    void infra_timer_callback(const ros::TimerEvent&);
+    /// check the infrastructure sensor monitoring
+    void infra_thread_fun();
 };
 
 
