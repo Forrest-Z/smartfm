@@ -54,7 +54,7 @@ Tracks::iterator TrackMatcherNNT::match(Tracks & tracks, const Blob & blob)
     for( Tracks::iterator it = tracks.begin(); it!=tracks.end(); ++it )
     {
         double d = it->distance(blob);
-        cout <<"   distance to track " <<it->id <<": " <<d <<endl;
+        //cout <<"   distance to track " <<it->id <<": " <<d <<endl;
         if( d < match_distance && d < match_threshold->threshold(*it, blob) )
         {
             match_distance = d;
