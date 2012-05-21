@@ -8,7 +8,7 @@ import rospy
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus
 import computer_monitor
 
-import socket
+import socket, string
 
 class SensorsMonitor(object):
     def __init__(self, hostname):
@@ -35,8 +35,9 @@ class SensorsMonitor(object):
         
 if __name__ == '__main__':
     hostname = socket.gethostname()
+    hostname_clean = string.translate(hostname, string.maketrans('-','_'))
     try:
-        rospy.init_node('sensors_monitor_%s'%hostname)
+        rospy.init_node('sensors_monitor_%s'%hostname_clean)
     except rospy.ROSInitException:
         print >> sys.stderr, 'Unable to initialize node. Master may not be running'
         sys.exit(0)

@@ -46,7 +46,7 @@ from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus
 from pr2_msgs.msg import GPUStatus
 
 import computer_monitor
-import socket
+import socket, string
 
 class NVidiaTempMonitor(object):
     def __init__(self, hostname):
@@ -82,7 +82,8 @@ class NVidiaTempMonitor(object):
 
 if __name__ == '__main__':
     hostname = socket.gethostname()
-    rospy.init_node('nvidia_temp_monitor_%s'%hostname)
+    hostname_clean = string.translate(hostname, string.maketrans('-','_'))
+    rospy.init_node('nvidia_temp_monitor_%s'%hostname_clean)
 
     monitor = NVidiaTempMonitor(hostname)
     my_rate = rospy.Rate(1.0)
