@@ -4,12 +4,10 @@
 '''Run a number of flow simulations with different parameters values.'''
 
 import sys, traceback
-#import cPickle as pickle
 import marshal
 import itertools
 import os, tarfile, tempfile
 
-sys.path.append('src')
 from tencon_sim import *
 
 
@@ -77,7 +75,7 @@ for lv, lp in itertools.product(lambda_veh, lambda_ped):
             print '-'*60
     if not ok:
         break
-    filename = '%s/lv_%03d_lp_%03d.dat' % (logdir, int(lv*100), int(lp*100))
+    filename = '%s/lv_%f_lp_%f.dat' % (logdir, lv, lp)
     with open(filename, 'wb') as f:
         marshal.dump(flow_sim.log, f)
 

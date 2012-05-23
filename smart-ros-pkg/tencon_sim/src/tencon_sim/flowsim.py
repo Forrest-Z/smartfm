@@ -13,7 +13,6 @@ The simulation is collecting results along the way:
 
 import math
 import numpy as np
-import scipy.stats
 import copy
 
 from vehicle import *

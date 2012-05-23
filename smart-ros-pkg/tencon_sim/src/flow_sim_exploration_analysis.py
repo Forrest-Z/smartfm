@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import sys
-#import cPickle as pickle
 import marshal
 import os, os.path, tarfile, tempfile, re
 
@@ -31,10 +30,14 @@ class PlotResults:
         self.logdir = logdir
         self.logfiles = sorted(os.listdir(logdir))
         for f in self.logfiles:
-            m = re.search('lv_(?P<lv>\d*)_lp_(?P<lp>\d*)', f)
-            self.lvs.append( float(m.group('lv'))/100 )
-            self.lps.append( float(m.group('lp'))/100 )
-            self.dts.append( self.extract_transit_times(self.logdir+'/'+f) )
+            m = re.search('lv_(?P<lv>[\d\.]*)_lp_(?P<lp>[\d\.]*).dat', f)
+            try:
+                self.lvs.append( float(m.group('lv')) )
+                self.lps.append( float(m.group('lp')) )
+            except KeyError:
+                print 'Skipping', f
+            else:
+                self.dts.append( self.extract_transit_times(self.logdir+'/'+f) )
         self.lp = sorted(set(self.lps))
         self.lv = sorted(set(self.lvs))
 

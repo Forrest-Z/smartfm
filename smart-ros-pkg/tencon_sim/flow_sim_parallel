@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [ -x parallel ]
+then
+    echo This requires GNU parallel to work >&2
+    exit 1
+fi
+
+lvs="0.01 0.05 0.1 0.25 0.5 0.75 1"
+lps="0.01 0.05 0.1 0.25 0.35 0.5"
+
+# lvs="0.01 0.05 0.1 0.25"
+# lps="0.01 0.05 0.1 0.25"
+
+opts="--sshlogin FMAutonomy,: --cleanup --return lv_{1}_lp_{2}.dat"
+
+parallel $opts flow_sim_unit.py --lv={1} --lp={2} --logfile=lv_{1}_lp_{2}.dat ::: $lvs ::: $lps
