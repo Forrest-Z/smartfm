@@ -3,8 +3,7 @@
 
 '''Run a flow simulation, taking parameters from the command line.'''
 
-import sys
-import marshal
+import sys, os, gzip, tempfile
 from optparse import OptionParser
 
 from tencon_sim import *
@@ -55,15 +54,16 @@ parser.add_option("--logfile", dest="logfile",
 (options, args) = parser.parse_args()
 params['lambda_ped'] = options.lp
 params['lambda_veh'] = options.lv
-logfile = options.logfile
 
 
 #------------------------------------------------------------------------------
 # run the simulation
 #
 
-flow_sim = FlowSim(params)
+fn = tempfile.mktemp()
+f = gzip.GzipFile(fn, 'w')
+flow_sim = FlowSim(params, f)
 while min([flow_sim.nvehs['base'], flow_sim.nvehs['infra']]) < 300:
     flow_sim.step()
-with open(logfile, 'wb') as f:
-    marshal.dump(flow_sim.log, f)
+f.close()
+os.rename(fn, options.logfile)

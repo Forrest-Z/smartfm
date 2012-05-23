@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-'''Run a number of flow simulations with different parameters values.'''
+'''Run a number of flow simulations with different parameters values.
+The simulations are logged in a file per simulation, in ascii format, gzipped
+and finally grouped into one tar file.
+'''
 
 import sys, traceback
-import marshal
 import itertools
-import os, tarfile, tempfile
+import os, tarfile, tempfile, gzip
 
 from tencon_sim import *
 
@@ -47,6 +49,8 @@ params['lambda_veh'] = 0.3
 
 lambda_veh = [0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1]
 lambda_ped = [0.01, 0.05, 0.1, 0.25, 0.35, 0.5]
+#lambda_veh = [0.01, 0.05, 0.1, 0.2]
+#lambda_ped = [0.01, 0.05, 0.1]
 #lambda_veh = [1]
 #lambda_ped = [0.5]
 
@@ -60,24 +64,22 @@ for lv, lp in itertools.product(lambda_veh, lambda_ped):
     print 'Simulating with lambda_veh=%g and lambda_ped=%g' % (lv, lp)
     params['lambda_ped'] = lp
     params['lambda_veh'] = lv
-    flow_sim = FlowSim(params)
+    tmplogfile = tempfile.mktemp()
+    f = gzip.GzipFile(tmplogfile, 'w')
+    flow_sim = FlowSim(params, f)
     while ok:
         try:
             flow_sim.step()
             #print flow_sim.t, flow_sim.nvehs
             if min([flow_sim.nvehs['base'], flow_sim.nvehs['infra']]) > 300:
+                f.close()
+                os.rename(tmplogfile, '%s/lv_%0.2f_lp_%0.2f.dat' % (logdir, lv, lp))
                 break
         except KeyboardInterrupt:
             ok = False
-        except:
-            print '-'*60
-            traceback.print_exc()
-            print '-'*60
+            f.close()
     if not ok:
         break
-    filename = '%s/lv_%f_lp_%f.dat' % (logdir, lv, lp)
-    with open(filename, 'wb') as f:
-        marshal.dump(flow_sim.log, f)
 
 
 tar = tarfile.open("result_logs.tar", "w")

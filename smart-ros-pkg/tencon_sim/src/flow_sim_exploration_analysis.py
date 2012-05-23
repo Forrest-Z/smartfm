@@ -1,15 +1,49 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sys
-import marshal
-import os, os.path, tarfile, tempfile, re
+import sys, os, os.path, tarfile, tempfile, re, gzip
 
 import numpy as np
 import scipy.stats
 import matplotlib.pyplot as plt
 import matplotlib.mlab
 from mpl_toolkits.mplot3d import Axes3D
+
+
+class SimState:
+    '''Holds the state of the simulation at a given instant: time step, pos and
+    vel of each mobile.
+    '''
+    def __init__(self):
+        self.t = 0
+        self.m = {'base':{}, 'infra':{}, 'peds':{}}
+
+    def __str__(self):
+        s = ['t='+str(round(self.t,2))]
+        for k in ['peds', 'base', 'infra']:
+            tmp = []
+            for mid, mval in self.m[k].items():
+                tmp.append( '(' + ', '.join([str(mid)] + [str(round(mval[kk],2)) for kk in ['pos', 'vel']]) + ')' )
+                s.append( k + '=[' + ', '.join(tmp) + ']' )
+        return ', '.join(s)
+
+
+def parseSimStateStr(s):
+    '''Parses a string with the following format and returns the corresponding
+    SimState object:
+    "t=1.2, peds=[(2, -3, 1), (3, -5, 1)], base=[], infra=[]"
+    '''
+    state = SimState()
+    m = re.search('t=([\-\d\.]*)', s)
+    state.t = float(m.group(1))
+    for k in ('peds', 'base', 'infra'):
+        m = re.search(k+'=\[([^\]]*)\]', s)
+        if m.group(1)!='':
+            mm = re.findall('\(([\-\d\.]*), ([\-\d\.]*), ([\-\d\.]*)\)', m.group(1))
+            for mmm in mm:
+                state.m[k][int(mmm[0])] = {'pos': float(mmm[1]), 'vel': float(mmm[2])}
+    return state
+
 
 
 class PlotResults:
@@ -19,9 +53,9 @@ class PlotResults:
         self.lvs = []
         self.dts = []
 
-    def load_from_tar(self, tarfile):
+    def load_from_tar(self, tarfn):
         logdir = tempfile.mkdtemp()
-        tar = tarfile.open(tarfile)
+        tar = tarfile.open(tarfn)
         tar.extractall(path=logdir)
         tar.close()
         self.load_from_dir(logdir)
@@ -48,38 +82,44 @@ class PlotResults:
         '''Goes through the raw data and extracts the transit times of all vehicles
         in both the base and infra condition.
         '''
-        with open(filename, 'rb') as f:
-            data = marshal.load(f)
+        # open the file (it's zipped)
+        f = gzip.GzipFile(filename,'r')
 
-        # For each base/infra condition
+        # store transit times here
         dts = {'base':[], 'infra':[]}
+
+        # maintain a record of entry times
+        entry = {'base':{}, 'infra':{}} #{id: t}
+
+        # initialize entry time with t0
+        line = f.readline()
+        state = parseSimStateStr(line)
         for k in ('base','infra'):
+            for vid in state.m[k]:
+                entry[k][vid] = state.t
+        prev_time = state.t
 
-            # maintain a record of entry times
-            entry = {} #{id: t}
-            # initialize with t0
-            for vid in data[k][0]:
-                entry[vid] = data['t'][0]
+        # iterate other lines
+        for line in f:
+            state = parseSimStateStr(line)
+            #print line, state
+            for k in ('base','infra'):
+                todel = []
+                for vid in entry[k]:
+                    if vid not in state.m[k]:
+                        # vehicle has disappeared
+                        dts[k].append(prev_time - entry[k][vid])
+                        todel.append(vid)
+                for vid in todel:
+                    del entry[k][vid]
 
-            # for each row, compare with previous row to find out
-            # vehicle ids that have been added and those that have
-            # been removed. Sets are useful for that.
-            prev_set = set(data[k][0])
-            for i in xrange(1, len(data['t'])):
-                new_set = set(data[k][i])
-                #print 'prev_set:', prev_set
-                #print 'new_set:', new_set
-                #print 'new vehicles (new_set-prev_set):', (new_set-prev_set)
-                #print 'removed vehicles (prev_set-new_set):', (prev_set-new_set)
-                for vid in new_set-prev_set:
-                    # vehicles that have appeared
-                    entry[vid] = data['t'][i]
-                for vid in prev_set-new_set:
-                    # vehicles that have disappeared
-                    dts[k].append(data['t'][i-1] - entry[vid])
-                    del entry[vid]
-                prev_set = new_set
+                for vid in state.m[k]:
+                    if vid not in entry[k]:
+                        # vehicle has appeared
+                        entry[k][vid] = state.t
+            prev_time = state.t
 
+        f.close()
         print '%s: base=%d,%f, infra=%d,%f, dt=%f' % \
             ( os.path.basename(filename), \
             len(dts['base']), np.mean(dts['base']), \

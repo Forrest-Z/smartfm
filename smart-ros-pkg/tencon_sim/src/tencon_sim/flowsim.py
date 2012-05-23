@@ -17,12 +17,17 @@ import copy
 
 from vehicle import *
 
-
 class FlowSim:
 
-    def __init__(self, params):
+    def __init__(self, params, logfile=None):
+        '''Constructor. params is a dictionnary with all the parameters for the
+        simulation. logfile, if given, is the file object to use for data logging.
+        '''
+
         # experimental parameters
         self.params = copy.deepcopy(params)
+
+        self.logfile = logfile
 
         # the current time
         self.t = 0
@@ -37,7 +42,6 @@ class FlowSim:
         self.nvehs = {'base': 0, 'infra': 0}
 
         # data log
-        self.log = {'t': [], 'base': [], 'infra': [], 'peds': []}
         self.last_log_t = 0
 
         # Populate the stream of pedestrians
@@ -123,15 +127,21 @@ class FlowSim:
         self._update_peds()
         self._update_vehs()
 
-        if self.do_log or self.t - self.last_log_t >= 1 or self._remove_mobiles(False):
-            self.log['t'].append(self.t)
-            self.log['peds'].append({})
-            for p in self.peds:
-                self.log['peds'][-1][p.id] = {'pos': p.x, 'vel': p.v}
-            for k in ('base', 'infra'):
-                self.log[k].append({})
-                for v in self.vehs[k]:
-                    self.log[k][-1][v.id] = {'pos': v.x, 'vel': v.v}
+        if self.logfile and ( self.do_log or self.t - self.last_log_t >= 1 \
+                              or self._remove_mobiles(False) ):
+            # log the current situation as a string:
+            # t=1.2, peds=[(2, -3, 1), (3, -5, 1)], base=[], infra=[]
+            # where for each mobile we are logging the id, position and velocity
+
+            log = ['t='+str(round(self.t,2))]
+
+            for k,ms in [('peds',self.peds), ('base',self.vehs['base']), ('infra', self.vehs['infra'])]:
+                tmp = []
+                for m in ms:
+                    tmp.append( '(' + ', '.join([str(m.id)] + [str(round(val,2)) for val in [m.x, m.v]]) + ')' )
+                log.append( k + '=[' + ', '.join(tmp) + ']' )
+
+            self.logfile.write( ', '.join(log) + '\n' )
             self.last_log_t = self.t
 
         self._remove_mobiles(True)
