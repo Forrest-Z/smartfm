@@ -52,38 +52,48 @@ class PlotResults:
         self.lps = []
         self.lvs = []
         self.dts = []
+        self.stability_p_val = []
+        self.dt = []
+        self.t_dt = []
 
     def load_from_tar(self, tarfn):
         logdir = tempfile.mkdtemp()
         tar = tarfile.open(tarfn)
+        print 'Extracting data files to', logdir
         tar.extractall(path=logdir)
         tar.close()
         self.load_from_dir(logdir)
 
     def load_from_dir(self, logdir):
         self.logdir = logdir
-        self.logfiles = sorted(os.listdir(logdir))
-        for f in self.logfiles:
+
+        self.logfiles = []
+        for f in sorted(os.listdir(logdir)):
+            # check all files in the directory but only process those that match
+            # the pattern
             m = re.search('lv_(?P<lv>[\d\.]*)_lp_(?P<lp>[\d\.]*).dat', f)
-            try:
+            if m.groupdict().has_key('lv') and m.groupdict().has_key('lp'):
+                self.logfiles.append(f)
                 self.lvs.append( float(m.group('lv')) )
                 self.lps.append( float(m.group('lp')) )
-            except KeyError:
-                print 'Skipping', f
-            else:
-                self.dts.append( self.extract_transit_times(self.logdir+'/'+f) )
+
+                # open the file and extract some useful data
+                self.extract_data( os.path.join(self.logdir,f) )
+
         self.lp = sorted(set(self.lps))
         self.lv = sorted(set(self.lvs))
 
-        self.dt = [np.mean(dt['base']) - np.mean(dt['infra']) for dt in self.dts]
-        self.t_dt = [scipy.stats.ttest_ind(dt['base'], dt['infra'])[0] for dt in self.dts]
 
-    def extract_transit_times(self, filename):
-        '''Goes through the raw data and extracts the transit times of all vehicles
-        in both the base and infra condition.
+    def extract_data(self, filename):
+        '''Goes through the raw data and extracts meaningful data in both the
+        base and infra condition:
+        - the transit times of vehicles (dts), which is the time taken for each
+          vehicle to transit from the launch point to after the pedestrian
+          crossing. It is returned as a list of transit times.
         '''
+
         # open the file (it's zipped)
-        f = gzip.GzipFile(filename,'r')
+        f = gzip.GzipFile(filename, 'r')
 
         # store transit times here
         dts = {'base':[], 'infra':[]}
@@ -120,12 +130,26 @@ class PlotResults:
             prev_time = state.t
 
         f.close()
-        print '%s: base=%d,%f, infra=%d,%f, dt=%f' % \
+        self.dts.append(dts)
+        self.dt.append( np.mean(dts['base']) - np.mean(dts['infra']) )
+        t, p = scipy.stats.ttest_ind(dts['base'], dts['infra'])
+        self.t_dt.append(t)
+
+        # compute the stability metric: t-test between first half and
+        # second half of the transit time data.
+        stability_p_val = {}
+        for k in ('base', 'infra'):
+            n = int(len(dts[k])/2)
+            t, p =  scipy.stats.ttest_ind(dts[k][:n],dts[k][n:])
+            stability_p_val[k] = p
+        self.stability_p_val.append(stability_p_val)
+
+        print '%s: base=%d,%.2f,%.2f, infra=%d,%.2f,%.2f, dt=%2f, t_dt=%.2f' % \
             ( os.path.basename(filename), \
-            len(dts['base']), np.mean(dts['base']), \
-            len(dts['infra']), np.mean(dts['infra']), \
-            np.mean(dts['base'])-np.mean(dts['infra']) )
-        return dts
+            len(dts['base']), np.mean(dts['base']), stability_p_val['base'], \
+            len(dts['infra']), np.mean(dts['infra']), stability_p_val['infra'], \
+            self.dt[-1], self.t_dt[-1] )
+
 
     def plot_3D_hist(self, zvar, name='', fig=None, subplot=111):
         '''Plots the dt results as a 3D histogram.'''

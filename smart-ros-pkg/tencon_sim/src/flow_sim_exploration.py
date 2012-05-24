@@ -4,6 +4,9 @@
 '''Run a number of flow simulations with different parameters values.
 The simulations are logged in a file per simulation, in ascii format, gzipped
 and finally grouped into one tar file.
+All simulations are ran sequentially in one process, i.e. on a single core,
+which can be pretty slow. If GNU parallel is available, then you are better off
+running the flow_sim_parallel script.
 '''
 
 import sys, traceback

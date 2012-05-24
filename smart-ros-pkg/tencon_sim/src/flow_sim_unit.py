@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-'''Run a flow simulation, taking parameters from the command line.'''
+'''Run a flow simulation, taking parameters from the command line. Useful when
+distributing several simulations onto several cores/machines.
+'''
 
 import sys, os, gzip, tempfile
 from optparse import OptionParser

@@ -1,19 +1,44 @@
 #!/bin/bash
 
-if [ -x parallel ]
+#-------------------------------------------------------------------------------
+# This script runs several simulations with different values of lambda_ped
+# and lambda_veh, much as flow_sim_exploration does, except that each simulation
+# is ran in a different process (using flow_sim_unit), which allow to distribute
+# the load across different nodes. GNU parallel is used to handle the
+# distribution process.
+#-------------------------------------------------------------------------------
+
+# verify that GNU parallel is available
+# first verify that there is a parallel command
+command -v trash >/dev/null 2>&1 || { echo This requires GNU parallel >&2; exit 1; }
+
+# then verify that this is actually GNU parallel
+if [ -z "`parallel -V | head -n 1 | grep 'GNU parallel'`" ]
 then
-    echo This requires GNU parallel to work >&2
+    echo This requires GNU parallel >&2
     exit 1
 fi
 
+# values for lambda_veh and lambda_ped
 lvs="1 0.75 0.5 0.25 0.1 0.05 0.01"
-lps="0.5 0.25 0.1 0.05 0.01"
-
+lps="0.5 0.25 0.15 0.1 0.07 0.4 0.01"
 # lvs="0.75 0.5 0.25 0.1 0.05 0.01"
 # lps="0.25 0.1 0.05 0.01"
 
-#opts="--sshlogin FMAutonomy,: --cleanup --return lv_{1}_lp_{2}.dat"
+#
+# options
 
-parallel --progress --eta $opts flow_sim_unit.py --lv={1} --lp={2} --logfile=lv_{1}_lp_{2}.dat ::: $lvs ::: $lps
+opts=""
+
+# uncomment next line to distribute to a different computer
+# GNU parallel must be installed, as well as flow_sim_unit
+# Check GNU parallel documentation
+#opts="$opts --sshlogin FMAutonomy,: --cleanup --return lv_{1}_lp_{2}.dat"
+
+# report progress
+opts="$opts --progress --eta"
+
+# this command is a bit cryptic. Check GNU parallel documentation
+parallel $opts flow_sim_unit.py --lv={1} --lp={2} --logfile=lv_{1}_lp_{2}.dat ::: $lvs ::: $lps
 
 tar cf result_logs.tar lv*dat
