@@ -105,7 +105,10 @@ class PlotResults:
         self.data.append(data)
 
         # open the file (it's zipped)
-        f = gzip.GzipFile(filename, 'r')
+        if filename.endswith('gz'):
+            f = gzip.GzipFile(filename, 'rb')
+        else:
+            f = open(filename, 'rb')
 
         # store transit times here
         data['dts'] = {'base':[], 'infra':[]}

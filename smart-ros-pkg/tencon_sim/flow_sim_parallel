@@ -20,10 +20,12 @@ then
 fi
 
 # values for lambda_veh and lambda_ped
-lvs="0.80 0.60 0.40 0.30 0.20 0.10 0.01"
-lps="0.40 0.20 0.10 0.07 0.04 0.01 0.00"
+# lvs="0.80 0.60 0.40 0.30 0.20 0.10 0.01"
+# lps="0.40 0.20 0.10 0.07 0.04 0.01 0.00"
 # lvs="0.75 0.5 0.25 0.1 0.05 0.01"
 # lps="0.25 0.1 0.05 0.01"
+lvs="0.50 0.30"
+lps="0.01 0.00"
 
 #
 # options
@@ -33,12 +35,13 @@ opts=""
 # uncomment next line to distribute to a different computer
 # GNU parallel must be installed, as well as flow_sim_unit
 # Check GNU parallel documentation
-opts="$opts --sshlogin FMAutonomy,: --cleanup --return lv_{1}_lp_{2}.dat"
+# opts="$opts --sshlogin FMAutonomy,: --cleanup --return lv_{1}_lp_{2}.dat.gz"
 
 # report progress
-opts="$opts --progress --eta"
+opts="$opts --progress"
 
 # this command is a bit cryptic. Check GNU parallel documentation
-parallel $opts flow_sim_unit.py --lv={1} --lp={2} --logfile=lv_{1}_lp_{2}.dat ::: $lvs ::: $lps
+parallel $opts flow_sim_unit.py --lv={1} --lp={2} --logfile=lv_{1}_lp_{2}.dat.gz ::: $lvs ::: $lps
 
-tar cf result_logs.tar lv*dat
+tar cf result_logs.tar lv_*_lp_*
+rm lv_*_lp_*

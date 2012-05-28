@@ -5,7 +5,7 @@
 distributing several simulations onto several cores/machines.
 '''
 
-import sys, os, gzip, tempfile
+import sys, os, gzip, tempfile, shutil
 from optparse import OptionParser
 
 from tencon_sim import *
@@ -63,9 +63,12 @@ params['lambda_veh'] = options.lv
 #
 
 fn = tempfile.mktemp()
-f = gzip.GzipFile(fn, 'w')
+if options.logfile.endswith('gz'):
+    f = gzip.GzipFile(fn, 'wb')
+else:
+    f = open(fn, 'wb')
 flow_sim = FlowSim(params, f)
 while min([flow_sim.nvehs['base'], flow_sim.nvehs['infra']]) < 300:
     flow_sim.step()
 f.close()
-os.rename(fn, options.logfile)
+shutil.move(fn, options.logfile)
