@@ -20,8 +20,8 @@ then
 fi
 
 # values for lambda_veh and lambda_ped
-lvs="1 0.75 0.5 0.25 0.1 0.05 0.01"
-lps="0.5 0.25 0.15 0.1 0.07 0.4 0.01"
+lvs="0.80 0.60 0.40 0.30 0.20 0.10 0.01"
+lps="0.40 0.20 0.10 0.07 0.04 0.01 0.00"
 # lvs="0.75 0.5 0.25 0.1 0.05 0.01"
 # lps="0.25 0.1 0.05 0.01"
 
@@ -33,7 +33,7 @@ opts=""
 # uncomment next line to distribute to a different computer
 # GNU parallel must be installed, as well as flow_sim_unit
 # Check GNU parallel documentation
-#opts="$opts --sshlogin FMAutonomy,: --cleanup --return lv_{1}_lp_{2}.dat"
+opts="$opts --sshlogin FMAutonomy,: --cleanup --return lv_{1}_lp_{2}.dat"
 
 # report progress
 opts="$opts --progress --eta"
