@@ -57,12 +57,12 @@ Revised Jan 2012 to adapt to new rosserial API (ros electric)
 // pin connection
 enum { emergency_pin = 2, throttle_pin,
   l293_3_pin, l293_2_pin, l293_4_pin, l293_1_pin,
-  auto_mode_pin, steer_pulse_pin, steer_dir_pin, brake_pulse_pin, brake_dir_pin,
+  auto_mode_pin, brake_dir_pin, brake_pulse_pin, steer_pulse_pin, steer_dir_pin,
   motors_enable_pin };
 
 uint8_t right_blinker_pin = l293_1_pin;
 uint8_t left_blinker_pin = l293_2_pin;
-uint8_t stop_light_pin = l293_3_pin;
+uint8_t stop_light_pin = l293_4_pin;
 
 
 
@@ -237,6 +237,8 @@ void button_state()
     }
     else {
       set_brake(0);
+      right_blinker.set(false);
+      left_blinker.set(false);
     }
     emergency_msg.data = emergency;
     emergency_pub.publish( &emergency_msg );
@@ -257,7 +259,7 @@ void loop()
   button_state();
   nh.spinOnce();
 
-  if( motorsEnabled && (prev_in_msg_time==0 || time > prev_in_msg_time + 5000) )
+  if( motorsEnabled && (prev_in_msg_time==0 || time > prev_in_msg_time + 1000) )
     setMotorsEnabled(false);
 
 
