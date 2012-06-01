@@ -44,7 +44,7 @@ import rospy
 import traceback
 import threading
 from threading import Timer
-import sys, os, time
+import sys, os, time, string
 from time import sleep
 import subprocess
 
@@ -105,7 +105,7 @@ def get_hddtemp_data(hostname = 'localhost', port = 7634):
         return True, drives, makes, temps
     except:
         rospy.logerr(traceback.format_exc())
-        return False, [ 'Exception' ], [ traceback.format_exc() ], [ 0 ]
+        return False, [ 'Exception' ], [ traceback.format_exc() ], [ '0' ]
 
 def update_status_stale(stat, last_update_time):
     time_since_update = rospy.get_time() - last_update_time
@@ -331,6 +331,10 @@ class hd_monitor():
                 update_status_stale(self._usage_stat, self._last_usage_time)
                 msg.status.append(self._usage_stat)
 
+            for s in msg.status:
+                for v in s.values:
+                    print v, type(v.value)
+
             if rospy.get_time() - self._last_publish_time > 0.5:
                 self._diag_pub.publish(msg)
                 self._last_publish_time = rospy.get_time()
@@ -354,9 +358,10 @@ if __name__ == '__main__':
     home_dir = ''
     if len(args) > 1:
         home_dir = args[1]
-
+   
+    hostname_clean = string.translate(hostname, string.maketrans('-','_'))
     try:
-        rospy.init_node('hd_monitor_%s' % hostname)
+        rospy.init_node('hd_monitor_%s' % hostname_clean)
     except rospy.exceptions.ROSInitException:
         print 'HD monitor is unable to initialize node. Master may not be running.'
         sys.exit(0)

@@ -243,6 +243,7 @@ class MixAmclNode
      
     //add on 20111222, to publish invalid curb data;
     ros::Publisher invalid_curb_pub_;
+    ros::Publisher valid_curb_pub_;
 };
 
 #define USAGE "USAGE: amcl"
@@ -484,6 +485,7 @@ MixAmclNode::MixAmclNode() :
   initial_pose_sub_old_ = nh_.subscribe("initialpose", 2, &MixAmclNode::initialPoseReceivedOld, this);
   
   invalid_curb_pub_ = nh_.advertise<sensor_msgs::PointCloud>("invalid_curb", 2);
+  valid_curb_pub_ = nh_.advertise<sensor_msgs::PointCloud>("valid_curb", 2);
   
   ROS_INFO("Construction Finished");
 }
@@ -1077,6 +1079,7 @@ void MixAmclNode::curbReceived (const sensor_msgs::PointCloud::ConstPtr& cloud_i
             
             curb_->UpdateSensor(pf_, (AMCLSensorData*) curbdata_, FlagPointer, validate_function_switch, src);
             invalid_curb_pub_.publish(curbdata_->invalidCurbSeg_);
+            valid_curb_pub_.publish(curbdata_->validCurbSeg_);
             
             if(LaserUseFlag_){numTresh_ = 15;}
             else{numTresh_ = 15;}
