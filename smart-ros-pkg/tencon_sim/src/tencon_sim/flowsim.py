@@ -17,6 +17,25 @@ import copy
 
 from vehicle import *
 
+
+class PoissonGenerator:
+    '''This is a generator for a poisson process. When called with the current
+    time, it returns whether to generate a mobile or not, and if yes, it computes
+    the next generation time.
+    '''
+    def __init__(self, rate):
+        self.rate = rate #lambda is a reserved keyword
+        self.next_time = self.draw()
+
+    def draw(self):
+        return - np.log( np.random.random() ) / self.rate
+
+    def __call__(self, t):
+        if t >= self.next_time:
+            self.next_time += self.draw()
+            return True
+        return False
+
 class FlowSim:
 
     def __init__(self, params, logfile=None):
@@ -44,10 +63,15 @@ class FlowSim:
         # data log
         self.last_log_t = 0
 
+        # create a generator for each stream
+        self.ped_gen = PoissonGenerator(self.params['lambda_ped'])
+        self.veh_gen = PoissonGenerator(self.params['lambda_veh'])
+
         # Populate the stream of pedestrians
         N = self.params['lambda_ped'] / self.params['ped_vel'] * abs(self.params['ped_start_pos'])
         while len(self.peds) < int(math.floor(N)):
             self._update_peds()
+            self.t += self.params['sim_time_step']
 
     def _update_peds(self):
         '''Updates the stream of pedestrians: updates their position and velocity
@@ -55,8 +79,7 @@ class FlowSim:
         for p in self.peds:
             p.update()
 
-        lam = self.params['lambda_ped'] * self.params['sim_time_step']
-        if np.random.poisson(lam):
+        if self.ped_gen(self.t):
             self.do_log = True
             p = self.peds.append( Mobile(x0=self.params['ped_start_pos'],
                                     v_max=self.params['ped_vel'],
@@ -69,8 +92,7 @@ class FlowSim:
             for v in self.vehs[k]:
                 v.update(self.vehs[k], self.peds)
 
-        lam = self.params['lambda_veh'] * self.params['sim_time_step']
-        if np.random.poisson(lam):
+        if self.veh_gen(self.t):
             for k in ('base', 'infra'):
                 #if self.vehs[k]!=[] and self.vehs[k][-1].x < self.params['veh_start_pos'] + 2:
                 #    raise RuntimeError("Queue full")

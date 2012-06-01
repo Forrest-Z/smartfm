@@ -33,7 +33,7 @@ pedPub = rospy.Publisher('pedestrians', PointCloud)
 
 params = {}
 
-# time step of the simulation:
+# time step of the simulation
 params['sim_time_step'] = 0.1
 
 # position of the beginning of the pedestrian crossing on the pedestrian axis

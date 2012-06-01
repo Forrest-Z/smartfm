@@ -52,10 +52,14 @@ parser.add_option("--lv", dest="lv", type='float',
                   metavar="VAL")
 parser.add_option("--logfile", dest="logfile",
                   help="log into FILE", metavar="FILE")
+parser.add_option("--veh_max_vel", dest="veh_max_vel", type='float',
+                  help="sets the the velocity of vehicles",
+                  metavar="VAL", default=params['veh_max_vel'])
 
 (options, args) = parser.parse_args()
 params['lambda_ped'] = options.lp
 params['lambda_veh'] = options.lv
+params['veh_max_vel'] = options.veh_max_vel
 
 
 #------------------------------------------------------------------------------
