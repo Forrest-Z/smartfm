@@ -32,6 +32,7 @@ link_directories(${OCTOMAP_LIBRARY_DIRS})
 link_libraries(${OCTOMAP_LIBRARIES})
 
 #common commands for building c++ executables and libraries
+rosbuild_add_executable(pip_test src/pip_test.cpp)
 rosbuild_add_executable(ped_clustering src/ped_clustering.cpp)
 rosbuild_link_boost(ped_clustering signals)
 
