@@ -11,6 +11,7 @@
 	 </node>
 	 <node name="ped_momdp_local_transform" pkg="ped_momdp_sarsop" type="local_frame" output="screen">
 	    <param name="global_frame" value="odom"/>
+        <param name="threshold" value="0.0"/>
 	</node>
 
 </launch>
