@@ -67,8 +67,8 @@ void ped_clustering::getOctomap()
 {
     const static std::string servname = "octomap_binary";
     ROS_INFO("Requesting the map from %s...", nh.resolveName(servname).c_str());
-    octomap_msgs::GetOctomap::Request req;
-    octomap_msgs::GetOctomap::Response resp;
+    octomap_ros::GetOctomap::Request req;
+    octomap_ros::GetOctomap::Response resp;
     while(nh.ok() && !ros::service::call(servname, req, resp))
     {
         ROS_WARN("Request to %s failed; trying again...", nh.resolveName(servname).c_str());
@@ -82,7 +82,7 @@ void ped_clustering::getOctomap()
     sequential_clustering_ = false;
     octomapTreeToPCLoctree(resp.map, global_pclOctree_);
 }
-void ped_clustering::octomapTreeToPCLoctree(octomap_msgs::OctomapBinary& octomap, pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>* pcl_octree)
+void ped_clustering::octomapTreeToPCLoctree(octomap_ros::OctomapBinary& octomap, pcl::octree::OctreePointCloud<pcl::PointXYZ>* pcl_octree)
 {
     std::list<octomap::point3d> all_cells;
     int level=15;
@@ -104,7 +104,7 @@ void ped_clustering::octomapTreeToPCLoctree(octomap_msgs::OctomapBinary& octomap
     }
 
     double resolution = octree.getResolution();
-    global_pclOctree_ = new pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>(resolution);
+    global_pclOctree_ = new pcl::octree::OctreePointCloud<pcl::PointXYZ>(resolution);
 
     global_pclOctree_->setInputCloud(pcl_out.makeShared());
     global_pclOctree_->addPointsFromInputCloud();
@@ -136,7 +136,7 @@ void ped_clustering::octomapTreeToPCLoctree(octomap_msgs::OctomapBinary& octomap
     }
 }
 
-void ped_clustering::filterPCLOctreeNN(pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> &priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub_, double threshold)
+void ped_clustering::filterPCLOctreeNN(pcl::octree::OctreePointCloud<pcl::PointXYZ> &priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub_, double threshold)
 {
     cout<<"Filtering with points "<< pc_in.points.size()<<endl;
     int missed = 0;
@@ -493,8 +493,8 @@ void ped_clustering::extractCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_fi
 {
     if(cloud_filtered->size()==0) return;
     // Creating the KdTree object for the search method of the extraction
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-    //pcl::KdTreeFLANN<pcl::PointXYZ>::Ptr tree (new pcl::KdTreeFLANN<pcl::PointXYZ>);
+    //pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
+    pcl::KdTreeFLANN<pcl::PointXYZ>::Ptr tree (new pcl::KdTreeFLANN<pcl::PointXYZ>);
     tree->setInputCloud (cloud_filtered);
 
 

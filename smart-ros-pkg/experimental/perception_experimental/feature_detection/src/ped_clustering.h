@@ -20,7 +20,7 @@
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/common/common.h>
 #include <pcl/common/pca.h>
-#include <pcl/octree/octree_search.h>
+#include <pcl/octree/octree.h>
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <fmutil/fm_math.h>
@@ -36,8 +36,8 @@
 #include <feature_detection/cluster.h>
 
 #include <octomap_ros/OctomapROS.h>
-#include <octomap_msgs/GetOctomap.h>
-#include <octomap_msgs/OctomapBinary.h>
+#include <octomap_ros/GetOctomap.h>
+#include <octomap_ros/OctomapBinary.h>
 #include <octomap/octomap.h>
 #include <pcl/filters/radius_outlier_removal.h>
 
@@ -58,8 +58,8 @@ private:
                         double clusterTolerance, int minSize,int maxSize);
     void laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in);
     void filterPriorMap(octomap::OcTree& priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub_, double threshold);
-    void octomapTreeToPCLoctree(octomap_msgs::OctomapBinary& octomap, pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>* pcl_octree);
-    void filterPCLOctreeNN(pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> &priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub_, double threshold);
+    void octomapTreeToPCLoctree(octomap_ros::OctomapBinary& octomap, pcl::octree::OctreePointCloud<pcl::PointXYZ>* pcl_octree);
+    void filterPCLOctreeNN(pcl::octree::OctreePointCloud<pcl::PointXYZ> &priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub_, double threshold);
     message_filters::Subscriber<sensor_msgs::PointCloud2> cloud_sub_;
     message_filters::Subscriber<sensor_msgs::LaserScan> laser_sub_;
     ros::Publisher cloud_pub_, filter_pub_, after_line_filter_pub_, after_prior_filter_pub_;
@@ -75,7 +75,7 @@ private:
     bool bounding_box_filter_, line_filter_;
     bool sequential_clustering_, use_octomap_;
     octomap::OcTree* global_octMap;
-    pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>* global_pclOctree_;
+    pcl::octree::OctreePointCloud<pcl::PointXYZ>* global_pclOctree_;
     void getOctomap();
     ros::NodeHandle nh;
 
