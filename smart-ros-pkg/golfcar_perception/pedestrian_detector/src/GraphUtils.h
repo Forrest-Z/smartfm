@@ -62,7 +62,7 @@ void showImage(const IplImage *img, int delay_ms DEFAULT(0), char *name DEFAULT(
 // Call 'setGraphColor(0)' to reset the colors that will be used for graphs.
 void setGraphColor(int index DEFAULT(0));
 // Specify the exact color that the next graph should be drawn as.
-void setCustomGraphColor(int R, int B, int G);
+void setCustomGraphColor(cv::Scalar color);
 
 
 

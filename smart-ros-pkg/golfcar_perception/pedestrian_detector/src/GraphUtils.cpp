@@ -66,9 +66,9 @@ void setGraphColor(int index)
 	usingCustomGraphColor = 0;	// dont use a custom color.
 }
 // Specify the exact color that the next graph should be drawn as.
-void setCustomGraphColor(int R, int B, int G)
+void setCustomGraphColor(cv::Scalar color)
 {
-	customGraphColor = CV_RGB(R, G, B);
+	customGraphColor = CV_RGB(color[0], color[1], color[2]);
 	usingCustomGraphColor = 1;	// show that it will be used.
 }
 
@@ -78,7 +78,7 @@ IplImage* drawFloatGraph(const float *arraySrc, int nArrayLength, IplImage *imag
 {
 	int w = width;
 	int h = height;
-	int b = 10;		// border around graph within the image
+	int b = 25;		// border around graph within the image
 	if (w <= 20)
 		w = nArrayLength + b*2;	// width of the image
 	if (h <= 20)
@@ -133,13 +133,19 @@ IplImage* drawFloatGraph(const float *arraySrc, int nArrayLength, IplImage *imag
 	cvInitFont(&font,CV_FONT_HERSHEY_PLAIN,0.55,0.7, 0,1,CV_AA);	// For OpenCV 1.1
 	if (showScale) {
 		//cvInitFont(&font,CV_FONT_HERSHEY_PLAIN,0.5,0.6, 0,1, CV_AA);	// For OpenCV 2.0
-		CvScalar clr = GREY;
+		CvScalar clr = BLACK;
 		char text[16];
-		sprintf_s(text, sizeof(text)-1, "%.1f", maxV);
+		sprintf_s(text, sizeof(text)-1, "%.2f", maxV);
 		cvPutText(imageGraph, text, cvPoint(1, b+4), &font, clr);
+		sprintf_s(text, sizeof(text)-1, "%.2f", maxV/4);
+		cvPutText(imageGraph, text, cvPoint(1, b+4+s-s/4), &font, clr);
+		sprintf_s(text, sizeof(text)-1, "%.2f", maxV/4*2);
+		cvPutText(imageGraph, text, cvPoint(1, b+4+s-s/2), &font, clr);
+		sprintf_s(text, sizeof(text)-1, "%.2f", maxV/4*3);
+		cvPutText(imageGraph, text, cvPoint(1, b+4+s-s/4*3), &font, clr);
 		// Write the scale of the x axis
-		sprintf_s(text, sizeof(text)-1, "%d", (nArrayLength-1) );
-		cvPutText(imageGraph, text, cvPoint(w-b+4-5*strlen(text), (h/2)+10), &font, clr);
+		//sprintf_s(text, sizeof(text)-1, "%d", (nArrayLength-1) );
+		//cvPutText(imageGraph, text, cvPoint(w-b+4-5*strlen(text), (h/2)+10), &font, clr);
 	}
 
 	// Draw the values
@@ -155,7 +161,8 @@ IplImage* drawFloatGraph(const float *arraySrc, int nArrayLength, IplImage *imag
 	// Write the graph label, if desired
 	if (graphLabel != NULL && strlen(graphLabel) > 0) {
 		//cvInitFont(&font,CV_FONT_HERSHEY_PLAIN, 0.5,0.7, 0,1,CV_AA);
-		cvPutText(imageGraph, graphLabel, cvPoint(30, 10), &font, CV_RGB(0,0,0));	// black text
+		cvInitFont(&font,CV_FONT_HERSHEY_PLAIN,1.0,1.0, 0,1,CV_AA);
+		cvPutText(imageGraph, graphLabel, cvPoint(30, 15), &font, CV_RGB(0,0,0));	// black text
 	}
 
 	return imageGraph;

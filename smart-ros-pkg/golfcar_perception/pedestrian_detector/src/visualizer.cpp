@@ -32,7 +32,8 @@ using namespace message_filters;
 using namespace sensing_on_road;
 struct pedBelife_vis
 {
-    double left_side, right_side;
+    //double left_side, right_side;
+    vector<double> goals;
     int decision;
     int id;
 };
@@ -80,7 +81,17 @@ private:
     void drawBeliefChart();
     void resetBeliefChart();
     void resetSpeedChart();
+    void updateBelief();
+    void extrapolateBelief();
+    vector<Scalar> colors;
+
+    ros::Time beliefLastUpdate;
+    int trackingID;
+    bool endBeliefChart;
 };
+
+enum color_t
+{PURPLE, BLUE, RED, GREEN};
 
 Visualizer::Visualizer(ros::NodeHandle &n) : n_(n), it_(n_)
 {
@@ -112,9 +123,15 @@ Visualizer::Visualizer(ros::NodeHandle &n) : n_(n), it_(n_)
     cmd_vel_stamped_pub_ = n.advertise<geometry_msgs::TwistStamped>("cmd_vel_stamped", 10);
 
     ped_bel_sub_ = n.subscribe("peds_believes", 1, &Visualizer::pedBeliefCallback, this);
-    belief_chart_size = 30;
-    speedcmd_chart_size = 200;
+    belief_chart_size = 400;
+    speedcmd_chart_size = 400;
 
+    colors.push_back(Scalar(255, 0, 246));//246, 0)); //purple
+    colors.push_back(Scalar(30, 0, 255));//255, 0)); //blue
+    colors.push_back(Scalar(255, 0, 0)); //red
+    colors.push_back(Scalar(0, 255, 0));//0, 255)); //green
+
+    beliefLastUpdate = ros::Time::now();
     resetBeliefChart();
     resetSpeedChart();
     ros::spin();
@@ -122,6 +139,7 @@ Visualizer::Visualizer(ros::NodeHandle &n) : n_(n), it_(n_)
 
 void Visualizer::resetBeliefChart()
 {
+	endBeliefChart = false;
 	chart.BL.clear();
 	chart.BR.clear();
 	chart.TR.clear();
@@ -132,6 +150,7 @@ void Visualizer::resetBeliefChart()
 	chart.TR.resize(belief_chart_size);
 	chart.TL.resize(belief_chart_size);
 
+	trackingID = -1;
 }
 
 void Visualizer::resetSpeedChart()
@@ -154,6 +173,7 @@ void Visualizer::cmdVellCallback(geometry_msgs::Twist cmdvel)
 
 void Visualizer::speedCallback(const geometry_msgs::TwistStampedConstPtr cmd, const nav_msgs::OdometryConstPtr feedback)
 {
+	cout <<"Speed sync!"<<endl;
 	sp_chart.cmd.erase(sp_chart.cmd.begin());
 	sp_chart.feedback.erase(sp_chart.feedback.begin());
 
@@ -161,17 +181,20 @@ void Visualizer::speedCallback(const geometry_msgs::TwistStampedConstPtr cmd, co
 	sp_chart.feedback.insert(sp_chart.feedback.end(), feedback->twist.twist.linear.x);
 
 	IplImage *img = cvLoadImage("/home/demian/blank.png");
-	setCustomGraphColor(255, 0, 0); //red
+	setCustomGraphColor(colors[RED]); //red
 	drawFloatGraph(&sp_chart.cmd[0], sp_chart.cmd.size(), img, 0, 2.0, img->width, img->height, "Speed command");
-	setCustomGraphColor(0, 0, 255); //green
+	setCustomGraphColor(colors[GREEN]); //green
 	//drawFloatGraph(&sp_chart.feedback[0], sp_chart.feedback.size(), img, 0, 2.5, img->width, img->height);
-	IplImage *img2 = cvCreateImage(cvSize(img->width*0.8,img->height*0.8), 8, 3);
+	IplImage *img2 = cvCreateImage(cvSize(img->width,img->height), 8, 3);
 	cvResize(img, img2);
-	cvNamedWindow("Speed Red: speed cmd, Green: speed feedback", CV_WINDOW_AUTOSIZE);
-	cvShowImage("Speed Red: speed cmd, Green: speed feedback", img2);
-	if((char)cvWaitKey(3) == 'r') resetSpeedChart();
+	cvNamedWindow("Speed Command", CV_WINDOW_AUTOSIZE);
+	cvShowImage("Speed Command", img2);
+	if((char)cvWaitKey(3) == 's') resetSpeedChart();
 	cvReleaseImage(&img);
 	cvReleaseImage(&img2);
+
+	extrapolateBelief();
+	drawBeliefChart();
 }
 
 void Visualizer::syncCallback(const sensor_msgs::ImageConstPtr image, const sensing_on_road::pedestrian_vision_batchConstPtr vision_roi)
@@ -224,7 +247,7 @@ void Visualizer::syncCallback(const sensor_msgs::ImageConstPtr image, const sens
     Mat img2;
     resize(img, img2, Size(), 0.8, 0.8);
     imshow(ros::this_node::getName().c_str(), img2);
-    drawBeliefChart();
+    //drawBeliefChart();
     cvWaitKey(3);
 }
 
@@ -236,49 +259,81 @@ void Visualizer::syncCallback(const sensor_msgs::ImageConstPtr image, const sens
 void Visualizer::drawBeliefChart()
 {
 	IplImage *img = cvLoadImage("/home/demian/blank.png");
-	setCustomGraphColor(255, 246, 0); //purple
-	drawFloatGraph(&chart.BL[0], chart.BL.size(), img, 0, 1, img->width, img->height);
-	setCustomGraphColor(30, 255, 0); //blue
+	setCustomGraphColor(colors[PURPLE]); //purple
+	drawFloatGraph(&chart.BL[0], chart.BL.size(), img, 0, 1, img->width, img->height, "Pedestrian Belief");
+	setCustomGraphColor(colors[BLUE]); //blue6
 	drawFloatGraph(&chart.BR[0], chart.BR.size(), img, 0, 1, img->width, img->height);
-	setCustomGraphColor(255, 0, 0); //red
+	setCustomGraphColor(colors[RED]); //red
 	drawFloatGraph(&chart.TR[0], chart.TR.size(), img, 0, 1, img->width, img->height);
-	setCustomGraphColor(0, 0, 255); //green
+	setCustomGraphColor(colors[GREEN]); //green
 	drawFloatGraph(&chart.TL[0], chart.TL.size(), img, 0, 1, img->width, img->height);
-	IplImage *img2 = cvCreateImage(cvSize(img->width*0.8,img->height*0.8), 8, 3);
-	cvResize(img, img2);
+
+	//draw legend
+	CvFont font;
+	cvInitFont(&font,CV_FONT_HERSHEY_PLAIN,0.8,1.0, 0,1,CV_AA);
+	float topright = img->width-30;
+
+	cvPutText(img, "G4", cvPoint(topright, 15), &font, CV_RGB(0,0,0));
+	cvPutText(img, "G3", cvPoint(topright-50, 15), &font, CV_RGB(0,0,0));
+	cvPutText(img, "G2", cvPoint(topright-100, 15), &font, CV_RGB(0,0,0));
+	cvPutText(img, "G1", cvPoint(topright-150, 15), &font, CV_RGB(0,0,0));
+
 	cvNamedWindow("chart", CV_WINDOW_AUTOSIZE);
-	cvShowImage("chart", img2);
-	if((char)cvWaitKey(3) == 'r') resetBeliefChart();
+	cvShowImage("chart", img);
+	char keyboard_response = cvWaitKey(3);
+	if(keyboard_response == 'r') resetBeliefChart();
+	else if(keyboard_response == 'p') endBeliefChart = true;
+
 	cvReleaseImage(&img);
-	cvReleaseImage(&img2);
 }
 
-void Visualizer::pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel_cb)
+void Visualizer::extrapolateBelief()
 {
+	//this function will add the latest belief into the vector to keep in sync with speed command chart
+	cout<< "Duration since last belief update "<<(ros::Time::now()-beliefLastUpdate)<<endl;
+
 	chart.BL.erase(chart.BL.begin());
 	chart.BR.erase(chart.BR.begin());
 	chart.TR.erase(chart.TR.begin());
 	chart.TL.erase(chart.TL.begin());
 
-	chart.BL.insert(chart.BL.end(), ped_bel_cb.believes[0].belief_value[0]);
-	chart.BR.insert(chart.BR.end(), ped_bel_cb.believes[0].belief_value[1]);
-	chart.TR.insert(chart.TR.end(), ped_bel_cb.believes[0].belief_value[2]);
-	chart.TL.insert(chart.TL.end(), ped_bel_cb.believes[0].belief_value[3]);
+	if(ped_bel.size()==0)
+	{
+		chart.BL.insert(chart.BL.end(), 0);
+		chart.BR.insert(chart.BR.end(), 0);
+		chart.TR.insert(chart.TR.end(), 0);
+		chart.TL.insert(chart.TL.end(), 0);
+	}
+	else
+	{
+		if(ped_bel[0].id == trackingID && !endBeliefChart)
+		{
+			chart.BL.insert(chart.BL.end(), ped_bel[0].goals[0]);
+			chart.BR.insert(chart.BR.end(), ped_bel[0].goals[1]);
+			chart.TR.insert(chart.TR.end(), ped_bel[0].goals[2]);
+			chart.TL.insert(chart.TL.end(), ped_bel[0].goals[3]);
+		}
+		else
+		{
+			chart.BL.insert(chart.BL.end(), 0);
+			chart.BR.insert(chart.BR.end(), 0);
+			chart.TR.insert(chart.TR.end(), 0);
+			chart.TL.insert(chart.TL.end(), 0);
+		}
+	}
 
+}
 
+void Visualizer::pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel_cb)
+{
 
-
-	for(int i=0; i<chart.BL.size(); i++)cout<<chart.BL[i]<<' ';cout<<endl;
-	for(int i=0; i<chart.BR.size(); i++)cout<<chart.BR[i]<<' ';cout<<endl;
-	for(int i=0; i<chart.TR.size(); i++)cout<<chart.TR[i]<<' ';cout<<endl;
-	for(int i=0; i<chart.TL.size(); i++)cout<<chart.TL[i]<<' ';cout<<endl;
-
-
+	if(trackingID == -1) trackingID = ped_bel_cb.believes[0].ped_id;
     ped_bel.resize(ped_bel_cb.believes.size());
     for(size_t i=0; i<ped_bel_cb.believes.size(); i++)
     {
-        double left =  ped_bel_cb.believes[i].belief_value[0] + ped_bel_cb.believes[i].belief_value[3];
-        double right =  ped_bel_cb.believes[i].belief_value[1] + ped_bel_cb.believes[i].belief_value[2];
+    	if(ped_bel_cb.believes[i].ped_id == trackingID) beliefLastUpdate = ros::Time::now();
+        //double left =  ped_bel_cb.believes[i].belief_value[0] + ped_bel_cb.believes[i].belief_value[3];
+        //double right =  ped_bel_cb.believes[i].belief_value[1] + ped_bel_cb.believes[i].belief_value[2];
         int decision=-2;
 
         if(ped_bel_cb.believes[i].action==1)
@@ -299,10 +354,13 @@ void Visualizer::pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel_cb)
             std::cout << "Strange action " << ped_bel_cb.believes[i].action << std::endl;
             decision=-1;
         }
+        ped_bel[i].goals.clear();
+        for(size_t j=0; j< ped_bel_cb.believes[i].belief_value.size(); j++)
+        	ped_bel[i].goals.push_back(ped_bel_cb.believes[i].belief_value[j]);
 
         ped_bel[i].decision = decision;
-        ped_bel[i].left_side = left;
-        ped_bel[i].right_side = right;
+        //ped_bel[i].goals = left;
+        //ped_bel[i].right_side = right;
         ped_bel[i].id = ped_bel_cb.believes[i].ped_id;
     }
 
@@ -321,69 +379,44 @@ void Visualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_visio
 
     /// decision panel
     Point D_TopLeft = Point(pv.cvRect_x1, pv.cvRect_y1);
-    Point D_BotRight =
-            Point(pv.cvRect_x1+D_panel_width,pv.cvRect_y1+D_panel_height);
+    Point D_BotRight = Point(pv.cvRect_x1+D_panel_width,pv.cvRect_y1+D_panel_height);
 
     //if(ped_bel[i].decision==-1)
     //rectangle(img,UL, UR_UP, Scalar(0,0,255), CV_FILLED); /// red
     //else
-
-
-    /// belief panel
-    double gap=5;
-    double Bbox_width = 35;//pv.cvRect_x2 - pv.cvRect_x1;
-    double Bbox_height = 30;
-
-    Point B_TopLeft = Point(pv.cvRect_x1, pv.cvRect_y1+D_panel_height + gap);
-    Point B_TopRight = Point(pv.cvRect_x1+Bbox_width,
-                             pv.cvRect_y1+D_panel_height + gap);
-
-    Point B_BotLeft = Point(pv.cvRect_x1, pv.cvRect_y1+D_panel_height
-                            +Bbox_height + gap);
-    Point B_BotRight = Point(pv.cvRect_x1+Bbox_width,
-                             pv.cvRect_y1+D_panel_height+Bbox_height + gap);
-
-    //rectangle(img,B_BotRight, B_TopLeft, Scalar(0,0,0),1);
 
     /// belief bar
     double bar_width=10;
     double bar_buff=5;
     double min_height=5;
 
+    /// belief panel
+    double gap=5;
 
-    ///// first row
-    ////Point UL =
-    //Point UR = Point(pv.cvRect_x2, pv.cvRect_y1); /// top left
-    //Point UR_UP = Point(pv.cvRect_x2, pv.cvRect_y1-offset); /// top left
-    //Point UC = Point((pv.cvRect_x2+pv.cvRect_x1)/2, pv.cvRect_y1); /// top mid
-    //Point UP_C_OFF = Point((pv.cvRect_x1+pv.cvRect_x2)/2,    pv.cvRect_y1+offset); /// top thickness
-    //Point UL_OFF = Point(pv.cvRect_x1, pv.cvRect_y1+offset);
-    ///topleft thickness
-    ////Point UR_OFF = Point(pv.cvRect_x2, pv.cvRect_y1+offset);
-    ///topright thickness
 
-    ///// second row
-    //Point UR_2OFF = Point(pv.cvRect_x2, pv.cvRect_y1+(2*offset));
-    /// 2nd row mid thickness
-    //Point UR_OFF = Point(pv.cvRect_x2, pv.cvRect_y1+offset);
-    //Point BR = Point(pv.cvRect_x2, pv.cvRect_y2); /// bot left
-    //Point BL = Point(pv.cvRect_x1, pv.cvRect_y2); /// bot right
-
-    ////Point LeftMid = Point((pv.cvRect_x1+UC.x)/2, pv.cvRect_y1);
-    ////Point RightMid = Point((pv.cvRect_x2+UC.x)/2, pv.cvRect_y1);
-    //Point LeftMid = Point((pv.cvRect_x1+10, pv.cvRect_y2);
-    //Point RightMid = Point((pv.cvRect_x2-10, pv.cvRect_y2);
 
     for(size_t i=0; i<ped_bel.size(); i++)
     {
+    	double Bbox_width =  gap + (bar_width + gap)*ped_bel[0].goals.size();
+    	double Bbox_height = 30;
+
+    	Point B_TopLeft = Point(pv.cvRect_x1, pv.cvRect_y1+D_panel_height + gap);
+    	Point B_TopRight = Point(pv.cvRect_x1+Bbox_width,
+    			pv.cvRect_y1+D_panel_height + gap);
+
+    	Point B_BotLeft = Point(pv.cvRect_x1, pv.cvRect_y1+D_panel_height
+    			+Bbox_height + gap);
+    	Point B_BotRight = Point(pv.cvRect_x1+Bbox_width,
+    			pv.cvRect_y1+D_panel_height+Bbox_height + gap);
+
 
         if(ped_bel[i].id == pv.object_label)
         {
             // if((ped_bel[i].id==61) || (ped_bel[i].id==62)) /// ISER 2ped  bag file fixed pedestrians
             //   return;
 
-            std::cout<<ped_bel[i].id<<" "<<ped_bel[i].left_side<<" "<<ped_bel[i].right_side << " decision " << ped_bel[i].decision
-                    <<std::endl;
+            //std::cout<<ped_bel[i].id<<" "<<ped_bel[i].left_side<<" "<<ped_bel[i].right_side << " decision " << ped_bel[i].decision
+              //      <<std::endl;
 
             if (ped_bel[i].decision==1)
                 rectangle(img,D_TopLeft, D_BotRight, Scalar(0,255,0), CV_FILLED); /// green
@@ -426,36 +459,20 @@ void Visualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_visio
             /// clean up background
             rectangle(img,B_TopLeft, B_BotRight, Scalar(255,255,255,150),CV_FILLED);
 
-            /// left bar
-            double lvalue = ped_bel[i].left_side*Bbox_height;
-            if(lvalue < min_height)
-                lvalue = min_height;
-            Point lbar_TopRight = Point(B_TopLeft.x+bar_width+bar_buff,
-                                        B_BotLeft.y- lvalue);
-            /// fill
-            rectangle(img, Point(B_BotLeft.x+bar_buff, B_BotLeft.y),
-                      lbar_TopRight, Scalar(255,0,0,0.7),CV_FILLED);
-            /// outline
-            rectangle(img,Point(B_BotLeft.x+bar_buff, B_BotLeft.y),
-                      lbar_TopRight, Scalar(0,0,0),1);
-
-
-            /// right bar
-            double rvalue = ped_bel[i].right_side*Bbox_height;
-            if(rvalue < min_height)
-                rvalue = min_height;
-            Point rbar_TopLeft = Point(B_TopRight.x-bar_width-bar_buff,
-                                       B_BotRight.y- rvalue);
-            /// fill
-            rectangle(img,Point(B_BotRight.x-bar_buff, B_BotRight.y),
-                      rbar_TopLeft, Scalar(255,0,0,0.7),CV_FILLED);
-            /// outline
-            rectangle(img,Point(B_BotRight.x-bar_buff, B_BotRight.y),
-                      rbar_TopLeft, Scalar(0,0,0),1);
-
-            //rectangle(img,UL, UR_UP, Scalar(0,255,255), CV_FILLED);
-            ///yellow ( cruise )
-
+            for(size_t j = 0; j<ped_bel[i].goals.size(); j++)
+            {
+            	assert(ped_bel[i].goals.size()==4);
+            	/// left bar
+            	double lvalue = ped_bel[i].goals[j]*Bbox_height;
+            	cout<<"lvalue "<<j<<" ="<<lvalue<<' ';
+            	if(lvalue < min_height)
+            		lvalue = min_height;
+            	Point bar_TopRight = Point(B_TopLeft.x+(bar_width+bar_buff)*(j+1),
+            			B_BotLeft.y- lvalue);
+            	/// fill
+            	rectangle(img, Point(bar_buff + B_BotLeft.x + (bar_width+bar_buff)*j, B_BotLeft.y),
+            			bar_TopRight, colors[j],CV_FILLED);
+            }
         }
     }
 
@@ -506,14 +523,14 @@ void Visualizer::colorHist(cv::Mat src)
         {
             float binVal = hist.at<float>(h, s);
             int intensity = cvRound(binVal*255/maxVal);
-            cout << intensity << ' ';
+            //cout << intensity << ' ';
             /*cvRectangle( histImg, Point(h*scale, s*scale),
                          Point( (h+1)*scale - 1, (s+1)*scale - 1),
                          Scalar::all(intensity),
                          CV_FILLED );*/
         }
 
-    cout<<endl;
+    //cout<<endl;
 }
 
 int main(int argc, char** argv)
