@@ -19,10 +19,13 @@
 #include <ped_momdp_sarsop/peds_believes.h>
 
 #include "cv_helper.h"
-
+#include "GraphUtils.h"
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
+
+#include <geometry_msgs/TwistStamped.h>
+#include <nav_msgs/Odometry.h>
 
 using namespace std;
 using namespace message_filters;
@@ -34,6 +37,19 @@ struct pedBelife_vis
     int id;
 };
 
+struct pedBelief_chart
+{
+	vector<float> BL;
+	vector<float> BR;
+	vector<float> TL;
+	vector<float> TR;
+};
+
+struct speed_chart
+{
+	vector<float> cmd;
+	vector<float> feedback;
+};
 class Visualizer
 {
 public:
@@ -44,15 +60,26 @@ private:
 
     image_transport::ImageTransport it_;
     image_transport::SubscriberFilter image_sub_;
-    ros::Subscriber ped_bel_sub_;
+    ros::Subscriber ped_bel_sub_, cmd_vel_sub_;
+    ros::Publisher cmd_vel_stamped_pub_;
     message_filters::Subscriber<sensing_on_road::pedestrian_vision_batch> people_roi_sub_;
+    message_filters::Subscriber<geometry_msgs::TwistStamped> speed_cmd_sub_;
+    message_filters::Subscriber<nav_msgs::Odometry> speed_fb_sub_;
     bool started, ROI_text, verified_text, vision_rect, verified_rect, ROI_rect, publish_verified;
     vector<pedBelife_vis> ped_bel;
+    pedBelief_chart chart;
+    speed_chart sp_chart;
+    int belief_chart_size, speedcmd_chart_size;
     double threshold_;
     void syncCallback(const sensor_msgs::ImageConstPtr image, const sensing_on_road::pedestrian_vision_batchConstPtr vision_roi);
+    void speedCallback(const geometry_msgs::TwistStampedConstPtr cmd, const nav_msgs::OdometryConstPtr feedback);
     void drawIDandConfidence(cv::Mat& img, sensing_on_road::pedestrian_vision& pv);
     void pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel);
+    void cmdVellCallback(geometry_msgs::Twist cmdvel);
     void colorHist(cv::Mat src);
+    void drawBeliefChart();
+    void resetBeliefChart();
+    void resetSpeedChart();
 };
 
 Visualizer::Visualizer(ros::NodeHandle &n) : n_(n), it_(n_)
@@ -71,13 +98,80 @@ Visualizer::Visualizer(ros::NodeHandle &n) : n_(n), it_(n_)
     // from laser (green rect)
     people_roi_sub_.subscribe(n, "veri_pd_vision", 20);
 
-    typedef sync_policies::ApproximateTime<sensor_msgs::Image, pedestrian_vision_batch> MySyncPolicy;
-    Synchronizer<MySyncPolicy> sync(MySyncPolicy(20), image_sub_, people_roi_sub_);
-    sync.registerCallback(boost::bind(&Visualizer::syncCallback,this, _1, _2));
+    speed_cmd_sub_.subscribe(n, "cmd_vel_stamped", 20);
+    speed_fb_sub_.subscribe(n, "encoder_odom", 20);
+    cmd_vel_sub_ = n.subscribe("cmd_vel", 10, &Visualizer::cmdVellCallback, this);
+    typedef sync_policies::ApproximateTime<sensor_msgs::Image, pedestrian_vision_batch> imageSyncPolicy;
+    Synchronizer<imageSyncPolicy> imageSync(imageSyncPolicy(20), image_sub_, people_roi_sub_);
+    imageSync.registerCallback(boost::bind(&Visualizer::syncCallback,this, _1, _2));
+
+
+    typedef sync_policies::ApproximateTime<geometry_msgs::TwistStamped, nav_msgs::Odometry> speedSyncPolicy;
+    Synchronizer<speedSyncPolicy> speedSync(speedSyncPolicy(20), speed_cmd_sub_, speed_fb_sub_);
+    speedSync.registerCallback(boost::bind(&Visualizer::speedCallback,this, _1, _2));
+    cmd_vel_stamped_pub_ = n.advertise<geometry_msgs::TwistStamped>("cmd_vel_stamped", 10);
 
     ped_bel_sub_ = n.subscribe("peds_believes", 1, &Visualizer::pedBeliefCallback, this);
+    belief_chart_size = 30;
+    speedcmd_chart_size = 200;
 
+    resetBeliefChart();
+    resetSpeedChart();
     ros::spin();
+}
+
+void Visualizer::resetBeliefChart()
+{
+	chart.BL.clear();
+	chart.BR.clear();
+	chart.TR.clear();
+	chart.TL.clear();
+
+	chart.BL.resize(belief_chart_size);
+	chart.BR.resize(belief_chart_size);
+	chart.TR.resize(belief_chart_size);
+	chart.TL.resize(belief_chart_size);
+
+}
+
+void Visualizer::resetSpeedChart()
+{
+	sp_chart.cmd.clear();
+	sp_chart.feedback.clear();
+
+	sp_chart.cmd.resize(speedcmd_chart_size);
+	sp_chart.feedback.resize(speedcmd_chart_size);
+}
+
+void Visualizer::cmdVellCallback(geometry_msgs::Twist cmdvel)
+{
+	geometry_msgs::TwistStamped cmdvelts;
+	cmdvelts.header.stamp = ros::Time::now();
+	cmdvelts.header.frame_id = "base_link";
+	cmdvelts.twist = cmdvel;
+	cmd_vel_stamped_pub_.publish(cmdvelts);
+}
+
+void Visualizer::speedCallback(const geometry_msgs::TwistStampedConstPtr cmd, const nav_msgs::OdometryConstPtr feedback)
+{
+	sp_chart.cmd.erase(sp_chart.cmd.begin());
+	sp_chart.feedback.erase(sp_chart.feedback.begin());
+
+	sp_chart.cmd.insert(sp_chart.cmd.end(), cmd->twist.linear.x);
+	sp_chart.feedback.insert(sp_chart.feedback.end(), feedback->twist.twist.linear.x);
+
+	IplImage *img = cvLoadImage("/home/demian/blank.png");
+	setCustomGraphColor(255, 0, 0); //red
+	drawFloatGraph(&sp_chart.cmd[0], sp_chart.cmd.size(), img, 0, 2.0, img->width, img->height, "Speed command");
+	setCustomGraphColor(0, 0, 255); //green
+	//drawFloatGraph(&sp_chart.feedback[0], sp_chart.feedback.size(), img, 0, 2.5, img->width, img->height);
+	IplImage *img2 = cvCreateImage(cvSize(img->width*0.8,img->height*0.8), 8, 3);
+	cvResize(img, img2);
+	cvNamedWindow("Speed Red: speed cmd, Green: speed feedback", CV_WINDOW_AUTOSIZE);
+	cvShowImage("Speed Red: speed cmd, Green: speed feedback", img2);
+	if((char)cvWaitKey(3) == 'r') resetSpeedChart();
+	cvReleaseImage(&img);
+	cvReleaseImage(&img2);
 }
 
 void Visualizer::syncCallback(const sensor_msgs::ImageConstPtr image, const sensing_on_road::pedestrian_vision_batchConstPtr vision_roi)
@@ -127,12 +221,59 @@ void Visualizer::syncCallback(const sensor_msgs::ImageConstPtr image, const sens
 
 
     started = true;
-    imshow(ros::this_node::getName().c_str(), img);
+    Mat img2;
+    resize(img, img2, Size(), 0.8, 0.8);
+    imshow(ros::this_node::getName().c_str(), img2);
+    drawBeliefChart();
     cvWaitKey(3);
+}
+
+//void Visualizer::drawSpeedChart()
+//{
+
+//}
+
+void Visualizer::drawBeliefChart()
+{
+	IplImage *img = cvLoadImage("/home/demian/blank.png");
+	setCustomGraphColor(255, 246, 0); //purple
+	drawFloatGraph(&chart.BL[0], chart.BL.size(), img, 0, 1, img->width, img->height);
+	setCustomGraphColor(30, 255, 0); //blue
+	drawFloatGraph(&chart.BR[0], chart.BR.size(), img, 0, 1, img->width, img->height);
+	setCustomGraphColor(255, 0, 0); //red
+	drawFloatGraph(&chart.TR[0], chart.TR.size(), img, 0, 1, img->width, img->height);
+	setCustomGraphColor(0, 0, 255); //green
+	drawFloatGraph(&chart.TL[0], chart.TL.size(), img, 0, 1, img->width, img->height);
+	IplImage *img2 = cvCreateImage(cvSize(img->width*0.8,img->height*0.8), 8, 3);
+	cvResize(img, img2);
+	cvNamedWindow("chart", CV_WINDOW_AUTOSIZE);
+	cvShowImage("chart", img2);
+	if((char)cvWaitKey(3) == 'r') resetBeliefChart();
+	cvReleaseImage(&img);
+	cvReleaseImage(&img2);
 }
 
 void Visualizer::pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel_cb)
 {
+	chart.BL.erase(chart.BL.begin());
+	chart.BR.erase(chart.BR.begin());
+	chart.TR.erase(chart.TR.begin());
+	chart.TL.erase(chart.TL.begin());
+
+	chart.BL.insert(chart.BL.end(), ped_bel_cb.believes[0].belief_value[0]);
+	chart.BR.insert(chart.BR.end(), ped_bel_cb.believes[0].belief_value[1]);
+	chart.TR.insert(chart.TR.end(), ped_bel_cb.believes[0].belief_value[2]);
+	chart.TL.insert(chart.TL.end(), ped_bel_cb.believes[0].belief_value[3]);
+
+
+
+
+	for(int i=0; i<chart.BL.size(); i++)cout<<chart.BL[i]<<' ';cout<<endl;
+	for(int i=0; i<chart.BR.size(); i++)cout<<chart.BR[i]<<' ';cout<<endl;
+	for(int i=0; i<chart.TR.size(); i++)cout<<chart.TR[i]<<' ';cout<<endl;
+	for(int i=0; i<chart.TL.size(); i++)cout<<chart.TL[i]<<' ';cout<<endl;
+
+
     ped_bel.resize(ped_bel_cb.believes.size());
     for(size_t i=0; i<ped_bel_cb.believes.size(); i++)
     {
