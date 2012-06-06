@@ -161,7 +161,7 @@ IplImage* drawFloatGraph(const float *arraySrc, int nArrayLength, IplImage *imag
 	// Write the graph label, if desired
 	if (graphLabel != NULL && strlen(graphLabel) > 0) {
 		//cvInitFont(&font,CV_FONT_HERSHEY_PLAIN, 0.5,0.7, 0,1,CV_AA);
-		cvInitFont(&font,CV_FONT_HERSHEY_PLAIN,1.0,1.0, 0,1,CV_AA);
+		cvInitFont(&font,CV_FONT_HERSHEY_PLAIN,0.8,1.0, 0,1,CV_AA);
 		cvPutText(imageGraph, graphLabel, cvPoint(30, 15), &font, CV_RGB(0,0,0));	// black text
 	}
 

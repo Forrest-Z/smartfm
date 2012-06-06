@@ -140,6 +140,8 @@ Visualizer::Visualizer(ros::NodeHandle &n) : n_(n), it_(n_)
 void Visualizer::resetBeliefChart()
 {
 	endBeliefChart = false;
+
+	ped_bel.clear();
 	chart.BL.clear();
 	chart.BR.clear();
 	chart.TR.clear();
@@ -189,7 +191,7 @@ void Visualizer::speedCallback(const geometry_msgs::TwistStampedConstPtr cmd, co
 	cvResize(img, img2);
 	cvNamedWindow("Speed Command", CV_WINDOW_AUTOSIZE);
 	cvShowImage("Speed Command", img2);
-	if((char)cvWaitKey(3) == 's') resetSpeedChart();
+	if((char)cvWaitKey(3) == 's');
 	cvReleaseImage(&img);
 	cvReleaseImage(&img2);
 
@@ -247,8 +249,22 @@ void Visualizer::syncCallback(const sensor_msgs::ImageConstPtr image, const sens
     Mat img2;
     resize(img, img2, Size(), 0.8, 0.8);
     imshow(ros::this_node::getName().c_str(), img2);
+    //if(resetSpeedChart();
     //drawBeliefChart();
-    cvWaitKey(3);
+    char keypressed = cvWaitKey(3);
+    switch (keypressed)
+	{
+    case 's':
+    	resetSpeedChart();
+    	break;
+    case 'r':
+    	resetBeliefChart();
+    	break;
+    case 'p':
+    	endBeliefChart = true;
+    	break;
+	}
+
 }
 
 //void Visualizer::drawSpeedChart()
@@ -269,20 +285,35 @@ void Visualizer::drawBeliefChart()
 	drawFloatGraph(&chart.TL[0], chart.TL.size(), img, 0, 1, img->width, img->height);
 
 	//draw legend
+	Mat beliefImg(img);
 	CvFont font;
 	cvInitFont(&font,CV_FONT_HERSHEY_PLAIN,0.8,1.0, 0,1,CV_AA);
-	float topright = img->width-30;
 
-	cvPutText(img, "G4", cvPoint(topright, 15), &font, CV_RGB(0,0,0));
-	cvPutText(img, "G3", cvPoint(topright-50, 15), &font, CV_RGB(0,0,0));
-	cvPutText(img, "G2", cvPoint(topright-100, 15), &font, CV_RGB(0,0,0));
-	cvPutText(img, "G1", cvPoint(topright-150, 15), &font, CV_RGB(0,0,0));
+	Point linePosOffset(-5, -5);
+	Point lineLength (-10, 0);
+	Point TR_pt(img->width-30, 15);
+	Point textOffset(-50, 0);
+	const string labeltxt[] = {"G3", "G2", "G1", "G0"};
+	for(size_t i=0; i<4; i++, TR_pt += textOffset)
+	{
+		putText(beliefImg, labeltxt[i], TR_pt, FONT_HERSHEY_PLAIN, 0.8,cvScalar(0,0,0), 1, 8);
+		Point linePos = TR_pt + linePosOffset;
+		Scalar RGB = colors[3-i];
+		Scalar BRG = Scalar(RGB[2], RGB[1], RGB[0]);
+		line(beliefImg, linePos, linePos + lineLength, BRG, 2);
+	}
 
-	cvNamedWindow("chart", CV_WINDOW_AUTOSIZE);
-	cvShowImage("chart", img);
-	char keyboard_response = cvWaitKey(3);
-	if(keyboard_response == 'r') resetBeliefChart();
-	else if(keyboard_response == 'p') endBeliefChart = true;
+	//putText(beliefImg, "G3", TR_pt-textOffset, FONT_HERSHEY_PLAIN, 0.8,cvScalar(0,0,0), 1, 8);
+	//cvPutText(img, "G4", TR_pt, &font, CV_RGB(0,0,0));
+	//cvLine(img, TR_pt+legendPosOffset, TR_pt+legendPosOffset+legendLength, CV_RGB(colors[0][0], colors[0][1], colors[0][2]), 1, CV_AA);
+	//TR_pt = cvPoint(toprightx-=50, toprighty);
+	/*cvPutText(img, "G3", TR_pt, &font, CV_RGB(0,0,0));
+	cvPutText(img, "G2", cvPoint(toprightx-=50, toprighty), &font, CV_RGB(0,0,0));
+	cvPutText(img, "G1", cvPoint(toprightx-=50, toprighty), &font, CV_RGB(0,0,0));
+
+	cvNamedWindow("chart", CV_WINDOW_AUTOSIZE);*/
+	imshow("chart", beliefImg);
+	cvWaitKey(3);
 
 	cvReleaseImage(&img);
 }
@@ -372,14 +403,8 @@ void Visualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_visio
     float offset = 10.0;
     ss<<pv.object_label;
 
-    /// Set visualizer geometry
-    double D_panel_width = 35;//pv.cvRect_x2 - pv.cvRect_x1;
-    double D_panel_height = 10;//pv.cvRect_y1 - pv.cvRect_y2;
-    ///flipped because of image coord
 
-    /// decision panel
-    Point D_TopLeft = Point(pv.cvRect_x1, pv.cvRect_y1);
-    Point D_BotRight = Point(pv.cvRect_x1+D_panel_width,pv.cvRect_y1+D_panel_height);
+
 
     //if(ped_bel[i].decision==-1)
     //rectangle(img,UL, UR_UP, Scalar(0,0,255), CV_FILLED); /// red
@@ -397,8 +422,18 @@ void Visualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_visio
 
     for(size_t i=0; i<ped_bel.size(); i++)
     {
+    	/// Set visualizer geometry
+
     	double Bbox_width =  gap + (bar_width + gap)*ped_bel[0].goals.size();
     	double Bbox_height = 30;
+
+    	double D_panel_width = Bbox_width;//pv.cvRect_x2 - pv.cvRect_x1;
+    	double D_panel_height = 10;//pv.cvRect_y1 - pv.cvRect_y2;
+    	///flipped because of image coord
+
+    	/// decision panel
+    	Point D_TopLeft = Point(pv.cvRect_x1, pv.cvRect_y1);
+    	Point D_BotRight = Point(pv.cvRect_x1+D_panel_width,pv.cvRect_y1+D_panel_height);
 
     	Point B_TopLeft = Point(pv.cvRect_x1, pv.cvRect_y1+D_panel_height + gap);
     	Point B_TopRight = Point(pv.cvRect_x1+Bbox_width,
@@ -470,8 +505,13 @@ void Visualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_visio
             	Point bar_TopRight = Point(B_TopLeft.x+(bar_width+bar_buff)*(j+1),
             			B_BotLeft.y- lvalue);
             	/// fill
+            	Scalar RGB = colors[j];
+            	Scalar BRG = Scalar(RGB[2], RGB[1], RGB[0]);
             	rectangle(img, Point(bar_buff + B_BotLeft.x + (bar_width+bar_buff)*j, B_BotLeft.y),
-            			bar_TopRight, colors[j],CV_FILLED);
+            			bar_TopRight, BRG,CV_FILLED);
+            	/// outline
+            	rectangle(img, Point(bar_buff + B_BotLeft.x + (bar_width+bar_buff)*j, B_BotLeft.y),
+            	            			bar_TopRight, Scalar(0, 0, 0),1);
             }
         }
     }
