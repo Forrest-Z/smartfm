@@ -49,7 +49,7 @@ rosbuild_add_executable(classifier src/classifier.cpp)
 target_link_libraries(classifier ${OpenCV_LIBS})
 ENDIF(CUDA_FOUND)
 
-rosbuild_add_executable(visualizer src/visualizer.cpp)
+rosbuild_add_executable(visualizer src/visualizer.cpp src/GraphUtils.cpp)
 target_link_libraries(visualizer ${OpenCV_LIBS})
 rosbuild_link_boost(visualizer signals)
 
