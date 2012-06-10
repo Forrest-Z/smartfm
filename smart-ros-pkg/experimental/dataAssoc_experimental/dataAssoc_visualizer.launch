@@ -1,9 +1,12 @@
 <launch>
+    <node pkg="pedestrian_detector" type="loadBackground" name="crossing_background" output="screen">
+	    <param name="img_file" value="$(find pedestrian_detector)/crossing_figure3.png"/>
+    </node>
     <node pkg="pedestrian_detector" type="visualizer" name="visualizer_dataAssoc" output="screen">
 	    <param name="image_transport" value="compressed"/>
 	    <param name="ROI_text" value="true"/>
 	    <param name="ROI_rect" value="true"/>
-	    <param name="threshold" value="3.0"/>
+	    <param name="threshold" value="0.0"/>
 	    <remap from="image_raw" to="usb_cam/image_raw"/>
 	    <remap from="veri_pd_vision" to="ped_data_assoc"/>
 	</node>

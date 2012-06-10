@@ -92,7 +92,7 @@ private:
 };
 
 enum color_t
-{PURPLE, BLUE, RED, GREEN};
+{GREEN, PURPLE, BLUE, RED};
 
 Visualizer::Visualizer(ros::NodeHandle &n) : n_(n), it_(n_)
 {
@@ -185,7 +185,10 @@ void Visualizer::speedCallback(const geometry_msgs::TwistStampedConstPtr cmd, co
     sp_chart.cmd.insert(sp_chart.cmd.end(), cmd->twist.linear.x);
     sp_chart.feedback.insert(sp_chart.feedback.end(), feedback->twist.twist.linear.x);
 
-    IplImage *img = cvLoadImage("/home/golfcar/blank.png");
+    ros::NodeHandle nh("~");
+    string speedchart_bg;
+    nh.param("speedchart_bg", speedchart_bg, string(""));
+    IplImage *img = cvLoadImage(speedchart_bg.c_str());
     setCustomGraphColor(colors[RED]); //red
     drawFloatGraph(&sp_chart.cmd[0], sp_chart.cmd.size(), img, 0, 2.0, img->width, img->height, "Speed command");
     setCustomGraphColor(colors[GREEN]); //green
@@ -250,7 +253,7 @@ void Visualizer::syncCallback(const sensor_msgs::ImageConstPtr image, const sens
 
     started = true;
     Mat img2;
-    resize(img, img2, Size(), 0.8, 0.8);
+    resize(img, img2, Size(), 1.0, 1.0);
     imshow(ros::this_node::getName().c_str(), img2);
     //if(resetSpeedChart();
     //drawBeliefChart();
@@ -277,7 +280,10 @@ void Visualizer::syncCallback(const sensor_msgs::ImageConstPtr image, const sens
 
 void Visualizer::drawBeliefChart()
 {
-    IplImage *img = cvLoadImage("/home/golfcar/blank.png");
+    ros::NodeHandle nh("~");
+    string beliefchart_bg;
+    nh.param("beliefchart_bg", beliefchart_bg, string(""));
+    IplImage *img = cvLoadImage(beliefchart_bg.c_str());
     for(size_t i=0; i<4; i++)
     {
         setCustomGraphColor(colors[i]); //purple
@@ -293,7 +299,7 @@ void Visualizer::drawBeliefChart()
     Point lineLength (-10, 0);
     Point TR_pt(img->width-60, 15);
     Point textOffset(-80, 0);
-    const string labeltxt[] = {"G3", "G2", "G1", "G0"};
+    const string labeltxt[] = {"D", "C", "B", "A"};
     for(size_t i=0; i<4; i++, TR_pt += textOffset)
     {
         stringstream ss;
@@ -393,10 +399,10 @@ void Visualizer::pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel_cb)
         //move the last goals value to as the first one: workaround specific for crossing case
         //for(size_t j=0; j< ped_bel_cb.believes[i].belief_value.size(); j++)
         //           ped_bel[i].goals.push_back(ped_bel_cb.believes[i].belief_value[j]);
-        ped_bel[i].goals.push_back(ped_bel_cb.believes[i].belief_value[3]);
-        ped_bel[i].goals.push_back(ped_bel_cb.believes[i].belief_value[0]);
-        ped_bel[i].goals.push_back(ped_bel_cb.believes[i].belief_value[1]);
-        ped_bel[i].goals.push_back(ped_bel_cb.believes[i].belief_value[2]);
+        ped_bel[i].goals.push_back(max(ped_bel_cb.believes[i].belief_value[3], ped_bel_cb.believes[i].belief_value[0]));
+        //ped_bel[i].goals.push_back();
+        ped_bel[i].goals.push_back(max(ped_bel_cb.believes[i].belief_value[1], ped_bel_cb.believes[i].belief_value[2]));
+        //ped_bel[i].goals.push_back();
 
         ped_bel[i].decision = decision;
         //ped_bel[i].goals = left;
@@ -508,7 +514,7 @@ void Visualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_visio
 
             for(size_t j = 0; j<ped_bel[i].goals.size(); j++)
             {
-                assert(ped_bel[i].goals.size()==4);
+                assert(ped_bel[i].goals.size()==2);
                 /// left bar
                 double lvalue = ped_bel[i].goals[j]*Bbox_height;
                 cout<<"lvalue "<<j<<" ="<<lvalue<<' ';
@@ -517,7 +523,7 @@ void Visualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_visio
                 Point bar_TopRight = Point(B_TopLeft.x+(bar_width+bar_buff)*(j+1),
                                            B_BotLeft.y- lvalue);
                 /// fill
-                Scalar RGB = colors[j];
+                Scalar RGB = colors[BLUE];
                 Scalar BRG = Scalar(RGB[2], RGB[1], RGB[0]);
                 rectangle(img, Point(bar_buff + B_BotLeft.x + (bar_width+bar_buff)*j, B_BotLeft.y),
                           bar_TopRight, BRG,CV_FILLED);
