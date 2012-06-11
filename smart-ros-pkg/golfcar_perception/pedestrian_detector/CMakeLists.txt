@@ -53,3 +53,5 @@ rosbuild_add_executable(visualizer src/visualizer.cpp src/GraphUtils.cpp)
 target_link_libraries(visualizer ${OpenCV_LIBS})
 rosbuild_link_boost(visualizer signals)
 
+rosbuild_add_executable(loadBackground src/loadBackground.cpp)
+
