@@ -35,14 +35,14 @@ opts=""
 # uncomment next line to distribute to a different computer
 # GNU parallel must be installed, as well as flow_sim_unit
 # Check GNU parallel documentation
-opts="$opts --sshlogin FMAutonomy,: --cleanup --return lv_{1}_lp_{2}.dat.gz"
+#opts="$opts --sshlogin FMAutonomy,: --cleanup --return lv_{1}_lp_{2}.dat.gz"
 
 # report progress
 opts="$opts --progress"
 
 
 flow_sim_opts="--lv={1} --lp={2} --logfile=lv_{1}_lp_{2}.dat.gz"
-flow_sim_opts="$flow_sim_opts --veh_max_vel=6"
+flow_sim_opts="$flow_sim_opts --veh_max_vel=14"
 
 # this command is a bit cryptic. Check GNU parallel documentation
 parallel $opts flow_sim_unit.py $flow_sim_opts ::: $lvs ::: $lps
