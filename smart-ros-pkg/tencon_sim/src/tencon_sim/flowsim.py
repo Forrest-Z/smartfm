@@ -13,86 +13,158 @@ The simulation is collecting results along the way:
 
 import math
 import numpy as np
-import scipy.stats
 import copy
 
 from vehicle import *
 
 
+class PoissonGenerator:
+    '''This is a generator for a poisson process. When called with the current
+    time, it returns whether to generate a mobile or not, and if yes, it computes
+    the next generation time.
+    '''
+    def __init__(self, rate):
+        self.rate = rate #lambda is a reserved keyword
+        self.next_time = self.draw()
+
+    def draw(self):
+        return - np.log( np.random.random() ) / self.rate
+
+    def __call__(self, t):
+        if t >= self.next_time:
+            self.next_time += self.draw()
+            return True
+        return False
+
 class FlowSim:
 
-    def __init__(self, params):
-        self.t = 0
-        self.vehs = {'base': [], 'infra': []}
-        self.dt = {'base': [], 'infra': []}
-        self.peds = []
+    def __init__(self, params, logfile=None):
+        '''Constructor. params is a dictionnary with all the parameters for the
+        simulation. logfile, if given, is the file object to use for data logging.
+        '''
+
+        # experimental parameters
         self.params = copy.deepcopy(params)
-        
+
+        self.logfile = logfile
+
+        # the current time
+        self.t = 0
+
+        # the list of vehicles in each condition
+        self.vehs = {'base': [], 'infra': []}
+
+        # the list of pedestrians
+        self.peds = []
+
+        # number of vehicles that have crossed the pedestrian crossing
+        self.nvehs = {'base': 0, 'infra': 0}
+
+        # data log
+        self.last_log_t = 0
+
+        # create a generator for each stream
+        self.ped_gen = PoissonGenerator(self.params['lambda_ped'])
+        self.veh_gen = PoissonGenerator(self.params['lambda_veh'])
+
+        # Populate the stream of pedestrians
         N = self.params['lambda_ped'] / self.params['ped_vel'] * abs(self.params['ped_start_pos'])
         while len(self.peds) < int(math.floor(N)):
-            self.update_peds()
+            self._update_peds()
+            self.t += self.params['sim_time_step']
 
-    def base_vehicle(self, x0):
-        d = self.params['ped_crossing_length']
-        return BaseVehicle(x0=x0, v_max=self.params['veh_max_vel'],
-                    a=self.params['veh_acc'], v0=self.params['veh_max_vel'], 
-                    **self.params)
-    
-    def infra_vehicle(self, x0):
-        sensor = Sensor([-self.params['infra_fov_dist'], 
-                         self.params['ped_crossing_length']])
-        return InfraVehicle(x0=x0, v_max=self.params['veh_max_vel'],
-                        a=self.params['veh_acc'], v0=self.params['veh_max_vel'], 
-                        sensor=sensor, **self.params)
-    
-    def update_peds(self):
-        for p in self.peds: 
+    def _update_peds(self):
+        '''Updates the stream of pedestrians: updates their position and velocity
+        and maybe add a new one.'''
+        for p in self.peds:
             p.update()
-    
-        i=0
-        while i < len(self.peds):
-            if self.peds[i].x > self.params['ped_crossing_length'] + 1:
-                self.peds.remove(self.peds[i])
-            else:
-                i += 1
-    
-        lam = self.params['lambda_ped'] * self.params['sim_time_step']
-        if np.random.poisson(lam):
-            p = self.peds.append( Mobile(x0=self.params['ped_start_pos'], 
-                                    v_max=self.params['ped_vel'], 
+
+        if self.ped_gen(self.t):
+            self.do_log = True
+            p = self.peds.append( Mobile(x0=self.params['ped_start_pos'],
+                                    v_max=self.params['ped_vel'],
                                     v0=self.params['ped_vel'], **self.params) )
-    
-    def update_vehs(self):
+
+    def _update_vehs(self):
+        '''Updates the streams of vehicles: updates their position and velocity
+        and maybe add a new one.'''
         for k in ('base', 'infra'):
             for v in self.vehs[k]:
                 v.update(self.vehs[k], self.peds)
+
+        if self.veh_gen(self.t):
+            for k in ('base', 'infra'):
+                #if self.vehs[k]!=[] and self.vehs[k][-1].x < self.params['veh_start_pos'] + 2:
+                #    raise RuntimeError("Queue full")
+                if k=='base':
+                    v = BaseVehicle(x0 = self.params['veh_start_pos'],
+                                    v_max = self.params['veh_max_vel'],
+                                    a = self.params['veh_acc'],
+                                    v0 = self.params['veh_max_vel'],
+                                    **self.params)
+                else:
+                    v = InfraVehicle(x0 = self.params['veh_start_pos'],
+                                    v_max = self.params['veh_max_vel'],
+                                    a = self.params['veh_acc'],
+                                    v0 = self.params['veh_max_vel'],
+                                    sensor = Sensor([-self.params['infra_fov_dist'],
+                                            self.params['ped_crossing_length']]),
+                                    **self.params)
+                self.vehs[k].append(v)
+                self.do_log = True
+
+    def _remove_mobiles(self, remove=True):
+        ''' Checks all mobiles for removal condition. If remove is False, then
+        only reports whether a mobile needs to be removed.
+        '''
+        removing = False
+        i = 0
+        while i < len(self.peds):
+            if self.peds[i].x > self.params['ped_crossing_length'] + 1:
+                if not remove:
+                    return True
+                else:
+                    removing = True
+                    self.peds.remove(self.peds[i])
+            else:
+                i += 1
+
+        for k in ('base', 'infra'):
             i = 0
             while i<len(self.vehs[k]):
                 if self.vehs[k][i].x > 5:
-                    self.dt[k].append(self.t - self.vehs[k][i].entry_time)
-                    self.vehs[k].remove(self.vehs[k][i])
+                    if not remove:
+                        return True
+                    else:
+                        removing = True
+                        self.vehs[k].remove(self.vehs[k][i])
+                        self.nvehs[k] += 1
                 else:
                     i += 1
-    
-        lam = self.params['lambda_veh'] * self.params['sim_time_step']
-        if np.random.poisson(lam):
-            for k, f in (('base', self.base_vehicle), ('infra', self.infra_vehicle)):
-                if self.vehs[k]!=[] and self.vehs[k][-1].x < self.params['veh_start_pos'] - 2:
-                    raise RuntimeError("Queue full")
-                v = f(self.params['veh_start_pos'])
-                v.entry_time = self.t
-                self.vehs[k].append(v)
-                
-    def step(self):
-        self.update_peds()
-        self.update_vehs()
-        self.t += self.params['sim_time_step']
 
-    def print_dt_stats(self):
-        if self.dt['infra']==[] or self.dt['base']==[]:
-            raise RuntimeError()
-        for k in ('base', 'infra'):
-            l = self.dt[k][-100:]
-            print '%s: t=%g (n=%i, sigma=%g)' % (k, np.average(l), len(l), np.std(l))
-        tp = scipy.stats.ttest_ind(self.dt['infra'][-100:], self.dt['base'][-100:])
-        print 't=%g, p=%g' % tp
+        return removing
+
+    def step(self):
+        self.do_log = False
+        self._update_peds()
+        self._update_vehs()
+
+        if self.logfile and ( self.do_log or self.t - self.last_log_t >= 1 \
+                              or self._remove_mobiles(False) ):
+            # log the current situation as a string:
+            # t=1.2, peds=[(2, -3, 1), (3, -5, 1)], base=[], infra=[]
+            # where for each mobile we are logging the id, position and velocity
+
+            log = ['t='+str(round(self.t,2))]
+
+            for k,ms in [('peds',self.peds), ('base',self.vehs['base']), ('infra', self.vehs['infra'])]:
+                tmp = []
+                for m in ms:
+                    tmp.append( '(' + ', '.join([str(m.id)] + [str(round(val,2)) for val in [m.x, m.v]]) + ')' )
+                log.append( k + '=[' + ', '.join(tmp) + ']' )
+
+            self.logfile.write( ', '.join(log) + '\n' )
+            self.last_log_t = self.t
+
+        self._remove_mobiles(True)
+        self.t += self.params['sim_time_step']

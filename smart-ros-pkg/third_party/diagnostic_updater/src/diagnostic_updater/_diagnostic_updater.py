@@ -7,7 +7,7 @@
 import roslib
 roslib.load_manifest('diagnostic_updater')
 import rospy
-import threading
+import threading, httplib
 from diagnostic_msgs.msg import DiagnosticArray
 
 from ._diagnostic_status_wrapper import *
@@ -37,10 +37,10 @@ class DiagnosticTask:
 
 
 
-class GenericFunctionDiagnosticTask(DiagnosticTask):
+class FunctionDiagnosticTask(DiagnosticTask):
     """A DiagnosticTask based on a function.
 
-    The GenericFunctionDiagnosticTask calls the function when it updates. The
+    The FunctionDiagnosticTask calls the function when it updates. The
     function updates the DiagnosticStatusWrapper and collects data.
 
     This is useful for gathering information about a device or driver, like temperature,
@@ -282,7 +282,10 @@ class Updater(DiagnosticTaskVector):
     def update_diagnostic_period(self):
         """Recheck the diagnostic_period on the parameter server. (Cached)"""
         old_period = self.period
-        self.period = rospy.get_param("~diagnostic_period", 1)
+        try:
+            self.period = rospy.get_param("~diagnostic_period", 1)
+        except (httplib.CannotSendRequest, httplib.ResponseNotReady):
+            self.period = 1
         self.next_time += rospy.Duration(self.period - old_period) # Update next_time
 
     def publish(self, msg):
