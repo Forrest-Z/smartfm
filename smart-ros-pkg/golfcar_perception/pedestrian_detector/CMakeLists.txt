@@ -24,7 +24,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 FIND_PACKAGE(CUDA 4.0)
 find_package(OpenCV REQUIRED)
-
+rosbuild_add_boost_directories()
 
 #uncomment if you have defined messages
 #rosbuild_genmsg()
@@ -41,10 +41,17 @@ find_package(OpenCV REQUIRED)
 
 #rosbuild_add_executable(pedestrian_detector_HOG src/pedestrian_detector_HOG.cpp)
 
+#Note: opencv gpu only works when all libopencv is overwritten from the
+#CUDA compiled source to /opt/ros/fuerte/lib. If not precomp.cpp will complain
+
 IF(CUDA_FOUND)
 rosbuild_add_executable(classifier src/classifier.cpp)
 target_link_libraries(classifier ${OpenCV_LIBS})
 ENDIF(CUDA_FOUND)
 
-rosbuild_add_executable(visualizer src/visualizer.cpp)
+rosbuild_add_executable(visualizer src/visualizer.cpp src/GraphUtils.cpp)
 target_link_libraries(visualizer ${OpenCV_LIBS})
+rosbuild_link_boost(visualizer signals)
+
+rosbuild_add_executable(loadBackground src/loadBackground.cpp)
+
