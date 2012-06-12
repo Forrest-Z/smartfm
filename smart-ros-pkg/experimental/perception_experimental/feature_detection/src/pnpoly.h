@@ -28,7 +28,8 @@ using namespace std;
 //  Note that division by zero is avoided because the division is protected
 //  by the "if" clause which surrounds it.
 
-bool pointInPolygon(Point p, vector<Point32> poly)
+template<class T> 
+bool pointInPolygon(T p, vector<Point32> poly)
 {
 	int polySides = poly.size();
 	int      i, j=polySides-1 ;

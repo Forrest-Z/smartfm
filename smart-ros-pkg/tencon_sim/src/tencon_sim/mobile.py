@@ -14,6 +14,8 @@ class Mobile(object):
     some acceleration constraints.
     '''
 
+    next_id_ = 0
+
     def __init__(self, x0, v_max, a=0, v0=0, sim_time_step=0.1, **kwargs):
         '''Constructor:
         @param x0 initial position
@@ -22,6 +24,9 @@ class Mobile(object):
         (infinite) acceleration/deceleration.
         @param v0 initial velocity (defaults to 0)
         '''
+        self.id = Mobile.next_id_
+        Mobile.next_id_ += 1
+
         self.x = x0
         self.v_max = v_max
         self.a = a
@@ -41,7 +46,7 @@ class Mobile(object):
 
         if self.a==0:
             self.v = self.v_target
-            
+
     def acc(self, a):
         '''brake, accelerate or cruise.
         @param a: 0: cruise, -1: brake, 1: accelerate
@@ -97,10 +102,10 @@ class Mobile(object):
     def time_to_pos(self, y):
         '''Returns the time needed, at the current speed, to reach the given
         position.'''
-        
+
         #x(t) = x0 + v0 * t
         #x(T) = y <=> T = (y-x0) / v0
-        
+
         if self.v == 0:
             raise RuntimeError('Mobile is not moving')
         return (y-self.x) / self.v
@@ -114,7 +119,7 @@ class Mobile(object):
         '''
         if a==0:
             return self.x + self.v * dt
-        
+
         if a==-1:
             if self.time_to_stop() < dt:
                 return self.x + self.dist_to_stop()
@@ -123,14 +128,13 @@ class Mobile(object):
         t_acc = 0
         if self.a != 0:
             t_acc = (self.v_max-self.v)/self.a
-        
+
         if t_acc > dt:
             return self.x + self.v * dt + self.a * pow(dt,2) / 2
-        
+
         d_acc = 0
         if self.a != 0:
             d_acc = (pow(self.v_max,2)-pow(self.v,2)) / (2 * self.a )
-        
+
         d_v_max = self.v_max * (dt-t_acc)
         return self.x + d_acc + d_v_max
-    

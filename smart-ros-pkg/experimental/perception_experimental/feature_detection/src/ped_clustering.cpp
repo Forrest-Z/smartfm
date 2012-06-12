@@ -58,6 +58,7 @@ ped_clustering::ped_clustering()
 	boundary_msg.header.stamp = ros::Time::now();
 	boundary_msg.header.frame_id = "/map";
 	boundary_msg.header.seq = 1;
+
 	svg_boundary svg(svg_file.c_str(), 0.1);
 	boundary_ = svg.getPath("crossing_boundary");
 	boundary_msg.polygon.points = boundary_;
@@ -258,12 +259,11 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
             	catch(tf::TransformException& e){ROS_INFO_STREAM(e.what());continue;}
 
             	//log shows the wn_PnPoly falls into the boundary only if output is 1
-            	if(!pointInPolygon(global_pt.point, boundary_))
+            	if(!pointInPolygon<Point>(global_pt.point, boundary_))
             		continue;
             }
             if(cluster.width < 1.5 && cluster.depth < 1.5)
             	ped_poi.points.push_back(p);
-
             std::vector<geometry_msgs::Point32> cluster_points;
             for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
             {
@@ -534,7 +534,6 @@ void ped_clustering::extractCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_fi
     if(cloud_filtered->size()==0) return;
     // Creating the KdTree object for the search method of the extraction
     pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-    //pcl::KdTreeFLANN<pcl::PointXYZ>::Ptr tree (new pcl::KdTreeFLANN<pcl::PointXYZ>);
     tree->setInputCloud (cloud_filtered);
 
 
