@@ -1,0 +1,17 @@
+<launch>
+   
+    <node pkg="vision_lane_detection" type="ipm" name="ipm">
+        <param name="image_transport" value="compressed"/>
+	</node>
+
+    <node pkg="image_view" type="image_view" name="image_view0">
+        <remap from="image" to= "/usb_cam/image_raw"/>
+        <param name="image_transport" value="compressed"/>
+	</node>
+
+    <node pkg="image_view" type="image_view" name="image_view1">
+        <remap from="image" to= "/usb_cam/image_ipm"/>
+        <param name="image_transport" value="compressed"/>
+	</node>
+
+</launch>

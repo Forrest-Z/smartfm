@@ -1,0 +1,50 @@
+There should be 4 class:
+
+1. "lane_detector" works at the highest level, which controls the frequency of the loop.
+    input:      the topic of camera, tf;
+    output:     detection results of lane markers, and (x, y, thetha);
+
+2. "ipm" wraps the image into an bird's eye view.
+    input:      raw image;
+    output:     ipm image;
+
+3. "image_proc" processes every single image, and generates contours and moments of lane marker candidates;
+    input:      ipm image;
+    output:     summary characteristics of lane marker candidates, including contours, moments, etc;
+
+4. "contour_matcher" classify each lane marker candidate, and calculate its pose; 
+    input:      summary charateristics of lane marker candidates;
+    output:     detection results of lane markers, and (x, y, thetha);
+
+ps: a. first drafted 20120530;
+    b. try to make it work, and then adjusted the whole structure;
+
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+For training data:
+
+1. The program "generate_training_data" is used to generate training data file from each single image respectively;
+The batch of images are extracted from image_proc, by setting "extract_image_" to true;
+
+2. The program "data_formating" tries to format data from "generate_training_data" into the required format of libsvm;
+
+---------------------------------------------------------------------------------------------------------------------------------------------
+
+Pictures:
+
+1. "issue_in_filtering": Sometimes even when the marker has touch the bottom, the box is somewhat not touching the bottom. This causes some
+    trouble in filtering. To filter the marker touching the bottom, big value is given as margin. For the bottom(actually upper bound in y
+    axis in the image), the value is 5. (See my notebook 20120602, and check the code in "generate_training_data", line 83)
+
+2. "quick_shot": this picture shows the interaction process of "generate_training_data" to extract training data from images;
+
+---------------------------------------------------------------------------------------------------------------------------------------------
+Latest Update 20120604:
+1. main structure has worked. Able to detect 3 types of markers. However, need to further filter out those noise;
+2. future work: camera calibration; fine tune the structure of the software; get position estimation; training data;
+
+Latest Update 20120606:
+1. Pose estimation has been added; the output of lane marker detection is published.
+2. future work: see above.
+
+

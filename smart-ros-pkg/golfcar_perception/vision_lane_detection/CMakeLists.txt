@@ -16,26 +16,35 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-#find_package(Eigen REQUIRED)
-#include_directories(${EIGEN_INCLUDE_DIRS})
-
 #uncomment if you have defined messages
 rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
-rosbuild_add_boost_directories()
+find_package(OpenCV REQUIRED)
 
-find_package(octomap REQUIRED)
-include_directories(${OCTOMAP_INCLUDE_DIRS})
-link_directories(${OCTOMAP_LIBRARY_DIRS})
-link_libraries(${OCTOMAP_LIBRARIES})
+rosbuild_add_library(image_proc src/image_proc.cpp src/libsvm/svm.cpp)
+rosbuild_add_executable(ipm src/ipm.cpp)
+target_link_libraries(ipm ${OpenCV_LIBRARIES} image_proc)
+                    
+rosbuild_add_executable(addCamInfo src/addCamInfo.cpp)
+target_link_libraries(addCamInfo ${OpenCV_LIBRARIES})
 
+rosbuild_add_executable(single_pic src/single_pic.cpp)
+target_link_libraries(single_pic ${OpenCV_LIBRARIES})
+#rosbuild_add_executable(wrap_example src/wrap_example.cpp)
+
+#rosbuild_add_executable(single_pic src/single_pic.cpp)
+#target_link_libraries(single_pic ${OpenCV_LIBRARIES})
+
+rosbuild_add_executable(generate_training_data src/generate_training_data.cpp)
+target_link_libraries(generate_training_data ${OpenCV_LIBRARIES})
+
+
+
+
+#target_link_libraries(wrap_example ${OpenCV_LIBRARIES})
 #common commands for building c++ executables and libraries
-rosbuild_add_executable(pip_test src/pip_test.cpp)
-rosbuild_add_executable(ped_clustering src/ped_clustering.cpp)
-rosbuild_link_boost(ped_clustering signals)
-
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()

@@ -58,5 +58,5 @@ target_link_libraries(uvc_cam_node uvc_cam ${OpenCV_LIBS})
 # rosbuild_add_executable(senderStereo src/stereo_sender.cpp)
 # target_link_libraries(senderStereo uvc_cam)
 
-rosbuild_add_executable(dump_send src/dump/dump_send.cpp src/dump/avilib.c)
-target_link_libraries(dump_send uvc_cam)
+#rosbuild_add_executable(dump_send src/dump/dump_send.cpp src/dump/avilib.c)
+#target_link_libraries(dump_send uvc_cam)
