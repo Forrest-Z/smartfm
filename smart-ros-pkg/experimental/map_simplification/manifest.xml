@@ -1,0 +1,14 @@
+<package>
+  <description brief="map_simplification">
+
+     map_simplification
+
+  </description>
+  <author>demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/map_simplification</url>
+
+</package>
+
+
