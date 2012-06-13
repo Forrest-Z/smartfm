@@ -43,7 +43,7 @@ from sensor_msgs.msg import *
 import utils as util
 from rospy.numpy_msg import numpy_msg
 from params import LDMRSParams
-#import diagnostic_updater
+import diagnostic_updater
 
 class ProcessLDMRSData:
     """
