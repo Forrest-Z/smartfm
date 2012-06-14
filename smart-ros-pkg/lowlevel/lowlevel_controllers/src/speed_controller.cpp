@@ -125,7 +125,7 @@ PID_Speed::PID_Speed()
 
     cmdVel = e_pre = iTerm = pitch = 0.0;
     emergency = false;
-    automode = true; //init as true as long as arduino is not here.
+    automode = false;
     safetyBrake_ = false;
 
     vFilter = fmutil::LowPassFilter(param.tau_v);

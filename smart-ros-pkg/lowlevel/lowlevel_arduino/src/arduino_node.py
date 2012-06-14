@@ -49,8 +49,13 @@ class ArduinoNode:
         fs_param = DIAG.FrequencyStatusParam({'min': rate, 'max': rate}, 0.1, 20)
         self.fs_diag = DIAG.FrequencyStatus(fs_param)
         self.diag_updater.add(self.fs_diag)
-        fn = DIAG.FunctionDiagnosticTask('board watchdog', self.watchdog)
-        self.diag_updater.add(fn)
+
+        # watchdog diagnostic: reports an error when the board does not respond
+        self.diag_updater.add( DIAG.FunctionDiagnosticTask('board watchdog', self.watchdog_diag) )
+
+        # emergency monitor
+        self.emergency_state = False
+        self.diag_updater.add( DIAG.FunctionDiagnosticTask('emergency button', self.emergency_diag) )
 
         self.timer = rospy.Timer(rospy.Duration(1.0/rate), self.timer_cb)
 
@@ -58,11 +63,12 @@ class ArduinoNode:
     def arduinoCB(self, msg):
         # A callback to update last_watchdog whenever a button_state_emergency message
         # is received
+        self.emergency_state = msg.data
         self.last_watchdog = rospy.Time.now()
         self.diag_updater.update()
 
 
-    def watchdog(self, stat):
+    def watchdog_diag(self, stat):
         # a function diagnostic to monitor the watchdog status
         if self.last_watchdog is None:
             stat.summary(2, 'Arduino board not started')
@@ -74,6 +80,17 @@ class ArduinoNode:
                 stat.summary(0, 'Arduino board is alive')
             stat.add('Last message received', self.last_watchdog.to_sec())
             stat.add('Elapsed since last message', d)
+        return stat
+
+
+    def emergency_diag(self, stat):
+        # a function diagnostic to monitor the emergency button status
+        if self.last_watchdog is None:
+            stat.summary(2, 'Arduino board not started')
+        elif self.emergency_state:
+            stat.summary(2, 'Emergency state')
+        else:
+            stat.summary(0, 'Normal running state')
         return stat
 
 
