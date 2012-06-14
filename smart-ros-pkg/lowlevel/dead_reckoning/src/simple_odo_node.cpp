@@ -34,10 +34,10 @@ public:
         m.y = odomsg.pose.pose.position.y;
 
         // Convert quaternion to RPY.
-        btQuaternion q;
+        tf::Quaternion q;
         double roll, pitch, yaw;
         tf::quaternionMsgToTF(odomsg.pose.pose.orientation, q);
-        btMatrix3x3(q).getRPY(roll, pitch, yaw);
+        tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
         m.th = yaw;
 
         m.v = odomsg.twist.twist.linear.x;

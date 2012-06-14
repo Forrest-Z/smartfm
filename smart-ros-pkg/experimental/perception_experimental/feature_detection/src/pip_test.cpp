@@ -24,13 +24,13 @@ int main(int argc, char** argv)
 	//double polygon[][2] = {{600, 2900}, {675, 3000},{625, 3100},  {650, 2900}, {600, 2900}};
 	int npts = NPTS(polygon);
 	geometry_msgs::PolygonStamped boundary_msg;
-	vector<Point> boundary;
+	vector<Point32> boundary;
 	boundary_msg.header.stamp = ros::Time::now();
 	boundary_msg.header.frame_id = "/map";
 	boundary_msg.header.seq = 1;
 	for (int i = 0; i < npts; i++)
 	{
-		Point l; l.x = polygon[i][0]/10.0; l.y = polygon[i][1]/10.0;
+		Point32 l; l.x = polygon[i][0]/10.0; l.y = polygon[i][1]/10.0;
 		Point32 l32; l32.x = l.x; l32.y = l.y;
 		boundary.push_back(l);
 		boundary_msg.polygon.points.push_back(l32);
@@ -45,7 +45,7 @@ int main(int argc, char** argv)
 		Point rnd_pt;
 		rnd_pt.x = 25.0f * rand() / (RAND_MAX + 1.0f) + 50.0;
 		rnd_pt.y = 40.0f * rand() / (RAND_MAX + 1.0f) + 280.0;
-		int pts_decision = pointInPolygon(rnd_pt, boundary);
+		int pts_decision = pointInPolygon<Point>(rnd_pt, boundary);
 		Point32 pt_cat;
 		pt_cat.x = rnd_pt.x;
 		pt_cat.y = rnd_pt.y;

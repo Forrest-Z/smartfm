@@ -31,4 +31,4 @@ rosbuild_genmsg()
 
 #rosbuild_add_library( libserial src/compass.cpp)
 rosbuild_add_executable(compass src/compass.cpp)
-rosbuild_add_link_flags(compass -lserial)
+target_link_libraries(compass serial)

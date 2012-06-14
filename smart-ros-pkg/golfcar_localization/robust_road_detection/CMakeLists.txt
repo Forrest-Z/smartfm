@@ -10,12 +10,13 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #set(ROS_BUILD_TYPE RelWithDebInfo)
 
 rosbuild_init()
-
+find_package(Eigen REQUIRED)
+include_directories(${Eigen_INCLUDE_DIRS})
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
-
+rosbuild_add_boost_directories()
 #uncomment if you have defined messages
 rosbuild_genmsg()
 #uncomment if you have defined services
@@ -27,5 +28,6 @@ rosbuild_genmsg()
 rosbuild_add_boost_directories()
 #rosbuild_add_executable(example examples/example.cpp)
 rosbuild_add_executable(curb_detect src/curb_detect.cpp)
+rosbuild_link_boost(curb_detect signals)
 #rosbuild_add_executable(curb_track src/curb_track.cpp)
 #target_link_libraries(example ${PROJECT_NAME})

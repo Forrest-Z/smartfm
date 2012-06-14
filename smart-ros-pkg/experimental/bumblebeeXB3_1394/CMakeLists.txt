@@ -11,10 +11,14 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 
 rosbuild_init()
 
+rosbuild_add_boost_directories()
+
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+
+find_package(OpenCV REQUIRED)
 
 #uncomment if you have defined messages
 #rosbuild_genmsg()
@@ -32,3 +36,4 @@ target_link_libraries(xb3 pnmutils ${OpenCV_LIBS} triclops dc1394)
 rosbuild_add_executable(time_server src/time_server.cpp)
 rosbuild_add_executable(triclopsRect src/triclopsRect.cpp ${PGR_LIB})
 target_link_libraries(triclopsRect pnmutils ${OpenCV_LIBS} triclops dc1394)
+rosbuild_link_boost(triclopsRect signals)

@@ -26,10 +26,10 @@ rosbuild_genmsg()
 
 rosbuild_add_boost_directories()
 
-#find_package(octomap REQUIRED)
-#include_directories(${OCTOMAP_INCLUDE_DIRS})
-#link_directories(${OCTOMAP_LIBRARY_DIRS})
-#link_libraries(${OCTOMAP_LIBRARIES})
+find_package(octomap REQUIRED)
+include_directories(${OCTOMAP_INCLUDE_DIRS})
+link_directories(${OCTOMAP_LIBRARY_DIRS})
+link_libraries(${OCTOMAP_LIBRARIES})
 
 #common commands for building c++ executables and libraries
 rosbuild_add_executable(pip_test src/pip_test.cpp)

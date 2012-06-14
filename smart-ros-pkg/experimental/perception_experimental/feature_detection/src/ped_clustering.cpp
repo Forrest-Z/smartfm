@@ -29,7 +29,7 @@ ped_clustering::ped_clustering()
     after_prior_filter_pub_ = nh.advertise<sensor_msgs::PointCloud>("prior_filtered", 1);
 
     laser_sub_.subscribe(nh, "sickldmrs/scan0", 10);
-    tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, laser_frame_id_, 10);
+    tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, global_frame_, 10);
     tf_filter_->registerCallback(boost::bind(&ped_clustering::laserCallback, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
 
@@ -43,21 +43,28 @@ ped_clustering::ped_clustering()
 	    getOctomap();
 	}
 
-	double polygon[][2] = {{631.34534, 3078.18734},{602.05092, 3019.34596},{574.7768, 3021.24},{567.45319, 3005.20383},{576.16576, 2988.1575},{584.62579, 2983.61182},{590.6867, 2980.32882},{589.42401, 2969.34341},{556.34152, 2880.95506},{621.24382, 2861.76216},{653.82124, 2933.73553},{649.78063, 2937.27107},{660.13469, 2961.76727},{679.32759, 2953.93858},{694.47988, 2983.73808},{672.7616, 2996.87007},{677.81236, 3007.72921},{680.33774, 3006.21398},{700.28826, 3045.60993},{631.85041, 3078.18734}};
-	int npts = NPTS(polygon);
+	string svg_file;
+	private_nh.param("svg_file", svg_file, string(""));
+	//double polygon[][2] = {{662.155,3136.776},{602.0509,3019.346},{574.7768,3021.24},{567.4532,3005.204},{576.1658,2988.158},{584.6258,2983.612},{588.1613,2974.773},{566.1905,2920.351},{533.108,2843.074},{605.0814,2815.8},{653.8212,2933.736},{649.7806,2937.271},{660.1347,2961.767},{679.3276,2953.939},{694.4799,2983.738},{672.7616,2996.87},{677.8124,3007.729},{680.3377,3006.214},{733.6233,3109.25},{662.155,3136.776}};
+	//int npts = NPTS(polygon);
+	/*for (int i = 0; i < npts; i++)
+		{
+			Point l; l.x = polygon[i][0]/10.0; l.y = polygon[i][1]/10.0;
+			Point32 l32; l32.x = l.x; l32.y = l.y;
+			boundary_.push_back(l);
+			boundary_msg.polygon.points.push_back(l32);
+		}*/
 	geometry_msgs::PolygonStamped boundary_msg;
 	boundary_msg.header.stamp = ros::Time::now();
 	boundary_msg.header.frame_id = "/map";
 	boundary_msg.header.seq = 1;
-	for (int i = 0; i < npts; i++)
-	{
-		Point l; l.x = polygon[i][0]/10.0; l.y = polygon[i][1]/10.0;
-		Point32 l32; l32.x = l.x; l32.y = l.y;
-		boundary_.push_back(l);
-		boundary_msg.polygon.points.push_back(l32);
-	}
-	boundary_pub_.publish(boundary_msg);
 
+	svg_boundary svg(svg_file.c_str(), 0.1);
+	boundary_ = svg.getPath("crossing_boundary");
+	boundary_msg.polygon.points = boundary_;
+
+	boundary_pub_.publish(boundary_msg);
+	sequential_clustering_ = false;
 
 
     ros::spin();
@@ -67,8 +74,8 @@ void ped_clustering::getOctomap()
 {
     const static std::string servname = "octomap_binary";
     ROS_INFO("Requesting the map from %s...", nh.resolveName(servname).c_str());
-    octomap_ros::GetOctomap::Request req;
-    octomap_ros::GetOctomap::Response resp;
+    octomap_msgs::GetOctomap::Request req;
+    octomap_msgs::GetOctomap::Response resp;
     while(nh.ok() && !ros::service::call(servname, req, resp))
     {
         ROS_WARN("Request to %s failed; trying again...", nh.resolveName(servname).c_str());
@@ -79,10 +86,10 @@ void ped_clustering::getOctomap()
     global_octMap->getMetricMax(x, y, z);
     //global_octMap->octree.getMetricMax(x,y,z);
     ROS_INFO("Map received. Size of map = %lf, %lf, %lf with resolution %lf", x, y, z, global_octMap->getResolution());
-    sequential_clustering_ = false;
+
     octomapTreeToPCLoctree(resp.map, global_pclOctree_);
 }
-void ped_clustering::octomapTreeToPCLoctree(octomap_ros::OctomapBinary& octomap, pcl::octree::OctreePointCloud<pcl::PointXYZ>* pcl_octree)
+void ped_clustering::octomapTreeToPCLoctree(octomap_msgs::OctomapBinary& octomap, pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>* pcl_octree)
 {
     std::list<octomap::point3d> all_cells;
     int level=15;
@@ -104,7 +111,7 @@ void ped_clustering::octomapTreeToPCLoctree(octomap_ros::OctomapBinary& octomap,
     }
 
     double resolution = octree.getResolution();
-    global_pclOctree_ = new pcl::octree::OctreePointCloud<pcl::PointXYZ>(resolution);
+    global_pclOctree_ = new pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>(resolution);
 
     global_pclOctree_->setInputCloud(pcl_out.makeShared());
     global_pclOctree_->addPointsFromInputCloud();
@@ -136,7 +143,7 @@ void ped_clustering::octomapTreeToPCLoctree(octomap_ros::OctomapBinary& octomap,
     }
 }
 
-void ped_clustering::filterPCLOctreeNN(pcl::octree::OctreePointCloud<pcl::PointXYZ> &priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub_, double threshold)
+void ped_clustering::filterPCLOctreeNN(pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> &priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub_, double threshold)
 {
     cout<<"Filtering with points "<< pc_in.points.size()<<endl;
     int missed = 0;
@@ -252,13 +259,24 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
             	catch(tf::TransformException& e){ROS_INFO_STREAM(e.what());continue;}
 
             	//log shows the wn_PnPoly falls into the boundary only if output is 1
-            	if(!pointInPolygon(global_pt.point, boundary_))
+            	if(!pointInPolygon<Point>(global_pt.point, boundary_))
             		continue;
             }
             if(cluster.width < 1.5 && cluster.depth < 1.5)
             	ped_poi.points.push_back(p);
             std::vector<geometry_msgs::Point32> cluster_points;
-            pcl::PointCloud<pcl::PointXYZ> pca_input = cloud_temp;
+            for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
+            {
+            	pcl::PointXYZ pclpt_temp;
+            	pclpt_temp = cloud_filtered->points[*pit];
+            	geometry_msgs::Point32 p_temp;
+            	p_temp.x = pclpt_temp.x;
+            	p_temp.y = pclpt_temp.y;
+            	p_temp.z = pclpt_temp.z;
+            	cluster_points.push_back(p_temp);
+            }
+            cluster.points = cluster_points;
+            /*pcl::PointCloud<pcl::PointXYZ> pca_input = cloud_temp;
             pca_input.points.clear();
             ROS_DEBUG("Start of cluster %d\n", cluster_number);
             for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
@@ -329,7 +347,7 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
             cluster.projected_l1 = abs_distance[sorting[2]];
             cluster.projected_l2 = abs_distance[sorting[1]];
             cluster.projected_l3 = abs_distance[sorting[0]];
-            cluster.projected_points = projected_points;
+            cluster.projected_points = projected_points;*/
 
 
             clusters.clusters.push_back(cluster);
@@ -416,10 +434,31 @@ inline geometry_msgs::Point32 getCenterPoint(geometry_msgs::Point32 start_pt, ge
 
 void ped_clustering::laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in)
 {
-    sensor_msgs::PointCloud pc;
+    sensor_msgs::PointCloud pc, global_pc;
 
     try{projector_.transformLaserScanToPointCloud(laser_frame_id_, *scan_in, pc, tf_);}
     catch (tf::TransformException& e){ROS_INFO_STREAM(e.what());return;}
+
+    //interleave based on map frame
+    //based on initial impression, it is quite good. Points appears to be more stable
+
+    if(scan_in->header.seq%2)
+    {
+    	try{tf_.transformPointCloud(global_frame_, pc, global_pc);}
+        catch(tf::TransformException& e){ROS_INFO_STREAM(e.what());return;}
+        laser_global_pc_.points.clear();
+        laser_global_pc_ = global_pc;
+        return;
+    }
+    else
+    {
+    	laser_global_pc_.header.stamp = scan_in->header.stamp;
+    	sensor_msgs::PointCloud pc_temp;
+    	try{tf_.transformPointCloud(scan_in->header.frame_id, laser_global_pc_, pc_temp);}
+    	catch(tf::TransformException& e){ROS_INFO_STREAM(e.what());return;}
+    	pc.points.insert(pc.points.end(), pc_temp.points.begin(), pc_temp.points.end());
+    }
+    //cout<<"laser_scan seq "<<scan_in->header.seq<<endl;
 
     if(sequential_clustering_)
     {
@@ -479,11 +518,12 @@ void ped_clustering::laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in
     {
         //A workaround with an apparent bug where sometimes It shows a different
         //cluster each with single point although there are separated by less than the threshold value
-        pc.points.insert(pc.points.end(),pc.points.begin(),pc.points.end());
+    	//perform interleave action by default
+        //pc.points.insert(pc.points.end(),pc.points.begin(),pc.points.end());
         sensor_msgs::PointCloud2 pc2;
         sensor_msgs::PointCloud output;
         sensor_msgs::convertPointCloudToPointCloud2(pc,pc2);
-        clustering(pc2, output, 1.2, 2, 100, true);
+        clustering(pc2, output, 0.7, 2, 100, true);
     }
 
 }
@@ -493,8 +533,7 @@ void ped_clustering::extractCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_fi
 {
     if(cloud_filtered->size()==0) return;
     // Creating the KdTree object for the search method of the extraction
-    //pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-    pcl::KdTreeFLANN<pcl::PointXYZ>::Ptr tree (new pcl::KdTreeFLANN<pcl::PointXYZ>);
+    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
     tree->setInputCloud (cloud_filtered);
 
 
