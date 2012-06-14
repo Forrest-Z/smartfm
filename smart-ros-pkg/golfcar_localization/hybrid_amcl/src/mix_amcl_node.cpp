@@ -579,7 +579,7 @@ bool MixAmclNode::getOdomPose(tf::Stamped<tf::Pose>& odom_pose, double& x, doubl
 							  const ros::Time& t, const std::string& f)
 {
 	// Get the robot's pose
-	tf::Stamped<tf::Pose> ident (btTransform(tf::createIdentityQuaternion(), btVector3(0,0,0)), t, f);
+	tf::Stamped<tf::Pose> ident (btTransform(btQuaternion::getIdentity(), btVector3(0,0,0)), t, f);
 	try
 	{
 		this->tf_->transformPose(odom_frame_id_, ident, odom_pose);
@@ -1393,7 +1393,7 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 		lasers_update_.push_back(true);
 		laser_index = frame_to_laser_.size();
 
-		tf::Stamped<tf::Pose> ident (btTransform(tf::createIdentityQuaternion(), btVector3(0,0,0)), ros::Time(), laser_scan->header.frame_id);
+		tf::Stamped<tf::Pose> ident (btTransform(btQuaternion::getIdentity(), btVector3(0,0,0)), ros::Time(), laser_scan->header.frame_id);
 		tf::Stamped<tf::Pose> laser_pose;
 		try
 		{
@@ -1844,8 +1844,7 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
 double MixAmclNode::getYaw(tf::Pose& t)
 {
 	double yaw, pitch, roll;
-	btMatrix3x3 mat = t.getBasis();
-	mat.getEulerYPR(yaw,pitch,roll);
+	t.getBasis().getEulerYPR(yaw,pitch,roll);
 	return yaw;
 }
 

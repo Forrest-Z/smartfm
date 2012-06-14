@@ -16,6 +16,7 @@
   <depend package="triclops" />
   <depend package="cv_bridge" />
   <depend package="camera_info_manager" />
+  <rosdep name="opencv2"/> 
 </package>
 
 

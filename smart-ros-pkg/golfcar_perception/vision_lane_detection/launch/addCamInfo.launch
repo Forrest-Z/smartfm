@@ -1,0 +1,15 @@
+<launch>
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camerabase" args="1.795, 0.0, 0.97 -0.0 0.0 -0.0 /base_link /usb_cam 100" />
+    <node pkg="tf" type="static_transform_publisher" name="camerabase_to_camera" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /usb_cam /logitech_cam 100" />
+    
+	<node pkg="vision_lane_detection" type="addCamInfo" name="addCamInfo">
+        <param name="image_transport" value="compressed"/>
+	</node>
+
+    <node pkg="image_view" type="image_view" name="image_view0">
+        <remap from="image" to= "/usb_cam/image_raw"/>
+        <param name="image_transport" value="compressed"/>
+        
+	</node>
+
+</launch>

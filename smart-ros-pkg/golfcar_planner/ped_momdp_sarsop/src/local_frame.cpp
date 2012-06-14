@@ -69,7 +69,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
         if(matched)
         {
             //transform found, just update the position
-            if(ped_batch->pd_vector[i].confidence > threshold_/100)
+            //if(ped_batch->pd_vector[i].confidence > threshold_/100)
             {
                 ped_momdp_sarsop::ped_local_frame plf;
                 plf.header.stamp = ped_batch->header.stamp;

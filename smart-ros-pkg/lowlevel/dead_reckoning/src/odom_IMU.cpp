@@ -12,6 +12,7 @@
 #include <ros/console.h>
 
 #include <sensor_msgs/Imu.h>
+#include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Quaternion.h>
@@ -66,7 +67,7 @@ void OdoIMU::imuCallBack(sensor_msgs::Imu imuMsg)
     // Get RPY from the IMU
     tf::Quaternion qt;
     tf::quaternionMsgToTF(imuMsg.orientation, qt);
-    btMatrix3x3(qt).getRPY(roll, pitch, yaw);
+    tf::Matrix3x3(qt).getRPY(roll, pitch, yaw);
     ROS_DEBUG("rpy: %d, %d, %d (degrees)", R2D(roll), R2D(pitch), R2D(yaw));
 }
 
