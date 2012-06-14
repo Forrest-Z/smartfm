@@ -72,6 +72,21 @@ class PlotResults:
         self.dt = [d['dt'] for d in self.data]
         self.dt_t = [d['dt_t'] for d in self.data]
 
+    def parse_parameter_section(self, f):
+        params = {}
+        line = f.readline()
+        while '<parameters>' not in line:
+            line = f.readline()
+        line = f.readline()
+        while '</parameters>' not in line:
+            tokens = line.strip().split('=')
+            if len(tokens)!=2:
+                print 'Warning: failed parsing parameter line:', line.strip()
+            else:
+                params[tokens[0]] = float(tokens[1])
+            line = f.readline()
+        return params
+
     def extract_data(self, filename):
         '''Goes through the raw data and extracts meaningful data. Entries in
         the list below describe the keys available in the data dictionnary
@@ -109,6 +124,9 @@ class PlotResults:
             f = gzip.GzipFile(filename, 'rb')
         else:
             f = open(filename, 'rb')
+
+        # parse the parameters
+        data['params'] = self.parse_parameter_section(f)
 
         # store transit times here
         data['dts'] = {'base':[], 'infra':[]}
@@ -154,8 +172,8 @@ class PlotResults:
             prev_time = state.t
 
         f.close()
-        data['dt'] = np.mean(data['dts']['base']) - np.mean(data['dts']['infra'])
-        data['dt_t'], data['dt_p'] = scipy.stats.ttest_ind(data['dts']['base'], data['dts']['infra'])
+        data['dt'] = np.mean(data['dts']['base'][30:]) - np.mean(data['dts']['infra'][30:])
+        data['dt_t'], data['dt_p'] = scipy.stats.ttest_ind(data['dts']['base'][30:], data['dts']['infra'][30:])
 
         # compute the stability metric: t-test between first half and
         # second half of the transit time data. If above 0.05, then it is
@@ -169,8 +187,8 @@ class PlotResults:
 
         print '%s: base=%d,%.2f,%.2f, infra=%d,%.2f,%.2f, dt=%2f, dt_t=%.2f, dt_p=%.2f' % \
             ( os.path.basename(filename), \
-            len(data['dts']['base']), np.mean(data['dts']['base']), data['stability_p_val']['base'], \
-            len(data['dts']['infra']), np.mean(data['dts']['infra']), data['stability_p_val']['infra'], \
+            len(data['dts']['base'][30:]), np.mean(data['dts']['base'][30:]), data['stability_p_val']['base'], \
+            len(data['dts']['infra'][30:]), np.mean(data['dts']['infra'][30:]), data['stability_p_val']['infra'], \
             data['dt'], data['dt_t'], data['dt_p'] )
 
     def print_data(self):
@@ -178,11 +196,32 @@ class PlotResults:
         for d in self.data:
             print '%.02f, %.02f, %.02f, %.02f, %d, %.02f, %.02f, %d, %.02f, %.02f' % ( \
                 d['lv'], d['lp'], \
-                np.mean(d['dts']['base']), d['stability_p_val']['base'], \
+                np.mean(d['dts']['base'][30:]), d['stability_p_val']['base'], \
                 d['is_stable']['base'], \
-                np.mean(d['dts']['infra']), d['stability_p_val']['infra'], \
+                np.mean(d['dts']['infra'][30:]), d['stability_p_val']['infra'], \
                 d['is_stable']['infra'], \
                 d['dt_t'], d['dt_p'])
+
+    def print_data_table_tex(self):
+        print '\\begin{tabular}{|c|%s}' % (len(self.lv) * 'cc|')
+        print '\\hline'
+        print '\\multirow{2}{*}{$\\lambda_p$} & \\multicolumn{%d}{|c|}{$\\lambda_v$}' % (2*len(self.lv))
+        print '\\\\ \\cline{2-%d}' % (2*len(self.lv)+1)
+        print ' & ' + ' & '.join(['\\multicolumn{2}{|c|}{%.2f}' % lv for lv in self.lv])
+        print '\\\\ \\hline'
+        for lp in self.lp:
+            s = '%.2f' % lp
+            for lv in self.lv:
+                for k in ('base','infra'):
+                    for d in self.data:
+                        if d['lp']==lp and d['lv']==lv:
+                            if d['is_stable'][k]:
+                                s = s + ' & %d' % int( np.mean(d['dts'][k][30:]) )
+                            else:
+                                s = s + ' & - '
+            print s + '\\\\'
+        print '\\hline'
+        print '\\end{tabular}'
 
     def plot_3D_hist(self, zvar, name='', fig=None, subplot=111):
         '''Plots the dt results as a 3D histogram.'''
@@ -253,6 +292,7 @@ if __name__=='__main__':
 
     print '-'*79
     results.print_data()
+    results.print_data_table_tex()
 
     #results.plot_3D_hist(results.dt_t, 'time gain (t value)')
     #results.plot_3D_hist(results.dt, 'time gain (raw value)')

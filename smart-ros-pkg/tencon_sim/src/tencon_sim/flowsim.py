@@ -47,6 +47,8 @@ class FlowSim:
         self.params = copy.deepcopy(params)
 
         self.logfile = logfile
+        if logfile:
+            self.log_params()
 
         # the current time
         self.t = 0
@@ -168,3 +170,9 @@ class FlowSim:
 
         self._remove_mobiles(True)
         self.t += self.params['sim_time_step']
+
+    def log_params(self):
+        self.logfile.write('<parameters>\n')
+        for k,v in self.params.iteritems():
+            self.logfile.write('%s=%f\n' % (k,v))
+        self.logfile.write('</parameters>\n')
