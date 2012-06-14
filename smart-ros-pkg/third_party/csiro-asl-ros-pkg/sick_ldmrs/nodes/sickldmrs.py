@@ -269,7 +269,7 @@ def _update_config_callback(config,  level):
     config = param_handler.update_config(config,  level,  fix_errors=True)
     rospy.logdebug("Parameters are OK")
 
-    if  ("apply_changes" in config) and config["apply_changes"]:
+    if  ("apply_changes" in config.__dict__) and config["apply_changes"]:
         config["apply_changes"] = False # make sure changes are only applied once
         # Restart the transport layer since we need to change the device
         # parameters,and this can only be done on restart with the present
