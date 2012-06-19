@@ -304,7 +304,7 @@ void Visualizer::drawBeliefChart()
     {
         stringstream ss;
 
-        ss<<setprecision(2)<<fixed<<labeltxt[i]<<": "<<belief_chart[i][belief_chart[i].size()-1];
+        ss<<setprecision(2)<<fixed<<labeltxt[i]<<": "<<belief_chart[3-i][belief_chart[i].size()-1];
         putText(beliefImg, ss.str(), TR_pt, FONT_HERSHEY_PLAIN, 0.8,cvScalar(0,0,0), 1, 8);
         Point linePos = TR_pt + linePosOffset;
         Scalar RGB = colors[3-i];
@@ -346,12 +346,24 @@ void Visualizer::extrapolateBelief()
     }
     else
     {
-        if(ped_bel[0].id == trackingID && !endBeliefChart)
+        int pedbel_n;
+        bool id_found = false;
+        for(size_t i=0; i<ped_bel.size(); i++)
         {
-            belief_chart[0].insert(belief_chart[0].end(), ped_bel[0].goals[0]);
-            belief_chart[1].insert(belief_chart[1].end(), ped_bel[0].goals[1]);
-            belief_chart[2].insert(belief_chart[2].end(), ped_bel[0].goals[2]);
-            belief_chart[3].insert(belief_chart[3].end(), ped_bel[0].goals[3]);
+            if(ped_bel[i].id == trackingID)
+            {
+                pedbel_n = i;
+                id_found = true;
+                continue;
+            }
+
+        }
+        if(id_found && !endBeliefChart)
+        {
+            belief_chart[0].insert(belief_chart[0].end(), ped_bel[pedbel_n].goals[0]);
+            belief_chart[1].insert(belief_chart[1].end(), ped_bel[pedbel_n].goals[1]);
+            belief_chart[2].insert(belief_chart[2].end(), ped_bel[pedbel_n].goals[2]);
+            belief_chart[3].insert(belief_chart[3].end(), ped_bel[pedbel_n].goals[3]);
         }
         else
         {
@@ -367,7 +379,7 @@ void Visualizer::extrapolateBelief()
 void Visualizer::pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel_cb)
 {
 
-    if(trackingID == -1) trackingID = ped_bel_cb.believes[0].ped_id;
+    if(trackingID == -1) trackingID = 109;
     ped_bel.resize(ped_bel_cb.believes.size());
     for(size_t i=0; i<ped_bel_cb.believes.size(); i++)
     {
@@ -397,12 +409,14 @@ void Visualizer::pedBeliefCallback(ped_momdp_sarsop::peds_believes ped_bel_cb)
         ped_bel[i].goals.clear();
 
         //move the last goals value to as the first one: workaround specific for crossing case
-        //for(size_t j=0; j< ped_bel_cb.believes[i].belief_value.size(); j++)
-        //           ped_bel[i].goals.push_back(ped_bel_cb.believes[i].belief_value[j]);
-        ped_bel[i].goals.push_back(max(ped_bel_cb.believes[i].belief_value[3], ped_bel_cb.believes[i].belief_value[0]));
-        //ped_bel[i].goals.push_back();
-        ped_bel[i].goals.push_back(max(ped_bel_cb.believes[i].belief_value[1], ped_bel_cb.believes[i].belief_value[2]));
-        //ped_bel[i].goals.push_back();
+
+        //ped_bel[i].goals.push_back(max(ped_bel_cb.believes[i].belief_value[3], ped_bel_cb.believes[i].belief_value[0]));
+        //ped_bel[i].goals.push_back(max(ped_bel_cb.believes[i].belief_value[1], ped_bel_cb.believes[i].belief_value[2]));
+
+        ped_bel[i].goals.push_back(ped_bel_cb.believes[i].belief_value[3]);
+        ped_bel[i].goals.push_back(ped_bel_cb.believes[i].belief_value[0]);
+        ped_bel[i].goals.push_back(ped_bel_cb.believes[i].belief_value[1]);
+        ped_bel[i].goals.push_back(ped_bel_cb.believes[i].belief_value[2]);
 
         ped_bel[i].decision = decision;
         //ped_bel[i].goals = left;
@@ -514,7 +528,7 @@ void Visualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_visio
 
             for(size_t j = 0; j<ped_bel[i].goals.size(); j++)
             {
-                assert(ped_bel[i].goals.size()==2);
+                assert(ped_bel[i].goals.size()==4);
                 /// left bar
                 double lvalue = ped_bel[i].goals[j]*Bbox_height;
                 cout<<"lvalue "<<j<<" ="<<lvalue<<' ';
@@ -523,7 +537,7 @@ void Visualizer::drawIDandConfidence(Mat& img, sensing_on_road::pedestrian_visio
                 Point bar_TopRight = Point(B_TopLeft.x+(bar_width+bar_buff)*(j+1),
                                            B_BotLeft.y- lvalue);
                 /// fill
-                Scalar RGB = colors[BLUE];
+                Scalar RGB = colors[j];
                 Scalar BRG = Scalar(RGB[2], RGB[1], RGB[0]);
                 rectangle(img, Point(bar_buff + B_BotLeft.x + (bar_width+bar_buff)*j, B_BotLeft.y),
                           bar_TopRight, BRG,CV_FILLED);

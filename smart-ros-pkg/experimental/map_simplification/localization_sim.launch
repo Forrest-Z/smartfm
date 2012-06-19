@@ -1,36 +1,12 @@
 <launch>
     <param name="use_sim_time" value="true"/>
-    <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller"/>
-    <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
-        <rosparam file="$(find lowlevel_controllers)/speed_controller.yaml" command="load" />
-        <remap from="/odom" to="/encoder_odom"/>
-    </node>
-
-    <node name="laser_republish" pkg="laser_maxrange_republish" type="laser_repub"/>
-
-    <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
-        <remap from="cmd_vel" to="move_vel"/>
-        <remap from="map" to="curb_map"/>
-
-        <param name="footprint_padding" value="0.01" />
-        <param name="controller_frequency" value="20.0" />
-        <param name="controller_patience" value="100.0" />
-        <param name="base_global_planner" value="golfcar_gp/GlobalPlan"/>
-        <param name="base_local_planner" value="golfcar_purepursuit/PurePursuitBase"/>
-        <param name="PurePursuitBase/tracking_distance" value="15.0"/>
-
-        <rosparam file="$(find map_simplification)/move_base/costmap_common_params.yaml" command="load" ns="global_costmap" />
-        <rosparam file="$(find map_simplification)/move_base/costmap_common_params.yaml" command="load" ns="local_costmap" />
-        <rosparam file="$(find map_simplification)/move_base/local_costmap_params_close.yaml" command="load" />
-        <rosparam file="$(find map_simplification)/move_base/global_costmap_params.yaml" command="load" />
-        <rosparam file="$(find map_simplification)/move_base/sbpl_global_params.yaml" command="load" />
-    </node>
+    
     <node pkg="amcl" type="amcl" respawn="false" name="amcl_node" output="screen">
         <param name="initial_pose_x" value="99"/>
         <param name="initial_pose_y" value="140"/>
         <param name="initial_pose_a" value="-4.18879"/>
         <param name="odom_alpha1" value="0.3"/>
-        <param name="odom_alpha3" value="0.5"/>
+        <param name="odom_alpha3" value="0.7"/>
         <param name="laser_model_type" value="beam"/>
         <remap from="scan" to="base_scan"/>
     </node>
