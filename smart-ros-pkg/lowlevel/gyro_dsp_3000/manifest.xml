@@ -1,0 +1,18 @@
+<package>
+  <description brief="gyro_dsp_3000">
+
+     gyro_dsp_3000
+     python driver for KVH DSP-3000 gyro
+
+  </description>
+  <author>Sethu</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/gyro_dsp_3000</url>
+  <depend package="rospy"/>
+  <depend package="std_msgs"/>
+  <!--rosdep depend="python-serial"/-->
+
+</package>
+
+
