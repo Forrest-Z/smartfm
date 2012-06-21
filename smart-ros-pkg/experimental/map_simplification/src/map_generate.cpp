@@ -17,13 +17,14 @@ using namespace cv;
 int main(int argc, char** argcv)
 {
 	ifstream file;
-	string folder("/home/demian/smartfm/smart-ros-pkg/experimental/map_simplification/maps");
-	if(argc!=2)
+	//string folder("/home/golfcar/smartfm/smart-ros-pkg/experimental/map_simplification/maps");
+	if(argc!=3)
 	{
-		cout<<"Usage: map_generate input.txt"<<endl;
+		cout<<"Usage: map_generate MAP_FOLDER input.txt"<<endl;
 		return 1;
 	}
-	file.open(argcv[1]);
+	string folder(argcv[1]);
+	file.open(argcv[2]);
 
 	//load image into memory
 	Vector< Mat > maps;
@@ -46,35 +47,38 @@ int main(int argc, char** argcv)
 		maps.push_back(map);
 	}
 
-	string bin_str;
-	int file_no=0;
+	vector<string> bin_strs;
 	while(file.good())
 	{
+	        string bin_str;
 		getline(file, bin_str);
 		if(bin_str.size()>0)
-		{
-			int bit_no = 0;
-			Mat new_map;
-			new_map = background_img.clone();
-			for(string::iterator it=bin_str.begin(); it!=bin_str.end(); it++)
-			{
-				char on_off =*it;
-				if(on_off == '1')
-				{
-					cout<<"O";
-					multiply(new_map, maps[bit_no], new_map);
-				}
-				else cout<<" ";
-				bit_no++;
-			}
-			cout<<endl;
-			multiply(new_map, 255, new_map);
-			stringstream filename;
-			filename<<folder<<"/comb/"<<file_no++<<".png";
-			cout<<"Saving: "<<filename.str()<<endl;
-			imwrite(filename.str(), new_map);
-		}
+		    bin_strs.push_back(bin_str);
 	}
+        #pragma omp parallel for
+	for(size_t i = 0; i < 8795/*bin_strs.size()*/; i++)
+	{
 
+	    {
+	        string bin_str = bin_strs[i];
+
+	        Mat new_map;
+	        new_map = background_img.clone();
+	        for(size_t j = 0; j<bin_str.size(); j++)
+	        {
+	            char on_off =bin_str[j];
+	            if(on_off == '1')
+	                multiply(new_map, maps[j], new_map);
+	        }
+	        multiply(new_map, 255, new_map);
+	        stringstream filename;
+                #pragma omp critical
+	        {
+	            filename<<folder<<"/comb/"<<i<<".png";
+	            cout<<"Saving: "<<filename.str()<<endl;
+	            imwrite(filename.str(), new_map);
+	        }
+	    }
+	}
 	return 0;
 }
