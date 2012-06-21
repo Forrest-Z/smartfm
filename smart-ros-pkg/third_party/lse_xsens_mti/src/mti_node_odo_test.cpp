@@ -133,10 +133,10 @@ int main(int argc, char** argv)
 		tf::Quaternion qt_temp;
 		btScalar pitch, roll, yaw;
 		tf::Quaternion qt;
+		geometry_msgs::Quaternion orientation = mti_msg.orientation;
+		btQuaternion btq(orientation.x, orientation.y, orientation.z, orientation.w);
+		btMatrix3x3(btq).getEulerYPR(yaw, pitch, roll);
 		
-		tf::quaternionMsgToTF(mti_msg.orientation, qt);
-		
-		btMatrix3x3(qt).getRPY(yaw, pitch, roll);
 		//handle the nan issue. This occur when the imu is restarted 
 		if(isnan(yaw)||isnan(pitch)||isnan(roll)) 
 		{
@@ -155,9 +155,10 @@ int main(int argc, char** argv)
 		}
 		//Ensure that the orientation always start from yaw=0. That's the assumption made for odometry calculation
 		yaw -= yaw_pre;
-		btm.setRPY(roll, pitch, yaw);
-		btm.getRotation(qt_temp);
-		tf::quaternionTFToMsg(qt_temp,mti_msg.orientation);
+		btm.setEulerYPR(yaw, pitch, roll);
+		btQuaternion btqt_temp;
+		btm.getRotation(btqt_temp);
+		tf::quaternionTFToMsg(btqt_temp,mti_msg.orientation);
 		//test odometry, assuming running at 1 m/s
 		
 		double r11 = cos(yaw)*cos(pitch);

@@ -62,7 +62,7 @@ private:
     void convertToLaser(sensor_msgs::PointCloud2 pointcloud2_in, sensor_msgs::LaserScan& laser_out);
     void normalEstimation(PointCloud input);
     void publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_cloud);
-    void mainLoop(geometry_msgs::PointStamped& laser_pose);
+    void mainLoop(geometry_msgs::PointStamped& laser_pose, sensor_msgs::PointCloud& laser_cloud);
 
     size_t sample_size_;
     double static_prob_;
@@ -75,7 +75,7 @@ private:
 laser_evidence::laser_evidence() : tf_()
 {
     target_frame_ = "/odom";
-    sample_size_ = 50; //75
+    sample_size_ = 75;
     //filter_prob_ = 0.8;
     search_radius_ = 0.3;
     laser_scan_sub_.subscribe(n_, "scan_in", 10);
@@ -101,8 +101,8 @@ void laser_evidence::pointcloudsToLaser(sensor_msgs::PointCloud& cloud, sensor_m
     //adapted from turtlebot's cloud_to_scan.cpp
     filtered_pc_pub_.publish(cloud);
     output.header = cloud.header;
-    output.angle_min = -M_PI*0.7;
-    output.angle_max = M_PI*0.7;
+    output.angle_min = -M_PI;//*0.7;
+    output.angle_max = M_PI;//*0.7;
     output.angle_increment = M_PI/180.0/2.0;
     output.time_increment = 0.0;
     output.scan_time = 1.0/30.0;
@@ -139,7 +139,9 @@ void laser_evidence::pointcloudsToLaser(sensor_msgs::PointCloud& cloud, sensor_m
         int index = (angle - output.angle_min) / output.angle_increment;
 
 
-        if (output.ranges[index] * output.ranges[index] > range_sq)
+        //added to output the maximum range available from the point cloud
+        if (output.ranges[index] == output.range_max + 1.0) output.ranges[index] = sqrt(range_sq);
+        if (output.ranges[index] * output.ranges[index] < range_sq)
             output.ranges[index] = sqrt(range_sq);
     }
 }
@@ -164,8 +166,8 @@ void laser_evidence::cloudCallback(const sensor_msgs::PointCloud2ConstPtr cloud_
         ROS_DEBUG("%s",e.what());
         return;
     }
-    mainLoop(laser_pose);
-    sample_data_.insert(sample_data_.begin(), laser_cloud);
+    mainLoop(laser_pose, laser_cloud);
+//    sample_data_.insert(sample_data_.begin(), laser_cloud);
 }
 void laser_evidence::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
 {
@@ -188,12 +190,12 @@ void laser_evidence::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
         return;
     }
 
-    mainLoop(laser_pose);
-    sample_data_.insert(sample_data_.begin(), laser_cloud);
+    mainLoop(laser_pose, laser_cloud);
+
 
 }
 
-void laser_evidence::mainLoop(geometry_msgs::PointStamped& laser_pose)
+void laser_evidence::mainLoop(geometry_msgs::PointStamped& laser_pose, sensor_msgs::PointCloud& laser_cloud)
 {
     if(fmutil::distance(laser_pose_pre_.point, laser_pose.point)<0.03) return;
     else laser_pose_pre_ = laser_pose;
@@ -219,6 +221,7 @@ void laser_evidence::mainLoop(geometry_msgs::PointStamped& laser_pose)
 
 
     }
+    sample_data_.insert(sample_data_.begin(), laser_cloud);
 }
 
 void laser_evidence::normalEstimation(PointCloud input)
@@ -260,7 +263,7 @@ void laser_evidence::publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_cloud)
       for(size_t i=0; i<pcl_cloud.points.size();)
       {
 
-          if(fabs(pcl_cloud.points[i].normal_z)>0.60)//up to 0.9 is alright for tilted laser //, , fmutil::d2r(-355)))
+          if(fabs(pcl_cloud.points[i].normal_z)>0.90)//up to 0.9 is alright for tilted laser //, , fmutil::d2r(-355)))
           {
               pcl_cloud.points.erase(pcl_cloud.points.begin()+i);
               if(pcl_cloud.width>1) pcl_cloud.width --;

@@ -3,6 +3,9 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 set(ROS_BUILD_TYPE Release)
 rosbuild_init()
 
+find_package(Eigen REQUIRED)
+include_directories(${Eigen_INCLUDE_DIRS})
+
 rosbuild_add_library(amcl_pf 
                     src/pf/pf.c 
                     src/pf/pf_kdtree.c 
@@ -26,18 +29,19 @@ rosbuild_add_library(amcl_sensors
                     src/sensors/amcl_crossing_window.cpp)
                     
 target_link_libraries(amcl_sensors amcl_map amcl_pf)
-
+rosbuild_add_boost_directories()
 rosbuild_add_executable(bin/mix_amcl
                        src/mix_amcl_node.cpp)
-
+rosbuild_link_boost(bin/mix_amcl signals)
 rosbuild_add_link_flags(bin/mix_amcl -lm)
                              
 target_link_libraries(bin/mix_amcl amcl_sensors amcl_map amcl_pf)
 
+
 rosbuild_add_executable(bin/curb_intersection_amcl
                        src/curb_intersection_node.cpp)   
 target_link_libraries(bin/curb_intersection_amcl amcl_sensors amcl_map amcl_pf)
-
+rosbuild_link_boost(bin/curb_intersection_amcl signals)
 ## Tests are failing on OSX for an unknown reason
 #include(CMakeDetermineSystem)
 #if(CMAKE_SYSTEM_NAME MATCHES "Linux")

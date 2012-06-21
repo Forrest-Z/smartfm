@@ -11,7 +11,7 @@
 #include <stdio.h>
 
 #include <ros/ros.h>
-#include <joy/Joy.h>
+#include <sensor_msgs/Joy.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/Bool.h>
 
@@ -22,7 +22,7 @@
 ros::Publisher throttle_pub, steering_pub, brake_pub, lblinker_pub, rblinker_pub;
 
 
-void joyCallBack(joy::Joy joy_msg)
+void joyCallBack(sensor_msgs::Joy joy_msg)
 {
     // 3 axes joystick, each axis value ranges from -1.0 to 1.0
     // axes[0] is the lateral axis: positive to the left

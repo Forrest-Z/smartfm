@@ -10,7 +10,7 @@
   <url>http://ros.org/wiki/kbd_joy_control</url>
 
   <depend package="roscpp"/>
-  <depend package="joy"/>
+  <depend package="sensor_msgs"/>
 
 </package>
 

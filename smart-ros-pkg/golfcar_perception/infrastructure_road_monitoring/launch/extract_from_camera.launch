@@ -2,12 +2,9 @@
 
     <arg name="device" />
 
-    <node pkg="usb_cam" type="usb_cam_node" name="camera" output="screen" >
-        <param name="video_device" value="$(arg device)" />
-        <param name="pixel_format" value="yuyv" />
-        <param name="image_width" value="320" />
-        <param name="image_height" value="240" />
-    </node>
+    <include file="$(find infrastructure_road_monitoring)/launch/camera.launch">
+        <arg name="device" value="$(arg device)" />
+    </include>
 
     <node pkg="infrastructure_road_monitoring" type="background_extractor" name="background_extractor" output="screen">
         <remap from="camera" to="camera/image_raw" />

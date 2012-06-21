@@ -12,19 +12,20 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr msg)
 {
     //added to publish rpy and tf
     static tf::TransformBroadcaster broadcaster_b;
-    tf::Quaternion qt_temp;
+    
     btScalar pitch, roll, yaw;
-    tf::Quaternion qt;
-    tf::quaternionMsgToTF(msg->orientation, qt);
-    btMatrix3x3(qt).getRPY(roll, pitch, yaw);
-
+    geometry_msgs::Quaternion orientation = msg->orientation;
+    btQuaternion btq(orientation.x, orientation.y, orientation.z, orientation.w);
+    btMatrix3x3(btq).getEulerYPR(yaw, pitch, roll);
+    
     //correct the roll angle from +-180 to +-0
     //if(roll>=0) roll-=M_PI;
     //else roll+=M_PI;
 
     btMatrix3x3 btm;
-    btm.setRPY(roll, pitch, yaw);
-    btm.getRotation(qt_temp);
+    btm.setEulerYPR(yaw, pitch, roll);
+    btQuaternion btqt_temp;
+    btm.getRotation(btqt_temp);
     microstrain_rpy::imu_rpy rpy;
 
     rpy.roll = roll/M_PI*180;
@@ -32,7 +33,7 @@ void imuCallback(const sensor_msgs::Imu::ConstPtr msg)
     rpy.yaw = yaw/M_PI*180;
     broadcaster_b.sendTransform(
         tf::StampedTransform(
-            tf::Transform(qt_temp, tf::Vector3(0,0,0)),
+            tf::Transform(btqt_temp, tf::Vector3(0,0,0)),
                              ros::Time::now(), "ms_imu_base", "ms_imu"));
     imu_pub_->publish(rpy);
 }

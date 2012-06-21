@@ -125,7 +125,7 @@ PID_Speed::PID_Speed()
 
     cmdVel = e_pre = iTerm = pitch = 0.0;
     emergency = false;
-    automode = true; //init as true as long as arduino is not here.
+    automode = false;
     safetyBrake_ = false;
 
     vFilter = fmutil::LowPassFilter(param.tau_v);
@@ -169,6 +169,7 @@ void PID_Speed::odoCallBack(phidget_encoders::Encoders enc)
 {
     std_msgs::Float64 throttle_msg, brake_msg;
     lowlevel_controllers::PID pid;
+    pid.desired_vel = cmdVel;
 
     double odovel = enc.v;
     if( emergency || !automode || (cmdVel <= 0 && odovel <= param.full_brake_thres) || safetyBrake_ )

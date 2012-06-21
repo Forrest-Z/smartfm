@@ -53,7 +53,7 @@
 
 typedef driver_base::Driver Driver;
 typedef driver_base::SensorLevels Levels;
-
+using namespace camera_info_manager;
 /** Segfault signal handler */
 void sigsegv_handler(int sig)
 {

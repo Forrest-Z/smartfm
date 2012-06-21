@@ -127,18 +127,19 @@ int main(int argc, char** argv)
 		mti_msg.linear_acceleration.z = mti->accelerometer_z();
 
 		static tf::TransformBroadcaster broadcaster_b;
-		tf::Quaternion qt_temp;
+		
 		btScalar pitch, roll, yaw;
 		tf::Quaternion qt;
 
-		tf::quaternionMsgToTF(mti_msg.orientation, qt);
-
-		btMatrix3x3(qt).getRPY(yaw, pitch, roll);
+		geometry_msgs::Quaternion orientation = mti_msg.orientation;
+		btQuaternion btq(orientation.x, orientation.y, orientation.z, orientation.w);
+		btMatrix3x3(btq).getEulerYPR(yaw, pitch, roll);
 		btMatrix3x3 btm;
 		pitch = -pitch;
 		yaw = -yaw;
-		btm.setRPY(roll, pitch, yaw);
-		btm.getRotation(qt_temp);
+		btm.setEulerYPR(yaw, pitch, roll);
+		btQuaternion btqt_temp;
+		btm.getRotation(btqt_temp);
 		lse_xsens_mti::imu_rpy rpy;
 		rpy.roll = roll/M_PI*180;
 		rpy.pitch = pitch/M_PI*180;
@@ -146,9 +147,9 @@ int main(int argc, char** argv)
 		//tf::quaternionMsgToTF(mti_msg.orientation, qt_temp);
 		broadcaster_b.sendTransform(
 			tf::StampedTransform(
-				tf::Transform(qt_temp, tf::Vector3(0,0,0)),
+				tf::Transform(btqt_temp, tf::Vector3(0,0,0)),
 				ros::Time::now(),"imu_base", "imu"));
-		tf::quaternionTFToMsg(qt_temp,mti_msg.orientation);
+		tf::quaternionTFToMsg(btqt_temp,mti_msg.orientation);
 		mti_pub.publish(mti_msg);
 		mti_pose_pub.publish(mti_pose);
 		mtirpy_pub.publish(rpy);

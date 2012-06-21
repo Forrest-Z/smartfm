@@ -57,18 +57,20 @@ namespace road_detection{
         
         //step 1: store transform between vertiBase and base;
         ROS_DEBUG("step 1");
-        btTransform vertiBase_to_base;
-        btVector3 origin;
+        tf::Transform vertiBase_to_base;
+        tf::Vector3 origin;
         origin.setValue (0.0, 0.0, 0.0);
         vertiBase_to_base.setOrigin(origin);
-        btQuaternion q;
-        tf::quaternionMsgToTF(latest_imu_msg_.orientation, q);
+        tf::Quaternion q;
+        
         double roll, pitch, yaw;
-        btMatrix3x3  m(q);
-        m.getRPY (roll, pitch, yaw);
-        btQuaternion rotation;
+	    geometry_msgs::Quaternion orientation = latest_imu_msg_.orientation;
+	    tf::Quaternion btq(orientation.x, orientation.y, orientation.z, orientation.w);
+	    tf::Matrix3x3(btq).getEulerYPR(yaw, pitch, roll);
+        
+        tf::Quaternion rotation;
         //slightly different from the method in "laser_ortho_projector", which solves the problem through an non-existing "world" coordinate;
-        rotation.setRPY (roll, pitch, 0.0);
+        rotation.setEuler (0.0, pitch, roll);
         vertiBase_to_base.setRotation(rotation);
         transformer_.setTransform(StampedTransform(vertiBase_to_base, laser_time_, verti_base_frame_id_, base_frame_id_));
         //step 2: store transform between vertiBase and vertiSick;
@@ -79,10 +81,10 @@ namespace road_detection{
         transformer_.setTransform(BasetoSick);
         
         //get the translation between vertiBase and sick, while setting the rotation to zero;
-        btTransform vertiBasetoSick = vertiBase_to_base * BasetoSick;
-        btTransform vertiBasetovertiSick(vertiBasetoSick);
-        btQuaternion rotation_tmp;
-        rotation_tmp.setRPY (0.0, 0.0, 0.0);
+        tf::Transform vertiBasetoSick = vertiBase_to_base * BasetoSick;
+        tf::Transform vertiBasetovertiSick(vertiBasetoSick);
+        tf::Quaternion rotation_tmp;
+        rotation_tmp.setEuler (0.0, 0.0, 0.0);
         vertiBasetovertiSick.setRotation (rotation_tmp);
         
         transformer_.setTransform(StampedTransform(vertiBasetovertiSick, laser_time_, verti_base_frame_id_, verti_laser_frame_id_));
@@ -116,7 +118,7 @@ namespace road_detection{
         
         for(unsigned int ip=0; ip<raw_laser_pcl_.points.size(); ip++)
         {
-            tf::Stamped <btVector3> LaserPt, vertiLaserPt, vertiBaseLaserPt;
+            tf::Stamped <tf::Vector3> LaserPt, vertiLaserPt, vertiBaseLaserPt;
             laser_pt.point.x = (float)raw_laser_pcl_.points[ip].x;
             laser_pt.point.y = (float)raw_laser_pcl_.points[ip].y;
             laser_pt.point.z = (float)raw_laser_pcl_.points[ip].z;            

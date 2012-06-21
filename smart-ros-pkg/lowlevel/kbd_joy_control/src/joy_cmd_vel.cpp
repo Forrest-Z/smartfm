@@ -7,11 +7,11 @@
 
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
-#include <joy/Joy.h>
+#include <sensor_msgs/Joy.h>
 
 ros::Publisher speed_pub;
 
-void joyCallBack(joy::Joy joy_)
+void joyCallBack(sensor_msgs::Joy joy_)
 {
   geometry_msgs::Twist tw;
   tw.linear.x=joy_.axes[1]*2.5;

@@ -26,9 +26,12 @@ rosbuild_genmsg()
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
+
+rosbuild_add_boost_directories()
 rosbuild_add_executable(laser_extraction src/laser_extraction.cpp)
+rosbuild_link_boost(laser_extraction signals)
 rosbuild_add_executable(pedestrian_features src/pedestrian_features.cpp)
 rosbuild_add_library(camera_project src/camera_project.cpp)
 rosbuild_add_executable(camera_project_baoxing src/camera_project.cpp src/camera_project_node.cpp src/camera_project_baoxing.cpp)
 rosbuild_add_executable(camera_project_pcl src/camera_project.cpp src/camera_project_node.cpp src/camera_project_pcl.cpp)
-
+rosbuild_link_boost(camera_project_pcl signals)

@@ -59,7 +59,7 @@ void BlobTrackerNode::blobsCallback(const infrastructure_road_monitoring::Blobs 
 
 void BlobTrackerNode::update(const vector<Blob> & in_blobs)
 {
-    bool debug = true;
+    bool debug = false;
 
     if( tracks.empty() && in_blobs.empty() ) return;
 
