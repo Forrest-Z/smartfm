@@ -1,6 +1,7 @@
 #!/bin/bash
 
 cp chrony.conf /etc/chrony/chrony.conf
+cp chrony_custom_init_d_script /etc/init.d/chrony
 
 exit 0
 
