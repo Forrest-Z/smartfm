@@ -55,8 +55,9 @@ int main(int argc, char** argcv)
 		if(bin_str.size()>0)
 		    bin_strs.push_back(bin_str);
 	}
+    
         #pragma omp parallel for
-	for(size_t i = 0; i < 8795/*bin_strs.size()*/; i++)
+	for(size_t i = 969; i < bin_strs.size(); i++)
 	{
 
 	    {
