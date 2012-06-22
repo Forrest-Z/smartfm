@@ -67,13 +67,14 @@ private:
 
 localization_error::~localization_error()
 {
-	cout<<"Summary: "<<endl;
-	cout<<"_error = "<<e_sum.ave_abs/e_sum.count<<" ";
-	cout<</*"Average lon_error = "<<*/e_sum.ave_lon/e_sum.count<<" ";
-	cout<</*"Average lat_error = "<<*/e_sum.ave_lat/e_sum.count<<" ";
-	cout<</*"Maximum abs_error = "<<*/e_sum.max_abs.value<<" "<<e_sum.max_abs.pos.x<<" "<<e_sum.max_abs.pos.y<<" ";
-	cout<</*"Maximum lon_error = "<<*/e_sum.max_lon.value<<" "<<e_sum.max_lon.pos.x<<" "<<e_sum.max_lon.pos.y<<" ";
-	cout<</*"Maximum lat_error = "<<*/e_sum.max_lat.value<<" "<<e_sum.max_lat.pos.x<<" "<<e_sum.max_lat.pos.y<<endl;
+    cout.precision(5);
+    cout<<"_error = "<<e_sum.count<<"\t";
+	cout<</*"error = "<<*/e_sum.ave_abs/e_sum.count<<"\t";
+	cout<</*"Average lon_error = "<<*/e_sum.ave_lon/e_sum.count<<"\t";
+	cout<</*"Average lat_error = "<<*/e_sum.ave_lat/e_sum.count<<"\t";
+	cout<</*"Maximum abs_error = "<<*/e_sum.max_abs.value<<"\t"<<e_sum.max_abs.pos.x<<"\t"<<e_sum.max_abs.pos.y<<"\t";
+	cout<</*"Maximum lon_error = "<<*/e_sum.max_lon.value<<"\t"<<e_sum.max_lon.pos.x<<"\t"<<e_sum.max_lon.pos.y<<"\t";
+	cout<</*"Maximum lat_error = "<<*/e_sum.max_lat.value<<"\t"<<e_sum.max_lat.pos.x<<"\t"<<e_sum.max_lat.pos.y<<endl;
 }
 
 localization_error::localization_error()
