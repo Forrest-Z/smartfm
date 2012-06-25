@@ -41,21 +41,20 @@ class CountBuffer:
     def __init__(self, wheelSize, counts=6000):
         self.wheelSize = wheelSize
         self.counts = counts
-        self.pos = 0.0 #total distance travelled in meters
         self.reset()
 
     def reset(self):
-        self.last_pos = self.pos
         self.dt = 0.0 #time (sec)
         self.n = 0 #number of values cumulated
+        self.d_count = 0
 
     def add(self, e):
-        self.pos += e.positionChange * self.wheelSize / self.counts
+        self.d_count += e.positionChange
         self.dt += e.time * 1e-6 #usec to sec
         self.n += 1
 
     def dpos(self):
-        return self.pos - self.last_pos
+        return self.d_count * self.wheelSize / self.counts
 
 
 class PhidgetEncoder:
@@ -63,7 +62,7 @@ class PhidgetEncoder:
 
     def __init__(self):
         self.distBtwWheels = rospy.get_param('~dist_btw_wheels',0.995)
-        wheelSize = rospy.get_param('~wheel_size', 1.32212398060626)#original:1.335)
+        wheelSize = rospy.get_param('~wheel_size', 1.322)
         leftCorrectionFactor = rospy.get_param('~left_correction_factor', 1.011)
 
         self.period = rospy.get_param('~period', 0.02)
@@ -174,9 +173,12 @@ class PhidgetEncoder:
 
 
     def publish(self, dt):
+        encodersMsg = EncodersMsg()
         self.lastPub = rospy.Time.now()
 
         with self._mutex:
+            encodersMsg.d_count_left = self.countBufs[self.left].d_count
+            encodersMsg.d_count_right = self.countBufs[self.right].d_count
             dl = self.countBufs[self.left].dpos()
             dr = self.countBufs[self.right].dpos()
             self.countBufs[self.left].reset()
@@ -185,7 +187,7 @@ class PhidgetEncoder:
         self.d_dist = (dl+dr)/2
         self.d_th = (dr-dl)/self.distBtwWheels
 
-        encodersMsg = EncodersMsg()
+
         encodersMsg.stamp = self.lastPub # i.e. now()
         encodersMsg.dt = dt
         encodersMsg.d_left = dl

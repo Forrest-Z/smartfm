@@ -1,5 +1,8 @@
 <launch>
     <node name="encoders_odo_node" pkg="phidget_encoders" type="encoders_odo_node.py" output="screen">
         <param name="min_pub_period" value="0.05"/>
+        <param name="wheel_size" value="1.314"/>
+        <param name="dist_btw_wheels" value="0.995"/>
+        <param name="left_correction_factor" value="1.011"/>
     </node>
 </launch>
