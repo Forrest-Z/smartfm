@@ -10,8 +10,11 @@ IntersectionHandler::IntersectionHandler()
 : initialised_(false), dist_to_int_(10000), marker_server_ ("intersection")
 {
     client_ = nh_.serviceClient<InfrastructureQuery>("infrastructure_query");
-    infra_srv_thread_ = boost::thread( boost::bind(
+    if( client_.waitForExistence(ros::Duration(3)) )
+        infra_srv_thread_ = boost::thread( boost::bind(
             &IntersectionHandler::infra_thread_fun, this) );
+    else
+        ROS_WARN("Infrastructure query service unavailable. Not using infrastructure sensor.");
 }
 
 bool IntersectionHandler::is_clear_to_go() const
