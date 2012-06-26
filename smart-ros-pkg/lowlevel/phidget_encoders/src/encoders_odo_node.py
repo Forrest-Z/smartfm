@@ -178,7 +178,7 @@ class PhidgetEncoder:
 
         with self._mutex:
             encodersMsg.d_count_left = self.countBufs[self.left].d_count
-            encodersMsg.d_count_right = self.countBufs[self.right].d_count
+            encodersMsg.d_count_right = -self.countBufs[self.right].d_count
             dl = self.countBufs[self.left].dpos()
             dr = self.countBufs[self.right].dpos()
             self.countBufs[self.left].reset()
