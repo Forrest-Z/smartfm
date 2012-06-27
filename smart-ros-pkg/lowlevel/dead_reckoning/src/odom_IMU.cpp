@@ -3,10 +3,11 @@
  *
  * Gets the input from encoders and IMU ('imu/data', yaw rate only),
  * publishes the resulting pose estimate as a tf broadcast (odomImu / base_link)
- * and as a Odometry message on the 'odom_imu' channel.
+ * and as a Odometry message on the 'odom' topic.
  */
 
 #include <cmath>
+#include <string>
 
 #include <ros/ros.h>
 #include <ros/console.h>
@@ -18,15 +19,15 @@
 #include <geometry_msgs/Quaternion.h>
 
 #include <fmutil/fm_math.h>
-#include <phidget_encoders/Encoders.h>
+#include <phidget_encoders/EncoderOdo.h>
 
 class OdoIMU
 {
     public:
-        OdoIMU(ros::NodeHandle nh_);
+        OdoIMU();
 
     private:
-        void encodersCallBack(phidget_encoders::Encoders);
+        void encodersCallBack(phidget_encoders::EncoderOdo);
         void imuCallBack(sensor_msgs::Imu);
         void publishOdo();
 
@@ -36,6 +37,7 @@ class OdoIMU
         ros::Publisher odoImuPub;
         tf::TransformBroadcaster tfBroadcaster;
 
+        std::string frame_id;
         geometry_msgs::Point position;
         double linear_speed, angular_speed;
         bool initialized;
@@ -47,12 +49,15 @@ class OdoIMU
 
 
 
-OdoIMU::OdoIMU(ros::NodeHandle nh_):n(nh_)
+OdoIMU::OdoIMU()
+: n("~"), frame_id("odom")
 {
     ROS_INFO("OdoIMU initializing");
-    encSub = n.subscribe("/encoders", 1000, &OdoIMU::encodersCallBack, this);
+    encSub = n.subscribe("/encoder_odo", 1000, &OdoIMU::encodersCallBack, this);
     imuSub = n.subscribe("/ms/imu/data", 1000, &OdoIMU::imuCallBack, this);
-    odoImuPub = n.advertise<nav_msgs::Odometry>("odo_imu", 100);
+    odoImuPub = n.advertise<nav_msgs::Odometry>("odom", 100);
+
+    n.getParam("frame_id", frame_id);
 
     initialized = false;
     yaw_drift = 0;
@@ -72,7 +77,7 @@ void OdoIMU::imuCallBack(sensor_msgs::Imu imuMsg)
 }
 
 
-void OdoIMU::encodersCallBack(phidget_encoders::Encoders encMsg)
+void OdoIMU::encodersCallBack(phidget_encoders::EncoderOdo encMsg)
 {
     //handle the nan issue. This occurs when the imu is restarted
     if( isnan(roll) || isnan(pitch) || isnan(yaw) )
@@ -117,7 +122,7 @@ void OdoIMU::publishOdo()
     // Create the Odometry msg
     nav_msgs::Odometry odoImuMsg;
     odoImuMsg.header.stamp = ros::Time::now();
-    odoImuMsg.header.frame_id = "odom";
+    odoImuMsg.header.frame_id = frame_id;
     odoImuMsg.child_frame_id = "base_link";
     odoImuMsg.pose.pose.position = position;
     odoImuMsg.pose.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw_now);
@@ -140,9 +145,8 @@ void OdoIMU::publishOdo()
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "odomImu");
-    ros::NodeHandle nh_;
-    OdoIMU odomimu(nh_);
+    ros::init(argc, argv, "odom_Imu");
+    OdoIMU odomimu();
     ros::spin();
     return 0;
 }
