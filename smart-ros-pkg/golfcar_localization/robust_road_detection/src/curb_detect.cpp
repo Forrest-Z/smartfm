@@ -167,20 +167,28 @@ private:
     // some diagnostics to make sure that we receive odometry and laser scans
     diagnostic_updater::Updater diagnostic_updater_;
     double diag_freq_scan_min_, diag_freq_scan_max_;
+    double diag_freq_tilted_scan_min_, diag_freq_tilted_scan_max_;
     double diag_freq_odo_min_, diag_freq_odo_max_;
-    diagnostic_updater::FrequencyStatusParam diag_freq_scan_param_, diag_freq_odo_param_;
-    diagnostic_updater::HeaderlessTopicDiagnostic diag_scan_, diag_odo_;
+    diagnostic_updater::FrequencyStatusParam diag_freq_scan_param_;
+    diagnostic_updater::FrequencyStatusParam diag_freq_tilted_scan_param_;
+    diagnostic_updater::FrequencyStatusParam diag_freq_odo_param_;
+    diagnostic_updater::HeaderlessTopicDiagnostic diag_scan_, diag_tilted_scan_, diag_odo_;
 };
 
 curb_detect::curb_detect()
   : private_nh_("~"),
     diag_freq_scan_min_(2), diag_freq_scan_max_(100),
+    diag_freq_tilted_scan_min_(2), diag_freq_tilted_scan_max_(100),
     diag_freq_odo_min_(2), diag_freq_odo_max_(100),
     diag_freq_scan_param_(&diag_freq_scan_min_, &diag_freq_scan_max_, 0.1, 10),
+    diag_freq_tilted_scan_param_(&diag_freq_tilted_scan_min_, &diag_freq_tilted_scan_max_, 0.1, 10),
     diag_freq_odo_param_(&diag_freq_odo_min_, &diag_freq_odo_max_, 0.1, 10),
     diag_scan_("scan input", diagnostic_updater_, diag_freq_scan_param_),
+    diag_tilted_scan_("tilted scan input", diagnostic_updater_, diag_freq_tilted_scan_param_),
     diag_odo_("odo input", diagnostic_updater_, diag_freq_odo_param_)
 {
+    diagnostic_updater_.setHardwareID("none");
+
     pub_init_ = false;
     private_nh_.param("base_frame_id",      base_frame_id_,     std::string("base_link"));
     private_nh_.param("odom_frame_id",      odom_frame_id_,     std::string("odom"));
@@ -1001,9 +1009,10 @@ float curb_detect::Pt_Line_Dis(std::vector <geometry_msgs::Point32> &line, geome
 
 void curb_detect::scanSource (const sensor_msgs::LaserScan::ConstPtr& scan_in)
 {
-    std::string laser_frame_id = scan_in->header.frame_id;
+    diag_tilted_scan_.tick();
+    diagnostic_updater_.update();
 
-    try{projector_.transformLaserScanToPointCloud(laser_frame_id, *scan_in, otherSource_pcl_, tf_);}
+    try{projector_.transformLaserScanToPointCloud(scan_in->header.frame_id, *scan_in, otherSource_pcl_, tf_);}
     catch (tf::TransformException& e){ROS_DEBUG("Other Souce Wrong!!!!!!!!!!!!!"); std::cout << e.what();return;}
 }
 
