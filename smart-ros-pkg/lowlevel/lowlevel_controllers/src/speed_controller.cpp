@@ -188,7 +188,7 @@ void PID_Speed::odoCallBack(phidget_encoders::EncoderOdo enc)
         double u = pid.p_gain + pid.i_gain + pid.d_gain;
         pid.u_ctrl = fmutil::symbound<double>(u, 1.0);
 
-        ROS_INFO("Velocity error: %.2f, u_ctrl=%.2f", e_now, pid.u_ctrl);
+        //ROS_INFO("Velocity error: %.2f, u_ctrl=%.2f", e_now, pid.u_ctrl);
 
         if(pid.u_ctrl > param.throttle_zero_thres)
         {
