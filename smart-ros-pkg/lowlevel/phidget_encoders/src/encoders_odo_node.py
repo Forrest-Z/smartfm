@@ -72,8 +72,8 @@ class EncodersOdoNode:
 
 
     def callback(self, msg):
-        dr = msg.d_right * self.wheel_size
-        dl = msg.d_left * self.wheel_size * self.left_correction_factor
+        dr = msg.d_right * self.wheelSize
+        dl = msg.d_left * self.wheelSize * self.leftCorrectionFactor
 
         omsg = EncoderOdo()
         omsg.dt = msg.dt

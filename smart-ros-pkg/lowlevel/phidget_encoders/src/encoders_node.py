@@ -39,7 +39,7 @@ class CountBuffer:
 
     def reset(self):
         self.dt = 0.0 #time (sec)
-        self.d_counts = 0
+        self.d_count = 0
         self.n = 0
 
     def add(self, e):
