@@ -11,7 +11,7 @@
 #include <lse_xsens_mti/imu_rpy.h>
 
 #include <lowlevel_controllers/PID.h>
-#include <phidget_encoders/Encoders.h>
+#include <phidget_encoders/EncoderOdo.h>
 
 #include <fmutil/fm_math.h>
 #include <fmutil/fm_filter.h>
@@ -34,8 +34,6 @@ class Parameters
 
         double tau_v; ///< Time constant for the velocity filter
 
-        double pitch1, pitch2; ///< pitch thresholds (currently not used)
-
         void getParam();
 };
 
@@ -47,20 +45,18 @@ class PID_Speed
 
     private:
         void cmdVelCallBack(geometry_msgs::Twist);
-        void imuCallBack(lse_xsens_mti::imu_rpy);
-        void odoCallBack(phidget_encoders::Encoders);
+        void odoCallBack(phidget_encoders::EncoderOdo);
         void emergencyBtnCB(std_msgs::Bool);
         void automodeBtnCB(std_msgs::Bool);
         void safetyBrakeCallBack(std_msgs::Bool);
 
         ros::NodeHandle n;
-        ros::Subscriber cmdVelSub, odoSub, imuSub, emergencyBtnSub, automodeBtnSub, safetyBrakeSub;
+        ros::Subscriber cmdVelSub, odoSub, emergencyBtnSub, automodeBtnSub, safetyBrakeSub;
         ros::Publisher throttlePub, brakePedalPub, pidPub;
 
         Parameters param; ///< parameters of the controller, neatly packed together
 
         double cmdVel; ///< The desired velocity (set by cmdVelCallBack)
-        double pitch; ///< current pitch (set by imuCallBack)
         bool emergency; ///< is the emergency button pressed (set by emergencyBtnCB)
         bool automode; ///< is the auto mode button pressed (set by automodeBtnCB)
         bool safetyBrake_;
@@ -97,22 +93,17 @@ void Parameters::getParam()
 
     GETP( "tau_v", tau_v, 0.2 );
 
-    GETP( "pitch_param1", pitch1, 0 );
-    GETP( "pitch_param2", pitch2, -4 );
-
 //     ROS_INFO("kp: %lf, ki: %lf, kd: %lf", kp, ki, kd);
 //     cout <<"kp: " <<kp <<" ki: " <<ki <<" kd: "<<kd<<" ki_sat: " <<ki_sat <<"\n";
 //     cout <<"coeff_bp: " <<coeff_bp <<" tau_v: " <<tau_v  <<"\n";
 //     cout <<"throttle_threshold: " <<throttle_zero_thres <<" brake_threshold: " <<brake_zero_thres <<"\n";
-//     cout <<"pitch1: " <<pitch1 <<" pitch2: " <<pitch2 <<"\n";
 }
 
 
 PID_Speed::PID_Speed()
 {
     cmdVelSub = n.subscribe("cmd_vel", 1, &PID_Speed::cmdVelCallBack, this);
-    odoSub = n.subscribe("encoders", 1, &PID_Speed::odoCallBack, this);
-    imuSub = n.subscribe("imu/rpy", 1, &PID_Speed::imuCallBack, this);
+    odoSub = n.subscribe("encoder_odo", 1, &PID_Speed::odoCallBack, this);
     emergencyBtnSub = n.subscribe("button_state_emergency", 1, &PID_Speed::emergencyBtnCB, this);
     automodeBtnSub = n.subscribe("button_state_automode", 1, &PID_Speed::automodeBtnCB, this);
     safetyBrakeSub = n.subscribe("safety_stop", 1, &PID_Speed::safetyBrakeCallBack, this);
@@ -123,7 +114,7 @@ PID_Speed::PID_Speed()
 
     param.getParam();
 
-    cmdVel = e_pre = iTerm = pitch = 0.0;
+    cmdVel = e_pre = iTerm = 0.0;
     emergency = false;
     automode = false;
     safetyBrake_ = false;
@@ -136,12 +127,6 @@ void PID_Speed::cmdVelCallBack(geometry_msgs::Twist cmd_vel)
 {
     cmdVel = cmd_vel.linear.x;
     //ROS_INFO("Setting the desired velocity to %.2f m/s", cmdVel);
-}
-
-
-void PID_Speed::imuCallBack(lse_xsens_mti::imu_rpy rpy)
-{
-    pitch = rpy.pitch;
 }
 
 void PID_Speed::emergencyBtnCB(std_msgs::Bool msg)
@@ -165,7 +150,7 @@ void PID_Speed::safetyBrakeCallBack(std_msgs::Bool m)
     else ROS_INFO("turning OFF safety brake");
 }
 
-void PID_Speed::odoCallBack(phidget_encoders::Encoders enc)
+void PID_Speed::odoCallBack(phidget_encoders::EncoderOdo enc)
 {
     std_msgs::Float64 throttle_msg, brake_msg;
     lowlevel_controllers::PID pid;

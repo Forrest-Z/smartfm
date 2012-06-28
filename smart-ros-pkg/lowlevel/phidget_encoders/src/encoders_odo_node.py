@@ -5,7 +5,7 @@
 the result as:
 - an EncoderOdo custom msg
 - an Odometry msg
-- a TF broadcast
+- a TF broadcast (from <frame_id> to 'base_link')
 
 Parameters:
 - wheel_size: the circumference of the wheels
@@ -60,6 +60,7 @@ class EncodersOdoNode:
         self.leftCorrectionFactor = rospy.get_param('~left_correction_factor', 1.011)
 
         self.frameID = rospy.get_param('~frame_id', 'odom') #TF frame ID
+        rospy.loginfo('publishing tf on frame id ' + self.frameID)
 
         self.x = rospy.get_param('~x', 0.0)
         self.y = rospy.get_param('~y', 0.0)

@@ -242,7 +242,7 @@ curb_detect::curb_detect()
     tf_filter_->registerCallback(boost::bind(&curb_detect::scanCallback, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
 
-    odom_sub_ = nh_.subscribe("encoder_odom", 100, &curb_detect::odomCallback, this);
+    odom_sub_ = nh_.subscribe("odom", 100, &curb_detect::odomCallback, this);
     //this is subscribed to filter possible noise;
     scan_sub_ = nh_.subscribe("scan", 10, &curb_detect::scanSource, this);
 }

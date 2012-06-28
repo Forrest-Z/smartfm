@@ -3,7 +3,6 @@
     <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller"/>
     <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
         <rosparam file="$(find lowlevel_controllers)/speed_controller.yaml" command="load" />
-        <remap from="/odom" to="/encoder_odom"/>
     </node>
 
     <node name="laser_republish" pkg="laser_maxrange_republish" type="laser_repub"/>

@@ -21,6 +21,7 @@
 #include <fmutil/fm_math.h>
 #include <phidget_encoders/EncoderOdo.h>
 
+
 class OdoIMU
 {
     public:
@@ -44,7 +45,6 @@ class OdoIMU
         double roll_, pitch_, yaw_, yaw_now_;
         double dist_pre_;
         double yaw_pre_, yaw_drift_, yaw_minus_;
-        double accumulated_dist_;
 };
 
 
@@ -52,9 +52,8 @@ class OdoIMU
 OdoIMU::OdoIMU()
 : frame_id_("odom")
 {
-    ROS_INFO("OdoIMU initializing");
-    enc_sub_ = nh_.subscribe("/encoder_odo", 1000, &OdoIMU::encodersCallBack, this);
-    imu_sub_ = nh_.subscribe("/ms/imu/data", 1000, &OdoIMU::imuCallBack, this);
+    enc_sub_ = nh_.subscribe("/encoder_odo", 100, &OdoIMU::encodersCallBack, this);
+    imu_sub_ = nh_.subscribe("/ms/imu/data", 100, &OdoIMU::imuCallBack, this);
     odo_imu_pub_ = nh_.advertise<nav_msgs::Odometry>("odom", 100);
 
     ros::NodeHandle n("~");
@@ -63,7 +62,6 @@ OdoIMU::OdoIMU()
     initialized_ = false;
     yaw_drift_ = 0;
     roll_ = pitch_ = yaw_ = NAN;
-    ROS_INFO("OdoIMU initialized");
 }
 
 #define R2D(a) ( (int)(fmutil::r2d( fmutil::angModPI(a) )) )
@@ -104,7 +102,6 @@ void OdoIMU::encodersCallBack(phidget_encoders::EncoderOdo encMsg)
     double r11 = cos(yaw_now_)*cos(pitch_);
     double r21 = sin(yaw_now_)*cos(pitch_);
     double r31 = sin(pitch_);
-    accumulated_dist_ += encMsg.d_dist;
     position_.x += encMsg.d_dist * r11;
     position_.y += encMsg.d_dist * r21;
     position_.z -= encMsg.d_dist * r31;
@@ -113,7 +110,6 @@ void OdoIMU::encodersCallBack(phidget_encoders::EncoderOdo encMsg)
     angular_speed_ = encMsg.w;
 
     ROS_DEBUG("Pose: x=%.2f, y=%.2f, th=%ddeg", position_.x, position_.y, R2D(yaw_now_));
-    //std::cout <<accumulated_dist_ <<std::endl;
     publishOdo();
 }
 
@@ -147,7 +143,7 @@ void OdoIMU::publishOdo()
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "odom_Imu");
-    OdoIMU odomimu();
+    OdoIMU odomimu;
     ros::spin();
     return 0;
 }

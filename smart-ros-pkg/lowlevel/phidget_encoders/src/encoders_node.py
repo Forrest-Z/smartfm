@@ -47,6 +47,9 @@ class CountBuffer:
         self.d_count += e.positionChange
         self.dt += e.time * 1e-6 #usec to sec
 
+    def get_delta_rev(self):
+        return float(self.d_count)/self.counts
+
 
 class PhidgetEncoder:
     '''Monitor the pose of each encoders'''
@@ -141,21 +144,19 @@ class PhidgetEncoder:
         '''A callback function called whenever the position changed'''
 
         #rospy.loginfo("Encoder %i: Encoder %i -- Change: %i -- Time: %i -- Position: %i"
-        #       % ( e.device.getSerialNum(), e.index, e.positionChange, e.time,
-        #             self.encoder.getPosition(e.index)) )
+              #% ( e.device.getSerialNum(), e.index, e.positionChange, e.time,
+                    #self.encoder.getPosition(e.index)) )
 
         with self._mutex:
             if e.index in self.countBufs.keys():
                 self.countBufs[e.index].add(e)
                 dts = [b.dt for b in self.countBufs.values()]
                 if min(dts) >= self.period:
-                    if self.countBufs[self.left].n == self.countBufs[self.right].n:
-                        #rospy.loginfo("Encoders: got equal number of counts.")
-                        dt = sum(dts)/len(dts)
-                        #rospy.loginfo("Encoders: dt1 = %f, dt2 = %f --> dt=%f" % (dts[0], dts[1], self.dt))
-                        self.publish(dt)
-                    else:
-                        rospy.loginfo("encoders: time criteria met, but not count criteria")
+                    #if self.countBufs[self.left].n != self.countBufs[self.right].n:
+                        #rospy.loginfo("encoders: time criteria met, but not count criteria")
+                    dt = sum(dts)/len(dts)
+                    #rospy.loginfo("Publishing")
+                    self.publish(dt)
 
 
     def publish(self, dt):
@@ -165,8 +166,8 @@ class PhidgetEncoder:
         encodersMsg.dt = dt
 
         with self._mutex:
-            encodersMsg.d_left = self.countBufs[self.left].d_count
-            encodersMsg.d_right = -self.countBufs[self.right].d_count
+            encodersMsg.d_left = self.countBufs[self.left].get_delta_rev()
+            encodersMsg.d_right = -self.countBufs[self.right].get_delta_rev()
             self.countBufs[self.left].reset()
             self.countBufs[self.right].reset()
 
