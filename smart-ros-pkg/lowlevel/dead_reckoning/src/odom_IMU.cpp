@@ -31,37 +31,38 @@ class OdoIMU
         void imuCallBack(sensor_msgs::Imu);
         void publishOdo();
 
-        ros::NodeHandle n;
-        ros::Subscriber encSub;
-        ros::Subscriber imuSub;
-        ros::Publisher odoImuPub;
-        tf::TransformBroadcaster tfBroadcaster;
+        ros::NodeHandle nh_;
+        ros::Subscriber enc_sub_;
+        ros::Subscriber imu_sub_;
+        ros::Publisher odo_imu_pub_;
+        tf::TransformBroadcaster tf_broadcaster_;
 
-        std::string frame_id;
-        geometry_msgs::Point position;
-        double linear_speed, angular_speed;
-        bool initialized;
-        double roll, pitch, yaw, yaw_now;
-        double dist_pre;
-        double yaw_pre, yaw_drift, yaw_minus;
-        double accumulated_dist;
+        std::string frame_id_;
+        geometry_msgs::Point position_;
+        double linear_speed_, angular_speed_;
+        bool initialized_;
+        double roll_, pitch_, yaw_, yaw_now_;
+        double dist_pre_;
+        double yaw_pre_, yaw_drift_, yaw_minus_;
+        double accumulated_dist_;
 };
 
 
 
 OdoIMU::OdoIMU()
-: n("~"), frame_id("odom")
+: frame_id_("odom")
 {
     ROS_INFO("OdoIMU initializing");
-    encSub = n.subscribe("/encoder_odo", 1000, &OdoIMU::encodersCallBack, this);
-    imuSub = n.subscribe("/ms/imu/data", 1000, &OdoIMU::imuCallBack, this);
-    odoImuPub = n.advertise<nav_msgs::Odometry>("odom", 100);
+    enc_sub_ = nh_.subscribe("/encoder_odo", 1000, &OdoIMU::encodersCallBack, this);
+    imu_sub_ = nh_.subscribe("/ms/imu/data", 1000, &OdoIMU::imuCallBack, this);
+    odo_imu_pub_ = nh_.advertise<nav_msgs::Odometry>("odom", 100);
 
-    n.getParam("frame_id", frame_id);
+    ros::NodeHandle n("~");
+    n.getParam("frame_id", frame_id_);
 
-    initialized = false;
-    yaw_drift = 0;
-    roll = pitch = yaw = NAN;
+    initialized_ = false;
+    yaw_drift_ = 0;
+    roll_ = pitch_ = yaw_ = NAN;
     ROS_INFO("OdoIMU initialized");
 }
 
@@ -72,22 +73,22 @@ void OdoIMU::imuCallBack(sensor_msgs::Imu imuMsg)
     // Get RPY from the IMU
     tf::Quaternion qt;
     tf::quaternionMsgToTF(imuMsg.orientation, qt);
-    tf::Matrix3x3(qt).getRPY(roll, pitch, yaw);
-    ROS_DEBUG("rpy: %d, %d, %d (degrees)", R2D(roll), R2D(pitch), R2D(yaw));
+    tf::Matrix3x3(qt).getRPY(roll_, pitch_, yaw_);
+    ROS_DEBUG("rpy: %d, %d, %d (degrees)", R2D(roll_), R2D(pitch_), R2D(yaw_));
 }
 
 
 void OdoIMU::encodersCallBack(phidget_encoders::EncoderOdo encMsg)
 {
     //handle the nan issue. This occurs when the imu is restarted
-    if( isnan(roll) || isnan(pitch) || isnan(yaw) )
+    if( isnan(roll_) || isnan(pitch_) || isnan(yaw_) )
         return;
-	yaw_now = yaw;
-    if( ! initialized )
+	yaw_now_ = yaw_;
+    if( ! initialized_ )
     {
-        yaw_pre = yaw_now;
-        yaw_minus = yaw_now;
-        initialized = true;
+        yaw_pre_ = yaw_now_;
+        yaw_minus_ = yaw_now_;
+        initialized_ = true;
         return;
     }
     //Ensure that the orientation always start from yaw=0.
@@ -95,24 +96,24 @@ void OdoIMU::encodersCallBack(phidget_encoders::EncoderOdo encMsg)
 
     // Only integrate yaw when the car is moving
     if( fabs(encMsg.v) < 0.01 ) //the car is not moving
-        yaw_drift += yaw_now - yaw_minus;
-    yaw_minus = yaw_now;
-    yaw_now -= yaw_pre + yaw_drift;
-    //std::cout <<yaw <<' ' <<yaw_drift <<std::endl;
+        yaw_drift_ += yaw_now_ - yaw_minus_;
+    yaw_minus_ = yaw_now_;
+    yaw_now_ -= yaw_pre_ + yaw_drift_;
+    //std::cout <<yaw_ <<' ' <<yaw_drift_ <<std::endl;
 
-    double r11 = cos(yaw_now)*cos(pitch);
-    double r21 = sin(yaw_now)*cos(pitch);
-    double r31 = sin(pitch);
-    accumulated_dist+=encMsg.d_dist;
-    position.x += encMsg.d_dist * r11;
-    position.y += encMsg.d_dist * r21;
-    position.z -= encMsg.d_dist * r31;
+    double r11 = cos(yaw_now_)*cos(pitch_);
+    double r21 = sin(yaw_now_)*cos(pitch_);
+    double r31 = sin(pitch_);
+    accumulated_dist_ += encMsg.d_dist;
+    position_.x += encMsg.d_dist * r11;
+    position_.y += encMsg.d_dist * r21;
+    position_.z -= encMsg.d_dist * r31;
 
-    linear_speed = encMsg.v;
-    angular_speed = encMsg.w;
+    linear_speed_ = encMsg.v;
+    angular_speed_ = encMsg.w;
 
-    ROS_DEBUG("Pose: x=%.2f, y=%.2f, th=%ddeg", position.x, position.y, (int)(yaw_now*180/M_PI));
-    //std::cout<<accumulated_dist<<std::endl;
+    ROS_DEBUG("Pose: x=%.2f, y=%.2f, th=%ddeg", position_.x, position_.y, R2D(yaw_now_));
+    //std::cout <<accumulated_dist_ <<std::endl;
     publishOdo();
 }
 
@@ -122,20 +123,20 @@ void OdoIMU::publishOdo()
     // Create the Odometry msg
     nav_msgs::Odometry odoImuMsg;
     odoImuMsg.header.stamp = ros::Time::now();
-    odoImuMsg.header.frame_id = frame_id;
+    odoImuMsg.header.frame_id = frame_id_;
     odoImuMsg.child_frame_id = "base_link";
-    odoImuMsg.pose.pose.position = position;
-    odoImuMsg.pose.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw_now);
-    odoImuMsg.twist.twist.linear.x = linear_speed;
-    odoImuMsg.twist.twist.angular.z = angular_speed;
+    odoImuMsg.pose.pose.position = position_;
+    odoImuMsg.pose.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(roll_, pitch_, yaw_now_);
+    odoImuMsg.twist.twist.linear.x = linear_speed_;
+    odoImuMsg.twist.twist.angular.z = angular_speed_;
     // Publish it
-    odoImuPub.publish(odoImuMsg);
+    odo_imu_pub_.publish(odoImuMsg);
 
 
     // Broadcast the TF
     tf::StampedTransform trans(tf::Transform(), odoImuMsg.header.stamp, odoImuMsg.header.frame_id, odoImuMsg.child_frame_id);
     tf::poseMsgToTF(odoImuMsg.pose.pose, trans);
-    tfBroadcaster.sendTransform(trans);
+    tf_broadcaster_.sendTransform(trans);
 }
 
 
