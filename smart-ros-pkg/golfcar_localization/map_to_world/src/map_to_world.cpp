@@ -40,9 +40,10 @@ private:
     std::string zone_;
     double offset_x_, offset_y_;
     bool publish_tf_;
+    tf::Stamped<tf::Pose> robot_pose_;
 
     void timerCallback(const ros::TimerEvent& event);
-    bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
+    void getRobotGlobalPose();
 };
 
 MapToWorld::MapToWorld()
@@ -56,6 +57,16 @@ MapToWorld::MapToWorld()
     nh.param("offset_y", offset_y_, 143485.0);
     nh.param("publish_tf", publish_tf_, true);
 
+    while( true )
+    {
+        try {
+            getRobotGlobalPose();
+            break;
+        } catch( tf::TransformException& e ) {
+            ROS_INFO_THROTTLE(3, "Waiting for map: %s", e.what());
+        }
+    }
+
     client_ = nh.serviceClient<map_to_world::UtmToLatLon>("/utm_to_latlon");
     coordinate_pub_ = nh.advertise<map_to_world::coordinate>("/world_utm_latlon", 1);
     timer_ = nh.createTimer(ros::Duration(1.0/frequency),
@@ -64,15 +75,15 @@ MapToWorld::MapToWorld()
 
 void MapToWorld::timerCallback(const ros::TimerEvent& event)
 {
-    //ROS_DEBUG("timer callback");
-    tf::Stamped<tf::Pose> robot_pose;
-    if(getRobotGlobalPose(robot_pose))
+    try
     {
+        getRobotGlobalPose();
+        
         //ROS_DEBUG("global pose: %f, %f", robot_pose.getOrigin().x(), robot_pose.getOrigin().y());
         map_to_world::UtmToLatLon utmLL;
         utmLL.request.zone = zone_;
-        utmLL.request.easting = offset_x_ + robot_pose.getOrigin().x();
-        utmLL.request.northing = offset_y_ + robot_pose.getOrigin().y();
+        utmLL.request.easting = offset_x_ + robot_pose_.getOrigin().x();
+        utmLL.request.northing = offset_y_ + robot_pose_.getOrigin().y();
 
         if(client_.call(utmLL))
         {
@@ -90,8 +101,17 @@ void MapToWorld::timerCallback(const ros::TimerEvent& event)
         }
         else
         {
-            ROS_ERROR("Failed to call service utm_to_latlon");
+            ROS_ERROR_THROTTLE(3, "Failed to call service utm_to_latlon");
         }
+    }
+    catch(tf::LookupException& ex) {
+        ROS_ERROR_THROTTLE(1, "No Transform available Error: %s", ex.what());
+    } 
+    catch(tf::ConnectivityException& ex) {
+        ROS_ERROR_THROTTLE(1, "Connectivity Error: %s", ex.what());
+    }
+    catch(tf::ExtrapolationException& ex) {
+        ROS_ERROR_THROTTLE(1, "Extrapolation Error: %s", ex.what());
     }
 
     if(publish_tf_)
@@ -104,32 +124,16 @@ void MapToWorld::timerCallback(const ros::TimerEvent& event)
     }
 }
 
-bool MapToWorld::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const
+void MapToWorld::getRobotGlobalPose()
 {
-    odom_pose.setIdentity();
-    tf::Stamped<tf::Pose> robot_pose;
-    robot_pose.setIdentity();
-    robot_pose.frame_id_ = "/base_link";
-    robot_pose.stamp_ = ros::Time();
+    tf::Stamped<tf::Pose> base_pose;
+    base_pose.setIdentity();
+    base_pose.frame_id_ = "/base_link";
+    base_pose.stamp_ = ros::Time();
     ros::Time current_time = ros::Time::now(); // save time for checking tf delay later
     //ros::Time current_time = ros::Time(); //get the latest available transform without checking for the time
 
-    try {
-        tf_.transformPose("/map", robot_pose, odom_pose);
-    }
-    catch(tf::LookupException& ex) {
-        ROS_ERROR("No Transform available Error: %s\n", ex.what());
-        return false;
-    }
-    catch(tf::ConnectivityException& ex) {
-        ROS_ERROR("Connectivity Error: %s\n", ex.what());
-        return false;
-    }
-    catch(tf::ExtrapolationException& ex) {
-        ROS_ERROR("Extrapolation Error: %s\n", ex.what());
-        return false;
-    }
-    return true;
+    tf_.transformPose("/map", base_pose, robot_pose_);
 }
 
 int main(int argc, char **argv)
@@ -142,3 +146,4 @@ int main(int argc, char **argv)
 
   return 0;
 }
+

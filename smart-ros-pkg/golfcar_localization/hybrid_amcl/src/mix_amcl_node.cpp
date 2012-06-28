@@ -1365,7 +1365,7 @@ void MixAmclNode::laserReceived(const sensor_msgs::LaserScanConstPtr& laser_scan
     }
     catch(tf::TransformException e)
     {
-        ROS_WARN("Laser Failed to get fresh tf between map and baselink, (%s)", e.what());
+        ROS_WARN_THROTTLE(1, "Laser Failed to get fresh tf between map and baselink, (%s)", e.what());
         //return;
     }
     
