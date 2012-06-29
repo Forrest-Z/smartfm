@@ -12,6 +12,8 @@
 #include <ros/ros.h>
 #include <ros/console.h>
 
+#include <diagnostic_updater/publisher.h>
+
 #include <sensor_msgs/Imu.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_broadcaster.h>
@@ -19,6 +21,7 @@
 #include <geometry_msgs/Quaternion.h>
 
 #include <fmutil/fm_math.h>
+
 #include <phidget_encoders/EncoderOdo.h>
 
 
@@ -45,12 +48,20 @@ class OdoIMU
         double roll_, pitch_, yaw_, yaw_now_;
         double dist_pre_;
         double yaw_pre_, yaw_drift_, yaw_minus_;
+
+        diagnostic_updater::Updater diag_updater_;
+        double diag_min_freq_, diag_max_freq_;
+        diagnostic_updater::FrequencyStatusParam diag_param_fs_;
+        diagnostic_updater::FrequencyStatus diag_task_fs_;
 };
 
 
 
 OdoIMU::OdoIMU()
-: frame_id_("odom")
+: frame_id_("odom"),
+  diag_min_freq_(5), diag_max_freq_(50),
+  diag_param_fs_(&diag_min_freq_, &diag_max_freq_),
+  diag_task_fs_(diag_param_fs_)
 {
     enc_sub_ = nh_.subscribe("/encoder_odo", 100, &OdoIMU::encodersCallBack, this);
     imu_sub_ = nh_.subscribe("/ms/imu/data", 100, &OdoIMU::imuCallBack, this);
@@ -62,6 +73,9 @@ OdoIMU::OdoIMU()
     initialized_ = false;
     yaw_drift_ = 0;
     roll_ = pitch_ = yaw_ = NAN;
+
+    diag_updater_.setHardwareID("none");
+    diag_updater_.add(diag_task_fs_);
 }
 
 #define R2D(a) ( (int)(fmutil::r2d( fmutil::angModPI(a) )) )
@@ -111,6 +125,8 @@ void OdoIMU::encodersCallBack(phidget_encoders::EncoderOdo encMsg)
 
     ROS_DEBUG("Pose: x=%.2f, y=%.2f, th=%ddeg", position_.x, position_.y, R2D(yaw_now_));
     publishOdo();
+    diag_task_fs_.tick();
+    diag_updater_.update();
 }
 
 

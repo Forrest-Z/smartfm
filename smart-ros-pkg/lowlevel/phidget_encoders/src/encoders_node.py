@@ -84,13 +84,10 @@ class PhidgetEncoder:
         # diagnostics
         self.diag_updater = DIAG.Updater()
         self.diag_updater.setHardwareID('none')
-        f1 = 1.0/self.period
-        f2 = 0
-        if self.minPubPeriod is not None:
-            f2 = 1.0/self.minPubPeriod
-        f = {'min': min([f1,f2]), 'max': max([f1,f2])}
-        fs_params = DIAG.FrequencyStatusParam(f, 0.1, 1)
-        self.pub_diag = DIAG.HeaderlessTopicDiagnostic('encoder_counts', self.diag_updater, fs_params)
+        f = {'min': 1.0/self.minPubPeriod}
+        fs_params = DIAG.FrequencyStatusParam(f, 0.2, 1)
+        self.pub_diag = DIAG.HeaderlessTopicDiagnostic('encoder_counts',
+                            self.diag_updater, fs_params)
 
         #TODO: add a diagnostic task to monitor the connection with the phidget
 

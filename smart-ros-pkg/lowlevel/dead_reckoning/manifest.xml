@@ -13,12 +13,14 @@
   <depend package="roscpp"/>
   <depend package="rosconsole"/>
   <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
   <depend package="std_msgs"/>
   <depend package="nav_msgs"/>
   <depend package="sensor_msgs"/>
   <depend package="tf"/>
   <depend package="phidget_encoders"/>
   <depend package="fmutil"/>
+  <depend package="diagnostic_updater"/>
 
 </package>
 
