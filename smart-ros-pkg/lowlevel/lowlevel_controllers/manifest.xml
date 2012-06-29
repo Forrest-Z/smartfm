@@ -14,6 +14,7 @@
   <depend package="lse_xsens_mti"/>
   <depend package="tf"/>
   <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
   <depend package="std_msgs"/>
   <depend package="nav_msgs"/>
   <depend package="fmutil"/>
