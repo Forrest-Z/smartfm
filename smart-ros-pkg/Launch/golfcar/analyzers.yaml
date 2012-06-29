@@ -1,0 +1,56 @@
+analyzers:
+    system:
+        type: AnalyzerGroup
+        path: System
+        analyzers:
+            master:
+                type: GenericAnalyzer
+                path: Master
+                find_and_remove_prefix: golfcart-master
+            lowlevel:
+                type: GenericAnalyzer
+                path: Lowlevel
+                find_and_remove_prefix: golfcart-lowlevel
+                startswith: NTP
+            tf:
+                type: GenericAnalyzer
+                path: TF
+                find_and_remove_prefix: tf_monitor
+    sensors:
+        type: AnalyzerGroup
+        path: Sensors - Actuators
+        analyzers:
+            lasers:
+                type: GenericAnalyzer
+                path: Lasers
+                startswith: ['sickldmrs', 'sicklms', 'sicklms3']
+                num_items: 3
+            arduino:
+                type: GenericAnalyzer
+                path: Arduino
+                find_and_remove_prefix: arduino_node
+                num_items: 3
+            imu:
+                type: GenericAnalyzer
+                path: IMU
+                contains: microstrain
+                num_items: 3
+            encoders:
+                type: GenericAnalyzer
+                path: Encoders
+                find_and_remove_prefix: encoders_node
+                num_items: 1
+    localization:
+        type: AnalyzerGroup
+        path: Localization
+        analyzers:
+            curb_detect:
+                type: GenericAnalyzer
+                path: Curb Detector
+                find_and_remove_prefix: curb_detect
+                num_items: 3
+            odometry:
+                type: GenericAnalyzer
+                path: Odometry
+                startswith: ['encoderImu_integrator', 'odom_republish']
+                num_items: 2
