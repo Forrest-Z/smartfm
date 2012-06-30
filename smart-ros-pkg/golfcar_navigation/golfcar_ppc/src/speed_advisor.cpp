@@ -37,7 +37,6 @@ SpeedAttribute & SpeedSettings::find_min_speed()
 
 
 SpeedAdvisor::SpeedAdvisor()
-: marker_server_ ("intersection")
 {
     ros::NodeHandle nh("~");
     nh.param("max_speed", high_speed_, 2.0);
@@ -48,7 +47,7 @@ SpeedAdvisor::SpeedAdvisor()
     nh.param("map_frame_id", map_id_, string("map"));
     nh.param("dec_ints", dec_ints_, 0.5);
     nh.param("dec_station", dec_station_, 0.5);
-    nh.param("ppc_stop_dist", ppc_stop_dist_,5.0); //the stopping distance from ppc.
+    nh.param("ppc_stop_dist", ppc_stop_dist_, 5.0); //the stopping distance from ppc.
     //It was found that the distance given by move_status will reach as small as 4 meter
     //Hence, stopping distance should be at least larger than 4 for the stopping manoeuvre to work
 
@@ -65,8 +64,6 @@ SpeedAdvisor::SpeedAdvisor()
     nh_.param("use_sim_time", use_sim_time_, false);
     ROS_DEBUG_STREAM("Simulated time is "<<use_sim_time_);
 
-    junction_stop_ = false;
-    through_ints_ = true;
     speed_now_ = 0;
     signal_type_ = -1;
 
@@ -84,7 +81,7 @@ SpeedAdvisor::SpeedAdvisor()
 
 void SpeedAdvisor::slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones)
 {
-    slowZone_.poses=slowzones->poses;
+    slowZone_.poses = slowzones->poses;
 }
 
 /* A shortcut to add a full brake velocity profile */
@@ -189,42 +186,21 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     //
     // Intersections
     //
-
-    //only change the dist_to_ints to the next station when through_ints has set to true
-
-    //last_ints_dist make sure that the car has come to complete stop before the button is pressed
-    //this may occur when the vehicle has overshoot its stopping point and move_status_.dist_to_ints
-    //become a large value, making the car accelerate instead of stopping.
-
-    if( ! through_ints_ )//move_status_.dist_to_ints>0 &&
+    if( ! int_h_.is_clear_to_go() )
     {
         // Approaching an intersection, and the flag has not been cleared yet.
         // --> needs to stop.
-        // The target velocity (sc.int_rec) is recommended based on the distance
-        // to the intersection stop point (move_status_.dist_to_ints)
+        // The target velocity (sc.int_rec) is computed based on the distance
+        // to the intersection stop point
+        float d = int_h_.dist_to_int() - ppc_stop_dist_;
+        sc.int_rec = d<=0 ? 0 : sqrt(2 * dec_ints_ * d);
 
-        //only update the last_ints_dist_ by ensuring the value is strictly reducing
-        if( move_status_.dist_to_ints < last_ints_dist_)
-            last_ints_dist_ = move_status_.dist_to_ints;
+        ROS_DEBUG_STREAM("Intersection not clear. dist=" << int_h_.dist_to_int()
+                <<". Recommended speed: " <<sc.int_rec);
 
-        if( last_ints_dist_ < ppc_stop_dist_ )
-            sc.int_rec = 0;
-        else
-            sc.int_rec = sqrt(2 * dec_ints_ * (move_status_.dist_to_ints - ppc_stop_dist_));
         speed_settings.push_back( SpeedAttribute::generate(
                 "Intersection", SpeedAttribute::intersection,
                 speed_now_, sc.int_rec, pos_speed, norm_neg_speed) );
-    }
-    else
-    {
-        last_ints_dist_ = move_status_.dist_to_ints;
-    }
-
-    //reset the intersection flag to allow vehicle to stop for next intersection
-    //this assumed that the distance between intersections are at least 10 m.
-    if(move_status_.dist_to_ints>10)
-    {
-        through_ints_ = false;
     }
 
 
@@ -260,8 +236,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     //it was found that, in simulation with stage, although commanded to
     //travel at 2 m/s, it is actually travelling at 3.33x faster,
     //compensation is needed
-    //fixed ros-pkg ticket #5432
-    //if( use_sim_time_ ) move_speed.linear.x *= 0.3;
+    if( use_sim_time_ ) move_speed.linear.x *= 0.3;
 
     recommend_speed_pub_.publish(move_speed);
 
@@ -274,7 +249,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     if( element_now_!=sc.element )
     {
         element_pre_ = element_now_;
-        element_now_ = (SpeedAttribute::SpeedAttributeDescription)sc.element;
+        element_now_ = (SpeedAttribute::SpeedAttributeDescription) sc.element;
     }
     if( (sc.element == SpeedAttribute::goal || element_pre_ == SpeedAttribute::goal)
             && sc.speed_now == 0 && sc.dist_goal < 7 )
@@ -289,22 +264,17 @@ void SpeedAdvisor::moveSpeedCallback(pnc_msgs::move_status status)
     move_status_ = status;
 
     //only change the button when the speed element is not from intersection
-    if(element_now_==SpeedAttribute::norm_zone || element_now_ == SpeedAttribute::slow_zone)
-    {
-        if(int_point_.x!=status.int_point.x && int_point_.y!=status.int_point.y)
-        {
-            int_point_ = status.int_point;
-            geometry_msgs::Vector3 size; size.x=1.0; size.y=1.0;
-            std_msgs::ColorRGBA color; color.a=1; color.r=0.5;
-            geometry_msgs::Pose pose; pose.position = int_point_; pose.orientation.w = 1;
-            add_button_marker(marker_server_, size, color, pose, "Int", "Intersection" );
-        }
-        marker_server_.applyChanges();
-    }
+    // BRICE: Why? removing for now !
+    //if( element_now_==SpeedAttribute::norm_zone
+    //        || element_now_ == SpeedAttribute::slow_zone )
+    //{
+    int_h_.update(status);
+    //}
 
-    if(status.dist_to_sig<ppc_stop_dist_ && status.dist_to_sig>0)
+
+    if( status.dist_to_sig < ppc_stop_dist_ && status.dist_to_sig > 0 )
     {
-        if(status.sig_type!=signal_type_)
+        if( status.sig_type != signal_type_ )
         {
             signal_type_ = status.sig_type;
             // 0: left_signal, 1: right_signal, 2: off_signals
@@ -342,40 +312,6 @@ bool SpeedAdvisor::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const
         return false;
     }
     return true;
-}
-
-void SpeedAdvisor::add_button_marker(interactive_markers::InteractiveMarkerServer &server, geometry_msgs::Vector3 scale, std_msgs::ColorRGBA color, geometry_msgs::Pose pose, std::string name, std::string description)
-{
-    // create an interactive marker for our server
-    visualization_msgs::InteractiveMarker int_marker;
-    int_marker.header.frame_id = "/map";
-    int_marker.name = name;
-    int_marker.description = description;
-
-    // create a grey box marker
-    visualization_msgs::Marker box_marker;
-    box_marker.type = visualization_msgs::Marker::CUBE;
-    box_marker.scale = scale;
-    box_marker.color = color;
-    int_marker.pose = pose;
-
-    // create a non-interactive control which contains the box
-    visualization_msgs::InteractiveMarkerControl box_control;
-    box_control.markers.push_back( box_marker );
-    box_control.always_visible = true;
-    box_control.interaction_mode = InteractiveMarkerControl::BUTTON;
-
-    // add the control to the interactive marker
-    int_marker.controls.push_back( box_control );
-    server.insert(int_marker,boost::bind(&SpeedAdvisor::processFeedback, this, _1));
-}
-
-void SpeedAdvisor::processFeedback(const InteractiveMarkerFeedbackConstPtr &feedback )
-{
-    if(feedback->event_type==InteractiveMarkerFeedback::MOUSE_UP)
-    {
-       through_ints_ = true;
-    }
 }
 
 int main(int argc, char **argv)

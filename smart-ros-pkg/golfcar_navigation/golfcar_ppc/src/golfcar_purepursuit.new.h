@@ -45,7 +45,12 @@ private:
     double car_length_;
 
     bool heading_lookahead(double *heading_la, double *dist_to_goal);
-    bool circle_line_collision(geometry_msgs::Point anchor_point, geometry_msgs::Point *intersect_point);
+
+    /// check whether there is an intersection between the segment formed by
+    /// [current_point_, next_point_] and the circle centred on anchor_point
+    /// with radius Lfw_
+    bool circle_line_collision(geometry_msgs::Point anchor_point,
+            geometry_msgs::Point *intersect_point);
 
 };
 

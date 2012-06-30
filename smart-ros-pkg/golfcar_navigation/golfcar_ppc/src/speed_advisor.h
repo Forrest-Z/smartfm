@@ -25,15 +25,13 @@
 #include <nav_msgs/Path.h>
 #include <nav_msgs/Odometry.h>
 
-#include <interactive_markers/interactive_marker_server.h>
-
 #include <fmutil/fm_math.h>
 #include <pnc_msgs/speed_contribute.h>
 #include <pnc_msgs/move_status.h>
 
-using namespace std;
-using namespace visualization_msgs;
+#include "intersection_handler.h"
 
+using namespace std;
 
 
 class SpeedAttribute
@@ -73,6 +71,8 @@ public:
     SpeedAttribute & find_min_speed();
 };
 
+
+
 /** The speed advisor receives message from the move_base node
  * and performs necessary speed profile generation.
  *
@@ -105,14 +105,16 @@ private:
     ros::Subscriber slowzone_sub_;
     ros::Timer timer_;
 
-    bool junction_stop_,through_ints_, kinematics_acc_;
+    IntersectionHandler int_h_;
+
+    bool kinematics_acc_;
     int attribute_, zone_;
     ros::Time last_update_;
     double stopping_distance_, baselink_carfront_length_; //automatic calculate based on the maximum speed and normal deceleration
-    double speed_now_, last_ints_dist_;
+    double speed_now_;
     bool use_sim_time_;
     SpeedAttribute::SpeedAttributeDescription element_pre_, element_now_;
-    int signal_type_;
+    int signal_type_; // 0: left_signal, 1: right_signal, 2: off_signals
 
     string base_link_, map_id_;
     
@@ -120,16 +122,11 @@ private:
     pnc_msgs::move_status move_status_;
     vector<geometry_msgs::Point> stoppingPoint_;
     geometry_msgs::PoseArray slowZone_;
-    interactive_markers::InteractiveMarkerServer marker_server_;
-    geometry_msgs::Point int_point_;
 
     void ControlLoop(const ros::TimerEvent& event);
     bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
     void moveSpeedCallback(pnc_msgs::move_status status);
     void slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones);
-    void add_button_marker(interactive_markers::InteractiveMarkerServer &server, geometry_msgs::Vector3 scale, std_msgs::ColorRGBA color, geometry_msgs::Pose pose, std::string name, std::string description);
-    void processFeedback(const InteractiveMarkerFeedbackConstPtr &feedback );
-
 };
 
 
