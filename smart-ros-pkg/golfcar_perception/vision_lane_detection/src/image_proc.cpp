@@ -7,9 +7,9 @@ namespace golfcar_vision{
         init_flag_(false),
         extract_image_(false)
     { 
-      //cvNamedWindow("It_image");
-      //cvNamedWindow("Iat_image");
-      //cvNamedWindow("binary_image");
+      cvNamedWindow("It_image");
+      cvNamedWindow("Iat_image");
+      cvNamedWindow("binary_image");
       cvNamedWindow("contour_image");
       
       string svm_model_file;
@@ -64,10 +64,12 @@ namespace golfcar_vision{
         cvAdaptiveThreshold(src, Iat, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, BLOCK_SIZE, OFFSET);
         cvAnd(It, Iat, Itand);
         
-        //cvShowImage("It_image",It);
-        //cvShowImage("Iat_image",Iat);
-        //cvShowImage("binary_image",Itand);
-        
+        cvShowImage("It_image",It);
+        cvShowImage("Iat_image",Iat);
+        cvShowImage("binary_image",Itand);
+        //cvSaveImage("/home/baoxing/It.png", It);
+        //cvSaveImage("/home/baoxing/Iat.png", Iat);
+        //cvSaveImage("/home/baoxing/Itand.png", Itand);
         //------------------------------------------------------------------------------------------------------------------------------
         //2. to find the contours from image "Itand";
         //------------------------------------------------------------------------------------------------------------------------------
@@ -140,21 +142,7 @@ namespace golfcar_vision{
             int contour_class = classify_contour (cvHM, cvBox);
             if(contour_class==-1){ROS_ERROR("NO CLASSIFICATION!!!");}
             if(contour_class==1||contour_class==2||contour_class==3)
-            {
-                CvFont font;
-                double hScale=1.0;
-                double vScale=1.0;
-                int lineWidth=2;
-                CvPoint origin;
-                stringstream  class_string;
-                class_string<<"type"<< contour_class; 
-                const char *class_name = class_string.str().c_str();
-                origin.x = (int)cvBox.center.x;
-                origin.y = (int)cvBox.center.y;
-                cvInitFont(&font,CV_FONT_ITALIC, hScale, vScale, 0, lineWidth);
-                cvPutText(contour_img, class_name, origin, &font, cvScalar(0,0,255));
-                ROS_INFO("lane marker detected");
-                
+            {               
                 //------------------------------------------------------------------------
                 //5. calculate their pose relative to "base_link";
                 //------------------------------------------------------------------------
@@ -163,10 +151,48 @@ namespace golfcar_vision{
                 //this default number denotes no angle information;
                 marker_output.thetha = 3*M_PI;
                 pose_contour(contours, cvm, marker_output);
+                
+                CvFont font;
+                double hScale=1.0;
+                double vScale=1.0;
+                int lineWidth=2;
+                CvPoint origin;
+                stringstream  class_string;
+                class_string<<"type "<< contour_class; 
+                const char *class_name = class_string.str().c_str();
+                origin.x = (int)cvBox.center.x+10;
+                origin.y = (int)cvBox.center.y;
+                cvInitFont(&font,CV_FONT_ITALIC, hScale, vScale, 0, lineWidth);
+                cvPutText(contour_img, class_name, origin, &font, CV_RGB(0,255,0));
+                
+				CvPoint centroid_pt; 
+				centroid_pt.x = int(cvm.m10/cvm.m00);
+				centroid_pt.y = int(cvm.m01/cvm.m00);
+                cvCircle( contour_img, centroid_pt, 3, CV_RGB(0,255,0), 2);
+                
+                ROS_INFO("lane marker detected");
+           
+				
+                if(marker_output.thetha!=3*M_PI)
+                {
+					CvFont font2;
+					double hScale2=0.5;
+					double vScale2=0.5;
+					int lineWidth2=1;
+					CvPoint origin_2;
+					stringstream  pose_string;
+					pose_string<<"pose:(" <<setiosflags(ios::fixed) << setprecision(3) << marker_output.x << ","<<marker_output.y <<","<< marker_output.thetha<<")"; 
+					const char *pose_info = pose_string.str().c_str();
+					origin_2.x = (int)cvBox.center.x+10;
+					origin_2.y = (int)cvBox.center.y+20;
+					cvInitFont(&font2,CV_FONT_ITALIC, hScale2, vScale2, 0, lineWidth2);
+					cvPutText(contour_img, pose_info, origin_2, &font2, CV_RGB(0,255,0));
+				}
                 markers_para.vec.push_back(marker_output);
             }
         }
         cvShowImage("contour_image",contour_img);
+        //cvSaveImage("/home/baoxing/contour_img.png", contour_img);
         
         //-----------------------------------------------------------------------------------------------
         //only use when to extract training pictures;
@@ -196,6 +222,10 @@ namespace golfcar_vision{
         cvReleaseMemStorage(&mem_contours);
         cvReleaseMemStorage(&mem_box);
         cvWaitKey(50);
+        
+       
+        
+        
         cvReleaseImage(&It);
         cvReleaseImage(&Iat);
         cvReleaseImage(&Itand);
@@ -464,9 +494,9 @@ namespace golfcar_vision{
       
     image_proc::~image_proc()
     {
-        //cvDestroyWindow("It_image");
-        //cvDestroyWindow("Iat_image");
-        //cvDestroyWindow("binary_image");
+        cvDestroyWindow("It_image");
+        cvDestroyWindow("Iat_image");
+        cvDestroyWindow("binary_image");
         cvDestroyWindow("contour_image");
     }
 };
