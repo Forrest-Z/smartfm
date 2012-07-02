@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="rolling_window" type="rolling_window" name="rolling_window" output="screen">
+	<remap from="scan_in" to="sick_scan2" />
+	<remap from="odom" to="encoder_odom" />
+    </node>
+</launch>    
