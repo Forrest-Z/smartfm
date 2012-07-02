@@ -1,0 +1,24 @@
+<package>
+  <description brief="rolling_window">
+
+     3d rolling window for pcl
+
+  </description>
+  <author>golfcar</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/rolling_window</url>
+  <depend package="geometry_msgs"/>
+  <depend package="roscpp"/>
+  <depend package="rospy"/>
+  <depend package="sensor_msgs"/>
+  <depend package="tf"/>
+  <depend package="nav_msgs"/>
+  <depend package="message_filters"/>
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
+  <depend package="laser_geometry"/>
+  <depend package="fmutil"/>
+  <!--depend package="pcl_visualization"/-->
+</package>
+
