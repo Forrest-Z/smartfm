@@ -37,19 +37,13 @@ Tuning method:
 
 import roslib; roslib.load_manifest('phidget_encoders')
 import rospy
-
 import diagnostic_updater as DIAG
 import tf.transformations
-
-from geometry_msgs.msg import Quaternion
-from geometry_msgs.msg import Twist
-from nav_msgs.msg import Odometry
 from tf.broadcaster import TransformBroadcaster
+from geometry_msgs.msg import Quaternion, Twist
+from nav_msgs.msg import Odometry
 from phidget_encoders.msg import *
-
 from math import sin, cos, pi
-
-
 
 
 class EncodersOdoNode:
