@@ -1,5 +1,4 @@
 <launch>
-   
     <node pkg="vision_lane_detection" type="ipm" name="ipm">
         <param name="image_transport" value="compressed"/>
 	</node>
