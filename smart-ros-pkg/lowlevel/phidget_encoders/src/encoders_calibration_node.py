@@ -110,20 +110,26 @@ class SegmentClassifier:
     '''
 
     def __init__(self):
+        # pool of poses to process: AMCL poses are accumulated here. Periodically
+        # it will be searched for segments
         self.amcl_poses = []
+
+        # the output of the extraction algorithms
         self.straight_segments = []
         self.curved_segments = []
 
-        self.orientation_threshold = math.radians(2)
+        # some thresholds for the algorithms
+        self.orientation_threshold = math.radians(1)
         self.min_pts_per_seg = 5
         self.curvature_threshold = self.orientation_threshold
         self.min_curvature = math.radians(5)
 
-        self.mutex = threading.Lock() #protects access to amcl_poses
+        # a mutex to protect access to amcl_poses
+        self.mutex = threading.Lock()
 
     def append(self, p):
         '''Appends a pose to the pool of AMCL poses.'''
-        print p.x, p.y, p.th
+        #print p.x, p.y, p.th
         with self.mutex:
             # check whether it's the same pose as before. If it is, simply update
             # the stamp
@@ -135,13 +141,14 @@ class SegmentClassifier:
                     return
             self.amcl_poses.append(p)
 
-    def search_for_line(self, a, threshold, min_pts_per_seg=0):
-        '''Searches the list for sequences of similar values and returns their
+    def search_for_segment(self, a, testfn, min_pts_per_seg=0):
+        '''Searches sequences of similar values and returns their
         begining and end index.
 
         Args:
             a: the array of values to search
-            threshold: the threshold used to decide on similarity
+            testfn: the function used to decide on similarity. Takes the array of
+                values as input, and returns whether they are similar enough or not.
             min_pts_per_seg: minimal number of points required to make a segment
 
         Returns:
@@ -157,21 +164,20 @@ class SegmentClassifier:
         e = b+1
 
         while e <= len(a):
-            # current value
-            m = np.mean(a[b:e])
-
             # if the next point (if any) does not belong to the segment, then
             # terminate the segment here
-            if e==len(a) or abs(m-a[e])>threshold:
+            if e>=len(a) or not testfn(a[b:e]):
                 # only keep segments that are long enough
                 if e-b >= min_pts_per_seg:
                     segs.append([b,e])
-                    # start a new segment
+                    # start a new segment at the end of this one
                     b = e
                 else:
+                    # start a new segment at the begining of this one
                     b += 1
                 e = b+1
             else:
+                # proceed with the next point
                 e += 1
 
         return segs
@@ -233,9 +239,12 @@ class SegmentClassifier:
         seg_p = self.curved_segments[-1]
 
         # compare curvatures
-        d = abs(seg.curvature-seg_p.curvature)
-        if d > self.curvature_threshold:
-            print 'curvatures don\'t match: %f>%f' % (d,self.curvature_threshold)
+        #d = abs(seg.curvature-seg_p.curvature)
+        #if d > self.curvature_threshold:
+            #print 'curvatures don\'t match: %f>%f' % (d,self.curvature_threshold)
+            #return False
+        a = np.asarray(seg.dths+seg_p.dths)
+        if any(a>0) and any(a<0):
             return False
 
         return self.merge(seg_p, seg)
@@ -249,16 +258,22 @@ class SegmentClassifier:
         self.searched.compute_geometry()
 
         # Search for straigt segments
-        straigt_seg_idx = self.search_for_line(self.searched.orientations,
-                                self.orientation_threshold, self.min_pts_per_seg)
+        testfn = lambda dths: all(np.abs(dths)<self.orientation_threshold)
+        straigt_seg_idx = self.search_for_segment(self.searched.dths,
+                                testfn, self.min_pts_per_seg)
         for si in straigt_seg_idx:
+            si[1] += 1
             seg = Segment( self.searched.poses[si[0]:si[1]] )
             seg.compute_geometry()
             if not self.try_merge_straight(seg):
                 self.straight_segments.append(seg)
 
         # Search for curved segments
-        curved_seg_idx = self.search_for_line(self.searched.curvatures, self.curvature_threshold, self.min_pts_per_seg)
+        def samesign(a):
+            ar = np.asarray(a)
+            return all(ar>=0) or all(ar<=0)
+        curved_seg_idx = self.search_for_segment(self.searched.dths, samesign,
+                                self.min_pts_per_seg)
         for si in curved_seg_idx:
             si[1] += 1
             seg = Segment( self.searched.poses[si[0]:si[1]] )
