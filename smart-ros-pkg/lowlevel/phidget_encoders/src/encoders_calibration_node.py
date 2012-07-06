@@ -123,8 +123,6 @@ class SegmentClassifier:
         # a mutex to protect access to amcl_poses
         self.mutex = threading.Lock()
 
-        self.classify()
-
     def append(self, p):
         '''Appends a pose to the pool of AMCL poses.'''
         #print p.x, p.y, p.th
@@ -198,11 +196,11 @@ class SegmentClassifier:
         d = distance(p0, p1)
         t = max(seg_p.lengths)
         if d > t:
-            print 'distances don\'t match %f>%f' %(d,t)
+            #print 'distances don\'t match %f>%f' %(d,t)
             return False
 
         # merge
-        print 'merging'
+        #print 'merging'
         if (p0.x,p0.y,p0.th)==(p1.x,p1.y,p1.th):
             # This is a weird case. I am not sure why this happens... It is
             # important to guard against it though, otherwise curvature computation
@@ -215,32 +213,28 @@ class SegmentClassifier:
         return True
 
     def try_merge_straight(self, seg):
-        print 'trying to merge (straight)'
+        #print 'trying to merge (straight)'
         if len(self.straight_segments)==0:
-            print 'new segment'
+            #print 'new segment'
             return False
         seg_p = self.straight_segments[-1]
 
         # compare orientations
         d = abs(anorm(seg.orientation-seg_p.orientation))
         if d > self.orientation_threshold:
-            print 'orientations don\'t match: %f>%f' % (d,self.orientation_threshold)
+            #print 'orientations don\'t match: %f>%f' % (d,self.orientation_threshold)
             return False
 
         return self.merge(seg_p, seg)
 
     def try_merge_curved(self, seg):
-        print 'trying to merge (curved)'
+        #print 'trying to merge (curved)'
         if len(self.curved_segments)==0:
-            print 'new segment'
+            #print 'new segment'
             return False
         seg_p = self.curved_segments[-1]
 
         # compare curvatures
-        #d = abs(seg.curvature-seg_p.curvature)
-        #if d > self.curvature_threshold:
-            #print 'curvatures don\'t match: %f>%f' % (d,self.curvature_threshold)
-            #return False
         a = np.asarray(seg.dths+seg_p.dths)
         if any(a>0) and any(a<0):
             return False
@@ -283,9 +277,137 @@ class SegmentClassifier:
         I = straigt_seg_idx+curved_seg_idx
         n = len(self.searched.poses)-self.min_pts_per_seg
         last = max([i[1] for i in I] + [0, n])
-        print 'keeping %d points' % (len(self.searched.poses)-last)
+        #print 'keeping %d points' % (len(self.searched.poses)-last)
         with self.mutex:
             self.amcl_poses = self.searched.poses[last:]+self.amcl_poses
+
+class CalibrationSegment:
+    '''Holds information about a segment that is useful for calibration.
+
+    Attributes:
+        length: the length of the segment
+        orientation_sigma: the standard deviation of orientations on that segment
+        rotation: the total rotation of the segment (last orientation - first orientation)
+        left: the difference of encoder counts on the left side
+        right: the difference of encoder counts on the right side
+    '''
+
+    def __init__(self, seg):
+        '''Constructed from a Segment'''
+        self.poses = seg.poses
+        self.length = seg.length
+        self.orientation_range = np.std(seg.orientations)
+        self.rotation = seg.orientations[-1] - seg.orientations[0]
+
+class CalibrationTool:
+    '''Maintains information about extracted segments for optimal use of them all.'''
+
+    def __init__(self):
+        self.segment_classifier = SegmentClassifier()
+        self.encoder_counts = []
+        self.curved_segments = []
+        self.straight_segments = []
+
+        self.calibration_period = rospy.Duration(5)
+
+        # a mutex to protect access to encoder_counts
+        self.mutex = threading.Lock()
+
+        # initial values. only needed for debugging (the algorithm does not need
+        # to be seeded)
+        self.left_correction_factor = 1.0101
+        self.wheel_size = 1.3168544
+
+    def append(self, msg):
+        with self.mutex:
+            self.encoder_counts.append(msg)
+
+    def get_encoder_counts(self, seg, i0=0):
+        left = 0
+        right = 0
+        try:
+            while self.encoder_counts[i0].stamp < seg.poses[0].stamp:
+                i0 += 1
+            i1 = i0
+            while self.encoder_counts[i1].stamp < seg.poses[-1].stamp:
+                left += self.encoder_counts[i1].d_left
+                right += self.encoder_counts[i1].d_right
+                i1 += 1
+        except IndexError:
+            print 'Could not find matching encoder messages'
+            raise
+        #print 'poses[0].stamp:', seg.poses[0].stamp.to_sec(), 'i0:', i0, \
+            #'encoder_counts[i0].stamp:', self.encoder_counts[i0].stamp.to_sec()
+        #print 'poses[-1].stamp:', seg.poses[-1].stamp.to_sec(), 'i1:', i1, \
+            #'encoder_counts[i1].stamp:', self.encoder_counts[i1].stamp.to_sec()
+        seg.left = left
+        seg.right = right
+        return i1
+
+    def calibrate_straight(self):
+        if len(self.straight_segments)>0 and len(self.segment_classifier.straight_segments)>0:
+            self.straight_segments.pop()
+        i = 0
+        for seg in self.segment_classifier.straight_segments:
+            cseg = CalibrationSegment(seg)
+            try:
+                i = self.get_encoder_counts(cseg, i)
+            except IndexError:
+                continue
+            cseg.alpha = cseg.right / cseg.left
+            cseg.size = cseg.length / cseg.right
+            self.straight_segments.append(cseg)
+        if len(self.segment_classifier.straight_segments)>0:
+            self.segment_classifier.straight_segments = self.segment_classifier.straight_segments[-1:]
+        if len(self.straight_segments)>0:
+            self.left_correction_factor = np.mean([s.alpha for s in self.straight_segments])
+            self.wheel_size = np.mean([s.size for s in self.straight_segments])
+            print 'left_correction_factor:', self.left_correction_factor
+            print 'wheel_size:', self.wheel_size
+
+    def calibrate_curves(self):
+        if len(self.curved_segments)>0 and len(self.segment_classifier.curved_segments)>0:
+            self.curved_segments.pop()
+        i = 0
+        for seg in self.segment_classifier.curved_segments:
+            cseg = CalibrationSegment(seg)
+            try:
+                i = self.get_encoder_counts(cseg, i)
+            except IndexError:
+                continue
+            cseg.beta = (cseg.right-cseg.left*self.left_correction_factor)*self.wheel_size/cseg.rotation
+            self.curved_segments.append(cseg)
+        if len(self.segment_classifier.curved_segments)>0:
+            self.segment_classifier.curved_segments = self.segment_classifier.curved_segments[-1:]
+        if len(self.curved_segments)>0:
+            self.dist_btw_wheels = np.mean([s.beta for s in self.curved_segments])
+            print 'dist_btw_wheels:', self.dist_btw_wheels
+
+    def remove_encoder_counts(self):
+        ts = [rospy.Time.now() - self.calibration_period]
+        if len(self.segment_classifier.amcl_poses)>0:
+            ts.append( self.segment_classifier.amcl_poses[0].stamp )
+        if len(self.segment_classifier.straight_segments)>0:
+            ts.append( self.segment_classifier.straight_segments[0].poses[0].stamp )
+        if len(self.segment_classifier.curved_segments)>0:
+            ts.append( self.segment_classifier.curved_segments[0].poses[0].stamp )
+        t = min(ts)
+
+        with self.mutex:
+            if len(self.encoder_counts)==0:
+                return
+            i = len(self.encoder_counts)-1
+            while i>=0 and self.encoder_counts[i].stamp>=t:
+                i -= 10
+            if i>0:
+                #print 'removing', i, 'encoder_counts values:', t.to_sec()
+                self.encoder_counts = self.encoder_counts[i:]
+
+    def calibrate(self):
+        self.segment_classifier.classify()
+        self.calibrate_straight()
+        self.calibrate_curves()
+        self.remove_encoder_counts()
 
 class OdometryCalibrationNode:
     '''From encoder counts and AMCL trajectory, calibrate the odometry.
@@ -301,86 +423,34 @@ class OdometryCalibrationNode:
     '''
 
     def __init__(self):
+        self.calibration_tool = CalibrationTool()
+
         self.encoders_sub = rospy.Subscriber('encoder_counts', EncoderCounts, self.encoders_callback)
         self.amcl_sub = rospy.Subscriber('amcl_pose', PoseWithCovarianceStamped, self.amcl_callback)
-
-        # every 5 seconds, analyze the trajectory and attempt to calibrate
-        self.timer = rospy.Timer(rospy.Duration(5), self.timer_callback)
 
         # publish the extracted segments as a point cloud (for debugging)
         self.segments_pub = rospy.Publisher('calibration_segments', PointCloud)
 
-        self.segment_classifier = SegmentClassifier()
-        self.encoder_counts = []
+        # every 5 seconds, analyze the trajectory and attempt to calibrate
+        self.timer = rospy.Timer(self.calibration_tool.calibration_period, self.timer_callback)
 
-        # initial values. only needed for debugging, the algorithm does not need
-        # to be seeded.
-        self.left_correction_factor = 1.0101
-        self.wheel_size = 1.3168544
+        # do it straight away for debugging purpose
+        self.timer_callback(0)
 
     def encoders_callback(self, msg):
-        self.encoder_counts.append(msg)
+        self.calibration_tool.append(msg)
 
     def amcl_callback(self, msg):
-        p = PoseFromAMCLMsg(msg)
-        self.segment_classifier.append(p)
+        self.calibration_tool.segment_classifier.append( PoseFromAMCLMsg(msg) )
 
-    def timer_callback(self, msg):
-        self.segment_classifier.classify()
-        self.publish_segments()
-        self.calibrate()
+    def timer_callback(self, dummy):
+        self.calibration_tool.calibrate()
 
-    def calibrate(self):
-        alphas = []
-        sizes = []
-        t0 = 0
-        for seg in self.segment_classifier.straight_segments:
-            try:
-                (left,right) = self.get_encoder_counts(seg, t0)
-                alphas.append(right / left)
-                sizes.append(seg.length / right)
-            except IndexError:
-                pass
-        if len(alphas)>0:
-            self.left_correction_factor = np.mean(alphas)
-            self.wheel_size = np.mean(sizes)
-            print 'left_correction_factors:', alphas, 'mean:', self.left_correction_factor
-            print 'wheel_sizes:', sizes, 'mean:', self.wheel_size
-
-        betas = []
-        t0 = 0
-        for seg in self.segment_classifier.curved_segments:
-            try:
-                (left,right) = self.get_encoder_counts(seg, t0)
-                betas.append( (right-left*self.left_correction_factor)*self.wheel_size/sum(seg.dths) )
-            except IndexError:
-                pass
-        if len(betas)>0:
-            self.dist_btw_wheels = np.mean(betas)
-            print 'dist_btw_wheels:', betas, 'mean:', self.dist_btw_wheels
-
-    def get_encoder_counts(self, seg, t0=0):
-        try:
-            while self.encoder_counts[t0].stamp < seg.poses[0].stamp:
-                t0 += 1
-            t1 = t0
-            while self.encoder_counts[t1].stamp < seg.poses[-1].stamp:
-                t1 += 1
-        except IndexError:
-            print 'Could not find matching encoder messages'
-            raise
-        left = 0
-        right = 0
-        for t in range(t0,t1):
-            left += self.encoder_counts[t].d_left
-            right += self.encoder_counts[t].d_right
-        return left, right
-
-    def publish_segments(self):
+        # publish the segments (for visualization purpose)
         msg = PointCloud()
         msg.header.frame_id = 'map'
-        d = {1: self.segment_classifier.straight_segments,
-             -1: self.segment_classifier.curved_segments}
+        d = {1: self.calibration_tool.straight_segments,
+             -1: self.calibration_tool.curved_segments}
         for (z, segments) in d.iteritems():
             for i in range(len(segments)):
                 for p in segments[i].poses:
