@@ -102,9 +102,6 @@ class SegmentClassifier:
             point to the segment only if its orientation is equal to the mean
             orientation plus or minus this threshold
         min_pts_per_seg: only consider segments with at least that many points
-        curvature_threshold: when searching for curved segments, include a new
-            point to the segment only if its curvature is equal to the mean
-            curvature plus or minus this threshold
         min_curvature: only consider segments as curved if the curvature is larger
             than this threshold
     '''
@@ -121,11 +118,12 @@ class SegmentClassifier:
         # some thresholds for the algorithms
         self.orientation_threshold = math.radians(1)
         self.min_pts_per_seg = 5
-        self.curvature_threshold = self.orientation_threshold
         self.min_curvature = math.radians(5)
 
         # a mutex to protect access to amcl_poses
         self.mutex = threading.Lock()
+
+        self.classify()
 
     def append(self, p):
         '''Appends a pose to the pool of AMCL poses.'''
@@ -258,11 +256,10 @@ class SegmentClassifier:
         self.searched.compute_geometry()
 
         # Search for straigt segments
-        testfn = lambda dths: all(np.abs(dths)<self.orientation_threshold)
-        straigt_seg_idx = self.search_for_segment(self.searched.dths,
+        testfn = lambda v: max(v)-min(v)<=self.orientation_threshold
+        straigt_seg_idx = self.search_for_segment(self.searched.orientations,
                                 testfn, self.min_pts_per_seg)
         for si in straigt_seg_idx:
-            si[1] += 1
             seg = Segment( self.searched.poses[si[0]:si[1]] )
             seg.compute_geometry()
             if not self.try_merge_straight(seg):
@@ -285,7 +282,7 @@ class SegmentClassifier:
         # keep the last few points for future analysis
         I = straigt_seg_idx+curved_seg_idx
         n = len(self.searched.poses)-self.min_pts_per_seg
-        last = max([i[1] for i in I] + [n])
+        last = max([i[1] for i in I] + [0, n])
         print 'keeping %d points' % (len(self.searched.poses)-last)
         with self.mutex:
             self.amcl_poses = self.searched.poses[last:]+self.amcl_poses
