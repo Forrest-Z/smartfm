@@ -1,25 +1,23 @@
 <package>
-  <description brief="curb_points_to_laser">
+  <description brief="correlative_scanmatcher">
 
-     curb_points_to_laser
+     correlative_scanmatcher
 
   </description>
-  <author>golfcar</author>
+  <author>demian</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/curb_points_to_laser</url>
+  <url>http://ros.org/wiki/correlative_scanmatcher</url>
   <depend package="geometry_msgs"/>
   <depend package="roscpp"/>
-  <depend package="rospy"/>
   <depend package="sensor_msgs"/>
   <depend package="tf"/>
   <depend package="nav_msgs"/>
-  <depend package="message_filters"/>
   <depend package="pcl"/>
   <depend package="pcl_ros"/>
-  <depend package="laser_geometry"/>
   <depend package="fmutil"/>
-  <!--depend package="pcl_visualization"/-->
-  <depend package="dynamic_reconfigure"/>
+  <depend package="laser_geometry"/>
+
 </package>
+
 

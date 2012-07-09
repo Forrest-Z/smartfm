@@ -21,24 +21,11 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
-#add dynamic reconfigure api
-rosbuild_find_ros_package(dynamic_reconfigure)
-include(${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake)
-gencfg()
-
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
-rosbuild_add_boost_directories()
-rosbuild_add_executable(curb_to_laser src/curb_to_laser.cpp)
-rosbuild_link_boost(curb_to_laser signals)
-#rosbuild_add_executable(ldf src/laser_dynamic_object_filter.cpp)
-rosbuild_add_executable(le src/laser_evidence.cpp)
-rosbuild_link_boost(le signals)
-
-rosbuild_add_executable(scene_interpretation src/scene_interpretation.cpp)
-rosbuild_link_boost(scene_interpretation signals)
-
-#target_link_libraries (le pcl_visualization gomp)
-#rosbuild_add_compile_flags(le -lpcl_visualization)
+#rosbuild_add_boost_directories()
+#rosbuild_link_boost(${PROJECT_NAME} thread)
+rosbuild_add_executable(grid_map src/GridMap.cpp)
+rosbuild_add_openmp_flags(grid_map)
 #target_link_libraries(example ${PROJECT_NAME})

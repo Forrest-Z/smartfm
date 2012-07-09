@@ -3,6 +3,9 @@
  *
  *  Created on: Apr 25, 2012
  *      Author: golfcar
+ *
+ *      laser_evidence.cpp will move towards a more modular model
+ *      by splitting rolling windows and other perception processes
  */
 
 #include <ros/ros.h>
@@ -25,6 +28,7 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/filters/radius_outlier_removal.h>
 #include <pcl/features/normal_3d_omp.h>
+#include <pcl/filters/conditional_removal.h>
 
 #include <laser_geometry/laser_geometry.h>
 
@@ -32,7 +36,27 @@
 
 #include <visualization_msgs/MarkerArray.h>
 
+#include <sys/time.h>
+#include <ctime>
+
 using namespace std;
+
+
+uint64_t GetTimeMs64()
+{
+	struct timeval tv;
+
+	 gettimeofday(&tv, NULL);
+
+	 uint64_t ret = tv.tv_usec;
+	 /* Convert from micro seconds (10^-6) to milliseconds (10^-3) */
+	 ret /= 1000;
+
+	 /* Adds the seconds (10^0) after converting them to milliseconds (10^-3) */
+	 ret += (tv.tv_sec * 1000);
+
+	 return ret;
+}
 
 class laser_evidence
 {
@@ -197,6 +221,11 @@ void laser_evidence::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
 
 void laser_evidence::mainLoop(geometry_msgs::PointStamped& laser_pose, sensor_msgs::PointCloud& laser_cloud)
 {
+	double laser_pose_dist = fmutil::distance(laser_pose_pre_.point, laser_pose.point);
+	static int laserNo_received = 0, laserNo_filtered = 0;
+	if(laser_pose_dist<0.03) laserNo_filtered++;
+	laserNo_received++;
+	cout<<laser_pose_dist<<" "<<(laser_pose_dist<0.03)<<" "<<laserNo_filtered<<"/"<<laserNo_received<<": "<<(double)laserNo_filtered/laserNo_received<<endl;
     if(fmutil::distance(laser_pose_pre_.point, laser_pose.point)<0.03) return;
     else laser_pose_pre_ = laser_pose;
     //only start filtering when there is enough samples
@@ -242,14 +271,19 @@ void laser_evidence::normalEstimation(PointCloud input)
       ne.setRadiusSearch (0.3);
       ne.setViewPoint(laser_pose_pre_.point.x,laser_pose_pre_.point.y,laser_pose_pre_.point.z);
       // Compute the features
+      uint64_t stopwatch = GetTimeMs64();
       ne.compute (cloud_normals);
-
+      cout<<"Compute normals "<< (GetTimeMs64()-stopwatch)<<endl;
       // concatentate the fileds
       pcl::PointCloud<pcl::PointNormal> point_normals;
+      stopwatch = GetTimeMs64();
       pcl::concatenateFields(input, cloud_normals, point_normals);
-      cout<<"Point normal "<<point_normals.points[0].normal_x<<' '<<point_normals.points[0].normal_y<<' '<<point_normals.points[0].normal_z<<endl;
+      cout<<"Concatenate fileds "<< (GetTimeMs64()-stopwatch)<<endl;
+      //cout<<"Point normal "<<point_normals.points[0].normal_x<<' '<<point_normals.points[0].normal_y<<' '<<point_normals.points[0].normal_z<<endl;
       // publish normal using visualization marker
+      stopwatch = GetTimeMs64();
       publishNormal(point_normals);
+      cout<<"Normals calculation "<< (GetTimeMs64()-stopwatch)<<endl;
 
 }
 
@@ -258,29 +292,18 @@ void laser_evidence::publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_cloud)
 
     visualization_msgs::MarkerArray normals_marker_array_msg;
     //just checking...
-    cout<<"Point normal "<<pcl_cloud.points[0].normal_x<<' '<<pcl_cloud.points[0].normal_y<<' '<<pcl_cloud.points[0].normal_z<<endl;
+    //cout<<"Point normal "<<pcl_cloud.points[0].normal_x<<' '<<pcl_cloud.points[0].normal_y<<' '<<pcl_cloud.points[0].normal_z<<endl;
       unsigned int count_filtered=0, count_correct=0, count_raw=0;
-      for(size_t i=0; i<pcl_cloud.points.size();)
-      {
-
-          if(fabs(pcl_cloud.points[i].normal_z)>0.90)//up to 0.9 is alright for tilted laser //, , fmutil::d2r(-355)))
-          {
-              pcl_cloud.points.erase(pcl_cloud.points.begin()+i);
-              if(pcl_cloud.width>1) pcl_cloud.width --;
-              else if(pcl_cloud.height>1)pcl_cloud.height--;
-              else printf("more filtered points than the allowable size, this is strange!\n");
-              count_filtered++;
-          }
-          else
-          {
-              //it's very slow here. Need to speed up
-              //cout<<"Point normal "<<pcl_cloud.points[i].normal_x<<' '<<pcl_cloud.points[i].normal_y<<' '<<pcl_cloud.points[i].normal_z<<endl;
-              count_correct++;
-              i++;
-          }
-          count_raw++;
-      }
-      ROS_INFO("raw size: %i, passed size: %i, filtered size: %i", count_raw, count_correct, count_filtered);
+      uint64_t stopwatch = GetTimeMs64();
+      //absolutely stunningly quick!
+      pcl::ConditionAnd<pcl::PointNormal>::Ptr range_cond (new pcl::ConditionAnd<pcl::PointNormal> ());
+      range_cond->addComparison (pcl::FieldComparison<pcl::PointNormal>::ConstPtr (new
+            pcl::FieldComparison<pcl::PointNormal> ("normal_z", pcl::ComparisonOps::LT, 0.90)));
+      pcl::ConditionalRemoval<pcl::PointNormal> condrem (range_cond);
+      condrem.setInputCloud (pcl_cloud.makeShared());
+      condrem.filter (pcl_cloud);
+      cout<<"Filter clouds "<< (GetTimeMs64()-stopwatch)<<endl;
+      //ROS_INFO("raw size: %i, passed size: %i, filtered size: %i", count_raw, count_correct, count_filtered);
       //sensor_msgs::PointCloud2 filtered_pc2;
       //pcl::toROSMsg(pcl_cloud, filtered_pc2);
       //filtered_pc2_pub_.publish(filtered_pc2);
@@ -291,16 +314,20 @@ void laser_evidence::publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_cloud)
 
 
        //perform density based filtering
+      /*stopwatch = GetTimeMs64();
       pcl::PointCloud<pcl::PointNormal> radius_filtered_pcl2;
       pcl::RadiusOutlierRemoval<pcl::PointNormal> outrem;
       outrem.setInputCloud(pcl_cloud.makeShared());
       outrem.setRadiusSearch(0.4);
       outrem.setMinNeighborsInRadius(8);
       outrem.filter(radius_filtered_pcl2);
+      cout<<"density filtering "<< (GetTimeMs64()-stopwatch)<<endl;*/
       sensor_msgs::PointCloud2 radius_filtered_pc2;
-      pcl::toROSMsg(radius_filtered_pcl2, radius_filtered_pc2);
+      pcl::toROSMsg(pcl_cloud, radius_filtered_pc2);
       sensor_msgs::LaserScan filtered_laser;
+      stopwatch = GetTimeMs64();
       convertToLaser(radius_filtered_pc2, filtered_laser);
+      cout<<"convert to laser "<< (GetTimeMs64()-stopwatch)<<endl;
       filtered_pc2_pub_.publish(radius_filtered_pc2);
       filtered_laser_pub_.publish(filtered_laser);
 
