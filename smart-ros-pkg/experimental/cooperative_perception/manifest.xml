@@ -1,0 +1,23 @@
+<package>
+  <description brief="cooperative_perception">
+
+     cooperative_perception
+
+  </description>
+  <author>demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/cooperative_perception</url>
+  <depend package="geometry_msgs"/>
+  <depend package="roscpp"/>
+  <depend package="sensor_msgs"/>
+  <depend package="tf"/>
+  <depend package="nav_msgs"/>
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
+  <depend package="fmutil"/>
+  <depend package="laser_geometry"/>
+
+</package>
+
+

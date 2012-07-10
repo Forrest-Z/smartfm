@@ -1,0 +1,42 @@
+<launch>
+	<node pkg="golfcar_lowlevel" type="joy" name="joy"/>
+	<node pkg="joy" type="joy_node" name="joy_node"/>
+	<node pkg="golfcar_odom" type="golfcar_odom" name="golfcar_odom"/>
+	<node pkg="gpsd_client" type="gpsd_client" name="gpsd_client"/>
+	<node pkg="gps_common" type="utm_odometry_node" name="utm_odometry_node">
+		<remap from="odom" to="gps/odom"/>
+	</node>
+	<node pkg="sicktoolbox_wrapper" type="sicklms" name="sicklms">
+		<param name="port" value="/dev/ttyUSB0"/>
+		<remap from ="scan" to="sick_scan"/>
+	<!--	<param name="resolution" value="0.5"/>
+		
+		<param name="frame_id" value="sick_laser"/>
+		<param name="baud" value="500000"/>-->
+	</node>
+	<!--IMPORTANT: Remeber to set z offset to larger than zero, else cost map will only recognize as unknown space -->
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser" args="1.97, 0.0, 1.5 0 0 0 /base_link /sick_laser 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_hokuyolaser" args="1.14, 0.0, 1.83 0 0 0 /base_link /laser 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_base_footprint" args="0 0.0 0.0 0 0 0 /base_link /base_footprint 100" />
+	<node pkg="golfcar_steeringcontrol" type="local_controller" name="local_controller"/> 
+	<node name="amcl" pkg="amcl" type="amcl" respawn="false">
+	</node>
+	<node pkg="canonical_scan_matcher" type="csm_node" name="csm_node" output="screen">
+		<param name="/publish_tf" value="false"/>
+	</node>
+	<node name="hokuyo" pkg="hokuyo_node" type="hokuyo_node" respawn="false" output="screen">  
+		<!-- Starts up faster, but timestamps will be inaccurate. --> 
+		<param name="calibrate_time" type="bool" value="false"/> 
+		<param name="frame_id" value="laser"/>
+		<!-- Set the port to connect to here -->
+		<param name="port" type="string" value="/dev/ttyACM0"/> 
+		<param name="min_ang" type="double" value="-2.2689"/>
+		<param name="max_ang" type="double" value="2.2689"/>  
+		<param name="intensity" type="bool" value="false"/>
+	</node>
+	<!--
+	<node name="slam_gmapping" pkg="gmapping" type="slam_gmapping" respawn="false">
+		<param name="linearUpdate" value="0.1"/>
+	</node>-->
+</launch>
+

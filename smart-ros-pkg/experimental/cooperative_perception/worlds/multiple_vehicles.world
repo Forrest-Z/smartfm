@@ -1,0 +1,55 @@
+define block model
+(
+  size [0.500 0.500 0.750]
+  gui_nose 0
+)
+
+define topurg ranger
+(
+ sensor(
+  range [0.0 80.0]
+  fov 180
+  samples 360
+  )
+  # generic model properties
+  color "black"
+  size [ 0.050 0.050 0.100 ]
+)
+
+define gc position
+(
+  #size [0.65 0.65 0.25]
+  #origin [-0.05 0 0 0]
+  size [2.385 1.200 0.250]
+  
+  origin [0.792 0.000 0.000 0.000]
+  gui_nose 1
+  drive "car"
+  localization "gps"
+
+  topurg(pose [1.985 0.000 -0.100 0.000])
+)
+
+# set the resolution of the underlying raytrace model in meters
+resolution 0.005
+
+interval_sim 100  # simulation timestep in milliseconds
+#interval_real 100  # real-time interval between simulation updates in milliseconds 
+window
+( 
+  size [ 672 574 ] 
+ #center [327.990 371.960] 
+  center [-127.368 100.682]
+#rotate [ 0.000 -1.560 ]
+  rotate [ 0.000 -282.000 ]
+  scale 7.975 
+)
+
+# throw in a robot
+gc( pose [-126.072 106.762 0.000 -151.352] name "gc1" color "red")
+gc( pose [-121.787 108.804 0.000 -155.736] name "gc2" color "orange")
+gc( pose [-117.298 110.783 0.000 -157.081] name "gc3" color "yellow")
+gc( pose [-112.376 112.744 0.000 -148.487] name "gc4" color "green")
+gc( pose [-106.220 115.304 0.000 -151.352] name "gc5" color "cyan")
+gc( pose [-100.136 117.839 0.000 -151.352] name "gc6" color "blue")
+gc( pose [-94.214 120.612 0.000 -148.487] name "gc7" color "purple")
