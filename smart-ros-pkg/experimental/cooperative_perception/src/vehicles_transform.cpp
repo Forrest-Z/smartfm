@@ -18,12 +18,10 @@ tf::TransformListener *listener_;
 ros::Publisher *detected_poses_;
 void scanCallback(sensor_msgs::LaserScan scan)
 {
-	//look for latest available transform from 2 different robots
-	//everything based on robot_2's base_link
-	tf::StampedTransform robot01_tf, robot12_tf, robot02_tf, trueRobot02_tf, trueRobot12_tf;
-	vector<tf::StampedTransform> detected_robot_tf, true_robot_tf, combined_robot_tf;
+	//look for latest available transform from different number of robots
 	const int robot_number = 7;
-
+	//everything based on the last robot's base_link
+	vector<tf::StampedTransform> detected_robot_tf, true_robot_tf, combined_robot_tf;
 
 	stringstream last_robot_frame;
 	last_robot_frame<<"/robot_"<<robot_number-1<<"/base_link";
@@ -36,15 +34,12 @@ void scanCallback(sensor_msgs::LaserScan scan)
 		robotinfront_true_frame<<"/robot_"<<i<<"/base_link";
 		try
 		{
-			//cout<<"Detected frame "<<i<<" "<<detected_frame.str()<<" "<< base_frame.str()<<endl;
-			//cout<<"True frame "<<robotinfront_true_frame.str()<< " "<<last_robot_frame.str()<<endl;
 			listener_->lookupTransform(base_frame.str(), detected_frame.str(),
 					ros::Time(0), detected_robot_trans);
 			detected_robot_tf.push_back(detected_robot_trans);
 			listener_->lookupTransform(last_robot_frame.str(), robotinfront_true_frame.str(),
 					ros::Time(0), true_robot_trans);
 			true_robot_tf.push_back(true_robot_trans);
-			//cout<<"True robot pose "<< true_robot_tf[true_robot_tf.size()-1].getOrigin().x()<<" "<<true_robot_tf[true_robot_tf.size()-1].getOrigin().y()<<endl;
 		}
 		catch (tf::LookupException ex)
 		{
@@ -60,24 +55,16 @@ void scanCallback(sensor_msgs::LaserScan scan)
 		}
 	}
 
-	//cout<<detected_robot_tf.size()<<endl;
-	//get the combined tf by performing robot02_tf.mult(robot01_tf, robot12_tf);
 	combined_robot_tf.resize(robot_number-1);
 	for(int i=0; i<robot_number-1; i++)
 	{
-		//cout<<"For tf "<<i<<": "<<endl;
 		if((robot_number-2-i)>=1)
 		{
-			//cout<<i<<" mult "<<i+1<<endl;
 			combined_robot_tf[i].mult(detected_robot_tf[i+1], detected_robot_tf[i]);
 			for(int j=i+2; j<robot_number-1; j++)
-			{
-				//cout<<" mult "<<j<<endl;
 				combined_robot_tf[i].mult(detected_robot_tf[j], combined_robot_tf[i]);
-			}
 		}
 		else combined_robot_tf[i]=detected_robot_tf[i];
-		//cout<<endl;
 	}
 
 	assert(robot_number>2);

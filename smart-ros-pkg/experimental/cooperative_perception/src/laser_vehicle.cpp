@@ -25,6 +25,9 @@
 
 using namespace std;
 
+ros::Publisher *pub_, *vehicle_pub_;
+tf::TransformBroadcaster *tf_broadcaster_;
+string target_frame_id_;
 
 inline double deg_between_pt(geometry_msgs::Point32 p1, geometry_msgs::Point32 p2)
 {
@@ -62,8 +65,8 @@ bool sort_y(const geometry_msgs::Point32& p1, const geometry_msgs::Point32& p2)
 
 bool findYawLeastSquare(vector<geometry_msgs::Point32> p, double &yaw)
 {
-	//www.ccas.ru/mmes/educat/lab04k/02/least-squares.c
-	  double SUMx, SUMy, SUMxy, SUMxx, SUMres, res, slope,
+	//adapted from www.ccas.ru/mmes/educat/lab04k/02/least-squares.c
+	  double SUMx, SUMy, SUMxy, SUMxx, slope,
 	         y_intercept;
 	  SUMx = 0; SUMy = 0; SUMxy = 0; SUMxx = 0;
 	  for (size_t i=0; i<p.size(); i++) {
@@ -80,9 +83,6 @@ bool findYawLeastSquare(vector<geometry_msgs::Point32> p, double &yaw)
 	  yaw = atan2(y1-y2, x1-x2);
 	  return slope>=0;
 }
-ros::Publisher *pub_, *vehicle_pub_;
-tf::TransformBroadcaster *tf_broadcaster_;
-string target_frame_id_;
 
 void laserCallback(sensor_msgs::LaserScan scan)
 {
@@ -97,6 +97,7 @@ void laserCallback(sensor_msgs::LaserScan scan)
 		pts.push_back(p);
 	}
 	if(pts.size()<=1) return;
+
 	//get the first angle of the segments and start segmentation
 	double angle_pre = deg_between_pt(pts[0], pts[1]);
 	vector< line_segments > segmented_line;
@@ -104,20 +105,15 @@ void laserCallback(sensor_msgs::LaserScan scan)
 	first_segment.pts.push_back(pts[0]);
 	first_segment.pts.push_back(pts[1]);
 	segmented_line.push_back(first_segment);
-	//cout<<angle_pre<<" ";
+
 	unsigned int segment_no = 0;
 	for(size_t i=1; i<pts.size()-1; i++)
 	{
 		double angle = deg_between_pt(pts[i], pts[i+1]);
-		//cout<<angle;
 		if(fabs(angle - angle_pre) < 45)
-		{
-			//cout<<" ";
 			segmented_line[segment_no].pts.push_back(pts[i+1]);
-		}
 		else
 		{
-			//cout<<"* ";
 			//get the angle and centroid of the last segment
 			segmented_line[segmented_line.size()-1].getDetails();
 
@@ -129,14 +125,14 @@ void laserCallback(sensor_msgs::LaserScan scan)
 		}
 		angle_pre = angle;
 	}
-	//cout<<endl<<endl;
 	segmented_line[segmented_line.size()-1].getDetails();
-	//select only the line that is closer to the vehicle
+
+	//sort the segment so that segments that is closer to the vehicle get selected
 	sort(segmented_line.begin(), segmented_line.end(), sort_dist);
 	sensor_msgs::PointCloud pc;
 	pc.header = scan.header;
 
-	//remove single point, the outlier
+	//remove segments contain less than 2 points which are usually the outlier
 	for(size_t i=0; i<segmented_line.size();)
 	{
 		if(segmented_line[i].pts.size()<=2) segmented_line.erase(segmented_line.begin()+i);
@@ -146,20 +142,13 @@ void laserCallback(sensor_msgs::LaserScan scan)
 	pc.points = segmented_line[0].pts;
 	double first_angle = segmented_line[0].angle;
 	geometry_msgs::Point32 first_centroid = segmented_line[0].centroid;
-	//cout<<segmented_line[0].angle<<" ";
 
-
-	//one more filtering to gather all the pieces together
+	//Finally gather all the pieces together
 	for(size_t i=1; i<segmented_line.size(); i++)
 	{
 		if(fabs(segmented_line[i].angle - first_angle) < 30 && fmutil::distance(segmented_line[i].centroid.x, segmented_line[i].centroid.y, first_centroid.x, first_centroid.y)<2.0)
-		{
 			pc.points.insert(pc.points.begin(), segmented_line[i].pts.begin(), segmented_line[i].pts.end());
-			//cout<<"*";
-		}
-		//cout<<segmented_line[i].angle<<" ";
 	}
-	//cout<<endl<<endl;
 
 	//Obtain the vehicle's final position and orientation
 	pcl::PointCloud<pcl::PointXYZ> pcl;
@@ -170,18 +159,12 @@ void laserCallback(sensor_msgs::LaserScan scan)
 	pcl::getMinMax3D(pcl, pt_min, pt_max);
 	geometry_msgs::Point vehicle_xy;
 	double vehicle_yaw;
-	if(findYawLeastSquare(pc.points, vehicle_yaw))//atan2(pt_max.y-pt_min.y, pt_max.x-pt_min.x)-M_PI/2;
+	if(findYawLeastSquare(pc.points, vehicle_yaw))
 		vehicle_yaw += M_PI/2;
 	else vehicle_yaw -= M_PI/2;
 	vehicle_xy.x = (pt_max.x+pt_min.x)/2.0 + 0.45*cos(vehicle_yaw);
 	vehicle_xy.y = (pt_max.y+pt_min.y)/2.0 + 0.45*sin(vehicle_yaw);
 
-
-	 cout<<"Vehicle pose: "<<vehicle_xy.x<<" "<<vehicle_xy.y<<" "<<vehicle_yaw/M_PI*180<<endl;
-
-	cout<<"Min_pt "<<pt_min.x<<" "<<pt_min.y<<endl;
-	cout<<"Max_pt "<<pt_max.x<<" "<<pt_max.y<<endl;
-	cout<<endl;
 	tf::Quaternion q;
 	q.setRPY(0, 0, vehicle_yaw);
 	geometry_msgs::Quaternion vehicle_quat;
