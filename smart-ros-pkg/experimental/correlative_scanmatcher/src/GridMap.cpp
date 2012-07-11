@@ -6,6 +6,10 @@
  */
 #include <ros/ros.h>
 #include <geometry_msgs/Point.h>
+#include <geometry_msgs/Pose.h>
+#include <tf/transform_datatypes.h>
+#include <tf/transform_broadcaster.h>
+
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/PointCloud.h>
 #include "pcl_ros/point_cloud.h"
@@ -14,7 +18,7 @@
 #include <pcl/point_types.h>
 #include <pcl/common/centroid.h>
 #include <pcl/common/eigen.h>
-//#include <pcl/common/impl/transforms.hpp>
+#include <pcl/registration/registration.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/filters/radius_outlier_removal.h>
 #include <pcl/features/normal_3d_omp.h>
@@ -229,69 +233,83 @@ private:
 		}
 
 	}
-public:
-	template <typename PointT> void
-	transformPointCloud (const pcl::PointCloud<PointT> &cloud_in,
-	                          pcl::PointCloud<PointT> &cloud_out,
-	                          const Eigen::Affine3f &transform)
-	{
-	  if (&cloud_in != &cloud_out)
-	  {
-	    // Note: could be replaced by cloud_out = cloud_in
-	    cloud_out.header   = cloud_in.header;
-	    cloud_out.is_dense = cloud_in.is_dense;
-	    cloud_out.width    = cloud_in.width;
-	    cloud_out.height   = cloud_in.height;
-	    cloud_out.points.reserve (cloud_out.points.size ());
-	    cloud_out.points.assign (cloud_in.points.begin (), cloud_in.points.end ());
-	  }
-
-	  if (cloud_in.is_dense)
-	  {
-	    // If the dataset is dense, simply transform it!
-	    for (size_t i = 0; i < cloud_out.points.size (); ++i)
-	      cloud_out.points[i].getVector3fMap () = transform *
-	                                              cloud_in.points[i].getVector3fMap ();
-	  }
-	  else
-	  {
-	    // Dataset might contain NaNs and Infs, so check for them first,
-	    // otherwise we get errors during the multiplication (?)
-	    for (size_t i = 0; i < cloud_out.points.size (); ++i)
-	    {
-	      if (!pcl_isfinite (cloud_in.points[i].x) ||
-	          !pcl_isfinite (cloud_in.points[i].y) ||
-	          !pcl_isfinite (cloud_in.points[i].z))
-	        continue;
-	      cloud_out.points[i].getVector3fMap () = transform *
-	                                              cloud_in.points[i].getVector3fMap ();
-	    }
-	  }
-	}
 };
 
-GridMap* gm;
-ros::Publisher* pub_;
+GridMap *gm;
+ros::Publisher *pub_, *pt_transformed_first_, *pt_transformed_sec_, *pt_transformed_th_;
+tf::TransformBroadcaster *tf_broadcaster_;
 bool initialized=false;
+double scan_odo_x=0, scan_odo_y=0, scan_odo_t=0;
 void pcCallback(sensor_msgs::PointCloud2ConstPtr pc)
 {
 	fmutil::Stopwatch sw;
 	sw.start("Build map");
 	if(initialized)
 	{
-		for(double i = -2.0; i <= 2.0; i+=0.5)
+		int max_score=0;
+		double max_i, max_j, max_t;
+		double eva_xres = 0.05;
+		double eva_xrange = 0.5;
+		int x_iter = eva_xrange/eva_xres; //always assume the vehicle only move forward
+
+		double eva_yres = 0.05;
+		double eva_yrange = 0.2;
+		int y_iter = eva_yrange/eva_yres*2;
+
+		double eva_tres = 0.5/180*M_PI;
+		double eva_trange = 3.0/180*M_PI;
+		int t_iter = eva_trange/eva_tres*2;
+#pragma omp parallel for
+		for(int i = 0; i <= x_iter; i++)
 		{
-			for(double j = -2.0; j <= 2.0; j+=0.5)
+			double dou_i = i*eva_xres;
+			for(int j = 0; j <= y_iter; j++)
 			{
-				//todo: find out why transformPointCloud cannot be used directly
-				Eigen::Affine3f e_tf = pcl::getTransformation(j, i, 0, 0, 0, 0);
-				pcl::PointCloud<pcl::PointXYZ> pcl, pcl_transformed;
-				pcl::fromROSMsg(*pc, pcl);
-				gm->transformPointCloud(pcl, pcl_transformed, e_tf);
-				cout<<gm->score2D(pcl_transformed)<<" ";
+				double dou_j = j*eva_yres-eva_yrange;
+				for(int k=0; k <=t_iter; k++)
+				{
+					double dou_t = k*eva_tres-eva_trange;
+					Eigen::Affine3f e_tf = pcl::getTransformation(dou_i, dou_j, 0, 0, 0, dou_t);
+					pcl::PointCloud<pcl::PointXYZ> pcl, pcl_transformed;
+					pcl::fromROSMsg(*pc, pcl);
+					pcl::transformPointCloud(pcl, pcl_transformed, e_tf);
+					bool pub_cond_1 = (i==0 && j==0 && k==0);
+					bool pub_cond_2 = (i==0 && j==0 && k==t_iter/2);
+					bool pub_cond_3 = (i==0 && j==0 && k==t_iter);
+					if( pub_cond_1 || pub_cond_2 ||pub_cond_3)
+					{
+						sensor_msgs::PointCloud2 msg;
+						msg.header = pc->header;
+						pcl::toROSMsg(pcl_transformed, msg);
+						if(pub_cond_1) pt_transformed_first_->publish(msg);
+						else if(pub_cond_2) pt_transformed_sec_->publish(msg);
+						else pt_transformed_th_->publish(msg);
+					}
+					int score = gm->score2D(pcl_transformed);
+					if(max_score < score)
+					{
+						max_i = dou_i; max_j = dou_j; max_t = dou_t;
+						max_score = score;
+					}
+					//cout<<dou_i<<","<<dou_j<<", "<<dou_t<<": "<<score<<" ";
+				}
+
 			}
-			cout<<endl;
+			//cout<<endl;
 		}
+		cout<<"Max score at "<< max_i <<", "<<max_j<<", "<<max_t<<": "<<max_score<<endl;
+		scan_odo_t += max_t;
+		scan_odo_x += max_i * cos(scan_odo_t);
+		scan_odo_y += max_i * sin(scan_odo_t);
+
+		cout<<"Odo now at "<< scan_odo_x <<", "<<scan_odo_y<<", "<<scan_odo_t<<endl;
+		geometry_msgs::Pose pose;
+		pose.position.x = scan_odo_x;
+		pose.position.y = scan_odo_y;
+		pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, 0, scan_odo_t);
+		tf::StampedTransform trans(tf::Transform(), pc->header.stamp, "scan_odo", "base_link");
+		tf::poseMsgToTF(pose, trans);
+		tf_broadcaster_->sendTransform(trans);
 		cout<<endl;
 	}
 	gm->buildMapDirectDraw(pc);
@@ -313,5 +331,13 @@ int main(int argc, char** argv)
     ros::Subscriber sub = nh.subscribe("pc_out", 10, &pcCallback);
     ros::Publisher pub = nh.advertise<sensor_msgs::PointCloud>("grid_map", 10);
     pub_ = &pub;
+    ros::Publisher pub2 = nh.advertise<sensor_msgs::PointCloud2>("pt_transformed_first", 10);
+    pt_transformed_first_ = &pub2;
+    ros::Publisher pub3 = nh.advertise<sensor_msgs::PointCloud2>("pt_transformed_sec", 10);
+    pt_transformed_sec_ = &pub3;
+    ros::Publisher pub4 = nh.advertise<sensor_msgs::PointCloud2>("pt_transformed_th", 10);
+    pt_transformed_th_ = &pub4;
+    tf::TransformBroadcaster tf_broadcast;
+    tf_broadcaster_ = &tf_broadcast;
     ros::spin();
 }
