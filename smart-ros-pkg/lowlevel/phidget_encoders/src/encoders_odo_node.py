@@ -5,7 +5,6 @@
 the result as:
 - an EncoderOdo custom msg
 - an Odometry msg
-- a TF broadcast (from <frame_id> to 'base_link')
 
 Parameters:
 - wheel_size: the circumference of the wheels
@@ -39,7 +38,6 @@ import roslib; roslib.load_manifest('phidget_encoders')
 import rospy
 import diagnostic_updater as DIAG
 import tf.transformations
-from tf.broadcaster import TransformBroadcaster
 from geometry_msgs.msg import Quaternion, Twist
 from nav_msgs.msg import Odometry
 from phidget_encoders.msg import *
@@ -62,7 +60,6 @@ class EncodersOdoNode:
 
         self.pub = rospy.Publisher('encoder_odo', EncoderOdo)
         self.odomPub = rospy.Publisher('odom', Odometry)
-        self.odomBroadcaster = TransformBroadcaster()
         self.sub = rospy.Subscriber('encoder_counts', EncoderCounts, self.callback)
 
 
@@ -90,12 +87,6 @@ class EncodersOdoNode:
         rospy.logdebug('pose (x,y,th_deg)=(%.2f, %.2f, %+d), (v,w)=(%.2f, %.2f)' % (self.x, self.y, int(self.th*180.0/pi), omsg.v, omsg.w))
 
         quaternion = tf.transformations.quaternion_from_euler(0, 0, self.th)
-
-        self.odomBroadcaster.sendTransform(
-            (self.x, self.y, 0),
-            (quaternion[0], quaternion[1], quaternion[2], quaternion[3]),
-            omsg.stamp, "base_link", self.frameID
-        )
 
         odom = Odometry()
         odom.header.stamp = omsg.stamp

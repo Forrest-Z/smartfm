@@ -1,6 +1,7 @@
 <!-- launch what's necessary to localize when given only raw sensor data -->
 
 <launch>
+
     <include file="$(find Launch)/golfcar/sensors/sicks_tf.launch"/>
 
     <node name="encoders_odo_node" pkg="phidget_encoders" type="encoders_odo_node.py" output="screen">
@@ -11,54 +12,8 @@
         <remap from="odom" to="encoder_odom"/>
     </node>
 
+    <include file="$(find dead_reckoning)/encoderOdom.launch"/>
 
-
-
-    <!--include file="$(find dead_reckoning)/encoderOdom.launch"/-->
-
-    <node pkg="dead_reckoning" name="encoderImu_integrator" type="odom_IMU" output="screen">
-        <remap from="odom" to="encoder_imu_odom"/>
-        <param name="frame_id" value="encoder_imu_odom"/>
-        <!--param name="frame_id" value="odom"/-->
-    </node>
-
-    <node pkg="dead_reckoning" name="odom_republish" type="odom_republish.py">
-        <remap from="input_topic" to="encoder_imu_odom"/>
-    </node>
-
-    <!--
-    <node pkg="dead_reckoning" name="simple_odo_node_encoders" type="simple_odo_node" args="encoder_odom" output="screen"/>
-    <node pkg="dead_reckoning" name="simple_odo_node_encoders_imu" type="simple_odo_node" args="encoder_imu_odom" output="screen"/>
-    <node pkg="dead_reckoning" name="simple_odo_node_odom" type="simple_odo_node" args="odom" output="screen"/>
-    -->
-
-
-
-
-    <!--include file="$(find Launch)/golfcar/2LocalizationCurb.launch"/-->
-
-    <!--
-    <node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
-    <node pkg="scan_verti"    type="scan_verti"    name="scan_verti"/>
-    <node name="map_server" pkg="map_server" type="map_server" args="$(find hybrid_amcl)/worlds/curb_map.yaml">
-        <remap from="static_map" to="static_curb_map"/>
-        <remap from="map" to= "curb_map"/>
-    </node>
-    <node pkg="map_server" type="map_server" name="map_server2" args="$(find hybrid_amcl)/worlds/planar_map.yaml">
-        <remap from="static_map" to="static_planar_map"/>
-        <remap from="map" to= "planar_map"/>
-    </node>
-    <node pkg="robust_road_detection" type="curb_detect" name="curb_detect">
-    </node>
-    <node pkg="hybrid_amcl" type="mix_amcl" name="mix_amcl" output="screen">
-        <param name="max_particles" value="1000"/>
-        <param name="min_particles" value="200"/>
-    </node>
-    -->
-
-    <!--
-    <node pkg="map_to_world" type="utm_to_latlon.py" name="utm_to_latlon"/>
-    <node pkg="map_to_world" type="map_to_world" name="map_to_world"/>
-    -->
+    <include file="$(find Launch)/golfcar/2LocalizationCurb.launch"/>
 
 </launch>

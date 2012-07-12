@@ -2,8 +2,7 @@
  *  estimate.
  *
  * Gets the input from encoders and IMU ('imu/data', yaw rate only),
- * publishes the resulting pose estimate as a tf broadcast (odomImu / base_link)
- * and as a Odometry message on the 'odom' topic.
+ * publishes the resulting pose estimate as an Odometry message on the 'odom' topic.
  */
 
 #include <cmath>
@@ -16,7 +15,6 @@
 
 #include <sensor_msgs/Imu.h>
 #include <tf/transform_datatypes.h>
-#include <tf/transform_broadcaster.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Quaternion.h>
 
@@ -39,7 +37,6 @@ class OdoIMU
         ros::Subscriber enc_sub_;
         ros::Subscriber imu_sub_;
         ros::Publisher odo_imu_pub_;
-        tf::TransformBroadcaster tf_broadcaster_;
 
         std::string frame_id_;
         geometry_msgs::Point position_;
@@ -143,12 +140,6 @@ void OdoIMU::publishOdo()
     odoImuMsg.twist.twist.angular.z = angular_speed_;
     // Publish it
     odo_imu_pub_.publish(odoImuMsg);
-
-
-    // Broadcast the TF
-    tf::StampedTransform trans(tf::Transform(), odoImuMsg.header.stamp, odoImuMsg.header.frame_id, odoImuMsg.child_frame_id);
-    tf::poseMsgToTF(odoImuMsg.pose.pose, trans);
-    tf_broadcaster_.sendTransform(trans);
 }
 
 
