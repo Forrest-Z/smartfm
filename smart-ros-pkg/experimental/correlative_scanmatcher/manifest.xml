@@ -17,7 +17,7 @@
   <depend package="pcl_ros"/>
   <depend package="fmutil"/>
   <depend package="laser_geometry"/>
-
+  <!--depend package="slam_backend"/-->
 </package>
 
 
