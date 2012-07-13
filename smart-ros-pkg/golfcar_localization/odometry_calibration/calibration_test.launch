@@ -1,0 +1,19 @@
+<!-- launch what's necessary to localize when given only raw sensor data -->
+
+<launch>
+
+    <include file="$(find Launch)/golfcar/sensors/sicks_tf.launch"/>
+
+    <node name="encoders_odo_node" pkg="phidget_encoders" type="encoders_odo_node.py" output="screen">
+        <param name="wheel_size" value="1.3168"/>
+        <param name="dist_btw_wheels" value="0.9866"/>
+        <param name="left_correction_factor" value="1.0101"/>
+        <param name="frame_id" value="encoder_odom"/>
+        <remap from="odom" to="encoder_odom"/>
+    </node>
+
+    <include file="$(find dead_reckoning)/encoderOdom.launch"/>
+
+    <include file="$(find Launch)/golfcar/2LocalizationCurb.launch"/>
+
+</launch>
