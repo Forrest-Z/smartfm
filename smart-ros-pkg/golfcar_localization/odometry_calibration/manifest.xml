@@ -1,0 +1,19 @@
+<package>
+  <description brief="odometry_calibration">
+
+     odometry_calibration
+
+  </description>
+  <author>brice rebsamen</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/odometry_calibration</url>
+  <depend package="phidget_encoders"/>
+  <depend package="nav_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="tf"/>
+
+</package>
+
+

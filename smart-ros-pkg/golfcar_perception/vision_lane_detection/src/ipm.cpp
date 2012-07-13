@@ -26,9 +26,9 @@ namespace golfcar_vision{
       gndQuad_[3].x = RECT_P3_X+DIS_CAM_BASE_X;
       gndQuad_[3].y = RECT_P3_Y;
       
-      //cvNamedWindow("src_window");
+      cvNamedWindow("src_window");
       //cvNamedWindow("gray_window");
-      //cvNamedWindow("ipm_window");
+      cvNamedWindow("ipm_window");
   }
   
   void ipm::ImageCallBack( const sensor_msgs::ImageConstPtr& image_msg,
@@ -106,15 +106,23 @@ namespace golfcar_vision{
         ////////////////////////////////////////////////
         //visualization part;
         ////////////////////////////////////////////////
-        cvCircle( color_image, cvPointFrom32f(srcQuad_[0]), 9, CV_RGB(0,0,255), 3);
-        cvCircle( color_image, cvPointFrom32f(srcQuad_[1]), 9, CV_RGB(0,255,0), 3);
-        cvCircle( color_image, cvPointFrom32f(srcQuad_[2]), 9, CV_RGB(255,0,0), 3);
-        cvCircle( color_image, cvPointFrom32f(srcQuad_[3]), 9, CV_RGB(255,255,0), 3);
+        cvCircle( color_image, cvPointFrom32f(srcQuad_[0]), 6, CV_RGB(0,255,0), 2);
+        cvCircle( color_image, cvPointFrom32f(srcQuad_[1]), 6, CV_RGB(0,255,0), 2);
+        cvCircle( color_image, cvPointFrom32f(srcQuad_[2]), 6, CV_RGB(0,255,0), 2);
+        cvCircle( color_image, cvPointFrom32f(srcQuad_[3]), 6, CV_RGB(0,255,0), 2);
+        
+        cvLine( color_image, cvPointFrom32f(srcQuad_[0]), cvPointFrom32f(srcQuad_[1]), CV_RGB(0,0,255), 1);
+        cvLine( color_image, cvPointFrom32f(srcQuad_[1]), cvPointFrom32f(srcQuad_[2]), CV_RGB(0,0,255), 1);
+        cvLine( color_image, cvPointFrom32f(srcQuad_[2]), cvPointFrom32f(srcQuad_[3]), CV_RGB(0,0,255), 1);
+        cvLine( color_image, cvPointFrom32f(srcQuad_[3]), cvPointFrom32f(srcQuad_[0]), CV_RGB(0,0,255), 1);
         
         //from "gndPt_[4]" to get "dstQuad_[4]";    
-        //cvShowImage("src_window", color_image);
+        cvShowImage("src_window", color_image);
         //cvShowImage("gray_window", gray_image);
-        //cvShowImage("ipm_window", ipm_image);
+        cvShowImage("ipm_window", ipm_image);
+        
+        //cvSaveImage("/home/baoxing/src_window.png", color_image);
+        //cvSaveImage("/home/baoxing/ipm_window.png", ipm_image);
         
         try
           {
@@ -195,9 +203,9 @@ namespace golfcar_vision{
   
   ipm::~ipm()
   {
-    //cvDestroyWindow("src_window");
+    cvDestroyWindow("src_window");
     //cvDestroyWindow("gray_window");
-    //cvDestroyWindow("ipm_window");
+    cvDestroyWindow("ipm_window");
     delete image_processor_;
   }
 };

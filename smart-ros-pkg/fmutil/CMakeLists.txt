@@ -22,4 +22,4 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_gensrv()
 
 #common commands for building c++ executables and libraries
-rosbuild_add_library(${PROJECT_NAME} src/fm_math.cpp src/fm_filter.cpp)
+rosbuild_add_library(${PROJECT_NAME} src/fm_math.cpp src/fm_filter.cpp src/fm_stopwatch.cpp)

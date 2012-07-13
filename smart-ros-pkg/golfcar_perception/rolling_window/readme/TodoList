@@ -1,0 +1,13 @@
+1. To reduce the computational cost:
+   a. by eliminating out-boundary points in "odom" frame, and then send it to "base_link";
+   b. right now too many undesired computation is spent on type and coordinate conversion, try to reduce it;
+
+2. pcl::fromROSMsg() and pcl::toROSMsg() will be deprecated and removed in the future; 
+   a. try to avoid them;
+   b. pay extra attention to this point in the future;
+
+3. odom callback trigger the main processing loop; 
+   a. pay attention to "tf_->lookupTransform(target_frame_, base_frame_, ros::Time(0), baseOdomTemp)";
+   b. if "odom_time" is used rather than "ros::Time(0)", some warn information saying "cache is empty" will appear;
+   c. although this seems not harm the whole program, but try to find the reason later;
+   d .maybe because the callback frequency is too high, even a little bit higher that corresponding "tf";

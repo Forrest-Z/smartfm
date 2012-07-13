@@ -25,13 +25,18 @@ class PoissonGenerator:
     '''
     def __init__(self, rate):
         self.rate = rate #lambda is a reserved keyword
-        self.next_time = self.draw()
+        self.next_time = None
 
     def draw(self):
         return - np.log( np.random.random() ) / self.rate
 
     def __call__(self, t):
-        if t >= self.next_time:
+        if self.rate==0:
+            return False
+        elif self.next_time is None:
+            self.next_time = t + self.draw()
+            return False
+        elif t >= self.next_time:
             self.next_time += self.draw()
             return True
         return False

@@ -1,5 +1,12 @@
 <launch>
-    <node name="encoders_odo_node" pkg="phidget_encoders" type="encoders_odo_node.py" output="screen">
+    <node name="encoders_node" pkg="phidget_encoders" type="encoders_node.py" output="screen">
         <param name="min_pub_period" value="0.05"/>
+    </node>
+    <node name="encoders_odo_node" pkg="phidget_encoders" type="encoders_odo_node.py" output="screen">
+        <param name="wheel_size" value="1.3168"/>
+        <param name="dist_btw_wheels" value="0.9866"/>
+        <param name="left_correction_factor" value="1.0101"/>
+        <param name="frame_id" value="encoder_odom"/>
+        <remap from="odom" to="encoder_odom"/>
     </node>
 </launch>
