@@ -2,11 +2,10 @@
 
 thread_n=12
 total_it=8191
-#11627
-rootfolder="/home/golfcar/fuerte/smartfm/smart-ros-pkg/experimental/map_simplification"
-#`rospack find map_simplification`
-echo "map_simplification package found at:"
-echo $rootfolder
+rootfolder=`rospack find map_simplification`
+echo "root folder found at:"
+echo $map_simplification_folder
+
 #sleep 5
 for ((i = 0; i <= $total_it; i+=$thread_n ))
 do
@@ -38,4 +37,5 @@ do
     fi
     sleep 1
 done
+
 
