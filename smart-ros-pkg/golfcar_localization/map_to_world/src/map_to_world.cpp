@@ -120,7 +120,7 @@ void MapToWorld::timerCallback(const ros::TimerEvent& event)
         tf::Transform transform;
         transform.setOrigin( tf::Vector3(offset_x_, offset_y_, 0.0) );
         transform.setRotation( tf::Quaternion(0, 0, 0, 1));
-        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "world"));
+        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "map"));
     }
 }
 
