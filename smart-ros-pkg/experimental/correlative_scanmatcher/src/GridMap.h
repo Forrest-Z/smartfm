@@ -40,6 +40,46 @@ struct simple_pose
 	}
 
 };
+
+namespace PointCloudHelper
+{
+pcl::PointCloud<pcl::PointXYZ> compressTo2D(const sensor_msgs::PointCloud2& input_pts)
+		{
+	pcl::PointCloud<pcl::PointXYZ>::Ptr xy_rawpts(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr xy_pts(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::fromROSMsg(input_pts, *xy_rawpts);
+	for(size_t i=0; i<xy_rawpts->points.size(); i++)
+	{
+		xy_rawpts->points[i].z = 0.0;
+	}
+	//downsample since now it is 2D
+	cout<<"Before voxel filter: "<<xy_rawpts->points.size()<<endl;
+	pcl::VoxelGrid<pcl::PointXYZ> sor;
+	sor.setInputCloud(xy_rawpts);
+	sor.setLeafSize (0.05, 0.05, 0.05);
+	sor.filter (*xy_pts);
+	cout<<"After voxel filter: "<<xy_pts->points.size()<<endl;
+	return *xy_pts;
+		}
+
+pcl::PointCloud<pcl::PointXYZ> compressTo2D(const pcl::PointCloud<pcl::PointXYZ> &input)
+		{
+	pcl::PointCloud<pcl::PointXYZ> xy_pts, xy_rawpts = input;
+	for(size_t i=0; i<xy_rawpts.points.size(); i++)
+	{
+		xy_rawpts.points[i].z = 0.0;
+	}
+	//downsample since now it is 2D
+	cout<<"Before voxel filter: "<<xy_rawpts.points.size()<<endl;
+	pcl::VoxelGrid<pcl::PointXYZ> sor;
+	sor.setInputCloud(xy_rawpts.makeShared());
+	sor.setLeafSize (0.05, 0.05, 0.05);
+	sor.filter (xy_pts);
+	cout<<"After voxel filter: "<<xy_pts.points.size()<<endl;
+	return xy_pts;
+		}
+}
+
 class GridMap
 {
 public:
@@ -83,16 +123,17 @@ public:
 		mmp = meter_per_pixel_;
 	}
 
-	void buildMapDirectDraw(const sensor_msgs::PointCloud2& input_pts)
+	void buildMapDirectDraw(const pcl::PointCloud<pcl::PointXYZ> &xy_pts)
 	{
-		pcl::PointCloud<pcl::PointXYZ> xy_pts = compressTo2D(input_pts);
 		pcl::getMinMax3D(xy_pts, min_pt_, max_pt_);
+		//cout<<min_pt_.x<<" "<<min_pt_.y<<endl;
+		//cout<<max_pt_.x<<" "<<max_pt_.y<<endl;
 		pcl::PointXYZ size;
 		size.x = max_pt_.x - min_pt_.x;
 		size.y = max_pt_.y - min_pt_.y;
 		size.z = max_pt_.z - min_pt_.z;
 		data_ = *(new vector< vector<int> >(size.x/meter_per_pixel_+1, vector<int>(size.y/meter_per_pixel_+1)));
-		cout<<"Map size initialized with "<<data_.size()<<" "<<data_[0].size()<<endl;
+		//cout<<"Map size initialized with "<<data_.size()<<" "<<data_[0].size()<<endl;
 		#pragma omp parallel for
 		for(size_t i=0; i<xy_pts.points.size(); i++)
 		{
@@ -117,7 +158,7 @@ public:
 		return (y - min_pt_.y)/meter_per_pixel_;
 	}
 
-	int score2D(pcl::PointCloud<pcl::PointXYZ>& pcl_to_match)
+	int score2D(const pcl::PointCloud<pcl::PointXYZ>& pcl_to_match, double &percent_hit)
 	{
 
 		int score = 0;
@@ -130,14 +171,12 @@ public:
 			score += data_[grid_x][grid_y];
 			count ++;
 		}
-		//cout<<"Percent hit = "<<count/(double)pcl_to_match.points.size()<<" Score: "<<score<<endl;
+		percent_hit = count/(double)pcl_to_match.points.size();
 		return score;
 	}
 
-	void buildMapKdTree(const sensor_msgs::PointCloud2& input_pts)
+	void buildMapKdTree(const pcl::PointCloud<pcl::PointXYZ> &xy_pts)
 	{
-		pcl::PointCloud<pcl::PointXYZ> xy_pts = compressTo2D(input_pts);
-
 		pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
 		kdtree.setInputCloud (xy_pts.makeShared());
 
@@ -183,8 +222,14 @@ public:
 		cout<<"Done build map"<<endl;
 	}
 
-	void findBestMatchRotateFirst(const sensor_msgs::PointCloud2& pc, simple_pose& best_pose, int& max_score, double tran_range, double tran_res, double or_range, double or_res, bool publish = true, simple_pose cur_pose= simple_pose(0.0,0.0,0.0) )
+
+
+
+	void findBestMatchRotateFirst(const pcl::PointCloud<pcl::PointXYZ> &pcl, simple_pose& best_pose, int& max_score, double tran_range, double tran_res, double or_range, double or_res, bool publish = true, simple_pose cur_pose= simple_pose(0.0,0.0,0.0) )
 	{
+		//although float number is allowed for res and range, to avoid quantization issue
+		//only use pair of number that is zero remainder of range/res
+		cout<<pcl.points.size()<<" ";
 		fmutil::Stopwatch sw("RotateFirst");
 		sw.start();
 		max_score = 0;
@@ -199,16 +244,17 @@ public:
 		double eva_tres = or_res/180*M_PI;
 		double eva_trange = or_range/180*M_PI;
 		int t_iter = eva_trange/eva_tres*2;
-		pcl::PointCloud<pcl::PointXYZ> pcl;
-		pcl::fromROSMsg(pc, pcl);
 
-		#pragma omp parallel for
+
+		double total_percent = 0.0;
+		int total_count = 0;
+#pragma omp parallel for
 		for(int i=0; i<=t_iter; i++)
 		{
 			double theta = i*eva_tres-eva_trange+cur_pose.t;
 			double ct = cos(theta), st = sin(theta);
 			//always get a fresh copy of points, rinse and start
-			pcl::PointCloud<pcl::PointXYZ> p_copy = pcl;
+			pcl::PointCloud<pcl::PointXYZ> p_copy(pcl);
 			for(size_t j =0 ; j<p_copy.points.size(); j++)
 			{
 				pcl::PointXYZ p = p_copy.points[j];
@@ -221,7 +267,7 @@ public:
 			{
 				for(int k=0; k<=y_iter; k++)
 				{
-					pcl::PointCloud<pcl::PointXYZ> p_copy2 = p_copy;
+					pcl::PointCloud<pcl::PointXYZ> p_copy2(p_copy);
 
 					double offsetx = j*eva_xres-eva_xrange+cur_pose.x;
 					double offsety = k*eva_yres-eva_yrange+cur_pose.y;
@@ -240,7 +286,7 @@ public:
 						if( pub_cond_1 || pub_cond_2 ||pub_cond_3)
 						{
 							sensor_msgs::PointCloud2 msg;
-							msg.header = pc.header;
+							msg.header = pcl.header;
 							pcl::toROSMsg(p_copy2, msg);
 							if(pub_cond_1) {pt_transformed_first_.publish(msg), cout<<" 1: ";}
 							else if(pub_cond_2) {pt_transformed_sec_.publish(msg), cout<<" 2: ";}
@@ -248,7 +294,10 @@ public:
 							cout<<offsetx<<" "<<offsety<<" "<<theta<<endl;
 						}
 					}
-					int score = score2D(p_copy2);
+					double percent_hit;
+					int score = score2D(p_copy2, percent_hit);
+					total_percent +=percent_hit;
+					total_count++;
 					//cout<<"Current score at "<<offsetx<<" "<<offsety<<" "<<theta<<": "<<score<<" "<<max_score<<endl;
 					if(max_score < score)
 					{
@@ -260,11 +309,11 @@ public:
 			}
 
 		}
+		cout<<" average percent hit = "<<total_percent/total_count<<" ";
 		sw.end(true);
-		cout<<data_.size()<<" "<<data_[0].size()<<endl;
 	}
 
-	void findBestMatchBruteForce(const sensor_msgs::PointCloud2& pc, simple_pose& best_pose, double max_score, bool publish)
+	void findBestMatchBruteForce(const pcl::PointCloud<pcl::PointXYZ>& pcl, simple_pose& best_pose, double max_score, bool publish)
 	{
 		max_score=0;
 		//current implementation is too sensitive to the parameters below due to the need to balance the speed and accuracy
@@ -294,8 +343,7 @@ public:
 
 					sw_transform.start();
 					Eigen::Affine3f e_tf = pcl::getTransformation(dou_i, dou_j, 0, 0, 0, dou_t);
-					pcl::PointCloud<pcl::PointXYZ> pcl, pcl_transformed;
-					pcl::fromROSMsg(pc, pcl);
+					pcl::PointCloud<pcl::PointXYZ> pcl_transformed;
 					pcl::transformPointCloud(pcl, pcl_transformed, e_tf);
 					sw_transform.end(false);
 					if(publish)
@@ -306,7 +354,7 @@ public:
 						if( pub_cond_1 || pub_cond_2 ||pub_cond_3 )
 						{
 							sensor_msgs::PointCloud2 msg;
-							msg.header = pc.header;
+							msg.header = pcl.header;
 							pcl::toROSMsg(pcl_transformed, msg);
 							if(pub_cond_1) pt_transformed_first_.publish(msg);
 							else if(pub_cond_2) pt_transformed_sec_.publish(msg);
@@ -314,7 +362,8 @@ public:
 						}
 					}
 					sw_lookupdata.start();
-					int score = score2D(pcl_transformed);
+					double percent_hit;
+					int score = score2D(pcl_transformed, percent_hit);
 					sw_lookupdata.end(false);
 					if(max_score < score)
 					{
@@ -349,30 +398,12 @@ private:
 		{
 			double d = meter_per_pixel_ * i;
 			mapping.push_back((int) (255*exp(-d*d/range_covariance_)));
-			cout<<d<<": "<<mapping[mapping.size()-1]<<" ";
+			//cout<<d<<": "<<mapping[mapping.size()-1]<<" ";
 		}
-		cout<<endl;
+		//cout<<endl;
 		return mapping;
 	}
 
-	pcl::PointCloud<pcl::PointXYZ> compressTo2D(const sensor_msgs::PointCloud2& input_pts)
-	{
-		pcl::PointCloud<pcl::PointXYZ> xy_rawpts;
-		pcl::PointCloud<pcl::PointXYZ> xy_pts;//(new pcl::PointCloud<pcl::PointXY>());
-		pcl::fromROSMsg(input_pts, xy_rawpts);
-		for(size_t i=0; i<xy_rawpts.points.size(); i++)
-		{
-			xy_rawpts.points[i].z = 0.0;
-		}
-		//downsample since now it is 2D
-		cout<<"Before voxel filter: "<<xy_rawpts.points.size()<<endl;
-		pcl::VoxelGrid<pcl::PointXYZ> sor;
-		sor.setInputCloud(xy_rawpts.makeShared());
-		sor.setLeafSize (0.05, 0.05, 0.05);
-		sor.filter (xy_pts);
-		cout<<"After voxel filter: "<<xy_pts.points.size()<<endl;
-		return xy_pts;
-	}
 
 	void precalculateCosSin()
 	{
@@ -386,7 +417,9 @@ private:
 
 	bool outsideMap(int grid_x, int grid_y)
 	{
-		return (grid_x < 0 || grid_y < 0 || grid_x >= data_.size() || grid_y >= data_[0].size());
+		bool outside = (grid_x < 0 || grid_y < 0 || grid_x >= data_.size() || grid_y >= data_[0].size());
+		//if(outside) cout<<"("<<grid_x<<","<<grid_y<<")";
+		return outside;
 	}
 	void drawCircle(int x, int y, int r, int segments)
 	{
