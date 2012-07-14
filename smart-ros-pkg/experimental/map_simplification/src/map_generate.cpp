@@ -35,7 +35,7 @@ int main(int argc, char** argcv)
 	//convert to float 0-1 is necessary for simple multiply operation on Mat
 	background_img.convertTo(background_img, CV_32F, 1./255);
 	cout<<"Background_img type "<<background_img.type()<<endl;
-	for(int i=0; i< 19; i++)
+	for(int i=0; i< 13; i++)
 	{
 		stringstream filename;
 		filename<<folder<<"/"<<i+1<<".png";
@@ -57,7 +57,7 @@ int main(int argc, char** argcv)
 	}
     
         #pragma omp parallel for
-	for(size_t i = 969; i < bin_strs.size(); i++)
+	for(size_t i = 0; i < bin_strs.size(); i++)
 	{
 
 	    {
