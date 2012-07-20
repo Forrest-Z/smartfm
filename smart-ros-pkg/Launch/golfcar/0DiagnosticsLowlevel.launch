@@ -1,19 +1,12 @@
 <launch>
 
-    <!-- this does not seem to report anything useful -->
-    <!--node name="cpu_monitor" pkg="computer_monitor" type="cpu_monitor.py">
-        <param name="check_ipmi_tool" value="false" type="bool" />
-        <param name="enforce_clock_speed" value="false" type="bool" />
-        <param name="num_cores" value="-1" type="int" />
-    </node-->
-
-    <node name="hd_monitor_lowlevel" pkg="computer_monitor" type="hd_monitor.py"
+    <node name="hd_monitor_lowlevel" pkg="diagnostic_common_diagnostics" type="hd_monitor.py"
             args="$(optenv HOME /home)" />
 
-    <node name="sensors_monitor_lowlevel" pkg="computer_monitor" type="sensors_monitor.py" output="screen">
+    <node name="sensors_monitor_lowlevel" pkg="diagnostic_common_diagnostics" type="sensors_monitor.py" output="screen">
         <param name="ignore_fans" value="true"/>
     </node>
 
-    <node pkg="computer_monitor" type="ntp_monitor.py" name="ntp_monitor_lowlevel" args="--no-self-test golfcart-master" />
+    <node pkg="diagnostic_common_diagnostics" type="ntp_monitor.py" name="ntp_monitor_lowlevel" args="--no-self-test golfcart-master" />
 
 </launch>
