@@ -5,70 +5,84 @@
  *      Author: demian
  */
 
-#include "GridMap.h"
+#include "CorrelativeScanMatcher.h"
+#include <nav_msgs/Odometry.h>
+#include <tf/tf.h>
 
-GridMap *gm, *gm_hd;
-ros::Publisher *pub_;
+
+
+ros::Publisher *odo_pub_;
 tf::TransformBroadcaster *tf_broadcaster_;
+tf::StampedTransform odo_transform_;
+CorrelativeScanMatcher *csm_;
 bool initialized=false;
-double scan_odo_x=0, scan_odo_y=0, scan_odo_t=0;
+
 void pcCallback(const sensor_msgs::PointCloud2& pc)
 {
 	fmutil::Stopwatch sw("Overall matching time");
 	sw.start();
 
+	pcl::PointCloud<pcl::PointXYZ> pcl = PointCloudHelper::compressTo2D(pc);
 	if(initialized)
 	{
-		int max_score=0;
 		simple_pose best_pose;
-		//gm->findBestMatchBruteForce(pc, best_pose, max_score);
-		gm_hd->findBestMatchRotateFirst(pc, best_pose, max_score, 2.0, 1.0, 7.0, 2.0);
-		cout<<"Max score at "<< best_pose.x <<", "<<best_pose.y<<", "<<best_pose.t<<": "<<max_score<<endl;
-		gm_hd->findBestMatchRotateFirst(pc, best_pose, max_score, 1.0, 0.25, 2.0, 0.5, false, best_pose);
-		cout<<"New finer score at "<< best_pose.x <<", "<<best_pose.y<<", "<<best_pose.t<<": "<<max_score<<endl;
-		gm_hd->findBestMatchRotateFirst(pc, best_pose, max_score, 0.25, 0.05, 0.5, 0.1, false, best_pose);
-		cout<<"New finer score at "<< best_pose.x <<", "<<best_pose.y<<", "<<best_pose.t<<": "<<max_score<<endl;
-		gm_hd->findBestMatchRotateFirst(pc, best_pose, max_score, 0.05, 0.01, 0.1, 0.02, false, best_pose);
-		cout<<"New finer score at "<< best_pose.x <<", "<<best_pose.y<<", "<<best_pose.t<<": "<<max_score<<endl;
-		scan_odo_t += best_pose.t;
-		scan_odo_x += best_pose.x * cos(scan_odo_t);
-		scan_odo_y += best_pose.x * sin(scan_odo_t);
+		best_pose = csm_->findBestMatchMultiRes(pcl);
+
+		tf::Transform new_transform;
+		tf::Vector3 origin(best_pose.x, best_pose.y, 0.0);
+		new_transform.setOrigin(origin);
+		new_transform.setRotation(tf::createQuaternionFromYaw(best_pose.t));
+		odo_transform_.mult(odo_transform_, new_transform);
+
+		tf::Quaternion orientation = odo_transform_.getRotation();
+		btQuaternion btq(orientation.x(), orientation.y(), orientation.z(), orientation.w());
+		btScalar pitch, roll, yaw;
+		btMatrix3x3(btq).getEulerYPR(yaw, pitch, roll);
+		double scan_odo_x=0, scan_odo_y=0, scan_odo_t=0;
+		scan_odo_t = yaw;
+
+		scan_odo_x = odo_transform_.getOrigin().x();// best_pose.x * cos(scan_odo_t);
+		scan_odo_y = odo_transform_.getOrigin().y();//+= best_pose.x * sin(scan_odo_t);
 
 
 
-		cout<<"Odo now at "<< scan_odo_x <<", "<<scan_odo_y<<", "<<scan_odo_t<<endl;
+		//cout<<"Odo now at "<< scan_odo_x <<", "<<scan_odo_y<<", "<<scan_odo_t/M_PI*180<<endl;
 		geometry_msgs::Pose pose;
 		pose.position.x = scan_odo_x;
 		pose.position.y = scan_odo_y;
 		pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0, 0, scan_odo_t);
-		tf::StampedTransform trans(tf::Transform(), pc.header.stamp, "scan_odo", "base_link");
-		tf::poseMsgToTF(pose, trans);
+		tf::StampedTransform trans(odo_transform_, pcl.header.stamp, "scan_odo", "base_link");
+		//tf::poseMsgToTF(pose, trans);
 		tf_broadcaster_->sendTransform(trans);
-		cout<<endl;
+
+		nav_msgs::Odometry odo;
+		odo.header = pcl.header;
+		odo.header.frame_id = "scan_odo";
+		odo.pose.pose = pose;
+		odo_pub_->publish(odo);
+		//cout<<endl;
 	}
 
-	gm->buildMapDirectDraw(pc);
-	gm_hd->buildMapDirectDraw(pc);
-	sensor_msgs::PointCloud grid_map_pc;
-	grid_map_pc.header = pc.header;
-
-	gm->getMap(grid_map_pc);
-	pub_->publish(grid_map_pc);
+	csm_->updatePriorMap(pcl);
 	initialized = true;
-	sw.end(true);
+	sw.end(true);cout<<endl;
 }
 
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "grid_map");
-    gm = new GridMap(0.5, 0.1);
-    gm_hd = new GridMap(0.05, 0.1);
+
     ros::NodeHandle nh;
     ros::Subscriber sub = nh.subscribe("pc_out", 10, &pcCallback);
-    ros::Publisher pub = nh.advertise<sensor_msgs::PointCloud>("grid_map", 10);
-    pub_ = &pub;
 
+    ros::Publisher odo_pub = nh.advertise<nav_msgs::Odometry>("scan_odo", 10);
+    odo_pub_ = &odo_pub;
+
+    CorrelativeScanMatcher csm;
+    csm_ = &csm;
     tf::TransformBroadcaster tf_broadcast;
     tf_broadcaster_ = &tf_broadcast;
+    odo_transform_.setRotation(tf::Quaternion::getIdentity());
+
     ros::spin();
 }
