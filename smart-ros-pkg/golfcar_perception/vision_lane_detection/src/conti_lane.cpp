@@ -399,7 +399,7 @@ int main(int argc, char** argv)
 					cvCircle( color_img, cvPoint(fused_points[i].x,fused_points[i].y), 2, ext_color, 1);
 					//ROS_INFO("fused point serial %d, %2f, %2f",i, xx, yy);
 				}
-				ROS_INFO("fused points number %d", xs.size() );
+				ROS_INFO("fused points number %ld", xs.size() );
 				
 				//-------------------------------------------------------------------------------------------------
 				//approximation by straight lines;

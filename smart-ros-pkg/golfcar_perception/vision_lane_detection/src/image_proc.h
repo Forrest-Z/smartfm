@@ -35,12 +35,14 @@ namespace golfcar_vision{
         
         CvSeq* Filter_candidates (CvContourScanner &scanner);
         bool CheckPointInside(CvPoint pt_para);
-        
+        bool CheckPointOffSideBounds(CvPoint pt_para);
+
         struct svm_model *svm_model_;
         int classify_contour(CvHuMoments &HM_input, CvBox2D &Box_input);
         void pose_contour(CvSeq *contour, CvMoments &cvm, vision_lane_detection::marker_info &marker_para);
         void cvt_pose_baselink(vision_lane_detection::marker_info &marker_para);
 		void continuous_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color);
+
     };
 };
 
