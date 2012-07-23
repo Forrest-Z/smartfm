@@ -1,10 +1,12 @@
 #!/bin/bash
 
 thread_n=12
-total_it=3875
+total_it=8191
 rootfolder=`rospack find map_simplification`
-echo $rootfolder
+echo "root folder found at:"
+echo $map_simplification_folder
 
+#sleep 5
 for ((i = 0; i <= $total_it; i+=$thread_n ))
 do
     roscore &
@@ -35,4 +37,5 @@ do
     fi
     sleep 1
 done
+
 

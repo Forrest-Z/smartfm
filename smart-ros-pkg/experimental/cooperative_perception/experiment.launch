@@ -1,0 +1,53 @@
+<launch>
+    <param name="use_sim_time" value="true"/>
+    <node pkg="stage" type="stageros" name="stageros" args="$(find cooperative_perception)/worlds/multiple_vehicles.world" respawn="false"/>
+    <node name="fake_localization_0" pkg="fake_localization" type="fake_localization" respawn="false" ns="/robot_0" output="screen">
+        <param name="odom_frame_id" value="/robot_0/odom"/>
+        <param name="base_frame_id" value="/robot_0/base_link"/>
+    </node>
+    <node name="fake_localization_1" pkg="fake_localization" type="fake_localization" respawn="false" ns="/robot_1" output="screen">
+        <param name="odom_frame_id" value="/robot_1/odom"/>
+        <param name="base_frame_id" value="/robot_1/base_link"/>
+    </node>
+    <node name="fake_localization_2" pkg="fake_localization" type="fake_localization" respawn="false" ns="/robot_2" output="screen">
+        <param name="odom_frame_id" value="/robot_2/odom"/>
+        <param name="base_frame_id" value="/robot_2/base_link"/>
+    </node>
+    <node name="fake_localization_3" pkg="fake_localization" type="fake_localization" respawn="false" ns="/robot_3" output="screen">
+        <param name="odom_frame_id" value="/robot_3/odom"/>
+        <param name="base_frame_id" value="/robot_3/base_link"/>
+    </node>
+    <node name="fake_localization_4" pkg="fake_localization" type="fake_localization" respawn="false" ns="/robot_4" output="screen">
+        <param name="odom_frame_id" value="/robot_4/odom"/>
+        <param name="base_frame_id" value="/robot_4/base_link"/>
+    </node>
+    <node name="fake_localization_5" pkg="fake_localization" type="fake_localization" respawn="false" ns="/robot_5" output="screen">
+        <param name="odom_frame_id" value="/robot_5/odom"/>
+        <param name="base_frame_id" value="/robot_5/base_link"/>
+    </node>
+    <node name="fake_localization_6" pkg="fake_localization" type="fake_localization" respawn="false" ns="/robot_6" output="screen">
+        <param name="odom_frame_id" value="/robot_6/odom"/>
+        <param name="base_frame_id" value="/robot_6/base_link"/>
+    </node>
+    <include file="$(find cooperative_perception)/move_base.launch">
+        <arg name="robot" value="robot_0" /> 
+    </include>
+    <include file="$(find cooperative_perception)/move_base.launch">
+        <arg name="robot" value="robot_1" /> 
+    </include>
+    <include file="$(find cooperative_perception)/move_base.launch">
+        <arg name="robot" value="robot_2" /> 
+    </include>
+    <include file="$(find cooperative_perception)/move_base.launch">
+        <arg name="robot" value="robot_3" /> 
+    </include>
+    <include file="$(find cooperative_perception)/move_base.launch">
+        <arg name="robot" value="robot_4" /> 
+    </include>
+    <include file="$(find cooperative_perception)/move_base.launch">
+        <arg name="robot" value="robot_5" /> 
+    </include>
+    <include file="$(find cooperative_perception)/move_base.launch">
+        <arg name="robot" value="robot_6" /> 
+    </include>
+</launch>

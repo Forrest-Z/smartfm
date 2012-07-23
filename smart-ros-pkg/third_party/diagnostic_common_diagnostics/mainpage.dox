@@ -2,7 +2,9 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b tf_diagnostic is to publish diagnostic messages reporting on the health of
+\b diagnostic_common_diagnostics contains a few common diagnostic nodes
+
+- tf_monitor publishes diagnostic messages reporting on the health of
 the TF tree. It is based on tfwtf.
 
 

@@ -7,7 +7,7 @@ A node to check the TF tree
 A big chunk of the code was copied from tfwtf, the wtf plugin for tf.
 '''
 
-import roslib; roslib.load_manifest('tf_diagnostic')
+import roslib; roslib.load_manifest('diagnostic_common_diagnostics')
 import rospy
 import diagnostic_updater as DIAG
 
@@ -138,11 +138,11 @@ rospy.init_node('tf_monitor')
 
 diag_updater = DIAG.Updater()
 diag_updater.setHardwareID('none')
-diag_updater.add('Messaging status', make_diag_fn(no_msgs, 1, 'No tf messages received') )
-diag_updater.add('Time status', make_diag_fn(rostime_delta, 1, 'Received out-of-date/future transforms') )
-diag_updater.add('Reparenting status', make_diag_fn(reparenting, 2, 'TF re-parenting contention') )
-diag_updater.add('Cycle status', make_diag_fn(cycle_detection, 2, 'TF cycle detection') )
-diag_updater.add('Multiple authority status', make_diag_fn(multiple_authority, 2, 'TF multiple authority contention') )
+diag_updater.add('Messaging status', make_diag_fn(no_msgs, DIAG.WARN, 'No tf messages received') )
+diag_updater.add('Time status', make_diag_fn(rostime_delta, DIAG.WARN, 'Received out-of-date/future transforms') )
+diag_updater.add('Reparenting status', make_diag_fn(reparenting, DIAG.ERROR, 'TF re-parenting contention') )
+diag_updater.add('Cycle status', make_diag_fn(cycle_detection, DIAG.ERROR, 'TF cycle detection') )
+diag_updater.add('Multiple authority status', make_diag_fn(multiple_authority, DIAG.ERROR, 'TF multiple authority contention') )
 
 
 while not rospy.is_shutdown():

@@ -78,7 +78,7 @@ void MapToWorld::timerCallback(const ros::TimerEvent& event)
     try
     {
         getRobotGlobalPose();
-        
+
         //ROS_DEBUG("global pose: %f, %f", robot_pose.getOrigin().x(), robot_pose.getOrigin().y());
         map_to_world::UtmToLatLon utmLL;
         utmLL.request.zone = zone_;
@@ -106,7 +106,7 @@ void MapToWorld::timerCallback(const ros::TimerEvent& event)
     }
     catch(tf::LookupException& ex) {
         ROS_ERROR_THROTTLE(1, "No Transform available Error: %s", ex.what());
-    } 
+    }
     catch(tf::ConnectivityException& ex) {
         ROS_ERROR_THROTTLE(1, "Connectivity Error: %s", ex.what());
     }
@@ -120,7 +120,7 @@ void MapToWorld::timerCallback(const ros::TimerEvent& event)
         tf::Transform transform;
         transform.setOrigin( tf::Vector3(offset_x_, offset_y_, 0.0) );
         transform.setRotation( tf::Quaternion(0, 0, 0, 1));
-        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", "world"));
+        br.sendTransform(tf::StampedTransform(transform.inverse(), ros::Time::now(), "world", "map"));
     }
 }
 

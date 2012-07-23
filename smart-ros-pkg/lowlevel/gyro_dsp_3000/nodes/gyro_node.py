@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 '''Driver for the DSP 3000 optical gyroscope.
 
@@ -32,8 +33,7 @@ class GyroNode:
         try:
             self.ser = serial.Serial(port=port, baudrate=38400, bytesize=8,
                             parity='N', stopbits=1, timeout=None, xonxoff=False,
-                            rtscts=False, writeTimeout=None, dsrdtr=False,
-                            interCharTimeout=None)
+                            rtscts=False, writeTimeout=None, dsrdtr=False)
         except serial.serialutil.SerialException:
             rospy.logfatal('Could not open ' + port)
             raise
@@ -57,11 +57,11 @@ class GyroNode:
                 value = float(msgs[0])
                 status = float(msgs[1])
             except ValueError:
-                rospy.logwarn('problem converting to float: %s %s' % msgs)
+                rospy.logwarn('problem converting to float: %s %s' % (msgs[0], msgs[1]))
             else:
                 rospy.logdebug('%f, %f' % (value, status))
                 if status==1:
-                    pub.publish(value)
+                    self.pub.publish(value)
                 else:
                     rospy.logwarn('got a message with invalid status')
         else:

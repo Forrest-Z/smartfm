@@ -20,5 +20,6 @@
   <depend package="laser_geometry"/>
   <depend package="fmutil"/>
   <!--depend package="pcl_visualization"/-->
+  <depend package="dynamic_reconfigure"/>
 </package>
 

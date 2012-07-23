@@ -28,7 +28,7 @@ uint64_t Duoas_dec2bin(uint64_t n, string& bin){
 
 int main(){
 
-	uint64_t segments = 19;
+	uint64_t segments = 13;
 	int no_one = 0;
 	vector<string> possibilities;
 	cout << "Enter number of segments to be turn on: "<<endl;
@@ -44,7 +44,7 @@ int main(){
 		for(uint64_t i=0; i<pc_int64; i++)
 		{
 			string bin;
-			uint64_t count_one = Duoas_dec2bin(i, bin);
+			uint64_t count_one = 1; Duoas_dec2bin(i, bin);
 			if(count_one == no_one)
 			{
 				//cout<<i<<": "<<count_one<<endl;
