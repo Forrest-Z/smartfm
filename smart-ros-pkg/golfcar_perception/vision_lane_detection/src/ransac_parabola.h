@@ -431,7 +431,7 @@ namespace mrpt
 		void ransac_detect_parabolas(
 			const Eigen::Matrix<NUMTYPE,Eigen::Dynamic,1>  &x,
 			const Eigen::Matrix<NUMTYPE,Eigen::Dynamic,1>  &y,
-			std::vector<std::pair<size_t,parabola> >   &out_detected_lines,
+			std::vector<std::pair<mrpt::vector_size_t,parabola> >   &out_detected_lines,
 			const double           threshold,
 			const size_t           min_inliers_for_valid_line
 			)
@@ -471,13 +471,13 @@ namespace mrpt
 					100		// non-lane contours will take much time to process; 
 					);
 
-				// Is this plane good enough?
+				// Is this parabola good enough?
 				if (this_best_inliers.size()>=min_inliers_for_valid_line)
 				{
 					// Add this plane to the output list:
 					out_detected_lines.push_back(
-						std::make_pair<size_t,parabola>(
-							this_best_inliers.size(),
+						std::make_pair<mrpt::vector_size_t,parabola>(
+							this_best_inliers,
 							parabola(this_best_model(0,0), this_best_model(0,1),
 										this_best_model(0,2), this_best_model(0,3))
 							) );
