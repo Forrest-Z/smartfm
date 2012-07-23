@@ -5,12 +5,17 @@
 #ifndef LANER_MARKER_COMMON_H
 #define LANER_MARKER_COMMON_H
 
+#include <cmath>
+#include <algorithm>
+#include <iostream>
+
 #include <ros/ros.h>
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <vector>
 #include "vision_lane_detection/marker_info.h"
 #include "vision_lane_detection/markers_info.h"
+
 //--------------------------------------------Parameters for "ipm"---------------------------------------------
 
 //This number can be calculated dynamicallyfrom tf between "camera" and "base_link" in future version.
@@ -52,8 +57,7 @@
 #define LONG_SIDE_THRESH                2.0
 #define BOUNDARY_MARGIN                 2
 
-#define max(x,y) (((x)>(y))?(x):(y))
-#define min(x,y) (((x)<(y))?(x):(y))
+using namespace std;
 
 namespace golfcar_vision{
 
@@ -118,8 +122,7 @@ namespace golfcar_vision{
          cvLine( img, pt[1], pt[2], ext_color, 2, 8, 0 );
          cvLine( img, pt[2], pt[3], ext_color, 2, 8, 0 );
          cvLine( img, pt[3], pt[0], ext_color, 2, 8, 0 );
-     } 
-
+     }
 };
 
 #endif

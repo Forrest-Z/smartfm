@@ -1,5 +1,4 @@
 #include "image_proc.h"
-using namespace std;
 
 namespace golfcar_vision{
   

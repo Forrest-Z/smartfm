@@ -1,0 +1,5 @@
+1.	"lane_detection_sim" is used on previous data, where "camera_info" and some "tf" information need to be added
+  	separately. In this case, do remember to set the clock, and "use_sim_time".
+
+2. 	"lane_detection" is used where real raw data has necessary "camera_info" and "tf", such as data collected 20120511.
+    Just directly play the data bag, and launch "lane_detection" is OK. 
