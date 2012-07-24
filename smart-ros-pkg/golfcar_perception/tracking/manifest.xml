@@ -1,0 +1,16 @@
+<package>
+  <description brief="tracking">
+
+     tracking
+
+  </description>
+  <author>brice rebsamen</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/tracking</url>
+
+  <depend package="roscpp" />
+
+</package>
+
+
