@@ -33,9 +33,37 @@ double waypoints[][3] = {
     {15, 150, 100}
 };
 
+
+void log(FILE *flog, double t, Path &path, MatrixWrapper::ColumnVector &measurement, EKF &ekf)
+{
+    MatrixWrapper::ColumnVector state = ekf.get_posterior_expected_value();
+    MatrixWrapper::SymmetricMatrix pcov = ekf.get_posterior_cov();
+    double cov = 0;
+    for( unsigned i=1; i<=STATE::SIZE; i++ )
+        for( unsigned j=1; j<=i; j++ )
+            cov += pcov(i,j);
+
+    double e = sqrt(pow(path.get_x(t)-state(STATE::X),2)+pow(path.get_y(t)-state(STATE::Y),2));
+    printf("t=%.1f\tp=(%.1f,%.1f)\te=%.1f\tcov=%g\n", t, path.get_x(t), path.get_y(t), e, sqrt(cov));
+
+    fprintf(flog, "%g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g\n", t,
+            path.get_x(t), path.get_y(t), path.get_t(t), path.get_v(t), path.get_w(t),
+            measurement(MEAS::X), measurement(MEAS::Y),
+            state(STATE::X), state(STATE::Y), state(STATE::T), state(STATE::V),
+            state(STATE::W), sqrt(cov));
+}
+
 int main()
 {
     Path path(waypoints, sizeof(waypoints)/sizeof(double)/3);
+
+    // Some measurement noise to add to the ground truth
+    MatrixWrapper::ColumnVector meas_noise_Mu(MEAS::SIZE);
+    meas_noise_Mu = 0.0;
+    MatrixWrapper::SymmetricMatrix meas_noise_Cov(MEAS::SIZE);
+    meas_noise_Cov = 0.0;
+    meas_noise_Cov(MEAS::X,MEAS::X) = meas_noise_Cov(MEAS::Y,MEAS::Y) = pow(1.0, 2);
+    BFL::Gaussian meas_noise(meas_noise_Mu, meas_noise_Cov);
 
     // set the parameters of the EKF: system noise, measurement noise, etc.
     EKF_Parameters params;
@@ -57,32 +85,21 @@ int main()
     FILE *flog = fopen("datalog.csv", "w");
     fprintf(flog, "time, gt_x, gt_y, gt_t, gt_v, gt_w, obs_x, obs_y, p_x, p_y, p_t, p_v, p_w, p_cov\n");
 
+    MatrixWrapper::ColumnVector measurement(MEAS::SIZE);
+    BFL::Sample<MatrixWrapper::ColumnVector> measurement_noise(MEAS::SIZE);
     const double period = 0.5;
+
     for (double t=path.get_tmin()+period; t<=/*15*period*/path.get_tmax(); t+=period)
     {
         path.precompute(t);
-
-        MatrixWrapper::ColumnVector measurement(MEAS::SIZE);
         measurement(MEAS::X) = path.get_x(t);
         measurement(MEAS::Y) = path.get_y(t);
+        meas_noise.SampleFrom(measurement_noise);
+        measurement += measurement_noise.ValueGet();
 
         ekf.update(measurement, period);
 
-        MatrixWrapper::ColumnVector state = ekf.get_posterior_expected_value();
-        MatrixWrapper::SymmetricMatrix pcov = ekf.get_posterior_cov();
-        double cov = 0;
-        for( unsigned i=1; i<=STATE::SIZE; i++ )
-            for( unsigned j=1; j<=i; j++ )
-                cov += pcov(i,j);
-
-        double e = sqrt(pow(path.get_x(t)-state(STATE::X),2)+pow(path.get_y(t)-state(STATE::Y),2));
-        printf("t=%.1f\tp=(%.1f,%.1f)\te=%.1f\tcov=%g\n", t, path.get_x(t), path.get_y(t), e, sqrt(cov));
-
-        fprintf(flog, "%g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g\n", t,
-                path.get_x(t), path.get_y(t), path.get_t(t), path.get_v(t), path.get_w(t),
-                measurement(MEAS::X), measurement(MEAS::Y),
-                state(STATE::X), state(STATE::Y), state(STATE::T), state(STATE::V),
-                state(STATE::W), sqrt(cov));
+        log(flog, t, path, measurement, ekf);
     }
     fclose(flog);
 
