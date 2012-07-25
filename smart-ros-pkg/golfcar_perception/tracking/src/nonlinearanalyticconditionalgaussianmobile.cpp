@@ -20,7 +20,9 @@
 
 
 #include "nonlinearanalyticconditionalgaussianmobile.h"
-#include <bfl/wrappers/rng/rng.h> // Wrapper around several rng libraries
+#include "EKF_cts.h"
+
+// #include <bfl/wrappers/rng/rng.h> // Wrapper around several rng libraries
 
 
 #define NUMCONDARGUMENTS_MOBILE 2   //1 means that the system has no inputs.
@@ -43,10 +45,10 @@ MatrixWrapper::ColumnVector NonLinearAnalyticConditionalGaussianMobile::Expected
     MatrixWrapper::ColumnVector state = ConditionalArgumentGet(0);
     MatrixWrapper::ColumnVector input = ConditionalArgumentGet(1);
     double dt = input(1);
-    state(1) += cos(state(3)) * state(4) * dt;
-    state(2) += sin(state(3)) * state(4) * dt;
-    state(3) += state(5) * dt;
-    // state(4) and state(5) (v and w) remain the same
+    state(STATE::X) += cos(state(STATE::T)) * state(STATE::V) * dt;
+    state(STATE::Y) += sin(state(STATE::T)) * state(STATE::V) * dt;
+    state(STATE::T) += state(STATE::W) * dt;
+    // state(STATE::V) and state(STATE::W) remain the same
     return state + AdditiveNoiseMuGet();
 }
 
@@ -58,18 +60,18 @@ MatrixWrapper::Matrix NonLinearAnalyticConditionalGaussianMobile::dfGet(unsigned
         MatrixWrapper::ColumnVector input = ConditionalArgumentGet(1);
         double dt = input(1);
 
-        MatrixWrapper::Matrix df(5,5);
+        MatrixWrapper::Matrix df(STATE::SIZE, STATE::SIZE);
 
         // Init as identity matrix
-        for(unsigned i=0; i<5; i++)
-            for(unsigned j=0; j<5; j++)
+        for(unsigned i=1; i<=STATE::SIZE; i++)
+            for(unsigned j=1; j<=STATE::SIZE; j++)
                 df(i,j) = (i==j ? 1.0 : 0.0);
 
-        df(1,3) = -state(4)*sin(state(3))*dt;
-        df(1,4) = cos(state(3))*dt;
-        df(2,3) = state(4)*cos(state(3))*dt;
-        df(2,4) = sin(state(3))*dt;
-        df(3,5) = dt;
+        df(STATE::X, STATE::T) = -state(STATE::V)*sin(state(STATE::T))*dt;
+        df(STATE::X, STATE::V) = cos(state(STATE::T))*dt;
+        df(STATE::Y, STATE::T) = state(STATE::V)*cos(state(STATE::T))*dt;
+        df(STATE::Y, STATE::V) = sin(state(STATE::T))*dt;
+        df(STATE::T, STATE::W) = dt;
         return df;
     }
     else

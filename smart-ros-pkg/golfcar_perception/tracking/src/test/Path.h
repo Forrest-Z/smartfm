@@ -23,7 +23,7 @@ public:
     double get_tmax() const;
     double get_x(double t);
     double get_y(double t);
-    double get_theta(double t);
+    double get_t(double t);
     double get_v(double t);
     double get_w(double t);
 

@@ -14,7 +14,7 @@
  * The result can be visualized with GNU plot.
  */
 
-#include <fstream>
+#include <stdio.h>
 
 #include "Path.h"
 #include "EKF.h"
@@ -33,44 +33,58 @@ double waypoints[][3] = {
     {15, 150, 100}
 };
 
-struct DataLogEntry
-{
-    double time;
-
-    // ground truth
-    double gt_x, gt_y, gt_v, gt_w;
-
-    // measured
-    double obs_x, obs_y;
-
-    // predicted
-    double p_x, p_y, p_v, p_w;
-};
-
-
-std::vector<DataLogEntry> datalog;
-
 int main()
 {
     Path path(waypoints, sizeof(waypoints)/sizeof(double)/3);
-    std::ofstream file("trajectory.dat");
-    file <<"#m=1,S=0" <<std::endl;
-    path.print_path_xy(file);
-    path.precompute(0);
 
-    EKF ekf;
-    ekf.sigma_system_noise_.x_ = ekf.sigma_system_noise_.y_ = pow(1,2);
-    ekf.sigma_system_noise_.theta_ = pow(5*M_PI/180,2);
-    ekf.sigma_system_noise_.v_ = pow(1,2);
-    ekf.sigma_system_noise_.v_ = pow(1*M_PI/180,2);
-    ekf.sigma_meas_noise_ = pow(2,2);
-    ekf.prior_mu_.x_ = path.get_x(0);
-    ekf.prior_mu_.y_ = path.get_y(0);
-    ekf.prior_mu_.theta_ = path.get_theta(0);
-    ekf.prior_mu_.v_ = path.get_v(0);
-    ekf.prior_mu_.w_ = path.get_w(0);
-    ekf.prior_cov_ = ekf.sigma_system_noise_;
-    ekf.apply_parameters();
+    // set the parameters of the EKF: system noise, measurement noise, etc.
+    EKF_Parameters params;
+    params.sigma_system_noise_.x_ = params.sigma_system_noise_.y_ = pow(1,2);
+    params.sigma_system_noise_.t_ = pow(5*M_PI/180,2);
+    params.sigma_system_noise_.v_ = pow(1,2);
+    params.sigma_system_noise_.w_ = pow(1*M_PI/180,2);
+    params.sigma_meas_noise_ = pow(2,2);
+    path.precompute(0);
+    params.prior_mu_.x_ = path.get_x(0);
+    params.prior_mu_.y_ = path.get_y(0);
+    params.prior_mu_.t_ = path.get_t(0);
+    params.prior_mu_.v_ = path.get_v(0);
+    params.prior_mu_.w_ = path.get_w(0);
+    params.prior_cov_ = params.sigma_system_noise_;
+
+    EKF ekf(params);
+
+    FILE *flog = fopen("datalog.csv", "w");
+    fprintf(flog, "time, gt_x, gt_y, gt_t, gt_v, gt_w, obs_x, obs_y, p_x, p_y, p_t, p_v, p_w, p_cov\n");
+
+    const double period = 0.5;
+    for (double t=path.get_tmin()+period; t<=/*15*period*/path.get_tmax(); t+=period)
+    {
+        path.precompute(t);
+
+        MatrixWrapper::ColumnVector measurement(MEAS::SIZE);
+        measurement(MEAS::X) = path.get_x(t);
+        measurement(MEAS::Y) = path.get_y(t);
+
+        ekf.update(measurement, period);
+
+        MatrixWrapper::ColumnVector state = ekf.get_posterior_expected_value();
+        MatrixWrapper::SymmetricMatrix pcov = ekf.get_posterior_cov();
+        double cov = 0;
+        for( unsigned i=1; i<=STATE::SIZE; i++ )
+            for( unsigned j=1; j<=i; j++ )
+                cov += pcov(i,j);
+
+        double e = sqrt(pow(path.get_x(t)-state(STATE::X),2)+pow(path.get_y(t)-state(STATE::Y),2));
+        printf("t=%.1f\tp=(%.1f,%.1f)\te=%.1f\tcov=%g\n", t, path.get_x(t), path.get_y(t), e, sqrt(cov));
+
+        fprintf(flog, "%g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g\n", t,
+                path.get_x(t), path.get_y(t), path.get_t(t), path.get_v(t), path.get_w(t),
+                measurement(MEAS::X), measurement(MEAS::Y),
+                state(STATE::X), state(STATE::Y), state(STATE::T), state(STATE::V),
+                state(STATE::W), sqrt(cov));
+    }
+    fclose(flog);
 
     return 0;
 }

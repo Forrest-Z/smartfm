@@ -55,11 +55,11 @@ double Path::get_tmax() const
 void Path::precompute(double t)
 {
     CHECK_T_(t);
+    buf_interp_.t = t;
     buf_interp_.x  = gsl_spline_eval(x_spline_, t, x_acc_);
     buf_interp_.y  = gsl_spline_eval(y_spline_, t, y_acc_);
     buf_interp_.dx = gsl_spline_eval_deriv(x_spline_, t, x_acc_);
-    buf_interp_.dx = gsl_spline_eval_deriv(y_spline_, t, y_acc_);
-    buf_interp_.t = t;
+    buf_interp_.dy = gsl_spline_eval_deriv(y_spline_, t, y_acc_);
 }
 
 double Path::get_x(double t)
@@ -76,7 +76,7 @@ double Path::get_y(double t)
     return gsl_spline_eval(y_spline_, t, y_acc_);
 }
 
-double Path::get_theta(double t)
+double Path::get_t(double t)
 {
     double dx=0, dy=0;
     if( t==buf_interp_.t ) {
@@ -131,10 +131,7 @@ double Path::get_w(double t)
 void Path::print_path_xy(std::ostream & stream)
 {
     for(double t=t_[0]; t<=t_[n_pts_-1]; t+=0.1)
-    {
-        precompute(t);
         stream <<get_x(t) <<" " <<get_y(t) <<std::endl;
-    }
 }
 
 void Path::print_waypoints_xy(std::ostream & stream) const

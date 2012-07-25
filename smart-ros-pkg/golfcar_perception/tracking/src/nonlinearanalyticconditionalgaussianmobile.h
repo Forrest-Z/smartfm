@@ -21,7 +21,7 @@
 #ifndef __NON_LINEAR_SYSTEM_CONDITIONAL_GAUSSIAN_MOBILE__
 #define __NON_LINEAR_SYSTEM_CONDITIONAL_GAUSSIAN_MOBILE__
 
-#include <bfl/pdf/analyticconditionalgaussian_additivenoise.h>
+#include <pdf/analyticconditionalgaussian_additivenoise.h>
 
 
 /// Non Linear Conditional Gaussian
