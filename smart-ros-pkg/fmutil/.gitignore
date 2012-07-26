@@ -1,1 +1,3 @@
-src/fmutil/srv
+cfg/cpp/
+docs/
+src/fmutil/cfg/

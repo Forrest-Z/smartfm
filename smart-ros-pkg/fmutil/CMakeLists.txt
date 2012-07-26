@@ -23,3 +23,10 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 #common commands for building c++ executables and libraries
 rosbuild_add_library(${PROJECT_NAME} src/fm_math.cpp src/fm_filter.cpp src/fm_stopwatch.cpp)
+
+#add dynamic reconfigure api
+rosbuild_find_ros_package(dynamic_reconfigure)
+include(${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake)
+gencfg()
+
+rosbuild_add_executable(static_transform_publisher_dyn_reconfig src/static_transform_publisher_dyn_reconfig.cpp)
