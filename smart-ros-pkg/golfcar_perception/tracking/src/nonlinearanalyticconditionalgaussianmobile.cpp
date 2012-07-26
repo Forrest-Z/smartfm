@@ -20,10 +20,7 @@
 
 
 #include "nonlinearanalyticconditionalgaussianmobile.h"
-#include "EKF_cts.h"
-
-// #include <bfl/wrappers/rng/rng.h> // Wrapper around several rng libraries
-
+#include "Filter.h"
 
 #define NUMCONDARGUMENTS_MOBILE 2   //1 means that the system has no inputs.
                                     //2 means there is one input (the dt)

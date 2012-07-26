@@ -16,6 +16,8 @@
 
 #include <stdio.h>
 
+#include <fmutil/fm_math.h>
+
 #include "Path.h"
 #include "EKF.h"
 
@@ -43,7 +45,7 @@ void log(FILE *flog, double t, Path &path, MatrixWrapper::ColumnVector &measurem
         for( unsigned j=1; j<=i; j++ )
             cov += pcov(i,j);
 
-    double e = sqrt(pow(path.get_x(t)-state(STATE::X),2)+pow(path.get_y(t)-state(STATE::Y),2));
+    double e = fmutil::distance(path.get_x(t), state(STATE::X), path.get_y(t), state(STATE::Y));
     printf("t=%.1f\tp=(%.1f,%.1f)\te=%.1f\tcov=%g\n", t, path.get_x(t), path.get_y(t), e, sqrt(cov));
 
     fprintf(flog, "%g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g, %g\n", t,
@@ -62,11 +64,11 @@ int main()
     meas_noise_Mu = 0.0;
     MatrixWrapper::SymmetricMatrix meas_noise_Cov(MEAS::SIZE);
     meas_noise_Cov = 0.0;
-    meas_noise_Cov(MEAS::X,MEAS::X) = meas_noise_Cov(MEAS::Y,MEAS::Y) = pow(1.0, 2);
+    meas_noise_Cov(MEAS::X,MEAS::X) = meas_noise_Cov(MEAS::Y,MEAS::Y) = pow(4.0, 2);
     BFL::Gaussian meas_noise(meas_noise_Mu, meas_noise_Cov);
 
     // set the parameters of the EKF: system noise, measurement noise, etc.
-    EKF_Parameters params;
+    FilterParameters params;
     params.sigma_system_noise_.x_ = params.sigma_system_noise_.y_ = pow(1,2);
     params.sigma_system_noise_.t_ = pow(5*M_PI/180,2);
     params.sigma_system_noise_.v_ = pow(1,2);
@@ -97,7 +99,7 @@ int main()
         meas_noise.SampleFrom(measurement_noise);
         measurement += measurement_noise.ValueGet();
 
-        ekf.update(measurement, period);
+        ekf.update(measurement(MEAS::X), measurement(MEAS::Y), period);
 
         log(flog, t, path, measurement, ekf);
     }

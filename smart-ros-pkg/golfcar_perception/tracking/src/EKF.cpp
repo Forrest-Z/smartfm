@@ -1,41 +1,6 @@
 #include "EKF.h"
 
-EKF_ParamElement::EKF_ParamElement() :
-    x_(0), y_(0), t_(0), v_(0), w_(0)
-{
-}
-
-void EKF_ParamElement::apply(MatrixWrapper::ColumnVector & mu) const
-{
-    mu(STATE::X) = x_;
-    mu(STATE::Y) = y_;
-    mu(STATE::T) = t_;
-    mu(STATE::V) = v_;
-    mu(STATE::W) = w_;
-}
-
-void EKF_ParamElement::apply(MatrixWrapper::SymmetricMatrix & cov) const
-{
-    for( unsigned i=1; i<=STATE::SIZE; i++ )
-        for( unsigned j=1; j<=STATE::SIZE; j++ )
-            cov(i,j) = 0.0;
-
-    cov(STATE::X,STATE::X) = x_;
-    cov(STATE::Y,STATE::Y) = y_;
-    cov(STATE::T,STATE::T) = t_;
-    cov(STATE::V,STATE::V) = v_;
-    cov(STATE::W,STATE::W) = w_;
-}
-
-EKF_Parameters::EKF_Parameters() :
-    mu_meas_noise_(0.0), sigma_meas_noise_(0.0)
-{
-
-}
-
-
-
-EKF::EKF(EKF_Parameters parameters) :
+EKF::EKF(FilterParameters parameters) :
     sys_noise_Mu_(STATE::SIZE), sys_noise_Cov_(STATE::SIZE),
     H_(MEAS::SIZE,STATE::SIZE), meas_noise_Mu_(MEAS::SIZE),
     meas_noise_Cov_(MEAS::SIZE),
@@ -86,8 +51,11 @@ EKF::~EKF()
     delete system_Uncertainty_;
 }
 
-void EKF::update(const MatrixWrapper::ColumnVector & measurement, double dt)
+void EKF::update(double x, double y, double dt)
 {
+    MatrixWrapper::ColumnVector measurement(MEAS::SIZE);
+    measurement(MEAS::X) = x;
+    measurement(MEAS::Y) = y;
     MatrixWrapper::ColumnVector input(1);
     input(1) = dt;
     filter_->Update(sys_model_, input, meas_model_, measurement);

@@ -22,42 +22,17 @@
 #include <pdf/linearanalyticconditionalgaussian.h>
 
 #include "nonlinearanalyticconditionalgaussianmobile.h"
-#include "EKF_cts.h"
+#include "Filter.h"
 
-
-class EKF_ParamElement
+class EKF : public Filter
 {
 public:
-    ///default constructor: inits to 0
-    EKF_ParamElement();
+    explicit EKF(FilterParameters);
+    virtual ~EKF();
 
-    double x_, y_, t_, v_, w_;
-
-    void apply(MatrixWrapper::ColumnVector & mu) const;
-    void apply(MatrixWrapper::SymmetricMatrix & cov) const;
-};
-
-class EKF_Parameters
-{
-public:
-    ///default constructor: inits to 0
-    EKF_Parameters();
-
-    EKF_ParamElement mu_system_noise_, sigma_system_noise_;
-    double mu_meas_noise_, sigma_meas_noise_;
-    EKF_ParamElement prior_mu_, prior_cov_;
-};
-
-class EKF
-{
-public:
-    explicit EKF(EKF_Parameters);
-    ~EKF();
-
-    void update(const MatrixWrapper::ColumnVector & o, double dt);
-
-    MatrixWrapper::ColumnVector get_posterior_expected_value();
-    MatrixWrapper::SymmetricMatrix get_posterior_cov();
+    virtual void update(double x, double y, double dt);
+    virtual MatrixWrapper::ColumnVector get_posterior_expected_value();
+    virtual MatrixWrapper::SymmetricMatrix get_posterior_cov();
 
 private:
     /****************************
