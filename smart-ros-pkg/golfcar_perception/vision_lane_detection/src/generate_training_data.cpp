@@ -15,8 +15,6 @@ CvPoint corners_[4];
 int height = 360;
 int width  = 640;
 float scale_ = float(height)/GND_HEIGHT;
-
-
     
 void cvBoxPoints( CvBox2D box, CvPoint2D32f pt[4] )
 {
@@ -129,6 +127,7 @@ bool CheckPointInside(CvPoint pt_para)
             }
             else
             {
+				/*
                 //3rd criterion: four corners shouldn't appear at the boundary;
                 CvPoint2D32f point[4];
                 cvBoxPoints(cvBox, point); 
@@ -143,6 +142,7 @@ bool CheckPointInside(CvPoint pt_para)
                         break;
                     }
                 }
+                */ 
             }   
         }                       
     }
@@ -153,7 +153,6 @@ bool CheckPointInside(CvPoint pt_para)
 
 int main(int argc, char** argv) 
 {
-    
     IplImage *It = 0, *Iat = 0, *Itand = 0;
     It = cvCreateImage(cvSize(width,height),IPL_DEPTH_8U, 1);
     Iat = cvCreateImage(cvSize(width,height),IPL_DEPTH_8U, 1);
@@ -168,6 +167,14 @@ int main(int argc, char** argv)
     CvMoments cvm; 
     CvHuMoments cvHM;
     CvBox2D cvBox;
+    
+    CvSeq *contour_poly;
+	CvMemStorage *mem_poly;
+	mem_poly = cvCreateMemStorage(0);
+	double contour_weight;
+	double contour_perimeter;
+	int approxPtNum;
+	
     float boxshortside;
     float boxlongside;
     unsigned int class_type;
@@ -214,7 +221,7 @@ int main(int argc, char** argv)
         cvCvtColor(Itand, contour_img, CV_GRAY2BGR);
         CvScalar ext_color;
         
-        CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+        CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
         contours = Filter_candidates(scanner);
         
         printf("contours extracted\n\n");
@@ -223,6 +230,9 @@ int main(int argc, char** argv)
         std::vector <float >        shortside_vector;
         std::vector <float >        longside_vector;
         std::vector <CvHuMoments>   CvHuMoments_vector;
+        std::vector <double>  		weight_vector;
+        std::vector <double >       perimeter_vector;
+        std::vector <int >        	approxNum_vector;
         
         unsigned int contour_serial_in_this_image = 0;
         
@@ -230,7 +240,7 @@ int main(int argc, char** argv)
         CvSeq *first_contours = contours;
         
         for (; contours != 0; contours = contours->h_next)
-        {    
+        {   
             ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 ); 
             cvDrawContours(contour_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
             
@@ -241,7 +251,13 @@ int main(int argc, char** argv)
             
             cvContourMoments(contours, &cvm);
             cvGetHuMoments(&cvm, &cvHM);
-
+            
+            contour_weight = cvm.m00;
+            contour_perimeter = cvContourPerimeter(contours);
+            
+            contour_poly = cvApproxPoly( contours, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 2, 0 );
+			approxPtNum = int (contour_poly->total);
+			
             cvBox = cvMinAreaRect2(contours, mem_box);
             float boxAngle= cvBox.angle;
             float boxheight =  cvBox.size.height;
@@ -267,6 +283,7 @@ int main(int argc, char** argv)
             //fprintf(fp, "%lf\t%lf\n", boxshortside, boxlongside);
             
             printf("image serial: %u, contour serial: %u, contour class: %u\n", image_serial, contour_serial_in_this_image, class_type);
+            printf("weigth %lf\t perimeter %lf\t approxNum %d\n",contour_weight,contour_perimeter,approxPtNum);
             printf("H-Moment: %lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n", cvHM.hu1, cvHM.hu2, cvHM.hu3, cvHM.hu4, cvHM.hu5, cvHM.hu6, cvHM.hu7);
             printf("Bounding box %lf\t%lf\t%lf\n\n", boxAngle, boxshortside, boxlongside);
             
@@ -277,11 +294,11 @@ int main(int argc, char** argv)
             shortside_vector.push_back(boxshortside);
             longside_vector.push_back(boxlongside);
             CvHuMoments_vector.push_back(cvHM);
-            
-            
+            weight_vector.push_back(contour_weight);
+			perimeter_vector.push_back(contour_perimeter);
+         	approxNum_vector.push_back(approxPtNum);
         }
-        
-        
+         
         int keep_this_image = 0;
         printf("keep the results of this image? Press 1 to keep, 0 to skip\n");
         scanf("%d", &keep_this_image);
@@ -299,8 +316,12 @@ int main(int argc, char** argv)
                 boxshortside    =   shortside_vector [contour_serial_in_this_image];
                 boxlongside     =   longside_vector [contour_serial_in_this_image];
                 cvHM            =   CvHuMoments_vector[contour_serial_in_this_image];
-                
+                contour_weight 	= 	weight_vector[contour_serial_in_this_image];
+				contour_perimeter = perimeter_vector[contour_serial_in_this_image];
+				approxPtNum 	= 	approxNum_vector[contour_serial_in_this_image];
+				
                 fprintf(fp, "%u\t%u\t", image_serial, class_type);
+                fprintf(fp, "%lf\t%lf\t%d\t",contour_weight,contour_perimeter,approxPtNum);
                 fprintf(fp, "%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t", cvHM.hu1, cvHM.hu2, cvHM.hu3, cvHM.hu4, cvHM.hu5, cvHM.hu6, cvHM.hu7);
                 fprintf(fp, "%lf\t%lf\n", boxshortside, boxlongside);
                 
@@ -322,6 +343,7 @@ int main(int argc, char** argv)
     cvReleaseImage(&Iat);
     cvReleaseMemStorage(&mem_contours);
     cvReleaseMemStorage(&mem_box);
+    cvReleaseMemStorage(&mem_poly);
     //cvDestroyWindow("Raw");
     cvDestroyWindow("contour_image");
     

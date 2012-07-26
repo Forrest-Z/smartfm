@@ -18,7 +18,7 @@ namespace golfcar_vision{
         image_proc();
         ~image_proc();        
         void Extract_Markers(IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, int &frame_serial);
-
+		
         private:
         bool init_flag_; 
         float scale_;
@@ -38,10 +38,14 @@ namespace golfcar_vision{
         bool CheckPointOffSideBounds(CvPoint pt_para);
 
         struct svm_model *svm_model_;
-        int classify_contour(CvHuMoments &HM_input, CvBox2D &Box_input);
+        int classify_contour(double weight_input, double perimeter_input, CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input);
         void pose_contour(CvSeq *contour, CvMoments &cvm, vision_lane_detection::marker_info &marker_para);
         void cvt_pose_baselink(vision_lane_detection::marker_info &marker_para);
 		void continuous_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color);
+
+		double feature_maxs_[12], feature_mins_[12];
+		double lower_limit_, upper_limit_;
+		double data_scaling(double raw_data, double feature_max, double feature_min);
 
     };
 };

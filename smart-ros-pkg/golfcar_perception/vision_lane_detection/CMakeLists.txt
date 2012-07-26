@@ -33,9 +33,8 @@ target_link_libraries(ipm ${OpenCV_LIBRARIES} image_proc)
 rosbuild_add_executable(addCamInfo src/addCamInfo.cpp)
 target_link_libraries(addCamInfo ${OpenCV_LIBRARIES})
 
-rosbuild_add_executable(single_pic src/conti_lane.cpp)
-target_link_libraries(single_pic ${OpenCV_LIBRARIES})
-#rosbuild_add_executable(wrap_example src/wrap_example.cpp)
+#rosbuild_add_executable(single_pic src/conti_lane.cpp)
+#target_link_libraries(single_pic ${OpenCV_LIBRARIES})
 
 #rosbuild_add_executable(single_pic src/single_pic.cpp)
 #target_link_libraries(single_pic ${OpenCV_LIBRARIES})
@@ -46,7 +45,7 @@ target_link_libraries(generate_training_data ${OpenCV_LIBRARIES})
 rosbuild_add_executable(test_eigen src/test_eigen.cpp)
 target_link_libraries(test_eigen ${OpenCV_LIBRARIES})
 
-#rosbuild_add_executable(test_mrpt src/related_codes/test_mrpt.cpp)
+rosbuild_add_executable(data_formating src/data_formating.cpp)
 
 
 #target_link_libraries(wrap_example ${OpenCV_LIBRARIES})

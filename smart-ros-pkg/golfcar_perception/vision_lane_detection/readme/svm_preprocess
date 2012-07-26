@@ -1,0 +1,7 @@
+1.use "generate_training_data" to generate labelled contours;
+2.use "data_formating" to format data into svm-supported format;
+3.use "./svm-scale -s range_20120726 data/formatted_data_20120726 > scaled_20120726" to scale data; 
+  also use "range" file to change the "lower&upper_limit", and "feature_max&min";
+4.use "python ./grid.py ../scaled_20120726" to find the best "C" and "gamma";
+5.use "./svm-train -s 0 -c 8 -g 0.5 -e 0.1 data/20120726/scaled_20120726" to get model of "scaled_20120726";
+6.move "scaled_20120726.model" to referred folder;

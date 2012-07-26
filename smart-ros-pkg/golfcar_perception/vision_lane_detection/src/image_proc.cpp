@@ -14,10 +14,25 @@ namespace golfcar_vision{
       string svm_model_file;
 
       //the name cannot be too long, or it cannot load;
-      svm_model_file = "/home/baoxing/workspace/data_and_model/lane_detection.model";
+      svm_model_file = "/home/baoxing/workspace/data_and_model/scaled_20120726.model";
       svm_model_ = svm_load_model(svm_model_file.c_str());
       //the following line can help to check where the model has been loaded or not;
       cout<<" SVM loaded, type = "<< svm_model_->param.svm_type <<endl;
+      
+      lower_limit_ = -1.0;				upper_limit_ = 1.0;
+      feature_mins_[0] = 0.280736; 		feature_maxs_[0]= 11.318012;
+      feature_mins_[1] = 0.04729; 		feature_maxs_[1]= 127.993402;
+      feature_mins_[2] = 1.3e-05; 		feature_maxs_[2]= 38.793207;
+      feature_mins_[3] = 2e-06; 		feature_maxs_[3]= 38.78833;
+      feature_mins_[4] = -0.261051; 	feature_maxs_[4]= 1504.629155;
+      feature_mins_[5] = -2.033401; 	feature_maxs_[5]= 407.361793;
+      feature_mins_[6] = -2.94678; 		feature_maxs_[6]= 1.893048;
+      feature_mins_[7] = 0.02354; 		feature_maxs_[7]= 0.727546;
+      feature_mins_[8] = 0.8; 			feature_maxs_[8]= 3.750995;
+      feature_mins_[9] = 83; 			feature_maxs_[9]= 8548;
+      feature_mins_[10] = 169.698484;	feature_maxs_[10]= 1615.069315;
+      feature_mins_[11] = 2; 			feature_maxs_[11]= 85;
+      
     }
   
     void image_proc::Extract_Markers (IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, int &frame_serial)
@@ -102,6 +117,10 @@ namespace golfcar_vision{
         mem_box = cvCreateMemStorage(0);
         
         
+		CvSeq *contour_poly;
+		CvMemStorage *mem_poly;
+		mem_poly = cvCreateMemStorage(0);
+
         int contour_num_in_this_image = 0;   // to calculate the number of contour candidates in one image;
         for (; contours != 0; contours = contours->h_next)
         {
@@ -109,32 +128,26 @@ namespace golfcar_vision{
             
             //This denotes how many pixels of one certain object contour;
             //ROS_DEBUG("total pixels %d", contours->total);
-            
             ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 ); 
-            
-            /*
-            //Polygon approximation: get vertices of the contour;
-            //pay attention here: need allocate another memory to store the new contours;
-            contours = cvApproxPoly( contours, sizeof(CvContour), mem_contours, CV_POLY_APPROX_DP, 10, 0 );
-            cvDrawContours(contour_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
-            //total number of vertices after approximation;
-            ROS_INFO("total %d", contours->total);
-            */
-            
-            /*
-            for(int i=0; i<contours->total; i++)
-            {
-                CvPoint* p = (CvPoint*)cvGetSeqElem(contours, i);
-                printf("(%d, %d)\n", p->x, p->y);
-            }
-            */ 
 
+			//---------------------------------------------------------------------------------------------
+			//--Extract features for marker classifcation;
+			//---------------------------------------------------------------------------------------------
+			//1st feature, weights and perimeter;
             cvContourMoments(contours, &cvm);
+            double contour_weight = cvm.m00;
+            double contour_perimeter = cvContourPerimeter(contours);
+            //2nd feature, HuMoment;
             cvGetHuMoments(&cvm, &cvHM);
+            //3rd feature, side lengths of bounding box;
             cvBox = cvMinAreaRect2(contours, mem_box);
+            //4th feature: number of points after polygon approximation;
+			contour_poly = cvApproxPoly( contours, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 2, 0 );
+			int approxPtNum = int (contour_poly->total);
+            //---------------------------------------------------------------------------------------------
             
-
-            int contour_class = classify_contour (cvHM, cvBox);
+            int contour_class = classify_contour (contour_weight, contour_perimeter, cvHM, cvBox, approxPtNum);
+            
             if(contour_class==-1){ROS_ERROR("NO CLASSIFICATION!!!");}
             if(contour_class==1||contour_class==2||contour_class==3)
             {   
@@ -206,8 +219,7 @@ namespace golfcar_vision{
                 markers_para.vec.push_back(marker_output);
             }
             
-            //else if(){}
-            else 
+            else if(contour_class==4)
             {
 				float height =  cvBox.size.height;
 				float width = cvBox.size.width;
@@ -238,6 +250,7 @@ namespace golfcar_vision{
 				if(max(height,width)<100) continue; 
 				continuous_lane(contours, contour_img, ext_color);
 			}
+			else {}
 		}
         cvShowImage("contour_image",contour_img);
         //cvSaveImage("/home/baoxing/contour_img.png", contour_img);
@@ -255,7 +268,7 @@ namespace golfcar_vision{
                 stringstream  name_string;       
                 int stored_serial= frame_serial/2;
                 //pay attention, this path to the folder cannot be too long, or OpenCV will crash;
-                name_string<<"/home/marskahn/training/frame"<<stored_serial<<".jpg";
+                name_string<<"/home/baoxing/images/frame"<<stored_serial<<".jpg";
                 const char *output_name = name_string.str().c_str();
 
                 if (!cvSaveImage(output_name, src))
@@ -269,6 +282,8 @@ namespace golfcar_vision{
     
         cvReleaseMemStorage(&mem_contours);
         cvReleaseMemStorage(&mem_box);
+        cvReleaseMemStorage(&mem_poly);
+        
         cvWaitKey(50);
 
         cvReleaseImage(&It);
@@ -279,7 +294,8 @@ namespace golfcar_vision{
     
     //Use libsvm to classify each contour; input features are of type "CvHuMoments" and "CvBox2D";
     //More and better features may be used in the future;
-    int image_proc::classify_contour(CvHuMoments &HM_input, CvBox2D &Box_input )
+    int image_proc::classify_contour(double weight_input, double perimeter_input, 
+									 CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input)
     {
         int class_label = -1;
         float boxAngle  =   Box_input.angle;
@@ -288,10 +304,13 @@ namespace golfcar_vision{
         ROS_INFO("%lf, %lf, %lf, %lf, %lf, %lf, %lf", HM_input.hu1, HM_input.hu2, HM_input.hu3, HM_input.hu4, HM_input.hu5, HM_input.hu6, HM_input.hu7);
         ROS_INFO("boxAngle, height, width: %lf, %lf, %lf", boxAngle, height, width);
         //Data scaling here enables svm to get better accuracy;
+        
+        //keep accordance with "data_formating";
         double long_side_scaled = (max(width, height))/100.0;
         double short_side_scaled = (min(width, height))/100.0;
+        
         struct svm_node *x;
-        int max_nr_attr = 10;
+        int max_nr_attr = 13;
         x = (struct svm_node *) malloc(max_nr_attr*sizeof(struct svm_node));
         x[0].index = 1;     
         x[1].index = 2;
@@ -302,17 +321,24 @@ namespace golfcar_vision{
         x[6].index = 7;
         x[7].index = 8;
         x[8].index = 9;
-        x[9].index = -1;
+        x[9].index = 10;
+        x[10].index = 11;
+        x[11].index = 12;
+        x[12].index = -1;
          
-        x[0].value = HM_input.hu1;     
-        x[1].value = HM_input.hu2;
-        x[2].value = HM_input.hu3;
-        x[3].value = HM_input.hu4;
-        x[4].value = HM_input.hu5;
-        x[5].value = HM_input.hu6;
-        x[6].value = HM_input.hu7;
-        x[7].value = short_side_scaled;
-        x[8].value = long_side_scaled;
+         // go to "data_formating" for the feature sequences;
+        x[0].value = data_scaling(HM_input.hu1, feature_maxs_[0], feature_mins_[0]);     
+        x[1].value = data_scaling(HM_input.hu2, feature_maxs_[1], feature_mins_[1]);
+        x[2].value = data_scaling(HM_input.hu3, feature_maxs_[2], feature_mins_[2]);
+        x[3].value = data_scaling(HM_input.hu4, feature_maxs_[3], feature_mins_[3]);
+        x[4].value = data_scaling(HM_input.hu5, feature_maxs_[4], feature_mins_[4]);
+        x[5].value = data_scaling(HM_input.hu6, feature_maxs_[5], feature_mins_[5]);
+        x[6].value = data_scaling(HM_input.hu7, feature_maxs_[6], feature_mins_[6]);
+        x[7].value = data_scaling(short_side_scaled, feature_maxs_[7], feature_mins_[7]);
+        x[8].value = data_scaling(long_side_scaled, feature_maxs_[8], feature_mins_[8]);
+        x[9].value = data_scaling(weight_input, feature_maxs_[9], feature_mins_[9]);
+        x[10].value = data_scaling(perimeter_input, feature_maxs_[10], feature_mins_[10]);
+        x[11].value = data_scaling(polyNum_input, feature_maxs_[11], feature_mins_[11]);
         
         ROS_INFO("try to predict");
         class_label = svm_predict(svm_model_,x);
@@ -320,7 +346,13 @@ namespace golfcar_vision{
         free(x);
         return class_label;
     }
-  
+    
+	double image_proc::data_scaling(double raw_data, double feature_max, double feature_min)
+	{
+		double scaled_data = lower_limit_ + (upper_limit_-lower_limit_)*(raw_data-feature_min)/(feature_max-feature_min);
+		return scaled_data;
+	}
+	
     CvSeq* image_proc::Filter_candidates (CvContourScanner &scanner)
     {
         CvSeq* c;
