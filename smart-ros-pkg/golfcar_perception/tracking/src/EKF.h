@@ -39,12 +39,6 @@ private:
     * NonLinear system model    *
     ****************************/
 
-    // create gaussian
-    MatrixWrapper::ColumnVector sys_noise_Mu_;
-    MatrixWrapper::SymmetricMatrix sys_noise_Cov_;
-    BFL::Gaussian *system_Uncertainty_;
-
-    // create the model
     NonLinearAnalyticConditionalGaussianMobile *sys_pdf_;
     BFL::AnalyticSystemModelGaussianUncertainty *sys_model_;
 
@@ -56,12 +50,6 @@ private:
     // create matrix H for linear measurement model
     MatrixWrapper::Matrix H_;
 
-    // Construct the measurement noise (a scalar in this case)
-    MatrixWrapper::ColumnVector meas_noise_Mu_;
-    MatrixWrapper::SymmetricMatrix meas_noise_Cov_;
-    BFL::Gaussian *measurement_Uncertainty_;
-
-    // create the measurement model
     BFL::LinearAnalyticConditionalGaussian *meas_pdf_;
     BFL::LinearAnalyticMeasurementModelGaussianUncertainty *meas_model_;
 
@@ -69,11 +57,7 @@ private:
     /*************************
     * Linear prior DENSITY   *
     *************************/
-
-    // Continuous Gaussian prior (for Kalman filters)
-    MatrixWrapper::ColumnVector prior_Mu_;
-    MatrixWrapper::SymmetricMatrix prior_Cov_;
-    BFL::Gaussian *prior_cont_;
+    BFL::Gaussian prior_cont_;
 
     /*****************************
     * Construction of the Filter *

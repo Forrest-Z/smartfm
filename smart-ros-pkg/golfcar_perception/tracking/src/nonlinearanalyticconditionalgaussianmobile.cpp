@@ -51,17 +51,17 @@ MatrixWrapper::ColumnVector NonLinearAnalyticConditionalGaussianMobile::Expected
 
 MatrixWrapper::Matrix NonLinearAnalyticConditionalGaussianMobile::dfGet(unsigned int i) const
 {
+    MatrixWrapper::Matrix df(5, 5);
+
     if (i==0)//derivative to the first conditional argument (x)
     {
         MatrixWrapper::ColumnVector state = ConditionalArgumentGet(0);
         MatrixWrapper::ColumnVector input = ConditionalArgumentGet(1);
         double dt = input(1);
 
-        MatrixWrapper::Matrix df(STATE::SIZE, STATE::SIZE);
-
         // Init as identity matrix
-        for(unsigned i=1; i<=STATE::SIZE; i++)
-            for(unsigned j=1; j<=STATE::SIZE; j++)
+        for(unsigned i=1; i<=df.rows(); i++)
+            for(unsigned j=1; j<=df.columns(); j++)
                 df(i,j) = (i==j ? 1.0 : 0.0);
 
         df(STATE::X, STATE::T) = -state(STATE::V)*sin(state(STATE::T))*dt;
@@ -69,7 +69,6 @@ MatrixWrapper::Matrix NonLinearAnalyticConditionalGaussianMobile::dfGet(unsigned
         df(STATE::Y, STATE::T) = state(STATE::V)*cos(state(STATE::T))*dt;
         df(STATE::Y, STATE::V) = sin(state(STATE::T))*dt;
         df(STATE::T, STATE::W) = dt;
-        return df;
     }
     else
     {
@@ -84,4 +83,5 @@ MatrixWrapper::Matrix NonLinearAnalyticConditionalGaussianMobile::dfGet(unsigned
             ::exit(-BFL_ERRMISUSE);
         }
     }
+    return df;
 }
