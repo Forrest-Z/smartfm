@@ -11,6 +11,12 @@
 #include "libsvm/svm.h"
 #include "ransac_parabola.h"
 
+#include <float.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include <string.h>
+
 namespace golfcar_vision{
 
     class image_proc {
@@ -42,11 +48,14 @@ namespace golfcar_vision{
         void pose_contour(CvSeq *contour, CvMoments &cvm, vision_lane_detection::marker_info &marker_para);
         void cvt_pose_baselink(vision_lane_detection::marker_info &marker_para);
 		void continuous_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color);
-
-		double feature_maxs_[12], feature_mins_[12];
-		double lower_limit_, upper_limit_;
-		double data_scaling(double raw_data, double feature_max, double feature_min);
-
+		
+		void restore_scalefile(string filename,double* &feature_min, double* &feature_max, int &feature_index);
+		double output(int index, double value);
+		char* readline(FILE *input);
+		double* feature_max_;
+		double* feature_min_;
+		int feature_index_;
+		double lower_, upper_;
     };
 };
 

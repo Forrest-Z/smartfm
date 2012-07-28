@@ -12,26 +12,15 @@ namespace golfcar_vision{
       cvNamedWindow("contour_image");
       
       string svm_model_file;
-
       //the name cannot be too long, or it cannot load;
       svm_model_file = "/home/baoxing/workspace/data_and_model/scaled_20120726.model";
       svm_model_ = svm_load_model(svm_model_file.c_str());
       //the following line can help to check where the model has been loaded or not;
       cout<<" SVM loaded, type = "<< svm_model_->param.svm_type <<endl;
       
-      lower_limit_ = -1.0;				upper_limit_ = 1.0;
-      feature_mins_[0] = 0.280736; 		feature_maxs_[0]= 11.318012;
-      feature_mins_[1] = 0.04729; 		feature_maxs_[1]= 127.993402;
-      feature_mins_[2] = 1.3e-05; 		feature_maxs_[2]= 38.793207;
-      feature_mins_[3] = 2e-06; 		feature_maxs_[3]= 38.78833;
-      feature_mins_[4] = -0.261051; 	feature_maxs_[4]= 1504.629155;
-      feature_mins_[5] = -2.033401; 	feature_maxs_[5]= 407.361793;
-      feature_mins_[6] = -2.94678; 		feature_maxs_[6]= 1.893048;
-      feature_mins_[7] = 0.02354; 		feature_maxs_[7]= 0.727546;
-      feature_mins_[8] = 0.8; 			feature_maxs_[8]= 3.750995;
-      feature_mins_[9] = 83; 			feature_maxs_[9]= 8548;
-      feature_mins_[10] = 169.698484;	feature_maxs_[10]= 1615.069315;
-      feature_mins_[11] = 2; 			feature_maxs_[11]= 85;
+      string svm_scale_file;
+      svm_scale_file = "/home/baoxing/workspace/data_and_model/range_20120726";
+      restore_scalefile(svm_scale_file, feature_min_, feature_max_, feature_index_);
       
     }
   
@@ -327,18 +316,20 @@ namespace golfcar_vision{
         x[12].index = -1;
          
          // go to "data_formating" for the feature sequences;
-        x[0].value = data_scaling(HM_input.hu1, feature_maxs_[0], feature_mins_[0]);     
-        x[1].value = data_scaling(HM_input.hu2, feature_maxs_[1], feature_mins_[1]);
-        x[2].value = data_scaling(HM_input.hu3, feature_maxs_[2], feature_mins_[2]);
-        x[3].value = data_scaling(HM_input.hu4, feature_maxs_[3], feature_mins_[3]);
-        x[4].value = data_scaling(HM_input.hu5, feature_maxs_[4], feature_mins_[4]);
-        x[5].value = data_scaling(HM_input.hu6, feature_maxs_[5], feature_mins_[5]);
-        x[6].value = data_scaling(HM_input.hu7, feature_maxs_[6], feature_mins_[6]);
-        x[7].value = data_scaling(short_side_scaled, feature_maxs_[7], feature_mins_[7]);
-        x[8].value = data_scaling(long_side_scaled, feature_maxs_[8], feature_mins_[8]);
-        x[9].value = data_scaling(weight_input, feature_maxs_[9], feature_mins_[9]);
-        x[10].value = data_scaling(perimeter_input, feature_maxs_[10], feature_mins_[10]);
-        x[11].value = data_scaling(polyNum_input, feature_maxs_[11], feature_mins_[11]);
+        x[0].value = HM_input.hu1;
+        x[1].value = HM_input.hu2;
+        x[2].value = HM_input.hu3;
+        x[3].value = HM_input.hu4;
+        x[4].value = HM_input.hu5;
+        x[5].value = HM_input.hu6;
+        x[6].value = HM_input.hu7;
+        x[7].value = short_side_scaled;
+        x[8].value = long_side_scaled;
+        x[9].value = weight_input;
+        x[10].value = perimeter_input;
+        x[11].value = polyNum_input;
+        
+        for(int i=0; i<12; i++) x[i].value = output(x[i].index, x[i].value);
         
         ROS_INFO("try to predict");
         class_label = svm_predict(svm_model_,x);
@@ -347,12 +338,6 @@ namespace golfcar_vision{
         return class_label;
     }
     
-	double image_proc::data_scaling(double raw_data, double feature_max, double feature_min)
-	{
-		double scaled_data = lower_limit_ + (upper_limit_-lower_limit_)*(raw_data-feature_min)/(feature_max-feature_min);
-		return scaled_data;
-	}
-	
     CvSeq* image_proc::Filter_candidates (CvContourScanner &scanner)
     {
         CvSeq* c;
@@ -709,7 +694,111 @@ namespace golfcar_vision{
         if(out_flag3||out_flag4) return false;
         else return true;
     }
-      
+    
+    void image_proc::restore_scalefile(string filename, double* &feature_min, double* &feature_max, int &feature_index)
+	{
+		int idx, c;
+		FILE *fp_restore;
+		const char *restore_filename = filename.c_str();
+		double y_max = -DBL_MAX;
+		double y_min = DBL_MAX;
+		double y_lower,y_upper;
+		int max_index=0;
+
+		fp_restore = fopen(restore_filename,"r");
+		if(fp_restore==NULL)
+		{
+			fprintf(stderr,"can't open file %s\n", restore_filename);
+			exit(1);
+		}
+		cout<<"File opened"<<endl;
+		c = fgetc(fp_restore);
+		if(c == 'y')
+		{
+			readline(fp_restore);
+			readline(fp_restore);
+			readline(fp_restore);
+		}
+		cout<<readline(fp_restore)<<endl;
+		cout<<readline(fp_restore)<<endl;
+		cout<<"Retrieving maximum index"<<endl;
+		while(fscanf(fp_restore,"%d %*f %*f\n",&idx) == 1)
+			max_index = max(idx,max_index);
+		rewind(fp_restore);
+		cout<<"Max index retrieved "<<max_index<<endl;
+		feature_max = (double *)malloc((max_index+1)* sizeof(double));
+		feature_min = (double *)malloc((max_index+1)* sizeof(double));
+
+		double fmin, fmax;
+		int y_scaling = 0;
+		if((c = fgetc(fp_restore)) == 'y')
+		{
+			fscanf(fp_restore, "%lf %lf\n", &y_lower, &y_upper);
+			fscanf(fp_restore, "%lf %lf\n", &y_min, &y_max);
+			y_scaling = 1;
+		}
+		else
+			ungetc(c, fp_restore);
+
+		if (fgetc(fp_restore) == 'x') {
+			cout<<"got x"<<endl;
+			fscanf(fp_restore, "%lf %lf\n", &lower_, &upper_);
+			while(fscanf(fp_restore,"%d %lf %lf\n",&idx,&fmin,&fmax)==3)
+			{
+				if(idx<=max_index)
+				{
+					feature_min[idx] = fmin;
+					feature_max[idx] = fmax;
+				}
+			}
+		}
+		feature_index = max_index;
+		fclose(fp_restore);
+		cout<<"File closed"<<endl;
+	}
+	
+	char* image_proc::readline(FILE *input)
+	{
+		int len;
+		char *line = NULL;
+		int max_line_len = 1024;
+		line = (char *) malloc(max_line_len*sizeof(char));
+		if(fgets(line,max_line_len,input) == NULL)
+			return NULL;
+
+		while(strrchr(line,'\n') == NULL)
+		{
+			max_line_len *= 2;
+			line = (char *) realloc(line, max_line_len);
+			len = (int) strlen(line);
+			if(fgets(line+len,max_line_len-len,input) == NULL)
+				break;
+		}
+		return line;
+	}
+
+	double image_proc::output(int index, double value)
+	{
+		/* skip single-valued attribute */
+		if(feature_max_[index] == feature_min_[index])
+			return value;
+
+		if(value == feature_min_[index])
+			value = lower_;
+		else if(value == feature_max_[index])
+			value = upper_;
+		else
+			value = lower_ + (upper_-lower_) *
+				(value-feature_min_[index])/
+				(feature_max_[index]-feature_min_[index]);
+
+		if(value != 0)
+		{
+			//printf("%d:%g ",index, value);
+		}
+		return value;
+	}
+
     image_proc::~image_proc()
     {
         cvDestroyWindow("It_image");
