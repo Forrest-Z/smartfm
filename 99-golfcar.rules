@@ -28,7 +28,7 @@ SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", ATTRS{product}=="Arduino Uno", SYMLINK
 SUBSYSTEM=="video4linux", BUS=="usb", ATTRS{vendor}=="0x046d", ATTRS{device}=="0x0821", ATTRS{serial}=="3C33E4E0", NAME="video0"
 
 # Front Right
-SUBSYSTEM=="video4linux", BUS=="usb", ATTRS{vendor}=="0x046d", ATTRS{device}=="0x0821", ATTRS{serial}=="D6377CC0", NAME="video1"
+SUBSYSTEM=="video4linux", BUS=="usb", ATTRS{vendor}=="0x046d", ATTRS{device}=="0x0821", ATTRS{serial}=="86014CC0", NAME="video1"
 
 # Rear
-SUBSYSTEM=="video4linux", BUS=="usb", ATTRS{vendor}=="0x046d", ATTRS{device}=="0x0821", ATTRS{serial}=="86014CC0", NAME="video2"
+SUBSYSTEM=="video4linux", BUS=="usb", ATTRS{vendor}=="0x046d", ATTRS{device}=="0x0821", ATTRS{serial}=="D6377CC0", NAME="video2"
