@@ -17,3 +17,18 @@ SUBSYSTEM=="tty", KERNEL=="ttyUSB[0-9]*", ATTRS{manufacturer}=="Xsens", ATTRS{pr
 
 # Arduino Board
 SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", ATTRS{product}=="Arduino Uno", SYMLINK+="arduino"
+
+
+
+# Cameras
+#   Serial number was obtained with the following command:
+#     udevadm info --attribute-walk --name=/dev/video0 | grep serial
+
+# Front
+SUBSYSTEM=="video4linux", BUS=="usb", ATTRS{vendor}=="0x046d", ATTRS{device}=="0x0821", ATTRS{serial}=="3C33E4E0", NAME="video0"
+
+# Front Right
+SUBSYSTEM=="video4linux", BUS=="usb", ATTRS{vendor}=="0x046d", ATTRS{device}=="0x0821", ATTRS{serial}=="D6377CC0", NAME="video1"
+
+# Rear
+SUBSYSTEM=="video4linux", BUS=="usb", ATTRS{vendor}=="0x046d", ATTRS{device}=="0x0821", ATTRS{serial}=="86014CC0", NAME="video2"
