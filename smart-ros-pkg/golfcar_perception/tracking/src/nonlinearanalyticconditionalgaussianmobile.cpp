@@ -45,13 +45,13 @@ MatrixWrapper::ColumnVector NonLinearAnalyticConditionalGaussianMobile::Expected
     state(STATE::X) += cos(state(STATE::T)) * state(STATE::V) * dt;
     state(STATE::Y) += sin(state(STATE::T)) * state(STATE::V) * dt;
     state(STATE::T) += state(STATE::W) * dt;
-    // state(STATE::V) and state(STATE::W) remain the same
+    // state(FilterParam::V) and state(FilterParam::W) remain the same
     return state + AdditiveNoiseMuGet();
 }
 
 MatrixWrapper::Matrix NonLinearAnalyticConditionalGaussianMobile::dfGet(unsigned int i) const
 {
-    MatrixWrapper::Matrix df(5, 5);
+    MatrixWrapper::Matrix df(STATE::SIZE, STATE::SIZE);
 
     if (i==0)//derivative to the first conditional argument (x)
     {

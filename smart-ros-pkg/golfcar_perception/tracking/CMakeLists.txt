@@ -22,6 +22,8 @@ IF(GSL_FOUND)
     INCLUDE_DIRECTORIES(${GSL_INCLUDE_DIR})
 ENDIF()
 
+INCLUDE_DIRECTORIES(/usr/local/include/bfl)
+
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src)
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/test)
 
@@ -46,4 +48,4 @@ rosbuild_add_executable(test_path src/test/test_path.cpp src/test/Path.cpp)
 target_link_libraries(test_path ${GSL_LIBRARIES})
 
 rosbuild_add_executable(test_one_target src/test/test_one_target.cpp src/test/Path.cpp src/nonlinearanalyticconditionalgaussianmobile.cpp src/EKF.cpp src/Filter.cpp)
-target_link_libraries(test_one_target ${GSL_LIBRARIES})
+target_link_libraries(test_one_target ${GSL_LIBRARIES} orocos-bfl)

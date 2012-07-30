@@ -27,7 +27,7 @@
 class EKF : public Filter
 {
 public:
-    explicit EKF(FilterParameters);
+    explicit EKF(BFL::Gaussian sys_noise, BFL::Gaussian meas_noise, BFL::Gaussian prior);
     virtual ~EKF();
 
     virtual void update(double x, double y, double dt);

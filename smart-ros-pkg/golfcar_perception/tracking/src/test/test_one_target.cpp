@@ -59,64 +59,73 @@ void log(FILE *flog, double t, Path &path, double obs_x, double obs_y, Filter &f
 
 int main()
 {
+    /* This controls the updating step:
+     * 2: observe only x and y and let the filter guess the rest
+     * 5: we observe only x and y but compute t, v and w from the change with
+     *    the expected value.
+     */
+    const unsigned MEAS_SIZE = 2;
+
     const double PERIOD = 0.5;
-    const unsigned MEAS_SIZE = 2; // 2 or 5
 
     Path path(waypoints, sizeof(waypoints)/sizeof(double)/3);
 
     // Some measurement noise to add to the ground truth
-    FilterMeasParam meas_noise_mu(2), meas_noise_sigma(2);
-    meas_noise_sigma.x_ = meas_noise_sigma.y_ = SQUARE(4);
-    BFL::Gaussian meas_noise = FilterMeasParam::createGaussian(meas_noise_mu,
-                                                               meas_noise_sigma);
+    MatrixWrapper::SymmetricMatrix obs_noise_cov(2);
+    obs_noise_cov(STATE::X,STATE::X) = obs_noise_cov(STATE::Y,STATE::Y) = SQUARE(4);
+    BFL::Gaussian obs_noise(MatrixWrapper::ColumnVector(2), obs_noise_cov);
 
     // set the parameters of the EKF: system noise, measurement noise, etc.
-    FilterParameters params(MEAS_SIZE);
-    double sv = 5, sw = fmutil::d2r(50);
-    params.sigma_system_noise_.x_ = params.sigma_system_noise_.y_ = SQUARE(sv*PERIOD);
-    params.sigma_system_noise_.t_ = SQUARE(sw*PERIOD);
-    params.sigma_system_noise_.v_ = SQUARE(sv);
-    params.sigma_system_noise_.w_ = SQUARE(sw);
 
-    params.sigma_meas_noise_.x_ = params.sigma_meas_noise_.y_ = SQUARE(2);
-    if( MEAS_SIZE == 5 )
+    // system noise: mu=0
+    double sv = .1, sw = fmutil::d2r(1);
+    MatrixWrapper::SymmetricMatrix Q(STATE::SIZE);
+    Q(STATE::X,STATE::X) = Q(STATE::Y,STATE::Y) = SQUARE(sv*PERIOD);
+    Q(STATE::T,STATE::T) = SQUARE(sw*PERIOD);
+    Q(STATE::V,STATE::V) = SQUARE(sv);
+    Q(STATE::W,STATE::W) = SQUARE(sw);
+    BFL::Gaussian sys_noise(MatrixWrapper::ColumnVector(STATE::SIZE), Q);
+
+    MatrixWrapper::SymmetricMatrix R(MEAS_SIZE);
+    R(STATE::X,STATE::X) = R(STATE::Y,STATE::Y) = SQUARE(10);
+    if( MEAS_SIZE == STATE::SIZE )
     {
-        params.sigma_meas_noise_.t_ = SQUARE(sw*PERIOD);
-        params.sigma_meas_noise_.v_ = SQUARE(sv);
-        params.sigma_meas_noise_.w_ = SQUARE(sw);
+        R(STATE::T,STATE::T) = SQUARE(sw*PERIOD) * 10;
+        R(STATE::V,STATE::V) = SQUARE(sv) * 10;
+        R(STATE::W,STATE::W) = SQUARE(sw) * 10;
     }
+    BFL::Gaussian meas_noise(MatrixWrapper::ColumnVector(MEAS_SIZE), R);
 
     path.precompute(0);
-    params.prior_mu_.x_ = path.get_x(0);
-    params.prior_mu_.y_ = path.get_y(0);
-    params.prior_mu_.t_ = path.get_t(0);
-    params.prior_mu_.v_ = path.get_v(0);
-    params.prior_mu_.w_ = path.get_w(0);
-    params.prior_sigma_.x_ = params.sigma_system_noise_.x_ * 10;
-    params.prior_sigma_.y_ = params.sigma_system_noise_.y_ * 10;
-    params.prior_sigma_.t_ = params.sigma_system_noise_.t_ * 10;
-    params.prior_sigma_.v_ = params.sigma_system_noise_.v_ * 10;
-    params.prior_sigma_.w_ = params.sigma_system_noise_.w_ * 10;
+    MatrixWrapper::ColumnVector prior_mu(STATE::SIZE);
+    prior_mu(STATE::X) = path.get_x(0);
+    prior_mu(STATE::Y) = path.get_y(0);
+    prior_mu(STATE::T) = path.get_t(0);
+    prior_mu(STATE::V) = path.get_v(0);
+    prior_mu(STATE::W) = path.get_w(0);
+    MatrixWrapper::SymmetricMatrix P(STATE::SIZE);
+    P = 0.01;
+    BFL::Gaussian prior(prior_mu, P);
 
-    EKF ekf(params);
+    EKF ekf(sys_noise, meas_noise, prior);
 
     std::FILE *flog = std::fopen("datalog.csv", "w");
     std::fprintf(flog, "time, gt_x, gt_y, gt_t, gt_v, gt_w, obs_x, obs_y, p_x, p_y, p_t, p_v, p_w, p_cov\n");
 
-    MatrixWrapper::ColumnVector measurement(2);
-    BFL::Sample<MatrixWrapper::ColumnVector> measurement_noise(2);
+    MatrixWrapper::ColumnVector measurement(obs_noise.DimensionGet());
+    BFL::Sample<MatrixWrapper::ColumnVector> measurement_noise(obs_noise.DimensionGet());
 
     for (double t=path.get_tmin()+PERIOD; t<=/*15*PERIOD*/path.get_tmax(); t+=PERIOD)
     {
         path.precompute(t);
-        measurement(MEAS::X) = path.get_x(t);
-        measurement(MEAS::Y) = path.get_y(t);
-        meas_noise.SampleFrom(measurement_noise);
+        measurement(STATE::X) = path.get_x(t);
+        measurement(STATE::Y) = path.get_y(t);
+        obs_noise.SampleFrom(measurement_noise);
         measurement += measurement_noise.ValueGet();
 
-        ekf.update(measurement(MEAS::X), measurement(MEAS::Y), PERIOD);
+        ekf.update(measurement(STATE::X), measurement(STATE::Y), PERIOD);
 
-        log(flog, t, path, measurement(MEAS::X), measurement(MEAS::Y), ekf);
+        log(flog, t, path, measurement(STATE::X), measurement(STATE::Y), ekf);
     }
 
     std::fclose(flog);
