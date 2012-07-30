@@ -12,12 +12,16 @@ namespace golfcar_vision{
       cvNamedWindow("contour_image");
       
       string svm_model_file;
-
       //the name cannot be too long, or it cannot load;
-      svm_model_file = "/home/baoxing/workspace/data_and_model/lane_detection.model";
+      svm_model_file = "/home/baoxing/workspace/data_and_model/scaled_20120726.model";
       svm_model_ = svm_load_model(svm_model_file.c_str());
       //the following line can help to check where the model has been loaded or not;
       cout<<" SVM loaded, type = "<< svm_model_->param.svm_type <<endl;
+      
+      string svm_scale_file;
+      svm_scale_file = "/home/baoxing/workspace/data_and_model/range_20120726";
+      restore_scalefile(svm_scale_file, feature_min_, feature_max_, feature_index_);
+      
     }
   
     void image_proc::Extract_Markers (IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, int &frame_serial)
@@ -80,7 +84,7 @@ namespace golfcar_vision{
         //int n = cvFindContours(Itand, mem_contours, &contours, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE, cvPoint(0,0));
         //ROS_DEBUG("total contours: %d", n);
         
-        CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+        CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
                 
         //-------------------------------------------------------------------------------------------------------------------------------
         //3. to filter noise at the boundary, and noise too small or too big;
@@ -102,7 +106,10 @@ namespace golfcar_vision{
         mem_box = cvCreateMemStorage(0);
         
         
-        
+		CvSeq *contour_poly;
+		CvMemStorage *mem_poly;
+		mem_poly = cvCreateMemStorage(0);
+
         int contour_num_in_this_image = 0;   // to calculate the number of contour candidates in one image;
         for (; contours != 0; contours = contours->h_next)
         {
@@ -110,41 +117,55 @@ namespace golfcar_vision{
             
             //This denotes how many pixels of one certain object contour;
             //ROS_DEBUG("total pixels %d", contours->total);
-            
             ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 ); 
-            
-            /*
-            //Polygon approximation: get vertices of the contour;
-            //pay attention here: need allocate another memory to store the new contours;
-            contours = cvApproxPoly( contours, sizeof(CvContour), mem_contours, CV_POLY_APPROX_DP, 10, 0 );
-            cvDrawContours(contour_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
-            //total number of vertices after approximation;
-            ROS_INFO("total %d", contours->total);
-            */
-            
-            /*
-            for(int i=0; i<contours->total; i++)
-            {
-                CvPoint* p = (CvPoint*)cvGetSeqElem(contours, i);
-                printf("(%d, %d)\n", p->x, p->y);
-            }
-            */ 
 
+			//---------------------------------------------------------------------------------------------
+			//--Extract features for marker classifcation;
+			//---------------------------------------------------------------------------------------------
+			//1st feature, weights and perimeter;
             cvContourMoments(contours, &cvm);
+            double contour_weight = cvm.m00;
+            double contour_perimeter = cvContourPerimeter(contours);
+            //2nd feature, HuMoment;
             cvGetHuMoments(&cvm, &cvHM);
+            //3rd feature, side lengths of bounding box;
             cvBox = cvMinAreaRect2(contours, mem_box);
+            //4th feature: number of points after polygon approximation;
+			contour_poly = cvApproxPoly( contours, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 2, 0 );
+			int approxPtNum = int (contour_poly->total);
+            //---------------------------------------------------------------------------------------------
             
-            //to visualize all the candidates, together with their bounding box;
-            DrawBox(cvBox,contour_img, ext_color);
-            cvDrawContours(contour_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
-
-            int contour_class = classify_contour (cvHM, cvBox);
+            int contour_class = classify_contour (contour_weight, contour_perimeter, cvHM, cvBox, approxPtNum);
+            
             if(contour_class==-1){ROS_ERROR("NO CLASSIFICATION!!!");}
             if(contour_class==1||contour_class==2||contour_class==3)
-            {               
-                //------------------------------------------------------------------------
+            {   
+                //-------------------------------------------------------------------------------------
                 //5. calculate their pose relative to "base_link";
-                //------------------------------------------------------------------------
+                //-------------------------------------------------------------------------------------
+                
+                //-------------------------------------------------------------------------------------
+                //dedicated filtering 3rd criterion: four corners shouldn't appear at the boundary;
+				CvPoint2D32f point[4];
+				calc_cvBoxPoints(cvBox, point); 
+				CvPoint pt[4];
+				bool onBoundary = false;
+				for (int i=0; i<4; i++)
+				{
+					pt[i].x = (int)point[i].x;
+					pt[i].y = (int)point[i].y;
+					if(!CheckPointInside(pt[i])) {onBoundary = true; break;}
+				}
+				//ignore current contour since it may not be complete; go on to the next on;
+				if(onBoundary) continue; 
+				//-------------------------------------------------------------------------------------
+				
+				//-----------------------------------------------------------------------------------------------
+				//to visualize all the candidates, together with their bounding box;
+				DrawBox(cvBox,contour_img, ext_color);
+				cvDrawContours(contour_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
+				//-----------------------------------------------------------------------------------------------
+				
                 vision_lane_detection::marker_info marker_output;
                 marker_output.class_label = contour_class;
                 //this default number denotes no angle information;
@@ -168,10 +189,7 @@ namespace golfcar_vision{
 				centroid_pt.x = int(cvm.m10/cvm.m00);
 				centroid_pt.y = int(cvm.m01/cvm.m00);
                 cvCircle( contour_img, centroid_pt, 3, CV_RGB(0,255,0), 2);
-                
                 ROS_INFO("lane marker detected");
-           
-				
                 if(marker_output.thetha!=3*M_PI)
                 {
 					CvFont font2;
@@ -189,7 +207,40 @@ namespace golfcar_vision{
 				}
                 markers_para.vec.push_back(marker_output);
             }
-        }
+            
+            else if(contour_class==4)
+            {
+				float height =  cvBox.size.height;
+				float width = cvBox.size.width;
+				float center_x=  cvBox.center.x;
+				float center_y=  cvBox.center.y;
+				//ROS_INFO("center.x, center.y, height, width: %lf, %lf, %lf, %lf, %lf", center_x, center_y, height, width);
+				//DrawBox(cvBox,color_img,ext_color);
+				
+				//------------------------------------------------------------------------------------------------------------------
+                //dedicated filtering 3rd criterion for continuous lane: 
+                //1)no one side of its bounding box touches two side bounds;
+				CvPoint2D32f point[4];
+				calc_cvBoxPoints(cvBox, point); 
+				CvPoint pt[4];
+				bool onSideBounds = false;
+				for (int i=0; i<3; i++)
+				{
+					pt[i].x = (int)point[i].x;
+					pt[i].y = (int)point[i].y;
+					pt[i+1].x = (int)point[i+1].x;
+					pt[i+1].y = (int)point[i+1].y;
+					if(!CheckPointOffSideBounds(pt[i]) && !CheckPointOffSideBounds(pt[i+1])) 
+					{onSideBounds = true; break;}
+				}
+				if(onSideBounds) continue; 
+				
+				//2)lane is long enough;
+				if(max(height,width)<100) continue; 
+				continuous_lane(contours, contour_img, ext_color);
+			}
+			else {}
+		}
         cvShowImage("contour_image",contour_img);
         //cvSaveImage("/home/baoxing/contour_img.png", contour_img);
         
@@ -206,7 +257,7 @@ namespace golfcar_vision{
                 stringstream  name_string;       
                 int stored_serial= frame_serial/2;
                 //pay attention, this path to the folder cannot be too long, or OpenCV will crash;
-                name_string<<"/home/marskahn/training/frame"<<stored_serial<<".jpg";
+                name_string<<"/home/baoxing/images/frame"<<stored_serial<<".jpg";
                 const char *output_name = name_string.str().c_str();
 
                 if (!cvSaveImage(output_name, src))
@@ -220,11 +271,10 @@ namespace golfcar_vision{
     
         cvReleaseMemStorage(&mem_contours);
         cvReleaseMemStorage(&mem_box);
+        cvReleaseMemStorage(&mem_poly);
+        
         cvWaitKey(50);
-        
-       
-        
-        
+
         cvReleaseImage(&It);
         cvReleaseImage(&Iat);
         cvReleaseImage(&Itand);
@@ -233,7 +283,8 @@ namespace golfcar_vision{
     
     //Use libsvm to classify each contour; input features are of type "CvHuMoments" and "CvBox2D";
     //More and better features may be used in the future;
-    int image_proc::classify_contour(CvHuMoments &HM_input, CvBox2D &Box_input )
+    int image_proc::classify_contour(double weight_input, double perimeter_input, 
+									 CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input)
     {
         int class_label = -1;
         float boxAngle  =   Box_input.angle;
@@ -242,10 +293,13 @@ namespace golfcar_vision{
         ROS_INFO("%lf, %lf, %lf, %lf, %lf, %lf, %lf", HM_input.hu1, HM_input.hu2, HM_input.hu3, HM_input.hu4, HM_input.hu5, HM_input.hu6, HM_input.hu7);
         ROS_INFO("boxAngle, height, width: %lf, %lf, %lf", boxAngle, height, width);
         //Data scaling here enables svm to get better accuracy;
+        
+        //keep accordance with "data_formating";
         double long_side_scaled = (max(width, height))/100.0;
         double short_side_scaled = (min(width, height))/100.0;
+        
         struct svm_node *x;
-        int max_nr_attr = 10;
+        int max_nr_attr = 13;
         x = (struct svm_node *) malloc(max_nr_attr*sizeof(struct svm_node));
         x[0].index = 1;     
         x[1].index = 2;
@@ -256,9 +310,13 @@ namespace golfcar_vision{
         x[6].index = 7;
         x[7].index = 8;
         x[8].index = 9;
-        x[9].index = -1;
+        x[9].index = 10;
+        x[10].index = 11;
+        x[11].index = 12;
+        x[12].index = -1;
          
-        x[0].value = HM_input.hu1;     
+         // go to "data_formating" for the feature sequences;
+        x[0].value = HM_input.hu1;
         x[1].value = HM_input.hu2;
         x[2].value = HM_input.hu3;
         x[3].value = HM_input.hu4;
@@ -267,6 +325,11 @@ namespace golfcar_vision{
         x[6].value = HM_input.hu7;
         x[7].value = short_side_scaled;
         x[8].value = long_side_scaled;
+        x[9].value = weight_input;
+        x[10].value = perimeter_input;
+        x[11].value = polyNum_input;
+        
+        for(int i=0; i<12; i++) x[i].value = output(x[i].index, x[i].value);
         
         ROS_INFO("try to predict");
         class_label = svm_predict(svm_model_,x);
@@ -274,7 +337,7 @@ namespace golfcar_vision{
         free(x);
         return class_label;
     }
-  
+    
     CvSeq* image_proc::Filter_candidates (CvContourScanner &scanner)
     {
         CvSeq* c;
@@ -303,6 +366,10 @@ namespace golfcar_vision{
                 }
                 else
                 {
+					//this criterion only applies to discrete markers, while not to continuous lanes;
+					//shift to their dedicated part;
+					
+					/*
                     //3rd criterion: four corners shouldn't appear at the boundary;
                     CvPoint2D32f point[4];
                     calc_cvBoxPoints(cvBox, point); 
@@ -317,6 +384,7 @@ namespace golfcar_vision{
                             break;
                         }
                     }
+                    */ 
                 }   
             }                       
         }
@@ -324,6 +392,7 @@ namespace golfcar_vision{
         cvReleaseMemStorage(&mem_box);
         return contours;
     }
+    
     
     void image_proc::pose_contour(CvSeq *contour_raw, CvMoments &cvm, vision_lane_detection::marker_info &marker_para)
     {
@@ -466,6 +535,132 @@ namespace golfcar_vision{
         cvReleaseMemStorage(&mem_poly);
     }
     
+	void image_proc::continuous_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color)
+	{
+		std::vector <TPoint2D> contour_points;
+		for(int i=0; i<contours->total; i++)
+		{
+			CvPoint* p = (CvPoint*)cvGetSeqElem(contours, i);
+			TPoint2D pt_tmp;
+			pt_tmp.x = p -> x;
+			pt_tmp.y = p -> y;
+			contour_points.push_back(pt_tmp);
+		}
+		
+		//-------------------------------------------------------------------------------------------------------------------------
+		//preparation work: to reduce the polygon of the contour into a thin single line;
+		//-------------------------------------------------------------------------------------------------------------------------
+		ROS_INFO("step1");
+		std::vector <TPoint2D> fused_points;
+		if(contour_points.size()<4) return;
+		
+		bool publish =  false;
+		for(int serial_tmp =0; serial_tmp < contour_points.size(); serial_tmp++)
+		{
+			if(publish) printf("serial_tmp %d\t  (%3f, %3f)\t", serial_tmp, contour_points[serial_tmp].x, contour_points[serial_tmp].y);
+			
+			int prev2_serial= serial_tmp-2;
+			int next2_serial= serial_tmp+2;
+			if(prev2_serial <0) prev2_serial = prev2_serial + contour_points.size();
+			if(next2_serial >= contour_points.size()) next2_serial = next2_serial - contour_points.size();
+			
+			ASSERT_(prev2_serial<contour_points.size());
+			ASSERT_(next2_serial<contour_points.size());
+
+			if(contour_points[prev2_serial] == contour_points[next2_serial]) continue;
+			TLine2D line_tmp(contour_points[prev2_serial], contour_points[next2_serial]);
+			
+			TPoint2D mid_point;
+			mid_point.x = (contour_points[prev2_serial].x+contour_points[next2_serial].x)/2.0;
+			mid_point.y = (contour_points[prev2_serial].y+contour_points[next2_serial].y)/2.0;
+			
+			if(publish) printf("mid point: %3f, %3f\t", mid_point.x, mid_point.y);
+			
+			double a_tmp = line_tmp.coefs[1];
+			double b_tmp = -line_tmp.coefs[0];
+			double c_tmp = -(a_tmp*mid_point.x+b_tmp*mid_point.y);
+			
+			if(publish) printf("line parameter: %3f, %3f, %3f\t", a_tmp, b_tmp, c_tmp);
+			
+			TLine2D line_perpendicular_tmp(a_tmp,b_tmp,c_tmp);
+
+			double nearest_distance = 100.0;
+			int nearest_serial = 0;
+			TPoint2D fused_pt;
+			
+			for(int serial_tmpp = 0; serial_tmpp < contour_points.size(); serial_tmpp ++)
+			{
+				double tmp_distance = line_perpendicular_tmp.distance(contour_points[serial_tmpp]);
+				bool another_side = abs(serial_tmpp-serial_tmp)>10;
+				if(tmp_distance<nearest_distance && another_side){nearest_distance=tmp_distance;nearest_serial = serial_tmpp;}
+			}
+			if(publish) printf("nearest point %d\t, (%3f, %3f)\t, distance %3f\n", nearest_serial, contour_points[nearest_serial].x, contour_points[nearest_serial].y, nearest_distance);
+			
+			if(nearest_distance<20.0)
+			{
+				fused_pt.x = (contour_points[nearest_serial].x + contour_points[serial_tmp].x)/2;
+				fused_pt.y = (contour_points[nearest_serial].y + contour_points[serial_tmp].y)/2;
+				
+				bool point_exist = false;
+				for(size_t fuse_serial = 0; fuse_serial < fused_points.size(); fuse_serial++)
+				{
+					if(fused_points[fuse_serial]==fused_pt){point_exist = true; break;}
+				}
+				if(!point_exist)fused_points.push_back(fused_pt);
+			}
+			//publish =  false;
+		}
+		
+		ROS_INFO("step2");
+		vector_double xs,ys;
+		for (size_t i=0;i<fused_points.size();i++)
+		{	
+			const double xx = fused_points[i].x;
+			const double yy = fused_points[i].y;
+			xs.push_back(xx);
+			ys.push_back(yy);
+			//cvCircle( contour_img, cvPoint(fused_points[i].x,fused_points[i].y), 2, ext_color, 1);
+		}
+		ROS_INFO("fused points number %ld", xs.size());
+		//--------------------------------------------------------------------------------------------------------------
+		
+		//--------------------------------------------------------------------------------------------------------------
+		// non-lane contours will take much time to process; 
+		// add pre-filtering step for those nonlane contours;
+		//--------------------------------------------------------------------------------------------------------------
+		
+		vector<pair<mrpt::vector_size_t, parabola> >   detectedLines;
+		//temporarily the unit is still pixel;
+		const double DIST_THRESHOLD = 5;
+		ransac_detect_parabolas(xs,ys,detectedLines,DIST_THRESHOLD, 100 );
+		
+		//--------------------------------------------------------------------------------------------------------------
+		//try to visualize the detected parabola;
+		//--------------------------------------------------------------------------------------------------------------
+		for (vector<pair<mrpt::vector_size_t,parabola> >::iterator p=detectedLines.begin();p!=detectedLines.end();++p)
+		{
+			CvScalar random_color;
+			random_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
+			if(p->second.coefs[3]==1.0)
+			{
+				for(unsigned int yPixel=0; yPixel<360; yPixel++)
+				{
+					unsigned int xPixel = p->second.coefs[0]*yPixel*yPixel+p->second.coefs[1]*yPixel+p->second.coefs[2];
+					cvCircle( contour_img, cvPoint(xPixel,yPixel), 2, ext_color, 1);
+				}
+			}
+			else
+			{
+				for(unsigned int xPixel=0; xPixel<640; xPixel++)
+				{
+					unsigned int yPixel = p->second.coefs[0]*xPixel*xPixel+p->second.coefs[1]*xPixel+p->second.coefs[2];
+					cvCircle( contour_img, cvPoint(xPixel,yPixel), 2, ext_color, 1);
+				}
+			}
+		}
+		//---------------------------------------------------------------------------------------------------------------
+    }
+    
     void image_proc::cvt_pose_baselink(vision_lane_detection::marker_info &marker_para)
     {
         double center_x = (RECT_P0_X + RECT_P2_X)/2.0 + DIS_CAM_BASE_X;
@@ -490,7 +685,120 @@ namespace golfcar_vision{
         if(out_flag1||out_flag2||out_flag3||out_flag4) return false;
         else return true;
     }
-      
+    
+    
+    bool image_proc::CheckPointOffSideBounds(CvPoint pt_para)
+    {
+        bool out_flag3 = pt_para.y+BOUNDARY_MARGIN > para_A1_*pt_para.x+para_C1_;
+        bool out_flag4 = pt_para.y+BOUNDARY_MARGIN > para_A2_*pt_para.x+para_C2_;
+        if(out_flag3||out_flag4) return false;
+        else return true;
+    }
+    
+    void image_proc::restore_scalefile(string filename, double* &feature_min, double* &feature_max, int &feature_index)
+	{
+		int idx, c;
+		FILE *fp_restore;
+		const char *restore_filename = filename.c_str();
+		double y_max = -DBL_MAX;
+		double y_min = DBL_MAX;
+		double y_lower,y_upper;
+		int max_index=0;
+
+		fp_restore = fopen(restore_filename,"r");
+		if(fp_restore==NULL)
+		{
+			fprintf(stderr,"can't open file %s\n", restore_filename);
+			exit(1);
+		}
+		cout<<"File opened"<<endl;
+		c = fgetc(fp_restore);
+		if(c == 'y')
+		{
+			readline(fp_restore);
+			readline(fp_restore);
+			readline(fp_restore);
+		}
+		cout<<readline(fp_restore)<<endl;
+		cout<<readline(fp_restore)<<endl;
+		cout<<"Retrieving maximum index"<<endl;
+		while(fscanf(fp_restore,"%d %*f %*f\n",&idx) == 1)
+			max_index = max(idx,max_index);
+		rewind(fp_restore);
+		cout<<"Max index retrieved "<<max_index<<endl;
+		feature_max = (double *)malloc((max_index+1)* sizeof(double));
+		feature_min = (double *)malloc((max_index+1)* sizeof(double));
+
+		double fmin, fmax;
+		int y_scaling = 0;
+		if((c = fgetc(fp_restore)) == 'y')
+		{
+			fscanf(fp_restore, "%lf %lf\n", &y_lower, &y_upper);
+			fscanf(fp_restore, "%lf %lf\n", &y_min, &y_max);
+			y_scaling = 1;
+		}
+		else
+			ungetc(c, fp_restore);
+
+		if (fgetc(fp_restore) == 'x') {
+			cout<<"got x"<<endl;
+			fscanf(fp_restore, "%lf %lf\n", &lower_, &upper_);
+			while(fscanf(fp_restore,"%d %lf %lf\n",&idx,&fmin,&fmax)==3)
+			{
+				if(idx<=max_index)
+				{
+					feature_min[idx] = fmin;
+					feature_max[idx] = fmax;
+				}
+			}
+		}
+		feature_index = max_index;
+		fclose(fp_restore);
+		cout<<"File closed"<<endl;
+	}
+	
+	char* image_proc::readline(FILE *input)
+	{
+		int len;
+		char *line = NULL;
+		int max_line_len = 1024;
+		line = (char *) malloc(max_line_len*sizeof(char));
+		if(fgets(line,max_line_len,input) == NULL)
+			return NULL;
+
+		while(strrchr(line,'\n') == NULL)
+		{
+			max_line_len *= 2;
+			line = (char *) realloc(line, max_line_len);
+			len = (int) strlen(line);
+			if(fgets(line+len,max_line_len-len,input) == NULL)
+				break;
+		}
+		return line;
+	}
+
+	double image_proc::output(int index, double value)
+	{
+		/* skip single-valued attribute */
+		if(feature_max_[index] == feature_min_[index])
+			return value;
+
+		if(value == feature_min_[index])
+			value = lower_;
+		else if(value == feature_max_[index])
+			value = upper_;
+		else
+			value = lower_ + (upper_-lower_) *
+				(value-feature_min_[index])/
+				(feature_max_[index]-feature_min_[index]);
+
+		if(value != 0)
+		{
+			//printf("%d:%g ",index, value);
+		}
+		return value;
+	}
+
     image_proc::~image_proc()
     {
         cvDestroyWindow("It_image");

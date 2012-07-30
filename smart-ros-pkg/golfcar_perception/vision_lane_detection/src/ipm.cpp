@@ -103,6 +103,24 @@ namespace golfcar_vision{
         ipm_image = cvCreateImage(cvGetSize(gray_image),8,1);
         cvWarpPerspective( gray_image, ipm_image, warp_matrix);
         
+        //---------------------------------------------------------------------
+        //this helps to reduce the artificial contours in adaptiveThreshold;
+        int ipm_height 		= ipm_image -> height;
+		int ipm_width  		= ipm_image -> width;
+		int ipm_step	 	= ipm_image -> widthStep/sizeof(uchar);
+		uchar * ipm_data 	= (uchar*)ipm_image ->imageData;
+		for(int ih=0; ih < ipm_height; ih++)
+		{
+			for(int iw=0; iw < ipm_width; iw++)
+			{
+				if(ipm_data[ih*ipm_step+iw] == 0)
+				{
+					ipm_data[ih*ipm_step+iw]=150;
+				}
+			}
+		}
+		//---------------------------------------------------------------------
+		 
         ////////////////////////////////////////////////
         //visualization part;
         ////////////////////////////////////////////////

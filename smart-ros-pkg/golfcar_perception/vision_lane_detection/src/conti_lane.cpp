@@ -399,13 +399,16 @@ int main(int argc, char** argv)
 					cvCircle( color_img, cvPoint(fused_points[i].x,fused_points[i].y), 2, ext_color, 1);
 					//ROS_INFO("fused point serial %d, %2f, %2f",i, xx, yy);
 				}
-				ROS_INFO("fused points number %d", xs.size() );
+				ROS_INFO("fused points number %ld", xs.size() );
 				
+				//-------------------------------------------------------------------------------------------------
+				//approximation by straight lines;
+				//-------------------------------------------------------------------------------------------------
 				/*
 				const double DIST_THRESHOLD = 10;
 				vector<pair<size_t, TLine2D> >   detectedLines;
 				ransac_detect_2D_lines(xs,ys,detectedLines,DIST_THRESHOLD, 300 );
-				for (vector<pair<size_t,TLine2D> >::iterator p=detectedLines.begin();p!=detectedLines.end(); ++p)
+				for (vector<pair<mrpt::vector_size_t, TLine2D> >::iterator p=detectedLines.begin();p!=detectedLines.end(); ++p)
 				{
 					ROS_INFO("line detected");
 					
@@ -431,7 +434,7 @@ int main(int argc, char** argv)
 				//-------------------------------------------------------------------------------------------------
 				//approximation by parabola lines;
 				//-------------------------------------------------------------------------------------------------
-				vector<pair<size_t, parabola> >   detectedLines;
+				vector<pair<mrpt::vector_size_t, parabola> >   detectedLines;
 				//temporarily the unit is still pixel;
 				const double DIST_THRESHOLD = 5;
 				
@@ -441,7 +444,7 @@ int main(int argc, char** argv)
 				//-------------------------------------------------------------------------------------------------
 				
 				ransac_detect_parabolas(xs,ys,detectedLines,DIST_THRESHOLD, 100 );
-				for (vector<pair<size_t,parabola> >::iterator p=detectedLines.begin();p!=detectedLines.end();++p)
+				for (vector<pair<mrpt::vector_size_t,parabola> >::iterator p=detectedLines.begin();p!=detectedLines.end();++p)
 				{
 					ROS_INFO("---------------------lane detected-------------------");
 					CvScalar random_color;

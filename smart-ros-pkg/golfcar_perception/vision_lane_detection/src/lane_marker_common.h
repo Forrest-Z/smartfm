@@ -27,20 +27,25 @@
 
 //According to both calculation and tests, lowest part of the image is about 3 meters away from the camera;
 //To calculate its coordinate in "base_link", X Coordinates plus "DIS_CAM_BASE_X";
-#define RECT_P0_X 3.0
-#define RECT_P0_Y 1.5
-#define RECT_P1_X 3.0
-#define RECT_P1_Y -1.5
-#define RECT_P2_X 10.0
+
+//these parameters should change according to pitch angle of the camera;
+//may make it self-adjusted later, according to tf, camera verticle fov, etc; at least adjustable from launch files.
+//parameter for "filter_demo2.bag"
+#define RECT_P0_X 3.5
+#define RECT_P0_Y 1.7
+#define RECT_P1_X 3.5
+#define RECT_P1_Y -1.7
+#define RECT_P2_X 12.5
 #define RECT_P2_Y -5.0
-#define RECT_P3_X 10.0
+#define RECT_P3_X 12.5
 #define RECT_P3_Y 5.0
-//This value is actually calculated from 10.0-3.0;
-#define GND_HEIGHT 7.0       
+
+//This value is actually calculated from 12.5-3.5;
+#define GND_HEIGHT 9.0       
 
 //-----------------------------------------Parameters for "image_proc"----------------------------------------
 #define BINARY_THRESH           190
-#define BLOCK_SIZE              41
+#define BLOCK_SIZE              65
 #define OFFSET                  -10
 
 //These parameters are all rough; even there true metrics may vary; 
