@@ -1,5 +1,5 @@
 <launch>
     <include file="$(find dead_reckoning)/encoderOdom.launch"/>
     <include file="$(find Launch)/golfcar/sensors/sicks_tf.launch"/>
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camerabase" args="1.795, 0.0, 1.08 0 0 0 /base_link /usb_cam 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.795, 0.0, 0.97 -0.0 0.0 -0.0 /base_link /camera_front_base 100" />
 </launch>

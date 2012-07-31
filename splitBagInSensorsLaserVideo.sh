@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# Given a bag file, it splits it into 3 smaller bags:
+#  - the sensor bag that contains the odometry sensor data
+#  - the laser bag that contains the laser data
+#  - the video bag that contains the video from the front camera
+
 if [ $# -ne 1 ]; then
     echo "You must give the name of the bag file to process." >&2
     exit 1
@@ -20,7 +25,7 @@ echo "Splitting:"
 
 rosbag filter $infile $sensor_bag "topic in ['/encoders','/fix','/ms/imu/data','/ms/imu/is_calibrated']" || exit 1
 rosbag filter $infile $laser_bag "topic in ['/scan','/sick_scan','/sick_scan2','/tf']" || exit 1
-rosbag filter $infile $video_bag "topic in ['/usb_cam/image_raw/compressed','/tf']" || exit 1
+rosbag filter $infile $video_bag "topic in ['/camera_front/image_raw/compressed','/tf']" || exit 1
 
 echo "Compressing:"
 rosbag compress $sensor_bag $laser_bag || exit 1
