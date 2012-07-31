@@ -1,0 +1,6 @@
+<launch>
+    <node ns="EA" pkg="image_transport" type="republish" name="republish"
+            args="compressed in:=camera/image_raw raw out:=camera/image_raw" />
+    <node ns="SDE" pkg="image_transport" type="republish" name="republish"
+            args="compressed in:=camera/image_raw raw out:=camera/image_raw" />
+</launch>

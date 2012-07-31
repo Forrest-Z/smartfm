@@ -26,7 +26,7 @@ public:
 
 BackgroundExtractor::BackgroundExtractor() : it_(nh_)
 {
-    image_sub_ = it_.subscribe("camera", 10, &BackgroundExtractor::imageCallback, this);
+    image_sub_ = it_.subscribe("image", 10, &BackgroundExtractor::imageCallback, this);
     bgnd_pub_  = it_.advertise("background", 10);
 
     ros::NodeHandle nh("~");

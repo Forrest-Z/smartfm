@@ -1,0 +1,29 @@
+<launch>
+
+    <group ns="EA">
+        <include file="$(find infrastructure_road_monitoring)/launch/camera.launch">
+            <arg name="device" value="/dev/video1" />
+            <arg name="frame_id" value="ea_cam_img" />
+        </include>
+        <node pkg="image_view" type="image_view" name="image_view" output="screen">
+            <remap from="image" to="camera/image_raw" />
+        </node>
+    </group>
+
+    <group ns="SDE">
+        <include file="$(find infrastructure_road_monitoring)/launch/camera.launch">
+            <arg name="device" value="/dev/video2" />
+            <arg name="frame_id" value="sde_cam_img" />
+        </include>
+        <node pkg="image_view" type="image_view" name="image_view" output="screen">
+            <remap from="image" to="camera/image_raw" />
+        </node>
+    </group>
+
+    <node pkg="fmutil" type="static_transform_publisher_dyn_reconfig" name="map_to_eacam" args="31 93 8 -0.07 0.29 1.43 /map /ea_cam_base 100" />
+    <node pkg="tf" type="static_transform_publisher" name="eacam_to_img" args="0.0 0.0 0.0 -1.5707963267949 0.0 -1.5707963267949 /ea_cam_base /ea_cam_img 100" />
+
+    <node pkg="fmutil" type="static_transform_publisher_dyn_reconfig" name="map_to_sdecam" args="32 120 10 0.0 0.0 0.0 /map /sde_cam_base 100" />
+    <node pkg="tf" type="static_transform_publisher" name="camerabase_to_camera" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /sde_cam_base /sde_cam_img 100" />
+
+</launch>

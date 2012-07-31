@@ -1,12 +1,24 @@
 <launch>
 
-    <include ns="EA" file="$(find infrastructure_road_monitoring)/launch/extract_from_camera.launch">
-        <arg name="device" value="/dev/video1" />
-    </include>
+    <group ns="EA">
+        <node pkg="infrastructure_road_monitoring" type="background_extractor" name="background_extractor" output="screen">
+            <remap from="image" to="camera/image_raw" />
+        </node>
 
-    <include ns="SDE" file="$(find infrastructure_road_monitoring)/launch/extract_from_camera.launch">
-        <arg name="device" value="/dev/video2" />
-    </include>
+        <include file="$(find infrastructure_road_monitoring)/launch/motion_detect.launch">
+            <arg name="camera_topic" value="camera/image_raw" />
+        </include>
+    </group>
+
+    <group ns="SDE">
+        <node pkg="infrastructure_road_monitoring" type="background_extractor" name="background_extractor" output="screen">
+            <remap from="image" to="camera/image_raw" />
+        </node>
+
+        <include file="$(find infrastructure_road_monitoring)/launch/motion_detect.launch">
+            <arg name="camera_topic" value="camera/image_raw" />
+        </include>
+    </group>
 
     <node pkg="infrastructure_road_monitoring" type="t_junction_go.py" name="t_junction_go" output="screen">
         <remap from="tracksSDE" to="SDE/tracks"/>
