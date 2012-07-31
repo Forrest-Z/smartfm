@@ -2,3 +2,4 @@
 
 from ._segment_extraction import *
 from ._calibration import *
+from ._filter import *
