@@ -6,18 +6,18 @@
 HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
 {
     //image_pub_ = it_.advertise("pedestrian_detector",1);
-    //image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &HOGClassifier::imageCallback, this);
+    //image_sub_ = it_.subscribe("/camera_front/image_raw", 1, &HOGClassifier::imageCallback, this);
     //people_rects_sub_ = n.subscribe("pd_vision_batch", 1, &HOGClassifier::peopleRectsCallback, this);
     people_roi_pub_ = n.advertise<sensor_msgs::PointCloud>("pedestrian_roi", 1);
     people_detect_pub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("pedestrian_detect",1);
     //people_ver_pub_ = n.advertise<people_detector::verified_objs>("verified_objects",1);
     polygon_pub_ = n.advertise<geometry_msgs::PolygonStamped>("pedestrian_detect_visual",1);
-    image_sub_ = it_.subscribe("/usb_cam/image_raw", 1, &HOGClassifier::imageCallback, this);
+    image_sub_ = it_.subscribe("/camera_front/image_raw", 1, &HOGClassifier::imageCallback, this);
     //First call to hog to ready the CUDA
     cv::gpu::HOGDescriptor g_hog;
 
     //people_rects_sub_.subscribe(n_, "pd_vision_batch", 10);
-    //image_sub_.subscribe(it_,"/usb_cam/image_raw",10);
+    //image_sub_.subscribe(it_,"/camera_front/image_raw",10);
     //typedef sync_policies::ApproximateTime<feature_detection::clusters, sensor_msgs::Image> MySyncPolicy;
     //TimeSynchronizer<sensing_on_road::pedestrian_vision_batch, sensor_msgs::Image> sync(people_rects_sub_, image_sub_, 100);
     //Synchronizer<MySyncPolicy> sync(MySyncPolicy(10), people_rects_sub_, image_sub_);
@@ -259,7 +259,7 @@ void HOGClassifier::detectPedestrian(Point offset, double ratio, gpu::GpuMat& gp
 
 
     gpu_hog.nlevels = 1;
-    /// does it give confidence level ?  
+    /// does it give confidence level ?
 
     t = (double)getTickCount() - t;
     ROS_INFO("Detection time = %gms with %d pedestrians", t*1000./getTickFrequency(), (int)(found).size());

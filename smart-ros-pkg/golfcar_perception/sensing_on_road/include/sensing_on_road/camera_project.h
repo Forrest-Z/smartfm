@@ -87,7 +87,7 @@ public:
     void setPixelAllowance(const double pixel);
     void setLaserMountingHeight(const double height);
 protected:
-    /// Frame ID of the camera (where to project). Defaults to "usb_cam"
+    /// Frame ID of the camera (where to project). Defaults to "camera_front_base"
     std::string camera_frame_id_;
 
     // Field of view of the camera. Defaults to 70 degree

@@ -11,7 +11,7 @@ data_assoc::data_assoc(int argc, char** argv) : merge_lists(nh_), it_(nh_)
     ROS_DEBUG("Starting Pedestrian Avoidance ... ");
 
     /// Setting up subsciption
-    image_sub_.subscribe(it_, "/usb_cam/image_raw", 20);
+    image_sub_.subscribe(it_, "/camera_front/image_raw", 20);
 
     pedClustSub_.subscribe(nh_, "pedestrian_clusters", 10);
     pedVisionAngularSub_.subscribe(nh_, "pedestrian_roi", 10);
@@ -20,7 +20,7 @@ data_assoc::data_assoc(int argc, char** argv) : merge_lists(nh_), it_(nh_)
     ros::NodeHandle n("~");
 
     n.param("global_frame", global_frame_, string("map"));
-    n.param("camera_frame", camera_frame_, string("usb_cam"));
+    n.param("camera_frame", camera_frame_, string("camera_front_base"));
     n.param("time_out", time_out_, 3.0);
     n.param("poll_increment", poll_inc_, 0.1);
     n.param("poll_decrement", poll_dec_, 0.05);
@@ -36,7 +36,7 @@ data_assoc::data_assoc(int argc, char** argv) : merge_lists(nh_), it_(nh_)
     //laser_tf_filter_ = new tf::MessageFilter<feature_detection::clusters>(pedClustSub_, *listener_, global_frame_, 10);
     //laser_tf_filter_->registerCallback(boost::bind(&data_assoc::pedClustCallback, this, _1));
 
-    vision_angular_tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(pedVisionAngularSub_, *listener_, "usb_cam", 10);
+    vision_angular_tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(pedVisionAngularSub_, *listener_, "camera_front_base", 10);
     vision_angular_tf_filter_ -> registerCallback(boost::bind(&data_assoc::pedVisionAngularCallback, this, _1));
 
     dynamic_cb = boost::bind(&data_assoc::dynamic_callback, this, _1, _2);
