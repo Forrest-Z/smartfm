@@ -55,6 +55,9 @@ class Segment:
         orientation: the mean orientation
     '''
 
+    STRAIGHT = 0
+    CURVED = 1
+
     def __init__(self, poses=[]):
         self.poses = poses
 
@@ -111,8 +114,7 @@ class SegmentClassifier:
         self.amcl_poses = []
 
         # the output of the extraction algorithms
-        self.straight_segments = []
-        self.curved_segments = []
+        self.segments = []
 
         # some thresholds for the algorithms
         self.orientation_threshold = np.radians(1)
@@ -213,10 +215,10 @@ class SegmentClassifier:
 
     def try_merge_straight(self, seg):
         #print 'trying to merge (straight)'
-        if len(self.straight_segments)==0:
+        if len(self.segments)==0 or self.segments[-1].type!=Segment.STRAIGHT:
             #print 'new segment'
             return False
-        seg_p = self.straight_segments[-1]
+        seg_p = self.segments[-1]
 
         # compare orientations
         d = abs(anorm(seg.orientation-seg_p.orientation))
@@ -228,10 +230,10 @@ class SegmentClassifier:
 
     def try_merge_curved(self, seg):
         #print 'trying to merge (curved)'
-        if len(self.curved_segments)==0:
+        if len(self.segments)==0 or self.segments[-1].type!=Segment.CURVED:
             #print 'new segment'
             return False
-        seg_p = self.curved_segments[-1]
+        seg_p = self.segments[-1]
 
         # compare curvatures
         if np.sign(seg.curvature)!=np.sign(seg_p.curvature):
@@ -256,7 +258,8 @@ class SegmentClassifier:
             seg = Segment( self.searched.poses[si[0]:si[1]] )
             seg.compute_geometry()
             if not self.try_merge_straight(seg):
-                self.straight_segments.append(seg)
+                seg.type = Segment.STRAIGHT
+                self.segments.append(seg)
 
         # Search for curved segments
         def testfn(a):
@@ -270,7 +273,8 @@ class SegmentClassifier:
             seg.compute_geometry()
             if abs(seg.curvature) > self.min_curvature:
                 if not self.try_merge_curved(seg):
-                    self.curved_segments.append(seg)
+                    seg.type = Segment.CURVED
+                    self.segments.append(seg)
 
         # keep the last few points for future analysis
         I = straigt_seg_idx+curved_seg_idx

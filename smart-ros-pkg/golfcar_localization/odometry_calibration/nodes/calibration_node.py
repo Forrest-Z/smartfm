@@ -27,6 +27,8 @@ class OdometryCalibrationNode:
 
     def __init__(self):
         self.calibration_tool = CalibrationTool()
+        self.calibration_tool.debug_viz = True
+        self.calibration_tool.turn_on_filter_log('filters.log')
 
         self.encoders_sub = rospy.Subscriber('encoder_counts', EncoderCounts, self.encoders_callback)
         self.amcl_sub = rospy.Subscriber('amcl_pose', PoseWithCovarianceStamped, self.amcl_callback)
@@ -52,12 +54,17 @@ class OdometryCalibrationNode:
         # publish the segments (for visualization purpose)
         msg = PointCloud()
         msg.header.frame_id = 'map'
-        d = {1: self.calibration_tool.straight_segments,
-             -1: self.calibration_tool.curved_segments}
-        for (z, segments) in d.iteritems():
-            for i in range(len(segments)):
-                for p in segments[i].poses:
-                    msg.points.append( Point32(p.x, p.y, z*(i+1)) )
+        curved = 0
+        straight = 0
+        for s in self.calibration_tool.segments_viz:
+            if s[0]==Segment.STRAIGHT:
+                straight += 1
+                z = straight
+            else:
+                curved -= 1
+                z = curved
+            for p in s[1]:
+                msg.points.append( Point32(p.x, p.y, z) )
         self.segments_pub.publish(msg)
 
 
