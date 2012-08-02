@@ -25,7 +25,7 @@ A, then \f$beta = (right-left * alpha) * size / A\f$
 
 
 
-calibration_node
+\section calibration_node calibration_node
 
 The algorithm works as follow:
 - it records the encoder messages and the AMCL poses
@@ -48,7 +48,7 @@ segments.
 
 
 
-Auxiliary tools
+\section tools Auxiliary tools
 
 This package also provides prepare_bag to prepare a bag of data for testing, and
 eval_odom_calibration to evaluate a set of parameters. calibration_test.launch is
@@ -56,7 +56,7 @@ used to launch the localization nodes when testing. plot_odo_filter_log is used
 to tune the filters.
 
 
-prepare_bag
+\subsection prepare_bag prepare_bag
 
 This script reads a bag file and filters out all the processed data, keeping only
 the raw sensor data. It also inserts one message on _initialpose_ required to init
@@ -66,14 +66,14 @@ usage: prepare_bag.py in.bag
 this produces a new bag called in_filt.bag
 
 
-calibration_test.launch
+\subsection calibration_test calibration_test.launch
 
 When raw sensor data is played (i.e. from the filtered bag), the nodes in this launch
 file will localize the vehicle by recomputing the AMCL poses. This is useful to
 measure the effect of a set of odometry parameters.
 
 
-eval_odom_calibration.py
+\subsection eval_odom_calibration eval_odom_calibration.py
 
 This script creates a new frame called odom_raw, and published Odometry messages
 on the odom_raw topic. This can be used to plot the trace of the localization based
@@ -81,7 +81,7 @@ on odometry alone (i.e. no AMCL). It also measures and display the localization
 error defined as the average distance between the odom_raw and odom frames.
 
 
-plot_odo_filter_log.py
+\subsection plot_odo_filter_log plot_odo_filter_log.py
 
 When the _calibration_node_ node is run with the filter logging turned on (see
 CalibrationTool.turn_on_filter_log()), it produces a csv file with, for each filter,
@@ -89,7 +89,9 @@ the log of observations and estimations. plot_odo_filter_log can be used to plot
 the data, and is a useful tool to tune the filters.
 
 
-procedure for testing
+\section procedures procedures
+
+\subsection testing_procedure procedure for testing
 
 - prepare a bag using prepare_bag.py
 - run rviz
@@ -97,5 +99,12 @@ procedure for testing
 - play the filtered bag
 - once the AMCL pose has been initialized, run eval_odom_calibration.py, which
     will print the odometry error.
+
+\subsection calibration_procedure procedure for calibrating
+
+- publish encoder message and AMCL poses:
+    - either from a full recorded bag
+    - or using a filtered bag and running the localization nodes
+- run calibration_node
 
 */
