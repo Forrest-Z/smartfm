@@ -2,27 +2,23 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b infrastructure_sensor provides a way to inject a virtual obstacle in the costmap. This was developped for Dina Katabi's students (Dec 2011).
+\b infrastructure_sensor provides a way to inject a virtual obstacle in the costmap.
+This was developped for Dina Katabi's students (Dec 2011).
 
+Note that this was not used at the end, since the car takes too long to react a new
+obstacle in the costmap. Finally the best solution is to publish a Bool on topic
+safety_stop, which causes the car to immediately stop.
 
 \section codeapi Code API
 
-The package is made of 2 parts: a service server that injects the virtual obstacle into the costmap, and an example client to call that service.
+The package is made of 2 parts: a service server that injects the virtual obstacle
+into the costmap, and an example client to call that service.
 
-pedestrian_crossing.cpp is the service server. The service is called pedestrian_crossing (type pedestrianDetected). When called, it publishes a PointCloud on topic pedestrian_crossing, with an obstacle at (10,0,0.5) in the infra_sensor frame.
+pedestrian_crossing.cpp is the service server. The service is called
+pedestrian_crossing (type pedestrianDetected). When called, it publishes a
+PointCloud on topic pedestrian_crossing, with an obstacle at (10,0,0.5) in the
+infra_sensor frame.
 
 simple_ped_client.cpp is the example implementation of the client.
-
-<!--
-Provide links to specific auto-generated API documentation within your
-package that is of particular interest to a reader. Doxygen will
-document pretty much every part of your code, so do your best here to
-point the reader to the actual API.
-
-If your codebase is fairly large or has different sets of APIs, you
-should use the doxygen 'group' tag to keep these APIs together. For
-example, the roscpp documentation has 'libros' group.
--->
-
 
 */
