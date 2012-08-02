@@ -2,13 +2,100 @@
 \mainpage
 \htmlinclude manifest.html
 
-\b odometry_calibration 
+\b odometry_calibration
 
-<!-- 
-Provide an overview of your package.
--->
+This package's main tool is the calibration_node, which allows to calibrate the
+odometry parameters by taking the AMCL pose as the ground truth. In order to work
+properly, it must be run in an area where the AMCL localization is performing as
+good as possible.
 
--->
+There are 3 parameters:
+- _alpha_, or the left correction factor, which compensate for the fact that the 2
+  wheels may not have the same size
+- _size_, is the size (circumference) of the wheels
+- _beta_, is the distance between the 2 wheels, used to compute the angular motion
 
+_alpha_ and _size_ can be computed from straight motion: if we know we are going
+perfectly straight, then the 2 encoders should output the same value. If they don't
+then _alpha_ is their ratio. _size_ can then be computed as the total travelled
+distance divided by the number of wheel revolutions.
+
+_beta_ can be computed from a curved motion: if we know we have rotated by an angle
+A, then \f$beta = (right-left * alpha) * size / A\f$
+
+
+
+calibration_node
+
+The algorithm works as follow:
+- it records the encoder messages and the AMCL poses
+- then, periodically:
+    - it searches the sequence of AMCL poses for straight segments and
+        curved segments
+    - uses straight segments to compute alpha and size
+    - uses curved segments to compute beta
+
+Note that the multiple observations of these parameters are filtered using a Kalman
+filter.
+
+Class SegmentClassifier is used to extract straight and curved segments, as long as
+possible, from the running sequence of AMCL poses. Segments are extracted
+periodically, and AMCL poses are cleared from the running list. Attempt is made to
+merge with the last extracted segment.
+
+Class CalibrationTool is used to estimate the odometry parameters from the extracted
+segments.
+
+
+
+Auxiliary tools
+
+This package also provides prepare_bag to prepare a bag of data for testing, and
+eval_odom_calibration to evaluate a set of parameters. calibration_test.launch is
+used to launch the localization nodes when testing. plot_odo_filter_log is used
+to tune the filters.
+
+
+prepare_bag
+
+This script reads a bag file and filters out all the processed data, keeping only
+the raw sensor data. It also inserts one message on _initialpose_ required to init
+the AMCL node.
+
+usage: prepare_bag.py in.bag
+this produces a new bag called in_filt.bag
+
+
+calibration_test.launch
+
+When raw sensor data is played (i.e. from the filtered bag), the nodes in this launch
+file will localize the vehicle by recomputing the AMCL poses. This is useful to
+measure the effect of a set of odometry parameters.
+
+
+eval_odom_calibration.py
+
+This script creates a new frame called odom_raw, and published Odometry messages
+on the odom_raw topic. This can be used to plot the trace of the localization based
+on odometry alone (i.e. no AMCL). It also measures and display the localization
+error defined as the average distance between the odom_raw and odom frames.
+
+
+plot_odo_filter_log.py
+
+When the _calibration_node_ node is run with the filter logging turned on (see
+CalibrationTool.turn_on_filter_log()), it produces a csv file with, for each filter,
+the log of observations and estimations. plot_odo_filter_log can be used to plot
+the data, and is a useful tool to tune the filters.
+
+
+procedure for testing
+
+- prepare a bag using prepare_bag.py
+- run rviz
+- launch calibration_test.launch
+- play the filtered bag
+- once the AMCL pose has been initialized, run eval_odom_calibration.py, which
+    will print the odometry error.
 
 */
