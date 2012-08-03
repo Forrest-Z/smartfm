@@ -4,12 +4,13 @@ define block model
   gui_nose 0
 )
 
-define topurg laser
+define topurg ranger
 (
-  range_min 0.0
-  range_max 80.0
+  sensor(
+  range [0.0 80.0]
   fov 180
   samples 360
+  )
   # generic model properties
   color "black"
   size [ 0.050 0.050 0.100 ]
@@ -21,13 +22,13 @@ define gc1 position
   #origin [-0.05 0 0 0]
   size [2.385 1.200 0.250]
   
-  origin [0.792 0 0 0]
+  origin [0.792 0.000 0.000 0.000]
   gui_nose 1
   drive "car"
   localization "gps"
   #odom_error [0.01 0.05 0.01 0.02 0.01 0.02]
 
-  topurg(pose [1.985 0 0 0])
+  topurg(pose [1.985 0.000 0.000 0.000])
 )
 
 define gc2 position
@@ -85,12 +86,12 @@ interval_sim 100  # simulation timestep in milliseconds
 
 window
 ( 
-  size [ 651.000 458.000 ] 
+  size [ 651 458 ] 
  #center [327.990 371.960] 
-  center [-94.506 121.341]
+  center [-132.867 101.873]
 #rotate [ 0.000 -1.560 ]
-  rotate [ 0 -0.500 ]
-  scale 6.592 
+  rotate [ 0.000 -0.500 ]
+  scale 11.918 
 )
 
 # load an environment bitmap
@@ -103,15 +104,15 @@ floorplan
  
 # size [147.950 44.450 1.000] #for mcdonald3.pgm
 #  size [177.650 57.650 1.000]
-pose [-80.926 130.834 0 90.000]  #for amcl_hokuyo
+pose [-80.926 130.834 0.000 90.000]  #for amcl_hokuyo
 # pose [-40.462 102.979 0 90.000] #for mcdonal
 #pose [-95.415 145.298 0 90.000] 
 )
 
 # throw in a robot
-gc1( pose [-139.407 107.331 0 52.291] name "gc1" color "red")
+gc1( pose [-138.515 107.745 0.000 -4.319] name "gc1" color "red")
 #gc2( pose [-95.109 181.515 0 90.763] name "gc2" color "green")
 #gc3( pose [-95.109 177.739 0 90.763] name "gc3" color "blue")
-block( pose [ -104.223 98.740 0 0 ] color "red")
-block( pose [ -25.628 38.882 0 0 ] color "red")
-block( pose [ -26.369 37.454 0 0 ] color "red")
+block( pose [ -104.223 98.740 0.000 0.000 ] color "red")
+block( pose [ -25.628 38.882 0.000 0.000 ] color "red")
+block( pose [ -26.369 37.454 0.000 0.000 ] color "red")
