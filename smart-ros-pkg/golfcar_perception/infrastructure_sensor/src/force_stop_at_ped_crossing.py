@@ -20,17 +20,23 @@ thr = 5
 
 while not rospy.is_shutdown():
     try:
-        (trans, rot) = listener.lookupTransform('/base_link', '/map', rospy.Time(0))
+        (trans, rot) = listener.lookupTransform('/map', '/base_link', rospy.Time(0))
     except tf.Exception as e:
-        rospy.logwarn("Could not transform from base_link to map: " + str(e))
+        rospy.logwarn("Could not transform from map to base_link: " + str(e))
         continue
+    rospy.loginfo("Position of the robot: (%f, %f)" % (trans[0], trans[1]))
     dx = trans[0]-stop_x
     dy = trans[1]-stop_y
     d = math.sqrt(dx*dx + dy*dy)
+    rospy.loginfo("Distance to the stop point: %f. Stopping distance: %f" % (d, thr))
     if d < thr:
-        pub.publisher(Bool(True))
+        rospy.loginfo("Stopping for %f seconds" % stop_duration)
+        pub.publish(Bool(True))
         rospy.sleep(stop_duration)
-        pub.publisher(Bool(False))
+        rospy.loginfo("Resuming motion")
+        pub.publish(Bool(False))
         break
     else:
         rospy.sleep(.1)
+
+rospy.loginfo("Quitting...")
