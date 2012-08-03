@@ -6,11 +6,11 @@ analyzers:
             master:
                 type: GenericAnalyzer
                 path: Master
-                find_and_remove_prefix: golfcart-master
+                find_and_remove_prefix: ['golfcart-master', 'sensors_monitor_master: golfcart-master']
             lowlevel:
                 type: GenericAnalyzer
                 path: Lowlevel
-                find_and_remove_prefix: golfcart-lowlevel
+                find_and_remove_prefix: ['golfcart-lowlevel', 'sensors_monitor_lowlevel: golfcart-lowlevel']
                 startswith: NTP
             tf:
                 type: GenericAnalyzer
