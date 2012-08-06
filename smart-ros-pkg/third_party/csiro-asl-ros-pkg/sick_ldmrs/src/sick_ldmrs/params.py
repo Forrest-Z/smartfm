@@ -115,7 +115,7 @@ class LDMRSParams(object):
         """
         # note save values we see an apply_changes True parameter
         config = self._check_values(config,  fix_errors)
-        self.ros_params = copy.deepcopy(config.__dict__)
+        self.ros_params = copy.deepcopy(config)
         self._ros_to_ldmrs()
         return config
 

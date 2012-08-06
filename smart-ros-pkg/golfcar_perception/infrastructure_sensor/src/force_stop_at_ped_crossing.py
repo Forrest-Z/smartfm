@@ -16,7 +16,7 @@ listener = tf.TransformListener()
 stop_duration = 5
 stop_x = 141
 stop_y = 52
-thr = 5
+thr = 8
 
 while not rospy.is_shutdown():
     try:
