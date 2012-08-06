@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 namespace golfcar_vision{
-
+    
     class addCamInfo {
 
     public:
@@ -23,17 +23,17 @@ namespace golfcar_vision{
         ros::NodeHandle nh;
         CamInfo_pub_ = nh.advertise<sensor_msgs::CameraInfo>("/camera_front/camera_info", 2);
         image_sub_ = it_.subscribe("/camera_front/image_raw", 1, &addCamInfo::imageCallback, this);
-
+        
         CameraStaticInfo_.width = 640;
         CameraStaticInfo_.height = 360;
         CameraStaticInfo_.distortion_model = "plumb_bob";
-
+        
         CameraStaticInfo_.D.push_back(-0.00791);
         CameraStaticInfo_.D.push_back(-0.05311);
         CameraStaticInfo_.D.push_back(0.00462);
         CameraStaticInfo_.D.push_back(0.00101);
         CameraStaticInfo_.D.push_back(0.00000);
-
+        
         CameraStaticInfo_.K[0]= 462.55911;
         CameraStaticInfo_.K[1]= 0.0;
         CameraStaticInfo_.K[2]= 326.21463;
@@ -43,7 +43,7 @@ namespace golfcar_vision{
         CameraStaticInfo_.K[6]= 0.0;
         CameraStaticInfo_.K[7]= 0.0;
         CameraStaticInfo_.K[8]= 1.00;
-
+        
         CameraStaticInfo_.R[0]= 1.0;
         CameraStaticInfo_.R[1]= 0.0;
         CameraStaticInfo_.R[2]= 0.0;
@@ -52,7 +52,7 @@ namespace golfcar_vision{
         CameraStaticInfo_.R[5]= 0.0;
         CameraStaticInfo_.R[7]= 0.0;
         CameraStaticInfo_.R[8]= 1.0;
-
+        
         CameraStaticInfo_.P[0]= 454.09927;
         CameraStaticInfo_.P[1]= 0.0;
         CameraStaticInfo_.P[2]= 326.85492;
@@ -66,9 +66,9 @@ namespace golfcar_vision{
         CameraStaticInfo_.P[10]= 1.0;
         CameraStaticInfo_.P[11]= 0.0;
     }
-
+    
     addCamInfo::~addCamInfo(){}
-
+    
     void addCamInfo::imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr)
     {
         CameraStaticInfo_.header = msg_ptr->header;

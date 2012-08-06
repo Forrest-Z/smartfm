@@ -10,8 +10,20 @@
 #include <tf/transform_listener.h>
 #include <cstdio>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+
+#include <tf/transform_broadcaster.h>
+#include <tf/message_filter.h>
+#include <nav_msgs/Odometry.h>
+
+
 #include "lane_marker_common.h"
 #include "image_proc.h"
+
+using namespace std;
+using namespace ros;
+using namespace tf;
+
+typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
 
 namespace golfcar_vision{
 
@@ -57,6 +69,16 @@ namespace golfcar_vision{
         image_proc* image_processor_;
         vision_lane_detection::markers_info markers_;
         ros::Publisher markers_info_pub;
+
+	//ros::Subscriber  odom_sub_;
+	tf::Transformer  transformer_;
+	tf::StampedTransform odom_meas_, odom_meas_old_;
+	bool pub_init_;
+    	bool publish_flag_;
+    	//void odomCallback(const OdomConstPtr& odom);
+	void process_control(ros::Time meas_time);
+	double  publish_dis_thresh_;
+    	double  publish_angle_thresh_;
     };
 };
 

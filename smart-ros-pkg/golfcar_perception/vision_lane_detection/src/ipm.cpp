@@ -1,21 +1,27 @@
 #include "ipm.h"
 
-namespace golfcar_vision{
 
+namespace golfcar_vision{
+  
   ipm::ipm():
     private_nh_("~"),
     it_(nh_),
     fixedTf_inited_(false)
   {
+	  private_nh_.param("publish_dis_thresh",     publish_dis_thresh_,    0.05);
+	  private_nh_.param("publish_angle_thresh",   publish_angle_thresh_,  5.0/180.0*M_PI);
+      
+      //odom_sub_ = nh_.subscribe("odom", 100, &ipm::odomCallback, this);
+      
       training_frame_serial_ = 0;
       private_nh_.param("destination_frame_id", dest_frame_id_, std::string("base_link"));
       cam_sub_ = it_.subscribeCamera("/camera_front/image_raw", 1, &ipm::ImageCallBack, this);
       image_pub_ = it_.advertise("/camera_front/image_ipm", 1);
-
+      
       markers_info_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_info",2);
-
+      
       image_processor_ = new image_proc();
-
+      
       //Four base points on the ground in the "base_link" coordinate; "base_link" is at the back wheel.
       gndQuad_[0].x = RECT_P0_X+DIS_CAM_BASE_X;
       gndQuad_[0].y = RECT_P0_Y;
@@ -25,18 +31,32 @@ namespace golfcar_vision{
       gndQuad_[2].y = RECT_P2_Y;
       gndQuad_[3].x = RECT_P3_X+DIS_CAM_BASE_X;
       gndQuad_[3].y = RECT_P3_Y;
-
+      
+      pub_init_ = false;
+      
       cvNamedWindow("src_window");
       //cvNamedWindow("gray_window");
       cvNamedWindow("ipm_window");
   }
-
+  
   void ipm::ImageCallBack( const sensor_msgs::ImageConstPtr& image_msg,
                            const sensor_msgs::CameraInfoConstPtr& info_msg)
   {
         ROS_INFO("ImageCallBack");
+        
+        /*
+        ros::Time meas_time = info_msg->header.stamp;
+        process_control(meas_time);
+        if(!publish_flag_)
+        {
+			ROS_INFO("image not processing since moving distance small");
+			return;
+		}
+		else ROS_INFO("-----------to process image------");
+        */
+        
         IplImage* color_image, *gray_image, *ipm_image;
-
+        
         //get image in OpenCV format;
         try {
             color_image = bridge_.imgMsgToCv(image_msg, "bgr8");
@@ -45,21 +65,21 @@ namespace golfcar_vision{
             ROS_ERROR("Failed to convert image");
             return;
             }
-
+            
         gray_image = cvCreateImage(cvGetSize(color_image),8,1);
         cvCvtColor(color_image, gray_image, CV_BGR2GRAY);
-
+        
         //assign camera informtion to "cam_model_";
         cam_model_.fromCameraInfo(info_msg);
         CameraStaticInfo_ = *info_msg;
         scale_ = float(CameraStaticInfo_.height)/GND_HEIGHT;
-
+      
         //check if pinhole camera parameter is right;
         //ROS_DEBUG("cam_model_ parameters:");
         //ROS_DEBUG("fx %5f, fy %5f",cam_model_.fx(), cam_model_.fy());
         //ROS_DEBUG("Tx %5f, Ty %5f",cam_model_.Tx(), cam_model_.Ty());
         //ROS_DEBUG("cx %5f, cy %5f",cam_model_.cx(), cam_model_.cy());
-
+        
         //get fixed transform information from "baselink" (dest) to "camera" (src);
         //pay attention to that this time the roles are interchanged between two frames;
         //right now is "camera" centered;
@@ -73,10 +93,10 @@ namespace golfcar_vision{
                                                 acquisition_time, timeout);
                 tf_.lookupTransform(cam_model_.tfFrame(), dest_frame_id_,
                                                 acquisition_time, transform);
-
+            
                 tf::Transform *transform_pointer = &transform;
                 src_dest_tf_ = *transform_pointer;
-
+                
                 fixedTf_inited_ = true;
                 }
             catch (tf::TransformException& ex) {
@@ -84,25 +104,25 @@ namespace golfcar_vision{
                 return;
             }
         }
-
+        
         ////////////////////////////////////////////////
         //main functional part;
         ////////////////////////////////////////////////
-
+        
         //1. from "gndQuad_[4]" to get "srcQuad_[4]";
         GndPt_to_Src(gndQuad_, srcQuad_);
-
+        
         //2. from "gndQuad_[4]" to get "dstQuad_[4]";
         //this depends on how you represent your image;
         GndPt_to_Dst(gndQuad_, dstQuad_);
-
+        
         //3. wrap the image;
         CvMat* warp_matrix = cvCreateMat(3,3,CV_32FC1);
         cvGetPerspectiveTransform(srcQuad_,dstQuad_,warp_matrix);
-
+        
         ipm_image = cvCreateImage(cvGetSize(gray_image),8,1);
         cvWarpPerspective( gray_image, ipm_image, warp_matrix);
-
+        
         //---------------------------------------------------------------------
         //this helps to reduce the artificial contours in adaptiveThreshold;
         int ipm_height 		= ipm_image -> height;
@@ -120,7 +140,7 @@ namespace golfcar_vision{
 			}
 		}
 		//---------------------------------------------------------------------
-
+		 
         ////////////////////////////////////////////////
         //visualization part;
         ////////////////////////////////////////////////
@@ -128,20 +148,20 @@ namespace golfcar_vision{
         cvCircle( color_image, cvPointFrom32f(srcQuad_[1]), 6, CV_RGB(0,255,0), 2);
         cvCircle( color_image, cvPointFrom32f(srcQuad_[2]), 6, CV_RGB(0,255,0), 2);
         cvCircle( color_image, cvPointFrom32f(srcQuad_[3]), 6, CV_RGB(0,255,0), 2);
-
+        
         cvLine( color_image, cvPointFrom32f(srcQuad_[0]), cvPointFrom32f(srcQuad_[1]), CV_RGB(0,0,255), 1);
         cvLine( color_image, cvPointFrom32f(srcQuad_[1]), cvPointFrom32f(srcQuad_[2]), CV_RGB(0,0,255), 1);
         cvLine( color_image, cvPointFrom32f(srcQuad_[2]), cvPointFrom32f(srcQuad_[3]), CV_RGB(0,0,255), 1);
         cvLine( color_image, cvPointFrom32f(srcQuad_[3]), cvPointFrom32f(srcQuad_[0]), CV_RGB(0,0,255), 1);
-
-        //from "gndPt_[4]" to get "dstQuad_[4]";
+        
+        //from "gndPt_[4]" to get "dstQuad_[4]";    
         cvShowImage("src_window", color_image);
         //cvShowImage("gray_window", gray_image);
         cvShowImage("ipm_window", ipm_image);
-
+        
         //cvSaveImage("/home/baoxing/src_window.png", color_image);
         //cvSaveImage("/home/baoxing/ipm_window.png", ipm_image);
-
+        
         try
           {
             image_pub_.publish(bridge_.cvToImgMsg(ipm_image, "mono8"));
@@ -150,27 +170,27 @@ namespace golfcar_vision{
           {
             ROS_ERROR("error");
           }
-
+          
         //this scentence is necessary;
         cvWaitKey(10);
-
+        
         image_processor_->Extract_Markers(ipm_image, scale_, markers_, training_frame_serial_);
         markers_.header = info_msg -> header;
         markers_info_pub.publish(markers_);
-
+        
         ROS_INFO("ImageCallBack finished");
-
-        //Attention:
+        
+        //Attention: 
         //color_image is not allocated memory as normal;
         //it points to some memory space in "cv_bridge" object handled by ros;
         //so there is no need and it is also not permitted to release its memory space as normal;
         //cvReleaseImage(&color_image);
-
+        
         cvReleaseImage(&gray_image);
         cvReleaseImage(&ipm_image);
         cvReleaseMat(&warp_matrix);
   }
-
+  
   //Function "GndPt_to_Src": project ground point in baselink coordinate into camera image;
   //input: pointer to ground points in "baselink coordinate"; output: pointer to pixels in "camera image";
   //steps: a. use "tf" relationship; b. use cam_model to project;
@@ -202,13 +222,13 @@ namespace golfcar_vision{
             //ROS_DEBUG("%5f, %5f", src_pointer[i].x, src_pointer[i].y);
         }
   }
-
+  
   void ipm::GndPt_to_Dst(CvPoint2D32f * gnd_pointer, CvPoint2D32f* dst_pointer)
   {
       //this point corresponds to the center of the image;
       float center_x = (RECT_P0_X + RECT_P2_X)/2.0 + DIS_CAM_BASE_X;
       float center_y = 0.0;
-
+      
       for(unsigned int i = 0; i < 4; i++)
       {
           float x_tmp = - (gnd_pointer[i].y-center_y);
@@ -218,7 +238,67 @@ namespace golfcar_vision{
           ROS_DEBUG("%5f, %5f, %5f, %5f", x_tmp, y_tmp, dst_pointer[i].x, dst_pointer[i].y);
       }
   }
+  
+   void ipm::process_control(ros::Time meas_time)
+   {
+		publish_flag_ = false;
+		
+		/*
+		if (!transformer_.canTransform("base_link","odom", meas_time))
+		{ROS_ERROR("image_time older than odom message buffer");return;}
+		else {ROS_INFO("odom OK");}
+		transformer_.lookupTransform("odom", "base_link", meas_time, odom_meas_);
+		*/ 
+		
+		try {
+			ros::Duration timeout(1.0 / 30);
+			tf_.waitForTransform("odom", "base_link", meas_time, timeout);
+			tf_.lookupTransform("odom", "base_link",  meas_time, odom_meas_);
+			}
+		catch (tf::TransformException& ex) {
+			ROS_WARN("[draw_frames] TF exception:\n%s", ex.what());
+			return;
+			}
+		
+		if(pub_init_)
+		{
+			tf::Transform odom_old_new  = odom_meas_old_.inverse() * odom_meas_;
+			float tx, ty;
+			tx = -odom_old_new.getOrigin().y();
+			ty =  odom_old_new.getOrigin().x();
+			float mov_dis = sqrtf(tx*tx + ty*ty);
+			ROS_INFO("moving distance %3f", mov_dis);
 
+			double yaw_dis, ttemp;
+			odom_old_new.getBasis().getEulerYPR(yaw_dis, ttemp, ttemp);
+
+			if(mov_dis > publish_dis_thresh_ || yaw_dis > publish_angle_thresh_)
+			{
+				publish_flag_ = true;
+				odom_meas_old_ = odom_meas_;
+			}
+		}
+		else
+		{
+			pub_init_ = true;
+			publish_flag_ = true;
+			odom_meas_old_ = odom_meas_;
+		}
+   }
+
+  /*
+  void ipm::odomCallback(const OdomConstPtr& odom)
+  {
+	//ROS_DEBUG("odom call_back");
+	ros::Time odom_time = odom->header.stamp;
+	Quaternion q;
+	tf::quaternionMsgToTF(odom->pose.pose.orientation, q);
+	tf::Transform odom_meas_add = Transform(q, Vector3(odom->pose.pose.position.x, odom->pose.pose.position.y, odom->pose.pose.position.z));
+	StampedTransform meas_add = StampedTransform(odom_meas_add.inverse(), odom_time, "base_link", "odom");
+	transformer_.setTransform( meas_add );
+  }
+  */ 
+  
   ipm::~ipm()
   {
     cvDestroyWindow("src_window");
