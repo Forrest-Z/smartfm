@@ -1,5 +1,5 @@
 
-define topurg laser
+define topurg ranger
 (
   sensor(
   range [0.0 80.0]
