@@ -89,7 +89,8 @@ int main(int argc, char **argv)
 				path.poses[i].pose.position.x = posex_cur;
 				path.poses[i].pose.position.y = posey_cur;
 				path.poses[i].pose.position.z = -radius;
-				path.poses[i].pose.orientation = tf::createQuaternionMsgFromYaw(atan2(posey_cur-posey_pre, posex_cur-posex_pre));
+				path.poses[i].pose.orientation.w = 1.0;
+				//path.poses[i].pose.orientation = tf::createQuaternionMsgFromYaw(atan2(posey_cur-posey_pre, posex_cur-posex_pre));
 				posex_pre = posex_cur;
 				posey_pre = posey_cur;
 			}
@@ -128,7 +129,8 @@ int main(int argc, char **argv)
 				path.poses[i].header.frame_id = "/odom";
 				posex_cur = path.poses[i].pose.position.x;
 				posey_cur = path.poses[i].pose.position.y;
-				path.poses[i].pose.orientation = tf::createQuaternionMsgFromYaw(atan2(posey_cur-posey_pre, posex_cur-posex_pre));
+				path.poses[i].pose.orientation.w = 1.0;
+				//path.poses[i].pose.orientation = tf::createQuaternionMsgFromYaw(atan2(posey_cur-posey_pre, posex_cur-posex_pre));
 				posex_pre = posex_cur;
 				posey_pre = posey_cur;
 			}
@@ -184,7 +186,8 @@ int main(int argc, char **argv)
 				path.poses[i].header.frame_id = "/odom";
 				posex_cur = path.poses[i].pose.position.x;
 				posey_cur = path.poses[i].pose.position.y;
-				path.poses[i].pose.orientation = tf::createQuaternionMsgFromYaw(atan2(posey_cur-posey_pre, posex_cur-posex_pre));
+				path.poses[i].pose.orientation.w = 1.0;
+				//path.poses[i].pose.orientation = tf::createQuaternionMsgFromYaw(atan2(posey_cur-posey_pre, posex_cur-posex_pre));
 				posex_pre = posex_cur;
 				posey_pre = posey_cur;
 			}
