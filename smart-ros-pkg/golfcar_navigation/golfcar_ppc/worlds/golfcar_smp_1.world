@@ -6,10 +6,11 @@ define block model
 
 define topurg laser
 (
-  range_min 0.0
-  range_max 80.0
+  sensor(
+  range [0.0 80.0]
   fov 180
   samples 360
+  )
   # generic model properties
   color "black"
   size [ 0.050 0.050 0.100 ]
