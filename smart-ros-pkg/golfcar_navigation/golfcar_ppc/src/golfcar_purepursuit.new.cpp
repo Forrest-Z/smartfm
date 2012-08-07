@@ -73,6 +73,20 @@ bool PurePursuit::heading_lookahead(double *heading_la, double *dist_to_goal)
     return true;
 }
 
+bool PurePursuit::current_pos_to_point_dist_simple(int end_point, double* path_dist)
+{
+	*path_dist=0;
+
+	*path_dist = fmutil::distance(vehicle_base_.position,
+				path_.poses[end_point].pose.position);
+
+	if(path_n_<0)
+		return false;
+	else
+		return true;
+
+}
+
 bool PurePursuit::current_pos_to_point_dist(int end_point, double* path_dist)
 {
     *path_dist=0;
