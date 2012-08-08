@@ -25,7 +25,7 @@ public:
 
     bool steering_control(double *wheel_angle, double *dist_to_goal);
     bool current_pos_to_point_dist(int end_point, double* path_dist);
-
+    bool current_pos_to_point_dist_simple(int end_point, double* path_dist);
     nav_msgs::Path path_;
     geometry_msgs::Pose vehicle_base_;
     int path_n_;

@@ -54,17 +54,19 @@ namespace golfcar_pcl{
 
     	message_filters::Subscriber<sensor_msgs::LaserScan> 	laser_scan_sub_;
     	message_filters::Subscriber<sensor_msgs::PointCloud2> 	cloud_scan_sub_;
+    	message_filters::Subscriber<nav_msgs::Odometry>			odom_sub_;
 		tf::MessageFilter<sensor_msgs::LaserScan> 				*laser_scan_filter_;
 	    tf::MessageFilter<sensor_msgs::PointCloud2> 			*cloud_scan_filter_;
+	    tf::MessageFilter<nav_msgs::Odometry>					*odom_filter_;
 		laser_geometry::LaserProjection projector_;
 		
-		ros::Subscriber                             odom_sub_;
+		//ros::Subscriber                             odom_sub_;
 		tf::StampedTransform 	odom_OdomMeas_, scan_OdomMeas_, cloud_OdomMeas_;
 		bool odom_init_, scan_init_, cloud_init_;
 		float front_bound_, back_bound_;
 		float odom_trigger_thresh_, scan_in_thresh_, cloud_in_thresh_;
 		float angle_thresh_;
-		
+		int window_counts_;
 
         void scanCallback(const sensor_msgs::LaserScanConstPtr scan_in);
     	void cloudCallback(const sensor_msgs::PointCloud2ConstPtr cloud_in);

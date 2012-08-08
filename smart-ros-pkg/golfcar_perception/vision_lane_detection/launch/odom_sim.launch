@@ -1,0 +1,23 @@
+<launch>
+    <param name="use_sim_time" value="true"/>
+    <node name="encoders_odo_node" pkg="phidget_encoders" type="encoders_odo_node.py" output="screen">
+        <param name="wheel_size" value="1.3168"/>
+        <param name="dist_btw_wheels" value="0.9866"/>
+        <param name="left_correction_factor" value="1.0101"/>
+        <param name="frame_id" value="encoder_odom"/>
+        <remap from="odom" to="encoder_odom"/>
+    </node>
+
+    <node pkg="dead_reckoning" name="encoderImu_integrator" type="odom_IMU" output="screen">
+        <remap from="odom" to="encoder_imu_odom"/>
+        <param name="frame_id" value="encoder_imu_odom"/>
+    </node>
+
+    <node pkg="dead_reckoning" name="odom_republish" type="odom_republish.py">
+        <remap from="input_topic" to="encoder_imu_odom"/>
+    </node>
+
+    <node pkg="dead_reckoning" name="simple_odo_node_encoders" type="simple_odo_node" args="encoder_odom" output="screen"/>
+    <node pkg="dead_reckoning" name="simple_odo_node_encoders_imu" type="simple_odo_node" args="encoder_imu_odom" output="screen"/>
+
+</launch>

@@ -1,0 +1,7 @@
+<launch>
+    <param name="use_sim_time" value="true"/>
+    <include file="$(find Launch)/golfcar/sensors/sicks_tf.launch"/>
+    <include file="$(find multiple_amcl)/launch/odom_sim.launch"/>
+
+</launch>
+

@@ -139,6 +139,7 @@ void PurePursuitBase::UpdatePosition()
 
 double PurePursuitBase::getIntDist(geometry_msgs::Point* int_point)
 {
+	
     //the intersections points is strictly increasing, getting the distance is easier
     for( unsigned i=0; i<poi_.int_pts.size(); i++ )
     {
@@ -146,7 +147,11 @@ double PurePursuitBase::getIntDist(geometry_msgs::Point* int_point)
         {
             double dist;
             *int_point = pp_->path_.poses[poi_.int_pts[i]].pose.position;
-            if( pp_->current_pos_to_point_dist(poi_.int_pts[i], &dist) ) return dist;
+            if( pp_->current_pos_to_point_dist_simple(poi_.int_pts[i], &dist) )
+            {
+				ROS_DEBUG("int_pt %d, path_n %d", poi_.int_pts[i], pp_->path_n_);
+				return dist;
+			}
             else return -1;
         }
     }

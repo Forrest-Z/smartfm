@@ -1,0 +1,22 @@
+<launch>
+    <node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
+    <node pkg="scan_verti"    type="scan_verti"    name="scan_verti"/>
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find hybrid_amcl)/worlds/curb_map.yaml">
+        <remap from="static_map" to="static_curb_map"/>
+        <remap from="map" to= "curb_map"/>
+    </node>
+
+    <node pkg="map_server" type="map_server" name="map_server2" args="$(find hybrid_amcl)/worlds/planar_map.yaml">
+        <remap from="static_map" to="static_planar_map"/>
+        <remap from="map" to= "planar_map"/>
+    </node>
+    <node pkg="robust_road_detection" type="curb_detect" name="curb_detect">
+    </node>
+    <node pkg="multiple_amcl" type="multiple_amcl" name="multiple_amcl" output="screen">
+        <param name="max_particles" value="1000"/>
+        <param name="min_particles" value="200"/>
+    </node>
+    <node pkg="map_to_world" type="utm_to_latlon.py" name="utm_to_latlon"/>
+    <node pkg="map_to_world" type="map_to_world" name="map_to_world"/>
+</launch>
+
