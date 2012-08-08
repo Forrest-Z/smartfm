@@ -44,7 +44,6 @@ namespace golfcar_vision{
   {
         ROS_INFO("ImageCallBack");
         
-        /*
         ros::Time meas_time = info_msg->header.stamp;
         process_control(meas_time);
         if(!publish_flag_)
@@ -53,7 +52,6 @@ namespace golfcar_vision{
 			return;
 		}
 		else ROS_INFO("-----------to process image------");
-        */
         
         IplImage* color_image, *gray_image, *ipm_image;
         

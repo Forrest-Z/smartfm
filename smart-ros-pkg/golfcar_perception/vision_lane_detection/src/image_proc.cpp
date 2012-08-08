@@ -207,7 +207,7 @@ namespace golfcar_vision{
 				}
                 markers_para.vec.push_back(marker_output);
             }
-            
+            /*
             else if(contour_class==4)
             {
 				float height =  cvBox.size.height;
@@ -239,6 +239,8 @@ namespace golfcar_vision{
 				if(max(height,width)<100) continue; 
 				continuous_lane(contours, contour_img, ext_color);
 			}
+			*/
+			 
 			else {}
 		}
         cvShowImage("contour_image",contour_img);

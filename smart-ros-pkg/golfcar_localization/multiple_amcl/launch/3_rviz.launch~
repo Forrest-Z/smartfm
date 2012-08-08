@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find multiple_amcl)/launch/multiple_amcl.vcg" />
+</launch>
+

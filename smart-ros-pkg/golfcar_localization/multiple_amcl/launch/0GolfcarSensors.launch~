@@ -1,0 +1,6 @@
+<launch>
+    <include file="$(find Launch)/golfcar/sensors/sicks_tf.launch"/>
+    <include file="$(find vision_lane_detection)/launch.launch"/>
+
+</launch>
+
