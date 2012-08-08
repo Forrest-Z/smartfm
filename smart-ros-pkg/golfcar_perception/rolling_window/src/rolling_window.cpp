@@ -30,7 +30,10 @@ namespace golfcar_pcl{
 		cloud_scan_filter_->registerCallback(boost::bind(&rolling_window::cloudCallback, this, _1));
 		cloud_scan_filter_->setTolerance(ros::Duration(0.05));
 		
-		odom_sub_ = nh_.subscribe("odom", 100, &rolling_window::odomCallback, this);
+		odom_sub_.subscribe(nh_, "odom", 100);
+		odom_filter_ = new tf::MessageFilter<nav_msgs::Odometry>(odom_sub_, *tf_, base_frame_, 10);
+		odom_filter_ ->registerCallback(boost::bind(&rolling_window::odomCallback, this, _1));
+
 		rolling_window_pub_ = nh_.advertise<PointCloud>("rolling_window_pcl", 10);
 		
 		//new_function1(NF1);
@@ -42,6 +45,7 @@ namespace golfcar_pcl{
 		viewpoint_td_sick_.z = 1.53;
 		normals_poses_pub_ = nh_.advertise<geometry_msgs::PoseArray>("normals_array", 100);
 		
+		window_counts_ = 0;
 	}
 	
 	rolling_window::~rolling_window(){}
@@ -188,6 +192,8 @@ namespace golfcar_pcl{
 	
 	void rolling_window::windowProcessing(ros::Time current_time)
 	{
+
+
 		rolling_window_odom_.header.stamp 		=	current_time;
 		rolling_window_odom_.header.frame_id 	=	target_frame_;
 		
@@ -202,6 +208,7 @@ namespace golfcar_pcl{
 		
 		try
 		{
+
 			tf_->transformPointCloud(base_frame_, window_tmp, window_tmp);
 			sensor_msgs::convertPointCloudToPointCloud2(window_tmp, window_tmp2);
 			pcl::fromROSMsg(window_tmp2, windowXYZ_tmp);
@@ -211,7 +218,7 @@ namespace golfcar_pcl{
 			printf ("Failure %s\n", ex.what()); //Print exception which was caught
 			return;
 		}
-		
+
 		rolling_window_baselink_.clear();
 		rolling_window_baselink_.height = 1;
 		rolling_window_baselink_.header = windowXYZ_tmp.header;
@@ -240,7 +247,14 @@ namespace golfcar_pcl{
 			return;
 		}
 		
+		//simple extension that will ensure only a single scan is used for each windows
+		//Initial test failed. There are too little overlap for gmapping to work properly
+		//window_counts_++;
+		//if(window_counts_< 10) return;
+		//rolling_window_odom_.clear();
 		rolling_window_pub_.publish(rolling_window_baselink_);
+		window_counts_ = 0;
+
 		
 		//----------NF1--------just to test the plane estimation;---------------------------------
 		/*

@@ -192,6 +192,18 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
         // --> needs to stop.
         // The target velocity (sc.int_rec) is computed based on the distance
         // to the intersection stop point
+        
+        // todo: This could be problematic when there is a skip in path point
+        // by the controller, the vehicle wouldn't stop but proceed to the
+        // next point
+        
+        // todo: The other problem is when the calculation of int dist is
+        // inaccurate, causes overshoot due to constraint given by decceleration
+        // and the recommended speed is reported as the next point
+        // need to add to check that the speed is actally zero 
+        // there are some fundamental problem here:
+        // --------- The inaacurate calculation of int dist ------------------
+
         float d = int_h_.dist_to_int() - ppc_stop_dist_;
         sc.int_rec = d<=0 ? 0 : sqrt(2 * dec_ints_ * d);
 
@@ -236,7 +248,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     //it was found that, in simulation with stage, although commanded to
     //travel at 2 m/s, it is actually travelling at 3.33x faster,
     //compensation is needed
-    if( use_sim_time_ ) move_speed.linear.x *= 0.3;
+//    if( use_sim_time_ ) move_speed.linear.x *= 0.3;
 
     recommend_speed_pub_.publish(move_speed);
 
