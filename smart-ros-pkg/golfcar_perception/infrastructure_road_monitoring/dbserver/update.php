@@ -3,7 +3,11 @@ require("funcs.php");
 $xmlres = new XMLRes();
 $con = connect_to_DB();
 
-$id = $_REQUEST["Id"] or $xmlres->fatal('Id missing');
+if( isset($_REQUEST["Id"]) )
+    $id = $_REQUEST["Id"];
+else
+    $xmlres->fatal('Id missing');
+
 if( isset($_REQUEST["Status"]) )
     $status = $_REQUEST["Status"];
 else

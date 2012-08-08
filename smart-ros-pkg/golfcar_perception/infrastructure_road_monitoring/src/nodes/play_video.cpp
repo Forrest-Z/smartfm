@@ -73,8 +73,10 @@ int main( int argc, char **argv )
     // background extraction
     Background background;
     ros::NodeHandle nh("~");
-    nh.param("alpha", background.alpha, 0.005);
-    ROS_INFO("background alpha value: %f", background.alpha);
+    double alpha;
+    nh.param("alpha", alpha, 0.005);
+    ROS_INFO("background alpha value: %f", alpha);
+    background.set_alpha(alpha);
 
     cv::namedWindow("car detect", CV_WINDOW_NORMAL);
 
