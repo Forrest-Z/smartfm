@@ -23,7 +23,8 @@ namespace golfcar_vision{
         public:
         image_proc();
         ~image_proc();        
-        void Extract_Markers(IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, int &frame_serial);
+        void Extract_Markers(IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, 
+				int &frame_serial, CvPoint2D32f* dst_pointer);
 		
         private:
         bool init_flag_; 
