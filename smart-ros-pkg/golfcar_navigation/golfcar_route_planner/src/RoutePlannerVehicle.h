@@ -41,14 +41,14 @@ private:
 
     MoveBaseClient ac_;
     StationPath path_;
+    Station destination_;
 
     unsigned waypointNo_;
 
     bool goToDest();
-    void initDest();
+    void initDest(const Station & start, const Station & end);
 
     void pubPathVis();
-    void publishGoal();
     bool getRobotGlobalPose();
     void transformMapToOdom(geometry_msgs::PoseStamped *map_pose,
                             geometry_msgs::PointStamped *odom_point);

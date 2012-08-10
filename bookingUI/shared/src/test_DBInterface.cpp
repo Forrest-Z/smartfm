@@ -35,7 +35,7 @@ string vehicleID = "golfcart1";
 
 bool testCreateInterface()
 {
-    dbi = new DBInterface("http://fmautonomy.no-ip.info/booking", vehicleID);
+    dbi = new DBInterface("http://137.132.22.82:15016/booking", vehicleID);
     return dbi!=0;
 }
 

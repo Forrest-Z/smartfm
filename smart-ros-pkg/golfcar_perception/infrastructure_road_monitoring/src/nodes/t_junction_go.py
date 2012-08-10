@@ -10,14 +10,13 @@ database on FMAutonomy.
 
 import roslib; roslib.load_manifest('infrastructure_road_monitoring')
 import rospy
-from dynamic_reconfigure.server import Server
-
 from std_msgs.msg import Bool
+
 from infrastructure_road_monitoring.msg import Blob, Blobs, Track, Tracks
-from infrastructure_road_monitoring.cfg import TJunctionGoConfig
 
 import urllib, urllib2
 from xml.dom import minidom
+import sys
 
 import threading
 
@@ -45,14 +44,30 @@ def point_inside_polygon(x, y, poly):
     return inside
 
 
+def test_connection():
+    try:
+        url = rospy.get_param('/infra_url')
+    except KeyError:
+        rospy.logfatal('rosparam /infra_url must be set first')
+        sys.exit(1)
+
+    try:
+        f = urllib2.urlopen(url+'/query.php')
+        xml = f.read()
+        f.close()
+    except urllib2.URLError:
+        rospy.logfatal('Could not contact the server %s' % url)
+        sys.exit(1)
+
+    rospy.loginfo('Using %s as URL' % url)
+    return url
+
 class Node:
     def __init__(self):
+        self.url = test_connection()
         self.delay = rospy.get_param('delay', 3)
-        self.url = rospy.get_param('url', 'http://fmautonomy.no-ip.info/infrastructure')
         self.get_poly_defs()
-
         self.lock = threading.Lock()
-
 
         self.subEA = rospy.Subscriber('tracksEA', Tracks, self.EA_Callback)
         self.subSDE = rospy.Subscriber('tracksSDE', Tracks, self.SDE_Callback)
@@ -87,8 +102,6 @@ class Node:
         self.pub_result()
 
     def get_poly_defs(self):
-        #ea_poly_str = rospy.get_param('ea_poly', '[]')
-        #sde_poly_str = rospy.get_param('sde_poly', '[]')
         self.ea_poly = rospy.get_param('~ea_poly', [])
         self.sde_poly = rospy.get_param('~sde_poly', [])
 

@@ -17,11 +17,10 @@ RoutePlanner::RoutePlanner(const StationPaths & sp) : sp_(sp)
     eta_ = -1.0;
 }
 
-void RoutePlanner::setDestination(const Station & s)
+void RoutePlanner::setPath(const Station & start, const Station & end)
 {
     if( state_==sUninit || state_==sReached ) {
-        destination_ = s;
-        initDest();
+        initDest(start, end);
         state_ = sReady;
     }
     else {
@@ -48,13 +47,8 @@ void RoutePlanner::run()
         break;
 
     case sMoving:
-        if( goToDest() ) {
-            state_ = sReached;
-            currentStation_ = destination_;
-        }
-        else {
-            usleep(100000);
-        }
+        if( goToDest() ) state_ = sReached;
+        else usleep(100000);
         break;
     }
 }

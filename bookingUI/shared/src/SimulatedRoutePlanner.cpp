@@ -47,10 +47,11 @@ bool SimulatedRoutePlanner::goToDest()
     return false;
 }
 
-void SimulatedRoutePlanner::initDest()
+void SimulatedRoutePlanner::initDest(const Station & start, const Station & end)
 {
+    destination_ = end;
     distance_travelled = 0;
-    distance_to_travel = sp_.getPath(currentStation_, destination_).length();
+    distance_to_travel = sp_.getPath(start, end).length();
     last_time = 0;
-    printf("Moving from %s to %s\n", currentStation_.c_str(), destination_.c_str());
+    printf("Moving from %s to %s\n", start.c_str(), end.c_str());
 }

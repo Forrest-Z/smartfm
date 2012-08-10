@@ -19,6 +19,8 @@ class SimulatedRoutePlanner : public RoutePlanner
     /// time of last update
     double last_time, last_disp_time;
 
+    Station destination_;
+
 public:
     SimulatedRoutePlanner(const StationPaths & sp, float vehicle_speed);
 
@@ -26,7 +28,7 @@ public:
 
 protected:
     bool goToDest();
-    void initDest();
+    void initDest(const Station & start, const Station & end);
 };
 
 #endif

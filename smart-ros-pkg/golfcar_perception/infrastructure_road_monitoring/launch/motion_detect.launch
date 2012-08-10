@@ -7,6 +7,7 @@
 
     <node pkg="infrastructure_road_monitoring" type="blob_extractor" name="blob_extractor" output="screen">
         <remap from="camera" to="$(arg camera_topic)" />
+        <remap from="background" to="background_extractor/background" />
         <remap from="blobs" to="all_blobs" />
         <!--
         <param name="blurring_size" value="2" />

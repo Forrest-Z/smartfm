@@ -11,6 +11,7 @@ from infrastructure_road_monitoring.srv import InfrastructureQuery, Infrastructu
 
 import urllib, urllib2
 from xml.dom import minidom
+import sys
 
 url = ''
 
@@ -60,8 +61,25 @@ def query(req):
             return InfrastructureQueryResponse(res)
     return None
 
+def test_connection():
+    try:
+        url = rospy.get_param('/infra_url')
+    except KeyError:
+        rospy.logfatal('rosparam /infra_url must be set first')
+        sys.exit(1)
+
+    try:
+        f = urllib2.urlopen(url+'/query.php')
+        xml = f.read()
+        f.close()
+    except urllib2.URLError:
+        rospy.logfatal('Could not contact the server %s' % url)
+        sys.exit(1)
+
+    rospy.loginfo('Using %s as URL' % url)
+    return url
 
 rospy.init_node('infrastructure_query_service')
-url = rospy.get_param('url', 'http://fmautonomy.no-ip.info/infrastructure')
+url = test_connection()
 s = rospy.Service('infrastructure_query', InfrastructureQuery, query)
 rospy.spin()
