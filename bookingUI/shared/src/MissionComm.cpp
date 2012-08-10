@@ -2,12 +2,14 @@
 
 #include <iostream>
 #include <stdexcept>
+using std::cout;
+using std::endl;
 
 #include "MissionComm.h"
 
 MissionComm::MissionComm( RoutePlanner & rp, PassengerComm & pc )
     : stationList_(rp.sp_.knownStations()), routePlanner_(rp),
-    currentStation_(rp.currentStation_), passengerComm_(pc), state_(sUninit)
+    passengerComm_(pc), state_(sUninit)
 {
     stateStr_[sWaitingMission] = "WaitingForAMission";
     stateStr_[sGoingToPickup] = "GoingToPickupLocation";
@@ -36,7 +38,7 @@ void MissionComm::run()
     case sWaitingMission:
         waitForMission();
         if( currentStation_ != pickup_ ) {
-            routePlanner_.setDestination(pickup_);
+            routePlanner_.setPath(currentStation_, pickup_);
             changeState(sGoingToPickup);
             updateCurrentLocation("");
             routePlanner_.start();
@@ -50,27 +52,29 @@ void MissionComm::run()
     case sGoingToPickup:
         // TODO: check for mission cancel
 
-        updateETA(routePlanner_.eta_);
+        updateETA(routePlanner_.get_ETA());
         if( routePlanner_.hasReached() ) {
             changeState(sAtPickup);
             updateCurrentLocation(pickup_.str());
+            currentStation_ = pickup_;
         }
         break;
 
     case sAtPickup:
         // TODO: check for mission cancel
         passengerComm_.waitForPassengerInAtPickup();
-        routePlanner_.setDestination(dropoff_);
+        routePlanner_.setPath(pickup_, dropoff_);
         changeState(sGoingToDropoff);
         updateCurrentLocation("");
         routePlanner_.start();
         break;
 
     case sGoingToDropoff:
-        updateETA(routePlanner_.eta_);
+        updateETA(routePlanner_.get_ETA());
         if( routePlanner_.hasReached() ) {
             changeState(sAtDropoff);
             updateCurrentLocation(dropoff_.str());
+            currentStation_ = dropoff_;
         }
         break;
 
@@ -87,7 +91,7 @@ void MissionComm::run()
 
     }
 
-    updateGeoLocation(routePlanner_.latitude_, routePlanner_.longitude_);
+    updateGeoLocation(routePlanner_.get_lat(), routePlanner_.get_lon());
 
     sleep(1);
 }
@@ -106,13 +110,22 @@ bool PromptMissionComm::checkMissionCompleted() { return true; }
 
 void PromptMissionComm::initialize() { }
 
-void PromptMissionComm::updateMissionStatus(std::string status) { }
+void PromptMissionComm::updateMissionStatus(std::string status)
+{
+    cout <<"mission status update: " <<status <<endl;
+}
 
-void PromptMissionComm::updateVehicleStatus(std::string status) { }
+void PromptMissionComm::updateVehicleStatus(std::string status)
+{
+    cout <<"vehicle status update: " <<status <<endl;
+}
 
 void PromptMissionComm::updateGeoLocation(float lat, float lon) { }
 
-void PromptMissionComm::updateETA(float eta) { }
+void PromptMissionComm::updateETA(float eta)
+{
+    cout <<"ETA: " <<eta <<endl;
+}
 
 void PromptMissionComm::updateCurrentLocation(std::string loc) { }
 

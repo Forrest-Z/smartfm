@@ -7,34 +7,38 @@
 /// A base class for route planners
 class RoutePlanner : public Threaded
 {
-    friend class MissionComm;
-
 public:
     explicit RoutePlanner(const StationPaths & sp);
-    void setDestination(const Station & s);
+
+    void setPath(const Station & start, const Station & end);
     bool hasReached() const { return state_ == sReached; }
     void start();
-    const Station & getCurrentStation() const { return currentStation_; }
 
-
-protected:
-    enum State { sUninit, sReady, sMoving, sReached };
+    float get_ETA() const { return eta_; }
+    float get_lat() const { return latitude_; }
+    float get_lon() const { return longitude_; }
 
     const StationPaths & sp_;
-    Station currentStation_, destination_;
+
+private:
+    enum State { sUninit, sReady, sMoving, sReached };
+
+    /// The current state
     State state_;
 
+    /// The main thread function and the actual implementation of the state machine
+    void run();
+
+protected:
     double latitude_, longitude_;
     float eta_;
 
     /// Called when the destination is received. Loads the path, etc. ...
-    virtual void initDest() = 0;
+    virtual void initDest(const Station & start, const Station & end) = 0;
 
     /// Called at each loop step. Performs the task of moving the vehicle.
     /// Returns whether the destination has been reached yet.
     virtual bool goToDest() = 0;
-
-    void run();
 };
 
 #endif

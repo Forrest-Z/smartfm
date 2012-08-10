@@ -31,7 +31,7 @@ private:
     bool has_reached_;
 
     bool goToDest();
-    void initDest();
+    void initDest(const Station & start, const Station & end);
     void speedStatusCallBack(const pnc_msgs::speed_contribute &);
     void worldCoordCallBack(const map_to_world::coordinate &);
 };

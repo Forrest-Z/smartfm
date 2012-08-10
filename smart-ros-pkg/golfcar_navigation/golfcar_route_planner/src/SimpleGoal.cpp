@@ -14,15 +14,15 @@ SimpleGoal::SimpleGoal(const StationPaths & sp) : RoutePlanner(sp)
     world_coord_sub_ = nh.subscribe("/world_utm_latlon", 1, &SimpleGoal::worldCoordCallBack, this);
 }
 
-void SimpleGoal::initDest()
+void SimpleGoal::initDest(const Station & start, const Station & end)
 {
     has_reached_ = false;
 
     geometry_msgs::PoseStamped goal;
     goal.header.stamp = ros::Time::now();
     goal.header.frame_id = "/map";
-    goal.pose.position.x = (double) currentStation_.number();
-    goal.pose.position.y = (double) destination_.number();
+    goal.pose.position.x = (double) start.number();
+    goal.pose.position.y = (double) end.number();
     goal.pose.orientation.z = 1.0;
     goal_pub_.publish(goal);
 
@@ -44,6 +44,4 @@ void SimpleGoal::worldCoordCallBack(const map_to_world::coordinate & msg)
 {
     latitude_ = msg.latitude;
     longitude_ = msg.longitude;
-    //printf("msg.longitude: %.9f\n", msg.longitude);
-    //cout <<"msg.longitude: " <<setprecision(12) <<msg.longitude << " longitude_: " <<setprecision(12) <<longitude_ <<endl;
 }

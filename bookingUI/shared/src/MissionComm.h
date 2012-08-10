@@ -22,11 +22,8 @@ protected:
     /// The list of stations (reference to the one in routePlanner_)
     const StationList & stationList_;
 
-    /// The pickup and dropoff stations
-    Station pickup_, dropoff_;
-
-    /// The current station (reference to the one in routePlanner_)
-    Station & currentStation_;
+    /// The pickup, dropoff and current stations
+    Station pickup_, dropoff_, currentStation_;
 
     /// Blocks until a mission is available. When a mission is obtained,
     /// it should set pickup_ and dropoff_.
