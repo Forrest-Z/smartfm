@@ -43,8 +43,12 @@ int main(int argc, char **argv)
     nh.getParam("use_dbserver", use_dbserver);
     if( use_dbserver )
     {
-        std::string url = "http://fmautonomy.no-ip.info/booking", vehicleID="golfcart1";
-        nh.getParam("/dbserver/url", url);
+        std::string url, vehicleID="golfcart1";
+        if( ! nh.getParam("booking_url", url) )
+        {
+            ROS_FATAL("Parameter booking_url is missing");
+            exit(1);
+        }
         nh.getParam("vehicleID", vehicleID);
         ROS_INFO("Connecting to database at URL %s with ID %s.",
                  url.c_str(), vehicleID.c_str());

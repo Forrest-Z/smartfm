@@ -1,0 +1,160 @@
+Background\ ColorB=0
+Background\ ColorG=0
+Background\ ColorR=0
+Camera\ Config=6.53389 110.619 279.611 -143.753
+Camera\ Type=rviz::FixedOrientationOrthoViewController
+CurbMap.Alpha=0.7
+CurbMap.Draw\ Behind=1
+CurbMap.Enabled=1
+CurbMap.Topic=/curb_map
+Fixed\ Frame=/map
+Grid\ Cells.Alpha=1
+Grid\ Cells.ColorB=0
+Grid\ Cells.ColorG=1
+Grid\ Cells.ColorR=0.1
+Grid\ Cells.Enabled=1
+Grid\ Cells.Topic=/move_base_node/local_costmap/obstacles
+Image.Enabled=1
+Image.Image\ Topic=/camera_front/image_raw
+Image.Queue\ Size=2
+Image.Transport\ Hint=compressed
+Image2.Enabled=1
+Image2.Image\ Topic=
+Image2.Queue\ Size=2
+Image2.Transport\ Hint=raw
+Interactive\ Markers.Enabled=1
+Interactive\ Markers.Show\ Axes=0
+Interactive\ Markers.Show\ Descriptions=1
+Interactive\ Markers.Show\ Tool\ Tips=1
+Interactive\ Markers.Update\ Topic=/intersection/update
+Laser\ Scan..AxisColorAutocompute\ Value\ Bounds=1
+Laser\ Scan..AxisColorAxis=2
+Laser\ Scan..AxisColorMax\ Value=10
+Laser\ Scan..AxisColorMin\ Value=-10
+Laser\ Scan..AxisColorUse\ Fixed\ Frame=1
+Laser\ Scan..FlatColorColorB=1
+Laser\ Scan..FlatColorColorG=1
+Laser\ Scan..FlatColorColorR=1
+Laser\ Scan..IntensityAutocompute\ Intensity\ Bounds=1
+Laser\ Scan..IntensityChannel\ Name=intensity
+Laser\ Scan..IntensityMax\ ColorB=1
+Laser\ Scan..IntensityMax\ ColorG=1
+Laser\ Scan..IntensityMax\ ColorR=1
+Laser\ Scan..IntensityMax\ Intensity=0
+Laser\ Scan..IntensityMin\ ColorB=0
+Laser\ Scan..IntensityMin\ ColorG=0
+Laser\ Scan..IntensityMin\ ColorR=0
+Laser\ Scan..IntensityMin\ Intensity=0
+Laser\ Scan..IntensityUse\ full\ RGB\ spectrum=0
+Laser\ Scan.Alpha=1
+Laser\ Scan.Billboard\ Size=0.01
+Laser\ Scan.Color\ Transformer=Intensity
+Laser\ Scan.Decay\ Time=0
+Laser\ Scan.Enabled=1
+Laser\ Scan.Position\ Transformer=XYZ
+Laser\ Scan.Queue\ Size=10
+Laser\ Scan.Selectable=1
+Laser\ Scan.Style=0
+Laser\ Scan.Topic=/sick_scan2
+Odometry3.Angle\ Tolerance=0.1
+Odometry3.ColorB=0
+Odometry3.ColorG=0.1
+Odometry3.ColorR=1
+Odometry3.Enabled=1
+Odometry3.Keep=1000
+Odometry3.Length=1
+Odometry3.Position\ Tolerance=0.1
+Odometry3.Topic=/odom
+Path.Alpha=1
+Path.ColorB=0
+Path.ColorG=1
+Path.ColorR=0.1
+Path.Enabled=1
+Path.Topic=/global_plan
+PlanarMap.Alpha=0.7
+PlanarMap.Draw\ Behind=0
+PlanarMap.Enabled=1
+PlanarMap.Topic=/planar_map
+Polygon.Alpha=1
+Polygon.ColorB=0
+Polygon.ColorG=1
+Polygon.ColorR=0.1
+Polygon.Enabled=1
+Polygon.Topic=/clear_space
+Polygon2.Alpha=1
+Polygon2.ColorB=0
+Polygon2.ColorG=1
+Polygon2.ColorR=0.1
+Polygon2.Enabled=1
+Polygon2.Topic=/move_base_node/local_costmap/robot_footprint
+Polygon3.Alpha=1
+Polygon3.ColorB=0.0941176
+Polygon3.ColorG=0
+Polygon3.ColorR=1
+Polygon3.Enabled=1
+Polygon3.Topic=/pp_vis
+Polygon4.Alpha=1
+Polygon4.ColorB=0
+Polygon4.ColorG=1
+Polygon4.ColorR=0.1
+Polygon4.Enabled=1
+Polygon4.Topic=/move_base_node/local_costmap/robot_footprint
+Pose\ Array.Arrow\ Length=0.3
+Pose\ Array.ColorB=0
+Pose\ Array.ColorG=0.1
+Pose\ Array.ColorR=1
+Pose\ Array.Enabled=1
+Pose\ Array.Topic=/particlecloud
+Property\ Grid\ Splitter=241,145
+Property\ Grid\ State=expanded=.Global Options,Image.Enabled,Image2.Enabled;splitterratio=0.5
+QMainWindow=000000ff00000000fd00000003000000000000011d0000033bfc0200000003fb000000100044006900730070006c006100790073010000001d000001d4000000ee00fffffffb0000000a0049006d00610067006501000001f7000000870000001900fffffffb0000000c0049006d00610067006500320100000284000000d40000001900ffffff00000001000001310000033bfc0200000003fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000001d0000017b0000006700fffffffb0000000a00560069006500770073010000019e00000118000000bb00fffffffb0000001200530065006c0065006300740069006f006e01000002bc0000009c0000006700ffffff00000003000005650000003efc0100000001fb0000000800540069006d0065010000000000000565000002bf00ffffff0000030b0000033b00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+Target\ Frame=/map
+Tool\ 2D\ Nav\ GoalTopic=goal
+Tool\ 2D\ Pose\ EstimateTopic=initialpose
+[Display0]
+ClassName=rviz::MapDisplay
+Name=PlanarMap
+[Display1]
+ClassName=rviz::MapDisplay
+Name=CurbMap
+[Display10]
+ClassName=rviz::InteractiveMarkerDisplay
+Name=Interactive Markers
+[Display11]
+ClassName=rviz::LaserScanDisplay
+Name=Laser Scan
+[Display12]
+ClassName=rviz::ImageDisplay
+Name=Image
+[Display13]
+ClassName=rviz::ImageDisplay
+Name=Image2
+[Display2]
+ClassName=rviz::PoseArrayDisplay
+Name=Pose Array
+[Display3]
+ClassName=rviz::PathDisplay
+Name=Path
+[Display4]
+ClassName=rviz::PolygonDisplay
+Name=Polygon
+[Display5]
+ClassName=rviz::PolygonDisplay
+Name=Polygon2
+[Display6]
+ClassName=rviz::GridCellsDisplay
+Name=Grid Cells
+[Display7]
+ClassName=rviz::PolygonDisplay
+Name=Polygon3
+[Display8]
+ClassName=rviz::OdometryDisplay
+Name=Odometry3
+[Display9]
+ClassName=rviz::PolygonDisplay
+Name=Polygon4
+[Window]
+Height=960
+Width=1397
+X=-20
+Y=-20

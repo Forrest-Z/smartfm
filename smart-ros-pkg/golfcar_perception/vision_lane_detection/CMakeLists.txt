@@ -42,8 +42,8 @@ target_link_libraries(addCamInfo ${OpenCV_LIBRARIES})
 rosbuild_add_executable(generate_training_data src/generate_training_data.cpp)
 target_link_libraries(generate_training_data ${OpenCV_LIBRARIES})
 
-rosbuild_add_executable(test_eigen src/test_eigen.cpp)
-target_link_libraries(test_eigen ${OpenCV_LIBRARIES})
+#rosbuild_add_executable(test_eigen src/test_eigen.cpp)
+#target_link_libraries(test_eigen ${OpenCV_LIBRARIES})
 
 rosbuild_add_executable(data_formating src/data_formating.cpp)
 

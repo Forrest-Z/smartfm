@@ -10,6 +10,8 @@ namespace golfcar_vision{
       cvNamedWindow("Iat_image");
       cvNamedWindow("binary_image");
       cvNamedWindow("contour_image");
+      cvNamedWindow("HistogramEqualized_image");
+      
       
       string svm_model_file;
       //the name cannot be too long, or it cannot load;
@@ -24,7 +26,8 @@ namespace golfcar_vision{
       
     }
   
-    void image_proc::Extract_Markers (IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, int &frame_serial)
+    void image_proc::Extract_Markers (IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, 
+										int &frame_serial, CvPoint2D32f* dst_pointer)
     {
         markers_para.vec.clear();
         //initiation, first calculate four corners used to filter noise;
@@ -32,16 +35,7 @@ namespace golfcar_vision{
         {
             scale_ = scale;
             init_flag_ = true;
-            
-            //remember, image_coordinate is quite different from other coordinates;
-            corners_[0].x = int(src->width/2 - RECT_P0_Y * scale_);    
-            corners_[0].y = src->height;
-            corners_[1].x = int(src->width/2 - RECT_P1_Y * scale_);
-            corners_[1].y = src->height;
-            corners_[2].x = src->width;   
-            corners_[2].y = 0;
-            corners_[3].x = 0;   
-            corners_[3].y = 0;
+            for (unsigned int i = 0; i<4; i++) corners_[i] = cvPointFrom32f(dst_pointer[i]);
             
             double delt_x1, delt_y1, delt_x2, delt_y2;
             delt_x1= corners_[0].x-corners_[3].x;
@@ -54,6 +48,21 @@ namespace golfcar_vision{
             para_C2_ = corners_[1].y-para_A2_*corners_[1].x;
         }
         
+        
+        IplImage *HistogramEqualized = 0;
+        HistogramEqualized = cvCreateImage(cvSize(src->width,src->height),IPL_DEPTH_8U, 1);
+        cvEqualizeHist(src, HistogramEqualized);
+        
+        cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[0]), 6, CV_RGB(0,255,0), 2);
+		cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[1]), 6, CV_RGB(0,255,0), 2);
+		cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[2]), 6, CV_RGB(0,255,0), 2);
+		cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[3]), 6, CV_RGB(0,255,0), 2);
+		cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[0]), cvPointFrom32f(dst_pointer[1]), cvScalar(255), 1);
+		cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[1]), cvPointFrom32f(dst_pointer[2]), cvScalar(255), 1);
+		cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[2]), cvPointFrom32f(dst_pointer[3]), cvScalar(255), 1);
+		cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[3]), cvPointFrom32f(dst_pointer[0]), cvScalar(255), 1);
+		cvShowImage("HistogramEqualized_image", HistogramEqualized);
+	
         //-------------------------------------------------------------------------------------------------------------------------
         //1. thresholding step, combining threshold and adaptive threshold methods, to get binary image;
         //-------------------------------------------------------------------------------------------------------------------------
@@ -207,7 +216,7 @@ namespace golfcar_vision{
 				}
                 markers_para.vec.push_back(marker_output);
             }
-            
+            /*
             else if(contour_class==4)
             {
 				float height =  cvBox.size.height;
@@ -239,6 +248,8 @@ namespace golfcar_vision{
 				if(max(height,width)<100) continue; 
 				continuous_lane(contours, contour_img, ext_color);
 			}
+			*/
+			 
 			else {}
 		}
         cvShowImage("contour_image",contour_img);
@@ -249,23 +260,18 @@ namespace golfcar_vision{
         //once entering this loop, meaning at least one contour exist, save image as training sets;
         //-----------------------------------------------------------------------------------------------
         if(extract_image_ && contour_num_in_this_image>0)
-        {
-            //here "%2" is just to adjust(reduce) the frequency of image saving;
-            if(frame_serial%2==0)
-            {
-                
-                stringstream  name_string;       
-                int stored_serial= frame_serial/2;
-                //pay attention, this path to the folder cannot be too long, or OpenCV will crash;
-                name_string<<"/home/baoxing/images/frame"<<stored_serial<<".jpg";
-                const char *output_name = name_string.str().c_str();
+        {                
+			stringstream  name_string;       
+			int stored_serial= frame_serial/2;
+			//pay attention, this path to the folder cannot be too long, or OpenCV will crash;
+			name_string<<"/home/baoxing/images/frame"<<stored_serial<<".jpg";
+			const char *output_name = name_string.str().c_str();
 
-                if (!cvSaveImage(output_name, src))
-                {               
-                    ROS_ERROR("Cannot save images");
-                    return;
-                }
-            }
+			if (!cvSaveImage(output_name, src))
+			{               
+				ROS_ERROR("Cannot save images");
+				return;
+			}
             frame_serial++; 
         }
     
@@ -677,11 +683,10 @@ namespace golfcar_vision{
     
     bool image_proc::CheckPointInside(CvPoint pt_para)
     {
-        bool out_flag1 = pt_para.y+5 > corners_[0].y;
-        bool out_flag2 = pt_para.y-BOUNDARY_MARGIN < 0;
-        bool out_flag3 = pt_para.y+BOUNDARY_MARGIN > para_A1_*pt_para.x+para_C1_;
-        bool out_flag4 = pt_para.y+BOUNDARY_MARGIN > para_A2_*pt_para.x+para_C2_;
-        
+        bool out_flag1 = (pt_para.y >= corners_[0].y);
+        bool out_flag2 = (pt_para.y <= 0);
+        bool out_flag3 = (pt_para.y >= para_A1_*pt_para.x+para_C1_);
+        bool out_flag4 = (pt_para.y >= para_A2_*pt_para.x+para_C2_);
         if(out_flag1||out_flag2||out_flag3||out_flag4) return false;
         else return true;
     }
@@ -689,8 +694,8 @@ namespace golfcar_vision{
     
     bool image_proc::CheckPointOffSideBounds(CvPoint pt_para)
     {
-        bool out_flag3 = pt_para.y+BOUNDARY_MARGIN > para_A1_*pt_para.x+para_C1_;
-        bool out_flag4 = pt_para.y+BOUNDARY_MARGIN > para_A2_*pt_para.x+para_C2_;
+        bool out_flag3 = (pt_para.y >= para_A1_*pt_para.x+para_C1_);
+        bool out_flag4 = (pt_para.y > para_A2_*pt_para.x+para_C2_);
         if(out_flag3||out_flag4) return false;
         else return true;
     }
@@ -805,5 +810,6 @@ namespace golfcar_vision{
         cvDestroyWindow("Iat_image");
         cvDestroyWindow("binary_image");
         cvDestroyWindow("contour_image");
+        cvDestroyWindow("HistogramEqualized_image");
     }
 };

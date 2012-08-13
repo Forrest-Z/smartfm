@@ -27,23 +27,23 @@ import org.apache.http.message.BasicNameValuePair;
 
 /** A helper class to call the PHP scripts used to interface with the database. */
 class RPC {
-		
+
 	String url;
 	String scriptName;
 	List<NameValuePair> nameValuePairs;
-	
+
 	public RPC(String phpscript) {
 		this.scriptName = phpscript;
 		this.url = DBInterface.BaseURI + phpscript;
 		nameValuePairs = new ArrayList<NameValuePair>(1);
 		addParameter("CustomerID", DBInterface.CustomerID);
 	}
-	
+
 	public RPC addParameter(String name, String value) {
 		nameValuePairs.add(new BasicNameValuePair(name,value));
 		return this;
 	}
-	
+
 	public Document call() throws Exception {
 		InputStream in = null;
 		Document dom = null;
@@ -53,17 +53,17 @@ class RPC {
 			request.setEntity(new UrlEncodedFormEntity(nameValuePairs));
 			HttpResponse response = client.execute(request);
 			in = response.getEntity().getContent();
-			
+
 			BufferedReader rd = new BufferedReader(new InputStreamReader(in));
 			String line = "", xml="";
 			while ((line = rd.readLine()) != null)
 				xml += line + "\n";
-			
+
 			DocumentBuilderFactory factory = DocumentBuilderFactory
 					.newInstance();
 			DocumentBuilder builder = factory.newDocumentBuilder();
 			dom = builder.parse(new InputSource(new StringReader(xml)));
-			
+
 			NodeList items = dom.getDocumentElement().getElementsByTagName("status");
 			for (int i = 0; i < items.getLength(); i++) {
 				Element item = (Element) items.item(i);
@@ -90,11 +90,11 @@ class RPC {
  * interface.
  */
 public class DBInterface {
-	
-	public static final String BaseURI = "http://fmautonomy.no-ip.info/booking/";
+
+	public static final String BaseURI = "http://137.132.22.82:15016/booking/";
 	public static final String CustomerID = "cust1";
-	
-	
+
+
 	public static Task taskFromElement(Element item) throws Exception {
 		Task task = new Task();
 		task.customerID = item.getAttribute("customerID");
@@ -103,12 +103,12 @@ public class DBInterface {
 		task.pickup = item.getAttribute("pickup");
 		task.dropoff = item.getAttribute("dropoff");
 		task.custCancelled = Integer.parseInt( item.getAttribute("custCancelled") )!=0 ? true : false;
-		
+
 		task.vehicle = new VehicleInfo();
 		task.vehicle.vehicleID = item.getAttribute("vehicleID");
 		return task;
 	}
-	
+
 	public static VehicleInfo vehicleFromElement(Element item) throws Exception {
 		VehicleInfo vehicle = new VehicleInfo();
 		vehicle.vehicleID = item.getAttribute("vehicleID");
@@ -123,7 +123,7 @@ public class DBInterface {
 				vehicle.longitude = 0;
 			}
 		}
-		
+
 		if( item.hasAttribute("requestID") ) {
 			try {
 				vehicle.requestID = Integer.parseInt(item.getAttribute("requestID"));
@@ -131,7 +131,7 @@ public class DBInterface {
 				//nothing
 			}
 		}
-		
+
 		if( item.hasAttribute("eta") ) {
 			try {
 				vehicle.eta = Integer.parseInt(item.getAttribute("eta"));
@@ -154,40 +154,40 @@ public class DBInterface {
 			tasks.add( taskFromElement((Element) items.item(i)) );
 		return tasks;
 	}
-	
+
 	public static Task getTask(int taskID) throws Exception {
 		Document dom = new RPC("list_requests.php")
 						.addParameter("RequestID", ""+taskID)
 						.call();
 		NodeList items = dom.getDocumentElement().getElementsByTagName("request");
-		
+
 		if( items.getLength()==0 )
 			throw new RuntimeException("Task " + taskID + " not found.");
 		if( items.getLength()>1 )
 			throw new RuntimeException("Too many tasks returned.");
-		
-		return taskFromElement((Element) items.item(0));		
+
+		return taskFromElement((Element) items.item(0));
 	}
-	
+
 	public static int addTask(String pickup, String dropoff) throws Exception {
 		//check that the stations exist. If they don't an exception will
 		//be thrown.
 		StationList stations = new StationList();
 		stations.getStation(pickup);
 		stations.getStation(dropoff);
-		
+
 		//all right, stations are valid. Make the booking.
 		Document dom = new RPC("new_request.php")
 			.addParameter("PickUpLocation", pickup)
 			.addParameter("DropOffLocation",dropoff)
 			.call();
-		
+
 		//retrieve the task id and return it.
 		NodeList items = dom.getDocumentElement().getElementsByTagName("taskadded");
 		Element item = (Element) items.item(0);
 		return Integer.parseInt(item.getAttribute("id"));
 	}
-	
+
 	public static void cancelTask(int taskID) throws Exception {
 		new RPC("cancel_request.php")
 			.addParameter("RequestID", ""+taskID)
@@ -202,20 +202,20 @@ public class DBInterface {
 			vehicles.add( vehicleFromElement((Element) items.item(i)) );
 		return vehicles;
 	}
-	
+
 	public static VehicleInfo getVehicle(int vehicleID) throws Exception {
 		Document dom = new RPC("list_vehicles.php")
 						.addParameter("VehicleID", ""+vehicleID)
 						.call();
 		NodeList items = dom.getDocumentElement().getElementsByTagName("vehicle");
-		
+
 		if( items.getLength()==0 )
 			throw new RuntimeException("Vehicle " + vehicleID + " not found.");
 		if( items.getLength()>1 )
 			throw new RuntimeException("Too many tasks returned.");
-		
-		return vehicleFromElement((Element) items.item(0));		
+
+		return vehicleFromElement((Element) items.item(0));
 	}
-	
+
 
 }

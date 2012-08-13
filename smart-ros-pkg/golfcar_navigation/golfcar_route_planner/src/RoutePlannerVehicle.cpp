@@ -15,12 +15,35 @@ RoutePlannerVehicle::RoutePlannerVehicle(const StationPaths & sp)
 }
 
 
-void RoutePlannerVehicle::initDest()
+void RoutePlannerVehicle::initDest(const Station & start, const Station & end)
 {
-    path_ = sp_.getPath(currentStation_, destination_);
-    pubPathVis();
-    publishGoal();
+    destination_ = end;
+    path_ = sp_.getPath(start, end);
     waypointNo_ = 0;
+
+    // publish the path (for visualization)
+    nav_msgs::Path p;
+    p.header.stamp = ros::Time::now();
+    p.header.frame_id = "/map";
+    p.poses.resize(path_.size());
+    for( unsigned i=0; i<path_.size(); i++ )
+    {
+        p.poses[i].pose.position.x = path_[i].x_;
+        p.poses[i].pose.position.y = path_[i].y_;
+        p.poses[i].pose.orientation.w = 1.0;
+    }
+    g_plan_pub_.publish(p);
+
+    // publish the path for the local controller
+    // we encode it: x contains the id of the starting station, and y the id of the
+    // destination station.
+    move_base_msgs::MoveBaseGoal goal;
+    goal.target_pose.header.stamp = ros::Time::now();
+    goal.target_pose.header.frame_id = "/map";
+    goal.target_pose.pose.position.x = (double) start.number();
+    goal.target_pose.pose.position.y = (double) end.number();
+    goal.target_pose.pose.orientation.w = 1.0;
+    ac_.sendGoal(goal);
 }
 
 
@@ -71,23 +94,6 @@ bool RoutePlannerVehicle::goToDest()
     return false;
 }
 
-
-void RoutePlannerVehicle::pubPathVis()
-{
-    nav_msgs::Path p;
-    p.header.stamp = ros::Time::now();
-    p.header.frame_id = "/map";
-    p.poses.resize(path_.size());
-    for( unsigned i=0; i<path_.size(); i++ )
-    {
-        p.poses[i].pose.position.x = path_[i].x_;
-        p.poses[i].pose.position.y = path_[i].y_;
-        p.poses[i].pose.orientation.w = 1.0;
-    }
-    g_plan_pub_.publish(p);
-}
-
-
 double RoutePlannerVehicle::distanceToGoal()
 {
     double d = 0;
@@ -100,24 +106,6 @@ double RoutePlannerVehicle::distanceToGoal()
 
     return d;
 }
-
-
-void RoutePlannerVehicle::publishGoal()
-{
-    //use more expansive action server to properly trace the goal status
-    geometry_msgs::PoseStamped ps;
-    ps.header.stamp = ros::Time::now();
-    ps.header.frame_id = "/map";
-
-    ps.pose.position.x = (double) currentStation_.number();
-    ps.pose.position.y = (double) destination_.number();
-    ps.pose.orientation.w = 1.0;
-
-    move_base_msgs::MoveBaseGoal goal;
-    goal.target_pose = ps;
-    ac_.sendGoal(goal);
-}
-
 
 void RoutePlannerVehicle::transformMapToOdom(geometry_msgs::PoseStamped *map_pose,
                                              geometry_msgs::PointStamped *odom_point)

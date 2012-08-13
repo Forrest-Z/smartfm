@@ -20,6 +20,8 @@
         </include>
     </group>
 
+    <param name="/infra_url" type="string" value="http://137.132.22.82:15016/infrastructure" />
+
     <node pkg="infrastructure_road_monitoring" type="t_junction_go.py" name="t_junction_go" output="screen">
         <remap from="tracksSDE" to="SDE/tracks"/>
         <remap from="tracksEA" to="EA/tracks"/>
