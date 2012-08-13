@@ -7,12 +7,9 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE RelWithDebInfo)
 
+set(ROS_BUILD_TYPE Debug)
 rosbuild_init()
-
-find_package(Eigen REQUIRED)
-include_directories(${Eigen_INCLUDE_DIRS})
 
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
@@ -24,31 +21,6 @@ rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
-find_package(OpenCV REQUIRED)
-
-rosbuild_add_library(image_proc src/image_proc.cpp src/libsvm/svm.cpp)
-rosbuild_add_executable(ipm src/ipm.cpp)
-target_link_libraries(ipm ${OpenCV_LIBRARIES} image_proc)
-                    
-rosbuild_add_executable(addCamInfo src/addCamInfo.cpp)
-target_link_libraries(addCamInfo ${OpenCV_LIBRARIES})
-
-#rosbuild_add_executable(single_pic src/conti_lane.cpp)
-#target_link_libraries(single_pic ${OpenCV_LIBRARIES})
-
-#rosbuild_add_executable(single_pic src/single_pic.cpp)
-#target_link_libraries(single_pic ${OpenCV_LIBRARIES})
-
-rosbuild_add_executable(generate_training_data src/generate_training_data.cpp)
-target_link_libraries(generate_training_data ${OpenCV_LIBRARIES})
-
-#rosbuild_add_executable(test_eigen src/test_eigen.cpp)
-#target_link_libraries(test_eigen ${OpenCV_LIBRARIES})
-
-rosbuild_add_executable(data_formating src/data_formating.cpp)
-
-
-#target_link_libraries(wrap_example ${OpenCV_LIBRARIES})
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
@@ -56,3 +28,4 @@ rosbuild_add_executable(data_formating src/data_formating.cpp)
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
+rosbuild_add_executable(rrts_node src/rrts_node.cpp src/kdtree.c)

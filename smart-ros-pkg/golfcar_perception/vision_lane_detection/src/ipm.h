@@ -79,6 +79,8 @@ namespace golfcar_vision{
 	void process_control(ros::Time meas_time);
 	double  publish_dis_thresh_;
     	double  publish_angle_thresh_;
+
+	bool visualization_flag_;
     };
 };
 

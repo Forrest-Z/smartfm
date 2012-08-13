@@ -1,7 +1,8 @@
 <launch>
     <param name="use_sim_time" value="true"/>
 
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.75, 0.0, 1.01 -0.0 0.2 -0.0 /base_link /camera_front_base 100" />
+    <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.75, 0.0, 1.01 -0.0 0.2 -0.0 /base_link /camera_front_base 100" /-->
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.75, 0.0, 1.32 -0.0 0.12 -0.0 /base_link /camera_front_base 100" />
     <node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_img" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /camera_front_base /camera_front_img 100" />
     
 	<!--node pkg="vision_lane_detection" type="addCamInfo" name="addCamInfo">
@@ -10,6 +11,7 @@
     
     <node pkg="vision_lane_detection" type="ipm" name="ipm">
         <param name="image_transport" value="compressed"/>
+	<param name="visualization_flag" value="false"/>
 	</node>
 
     <node pkg="image_view" type="image_view" name="image_view0">

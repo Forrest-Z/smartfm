@@ -1,0 +1,24 @@
+<package>
+  <description brief="golfcar_planner">
+
+     golfcar_planner
+
+  </description>
+  <author>Pratik</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/golfcar_planner</url>
+
+  <depend package="nav_msgs"/>
+  <depend package="rosconsole"/>
+  <depend package="roscpp"/>
+  <depend package="rospy" />
+  <depend package="sensor_msgs"/>
+  <depend package="tf"/>
+  <depend package="laser_geometry"/>
+  <depend package="geometry_msgs"/>
+  <!--<depend package="local_map"/>
+  <depend package="golfcar_ppc" />-->
+</package>
+
+
