@@ -21,13 +21,13 @@ int main(int argc, char** argcv)
 	StationPath station_path = sp_.getPath(sp_.knownStations()(atoi(argcv[1])),sp_.knownStations()(atoi(argcv[2])));
 	nav_msgs::Path p;
 	p.header.stamp = ros::Time::now();
-	p.header.frame_id = "/odom";
+	p.header.frame_id = "/map";
 	p.poses.resize(station_path.size());
 	cout<<"Path segments="<<p.poses.size()<<endl;
 	cout<<"sp segments="<<station_path.size()<<endl;
 	for(unsigned int i=0; i<station_path.size(); i++)
 	{
-		p.poses[i].header.frame_id = "/odom";
+		p.poses[i].header.frame_id = "/map";
 		p.poses[i].header.stamp = ros::Time::now();
 		p.poses[i].pose.position.x = station_path[i].x_;
 		p.poses[i].pose.position.y = station_path[i].y_;
