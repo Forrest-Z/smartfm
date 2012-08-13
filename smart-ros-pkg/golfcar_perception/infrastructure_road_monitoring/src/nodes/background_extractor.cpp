@@ -5,7 +5,7 @@
 #include <std_msgs/Empty.h>
 #include <boost/thread/mutex.hpp>
 
-#include "BackgroundExtraction.h"
+#include <infrastructure_road_monitoring/BackgroundExtraction.h>
 
 //TODO: add a reconfigure interface to change the background alpha value
 

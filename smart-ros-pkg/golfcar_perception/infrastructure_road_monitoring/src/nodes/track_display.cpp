@@ -14,9 +14,9 @@
 #include <opencv2/highgui/highgui.hpp>
 
 #include <infrastructure_road_monitoring/Tracks.h>
-#include <infrastructure_road_monitoring/BlobTracker.h>
+#include <infrastructure_road_monitoring/TrackMatcher.h>
 
-#include "data_msg_conv.h"
+#include <infrastructure_road_monitoring/data_types.h>
 
 
 class TrackDisplayNode

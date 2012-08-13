@@ -1,4 +1,4 @@
-#include "BackgroundExtraction.h"
+#include <infrastructure_road_monitoring/BackgroundExtraction.h>
 
 Background::Background() : changed_(true), alpha_target_(0.005), alpha_(1.0)
 {

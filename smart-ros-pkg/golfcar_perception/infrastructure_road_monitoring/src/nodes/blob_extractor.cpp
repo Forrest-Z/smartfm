@@ -27,8 +27,9 @@
 
 #include <infrastructure_road_monitoring/Blobs.h>
 
-#include "data_msg_conv.h"
-#include "polygon.h"
+#include <infrastructure_road_monitoring/data_types.h>
+#include <infrastructure_road_monitoring/Polygon.h>
+#include <infrastructure_road_monitoring/BlobExtractor.h>
 
 using namespace std;
 
@@ -38,6 +39,8 @@ public:
     BlobExtractorNode();
 
 private:
+    BlobExtractor blob_extractor_;
+
     ros::NodeHandle nh_, private_nh_;
     image_transport::ImageTransport it_;
     image_transport::SubscriberFilter frame_sub_, bgnd_sub_;
@@ -51,33 +54,8 @@ private:
 
     ros::Publisher blobs_pub_;
 
-    /// Region of interest defined as a polygon
-    Polygon roi_poly_;
-
-    /// A binary mask corresponding to the ROI
-    cv::Mat bin_mask_, rgb_mask_;
-
-    /// The extracted blobs
-    vector<Blob> blobs_;
-
-    /// extract blobs from the binary frame
-    void extract(cv::Mat inFrameBin, double time);
-
-
     int skip_frames_, skip_frames_count_;
     double period_, last_time_;
-
-    unsigned diff_thresh_; ///< threshold used when converting diff image to binary
-    int dilate_size_; ///< how much dilation should be applied
-    int erode_size_;  ///< how much erosion should be applied
-    int blurring_size_; ///< size of the blurring kernel
-    cv::Mat diffImg_; ///< the resulting binary image.
-
-    bool view_intermediate_images_; ///< display images resulting from blurring, erosion, dilation, threshold, etc.
-
-    void diff(cv::Mat frame, cv::Mat background);
-    void dilate(cv::Mat &);
-	void erode(cv::Mat  &);
 
     dynamic_reconfigure::Server<infrastructure_road_monitoring::BlobExtractorConfig> server;
 
@@ -86,7 +64,6 @@ private:
     void configCallback(infrastructure_road_monitoring::BlobExtractorConfig & config, uint32_t level);
     void timerCallback(const ros::TimerEvent &);
     void getRoi();
-    void setMask();
 };
 
 
@@ -99,12 +76,7 @@ BlobExtractorNode::BlobExtractorNode()
   skip_frames_(0),
   skip_frames_count_(0),
   period_(0.0),
-  last_time_(0.0),
-  diff_thresh_(30),
-  dilate_size_(5),
-  erode_size_(5),
-  blurring_size_(2),
-  view_intermediate_images_(false)
+  last_time_(0.0)
 {
     // check if a ROI is defined
     getRoi();
@@ -137,187 +109,41 @@ void BlobExtractorNode::getRoi()
     {
         try {
             // update the polygon
-            roi_poly_.from_XmlRpc(xmlrpc);
-
-            // update the mask
-            setMask();
+            Polygon p;
+            p.from_XmlRpc(xmlrpc);
+            blob_extractor_.set_roi(p);
         } catch (runtime_error & e) {
             ROS_ERROR("ROI param has wrong format");
         }
     }
 }
 
-// Set the mask according to the ROI
-void BlobExtractorNode::setMask()
-{
-    // the mask is only defined once we know the dimension of the image, i.e.
-    // after the image callback has been called at least once.
-    if( bin_mask_.empty() || rgb_mask_.empty() ) {
-        //ROS_INFO("empty masks, skipping");
-        return;
-    }
-
-    if( roi_poly_.empty() ) {
-        //ROS_INFO("No ROI defined, use white masks");
-        bin_mask_.setTo(255);
-        rgb_mask_.setTo(cv::Scalar(255,255,255));
-        return;
-    }
-
-    //ROS_INFO("Creating masks");
-    rgb_mask_.setTo( cv::Scalar(0,0,0) );
-    vector< vector<cv::Point> > polys;
-    polys.push_back(roi_poly_);
-    cv::fillPoly(rgb_mask_, polys, cv::Scalar(255,255,255), 8);
-    cv::Mat tmp;
-    cvtColor(rgb_mask_, tmp, CV_BGR2GRAY);
-    cv::threshold(tmp, bin_mask_, 125, 255, CV_THRESH_BINARY);
-
-    /*
-    cv::imshow("bin mask", bin_mask_);
-    cv::imshow("rgb mask", rgb_mask_);
-    cv::waitKey(10);
-    */
-}
-
-void BlobExtractorNode::diff(cv::Mat frame_in, cv::Mat background_in)
-{
-    cv::Mat frame, background;
-    cv::bitwise_and(frame_in, rgb_mask_, frame);
-    cv::bitwise_and(background_in, rgb_mask_, background);
-
-    // first blur the input image and the background. This helps reducing
-    // problems due to small camera motions (wind, vibration, auto focus, etc.)
-	if( blurring_size_>0 ) {
-		cv::Size s( 2*blurring_size_ + 1, 2*blurring_size_+1 );
-		cv::GaussianBlur( frame, frame, s, 0 );
-		cv::GaussianBlur( background, background, s, 0 );
-	}
-
-	if( view_intermediate_images_ )
-		cv::imshow(ros::this_node::getName()+"/1blurred", frame);
-
-    // compute difference between current image and background
-    cv::Mat tmp;
-    cv::absdiff(background, frame, tmp);
-
-    // convert to gray scale and threshold
-    cvtColor(tmp, tmp, CV_BGR2GRAY);
-    cv::threshold(tmp, diffImg_, diff_thresh_, 255, CV_THRESH_BINARY);
-
-	if( view_intermediate_images_ )
-		cv::imshow(ros::this_node::getName()+"/2diff", diffImg_);
-
-	// dilate and erode to get rid of isolated pixels and holes
-
-    dilate(diffImg_);
-	if( view_intermediate_images_ )
-		cv::imshow(ros::this_node::getName()+"/3dilate", diffImg_);
-
-    erode(diffImg_);
-	if( view_intermediate_images_ ) {
-		cv::imshow(ros::this_node::getName()+"/4erode", diffImg_);
-		cv::waitKey(10);
-	}
-
-}
-
-void BlobExtractorNode::dilate(cv::Mat & img)
-{
-    //MORPH_RECT, MORPH_CROSS, MORPH_ELLIPSE
-    int s = dilate_size_;
-    if( s<=0 ) return;
-    cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT,
-                                       cv::Size( 2*s + 1, 2*s+1 ),
-                                       cv::Point( s, s ) );
-    cv::dilate( img, img, element );
-}
-
-void BlobExtractorNode::erode(cv::Mat & img)
-{
-    //MORPH_RECT, MORPH_CROSS, MORPH_ELLIPSE
-    int s = erode_size_;
-    if( s<=0 ) return;
-    cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT,
-                                       cv::Size( 2*s + 1, 2*s+1 ),
-                                       cv::Point( s, s ) );
-    cv::erode( img, img, element );
-}
-
-void BlobExtractorNode::extract(cv::Mat bin_input, double time)
-{
-    blobs_.clear();
-
-    cv::Mat image;
-    cv::bitwise_and(bin_input, bin_mask_, image);
-
-
-    // Connected points
-    vector<vector<cv::Point> > v;
-
-    /* CV_RETR_EXTERNAL retrives only the extreme outer contours
-     * CV_RETR_LIST retrieves all of the contours and puts them in the list
-     * CV_RETR_CCOMP retrieves all of the contours and organizes them into a two-level hierarchy: on the top level are the external boundaries of the components, on the second level are the boundaries of the holes
-     * CV_RETR_TREE retrieves all of the contours and reconstructs the full hierarchy of nested contours
-     */
-    /* CV_CHAIN_CODE outputs contours in the Freeman chain code. All other methods output polygons (sequences of vertices)
-     * CV_CHAIN_APPROX_NONE translates all of the points from the chain code into points
-     * CV_CHAIN_APPROX_SIMPLE compresses horizontal, vertical, and diagonal segments and leaves only their end points
-     * CV_CHAIN_APPROX_TC89_L1,CV_CHAIN_APPROX_TC89_KCOS applies one of the flavors of the Teh-Chin chain approximation algorithm.
-     * CV_LINK_RUNS uses a completely different contour retrieval algorithm by linking horizontal segments of 1’s. Only the CV_RETR_LIST retrieval mode can be used with this method.
-     */
-    cv::findContours(image, v, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-
-    // Approximate each contour by a polygon
-    for( unsigned i=0; i<v.size(); i++ )
-    {
-        Blob blob;
-        cv::Mat vi(v[i]);
-        //cv::approxPolyDP( vi, blob.contour, 10, true );
-        blob.contour = v[i];
-        cv::Moments m = cv::moments(vi);
-        blob.centroid = cv::Point(m.m10/m.m00, m.m01/m.m00);
-        blob.timestamp = time;
-        blobs_.push_back(blob);
-    }
-}
-
 void BlobExtractorNode::imgCallback(const sensor_msgs::Image::ConstPtr & frame,
         const sensor_msgs::Image::ConstPtr & background)
 {
-	double t_now = frame->header.stamp.toSec();
-	if( last_time_==0.0 ||
-			(++skip_frames_count_ > skip_frames_ && t_now>last_time_+period_) )
-	{
-		//ROS_INFO("processing");
-		skip_frames_count_ = 0;
-		last_time_ = t_now;
-	}
-	else
-	{
-		//ROS_INFO("skipping");
-		return;
-	}
+    double t_now = frame->header.stamp.toSec();
+    if( last_time_==0.0 ||
+            (++skip_frames_count_ > skip_frames_ && t_now>last_time_+period_) )
+    {
+        //ROS_INFO("processing");
+        skip_frames_count_ = 0;
+        last_time_ = t_now;
+    }
+    else
+    {
+        //ROS_INFO("skipping");
+        return;
+    }
 
     cv_bridge::CvImageConstPtr cvImgFrame = cv_bridge::toCvShare(frame, "bgr8");
     cv_bridge::CvImageConstPtr cvImgBgnd = cv_bridge::toCvShare(background, "bgr8");
 
-    /// Apply the ROI mask
-    if( bin_mask_.empty() || rgb_mask_.empty() )
-    {
-        // first call, create a white mask (all ones)
-        bin_mask_ = cv::Mat(cvImgFrame->image.size(), CV_8U);
-        rgb_mask_ = cv::Mat(cvImgFrame->image.size(), CV_8UC3);
-        setMask();
-    }
-
-    diff(cvImgFrame->image, cvImgBgnd->image);
-    extract(diffImg_, t_now);
+    std::vector<Blob> blobs = blob_extractor_.extract(cvImgFrame->image, cvImgBgnd->image, t_now);
 
     infrastructure_road_monitoring::Blobs msg;
     msg.header = frame->header;
-    for(unsigned i=0; i<blobs_.size(); i++)
-        msg.blobs.push_back( blobDataToMsg(blobs_[i]) );
+    for(unsigned i=0; i<blobs.size(); i++)
+        msg.blobs.push_back( blobDataToMsg(blobs[i]) );
 
     blobs_pub_.publish(msg);
 }
@@ -329,11 +155,11 @@ void BlobExtractorNode::configCallback(infrastructure_road_monitoring::BlobExtra
 
     if( level&1 ) { skip_frames_ = config.skip; skip_frames_count_=0; }
     if( level&2 ) { period_=config.period; last_time_=0.0; }
-    diff_thresh_ = config.diff_threshold;
-    dilate_size_ = config.dilate_size;
-    erode_size_ = config.erode_size;
-    blurring_size_ = config.blurring_size;
-    view_intermediate_images_ = config.debug_view;
+    blob_extractor_.diff_thresh_ = config.diff_threshold;
+    blob_extractor_.dilate_size_ = config.dilate_size;
+    blob_extractor_.erode_size_ = config.erode_size;
+    blob_extractor_.blurring_size_ = config.blurring_size;
+    blob_extractor_.view_intermediate_images_ = config.debug_view;
 }
 
 int main(int argc, char **argv)

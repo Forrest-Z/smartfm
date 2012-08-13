@@ -31,10 +31,13 @@ include_directories(src)
 include_directories(src/lib)
 
 rosbuild_add_library(${PROJECT_NAME}
+    src/data_types.cpp
+    src/Polygon.cpp
     src/BackgroundExtraction.cpp
-    src/data_def.cpp
+    src/BlobExtractor.cpp
     src/BlobFilter.cpp
-    src/polygon.cpp
+    src/TrackMatcher.cpp
+    src/Tracker.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} opencv_core opencv_imgproc opencv_highgui)
@@ -55,19 +58,19 @@ target_link_libraries(play_images ${PROJECT_NAME})
 ADD_EXECUTABLE(background_extractor src/nodes/background_extractor.cpp)
 target_link_libraries(background_extractor ${PROJECT_NAME})
 
-ADD_EXECUTABLE(blob_extractor src/nodes/blob_extractor.cpp src/data_msg_conv.cpp)
+ADD_EXECUTABLE(blob_extractor src/nodes/blob_extractor.cpp)
 target_link_libraries(blob_extractor ${PROJECT_NAME})
 
-ADD_EXECUTABLE(blob_area_filter src/nodes/blob_area_filter.cpp src/data_msg_conv.cpp)
+ADD_EXECUTABLE(blob_area_filter src/nodes/blob_area_filter.cpp)
 target_link_libraries(blob_area_filter ${PROJECT_NAME})
 
-ADD_EXECUTABLE(blob_display src/nodes/blob_display.cpp src/data_msg_conv.cpp)
+ADD_EXECUTABLE(blob_display src/nodes/blob_display.cpp)
 target_link_libraries(blob_display ${PROJECT_NAME})
 
-ADD_EXECUTABLE(blob_tracker src/nodes/blob_tracker.cpp src/data_msg_conv.cpp src/BlobTracker.cpp)
+ADD_EXECUTABLE(blob_tracker src/nodes/blob_tracker.cpp)
 target_link_libraries(blob_tracker ${PROJECT_NAME})
 
-ADD_EXECUTABLE(track_display src/nodes/track_display.cpp src/data_msg_conv.cpp)
+ADD_EXECUTABLE(track_display src/nodes/track_display.cpp)
 target_link_libraries(track_display ${PROJECT_NAME})
 
 ADD_EXECUTABLE(roi_select src/nodes/roi_select.cpp)

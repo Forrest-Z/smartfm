@@ -1,6 +1,12 @@
-#include <infrastructure_road_monitoring/BlobTracker.h>
+#include <limits>
 
-using namespace std;
+#include <boost/function.hpp>
+
+#include <fmutil/fm_filter.h>
+
+#include <infrastructure_road_monitoring/data_types.h>
+#include <infrastructure_road_monitoring/TrackMatcher.h>
+
 
 FixedMatcherThreshold::FixedMatcherThreshold()
 : th( std::numeric_limits<double>::infinity() )
@@ -17,6 +23,8 @@ double FixedMatcherThreshold::threshold(const Track & track, const Blob & b)
 {
     return th;
 }
+
+
 
 double AdaptiveMatcherThreshold::threshold(const Track & track, const Blob & b)
 {
@@ -38,26 +46,26 @@ double AdaptiveMatcherThreshold::threshold(const Track & track, const Blob & b)
     return th;
 }
 
-TrackMatcherNNT::TrackMatcherNNT()
-: match_threshold(0)
+
+
+TrackMatcherNNT::TrackMatcherNNT(MatcherThreshold & match_threshold)
+: match_threshold_(match_threshold)
 {
 
 }
 
 Tracks::iterator TrackMatcherNNT::match(Tracks & tracks, const Blob & blob)
 {
-    assert( match_threshold!=0 );
-
-    match_distance = numeric_limits<double>::infinity();
+    match_distance_ = std::numeric_limits<double>::infinity();
     Tracks::iterator matched_track_it = tracks.end();
 
     for( Tracks::iterator it = tracks.begin(); it!=tracks.end(); ++it )
     {
         double d = it->distance(blob);
         //cout <<"   distance to track " <<it->id <<": " <<d <<endl;
-        if( d < match_distance && d < match_threshold->threshold(*it, blob) )
+        if( d < match_distance_ && d < match_threshold_.threshold(*it, blob) )
         {
-            match_distance = d;
+            match_distance_ = d;
             matched_track_it = it;
         }
     }
