@@ -14,17 +14,21 @@ void Tracker::update(const std::vector<Blob> & in_blobs)
 
     if( debug )
     {
-        std::cout <<"--- Processing " <<in_blobs.size() <<" blobs. Following " <<tracks.size() <<" tracks" <<std::endl;
-        for( unsigned i=0; i<in_blobs.size(); i++ ) {
+        std::cout <<"--- Processing " <<in_blobs.size() <<" blobs."
+                <<" Following " <<tracks.size() <<" tracks" <<std::endl;
+        for( unsigned i=0; i<in_blobs.size(); i++ )
+        {
             std::cout <<"Blob " <<i <<": centroid=(" <<in_blobs[i].centroid.x
                     <<"," <<in_blobs[i].centroid.y <<"), timestamp="
                     <<in_blobs[i].timestamp <<std::endl;
         }
     }
 
-    if( tracks.empty() ) {
+    if( tracks.empty() )
+    {
         if(debug) std::cout <<"Adding blobs to tracker: creating tracks [";
-        for( unsigned i=0; i<in_blobs.size(); i++ ) {
+        for( unsigned i=0; i<in_blobs.size(); i++ )
+        {
             tracks.push_back( Track::newTrack(in_blobs[i]) );
             if(debug) {
                 if( i!=0 ) std::cout <<", ";
@@ -43,15 +47,18 @@ void Tracker::update(const std::vector<Blob> & in_blobs)
     // next blob matching will bug (dt<0)
     std::vector<Tracks::iterator> updatedTracks;
     std::vector<Track> newTracks;
-    for( unsigned i=0; i<in_blobs.size(); i++ ) {
+    for( unsigned i=0; i<in_blobs.size(); i++ )
+    {
         if(debug) std::cout <<"Matching blob " <<i <<std::endl;
         Tracks::iterator it = matcher_.match(tracks, in_blobs[i]);
-        if( it!=tracks.end() ) {
+        if( it!=tracks.end() )
+        {
             if(debug) std::cout <<"blob " <<i <<" matched with track " <<it->id <<std::endl;
             it->addObservation(in_blobs[i]);
             updatedTracks.push_back(it);
         }
-        else {
+        else
+        {
             newTracks.push_back( Track::newTrack(in_blobs[i]) );
             if(debug) std::cout <<"blob " <<i <<" cannot be matched. Creating a new track: " <<tracks.back().id <<std::endl;
         }
@@ -72,11 +79,13 @@ void Tracker::update(const std::vector<Blob> & in_blobs)
     // remove tracks that haven't been updated in a long time
     for( Tracks::iterator it=tracks.begin(); it!=tracks.end(); )
     {
-        if( it->latestObserved() - it->observations.rbegin() > (int)unobserved_threshold_remove ) {
+        if( it->latestObserved() - it->observations.rbegin() > (int)unobserved_threshold_remove )
+        {
             if(debug) std::cout <<"Removing track " <<it->id <<std::endl;
             it = tracks.erase(it);
         }
-        else {
+        else
+        {
             ++it;
         }
     }

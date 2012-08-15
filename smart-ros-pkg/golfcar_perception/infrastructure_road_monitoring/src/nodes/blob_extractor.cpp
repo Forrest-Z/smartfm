@@ -24,6 +24,7 @@
 
 #include <dynamic_reconfigure/server.h>
 #include <infrastructure_road_monitoring/BlobExtractorConfig.h>
+using infrastructure_road_monitoring::BlobExtractorConfig;
 
 #include <infrastructure_road_monitoring/Blobs.h>
 
@@ -57,11 +58,11 @@ private:
     int skip_frames_, skip_frames_count_;
     double period_, last_time_;
 
-    dynamic_reconfigure::Server<infrastructure_road_monitoring::BlobExtractorConfig> server;
+    dynamic_reconfigure::Server<BlobExtractorConfig> server_;
 
     void imgCallback(const sensor_msgs::Image::ConstPtr &  frame,
             const sensor_msgs::Image::ConstPtr &  background);
-    void configCallback(infrastructure_road_monitoring::BlobExtractorConfig & config, uint32_t level);
+    void configCallback(BlobExtractorConfig & config, uint32_t level);
     void timerCallback(const ros::TimerEvent &);
     void getRoi();
 };
@@ -85,7 +86,7 @@ BlobExtractorNode::BlobExtractorNode()
 
     blobs_pub_ = nh_.advertise<infrastructure_road_monitoring::Blobs>("blobs", 10);
 
-    server.setCallback( boost::bind(&BlobExtractorNode::configCallback, this, _1, _2) );
+    server_.setCallback( boost::bind(&BlobExtractorNode::configCallback, this, _1, _2) );
 
     // periodically update the ROI
     timer_ = nh_.createTimer(ros::Duration(1), boost::bind(&BlobExtractorNode::timerCallback, this, _1) );
@@ -148,13 +149,13 @@ void BlobExtractorNode::imgCallback(const sensor_msgs::Image::ConstPtr & frame,
     blobs_pub_.publish(msg);
 }
 
-void BlobExtractorNode::configCallback(infrastructure_road_monitoring::BlobExtractorConfig & config, uint32_t level)
+void BlobExtractorNode::configCallback(BlobExtractorConfig & config, uint32_t level)
 {
     //ROS_INFO("diff_threshold=%d, dilate_size=%d, erode_size=%d",
     //        config.diff_threshold, config.dilate_size, config.erode_size);
 
-    if( level&1 ) { skip_frames_ = config.skip; skip_frames_count_=0; }
-    if( level&2 ) { period_=config.period; last_time_=0.0; }
+    if( config.skip!=skip_frames_ ) { skip_frames_ = config.skip; skip_frames_count_=0; }
+    if( config.period!=period_ ) { period_=config.period; last_time_=0.0; }
     blob_extractor_.diff_thresh_ = config.diff_threshold;
     blob_extractor_.dilate_size_ = config.dilate_size;
     blob_extractor_.erode_size_ = config.erode_size;
