@@ -112,19 +112,19 @@ void PromptMissionComm::initialize() { }
 
 void PromptMissionComm::updateMissionStatus(std::string status)
 {
-    cout <<"mission status update: " <<status <<endl;
+    //cout <<"mission status update: " <<status <<endl;
 }
 
 void PromptMissionComm::updateVehicleStatus(std::string status)
 {
-    cout <<"vehicle status update: " <<status <<endl;
+    //cout <<"vehicle status update: " <<status <<endl;
 }
 
 void PromptMissionComm::updateGeoLocation(float lat, float lon) { }
 
 void PromptMissionComm::updateETA(float eta)
 {
-    cout <<"ETA: " <<eta <<endl;
+    //cout <<"ETA: " <<eta <<endl;
 }
 
 void PromptMissionComm::updateCurrentLocation(std::string loc) { }
