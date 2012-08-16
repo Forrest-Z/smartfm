@@ -29,7 +29,7 @@
 #include <pnc_msgs/speed_contribute.h>
 #include <pnc_msgs/move_status.h>
 
-#include "intersection_handler.h"
+#include "IntersectionHandler.h"
 
 using namespace std;
 

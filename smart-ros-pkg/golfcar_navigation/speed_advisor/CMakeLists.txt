@@ -29,4 +29,9 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
-rosbuild_add_executable(speed_advisor src/speed_advisor.cpp src/intersection_handler.cpp)
+rosbuild_add_executable( speed_advisor 
+    src/InteractiveMarkerPolicy.cpp
+    src/InfrastructureSensorPolicy.cpp
+    src/IntersectionHandler.cpp
+    src/speed_advisor.cpp 
+)
