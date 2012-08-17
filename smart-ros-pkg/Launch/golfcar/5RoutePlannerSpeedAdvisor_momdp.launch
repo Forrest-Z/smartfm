@@ -3,7 +3,7 @@
         <param name="dummy_vehicle" value="false"/>
         <param name="use_dbserver" value="false"/>
     </node>
-    <node pkg="golfcar_ppc" type="speed_advisor" name="speed_advisor" output="screen">
+    <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
         <rosparam file="$(find ped_momdp_sarsop)/speed_advisor.yaml" command="load"/>
         <remap from="cmd_vel" to="speed_advisor_cmdvel"/>
     </node>

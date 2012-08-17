@@ -1,13 +1,8 @@
-#ifndef BLOBTRACKER_H_
-#define BLOBTRACKER_H_
-
-#include <limits>
+#ifndef __TRACK_MATCHER_H__
+#define __TRACK_MATCHER_H__
 
 #include <boost/function.hpp>
-
-#include <fmutil/fm_filter.h>
-
-#include <infrastructure_road_monitoring/data_def.h>
+#include <infrastructure_road_monitoring/data_types.h>
 
 
 /// Generates a threshold for the nearest neighbours matcher, given a blob and
@@ -61,20 +56,24 @@ public:
 
 
 public:
-    /// Matching between an existing track and an blob occurs if the distance
-    /// is smaller than this threshold
-    MatcherThreshold * match_threshold;
-
-    /// Once a match occurred, this is the distance to the closest match
-    double match_distance;
-
-    TrackMatcherNNT();
+    TrackMatcherNNT(MatcherThreshold &);
 
     /// Searches all tracks for one that matches a given Blob. If one is found
     /// then returns an iterator to it, otherwise returns the end iterator.
     /// A blob is matched to the nearest track, if the distance is smaller
     /// than a threshold (see match_treshold).
     Tracks::iterator match(Tracks & tracks, const Blob & blob);
+
+    /// Returns the distance to the closest match
+    double match_distance() const { return match_distance_; }
+
+private:
+    /// Matching between an existing track and an blob occurs if the distance
+    /// is smaller than this threshold
+    MatcherThreshold & match_threshold_;
+
+    /// Once a match occurred, this is the distance to the closest match
+    double match_distance_;
 };
 
-#endif /* BLOBTRACKER_H_ */
+#endif /* __TRACK_MATCHER_H__ */

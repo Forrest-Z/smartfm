@@ -12,8 +12,8 @@
 #include <dynamic_reconfigure/server.h>
 #include <infrastructure_road_monitoring/BlobAreaFilterConfig.h>
 
-#include "BlobFilter.h"
-#include "data_msg_conv.h"
+#include <infrastructure_road_monitoring/BlobFilter.h>
+#include <infrastructure_road_monitoring/data_types.h>
 
 BlobFilterArea blobFilter;
 
@@ -21,15 +21,7 @@ ros::Publisher publisher;
 
 void blobCallback(const infrastructure_road_monitoring::Blobs & msg)
 {
-    infrastructure_road_monitoring::Blobs outmsg;
-    outmsg.header = msg.header;
-    for(unsigned i=0; i<msg.blobs.size(); i++)
-    {
-        Blob blob = blobMsgToData(msg.blobs[i], msg.header.stamp.toSec());
-        if( blobFilter.check(blob) )
-            outmsg.blobs.push_back( blobDataToMsg(blob) );
-    }
-    publisher.publish(outmsg);
+    publisher.publish( blobFilter.filter(msg) );
 }
 
 void configCallback(infrastructure_road_monitoring::BlobAreaFilterConfig & config, uint32_t level)

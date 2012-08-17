@@ -14,7 +14,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 
-#include "BackgroundExtraction.h"
+#include <infrastructure_road_monitoring/BackgroundExtraction.h>
 
 #include <opencv2/highgui/highgui.hpp>
 

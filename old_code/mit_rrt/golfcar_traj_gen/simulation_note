@@ -1,0 +1,4 @@
+roslaunch golfcar_traj_gen simulation.launch
+rosrun golfcar_ppc golfcar_pp _max_timer:=999
+rosrun golfcar_traj_gen svg_path 2 3
+
