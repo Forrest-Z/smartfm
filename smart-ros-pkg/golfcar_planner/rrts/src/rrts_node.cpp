@@ -20,8 +20,6 @@
 #include <nav_msgs/Path.h>
 #include <nav_msgs/GridCells.h>
 
-#include <local_map/local_map_msg.h>
-
 #include "dubins_car.hpp"
 #include "rrts.hpp"
 
@@ -45,7 +43,7 @@ class Planner_node
         // planner
         system_t system;
         planner_t rrts;
-        unsigned int RRT_MAX_ITER;
+        unsigned int rrt_max_iter;
         float prev_best_cost, curr_best_cost;
         int already_committed;
         bool planner_in_progress;

@@ -5,9 +5,11 @@
 #include <std_msgs/Empty.h>
 #include <boost/thread/mutex.hpp>
 
-#include "BackgroundExtraction.h"
+#include <dynamic_reconfigure/server.h>
+#include <infrastructure_road_monitoring/BackgroundExtractorConfig.h>
+using infrastructure_road_monitoring::BackgroundExtractorConfig;
 
-//TODO: add a reconfigure interface to change the background alpha value
+#include <infrastructure_road_monitoring/BackgroundExtraction.h>
 
 
 class BackgroundExtractor
@@ -25,6 +27,9 @@ private:
     void imageCallback(const sensor_msgs::ImageConstPtr& image);
     void resetCallback(const std_msgs::Empty &);
 
+    dynamic_reconfigure::Server<BackgroundExtractorConfig> server_;
+    void configCallback(BackgroundExtractorConfig & config, uint32_t level);
+
 public:
     BackgroundExtractor();
 };
@@ -40,6 +45,20 @@ BackgroundExtractor::BackgroundExtractor() : nhp_("~"), it_pub_(nhp_), it_sub_(n
     background_.set_alpha(alpha);
 
     reset_sub_ = nhp_.subscribe("reset", 1, &BackgroundExtractor::resetCallback, this);
+
+    server_.setCallback( boost::bind(&BackgroundExtractor::configCallback, this, _1, _2) );
+}
+
+void BackgroundExtractor::configCallback(BackgroundExtractorConfig & config, uint32_t level)
+{
+    background_.set_alpha(config.alpha);
+
+    if( level==1 )
+    {
+        mutex_.lock();
+        background_.reset();
+        mutex_.unlock();
+    }
 }
 
 void BackgroundExtractor::imageCallback(const sensor_msgs::ImageConstPtr& image)

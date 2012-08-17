@@ -15,7 +15,7 @@
 
 #include <infrastructure_road_monitoring/Blobs.h>
 
-#include "data_msg_conv.h"
+#include <infrastructure_road_monitoring/data_types.h>
 
 
 class BlobDisplayNode

@@ -1,0 +1,24 @@
+<package>
+  <description brief="speed_advisor">
+
+     speed_advisor
+
+  </description>
+  <author>brice rebsamen</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/speed_advisor</url>
+
+  <depend package="roscpp"/>
+  <depend package="std_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="nav_msgs"/>
+  <depend package="infrastructure_road_monitoring"/>
+  <depend package="interactive_markers"/>
+  <depend package="fmutil"/>
+  <depend package="pnc_msgs"/>
+
+
+</package>
+
+

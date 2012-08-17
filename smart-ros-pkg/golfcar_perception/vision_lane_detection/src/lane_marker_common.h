@@ -61,9 +61,9 @@
 #define FORK_ARROW_WIDTH                0.7
 #define FORK_ARROW_HEIGHT               5.5
 #define ZIGZAG_LINE_HEIGHT              4.17
-#define CONTOUR_PERIMETER_THRESH        7.0
+#define CONTOUR_PERIMETER_THRESH        4.0
 #define LONG_SIDE_THRESH                2.0
-#define BOUNDARY_MARGIN                 2
+#define BOUNDARY_MARGIN                 3
 
 using namespace std;
 

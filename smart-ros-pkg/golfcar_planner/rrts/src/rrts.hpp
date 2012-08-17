@@ -188,10 +188,10 @@ int
 {
     updateBranchCost(*root, 1);
     lowerBoundCost = getBestVertexCost();
-    
+
     //vertex_t &bestVertex = getBestVertex();
     //lowerBoundVertex = &bestVertex;
-    
+
     return 1;
 }
 
@@ -358,7 +358,7 @@ RRTstar::Planner< typeparams >
     numDimensions = system->getNumDimensions();
     root = rootBackup;
     if (root){
-        
+
         root->children.clear();
         root->costFromParent = 0.0;
         root->costFromRoot = 0.0;
@@ -626,15 +626,15 @@ template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
 ::iteration () {
-  
-  /*
-  for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++) {
-    vertex_t &vertexCurr = **iter;
-    state_t &stateCurr = vertexCurr.getState();
-    if ( (stateCurr[2] < -M_PI) || (stateCurr[2] > M_PI) )
-      cout <<"Nooo" << endl;
-  }
-  */
+
+    /*
+       for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++) {
+       vertex_t &vertexCurr = **iter;
+       state_t &stateCurr = vertexCurr.getState();
+       if ( (stateCurr[2] < -M_PI) || (stateCurr[2] > M_PI) )
+       cout <<"Nooo" << endl;
+       }
+       */
 
     // 1. Sample a new state
     state_t stateRandom;
@@ -690,7 +690,7 @@ RRTstar::Planner< typeparams >
 
 template< class typeparams >
 int 
-RRTstar::Planner< typeparams >
+    RRTstar::Planner< typeparams >
 ::findDescendantVertices (vertex_t* vertexIn) 
 {
     vertexIn->costFromRoot = (-1.0) * vertexIn->costFromRoot - 1.0;  // Mark the node so that we can understand 
@@ -743,7 +743,7 @@ template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
 ::switchRoot (double distanceIn, list<double*>& trajret, list<float> &controlret) {
-    
+
 
     // If there is no path reaching the goal, then return failure
     if (lowerBoundVertex == NULL) 
@@ -755,8 +755,7 @@ RRTstar::Planner< typeparams >
     vertex_t* vertexCurrBest = lowerBoundVertex; 
     while (vertexCurrBest) {
 
-        listBestVertex.push_front (vertexCurrBest);
-        vertexCurrBest = &(vertexCurrBest->getParent());
+        listBestVertex.push_front (vertexCurrBest);        vertexCurrBest = &(vertexCurrBest->getParent());
     }
 
     double *stateRootNew = new double[numDimensions];
@@ -769,7 +768,7 @@ RRTstar::Planner< typeparams >
     double *stateArrPrev = new double [numDimensions];
     for (int i = 0; i < numDimensions; i++) 
         stateArrPrev[i] = rootState[i];
-    
+
     double distTotal = 0.0;
     for (typename list<vertex_t*>::iterator iter = listBestVertex.begin(); iter != listBestVertex.end(); iter++) 
     {
@@ -804,12 +803,12 @@ RRTstar::Planner< typeparams >
             float controlTmp = *iterControl;
             trajret.push_back(stateTmp);
             controlret.push_back(controlTmp);
-            
+
             // copy it every time
             for (int i = 0; i < numDimensions; i++)
                 stateRootNew[i] = stateArrCurr[i];
             vertexChildNew = vertexCurr;
-            
+
             if (distTotal >= distanceIn) 
             {
                 stateFound = true;
@@ -836,26 +835,26 @@ RRTstar::Planner< typeparams >
 
         vertexCurr = &vertexParent;
     }
-    
-    delete [] stateArrPrev; 
-    
-    /*
-    if (stateFound == false) 
-    {
-        // free memory for toPublishTraj
-        for (list<double*>::iterator iter = trajret.begin(); iter != trajret.end(); iter++) 
-        {
-            double* stateRef = *iter;
-            delete stateRef;
-        } 
-        trajret.clear();
-        controlret.clear();
 
-        delete [] stateRootNew;
-        return 0;
+    delete [] stateArrPrev; 
+
+    /*
+       if (stateFound == false) 
+       {
+    // free memory for toPublishTraj
+    for (list<double*>::iterator iter = trajret.begin(); iter != trajret.end(); iter++) 
+    {
+    double* stateRef = *iter;
+    delete stateRef;
+    } 
+    trajret.clear();
+    controlret.clear();
+
+    delete [] stateRootNew;
+    return 0;
     }
     */
-    
+
     state_t &vertexChildNewState = vertexChildNew->getState();
     if( (stateRootNew[0] == vertexChildNewState[0]) && (stateRootNew[1] == vertexChildNewState[1]) &&\
             (stateRootNew[2] == vertexChildNewState[2]) )
@@ -870,7 +869,7 @@ RRTstar::Planner< typeparams >
     else
     {
         // goal is farther than committed trajectory
-        
+
         // 2. Find and store all the decendandts of the new root
         findDescendantVertices (vertexChildNew);
 
@@ -881,7 +880,7 @@ RRTstar::Planner< typeparams >
         for (int i = 0; i < numDimensions; i++)
             stateRoot[i] = stateRootNew[i];
         vertexRoot->children.insert (vertexChildNew);
-        
+
         root = vertexRoot;
 
         // 4. Connect the new root vertex to the new child
@@ -1040,7 +1039,7 @@ RRTstar::Planner< typeparams >
 
 template< class typeparams >
 int 
-RRTstar::Planner< typeparams >
+    RRTstar::Planner< typeparams >
 ::isSafeTrajectory(list<double*>& trajectory)
 {
     for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++)
@@ -1055,7 +1054,7 @@ RRTstar::Planner< typeparams >
 
 template< class typeparams >
 double
-RRTstar::Planner< typeparams >
+    RRTstar::Planner< typeparams >
 ::getTrajectoryLength(list<double*>& trajectory)
 {
     double len = 0;
