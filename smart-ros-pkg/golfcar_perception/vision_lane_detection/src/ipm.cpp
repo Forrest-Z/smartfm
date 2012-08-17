@@ -18,6 +18,7 @@ namespace golfcar_vision{
       image_pub_ = it_.advertise("/camera_front/image_ipm", 1);
       
       markers_info_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_info",2);
+      markers_info_2nd_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_2nd_info",2);
       
       image_processor_ = new image_proc();
       
@@ -115,12 +116,28 @@ namespace golfcar_vision{
         //this depends on how you represent your image;
         GndPt_to_Dst(gndQuad_, dstQuad_);
         
+        ROS_INFO("srcQuad points: (%5f, %5f); (%5f, %5f); (%5f, %5f); (%5f, %5f)", 
+					srcQuad_[0].x, srcQuad_[0].y,
+					srcQuad_[1].x, srcQuad_[1].y,
+					srcQuad_[2].x, srcQuad_[2].y,
+					srcQuad_[3].x, srcQuad_[3].y
+        );
+        
+        ROS_INFO("dstQuad points: (%5f, %5f); (%5f, %5f); (%5f, %5f); (%5f, %5f)",
+					dstQuad_[0].x, dstQuad_[0].y,
+					dstQuad_[1].x, dstQuad_[1].y,
+					dstQuad_[2].x, dstQuad_[2].y,
+					dstQuad_[3].x, dstQuad_[3].y
+        );
+        
         //3. wrap the image;
         CvMat* warp_matrix = cvCreateMat(3,3,CV_32FC1);
         cvGetPerspectiveTransform(srcQuad_,dstQuad_,warp_matrix);
-        
         ipm_image = cvCreateImage(cvGetSize(gray_image),8,1);
         cvWarpPerspective( gray_image, ipm_image, warp_matrix);
+        
+        CvMat* projection_matrix = cvCreateMat(3,3,CV_32FC1);
+        cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix);
         
         //---------------------------------------------------------------------
         //this helps to reduce the artificial contours in adaptiveThreshold;
@@ -180,9 +197,12 @@ namespace golfcar_vision{
         //this scentence is necessary;
         cvWaitKey(10);
         
-        image_processor_->Extract_Markers(ipm_image, scale_, markers_, training_frame_serial_, dstQuad_);
+        image_processor_->Extract_Markers(ipm_image, scale_, markers_, training_frame_serial_, dstQuad_, projection_matrix, markers_2nd_);
         markers_.header = info_msg -> header;
         markers_info_pub.publish(markers_);
+        //
+        markers_2nd_.header = info_msg -> header;
+        markers_info_2nd_pub.publish(markers_2nd_);
         
         ROS_INFO("ImageCallBack finished");
         

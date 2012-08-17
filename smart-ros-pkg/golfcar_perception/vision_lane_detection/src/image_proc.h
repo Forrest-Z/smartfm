@@ -2,6 +2,8 @@
 #define LANE_MARKER_IMAGE_PROC_H
 
 #include <ros/ros.h>
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <image_geometry/pinhole_camera_model.h>
@@ -23,8 +25,10 @@ namespace golfcar_vision{
         public:
         image_proc();
         ~image_proc();        
-        void Extract_Markers(IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, 
-				int &frame_serial, CvPoint2D32f* dst_pointer);
+
+        void Extract_Markers (IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, 
+			      int &frame_serial, CvPoint2D32f* dst_pointer,
+			      CvMat* projection_matrix, vision_lane_detection::markers_info &markers_para_2nd);
 		
         private:
         bool init_flag_; 
@@ -57,6 +61,12 @@ namespace golfcar_vision{
 		double* feature_min_;
 		int feature_index_;
 		double lower_, upper_;
+
+	CvMat* intrinsic_A_, *distortion_coeffs_;
+ 	void pose_contour_Extrinsic(CvSeq *contour_raw, int contour_class, CvMat* projection_matrix,
+						 vision_lane_detection::marker_info &marker_para);
+	void corresPoints_extrinCalib(int contour_class, CvMat* srcMarkerPts, tf::Pose & markerPose_base);
+	CvMat* M1_gndPts_, *M2_gndPts_, *M3_gndPts_;
     };
 };
 

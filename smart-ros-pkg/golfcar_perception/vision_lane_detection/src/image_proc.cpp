@@ -11,8 +11,7 @@ namespace golfcar_vision{
       cvNamedWindow("binary_image");
       cvNamedWindow("contour_image");
       cvNamedWindow("HistogramEqualized_image");
-      
-      
+
       string svm_model_file;
       //the name cannot be too long, or it cannot load;
       svm_model_file = "/home/baoxing/workspace/data_and_model/scaled_20120726.model";
@@ -24,12 +23,63 @@ namespace golfcar_vision{
       svm_scale_file = "/home/baoxing/workspace/data_and_model/range_20120726";
       restore_scalefile(svm_scale_file, feature_min_, feature_max_, feature_index_);
       
+      // initialize camera intrinsic matrix and distortion coefficients;
+      // later may write in a loading function by reading text files;
+      intrinsic_A_ = cvCreateMat(3,3,CV_32FC1);
+      int row = 0; float *ptr = (float*)(intrinsic_A_->data.ptr + row * intrinsic_A_->step);
+	  ptr[0] = 462.55911; ptr[1] = 0.00; ptr[2] = 326.21463;
+	  row = 1; ptr = (float*)(intrinsic_A_->data.ptr + row * intrinsic_A_->step);
+	  ptr[0] = 0.0; ptr[1] = 472.34580; ptr[2] = 188.72264;
+	  row = 2; ptr = (float*)(intrinsic_A_->data.ptr + row * intrinsic_A_->step);
+	  ptr[0] = 0.0; ptr[1] = 0.0; ptr[2] = 1.0;
+	  
+	  distortion_coeffs_= cvCreateMat(5,1,CV_32FC1);
+	  ptr = (float*)(distortion_coeffs_->data.ptr + 0 * distortion_coeffs_->step); 	ptr[0] = -0.00791 ;
+	  ptr = (float*)(distortion_coeffs_->data.ptr + 1 * distortion_coeffs_->step); 	ptr[0] = -0.05311;
+	  ptr = (float*)(distortion_coeffs_->data.ptr + 2 * distortion_coeffs_->step);  ptr[0] = 0.00462;
+	  ptr = (float*)(distortion_coeffs_->data.ptr + 3 * distortion_coeffs_->step);  ptr[0] = 0.00101;
+	  ptr = (float*)(distortion_coeffs_->data.ptr + 4 * distortion_coeffs_->step);  ptr[0] = 0.0;
+		
+	  //initilize gndPts for 3 types of markers, which may be extended later;
+      M1_gndPts_ = cvCreateMat(4,1,CV_32FC3);
+      M2_gndPts_ = cvCreateMat(4,1,CV_32FC3);
+      M3_gndPts_ = cvCreateMat(4,1,CV_32FC3);
+      
+	  row = 0; ptr = (float*)(M1_gndPts_->data.ptr + row * M1_gndPts_->step);
+	  ptr[0] = 0.582;	ptr[1] = 0.0833; 	ptr[2] = 0.0;
+      row = 1; ptr = (float*)(M1_gndPts_->data.ptr + row * M1_gndPts_->step);
+	  ptr[0] = -2.51; 	ptr[1] = 0.167; 	ptr[2] = 0.0;
+	  row = 2; ptr = (float*)(M1_gndPts_->data.ptr + row * M1_gndPts_->step);
+	  ptr[0] = 0.582;	ptr[1] = -0.0833; 	ptr[2] = 0.0;
+      row = 3; ptr = (float*)(M1_gndPts_->data.ptr + row * M1_gndPts_->step);
+	  ptr[0] = -2.51; 	ptr[1] = -0.167; 	ptr[2] = 0.0;
+	  
+	  row = 0; ptr = (float*)(M2_gndPts_->data.ptr + row * M2_gndPts_->step);
+	  ptr[0] = 0.664;	ptr[1] = 0.142; 	ptr[2] = 0.0;
+      row = 1; ptr = (float*)(M2_gndPts_->data.ptr + row * M2_gndPts_->step);
+	  ptr[0] = -2.878; 	ptr[1] = 0.208; 	ptr[2] = 0.0;
+	  row = 2; ptr = (float*)(M2_gndPts_->data.ptr + row * M2_gndPts_->step);
+	  ptr[0] = 0.664;	ptr[1] = -0.142;  	ptr[2] = 0.0;
+      row = 3; ptr = (float*)(M2_gndPts_->data.ptr + row * M2_gndPts_->step);
+	  ptr[0] = -2.878; 	ptr[1] = -0.208; 	ptr[2] = 0.0;
+	  
+	  row = 0; ptr = (float*)(M3_gndPts_->data.ptr + row * M3_gndPts_->step);
+	  ptr[0] = -0.304;	ptr[1] = 0.0868; 	ptr[2] = 0.0;
+      row = 1; ptr = (float*)(M3_gndPts_->data.ptr + row * M3_gndPts_->step);
+	  ptr[0] = -2.354; 	ptr[1] = 0.212; 	ptr[2] = 0.0;
+	  row = 2; ptr = (float*)(M3_gndPts_->data.ptr + row * M3_gndPts_->step);
+	  ptr[0] = 0.736;	ptr[1] = -0.163; 	ptr[2] = 0.0;
+      row = 3; ptr = (float*)(M3_gndPts_->data.ptr + row * M3_gndPts_->step);
+	  ptr[0] = -2.354; 	ptr[1] = -0.212; 	ptr[2] = 0.0;
+      
     }
   
     void image_proc::Extract_Markers (IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, 
-										int &frame_serial, CvPoint2D32f* dst_pointer)
+										int &frame_serial, CvPoint2D32f* dst_pointer,
+										CvMat* projection_matrix, vision_lane_detection::markers_info &markers_para_2nd)
     {
         markers_para.vec.clear();
+        markers_para_2nd.vec.clear();
         //initiation, first calculate four corners used to filter noise;
         if(!init_flag_)
         {
@@ -181,6 +231,7 @@ namespace golfcar_vision{
                 marker_output.thetha = 3*M_PI;
                 pose_contour(contours, cvm, marker_output);
                 
+                //to visualize the posing result from 
                 CvFont font;
                 double hScale=1.0;
                 double vScale=1.0;
@@ -213,8 +264,15 @@ namespace golfcar_vision{
 					origin_2.y = (int)cvBox.center.y+20;
 					cvInitFont(&font2,CV_FONT_ITALIC, hScale2, vScale2, 0, lineWidth2);
 					cvPutText(contour_img, pose_info, origin_2, &font2, CV_RGB(0,255,0));
+					
+					markers_para.vec.push_back(marker_output);
 				}
-                markers_para.vec.push_back(marker_output);
+
+                vision_lane_detection::marker_info marker_output_2nd;
+                marker_output_2nd.class_label = contour_class;
+                marker_output_2nd.thetha = 3*M_PI;
+                pose_contour_Extrinsic(contours, contour_class, projection_matrix, marker_output_2nd);
+                if(marker_output_2nd.thetha!=3*M_PI){markers_para_2nd.vec.push_back(marker_output_2nd);}
             }
             /*
             else if(contour_class==4)
@@ -354,7 +412,7 @@ namespace golfcar_vision{
         {
             //1st criterion: perimeter should be long enough;
             double len_pixel = cvContourPerimeter(c);
-            double len_meter = len_pixel * scale_;
+            double len_meter = len_pixel/scale_;
             if(len_meter < CONTOUR_PERIMETER_THRESH)
             {
                 cvSubstituteContour(scanner, NULL);
@@ -455,91 +513,379 @@ namespace golfcar_vision{
                 distance_vec.push_back(distance);
             }
             
-            unsigned int longest_serial, sec_longest_serial;
-            float temp_distance1, temp_distance2;
-            longest_serial = find_longest_distance(distance_vec);
-            temp_distance1 = distance_vec[longest_serial];
-            distance_vec[longest_serial]=0.0;
-            sec_longest_serial = find_longest_distance(distance_vec);
-            temp_distance2 = distance_vec[sec_longest_serial];
-            
-            if(temp_distance1<50.0||temp_distance2<50.0){ROS_INFO("this marker is not long enough! no angle information;");}
-            else
-            {
-                //to determine the heading side;
-                unsigned int serial1 = min(longest_serial, sec_longest_serial);
-                unsigned int serial2 = max(longest_serial, sec_longest_serial);
-                unsigned int delt_serial_forward_path   = serial2 - serial1 -1;
-                unsigned int delt_serial_backward_path  = serial1 + distance_vec.size() -1 -serial2;
-                
-                CvPoint2D32f line1_front, line1_back, line2_front, line2_back;
-                
-                CvPoint line1_frontd, line1_backd, line2_frontd, line2_backd;
-                //the shorter path is the bottom of the marker;
-                if(delt_serial_forward_path <= delt_serial_backward_path)
-                {
-                    if(serial1 == 0)
-                    {
-                        line1_front = centered_vertices.back();
-                        line1_frontd = vertices.back();
-                    }
-                    else
-                    {
-                        line1_front  = centered_vertices[serial1-1];
-                        line1_frontd  = vertices[serial1-1];
-                    }
-                    line1_back  = centered_vertices[serial1];
-                    line2_front = centered_vertices[serial2];
-                    line2_back  = centered_vertices[serial2-1];
-                    
-                    line1_backd  = vertices[serial1];
-                    line2_frontd = vertices[serial2];
-                    line2_backd  = vertices[serial2-1];
-                    
-                }
-                else
-                {
-                    //invert the sequence of the above senario;
-                    if(serial1 == 0)
-                    {
-                        line1_back = centered_vertices.back();
-                        line1_backd = vertices.back();
-                    }
-                    else
-                    {
-                        line1_back  = centered_vertices[serial1-1];
-                        line1_backd  = vertices[serial1-1];
-                    }
-                    line1_front  = centered_vertices[serial1];
-                    line2_back = centered_vertices[serial2];
-                    line2_front  = centered_vertices[serial2-1];
-                    
-                    line1_frontd  = vertices[serial1];
-                    line2_backd = vertices[serial2];
-                    line2_frontd  = vertices[serial2-1];
-                }
-                
-                double angle1 = atan2f((line1_front.y-line1_back.y), (line1_front.x-line1_back.x));
-                double angle2 = atan2f((line2_front.y-line2_back.y), (line2_front.x-line2_back.x));
-                
-                //remember to filter the case happened in picture 215;
-                double abs_delt = fabs(fabs(angle1)-fabs(angle2));
-                if(abs_delt>M_PI_2){ROS_INFO("noisy situation, do not provide angle");}
-                else
-                {
-                    //thetha is in "rad" here;
-                    double thetha = (angle1+angle2)/2.0;
-                    //be careful with this case
-                    if((angle1 > M_PI_2 && angle2 < -M_PI_2) || (angle2 > M_PI_2&& angle1 < -M_PI_2))
-                    {thetha = thetha + M_PI;}
-                    marker_para.thetha = thetha;
-                }
-            }
+            unsigned int longest_serial;
+			float temp_distance1;
+			longest_serial = find_longest_distance(distance_vec);
+			temp_distance1 = distance_vec[longest_serial];
+			
+			if(temp_distance1<50.0){printf("this marker is not long enough! no angle information;");}
+			else
+			{
+				unsigned int line_front, line_back;
+				line_front = longest_serial;
+				if(line_front > 0) {line_back = line_front -1;}
+				else {line_back = line_front + distance_vec.size()-1;}
+				
+				unsigned int forward_line_front, backward_line_front;
+				
+				if(longest_serial < 2 ){backward_line_front = longest_serial + distance_vec.size() -2;}
+				else {backward_line_front = longest_serial -2;}
+				if(longest_serial + 2 >= distance_vec.size() ){forward_line_front = longest_serial +2 -distance_vec.size();}
+				else {forward_line_front = longest_serial+2;}
+				
+				unsigned int forward_line_back, backward_line_back;
+				if(backward_line_front > 0){backward_line_back = backward_line_front - 1;}
+				else{backward_line_back = backward_line_front + distance_vec.size()-1;}
+				if(forward_line_front > 0){forward_line_back = forward_line_front - 1;}
+				else{forward_line_back = forward_line_front + distance_vec.size()-1;}
+				
+				bool fd_long = false;
+				bool fd_angle = false;
+				bool bd_long = false;
+				bool bd_angle = false;
+				
+				CvPoint frontPt, backPt, fd_frontPt, fd_backPt, bd_frontPt, bd_backPt;
+				frontPt    = vertices[line_front];
+				backPt     = vertices[line_back];
+				fd_frontPt = vertices[forward_line_front];
+				fd_backPt  = vertices[forward_line_back];
+				bd_frontPt = vertices[backward_line_front];
+				bd_backPt  = vertices[backward_line_back];
+				
+				//distance criteria 
+				if(distance_vec[forward_line_front]/temp_distance1  > 0.5) {fd_long = true;}
+				if(distance_vec[backward_line_front]/temp_distance1 > 0.5) {bd_long = true;}
+
+				double angle1 = atan2f((backPt.y-frontPt.y), (backPt.x-frontPt.x));
+				double angle2 = atan2f((fd_frontPt.y-fd_backPt.y), (fd_frontPt.x-fd_backPt.x));
+				double fd_abs_delt = fabs(fabs(angle1)-fabs(angle2));
+				
+				double angle3 = atan2f((frontPt.y-backPt.y), (frontPt.x-backPt.x));
+				double angle4 = atan2f((bd_backPt.y-bd_frontPt.y), (bd_backPt.x-bd_frontPt.x));
+				double bd_abs_delt = fabs(fabs(angle3)-fabs(angle4));
+				
+				if(fd_abs_delt < M_PI_4) {fd_angle = true;}
+				if(bd_abs_delt < M_PI_4) {bd_angle = true;}
+				bool fd_satisfy = fd_long && fd_angle;
+				bool bd_satisfy = bd_long && bd_angle;
+				
+				bool find_cor_pts = true;
+				
+				unsigned int line1_front_serial, line1_back_serial, line2_front_serial, line2_back_serial;
+				
+				CvPoint line1_frontd, line1_backd, line2_frontd, line2_backd;
+				CvPoint2D32f line1_front, line1_back, line2_front, line2_back;
+				
+				//line1 is the line at the left side of the marker;
+				if(fd_satisfy && !bd_satisfy)
+				{
+					line1_front_serial = line_back;
+					line1_back_serial  = line_front;
+					line2_front_serial = forward_line_front;
+					line2_back_serial  = forward_line_back;
+					
+					//ROS_INFO("use_front_only");
+				}
+				else if (!fd_satisfy && bd_satisfy)
+				{
+					line2_front_serial = line_front;
+					line2_back_serial  = line_back;
+					line1_front_serial = backward_line_back;
+					line1_back_serial  = backward_line_front;
+					
+					//ROS_INFO("use_back_only");
+				}
+				else if (fd_satisfy && bd_satisfy)
+				{
+					if(distance_vec[forward_line_front]>distance_vec[backward_line_front])
+					{
+						line1_front_serial = line_back;
+						line1_back_serial  = line_front;
+						line2_front_serial = forward_line_front;
+						line2_back_serial  = forward_line_back;
+					}
+					else
+					{
+						line2_front_serial = line_front;
+						line2_back_serial  = line_back;
+						line1_front_serial = backward_line_back;
+						line1_back_serial  = backward_line_front;
+					}
+				}
+				else
+				{
+					find_cor_pts = false;
+				}
+				
+				if(find_cor_pts)
+				{
+					line1_frontd = vertices[line1_front_serial];
+					line1_backd  = vertices[line1_back_serial];
+					line2_frontd = vertices[line2_front_serial];
+					line2_backd  = vertices[line2_back_serial];
+					
+					line1_front  = centered_vertices[line1_front_serial];
+					line1_back   = centered_vertices[line1_back_serial];
+					line2_front  = centered_vertices[line2_front_serial];
+					line2_back   = centered_vertices[line2_back_serial];
+					
+					double angle1 = atan2f((line1_front.y-line1_back.y), (line1_front.x-line1_back.x));
+					double angle2 = atan2f((line2_front.y-line2_back.y), (line2_front.x-line2_back.x));
+					
+					//remember to filter the case happened in picture 215;
+					double abs_delt = fabs(fabs(angle1)-fabs(angle2));
+					if(abs_delt>M_PI_2){ROS_INFO("noisy situation, do not provide angle");}
+					else
+					{
+						//thetha is in "rad" here;
+						double thetha = (angle1+angle2)/2.0;
+						//be careful with this case
+						if((angle1 > M_PI_2 && angle2 < -M_PI_2) || (angle2 > M_PI_2&& angle1 < -M_PI_2))
+						{thetha = thetha + M_PI;}
+						marker_para.thetha = thetha;
+					}
+				}
+			}
         }
         cvt_pose_baselink(marker_para);
         ROS_INFO("---------marker %lf, %lf, %lf----------\n", marker_para.x, marker_para.y, marker_para.thetha);
         cvReleaseMemStorage(&mem_poly);
     }
+    
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // 2nd method to pose the contour by utilizing corresponding points, which is expected to be more accurate;
+    // this method doesn't rely on the assumption that the ground is always flat, which is more realistic;
+    // the core of this method is the OpenCV funciton "cvFindExtrinsicCameraParams2";
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    void image_proc::pose_contour_Extrinsic(CvSeq *contour_raw, int contour_class, CvMat* projection_matrix, vision_lane_detection::marker_info &marker_para)
+    {
+        CvSeq *contours;
+        CvMemStorage *mem_poly;
+        mem_poly = cvCreateMemStorage(0);
+        contours = cvApproxPoly( contour_raw, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 2, 0 );
+        
+        //////////////////////////////////////////////////////////////
+        //// find 4 corresponding points;
+        //////////////////////////////////////////////////////////////
+        if(contours->total<5){ROS_INFO("this marker is bad! no corresponding points! no pose information!");}
+        else
+        {
+            std::vector <CvPoint> vertices;
+            
+            for(int i=0; i<contours->total; i++)
+            {
+                CvPoint* p = (CvPoint*)cvGetSeqElem(contours, i);
+                vertices.push_back(*p);
+            }
+            
+            float vertix_x_new, vertix_y_new;
+            float vertix_x_old, vertix_y_old;
+            float distance;
+            std::vector <float> distance_vec;
+            
+            //pay attention to the sequence, distance from line0 ("n" to "0"), line1 ("0" to "1")...lineN ("n-1" to "n").
+            if(vertices.size()>2)   //no need any more, since we have alread denotes the minimum number before;
+            {
+                vertix_x_new = vertices[0].x;
+                vertix_y_new = vertices[0].y;
+                vertix_x_old = vertices.back().x;
+                vertix_y_old = vertices.back().y;
+                distance = sqrtf((vertix_x_new-vertix_x_old)*(vertix_x_new-vertix_x_old)+(vertix_y_new-vertix_y_old)*(vertix_y_new-vertix_y_old));
+                distance_vec.push_back(distance);
+            }
+            for(unsigned int i=1; i<vertices.size(); i++)
+            {
+                vertix_x_new = vertices[i].x;
+                vertix_y_new = vertices[i].y;
+                vertix_x_old = vertices[i-1].x;
+                vertix_y_old = vertices[i-1].y;
+                
+                distance = sqrtf((vertix_x_new-vertix_x_old)*(vertix_x_new-vertix_x_old)+(vertix_y_new-vertix_y_old)*(vertix_y_new-vertix_y_old));
+                distance_vec.push_back(distance);
+            }
+            
+			unsigned int longest_serial;
+			float temp_distance1;
+			longest_serial = find_longest_distance(distance_vec);
+			temp_distance1 = distance_vec[longest_serial];
+			
+			if(temp_distance1<50.0){printf("this marker is not long enough! no angle information;");}
+			else
+			{
+				unsigned int line_front, line_back;
+				line_front = longest_serial;
+				if(line_front > 0) {line_back = line_front -1;}
+				else {line_back = line_front + distance_vec.size()-1;}
+				
+				unsigned int forward_line_front, backward_line_front;
+				
+				if(longest_serial < 2 ){backward_line_front = longest_serial + distance_vec.size() -2;}
+				else {backward_line_front = longest_serial -2;}
+				if(longest_serial + 2 >= distance_vec.size() ){forward_line_front = longest_serial +2 -distance_vec.size();}
+				else {forward_line_front = longest_serial+2;}
+				
+				unsigned int forward_line_back, backward_line_back;
+				if(backward_line_front > 0){backward_line_back = backward_line_front - 1;}
+				else{backward_line_back = backward_line_front + distance_vec.size()-1;}
+				if(forward_line_front > 0){forward_line_back = forward_line_front - 1;}
+				else{forward_line_back = forward_line_front + distance_vec.size()-1;}
+				
+				bool fd_long = false;
+				bool fd_angle = false;
+				bool bd_long = false;
+				bool bd_angle = false;
+				
+				CvPoint frontPt, backPt, fd_frontPt, fd_backPt, bd_frontPt, bd_backPt;
+				frontPt    = vertices[line_front];
+				backPt     = vertices[line_back];
+				fd_frontPt = vertices[forward_line_front];
+				fd_backPt  = vertices[forward_line_back];
+				bd_frontPt = vertices[backward_line_front];
+				bd_backPt  = vertices[backward_line_back];
+				
+				//distance criteria 
+				if(distance_vec[forward_line_front]/temp_distance1  > 0.5) {fd_long = true;}
+				if(distance_vec[backward_line_front]/temp_distance1 > 0.5) {bd_long = true;}
+				
+				double angle1 = atan2f((backPt.y-frontPt.y), (backPt.x-frontPt.x));
+				double angle2 = atan2f((fd_frontPt.y-fd_backPt.y), (fd_frontPt.x-fd_backPt.x));
+				double fd_abs_delt = fabs(fabs(angle1)-fabs(angle2));
+				
+				double angle3 = atan2f((frontPt.y-backPt.y), (frontPt.x-backPt.x));
+				double angle4 = atan2f((bd_backPt.y-bd_frontPt.y), (bd_backPt.x-bd_frontPt.x));
+				double bd_abs_delt = fabs(fabs(angle3)-fabs(angle4));
+				
+				if(fd_abs_delt < M_PI_4) {fd_angle = true;}
+				if(bd_abs_delt < M_PI_4) {bd_angle = true;}
+				bool fd_satisfy = fd_long && fd_angle;
+				bool bd_satisfy = bd_long && bd_angle;
+				
+				bool find_cor_pts = true;
+				unsigned int line1_front_serial, line1_back_serial, line2_front_serial, line2_back_serial;
+				CvPoint line1_frontd, line1_backd, line2_frontd, line2_backd;
+				
+				//line1 is the line at the left side of the marker;
+				if(fd_satisfy && !bd_satisfy)
+				{
+					line1_front_serial = line_back;
+					line1_back_serial  = line_front;
+					line2_front_serial = forward_line_front;
+					line2_back_serial  = forward_line_back;
+					
+					//ROS_INFO("use_front_only");
+				}
+				else if (!fd_satisfy && bd_satisfy)
+				{
+					line2_front_serial = line_front;
+					line2_back_serial  = line_back;
+					line1_front_serial = backward_line_back;
+					line1_back_serial  = backward_line_front;
+					
+					//ROS_INFO("use_back_only");
+				}
+				else if (fd_satisfy && bd_satisfy)
+				{
+					if(distance_vec[forward_line_front]>distance_vec[backward_line_front])
+					{
+						line1_front_serial = line_back;
+						line1_back_serial  = line_front;
+						line2_front_serial = forward_line_front;
+						line2_back_serial  = forward_line_back;
+					}
+					else
+					{
+						line2_front_serial = line_front;
+						line2_back_serial  = line_back;
+						line1_front_serial = backward_line_back;
+						line1_back_serial  = backward_line_front;
+					}
+				}
+				else
+				{
+					find_cor_pts = false;
+				}
+				
+				if(find_cor_pts)
+				{
+					line1_frontd = vertices[line1_front_serial];
+					line1_backd  = vertices[line1_back_serial];
+					line2_frontd = vertices[line2_front_serial];
+					line2_backd  = vertices[line2_back_serial];
+					
+					CvMat* dstMarkerPts = cvCreateMat(4,1,CV_32FC2);
+					CvMat* srcMarkerPts = cvCreateMat(4,1,CV_32FC2);
+					
+					int row = 0;
+					float* ptr = (float*)(dstMarkerPts->data.ptr + row * dstMarkerPts->step);
+					ptr[0] = line1_frontd.x;
+					ptr[1] = line1_frontd.y;
+					row = 1;
+					ptr = (float*)(dstMarkerPts->data.ptr + row * dstMarkerPts->step);
+					ptr[0] = line1_backd.x;
+					ptr[1] = line1_backd.y;
+					row = 2;
+					ptr = (float*)(dstMarkerPts->data.ptr + row * dstMarkerPts->step);
+					ptr[0] = line2_frontd.x;
+					ptr[1] = line2_frontd.y;
+					row = 3;
+					ptr = (float*)(dstMarkerPts->data.ptr + row * dstMarkerPts->step);
+					ptr[0] = line2_backd.x;
+					ptr[1] = line2_backd.y;
+					
+					// 4 points in "ipm_image" projected back raw "src_image"; 
+					cvPerspectiveTransform(dstMarkerPts, srcMarkerPts, projection_matrix);
+					
+					tf::Pose markerPose_base;
+					corresPoints_extrinCalib(contour_class, srcMarkerPts, markerPose_base);
+					marker_para.x = markerPose_base.getOrigin().x();
+					marker_para.y = markerPose_base.getOrigin().y();
+					double tmp;
+					markerPose_base.getBasis().getEulerYPR(marker_para.thetha, tmp, tmp);
+				}
+            }
+        }
+        cvReleaseMemStorage(&mem_poly);
+    }
+    
+    void image_proc::corresPoints_extrinCalib(int contour_class, CvMat* srcMarkerPts, tf::Pose & markerPose_base)
+    {
+		CvMat* trans_vec = cvCreateMat(3,1,CV_32FC1);
+		CvMat* rot_vec = cvCreateMat(3,1,CV_32FC1);
+		CvMat* rot_matrix = cvCreateMat(3,3,CV_32FC1);
+		
+		CvMat* marker_gndPts;
+		
+		if(contour_class == 1) marker_gndPts = M1_gndPts_;
+		else if(contour_class == 2) marker_gndPts = M2_gndPts_;
+		else if(contour_class == 2) marker_gndPts = M3_gndPts_;
+		else {ROS_ERROR("contour class unexpected, please check!"); return;}
+		
+		cvFindExtrinsicCameraParams2(marker_gndPts, srcMarkerPts, intrinsic_A_, distortion_coeffs_, rot_vec, trans_vec);
+		float x_trans, y_trans, z_trans;							
+		float *ptr = (float*)(trans_vec->data.ptr + 0 * trans_vec->step);  x_trans = ptr[0];
+		ptr = (float*)(trans_vec->data.ptr + 1 * trans_vec->step);  y_trans = ptr[0];
+		ptr = (float*)(trans_vec->data.ptr + 2 * trans_vec->step);  z_trans = ptr[0];
+		
+        cvRodrigues2(rot_vec, rot_matrix, NULL);
+							
+		int row = 0; ptr = (float*)(rot_matrix->data.ptr + row * rot_matrix->step);
+		float M11_rot = ptr[0];			
+		row = 1; ptr = (float*)(rot_matrix->data.ptr + row * rot_matrix->step);
+		float M21_rot = ptr[0];					
+		row = 2; ptr = (float*)(rot_matrix->data.ptr + row * rot_matrix->step);
+		float M31_rot = ptr[0]; float M32_rot = ptr[1]; float M33_rot = ptr[2];
+							
+		double yaw, pitch, roll;
+		yaw	  = atan2f(M21_rot, M11_rot);
+		pitch = atan2f(- M31_rot, sqrtf(M32_rot*M32_rot+M33_rot*M33_rot));
+		roll  = atan2f(M32_rot, M33_rot);
+		tf::Pose cameraInbaselink (tf::createQuaternionFromRPY(0.0,0.0,0.0), btVector3(1.795, 0.0, 0.97));				
+		tf::Pose imageInCamerabase (tf::createQuaternionFromRPY(-1.5707963267949, 0.0, -1.5707963267949), btVector3(0.0, 0.0, 0.0));
+		tf::Pose markerCoordinate_inCam (tf::createQuaternionFromRPY(roll,pitch,yaw), btVector3(x_trans,y_trans, z_trans));
+		markerPose_base = cameraInbaselink * imageInCamerabase * markerCoordinate_inCam;
+	}
+    
     
 	void image_proc::continuous_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color)
 	{
@@ -672,7 +1018,7 @@ namespace golfcar_vision{
         double center_x = (RECT_P0_X + RECT_P2_X)/2.0 + DIS_CAM_BASE_X;
         double center_y = 0.0;
         
-        double center_pix_x = 360;
+        double center_pix_x = 320;
         double center_pix_y = 180;
         
         double delt_x =  -(marker_para.y - center_pix_y)/scale_;
@@ -683,10 +1029,10 @@ namespace golfcar_vision{
     
     bool image_proc::CheckPointInside(CvPoint pt_para)
     {
-        bool out_flag1 = (pt_para.y >= corners_[0].y);
-        bool out_flag2 = (pt_para.y <= 0);
-        bool out_flag3 = (pt_para.y >= para_A1_*pt_para.x+para_C1_);
-        bool out_flag4 = (pt_para.y >= para_A2_*pt_para.x+para_C2_);
+        bool out_flag1 = (pt_para.y + BOUNDARY_MARGIN >= corners_[0].y);
+        bool out_flag2 = (pt_para.y - BOUNDARY_MARGIN <= 0);
+        bool out_flag3 = (pt_para.y + BOUNDARY_MARGIN >= para_A1_*pt_para.x+para_C1_);
+        bool out_flag4 = (pt_para.y + BOUNDARY_MARGIN >= para_A2_*pt_para.x+para_C2_);
         if(out_flag1||out_flag2||out_flag3||out_flag4) return false;
         else return true;
     }
@@ -694,7 +1040,7 @@ namespace golfcar_vision{
     
     bool image_proc::CheckPointOffSideBounds(CvPoint pt_para)
     {
-        bool out_flag3 = (pt_para.y >= para_A1_*pt_para.x+para_C1_);
+        bool out_flag3 = (pt_para.y > para_A1_*pt_para.x+para_C1_);
         bool out_flag4 = (pt_para.y > para_A2_*pt_para.x+para_C2_);
         if(out_flag3||out_flag4) return false;
         else return true;
