@@ -9,10 +9,10 @@
 #include <vision_motion_detection/BackgroundExtractorConfig.h>
 using vision_motion_detection::BackgroundExtractorConfig;
 
-#include <vision_motion_detection/BackgroundExtraction.h>
+#include <vision_motion_detection/BackgroundExtractor.h>
 
 
-class BackgroundExtractor
+class BackgroundExtractorNode
 {
 private:
     ros::NodeHandle nhp_, nh_;
@@ -21,7 +21,7 @@ private:
     image_transport::Publisher bgnd_pub_;
     ros::Subscriber reset_sub_;
 
-    Background background_;
+    BackgroundExtractor background_;
     boost::mutex mutex_; // protects background_
 
     void imageCallback(const sensor_msgs::ImageConstPtr& image);
@@ -31,12 +31,12 @@ private:
     void configCallback(BackgroundExtractorConfig & config, uint32_t level);
 
 public:
-    BackgroundExtractor();
+    BackgroundExtractorNode();
 };
 
-BackgroundExtractor::BackgroundExtractor() : nhp_("~"), it_pub_(nhp_), it_sub_(nh_)
+BackgroundExtractorNode::BackgroundExtractorNode() : nhp_("~"), it_pub_(nhp_), it_sub_(nh_)
 {
-    image_sub_ = it_sub_.subscribe("image", 10, &BackgroundExtractor::imageCallback, this);
+    image_sub_ = it_sub_.subscribe("image", 10, &BackgroundExtractorNode::imageCallback, this);
     bgnd_pub_  = it_pub_.advertise("background", 10);
 
     double alpha;
@@ -44,12 +44,12 @@ BackgroundExtractor::BackgroundExtractor() : nhp_("~"), it_pub_(nhp_), it_sub_(n
     ROS_INFO("background alpha value: %f", alpha);
     background_.set_alpha(alpha);
 
-    reset_sub_ = nhp_.subscribe("reset", 1, &BackgroundExtractor::resetCallback, this);
+    reset_sub_ = nhp_.subscribe("reset", 1, &BackgroundExtractorNode::resetCallback, this);
 
-    server_.setCallback( boost::bind(&BackgroundExtractor::configCallback, this, _1, _2) );
+    server_.setCallback( boost::bind(&BackgroundExtractorNode::configCallback, this, _1, _2) );
 }
 
-void BackgroundExtractor::configCallback(BackgroundExtractorConfig & config, uint32_t level)
+void BackgroundExtractorNode::configCallback(BackgroundExtractorConfig & config, uint32_t level)
 {
     background_.set_alpha(config.alpha);
 
@@ -61,7 +61,7 @@ void BackgroundExtractor::configCallback(BackgroundExtractorConfig & config, uin
     }
 }
 
-void BackgroundExtractor::imageCallback(const sensor_msgs::ImageConstPtr& image)
+void BackgroundExtractorNode::imageCallback(const sensor_msgs::ImageConstPtr& image)
 {
     mutex_.lock();
     cv_bridge::CvImageConstPtr cv_image = cv_bridge::toCvShare(image, "bgr8");
@@ -74,7 +74,7 @@ void BackgroundExtractor::imageCallback(const sensor_msgs::ImageConstPtr& image)
     bgnd_pub_.publish(backgroundImg.toImageMsg());
 }
 
-void BackgroundExtractor::resetCallback(const std_msgs::Empty & dummy)
+void BackgroundExtractorNode::resetCallback(const std_msgs::Empty & dummy)
 {
     mutex_.lock();
     background_.reset();
@@ -85,7 +85,7 @@ void BackgroundExtractor::resetCallback(const std_msgs::Empty & dummy)
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "background_extractor");
-    BackgroundExtractor bgnd_ext;
+    BackgroundExtractorNode node;
     ros::spin();
     return 0;
 }

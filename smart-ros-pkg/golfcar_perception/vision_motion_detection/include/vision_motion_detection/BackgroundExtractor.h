@@ -3,7 +3,7 @@
 
 #include <opencv2/opencv.hpp>
 
-class Background
+class BackgroundExtractor
 {
     cv::Mat background_; ///< where accumulation is done. type CV_32F
     cv::Mat backImage_; ///< the background image in 8U type (generated and retrieved by getImg() ).
@@ -20,7 +20,7 @@ class Background
 
 
 public:
-    Background();
+    BackgroundExtractor();
 
     void add(cv::Mat frame);
 

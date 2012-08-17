@@ -30,7 +30,7 @@ rosbuild_genmsg()
 rosbuild_add_library(${PROJECT_NAME}
     src/data_types.cpp
     src/Polygon.cpp
-    src/BackgroundExtraction.cpp
+    src/BackgroundExtractor.cpp
     src/BlobExtractor.cpp
     src/BlobFilter.cpp
     src/TrackMatcher.cpp

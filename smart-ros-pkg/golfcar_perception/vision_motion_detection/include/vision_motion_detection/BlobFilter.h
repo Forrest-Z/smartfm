@@ -12,6 +12,7 @@
 class BlobFilter
 {
 public:
+    virtual ~BlobFilter() { }
     virtual bool check(const Blob & blob) const = 0;
     void filter(std::vector<Blob> & blobs) const;
     vision_motion_detection::Blobs filter(const vision_motion_detection::Blobs &) const;

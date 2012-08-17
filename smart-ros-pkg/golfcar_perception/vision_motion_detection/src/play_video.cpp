@@ -14,7 +14,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
 
-#include <vision_motion_detection/BackgroundExtraction.h>
+#include <vision_motion_detection/BackgroundExtractor.h>
 
 #include <opencv2/highgui/highgui.hpp>
 
@@ -71,7 +71,7 @@ int main( int argc, char **argv )
     backgroundImg.encoding = "bgr8";
 
     // background extraction
-    Background background;
+    BackgroundExtractor background;
     ros::NodeHandle nh("~");
     double alpha;
     nh.param("alpha", alpha, 0.005);
@@ -90,7 +90,7 @@ int main( int argc, char **argv )
             cap >> frame.image;
             background.add(frame.image);
             time += inv_fps;
-            if( speedFactor<=0 || i>=pow(speedFactor,2) )
+            if( speedFactor<=0 || i>=pow(2.0,speedFactor) )
                 break;
         }
 
@@ -109,15 +109,15 @@ int main( int argc, char **argv )
         backgroundPub.publish(backgroundImg.toImageMsg());
 
         // listen to user input; control playback speed
-        int wait = speedFactor<0 ? pow(2,-speedFactor) : 1;
+        int wait = speedFactor<0 ? pow(2.0,-speedFactor) : 1;
         while( ! quit && wait-- > 0 )
         {
             // display the current frame, with time and speed information
             cv::Mat displayImg = frame.image.clone();
             stringstream ss;
             ss << format_time_frame(time) <<", speed=";
-            if( speedFactor<0 ) ss <<"1/" <<pow(2,-speedFactor);
-            else ss <<"x" <<pow(2,speedFactor);
+            if( speedFactor<0 ) ss <<"1/" <<pow(2.0,-speedFactor);
+            else ss <<"x" <<pow(2.0,speedFactor);
             cv::putText(displayImg, ss.str(), cv::Point(30,50),
                             cv::FONT_HERSHEY_COMPLEX_SMALL, 2,
                             CV_RGB(0,255,555), 1, CV_AA);
@@ -129,7 +129,7 @@ int main( int argc, char **argv )
             if( key=='q' ) quit = true;
             else if( key=='f' ) {
                 if( speedFactor<0 ) {
-                    wait -= pow(2,-speedFactor-1);
+                    wait -= pow(2.0,-speedFactor-1);
                 }
                 speedFactor++;
             }

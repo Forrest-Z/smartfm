@@ -1,11 +1,11 @@
-#include <vision_motion_detection/BackgroundExtraction.h>
+#include <vision_motion_detection/BackgroundExtractor.h>
 
-Background::Background() : changed_(true), alpha_target_(0.005), alpha_(1.0)
+BackgroundExtractor::BackgroundExtractor() : changed_(true), alpha_target_(0.005), alpha_(1.0)
 {
 
 }
 
-void Background::reset()
+void BackgroundExtractor::reset()
 {
     cv::Mat empty;
     empty.copyTo(background_);
@@ -14,12 +14,12 @@ void Background::reset()
     alpha_ = 1.0;
 }
 
-void Background::set_alpha(double a)
+void BackgroundExtractor::set_alpha(double a)
 {
     alpha_target_ = a;
 }
 
-void Background::add(cv::Mat frame)
+void BackgroundExtractor::add(cv::Mat frame)
 {
     changed_ = true;
 
@@ -50,7 +50,7 @@ void Background::add(cv::Mat frame)
 }
 
 
-cv::Mat Background::getImg()
+cv::Mat BackgroundExtractor::getImg()
 {
     if( changed_ )
     {

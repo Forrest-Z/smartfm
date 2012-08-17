@@ -10,6 +10,7 @@
 class MatcherThreshold
 {
 public:
+    virtual ~MatcherThreshold() { }
     virtual double threshold(const Track & track, const Blob & b) = 0;
 };
 
@@ -40,6 +41,7 @@ public:
 class TrackMatcher
 {
 public:
+    virtual ~TrackMatcher() { }
     /// Searches all tracks for one that matches a given Blob. If one is found
     /// then returns an iterator to it, otherwise returns the end iterator.
     virtual Tracks::iterator match(Tracks & tracks, const Blob & blob) = 0;
