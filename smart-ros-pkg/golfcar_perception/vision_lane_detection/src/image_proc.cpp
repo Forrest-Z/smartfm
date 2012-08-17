@@ -842,6 +842,9 @@ namespace golfcar_vision{
 					marker_para.y = markerPose_base.getOrigin().y();
 					double tmp;
 					markerPose_base.getBasis().getEulerYPR(marker_para.thetha, tmp, tmp);
+					
+					cvReleaseMat(&dstMarkerPts);
+					cvReleaseMat(&srcMarkerPts);
 				}
             }
         }
@@ -853,7 +856,6 @@ namespace golfcar_vision{
 		CvMat* trans_vec = cvCreateMat(3,1,CV_32FC1);
 		CvMat* rot_vec = cvCreateMat(3,1,CV_32FC1);
 		CvMat* rot_matrix = cvCreateMat(3,3,CV_32FC1);
-		
 		CvMat* marker_gndPts;
 		
 		if(contour_class == 1) marker_gndPts = M1_gndPts_;
@@ -884,6 +886,10 @@ namespace golfcar_vision{
 		tf::Pose imageInCamerabase (tf::createQuaternionFromRPY(-1.5707963267949, 0.0, -1.5707963267949), btVector3(0.0, 0.0, 0.0));
 		tf::Pose markerCoordinate_inCam (tf::createQuaternionFromRPY(roll,pitch,yaw), btVector3(x_trans,y_trans, z_trans));
 		markerPose_base = cameraInbaselink * imageInCamerabase * markerCoordinate_inCam;
+		
+		cvReleaseMat(&trans_vec);
+		cvReleaseMat(&rot_vec);
+		cvReleaseMat(&rot_matrix);
 	}
     
     
@@ -1157,5 +1163,10 @@ namespace golfcar_vision{
         cvDestroyWindow("binary_image");
         cvDestroyWindow("contour_image");
         cvDestroyWindow("HistogramEqualized_image");
+        cvReleaseMat(&intrinsic_A_);
+        cvReleaseMat(&distortion_coeffs_);
+        cvReleaseMat(&M1_gndPts_);
+        cvReleaseMat(&M2_gndPts_);
+        cvReleaseMat(&M3_gndPts_);
     }
 };

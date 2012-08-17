@@ -55,6 +55,7 @@ namespace golfcar_vision{
         //they are two different representations about the ground; 
         //"srcQuad_" is pixels in camera image;
         CvPoint2D32f gndQuad_[4], srcQuad_[4], dstQuad_[4];
+	CvMat *warp_matrix_, *projection_matrix_; 
 
         //scale denotes the ratio of pixel/distance in "image_ipm";
         float scale_;

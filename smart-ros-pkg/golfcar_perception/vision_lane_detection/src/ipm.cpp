@@ -31,7 +31,7 @@ namespace golfcar_vision{
       gndQuad_[2].y = RECT_P2_Y;
       gndQuad_[3].x = RECT_P3_X+DIS_CAM_BASE_X;
       gndQuad_[3].y = RECT_P3_Y;
-      
+  
       pub_init_ = false;
       
       if(visualization_flag_)
@@ -39,6 +39,9 @@ namespace golfcar_vision{
 		cvNamedWindow("src_window");
 		cvNamedWindow("ipm_window");
 	  }
+	  				
+		warp_matrix_ = cvCreateMat(3,3,CV_32FC1);
+		projection_matrix_ = cvCreateMat(3,3,CV_32FC1);
   }
   
   void ipm::ImageCallBack( const sensor_msgs::ImageConstPtr& image_msg,
@@ -52,11 +55,11 @@ namespace golfcar_vision{
         {
 			ROS_INFO("image not processing since moving distance small");
 			return;
-		}
-		else ROS_INFO("-----------to process image------");
+			}
+			else ROS_INFO("-----------to process image------");
+        
         
         IplImage* color_image, *gray_image, *ipm_image;
-        
         //get image in OpenCV format;
         try {
             color_image = bridge_.imgMsgToCv(image_msg, "bgr8");
@@ -89,73 +92,64 @@ namespace golfcar_vision{
             try {
                 ros::Time acquisition_time = info_msg->header.stamp;
                 ros::Duration timeout(5.0 / 30);
-                tf_.waitForTransform(cam_model_.tfFrame(), dest_frame_id_,
-                                                acquisition_time, timeout);
-                tf_.lookupTransform(cam_model_.tfFrame(), dest_frame_id_,
-                                                acquisition_time, transform);
-            
-                tf::Transform *transform_pointer = &transform;
-                src_dest_tf_ = *transform_pointer;
-                
+                tf_.waitForTransform(cam_model_.tfFrame(), dest_frame_id_, acquisition_time, timeout);
+                tf_.lookupTransform(cam_model_.tfFrame(), dest_frame_id_, acquisition_time, transform);
                 fixedTf_inited_ = true;
                 }
-            catch (tf::TransformException& ex) {
+				catch (tf::TransformException& ex){
                 ROS_WARN("[draw_frames] TF exception:\n%s", ex.what());
                 return;
-            }
+					 }
+					 
+            tf::Transform *transform_pointer = &transform;
+            src_dest_tf_ = *transform_pointer;
+        
+				//1. from "gndQuad_[4]" to get "srcQuad_[4]";
+				GndPt_to_Src(gndQuad_, srcQuad_);
+				//2. from "gndQuad_[4]" to get "dstQuad_[4]";
+				//this depends on how you represent your image;
+				GndPt_to_Dst(gndQuad_, dstQuad_);
+				
+				ROS_INFO("srcQuad points: (%5f, %5f); (%5f, %5f); (%5f, %5f); (%5f, %5f)", 
+						srcQuad_[0].x, srcQuad_[0].y,
+						srcQuad_[1].x, srcQuad_[1].y,
+						srcQuad_[2].x, srcQuad_[2].y,
+						srcQuad_[3].x, srcQuad_[3].y
+				);
+				ROS_INFO("dstQuad points: (%5f, %5f); (%5f, %5f); (%5f, %5f); (%5f, %5f)",
+						dstQuad_[0].x, dstQuad_[0].y,
+						dstQuad_[1].x, dstQuad_[1].y,
+						dstQuad_[2].x, dstQuad_[2].y,
+						dstQuad_[3].x, dstQuad_[3].y
+				);
+
+				cvGetPerspectiveTransform(srcQuad_,dstQuad_,  warp_matrix_);
+				cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix_);
         }
         
-        ////////////////////////////////////////////////
-        //main functional part;
-        ////////////////////////////////////////////////
-        
-        //1. from "gndQuad_[4]" to get "srcQuad_[4]";
-        GndPt_to_Src(gndQuad_, srcQuad_);
-        
-        //2. from "gndQuad_[4]" to get "dstQuad_[4]";
-        //this depends on how you represent your image;
-        GndPt_to_Dst(gndQuad_, dstQuad_);
-        
-        ROS_INFO("srcQuad points: (%5f, %5f); (%5f, %5f); (%5f, %5f); (%5f, %5f)", 
-					srcQuad_[0].x, srcQuad_[0].y,
-					srcQuad_[1].x, srcQuad_[1].y,
-					srcQuad_[2].x, srcQuad_[2].y,
-					srcQuad_[3].x, srcQuad_[3].y
-        );
-        
-        ROS_INFO("dstQuad points: (%5f, %5f); (%5f, %5f); (%5f, %5f); (%5f, %5f)",
-					dstQuad_[0].x, dstQuad_[0].y,
-					dstQuad_[1].x, dstQuad_[1].y,
-					dstQuad_[2].x, dstQuad_[2].y,
-					dstQuad_[3].x, dstQuad_[3].y
-        );
-        
-        //3. wrap the image;
-        CvMat* warp_matrix = cvCreateMat(3,3,CV_32FC1);
-        cvGetPerspectiveTransform(srcQuad_,dstQuad_,warp_matrix);
+			////////////////////////////////////////////////
+			//main functional part;
+			////////////////////////////////////////////////
         ipm_image = cvCreateImage(cvGetSize(gray_image),8,1);
-        cvWarpPerspective( gray_image, ipm_image, warp_matrix);
-        
-        CvMat* projection_matrix = cvCreateMat(3,3,CV_32FC1);
-        cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix);
-        
+        cvWarpPerspective( gray_image, ipm_image, warp_matrix_);
+
         //---------------------------------------------------------------------
         //this helps to reduce the artificial contours in adaptiveThreshold;
         int ipm_height 		= ipm_image -> height;
-		int ipm_width  		= ipm_image -> width;
-		int ipm_step	 	= ipm_image -> widthStep/sizeof(uchar);
-		uchar * ipm_data 	= (uchar*)ipm_image ->imageData;
-		for(int ih=0; ih < ipm_height; ih++)
-		{
-			for(int iw=0; iw < ipm_width; iw++)
-			{
-				if(ipm_data[ih*ipm_step+iw] == 0)
-				{
-					ipm_data[ih*ipm_step+iw]=150;
-				}
-			}
-		}
-		//---------------------------------------------------------------------
+		  int ipm_width  		= ipm_image -> width;
+		  int ipm_step	 		= ipm_image -> widthStep/sizeof(uchar);
+		  uchar * ipm_data 	= (uchar*)ipm_image ->imageData;
+		  for(int ih=0; ih < ipm_height; ih++)
+		  {
+			 for(int iw=0; iw < ipm_width; iw++)
+			 {
+				 if(ipm_data[ih*ipm_step+iw] == 0)
+				 {
+					 ipm_data[ih*ipm_step+iw]=150;
+				 }
+			 }
+		  }
+		  //---------------------------------------------------------------------
 		 
         ////////////////////////////////////////////////
         //visualization part;
@@ -197,7 +191,7 @@ namespace golfcar_vision{
         //this scentence is necessary;
         cvWaitKey(10);
         
-        image_processor_->Extract_Markers(ipm_image, scale_, markers_, training_frame_serial_, dstQuad_, projection_matrix, markers_2nd_);
+        image_processor_->Extract_Markers(ipm_image, scale_, markers_, training_frame_serial_, dstQuad_, projection_matrix_, markers_2nd_);
         markers_.header = info_msg -> header;
         markers_info_pub.publish(markers_);
         //
@@ -214,7 +208,7 @@ namespace golfcar_vision{
         
         cvReleaseImage(&gray_image);
         cvReleaseImage(&ipm_image);
-        cvReleaseMat(&warp_matrix);
+
   }
   
   //Function "GndPt_to_Src": project ground point in baselink coordinate into camera image;
@@ -236,7 +230,7 @@ namespace golfcar_vision{
         {
             temppose.position.x= gnd_pointer[i].x;
             temppose.position.y= gnd_pointer[i].y;
-			tf::poseMsgToTF(temppose, tempTfPose);
+			   tf::poseMsgToTF(temppose, tempTfPose);
             PoseInCamera = src_dest_tf_ * tempTfPose;
             tf::Point pt = PoseInCamera.getOrigin();
             //ROS_DEBUG("%5f,%5f,%5f", pt.x(), pt.y(), pt.z());
@@ -313,6 +307,8 @@ namespace golfcar_vision{
 	   cvDestroyWindow("ipm_window");
 	}
     delete image_processor_;
+    cvReleaseMat(&warp_matrix_);
+    cvReleaseMat(&projection_matrix_);
   }
 };
 
