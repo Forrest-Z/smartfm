@@ -1,0 +1,4 @@
+cfg/*.cfgc
+cfg/cpp/
+docs/
+src/vision_motion_detection

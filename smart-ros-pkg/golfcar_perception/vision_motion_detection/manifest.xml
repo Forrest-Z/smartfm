@@ -1,22 +1,21 @@
 <package>
-  <description brief="infrastructure_road_monitoring">
+  <description brief="vision_motion_detection">
 
-     infrastructure_road_monitoring
+     vision_motion_detection
 
   </description>
   <author>brice rebsamen</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
-  <url>http://ros.org/wiki/infrastructure_road_monitoring</url>
+  <url>http://ros.org/wiki/vision_motion_detection</url>
+  <depend package="roscpp"/>
   <depend package="rospy"/>
   <depend package="geometry_msgs"/>
   <depend package="image_transport"/>
   <depend package="cv_bridge"/>
   <depend package="opencv2"/>
-  <depend package="pluginlib"/>
   <depend package="dynamic_reconfigure"/>
   <depend package="fmutil"/>
-  <depend package="vision_motion_detection"/>
 </package>
 
 
