@@ -1,3 +1,7 @@
+/*
+ * This is a test
+ */
+
 #include <iostream>
 #include <ctime>
 
