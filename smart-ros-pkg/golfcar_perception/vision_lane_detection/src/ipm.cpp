@@ -9,6 +9,11 @@ namespace golfcar_vision{
     fixedTf_inited_(false),
     visualization_flag_(false)
   {
+	  string svm_model_path;
+	  string svm_scale_path;
+	  private_nh_.param("svm_model_path", svm_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
+	  private_nh_.param("svm_scale_path", svm_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
+	  
 	  private_nh_.param("publish_dis_thresh",     publish_dis_thresh_,    0.05);
 	  private_nh_.param("publish_angle_thresh",   publish_angle_thresh_,  5.0/180.0*M_PI);
       private_nh_.param("visualization_flag",     visualization_flag_,    false);     
@@ -20,7 +25,7 @@ namespace golfcar_vision{
       markers_info_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_info",2);
       markers_info_2nd_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_2nd_info",2);
       
-      image_processor_ = new image_proc();
+      image_processor_ = new image_proc(svm_model_path, svm_scale_path);
       
       //Four base points on the ground in the "base_link" coordinate; "base_link" is at the back wheel.
       gndQuad_[0].x = RECT_P0_X+DIS_CAM_BASE_X;

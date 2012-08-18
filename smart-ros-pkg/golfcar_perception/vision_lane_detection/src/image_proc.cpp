@@ -2,7 +2,7 @@
 
 namespace golfcar_vision{
   
-    image_proc::image_proc():
+    image_proc::image_proc(string svm_model_path, string svm_scale_path):
         init_flag_(false),
         extract_image_(false)
     { 
@@ -14,13 +14,15 @@ namespace golfcar_vision{
 
       string svm_model_file;
       //the name cannot be too long, or it cannot load;
-      svm_model_file = "/home/baoxing/workspace/data_and_model/scaled_20120726.model";
+      //svm_model_file = "/home/baoxing/workspace/data_and_model/scaled_20120726.model";
+      svm_model_file = svm_model_path;
       svm_model_ = svm_load_model(svm_model_file.c_str());
       //the following line can help to check where the model has been loaded or not;
       cout<<" SVM loaded, type = "<< svm_model_->param.svm_type <<endl;
       
       string svm_scale_file;
-      svm_scale_file = "/home/baoxing/workspace/data_and_model/range_20120726";
+      //svm_scale_file = "/home/baoxing/workspace/data_and_model/range_20120726";
+      svm_scale_file = svm_scale_path;
       restore_scalefile(svm_scale_file, feature_min_, feature_max_, feature_index_);
       
       // initialize camera intrinsic matrix and distortion coefficients;
@@ -892,7 +894,7 @@ namespace golfcar_vision{
 		cvReleaseMat(&rot_matrix);
 	}
     
-    
+   /*
 	void image_proc::continuous_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color)
 	{
 		std::vector <TPoint2D> contour_points;
@@ -1018,6 +1020,7 @@ namespace golfcar_vision{
 		}
 		//---------------------------------------------------------------------------------------------------------------
     }
+    */ 
     
     void image_proc::cvt_pose_baselink(vision_lane_detection::marker_info &marker_para)
     {
