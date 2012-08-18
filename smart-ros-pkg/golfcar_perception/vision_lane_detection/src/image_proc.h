@@ -11,7 +11,9 @@
 #include "lane_marker_common.h"
 #include <stdlib.h>
 #include "libsvm/svm.h"
-#include "ransac_parabola.h"
+
+//disable continuous lane temporarily, since golfcart 10.04 doesn't have required mrpt-library;
+//#include "ransac_parabola.h"
 
 #include <float.h>
 #include <stdio.h>
@@ -23,7 +25,7 @@ namespace golfcar_vision{
 
     class image_proc {
         public:
-        image_proc();
+        image_proc(string svm_model_path, string svm_scale_path);
         ~image_proc();        
 
         void Extract_Markers (IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, 
@@ -49,18 +51,19 @@ namespace golfcar_vision{
         bool CheckPointOffSideBounds(CvPoint pt_para);
 
         struct svm_model *svm_model_;
-        int classify_contour(double weight_input, double perimeter_input, CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input);
+        int classify_contour(double weight_input, double perimeter_input, CvHuMoments &HM_input, 
+				CvBox2D &Box_input, int polyNum_input);
         void pose_contour(CvSeq *contour, CvMoments &cvm, vision_lane_detection::marker_info &marker_para);
         void cvt_pose_baselink(vision_lane_detection::marker_info &marker_para);
-		void continuous_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color);
+	//void continuous_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color);
 		
-		void restore_scalefile(string filename,double* &feature_min, double* &feature_max, int &feature_index);
-		double output(int index, double value);
-		char* readline(FILE *input);
-		double* feature_max_;
-		double* feature_min_;
-		int feature_index_;
-		double lower_, upper_;
+	void restore_scalefile(string filename,double* &feature_min, double* &feature_max, int &feature_index);
+	double output(int index, double value);
+	char* readline(FILE *input);
+	double* feature_max_;
+	double* feature_min_;
+	int feature_index_;
+	double lower_, upper_;
 
 	CvMat* intrinsic_A_, *distortion_coeffs_;
  	void pose_contour_Extrinsic(CvSeq *contour_raw, int contour_class, CvMat* projection_matrix,
