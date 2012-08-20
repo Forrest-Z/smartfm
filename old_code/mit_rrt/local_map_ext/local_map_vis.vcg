@@ -1,7 +1,7 @@
 Background\ ColorB=0
 Background\ ColorG=0
 Background\ ColorR=0
-Camera\ Config=17.2758 -2.30324 -6.8477 -3.37
+Camera\ Config=8.30423 -1.45155 16.0202 -6.85
 Camera\ Type=rviz::FixedOrientationOrthoViewController
 Fixed\ Frame=/map
 Grid.Alpha=1
@@ -48,14 +48,14 @@ LaserScan.Queue\ Size=10
 LaserScan.Selectable=1
 LaserScan.Style=0
 LaserScan.Topic=/base_scan
-MapExt.Alpha=0.7
-MapExt.Draw\ Behind=0
-MapExt.Enabled=1
-MapExt.Topic=/map
-MapExt2.Alpha=0.7
-MapExt2.Draw\ Behind=0
-MapExt2.Enabled=1
-MapExt2.Topic=/local_map
+Map.Alpha=0.7
+Map.Draw\ Behind=0
+Map.Enabled=1
+Map.Topic=/lane_map
+Map2.Alpha=0.7
+Map2.Draw\ Behind=0
+Map2.Enabled=1
+Map2.Topic=/local_map
 Odometry.Angle\ Tolerance=0.1
 Odometry.ColorB=0
 Odometry.ColorG=0.1
@@ -67,7 +67,7 @@ Odometry.Position\ Tolerance=0.1
 Odometry.Topic=/odom
 PointCloud..AxisColorAutocompute\ Value\ Bounds=1
 PointCloud..AxisColorAxis=2
-PointCloud..AxisColorMax\ Value=1.26
+PointCloud..AxisColorMax\ Value=1.05
 PointCloud..AxisColorMin\ Value=0
 PointCloud..AxisColorUse\ Fixed\ Frame=1
 PointCloud..FlatColorColorB=0
@@ -94,30 +94,30 @@ PointCloud.Queue\ Size=10
 PointCloud.Selectable=1
 PointCloud.Style=1
 PointCloud.Topic=/local_map_pts
-Property\ Grid\ Splitter=619,78
-Property\ Grid\ State=expanded=.Global Options;splitterratio=0.5
-QMainWindow=000000ff00000000fd0000000300000000000001710000030bfc0200000001fb000000100044006900730070006c006100790073010000001d0000030b000000ee00ffffff00000001000001310000030bfc0200000003fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000001d000000d60000006700fffffffb0000000a0056006900650077007301000000f900000100000000bb00fffffffc000001ff000001290000006700fffffffa000000020100000003fb0000000c0049006d00610067006500320000000000ffffffff0000000000000000fb0000000a0049006d0061006700650000000000ffffffff0000000000000000fb0000001200530065006c0065006300740069006f006e01000003e4000001310000004f00ffffff00000003000005ff0000003efc0100000001fb0000000800540069006d00650100000000000005ff000002bf00ffffff000003510000030b00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+Property\ Grid\ Splitter=590,84
+Property\ Grid\ State=expanded=.Global Options,Map.Enabled,Map2.Enabled;splitterratio=0.5
+QMainWindow=000000ff00000000fd000000030000000000000171000002f4fc0200000001fb000000100044006900730070006c0061007900730100000034000002f4000000fa00ffffff0000000100000131000002f4fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000034000000d00000006d00fffffffb0000000a00560069006500770073010000010a000000f8000000c100fffffffc0000020800000120000000890100001bfa000000020100000003fb0000000c0049006d00610067006500320000000000ffffffff0000000000000000fb0000000a0049006d0061006700650000000000ffffffff0000000000000000fb0000001200530065006c0065006300740069006f006e01000003e4000001310000005400ffffff00000003000005ff0000003efc0100000001fb0000000800540069006d00650100000000000005ff0000022100ffffff00000351000002f400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
 Target\ Frame=/base_link
 Tool\ 2D\ Nav\ GoalTopic=/move_base_simple/goal
 Tool\ 2D\ Pose\ EstimateTopic=initialpose
 [Display0]
-ClassName=map_ext_rviz_plugin::MapExtDisplay
-Name=MapExt
-[Display1]
 ClassName=rviz::PointCloudDisplay
 Name=PointCloud
-[Display2]
-ClassName=map_ext_rviz_plugin::MapExtDisplay
-Name=MapExt2
-[Display3]
+[Display1]
 ClassName=rviz::GridDisplay
 Name=Grid
-[Display4]
+[Display2]
 ClassName=rviz::OdometryDisplay
 Name=Odometry
-[Display5]
+[Display3]
 ClassName=rviz::LaserScanDisplay
 Name=LaserScan
+[Display4]
+ClassName=rviz::MapDisplay
+Name=Map
+[Display5]
+ClassName=rviz::MapDisplay
+Name=Map2
 [Views]
 0Name=CrossingMOMDP
 10Name=utown_deadreckoning
@@ -180,7 +180,7 @@ Config=0.305399 4.66358 54.0311 32.2027 138.864 -9.12217
 Target=<Fixed Frame>
 Type=rviz::OrbitViewController
 [Window]
-Height=876
-Width=1535
-X=27133
-Y=584
+Height=900
+Width=1541
+X=69
+Y=-42
