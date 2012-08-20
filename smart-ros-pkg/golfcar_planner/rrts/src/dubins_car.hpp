@@ -95,18 +95,13 @@ System::System ()
     turning_radius = 4.0;
     distance_limit = 1000.0;
     delta_distance = 0.05;
-    has_found_path = 0; 
+
+    car_width = 2.0;
+    car_height = 4.0;
 }
 
 
 System::~System () {
-    /*
-       cout<<"dying right here"<<endl;
-       if(map_vals)
-       delete [] map_vals;
-
-       cout<<"after dying"<<endl;
-       */
 }
 
 
@@ -126,48 +121,59 @@ bool System::isReachingTarget (State &stateIn) {
         if (fabs(stateIn.x[i] - regionGoal.center[i]) > regionGoal.size[i]/2.0 )
             return false;
     }
-    has_found_path = 1; 
     return true;
 }
 
 bool System::IsInCollision (double stateIn[3]) 
 {
-    // get cell_num of stateIn
-    double xtmp = stateIn[0] - origin.x;
-    double ytmp = stateIn[1] - origin.y;
+    double roll=0, pitch=0, yaw=0;
+    tf::Quaternion q;
+    tf::quaternionMsgToTF(map.info.origin.orientation, q);
+    tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+    cout<<roll<<" "<<pitch<<" "<<yaw<<endl;
 
-    int xnum, ynum;
-    xnum = xtmp/map_res + xorigin;
-    ynum = ytmp/map_res + yorigin;
+    // convert stateIn to local coords
+    stateIn[0] = stateIn[0] - map.info.origin.position.x;
+    stateIn[1] = stateIn[1] - map.info.origin.position.y;
+    stateIn[2] = stateIn[2] - yaw;
+    while(stateIn[2] > M_PI)
+        stateIn[2] -= 2.0*M_PI;
+    while(stateIn[2] < -M_PI)
+        stateIn[2] += 2.0*M_PI;
+    
+    double cyaw = cos(stateIn[2]);
+    double syaw = sin(stateIn[2]);
 
-    float car_width =1.0, car_length = 2.0;
-
-    int yleft = min(ysize, (int)(ynum + car_width/2/map_res));
-    int yright = max(0, (int)(ynum - car_width/2/map_res));
-    int xfront = min(xsize, (int)(xnum + car_length/2/map_res));
-    int xback = max(0, (int)(xnum - car_length/2/map_res));
-
-    bool is_collision = false;
-
-    for(int xt = xback; xt < xfront; xt++)
+    bool is_obstructed = false;
+    double cy = -car_width/2.0;
+    double cx = -car_height/2.0;
+    while(cy < car_width/2.0)
     {
-        for(int yt = yright; yt < yleft; yt++)
-        {	
-            if( (xt >= xsize) || (xt < 0) || (yt >= ysize) || (yt < 0) ){}
-            else
-            {
-                //cout<<"grid: " << xback <<" "<< xfront <<" "<< yleft <<" "<< yright << endl;
-                if(map_vals[yt + xt*xsize] > 10)
-                    is_collision = true;
-            }
+        while(cx < car_height/2.0)
+        {
+            // 1. check the point (stateIn[0], stateIn[1]) + (cx,cy) -> R(-yaw)
+            double x = stateIn[0] + cx*cyaw + cy*syaw;
+            double y = stateIn[1] - cx*syaw + cy*cyaw;
+            
+            // 2. find cells corresponding to (x,y)
+            int cellx = x/map.info.resolution + map.info.height/2.0;
+            int celly = y/map.info.resolution + map.info.width/2.0;
+            
+            int to_check = cellx*map.info.width + celly;
+            if( map.data[to_check] != 87)
+                is_obstructed = true;
 
+            cx = cx + map.info.resolution;
         }
+        cy = cy + map.info.resolution;
     }
-    return is_collision;
+    
+    return is_obstructed;
 }
 
 int System::getStateCost(double stateIn[3])
-{   
+{
+    /*
     // get cell_num of stateIn
     double xtmp = stateIn[0] - origin.x;
     double ytmp = stateIn[1] - origin.y;
@@ -188,6 +194,7 @@ int System::getStateCost(double stateIn[3])
         else
             return (250 - map_vals[ynum + xnum*xsize]);
     }
+    */
     return 0;
 }
 
