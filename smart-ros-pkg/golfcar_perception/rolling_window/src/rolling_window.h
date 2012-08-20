@@ -21,6 +21,7 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/filters/radius_outlier_removal.h>
 #include <pcl/features/normal_3d_omp.h>
+#include <pcl/filters/voxel_grid.h>
 
 #include <laser_geometry/laser_geometry.h>
 
