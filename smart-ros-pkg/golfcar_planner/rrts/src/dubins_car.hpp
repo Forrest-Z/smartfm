@@ -96,8 +96,8 @@ System::System ()
     distance_limit = 1000.0;
     delta_distance = 0.05;
 
-    car_width = 2.0;
-    car_height = 4.0;
+    car_width = 1.0;
+    car_height = 2.0;
 }
 
 
@@ -126,12 +126,15 @@ bool System::isReachingTarget (State &stateIn) {
 
 bool System::IsInCollision (double stateIn[3]) 
 {
+    //return false;
+
     double roll=0, pitch=0, yaw=0;
     tf::Quaternion q;
     tf::quaternionMsgToTF(map.info.origin.orientation, q);
     tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
-    cout<<roll<<" "<<pitch<<" "<<yaw<<endl;
-
+    cout<<"attitude: "<<roll<<" "<<pitch<<" "<<yaw<<endl;
+    
+    cout<<"stateIn: "<<stateIn[0]<<" "<<stateIn[1]<<" "<<stateIn[2]<<endl;
     // convert stateIn to local coords
     stateIn[0] = stateIn[0] - map.info.origin.position.x;
     stateIn[1] = stateIn[1] - map.info.origin.position.y;
@@ -140,7 +143,17 @@ bool System::IsInCollision (double stateIn[3])
         stateIn[2] -= 2.0*M_PI;
     while(stateIn[2] < -M_PI)
         stateIn[2] += 2.0*M_PI;
-    
+    cout<<"stateCheck: "<<stateIn[0]<<" "<<stateIn[1]<<" "<<stateIn[2]<<endl;
+
+    for(int i=0; i<3; i++)
+    {
+        if( (stateIn[i] > regionOperating.size[i]/2.0) || (stateIn[i] < -regionOperating.size[i]/2.0) )
+        {
+            cout<<"returning line 152"<<endl;
+            return true;
+        }
+    }
+
     double cyaw = cos(stateIn[2]);
     double syaw = sin(stateIn[2]);
 
@@ -154,13 +167,21 @@ bool System::IsInCollision (double stateIn[3])
             // 1. check the point (stateIn[0], stateIn[1]) + (cx,cy) -> R(-yaw)
             double x = stateIn[0] + cx*cyaw + cy*syaw;
             double y = stateIn[1] - cx*syaw + cy*cyaw;
-            
+            cout<<"x: "<< x<<" y: "<<y<<endl;
+
             // 2. find cells corresponding to (x,y)
             int cellx = x/map.info.resolution + map.info.height/2.0;
             int celly = y/map.info.resolution + map.info.width/2.0;
-            
+            cout<<"cellx: "<<cellx<<" celly: "<<celly<<endl;
+
             int to_check = cellx*map.info.width + celly;
-            if( map.data[to_check] != 87)
+            cout<<"to_check: "<< to_check<<" map.data: "<<(int)map.data[to_check]<<endl;
+            if(to_check > map.data.size())
+            {
+                cout<<"ERR: to_check: "<<to_check<<" > map.data.size(): "<<map.data.size()<<endl;
+                exit(0);
+            }
+            if( map.data[to_check] != 84)
                 is_obstructed = true;
 
             cx = cx + map.info.resolution;
@@ -225,7 +246,7 @@ int System::sampleGoalState (State &randomStateOut) {
     {
         return 0;
     }
-    //cout<<"sampled goal: "<< randomStateOut.x[0]<<" "<< randomStateOut.x[1]<< endl;
+    cout<<"sampled goal: "<< randomStateOut.x[0]<<" "<< randomStateOut.x[1]<< " "<<randomStateOut.x[2]<<endl;
     return 1;
 }
 

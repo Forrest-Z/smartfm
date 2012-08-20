@@ -651,7 +651,7 @@ RRTstar::Planner< typeparams >
     // 2. Compute the set of all near vertices
     vector<vertex_t*> vectorNearVertices;
     getNearVertices (stateRandom, vectorNearVertices);
-
+    
 
     // 3. Find the best parent and extend from that parent
     vertex_t* vertexParent = NULL;  
