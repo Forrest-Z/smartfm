@@ -29,7 +29,7 @@
 #include <laser_geometry/laser_geometry.h>
 
 #include <fmutil/fm_math.h>
-
+#include <fmutil/fm_stopwatch.h>
 #include <visualization_msgs/MarkerArray.h>
 
 
@@ -51,20 +51,23 @@ public:
 private:
 	ros::NodeHandle n_;
 	ros::Timer timer_;
-	ros::Subscriber raw_pc_sub_;
+	ros::Subscriber raw_pc_sub_, curb_pc_sub_;
 	ros::Publisher interpreted_pub_, downsampled_pub_, bef_downsampled_pub_, laser_pub_, normals_poses_pub_;
 	ros::Publisher interpreted_pc_pub_;
 	tf::TransformListener tf_;
 	void rawPointCloudCallback(sensor_msgs::PointCloud2ConstPtr raw_pointcloud);
+	void curbPointCallback(sensor_msgs::PointCloud2ConstPtr curb_pointcloud);
 
 	//dynamic parameters
 	bool min_pc2laser_, publish_normals_;
 	double downsample_size_, normal_radius_search_, normal_thres_, density_radius_search_;
 	int density_min_neighbors_;
+	sensor_msgs::PointCloud2 curb_pc_;
 
 	typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 	void pointcloudsToLaser(sensor_msgs::PointCloud& cloud, sensor_msgs::LaserScan& output);
 	void normalEstimation(PointCloud& input);
+
 	void publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_cloud);
 	void convertToLaser(sensor_msgs::PointCloud2 pointcloud2_in, sensor_msgs::LaserScan& laser_out);
 
@@ -85,7 +88,8 @@ void SceneInterpretation::dynamicCallback(curb_points_to_laser::SceneInterpretat
 
 SceneInterpretation::SceneInterpretation()
 {
-	raw_pc_sub_ = n_.subscribe("pc_in", 10, &SceneInterpretation::rawPointCloudCallback, this);
+	raw_pc_sub_ = n_.subscribe("pc_in", 1, &SceneInterpretation::rawPointCloudCallback, this);
+	curb_pc_sub_ = n_.subscribe("rolling_window_curb", 10, &SceneInterpretation::curbPointCallback, this);
 	interpreted_pub_ = n_.advertise<sensor_msgs::PointCloud2>("pc_out", 10);
 	interpreted_pc_pub_ = n_.advertise<sensor_msgs::PointCloud>("pc_legacy_out", 10);
 	downsampled_pub_ = n_.advertise<sensor_msgs::PointCloud2>("downsampled", 10);
@@ -96,6 +100,11 @@ SceneInterpretation::SceneInterpretation()
 	dynamic_server_cb_ = boost::bind(&SceneInterpretation::dynamicCallback, this, _1, _2);
 	dynamic_server_.setCallback(dynamic_server_cb_);
 	ros::spin();
+}
+
+void SceneInterpretation::curbPointCallback(sensor_msgs::PointCloud2ConstPtr curb_pointcloud)
+{
+	this->curb_pc_ = *curb_pointcloud;
 }
 
 void SceneInterpretation::rawPointCloudCallback(sensor_msgs::PointCloud2ConstPtr raw_pointcloud)
@@ -112,7 +121,7 @@ void SceneInterpretation::pointcloudsToLaser(sensor_msgs::PointCloud& cloud, sen
     output.header = cloud.header;
     output.angle_min = -M_PI;//*0.7;
     output.angle_max = M_PI;//*0.7;
-    output.angle_increment = M_PI/180.0/2.0;
+    output.angle_increment = M_PI/180.0/5.0;
     output.time_increment = 0.0;
     output.scan_time = 1.0/30.0;
     output.range_min = 0.1;
@@ -164,22 +173,8 @@ void SceneInterpretation::pointcloudsToLaser(sensor_msgs::PointCloud& cloud, sen
 void SceneInterpretation::normalEstimation(PointCloud& input)
 {
 	if(input.points.size() == 0) return;
-	//down sampling first
-	Stopwatch sw;
-	sw.start("Downsampling");
-	pcl::VoxelGrid<sensor_msgs::PointCloud2> sor;
-	sensor_msgs::PointCloud2::Ptr input_msg (new sensor_msgs::PointCloud2 ());
-	// always good not to use in place filtering as stated in
-	// http://www.pcl-users.org/strange-effect-of-the-downsampling-td3857829.html
-	sensor_msgs::PointCloud2::Ptr input_msg_filtered (new sensor_msgs::PointCloud2 ());
-	pcl::toROSMsg(input, *input_msg);
-	bef_downsampled_pub_.publish(*input_msg);
-	sor.setInputCloud(input_msg);
-	sor.setLeafSize (downsample_size_, downsample_size_, downsample_size_);
-	sor.filter (*input_msg_filtered);
-	pcl::fromROSMsg(*input_msg_filtered, input);
-	downsampled_pub_.publish(*input_msg_filtered);
-	sw.end();
+	//down sampling moved to rolling windows
+	fmutil::Stopwatch sw;
 
 	// Create the normal estimation class, and pass the input dataset to it
 	pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> ne;
@@ -219,7 +214,7 @@ void SceneInterpretation::normalEstimation(PointCloud& input)
 
 void SceneInterpretation::publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_cloud)
 {
-	Stopwatch sw;
+	fmutil::Stopwatch sw;
 	visualization_msgs::MarkerArray normals_marker_array_msg;
 	sw.start("Filter clouds");
 	unsigned int count_filtered=0, count_correct=0, count_raw=0;
@@ -246,7 +241,7 @@ void SceneInterpretation::publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_c
 
 	//perform density based filtering
 	sw.start("Density filtering");
-	pcl::PointCloud<pcl::PointNormal> radius_filtered_pcl2;
+	pcl::PointCloud<pcl::PointNormal> radius_filtered_pcl2;// = pcl_cloud;
 	pcl::RadiusOutlierRemoval<pcl::PointNormal> outrem;
 	outrem.setInputCloud(pcl_cloud.makeShared());
 	outrem.setRadiusSearch(density_radius_search_);
@@ -254,8 +249,19 @@ void SceneInterpretation::publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_c
 	outrem.filter(radius_filtered_pcl2);
     sw.end();
 
+    //insertion of curb points to make sure curb will correctly mark as occupied
+    pcl::PointCloud<pcl::PointXYZ> curb_pcl, radius_filtered_pcl2_xyz;
+    pcl::copyPointCloud(radius_filtered_pcl2, radius_filtered_pcl2_xyz);
+    if(this->curb_pc_.data.size()>0)
+    {
+    	pcl::fromROSMsg(this->curb_pc_, curb_pcl);
+    	radius_filtered_pcl2_xyz = radius_filtered_pcl2_xyz + curb_pcl;
+    }
+
 	sensor_msgs::PointCloud2 radius_filtered_pc2;
-	pcl::toROSMsg(radius_filtered_pcl2, radius_filtered_pc2);
+	pcl::toROSMsg(radius_filtered_pcl2_xyz, radius_filtered_pc2);
+
+
 	sensor_msgs::LaserScan filtered_laser;
 	sw.start("Convert to laser");
 	convertToLaser(radius_filtered_pc2, filtered_laser);
@@ -263,6 +269,9 @@ void SceneInterpretation::publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_c
 	interpreted_pub_.publish(radius_filtered_pc2);
 	sensor_msgs::PointCloud filtered_pc;
 	sensor_msgs::convertPointCloud2ToPointCloud(radius_filtered_pc2, filtered_pc);
+
+
+
 	interpreted_pc_pub_.publish(filtered_pc);
 	laser_pub_.publish(filtered_laser);
 
@@ -305,12 +314,10 @@ void SceneInterpretation::publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_c
 }
 void SceneInterpretation::convertToLaser(sensor_msgs::PointCloud2 pointcloud2_in, sensor_msgs::LaserScan& laser_out)
 {
-	//todo: Why laser keep shifting in the location.
 	sensor_msgs::PointCloud pointcloud_in;
 	sensor_msgs::convertPointCloud2ToPointCloud(pointcloud2_in, pointcloud_in);
 	try
 	{
-
 		tf_.transformPointCloud("base_link", pointcloud_in, pointcloud_in);
 		sensor_msgs::convertPointCloudToPointCloud2(pointcloud_in, pointcloud2_in);
 	}
