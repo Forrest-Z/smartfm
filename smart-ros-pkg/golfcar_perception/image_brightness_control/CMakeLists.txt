@@ -11,31 +11,27 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 
 rosbuild_init()
 
+find_package(Eigen REQUIRED)
+include_directories(${Eigen_INCLUDE_DIRS})
+
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 #uncomment if you have defined messages
-#rosbuild_genmsg()
+rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
-SET( BookingCommonRootDir ${PROJECT_SOURCE_DIR}/../../../bookingUI/shared )
-INCLUDE_DIRECTORIES(${BookingCommonRootDir}/src)
-LINK_DIRECTORIES (${LINK_DIRECTORIES} ${BookingCommonRootDir})
-
-
+find_package(OpenCV REQUIRED)
+rosbuild_add_executable(brightness_control src/brightness_control.cpp)
+                    
+#target_link_libraries(wrap_example ${OpenCV_LIBRARIES})
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
-rosbuild_add_executable(path src/keyboard_path.cpp)
-rosbuild_add_executable(svg_path src/keyboard_svg_path.cpp)
-target_link_libraries(svg_path bookingcommon tinyxml)
-
-rosbuild_add_executable(route_planner src/route_planner.cpp)
-target_link_libraries(route_planner bookingcommon tinyxml)
-
+#rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})

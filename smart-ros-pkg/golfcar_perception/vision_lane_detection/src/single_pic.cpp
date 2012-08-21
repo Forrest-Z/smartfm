@@ -9,6 +9,30 @@
 #include <tf/transform_listener.h>
 
 using namespace golfcar_vision;
+
+IplImage* DrawHistogram(CvHistogram *hist, float scaleX=1, float scaleY=1)
+{
+	 float histMax = 0;
+    cvGetMinMaxHistValue(hist, 0, &histMax, 0, 0);
+    IplImage* imgHist = cvCreateImage(cvSize(256*scaleX, 64*scaleY), 8 ,1);
+    cvZero(imgHist);
+    for(int i=0;i<255;i++)
+    {
+        float histValue = cvQueryHistValue_1D(hist, i);
+        float nextValue = cvQueryHistValue_1D(hist, i+1);
+        CvPoint pt1 = cvPoint(i*scaleX, 64*scaleY);
+        CvPoint pt2 = cvPoint(i*scaleX+scaleX, 64*scaleY);
+        CvPoint pt3 = cvPoint(i*scaleX+scaleX, (64-nextValue*64/histMax)*scaleY);
+        CvPoint pt4 = cvPoint(i*scaleX, (64-histValue*64/histMax)*scaleY);
+
+        int numPts = 5;
+        CvPoint pts[] = {pt1, pt2, pt3, pt4, pt1};
+ 
+        cvFillConvexPoly(imgHist, pts, numPts, cvScalar(255));
+    }
+    return imgHist;
+}
+
 class line_segment
    { 
 	public:
@@ -26,41 +50,94 @@ class line_segment
    
 int main(int argc, char** argv) 
 {
-    IplImage *Igray=0, *It = 0, *Iat = 0, *Itand = 0;
+    IplImage *It = 0, *Iat = 0, *Itand = 0;
     IplImage *gray_image=0, *src_image=0, *ipm_image=0;
+    int depth;
+    CvSize size;
     
-    if(argc != 3){return -1;}
-
-    //Read in gray image
-    if((Igray = cvLoadImage( argv[1], CV_LOAD_IMAGE_GRAYSCALE)) == 0){
-    return -1;}
+    /*
+    IplImage *color_ipm;
+    IplImage *img, *hsv, *hue, *sat, *val;
+    */
     
-    if((src_image = cvLoadImage( argv[2], 1)) == 0){
-    return -1;}
+    if(argc != 2){return -1;}
 
+    if((src_image = cvLoadImage( argv[1], 1)) == 0){
+    return -1;}
+    size = cvGetSize(src_image);
+    depth = src_image->depth;
+   
+ 
+    int numBins = 256;
+    float range[] = {0, 255};
+    float *ranges[] = { range };
+ 
+    CvHistogram *hist = cvCreateHist(1, &numBins, CV_HIST_ARRAY, ranges, 1);
+    cvClearHist(hist);
+    
+    /*
+    IplImage* imgRed = cvCreateImage(size, 8, 1);
+    IplImage* imgGreen = cvCreateImage(size, 8, 1);
+    IplImage* imgBlue = cvCreateImage(size, 8, 1);
+ 
+    cvSplit(src_image, imgBlue, imgGreen, imgRed, NULL);
+    cvCalcHist(&imgRed, hist, 0, 0);
+    
+    IplImage* imgHistRed = DrawHistogram(hist);
+    cvClearHist(hist);
+    cvCalcHist(&imgGreen, hist, 0, 0);
+    IplImage* imgHistGreen = DrawHistogram(hist);
+    cvClearHist(hist);
+    cvCalcHist(&imgBlue, hist, 0, 0);
+    IplImage* imgHistBlue = DrawHistogram(hist);
+    cvClearHist(hist);
+    */
+    
+    /*
+    color_ipm = cvCreateImage(cvGetSize(src_image),8,3);
+    cvWarpPerspective( src_image, color_ipm, warp_matrix);
+    hue = cvCreateImage(size, depth, 1);
+    sat = cvCreateImage(size, depth, 1);
+    val = cvCreateImage(size, depth, 1);
+    hsv = cvCreateImage(size, depth, 3);
+    cvZero(hue);
+    cvZero(sat);
+    cvZero(val);
+    cvZero(hsv);
+    cvCvtColor( color_ipm, hsv, CV_BGR2HSV );
+    cvSplit(hsv, hue, sat, val, 0);
+    cvNamedWindow("hue", CV_WINDOW_AUTOSIZE);
+    cvNamedWindow("saturation", CV_WINDOW_AUTOSIZE);
+    cvNamedWindow("value", CV_WINDOW_AUTOSIZE);
+    cvShowImage("hue", hue);
+    cvShowImage("saturation", sat);
+    cvShowImage("value", val);
+	 */
     
     CvPoint2D32f gndQuad_[4], srcQuad_[4], dstQuad_[4];
-	CvPoint origin_keyPts[4];
-	//srcQuad points: (41.358669, 328.892059); (612.351196, 328.892059); (627.685974, 173.960587); (26.023849, 173.960587)
-	//dstQuad points: (260.000000, 360.000000); (380.000000, 360.000000); (620.000000, 0.000000); (20.000000, 0.000000)
+	 CvPoint origin_keyPts[4];
 	
 	srcQuad_[0].x = 41.358669; 		srcQuad_[0].y = 328.892059;
-	srcQuad_[1].x = 612.351196; 	srcQuad_[1].y = 328.892059;
-	srcQuad_[2].x = 627.685974; 	srcQuad_[2].y = 173.960587;
+	srcQuad_[1].x = 612.351196; 		srcQuad_[1].y = 328.892059;
+	srcQuad_[2].x = 627.685974; 		srcQuad_[2].y = 173.960587;
 	srcQuad_[3].x = 26.023849; 		srcQuad_[3].y = 173.960587;
 	
-	dstQuad_[0].x = 260.000000; 	dstQuad_[0].y = 360.000000;
-	dstQuad_[1].x = 380.000000; 	dstQuad_[1].y = 360.000000;
-	dstQuad_[2].x = 620.000000; 	dstQuad_[2].y = 0.000000;
+	dstQuad_[0].x = 260.000000; 		dstQuad_[0].y = 360.000000;
+	dstQuad_[1].x = 380.000000; 		dstQuad_[1].y = 360.000000;
+	dstQuad_[2].x = 620.000000; 		dstQuad_[2].y = 0.000000;
 	dstQuad_[3].x = 20.000000; 		dstQuad_[3].y = 0.000000;
 	
 	CvMat* warp_matrix = cvCreateMat(3,3,CV_32FC1);
     cvGetPerspectiveTransform(srcQuad_, dstQuad_,warp_matrix);
     
     gray_image = cvCreateImage(cvGetSize(src_image),8,1);
-    cvCvtColor(src_image, gray_image, CV_BGR2GRAY);
+     cvCvtColor(src_image, gray_image, CV_BGR2GRAY);
+    
 	ipm_image = cvCreateImage(cvGetSize(gray_image),8,1);
     cvWarpPerspective( gray_image, ipm_image, warp_matrix);
+    
+    cvCalcHist(&gray_image, hist, 0, 0);
+    IplImage* imgHist = DrawHistogram(hist);
     
 	CvMat* projection_matrix = cvCreateMat(3,3,CV_32FC1);
     cvGetPerspectiveTransform(dstQuad_,srcQuad_,projection_matrix);
@@ -69,9 +146,9 @@ int main(int argc, char** argv)
     CvMat* srcMarkerPts = cvCreateMat(4,1,CV_32FC2);
 	
     // Create the grayscale output images
-    It = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 1);
-    Iat = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 1);
-    Itand = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 1);
+    It = cvCreateImage(size,IPL_DEPTH_8U, 1);
+    Iat = cvCreateImage(size,IPL_DEPTH_8U, 1);
+    Itand = cvCreateImage(size,IPL_DEPTH_8U, 1);
     
     //Threshold
     cvThreshold(ipm_image,It,BINARY_THRESH,255,CV_THRESH_BINARY);
@@ -101,7 +178,7 @@ int main(int argc, char** argv)
     
     ROS_INFO("total contours: %d", n);
     
-    IplImage *color_img = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 3);
+    IplImage *color_img = cvCreateImage(size,IPL_DEPTH_8U, 3);
     cvCvtColor(Itand, color_img, CV_GRAY2BGR);
     CvScalar ext_color;
     CvMoments cvm; 
@@ -119,10 +196,10 @@ int main(int argc, char** argv)
         if(contours->total >300 && contours->total <1000) 
         {
             //Polygon approximation: get vertices of the contour;
-            contours = cvApproxPoly( contours, sizeof(CvContour), mem, CV_POLY_APPROX_DP, 2, 0 );
-            cvDrawContours(color_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
+            contour_poly = cvApproxPoly( contours, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 2, 0 );
+            cvDrawContours(color_img, contour_poly, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
             
-            cvContourMoments(contours, &cvm);
+            cvContourMoments(contour_poly, &cvm);
             cvGetHuMoments(&cvm, &cvHM);
             ROS_INFO("%lf, %lf, %lf, %lf, %lf, %lf, %lf", cvHM.hu1, cvHM.hu2, cvHM.hu3, cvHM.hu4, cvHM.hu5, cvHM.hu6, cvHM.hu7);
             
@@ -141,7 +218,7 @@ int main(int argc, char** argv)
             CvMemStorage *mem2;
             mem2 = cvCreateMemStorage(0);
             
-            cvBox = cvMinAreaRect2(contours, mem2);
+            cvBox = cvMinAreaRect2(contour_poly, mem2);
             boxAngle= cvBox.angle;
             
             float height =  cvBox.size.height;
@@ -151,19 +228,19 @@ int main(int argc, char** argv)
             ROS_INFO("boxAngle, center.x, center.y, height, width: %lf, %lf, %lf, %lf, %lf", boxAngle, center_x, center_y, height, width);
             DrawBox(cvBox,color_img,ext_color);
                 
-            ROS_INFO("total %d", contours->total);
-            if(contours->total<5){printf("this marker is bad! no angle information;");}
+            ROS_INFO("total %d", contour_poly->total);
+            if(contour_poly->total<5){printf("this marker is bad! no angle information;");}
             else
             {
                 std::vector <CvPoint> vertices;
                 std::vector <CvPoint2D32f> centered_vertices;
                 
-                for(int i=0; i<contours->total; i++)
+                for(int i=0; i<contour_poly->total; i++)
                 {
-                    CvPoint* p = (CvPoint*)cvGetSeqElem(contours, i);
+                    CvPoint* p = (CvPoint*)cvGetSeqElem(contour_poly, i);
                     printf("(%d, %d)\n", p->x, p->y);
                     vertices.push_back(*p);
-                    
+                    cvCircle( color_img, *p, 3, CV_RGB(0,255,0), 2);
                     CvPoint2D32f centered_vertix = centroid_centering_coordinate(*p, cvBox.center);
                     centered_vertices.push_back(centered_vertix);
                 }
@@ -398,23 +475,23 @@ int main(int argc, char** argv)
 							row = 0;
 							ptr = (float*)(gndMarkerPts->data.ptr + row * gndMarkerPts->step);
 							ptr[0] = 0.46;
-							ptr[1] = 0.088;
+							ptr[1] = 0.05;
 							ptr[2] = 0.0;
 							row = 1;
 							ptr = (float*)(gndMarkerPts->data.ptr + row * gndMarkerPts->step);
 							ptr[0] = -2.779;
-							ptr[1] = 0.16;
+							ptr[1] = 0.14;
 							ptr[2] = 0.0;
 							row = 2;
 							ptr = (float*)(gndMarkerPts->data.ptr + row * gndMarkerPts->step);
 							ptr[0] = 0.46;
-							ptr[1] = -0.088;
+							ptr[1] = -0.05;
 							ptr[2] = 0.0;
 							
 							row = 3;
 							ptr = (float*)(gndMarkerPts->data.ptr + row * gndMarkerPts->step);
 							ptr[0] = -2.779;
-							ptr[1] = -0.16;
+							ptr[1] = -0.14;
 							ptr[2] = 0.0;
 							
 							CvMat* Intrinsic_A = cvCreateMat(3,3,CV_32FC1);
@@ -485,7 +562,8 @@ int main(int argc, char** argv)
 							tf::Pose markerCoordinate_inCam (tf::createQuaternionFromRPY(roll,pitch,yaw), 
 										btVector3(x_trans,y_trans, z_trans));
 										
-							tf:: Pose markerInBaselink = cameraInbaselink * imageInCamerabase * markerCoordinate_inCam;
+							//tf:: Pose markerInBaselink = cameraInbaselink * imageInCamerabase * markerCoordinate_inCam;
+							tf:: Pose markerInBaselink = imageInCamerabase * markerCoordinate_inCam;
 							
 							x_trans = markerInBaselink.getOrigin().x();
 							y_trans = markerInBaselink.getOrigin().y();
@@ -494,6 +572,10 @@ int main(int argc, char** argv)
 							printf("---------x_trans, y_trans, z_trans (%5f, %5f, %5f)----------\n", x_trans, y_trans, z_trans);
 							markerInBaselink.getBasis().getEulerYPR(yaw, pitch, roll);
 							printf("---------yaw, pitch, roll (%5f, %5f, %5f)----------\n", yaw, pitch, roll);
+							float dis_to_camera = sqrtf(x_trans*x_trans+y_trans*y_trans+z_trans*z_trans);
+							printf("dis_to_camera %5f\n", dis_to_camera);
+							float dis_to_baselink = sqrtf(dis_to_camera*dis_to_camera-1.32*1.32)+ 1.795;
+							printf("dis_to_baselink %5f\n", dis_to_baselink);
 							
 						}
                    
@@ -510,10 +592,23 @@ int main(int argc, char** argv)
 	cvNamedWindow("src_image",1);
 	cvShowImage("src_image",src_image);
 						
+	/*
+	cvNamedWindow("color_ipm",1);
+	cvShowImage("color_ipm",color_ipm);
+	*/
+	
+	/*
+	 cvNamedWindow("Red");
+    cvNamedWindow("Green");
+	 cvNamedWindow("Blue");
+ 
+    cvShowImage("Red", imgHistRed);
+    cvShowImage("Green", imgHistGreen);
+    cvShowImage("Blue", imgHistBlue);
+	*/
+	cvShowImage("histogram", imgHist);
 	cvWaitKey();
    
-    //Clean up
-    cvReleaseImage(&Igray);
     cvReleaseImage(&It);
     cvReleaseImage(&Iat);
     cvReleaseImage(&Itand);
