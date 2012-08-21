@@ -14,8 +14,8 @@ namespace golfcar_pcl{
 		scan_init_				= 	false;
 		cloud_init_				= 	false;
 		
-		front_bound_  			= 	12.0;
-		back_bound_	  			= 	-4.0;
+		front_bound_  			= 	11.0;//was 12
+		back_bound_	  			= 	-3.0;//was -4
 		odom_trigger_thresh_ 	= 	0.30;
 		scan_in_thresh_			=	0.02;
 		cloud_in_thresh_		=	0.02;
@@ -252,7 +252,19 @@ namespace golfcar_pcl{
 		//window_counts_++;
 		//if(window_counts_< 10) return;
 		//rolling_window_odom_.clear();
-		rolling_window_pub_.publish(rolling_window_baselink_);
+
+
+
+		pcl::VoxelGrid<pcl::PointXYZ> sor;
+		// always good not to use in place filtering as stated in
+		// http://www.pcl-users.org/strange-effect-of-the-downsampling-td3857829.html
+		PointCloud::Ptr input_msg_filtered (new PointCloud ());
+		float downsample_size_ = 0.05;
+		sor.setInputCloud(rolling_window_baselink_.makeShared());
+		sor.setLeafSize (downsample_size_, downsample_size_, downsample_size_);
+		sor.filter (*input_msg_filtered);
+
+		rolling_window_pub_.publish(*input_msg_filtered);
 		window_counts_ = 0;
 
 		

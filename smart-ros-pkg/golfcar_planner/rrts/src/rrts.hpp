@@ -627,15 +627,6 @@ int
 RRTstar::Planner< typeparams >
 ::iteration () {
 
-    /*
-       for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++) {
-       vertex_t &vertexCurr = **iter;
-       state_t &stateCurr = vertexCurr.getState();
-       if ( (stateCurr[2] < -M_PI) || (stateCurr[2] > M_PI) )
-       cout <<"Nooo" << endl;
-       }
-       */
-
     // 1. Sample a new state
     state_t stateRandom;
     double randGoalSampling = ((double)rand())/(RAND_MAX + 1.0);
@@ -651,7 +642,7 @@ RRTstar::Planner< typeparams >
     // 2. Compute the set of all near vertices
     vector<vertex_t*> vectorNearVertices;
     getNearVertices (stateRandom, vectorNearVertices);
-
+    
 
     // 3. Find the best parent and extend from that parent
     vertex_t* vertexParent = NULL;  
