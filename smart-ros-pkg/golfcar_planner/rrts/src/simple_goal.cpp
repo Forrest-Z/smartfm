@@ -60,7 +60,7 @@ class SimpleGoal
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "simple_goal");
-    
+
     SimpleGoal sg;
 
     ros::spin();

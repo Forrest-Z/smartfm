@@ -9,7 +9,7 @@
     <remap from="map" to="lane_map"/>
   </node>
   <node name="map_server" pkg="map_server_ext" type="map_server" args="$(find local_map_ext)/1_0.2.yaml"/>
-  <!-- <node name="rviz" pkg="rviz" type="rviz" args="-d $(find local_map_ext)/local_map_vis.vcg"/> -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find local_map_ext)/local_map_vis.vcg"/>
   <node name="stageros" pkg="stage" type="stageros" args="$(find local_map_ext)/golfcar_eng.world"/>
   <node name="fake_localization" pkg="fake_localization" type="fake_localization"/>
 </launch>
