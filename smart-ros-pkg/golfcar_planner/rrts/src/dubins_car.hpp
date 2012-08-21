@@ -96,8 +96,8 @@ System::System ()
     distance_limit = 1000.0;
     delta_distance = 0.05;
 
-    car_width = 1.0;
-    car_height = 2.0;
+    car_width = 1.2;
+    car_height = 2.2;
 }
 
 
@@ -170,20 +170,26 @@ bool System::IsInCollision (double stateIn[3])
             cout<<"x: "<< x<<" y: "<<y<<endl;
 
             // 2. find cells corresponding to (x,y)
-            int cellx = x/map.info.resolution + map.info.height/2.0;
-            int celly = y/map.info.resolution + map.info.width/2.0;
+            // car is placed at (height/4, width/2) according to the local_map
+            /*
+             * X_map
+             * |    X_car
+             * |    |
+             * | ---| Y_car
+             * |
+             * |--------- Y_map
+             */
+            int cellx = x/map.info.resolution + map.info.height/4.0;
+            int celly = map.info.width/2.0 - y/map.info.resolution;
             cout<<"cellx: "<<cellx<<" celly: "<<celly<<endl;
 
             int to_check = cellx*map.info.width + celly;
             cout<<"to_check: "<< to_check<<" map.data: "<<(int)map.data[to_check]<<endl;
-            if(to_check > map.data.size())
+            if( (to_check >=0) && (to_check < map.data.size()))
             {
-                cout<<"ERR: to_check: "<<to_check<<" > map.data.size(): "<<map.data.size()<<endl;
-                exit(0);
+                if( map.data[to_check] != 87)
+                    is_obstructed = true;
             }
-            if( map.data[to_check] != 84)
-                is_obstructed = true;
-
             cx = cx + map.info.resolution;
         }
         cy = cy + map.info.resolution;
@@ -226,6 +232,11 @@ int System::sampleState (State &randomStateOut) {
         randomStateOut.x[i] = (double)rand()/(RAND_MAX + 1.0)*regionOperating.size[i] 
             - regionOperating.size[i]/2.0 + regionOperating.center[i];
     }
+    
+    while(randomStateOut.x[2] > M_PI)
+        randomStateOut.x[2] -= 2.0*M_PI;
+    while(randomStateOut.x[2] < -M_PI)
+        randomStateOut.x[2] += 2.0*M_PI;
 
     if (IsInCollision (randomStateOut.x))
         return 0;
@@ -241,6 +252,11 @@ int System::sampleGoalState (State &randomStateOut) {
         randomStateOut.x[i] = (double)rand()/(RAND_MAX + 1.0)*regionGoal.size[i] 
             - regionGoal.size[i]/2.0 + regionGoal.center[i];
     }
+    
+    while(randomStateOut.x[2] > M_PI)
+        randomStateOut.x[2] -= 2.0*M_PI;
+    while(randomStateOut.x[2] < -M_PI)
+        randomStateOut.x[2] += 2.0*M_PI;
 
     if (IsInCollision (randomStateOut.x))
     {

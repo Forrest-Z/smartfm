@@ -5,6 +5,7 @@
 #include <message_filters/subscriber.h>
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Pose.h>
 #include <sensor_msgs/PointCloud.h>
 #include <nav_msgs/OccupancyGrid.h>
@@ -18,39 +19,22 @@ using namespace std;
 class SimpleGoal
 {
     public:
-        geometry_msgs::Pose car_position;
+        
+        ros::Subscriber rviz_goal_listener;
         ros::Publisher goal_pub;
-        ros::Timer send_goal_timer;
-        ros::Subscriber map_sub;
-
-        void on_map(const nav_msgs::OccupancyGrid::ConstPtr og)
-        {
-            car_position = og->info.origin;
-            cout<<car_position<<endl;
-        }
-        void on_send_goal_timer(const ros::TimerEvent &e)
-        {
-            double roll=0, pitch=0, yaw=0;
-            tf::Quaternion q;
-            tf::quaternionMsgToTF(car_position.orientation, q);
-            tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
-
-            geometry_msgs::PointStamped p;
-            p.header.stamp = ros::Time::now();
-            p.point.x = 50.0;
-            p.point.y = 4.46;
-            p.point.z = 0.34;
-
-            ROS_INFO("sent goal: (%f,%f,%f)", p.point.x, p.point.y, p.point.z);
-
-            goal_pub.publish(p);
-        }
         SimpleGoal()
         {
             ros::NodeHandle n;
-            goal_pub = n.advertise<geometry_msgs::PointStamped>("goal", 2);
-            send_goal_timer = n.createTimer(ros::Duration(2.0), &SimpleGoal::on_send_goal_timer, this);
-            map_sub = n.subscribe("local_map", 2, &SimpleGoal::on_map, this);
+            rviz_goal_listener = n.subscribe("move_base_simple/goal", 2, &SimpleGoal::on_rviz_goal_listener, this);
+            goal_pub = n.advertise<geometry_msgs::Pose>("goal", 2);
+        }
+        void on_rviz_goal_listener(const geometry_msgs::PoseStamped::ConstPtr p)
+        {
+            geometry_msgs::Pose pose;
+            pose = p->pose;
+            goal_pub.publish(pose);
+            ROS_INFO("published pose");
+            cout<<pose<<endl;
         }
 };
 
