@@ -35,6 +35,7 @@ rosbuild_add_library(${PROJECT_NAME}
     src/BlobFilter.cpp
     src/TrackMatcher.cpp
     src/Tracker.cpp
+    src/MotionExtractor.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} opencv_core opencv_imgproc opencv_highgui)
@@ -60,6 +61,9 @@ target_link_libraries(blob_extractor ${PROJECT_NAME})
 
 ADD_EXECUTABLE(blob_area_filter src/blob_area_filter.cpp)
 target_link_libraries(blob_area_filter ${PROJECT_NAME})
+
+ADD_EXECUTABLE(blob_position_filter src/blob_position_filter.cpp)
+target_link_libraries(blob_position_filter ${PROJECT_NAME})
 
 ADD_EXECUTABLE(blob_display src/blob_display.cpp)
 target_link_libraries(blob_display ${PROJECT_NAME})

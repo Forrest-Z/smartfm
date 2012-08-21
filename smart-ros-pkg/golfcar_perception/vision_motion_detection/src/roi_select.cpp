@@ -161,8 +161,8 @@ void RoiSelectNode::on_mouse(int event, int x, int y, int flags)
     if (event == CV_EVENT_MOUSEMOVE && drag_)
     {
         //cout <<"dragging" <<endl;
-        selected_point_->x = x;
-        selected_point_->y = y;
+        selected_point_->x = fmutil::bound<int>(0, x, frame_.size().width);
+        selected_point_->y = fmutil::bound<int>(0, y, frame_.size().height);
     }
 
     if (event == CV_EVENT_LBUTTONUP && drag_)

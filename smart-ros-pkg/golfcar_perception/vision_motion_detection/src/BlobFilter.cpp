@@ -2,21 +2,13 @@
 
 #include <stdexcept>
 
-void BlobFilter::filter(std::vector<Blob> & blobs) const
+std::vector<Blob> BlobFilter::filter(const std::vector<Blob> & blobs) const
 {
-    std::vector<unsigned> idx;
+    std::vector<Blob> res;
     for( unsigned i=0; i<blobs.size(); i++ )
         if( check(blobs[i]) )
-            idx.push_back(i);
-
-    if( idx.size()==blobs.size() )
-        return;
-
-    std::vector<Blob> tmp;
-    for( unsigned i=0; i<idx.size(); i++ )
-        tmp.push_back(blobs[idx[i]]);
-
-    blobs = tmp;
+            res.push_back(blobs[i]);
+    return res;
 }
 
 vision_motion_detection::Blobs
@@ -45,7 +37,6 @@ bool BlobFilterArea::check(const Blob & blob) const
 
 bool BlobFilterPosition::check(const Blob & blob) const
 {
-    throw std::logic_error("not implemented");
-    return true;
+    return area_.empty() || area_.is_inside(blob.centroid);
 }
 

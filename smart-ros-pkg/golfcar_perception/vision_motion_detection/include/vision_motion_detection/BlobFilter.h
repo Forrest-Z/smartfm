@@ -14,7 +14,7 @@ class BlobFilter
 public:
     virtual ~BlobFilter() { }
     virtual bool check(const Blob & blob) const = 0;
-    void filter(std::vector<Blob> & blobs) const;
+    std::vector<Blob> filter(const std::vector<Blob> & blobs) const;
     vision_motion_detection::Blobs filter(const vision_motion_detection::Blobs &) const;
 };
 
@@ -33,8 +33,9 @@ public:
 class BlobFilterPosition : public BlobFilter
 {
 public:
-    /// if centroid falls within that area then accept the blob
-    Polygon area;
+    /// if centroid falls within that area then accept the blob. If empty (null
+    /// polygon), then accept as well.
+    Polygon area_;
 
     virtual bool check(const Blob & blob) const;
 };
