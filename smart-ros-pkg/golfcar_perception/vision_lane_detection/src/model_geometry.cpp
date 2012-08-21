@@ -70,7 +70,7 @@ int main(int argc, char** argv)
         ROS_INFO("n %d", contours->total);
         if(contours->total >300 && contours->total <5000) 
         {
-            contour_poly = cvApproxPoly( contours, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 2, 0 );
+            contour_poly = cvApproxPoly( contours, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 3, 0 );
             cvDrawContours(color_img, contour_poly, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
             
             cvContourMoments(contour_poly, &cvm);
@@ -114,7 +114,7 @@ int main(int argc, char** argv)
                     CvPoint* p = (CvPoint*)cvGetSeqElem(contour_poly, i);
                     //printf("(%d, %d)\n", p->x, p->y);
                     vertices.push_back(*p);
-                    
+                    cvCircle( color_img, *p, 3, CV_RGB(0,255,0), 2);
                     CvPoint2D32f centered_vertix = centroid_centering_coordinate(*p, cvBox.center);
                     centered_vertices.push_back(centered_vertix);
                 }

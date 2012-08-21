@@ -106,14 +106,14 @@ namespace golfcar_vision{
         cvEqualizeHist(src, HistogramEqualized);
         
         cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[0]), 6, CV_RGB(0,255,0), 2);
-		cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[1]), 6, CV_RGB(0,255,0), 2);
-		cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[2]), 6, CV_RGB(0,255,0), 2);
-		cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[3]), 6, CV_RGB(0,255,0), 2);
-		cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[0]), cvPointFrom32f(dst_pointer[1]), cvScalar(255), 1);
-		cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[1]), cvPointFrom32f(dst_pointer[2]), cvScalar(255), 1);
-		cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[2]), cvPointFrom32f(dst_pointer[3]), cvScalar(255), 1);
-		cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[3]), cvPointFrom32f(dst_pointer[0]), cvScalar(255), 1);
-		cvShowImage("HistogramEqualized_image", HistogramEqualized);
+		  cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[1]), 6, CV_RGB(0,255,0), 2);
+		  cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[2]), 6, CV_RGB(0,255,0), 2);
+		  cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[3]), 6, CV_RGB(0,255,0), 2);
+		  cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[0]), cvPointFrom32f(dst_pointer[1]), cvScalar(255), 1);
+		  cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[1]), cvPointFrom32f(dst_pointer[2]), cvScalar(255), 1);
+		  cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[2]), cvPointFrom32f(dst_pointer[3]), cvScalar(255), 1);
+		  cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[3]), cvPointFrom32f(dst_pointer[0]), cvScalar(255), 1);
+		  cvShowImage("HistogramEqualized_image", HistogramEqualized);
 	
         //-------------------------------------------------------------------------------------------------------------------------
         //1. thresholding step, combining threshold and adaptive threshold methods, to get binary image;

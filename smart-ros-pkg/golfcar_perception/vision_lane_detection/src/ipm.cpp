@@ -56,6 +56,10 @@ namespace golfcar_vision{
         
         ros::Time meas_time = info_msg->header.stamp;
         process_control(meas_time);
+        
+        //disable it temporarily;
+        //publish_flag_ = true;
+        
         if(!publish_flag_)
         {
 			ROS_INFO("image not processing since moving distance small");
@@ -76,7 +80,7 @@ namespace golfcar_vision{
             
         gray_image = cvCreateImage(cvGetSize(color_image),8,1);
         cvCvtColor(color_image, gray_image, CV_BGR2GRAY);
-        
+
         //assign camera informtion to "cam_model_";
         cam_model_.fromCameraInfo(info_msg);
         CameraStaticInfo_ = *info_msg;
