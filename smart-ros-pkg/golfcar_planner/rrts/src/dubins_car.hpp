@@ -3,10 +3,11 @@
 #include <cstdlib>
 #include <inttypes.h>
 #include <iostream>
+#include <stdio.h>
 
 using namespace std;
 
-#define DISCRETIZATION_STEP 0.01
+#define DISCRETIZATION_STEP 0.1
 
 
 region::region () {
@@ -96,8 +97,8 @@ System::System ()
     distance_limit = 1000.0;
     delta_distance = 0.05;
 
-    car_width = 1.2;
-    car_height = 2.2;
+    car_width = 0.2;
+    car_height = 0.2;
 }
 
 
@@ -124,38 +125,38 @@ bool System::isReachingTarget (State &stateIn) {
     return true;
 }
 
-bool System::IsInCollision (double stateIn[3]) 
+bool System::IsInCollision (const double stateIn[3]) 
 {
-    //return false;
+    return false;
 
-    double roll=0, pitch=0, yaw=0;
-    tf::Quaternion q;
-    tf::quaternionMsgToTF(map.info.origin.orientation, q);
-    tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
-    cout<<"attitude: "<<roll<<" "<<pitch<<" "<<yaw<<endl;
-    
-    cout<<"stateIn: "<<stateIn[0]<<" "<<stateIn[1]<<" "<<stateIn[2]<<endl;
+    //cout<<"attitude: "<<roll<<" "<<pitch<<" "<<yaw<<endl;
+
+    cout<<"134: stateIn: "<<stateIn[0]<<" "<<stateIn[1]<<" "<<stateIn[2]<<endl;
     // convert stateIn to local coords
-    stateIn[0] = stateIn[0] - map.info.origin.position.x;
-    stateIn[1] = stateIn[1] - map.info.origin.position.y;
-    stateIn[2] = stateIn[2] - yaw;
-    while(stateIn[2] > M_PI)
-        stateIn[2] -= 2.0*M_PI;
-    while(stateIn[2] < -M_PI)
-        stateIn[2] += 2.0*M_PI;
-    cout<<"stateCheck: "<<stateIn[0]<<" "<<stateIn[1]<<" "<<stateIn[2]<<endl;
+    double stateInLocal[3] = {0};
+    for(int i=0; i<3; i++)
+        stateInLocal[i] = stateIn[i] - map_origin[i];
 
+    while(stateInLocal[2] > M_PI)
+        stateInLocal[2] -= 2.0*M_PI;
+    while(stateInLocal[2] < -M_PI)
+        stateInLocal[2] += 2.0*M_PI;
+    //cout<<"stateCheck: "<<stateIn[0]<<" "<<stateIn[1]<<" "<<stateIn[2]<<endl;
+    
+    cout<<"regionOperating_center: "<< regionOperating.center[0]<<" "<< regionOperating.center[1]<<" "<< regionOperating.center[2]<<endl;
+    cout<<"regionOperating_size: "<< regionOperating.size[0]<<" "<< regionOperating.size[1]<<" "<< regionOperating.size[2]<<endl;
+    
     for(int i=0; i<3; i++)
     {
-        if( (stateIn[i] > regionOperating.size[i]/2.0) || (stateIn[i] < -regionOperating.size[i]/2.0) )
+        if( (stateIn[i] > regionOperating.center[i] + regionOperating.size[i]/2.0) || (stateIn[i] < regionOperating.center[i] -regionOperating.size[i]/2.0) )
         {
-            cout<<"returning line 152"<<endl;
+            //cout<<"returning line 152"<<endl;
             return true;
         }
     }
 
-    double cyaw = cos(stateIn[2]);
-    double syaw = sin(stateIn[2]);
+    double cyaw = cos(stateInLocal[2]);
+    double syaw = sin(stateInLocal[2]);
 
     bool is_obstructed = false;
     double cy = -car_width/2.0;
@@ -165,9 +166,9 @@ bool System::IsInCollision (double stateIn[3])
         while(cx < car_height/2.0)
         {
             // 1. check the point (stateIn[0], stateIn[1]) + (cx,cy) -> R(-yaw)
-            double x = stateIn[0] + cx*cyaw + cy*syaw;
-            double y = stateIn[1] - cx*syaw + cy*cyaw;
-            cout<<"x: "<< x<<" y: "<<y<<endl;
+            double x = stateInLocal[0] + cx*cyaw + cy*syaw;
+            double y = stateInLocal[1] - cx*syaw + cy*cyaw;
+            //cout<<"x: "<< x<<" y: "<<y<<endl;
 
             // 2. find cells corresponding to (x,y)
             // car is placed at (height/4, width/2) according to the local_map
@@ -179,26 +180,34 @@ bool System::IsInCollision (double stateIn[3])
              * |
              * |--------- Y_map
              */
-            int cellx = x/map.info.resolution + map.info.height/4.0;
-            int celly = map.info.width/2.0 - y/map.info.resolution;
-            cout<<"cellx: "<<cellx<<" celly: "<<celly<<endl;
-
-            int to_check = cellx*map.info.width + celly;
-            cout<<"to_check: "<< to_check<<" map.data: "<<(int)map.data[to_check]<<endl;
-            if( (to_check >=0) && (to_check < map.data.size()))
+            unsigned int cellx = x/map.info.resolution + map.info.height/4.0;
+            unsigned int celly = map.info.width/2.0 - y/map.info.resolution;
+            //cout<<"cellx: "<<cellx<<" celly: "<<celly<<endl;
+            if( (cellx >=0) && (cellx < map.info.height) && (celly >= 0) && (celly < map.info.width))
             {
-                if( map.data[to_check] != 87)
+                int to_check = cellx*map.info.width + celly;
+                //cout<<"to_check: "<< to_check<<" map.data: "<<(int)map.data[to_check]<<endl;
+                if(map.data[to_check] == 0)
+                {
                     is_obstructed = true;
+                    break;
+                }
+            }
+            else
+            {
+                is_obstructed = true;
+                break;
             }
             cx = cx + map.info.resolution;
         }
         cy = cy + map.info.resolution;
     }
     
+    cout<<" "<<is_obstructed<<endl;
     return is_obstructed;
 }
 
-int System::getStateCost(double stateIn[3])
+int System::getStateCost(const double stateIn[3])
 {
     /*
     // get cell_num of stateIn
@@ -237,7 +246,8 @@ int System::sampleState (State &randomStateOut) {
         randomStateOut.x[2] -= 2.0*M_PI;
     while(randomStateOut.x[2] < -M_PI)
         randomStateOut.x[2] += 2.0*M_PI;
-
+    
+    cout<<"sampleState"<<endl;
     if (IsInCollision (randomStateOut.x))
         return 0;
 
@@ -258,11 +268,12 @@ int System::sampleGoalState (State &randomStateOut) {
     while(randomStateOut.x[2] < -M_PI)
         randomStateOut.x[2] += 2.0*M_PI;
 
+    cout<<"sampleGoal"<<endl;
     if (IsInCollision (randomStateOut.x))
     {
         return 0;
     }
-    cout<<"sampled goal: "<< randomStateOut.x[0]<<" "<< randomStateOut.x[1]<< " "<<randomStateOut.x[2]<<endl;
+    //cout<<"sampled goal: "<< randomStateOut.x[0]<<" "<< randomStateOut.x[1]<< " "<<randomStateOut.x[2]<<endl;
     return 1;
 }
 

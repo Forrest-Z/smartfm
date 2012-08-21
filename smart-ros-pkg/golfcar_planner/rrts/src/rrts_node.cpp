@@ -11,6 +11,7 @@
 #include <nav_msgs/Path.h>
 
 #include <tf/tf.h>
+#include <tf/transform_listener.h>
 
 #include "dubins_car.hpp"
 #include "rrts.hpp"
@@ -37,10 +38,14 @@ class Planner
         
         geometry_msgs::Point32 goal;
         nav_msgs::OccupancyGrid map;
-        bool is_first_goal;
+        bool is_first_goal, is_first_map;
 
-        geometry_msgs::Pose car_position;
+        geometry_msgs::Point32 car_position;
+        tf::TransformListener tf_;
+        void get_robot_pose();
+
         bool is_updating_committed_trajectory;
+        void publish_committed_trajectory();
         list<double*> committed_trajectory;
         list<float> committed_control;
         int clear_committed_trajectory();
@@ -79,13 +84,15 @@ class Planner
 
 Planner::Planner()
 {
+    srand(0);
+
     clear_committed_trajectory();
     is_updating_committed_trajectory = false;
 
     planner_timer = nh.createTimer(ros::Duration(0.5), &Planner::on_planner_timer, this);
 
-    tree_pub_timer = nh.createTimer(ros::Duration(1.0), &Planner::on_tree_pub_timer, this);
-    committed_trajectory_pub_timer = nh.createTimer(ros::Duration(0.5), &Planner::on_committed_trajectory_pub_timer, this);
+    //tree_pub_timer = nh.createTimer(ros::Duration(0.5), &Planner::on_tree_pub_timer, this);
+    //committed_trajectory_pub_timer = nh.createTimer(ros::Duration(0.5), &Planner::on_committed_trajectory_pub_timer, this);
      
     committed_trajectory_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 2);
     committed_trajectory_view_pub = nh.advertise<nav_msgs::Path>("pncview_trajectory", 2);
@@ -97,6 +104,7 @@ Planner::Planner()
 
     rrts_max_iter = 200;
     is_first_goal = true;
+    is_first_map = true;
 }
 
 Planner::~Planner()
@@ -135,22 +143,82 @@ void Planner::on_goal(const geometry_msgs::Pose::ConstPtr p)
     
     if(is_first_goal)
     {
-        setup_rrts();
         is_first_goal = false;
+        cout<<"got first goal"<<endl;
+        if(is_first_map == false)
+            setup_rrts();
     }
 
+}
+
+void Planner::get_robot_pose()
+{
+    tf::Stamped<tf::Pose> map_pose;
+    map_pose.setIdentity();
+    tf::Stamped<tf::Pose> robot_pose;
+    robot_pose.setIdentity();
+    robot_pose.frame_id_ = "base_link";
+    robot_pose.stamp_ = ros::Time();
+    ros::Time current_time = ros::Time::now();
+    
+    bool transform_is_correct = false;
+    try {
+        tf_.transformPose("map", robot_pose, map_pose);
+    }
+    catch(tf::LookupException& ex) {
+        ROS_ERROR("No Transform available Error: %s\n", ex.what());
+        transform_is_correct = false;
+    }
+    catch(tf::ConnectivityException& ex) {
+        ROS_ERROR("Connectivity Error: %s\n", ex.what());
+        transform_is_correct = false;
+    }
+    catch(tf::ExtrapolationException& ex) {
+        ROS_ERROR("Extrapolation Error: %s\n", ex.what());
+        transform_is_correct = false;
+    }
+    // check odom_pose timeout
+    if (current_time.toSec() - map_pose.stamp_.toSec() > 0.1) {
+        ROS_WARN("Get robot pose transform timeout. Current time: %.4f, odom_pose stamp: %.4f, tolerance: %.4f",
+                current_time.toSec(), map_pose.stamp_.toSec(), 0.1);
+        transform_is_correct = false;
+    }
+    transform_is_correct = true;
+    
+    if(transform_is_correct)
+    {
+        geometry_msgs::PoseStamped tmp;
+        tf::poseStampedTFToMsg(map_pose, tmp);
+        
+        double roll=0, pitch=0, yaw=0;
+        tf::Quaternion q;
+        tf::quaternionMsgToTF(tmp.pose.orientation, q);
+        tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+        car_position.x = tmp.pose.position.x;
+        car_position.y = tmp.pose.position.y;
+        car_position.z = yaw;
+        //cout<<car_position<<endl;
+    }
 }
 
 void Planner::on_map(const nav_msgs::OccupancyGrid::ConstPtr og)
 {
     // 1. copy the incoming grid into map
     system.map = *og;
-
-    // 2. get pose of car in map frame
-    car_position = og->info.origin;
-    ROS_INFO("got map");
-    //cout<<car_position<<endl;
     
+    // 2. get car_position
+    get_robot_pose();
+    system.map_origin[0] = car_position.x;
+    system.map_origin[1] = car_position.y;
+    system.map_origin[2] = car_position.z;
+
+    if(is_first_map)
+    {
+        is_first_map = false;
+        cout<<"got first map"<<endl;
+        if(is_first_goal == false)
+            setup_rrts();
+    }
 }
 
 bool Planner::root_in_goal()
@@ -178,7 +246,7 @@ void Planner::change_sampling_region()
     
     // just create a large operating region around the car irrespective of the orientation in /map frame
     // yaw is 2*M_PI
-    double size = sqrt(pow(system.map.info.height,2), pow(system.map.info.width,2));
+    double size = sqrt(pow(system.map.info.height,2) + pow(system.map.info.width,2))*system.map.info.resolution;
     system.regionOperating.size[0] = size;
     system.regionOperating.size[1] = size;
     system.regionOperating.size[2] = 2.0 * M_PI;
@@ -197,13 +265,11 @@ void Planner::setup_rrts()
     rrts.setSystem(system);
     vertex_t &root = rrts.getRootVertex();  
     state_t &rootState = root.getState();
-    rootState[0] = car_position.position.x;
-    rootState[1] = car_position.position.y;
-    double roll=0, pitch=0, yaw=0;
-    tf::Quaternion q;
-    tf::quaternionMsgToTF(car_position.orientation, q);
-    tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
-    rootState[2] = yaw;
+    rootState[0] = car_position.x;
+    rootState[1] = car_position.y;
+    rootState[2] = car_position.z;
+    
+    cout<<"setup_rrts rootState: "<<rootState[0]<<" "<<rootState[1]<<" "<<rootState[2]<<endl;
 
     change_sampling_region();
 
@@ -213,25 +279,38 @@ void Planner::setup_rrts()
 
     // Initialize the planner
     rrts.initialize ();
+    cout<<"setup_rrts complete"<<endl;
 }
 
 void Planner::get_plan()
 {
     rrts.checkTree();
     rrts.updateReachability();
-    ROS_INFO("rrt num_vert: %d", rrts.numVertices);
-    while(rrts.numVertices < rrts_max_iter)
+    bool found_best_path = false;
+    double best_cost=1e20, prev_best_cost=1e20;
+    while(!found_best_path)
     {
         rrts.iteration();
-        cout<<"rrts.numVertices: "<<rrts.numVertices<<endl;
-        getchar();
+        best_cost = rrts.getBestVertexCost();
+        if(best_cost < 100)
+        {
+            if( (prev_best_cost - best_cost) < 1.0)
+                found_best_path = true;
+        }
+        prev_best_cost = best_cost;
+        
+        cout<<"num_vert: "<< rrts.numVertices<<endl;
+        
+        //cout<<endl<<endl;
     }
-    double best_cost = rrts.getBestVertexCost();
-    if(best_cost < 100)
+    if(found_best_path)
     {
+        publish_tree();
         is_updating_committed_trajectory = true;
-        rrts.switchRoot(10, committed_trajectory, committed_control);
+        rrts.switchRoot(5, committed_trajectory, committed_control);
+        publish_committed_trajectory();
         is_updating_committed_trajectory = false;
+        getchar();
     }
     else
     {
@@ -242,12 +321,13 @@ void Planner::get_plan()
 
 void Planner::on_planner_timer(const ros::TimerEvent &e)
 {
+    /*
     // 1. if at the end of committed trajectory then clear trajectory and return
     if(!committed_trajectory.empty())
     {
         list<double*>::reverse_iterator riter = committed_trajectory.rbegin();
         double* last_committed_state = *riter;
-        if( dist(car_position.position.x, car_position.position.y, last_committed_state[0], last_committed_state[1]) < 0.25)
+        if( dist(car_position.x, car_position.y, last_committed_state[0], last_committed_state[1]) < 0.25)
         {
             clear_committed_trajectory();
             get_plan();
@@ -259,7 +339,7 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
         for(list<double*>::iterator i=committed_trajectory.begin(); i!=committed_trajectory.end(); i++)
         {
             double* curr_state = *i;
-            if(dist(car_position.position.x, car_position.position.y, curr_state[0], curr_state[1]) < 0.25)
+            if(dist(car_position.x, car_position.y, curr_state[0], curr_state[1]) < 0.25)
                 is_far_away = false;
         }
         if(is_far_away == true)
@@ -270,21 +350,28 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
     else
     {
         // 3. else add more vertices / until you get a good trajectory, copy it to committed trajectory, return
-        if(is_first_goal == false)
+        if( (is_first_goal == false) && (is_first_map == false) )
         {
-            /*
             vertex_t &root = rrts.getRootVertex();  
             state_t &rootState = root.getState();
             double t[3] = {rootState[0], rootState[1], rootState[2]};
             cout<<"t: "<< t[0]<<" "<<t[1]<<" "<<t[2]<<endl;
-            cout<<system.IsInCollision (t)<<endl;
-            */
+            cout<<"is_in_collision: "<< system.IsInCollision (t)<<endl;
+            
             get_plan();
         }
     }
+    */
+    if( (is_first_goal == false) && (is_first_map == false) )
+        get_plan();
 }
 
 void Planner::on_committed_trajectory_pub_timer(const ros::TimerEvent &e)
+{
+    publish_committed_trajectory();
+}
+
+void Planner::publish_committed_trajectory()
 {
     // this flag is set by iterate() if it is going to change the committed_trajectory
     // hacked semaphore
@@ -309,7 +396,7 @@ void Planner::on_committed_trajectory_pub_timer(const ros::TimerEvent &e)
         p.pose.orientation.w = 1.0;
         traj_msg.poses.push_back(p);
         
-        ROS_DEBUG(" [%f, %f, %f]", p.pose.position.x, p.pose.position.y, p.pose.position.z);
+        printf(" [%f, %f, %f]", p.pose.position.x, p.pose.position.y, p.pose.position.z);
 
         committed_control_iter++;
     }
@@ -334,16 +421,14 @@ void Planner::on_committed_trajectory_pub_timer(const ros::TimerEvent &e)
     committed_trajectory_view_pub.publish(traj_msg);
 }
 
-
 void Planner::on_tree_pub_timer(const ros::TimerEvent &e)
 {
     publish_tree();
+    //cout<<"published tree"<<endl;
 }
 void Planner::publish_tree()
 {
-    int num_nodes = 0;
-
-    num_nodes = rrts.numVertices;
+    int num_nodes = rrts.numVertices;
 
     sensor_msgs::PointCloud pc;
     pc.header.stamp = ros::Time::now();
@@ -366,7 +451,7 @@ void Planner::publish_tree()
             p.z = 0.0;
             pc.points.push_back(p);
             pc1.points.push_back(p);
-
+            //cout<<"published: "<< p.x<<" "<<p.y<<endl;
             vertex_t& vertexParent = vertexCurr.getParent();
             if (&vertexParent != NULL) 
             {

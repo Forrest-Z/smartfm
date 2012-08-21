@@ -638,6 +638,7 @@ RRTstar::Planner< typeparams >
         if (system->sampleState (stateRandom) <= 0) 
             return 0;
     }
+    cout<<"got a free vertex"<<endl;
 
     // 2. Compute the set of all near vertices
     vector<vertex_t*> vectorNearVertices;
