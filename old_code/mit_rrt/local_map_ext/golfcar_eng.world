@@ -55,10 +55,10 @@ window
 ( 
   size [ 651 458 ] 
  #center [327.990 371.960] 
-  center [-5.103 -134.026]
+  center [-138.892 71.523]
 #rotate [ 0.000 -1.560 ]
-  rotate [ 0.000 -0.500 ]
-  scale 6.115 
+  rotate [ 0.000 -0.000 ]
+  scale 5.560 
 )
 
 # load an environment bitmap
@@ -67,12 +67,13 @@ floorplan
   name "willow"
   bitmap "dense+curb.png"
   size [342.400 265.600 1.000]
-  pose [12.500 -47.600 0.000 90.000]  #for amcl_hokuyo
+#  pose [12.500 -47.600 0.000 90.000]
+  pose [-141.900	183.200 0.000 90.000]
 )
 
 # throw in a robot
-gc1( pose [-14.523 -166.933 0.000 -19.254] name "gc1" color "red")
+gc1( pose [-170.230 63.313 0.000 -19.254] name "gc1" color "red")
 
-block( pose [ 42.586 -124.181 0.000 -14.324 ] color "blue")
-block( pose [ -2.395 7.555 0.000 0.000 ] color "blue")
-block( pose [ -8.355 -168.313 0.000 0.000 ] color "blue")
+block( pose [ -175.810 67.873 0.000 -14.324 ] color "blue")
+block( pose [ -111.896 106.660 0.000 0.000 ] color "blue")
+block( pose [ -162.507 61.546 0.000 -51.566 ] color "blue")
