@@ -305,11 +305,15 @@ void Planner::get_plan()
     }
     if(found_best_path)
     {
+        cout<<"found best path with cost: "<<best_cost<<endl;
+        if(committed_trajectory.empty())
+        {
+            is_updating_committed_trajectory = true;
+            rrts.switchRoot(5, committed_trajectory, committed_control);
+            is_updating_committed_trajectory = false;
+        }
         publish_tree();
-        is_updating_committed_trajectory = true;
-        rrts.switchRoot(5, committed_trajectory, committed_control);
         publish_committed_trajectory();
-        is_updating_committed_trajectory = false;
         getchar();
     }
     else
@@ -321,7 +325,6 @@ void Planner::get_plan()
 
 void Planner::on_planner_timer(const ros::TimerEvent &e)
 {
-    /*
     // 1. if at the end of committed trajectory then clear trajectory and return
     if(!committed_trajectory.empty())
     {
@@ -352,18 +355,20 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
         // 3. else add more vertices / until you get a good trajectory, copy it to committed trajectory, return
         if( (is_first_goal == false) && (is_first_map == false) )
         {
+            /*
             vertex_t &root = rrts.getRootVertex();  
             state_t &rootState = root.getState();
             double t[3] = {rootState[0], rootState[1], rootState[2]};
             cout<<"t: "<< t[0]<<" "<<t[1]<<" "<<t[2]<<endl;
             cout<<"is_in_collision: "<< system.IsInCollision (t)<<endl;
-            
+            */
             get_plan();
         }
     }
-    */
+    /*
     if( (is_first_goal == false) && (is_first_map == false) )
         get_plan();
+    */
 }
 
 void Planner::on_committed_trajectory_pub_timer(const ros::TimerEvent &e)
