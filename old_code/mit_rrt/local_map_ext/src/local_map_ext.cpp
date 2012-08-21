@@ -75,7 +75,6 @@ LocalMap::LocalMap(double height, double width, double res):height_(height), wid
     tf::Quaternion q;
     q.setRPY(0.0, 0.0,-M_PI/2.0);
     transform_ = tf::StampedTransform(tf::Transform(q, tf::Vector3(-height/4.0,width/2.0,0.0)), ros::Time::now()+*tf_sleeper_, base_frame_, local_frame_ );
-
     ros::Timer timer = nh_.createTimer(ros::Duration(*tf_sleeper_), &LocalMap::timerCallback, this);
     ros::spin();
 };

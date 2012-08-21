@@ -35,9 +35,9 @@ class Planner
         planner_t rrts;
         int rrts_max_iter;
         
-        geometry_msgs::PointStamped goal;
+        geometry_msgs::Point32 goal;
         nav_msgs::OccupancyGrid map;
-        bool is_first_map;
+        bool is_first_goal;
 
         geometry_msgs::Pose car_position;
         bool is_updating_committed_trajectory;
@@ -59,7 +59,7 @@ class Planner
         ros::Timer committed_trajectory_pub_timer;
 
         // functions
-        void on_goal(const geometry_msgs::PointStamped &p);
+        void on_goal(const geometry_msgs::Pose::ConstPtr p);
         void on_map(const nav_msgs::OccupancyGrid::ConstPtr og);
         void on_committed_trajectory_pub_timer(const ros::TimerEvent &e);
         
@@ -96,7 +96,7 @@ Planner::Planner()
     goal_sub = nh.subscribe("goal", 2, &Planner::on_goal, this);
 
     rrts_max_iter = 200;
-    is_first_map = true;
+    is_first_goal = true;
 }
 
 Planner::~Planner()
@@ -119,17 +119,26 @@ int Planner::clear_committed_trajectory()
 }
 
 // p is (x,y,yaw) in map coords
-void Planner::on_goal(const geometry_msgs::PointStamped &p)
+// assumption: goal is coming less frequently than map
+void Planner::on_goal(const geometry_msgs::Pose::ConstPtr p)
 {
-    goal.point.x = p.point.x;
-    goal.point.y = p.point.y;
-    goal.point.z = p.point.z;
-    while(goal.point.z > M_PI)
-        goal.point.z = goal.point.z - 2*M_PI;
-    while(goal.point.z < -M_PI)
-        goal.point.z = goal.point.z + 2*M_PI;
+    double roll=0, pitch=0, yaw=0;
+    tf::Quaternion q;
+    tf::quaternionMsgToTF(p->orientation, q);
+    tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+    
+    goal.x = p->position.x;
+    goal.y = p->position.y;
+    goal.z = yaw;
 
-    ROS_INFO("got goal: %f %f %f", goal.point.x, goal.point.y, goal.point.z);
+    ROS_INFO("got goal: %f %f %f", goal.x, goal.y, goal.z);
+    
+    if(is_first_goal)
+    {
+        setup_rrts();
+        is_first_goal = false;
+    }
+
 }
 
 void Planner::on_map(const nav_msgs::OccupancyGrid::ConstPtr og)
@@ -142,11 +151,6 @@ void Planner::on_map(const nav_msgs::OccupancyGrid::ConstPtr og)
     ROS_INFO("got map");
     //cout<<car_position<<endl;
     
-    if(is_first_map)
-    {
-        setup_rrts();
-        is_first_map = false;
-    }
 }
 
 bool Planner::root_in_goal()
@@ -161,19 +165,28 @@ void Planner::change_sampling_region()
 {
     vertex_t &root = rrts.getRootVertex();  
     state_t &rootState = root.getState();
-    system.regionOperating.center[0] = rootState[0];
-    system.regionOperating.center[1] = rootState[1];
-    system.regionOperating.center[2] = rootState[2];
-    cout<<"rootState: "<< rootState[0]<<" "<<rootState[1]<<" "<<rootState[2]<<endl;
-
-    system.regionOperating.size[0] = system.map.info.height*system.map.info.resolution;
-    system.regionOperating.size[1] = system.map.info.width*system.map.info.resolution;
+    
+    double cyaw = cos(rootState[2]);
+    double syaw = sin(rootState[2]);
+    
+    // center of the map is the center of the local_map but in /map frame
+    // yaw is 0
+    system.regionOperating.center[0] = rootState[0] + cyaw*system.map.info.height/4.0*system.map.info.resolution;
+    system.regionOperating.center[1] = rootState[1] + syaw*system.map.info.height/4.0*system.map.info.resolution;
+    system.regionOperating.center[2] = 0;
+    cout<<"rootState: "<< rootState[0]<<" "<<rootState[1]<<" "<<0<<endl;
+    
+    // just create a large operating region around the car irrespective of the orientation in /map frame
+    // yaw is 2*M_PI
+    double size = sqrt(pow(system.map.info.height,2), pow(system.map.info.width,2));
+    system.regionOperating.size[0] = size;
+    system.regionOperating.size[1] = size;
     system.regionOperating.size[2] = 2.0 * M_PI;
     cout<<"regionOperating: "<< system.regionOperating.size[0]<<" "<<system.regionOperating.size[1]<<" "<<system.regionOperating.size[2]<<endl;
 
-    system.regionGoal.center[0] = goal.point.x;
-    system.regionGoal.center[1] = goal.point.y;
-    system.regionGoal.center[2] = goal.point.z;
+    system.regionGoal.center[0] = goal.x;
+    system.regionGoal.center[1] = goal.y;
+    system.regionGoal.center[2] = goal.z;
     system.regionGoal.size[0] = 1;
     system.regionGoal.size[1] = 1;
     system.regionGoal.size[2] = 10/180*M_PI;
@@ -196,7 +209,7 @@ void Planner::setup_rrts()
 
     // Set planner parameters
     rrts.setGamma (2.0);
-    rrts.setGoalSampleFrequency (0.1);
+    rrts.setGoalSampleFrequency (0.4);
 
     // Initialize the planner
     rrts.initialize ();
@@ -211,6 +224,7 @@ void Planner::get_plan()
     {
         rrts.iteration();
         cout<<"rrts.numVertices: "<<rrts.numVertices<<endl;
+        getchar();
     }
     double best_cost = rrts.getBestVertexCost();
     if(best_cost < 100)
@@ -256,14 +270,16 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
     else
     {
         // 3. else add more vertices / until you get a good trajectory, copy it to committed trajectory, return
-        if(is_first_map == false)
+        if(is_first_goal == false)
         {
+            /*
             vertex_t &root = rrts.getRootVertex();  
             state_t &rootState = root.getState();
             double t[3] = {rootState[0], rootState[1], rootState[2]};
             cout<<"t: "<< t[0]<<" "<<t[1]<<" "<<t[2]<<endl;
             cout<<system.IsInCollision (t)<<endl;
-            //get_plan();
+            */
+            get_plan();
         }
     }
 }
