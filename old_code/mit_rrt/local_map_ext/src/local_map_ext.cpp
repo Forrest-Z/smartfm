@@ -12,8 +12,8 @@ LocalMap::LocalMap(double height, double width, double res):height_(height), wid
 {
 
     local_map_.info.resolution = res;
-    local_map_.info.height = height/res; //y axis
-    local_map_.info.width = width/res; //x axis
+    local_map_.info.height = height/res; //x axis in map frame
+    local_map_.info.width = width/res; //-y axis in map frame
 
     updateMapSkipMax = 5;
     updateMapSkip = 0;
@@ -73,8 +73,8 @@ LocalMap::LocalMap(double height, double width, double res):height_(height), wid
 
 
     tf::Quaternion q;
-    q.setRPY(0.0, 0.0,0.0);
-    transform_ = tf::StampedTransform(tf::Transform(q, tf::Vector3(-width/4.0,-height/2.0,0.0)), ros::Time::now()+*tf_sleeper_, base_frame_, local_frame_ );
+    q.setRPY(0.0, 0.0,-M_PI/2.0);
+    transform_ = tf::StampedTransform(tf::Transform(q, tf::Vector3(-height/4.0,width/2.0,0.0)), ros::Time::now()+*tf_sleeper_, base_frame_, local_frame_ );
 
     ros::Timer timer = nh_.createTimer(ros::Duration(*tf_sleeper_), &LocalMap::timerCallback, this);
     ros::spin();
@@ -246,7 +246,7 @@ bool LocalMap::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
 int main(int argc, char** argcv)
 {
     ros::init(argc, argcv, "local_map");
-    LocalMap lm(20.0, 40.0, 0.2);
+    LocalMap lm(40.0, 20.0, 0.2);
 
     return 0;
 }
