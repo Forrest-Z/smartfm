@@ -15,6 +15,7 @@
 #include <nav_msgs/Odometry.h>
 
 #include "image_brightness_control/image_brightness.h"
+#include "image_brightness_control/control_command.h"
 
 using namespace std;
 using namespace ros;
@@ -35,6 +36,8 @@ namespace golfcar_vision{
 	void ImageCallBack( const sensor_msgs::ImageConstPtr& image_msg,
 					   const sensor_msgs::CameraInfoConstPtr& info_msg);
    	ros::Publisher image_brightness_pub;
+	ros::Publisher control_command_pub;
+	int control_command_;
     };
 };
 
