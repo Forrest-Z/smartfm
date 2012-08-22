@@ -47,8 +47,8 @@ target_link_libraries(generate_training_data ${OpenCV_LIBRARIES})
 
 #rosbuild_add_executable(test_eigen src/test_eigen.cpp)
 #target_link_libraries(test_eigen ${OpenCV_LIBRARIES})
-
 rosbuild_add_executable(data_formating src/data_formating.cpp)
+rosbuild_add_executable(extrinsic_calibration src/extrinsic_calibration.cpp)
 
 
 #target_link_libraries(wrap_example ${OpenCV_LIBRARIES})

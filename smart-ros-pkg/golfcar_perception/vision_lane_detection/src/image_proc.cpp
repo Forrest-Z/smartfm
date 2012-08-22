@@ -879,7 +879,8 @@ namespace golfcar_vision{
 		float M21_rot = ptr[0];					
 		row = 2; ptr = (float*)(rot_matrix->data.ptr + row * rot_matrix->step);
 		float M31_rot = ptr[0]; float M32_rot = ptr[1]; float M33_rot = ptr[2];
-							
+		
+		//http://planning.cs.uiuc.edu/node102.html#eqn:yprmat
 		double yaw, pitch, roll;
 		yaw	  = atan2f(M21_rot, M11_rot);
 		pitch = atan2f(- M31_rot, sqrtf(M32_rot*M32_rot+M33_rot*M33_rot));
