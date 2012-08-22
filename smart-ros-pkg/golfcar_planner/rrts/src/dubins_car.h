@@ -86,6 +86,7 @@ class System {
     double car_width;
     double car_height;
     nav_msgs::OccupancyGrid map;
+    double map_origin[3];
 
     System ();
     ~System ();
@@ -94,8 +95,8 @@ class System {
     State& getRootState () {return rootState;}
     int getStateKey (State& stateIn, double* stateKey);
 
-    bool IsInCollision (double stateIn[3]);
-    int getStateCost(double stateIn[3]);
+    bool IsInCollision (const double stateIn[3]);
+    int getStateCost(const double stateIn[3]);
 
     bool isReachingTarget (State& stateIn);
 
