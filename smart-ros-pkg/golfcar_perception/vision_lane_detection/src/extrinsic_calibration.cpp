@@ -22,7 +22,7 @@ int main(int argc, char** argv)
 	 int board_n = board_w * board_h;
 	 CvSize board_sz = cvSize( board_w, board_h );
 	 
-	 IplImage *image=0;
+	 IplImage *image = 0;
     CvMat* image_points			= cvCreateMat( n_boards*board_n, 2, CV_32FC1 );
 	 CvMat* object_points		= cvCreateMat( n_boards*board_n, 3, CV_32FC1 );
 	 CvMat* point_counts			= cvCreateMat( n_boards, 1, CV_32SC1 );
@@ -54,6 +54,12 @@ int main(int argc, char** argv)
 	 cvShowImage( "Calibration", image );
 
 	 float scale_ratio = 0.09;
+	 
+	 for(int i=0; i<board_n; i++)
+	 {
+		 printf("corner (%3f, %3f)\t", corners[i].x, corners[i].y);
+	 }
+	 
 	 
 	 // If we got a good board, add it to our data
 	 if( corner_count == board_n ){
@@ -127,9 +133,10 @@ int main(int argc, char** argv)
 	float z_z = CV_MAT_ELEM( *z_new_vec, float, 2, 0 );
 	printf("---------z_x, z_y, z_z (%5f, %5f, %5f)----------\n", z_x, z_y, z_z);
 	
-	float proXZ_length = sqrtf( z_x* z_x+z_z*z_z);
-	float z_angle = atan2f(z_y , proXZ_length);
-
+	float proXZ_length = sqrtf( z_y* z_y+z_z*z_z);
+	float z_angle = -atan2f(z_x , proXZ_length);
+	
+	//as calculated, the pitch angle right now is about 12 degree, 0.21 rad;
 	z_angle = z_angle/M_PI*180.0;
 	
 	printf("z angle from the camera z axis: %5f\n", z_angle);	
