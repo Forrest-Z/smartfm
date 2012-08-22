@@ -7,7 +7,7 @@ namespace golfcar_vision{
     private_nh_("~"),
     it_(nh_)
   {
-	  control_command_ = 10;
+	  control_command_ = 1000;
       cam_sub_ = it_.subscribeCamera("/camera_front/image_raw", 1, &brightness_control::ImageCallBack, this);
       image_brightness_pub = nh_.advertise<image_brightness_control::image_brightness>("image_brightness",2);
       control_command_pub = nh_.advertise<image_brightness_control::control_command>("control_command",2);
@@ -56,7 +56,7 @@ namespace golfcar_vision{
         }
         else if (brightness_indicator.hist_elements[15] < 0.10) 
         {
-			  if(control_command_ <10)
+			  if(control_command_ <1000)
 			  control_command_++;
 		  }
         image_brightness_control::control_command control_tmp;

@@ -53,7 +53,7 @@ int main(int argc, char** argv)
 	 cvDrawChessboardCorners( image, board_sz, corners, corner_count, found );
 	 cvShowImage( "Calibration", image );
 
-	 float scale_ratio = 1.0;
+	 float scale_ratio = 0.09;
 	 
 	 // If we got a good board, add it to our data
 	 if( corner_count == board_n ){
@@ -86,9 +86,6 @@ int main(int argc, char** argv)
 	CV_MAT_ELEM( *distortion_coeffs, float, 3, 0 ) = 0.00101; 
 	CV_MAT_ELEM( *distortion_coeffs, float, 4, 0 ) = 0.0;
 	
-	cvSave( "~/Intrinsics.xml", intrinsic_matrix );
-	cvSave( "~/Distortion.xml", distortion_coeffs );
-	
 	CvMat* trans_vec = cvCreateMat(3,1,CV_32FC1);
 	CvMat* rot_vec = cvCreateMat(3,1,CV_32FC1);
 	CvMat* rot_matrix = cvCreateMat(3,3,CV_32FC1);
@@ -96,9 +93,9 @@ int main(int argc, char** argv)
 	cvFindExtrinsicCameraParams2(object_points, image_points, intrinsic_matrix, distortion_coeffs, rot_vec, trans_vec);
 	cvRodrigues2(rot_vec, rot_matrix, NULL);
 	float x_trans, y_trans, z_trans;
-	x_trans = CV_MAT_ELEM( *distortion_coeffs, float, 0, 0 );
-	y_trans = CV_MAT_ELEM( *distortion_coeffs, float, 1, 0 );
-	z_trans = CV_MAT_ELEM( *distortion_coeffs, float, 2, 0 );
+	x_trans = CV_MAT_ELEM( *trans_vec, float, 0, 0 );
+	y_trans = CV_MAT_ELEM( *trans_vec, float, 1, 0 );
+	z_trans = CV_MAT_ELEM( *trans_vec, float, 2, 0 );
 	printf("---------x_trans, y_trans, z_trans (%5f, %5f, %5f)----------\n", x_trans, y_trans, z_trans);
 
 	float M11_rot = CV_MAT_ELEM( *rot_matrix, float, 0, 0 );
@@ -132,7 +129,8 @@ int main(int argc, char** argv)
 	if(z_angle<0) z_angle = z_angle + M_PI;
 	z_angle = z_angle/M_PI*180.0;
 	
-	printf("z angle from the camera z axis: %5f", z_angle);		
-   return 0;
+	printf("z angle from the camera z axis: %5f", z_angle);	
+	cvWaitKey();
+    return 0;
 }
 
