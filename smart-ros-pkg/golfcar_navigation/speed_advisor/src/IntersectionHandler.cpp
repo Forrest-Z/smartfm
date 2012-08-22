@@ -80,5 +80,6 @@ void IntersectionHandler::update(const pnc_msgs::move_status & status)
             dist_to_int_ = 0;
         else if( status.dist_to_ints < dist_to_int_)
             dist_to_int_ = status.dist_to_ints;
+        if( policy_ ) policy_->update_dist(dist_to_int_);
     }
 }

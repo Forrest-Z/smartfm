@@ -26,10 +26,11 @@ class IntersectionHandler
 public:
     IntersectionHandler();
 
-    /** Updates the handler with the position of the next intersection location
-     * and creates a new set of policies when receiving a new intersection.
+    /** Updates the handler and creates a new set of policies when receiving a
+     * new intersection.
+     * @param move_status contains the position of the next intersection.
      */
-    void update(const pnc_msgs::move_status &);
+    void update(const pnc_msgs::move_status &move_status);
 
     /// Returns whether it is safe to go through the intersection.
     bool is_clear_to_go() const;

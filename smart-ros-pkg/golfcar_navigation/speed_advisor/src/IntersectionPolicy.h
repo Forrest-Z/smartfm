@@ -14,6 +14,11 @@ public:
 
     /// Returns whether it is safe to go through the intersection
     virtual bool is_clear_to_go() = 0;
+
+    /// This is called in a loop by the IntersectionHandler to update the
+    /// distance to the coming intersection.
+    /// The base implementation does not do anything.
+    virtual void update_dist(double d) {}
 };
 
 
