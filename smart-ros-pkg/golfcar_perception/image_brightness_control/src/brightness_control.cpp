@@ -7,7 +7,7 @@ namespace golfcar_vision{
     private_nh_("~"),
     it_(nh_)
   {
-	  control_command_ = 1000;
+	  control_command_ = 100;
       cam_sub_ = it_.subscribeCamera("/camera_front/image_raw", 1, &brightness_control::ImageCallBack, this);
       image_brightness_pub = nh_.advertise<image_brightness_control::image_brightness>("image_brightness",2);
       control_command_pub = nh_.advertise<image_brightness_control::control_command>("control_command",2);
@@ -31,7 +31,7 @@ namespace golfcar_vision{
         gray_image = cvCreateImage(cvGetSize(color_image),8,1);
         cvCvtColor(color_image, gray_image, CV_BGR2GRAY);
         
-        int numBins = 16;
+        int numBins = 8;
 		  float range[] = {0, 255};
         float *ranges[] = { range };
         CvHistogram *hist = cvCreateHist(1, &numBins, CV_HIST_ARRAY, ranges, 1);
@@ -40,7 +40,7 @@ namespace golfcar_vision{
         cvNormalizeHist(hist,1);
         image_brightness_control::image_brightness brightness_indicator;
         brightness_indicator.header = info_msg->header;
-        for(int i = 0; i < 16; i++)
+        for(int i = 0; i < 8; i++)
         {
 			  float hist_element_value = cvQueryHistValue_1D(hist, i);
 			  brightness_indicator.hist_elements.push_back(hist_element_value);
@@ -49,14 +49,14 @@ namespace golfcar_vision{
         cvReleaseImage(&gray_image);
         
         //simple control policy;
-        if(brightness_indicator.hist_elements[15] > 0.20)
+        if(brightness_indicator.hist_elements[7] > 0.15)
         {
 			  if(control_command_ >1)
            control_command_--;
         }
-        else if (brightness_indicator.hist_elements[15] < 0.10) 
+        else if (brightness_indicator.hist_elements[7] < 0.07) 
         {
-			  if(control_command_ <1000)
+			  if(control_command_ <200)
 			  control_command_++;
 		  }
         image_brightness_control::control_command control_tmp;

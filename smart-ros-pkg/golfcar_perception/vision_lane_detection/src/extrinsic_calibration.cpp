@@ -89,6 +89,7 @@ int main(int argc, char** argv)
 	CvMat* trans_vec = cvCreateMat(3,1,CV_32FC1);
 	CvMat* rot_vec = cvCreateMat(3,1,CV_32FC1);
 	CvMat* rot_matrix = cvCreateMat(3,3,CV_32FC1);
+	CvMat* inv_rot_matrix = cvCreateMat(3,3,CV_32FC1);
 	
 	cvFindExtrinsicCameraParams2(object_points, image_points, intrinsic_matrix, distortion_coeffs, rot_vec, trans_vec);
 	cvRodrigues2(rot_vec, rot_matrix, NULL);
@@ -110,6 +111,8 @@ int main(int argc, char** argv)
 	roll  = atan2f(M32_rot, M33_rot);
 	printf("---------yaw, pitch, roll (%5f, %5f, %5f)----------\n", yaw, pitch, roll);
 	
+	cvInvert(rot_matrix, inv_rot_matrix, CV_LU);
+	
 	CvMat* z_unit_vec = cvCreateMat(3,1,CV_32FC1);
 	CvMat* z_new_vec  = cvCreateMat(3,1,CV_32FC1);
 	
@@ -117,19 +120,19 @@ int main(int argc, char** argv)
 	CV_MAT_ELEM( *z_unit_vec, float, 1, 0 ) = 0.0;
 	CV_MAT_ELEM( *z_unit_vec, float, 2, 0 ) = 1.0;
 	
-	cvMatMul(rot_matrix, z_unit_vec, z_new_vec);
+	cvMatMul(inv_rot_matrix, z_unit_vec, z_new_vec);
 	
 	float z_x = CV_MAT_ELEM( *z_new_vec, float, 0, 0 );
 	float z_y = CV_MAT_ELEM( *z_new_vec, float, 1, 0 );
 	float z_z = CV_MAT_ELEM( *z_new_vec, float, 2, 0 );
 	printf("---------z_x, z_y, z_z (%5f, %5f, %5f)----------\n", z_x, z_y, z_z);
 	
-	assert(z_z<=1.0 && z_z>=-1.0);
-	float z_angle = acosf(z_z);
-	if(z_angle<0) z_angle = z_angle + M_PI;
+	float proXZ_length = sqrtf( z_x* z_x+z_z*z_z);
+	float z_angle = atan2f(z_y , proXZ_length);
+
 	z_angle = z_angle/M_PI*180.0;
 	
-	printf("z angle from the camera z axis: %5f", z_angle);	
+	printf("z angle from the camera z axis: %5f\n", z_angle);	
 	cvWaitKey();
     return 0;
 }
