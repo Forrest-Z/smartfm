@@ -27,8 +27,4 @@
 
     <node pkg="vision_motion_detection" type="blob_tracker" name="blob_tracker" output="screen" respawn="true" />
 
-    <node pkg="vision_motion_detection" type="track_display" name="track_display" output="screen">
-        <remap from="image" to="$(arg camera_topic)" />
-    </node>
-
 </launch>
