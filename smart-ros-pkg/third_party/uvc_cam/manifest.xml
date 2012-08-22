@@ -14,9 +14,10 @@
   <depend package="camera_info_manager"/>
   <depend package="dynamic_reconfigure" />
   <depend package="driver_base" />
+  <depend package="image_brightness_control" />
   <rosdep name="opencv2"/>
   <rosdep name="sdl" />
-
+  
   <export>
     <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -luvc_cam"/>
   </export>
