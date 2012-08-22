@@ -849,8 +849,7 @@ RRTstar::Planner< typeparams >
     if( (stateRootNew[0] == vertexChildNewState[0]) && (stateRootNew[1] == vertexChildNewState[1]) &&\
             (stateRootNew[2] == vertexChildNewState[2]) )
     {
-        // the committed trajectory is very small
-        //cout<<"committed trajectory is less than first child of root"<<endl;
+        //cout<<"switch_root length > length of best_trajectory"<<endl;
         state_t& stateRoot = root->getState();
         for (int i = 0; i < numDimensions; i++)
             stateRoot[i] = stateRootNew[i];

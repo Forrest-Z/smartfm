@@ -147,7 +147,9 @@ void Planner::on_goal(const geometry_msgs::Pose::ConstPtr p)
         is_first_goal = false;
         cout<<"got first goal"<<endl;
         if(is_first_map == false)
+        {
             setup_rrts();
+        }
     }
     else
     {
@@ -327,17 +329,16 @@ void Planner::get_plan()
         }
         prev_best_cost = best_cost;
         
-        cout<<"n: "<< rrts.numVertices<<endl;
-        
         //cout<<endl;
     }
+    cout<<"n: "<< rrts.numVertices<<endl;
     if(found_best_path)
     {
         cout<<"found best path with cost: "<<best_cost<<endl;
         if(committed_trajectory.empty())
         {
             is_updating_committed_trajectory = true;
-            if(rrts.switchRoot(2, committed_trajectory, committed_control) == 0)
+            if(rrts.switchRoot(10, committed_trajectory, committed_control) == 0)
                 cout<<"cannot switch_root: lowerBoundVertex = NULL"<<endl;
             else
                 cout<<"switched root successfully"<<endl;

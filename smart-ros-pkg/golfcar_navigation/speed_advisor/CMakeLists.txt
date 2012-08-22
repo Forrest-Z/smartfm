@@ -21,6 +21,11 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
+#add dynamic reconfigure api
+rosbuild_find_ros_package(dynamic_reconfigure)
+include(${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake)
+gencfg()
+
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
@@ -29,4 +34,15 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
-rosbuild_add_executable(speed_advisor src/speed_advisor.cpp src/intersection_handler.cpp)
+rosbuild_add_executable( speed_advisor
+    src/InteractiveMarkerPolicy.cpp
+    src/InfrastructureSensorPolicy.cpp
+    src/OnboardCamPolicy.cpp
+    src/IntersectionHandler.cpp
+    src/speed_advisor.cpp
+)
+
+rosbuild_add_executable(onboard_cam_test
+    src/OnboardCamPolicy.cpp
+    src/onboard_cam_test_node.cpp
+)
