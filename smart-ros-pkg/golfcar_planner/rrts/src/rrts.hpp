@@ -94,7 +94,6 @@ RRTstar::Planner< typeparams >
 
     // Delete the kdtree structure
     if (kdtree) {
-        kd_clear (kdtree);
         kd_free (kdtree);
     }
 }
@@ -104,7 +103,9 @@ template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
 ::insertIntoKdtree (vertex_t& vertexIn) {
-
+    
+    //state_t &s = vertexIn.getState();
+    //cout<<"insert_kdtree: "<<s[0]<<" "<<s[1]<<" "<<s[2]<<endl;
     double *stateKey = new double[numDimensions];
     system->getStateKey ( *(vertexIn.state), stateKey);
     kd_insert (kdtree, stateKey, &vertexIn);
@@ -188,10 +189,10 @@ int
 {
     updateBranchCost(*root, 1);
     lowerBoundCost = getBestVertexCost();
-    
-    //vertex_t &bestVertex = getBestVertex();
-    //lowerBoundVertex = &bestVertex;
-    
+
+    vertex_t &bestVertex = getBestVertex();
+    lowerBoundVertex = &bestVertex;
+
     return 1;
 }
 
@@ -276,11 +277,6 @@ int
 RRTstar::Planner< typeparams >
 ::setSystem (system_t& systemIn) {
 
-    /*
-       if (system)
-       delete system;
-       */
-
     system = &systemIn;
 
     numDimensions = system->getNumDimensions ();
@@ -291,13 +287,14 @@ RRTstar::Planner< typeparams >
         for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++)
             delete *iter;
     }
+    listVertices.clear();
+
     numVertices = 0;
     lowerBoundCost = DBL_MAX;
     lowerBoundVertex = NULL;
 
     // Clear the kdtree
     if (kdtree) {
-        kd_clear (kdtree);
         kd_free (kdtree);
     }
     kdtree = kd_create (numDimensions);
@@ -337,10 +334,18 @@ RRTstar::Planner< typeparams >
     vertex_t *rootBackup = NULL;
     if (root)
         rootBackup = new vertex_t (*root);
-
+    
+    //cout<<"341: "<< listVertices.size()<<endl;
+    //cout<<"deleting list of vertices"<<endl;
     // Delete all the vertices
     for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++)
+    {
+        //vertex_t *v = *iter;
+        //state_t &s = v->getState();
+        //cout<<"v.state: "<< s[0]<<" "<<s[1]<<" "<<s[2]<<endl;
         delete *iter;
+    }
+    //cout<<"345"<<endl;
 
     listVertices.clear();
     numVertices = 0;
@@ -349,16 +354,17 @@ RRTstar::Planner< typeparams >
 
     // Clear the kdtree
     if (kdtree) {
-        kd_clear (kdtree);
         kd_free (kdtree);
     }
     kdtree = kd_create (system->getNumDimensions());
+    
+    //cout<<"356"<<endl;
 
     // Initialize the variables
     numDimensions = system->getNumDimensions();
     root = rootBackup;
-    if (root){
-        
+    if (root)
+    {
         root->children.clear();
         root->costFromParent = 0.0;
         root->costFromRoot = 0.0;
@@ -370,7 +376,8 @@ RRTstar::Planner< typeparams >
     }
     lowerBoundCost = DBL_MAX;
     lowerBoundVertex = NULL;
-
+    
+    //cout<<"380"<<endl;
     return 1;
 }
 
@@ -537,12 +544,20 @@ int
 {
     if( root->children.size() > 0)
     {
+        //cout<<"547"<<endl;
         for (typename set<vertex_t*>::iterator iter = root->children.begin(); iter != root->children.end(); iter++) 
         {
             vertex_t &vertex = **iter;
             checkTrajectory(vertex);
         }
-
+        /*
+        cout<<"listVertices 553: "<<listVertices.size()<<endl;
+        for(typename list<vertex_t*>::iterator lvi=listVertices.begin(); lvi!=listVertices.end(); lvi++)
+        {
+            state_t &s = (*lvi)->getState();
+            cout<<s[0]<<" "<<s[1]<<" "<<s[2]<<endl;
+        }
+        */
         list<vertex_t*> listSurvivingVertices;
         for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++) 
         {
@@ -557,7 +572,6 @@ int
         }
 
         if (kdtree) {
-            kd_clear (kdtree);
             kd_free (kdtree);
         }
         kdtree = kd_create (system->getNumDimensions());
@@ -577,7 +591,6 @@ int
 
         listSurvivingVertices.clear();
         recomputeCost (root);
-
     }
     return 1;
 }
@@ -626,15 +639,6 @@ template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
 ::iteration () {
-  
-  /*
-  for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++) {
-    vertex_t &vertexCurr = **iter;
-    state_t &stateCurr = vertexCurr.getState();
-    if ( (stateCurr[2] < -M_PI) || (stateCurr[2] > M_PI) )
-      cout <<"Nooo" << endl;
-  }
-  */
 
     // 1. Sample a new state
     state_t stateRandom;
@@ -647,11 +651,12 @@ RRTstar::Planner< typeparams >
         if (system->sampleState (stateRandom) <= 0) 
             return 0;
     }
+    //cout<<"got a free vertex"<<endl;
 
     // 2. Compute the set of all near vertices
     vector<vertex_t*> vectorNearVertices;
     getNearVertices (stateRandom, vectorNearVertices);
-
+    
 
     // 3. Find the best parent and extend from that parent
     vertex_t* vertexParent = NULL;  
@@ -690,7 +695,7 @@ RRTstar::Planner< typeparams >
 
 template< class typeparams >
 int 
-RRTstar::Planner< typeparams >
+    RRTstar::Planner< typeparams >
 ::findDescendantVertices (vertex_t* vertexIn) 
 {
     vertexIn->costFromRoot = (-1.0) * vertexIn->costFromRoot - 1.0;  // Mark the node so that we can understand 
@@ -742,8 +747,9 @@ RRTstar::Planner< typeparams >
 template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
-::switchRoot (double distanceIn, list<double*>& trajret, list<float> &controlret) {
-    
+::switchRoot (double distanceIn, list<double*> &trajret, list<float> &controlret) 
+{
+    cout<<"calling switch_root"<<endl;
 
     // If there is no path reaching the goal, then return failure
     if (lowerBoundVertex == NULL) 
@@ -754,8 +760,7 @@ RRTstar::Planner< typeparams >
     list<vertex_t*> listBestVertex;
     vertex_t* vertexCurrBest = lowerBoundVertex; 
     while (vertexCurrBest) {
-
-        listBestVertex.push_front (vertexCurrBest);
+        listBestVertex.push_front (vertexCurrBest);        
         vertexCurrBest = &(vertexCurrBest->getParent());
     }
 
@@ -769,7 +774,7 @@ RRTstar::Planner< typeparams >
     double *stateArrPrev = new double [numDimensions];
     for (int i = 0; i < numDimensions; i++) 
         stateArrPrev[i] = rootState[i];
-    
+
     double distTotal = 0.0;
     for (typename list<vertex_t*>::iterator iter = listBestVertex.begin(); iter != listBestVertex.end(); iter++) 
     {
@@ -804,12 +809,12 @@ RRTstar::Planner< typeparams >
             float controlTmp = *iterControl;
             trajret.push_back(stateTmp);
             controlret.push_back(controlTmp);
-            
+
             // copy it every time
             for (int i = 0; i < numDimensions; i++)
                 stateRootNew[i] = stateArrCurr[i];
             vertexChildNew = vertexCurr;
-            
+
             if (distTotal >= distanceIn) 
             {
                 stateFound = true;
@@ -834,43 +839,35 @@ RRTstar::Planner< typeparams >
             break;
         }
 
-        vertexCurr = &vertexParent;
+        // what is the this line for??
+        //vertexCurr = &vertexParent;
     }
-    
-    delete [] stateArrPrev; 
-    
-    /*
-    if (stateFound == false) 
-    {
-        // free memory for toPublishTraj
-        for (list<double*>::iterator iter = trajret.begin(); iter != trajret.end(); iter++) 
-        {
-            double* stateRef = *iter;
-            delete stateRef;
-        } 
-        trajret.clear();
-        controlret.clear();
 
-        delete [] stateRootNew;
-        return 0;
-    }
-    */
-    
+    delete [] stateArrPrev; 
+
     state_t &vertexChildNewState = vertexChildNew->getState();
     if( (stateRootNew[0] == vertexChildNewState[0]) && (stateRootNew[1] == vertexChildNewState[1]) &&\
             (stateRootNew[2] == vertexChildNewState[2]) )
     {
-        // the committed trajectory is very small
+        //cout<<"switch_root length > length of best_trajectory"<<endl;
         state_t& stateRoot = root->getState();
         for (int i = 0; i < numDimensions; i++)
             stateRoot[i] = stateRootNew[i];
+        /*
+        cout<<"listVertices before initialize: "<<listVertices.size()<<endl;
+        for(typename list<vertex_t*>::iterator lvi=listVertices.begin(); lvi!=listVertices.end(); lvi++)
+        {
+            state_t &s = (*lvi)->getState();
+            cout<<s[0]<<" "<<s[1]<<" "<<s[2]<<endl;
+        }
+        */
         initialize();
         return 1;
     }
     else
     {
         // goal is farther than committed trajectory
-        
+
         // 2. Find and store all the decendandts of the new root
         findDescendantVertices (vertexChildNew);
 
@@ -881,7 +878,7 @@ RRTstar::Planner< typeparams >
         for (int i = 0; i < numDimensions; i++)
             stateRoot[i] = stateRootNew[i];
         vertexRoot->children.insert (vertexChildNew);
-        
+
         root = vertexRoot;
 
         // 4. Connect the new root vertex to the new child
@@ -912,7 +909,6 @@ RRTstar::Planner< typeparams >
 
         // 5. Clear the kdtree
         if (kdtree) {
-            kd_clear (kdtree);
             kd_free (kdtree);
         }
         kdtree = kd_create (system->getNumDimensions());
@@ -963,7 +959,7 @@ RRTstar::Planner< typeparams >
         listSurvivingVertices.clear();
 
         recomputeCost (vertexRoot);
-        //cout<<"after switchRoot vertices left: "<< numVertices << endl;
+        cout<<"after switchRoot vertices left: "<< numVertices << endl;
 
         // 8. Clear temporary memory  
         delete [] stateRootNew;
@@ -1040,7 +1036,7 @@ RRTstar::Planner< typeparams >
 
 template< class typeparams >
 int 
-RRTstar::Planner< typeparams >
+    RRTstar::Planner< typeparams >
 ::isSafeTrajectory(list<double*>& trajectory)
 {
     for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++)
@@ -1055,7 +1051,7 @@ RRTstar::Planner< typeparams >
 
 template< class typeparams >
 double
-RRTstar::Planner< typeparams >
+    RRTstar::Planner< typeparams >
 ::getTrajectoryLength(list<double*>& trajectory)
 {
     double len = 0;

@@ -35,4 +35,7 @@ rosbuild_add_executable(path src/keyboard_path.cpp)
 rosbuild_add_executable(svg_path src/keyboard_svg_path.cpp)
 target_link_libraries(svg_path bookingcommon tinyxml)
 
+rosbuild_add_executable(route_planner src/route_planner.cpp)
+target_link_libraries(route_planner bookingcommon tinyxml)
+
 #target_link_libraries(example ${PROJECT_NAME})

@@ -2,25 +2,16 @@
 #include <ctime>
 
 #include <ros/ros.h>
-#include <sensor_msgs/LaserScan.h>
-#include <laser_geometry/laser_geometry.h>
-
-// For transform support
-#include <tf/tf.h>
-#include "tf/transform_broadcaster.h"
-#include "tf/transform_listener.h"
-#include "tf/message_filter.h"
-
-#include <geometry_msgs/Point32.h>
-#include <sensor_msgs/PointCloud.h>
 #include <message_filters/subscriber.h>
-#include <nav_msgs/Odometry.h>
-#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Point32.h>
 #include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/Pose.h>
+#include <sensor_msgs/PointCloud.h>
+#include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Path.h>
-#include <nav_msgs/GridCells.h>
 
-#include <local_map/local_map_msg.h>
+#include <tf/tf.h>
+#include <tf/transform_listener.h>
 
 #include "dubins_car.hpp"
 #include "rrts.hpp"
@@ -34,588 +25,474 @@ typedef DubinsCar::SystemType system_t;
 typedef RRTstar::Vertex <DubinsCar> vertex_t;
 typedef RRTstar::Planner <DubinsCar> planner_t; 
 
-class Planner_node
+
+class Planner
 {
     public:
-        Planner_node();
-        ~Planner_node(){};
+        Planner();
+        ~Planner();
 
-    private:
-
-        // planner
         system_t system;
         planner_t rrts;
-        unsigned int RRT_MAX_ITER;
-        float prev_best_cost, curr_best_cost;
-        int already_committed;
-        bool planner_in_progress;
-        bool received_goal;
-        bool first_frame;
-        float dist_betw_odom;
-        int map_skip, map_count;
-        geometry_msgs::Point32 curr_goal;
+        int rrts_max_iter;
+        
+        geometry_msgs::Point32 goal;
+        nav_msgs::OccupancyGrid map;
+        bool is_first_goal, is_first_map;
 
-        list<double*> toPublishTraj;
-        list<float> toPublishControl;
+        geometry_msgs::Point32 car_position;
+        tf::TransformListener tf_;
+        void get_robot_pose();
 
-        ros::Time last_good_path_time;
-        system_t create_system();
-        void change_sampling_region();
-        void emergency_replan();
-        int project_goal(float &xc, float &yc, float &xs, float &ys, float goalx, float goaly);
-        bool root_in_goal();
-        bool isFarFromTraj();
+        bool is_updating_committed_trajectory;
+        void publish_committed_trajectory();
+        list<double*> committed_trajectory;
+        list<float> committed_control;
+        int clear_committed_trajectory();
+        bool is_reaching_end_committed_trajectory();
 
         // ros
         ros::NodeHandle nh;
         ros::Subscriber goal_sub;
-        ros::Subscriber odom_sub;
         ros::Subscriber map_sub;
-
-        ros::Publisher traj_pub;
-        ros::Publisher trajview_pub;
-        ros::Publisher obs_pub;
+        
         ros::Publisher tree_pub;
         ros::Publisher vertex_pub;
+        ros::Publisher committed_trajectory_pub;
+        ros::Publisher committed_trajectory_view_pub;
         ros::Timer planner_timer;
         ros::Timer tree_pub_timer;
+        ros::Timer committed_trajectory_pub_timer;
 
-        geometry_msgs::Pose odom_prev, odom_now;
-        void on_goal(const geometry_msgs::PointStamped& point);
-        void on_odom(const nav_msgs::Odometry::ConstPtr & msg);
-        void on_map(const local_map::local_map_msg::ConstPtr & local_map);
+        // functions
+        void on_goal(const geometry_msgs::Pose::ConstPtr p);
+        void on_map(const nav_msgs::OccupancyGrid::ConstPtr og);
+        void on_committed_trajectory_pub_timer(const ros::TimerEvent &e);
+        
+        bool root_in_goal();
+        void change_sampling_region();
+        void setup_rrts();
         void on_planner_timer(const ros::TimerEvent &e);
-        void on_tree_pub_timer(const ros::TimerEvent &e);
         void get_plan();
+        float dist(float x1, float y1, float z1=0, float x2=0, float y2=0, float z2=0)
+        {
+            return sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) + (z1-z2)*(z1-z2));
+        }
 
-        int publish_traj();
-        int publish_tree();
-        void publish_grid();
+        void publish_tree();
+        void on_tree_pub_timer(const ros::TimerEvent &e);
 };
 
-Planner_node::Planner_node()
+Planner::Planner()
 {
-    received_goal = 0;
-    prev_best_cost = 1e20, curr_best_cost = 1e10;
-    already_committed = 0;
-    dist_betw_odom = 0;
-    map_count = 0;
-    map_skip = 1;
-    planner_in_progress = false;
-    first_frame = 1;
-    RRT_MAX_ITER = 500;
+    srand(0);
 
-    curr_goal.x = 0;
-    curr_goal.y = 0;
-    curr_goal.z = 0;
+    clear_committed_trajectory();
+    is_updating_committed_trajectory = false;
 
-    // init periodic planner
-    planner_timer = nh.createTimer(ros::Duration(0.5), &Planner_node::on_planner_timer, this);
-    tree_pub_timer = nh.createTimer(ros::Duration(0.5), &Planner_node::on_tree_pub_timer, this);
+    planner_timer = nh.createTimer(ros::Duration(0.5), &Planner::on_planner_timer, this);
 
-    // subscribe to points
-    odom_sub = nh.subscribe<nav_msgs::Odometry>("odom", 5, &Planner_node::on_odom, this);
-    map_sub = nh.subscribe<local_map::local_map_msg>("localCells", 5, &Planner_node::on_map, this);
-    goal_sub = nh.subscribe("pnc_waypoint", 5, &Planner_node::on_goal, this);
+    tree_pub_timer = nh.createTimer(ros::Duration(0.5), &Planner::on_tree_pub_timer, this);
+    committed_trajectory_pub_timer = nh.createTimer(ros::Duration(0.5), &Planner::on_committed_trajectory_pub_timer, this);
+     
+    committed_trajectory_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 2);
+    committed_trajectory_view_pub = nh.advertise<nav_msgs::Path>("pncview_trajectory", 2);
+    tree_pub = nh.advertise<sensor_msgs::PointCloud>("rrts_tree", 2);
+    vertex_pub = nh.advertise<sensor_msgs::PointCloud>("rrts_vertex", 2);
 
-    traj_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 5);
-    trajview_pub = nh.advertise<nav_msgs::Path>("pncview_trajectory", 5);
-    obs_pub = nh.advertise<sensor_msgs::PointCloud>("obs_map", 5);
-    tree_pub = nh.advertise<sensor_msgs::PointCloud>("rrt_tree", 5);
-    vertex_pub = nh.advertise<sensor_msgs::PointCloud>("rrt_vertex", 5);
+    map_sub = nh.subscribe("local_map", 2, &Planner::on_map, this);
+    goal_sub = nh.subscribe("goal", 2, &Planner::on_goal, this);
+
+    rrts_max_iter = 200;
+    is_first_goal = true;
+    is_first_map = true;
 }
 
-inline float dist(float x1, float y1, float x2, float y2)
+Planner::~Planner()
 {
-    return sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) );
+    clear_committed_trajectory();
 }
 
-void Planner_node::on_goal(const geometry_msgs::PointStamped &point)
+int Planner::clear_committed_trajectory()
 {
-    curr_goal.x = point.point.x;
-    curr_goal.y = point.point.y;
-    curr_goal.z = point.point.z;
-    ROS_INFO("got goal: %f %f %f", curr_goal.x, curr_goal.y, curr_goal.z);
-
-    if(first_frame == 0)
+    for(list<double*>::iterator i=committed_trajectory.begin(); i!=committed_trajectory.end(); i++)
     {
-        change_sampling_region();
-
-        /*
-        // set root to current position
-        vertex_t& rootVertex =  rrts.getRootVertex();
-        state_t &stateRoot = rootVertex.getState();
-        stateRoot[0] = odom_now.position.x;
-        stateRoot[1] = odom_now.position.y;
-        stateRoot[2] = odom_now.position.z;
-
-        // 2. reinit planner
-        rrts.initialize();
-        prev_best_cost = 1e10;
-        curr_best_cost = 1e20;
-        cout<<"initialized new tree"<<endl;
-        */
-
-        rrts.checkTree();
-        rrts.updateReachability();
-
-        planner_in_progress = true;
-        last_good_path_time = ros::Time::now();
+        double* stateRef = *i;
+        delete[] stateRef;
     }
-}
+    committed_trajectory.clear();
 
-void Planner_node::on_odom(const nav_msgs::Odometry::ConstPtr & msg)
-{
-    odom_now.position.x = msg->pose.pose.position.x;
-    odom_now.position.y = msg->pose.pose.position.y;
-    odom_now.position.z = tf::getYaw(msg->pose.pose.orientation);
-
-    float x1 = odom_now.position.x;
-    float y1 = odom_now.position.y;
-
-    if(planner_in_progress)
-    {
-        vertex_t& rootVertex =  rrts.getRootVertex();
-        state_t &stateRoot = rootVertex.getState();
-        float x2 = stateRoot[0];
-        float y2 = stateRoot[1];
-
-        if( (sqrt((x1-x2)*(x1-x2) + (y1-y2)*(y1-y2)) < 2) )
-        {
-            already_committed = 0;
-        }
-    }
-}
-
-void Planner_node::publish_grid()
-{
-    sensor_msgs::PointCloud pc;
-    pc.header.stamp = ros::Time::now();
-    pc.header.frame_id = "odom";
-
-    //cout<<"verify: "<< local_map->vals.size() <<" "<< local_map->xsize * local_map->ysize << endl;
-    for(int i=0; i< system.xsize; i++)
-    {
-        for(int j=0; j< system.ysize; j++)
-        {
-            float tmp = (float)system.map_vals[j + i*system.xsize];
-            if( tmp > 50.0)
-            {
-                //cout<<"1: "<<i<<" "<<j << endl;
-                geometry_msgs::Point32 p;
-                p.x = system.origin.x + (i - system.xorigin)*system.map_res;
-                p.y = system.origin.y + (j - system.yorigin)*system.map_res;
-                p.z = 0;
-
-                pc.points.push_back(p);
-            }
-        }
-    }
-    obs_pub.publish(pc);
-}
-
-void Planner_node::on_map(const local_map::local_map_msg::ConstPtr & local_map)
-{
-    map_count++;
-
-    if(first_frame)
-    {
-        first_frame = 0;
-        system.map_res = local_map->res;
-        system.xsize = local_map->xsize;
-        system.ysize = local_map->ysize;
-        system.xorigin = local_map->xorigin;
-        system.yorigin = local_map->yorigin;
-        system.map_width = local_map->width;
-        system.map_height = local_map->height;
-
-        system.origin.x = local_map->origin.x;
-        system.origin.y = local_map->origin.y;
-        system.origin.z = local_map->origin.z;       // this is yaw
-
-        system.map_vals = new unsigned char [system.xsize * system.ysize];
-
-        //change_sampling_region();        
-        rrts.setSystem( system );
-
-        // init root
-        vertex_t &root = rrts.getRootVertex();  
-        state_t &rootState = root.getState();
-        rootState[0] = system.origin.x;
-        rootState[1] = system.origin.y;
-        rootState[2] = system.origin.z;
-
-        // Set planner parameters
-        rrts.setGamma (2.0);
-        rrts.setGoalSampleFrequency (0.1);
-
-        // Initialize the planner
-        rrts.initialize ();
-
-        ROS_INFO("got first frame");
-
-        curr_goal.x = system.origin.x;
-        curr_goal.y = system.origin.y;
-        curr_goal.z = system.origin.z;
-    }
-
-    for(int i=0; i< system.xsize; i++)
-    {
-        for(int j=0; j< system.ysize; j++)
-        {
-            float car_width = 1.75, car_length = 1.75;
-
-            int yleft = min(system.ysize, (int)(j + car_width/2/system.map_res));
-            int yright = max(0, (int)(j - car_width/2/system.map_res));
-            int xfront = min(system.xsize, (int)(i + car_length/2/system.map_res));
-            int xback = max(0, (int)(i - car_length/2/system.map_res));
-
-            system.map_vals[i + j*system.xsize] = (unsigned char)local_map->vals[i + j*system.xsize];
-            if(system.map_vals[i + j*system.xsize] > 10)
-            {
-                for(int it= xback; it< xfront; it++)
-                {
-                    for(int jt = yright; jt < yleft; jt++)
-                    {
-                        system.map_vals[it + jt*system.xsize] = 250 - fabs(it-i) - fabs(jt-j);
-                    }
-                }
-            }
-        }
-    }
-
-    // write origin in odom frame
-    system.origin.x = local_map->origin.x;
-    system.origin.y = local_map->origin.y;
-    system.origin.z = local_map->origin.z;       // this is yaw
-
-    publish_grid();
-}
-
-
-int Planner_node::project_goal(float &xc, float &yc, float &xs, float &ys, float goalx, float goaly)
-{
-    int goalx_num = ((goalx - system.origin.x)/system.map_res + system.xorigin);
-    int goaly_num = ((goaly - system.origin.y)/system.map_res + system.yorigin);
-    if( (goalx_num >=0) && (goalx_num < system.xsize) && (goaly_num >=0) && (goaly_num < system.ysize) )
-    {
-        ROS_INFO("goal inside: keeping it same");
-        xc = goalx; yc = goaly;
-        xs = 2.0; yc = 2.0;
-        return 1;
-    }
-    double min_corner_dist = DBL_MAX;
-    int corner_num = 0;
-
-    float xmin, ymin;
-    vector<geometry_msgs::Point32> corners(4);
-    corners[0].x = 0; corners[0].y = 0;
-    corners[1].x = (float)system.xsize; corners[1].y = 0;
-    corners[2].x = (float)system.xsize; corners[2].y = (float)system.ysize;
-    corners[3].x = 0; corners[3].y = (float)system.ysize;
-
-    for(int i=0; i<4; i++)
-    {
-        corners[i].x = system.origin.x + (corners[i].x - system.xorigin)*system.map_res;
-        corners[i].y = system.origin.y + (corners[i].y - system.yorigin)*system.map_res;
-
-        float tmp_dist = dist(corners[i].x, corners[i].y, goalx, goaly);
-        if( tmp_dist < min_corner_dist)
-        {
-            xmin = corners[i].x; ymin = corners[i].y;
-            min_corner_dist = tmp_dist;
-            corner_num = i;
-        }
-    }
-    //cout<<"min corner: "<< xmin <<" "<< ymin << " corner_num: "<< corner_num<<endl;
-
-    float xmin2, ymin2;
-    int corner_bef = ((corner_num - 1)%4 + 4)%4;
-    int corner_next = (corner_num + 1)%4;
-
-    if( dist( corners[corner_bef].x, corners[corner_bef].y, goalx, goaly) <= dist( corners[corner_next].x, corners[corner_next].y, goalx, goaly) )
-    {
-        xmin2 = corners[corner_bef].x;
-        ymin2 = corners[corner_bef].y;
-        //cout<<"min2: "<< xmin2<<" "<< ymin2<<" min2: "<< corner_bef<<endl;
-    }
-    else
-    {
-        xmin2 = corners[corner_next].x;
-        ymin2 = corners[corner_next].y;
-        //cout<<"min2: "<< xmin2<<" "<< ymin2<<" min2: "<< corner_next<<endl;
-    }
-
-    xc = (xmin + xmin2)/2;
-    yc = (ymin + ymin2)/2;
-    if( fabs(xmin - xmin2) > fabs(ymin - ymin2) )
-    {
-        xs = fabs(xmin - xmin2);
-        ys = 5.0;
-    }
-    else
-    {
-        ys = fabs(ymin - ymin2);
-        xs = 5.0;
-    }
-    ROS_INFO("projected goals: [%f, %f], size: [%f, %f]", xc, yc, xs, ys);
-
+    committed_control.clear();
+    
     return 0;
 }
 
-void Planner_node::change_sampling_region()
+// p is (x,y,yaw) in map coords
+// assumption: goal is coming less frequently than map
+void Planner::on_goal(const geometry_msgs::Pose::ConstPtr p)
 {
-    //cout<<"sys origin: "<< system.origin.x<<" "<< system.origin.y<<endl;
-    vertex_t &root = rrts.getRootVertex();  
-    state_t &rootState = root.getState();
-    system.regionOperating.center[0] = rootState[0];
-    system.regionOperating.center[1] = rootState[1];
-    system.regionOperating.center[2] = 0;
-    system.regionOperating.size[0] = 100.0;
-    system.regionOperating.size[1] = 100.0;
-    system.regionOperating.size[2] = 2.0 * M_PI;
+    double roll=0, pitch=0, yaw=0;
+    tf::Quaternion q;
+    tf::quaternionMsgToTF(p->orientation, q);
+    tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+    
+    goal.x = p->position.x;
+    goal.y = p->position.y;
+    goal.z = yaw;
 
-    while(curr_goal.z > M_PI)
-        curr_goal.z -= 2*M_PI;
-    while(curr_goal.z < -M_PI)
-        curr_goal.z += 2*M_PI;
-
-    system.regionGoal.center[0] = curr_goal.x;
-    system.regionGoal.center[1] = curr_goal.y;
-    system.regionGoal.center[2] = curr_goal.z;
-    system.regionGoal.size[0] = 2;
-    system.regionGoal.size[1] = 2;
-    system.regionGoal.size[2] = 10/180*M_PI;
+    //ROS_INFO("got goal: %f %f %f", goal.x, goal.y, goal.z);
+    
+    if(is_first_goal)
+    {
+        is_first_goal = false;
+        cout<<"got first goal"<<endl;
+        if(is_first_map == false)
+        {
+            setup_rrts();
+        }
+    }
+    else
+    {
+        system.regionGoal.center[0] = (double)goal.x;
+        system.regionGoal.center[1] = (double)goal.y;
+        system.regionGoal.center[2] = (double)goal.z;
+        system.regionGoal.size[0] = 1.0;
+        system.regionGoal.size[1] = 1.0;
+        system.regionGoal.size[2] = 20.0/180.0*M_PI;
+        cout<<"region_goal: "<< system.regionGoal.center[0]<<" "<<system.regionGoal.center[1]<<" "<<system.regionGoal.center[2]<<endl;
+    }
 }
 
-bool Planner_node::root_in_goal()
+void Planner::get_robot_pose()
+{
+    tf::Stamped<tf::Pose> map_pose;
+    map_pose.setIdentity();
+    tf::Stamped<tf::Pose> robot_pose;
+    robot_pose.setIdentity();
+    robot_pose.frame_id_ = "base_link";
+    robot_pose.stamp_ = ros::Time();
+    ros::Time current_time = ros::Time::now();
+    
+    bool transform_is_correct = false;
+    try {
+        tf_.transformPose("map", robot_pose, map_pose);
+    }
+    catch(tf::LookupException& ex) {
+        ROS_ERROR("No Transform available Error: %s\n", ex.what());
+        transform_is_correct = false;
+    }
+    catch(tf::ConnectivityException& ex) {
+        ROS_ERROR("Connectivity Error: %s\n", ex.what());
+        transform_is_correct = false;
+    }
+    catch(tf::ExtrapolationException& ex) {
+        ROS_ERROR("Extrapolation Error: %s\n", ex.what());
+        transform_is_correct = false;
+    }
+    // check odom_pose timeout
+    if (current_time.toSec() - map_pose.stamp_.toSec() > 0.1) {
+        ROS_WARN("Get robot pose transform timeout. Current time: %.4f, odom_pose stamp: %.4f, tolerance: %.4f",
+                current_time.toSec(), map_pose.stamp_.toSec(), 0.1);
+        transform_is_correct = false;
+    }
+    transform_is_correct = true;
+    
+    if(transform_is_correct)
+    {
+        geometry_msgs::PoseStamped tmp;
+        tf::poseStampedTFToMsg(map_pose, tmp);
+        
+        double roll=0, pitch=0, yaw=0;
+        tf::Quaternion q;
+        tf::quaternionMsgToTF(tmp.pose.orientation, q);
+        tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+        car_position.x = tmp.pose.position.x;
+        car_position.y = tmp.pose.position.y;
+        car_position.z = yaw;
+        //cout<<car_position<<endl;
+    }
+}
+
+void Planner::on_map(const nav_msgs::OccupancyGrid::ConstPtr og)
+{
+    // 1. copy the incoming grid into map
+    system.map = *og;
+    
+    // 2. get car_position
+    get_robot_pose();
+    system.map_origin[0] = car_position.x;
+    system.map_origin[1] = car_position.y;
+    system.map_origin[2] = car_position.z;
+
+    if(is_first_map)
+    {
+        is_first_map = false;
+        cout<<"got first map"<<endl;
+        if(is_first_goal == false)
+            setup_rrts();
+    }
+    /*
+    cout<<"system.map_origin: "<< system.map_origin[0]<<" "<<system.map_origin[1]<<" "<<system.map_origin[2]<<endl;
+    cout<<"is_in_collision: "<< system.IsInCollision (system.map_origin)<<endl;
+    cout<<endl;
+    */
+}
+
+bool Planner::root_in_goal()
 {
     vertex_t &rootVertex = rrts.getRootVertex();
     state_t &curr_state = rootVertex.getState();
     return system.isReachingTarget(curr_state);
 }
 
-void Planner_node::on_tree_pub_timer(const ros::TimerEvent &e)
+
+void Planner::change_sampling_region()
 {
-    publish_tree();
+    vertex_t &root = rrts.getRootVertex();  
+    state_t &rootState = root.getState();
+    
+    double cyaw = cos(rootState[2]);
+    double syaw = sin(rootState[2]);
+    
+    // center of the map is the center of the local_map but in /map frame
+    // yaw is 0
+    system.regionOperating.center[0] = rootState[0] + cyaw*system.map.info.height/4.0*system.map.info.resolution;
+    system.regionOperating.center[1] = rootState[1] + syaw*system.map.info.height/4.0*system.map.info.resolution;
+    system.regionOperating.center[2] = 0;
+    cout<<"regionOperating: "<< system.regionOperating.center[0]<<" "<<system.regionOperating.center[1]<<" "<<system.regionOperating.center[2]<<endl;
+     
+    // just create a large operating region around the car irrespective of the orientation in /map frame
+    // yaw is 2*M_PI
+    double size = sqrt(pow(system.map.info.height,2) + pow(system.map.info.width,2))*system.map.info.resolution;
+    system.regionOperating.size[0] = size;
+    system.regionOperating.size[1] = size;
+    system.regionOperating.size[2] = 2.0 * M_PI;
+    //cout<<"regionOperating: "<< system.regionOperating.size[0]<<" "<<system.regionOperating.size[1]<<" "<<system.regionOperating.size[2]<<endl;
+
+    system.regionGoal.center[0] = (double)goal.x;
+    system.regionGoal.center[1] = (double)goal.y;
+    system.regionGoal.center[2] = (double)goal.z;
+    system.regionGoal.size[0] = 1.0;
+    system.regionGoal.size[1] = 1.0;
+    system.regionGoal.size[2] = 20.0/180.0*M_PI;
+    cout<<"region_goal: "<< system.regionGoal.center[0]<<" "<<system.regionGoal.center[1]<<" "<<system.regionGoal.center[2]<<endl;
+
 }
 
-void Planner_node::on_planner_timer(const ros::TimerEvent &e)
+void Planner::setup_rrts()
 {
-    if(planner_in_progress)
-        get_plan();
-    return;
+    cout<<"called setup_rrts"<<endl;
+
+    // get car_position
+    get_robot_pose();
+    
+    rrts.setSystem(system);
+    vertex_t &root = rrts.getRootVertex();  
+    state_t &rootState = root.getState();
+    rootState[0] = car_position.x;
+    rootState[1] = car_position.y;
+    rootState[2] = car_position.z;
+    
+    cout<<"setup_rrts rootState: "<<rootState[0]<<" "<<rootState[1]<<" "<<rootState[2]<<endl;
+
+    change_sampling_region();
+
+    // Set planner parameters
+    rrts.setGamma (2.0);
+    rrts.setGoalSampleFrequency (0.3);
+
+    // Initialize the planner
+    rrts.initialize ();
+    cout<<"setup_rrts complete"<<endl;
 }
 
-void Planner_node::get_plan()
+void Planner::get_plan()
 {
-
-    // prune the obstructed part of the tree
     rrts.checkTree();
     rrts.updateReachability();
-    ROS_INFO("rrt num_vert: %d", rrts.numVertices);
-    change_sampling_region();
-
-    if( ! root_in_goal() )
+    if(root_in_goal())
     {
-        for(unsigned int i=0; i< RRT_MAX_ITER; i++)
+        cout<<"root in goal"<<endl;
+        return;
+    }
+    //cout<<"after check_tree num_vert: "<< rrts.numVertices<<endl;
+    bool found_best_path = false;
+    double best_cost=1e20, prev_best_cost=1e20;
+    while(!found_best_path)
+    {
+        rrts.iteration();
+        best_cost = rrts.getBestVertexCost();
+        if( (best_cost < 100) && (rrts.numVertices > 25))
         {
-            rrts.iteration();
-            if( rrts.numVertices > 5000)
-                break;
+            if( (prev_best_cost - best_cost) < 0.5)
+                found_best_path = true;
         }
-        rrts.updateReachability();
-        curr_best_cost = rrts.getBestVertexCost();
-        ROS_INFO("commit status: %d best_curr: %f", already_committed, curr_best_cost);
-
-        // if found traj, copy it and keep publishing, switch root to some node ahead
-        if( !already_committed )
+        prev_best_cost = best_cost;
+        
+        //cout<<endl;
+    }
+    cout<<"n: "<< rrts.numVertices<<endl;
+    if(found_best_path)
+    {
+        cout<<"found best path with cost: "<<best_cost<<endl;
+        if(committed_trajectory.empty())
         {
-            ROS_INFO("prev_cost: %f curr_cost: %f", prev_best_cost, curr_best_cost);
-            if( fabs(prev_best_cost - curr_best_cost) < 1.0)
-            {
-                vertex_t& vertexBest = rrts.getBestVertex ();
-                if (&vertexBest == NULL)
-                {
-                    ROS_DEBUG("get_plan(): best not found");
-                }
-                else
-                {
-                    ROS_INFO("traj cost: %f", rrts.getBestVertexCost() );
-
-                    // free memory for toPublishTraj
-                    for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
-                    {
-                        double* stateRef = *iter;
-                        delete stateRef;
-                    } 
-                    toPublishTraj.clear();
-                    toPublishControl.clear();
-
-                    // do checktree here to avoid switchRoot going beyond an obstacle
-                    rrts.checkTree();
-                    rrts.updateReachability();
-                    if(rrts.switchRoot(50, toPublishTraj, toPublishControl))
-                    {
-                        already_committed = 1;
-                        ROS_INFO("switching root");
-                    }
-                    else
-                        ROS_INFO("couldn't switch root");
-                }
-            }
+            is_updating_committed_trajectory = true;
+            if(rrts.switchRoot(10, committed_trajectory, committed_control) == 0)
+                cout<<"cannot switch_root: lowerBoundVertex = NULL"<<endl;
+            else
+                cout<<"switched root successfully"<<endl;
+            is_updating_committed_trajectory = false;
         }
-
-        prev_best_cost = curr_best_cost;
-    }
-
-    publish_traj();
-}
-
-void Planner_node::emergency_replan()
-{
-    //1. set root to current position
-    vertex_t& rootVertex =  rrts.getRootVertex();
-    state_t &stateRoot = rootVertex.getState();
-    stateRoot[0] = odom_now.position.x;
-    stateRoot[1] = odom_now.position.y;
-    stateRoot[2] = odom_now.position.z;
-
-    change_sampling_region();
-
-    // 2. reinit planner
-    rrts.initialize();
-    prev_best_cost = 1e10;
-    curr_best_cost = 1e20;
-    ROS_INFO("initialized new tree");
-
-    already_committed = 0;
-
-    get_plan();
-    ROS_INFO("finished get_plan emergency");
-}
-
-// return true normally, if it finds even one vertex within 1.5 m of car, return false
-bool Planner_node::isFarFromTraj()
-{
-    float cx = odom_now.position.x;
-    float cy = odom_now.position.y;
-
-    if(toPublishTraj.size() == 0)
-        return false;
-
-    for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
-    {
-        double* stateRef = *iter;
-
-        if( dist(cx, cy, stateRef[0], stateRef[1]) < 3.0)
-            return false;
-    }
-    return true;
-}
-
-
-int Planner_node::publish_traj()
-{
-    bool late_flag = false;
-    if(planner_in_progress)
-    {
-        ros::Duration time_since_last_path = ros::Time::now() - last_good_path_time;
-        //ROS_INFO("Duration: %f", time_since_last_path.toSec());
-        if(time_since_last_path.toSec() > 5.0)
-            late_flag = true;
-        else
-            late_flag = false;
-    }
-    late_flag = false;
-
-    bool safe_flag = rrts.isSafeTrajectory(toPublishTraj);
-    bool far_flag = isFarFromTraj();
-
-    if( (!safe_flag) || far_flag  || late_flag  )
-    {
-        ROS_INFO("clearing_trajectory- is_far: %d is_safe: %d is_late: %d", far_flag, safe_flag, late_flag);
-        toPublishControl.clear();
-
-        // free memory
-        for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
-        {
-            double* stateRef = *iter;
-            delete stateRef;
-        } 
-        toPublishTraj.clear();
-
-        // initiate replan
-        emergency_replan();
-
-        return 0;
     }
     else
     {
-        if(toPublishTraj.size() > 0)
-            last_good_path_time = ros::Time::now();
-
-        nav_msgs::Path traj_msg;
-        traj_msg.header.stamp = ros::Time::now();
-        traj_msg.header.frame_id = "odom";
-
-        for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
-        {
-            double* stateRef = *iter;
-            geometry_msgs::PoseStamped p;
-            p.header.stamp = ros::Time::now();
-            p.header.frame_id = "odom";
-
-            ROS_DEBUG(" [%f, %f, %f]", stateRef[0], stateRef[1], stateRef[2]);
-            p.pose.position.x = stateRef[0];
-            p.pose.position.y = stateRef[1];
-            p.pose.position.z = stateRef[2];
-            p.pose.orientation.w = 1.0;
-            traj_msg.poses.push_back(p);
-        }
-
-        int which_pose =0;
-        for (list<float>::iterator iter = toPublishControl.begin(); iter != toPublishControl.end(); iter++) 
-        {
-            traj_msg.poses[which_pose].pose.position.z = *iter;
-            //cout<< *iter<<" ";
-            which_pose++;
-        }
-        traj_pub.publish(traj_msg);
-
-        // publish to viewer
-        traj_msg.poses.clear();
-        for (list<double*>::iterator iter = toPublishTraj.begin(); iter != toPublishTraj.end(); iter++) 
-        {
-            double* stateRef = *iter;
-            geometry_msgs::PoseStamped p;
-            p.header.stamp = ros::Time::now();
-            p.header.frame_id = "odom";
-
-            p.pose.position.x = stateRef[0];
-            p.pose.position.y = stateRef[1];
-            p.pose.position.z = 0;
-            p.pose.orientation.w = 1.0;
-            traj_msg.poses.push_back(p);
-        }
-        trajview_pub.publish(traj_msg);
+        ROS_INFO("223: did not find good path");
     }
-    return 1;
+
 }
 
-int Planner_node::publish_tree()
+bool Planner::is_reaching_end_committed_trajectory()
 {
-    int num_nodes = 0;
+    list<double*>::reverse_iterator riter = committed_trajectory.rbegin();
+    double* last_committed_state = *riter;
+    double delyaw = fabs(car_position.x - last_committed_state[2]);
+    while(delyaw > M_PI)
+        delyaw -= 2.0*M_PI;
+    while(delyaw < -M_PI)
+        delyaw += 2.0*M_PI;
 
-    num_nodes = rrts.numVertices;
+    /*
+    if( (fabs(car_position.x - last_committed_state[0]) > system.regionGoal.size[0]/2.0) ||
+        (fabs(car_position.y - last_committed_state[1]) > system.regionGoal.size[1]/2.0) || 
+        ( delyaw > system.regionGoal.size[2]/2.0) )
+        return false;
+    else
+        return true;
+    */
+    if(dist(car_position.x, car_position.y, delyaw, last_committed_state[0], last_committed_state[1], last_committed_state[2]) < 0.1)
+        return true;
+    else
+        return false;
+}
+
+void Planner::on_planner_timer(const ros::TimerEvent &e)
+{
+
+    // 1. if at the end of committed trajectory then clear trajectory and return
+    if(!committed_trajectory.empty())
+    {
+        if(!rrts.isSafeTrajectory(committed_trajectory))
+        {
+            cout<<"committed trajectory unsafe"<<endl;
+            clear_committed_trajectory();
+            setup_rrts();
+        }
+        else if(is_reaching_end_committed_trajectory())
+        {
+            cout<<"reached end of committed trajectory"<<endl;
+            clear_committed_trajectory();
+            setup_rrts();
+        }
+        else
+        {
+            // 2. if far from committed trajectory, clear everything and go to 3
+            bool is_far_away = true;
+            for(list<double*>::iterator i=committed_trajectory.begin(); i!=committed_trajectory.end(); i++)
+            {
+                double* curr_state = *i;
+                if(dist(car_position.x, car_position.y, car_position.z, curr_state[0], curr_state[1], curr_state[2]) < 1.0)
+                    is_far_away = false;
+            }
+            if(is_far_away == true)
+            {
+                cout<<"is_far_away: emergency replan"<<endl;
+                clear_committed_trajectory();
+                setup_rrts();
+            }
+        }
+    }
+    
+    // 3. else add more vertices / until you get a good trajectory, copy it to committed trajectory, return
+    if( (is_first_goal == false) && (is_first_map == false) )
+    {
+        get_plan();
+    }
+}
+
+void Planner::on_committed_trajectory_pub_timer(const ros::TimerEvent &e)
+{
+    publish_committed_trajectory();
+}
+
+void Planner::publish_committed_trajectory()
+{
+    // this flag is set by iterate() if it is going to change the committed_trajectory
+    // hacked semaphore
+    if(is_updating_committed_trajectory)
+        return;
+
+    nav_msgs::Path traj_msg;
+    traj_msg.header.stamp = ros::Time::now();
+    traj_msg.header.frame_id = "map";
+    
+    list<float>::iterator committed_control_iter = committed_control.begin();
+    for (list<double*>::iterator iter = committed_trajectory.begin(); iter != committed_trajectory.end(); iter++) 
+    {
+        double* stateRef = *iter;
+        geometry_msgs::PoseStamped p;
+        p.header.stamp = ros::Time::now();
+        p.header.frame_id = "map";
+
+        p.pose.position.x = stateRef[0];
+        p.pose.position.y = stateRef[1];
+        p.pose.position.z = *committed_control_iter;        // send control as the third state
+        p.pose.orientation.w = 1.0;
+        traj_msg.poses.push_back(p);
+        
+        //printf(" [%f, %f, %f]", p.pose.position.x, p.pose.position.y, p.pose.position.z);
+        ROS_DEBUG(" [%f, %f, %f]", p.pose.position.x, p.pose.position.y, p.pose.position.z);
+
+        committed_control_iter++;
+    }
+    
+    committed_trajectory_pub.publish(traj_msg);
+    
+    // publish to viewer
+    traj_msg.poses.clear();
+    for (list<double*>::iterator iter = committed_trajectory.begin(); iter != committed_trajectory.end(); iter++) 
+    {
+        double* stateRef = *iter;
+        geometry_msgs::PoseStamped p;
+        p.header.stamp = ros::Time::now();
+        p.header.frame_id = "map";
+
+        p.pose.position.x = stateRef[0];
+        p.pose.position.y = stateRef[1];
+        p.pose.position.z = 0;
+        p.pose.orientation.w = 1.0;
+        traj_msg.poses.push_back(p);
+    }
+    committed_trajectory_view_pub.publish(traj_msg);
+    //cout<<"published committed_trajectory"<<endl;
+}
+
+void Planner::on_tree_pub_timer(const ros::TimerEvent &e)
+{
+    publish_tree();
+    //cout<<"published tree"<<endl;
+}
+void Planner::publish_tree()
+{
+    int num_nodes = rrts.numVertices;
 
     sensor_msgs::PointCloud pc;
     pc.header.stamp = ros::Time::now();
-    pc.header.frame_id = "odom";
+    pc.header.frame_id = "map";
 
     sensor_msgs::PointCloud pc1;
     pc1.header.stamp = ros::Time::now();
-    pc1.header.frame_id = "odom";
+    pc1.header.frame_id = "map";
 
     if (num_nodes > 0) 
     {    
@@ -630,7 +507,7 @@ int Planner_node::publish_tree()
             p.z = 0.0;
             pc.points.push_back(p);
             pc1.points.push_back(p);
-
+            //cout<<"published: "<< p.x<<" "<<p.y<<endl;
             vertex_t& vertexParent = vertexCurr.getParent();
             if (&vertexParent != NULL) 
             {
@@ -663,17 +540,17 @@ int Planner_node::publish_tree()
 
     tree_pub.publish(pc);
     vertex_pub.publish(pc1);
-
-    return 1;
+    //cout<<"published tree"<<endl;
 }
+
 
 int main(int argc, char **argv)
 {
 
-    ros::init(argc, argv, "golfcar_planner_node");
-    ros::NodeHandle n;
+    ros::init(argc, argv, "rrts_node");
+    //ros::NodeHandle n;
 
-    Planner_node my_pnode;
+    Planner my_planner;
 
     ros::spin();
 };

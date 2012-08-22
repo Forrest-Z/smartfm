@@ -8,7 +8,7 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
 
-set(ROS_BUILD_TYPE Debug)
+set(ROS_BUILD_TYPE Coverage)
 rosbuild_init()
 
 #set the default path for built executables to the "bin" directory
@@ -29,3 +29,4 @@ rosbuild_genmsg()
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 rosbuild_add_executable(rrts_node src/rrts_node.cpp src/kdtree.c)
+rosbuild_add_executable(simple_goal src/simple_goal.cpp)

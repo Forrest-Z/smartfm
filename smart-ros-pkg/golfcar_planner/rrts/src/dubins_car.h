@@ -6,6 +6,7 @@
 #include <list>
 #include <stdlib.h>
 #include <geometry_msgs/Point.h>
+#include <nav_msgs/OccupancyGrid.h>
 
 using namespace std;
 
@@ -78,19 +79,14 @@ class System {
     State rootState;
 
     public:    
-
     double turning_radius;
     region regionOperating;
     region regionGoal;
-
-    // obstacles
-    list<region*> obstacles;
-
-    int has_found_path;
-    geometry_msgs::Point origin;
-    int xsize, ysize, xorigin, yorigin;
-    float map_width, map_height, map_res;
-    unsigned char *map_vals;
+    
+    double car_width;
+    double car_height;
+    nav_msgs::OccupancyGrid map;
+    double map_origin[3];
 
     System ();
     ~System ();
@@ -99,8 +95,8 @@ class System {
     State& getRootState () {return rootState;}
     int getStateKey (State& stateIn, double* stateKey);
 
-    bool IsInCollision (double stateIn[3]);
-    int getStateCost(double stateIn[3]);
+    bool IsInCollision (const double stateIn[3]);
+    int getStateCost(const double stateIn[3]);
 
     bool isReachingTarget (State& stateIn);
 

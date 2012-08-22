@@ -55,6 +55,7 @@ namespace golfcar_vision{
         //they are two different representations about the ground; 
         //"srcQuad_" is pixels in camera image;
         CvPoint2D32f gndQuad_[4], srcQuad_[4], dstQuad_[4];
+	CvMat *warp_matrix_, *projection_matrix_; 
 
         //scale denotes the ratio of pixel/distance in "image_ipm";
         float scale_;
@@ -67,8 +68,9 @@ namespace golfcar_vision{
         void Wrap_Src_to_Dst();
 
         image_proc* image_processor_;
-        vision_lane_detection::markers_info markers_;
+        vision_lane_detection::markers_info markers_, markers_2nd_;
         ros::Publisher markers_info_pub;
+	ros::Publisher markers_info_2nd_pub;
 
 	//ros::Subscriber  odom_sub_;
 	tf::Transformer  transformer_;

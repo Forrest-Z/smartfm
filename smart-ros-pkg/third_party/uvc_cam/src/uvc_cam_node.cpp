@@ -48,7 +48,7 @@
 
 #include <image_transport/image_transport.h>
 #include <cv_bridge/CvBridge.h>
-
+#include <image_brightness_control/control_command.h>
 #include "uvc_cam/UVCCamConfig.h"
 
 typedef driver_base::Driver Driver;
@@ -74,7 +74,8 @@ private:
 	std::string device_;
 	std::string camera_name_;
 	sensor_msgs::CvBridge bridge_;
-
+	ros::Subscriber brightness_control_sub_;
+	
 	/** dynamic parameter configuration */
 	typedef uvc_cam::UVCCamConfig Config;
 	Config config_;
@@ -84,11 +85,12 @@ private:
 	bool calibration_matches_;            // cam_info_ matches video mode
 
 	uvc_cam::Cam *cam_;
-
+	
 	/** image transport interfaces */
 	image_transport::ImageTransport it_;
 	image_transport::CameraPublisher image_pub_;
-
+	
+	
 public:
 	UVCCamNode():
 		privNH_("~"),
@@ -107,7 +109,17 @@ public:
 			closeCamera();
 		}
 	}
-
+	
+	void control_brightness(const image_brightness_control::control_command::ConstPtr& control)
+	{
+		if(config_.absolute_exposure != control->shutter){
+			try {
+		  cam_->set_control(0x9a0902, control->shutter);
+		  	} catch (uvc_cam::Exception& e) {
+				ROS_ERROR_STREAM("Problem setting absolute exposure. Exception was " << e.what());
+			}
+		}
+	}
 	/** Close camera device
 	 *
 	 *  postcondition: state_ is Driver::CLOSED
@@ -428,7 +440,8 @@ public:
 		srv.setCallback(f);
 
 		image_pub_ = it_.advertiseCamera("image_raw", 1);
-
+		brightness_control_sub_ = camera_nh_.subscribe("control_command", 10, &UVCCamNode::control_brightness, this);
+		
 		while (node.ok())
 		{
 			if (state_ != Driver::CLOSED)
@@ -438,7 +451,6 @@ public:
 					publish();
 				}
 			}
-
 			ros::spinOnce();
 		}
 
