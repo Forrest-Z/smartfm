@@ -60,6 +60,7 @@ namespace golfcar_vision{
 			  control_command_++;
 		  }
         image_brightness_control::control_command control_tmp;
+        control_tmp.header = image_msg->header;
         control_tmp.shutter = control_command_;
         control_command_pub.publish(control_tmp);
   }
