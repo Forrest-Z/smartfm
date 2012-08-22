@@ -18,9 +18,9 @@ struct Stopwatch
 	uint64_t time_;
 	uint64_t total_;
 
-	Stopwatch(string msg)
+	Stopwatch()
 	{
-		msg_ = msg;
+		
 		total_ = 0;
 	}
 	void reset()
@@ -43,8 +43,9 @@ struct Stopwatch
 		return ret;
 	}
 
-	void start()
+	void start(string msg)
 	{
+        msg_ = msg;
 		time_ = GetTimeMs64();
 	}
 
@@ -54,6 +55,11 @@ struct Stopwatch
 		if(print_msg)	cout<<msg_<<": "<<time_diff<<" ms"<<endl;
 		total_+=time_diff;
 	}
+
+    void end()
+    {
+        end(true);
+    }
 
 };
 }
