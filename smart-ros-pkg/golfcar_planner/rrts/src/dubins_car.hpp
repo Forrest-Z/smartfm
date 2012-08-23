@@ -229,18 +229,26 @@ int System::getStateCost(const double stateIn[3])
 
 int System::sampleState (State &randomStateOut) {
 
-    for (int i = 0; i < 3; i++) {
-
+    for (int i = 0; i < 3; i++) 
+    {
         randomStateOut.x[i] = (double)rand()/(RAND_MAX + 1.0)*regionOperating.size[i] 
             - regionOperating.size[i]/2.0 + regionOperating.center[i];
     }
+    cout<<"sample_local: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
     
+    // transform the sample from local_map frame to /map frame
+    double cyaw = cos(map_origin[2]);
+    double syaw = sin(map_origin[2]);
+    double state_copy[3] = {randomStateOut.x[0], randomStateOut.x[1], randomStateOut.x[2]};
+    randomStateOut.x[0] = map_origin[0] + state_copy[0]*cyaw + state_copy[1]*syaw;
+    randomStateOut.x[1] = map_origin[1] + -state_copy[0]*syaw + state_copy[1]*cyaw;
+    randomStateOut.x[2] = map_origin[2] + state_copy[2];
     while(randomStateOut.x[2] > M_PI)
         randomStateOut.x[2] -= 2.0*M_PI;
     while(randomStateOut.x[2] < -M_PI)
         randomStateOut.x[2] += 2.0*M_PI;
     
-    //cout<<"sampleState"<<endl;
+    cout<<"sample_transformed: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
     if (IsInCollision (randomStateOut.x))
         return 0;
 

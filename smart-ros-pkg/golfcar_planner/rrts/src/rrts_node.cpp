@@ -255,24 +255,20 @@ void Planner::change_sampling_region()
 {
     vertex_t &root = rrts.getRootVertex();  
     state_t &rootState = root.getState();
-    
-    double cyaw = cos(rootState[2]);
-    double syaw = sin(rootState[2]);
-    
     cout<<"rootState: "<<rootState[0]<<" "<<rootState[1]<<" "<<rootState[2]<<endl;
     
     // center of the map is the center of the local_map but in /map frame
     // yaw is 0
-    system.regionOperating.center[0] = rootState[0] + cyaw*system.map.info.height/4.0*system.map.info.resolution;
-    system.regionOperating.center[1] = rootState[1] + syaw*system.map.info.height/4.0*system.map.info.resolution;
+    system.regionOperating.center[0] = 0; //rootState[0] + cyaw*system.map.info.height/4.0*system.map.info.resolution;
+    system.regionOperating.center[1] = 0; //rootState[1] + syaw*system.map.info.height/4.0*system.map.info.resolution;
     system.regionOperating.center[2] = 0;
     cout<<"regionOperating: "<< system.regionOperating.center[0]<<" "<<system.regionOperating.center[1]<<" "<<system.regionOperating.center[2]<<endl;
      
     // just create a large operating region around the car irrespective of the orientation in /map frame
     // yaw is 2*M_PI
     double size = sqrt(pow(system.map.info.height,2) + pow(system.map.info.width,2))*system.map.info.resolution;
-    system.regionOperating.size[0] = size;
-    system.regionOperating.size[1] = size;
+    system.regionOperating.size[0] = system.map.info.height*system.map.info.resolution;
+    system.regionOperating.size[1] = system.map.info.width*system.map.info.resolution;
     system.regionOperating.size[2] = 2.0 * M_PI;
     cout<<"regionOperating: "<< system.regionOperating.size[0]<<" "<<system.regionOperating.size[1]<<" "<<system.regionOperating.size[2]<<endl;
 
@@ -327,7 +323,7 @@ void Planner::get_plan()
     {
         rrts.iteration();
         best_cost = rrts.getBestVertexCost();
-        if( (best_cost < 100) && (rrts.numVertices > 25))
+        if( (best_cost < 25) && (rrts.numVertices > 25))
         {
             if( (prev_best_cost - best_cost) < 0.5)
                 found_best_path = true;
