@@ -15,7 +15,7 @@ LocalMap::LocalMap(double height, double width, double res):height_(height), wid
     local_map_.info.height = height/res; //x axis in map frame
     local_map_.info.width = width/res; //-y axis in map frame
 
-    updateMapSkipMax = 10;
+    updateMapSkipMax = 5;
     updateMapSkip = 0;
 
     global_frame_ = "/map";

@@ -43,13 +43,17 @@ class Planner
         geometry_msgs::Point32 car_position;
         tf::TransformListener tf_;
         void get_robot_pose();
-
+    
+        double max_length_committed_trajectory;
         bool is_updating_committed_trajectory;
         void publish_committed_trajectory();
         list<double*> committed_trajectory;
         list<float> committed_control;
         int clear_committed_trajectory();
-        bool reached_end_of_committed_trajectory();
+        int clear_committed_trajectory_length(double length);
+        bool should_send_new_committed_trajectory;
+        bool is_near_end_committed_trajectory(); 
+        double state_at_last_clear[3];
 
         // ros
         ros::NodeHandle nh;
@@ -89,6 +93,12 @@ Planner::Planner()
 
     clear_committed_trajectory();
     is_updating_committed_trajectory = false;
+    max_length_committed_trajectory = 10.0;
+    should_send_new_committed_trajectory = true;
+    get_robot_pose();
+    state_at_last_clear[0]=car_position.x;
+    state_at_last_clear[1]=car_position.y;
+    state_at_last_clear[2]=car_position.z;
 
     planner_timer = nh.createTimer(ros::Duration(0.5), &Planner::on_planner_timer, this);
 
@@ -126,6 +136,36 @@ int Planner::clear_committed_trajectory()
     return 0;
 }
 
+// keep doing pop_front on the committed_trajectory until length
+int Planner::clear_committed_trajectory_length(double length)
+{
+    float l = 0;
+    bool reached_end = false;
+    list<double*>::iterator iter = committed_trajectory.begin();
+    int num_delete = 0;
+    while ((l < length) || (!reached_end) )
+    {
+        double *s1 = *iter;
+        iter++;
+        if(iter == committed_trajectory.end())
+        {
+            reached_end = true;
+            break;
+        }
+        double *s2 = *iter;
+        l += dist(s1[0], s1[1], 0, s2[0], s2[1], 0);
+        num_delete++;
+    }
+    int n = 0;
+    while(n < num_delete)
+    {
+        committed_trajectory.pop_front();
+        committed_control.pop_front();
+        n++;
+    }
+    return 0;
+}
+
 // p is (x,y,yaw) in map coords
 // assumption: goal is coming less frequently than map
 void Planner::on_goal(const geometry_msgs::Pose::ConstPtr p)
@@ -149,7 +189,7 @@ void Planner::on_goal(const geometry_msgs::Pose::ConstPtr p)
             setup_rrts();
             if(rrts.system->IsInCollision(goal_state))
             {
-                cout<<"goal in collision: abort"<<endl;
+                cout<<"152: goal in collision: abort"<<endl;
                 exit(0);
             }
         }
@@ -159,7 +199,7 @@ void Planner::on_goal(const geometry_msgs::Pose::ConstPtr p)
     {
         if(rrts.system->IsInCollision(goal_state))
         {
-            cout<<"goal in collision: abort"<<endl;
+            cout<<"162: goal in collision: abort"<<endl;
             exit(0);
         }
         change_sampling_region();
@@ -213,11 +253,22 @@ void Planner::get_robot_pose()
         car_position.x = tmp.pose.position.x;
         car_position.y = tmp.pose.position.y;
         car_position.z = yaw;
-        //cout<<car_position<<endl;
-        
+        //cout<<"get_robot_pose: "<< car_position.x<<" "<<car_position.y<<" "<<car_position.z<<endl;
+
         system.map_origin[0] = car_position.x;
         system.map_origin[1] = car_position.y;
         system.map_origin[2] = car_position.z;
+        
+        /*
+        if( (is_first_map==false) && (is_first_goal==false))
+        {
+            if(rrts.system->IsInCollision(system.map_origin))
+            {
+                cout<<"current car position in collision abort"<<endl;
+                exit(0);
+            }
+        }
+        */
     }
 }
 
@@ -255,22 +306,21 @@ void Planner::change_sampling_region()
 {
     vertex_t &root = rrts.getRootVertex();  
     state_t &rootState = root.getState();
-    cout<<"rootState: "<<rootState[0]<<" "<<rootState[1]<<" "<<rootState[2]<<endl;
+    //cout<<"rootState: "<<rootState[0]<<" "<<rootState[1]<<" "<<rootState[2]<<endl;
     
     // center of the map is the center of the local_map but in /map frame
     // yaw is 0
-    system.regionOperating.center[0] = 0; //rootState[0] + cyaw*system.map.info.height/4.0*system.map.info.resolution;
-    system.regionOperating.center[1] = 0; //rootState[1] + syaw*system.map.info.height/4.0*system.map.info.resolution;
+    system.regionOperating.center[0] = 0;
+    system.regionOperating.center[1] = 0;
     system.regionOperating.center[2] = 0;
-    cout<<"regionOperating: "<< system.regionOperating.center[0]<<" "<<system.regionOperating.center[1]<<" "<<system.regionOperating.center[2]<<endl;
+    //cout<<"regionOperating: "<< system.regionOperating.center[0]<<" "<<system.regionOperating.center[1]<<" "<<system.regionOperating.center[2]<<endl;
      
     // just create a large operating region around the car irrespective of the orientation in /map frame
     // yaw is 2*M_PI
-    double size = sqrt(pow(system.map.info.height,2) + pow(system.map.info.width,2))*system.map.info.resolution;
     system.regionOperating.size[0] = system.map.info.height*system.map.info.resolution;
     system.regionOperating.size[1] = system.map.info.width*system.map.info.resolution;
     system.regionOperating.size[2] = 2.0 * M_PI;
-    cout<<"regionOperating: "<< system.regionOperating.size[0]<<" "<<system.regionOperating.size[1]<<" "<<system.regionOperating.size[2]<<endl;
+    //cout<<"regionOperating: "<< system.regionOperating.size[0]<<" "<<system.regionOperating.size[1]<<" "<<system.regionOperating.size[2]<<endl;
 
     system.regionGoal.center[0] = (double)goal.x;
     system.regionGoal.center[1] = (double)goal.y;
@@ -278,13 +328,13 @@ void Planner::change_sampling_region()
     system.regionGoal.size[0] = 1.0;
     system.regionGoal.size[1] = 1.0;
     system.regionGoal.size[2] = 20.0/180.0*M_PI;
-    cout<<"region_goal: "<< system.regionGoal.center[0]<<" "<<system.regionGoal.center[1]<<" "<<system.regionGoal.center[2]<<endl;
+    //cout<<"region_goal: "<< system.regionGoal.center[0]<<" "<<system.regionGoal.center[1]<<" "<<system.regionGoal.center[2]<<endl;
 
 }
 
 void Planner::setup_rrts()
 {
-    cout<<"called setup_rrts"<<endl;
+    //cout<<"called setup_rrts"<<endl;
 
     // get car_position
     get_robot_pose();
@@ -304,7 +354,7 @@ void Planner::setup_rrts()
 
     // Initialize the planner
     rrts.initialize ();
-    cout<<"setup_rrts complete"<<endl;
+    //cout<<"setup_rrts complete"<<endl;
 }
 
 void Planner::get_plan()
@@ -334,14 +384,14 @@ void Planner::get_plan()
             break;
         //cout<<endl;
     }
-    cout<<"n: "<< rrts.numVertices<<endl;
+    cout<<"num_vertices: "<< rrts.numVertices<<endl;
     if(found_best_path)
     {
         cout<<"found best path with cost: "<<best_cost<<endl;
-        if(committed_trajectory.empty())
+        if(should_send_new_committed_trajectory)
         {
             is_updating_committed_trajectory = true;
-            if(rrts.switchRoot(10, committed_trajectory, committed_control) == 0)
+            if(rrts.switchRoot(max_length_committed_trajectory, committed_trajectory, committed_control) == 0)
                 cout<<"cannot switch_root: lowerBoundVertex = NULL"<<endl;
             else
             {
@@ -351,6 +401,7 @@ void Planner::get_plan()
                 cout<<"committed_trajectory len: "<< committed_trajectory.size()<<endl;
             }
             is_updating_committed_trajectory = false;
+            should_send_new_committed_trajectory = false;
         }
     }
     else
@@ -360,7 +411,7 @@ void Planner::get_plan()
 
 }
 
-bool Planner::reached_end_of_committed_trajectory()
+bool Planner::is_near_end_committed_trajectory()
 {
     // latest car_position
     get_robot_pose();
@@ -373,15 +424,7 @@ bool Planner::reached_end_of_committed_trajectory()
     while(delyaw < -M_PI)
         delyaw += 2.0*M_PI;
 
-    /*
-    if( (fabs(car_position.x - last_committed_state[0]) > system.regionGoal.size[0]/2.0) ||
-        (fabs(car_position.y - last_committed_state[1]) > system.regionGoal.size[1]/2.0) || 
-        ( fabs(delyaw) > system.regionGoal.size[2]/2.0) )
-        return false;
-    else
-        return true;
-    */
-    if(dist(car_position.x, car_position.y, 0, last_committed_state[0], last_committed_state[1], 0) < 0.5)
+    if(dist(car_position.x, car_position.y, 0, last_committed_state[0], last_committed_state[1], 0) < 4.0)
         return true;
     else
         return false;
@@ -392,20 +435,20 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
     // 1. if at the end of committed trajectory then clear trajectory and go to 3
     if(!committed_trajectory.empty())
     {
-        /*
         if(!rrts.isSafeTrajectory(committed_trajectory))
         {
             cout<<"committed trajectory unsafe"<<endl;
             clear_committed_trajectory();
             setup_rrts();
         }
-        else 
-        */ 
-        if(reached_end_of_committed_trajectory())
+        else if(is_near_end_committed_trajectory())
         {
-            cout<<"reached end of committed trajectory"<<endl;
-            clear_committed_trajectory();
-            setup_rrts();
+            cout<<"appending to committed trajectory"<<endl;
+            //clear_committed_trajectory();
+            should_send_new_committed_trajectory = true;
+            get_robot_pose();
+            float delta_since_last_clear = dist(state_at_last_clear[0], state_at_last_clear[1], 0, car_position.x, car_position.y, 0);
+            clear_committed_trajectory_length(delta_since_last_clear/2.0);
         }
         else
         {
