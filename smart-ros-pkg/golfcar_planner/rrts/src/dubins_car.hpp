@@ -92,7 +92,7 @@ System::System ()
 {
     turning_radius = 4.0;
     distance_limit = 100.0;
-    delta_distance = 0.15;
+    delta_distance = 0.05;
 
     car_width = 1.2;
     car_height = 2.2;
@@ -133,27 +133,21 @@ bool System::IsInCollision (const double stateIn[3])
     double stateInLocal[3] = {0};
     for(int i=0; i<3; i++)
         stateInLocal[i] = stateIn[i] - map_origin[i];
-
     while(stateInLocal[2] > M_PI)
         stateInLocal[2] -= 2.0*M_PI;
     while(stateInLocal[2] < -M_PI)
         stateInLocal[2] += 2.0*M_PI;
-    //cout<<"stateCheck: "<<stateInLocal[0]<<" "<<stateInLocal[1]<<" "<<stateInLocal[2]<<endl;
+    //cout<<"stateRel: "<<stateInLocal[0]<<" "<<stateInLocal[1]<<" "<<stateInLocal[2]<<endl;
     
-    //cout<<"regionOperating_center: "<< regionOperating.center[0]<<" "<< regionOperating.center[1]<<" "<< regionOperating.center[2]<<endl;
-    //cout<<"regionOperating_size: "<< regionOperating.size[0]<<" "<< regionOperating.size[1]<<" "<< regionOperating.size[2]<<endl;
-    /*
-    for(int i=0; i<3; i++)
-    {
-        if( (stateIn[i] > regionOperating.center[i] + regionOperating.size[i]/2.0) || (stateIn[i] < regionOperating.center[i] -regionOperating.size[i]/2.0) )
-        {
-            cout<<"returning line 152"<<endl;
-            return true;
-        }
-    }
-    */
-    double cyaw = cos(stateInLocal[2]);
-    double syaw = sin(stateInLocal[2]);
+    double cyaw_map = cos(stateIn[2]);
+    double syaw_map = sin(stateIn[2]);
+    double cyaw_local = cos(stateInLocal[2]);
+    double syaw_local = sin(stateInLocal[2]);
+    // transform relative position vector to coord frame of the local map
+    double stateInLocalCopy[3] = {stateInLocal[0], stateInLocal[1], stateInLocal[2]};
+    stateInLocal[0] = stateInLocalCopy[0]*cyaw_map + stateInLocalCopy[1]*syaw_map;
+    stateInLocal[1] = -stateInLocalCopy[0]*syaw_map + stateInLocalCopy[1]*cyaw_map;
+    //cout<<"stateInLocal: "<<stateInLocal[0]<<" "<<stateInLocal[1]<<" "<<stateInLocal[2]<<endl;
 
     bool is_obstructed = false;
     double cy = -car_width/2.0;
@@ -162,18 +156,19 @@ bool System::IsInCollision (const double stateIn[3])
     {
         while(cx < car_height/2.0)
         {
-            // 1. check the point (stateIn[0], stateIn[1]) + (cx,cy) -> R(-yaw)
-            double x = stateInLocal[0] + cx*cyaw + cy*syaw;
-            double y = stateInLocal[1] - cx*syaw + cy*cyaw;
+            // x = stateInLocal + rel position (cx,cy) transformed into the (X_car,Y_car) frame
+            double x = stateInLocal[0] + cx*cyaw_local + cy*syaw_local;
+            double y = stateInLocal[1] - cx*syaw_local + cy*cyaw_local;
             //cout<<"x: "<< x<<" y: "<<y<<endl;
-
+            //getchar();
+            
             // 2. find cells corresponding to (x,y)
             // car is placed at (height/4, width/2) according to the local_map
             /*
              * X_map
-             * |    X_car
-             * |    |
-             * | ---| Y_car
+             * |       X_car|
+             * |            |
+             * | Y_car------|
              * |
              * |--------- Y_map
              */
@@ -187,20 +182,21 @@ bool System::IsInCollision (const double stateIn[3])
                 if(map.data[to_check] == 0)
                 {
                     is_obstructed = true;
-                    break;
+                    //cout<<"is_obstructed: "<<is_obstructed<<endl;
+                    return is_obstructed;
                 }
             }
             else
             {
                 is_obstructed = true;
-                break;
+                //cout<<"is_obstructed: "<<is_obstructed<<endl;
+                return is_obstructed;
             }
             cx = cx + map.info.resolution;
         }
         cy = cy + map.info.resolution;
     }
     
-    //cout<<"is_obstructed: "<<is_obstructed<<endl;
     return is_obstructed;
 }
 
@@ -233,18 +229,26 @@ int System::getStateCost(const double stateIn[3])
 
 int System::sampleState (State &randomStateOut) {
 
-    for (int i = 0; i < 3; i++) {
-
+    for (int i = 0; i < 3; i++) 
+    {
         randomStateOut.x[i] = (double)rand()/(RAND_MAX + 1.0)*regionOperating.size[i] 
             - regionOperating.size[i]/2.0 + regionOperating.center[i];
     }
+    cout<<"sample_local: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
     
+    // transform the sample from local_map frame to /map frame
+    double cyaw = cos(map_origin[2]);
+    double syaw = sin(map_origin[2]);
+    double state_copy[3] = {randomStateOut.x[0], randomStateOut.x[1], randomStateOut.x[2]};
+    randomStateOut.x[0] = map_origin[0] + state_copy[0]*cyaw + state_copy[1]*syaw;
+    randomStateOut.x[1] = map_origin[1] + -state_copy[0]*syaw + state_copy[1]*cyaw;
+    randomStateOut.x[2] = map_origin[2] + state_copy[2];
     while(randomStateOut.x[2] > M_PI)
         randomStateOut.x[2] -= 2.0*M_PI;
     while(randomStateOut.x[2] < -M_PI)
         randomStateOut.x[2] += 2.0*M_PI;
     
-    //cout<<"sampleState"<<endl;
+    cout<<"sample_transformed: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
     if (IsInCollision (randomStateOut.x))
         return 0;
 
