@@ -83,9 +83,9 @@ PurePursuit::PurePursuit()
     if(!private_nh.getParam("max_timer_complaint",max_timer_complaint_)) max_timer_complaint_ = 5.0;
     if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 2.0;
     if(!private_nh.getParam("slow_speed",slow_speed_)) slow_speed_ = 1.5;
-    if(!private_nh.getParam("stopping_distance",stopping_distance_)) stopping_distance_ = 3.5;
+    if(!private_nh.getParam("stopping_distance",stopping_distance_)) stopping_distance_ = 5.0;
     if(!private_nh.getParam("neglect_distance",neglect_distance_)) neglect_distance_ = 0.001;
-    if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3;
+    if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3.0;
     if(!private_nh.getParam("max_steering",max_steering_)) max_steering_ = 0.65;
     if(!private_nh.getParam("car_length",car_length_)) car_length_ = 1.632;
 
@@ -249,7 +249,7 @@ bool PurePursuit::get_center(double tar_x, double tar_y,
 
 double PurePursuit::get_inv_R(double u)
 {
-    double inv_R = 0;
+    double inv_R = 0.0;
     if(abs(u) > 1.0e-6)
         inv_R = 1.0/u;
 
@@ -588,8 +588,9 @@ double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
     // for all the calculations, refer IROS'95 by Ollero and Heredia
     gamma = 2.0/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
     double steering = atan(gamma * car_length_);
-    ROS_WARN("[just info] steering, segment=%d lookahead_seg=%d x=%lf y=%lf yaw=%lf cmd_vel=%lf", segment, lookahead_segment, cur_x, cur_y, cur_yaw, cmd_vel);
-    ROS_WARN("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf", inv_R, L, r, x, theta, gamma, steering);
+    ROS_WARN("[just info] steering, on_segment=%d lookahead_seg=%d:(%lf,%lf)->(%lf,%lf) at x=%lf y=%lf yaw=%lf",
+             segment, lookahead_segment, ori_x, ori_y, tar_x, tar_y, cur_x, cur_y, cur_yaw);
+    ROS_WARN("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf cmd_vel=%lf", inv_R, L, r, x, theta, gamma, steering, cmd_vel);
 
     if(isnan(steering))
     {
