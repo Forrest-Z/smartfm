@@ -98,8 +98,10 @@ class System {
     State& getRootState () {return rootState;}
     int getStateKey (State& stateIn, double* stateKey);
 
+    int get_cell_index(double x, double y, int &map_index);
+    int transform_map_to_local_map(const double stateIn[3], double &zlx, double &zly, double &yl);
     bool IsInCollision (const double stateIn[3]);
-    int getStateCost(const double stateIn[3]);
+    double getStateCost(const double stateIn[3]);
 
     bool isReachingTarget (State& stateIn);
 

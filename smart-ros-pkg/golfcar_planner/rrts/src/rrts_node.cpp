@@ -265,16 +265,6 @@ int Planner::get_robot_pose()
         system.map_origin[2] = car_position.z;
         
         return 0;
-        /*
-        if( (is_first_map==false) && (is_first_goal==false))
-        {
-            if(rrts.system->IsInCollision(system.map_origin))
-            {
-                cout<<"current car position in collision abort"<<endl;
-                exit(0);
-            }
-        }
-        */
     }
     return 1;
 }
