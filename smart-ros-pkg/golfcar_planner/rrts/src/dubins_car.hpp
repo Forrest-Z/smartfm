@@ -400,7 +400,8 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             || ( (t_increment_s1 > 3*M_PI_2) || (t_increment_s2 > 3*M_PI_2) )  ){
         return -1.0;
     }
-
+    
+    // send total_distance_travel + local_map_cost as the real cost
     double total_distance_travel = (t_increment_s1 + t_increment_s2) * turning_radius  + distance;
     double local_map_cost = 0;
     fully_extends = 0;
@@ -437,30 +438,31 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             if (IsInCollision (state_curr))
                 return -2.0;
 
-            if (trajectory) {
+            if (trajectory) 
+            {
                 double *state_new = new double[3];
                 for (int i = 0; i < 3; i++) 
                     state_new[i] = state_curr[i];
-
+                
                 trajectory->push_front(state_new);
-
-                // populate controls here
                 control.push_front (direction_s1*turning_radius);
+                local_map_cost += getStateCost(state_new);
             }
 
-            if (t_inc_curr * turning_radius > distance_limit)  {
-
+            if (t_inc_curr * turning_radius > distance_limit)  
+            {
                 fully_extends = false;
 
                 for (int i = 0; i < 3; i++)
                     end_state[i] = state_curr[i];
 
-                return total_distance_travel;
+                return total_distance_travel + local_map_cost;
             }
         }
 
         double d_inc_curr = 0.0;
-        while (d_inc_curr < distance) {
+        while (d_inc_curr < distance) 
+        {
             double d_inc_rel = del_d;
             d_inc_curr += del_d;
             if (d_inc_curr > distance) {
@@ -489,25 +491,25 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 for (int i = 0; i < 3; i++) 
                     state_new[i] = state_curr[i];
                 trajectory->push_front(state_new);
-
-                // populate controls here
                 control.push_front (0);
+                local_map_cost += getStateCost(state_new);
             }
 
-            if (t_inc_curr * turning_radius + d_inc_curr > distance_limit) {
-
+            if (t_inc_curr * turning_radius + d_inc_curr > distance_limit) 
+            {
                 fully_extends = false;
 
                 for (int i = 0; i < 3; i++)
                     end_state[i] = state_curr[i];
 
-                return total_distance_travel;
+                return total_distance_travel + local_map_cost;
             }
         }
 
         double t_inc_curr_prev = t_inc_curr;
         t_inc_curr = 0.0;
-        while (t_inc_curr < t_increment_s2) {
+        while (t_inc_curr < t_increment_s2) 
+        {
             double t_inc_rel = del_t;
             t_inc_curr += del_t;
             if (t_inc_curr > t_increment_s2)  {
@@ -532,22 +534,23 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             if (IsInCollision (state_curr))
                 return -2.0;
 
-            if (trajectory) {
+            if (trajectory) 
+            {
                 double *state_new = new double [3];
                 for (int i = 0; i < 3; i++) 
                     state_new[i] = state_curr[i];
                 trajectory->push_front(state_new);
                 control.push_front(turning_radius * direction_s2);
+                local_map_cost += getStateCost(state_new);
             }
 
-            if ((t_inc_curr_prev + t_inc_curr) * turning_radius + d_inc_curr > distance_limit) {
-
+            if ((t_inc_curr_prev + t_inc_curr) * turning_radius + d_inc_curr > distance_limit) 
+            {
                 fully_extends = false;
-
                 for (int i = 0; i < 3; i++)
                     end_state[i] = state_curr[i];
 
-                return total_distance_travel;
+                return total_distance_travel + local_map_cost;
             }
         }
 
@@ -557,7 +560,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             end_state[i] = state_curr[i];
     }
 
-    return total_distance_travel;
+    return total_distance_travel + local_map_cost;
 
 }
 

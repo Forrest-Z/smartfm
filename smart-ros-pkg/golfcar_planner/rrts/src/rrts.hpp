@@ -890,7 +890,7 @@ RRTstar::Planner< typeparams >
         // if connection possible, switch to new root, else call vertex_new as the new root
         if (system->extendTo(vertexRoot->getState(), vertexChildNew->getState(), connectingTrajectory, exactConnection, connectingControl) <= 0)
         {
-            cout << "ERR: No extend, reinitializing" << endl;
+            cout << "switchRoot ERR: No extend, reinitializing" << endl;
 
             state_t& stateRoot = root->getState();
             for (int i = 0; i < numDimensions; i++)

@@ -337,7 +337,7 @@ void Planner::change_goal_region()
     system.regionGoal.center[2] = (double)goal.z;
     system.regionGoal.size[0] = 1.0;
     system.regionGoal.size[1] = 1.0;
-    system.regionGoal.size[2] = 20.0/180.0*M_PI;
+    system.regionGoal.size[2] = 30.0/180.0*M_PI;
     //cout<<"region_goal: "<< system.regionGoal.center[0]<<" "<<system.regionGoal.center[1]<<" "<<system.regionGoal.center[2]<<endl;
 }
 
@@ -418,7 +418,7 @@ void Planner::get_plan()
             break;
         
         ros::Duration delta_t = ros::Time::now() - start_rrts;
-        if(delta_t.toSec() > 5.0)
+        if(delta_t.toSec() > 10.0)
         {
             cout<<"no plan since "<<delta_t.toSec()<<endl;
             found_best_path = false;
