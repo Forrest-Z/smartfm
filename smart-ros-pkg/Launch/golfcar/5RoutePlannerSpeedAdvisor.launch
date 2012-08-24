@@ -1,7 +1,7 @@
 <launch>
     <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen">
         <param name="dummy_vehicle" value="false"/>
-        <param name="use_dbserver" value="false"/>
+        <param name="use_dbserver" value="true"/>
         <param name="booking_url" type="string" value="http://137.132.22.82:15016/booking" />
         <param name="vehicleID" type="string" value="golfcart1" />
     </node>

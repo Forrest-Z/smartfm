@@ -94,10 +94,10 @@ System::System ()
     distance_limit = 100.0;
     delta_distance = 0.05;
 
-    car_width = .12;
-    car_height = .228;
-    safe_distance = 0.03;    // car footprint is blown up by this distance for collision checking
-    distance_rear_axis_rear = .045; // dist between center of rear axis and rear end
+    car_width = 1.2;
+    car_height = 2.28;
+    safe_distance = 0.3;    // car footprint is blown up by this distance for collision checking
+    distance_rear_axis_rear = 0.45; // dist between center of rear axis and rear end
 }
 
 
@@ -382,11 +382,11 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
     }
 
     double total_distance_travel = (t_increment_s1 + t_increment_s2) * turning_radius  + distance;
-    //double cost_map_cost = 0;
+    double cost_map_cost = 0;
     fully_extends = 0;
 
-    if (check_obstacles) {
-
+    if (check_obstacles) 
+    {
         // Generate states/inputs
         double del_d = delta_distance;
         double del_t = del_d/turning_radius;
@@ -396,7 +396,8 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         double state_curr[3] = {0};
         // double input_curr[2];
 
-        while (t_inc_curr < t_increment_s1) {
+        while (t_inc_curr < t_increment_s1) 
+        {
             double t_inc_rel = del_t;
             t_inc_curr += del_t;
             if (t_inc_curr > t_increment_s1) {

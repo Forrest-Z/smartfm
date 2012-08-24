@@ -2,6 +2,7 @@
 #include <ctime>
 
 #include <ros/ros.h>
+#include <std_msgs/Int16MultiArray.h>
 #include <message_filters/subscriber.h>
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/PointStamped.h>
@@ -49,7 +50,9 @@ class Planner
         void publish_committed_trajectory();
         list<double*> committed_trajectory;
         list<float> committed_control;
-        int clear_committed_trajectory();
+	void publish_control_view_trajectory();
+        
+	int clear_committed_trajectory();
         int clear_committed_trajectory_length();
         bool should_send_new_committed_trajectory;
         bool is_first_committed_trajectory;
@@ -63,7 +66,9 @@ class Planner
         
         ros::Publisher tree_pub;
         ros::Publisher vertex_pub;
-        ros::Publisher committed_trajectory_pub;
+        ros::Publisher control_trajectory_pub;
+
+	ros::Publisher committed_trajectory_pub;
         ros::Publisher committed_trajectory_view_pub;
         ros::Timer planner_timer;
         ros::Timer tree_pub_timer;
@@ -107,11 +112,12 @@ Planner::Planner()
     committed_trajectory_view_pub = nh.advertise<nav_msgs::Path>("pncview_trajectory", 2);
     tree_pub = nh.advertise<sensor_msgs::PointCloud>("rrts_tree", 2);
     vertex_pub = nh.advertise<sensor_msgs::PointCloud>("rrts_vertex", 2);
+	control_trajectory_pub = nh.advertise<std_msgs::Int16MultiArray>("control_trajectory_msg", 2);	
 
     map_sub = nh.subscribe("local_map", 2, &Planner::on_map, this);
     goal_sub = nh.subscribe("goal", 2, &Planner::on_goal, this);
 
-    rrts_max_iter = 100;
+    rrts_max_iter = 200;
     is_first_goal = true;
     is_first_map = true;
     
@@ -380,7 +386,7 @@ void Planner::get_plan()
     {
         rrts.iteration();
         best_cost = rrts.getBestVertexCost();
-        if(best_cost < 25)
+        if(best_cost < 50)
         {
             if( (prev_best_cost - best_cost) < 0.5)
                 found_best_path = true;
@@ -414,6 +420,14 @@ void Planner::get_plan()
             is_first_committed_trajectory = false;
         }
     }
+	else
+{
+	clear_committed_trajectory();
+	setup_rrts();
+
+	should_send_new_committed_trajectory = false;
+	is_first_committed_trajectory = true;
+}
 }
 
 bool Planner::is_near_end_committed_trajectory()
@@ -464,7 +478,7 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
             for(list<double*>::iterator i=committed_trajectory.begin(); i!=committed_trajectory.end(); i++)
             {
                 double* curr_state = *i;
-                if(dist(car_position.x, car_position.y, car_position.z, curr_state[0], curr_state[1], curr_state[2]) < 0.5)
+                if(dist(car_position.x, car_position.y, 0., curr_state[0], curr_state[1], 0.) < 0.5)
                     is_far_away = false;
             }
             if(is_far_away == true)
@@ -493,9 +507,21 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
     }
 }
 
+void Planner::publish_control_view_trajectory()
+{
+	std_msgs::Int16MultiArray tmp;
+	
+	for(list<float>::iterator i=committed_control.begin(); i!=committed_control.end(); i++)
+{
+	tmp.data.push_back((int)(*i));
+}
+	control_trajectory_pub.publish(tmp);
+}
+
 void Planner::on_committed_trajectory_pub_timer(const ros::TimerEvent &e)
 {
     publish_committed_trajectory();
+	publish_control_view_trajectory();
 }
 
 void Planner::publish_committed_trajectory()
