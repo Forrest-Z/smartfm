@@ -30,7 +30,7 @@ rosbuild_genmsg()
 #target_link_libraries(example ${PROJECT_NAME})
 
 SET( BookingCommonRootDir ${PROJECT_SOURCE_DIR}/../../../bookingUI/shared )
-INCLUDE_DIRECTORIES(${BookingCommonRootDir}/src)
+INCLUDE_DIRECTORIES(${BookingCommonRootDir}/src ${BookingCommonRootDir}/src/route_planner ${BookingCommonRootDir}/src/svg_path)
 LINK_DIRECTORIES (${LINK_DIRECTORIES} ${BookingCommonRootDir})
 
 rosbuild_add_library(${PROJECT_NAME} src/global_planner.cpp src/simple_gp.cpp)
