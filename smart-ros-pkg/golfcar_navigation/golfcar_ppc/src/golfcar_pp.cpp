@@ -42,7 +42,7 @@ private:
     void trajCallBack(const nav_msgs::Path::ConstPtr &traj);
     void controlLoop(const ros::TimerEvent &e);
 
-    bool getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const;
+    bool getRobotPose(tf::Stamped<tf::Pose> &map_pose) const;
     double get_distance(double x1, double y1, double x2, double y2);
     bool get_center(double tar_x, double tar_y,
                     double ori_x, double ori_y, double inv_R,
@@ -83,9 +83,9 @@ PurePursuit::PurePursuit()
     if(!private_nh.getParam("max_timer_complaint",max_timer_complaint_)) max_timer_complaint_ = 5.0;
     if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 2.0;
     if(!private_nh.getParam("slow_speed",slow_speed_)) slow_speed_ = 1.5;
-    if(!private_nh.getParam("stopping_distance",stopping_distance_)) stopping_distance_ = 3.5;
+    if(!private_nh.getParam("stopping_distance",stopping_distance_)) stopping_distance_ = 5.0;
     if(!private_nh.getParam("neglect_distance",neglect_distance_)) neglect_distance_ = 0.001;
-    if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3;
+    if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3.0;
     if(!private_nh.getParam("max_steering",max_steering_)) max_steering_ = 0.65;
     if(!private_nh.getParam("car_length",car_length_)) car_length_ = 1.632;
 
@@ -108,13 +108,17 @@ void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
 {
     last_segment_ = 0;
 
-    trajectory_.header.frame_id = "/odom";
+    trajectory_.header.frame_id = "/map";
     trajectory_.header.stamp = ros::Time::now();
     trajectory_.poses.resize(traj->poses.size());
     for(unsigned int i=0; i<traj->poses.size(); i++)
     {
         try {
-            tf_.transformPose("/odom", traj->poses[i], trajectory_.poses[i]);
+ROS_WARN("[temp] z value before = %lf", traj->poses[i].pose.position.z);
+double temp = traj->poses[i].pose.position.z;
+            tf_.transformPose("/map", traj->poses[i], trajectory_.poses[i]);
+trajectory_.poses[i].pose.position.z = temp;
+ROS_WARN("[temp] z value after = %lf", trajectory_.poses[i].pose.position.z);
         }
         catch(tf::LookupException& ex) {
             ROS_ERROR("No Transform available Error: %s", ex.what());
@@ -176,9 +180,9 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
     cmd_pub_.publish(cmd_ctrl);
 }
 
-bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
+bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &map_pose) const
 {
-    odom_pose.setIdentity();
+    map_pose.setIdentity();
     tf::Stamped<tf::Pose> robot_pose;
     robot_pose.setIdentity();
     robot_pose.frame_id_ = "/base_link";
@@ -186,7 +190,7 @@ bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
     ros::Time current_time = ros::Time::now(); // save time for checking tf delay later
 
     try {
-        tf_.transformPose("/odom", robot_pose, odom_pose);
+        tf_.transformPose("/map", robot_pose, map_pose);
     }
     catch(tf::LookupException& ex) {
         ROS_ERROR("No Transform available Error: %s", ex.what());
@@ -200,10 +204,10 @@ bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
         ROS_ERROR("Extrapolation Error: %s", ex.what());
         return false;
     }
-    // check odom_pose timeout
-    if (current_time.toSec() - odom_pose.stamp_.toSec() > 0.1) {
-        ROS_WARN("PurePursuit transform timeout. Current time: %.4f, odom_pose stamp: %.4f, tolerance: %.4f",
-                 current_time.toSec(), odom_pose.stamp_.toSec(), 0.1);
+    // check map_pose timeout
+    if (current_time.toSec() - map_pose.stamp_.toSec() > 0.1) {
+        ROS_WARN("PurePursuit transform timeout. Current time: %.4f, map_pose stamp: %.4f, tolerance: %.4f",
+                 current_time.toSec(), map_pose.stamp_.toSec(), 0.1);
         return false;
     }
 
@@ -249,7 +253,7 @@ bool PurePursuit::get_center(double tar_x, double tar_y,
 
 double PurePursuit::get_inv_R(double u)
 {
-    double inv_R = 0;
+    double inv_R = 0.0;
     if(abs(u) > 1.0e-6)
         inv_R = 1.0/u;
 

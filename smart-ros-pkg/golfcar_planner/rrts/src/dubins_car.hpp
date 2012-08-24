@@ -96,7 +96,7 @@ System::System ()
 
     car_width = 1.2;
     car_height = 2.28;
-    safe_distance = 0.2;    // car footprint is blown up by this distance for collision checking
+    safe_distance = 0.3;    // car footprint is blown up by this distance for collision checking
     distance_rear_axis_rear = 0.45; // dist between center of rear axis and rear end
 }
 
