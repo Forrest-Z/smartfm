@@ -42,7 +42,7 @@ private:
     void trajCallBack(const nav_msgs::Path::ConstPtr &traj);
     void controlLoop(const ros::TimerEvent &e);
 
-    bool getRobotPose(tf::Stamped<tf::Pose> &map_pose) const;
+    bool getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const;
     double get_distance(double x1, double y1, double x2, double y2);
     bool get_center(double tar_x, double tar_y,
                     double ori_x, double ori_y, double inv_R,
@@ -108,7 +108,7 @@ void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
 {
     last_segment_ = 0;
 
-    trajectory_.header.frame_id = "/map";
+    trajectory_.header.frame_id = "/odom";
     trajectory_.header.stamp = ros::Time::now();
     trajectory_.poses.resize(traj->poses.size());
     for(unsigned int i=0; i<traj->poses.size(); i++)
@@ -116,7 +116,7 @@ void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
         try {
 ROS_WARN("[temp] z value before = %lf", traj->poses[i].pose.position.z);
 double temp = traj->poses[i].pose.position.z;
-            tf_.transformPose("/map", traj->poses[i], trajectory_.poses[i]);
+            tf_.transformPose("/odom", traj->poses[i], trajectory_.poses[i]);
 trajectory_.poses[i].pose.position.z = temp;
 ROS_WARN("[temp] z value after = %lf", trajectory_.poses[i].pose.position.z);
         }
@@ -180,9 +180,9 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
     cmd_pub_.publish(cmd_ctrl);
 }
 
-bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &map_pose) const
+bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
 {
-    map_pose.setIdentity();
+    odom_pose.setIdentity();
     tf::Stamped<tf::Pose> robot_pose;
     robot_pose.setIdentity();
     robot_pose.frame_id_ = "/base_link";
@@ -190,7 +190,7 @@ bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &map_pose) const
     ros::Time current_time = ros::Time::now(); // save time for checking tf delay later
 
     try {
-        tf_.transformPose("/map", robot_pose, map_pose);
+        tf_.transformPose("/odom", robot_pose, odom_pose);
     }
     catch(tf::LookupException& ex) {
         ROS_ERROR("No Transform available Error: %s", ex.what());
@@ -204,10 +204,10 @@ bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &map_pose) const
         ROS_ERROR("Extrapolation Error: %s", ex.what());
         return false;
     }
-    // check map_pose timeout
-    if (current_time.toSec() - map_pose.stamp_.toSec() > 0.1) {
-        ROS_WARN("PurePursuit transform timeout. Current time: %.4f, map_pose stamp: %.4f, tolerance: %.4f",
-                 current_time.toSec(), map_pose.stamp_.toSec(), 0.1);
+    // check odom_pose timeout
+    if (current_time.toSec() - odom_pose.stamp_.toSec() > 0.1) {
+        ROS_WARN("PurePursuit transform timeout. Current time: %.4f, odom_pose stamp: %.4f, tolerance: %.4f",
+                 current_time.toSec(), odom_pose.stamp_.toSec(), 0.1);
         return false;
     }
 
