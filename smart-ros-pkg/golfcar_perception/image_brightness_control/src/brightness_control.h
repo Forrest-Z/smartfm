@@ -38,6 +38,10 @@ namespace golfcar_vision{
    	ros::Publisher image_brightness_pub;
 	ros::Publisher control_command_pub;
 	int control_command_;
+	int expected_centroid_;
+	bool visualization_flag_;
+	void DrawHistogram(IplImage* imgHist, CvHistogram *hist);
+	void generate_ctrl_cmd(image_brightness_control::image_brightness & brightness_indicator);
     };
 };
 

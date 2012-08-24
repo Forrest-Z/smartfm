@@ -92,10 +92,12 @@ System::System ()
 {
     turning_radius = 4.0;
     distance_limit = 100.0;
-    delta_distance = 0.15;
+    delta_distance = 0.05;
 
-    car_width = 1.2;
-    car_height = 2.2;
+    car_width = .12;
+    car_height = .228;
+    safe_distance = 0.03;    // car footprint is blown up by this distance for collision checking
+    distance_rear_axis_rear = .045; // dist between center of rear axis and rear end
 }
 
 
@@ -126,82 +128,80 @@ bool System::IsInCollision (const double stateIn[3])
 {
     //return false;
 
-    //cout<<"attitude: "<<roll<<" "<<pitch<<" "<<yaw<<endl;
+    //cout<<"attitude: "<<roll<<" "<<pitch<<" "<<yaw<<endl; 
+    // map frame z, yaw
+    double zm[2] = {stateIn[0], stateIn[1]};
+    double ym = stateIn[2];
+    //cout<<"zm: "<< zm[0]<<" "<<zm[1]<<" "<<ym<<endl; 
 
-    //cout<<"134: stateIn: "<<stateIn[0]<<" "<<stateIn[1]<<" "<<stateIn[2]<<endl;
-    // convert stateIn to local coords
-    double stateInLocal[3] = {0};
-    for(int i=0; i<3; i++)
-        stateInLocal[i] = stateIn[i] - map_origin[i];
-
-    while(stateInLocal[2] > M_PI)
-        stateInLocal[2] -= 2.0*M_PI;
-    while(stateInLocal[2] < -M_PI)
-        stateInLocal[2] += 2.0*M_PI;
-    //cout<<"stateCheck: "<<stateInLocal[0]<<" "<<stateInLocal[1]<<" "<<stateInLocal[2]<<endl;
+    // base_link frame
+    double cos_map_yaw = cos(map_origin[2]);
+    double sin_map_yaw = sin(map_origin[2]);
     
-    //cout<<"regionOperating_center: "<< regionOperating.center[0]<<" "<< regionOperating.center[1]<<" "<< regionOperating.center[2]<<endl;
-    //cout<<"regionOperating_size: "<< regionOperating.size[0]<<" "<< regionOperating.size[1]<<" "<< regionOperating.size[2]<<endl;
-    /*
-    for(int i=0; i<3; i++)
-    {
-        if( (stateIn[i] > regionOperating.center[i] + regionOperating.size[i]/2.0) || (stateIn[i] < regionOperating.center[i] -regionOperating.size[i]/2.0) )
-        {
-            cout<<"returning line 152"<<endl;
-            return true;
-        }
-    }
-    */
-    double cyaw = cos(stateInLocal[2]);
-    double syaw = sin(stateInLocal[2]);
+    // rotate zm by yaw, subtract map_origin to get zlocal
+    double zl[2] ={0};
+    zl[0] = (zm[0]-map_origin[0])*cos_map_yaw + (zm[1]-map_origin[1])*sin_map_yaw;
+    zl[1] = -(zm[0]-map_origin[0])*sin_map_yaw + (zm[1]-map_origin[1])*cos_map_yaw;
+    double yl = ym - map_origin[2];
+    while(yl > M_PI)
+        yl -= 2.0*M_PI;
+    while(yl < -M_PI)
+        yl += 2.0*M_PI;
+    //cout<<"zl: "<< zl[0]<<" "<<zl[1]<<" "<<yl<<endl; 
+    double cos_yl = cos(yl);
+    double sin_yl = sin(yl);
 
+#if 1
     bool is_obstructed = false;
-    double cy = -car_width/2.0;
-    double cx = -car_height/2.0;
-    while(cy < car_width/2.0)
+    double cy = -car_width/2.0 - safe_distance;
+    double cx = -distance_rear_axis_rear - safe_distance;
+    while(cy < car_width/2.0 + safe_distance)
     {
-        while(cx < car_height/2.0)
+        while(cx < (car_height - distance_rear_axis_rear + safe_distance))
         {
-            // 1. check the point (stateIn[0], stateIn[1]) + (cx,cy) -> R(-yaw)
-            double x = stateInLocal[0] + cx*cyaw + cy*syaw;
-            double y = stateInLocal[1] - cx*syaw + cy*cyaw;
+            // x = stateInLocal + rel position (cx,cy) transformed into the (X_car,Y_car) frame
+            double x = zl[0] + cx*cos_yl + cy*sin_yl;
+            double y = zl[1] - cx*sin_yl + cy*cos_yl;
             //cout<<"x: "<< x<<" y: "<<y<<endl;
-
+            //getchar();
+            
             // 2. find cells corresponding to (x,y)
             // car is placed at (height/4, width/2) according to the local_map
             /*
              * X_map
-             * |    X_car
-             * |    |
-             * | ---| Y_car
+             * |       X_car|
+             * |            |
+             * | Y_car------|
              * |
              * |--------- Y_map
              */
             int cellx = x/map.info.resolution + map.info.height/4.0;
             int celly = map.info.width/2.0 - y/map.info.resolution;
-            //cout<<"cellx: "<<cellx<<" celly: "<<celly<<endl;
             if( (cellx >=0) && (cellx < (int)map.info.height) && (celly >= 0) && (celly < (int)map.info.width))
             {
-                int to_check = cellx*map.info.width + celly;
-                //cout<<"to_check: "<< to_check<<" map.data: "<<(int)map.data[to_check]<<endl;
-                if(map.data[to_check] == 0)
+                int to_check = map.data[cellx*map.info.width + celly];
+                //cout<<"cellx: "<<cellx<<" celly: "<<celly<<" to_check: "<<to_check<<endl;
+                if(to_check == 0)
                 {
                     is_obstructed = true;
-                    break;
+                    //cout<<"is_obstructed 184: "<<is_obstructed<<endl;
+                    return is_obstructed;
                 }
             }
             else
             {
                 is_obstructed = true;
-                break;
+                //cout<<"is_obstructed: "<<is_obstructed<<endl;
+                return is_obstructed;
             }
             cx = cx + map.info.resolution;
         }
         cy = cy + map.info.resolution;
     }
     
-    //cout<<"is_obstructed: "<<is_obstructed<<endl;
     return is_obstructed;
+#endif
+    return true;
 }
 
 int System::getStateCost(const double stateIn[3])
@@ -233,18 +233,26 @@ int System::getStateCost(const double stateIn[3])
 
 int System::sampleState (State &randomStateOut) {
 
-    for (int i = 0; i < 3; i++) {
-
+    for (int i = 0; i < 3; i++) 
+    {
         randomStateOut.x[i] = (double)rand()/(RAND_MAX + 1.0)*regionOperating.size[i] 
             - regionOperating.size[i]/2.0 + regionOperating.center[i];
     }
+    //cout<<"sample_local: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
     
+    // transform the sample from local_map frame to /map frame
+    double cyaw = cos(map_origin[2]);
+    double syaw = sin(map_origin[2]);
+    double state_copy[3] = {randomStateOut.x[0], randomStateOut.x[1], randomStateOut.x[2]};
+    randomStateOut.x[0] = map_origin[0] + state_copy[0]*cyaw + state_copy[1]*syaw;
+    randomStateOut.x[1] = map_origin[1] + -state_copy[0]*syaw + state_copy[1]*cyaw;
+    randomStateOut.x[2] = map_origin[2] + state_copy[2];
     while(randomStateOut.x[2] > M_PI)
         randomStateOut.x[2] -= 2.0*M_PI;
     while(randomStateOut.x[2] < -M_PI)
         randomStateOut.x[2] += 2.0*M_PI;
     
-    //cout<<"sampleState"<<endl;
+    //cout<<"sample_transformed: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
     if (IsInCollision (randomStateOut.x))
         return 0;
 

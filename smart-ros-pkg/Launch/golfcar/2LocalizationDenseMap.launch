@@ -16,10 +16,10 @@
         <param name="max_particles" value="1500"/>
         <param name="min_particles" value="200"/>
         <param name="laser_likelihood_max_dist" value="1.0"/>
-        <param name="odom_alpha1" value="0.5"/>
-        <param name="odom_alpha2" value="0.2"/>
-        <param name="odom_alpha3" value="0.5"/>
-        <param name="odom_alpha4" value="0.2"/>
+        <param name="odom_alpha1" value="0.3"/>
+        <param name="odom_alpha2" value="0.1"/>
+        <param name="odom_alpha3" value="0.3"/>
+        <param name="odom_alpha4" value="0.1"/>
         <param name="laser_model_type" value="pc_likelihood_field"/>
         <remap from="scan" to="sick_scan2"/>
         <remap from="pc" to="pc_legacy_out"/>

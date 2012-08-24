@@ -85,6 +85,9 @@ class System {
     
     double car_width;
     double car_height;
+    double safe_distance;
+    double distance_rear_axis_rear;
+
     nav_msgs::OccupancyGrid map;
     double map_origin[3];
 
