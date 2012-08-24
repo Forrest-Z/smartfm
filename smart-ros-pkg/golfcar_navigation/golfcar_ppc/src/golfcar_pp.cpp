@@ -114,11 +114,7 @@ void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
     for(unsigned int i=0; i<traj->poses.size(); i++)
     {
         try {
-ROS_WARN("[temp] z value before = %lf", traj->poses[i].pose.position.z);
-double temp = traj->poses[i].pose.position.z;
             tf_.transformPose("/odom", traj->poses[i], trajectory_.poses[i]);
-trajectory_.poses[i].pose.position.z = temp;
-ROS_WARN("[temp] z value after = %lf", trajectory_.poses[i].pose.position.z);
         }
         catch(tf::LookupException& ex) {
             ROS_ERROR("No Transform available Error: %s", ex.what());
@@ -592,8 +588,9 @@ double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
     // for all the calculations, refer IROS'95 by Ollero and Heredia
     gamma = 2.0/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
     double steering = atan(gamma * car_length_);
-    ROS_WARN("[just info] steering, segment=%d lookahead_seg=%d x=%lf y=%lf yaw=%lf cmd_vel=%lf", segment, lookahead_segment, cur_x, cur_y, cur_yaw, cmd_vel);
-    ROS_WARN("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf", inv_R, L, r, x, theta, gamma, steering);
+    ROS_WARN("[just info] steering, on_segment=%d lookahead_seg=%d:(%lf,%lf)->(%lf,%lf) at x=%lf y=%lf yaw=%lf",
+             segment, lookahead_segment, ori_x, ori_y, tar_x, tar_y, cur_x, cur_y, cur_yaw);
+    ROS_WARN("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf cmd_vel=%lf", inv_R, L, r, x, theta, gamma, steering, cmd_vel);
 
     if(isnan(steering))
     {
