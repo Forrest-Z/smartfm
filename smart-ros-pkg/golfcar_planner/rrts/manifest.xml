@@ -17,8 +17,8 @@
   <depend package="tf"/>
   <depend package="laser_geometry"/>
   <depend package="geometry_msgs"/>
-  <!--<depend package="local_map"/>
-  <depend package="golfcar_ppc" />-->
+  <depend package="local_map_ext"/>
+  <depend package="golfcar_ppc" />
 </package>
 
 
