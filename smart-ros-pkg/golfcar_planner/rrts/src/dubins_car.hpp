@@ -93,11 +93,12 @@ System::System ()
     turning_radius = 4.0;
     distance_limit = 100.0;
     delta_distance = 0.05;
-
-    car_width = 1.2;
-    car_height = 2.28;
-    safe_distance = 0.3;    // car footprint is blown up by this distance for collision checking
-    distance_rear_axis_rear = 0.45; // dist between center of rear axis and rear end
+    
+    double factor_reduce_size = 1.0;
+    car_width = 1.2/factor_reduce_size;
+    car_height = 2.28/factor_reduce_size;
+    safe_distance = 0.3/factor_reduce_size;    // car footprint is blown up by this distance for collision checking
+    distance_rear_axis_rear = 0.45/factor_reduce_size; // dist between center of rear axis and rear end
 }
 
 
@@ -137,7 +138,7 @@ bool System::IsInCollision (const double stateIn[3])
     // base_link frame
     double cos_map_yaw = cos(map_origin[2]);
     double sin_map_yaw = sin(map_origin[2]);
-    
+
     // rotate zm by yaw, subtract map_origin to get zlocal
     double zl[2] ={0};
     zl[0] = (zm[0]-map_origin[0])*cos_map_yaw + (zm[1]-map_origin[1])*sin_map_yaw;
@@ -164,7 +165,7 @@ bool System::IsInCollision (const double stateIn[3])
             double y = zl[1] - cx*sin_yl + cy*cos_yl;
             //cout<<"x: "<< x<<" y: "<<y<<endl;
             //getchar();
-            
+
             // 2. find cells corresponding to (x,y)
             // car is placed at (height/4, width/2) according to the local_map
             /*
@@ -198,7 +199,7 @@ bool System::IsInCollision (const double stateIn[3])
         }
         cy = cy + map.info.resolution;
     }
-    
+
     return is_obstructed;
 #endif
     return true;
@@ -217,15 +218,15 @@ int System::getStateCost(const double stateIn[3])
 
     if( (xnum >= xsize) || (xnum < 0) || (ynum >= ysize) || (ynum < 0) )
     {
-        return 0;
+    return 0;
     }
     else
     {
-        //cout<<"grid: " << xback <<" "<< xfront <<" "<< yleft <<" "<< yright << endl;
-        if(map_vals[ynum + xnum*xsize] >= 250)
-            return 250;
-        else
-            return (250 - map_vals[ynum + xnum*xsize]);
+    //cout<<"grid: " << xback <<" "<< xfront <<" "<< yleft <<" "<< yright << endl;
+    if(map_vals[ynum + xnum*xsize] >= 250)
+    return 250;
+    else
+    return (250 - map_vals[ynum + xnum*xsize]);
     }
     */
     return 0;
@@ -239,7 +240,7 @@ int System::sampleState (State &randomStateOut) {
             - regionOperating.size[i]/2.0 + regionOperating.center[i];
     }
     //cout<<"sample_local: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
-    
+
     // transform the sample from local_map frame to /map frame
     double cyaw = cos(map_origin[2]);
     double syaw = sin(map_origin[2]);
@@ -251,7 +252,7 @@ int System::sampleState (State &randomStateOut) {
         randomStateOut.x[2] -= 2.0*M_PI;
     while(randomStateOut.x[2] < -M_PI)
         randomStateOut.x[2] += 2.0*M_PI;
-    
+
     //cout<<"sample_transformed: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
     if (IsInCollision (randomStateOut.x))
         return 0;
@@ -267,7 +268,7 @@ int System::sampleGoalState (State &randomStateOut) {
         randomStateOut.x[i] = (double)rand()/(RAND_MAX + 1.0)*regionGoal.size[i] 
             - regionGoal.size[i]/2.0 + regionGoal.center[i];
     }
-    
+
     while(randomStateOut.x[2] > M_PI)
         randomStateOut.x[2] -= 2.0*M_PI;
     while(randomStateOut.x[2] < -M_PI)
@@ -425,7 +426,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 double *state_new = new double[3];
                 for (int i = 0; i < 3; i++) 
                     state_new[i] = state_curr[i];
-                
+
                 trajectory->push_front(state_new);
 
                 // populate controls here
@@ -455,7 +456,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             state_curr[0] = (x_end - x_start) * d_inc_curr / distance + x_start; 
             state_curr[1] = (y_end - y_start) * d_inc_curr / distance + y_start; 
             state_curr[2] = direction_s1 * t_inc_curr + t_s1 + ( (direction_s1 == 1) ? M_PI_2 : 3.0*M_PI_2);
-            
+
             while (state_curr[2] < -M_PI)
                 state_curr[2] += 2.0 * M_PI;
             while (state_curr[2] > M_PI)
@@ -503,7 +504,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             state_curr[1] = y_s2 + turning_radius * sin (direction_s2 * (t_inc_curr - t_increment_s2) + t_s2);
             state_curr[2] = direction_s2 * (t_inc_curr - t_increment_s2) + t_s2 
                 + ( (direction_s2 == 1) ?  M_PI_2 : 3.0*M_PI_2 );
-            
+
             while (state_curr[2] < -M_PI)
                 state_curr[2] += 2.0 * M_PI;
             while (state_curr[2] > M_PI)
