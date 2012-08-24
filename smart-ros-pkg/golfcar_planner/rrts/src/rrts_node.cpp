@@ -111,7 +111,7 @@ Planner::Planner()
     map_sub = nh.subscribe("local_map", 2, &Planner::on_map, this);
     goal_sub = nh.subscribe("goal", 2, &Planner::on_goal, this);
 
-    rrts_max_iter = 100;
+    rrts_max_iter = 200;
     is_first_goal = true;
     is_first_map = true;
     
@@ -380,7 +380,7 @@ void Planner::get_plan()
     {
         rrts.iteration();
         best_cost = rrts.getBestVertexCost();
-        if(best_cost < 25)
+        if(best_cost < 50)
         {
             if( (prev_best_cost - best_cost) < 0.5)
                 found_best_path = true;
