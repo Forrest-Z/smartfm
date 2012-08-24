@@ -22,7 +22,7 @@ int main(int argc, char** argv)
 	 int board_n = board_w * board_h;
 	 CvSize board_sz = cvSize( board_w, board_h );
 	 
-	 IplImage *image=0;
+	 IplImage *image = 0;
     CvMat* image_points			= cvCreateMat( n_boards*board_n, 2, CV_32FC1 );
 	 CvMat* object_points		= cvCreateMat( n_boards*board_n, 3, CV_32FC1 );
 	 CvMat* point_counts			= cvCreateMat( n_boards, 1, CV_32SC1 );
@@ -54,6 +54,12 @@ int main(int argc, char** argv)
 	 cvShowImage( "Calibration", image );
 
 	 float scale_ratio = 0.09;
+	 
+	 for(int i=0; i<board_n; i++)
+	 {
+		 printf("corner (%3f, %3f)\t", corners[i].x, corners[i].y);
+	 }
+	 
 	 
 	 // If we got a good board, add it to our data
 	 if( corner_count == board_n ){
@@ -89,6 +95,7 @@ int main(int argc, char** argv)
 	CvMat* trans_vec = cvCreateMat(3,1,CV_32FC1);
 	CvMat* rot_vec = cvCreateMat(3,1,CV_32FC1);
 	CvMat* rot_matrix = cvCreateMat(3,3,CV_32FC1);
+	CvMat* inv_rot_matrix = cvCreateMat(3,3,CV_32FC1);
 	
 	cvFindExtrinsicCameraParams2(object_points, image_points, intrinsic_matrix, distortion_coeffs, rot_vec, trans_vec);
 	cvRodrigues2(rot_vec, rot_matrix, NULL);
@@ -110,6 +117,8 @@ int main(int argc, char** argv)
 	roll  = atan2f(M32_rot, M33_rot);
 	printf("---------yaw, pitch, roll (%5f, %5f, %5f)----------\n", yaw, pitch, roll);
 	
+	cvInvert(rot_matrix, inv_rot_matrix, CV_LU);
+	
 	CvMat* z_unit_vec = cvCreateMat(3,1,CV_32FC1);
 	CvMat* z_new_vec  = cvCreateMat(3,1,CV_32FC1);
 	
@@ -117,19 +126,20 @@ int main(int argc, char** argv)
 	CV_MAT_ELEM( *z_unit_vec, float, 1, 0 ) = 0.0;
 	CV_MAT_ELEM( *z_unit_vec, float, 2, 0 ) = 1.0;
 	
-	cvMatMul(rot_matrix, z_unit_vec, z_new_vec);
+	cvMatMul(inv_rot_matrix, z_unit_vec, z_new_vec);
 	
 	float z_x = CV_MAT_ELEM( *z_new_vec, float, 0, 0 );
 	float z_y = CV_MAT_ELEM( *z_new_vec, float, 1, 0 );
 	float z_z = CV_MAT_ELEM( *z_new_vec, float, 2, 0 );
 	printf("---------z_x, z_y, z_z (%5f, %5f, %5f)----------\n", z_x, z_y, z_z);
 	
-	assert(z_z<=1.0 && z_z>=-1.0);
-	float z_angle = acosf(z_z);
-	if(z_angle<0) z_angle = z_angle + M_PI;
+	float proXZ_length = sqrtf( z_y* z_y+z_z*z_z);
+	float z_angle = -atan2f(z_x , proXZ_length);
+	
+	//as calculated, the pitch angle right now is about 12 degree, 0.21 rad;
 	z_angle = z_angle/M_PI*180.0;
 	
-	printf("z angle from the camera z axis: %5f", z_angle);	
+	printf("z angle from the camera z axis: %5f\n", z_angle);	
 	cvWaitKey();
     return 0;
 }

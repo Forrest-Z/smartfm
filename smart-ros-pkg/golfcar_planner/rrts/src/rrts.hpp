@@ -744,12 +744,13 @@ RRTstar::Planner< typeparams >
     return 1;
 }
 
+// note trajret, controlret is always only appended
 template< class typeparams >
 int 
 RRTstar::Planner< typeparams >
 ::switchRoot (double distanceIn, list<double*> &trajret, list<float> &controlret) 
 {
-    cout<<"calling switch_root"<<endl;
+    //cout<<"calling switch_root"<<endl;
 
     // If there is no path reaching the goal, then return failure
     if (lowerBoundVertex == NULL) 
