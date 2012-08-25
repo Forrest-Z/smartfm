@@ -94,10 +94,10 @@ System::System ()
     distance_limit = 100.0;
     delta_distance = 0.05;
     
-    double factor_reduce_size = 1.0;
+    double factor_reduce_size = 10.0;
     car_width = 1.2/factor_reduce_size;
     car_height = 2.28/factor_reduce_size;
-    safe_distance = 0.3/factor_reduce_size;    // car footprint is blown up by this distance for collision checking
+    safe_distance = 0.2/factor_reduce_size;    // car footprint is blown up by this distance for collision checking
     distance_rear_axis_rear = 0.45/factor_reduce_size; // dist between center of rear axis and rear end
 }
 
@@ -231,6 +231,8 @@ bool System::IsInCollision (const double stateIn[3])
 
 double System::getStateCost(const double stateIn[3])
 {
+    return 0;
+
     // (x,y) in local_map frame
     double zl[2] = {0};
     // yaw in local frame
@@ -242,7 +244,7 @@ double System::getStateCost(const double stateIn[3])
     {
         int val = map.data[map_index];
         if(val != 0)
-            return (float)val/100.0;
+            return (float)val/10.0;
         else
             return 100.0;
     }
@@ -685,7 +687,8 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
     double time = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
             true, false, 
             exactConnectionOut, end_state, NULL, controlOut);
-    if (time < 0.0) {
+    if (time < 0.0) 
+    {
         delete [] end_state;
         return 0;
     }

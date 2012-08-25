@@ -79,7 +79,7 @@ PurePursuit::PurePursuit()
 {
     ros::NodeHandle n;
     traj_sub_ = n.subscribe("pnc_trajectory", 100, &PurePursuit::trajCallBack, this);
-    cmd_pub_ = n.advertise<geometry_msgs::Twist>("move_vel",1);
+    cmd_pub_ = n.advertise<geometry_msgs::Twist>("cmd_vel",1);
     move_status_pub_ = n.advertise<pnc_msgs::move_status>("move_status", 1);
     timer_ = n.createTimer(ros::Duration(0.05), &PurePursuit::controlLoop, this);
 

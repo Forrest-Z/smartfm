@@ -7,6 +7,7 @@
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/PointCloud.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Path.h>
@@ -75,11 +76,12 @@ class Planner
         ros::Timer committed_trajectory_pub_timer;
 
         // functions
-        void on_goal(const geometry_msgs::Pose::ConstPtr p);
+        void on_goal(const geometry_msgs::PoseStamped::ConstPtr p);
         void on_map(const nav_msgs::OccupancyGrid::ConstPtr og);
         void on_committed_trajectory_pub_timer(const ros::TimerEvent &e);
 
         bool root_in_goal();
+        bool is_robot_in_collision();
         void change_goal_region();
         void setup_rrts();
         void on_planner_timer(const ros::TimerEvent &e);
@@ -99,12 +101,12 @@ Planner::Planner()
 
     clear_committed_trajectory();
     is_updating_committed_trajectory = false;
-    max_length_committed_trajectory = 10.0;
+    max_length_committed_trajectory = 15.0;
 
     planner_timer = nh.createTimer(ros::Duration(0.5), &Planner::on_planner_timer, this);
 
-    tree_pub_timer = nh.createTimer(ros::Duration(0.5), &Planner::on_tree_pub_timer, this);
-    committed_trajectory_pub_timer = nh.createTimer(ros::Duration(0.5), &Planner::on_committed_trajectory_pub_timer, this);
+    tree_pub_timer = nh.createTimer(ros::Duration(0.3), &Planner::on_tree_pub_timer, this);
+    committed_trajectory_pub_timer = nh.createTimer(ros::Duration(0.3), &Planner::on_committed_trajectory_pub_timer, this);
 
     committed_trajectory_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 2);
     committed_trajectory_view_pub = nh.advertise<nav_msgs::Path>("pncview_trajectory", 2);
@@ -113,7 +115,7 @@ Planner::Planner()
     control_trajectory_pub = nh.advertise<std_msgs::Int16MultiArray>("control_trajectory_msg", 2);	
 
     map_sub = nh.subscribe("local_map", 2, &Planner::on_map, this);
-    goal_sub = nh.subscribe("goal", 2, &Planner::on_goal, this);
+    goal_sub = nh.subscribe("pnc_nextpose", 2, &Planner::on_goal, this);
 
     rrts_max_iter = 200;
     is_first_goal = true;
@@ -136,6 +138,9 @@ int Planner::clear_committed_trajectory()
     }
     committed_trajectory.clear();
     committed_control.clear();
+    
+    publish_committed_trajectory();
+
     is_updating_committed_trajectory = false;
 
     if(get_robot_pose() == 1)
@@ -186,22 +191,22 @@ int Planner::clear_committed_trajectory_length()
 
 // p is (x,y,yaw) in map coords
 // assumption: goal is coming less frequently than map
-void Planner::on_goal(const geometry_msgs::Pose::ConstPtr p)
+void Planner::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
 {
     double roll=0, pitch=0, yaw=0;
     tf::Quaternion q;
-    tf::quaternionMsgToTF(p->orientation, q);
+    tf::quaternionMsgToTF(ps->pose.orientation, q);
     tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
 
-    goal.x = p->position.x;
-    goal.y = p->position.y;
-    goal.z = yaw;
-    double goal_state[3] = {goal.x, goal.y, goal.z};
-    cout<<"goal goal: "<< goal.x<<" "<<goal.y<<" "<<goal.z<<endl;
     if(is_first_goal)
     {
         is_first_goal = false;
         cout<<"got first goal"<<endl;
+        goal.x = ps->pose.position.x;
+        goal.y = ps->pose.position.y;
+        goal.z = yaw;
+        double goal_state[3] = {goal.x, goal.y, goal.z};
+        cout<<"goal goal: "<< goal.x<<" "<<goal.y<<" "<<goal.z<<endl;
         if(is_first_map == false)
         {
             setup_rrts();
@@ -214,8 +219,13 @@ void Planner::on_goal(const geometry_msgs::Pose::ConstPtr p)
         }
     }
     // new goal than previous one, change sampling region
-    else if( dist(goal.x, goal.y, goal.z, p->position.z, p->position.y, yaw) > 0.5)
+    else if( dist(goal.x, goal.y, 0., ps->pose.position.x, ps->pose.position.y, 0.) > 0.5)
     {
+        goal.x = ps->pose.position.x;
+        goal.y = ps->pose.position.y;
+        goal.z = yaw;
+        double goal_state[3] = {goal.x, goal.y, goal.z};
+        cout<<"goal goal: "<< goal.x<<" "<<goal.y<<" "<<goal.z<<endl;
         if(rrts.system->IsInCollision(goal_state))
         {
             cout<<"goal in collision: stopping"<<endl;
@@ -275,11 +285,8 @@ int Planner::get_robot_pose()
         car_position.z = yaw;
         //cout<<"get_robot_pose: "<< car_position.x<<" "<<car_position.y<<" "<<car_position.z<<endl;
 
-        system.map_origin[0] = car_position.x;
-        system.map_origin[1] = car_position.y;
-        system.map_origin[2] = car_position.z;
         /*
-        if( (is_first_map==false) && (is_first_goal==false))
+           if( (is_first_map==false) && (is_first_goal==false))
         {
             if(rrts.system->IsInCollision(system.map_origin))
             {
@@ -297,23 +304,32 @@ void Planner::on_map(const nav_msgs::OccupancyGrid::ConstPtr og)
 {
     // 1. copy the incoming grid into map
     system.map = *og;
-
+    
+    bool got_pose = true;
     // 2. get car_position
     if(get_robot_pose() == 1)
+    {
+        got_pose = false;
         cout<<"robot_pose failed"<<endl;
-    else if(is_first_map)
+    }
+    if(is_first_map && got_pose)
     {
         state_last_clear[0] = car_position.x;
         state_last_clear[1] = car_position.y;
         state_last_clear[2] = car_position.z;
     }
-
     if(is_first_map)
     {
         is_first_map = false;
         cout<<"got first map"<<endl;
         if(is_first_goal == false)
             setup_rrts();
+    }
+    if(got_pose)
+    {
+        system.map_origin[0] = car_position.x;
+        system.map_origin[1] = car_position.y;
+        system.map_origin[2] = car_position.z;
     }
     /*
        cout<<"system.map_origin: "<< system.map_origin[0]<<" "<<system.map_origin[1]<<" "<<system.map_origin[2]<<endl;
@@ -335,9 +351,9 @@ void Planner::change_goal_region()
     system.regionGoal.center[0] = (double)goal.x;
     system.regionGoal.center[1] = (double)goal.y;
     system.regionGoal.center[2] = (double)goal.z;
-    system.regionGoal.size[0] = 1.0;
-    system.regionGoal.size[1] = 1.0;
-    system.regionGoal.size[2] = 30.0/180.0*M_PI;
+    system.regionGoal.size[0] = 0.5;
+    system.regionGoal.size[1] = 0.5;
+    system.regionGoal.size[2] = 20.0/180.0*M_PI;
     //cout<<"region_goal: "<< system.regionGoal.center[0]<<" "<<system.regionGoal.center[1]<<" "<<system.regionGoal.center[2]<<endl;
 }
 
@@ -371,7 +387,7 @@ void Planner::setup_rrts()
 
     // Set planner parameters
     rrts.setGamma (2.0);
-    rrts.setGoalSampleFrequency (0.3);
+    rrts.setGoalSampleFrequency (0.4);
 
     // Initialize the planner
     rrts.initialize ();
@@ -382,19 +398,32 @@ void Planner::setup_rrts()
     is_first_committed_trajectory = true;
 }
 
+bool Planner::is_robot_in_collision()
+{
+    if((!is_first_map) && (!is_first_goal))
+    {
+        get_robot_pose();
+        double tmp[3] = {car_position.x, car_position.y, car_position.z};
+        return rrts.system->IsInCollision(tmp);
+    }
+    else
+        return false;
+}
+
 void Planner::get_plan()
 {
     rrts.checkTree();
     rrts.updateReachability();
     if(root_in_goal())
     {
-        //cout<<"root in goal"<<endl;
+        cout<<"root in goal"<<endl;
         return;
     }
-    //if(robot_in_collision())
-    //{
-
-    //}
+    if(is_robot_in_collision())
+    {
+        cout<<"robot in collision"<<endl;
+        return;
+    }
     //cout<<"after check_tree num_vert: "<< rrts.numVertices<<endl;
     bool found_best_path = false;
     double best_cost=rrts.getBestVertexCost();
@@ -402,17 +431,18 @@ void Planner::get_plan()
     
     ros::Time start_rrts = ros::Time::now();
     cout<<"start_planner n: "<< rrts.numVertices<<endl;
-    while(!found_best_path)
+    while((!found_best_path) || (rrts.numVertices < 10))
     {
         rrts.iteration();
         best_cost = rrts.getBestVertexCost();
         if(best_cost < 50)
         {
-            if( fabs(prev_best_cost - best_cost) < 0.5)
+            if( fabs(prev_best_cost - best_cost) < 0.05)
                 found_best_path = true;
         }
         prev_best_cost = best_cost;
         //cout<<endl;
+        //cout<<"n: "<< rrts.numVertices<<endl;
 
         if(rrts.numVertices > rrts_max_iter)
             break;

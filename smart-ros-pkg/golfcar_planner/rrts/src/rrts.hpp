@@ -530,7 +530,7 @@ int
     }
     else
     {
-        //cout<<"marking"<<endl;
+        cout<<"marking: "<<state_in[0]<<" "<<state_in[1]<<" "<<state_in[2]<<endl;
         markCost(vertexIn);
     }
     return 1;
@@ -554,8 +554,9 @@ int
         cout<<"listVertices 553: "<<listVertices.size()<<endl;
         for(typename list<vertex_t*>::iterator lvi=listVertices.begin(); lvi!=listVertices.end(); lvi++)
         {
+            vertex_t *v = (*lvi);
             state_t &s = (*lvi)->getState();
-            cout<<s[0]<<" "<<s[1]<<" "<<s[2]<<endl;
+            cout<<s[0]<<" "<<s[1]<<" "<<s[2]<<" : "<<v->costFromRoot<<endl;
         }
         */
         list<vertex_t*> listSurvivingVertices;
@@ -585,7 +586,15 @@ int
 
             insertIntoKdtree (**iter);
         }
-
+        /*
+        cout<<"listVertices 587: "<<listVertices.size()<<endl;
+        for(typename list<vertex_t*>::iterator lvi=listVertices.begin(); lvi!=listVertices.end(); lvi++)
+        {
+            vertex_t *v = (*lvi);
+            state_t &s = (*lvi)->getState();
+            cout<<s[0]<<" "<<s[1]<<" "<<s[2]<<" : "<<v->costFromRoot<<endl;
+        }
+        */
         lowerBoundVertex = NULL;
         lowerBoundCost = DBL_MAX;
 
@@ -719,10 +728,8 @@ RRTstar::Planner< typeparams >
 ::recomputeCost (vertex_t* vertexIn) {
 
 
-    for (typename set<vertex_t*>::iterator iter = vertexIn->children.begin(); iter != vertexIn->children.end(); iter++) {
-
-
-
+    for (typename set<vertex_t*>::iterator iter = vertexIn->children.begin(); iter != vertexIn->children.end(); iter++) 
+    {
         vertex_t* vertexCurr = *iter;
 
         double costCurr = vertexIn->costFromRoot + vertexCurr->costFromParent;
