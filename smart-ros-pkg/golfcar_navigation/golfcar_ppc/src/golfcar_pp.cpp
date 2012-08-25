@@ -9,6 +9,9 @@
 #include <string>
 #include <cmath>
 
+#include <pnc_msgs/move_status.h>
+#include <fmutil/fm_math.h>
+
 using namespace std;
 
 
@@ -20,6 +23,7 @@ public:
 private:
     ros::Subscriber traj_sub_;
     ros::Publisher cmd_pub_;
+    ros::Publisher move_status_pub_;
     ros::Timer timer_;
 
     double max_timer_;
@@ -75,7 +79,8 @@ PurePursuit::PurePursuit()
 {
     ros::NodeHandle n;
     traj_sub_ = n.subscribe("pnc_trajectory", 100, &PurePursuit::trajCallBack, this);
-    cmd_pub_ = n.advertise<geometry_msgs::Twist>("cmd_vel",1);
+    cmd_pub_ = n.advertise<geometry_msgs::Twist>("move_vel",1);
+    move_status_pub_ = n.advertise<pnc_msgs::move_status>("move_status", 1);
     timer_ = n.createTimer(ros::Duration(0.05), &PurePursuit::controlLoop, this);
 
     ros::NodeHandle private_nh("~");
@@ -135,8 +140,10 @@ void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
 void PurePursuit::controlLoop(const ros::TimerEvent &e)
 {
     geometry_msgs::Twist cmd_ctrl;
+    pnc_msgs::move_status move_status;
     double cmd_vel;
     double cmd_steer;
+    double goal_dist;
 
     ros::Time time_now = ros::Time::now();
     ros::Duration time_diff = time_now - trajectory_.header.stamp;
@@ -154,6 +161,7 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
         }
         cmd_vel = 0.0;
         cmd_steer = 0.0;
+        goal_dist = 0.0;
     }
     else if((int) trajectory_.poses.size() > 1 && getRobotPose(pose))
     {
@@ -164,16 +172,37 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
 
         cmd_vel = get_desired_speed(segment, cur_x, cur_y);
         cmd_steer = get_steering(segment, cur_x, cur_y, cur_yaw, cmd_vel);
+
+        geometry_msgs::Point target_pt = trajectory_.poses[segment+1].pose.position;
+        goal_dist = fmutil::distance(cur_x, cur_y, target_pt.x, target_pt.y);
+        if(last_segment_+1<trajectory_.poses.size())
+        {
+        	for(int i=last_segment_+1; i<trajectory_.poses.size()-1; i++)
+        	{
+        		goal_dist+=fmutil::distance(trajectory_.poses[i].pose.position, trajectory_.poses[i+1].pose.position);
+        	}
+        }
     }
     else
     {
         cmd_vel = 0.0;
         cmd_steer = 0.0;
+        goal_dist = 0.0;
     }
 
     cmd_ctrl.linear.x = cmd_vel;
     cmd_ctrl.angular.z = cmd_steer;
     cmd_pub_.publish(cmd_ctrl);
+
+    move_status.dist_to_goal = goal_dist;
+    move_status.dist_to_ints = 99.0;
+    move_status.dist_to_sig = 99.0;
+    move_status.steer_angle = cmd_steer;
+    move_status.obstacles_dist = 99.0;
+    move_status.path_exist = true;
+    move_status.emergency = false;
+    if(cmd_vel <= 0.01) move_status.emergency = true;
+    move_status_pub_.publish(move_status);
 }
 
 bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
