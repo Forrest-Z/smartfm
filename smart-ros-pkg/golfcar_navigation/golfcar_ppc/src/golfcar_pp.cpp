@@ -26,6 +26,7 @@ private:
     ros::Publisher move_status_pub_;
     ros::Timer timer_;
 
+    string robot_frame_id_, coord_frame_id_;
     double max_timer_;
     double max_timer_complaint_;
     double normal_speed_;
@@ -84,6 +85,8 @@ PurePursuit::PurePursuit()
     timer_ = n.createTimer(ros::Duration(0.05), &PurePursuit::controlLoop, this);
 
     ros::NodeHandle private_nh("~");
+    if(!private_nh.getParam("robot_frame_id", robot_frame_id_)) robot_frame_id_ = "/base_link";
+    if(!private_nh.getParam("coord_frame_id", coord_frame_id_)) coord_frame_id_ = "/odom";
     if(!private_nh.getParam("max_timer",max_timer_)) max_timer_ = 2.0;
     if(!private_nh.getParam("max_timer_complaint",max_timer_complaint_)) max_timer_complaint_ = 5.0;
     if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 2.0;
@@ -98,6 +101,8 @@ PurePursuit::PurePursuit()
     last_timer_complaint_ = ros::Time::now();
     last_segment_complaint_ = ros::Time::now();
 
+    std::cout<<"robot_frame_id: "<<robot_frame_id_<<"\n";
+    std::cout<<"coord_frame_id: "<<coord_frame_id_<<"\n";
     std::cout<<"max_timer: "<<max_timer_<<"\n";
     std::cout<<"max_timer_complaint: "<<max_timer_complaint_<<"\n";
     std::cout<<"normal_speed: "<<normal_speed_<<"\n";
@@ -113,13 +118,13 @@ void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
 {
     last_segment_ = 0;
 
-    trajectory_.header.frame_id = "/odom";
+    trajectory_.header.frame_id = coord_frame_id_;
     trajectory_.header.stamp = ros::Time::now();
     trajectory_.poses.resize(traj->poses.size());
     for(unsigned int i=0; i<traj->poses.size(); i++)
     {
         try {
-            tf_.transformPose("/odom", traj->poses[i], trajectory_.poses[i]);
+            tf_.transformPose(coord_frame_id_, traj->poses[i], trajectory_.poses[i]);
         }
         catch(tf::LookupException& ex) {
             ROS_ERROR("No Transform available Error: %s", ex.what());
@@ -175,9 +180,9 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
 
         geometry_msgs::Point target_pt = trajectory_.poses[segment+1].pose.position;
         goal_dist = fmutil::distance(cur_x, cur_y, target_pt.x, target_pt.y);
-        if(last_segment_+1<trajectory_.poses.size())
+        if(last_segment_+1<(int)trajectory_.poses.size())
         {
-        	for(int i=last_segment_+1; i<trajectory_.poses.size()-1; i++)
+        	for(int i=last_segment_+1; i<(int)trajectory_.poses.size()-1; i++)
         	{
         		goal_dist+=fmutil::distance(trajectory_.poses[i].pose.position, trajectory_.poses[i+1].pose.position);
         	}
@@ -210,12 +215,12 @@ bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
     odom_pose.setIdentity();
     tf::Stamped<tf::Pose> robot_pose;
     robot_pose.setIdentity();
-    robot_pose.frame_id_ = "/base_link";
+    robot_pose.frame_id_ = robot_frame_id_;
     robot_pose.stamp_ = ros::Time();
     ros::Time current_time = ros::Time::now(); // save time for checking tf delay later
 
     try {
-        tf_.transformPose("/odom", robot_pose, odom_pose);
+        tf_.transformPose(coord_frame_id_, robot_pose, odom_pose);
     }
     catch(tf::LookupException& ex) {
         ROS_ERROR("No Transform available Error: %s", ex.what());
@@ -231,8 +236,8 @@ bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
     }
     // check odom_pose timeout
     if (current_time.toSec() - odom_pose.stamp_.toSec() > 0.1) {
-        ROS_WARN("PurePursuit transform timeout. Current time: %.4f, odom_pose stamp: %.4f, tolerance: %.4f",
-                 current_time.toSec(), odom_pose.stamp_.toSec(), 0.1);
+        ROS_WARN("PurePursuit transform timeout. Current time: %.4f, pose(%s) stamp: %.4f, tolerance: %.4f",
+                 current_time.toSec(), coord_frame_id_.c_str(), odom_pose.stamp_.toSec(), 0.1);
         return false;
     }
 

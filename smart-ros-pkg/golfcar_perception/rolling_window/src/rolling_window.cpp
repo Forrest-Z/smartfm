@@ -30,9 +30,11 @@ namespace golfcar_pcl{
 		cloud_scan_filter_->registerCallback(boost::bind(&rolling_window::cloudCallback, this, _1));
 		cloud_scan_filter_->setTolerance(ros::Duration(0.05));
 		
-		odom_sub_.subscribe(nh_, "odom", 100);
+		//be careful to the frame_id of "odom";
+		odom_sub_.subscribe(nh_, "odom", 10);
 		odom_filter_ = new tf::MessageFilter<nav_msgs::Odometry>(odom_sub_, *tf_, base_frame_, 10);
 		odom_filter_ ->registerCallback(boost::bind(&rolling_window::odomCallback, this, _1));
+		odom_filter_->setTolerance(ros::Duration(0.05));
 
 		rolling_window_pub_ = nh_.advertise<PointCloud>("rolling_window_pcl", 10);
 		
@@ -192,8 +194,6 @@ namespace golfcar_pcl{
 	
 	void rolling_window::windowProcessing(ros::Time current_time)
 	{
-
-
 		rolling_window_odom_.header.stamp 		=	current_time;
 		rolling_window_odom_.header.frame_id 	=	target_frame_;
 		
@@ -201,6 +201,7 @@ namespace golfcar_pcl{
 		sensor_msgs::PointCloud  window_tmp;
 		sensor_msgs::PointCloud2 window_tmp2;
 		PointCloud windowXYZ_tmp;
+		PointCloud patch_ROI;
 		
 		pcl::toROSMsg(rolling_window_odom_, window_tmp2);
 		sensor_msgs::convertPointCloud2ToPointCloud(window_tmp2, window_tmp);
@@ -208,7 +209,6 @@ namespace golfcar_pcl{
 		
 		try
 		{
-
 			tf_->transformPointCloud(base_frame_, window_tmp, window_tmp);
 			sensor_msgs::convertPointCloudToPointCloud2(window_tmp, window_tmp2);
 			pcl::fromROSMsg(window_tmp2, windowXYZ_tmp);
@@ -223,12 +223,23 @@ namespace golfcar_pcl{
 		rolling_window_baselink_.height = 1;
 		rolling_window_baselink_.header = windowXYZ_tmp.header;
 
+		patch_ROI.clear();
+		patch_ROI.height = 1;
+		patch_ROI.header.stamp 	=	current_time;
+		patch_ROI.header.frame_id 	=	base_frame_;
+		
 		for(size_t i=0; i<windowXYZ_tmp.points.size();i++)
 		{
           if(windowXYZ_tmp.points[i].x<front_bound_ && windowXYZ_tmp.points[i].x>back_bound_)
           {
               rolling_window_baselink_.points.push_back(windowXYZ_tmp.points[i]);
-			  rolling_window_baselink_.width ++;
+			     rolling_window_baselink_.width ++;
+          }
+          
+          if(windowXYZ_tmp.points[i].x<10.0 && windowXYZ_tmp.points[i].x>6.0)
+          {
+              patch_ROI.points.push_back(windowXYZ_tmp.points[i]);
+			     patch_ROI.width ++;
           }
 		}
 		
@@ -253,8 +264,6 @@ namespace golfcar_pcl{
 		//if(window_counts_< 10) return;
 		//rolling_window_odom_.clear();
 
-
-
 		pcl::VoxelGrid<pcl::PointXYZ> sor;
 		// always good not to use in place filtering as stated in
 		// http://www.pcl-users.org/strange-effect-of-the-downsampling-td3857829.html
@@ -267,10 +276,14 @@ namespace golfcar_pcl{
 		rolling_window_pub_.publish(*input_msg_filtered);
 		window_counts_ = 0;
 
+		//----------NF3--------to focus on a fraction of the road surface-------------------------
+		//PointCloud patch_ROI;
+		
 		
 		//----------NF1--------just to test the plane estimation;---------------------------------
-		/*
-	    pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+		//http://www.pointclouds.org/documentation/tutorials/planar_segmentation.php#planar-segmentation
+		
+	   pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
 		pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
 		// Create the segmentation object
 		pcl::SACSegmentation<pcl::PointXYZ> seg;
@@ -280,11 +293,11 @@ namespace golfcar_pcl{
 		seg.setModelType (pcl::SACMODEL_PLANE);
 		seg.setMethodType (pcl::SAC_RANSAC);
 		seg.setDistanceThreshold (0.05);
-		seg.setInputCloud (rolling_window_baselink_.makeShared ());
+		seg.setInputCloud (patch_ROI.makeShared ());
 		seg.segment (*inliers, *coefficients);
 		
 		pcl::PointCloud<pcl::PointXYZ> cloud;
-		cloud = rolling_window_baselink_;
+		cloud.header = rolling_window_baselink_.header;
 		// Fill in the cloud data
 		cloud.width  = inliers->indices.size ();
 		cloud.height = 1;
@@ -292,11 +305,11 @@ namespace golfcar_pcl{
 		size_t j=0;
 		for (size_t i = 0; i < inliers->indices.size (); ++i)
 		{
-			cloud.points[j]=rolling_window_baselink_.points[inliers->indices[i]];
+			cloud.points[j]=patch_ROI.points[inliers->indices[i]];
 			j++;
 		}
 		road_surface_pub_.publish(cloud);
-		*/
+		
 		
 		/*
 		//----------NF2----------Calculate the norm including curvature of surfaces;--------------
