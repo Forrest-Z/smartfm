@@ -116,9 +116,9 @@ loadMapFromFile(nav_msgs::GetMap::Response* resp,
 
       //we only have to differentiate between 2 lane, all other assumed to be obstacles
       int final_color = 0;
-      if((int)color_avg < 97 && (int)color_avg > 85)
+      if((int)color_avg < 97 && (int)color_avg > 75)
     	  final_color = 87;
-      if((int)color_avg >= 97 && (int)color_avg < 108)
+      if((int)color_avg >= 97 && (int)color_avg < 118)
     	  final_color = 107;
       resp->map.data[MAP_IDX(resp->map.info.width,i,resp->map.info.height - j - 1)] = final_color;
       color_hist[final_color]+=1;
