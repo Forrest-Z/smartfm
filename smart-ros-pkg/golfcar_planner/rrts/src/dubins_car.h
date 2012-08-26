@@ -100,7 +100,7 @@ class System {
 
     int get_cell_index(double x, double y, int &map_index);
     int transform_map_to_local_map(const double stateIn[3], double &zlx, double &zly, double &yl);
-    bool IsInCollision (const double stateIn[3]);
+    bool IsInCollision (const double stateIn[3], bool debug_flag=false);
     double getStateCost(const double stateIn[3]);
 
     bool isReachingTarget (State& stateIn);
