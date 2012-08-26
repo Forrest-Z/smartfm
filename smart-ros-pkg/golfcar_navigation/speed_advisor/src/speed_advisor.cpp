@@ -270,7 +270,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     // Since the speed controller cannot track very small speed, so if we are
     // not stopped yet (i.e. final_speed>0) and if the target speed is small,
     // impose a minimal velocity.
-    static const double minimal_vel = 0.4;
+    static const double minimal_vel = 0.1;
     if( sattr.final_speed_!=0 && sattr.final_speed_<minimal_vel && sattr.target_speed_<minimal_vel )
         move_speed.linear.x = minimal_vel;
 

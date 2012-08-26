@@ -49,6 +49,8 @@ class Planner
 
 		double max_length_committed_trajectory;
 		bool is_updating_committed_trajectory;
+		ros::Time last_committed_trajectory_time;
+
 		void publish_committed_trajectory();
 		list<double*> committed_trajectory;
 		list<float> committed_control;
@@ -124,7 +126,7 @@ Planner::Planner()
 	rrts_max_iter = 200;
 	is_first_goal = true;
 	is_first_map = true;
-
+	ros::spin();
 }
 
 Planner::~Planner()
@@ -204,6 +206,7 @@ void Planner::send_goal_collision_status(bool b)
 // assumption: goal is coming less frequently than map
 void Planner::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
 {
+	cout<<"inside on_goal"<<endl;
 	double roll=0, pitch=0, yaw=0;
 	tf::Quaternion q;
 	tf::quaternionMsgToTF(ps->pose.orientation, q);
@@ -218,6 +221,7 @@ void Planner::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
 		goal.z = yaw;
 		double goal_state[3] = {goal.x, goal.y, goal.z};
 		cout<<"goal goal: "<< goal.x<<" "<<goal.y<<" "<<goal.z<<endl;
+
 		if(is_first_map == false)
 		{
 			setup_rrts();
@@ -443,32 +447,28 @@ void Planner::get_plan()
 	bool found_best_path = false;
 	double best_cost=rrts.getBestVertexCost();
 	double prev_best_cost=best_cost;
+	int prev_best_n = rrts.numVertices;
 
-	ros::Time start_rrts = ros::Time::now();
 	cout<<"start_planner n: "<< rrts.numVertices<<endl;
 	while((!found_best_path) || (rrts.numVertices < 10))
 	{
 		rrts.iteration();
 		best_cost = rrts.getBestVertexCost();
-		if(best_cost < 50)
+		if(best_cost < 100)
 		{
 			if( fabs(prev_best_cost - best_cost) < 0.05)
 				found_best_path = true;
 		}
-		prev_best_cost = best_cost;
+		if( (rrts.numVertices - prev_best_n) % 10 == 0)
+		{
+			prev_best_n = rrts.numVertices;
+			prev_best_cost = best_cost;
+		}
 		//cout<<endl;
 		//cout<<"n: "<< rrts.numVertices<<endl;
 
 		if(rrts.numVertices > rrts_max_iter)
 			break;
-
-		ros::Duration delta_t = ros::Time::now() - start_rrts;
-		if(delta_t.toSec() > 10.0)
-		{
-			cout<<"no plan since "<<delta_t.toSec()<<endl;
-			found_best_path = false;
-			break;
-		}
 	}
 	cout<<"num_vertices: "<< rrts.numVertices<<" cost: "<< best_cost<<endl;
 	if(found_best_path)
@@ -487,6 +487,7 @@ void Planner::get_plan()
 				change_goal_region();
 				cout<<"switched root successfully"<<endl;
 				cout<<"committed_trajectory len: "<< committed_trajectory.size()<<endl;
+				last_committed_trajectory_time = ros::Time::now();
 			}
 			is_updating_committed_trajectory = false;
 			should_send_new_committed_trajectory = false;
@@ -531,6 +532,8 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
 			cout<<"committed trajectory unsafe"<<endl;
 			clear_committed_trajectory();
 			setup_rrts();
+			get_plan();
+			return;
 		}
 		// 2. check if it is at the end of the trajectory
 		else if(is_near_end_committed_trajectory() && (!root_in_goal()))
@@ -560,6 +563,15 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
 				get_plan();
 				return;
 			}
+		}
+	}
+	else
+	{
+		ros::Time current_time = ros::Time::now();
+		ros::Duration dt = current_time - last_committed_trajectory_time;
+		if(dt.toSec() > 10.0)
+		{
+			setup_rrts();
 		}
 	}
 	// 4. else add more vertices / until you get a good trajectory, copy it to committed trajectory, return
@@ -713,5 +725,5 @@ int main(int argc, char **argv)
 
 	Planner my_planner;
 
-	ros::spin();
+
 };

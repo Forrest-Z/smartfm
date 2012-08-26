@@ -1,7 +1,7 @@
-max_speed: 2.0
+max_speed: 1.5
 #max_speed: 3.0
-acc: 0.5
-max_dec: 2.0
+acc: 0.3
+max_dec: 1.0
 norm_dec: 0.5
 dec_ints: 0.4
 dec_station: 0.4
@@ -9,9 +9,9 @@ frequency: 20.0
 tolerance: 0.5
 emergency_zone: 3.0
 slow_zone: 7.0
-slow_speed: 1.5
+slow_speed: 1.0
 #slow_speed: 2.5
-enterstation_speed: 2.0
+enterstation_speed: 1.5
 stationspeed_dist: 0.0
 baselink_carfront_length: 2.0
-ppc_stop_dist: 1.0
+ppc_stop_dist: 0.5
