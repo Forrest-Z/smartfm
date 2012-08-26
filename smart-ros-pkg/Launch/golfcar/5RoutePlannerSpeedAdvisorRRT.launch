@@ -1,0 +1,6 @@
+<launch>
+  <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
+        <rosparam file="$(find golfcar_traj_gen)/speed_advisor.yaml" command="load"/>
+  </node>
+</launch>
+
