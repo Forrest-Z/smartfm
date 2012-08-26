@@ -48,6 +48,8 @@
 // compute linear index for given map coords
 #define MAP_IDX(sx, i, j) ((sx) * (j) + (i))
 
+using namespace std;
+
 namespace map_server
 {
 
@@ -98,6 +100,9 @@ loadMapFromFile(nav_msgs::GetMap::Response* resp,
 
   // Copy pixel data into the map structure
   pixels = (unsigned char*)(img->pixels);
+  unsigned int left_lane = 0, right_lane = 0;
+  vector<int> data_received, data_count;
+  map<int, int> color_hist;
   for(j = 0; j < resp->map.info.height; j++)
   {
     for (i = 0; i < resp->map.info.width; i++)
@@ -109,25 +114,20 @@ loadMapFromFile(nav_msgs::GetMap::Response* resp,
         color_sum += *(p + (k));
       color_avg = color_sum / (double)n_channels;
 
-      // If negate is true, we consider blacker pixels free, and whiter
-      // pixels free.  Otherwise, it's vice versa.
-     // if(negate)
-       /// occ = color_avg / 255.0;
-      //else
-        //occ = (255 - color_avg) / 255.0;
-      
-      // Apply thresholds to RGB means to determine occupancy values for
-      // map.  Note that we invert the graphics-ordering of the pixels to
-      // produce a map with cell (0,0) in the lower-left corner.
-      /*if(occ > occ_th)
-        resp->map.data[MAP_IDX(resp->map.info.width,i,resp->map.info.height - j - 1)] = +100;
-      else if(occ < free_th)
-        resp->map.data[MAP_IDX(resp->map.info.width,i,resp->map.info.height - j - 1)] = 0;
-      else*/
-        resp->map.data[MAP_IDX(resp->map.info.width,i,resp->map.info.height - j - 1)] = color_avg;
+      //we only have to differentiate between 2 lane, all other assumed to be obstacles
+      int final_color = 0;
+      if((int)color_avg < 97 && (int)color_avg > 85)
+    	  final_color = 87;
+      if((int)color_avg >= 97 && (int)color_avg < 108)
+    	  final_color = 107;
+      resp->map.data[MAP_IDX(resp->map.info.width,i,resp->map.info.height - j - 1)] = final_color;
+      color_hist[final_color]+=1;
     }
   }
-
+  for(map<int, int>::iterator i=color_hist.begin(); i!=color_hist.end(); i++)
+  {
+	  cout<<"color = "<<i->first<<" count = "<<i->second<<endl;
+  }
   SDL_FreeSurface(img);
 }
 

@@ -20,6 +20,7 @@
 #include <nav_msgs/Path.h>
 #include <StationPath.h>
 #include <fmutil/fm_math.h>
+#include <std_msgs/Bool.h>
 
 /// Drives the vehicle from A to B by feeding it a sequence of waypoints.
 class RoutePlanner
@@ -33,13 +34,14 @@ private:
     ros::Publisher g_plan_pub_;
     ros::Publisher nextpose_pub_;
 
+    ros::Subscriber goal_in_collision_sub_;
     tf::TransformListener tf_;
     tf::Stamped<tf::Pose> global_pose_;
     StationPaths sp_;
 
     StationPath path_;
     Station destination_;
-
+    bool goal_collision_;
     unsigned waypointNo_;
 
     bool goToDest();
@@ -50,19 +52,24 @@ private:
     void transformMapToOdom(geometry_msgs::PoseStamped *map_pose,
                             geometry_msgs::PointStamped *odom_point);
     double distanceToGoal();
-    
+    void goalCollision(std_msgs::Bool goal_status);
     int transform_map_to_local_map(const double stateIn[3], double &zlx, double &zly, double &yl);
 };
 
+void RoutePlanner::goalCollision(std_msgs::Bool goal_status)
+{
+	goal_collision_ = goal_status.data;
+}
 RoutePlanner::RoutePlanner(const int start, const int end)
 {
     g_plan_pub_ = n.advertise<nav_msgs::Path>("pnc_globalplan", 1, true);
     nextpose_pub_ = n.advertise<geometry_msgs::PoseStamped>("pnc_nextpose",1);
-
+    goal_in_collision_sub_ = n.subscribe("goal_collision_status",1, &RoutePlanner::goalCollision, this);
     ros::Rate loop_rate(3);
     int count=0;
     initDest(start, end);
     bool initialized = false;
+    goal_collision_ = false;
     while(ros::ok())
     {
     	if(initialized)
@@ -142,10 +149,10 @@ bool RoutePlanner::goToDest()
     double d = sqrt(pow(mapx-robotx,2)+pow(mapy-roboty,2));
     
 
-    double state[3] = {map_pose.pose.position.x, map_pose.pose.position.y, 0};
+    /*double state[3] = {map_pose.pose.position.x, map_pose.pose.position.y, 0};
     double x,y,yaw;
     transform_map_to_local_map(state, x, y, yaw);
-    bool inside_local_map_x = (x < 3.0/4.0*40) && (x > -1.0/4.0 * 40);
+    //bool inside_local_map_x = (x < 3.0/4.0*40) && (x > -1.0/4.0 * 40);
     bool inside_local_map_y = (y < 0.5 * 20) && (y > -0.5 * 20);  
     cout<<"local x "<<x<<" bool: "<<inside_local_map_x<<" local y "<< y<<" bool: "<<inside_local_map_y<<endl;
  
@@ -153,15 +160,15 @@ bool RoutePlanner::goToDest()
     {
         waypointNo_--;
         return false;
-     }
-    if( waypointNo_ < path_.size()-1 && d < 10.0)
+     }*/
+    if(goal_collision_)
+    {
+    	waypointNo_++;
+    }
+    if( waypointNo_ < path_.size()-1 && d < 10.0 )
         waypointNo_++;
     else if( waypointNo_ == path_.size()-1 )
         return true;
-
-        
-    
-   
    
     //transform from pose to point, planner expect point z as yaw
     //publish the first waypoint in map frame then continue to send the points until the last one
