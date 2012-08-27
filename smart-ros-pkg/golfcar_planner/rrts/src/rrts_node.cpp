@@ -461,21 +461,24 @@ void Planner::get_plan()
     bool found_best_path = false;
     double best_cost=rrts.getBestVertexCost();
     double prev_best_cost=best_cost;
+    int samples_this_loop = 0;
 
     ros::Time start_current_call_back = ros::Time::now();
     cout<<"s: "<< rrts.numVertices<<" best_cost: "<<best_cost;
     flush(cout);
     while((!found_best_path) || (rrts.numVertices < 10))
     {
-        rrts.iteration();
+        samples_this_loop += rrts.iteration();
         best_cost = rrts.getBestVertexCost();
-        if(best_cost < 100)
+        if(best_cost < 50)
         {
             if( fabs(prev_best_cost - best_cost) < 0.05)
                 found_best_path = true;
         }
-        prev_best_cost = best_cost;
         //cout<<"n: "<< rrts.numVertices<<endl;
+        
+        if(samples_this_loop %5 == 0)
+            prev_best_cost = best_cost;
 
         ros::Duration dt = ros::Time::now() - start_current_call_back;
         // give some time to the following code as well
@@ -583,7 +586,7 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
         get_plan();
         return;
     }
-
+    
     if( dist(car_position.x, car_position.y, 0, state_last_clear[0], state_last_clear[1], 0) > 2.0)
         clear_committed_trajectory_length();
 }
