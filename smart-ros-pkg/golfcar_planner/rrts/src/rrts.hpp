@@ -530,7 +530,7 @@ int
     }
     else
     {
-        cout<<"marking: "<<state_in[0]<<" "<<state_in[1]<<" "<<state_in[2]<<endl;
+        //cout<<"marking: "<<state_in[0]<<" "<<state_in[1]<<" "<<state_in[2]<<endl;
         markCost(vertexIn);
     }
     return 1;

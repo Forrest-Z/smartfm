@@ -188,6 +188,7 @@ StationPath SvgPath::getPath(string id)
             {
                 value = childElement->Attribute("d");
                 assert( value!=NULL );
+                if(VERBOSE) cout<<"Convert string to path: "<<value<<endl;
                 StationPath path = StringToPath(value);
                 convert_to_meter(&path);
                 return path;
@@ -214,6 +215,7 @@ StationPath SvgPath::StringToPath(string data)
     vector<string> data_s = SplitString(data.c_str(), " ,");
     bool abs_rel;
     //a path must start with m or M
+    if(VERBOSE) cout <<"Checking for first Mm point" <<endl;
     if(data_s[0].find_first_of("Mm")==string::npos)
     {
         throw runtime_error(string("Unexpected data start character, expected M or m but received ")+data_s[0]);
@@ -224,7 +226,7 @@ StationPath SvgPath::StringToPath(string data)
         if(data_s[0].find_first_of("M")!=string::npos) abs_rel = true;
         else abs_rel = false;
     }
-
+    if(VERBOSE) cout <<"Start storing path points into station path"<<endl;
     StationPath positions;
     PathPoint pos;
     pos.x_ = atof(data_s[1].c_str());
@@ -242,7 +244,7 @@ StationPath SvgPath::StringToPath(string data)
             //the start of another node on the same path represent the turning signals
             if(VERBOSE)
             {
-                for(int k=i; k<i+17; k++) cout<<data_s[k]<<' ';
+                for(int k=i; k<data_s.size(); k++) cout<<data_s[k]<<' ';
                 cout<<endl;
             }
 
@@ -306,7 +308,7 @@ StationPath SvgPath::StringToPath(string data)
             positions.push_back(pos);
 
             //the intersection points
-            positions.ints_pts_.push_back(found_points);
+            positions.ints_pts_.push_back(found_points-1);
         }
         else if(data_s[i].find_first_of("Zz")==string::npos)
         {

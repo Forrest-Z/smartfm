@@ -234,8 +234,6 @@ bool System::IsInCollision (const double stateIn[3], bool debug_flag)
 
 double System::getStateCost(const double stateIn[3])
 {
-    return 0;
-
     // (x,y) in local_map frame
     double zl[2] = {0};
     // yaw in local frame
@@ -247,7 +245,10 @@ double System::getStateCost(const double stateIn[3])
     {
         int val = map.data[map_index];
         if(val != 0)
-            return (float)val/10.0;
+        {
+            //cout<<"249 returning: "<<(float)val/100.0<<endl;
+            return (float)val/100.0;
+        }
         else
             return 100.0;
     }
