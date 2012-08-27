@@ -7,5 +7,8 @@
 	<node pkg="golfcar_traj_gen" type="path" name="path_gen"/>
 	<node pkg="rviz" type="rviz" name="rviz" args="-d $(find Launch)/nav_simulationPP.vcg" respawn="false"/>
   	<param name="use_sim_time" value="true"/>
+  <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
+        <rosparam file="$(find golfcar_traj_gen)/speed_advisor.yaml" command="load"/>
+  </node>
 </launch>
 

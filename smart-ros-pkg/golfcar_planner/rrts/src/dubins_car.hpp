@@ -94,10 +94,11 @@ System::System ()
     distance_limit = 100.0;
     delta_distance = 0.05;
 
-    car_width = 1.2;
-    car_height = 2.28;
-    safe_distance = 0.3;    // car footprint is blown up by this distance for collision checking
-    distance_rear_axis_rear = 0.45; // dist between center of rear axis and rear end
+    double factor_reduce_size = 1.0;
+    car_width = 1.2/factor_reduce_size;
+    car_height = 2.28/factor_reduce_size;
+    safe_distance = 0.3/factor_reduce_size;    // car footprint is blown up by this distance for collision checking
+    distance_rear_axis_rear = 0.45/factor_reduce_size; // dist between center of rear axis and rear end
 }
 
 
@@ -124,11 +125,17 @@ bool System::isReachingTarget (State &stateIn) {
     return true;
 }
 
-bool System::IsInCollision (const double stateIn[3]) 
+    inline
+int System::transform_map_to_local_map(const double stateIn[3], double &zlx, double &zly, double &yl)
 {
-    //return false;
-
-    //cout<<"attitude: "<<roll<<" "<<pitch<<" "<<yaw<<endl; 
+    /*
+     * X_map
+     * |       X_car|
+     * |            |
+     * | Y_car------|
+     * |
+     * |--------- Y_map
+     */
     // map frame z, yaw
     double zm[2] = {stateIn[0], stateIn[1]};
     double ym = stateIn[2];
@@ -137,16 +144,47 @@ bool System::IsInCollision (const double stateIn[3])
     // base_link frame
     double cos_map_yaw = cos(map_origin[2]);
     double sin_map_yaw = sin(map_origin[2]);
-    
+
     // rotate zm by yaw, subtract map_origin to get zlocal
-    double zl[2] ={0};
-    zl[0] = (zm[0]-map_origin[0])*cos_map_yaw + (zm[1]-map_origin[1])*sin_map_yaw;
-    zl[1] = -(zm[0]-map_origin[0])*sin_map_yaw + (zm[1]-map_origin[1])*cos_map_yaw;
-    double yl = ym - map_origin[2];
+    zlx = (zm[0]-map_origin[0])*cos_map_yaw + (zm[1]-map_origin[1])*sin_map_yaw;
+    zly = -(zm[0]-map_origin[0])*sin_map_yaw + (zm[1]-map_origin[1])*cos_map_yaw;
+    yl = ym - map_origin[2];
     while(yl > M_PI)
         yl -= 2.0*M_PI;
     while(yl < -M_PI)
         yl += 2.0*M_PI;
+
+    return 0;
+}
+
+    inline
+int System::get_cell_index(double x, double y, int &map_index)
+{
+    // find cells corresponding to (x,y)
+    // car is placed at (height/4, width/2) according to the local_map
+
+    int cellx = x/map.info.resolution + map.info.height/4.0;
+    int celly = map.info.width/2.0 - y/map.info.resolution;
+
+    if( (cellx >=0) && (cellx < (int)map.info.height) && (celly >= 0) && (celly < (int)map.info.width))
+    {
+        map_index = cellx*map.info.width + celly;
+        return 0;
+    }
+    else
+    {
+        map_index = -1;
+        return 1;
+    }
+}
+
+bool System::IsInCollision (const double stateIn[3], bool debug_flag) 
+{
+    // (x,y) in local_map frame
+    double zl[2] = {0};
+    // yaw in local frame
+    double yl = 0;
+    transform_map_to_local_map(stateIn, zl[0], zl[1], yl);
     //cout<<"zl: "<< zl[0]<<" "<<zl[1]<<" "<<yl<<endl; 
     double cos_yl = cos(yl);
     double sin_yl = sin(yl);
@@ -162,25 +200,15 @@ bool System::IsInCollision (const double stateIn[3])
             // x = stateInLocal + rel position (cx,cy) transformed into the (X_car,Y_car) frame
             double x = zl[0] + cx*cos_yl + cy*sin_yl;
             double y = zl[1] - cx*sin_yl + cy*cos_yl;
-            //cout<<"x: "<< x<<" y: "<<y<<endl;
+            if(debug_flag)
+                cout<<"x: "<< x<<" y: "<<y<<endl;
             //getchar();
-            
-            // 2. find cells corresponding to (x,y)
-            // car is placed at (height/4, width/2) according to the local_map
-            /*
-             * X_map
-             * |       X_car|
-             * |            |
-             * | Y_car------|
-             * |
-             * |--------- Y_map
-             */
-            int cellx = x/map.info.resolution + map.info.height/4.0;
-            int celly = map.info.width/2.0 - y/map.info.resolution;
-            if( (cellx >=0) && (cellx < (int)map.info.height) && (celly >= 0) && (celly < (int)map.info.width))
+            int map_index = -1;
+            if(get_cell_index(x, y, map_index) == 0)
             {
-                int to_check = map.data[cellx*map.info.width + celly];
-                //cout<<"cellx: "<<cellx<<" celly: "<<celly<<" to_check: "<<to_check<<endl;
+                int to_check = map.data[map_index];
+                if(debug_flag)
+                    cout<<"to_check: "<<to_check<<endl;
                 if(to_check == 0)
                 {
                     is_obstructed = true;
@@ -190,45 +218,41 @@ bool System::IsInCollision (const double stateIn[3])
             }
             else
             {
-                is_obstructed = true;
-                //cout<<"is_obstructed: "<<is_obstructed<<endl;
-                return is_obstructed;
+                is_obstructed = false;
+                //cout<<"is_obstructed 184: "<<is_obstructed<<endl;
+                return is_obstructed;            
             }
             cx = cx + map.info.resolution;
         }
         cy = cy + map.info.resolution;
     }
-    
+
     return is_obstructed;
 #endif
     return true;
 }
 
-int System::getStateCost(const double stateIn[3])
+double System::getStateCost(const double stateIn[3])
 {
-    /*
-    // get cell_num of stateIn
-    double xtmp = stateIn[0] - origin.x;
-    double ytmp = stateIn[1] - origin.y;
+    return 0;
 
-    int xnum, ynum;
-    xnum = xtmp/map_res + xorigin;
-    ynum = ytmp/map_res + yorigin;
+    // (x,y) in local_map frame
+    double zl[2] = {0};
+    // yaw in local frame
+    double yl = 0;
+    transform_map_to_local_map(stateIn, zl[0], zl[1], yl);
 
-    if( (xnum >= xsize) || (xnum < 0) || (ynum >= ysize) || (ynum < 0) )
+    int map_index = -1;
+    if(get_cell_index(zl[0], zl[1], map_index) == 0)
     {
-        return 0;
+        int val = map.data[map_index];
+        if(val != 0)
+            return (float)val/10.0;
+        else
+            return 100.0;
     }
     else
-    {
-        //cout<<"grid: " << xback <<" "<< xfront <<" "<< yleft <<" "<< yright << endl;
-        if(map_vals[ynum + xnum*xsize] >= 250)
-            return 250;
-        else
-            return (250 - map_vals[ynum + xnum*xsize]);
-    }
-    */
-    return 0;
+        return 100.0;
 }
 
 int System::sampleState (State &randomStateOut) {
@@ -239,7 +263,7 @@ int System::sampleState (State &randomStateOut) {
             - regionOperating.size[i]/2.0 + regionOperating.center[i];
     }
     //cout<<"sample_local: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
-    
+
     // transform the sample from local_map frame to /map frame
     double cyaw = cos(map_origin[2]);
     double syaw = sin(map_origin[2]);
@@ -251,7 +275,7 @@ int System::sampleState (State &randomStateOut) {
         randomStateOut.x[2] -= 2.0*M_PI;
     while(randomStateOut.x[2] < -M_PI)
         randomStateOut.x[2] += 2.0*M_PI;
-    
+
     //cout<<"sample_transformed: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
     if (IsInCollision (randomStateOut.x))
         return 0;
@@ -267,7 +291,7 @@ int System::sampleGoalState (State &randomStateOut) {
         randomStateOut.x[i] = (double)rand()/(RAND_MAX + 1.0)*regionGoal.size[i] 
             - regionGoal.size[i]/2.0 + regionGoal.center[i];
     }
-    
+
     while(randomStateOut.x[2] > M_PI)
         randomStateOut.x[2] -= 2.0*M_PI;
     while(randomStateOut.x[2] < -M_PI)
@@ -302,12 +326,12 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
     double y_end;
     double t_end = 0;
 
-    if (distance > 2 * turning_radius) {  // disks do not intersect 
-
+    if (distance > 2 * turning_radius) 
+    {  
+        // disks do not intersect
         double t_balls = acos (2 * turning_radius / distance);
-
-
-        switch (comb_no) {
+        switch (comb_no) 
+        {
             case 1:
                 t_start = t_tr - t_balls;
                 t_end = t_tr + M_PI - t_balls;
@@ -328,10 +352,11 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 return -1.0;
         }
     }
-
-    else { // disks are intersecting
-
-        switch (comb_no) {
+    else 
+    { 
+        // disks are intersecting
+        switch (comb_no) 
+        {
             case 1:
             case 2:
                 // No solution
@@ -381,8 +406,9 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         return -1.0;
     }
 
+    // send total_distance_travel + local_map_cost as the real cost
     double total_distance_travel = (t_increment_s1 + t_increment_s2) * turning_radius  + distance;
-    double cost_map_cost = 0;
+    double local_map_cost = 0;
     fully_extends = 0;
 
     if (check_obstacles) 
@@ -394,7 +420,6 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         double t_inc_curr = 0.0;
 
         double state_curr[3] = {0};
-        // double input_curr[2];
 
         while (t_inc_curr < t_increment_s1) 
         {
@@ -414,37 +439,35 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             while (state_curr[2] > M_PI)
                 state_curr[2] -= 2.0*M_PI;
 
-            // input_curr[0] = t_inc_rel * turning_radius;
-            // input_curr[1] = ( (comb_no == 1) || (comb_no == 3) ) ? -1 : 1;
-
             // check for collision
             if (IsInCollision (state_curr))
                 return -2.0;
 
-            if (trajectory) {
+            if (trajectory) 
+            {
                 double *state_new = new double[3];
                 for (int i = 0; i < 3; i++) 
                     state_new[i] = state_curr[i];
-                
-                trajectory->push_front(state_new);
 
-                // populate controls here
+                trajectory->push_front(state_new);
                 control.push_front (direction_s1*turning_radius);
+                local_map_cost += getStateCost(state_new);
             }
 
-            if (t_inc_curr * turning_radius > distance_limit)  {
-
+            if (t_inc_curr * turning_radius > distance_limit)  
+            {
                 fully_extends = false;
 
                 for (int i = 0; i < 3; i++)
                     end_state[i] = state_curr[i];
 
-                return total_distance_travel;
+                return total_distance_travel + local_map_cost;
             }
         }
 
         double d_inc_curr = 0.0;
-        while (d_inc_curr < distance) {
+        while (d_inc_curr < distance) 
+        {
             double d_inc_rel = del_d;
             d_inc_curr += del_d;
             if (d_inc_curr > distance) {
@@ -455,7 +478,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             state_curr[0] = (x_end - x_start) * d_inc_curr / distance + x_start; 
             state_curr[1] = (y_end - y_start) * d_inc_curr / distance + y_start; 
             state_curr[2] = direction_s1 * t_inc_curr + t_s1 + ( (direction_s1 == 1) ? M_PI_2 : 3.0*M_PI_2);
-            
+
             while (state_curr[2] < -M_PI)
                 state_curr[2] += 2.0 * M_PI;
             while (state_curr[2] > M_PI)
@@ -473,25 +496,25 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 for (int i = 0; i < 3; i++) 
                     state_new[i] = state_curr[i];
                 trajectory->push_front(state_new);
-
-                // populate controls here
                 control.push_front (0);
+                local_map_cost += getStateCost(state_new);
             }
 
-            if (t_inc_curr * turning_radius + d_inc_curr > distance_limit) {
-
+            if (t_inc_curr * turning_radius + d_inc_curr > distance_limit) 
+            {
                 fully_extends = false;
 
                 for (int i = 0; i < 3; i++)
                     end_state[i] = state_curr[i];
 
-                return total_distance_travel;
+                return total_distance_travel + local_map_cost;
             }
         }
 
         double t_inc_curr_prev = t_inc_curr;
         t_inc_curr = 0.0;
-        while (t_inc_curr < t_increment_s2) {
+        while (t_inc_curr < t_increment_s2) 
+        {
             double t_inc_rel = del_t;
             t_inc_curr += del_t;
             if (t_inc_curr > t_increment_s2)  {
@@ -503,7 +526,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             state_curr[1] = y_s2 + turning_radius * sin (direction_s2 * (t_inc_curr - t_increment_s2) + t_s2);
             state_curr[2] = direction_s2 * (t_inc_curr - t_increment_s2) + t_s2 
                 + ( (direction_s2 == 1) ?  M_PI_2 : 3.0*M_PI_2 );
-            
+
             while (state_curr[2] < -M_PI)
                 state_curr[2] += 2.0 * M_PI;
             while (state_curr[2] > M_PI)
@@ -516,22 +539,23 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             if (IsInCollision (state_curr))
                 return -2.0;
 
-            if (trajectory) {
+            if (trajectory) 
+            {
                 double *state_new = new double [3];
                 for (int i = 0; i < 3; i++) 
                     state_new[i] = state_curr[i];
                 trajectory->push_front(state_new);
                 control.push_front(turning_radius * direction_s2);
+                local_map_cost += getStateCost(state_new);
             }
 
-            if ((t_inc_curr_prev + t_inc_curr) * turning_radius + d_inc_curr > distance_limit) {
-
+            if ((t_inc_curr_prev + t_inc_curr) * turning_radius + d_inc_curr > distance_limit) 
+            {
                 fully_extends = false;
-
                 for (int i = 0; i < 3; i++)
                     end_state[i] = state_curr[i];
 
-                return total_distance_travel;
+                return total_distance_travel + local_map_cost;
             }
         }
 
@@ -541,7 +565,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             end_state[i] = state_curr[i];
     }
 
-    return total_distance_travel;
+    return total_distance_travel + local_map_cost;
 
 }
 
@@ -666,7 +690,8 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
     double time = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
             true, false, 
             exactConnectionOut, end_state, NULL, controlOut);
-    if (time < 0.0) {
+    if (time < 0.0) 
+    {
         delete [] end_state;
         return 0;
     }
