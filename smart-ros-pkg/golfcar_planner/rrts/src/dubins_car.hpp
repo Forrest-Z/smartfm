@@ -115,6 +115,12 @@ int System::getStateKey (State &stateIn, double *stateKey) {
 }
 
 
+#define SQ(x)   ((x)*(x))
+float System::getGoalCost(const double x[3])
+{
+    return sqrt(0.5*SQ(x[0]-regionGoal.center[0]) + 0.5*SQ(x[1]-regionGoal.center[1]) + SQ(x[2] - regionGoal.center[2]));
+}
+
 bool System::isReachingTarget (State &stateIn) {
 
     for (int i = 0; i < 3; i++) {
@@ -246,14 +252,16 @@ double System::getStateCost(const double stateIn[3])
         int val = map.data[map_index];
         if(val != 0)
         {
-            //cout<<"249 returning: "<<(float)val/100.0<<endl;
-            return (float)val/100.0;
+            if(val == 87)
+                return 1;
+            else if(val == 107)
+                return 2;
         }
         else
-            return 100.0;
+            return 100;
     }
     else
-        return 100.0;
+        return 1;
 }
 
 int System::sampleState (State &randomStateOut) {

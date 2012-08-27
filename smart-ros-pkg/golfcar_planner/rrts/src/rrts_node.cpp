@@ -210,6 +210,7 @@ void Planner::send_rrts_status(const ros::TimerEvent &e)
     smsg.root_in_goal = rrts_status[ring];
     rrts_status_pub.publish(smsg);
 }
+
 // p is (x,y,yaw) in map coords
 void Planner::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
 {
@@ -379,7 +380,7 @@ void Planner::change_goal_region()
     system.regionGoal.center[2] = (double)goal.z;
     system.regionGoal.size[0] = 1.0;
     system.regionGoal.size[1] = 1.0;
-    system.regionGoal.size[2] = 20.0/180.0*M_PI;
+    system.regionGoal.size[2] = 30.0/180.0*M_PI;
     //cout<<"region_goal: "<< system.regionGoal.center[0]<<" "<<system.regionGoal.center[1]<<" "<<system.regionGoal.center[2]<<endl;
 }
 
@@ -470,7 +471,7 @@ void Planner::get_plan()
     {
         samples_this_loop += rrts.iteration();
         best_cost = rrts.getBestVertexCost();
-        if(best_cost < 50)
+        if(best_cost < 5000)
         {
             if( fabs(prev_best_cost - best_cost) < 0.05)
                 found_best_path = true;
