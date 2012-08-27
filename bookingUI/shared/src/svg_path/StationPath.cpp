@@ -207,9 +207,9 @@ StationPaths::StationPaths()
         printPath(stationPaths_[0][2]);
     }
 
-    for(unsigned i=0; i<NSTATIONS;i++)
+   /* for(unsigned i=0; i<NSTATIONS;i++)
         for(unsigned j=0; j<NSTATIONS; j++)
-            addPointsInPath( & stationPaths_[i][j] );
+            addPointsInPath( & stationPaths_[i][j] );*/
 
     if( VERBOSE ) printPath(stationPaths_[0][2]);
 }
