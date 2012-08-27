@@ -538,13 +538,7 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
 {
     cout<<endl;
     
-    // 4. else add more vertices / until you get a good trajectory, copy it to committed trajectory, return
-    if( (is_first_goal == false) && (is_first_map == false) )
-    {
-        get_plan();
-        return;
-    }
-    else if(!committed_trajectory.empty())
+    if(!committed_trajectory.empty())
     {
         // 1. check if trajectory is safe
         if(!rrts.isSafeTrajectory(committed_trajectory))
@@ -579,8 +573,15 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
                 clear_committed_trajectory();
                 setup_rrts();
                 get_plan();
+                return;
             }
         }
+    }
+    // 4. else add more vertices / until you get a good trajectory, copy it to committed trajectory, return
+    if( (is_first_goal == false) && (is_first_map == false) )
+    {
+        get_plan();
+        return;
     }
 
     if( dist(car_position.x, car_position.y, 0, state_last_clear[0], state_last_clear[1], 0) > 2.0)
