@@ -16,6 +16,7 @@
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 
+#include <rrts/rrts_status.h>
 #include "dubins_car.hpp"
 #include "rrts.hpp"
 
@@ -26,8 +27,7 @@ typedef DubinsCar::TrajectoryType trajectory_t;
 typedef DubinsCar::SystemType system_t;
 
 typedef RRTstar::Vertex <DubinsCar> vertex_t;
-typedef RRTstar::Planner <DubinsCar> planner_t; 
-
+typedef RRTstar::Planner <DubinsCar> planner_t;
 
 class Planner
 {
@@ -66,7 +66,12 @@ class Planner
         ros::Subscriber goal_sub;
         ros::Subscriber map_sub;
 
-        ros::Publisher goal_collision_status_pub;
+        enum status_def{rinc=0, ginc, ginf, ring};
+        bool rrts_status[4];
+
+        ros::Publisher rrts_status_pub;
+        ros::Timer rrts_status_timer;
+
         ros::Publisher tree_pub;
         ros::Publisher vertex_pub;
         ros::Publisher control_trajectory_pub;
@@ -79,7 +84,7 @@ class Planner
 
         // functions
         void on_goal(const geometry_msgs::PoseStamped::ConstPtr p);
-        void send_goal_collision_status(bool b);
+        void send_rrts_status(const ros::TimerEvent &e);
         void on_map(const nav_msgs::OccupancyGrid::ConstPtr og);
         void on_committed_trajectory_pub_timer(const ros::TimerEvent &e);
 
@@ -108,6 +113,7 @@ Planner::Planner()
     
     planner_dt = 0.5;
     planner_timer = nh.createTimer(ros::Duration(planner_dt), &Planner::on_planner_timer, this);
+    rrts_status_timer = nh.createTimer(ros::Duration(0.5), &Planner::send_rrts_status, this);
 
     tree_pub_timer = nh.createTimer(ros::Duration(0.3), &Planner::on_tree_pub_timer, this);
     committed_trajectory_pub_timer = nh.createTimer(ros::Duration(0.3), &Planner::on_committed_trajectory_pub_timer, this);
@@ -120,11 +126,12 @@ Planner::Planner()
 
     map_sub = nh.subscribe("local_map", 2, &Planner::on_map, this);
     goal_sub = nh.subscribe("pnc_nextpose", 2, &Planner::on_goal, this);
-    goal_collision_status_pub = nh.advertise<std_msgs::Bool>("goal_collision_status", 2);
+    rrts_status_pub = nh.advertise<rrts::rrts_status>("rrts_status", 2);
 
     is_first_goal = true;
     is_first_map = true;
-
+    for(int i=0; i<4; i++)
+        rrts_status[i] = false;
 }
 
 Planner::~Planner()
@@ -193,12 +200,15 @@ int Planner::clear_committed_trajectory_length()
     return 0;
 }
 
-
-void Planner::send_goal_collision_status(bool b)
+void Planner::send_rrts_status(const ros::TimerEvent &e)
 {
-    std_msgs::Bool msg;
-    msg.data = b;
-    goal_collision_status_pub.publish(msg);
+    rrts::rrts_status smsg;
+    smsg.header.stamp = ros::Time::now();
+    smsg.robot_in_collision = rrts_status[rinc];
+    smsg.goal_in_collision = rrts_status[ginc];
+    smsg.goal_infeasible = rrts_status[ginf];
+    smsg.root_in_goal = rrts_status[ring];
+    rrts_status_pub.publish(smsg);
 }
 // p is (x,y,yaw) in map coords
 void Planner::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
@@ -225,9 +235,9 @@ void Planner::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
                 cout<<"goal in collision: stopping"<<endl;
                 clear_committed_trajectory();
                 setup_rrts();
-                send_goal_collision_status(true);
+                rrts_status[ginc] = true;
             }
-            send_goal_collision_status(false);
+            rrts_status[ginc] = false;
         }
     }
     // new goal than previous one, change sampling region
@@ -243,10 +253,10 @@ void Planner::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
             cout<<"goal in collision: sending collision"<<endl;
             //clear_committed_trajectory();
             //setup_rrts();
-            send_goal_collision_status(true);
+            rrts_status[ginc] = true;
         }
         change_goal_region();
-        send_goal_collision_status(false);
+        rrts_status[ginc] = false;
     }
     //ROS_INFO("got goal: %f %f %f", goal.x, goal.y, goal.z);
 }
@@ -356,7 +366,9 @@ bool Planner::root_in_goal()
 {
     vertex_t &rootVertex = rrts.getRootVertex();
     state_t &curr_state = rootVertex.getState();
-    return system.isReachingTarget(curr_state);
+    bool res = system.isReachingTarget(curr_state); 
+    rrts_status[ring] = res;
+    return res;
 }
 
 
@@ -418,26 +430,31 @@ bool Planner::is_robot_in_collision()
     {
         get_robot_pose();
         double tmp[3] = {car_position.x, car_position.y, car_position.z};
-        return rrts.system->IsInCollision(tmp);
+        bool res = rrts.system->IsInCollision(tmp);
+        rrts_status[rinc] = res;
+        return res;
     }
     else
+    {
+        rrts_status[rinc] = false;
         return false;
+    }
 }
 
 void Planner::get_plan()
 {
     rrts.checkTree();
     rrts.updateReachability();
+    
     if(root_in_goal())
     {
-        cout<<"root in goal"<<endl;
+        //cout<<"root in goal"<<endl;
         return;
     }
     if(is_robot_in_collision())
     {
         cout<<"robot in collision"<<endl;
         clear_committed_trajectory();
-        setup_rrts();
         return;
     }
     //cout<<"after check_tree num_vert: "<< rrts.numVertices<<endl;
@@ -461,6 +478,7 @@ void Planner::get_plan()
         //cout<<"n: "<< rrts.numVertices<<endl;
 
         ros::Duration dt = ros::Time::now() - start_current_call_back;
+        // give some time to the following code as well
         if(dt.toSec() > 0.8*planner_dt)
             break;
     }
@@ -489,6 +507,7 @@ void Planner::get_plan()
     }
     else if(rrts.numVertices > 200)
     {
+        rrts_status[ginf] = true;
         cout<<"did not find best path: reinitializing"<<endl;
         clear_committed_trajectory();
         setup_rrts();
@@ -517,7 +536,15 @@ bool Planner::is_near_end_committed_trajectory()
 
 void Planner::on_planner_timer(const ros::TimerEvent &e)
 {
-    if(!committed_trajectory.empty())
+    cout<<endl;
+    
+    // 4. else add more vertices / until you get a good trajectory, copy it to committed trajectory, return
+    if( (is_first_goal == false) && (is_first_map == false) )
+    {
+        get_plan();
+        return;
+    }
+    else if(!committed_trajectory.empty())
     {
         // 1. check if trajectory is safe
         if(!rrts.isSafeTrajectory(committed_trajectory))
@@ -552,13 +579,9 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
                 clear_committed_trajectory();
                 setup_rrts();
                 get_plan();
-                return;
             }
         }
     }
-    // 4. else add more vertices / until you get a good trajectory, copy it to committed trajectory, return
-    if( (is_first_goal == false) && (is_first_map == false) )
-        get_plan();
 
     if( dist(car_position.x, car_position.y, 0, state_last_clear[0], state_last_clear[1], 0) > 2.0)
         clear_committed_trajectory_length();
