@@ -25,7 +25,7 @@ LaserAreaPolicy::LaserAreaPolicy(string path_id)
     tf_filter_->setTolerance(ros::Duration(0.05));
 
     string svg_file;
-    private_nh.param("svg_file", svg_file, string(""));
+    private_nh.param("svg_file", svg_file, string("~/SvgPath/path_def.svg"));
     SvgBoundary svg_boundary(svg_file, 0.1);
     boundary_ = svg_boundary.getPath(path_id);
 }

@@ -19,12 +19,24 @@ public:
 
 class EAPedCrossingPolicy : public IntersectionPolicy
 {
-    LaserAreaPolicy area;
+    LaserAreaPolicy *area;
     InteractiveMarkerPolicy marker;
 
 public:
-    EAPedCrossingPolicy(geometry_msgs::Point p) : area("crossing_boundary"), marker(p) { }
-    bool is_clear_to_go() { return area.is_clear_to_go() || marker.is_clear_to_go(); }
+    EAPedCrossingPolicy(geometry_msgs::Point p) : area(0), marker(p)
+    {
+        try
+        {
+            area = new LaserAreaPolicy("crossing_boundary");
+        }
+        catch( std::runtime_error & e )
+        {
+            ROS_WARN("Problem with the LaserAreaPolicy: %s", e.what());
+        }
+    }
+
+    bool is_clear_to_go()
+    { return (area!=0 && area->is_clear_to_go()) || marker.is_clear_to_go(); }
 };
 
 

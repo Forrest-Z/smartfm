@@ -1,10 +1,10 @@
 #include <boost/algorithm/string.hpp>
-
+#include <ros/ros.h>
 #include "SvgBoundary.h"
 
 using namespace std;
 
-const unsigned VERBOSITY = 1;
+const unsigned VERBOSITY = 0;
 
 SvgBoundary::SvgBoundary()
 {
@@ -16,10 +16,24 @@ SvgBoundary::SvgBoundary(string pFilename, double res)
     loadFile(pFilename, res);
 }
 
+#include <wordexp.h>
+string tilde_expand(string path)
+{
+    wordexp_t p;
+    wordexp(path.c_str(), &p, 0);
+    char **w = p.we_wordv;
+    assert(p.we_wordc==1);
+    string res = w[0];
+    wordfree(&p);
+    return res;
+}
+
 void SvgBoundary::loadFile(string pFilename, double res)
 {
     TiXmlElement* svgElement;
-    bool loadOkay = svgDoc_.LoadFile(pFilename);
+    string f = tilde_expand(pFilename);
+    ROS_INFO("Reading crossing boundary from %s", f.c_str());
+    bool loadOkay = svgDoc_.LoadFile(f);
     if (loadOkay)
     {
         svgElement = svgDoc_.FirstChildElement();
