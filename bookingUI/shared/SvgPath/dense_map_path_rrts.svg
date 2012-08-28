@@ -8,7 +8,7 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   sodipodi:docname="path_def.svg"
+   sodipodi:docname="dense_map_path_rrts.svg"
    height="4520"
    width="4251"
    inkscape:version="0.48.3.1 r9886"
@@ -23,15 +23,15 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="1301"
-     inkscape:window-height="744"
+     inkscape:window-width="1600"
+     inkscape:window-height="850"
      id="namedview32"
      showgrid="false"
      inkscape:zoom="2.9728492"
-     inkscape:cx="2134.8059"
-     inkscape:cy="1809.0677"
-     inkscape:window-x="65"
-     inkscape:window-y="24"
+     inkscape:cx="2189.4563"
+     inkscape:cy="1796.6289"
+     inkscape:window-x="0"
+     inkscape:window-y="27"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg2" />
   <metadata
@@ -475,7 +475,7 @@
      id="desc6">The paths consist of all the possible route that can be taken by the golfcart to serve 4 stations: DCC, MCD, EA and E3A</desc>
   <image
      style="fill:#aa4400;font-size:14px"
-     xlink:href="file:///home/demian/smartfm/old_code/mit_rrt/local_map_ext/bigeng_sde_map_0.1_cleaned_path.png"
+     xlink:href="file:///home/pratik/smartfm/old_code/mit_rrt/local_map_ext/bigeng_sde_map_0.1_cleaned_path.png"
      width="4251"
      height="4520"
      id="map"
@@ -604,7 +604,7 @@
      inkscape:label="#path3073" />
   <path
      style="fill:none;stroke:#ff0000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#DotL)"
-     d="m 2223.4677,2709.7002 215.3164,-5.7325 213.971,-8.7597 105.8081,-2.8662 107.8263,-6.9028 212.6254,-9.769 45.4093,-3.6325 22.1324,-7.8323 17.7596,-13.5507 12.1376,-15.3959 14.5022,-21.9304 17.866,-21.7096 23.1028,-14.329 22.9495,-2.7388 18.1049,6.3235 15.2805,10.9075 10.1869,17.1157 2.6432,26.8129 -7.1595,18.9806 -21.1621,21.3731 -21.7672,7.9477 -28.9367,-2.47"
+     d="m 2337.8361,2709.0274 100.948,-5.0597 213.971,-8.7597 105.8081,-2.8662 107.8263,-6.9028 212.6254,-9.769 45.4093,-3.6325 22.1324,-7.8323 17.7596,-13.5507 12.1376,-15.3959 14.5022,-21.9304 17.866,-21.7096 23.1028,-14.329 22.9495,-2.7388 18.1049,6.3235 15.2805,10.9075 10.1869,17.1157 2.6432,26.8129 -7.1595,18.9806 -21.1621,21.3731 -21.7672,7.9477 -28.9367,-2.47"
      id="DCC_MCD"
      inkscape:connector-curvature="0"
      inkscape:label="#path3069"
@@ -625,7 +625,7 @@
      inkscape:label="#path3073" />
   <path
      style="fill:none;stroke:#ff0000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#DotL)"
-     d="m 494.70851,1865.6475 -30.41572,21.0747 -44.71672,33.2996 -17.01012,19.4225 -8.89916,16.7892 -4.08435,25.352 7.27499,28.2062 13.99262,29.7726 18.41336,31.1182 42.75617,71.0201 41.74703,71.3565 13.72142,23.538 c 0,0 10.16657,17.3256 16.46516,26.1864 l 21.42094,26.7832 31.73323,38.9506 87.82907,119.2457 49.85101,64.8936 50.52377,63.5481 59.26959,68.2573 51.86926,66.9119 69.07765,80.427 30.45533,28.2639 34.86616,31.791 30.945,20.5371 110.1314,73.8336 118.2044,73.1608 114.1679,73.4971 114.1679,73.4972 78.9678,53.2795 131.8631,85.9064 m 33.0569,19.3743 33.0569,19.3742 m 33.0569,19.3743 33.0569,19.3742 40.7676,13.935 18.4711,-9.1878 11.6281,-8.3895 18.2401,-23.0453 m 4.9781,-27.1871 c 0,0 -0.4566,-10.0575 -6.3812,-29.0521 -5.9246,-18.9946 -35.539,-81.7066 -35.539,-81.7066 l -21.1043,-41.8625 -43.4191,-72.1925 -17.6829,-31.2336 -10.6288,-25.0832 -13.1567,-32.9534 -5.9971,-26.0824 -5.997,-30.0613 2.5277,-29.6094 8.0632,-32.0598 11.5325,-30.1089 14.6653,-31.2914 19.9222,-28.1963 25.6883,-27.5912 29.494,-23.7855 25.4674,-13.8195 24.0641,-12.3685 31.1182,-11.417"
+     d="m 494.70851,1865.6475 -30.41572,21.0747 -44.71672,33.2996 -17.01012,19.4225 -8.89916,16.7892 -4.08435,25.352 7.27499,28.2062 13.99262,29.7726 18.41336,31.1182 42.75617,71.0201 41.74703,71.3565 13.72142,23.538 c 0,0 10.16657,17.3256 16.46516,26.1864 l 21.42094,26.7832 31.73323,38.9506 87.82907,119.2457 49.85101,64.8936 50.52377,63.5481 59.26959,68.2573 51.86926,66.9119 69.07765,80.427 30.45533,28.2639 34.86616,31.791 30.945,20.5371 110.1314,73.8336 118.2044,73.1608 114.1679,73.4971 114.1679,73.4972 78.9678,53.2795 131.8631,85.9064 m 33.0569,19.3743 33.0569,19.3742 m 33.0569,19.3743 33.0569,19.3742 47.4952,22.3444 26.2078,-5.1512 11.628,-18.4809 8.1488,-28.0909 m 3.2962,-24.4961 c 0,0 -0.4566,-11.7394 -6.3812,-30.734 -5.9246,-18.9946 -34.5299,-83.0521 -34.5299,-83.0521 l -21.777,-40.1806 -46.4465,-70.847 -17.6829,-31.2336 -10.6288,-25.0832 -13.1567,-32.9534 -3.9788,-27.7643 -2.6333,-29.7249 3.2005,-30.6185 5.0358,-30.0416 10.8597,-30.1089 16.0109,-31.2914 19.5858,-26.5144 23.67,-27.2548 30.1668,-24.7946 23.4491,-14.4923 24.0641,-12.3685 31.4546,-8.0532"
      id="EA_DCC"
      inkscape:connector-curvature="0"
      inkscape:label="#path3075"
@@ -692,14 +692,16 @@
      inkscape:label="#path3111" />
   <path
      style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     d="m 2000.1015,2717.0158 55.5023,-4.3729 30.9467,-24.8919 37.0015,0"
+     d="m 2000.7743,2719.3704 54.8295,-6.7275 35.3197,-52.1385 28.5921,0"
      id="DCC_END2"
      inkscape:connector-curvature="0"
-     inkscape:label="#path3074" />
+     inkscape:label="#path3074"
+     sodipodi:nodetypes="cccc" />
   <path
      style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     d="m 2100.0056,2690.1056 34.6469,-0.6727 37.6743,21.8645 45.7474,-0.6727"
+     d="m 2092.9416,2659.4953 34.6469,-0.6727 46.7566,55.8386 100.2405,-0.6727"
      id="DCC_START"
      inkscape:connector-curvature="0"
-     inkscape:label="#path3076" />
+     inkscape:label="#path3076"
+     sodipodi:nodetypes="cccc" />
 </svg>

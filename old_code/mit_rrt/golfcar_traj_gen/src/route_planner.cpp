@@ -49,6 +49,7 @@ private:
     bool robot_near_root_;
     bool switched_root_;
     bool initialized_;
+    bool goal_infeasible_;
     unsigned waypointNo_;
 
     bool goToDest();
@@ -68,6 +69,7 @@ void RoutePlanner::rrts_status(rrts::rrts_status rrts_status)
 	if(initialized_)
 	{
 		goal_collision_ = rrts_status.goal_in_collision;
+		goal_infeasible_ = rrts_status.goal_infeasible;
 		root_in_goal_ = rrts_status.root_in_goal;
 		robot_near_root_ = rrts_status.robot_near_root;
 		switched_root_ = rrts_status.switched_root;
@@ -158,24 +160,33 @@ bool RoutePlanner::goToDest()
 
 
     
-    if(goal_collision_)
+    if(goal_collision_ || goal_infeasible_)
     {
-    	waypointNo_++;
-    	cout<<"Goal in collision reported, increment waypoint"<<endl;
+        double dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), path_[waypointNo_].x_, path_[waypointNo_].y_);
+        if(dist < 15) 	
+        {
+            waypointNo_++;	
+        	cout<<"Goal in collision/infeasible reported, increment waypoint"<<endl;
+        }
     }
-    if(robot_near_root_ && switched_root_)
+    if(robot_near_root_ && (switched_root_ || root_in_goal_))
     {
+        if(waypointNo_==path_.size())
+        {
+            cout<<"Reach last pose, exiting..."<<endl;
+            exit(0);
+         }
     	waypointNo_++;
     	cout<<"Nominal increment for next path"<<endl;
     }
 
-    if(waypointNo_>=path_.size()) return true;
-    //transform from pose to point, planner expect point z as yaw
-    //publish the first waypoint in map frame then continue to send the points until the last one
     map_pose.header.frame_id="/map";
     map_pose.header.stamp=ros::Time::now();
     nextpose_pub_.publish(map_pose);
 
+    //transform from pose to point, planner expect point z as yaw
+    //publish the first waypoint in map frame then continue to send the points until the last one
+    
    return true;
 }
 
