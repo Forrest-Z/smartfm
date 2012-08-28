@@ -428,7 +428,7 @@ void Planner::change_goal_region()
     system.regionGoal.center[2] = (double)goal.z;
     system.regionGoal.size[0] = 1.5;
     system.regionGoal.size[1] = 1.5;
-    system.regionGoal.size[2] = 30.0/180.0*M_PI;
+    system.regionGoal.size[2] = 40.0/180.0*M_PI;
     //cout<<"region_goal: "<< system.regionGoal.center[0]<<" "<<system.regionGoal.center[1]<<" "<<system.regionGoal.center[2]<<endl;
 }
 

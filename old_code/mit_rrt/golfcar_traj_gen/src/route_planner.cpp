@@ -165,13 +165,16 @@ bool RoutePlanner::goToDest()
         double dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), path_[waypointNo_].x_, path_[waypointNo_].y_);
         if(dist < 15) 	
         {
-            waypointNo_++;	
+            if(waypointNo_ < path_.size())
+                waypointNo_++;	
         	cout<<"Goal in collision/infeasible reported, increment waypoint"<<endl;
         }
     }
+    
+        
     if(robot_near_root_ && (switched_root_ || root_in_goal_))
     {
-        if(waypointNo_==path_.size())
+        if(waypointNo_>=path_.size())
         {
             cout<<"Reach last pose, exiting..."<<endl;
             exit(0);
