@@ -109,13 +109,13 @@ class System {
     int sampleGoalState (State& randomStateOut);
 
     int extendTo (State& stateFromIn, State& stateTowardsIn, 
-            Trajectory& trajectoryOut, bool& exactConnectionOut, list<float> &controlOut ); 
+            Trajectory& trajectoryOut, bool& exactConnectionOut, list<float> &controlOut, bool check_obstacles); 
 
     double evaluateExtensionCost (State& stateFromIn, State& stateTowardsIn, bool& exactConnectionOut);
 
     double evaluateCostToGo (State& stateIn);
 
-    int getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut, list<float> &controlOut);
+    int getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut, list<float> &controlOut, bool check_obstacles);
 
 };
 

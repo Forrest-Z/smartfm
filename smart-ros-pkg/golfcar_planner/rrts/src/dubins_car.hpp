@@ -46,7 +46,6 @@ State& State::operator=(const State &stateIn){
 
 
 Trajectory::Trajectory () {
-
     totalVariation = -1.0;
 }
 
@@ -262,6 +261,11 @@ double System::getStateCost(const double stateIn[3])
                 return 1;
             else if(val == 107)
                 return 2;
+            else
+            {
+                cout<<"Found random value in the map"<<endl;
+                return 1;
+            }
         }
         else
             return 100;
@@ -697,13 +701,13 @@ System::extend_dubins_all (double state_ini[3], double state_fin[3],
 
 
 int System::extendTo (State &stateFromIn, State &stateTowardsIn, 
-        Trajectory &trajectoryOut, bool &exactConnectionOut, list<float> &controlOut) {
+        Trajectory &trajectoryOut, bool &exactConnectionOut, list<float> &controlOut, bool check_obstacles) {
 
     double *end_state;
     end_state = new double [3];
 
     double time = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
-            true, false, 
+            check_obstacles, false, 
             exactConnectionOut, end_state, NULL, controlOut);
     if (time < 0.0) 
     {
@@ -743,7 +747,7 @@ double System::evaluateExtensionCost (State &stateFromIn, State &stateTowardsIn,
 }
 
 
-int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut, list<float>& controlOut) {
+int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut, list<float>& controlOut, bool check_obstacles) {
 
     double *end_state;
     end_state = new double[3];
@@ -751,7 +755,7 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
     bool exactConnectionOut = false;
 
     double time = extend_dubins_all (stateFromIn.x, stateToIn.x, 
-            true, true, 
+            check_obstacles, true, 
             exactConnectionOut, end_state, &trajectoryOut, controlOut);
 
     delete [] end_state;
@@ -783,4 +787,3 @@ double System::evaluateCostToGo (State& stateIn)
     return dist - radius;
 
 }
-

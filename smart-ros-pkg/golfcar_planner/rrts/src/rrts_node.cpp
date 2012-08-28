@@ -66,8 +66,8 @@ class Planner
         ros::Subscriber goal_sub;
         ros::Subscriber map_sub;
 
-        enum status_def{rinc=0, ginc, ginf, ring};
-        bool rrts_status[4];
+        enum status_def{rinc=0, ginc, ginf, ring, rnr, swr};
+        bool rrts_status[6];
 
         ros::Publisher rrts_status_pub, obs_check_pub;
         ros::Timer rrts_status_timer, obs_check_timer;
@@ -144,7 +144,7 @@ Planner::~Planner()
 
 void Planner::obs_check()
 {
-#if 1
+#if 0
     cout<<"inside obs_check"<<endl;
     if((!is_first_map) && (!is_first_goal))
     {
@@ -248,7 +248,13 @@ void Planner::send_rrts_status(const ros::TimerEvent &e)
     smsg.goal_in_collision = rrts_status[ginc];
     smsg.goal_infeasible = rrts_status[ginf];
     smsg.root_in_goal = rrts_status[ring];
+    smsg.robot_near_root = rrts_status[rnr];
+    
+    smsg.switched_root = rrts_status[swr];
+
     rrts_status_pub.publish(smsg);
+    
+    rrts_status[swr] = false;
 }
 
 // p is (x,y,yaw) in map coords
@@ -540,6 +546,7 @@ void Planner::get_plan()
             }
             else
             {
+                rrts_status[swr] = true;
                 // change sampling region if successful switch_root
                 change_goal_region();
                 cout<<"switched root successfully"<<endl;
@@ -595,11 +602,13 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
         // 2. check if it is at the end of the trajectory
         else if(is_near_end_committed_trajectory() && (!root_in_goal()))
         {
+            rrts_status[rnr] = true;
             cout<<"appending to committed trajectory"<<endl;
             //clear_committed_trajectory();
             should_send_new_committed_trajectory = true;
             clear_committed_trajectory_length();
             get_plan();
+            
             return;
         }
         // 3. if far from committed trajectory, clear everything
@@ -739,7 +748,7 @@ void Planner::publish_tree()
                 state_t& stateParent = vertexParent.getState();
                 list<double*> trajectory;
                 list<float> control;
-                if (system.getTrajectory (stateParent, stateCurr, trajectory, control)) 
+                if (system.getTrajectory (stateParent, stateCurr, trajectory, control, true)) 
                 {
                     int par_num_states = trajectory.size();
                     if (par_num_states) 

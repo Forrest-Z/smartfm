@@ -454,7 +454,7 @@ RRTstar::Planner< typeparams >
 
         // Extend the current vertex towards stateIn (and this time check for collision with obstacles)
         exactConnection = false;
-        if (system->extendTo(*(vertexCurr->state), stateIn, trajectoryOut, exactConnection, controlOut) > 0) {
+        if (system->extendTo(*(vertexCurr->state), stateIn, trajectoryOut, exactConnection, controlOut, true) > 0) {
             vertexBest = vertexCurr;
             connectionEstablished = true;
             break;
@@ -521,7 +521,7 @@ int
     trajectory_t traj;
     list<float> tmp_control;
     bool exactConnection;
-    if(system->extendTo(state_par, state_in, traj, exactConnection, tmp_control))
+    if(system->extendTo(state_par, state_in, traj, exactConnection, tmp_control, true))
     {
         for (typename set<vertex_t*>::iterator iter = vertexIn.children.begin(); iter != vertexIn.children.end(); iter++) 
         {
@@ -629,7 +629,7 @@ RRTstar::Planner< typeparams >
             // Compute the extension (checking for collision)
             trajectory_t trajectory;
             list<float> tmp_control;
-            if (system->extendTo (*(vertexNew.state), *(vertexCurr.state), trajectory, exactConnection, tmp_control) <= 0 ) 
+            if (system->extendTo (*(vertexNew.state), *(vertexCurr.state), trajectory, exactConnection, tmp_control, true) <= 0 ) 
                 continue;
 
             // Insert the new trajectory to the tree by rewiring
@@ -678,7 +678,7 @@ RRTstar::Planner< typeparams >
         // 3.a Extend the nearest
         if (getNearestVertex (stateRandom, vertexParent) <= 0) 
             return 0;
-        if (system->extendTo(vertexParent->getState(), stateRandom, trajectory, exactConnection, control) <= 0)
+        if (system->extendTo(vertexParent->getState(), stateRandom, trajectory, exactConnection, control, true) <= 0)
             return 0;
     }
     else {
@@ -799,7 +799,7 @@ RRTstar::Planner< typeparams >
         state_t& stateParent = vertexParent.getState();    
         list<double*> trajectory;
         list<float> control;
-        system->getTrajectory (stateParent, stateCurr, trajectory, control);
+        system->getTrajectory (stateParent, stateCurr, trajectory, control, true);
 
         list<float>::iterator iterControl = control.begin();
         for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++) 
@@ -895,7 +895,7 @@ RRTstar::Planner< typeparams >
         bool exactConnection;
 
         // if connection possible, switch to new root, else call vertex_new as the new root
-        if (system->extendTo(vertexRoot->getState(), vertexChildNew->getState(), connectingTrajectory, exactConnection, connectingControl) <= 0)
+        if (system->extendTo(vertexRoot->getState(), vertexChildNew->getState(), connectingTrajectory, exactConnection, connectingControl, true) <= 0)
         {
             cout << "switchRoot ERR: No extend, reinitializing" << endl;
 
@@ -1010,7 +1010,7 @@ RRTstar::Planner< typeparams >
 
             list<double*> trajectory;
             list<float> control;
-            system->getTrajectory (stateParent, stateCurr, trajectory, control);
+            system->getTrajectory (stateParent, stateCurr, trajectory, control, false);
 
             trajectory.reverse ();
             control.reverse();
