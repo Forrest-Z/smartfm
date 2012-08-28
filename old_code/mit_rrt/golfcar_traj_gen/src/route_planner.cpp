@@ -18,9 +18,12 @@
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <nav_msgs/Path.h>
-#include <StationPath.h>
+#include <svg_path/StationPath.h>
 #include <fmutil/fm_math.h>
 #include <std_msgs/Bool.h>
+#include <rrts/rrts_status.h>
+
+using namespace std;
 
 /// Drives the vehicle from A to B by feeding it a sequence of waypoints.
 class RoutePlanner
@@ -42,6 +45,10 @@ private:
     StationPath path_;
     Station destination_;
     bool goal_collision_;
+    bool root_in_goal_;
+    bool robot_near_root_;
+    bool switched_root_;
+    bool initialized_;
     unsigned waypointNo_;
 
     bool goToDest();
@@ -52,51 +59,55 @@ private:
     void transformMapToOdom(geometry_msgs::PoseStamped *map_pose,
                             geometry_msgs::PointStamped *odom_point);
     double distanceToGoal();
-    void goalCollision(std_msgs::Bool goal_status);
+    void rrts_status(rrts::rrts_status rrts_status);
     int transform_map_to_local_map(const double stateIn[3], double &zlx, double &zly, double &yl);
 };
 
-void RoutePlanner::goalCollision(std_msgs::Bool goal_status)
+void RoutePlanner::rrts_status(rrts::rrts_status rrts_status)
 {
-	goal_collision_ = goal_status.data;
+	if(initialized_)
+	{
+		goal_collision_ = rrts_status.goal_in_collision;
+		root_in_goal_ = rrts_status.root_in_goal;
+		robot_near_root_ = rrts_status.robot_near_root;
+		switched_root_ = rrts_status.switched_root;
+		goToDest();
+	}
 }
 RoutePlanner::RoutePlanner(const int start, const int end)
 {
     g_plan_pub_ = n.advertise<nav_msgs::Path>("pnc_globalplan", 1, true);
     nextpose_pub_ = n.advertise<geometry_msgs::PoseStamped>("pnc_nextpose",1);
-    goal_in_collision_sub_ = n.subscribe("goal_collision_status",1, &RoutePlanner::goalCollision, this);
+    goal_in_collision_sub_ = n.subscribe("rrts_status",1, &RoutePlanner::rrts_status, this);
     ros::Rate loop_rate(3);
     int count=0;
     initDest(start, end);
-    bool initialized = false;
+    initialized_ = false;
     goal_collision_ = false;
-    while(ros::ok())
-    {
-    	if(initialized)
-    		goToDest();
-    	else
-    	{
-    		if(getRobotGlobalPose())
-    		{
-    			initDest(start, end);
-    			//search for the path nearest to the car current pose
-    			double min_dist = std::numeric_limits<double>::max();
-    			for( unsigned i=0; i<path_.size(); i++ )
-    			{
-    				double dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), path_[i].x_, path_[i].y_);
-    				if(dist<min_dist)
-    				{
-    					waypointNo_ = i;
-    					min_dist = dist;
-    				}
-    			}
-    			initialized = true;
-    		}
 
-    	}
+    while(!getRobotGlobalPose())
+    {
     	ros::spinOnce();
     	loop_rate.sleep();
+    	cout<<"Waiting for Robot pose"<<endl;
     }
+
+    //search for the path nearest to the car current pose
+    double min_dist = std::numeric_limits<double>::max();
+    for( unsigned i=0; i<path_.size(); i++ )
+    {
+    	double dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), path_[i].x_, path_[i].y_);
+    	if(dist<min_dist)
+    	{
+    		waypointNo_ = i;
+    		min_dist = dist;
+    	}
+    }
+    goToDest();
+    initialized_ = true;
+    ros::spin();
+
+
 }
 
 
@@ -143,42 +154,26 @@ bool RoutePlanner::goToDest()
 
     map_pose.pose.orientation = tf::createQuaternionMsgFromYaw(map_yaw);
 
-     //get how near it is to the goal point, if reaches the threshold, send the next point
-    double mapx = map_pose.pose.position.x, mapy = map_pose.pose.position.y;
-    double robotx = global_pose_.getOrigin().x(), roboty = global_pose_.getOrigin().y();
-    double d = sqrt(pow(mapx-robotx,2)+pow(mapy-roboty,2));
-    
 
-    /*double state[3] = {map_pose.pose.position.x, map_pose.pose.position.y, 0};
-    double x,y,yaw;
-    transform_map_to_local_map(state, x, y, yaw);
-    //bool inside_local_map_x = (x < 3.0/4.0*40) && (x > -1.0/4.0 * 40);
-    bool inside_local_map_y = (y < 0.5 * 20) && (y > -0.5 * 20);  
-    cout<<"local x "<<x<<" bool: "<<inside_local_map_x<<" local y "<< y<<" bool: "<<inside_local_map_y<<endl;
- 
-    if(!(inside_local_map_x && inside_local_map_y))
-    {
-        waypointNo_--;
-        return false;
-     }*/
+    
     if(goal_collision_)
     {
     	waypointNo_++;
+    	cout<<"Goal in collision reported, increment waypoint"<<endl;
     }
-    if( waypointNo_ < path_.size()-1 && d < 10.0 )
-        waypointNo_++;
-    else if( waypointNo_ == path_.size()-1 )
-        return true;
-   
+    if(robot_near_root_ && switched_root_)
+    {
+    	waypointNo_++;
+    	cout<<"Nominal increment for next path"<<endl;
+    }
+
     //transform from pose to point, planner expect point z as yaw
     //publish the first waypoint in map frame then continue to send the points until the last one
     map_pose.header.frame_id="/map";
     map_pose.header.stamp=ros::Time::now();
     nextpose_pub_.publish(map_pose);
 
-   
-
-    return false;
+   return true;
 }
 
 double RoutePlanner::distanceToGoal()

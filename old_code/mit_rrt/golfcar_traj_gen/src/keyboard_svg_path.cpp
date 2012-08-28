@@ -6,7 +6,7 @@
  */
 #include <ros/ros.h>
 #include <ros/console.h>
-#include <StationPath.h>
+#include <svg_path/StationPath.h>
 
 #include <nav_msgs/Path.h>
 
