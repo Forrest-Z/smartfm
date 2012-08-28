@@ -549,7 +549,7 @@ void Planner::get_plan()
             is_first_committed_trajectory = false;
         }
     }
-    else if(rrts.numVertices > 200)
+    else if( (rrts.numVertices > 200) || (samples_this_loop < 10))
     {
         rrts_status[ginf] = true;
         cout<<"did not find best path: reinitializing"<<endl;
