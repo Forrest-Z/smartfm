@@ -127,7 +127,7 @@ void localization_error::syncCallback(const geometry_msgs::PoseWithCovarianceSta
 {
     geometry_msgs::Point p1 = amcl->pose.pose.position;
     geometry_msgs::Point p2 = ground_truth->pose.pose.position;
-    double error = fmutil::distance(p1, p2);
+    double error = fmutil::distance<geometry_msgs::Point>(p1, p2);
     double amcl_yaw = getYaw(amcl->pose.pose.orientation);
     double ground_yaw = getYaw(ground_truth->pose.pose.orientation);
 

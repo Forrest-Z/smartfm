@@ -3,9 +3,6 @@
 
 #include <cmath>
 
-#include <geometry_msgs/Point.h>
-
-
 namespace fmutil
 {
 
@@ -103,9 +100,10 @@ double sat(double x, double s);
 /// returns the euclidian distance between points (x1,y1) and (x2,y2)
 double distance(double x1, double y1, double x2, double y2);
 
-/// returns the euclidian distance between points
-double distance(const geometry_msgs::Point & p1,
-                const geometry_msgs::Point & p2);
+/// returns the euclidian distance between points (p1.x,p1.y) and (p2.x,p2.y)
+template<class T>
+double distance(const T & p1, const T & p2)
+{return mag(p1.x-p2.x, p1.y-p2.y);}
 
 /// returns the angle of the vector from (x1,y1) to (x2,y2)
 /// i.e. atan2f(y1-y2,x1-x2)
