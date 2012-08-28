@@ -507,11 +507,11 @@ void Planner::get_plan()
     ros::Time start_current_call_back = ros::Time::now();
     cout<<"s: "<< rrts.numVertices<<" best_cost: "<<best_cost;
     flush(cout);
-    while((!found_best_path) || (rrts.numVertices < 10))
+    while((!found_best_path) || (samples_this_loop < 10))
     {
         samples_this_loop += rrts.iteration();
         best_cost = rrts.getBestVertexCost();
-        if(best_cost < 5000)
+        if(best_cost < 500)
         {
             if( fabs(prev_best_cost - best_cost) < 0.05)
                 found_best_path = true;
@@ -529,6 +529,7 @@ void Planner::get_plan()
     cout<<" e: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
     if(found_best_path)
     {
+        rrts_status[ginf] = false;
         if( should_send_new_committed_trajectory || is_first_committed_trajectory )
         {
             is_updating_committed_trajectory = true;
@@ -549,7 +550,7 @@ void Planner::get_plan()
             is_first_committed_trajectory = false;
         }
     }
-    else if(rrts.numVertices > 200)
+    else if( (rrts.numVertices > 200) || (samples_this_loop < 10))
     {
         rrts_status[ginf] = true;
         cout<<"did not find best path: reinitializing"<<endl;
