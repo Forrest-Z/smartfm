@@ -85,7 +85,7 @@ class PhidgetEncoder:
         self.diag_updater = DIAG.Updater()
         self.diag_updater.setHardwareID('none')
         f = {'min': 1.0/self.minPubPeriod}
-        fs_params = DIAG.FrequencyStatusParam(f, 0.2, 1)
+        fs_params = DIAG.FrequencyStatusParam(f, 0.25, 1)
         self.pub_diag = DIAG.HeaderlessTopicDiagnostic('encoder_counts',
                             self.diag_updater, fs_params)
 

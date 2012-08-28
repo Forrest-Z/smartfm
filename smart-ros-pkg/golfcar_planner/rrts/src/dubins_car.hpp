@@ -97,7 +97,7 @@ System::System ()
     double factor_reduce_size = 1.0;
     car_width = 1.2/factor_reduce_size;
     car_height = 2.28/factor_reduce_size;
-    safe_distance = 0.3/factor_reduce_size;    // car footprint is blown up by this distance for collision checking
+    safe_distance = 0.2/factor_reduce_size;    // car footprint is blown up by this distance for collision checking
     distance_rear_axis_rear = 0.45/factor_reduce_size; // dist between center of rear axis and rear end
 }
 
@@ -118,7 +118,7 @@ int System::getStateKey (State &stateIn, double *stateKey) {
 #define SQ(x)   ((x)*(x))
 float System::getGoalCost(const double x[3])
 {
-    return sqrt(0.5*SQ(x[0]-regionGoal.center[0]) + 0.5*SQ(x[1]-regionGoal.center[1]) + SQ(x[2] - regionGoal.center[2]));
+    return (sqrt(SQ(x[0]-regionGoal.center[0]) + SQ(x[1]-regionGoal.center[1])) + 5.0*fabs(x[2] - regionGoal.center[2]));
 }
 
 bool System::isReachingTarget (State &stateIn) {
@@ -145,9 +145,10 @@ int System::transform_map_to_local_map(const double stateIn[3], double &zlx, dou
     // map frame z, yaw
     double zm[2] = {stateIn[0], stateIn[1]};
     double ym = stateIn[2];
-    //cout<<"zm: "<< zm[0]<<" "<<zm[1]<<" "<<ym<<endl; 
+    //cout<<"zm: "<< zm[0]<<" "<<zm[1]<<" "<<ym<<endl;
 
     // base_link frame
+    //cout<<"map_origin "<<map_origin[0]<<" "<<map_origin[1]<<" "<<map_origin[2]<<endl;
     double cos_map_yaw = cos(map_origin[2]);
     double sin_map_yaw = sin(map_origin[2]);
 
@@ -195,13 +196,17 @@ bool System::IsInCollision (const double stateIn[3], bool debug_flag)
     double cos_yl = cos(yl);
     double sin_yl = sin(yl);
 
+
 #if 1
     bool is_obstructed = false;
+    double cxmax = car_height - distance_rear_axis_rear + safe_distance + 0.001;
+    double cymax = car_width/2.0 + safe_distance + 0.001;
     double cy = -car_width/2.0 - safe_distance;
-    double cx = -distance_rear_axis_rear - safe_distance;
-    while(cy < car_width/2.0 + safe_distance)
+
+    while(cy < cymax)
     {
-        while(cx < (car_height - distance_rear_axis_rear + safe_distance))
+        double cx = -distance_rear_axis_rear - safe_distance;
+        while(cx < cxmax)
         {
             // x = stateInLocal + rel position (cx,cy) transformed into the (X_car,Y_car) frame
             double x = zl[0] + cx*cos_yl + cy*sin_yl;
@@ -226,8 +231,9 @@ bool System::IsInCollision (const double stateIn[3], bool debug_flag)
             {
                 is_obstructed = false;
                 //cout<<"is_obstructed 184: "<<is_obstructed<<endl;
-                return is_obstructed;            
+                //return is_obstructed;
             }
+
             cx = cx + map.info.resolution;
         }
         cy = cy + map.info.resolution;

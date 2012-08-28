@@ -20,7 +20,6 @@ namespace golfcar_pcl{
 		
 		private_nh_.param("search_radius", search_radius_, 0.10);
 		private_nh_.param("curvature_thresh", curvature_thresh_, 0.2);
-		
 		road_surface_pub_ = nh_.advertise<PointCloud>("road_surface", 10);
 		
 		pub_surface_and_other_ = true;
@@ -65,8 +64,7 @@ namespace golfcar_pcl{
 	{
 		pcl::PCDWriter writer;
 		
-		
-		
+		//http://pointclouds.org/documentation/tutorials/kdtree_search.php
 		std::cout << "extract surface"<< endl;
 		pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
 		
@@ -90,13 +88,11 @@ namespace golfcar_pcl{
                 << " " << pcl_cloud.points[ pointIdxNKNSearch[0] ].y 
                 << " " << pcl_cloud.points[ pointIdxNKNSearch[0] ].z 
                 << " (squared distance: " << pointNKNSquaredDistance[0] << ")" << std::endl;
-                
-        //float max_radius = 0.1;
-        
-        pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
-        inliers->indices.push_back(pointIdxNKNSearch[0]);
-        for(unsigned int pt=0; pt<inliers->indices.size(); pt++)
-        {
+
+      pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+      inliers->indices.push_back(pointIdxNKNSearch[0]);
+      for(unsigned int pt=0; pt<inliers->indices.size(); pt++)
+      {
 			unsigned int serial = inliers->indices[pt];
 			//std::cout <<"serial  "<< serial<< endl;	
 			int neighbor_num = 4;
@@ -158,10 +154,6 @@ namespace golfcar_pcl{
 			std::cout << "save surface plane"<<endl;
 			plane_surface << "/home/baoxing/workspace/PCD/plane_surface.pcd";
 			writer.write<pcl::PointXYZ> (plane_surface.str (), *surface_plane, false); 
-			
-			
-			
-			
 			
 			pcl::PointCloud<pcl::PointXYZ>::Ptr other_points (new pcl::PointCloud<pcl::PointXYZ>);
 			extract.setNegative (true);

@@ -1,7 +1,12 @@
 <launch>
 
+    <!-- This is causing problems (CPU hogs), don't know why...
+
     <node name="hd_monitor_lowlevel" pkg="diagnostic_common_diagnostics" type="hd_monitor.py"
             args="$(optenv HOME /home)" />
+
+    -->
+
 
     <node name="sensors_monitor_lowlevel" pkg="diagnostic_common_diagnostics" type="sensors_monitor.py" output="screen">
         <param name="ignore_fans" value="true"/>
