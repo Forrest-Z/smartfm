@@ -103,6 +103,8 @@ RoutePlanner::RoutePlanner(const int start, const int end)
     		min_dist = dist;
     	}
     }
+    //just to increment again to make sure the waypoint is in front
+    waypointNo_++;
     goToDest();
     initialized_ = true;
     ros::spin();
@@ -167,6 +169,7 @@ bool RoutePlanner::goToDest()
     	cout<<"Nominal increment for next path"<<endl;
     }
 
+    if(waypointNo_>=path_.size()) return true;
     //transform from pose to point, planner expect point z as yaw
     //publish the first waypoint in map frame then continue to send the points until the last one
     map_pose.header.frame_id="/map";
