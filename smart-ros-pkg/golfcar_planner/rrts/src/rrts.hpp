@@ -204,7 +204,8 @@ RRTstar::Planner< typeparams >
 
     if (system->isReachingTarget(vertexIn.getState()))
     {
-        double costCurr = vertexIn.getCost();
+        state_t &s = vertexIn.getState();
+        double costCurr = vertexIn.getCost() + system->getGoalCost(s.x);
         if ( (lowerBoundVertex == NULL) || ( (lowerBoundVertex != NULL) && (costCurr < lowerBoundCost)) ) {
 
             lowerBoundVertex = &vertexIn;
@@ -214,7 +215,6 @@ RRTstar::Planner< typeparams >
 
     return 1;
 }
-
 
 template< class typeparams >
 typename RRTstar::Planner<typeparams>::vertex_t*

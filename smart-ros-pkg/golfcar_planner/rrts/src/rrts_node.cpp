@@ -210,6 +210,7 @@ void Planner::send_rrts_status(const ros::TimerEvent &e)
     smsg.root_in_goal = rrts_status[ring];
     rrts_status_pub.publish(smsg);
 }
+
 // p is (x,y,yaw) in map coords
 void Planner::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
 {
@@ -379,7 +380,7 @@ void Planner::change_goal_region()
     system.regionGoal.center[2] = (double)goal.z;
     system.regionGoal.size[0] = 1.0;
     system.regionGoal.size[1] = 1.0;
-    system.regionGoal.size[2] = 20.0/180.0*M_PI;
+    system.regionGoal.size[2] = 30.0/180.0*M_PI;
     //cout<<"region_goal: "<< system.regionGoal.center[0]<<" "<<system.regionGoal.center[1]<<" "<<system.regionGoal.center[2]<<endl;
 }
 
@@ -461,21 +462,24 @@ void Planner::get_plan()
     bool found_best_path = false;
     double best_cost=rrts.getBestVertexCost();
     double prev_best_cost=best_cost;
+    int samples_this_loop = 0;
 
     ros::Time start_current_call_back = ros::Time::now();
     cout<<"s: "<< rrts.numVertices<<" best_cost: "<<best_cost;
     flush(cout);
     while((!found_best_path) || (rrts.numVertices < 10))
     {
-        rrts.iteration();
+        samples_this_loop += rrts.iteration();
         best_cost = rrts.getBestVertexCost();
-        if(best_cost < 100)
+        if(best_cost < 5000)
         {
             if( fabs(prev_best_cost - best_cost) < 0.05)
                 found_best_path = true;
         }
-        prev_best_cost = best_cost;
         //cout<<"n: "<< rrts.numVertices<<endl;
+        
+        if(samples_this_loop %5 == 0)
+            prev_best_cost = best_cost;
 
         ros::Duration dt = ros::Time::now() - start_current_call_back;
         // give some time to the following code as well
@@ -538,13 +542,7 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
 {
     cout<<endl;
     
-    // 4. else add more vertices / until you get a good trajectory, copy it to committed trajectory, return
-    if( (is_first_goal == false) && (is_first_map == false) )
-    {
-        get_plan();
-        return;
-    }
-    else if(!committed_trajectory.empty())
+    if(!committed_trajectory.empty())
     {
         // 1. check if trajectory is safe
         if(!rrts.isSafeTrajectory(committed_trajectory))
@@ -579,10 +577,17 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
                 clear_committed_trajectory();
                 setup_rrts();
                 get_plan();
+                return;
             }
         }
     }
-
+    // 4. else add more vertices / until you get a good trajectory, copy it to committed trajectory, return
+    if( (is_first_goal == false) && (is_first_map == false) )
+    {
+        get_plan();
+        return;
+    }
+    
     if( dist(car_position.x, car_position.y, 0, state_last_clear[0], state_last_clear[1], 0) > 2.0)
         clear_committed_trajectory_length();
 }
