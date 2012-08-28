@@ -529,6 +529,7 @@ void Planner::get_plan()
     cout<<" e: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
     if(found_best_path)
     {
+        rrts_status[ginf] = false;
         if( should_send_new_committed_trajectory || is_first_committed_trajectory )
         {
             is_updating_committed_trajectory = true;
