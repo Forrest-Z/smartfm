@@ -145,38 +145,38 @@ Planner::~Planner()
 void Planner::obs_check()
 {
 #if 1
-	cout<<"inside obs_check"<<endl;
-	if((!is_first_map) && (!is_first_goal))
-	    {
-		get_robot_pose();
-		double tmp[3];
-		tmp[2] = car_position.z;
-		cout<<"Obs check: "<<car_position.x<<" "<<car_position.y<<" "<<car_position.z<<endl;
-		system.map_origin[0] = car_position.x; system.map_origin[1] = car_position.y; system.map_origin[2] = car_position.z;
-		cout<<"map origin: "<<system.map_origin[0]<<" "<<system.map_origin[1]<<" "<<system.map_origin[2]<<endl;
-		sensor_msgs::PointCloud obs_check;
-		obs_check.header.frame_id = "/map";
-		obs_check.header.stamp = ros::Time::now();
+    cout<<"inside obs_check"<<endl;
+    if((!is_first_map) && (!is_first_goal))
+    {
+        get_robot_pose();
+        double tmp[3];
+        tmp[2] = car_position.z;
+        cout<<"Obs check: "<<car_position.x<<" "<<car_position.y<<" "<<car_position.z<<endl;
+        //system.map_origin[0] = car_position.x; system.map_origin[1] = car_position.y; system.map_origin[2] = car_position.z;
+        //cout<<"map origin: "<<system.map_origin[0]<<" "<<system.map_origin[1]<<" "<<system.map_origin[2]<<endl;
+        sensor_msgs::PointCloud obs_check;
+        obs_check.header.frame_id = "/map";
+        obs_check.header.stamp = ros::Time::now();
 
-		for(double x = car_position.x-10.0; x < car_position.x + 10.0; x+=0.2)
-		{
-			for(double y = car_position.y-10.0; y < car_position.y + 10.0; y+=0.2)
-			{
-				tmp[0] = x;
-				tmp[1] = y;
-				if(rrts.system->IsInCollision(tmp))
-				{
-					geometry_msgs::Point32 p;
-					p.x = tmp[0];
-					p.y = tmp[1];
-					p.z = 1.0;
-					obs_check.points.push_back(p);
-				}
-			}
-		}
-		obs_check_pub.publish(obs_check);
-	    }
-	cout<<"End of obs_check"<<endl;
+        for(double x = car_position.x-10.0; x < car_position.x + 10.0; x+=0.2)
+        {
+            for(double y = car_position.y-10.0; y < car_position.y + 10.0; y+=0.2)
+            {
+                tmp[0] = x;
+                tmp[1] = y;
+                if(rrts.system->IsInCollision(tmp))
+                {
+                    geometry_msgs::Point32 p;
+                    p.x = tmp[0];
+                    p.y = tmp[1];
+                    p.z = 1.0;
+                    obs_check.points.push_back(p);
+                }
+            }
+        }
+        obs_check_pub.publish(obs_check);
+    }
+    cout<<"End of obs_check"<<endl;
 #endif
 }
 int Planner::clear_committed_trajectory()
@@ -418,8 +418,8 @@ void Planner::change_goal_region()
     system.regionGoal.center[0] = (double)goal.x;
     system.regionGoal.center[1] = (double)goal.y;
     system.regionGoal.center[2] = (double)goal.z;
-    system.regionGoal.size[0] = 1.0;
-    system.regionGoal.size[1] = 1.0;
+    system.regionGoal.size[0] = 2.0;
+    system.regionGoal.size[1] = 2.0;
     system.regionGoal.size[2] = 30.0/180.0*M_PI;
     //cout<<"region_goal: "<< system.regionGoal.center[0]<<" "<<system.regionGoal.center[1]<<" "<<system.regionGoal.center[2]<<endl;
 }

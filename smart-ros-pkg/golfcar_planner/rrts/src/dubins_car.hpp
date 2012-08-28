@@ -97,7 +97,7 @@ System::System ()
     double factor_reduce_size = 1.0;
     car_width = 1.2/factor_reduce_size;
     car_height = 2.28/factor_reduce_size;
-    safe_distance = 0.3/factor_reduce_size;    // car footprint is blown up by this distance for collision checking
+    safe_distance = 0.2/factor_reduce_size;    // car footprint is blown up by this distance for collision checking
     distance_rear_axis_rear = 0.45/factor_reduce_size; // dist between center of rear axis and rear end
 }
 
