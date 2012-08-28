@@ -286,7 +286,10 @@ int System::sampleState (State &randomStateOut) {
     // transform the sample from local_map frame to /map frame
     double cyaw = cos(map_origin[2]);
     double syaw = sin(map_origin[2]);
-    double state_copy[3] = {randomStateOut.x[0], randomStateOut.x[1], randomStateOut.x[2]};
+    double state_copy[3];
+    for(int i=0; i<3; i++)
+        state_copy[i] = randomStateOut[i] - regionOperating.center[i];
+    
     randomStateOut.x[0] = map_origin[0] + state_copy[0]*cyaw + state_copy[1]*syaw;
     randomStateOut.x[1] = map_origin[1] + -state_copy[0]*syaw + state_copy[1]*cyaw;
     randomStateOut.x[2] = map_origin[2] + state_copy[2];
@@ -301,7 +304,6 @@ int System::sampleState (State &randomStateOut) {
 
     return 1;
 }
-
 
 int System::sampleGoalState (State &randomStateOut) {
 
