@@ -221,12 +221,12 @@ void laser_evidence::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
 
 void laser_evidence::mainLoop(geometry_msgs::PointStamped& laser_pose, sensor_msgs::PointCloud& laser_cloud)
 {
-	double laser_pose_dist = fmutil::distance(laser_pose_pre_.point, laser_pose.point);
+	double laser_pose_dist = fmutil::distance<geometry_msgs::Point>(laser_pose_pre_.point, laser_pose.point);
 	static int laserNo_received = 0, laserNo_filtered = 0;
 	if(laser_pose_dist<0.03) laserNo_filtered++;
 	laserNo_received++;
 	cout<<laser_pose_dist<<" "<<(laser_pose_dist<0.03)<<" "<<laserNo_filtered<<"/"<<laserNo_received<<": "<<(double)laserNo_filtered/laserNo_received<<endl;
-    if(fmutil::distance(laser_pose_pre_.point, laser_pose.point)<0.03) return;
+    if(fmutil::distance<geometry_msgs::Point>(laser_pose_pre_.point, laser_pose.point)<0.03) return;
     else laser_pose_pre_ = laser_pose;
     //only start filtering when there is enough samples
     if(sample_data_.size()>sample_size_)

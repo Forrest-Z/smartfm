@@ -84,15 +84,9 @@ double distance(double x1, double y1, double x2, double y2)
   return mag(x1-x2, y1-y2);
 }
 
-double distance(const geometry_msgs::Point & p1,
-                const geometry_msgs::Point & p2)
-{
-    return mag(p1.x-p2.x, p1.y-p2.y);
-}
-
 double angle(double x1, double y1, double x2, double y2)
 {
-  return atan2f(y1-y2, x1-x2);
+  return atan2(y1-y2, x1-x2);
 }
 
 double min(double a, double b, double c)
