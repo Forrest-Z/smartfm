@@ -139,9 +139,10 @@ int System::transform_map_to_local_map(const double stateIn[3], double &zlx, dou
     // map frame z, yaw
     double zm[2] = {stateIn[0], stateIn[1]};
     double ym = stateIn[2];
-    //cout<<"zm: "<< zm[0]<<" "<<zm[1]<<" "<<ym<<endl; 
+    //cout<<"zm: "<< zm[0]<<" "<<zm[1]<<" "<<ym<<endl;
 
     // base_link frame
+    //cout<<"map_origin "<<map_origin[0]<<" "<<map_origin[1]<<" "<<map_origin[2]<<endl;
     double cos_map_yaw = cos(map_origin[2]);
     double sin_map_yaw = sin(map_origin[2]);
 
@@ -189,12 +190,14 @@ bool System::IsInCollision (const double stateIn[3], bool debug_flag)
     double cos_yl = cos(yl);
     double sin_yl = sin(yl);
 
+
 #if 1
     bool is_obstructed = false;
     double cy = -car_width/2.0 - safe_distance;
-    double cx = -distance_rear_axis_rear - safe_distance;
+
     while(cy < car_width/2.0 + safe_distance)
     {
+        double cx = -distance_rear_axis_rear - safe_distance;
         while(cx < (car_height - distance_rear_axis_rear + safe_distance))
         {
             // x = stateInLocal + rel position (cx,cy) transformed into the (X_car,Y_car) frame
@@ -220,8 +223,9 @@ bool System::IsInCollision (const double stateIn[3], bool debug_flag)
             {
                 is_obstructed = false;
                 //cout<<"is_obstructed 184: "<<is_obstructed<<endl;
-                return is_obstructed;            
+                //return is_obstructed;
             }
+
             cx = cx + map.info.resolution;
         }
         cy = cy + map.info.resolution;
