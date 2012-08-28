@@ -507,7 +507,7 @@ void Planner::get_plan()
     ros::Time start_current_call_back = ros::Time::now();
     cout<<"s: "<< rrts.numVertices<<" best_cost: "<<best_cost;
     flush(cout);
-    while((!found_best_path) || (rrts.numVertices < 10))
+    while((!found_best_path) || (samples_this_loop < 10))
     {
         samples_this_loop += rrts.iteration();
         best_cost = rrts.getBestVertexCost();
