@@ -22,7 +22,7 @@ odomBroadcaster = TransformBroadcaster()
 
 diag_updater = DIAG.Updater()
 diag_updater.setHardwareID('none')
-diag_param_fs = DIAG.FrequencyStatusParam({'min': 5}, 0.1, 20)
+diag_param_fs = DIAG.FrequencyStatusParam({'min': 5}, 0.1, 5)
 diag_task_fs = DIAG.FrequencyStatus(diag_param_fs)
 diag_updater.add(diag_task_fs)
 

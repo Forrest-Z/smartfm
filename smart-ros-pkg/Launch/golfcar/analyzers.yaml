@@ -10,7 +10,7 @@ analyzers:
             lowlevel:
                 type: GenericAnalyzer
                 path: Lowlevel
-                find_and_remove_prefix: ['golfcart-lowlevel', 'sensors_monitor_lowlevel: golfcart-lowlevel']
+                find_and_remove_prefix: ['sensors_monitor_lowlevel: golfcart-lowlevel']
                 startswith: NTP
             tf:
                 type: GenericAnalyzer

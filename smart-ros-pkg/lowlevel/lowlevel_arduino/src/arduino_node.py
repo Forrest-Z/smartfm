@@ -46,7 +46,7 @@ class ArduinoNode:
 
         # a frequency diagnostic: make sure we are sending the arduino_cmd message at the
         # appropriate frequency
-        fs_param = DIAG.FrequencyStatusParam({'min': rate, 'max': rate}, 0.1, 20)
+        fs_param = DIAG.FrequencyStatusParam({'min': rate, 'max': rate}, 0.1, 5)
         self.fs_diag = DIAG.FrequencyStatus(fs_param)
         self.diag_updater.add(self.fs_diag)
 
