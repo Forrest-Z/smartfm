@@ -62,7 +62,8 @@ private:
                         double proj[2]);
     int get_segment(double cur_x, double cur_y);
     int find_lookahead_segment(int segment, double cur_x, double cur_y, double &L, double &cmd_vel);
-    double get_desired_speed(int segment, double cur_x, double cur_y);
+    double get_dist_to_go(int segment, double cur_x, double cur_y);
+    double get_desired_speed(double dist_to_go);
     double get_steering(int segment, double cur_x, double cur_y, double cur_yaw, double &cmd_vel);
 
     bool intersection_circle_line(double tar_x, double tar_y,
@@ -159,7 +160,7 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
     {
         ros::Duration time_diff2 = time_now - last_timer_complaint_;
         double dt2 = time_diff2.toSec();
-	if(dt2 > max_timer_complaint_)
+        if(dt2 > max_timer_complaint_)
         {
             ROS_WARN("stopping due to timer, %lf s passed after the last plan!", dt);
             last_timer_complaint_ = time_now;
@@ -175,18 +176,9 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
         double cur_yaw = tf::getYaw(pose.getRotation());
         int segment = get_segment(cur_x, cur_y);
 
-        cmd_vel = get_desired_speed(segment, cur_x, cur_y);
+        goal_dist = get_dist_to_go(segment, cur_x, cur_y);
+        cmd_vel = get_desired_speed(goal_dist);
         cmd_steer = get_steering(segment, cur_x, cur_y, cur_yaw, cmd_vel);
-
-        geometry_msgs::Point target_pt = trajectory_.poses[segment+1].pose.position;
-        goal_dist = fmutil::distance(cur_x, cur_y, target_pt.x, target_pt.y);
-        if(last_segment_+1<(int)trajectory_.poses.size())
-        {
-        	for(int i=last_segment_+1; i<(int)trajectory_.poses.size()-1; i++)
-        	{
-        		goal_dist+=fmutil::distance(trajectory_.poses[i].pose.position, trajectory_.poses[i+1].pose.position);
-        	}
-        }
     }
     else
     {
@@ -497,16 +489,16 @@ int PurePursuit::find_lookahead_segment(int segment, double cur_x, double cur_y,
 // this function assumes that trajectory points are reasonably dense
 // if the trajectory points are very sparse like very few points in the arc,
 // this function needs to be changed
-double PurePursuit::get_desired_speed(int segment, double cur_x, double cur_y)
+double PurePursuit::get_dist_to_go(int segment, double cur_x, double cur_y)
 {
     if(segment < 0)
-        return 0;
+        return 0.0;
     if((int) trajectory_.poses.size() < 2)
-        return 0;
+        return 0.0;
     if((int) trajectory_.poses.size() < segment+2)
-        return 0;
+        return 0.0;
 
-    double dist_to_go = 0;
+    double dist_to_go = 0.0;
     int on_segment = segment;
 
     double tar_x = trajectory_.poses[on_segment+1].pose.position.x;
@@ -525,11 +517,16 @@ double PurePursuit::get_desired_speed(int segment, double cur_x, double cur_y)
                                    trajectory_.poses[on_segment+1].pose.position.y,
                                    trajectory_.poses[on_segment].pose.position.x,
                                    trajectory_.poses[on_segment].pose.position.y);
-        if(dist_to_go > stopping_distance_)
-            return normal_speed_;
-
         on_segment++;
     }
+
+    return dist_to_go;
+}
+
+double PurePursuit::get_desired_speed(double dist_to_go)
+{
+    if(dist_to_go <= 0.0)
+        return 0.0;
 
     if(dist_to_go > stopping_distance_)
         return normal_speed_;
@@ -553,14 +550,14 @@ double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
             ROS_WARN("cannot determine, segment = -1");
             last_segment_complaint_ = time_now;
         }
-        cmd_vel = 0;
-        return 0;
+        cmd_vel = 0.0;
+        return 0.0;
     }
     if((int) trajectory_.poses.size() < segment+1)
     {
         ROS_WARN("trajectory(%d), segment(%d), not possible!", (int) trajectory_.poses.size(), segment);
-        cmd_vel = 0;
-        return 0;
+        cmd_vel = 0.0;
+        return 0.0;
     }
 
     double L = look_ahead_;
@@ -568,8 +565,8 @@ double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
     if(lookahead_segment < 0)
     {
         ROS_WARN("cannot determine, lookahead_segment = -1");
-        cmd_vel = 0;
-        return 0;
+        cmd_vel = 0.0;
+        return 0.0;
     }
 
     double tar_x = trajectory_.poses[lookahead_segment+1].pose.position.x;

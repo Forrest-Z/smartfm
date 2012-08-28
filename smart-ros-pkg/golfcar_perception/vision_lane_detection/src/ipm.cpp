@@ -25,6 +25,8 @@ namespace golfcar_vision{
       markers_info_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_info",2);
       markers_info_2nd_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_2nd_info",2);
       
+      planeCoef_sub_ = nh_.subscribe("plane_coef", 10, &ipm::planeCoefCallback, this);
+      
       image_processor_ = new image_proc(svm_model_path, svm_scale_path);
       
       //Four base points on the ground in the "base_link" coordinate; "base_link" is at the back wheel.
@@ -36,7 +38,7 @@ namespace golfcar_vision{
       gndQuad_[2].y = RECT_P2_Y;
       gndQuad_[3].x = RECT_P3_X+DIS_CAM_BASE_X;
       gndQuad_[3].y = RECT_P3_Y;
-  
+		
       pub_init_ = false;
       
       if(visualization_flag_)
@@ -58,7 +60,7 @@ namespace golfcar_vision{
         process_control(meas_time);
         
         //disable it temporarily;
-        //publish_flag_ = true;
+        publish_flag_ = true;
         
         if(!publish_flag_)
         {
@@ -112,29 +114,31 @@ namespace golfcar_vision{
 					 
             tf::Transform *transform_pointer = &transform;
             src_dest_tf_ = *transform_pointer;
-        
-				//1. from "gndQuad_[4]" to get "srcQuad_[4]";
-				GndPt_to_Src(gndQuad_, srcQuad_);
-				//2. from "gndQuad_[4]" to get "dstQuad_[4]";
-				//this depends on how you represent your image;
-				GndPt_to_Dst(gndQuad_, dstQuad_);
-				
-				ROS_INFO("srcQuad points: (%5f, %5f); (%5f, %5f); (%5f, %5f); (%5f, %5f)", 
-						srcQuad_[0].x, srcQuad_[0].y,
-						srcQuad_[1].x, srcQuad_[1].y,
-						srcQuad_[2].x, srcQuad_[2].y,
-						srcQuad_[3].x, srcQuad_[3].y
-				);
-				ROS_INFO("dstQuad points: (%5f, %5f); (%5f, %5f); (%5f, %5f); (%5f, %5f)",
-						dstQuad_[0].x, dstQuad_[0].y,
-						dstQuad_[1].x, dstQuad_[1].y,
-						dstQuad_[2].x, dstQuad_[2].y,
-						dstQuad_[3].x, dstQuad_[3].y
-				);
-
-				cvGetPerspectiveTransform(srcQuad_,dstQuad_,  warp_matrix_);
-				cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix_);
         }
+        
+         //To take into account the uneven of the road surface, the matrix is to be calculated every time;
+         //1. from "gndQuad_[4]" to get "srcQuad_[4]";
+			GndPt_to_Src(gndQuad_, srcQuad_);
+			//2. from "gndQuad_[4]" to get "dstQuad_[4]";
+			//this depends on how you represent your image;
+			GndPt_to_Dst(gndQuad_, dstQuad_);
+			
+			ROS_DEBUG("srcQuad points: (%5f, %5f); (%5f, %5f); (%5f, %5f); (%5f, %5f)", 
+					srcQuad_[0].x, srcQuad_[0].y,
+					srcQuad_[1].x, srcQuad_[1].y,
+					srcQuad_[2].x, srcQuad_[2].y,
+					srcQuad_[3].x, srcQuad_[3].y
+			);
+			ROS_DEBUG("dstQuad points: (%5f, %5f); (%5f, %5f); (%5f, %5f); (%5f, %5f)",
+					dstQuad_[0].x, dstQuad_[0].y,
+					dstQuad_[1].x, dstQuad_[1].y,
+					dstQuad_[2].x, dstQuad_[2].y,
+					dstQuad_[3].x, dstQuad_[3].y
+			);
+
+			cvGetPerspectiveTransform(srcQuad_,dstQuad_,  warp_matrix_);
+			cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix_);
+			
         
 			////////////////////////////////////////////////
 			//main functional part;
@@ -239,6 +243,23 @@ namespace golfcar_vision{
         {
             temppose.position.x= gnd_pointer[i].x;
             temppose.position.y= gnd_pointer[i].y;
+            temppose.position.z= 0.0;
+            
+            //this part takes into account that the road is not flat;
+            //use the plane coefficient from "rolling_window";
+            if(plane_ROI_.coefs.size() == 4)
+            {
+					ROS_INFO("compensate road unflatness;");
+					if(plane_ROI_.coefs[2]!=0.0)
+					{
+						double nominator_tmp = (plane_ROI_.coefs[0]*temppose.position.x + plane_ROI_.coefs[1]*temppose.position.y 
+														+ plane_ROI_.coefs[3]);
+												
+						temppose.position.z = - nominator_tmp/ plane_ROI_.coefs[2];
+					}
+					ROS_INFO("temppose.position.z %3f", temppose.position.z);
+				}
+            
 			   tf::poseMsgToTF(temppose, tempTfPose);
             PoseInCamera = src_dest_tf_ * tempTfPose;
             tf::Point pt = PoseInCamera.getOrigin();
@@ -307,6 +328,11 @@ namespace golfcar_vision{
 			odom_meas_old_ = odom_meas_;
 		}
    }
+   
+   void ipm::planeCoefCallback(const rolling_window::plane_coef::ConstPtr& coef_in)
+   {
+		plane_ROI_ = *coef_in;
+	}
   
   ipm::~ipm()
   {

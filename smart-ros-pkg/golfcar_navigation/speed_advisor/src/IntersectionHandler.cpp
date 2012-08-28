@@ -32,6 +32,7 @@ public:
         catch( std::runtime_error & e )
         {
             ROS_WARN("Problem with the LaserAreaPolicy: %s", e.what());
+            area = 0;
         }
     }
 
@@ -92,9 +93,16 @@ void IntersectionHandler::update(const pnc_msgs::move_status & status)
 
         // Special case: if the next point is the t-junction (identified
         // by position), then launch the infrastructure sensor monitoring system.
-        if( fmutil::distance(int_point_.x, int_point_.y, 32, 120) < 5 )
+        geometry_msgs::Point tjunc, ped;
+        //tjunc.x = 32; tjunc.y = 120; //curb map
+        tjunc.x = 196; tjunc.y = 199; //dense map
+        ped.x = 63; ped.y = 300; //curb map
+        ped.x = 52; ped.y = 229; //dense map
+
+
+        if( fmutil::distance(int_point_, tjunc) < 15 )
             policy_ = new TJunctionPolicy(int_point_);
-        else if( fmutil::distance(int_point_.x, int_point_.y, 63, 300) < 20 )
+        else if( fmutil::distance(int_point_, ped) < 20 )
             policy_ = new EAPedCrossingPolicy(int_point_);
         else
             policy_ = new InteractiveMarkerPolicy(int_point_);

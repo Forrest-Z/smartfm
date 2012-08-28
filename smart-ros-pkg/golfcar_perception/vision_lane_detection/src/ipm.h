@@ -18,6 +18,7 @@
 
 #include "lane_marker_common.h"
 #include "image_proc.h"
+#include "rolling_window/plane_coef.h"
 
 using namespace std;
 using namespace ros;
@@ -40,8 +41,6 @@ namespace golfcar_vision{
         sensor_msgs::CvBridge bridge_;
         tf::TransformListener tf_;
 
-        
-        
         image_geometry::PinholeCameraModel cam_model_;
         
         std::string dest_frame_id_;
@@ -83,6 +82,10 @@ namespace golfcar_vision{
     	double  publish_angle_thresh_;
 
 	bool visualization_flag_;
+
+	ros::Subscriber                             planeCoef_sub_;
+	void planeCoefCallback(const rolling_window::plane_coef::ConstPtr& coef_in);
+	rolling_window::plane_coef 		    plane_ROI_;
     };
 };
 
