@@ -579,11 +579,14 @@ bool Planner::is_near_end_committed_trajectory()
         delyaw -= 2.0*M_PI;
     while(delyaw < -M_PI)
         delyaw += 2.0*M_PI;
-
+    
+    bool res = false;
     if(dist(car_position.x, car_position.y, 0, last_committed_state[0], last_committed_state[1], 0) < 4.0)
-        return true;
+        res = true;
     else
-        return false;
+        res = false;
+    rrts_status[rnr] = res;
+    return res;
 }
 
 void Planner::on_planner_timer(const ros::TimerEvent &e)
@@ -602,7 +605,6 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
         // 2. check if it is at the end of the trajectory
         else if(is_near_end_committed_trajectory() && (!root_in_goal()))
         {
-            rrts_status[rnr] = true;
             cout<<"appending to committed trajectory"<<endl;
             //clear_committed_trajectory();
             should_send_new_committed_trajectory = true;
