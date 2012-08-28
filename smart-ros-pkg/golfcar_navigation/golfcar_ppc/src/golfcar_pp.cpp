@@ -9,6 +9,9 @@
 #include <string>
 #include <cmath>
 
+#include <pnc_msgs/move_status.h>
+#include <fmutil/fm_math.h>
+
 using namespace std;
 
 
@@ -20,8 +23,10 @@ public:
 private:
     ros::Subscriber traj_sub_;
     ros::Publisher cmd_pub_;
+    ros::Publisher move_status_pub_;
     ros::Timer timer_;
 
+    string robot_frame_id_, coord_frame_id_;
     double max_timer_;
     double max_timer_complaint_;
     double normal_speed_;
@@ -76,16 +81,19 @@ PurePursuit::PurePursuit()
     ros::NodeHandle n;
     traj_sub_ = n.subscribe("pnc_trajectory", 100, &PurePursuit::trajCallBack, this);
     cmd_pub_ = n.advertise<geometry_msgs::Twist>("cmd_vel",1);
+    move_status_pub_ = n.advertise<pnc_msgs::move_status>("move_status", 1);
     timer_ = n.createTimer(ros::Duration(0.05), &PurePursuit::controlLoop, this);
 
     ros::NodeHandle private_nh("~");
+    if(!private_nh.getParam("robot_frame_id", robot_frame_id_)) robot_frame_id_ = "/base_link";
+    if(!private_nh.getParam("coord_frame_id", coord_frame_id_)) coord_frame_id_ = "/odom";
     if(!private_nh.getParam("max_timer",max_timer_)) max_timer_ = 2.0;
     if(!private_nh.getParam("max_timer_complaint",max_timer_complaint_)) max_timer_complaint_ = 5.0;
     if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 2.0;
     if(!private_nh.getParam("slow_speed",slow_speed_)) slow_speed_ = 1.5;
-    if(!private_nh.getParam("stopping_distance",stopping_distance_)) stopping_distance_ = 3.5;
+    if(!private_nh.getParam("stopping_distance",stopping_distance_)) stopping_distance_ = 5.0;
     if(!private_nh.getParam("neglect_distance",neglect_distance_)) neglect_distance_ = 0.001;
-    if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3;
+    if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3.0;
     if(!private_nh.getParam("max_steering",max_steering_)) max_steering_ = 0.65;
     if(!private_nh.getParam("car_length",car_length_)) car_length_ = 1.632;
 
@@ -93,6 +101,8 @@ PurePursuit::PurePursuit()
     last_timer_complaint_ = ros::Time::now();
     last_segment_complaint_ = ros::Time::now();
 
+    std::cout<<"robot_frame_id: "<<robot_frame_id_<<"\n";
+    std::cout<<"coord_frame_id: "<<coord_frame_id_<<"\n";
     std::cout<<"max_timer: "<<max_timer_<<"\n";
     std::cout<<"max_timer_complaint: "<<max_timer_complaint_<<"\n";
     std::cout<<"normal_speed: "<<normal_speed_<<"\n";
@@ -108,13 +118,13 @@ void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
 {
     last_segment_ = 0;
 
-    trajectory_.header.frame_id = "/odom";
+    trajectory_.header.frame_id = coord_frame_id_;
     trajectory_.header.stamp = ros::Time::now();
     trajectory_.poses.resize(traj->poses.size());
     for(unsigned int i=0; i<traj->poses.size(); i++)
     {
         try {
-            tf_.transformPose("/odom", traj->poses[i], trajectory_.poses[i]);
+            tf_.transformPose(coord_frame_id_, traj->poses[i], trajectory_.poses[i]);
         }
         catch(tf::LookupException& ex) {
             ROS_ERROR("No Transform available Error: %s", ex.what());
@@ -135,8 +145,10 @@ void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
 void PurePursuit::controlLoop(const ros::TimerEvent &e)
 {
     geometry_msgs::Twist cmd_ctrl;
+    pnc_msgs::move_status move_status;
     double cmd_vel;
     double cmd_steer;
+    double goal_dist;
 
     ros::Time time_now = ros::Time::now();
     ros::Duration time_diff = time_now - trajectory_.header.stamp;
@@ -154,6 +166,7 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
         }
         cmd_vel = 0.0;
         cmd_steer = 0.0;
+        goal_dist = 0.0;
     }
     else if((int) trajectory_.poses.size() > 1 && getRobotPose(pose))
     {
@@ -164,16 +177,37 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
 
         cmd_vel = get_desired_speed(segment, cur_x, cur_y);
         cmd_steer = get_steering(segment, cur_x, cur_y, cur_yaw, cmd_vel);
+
+        geometry_msgs::Point target_pt = trajectory_.poses[segment+1].pose.position;
+        goal_dist = fmutil::distance(cur_x, cur_y, target_pt.x, target_pt.y);
+        if(last_segment_+1<(int)trajectory_.poses.size())
+        {
+        	for(int i=last_segment_+1; i<(int)trajectory_.poses.size()-1; i++)
+        	{
+        		goal_dist+=fmutil::distance(trajectory_.poses[i].pose.position, trajectory_.poses[i+1].pose.position);
+        	}
+        }
     }
     else
     {
         cmd_vel = 0.0;
         cmd_steer = 0.0;
+        goal_dist = 0.0;
     }
 
     cmd_ctrl.linear.x = cmd_vel;
     cmd_ctrl.angular.z = cmd_steer;
     cmd_pub_.publish(cmd_ctrl);
+
+    move_status.dist_to_goal = goal_dist;
+    move_status.dist_to_ints = 99.0;
+    move_status.dist_to_sig = 99.0;
+    move_status.steer_angle = cmd_steer;
+    move_status.obstacles_dist = 99.0;
+    move_status.path_exist = true;
+    move_status.emergency = false;
+    if(cmd_vel <= 0.01) move_status.emergency = true;
+    move_status_pub_.publish(move_status);
 }
 
 bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
@@ -181,12 +215,12 @@ bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
     odom_pose.setIdentity();
     tf::Stamped<tf::Pose> robot_pose;
     robot_pose.setIdentity();
-    robot_pose.frame_id_ = "/base_link";
+    robot_pose.frame_id_ = robot_frame_id_;
     robot_pose.stamp_ = ros::Time();
     ros::Time current_time = ros::Time::now(); // save time for checking tf delay later
 
     try {
-        tf_.transformPose("/odom", robot_pose, odom_pose);
+        tf_.transformPose(coord_frame_id_, robot_pose, odom_pose);
     }
     catch(tf::LookupException& ex) {
         ROS_ERROR("No Transform available Error: %s", ex.what());
@@ -202,8 +236,8 @@ bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
     }
     // check odom_pose timeout
     if (current_time.toSec() - odom_pose.stamp_.toSec() > 0.1) {
-        ROS_WARN("PurePursuit transform timeout. Current time: %.4f, odom_pose stamp: %.4f, tolerance: %.4f",
-                 current_time.toSec(), odom_pose.stamp_.toSec(), 0.1);
+        ROS_WARN("PurePursuit transform timeout. Current time: %.4f, pose(%s) stamp: %.4f, tolerance: %.4f",
+                 current_time.toSec(), coord_frame_id_.c_str(), odom_pose.stamp_.toSec(), 0.1);
         return false;
     }
 
@@ -249,7 +283,7 @@ bool PurePursuit::get_center(double tar_x, double tar_y,
 
 double PurePursuit::get_inv_R(double u)
 {
-    double inv_R = 0;
+    double inv_R = 0.0;
     if(abs(u) > 1.0e-6)
         inv_R = 1.0/u;
 
@@ -588,8 +622,9 @@ double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
     // for all the calculations, refer IROS'95 by Ollero and Heredia
     gamma = 2.0/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
     double steering = atan(gamma * car_length_);
-    ROS_WARN("[just info] steering, segment=%d lookahead_seg=%d x=%lf y=%lf yaw=%lf cmd_vel=%lf", segment, lookahead_segment, cur_x, cur_y, cur_yaw, cmd_vel);
-    ROS_WARN("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf", inv_R, L, r, x, theta, gamma, steering);
+    ROS_WARN("[just info] steering, on_segment=%d lookahead_seg=%d:(%lf,%lf)->(%lf,%lf) at x=%lf y=%lf yaw=%lf",
+             segment, lookahead_segment, ori_x, ori_y, tar_x, tar_y, cur_x, cur_y, cur_yaw);
+    ROS_WARN("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf cmd_vel=%lf", inv_R, L, r, x, theta, gamma, steering, cmd_vel);
 
     if(isnan(steering))
     {

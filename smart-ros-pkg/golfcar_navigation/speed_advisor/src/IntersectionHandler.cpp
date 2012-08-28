@@ -1,4 +1,7 @@
 #include "IntersectionHandler.h"
+#include "InterarctiveMarkerPolicy.h"
+#include "InfrastructureSensorPolicy.h"
+#include "LaserAreaPolicy.h"
 
 #include <fmutil/fm_math.h>
 
@@ -11,6 +14,29 @@ class TJunctionPolicy : public IntersectionPolicy
 public:
     TJunctionPolicy(geometry_msgs::Point p) : infra("tjunc"), marker(p) { }
     bool is_clear_to_go() { return infra.is_clear_to_go() || marker.is_clear_to_go(); }
+};
+
+
+class EAPedCrossingPolicy : public IntersectionPolicy
+{
+    LaserAreaPolicy *area;
+    InteractiveMarkerPolicy marker;
+
+public:
+    EAPedCrossingPolicy(geometry_msgs::Point p) : area(0), marker(p)
+    {
+        try
+        {
+            area = new LaserAreaPolicy("crossing_boundary");
+        }
+        catch( std::runtime_error & e )
+        {
+            ROS_WARN("Problem with the LaserAreaPolicy: %s", e.what());
+        }
+    }
+
+    bool is_clear_to_go()
+    { return (area!=0 && area->is_clear_to_go()) || marker.is_clear_to_go(); }
 };
 
 
@@ -68,6 +94,8 @@ void IntersectionHandler::update(const pnc_msgs::move_status & status)
         // by position), then launch the infrastructure sensor monitoring system.
         if( fmutil::distance(int_point_.x, int_point_.y, 32, 120) < 5 )
             policy_ = new TJunctionPolicy(int_point_);
+        else if( fmutil::distance(int_point_.x, int_point_.y, 63, 300) < 20 )
+            policy_ = new EAPedCrossingPolicy(int_point_);
         else
             policy_ = new InteractiveMarkerPolicy(int_point_);
     }

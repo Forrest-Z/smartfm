@@ -25,14 +25,13 @@ class region
 
 class State 
 {
-    double x[3];
-
     public:
-    State ();
-    ~State ();
-    State (const State &stateIn);
-    State& operator= (const State &stateIn);
-    double& operator[] (const int i) {return x[i];}
+        double x[3];
+        State ();
+        ~State ();
+        State (const State &stateIn);
+        State& operator= (const State &stateIn);
+        double& operator[] (const int i) {return x[i];}
 
     friend class System;
     friend class Trajectory;
@@ -98,9 +97,12 @@ class System {
     State& getRootState () {return rootState;}
     int getStateKey (State& stateIn, double* stateKey);
 
-    bool IsInCollision (const double stateIn[3]);
-    int getStateCost(const double stateIn[3]);
+    int get_cell_index(double x, double y, int &map_index);
+    int transform_map_to_local_map(const double stateIn[3], double &zlx, double &zly, double &yl);
+    bool IsInCollision (const double stateIn[3], bool debug_flag=false);
+    double getStateCost(const double stateIn[3]);
 
+    float getGoalCost(const double x[3]);
     bool isReachingTarget (State& stateIn);
 
     int sampleState (State& randomStateOut); 

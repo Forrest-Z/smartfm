@@ -20,5 +20,3 @@
   <depend package="local_map_ext"/>
   <depend package="golfcar_ppc" />
 </package>
-
-

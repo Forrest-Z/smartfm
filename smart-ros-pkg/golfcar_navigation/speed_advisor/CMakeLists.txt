@@ -34,13 +34,18 @@ gencfg()
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
+rosbuild_add_boost_directories()
+
 rosbuild_add_executable( speed_advisor
     src/InteractiveMarkerPolicy.cpp
     src/InfrastructureSensorPolicy.cpp
     src/OnboardCamPolicy.cpp
+    src/SvgBoundary.cpp
+    src/LaserAreaPolicy.cpp
     src/IntersectionHandler.cpp
     src/speed_advisor.cpp
 )
+rosbuild_link_boost(speed_advisor signals) #not sure why this is needed... laser_geometry?
 
 rosbuild_add_executable(onboard_cam_test
     src/OnboardCamPolicy.cpp

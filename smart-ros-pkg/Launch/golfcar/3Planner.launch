@@ -1,11 +1,13 @@
 <launch>
-	
+	<!--Using the 3Autonomous.launch from local_map_ext for rrts-->
 	<node pkg="golfcar_steeringcontrol" type="local_controller" name="local_controller"/> 
 	<node name="speed_controller" pkg="speed_controller" type="speed_controller_PI">
 		<remap from="imu/rpy" to="ms/imu/rpy"/>
 	</node>
-	<node pkg="golfcar_ppc" type="golfcar_pp" name="golfcar_pp"/>
-	<node pkg="local_map" type="local_map_node" name="local_map"/>
+	<node pkg="golfcar_ppc" type="golfcar_pp" name="golfcar_pp">
+        <remap from="cmd_vel" to="move_vel"/>
+    </node>
+	<node pkg="local_map_ext" type="local_map_node" name="local_map"/>
 	<node pkg="golfcar_planner" type="golfcar_planner_node" name="golfcar_planner"/>
 	<node pkg="golfcar_route_planner" type="simple_goal" name="simple_goal"/>
 </launch>
