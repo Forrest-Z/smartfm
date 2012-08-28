@@ -2,6 +2,13 @@
  * Reads a movie file, publishes frames and extracted background. Possible to
  * fast forward and slow down, and save the current image and background image
  * to a file. Also publishes clock messages.
+ *
+ * control:
+ * - Q: exit
+ * - F: fast-forward
+ * - S: slow down
+ * - D: return to normal play-back speed
+ * - C: capture the current image and background image
  */
 
 //TODO: add a reconfigure interface to change the background alpha value
