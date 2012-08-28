@@ -511,7 +511,7 @@ void Planner::get_plan()
     {
         samples_this_loop += rrts.iteration();
         best_cost = rrts.getBestVertexCost();
-        if(best_cost < 5000)
+        if(best_cost < 500)
         {
             if( fabs(prev_best_cost - best_cost) < 0.05)
                 found_best_path = true;
