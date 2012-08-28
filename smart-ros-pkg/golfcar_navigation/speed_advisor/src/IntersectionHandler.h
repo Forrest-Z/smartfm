@@ -6,8 +6,6 @@
 #include <pnc_msgs/move_status.h>
 
 #include "IntersectionPolicy.h"
-#include "InterarctiveMarkerPolicy.h"
-#include "InfrastructureSensorPolicy.h"
 
 
 /** A class to handle going through intersections.

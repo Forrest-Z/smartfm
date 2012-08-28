@@ -93,7 +93,7 @@ System::System ()
     turning_radius = 4.0;
     distance_limit = 100.0;
     delta_distance = 0.05;
-    
+
     double factor_reduce_size = 1.0;
     car_width = 1.2/factor_reduce_size;
     car_height = 2.28/factor_reduce_size;
@@ -115,6 +115,12 @@ int System::getStateKey (State &stateIn, double *stateKey) {
 }
 
 
+#define SQ(x)   ((x)*(x))
+float System::getGoalCost(const double x[3])
+{
+    return (sqrt(SQ(x[0]-regionGoal.center[0]) + SQ(x[1]-regionGoal.center[1])) + 5.0*fabs(x[2] - regionGoal.center[2]));
+}
+
 bool System::isReachingTarget (State &stateIn) {
 
     for (int i = 0; i < 3; i++) {
@@ -125,15 +131,24 @@ bool System::isReachingTarget (State &stateIn) {
     return true;
 }
 
-inline
+    inline
 int System::transform_map_to_local_map(const double stateIn[3], double &zlx, double &zly, double &yl)
 {
+    /*
+     * X_map
+     * |       X_car|
+     * |            |
+     * | Y_car------|
+     * |
+     * |--------- Y_map
+     */
     // map frame z, yaw
     double zm[2] = {stateIn[0], stateIn[1]};
     double ym = stateIn[2];
-    //cout<<"zm: "<< zm[0]<<" "<<zm[1]<<" "<<ym<<endl; 
+    //cout<<"zm: "<< zm[0]<<" "<<zm[1]<<" "<<ym<<endl;
 
     // base_link frame
+    //cout<<"map_origin "<<map_origin[0]<<" "<<map_origin[1]<<" "<<map_origin[2]<<endl;
     double cos_map_yaw = cos(map_origin[2]);
     double sin_map_yaw = sin(map_origin[2]);
 
@@ -145,23 +160,16 @@ int System::transform_map_to_local_map(const double stateIn[3], double &zlx, dou
         yl -= 2.0*M_PI;
     while(yl < -M_PI)
         yl += 2.0*M_PI;
-    
+
     return 0;
 }
 
-inline
+    inline
 int System::get_cell_index(double x, double y, int &map_index)
 {
     // find cells corresponding to (x,y)
     // car is placed at (height/4, width/2) according to the local_map
-    /*
-     * X_map
-     * |       X_car|
-     * |            |
-     * | Y_car------|
-     * |
-     * |--------- Y_map
-     */
+
     int cellx = x/map.info.resolution + map.info.height/4.0;
     int celly = map.info.width/2.0 - y/map.info.resolution;
 
@@ -177,7 +185,7 @@ int System::get_cell_index(double x, double y, int &map_index)
     }
 }
 
-bool System::IsInCollision (const double stateIn[3]) 
+bool System::IsInCollision (const double stateIn[3], bool debug_flag) 
 {
     // (x,y) in local_map frame
     double zl[2] = {0};
@@ -188,24 +196,30 @@ bool System::IsInCollision (const double stateIn[3])
     double cos_yl = cos(yl);
     double sin_yl = sin(yl);
 
+
 #if 1
     bool is_obstructed = false;
+    double cxmax = car_height - distance_rear_axis_rear + safe_distance + 0.001;
+    double cymax = car_width/2.0 + safe_distance + 0.001;
     double cy = -car_width/2.0 - safe_distance;
-    double cx = -distance_rear_axis_rear - safe_distance;
-    while(cy < car_width/2.0 + safe_distance)
+
+    while(cy < cymax)
     {
-        while(cx < (car_height - distance_rear_axis_rear + safe_distance))
+        double cx = -distance_rear_axis_rear - safe_distance;
+        while(cx < cxmax)
         {
             // x = stateInLocal + rel position (cx,cy) transformed into the (X_car,Y_car) frame
             double x = zl[0] + cx*cos_yl + cy*sin_yl;
             double y = zl[1] - cx*sin_yl + cy*cos_yl;
-            //cout<<"x: "<< x<<" y: "<<y<<endl;
+            if(debug_flag)
+                cout<<"x: "<< x<<" y: "<<y<<endl;
             //getchar();
             int map_index = -1;
             if(get_cell_index(x, y, map_index) == 0)
             {
                 int to_check = map.data[map_index];
-                //cout<<"cellx: "<<cellx<<" celly: "<<celly<<" to_check: "<<to_check<<endl;
+                if(debug_flag)
+                    cout<<"to_check: "<<to_check<<endl;
                 if(to_check == 0)
                 {
                     is_obstructed = true;
@@ -215,10 +229,11 @@ bool System::IsInCollision (const double stateIn[3])
             }
             else
             {
-                is_obstructed = true;
-                //cout<<"is_obstructed: "<<is_obstructed<<endl;
-                return is_obstructed;
+                is_obstructed = false;
+                //cout<<"is_obstructed 184: "<<is_obstructed<<endl;
+                //return is_obstructed;
             }
+
             cx = cx + map.info.resolution;
         }
         cy = cy + map.info.resolution;
@@ -236,18 +251,23 @@ double System::getStateCost(const double stateIn[3])
     // yaw in local frame
     double yl = 0;
     transform_map_to_local_map(stateIn, zl[0], zl[1], yl);
-    
+
     int map_index = -1;
     if(get_cell_index(zl[0], zl[1], map_index) == 0)
     {
         int val = map.data[map_index];
         if(val != 0)
-            return (float)val/100.0;
+        {
+            if(val == 87)
+                return 1;
+            else if(val == 107)
+                return 2;
+        }
         else
-            return 100.0;
+            return 100;
     }
     else
-        return 100.0;
+        return 1;
 }
 
 int System::sampleState (State &randomStateOut) {
@@ -400,7 +420,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             || ( (t_increment_s1 > 3*M_PI_2) || (t_increment_s2 > 3*M_PI_2) )  ){
         return -1.0;
     }
-    
+
     // send total_distance_travel + local_map_cost as the real cost
     double total_distance_travel = (t_increment_s1 + t_increment_s2) * turning_radius  + distance;
     double local_map_cost = 0;
@@ -443,7 +463,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 double *state_new = new double[3];
                 for (int i = 0; i < 3; i++) 
                     state_new[i] = state_curr[i];
-                
+
                 trajectory->push_front(state_new);
                 control.push_front (direction_s1*turning_radius);
                 local_map_cost += getStateCost(state_new);
@@ -685,7 +705,8 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
     double time = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
             true, false, 
             exactConnectionOut, end_state, NULL, controlOut);
-    if (time < 0.0) {
+    if (time < 0.0) 
+    {
         delete [] end_state;
         return 0;
     }

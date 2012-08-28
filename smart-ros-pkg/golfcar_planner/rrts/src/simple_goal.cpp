@@ -26,12 +26,12 @@ class SimpleGoal
         {
             ros::NodeHandle n;
             rviz_goal_listener = n.subscribe("move_base_simple/goal", 2, &SimpleGoal::on_rviz_goal_listener, this);
-            goal_pub = n.advertise<geometry_msgs::Pose>("goal", 2);
+            goal_pub = n.advertise<geometry_msgs::PoseStamped>("pnc_nextpose", 2);
         }
         void on_rviz_goal_listener(const geometry_msgs::PoseStamped::ConstPtr p)
         {
-            geometry_msgs::Pose pose;
-            pose = p->pose;
+            geometry_msgs::PoseStamped pose;
+            pose = *p;
             goal_pub.publish(pose);
             ROS_INFO("published pose");
             cout<<pose<<endl;

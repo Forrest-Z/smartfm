@@ -10,7 +10,7 @@ ped_clustering::ped_clustering()
 {
     ros::NodeHandle private_nh("~");
 
-    private_nh.param("gloabl_frame", global_frame_, string("map"));
+    private_nh.param("global_frame", global_frame_, string("map"));
     private_nh.param("laser_frame", laser_frame_id_, string("ldmrs0"));
     private_nh.param("prior_distance_filter", prior_distance_filter_, 0.4);
     private_nh.param("use_octomap", use_octomap_, false);
@@ -239,7 +239,7 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
             p.x = mid_pt[0];
             p.y = mid_pt[1];
             p.z = mid_pt[2];
-            
+
             cluster.centroid = p;
             cluster.width = abs_distance[1];
             cluster.height = abs_distance[2];
@@ -351,7 +351,7 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
 
 
             clusters.clusters.push_back(cluster);
-            
+
             cluster_number++;
         }
         ROS_INFO("End of cluster %d\n", cluster_number);

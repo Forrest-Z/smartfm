@@ -1,4 +1,7 @@
 #include "IntersectionHandler.h"
+#include "InterarctiveMarkerPolicy.h"
+#include "InfrastructureSensorPolicy.h"
+#include "LaserAreaPolicy.h"
 
 #include <fmutil/fm_math.h>
 
@@ -11,6 +14,30 @@ class TJunctionPolicy : public IntersectionPolicy
 public:
     TJunctionPolicy(geometry_msgs::Point p) : infra("tjunc"), marker(p) { }
     bool is_clear_to_go() { return infra.is_clear_to_go() || marker.is_clear_to_go(); }
+};
+
+
+class EAPedCrossingPolicy : public IntersectionPolicy
+{
+    LaserAreaPolicy *area;
+    InteractiveMarkerPolicy marker;
+
+public:
+    EAPedCrossingPolicy(geometry_msgs::Point p) : area(0), marker(p)
+    {
+        try
+        {
+            area = new LaserAreaPolicy("crossing_boundary");
+        }
+        catch( std::runtime_error & e )
+        {
+            ROS_WARN("Problem with the LaserAreaPolicy: %s", e.what());
+            area = 0;
+        }
+    }
+
+    bool is_clear_to_go()
+    { return (area!=0 && area->is_clear_to_go()) || marker.is_clear_to_go(); }
 };
 
 
@@ -66,8 +93,17 @@ void IntersectionHandler::update(const pnc_msgs::move_status & status)
 
         // Special case: if the next point is the t-junction (identified
         // by position), then launch the infrastructure sensor monitoring system.
-        if( fmutil::distance(int_point_.x, int_point_.y, 32, 120) < 5 )
+        geometry_msgs::Point tjunc, ped;
+        //tjunc.x = 32; tjunc.y = 120; //curb map
+        tjunc.x = 196; tjunc.y = 199; //dense map
+        ped.x = 63; ped.y = 300; //curb map
+        ped.x = 52; ped.y = 229; //dense map
+
+
+        if( fmutil::distance(int_point_, tjunc) < 15 )
             policy_ = new TJunctionPolicy(int_point_);
+        else if( fmutil::distance(int_point_, ped) < 20 )
+            policy_ = new EAPedCrossingPolicy(int_point_);
         else
             policy_ = new InteractiveMarkerPolicy(int_point_);
     }

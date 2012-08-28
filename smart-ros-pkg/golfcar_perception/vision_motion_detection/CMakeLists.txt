@@ -28,14 +28,14 @@ rosbuild_genmsg()
 #target_link_libraries(example ${PROJECT_NAME})
 
 rosbuild_add_library(${PROJECT_NAME}
-    src/data_types.cpp
-    src/Polygon.cpp
-    src/BackgroundExtractor.cpp
-    src/BlobExtractor.cpp
-    src/BlobFilter.cpp
-    src/TrackMatcher.cpp
-    src/Tracker.cpp
-    src/MotionExtractor.cpp
+    src/lib/data_types.cpp
+    src/lib/Polygon.cpp
+    src/lib/BackgroundExtractor.cpp
+    src/lib/BlobExtractor.cpp
+    src/lib/BlobFilter.cpp
+    src/lib/TrackMatcher.cpp
+    src/lib/Tracker.cpp
+    src/lib/MotionExtractor.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} opencv_core opencv_imgproc opencv_highgui)
@@ -47,32 +47,32 @@ rosbuild_find_ros_package(dynamic_reconfigure)
 include(${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake)
 gencfg()
 
-ADD_EXECUTABLE(play_video src/play_video.cpp)
+ADD_EXECUTABLE(play_video src/nodes/play_video.cpp)
 target_link_libraries(play_video ${PROJECT_NAME})
 
-ADD_EXECUTABLE(play_images src/play_images.cpp)
+ADD_EXECUTABLE(play_images src/nodes/play_images.cpp)
 target_link_libraries(play_images ${PROJECT_NAME})
 
-ADD_EXECUTABLE(background_extractor src/background_extractor.cpp)
+ADD_EXECUTABLE(background_extractor src/nodes/background_extractor.cpp)
 target_link_libraries(background_extractor ${PROJECT_NAME})
 
-ADD_EXECUTABLE(blob_extractor src/blob_extractor.cpp)
+ADD_EXECUTABLE(blob_extractor src/nodes/blob_extractor.cpp)
 target_link_libraries(blob_extractor ${PROJECT_NAME})
 
-ADD_EXECUTABLE(blob_area_filter src/blob_area_filter.cpp)
+ADD_EXECUTABLE(blob_area_filter src/nodes/blob_area_filter.cpp)
 target_link_libraries(blob_area_filter ${PROJECT_NAME})
 
-ADD_EXECUTABLE(blob_position_filter src/blob_position_filter.cpp)
+ADD_EXECUTABLE(blob_position_filter src/nodes/blob_position_filter.cpp)
 target_link_libraries(blob_position_filter ${PROJECT_NAME})
 
-ADD_EXECUTABLE(blob_display src/blob_display.cpp)
+ADD_EXECUTABLE(blob_display src/nodes/blob_display.cpp)
 target_link_libraries(blob_display ${PROJECT_NAME})
 
-ADD_EXECUTABLE(blob_tracker src/blob_tracker.cpp)
+ADD_EXECUTABLE(blob_tracker src/nodes/blob_tracker.cpp)
 target_link_libraries(blob_tracker ${PROJECT_NAME})
 
-ADD_EXECUTABLE(track_display src/track_display.cpp)
+ADD_EXECUTABLE(track_display src/nodes/track_display.cpp)
 target_link_libraries(track_display ${PROJECT_NAME})
 
-ADD_EXECUTABLE(roi_select src/roi_select.cpp)
+ADD_EXECUTABLE(roi_select src/nodes/roi_select.cpp)
 target_link_libraries(roi_select ${PROJECT_NAME})

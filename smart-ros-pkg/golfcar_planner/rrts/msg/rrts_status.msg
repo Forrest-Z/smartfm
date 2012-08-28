@@ -1,0 +1,5 @@
+Header header
+bool robot_in_collision
+bool goal_in_collision
+bool goal_infeasible
+bool root_in_goal

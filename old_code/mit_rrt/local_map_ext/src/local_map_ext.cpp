@@ -44,7 +44,7 @@ LocalMap::LocalMap(double height, double width, double res):height_(height), wid
     }
 
     prior_pts_.header = resp.map.header;
-
+    unsigned int left_lane = 0, right_lane = 0;
     for(unsigned int i=0; i<resp.map.info.width; i++)
     {
         for(unsigned int j=0; j<resp.map.info.height; j++)
@@ -61,10 +61,13 @@ LocalMap::LocalMap(double height, double width, double res):height_(height), wid
             {
                 prior_pts_.points.push_back(map_p);
                 prior_obs_.push_back(resp.map.data[map_index]);
+                if(resp.map.data[map_index] == 107) left_lane++;
+                if(resp.map.data[map_index] == 87) right_lane++;;
             }
         }
 
     }
+    cout<<"left lane = "<<left_lane<<" right_lane = "<<right_lane<<endl;
     prior_pts_pub_.publish(prior_pts_);
 
     prior_map_ = resp.map;

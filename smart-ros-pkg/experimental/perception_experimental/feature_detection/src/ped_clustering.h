@@ -93,6 +93,11 @@ private:
 
 #include <tinyxml.h>
 #define VERBOSE 1
+
+// this reads a path from the SVG file.
+// It's actually quite similar to the SvgPath class, but Demian can't recall
+// why we re-implemented from scratch...
+
 class svg_boundary
 {
 public:
