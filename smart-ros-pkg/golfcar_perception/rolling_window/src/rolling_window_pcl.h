@@ -1,5 +1,5 @@
-#ifndef ROLLING_WINDOW_H
-#define ROLLING_WINDOW_H
+#ifndef ROLLING_WINDOW_PCL_H
+#define ROLLING_WINDOW_PCL_H
 
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
@@ -35,6 +35,8 @@
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
+#include "geometry_common.h"
+#include "rolling_window/plane_coef.h"
 
 using namespace std;
 
@@ -43,50 +45,41 @@ namespace golfcar_pcl{
 	typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
 	typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
-	class rolling_window {
+	class rolling_window_pcl {
         public:
-        rolling_window();
-        ~rolling_window();        
+        rolling_window_pcl();
+        ~rolling_window_pcl();        
     
         private:
         ros::NodeHandle nh_, private_nh_;
-		string target_frame_, base_frame_;
+	string target_frame_, base_frame_;
         tf::TransformListener *tf_;
 
     	message_filters::Subscriber<sensor_msgs::LaserScan> 	laser_scan_sub_;
     	message_filters::Subscriber<sensor_msgs::PointCloud2> 	cloud_scan_sub_;
-    	message_filters::Subscriber<nav_msgs::Odometry>			odom_sub_;
-		tf::MessageFilter<sensor_msgs::LaserScan> 				*laser_scan_filter_;
-	    tf::MessageFilter<sensor_msgs::PointCloud2> 			*cloud_scan_filter_;
-	    tf::MessageFilter<nav_msgs::Odometry>					*odom_filter_;
-		laser_geometry::LaserProjection projector_;
+    	message_filters::Subscriber<nav_msgs::Odometry>		odom_sub_;
+	tf::MessageFilter<sensor_msgs::LaserScan> 		*laser_scan_filter_;
+    	tf::MessageFilter<sensor_msgs::PointCloud2> 		*cloud_scan_filter_;
+    	tf::MessageFilter<nav_msgs::Odometry>			*odom_filter_;
+	laser_geometry::LaserProjection projector_;
 		
-		//ros::Subscriber                             odom_sub_;
-		tf::StampedTransform 	odom_OdomMeas_, scan_OdomMeas_, cloud_OdomMeas_;
-		bool odom_init_, scan_init_, cloud_init_;
-		float front_bound_, back_bound_;
-		float odom_trigger_thresh_, scan_in_thresh_, cloud_in_thresh_;
-		float angle_thresh_;
-		int window_counts_;
+	//ros::Subscriber                             odom_sub_;
+	tf::StampedTransform 	odom_OdomMeas_, scan_OdomMeas_, cloud_OdomMeas_;
+	bool odom_init_, scan_init_, cloud_init_;
+	double front_bound_, back_bound_;
+	double odom_trigger_thresh_, scan_in_thresh_, cloud_in_thresh_;
+	float angle_thresh_;
+	int window_counts_;
 
         void scanCallback(const sensor_msgs::LaserScanConstPtr scan_in);
     	void cloudCallback(const sensor_msgs::PointCloud2ConstPtr cloud_in);
-		void odomCallback(const OdomConstPtr& odom);
-		bool checkDistance(const tf::StampedTransform& oldTf, const tf::StampedTransform& newTf, 
-															  float Dis_thresh);
-		void windowProcessing(ros::Time current_time);
+	void odomCallback(const OdomConstPtr& odom);
+	bool checkDistance(const tf::StampedTransform& oldTf, const tf::StampedTransform& newTf, 
+			   float Dis_thresh);
+	void windowProcessing(ros::Time current_time);
 
-		PointCloud rolling_window_odom_, rolling_window_baselink_;
-
-		ros::Publisher  rolling_window_pub_;
-		
-		//NF1
-		ros::Publisher 	road_surface_pub_;
-
-		//NF2
-		geometry_msgs::Point32	viewpoint_td_sick_;
-		void publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_cloud);
-		ros::Publisher	normals_poses_pub_;
+	PointCloud rolling_window_odom_, rolling_window_baselink_;
+	ros::Publisher  rolling_window_pub_;
     };
 
 };

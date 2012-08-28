@@ -17,7 +17,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 #uncomment if you have defined messages
-#rosbuild_genmsg()
+rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
@@ -25,8 +25,11 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
 rosbuild_add_boost_directories()
-rosbuild_add_executable(rolling_window src/rolling_window.cpp)
-rosbuild_link_boost(rolling_window signals)
+rosbuild_add_executable(road_surface src/road_surface.cpp)
+rosbuild_link_boost(road_surface signals)
+rosbuild_add_executable(rolling_window_pcl src/rolling_window_pcl.cpp)
+rosbuild_link_boost(rolling_window_pcl signals)
+
 rosbuild_add_executable(single_window src/single_window.cpp)
 rosbuild_link_boost(single_window signals)
 rosbuild_add_executable(quick_process src/quick_process.cpp)

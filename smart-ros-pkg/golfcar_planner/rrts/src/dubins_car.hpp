@@ -97,7 +97,7 @@ System::System ()
     double factor_reduce_size = 1.0;
     car_width = 1.2/factor_reduce_size;
     car_height = 2.28/factor_reduce_size;
-    safe_distance = 0.3/factor_reduce_size;    // car footprint is blown up by this distance for collision checking
+    safe_distance = 0.2/factor_reduce_size;    // car footprint is blown up by this distance for collision checking
     distance_rear_axis_rear = 0.45/factor_reduce_size; // dist between center of rear axis and rear end
 }
 
@@ -118,7 +118,7 @@ int System::getStateKey (State &stateIn, double *stateKey) {
 #define SQ(x)   ((x)*(x))
 float System::getGoalCost(const double x[3])
 {
-    return sqrt(0.5*SQ(x[0]-regionGoal.center[0]) + 0.5*SQ(x[1]-regionGoal.center[1]) + SQ(x[2] - regionGoal.center[2]));
+    return (sqrt(SQ(x[0]-regionGoal.center[0]) + SQ(x[1]-regionGoal.center[1])) + 5.0*fabs(x[2] - regionGoal.center[2]));
 }
 
 bool System::isReachingTarget (State &stateIn) {
@@ -199,12 +199,14 @@ bool System::IsInCollision (const double stateIn[3], bool debug_flag)
 
 #if 1
     bool is_obstructed = false;
+    double cxmax = car_height - distance_rear_axis_rear + safe_distance + 0.001;
+    double cymax = car_width/2.0 + safe_distance + 0.001;
     double cy = -car_width/2.0 - safe_distance;
 
-    while(cy < car_width/2.0 + safe_distance)
+    while(cy < cymax)
     {
         double cx = -distance_rear_axis_rear - safe_distance;
-        while(cx < (car_height - distance_rear_axis_rear + safe_distance))
+        while(cx < cxmax)
         {
             // x = stateInLocal + rel position (cx,cy) transformed into the (X_car,Y_car) frame
             double x = zl[0] + cx*cos_yl + cy*sin_yl;
