@@ -89,7 +89,10 @@ double Trajectory::evaluateCost () {
 
 System::System () 
 {
-    turning_radius = 4.0;
+    turning_radii[0] = 3.5; 
+    turning_radii[1] = 5;
+    turning_radii[2] = 8;
+    
     distance_limit = 100.0;
     delta_distance = 0.05;
 
@@ -117,7 +120,7 @@ int System::getStateKey (State &stateIn, double *stateKey) {
 #define SQ(x)   ((x)*(x))
 float System::getGoalCost(const double x[3])
 {
-    return (sqrt(SQ(x[0]-regionGoal.center[0]) + SQ(x[1]-regionGoal.center[1])) + 3.0*fabs(x[2] - regionGoal.center[2]));
+    return (sqrt(SQ(x[0]-regionGoal.center[0]) + SQ(x[1]-regionGoal.center[1])) + 5.0*fabs(x[2] - regionGoal.center[2]));
 }
 
 bool System::isReachingTarget (State &stateIn) {
@@ -258,9 +261,9 @@ double System::getStateCost(const double stateIn[3])
         if(val != 0)
         {
             if(val == 87)
-                return 1;
-            else if(val == 107)
                 return 2;
+            else if(val == 107)
+                return 1;
             else
             {
                 cout<<"Found random value in the map"<<endl;
@@ -271,7 +274,7 @@ double System::getStateCost(const double stateIn[3])
             return 100;
     }
     else
-        return 1;
+        return 10;
 }
 
 int System::sampleState (State &randomStateOut) {
@@ -332,7 +335,7 @@ int System::sampleGoalState (State &randomStateOut) {
 double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1, 
         double x_s2, double y_s2, double t_s2, int comb_no, 
         bool check_obstacles, bool return_trajectory,
-        bool& fully_extends, double*& end_state, list<double*>* trajectory, list<float> &control) {
+        bool& fully_extends, double*& end_state, list<double*>* trajectory, list<float> &control, double turning_radius) {
 
     double x_tr = x_s2 - x_s1;
     double y_tr = y_s2 - y_s1;
@@ -427,21 +430,26 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         return -1.0;
     }
 
-    // send total_distance_travel + local_map_cost as the real cost
-    double total_distance_travel = (t_increment_s1 + t_increment_s2) * turning_radius  + distance;
+    // different costs
+    double time_cost = (t_increment_s1 + t_increment_s2) * turning_radius  + distance;
     double local_map_cost = 0;
-    fully_extends = 0;
+    double turning_cost = (t_increment_s1 + t_increment_s2);
+    time_cost += turning_cost;
 
+    fully_extends = 0;
+    
     if (check_obstacles) 
     {
         // Generate states/inputs
         double del_d = delta_distance;
         double del_t = del_d/turning_radius;
+        double max_counter = map.info.resolution/del_d;
 
         double t_inc_curr = 0.0;
 
         double state_curr[3] = {0};
-
+        
+        int obs_check_counter = 0;
         while (t_inc_curr < t_increment_s1) 
         {
             double t_inc_rel = del_t;
@@ -454,16 +462,20 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             state_curr[0] = x_s1 + turning_radius * cos (direction_s1 * t_inc_curr + t_s1);
             state_curr[1] = y_s1 + turning_radius * sin (direction_s1 * t_inc_curr + t_s1);
             state_curr[2] = direction_s1 * t_inc_curr + t_s1 + ( (direction_s1 == 1) ? M_PI_2 : 3.0*M_PI_2);
-
+            obs_check_counter++;
+                
             while (state_curr[2] < -M_PI)
                 state_curr[2] += 2.0 * M_PI;
             while (state_curr[2] > M_PI)
                 state_curr[2] -= 2.0*M_PI;
 
-            // check for collision
-            if (IsInCollision (state_curr))
-                return -2.0;
-
+            // check for collision only if counter = map.info.resolution/delta_d
+            if(obs_check_counter == max_counter)
+            {
+                obs_check_counter = 0;
+                if (IsInCollision (state_curr))
+                    return -2.0;
+            }
             if (trajectory) 
             {
                 double *state_new = new double[3];
@@ -482,10 +494,11 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 for (int i = 0; i < 3; i++)
                     end_state[i] = state_curr[i];
 
-                return total_distance_travel + local_map_cost;
+                return time_cost + local_map_cost;
             }
         }
 
+        obs_check_counter = 0;
         double d_inc_curr = 0.0;
         while (d_inc_curr < distance) 
         {
@@ -499,6 +512,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             state_curr[0] = (x_end - x_start) * d_inc_curr / distance + x_start; 
             state_curr[1] = (y_end - y_start) * d_inc_curr / distance + y_start; 
             state_curr[2] = direction_s1 * t_inc_curr + t_s1 + ( (direction_s1 == 1) ? M_PI_2 : 3.0*M_PI_2);
+            obs_check_counter++;
 
             while (state_curr[2] < -M_PI)
                 state_curr[2] += 2.0 * M_PI;
@@ -508,10 +522,13 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             // input_curr[0] = d_inc_rel;
             // input_curr[1] = 0.0;
 
-            // check for collision
-            if (IsInCollision (state_curr))
-                return -2.0;
-
+            if(obs_check_counter == max_counter)
+            {
+                obs_check_counter = 0;
+                // check for collision
+                if (IsInCollision (state_curr))
+                    return -2.0;
+            }
             if (trajectory) {
                 double *state_new = new double [3];
                 for (int i = 0; i < 3; i++) 
@@ -528,12 +545,13 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 for (int i = 0; i < 3; i++)
                     end_state[i] = state_curr[i];
 
-                return total_distance_travel + local_map_cost;
+                return time_cost + local_map_cost;
             }
         }
 
         double t_inc_curr_prev = t_inc_curr;
         t_inc_curr = 0.0;
+        obs_check_counter = 0;
         while (t_inc_curr < t_increment_s2) 
         {
             double t_inc_rel = del_t;
@@ -547,6 +565,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             state_curr[1] = y_s2 + turning_radius * sin (direction_s2 * (t_inc_curr - t_increment_s2) + t_s2);
             state_curr[2] = direction_s2 * (t_inc_curr - t_increment_s2) + t_s2 
                 + ( (direction_s2 == 1) ?  M_PI_2 : 3.0*M_PI_2 );
+            obs_check_counter++;
 
             while (state_curr[2] < -M_PI)
                 state_curr[2] += 2.0 * M_PI;
@@ -556,10 +575,13 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             // input_curr[0] = t_inc_rel * turning_radius;
             // input_curr[1] = ( (comb_no == 2) || (comb_no == 3) ) ? -1 : 1;
 
-            // check for collision
-            if (IsInCollision (state_curr))
-                return -2.0;
-
+            if(obs_check_counter == max_counter)
+            {
+                obs_check_counter = 0;
+                // check for collision
+                if (IsInCollision (state_curr))
+                    return -2.0;
+            }
             if (trajectory) 
             {
                 double *state_new = new double [3];
@@ -576,7 +598,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 for (int i = 0; i < 3; i++)
                     end_state[i] = state_curr[i];
 
-                return total_distance_travel + local_map_cost;
+                return time_cost + local_map_cost;
             }
         }
 
@@ -586,16 +608,15 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             end_state[i] = state_curr[i];
     }
 
-    return total_distance_travel + local_map_cost;
+    return time_cost + local_map_cost;
 
 }
-
 
 
 double 
 System::extend_dubins_all (double state_ini[3], double state_fin[3],
         bool check_obstacles, bool return_trajectory,
-        bool &fully_extends, double*& end_state, list<double*>* trajectory, list<float> &control) {
+        bool &fully_extends, double*& end_state, list<double*>* trajectory, list<float> &control, double turning_radius) {
 
     double ti = state_ini[2];
     double tf = state_fin[2];
@@ -633,19 +654,19 @@ System::extend_dubins_all (double state_ini[3], double state_fin[3],
     times[0] = extend_dubins_spheres (si_left[0], si_left[1], si_left[2], 
             sf_right[0], sf_right[1], sf_right[2], 1,
             false, false,
-            exact_connection[0], end_state, NULL, control);
+            exact_connection[0], end_state, NULL, control, turning_radius);
     times[1] = extend_dubins_spheres (si_right[0], si_right[1], si_right[2], 
             sf_left[0], sf_left[1], sf_left[2], 2,
             false, false,
-            exact_connection[1], end_state, NULL, control);
+            exact_connection[1], end_state, NULL, control, turning_radius);
     times[2] = extend_dubins_spheres (si_left[0], si_left[1], si_left[2], 
             sf_left[0], sf_left[1], sf_left[2], 3, 
             false, false,
-            exact_connection[2], end_state, NULL, control);
+            exact_connection[2], end_state, NULL, control, turning_radius);
     times[3] = extend_dubins_spheres (si_right[0], si_right[1], si_right[2], 
             sf_right[0], sf_right[1], sf_right[2], 4, 
             false, false,
-            exact_connection[3], end_state, NULL, control);
+            exact_connection[3], end_state, NULL, control, turning_radius);
 
     double min_time = DBL_MAX;
     int comb_min = -1;
@@ -671,28 +692,28 @@ System::extend_dubins_all (double state_ini[3], double state_fin[3],
             res = extend_dubins_spheres (si_left[0], si_left[1], si_left[2], 
                     sf_right[0], sf_right[1], sf_right[2], 1,
                     true, return_trajectory,
-                    fully_extends, end_state, trajectory, control);
+                    fully_extends, end_state, trajectory, control, turning_radius);
             return res;
 
         case 2:
             res = extend_dubins_spheres (si_right[0], si_right[1], si_right[2], 
                     sf_left[0], sf_left[1], sf_left[2], 2, 
                     true, return_trajectory,
-                    fully_extends, end_state, trajectory, control);
+                    fully_extends, end_state, trajectory, control, turning_radius);
             return res;
 
         case 3:
             res = extend_dubins_spheres (si_left[0], si_left[1], si_left[2], 
                     sf_left[0], sf_left[1], sf_left[2], 3, 
                     true, return_trajectory,
-                    fully_extends, end_state, trajectory, control);
+                    fully_extends, end_state, trajectory, control, turning_radius);
             return res;
 
         case 4:
             res = extend_dubins_spheres (si_right[0], si_right[1], si_right[2], 
                     sf_right[0], sf_right[1], sf_right[2], 4, 
                     true, return_trajectory,
-                    fully_extends, end_state, trajectory, control);
+                    fully_extends, end_state, trajectory, control, turning_radius);
             return res;
 
         case -1:
@@ -705,18 +726,41 @@ System::extend_dubins_all (double state_ini[3], double state_fin[3],
 int System::extendTo (State &stateFromIn, State &stateTowardsIn, 
         Trajectory &trajectoryOut, bool &exactConnectionOut, list<float> &controlOut, bool check_obstacles) {
 
-    double *end_state;
-    end_state = new double [3];
-
-    double time = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
-            check_obstacles, false, 
-            exactConnectionOut, end_state, NULL, controlOut);
-    if (time < 0.0) 
+    double *end_state = new double [3];
+    
+    double min_cost = DBL_MAX;
+    double best_turning_radius = 100.0; 
+    for(int i=num_turning_radii -1; i >= 0; i--)
     {
-        delete [] end_state;
+        double *tmp_end_state = new double [3];
+        double turning_radius = turning_radii[i];
+        bool tmp_exact_connection = false;
+        list<float> tmp_control;
+
+        double cost = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
+                check_obstacles, false, 
+                tmp_exact_connection, tmp_end_state, NULL, tmp_control, turning_radius);
+        if(cost > 0.0)
+        {
+            if(cost < min_cost)
+            {
+                for(int j=0; j<3; j++)
+                    end_state[j] = tmp_end_state[j];
+                min_cost = cost;
+                best_turning_radius = turning_radius;
+                exactConnectionOut = tmp_exact_connection;
+                controlOut = tmp_control;
+            }
+        }
+        delete[] tmp_end_state;
+    }
+    if((min_cost <= 0.0) || (min_cost > 1000.0))
+    {
+        delete[] end_state;
         return 0;
     }
-
+    //cout<<"min_cost: "<< min_cost <<" tr: "<<best_turning_radius<<endl;
+    //cout<<"tr: "<< best_turning_radius<<endl;
     while (end_state[2] < -M_PI)
         end_state[2] += 2.0 * M_PI;
     while (end_state[2] > M_PI)
@@ -726,7 +770,7 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
         trajectoryOut.endState.x[i] = end_state[i];
     }
 
-    trajectoryOut.totalVariation = time;
+    trajectoryOut.totalVariation = min_cost;
 
     delete [] end_state;
 
@@ -734,38 +778,84 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
 }
 
 
-double System::evaluateExtensionCost (State &stateFromIn, State &stateTowardsIn, bool &exactConnectionOut) {
+double System::evaluateExtensionCost (State &stateFromIn, State &stateTowardsIn, bool &exactConnectionOut) 
+{
 
-    double *end_state;
+    double *end_state = new double[3];
 
-    list<float> tmp_control;
-    double time = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
-            false, false, 
-            exactConnectionOut, end_state, NULL, tmp_control);
-    if (time < 0.0) 
-        return DBL_MAX;
+    double min_cost = DBL_MAX;
+    for(int i=num_turning_radii -1; i >= 0; i--)
+    {
+        double turning_radius = turning_radii[i];
+        bool tmp_exact_connection = false;
+        list<float> tmp_control;
 
-    return time;
+        double cost = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
+                false, false, 
+                tmp_exact_connection, end_state, NULL, tmp_control, turning_radius);
+        if(cost > 0.0)
+        {
+            if(cost < min_cost)
+            {
+                min_cost = cost;
+                exactConnectionOut = tmp_exact_connection;
+            }
+        }
+    }
+    delete[] end_state;
+    return min_cost;
 }
 
 
+int System::clear_tmp_trajectories(list<double*> &state_traj, list<float> &control_traj)
+{
+    for(list<double*>::iterator i=state_traj.begin(); i!= state_traj.end(); i++)
+    {
+        delete[] (*i);
+    }
+    state_traj.clear();
+    control_traj.clear();
+    return 0;
+}
+
 int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut, list<float>& controlOut, bool check_obstacles) {
 
-    double *end_state;
-    end_state = new double[3];
 
+    double min_cost = DBL_MAX;
     bool exactConnectionOut = false;
+    for(int i=num_turning_radii -1; i >= 0; i--)
+    {
+        list<double*> tmp_traj;
+        list<float> tmp_control;
+        bool tmp_exact_connection = false;
+        double *end_state = new double[3];
+        double turning_radius = turning_radii[i];
 
-    double time = extend_dubins_all (stateFromIn.x, stateToIn.x, 
-            check_obstacles, true, 
-            exactConnectionOut, end_state, &trajectoryOut, controlOut);
-
-    delete [] end_state;
-
-    if (time <= 0.0) {
-        return 0;
+        double cost = extend_dubins_all (stateFromIn.x, stateToIn.x, 
+                check_obstacles, true, 
+                tmp_exact_connection, end_state, &tmp_traj, tmp_control, turning_radius);
+        if(cost > 0.0)
+        {
+            if(cost < min_cost)
+            {
+                min_cost = cost;
+                trajectoryOut = tmp_traj;
+                controlOut = tmp_control;
+                exactConnectionOut = tmp_exact_connection;
+            }
+        }
+        else
+        {
+            //clear tmp_traj
+            clear_tmp_trajectories(tmp_traj, tmp_control);
+        }
+        delete [] end_state;
     }
 
+    if ( (min_cost <= 0.0) || (min_cost > 1000.0)) {
+        return 0;
+    }
+    
     if (exactConnectionOut == false) 
         return 0;
 

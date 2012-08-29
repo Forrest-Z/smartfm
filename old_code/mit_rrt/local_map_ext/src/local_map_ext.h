@@ -17,6 +17,7 @@
 #include <laser_geometry/laser_geometry.h>
 #include <sensor_msgs/LaserScan.h>
 #include <message_filters/subscriber.h>
+#include <std_msgs/Bool.h>
 
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
@@ -38,7 +39,7 @@ class LocalMap
         void pointcloudCallback(sensor_msgs::PointCloud2ConstPtr pc);
         tf::MessageFilter<sensor_msgs::PointCloud2> *pointcloud_filter_;
         message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_sub_;
-
+        ros::Subscriber norminal_lane_sub_;
         void laserCallback(sensor_msgs::LaserScanConstPtr pc);
         tf::MessageFilter<sensor_msgs::LaserScan> *laser_filter_;
         message_filters::Subscriber<sensor_msgs::LaserScan> laser_sub_;
@@ -58,7 +59,7 @@ class LocalMap
         ros::NodeHandle nh_;
 
         sensor_msgs::PointCloud prior_pts_, local_map_pts_;
-        vector<int> prior_obs_;
+        vector<int> prior_obs_master_, prior_obs_;
 
         tf::StampedTransform transform_;
 
@@ -69,5 +70,7 @@ class LocalMap
 
         void timerCallback(const ros::TimerEvent &event);
         void publishLocalMapPts();
+        void norminalLane(std_msgs::Bool norminal_lane);
         double height_, width_;
+        void updatePriorObsWithLane(bool norminal);
 };

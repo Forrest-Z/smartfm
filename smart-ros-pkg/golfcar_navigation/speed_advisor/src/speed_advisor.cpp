@@ -129,6 +129,7 @@ SpeedAdvisor::SpeedAdvisor()
     right_blinker_pub_ = nh_.advertise<std_msgs::Bool>("right_blinker",1);
 
     move_base_speed_ = nh_.subscribe("/move_status", 1, &SpeedAdvisor::moveSpeedCallback, this);
+    rrts_sub_ = nh_.subscribe("rrts_status", 1, &SpeedAdvisor::rrts_callback, this);
     slowzone_sub_ = nh_.subscribe("slowZone", 1, &SpeedAdvisor::slowZoneCallback, this);
 
     timer_ = nh_.createTimer(ros::Duration(1.0/frequency_),
@@ -157,14 +158,19 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     // Add a normal speed profile
     speed_settings_.add( "norm zone", SpeedAttribute::norm_zone, high_speed_);
 
+    // RRTS says robot is in collision --> brake
+    if(rrts_status_.robot_in_collision)
+        speed_settings_.add_brake("rrts says robot is in collision", SpeedAttribute::robot_collision);
+
     // Problem with the navigation node (move_base) --> brake
     if( fabs((ros::Time::now()-last_update_).toSec()) > tolerance_ )
         speed_settings_.add_brake("no response from move_base", SpeedAttribute::no_response);
 
     // PPC couldn't find a path to follow, it may due to localisation error or illegal path received
-    if( ! move_status_.path_exist )
-        speed_settings_.add_brake("move_base reports no path", SpeedAttribute::path_exist);
+    if( !move_status_.path_exist )
+        speed_settings_.add_brake("move_base reports no path", SpeedAttribute::path_noexist);
 
+    // This may be an abuse for emergency, but to enable max deceleration
     if(move_status_.emergency)
         speed_settings_.add_brake("Emergency!", SpeedAttribute::emergency);
 
@@ -281,13 +287,16 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     SpeedAttribute sattr = speed_settings_.select_min_speed();
 
     move_speed.linear.x = sattr.final_speed_;
-    move_speed.angular.z = move_status_.steer_angle;
+
+    // steer is not set here using "cmd_vel"
+    // golfcar_pp set it using "cmd_steer"
+    move_speed.angular.z = 0.0;
 
     // Since the speed controller cannot track very small speed, so if we are
     // not stopped yet (i.e. final_speed>0) and if the target speed is small,
     // impose a minimal velocity.
     static const double minimal_vel = 0.1;
-    if( sattr.final_speed_!=0 && sattr.final_speed_<minimal_vel && sattr.target_speed_<minimal_vel )
+    if( sattr.final_speed_>0.0 && sattr.final_speed_<minimal_vel && sattr.target_speed_<minimal_vel )
         move_speed.linear.x = minimal_vel;
 
     //it was found that, in simulation with stage, although commanded to
@@ -362,6 +371,11 @@ bool SpeedAdvisor::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const
         return false;
     }
     return true;
+}
+
+void SpeedAdvisor::rrts_callback(const rrts::rrts_status &msg)
+{
+    rrts_status_ = msg;
 }
 
 int main(int argc, char **argv)

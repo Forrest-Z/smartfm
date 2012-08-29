@@ -60,13 +60,16 @@ LocalMap::LocalMap(double height, double width, double res):height_(height), wid
             if(resp.map.data[map_index] > 0)
             {
                 prior_pts_.points.push_back(map_p);
-                prior_obs_.push_back(resp.map.data[map_index]);
+                prior_obs_master_.push_back(resp.map.data[map_index]);
+                //initialize the prior_obs the same as the master
+
                 if(resp.map.data[map_index] == 107) left_lane++;
                 if(resp.map.data[map_index] == 87) right_lane++;;
             }
         }
 
     }
+    prior_obs_ = prior_obs_master_;
     cout<<"left lane = "<<left_lane<<" right_lane = "<<right_lane<<endl;
     prior_pts_pub_.publish(prior_pts_);
 
@@ -79,8 +82,37 @@ LocalMap::LocalMap(double height, double width, double res):height_(height), wid
     q.setRPY(0.0, 0.0,-M_PI/2.0);
     transform_ = tf::StampedTransform(tf::Transform(q, tf::Vector3(-height/4.0,width/2.0,0.0)), ros::Time::now()+*tf_sleeper_, base_frame_, local_frame_ );
     ros::Timer timer = nh_.createTimer(ros::Duration(*tf_sleeper_), &LocalMap::timerCallback, this);
+    norminal_lane_sub_ = nh_.subscribe("norminal_lane", 1, &LocalMap::norminalLane, this);
     ros::spin();
 };
+
+void LocalMap::updatePriorObsWithLane(bool norminal)
+{
+	if(norminal)
+	{
+		prior_obs_ = prior_obs_master_;
+	}
+	else
+	{
+		for(size_t i = 0; i < prior_obs_master_.size(); i++)
+		{
+			if(prior_obs_master_[i] == 107) prior_obs_[i] = 87;
+			if(prior_obs_master_[i] == 87) prior_obs_[i] = 107;
+		}
+	}
+
+}
+void LocalMap::norminalLane(std_msgs::Bool norminal_lane)
+{
+	//update the prior points
+	if(norminal_lane.data)
+		ROS_WARN("We are now moving towards McD");
+	else
+		ROS_WARN("We are now moving away from McD");
+
+	updatePriorObsWithLane(norminal_lane.data);
+
+}
 
 void LocalMap::publishLocalMapPts()
 {
