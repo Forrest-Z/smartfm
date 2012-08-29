@@ -65,6 +65,8 @@ namespace golfcar_pcl{
 	{	
 	}
 	
+	//to process input pcl batch with interesting indices: 
+	//1st extract normals; 2nd region-growing segmentation to extract road surface;
 	void road_surface::pclCallback(const PointCloud::ConstPtr& pcl_in, const rolling_window::pcl_indices::ConstPtr &indices_in)
 	{
 		if(input_update_flag_) ROS_WARN("last road_surface and boundary pcl batch are not accumulated, please check odomCallback");
@@ -87,6 +89,10 @@ namespace golfcar_pcl{
 		road_boundary_pub_.publish(boundary_pts_);
 		
 	}
+	
+	//odomCallback serves for several purposes;
+	//1st maintain the "road_surface" and "boundary" in the odom frame, by erasing obsolete pcl and add new incoming pcl;
+	//2nd extract plane by RANSAC based on the maintained "road_surface" pcl;
 	
 	void road_surface::odomCallback(const OdomConstPtr& odom)
 	{		
