@@ -17,12 +17,18 @@ namespace golfcar_pcl{
 		
 		geometry_msgs::Point32	viewpoint_td_sick_;
 		viewpoint_td_sick_.x = 1.70; viewpoint_td_sick_.y = 0.00; viewpoint_td_sick_.z = 1.53;
-		pcl::PointXYZ seedPoint_;
-		seedPoint_.x = 0.0; seedPoint_.y = 0.0; seedPoint_.z = 0.0;
+
+		seedPoint_.x = 7.0; seedPoint_.y = 0.0; seedPoint_.z = 0.0;
+		
 		private_nh_.param("search_radius", search_radius_, 0.10);
 		private_nh_.param("curvature_thresh", curvature_thresh_, 0.2);
+
+		rolling_pcl_sub_ = new message_filters::Subscriber<PointCloud> (nh_, "rolling_window_pcl", 1);
+		pcl_indices_sub_ = new message_filters::Subscriber<rolling_window::pcl_indices> (nh_, "process_fraction_indices", 1);
+		sync_	= new message_filters::TimeSynchronizer<PointCloud, rolling_window::pcl_indices>(*rolling_pcl_sub_, *pcl_indices_sub_, 5);
+		sync_->registerCallback(boost::bind(&road_surface::pclCallback, this, _1, _2));
 		
-		rolling_pcl_sub_ = nh_.subscribe("rolling_window_pcl", 10, &road_surface::pclCallback, this);
+		process_fraction_pub_   = nh_.advertise<PointCloud>("process_fraction", 10);
 		road_surface_pub_   = nh_.advertise<PointCloud>("road_surface_pts", 10);
 		road_boundary_pub_   = nh_.advertise<PointCloud>("road_boundary_pts", 10);
 		fitting_plane_pub_   = nh_.advertise<PointCloud>("fitting_plane", 10);
@@ -34,7 +40,7 @@ namespace golfcar_pcl{
 	{	
 	}
 	
-	void road_surface::pclCallback(const PointCloud::ConstPtr& pcl_in)
+	void road_surface::pclCallback(const PointCloud::ConstPtr& pcl_in, const rolling_window::pcl_indices::ConstPtr &indices_in)
 	{
 		PointCloud surface_pts;
 		surface_pts.clear();
@@ -54,7 +60,8 @@ namespace golfcar_pcl{
 		pcl::PointCloud<pcl::PointNormal> point_normals;
 		
 		rolling_window::plane_coef plane_coefs;
-      road_surface::surface_extraction(*pcl_in, true,  poly_ROI_, point_normals, surface_pts, boundary_pts, fitting_plane, plane_coefs);
+      road_surface::surface_extraction(*pcl_in,  *indices_in, poly_ROI_, point_normals, surface_pts, 
+													 boundary_pts, fitting_plane, plane_coefs);
 		
 		
 		road_surface_pub_.publish(surface_pts);
@@ -64,109 +71,123 @@ namespace golfcar_pcl{
 		publishNormal(point_normals);
 	}
 	
-	
-	
-	void road_surface::surface_extraction (const PointCloud &cloud_in, bool window_process, vector<pcl::PointXYZ> & poly_ROI,
+	void road_surface::surface_extraction (const PointCloud &cloud_in, const rolling_window::pcl_indices& proc_indices, 
+														vector<pcl::PointXYZ> & poly_ROI,
 														pcl::PointCloud<pcl::PointNormal> & point_normals,
 														PointCloud & surface_pts, PointCloud & boundary_pts, 
 														PointCloud & fitting_plane, rolling_window::plane_coef & plane_coef)
 	{
+		PointCloud process_fraction_pcl;
+		process_fraction_pcl.header = cloud_in.header;
+		process_fraction_pcl.clear();
+		process_fraction_pcl.height = 1;
+		for(size_t i=0; i<proc_indices.indices.size(); i++)
+		{
+			size_t point_index = proc_indices.indices[i];
+			process_fraction_pcl.points.push_back(cloud_in.points[point_index]);
+			process_fraction_pcl.width ++;
+		}
+		process_fraction_pub_.publish(process_fraction_pcl);
+		
 		fmutil::Stopwatch sw;
 		//process the cloud_in: a. calculate norms; b. extract road_boundary;
-		if(window_process)
-		{
-			sw.start("1. calculate pcl normals");
-			//http://pointclouds.org/documentation/tutorials/kdtree_search.php
-			//1st calculate the normals;
-			pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> ne;
-			ne.setInputCloud (cloud_in.makeShared());
-			pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> ());
-			ne.setSearchMethod (tree);
-			pcl::PointCloud<pcl::Normal> cloud_normals;
-			ne.setRadiusSearch (search_radius_);
-			ne.setViewPoint(viewpoint_td_sick_.x,viewpoint_td_sick_.y,viewpoint_td_sick_.z);
-			// Compute the features
-			ne.compute (cloud_normals);
-			// concatentate the fileds
-			//pcl::PointCloud<pcl::PointNormal> point_normals;
-			pcl::concatenateFields(cloud_in, cloud_normals, point_normals);
-			sw.end();
-			
-		   //2nd region-growing method for surface extraction;
-		   
-		   sw.start("2. region-growing to extract surface");
-			pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
-			if(cloud_in.points.size()==0) return;
-			kdtree.setInputCloud (cloud_in.makeShared());
-			//just to find the initial seed of road surface;
-			int K = 1;
-			std::vector<int> pointIdxNKNSearch(K);
-			std::vector<float> pointNKNSquaredDistance(K);
-			
-			int num = kdtree.nearestKSearch (seedPoint_, K, pointIdxNKNSearch, pointNKNSquaredDistance);
-			
-			if(num!=1){std::cout<<"ERROR When to find surface seed"<<endl; return;}
+		//http://pointclouds.org/documentation/tutorials/kdtree_search.php
+		//http://pointclouds.org/documentation/tutorials/how_features_work.php#how-3d-features-work
 		
-		   pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
-		   pcl::PointIndices::Ptr boundary_inliers (new pcl::PointIndices);
-		   
-		   inliers->indices.push_back(pointIdxNKNSearch[0]);
-			for(unsigned int pt=0; pt<inliers->indices.size(); pt++)
+		
+		sw.start("1. calculate pcl normals");
+		//1st calculate the normals;
+		pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> ne;
+		ne.setInputCloud (cloud_in.makeShared());
+		boost::shared_ptr<std::vector<int> > indicesptr (new std::vector<int> (proc_indices.indices));
+		ne.setIndices (indicesptr);
+		pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ> ());
+		ne.setSearchMethod (tree);
+		pcl::PointCloud<pcl::Normal> cloud_normals;
+		ne.setRadiusSearch (search_radius_);
+		ne.setViewPoint(viewpoint_td_sick_.x,viewpoint_td_sick_.y,viewpoint_td_sick_.z);
+		// Compute the features
+		ne.compute (cloud_normals);
+		// concatentate the fileds
+		//pcl::PointCloud<pcl::PointNormal> point_normals;
+		pcl::concatenateFields(process_fraction_pcl, cloud_normals, point_normals);
+		sw.end();
+		
+		//2nd region-growing method for surface extraction;
+		sw.start("2. region-growing to extract surface");
+		pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+		if(process_fraction_pcl.points.size()==0) return;
+		kdtree.setInputCloud (process_fraction_pcl.makeShared());
+		//just to find the initial seed of road surface;
+		int K = 1;
+		std::vector<int> pointIdxNKNSearch(K);
+		std::vector<float> pointNKNSquaredDistance(K);
+		
+		int num = kdtree.nearestKSearch (seedPoint_, K, pointIdxNKNSearch, pointNKNSquaredDistance);
+		
+		if(num!=1){std::cout<<"ERROR When to find surface seed"<<endl; return;}
+	
+		pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+		pcl::PointIndices::Ptr boundary_inliers (new pcl::PointIndices);
+		
+		pcl::PointXYZ searchPt_tmp;
+		searchPt_tmp = process_fraction_pcl.points[pointIdxNKNSearch[0]];
+		std::cout <<"searching point (x,y,z)"<< searchPt_tmp.x << " " << searchPt_tmp.y<<" "<< searchPt_tmp.z<< endl;
+		inliers->indices.push_back(pointIdxNKNSearch[0]);
+		
+		for(unsigned int pt=0; pt<inliers->indices.size(); pt++)
+		{
+			unsigned int serial = inliers->indices[pt];
+			//std::cout <<"serial  "<< serial<< endl;	
+			int neighbor_num = 8;
+			std::vector<int> nbPts(neighbor_num);
+			std::vector<float> nbPtDis(neighbor_num); 
+			
+			searchPt_tmp = process_fraction_pcl.points[serial];
+			int num = kdtree.nearestKSearch (searchPt_tmp, neighbor_num, nbPts, nbPtDis);
+			if(num!=neighbor_num) std::cout<<"neighbour points not enought, error"<<endl;
+			for(unsigned int neighbour_pt=0; neighbour_pt <nbPts.size(); neighbour_pt++)
 			{
-				unsigned int serial = inliers->indices[pt];
-				//std::cout <<"serial  "<< serial<< endl;	
-				int neighbor_num = 8;
-				std::vector<int> nbPts(neighbor_num);
-				std::vector<float> nbPtDis(neighbor_num); 
-				
-				pcl::PointXYZ searchPt_tmp;
-				searchPt_tmp = cloud_in.points[serial];
-				//std::cout <<"searching point (x,y,z)"<< searchPt_tmp.x << searchPt_tmp.y<< searchPt_tmp.z<< endl;
-				
-				int num = kdtree.nearestKSearch (searchPt_tmp, neighbor_num, nbPts, nbPtDis);
-				if(num!=neighbor_num) std::cout<<"neighbour points not enought 4, error"<<endl;
-				for(unsigned int neighbour_pt=0; neighbour_pt <nbPts.size(); neighbour_pt++)
-				{
-					 int nb_serial = nbPts[neighbour_pt];
-					 bool curvature_flat = point_normals.points[nb_serial].curvature <= curvature_thresh_;
-					 if(curvature_flat)
+				 int nb_serial = nbPts[neighbour_pt];
+				 bool curvature_flat = point_normals.points[nb_serial].curvature <= curvature_thresh_;
+				 if(curvature_flat)
+				 {
+					 bool no_copy = true;
+					 for(unsigned int all_pt=0; all_pt<inliers->indices.size(); all_pt++)
 					 {
-						 bool no_copy = true;
-						 for(unsigned int all_pt=0; all_pt<inliers->indices.size(); all_pt++)
-						 {
-							  if(inliers->indices[all_pt] == nb_serial) no_copy = false;
-						 }
-						 if(no_copy) inliers->indices.push_back(nb_serial);	 
+						  if(inliers->indices[all_pt] == nb_serial) no_copy = false;
 					 }
-					 else
+					 if(no_copy) inliers->indices.push_back(nb_serial);	 
+				 }
+				 else
+				 {
+					 bool no_copy = true;
+					 for(unsigned int bd_pt=0; bd_pt< boundary_inliers->indices.size(); bd_pt++)
 					 {
-						 bool no_copy = true;
-						 for(unsigned int bd_pt=0; bd_pt< boundary_inliers->indices.size(); bd_pt++)
-						 {
-							  if(boundary_inliers->indices[bd_pt] == nb_serial) no_copy = false;
-						 }
-						 if(no_copy){boundary_inliers->indices.push_back(nb_serial);}
-						 
+						  if(boundary_inliers->indices[bd_pt] == nb_serial) no_copy = false;
 					 }
-				}
+					 if(no_copy){boundary_inliers->indices.push_back(nb_serial);}
+					 
+				 }
 			}
-			sw.end();
-			
-			pcl::ExtractIndices<pcl::PointXYZ> extract;
-			extract.setInputCloud (cloud_in.makeShared());
-			extract.setIndices (inliers);
-			extract.setNegative (false);
-			extract.filter (surface_pts);
-			
-			ROS_INFO("boundary_inliers - size() %ld", boundary_inliers->indices.size());
-			pcl::ExtractIndices<pcl::PointXYZ> extract_bd;
-			extract_bd.setInputCloud (cloud_in.makeShared());
-			extract_bd.setIndices (boundary_inliers);
-			extract_bd.setNegative (false);
-			extract_bd.filter (boundary_pts);
-			
-			//planefitting_ROI(surface_pts, poly_ROI, fitting_plane, plane_coef);
-		}		
+		}
+		sw.end();
+		
+		pcl::ExtractIndices<pcl::PointXYZ> extract;
+		extract.setInputCloud (process_fraction_pcl.makeShared());
+		extract.setIndices (inliers);
+		extract.setNegative (false);
+		extract.filter (surface_pts);
+		
+		ROS_INFO("boundary_inliers - size() %ld", boundary_inliers->indices.size());
+		pcl::ExtractIndices<pcl::PointXYZ> extract_bd;
+		extract_bd.setInputCloud (process_fraction_pcl.makeShared());
+		extract_bd.setIndices (boundary_inliers);
+		extract_bd.setNegative (false);
+		extract_bd.filter (boundary_pts);
+		
+		//planefitting_ROI(surface_pts, poly_ROI, fitting_plane, plane_coef);
+		
 	}
 	
 	//input:		surface_pts;	poly_ROI;

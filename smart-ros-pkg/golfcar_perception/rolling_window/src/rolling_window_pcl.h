@@ -37,6 +37,7 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include "geometry_common.h"
 #include "rolling_window/plane_coef.h"
+#include "rolling_window/pcl_indices.h"
 
 using namespace std;
 
@@ -52,7 +53,7 @@ namespace golfcar_pcl{
     
         private:
         ros::NodeHandle nh_, private_nh_;
-	string target_frame_, base_frame_;
+	string odom_frame_, base_frame_;
         tf::TransformListener *tf_;
 
     	message_filters::Subscriber<sensor_msgs::LaserScan> 	laser_scan_sub_;
@@ -77,9 +78,13 @@ namespace golfcar_pcl{
 	bool checkDistance(const tf::StampedTransform& oldTf, const tf::StampedTransform& newTf, 
 			   float Dis_thresh);
 	void windowProcessing(ros::Time current_time);
-
+	
+	bool process_fraction_exist_;
 	PointCloud rolling_window_odom_, rolling_window_baselink_;
-	ros::Publisher  rolling_window_pub_;
+	PointCloud      process_fraction_odom_, front_buffer_odom_;
+	ros::Publisher  rolling_window_pub_, process_fraction_pub_;	
+	void pclXYZ_transform(string target_frame, PointCloud &pcl_src, PointCloud &pcl_dest);
+	void pcl_downsample(PointCloud &point_cloud);
     };
 
 };

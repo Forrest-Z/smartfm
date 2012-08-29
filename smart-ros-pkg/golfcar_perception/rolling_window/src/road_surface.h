@@ -42,11 +42,14 @@
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/segmentation/extract_clusters.h>
-
-#include "geometry_common.h"
-#include "rolling_window/plane_coef.h"
 #include <fmutil/fm_stopwatch.h>
 #include <pcl/filters/conditional_removal.h>
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
+#include "geometry_common.h"
+#include "rolling_window/plane_coef.h"
+#include "rolling_window/pcl_indices.h"
+
 
 namespace golfcar_pcl{
 
@@ -58,20 +61,26 @@ namespace golfcar_pcl{
         ~road_surface();   
 	
 	ros::NodeHandle nh_, private_nh_;
-	ros::Subscriber	rolling_pcl_sub_;
-	void pclCallback(const PointCloud::ConstPtr& pcl_in);
-	vector<pcl::PointXYZ> poly_ROI_;
 
+	message_filters::Subscriber<PointCloud> 			*rolling_pcl_sub_;
+    	message_filters::Subscriber<rolling_window::pcl_indices> 	*pcl_indices_sub_;
+	message_filters::TimeSynchronizer<PointCloud, rolling_window::pcl_indices> *sync_;
+
+	void pclCallback(const PointCloud::ConstPtr& pcl_in, const rolling_window::pcl_indices::ConstPtr &indices_in);
+	
+	vector<pcl::PointXYZ> poly_ROI_;
+	
 	ros::Publisher 	road_surface_pub_;
 	ros::Publisher	road_boundary_pub_;
 	ros::Publisher	fitting_plane_pub_;
 	ros::Publisher	plane_coef_pub_;
-	
+	ros::Publisher  process_fraction_pub_;
 	
 	void publishNormal(pcl::PointCloud<pcl::PointNormal>& pcl_cloud);
 	ros::Publisher	normals_poses_pub_;
 
-	void surface_extraction (const PointCloud &cloud_in, bool window_process, vector<pcl::PointXYZ> & poly_ROI,
+	void surface_extraction (const PointCloud &cloud_in, const rolling_window::pcl_indices & proc_indices,
+				 vector<pcl::PointXYZ> & poly_ROI,
 				 pcl::PointCloud<pcl::PointNormal> & point_normals,
 	    			 PointCloud & surface_pts, PointCloud & boundary_pts, 
 				 PointCloud & fitting_plane, rolling_window::plane_coef & plane_coef);

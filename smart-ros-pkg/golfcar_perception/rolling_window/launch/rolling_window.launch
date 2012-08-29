@@ -1,9 +1,9 @@
 <launch>
     <node pkg="rolling_window" type="rolling_window_pcl" name="rolling_window_pcl" output="screen">
 	<remap from="scan_in" to="sick_scan2" />
-	<param name="odom_trigger_thresh" value="10.0" type="double" />
+	<param name="odom_trigger_thresh" value="0.5" type="double" />
 	<param name="front_bound" value="10.0" type="double" />
-	<param name="back_bound" value="5.0" type="double" />
+	<param name="back_bound" value="-3.0" type="double" />
     </node>
 
     <node pkg="rolling_window" type="road_surface" name="road_surface" output="screen">
