@@ -50,10 +50,10 @@
 #include "rolling_window/plane_coef.h"
 #include "rolling_window/pcl_indices.h"
 
-
 namespace golfcar_pcl{
 
 	typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+	typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
 
 	class road_surface {
         public:
@@ -61,13 +61,26 @@ namespace golfcar_pcl{
         ~road_surface();   
 	
 	ros::NodeHandle nh_, private_nh_;
+	tf::TransformListener *tf_;
+	string odom_frame_, base_frame_;
+	
 
 	message_filters::Subscriber<PointCloud> 			*rolling_pcl_sub_;
     	message_filters::Subscriber<rolling_window::pcl_indices> 	*pcl_indices_sub_;
 	message_filters::TimeSynchronizer<PointCloud, rolling_window::pcl_indices> *sync_;
+	message_filters::Subscriber<nav_msgs::Odometry>			odom_sub_;
+	tf::MessageFilter<nav_msgs::Odometry>			*odom_filter_;
 
 	void pclCallback(const PointCloud::ConstPtr& pcl_in, const rolling_window::pcl_indices::ConstPtr &indices_in);
+	void odomCallback(const OdomConstPtr& odom);
 	
+	PointCloud surface_pts_, boundary_pts_;
+	bool input_update_flag_;
+	PointCloud road_surface_odom_, road_boundary_odom_;
+	vector <size_t> surface_index_batches_, boundary_index_batches_;
+	size_t batchNum_limit_;
+	
+
 	vector<pcl::PointXYZ> poly_ROI_;
 	
 	ros::Publisher 	road_surface_pub_;
@@ -80,17 +93,18 @@ namespace golfcar_pcl{
 	ros::Publisher	normals_poses_pub_;
 
 	void surface_extraction (const PointCloud &cloud_in, const rolling_window::pcl_indices & proc_indices,
-				 vector<pcl::PointXYZ> & poly_ROI,
-				 pcl::PointCloud<pcl::PointNormal> & point_normals,
-	    			 PointCloud & surface_pts, PointCloud & boundary_pts, 
-				 PointCloud & fitting_plane, rolling_window::plane_coef & plane_coef);
+	    			 PointCloud & surface_pts, PointCloud & boundary_pts);
     
 	void planefitting_ROI(PointCloud & surface_pts, vector<pcl::PointXYZ> & poly_ROI,
 			        	    PointCloud & fitting_plane, rolling_window::plane_coef & plane_coef);
-	
+	void pclXYZ_transform(string target_frame, PointCloud &pcl_src, PointCloud &pcl_dest);
+
 	geometry_msgs::Point32	viewpoint_td_sick_;
 	pcl::PointXYZ seedPoint_;
 	double search_radius_, curvature_thresh_; 
+
+	ros::Publisher 	surface_all_pub_;
+	ros::Publisher	boundary_all_pub_;
     };
 
 };
