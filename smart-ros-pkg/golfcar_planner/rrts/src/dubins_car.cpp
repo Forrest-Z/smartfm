@@ -46,7 +46,6 @@ State& State::operator=(const State &stateIn){
 
 
 Trajectory::Trajectory () {
-
     totalVariation = -1.0;
 }
 
@@ -118,7 +117,7 @@ int System::getStateKey (State &stateIn, double *stateKey) {
 #define SQ(x)   ((x)*(x))
 float System::getGoalCost(const double x[3])
 {
-    return (sqrt(SQ(x[0]-regionGoal.center[0]) + SQ(x[1]-regionGoal.center[1])) + 5.0*fabs(x[2] - regionGoal.center[2]));
+    return (sqrt(SQ(x[0]-regionGoal.center[0]) + SQ(x[1]-regionGoal.center[1])) + 3.0*fabs(x[2] - regionGoal.center[2]));
 }
 
 bool System::isReachingTarget (State &stateIn) {
@@ -262,6 +261,11 @@ double System::getStateCost(const double stateIn[3])
                 return 1;
             else if(val == 107)
                 return 2;
+            else
+            {
+                cout<<"Found random value in the map"<<endl;
+                return 1;
+            }
         }
         else
             return 100;
@@ -282,7 +286,10 @@ int System::sampleState (State &randomStateOut) {
     // transform the sample from local_map frame to /map frame
     double cyaw = cos(map_origin[2]);
     double syaw = sin(map_origin[2]);
-    double state_copy[3] = {randomStateOut.x[0], randomStateOut.x[1], randomStateOut.x[2]};
+    double state_copy[3];
+    for(int i=0; i<3; i++)
+        state_copy[i] = randomStateOut[i] - regionOperating.center[i];
+    
     randomStateOut.x[0] = map_origin[0] + state_copy[0]*cyaw + state_copy[1]*syaw;
     randomStateOut.x[1] = map_origin[1] + -state_copy[0]*syaw + state_copy[1]*cyaw;
     randomStateOut.x[2] = map_origin[2] + state_copy[2];
@@ -297,7 +304,6 @@ int System::sampleState (State &randomStateOut) {
 
     return 1;
 }
-
 
 int System::sampleGoalState (State &randomStateOut) {
 
@@ -697,13 +703,13 @@ System::extend_dubins_all (double state_ini[3], double state_fin[3],
 
 
 int System::extendTo (State &stateFromIn, State &stateTowardsIn, 
-        Trajectory &trajectoryOut, bool &exactConnectionOut, list<float> &controlOut) {
+        Trajectory &trajectoryOut, bool &exactConnectionOut, list<float> &controlOut, bool check_obstacles) {
 
     double *end_state;
     end_state = new double [3];
 
     double time = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
-            true, false, 
+            check_obstacles, false, 
             exactConnectionOut, end_state, NULL, controlOut);
     if (time < 0.0) 
     {
@@ -743,7 +749,7 @@ double System::evaluateExtensionCost (State &stateFromIn, State &stateTowardsIn,
 }
 
 
-int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut, list<float>& controlOut) {
+int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut, list<float>& controlOut, bool check_obstacles) {
 
     double *end_state;
     end_state = new double[3];
@@ -751,7 +757,7 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
     bool exactConnectionOut = false;
 
     double time = extend_dubins_all (stateFromIn.x, stateToIn.x, 
-            true, true, 
+            check_obstacles, true, 
             exactConnectionOut, end_state, &trajectoryOut, controlOut);
 
     delete [] end_state;
@@ -783,4 +789,3 @@ double System::evaluateCostToGo (State& stateIn)
     return dist - radius;
 
 }
-

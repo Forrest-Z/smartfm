@@ -3,3 +3,5 @@ bool robot_in_collision
 bool goal_in_collision
 bool goal_infeasible
 bool root_in_goal
+bool robot_near_root
+bool switched_root

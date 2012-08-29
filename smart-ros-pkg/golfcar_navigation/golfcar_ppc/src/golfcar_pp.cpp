@@ -227,9 +227,9 @@ bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
         return false;
     }
     // check odom_pose timeout
-    if (current_time.toSec() - odom_pose.stamp_.toSec() > 0.1) {
+    if (current_time.toSec() - odom_pose.stamp_.toSec() > 0.2) {
         ROS_WARN("PurePursuit transform timeout. Current time: %.4f, pose(%s) stamp: %.4f, tolerance: %.4f",
-                 current_time.toSec(), coord_frame_id_.c_str(), odom_pose.stamp_.toSec(), 0.1);
+                 current_time.toSec(), coord_frame_id_.c_str(), odom_pose.stamp_.toSec(), 0.2);
         return false;
     }
 

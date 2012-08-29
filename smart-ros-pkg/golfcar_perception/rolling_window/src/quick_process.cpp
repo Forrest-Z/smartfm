@@ -195,7 +195,7 @@ void laser_evidence::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
 
 void laser_evidence::mainLoop(geometry_msgs::PointStamped& laser_pose)
 {
-    if(fmutil::distance(laser_pose_pre_.point, laser_pose.point)<0.01) return;
+    if(fmutil::distance<geometry_msgs::Point>(laser_pose_pre_.point, laser_pose.point)<0.01) return;
     else laser_pose_pre_ = laser_pose;
     //only start filtering when there is enough samples
     if(sample_data_.size()>sample_size_)
