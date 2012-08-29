@@ -258,9 +258,9 @@ double System::getStateCost(const double stateIn[3])
         if(val != 0)
         {
             if(val == 87)
-                return 1;
-            else if(val == 107)
                 return 2;
+            else if(val == 107)
+                return 1;
             else
             {
                 cout<<"Found random value in the map"<<endl;
