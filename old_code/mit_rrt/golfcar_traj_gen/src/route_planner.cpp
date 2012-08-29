@@ -36,6 +36,7 @@ private:
     ros::NodeHandle n;
     ros::Publisher g_plan_pub_;
     ros::Publisher nextpose_pub_;
+    ros::Publisher norminal_lane_pub_;
 
     ros::Subscriber goal_in_collision_sub_;
     tf::TransformListener tf_;
@@ -80,9 +81,9 @@ RoutePlanner::RoutePlanner(const int start, const int end)
 {
     g_plan_pub_ = n.advertise<nav_msgs::Path>("pnc_globalplan", 1, true);
     nextpose_pub_ = n.advertise<geometry_msgs::PoseStamped>("pnc_nextpose",1);
+    norminal_lane_pub_ = n.advertise<std_msgs::Bool>("norminal_lane", 1, true);
     goal_in_collision_sub_ = n.subscribe("rrts_status",1, &RoutePlanner::rrts_status, this);
     ros::Rate loop_rate(3);
-    int count=0;
     initDest(start, end);
     initialized_ = false;
     goal_collision_ = false;
@@ -117,6 +118,15 @@ RoutePlanner::RoutePlanner(const int start, const int end)
 
 void RoutePlanner::initDest(const int start, const int end)
 {
+	//Default to true which is towards McD
+	bool norminal_lane = true;
+	//All paths starting from 0 and 1 are moving away from McD
+	if(start == 0 || start == 1) norminal_lane = false;
+	//Except when moving from 0 to 1 (DCC to McD)
+	if(start == 0 && end == 1) norminal_lane = true;
+	//All paths starting from 2 and 3 are moving towards McD
+	//Except when moving from 2 to 3 (EA to E3A)
+	if(start == 2 && end == 3) norminal_lane = false;
     destination_ = sp_.knownStations()(end);
     path_ = sp_.getPath(sp_.knownStations()(start),sp_.knownStations()(end));
     waypointNo_ = 0;
@@ -133,7 +143,8 @@ void RoutePlanner::initDest(const int start, const int end)
         p.poses[i].pose.orientation.w = 1.0;
     }
     g_plan_pub_.publish(p);
-
+    std_msgs::Bool temp; temp.data = norminal_lane;
+    norminal_lane_pub_.publish(temp);
 }
 
 using namespace std;
