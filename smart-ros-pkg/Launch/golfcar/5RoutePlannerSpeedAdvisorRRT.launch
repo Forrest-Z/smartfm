@@ -1,6 +1,5 @@
 <launch>
   <node pkg="golfcar_ppc" type="golfcar_pp" name="golfcar_pp" output="screen" >
-        <remap from="cmd_vel" to="move_vel"/>
         <param name="coord_frame_id" value="/map"/>
   </node>
   <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
