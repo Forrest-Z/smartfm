@@ -1,0 +1,17 @@
+<launch>
+    <param name="use_sim_time" value="true"/>
+
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find amcl_pc)/maps/bigeng_sde_map.yaml"/>
+
+    <!--node name="rviz" pkg="rviz" type="rviz" args="-d $(find local_map_ext)/local_map_vis.vcg"/-->
+
+    <node name="stageros" pkg="stage" type="stageros" args="$(find amcl_pc)/worlds/golfcar_eng.world">
+        <remap from="base_scan" to="sick_scan2"/>
+    </node>
+
+    <node name="fake_localization" pkg="fake_localization" type="fake_localization"/>
+
+    <node name="simple_goal" pkg="rrts" type="simple_goal" />
+
+    <include file="$(find Launch)/move_base.launch"/>
+</launch>
