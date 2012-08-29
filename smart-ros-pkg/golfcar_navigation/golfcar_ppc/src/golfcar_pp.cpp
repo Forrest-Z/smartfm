@@ -603,7 +603,7 @@ double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
     ROS_WARN("[just info] steering, on_segment=%d lookahead_seg=%d:(%lf,%lf)->(%lf,%lf) at x=%lf y=%lf yaw=%lf",
              segment, lookahead_segment, ori_x, ori_y, tar_x, tar_y, cur_x, cur_y, cur_yaw);
     ROS_WARN("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf%s",
-             inv_R, L, r, x, theta, gamma, steering, emergency_?"emergency!":"");
+             inv_R, L, r, x, theta, gamma, steering, emergency?" emergency!":"");
 
     if(isnan(steering))
     {
