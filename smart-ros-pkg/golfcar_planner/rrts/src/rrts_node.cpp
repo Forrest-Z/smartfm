@@ -95,7 +95,7 @@ class Planner
         void change_goal_region();
         void setup_rrts();
         void on_planner_timer(const ros::TimerEvent &e);
-        void get_plan();
+        int get_plan();
         float dist(float x1, float y1, float z1=0, float x2=0, float y2=0, float z2=0)
         {
             return sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) + (z1-z2)*(z1-z2));
@@ -220,6 +220,14 @@ int Planner::clear_committed_trajectory_length()
 {
     if(get_robot_pose() == 1)
         cout<<"robot_pose failed"<<endl;
+    
+    state_last_clear[0] = car_position.x;
+    state_last_clear[1] = car_position.y;
+    state_last_clear[2] = car_position.z;
+    
+    if(committed_trajectory.empty())
+        return 0;
+
     bool reached_end = false;
     list<double*>::iterator iter = committed_trajectory.begin();
     int num_delete = 0;
@@ -246,9 +254,6 @@ int Planner::clear_committed_trajectory_length()
         }
     }
 
-    state_last_clear[0] = car_position.x;
-    state_last_clear[1] = car_position.y;
-    state_last_clear[2] = car_position.z;
     is_updating_committed_trajectory = false;
     return 0;
 }
@@ -462,7 +467,7 @@ void Planner::setup_rrts()
 
     // Set planner parameters
     rrts.setGamma (2.0);
-    rrts.setGoalSampleFrequency (0.4);
+    rrts.setGoalSampleFrequency (0.5);
 
     // Initialize the planner
     rrts.initialize ();
@@ -490,7 +495,7 @@ bool Planner::is_robot_in_collision()
     }
 }
 
-void Planner::get_plan()
+int Planner::get_plan()
 {
     rrts.checkTree();
     rrts.updateReachability();
@@ -498,33 +503,37 @@ void Planner::get_plan()
     if(root_in_goal())
     {
         //cout<<"root in goal"<<endl;
-        return;
+        return 0;
     }
     if(is_robot_in_collision())
     {
         cout<<"robot in collision"<<endl;
         clear_committed_trajectory();
-        return;
+        return 1;
     }
     //cout<<"after check_tree num_vert: "<< rrts.numVertices<<endl;
     bool found_best_path = false;
     double best_cost=rrts.getBestVertexCost();
     double prev_best_cost=best_cost;
     int samples_this_loop = 0;
+    vertex_t &root_vertex = rrts.getRootVertex();
+    state_t &root_state = root_vertex.getState();
+    double root_goal_distance = dist(root_state[0], root_state[1],
+            0., rrts.system->regionGoal.center[0], rrts.system->regionGoal.center[1], 0 );
 
     ros::Time start_current_call_back = ros::Time::now();
-    cout<<"s: "<< rrts.numVertices<<" best_cost: "<<best_cost;
+    cout<<"s: "<< rrts.numVertices<<" -- "<<best_cost;
     flush(cout);
-    while((!found_best_path) || (samples_this_loop < 10))
+    while((!found_best_path) || (samples_this_loop < 5))
     {
         samples_this_loop += rrts.iteration();
         best_cost = rrts.getBestVertexCost();
-        if(best_cost < 500)
+        if(best_cost < 5.0*root_goal_distance)
         {
-            if( fabs(prev_best_cost - best_cost) < 0.05)
+            if( (fabs(prev_best_cost - best_cost) < 0.05) && (rrts.numVertices > 10))
                 found_best_path = true;
         }
-        //cout<<"n: "<< rrts.numVertices<<endl;
+        //cout<<"n: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
         
         if(samples_this_loop %5 == 0)
             prev_best_cost = best_cost;
@@ -534,7 +543,7 @@ void Planner::get_plan()
         if(dt.toSec() > 0.8*planner_dt)
             break;
     }
-    cout<<" e: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
+    cout<<" e: "<< rrts.numVertices<<" -- "<< best_cost<<endl;
     if(found_best_path)
     {
         rrts_status[ginf] = false;
@@ -558,14 +567,20 @@ void Planner::get_plan()
             should_send_new_committed_trajectory = false;
             is_first_committed_trajectory = false;
         }
+        return 0;
     }
-    else if( (rrts.numVertices > 500) || (samples_this_loop < 10))
+    else 
     {
-        rrts_status[ginf] = true;
-        cout<<"did not find best path: reinitializing"<<endl;
-        clear_committed_trajectory();
-        setup_rrts();
+        if(rrts.numVertices > 500)
+        {
+            rrts_status[ginf] = true;
+            cout<<"did not find best path: reinitializing"<<endl;
+            clear_committed_trajectory();
+            setup_rrts();
+            return 1;
+        }
     }
+    return 0;
 }
 
 bool Planner::is_near_end_committed_trajectory()
@@ -583,7 +598,7 @@ bool Planner::is_near_end_committed_trajectory()
         delyaw += 2.0*M_PI;
     
     bool res = false;
-    if(dist(car_position.x, car_position.y, 0, last_committed_state[0], last_committed_state[1], 0) < 4.0)
+    if(dist(car_position.x, car_position.y, 0, last_committed_state[0], last_committed_state[1], 0) < 5.0)
         res = true;
     else
         res = false;
