@@ -82,7 +82,7 @@ class System {
     region regionOperating;
     region regionGoal;
     
-#define num_turning_radii   (2)
+#define num_turning_radii   (3)
     double turning_radii[num_turning_radii];
     double car_width;
     double car_height;
