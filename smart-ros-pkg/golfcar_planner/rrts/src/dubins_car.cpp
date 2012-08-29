@@ -119,7 +119,12 @@ int System::getStateKey (State &stateIn, double *stateKey) {
 #define SQ(x)   ((x)*(x))
 float System::getGoalCost(const double x[3])
 {
-    return (sqrt(SQ(x[0]-regionGoal.center[0]) + SQ(x[1]-regionGoal.center[1])) + 10.0*fabs(x[2] - regionGoal.center[2]));
+    double tmp = x[2] - regionGoal.center[2];
+    while(tmp < -M_PI)
+        tmp += 2.0*M_PI;
+    while(tmp > M_PI)
+        tmp -= 2.0*M_PI;
+    return (sqrt(SQ(x[0]-regionGoal.center[0]) + SQ(x[1]-regionGoal.center[1])) + 4.0*fabs(tmp));
 }
 
 bool System::isReachingTarget (State &stateIn) {

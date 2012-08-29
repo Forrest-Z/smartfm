@@ -186,8 +186,13 @@ bool RoutePlanner::goToDest()
         if(dist < 15) 	
         {
             if(waypointNo_ < path_.size())
+            {
                 waypointNo_++;	
-            cout<<"Goal in collision/infeasible reported, increment waypoint"<<endl;
+                cout<<"Goal in collision/infeasible reported, increment waypoint"<<endl;
+                map_pose.header.frame_id="/map";
+                map_pose.header.stamp=ros::Time::now();
+                nextpose_pub_.publish(map_pose);
+            }
         }
     }
 
@@ -202,11 +207,12 @@ bool RoutePlanner::goToDest()
         }
         waypointNo_++;
         cout<<"Nominal increment for next path"<<endl;
+        map_pose.header.frame_id="/map";
+        map_pose.header.stamp=ros::Time::now();
+        nextpose_pub_.publish(map_pose);
     }
 
-    map_pose.header.frame_id="/map";
-    map_pose.header.stamp=ros::Time::now();
-    nextpose_pub_.publish(map_pose);
+    
 
     //transform from pose to point, planner expect point z as yaw
     //publish the first waypoint in map frame then continue to send the points until the last one
