@@ -68,20 +68,22 @@ class System {
     double extend_dubins_spheres (double x_s1, double y_s1, double t_s1, 
             double x_s2, double y_s2, double t_s2, int comb_no, 
             bool check_obstacles, bool return_trajectory,
-            bool& fully_extends, double*& end_state, list<double*>* trajectory, list<float> &control);
+            bool& fully_extends, double*& end_state, list<double*>* trajectory, list<float> &control, double turning_radius);
 
     double extend_dubins_all (double state_ini[3], double state_fin[3], 
             bool check_obstacles, bool return_trajectory,
-            bool& fully_extends, double*& end_state, list<double*>* trajectory, list<float> &control);
+            bool& fully_extends, double*& end_state, list<double*>* trajectory, list<float> &control, double turning_radius);
 
 
     State rootState;
 
     public:    
-    double turning_radius;
+    
     region regionOperating;
     region regionGoal;
     
+#define num_turning_radii   (3)
+    double turning_radii[num_turning_radii];
     double car_width;
     double car_height;
     double safe_distance;
@@ -115,6 +117,7 @@ class System {
 
     double evaluateCostToGo (State& stateIn);
 
+    int clear_tmp_trajectories(list<double*> &state_traj, list<float> &control_traj);
     int getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut, list<float> &controlOut, bool check_obstacles);
 
 };

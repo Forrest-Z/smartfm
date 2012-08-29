@@ -22,19 +22,18 @@ public:
 
 private:
     ros::Subscriber traj_sub_;
-    ros::Publisher cmd_pub_;
+    ros::Publisher cmd_steer_pub_;
     ros::Publisher move_status_pub_;
+    ros::Subscriber cmd_vel_sub_;
+    ros::Publisher cmd_vel_pub_; // only in case of (emergency) && (speed_advisor died)
     ros::Timer timer_;
 
     string robot_frame_id_, coord_frame_id_;
     double max_timer_;
     double max_timer_complaint_;
-    double normal_speed_;
-    double slow_speed_;
-    double stopping_distance_;
+    double max_silence_cmd_vel_;
     double neglect_distance_;
     double look_ahead_;
-    double look_ahead_add_;
     double max_steering_;
     double car_length_;
 
@@ -43,8 +42,10 @@ private:
     int last_segment_;
     ros::Time last_timer_complaint_;
     ros::Time last_segment_complaint_;
+    ros::Time last_time_cmd_vel_;
 
     void trajCallBack(const nav_msgs::Path::ConstPtr &traj);
+    void cmdVelCallBack(const geometry_msgs::Twist &cmd_vel);
     void controlLoop(const ros::TimerEvent &e);
 
     bool getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const;
@@ -61,10 +62,9 @@ private:
                         double inv_R, double cur_x, double cur_y,
                         double proj[2]);
     int get_segment(double cur_x, double cur_y);
-    int find_lookahead_segment(int segment, double cur_x, double cur_y, double &L, double &cmd_vel);
+    int find_lookahead_segment(int segment, double cur_x, double cur_y, double L);
     double get_dist_to_go(int segment, double cur_x, double cur_y);
-    double get_desired_speed(double dist_to_go);
-    double get_steering(int segment, double cur_x, double cur_y, double cur_yaw, double &cmd_vel);
+    double get_steering(int segment, double cur_x, double cur_y, double cur_yaw, bool &emergency);
 
     bool intersection_circle_line(double tar_x, double tar_y,
                                   double ori_x, double ori_y,
@@ -81,34 +81,33 @@ PurePursuit::PurePursuit()
 {
     ros::NodeHandle n;
     traj_sub_ = n.subscribe("pnc_trajectory", 100, &PurePursuit::trajCallBack, this);
-    cmd_pub_ = n.advertise<geometry_msgs::Twist>("cmd_vel",1);
+    cmd_steer_pub_ = n.advertise<geometry_msgs::Twist>("cmd_steer",1);
+    cmd_vel_pub_ = n.advertise<geometry_msgs::Twist>("cmd_vel",1); // only in case of (emergency) && (speed_advisor died)
     move_status_pub_ = n.advertise<pnc_msgs::move_status>("move_status", 1);
+    cmd_vel_sub_ = n.subscribe("cmd_vel", 100, &PurePursuit::cmdVelCallBack, this);
     timer_ = n.createTimer(ros::Duration(0.05), &PurePursuit::controlLoop, this);
 
     ros::NodeHandle private_nh("~");
     if(!private_nh.getParam("robot_frame_id", robot_frame_id_)) robot_frame_id_ = "/base_link";
     if(!private_nh.getParam("coord_frame_id", coord_frame_id_)) coord_frame_id_ = "/odom";
-    if(!private_nh.getParam("max_timer",max_timer_)) max_timer_ = 2.0;
-    if(!private_nh.getParam("max_timer_complaint",max_timer_complaint_)) max_timer_complaint_ = 5.0;
-    if(!private_nh.getParam("normal_speed",normal_speed_)) normal_speed_ = 2.0;
-    if(!private_nh.getParam("slow_speed",slow_speed_)) slow_speed_ = 1.5;
-    if(!private_nh.getParam("stopping_distance",stopping_distance_)) stopping_distance_ = 5.0;
-    if(!private_nh.getParam("neglect_distance",neglect_distance_)) neglect_distance_ = 0.001;
-    if(!private_nh.getParam("look_ahead",look_ahead_)) look_ahead_ = 3.0;
-    if(!private_nh.getParam("max_steering",max_steering_)) max_steering_ = 0.65;
-    if(!private_nh.getParam("car_length",car_length_)) car_length_ = 1.632;
+    if(!private_nh.getParam("max_timer", max_timer_)) max_timer_ = 2.0;
+    if(!private_nh.getParam("max_timer_complaint", max_timer_complaint_)) max_timer_complaint_ = 5.0;
+    if(!private_nh.getParam("max_silence_cmd_vel", max_silence_cmd_vel_)) max_silence_cmd_vel_ = 0.3;
+    if(!private_nh.getParam("neglect_distance", neglect_distance_)) neglect_distance_ = 0.001;
+    if(!private_nh.getParam("look_ahead", look_ahead_)) look_ahead_ = 3.0;
+    if(!private_nh.getParam("max_steering", max_steering_)) max_steering_ = 0.65;
+    if(!private_nh.getParam("car_length", car_length_)) car_length_ = 1.632;
 
     last_segment_ = 0;
     last_timer_complaint_ = ros::Time::now();
     last_segment_complaint_ = ros::Time::now();
+    last_time_cmd_vel_ = ros::Time::now();
 
     std::cout<<"robot_frame_id: "<<robot_frame_id_<<"\n";
     std::cout<<"coord_frame_id: "<<coord_frame_id_<<"\n";
     std::cout<<"max_timer: "<<max_timer_<<"\n";
     std::cout<<"max_timer_complaint: "<<max_timer_complaint_<<"\n";
-    std::cout<<"normal_speed: "<<normal_speed_<<"\n";
-    std::cout<<"slow_speed: "<<slow_speed_<<"\n";
-    std::cout<<"stopping_distance: "<<stopping_distance_<<"\n";
+    std::cout<<"max_silence_cmd_vel: "<<max_silence_cmd_vel_<<"\n";
     std::cout<<"neglect_distance: "<<neglect_distance_<<"\n";
     std::cout<<"look_ahead: "<<look_ahead_<<"\n";
     std::cout<<"max_steering: "<<max_steering_<<"\n";
@@ -142,15 +141,20 @@ void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
     }
 }
 
+void PurePursuit::cmdVelCallBack(const geometry_msgs::Twist &cmd_vel)
+{
+    last_time_cmd_vel_ = ros::Time::now();
+}
 
 void PurePursuit::controlLoop(const ros::TimerEvent &e)
 {
     geometry_msgs::Twist cmd_ctrl;
     pnc_msgs::move_status move_status;
-    double cmd_vel;
     double cmd_steer;
     double goal_dist;
 
+    bool emergency = false;
+    bool path_exist = false;
     ros::Time time_now = ros::Time::now();
     ros::Duration time_diff = time_now - trajectory_.header.stamp;
     double dt = time_diff.toSec();
@@ -165,9 +169,9 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
             ROS_WARN("stopping due to timer, %lf s passed after the last plan!", dt);
             last_timer_complaint_ = time_now;
         }
-        cmd_vel = 0.0;
         cmd_steer = 0.0;
         goal_dist = 0.0;
+        emergency = true;
     }
     else if((int) trajectory_.poses.size() > 1 && getRobotPose(pose))
     {
@@ -177,29 +181,42 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
         int segment = get_segment(cur_x, cur_y);
 
         goal_dist = get_dist_to_go(segment, cur_x, cur_y);
-        cmd_vel = get_desired_speed(goal_dist);
-        cmd_steer = get_steering(segment, cur_x, cur_y, cur_yaw, cmd_vel);
+        ROS_WARN("[just info] remaining_dist=%lf will be used in speed_advisor", goal_dist);
+        cmd_steer = get_steering(segment, cur_x, cur_y, cur_yaw, emergency);
+        if(segment > -1)
+            path_exist = true;
     }
     else
     {
-        cmd_vel = 0.0;
         cmd_steer = 0.0;
         goal_dist = 0.0;
+        emergency = true;
     }
 
-    cmd_ctrl.linear.x = cmd_vel;
+    // vel is not set here using "cmd_steer"
+    // based on move_status, speed_advisor set it using "cmd_vel"
+    cmd_ctrl.linear.x = 0.0;
     cmd_ctrl.angular.z = cmd_steer;
-    cmd_pub_.publish(cmd_ctrl);
+    cmd_steer_pub_.publish(cmd_ctrl);
 
     move_status.dist_to_goal = goal_dist;
     move_status.dist_to_ints = 99.0;
     move_status.dist_to_sig = 99.0;
     move_status.steer_angle = cmd_steer;
     move_status.obstacles_dist = 99.0;
-    move_status.path_exist = true;
-    move_status.emergency = false;
-    if(cmd_vel <= 0.01) move_status.emergency = true;
+    move_status.path_exist = path_exist;
+    move_status.emergency = emergency;
     move_status_pub_.publish(move_status);
+
+    ros::Duration time_diff3 = time_now - last_time_cmd_vel_;
+    double dt3 = time_diff3.toSec();
+    if(dt3 > max_silence_cmd_vel_)
+    {
+        ROS_WARN("speed_advisor did not send out cmd_vel for %lf s, I'm commanding 0.0 for safety", dt3);
+        cmd_ctrl.linear.x = 0.0;
+        cmd_ctrl.angular.z = 0.0;
+        cmd_vel_pub_.publish(cmd_ctrl);
+    }
 }
 
 bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
@@ -426,7 +443,7 @@ int PurePursuit::get_segment(double cur_x, double cur_y)
     return segment;
 }
 
-int PurePursuit::find_lookahead_segment(int segment, double cur_x, double cur_y, double &L, double &cmd_vel)
+int PurePursuit::find_lookahead_segment(int segment, double cur_x, double cur_y, double L)
 {
     if(segment < 0)
         return -1;
@@ -523,19 +540,8 @@ double PurePursuit::get_dist_to_go(int segment, double cur_x, double cur_y)
     return dist_to_go;
 }
 
-double PurePursuit::get_desired_speed(double dist_to_go)
-{
-    if(dist_to_go <= 0.0)
-        return 0.0;
-
-    if(dist_to_go > stopping_distance_)
-        return normal_speed_;
-    else
-        return (normal_speed_ * dist_to_go / stopping_distance_);
-}
-
 double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
-                                 double cur_yaw, double &cmd_vel)
+                                 double cur_yaw, bool &emergency)
 {
     ros::Time time_now = ros::Time::now();
     ros::Duration time_diff;
@@ -550,22 +556,22 @@ double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
             ROS_WARN("cannot determine, segment = -1");
             last_segment_complaint_ = time_now;
         }
-        cmd_vel = 0.0;
+        emergency = true;
         return 0.0;
     }
     if((int) trajectory_.poses.size() < segment+1)
     {
         ROS_WARN("trajectory(%d), segment(%d), not possible!", (int) trajectory_.poses.size(), segment);
-        cmd_vel = 0.0;
+        emergency = true;
         return 0.0;
     }
 
     double L = look_ahead_;
-    int lookahead_segment = find_lookahead_segment(segment, cur_x, cur_y, L, cmd_vel);
+    int lookahead_segment = find_lookahead_segment(segment, cur_x, cur_y, L);
     if(lookahead_segment < 0)
     {
         ROS_WARN("cannot determine, lookahead_segment = -1");
-        cmd_vel = 0.0;
+        emergency = true;
         return 0.0;
     }
 
@@ -612,7 +618,7 @@ double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
     if(L < abs(x))
     {
         ROS_WARN("too off from traj, L=%lf < abs(x=%lf)", L, x);
-        cmd_vel = 0.0;
+        emergency = true;
         return 0.0;
     }
 
@@ -621,12 +627,13 @@ double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
     double steering = atan(gamma * car_length_);
     ROS_WARN("[just info] steering, on_segment=%d lookahead_seg=%d:(%lf,%lf)->(%lf,%lf) at x=%lf y=%lf yaw=%lf",
              segment, lookahead_segment, ori_x, ori_y, tar_x, tar_y, cur_x, cur_y, cur_yaw);
-    ROS_WARN("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf cmd_vel=%lf", inv_R, L, r, x, theta, gamma, steering, cmd_vel);
+    ROS_WARN("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf%s",
+             inv_R, L, r, x, theta, gamma, steering, emergency?" emergency!":"");
 
     if(isnan(steering))
     {
         ROS_WARN("steering isnan, so commanding just 0!");
-        cmd_vel = 0.0;
+        emergency = true;
         steering = 0.0;
     }
     else if(steering > max_steering_)

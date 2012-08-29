@@ -1,5 +1,8 @@
 #include "speed_advisor.h"
 
+
+//todo: comment and test the automode behavior.
+
 SpeedSettings::SpeedSettings()
 : automode_(true), emergency_(false), curr_vel_(0), odo_vel_(0)
 {
@@ -53,7 +56,7 @@ void SpeedSettings::add(const string & description_str,
     else
         attr.final_speed_ = curr_vel_;
 
-    ROS_DEBUG("Adding speed attr: \"%s\", target=%.1f, curr_vel=%g, final=%g",
+    ROS_DEBUG_NAMED("ctrl_loop", "Adding speed attr: \"%s\", target=%.1f, curr_vel=%g, final=%g",
             description_str.c_str(), target_speed, curr_vel_, attr.final_speed_);
     attrs_.push_back(attr);
     mutex_.unlock();
@@ -71,7 +74,14 @@ SpeedAttribute SpeedSettings::select_min_speed()
     attrs_.clear();
     if( automode_ && !emergency_ )
         curr_vel_ = attr.final_speed_;
-    ROS_DEBUG("Selecting profile: \"%s\", target=%.1f, curr_vel=%g, final=%g",
+    else
+    {
+        attr.description_ = SpeedAttribute::manual_mode;
+        attr.description_str_ = "manual mode";
+        attr.final_speed_ = 0;
+        attr.target_speed_ = 0;
+    }
+    ROS_DEBUG_NAMED("ctrl_loop", "Selecting profile: \"%s\", target=%.1f, curr_vel=%g, final=%g",
             attr.description_str_.c_str(), attr.target_speed_, curr_vel_, attr.final_speed_);
     mutex_.unlock();
     return attr;
@@ -119,10 +129,17 @@ SpeedAdvisor::SpeedAdvisor()
     right_blinker_pub_ = nh_.advertise<std_msgs::Bool>("right_blinker",1);
 
     move_base_speed_ = nh_.subscribe("/move_status", 1, &SpeedAdvisor::moveSpeedCallback, this);
+    rrts_sub_ = nh_.subscribe("rrts_status", 1, &SpeedAdvisor::rrts_callback, this);
     slowzone_sub_ = nh_.subscribe("slowZone", 1, &SpeedAdvisor::slowZoneCallback, this);
 
     timer_ = nh_.createTimer(ros::Duration(1.0/frequency_),
                                 &SpeedAdvisor::ControlLoop, this);
+
+
+    // Init named loggers so that they the log level can be set in rxconsole
+    ROS_DEBUG_NAMED("ctrl_loop","");
+    ROS_DEBUG_NAMED("intersection","");
+    ROS_DEBUG_NAMED("laser_area","");
 }
 
 void SpeedAdvisor::slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones)
@@ -136,19 +153,24 @@ void SpeedAdvisor::slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones)
  */
 void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
 {
-    ROS_DEBUG("Control Loop: t=%f", ros::Time::now().toSec());
+    ROS_DEBUG_NAMED("ctrl_loop", "Control Loop: t=%f", ros::Time::now().toSec());
 
     // Add a normal speed profile
     speed_settings_.add( "norm zone", SpeedAttribute::norm_zone, high_speed_);
+
+    // RRTS says robot is in collision --> brake
+    if(rrts_status_.robot_in_collision)
+        speed_settings_.add_brake("rrts says robot is in collision", SpeedAttribute::robot_collision);
 
     // Problem with the navigation node (move_base) --> brake
     if( fabs((ros::Time::now()-last_update_).toSec()) > tolerance_ )
         speed_settings_.add_brake("no response from move_base", SpeedAttribute::no_response);
 
     // PPC couldn't find a path to follow, it may due to localisation error or illegal path received
-    if( ! move_status_.path_exist )
-        speed_settings_.add_brake("move_base reports no path", SpeedAttribute::path_exist);
+    if( !move_status_.path_exist )
+        speed_settings_.add_brake("move_base reports no path", SpeedAttribute::path_noexist);
 
+    // This may be an abuse for emergency, but to enable max deceleration
     if(move_status_.emergency)
         speed_settings_.add_brake("Emergency!", SpeedAttribute::emergency);
 
@@ -271,7 +293,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     // not stopped yet (i.e. final_speed>0) and if the target speed is small,
     // impose a minimal velocity.
     static const double minimal_vel = 0.1;
-    if( sattr.final_speed_!=0 && sattr.final_speed_<minimal_vel && sattr.target_speed_<minimal_vel )
+    if( sattr.final_speed_>0.0 && sattr.final_speed_<minimal_vel && sattr.target_speed_<minimal_vel )
         move_speed.linear.x = minimal_vel;
 
     //it was found that, in simulation with stage, although commanded to
@@ -346,6 +368,11 @@ bool SpeedAdvisor::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const
         return false;
     }
     return true;
+}
+
+void SpeedAdvisor::rrts_callback(const rrts::rrts_status &msg)
+{
+    rrts_status_ = msg;
 }
 
 int main(int argc, char **argv)

@@ -29,6 +29,7 @@
 #include <fmutil/fm_math.h>
 #include <pnc_msgs/speed_contribute.h>
 #include <pnc_msgs/move_status.h>
+#include <rrts/rrts_status.h>
 
 #include "IntersectionHandler.h"
 
@@ -39,9 +40,9 @@ struct SpeedAttribute
 {
     enum Description
     {
-        no_response, path_exist, norm_zone, slow_zone,
+        no_response, robot_collision, path_noexist, norm_zone, slow_zone,
         emergency, max_brake, need_brake, e_zone, warn_brake,
-        intersection, app_goal, goal
+        intersection, app_goal, goal, manual_mode
     };
 
     string description_str_;
@@ -130,6 +131,7 @@ private:
     ros::Subscriber move_base_speed_;
     ros::Subscriber global_plan_;
     ros::Subscriber slowzone_sub_;
+    ros::Subscriber rrts_sub_;
     ros::Timer timer_;
 
     IntersectionHandler int_h_;
@@ -145,6 +147,7 @@ private:
     string base_link_, map_id_;
     
     pnc_msgs::move_status move_status_;
+    rrts::rrts_status rrts_status_;
     geometry_msgs::PoseArray slowZone_;
 
     SpeedSettings speed_settings_;
@@ -153,6 +156,7 @@ private:
     bool getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const;
     void moveSpeedCallback(pnc_msgs::move_status status);
     void slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones);
+    void rrts_callback(const rrts::rrts_status &);
 };
 
 

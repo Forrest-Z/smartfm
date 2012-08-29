@@ -1,6 +1,6 @@
 <launch>
     <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
-        <remap from="cmd_vel" to="move_vel"/>
+        <remap from="cmd_vel" to="cmd_steer"/>
         <remap from="map" to="curb_map"/>
 
         <param name="footprint_padding" value="0.01" />

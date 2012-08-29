@@ -22,7 +22,7 @@ public:
 
 private:
     void emergencyBtnCB(std_msgs::Bool);
-    void cmdVelCallBack(geometry_msgs::Twist);
+    void cmdSteerCallBack(geometry_msgs::Twist);
 
     ros::NodeHandle n;
     ros::Subscriber sub;
@@ -39,7 +39,7 @@ private:
 
 SteeringController::SteeringController()
 {
-    sub = n.subscribe("cmd_vel", 1000, &SteeringController::cmdVelCallBack, this);
+    sub = n.subscribe("cmd_steer", 1000, &SteeringController::cmdSteerCallBack, this);
     emergency_btn_sub = n.subscribe("button_state_emergency", 1000, &SteeringController::emergencyBtnCB, this);
     steer_pub = n.advertise<std_msgs::Float64>("steer_angle", 1);
     emergency = false;
@@ -52,12 +52,12 @@ void SteeringController::emergencyBtnCB(std_msgs::Bool msg)
 }
 
 
-void SteeringController::cmdVelCallBack(geometry_msgs::Twist cmd_vel)
+void SteeringController::cmdSteerCallBack(geometry_msgs::Twist cmd_steer)
 {
     float st = 0;
     if( ! emergency )
     {
-        double wheel_angle = fmutil::r2d(cmd_vel.angular.z);
+        double wheel_angle = fmutil::r2d(cmd_steer.angular.z);
         double steering_angle = - 0.0016 * pow(wheel_angle,3)
                                 - 0.0032 * pow(wheel_angle,2)
                                 + 16.648 * wheel_angle

@@ -8,20 +8,20 @@ using namespace std;
 LaserAreaPolicy::LaserAreaPolicy(string path_id)
 : dist_to_pedcross_(1e6), dist_to_pedcross_threshold_(10), ped_crossing_free_(false)
 {
-    ros::NodeHandle private_nh("~");
+    ros::NodeHandle private_nh("~"), nh;
 
     private_nh.param("global_frame", global_frame_, string("map"));
-    cloud_sub_.subscribe(nh_, "sickldmrs/cloud", 10);
+    cloud_sub_.subscribe(nh, "laser_area_policy/cloud", 10);
     tf_pc2_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(cloud_sub_, tf_, global_frame_, 10);
-    tf_pc2_filter_->registerCallback(boost::bind(&LaserAreaPolicy::scanCallback, this, _1));
+    tf_pc2_filter_->registerCallback(boost::bind(&LaserAreaPolicy::pt_cloud_callback, this, _1));
     tf_pc2_filter_->setTolerance(ros::Duration(0.05));
 
-    boundary_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("ped_boundary",1, true);
-    obs_pts_pub_ = nh_.advertise<sensor_msgs::PointCloud>("ped_obstacles", 1, true);
+    boundary_pub_ = nh.advertise<geometry_msgs::PolygonStamped>("ped_boundary",1, true);
+    obs_pts_pub_ = nh.advertise<sensor_msgs::PointCloud>("ped_obstacles", 1, true);
 
-    laser_sub_.subscribe(nh_, "sickldmrs/scan0", 10);
+    laser_sub_.subscribe(nh, "laser_area_policy/scan", 10);
     tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, global_frame_, 10);
-    tf_filter_->registerCallback(boost::bind(&LaserAreaPolicy::laserCallback, this, _1));
+    tf_filter_->registerCallback(boost::bind(&LaserAreaPolicy::laser_callback, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
 
     string svg_file;
@@ -32,7 +32,9 @@ LaserAreaPolicy::LaserAreaPolicy(string path_id)
 
 bool LaserAreaPolicy::is_clear_to_go()
 {
-    return dist_to_pedcross_>dist_to_pedcross_threshold_ || ped_crossing_free_;
+    ROS_DEBUG_NAMED("laser_area", "dist_to_pedcross=%f, thr=%f, ped_crossing_free=%d",
+            dist_to_pedcross_, dist_to_pedcross_threshold_, ped_crossing_free_);
+    return dist_to_pedcross_<dist_to_pedcross_threshold_ && ped_crossing_free_;
 }
 
 void LaserAreaPolicy::update_dist(double d)
@@ -100,7 +102,7 @@ void LaserAreaPolicy::process(const sensor_msgs::PointCloud & pc)
         }
         catch(tf::TransformException& e)
         {
-            ROS_INFO_STREAM(e.what());
+            ROS_INFO_STREAM_NAMED("laser_area", e.what());
             continue;
         }
 
@@ -109,13 +111,15 @@ void LaserAreaPolicy::process(const sensor_msgs::PointCloud & pc)
             obs_pts.push_back(*it);
     }
 
+    ROS_DEBUG_NAMED("laser_area", "%d points in ped_boundary", obs_pts.size());
     pub_boundary();
     pub_obstacle_pts(obs_pts);
     ped_crossing_free_ = obs_pts.empty();
 }
 
-void LaserAreaPolicy::scanCallback(const sensor_msgs::PointCloud2ConstPtr& pc2)
+void LaserAreaPolicy::pt_cloud_callback(const sensor_msgs::PointCloud2ConstPtr& pc2)
 {
+    ROS_DEBUG_NAMED("laser_area", "pt_cloud_callback");
     if(dist_to_pedcross_ > dist_to_pedcross_threshold_)
         return;
     sensor_msgs::PointCloud pc;
@@ -123,8 +127,9 @@ void LaserAreaPolicy::scanCallback(const sensor_msgs::PointCloud2ConstPtr& pc2)
     process(pc);
 }
 
-void LaserAreaPolicy::laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in)
+void LaserAreaPolicy::laser_callback(const sensor_msgs::LaserScanConstPtr& scan_in)
 {
+    ROS_DEBUG_NAMED("laser_area", "laser_callback");
     if(dist_to_pedcross_ > dist_to_pedcross_threshold_)
         return;
 
@@ -135,7 +140,7 @@ void LaserAreaPolicy::laserCallback(const sensor_msgs::LaserScanConstPtr& scan_i
     }
     catch (tf::TransformException& e)
     {
-        ROS_INFO_STREAM(e.what());
+        ROS_INFO_STREAM_NAMED("laser_area", e.what());
         return;
     }
     process(pc);
