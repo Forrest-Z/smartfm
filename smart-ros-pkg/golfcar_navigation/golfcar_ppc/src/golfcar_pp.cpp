@@ -24,11 +24,14 @@ private:
     ros::Subscriber traj_sub_;
     ros::Publisher cmd_steer_pub_;
     ros::Publisher move_status_pub_;
+    ros::Subscriber cmd_vel_sub_;
+    ros::Publisher cmd_vel_pub_; // only in case of (emergency) && (speed_advisor died)
     ros::Timer timer_;
 
     string robot_frame_id_, coord_frame_id_;
     double max_timer_;
     double max_timer_complaint_;
+    double max_silence_cmd_vel_;
     double neglect_distance_;
     double look_ahead_;
     double max_steering_;
@@ -39,8 +42,10 @@ private:
     int last_segment_;
     ros::Time last_timer_complaint_;
     ros::Time last_segment_complaint_;
+    ros::Time last_time_cmd_vel_;
 
     void trajCallBack(const nav_msgs::Path::ConstPtr &traj);
+    void cmdVelCallBack(const geometry_msgs::Twist &cmd_vel);
     void controlLoop(const ros::TimerEvent &e);
 
     bool getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const;
@@ -77,7 +82,9 @@ PurePursuit::PurePursuit()
     ros::NodeHandle n;
     traj_sub_ = n.subscribe("pnc_trajectory", 100, &PurePursuit::trajCallBack, this);
     cmd_steer_pub_ = n.advertise<geometry_msgs::Twist>("cmd_steer",1);
+    cmd_vel_pub_ = n.advertise<geometry_msgs::Twist>("cmd_vel",1); // only in case of (emergency) && (speed_advisor died)
     move_status_pub_ = n.advertise<pnc_msgs::move_status>("move_status", 1);
+    cmd_vel_sub_ = n.subscribe("cmd_vel", 100, &PurePursuit::cmdVelCallBack, this);
     timer_ = n.createTimer(ros::Duration(0.05), &PurePursuit::controlLoop, this);
 
     ros::NodeHandle private_nh("~");
@@ -85,6 +92,7 @@ PurePursuit::PurePursuit()
     if(!private_nh.getParam("coord_frame_id", coord_frame_id_)) coord_frame_id_ = "/odom";
     if(!private_nh.getParam("max_timer", max_timer_)) max_timer_ = 2.0;
     if(!private_nh.getParam("max_timer_complaint", max_timer_complaint_)) max_timer_complaint_ = 5.0;
+    if(!private_nh.getParam("max_silence_cmd_vel", max_silence_cmd_vel_)) max_silence_cmd_vel_ = 0.3;
     if(!private_nh.getParam("neglect_distance", neglect_distance_)) neglect_distance_ = 0.001;
     if(!private_nh.getParam("look_ahead", look_ahead_)) look_ahead_ = 3.0;
     if(!private_nh.getParam("max_steering", max_steering_)) max_steering_ = 0.65;
@@ -93,11 +101,13 @@ PurePursuit::PurePursuit()
     last_segment_ = 0;
     last_timer_complaint_ = ros::Time::now();
     last_segment_complaint_ = ros::Time::now();
+    last_time_cmd_vel_ = ros::Time::now();
 
     std::cout<<"robot_frame_id: "<<robot_frame_id_<<"\n";
     std::cout<<"coord_frame_id: "<<coord_frame_id_<<"\n";
     std::cout<<"max_timer: "<<max_timer_<<"\n";
     std::cout<<"max_timer_complaint: "<<max_timer_complaint_<<"\n";
+    std::cout<<"max_silence_cmd_vel: "<<max_silence_cmd_vel_<<"\n";
     std::cout<<"neglect_distance: "<<neglect_distance_<<"\n";
     std::cout<<"look_ahead: "<<look_ahead_<<"\n";
     std::cout<<"max_steering: "<<max_steering_<<"\n";
@@ -131,6 +141,10 @@ void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
     }
 }
 
+void PurePursuit::cmdVelCallBack(const geometry_msgs::Twist &cmd_vel)
+{
+    last_time_cmd_vel_ = ros::Time::now();
+}
 
 void PurePursuit::controlLoop(const ros::TimerEvent &e)
 {
@@ -167,6 +181,7 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
         int segment = get_segment(cur_x, cur_y);
 
         goal_dist = get_dist_to_go(segment, cur_x, cur_y);
+        ROS_WARN("[just info] remaining_dist=%lf will be used in speed_advisor", goal_dist);
         cmd_steer = get_steering(segment, cur_x, cur_y, cur_yaw, emergency);
         if(segment > -1)
             path_exist = true;
@@ -192,6 +207,16 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
     move_status.path_exist = path_exist;
     move_status.emergency = emergency;
     move_status_pub_.publish(move_status);
+
+    ros::Duration time_diff3 = time_now - last_time_cmd_vel_;
+    double dt3 = time_diff3.toSec();
+    if(dt3 > max_silence_cmd_vel_)
+    {
+        ROS_WARN("speed_advisor did not send out cmd_vel for %lf s, I'm commanding 0.0 for safety", dt3);
+        cmd_ctrl.linear.x = 0.0;
+        cmd_ctrl.angular.z = 0.0;
+        cmd_vel_pub_.publish(cmd_ctrl);
+    }
 }
 
 bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const

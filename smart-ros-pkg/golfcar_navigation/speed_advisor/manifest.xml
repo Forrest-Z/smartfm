@@ -26,6 +26,7 @@
   <depend package="infrastructure_road_monitoring"/>
   <depend package="vision_motion_detection"/>
   <depend package="pnc_msgs"/>
+  <depend package="rrts"/>
 
 </package>
 
