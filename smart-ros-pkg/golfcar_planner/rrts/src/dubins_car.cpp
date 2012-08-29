@@ -429,9 +429,12 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         return -1.0;
     }
 
-    // send total_distance_travel + local_map_cost as the real cost
-    double total_distance_travel = (t_increment_s1 + t_increment_s2) * turning_radius  + distance;
+    // different costs
+    double time_cost = (t_increment_s1 + t_increment_s2) * turning_radius  + distance;
     double local_map_cost = 0;
+    double turning_cost = 5.0*(t_increment_s1 + t_increment_s2);
+    time_cost += turning_cost;
+
     fully_extends = 0;
 
     if (check_obstacles) 
@@ -484,7 +487,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 for (int i = 0; i < 3; i++)
                     end_state[i] = state_curr[i];
 
-                return total_distance_travel + local_map_cost;
+                return time_cost + local_map_cost;
             }
         }
 
@@ -530,7 +533,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 for (int i = 0; i < 3; i++)
                     end_state[i] = state_curr[i];
 
-                return total_distance_travel + local_map_cost;
+                return time_cost + local_map_cost;
             }
         }
 
@@ -578,7 +581,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
                 for (int i = 0; i < 3; i++)
                     end_state[i] = state_curr[i];
 
-                return total_distance_travel + local_map_cost;
+                return time_cost + local_map_cost;
             }
         }
 
@@ -588,7 +591,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
             end_state[i] = state_curr[i];
     }
 
-    return total_distance_travel + local_map_cost;
+    return time_cost + local_map_cost;
 
 }
 
@@ -710,24 +713,39 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
     double *end_state;
     end_state = new double [3];
     
-    double time = DBL_MAX;
+    double min_cost = DBL_MAX;
+    double best_turning_radius = 100.0; 
     for(int i=num_turning_radii -1; i >= 0; i--)
     {
+        double *tmp_end_state = new double [3];
         double turning_radius = turning_radii[i];
-        time = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
+        bool tmp_exact_connection = false;
+        list<float> tmp_control;
+
+        double cost = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
                 check_obstacles, false, 
-                exactConnectionOut, end_state, NULL, controlOut, turning_radius);
-        if (time < 0.0)
+                tmp_exact_connection, tmp_end_state, NULL, tmp_control, turning_radius);
+        delete[] tmp_end_state;
+        if(cost > 0.0)
         {
-            delete [] end_state;
-            return 0;
-        }
-        else if (time < 500.0)  // worst case cost is L + 10*L (obstacle cost) = 11L
-        {
-            cout<<"tr: "<< turning_radius<<endl;
-            break;
+            if(cost < min_cost)
+            {
+                for(int j=0; j<3; j++)
+                    end_state[i] = tmp_end_state[i];
+                min_cost = cost;
+                best_turning_radius = turning_radius;
+                exactConnectionOut = tmp_exact_connection;
+                controlOut = tmp_control;
+            }
         }
     }
+    cout<<"min_cost: "<< min_cost <<" tr: "<<best_turning_radius<<endl;
+    if((min_cost <= 0.0) || (min_cost > 1000.0))
+    {
+        delete[] end_state;
+        return 0;
+    }
+    //cout<<"tr: "<< best_turning_radius<<endl;
     while (end_state[2] < -M_PI)
         end_state[2] += 2.0 * M_PI;
     while (end_state[2] > M_PI)
@@ -737,7 +755,7 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
         trajectoryOut.endState.x[i] = end_state[i];
     }
 
-    trajectoryOut.totalVariation = time;
+    trajectoryOut.totalVariation = min_cost;
 
     delete [] end_state;
 
@@ -745,21 +763,32 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
 }
 
 
-double System::evaluateExtensionCost (State &stateFromIn, State &stateTowardsIn, bool &exactConnectionOut) {
+double System::evaluateExtensionCost (State &stateFromIn, State &stateTowardsIn, bool &exactConnectionOut) 
+{
 
-    double *end_state;
-    double time = DBL_MAX;
+    double *end_state = new double[3];
+
+    double min_cost = DBL_MAX;
     for(int i=num_turning_radii -1; i >= 0; i--)
     {
         double turning_radius = turning_radii[i];
+        bool tmp_exact_connection = false;
         list<float> tmp_control;
-        time = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
+
+        double cost = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
                 false, false, 
-                exactConnectionOut, end_state, NULL, tmp_control, turning_radius);
-        if (time > 0.0)
-            break;
+                tmp_exact_connection, end_state, NULL, tmp_control, turning_radius);
+        if(cost > 0.0)
+        {
+            if(cost < min_cost)
+            {
+                min_cost = cost;
+                exactConnectionOut = tmp_exact_connection;
+            }
+        }
     }
-    return time;
+    delete[] end_state;
+    return min_cost;
 }
 
 
@@ -779,21 +808,27 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
     double *end_state;
     end_state = new double[3];
 
+    double min_cost = DBL_MAX;
     bool exactConnectionOut = false;
-    double time = DBL_MAX;
     for(int i=num_turning_radii -1; i >= 0; i--)
     {
         list<double*> tmp_traj;
         list<float> tmp_control;
+        bool tmp_exact_connection = false;
         double turning_radius = turning_radii[i];
-        time = extend_dubins_all (stateFromIn.x, stateToIn.x, 
+
+        double cost = extend_dubins_all (stateFromIn.x, stateToIn.x, 
                 check_obstacles, true, 
-                exactConnectionOut, end_state, &tmp_traj, tmp_control, turning_radius);
-        if(time > 0.0)
+                tmp_exact_connection, end_state, &tmp_traj, tmp_control, turning_radius);
+        if(cost > 0.0)
         {
-            trajectoryOut = tmp_traj;
-            controlOut = tmp_control;
-            break;
+            if(cost < min_cost)
+            {
+                min_cost = cost;
+                trajectoryOut = tmp_traj;
+                controlOut = tmp_control;
+                exactConnectionOut = tmp_exact_connection;
+            }
         }
         else
         {
@@ -803,7 +838,7 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
     }
     delete [] end_state;
 
-    if (time <= 0.0) {
+    if ( (min_cost <= 0.0) || (min_cost > 1000.0)) {
         return 0;
     }
     

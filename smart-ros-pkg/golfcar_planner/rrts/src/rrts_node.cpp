@@ -220,6 +220,14 @@ int Planner::clear_committed_trajectory_length()
 {
     if(get_robot_pose() == 1)
         cout<<"robot_pose failed"<<endl;
+    
+    state_last_clear[0] = car_position.x;
+    state_last_clear[1] = car_position.y;
+    state_last_clear[2] = car_position.z;
+    
+    if(committed_trajectory.empty())
+        return 0;
+
     bool reached_end = false;
     list<double*>::iterator iter = committed_trajectory.begin();
     int num_delete = 0;
@@ -246,9 +254,6 @@ int Planner::clear_committed_trajectory_length()
         }
     }
 
-    state_last_clear[0] = car_position.x;
-    state_last_clear[1] = car_position.y;
-    state_last_clear[2] = car_position.z;
     is_updating_committed_trajectory = false;
     return 0;
 }
