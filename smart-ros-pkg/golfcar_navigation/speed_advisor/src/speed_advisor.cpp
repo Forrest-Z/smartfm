@@ -287,10 +287,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     SpeedAttribute sattr = speed_settings_.select_min_speed();
 
     move_speed.linear.x = sattr.final_speed_;
-
-    // steer is not set here using "cmd_vel"
-    // golfcar_pp set it using "cmd_steer"
-    move_speed.angular.z = 0.0;
+    move_speed.angular.z = move_status_.steer_angle;
 
     // Since the speed controller cannot track very small speed, so if we are
     // not stopped yet (i.e. final_speed>0) and if the target speed is small,
