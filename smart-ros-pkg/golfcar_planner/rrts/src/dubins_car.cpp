@@ -116,11 +116,10 @@ int System::getStateKey (State &stateIn, double *stateKey) {
     return 1;
 }
 
-
 #define SQ(x)   ((x)*(x))
 float System::getGoalCost(const double x[3])
 {
-    return (sqrt(SQ(x[0]-regionGoal.center[0]) + SQ(x[1]-regionGoal.center[1])) + 5.0*fabs(x[2] - regionGoal.center[2]));
+    return (sqrt(SQ(x[0]-regionGoal.center[0]) + SQ(x[1]-regionGoal.center[1])) + 10.0*fabs(x[2] - regionGoal.center[2]));
 }
 
 bool System::isReachingTarget (State &stateIn) {
@@ -246,28 +245,22 @@ bool System::IsInCollision (const double stateIn[3], bool debug_flag)
     return true;
 }
 
-double System::getStateCost(const double stateIn[3])
+double System::getLaneCost(const double zx, const double zy)
 {
-    // (x,y) in local_map frame
-    double zl[2] = {0};
-    // yaw in local frame
-    double yl = 0;
-    transform_map_to_local_map(stateIn, zl[0], zl[1], yl);
-
     int map_index = -1;
-    if(get_cell_index(zl[0], zl[1], map_index) == 0)
+    if(get_cell_index(zx, zy, map_index) == 0)
     {
         int val = map.data[map_index];
         if(val != 0)
         {
             if(val == 87)
-                return 2;
+                return 0;
             else if(val == 107)
-                return 1;
+                return 5;
             else
             {
                 cout<<"Found random value in the map"<<endl;
-                return 1;
+                return 10;
             }
         }
         else
@@ -275,6 +268,29 @@ double System::getStateCost(const double stateIn[3])
     }
     else
         return 10;
+}
+
+double System::getStateCost(const double stateIn[3])
+{
+    // (x,y) in local_map frame
+    double zlc[2] = {0};
+    // yaw in local frame
+    double ylc = 0;
+    transform_map_to_local_map(stateIn, zlc[0], zlc[1], ylc);
+    
+    double cost = 0;
+    
+    double zll[2] = {0};
+    double zlr[2] = {0};
+    zlr[0] = zlc[0] + car_width/2.0*sin(ylc);
+    zlr[1] = zlc[1] - car_width/2.0*cos(ylc);
+    zll[0] = zlc[0] - car_width/2.0*sin(M_PI/2.0 - ylc);
+    zll[1] = zlc[1] + car_width/2.0*cos(M_PI/2.0 - ylc);
+
+    cost += getLaneCost(zlc[0], zlc[1]);
+    cost += getLaneCost(zll[0], zll[1]);
+    cost += getLaneCost(zlr[0], zlr[1]);
+    return cost/3.0;
 }
 
 int System::sampleState (State &randomStateOut) {
@@ -329,7 +345,6 @@ int System::sampleGoalState (State &randomStateOut) {
     //cout<<"sampled goal: "<< randomStateOut.x[0]<<" "<< randomStateOut.x[1]<< " "<<randomStateOut.x[2]<<endl;
     return 1;
 }
-
 
 
 double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1, 
@@ -431,9 +446,20 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
     }
 
     // different costs
-    double time_cost = (t_increment_s1 + t_increment_s2) * turning_radius  + distance;
+    double ts1c = t_increment_s1;
+    double ts2c = t_increment_s2;
+    while(ts1c > M_PI)
+        ts1c -= 2.0*M_PI;
+    while(ts1c < -M_PI)
+        ts1c += 2.0*M_PI;
+    while(ts2c > M_PI)
+        ts2c -= 2.0*M_PI;
+    while(ts2c < -M_PI)
+        ts2c += 2.0*M_PI;
+
+    double time_cost = 0.5*(( fabs(ts1c) + fabs(ts2c)) * turning_radius  + distance);
     double local_map_cost = 0;
-    double turning_cost = (t_increment_s1 + t_increment_s2);
+    double turning_cost = ( fabs(ts1c) + fabs(ts2c));
     time_cost += turning_cost;
 
     fully_extends = 0;
@@ -443,7 +469,8 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         // Generate states/inputs
         double del_d = delta_distance;
         double del_t = del_d/turning_radius;
-        double max_counter = map.info.resolution/del_d;
+        int max_counter = map.info.resolution/del_d;
+        //cout<<"max_counter: "<<max_counter<<endl;
 
         double t_inc_curr = 0.0;
 
@@ -454,7 +481,8 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         {
             double t_inc_rel = del_t;
             t_inc_curr += del_t;
-            if (t_inc_curr > t_increment_s1) {
+            if (t_inc_curr > t_increment_s1) 
+            {
                 t_inc_rel -= t_inc_curr - t_increment_s1;
                 t_inc_curr = t_increment_s1;
             }
@@ -851,14 +879,13 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
         }
         delete [] end_state;
     }
+    //cout<<"trajOut size: "<<trajectoryOut.size()<<" min_cost: "<<min_cost<<" exact: "<< exactConnectionOut<<endl;
 
-    if ( (min_cost <= 0.0) || (min_cost > 1000.0)) {
+    if ((min_cost <= 0.0) || (exactConnectionOut == false))
+    {
         return 0;
     }
     
-    if (exactConnectionOut == false) 
-        return 0;
-
     trajectoryOut.reverse();
 
     return 1;

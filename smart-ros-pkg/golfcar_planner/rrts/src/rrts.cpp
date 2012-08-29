@@ -782,6 +782,7 @@ RRTstar::Planner< typeparams >
     double *stateArrPrev = new double [numDimensions];
     for (int i = 0; i < numDimensions; i++) 
         stateArrPrev[i] = rootState[i];
+    //cout<<"stateArrPrev: "<< stateArrPrev[0]<<" "<<stateArrPrev[1]<<" "<<stateArrPrev[2]<<endl;
 
     double distTotal = 0.0;
     for (typename list<vertex_t*>::iterator iter = listBestVertex.begin(); iter != listBestVertex.end(); iter++) 
@@ -800,6 +801,15 @@ RRTstar::Planner< typeparams >
         list<double*> trajectory;
         list<float> control;
         system->getTrajectory (stateParent, stateCurr, trajectory, control, true);
+        
+        /*
+        cout<<"switchroot gettraj size: "<< trajectory.size()<<endl;
+        for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++) 
+        {
+            double *s = *iter;
+            cout<<s[0]<<" "<<s[1]<<" "<<s[2]<<endl;
+        }
+        */
 
         list<float>::iterator iterControl = control.begin();
         for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++) 
@@ -810,6 +820,7 @@ RRTstar::Planner< typeparams >
                     + (stateArrCurr[1]-stateArrPrev[1])*(stateArrCurr[1]-stateArrPrev[1]) );
 
             distTotal += distCurr;
+            //cout<<"distTotal: "<<distTotal<<endl;
 
             // write code for copying trajectory, control into traj here
             double *stateTmp = new double[3];
@@ -837,20 +848,18 @@ RRTstar::Planner< typeparams >
 
         // Free the temporary memory occupied by the states
         for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++) {
-
             double *stateArrCurr = *iter;
             delete [] stateArrCurr;
         }
-
         if (stateFound)
         {
             break;
         }
 
         // what is the this line for??
-        //vertexCurr = &vertexParent;
+        vertexCurr = &vertexParent;
     }
-
+    //cout<<"trajret size: "<< trajret.size()<<endl;
     delete [] stateArrPrev; 
 
     state_t &vertexChildNewState = vertexChildNew->getState();
@@ -1011,7 +1020,7 @@ RRTstar::Planner< typeparams >
             list<double*> trajectory;
             list<float> control;
             system->getTrajectory (stateParent, stateCurr, trajectory, control, false);
-
+            
             trajectory.reverse ();
             control.reverse();
             for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++) 
@@ -1047,11 +1056,18 @@ int
     RRTstar::Planner< typeparams >
 ::isSafeTrajectory(list<double*>& trajectory)
 {
+    int max_obs_check = 4;
+    int obs_counter = 0;
     for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++)
     {
-        double *stateRef = *iter;
-        if( system->IsInCollision(stateRef) )
-            return false;
+        obs_counter++;
+        if(obs_counter == max_obs_check)
+        {
+            obs_counter = 0;
+            double *stateRef = *iter;
+            if( system->IsInCollision(stateRef) )
+                return false;
+        }
     }
     return true;
 }
