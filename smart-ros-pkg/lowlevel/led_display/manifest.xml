@@ -1,0 +1,16 @@
+<package>
+  <description brief="led_display">
+
+     led_display
+
+  </description>
+  <author>brice rebsamen</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/led_display</url>
+
+  <rosdep name="serial"/>
+
+</package>
+
+
