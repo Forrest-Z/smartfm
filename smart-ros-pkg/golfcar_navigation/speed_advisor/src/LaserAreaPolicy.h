@@ -28,7 +28,6 @@ private:
 
     std::string global_frame_;
 
-    ros::NodeHandle nh_;
     ros::Publisher boundary_pub_, obs_pts_pub_;
     message_filters::Subscriber<sensor_msgs::PointCloud2> cloud_sub_;
     message_filters::Subscriber<sensor_msgs::LaserScan> laser_sub_;
@@ -37,8 +36,8 @@ private:
     tf::MessageFilter<sensor_msgs::LaserScan> * tf_filter_;
     tf::MessageFilter<sensor_msgs::PointCloud2>* tf_pc2_filter_;
 
-    void scanCallback(const sensor_msgs::PointCloud2ConstPtr& pc2);
-    void laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in);
+    void pt_cloud_callback(const sensor_msgs::PointCloud2ConstPtr& pc2);
+    void laser_callback(const sensor_msgs::LaserScanConstPtr& scan_in);
     void process(const sensor_msgs::PointCloud &);
     void pub_boundary();
     void pub_obstacle_pts(const std::vector<geometry_msgs::Point32> &);

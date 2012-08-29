@@ -41,7 +41,7 @@ struct SpeedAttribute
     {
         no_response, path_exist, norm_zone, slow_zone,
         emergency, max_brake, need_brake, e_zone, warn_brake,
-        intersection, app_goal, goal
+        intersection, app_goal, goal, manual_mode
     };
 
     string description_str_;
