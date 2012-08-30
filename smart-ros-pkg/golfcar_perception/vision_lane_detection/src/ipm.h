@@ -96,6 +96,8 @@ namespace golfcar_vision{
 	sensor_msgs::PointCloud left_accumulated_, right_accumulated_;
 	size_t curb_num_limit_;
 	ros::Publisher  left_pub_, right_pub_;
+
+	
     };
 };
 
