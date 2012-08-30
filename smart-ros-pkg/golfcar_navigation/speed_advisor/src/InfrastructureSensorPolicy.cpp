@@ -11,6 +11,7 @@ InfrastructureSensorPolicy::InfrastructureSensorPolicy(std::string id)
     client_ = nh_.serviceClient<InfrastructureQuery>("infrastructure_query");
 
     // create the thread
+    ROS_DEBUG_NAMED("infrastructure", "Launching the thread");
     infra_srv_thread_ = boost::thread(
             boost::bind(&InfrastructureSensorPolicy::thread_func, this) );
 }
@@ -33,6 +34,7 @@ bool InfrastructureSensorPolicy::is_clear_to_go()
 
 void InfrastructureSensorPolicy::thread_func()
 {
+    ROS_DEBUG_NAMED("infrastructure", "Starting thread");
     while( running_ )
     {
         InfrastructureQuery srv;
@@ -40,12 +42,15 @@ void InfrastructureSensorPolicy::thread_func()
         if( client_.call(srv) )
         {
             infra_clear_ = srv.response.clear_to_go;
-            ROS_DEBUG("Service infrastructure_query returned %s", (infra_clear_ ? "true" : "false"));
+            ROS_DEBUG_NAMED("infrastructure",
+                    "Service infrastructure_query returned %s clear=%s",
+                    int_id_.c_str(), (infra_clear_ ? "true" : "false"));
         }
         else
         {
-            ROS_WARN_THROTTLE(3, "Failed to call service infrastructure_query");
+            ROS_WARN_THROTTLE_NAMED(3, "infrastructure", "Failed to call service infrastructure_query");
             infra_clear_ = false;
         }
     }
+    ROS_DEBUG_NAMED("infrastructure", "Thread exiting");
 }

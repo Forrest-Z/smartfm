@@ -83,7 +83,7 @@ class System {
     region regionGoal;
     
 #define num_turning_radii   (3)
-    double turning_radii[num_turning_radii];
+    double turning_radii[3];
     double car_width;
     double car_height;
     double safe_distance;
@@ -102,6 +102,7 @@ class System {
     int get_cell_index(double x, double y, int &map_index);
     int transform_map_to_local_map(const double stateIn[3], double &zlx, double &zly, double &yl);
     bool IsInCollision (const double stateIn[3], bool debug_flag=false);
+    double getLaneCost(const double zx, const double zy);
     double getStateCost(const double stateIn[3]);
 
     float getGoalCost(const double x[3]);
