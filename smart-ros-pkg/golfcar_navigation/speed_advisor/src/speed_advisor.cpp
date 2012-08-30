@@ -140,6 +140,7 @@ SpeedAdvisor::SpeedAdvisor()
     ROS_DEBUG_NAMED("ctrl_loop","");
     ROS_DEBUG_NAMED("intersection","");
     ROS_DEBUG_NAMED("laser_area","");
+    ROS_DEBUG_NAMED("infrastructure","");
 }
 
 void SpeedAdvisor::slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones)

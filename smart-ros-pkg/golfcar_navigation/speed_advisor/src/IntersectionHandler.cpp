@@ -105,7 +105,7 @@ void IntersectionHandler::update(const pnc_msgs::move_status & status)
         geometry_msgs::Point tjunc, ped;
         //tjunc.x = 32; tjunc.y = 120; //curb map
         //ped.x = 63; ped.y = 300; //curb map
-        tjunc.x = 196; tjunc.y = 199; //dense map
+        tjunc.x = 196; tjunc.y = 107; //dense map
         ped.x = 52; ped.y = 229; //dense map
 
 
@@ -133,7 +133,7 @@ void IntersectionHandler::update(const pnc_msgs::move_status & status)
         // - zero if we passed the intersection point (new_int is true)
         if( new_int )
             dist_to_int_ = 0;
-        else if( status.dist_to_ints < dist_to_int_)
+        else
             dist_to_int_ = status.dist_to_ints;
         ROS_DEBUG_NAMED("intersection", "dist_to_int_=%f", dist_to_int_);
 

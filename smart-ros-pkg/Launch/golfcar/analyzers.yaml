@@ -30,11 +30,6 @@ analyzers:
                 path: Arduino
                 find_and_remove_prefix: arduino_node
                 num_items: 3
-            imu:
-                type: GenericAnalyzer
-                path: IMU
-                contains: microstrain
-                num_items: 3
             encoders:
                 type: GenericAnalyzer
                 path: Encoders
@@ -52,5 +47,5 @@ analyzers:
             odometry:
                 type: GenericAnalyzer
                 path: Odometry
-                startswith: ['encoderImu_integrator', 'odom_republish']
-                num_items: 2
+                startswith: 'odom_republish'
+                num_items: 1

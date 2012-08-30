@@ -14,8 +14,7 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/message_filter.h>
 #include <nav_msgs/Odometry.h>
-
-
+#include <message_filters/subscriber.h>
 #include "lane_marker_common.h"
 #include "image_proc.h"
 #include "rolling_window/plane_coef.h"
@@ -86,6 +85,17 @@ namespace golfcar_vision{
 	ros::Subscriber                             planeCoef_sub_;
 	void planeCoefCallback(const rolling_window::plane_coef::ConstPtr& coef_in);
 	rolling_window::plane_coef 		    plane_ROI_;
+
+	
+	//to accumulate the curb points (road_boundary);
+	string odom_frame_, base_frame_;
+	message_filters::Subscriber<sensor_msgs::PointCloud> 	curb_point_sub_;
+	tf::MessageFilter<sensor_msgs::PointCloud> 		*curb_point_filter_;
+	void curbCallback(const sensor_msgs::PointCloudConstPtr  curb_in);
+	void curbPts_to_image(sensor_msgs::PointCloud &pts_3d, std::vector <CvPoint2D32f> & pts_image);
+	sensor_msgs::PointCloud left_accumulated_, right_accumulated_;
+	size_t curb_num_limit_;
+	ros::Publisher  left_pub_, right_pub_;
     };
 };
 

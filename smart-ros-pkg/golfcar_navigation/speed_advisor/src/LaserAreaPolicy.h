@@ -10,6 +10,9 @@
 #include <tf/message_filter.h>
 #include <laser_geometry/laser_geometry.h>
 
+#include <fmutil/fm_filter.h>
+
+
 #include "IntersectionPolicy.h"
 #include "SvgBoundary.h"
 
@@ -25,6 +28,11 @@ private:
     const double dist_to_pedcross_threshold_;
     std::vector<geometry_msgs::Point32> boundary_;
     bool ped_crossing_free_;
+
+    /// A low pass filter to temporally filter the number of points in the
+    /// pedestrian boundary. Use a threshold for clearance.
+    /// TODO: test it and tune it
+    fmutil::LowPassFilter density_filter_;
 
     std::string global_frame_;
 

@@ -96,7 +96,7 @@ class Planner
         void setup_rrts();
         void on_planner_timer(const ros::TimerEvent &e);
         int get_plan();
-        float dist(float x1, float y1, float z1=0, float x2=0, float y2=0, float z2=0)
+        float dist(float x1, float y1, float z1, float x2, float y2, float z2)
         {
             return sqrt( (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2) + (z1-z2)*(z1-z2));
         }
@@ -119,7 +119,7 @@ Planner::Planner()
     state_last_clear[0] = car_position.x;
     state_last_clear[1] = car_position.y;
     state_last_clear[2] = car_position.z;
-    cout<<"state_last_clear: "<< state_last_clear[0]<<" "<<state_last_clear[1]<<" "<<state_last_clear[2]<<endl;
+    //cout<<"state_last_clear: "<< state_last_clear[0]<<" "<<state_last_clear[1]<<" "<<state_last_clear[2]<<endl;
 
     clear_committed_trajectory();
     is_updating_committed_trajectory = false;
@@ -524,16 +524,16 @@ int Planner::get_plan()
     ros::Time start_current_call_back = ros::Time::now();
     cout<<"s: "<< rrts.numVertices<<" -- "<<best_cost;
     flush(cout);
-    while((!found_best_path) || (samples_this_loop < 5))
+    while((!found_best_path) || (samples_this_loop < 10))
     {
         samples_this_loop += rrts.iteration();
         best_cost = rrts.getBestVertexCost();
-        if(best_cost < 5.0*root_goal_distance)
+        if(best_cost < 500.0)
         {
             if( (fabs(prev_best_cost - best_cost) < 0.05) && (rrts.numVertices > 10))
                 found_best_path = true;
         }
-        //cout<<"n: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
+        cout<<"n: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
         
         if(samples_this_loop %5 == 0)
             prev_best_cost = best_cost;
@@ -585,31 +585,33 @@ int Planner::get_plan()
 
 bool Planner::is_near_end_committed_trajectory()
 {
-    // latest car_position
-    if(get_robot_pose() == 1)
-        cout<<"robot_pose failed"<<endl;
+    if(!committed_trajectory.empty())
+    {
+        // latest car_position
+        if(get_robot_pose() == 1)
+            cout<<"robot_pose failed"<<endl;
 
-    list<double*>::reverse_iterator riter = committed_trajectory.rbegin();
-    double* last_committed_state = *riter;
-    double delyaw = car_position.x - last_committed_state[2];
-    while(delyaw > M_PI)
-        delyaw -= 2.0*M_PI;
-    while(delyaw < -M_PI)
-        delyaw += 2.0*M_PI;
-    
-    bool res = false;
-    if(dist(car_position.x, car_position.y, 0, last_committed_state[0], last_committed_state[1], 0) < 5.0)
-        res = true;
-    else
-        res = false;
-    rrts_status[rnr] = res;
-    return res;
+        list<double*>::reverse_iterator riter = committed_trajectory.rbegin();
+        double* last_committed_state = *riter;
+        double delyaw = car_position.x - last_committed_state[2];
+        while(delyaw > M_PI)
+            delyaw -= 2.0*M_PI;
+        while(delyaw < -M_PI)
+            delyaw += 2.0*M_PI;
+
+        bool res = false;
+        if(dist(car_position.x, car_position.y, 0, last_committed_state[0], last_committed_state[1], 0) < 4.0)
+            res = true;
+        else
+            res = false;
+        rrts_status[rnr] = res;
+        return res;
+    }
+    return false;
 }
 
 void Planner::on_planner_timer(const ros::TimerEvent &e)
 {
-    cout<<endl;
-    
     if(!committed_trajectory.empty())
     {
         // 1. check if trajectory is safe
@@ -655,12 +657,11 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
     {
         get_plan();
         
-        if( dist(car_position.x, car_position.y, 0, state_last_clear[0], state_last_clear[1], 0) > 2.0)
+        if(dist(car_position.x, car_position.y, 0, state_last_clear[0], state_last_clear[1], 0) > 2.0)
             clear_committed_trajectory_length();
         
         return;
     }
-    
 }
 
 void Planner::publish_control_view_trajectory()
