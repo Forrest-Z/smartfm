@@ -18,11 +18,12 @@
 #include <sensor_msgs/LaserScan.h>
 #include <message_filters/subscriber.h>
 #include <std_msgs/Bool.h>
-
+#include <std_msgs/Int32MultiArray.h>
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 #include <tf/message_filter.h>
 #include <tf/transform_broadcaster.h>
+#include <pnc_msgs/local_map.h>
 
 #include <fmutil/fm_math.h>
 
@@ -69,7 +70,7 @@ class LocalMap
         tf::TransformBroadcaster broadcaster_;
 
         void timerCallback(const ros::TimerEvent &event);
-        void publishLocalMapPts();
+        void publishLocalMapPts(vector<int> &free_cells);
         void norminalLane(std_msgs::Bool norminal_lane);
         double height_, width_;
         void updatePriorObsWithLane(bool norminal);
