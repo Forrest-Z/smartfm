@@ -6,7 +6,8 @@
 using namespace std;
 
 LaserAreaPolicy::LaserAreaPolicy(string path_id)
-: dist_to_pedcross_(1e6), dist_to_pedcross_threshold_(10), ped_crossing_free_(false)
+: dist_to_pedcross_(1e6), dist_to_pedcross_threshold_(10),
+  ped_crossing_free_(false), density_filter_(1.0)
 {
     ros::NodeHandle private_nh("~"), nh;
 
@@ -111,10 +112,13 @@ void LaserAreaPolicy::process(const sensor_msgs::PointCloud & pc)
             obs_pts.push_back(*it);
     }
 
-    ROS_DEBUG_NAMED("laser_area", "%d points in ped_boundary", obs_pts.size());
     pub_boundary();
     pub_obstacle_pts(obs_pts);
+
+    density_filter_.filter(pc.header.stamp.toSec(), obs_pts.size());
     ped_crossing_free_ = obs_pts.empty();
+    ROS_DEBUG_NAMED("laser_area", "%d points in ped_boundary, filtered=%f",
+                    (int)obs_pts.size(), density_filter_.value());
 }
 
 void LaserAreaPolicy::pt_cloud_callback(const sensor_msgs::PointCloud2ConstPtr& pc2)
