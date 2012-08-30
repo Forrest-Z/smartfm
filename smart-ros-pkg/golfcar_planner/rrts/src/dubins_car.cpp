@@ -191,6 +191,21 @@ int System::get_cell_index(double x, double y, int &map_index)
     }
 }
 
+inline
+int System::getxy_from_index(double &x, double &y, const int index)
+{
+    if( (index >= (int)map.info.height*map.info.width) || (index < 0))
+        return 1;
+
+    double cx = (index/map.info.width)*map.info.resolution;
+    double cy = (index%map.info.width)*map.info.resolution;
+     
+    x = cx - map.info.height*map.info.resolution/4.0;
+    y  = map.info.width*map.info.resolution/2.0 - cy;
+    
+    return 0;
+}
+
 bool System::IsInCollision (const double stateIn[3], bool debug_flag) 
 {
     // (x,y) in local_map frame
@@ -298,6 +313,7 @@ double System::getStateCost(const double stateIn[3])
     return cost/3.0;
 }
 
+/*
 int System::sampleState (State &randomStateOut) {
 
     for (int i = 0; i < 3; i++) 
@@ -306,17 +322,19 @@ int System::sampleState (State &randomStateOut) {
             - regionOperating.size[i]/2.0 + regionOperating.center[i];
     }
     //cout<<"sample_local: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
-
+    
     // transform the sample from local_map frame to /map frame
     double cyaw = cos(map_origin[2]);
     double syaw = sin(map_origin[2]);
-    double state_copy[3];
-    for(int i=0; i<3; i++)
-        state_copy[i] = randomStateOut[i] - regionOperating.center[i];
     
-    randomStateOut.x[0] = map_origin[0] + state_copy[0]*cyaw + state_copy[1]*syaw;
-    randomStateOut.x[1] = map_origin[1] + -state_copy[0]*syaw + state_copy[1]*cyaw;
-    randomStateOut.x[2] = map_origin[2] + state_copy[2];
+    double local_map_state[3] = {0};
+    local_map_state[0] = randomStateOut.x[0] + map.info.resolution*map.info.height/4.0;
+    local_map_state[1] = randomStateOut.x[1];           // the origin of regionOperating is on the X axis of the local_map_frame 
+    local_map_state[2] = randomStateOut.x[2];
+
+    randomStateOut.x[0] = map_origin[0] + local_map_state[0]*cyaw + local_map_state[1]*syaw;
+    randomStateOut.x[1] = map_origin[1] + -local_map_state[0]*syaw + local_map_state[1]*cyaw;
+    randomStateOut.x[2] = map_origin[2] + local_map_state[2];
     while(randomStateOut.x[2] > M_PI)
         randomStateOut.x[2] -= 2.0*M_PI;
     while(randomStateOut.x[2] < -M_PI)
@@ -328,7 +346,43 @@ int System::sampleState (State &randomStateOut) {
 
     return 1;
 }
+*/
 
+int System::sampleState(State &z)
+{
+    int r = (double)(rand()/RAND_MAX+1.0)*free_cells.size();
+    int index = free_cells[r];
+    double local_xy[3] ={0, 0, 0};
+    getxy_from_index(local_xy[0], local_xy[1], index);
+
+    for(int i=0; i<3; i++)
+    {
+        z.x[i] = local_xy[i] + (double)rand()/(RAND_MAX + 1.0)*regionCell.size[i] 
+            - regionCell.size[i]/2.0 + regionCell.center[i];
+    }
+    
+    // transform the sample from local_map frame to /map frame
+    double cyaw = cos(map_origin[2]);
+    double syaw = sin(map_origin[2]);
+    double state_copy[3];
+    for(int i=0; i<3; i++)
+        state_copy[i] = z[i];
+    
+    z.x[0] = map_origin[0] + state_copy[0]*cyaw + state_copy[1]*syaw;
+    z.x[1] = map_origin[1] + -state_copy[0]*syaw + state_copy[1]*cyaw;
+    z.x[2] = map_origin[2] + state_copy[2];
+    while(z.x[2] > M_PI)
+        z.x[2] -= 2.0*M_PI;
+    while(z.x[2] < -M_PI)
+        z.x[2] += 2.0*M_PI;
+
+    //cout<<"sampled state: "<<z.x[0]<<" "<<z.x[1]<<" "<<z.x[2]<<endl;
+    if (IsInCollision (z.x))
+        return 0;
+
+    return 1;
+
+}
 int System::sampleGoalState (State &randomStateOut) {
 
     for (int i = 0; i < 3; i++) {
