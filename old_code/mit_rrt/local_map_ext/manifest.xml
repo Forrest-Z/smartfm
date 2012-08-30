@@ -25,6 +25,7 @@
   <depend package="dynamic_reconfigure" />
   <depend package="common_rosdeps" />
   <depend package="fmutil"/>
+  <depend package="pnc_msgs"/>
   <rosdep name="eigen" />
 </package>
 

@@ -31,7 +31,7 @@ LocalMap::LocalMap(double height, double width, double res):height_(height), wid
     laser_filter_->registerCallback(boost::bind(&LocalMap::laserCallback, this, _1));
 
     prior_pts_pub_ = nh_.advertise<sensor_msgs::PointCloud>("prior_pts", 10, true);
-    map_pub_ = nh_.advertise<nav_msgs::OccupancyGrid>("local_map", 10);
+    map_pub_ = nh_.advertise<pnc_msgs::local_map>("local_map", 10);
     map_pts_pub_ = nh_.advertise<sensor_msgs::PointCloud>("local_map_pts", 10);
     nav_msgs::GetMap::Request  req;
     nav_msgs::GetMap::Response resp;
@@ -44,6 +44,8 @@ LocalMap::LocalMap(double height, double width, double res):height_(height), wid
     }
 
     prior_pts_.header = resp.map.header;
+
+
     unsigned int left_lane = 0, right_lane = 0;
     for(unsigned int i=0; i<resp.map.info.width; i++)
     {
@@ -114,11 +116,10 @@ void LocalMap::norminalLane(std_msgs::Bool norminal_lane)
 
 }
 
-void LocalMap::publishLocalMapPts()
+void LocalMap::publishLocalMapPts(vector<int> &free_cells)
 {
     local_map_pts_.header.stamp = ros::Time::now();
     local_map_pts_.points.clear();
-
     for(unsigned int i=0; i<local_map_.info.width; i++)
     {
         for(unsigned int j=0; j<local_map_.info.height; j++)
@@ -127,10 +128,11 @@ void LocalMap::publishLocalMapPts()
             map_p.x = i*local_map_.info.resolution;
             map_p.y = j*local_map_.info.resolution;
             map_p.z = local_map_.data[j * local_map_.info.width +i]/100.0;
+            unsigned int map_index = (j * local_map_.info.width + i);
+            if(map_p.z > 0) free_cells.push_back(map_index);
             local_map_pts_.points.push_back(map_p);
         }
     }
-
     map_pts_pub_.publish(local_map_pts_);
 }
 
@@ -239,8 +241,12 @@ void LocalMap::updateMap(sensor_msgs::PointCloud& pc)
         local_map_.info.origin =origin.pose;
         local_map_.header.frame_id = global_frame_;
         local_map_.header.stamp = pc.header.stamp;
-        map_pub_.publish(local_map_);
-        publishLocalMapPts();
+        pnc_msgs::local_map lm;
+        lm.occupancy = local_map_;
+        vector<int> free_cells;
+        publishLocalMapPts(free_cells);
+        lm.free_cells = free_cells;
+        map_pub_.publish(lm);
     }
 };
 
