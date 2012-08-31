@@ -27,6 +27,8 @@ namespace golfcar_vision{
       
       planeCoef_sub_ = nh_.subscribe("plane_coef", 10, &ipm::planeCoefCallback, this);
       
+      
+      
       image_processor_ = new image_proc(svm_model_path, svm_scale_path);
       
       //Four base points on the ground in the "base_link" coordinate; "base_link" is at the back wheel.
@@ -49,6 +51,68 @@ namespace golfcar_vision{
 	  				
 		warp_matrix_ = cvCreateMat(3,3,CV_32FC1);
 		projection_matrix_ = cvCreateMat(3,3,CV_32FC1);
+		
+		
+		//to accumulate the curb points (road_boundary);
+		odom_frame_ = "odom";
+		base_frame_ = "base_link";
+		curb_point_sub_.subscribe(nh_, "hybrid_pt", 10);
+		curb_point_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(curb_point_sub_, tf_, odom_frame_, 10);
+		curb_point_filter_->registerCallback(boost::bind(&ipm::curbCallback, this, _1));
+		curb_point_filter_->setTolerance(ros::Duration(0.05));
+		left_accumulated_.header.frame_id  = odom_frame_;
+		right_accumulated_.header.frame_id = odom_frame_;
+		curb_num_limit_ = 500;
+		
+		left_pub_   = nh_.advertise<sensor_msgs::PointCloud>("vision_curb_left", 10);
+		right_pub_   = nh_.advertise<sensor_msgs::PointCloud>("vision_curb_right", 10);
+  }
+  
+  void ipm::curbCallback(const sensor_msgs::PointCloudConstPtr  curb_in)
+  {
+	   sensor_msgs::PointCloud left_tmp;
+	   sensor_msgs::PointCloud right_tmp;
+	   left_tmp.header = curb_in->header;
+	   right_tmp.header = curb_in->header;
+	   for(size_t i=0;i< curb_in->points.size(); i ++)
+	   {
+			if(curb_in->points[i].y >= 0.0)left_tmp.points.push_back(curb_in->points[i]);
+			else {right_tmp.points.push_back(curb_in->points[i]);}
+		}
+		try {tf_.transformPointCloud(odom_frame_, left_tmp, left_tmp);}
+		catch (tf::TransformException &ex){printf ("Failure %s\n", ex.what());return;}
+		try {tf_.transformPointCloud(odom_frame_, right_tmp, right_tmp);}
+		catch (tf::TransformException &ex){printf ("Failure %s\n", ex.what());return;}
+		 
+		for(size_t i=0; i<left_tmp.points.size(); i++){left_accumulated_.points.push_back(left_tmp.points[i]);}
+		
+		left_tmp.points.clear();
+		if(left_accumulated_.points.size() > curb_num_limit_)
+		{
+			size_t obsolete_num = left_accumulated_.points.size()- curb_num_limit_;
+			for(size_t j= obsolete_num; j <left_accumulated_.points.size(); j ++)
+			{
+				left_tmp.points.push_back(left_accumulated_.points[j]);
+			}
+			left_accumulated_.points = left_tmp.points;
+		}
+		left_accumulated_.header.stamp = curb_in->header.stamp;
+		
+		for(size_t i=0; i<right_tmp.points.size(); i++){right_accumulated_.points.push_back(right_tmp.points[i]);}
+		right_tmp.points.clear();
+		if(right_accumulated_.points.size() > curb_num_limit_)
+		{
+			size_t obsolete_num = right_accumulated_.points.size()- curb_num_limit_;
+			for(size_t j= obsolete_num; j <right_accumulated_.points.size(); j ++)
+			{
+				right_tmp.points.push_back(right_accumulated_.points[j]);
+			}
+			right_accumulated_.points = right_tmp.points;
+		}
+		right_accumulated_.header.stamp = curb_in->header.stamp;
+		
+		left_pub_.publish(left_accumulated_);
+		right_pub_.publish(right_accumulated_);
   }
   
   void ipm::ImageCallBack( const sensor_msgs::ImageConstPtr& image_msg,
@@ -69,11 +133,11 @@ namespace golfcar_vision{
 			}
 			else ROS_INFO("-----------to process image------");
         
-        
+
         IplImage* color_image, *gray_image, *ipm_image;
         //get image in OpenCV format;
         try {
-            color_image = bridge_.imgMsgToCv(image_msg, "bgr8");
+            color_image = bridge_.imgMsgToCv(image_msg, "rgb8");
             }
         catch (sensor_msgs::CvBridgeException& ex) {
             ROS_ERROR("Failed to convert image");
@@ -139,7 +203,6 @@ namespace golfcar_vision{
 			cvGetPerspectiveTransform(srcQuad_,dstQuad_,  warp_matrix_);
 			cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix_);
 			
-        
 			////////////////////////////////////////////////
 			//main functional part;
 			////////////////////////////////////////////////
@@ -163,7 +226,32 @@ namespace golfcar_vision{
 			 }
 		  }
 		  //---------------------------------------------------------------------
-		 
+		         
+        //----------------------project the curb points into image-----------------------
+        sensor_msgs::PointCloud left_tmp;
+	     sensor_msgs::PointCloud right_tmp;
+        left_accumulated_.header.stamp = meas_time;
+        right_accumulated_.header.stamp = meas_time;
+        try {tf_.transformPointCloud(base_frame_, left_accumulated_, left_tmp);}
+		  catch (tf::TransformException &ex){printf ("Failure %s\n", ex.what());return;}
+		  try {tf_.transformPointCloud(base_frame_, right_accumulated_, right_tmp);}
+		  catch (tf::TransformException &ex){printf ("Failure %s\n", ex.what());return;}
+		  
+		  std::vector <CvPoint2D32f> left_curb_image;
+		  std::vector <CvPoint2D32f> right_curb_image;
+        curbPts_to_image(left_tmp, left_curb_image);
+        curbPts_to_image(right_tmp, right_curb_image);
+        
+        for(size_t p=0; p<left_curb_image.size(); p++)
+        {
+				cvCircle( color_image, cvPointFrom32f(left_curb_image[p]), 6, CV_RGB(0,255,0), 2);
+		  }
+		  for(size_t p=0; p<right_curb_image.size(); p++)
+        {
+				cvCircle( color_image, cvPointFrom32f(right_curb_image[p]), 6, CV_RGB(0,0,255), 2);
+		  }
+		  
+		  
         ////////////////////////////////////////////////
         //visualization part;
         ////////////////////////////////////////////////
@@ -288,6 +376,38 @@ namespace golfcar_vision{
           ROS_INFO("%5f, %5f, %5f, %5f", x_tmp, y_tmp, dst_pointer[i].x, dst_pointer[i].y);
       }
   }
+   void ipm::curbPts_to_image(sensor_msgs::PointCloud &pts_3d, std::vector <CvPoint2D32f> & pts_image)
+   {
+		pts_image.clear();
+		geometry_msgs::Pose temppose;
+		temppose.position.x=0;
+		temppose.position.y=0;
+		temppose.position.z=0;
+		temppose.orientation.x=1;
+		temppose.orientation.y=0;
+		temppose.orientation.z=0;
+		temppose.orientation.w=0;
+		tf::Pose tempTfPose;
+		tf::Pose PoseInCamera;
+		CvPoint2D32f pt_image;
+		for(size_t i=0; i<pts_3d.points.size(); i++)
+		{	
+			temppose.position.x=pts_3d.points[i].x;
+			temppose.position.y=pts_3d.points[i].y;
+			temppose.position.z=pts_3d.points[i].z;
+			
+			tf::poseMsgToTF(temppose, tempTfPose);
+			PoseInCamera = src_dest_tf_ * tempTfPose;
+         tf::Point pt = PoseInCamera.getOrigin();
+			cv::Point3d pt_cv(pt.x(), pt.y(), pt.z());
+			if(pt.z()<0.0) continue;
+         cv::Point2d uv;
+         cam_model_.project3dToPixel(pt_cv, uv);
+         pt_image.x = uv.x;
+			pt_image.y = uv.y;
+			pts_image.push_back(pt_image);
+		}
+	}
   
    void ipm::process_control(ros::Time meas_time)
    {

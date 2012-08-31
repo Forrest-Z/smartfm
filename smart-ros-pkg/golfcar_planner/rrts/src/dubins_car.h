@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <geometry_msgs/Point.h>
 #include <nav_msgs/OccupancyGrid.h>
+#include <pnc_msgs/local_map.h>
 
 using namespace std;
 
@@ -81,6 +82,7 @@ class System {
     
     region regionOperating;
     region regionGoal;
+    region regionCell;
     
 #define num_turning_radii   (3)
     double turning_radii[3];
@@ -90,6 +92,7 @@ class System {
     double distance_rear_axis_rear;
 
     nav_msgs::OccupancyGrid map;
+    vector<int> free_cells;
     double map_origin[3];
 
     System ();
@@ -99,6 +102,7 @@ class System {
     State& getRootState () {return rootState;}
     int getStateKey (State& stateIn, double* stateKey);
 
+    int getxy_from_index(double &x, double &y, const int index);
     int get_cell_index(double x, double y, int &map_index);
     int transform_map_to_local_map(const double stateIn[3], double &zlx, double &zly, double &yl);
     bool IsInCollision (const double stateIn[3], bool debug_flag=false);

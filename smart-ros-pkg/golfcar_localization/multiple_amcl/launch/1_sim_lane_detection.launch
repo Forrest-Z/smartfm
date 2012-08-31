@@ -8,11 +8,15 @@
 	<param name="image_transport" value="compre5ssed"/>
 	</node-->
     
-    <node pkg="vision_lane_detection" type="ipm" name="ipm">
+    <!--node pkg="vision_lane_detection" type="ipm" name="ipm">
         <param name="image_transport" value="compressed"/>
 	<param name="visualization_flag" value="true"/>
 	<param name="svm_model_path" value="/home/baoxing/workspace/data_and_model/scaled_20120726.model"/>
 	<param name="svm_scale_path" value="/home/baoxing/workspace/data_and_model/range_20120726"/>
+	</node-->
+
+    <node pkg="vision_lane_detection" type="experimental_rgb" name="experimental_rgb">
+        <param name="image_transport" value="compressed"/>
 	</node>
 
     <node pkg="image_view" type="image_view" name="image_view0">
@@ -24,5 +28,8 @@
         <remap from="image" to= "/camera_front/image_ipm"/>
         <param name="image_transport" value="compressed"/>
 	</node>
-
+	
+<node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
+    <node pkg="robust_road_detection" type="curb_detect" name="curb_detect">
+    </node>
 </launch>

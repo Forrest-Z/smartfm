@@ -29,9 +29,14 @@ find_package(OpenCV REQUIRED)
 rosbuild_add_library(image_proc src/image_proc.cpp src/libsvm/svm.cpp)
 rosbuild_add_executable(ipm src/ipm.cpp)
 target_link_libraries(ipm ${OpenCV_LIBRARIES} image_proc)
+rosbuild_link_boost(ipm signals)
                     
 rosbuild_add_executable(addCamInfo src/addCamInfo.cpp)
 target_link_libraries(addCamInfo ${OpenCV_LIBRARIES})
+
+rosbuild_add_executable(experimental_rgb src/experimental_rgb.cpp)
+target_link_libraries(experimental_rgb ${OpenCV_LIBRARIES})
+rosbuild_link_boost(experimental_rgb signals)
 
 #rosbuild_add_executable(conti_lane src/conti_lane.cpp)
 #target_link_libraries(conti_lane ${OpenCV_LIBRARIES})

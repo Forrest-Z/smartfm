@@ -14,7 +14,10 @@
   <depend package="cv_bridge"/>
   <depend package="tf"/>
   <depend package="image_view"/>
+  <depend package="message_filters"/>
   <depend package="rolling_window"/>
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
   <!--depend package="mrpt_libs"/-->
 </package>
 
