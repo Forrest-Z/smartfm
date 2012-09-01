@@ -27,6 +27,8 @@ namespace golfcar_vision{
       
       planeCoef_sub_ = nh_.subscribe("plane_coef", 10, &ipm::planeCoefCallback, this);
       
+      
+      
       image_processor_ = new image_proc(svm_model_path, svm_scale_path);
       
       //Four base points on the ground in the "base_link" coordinate; "base_link" is at the back wheel.
@@ -94,12 +96,9 @@ namespace golfcar_vision{
 			}
 			left_accumulated_.points = left_tmp.points;
 		}
-		
-		
 		left_accumulated_.header.stamp = curb_in->header.stamp;
 		
 		for(size_t i=0; i<right_tmp.points.size(); i++){right_accumulated_.points.push_back(right_tmp.points[i]);}
-		
 		right_tmp.points.clear();
 		if(right_accumulated_.points.size() > curb_num_limit_)
 		{
@@ -110,8 +109,6 @@ namespace golfcar_vision{
 			}
 			right_accumulated_.points = right_tmp.points;
 		}
-		
-		
 		right_accumulated_.header.stamp = curb_in->header.stamp;
 		
 		left_pub_.publish(left_accumulated_);
