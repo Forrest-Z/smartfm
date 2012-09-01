@@ -1,0 +1,23 @@
+<launch>
+    <!--include file="$(find Launch)/golfcar/sensors/sicks_tf_july2011.launch"/-->
+    <!--include file="$(find Launch)/golfcar/sensors/sicks_tf.launch"/>    
+    <include file="$(find Launch)/golfcar/1LowLevel.launch"/-->
+    <node pkg="rolling_window" type="rolling_window" name="rolling_window">
+        <remap from="cloud_in" to="laser_surface_removed"/>
+        <remap from="odom" to="odom"/>
+    </node>
+    <!--node pkg="rolling_window" type="rolling_window" name="curb_rolling_window">
+        <remap from="cloud_in" to="laser_pure_curb"/>
+        <remap from="odom" to="odom"/>
+        <remap from="rolling_window_pcl" to="rolling_window_curb"/>
+    </node-->
+    <node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
+    <node pkg="robust_road_detection" type="curb_detect" name="curb_detect" output="screen">
+        <remap from="odom" to="odom"/>
+    </node>
+    <node pkg="robust_road_detection" type="road_surface_removal" name="road_surface_removal"/>
+    
+    <node pkg="curb_points_to_laser" type="scene_interpretation" name="scene_interpretation" output="screen">
+        <remap from="pc_in" to="rolling_window_pcl"/>
+    </node>
+</launch>
