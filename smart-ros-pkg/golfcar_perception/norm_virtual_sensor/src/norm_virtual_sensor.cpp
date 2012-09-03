@@ -146,6 +146,7 @@ class NormVirtualSensor
     AccumulateData *laser_accumulate_;
     string target_frame_;
     double norm_radius_search_, min_move_dist_;
+    unsigned int accumulate_size_;
     vector<pcl::PointCloud<pcl::PointXYZRGBNormal> > accumulated_normals_;
     ros::Publisher accumulated_pub_;
     ros::Publisher final_pc2_pub_, final_pc_pub_;
@@ -254,7 +255,6 @@ class NormVirtualSensor
         stringstream ss;
         ss<<"Filter clouds with "<<pcl_cloud.size()<<" pts";
         sw.start(ss.str());
-        unsigned int count_filtered=0, count_correct=0, count_raw=0;
 
         //absolutely stunningly quick!
         pcl::ConditionAnd<pcl::PointXYZRGBNormal>::Ptr range_cond (new pcl::ConditionAnd<pcl::PointXYZRGBNormal> ());
@@ -361,7 +361,7 @@ class NormVirtualSensor
             cout<<"Injecting latest normal with "<<latest_pcl.size()<<" pts"<<endl;
             //rebuild normals with old and new normals
             accumulated_normals_.insert(accumulated_normals_.begin(), single_pcl);
-            if(accumulated_normals_.size()>100) accumulated_normals_.resize(100);
+            if(accumulated_normals_.size()>accumulate_size_) accumulated_normals_.resize(accumulate_size_);
 
             pcl::PointCloud<pcl::PointXYZRGBNormal> rebuild_normal;
             for(size_t i=0; i<accumulated_normals_.size(); i++)
@@ -377,6 +377,7 @@ class NormVirtualSensor
             final_pc2_pub_.publish(out);
             sensor_msgs::PointCloud out_pc_legacy;
             sensor_msgs::convertPointCloud2ToPointCloud(out, out_pc_legacy);
+            tf_->transformPointCloud("/base_link", out_pc_legacy, out_pc_legacy);
             final_pc_pub_.publish(out_pc_legacy);
             pcl::toROSMsg(latest_pcl, out);
             out.header = header;
@@ -410,6 +411,8 @@ public:
         final_pc2_pub_ = n.advertise<sensor_msgs::PointCloud2>("single_pcl", 10);
         final_pc_pub_ = n.advertise<sensor_msgs::PointCloud>("pc_legacy_out", 10);
         latest_normal_pub_ = n.advertise<sensor_msgs::PointCloud2>("latest_normal", 10);
+
+        accumulate_size_ = 100;
         ros::spin();
     }
 
