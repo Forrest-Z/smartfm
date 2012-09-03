@@ -9,6 +9,7 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/pnc_msgs</url>
   <depend package="geometry_msgs"/>
+  <depend package="nav_msgs" />
 </package>
 
 

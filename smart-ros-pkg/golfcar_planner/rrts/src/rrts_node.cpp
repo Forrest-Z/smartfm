@@ -3,7 +3,9 @@
 
 #include <ros/ros.h>
 #include <std_msgs/Int16MultiArray.h>
+#include <std_msgs/Int32MultiArray.h>
 #include <std_msgs/Bool.h>
+
 #include <message_filters/subscriber.h>
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/PointStamped.h>
@@ -16,6 +18,7 @@
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 
+#include <pnc_msgs/local_map.h>
 #include <rrts/rrts_status.h>
 #include "dubins_car.cpp"
 #include "rrts.cpp"
@@ -86,7 +89,7 @@ class Planner
         // functions
         void on_goal(const geometry_msgs::PoseStamped::ConstPtr p);
         void send_rrts_status(const ros::TimerEvent &e);
-        void on_map(const nav_msgs::OccupancyGrid::ConstPtr og);
+        void on_map(const pnc_msgs::local_map::ConstPtr lm);
         void on_committed_trajectory_pub_timer(const ros::TimerEvent &e);
         void obs_check();
 
@@ -388,11 +391,12 @@ int Planner::get_robot_pose()
     return 1;
 }
 
-void Planner::on_map(const nav_msgs::OccupancyGrid::ConstPtr og)
+void Planner::on_map(const pnc_msgs::local_map::ConstPtr lm)
 {
     //cout<<"called on_map"<<endl;
     // 1. copy the incoming grid into map
-    system.map = *og;
+    system.map = lm->occupancy;
+    system.free_cells = lm->free_cells;
 
     bool got_pose = false;
     // 2. get car_position
@@ -462,6 +466,13 @@ void Planner::setup_rrts()
     system.regionOperating.size[0] = system.map.info.height*system.map.info.resolution;
     system.regionOperating.size[1] = system.map.info.width*system.map.info.resolution;
     system.regionOperating.size[2] = 2.0 * M_PI;
+    
+    system.regionCell.center[0] = 0;
+    system.regionCell.center[1] = 0;
+    system.regionCell.center[2] = 0;
+    system.regionCell.size[0] = map.info.resolution;
+    system.regionCell.size[1] = map.info.resolution;
+    system.regionCell.size[2] = 2.0*M_PI;
 
     change_goal_region();
 
@@ -533,7 +544,7 @@ int Planner::get_plan()
             if( (fabs(prev_best_cost - best_cost) < 0.05) && (rrts.numVertices > 10))
                 found_best_path = true;
         }
-        cout<<"n: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
+        //cout<<"n: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
         
         if(samples_this_loop %5 == 0)
             prev_best_cost = best_cost;
