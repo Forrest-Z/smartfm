@@ -1,0 +1,27 @@
+<launch>
+   
+   <node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
+    <node pkg="robust_road_detection" type="curb_detect" name="curb_detect" output="screen">
+        <remap from="odom" to="odom"/>
+    </node>
+    <node pkg="robust_road_detection" type="road_surface_removal" name="road_surface_removal"/>
+    
+   <node pkg="norm_virtual_sensor" type="norm_virtual_sensor" name="norm_virtual_sensor" output="screen">
+    	<remap from="sick_scan2" to="sick_scan0"/>
+    </node>    
+    <node pkg="amcl_pc" type="amcl" name="amcl" output="screen">
+        <param name="max_particles" value="1500"/>
+        <param name="min_particles" value="200"/>
+        <param name="laser_likelihood_max_dist" value="1.0"/>
+        <param name="odom_alpha1" value="0.3"/>
+        <param name="odom_alpha2" value="0.1"/>
+        <param name="odom_alpha3" value="0.3"/>
+        <param name="odom_alpha4" value="0.1"/>
+        <param name="laser_model_type" value="pc_likelihood_field"/>
+        <remap from="scan" to="sick_scan2"/>
+        <remap from="pc" to="pc_legacy_out"/>
+    </node>
+    <node pkg="map_server" type="map_server" name="map_server2" args="$(find amcl_pc)/maps/bigeng_sde_map.yaml"/>
+    <!--node pkg="map_server" type="map_server" name="map_server2" args="$(find local_map_ext)/1_0.2.yaml"/-->
+</launch>
+
