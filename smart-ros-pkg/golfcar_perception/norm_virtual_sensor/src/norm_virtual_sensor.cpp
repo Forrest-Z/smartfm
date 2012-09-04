@@ -4,154 +4,23 @@
  *  Created on: Sep 2, 2012
  *      Author: demian
  */
-
-#include <sensor_msgs/LaserScan.h>
-#include <sensor_msgs/PointCloud.h>
-#include <sensor_msgs/point_cloud_conversion.h>
-#include <tf/transform_listener.h>
-#include <tf/message_filter.h>
-#include <message_filters/subscriber.h>
-#include <laser_geometry/laser_geometry.h>
-#include <fmutil/fm_math.h>
-#include <fmutil/fm_stopwatch.h>
-
-#include "pcl/point_cloud.h"
-#include "pcl_ros/point_cloud.h"
-#include "pcl/point_types.h"
-#include "pcl/ros/conversions.h"
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/filters/radius_outlier_removal.h>
-#include <pcl/features/normal_3d_omp.h>
-#include <pcl/filters/conditional_removal.h>
-#include <pcl/filters/voxel_grid.h>
-
-using namespace std;
-
-class AccumulateData
-{
-    const string target_frame_;
-    const double min_dist_;
-    const unsigned int scan_buffer_;
-    laser_geometry::LaserProjection projector_;
-    tf::StampedTransform last_transform_;
-    tf::StampedTransform sensor_transform_;
-    vector<sensor_msgs::PointCloud> data_;
-
-    bool checkDistance(const tf::StampedTransform& newTf)
-    {
-        tf::Transform odom_old_new  = last_transform_.inverse() * newTf;
-        float tx, ty;
-        tx = -odom_old_new.getOrigin().y();
-        ty =  odom_old_new.getOrigin().x();
-        float mov_dis = sqrtf(tx*tx + ty*ty);
-
-        if(mov_dis > min_dist_) return true;
-        else return false;
-    }
-
-public:
-
-    bool new_data_;
-
-    AccumulateData(string target_frame, double min_dist, double data_dist): target_frame_(target_frame), min_dist_(min_dist),
-            scan_buffer_(data_dist/min_dist+15.0), new_data_(false)
-    {
-        cout<<"Accumulation at "<<scan_buffer_<<" scans "<<endl;
-    }
-
-    //add latest observation to the sensor and erase the old buffer if necessary
-    void addData(sensor_msgs::PointCloud2 &src, tf::TransformListener &tf)
-    {
-        sensor_msgs::PointCloud scan;
-        sensor_msgs::convertPointCloud2ToPointCloud(src, scan);
-        tf::StampedTransform latest_transform;
-
-        tf.lookupTransform(target_frame_, scan.header.frame_id, scan.header.stamp, latest_transform);
-        sensor_transform_ = latest_transform;
-        tf.transformPointCloud(target_frame_, scan, scan);
-        if(data_.size() == 0)
-        {
-            last_transform_ = latest_transform;
-            insertPointCloud(scan);
-            return;
-        }
-
-        if(checkDistance(latest_transform))
-        {
-            if(insertPointCloud(scan))
-            {
-                last_transform_ = latest_transform;
-                new_data_ = true;
-            }
-        }
-    }
-
-    void addData(sensor_msgs::LaserScan &scan, tf::TransformListener &tf)
-    {
-        tf::StampedTransform latest_transform;
-        tf.lookupTransform(target_frame_, scan.header.frame_id, scan.header.stamp, latest_transform);
-        sensor_transform_ = latest_transform;
-        if(data_.size() == 0 )
-        {
-            //only happens during initialization
-            last_transform_ = latest_transform;
-            insertData(scan, tf);
-            return;
-        }
-
-        if(checkDistance(latest_transform))
-        {
-            if(insertData(scan, tf))
-            {
-                last_transform_ = latest_transform;
-                new_data_ = true;
-            }
-        }
-    }
-
-    bool insertPointCloud(sensor_msgs::PointCloud &scan)
-    {
-        data_.insert(data_.begin(), scan);
-        if(data_.size()>scan_buffer_) data_.resize(scan_buffer_);
-        return true;
-    }
-
-    bool insertData(sensor_msgs::LaserScan &scan, tf::TransformListener &tf)
-    {
-        sensor_msgs::PointCloud laser_cloud;
-
-        try{projector_.transformLaserScanToPointCloud(target_frame_, scan, laser_cloud, tf);}
-        catch (tf::TransformException& e){ ROS_ERROR("%s",e.what());return false;}
-
-        return insertPointCloud(laser_cloud);
-    }
-
-    //obtain accumulated points so far that is sorted from new to old transformed by target frame
-    bool getLatestAccumulated(vector<sensor_msgs::PointCloud> &data)
-    {
-        data = data_;
-
-        //A simple flag to say we have new accumulated data
-        bool new_data = new_data_;
-        new_data_ = false;
-        return new_data;
-    }
-
-
-};
-
+#include "AccumulateData.h"
+#include <geometry_msgs/PoseArray.h>
+#include <dynamic_reconfigure/server.h>
+#include <norm_virtual_sensor/NormVirtualSensorConfig.h>
 
 class NormVirtualSensor
 {
     AccumulateData *laser_accumulate_;
     string target_frame_;
-    double norm_radius_search_, min_move_dist_;
-    unsigned int accumulate_size_;
-    bool min_pc2laser_;
+
+
+
     vector<pcl::PointCloud<pcl::PointXYZRGBNormal> > accumulated_normals_;
-    ros::Publisher accumulated_pub_;
+    ros::Publisher accumulated_pub_, normal_pc2_pub_;
     ros::Publisher final_pc2_pub_, final_pc_pub_;
     ros::Publisher latest_normal_pub_, laser_pub_;
+    ros::Publisher normals_poses_pub_;
     tf::TransformListener *tf_;
     tf::StampedTransform cur_sensor_trans_;
     message_filters::Subscriber<sensor_msgs::LaserScan> laser_scan_sub_;
@@ -159,6 +28,34 @@ class NormVirtualSensor
 
     message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_sub_;
     tf::MessageFilter<sensor_msgs::PointCloud2>       *pointcloud_filter_;
+
+    dynamic_reconfigure::Server<norm_virtual_sensor::NormVirtualSensorConfig> dynamic_server_;
+    dynamic_reconfigure::Server<norm_virtual_sensor::NormVirtualSensorConfig>::CallbackType dynamic_server_cb_;
+
+    bool publish_normals_;
+    bool min_pc2laser_;
+    double downsample_size_, norm_radius_search_, min_move_dist_, normal_thres_,
+    		density_radius_search_,density_min_neighbors_;
+    int accummulate_buffer_;
+    unsigned int accumulate_size_;
+
+    void dynamicCallback(norm_virtual_sensor::NormVirtualSensorConfig &config, uint32_t level)
+    {
+    	min_pc2laser_ = config.min_pc2laser;
+    	publish_normals_ = config.publish_normals;
+    	downsample_size_ = config.downsample_size;
+    	norm_radius_search_ = config.normal_radius_search;
+    	normal_thres_ = config.normal_thres;
+    	density_radius_search_ = config.density_radius_search;
+    	density_min_neighbors_ = config.density_min_neighbors;
+    	min_move_dist_ = config.min_move_dist;
+    	accumulate_size_ = config.accumulate_size;//100;
+    	accummulate_buffer_ = config.accummulate_buffer;
+
+    	int scan_buffer = norm_radius_search_/min_move_dist_ + accummulate_buffer_;
+    	laser_accumulate_->updateParameter(min_move_dist_, scan_buffer);
+
+    }
 
     inline float labelToRGB(uint8_t i)
     {
@@ -235,21 +132,67 @@ class NormVirtualSensor
         cout<<endl;
         ne.setViewPoint(viewpoint[0], viewpoint[1], viewpoint[2]);
         // Compute the features
-        sw.start("Compute normals");
+        stringstream ss;
+        ss<<"Compute normals in frame "<<input.header.frame_id;
+        sw.start(ss.str());
         ne.compute (cloud_normals);
         sw.end();
+
+
         // concatentate the fileds
         pcl::PointCloud<pcl::PointXYZRGBNormal> point_normals;
         sw.start("Concatenate fields");
         pcl::concatenateFields(input, cloud_normals, point_normals);
         sw.end();
         //cout<<"Point normal "<<point_normals.points[0].normal_x<<' '<<point_normals.points[0].normal_y<<' '<<point_normals.points[0].normal_z<<endl;
-        // publish normal using visualization marker
+
+        //publish normals as pose arrays if needed
+        if(publish_normals_)
+        	publishNormals(point_normals);
 
         return point_normals;
 
     }
 
+    void publishNormals(pcl::PointCloud<pcl::PointXYZRGBNormal>& pcl_cloud)
+    {
+    	fmutil::Stopwatch sw;
+    	sw.start("Normal calculate");
+    	geometry_msgs::PoseArray normals_poses;
+    	normals_poses.header.frame_id = target_frame_;
+    	normals_poses.header.stamp = ros::Time::now();
+    	for(unsigned int i=0; i<pcl_cloud.points.size(); i++)
+    	{
+
+    		geometry_msgs::Pose normals_pose;
+    		geometry_msgs::Point pos;
+    		pos.x = pcl_cloud.points[i].x; pos.y = pcl_cloud.points[i].y; pos.z = pcl_cloud.points[i].z;
+
+    		normals_pose.position = pos;
+    		btVector3 axis(pcl_cloud.points[i].normal[0],pcl_cloud.points[i].normal[1],pcl_cloud.points[i].normal[2]);
+    		if(isnan(pcl_cloud.points[i].normal[0])||isnan(pcl_cloud.points[i].normal[1])||isnan(pcl_cloud.points[i].normal[2])) continue;
+    		//cout<<axis.x()<<" "<<axis.y()<<" "<<axis.z()<<" "<<axis.w()<<endl;
+    		btVector3 marker_axis(1, 0, 0);
+    		btQuaternion qt(marker_axis.cross(axis.normalize()), marker_axis.angle(axis.normalize()));
+    		double yaw, pitch, roll;
+    		btMatrix3x3(qt).getEulerYPR(yaw, pitch, roll);
+    		geometry_msgs::Quaternion quat_msg;
+    		tf::quaternionTFToMsg(qt, quat_msg);
+    		if(isnan(qt.x())||isnan(qt.y())||isnan(qt.z())||isnan(qt.w())) continue;
+    		normals_pose.orientation.x = qt.x();// = quat_msg;
+    		normals_pose.orientation.y = qt.y();
+    		normals_pose.orientation.z = qt.z();
+    		normals_pose.orientation.w = qt.w();
+
+    		normals_poses.poses.push_back(normals_pose);
+    	}
+    	normals_poses_pub_.publish(normals_poses);
+    	sensor_msgs::PointCloud2 pc2_msg;
+    	pcl::toROSMsg(pcl_cloud, pc2_msg);
+    	pc2_msg.header = normals_poses.header;
+    	normal_pc2_pub_.publish(pc2_msg);
+    	sw.end();
+    }
     pcl::PointCloud<pcl::PointXYZRGBNormal> filterNormal(pcl::PointCloud<pcl::PointXYZRGBNormal>& pcl_cloud)
     {
         fmutil::Stopwatch sw;
@@ -260,7 +203,7 @@ class NormVirtualSensor
         //absolutely stunningly quick!
         pcl::ConditionAnd<pcl::PointXYZRGBNormal>::Ptr range_cond (new pcl::ConditionAnd<pcl::PointXYZRGBNormal> ());
         range_cond->addComparison (pcl::FieldComparison<pcl::PointXYZRGBNormal>::ConstPtr (new
-                pcl::FieldComparison<pcl::PointXYZRGBNormal> ("normal_z", pcl::ComparisonOps::LT, 0.5)));
+                pcl::FieldComparison<pcl::PointXYZRGBNormal> ("normal_z", pcl::ComparisonOps::LT, normal_thres_)));
         //range_cond->addComparison (pcl::FieldComparison<pcl::PointNormal>::ConstPtr (new
         //      pcl::FieldComparison<pcl::PointNormal> ("z", pcl::ComparisonOps::GT, 0.0)));
         pcl::ConditionalRemoval<pcl::PointXYZRGBNormal> condrem (range_cond);
@@ -269,21 +212,23 @@ class NormVirtualSensor
 
         pcl::ConditionAnd<pcl::PointXYZRGBNormal>::Ptr range_cond2 (new pcl::ConditionAnd<pcl::PointXYZRGBNormal> ());
         range_cond2->addComparison (pcl::FieldComparison<pcl::PointXYZRGBNormal>::ConstPtr (new
-                pcl::FieldComparison<pcl::PointXYZRGBNormal> ("normal_z", pcl::ComparisonOps::GT, -0.5)));
+                pcl::FieldComparison<pcl::PointXYZRGBNormal> ("normal_z", pcl::ComparisonOps::GT, -normal_thres_)));
         //range_cond2->addComparison (pcl::FieldComparison<pcl::PointNormal>::ConstPtr (new
         //      pcl::FieldComparison<pcl::PointNormal> ("z", pcl::ComparisonOps::GT, 0.0)));
         pcl::ConditionalRemoval<pcl::PointXYZRGBNormal> condrem2 (range_cond2);
         condrem2.setInputCloud (pcl_cloud.makeShared());
         condrem2.filter (pcl_cloud);
         sw.end();
+        cout<<"After normal filter "<<pcl_cloud.size()<<endl;
+        if(pcl_cloud.size()==0) return pcl_cloud;
 
         //perform density based filtering
         sw.start("Density filtering");
         pcl::PointCloud<pcl::PointXYZRGBNormal> radius_filtered_pcl2;// = pcl_cloud;
         pcl::RadiusOutlierRemoval<pcl::PointXYZRGBNormal> outrem;
         outrem.setInputCloud(pcl_cloud.makeShared());
-        outrem.setRadiusSearch(0.125);
-        outrem.setMinNeighborsInRadius(5);
+        outrem.setRadiusSearch(density_radius_search_);
+        outrem.setMinNeighborsInRadius(density_min_neighbors_);
         outrem.filter(radius_filtered_pcl2);
         sw.end();
         cout<<"Remaining clouds: "<<radius_filtered_pcl2.size()<<endl;
@@ -292,11 +237,12 @@ class NormVirtualSensor
 
     void pcl_downsample(pcl::PointCloud<pcl::PointXYZRGB> &point_cloud)
     {
+    	if(point_cloud.size()<100) return;
         pcl::VoxelGrid<pcl::PointXYZRGB> sor;
         // always good not to use in place filtering as stated in
         // http://www.pcl-users.org/strange-effect-of-the-downsampling-td3857829.html
         pcl::PointCloud<pcl::PointXYZRGB>::Ptr input_msg_filtered (new pcl::PointCloud<pcl::PointXYZRGB> ());
-        float downsample_size_ = 0.05;
+        //float downsample_size_ = 0.05;
         sor.setInputCloud(point_cloud.makeShared());
         sor.setLeafSize (downsample_size_, downsample_size_, downsample_size_);
         pcl::PointIndicesPtr pi;
@@ -451,14 +397,15 @@ class NormVirtualSensor
 
 
 public:
-    NormVirtualSensor(): norm_radius_search_(0.1), min_move_dist_(0.02)
+    NormVirtualSensor(): norm_radius_search_(0.2), min_move_dist_(0.02)
     {
         ros::NodeHandle n;
 
         tf_ = new tf::TransformListener();
 
         target_frame_ = "/odom";
-        laser_accumulate_ = new AccumulateData(target_frame_, min_move_dist_, norm_radius_search_);
+
+        laser_accumulate_ = new AccumulateData(target_frame_, min_move_dist_, norm_radius_search_/min_move_dist_+accummulate_buffer_);
 
         laser_scan_sub_.subscribe(n, "scan_in", 10);
         laser_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_scan_sub_, *tf_, target_frame_, 10);
@@ -473,8 +420,11 @@ public:
         final_pc_pub_ = n.advertise<sensor_msgs::PointCloud>("pc_legacy_out", 10);
         latest_normal_pub_ = n.advertise<sensor_msgs::PointCloud2>("latest_normal", 10);
         laser_pub_ = n.advertise<sensor_msgs::LaserScan>("laser_out", 10);
-        accumulate_size_ = 100;
-        min_pc2laser_ = true;
+    	normals_poses_pub_ = n.advertise<geometry_msgs::PoseArray>("normals_array", 10);
+    	normal_pc2_pub_ = n.advertise<sensor_msgs::PointCloud2>("normal_pc2", 10);
+    	dynamic_server_cb_ = boost::bind(&NormVirtualSensor::dynamicCallback, this, _1, _2);
+    	dynamic_server_.setCallback(dynamic_server_cb_);
+
         ros::spin();
     }
 
