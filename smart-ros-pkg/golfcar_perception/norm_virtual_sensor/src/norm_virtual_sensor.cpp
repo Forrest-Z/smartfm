@@ -147,10 +147,11 @@ class NormVirtualSensor
     string target_frame_;
     double norm_radius_search_, min_move_dist_;
     unsigned int accumulate_size_;
+    bool min_pc2laser_;
     vector<pcl::PointCloud<pcl::PointXYZRGBNormal> > accumulated_normals_;
     ros::Publisher accumulated_pub_;
     ros::Publisher final_pc2_pub_, final_pc_pub_;
-    ros::Publisher latest_normal_pub_;
+    ros::Publisher latest_normal_pub_, laser_pub_;
     tf::TransformListener *tf_;
     tf::StampedTransform cur_sensor_trans_;
     message_filters::Subscriber<sensor_msgs::LaserScan> laser_scan_sub_;
@@ -379,6 +380,11 @@ class NormVirtualSensor
             sensor_msgs::convertPointCloud2ToPointCloud(out, out_pc_legacy);
             tf_->transformPointCloud("/base_link", out_pc_legacy, out_pc_legacy);
             final_pc_pub_.publish(out_pc_legacy);
+
+            sensor_msgs::LaserScan out_laser;
+            this->pointcloudsToLaser(out_pc_legacy, out_laser);
+            laser_pub_.publish(out_laser);
+
             pcl::toROSMsg(latest_pcl, out);
             out.header = header;
             out.header.frame_id = target_frame_;
@@ -388,6 +394,61 @@ class NormVirtualSensor
 
         cout<<endl;
     }
+
+    void pointcloudsToLaser(sensor_msgs::PointCloud& cloud, sensor_msgs::LaserScan& output)
+    {
+        //adapted from turtlebot's cloud_to_scan.cpp
+        output.header = cloud.header;
+        output.angle_min = -M_PI;//*0.7;
+        output.angle_max = M_PI;//*0.7;
+        output.angle_increment = M_PI/180.0/5.0;
+        output.time_increment = 0.0;
+        output.scan_time = 1.0/30.0;
+        output.range_min = 0.1;
+        output.range_max = 80.0;
+
+        uint32_t ranges_size = std::ceil((output.angle_max - output.angle_min) / output.angle_increment);
+        output.ranges.assign(ranges_size, output.range_max + 1.0);
+
+        for (size_t it = 0; it < cloud.points.size(); ++it)
+        {
+            const float &x = cloud.points[it].x;
+            const float &y = cloud.points[it].y;
+            const float &z = cloud.points[it].z;
+
+            if ( std::isnan(x) || std::isnan(y) || std::isnan(z) )
+            {
+                ROS_DEBUG("rejected for nan in point(%f, %f, %f)\n", x, y, z);
+                continue;
+            }
+
+            double range_sq = y*y+x*x;
+            /*if (range_sq < 0.) {
+                ROS_DEBUG("rejected for range %f below minimum value %f. Point: (%f, %f, %f)", range_sq, range_min_sq_, x, y, z);
+                continue;
+            }*/
+
+            double angle = -atan2(-y, x);
+            if (angle < output.angle_min || angle > output.angle_max)
+            {
+                ROS_DEBUG("rejected for angle %f not in range (%f, %f)\n", angle, output.angle_min, output.angle_max);
+                continue;
+            }
+            int index = (angle - output.angle_min) / output.angle_increment;
+
+
+            //added to output the max range available from the point cloud
+            //todo: more advanced processing of the points should use, right now just the min/max is sufficient
+
+            if (output.ranges[index] == output.range_max + 1.0) output.ranges[index] = sqrt(range_sq);
+            bool update_range;
+            if(min_pc2laser_) update_range = output.ranges[index] * output.ranges[index] > range_sq;
+            else update_range = output.ranges[index] * output.ranges[index] < range_sq;
+            if (update_range)
+                output.ranges[index] = sqrt(range_sq);
+        }
+    }
+
 
 public:
     NormVirtualSensor(): norm_radius_search_(0.1), min_move_dist_(0.02)
@@ -411,8 +472,9 @@ public:
         final_pc2_pub_ = n.advertise<sensor_msgs::PointCloud2>("single_pcl", 10);
         final_pc_pub_ = n.advertise<sensor_msgs::PointCloud>("pc_legacy_out", 10);
         latest_normal_pub_ = n.advertise<sensor_msgs::PointCloud2>("latest_normal", 10);
-
+        laser_pub_ = n.advertise<sensor_msgs::LaserScan>("laser_out", 10);
         accumulate_size_ = 100;
+        min_pc2laser_ = true;
         ros::spin();
     }
 
