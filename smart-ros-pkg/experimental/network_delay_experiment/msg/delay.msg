@@ -1,2 +1,4 @@
 uint32 seq
-float32 time
+time   time_now
+time   scan_time
+uint32 nsec_delay

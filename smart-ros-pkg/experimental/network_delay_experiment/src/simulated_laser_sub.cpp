@@ -18,7 +18,9 @@ void scanCallback(sensor_msgs::LaserScanConstPtr scan)
 //    std::cout<<"Scan seq="<<scan->header.seq<<" Delay="<<(time_now - scan->header.stamp).toSec()<<std::endl;
     network_delay_experiment::delay delay;
     delay.seq = scan->header.seq;
-    delay.time = (time_now - scan->header.stamp).toSec();
+    delay.time_now = time_now;
+    delay.scan_time = scan->header.stamp;
+    delay.nsec_delay = (time_now - scan->header.stamp).toNSec();
     delay_pub->publish(delay);  
 }
 
@@ -28,7 +30,7 @@ int main(int argc, char** argcv)
     ros::NodeHandle n;
     ros::Subscriber laser_sub;
     ros::Publisher pub;
-    laser_sub = n.subscribe("simulated_scan", 10, &scanCallback);
+    laser_sub = n.subscribe<sensor_msgs::LaserScan>("simulated_scan", 10, &scanCallback);
     pub = n.advertise<network_delay_experiment::delay>("delay", 10);
     delay_pub = &pub;
     ros::spin();
