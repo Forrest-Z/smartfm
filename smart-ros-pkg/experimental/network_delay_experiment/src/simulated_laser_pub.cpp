@@ -27,6 +27,7 @@ int main(int argc, char** argcv)
     scan.range_max = 81.0;
     while(ros::ok())
     {
+        scan.ranges.clear();
         for(double angle = scan.angle_min; angle <= scan.angle_max; angle+=scan.angle_increment)
             scan.ranges.push_back(81.90999603271484f * rand () / (RAND_MAX + 1.0f));
         if(name_space.size() <= 1) name_space.clear();
