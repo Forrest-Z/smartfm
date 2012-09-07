@@ -1,0 +1,18 @@
+<package>
+  <description brief="network_delay_experiment">
+
+     network_delay_experiment
+
+  </description>
+  <author>Demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/network_delay_experiment</url>
+  <depend package="roscpp"/>
+  <depend package="sensor_msgs"/>
+  <depend package="tf"/>
+  <depend package="fmutil"/>
+
+</package>
+
+

@@ -1,0 +1,16 @@
+analyzers:
+    system:
+        type: AnalyzerGroup
+        path: System
+        analyzers:
+            golfcarbackup:
+                type: GenericAnalyzer
+                path: Lowlevel
+                find_and_remove_prefix: ['sensors_monitor_lowlevel: golfcart-backup']
+                startswith: NTP
+            demian:
+                type: GenericAnalyzer
+                path: Lowlevel
+                find_and_remove_prefix: ['sensors_monitor_lowlevel: demian-UL80VT']
+                startswith: NTP
+

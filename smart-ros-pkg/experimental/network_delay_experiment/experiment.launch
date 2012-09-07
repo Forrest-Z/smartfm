@@ -1,0 +1,5 @@
+<launch>
+    <arg name="client_name" default="comp1"/>
+    <node pkg="diagnostic_common_diagnostics" type="ntp_monitor.py" name="ntp_monitor_$(arg client_name)" args="--no-self-test golfcart-clone" />
+    <node pkg="network_delay_experiment" type="simulated_laser" name="simulated_laser" ns="$(arg client_name)"/>
+</launch>

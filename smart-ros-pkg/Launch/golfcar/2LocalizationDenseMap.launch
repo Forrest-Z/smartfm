@@ -1,17 +1,14 @@
 <launch>
-    <node pkg="rolling_window" type="rolling_window" name="rolling_window">
-        <remap from="cloud_in" to="laser_surface_removed"/>
-        <remap from="odom" to="odom"/>
-    </node>
+   
    <node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
-    <node pkg="robust_road_detection" type="curb_detect" name="curb_detect" output="screen">
+    <node pkg="robust_road_detection" type="curb_detect" name="curb_detect">
         <remap from="odom" to="odom"/>
     </node>
     <node pkg="robust_road_detection" type="road_surface_removal" name="road_surface_removal"/>
     
-    <node pkg="curb_points_to_laser" type="scene_interpretation" name="scene_interpretation" output="screen">
-        <remap from="pc_in" to="rolling_window_pcl"/>
-    </node>
+   <node pkg="norm_virtual_sensor" type="norm_virtual_sensor" name="norm_virtual_sensor" output="screen">
+    	<remap from="sick_scan2" to="sick_scan0"/>
+    </node>    
     <node pkg="amcl_pc" type="amcl" name="amcl" output="screen">
         <param name="max_particles" value="1500"/>
         <param name="min_particles" value="200"/>
