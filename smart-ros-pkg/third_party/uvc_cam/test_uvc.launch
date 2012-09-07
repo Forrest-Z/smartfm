@@ -2,10 +2,11 @@
         <node pkg="uvc_cam" type="uvc_cam_node" name="camera_front" output="screen">
         <remap from="camera" to="camera_front"/>
         <param name="width" type="int" value="640" />
-        <param name="height" type="int" value="360" />
+        <param name="height" type="int" value="480" />
         <param name="frame_rate" type="int" value="20" />
         <param name="frame_id" type="string" value="camera_front_img"/>
         <param name="camera_name" type="string" value="camera_front"/>
+	<param name="device" type="string" value="/dev/video1"/>
         <param name="format_mode" value="2"/>
         <param name="exposure" value="1"/>
         <param name="brightness" value="150"/>
