@@ -15,7 +15,7 @@ int main(int argc, char** argcv)
     ros::NodeHandle n;
     ros::Publisher laser_pub = n.advertise<sensor_msgs::LaserScan>("simulated_scan", 10);
     std::string name_space = n.getNamespace();
-    ros::Rate loop(75);
+    ros::Rate loop(20);
     srand (time (NULL));
     sensor_msgs::LaserScan scan;
     scan.angle_increment = M_PI/180*0.5;
