@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="vision_cp" type="visionCP" name="visionCP">
+	</node>
+</launch>
