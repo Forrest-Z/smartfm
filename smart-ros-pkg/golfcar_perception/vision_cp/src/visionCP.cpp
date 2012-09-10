@@ -8,7 +8,11 @@ namespace golfcar_vision{
     it_(nh_)
   {
       cam_sub_ = it_.subscribeCamera("/camera_front/image_raw", 1, &visionCP::ImageCallBack, this);
-		camera_init_ = false;
+		board_1st_switch_ = true;
+		board_2nd_switch_ = true;
+		detected_times_1st_ = 0;
+		detected_times_2nd_ = 0;
+		
 		intrinsic_matrix_	= cvCreateMat( 3, 3, CV_32FC1 );
 		distortion_coeffs_	= cvCreateMat( 5, 1, CV_32FC1 );
 		
@@ -80,17 +84,20 @@ namespace golfcar_vision{
 	     int corner_count_2nd;
 	     CvPoint2D32f* corners_2nd = new CvPoint2D32f[ board_n_2nd ];
 	     
-	     fmutil::Stopwatch sw;
-	     
-		  sw.start("1. find chessboard");
-		  int found_1st = cvFindChessboardCorners( color_image, board_sz_1st, corners_1st,
+		  int found_1st = 0;
+		  
+		  //small tricks to speed up the program;  
+		  if(board_1st_switch_)
+		  found_1st = cvFindChessboardCorners( color_image, board_sz_1st, corners_1st,
 														   &corner_count_1st, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FILTER_QUADS );
 		  if(found_1st!=0)
 		  {
-			  /*
+			   detected_times_1st_ ++;
+			   if(detected_times_1st_ > 10) board_2nd_switch_ = false;
+			   
 				cvFindCornerSubPix( gray_image, corners_1st, corner_count_1st, cvSize( 11, 11 ), 
 											cvSize( -1, -1 ), cvTermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 30, 0.1 ));
-				*/
+				
 											
 				for( int i=0, j=0; j < board_n_1st; ++i, ++j ){
 					 CV_MAT_ELEM( *image_points_1st,  float, i, 0 ) = corners_1st[j].x;
@@ -107,20 +114,20 @@ namespace golfcar_vision{
 				poses_batch.cb_poses.push_back(board_pose);
 			}
 			else { ROS_DEBUG ("--- No --- board1 -- not detected");}
-			sw.end();
-		  
+			
 		  int found_2nd = 0;
-		  /*
-		  sw.start("2. find chessboard");
-		  int found_2nd = cvFindChessboardCorners( color_image, board_sz_2nd, corners_2nd,
+		  if(board_2nd_switch_)
+		  found_2nd = cvFindChessboardCorners( color_image, board_sz_2nd, corners_2nd,
 														   &corner_count_2nd, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FILTER_QUADS );
-			*/											   
+										   
 		  if(found_2nd!=0)
 		  {
-			  /*
+			   detected_times_2nd_ ++;
+			   if(detected_times_2nd_ > 10) board_1st_switch_ = false;
+			   
 				cvFindCornerSubPix( gray_image, corners_2nd, corner_count_2nd, cvSize( 11, 11 ), 
 											cvSize( -1, -1 ), cvTermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 30, 0.1 ));
-				*/
+				
 											
 				for( int i=0, j=0; j < board_n_2nd; ++i, ++j ){
 					 CV_MAT_ELEM( *image_points_2nd,  float, i, 0 ) = corners_2nd[j].x;
@@ -137,7 +144,6 @@ namespace golfcar_vision{
 				poses_batch.cb_poses.push_back(board_pose);
 			}
 			else { ROS_DEBUG ("--- No --- board2 -- not detected");}
-		  sw.end();
 		  
 		  // Draw it
 		  cvDrawChessboardCorners( color_image, board_sz_1st, corners_1st, corner_count_1st, found_1st );
@@ -179,7 +185,7 @@ namespace golfcar_vision{
 	  cvMatMul(rot_matrix, z_unit_vec, z_new_vec);
 	  float z_x = CV_MAT_ELEM( *z_new_vec, float, 0, 0 );
 	  float z_z = CV_MAT_ELEM( *z_new_vec, float, 2, 0 );
-	  float board_yaw = atan2f(z_z , z_x) - M_PI_2;
+	  float board_yaw = -atan2f(z_z , z_x);
 	  board_pose.orientation = createQuaternionMsgFromRollPitchYaw(0.0, 0.0, board_yaw);
 	  ROS_DEBUG("board angle %3f", board_yaw);
 	  cvReleaseMat(&trans_vec);
