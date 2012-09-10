@@ -1,0 +1,4 @@
+These scripts are for the NTP daemon (Ubuntu default). But now we are using
+Chrony instead. On master, simply install chrony (sudo apt-get install chrony).
+The default configuration does not have to be modified.
+On lowlevel, see the lowlevel directory...
