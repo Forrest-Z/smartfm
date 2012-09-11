@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="network_delay_experiment" type="simulated_laser_sub" name="laser_selfcheck"/>
+    <node pkg="network_delay_experiment" type="simulated_laser" name="simulated_laser"/>
+    <node pkg="network_delay_experiment" type="simulated_laser_sub" name="laser_sub" ns="golfcartbackup"/>
+    <node pkg="network_delay_experiment" type="simulated_laser_sub" name="laser_sub" ns="comp1"/>
+</launch>

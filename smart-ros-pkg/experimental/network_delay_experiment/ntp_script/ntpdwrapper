@@ -1,0 +1,71 @@
+#!/bin/sh
+
+# Quick start-stop-daemon example, derived from Debian /etc/init.d/ssh
+set -e
+
+. /lib/lsb/init-functions
+
+# Must be a valid filename
+NAME=ntpdwrapperd
+PIDFILE=/var/run/$NAME.pid
+#This is the command to be run, give the full pathname
+DAEMON=/usr/local/bin/ntpdwrapperd
+
+export PATH="${PATH:+$PATH:}/usr/sbin:/sbin"
+
+
+startdaemon() {
+start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $DAEMON --make-pidfile --background
+}
+
+stopdaemon() {
+start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE --name $NAME
+if [ -f $PIDFILE ]; then
+    rm $PIDFILE
+fi
+}
+
+
+case "$1" in
+    start)
+        log_begin_msg "Starting ntp wrapper daemon: $NAME"
+        startdaemon
+        log_end_msg $?
+        ;;
+
+    stop)
+        log_begin_msg "Stopping ntp wrapper daemon: $NAME"
+        stopdaemon
+        log_end_msg $?
+        ;;
+
+    restart)
+        echo -n "Restarting ntp wrapper daemon: $NAME"
+        stopdaemon
+        startdaemon
+        log_end_msg $?
+        ;;
+
+    status)
+        echo -n "Status of ntp wrapper daemon: "
+        if [ ! -r "$PIDFILE" ]; then
+            echo "$NAME is not running."
+            exit 3
+        fi
+        if read pid < "$PIDFILE" && ps -p "$pid" > /dev/null 2>&1; then
+            echo "$NAME is running."
+            exit 0
+        else
+            echo "$NAME is not running but $PIDFILE exists."
+            exit 1
+        fi
+	;;
+
+    *)
+        N=/etc/init.d/${0##*/}
+        echo "Usage: "$N" {start|stop|restart|status}"
+        exit 1
+esac
+
+exit 0
+

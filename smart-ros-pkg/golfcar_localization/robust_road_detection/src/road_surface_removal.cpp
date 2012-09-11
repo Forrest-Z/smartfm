@@ -22,13 +22,14 @@ class RoadSurfaceRemoval
 	message_filters::Subscriber<robust_road_detection::curb_details> curb_details_sub_;
 	ros::Publisher laser_pub_, laser_curb_pub_;
 	int last_leftcurb_pt_, last_rightcurb_pt_;
-
+	int buffer_;
 	void update_curblines(robust_road_detection::curb_details& details)
 	{
 		//update the last leftcurb with -1 with last known id
 		cout<<"Received: "<<details.left_pt_id<<" "<<details.right_pt_id<<endl;
-		if(details.left_pt_id != -1) last_leftcurb_pt_ = details.left_pt_id;
-		if(details.right_pt_id != -1) last_rightcurb_pt_ = details.right_pt_id;
+        if(details.left_pt_id != -1 && details.right_pt_id != -1) assert(details.right_pt_id < details.left_pt_id);
+		if(details.left_pt_id != -1) last_leftcurb_pt_ = details.left_pt_id - buffer_;
+		if(details.right_pt_id != -1) last_rightcurb_pt_ = details.right_pt_id + buffer_;
 	}
 
 	bool filter_laser(sensor_msgs::PointCloud& laser)
@@ -74,7 +75,7 @@ class RoadSurfaceRemoval
 	}
 
 public:
-	RoadSurfaceRemoval() : last_leftcurb_pt_(-1), last_rightcurb_pt_(-1)
+	RoadSurfaceRemoval() : last_leftcurb_pt_(-1), last_rightcurb_pt_(-1), buffer_(10)
 	{
 		laser_cloud_sub_.subscribe(nh_, "laser_cloud_laser", 20);
 		curb_details_sub_.subscribe(nh_, "curb_details", 20);

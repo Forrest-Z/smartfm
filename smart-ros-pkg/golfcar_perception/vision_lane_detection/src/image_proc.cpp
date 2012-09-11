@@ -10,7 +10,7 @@ namespace golfcar_vision{
       cvNamedWindow("Iat_image");
       cvNamedWindow("binary_image");
       cvNamedWindow("contour_image");
-      cvNamedWindow("HistogramEqualized_image");
+      //cvNamedWindow("HistogramEqualized_image");
 
       string svm_model_file;
       //the name cannot be too long, or it cannot load;
@@ -100,11 +100,10 @@ namespace golfcar_vision{
             para_C2_ = corners_[1].y-para_A2_*corners_[1].x;
         }
         
-        
+        /*
         IplImage *HistogramEqualized = 0;
         HistogramEqualized = cvCreateImage(cvSize(src->width,src->height),IPL_DEPTH_8U, 1);
         cvEqualizeHist(src, HistogramEqualized);
-        
         cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[0]), 6, CV_RGB(0,255,0), 2);
 		  cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[1]), 6, CV_RGB(0,255,0), 2);
 		  cvCircle( HistogramEqualized, cvPointFrom32f(dst_pointer[2]), 6, CV_RGB(0,255,0), 2);
@@ -114,6 +113,7 @@ namespace golfcar_vision{
 		  cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[2]), cvPointFrom32f(dst_pointer[3]), cvScalar(255), 1);
 		  cvLine( HistogramEqualized, cvPointFrom32f(dst_pointer[3]), cvPointFrom32f(dst_pointer[0]), cvScalar(255), 1);
 		  cvShowImage("HistogramEqualized_image", HistogramEqualized);
+		  */ 
 	
         //-------------------------------------------------------------------------------------------------------------------------
         //1. thresholding step, combining threshold and adaptive threshold methods, to get binary image;
@@ -1166,7 +1166,7 @@ namespace golfcar_vision{
         cvDestroyWindow("Iat_image");
         cvDestroyWindow("binary_image");
         cvDestroyWindow("contour_image");
-        cvDestroyWindow("HistogramEqualized_image");
+        //cvDestroyWindow("HistogramEqualized_image");
         cvReleaseMat(&intrinsic_A_);
         cvReleaseMat(&distortion_coeffs_);
         cvReleaseMat(&M1_gndPts_);
