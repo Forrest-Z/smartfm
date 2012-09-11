@@ -59,7 +59,7 @@ namespace golfcar_vision{
         IplImage* color_image, *gray_image;
         //get image in OpenCV format;
         try {
-            color_image = bridge_.imgMsgToCv(image_msg, "rgb8");
+            color_image = bridge_.imgMsgToCv(image_msg, "bgr8");
             }
         catch (sensor_msgs::CvBridgeException& ex) {
             ROS_ERROR("Failed to convert image");
@@ -112,6 +112,7 @@ namespace golfcar_vision{
 				board_pose.label = 1;
 				visionCP::calc_cb_pose(object_points_1st, image_points_1st, board_pose.pose);
 				poses_batch.cb_poses.push_back(board_pose);
+		 cvDrawChessboardCorners( color_image, board_sz_1st, corners_1st, corner_count_1st, found_1st );
 			}
 			else { ROS_DEBUG ("--- No --- board1 -- not detected");}
 			
@@ -142,20 +143,19 @@ namespace golfcar_vision{
 				board_pose.label = 1;
 				visionCP::calc_cb_pose(object_points_2nd, image_points_2nd, board_pose.pose);
 				poses_batch.cb_poses.push_back(board_pose);
+			cvDrawChessboardCorners( color_image, board_sz_2nd, corners_2nd, corner_count_2nd, found_2nd );
 			}
 			else { ROS_DEBUG ("--- No --- board2 -- not detected");}
-		  
-		  // Draw it
-		  cvDrawChessboardCorners( color_image, board_sz_1st, corners_1st, corner_count_1st, found_1st );
-		  cvDrawChessboardCorners( color_image, board_sz_2nd, corners_2nd, corner_count_2nd, found_2nd );
+
 	     cvShowImage( "Calibration", color_image );
 		  
 		  cvWaitKey(10);
-        cvReleaseMat(&image_points_1st);
+       		  cvReleaseMat(&image_points_1st);
 		  cvReleaseMat(&object_points_1st);
 		  cvReleaseMat(&image_points_2nd);
 		  cvReleaseMat(&object_points_2nd);
-		  
+		  cvReleaseImage(&gray_image);
+
 		  board_pub_.publish(poses_batch);
   }
   
