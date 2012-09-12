@@ -9,6 +9,7 @@
 #include <dynamic_reconfigure/server.h>
 #include <norm_virtual_sensor/NormVirtualSensorConfig.h>
 
+
 class NormVirtualSensor
 {
     AccumulateData *laser_accumulate_;
@@ -112,7 +113,18 @@ class NormVirtualSensor
 
         // Create the normal estimation class, and pass the input dataset to it
         pcl::NormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
-        ne.setInputCloud (input.makeShared());
+        pcl::PointXYZRGB min, max, centroid;
+        pcl::getMinMax3D(input, min, max);
+        pcl::PointCloud<pcl::PointXYZRGB> normalized_input;
+        centroid.x = (max.x + min.x)/2.;
+        centroid.y = (max.y + min.y)/2.;
+        centroid.z = (max.z + min.z)/2.;
+        Eigen::Vector3f offset(-centroid.x, -centroid.y, -centroid.z);
+        Eigen::Quaternion<float> qt(1.0,0,0,0);
+
+        pcl_utils::transformPointCloud(input, normalized_input, offset, qt);
+
+        ne.setInputCloud (normalized_input.makeShared());
 
         // Create an empty kdtree representation, and pass it to the normal estimation object.
         // Its content will be filled inside the object, based on the given input dataset (as no other search surface is given).
@@ -127,10 +139,8 @@ class NormVirtualSensor
 
         // Set use point using current sensor pose
         double viewpoint[] = {cur_sensor_trans_.getOrigin().x(), cur_sensor_trans_.getOrigin().y(), cur_sensor_trans_.getOrigin().z()};
-        cout<<"Setting view point with ";
-        for(size_t i=0; i<3; i++) cout<<viewpoint[i]<<" ";
-        cout<<endl;
-        ne.setViewPoint(viewpoint[0], viewpoint[1], viewpoint[2]);
+
+        ne.setViewPoint(0.,0.,0.);//viewpoint[0], viewpoint[1], viewpoint[2]);
         // Compute the features
         stringstream ss;
         ss<<"Compute normals in frame "<<input.header.frame_id;
