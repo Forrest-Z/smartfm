@@ -17,14 +17,22 @@ namespace golfcar_vision{
 		distortion_coeffs_	= cvCreateMat( 5, 1, CV_32FC1 );
 		
 		//to specify different boards;
-		board_1st_.board_w = 6;
-		board_1st_.board_h = 8;
-		board_1st_.side_length = 0.0345;
-		board_2nd_.board_w = 4;
-		board_2nd_.board_h = 5;
-		board_2nd_.side_length = 0.20;
+		private_nh_.param("board_1st_w", board_1st_.board_w, 6);
+		private_nh_.param("board_1st_h", board_1st_.board_h, 8);
+		private_nh_.param("board_1st_side", board_1st_.side_length, 0.0345);
+		private_nh_.param("board_1st_name", board_1st_.board_name,  std::string("board1"));
+		
+		private_nh_.param("board_2nd_w", board_2nd_.board_w, 10);
+		private_nh_.param("board_2nd_h", board_2nd_.board_h, 10);
+		private_nh_.param("board_2nd_side", board_2nd_.side_length, 0.0345);
+		private_nh_.param("board_2nd_name", board_2nd_.board_name,  std::string("board2"));
+		
+		double tmp_tol;
+		private_nh_.param("transform_tolerance", tmp_tol, 0.0);
+		transform_tolerance_.fromSec(tmp_tol);
 		
 		board_pub_ = nh_.advertise<vision_cp::chess_board_poses>("cb_info",2);
+		tfb_ = new tf::TransformBroadcaster();
   }
   
   void visionCP::ImageCallBack( const sensor_msgs::ImageConstPtr& image_msg,
@@ -110,7 +118,7 @@ namespace golfcar_vision{
 				
 				vision_cp::cb_pose board_pose;
 				board_pose.label = 1;
-				visionCP::calc_cb_pose(object_points_1st, image_points_1st, board_pose.pose);
+				visionCP::calc_cb_pose(info_msg, std::string("board1"), object_points_1st, image_points_1st, board_pose.pose);
 				poses_batch.cb_poses.push_back(board_pose);
 		 cvDrawChessboardCorners( color_image, board_sz_1st, corners_1st, corner_count_1st, found_1st );
 			}
@@ -140,8 +148,8 @@ namespace golfcar_vision{
 				ROS_DEBUG("--- OK --- board2 -- detected");
 				
 				vision_cp::cb_pose board_pose;
-				board_pose.label = 1;
-				visionCP::calc_cb_pose(object_points_2nd, image_points_2nd, board_pose.pose);
+				board_pose.label = 2;
+				visionCP::calc_cb_pose(info_msg, std::string("board2"), object_points_2nd, image_points_2nd, board_pose.pose);
 				poses_batch.cb_poses.push_back(board_pose);
 			cvDrawChessboardCorners( color_image, board_sz_2nd, corners_2nd, corner_count_2nd, found_2nd );
 			}
@@ -166,7 +174,8 @@ namespace golfcar_vision{
   }
   
   //"cb" is short for "chess board"
-  void visionCP::calc_cb_pose(CvMat* obj_pts, CvMat* img_pts, geometry_msgs::Pose & board_pose )
+  void visionCP::calc_cb_pose( const sensor_msgs::CameraInfoConstPtr& info_msg, std::string board_name,
+										CvMat* obj_pts, CvMat* img_pts, geometry_msgs::Pose & board_pose )
   {
 	  CvMat* trans_vec = cvCreateMat(3,1,CV_32FC1);
 	  CvMat* rot_vec = cvCreateMat(3,1,CV_32FC1);
@@ -176,18 +185,26 @@ namespace golfcar_vision{
 	  board_pose.position.x = CV_MAT_ELEM( *trans_vec, float, 0, 0 );
 	  board_pose.position.y = CV_MAT_ELEM( *trans_vec, float, 1, 0 );
 	  board_pose.position.z = CV_MAT_ELEM( *trans_vec, float, 2, 0 );
-
-	  CvMat* z_unit_vec = cvCreateMat(3,1,CV_32FC1);
-	  CvMat* z_new_vec  = cvCreateMat(3,1,CV_32FC1);
-	  CV_MAT_ELEM( *z_unit_vec, float, 0, 0 ) = 0.0;
-	  CV_MAT_ELEM( *z_unit_vec, float, 1, 0 ) = 0.0;
-	  CV_MAT_ELEM( *z_unit_vec, float, 2, 0 ) = -1.0;
-	  cvMatMul(rot_matrix, z_unit_vec, z_new_vec);
-	  float z_x = CV_MAT_ELEM( *z_new_vec, float, 0, 0 );
-	  float z_z = CV_MAT_ELEM( *z_new_vec, float, 2, 0 );
-	  float board_yaw = -atan2f(z_z , z_x);
-	  board_pose.orientation = createQuaternionMsgFromRollPitchYaw(0.0, 0.0, board_yaw);
-	  ROS_DEBUG("board angle %3f", board_yaw);
+	  //ROS_INFO("%3f, %3f, %3f", board_pose.position.x, board_pose.position.y, board_pose.position.z);
+	  
+	  float M11_rot = CV_MAT_ELEM( *rot_matrix, float, 0, 0 );
+	  float M21_rot = CV_MAT_ELEM( *rot_matrix, float, 1, 0 );
+	  float M31_rot = CV_MAT_ELEM( *rot_matrix, float, 2, 0 );
+	  float M32_rot = CV_MAT_ELEM( *rot_matrix, float, 2, 1 );
+	  float M33_rot = CV_MAT_ELEM( *rot_matrix, float, 2, 2 );
+	
+	  double yaw, pitch, roll;
+	  yaw	  = atan2f(M21_rot, M11_rot);
+	  pitch = atan2f(- M31_rot, sqrtf(M32_rot*M32_rot+M33_rot*M33_rot));
+	  roll  = atan2f(M32_rot, M33_rot);
+	  board_pose.orientation = createQuaternionMsgFromRollPitchYaw(roll, pitch, yaw);
+	  
+	  ros::Time transform_expiration = (info_msg->header.stamp + transform_tolerance_);
+	  tf::Transform tmp_tf(tf::createQuaternionFromRPY(roll, pitch, yaw),
+								  tf::Vector3(board_pose.position.x, board_pose.position.y, board_pose.position.z));	
+	  tf::StampedTransform tmp_tf_stamped(tmp_tf, transform_expiration, info_msg->header.frame_id, board_name);	
+	  tfb_->sendTransform(tmp_tf_stamped);
+	  
 	  cvReleaseMat(&trans_vec);
 	  cvReleaseMat(&rot_vec);
 	  cvReleaseMat(&rot_matrix);

@@ -16,6 +16,7 @@
 #include <message_filters/subscriber.h>
 #include "vision_cp/chess_board_poses.h"
 #include <fmutil/fm_stopwatch.h>
+
 using namespace std;
 using namespace ros;
 using namespace tf;
@@ -28,6 +29,7 @@ namespace golfcar_vision{
 	int board_w;
 	int board_h;
 	double side_length;
+	std::string board_name; 
     };
 
     class visionCP {
@@ -54,8 +56,12 @@ namespace golfcar_vision{
 	bool camera_init_;
 	CvMat* intrinsic_matrix_;
 	CvMat* distortion_coeffs_;
-	void calc_cb_pose(CvMat* obj_pts, CvMat* img_pts, geometry_msgs::Pose & board_pose );
+	void calc_cb_pose( const sensor_msgs::CameraInfoConstPtr& info_msg, std::string board_name, CvMat* obj_pts, CvMat* img_pts, geometry_msgs::Pose & board_pose );
 	ros::Publisher board_pub_;
+
+	//this can only work as a pointer, or some tricky things will happen;
+	tf::TransformBroadcaster *tfb_;
+	ros::Duration transform_tolerance_;
     };
 
 
