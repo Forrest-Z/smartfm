@@ -309,7 +309,7 @@ class NormVirtualSensor
             //rebuild normals with old and new normals
             accumulated_normals_.insert(accumulated_normals_.begin(), single_pcl);
             if(accumulated_normals_.size()>accumulate_size_) accumulated_normals_.resize(accumulate_size_);
-
+            cout<<"Accumulated with "<<accumulated_normals_.size()<<" normal points"<<endl;
             pcl::PointCloud<pcl::PointXYZRGBNormal> rebuild_normal;
             for(size_t i=0; i<accumulated_normals_.size(); i++)
             {
@@ -344,9 +344,10 @@ class NormVirtualSensor
     void pointcloudsToLaser(sensor_msgs::PointCloud& cloud, sensor_msgs::LaserScan& output)
     {
         //adapted from turtlebot's cloud_to_scan.cpp
+        //cannot exceed 0.7 for compatibility of flirtlib
         output.header = cloud.header;
-        output.angle_min = -M_PI;//*0.7;
-        output.angle_max = M_PI;//*0.7;
+        output.angle_min = -M_PI*0.9;
+        output.angle_max = M_PI*0.9;
         output.angle_increment = M_PI/180.0/5.0;
         output.time_increment = 0.0;
         output.scan_time = 1.0/30.0;
