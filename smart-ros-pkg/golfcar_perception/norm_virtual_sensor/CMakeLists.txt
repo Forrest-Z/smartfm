@@ -31,5 +31,7 @@ gencfg()
 rosbuild_add_executable(norm_virtual_sensor src/norm_virtual_sensor.cpp)
 rosbuild_add_boost_directories()
 rosbuild_link_boost(norm_virtual_sensor signals)
-
+rosbuild_add_executable(carmen src/carmen.cpp src/AbstractReading.cpp src/CarmenLog.cpp
+                        src/LaserReading.cpp src/point.cpp )
+rosbuild_link_boost(carmen signals)
 #target_link_libraries(example ${PROJECT_NAME})
