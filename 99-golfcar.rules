@@ -1,5 +1,5 @@
 # UBlox GPS
-ACTION=="add", ATTRS{idVendor}=="067b", ATTRS{idProduct}=="2303", MODE="664", GROUP="plugdev" SYMLINK+="ublox"
+ACTION=="add", ATTRS{idVendor}=="0557", ATTRS{idProduct}=="2008", MODE="664", GROUP="plugdev" SYMLINK+="ublox"
 
 # Hokuyo
 ACTION=="add", ATTRS{manufacturer}=="Hokuyo Data Flex for USB", ATTRS{idVendor}=="15d1", MODE="664", GROUP="plugdev" SYMLINK+="hokuyo"
