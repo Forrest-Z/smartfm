@@ -43,6 +43,11 @@ namespace golfcar_vision{
         image_geometry::PinholeCameraModel cam_model_;
         sensor_msgs::CameraInfo CameraStaticInfo_;
 	
+	unsigned int detected_times_1st_;
+	unsigned int detected_times_2nd_;
+	bool board_1st_switch_;
+	bool board_2nd_switch_;
+
 	chess_board board_1st_;
 	chess_board board_2nd_;
         void ImageCallBack(const sensor_msgs::ImageConstPtr& image_msg, const sensor_msgs::CameraInfoConstPtr& info_msg);
