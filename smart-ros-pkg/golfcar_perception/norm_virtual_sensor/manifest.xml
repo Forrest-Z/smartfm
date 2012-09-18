@@ -20,7 +20,7 @@
   <depend package="laser_geometry"/>
   <depend package="fmutil"/>
   <depend package="dynamic_reconfigure"/>
-
+  <depend package="occupancy_grid_utils"/>
 </package>
 
 

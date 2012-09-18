@@ -25,17 +25,18 @@
 
 #include "LogReader.h"
 #include "LogWriter.h"
-#include "AbstractReading.h"
-#include "LaserReading.h"
-#include "point.h"
+#include "../sensors/AbstractReading.h"
+#include "../sensors/LaserReading.h"
+#include "../geometry/point.h"
 
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 
+//increase the max length so that the more fov can be included for laser sensor
 /** \def MAX_LINE_SIZE The maximum length of a line. */
-#define MAX_LINE_SIZE 8192
+#define MAX_LINE_SIZE 8192*2
 
 /** 
  * Representation of a CARMEN log reader. It implements the LogReader class for the CARMEN log file format.
