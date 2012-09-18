@@ -79,7 +79,7 @@ Building all ROS packages
 EOF
 
 
-packages=`rospack list | grep smart-ros-pkg | cut -d' ' -f1 | grep -v Launch | xargs echo`
+packages=`rospack list | grep smartfm | cut -d' ' -f1 | grep -v Launch | xargs echo`
 cmd="rosmake --robust"
 if [ $ncpus -gt 2 ]; then
     cmd="$cmd --threads=$ncpus"

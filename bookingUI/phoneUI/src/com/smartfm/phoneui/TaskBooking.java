@@ -62,7 +62,6 @@ public class TaskBooking extends Activity implements OnClickListener {
 		}
 	}
 
-	@Override
 	public void onClick(View v) {
 		switch(v.getId()) {
 		
@@ -71,7 +70,6 @@ public class TaskBooking extends Activity implements OnClickListener {
   				.setTitle("Pick a station")
   				.setAdapter(aspnPickups, new DialogInterface.OnClickListener() {
 
-				@Override
 				public void onClick(DialogInterface dialog, int which) {
 			    	pickupStation = aspnPickups.getItem(which);
 			    	((Button)findViewById(R.id.pickupbutton)).setText(pickupStation);
@@ -85,7 +83,6 @@ public class TaskBooking extends Activity implements OnClickListener {
   				.setTitle("Pick a station")
   				.setAdapter(aspnDests, new DialogInterface.OnClickListener() {
 
-				@Override
 				public void onClick(DialogInterface dialog, int which) {
 			    	dropoffStation = aspnDests.getItem(which);
 			    	((Button)findViewById(R.id.dropoffbutton)).setText(dropoffStation);
