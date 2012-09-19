@@ -1,51 +1,56 @@
 analyzers:
     system:
-        type: AnalyzerGroup
+        type: diagnostic_aggregator/AnalyzerGroup
         path: System
         analyzers:
             master:
-                type: GenericAnalyzer
+                type: diagnostic_aggregator/GenericAnalyzer
                 path: Master
                 find_and_remove_prefix: ['golfcart-master', 'sensors_monitor_master: golfcart-master']
             lowlevel:
-                type: GenericAnalyzer
+                type: diagnostic_aggregator/GenericAnalyzer
                 path: Lowlevel
                 find_and_remove_prefix: ['sensors_monitor_lowlevel: golfcart-lowlevel']
                 startswith: NTP
             tf:
-                type: GenericAnalyzer
+                type: diagnostic_aggregator/GenericAnalyzer
                 path: TF
                 find_and_remove_prefix: tf_monitor
     sensors:
-        type: AnalyzerGroup
+        type: diagnostic_aggregator/AnalyzerGroup
         path: Sensors - Actuators
         analyzers:
             lasers:
-                type: GenericAnalyzer
+                type: diagnostic_aggregator/GenericAnalyzer
                 path: Lasers
-                startswith: ['sickldmrs', 'sicklms', 'sicklms3']
-                num_items: 3
+                startswith: ['sickldmrs', 'sicklms']
+                num_items: 2
             arduino:
-                type: GenericAnalyzer
+                type: diagnostic_aggregator/GenericAnalyzer
                 path: Arduino
                 find_and_remove_prefix: arduino_node
                 num_items: 3
             encoders:
-                type: GenericAnalyzer
+                type: diagnostic_aggregator/GenericAnalyzer
                 path: Encoders
                 find_and_remove_prefix: encoders_node
                 num_items: 1
+            imu:
+                type: diagnostic_aggregator/GenericAnalyzer
+                path: IMU
+                contains: microstrain
+                num_items: 3
     localization:
-        type: AnalyzerGroup
+        type: diagnostic_aggregator/AnalyzerGroup
         path: Localization
         analyzers:
             curb_detect:
-                type: GenericAnalyzer
+                type: diagnostic_aggregator/GenericAnalyzer
                 path: Curb Detector
                 find_and_remove_prefix: curb_detect
                 num_items: 3
             odometry:
-                type: GenericAnalyzer
+                type: diagnostic_aggregator/GenericAnalyzer
                 path: Odometry
                 startswith: 'odom_republish'
                 num_items: 1

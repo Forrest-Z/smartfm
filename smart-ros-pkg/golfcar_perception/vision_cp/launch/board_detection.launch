@@ -1,0 +1,10 @@
+<launch>
+    <node pkg="vision_cp" type="visionCP" name="visionCP">
+	<param name="board_1st_w" type="int" value="6" />
+        <param name="board_1st_h" type="int" value="8" />
+	<param name="board_1st_side" type="double" value="0.0345" />
+	<param name="board_2nd_w" type="int" value="4" />
+        <param name="board_2nd_h" type="int" value="5" />
+	<param name="board_2nd_side" type="double" value="0.20" />
+    </node>
+</launch>

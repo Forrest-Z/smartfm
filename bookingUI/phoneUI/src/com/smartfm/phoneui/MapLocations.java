@@ -4,8 +4,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.ListIterator;
-
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
@@ -176,7 +174,6 @@ public class MapLocations extends MapActivity {
 	
 	public void startPeriodicUpdate() {
 		Runnable periodicUpdateProcess = new Runnable(){
-			@Override
 			public void run() {
 				updateVehicles();
 				handler.postDelayed(this, 3000);

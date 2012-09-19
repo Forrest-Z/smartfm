@@ -66,7 +66,6 @@ public class MainActivity extends Activity implements OnClickListener,
 		}
 	}
 
-	@Override
 	public void onClick(View v) {
 		switch (v.getId()) {
 		case R.id.makebookingbutton:
@@ -84,7 +83,6 @@ public class MainActivity extends Activity implements OnClickListener,
 		updateBookings();
 	}
 
-	@Override
 	public void onItemClick(AdapterView<?> parent, View view, int position,
 			long id) {
 		// A list item has been clicked: show the details of this task in
@@ -100,7 +98,6 @@ public class MainActivity extends Activity implements OnClickListener,
 	
 	public void startPeriodicUpdate() {
 		Runnable periodicUpdateProcess = new Runnable(){
-			@Override
 			public void run() {
 				updateBookings();
 				handler.postDelayed(this, 3000);

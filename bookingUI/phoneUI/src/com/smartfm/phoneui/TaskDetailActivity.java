@@ -27,7 +27,6 @@ public class TaskDetailActivity extends Activity implements OnClickListener {
 		((Button) findViewById(R.id.viewtaskonmapbutton)).setOnClickListener(this);
 		
 		Runnable periodicUpdateProcess = new Runnable(){
-			@Override
 			public void run() {
 				updateTask();
 				handler.postDelayed(this, 3000);
@@ -58,7 +57,6 @@ public class TaskDetailActivity extends Activity implements OnClickListener {
 		}
 	}
 
-	@Override
 	public void onClick(View v) {
 		switch(v.getId()) {
 		case R.id.canceltaskbutton:

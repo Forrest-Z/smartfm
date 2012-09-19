@@ -1,5 +1,5 @@
 # UBlox GPS
-ACTION=="add", ATTRS{idVendor}=="067b", ATTRS{idProduct}=="2303", MODE="664", GROUP="plugdev" SYMLINK+="ublox"
+ACTION=="add", ATTRS{idVendor}=="0557", ATTRS{idProduct}=="2008", MODE="664", GROUP="plugdev" SYMLINK+="ublox"
 
 # Hokuyo
 ACTION=="add", ATTRS{manufacturer}=="Hokuyo Data Flex for USB", ATTRS{idVendor}=="15d1", MODE="664", GROUP="plugdev" SYMLINK+="hokuyo"
@@ -18,6 +18,8 @@ SUBSYSTEM=="tty", KERNEL=="ttyUSB[0-9]*", ATTRS{manufacturer}=="Xsens", ATTRS{pr
 # Arduino Board
 SUBSYSTEM=="tty", KERNEL=="ttyACM[0-9]*", ATTRS{product}=="Arduino Uno", SYMLINK+="arduino"
 
+# Phidgets
+SUBSYSTEMS=="usb", ACTION=="add", ATTRS{idVendor}=="06c2", ATTRS{idProduct}=="00[3-a][0-f]", MODE="666"
 
 
 # Cameras

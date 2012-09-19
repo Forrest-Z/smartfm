@@ -380,7 +380,21 @@ public:
 			}
 		}
 		
+		if(config_.focus_auto != newconfig.focus_auto){
+			try {
+		  cam_->set_control(0x9a090c, newconfig.focus_auto);
+		  	} catch (uvc_cam::Exception& e) {
+				ROS_ERROR_STREAM("Problem setting focal length. Exception was " << e.what());
+			}
+		}
 		
+		if(config_.focal_length != newconfig.focal_length){
+			try {
+		  cam_->set_control(0x9a090a, newconfig.focal_length);
+		  	} catch (uvc_cam::Exception& e) {
+				ROS_ERROR_STREAM("Problem setting focal length. Exception was " << e.what());
+			}
+		}
 
 		if (config_.camera_info_url != newconfig.camera_info_url)
 		{
