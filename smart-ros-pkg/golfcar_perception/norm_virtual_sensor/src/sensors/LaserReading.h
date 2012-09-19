@@ -24,7 +24,7 @@
 #define LASERREADING_H_
 
 #include "AbstractReading.h"
-#include "point.h"
+#include "../geometry/point.h"
 #include <string>
 #include <vector>
 #include <cmath>
@@ -61,8 +61,14 @@ class LaserReading: public AbstractReading {
 	inline const std::vector<double>& getPhi() const 
 	    {return m_phi;} 
 	/** Get the distances. It returns the distances measured by the laser*/
-	inline const std::vector<double>& getRho() const 
-	    {return m_rho;}
+	std::vector<double> getRho() const
+	    {
+	        std::vector<double> rho;
+	        rho.resize(m_rho.size());
+	        for(size_t i=0; i<rho.size(); i++)
+	            rho[i] = m_rho[i];
+	        return rho;
+	    }
 	/** Get angles and distances. It returns both angles, _phi, and distances, _rho, of the reading.*/
 	inline unsigned int getPolar(const std::vector<double>*& _phi, const std::vector<double>*&  _rho) const 
 	    {_phi = &m_phi; _rho = &m_rho; return m_phi.size();}

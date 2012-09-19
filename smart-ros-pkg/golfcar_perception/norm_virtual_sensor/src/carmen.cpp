@@ -17,7 +17,7 @@
 #include <laser_geometry/laser_geometry.h>
 #include <fmutil/fm_math.h>
 #include <fmutil/fm_stopwatch.h>
-#include "CarmenLog.h"
+#include "sensorstream/CarmenLog.h"
 #include <iostream>
 #include <fstream>
 

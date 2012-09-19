@@ -20,28 +20,15 @@
 
 
 
-#ifndef LOGWRITER_H_
-#define LOGWRITER_H_
+#ifndef POSEESTIMATION_H_
+#define POSEESTIMATION_H_
 
-#include "AbstractReading.h"
-
-#include <iostream>
+#include <geometry/point.h>
 #include <vector>
+#include <utility>
 
-/** 
- * Representation of an abstract log writer. It defines the interface for writing a log file to a stream.
- *
- *
- * @author Gian Diego Tipaldi
- */
- 
-class LogWriter{
-    public:
-	/** Virtual Default destructor */
-	virtual ~LogWriter() { }
-	
-	/** Write a log to an outputstream */
-	virtual void writeLog(std::ostream& _stream, const std::vector<AbstractReading*>& _log) const = 0;
-};
+
+/** Function to compute the Euclidean transformation between two set of points. The transformation is computed in closed form minimizing the squared residual reprojection error. */
+double compute2DPose(const std::vector< std::pair<Point2D, Point2D> > &correspondences, OrientedPoint2D& transformation);
 
 #endif

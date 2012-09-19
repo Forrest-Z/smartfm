@@ -21,7 +21,7 @@ class NormVirtualSensor
     ros::Publisher accumulated_pub_, normal_pc2_pub_;
     ros::Publisher final_pc2_pub_, final_pc_pub_;
     ros::Publisher latest_normal_pub_, laser_pub_;
-    ros::Publisher normals_poses_pub_;
+    ros::Publisher normals_poses_pub_, filtered_normal_pub_;
     tf::TransformListener *tf_;
     tf::StampedTransform cur_sensor_trans_;
     message_filters::Subscriber<sensor_msgs::LaserScan> laser_scan_sub_;
@@ -230,6 +230,11 @@ class NormVirtualSensor
         condrem2.filter (pcl_cloud);
         sw.end();
         cout<<"After normal filter "<<pcl_cloud.size()<<endl;
+        sensor_msgs::PointCloud2 filtered_pts;
+        pcl::toROSMsg(pcl_cloud, filtered_pts);
+        filtered_pts.header.frame_id = target_frame_;
+        filtered_pts.header.stamp = ros::Time::now();
+        filtered_normal_pub_.publish(filtered_pts);
         if(pcl_cloud.size()==0) return pcl_cloud;
 
         //perform density based filtering
@@ -430,6 +435,7 @@ public:
         final_pc2_pub_ = n.advertise<sensor_msgs::PointCloud2>("single_pcl", 10);
         final_pc_pub_ = n.advertise<sensor_msgs::PointCloud>("pc_legacy_out", 10);
         latest_normal_pub_ = n.advertise<sensor_msgs::PointCloud2>("latest_normal", 10);
+        filtered_normal_pub_ = n.advertise<sensor_msgs::PointCloud2>("filtered_normal", 10);
         laser_pub_ = n.advertise<sensor_msgs::LaserScan>("laser_out", 10);
     	normals_poses_pub_ = n.advertise<geometry_msgs::PoseArray>("normals_array", 10);
     	normal_pc2_pub_ = n.advertise<sensor_msgs::PointCloud2>("normal_pc2", 10);

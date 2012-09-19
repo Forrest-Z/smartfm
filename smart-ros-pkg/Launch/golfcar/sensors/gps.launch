@@ -1,8 +1,10 @@
 <launch>
-    <node pkg="gpsd_client" type="gpsd_client" name="gpsd_client"/>
+    <node pkg="gpsd_client" type="gpsd_client" name="gpsd_client">
+	<param name="use_gps_time" value="false"/>
+    </node>
     <node name="gps_conv" pkg="gps_common" type="utm_odometry_node">
-        <remap from="odom" to="vo"/>
-        <param name="rot_covariance" value="99999" />
-        <param name="frame_id" value="base_footprint" />
+        <remap from="odom" to="gps_odom"/>
+        <!--param name="rot_covariance" value="99999" /-->
+        <param name="frame_id" value="base_link" />
     </node>
 </launch>

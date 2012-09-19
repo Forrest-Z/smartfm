@@ -168,7 +168,7 @@ void CarmenLogWriter::writeFLaser(std::ostream& _stream, const LaserReading* _re
     const std::vector<double>& rho = _reading->getRho();
     _stream << rho.size() << " ";
     
-    _stream.precision(2);
+    _stream.precision(3);
     for(uint i = 0; i < rho.size(); i++){
 	_stream << rho[i] << " ";
     }
@@ -194,7 +194,7 @@ void CarmenLogWriter::writeRobotLaser(std::ostream& _stream, const LaserReading*
     
     _stream << rho.size() << " ";
     
-    _stream.precision(2);
+    _stream.precision(3);
     for(uint i = 0; i < rho.size(); i++){
 	_stream << rho[i] << " ";
     }
