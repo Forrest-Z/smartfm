@@ -4,7 +4,6 @@
 #include "lane_marker_common.h"
 //#include <Eigen/Dense>
 #include <mrpt/base.h>
-#include <mrpt/slam.h>
 #include <mrpt/gui.h>
 #include <sensor_msgs/PointCloud.h>
 

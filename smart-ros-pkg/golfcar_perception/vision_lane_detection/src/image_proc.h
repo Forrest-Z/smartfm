@@ -13,7 +13,7 @@
 #include "libsvm/svm.h"
 
 //disable continuous lane temporarily, since golfcart 10.04 doesn't have required mrpt-library;
-//#include "ransac_parabola.h"
+#include "ransac_parabola.h"
 
 #include <float.h>
 #include <stdio.h>
@@ -55,7 +55,7 @@ namespace golfcar_vision{
 				CvBox2D &Box_input, int polyNum_input);
         void pose_contour(CvSeq *contour, CvMoments &cvm, vision_lane_detection::marker_info &marker_para);
         void cvt_pose_baselink(vision_lane_detection::marker_info &marker_para);
-	//void continuous_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color);
+	void continuous_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color);
 		
 	void restore_scalefile(string filename,double* &feature_min, double* &feature_max, int &feature_index);
 	double output(int index, double value);

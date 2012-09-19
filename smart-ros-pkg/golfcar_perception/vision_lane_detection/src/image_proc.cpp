@@ -276,7 +276,7 @@ namespace golfcar_vision{
                 pose_contour_Extrinsic(contours, contour_class, projection_matrix, marker_output_2nd);
                 if(marker_output_2nd.thetha!=3*M_PI){markers_para_2nd.vec.push_back(marker_output_2nd);}
             }
-            /*
+            
             else if(contour_class==4)
             {
 				float height =  cvBox.size.height;
@@ -287,8 +287,8 @@ namespace golfcar_vision{
 				//DrawBox(cvBox,color_img,ext_color);
 				
 				//------------------------------------------------------------------------------------------------------------------
-                //dedicated filtering 3rd criterion for continuous lane: 
-                //1)no one side of its bounding box touches two side bounds;
+            //dedicated filtering 3rd criterion for continuous lane: 
+            //1)no one side of its bounding box touches two side bounds;
 				CvPoint2D32f point[4];
 				calc_cvBoxPoints(cvBox, point); 
 				CvPoint pt[4];
@@ -308,7 +308,7 @@ namespace golfcar_vision{
 				if(max(height,width)<100) continue; 
 				continuous_lane(contours, contour_img, ext_color);
 			}
-			*/
+			
 			 
 			else {}
 		}
@@ -895,7 +895,7 @@ namespace golfcar_vision{
 		cvReleaseMat(&rot_matrix);
 	}
     
-   /*
+   
 	void image_proc::continuous_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color)
 	{
 		std::vector <TPoint2D> contour_points;
@@ -1021,7 +1021,7 @@ namespace golfcar_vision{
 		}
 		//---------------------------------------------------------------------------------------------------------------
     }
-    */ 
+     
     
     void image_proc::cvt_pose_baselink(vision_lane_detection::marker_info &marker_para)
     {

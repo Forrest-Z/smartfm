@@ -137,7 +137,7 @@ namespace golfcar_vision{
         IplImage* color_image, *gray_image, *ipm_image;
         //get image in OpenCV format;
         try {
-            color_image = bridge_.imgMsgToCv(image_msg, "rgb8");
+            color_image = bridge_.imgMsgToCv(image_msg, "bgr8");
             }
         catch (sensor_msgs::CvBridgeException& ex) {
             ROS_ERROR("Failed to convert image");
@@ -267,6 +267,7 @@ namespace golfcar_vision{
 			cvLine( color_image, cvPointFrom32f(srcQuad_[3]), cvPointFrom32f(srcQuad_[0]), CV_RGB(0,0,255), 1);
 			cvShowImage("src_window", color_image);
 			
+			/*
 			cvCircle( ipm_image, cvPointFrom32f(dstQuad_[0]), 6, CV_RGB(0,255,0), 2);
 			cvCircle( ipm_image, cvPointFrom32f(dstQuad_[1]), 6, CV_RGB(0,255,0), 2);
 			cvCircle( ipm_image, cvPointFrom32f(dstQuad_[2]), 6, CV_RGB(0,255,0), 2);
@@ -275,6 +276,7 @@ namespace golfcar_vision{
 			cvLine( ipm_image, cvPointFrom32f(dstQuad_[1]), cvPointFrom32f(dstQuad_[2]), cvScalar(255), 1);
 			cvLine( ipm_image, cvPointFrom32f(dstQuad_[2]), cvPointFrom32f(dstQuad_[3]), cvScalar(255), 1);
 			cvLine( ipm_image, cvPointFrom32f(dstQuad_[3]), cvPointFrom32f(dstQuad_[0]), cvScalar(255), 1);
+			*/ 
 			cvShowImage("ipm_window", ipm_image);
 	    }
         //cvSaveImage("/home/baoxing/src_window.png", color_image);
