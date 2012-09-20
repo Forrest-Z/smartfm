@@ -80,10 +80,14 @@ namespace golfcar_vision{
   
     void image_proc::Extract_Markers (IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, 
 										int &frame_serial, CvPoint2D32f* dst_pointer,
-										CvMat* projection_matrix, vision_lane_detection::markers_info &markers_para_2nd)
+										CvMat* projection_matrix, vision_lane_detection::markers_info &markers_para_2nd, 
+										vision_lane_detection::conti_lanes & lanes_inImg)
     {
         markers_para.vec.clear();
         markers_para_2nd.vec.clear();
+        
+        lanes_inImg.lanes.clear();
+        
         //initiation, first calculate four corners used to filter noise;
         if(!init_flag_)
         {
@@ -309,8 +313,8 @@ namespace golfcar_vision{
 				//2)lane is long enough;
 				if(max(height,width)<100) continue; 
 				
-				lane_extractor_ ->ransac_lane(contours, contour_img, ext_color);
-			}
+				lane_extractor_ ->ransac_lane(contours, contour_img, ext_color, lanes_inImg);
+			   }  
 			
 			 
 			else {}

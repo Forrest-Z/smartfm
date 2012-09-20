@@ -20,7 +20,7 @@ namespace golfcar_vision{
 	     public:
         continuous_lane();
         ~continuous_lane(){};        
-		  void ransac_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color);
+		  void ransac_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color, vision_lane_detection::conti_lanes & lanes_inImg);
     };
 };
 

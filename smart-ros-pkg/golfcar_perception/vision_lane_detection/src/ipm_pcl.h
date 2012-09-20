@@ -18,19 +18,22 @@
 #include "lane_marker_common.h"
 #include "image_proc.h"
 #include "rolling_window/plane_coef.h"
+#include "pcl/point_cloud.h"
+#include "pcl_ros/point_cloud.h"
+#include "pcl/point_types.h"
 
 using namespace std;
 using namespace ros;
 using namespace tf;
 
-typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
+typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudRGB;
 
 namespace golfcar_vision{
 
-    class ipm {
+    class ipm_pcl {
         public:
-        ipm();
-        ~ipm();        
+        ipm_pcl();
+        ~ipm_pcl();        
     
         private:
         ros::NodeHandle nh_, private_nh_;
@@ -53,55 +56,17 @@ namespace golfcar_vision{
         //they are two different representations about the ground; 
         //"srcQuad_" is pixels in camera image;
         CvPoint2D32f gndQuad_[4], srcQuad_[4], dstQuad_[4];
-	CvMat *warp_matrix_, *projection_matrix_; 
-
+			CvMat *warp_matrix_;
         //scale denotes the ratio of pixel/distance in "image_ipm";
         float scale_;
         sensor_msgs::CameraInfo CameraStaticInfo_;
-        int training_frame_serial_;
-
+       
         void ImageCallBack(const sensor_msgs::ImageConstPtr& image_msg, const sensor_msgs::CameraInfoConstPtr& info_msg);
         void GndPt_to_Src(CvPoint2D32f * gnd_pointer, CvPoint2D32f* src_pointer);
         void GndPt_to_Dst(CvPoint2D32f * gnd_pointer, CvPoint2D32f* dst_pointer);
-        void Wrap_Src_to_Dst();
-
-        image_proc* image_processor_;
-        
-        vision_lane_detection::markers_info markers_, markers_2nd_;
-        ros::Publisher markers_info_pub;
-	ros::Publisher markers_info_2nd_pub;
-
-	//ros::Subscriber  odom_sub_;
-	tf::Transformer  transformer_;
-	tf::StampedTransform odom_meas_, odom_meas_old_;
-	bool pub_init_;
-    	bool publish_flag_;
-    	//void odomCallback(const OdomConstPtr& odom);
-	void process_control(ros::Time meas_time);
-	double  publish_dis_thresh_;
-    	double  publish_angle_thresh_;
-
-	bool visualization_flag_;
-
-	ros::Subscriber                             planeCoef_sub_;
-	void planeCoefCallback(const rolling_window::plane_coef::ConstPtr& coef_in);
-	rolling_window::plane_coef 		    plane_ROI_;
-
-	
-	//to accumulate the curb points (road_boundary);
-	string odom_frame_, base_frame_;
-	message_filters::Subscriber<sensor_msgs::PointCloud> 	curb_point_sub_;
-	tf::MessageFilter<sensor_msgs::PointCloud> 		*curb_point_filter_;
-	void curbCallback(const sensor_msgs::PointCloudConstPtr  curb_in);
-	void pcl_to_RawImage(sensor_msgs::PointCloud &pts_3d, std::vector <CvPoint2D32f> & pts_image);
-	void IpmImage_to_pcl(std::vector <CvPoint2D32f> & pts_image, sensor_msgs::PointCloud &pts_3d);
-	
-	sensor_msgs::PointCloud left_accumulated_, right_accumulated_;
-	size_t curb_num_limit_;
-	ros::Publisher  left_pub_, right_pub_;
-	
-	vision_lane_detection::conti_lanes lanes_inImg_;
-	ros::Publisher  lanes_pub_;
+        void IpmImage_to_pclrgb(IplImage* pts_image, PointCloudRGB &pts_rgb);
+        ros::Publisher  rbg_pub_;
+        unsigned int frame_serial_;
    };
 };
 

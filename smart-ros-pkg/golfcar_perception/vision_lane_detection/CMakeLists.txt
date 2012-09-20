@@ -40,6 +40,10 @@ rosbuild_add_executable(experimental_rgb src/experimental_rgb.cpp)
 target_link_libraries(experimental_rgb ${OpenCV_LIBRARIES})
 rosbuild_link_boost(experimental_rgb signals)
 
+rosbuild_add_executable(ipm_pcl src/ipm_pcl.cpp)
+target_link_libraries(ipm_pcl ${OpenCV_LIBRARIES})
+rosbuild_link_boost(ipm_pcl signals)
+
 rosbuild_add_executable(conti_lane src/conti_lane.cpp)
 target_link_libraries(conti_lane ${OpenCV_LIBRARIES})
 

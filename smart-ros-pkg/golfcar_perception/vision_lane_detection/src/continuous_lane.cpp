@@ -7,7 +7,7 @@ namespace golfcar_vision{
 		printf("continous_lane constructed");
 	}
 		
-	void continuous_lane::ransac_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color)
+	void continuous_lane::ransac_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color, vision_lane_detection::conti_lanes & lanes_inImg)
 	{
 		std::vector <TPoint2D> contour_points;
 		for(int i=0; i<contours->total; i++)
@@ -137,18 +137,24 @@ namespace golfcar_vision{
 		ransac_detect_2dLines(xs,ys,detectedLines,DIST_THRESHOLD, 100);
 		for (vector<pair<mrpt::vector_size_t,TLine2D> >::iterator p=detectedLines.begin();p!=detectedLines.end();++p)
 		{
+			vision_lane_detection::conti_lane lanetmp;
+			lanetmp.points.clear();
+			
 			CvScalar random_color;
 			random_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
 			for(unsigned int id =0; id < p->first.size(); id++)
 			{
+				geometry_msgs::Point32 pttmp;
+				pttmp.x = (float)xs[p->first[id]];
+				pttmp.y = (float)ys[p->first[id]];
+				lanetmp.points.push_back(pttmp);
+				
 				int xPixel = (int)xs[p->first[id]];
 				int yPixel = (int)ys[p->first[id]];
 				cvCircle( contour_img, cvPoint(xPixel,yPixel), 2, ext_color, 1);
 			}
-			
+			lanes_inImg.lanes.push_back(lanetmp);
 		}
-		
-		
 	}
 
 };

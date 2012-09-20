@@ -24,6 +24,7 @@ namespace golfcar_vision{
       
       markers_info_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_info",2);
       markers_info_2nd_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_2nd_info",2);
+      lanes_pub_ = nh_.advertise<vision_lane_detection::conti_lanes>("conti_lanes",2);
       
       planeCoef_sub_ = nh_.subscribe("plane_coef", 10, &ipm::planeCoefCallback, this);
 
@@ -237,8 +238,8 @@ namespace golfcar_vision{
 		  
 		  std::vector <CvPoint2D32f> left_curb_image;
 		  std::vector <CvPoint2D32f> right_curb_image;
-        curbPts_to_image(left_tmp, left_curb_image);
-        curbPts_to_image(right_tmp, right_curb_image);
+        pcl_to_RawImage(left_tmp, left_curb_image);
+        pcl_to_RawImage(right_tmp, right_curb_image);
         
         for(size_t p=0; p<left_curb_image.size(); p++)
         {
@@ -292,13 +293,19 @@ namespace golfcar_vision{
         //this scentence is necessary;
         cvWaitKey(10);
         
-        image_processor_->Extract_Markers(ipm_image, scale_, markers_, training_frame_serial_, dstQuad_, projection_matrix_, markers_2nd_);
+        image_processor_->Extract_Markers(ipm_image, scale_, markers_, training_frame_serial_, 
+														dstQuad_, projection_matrix_, markers_2nd_,
+														lanes_inImg_										
+														);
         
         markers_.header = info_msg -> header;
         markers_info_pub.publish(markers_);
         //
         markers_2nd_.header = info_msg -> header;
         markers_info_2nd_pub.publish(markers_2nd_);
+        
+        lanes_inImg_.header = info_msg -> header;
+        lanes_pub_.publish(lanes_inImg_);
         
         ROS_INFO("ImageCallBack finished");
         
@@ -310,7 +317,6 @@ namespace golfcar_vision{
         
         cvReleaseImage(&gray_image);
         cvReleaseImage(&ipm_image);
-
   }
   
   //Function "GndPt_to_Src": project ground point in baselink coordinate into camera image;
@@ -377,7 +383,7 @@ namespace golfcar_vision{
           ROS_INFO("%5f, %5f, %5f, %5f", x_tmp, y_tmp, dst_pointer[i].x, dst_pointer[i].y);
       }
   }
-   void ipm::curbPts_to_image(sensor_msgs::PointCloud &pts_3d, std::vector <CvPoint2D32f> & pts_image)
+   void ipm::pcl_to_RawImage(sensor_msgs::PointCloud &pts_3d, std::vector <CvPoint2D32f> & pts_image)
    {
 		pts_image.clear();
 		geometry_msgs::Pose temppose;
@@ -407,6 +413,24 @@ namespace golfcar_vision{
          pt_image.x = uv.x;
 			pt_image.y = uv.y;
 			pts_image.push_back(pt_image);
+		}
+	}
+	
+	void ipm::IpmImage_to_pcl(std::vector <CvPoint2D32f> & pts_image, sensor_msgs::PointCloud &pts_3d)
+	{
+		pts_3d.points.clear();
+		geometry_msgs::Point32 pttmp;
+		float center_x = (RECT_P0_X + RECT_P2_X)/2.0 + DIS_CAM_BASE_X;
+		float center_y = 0.0;
+		float center_pix_x = 320;
+		float center_pix_y = 180;
+		
+		for(unsigned int i = 0; i< pts_image.size(); i++)
+		{
+			pttmp.x = center_x -(pts_image[i].y- center_pix_y)/scale_;
+			pttmp.y = center_y -(pts_image[i].x - center_pix_x)/scale_;
+			pttmp.z = 0.0;
+			pts_3d.points.push_back(pttmp);
 		}
 	}
   

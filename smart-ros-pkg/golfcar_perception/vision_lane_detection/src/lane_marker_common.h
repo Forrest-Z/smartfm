@@ -13,8 +13,10 @@
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <vector>
-#include "vision_lane_detection/marker_info.h"
+#include "sensor_msgs/PointCloud.h"
 #include "vision_lane_detection/markers_info.h"
+#include "vision_lane_detection/conti_lanes.h"
+
 
 //--------------------------------------------Parameters for "ipm"---------------------------------------------
 
