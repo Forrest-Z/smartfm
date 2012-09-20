@@ -25,6 +25,8 @@ namespace golfcar_vision{
       markers_info_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_info",2);
       markers_info_2nd_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_2nd_info",2);
       lanes_pub_ = nh_.advertise<vision_lane_detection::conti_lanes>("conti_lanes",2);
+      lanes_ptcloud_pub_ = nh_.advertise<sensor_msgs::PointCloud>("lanes_ptcloud",2);
+      
       
       planeCoef_sub_ = nh_.subscribe("plane_coef", 10, &ipm::planeCoefCallback, this);
 
@@ -307,6 +309,24 @@ namespace golfcar_vision{
         lanes_inImg_.header = info_msg -> header;
         lanes_pub_.publish(lanes_inImg_);
         
+        sensor_msgs::PointCloud lanes_ptcloud;
+        std::vector<CvPoint2D32f> lanes_pt_inImg;
+        for(unsigned int il=0; il<lanes_inImg_.lanes.size(); il++)
+        {
+			  for(unsigned int ip=0; ip< lanes_inImg_.lanes[il].points.size(); ip++)
+			  {
+				  CvPoint2D32f pttmp;
+				  pttmp.x = lanes_inImg_.lanes[il].points[ip].x;
+				  pttmp.y = lanes_inImg_.lanes[il].points[ip].y;
+				  lanes_pt_inImg.push_back(pttmp);
+			  }
+		  }
+		  IpmImage_to_pcl(lanes_pt_inImg, lanes_ptcloud);
+		  lanes_ptcloud.header.stamp = info_msg -> header.stamp;
+		  lanes_ptcloud.header.frame_id = "base_link";
+		  lanes_ptcloud_pub_.publish(lanes_ptcloud);
+        
+        
         ROS_INFO("ImageCallBack finished");
         
         //Attention: 
@@ -383,6 +403,7 @@ namespace golfcar_vision{
           ROS_INFO("%5f, %5f, %5f, %5f", x_tmp, y_tmp, dst_pointer[i].x, dst_pointer[i].y);
       }
   }
+  
    void ipm::pcl_to_RawImage(sensor_msgs::PointCloud &pts_3d, std::vector <CvPoint2D32f> & pts_image)
    {
 		pts_image.clear();
