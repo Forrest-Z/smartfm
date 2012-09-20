@@ -12,8 +12,8 @@
 #include <stdlib.h>
 #include "libsvm/svm.h"
 
-//disable continuous lane temporarily, since golfcart 10.04 doesn't have required mrpt-library;
-#include "ransac_parabola.h"
+//golfcart 10.04 doesn't have required mrpt-library;
+#include "continuous_lane.h"
 
 #include <float.h>
 #include <stdio.h>
@@ -46,6 +46,8 @@ namespace golfcar_vision{
         //flag decides whether to extract training images or not;
         bool extract_image_;
         
+        continuous_lane* lane_extractor_;
+        
         CvSeq* Filter_candidates (CvContourScanner &scanner);
         bool CheckPointInside(CvPoint pt_para);
         bool CheckPointOffSideBounds(CvPoint pt_para);
@@ -55,21 +57,21 @@ namespace golfcar_vision{
 				CvBox2D &Box_input, int polyNum_input);
         void pose_contour(CvSeq *contour, CvMoments &cvm, vision_lane_detection::marker_info &marker_para);
         void cvt_pose_baselink(vision_lane_detection::marker_info &marker_para);
-	void continuous_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color);
 		
-	void restore_scalefile(string filename,double* &feature_min, double* &feature_max, int &feature_index);
-	double output(int index, double value);
-	char* readline(FILE *input);
-	double* feature_max_;
-	double* feature_min_;
-	int feature_index_;
-	double lower_, upper_;
+	     void restore_scalefile(string filename,double* &feature_min, double* &feature_max, int &feature_index);
+	     double output(int index, double value);
+	     char* readline(FILE *input);
+	     double* feature_max_;
+	     double* feature_min_;
+	     int feature_index_;
+        double lower_, upper_;
 
-	CvMat* intrinsic_A_, *distortion_coeffs_;
- 	void pose_contour_Extrinsic(CvSeq *contour_raw, int contour_class, CvMat* projection_matrix,
-						 vision_lane_detection::marker_info &marker_para);
-	void corresPoints_extrinCalib(int contour_class, CvMat* srcMarkerPts, tf::Pose & markerPose_base);
-	CvMat* M1_gndPts_, *M2_gndPts_, *M3_gndPts_;
+	     CvMat* intrinsic_A_, *distortion_coeffs_;
+ 	     void pose_contour_Extrinsic(CvSeq *contour_raw, int contour_class, CvMat* projection_matrix, vision_lane_detection::marker_info &marker_para);
+	     void corresPoints_extrinCalib(int contour_class, CvMat* srcMarkerPts, tf::Pose & markerPose_base);
+	     CvMat* M1_gndPts_, *M2_gndPts_, *M3_gndPts_;
+	     
+	     
     };
 };
 

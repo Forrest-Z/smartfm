@@ -26,9 +26,7 @@ namespace golfcar_vision{
       markers_info_2nd_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_2nd_info",2);
       
       planeCoef_sub_ = nh_.subscribe("plane_coef", 10, &ipm::planeCoefCallback, this);
-      
-      
-      
+
       image_processor_ = new image_proc(svm_model_path, svm_scale_path);
       
       //Four base points on the ground in the "base_link" coordinate; "base_link" is at the back wheel.
@@ -295,6 +293,7 @@ namespace golfcar_vision{
         cvWaitKey(10);
         
         image_processor_->Extract_Markers(ipm_image, scale_, markers_, training_frame_serial_, dstQuad_, projection_matrix_, markers_2nd_);
+        
         markers_.header = info_msg -> header;
         markers_info_pub.publish(markers_);
         //

@@ -1,7 +1,7 @@
 #ifndef RANSAC_PARABOLA_H
 #define RANSAC_PARABOLA_H
 
-#include "lane_marker_common.h"
+#include "../lane_marker_common.h"
 //#include <Eigen/Dense>
 #include <mrpt/base.h>
 #include <mrpt/gui.h>
@@ -15,7 +15,6 @@ using namespace mrpt::utils;
 using namespace mrpt::gui;
 using namespace mrpt::math;
 using namespace mrpt::random;
-
 
 //----------------------------------------------------------------------------------------
 // this part is used to calculate the nearest distance from a point to one parabola line;
@@ -333,11 +332,9 @@ class parabola {
 			}
 		}
 		
-
 		double coefs[4];
 		vector <TPoint2D> approx_points;
 };
-
 
 namespace mrpt
 {
@@ -392,11 +389,11 @@ namespace mrpt
 			
 			ASSERT_( size(M,1)==1 && size(M,2)==4 )
 
-			if(M(0,3)==1.0)printf("inverse the points");
+			if(M(0,3)==1.0)printf("inverse the points\n");
 
 			parabola  line( M(0,0), M(0,1), M(0,2), M(0,3));
 
-			if(M(0,3)==1.0 && line.coefs[3]!=1.0)printf("inverse the points");
+			if(M(0,3)==1.0 && line.coefs[3]!=1.0)printf("inverse the points\n");
 
 			const size_t N = size(allData,2);
 			out_inlierIndices.reserve(100);

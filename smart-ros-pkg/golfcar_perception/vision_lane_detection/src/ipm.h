@@ -66,6 +66,7 @@ namespace golfcar_vision{
         void Wrap_Src_to_Dst();
 
         image_proc* image_processor_;
+        
         vision_lane_detection::markers_info markers_, markers_2nd_;
         ros::Publisher markers_info_pub;
 	ros::Publisher markers_info_2nd_pub;

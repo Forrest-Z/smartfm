@@ -5,7 +5,7 @@
 #include <vector>
 #include "lane_marker_common.h"
 #include <sensor_msgs/PointCloud.h>
-#include "ransac_parabola.h"
+#include "ransac/ransac_parabola.h"
 
 using namespace golfcar_vision;
 class line_segment
@@ -106,22 +106,22 @@ int main(int argc, char** argv)
     IplImage *canny=0, *color_dst = 0;
     IplImage *erode = 0, *dilate = 0;
     
-    if(argc != 5){return -1;}
+    if(argc != 2){return -1;}
     //Command line
-    int lower_canny = atoi(argv[1]);
-    int upper_canny = atoi(argv[2]);
-    int aperture = atoi(argv[3]);
+    //int lower_canny = atoi(argv[1]);
+    //int upper_canny = atoi(argv[2]);
+    //int aperture = atoi(argv[3]);
     //Read in gray image
-    if((Igray = cvLoadImage( argv[4], CV_LOAD_IMAGE_GRAYSCALE)) == 0){
+    if((Igray = cvLoadImage( argv[1], CV_LOAD_IMAGE_GRAYSCALE)) == 0){
     return -1;}
     // Create the grayscale output images
     It = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 1);
     Iat = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 1);
     Itand = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 1);
-    canny = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 1);
-    color_dst = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 3);
-    erode = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 1);
-    dilate = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 1);
+    //canny = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 1);
+    //color_dst = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 3);
+    //erode = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 1);
+    //dilate = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 1);
     
     //Threshold
     cvThreshold(Igray,It,BINARY_THRESH,255,CV_THRESH_BINARY);
@@ -396,7 +396,7 @@ int main(int argc, char** argv)
 					const double yy = fused_points[i].y;
 					xs.push_back(xx);
 					ys.push_back(yy);
-					cvCircle( color_img, cvPoint(fused_points[i].x,fused_points[i].y), 2, ext_color, 1);
+					//cvCircle( color_img, cvPoint(fused_points[i].x,fused_points[i].y), 2, CV_RGB( 255, 255, 255 ), 1);
 					//ROS_INFO("fused point serial %d, %2f, %2f",i, xx, yy);
 				}
 				ROS_INFO("fused points number %ld", xs.size() );
@@ -468,8 +468,7 @@ int main(int argc, char** argv)
 						}
 					}
 				}
-				//-------------------------------------------------------------------------------------------------
-				
+				//-------------------------------------------------------------------------------------------------------------
 			}
         }
     }
