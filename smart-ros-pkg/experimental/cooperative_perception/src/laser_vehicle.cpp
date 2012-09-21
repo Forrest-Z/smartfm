@@ -83,6 +83,8 @@ public:
 
 };
 
+
+
 class LaserVehicle
 {
     message_filters::Subscriber<sensor_msgs::LaserScan> laser_scan_sub_;
@@ -91,8 +93,9 @@ class LaserVehicle
     ros::NodeHandle *nh_;
     tf::TransformListener *tf_;
 
-    ros::Publisher poly_pub_, segmented_pub_, filter_res_pub_;
+    ros::Publisher poly_pub_, segmented_pub_, filter_res_pub_, filter_size_pub_, vehicle_pub_;
     string target_frame_;
+    int filter_pts_;
     laser_geometry::LaserProjection projector_;
     double disConti_thresh_;
     void scanCallback(sensor_msgs::LaserScanConstPtr scan)
@@ -105,6 +108,43 @@ class LaserVehicle
 
         findDiscontinuousPoint(laser_range_pt);
         //detectVehicle(laser_cloud);
+    }
+
+    inline pcl::PointCloud<pcl::PointXYZ> pointcloudToPCL(sensor_msgs::PointCloud &pc)
+    {
+        sensor_msgs::PointCloud2 pc2;
+        sensor_msgs::convertPointCloudToPointCloud2(pc, pc2);
+        pcl::PointCloud<pcl::PointXYZ> pcl;
+        pcl::fromROSMsg(pc2, pcl);
+        return pcl;
+    }
+
+    double findYawLeastSquare(pcl::PointCloud<pcl::PointXYZ> pts, int filter_pt)
+    {
+        //adapted from www.ccas.ru/mmes/educat/lab04k/02/least-squares.c
+          double SUMx, SUMy, SUMxy, SUMxx, slope,
+                 y_intercept;
+          SUMx = 0; SUMy = 0; SUMxy = 0; SUMxx = 0;
+
+          //erase some points near the edge to calculate only more stable points
+          pcl::PointCloud<pcl::PointXYZ> p;
+          for(size_t i=filter_pt; i<pts.size()-filter_pt;i++)
+              p.push_back(pts.points[i]);
+
+          for (size_t i=0; i<p.size(); i++) {
+            SUMx = SUMx + p[i].x;
+            SUMy = SUMy + p[i].y;
+            SUMxy = SUMxy + p[i].x*p[i].y;
+            SUMxx = SUMxx + p[i].x*p[i].x;
+          }
+          slope = ( SUMx*SUMy - p.size()*SUMxy ) / ( SUMx*SUMx - p.size()*SUMxx );
+          y_intercept = ( SUMy - slope*SUMx ) / p.size();
+
+          double y1 = y_intercept, x1 = 0;
+          double y2 = slope + y_intercept, x2 = 1;
+          double yaw = atan2(y1-y2, x1-x2);
+          if(slope>=0) return yaw+M_PI/2;
+          else return yaw-M_PI/2;
     }
 
     void findDiscontinuousPoint(LaserRangePoint &lrp)
@@ -146,7 +186,7 @@ class LaserVehicle
         unsigned int pre_minmax_pt = 2;
         unsigned int minmax_pt_count = 0;
 
-
+        vector<pcl::PointCloud<pcl::PointXYZ> > segmented_pcl;
         for(size_t ip=2; ip<filter_res.size()-2; ip++)
         {
             float temp_responsein2 = filter_res[ip-2];
@@ -171,14 +211,16 @@ class LaserVehicle
             {
 
                 if(ip - pre_minmax_pt > 3)
-                for(size_t j=pre_minmax_pt; j<ip; j++)
                 {
-                    geometry_msgs::Point32 p = filter_pts[j];
-                    //p.x = filter_res[ip];
-                    //p.y = ip;
-                    //p.z = minmax_pt_count;
-                    p.z = minmax_pt_count;// 0.1*filter_res[ip];
-                    segmented_pts.points.push_back(p);
+                    pcl::PointCloud<pcl::PointXYZ> pxyz;
+                    for(size_t j=pre_minmax_pt; j<ip; j++)
+                    {
+                        geometry_msgs::Point32 p = filter_pts[j];
+                        p.z = minmax_pt_count;// 0.1*filter_res[ip];
+                        segmented_pts.points.push_back(p);
+                        pxyz.push_back(pcl::PointXYZ(p.x, p.y, 0.0));
+                    }
+                    segmented_pcl.push_back(pxyz);
                 }
                 pre_minmax_pt = ip;
                 minmax_pt_count++;
@@ -187,86 +229,78 @@ class LaserVehicle
         //adding final segment
         if(filter_res.size()-2 - pre_minmax_pt > 3)
         {
-            if(filter_res.size()-2 - pre_minmax_pt > 3)
+                pcl::PointCloud<pcl::PointXYZ> pxyz;
                 for(size_t j=pre_minmax_pt; j<filter_res.size()-2; j++)
                 {
                     geometry_msgs::Point32 p = filter_pts[j];
-                    //p.x = filter_res[ip];
-                    //p.y = ip;
-                    //p.z = minmax_pt_count;
                     p.z = minmax_pt_count;// 0.1*filter_res[ip];
                     segmented_pts.points.push_back(p);
+                    pxyz.push_back(pcl::PointXYZ(p.x, p.y, 0.0));
                 }
-            pre_minmax_pt = filter_res.size()-2;
-            minmax_pt_count++;
-
+                segmented_pcl.push_back(pxyz);
         }
-        /*if(segmented_pts.points.size()>3)
+
+        //the points now contains only smooth curve, checking for length using simple bounding box and yaw with least square fit
+        //and select the nearest one
+        double final_yaw=0.0, nearest_dist=1e9;
+        geometry_msgs::Point final_point;
+
+        for(size_t i=0; i<segmented_pcl.size();)
         {
-            pcl::PointCloud<pcl::PointXYZ> segmented_pcl;
-            sensor_msgs::PointCloud2 segmented_pts2;
-            sensor_msgs::convertPointCloudToPointCloud2(segmented_pts, segmented_pts2);
-            pcl::fromROSMsg(segmented_pts2, segmented_pcl);
+            pcl::PointXYZ pt_max, pt_min;
+            pcl::getMinMax3D(segmented_pcl[i], pt_min, pt_max);
+            double yaw = findYawLeastSquare(segmented_pcl[i], filter_pts_);
+            double bounding_dist = fmutil::distance(pt_max.x, pt_max.y, pt_min.x, pt_min.y);
 
-            pcl::PCA<pcl::PointXYZ> pca;
-            pca.setInputCloud(segmented_pcl.makeShared());
-            Eigen::Matrix3f eigen_vectors = pca.getEigenVectors();
-            Eigen::Vector3f eigen_values = pca.getEigenValues();
-            cout<<eigen_values<<endl;
-            cout<<eigen_vectors<<endl<<endl;
+            if(bounding_dist < 1.5 && bounding_dist > 0.5 && fabs(yaw) < 45.0/180*M_PI)
+            {
+                i++;
+                //final selection of curve using nearest dist
+                pcl::PointXYZ pt_center((pt_max.x + pt_min.x)/2, (pt_max.y + pt_min.y)/2, 0);
+                double bumper_dist = fmutil::distance(pt_center.x, pt_center.y, 0, 0);
+                if(bumper_dist < nearest_dist)
+                {
+                    final_yaw = yaw;
+                    final_point.x = pt_center.x;
+                    final_point.y = pt_center.y;
+                    nearest_dist = bumper_dist;
+                }
+            }
+            else  segmented_pcl.erase(segmented_pcl.begin()+i);
+        }
+        pcl::PointCloud<pcl::PointXYZ> size_filtered_pcl;
+        for(size_t i=0; i<segmented_pcl.size(); i++)
+        {
+            for(size_t j=0; j<segmented_pcl[i].size(); j++)
+            {
+                pcl::PointXYZ p = segmented_pcl[i].points[j];
+                p.z = i;
+                size_filtered_pcl.push_back(p);
+            }
+        }
+        sensor_msgs::PointCloud2 size_filtered_pc2;
+        pcl::toROSMsg(size_filtered_pcl, size_filtered_pc2);
+        size_filtered_pc2.header = segmented_pts.header;
+        filter_size_pub_.publish(size_filtered_pc2);
 
-            geometry_msgs::Point32 pca_vector_pts;
-            pca_vector_pts.x = eigen_vectors(0);
-            pca_vector_pts.y = eigen_vectors(1);
-            pca_vector_pts.z = 1.0;
-            segmented_pts.points.push_back(pca_vector_pts);
-            pca_vector_pts.x = eigen_vectors(3);
-            pca_vector_pts.y = eigen_vectors(4);
-            pca_vector_pts.z = 2.0;
-            segmented_pts.points.push_back(pca_vector_pts);
-        }*/
         segmented_pub_.publish(segmented_pts);
+        if(segmented_pts.points.size()>0)
+            publishVehicle(final_yaw, final_point, segmented_pts.header);
     }
-    void detectVehicle(sensor_msgs::PointCloud laser_cloud)
+    void publishVehicle(double yaw, geometry_msgs::Point pt, std_msgs::Header &header)
     {
+        tf::Quaternion q;
+        q.setRPY(0, 0, yaw);
+        geometry_msgs::Quaternion vehicle_quat;
+        tf::quaternionTFToMsg(q, vehicle_quat);
 
-        //simply draw polygon for now
-        geometry_msgs::PolygonStamped poly;
-        poly.header = laser_cloud.header;
-        poly.polygon.points.insert(poly.polygon.points.begin(), laser_cloud.points.begin(), laser_cloud.points.end());
-        poly_pub_.publish(poly);
-
-        // smoothing with a 3rd order curve
-        for(size_t i=0; i<laser_cloud.points.size(); i++)
-        {
-            cout<<i<<" "<<laser_cloud.points[i].x<<" "<<laser_cloud.points[i].y<<endl;
-        }
-        //find angle between 3 points
-        /*
-        vector<double> angle_bet_pts;
-        for(size_t i=1; i<laser_cloud.points.size()-1; i++)
-        {
-            double angle1 = atan2(laser_cloud.points[i-1].y-laser_cloud.points[i].y, laser_cloud.points[i-1].x - laser_cloud.points[i].x);
-            double angle2 = atan2(laser_cloud.points[i].y-laser_cloud.points[i+1].y, laser_cloud.points[i].x - laser_cloud.points[i+1].x);
-
-            double angle_diff = angle2 - angle1;
-            if(angle_diff > M_PI/2) angle_diff=- M_PI/2;
-            if(angle_diff < -M_PI/2) angle_diff+= M_PI/2;
-            cout<<i<<": "<<angle1<<"-"<<angle2<<" = "<<angle_diff<<endl;
-        }*/
-
-        //calculate angle difference between 1st angle to another
-        /*for(size_t i=1; i<angle_bet_pts.size(); i++)
-        {
-            double angle_diff = angle_bet_pts[i] - angle_bet_pts[i-1];
-            if(angle_diff > M_PI/2) angle_diff=- M_PI/2;
-            if(angle_diff < -M_PI/2) angle_diff
-        }*/
-        /*sensor_msgs::PointCloud2 laser_cloud2;
-        pcl::PointCloud<pcl::PointXYZ> laser_pcl;
-        sensor_msgs::convertPointCloudToPointCloud2(laser_cloud, laser_cloud2);
-        pcl::fromROSMsg(laser_cloud2, laser_pcl);
-        segmentation(laser_pcl);*/
+        geometry_msgs::PoseStamped vehicle_pose;
+        vehicle_pose.header = header;
+        geometry_msgs::Pose temp_pose;
+        temp_pose.position = pt;
+        temp_pose.orientation = vehicle_quat;
+        vehicle_pose.pose = temp_pose;
+        vehicle_pub_.publish(vehicle_pose);
     }
 
 public:
@@ -275,13 +309,16 @@ public:
         ros::NodeHandle private_nh("~");
         private_nh.param("target_frame", target_frame_, string("/base_link"));
         private_nh.param("discontinue_thres", disConti_thresh_, 0.45);
+        private_nh.param("filter_pts", filter_pts_, 3);
         laser_scan_sub_.subscribe(*nh_, "scan_in", 10);
         laser_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_scan_sub_, *tf_, target_frame_, 10);
         laser_scan_filter_->registerCallback(boost::bind(&LaserVehicle::scanCallback, this, _1));
         poly_pub_ = nh_->advertise<geometry_msgs::PolygonStamped>("laser_polygon", 10);
         segmented_pub_ = nh_->advertise<sensor_msgs::PointCloud>("segmented_dist_p", 10);
         filter_res_pub_ = nh_->advertise<sensor_msgs::PointCloud>("filter_response", 10);
-        cout<<"LH initialized"<<endl;
+        filter_size_pub_ = nh_->advertise<sensor_msgs::PointCloud2>("size_filtered", 10);
+        vehicle_pub_ = nh_->advertise<geometry_msgs::PoseStamped>("vehicle_pose", 10);
+        cout<<"LV initialized"<<endl;
     }
 };
 
