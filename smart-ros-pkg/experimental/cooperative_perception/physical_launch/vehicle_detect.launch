@@ -1,0 +1,11 @@
+<launch>
+    <node name="vehicle_detect" pkg="cooperative_perception" type="laser_vehicle" output="screen">
+        <param name="target_frame" value="base_link"/>
+        <param name="discontinue_thres" value="0.5"/>
+        <param name="filter_pts" value="0"/>
+        <param name="car_width" value="1.0"/>
+        <param name="width_tolerance" value="0.5"/>
+        <param name="detect_angle_tolerance" value="90"/>
+        <remap from="scan_in" to="sickldmrs/scan3"/>
+    </node>
+</launch>
