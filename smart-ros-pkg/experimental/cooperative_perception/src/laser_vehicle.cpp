@@ -92,12 +92,13 @@ class LaserVehicle
 
     ros::NodeHandle *nh_;
     tf::TransformListener *tf_;
+    tf::TransformBroadcaster *tf_broadcaster_;
 
     ros::Publisher poly_pub_, segmented_pub_, filter_res_pub_, filter_size_pub_, vehicle_pub_;
-    string target_frame_;
+    string target_frame_, veh_frame_;
     int filter_pts_;
     laser_geometry::LaserProjection projector_;
-    double disConti_thresh_;
+    double disConti_thresh_, car_width_, width_tol_, angle_tol_;
     void scanCallback(sensor_msgs::LaserScanConstPtr scan)
     {
         sensor_msgs::PointCloud laser_cloud;
@@ -119,6 +120,21 @@ class LaserVehicle
         return pcl;
     }
 
+    double findYawLeastSquarePCA(pcl::PointCloud<pcl::PointXYZ> pts, int filter_pt)
+    {
+        pcl::PointCloud<pcl::PointXYZ> p;
+        for(size_t i=filter_pt; i<pts.size()-filter_pt;i++)
+        {
+            p.push_back(pts.points[i]);
+        }
+        if(p.size()<3) return M_PI;
+        pcl::PCA<pcl::PointXYZ> pca;
+        pca.setInputCloud(p.makeShared());
+        Eigen::Vector3f eigen_values = pca.getEigenValues();
+        Eigen::Matrix3f eigen_vec = pca.getEigenVectors();
+
+        return atan2(eigen_vec(0), eigen_vec(1));
+    }
     double findYawLeastSquare(pcl::PointCloud<pcl::PointXYZ> pts, int filter_pt)
     {
         //adapted from www.ccas.ru/mmes/educat/lab04k/02/least-squares.c
@@ -128,8 +144,13 @@ class LaserVehicle
 
           //erase some points near the edge to calculate only more stable points
           pcl::PointCloud<pcl::PointXYZ> p;
+          //cout<<"----------Start-----------"<<endl;
           for(size_t i=filter_pt; i<pts.size()-filter_pt;i++)
+          {
               p.push_back(pts.points[i]);
+              //cout<<pts.points[i].x<<" "<<pts.points[i].y<<endl;
+          }
+          //cout<<"-----------end-------------"<<endl;
 
           for (size_t i=0; i<p.size(); i++) {
             SUMx = SUMx + p[i].x;
@@ -156,16 +177,17 @@ class LaserVehicle
         vector<geometry_msgs::Point32> filter_pts;
         sensor_msgs::PointCloud segmented_pts, filter_res_vis;
         segmented_pts.header = lrp.getPts().header;
+        //cout<<"-------------start----------"<<endl;
         for(size_t i=3; i<ranges.size()-3; i++)
         {
-            /*double t1 = ranges[i-5] + ranges[i-4] + ranges[i-3];
+            double t1 = ranges[i-5] + ranges[i-4] + ranges[i-3];
             double t2 = ranges[i+3] + ranges[i+4] + ranges[i+5];
             double t3 = ranges[i-2] + ranges[i-1] + ranges[i];
-            double t4 = ranges[i+2] + ranges[i+1] + ranges[i];*/
-            double t1 = ranges[i-3] + ranges[i-2];
+            double t4 = ranges[i+2] + ranges[i+1] + ranges[i];
+            /*double t1 = ranges[i-3] + ranges[i-2];
             double t2 = ranges[i+2] + ranges[i+3];
             double t3 = ranges[i-1] + ranges[i];
-            double t4 = ranges[i+1] + ranges[i];
+            double t4 = ranges[i+1] + ranges[i];*/
             double r = t1 + t2 - t3 - t4;
             filter_res.push_back(r);
             filter_pts.push_back(lrp.getPts().points[i]);
@@ -177,7 +199,10 @@ class LaserVehicle
             p.z = r*0.1;
             filter_res_vis.points.push_back(p);
 
+           // cout<<p.x<<" "<<p.y<<" "<<p.z<<endl;
+
         }
+       //cout<<"-------------end----------"<<endl;
         filter_res_vis.header = lrp.getPts().header;
         filter_res_pub_.publish(filter_res_vis);
 
@@ -252,7 +277,7 @@ class LaserVehicle
             double yaw = findYawLeastSquare(segmented_pcl[i], filter_pts_);
             double bounding_dist = fmutil::distance(pt_max.x, pt_max.y, pt_min.x, pt_min.y);
 
-            if(bounding_dist < 1.5 && bounding_dist > 0.5 && fabs(yaw) < 45.0/180*M_PI)
+            if(bounding_dist < car_width_+width_tol_ && bounding_dist > car_width_-width_tol_ && fabs(yaw) < angle_tol_/180*M_PI)
             {
                 i++;
                 //final selection of curve using nearest dist
@@ -284,9 +309,12 @@ class LaserVehicle
         filter_size_pub_.publish(size_filtered_pc2);
 
         segmented_pub_.publish(segmented_pts);
+        //final_point.x += 0.45*cos(final_yaw);
+        //final_point.y += 0.45*sin(final_yaw);
         if(segmented_pts.points.size()>0)
             publishVehicle(final_yaw, final_point, segmented_pts.header);
     }
+
     void publishVehicle(double yaw, geometry_msgs::Point pt, std_msgs::Header &header)
     {
         tf::Quaternion q;
@@ -301,15 +329,25 @@ class LaserVehicle
         temp_pose.orientation = vehicle_quat;
         vehicle_pose.pose = temp_pose;
         vehicle_pub_.publish(vehicle_pose);
+
+        tf::StampedTransform trans(tf::Transform(), vehicle_pose.header.stamp, vehicle_pose.header.frame_id, veh_frame_);
+        tf::poseMsgToTF(vehicle_pose.pose, trans);
+        tf_broadcaster_->sendTransform(trans);
     }
 
 public:
-    LaserVehicle(): nh_(new ros::NodeHandle), tf_(new tf::TransformListener)
+    LaserVehicle(): nh_(new ros::NodeHandle), tf_(new tf::TransformListener), tf_broadcaster_(new tf::TransformBroadcaster)
     {
+
         ros::NodeHandle private_nh("~");
         private_nh.param("target_frame", target_frame_, string("/base_link"));
-        private_nh.param("discontinue_thres", disConti_thresh_, 0.45);
+        private_nh.param("discontinue_thres", disConti_thresh_, 0.3);
         private_nh.param("filter_pts", filter_pts_, 3);
+        private_nh.param("car_width", car_width_, 1.0);
+        private_nh.param("width_tolerance", width_tol_, 0.5);
+        private_nh.param("detect_angle_tolerance", angle_tol_, 90.0);
+        veh_frame_ = string(nh_->getNamespace() + "detected_vehicle");
+
         laser_scan_sub_.subscribe(*nh_, "scan_in", 10);
         laser_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_scan_sub_, *tf_, target_frame_, 10);
         laser_scan_filter_->registerCallback(boost::bind(&LaserVehicle::scanCallback, this, _1));
@@ -318,7 +356,7 @@ public:
         filter_res_pub_ = nh_->advertise<sensor_msgs::PointCloud>("filter_response", 10);
         filter_size_pub_ = nh_->advertise<sensor_msgs::PointCloud2>("size_filtered", 10);
         vehicle_pub_ = nh_->advertise<geometry_msgs::PoseStamped>("vehicle_pose", 10);
-        cout<<"LV initialized"<<endl;
+        cout<<"LV initialized with detected frame at "<<veh_frame_<<endl;
     }
 };
 
