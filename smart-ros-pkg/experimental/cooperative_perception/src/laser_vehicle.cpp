@@ -137,6 +137,14 @@ class LaserVehicle
     }
     double findYawLeastSquare(pcl::PointCloud<pcl::PointXYZ> pts, int filter_pt)
     {
+        //changing the coordinate into normal xy coordinate
+        for(size_t i=0; i<pts.size(); i++)
+        {
+            double x = - pts.points[i].y;
+            double y = pts.points[i].x;
+            pts.points[i].x = x;
+            pts.points[i].y = y;
+        }
         //adapted from www.ccas.ru/mmes/educat/lab04k/02/least-squares.c
           double SUMx, SUMy, SUMxy, SUMxx, slope,
                  y_intercept;
@@ -163,7 +171,7 @@ class LaserVehicle
 
           double y1 = y_intercept, x1 = 0;
           double y2 = slope + y_intercept, x2 = 1;
-          double yaw = atan2(y1-y2, x1-x2);
+          double yaw = atan2(x1-x2, -(y1-y2));
           if(slope>=0) return yaw+M_PI/2;
           else return yaw-M_PI/2;
     }
