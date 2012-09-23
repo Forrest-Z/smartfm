@@ -3,57 +3,54 @@
 
 namespace golfcar_vision{
   
-  ipm::ipm():
-    private_nh_("~"),
-    it_(nh_),
-    fixedTf_inited_(false),
-    visualization_flag_(false)
+	ipm::ipm():
+		private_nh_("~"),
+		it_(nh_),
+		fixedTf_inited_(false),
+		visualization_flag_(false)
   {
-	  string svm_model_path;
-	  string svm_scale_path;
-	  private_nh_.param("svm_model_path", svm_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
-	  private_nh_.param("svm_scale_path", svm_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
-	  
-	  private_nh_.param("publish_dis_thresh",     publish_dis_thresh_,    0.05);
-	  private_nh_.param("publish_angle_thresh",   publish_angle_thresh_,  5.0/180.0*M_PI);
-      private_nh_.param("visualization_flag",     visualization_flag_,    false);     
-      training_frame_serial_ = 0;
-      private_nh_.param("destination_frame_id", dest_frame_id_, std::string("base_link"));
-      cam_sub_ = it_.subscribeCamera("/camera_front/image_raw", 1, &ipm::ImageCallBack, this);
-      image_pub_ = it_.advertise("/camera_front/image_ipm", 1);
-      
-      markers_info_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_info",2);
-      markers_info_2nd_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_2nd_info",2);
-      lanes_pub_ = nh_.advertise<vision_lane_detection::conti_lanes>("conti_lanes",2);
-      lanes_ptcloud_pub_ = nh_.advertise<sensor_msgs::PointCloud>("lanes_ptcloud",2);
-      
-      
-      planeCoef_sub_ = nh_.subscribe("plane_coef", 10, &ipm::planeCoefCallback, this);
+		//parameters for “ipm” process;
+		private_nh_.param("ipm_center_x",  			ipm_center_x_,			9.0);
+		private_nh_.param("ipm_center_y", 			ipm_center_y_,			0.0);
+		private_nh_.param("ipm_ROI_height", 		ipm_ROI_height_,		12.0);
+		private_nh_.param("ipm_ROI_near_width",	ipm_ROI_near_width_,	4.0);
+		private_nh_.param("ipm_ROI_far_width",		ipm_ROI_far_width_,	20.0);
+		private_nh_.param("scale", 					scale_,					30.0);
+		CvSize ipm_size = cvSize((int)(scale_ * ipm_ROI_far_width_), (int)(scale_ * ipm_ROI_height_));
+      ipm_image_ = cvCreateImage(ipm_size, 8,1);
 
-      image_processor_ = new image_proc(svm_model_path, svm_scale_path);
-      
-      //Four base points on the ground in the "base_link" coordinate; "base_link" is at the back wheel.
-      gndQuad_[0].x = RECT_P0_X+DIS_CAM_BASE_X;
-      gndQuad_[0].y = RECT_P0_Y;
-      gndQuad_[1].x = RECT_P1_X+DIS_CAM_BASE_X;
-      gndQuad_[1].y = RECT_P1_Y;
-      gndQuad_[2].x = RECT_P2_X+DIS_CAM_BASE_X;
-      gndQuad_[2].y = RECT_P2_Y;
-      gndQuad_[3].x = RECT_P3_X+DIS_CAM_BASE_X;
-      gndQuad_[3].y = RECT_P3_Y;
-		
-      pub_init_ = false;
-      
-      if(visualization_flag_)
-      {
-		cvNamedWindow("src_window");
-		cvNamedWindow("ipm_window");
-	  }
-	  				
+		string svm_model_path;
+		string svm_scale_path;
+		private_nh_.param("svm_model_path", svm_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
+		private_nh_.param("svm_scale_path", svm_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
+
+		private_nh_.param("publish_dis_thresh",     publish_dis_thresh_,    0.05);
+		private_nh_.param("publish_angle_thresh",   publish_angle_thresh_,  5.0/180.0*M_PI);
+		private_nh_.param("visualization_flag",     visualization_flag_,    false);
+			  
+		training_frame_serial_ = 0;
+		private_nh_.param("destination_frame_id", dest_frame_id_, std::string("base_link"));
+		cam_sub_ = it_.subscribeCamera("/camera_front/image_raw", 1, &ipm::ImageCallBack, this);
+		image_pub_ = it_.advertise("/camera_front/image_ipm", 1);
+
+		markers_info_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_info",2);
+		markers_info_2nd_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_2nd_info",2);
+		lanes_pub_ = nh_.advertise<vision_lane_detection::conti_lanes>("conti_lanes",2);
+		lanes_ptcloud_pub_ = nh_.advertise<sensor_msgs::PointCloud>("lanes_ptcloud",2);
+
+		planeCoef_sub_ = nh_.subscribe("plane_coef", 10, &ipm::planeCoefCallback, this);
+		image_processor_ = new image_proc(svm_model_path, svm_scale_path);
+		pub_init_ = false;
+
+		if(visualization_flag_)
+		{
+			cvNamedWindow("src_window");
+			cvNamedWindow("ipm_window");
+		}
+					
 		warp_matrix_ = cvCreateMat(3,3,CV_32FC1);
 		projection_matrix_ = cvCreateMat(3,3,CV_32FC1);
-		
-		
+
 		//to accumulate the curb points (road_boundary);
 		odom_frame_ = "odom";
 		base_frame_ = "base_link";
@@ -64,7 +61,7 @@ namespace golfcar_vision{
 		left_accumulated_.header.frame_id  = odom_frame_;
 		right_accumulated_.header.frame_id = odom_frame_;
 		curb_num_limit_ = 500;
-		
+
 		left_pub_   = nh_.advertise<sensor_msgs::PointCloud>("vision_curb_left", 10);
 		right_pub_   = nh_.advertise<sensor_msgs::PointCloud>("vision_curb_right", 10);
   }
@@ -135,7 +132,7 @@ namespace golfcar_vision{
 			else ROS_INFO("-----------to process image------");
         
 
-        IplImage* color_image, *gray_image, *ipm_image;
+        IplImage* color_image, *gray_image;
         //get image in OpenCV format;
         try {
             color_image = bridge_.imgMsgToCv(image_msg, "bgr8");
@@ -179,6 +176,18 @@ namespace golfcar_vision{
 					 
             tf::Transform *transform_pointer = &transform;
             src_dest_tf_ = *transform_pointer;
+            
+            camera_baselink_dis_ = transform.inverse().getOrigin().x();
+            
+            //Four base points on the ground in the "base_link" coordinate; "base_link" is at the back wheel;
+				gndQuad_[0].x = ipm_center_x_ + camera_baselink_dis_ - ipm_ROI_height_/2.0;
+				gndQuad_[0].y = ipm_ROI_near_width_ / 2.0;
+				gndQuad_[1].x = ipm_center_x_ + camera_baselink_dis_ - ipm_ROI_height_/2.0 ;
+				gndQuad_[1].y = - ipm_ROI_near_width_ / 2.0;
+				gndQuad_[2].x = ipm_center_x_ + camera_baselink_dis_ + ipm_ROI_height_/2.0;
+				gndQuad_[2].y = - ipm_ROI_far_width_ /2.0;
+				gndQuad_[3].x = ipm_center_x_ + camera_baselink_dis_ + ipm_ROI_height_/2.0;
+				gndQuad_[3].y = ipm_ROI_far_width_ /2.0;
         }
         
          //To take into account the uneven of the road surface, the matrix is to be calculated every time;
@@ -201,21 +210,17 @@ namespace golfcar_vision{
 					dstQuad_[3].x, dstQuad_[3].y
 			);
 
-			cvGetPerspectiveTransform(srcQuad_,dstQuad_,  warp_matrix_);
-			cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix_);
-			
-			////////////////////////////////////////////////
-			//main functional part;
-			////////////////////////////////////////////////
-        ipm_image = cvCreateImage(cvGetSize(gray_image),8,1);
-        cvWarpPerspective( gray_image, ipm_image, warp_matrix_);
+		  cvGetPerspectiveTransform(srcQuad_,dstQuad_,  warp_matrix_);
+		  cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix_);
+		
+        cvWarpPerspective( gray_image, ipm_image_, warp_matrix_);
 
-        //---------------------------------------------------------------------
+        //------------------------set ipm image values------------------------
         //this helps to reduce the artificial contours in adaptiveThreshold;
-        int ipm_height 		= ipm_image -> height;
-		  int ipm_width  		= ipm_image -> width;
-		  int ipm_step	 		= ipm_image -> widthStep/sizeof(uchar);
-		  uchar * ipm_data 	= (uchar*)ipm_image ->imageData;
+        int ipm_height 		= ipm_image_ -> height;
+		  int ipm_width  		= ipm_image_ -> width;
+		  int ipm_step	 		= ipm_image_ -> widthStep/sizeof(uchar);
+		  uchar * ipm_data 	= (uchar*)ipm_image_ ->imageData;
 		  for(int ih=0; ih < ipm_height; ih++)
 		  {
 			 for(int iw=0; iw < ipm_width; iw++)
@@ -226,8 +231,8 @@ namespace golfcar_vision{
 				 }
 			 }
 		  }
-		  //---------------------------------------------------------------------
-		         
+		  //---------------------------end block-------------------------------
+		  
         //----------------------project the curb points into image-----------------------
         sensor_msgs::PointCloud left_tmp;
 	     sensor_msgs::PointCloud right_tmp;
@@ -253,66 +258,63 @@ namespace golfcar_vision{
 		  }
 		  
 		  
-        ////////////////////////////////////////////////
-        //visualization part;
-        ////////////////////////////////////////////////
-        if(visualization_flag_)
-        {
-			cvCircle( color_image, cvPointFrom32f(srcQuad_[0]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( color_image, cvPointFrom32f(srcQuad_[1]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( color_image, cvPointFrom32f(srcQuad_[2]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( color_image, cvPointFrom32f(srcQuad_[3]), 6, CV_RGB(0,255,0), 2);
-			cvLine( color_image, cvPointFrom32f(srcQuad_[0]), cvPointFrom32f(srcQuad_[1]), CV_RGB(0,0,255), 1);
-			cvLine( color_image, cvPointFrom32f(srcQuad_[1]), cvPointFrom32f(srcQuad_[2]), CV_RGB(0,0,255), 1);
-			cvLine( color_image, cvPointFrom32f(srcQuad_[2]), cvPointFrom32f(srcQuad_[3]), CV_RGB(0,0,255), 1);
-			cvLine( color_image, cvPointFrom32f(srcQuad_[3]), cvPointFrom32f(srcQuad_[0]), CV_RGB(0,0,255), 1);
-			cvShowImage("src_window", color_image);
-			
-			/*
-			cvCircle( ipm_image, cvPointFrom32f(dstQuad_[0]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( ipm_image, cvPointFrom32f(dstQuad_[1]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( ipm_image, cvPointFrom32f(dstQuad_[2]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( ipm_image, cvPointFrom32f(dstQuad_[3]), 6, CV_RGB(0,255,0), 2);
-			cvLine( ipm_image, cvPointFrom32f(dstQuad_[0]), cvPointFrom32f(dstQuad_[1]), cvScalar(255), 1);
-			cvLine( ipm_image, cvPointFrom32f(dstQuad_[1]), cvPointFrom32f(dstQuad_[2]), cvScalar(255), 1);
-			cvLine( ipm_image, cvPointFrom32f(dstQuad_[2]), cvPointFrom32f(dstQuad_[3]), cvScalar(255), 1);
-			cvLine( ipm_image, cvPointFrom32f(dstQuad_[3]), cvPointFrom32f(dstQuad_[0]), cvScalar(255), 1);
-			*/ 
-			cvShowImage("ipm_window", ipm_image);
-	    }
-        //cvSaveImage("/home/baoxing/src_window.png", color_image);
-        //cvSaveImage("/home/baoxing/ipm_window.png", ipm_image);
+			////////////////////////////////////////////////
+			//visualization part;
+			////////////////////////////////////////////////
+			if(visualization_flag_)
+			{
+				cvCircle( color_image, cvPointFrom32f(srcQuad_[0]), 6, CV_RGB(0,255,0), 2);
+				cvCircle( color_image, cvPointFrom32f(srcQuad_[1]), 6, CV_RGB(0,255,0), 2);
+				cvCircle( color_image, cvPointFrom32f(srcQuad_[2]), 6, CV_RGB(0,255,0), 2);
+				cvCircle( color_image, cvPointFrom32f(srcQuad_[3]), 6, CV_RGB(0,255,0), 2);
+				cvLine( color_image, cvPointFrom32f(srcQuad_[0]), cvPointFrom32f(srcQuad_[1]), CV_RGB(0,0,255), 1);
+				cvLine( color_image, cvPointFrom32f(srcQuad_[1]), cvPointFrom32f(srcQuad_[2]), CV_RGB(0,0,255), 1);
+				cvLine( color_image, cvPointFrom32f(srcQuad_[2]), cvPointFrom32f(srcQuad_[3]), CV_RGB(0,0,255), 1);
+				cvLine( color_image, cvPointFrom32f(srcQuad_[3]), cvPointFrom32f(srcQuad_[0]), CV_RGB(0,0,255), 1);
+				cvShowImage("src_window", color_image);
+
+				/*
+				cvCircle( ipm_image, cvPointFrom32f(dstQuad_[0]), 6, CV_RGB(0,255,0), 2);
+				cvCircle( ipm_image, cvPointFrom32f(dstQuad_[1]), 6, CV_RGB(0,255,0), 2);
+				cvCircle( ipm_image, cvPointFrom32f(dstQuad_[2]), 6, CV_RGB(0,255,0), 2);
+				cvCircle( ipm_image, cvPointFrom32f(dstQuad_[3]), 6, CV_RGB(0,255,0), 2);
+				cvLine( ipm_image, cvPointFrom32f(dstQuad_[0]), cvPointFrom32f(dstQuad_[1]), cvScalar(255), 1);
+				cvLine( ipm_image, cvPointFrom32f(dstQuad_[1]), cvPointFrom32f(dstQuad_[2]), cvScalar(255), 1);
+				cvLine( ipm_image, cvPointFrom32f(dstQuad_[2]), cvPointFrom32f(dstQuad_[3]), cvScalar(255), 1);
+				cvLine( ipm_image, cvPointFrom32f(dstQuad_[3]), cvPointFrom32f(dstQuad_[0]), cvScalar(255), 1);
+				*/ 
+				cvShowImage("ipm_window", ipm_image_);
+			}
         
-        try
-          {
-            image_pub_.publish(bridge_.cvToImgMsg(ipm_image, "mono8"));
-          }
-        catch (sensor_msgs::CvBridgeException error)
-          {
-            ROS_ERROR("error");
-          }
+			try
+			 {
+				image_pub_.publish(bridge_.cvToImgMsg(ipm_image_, "mono8"));
+			 }
+			catch (sensor_msgs::CvBridgeException error)
+			 {
+				ROS_ERROR("error");
+			 }
           
-        //this scentence is necessary;
-        cvWaitKey(10);
-        
-        image_processor_->Extract_Markers(ipm_image, scale_, markers_, training_frame_serial_, 
+			//this scentence is necessary;
+			cvWaitKey(10);
+
+			image_processor_->Extract_Markers(ipm_image_, scale_, markers_, training_frame_serial_, 
 														dstQuad_, projection_matrix_, markers_2nd_,
 														lanes_inImg_										
 														);
         
-        markers_.header = info_msg -> header;
-        markers_info_pub.publish(markers_);
-        //
-        markers_2nd_.header = info_msg -> header;
-        markers_info_2nd_pub.publish(markers_2nd_);
-        
-        lanes_inImg_.header = info_msg -> header;
-        lanes_pub_.publish(lanes_inImg_);
-        
-        sensor_msgs::PointCloud lanes_ptcloud;
-        std::vector<CvPoint2D32f> lanes_pt_inImg;
-        for(unsigned int il=0; il<lanes_inImg_.lanes.size(); il++)
-        {
+			markers_.header = info_msg -> header;
+			markers_info_pub.publish(markers_);
+			markers_2nd_.header = info_msg -> header;
+			markers_info_2nd_pub.publish(markers_2nd_);
+
+			lanes_inImg_.header = info_msg -> header;
+			lanes_pub_.publish(lanes_inImg_);
+
+			sensor_msgs::PointCloud lanes_ptcloud;
+			std::vector<CvPoint2D32f> lanes_pt_inImg;
+			for(unsigned int il=0; il<lanes_inImg_.lanes.size(); il++)
+			{
 			  for(unsigned int ip=0; ip< lanes_inImg_.lanes[il].points.size(); ip++)
 			  {
 				  CvPoint2D32f pttmp;
@@ -320,23 +322,20 @@ namespace golfcar_vision{
 				  pttmp.y = lanes_inImg_.lanes[il].points[ip].y;
 				  lanes_pt_inImg.push_back(pttmp);
 			  }
-		  }
-		  IpmImage_to_pcl(lanes_pt_inImg, lanes_ptcloud);
-		  lanes_ptcloud.header.stamp = info_msg -> header.stamp;
-		  lanes_ptcloud.header.frame_id = "base_link";
-		  lanes_ptcloud_pub_.publish(lanes_ptcloud);
+			}
+			IpmImage_to_pcl(lanes_pt_inImg, lanes_ptcloud);
+			lanes_ptcloud.header.stamp = info_msg -> header.stamp;
+			lanes_ptcloud.header.frame_id = "base_link";
+			lanes_ptcloud_pub_.publish(lanes_ptcloud);
         
-        
-        ROS_INFO("ImageCallBack finished");
-        
-        //Attention: 
-        //color_image is not allocated memory as normal;
-        //it points to some memory space in "cv_bridge" object handled by ros;
-        //so there is no need and it is also not permitted to release its memory space as normal;
-        //cvReleaseImage(&color_image);
-        
-        cvReleaseImage(&gray_image);
-        cvReleaseImage(&ipm_image);
+			ROS_INFO("ImageCallBack finished");
+
+			//Attention: 
+			//color_image is not allocated memory as normal;
+			//it points to some memory space in "cv_bridge" object handled by ros;
+			//so there is no need and it is also not permitted to release its memory space as normal;
+			//cvReleaseImage(&color_image);
+			cvReleaseImage(&gray_image);
   }
   
   //Function "GndPt_to_Src": project ground point in baselink coordinate into camera image;
@@ -344,7 +343,7 @@ namespace golfcar_vision{
   //steps: a. use "tf" relationship; b. use cam_model to project;
   void ipm::GndPt_to_Src(CvPoint2D32f * gnd_pointer, CvPoint2D32f* src_pointer)
   {
-        geometry_msgs::Pose temppose;
+		geometry_msgs::Pose temppose;
 		temppose.position.x=0;
 		temppose.position.y=0;
 		temppose.position.z=0;
@@ -352,55 +351,56 @@ namespace golfcar_vision{
 		temppose.orientation.y=0;
 		temppose.orientation.z=0;
 		temppose.orientation.w=0;
-        tf::Pose tempTfPose;
-        tf::Pose PoseInCamera;
-        for(unsigned int i = 0; i < 4; i++)
-        {
-            temppose.position.x= gnd_pointer[i].x;
-            temppose.position.y= gnd_pointer[i].y;
-            temppose.position.z= 0.0;
-            
-            //this part takes into account that the road is not flat;
-            //use the plane coefficient from "rolling_window";
-            if(plane_ROI_.coefs.size() == 4)
-            {
-					ROS_INFO("compensate road unflatness;");
-					if(plane_ROI_.coefs[2]!=0.0)
-					{
-						double nominator_tmp = (plane_ROI_.coefs[0]*temppose.position.x + plane_ROI_.coefs[1]*temppose.position.y 
-														+ plane_ROI_.coefs[3]);
-												
-						temppose.position.z = - nominator_tmp/ plane_ROI_.coefs[2];
-					}
-					ROS_INFO("temppose.position.z %3f", temppose.position.z);
+		tf::Pose tempTfPose;
+		tf::Pose PoseInCamera;
+		
+		for(unsigned int i = 0; i < 4; i++)
+		{
+			temppose.position.x= gnd_pointer[i].x;
+			temppose.position.y= gnd_pointer[i].y;
+			temppose.position.z= 0.0;
+			
+			//this part takes into account that the road is not flat;
+			//use the plane coefficient from "rolling_window";
+			if(plane_ROI_.coefs.size() == 4)
+			{
+				ROS_INFO("compensate road unflatness;");
+				if(plane_ROI_.coefs[2]!=0.0)
+				{
+					double nominator_tmp = (plane_ROI_.coefs[0]*temppose.position.x + plane_ROI_.coefs[1]*temppose.position.y 
+													+ plane_ROI_.coefs[3]);
+											
+					temppose.position.z = - nominator_tmp/ plane_ROI_.coefs[2];
 				}
-            
-			   tf::poseMsgToTF(temppose, tempTfPose);
-            PoseInCamera = src_dest_tf_ * tempTfPose;
-            tf::Point pt = PoseInCamera.getOrigin();
-            //ROS_DEBUG("%5f,%5f,%5f", pt.x(), pt.y(), pt.z());
-            cv::Point3d pt_cv(pt.x(), pt.y(), pt.z());
-            cv::Point2d uv;
-            cam_model_.project3dToPixel(pt_cv, uv);
-            src_pointer[i].x = uv.x;
-            src_pointer[i].y = uv.y;
-            //ROS_DEBUG("%5f, %5f", src_pointer[i].x, src_pointer[i].y);
-        }
-  }
+				ROS_INFO("temppose.position.z %3f", temppose.position.z);
+			}
+			
+			tf::poseMsgToTF(temppose, tempTfPose);
+			PoseInCamera = src_dest_tf_ * tempTfPose;
+			tf::Point pt = PoseInCamera.getOrigin();
+			//ROS_DEBUG("%5f,%5f,%5f", pt.x(), pt.y(), pt.z());
+			cv::Point3d pt_cv(pt.x(), pt.y(), pt.z());
+			cv::Point2d uv;
+			cam_model_.project3dToPixel(pt_cv, uv);
+			src_pointer[i].x = uv.x;
+			src_pointer[i].y = uv.y;
+			//ROS_DEBUG("%5f, %5f", src_pointer[i].x, src_pointer[i].y);
+		}
+	}
   
   void ipm::GndPt_to_Dst(CvPoint2D32f * gnd_pointer, CvPoint2D32f* dst_pointer)
   {
       //this point corresponds to the center of the image;
-      float center_x = (RECT_P0_X + RECT_P2_X)/2.0 + DIS_CAM_BASE_X;
-      float center_y = 0.0;
+      float center_x = ipm_center_x_ + camera_baselink_dis_;
+      float center_y = ipm_center_y_;
       
       for(unsigned int i = 0; i < 4; i++)
       {
           float x_tmp = - (gnd_pointer[i].y-center_y);
           float y_tmp = - (gnd_pointer[i].x-center_x);
-          dst_pointer[i].x =  x_tmp * scale_ + CameraStaticInfo_.width/2.0;
-          dst_pointer[i].y =  y_tmp * scale_ + CameraStaticInfo_.height/2.0;
-          ROS_INFO("%5f, %5f, %5f, %5f", x_tmp, y_tmp, dst_pointer[i].x, dst_pointer[i].y);
+          dst_pointer[i].x =  x_tmp * scale_ + ipm_image_->width/2.0;
+          dst_pointer[i].y =  y_tmp * scale_ + ipm_image_->height/2.0;
+          ROS_DEBUG("%5f, %5f, %5f, %5f", x_tmp, y_tmp, dst_pointer[i].x, dst_pointer[i].y);
       }
   }
   
@@ -441,10 +441,10 @@ namespace golfcar_vision{
 	{
 		pts_3d.points.clear();
 		geometry_msgs::Point32 pttmp;
-		float center_x = (RECT_P0_X + RECT_P2_X)/2.0 + DIS_CAM_BASE_X;
-		float center_y = 0.0;
-		float center_pix_x = 320;
-		float center_pix_y = 180;
+		float center_x = ipm_center_x_ + camera_baselink_dis_;
+      float center_y = ipm_center_y_;
+		float center_pix_x = ipm_image_->width/2.0;
+		float center_pix_y = ipm_image_->height/2.0;
 		
 		for(unsigned int i = 0; i< pts_image.size(); i++)
 		{
@@ -510,6 +510,7 @@ namespace golfcar_vision{
     delete image_processor_;
     cvReleaseMat(&warp_matrix_);
     cvReleaseMat(&projection_matrix_);
+    cvReleaseImage(&ipm_image_);
   }
 };
 
