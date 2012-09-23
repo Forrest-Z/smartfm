@@ -20,7 +20,7 @@
 
 //--------------------------------------------Parameters for "ipm"---------------------------------------------
 
-//This number can be calculated dynamicallyfrom tf between "camera" and "base_link" in future version.
+//This number can be calculated dynamically from tf between "camera" and "base_link" in future version.
 #define DIS_CAM_BASE_X  1.795
 
 //Find four points on the ground, and their projection point should be inside the raw camera image;
@@ -34,7 +34,6 @@
 //may make it self-adjusted later, according to tf, camera verticle fov, etc; at least adjustable from launch files.
 //parameter for "filter_demo2.bag"
 
-
 #define RECT_P0_X 3.0
 #define RECT_P0_Y 2.0
 #define RECT_P1_X 3.0
@@ -43,7 +42,6 @@
 #define RECT_P2_Y -10.0
 #define RECT_P3_X 15.0
 #define RECT_P3_Y 10.0
-
 //This value is actually calculated from RECT_P2_X-RECT_P0_X;
 #define GND_HEIGHT 12.0       
 
