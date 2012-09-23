@@ -171,6 +171,8 @@ class LaserVehicle
 
           double y1 = y_intercept, x1 = 0;
           double y2 = slope + y_intercept, x2 = 1;
+
+          //using the changed coordinate to properly calculate the orientation (x = -y, y = x)
           double yaw = atan2(x1-x2, -(y1-y2));
           if(slope>=0) return yaw+M_PI/2;
           else return yaw-M_PI/2;
