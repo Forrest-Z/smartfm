@@ -28,11 +28,12 @@ namespace golfcar_vision{
 		private_nh_.param("publish_angle_thresh",   publish_angle_thresh_,  5.0/180.0*M_PI);
 		private_nh_.param("visualization_flag",     visualization_flag_,    false);
 		private_nh_.param("odom_control",     odom_control_,    false);
+		private_nh_.param("curb_projection",  curb_projection_, false);
 
 		training_frame_serial_ = 0;
 		private_nh_.param("destination_frame_id", dest_frame_id_, std::string("base_link"));
-		cam_sub_ = it_.subscribeCamera("/camera_front/image_raw", 1, &ipm::ImageCallBack, this);
-		image_pub_ = it_.advertise("/camera_front/image_ipm", 1);
+		cam_sub_ = it_.subscribeCamera("camera_front/image_raw", 1, &ipm::ImageCallBack, this);
+		image_pub_ = it_.advertise("camera_front/image_ipm", 1);
 
 		markers_info_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_info",2);
 		markers_info_2nd_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_2nd_info",2);
@@ -233,29 +234,31 @@ namespace golfcar_vision{
 		  //---------------------------end block-------------------------------
 		  
         //----------------------project the curb points into image-----------------------
-        sensor_msgs::PointCloud left_tmp;
-	     sensor_msgs::PointCloud right_tmp;
-        left_accumulated_.header.stamp = meas_time;
-        right_accumulated_.header.stamp = meas_time;
-        try {tf_.transformPointCloud(base_frame_, left_accumulated_, left_tmp);}
-		  catch (tf::TransformException &ex){printf ("Failure %s\n", ex.what());return;}
-		  try {tf_.transformPointCloud(base_frame_, right_accumulated_, right_tmp);}
-		  catch (tf::TransformException &ex){printf ("Failure %s\n", ex.what());return;}
-		  
-		  std::vector <CvPoint2D32f> left_curb_image;
-		  std::vector <CvPoint2D32f> right_curb_image;
-        pcl_to_RawImage(left_tmp, left_curb_image);
-        pcl_to_RawImage(right_tmp, right_curb_image);
-        
-        for(size_t p=0; p<left_curb_image.size(); p++)
+        if(curb_projection_)
         {
-				cvCircle( color_image, cvPointFrom32f(left_curb_image[p]), 6, CV_RGB(0,255,0), 2);
-		  }
-		  for(size_t p=0; p<right_curb_image.size(); p++)
-        {
-				cvCircle( color_image, cvPointFrom32f(right_curb_image[p]), 6, CV_RGB(0,0,255), 2);
-		  }
-		  
+			  sensor_msgs::PointCloud left_tmp;
+			  sensor_msgs::PointCloud right_tmp;
+			  left_accumulated_.header.stamp = meas_time;
+			  right_accumulated_.header.stamp = meas_time;
+			  try {tf_.transformPointCloud(base_frame_, left_accumulated_, left_tmp);}
+			  catch (tf::TransformException &ex){printf ("Failure %s\n", ex.what());return;}
+			  try {tf_.transformPointCloud(base_frame_, right_accumulated_, right_tmp);}
+			  catch (tf::TransformException &ex){printf ("Failure %s\n", ex.what());return;}
+			  
+			  std::vector <CvPoint2D32f> left_curb_image;
+			  std::vector <CvPoint2D32f> right_curb_image;
+			  pcl_to_RawImage(left_tmp, left_curb_image);
+			  pcl_to_RawImage(right_tmp, right_curb_image);
+			  
+			  for(size_t p=0; p<left_curb_image.size(); p++)
+			  {
+					cvCircle( color_image, cvPointFrom32f(left_curb_image[p]), 6, CV_RGB(0,255,0), 2);
+			  }
+			  for(size_t p=0; p<right_curb_image.size(); p++)
+			  {
+					cvCircle( color_image, cvPointFrom32f(right_curb_image[p]), 6, CV_RGB(0,0,255), 2);
+			  }
+			}
 		  
 			////////////////////////////////////////////////
 			//visualization part;

@@ -110,7 +110,7 @@ namespace golfcar_vision{
 		  ros::Publisher  lanes_pub_;
 		  ros::Publisher  lanes_ptcloud_pub_;
 		  
-		  bool odom_control_;
+		  bool odom_control_, curb_projection_;
    };
 };
 
