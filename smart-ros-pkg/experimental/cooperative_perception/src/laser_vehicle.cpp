@@ -138,6 +138,8 @@ class LaserVehicle
     double findYawLeastSquarePCA(pcl::PointCloud<pcl::PointXYZ> pts, int filter_pt)
     {
         pcl::PointCloud<pcl::PointXYZ> p;
+        //if(filter_pt> pts.points.size()-1) return M_PI;
+        //if(pts.size()-filter_pt < 0) return M_PI;
         for(size_t i=filter_pt; i<pts.size()-filter_pt;i++)
         {
             p.push_back(pts.points[i]);
@@ -498,7 +500,7 @@ class LaserVehicle
             {
                 pcl::PointXYZ pt_max, pt_min;
                 pcl::getMinMax3D(segmented_pcl[i], pt_min, pt_max);
-                double yaw = findYawLeastSquare(segmented_pcl[i], filter_pts_);
+                double yaw = findYawLeastSquarePCA(segmented_pcl[i], filter_pts_);
                 double bounding_dist = fmutil::distance(pt_max.x, pt_max.y, pt_min.x, pt_min.y);
                 cout<<i<<": "<<bounding_dist<<" "<<yaw<<" "<<angle_tol_/180*M_PI<<endl;
                 if(bounding_dist < car_width_+width_tol_ && bounding_dist > car_width_-width_tol_ && fabs(yaw) < angle_tol_/180*M_PI)
