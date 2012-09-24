@@ -1,0 +1,11 @@
+<launch>
+    <include file="$(find cooperative_perception)/physical_launch/robot_1/camera_tf.launch"/>
+    <include file="$(find cooperative_perception)/physical_launch/robot_1/uvc_cam.launch"/>
+    <node pkg="vision_cp" type="visionCP" name="visionCP" ns="robot_1">
+	<param name="binary_thresh" value="30"/>
+	<param name="cvpoly_thresh" value="10"/>
+	<param name="rect_height" value="0.185"/>
+	<param name="rect_width" value="0.255"/>
+	<param name="red_detect" value="false"/>
+    </node>
+</launch>

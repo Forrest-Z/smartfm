@@ -44,29 +44,24 @@ namespace golfcar_vision{
         sensor_msgs::CvBridge bridge_;
         image_geometry::PinholeCameraModel cam_model_;
         sensor_msgs::CameraInfo CameraStaticInfo_;
-        
-        double rect_height_, rect_width_;
+	
+	unsigned int detected_times_1st_;
+	unsigned int detected_times_2nd_;
+	bool board_1st_switch_;
+	bool board_2nd_switch_;
+
+	chess_board board_1st_;
+	chess_board board_2nd_;
         void ImageCallBack(const sensor_msgs::ImageConstPtr& image_msg, const sensor_msgs::CameraInfoConstPtr& info_msg);
-		  bool camera_init_;
-		  CvMat* intrinsic_matrix_;
-		  CvMat* distortion_coeffs_;
-	     ros::Publisher board_pub_;
-		  void sort_pts(std::vector <CvPoint> & vertices);
-		  void calc_cb_pose( const sensor_msgs::CameraInfoConstPtr& info_msg, std::string board_name,
-										CvMat* obj_pts, CvMat* img_pts, geometry_msgs::Pose & board_pose );
-		  bool Extract_Rects (IplImage* src, const sensor_msgs::CameraInfoConstPtr& info_msg, 
-									 std::string board_name, geometry_msgs::Pose & board_pose);
-   	  bool check_angles(std::vector <CvPoint> vetices);
-		  //this can only work as a pointer, or some tricky things will happen;
-		  tf::TransformBroadcaster *tfb_;
-		  ros::Duration transform_tolerance_;
-		  
-		  int binary_thresh_;
-		  int cvpoly_thresh_;
-		  double angle_thresh_;
-		  double ratio_thresh_;
-		  bool red_detect_, blue_detect_;
-		  bool visual_flag_;
+	bool camera_init_;
+	CvMat* intrinsic_matrix_;
+	CvMat* distortion_coeffs_;
+	void calc_cb_pose( const sensor_msgs::CameraInfoConstPtr& info_msg, std::string board_name, CvMat* obj_pts, CvMat* img_pts, geometry_msgs::Pose & board_pose );
+	ros::Publisher board_pub_;
+
+	//this can only work as a pointer, or some tricky things will happen;
+	tf::TransformBroadcaster *tfb_;
+	ros::Duration transform_tolerance_;
     };
 
 

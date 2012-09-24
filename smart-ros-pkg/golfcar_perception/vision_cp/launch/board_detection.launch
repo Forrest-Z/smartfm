@@ -1,10 +1,10 @@
 <launch>
-    <node pkg="vision_cp" type="visionCP" name="visionCP">
-	<param name="board_1st_w" type="int" value="6" />
-        <param name="board_1st_h" type="int" value="8" />
-	<param name="board_1st_side" type="double" value="0.0345" />
-	<param name="board_2nd_w" type="int" value="4" />
-        <param name="board_2nd_h" type="int" value="5" />
-	<param name="board_2nd_side" type="double" value="0.20" />
+    <node pkg="vision_cp" type="visionCP" name="visionCP" ns="robot_2">
+	<param name="image_transport" value="compressed"/>
+	<param name="binary_thresh" value="30"/>
+	<param name="cvpoly_thresh" value="10"/>
+	<param name="rect_height" value="0.185"/>
+	<param name="rect_width" value="0.255"/>
+
     </node>
 </launch>
