@@ -27,7 +27,8 @@ namespace golfcar_vision{
 		private_nh_.param("publish_dis_thresh",     publish_dis_thresh_,    0.05);
 		private_nh_.param("publish_angle_thresh",   publish_angle_thresh_,  5.0/180.0*M_PI);
 		private_nh_.param("visualization_flag",     visualization_flag_,    false);
-			  
+		private_nh_.param("odom_control",     odom_control_,    false);
+
 		training_frame_serial_ = 0;
 		private_nh_.param("destination_frame_id", dest_frame_id_, std::string("base_link"));
 		cam_sub_ = it_.subscribeCamera("/camera_front/image_raw", 1, &ipm::ImageCallBack, this);
@@ -119,10 +120,8 @@ namespace golfcar_vision{
         ROS_INFO("ImageCallBack");
         
         ros::Time meas_time = info_msg->header.stamp;
-        process_control(meas_time);
-        
-        //disable it temporarily;
-        publish_flag_ = true;
+        if(odom_control_) process_control(meas_time);
+		  else {publish_flag_ = true;}
         
         if(!publish_flag_)
         {
@@ -298,7 +297,7 @@ namespace golfcar_vision{
 			//this scentence is necessary;
 			cvWaitKey(10);
 
-			image_processor_->Extract_Markers(ipm_image_, scale_, markers_, training_frame_serial_, 
+			image_processor_->Extract_Markers(ipm_image_, info_msg, scale_, markers_, training_frame_serial_, 
 														dstQuad_, projection_matrix_, markers_2nd_,
 														lanes_inImg_										
 														);
@@ -325,7 +324,7 @@ namespace golfcar_vision{
 			}
 			IpmImage_to_pcl(lanes_pt_inImg, lanes_ptcloud);
 			lanes_ptcloud.header.stamp = info_msg -> header.stamp;
-			lanes_ptcloud.header.frame_id = "base_link";
+			lanes_ptcloud.header.frame_id = dest_frame_id_;
 			lanes_ptcloud_pub_.publish(lanes_ptcloud);
         
 			ROS_INFO("ImageCallBack finished");
