@@ -145,10 +145,9 @@ class LaserVehicle
         if(p.size()<3) return M_PI;
         pcl::PCA<pcl::PointXYZ> pca;
         pca.setInputCloud(p.makeShared());
-        Eigen::Vector3f eigen_values = pca.getEigenValues();
         Eigen::Matrix3f eigen_vec = pca.getEigenVectors();
 
-        return atan2(eigen_vec(0), eigen_vec(1));
+        return atan2(eigen_vec(0), -eigen_vec(1));
     }
     double findYawLeastSquare(pcl::PointCloud<pcl::PointXYZ> pts, int filter_pt)
     {
@@ -482,7 +481,7 @@ class LaserVehicle
 
                 pcl::PointXYZ pt_max, pt_min;
                 pcl::getMinMax3D(segmented_pcl[i], pt_min, pt_max);
-                double yaw = findYawLeastSquare(segmented_pcl[i], filter_pts_);
+                double yaw = findYawLeastSquarePCA(segmented_pcl[i], filter_pts_);
                 pcl::PointXYZ pt_center((pt_max.x + pt_min.x)/2, (pt_max.y + pt_min.y)/2, 0);
                 final_point.x = pt_center.x;
                 final_point.y = pt_center.y;
