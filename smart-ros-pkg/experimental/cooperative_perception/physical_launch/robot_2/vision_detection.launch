@@ -1,0 +1,4 @@
+<launch>
+    <include file="$(find cooperative_perception)/physical_launch/robot_2/camera_tf.launch"/>
+    <include file="$(find cooperative_perception)/physical_launch/robot_2/uvc_cam.launch"/>
+</launch>
