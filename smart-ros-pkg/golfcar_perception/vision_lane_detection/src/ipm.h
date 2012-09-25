@@ -18,12 +18,16 @@
 #include "lane_marker_common.h"
 #include "image_proc.h"
 #include "rolling_window/plane_coef.h"
+#include "pcl/point_cloud.h"
+#include "pcl_ros/point_cloud.h"
+#include "pcl/point_types.h"
 
 using namespace std;
 using namespace ros;
 using namespace tf;
 
 typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
+typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudRGB;
 
 namespace golfcar_vision{
 
@@ -35,7 +39,7 @@ namespace golfcar_vision{
         private:
         ros::NodeHandle nh_, private_nh_;
         
-        IplImage *ipm_image_;
+        IplImage *ipm_image_, *ipm_color_image_;
 		  double camera_baselink_dis_;
 		  double ipm_center_x_, ipm_center_y_;
 		  double ipm_ROI_height_, ipm_ROI_near_width_, ipm_ROI_far_width_;
@@ -111,6 +115,9 @@ namespace golfcar_vision{
 		  ros::Publisher  lanes_ptcloud_pub_;
 		  
 		  bool odom_control_, curb_projection_;
+		  
+		  ros::Publisher rbg_pub_;
+		  void IpmImage_to_pclrgb(IplImage* pts_image, PointCloudRGB &pts_rgb);
    };
 };
 

@@ -1,10 +1,24 @@
 <launch>
-    <include file="$(find cooperative_perception)/physical_launch/robot_0/uvc_cam.launch"/>
-    <node pkg="vision_cp" type="visionCP" name="visionCP" ns="robot_0">
+    <node pkg="vision_cp" type="visionCP" name="visionCP">
 	<param name="binary_thresh" value="30"/>
 	<param name="cvpoly_thresh" value="10"/>
 	<param name="rect_height" value="0.185"/>
 	<param name="rect_width" value="0.255"/>
 	<param name="blue_detect" value="false"/>
     </node>
+
+	<node pkg="vision_lane_detection" type="ipm" name="ipm">
+	<!--param name="image_transport" value="compressed"/-->
+	<param name="visualization_flag" value="false"/>
+	<param name="svm_model_path" value="$(find vision_lane_detection)/data_and_model/scaled_20120726.model"/>
+	<param name="svm_scale_path" value="$(find vision_lane_detection)/data_and_model/range_20120726"/>
+	<param name="ipm_center_x" value="9.0"/>
+	<param name="ipm_center_y" value="0.0"/>
+	<param name="ipm_ROI_height" value="12.0"/>
+	<param name="ipm_ROI_near_width_" value="4.0"/>
+	<param name="ipm_ROI_far_width_" value="20.0"/>
+	<param name="use_odom_" value="false"/>
+	<param name="destination_frame_id" value="base_link"/>
+	</node>
+    
 </launch>

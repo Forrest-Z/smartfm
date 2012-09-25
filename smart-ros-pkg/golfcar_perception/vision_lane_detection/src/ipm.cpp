@@ -18,7 +18,8 @@ namespace golfcar_vision{
 		private_nh_.param("scale", 					scale_,					30.0);
 		CvSize ipm_size = cvSize((int)(scale_ * ipm_ROI_far_width_), (int)(scale_ * ipm_ROI_height_));
       ipm_image_ = cvCreateImage(ipm_size, 8,1);
-
+	   ipm_color_image_ = cvCreateImage(ipm_size, 8, 3);
+	   
 		string svm_model_path;
 		string svm_scale_path;
 		private_nh_.param("svm_model_path", svm_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
@@ -66,6 +67,8 @@ namespace golfcar_vision{
 
 		left_pub_   = nh_.advertise<sensor_msgs::PointCloud>("vision_curb_left", 10);
 		right_pub_   = nh_.advertise<sensor_msgs::PointCloud>("vision_curb_right", 10);
+		
+		rbg_pub_ = nh_.advertise<PointCloudRGB>("pts_rgb", 10);
   }
   
   void ipm::curbCallback(const sensor_msgs::PointCloudConstPtr  curb_in)
@@ -213,7 +216,14 @@ namespace golfcar_vision{
 		  cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix_);
 		
         cvWarpPerspective( gray_image, ipm_image_, warp_matrix_);
-
+		  cvWarpPerspective( color_image, ipm_color_image_, warp_matrix_);
+		  
+		  PointCloudRGB rgb_pts;
+		  rgb_pts.header.stamp = info_msg->header.stamp;
+		  rgb_pts.header.frame_id = dest_frame_id_;
+		  IpmImage_to_pclrgb (ipm_color_image_, rgb_pts);
+		  rbg_pub_.publish(rgb_pts);   
+        
         //------------------------set ipm image values------------------------
         //this helps to reduce the artificial contours in adaptiveThreshold;
         int ipm_height 		= ipm_image_ -> height;
@@ -501,6 +511,37 @@ namespace golfcar_vision{
    {
 		plane_ROI_ = *coef_in;
 	}
+	
+	void ipm::IpmImage_to_pclrgb(IplImage* pts_image, PointCloudRGB &pts_rgb)
+	{
+		geometry_msgs::Point32 pttmp;
+		float center_x = ipm_center_x_ + camera_baselink_dis_ ;
+		float center_y = ipm_center_y_;
+		float center_pix_x = pts_image -> width / 2;
+		float center_pix_y = pts_image -> height / 2;
+		
+		CvPoint pixel;
+		int ipm_height 		= pts_image -> height;
+		int ipm_width  		= pts_image -> width;
+		for(int ih=0; ih < ipm_height; ih++)
+		{
+			for(int iw=0; iw < ipm_width; iw++)
+			{
+				pixel.x = iw;
+				pixel.y = ih;
+				CvScalar s=cvGet2D(pts_image, pixel.y, pixel.x);
+		
+				pcl::PointXYZRGB xyzRGB_pt;
+				xyzRGB_pt.x = center_x -(pixel.y- center_pix_y)/scale_;
+				xyzRGB_pt.y = center_y -(pixel.x - center_pix_x)/scale_;
+				xyzRGB_pt.z = 0.0;
+				xyzRGB_pt.r = s.val[0];
+				xyzRGB_pt.g = s.val[1];
+				xyzRGB_pt.b = s.val[2];
+				pts_rgb.points.push_back(xyzRGB_pt);
+			}
+		}
+	}
   
   ipm::~ipm()
   {
@@ -513,6 +554,7 @@ namespace golfcar_vision{
     cvReleaseMat(&warp_matrix_);
     cvReleaseMat(&projection_matrix_);
     cvReleaseImage(&ipm_image_);
+    cvReleaseImage(&ipm_color_image_);
   }
 };
 
