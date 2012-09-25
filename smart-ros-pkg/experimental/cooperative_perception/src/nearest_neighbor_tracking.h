@@ -10,7 +10,9 @@
 class NearestNeighborTracking
 {
     geometry_msgs::PoseStamped cur_pose_;
-    fmutil::LowPassFilter *filter_;
+    fmutil::LowPassFilter *filter_yaw_;
+    fmutil::LowPassFilter *filter_x_;
+    fmutil::LowPassFilter *filter_y_;
 
     double getYawFromQuadMsg(geometry_msgs::Quaternion quad_msg)
     {
@@ -33,7 +35,9 @@ public:
     NearestNeighborTracking(geometry_msgs::PoseStamped pose_init): cur_pose_(pose_init)
     {
         cout<<"Initialized with pose "<<cur_pose_.pose.position.x<<" "<<cur_pose_.pose.position.y<<endl;
-        filter_ = new fmutil::LowPassFilter(0.2);
+        filter_yaw_ = new fmutil::LowPassFilter(0.2);
+        filter_x_ = new fmutil::LowPassFilter(0.2);
+        filter_y_ = new fmutil::LowPassFilter(0.2);
     }
 
     geometry_msgs::PoseStamped updateMeasurement(vector<geometry_msgs::PoseStamped> possible_poses)
@@ -59,9 +63,19 @@ public:
 
 
         double yaw = getYawFromQuadMsg(cur_pose_.pose.orientation);
-        yaw = filter_->filter(cur_pose_.header.stamp.toSec(), yaw);
-        cur_pose_.pose.orientation = getQuadMsgFromYaw(yaw);
-        cout<<"New position= "<<cur_pose_.pose.position.x<<" "<<cur_pose_.pose.position.y<<" "<<yaw<<endl;
+        double yaw_filtered = filter_yaw_->filter(cur_pose_.header.stamp.toSec(), yaw);
+        double x_filtered = filter_x_->filter(cur_pose_.header.stamp.toSec(), cur_pose_.pose.position.x);
+        double y_filtered = filter_y_->filter(cur_pose_.header.stamp.toSec(), cur_pose_.pose.position.y);
+        if(isnan(yaw_filtered))
+        {
+            cout<<"isnan detected, resetting filter"<<endl;
+            filter_yaw_->reset();
+            yaw_filtered = filter_yaw_->filter(cur_pose_.header.stamp.toSec(), yaw);
+        }
+        cur_pose_.pose.orientation = getQuadMsgFromYaw(yaw_filtered);
+        cur_pose_.pose.position.x = x_filtered;
+        cur_pose_.pose.position.y = y_filtered;
+        cout<<"New position= "<<cur_pose_.pose.position.x<<" "<<cur_pose_.pose.position.y<<" "<<yaw_filtered<<endl;
         return cur_pose_;
 
     }

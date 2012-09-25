@@ -111,7 +111,7 @@ class LaserVehicle
     int filter_pts_;
     laser_geometry::LaserProjection projector_;
     bool target_set_;
-    double disConti_thresh_, car_width_, width_tol_, angle_tol_;
+    double disConti_thresh_, car_width_, width_tol_, angle_tol_, range_thres_;
     void scanCallback(sensor_msgs::LaserScanConstPtr scan)
     {
         sensor_msgs::PointCloud laser_cloud;
@@ -140,7 +140,7 @@ class LaserVehicle
         pcl::PointCloud<pcl::PointXYZ> p;
         //if(filter_pt> pts.points.size()-1) return M_PI;
         //if(pts.size()-filter_pt < 0) return M_PI;
-        if(pts.size()<2*filter_pt) return M_PI;
+        if(pts.size()<(unsigned int)(2*filter_pt)) return M_PI;
         for(size_t i=filter_pt; i<pts.size()-filter_pt;i++)
         {
             p.push_back(pts.points[i]);
@@ -155,7 +155,7 @@ class LaserVehicle
     double findYawLeastSquare(pcl::PointCloud<pcl::PointXYZ> pts, int filter_pt)
     {
         //changing the coordinate into normal xy coordinate
-        if(pts.size()<2*filter_pt) return M_PI;
+        if(pts.size()<(unsigned int)(2*filter_pt)) return M_PI;
         for(size_t i=0; i<pts.size(); i++)
         {
             double x = - pts.points[i].y;
@@ -218,9 +218,11 @@ class LaserVehicle
             double angle_inc = index_diff * lrp.getAngleInc();
             double r = laser_cloud.channels[1].values[i-1];
             double euc_dist_thres = fabs(euc_dist_range*angle_inc*r);
+            double range_diff = fabs(laser_cloud.channels[1].values[i] - laser_cloud.channels[1].values[i-1]);
             pcl::PointXYZ pxyz(laser_cloud.points[i].x, laser_cloud.points[i].y, 0.0);
 
-            if(dist>euc_dist_thres )
+            //adding another criteria, the range since the euc_dist_thres fails when euc_dist_range is to large
+            if(dist>euc_dist_thres || range_diff>range_thres_)
             {
                 segmented_count++;
                 laser_cloud.points[i].z = segmented_count;
@@ -485,7 +487,7 @@ class LaserVehicle
 
                 pcl::PointXYZ pt_max, pt_min;
                 pcl::getMinMax3D(segmented_pcl[i], pt_min, pt_max);
-                double yaw = findYawLeastSquarePCA(segmented_pcl[i], filter_pts_);
+                double yaw = findYawLeastSquare(segmented_pcl[i], filter_pts_);
                 pcl::PointXYZ pt_center((pt_max.x + pt_min.x)/2, (pt_max.y + pt_min.y)/2, 0);
                 final_point.x = pt_center.x;
                 final_point.y = pt_center.y;
@@ -502,7 +504,7 @@ class LaserVehicle
             {
                 pcl::PointXYZ pt_max, pt_min;
                 pcl::getMinMax3D(segmented_pcl[i], pt_min, pt_max);
-                double yaw = findYawLeastSquarePCA(segmented_pcl[i], filter_pts_);
+                double yaw = findYawLeastSquare(segmented_pcl[i], filter_pts_);
                 double bounding_dist = fmutil::distance(pt_max.x, pt_max.y, pt_min.x, pt_min.y);
                 cout<<i<<": "<<bounding_dist<<" "<<yaw<<" "<<angle_tol_/180*M_PI<<endl;
                 if(bounding_dist < car_width_+width_tol_ && bounding_dist > car_width_-width_tol_ && fabs(yaw) < angle_tol_/180*M_PI)
@@ -585,7 +587,19 @@ public:
         private_nh.param("car_width", car_width_, 1.0);
         private_nh.param("width_tolerance", width_tol_, 0.5);
         private_nh.param("detect_angle_tolerance", angle_tol_, 90.0);
-        veh_frame_ = string(nh_->getNamespace() + "detected_vehicle");
+        private_nh.param("range_thres", range_thres_, 0.1);
+        private_nh.param("detected_vehicle_frame", veh_frame_, string("/robot_1/base_link"));
+        std::string::size_type delimiter_position( nh_->getNamespace().find('/') );
+
+        //the getNamespace() return //namespace for some reason...
+        //only search at most 2 delimited text, which is sufficient in this simple case
+        /*std::string part1, part2;
+        if ( std::string::npos != delimiter_position )
+        {
+            part1 =  nh_->getNamespace().substr(0, delimiter_position);
+            part2 =  nh_->getNamespace().substr(delimiter_position+1) ;
+        }
+        veh_frame_ = string( part2 + "/detected_vehicle");*/
 
         laser_scan_sub_.subscribe(*nh_, "scan_in", 10);
         laser_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_scan_sub_, *tf_, target_frame_, 10);
