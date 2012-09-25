@@ -142,9 +142,9 @@ namespace golfcar_vision{
         cvAdaptiveThreshold(src, Iat, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, BLOCK_SIZE, OFFSET);
         cvAnd(It, Iat, Itand);
         
-        cvShowImage("It_image",It);
-        cvShowImage("Iat_image",Iat);
-        cvShowImage("binary_image",Itand);
+        //cvShowImage("It_image",It);
+        //cvShowImage("Iat_image",Iat);
+        //cvShowImage("binary_image",Itand);
         //cvSaveImage("/home/baoxing/It.png", It);
         //cvSaveImage("/home/baoxing/Iat.png", Iat);
         //cvSaveImage("/home/baoxing/Itand.png", Itand);
