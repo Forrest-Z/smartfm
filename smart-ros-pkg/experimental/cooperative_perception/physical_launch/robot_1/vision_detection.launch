@@ -1,6 +1,4 @@
 <launch>
-    <include file="$(find cooperative_perception)/physical_launch/robot_1/camera_tf.launch"/>
-    <include file="$(find cooperative_perception)/physical_launch/robot_1/uvc_cam.launch"/>
     <node pkg="vision_cp" type="visionCP" name="visionCP" ns="robot_1">
 	<param name="binary_thresh" value="30"/>
 	<param name="cvpoly_thresh" value="10"/>
@@ -9,7 +7,6 @@
 	<param name="red_detect" value="false"/>
   <param name="visual_flag" value="false"/>
     </node>
-
 	<node pkg="vision_lane_detection" type="ipm" name="ipm" ns="robot_1">
 	<!--param name="image_transport" value="compressed"/-->
 	<param name="visualization_flag" value="false"/>
@@ -23,5 +20,4 @@
 	<param name="use_odom_" value="false"/>
 	<param name="destination_frame_id" value="robot_1/vbase_link"/>
 	</node>
-    
 </launch>

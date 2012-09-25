@@ -1,9 +1,6 @@
 <launch>
-    <!--param name="use_sim_time" value="true"/-->
-    <include file="$(find cooperative_perception)/physical_launch/robot_2/camera_tf.launch"/>
-    <include file="$(find cooperative_perception)/physical_launch/robot_2/uvc_cam.launch"/>
-    <node pkg="vision_lane_detection" type="ipm" name="ipm" ns="robot_2">
-        <!--param name="image_transport" value="compressed"/-->
+    <node pkg="vision_lane_detection" type="ipm" name="ipm" ns="robot_2" output="screen">
+        <param name="image_transport" value="raw"/>
 	<param name="visualization_flag" value="false"/>
 	<param name="svm_model_path" value="$(find vision_lane_detection)/data_and_model/scaled_20120726.model"/>
 	<param name="svm_scale_path" value="$(find vision_lane_detection)/data_and_model/range_20120726"/>
@@ -15,5 +12,14 @@
 	<param name="use_odom_" value="false"/>
 	<param name="destination_frame_id" value="robot_2/vbase_link"/>
     </node>
+
+    <node pkg="vision_cp" type="visionCP" name="visionCP" ns="robot_2">
+	<param name="binary_thresh" value="30"/>
+	<param name="cvpoly_thresh" value="10"/>
+	<param name="rect_height" value="0.185"/>
+	<param name="rect_width" value="0.255"/>
+	<param name="red_detect" value="false"/>
+  	<param name="visual_flag" value="false"/>
+ </node>
     
 </launch>

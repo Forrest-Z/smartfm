@@ -1,4 +1,5 @@
 <launch>
+	<include file="$(find cooperative_perception)/physical_launch/robot_2/camera_tf.launch"/>
         <node pkg="uvc_cam" type="uvc_cam_node" name="camera_front" output="screen" ns="robot_1">
         <remap from="camera" to="camera_front"/>
         <param name="width" type="int" value="1280" />
