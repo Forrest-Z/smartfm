@@ -52,7 +52,7 @@ public:
                 cout<<dist_now<<" "<<dist<<" "<<possible_poses[i].pose.position.x<<" "<<possible_poses[i].pose.position.y<<" "<<getYawFromQuadMsg(possible_poses[i].pose.orientation)<<endl;
             }
         }
-        if(dist_now<6.0) cur_pose_ = nearest_pose;
+        if(dist_now<3.0) cur_pose_ = nearest_pose;
         else cout<<"Not updating pose"<<endl;
         cout<<"-------------end----------"<<endl;
 
