@@ -25,28 +25,18 @@ namespace golfcar_vision{
       svm_scale_file = svm_scale_path;
       restore_scalefile(svm_scale_file, feature_min_, feature_max_, feature_index_);
       
-      // initialize camera intrinsic matrix and distortion coefficients;
-      // later may write in a loading function by reading text files;
-      intrinsic_A_ = cvCreateMat(3,3,CV_32FC1);
-      int row = 0; float *ptr = (float*)(intrinsic_A_->data.ptr + row * intrinsic_A_->step);
-	  ptr[0] = 462.55911; ptr[1] = 0.00; ptr[2] = 326.21463;
-	  row = 1; ptr = (float*)(intrinsic_A_->data.ptr + row * intrinsic_A_->step);
-	  ptr[0] = 0.0; ptr[1] = 472.34580; ptr[2] = 188.72264;
-	  row = 2; ptr = (float*)(intrinsic_A_->data.ptr + row * intrinsic_A_->step);
-	  ptr[0] = 0.0; ptr[1] = 0.0; ptr[2] = 1.0;
-	  
-	  distortion_coeffs_= cvCreateMat(5,1,CV_32FC1);
-	  ptr = (float*)(distortion_coeffs_->data.ptr + 0 * distortion_coeffs_->step); 	ptr[0] = -0.00791 ;
-	  ptr = (float*)(distortion_coeffs_->data.ptr + 1 * distortion_coeffs_->step); 	ptr[0] = -0.05311;
-	  ptr = (float*)(distortion_coeffs_->data.ptr + 2 * distortion_coeffs_->step);  ptr[0] = 0.00462;
-	  ptr = (float*)(distortion_coeffs_->data.ptr + 3 * distortion_coeffs_->step);  ptr[0] = 0.00101;
-	  ptr = (float*)(distortion_coeffs_->data.ptr + 4 * distortion_coeffs_->step);  ptr[0] = 0.0;
+     // initialize camera intrinsic matrix and distortion coefficients;
+     // later may write in a loading function by reading text files;
+     intrinsic_A_ = cvCreateMat(3,3,CV_32FC1);
+     distortion_coeffs_= cvCreateMat(5,1,CV_32FC1);
 		
 	  //initilize gndPts for 3 types of markers, which may be extended later;
       M1_gndPts_ = cvCreateMat(4,1,CV_32FC3);
       M2_gndPts_ = cvCreateMat(4,1,CV_32FC3);
       M3_gndPts_ = cvCreateMat(4,1,CV_32FC3);
       
+      int row; 
+      float *ptr;
 	  row = 0; ptr = (float*)(M1_gndPts_->data.ptr + row * M1_gndPts_->step);
 	  ptr[0] = 0.582;	ptr[1] = 0.0833; 	ptr[2] = 0.0;
       row = 1; ptr = (float*)(M1_gndPts_->data.ptr + row * M1_gndPts_->step);
@@ -78,7 +68,8 @@ namespace golfcar_vision{
       
     }
   
-    void image_proc::Extract_Markers (IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, 
+    void image_proc::Extract_Markers (IplImage* src, const sensor_msgs::CameraInfoConstPtr& info_msg,
+										float scale, vision_lane_detection::markers_info &markers_para, 
 										int &frame_serial, CvPoint2D32f* dst_pointer,
 										CvMat* projection_matrix, vision_lane_detection::markers_info &markers_para_2nd, 
 										vision_lane_detection::conti_lanes & lanes_inImg)
@@ -104,6 +95,23 @@ namespace golfcar_vision{
             delt_y2= corners_[1].y-corners_[2].y;
             para_A2_ = delt_y2/delt_x2;
             para_C2_ = corners_[1].y-para_A2_*corners_[1].x;
+            
+            sensor_msgs::CameraInfo CameraStaticInfo = *info_msg;
+			   CV_MAT_ELEM( *intrinsic_A_, float, 0, 0 ) = CameraStaticInfo.K[0];
+			   CV_MAT_ELEM( *intrinsic_A_, float, 0, 1 ) = CameraStaticInfo.K[1];
+			   CV_MAT_ELEM( *intrinsic_A_, float, 0, 2 ) = CameraStaticInfo.K[2];
+			   CV_MAT_ELEM( *intrinsic_A_, float, 1, 0 ) = CameraStaticInfo.K[3];
+			   CV_MAT_ELEM( *intrinsic_A_, float, 1, 1 ) = CameraStaticInfo.K[4];
+			   CV_MAT_ELEM( *intrinsic_A_, float, 1, 2 ) = CameraStaticInfo.K[5];
+			   CV_MAT_ELEM( *intrinsic_A_, float, 2, 0 ) = CameraStaticInfo.K[6];
+			   CV_MAT_ELEM( *intrinsic_A_, float, 2, 1 ) = CameraStaticInfo.K[7];
+			   CV_MAT_ELEM( *intrinsic_A_, float, 2, 2 ) = CameraStaticInfo.K[8];
+		
+			   CV_MAT_ELEM( *distortion_coeffs_, float, 0, 0 ) = CameraStaticInfo.D[0];
+			   CV_MAT_ELEM( *distortion_coeffs_, float, 1, 0 ) = CameraStaticInfo.D[1];		
+			   CV_MAT_ELEM( *distortion_coeffs_, float, 2, 0 ) = CameraStaticInfo.D[2];
+			   CV_MAT_ELEM( *distortion_coeffs_, float, 3, 0 ) = CameraStaticInfo.D[3]; 
+			   CV_MAT_ELEM( *distortion_coeffs_, float, 4, 0 ) = CameraStaticInfo.D[4];
         }
         
         /*

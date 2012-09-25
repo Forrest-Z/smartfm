@@ -28,7 +28,8 @@ namespace golfcar_vision{
         image_proc(string svm_model_path, string svm_scale_path);
         ~image_proc();        
 
-        void Extract_Markers (IplImage* src, float scale, vision_lane_detection::markers_info &markers_para, 
+        void Extract_Markers (IplImage* src, const sensor_msgs::CameraInfoConstPtr& info_msg,
+					float scale, vision_lane_detection::markers_info &markers_para, 
 			      int &frame_serial, CvPoint2D32f* dst_pointer,
 			      CvMat* projection_matrix, vision_lane_detection::markers_info &markers_para_2nd,
 			      vision_lane_detection::conti_lanes & lanes_inImg
