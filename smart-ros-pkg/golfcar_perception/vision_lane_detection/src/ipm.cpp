@@ -148,7 +148,6 @@ namespace golfcar_vision{
         //assign camera informtion to "cam_model_";
         cam_model_.fromCameraInfo(info_msg);
         CameraStaticInfo_ = *info_msg;
-        scale_ = float(CameraStaticInfo_.height)/GND_HEIGHT;
       
         //check if pinhole camera parameter is right;
         ROS_DEBUG("cam_model_ parameters:");
@@ -400,8 +399,9 @@ namespace golfcar_vision{
       {
           float x_tmp = - (gnd_pointer[i].y-center_y);
           float y_tmp = - (gnd_pointer[i].x-center_x);
-          dst_pointer[i].x =  x_tmp * scale_ + ipm_image_->width/2.0;
-          dst_pointer[i].y =  y_tmp * scale_ + ipm_image_->height/2.0;
+          dst_pointer[i].x =  x_tmp * scale_ + ipm_image_->width/2;
+          dst_pointer[i].y =  y_tmp * scale_ + ipm_image_->height/2;
+          ROS_INFO("scale, ipm_image height: %3f, %d", scale_, ipm_image_->height);
           ROS_DEBUG("%5f, %5f, %5f, %5f", x_tmp, y_tmp, dst_pointer[i].x, dst_pointer[i].y);
       }
   }
