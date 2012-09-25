@@ -127,19 +127,20 @@ class LaserVehicle
     }
 
     inline pcl::PointCloud<pcl::PointXYZ> pointcloudToPCL(sensor_msgs::PointCloud &pc)
-            {
+    {
         sensor_msgs::PointCloud2 pc2;
         sensor_msgs::convertPointCloudToPointCloud2(pc, pc2);
         pcl::PointCloud<pcl::PointXYZ> pcl;
         pcl::fromROSMsg(pc2, pcl);
         return pcl;
-            }
+    }
 
     double findYawLeastSquarePCA(pcl::PointCloud<pcl::PointXYZ> pts, int filter_pt)
     {
         pcl::PointCloud<pcl::PointXYZ> p;
         //if(filter_pt> pts.points.size()-1) return M_PI;
         //if(pts.size()-filter_pt < 0) return M_PI;
+        if(pts.size()<2*filter_pt) return M_PI;
         for(size_t i=filter_pt; i<pts.size()-filter_pt;i++)
         {
             p.push_back(pts.points[i]);
@@ -154,6 +155,7 @@ class LaserVehicle
     double findYawLeastSquare(pcl::PointCloud<pcl::PointXYZ> pts, int filter_pt)
     {
         //changing the coordinate into normal xy coordinate
+        if(pts.size()<2*filter_pt) return M_PI;
         for(size_t i=0; i<pts.size(); i++)
         {
             double x = - pts.points[i].y;
