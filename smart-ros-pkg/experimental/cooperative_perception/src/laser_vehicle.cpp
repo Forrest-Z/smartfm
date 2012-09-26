@@ -48,6 +48,7 @@ class LaserRangePoint
 
     laser_special laser;
     double angle_increment;
+
 public:
     LaserRangePoint(sensor_msgs::LaserScan &scan, tf::TransformListener &tf, string target_frame)
     {
@@ -112,6 +113,7 @@ class LaserVehicle
     laser_geometry::LaserProjection projector_;
     bool target_set_;
     double disConti_thresh_, car_width_, width_tol_, angle_tol_, range_thres_;
+    tf::StampedTransform latest_trans_;
     void scanCallback(sensor_msgs::LaserScanConstPtr scan)
     {
         sensor_msgs::PointCloud laser_cloud;
@@ -124,6 +126,10 @@ class LaserVehicle
         //DP_Extraction(laser_range_pt);
         simpleEuclideanExtraction(laser_range_pt);
         //detectVehicle(laser_cloud);
+
+        //need to keep sending the data to keep the tf tree alive
+        latest_trans_.stamp_ = ros::Time::now();
+        tf_broadcaster_->sendTransform(latest_trans_);
     }
 
     inline pcl::PointCloud<pcl::PointXYZ> pointcloudToPCL(sensor_msgs::PointCloud &pc)
@@ -573,7 +579,7 @@ class LaserVehicle
 
         tf::StampedTransform trans(tf::Transform(), vehicle_pose.header.stamp, vehicle_pose.header.frame_id, veh_frame_);
         tf::poseMsgToTF(vehicle_pose.pose, trans);
-        tf_broadcaster_->sendTransform(trans);
+        latest_trans_ = trans;
     }
 
 public:
