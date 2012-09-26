@@ -40,7 +40,8 @@ namespace golfcar_vision{
 		markers_info_2nd_pub = nh_.advertise<vision_lane_detection::markers_info>("markers_2nd_info",2);
 		lanes_pub_ = nh_.advertise<vision_lane_detection::conti_lanes>("conti_lanes",2);
 		lanes_ptcloud_pub_ = nh_.advertise<sensor_msgs::PointCloud>("lanes_ptcloud",2);
-
+		markers_ptcloud_pub_ = nh_.advertise<sensor_msgs::PointCloud>("markers_ptcloud",2);
+		
 		planeCoef_sub_ = nh_.subscribe("plane_coef", 10, &ipm::planeCoefCallback, this);
 		image_processor_ = new image_proc(svm_model_path, svm_scale_path);
 		pub_init_ = false;
@@ -339,6 +340,27 @@ namespace golfcar_vision{
 			lanes_ptcloud.header.frame_id = dest_frame_id_;
 			lanes_ptcloud_pub_.publish(lanes_ptcloud);
         
+         sensor_msgs::PointCloud markers_ptcloud;
+			std::vector<CvPoint2D32f> markers_pt_inImg;
+			for(unsigned int il=0; il<markers_.vec.size(); il++)
+			{
+			  for(unsigned int ip=0; ip< markers_.vec[il].points.size(); ip++)
+			  {
+				  CvPoint2D32f pttmp;
+				  pttmp.x = markers_.vec[il].points[ip].x;
+				  pttmp.y = markers_.vec[il].points[ip].y;
+				  markers_pt_inImg.push_back(pttmp);
+			  }
+			}
+			IpmImage_to_pcl(markers_pt_inImg, markers_ptcloud);
+			markers_ptcloud.header.stamp = info_msg -> header.stamp;
+			markers_ptcloud.header.frame_id = dest_frame_id_;
+			geometry_msgs::Point32 refresh_trick_rviz_pt;
+			refresh_trick_rviz_pt.x=10000.0;
+			markers_ptcloud.points.push_back(refresh_trick_rviz_pt);
+			markers_ptcloud_pub_.publish(markers_ptcloud);
+        
+        
 			ROS_INFO("ImageCallBack finished");
 
 			//Attention: 
@@ -411,7 +433,7 @@ namespace golfcar_vision{
           float y_tmp = - (gnd_pointer[i].x-center_x);
           dst_pointer[i].x =  x_tmp * scale_ + ipm_image_->width/2;
           dst_pointer[i].y =  y_tmp * scale_ + ipm_image_->height/2;
-          ROS_INFO("scale, ipm_image height: %3f, %d", scale_, ipm_image_->height);
+          ROS_DEBUG("scale, ipm_image height: %3f, %d", scale_, ipm_image_->height);
           ROS_DEBUG("%5f, %5f, %5f, %5f", x_tmp, y_tmp, dst_pointer[i].x, dst_pointer[i].y);
       }
   }

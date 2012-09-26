@@ -113,6 +113,7 @@ namespace golfcar_vision{
 		  vision_lane_detection::conti_lanes lanes_inImg_;
 		  ros::Publisher  lanes_pub_;
 		  ros::Publisher  lanes_ptcloud_pub_;
+		  ros::Publisher  markers_ptcloud_pub_;
 		  
 		  bool odom_control_, curb_projection_;
 		  

@@ -297,7 +297,7 @@ namespace golfcar_vision{
 				float width = cvBox.size.width;
 				float center_x=  cvBox.center.x;
 				float center_y=  cvBox.center.y;
-				//ROS_INFO("center.x, center.y, height, width: %lf, %lf, %lf, %lf, %lf", center_x, center_y, height, width);
+				//ROS_DEBUG("center.x, center.y, height, width: %lf, %lf, %lf, %lf, %lf", center_x, center_y, height, width);
 				//DrawBox(cvBox,color_img,ext_color);
 				
 				//------------------------------------------------------------------------------------------------------------------
@@ -371,8 +371,8 @@ namespace golfcar_vision{
         float boxAngle  =   Box_input.angle;
         float height    =   Box_input.size.height;
         float width     =   Box_input.size.width;
-        ROS_INFO("%lf, %lf, %lf, %lf, %lf, %lf, %lf", HM_input.hu1, HM_input.hu2, HM_input.hu3, HM_input.hu4, HM_input.hu5, HM_input.hu6, HM_input.hu7);
-        ROS_INFO("boxAngle, height, width: %lf, %lf, %lf", boxAngle, height, width);
+        ROS_DEBUG("%lf, %lf, %lf, %lf, %lf, %lf, %lf", HM_input.hu1, HM_input.hu2, HM_input.hu3, HM_input.hu4, HM_input.hu5, HM_input.hu6, HM_input.hu7);
+        ROS_DEBUG("boxAngle, height, width: %lf, %lf, %lf", boxAngle, height, width);
         //Data scaling here enables svm to get better accuracy;
         
         //keep accordance with "data_formating";
@@ -412,9 +412,9 @@ namespace golfcar_vision{
         
         for(int i=0; i<12; i++) x[i].value = output(x[i].index, x[i].value);
         
-        ROS_INFO("try to predict");
+        ROS_DEBUG("try to predict");
         class_label = svm_predict(svm_model_,x);
-        ROS_INFO("predict finished");
+        ROS_DEBUG("predict finished");
         free(x);
         return class_label;
     }
@@ -489,9 +489,20 @@ namespace golfcar_vision{
         contour_center.x = (float)marker_para.x;
         contour_center.y = (float)marker_para.y;
         
-        if(contours->total<5){ROS_INFO("this marker is bad! no angle information;");}
+        if(contours->total<5){ROS_DEBUG("this marker is bad! no angle information;");}
         else
         {
+			   //add this to visualize the contour of the lane_markers;
+			   geometry_msgs::Point32 pttmp;
+			   for(int i=0; i<contour_raw->total; i++)
+            {
+					 CvPoint* p = (CvPoint*)cvGetSeqElem(contour_raw, i);
+					 pttmp.x = p->x;
+					 pttmp.y = p->y;
+					 marker_para.points.push_back(pttmp);
+				}
+				//--------------------------------------------------------
+				
             std::vector <CvPoint> vertices;
             std::vector <CvPoint2D32f> centered_vertices;
             
@@ -601,7 +612,7 @@ namespace golfcar_vision{
 					line2_front_serial = forward_line_front;
 					line2_back_serial  = forward_line_back;
 					
-					//ROS_INFO("use_front_only");
+					//ROS_DEBUG("use_front_only");
 				}
 				else if (!fd_satisfy && bd_satisfy)
 				{
@@ -610,7 +621,7 @@ namespace golfcar_vision{
 					line1_front_serial = backward_line_back;
 					line1_back_serial  = backward_line_front;
 					
-					//ROS_INFO("use_back_only");
+					//ROS_DEBUG("use_back_only");
 				}
 				else if (fd_satisfy && bd_satisfy)
 				{
@@ -651,7 +662,7 @@ namespace golfcar_vision{
 					
 					//remember to filter the case happened in picture 215;
 					double abs_delt = fabs(fabs(angle1)-fabs(angle2));
-					if(abs_delt>M_PI_2){ROS_INFO("noisy situation, do not provide angle");}
+					if(abs_delt>M_PI_2){ROS_DEBUG("noisy situation, do not provide angle");}
 					else
 					{
 						//thetha is in "rad" here;
@@ -665,7 +676,7 @@ namespace golfcar_vision{
 			}
         }
         cvt_pose_baselink(marker_para);
-        ROS_INFO("---------marker %lf, %lf, %lf----------\n", marker_para.x, marker_para.y, marker_para.thetha);
+        ROS_DEBUG("---------marker %lf, %lf, %lf----------\n", marker_para.x, marker_para.y, marker_para.thetha);
         cvReleaseMemStorage(&mem_poly);
     }
     
@@ -685,7 +696,7 @@ namespace golfcar_vision{
         //////////////////////////////////////////////////////////////
         //// find 4 corresponding points;
         //////////////////////////////////////////////////////////////
-        if(contours->total<5){ROS_INFO("this marker is bad! no corresponding points! no pose information!");}
+        if(contours->total<5){ROS_DEBUG("this marker is bad! no corresponding points! no pose information!");}
         else
         {
             std::vector <CvPoint> vertices;
@@ -790,7 +801,7 @@ namespace golfcar_vision{
 					line2_front_serial = forward_line_front;
 					line2_back_serial  = forward_line_back;
 					
-					//ROS_INFO("use_front_only");
+					//ROS_DEBUG("use_front_only");
 				}
 				else if (!fd_satisfy && bd_satisfy)
 				{
@@ -799,7 +810,7 @@ namespace golfcar_vision{
 					line1_front_serial = backward_line_back;
 					line1_back_serial  = backward_line_front;
 					
-					//ROS_INFO("use_back_only");
+					//ROS_DEBUG("use_back_only");
 				}
 				else if (fd_satisfy && bd_satisfy)
 				{
