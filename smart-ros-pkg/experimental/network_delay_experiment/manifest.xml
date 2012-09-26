@@ -12,7 +12,7 @@
   <depend package="sensor_msgs"/>
   <depend package="tf"/>
   <depend package="fmutil"/>
-
+  <depend package="image_transport"/>
 </package>
 
 

@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="network_delay_experiment" type="vision_sub" name="vision_selfcheck"/>
+    <node pkg="network_delay_experiment" type="vision_sub" name="laser_sub" ns="comp1"/>
+    <node pkg="network_delay_experiment" type="vision_sub" name="laser_sub" ns="comp2"/>
+</launch>
