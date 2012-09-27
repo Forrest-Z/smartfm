@@ -1,5 +1,4 @@
 <launch>
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_robot1_scan" args="1.45, 0.0, 1.39 0 0 0 /robot_1/base_link /robot_1/laser 10" />
     <node name="robot_1_vehicle_detect" pkg="cooperative_perception" type="laser_vehicle" output="screen" ns="robot_1">
         <param name="target_frame" value="/robot_1/base_link"/>
         <param name="discontinue_thres" value="0.5"/>
