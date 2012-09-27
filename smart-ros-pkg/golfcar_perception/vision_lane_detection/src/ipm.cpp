@@ -557,9 +557,9 @@ namespace golfcar_vision{
 				xyzRGB_pt.x = center_x -(pixel.y- center_pix_y)/scale_;
 				xyzRGB_pt.y = center_y -(pixel.x - center_pix_x)/scale_;
 				xyzRGB_pt.z = 0.0;
-				xyzRGB_pt.r = s.val[0];
+				xyzRGB_pt.b = s.val[0];
 				xyzRGB_pt.g = s.val[1];
-				xyzRGB_pt.b = s.val[2];
+				xyzRGB_pt.r = s.val[2];
 				pts_rgb.points.push_back(xyzRGB_pt);
 			}
 		}
