@@ -35,7 +35,7 @@ public:
     NearestNeighborTracking(geometry_msgs::PoseStamped pose_init): cur_pose_(pose_init)
     {
         cout<<"Initialized with pose "<<cur_pose_.pose.position.x<<" "<<cur_pose_.pose.position.y<<endl;
-        filter_yaw_ = new fmutil::LowPassFilter(0.2);
+        filter_yaw_ = new fmutil::LowPassFilter(0.4);
         filter_x_ = new fmutil::LowPassFilter(0.2);
         filter_y_ = new fmutil::LowPassFilter(0.2);
     }
@@ -48,7 +48,9 @@ public:
         for(size_t i=0; i<possible_poses.size(); i++)
         {
             double dist =fmutil::distance<geometry_msgs::Point>(possible_poses[i].pose.position, cur_pose_.pose.position);
-
+            double yaw = getYawFromQuadMsg(possible_poses[i].pose.orientation);
+            //add a little yaw cost into dist function such that when the same dist
+            dist+=0.1*fabs(yaw);
             if(dist<dist_now)
             {
                 nearest_pose = possible_poses[i];

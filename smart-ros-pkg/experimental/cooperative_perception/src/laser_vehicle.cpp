@@ -48,6 +48,7 @@ class LaserRangePoint
 
     laser_special laser;
     double angle_increment;
+
 public:
     LaserRangePoint(sensor_msgs::LaserScan &scan, tf::TransformListener &tf, string target_frame)
     {
@@ -112,6 +113,7 @@ class LaserVehicle
     laser_geometry::LaserProjection projector_;
     bool target_set_;
     double disConti_thresh_, car_width_, width_tol_, angle_tol_, range_thres_;
+    tf::StampedTransform latest_trans_;
     void scanCallback(sensor_msgs::LaserScanConstPtr scan)
     {
         sensor_msgs::PointCloud laser_cloud;
@@ -124,6 +126,10 @@ class LaserVehicle
         //DP_Extraction(laser_range_pt);
         simpleEuclideanExtraction(laser_range_pt);
         //detectVehicle(laser_cloud);
+
+        //need to keep sending the data to keep the tf tree alive
+        latest_trans_.stamp_ = ros::Time::now();
+        tf_broadcaster_->sendTransform(latest_trans_);
     }
 
     inline pcl::PointCloud<pcl::PointXYZ> pointcloudToPCL(sensor_msgs::PointCloud &pc)
@@ -196,7 +202,9 @@ class LaserVehicle
         double yaw = atan2(x1-x2, -(y1-y2));
         //if(slope>=0) return yaw+M_PI/2;
         //else return yaw-M_PI/2;
-        return yaw+M_PI/2;
+        yaw+=M_PI/2;
+        if(isnan(yaw)) yaw=M_PI/2;
+        return yaw;
     }
 
     void simpleEuclideanExtraction(LaserRangePoint &lrp)
@@ -485,14 +493,46 @@ class LaserVehicle
             {
                 if(segmented_pcl[i].size()<2) continue;
 
+
+                //take into account the corner by searching for pt_index with min x
+                double x_min = segmented_pcl[i].points[0].x;
+                size_t x_min_index = 0;
+                for(size_t j=i; j<segmented_pcl[i].size(); j++)
+                {
+                    if(segmented_pcl[i].points[j].x < x_min)
+                    {
+                        x_min = segmented_pcl[i].points[j].x;
+                        x_min_index = j;
+                    }
+                }
+                //split into 2 segments
+                pcl::PointCloud<pcl::PointXYZ> seg[2];
+
+                seg[0].insert(seg[0].begin(), segmented_pcl[i].begin(), segmented_pcl[i].begin()+x_min_index);
+                seg[1].insert(seg[1].begin(), segmented_pcl[i].begin()+x_min_index, segmented_pcl[i].end());
+
+                double yaw[2];
+                yaw[0] = findYawLeastSquare(seg[0], 0);
+                yaw[1] = findYawLeastSquare(seg[1], 0);
+
+                //assuming a well behaved vehicle, select the segment has smaller magnitude of yaw and find the center pt
+                //it may not be the case, the statement above is violated when the vehicle is performing > 45deg turn, hence it will be added as
+                //candidate vehicles
+                //size_t selected_seg = 0;
+                //if (fabs(yaw[0])>fabs(yaw[1])) selected_seg = 1;
                 pcl::PointXYZ pt_max, pt_min;
+                //fixme:although it may make more sense to use the further segmented line (seg[2]) to obtain center pt, experimental shows it is
+                //      more accurate using segmented_pcl[i]
                 pcl::getMinMax3D(segmented_pcl[i], pt_min, pt_max);
-                double yaw = findYawLeastSquare(segmented_pcl[i], filter_pts_);
+
+
                 pcl::PointXYZ pt_center((pt_max.x + pt_min.x)/2, (pt_max.y + pt_min.y)/2, 0);
                 final_point.x = pt_center.x;
                 final_point.y = pt_center.y;
+                cout<<"segment "<<i<<"/"<<segmented_pcl.size()-1<<": x_min_index="<<x_min_index<<" yaw[0]="<<yaw[0]<<" yaw[1]="<<yaw[1]<<endl;
                 //cout<<"Added "<<final_point.x <<" "<<final_point.y<<" "<<yaw<<endl;
-                measured_poses.push_back(convertToPoseStamped(yaw, final_point, header));
+                measured_poses.push_back(convertToPoseStamped(yaw[0], final_point, header));
+                measured_poses.push_back(convertToPoseStamped(yaw[1], final_point, header));
             }
             //cout<<"-------------end----------"<<endl;
             geometry_msgs::PoseStamped final_pose = nnt_->updateMeasurement(measured_poses);
@@ -573,7 +613,7 @@ class LaserVehicle
 
         tf::StampedTransform trans(tf::Transform(), vehicle_pose.header.stamp, vehicle_pose.header.frame_id, veh_frame_);
         tf::poseMsgToTF(vehicle_pose.pose, trans);
-        tf_broadcaster_->sendTransform(trans);
+        latest_trans_ = trans;
     }
 
 public:

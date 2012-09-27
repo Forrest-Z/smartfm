@@ -30,9 +30,20 @@ LocalMap::LocalMap(double height, double width, double res):height_(height), wid
     laser_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, local_frame_, 10);
     laser_filter_->registerCallback(boost::bind(&LocalMap::laserCallback, this, _1));
 
+    laser2_sub_.subscribe(nh_, "scan_in2", 10);
+    laser2_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser2_sub_, tf_, local_frame_, 10);
+    laser2_filter_->registerCallback(boost::bind(&LocalMap::laser2Callback, this, _1));
+
+    laser3_sub_.subscribe(nh_, "scan_in3", 10);
+    laser3_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser3_sub_, tf_, local_frame_, 10);
+    laser3_filter_->registerCallback(boost::bind(&LocalMap::laser3Callback, this, _1));
+
     prior_pts_pub_ = nh_.advertise<sensor_msgs::PointCloud>("prior_pts", 10, true);
     map_pub_ = nh_.advertise<pnc_msgs::local_map>("local_map", 10);
     map_pts_pub_ = nh_.advertise<sensor_msgs::PointCloud>("local_map_pts", 10);
+
+
+
     nav_msgs::GetMap::Request  req;
     nav_msgs::GetMap::Response resp;
     ROS_INFO("Requesting the prior map...");
@@ -179,6 +190,38 @@ void LocalMap::laserCallback(sensor_msgs::LaserScanConstPtr scan_in)
 
 };
 
+void LocalMap::laser2Callback(sensor_msgs::LaserScanConstPtr scan_in)
+{
+    sensor_msgs::LaserScan scan_copy = *scan_in;
+    sensor_msgs::PointCloud laser_cloud;
+    try{
+        projector_.transformLaserScanToPointCloud(local_frame_, scan_copy,
+                laser_cloud, tf_);
+    }
+    catch (tf::TransformException& e){
+        ROS_ERROR("%s",e.what());
+        return;
+    }
+    laser2_coop_pts_ = laser_cloud;
+    cout<<"laser2"<<endl;
+};
+
+void LocalMap::laser3Callback(sensor_msgs::LaserScanConstPtr scan_in)
+{
+    sensor_msgs::LaserScan scan_copy = *scan_in;
+    sensor_msgs::PointCloud laser_cloud;
+    try{
+        projector_.transformLaserScanToPointCloud(local_frame_, scan_copy,
+                laser_cloud, tf_);
+    }
+    catch (tf::TransformException& e){
+        ROS_ERROR("%s",e.what());
+        return;
+    }
+    laser3_coop_pts_ = laser_cloud;
+    cout<<"laser3"<<endl;
+};
+
 void LocalMap::addPointToMap(geometry_msgs::Point32 map_p)
 {
     addPointToMap(map_p, 0);
@@ -197,8 +240,11 @@ void LocalMap::addPointToMap(geometry_msgs::Point32 map_p, int occ)
 
     }
 }
+
+
 void LocalMap::updateMap(sensor_msgs::PointCloud& pc)
 {
+    cout<<"Map update call"<<endl;
     if(updateMapSkip < updateMapSkipMax)
     {
         updateMapSkip++;
@@ -207,10 +253,11 @@ void LocalMap::updateMap(sensor_msgs::PointCloud& pc)
     else
         updateMapSkip = 0;
 
-    //a naive implementation where current sensor will just reset the map to prior map with latest obs
+
 
     tf::Stamped<tf::Pose> robot_pose;
     sensor_msgs::PointCloud prior_pts_local;
+    //a naive implementation where current sensor will just reset the map to prior map with latest obs
     local_map_.data.clear();
     local_map_.data.resize(local_map_.info.width*local_map_.info.height);
     local_map_pts_.points.clear();
@@ -235,6 +282,12 @@ void LocalMap::updateMap(sensor_msgs::PointCloud& pc)
         }
         for(size_t i=0; i<pc.points.size(); i++)
             addPointToMap(pc.points[i]);
+
+        //adding obstacles from coop
+        for(size_t i=0; i<laser2_coop_pts_.points.size(); i++)
+            addPointToMap(laser2_coop_pts_.points[i]);
+        for(size_t i=0; i<laser3_coop_pts_.points.size(); i++)
+            addPointToMap(laser3_coop_pts_.points[i]);
 
         geometry_msgs::PoseStamped origin;
         tf::poseStampedTFToMsg(robot_pose, origin);
