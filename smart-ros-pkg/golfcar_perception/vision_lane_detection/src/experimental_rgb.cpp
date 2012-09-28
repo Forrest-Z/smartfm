@@ -1,6 +1,7 @@
 /*
  * created on 30/08/2012
  * by Baoxing
+ * future work: write it in a general way to support multiple cameras;
  */
 
 #include "experimental_rgb.h"
