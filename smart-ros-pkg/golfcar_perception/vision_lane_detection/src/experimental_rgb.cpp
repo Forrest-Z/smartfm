@@ -24,7 +24,7 @@ namespace golfcar_vision{
 		cloud_scan_filter_ = new tf::MessageFilter<PointCloud>(cloud_scan_sub_, tf_, odom_frame_, 100);
 		cloud_scan_filter_->registerCallback(boost::bind(&experimental_rgb::pclCallback, this, _1));
 		cloud_scan_filter_->setTolerance(ros::Duration(0.05));
-		rbg_pub_ = nh_.advertise<PointCloudRGB>("pts_rgb", 10);
+		rbg_pub_ = nh_.advertise<PointCloudRGB>("RGBD", 10);
   }
   
   void experimental_rgb::pclCallback(const PointCloud::ConstPtr& pcl_in)
@@ -79,15 +79,28 @@ namespace golfcar_vision{
 		  {
 			  PointCloud 	 raw_pts;
 			  PointCloudRGB rgb_pts;
+			  PointCloudRGB rgb_pts_target;
+			  
 			  pcl_batch_.header.frame_id = odom_frame_;
 			  pcl_batch_.header.stamp = meas_time;
 			  ROS_INFO("pcl_batch_.points.size() %ld", pcl_batch_.points.size());
 			  pclXYZ_transform(base_frame_, pcl_batch_, raw_pts);
 			  ROS_INFO("raw_pts.points.size() %ld", raw_pts.points.size());
 			  curbPts_to_image(raw_pts, rgb_pts, color_image);
+			  
 			  ROS_INFO("rgb_pts.points.size() %ld", rgb_pts.points.size());
-			  rbg_pub_.publish(rgb_pts);
-			  process_pcl_ = false;
+			  
+			  if(pcl_ros::transformPointCloud(odom_frame_, rgb_pts, rgb_pts_target, tf_ ))
+			  {
+				   rgb_pts_target.width = rgb_pts_target.points.size();
+				   rgb_pts_target.height = 1;
+					rbg_pub_.publish(rgb_pts_target);
+					process_pcl_ = false;
+					pcl::PCDWriter writer;
+				   std::stringstream ss;
+				   ss << "/home/baoxing/RGBD.pcd";
+				   writer.write<pcl::PointXYZRGB> (ss.str (), rgb_pts_target, false); 
+			  }
 		  }
 		  else
 		  {
@@ -148,7 +161,6 @@ namespace golfcar_vision{
 			xyzRGB_pt.b = s.val[2];
 			rgb_pts.points.push_back(xyzRGB_pt);
 		}
-
 	}
 		
 	void experimental_rgb::pclXYZ_transform(string target_frame, const PointCloud &pcl_src, PointCloud &pcl_dest)

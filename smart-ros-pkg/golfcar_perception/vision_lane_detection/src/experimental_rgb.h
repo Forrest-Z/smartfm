@@ -20,6 +20,8 @@
 #include "rolling_window/plane_coef.h"
 #include "pcl/point_cloud.h"
 #include "pcl_ros/point_cloud.h"
+#include <pcl/io/pcd_io.h>
+#include <pcl_ros/transforms.h>
 #include "pcl/point_types.h"
 #include "pcl/ros/conversions.h"
 #include <nav_msgs/Odometry.h>

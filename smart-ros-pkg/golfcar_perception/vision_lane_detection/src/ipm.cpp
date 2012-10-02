@@ -44,6 +44,8 @@ namespace golfcar_vision{
 		
 		planeCoef_sub_ = nh_.subscribe("plane_coef", 10, &ipm::planeCoefCallback, this);
 		image_processor_ = new image_proc(svm_model_path, svm_scale_path);
+		PDC_detector_ = new ped_cross_detect(scale_);
+		
 		pub_init_ = false;
 
 		if(visualization_flag_)
@@ -314,7 +316,8 @@ namespace golfcar_vision{
 														dstQuad_, projection_matrix_, markers_2nd_,
 														lanes_inImg_										
 														);
-        
+         //PDC_detector_->Detect_PdCrossing(ipm_image_);
+         
 			markers_.header = info_msg -> header;
 			markers_info_pub.publish(markers_);
 			markers_2nd_.header = info_msg -> header;

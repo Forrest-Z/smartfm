@@ -7,7 +7,8 @@ namespace golfcar_vision{
 		printf("continous_lane constructed");
 	}
 		
-	void continuous_lane::ransac_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color, vision_lane_detection::conti_lanes & lanes_inImg)
+	void continuous_lane::ransac_lane(CvSeq *contours, IplImage *contour_img, CvScalar ext_color, 
+												 vision_lane_detection::conti_lanes & lanes_inImg)
 	{
 		std::vector <TPoint2D> contour_points;
 		for(int i=0; i<contours->total; i++)
@@ -22,7 +23,7 @@ namespace golfcar_vision{
 		//-------------------------------------------------------------------------------------------------------------------------
 		//preparation work: to reduce the polygon of the contour into a thin single line;
 		//-------------------------------------------------------------------------------------------------------------------------
-		ROS_INFO("step1");
+		//ROS_INFO("step1");
 		std::vector <TPoint2D> fused_points;
 		if(contour_points.size()<4) return;
 		
@@ -83,7 +84,7 @@ namespace golfcar_vision{
 			//publish =  false;
 		}
 		
-		ROS_INFO("step2");
+		//ROS_INFO("step2");
 		vector_double xs,ys;
 		for (size_t i=0;i<fused_points.size();i++)
 		{	
@@ -93,7 +94,7 @@ namespace golfcar_vision{
 			ys.push_back(yy);
 			//cvCircle( contour_img, cvPoint(fused_points[i].x,fused_points[i].y), 2, ext_color, 1);
 		}
-		ROS_INFO("fused points number %ld", xs.size());
+		//ROS_INFO("fused points number %ld", xs.size());
 		//--------------------------------------------------------------------------------------------------------------
 		
 		//--------------------------------------------------------------------------------------------------------------
@@ -139,7 +140,9 @@ namespace golfcar_vision{
 		{
 			vision_lane_detection::conti_lane lanetmp;
 			lanetmp.points.clear();
-			
+			lanetmp.params[0] = p->second.coefs[0];
+			lanetmp.params[1] = p->second.coefs[1];
+			lanetmp.params[2] = p->second.coefs[2];
 			CvScalar random_color;
 			random_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
 			for(unsigned int id =0; id < p->first.size(); id++)
