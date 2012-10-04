@@ -17,6 +17,7 @@
 #include <message_filters/subscriber.h>
 #include "lane_marker_common.h"
 #include "image_proc.h"
+#include "ped_crossing_detection.h"
 #include "rolling_window/plane_coef.h"
 #include "pcl/point_cloud.h"
 #include "pcl_ros/point_cloud.h"
@@ -77,6 +78,7 @@ namespace golfcar_vision{
         void Wrap_Src_to_Dst();
 
         image_proc* image_processor_;
+        ped_cross_detect* PDC_detector_;
         
         vision_lane_detection::markers_info markers_, markers_2nd_;
         ros::Publisher markers_info_pub;
