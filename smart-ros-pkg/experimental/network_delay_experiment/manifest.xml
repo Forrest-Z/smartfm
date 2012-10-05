@@ -13,6 +13,8 @@
   <depend package="tf"/>
   <depend package="fmutil"/>
   <depend package="image_transport"/>
+  <depend package="cv_bridge"/>
+
 </package>
 
 

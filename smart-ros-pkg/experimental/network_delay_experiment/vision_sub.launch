@@ -1,5 +1,11 @@
 <launch>
-    <node pkg="network_delay_experiment" type="vision_sub" name="vision_selfcheck"/>
-    <node pkg="network_delay_experiment" type="vision_sub" name="laser_sub" ns="comp1"/>
-    <node pkg="network_delay_experiment" type="vision_sub" name="laser_sub" ns="comp2"/>
+    <node pkg="network_delay_experiment" type="vision_sub0" name="vision_selfcheck">
+	<param name="image_transport" value="compressed"/>
+    </node>	
+
+    <node pkg="network_delay_experiment" type="vision_sub1" name="vision_sub" ns="robot_1">
+    </node>
+    <node pkg="network_delay_experiment" type="vision_sub0" name="vision_sub" ns="robot_2">
+	<remap from="/camera_front/image_raw" to="/camera_front/image_repub"/>
+    </node>
 </launch>

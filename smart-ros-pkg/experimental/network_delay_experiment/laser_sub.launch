@@ -1,6 +1,10 @@
 <launch>
-    <node pkg="network_delay_experiment" type="simulated_laser_sub" name="laser_selfcheck"/>
     <node pkg="network_delay_experiment" type="simulated_laser" name="simulated_laser"/>
-    <node pkg="network_delay_experiment" type="simulated_laser_sub" name="laser_sub" ns="golfcartbackup"/>
-    <node pkg="network_delay_experiment" type="simulated_laser_sub" name="laser_sub" ns="comp1"/>
+    <node pkg="network_delay_experiment" type="simulated_laser_sub0" name="laser_selfcheck"/>
+    <node pkg="network_delay_experiment" type="simulated_laser_sub1" name="laser_sub" ns="robot_1">
+	<remap from="/simulated_scan" to="/simulated_scan"/>
+    </node>
+    <node pkg="network_delay_experiment" type="simulated_laser_sub0" name="laser_sub" ns="robot_2">
+	<remap from="/simulated_scan" to="/copy_simulated_scan"/>
+    </node>
 </launch>
