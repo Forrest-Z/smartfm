@@ -1,20 +1,32 @@
 <launch>
     <node name="vehicle_detect_1" pkg="cooperative_perception" type="laser_vehicle" ns="/robot_1">
-        <param name="target_frame" value="robot_0_1"/>
+        <param name="target_frame" value="robot_1/base_link"/>
+        <remap from="scan_in" to="base_scan"/>
+        <param name="detected_vehicle_frame" value="robot_0_1"/>
     </node>
     <node name="vehicle_detect_2" pkg="cooperative_perception" type="laser_vehicle" ns="/robot_2">
-        <param name="target_frame" value="robot_1_2"/>
+        <param name="target_frame" value="robot_2/base_link"/>
+        <remap from="scan_in" to="base_scan"/>
+<param name="detected_vehicle_frame" value="robot_1_2"/>
     </node>
     <node name="vehicle_detect_3" pkg="cooperative_perception" type="laser_vehicle" ns="/robot_3">
-        <param name="target_frame" value="robot_2_3"/>
+        <param name="target_frame" value="robot_3/base_link"/>
+        <remap from="scan_in" to="base_scan"/>
+<param name="detected_vehicle_frame" value="robot_2_3"/>
     </node>
     <node name="vehicle_detect_4" pkg="cooperative_perception" type="laser_vehicle" ns="/robot_4">
-        <param name="target_frame" value="robot_3_4"/>
+        <param name="target_frame" value="robot_4/base_link"/>
+        <remap from="scan_in" to="base_scan"/>
+<param name="detected_vehicle_frame" value="robot_3_4"/>
     </node>
     <node name="vehicle_detect_5" pkg="cooperative_perception" type="laser_vehicle" ns="/robot_5">
-        <param name="target_frame" value="robot_4_5"/>
+        <param name="target_frame" value="robot_5/base_link"/>
+        <remap from="scan_in" to="base_scan"/>
+<param name="detected_vehicle_frame" value="robot_4_5"/>
     </node>
-    <node name="vehicle_detect_6" pkg="cooperative_perception" type="laser_vehicle" ns="/robot_6">
-        <param name="target_frame" value="robot_5_6"/>
+    <node name="vehicle_detect_6" pkg="cooperative_perception" type="laser_vehicle" ns="/robot_6" output="screen">
+        <param name="target_frame" value="robot_6/base_link"/>
+        <remap from="scan_in" to="base_scan"/>
+<param name="detected_vehicle_frame" value="robot_5_6"/>
     </node>>
 </launch>
