@@ -8,7 +8,7 @@
     <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrs4" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrs3 100" />
     <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrsAssemble" args="1.7, 0.0, 0.92 0 0 0 /base_link /ldmrsAssemb 100" />
 
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.795, 0.0, 0.97 -0.0 0.15 -0.0 /base_link /camera_front_base 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.795, 0.0, 0.97 -0.0 0.2 -0.0 /base_link /camera_front_base 100" />
     <node pkg="tf" type="static_transform_publisher" name="camera_rear_front_to_img" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /camera_front_base /camera_front_img 100" />
 
     <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.5, 0.0, 1.7 -0.0 0.19 -0.0 /robot_1/base_link /robot_1/camera_base 100" ns="robot_1"/>

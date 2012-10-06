@@ -487,7 +487,8 @@ namespace golfcar_vision{
 		{
 			pttmp.x = center_x -(pts_image[i].y- center_pix_y)/scale_;
 			pttmp.y = center_y -(pts_image[i].x - center_pix_x)/scale_;
-			pttmp.z = 0.0;
+			//for the purpose of visualization in RVIZ;
+			pttmp.z = 0.5;
 			pts_3d.points.push_back(pttmp);
 		}
 	}
@@ -563,6 +564,13 @@ namespace golfcar_vision{
 				xyzRGB_pt.b = s.val[0];
 				xyzRGB_pt.g = s.val[1];
 				xyzRGB_pt.r = s.val[2];
+				
+				if(xyzRGB_pt.b ==0 && xyzRGB_pt.g ==0 && xyzRGB_pt.r ==0)
+				{
+					xyzRGB_pt.b = 255;
+					xyzRGB_pt.g = 255;
+					xyzRGB_pt.r = 255;
+				}
 				pts_rgb.points.push_back(xyzRGB_pt);
 			}
 		}

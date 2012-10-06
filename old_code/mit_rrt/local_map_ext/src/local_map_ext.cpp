@@ -244,7 +244,7 @@ void LocalMap::addPointToMap(geometry_msgs::Point32 map_p, int occ)
 
 void LocalMap::updateMap(sensor_msgs::PointCloud& pc)
 {
-    cout<<"Map update call"<<endl;
+    //cout<<"Map update call"<<endl;
     if(updateMapSkip < updateMapSkipMax)
     {
         updateMapSkip++;

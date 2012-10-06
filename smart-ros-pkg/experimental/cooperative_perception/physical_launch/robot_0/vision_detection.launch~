@@ -7,7 +7,6 @@
 	<param name="ipm_center_x" value="9.0"/>
 	<param name="ipm_center_y" value="0.0"/>
 	<param name="ipm_ROI_height" value="12.0"/>
-    <param name="scale" value="30.0"/>
 	<param name="ipm_ROI_near_width_" value="4.0"/>
 	<param name="ipm_ROI_far_width_" value="20.0"/>
 	<param name="use_odom_" value="false"/>
