@@ -1,0 +1,28 @@
+<!-- launch file to test vision_opticalflow package -->
+
+<launch>
+    <!-- Take compressed format from bag file and republish it in raw format-->
+    <node pkg="image_transport" type="republish" name="republish"
+	args="compressed in:=camera_front/image_raw raw out:=camera_front/image_raw" >
+    </node>
+
+    <node pkg="vision_opticalflow" type="feature_extractor" name="feature_extractor" output="screen">
+	<remap from="image" to="camera_front/image_raw" />
+    </node>
+<!--
+    <node pkg="vision_opticalflow" type="feature_display" name="feature_display" output="screen" respawn="true">
+        <remap from="image" to="camera_front/image_raw" />
+        <remap from="features" to="/feature_extractor/feature" />
+    </node>
+-->
+    <node pkg="vision_opticalflow" type="feature_clustering" name="feature_clustering" output="screen" respawn="true">
+        <remap from="features" to="/feature_extractor/feature" />
+        <!--remap from="image" to="camera_front/image_raw" / -->
+    </node>
+
+    <node pkg="vision_opticalflow" type="cluster_display" name="cluster_display" output="screen" respawn="true">
+        <remap from="image" to="camera_front/image_raw" />
+        <!--remap from="features" to="/feature_extractor/feature" / -->
+    </node>
+
+</launch>
