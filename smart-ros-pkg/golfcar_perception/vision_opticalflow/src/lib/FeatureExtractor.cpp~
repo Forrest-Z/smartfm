@@ -3,7 +3,7 @@
 FeatureExtractor::FeatureExtractor() : changed_(true), alpha_target_(0.005), alpha_(1.0)
 {
     //goodFeaturesToTrack
-    MAX_CORNERS = 200;
+    MAX_CORNERS = 800;
     qualityLevel = 0.2;
     minDistance = 0.1;
     roi_start_pt = cv::Point(400,400);
@@ -30,8 +30,10 @@ void FeatureExtractor::goodFeatures(cv::Mat frame)
 
     disp_frame_ = frame.clone();
     frame.convertTo(curr_frame_, CV_8U);
-    
+   
     cv::cvtColor(curr_frame_, curr_frame_gray_, CV_BGR2GRAY);
+    //adjust image
+    cv::equalizeHist( curr_frame_gray_, curr_frame_gray_ );
     //Get good feature to track of the current frame, store it in curr_frame_feature_ vector (vector of type float)
 //     cv::goodFeaturesToTrack(curr_frame_gray_, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance, mask_roi);
     cv::goodFeaturesToTrack(curr_frame_gray_, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance);
@@ -53,6 +55,7 @@ void FeatureExtractor::update_frame()
 {
     prev_frame_ = curr_frame_.clone();
     prev_frame_feature_ = curr_frame_feature_;
+    prev_frame_feature_ = found_frame_feature_;
 }
 
 void FeatureExtractor::reset()

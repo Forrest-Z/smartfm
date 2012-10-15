@@ -36,10 +36,10 @@ CMAKE_COMMAND = /usr/bin/cmake
 RM = /usr/bin/cmake -E remove -f
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/poon/smartfm/smart-ros-pkg/golfcar_perception/vision_opticalflow
+CMAKE_SOURCE_DIR = /home/livingmachine/smartfm/smart-ros-pkg/golfcar_perception/vision_opticalflow
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/poon/smartfm/smart-ros-pkg/golfcar_perception/vision_opticalflow
+CMAKE_BINARY_DIR = /home/livingmachine/smartfm/smart-ros-pkg/golfcar_perception/vision_opticalflow
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -66,9 +66,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/poon/smartfm/smart-ros-pkg/golfcar_perception/vision_opticalflow/CMakeFiles /home/poon/smartfm/smart-ros-pkg/golfcar_perception/vision_opticalflow/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/livingmachine/smartfm/smart-ros-pkg/golfcar_perception/vision_opticalflow/CMakeFiles /home/livingmachine/smartfm/smart-ros-pkg/golfcar_perception/vision_opticalflow/CMakeFiles/progress.marks
 	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/poon/smartfm/smart-ros-pkg/golfcar_perception/vision_opticalflow/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/livingmachine/smartfm/smart-ros-pkg/golfcar_perception/vision_opticalflow/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
