@@ -52,7 +52,9 @@ void ClusterDisplayNode::displayCallback(const sensor_msgs::Image::ConstPtr & fr
         const vision_opticalflow::Clusters::ConstPtr & clusters_msg)
 {
     cv::Point2f cluster_pos;
-    std::cout << " displayCallback " << std::endl;
+    cv::Scalar color[] = {cv::Scalar(255,0,0),cv::Scalar(0,255,0),cv::Scalar(0,0,255),cv::Scalar(255,255,0),cv::Scalar(255,0,255),cv::Scalar(0,255,255)};
+    
+//     std::cout << " displayCallback " << std::endl;
     
     if( displayWindowName_.length()==0 ) {
         displayWindowName_ = clusters_sub_.getTopic();
@@ -63,12 +65,15 @@ void ClusterDisplayNode::displayCallback(const sensor_msgs::Image::ConstPtr & fr
 
     for( unsigned i=0; i< clusters_msg->clusters_info.size(); i++ )
     {
+        cluster_pos.x = clusters_msg->clusters_info[i].centroid.x;
+        cluster_pos.y = clusters_msg->clusters_info[i].centroid.y;
+        cv::circle(img, cluster_pos, 50, cv::Scalar(0,255,255));
         for(unsigned j=0; j<clusters_msg->clusters_info[i].members.size(); j++)
         {
             cluster_pos.x = clusters_msg->clusters_info[i].members[j].x;
             cluster_pos.y = clusters_msg->clusters_info[i].members[j].y;
 
-            cv::circle(img, cluster_pos, 2, cv::Scalar(0,255,0));
+            cv::circle(img, cluster_pos, 2, color[i%6]);
         }
 
     }

@@ -4,10 +4,10 @@ FeatureExtractor::FeatureExtractor() : changed_(true), alpha_target_(0.005), alp
 {
     //goodFeaturesToTrack
     MAX_CORNERS = 500;
-    qualityLevel = 0.1;
+    qualityLevel = 0.2;
     minDistance = 0.1;
-    roi_start_pt = cv::Point(200,200);
-    roi_end_pt = cv::Point(1000,650);
+    roi_start_pt = cv::Point(400,400);
+    roi_end_pt = cv::Point(600,600);
     
     //Opticalflow
     win_size = cv::Size(12,12);
@@ -33,7 +33,8 @@ void FeatureExtractor::goodFeatures(cv::Mat frame)
     
     cv::cvtColor(curr_frame_, curr_frame_gray_, CV_BGR2GRAY);
     //Get good feature to track of the current frame, store it in curr_frame_feature_ vector (vector of type float)
-    cv::goodFeaturesToTrack(curr_frame_gray_, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance, mask_roi);
+//     cv::goodFeaturesToTrack(curr_frame_gray_, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance, mask_roi);
+    cv::goodFeaturesToTrack(curr_frame_gray_, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance);
 }
 
 void FeatureExtractor::opticalFlow()
@@ -86,21 +87,26 @@ cv::Mat FeatureExtractor::getImg()
 vision_opticalflow::Feature FeatureExtractor::getFeatureToMsg(std_msgs::Header header)
 {
     geometry_msgs::Point feature_temp;
+    geometry_msgs::Point feature_vel;
     vision_opticalflow::Feature feature_msg;
 
     feature_msg.header = header;
     for(unsigned i = 0; i < prev_frame_feature_.size(); i++)
     {
+        //position of previous frame feature
         feature_temp.x = prev_frame_feature_[i].x;
         feature_temp.y = prev_frame_feature_[i].y;
         feature_msg.prev_feature.push_back(feature_temp);
-    }
-
-    for(unsigned i = 0; i < found_frame_feature_.size(); i++)
-    {
+    
+	//position of found frame feature
         feature_temp.x = found_frame_feature_[i].x;
         feature_temp.y = found_frame_feature_[i].y;
         feature_msg.found_feature.push_back(feature_temp);
+
+	//velocity of each feature
+	feature_vel.x = found_frame_feature_[i].x - prev_frame_feature_[i].x;
+	feature_vel.y = found_frame_feature_[i].y - prev_frame_feature_[i].y;
+        feature_msg.feature_vel.push_back(feature_vel);
     }
         
     return feature_msg;

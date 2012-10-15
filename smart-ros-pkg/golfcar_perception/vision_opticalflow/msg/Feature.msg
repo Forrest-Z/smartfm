@@ -7,3 +7,4 @@
 Header header
 geometry_msgs/Point[] prev_feature    
 geometry_msgs/Point[] found_feature
+geometry_msgs/Point[] feature_vel

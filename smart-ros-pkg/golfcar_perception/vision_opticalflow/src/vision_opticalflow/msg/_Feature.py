@@ -8,7 +8,7 @@ import geometry_msgs.msg
 import std_msgs.msg
 
 class Feature(genpy.Message):
-  _md5sum = "20a8ebdea3db8aa00aaf4bf6e3d4a679"
+  _md5sum = "9159c10cb3e36eee0cb6039da47d46ed"
   _type = "vision_opticalflow/Feature"
   _has_header = True #flag to mark the presence of a Header object
   _full_text = """#It is recommeded to use Point (which float64) wherever possible instead of Point32.
@@ -20,6 +20,7 @@ class Feature(genpy.Message):
 Header header
 geometry_msgs/Point[] prev_feature    
 geometry_msgs/Point[] found_feature
+geometry_msgs/Point[] feature_vel
 
 ================================================================================
 MSG: std_msgs/Header
@@ -47,8 +48,8 @@ float64 y
 float64 z
 
 """
-  __slots__ = ['header','prev_feature','found_feature']
-  _slot_types = ['std_msgs/Header','geometry_msgs/Point[]','geometry_msgs/Point[]']
+  __slots__ = ['header','prev_feature','found_feature','feature_vel']
+  _slot_types = ['std_msgs/Header','geometry_msgs/Point[]','geometry_msgs/Point[]','geometry_msgs/Point[]']
 
   def __init__(self, *args, **kwds):
     """
@@ -58,7 +59,7 @@ float64 z
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-       header,prev_feature,found_feature
+       header,prev_feature,found_feature,feature_vel
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
@@ -73,10 +74,13 @@ float64 z
         self.prev_feature = []
       if self.found_feature is None:
         self.found_feature = []
+      if self.feature_vel is None:
+        self.feature_vel = []
     else:
       self.header = std_msgs.msg.Header()
       self.prev_feature = []
       self.found_feature = []
+      self.feature_vel = []
 
   def _get_types(self):
     """
@@ -108,6 +112,11 @@ float64 z
       for val1 in self.found_feature:
         _x = val1
         buff.write(_struct_3d.pack(_x.x, _x.y, _x.z))
+      length = len(self.feature_vel)
+      buff.write(_struct_I.pack(length))
+      for val1 in self.feature_vel:
+        _x = val1
+        buff.write(_struct_3d.pack(_x.x, _x.y, _x.z))
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -123,6 +132,8 @@ float64 z
         self.prev_feature = None
       if self.found_feature is None:
         self.found_feature = None
+      if self.feature_vel is None:
+        self.feature_vel = None
       end = 0
       _x = self
       start = end
@@ -159,6 +170,17 @@ float64 z
         end += 24
         (_x.x, _x.y, _x.z,) = _struct_3d.unpack(str[start:end])
         self.found_feature.append(val1)
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      self.feature_vel = []
+      for i in range(0, length):
+        val1 = geometry_msgs.msg.Point()
+        _x = val1
+        start = end
+        end += 24
+        (_x.x, _x.y, _x.z,) = _struct_3d.unpack(str[start:end])
+        self.feature_vel.append(val1)
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
@@ -189,6 +211,11 @@ float64 z
       for val1 in self.found_feature:
         _x = val1
         buff.write(_struct_3d.pack(_x.x, _x.y, _x.z))
+      length = len(self.feature_vel)
+      buff.write(_struct_I.pack(length))
+      for val1 in self.feature_vel:
+        _x = val1
+        buff.write(_struct_3d.pack(_x.x, _x.y, _x.z))
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -205,6 +232,8 @@ float64 z
         self.prev_feature = None
       if self.found_feature is None:
         self.found_feature = None
+      if self.feature_vel is None:
+        self.feature_vel = None
       end = 0
       _x = self
       start = end
@@ -241,6 +270,17 @@ float64 z
         end += 24
         (_x.x, _x.y, _x.z,) = _struct_3d.unpack(str[start:end])
         self.found_feature.append(val1)
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      self.feature_vel = []
+      for i in range(0, length):
+        val1 = geometry_msgs.msg.Point()
+        _x = val1
+        start = end
+        end += 24
+        (_x.x, _x.y, _x.z,) = _struct_3d.unpack(str[start:end])
+        self.feature_vel.append(val1)
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
