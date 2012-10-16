@@ -1,0 +1,7 @@
+uint32 id
+geometry_msgs/Point centroid
+float64 centroid_vel
+float64 centroid_dir
+geometry_msgs/Point[] members
+float64[] members_vel
+float64[] members_dir

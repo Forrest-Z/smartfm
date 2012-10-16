@@ -90,17 +90,21 @@ namespace golfcar_vision{
 			  
 			  ROS_INFO("rgb_pts.points.size() %ld", rgb_pts.points.size());
 			  
+			  
 			  if(pcl_ros::transformPointCloud(odom_frame_, rgb_pts, rgb_pts_target, tf_ ))
 			  {
 				   rgb_pts_target.width = rgb_pts_target.points.size();
 				   rgb_pts_target.height = 1;
 					rbg_pub_.publish(rgb_pts_target);
+					/*
 					process_pcl_ = false;
 					pcl::PCDWriter writer;
 				   std::stringstream ss;
 				   ss << "/home/baoxing/RGBD.pcd";
 				   writer.write<pcl::PointXYZRGB> (ss.str (), rgb_pts_target, false); 
+				   */ 
 			  }
+			   
 		  }
 		  else
 		  {
@@ -143,9 +147,9 @@ namespace golfcar_vision{
 			CvScalar s;
 			if(pixel.x>=640||pixel.x<0||pixel.y<0||pixel.y>=360)
 			{
-				s.val[0] = 0;
+				s.val[0] = 255;
 				s.val[1] = 0;
-				s.val[2] = 255;
+				s.val[2] = 0;
 			}
 			else 
 			{
@@ -156,9 +160,9 @@ namespace golfcar_vision{
 			xyzRGB_pt.x = pts_3d.points[i].x;
 			xyzRGB_pt.y = pts_3d.points[i].y;
 			xyzRGB_pt.z = pts_3d.points[i].z;
-			xyzRGB_pt.r = s.val[0];
+			xyzRGB_pt.b = s.val[0];
 			xyzRGB_pt.g = s.val[1];
-			xyzRGB_pt.b = s.val[2];
+			xyzRGB_pt.r = s.val[2];
 			rgb_pts.points.push_back(xyzRGB_pt);
 		}
 	}
