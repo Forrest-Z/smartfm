@@ -8,7 +8,7 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   sodipodi:docname="utown_plaza_path.svg"
+   sodipodi:docname="path_def.svg"
    height="1920"
    width="1912"
    inkscape:version="0.48.3.1 r9886"
@@ -28,7 +28,7 @@
      id="namedview32"
      showgrid="false"
      inkscape:zoom="4.2042436"
-     inkscape:cx="985.35665"
+     inkscape:cx="980.30933"
      inkscape:cy="1086.9496"
      inkscape:window-x="65"
      inkscape:window-y="24"
@@ -478,26 +478,27 @@
   <image
      sodipodi:absref="/home/demian/smartfm/bookingUI/shared/SvgPath/utown_square_map_0.1.png"
      xlink:href="utown_square_map_0.1.png"
-     style="fill:#aa4400;font-size:14px"
-     width="1920"
-     height="1912"
-     id="map"
-     x="0"
+     inkscape:label="#image3014"
      y="0"
-     inkscape:label="#image3014" />
+     x="0"
+     id="map"
+     height="1912"
+     width="1920"
+     style="fill:#aa4400;font-size:14px" />
   <path
      style="fill:none;stroke:#000000;stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     d="m 952.4233,859.19952 2.94587,7.34252 2.33065,7.36657 7.81833,9.56485 13.1666,9.6057 8.96674,6.67685 14.05321,-6.22499 7.6552,-12.91876 1.4201,-8.76975 0.058,-9.344 -3.4286,-39.18135 -1.2878,-34.6621"
+     d="m 952.4233,859.19952 2.94587,7.34252 2.33065,7.36657 7.81833,9.56485 13.1666,9.6057 8.96674,6.67685 14.05321,-6.22499 7.6552,-12.91876 1.4201,-8.76975 0.058,-9.344 -2.9529,-32.75927 -1.2878,-18.96367"
      id="DCC_MCD"
      inkscape:connector-curvature="0"
      inkscape:label="#path3076"
      sodipodi:nodetypes="cccccccccccc" />
   <path
      style="fill:none;stroke:#000000;stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     d="m 1010.9743,837.40672 -2.691,-9.7549 -4.3729,-4.3729 -6.7276,-5.3821 -8.40952,-3.0273 -9.0821,-1.0091 -10.0913,1.3454 -3.7002,0.6728"
+     d="m 1009.3093,838.35814 -3.1667,-11.18203 -3.6593,-5.80003 -5.3005,-3.47926 -8.40952,-3.0273 -9.0821,-1.0091 -10.0913,1.3454 -3.7002,0.6728"
      id="MCD_DCC"
      inkscape:connector-curvature="0"
-     inkscape:label="#path3080" />
+     inkscape:label="#path3080"
+     sodipodi:nodetypes="cccccccc" />
   <path
      style="fill:none;stroke:#000000;stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      d="m 961.86318,816.21502 -10.7641,0.3364 -25.86442,2.14069 -24.53279,2.51786"
