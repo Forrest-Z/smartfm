@@ -59,6 +59,13 @@ namespace golfcar_pcl{
 		
 		surface_all_pub_   = nh_.advertise<PointCloud>("surface_all", 10);
 		boundary_all_pub_   = nh_.advertise<PointCloud>("boundary_all", 10);
+
+		planefitting_init_ = false;
+		clustering_init_   = false;
+		planefitting_disThresh_ = 0.03;
+		clustering_disThresh_   = 15.0;
+
+		clusters_pub_ = nh_.advertise<PointCloudRGB>("clusters_RGBD", 10);
 	}
 	
 	road_surface::~road_surface()
@@ -77,7 +84,7 @@ namespace golfcar_pcl{
 		boundary_pts_.clear();
 		boundary_pts_.height = 1;
 		boundary_pts_.header = pcl_in->header;
-		
+
 		PointCloud fitting_plane;
 		fitting_plane.clear();
 		fitting_plane.height = 1;
@@ -90,84 +97,155 @@ namespace golfcar_pcl{
 		
 	}
 	
-	//odomCallback serves for several purposes;
-	//1st maintain the "road_surface" and "boundary" in the odom frame, by erasing obsolete pcl and add new incoming pcl;
-	//2nd extract plane by RANSAC based on the maintained "road_surface" pcl;
+	//odomCallback triggers several processing functions;
+	//1st: extract plane by RANSAC based on the maintained "road_surface" pcl;
+	//2nd: do surface subtraction and clustering for other objects;
 	
 	void road_surface::odomCallback(const OdomConstPtr& odom)
-	{		
-		if(input_update_flag_)
-		{
-			input_update_flag_ = false;
-			PointCloud surface_single_tmp, boundary_single_tmp, surface_tmp, boundary_tmp;
-			
-			surface_single_tmp.clear();
-			surface_single_tmp.height = 1;
-			boundary_single_tmp.clear();	
-			boundary_single_tmp.height = 1;
-			
-			surface_tmp.clear();
-			surface_tmp.height = 1;
-			
-			boundary_tmp.clear();
-			boundary_tmp.height = 1;
-			
-			road_surface::pclXYZ_transform(odom_frame_, surface_pts_, surface_single_tmp);
-			road_surface::pclXYZ_transform(odom_frame_, boundary_pts_, boundary_single_tmp);
-			
-			//erase old history of road surface points;
-			assert(surface_index_batches_.size() == boundary_index_batches_.size());
-			if(surface_index_batches_.size() == batchNum_limit_)
-			{
-				size_t total_points_num = 0;
-				for(size_t i=0; i<surface_index_batches_.size();i++)
-				{total_points_num = total_points_num + surface_index_batches_[i];}
-				for(size_t j=surface_index_batches_[0]; j<total_points_num; j++)
-				{surface_tmp.points.push_back(road_surface_odom_.points[j]);}
-				surface_index_batches_.erase (surface_index_batches_.begin());
-				
-				total_points_num = 0;
-				for(size_t i=0; i<boundary_index_batches_.size(); i++)
-				{total_points_num = total_points_num + boundary_index_batches_[i];}
-				for(size_t j=boundary_index_batches_[0]; j<total_points_num; j++)
-				{boundary_tmp.points.push_back(road_boundary_odom_.points[j]);};
-				boundary_index_batches_.erase (boundary_index_batches_.begin());
-			}
-			
-			surface_index_batches_.push_back(surface_single_tmp.points.size());
-			boundary_index_batches_.push_back(boundary_single_tmp.points.size());
-			
-			surface_tmp = surface_tmp + surface_single_tmp;
-			boundary_tmp = boundary_tmp + boundary_single_tmp;
-			
-			road_surface_odom_ = surface_tmp;
-			road_boundary_odom_ = boundary_tmp;		
-			
-			//ROS_INFO("surface_index_batches size() %ld", surface_index_batches_.size());
-			//ROS_INFO("road_surface_odom size() %ld", road_surface_odom_.size());
-		}
-		
-		bool plane_extraction = true;
-		if(plane_extraction)
-		{
-			PointCloud surface_baselink_tmp;
-			road_surface_odom_.header = odom->header;				
-			road_surface::pclXYZ_transform(base_frame_, road_surface_odom_, surface_baselink_tmp);
-			
-			PointCloud fitting_plane;
-			fitting_plane.clear();
-			fitting_plane.height = 1;
-			fitting_plane.header = surface_baselink_tmp.header;
-			rolling_window::plane_coef plane_coef;
-			planefitting_ROI(surface_baselink_tmp, poly_ROI_, fitting_plane, plane_coef);
-			fitting_plane_pub_.publish(fitting_plane);
-		   plane_coef_pub_.publish(plane_coef);
-		}
-		
+	{
 		road_surface_odom_.header = odom->header;
-		road_boundary_odom_.header = odom->header;	
+		road_boundary_odom_.header = odom->header;
 		surface_all_pub_.publish(road_surface_odom_);
-		boundary_all_pub_.publish(road_boundary_odom_);	
+		boundary_all_pub_.publish(road_boundary_odom_);
+
+		tf::StampedTransform OdomTemp;
+		try
+		{
+			tf_->lookupTransform(odom_frame_, base_frame_, odom->header.stamp, OdomTemp);
+		}
+		catch(tf::TransformException e)
+		{
+			ROS_WARN("odom Failed to get fresh tf between odom and baselink, (%s)", e.what()); return;
+		}
+
+		//process1: some high-level processing triggered by odom;
+		if(planefitting_init_)
+		{
+			bool planefitting_flag = road_surface::checkDistance(planefitting_OdomMeas_, OdomTemp, planefitting_disThresh_);
+			if(planefitting_flag)
+			{
+				planefitting_OdomMeas_ = OdomTemp;
+				PointCloud surface_baselink_tmp;
+				road_surface_odom_.header = odom->header;
+				road_surface::pclXYZ_transform(base_frame_, road_surface_odom_, surface_baselink_tmp);
+
+				PointCloud fitting_plane;
+				fitting_plane.clear();
+				fitting_plane.height = 1;
+				fitting_plane.header = surface_baselink_tmp.header;
+				rolling_window::plane_coef plane_coef;
+				planefitting_ROI(surface_baselink_tmp, poly_ROI_, fitting_plane, plane_coef);
+				fitting_plane_pub_.publish(fitting_plane);
+			    plane_coef_pub_.publish(plane_coef);
+			}
+		}
+		else
+		{
+			planefitting_init_ = true;
+			planefitting_OdomMeas_ = OdomTemp;
+		}
+
+		//process2: do road surface subtraction and clustering every certain distance;
+		//process1: some high-level processing triggered by odom;
+		if(clustering_init_)
+		{
+			bool clustering_flag = road_surface::checkDistance(clustering_OdomMeas_, OdomTemp, clustering_disThresh_);
+			if(clustering_flag && raw_pcl_batches_.size() == batchNum_limit_)
+			{
+			    clustering_OdomMeas_ = OdomTemp;
+			    //add clustering function here, refer to "single_window.cpp" line 158-192;
+			    //publish as RGBD pointcloud;
+
+			    //1st step: prepare accumulated raw pcl, and combine surface indices;
+			    PointCloud accumulated_raw_pcl;
+			    accumulated_raw_pcl.clear();
+			    accumulated_raw_pcl.height = 1;
+			    //pay attention to the serial calculation here;
+			    size_t serial_base = 0;
+			    pcl::PointIndices::Ptr surface_indices (new pcl::PointIndices);
+			    for(size_t batch =0; batch < raw_pcl_batches_.size()-1; batch++)
+			    {
+			    	accumulated_raw_pcl = accumulated_raw_pcl+raw_pcl_batches_[batch];
+			    	for(size_t serial=0; serial < surface_index_batches_[batch].size(); serial++)
+			    	{
+			    		int serial_tmp = surface_index_batches_[batch][serial] + serial_base;
+			    		surface_indices->indices.push_back(serial_tmp);
+			    	}
+			    	serial_base = serial_base + raw_pcl_batches_[batch].size();
+			    }
+			    //2nd step: extract surface, and then do clustering for the rest;
+			    pcl::ExtractIndices<pcl::PointXYZ> extract;
+				pcl::PointCloud<pcl::PointXYZ>::Ptr surface_plane (new pcl::PointCloud<pcl::PointXYZ> ());
+				extract.setInputCloud (accumulated_raw_pcl.makeShared());
+				extract.setIndices (surface_indices);
+				extract.setNegative (false);
+				extract.filter (*surface_plane);
+
+				PointCloudRGB clusters_tmp;
+				clusters_tmp.clear();
+				clusters_tmp.header = odom->header;
+				clusters_tmp.height = 1;
+
+				pcl::PointXYZRGB xyzRGB_pt;
+
+				xyzRGB_pt.r = 0;
+				xyzRGB_pt.g = 0;
+				xyzRGB_pt.b = 255;
+				for(size_t sp=0; sp <surface_plane->points.size(); sp++)
+				{
+					xyzRGB_pt.x = surface_plane->points[sp].x;
+					xyzRGB_pt.y = surface_plane->points[sp].y;
+					xyzRGB_pt.z = surface_plane->points[sp].z;
+					clusters_tmp.push_back(xyzRGB_pt);
+				}
+
+				pcl::PointCloud<pcl::PointXYZ>::Ptr other_points (new pcl::PointCloud<pcl::PointXYZ>);
+				extract.setNegative (true);
+				extract.filter (*other_points);
+				std::cout << "other_points size "<<other_points->points.size()<<endl;
+
+				pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
+				tree->setInputCloud (other_points);
+
+				std::vector<pcl::PointIndices> cluster_indices;
+				pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+				ec.setClusterTolerance (0.1); // 2cm
+				ec.setMinClusterSize (50);
+				ec.setMaxClusterSize (250000);
+				ec.setSearchMethod (tree);
+				ec.setInputCloud (other_points);
+				ec.extract (cluster_indices);
+
+				srand ( time(NULL) );
+				std::cout << "cluster_indices size "<<cluster_indices.size()<<endl;
+				for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
+				{
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
+					for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
+					cloud_cluster->points.push_back (other_points->points[*pit]);
+					cloud_cluster->width = cloud_cluster->points.size ();
+					cloud_cluster->height = 1;
+
+					xyzRGB_pt.r = rand() % 255;
+					xyzRGB_pt.g = rand() % 255;
+					xyzRGB_pt.b = rand() % 255;
+					for(size_t sp=0; sp <cloud_cluster->points.size(); sp++)
+					{
+						xyzRGB_pt.x = cloud_cluster->points[sp].x;
+						xyzRGB_pt.y = cloud_cluster->points[sp].y;
+						xyzRGB_pt.z = cloud_cluster->points[sp].z;
+						clusters_tmp.push_back(xyzRGB_pt);
+					}
+				}
+				clusters_pub_.publish(clusters_tmp);
+			}
+		}
+		else
+		{
+			clustering_init_ = true;
+			clustering_OdomMeas_ = OdomTemp;
+		}
+
 	}
 	
 	void road_surface::surface_extraction (const PointCloud &cloud_in, const rolling_window::pcl_indices& proc_indices, 
@@ -269,21 +347,220 @@ namespace golfcar_pcl{
 		}
 		sw.end();
 		
+		sw.start("3. filter the noisy boundary");
+		if(inliers->indices.size()==0) {ROS_WARN("no surface extracted!!!"); return;}
+
+		/*
 		pcl::ExtractIndices<pcl::PointXYZ> extract;
 		extract.setInputCloud (process_fraction_pcl.makeShared());
 		extract.setIndices (inliers);
 		extract.setNegative (false);
 		extract.filter (surface_pts);
-		
-		//ROS_INFO("boundary_inliers - size() %ld", boundary_inliers->indices.size());
-		
+
 		pcl::ExtractIndices<pcl::PointXYZ> extract_bd;
 		extract_bd.setInputCloud (process_fraction_pcl.makeShared());
 		extract_bd.setIndices (boundary_inliers);
 		extract_bd.setNegative (false);
 		extract_bd.filter (boundary_pts);
-		
+		*/
+
 		input_update_flag_ = true;
+		//to process the last but one PCLs;
+
+		//1st maintain the "road_surface" and "boundary" in the odom frame, by erasing obsolete pcl and add new incoming pcl;
+		//a. maintain raw rolling window data by a vector of pcl batches, which is delayed by one step than that in "rolling_window_pcl";
+		//b. keep extracted surface and boundary data by indices corresponding to each pcl batch in the vector;
+		PointCloud pcl_odom_tmp;
+		road_surface::pclXYZ_transform(odom_frame_, process_fraction_pcl, pcl_odom_tmp);
+		raw_pcl_batches_.push_back(pcl_odom_tmp);
+		surface_index_batches_.push_back(inliers->indices);
+		boundary_index_batches_.push_back(boundary_inliers->indices);
+		//erase old history of road surface points;
+		assert( raw_pcl_batches_.size() == surface_index_batches_.size() && surface_index_batches_.size() == boundary_index_batches_.size());
+		if(raw_pcl_batches_.size() > batchNum_limit_)
+		{
+			raw_pcl_batches_.erase (raw_pcl_batches_.begin());
+			surface_index_batches_.erase (surface_index_batches_.begin());
+			boundary_index_batches_.erase (boundary_index_batches_.begin());
+		}
+
+
+		//2nd filter, update and process road_surface and road_boundary point; connect differ surface batches;
+		//a. filter road boundary noise, and repair holes in the surface;
+		//b. update "road_surface_odom_" and "road_boundary_odom_";
+		ROS_INFO("raw_pcl_batches_ size() %ld", raw_pcl_batches_.size());
+
+		if(raw_pcl_batches_.size()>=3)
+		{
+			//a---1st step: to prepare the boundary to be filtered, and its supporting surface and raw pcl---
+			PointCloud supporting_raw_pcl, supporting_road_surface, boundary_to_filter;
+			supporting_raw_pcl.clear();
+			supporting_raw_pcl.height = 1;
+			supporting_road_surface.clear();
+			supporting_road_surface.height = 1;
+			boundary_to_filter.clear();
+			boundary_to_filter.height = 1;
+
+			for(vector<PointCloud>::iterator it=raw_pcl_batches_.end()-3; it< raw_pcl_batches_.end(); it++)
+			{
+				supporting_raw_pcl = supporting_raw_pcl + *it;
+
+			}
+			supporting_raw_pcl.width = supporting_raw_pcl.points.size();
+			supporting_raw_pcl.header.stamp = cloud_in.header.stamp;
+			supporting_raw_pcl.header.frame_id = odom_frame_;
+			road_surface::pclXYZ_transform(base_frame_, supporting_raw_pcl, supporting_raw_pcl);
+
+			for(size_t i=surface_index_batches_.size()-3; i< surface_index_batches_.size(); i++)
+			{
+				PointCloud surface_pts_tmp;
+
+				pcl::ExtractIndices<pcl::PointXYZ> extract_surface;
+				extract_surface.setInputCloud (raw_pcl_batches_[i].makeShared());
+				pcl::PointIndices::Ptr surface_indices_tmp (new pcl::PointIndices);
+				surface_indices_tmp->indices = surface_index_batches_[i];
+				extract_surface.setIndices (surface_indices_tmp);
+				extract_surface.setNegative (false);
+				extract_surface.filter (surface_pts_tmp);
+				supporting_road_surface = supporting_road_surface + surface_pts_tmp;
+			}
+			supporting_road_surface.width = supporting_road_surface.points.size();
+			supporting_road_surface.header.stamp = cloud_in.header.stamp;
+			supporting_road_surface.header.frame_id = odom_frame_;
+			road_surface::pclXYZ_transform(base_frame_, supporting_road_surface, supporting_road_surface);
+
+			surface_pts.points = supporting_road_surface.points;
+			surface_pts.width = supporting_road_surface.width;
+
+			//only process the last but one boundary batch;
+			PointCloud raw_pcl_lb2;
+			pcl::PointIndices::Ptr boundary_inliers_lb2 (new pcl::PointIndices);
+			raw_pcl_lb2 = raw_pcl_batches_[raw_pcl_batches_.size()-2];
+			boundary_inliers_lb2 -> indices = boundary_index_batches_[boundary_index_batches_.size()-2];
+			raw_pcl_lb2.header.stamp = cloud_in.header.stamp;
+			raw_pcl_lb2.header.frame_id = odom_frame_;
+			road_surface::pclXYZ_transform(base_frame_, raw_pcl_lb2, raw_pcl_lb2);
+
+
+			//a---2nd step: filter the boundary points using several strategies---
+			pcl::KdTreeFLANN<pcl::PointXYZ> kdtree_filter;
+			kdtree_filter.setInputCloud (supporting_road_surface.makeShared());
+			pcl::PointIndices::Ptr boundary_inliers_tmp (new pcl::PointIndices);
+			for(unsigned int bd_pt=0; bd_pt< boundary_inliers_lb2->indices.size(); bd_pt++)
+			{
+				pcl::PointXYZ searchPt_tmp = raw_pcl_lb2.points[boundary_inliers_lb2->indices[bd_pt]];
+
+				std::vector<int> pointIdxRadiusSearch;
+				std::vector<float> pointRadiusSquaredDistance;
+
+				//-----------------check the point density in boundary point's neighborhood;--------------------
+				//std::vector<int> pointIdxRadiusSearch_PF;
+				//std::vector<float> pointRadiusSquaredDistance_PF;
+				//kdtree_PF.radiusSearch (searchPt_tmp, 0.3, pointIdxRadiusSearch_PF, pointRadiusSquaredDistance_PF);
+				//size_t bdPt_neighborNum = pointIdxRadiusSearch_PF.size();
+				//ROS_INFO("boundary point neighbors %ld", bdPt_neighborNum);
+
+				std::vector <float> angles_tmp;
+				//at least 4 support points from road surface pts;
+				if(kdtree_filter.radiusSearch (searchPt_tmp, 0.3, pointIdxRadiusSearch, pointRadiusSquaredDistance)> 3 )
+				{
+					//ROS_INFO("searchPt_tmp (%3f, %3f)", searchPt_tmp.x, searchPt_tmp.y);
+					for(size_t sp_pt=0; sp_pt< pointIdxRadiusSearch.size(); sp_pt++)
+					{
+						pcl::PointXYZ supportPt_tmp = supporting_road_surface.points[pointIdxRadiusSearch[sp_pt]];
+						float angle_tmp = atan2f(supportPt_tmp.y-searchPt_tmp.y, supportPt_tmp.x-searchPt_tmp.x);
+						angles_tmp.push_back(angle_tmp);
+						//printf("supportPt_tmp (%3f, %3f), angle %3f\t", supportPt_tmp.x, supportPt_tmp.y, angle_tmp);
+					}
+
+					//bubble sorting for small-to-big;
+					size_t i,j;
+					for(i=0; i<angles_tmp.size(); i++)
+					{
+						for(j=0;j<i;j++)
+						{
+							if(angles_tmp[i]<angles_tmp[j])
+							{
+								 float temp=angles_tmp[i]; //swap
+								 angles_tmp[i]=angles_tmp[j];
+								 angles_tmp[j]=temp;
+							}
+						}
+					}
+
+					//here is tricky;
+					float max_delt_angle = 0;
+					float delt_angle_tmp = 2*M_PI - fabsf(angles_tmp.back()-angles_tmp.front());
+					if(delt_angle_tmp> max_delt_angle) max_delt_angle = delt_angle_tmp;
+					for(i=1; i<angles_tmp.size(); i++)
+					{
+						delt_angle_tmp = fabsf(angles_tmp[i]-angles_tmp[i-1]);
+						if(delt_angle_tmp> max_delt_angle) max_delt_angle = delt_angle_tmp;
+					}
+
+					//ROS_INFO("max_delt_angle %3f", max_delt_angle);
+					if(max_delt_angle < M_PI_4)
+					{
+						ROS_INFO("boundary points filtered: max_delt_angle %3f", max_delt_angle);
+						//this boundary point is a fake point;
+						//incoporate it into the surface pcl;
+					}
+					else
+					{
+						boundary_inliers_tmp->indices.push_back(boundary_inliers_lb2->indices[bd_pt]);
+					}
+				}
+				else
+				{
+					boundary_inliers_tmp->indices.push_back(boundary_inliers_lb2->indices[bd_pt]);
+				}
+			}
+
+			boundary_index_batches_[boundary_index_batches_.size()-2] = boundary_inliers_tmp->indices;
+			pcl::ExtractIndices<pcl::PointXYZ> extract_bd;
+			extract_bd.setInputCloud (raw_pcl_lb2.makeShared());
+			extract_bd.setIndices (boundary_inliers_tmp);
+			//"boundary_inliers" is the most recent boundary;
+			//extract_bd.setIndices (boundary_inliers);
+			extract_bd.setNegative (false);
+			extract_bd.filter (boundary_pts);
+			sw.end();
+
+			//b. update "road_surface_odom_" and "road_boundary_odom_";
+			//just incorporated filtered PCLs, which is one batch delayed than the most recent batch, and compose of (batchNum_limit_-1) batches;
+			sw.start("4. update road_surface_odom and road_boundary_odom");
+			road_surface_odom_.clear();
+			road_surface_odom_.height=1;
+			road_boundary_odom_.clear();
+			road_boundary_odom_.height=1;
+			for(size_t i=0; i< surface_index_batches_.size()-1; i++)
+			{
+				PointCloud surface_pts_tmp;
+				pcl::ExtractIndices<pcl::PointXYZ> extract_surface;
+				extract_surface.setInputCloud (raw_pcl_batches_[i].makeShared());
+				pcl::PointIndices::Ptr surface_indices_tmp (new pcl::PointIndices);
+				surface_indices_tmp->indices = surface_index_batches_[i];
+				extract_surface.setIndices (surface_indices_tmp);
+				extract_surface.setNegative (false);
+				extract_surface.filter (surface_pts_tmp);
+				road_surface_odom_ = road_surface_odom_ + surface_pts_tmp;
+			}
+			for(size_t i=0; i< boundary_index_batches_.size()-1; i++)
+			{
+				PointCloud bd_pts_tmp;
+				pcl::ExtractIndices<pcl::PointXYZ> extract_bds;
+				extract_bds.setInputCloud (raw_pcl_batches_[i].makeShared());
+				pcl::PointIndices::Ptr bd_indices_tmp (new pcl::PointIndices);
+				bd_indices_tmp->indices = boundary_index_batches_[i];
+				extract_bds.setIndices (bd_indices_tmp);
+				extract_bds.setNegative (false);
+				extract_bds.filter (bd_pts_tmp);
+				road_boundary_odom_ = road_boundary_odom_ + bd_pts_tmp;
+			}
+			sw.end();
+			input_update_flag_ = false;
+
+		}
 	}
 	
 	//input:		surface_pts;	poly_ROI;
@@ -410,6 +687,21 @@ namespace golfcar_pcl{
 		}
 	}
 	
+
+	bool road_surface::checkDistance(const tf::StampedTransform& oldTf, const tf::StampedTransform& newTf, float Dis_thresh)
+	{
+		//"odom_old_new" denotes the tf of  "baselink_new" coordinate inside the "baselink_old" coordinate;
+		tf::Transform odom_old_new  = oldTf.inverse() * newTf;
+		float tx, ty;
+		tx = -odom_old_new.getOrigin().y();
+		ty =  odom_old_new.getOrigin().x();
+		float mov_dis = sqrtf(tx*tx + ty*ty);
+		//double yaw_dis, ttemp;
+		//odom_old_new.getBasis().getEulerYPR(yaw_dis, ttemp, ttemp);
+		if(mov_dis > Dis_thresh) return true;
+		else return false;
+	}
+
 };
 
 int main(int argc, char** argv)
