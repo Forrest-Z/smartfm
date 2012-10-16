@@ -1,0 +1,14 @@
+<package>
+  <description brief="utown_plaza">
+
+     utown_plaza
+
+  </description>
+  <author>Demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/utown_plaza</url>
+
+</package>
+
+
