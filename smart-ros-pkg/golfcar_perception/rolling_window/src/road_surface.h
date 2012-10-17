@@ -49,10 +49,16 @@
 #include "geometry_common.h"
 #include "rolling_window/plane_coef.h"
 #include "rolling_window/pcl_indices.h"
+#include <cstdlib>
+#include <pcl_ros/point_cloud.h>
+#include <pcl_ros/transforms.h>
 
 namespace golfcar_pcl{
 
 	typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
+	typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudRGB;
+	typedef pcl::PointCloud<pcl::PointNormal> PointCloudNormal;
+	typedef pcl::PointCloud<pcl::PointXYZRGBNormal> PointCloudRGBNormal;
 	typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
 
 	class road_surface {
@@ -76,8 +82,17 @@ namespace golfcar_pcl{
 	
 	PointCloud surface_pts_, boundary_pts_;
 	bool input_update_flag_;
+
+	//maintained for plane fitting purposes;
 	PointCloud road_surface_odom_, road_boundary_odom_;
-	vector <size_t> surface_index_batches_, boundary_index_batches_;
+
+	//vector <size_t> surface_index_batches_, boundary_index_batches_;
+
+	//important data management;
+	vector <PointCloud> raw_pcl_batches_;
+	vector <PointCloudNormal> pcl_normal_batches_;
+	vector <vector <int> > surface_index_batches_, boundary_index_batches_;
+
 	size_t batchNum_limit_;
 	
 
@@ -105,6 +120,18 @@ namespace golfcar_pcl{
 
 	ros::Publisher 	surface_all_pub_;
 	ros::Publisher	boundary_all_pub_;
+
+	bool planefitting_init_, clustering_init_;
+	tf::StampedTransform 	planefitting_OdomMeas_, clustering_OdomMeas_;
+	double planefitting_disThresh_,clustering_disThresh_;
+	bool checkDistance(const tf::StampedTransform& oldTf, const tf::StampedTransform& newTf, float Dis_thresh);
+
+	ros::Publisher  clusters_pub_, normal_visual_pub_;
+	vector<float> jet_r_, jet_g_, jet_b_;
+	double curvature_visual_limit_;
+	double normalZ_visual_limit_;
+	bool curvature_visualization_, normalZ_visualization_;
+	inline void colormap_jet(pcl::PointNormal& point_in, pcl::PointXYZRGBNormal &point_out);
     };
 
 };

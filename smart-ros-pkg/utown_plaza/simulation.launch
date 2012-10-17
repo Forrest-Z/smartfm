@@ -1,0 +1,19 @@
+<launch>
+
+    <param name="use_sim_time" value="true"/>
+
+    <node name="fake_localization" pkg="fake_localization" type="fake_localization" respawn="false" />
+
+    <node pkg="stage" type="stageros" name="stageros" args="$(find utown_plaza)/golfcar_utown.world" respawn="false">
+        <param name="base_watchdog_timeout" value="0.2"/>
+        <remap from="base_scan" to="sick_scan2"/>
+    </node>
+
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/map.yaml"/>
+
+    <include file="$(find Launch)/move_base.launch"/>
+
+    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation.vcg" />
+
+</launch>
+

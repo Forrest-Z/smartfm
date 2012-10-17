@@ -1,6 +1,0 @@
-<launch>
-    <node pkg="rolling_window" type="quick_process" name="quick_process" output="screen">
-    <!--remap from="cloud_in" to="sickldmrs/cloud" /-->
-	<remap from="scan_in" to="sick_scan2" />
-    </node>
-</launch>    
