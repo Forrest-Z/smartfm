@@ -1,12 +1,13 @@
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.h>
-#include <image_transport/subscriber.h>
-#include <std_msgs/Empty.h>
-#include <boost/thread/mutex.hpp>
-#include <vision_opticalflow/Feature.h> //for message type Feature.msg
+#include <image_transport/subscriber_filter.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+#include <message_filters/time_synchronizer.h>
+#include <opencv2/highgui/highgui.hpp>
 
-// #include <dynamic_reconfigure/server.h>
+#include <vision_opticalflow/Feature.h> //for message type Feature.msg
 
 #include <vision_opticalflow/FeatureExtractor.h>
 
@@ -16,69 +17,80 @@ public:
     FeatureExtractorNode();
     
 private:
+    FeatureExtractor feature_;
+
     ros::NodeHandle nhp_, nh_;
     image_transport::ImageTransport it_sub_;
-    image_transport::Subscriber image_sub_;
-    ros::Publisher feature_pub_;
-    ros::Subscriber reset_sub_;
+    image_transport::SubscriberFilter image_sub_, bgnd_sub_;
+    ros::Timer timer_;
 
-    FeatureExtractor feature_;
+    typedef message_filters::sync_policies::ApproximateTime<
+    sensor_msgs::Image, sensor_msgs::Image
+    > MySyncPolicy;
+    
+    message_filters::Synchronizer<MySyncPolicy> synchronizer;
+
+    ros::Publisher feature_pub_;
+
+    int skip_frames_, skip_frames_count_;
+    double period_, last_time_;
+
     boost::mutex mutex_; // protects background_
 
-    void imageCallback(const sensor_msgs::ImageConstPtr& image);
-    void resetCallback(const std_msgs::Empty &);
-
-    //For dynamic_reconfigure option (will use this in the future)
-    //dynamic_reconfigure::Server<BackgroundExtractorConfig> server_;
-    //void configCallback(BackgroundExtractorConfig & config, uint32_t level);
+    void imageCallback(const sensor_msgs::Image::ConstPtr & image,
+        const sensor_msgs::Image::ConstPtr & background);
+    void timerCallback(const ros::TimerEvent &);
 };
 
-FeatureExtractorNode::FeatureExtractorNode() : nhp_("~"), it_sub_(nh_)
+FeatureExtractorNode::FeatureExtractorNode()
+: nhp_("~"),
+  it_sub_(nh_),
+  image_sub_(it_sub_, "camera", 20),
+  bgnd_sub_(it_sub_, "background", 20),
+  synchronizer(MySyncPolicy(20), image_sub_, bgnd_sub_),
+  skip_frames_(0),
+  skip_frames_count_(0),
+  period_(0.0),
+  last_time_(0.0)
 {
-    image_sub_ = it_sub_.subscribe("image", 10, &FeatureExtractorNode::imageCallback, this);
+    synchronizer.registerCallback( boost::bind(&FeatureExtractorNode::imageCallback, this, _1, _2) );
+    
     feature_pub_  = nhp_.advertise<vision_opticalflow::Feature>("feature", 10);
 
-    double alpha;
-    nhp_.param("alpha", alpha, 0.005);
-    ROS_INFO("Good to go ...");
-    //feature_.set_alpha(alpha);
-
-    //reset_sub_ = nhp_.subscribe("reset", 1, &FeatureExtractorNode::resetCallback, this);
-
-//     server_.setCallback( boost::bind(&FeatureExtractorNode::configCallback, this, _1, _2) );
+    timer_ = nh_.createTimer(ros::Duration(1), boost::bind(&FeatureExtractorNode::timerCallback, this, _1) );
 }
 
-void FeatureExtractorNode::imageCallback(const sensor_msgs::ImageConstPtr & features_msg)
+void FeatureExtractorNode::timerCallback(const ros::TimerEvent & dummy)
 {
-    mutex_.lock();
-    cv_bridge::CvImageConstPtr cv_image = cv_bridge::toCvShare(image, "bgr8");
-    //Get feature
-    feature_.goodFeatures(cv_image->image);
-    //Do optical flow
-    feature_.opticalFlow();
-    
-    mutex_.unlock();
-    
-    //Display result
-//     dispImg.image = feature_.getImg();
-//     feature_pub_.publish(dispImg.toImageMsg()); //publish prev_frame_feature_ and found_frame_feature_
+    //do nothing
+}
 
-    //format vector for data from opencv datatype to ROS data type and publish using new defined Feature msg
-    vision_opticalflow::Feature feature_msg;
-    feature_msg = feature_.getFeatureToMsg(image->header);
-    
+void FeatureExtractorNode::imageCallback(const sensor_msgs::ImageConstPtr& image,
+        const sensor_msgs::Image::ConstPtr & background)
+{
+
+    double t_now = image->header.stamp.toSec();
+    if( last_time_==0.0 ||
+            (++skip_frames_count_ > skip_frames_ && t_now>last_time_+period_) )
+    {
+        //ROS_INFO("processing");
+        skip_frames_count_ = 0;
+        last_time_ = t_now;
+    }
+    else
+    {
+        //ROS_INFO("skipping");
+        return;
+    }
+
+    cv_bridge::CvImageConstPtr cvImgFrame = cv_bridge::toCvShare(image, "bgr8");
+    cv_bridge::CvImageConstPtr cvImgBgnd = cv_bridge::toCvShare(background, "bgr8");
+
+    vision_opticalflow::Feature feature_msg = feature_.extract(cvImgFrame->image, cvImgBgnd->image, t_now);
+    feature_msg.header = image->header;
+
     feature_pub_.publish(feature_msg);
     
-    //Update frame and feature
-    feature_.update_frame();
-//     ROS_INFO("Published!");
-}
-
-void FeatureExtractorNode::resetCallback(const std_msgs::Empty & dummy)
-{
-    mutex_.lock();
-    feature_.reset();
-    mutex_.unlock();
 }
 
 int main(int argc, char **argv)

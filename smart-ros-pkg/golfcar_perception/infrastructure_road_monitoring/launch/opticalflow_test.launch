@@ -6,8 +6,15 @@
 	args="compressed in:=camera_front/image_raw raw out:=camera_front/image_raw" >
     </node>
 
+    <!-- Take image in and output background image, pub: "background"-->
+    <node pkg="vision_motion_detection" type="background_extractor" name="background_extractor" output="screen">
+        <remap from="image" to="camera_front/image_raw" />
+    </node>
+
+    <!-- Take image in and output good feature to track, pub: "/feature_extractor/feature"-->
     <node pkg="vision_opticalflow" type="feature_extractor" name="feature_extractor" output="screen">
-	<remap from="image" to="camera_front/image_raw" />
+	    <remap from="camera" to="camera_front/image_raw" />
+        <remap from="background" to="/background_extractor/background" />
     </node>
 <!--
     <node pkg="vision_opticalflow" type="feature_display" name="feature_display" output="screen" respawn="true">
@@ -20,9 +27,14 @@
         <!--remap from="image" to="camera_front/image_raw" / -->
     </node>
 
+    <node pkg="vision_opticalflow" type="clusters_tracking" name="clusters_tracking" output="screen" respawn="true">
+        <!--remap from="image" to="camera_front/image_raw" / -->
+        <!--remap from="features" to="/feature_extractor/feature" / -->
+    </node>
+
     <node pkg="vision_opticalflow" type="cluster_display" name="cluster_display" output="screen" respawn="true">
         <remap from="image" to="camera_front/image_raw" />
-        <!--remap from="features" to="/feature_extractor/feature" / -->
+        <remap from="clusters" to="tracker" />
     </node>
 
 </launch>

@@ -48,3 +48,6 @@ target_link_libraries(feature_clustering ${PROJECT_NAME})
 
 ADD_EXECUTABLE(cluster_display src/nodes/cluster_display.cpp)
 target_link_libraries(cluster_display ${PROJECT_NAME})
+
+ADD_EXECUTABLE(clusters_tracking src/nodes/clusters_tracking.cpp)
+target_link_libraries(clusters_tracking ${PROJECT_NAME})

@@ -71,23 +71,23 @@ void ClusterDisplayNode::displayCallback(const sensor_msgs::Image::ConstPtr & fr
         float x_max,x_min;
         float y_max,y_min;
         
-        for(unsigned j=0; j<clusters_msg->clusters_info[i].members.size(); j++)
-        {
-            xpos.push_back(clusters_msg->clusters_info[i].members[j].x);
-            ypos.push_back(clusters_msg->clusters_info[i].members[j].y);
-        }
-        x_max = *std::max_element(xpos.begin(),xpos.end());     x_min = *std::min_element(xpos.begin(),xpos.end());
-        y_max = *std::max_element(ypos.begin(),ypos.end());     y_min = *std::min_element(ypos.begin(),ypos.end());
+//         for(unsigned j=0; j<clusters_msg->clusters_info[i].members.size(); j++)
+//         {
+//             xpos.push_back(clusters_msg->clusters_info[i].members[j].x);
+//             ypos.push_back(clusters_msg->clusters_info[i].members[j].y);
+//         }
+//         x_max = *std::max_element(xpos.begin(),xpos.end());     x_min = *std::min_element(xpos.begin(),xpos.end());
+//         y_max = *std::max_element(ypos.begin(),ypos.end());     y_min = *std::min_element(ypos.begin(),ypos.end());
 
 //         std::cout << "x_max : " << x_max << " x_min : "<< x_min << " y_max : " << y_max << " y_min : " << y_min <<std::endl;
         
         cluster_pos.x = clusters_msg->clusters_info[i].centroid.x;
         cluster_pos.y = clusters_msg->clusters_info[i].centroid.y;
-        cv::circle(img, cluster_pos, 2, color[clusters_msg->clusters_info[i].id%12]);
-        cv::rectangle(img, cv::Point(x_min,y_max), cv::Point(x_max,y_min), color[clusters_msg->clusters_info[i].id%12]);
-        std::cout << "x_cen_vel : " << clusters_msg->clusters_info[i].centroid_vel.x << " y_cen_vel : "<< clusters_msg->clusters_info[i].centroid_vel.y <<std::endl;
+        cv::circle(img, cluster_pos, 2, color[clusters_msg->clusters_info[i].id%12]); //[clusters_msg->clusters_info[i].id%12
+//         cv::rectangle(img, cv::Point(x_min,y_max), cv::Point(x_max,y_min), color[clusters_msg->clusters_info[i].id%12]);
+//         std::cout << "x_cen_vel : " << clusters_msg->clusters_info[i].centroid_vel.x << " y_cen_vel : "<< clusters_msg->clusters_info[i].centroid_vel.y <<std::endl;
     }
-    std::cout << " ------------------------ " <<std::endl;
+//     std::cout << " ------------------------ " <<std::endl;
     cv::imshow(displayWindowName_, img);
 }
 

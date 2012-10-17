@@ -187,6 +187,19 @@ cluster_display/fast:
 .PHONY : cluster_display/fast
 
 #=============================================================================
+# Target rules for targets named clusters_tracking
+
+# Build rule for target.
+clusters_tracking: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 clusters_tracking
+.PHONY : clusters_tracking
+
+# fast build rule for target.
+clusters_tracking/fast:
+	$(MAKE) -f CMakeFiles/clusters_tracking.dir/build.make CMakeFiles/clusters_tracking.dir/build
+.PHONY : clusters_tracking/fast
+
+#=============================================================================
 # Target rules for targets named feature_clustering
 
 # Build rule for target.
@@ -412,6 +425,21 @@ src/nodes/cluster_display.s:
 .PHONY : src/nodes/cluster_display.s
 
 # target to build an object file
+src/nodes/clusters_tracking.o:
+	$(MAKE) -f CMakeFiles/clusters_tracking.dir/build.make CMakeFiles/clusters_tracking.dir/src/nodes/clusters_tracking.o
+.PHONY : src/nodes/clusters_tracking.o
+
+# target to preprocess a source file
+src/nodes/clusters_tracking.i:
+	$(MAKE) -f CMakeFiles/clusters_tracking.dir/build.make CMakeFiles/clusters_tracking.dir/src/nodes/clusters_tracking.i
+.PHONY : src/nodes/clusters_tracking.i
+
+# target to generate assembly for a file
+src/nodes/clusters_tracking.s:
+	$(MAKE) -f CMakeFiles/clusters_tracking.dir/build.make CMakeFiles/clusters_tracking.dir/src/nodes/clusters_tracking.s
+.PHONY : src/nodes/clusters_tracking.s
+
+# target to build an object file
 src/nodes/feature_clustering.o:
 	$(MAKE) -f CMakeFiles/feature_clustering.dir/build.make CMakeFiles/feature_clustering.dir/src/nodes/feature_clustering.o
 .PHONY : src/nodes/feature_clustering.o
@@ -469,6 +497,7 @@ help:
 	@echo "... ROSBUILD_gensrv_lisp"
 	@echo "... clean-test-results"
 	@echo "... cluster_display"
+	@echo "... clusters_tracking"
 	@echo "... edit_cache"
 	@echo "... feature_clustering"
 	@echo "... feature_display"
@@ -492,6 +521,9 @@ help:
 	@echo "... src/nodes/cluster_display.o"
 	@echo "... src/nodes/cluster_display.i"
 	@echo "... src/nodes/cluster_display.s"
+	@echo "... src/nodes/clusters_tracking.o"
+	@echo "... src/nodes/clusters_tracking.i"
+	@echo "... src/nodes/clusters_tracking.s"
 	@echo "... src/nodes/feature_clustering.o"
 	@echo "... src/nodes/feature_clustering.i"
 	@echo "... src/nodes/feature_clustering.s"
