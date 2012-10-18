@@ -384,6 +384,7 @@ bool PurePursuitBase::computeVelocityCommands(geometry_msgs::Twist& cmd_vel)
 
     }
     move_status_pub_.publish(move_status);
+    cmd_vel.angular.z = move_status.steer_angle;
     return true;
 
 }
