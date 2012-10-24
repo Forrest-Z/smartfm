@@ -46,12 +46,16 @@ namespace golfcar_pcl{
 		rolling_window_pub_   = nh_.advertise<RollingPointCloud>("rolling_window_pcl", 10);
 		process_fraction_pub_ = nh_.advertise<rolling_window::pcl_indices>("process_fraction_indices", 10);
 
-		ms_imu_.pitch_para1 = 0.001;
-		ms_imu_.pitch_para2 = 0.0001;
-		ms_imu_.roll_para   = 0.02;
-		ms_imu_.pitch = 0.0;
-		ms_imu_.roll  = 0.0;
-		ms_imu_.pitch_speed = 0.0;
+		float pitch_para1 = 0.1;
+		float pitch_para2 = 0.01;
+		float roll_para   = 0.02;
+		ms_imu_.initialize(pitch_para1, pitch_para2, roll_para);
+
+		float laser_x = 1.5;
+		float laser_z = 1.7;
+		float laser_pitch = 0.21;
+		golfcar_pcl::imu_info *imu_tmp = &ms_imu_;
+		rolling_analyzer_.initialize(imu_tmp, laser_x, laser_z, laser_pitch);
 
 		imu_sub_ = nh_.subscribe("/ms/imu/data", 100, &rolling_window_pcl::imuCallback, this);
 		laser_scan_serial_ = 0;
@@ -68,10 +72,7 @@ namespace golfcar_pcl{
 	    geometry_msgs::Quaternion orientation = msg->orientation;
 	    btQuaternion btq(orientation.x, orientation.y, orientation.z, orientation.w);
 	    btMatrix3x3(btq).getEulerYPR(yaw, pitch, roll);
-
-	    ms_imu_.pitch = pitch;
-	    ms_imu_.roll  = roll;
-	    ms_imu_.pitch_speed = msg->angular_velocity.y;
+	    ms_imu_.update(msg->angular_velocity.y, pitch, roll);
 	}
 	
     void rolling_window_pcl::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
@@ -132,7 +133,7 @@ namespace golfcar_pcl{
 					//these variance are calculated in the "vertical_baselink" frame;
 					point_tmp.x_var      = 0.0;
 					point_tmp.y_var      = 0.0;
-					point_tmp.z_var      = 0.0;
+					point_tmp.z_var      = rolling_analyzer_.z_var(scan_in->ranges[i], angle_tmp);
 					cloud_tmp.points.push_back(point_tmp);
 				}
 			}

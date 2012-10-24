@@ -159,7 +159,7 @@ namespace golfcar_pcl{
 	double planefitting_disThresh_,clustering_disThresh_;
 	bool checkDistance(const tf::StampedTransform& oldTf, const tf::StampedTransform& newTf, float Dis_thresh);
 
-	ros::Publisher  clusters_pub_, normal_visual_pub_, surface_slope_pub_;
+	ros::Publisher  clusters_pub_, normal_visual_pub_, surface_slope_pub_, variance_visual_pub_;
 	//ros::Publisher planes_pub_, pcl_cloud_restPub_;
 
 	vector<float> jet_r_, jet_g_, jet_b_;
@@ -167,7 +167,7 @@ namespace golfcar_pcl{
 	double normalZ_visual_limit_;
 	bool curvature_visualization_, normalZ_visualization_;
 
-	inline void colormap_jet(RollingPointXYZNormal& point_in, pcl::PointXYZRGBNormal &point_out);
+	inline void colormap_jet(float plot_value, float upper_limit_, pcl::RGB &point_out);
 	void road_slope_visualization(RollingPointCloud & surface_pts, RollingPointCloud & boundary_pts);
     };
 

@@ -70,6 +70,7 @@ namespace golfcar_pcl{
 		clusters_pub_ = nh_.advertise<PointCloudRGB>("clusters_RGBD", 10);
 		normal_visual_pub_ = nh_.advertise<PointCloudRGB>("normal_visual_RGB", 10);
 		surface_slope_pub_ = nh_.advertise<PointCloudRGB>("surface_slope_visual_RGB", 10);
+		variance_visual_pub_ = nh_.advertise<PointCloudRGB>("variance_visual_RGB", 10);
 
 		//planes_pub_ = nh_.advertise<PointCloudRGB>("planes_RGBD", 10);
 		//pcl_cloud_restPub_ = nh_.advertise<PointCloudNormal>("pcl_cloud_restVisual", 10);
@@ -90,26 +91,13 @@ namespace golfcar_pcl{
 	{	
 	}
 	
-	inline void road_surface::colormap_jet(RollingPointXYZNormal& point_in, pcl::PointXYZRGBNormal &point_out)
+	inline void road_surface::colormap_jet(float plot_value, float upper_limit_, pcl::RGB &point_out)
 	{
-		if(curvature_visualization_)
-		{
-			float curvature_visual_upper_bound = (float) curvature_visual_limit_;
-			float curvature_tmp = point_in.curvature < curvature_visual_upper_bound ? point_in.curvature : curvature_visual_upper_bound;
-			int color_serial = floor(256.0 * curvature_tmp /(curvature_visual_upper_bound+0.0000001));
-			point_out.r = (u_int8_t( jet_r_[color_serial] * 255.0));
-			point_out.g = (u_int8_t( jet_g_[color_serial] * 255.0));
-			point_out.b = (u_int8_t( jet_b_[color_serial] * 255.0));
-		}
-		else if(normalZ_visualization_)
-		{
-			float normalZ_visual_upper_bound = (float) normalZ_visual_limit_;
-			float normal_tmp = point_in.normal_z < normalZ_visual_upper_bound ? point_in.normal_z : normalZ_visual_upper_bound;
-			int color_serial = floor(256.0-0.000001 - 256.0 * normal_tmp /(normalZ_visual_upper_bound+0.0000001));
-			point_out.r = (u_int8_t( jet_r_[color_serial] * 255.0));
-			point_out.g = (u_int8_t( jet_g_[color_serial] * 255.0));
-			point_out.b = (u_int8_t( jet_b_[color_serial] * 255.0));
-		}
+		float value_tmp = plot_value < upper_limit_ ? plot_value : upper_limit_;
+		int color_serial = floor(256.0 * value_tmp /(upper_limit_+0.0000001));
+		point_out.r = (u_int8_t( jet_r_[color_serial] * 255.0));
+		point_out.g = (u_int8_t( jet_g_[color_serial] * 255.0));
+		point_out.b = (u_int8_t( jet_b_[color_serial] * 255.0));
 	}
 
 	//to process input pcl batch with interesting indices: 
@@ -301,10 +289,23 @@ namespace golfcar_pcl{
 				{
 					for(size_t serial=0; serial < pcl_normal_batches_[batch].size(); serial++)
 					{
+						pcl::RGB RGB_tmp;
 						RollingPointXYZNormal pointNormal_tmp;
 						pcl::PointXYZRGBNormal pointRBGNormal_tmp;
 						pointNormal_tmp = pcl_normal_batches_[batch][serial];
-						road_surface::colormap_jet(pointNormal_tmp, pointRBGNormal_tmp);
+
+						if(curvature_visualization_)
+						{
+							road_surface::colormap_jet(pointNormal_tmp.curvature,curvature_visual_limit_, RGB_tmp);
+						}
+						else if(normalZ_visualization_)
+						{
+							road_surface::colormap_jet(pointNormal_tmp.normal_z, normalZ_visual_limit_, RGB_tmp);
+						}
+						pointRBGNormal_tmp.r = RGB_tmp.r;
+						pointRBGNormal_tmp.g = RGB_tmp.g;
+						pointRBGNormal_tmp.b = RGB_tmp.b;
+
 						pointRBGNormal_tmp.x = pointNormal_tmp.x;
 						pointRBGNormal_tmp.y = pointNormal_tmp.y;
 						pointRBGNormal_tmp.z = pointNormal_tmp.z;
@@ -317,29 +318,31 @@ namespace golfcar_pcl{
 				}
 				normal_visual_pub_.publish(normal_visual_tmp);
 
+				PointCloudRGB variance_visualization;
+				variance_visualization.clear();
+				variance_visualization.header = odom->header;
+				variance_visualization.height = 1;
 
-				PointCloudNormal normal_pcl_tmp;
-				normal_pcl_tmp.clear();
-				normal_pcl_tmp.header = odom->header;
-				normal_pcl_tmp.height = 1;
-
-				for(size_t batch =0; batch < pcl_normal_batches_.size()-1; batch++)
+				for(size_t batch =0; batch < raw_pcl_batches_.size()-1; batch++)
 				{
-					for(size_t serial=0; serial < pcl_normal_batches_[batch].size(); serial++)
+					for(size_t serial=0; serial < raw_pcl_batches_[batch].size(); serial++)
 					{
-						pcl::PointNormal normal_pt_tmp;
-						RollingPointXYZNormal pointNormal_tmp;
-						pointNormal_tmp = pcl_normal_batches_[batch][serial];
-						normal_pt_tmp.x = pointNormal_tmp.x;
-						normal_pt_tmp.y = pointNormal_tmp.y;
-						normal_pt_tmp.z = pointNormal_tmp.z;
-						normal_pt_tmp.curvature	=	pointNormal_tmp.curvature;
-						normal_pt_tmp.normal_x 	= 	pointNormal_tmp.normal_x;
-						normal_pt_tmp.normal_y 	= 	pointNormal_tmp.normal_y;
-						normal_pt_tmp.normal_z 	= 	pointNormal_tmp.normal_z;
-						normal_pcl_tmp.push_back(normal_pt_tmp);
+						RollingPointXYZ point_tmp;
+						point_tmp = raw_pcl_batches_[batch][serial];
+
+						pcl::RGB RGB_tmp;
+						pcl::PointXYZRGB pointRBG_tmp;
+						road_surface::colormap_jet(point_tmp.z_var, 0.1, RGB_tmp);
+						pointRBG_tmp.r = RGB_tmp.r;
+						pointRBG_tmp.g = RGB_tmp.g;
+						pointRBG_tmp.b = RGB_tmp.b;
+						pointRBG_tmp.x = point_tmp.x;
+						pointRBG_tmp.y = point_tmp.y;
+						pointRBG_tmp.z = point_tmp.z;
+						variance_visualization.push_back(pointRBG_tmp);
 					}
 				}
+				variance_visual_pub_.publish(variance_visualization);
 
 				//newly added function "plane-fitting" for patches;
 				//it needs more work;
