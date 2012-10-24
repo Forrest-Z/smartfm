@@ -37,33 +37,50 @@ namespace golfcar_pcl{
 		laser_scan_filter_->registerCallback(boost::bind(&rolling_window_pcl::scanCallback, this, _1));
 		laser_scan_filter_->setTolerance(ros::Duration(0.05));
 
-		cloud_scan_sub_.subscribe(nh_, "cloud_in", 10);
-		cloud_scan_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(cloud_scan_sub_, *tf_, odom_frame_, 10);
-		cloud_scan_filter_->registerCallback(boost::bind(&rolling_window_pcl::cloudCallback, this, _1));
-		cloud_scan_filter_->setTolerance(ros::Duration(0.05));
-		
 		//be careful to the frame_id of "odom";
 		odom_sub_.subscribe(nh_, "odom", 10);
 		odom_filter_ = new tf::MessageFilter<nav_msgs::Odometry>(odom_sub_, *tf_, base_frame_, 10);
 		odom_filter_ ->registerCallback(boost::bind(&rolling_window_pcl::odomCallback, this, _1));
 		odom_filter_->setTolerance(ros::Duration(0.05));
 
-		rolling_window_pub_   = nh_.advertise<PointCloud>("rolling_window_pcl", 10);
+		rolling_window_pub_   = nh_.advertise<RollingPointCloud>("rolling_window_pcl", 10);
 		process_fraction_pub_ = nh_.advertise<rolling_window::pcl_indices>("process_fraction_indices", 10);
+
+		ms_imu_.pitch_para1 = 0.001;
+		ms_imu_.pitch_para2 = 0.0001;
+		ms_imu_.roll_para   = 0.02;
+		ms_imu_.pitch = 0.0;
+		ms_imu_.roll  = 0.0;
+		ms_imu_.pitch_speed = 0.0;
+
+		imu_sub_ = nh_.subscribe("/ms/imu/data", 100, &rolling_window_pcl::imuCallback, this);
+		laser_scan_serial_ = 0;
 	}
 	
 	rolling_window_pcl::~rolling_window_pcl()
 	{
 		delete tf_;
 	}
-	
 
+	void rolling_window_pcl::imuCallback(const sensor_msgs::Imu::ConstPtr msg)
+	{
+	    btScalar pitch, roll, yaw;
+	    geometry_msgs::Quaternion orientation = msg->orientation;
+	    btQuaternion btq(orientation.x, orientation.y, orientation.z, orientation.w);
+	    btMatrix3x3(btq).getEulerYPR(yaw, pitch, roll);
+
+	    ms_imu_.pitch = pitch;
+	    ms_imu_.roll  = roll;
+	    ms_imu_.pitch_speed = msg->angular_velocity.y;
+	}
+	
     void rolling_window_pcl::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
     {
 		bool use_laser_input = false;
 		tf::StampedTransform laserOdomTemp;
 		ros::Time laserTime = scan_in->header.stamp;
 		string laserFrame 	= scan_in->header.frame_id;
+
 		try
 		{
 			tf_->lookupTransform(odom_frame_, laserFrame, laserTime, laserOdomTemp);
@@ -72,7 +89,7 @@ namespace golfcar_pcl{
 		{
 			ROS_WARN("scan Failed to get fresh tf between target_frame and scan_source, (%s)", e.what()); return;
 		}
-		
+
 		//only after odom is initialized, the input will be processed;
 		if(odom_init_ && !scan_init_)
 		{
@@ -93,63 +110,36 @@ namespace golfcar_pcl{
 		
 		if(use_laser_input)
 		{
-			sensor_msgs::PointCloud2 laser_cloud;
-			PointCloud cloud_tmp;
-			//"projector_" support "pointcloud2";
-			try{projector_.transformLaserScanToPointCloud(odom_frame_, *scan_in, laser_cloud, *tf_);}
-			catch (tf::TransformException& e){ ROS_ERROR("%s",e.what());return;}
-			//this function may be deprecated and removed in the future version; remember this;
-			pcl::fromROSMsg(laser_cloud, cloud_tmp);
-			front_buffer_odom_ = front_buffer_odom_ + cloud_tmp;
-		}
-	}
-	
-    void rolling_window_pcl::cloudCallback(const sensor_msgs::PointCloud2ConstPtr cloud_in)
-    {
-		bool use_cloud_input = false;
-		tf::StampedTransform cloudOdomTemp;
-		ros::Time cloudTime = cloud_in->header.stamp;
-		string cloudFrame 	= cloud_in->header.frame_id;
-		try
-		{
-			tf_->lookupTransform(odom_frame_, cloudFrame, cloudTime, cloudOdomTemp);
-		}
-		catch(tf::TransformException e)
-		{
-			ROS_WARN("cloud Failed to get fresh tf between target_frame and scan_source, (%s)", e.what()); return;
-		}
-		
-		//only after odom is initialized, the input will be processed;
-		if(odom_init_ && !cloud_init_)
-		{
-			cloud_init_ = true;
-			use_cloud_input = true;
-			cloud_OdomMeas_ = cloudOdomTemp;
-		}
-		else if(odom_init_ && cloud_init_)
-		{
-			bool move_flag = rolling_window_pcl::checkDistance(cloud_OdomMeas_, cloudOdomTemp, cloud_in_thresh_);
-			if(move_flag)
+			RollingPointXYZ point_tmp;
+			RollingPointCloud cloud_tmp;
+			cloud_tmp.header = scan_in->header;
+
+			for(size_t i=0; i< scan_in->ranges.size(); i++)
 			{
-				use_cloud_input = true;
-				cloud_OdomMeas_ = cloudOdomTemp;
+				float angle_tmp = scan_in->angle_min + scan_in->angle_increment*i;
+				if(scan_in->ranges[i] > scan_in->range_max)
+				{
+					continue;
+				}
+				else
+				{
+					point_tmp.x = scan_in->ranges[i]*cos(angle_tmp);
+					point_tmp.y = scan_in->ranges[i]*sin(angle_tmp);
+					point_tmp.z = 0.0;
+
+					point_tmp.laser_serial = laser_scan_serial_;
+					point_tmp.beam_angle = angle_tmp;
+					//these variance are calculated in the "vertical_baselink" frame;
+					point_tmp.x_var      = 0.0;
+					point_tmp.y_var      = 0.0;
+					point_tmp.z_var      = 0.0;
+					cloud_tmp.points.push_back(point_tmp);
+				}
 			}
-		}
-		
-		if(use_cloud_input)
-		{
-			//to record last updating position;
-			sensor_msgs::PointCloud cloud_cloud;
-			sensor_msgs::PointCloud2 cloud_cloud2;
-			PointCloud cloud_tmp;
-			
-			sensor_msgs::convertPointCloud2ToPointCloud(*cloud_in, cloud_cloud);
-			try{tf_->transformPointCloud(odom_frame_, cloud_cloud, cloud_cloud);}
-			catch (tf::TransformException& e){ ROS_ERROR("%s",e.what());return;}
-			sensor_msgs::convertPointCloudToPointCloud2(cloud_cloud, cloud_cloud2);
-			pcl::fromROSMsg(cloud_cloud2, cloud_tmp);
+			pcl_ros::transformPointCloud(odom_frame_, cloud_tmp, cloud_tmp, *tf_ );
 			front_buffer_odom_ = front_buffer_odom_ + cloud_tmp;
 		}
+		laser_scan_serial_++;
 	}
 	
 	bool rolling_window_pcl::checkDistance(const tf::StampedTransform& oldTf, const tf::StampedTransform& newTf, float Dis_thresh)
@@ -215,16 +205,14 @@ namespace golfcar_pcl{
 		rolling_window_baselink_.header.stamp 		=	current_time;
 		rolling_window_odom_.header.stamp 			=	current_time;
 		process_fraction_odom_.header.stamp 		=	current_time;
-		front_buffer_odom_.header.stamp 				=	current_time;
+		front_buffer_odom_.header.stamp 			=	current_time;
 		
 		// downsample the raw pcl;
 		pcl_downsample(front_buffer_odom_);
 
-		PointCloud windowXYZ_tmp;
-		
-		rolling_window_pcl::pclXYZ_transform(base_frame_, rolling_window_odom_, windowXYZ_tmp);
-		
-		
+		RollingPointCloud windowXYZ_tmp;
+		pcl_ros::transformPointCloud(base_frame_, rolling_window_odom_, windowXYZ_tmp, *tf_ );
+
 		// to erase obsolete points outside of the bounding box;
 		for(size_t i=0; i<windowXYZ_tmp.points.size();i++)
 		{
@@ -235,7 +223,7 @@ namespace golfcar_pcl{
           }
 		}
 		//record the remaining pcl in "odom" frame;
-		rolling_window_pcl::pclXYZ_transform(odom_frame_, rolling_window_baselink_, rolling_window_odom_);
+		pcl_ros::transformPointCloud(odom_frame_, rolling_window_baselink_, rolling_window_odom_, *tf_ );
 		
 		if(process_fraction_exist_)
 		{
@@ -247,9 +235,9 @@ namespace golfcar_pcl{
 			for(size_t i = 0; i < proc_indices_size ; i++) proc_indices.indices.push_back(i+proc_begin_index);
 			process_fraction_pub_.publish(proc_indices);
 			
-			PointCloud windowXYZ_proc_tmp, windowXYZ_buff_tmp;		
-			rolling_window_pcl::pclXYZ_transform(base_frame_, process_fraction_odom_, windowXYZ_proc_tmp);
-			rolling_window_pcl::pclXYZ_transform(base_frame_, front_buffer_odom_, windowXYZ_buff_tmp);
+			RollingPointCloud windowXYZ_proc_tmp, windowXYZ_buff_tmp;
+			pcl_ros::transformPointCloud(base_frame_, process_fraction_odom_, windowXYZ_proc_tmp, *tf_ );
+			pcl_ros::transformPointCloud(base_frame_, front_buffer_odom_, windowXYZ_buff_tmp, *tf_ );
 			rolling_window_baselink_ = rolling_window_baselink_  + windowXYZ_proc_tmp;
 			rolling_window_baselink_ = rolling_window_baselink_  + windowXYZ_buff_tmp;
 			
@@ -267,36 +255,14 @@ namespace golfcar_pcl{
 		} 
 	}
 	
-	void rolling_window_pcl::pclXYZ_transform(string target_frame, PointCloud &pcl_src, PointCloud &pcl_dest)
+	//pay attention to this down-sampling process: it may lead to unexpected sparsity;
+	void rolling_window_pcl::pcl_downsample(RollingPointCloud &point_cloud)
 	{
-		//from current frame to "frame_id" frame: pointcloud_XYZ -> pointcloud2 -> pointcloud;
-		//to manipulate the data, convert back to the format of "pointcloud_XYZ";
-		
-		sensor_msgs::PointCloud  window_tmp;
-		sensor_msgs::PointCloud2 window_tmp2;
-				
-		pcl::toROSMsg(pcl_src, window_tmp2);
-		
-		sensor_msgs::convertPointCloud2ToPointCloud(window_tmp2, window_tmp);
-		try
-		{
-			tf_->transformPointCloud(target_frame, window_tmp, window_tmp);
-			sensor_msgs::convertPointCloudToPointCloud2(window_tmp, window_tmp2);
-			pcl::fromROSMsg(window_tmp2, pcl_dest);
-		}
-		catch (tf::TransformException &ex)
-		{
-			printf ("Failure %s\n", ex.what()); //Print exception which was caught
-			return;
-		}
-	}
-	
-	void rolling_window_pcl::pcl_downsample(PointCloud &point_cloud)
-	{
-		pcl::VoxelGrid<pcl::PointXYZ> sor;
+		pcl::VoxelGrid<RollingPointXYZ> sor;
+
 		// always good not to use in place filtering as stated in
 		// http://www.pcl-users.org/strange-effect-of-the-downsampling-td3857829.html
-		PointCloud::Ptr input_msg_filtered (new PointCloud ());
+		RollingPointCloud::Ptr input_msg_filtered (new RollingPointCloud ());
 		float downsample_size_ = 0.05;
 		sor.setInputCloud(point_cloud.makeShared());
 		sor.setLeafSize (downsample_size_, downsample_size_, downsample_size_);
