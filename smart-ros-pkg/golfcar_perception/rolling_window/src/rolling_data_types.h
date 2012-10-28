@@ -12,8 +12,8 @@ struct RollingPointXYZ
 	unsigned int laser_serial;
 	float beam_angle;
 	float x_var, y_var, z_var;
-	float pitch_speed;
-	float roll_speed;
+	float pitch_speed, pitch;
+	float roll;
 
 	EIGEN_MAKE_ALIGNED_OPERATOR_NEW   // make sure our new allocators are aligned
 } EIGEN_ALIGN16;                    // enforce SSE padding for correct memory alignment
@@ -28,8 +28,8 @@ struct  RollingPointXYZNormal
 	unsigned int laser_serial;
 	float beam_angle;
 	float x_var, y_var, z_var;
-	float pitch_speed;
-	float roll_speed;
+	float pitch_speed, pitch;
+	float roll;
 
 	PCL_ADD_NORMAL4D; // This adds the member normal[3] which can also be accessed using the point (which is float[4])
 	union
@@ -53,7 +53,8 @@ struct  RollingPointXYZNormal
                                     (float, y_var, y_var)
                                     (float, z_var, z_var)
                                     (float, pitch_speed, pitch_speed)
-                                    (float, roll_speed, roll_speed)
+                                    (float, pitch, pitch)
+                                    (float, roll, roll)
  )
 
  POINT_CLOUD_REGISTER_POINT_STRUCT (RollingPointXYZNormal,
@@ -70,7 +71,8 @@ struct  RollingPointXYZNormal
 	(float, normal_z, normal_z)
 	(float, curvature, curvature)
 	(float, pitch_speed, pitch_speed)
-	(float, roll_speed, roll_speed)
+	(float, pitch, pitch)
+	(float, roll, roll)
 )
 
 #endif

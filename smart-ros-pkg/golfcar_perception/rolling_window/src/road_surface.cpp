@@ -41,6 +41,7 @@ namespace golfcar_pcl{
 		private_nh_.param("normalZ_visual_limit", normalZ_visual_limit_, 0.2);
 		private_nh_.param("curvature_visualization", curvature_visualization_, true);
 		private_nh_.param("normalZ_visualization", normalZ_visualization_, false);
+		private_nh_.param("extract_training_data", extract_training_data_, true);
 
 		rolling_pcl_sub_ = new message_filters::Subscriber<RollingPointCloud> (nh_, "rolling_window_pcl", 1);
 		pcl_indices_sub_ = new message_filters::Subscriber<rolling_window::pcl_indices> (nh_, "process_fraction_indices", 1);
@@ -85,6 +86,7 @@ namespace golfcar_pcl{
 			jet_g_.push_back(g[i]);
 			jet_b_.push_back(b[i]);
 		}
+		record_batch_serial_ = 0;
 	}
 	
 	road_surface::~road_surface()
@@ -437,6 +439,8 @@ namespace golfcar_pcl{
 	void road_surface::surface_extraction (const RollingPointCloud &cloud_in, const rolling_window::pcl_indices& proc_indices,
 											RollingPointCloud & surface_pts, RollingPointCloud & boundary_pts)
 	{
+		record_batch_serial_++;
+
 		RollingPointCloud process_fraction_pcl;
 		process_fraction_pcl.header = cloud_in.header;
 		process_fraction_pcl.clear();
@@ -749,6 +753,8 @@ namespace golfcar_pcl{
 				}
 			}
 			std::map< size_t , boundary_scan_info > boundary_noiseNum_batches;
+
+
 			for(std::map <size_t,angle_pt_map>::const_iterator batch_it = boundary_batches.begin(); batch_it != boundary_batches.end(); batch_it++ )
 			{
 				size_t laser_serial = (*batch_it).first;
@@ -758,7 +764,8 @@ namespace golfcar_pcl{
 				std::map <float,RollingPointXYZNormal>::const_iterator pt_it = batch_tmp.begin();
 				info_tmp.BDptNum = batch_tmp.size();
 				info_tmp.pitch_speed = (*pt_it).second.pitch_speed;
-				info_tmp.roll_speed = (*pt_it).second.roll_speed;
+				info_tmp.pitch = (*pt_it).second.pitch;
+				info_tmp.roll = (*pt_it).second.roll;
 
 				std::vector <float> beam_angles;
 				for(pt_it = batch_tmp.begin(); pt_it != batch_tmp.end(); pt_it++ )
@@ -796,16 +803,46 @@ namespace golfcar_pcl{
 
 				boundary_noiseNum_batches[laser_serial]= info_tmp;
 			}
+
+			//try to record training data for laser scans;
+			if(extract_training_data_)
+			{
+				stringstream  name_string;
+				name_string<<"/home/baoxing/training_data/scan_data";
+				const char *input_name = name_string.str().c_str();
+				if((fp_=fopen(input_name, "a"))==NULL){ROS_ERROR("cannot open file\n");return;}
+				else{ROS_INFO("file opened successfully!");}
+			}
+
 			std::map< size_t , bool> boundary_flag_batches;
 			for(std::map <size_t,boundary_scan_info>::const_iterator batch_it = boundary_noiseNum_batches.begin(); batch_it != boundary_noiseNum_batches.end(); batch_it++ )
 			{
 				size_t laser_serial = (*batch_it).first;
 				boundary_scan_info batch_tmp = (*batch_it).second;
 				bool noisy_or_not =  false;
-				ROS_INFO("batch_tmp informaiton: %ld, %3f", batch_tmp.BDptNum, batch_tmp.longest_horizontal_dist);
-				if(batch_tmp.BDptNum > 10 && batch_tmp.longest_horizontal_dist < 2.0) noisy_or_not = true;
-				boundary_flag_batches[laser_serial] = noisy_or_not;
+				ROS_INFO("batch_tmp informaiton: %d, %3f, %3f", batch_tmp.BDptNum, batch_tmp.longest_horizontal_dist, batch_tmp.pitch_speed);
+
+				//classification1 step for one single laser scan, to be replaced by some learning methods;
+				if(batch_tmp.BDptNum >= 10 && batch_tmp.longest_horizontal_dist < 2.0 && fabs(batch_tmp.pitch_speed) >=0.02)
+				{
+					noisy_or_not = true; ROS_WARN("-----------------filter this batch-----------");
+				}
+				//boundary_flag_batches[laser_serial] = noisy_or_not;
+				boundary_flag_batches[laser_serial] = false;
+
+				if(extract_training_data_)
+				{
+					ROS_INFO("write training data");
+					fprintf(fp_, "%ld\t%ld\t", record_batch_serial_, laser_serial);
+					fprintf(fp_, "%d\t%5f\t%5f\t%5f\t%5f\t", batch_tmp.BDptNum, batch_tmp.longest_horizontal_dist, batch_tmp.pitch_speed, batch_tmp.pitch, batch_tmp.roll);
+					int tentative_value;
+					if(noisy_or_not) {tentative_value = 1;}
+					else{tentative_value = 0;}
+					fprintf(fp_, "%d\n",tentative_value);
+				}
 			}
+
+			if(extract_training_data_){fclose(fp_); ROS_INFO("file closed");}
 
 
 			pcl::PointIndices::Ptr outlier_tmp (new pcl::PointIndices);
@@ -913,14 +950,17 @@ namespace golfcar_pcl{
 						}
 					}
 
-					//ROS_INFO("max_delt_angle %3f", max_delt_angle);
-					if(delt_Zs.back() < 0.1)
+					//classification2 for individual boundary point;
+
+					//if(delt_Zs.back() < 0.1) //for visualization when collection data;
+					if(delt_Zs.back() < -0.1)
 					{
 						ROS_INFO("boundary points filtered: max_delt %3f", delt_Zs.back());
 						outlier_tmp->indices.push_back(boundary_inliers_lb2->indices[bd_pt]);
 					}
 					else
 					{
+						//printf("Zvar:%3f\t", searchPt_tmp.z_var);
 						boundary_inliers_tmp2->indices.push_back(boundary_inliers_lb2->indices[bd_pt]);
 						//ROS_INFO("boundary points laser serial %ld", raw_pcl_lb2.points[boundary_inliers_lb2->indices[bd_pt]].laser_serial);
 					}

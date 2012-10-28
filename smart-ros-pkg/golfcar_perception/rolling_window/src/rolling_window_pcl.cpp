@@ -129,6 +129,9 @@ namespace golfcar_pcl{
 					point_tmp.z = 0.0;
 
 					point_tmp.laser_serial = laser_scan_serial_;
+					point_tmp.pitch_speed = rolling_analyzer_.imu_pointer->pitch_speed;
+					point_tmp.pitch = rolling_analyzer_.imu_pointer->pitch;
+					point_tmp.roll = rolling_analyzer_.imu_pointer->roll;
 					point_tmp.beam_angle = angle_tmp;
 					//these variance are calculated in the "vertical_baselink" frame;
 					point_tmp.x_var      = 0.0;

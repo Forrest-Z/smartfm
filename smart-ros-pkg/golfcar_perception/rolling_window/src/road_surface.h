@@ -42,6 +42,7 @@
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <math.h>
+#include <stdlib.h>
 
 //for plane fitting fuction still use "PointCloud" data type;
 //something wrong with "sac_model_stick.hpp" when compiling;
@@ -81,10 +82,11 @@ namespace golfcar_pcl{
 
 	typedef struct
 	{
-		size_t BDptNum;
+		int BDptNum;
 		float  longest_horizontal_dist;
 		float  pitch_speed;
-		float  roll_speed;
+		float  pitch;
+		float  roll;
 	}boundary_scan_info;
 
 	typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
@@ -169,6 +171,10 @@ namespace golfcar_pcl{
 
 	inline void colormap_jet(float plot_value, float upper_limit_, pcl::RGB &point_out);
 	void road_slope_visualization(RollingPointCloud & surface_pts, RollingPointCloud & boundary_pts);
+
+	bool extract_training_data_;
+	size_t record_batch_serial_;
+	FILE *fp_;
     };
 
 };
