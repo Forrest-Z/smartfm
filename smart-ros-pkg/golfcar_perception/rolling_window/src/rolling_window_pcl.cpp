@@ -212,7 +212,7 @@ namespace golfcar_pcl{
 		front_buffer_odom_.header.stamp 			=	current_time;
 		
 		// downsample the raw pcl;
-		pcl_downsample(front_buffer_odom_);
+		//pcl_downsample(front_buffer_odom_);
 
 		RollingPointCloud windowXYZ_tmp;
 		pcl_ros::transformPointCloud(base_frame_, rolling_window_odom_, windowXYZ_tmp, *tf_ );
@@ -254,7 +254,7 @@ namespace golfcar_pcl{
 		else
 		{
 			process_fraction_exist_ = true;
-			process_fraction_odom_  = front_buffer_odom_;
+			//process_fraction_odom_  = front_buffer_odom_;
 			return;
 		} 
 	}

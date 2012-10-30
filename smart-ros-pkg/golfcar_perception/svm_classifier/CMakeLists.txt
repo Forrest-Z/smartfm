@@ -11,6 +11,9 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 
 rosbuild_init()
 
+find_package(Eigen REQUIRED)
+include_directories(${Eigen_INCLUDE_DIRS})
+
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
@@ -21,23 +24,15 @@ rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
+find_package(OpenCV REQUIRED)
+
+rosbuild_add_library(${PROJECT_NAME} src/svm_classifier.cpp src/libsvm/svm.cpp)
+                    
+#target_link_libraries(wrap_example ${OpenCV_LIBRARIES})
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
-rosbuild_add_boost_directories()
-rosbuild_add_executable(road_surface src/road_surface.cpp)
-rosbuild_link_boost(road_surface signals)
-
-rosbuild_add_executable(data_formatting_pcl src/data_formatting_pcl.cpp)
-
-rosbuild_add_executable(rolling_window_pcl src/rolling_window_pcl.cpp)
-rosbuild_link_boost(rolling_window_pcl signals)
-
-rosbuild_add_executable(single_window src/single_window.cpp)
-rosbuild_link_boost(single_window signals)
-rosbuild_add_executable(quick_process src/quick_process.cpp)
-rosbuild_link_boost(quick_process signals)
-#rosbuild_add_executable(ldf src/laser_dynamic_object_filter.cpp)
-#target_link_libraries (le pcl_visualization gomp)
-#rosbuild_add_compile_flags(le -lpcl_visualization)
+#rosbuild_add_boost_directories()
+#rosbuild_link_boost(${PROJECT_NAME} thread)
+#rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})

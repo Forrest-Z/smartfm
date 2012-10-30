@@ -77,8 +77,16 @@
 #include <cstdlib>
 #include "rolling_data_types.h"
 #include <pcl_ros/impl/transforms.hpp>
+#include "svm_classifier.h"
 
 namespace golfcar_pcl{
+
+	typedef struct
+	{
+		float  pitch, roll, pitch_speed;
+		size_t large_curvature_number;
+		std::vector <float> curvature;
+	}scan_info;
 
 	typedef struct
 	{
@@ -161,7 +169,7 @@ namespace golfcar_pcl{
 	double planefitting_disThresh_,clustering_disThresh_;
 	bool checkDistance(const tf::StampedTransform& oldTf, const tf::StampedTransform& newTf, float Dis_thresh);
 
-	ros::Publisher  clusters_pub_, normal_visual_pub_, surface_slope_pub_, variance_visual_pub_;
+	ros::Publisher  clusters_pub_, normal_visual_pub_, surface_slope_pub_, variance_visual_pub_, large_curvature_pub_;
 	//ros::Publisher planes_pub_, pcl_cloud_restPub_;
 
 	vector<float> jet_r_, jet_g_, jet_b_;
@@ -172,9 +180,13 @@ namespace golfcar_pcl{
 	inline void colormap_jet(float plot_value, float upper_limit_, pcl::RGB &point_out);
 	void road_slope_visualization(RollingPointCloud & surface_pts, RollingPointCloud & boundary_pts);
 
+	float scan_angle_incremental_;
 	bool extract_training_data_;
 	size_t record_batch_serial_;
 	FILE *fp_;
+	int deputy_key(float angle_tmp);
+
+	golfcar_ml::svm_classifier *scan_classifier_;
     };
 
 };

@@ -1,0 +1,18 @@
+<package>
+  <description brief="svm_classifier">
+     this is a general svm_classifier library, which wrapps around "libsvm";
+     it will provide a class of svm_classifier, and several handy tools to facilitate the usage of libsvm; 
+  </description>
+
+  <author>Qin Baoxing</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/svm_classifier</url>
+  
+  <export>
+    <cpp cflags="-I${prefix}/src" lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lsvm_classifier"/>
+  </export>
+  
+</package>
+
+
