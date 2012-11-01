@@ -13,5 +13,7 @@
  	<param name="normalZ_visual_limit_" value="0.2" type="double" />
 	<param name="curvature_visualization" value="true"/>
 	<param name="normalZ_visualization" value="false"/>
+	<param name="extract_training_data_scan" value="false"/>
+	<param name="extract_training_data_point" value="true"/>
     </node>
 </launch>    

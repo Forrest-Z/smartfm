@@ -23,11 +23,9 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
-
-find_package(OpenCV REQUIRED)
-
 rosbuild_add_library(${PROJECT_NAME} src/svm_classifier.cpp src/libsvm/svm.cpp)
-                    
+rosbuild_add_executable(data_formatting src/data_formatting.cpp)
+
 #target_link_libraries(wrap_example ${OpenCV_LIBRARIES})
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)

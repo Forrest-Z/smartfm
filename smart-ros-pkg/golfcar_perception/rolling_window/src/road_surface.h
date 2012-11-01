@@ -169,7 +169,7 @@ namespace golfcar_pcl{
 	double planefitting_disThresh_,clustering_disThresh_;
 	bool checkDistance(const tf::StampedTransform& oldTf, const tf::StampedTransform& newTf, float Dis_thresh);
 
-	ros::Publisher  clusters_pub_, normal_visual_pub_, surface_slope_pub_, variance_visual_pub_, large_curvature_pub_;
+	ros::Publisher  clusters_pub_, normal_visual_pub_, surface_slope_pub_, variance_visual_pub_, large_curvature_pub_, scan_outlier_pub_;
 	//ros::Publisher planes_pub_, pcl_cloud_restPub_;
 
 	vector<float> jet_r_, jet_g_, jet_b_;
@@ -181,12 +181,13 @@ namespace golfcar_pcl{
 	void road_slope_visualization(RollingPointCloud & surface_pts, RollingPointCloud & boundary_pts);
 
 	float scan_angle_incremental_;
-	bool extract_training_data_;
+	bool extract_training_data_scan_, extract_training_data_point_;
 	size_t record_batch_serial_;
 	FILE *fp_;
 	int deputy_key(float angle_tmp);
 
 	golfcar_ml::svm_classifier *scan_classifier_;
+	golfcar_ml::svm_classifier *point_classifier_;
     };
 
 };
