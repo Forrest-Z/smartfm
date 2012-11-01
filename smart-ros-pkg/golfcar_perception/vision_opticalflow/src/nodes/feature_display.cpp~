@@ -32,7 +32,7 @@ private:
 
     std::string featuresWindowName_;
 
-    void displayCallback(const sensor_msgs::Image::ConstPtr & frame,
+    void featuresCallback(const sensor_msgs::Image::ConstPtr & frame,
         const vision_opticalflow::Feature::ConstPtr & features_msg);
 };
 
@@ -43,11 +43,11 @@ FeatureDisplayNode::FeatureDisplayNode()
   synchronizer(MySyncPolicy(20), frame_sub_, features_sub_),
   featuresWindowName_("")
 {
-    synchronizer.registerCallback( boost::bind(&FeatureDisplayNode::displayCallback, this, _1, _2) );
+    synchronizer.registerCallback( boost::bind(&FeatureDisplayNode::featuresCallback, this, _1, _2) );
 }
 
-void FeatureDisplayNode::displayCallback(const sensor_msgs::Image::ConstPtr & frame,
-        const vision_opticalflow::Clusters::ConstPtr & features_msg)
+void FeatureDisplayNode::featuresCallback(const sensor_msgs::Image::ConstPtr & frame,
+        const vision_opticalflow::Feature::ConstPtr & features_msg)
 {
     cv::Point2f prev_feature_cv;
     cv::Point2f found_feature_cv;
@@ -65,8 +65,12 @@ void FeatureDisplayNode::displayCallback(const sensor_msgs::Image::ConstPtr & fr
         prev_feature_cv.y = features_msg->prev_feature[i].y;
         found_feature_cv.x = features_msg->found_feature[i].x;
         found_feature_cv.y = features_msg->found_feature[i].y;
-        
-        cv::line(img, prev_feature_cv, found_feature_cv, cv::Scalar(0,255,0));
+
+        if(features_msg->direction[i] == 0){
+            cv::line(img, prev_feature_cv, found_feature_cv, cv::Scalar(0,255,0));      //feature is moving right
+        }else{
+            cv::line(img, prev_feature_cv, found_feature_cv, cv::Scalar(255,0,0));      //feature is moving left
+        }
     }
     cv::imshow(featuresWindowName_, img);
 }

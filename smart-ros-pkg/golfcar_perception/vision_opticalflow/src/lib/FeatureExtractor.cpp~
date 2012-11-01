@@ -174,11 +174,10 @@ vision_opticalflow::Feature FeatureExtractor::extract(cv::Mat gray_input, double
 
         std_msgs::Header dummy;
         vision_opticalflow::Feature msg_out = getFeatureToMsg(dummy);
-        msg_out.timestamp = time;
         
         prev_frame_ = gray_input.clone();
         prev_frame_feature_ = curr_frame_feature_;
-
+//         prev_frame_feature_ = found_frame_feature_;
         return msg_out;
     }
 }
@@ -187,6 +186,7 @@ vision_opticalflow::Feature FeatureExtractor::getFeatureToMsg(std_msgs::Header h
 {
     geometry_msgs::Point feature_temp;
     geometry_msgs::Point feature_vel;
+    int direction;
     vision_opticalflow::Feature feature_msg;
 
     feature_msg.header = header;
@@ -206,6 +206,14 @@ vision_opticalflow::Feature FeatureExtractor::getFeatureToMsg(std_msgs::Header h
         feature_vel.x = found_frame_feature_[i].x - prev_frame_feature_[i].x;
         feature_vel.y = found_frame_feature_[i].y - prev_frame_feature_[i].y;
         feature_msg.feature_vel.push_back(feature_vel);
+
+        //direction of each feature
+        if(feature_vel.x >= 0){
+            feature_msg.direction.push_back(0);         //0 -- moving right, 1 -- moving left
+        }else{
+            feature_msg.direction.push_back(1);         //0 -- moving right, 1 -- moving left
+        }
+        
     }
 
     return feature_msg;

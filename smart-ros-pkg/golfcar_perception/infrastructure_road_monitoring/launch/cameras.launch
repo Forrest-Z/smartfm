@@ -2,7 +2,7 @@
 
     <group ns="EA">
         <include file="$(find infrastructure_road_monitoring)/launch/camera.launch">
-            <arg name="device" value="/dev/video1" />
+            <arg name="device" value="/dev/video0" />
             <arg name="frame_id" value="ea_cam_img" />
         </include>
         <node pkg="image_view" type="image_view" name="image_view" output="screen">
@@ -12,7 +12,7 @@
 
     <group ns="SDE">
         <include file="$(find infrastructure_road_monitoring)/launch/camera.launch">
-            <arg name="device" value="/dev/video2" />
+            <arg name="device" value="/dev/video1" />
             <arg name="frame_id" value="sde_cam_img" />
         </include>
         <node pkg="image_view" type="image_view" name="image_view" output="screen">

@@ -8,7 +8,7 @@ import geometry_msgs.msg
 import std_msgs.msg
 
 class Feature(genpy.Message):
-  _md5sum = "9159c10cb3e36eee0cb6039da47d46ed"
+  _md5sum = "7a3f6cc0c7c1094c93d942c7d8ab6677"
   _type = "vision_opticalflow/Feature"
   _has_header = True #flag to mark the presence of a Header object
   _full_text = """#It is recommeded to use Point (which float64) wherever possible instead of Point32.
@@ -21,6 +21,7 @@ Header header
 geometry_msgs/Point[] prev_feature    
 geometry_msgs/Point[] found_feature
 geometry_msgs/Point[] feature_vel
+int16[]               direction
 
 ================================================================================
 MSG: std_msgs/Header
@@ -48,8 +49,8 @@ float64 y
 float64 z
 
 """
-  __slots__ = ['header','prev_feature','found_feature','feature_vel']
-  _slot_types = ['std_msgs/Header','geometry_msgs/Point[]','geometry_msgs/Point[]','geometry_msgs/Point[]']
+  __slots__ = ['header','prev_feature','found_feature','feature_vel','direction']
+  _slot_types = ['std_msgs/Header','geometry_msgs/Point[]','geometry_msgs/Point[]','geometry_msgs/Point[]','int16[]']
 
   def __init__(self, *args, **kwds):
     """
@@ -59,7 +60,7 @@ float64 z
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-       header,prev_feature,found_feature,feature_vel
+       header,prev_feature,found_feature,feature_vel,direction
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
@@ -76,11 +77,14 @@ float64 z
         self.found_feature = []
       if self.feature_vel is None:
         self.feature_vel = []
+      if self.direction is None:
+        self.direction = []
     else:
       self.header = std_msgs.msg.Header()
       self.prev_feature = []
       self.found_feature = []
       self.feature_vel = []
+      self.direction = []
 
   def _get_types(self):
     """
@@ -117,6 +121,10 @@ float64 z
       for val1 in self.feature_vel:
         _x = val1
         buff.write(_struct_3d.pack(_x.x, _x.y, _x.z))
+      length = len(self.direction)
+      buff.write(_struct_I.pack(length))
+      pattern = '<%sh'%length
+      buff.write(struct.pack(pattern, *self.direction))
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -181,6 +189,13 @@ float64 z
         end += 24
         (_x.x, _x.y, _x.z,) = _struct_3d.unpack(str[start:end])
         self.feature_vel.append(val1)
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      pattern = '<%sh'%length
+      start = end
+      end += struct.calcsize(pattern)
+      self.direction = struct.unpack(pattern, str[start:end])
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
@@ -216,6 +231,10 @@ float64 z
       for val1 in self.feature_vel:
         _x = val1
         buff.write(_struct_3d.pack(_x.x, _x.y, _x.z))
+      length = len(self.direction)
+      buff.write(_struct_I.pack(length))
+      pattern = '<%sh'%length
+      buff.write(self.direction.tostring())
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -281,6 +300,13 @@ float64 z
         end += 24
         (_x.x, _x.y, _x.z,) = _struct_3d.unpack(str[start:end])
         self.feature_vel.append(val1)
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      pattern = '<%sh'%length
+      start = end
+      end += struct.calcsize(pattern)
+      self.direction = numpy.frombuffer(str[start:end], dtype=numpy.int16, count=length)
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill

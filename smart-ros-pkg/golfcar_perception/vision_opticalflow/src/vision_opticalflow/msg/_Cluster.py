@@ -7,14 +7,15 @@ import struct
 import geometry_msgs.msg
 
 class Cluster(genpy.Message):
-  _md5sum = "697b8c74b0f3e66d2c221ab448a4fa71"
+  _md5sum = "bf3b6cfcb99a5fd463e2bb3f23d891c5"
   _type = "vision_opticalflow/Cluster"
   _has_header = False #flag to mark the presence of a Header object
   _full_text = """uint32 id
-geometry_msgs/Point centroid
-geometry_msgs/Point centroid_vel
-geometry_msgs/Point[] members
-geometry_msgs/Point[] members_vel
+geometry_msgs/Point     centroid
+geometry_msgs/Point     centroid_vel
+int16                   centroid_dir
+geometry_msgs/Point[]   members
+geometry_msgs/Point[]   members_vel
 
 ================================================================================
 MSG: geometry_msgs/Point
@@ -24,8 +25,8 @@ float64 y
 float64 z
 
 """
-  __slots__ = ['id','centroid','centroid_vel','members','members_vel']
-  _slot_types = ['uint32','geometry_msgs/Point','geometry_msgs/Point','geometry_msgs/Point[]','geometry_msgs/Point[]']
+  __slots__ = ['id','centroid','centroid_vel','centroid_dir','members','members_vel']
+  _slot_types = ['uint32','geometry_msgs/Point','geometry_msgs/Point','int16','geometry_msgs/Point[]','geometry_msgs/Point[]']
 
   def __init__(self, *args, **kwds):
     """
@@ -35,7 +36,7 @@ float64 z
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-       id,centroid,centroid_vel,members,members_vel
+       id,centroid,centroid_vel,centroid_dir,members,members_vel
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
@@ -50,6 +51,8 @@ float64 z
         self.centroid = geometry_msgs.msg.Point()
       if self.centroid_vel is None:
         self.centroid_vel = geometry_msgs.msg.Point()
+      if self.centroid_dir is None:
+        self.centroid_dir = 0
       if self.members is None:
         self.members = []
       if self.members_vel is None:
@@ -58,6 +61,7 @@ float64 z
       self.id = 0
       self.centroid = geometry_msgs.msg.Point()
       self.centroid_vel = geometry_msgs.msg.Point()
+      self.centroid_dir = 0
       self.members = []
       self.members_vel = []
 
@@ -74,7 +78,7 @@ float64 z
     """
     try:
       _x = self
-      buff.write(_struct_I6d.pack(_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z))
+      buff.write(_struct_I6dh.pack(_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir))
       length = len(self.members)
       buff.write(_struct_I.pack(length))
       for val1 in self.members:
@@ -105,8 +109,8 @@ float64 z
       end = 0
       _x = self
       start = end
-      end += 52
-      (_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z,) = _struct_I6d.unpack(str[start:end])
+      end += 54
+      (_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir,) = _struct_I6dh.unpack(str[start:end])
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
@@ -142,7 +146,7 @@ float64 z
     """
     try:
       _x = self
-      buff.write(_struct_I6d.pack(_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z))
+      buff.write(_struct_I6dh.pack(_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir))
       length = len(self.members)
       buff.write(_struct_I.pack(length))
       for val1 in self.members:
@@ -174,8 +178,8 @@ float64 z
       end = 0
       _x = self
       start = end
-      end += 52
-      (_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z,) = _struct_I6d.unpack(str[start:end])
+      end += 54
+      (_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir,) = _struct_I6dh.unpack(str[start:end])
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
@@ -203,5 +207,5 @@ float64 z
       raise genpy.DeserializationError(e) #most likely buffer underfill
 
 _struct_I = genpy.struct_I
-_struct_I6d = struct.Struct("<I6d")
+_struct_I6dh = struct.Struct("<I6dh")
 _struct_3d = struct.Struct("<3d")

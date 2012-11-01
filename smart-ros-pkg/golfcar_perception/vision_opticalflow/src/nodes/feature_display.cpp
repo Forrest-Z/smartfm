@@ -65,8 +65,12 @@ void FeatureDisplayNode::featuresCallback(const sensor_msgs::Image::ConstPtr & f
         prev_feature_cv.y = features_msg->prev_feature[i].y;
         found_feature_cv.x = features_msg->found_feature[i].x;
         found_feature_cv.y = features_msg->found_feature[i].y;
-        
-        cv::line(img, prev_feature_cv, found_feature_cv, cv::Scalar(0,255,0));
+
+        if(features_msg->direction[i] == 0){
+            cv::line(img, prev_feature_cv, found_feature_cv, cv::Scalar(0,255,0));      //feature is moving right
+        }else{
+            cv::line(img, prev_feature_cv, found_feature_cv, cv::Scalar(255,0,0));      //feature is moving left
+        }
     }
     cv::imshow(featuresWindowName_, img);
 }
@@ -78,7 +82,7 @@ void FeatureDisplayNode::spin()
         if( featuresWindowName_.length()==0 )
             ros::Duration(0.1).sleep();
         else
-            if( cv::waitKey(100)=='q' )
+            if( cv::waitKey(10)=='q' )
                 return;
         ros::spinOnce();
     }

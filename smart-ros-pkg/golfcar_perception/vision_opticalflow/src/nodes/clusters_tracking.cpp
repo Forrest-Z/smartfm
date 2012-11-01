@@ -39,7 +39,7 @@ ClustersTrackingNode::ClustersTrackingNode()
     tracker_pub_  = nhp_.advertise<vision_opticalflow::Clusters>("tracker", 10);
 
     begin = ros::Time::now();
-    logFile.open ("/home/livingmachine/Documents/DataRecord/logFile.txt");
+//     logFile.open ("/home/livingmachine/Documents/DataRecord/logFile.txt");
 }
 
 void ClustersTrackingNode::trackerCallback(const vision_opticalflow::Clusters::ConstPtr & clusters_msg)
@@ -53,8 +53,13 @@ void ClustersTrackingNode::trackerCallback(const vision_opticalflow::Clusters::C
         vision_opticalflow::Cluster cluster_temp;
 
         cluster_temp.id = clusters_msg->clusters_info[i].id;
+        cluster_temp.id = clusters_msg->clusters_info[i].id;
         cluster_temp.centroid = clusters_msg->clusters_info[i].centroid;
         cluster_temp.centroid_vel = clusters_msg->clusters_info[i].centroid_vel;
+        cluster_temp.centroid_dir = clusters_msg->clusters_info[i].centroid_dir;
+//         std::cout <<"i : " << i << " centroid_dir : " << clusters_msg->clusters_info[i].centroid_dir << std::endl;
+        cluster_temp.members = clusters_msg->clusters_info[i].members;
+        
         clusters_temp.header = clusters_msg->header;
         clusters_temp.clusters_info.push_back(cluster_temp);
 //         std::cout << "centroid : " << cluster_temp.centroid << std::endl;
@@ -81,10 +86,16 @@ void ClustersTrackingNode::trackerCallback(const vision_opticalflow::Clusters::C
             
             for(unsigned int k = 0; k < clusters_prev[clusters_index].clusters_info.size(); k++)
             {
-                float distance_temp;
-                distance_temp = centroid_distance(clusters_curr.clusters_info[j].centroid,clusters_prev[clusters_index].clusters_info[k].centroid);
-    //             std::cout << distance_temp << std::endl;
-                centroid_diff.push_back(distance_temp);
+                //check direction first
+                if(clusters_curr.clusters_info[j].centroid_dir == clusters_prev[clusters_index].clusters_info[k].centroid_dir){
+                    //check distance
+                    float distance_temp;
+                    distance_temp = centroid_distance(clusters_curr.clusters_info[j].centroid,clusters_prev[clusters_index].clusters_info[k].centroid);
+        //             std::cout << distance_temp << std::endl;
+                    centroid_diff.push_back(distance_temp);
+                }else{
+                    centroid_diff.push_back(10000.0);
+                }
             }
             minFloat_out nearest_centroid = minFloat(centroid_diff);
 
