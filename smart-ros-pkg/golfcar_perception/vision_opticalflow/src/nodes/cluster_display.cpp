@@ -53,8 +53,13 @@ void ClusterDisplayNode::displayCallback(const sensor_msgs::Image::ConstPtr & fr
 {
     cv::Point2f cluster_pos;
    
-    cv::Scalar color[] = {cv::Scalar(255,0,0), cv::Scalar(125,0,0), cv::Scalar(0,255,0), cv::Scalar(0,125,0), cv::Scalar(0,0,255), cv::Scalar(0,0,125),
-    cv::Scalar(255,255,0), cv::Scalar(125,125,0), cv::Scalar(255,0,255), cv::Scalar(125,0,125), cv::Scalar(0,255,255), cv::Scalar(0,125,125) };
+    cv::Scalar color[] = {
+        cv::Scalar(250,0,0), cv::Scalar(50,0,0), cv::Scalar(100,0,0), cv::Scalar(150,0,0), cv::Scalar(200,0,0),
+        cv::Scalar(0,250,0), cv::Scalar(0,50,0), cv::Scalar(0,100,0), cv::Scalar(0,150,0), cv::Scalar(0,200,0),
+        cv::Scalar(0,0,250), cv::Scalar(0,0,50), cv::Scalar(0,0,100), cv::Scalar(0,0,150), cv::Scalar(0,0,200),
+        cv::Scalar(250,250,0), cv::Scalar(50,50,0), cv::Scalar(100,100,0), cv::Scalar(150,150,0), cv::Scalar(200,200,0),
+        cv::Scalar(250,0,250), cv::Scalar(50,0,50), cv::Scalar(100,0,100), cv::Scalar(150,0,150), cv::Scalar(200,0,200),
+        cv::Scalar(0,250,250), cv::Scalar(0,50,50), cv::Scalar(0,100,100), cv::Scalar(0,150,150), cv::Scalar(0,200,200)};
     
 //     std::cout << " displayCallback " << std::endl;
     
@@ -67,27 +72,17 @@ void ClusterDisplayNode::displayCallback(const sensor_msgs::Image::ConstPtr & fr
 
     for( unsigned i=0; i< clusters_msg->clusters_info.size(); i++ )
     {
-        std::vector<float> xpos,ypos;
-        float x_max,x_min;
-        float y_max,y_min;
-        
-//         for(unsigned j=0; j<clusters_msg->clusters_info[i].members.size(); j++)
-//         {
-//             xpos.push_back(clusters_msg->clusters_info[i].members[j].x);
-//             ypos.push_back(clusters_msg->clusters_info[i].members[j].y);
-//         }
-//         x_max = *std::max_element(xpos.begin(),xpos.end());     x_min = *std::min_element(xpos.begin(),xpos.end());
-//         y_max = *std::max_element(ypos.begin(),ypos.end());     y_min = *std::min_element(ypos.begin(),ypos.end());
-
-//         std::cout << "x_max : " << x_max << " x_min : "<< x_min << " y_max : " << y_max << " y_min : " << y_min <<std::endl;
-        
-        cluster_pos.x = clusters_msg->clusters_info[i].centroid.x;
-        cluster_pos.y = clusters_msg->clusters_info[i].centroid.y;
-        cv::circle(img, cluster_pos, 2, color[clusters_msg->clusters_info[i].id%12]); //[clusters_msg->clusters_info[i].id%12
-//         cv::rectangle(img, cv::Point(x_min,y_max), cv::Point(x_max,y_min), color[clusters_msg->clusters_info[i].id%12]);
-//         std::cout << "x_cen_vel : " << clusters_msg->clusters_info[i].centroid_vel.x << " y_cen_vel : "<< clusters_msg->clusters_info[i].centroid_vel.y <<std::endl;
+        for(unsigned j=0; j<clusters_msg->clusters_info[i].members.size(); j++)
+        {
+            cluster_pos.x = clusters_msg->clusters_info[i].members[j].x;
+            cluster_pos.y = clusters_msg->clusters_info[i].members[j].y;
+            cv::circle(img, cluster_pos, 2, color[clusters_msg->clusters_info[i].id%30]);
+        }
+            
+//         cluster_pos.x = clusters_msg->clusters_info[i].centroid.x;
+//         cluster_pos.y = clusters_msg->clusters_info[i].centroid.y;
+//         cv::circle(img, cluster_pos, 5, color[clusters_msg->clusters_info[i].id%30]); //[clusters_msg->clusters_info[i].id%12
     }
-//     std::cout << " ------------------------ " <<std::endl;
     cv::imshow(displayWindowName_, img);
 }
 
