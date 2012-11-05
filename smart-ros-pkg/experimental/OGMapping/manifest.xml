@@ -1,0 +1,28 @@
+<package>
+  <description brief="OGMapping">
+     this is a OGMapping library, to generate a Occupancy Grid Map when robot pose is known;
+     the class is named after "OGMapper";
+  </description>
+
+  <author>Qin Baoxing</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/OGMapping</url>
+  
+  <depend package="roscpp"/>
+  <depend package="rosconsole"/>
+  <depend package="rospy" />
+  <depend package="nav_msgs"/>
+  <depend package="tf"/>
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
+  <depend package="rolling_window"/>
+  <depend package="common_rosdeps" />
+  <depend package="message_filters"/>
+  <rosdep name="python-imaging"/>
+  <rosdep name="python-yaml"/>
+  <rosdep name="yaml-cpp" />
+  <rosdep name="sdl-image" />
+</package>
+
+
