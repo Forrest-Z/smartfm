@@ -7,6 +7,10 @@
     </node>
 
     <node pkg="rolling_window" type="road_surface" name="road_surface" output="screen">
+    <param name="scan_model_path" value="$(find rolling_window)/svm_model/scan.model"/>
+    <param name="scan_scale_path" value="$(find rolling_window)/svm_model/scan.range"/>
+    <param name="point_model_path" value="$(find rolling_window)/svm_model/point.model"/>
+    <param name="point_scale_path" value="$(find rolling_window)/svm_model/point.range"/>
 	<param name="search_radius" value="0.3" type="double" />
 	<param name="curvature_thresh" value="0.005" type="double" />
 	<param name="curvature_visual_limit" value="0.1" type="double" />
@@ -14,6 +18,6 @@
 	<param name="curvature_visualization" value="true"/>
 	<param name="normalZ_visualization" value="false"/>
 	<param name="extract_training_data_scan" value="false"/>
-	<param name="extract_training_data_point" value="true"/>
+	<param name="extract_training_data_point" value="false"/>
     </node>
 </launch>    

@@ -12,7 +12,7 @@ OGMapper::OGMapper():
 	private_nh_.param("map_file", map_file_, std::string("tra_map"));
 	OGMapper::map_load(map_file_);
 
-	map_frame_ = "odom";
+	map_frame_ = "map";
 	tf_ = new tf::TransformListener();
 
 	private_nh_.param("initial_occ", initial_occ_, 0.5);
