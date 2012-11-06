@@ -115,7 +115,7 @@ namespace golfcar_pcl{
 	ros::NodeHandle nh_, private_nh_;
 	tf::TransformListener *tf_;
 	string odom_frame_, base_frame_;
-	
+	string record_path_;
 
 	message_filters::Subscriber<RollingPointCloud> 			*rolling_pcl_sub_;
     message_filters::Subscriber<rolling_window::pcl_indices> 	*pcl_indices_sub_;
@@ -185,6 +185,7 @@ namespace golfcar_pcl{
 	size_t record_batch_serial_;
 	FILE *fp_;
 	int deputy_key(float angle_tmp);
+	void pcl_downsample(RollingPointCloud &point_cloud);
 
 	golfcar_ml::svm_classifier *scan_classifier_;
 	golfcar_ml::svm_classifier *point_classifier_;

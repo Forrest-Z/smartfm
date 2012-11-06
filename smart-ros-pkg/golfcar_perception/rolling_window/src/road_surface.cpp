@@ -55,8 +55,11 @@ namespace golfcar_pcl{
 		odom_filter_->setTolerance(ros::Duration(0.05));
 		
 		process_fraction_pub_   = 	nh_.advertise<RollingPointCloud>("process_fraction", 10);
-		road_surface_pub_   	= 	nh_.advertise<RollingPointCloud>("road_surface_pts", 10);
-		road_boundary_pub_   	= 	nh_.advertise<RollingPointCloud>("road_boundary_pts", 10);
+
+		//modification: to downsampling it, publish the raw PointCloud type;
+		road_surface_pub_   	= 	nh_.advertise<PointCloud>("road_surface_pts", 10);
+		road_boundary_pub_   	= 	nh_.advertise<PointCloud>("road_boundary_pts", 10);
+
 		fitting_plane_pub_   	=	nh_.advertise<PointCloud>("fitting_plane", 10);
 		normals_poses_pub_ 		=	nh_.advertise<geometry_msgs::PoseArray>("normals_array", 10);
 		plane_coef_pub_ 		= 	nh_.advertise<rolling_window::plane_coef>("plane_coef", 10);
@@ -100,6 +103,8 @@ namespace golfcar_pcl{
 		private_nh_.param("point_model_path", point_model_path, std::string("/home/baoxing/workspace/data_and_model/rolling_window/point.model"));
 		private_nh_.param("point_scale_path", point_scale_path, std::string("/home/baoxing/workspace/data_and_model/rolling_window/point.range"));
 
+		private_nh_.param("record_path", record_path_, std::string("/home/baoxing/training_data"));
+
 		scan_classifier_ = new golfcar_ml::svm_classifier(scan_model_path, scan_scale_path);
 		point_classifier_ = new golfcar_ml::svm_classifier(point_model_path, point_scale_path);
 	}
@@ -134,8 +139,38 @@ namespace golfcar_pcl{
 		
 		road_surface::surface_extraction(*pcl_in,  *indices_in, surface_pts_, boundary_pts_);
 		
-		road_surface_pub_.publish(surface_pts_);
-		road_boundary_pub_.publish(boundary_pts_);
+		road_surface::pcl_downsample(surface_pts_);
+		road_surface::pcl_downsample(boundary_pts_);
+
+		//20121104 modifications;
+		PointCloud surface_pcl, boundary_pcl;
+		surface_pcl.clear();
+		surface_pcl.height = 1;
+		surface_pcl.header =	pcl_in->header;
+		boundary_pcl.clear();
+		boundary_pcl.height = 1;
+		boundary_pcl.header = pcl_in->header;
+
+		for(size_t i=0; i<surface_pts_.points.size(); i++)
+		{
+			pcl::PointXYZ point_tmp;
+			point_tmp.x = surface_pts_.points[i].x;
+			point_tmp.y = surface_pts_.points[i].y;
+			point_tmp.z = surface_pts_.points[i].z;
+			surface_pcl.push_back(point_tmp);
+		}
+
+		for(size_t i=0; i<boundary_pts_.points.size(); i++)
+		{
+			pcl::PointXYZ point_tmp;
+			point_tmp.x = boundary_pts_.points[i].x;
+			point_tmp.y = boundary_pts_.points[i].y;
+			point_tmp.z = boundary_pts_.points[i].z;
+			boundary_pcl.push_back(point_tmp);
+		}
+
+		road_surface_pub_.publish(surface_pcl);
+		road_boundary_pub_.publish(boundary_pcl);
 	}
 	
 	//odomCallback triggers several processing functions;
@@ -688,7 +723,7 @@ namespace golfcar_pcl{
 		if(extract_training_data_scan_)
 		{
 			stringstream  name_string;
-			name_string<<"/home/baoxing/training_data/scan_normal_data";
+			name_string<<record_path_.c_str()<<"/scan_data";
 			const char *input_name = name_string.str().c_str();
 			if((fp_=fopen(input_name, "a"))==NULL){ROS_ERROR("cannot open file\n");return;}
 			else{ROS_INFO("file opened successfully!");}
@@ -711,7 +746,7 @@ namespace golfcar_pcl{
 		if(extract_training_data_scan_)
 		{
 			stringstream  name_string;
-			name_string<<"/home/baoxing/training_data/simplified_data";
+			name_string<<record_path_.c_str()<<"/scan_label_data";
 			const char *input_name = name_string.str().c_str();
 			if((fp_=fopen(input_name, "a"))==NULL){ROS_ERROR("cannot open file\n");return;}
 			else{ROS_INFO("file opened successfully!");}
@@ -1069,7 +1104,7 @@ namespace golfcar_pcl{
 					if(extract_training_data_point_)
 					{
 						stringstream  name_string;
-						name_string<<"/home/baoxing/training_data/point_data";
+						name_string<<record_path_.c_str()<<"/point_data";
 						const char *input_name = name_string.str().c_str();
 						if((fp_=fopen(input_name, "a"))==NULL){ROS_ERROR("cannot open file\n");return;}
 						else{ROS_INFO("file opened successfully!");}
@@ -1081,7 +1116,7 @@ namespace golfcar_pcl{
 					if(extract_training_data_point_)
 					{
 						stringstream  name_string;
-						name_string<<"/home/baoxing/training_data/label_data";
+						name_string<<record_path_.c_str()<<"/point_label_data";
 						const char *input_name = name_string.str().c_str();
 						if((fp_=fopen(input_name, "a"))==NULL){ROS_ERROR("cannot open file\n");return;}
 						else{ROS_INFO("file opened successfully!");}
@@ -1103,6 +1138,9 @@ namespace golfcar_pcl{
 					point_feature_vector[6]= max_deltZ_tmp;
 					point_feature_vector[7]= density_tmp;
 					int point_type = point_classifier_->classify_objects(point_feature_vector, vector_length);
+
+					//when extract points data, we need to visualize all the potential points in "boundary_pts";
+					if(extract_training_data_point_) point_type = 0;
 
 					if(point_type ==1 || point_type==-1)
 					{
@@ -1140,6 +1178,8 @@ namespace golfcar_pcl{
 			extract_bd.setNegative (false);
 			extract_bd.filter (boundary_pts);
 			sw.end();
+
+
 
 			//b. update "road_surface_odom_" and "road_boundary_odom_";
 			//just incorporated filtered PCLs, which is one batch delayed than the most recent batch, and compose of (batchNum_limit_-1) batches;
@@ -1438,6 +1478,21 @@ namespace golfcar_pcl{
 	{
 		int muliplying_times = 1000;
 		return (int(angle_tmp * muliplying_times ));
+	}
+
+	//pay attention to this down-sampling process: it may lead to unexpected sparsity;
+	void road_surface::pcl_downsample(RollingPointCloud &point_cloud)
+	{
+		pcl::VoxelGrid<RollingPointXYZ> sor;
+
+		// always good not to use in place filtering as stated in
+		// http://www.pcl-users.org/strange-effect-of-the-downsampling-td3857829.html
+		RollingPointCloud::Ptr input_msg_filtered (new RollingPointCloud ());
+		float downsample_size_ = 0.05;
+		sor.setInputCloud(point_cloud.makeShared());
+		sor.setLeafSize (downsample_size_, downsample_size_, downsample_size_);
+		sor.filter (*input_msg_filtered);
+		point_cloud = * input_msg_filtered;
 	}
 };
 
