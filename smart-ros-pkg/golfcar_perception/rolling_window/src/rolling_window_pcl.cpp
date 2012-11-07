@@ -58,7 +58,7 @@ namespace golfcar_pcl{
 		rolling_analyzer_.initialize(imu_tmp, laser_x, laser_z, laser_pitch);
 
 		imu_sub_ = nh_.subscribe("/ms/imu/data", 100, &rolling_window_pcl::imuCallback, this);
-		laser_scan_serial_ = 0;
+		//laser_scan_serial_ = 0;
 	}
 	
 	rolling_window_pcl::~rolling_window_pcl()
@@ -128,7 +128,7 @@ namespace golfcar_pcl{
 					point_tmp.y = scan_in->ranges[i]*sin(angle_tmp);
 					point_tmp.z = 0.0;
 
-					point_tmp.laser_serial = laser_scan_serial_;
+					point_tmp.laser_serial = scan_in->header.seq;
 					point_tmp.pitch_speed = rolling_analyzer_.imu_pointer->pitch_speed;
 					point_tmp.pitch = rolling_analyzer_.imu_pointer->pitch;
 					point_tmp.roll = rolling_analyzer_.imu_pointer->roll;
@@ -143,7 +143,7 @@ namespace golfcar_pcl{
 			pcl_ros::transformPointCloud(odom_frame_, cloud_tmp, cloud_tmp, *tf_ );
 			front_buffer_odom_ = front_buffer_odom_ + cloud_tmp;
 		}
-		laser_scan_serial_++;
+		//laser_scan_serial_++;
 	}
 	
 	bool rolling_window_pcl::checkDistance(const tf::StampedTransform& oldTf, const tf::StampedTransform& newTf, float Dis_thresh)

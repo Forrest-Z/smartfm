@@ -728,17 +728,20 @@ namespace golfcar_pcl{
 			if((fp_=fopen(input_name, "a"))==NULL){ROS_ERROR("cannot open file\n");return;}
 			else{ROS_INFO("file opened successfully!");}
 
+			ROS_INFO("write training data");
 			for(std::map <size_t, scan_info>::const_iterator batch_it = batch_infos.begin(); batch_it != batch_infos.end(); batch_it++ )
 			{
 				size_t laser_serial = (*batch_it).first;
 				scan_info batch_tmp = (*batch_it).second;
-				ROS_INFO("write training data");
+
 				fprintf(fp_, "%ld\t%ld\t", (record_batch_serial_+1), laser_serial);
 				fprintf(fp_, "%5f\t%5f\t%5f\t", batch_tmp.pitch_speed, batch_tmp.pitch, batch_tmp.roll);
 				for(size_t i=0; i<120; i++) {fprintf(fp_, "%5f\t", batch_tmp.curvature[i]);}
 				fprintf(fp_, "%ld\t", batch_tmp.large_curvature_number);
 				int tentative_value = 0;
 				fprintf(fp_, "%d\n",tentative_value);
+
+				printf("\n laser_serial: %ld,\tbigCurve_number %ld\t \n", laser_serial, batch_tmp.large_curvature_number);
 			}
 			fclose(fp_); ROS_INFO("file closed");
 		}

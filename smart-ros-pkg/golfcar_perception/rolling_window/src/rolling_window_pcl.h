@@ -163,7 +163,7 @@ namespace golfcar_pcl{
 		ros::Publisher  rolling_window_pub_, 	process_fraction_pub_;
 		void pcl_downsample(RollingPointCloud &point_cloud);
 
-		size_t laser_scan_serial_;
+		//unsigned int laser_scan_serial_;
     };
 
 };
