@@ -14,6 +14,7 @@ rosbuild_init()
 find_package(Eigen REQUIRED)
 include_directories(${Eigen_INCLUDE_DIRS})
 
+
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
@@ -24,12 +25,18 @@ rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
+
+find_package(OpenCV REQUIRED)
+
 rosbuild_add_boost_directories()
 rosbuild_add_executable(OGMapper src/OGMapper.cpp)
 target_link_libraries(OGMapper SDL SDL_image yaml-cpp)
 rosbuild_link_boost(OGMapper signals)
 
 rosbuild_add_executable(save_pub src/save_pub.cpp)
+
+rosbuild_add_executable(skeletonization src/skeletonization.cpp)
+target_link_libraries(skeletonization ${OpenCV_LIBRARIES})
 
 #target_link_libraries(wrap_example ${OpenCV_LIBRARIES})
 #common commands for building c++ executables and libraries
