@@ -8,7 +8,7 @@
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/OGMapping</url>
-  
+  <rosdep name="opencv2.3"/>
   <depend package="roscpp"/>
   <depend package="rosconsole"/>
   <depend package="rospy" />
