@@ -316,8 +316,9 @@ void createObjects()
         gSimulatedVehicle->rp.startThread();
 
         // Wait for current station input
-        while( ! gSimulatedVehicle->rp.getCurrentStation().isValid() )
-            sleep(1);
+	// now handled by MissionComm
+       // while( ! gSimulatedVehicle->rp.getCurrentStation().isValid() )
+       //     sleep(1);
     }
 
     if (!optNoGUI)
