@@ -5,10 +5,10 @@ create table stations (
     longitude float(10,6) not null
 );
 
-insert into stations values ('E3A', 1.300500, 103.771592);
-insert into stations values ('EA',  1.300730, 103.770844);
-insert into stations values ('DCC Workshop', 1.299121, 103.770788);
-insert into stations values ('McDonald', 1.298116, 103.771209);
+insert into stations values ('ENTERPRISE Garage', 1.300500, 103.771592);
+insert into stations values ('ENTERPRISE',  1.300730, 103.770844);
+insert into stations values ('CREATE Garage', 1.299121, 103.770788);
+insert into stations values ('CREATE', 1.298116, 103.771209);
 
 drop table if exists vehicles;
 create table vehicles (
