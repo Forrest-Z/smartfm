@@ -1,16 +1,13 @@
 <launch>
+  <node name="laser_republish" pkg="laser_maxrange_republish" type="laser_repub"/>
+  <node name="hokuyo_repub" pkg="laser_maxrange_republish" type="hokuyo_repub"/>
+
+
 
     <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller"/>
     <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
         <rosparam file="$(find lowlevel_controllers)/speed_controller.yaml" command="load" />
     </node>
-
-    <node name="laser_republish" pkg="laser_maxrange_republish" type="laser_repub"/>
-    <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/map.yaml"/>
-
-	<node name="amcl" pkg="amcl" type="amcl" respawn="false">
-		<remap from="scan" to="scan"/>		
-	</node>
 
     <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
         <remap from="cmd_vel" to="cmd_steer"/>
@@ -30,6 +27,6 @@
         <rosparam file="$(find golfcar_ppc)/launch/move_base/sbpl_global_params.yaml" command="load" />
     </node>
 
-    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation.vcg" />
+    <!--node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation.vcg" /-->
 
 </launch>
