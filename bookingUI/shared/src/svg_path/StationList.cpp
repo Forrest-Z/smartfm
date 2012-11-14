@@ -69,8 +69,15 @@ bool StationList::exists(const std::string & s) const throw()
 void StationList::print() const
 {
     cout << "Station list:" <<endl;
+    cout << "(0) CREATE" <<endl;
+    cout << "(1) CREATE Garage" <<endl;
+    cout << "(2) ENTERPRISE" <<endl;
+    cout << "(3) ENTERPRISE Garage" <<endl;
+
+    /*
     for( StationIterator s=begin(); s<end(); ++s )
         cout <<"    " <<s->number() <<") - " <<s->str() <<endl;
+     */
 }
 
 
