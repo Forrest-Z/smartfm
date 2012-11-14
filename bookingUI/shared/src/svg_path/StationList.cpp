@@ -14,9 +14,9 @@ using namespace std;
 StationList::StationList()
 {
     knownStations_.push_back( Station("CREATE", 0) );
-    knownStations_.push_back( Station("Start", 1) );
-    knownStations_.push_back( Station("End", 2) );
-    knownStations_.push_back( Station("E3A", 3) );
+    knownStations_.push_back( Station("CREATE Garage", 1) );
+    knownStations_.push_back( Station("ENTERPRISE", 2) );
+    knownStations_.push_back( Station("ENTERPRISE Garage", 3) );
 }
 
 const Station & StationList::operator () (unsigned i) const
