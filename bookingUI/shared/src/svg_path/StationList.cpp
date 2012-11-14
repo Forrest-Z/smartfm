@@ -13,9 +13,9 @@ using namespace std;
 
 StationList::StationList()
 {
-    knownStations_.push_back( Station("DCC Workshop", 0) );
-    knownStations_.push_back( Station("McDonald", 1) );
-    knownStations_.push_back( Station("EA", 2) );
+    knownStations_.push_back( Station("CREATE", 0) );
+    knownStations_.push_back( Station("Start", 1) );
+    knownStations_.push_back( Station("End", 2) );
     knownStations_.push_back( Station("E3A", 3) );
 }
 

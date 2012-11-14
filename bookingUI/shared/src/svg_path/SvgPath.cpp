@@ -195,7 +195,9 @@ StationPath SvgPath::getPath(string id)
             }
         }
     }
-    throw runtime_error("Path id not found");
+    stringstream error_msg;
+    error_msg<<"Path id "<<id<<" not found";
+    throw runtime_error(error_msg.str());
 }
 
 void SvgPath::convert_to_meter(StationPath* pose)
