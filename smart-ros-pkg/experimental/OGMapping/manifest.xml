@@ -18,6 +18,7 @@
   <depend package="pcl_ros"/>
   <depend package="rolling_window"/>
   <depend package="common_rosdeps" />
+  <depend package="fmutil" />
   <depend package="message_filters"/>
   <rosdep name="python-imaging"/>
   <rosdep name="python-yaml"/>
