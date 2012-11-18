@@ -69,8 +69,6 @@ namespace golfcar_pcl{
 		large_curvature_pub_   	= 	nh_.advertise<PointCloud>("large_curvature_pts", 10);
 		scan_outlier_pub_		= 	nh_.advertise<PointCloud>("scan_outlier_pts", 10);
 
-		//pcl_to_process_pub_  	= 	nh_.advertise<RollingPointCloud>("pcl_to_process", 10);
-
 		planefitting_init_ = false;
 		clustering_init_   = false;
 		planefitting_disThresh_ = 0.03;
@@ -129,7 +127,6 @@ namespace golfcar_pcl{
 	//2nd region-growing segmentation to extract road surface;
 	void road_surface::pclCallback(const RollingPointCloud::ConstPtr& pcl_in, const rolling_window::pcl_indices::ConstPtr &indices_in)
 	{
-		boost::recursive_mutex::scoped_lock pcll(configuration_mutex_);
 		if(input_update_flag_) ROS_WARN("last road_surface and boundary pcl batch are not accumulated, please check odomCallback");
 		
 		surface_pts_.clear();
@@ -181,8 +178,6 @@ namespace golfcar_pcl{
 	//2nd: do surface subtraction and clustering for other objects;
 	void road_surface::odomCallback(const OdomConstPtr& odom)
 	{
-		boost::recursive_mutex::scoped_lock ocl(configuration_mutex_);
-
 		road_surface_odom_.header = odom->header;
 		road_boundary_odom_.header = odom->header;
 		surface_all_pub_.publish(road_surface_odom_);
@@ -242,6 +237,7 @@ namespace golfcar_pcl{
 			    //pay attention to the serial calculation here;
 			    size_t serial_base = 0;
 			    pcl::PointIndices::Ptr surface_indices (new pcl::PointIndices);
+			    pcl::PointIndices::Ptr outlier_indices (new pcl::PointIndices);
 			    for(size_t batch =0; batch < raw_pcl_batches_.size()-1; batch++)
 			    {
 			    	accumulated_raw_pcl = accumulated_raw_pcl+raw_pcl_batches_[batch];
@@ -250,6 +246,12 @@ namespace golfcar_pcl{
 			    		int serial_tmp = surface_index_batches_[batch][serial] + serial_base;
 			    		surface_indices->indices.push_back(serial_tmp);
 			    	}
+
+			    	for(size_t serial=0; serial < outlier_index_batches_[batch].size(); serial++)
+					{
+						int serial_tmp = outlier_index_batches_[batch][serial] + serial_base;
+						outlier_indices->indices.push_back(serial_tmp);
+					}
 			    	serial_base = serial_base + raw_pcl_batches_[batch].size();
 			    }
 
@@ -257,6 +259,11 @@ namespace golfcar_pcl{
 			    for(size_t serial=0; serial < surface_indices->indices.size(); serial++)
 				{
 					int serial_tmp = surface_indices->indices[serial];
+					total_indices->indices.push_back(serial_tmp);
+				}
+			    for(size_t serial=0; serial < outlier_indices->indices.size(); serial++)
+				{
+					int serial_tmp = outlier_indices->indices[serial];
 					total_indices->indices.push_back(serial_tmp);
 				}
 
@@ -484,11 +491,11 @@ namespace golfcar_pcl{
 	void road_surface::surface_extraction (const RollingPointCloud &cloud_in, const rolling_window::pcl_indices& proc_indices,
 											RollingPointCloud & surface_pts, RollingPointCloud & boundary_pts)
 	{
-		boost::recursive_mutex::scoped_lock sel(configuration_mutex_);
-
 		record_batch_serial_++;
 
-		//step 1:Extract the point-cloud fraction to be processed;
+		////////////////////////////////////////////////////////////////////////////
+		// Extract the pointcloud fraction to be processed.
+		////////////////////////////////////////////////////////////////////////////
 
 		RollingPointCloud process_fraction_pcl;
 		process_fraction_pcl.header = cloud_in.header;
@@ -502,6 +509,7 @@ namespace golfcar_pcl{
 		}
 		process_fraction_pub_.publish(process_fraction_pcl);
 		
+		///////////////////////////////////////////////////////////////////////////
 		//process the cloud_in: calculate normals;
 		//http://pointclouds.org/documentation/tutorials/kdtree_search.php
 		//http://pointclouds.org/documentation/tutorials/how_features_work.php#how-3d-features-work
@@ -525,7 +533,7 @@ namespace golfcar_pcl{
 		publishNormal(point_normals);
 		sw.end();
 
-		//instantly show colored pointcloud according to variance;
+		//instant show;
 		PointCloudRGBNormal normal_visual_tmp;
 		normal_visual_tmp.clear();
 		normal_visual_tmp.header = cloud_in.header;
@@ -560,10 +568,10 @@ namespace golfcar_pcl{
 		}
 		normal_visual_pub_.publish(normal_visual_tmp);
 
-
-		//step 2: filter noisy point cloud according to their scan batch;
+		///////////////////////////////////////////////////////////////////////////////////////
+		//filtering process: filter noisy point cloud according to their scan batch;
 		//output: scan_inlier_pcl, and scan_inlier_pclNormal;
-
+		///////////////////////////////////////////////////////////////////////////////////////
 
 		//one tricky bug: use "float" or "double" as key will lead to unexpected "inequality";
 		//typedef std::map < float, RollingPointXYZNormal> angle_pt_map;
@@ -782,7 +790,6 @@ namespace golfcar_pcl{
 			}
 		}
 
-
 		pcl::PointIndices::Ptr scanfilter_outlier (new pcl::PointIndices);
 		for(unsigned int pt=0; pt< point_normals.points.size(); pt++)
 		{
@@ -820,30 +827,128 @@ namespace golfcar_pcl{
 		extract_scanfilter_normal.setNegative (true);
 		extract_scanfilter_normal.filter (scan_inlier_pclNormal);
 
+		////////////////////////////////////////////////////////////////////////
+		//seeded region-growing method for surface extraction;
+		////////////////////////////////////////////////////////////////////////
+		sw.start("region-growing to extract surface");
+		pcl::KdTreeFLANN<RollingPointXYZ> kdtree;
+		if(scan_inlier_pcl.points.size()==0) return;
+		kdtree.setInputCloud (scan_inlier_pcl.makeShared());
+		//just to find the initial seed of road surface;
+		int K = 1;
+		std::vector<int> pointIdxNKNSearch(K);
+		std::vector<float> pointNKNSquaredDistance(K);
+		
+		int num = kdtree.nearestKSearch (seedPoint_, K, pointIdxNKNSearch, pointNKNSquaredDistance);
+		
+		if(num!=1){std::cout<<"ERROR When to find surface seed"<<endl; return;}
+	
+		pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+		pcl::PointIndices::Ptr boundary_inliers (new pcl::PointIndices);
+		
+		RollingPointXYZ searchPt_tmp;
+		searchPt_tmp = scan_inlier_pcl.points[pointIdxNKNSearch[0]];
+		inliers->indices.push_back(pointIdxNKNSearch[0]);
+		
+		for(unsigned int pt=0; pt<inliers->indices.size(); pt++)
+		{
+			unsigned int serial = inliers->indices[pt];
+			//std::cout <<"serial  "<< serial<< endl;	
+			int neighbor_num = 8;
+			std::vector<int> nbPts(neighbor_num);
+			std::vector<float> nbPtDis(neighbor_num); 
+			
+			searchPt_tmp = scan_inlier_pcl.points[serial];
+			int num = kdtree.nearestKSearch (searchPt_tmp, neighbor_num, nbPts, nbPtDis);
+			if(num!=neighbor_num) std::cout<<"neighbour points not enought, error"<<endl;
+			for(unsigned int neighbour_pt=0; neighbour_pt <nbPts.size(); neighbour_pt++)
+			{
+				 int nb_serial = nbPts[neighbour_pt];
+				 bool curvature_flat = scan_inlier_pclNormal.points[nb_serial].curvature <= curvature_thresh_;
+				 if(curvature_flat)
+				 {
+					 bool no_copy = true;
+					 for(unsigned int all_pt=0; all_pt<inliers->indices.size(); all_pt++)
+					 {
+						  if(inliers->indices[all_pt] == nb_serial) no_copy = false;
+					 }
+					 if(no_copy) inliers->indices.push_back(nb_serial);	 
+				 }
+				 else
+				 {
+					 bool no_copy = true;
+					 for(unsigned int bd_pt=0; bd_pt< boundary_inliers->indices.size(); bd_pt++)
+					 {
+						  if(boundary_inliers->indices[bd_pt] == nb_serial) no_copy = false;
+					 }
+					 if(no_copy){boundary_inliers->indices.push_back(nb_serial);}
+					 
+				 }
+			}
+		}
+		sw.end();
+		
+
+		sw.start("filter the noisy boundary");
+		if(inliers->indices.size()==0) {ROS_WARN("no surface extracted!!!"); return;}
+
+		input_update_flag_ = true;
+		//to process the last but one PCLs;
+
+		//1st maintain the "road_surface" and "boundary" in the odom frame, by erasing obsolete pcl and add new incoming pcl;
+		//a. maintain raw rolling window data by a vector of pcl batches, which is delayed by one step than that in "rolling_window_pcl";
+		//b. keep extracted surface and boundary data by indices corresponding to each pcl batch in the vector;
 		RollingPointCloud pcl_odom_tmp;
 		pcl_ros::transformPointCloud(odom_frame_, scan_inlier_pcl, pcl_odom_tmp, *tf_ );
+		raw_pcl_batches_.push_back(pcl_odom_tmp);
+
 		RollingPointNormalCloud pcl_normal_odom_tmp;
 		pcl_ros::transformPointCloud(odom_frame_, scan_inlier_pclNormal, pcl_normal_odom_tmp, *tf_ );
+		pcl_normal_batches_.push_back(pcl_normal_odom_tmp);
 
-		raw_pcl_buffers_.push_back(pcl_odom_tmp);
-		pcl_normal_buffers_.push_back(pcl_normal_odom_tmp);
+		surface_index_batches_.push_back(inliers->indices);
+		boundary_index_batches_.push_back(boundary_inliers->indices);
 
-		//step 3: region-growing based on SVM classification;
-
-		if(raw_pcl_buffers_.size() > 3)
+		//erase old history of road surface points;
+		assert( pcl_normal_batches_.size() == raw_pcl_batches_.size() && raw_pcl_batches_.size() == surface_index_batches_.size()&& surface_index_batches_.size() == boundary_index_batches_.size());
+		if(raw_pcl_batches_.size() > batchNum_limit_)
 		{
-			raw_pcl_buffers_.erase (raw_pcl_buffers_.begin());
-			pcl_normal_buffers_.erase (pcl_normal_buffers_.begin());
+			raw_pcl_batches_.erase (raw_pcl_batches_.begin());
+			pcl_normal_batches_.erase (pcl_normal_batches_.begin());
+			surface_index_batches_.erase (surface_index_batches_.begin());
+			boundary_index_batches_.erase (boundary_index_batches_.begin());
 		}
-		assert(raw_pcl_buffers_.size()<=3);
 
-		if(raw_pcl_buffers_.size()==3)
+
+		//2nd filter, update and process road_surface and road_boundary point; connect differ surface batches;
+		//a. filter road boundary noise, and repair holes in the surface;
+		//b. update "road_surface_odom_" and "road_boundary_odom_";
+		ROS_INFO("raw_pcl_batches_ size() %ld", raw_pcl_batches_.size());
+
+		if(raw_pcl_batches_.size()>=3)
 		{
+			//a---1st step: to prepare the boundary to be filtered, and its supporting surface and raw pcl---
+			RollingPointCloud supporting_raw_pcl, supporting_road_surface;
+			supporting_raw_pcl.clear();
+			supporting_raw_pcl.height = 1;
+			supporting_road_surface.clear();
+			supporting_road_surface.height = 1;
+
 			RollingPointNormalCloud supporting_normal_pcl;
 			supporting_normal_pcl.clear();
 			supporting_normal_pcl.height = 1;
 
-			for(vector<RollingPointNormalCloud>::iterator it=pcl_normal_buffers_.end()-3; it< pcl_normal_buffers_.end(); it++)
+			for(vector<RollingPointCloud>::iterator it=raw_pcl_batches_.end()-3; it< raw_pcl_batches_.end(); it++)
+			{
+				supporting_raw_pcl = supporting_raw_pcl + *it;
+
+			}
+			supporting_raw_pcl.width = supporting_raw_pcl.points.size();
+			supporting_raw_pcl.header.stamp = cloud_in.header.stamp;
+			supporting_raw_pcl.header.frame_id = odom_frame_;
+			pcl_ros::transformPointCloud(base_frame_, supporting_raw_pcl, supporting_raw_pcl, *tf_ );
+
+			for(vector<RollingPointNormalCloud>::iterator it=pcl_normal_batches_.end()-3; it< pcl_normal_batches_.end(); it++)
 			{
 				supporting_normal_pcl = supporting_normal_pcl + *it;
 			}
@@ -852,232 +957,231 @@ namespace golfcar_pcl{
 			supporting_normal_pcl.header.frame_id = odom_frame_;
 			pcl_ros::transformPointCloud(base_frame_, supporting_normal_pcl, supporting_normal_pcl, *tf_ );
 
-			RollingPointNormalCloud pcl_to_process;
-			pcl_to_process = pcl_normal_buffers_[pcl_normal_buffers_.size()-2];
-			pcl_to_process.header.stamp = cloud_in.header.stamp;
-			pcl_to_process.header.frame_id = odom_frame_;
-			pcl_ros::transformPointCloud(base_frame_, pcl_to_process, pcl_to_process, *tf_ );
-
-			//to publish pcl_to_process for debugging;
-			//pcl_to_process_pub_.publish(pcl_to_process);
-
-			sw.start("region-growing to extract surface");
-			pcl::KdTreeFLANN<RollingPointXYZNormal> kdtree;
-			if(pcl_to_process.points.size()==0) return;
-			kdtree.setInputCloud (pcl_to_process.makeShared());
-
-			pcl::KdTreeFLANN<RollingPointXYZNormal> kdtree_filter;
-			kdtree_filter.setInputCloud (supporting_normal_pcl.makeShared());
-
-			//just to find the initial seed of road surface;
-			int K = 1;
-			std::vector<int> pointIdxNKNSearch(K);
-			std::vector<float> pointNKNSquaredDistance(K);
-
-			int num = kdtree.nearestKSearch (seedPoint_, K, pointIdxNKNSearch, pointNKNSquaredDistance);
-
-			//pay attention to the "return" here, ignoring which may lead to bugs;
-			if(num!=1)
+			for(size_t i=surface_index_batches_.size()-3; i< surface_index_batches_.size(); i++)
 			{
-				ROS_WARN("ERROR When to find surface seed");
-				raw_pcl_buffers_.erase(raw_pcl_buffers_.end());
-				pcl_normal_buffers_.erase(pcl_normal_buffers_.end());
-				return;
+				RollingPointCloud surface_pts_tmp;
+
+				pcl::ExtractIndices<RollingPointXYZ> extract_surface;
+				extract_surface.setInputCloud (raw_pcl_batches_[i].makeShared());
+				pcl::PointIndices::Ptr surface_indices_tmp (new pcl::PointIndices);
+				surface_indices_tmp->indices = surface_index_batches_[i];
+				extract_surface.setIndices (surface_indices_tmp);
+				extract_surface.setNegative (false);
+				extract_surface.filter (surface_pts_tmp);
+				supporting_road_surface = supporting_road_surface + surface_pts_tmp;
 			}
+			supporting_road_surface.width = supporting_road_surface.points.size();
+			supporting_road_surface.header.stamp = cloud_in.header.stamp;
+			supporting_road_surface.header.frame_id = odom_frame_;
+			pcl_ros::transformPointCloud(base_frame_, supporting_road_surface, supporting_road_surface, *tf_ );
 
-			pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
-			pcl::PointIndices::Ptr boundary_inliers (new pcl::PointIndices);
+			surface_pts.points = supporting_road_surface.points;
+			surface_pts.width = supporting_road_surface.width;
 
-			RollingPointXYZNormal searchPt_tmp;
-			searchPt_tmp = pcl_to_process.points[pointIdxNKNSearch[0]];
-			inliers->indices.push_back(pointIdxNKNSearch[0]);
+			//only process the last but one "lb2" boundary batch;
+			RollingPointCloud raw_pcl_lb2;
+			RollingPointNormalCloud normal_pcl_lb2;
+			pcl::PointIndices::Ptr boundary_inliers_lb2 (new pcl::PointIndices);
+			raw_pcl_lb2 = raw_pcl_batches_[raw_pcl_batches_.size()-2];
+			boundary_inliers_lb2 -> indices = boundary_index_batches_[boundary_index_batches_.size()-2];
+			raw_pcl_lb2.header.stamp = cloud_in.header.stamp;
+			raw_pcl_lb2.header.frame_id = odom_frame_;
+			pcl_ros::transformPointCloud(base_frame_, raw_pcl_lb2, raw_pcl_lb2, *tf_ );
 
-			for(unsigned int pt=0; pt<inliers->indices.size(); pt++)
+			normal_pcl_lb2 = pcl_normal_batches_[pcl_normal_batches_.size()-2];
+			normal_pcl_lb2.header.stamp = cloud_in.header.stamp;
+			normal_pcl_lb2.header.frame_id = odom_frame_;
+			pcl_ros::transformPointCloud(base_frame_, normal_pcl_lb2, normal_pcl_lb2, *tf_ );
+
+			pcl::PointIndices::Ptr boundary_inliers_tmp (new pcl::PointIndices);
+
+			//filter the boundary points according to several features---
+			pcl::PointIndices::Ptr outlier_tmp (new pcl::PointIndices);
+
+			std::map< size_t , angle_pt_map > boundary_batches;
+			for(unsigned int bd_pt=0; bd_pt< boundary_inliers_lb2->indices.size(); bd_pt++)
 			{
-				unsigned int serial = inliers->indices[pt];
-				//std::cout <<"serial  "<< serial<< endl;
-				int neighbor_num = 8;
-				std::vector<int> nbPts(neighbor_num);
-				std::vector<float> nbPtDis(neighbor_num);
-
-				searchPt_tmp = pcl_to_process.points[serial];
-				int num = kdtree.nearestKSearch (searchPt_tmp, neighbor_num, nbPts, nbPtDis);
-				if(num!=neighbor_num) std::cout<<"neighbour points not enought, error"<<endl;
-
-				for(unsigned int neighbour_pt=0; neighbour_pt <nbPts.size(); neighbour_pt++)
+				RollingPointXYZNormal boundaryPt_tmp = normal_pcl_lb2.points[boundary_inliers_lb2->indices[bd_pt]];
+				size_t laser_serail = boundaryPt_tmp.laser_serial;
+				if(boundary_batches.find(laser_serail) == boundary_batches.end())
 				{
-					 int nb_serial = nbPts[neighbour_pt];
-					 RollingPointXYZNormal nbPoint_tmp = pcl_to_process.points[nb_serial];
-
-					 //to first classify out most surface points;
-					 bool curvature_flat =nbPoint_tmp.curvature <= curvature_thresh_;
-
-					 if(curvature_flat)
-					 {
-						 bool no_copy = true;
-						 for(unsigned int all_pt=0; all_pt<inliers->indices.size(); all_pt++)
-						 {
-							  if(inliers->indices[all_pt] == nb_serial) no_copy = false;
-						 }
-						 if(no_copy) inliers->indices.push_back(nb_serial);
-					 }
-					 else
-					 {
-						 bool no_copy = true;
-						 for(unsigned int bd_pt=0; bd_pt< boundary_inliers->indices.size(); bd_pt++)
-						 {
-							  if(boundary_inliers->indices[bd_pt] == nb_serial) no_copy = false;
-						 }
-
-						 if(no_copy)
-						 {
-							std::vector<int> pointIdxRadiusSearch_tmp;
-							std::vector<float> pointRadiusSquaredDistance_tmp;
-							//at least 4 support points from road surface pts;
-							if(kdtree_filter.radiusSearch (nbPoint_tmp, search_radius_, pointIdxRadiusSearch_tmp, pointRadiusSquaredDistance_tmp)> 3 )
-							{
-								std::vector <float> delt_Zs;
-								for(size_t sp_pt=0; sp_pt< pointIdxRadiusSearch_tmp.size(); sp_pt++)
-								{
-									RollingPointXYZNormal supportPt_tmp = supporting_normal_pcl.points[pointIdxRadiusSearch_tmp[sp_pt]];
-									float delt_z = fabs(supportPt_tmp.z - nbPoint_tmp.z);
-									delt_Zs.push_back(delt_z);
-								}
-
-								//bubble sorting for small-to-big;
-								size_t i,j;
-								for(i=0; i<delt_Zs.size(); i++)
-								{
-									for(j=0;j<i;j++)
-									{
-										if(delt_Zs[i]<delt_Zs[j])
-										{
-											 float temp=delt_Zs[i]; //swap
-											 delt_Zs[i]=delt_Zs[j];
-											 delt_Zs[j]=temp;
-										}
-									}
-								}
-
-								float curvature_tmp = nbPoint_tmp.curvature;
-								float pitch_speed_tmp = nbPoint_tmp.pitch_speed;
-								float pitch_tmp = nbPoint_tmp.pitch;
-								float roll_tmp = nbPoint_tmp.roll;
-								float angle_tmp = nbPoint_tmp.beam_angle;
-								float z_var_tmp = nbPoint_tmp.z_var;
-								float max_deltZ_tmp = delt_Zs.back();
-								float density_tmp = float(pointIdxRadiusSearch_tmp.size());
-
-								//try to record training data for svm;
-								if(extract_training_data_point_)
-								{
-									stringstream  name_string;
-									name_string<<record_path_.c_str()<<"/point_data";
-									const char *input_name = name_string.str().c_str();
-									if((fp_=fopen(input_name, "a"))==NULL){ROS_ERROR("cannot open file\n");return;}
-									else{ROS_INFO("file opened successfully!");}
-									fprintf(fp_, "%ld\t", (record_batch_serial_+1));
-									fprintf(fp_, "%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", curvature_tmp, pitch_speed_tmp, pitch_tmp, roll_tmp, angle_tmp, z_var_tmp, max_deltZ_tmp, density_tmp);
-									fclose(fp_); ROS_INFO("point raw file closed");
-								}
-								//to record a simplified data for labeling process;
-								if(extract_training_data_point_)
-								{
-									stringstream  name_string;
-									name_string<<record_path_.c_str()<<"/point_label_data";
-									const char *input_name = name_string.str().c_str();
-									if((fp_=fopen(input_name, "a"))==NULL){ROS_ERROR("cannot open file\n");return;}
-									else{ROS_INFO("file opened successfully!");}
-									fprintf(fp_, "%ld\t", (record_batch_serial_+1));
-									fprintf(fp_, "%f\t%f\t", nbPoint_tmp.x, nbPoint_tmp.y);
-									int tentative_value = 0;
-									fprintf(fp_, "%d\n", tentative_value);
-									fclose(fp_); ROS_INFO("point label file closed");
-								}
-
-
-								int vector_length = 8;
-								double point_feature_vector[vector_length];
-								point_feature_vector[0]= curvature_tmp;
-								point_feature_vector[1]= pitch_speed_tmp;
-								point_feature_vector[2]= pitch_tmp;
-								point_feature_vector[3]= roll_tmp;
-								point_feature_vector[4]= angle_tmp;
-								point_feature_vector[5]= z_var_tmp;
-								point_feature_vector[6]= max_deltZ_tmp;
-								point_feature_vector[7]= density_tmp;
-								int point_type = point_classifier_->classify_objects(point_feature_vector, vector_length);
-
-								//when extract points data, we need to visualize all the potential points in "boundary_pts";
-								if(extract_training_data_point_) point_type = 0;
-
-								//0 represents "true", "1" represents "noisy" (false) for boundary points;
-								//vice versa for surface points;
-								if(point_type == 0)
-								{
-									 boundary_inliers->indices.push_back(nb_serial);
-								}
-								else if( point_type == 1)
-								{
-									//just now only checked where there is already a copy in boundary points;
-									//still need to check where this point already exists in surface points, when trying to add it to the surface points;
-									 for(unsigned int all_pt=0; all_pt<inliers->indices.size(); all_pt++)
-									 {
-										  if(inliers->indices[all_pt] == nb_serial) no_copy = false;
-									 }
-									 if(no_copy) inliers->indices.push_back(nb_serial);
-								}
-								else
-								{
-									//do nothing when classification result is -1, meaning that "cannot classify";
-								}
-							}
-							else
-							{
-								//do nothing when there are no enough local supporting points;
-							}
-
-						 }
-					 }
+					angle_pt_map batch_tmp;
+					batch_tmp[deputy_key(boundaryPt_tmp.beam_angle)] = boundaryPt_tmp;
+					boundary_batches[laser_serail] = batch_tmp;
+				}
+				else
+				{
+					boundary_batches[laser_serail][deputy_key(boundaryPt_tmp.beam_angle)] = boundaryPt_tmp;
 				}
 			}
+
+			//1st: fine-tune the boundary points;
+			pcl::KdTreeFLANN<RollingPointXYZNormal> kdtree_filter;
+			kdtree_filter.setInputCloud (normal_pcl_lb2.makeShared());
+			for(unsigned int bd_pt=0; bd_pt< boundary_inliers_lb2->indices.size(); bd_pt++)
+			{
+				RollingPointXYZNormal searchPt_tmp = normal_pcl_lb2.points[boundary_inliers_lb2->indices[bd_pt]];
+				//float max_local_curvature = searchPt_tmp.curvature;
+				float local_y = searchPt_tmp.y;
+				int searchPt_serial_tmp = boundary_inliers_lb2->indices[bd_pt];
+
+				std::vector<int> pointIdxRadiusSearch;
+				std::vector<float> pointRadiusSquaredDistance;
+
+				//at least 4 support points from road surface pts;
+				if(kdtree_filter.radiusSearch (searchPt_tmp, 0.3, pointIdxRadiusSearch, pointRadiusSquaredDistance)> 3 )
+				{
+					for(size_t sp_pt=0; sp_pt< pointIdxRadiusSearch.size(); sp_pt++)
+					{
+						RollingPointXYZNormal supportPt_tmp = normal_pcl_lb2.points[pointIdxRadiusSearch[sp_pt]];
+
+						//supportPt_tmp is from the same scan, and it is not in the boundary point set;
+						if(supportPt_tmp.laser_serial == searchPt_tmp.laser_serial)
+						{
+							if(boundary_batches[searchPt_tmp.laser_serial].find(deputy_key(supportPt_tmp.beam_angle)) == boundary_batches[searchPt_tmp.laser_serial].end())
+							{
+								if(supportPt_tmp.curvature >= searchPt_tmp.curvature && (local_y>0 && supportPt_tmp.y > local_y) && fabsf(supportPt_tmp.z -searchPt_tmp.z) < 0.1)
+								{
+									local_y = supportPt_tmp.y;
+									searchPt_serial_tmp =pointIdxRadiusSearch[sp_pt];
+								}
+								else if(supportPt_tmp.curvature >= searchPt_tmp.curvature && (local_y <0.0 && supportPt_tmp.y < local_y) && fabsf(supportPt_tmp.z -searchPt_tmp.z) < 0.1)
+								{
+									local_y = supportPt_tmp.y;
+									searchPt_serial_tmp =pointIdxRadiusSearch[sp_pt];
+								}
+							}
+						}
+					}
+				}
+				boundary_inliers_tmp->indices.push_back(searchPt_serial_tmp);
+			}
+			boundary_index_batches_[boundary_index_batches_.size()-2] = boundary_inliers_tmp->indices;
+			boundary_inliers_lb2 -> indices = boundary_index_batches_[boundary_index_batches_.size()-2];
+
+			//2nd: filter noisy boundary points using SVM;
+			pcl::PointIndices::Ptr boundary_inliers_tmp2 (new pcl::PointIndices);
+			kdtree_filter.setInputCloud (supporting_normal_pcl.makeShared());
+			for(unsigned int bd_pt=0; bd_pt< boundary_inliers_lb2->indices.size(); bd_pt++)
+			{
+				RollingPointXYZNormal searchPt_tmp = normal_pcl_lb2.points[boundary_inliers_lb2->indices[bd_pt]];
+
+				std::vector<int> pointIdxRadiusSearch;
+				std::vector<float> pointRadiusSquaredDistance;
+				//at least 4 support points from road surface pts;
+				if(kdtree_filter.radiusSearch (searchPt_tmp, search_radius_, pointIdxRadiusSearch, pointRadiusSquaredDistance)> 3 )
+				{
+					std::vector <float> delt_Zs;
+					for(size_t sp_pt=0; sp_pt< pointIdxRadiusSearch.size(); sp_pt++)
+					{
+						RollingPointXYZNormal supportPt_tmp = supporting_normal_pcl.points[pointIdxRadiusSearch[sp_pt]];
+						float delt_z = fabs(supportPt_tmp.z - searchPt_tmp.z);
+						delt_Zs.push_back(delt_z);
+					}
+
+					//bubble sorting for small-to-big;
+					size_t i,j;
+					for(i=0; i<delt_Zs.size(); i++)
+					{
+						for(j=0;j<i;j++)
+						{
+							if(delt_Zs[i]<delt_Zs[j])
+							{
+								 float temp=delt_Zs[i]; //swap
+								 delt_Zs[i]=delt_Zs[j];
+								 delt_Zs[j]=temp;
+							}
+						}
+					}
+
+					float curvature_tmp = searchPt_tmp.curvature;
+					float pitch_speed_tmp = searchPt_tmp.pitch_speed;
+					float pitch_tmp = searchPt_tmp.pitch;
+					float roll_tmp = searchPt_tmp.roll;
+					float angle_tmp = searchPt_tmp.beam_angle;
+					float z_var_tmp = searchPt_tmp.z_var;
+					float max_deltZ_tmp = delt_Zs.back();
+					float density_tmp = float(pointIdxRadiusSearch.size());
+
+					//try to record training data for svm;
+					if(extract_training_data_point_)
+					{
+						stringstream  name_string;
+						name_string<<record_path_.c_str()<<"/point_data";
+						const char *input_name = name_string.str().c_str();
+						if((fp_=fopen(input_name, "a"))==NULL){ROS_ERROR("cannot open file\n");return;}
+						else{ROS_INFO("file opened successfully!");}
+						fprintf(fp_, "%ld\t", (record_batch_serial_+1));
+						fprintf(fp_, "%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", curvature_tmp, pitch_speed_tmp, pitch_tmp, roll_tmp, angle_tmp, z_var_tmp, max_deltZ_tmp, density_tmp);
+						fclose(fp_); ROS_INFO("point raw file closed");
+					}
+					//to record a simplified data for labeling process;
+					if(extract_training_data_point_)
+					{
+						stringstream  name_string;
+						name_string<<record_path_.c_str()<<"/point_label_data";
+						const char *input_name = name_string.str().c_str();
+						if((fp_=fopen(input_name, "a"))==NULL){ROS_ERROR("cannot open file\n");return;}
+						else{ROS_INFO("file opened successfully!");}
+						fprintf(fp_, "%ld\t", (record_batch_serial_+1));
+						fprintf(fp_, "%f\t%f\t", searchPt_tmp.x, searchPt_tmp.y);
+						int tentative_value = 0;
+						fprintf(fp_, "%d\n", tentative_value);
+						fclose(fp_); ROS_INFO("point label file closed");
+					}
+
+					int vector_length = 8;
+					double point_feature_vector[vector_length];
+					point_feature_vector[0]= curvature_tmp;
+					point_feature_vector[1]= pitch_speed_tmp;
+					point_feature_vector[2]= pitch_tmp;
+					point_feature_vector[3]= roll_tmp;
+					point_feature_vector[4]= angle_tmp;
+					point_feature_vector[5]= z_var_tmp;
+					point_feature_vector[6]= max_deltZ_tmp;
+					point_feature_vector[7]= density_tmp;
+					int point_type = point_classifier_->classify_objects(point_feature_vector, vector_length);
+
+					//when extract points data, we need to visualize all the potential points in "boundary_pts";
+					if(extract_training_data_point_) point_type = 0;
+
+					if(point_type ==1 || point_type==-1)
+					{
+						outlier_tmp->indices.push_back(boundary_inliers_lb2->indices[bd_pt]);
+					}
+					else
+					{
+						boundary_inliers_tmp2->indices.push_back(boundary_inliers_lb2->indices[bd_pt]);
+					}
+				}
+				else
+				{
+					boundary_inliers_tmp2->indices.push_back(boundary_inliers_lb2->indices[bd_pt]);
+				}
+			}
+			boundary_index_batches_[boundary_index_batches_.size()-2] = boundary_inliers_tmp2->indices;
+
+			//to be continued...
+			//to-do list: to remove noisy scans that no points exist in surface & boundary set;
+			//because region-growing will not put drastically untouched scans as road surface boundary;
+
+			//think over it in a systematic way as noisy scans removing;
+			//already done: remove noisy scans that has points in boundary set;
+
+			//use set theory when write papers;
+			outlier_index_batches_.push_back(outlier_tmp->indices);
+			if(outlier_index_batches_.size() > batchNum_limit_-1 )
+			{outlier_index_batches_.erase(outlier_index_batches_.begin());}
+
+			pcl::ExtractIndices<RollingPointXYZ> extract_bd;
+			extract_bd.setInputCloud (raw_pcl_lb2.makeShared());
+			extract_bd.setIndices (boundary_inliers_tmp2);
+			//"boundary_inliers" is the most recent boundary;
+			//extract_bd.setIndices (boundary_inliers);
+			extract_bd.setNegative (false);
+			extract_bd.filter (boundary_pts);
 			sw.end();
 
-
-			RollingPointCloud raw_pcl_processed;
-			raw_pcl_processed = raw_pcl_buffers_[raw_pcl_buffers_.size()-2];
-			raw_pcl_processed.header.stamp = cloud_in.header.stamp;
-			raw_pcl_processed.header.frame_id = odom_frame_;
-
-			//distinguish between "raw_pcl_buffers_" and "raw_pcl_batches_";
-			raw_pcl_batches_.push_back(raw_pcl_processed);
-
-			pcl_ros::transformPointCloud(base_frame_, raw_pcl_processed, raw_pcl_processed, *tf_ );
-
-			pcl::ExtractIndices<RollingPointXYZ> extract_tmp;
-			extract_tmp.setInputCloud (raw_pcl_processed.makeShared());
-			extract_tmp.setIndices (inliers);
-			extract_tmp.setNegative (false);
-			extract_tmp.filter (surface_pts);
-			extract_tmp.setIndices (boundary_inliers);
-			extract_tmp.setNegative (false);
-			extract_tmp.filter (boundary_pts);
-
-
-			surface_index_batches_.push_back(inliers->indices);
-			boundary_index_batches_.push_back(boundary_inliers->indices);
-
-
-			ROS_INFO("raw pcl batch size() %ld", batchNum_limit_);
-			assert( raw_pcl_batches_.size() == surface_index_batches_.size() &&
-					surface_index_batches_.size() == boundary_index_batches_.size());
-
-			if(raw_pcl_batches_.size() > batchNum_limit_)
-			{
-				raw_pcl_batches_.erase (raw_pcl_batches_.begin());
-				surface_index_batches_.erase (surface_index_batches_.begin());
-				boundary_index_batches_.erase (boundary_index_batches_.begin());
-			}
 
 
 			//b. update "road_surface_odom_" and "road_boundary_odom_";
@@ -1087,7 +1191,6 @@ namespace golfcar_pcl{
 			road_surface_odom_.height=1;
 			road_boundary_odom_.clear();
 			road_boundary_odom_.height=1;
-
 			for(size_t i=0; i< surface_index_batches_.size()-1; i++)
 			{
 				RollingPointCloud surface_pts_tmp;
@@ -1117,14 +1220,10 @@ namespace golfcar_pcl{
 
 			road_slope_visualization(surface_pts, boundary_pts);
 		}
-
-		ROS_INFO("extraction loop finished");
 	}
 	
 	void road_surface::road_slope_visualization(RollingPointCloud & surface_pts, RollingPointCloud & boundary_pts)
 	{
-		boost::recursive_mutex::scoped_lock rsl(configuration_mutex_);
-
 		PointCloud patch_ROI;
 		patch_ROI.clear();
 		patch_ROI.height = 1;
@@ -1263,7 +1362,6 @@ namespace golfcar_pcl{
 	void road_surface::planefitting_ROI(RollingPointCloud & surface_pts, vector<pcl::PointXYZ> & poly_ROI,
 										PointCloud & fitting_plane, rolling_window::plane_coef & plane_coef)
 	{
-		boost::recursive_mutex::scoped_lock pfl(configuration_mutex_);
 		PointCloud patch_ROI;
 		patch_ROI.clear();
 		patch_ROI.height = 1;
@@ -1275,16 +1373,12 @@ namespace golfcar_pcl{
 			deputy_pt.x = surface_pts.points[i].x;
 			deputy_pt.y = surface_pts.points[i].y;
 			deputy_pt.z = surface_pts.points[i].z;
-
 			if(pointInPolygon(deputy_pt, poly_ROI))
 			{
 				patch_ROI.points.push_back(deputy_pt);
 				patch_ROI.width ++;
 			}
 		}
-
-		ROS_INFO("surface_pts %ld, patch_ROI %ld", surface_pts.points.size(), patch_ROI.points.size());
-
 		pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
 		pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
 		// Create the segmentation object

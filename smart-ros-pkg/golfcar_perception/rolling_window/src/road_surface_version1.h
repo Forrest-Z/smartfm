@@ -79,9 +79,6 @@
 #include <pcl_ros/impl/transforms.hpp>
 #include "svm_classifier.h"
 
-#include <boost/bind.hpp>
-#include <boost/thread/mutex.hpp>
-
 namespace golfcar_pcl{
 
 	typedef struct
@@ -137,10 +134,8 @@ namespace golfcar_pcl{
 
 	//important data management;
 	vector <RollingPointCloud> raw_pcl_batches_;
-	vector <vector <int> > surface_index_batches_, boundary_index_batches_;
-
-	vector <RollingPointCloud> raw_pcl_buffers_;
-	vector <RollingPointNormalCloud> pcl_normal_buffers_;
+	vector <RollingPointNormalCloud> pcl_normal_batches_;
+	vector <vector <int> > surface_index_batches_, boundary_index_batches_, outlier_index_batches_;
 
 	size_t batchNum_limit_;
 	
@@ -162,13 +157,12 @@ namespace golfcar_pcl{
 							PointCloud & fitting_plane, rolling_window::plane_coef & plane_coef);
 
 	pcl::PointXYZ	viewpoint_td_sick_;
-	RollingPointXYZNormal seedPoint_;
+	RollingPointXYZ seedPoint_;
 
 	double search_radius_, curvature_thresh_; 
 
 	ros::Publisher 	surface_all_pub_;
 	ros::Publisher	boundary_all_pub_;
-	ros::Publisher  pcl_to_process_pub_;
 
 	bool planefitting_init_, clustering_init_;
 	tf::StampedTransform 	planefitting_OdomMeas_, clustering_OdomMeas_;
@@ -195,8 +189,6 @@ namespace golfcar_pcl{
 
 	golfcar_ml::svm_classifier *scan_classifier_;
 	golfcar_ml::svm_classifier *point_classifier_;
-
-	boost::recursive_mutex configuration_mutex_;
     };
 
 };
