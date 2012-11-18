@@ -1,4 +1,4 @@
-image: /home/golfcar/smartfm/smart-ros-pkg/experimental/OGMapping/maps/tra_map.pgm
+image: /home/baoxing/smartfm/smart-ros-pkg/experimental/OGMapping/maps/tra_map.pgm
 resolution: 0.100000
 origin: [0.000000, 0.000000, 0.000000]
 negate: 0
