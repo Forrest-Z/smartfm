@@ -59,6 +59,8 @@ namespace golfcar_pcl{
 		//modification: to downsampling it, publish the raw PointCloud type;
 		road_surface_pub_   	= 	nh_.advertise<PointCloud>("road_surface_pts", 10);
 		road_boundary_pub_   	= 	nh_.advertise<PointCloud>("road_boundary_pts", 10);
+		road_surface_pub2_   	= 	nh_.advertise<PointCloud>("road_surface_pts2", 10);
+		road_boundary_pub2_   	= 	nh_.advertise<PointCloud>("road_boundary_pts2", 10);
 
 		fitting_plane_pub_   	=	nh_.advertise<PointCloud>("fitting_plane", 10);
 		normals_poses_pub_ 		=	nh_.advertise<geometry_msgs::PoseArray>("normals_array", 10);
@@ -68,8 +70,10 @@ namespace golfcar_pcl{
 		boundary_all_pub_   	= 	nh_.advertise<RollingPointCloud>("boundary_all", 10);
 		large_curvature_pub_   	= 	nh_.advertise<PointCloud>("large_curvature_pts", 10);
 		scan_outlier_pub_		= 	nh_.advertise<PointCloud>("scan_outlier_pts", 10);
+		scan_inlier_pub_		= 	nh_.advertise<PointCloud>("scan_inlier_pts", 10);
 
-		//pcl_to_process_pub_  	= 	nh_.advertise<RollingPointCloud>("pcl_to_process", 10);
+		//the pcl batch to extract latest road boundary and surface;
+		pcl_to_process_pub_  	= 	nh_.advertise<RollingPointCloud>("pcl_to_process", 10);
 
 		planefitting_init_ = false;
 		clustering_init_   = false;
@@ -78,8 +82,12 @@ namespace golfcar_pcl{
 
 		clusters_pub_ = nh_.advertise<PointCloudRGB>("clusters_RGBD", 10);
 		normal_visual_pub_ = nh_.advertise<PointCloudRGB>("normal_visual_RGB", 10);
-		surface_slope_pub_ = nh_.advertise<PointCloudRGB>("surface_slope_visual_RGB", 10);
+		normal_visual_pub2_ = nh_.advertise<PointCloudRGB>("normal_visual_RGB2", 10);
 		variance_visual_pub_ = nh_.advertise<PointCloudRGB>("variance_visual_RGB", 10);
+
+		surface_slope_pub_ = nh_.advertise<PointCloudRGB>("surface_slope_visual_RGB", 10);
+
+
 
 		//planes_pub_ = nh_.advertise<PointCloudRGB>("planes_RGBD", 10);
 		//pcl_cloud_restPub_ = nh_.advertise<PointCloudNormal>("pcl_cloud_restVisual", 10);
@@ -324,47 +332,7 @@ namespace golfcar_pcl{
 				}
 				clusters_pub_.publish(clusters_tmp);
 
-				//to visualize normal and curvature in color;
 				/*
-				PointCloudRGBNormal normal_visual_tmp;
-				normal_visual_tmp.clear();
-				normal_visual_tmp.header = odom->header;
-				normal_visual_tmp.height = 1;
-
-				for(size_t batch =0; batch < pcl_normal_batches_.size()-1; batch++)
-				{
-					for(size_t serial=0; serial < pcl_normal_batches_[batch].size(); serial++)
-					{
-						pcl::RGB RGB_tmp;
-						RollingPointXYZNormal pointNormal_tmp;
-						pcl::PointXYZRGBNormal pointRBGNormal_tmp;
-						pointNormal_tmp = pcl_normal_batches_[batch][serial];
-
-						if(curvature_visualization_)
-						{
-							road_surface::colormap_jet(pointNormal_tmp.curvature,curvature_visual_limit_, RGB_tmp);
-						}
-						else if(normalZ_visualization_)
-						{
-							road_surface::colormap_jet(pointNormal_tmp.normal_z, normalZ_visual_limit_, RGB_tmp);
-						}
-						pointRBGNormal_tmp.r = RGB_tmp.r;
-						pointRBGNormal_tmp.g = RGB_tmp.g;
-						pointRBGNormal_tmp.b = RGB_tmp.b;
-
-						pointRBGNormal_tmp.x = pointNormal_tmp.x;
-						pointRBGNormal_tmp.y = pointNormal_tmp.y;
-						pointRBGNormal_tmp.z = pointNormal_tmp.z;
-						pointRBGNormal_tmp.curvature = pointNormal_tmp.curvature;
-						pointRBGNormal_tmp.normal_x = pointNormal_tmp.normal_x;
-						pointRBGNormal_tmp.normal_y = pointNormal_tmp.normal_y;
-						pointRBGNormal_tmp.normal_z = pointNormal_tmp.normal_z;
-						normal_visual_tmp.push_back(pointRBGNormal_tmp);
-					}
-				}
-				normal_visual_pub_.publish(normal_visual_tmp);
-				*/
-
 				PointCloudRGB variance_visualization;
 				variance_visualization.clear();
 				variance_visualization.header = odom->header;
@@ -390,6 +358,7 @@ namespace golfcar_pcl{
 					}
 				}
 				variance_visual_pub_.publish(variance_visualization);
+				*/
 
 				//newly added function "plane-fitting" for patches;
 				//it needs more work;
@@ -560,6 +529,27 @@ namespace golfcar_pcl{
 		}
 		normal_visual_pub_.publish(normal_visual_tmp);
 
+		PointCloudRGB variance_visualization;
+		variance_visualization.clear();
+		variance_visualization.header = cloud_in.header;
+		variance_visualization.height = 1;
+		for(size_t ip =0; ip < point_normals.points.size(); ip++)
+		{
+			RollingPointXYZNormal point_tmp;
+			point_tmp = point_normals.points[ip];
+
+			pcl::RGB RGB_tmp;
+			pcl::PointXYZRGB pointRBG_tmp;
+			road_surface::colormap_jet(point_tmp.z_var, 0.1, RGB_tmp);
+			pointRBG_tmp.r = RGB_tmp.r;
+			pointRBG_tmp.g = RGB_tmp.g;
+			pointRBG_tmp.b = RGB_tmp.b;
+			pointRBG_tmp.x = point_tmp.x;
+			pointRBG_tmp.y = point_tmp.y;
+			pointRBG_tmp.z = point_tmp.z;
+			variance_visualization.push_back(pointRBG_tmp);
+		}
+		variance_visual_pub_.publish(variance_visualization);
 
 		//step 2: filter noisy point cloud according to their scan batch;
 		//output: scan_inlier_pcl, and scan_inlier_pclNormal;
@@ -782,7 +772,6 @@ namespace golfcar_pcl{
 			}
 		}
 
-
 		pcl::PointIndices::Ptr scanfilter_outlier (new pcl::PointIndices);
 		for(unsigned int pt=0; pt< point_normals.points.size(); pt++)
 		{
@@ -812,7 +801,9 @@ namespace golfcar_pcl{
 		extract_scanfilter.setNegative (true);
 		extract_scanfilter.filter (scan_inlier_pcl);
 		//to visualize the noisy scan batches filtered;
+
 		scan_outlier_pub_.publish(scan_outlier_pcl);
+		scan_inlier_pub_.publish(scan_inlier_pcl);
 
 		pcl::ExtractIndices<RollingPointXYZNormal> extract_scanfilter_normal;
 		extract_scanfilter_normal.setInputCloud (point_normals.makeShared());
@@ -859,7 +850,42 @@ namespace golfcar_pcl{
 			pcl_ros::transformPointCloud(base_frame_, pcl_to_process, pcl_to_process, *tf_ );
 
 			//to publish pcl_to_process for debugging;
-			//pcl_to_process_pub_.publish(pcl_to_process);
+			pcl_to_process_pub_.publish(pcl_to_process);
+
+			//to visualize the curvature of "pcl_to_process";
+			PointCloudRGBNormal normal_visual_tmp2;
+			normal_visual_tmp2.clear();
+			normal_visual_tmp2.header = pcl_to_process.header;
+			normal_visual_tmp2.height = 1;
+			for(size_t ip =0; ip < pcl_to_process.points.size(); ip++)
+			{
+				pcl::RGB RGB_tmp;
+				RollingPointXYZNormal pointNormal_tmp;
+				pcl::PointXYZRGBNormal pointRBGNormal_tmp;
+				pointNormal_tmp = pcl_to_process.points[ip];
+
+				if(curvature_visualization_)
+				{
+					road_surface::colormap_jet(pointNormal_tmp.curvature,curvature_visual_limit_, RGB_tmp);
+				}
+				else if(normalZ_visualization_)
+				{
+					road_surface::colormap_jet(pointNormal_tmp.normal_z, normalZ_visual_limit_, RGB_tmp);
+				}
+				pointRBGNormal_tmp.r = RGB_tmp.r;
+				pointRBGNormal_tmp.g = RGB_tmp.g;
+				pointRBGNormal_tmp.b = RGB_tmp.b;
+
+				pointRBGNormal_tmp.x = pointNormal_tmp.x;
+				pointRBGNormal_tmp.y = pointNormal_tmp.y;
+				pointRBGNormal_tmp.z = pointNormal_tmp.z;
+				pointRBGNormal_tmp.curvature = pointNormal_tmp.curvature;
+				pointRBGNormal_tmp.normal_x = pointNormal_tmp.normal_x;
+				pointRBGNormal_tmp.normal_y = pointNormal_tmp.normal_y;
+				pointRBGNormal_tmp.normal_z = pointNormal_tmp.normal_z;
+				normal_visual_tmp2.push_back(pointRBGNormal_tmp);
+			}
+			normal_visual_pub2_.publish(normal_visual_tmp2);
 
 			sw.start("region-growing to extract surface");
 			pcl::KdTreeFLANN<RollingPointXYZNormal> kdtree;
@@ -887,7 +913,6 @@ namespace golfcar_pcl{
 
 			pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
 			pcl::PointIndices::Ptr boundary_inliers (new pcl::PointIndices);
-
 			RollingPointXYZNormal searchPt_tmp;
 			searchPt_tmp = pcl_to_process.points[pointIdxNKNSearch[0]];
 			inliers->indices.push_back(pointIdxNKNSearch[0]);
@@ -1043,6 +1068,53 @@ namespace golfcar_pcl{
 			}
 			sw.end();
 
+			//to generate classification result with only curvature;
+			pcl::PointIndices::Ptr inliers2 (new pcl::PointIndices);
+			pcl::PointIndices::Ptr boundary_inliers2 (new pcl::PointIndices);
+			inliers2->indices.push_back(pointIdxNKNSearch[0]);
+			for(unsigned int pt=0; pt<inliers2->indices.size(); pt++)
+			{
+				unsigned int serial = inliers2->indices[pt];
+				//std::cout <<"serial  "<< serial<< endl;
+				int neighbor_num = 8;
+				std::vector<int> nbPts(neighbor_num);
+				std::vector<float> nbPtDis(neighbor_num);
+
+				searchPt_tmp = pcl_to_process.points[serial];
+				int num = kdtree.nearestKSearch (searchPt_tmp, neighbor_num, nbPts, nbPtDis);
+				if(num!=neighbor_num) std::cout<<"neighbour points not enought, error"<<endl;
+
+				for(unsigned int neighbour_pt=0; neighbour_pt <nbPts.size(); neighbour_pt++)
+				{
+					 int nb_serial = nbPts[neighbour_pt];
+					 RollingPointXYZNormal nbPoint_tmp = pcl_to_process.points[nb_serial];
+
+					 //to first classify out most surface points;
+					 bool curvature_flat =nbPoint_tmp.curvature <= curvature_thresh_;
+
+					 if(curvature_flat)
+					 {
+						 bool no_copy = true;
+						 for(unsigned int all_pt=0; all_pt<inliers2->indices.size(); all_pt++)
+						 {
+							  if(inliers2->indices[all_pt] == nb_serial) no_copy = false;
+						 }
+						 if(no_copy) inliers2->indices.push_back(nb_serial);
+					 }
+					 else
+					 {
+						 bool no_copy = true;
+						 for(unsigned int bd_pt=0; bd_pt< boundary_inliers2->indices.size(); bd_pt++)
+						 {
+							  if(boundary_inliers2->indices[bd_pt] == nb_serial) no_copy = false;
+						 }
+						 if(no_copy)
+						 {
+							 boundary_inliers2->indices.push_back(nb_serial);
+						 }
+					 }
+				}
+			}
 
 			RollingPointCloud raw_pcl_processed;
 			raw_pcl_processed = raw_pcl_buffers_[raw_pcl_buffers_.size()-2];
@@ -1063,6 +1135,19 @@ namespace golfcar_pcl{
 			extract_tmp.setNegative (false);
 			extract_tmp.filter (boundary_pts);
 
+			RollingPointCloud surface_pts2, boundary_pts2;
+			surface_pts2.header = cloud_in.header;
+			boundary_pts2.header = cloud_in.header;
+			surface_pts2.clear();
+			boundary_pts2.clear();
+			extract_tmp.setIndices (inliers2);
+			extract_tmp.setNegative (false);
+			extract_tmp.filter (surface_pts2);
+			extract_tmp.setIndices (boundary_inliers2);
+			extract_tmp.setNegative (false);
+			extract_tmp.filter (boundary_pts2);
+			road_surface_pub2_.publish(surface_pts2);
+			road_boundary_pub2_.publish(boundary_pts2);
 
 			surface_index_batches_.push_back(inliers->indices);
 			boundary_index_batches_.push_back(boundary_inliers->indices);
