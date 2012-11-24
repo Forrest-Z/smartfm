@@ -181,7 +181,7 @@ namespace golfcar_pcl{
 	double planefitting_disThresh_,clustering_disThresh_;
 	bool checkDistance(const tf::StampedTransform& oldTf, const tf::StampedTransform& newTf, float Dis_thresh);
 
-	ros::Publisher  clusters_pub_, normal_visual_pub_, normal_visual_pub2_, surface_slope_pub_, variance_visual_pub_, large_curvature_pub_, scan_outlier_pub_, scan_inlier_pub_;
+	ros::Publisher  clusters_pub_, normal_visual_pub_, normal_visual_pub2_, surface_slope_pub_, variance_visual_pub_, variance_visual_pub2_, large_curvature_pub_, scan_outlier_pub_, scan_inlier_pub_;
 	//ros::Publisher planes_pub_, pcl_cloud_restPub_;
 
 	vector<float> jet_r_, jet_g_, jet_b_;

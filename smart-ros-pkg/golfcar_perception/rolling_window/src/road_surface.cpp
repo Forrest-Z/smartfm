@@ -85,6 +85,7 @@ namespace golfcar_pcl{
 		normal_visual_pub_ = nh_.advertise<PointCloudRGB>("normal_visual_RGB", 10);
 		normal_visual_pub2_ = nh_.advertise<PointCloudRGB>("normal_visual_RGB2", 10);
 		variance_visual_pub_ = nh_.advertise<PointCloudRGB>("variance_visual_RGB", 10);
+		variance_visual_pub2_ = nh_.advertise<PointCloudRGB>("variance_visual_RGB2", 10);
 
 		surface_slope_pub_ = nh_.advertise<PointCloudRGB>("surface_slope_visual_RGB", 10);
 
@@ -530,8 +531,6 @@ namespace golfcar_pcl{
 		}
 		normal_visual_pub_.publish(normal_visual_tmp);
 
-		//move to the back;
-		/*
 		PointCloudRGB variance_visualization;
 		variance_visualization.clear();
 		variance_visualization.header = cloud_in.header;
@@ -553,7 +552,6 @@ namespace golfcar_pcl{
 			variance_visualization.push_back(pointRBG_tmp);
 		}
 		variance_visual_pub_.publish(variance_visualization);
-		*/
 
 		//step 2: filter noisy point cloud according to their scan batch;
 		//output: scan_inlier_pcl, and scan_inlier_pclNormal;
@@ -892,7 +890,7 @@ namespace golfcar_pcl{
 			normal_visual_pub2_.publish(normal_visual_tmp2);
 
 
-			PointCloudRGB variance_visualization;
+			//PointCloudRGB variance_visualization;
 			variance_visualization.clear();
 			variance_visualization.header = cloud_in.header;
 			variance_visualization.height = 1;
@@ -912,7 +910,7 @@ namespace golfcar_pcl{
 				pointRBG_tmp.z = point_tmp.z;
 				variance_visualization.push_back(pointRBG_tmp);
 			}
-			variance_visual_pub_.publish(variance_visualization);
+			variance_visual_pub2_.publish(variance_visualization);
 
 
 			sw.start("region-growing to extract surface");
