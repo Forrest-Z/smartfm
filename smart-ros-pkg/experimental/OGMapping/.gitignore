@@ -2,3 +2,4 @@
 .pydevproject
 src/OGMapping
 maps/tra_map.yaml
+maps/some_materials
