@@ -2,5 +2,7 @@
     <node pkg="OGMapping" type="OGMapper" name="trav_mapper" output="screen">
 	<param name="map_file" value="$(find OGMapping)/maps/tra_map"/>
 	<param name="init_map" value="false"/>
+    <param name="map_size_x" value="5500"/>
+    <param name="map_size_y" value="4520"/>
     </node>
 </launch>    
