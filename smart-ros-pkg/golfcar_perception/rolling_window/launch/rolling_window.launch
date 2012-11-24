@@ -21,4 +21,9 @@
 	<param name="extract_training_data_scan" value="false"/>
 	<param name="extract_training_data_point" value="false"/>
     </node>
+
+    <node pkg="microstrain_rpy" type="rpy" name="rpy_publisher" output="screen">
+	<remap from="data" to="/ms/imu/data" />
+    </node>
+
 </launch>    

@@ -61,6 +61,7 @@ namespace golfcar_pcl{
 		road_boundary_pub_   	= 	nh_.advertise<PointCloud>("road_boundary_pts", 10);
 		road_surface_pub2_   	= 	nh_.advertise<PointCloud>("road_surface_pts2", 10);
 		road_boundary_pub2_   	= 	nh_.advertise<PointCloud>("road_boundary_pts2", 10);
+		offroad_pub_   	= 	nh_.advertise<PointCloud>("offroad_pts", 10);
 
 		fitting_plane_pub_   	=	nh_.advertise<PointCloud>("fitting_plane", 10);
 		normals_poses_pub_ 		=	nh_.advertise<geometry_msgs::PoseArray>("normals_array", 10);
@@ -529,6 +530,8 @@ namespace golfcar_pcl{
 		}
 		normal_visual_pub_.publish(normal_visual_tmp);
 
+		//move to the back;
+		/*
 		PointCloudRGB variance_visualization;
 		variance_visualization.clear();
 		variance_visualization.header = cloud_in.header;
@@ -550,6 +553,7 @@ namespace golfcar_pcl{
 			variance_visualization.push_back(pointRBG_tmp);
 		}
 		variance_visual_pub_.publish(variance_visualization);
+		*/
 
 		//step 2: filter noisy point cloud according to their scan batch;
 		//output: scan_inlier_pcl, and scan_inlier_pclNormal;
@@ -887,6 +891,30 @@ namespace golfcar_pcl{
 			}
 			normal_visual_pub2_.publish(normal_visual_tmp2);
 
+
+			PointCloudRGB variance_visualization;
+			variance_visualization.clear();
+			variance_visualization.header = cloud_in.header;
+			variance_visualization.height = 1;
+			for(size_t ip =0; ip < pcl_to_process.points.size(); ip++)
+			{
+				RollingPointXYZNormal point_tmp;
+				point_tmp = pcl_to_process.points[ip];
+
+				pcl::RGB RGB_tmp;
+				pcl::PointXYZRGB pointRBG_tmp;
+				road_surface::colormap_jet(point_tmp.z_var, 0.1, RGB_tmp);
+				pointRBG_tmp.r = RGB_tmp.r;
+				pointRBG_tmp.g = RGB_tmp.g;
+				pointRBG_tmp.b = RGB_tmp.b;
+				pointRBG_tmp.x = point_tmp.x;
+				pointRBG_tmp.y = point_tmp.y;
+				pointRBG_tmp.z = point_tmp.z;
+				variance_visualization.push_back(pointRBG_tmp);
+			}
+			variance_visual_pub_.publish(variance_visualization);
+
+
 			sw.start("region-growing to extract surface");
 			pcl::KdTreeFLANN<RollingPointXYZNormal> kdtree;
 			if(pcl_to_process.points.size()==0) return;
@@ -1134,6 +1162,17 @@ namespace golfcar_pcl{
 			extract_tmp.setIndices (boundary_inliers);
 			extract_tmp.setNegative (false);
 			extract_tmp.filter (boundary_pts);
+
+			RollingPointCloud offroad_pts;
+			offroad_pts.header = cloud_in.header;
+			offroad_pts.clear();
+			pcl::PointIndices::Ptr road_and_boundary_inliers (new pcl::PointIndices);
+			for(size_t is=0; is<inliers->indices.size(); is++) road_and_boundary_inliers->indices.push_back(inliers->indices[is]);
+			for(size_t ib=0; ib<boundary_inliers->indices.size(); ib++) road_and_boundary_inliers->indices.push_back(boundary_inliers->indices[ib]);
+			extract_tmp.setIndices (road_and_boundary_inliers);
+			extract_tmp.setNegative (true);
+			extract_tmp.filter (offroad_pts);
+			offroad_pub_.publish(offroad_pts);
 
 			RollingPointCloud surface_pts2, boundary_pts2;
 			surface_pts2.header = cloud_in.header;

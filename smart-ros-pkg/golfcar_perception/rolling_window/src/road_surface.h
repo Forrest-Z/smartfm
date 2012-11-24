@@ -152,6 +152,7 @@ namespace golfcar_pcl{
 	//for IVS_2013
 	ros::Publisher 	road_surface_pub2_;
 	ros::Publisher	road_boundary_pub2_;
+	ros::Publisher	offroad_pub_;
 
 	ros::Publisher	fitting_plane_pub_;
 	ros::Publisher	plane_coef_pub_;

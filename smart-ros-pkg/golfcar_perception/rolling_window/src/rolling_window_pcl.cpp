@@ -48,8 +48,9 @@ namespace golfcar_pcl{
 
 		float pitch_para1 = 0.1;
 		float pitch_para2 = 0.01;
-		float roll_para   = 0.02;
-		ms_imu_.initialize(pitch_para1, pitch_para2, roll_para);
+		float roll_para1  = 0.1;
+		float roll_para2  = 0.05;
+		ms_imu_.initialize(pitch_para1, pitch_para2, roll_para1, roll_para2);
 
 		float laser_x = 1.5;
 		float laser_z = 1.7;
@@ -72,7 +73,7 @@ namespace golfcar_pcl{
 	    geometry_msgs::Quaternion orientation = msg->orientation;
 	    btQuaternion btq(orientation.x, orientation.y, orientation.z, orientation.w);
 	    btMatrix3x3(btq).getEulerYPR(yaw, pitch, roll);
-	    ms_imu_.update(msg->angular_velocity.y, pitch, roll);
+	    ms_imu_.update(msg->angular_velocity.y, pitch, msg->angular_velocity.x, roll);
 	}
 	
     void rolling_window_pcl::scanCallback(const sensor_msgs::LaserScanConstPtr scan_in)
