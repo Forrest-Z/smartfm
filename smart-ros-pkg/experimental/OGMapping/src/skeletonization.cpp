@@ -290,8 +290,9 @@ int main(int argc, char** argv)
     if(argc != 2){return -1;}
     if((src = cvLoadImage( argv[1], CV_LOAD_IMAGE_GRAYSCALE)) == 0){
     return -1;}
-    
+
     int percent = 25;
+
     IplImage *destination = cvCreateImage( cvSize((int)((src->width*percent)/100) , (int)((src->height*percent)/100)),IPL_DEPTH_8U, 1);
     cvResize(src, destination);
     
@@ -305,10 +306,10 @@ int main(int argc, char** argv)
     color_edge = cvCreateImage(cvSize(destination->width,destination->height),IPL_DEPTH_8U, 3); 
     
     cvThreshold(destination, img, BINARY_THRESH, 255, CV_THRESH_BINARY);
-	 
-	 cvDilate(img, img, NULL, 5);
-	 cvErode(img, img, NULL, 5);
-	 
+
+    cvDilate(img, img, NULL, 1);
+    cvErode(img, img, NULL, 3);
+
     cvNamedWindow("binary",1);
     cvShowImage("binary", img);
     
@@ -393,7 +394,8 @@ int main(int argc, char** argv)
 	 
 	 for(size_t i=0; i < edges.size(); i++) {
 					CvScalar ext_color;
-					ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 ); 
+					ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
+					ext_color = CV_RGB( 0, 0, 255 );
         
         for(size_t j=0; j < edges[i].size(); j++) {
             int x = edges[i][j].x;
