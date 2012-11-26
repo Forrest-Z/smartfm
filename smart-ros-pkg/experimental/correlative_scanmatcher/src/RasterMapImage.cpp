@@ -115,7 +115,9 @@ public:
     	vector<transform_info> best_rotates;
 
     	vector<cv::Point2f> best_pts;
-
+    	transform_info best_rotate;
+    	best_rotate.score = -1e99;
+		#pragma omp parallel for
     	for(size_t i=0; i<rotations.size(); i++)
     	{
     		vector<cv::Point2f> rotated_search_pt;
@@ -130,24 +132,19 @@ public:
     		}
     		//cout<<"Best rot of "<<rotations[i]<<' ';
     		transform_info best_trans = searchTranslation(rotated_search_pt, translate_range, translate_step, initialization.translation_2d);
-    		best_rotates.push_back(best_trans);
-
-    	}
-
-    	transform_info best_rotate;
-    	best_rotate.score = -1e99;
-    	for(size_t i=0; i<best_rotates.size(); i++)
-    	{
-    		transform_info best_trans = best_rotates[i];
+    		//best_rotates[i] = best_trans;
+#pragma omp critical
     		if(best_trans.score > best_rotate.score)
     		{
     			best_rotate = best_trans;
     			best_rotate.rotation =rotations[i];
     		}
     	}
+
     	return best_rotate;
 
     }
+
     transform_info searchTranslation(vector<cv::Point2f> &search_pt, double range, double step, cv::Point2f initial_pt)
     {
         //investigate why low bottom of confusion matrix has overall higher score
@@ -158,35 +155,45 @@ public:
 
         double startx = initial_pt.x - range, endx = initial_pt.x + range;
         double starty = initial_pt.y - range, endy = initial_pt.y + range;
-
-//#pragma omp parallel for
+        vector<cv::Point2f> ij_vec;
         for(double j=starty; j<=endy; j+=step)
         {
-            for(double i=startx; i<=endx; i+=step)
-            {
-                vector<cv::Point2f> new_search_pt;
-                for(size_t k=0; k<search_pt.size(); k++)
-                    new_search_pt.push_back(cv::Point2f(search_pt[k].x+i, search_pt[k].y+j));
-                double cur_score = scorePoints(new_search_pt);
-
-                	transform_info best_info;
-                	best_info.translation_2d.x = i;
-                	best_info.translation_2d.y = j;
-                    best_info.score = cur_score;
-                    best_info.pts = new_search_pt;
-                    best_info_vec.push_back(best_info);
-                //cout<< cur_score<<" ";
-            }
-            //cout<<endl;
+        	for(double i=startx; i<=endx; i+=step)
+        	{
+        		cv::Point2f vec;
+        		vec.x = i;
+        		vec.y = j;
+        		ij_vec.push_back(vec);
+        	}
         }
+
+        //parallel seems to only improve marginally, and because the whole vector of results need to
+        //be stored into memory, in the end there is no improvement
+        //adding omp critical directive eliminate the need to allocate a large memory
+        //improved calculation from 0.7 to 0.45, further improvement to 0.4 when searchRotation also run in omp
         transform_info best_info;
         best_info.score = -1e99;
-        for(size_t i=0; i<best_info_vec.size(); i++)
+#pragma omp parallel for
+        for(size_t i=0; i<ij_vec.size(); i++)
         {
-        	if(best_info_vec[i].score>best_info.score)
+
+        	vector<cv::Point2f> new_search_pt;
+        	for(size_t k=0; k<search_pt.size(); k++)
+        		new_search_pt.push_back(cv::Point2f(search_pt[k].x+ij_vec[i].x, search_pt[k].y+ij_vec[i].y));
+        	double cur_score = scorePoints(new_search_pt);
+
+        	transform_info info;
+        	info.translation_2d = ij_vec[i];
+        	info.score = cur_score;
+        	info.pts = new_search_pt;
+        	//best_info_vec[i] = best_info;
+        	//cout<< cur_score<<" ";
+#pragma omp critical
+        	if(info.score>best_info.score)
         	{
-        		best_info = best_info_vec[i];
+        		best_info = info;
         	}
+        	//cout<<endl;
         }
 
         sw.end();
@@ -332,7 +339,7 @@ int main(int argc, char **argcv)
                }
     cout << query_pts.size() << "points read"<<endl;
 
-    RasterMapImage rm(0.25, 0.1);
+    RasterMapImage rm(0.25, 0.01);
     rm.getInputPoints(raster_pts);
     fmutil::Stopwatch sw;
     sw.start("Overall start");
@@ -340,12 +347,12 @@ int main(int argc, char **argcv)
     transform_info best_tf;
     best_tf = rm.searchRotation(query_pts, 20.0, 2.0, rotate_range, rotate_step, best_tf);
     cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
-    RasterMapImage rm2(0.1, 0.1);
+    RasterMapImage rm2(0.1, 0.01);
     rm2.getInputPoints(raster_pts);
     rotate_range = M_PI/16.0; rotate_step = M_PI/45.0;
     best_tf = rm2.searchRotation(query_pts, 1.0, 0.05, rotate_range, rotate_step, best_tf);
     cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
-    RasterMapImage rm3(0.01, 0.1);
+    RasterMapImage rm3(0.01, 0.01);
     rm3.getInputPoints(raster_pts);
     rotate_range = M_PI/90.0; rotate_step = M_PI/360.0;
     best_tf = rm3.searchRotation(query_pts, 0.1, 0.01, rotate_range, rotate_step, best_tf);
