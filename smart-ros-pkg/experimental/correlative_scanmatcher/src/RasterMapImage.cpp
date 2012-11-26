@@ -5,11 +5,19 @@
 #include <fmutil/fm_math.h>
 using namespace std;                    // make std:: accessible
 
+struct transform_info
+{
+	cv::Point2f translation_2d;
+	double rotation;
+	double score;
+	vector<cv::Point2f> pts;
+};
 class RasterMapImage
 {
 public:
 
     cv::Mat image_;
+
     RasterMapImage(double resolution, double range_covariance): res_(resolution), range_covariance_(range_covariance),
             max_dist_ (sqrt(log(255)*range_covariance)),
             gausian_length_((int) (max_dist_ / res_ + 1)),
@@ -81,43 +89,110 @@ public:
         for(size_t i=0; i<search_pt.size(); i++)
         {
             cv::Point pt =imageCoordinate(search_pt[i]);
+            //penalized each points fall outside of map to zero
+
             if(outsideMap(image_, pt)) continue;
             score += getPixel(pt.x, pt.y);
             count++;
         }
-        score/=count;
+        score/=search_pt.size();
         //sw.end();
         //cout<<"Score = "<<score/255*100<<"%"<<endl;
         return score/255*100;
     }
 
-    void searchTranslation(vector<cv::Point2f> search_pt)
+    transform_info searchRotation(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization)
     {
+    	//precalculate cosine
+    	vector<double> cos_vals, sin_vals, rotations;
+    	for(double i=initialization.rotation-rot_range; i<=initialization.rotation+rot_range; i+=rot_step)
+    	{
+    		cos_vals.push_back(cos(i));
+    		sin_vals.push_back(sin(i));
+    		rotations.push_back(i);
+    	}
+
+    	vector<transform_info> best_rotates;
+
+    	vector<cv::Point2f> best_pts;
+
+    	for(size_t i=0; i<rotations.size(); i++)
+    	{
+    		vector<cv::Point2f> rotated_search_pt;
+    		//rotate each point with by using the rotation center at the sensor's origin
+    		for(size_t j=0; j<search_pt.size(); j++)
+    		{
+    			double rot_x = search_pt[j].x, rot_y = search_pt[j].y;
+    			cv::Point2f rot_pt;
+    			rot_pt.x = cos_vals[i] * rot_x - sin_vals[i] * rot_y;
+    			rot_pt.y = sin_vals[i] * rot_x + cos_vals[i] * rot_y;
+    			rotated_search_pt.push_back(rot_pt);
+    		}
+    		//cout<<"Best rot of "<<rotations[i]<<' ';
+    		transform_info best_trans = searchTranslation(rotated_search_pt, translate_range, translate_step, initialization.translation_2d);
+    		best_rotates.push_back(best_trans);
+
+    	}
+
+    	transform_info best_rotate;
+    	best_rotate.score = -1e99;
+    	for(size_t i=0; i<best_rotates.size(); i++)
+    	{
+    		transform_info best_trans = best_rotates[i];
+    		if(best_trans.score > best_rotate.score)
+    		{
+    			best_rotate = best_trans;
+    			best_rotate.rotation =rotations[i];
+    		}
+    	}
+    	return best_rotate;
+
+    }
+    transform_info searchTranslation(vector<cv::Point2f> &search_pt, double range, double step, cv::Point2f initial_pt)
+    {
+        //investigate why low bottom of confusion matrix has overall higher score
+        //solved: It is a bad idea to normalize the score with only the number of point within the source map
         fmutil::Stopwatch sw;
         sw.start("searching");
-        double best_score = 0;
-        cv::Point2f best_trans;
-        for(double j=-10.0; j<=10.0; j+=1.0)
+        vector<transform_info> best_info_vec;
+
+        double startx = initial_pt.x - range, endx = initial_pt.x + range;
+        double starty = initial_pt.y - range, endy = initial_pt.y + range;
+
+//#pragma omp parallel for
+        for(double j=starty; j<=endy; j+=step)
         {
-            for(double i=-10.0; i<=10.0; i+=1.0)
+            for(double i=startx; i<=endx; i+=step)
             {
                 vector<cv::Point2f> new_search_pt;
                 for(size_t k=0; k<search_pt.size(); k++)
                     new_search_pt.push_back(cv::Point2f(search_pt[k].x+i, search_pt[k].y+j));
                 double cur_score = scorePoints(new_search_pt);
-                if(cur_score>best_score)
-                {
-                    best_trans.x = i;
-                    best_trans.y = j;
-                    best_score = cur_score;
-                }
-                cout<< cur_score<<" ";
+
+                	transform_info best_info;
+                	best_info.translation_2d.x = i;
+                	best_info.translation_2d.y = j;
+                    best_info.score = cur_score;
+                    best_info.pts = new_search_pt;
+                    best_info_vec.push_back(best_info);
+                //cout<< cur_score<<" ";
             }
-            cout<<endl;
+            //cout<<endl;
+        }
+        transform_info best_info;
+        best_info.score = -1e99;
+        for(size_t i=0; i<best_info_vec.size(); i++)
+        {
+        	if(best_info_vec[i].score>best_info.score)
+        	{
+        		best_info = best_info_vec[i];
+        	}
         }
 
         sw.end();
-        cout<<best_trans<<" "<<best_score<<endl;
+        cout<<best_info.translation_2d<<" "<<best_info.score<<endl;
+
+        return best_info;
     }
 
 private:
@@ -216,21 +291,31 @@ bool readPt(istream &in, cv::Point2f &p)            // read point (false on EOF)
     return true;
 }
 
-int main(int argc, char **argv)
+#include <ros/ros.h>
+#include <sensor_msgs/PointCloud.h>
+int main(int argc, char **argcv)
 {
+	ros::init(argc, argcv, "RasterMapImage");
+	ros::NodeHandle nh;
+	ros::Publisher src_pub, dst_pub, query_pub;
+	src_pub = nh.advertise<sensor_msgs::PointCloud>("src_pts", 5);
+	dst_pub = nh.advertise<sensor_msgs::PointCloud>("dst_pts", 5);
+	query_pub = nh.advertise<sensor_msgs::PointCloud>("query_pts", 5);
+	ros::Rate rate(10);
+
     istream*        data_in         = NULL;         // input for data points
     istream*        query_in         = NULL;         // input for query points
     vector<cv::Point2f> raster_pts, query_pts;
     cv::Point2f data_pts;
     ifstream dataStreamSrc, dataStreamDst;
-    dataStreamSrc.open(argv[1], ios::in);// open data file
+    dataStreamSrc.open(argcv[1], ios::in);// open data file
     if (!dataStreamSrc) {
         cerr << "Cannot open data file\n";
         exit(1);
     }
     data_in = &dataStreamSrc;
 
-    dataStreamDst.open(argv[2], ios::in);// open data file
+    dataStreamDst.open(argcv[2], ios::in);// open data file
     if (!dataStreamDst) {
         cerr << "Cannot open query file\n";
         exit(1);
@@ -247,9 +332,57 @@ int main(int argc, char **argv)
                }
     cout << query_pts.size() << "points read"<<endl;
 
-    RasterMapImage rm(1.0, 0.1);
+    RasterMapImage rm(0.25, 0.1);
     rm.getInputPoints(raster_pts);
-    rm.searchTranslation(query_pts);
+    fmutil::Stopwatch sw;
+    sw.start("Overall start");
+    double rotate_range = M_PI, rotate_step = M_PI/8.0;
+    transform_info best_tf;
+    best_tf = rm.searchRotation(query_pts, 20.0, 2.0, rotate_range, rotate_step, best_tf);
+    cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
+    RasterMapImage rm2(0.1, 0.1);
+    rm2.getInputPoints(raster_pts);
+    rotate_range = M_PI/16.0; rotate_step = M_PI/45.0;
+    best_tf = rm2.searchRotation(query_pts, 1.0, 0.05, rotate_range, rotate_step, best_tf);
+    cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
+    RasterMapImage rm3(0.01, 0.1);
+    rm3.getInputPoints(raster_pts);
+    rotate_range = M_PI/90.0; rotate_step = M_PI/360.0;
+    best_tf = rm3.searchRotation(query_pts, 0.1, 0.01, rotate_range, rotate_step, best_tf);
+    cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
+    sw.end();
+
+    sensor_msgs::PointCloud src_pc, dst_pc, query_pc;
+    src_pc.header.frame_id = dst_pc.header.frame_id = query_pc.header.frame_id = "scan";
+    for(size_t i=0; i<raster_pts.size();i++)
+    {
+    	geometry_msgs::Point32 pt;
+    	pt.x = raster_pts[i].x;
+    	pt.y = raster_pts[i].y;
+    	src_pc.points.push_back(pt);
+    }
+    for(size_t i=0; i<best_tf.pts.size();i++)
+    {
+    	geometry_msgs::Point32 pt;
+    	pt.x = best_tf.pts[i].x;
+    	pt.y = best_tf.pts[i].y;
+    	dst_pc.points.push_back(pt);
+    }
+    for(size_t i=0; i<query_pts.size();i++)
+    {
+    	geometry_msgs::Point32 pt;
+    	pt.x = query_pts[i].x;
+    	pt.y = query_pts[i].y;
+    	query_pc.points.push_back(pt);
+    }
+    while(ros::ok())
+    {
+    	src_pc.header.stamp = dst_pc.header.stamp = query_pc.header.stamp = ros::Time::now();
+    	src_pub.publish(src_pc);
+    	dst_pub.publish(dst_pc);
+    	query_pub.publish(query_pc);
+    	rate.sleep();
+    }
 
     return 0;
 }
