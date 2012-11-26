@@ -92,7 +92,7 @@ public:
             //penalized each points fall outside of map to zero
 
             if(outsideMap(image_, pt)) continue;
-            score += getPixel(pt.x, pt.y);
+            score +=  getPixel(pt.x, pt.y);
             count++;
         }
         score/=search_pt.size();
@@ -117,30 +117,40 @@ public:
     	vector<cv::Point2f> best_pts;
     	transform_info best_rotate;
     	best_rotate.score = -1e99;
-		#pragma omp parallel for
+		//#pragma omp parallel for
+    	vector<cv::Point2f> rotated_search_pt;
+    	rotated_search_pt.resize(search_pt.size());
+    	fmutil::Stopwatch sw;
     	for(size_t i=0; i<rotations.size(); i++)
     	{
-    		vector<cv::Point2f> rotated_search_pt;
+
     		//rotate each point with by using the rotation center at the sensor's origin
+
+
     		for(size_t j=0; j<search_pt.size(); j++)
     		{
     			double rot_x = search_pt[j].x, rot_y = search_pt[j].y;
     			cv::Point2f rot_pt;
     			rot_pt.x = cos_vals[i] * rot_x - sin_vals[i] * rot_y;
     			rot_pt.y = sin_vals[i] * rot_x + cos_vals[i] * rot_y;
-    			rotated_search_pt.push_back(rot_pt);
+    			rotated_search_pt[j] = rot_pt;
     		}
+
     		//cout<<"Best rot of "<<rotations[i]<<' ';
+    		sw.start("calculate");
     		transform_info best_trans = searchTranslation(rotated_search_pt, translate_range, translate_step, initialization.translation_2d);
+    		sw.end(false);
+
     		//best_rotates[i] = best_trans;
-#pragma omp critical
+//#pragma omp critical
     		if(best_trans.score > best_rotate.score)
     		{
     			best_rotate = best_trans;
     			best_rotate.rotation =rotations[i];
     		}
-    	}
 
+    	}
+    	cout<<"Total time spent in searchTranslation = "<<sw.total_/1000.0<<endl;
     	return best_rotate;
 
     }
@@ -149,13 +159,13 @@ public:
     {
         //investigate why low bottom of confusion matrix has overall higher score
         //solved: It is a bad idea to normalize the score with only the number of point within the source map
-        fmutil::Stopwatch sw;
-        sw.start("searching");
-        vector<transform_info> best_info_vec;
+    	vector<transform_info> best_info_vec;
 
         double startx = initial_pt.x - range, endx = initial_pt.x + range;
         double starty = initial_pt.y - range, endy = initial_pt.y + range;
         vector<cv::Point2f> ij_vec;
+        ij_vec.resize(round((starty-endy)/step)*round((startx-endx)/step));
+        int index = 0;
         for(double j=starty; j<=endy; j+=step)
         {
         	for(double i=startx; i<=endx; i+=step)
@@ -163,7 +173,8 @@ public:
         		cv::Point2f vec;
         		vec.x = i;
         		vec.y = j;
-        		ij_vec.push_back(vec);
+        		ij_vec[index]=(vec);
+        		index ++;
         	}
         }
 
@@ -173,31 +184,28 @@ public:
         //improved calculation from 0.7 to 0.45, further improvement to 0.4 when searchRotation also run in omp
         transform_info best_info;
         best_info.score = -1e99;
-#pragma omp parallel for
+
+        //best_info.pts = search_pt;
+
+        vector<cv::Point2f> new_search_pt;
+        new_search_pt.resize(search_pt.size());
         for(size_t i=0; i<ij_vec.size(); i++)
         {
-
-        	vector<cv::Point2f> new_search_pt;
-        	for(size_t k=0; k<search_pt.size(); k++)
-        		new_search_pt.push_back(cv::Point2f(search_pt[k].x+ij_vec[i].x, search_pt[k].y+ij_vec[i].y));
+        	//gained about 80 ms when fixed size of new_search_pt is used instead of keep pushing the search pt
+        	for(size_t k=0; k<new_search_pt.size(); k++)
+        	{
+        		new_search_pt[k].x = (search_pt[k].x+ij_vec[i].x);
+        		new_search_pt[k].y = (search_pt[k].y+ij_vec[i].y);
+        	}
         	double cur_score = scorePoints(new_search_pt);
 
-        	transform_info info;
-        	info.translation_2d = ij_vec[i];
-        	info.score = cur_score;
-        	info.pts = new_search_pt;
-        	//best_info_vec[i] = best_info;
-        	//cout<< cur_score<<" ";
-#pragma omp critical
-        	if(info.score>best_info.score)
+        	if(cur_score>best_info.score)
         	{
-        		best_info = info;
+        		best_info.translation_2d = ij_vec[i];
+        		best_info.score = cur_score;
+        		best_info.pts = new_search_pt;
         	}
-        	//cout<<endl;
         }
-
-        sw.end(false);
-        //cout<<best_info.translation_2d<<" "<<best_info.score<<endl;
 
         return best_info;
     }
@@ -340,36 +348,53 @@ int main(int argc, char **argcv)
     cout << query_pts.size() << "points read"<<endl;
     fmutil::Stopwatch sw;
     sw.start("Overall start");
-#pragma omp parallel for
-    for(int i=0; i<100; i++)
+
+    transform_info best_tf;
+//#pragma omp parallel for
+    //for(int i=0; i<100; i++)
     {
-    	RasterMapImage rm(0.25, 0.01);
+    	RasterMapImage rm(0.3, 0.01);
     	rm.getInputPoints(raster_pts);
     	fmutil::Stopwatch sw_t;
 
+    	//using value from http://april.eecs.umich.edu/pdfs/olson2009icra.pdf
     	sw_t.start("1");
+    	double rotate_range = M_PI/4.0, rotate_step = M_PI/8.0;
+
+    	best_tf = rm.searchRotation(query_pts, 4.0, 0.3, rotate_range, rotate_step, best_tf);
+    	cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
+    	sw_t.end();
+    	sw_t.start("2");
+    	RasterMapImage rm2(0.03, 0.01);
+    	rm2.getInputPoints(raster_pts);
+    	rotate_range = M_PI/16.0; rotate_step = M_PI/180.0;
+    	best_tf = rm2.searchRotation(query_pts, 0.3, 0.03, rotate_range, rotate_step, best_tf);
+    	cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
+    	sw_t.end();
+
+    	/*sw_t.start("1");
     	double rotate_range = M_PI, rotate_step = M_PI/8.0;
-    	transform_info best_tf;
+
     	best_tf = rm.searchRotation(query_pts, 20.0, 1.25, rotate_range, rotate_step, best_tf);
-    	//cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
-    	//sw_t.end();
+    	cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
+    	sw_t.end();
     	sw_t.start("2");
     	RasterMapImage rm2(0.1, 0.01);
     	rm2.getInputPoints(raster_pts);
     	rotate_range = M_PI/16.0; rotate_step = M_PI/45.0;
     	best_tf = rm2.searchRotation(query_pts, 0.75, 0.05, rotate_range, rotate_step, best_tf);
-    	//cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
-    	//sw_t.end();
+    	cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
+    	sw_t.end();
     	sw_t.start("3");
     	RasterMapImage rm3(0.01, 0.01);
     	rm3.getInputPoints(raster_pts);
     	rotate_range = M_PI/90.0; rotate_step = M_PI/360.0;
     	best_tf = rm3.searchRotation(query_pts, 0.1, 0.01, rotate_range, rotate_step, best_tf);
-    	//cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
-    	//sw_t.end();
+    	cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
+    	sw_t.end();*/
 
     }
-    sw.end();/*
+    sw.end();
     sensor_msgs::PointCloud src_pc, dst_pc, query_pc;
     src_pc.header.frame_id = dst_pc.header.frame_id = query_pc.header.frame_id = "scan";
     for(size_t i=0; i<raster_pts.size();i++)
@@ -400,7 +425,7 @@ int main(int argc, char **argcv)
     	dst_pub.publish(dst_pc);
     	query_pub.publish(query_pc);
     	rate.sleep();
-    }*/
+    }
 
     return 0;
 }
