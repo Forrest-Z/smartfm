@@ -57,25 +57,29 @@ namespace golfcar_pcl{
 	class imu_info
 	{
 		public:
-		float pitch_para1, pitch_para2, roll_para;
-		float pitch_speed, pitch, roll;
-		float laser_pitch_var, pitch_var, roll_var;
+		float pitch_para1, pitch_para2, roll_para1, roll_para2;
+		float pitch_speed, pitch, roll_speed, roll;
+		float pitch_var, roll_var;
 
-		void initialize(float pitch_para_tmp1, float pitch_para_tmp2, float roll_para_tmp)
+		void initialize(float pitch_para_tmp1, float pitch_para_tmp2, float roll_para_tmp1, float roll_para_tmp2)
 		{
 			pitch_para1 = pitch_para_tmp1;
 			pitch_para2 = pitch_para_tmp2;
-			roll_para   = roll_para_tmp;
+			roll_para1   = roll_para_tmp1;
+			roll_para2   = roll_para_tmp2;
 		};
-		void update(float pitch_speed_tmp, float pitch_tmp, float roll_tmp)
+
+		void update(float pitch_speed_tmp, float pitch_tmp, float roll_speed_tmp, float roll_tmp)
 		{
 			pitch_speed = pitch_speed_tmp;
 			pitch = pitch_tmp;
+			roll_speed = roll_speed_tmp;
 			roll = roll_tmp;
-			laser_pitch_var = pitch_para1*pitch_speed;
-			pitch_var = pitch_para2 * pitch;
-			roll_var = roll_para * roll;
+
+			pitch_var = pitch_para1*pitch_speed + pitch_para2 * pitch;
+			roll_var = roll_para1*roll_speed + roll_para2 * roll;
 		};
+
 	};
 
 	class variance_analyzer
@@ -92,34 +96,21 @@ namespace golfcar_pcl{
 			imu_pointer = imu_para;
 		};
 
-		float pZ_o_pLaserPitch( float range, float angle)
+		float Z_Roll( float range, float angle)
 		{
-			float item1 = sin(imu_pointer->pitch)*( sin(laser_pitch)*range*cos(angle)-laser_x );
-			float item2 = -cos(imu_pointer->pitch)*cos(imu_pointer->roll)*(cos(laser_pitch)*range*cos(angle) - laser_z);
-			return (item1+item2);
+			float item1 = cos(imu_pointer->pitch)*cos(imu_pointer->roll)*range*sin(angle)* imu_pointer->roll_var;
+			return (item1*item1);
 		};
 
-		float pZ_o_pPitch( float range, float angle)
+		float Z_Pitch( float range, float angle)
 		{
-			float item1 = -cos(imu_pointer->pitch) * ( cos(laser_pitch)*range*cos(angle)+ laser_x );
-			float item2 = -sin(imu_pointer->pitch) * sin(imu_pointer->roll)* range * sin(angle);
-			float item3 = -sin(imu_pointer->pitch) * cos(imu_pointer->roll)* ( -sin(laser_pitch)*range*cos(angle) + laser_z );
-			return (item1+item2+item3);
-		};
-
-		float pZ_o_pRoll( float range, float angle)
-		{
-			float item1 = cos(imu_pointer->pitch)*cos(imu_pointer->roll)*range*sin(angle);
-			float item2 = cos(imu_pointer->pitch)*sin(imu_pointer->roll)*(sin(laser_pitch)*range*cos(angle) - laser_z);
-			return (item1+ item2);
+			float item2 = -cos(imu_pointer->pitch)*(cos(laser_pitch)*range*cos(angle)+ laser_x)*imu_pointer->pitch_var;
+			return (item2*item2);
 		};
 
 		float z_var (float range, float angle)
 		{
-			float item1 = pZ_o_pLaserPitch(range, angle) * imu_pointer->laser_pitch_var;
-			float item2 = pZ_o_pPitch(range, angle) * imu_pointer->pitch_var;
-			float item3 = pZ_o_pRoll(range, angle) * imu_pointer->roll_var;
-			return (fabs(item1) + fabs(item2) + fabs(item3));
+			return (sqrtf(Z_Roll(range, angle)+Z_Pitch(range, angle)));
 		};
 
 	};

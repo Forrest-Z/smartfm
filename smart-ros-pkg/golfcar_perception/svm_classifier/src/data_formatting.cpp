@@ -28,9 +28,9 @@ int main(int argc, char** argv)
     	fscanf(fp_input,  "%lf\t", &feature_vector[feature_length-1]);
 		//prepare the input variables;
 
-		  //write input variables;
-        fprintf(fp_output,  "%d\t", class_label);
-        for(int j=0; j<feature_length-1; j++)
+	  //write input variables;
+	  fprintf(fp_output,  "%d\t", class_label);
+	  for(int j=0; j<feature_length-1; j++)
 		{
         	 fprintf(fp_output, "%d:%lf\t", j+1, feature_vector[j]);
 		}

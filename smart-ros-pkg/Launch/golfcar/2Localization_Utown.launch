@@ -1,0 +1,13 @@
+<launch>
+ 
+
+
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/map.yaml"/>
+
+	<node name="amcl" pkg="amcl" type="amcl" respawn="false">
+		<remap from="scan" to="scan"/>		
+    </node>
+
+    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation.vcg" />
+
+</launch>

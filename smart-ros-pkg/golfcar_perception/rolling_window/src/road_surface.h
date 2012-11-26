@@ -79,6 +79,9 @@
 #include <pcl_ros/impl/transforms.hpp>
 #include "svm_classifier.h"
 
+#include <boost/bind.hpp>
+#include <boost/thread/mutex.hpp>
+
 namespace golfcar_pcl{
 
 	typedef struct
@@ -134,8 +137,10 @@ namespace golfcar_pcl{
 
 	//important data management;
 	vector <RollingPointCloud> raw_pcl_batches_;
-	vector <RollingPointNormalCloud> pcl_normal_batches_;
-	vector <vector <int> > surface_index_batches_, boundary_index_batches_, outlier_index_batches_;
+	vector <vector <int> > surface_index_batches_, boundary_index_batches_;
+
+	vector <RollingPointCloud> raw_pcl_buffers_;
+	vector <RollingPointNormalCloud> pcl_normal_buffers_;
 
 	size_t batchNum_limit_;
 	
@@ -143,6 +148,12 @@ namespace golfcar_pcl{
 	
 	ros::Publisher 	road_surface_pub_;
 	ros::Publisher	road_boundary_pub_;
+
+	//for IVS_2013
+	ros::Publisher 	road_surface_pub2_;
+	ros::Publisher	road_boundary_pub2_;
+	ros::Publisher	offroad_pub_;
+
 	ros::Publisher	fitting_plane_pub_;
 	ros::Publisher	plane_coef_pub_;
 	ros::Publisher  process_fraction_pub_;
@@ -157,19 +168,20 @@ namespace golfcar_pcl{
 							PointCloud & fitting_plane, rolling_window::plane_coef & plane_coef);
 
 	pcl::PointXYZ	viewpoint_td_sick_;
-	RollingPointXYZ seedPoint_;
+	RollingPointXYZNormal seedPoint_;
 
 	double search_radius_, curvature_thresh_; 
 
 	ros::Publisher 	surface_all_pub_;
 	ros::Publisher	boundary_all_pub_;
+	ros::Publisher  pcl_to_process_pub_;
 
 	bool planefitting_init_, clustering_init_;
 	tf::StampedTransform 	planefitting_OdomMeas_, clustering_OdomMeas_;
 	double planefitting_disThresh_,clustering_disThresh_;
 	bool checkDistance(const tf::StampedTransform& oldTf, const tf::StampedTransform& newTf, float Dis_thresh);
 
-	ros::Publisher  clusters_pub_, normal_visual_pub_, surface_slope_pub_, variance_visual_pub_, large_curvature_pub_, scan_outlier_pub_;
+	ros::Publisher  clusters_pub_, normal_visual_pub_, normal_visual_pub2_, surface_slope_pub_, variance_visual_pub_, variance_visual_pub2_, large_curvature_pub_, scan_outlier_pub_, scan_inlier_pub_;
 	//ros::Publisher planes_pub_, pcl_cloud_restPub_;
 
 	vector<float> jet_r_, jet_g_, jet_b_;
@@ -189,6 +201,8 @@ namespace golfcar_pcl{
 
 	golfcar_ml::svm_classifier *scan_classifier_;
 	golfcar_ml::svm_classifier *point_classifier_;
+
+	boost::recursive_mutex configuration_mutex_;
     };
 
 };
