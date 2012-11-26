@@ -51,10 +51,10 @@ public:
             if(raster_pt[i].y > max_pt_.y) max_pt_.y = raster_pt[i].y;
         }
 
-        cout << "MinMax "<<min_pt_ << " " <<max_pt_<<endl;
+        //cout << "MinMax "<<min_pt_ << " " <<max_pt_<<endl;
         cv::Point2f map_size(max_pt_.x - min_pt_.x, max_pt_.y - min_pt_.y);
         map_size.x = ceil(map_size.x/res_); map_size.y =ceil(map_size.y/res_);
-        cout << "Size "<<map_size<<endl;
+        //cout << "Size "<<map_size<<endl;
         //lost about 10ms when using 32F instead of 8U, and total of 45 ms if draw circle function is called, perhaps too much
         image_ = cv::Mat::zeros( (int) map_size.y, (int) map_size.x  , CV_8UC1);
 
@@ -73,8 +73,8 @@ public:
             }
 
         }
-        sw.end();
-        cv::imwrite("map.png", image_);
+        sw.end(false);
+        //cv::imwrite("map.png", image_);
     }
 
     double scorePoints(vector<cv::Point2f> search_pt)
@@ -196,8 +196,8 @@ public:
         	//cout<<endl;
         }
 
-        sw.end();
-        cout<<best_info.translation_2d<<" "<<best_info.score<<endl;
+        sw.end(false);
+        //cout<<best_info.translation_2d<<" "<<best_info.score<<endl;
 
         return best_info;
     }
@@ -338,27 +338,38 @@ int main(int argc, char **argcv)
                 query_pts.push_back(data_pts);
                }
     cout << query_pts.size() << "points read"<<endl;
-
-    RasterMapImage rm(0.25, 0.01);
-    rm.getInputPoints(raster_pts);
     fmutil::Stopwatch sw;
     sw.start("Overall start");
-    double rotate_range = M_PI, rotate_step = M_PI/8.0;
-    transform_info best_tf;
-    best_tf = rm.searchRotation(query_pts, 20.0, 2.0, rotate_range, rotate_step, best_tf);
-    cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
-    RasterMapImage rm2(0.1, 0.01);
-    rm2.getInputPoints(raster_pts);
-    rotate_range = M_PI/16.0; rotate_step = M_PI/45.0;
-    best_tf = rm2.searchRotation(query_pts, 1.0, 0.05, rotate_range, rotate_step, best_tf);
-    cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
-    RasterMapImage rm3(0.01, 0.01);
-    rm3.getInputPoints(raster_pts);
-    rotate_range = M_PI/90.0; rotate_step = M_PI/360.0;
-    best_tf = rm3.searchRotation(query_pts, 0.1, 0.01, rotate_range, rotate_step, best_tf);
-    cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
-    sw.end();
+#pragma omp parallel for
+    for(int i=0; i<100; i++)
+    {
+    	RasterMapImage rm(0.25, 0.01);
+    	rm.getInputPoints(raster_pts);
+    	fmutil::Stopwatch sw_t;
 
+    	sw_t.start("1");
+    	double rotate_range = M_PI, rotate_step = M_PI/8.0;
+    	transform_info best_tf;
+    	best_tf = rm.searchRotation(query_pts, 20.0, 1.25, rotate_range, rotate_step, best_tf);
+    	//cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
+    	//sw_t.end();
+    	sw_t.start("2");
+    	RasterMapImage rm2(0.1, 0.01);
+    	rm2.getInputPoints(raster_pts);
+    	rotate_range = M_PI/16.0; rotate_step = M_PI/45.0;
+    	best_tf = rm2.searchRotation(query_pts, 0.75, 0.05, rotate_range, rotate_step, best_tf);
+    	//cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
+    	//sw_t.end();
+    	sw_t.start("3");
+    	RasterMapImage rm3(0.01, 0.01);
+    	rm3.getInputPoints(raster_pts);
+    	rotate_range = M_PI/90.0; rotate_step = M_PI/360.0;
+    	best_tf = rm3.searchRotation(query_pts, 0.1, 0.01, rotate_range, rotate_step, best_tf);
+    	//cout<<"Best tf found: "<<best_tf.translation_2d<<" "<<best_tf.rotation<<" "<<" with score "<<best_tf.score<<endl;
+    	//sw_t.end();
+
+    }
+    sw.end();/*
     sensor_msgs::PointCloud src_pc, dst_pc, query_pc;
     src_pc.header.frame_id = dst_pc.header.frame_id = query_pc.header.frame_id = "scan";
     for(size_t i=0; i<raster_pts.size();i++)
@@ -389,7 +400,7 @@ int main(int argc, char **argcv)
     	dst_pub.publish(dst_pc);
     	query_pub.publish(query_pc);
     	rate.sleep();
-    }
+    }*/
 
     return 0;
 }
