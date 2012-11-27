@@ -108,7 +108,7 @@ public:
 		//cv::imwrite("map.png", image_);
 	}
 
-	transform_info searchRotation(vector<cv::Point2f> search_pt, int translate_range, double rot_range, double rot_step, transform_info initialization)
+	transform_info searchRotation(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization)
 	{
 		//translate range is directly corresponds to number of cells in the grid
 		//precalculate cosine
@@ -128,6 +128,8 @@ public:
 		vector<cv::Point> rotated_search_pt;
 		rotated_search_pt.resize(search_pt.size());
 		fmutil::Stopwatch sw;
+		int range = translate_range / res_;
+		int step = translate_step / res_;
 		for(size_t i=0; i<rotations.size(); i++)
 		{
 
@@ -144,7 +146,7 @@ public:
 			}
 
 
-			transform_info best_trans = searchTranslation(rotated_search_pt, translate_range, initialization.translation_2d);
+			transform_info best_trans = searchTranslation(rotated_search_pt, range, step, initialization.translation_2d);
 			sw.end(false);
 
 			//best_rotates[i] = best_trans;
@@ -162,10 +164,13 @@ public:
 
 	}
 
-	transform_info searchTranslation(vector<cv::Point> &search_pt, int range, cv::Point2f initial_pt)
+	transform_info searchTranslation(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt)
 	{
 		//investigate why low bottom of confusion matrix has overall higher score
 		//solved: It is a bad idea to normalize the score with only the number of point within the source map
+
+		//result deteriorate when the resolution is more than 0.3. This is due to quantization error when mapping
+		//from pts to grid. Need independent control of map grid size and stepping size
 		int startx = initial_pt.x/res_ - range, endx = initial_pt.x/res_ + range;
 		int starty = initial_pt.y/res_ - range, endy = initial_pt.y/res_ + range;
 		//parallel seems to only improve marginally, and because the whole vector of results need to
@@ -179,15 +184,16 @@ public:
 		//cout<<startx<<" "<<endx<<" "<<starty<<" "<<endy<<endl;
 		vector<cv::Point> new_search_pt;
 		new_search_pt.resize(search_pt.size());
-		for(int j=starty; j<=endy; j++)
+		for(int j=starty; j<=endy; j+=stepsize)
 		{
-			for(int i=startx; i<=endx; i++)
+			for(int i=startx; i<=endx; i+=stepsize)
 			{
 				//gained about 80 ms when fixed size of new_search_pt is used instead of keep pushing the search pt
 				for(size_t k=0; k<search_pt.size(); k++)
 					new_search_pt[k] = (cv::Point(search_pt[k].x+i, search_pt[k].y-j));
 				double cur_score = scorePoints(new_search_pt);
 				//cout<<"offset "<<new_search_pt[0]<<" score "<<cur_score<<endl;
+				//cout<<cur_score<<" ";
 				if(cur_score>best_info.score)
 				{
 					best_info.translation_2d.x = i*res_;
@@ -196,8 +202,9 @@ public:
 					best_info.pts = new_search_pt;
 				}
 			}
+			//cout<<endl;
 		}
-
+		//cout<<endl;
 		return best_info;
 	}
 private:
@@ -333,24 +340,28 @@ int main(int argc, char **argcv)
 	transform_info best_tf;
 	fmutil::Stopwatch sw;
 	sw.start("New matching apporach");
-	RasterMapImage rm(0.3, 0.01);
+	//has to be very careful with quantization error. Rule of thumb, keep ratio between step size and resolution as close to 1 as possible
+	RasterMapImage rm(0.2, 0.5);
 	rm.getInputPoints(raster_pts);
 	//searchRotation(vector<cv::Point2f> search_pt, double translate_range, double rot_range, double rot_step, transform_info initialization)
 	transform_info best_info;
-	best_info = rm.searchRotation(query_pts, 4.0/0.3, M_PI/4., M_PI/8., best_info);
+	best_info = rm.searchRotation(query_pts, 20.0, 2.0, M_PI, M_PI/4., best_info);
 	vector<cv::Point> rotated_search_pt;
 	rotated_search_pt.resize(query_pts.size());
 	//for(size_t i=0; i<query_pts.size(); i++) rotated_search_pt[i] = rm.imageCoordinate(query_pts[i]);
 	//best_info = rm.searchTranslation(rotated_search_pt, 4.0/0.2, best_info.translation_2d);
 	cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
-	RasterMapImage rm2(0.03, 0.01);
+	RasterMapImage rm2(0.05, 0.1);
 	rm2.getInputPoints(raster_pts);
-	//for(size_t i=0; i<query_pts.size(); i++) rotated_search_pt[i] = rm2.imageCoordinate(query_pts[i]);
 	best_info.score = -1e99;
-	//best_info = rm2.searchTranslation(rotated_search_pt, 0.2/0.02, best_info.translation_2d);
-	//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
-	best_info = rm2.searchRotation(query_pts, 0.15/0.03, M_PI/16., M_PI/180., best_info);
+	best_info = rm2.searchRotation(query_pts, 1.5, 0.2, M_PI/8., M_PI/90., best_info);
 	cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+	RasterMapImage rm3(0.01, 0.01);
+	rm3.getInputPoints(raster_pts);
+	best_info.score = -1e99;
+	best_info = rm3.searchRotation(query_pts, 0.2, 0.02, M_PI/90., M_PI/360., best_info);
+	cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+
 	sw.end();
 
 
@@ -374,7 +385,7 @@ int main(int argc, char **argcv)
 	for(size_t i=0; i<best_info.pts.size();i++)
 	{
 		geometry_msgs::Point32 pt;
-		cv::Point2f cv_pt2f = rm2.realCoordinate(best_info.pts[i]);
+		cv::Point2f cv_pt2f = rm3.realCoordinate(best_info.pts[i]);
 		pt.x = cv_pt2f.x;
 		pt.y = cv_pt2f.y;
 		dst_pc.points.push_back(pt);
