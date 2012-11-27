@@ -10,7 +10,7 @@ struct transform_info
 	cv::Point2f translation_2d;
 	double rotation;
 	double score;
-	vector<cv::Point2f> pts;
+	vector<cv::Point> pts;
 };
 
 class RasterMapImage
@@ -35,6 +35,11 @@ public:
 	inline cv::Point imageCoordinate(cv::Point2f pt)
 	{
 		return cv::Point((pt.x-min_pt_.x)/res_, (int) image_.rows -(pt.y-min_pt_.y)/res_);
+	}
+
+	inline cv::Point2f realCoordinate(cv::Point pt)
+	{
+		return cv::Point2f(pt.x*res_+min_pt_.x, (image_.rows - pt.y)* res_ + min_pt_.y);
 	}
 
 	double scorePoints(vector<cv::Point> search_pt)
@@ -144,7 +149,7 @@ public:
 
 			//best_rotates[i] = best_trans;
 			//#pragma omp critical
-			cout<<rotations[i]<<" "<<best_trans.translation_2d<<": "<<best_trans.score<<endl;
+			//cout<<rotations[i]<<" "<<best_trans.translation_2d<<": "<<best_trans.score<<endl;
 			if(best_trans.score > best_rotate.score)
 			{
 				best_rotate = best_trans;
@@ -171,7 +176,7 @@ public:
 		best_info.score = -1e99;
 
 		//best_info.pts = search_pt;
-		cout<<startx<<" "<<endx<<" "<<starty<<" "<<endy<<endl;
+		//cout<<startx<<" "<<endx<<" "<<starty<<" "<<endy<<endl;
 		vector<cv::Point> new_search_pt;
 		new_search_pt.resize(search_pt.size());
 		for(int j=starty; j<=endy; j++)
@@ -188,7 +193,7 @@ public:
 					best_info.translation_2d.x = i*res_;
 					best_info.translation_2d.y = j*res_;
 					best_info.score = cur_score;
-					//best_info.pts = new_search_pt;
+					best_info.pts = new_search_pt;
 				}
 			}
 		}
@@ -291,6 +296,9 @@ bool readPt(istream &in, cv::Point2f &p)            // read point (false on EOF)
 	return true;
 }
 
+#include <ros/ros.h>
+#include <sensor_msgs/PointCloud.h>
+
 int main(int argc, char **argcv)
 {
 	istream*        data_in         = NULL;         // input for data points
@@ -341,8 +349,50 @@ int main(int argc, char **argcv)
 	best_info.score = -1e99;
 	//best_info = rm2.searchTranslation(rotated_search_pt, 0.2/0.02, best_info.translation_2d);
 	//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
-	best_info = rm.searchRotation(query_pts, 0.3/0.03, M_PI/16., M_PI/180., best_info);
+	best_info = rm2.searchRotation(query_pts, 0.15/0.03, M_PI/16., M_PI/180., best_info);
 	cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 	sw.end();
+
+
+	ros::init(argc, argcv, "RasterMapImage");
+	ros::NodeHandle nh;
+	ros::Publisher src_pub, dst_pub, query_pub;
+	src_pub = nh.advertise<sensor_msgs::PointCloud>("src_pts", 5);
+	dst_pub = nh.advertise<sensor_msgs::PointCloud>("dst_pts", 5);
+	query_pub = nh.advertise<sensor_msgs::PointCloud>("query_pts", 5);
+	ros::Rate rate(10);
+
+	sensor_msgs::PointCloud src_pc, dst_pc, query_pc;
+	src_pc.header.frame_id = dst_pc.header.frame_id = query_pc.header.frame_id = "scan";
+	for(size_t i=0; i<raster_pts.size();i++)
+	{
+		geometry_msgs::Point32 pt;
+		pt.x = raster_pts[i].x;
+		pt.y = raster_pts[i].y;
+		src_pc.points.push_back(pt);
+	}
+	for(size_t i=0; i<best_info.pts.size();i++)
+	{
+		geometry_msgs::Point32 pt;
+		cv::Point2f cv_pt2f = rm2.realCoordinate(best_info.pts[i]);
+		pt.x = cv_pt2f.x;
+		pt.y = cv_pt2f.y;
+		dst_pc.points.push_back(pt);
+	}
+	for(size_t i=0; i<query_pts.size();i++)
+	{
+		geometry_msgs::Point32 pt;
+		pt.x = query_pts[i].x;
+		pt.y = query_pts[i].y;
+		query_pc.points.push_back(pt);
+	}
+	while(ros::ok())
+	{
+		src_pc.header.stamp = dst_pc.header.stamp = query_pc.header.stamp = ros::Time::now();
+		src_pub.publish(src_pc);
+		dst_pub.publish(dst_pc);
+		query_pub.publish(query_pc);
+		rate.sleep();
+	}
 	return 0;
 }
