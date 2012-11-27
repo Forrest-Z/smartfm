@@ -104,12 +104,13 @@ public:
 			}
 
 		}
-		sw.end();
+		sw.end(false);
 		//cv::imwrite("map.png", image_);
 	}
 
 	transform_info searchRotation(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization)
 	{
+
 		//translate range is directly corresponds to number of cells in the grid
 		//precalculate cosine
 		vector<double> cos_vals, sin_vals, rotations;
@@ -159,7 +160,7 @@ public:
 			}
 
 		}
-		cout<<"Total time spent in searchTranslation = "<<sw.total_/1000.0<<endl;
+		//cout<<"Total time spent in searchTranslation = "<<sw.total_/1000.0<<endl;
 		return best_rotate;
 
 	}
@@ -337,31 +338,46 @@ int main(int argc, char **argcv)
 	}
 	cout << query_pts.size() << "points read"<<endl;
 
-	transform_info best_tf;
 	fmutil::Stopwatch sw;
 	sw.start("New matching apporach");
-	//has to be very careful with quantization error. Rule of thumb, keep ratio between step size and resolution as close to 1 as possible
-	RasterMapImage rm(0.2, 0.5);
-	rm.getInputPoints(raster_pts);
-	//searchRotation(vector<cv::Point2f> search_pt, double translate_range, double rot_range, double rot_step, transform_info initialization)
-	transform_info best_info;
-	best_info = rm.searchRotation(query_pts, 20.0, 2.0, M_PI, M_PI/4., best_info);
-	vector<cv::Point> rotated_search_pt;
-	rotated_search_pt.resize(query_pts.size());
-	//for(size_t i=0; i<query_pts.size(); i++) rotated_search_pt[i] = rm.imageCoordinate(query_pts[i]);
-	//best_info = rm.searchTranslation(rotated_search_pt, 4.0/0.2, best_info.translation_2d);
-	cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
-	RasterMapImage rm2(0.05, 0.1);
-	rm2.getInputPoints(raster_pts);
-	best_info.score = -1e99;
-	best_info = rm2.searchRotation(query_pts, 1.5, 0.2, M_PI/8., M_PI/90., best_info);
-	cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
-	RasterMapImage rm3(0.01, 0.01);
-	rm3.getInputPoints(raster_pts);
-	best_info.score = -1e99;
-	best_info = rm3.searchRotation(query_pts, 0.2, 0.02, M_PI/90., M_PI/360., best_info);
-	cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 
+	//has to be very careful with quantization error. Rule of thumb, keep ratio between step size and resolution as close to 1 as possible
+
+	sensor_msgs::PointCloud src_pc, dst_pc, query_pc;
+
+	transform_info best_tf;
+	#pragma omp parallel for
+	for(int i=0; i<100; i++)
+	{
+		transform_info best_info;
+		RasterMapImage rm(0.2, 0.5);
+		rm.getInputPoints(raster_pts);
+		best_info = rm.searchRotation(query_pts, 10.0, 1.0, M_PI, M_PI/4., best_info);
+		vector<cv::Point> rotated_search_pt;
+		rotated_search_pt.resize(query_pts.size());
+		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+		RasterMapImage rm2(0.1, 0.1);
+		rm2.getInputPoints(raster_pts);
+		best_info = rm2.searchRotation(query_pts, 0.75, 0.2, M_PI/8., M_PI/90., best_info);
+		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+		RasterMapImage rm3(0.02, 0.01);
+		rm3.getInputPoints(raster_pts);
+		best_info = rm3.searchRotation(query_pts, 0.14, 0.02, M_PI/90., M_PI/360., best_info);
+		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+#pragma omp critical
+		{
+			best_tf = best_info;
+			dst_pc.points.clear();
+			for(size_t i=0; i<best_tf.pts.size();i++)
+			{
+				geometry_msgs::Point32 pt;
+				cv::Point2f cv_pt2f = rm3.realCoordinate(best_info.pts[i]);
+				pt.x = cv_pt2f.x;
+				pt.y = cv_pt2f.y;
+				dst_pc.points.push_back(pt);
+			}
+		}
+	}
 	sw.end();
 
 
@@ -373,7 +389,7 @@ int main(int argc, char **argcv)
 	query_pub = nh.advertise<sensor_msgs::PointCloud>("query_pts", 5);
 	ros::Rate rate(10);
 
-	sensor_msgs::PointCloud src_pc, dst_pc, query_pc;
+
 	src_pc.header.frame_id = dst_pc.header.frame_id = query_pc.header.frame_id = "scan";
 	for(size_t i=0; i<raster_pts.size();i++)
 	{
@@ -382,14 +398,7 @@ int main(int argc, char **argcv)
 		pt.y = raster_pts[i].y;
 		src_pc.points.push_back(pt);
 	}
-	for(size_t i=0; i<best_info.pts.size();i++)
-	{
-		geometry_msgs::Point32 pt;
-		cv::Point2f cv_pt2f = rm3.realCoordinate(best_info.pts[i]);
-		pt.x = cv_pt2f.x;
-		pt.y = cv_pt2f.y;
-		dst_pc.points.push_back(pt);
-	}
+
 	for(size_t i=0; i<query_pts.size();i++)
 	{
 		geometry_msgs::Point32 pt;
