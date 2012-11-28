@@ -42,10 +42,12 @@ set(ANN_SRC src/ANN/ANN.cpp src/ANN/brute.cpp src/ANN/kd_tree.cpp src/ANN/kd_uti
 rosbuild_add_executable(ann_sample src/ann_sample.cpp ${ANN_SRC})
 rosbuild_add_executable(RasterMap src/RasterMap.cpp ${ANN_SRC})
 rosbuild_add_executable(RasterMapImage src/RasterMapImage.cpp ${ANN_SRC})
-rosbuild_add_executable(RasterMapImageOpt src/RasterMapImageOpt.cpp ${ANN_SRC})
+rosbuild_add_executable(RasterMapImageOpt src/RasterMapImageOpt.cpp)
+rosbuild_add_executable(RasterMapOdom src/RasterMapOdom.cpp)
 
 target_link_libraries(RasterMap  ${OpenCV_LIBS})
 target_link_libraries(RasterMapImage  ${OpenCV_LIBS})
 target_link_libraries(RasterMapImageOpt  ${OpenCV_LIBS})
+target_link_libraries(RasterMapOdom  ${OpenCV_LIBS})
 rosbuild_add_openmp_flags(RasterMapImage)
 rosbuild_add_openmp_flags(RasterMapImageOpt)
