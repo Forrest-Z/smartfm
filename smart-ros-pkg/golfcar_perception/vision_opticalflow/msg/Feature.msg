@@ -9,3 +9,7 @@ geometry_msgs/Point[] prev_feature
 geometry_msgs/Point[] found_feature
 geometry_msgs/Point[] feature_vel
 int16[]               direction
+#feature_speed_mag (feature_mag) is magnitude of velocity of the feature
+#feature_speed_dir (direction_mag) is direction of velocity in radian, calculate using atan2 from math library.
+float64[]             feature_speed_mag
+float64[]             feature_speed_dir

@@ -38,7 +38,7 @@ private:
     boost::mutex mutex_; // protects background_
 
     void imageCallback(const sensor_msgs::Image::ConstPtr & image,
-        const sensor_msgs::Image::ConstPtr & background);
+    const sensor_msgs::Image::ConstPtr & background);
     void timerCallback(const ros::TimerEvent &);
 };
 

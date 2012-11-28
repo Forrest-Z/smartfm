@@ -140,7 +140,7 @@ DBInterface::DBInterface(string url, string vehicleID)
 HTTPClient DBInterface::getHTTPClient(string php)
 {
     HTTPClient client(url, php);
-    client.addParam<string>("VehicleID", vehicleID);
+    client.addParam<string>("VehicleId", vehicleID);
     return client;
 }
 
@@ -178,23 +178,29 @@ TiXmlDocument DBInterface::rpc(HTTPClient & client)
 // Adds this vehicle to the database.
 void DBInterface::identify()
 {
-    HTTPClient client = getHTTPClient("new_vehicle.php");
-    rpc(client);
+    /*HTTPClient client = getHTTPClient("new_vehicle.php");
+    rpc(client);*/
 }
 
 // Sets the current location.
 void DBInterface::setCurrentLocation(string loc)
 {
-    HTTPClient client = getHTTPClient("veh_update_status.php");
-    client.addParam<string>("CurrentLocation", loc);
-    rpc(client);
+    //HTTPClient client = getHTTPClient("veh_update_status.php");
+    //client.addParam<string>("CurrentLocation", loc);
+    //HTTPClient client = getHTTPClient("updateVehicleStatus");
+    //client.addParam<string>("Latitude", "9999");
+    //client.addParam<string>("Longitude", "103.832493");
+    //client.addParam<int>("VehicleId", this->vehicleID);
+    //client.addParam<int>("RequestId", 1);
+    //std::cout << "makig the request";
+    //rpc(client);
 }
 
 // Removes this vehicle from the database.
 void DBInterface::deleteVehicle()
 {
-    HTTPClient client = getHTTPClient("delete_vehicle.php");
-    rpc(client);
+    //HTTPClient client = getHTTPClient("delete_vehicle.php");
+    //rpc(client);
 }
 
 // Returns true if the mission has been cancelled.
@@ -215,8 +221,9 @@ bool DBInterface::checkForNewMission(Task *t)
 {
     vector<Task> tasks = getAllTasks();
     for( vector<Task>::iterator it=tasks.begin(); it!=tasks.end(); ++it ) {
-        if( strcasecmp(it->status.c_str(),"confirmed")==0 ) {
+        if( strcasecmp(it->status.c_str(),"Assigned")==0 ) {
             *t = *it;
+            std::cout << "GOT A NEW MISSION?" << std::endl;
             return true;
         }
     }
@@ -236,7 +243,13 @@ DBInterface::Task DBInterface::waitForNewMission(float period)
 // Sets the GPS coordinates.
 void DBInterface::setGeoLocation(float lat, float lon)
 {
-    HTTPClient client = getHTTPClient("veh_update_status.php");
+    //HTTPClient client = getHTTPClient("veh_update_status.php");
+    //client.addParam<float>("Latitude", lat);
+    //client.addParam<float>("Longitude", lon);
+    //rpc(client);
+
+    std::cout << "=== lat:" << lat << " lon:" << lon << std::endl;
+    HTTPClient client = getHTTPClient("updateVehicleStatus");
     client.addParam<float>("Latitude", lat);
     client.addParam<float>("Longitude", lon);
     rpc(client);
@@ -245,14 +258,14 @@ void DBInterface::setGeoLocation(float lat, float lon)
 // Sets the estimated time of arrival
 void DBInterface::setETA(float eta)
 {
-    HTTPClient client = getHTTPClient("veh_update_status.php");
+    HTTPClient client = getHTTPClient("updateVehicleStatus");
     client.addParam<int>("ETA", (int)eta);
     rpc(client);
 }
 
 void DBInterface::setMissionStatus(unsigned id, string status)
 {
-    HTTPClient client = getHTTPClient("veh_update_request.php");
+    HTTPClient client = getHTTPClient("updateVehicleStatus");
     client.addParam<unsigned>("RequestID",id);
     client.addParam<string>("Status",status);
     rpc(client);
@@ -260,14 +273,14 @@ void DBInterface::setMissionStatus(unsigned id, string status)
 
 void DBInterface::setVehicleStatus(string status)
 {
-    HTTPClient client = getHTTPClient("veh_update_status.php");
+    HTTPClient client = getHTTPClient("updateVehicleStatus");
     client.addParam<string>("Status", status);
     rpc(client);
 }
 
 void DBInterface::setVehicleCurrReq(unsigned id)
 {
-    HTTPClient client = getHTTPClient("veh_update_status.php");
+    HTTPClient client = getHTTPClient("updateVehicleStatus");
     client.addParam<unsigned>("RequestID", id);
     rpc(client);
 }
@@ -285,7 +298,7 @@ DBInterface::Vehicle DBInterface::getVehicleEntry()
 
 vector<DBInterface::Task> DBInterface::getAllTasks()
 {
-    HTTPClient client = getHTTPClient("list_requests.php");
+    HTTPClient client = getHTTPClient("listJobs");
     TiXmlDocument doc = rpc(client);
 
     vector<Task> tasks;

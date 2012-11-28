@@ -3,7 +3,8 @@
 <launch>
     <!-- Take compressed format from bag file and republish it in raw format-->
     <node pkg="image_transport" type="republish" name="republish"
-	args="compressed in:=camera_front/image_raw raw out:=camera_front/image_raw" >
+        args="compressed in:=/EA/camera/image_raw/ raw out:=camera_front/image_raw">
+        
     </node>
 
     <!-- Take image in and output background image, pub: "background"-->
@@ -13,23 +14,20 @@
 
     <!-- Take image in and output good feature to track, pub: "/feature_extractor/feature"-->
     <node pkg="vision_opticalflow" type="feature_extractor" name="feature_extractor" output="screen">
-	    <remap from="camera" to="camera_front/image_raw" />
+        <remap from="camera" to="camera_front/image_raw" />
         <remap from="background" to="/background_extractor/background" />
     </node>
-<!--
+
     <node pkg="vision_opticalflow" type="feature_display" name="feature_display" output="screen" respawn="true">
         <remap from="image" to="camera_front/image_raw" />
         <remap from="features" to="/feature_extractor/feature" />
     </node>
--->
+
     <node pkg="vision_opticalflow" type="feature_clustering" name="feature_clustering" output="screen" respawn="true">
         <remap from="features" to="/feature_extractor/feature" />
-        <!--remap from="image" to="camera_front/image_raw" / -->
     </node>
 
     <node pkg="vision_opticalflow" type="clusters_tracking" name="clusters_tracking" output="screen" respawn="true">
-        <!--remap from="image" to="camera_front/image_raw" / -->
-        <!--remap from="features" to="/feature_extractor/feature" / -->
     </node>
 
     <node pkg="vision_opticalflow" type="cluster_display" name="cluster_display" output="screen" respawn="true">
