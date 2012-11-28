@@ -46,34 +46,37 @@ public:
 		return cv::Point2f(pt.x*res_+min_pt_.x, (image_.rows - pt.y)* res_ + min_pt_.y);
 	}
 
-	double scorePoints(vector<cv::Point> search_pt)
+	double scorePoints(vector<cv::Point> search_pt, int offset_x, int offset_y)
 	{
-		fmutil::Stopwatch sw;
-		sw.start("Score Pts");
+		//fmutil::Stopwatch sw;
+
 		assert(image_.data != NULL);
 
-		double score = 0;
+		uint score = 0;
 
 
 		//it only takes 25 ms for 6k loops on 0.03 res
-		for(size_t i=0; i<search_pt.size(); i++)
-		{
-			cv::Point pt = search_pt[i];// cv::Point(0,0);// imageCoordinate(search_pt[i]);
-			//penalized each points fall outside of map to zero
 
+		for(vector<cv::Point>::iterator i=search_pt.begin(); i!=search_pt.end(); i++)
+		{
+			cv::Point pt = *i;// cv::Point(0,0);// imageCoordinate(search_pt[i]);
+			//penalized each points fall outside of map to zero
+			pt.x += offset_x;
+			pt.y -= offset_y;
 			if(outsideMap(image_, pt)) continue;
 			score += getPixel(pt.x, pt.y);
+
 		}
 
-		score/=search_pt.size();
-		sw.end(false);
+		double norm_score = (double)score/search_pt.size()*100/255;
+
 		//cout<<"Score = "<<score/255*100<<"%"<<endl;
-		return score/255*100;
+		return norm_score;
 	}
 	void getInputPoints(vector<cv::Point2f> raster_pt)
 	{
 		fmutil::Stopwatch sw;
-		cout<<raster_pt.size()<<endl;
+
 		sw.start("Raster Map");
 
 		//very fast process, only needs 5 ms on 1620 points with 1000 loops
@@ -109,7 +112,7 @@ public:
 			}
 
 		}
-		sw.end();
+		sw.end(false);
 		//cv::imwrite("map.png", image_);
 	}
 
@@ -135,7 +138,7 @@ public:
 		//#pragma omp parallel for
 		vector<cv::Point> rotated_search_pt;
 		rotated_search_pt.resize(search_pt.size());
-		sw_init.end();
+		sw_init.end(false);
 		sw.start("calculate");
 		int range = translate_range / res_;
 		int step = translate_step / res_;
@@ -155,6 +158,7 @@ public:
 				cv::Point2f rot_pt;
 				rot_pt.x = cos_vals[i] * rot_x - sin_vals[i] * rot_y;
 				rot_pt.y = sin_vals[i] * rot_x + cos_vals[i] * rot_y;
+
 				rotated_search_pt[j] = imageCoordinate(rot_pt);
 			}
 
@@ -175,21 +179,22 @@ public:
 			{
 				best_rotate = best_trans;
 				best_rotate.rotation =rotations[i];
+				best_rotate.pts = rotated_search_pt;
 			}
 
 		}
 		sw.end(false);
 		sw_end.start("end");
-		cout<<"Total time spent in searchTranslation = "<<sw.total_/1000.0<<endl;
+		//cout<<"Total time spent in searchTranslation = "<<sw.total_/1000.0<<endl;
 
 		if(est_cov)
 		{
 			cv::Mat cov = K/s + (u * u.t())/(s*s);
-			cout<<cov<<endl;
-			cout<<"cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
+			//cout<<cov<<endl;
+			//cout<<"cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
 			best_rotate.covariance = cov;
 		}
-		sw_end.end();
+		sw_end.end(false);
 		return best_rotate;
 
 	}
@@ -199,6 +204,8 @@ public:
 		//investigate why low bottom of confusion matrix has overall higher score
 		//solved: It is a bad idea to normalize the score with only the number of point within the source map
 
+		fmutil::Stopwatch sw, sw1,sw2,sw3;
+		sw.start("");
 		//result deteriorate when the resolution is more than 0.3. This is due to quantization error when mapping
 		//from pts to grid. Need independent control of map grid size and stepping size
 		int startx = initial_pt.x/res_ - range, endx = initial_pt.x/res_ + range;
@@ -212,21 +219,31 @@ public:
 
 		//best_info.pts = search_pt;
 		//cout<<startx<<" "<<endx<<" "<<starty<<" "<<endy<<endl;
-		vector<cv::Point> new_search_pt;
-		new_search_pt.resize(search_pt.size());
+		//vector<cv::Point> new_search_pt;
+		//new_search_pt.resize(search_pt.size());
 		cv::Mat x_i = cv::Mat::zeros(3,1, CV_32F);
 		best_info.K = cv::Mat::zeros(3,3, CV_32F);
 		best_info.u = cv::Mat::zeros(3,1, CV_32F);
 		best_info.s = 0;
 		x_i.at<float>(2,0)= rotation;
+
 		for(int j=starty; j<=endy; j+=stepsize)
 		{
 			for(int i=startx; i<=endx; i+=stepsize)
 			{
 				//gained about 80 ms when fixed size of new_search_pt is used instead of keep pushing the search pt
-				for(size_t k=0; k<search_pt.size(); k++)
-					new_search_pt[k] = (cv::Point(search_pt[k].x+i, search_pt[k].y-j));
-				double cur_score = scorePoints(new_search_pt);
+				sw1.start("");
+				//elimintate this loop gain much needed boost
+				/*for(size_t k=0; k<search_pt.size(); k++)
+				{
+					new_search_pt[k].x = (cv::Point(search_pt[k].x+i, search_pt[k].y-j));
+				}*/
+				sw1.end(false);
+				sw2.start("");
+				double cur_score = scorePoints(search_pt, i, j);
+
+				sw2.end(false);
+				sw3.start("");
 				//cout<<"offset "<<new_search_pt[0]<<" score "<<cur_score<<endl;
 				//cout<<cur_score<<" ";
 				if(cur_score>best_info.score)
@@ -234,7 +251,7 @@ public:
 					best_info.translation_2d.x = i*res_;
 					best_info.translation_2d.y = j*res_;
 					best_info.score = cur_score;
-					best_info.pts = new_search_pt;
+					//best_info.pts = search_pt;
 				}
 				x_i.at<float>(0,0) = i*res_;
 				x_i.at<float>(1,0) = j*res_;
@@ -244,10 +261,19 @@ public:
 					best_info.u += x_i * cur_score;
 					best_info.s += cur_score;
 				}
+				sw3.end(false);
+
 			}
 			//cout<<endl;
 		}
+		sw.end(false);
+		/*double t1 = sw1.total_/1000.0;
+		double t2 = sw2.total_/1000.0;
+		double t3 = sw3.total_/1000.0;
+		cout<<"Detail: "<<sw.total_/1000.0<<" check:"<<t1<<"+"<<t2<<"+"<<t3<<"="<<t1+t2+t3<<endl;
+		*/
 		//cout<<endl;
+
 		return best_info;
 	}
 private:

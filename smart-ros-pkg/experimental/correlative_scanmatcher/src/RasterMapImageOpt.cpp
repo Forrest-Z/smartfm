@@ -87,6 +87,9 @@ int main(int argc, char **argcv)
 
 	transform_info best_tf = rmpcl.getBestTf(query_pc);
 
+	cv::Mat cov = best_tf.covariance;
+			cout<<"cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
+
 	for(size_t i=0; i<best_tf.pts.size();i++)
 	{
 		geometry_msgs::Point32 pt;

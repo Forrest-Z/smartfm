@@ -31,6 +31,9 @@ void pcCallback(const sensor_msgs::PointCloud& pc)
 		transform_info best_pose;
 		best_pose = csm_->getBestTf(src_pc);
 
+		cv::Mat cov = best_pose.covariance;
+		cout<<"cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
+
 		tf::Transform new_transform;
 		tf::Vector3 origin(best_pose.translation_2d.x, best_pose.translation_2d.y, 0.0);
 		new_transform.setOrigin(origin);
