@@ -79,6 +79,7 @@ void MissionComm::run()
         break;
 
     case sAtDropoff:
+	updateMissionStatus("completed");
         passengerComm_.waitForPassengerOutAtDropoff();
 
         // we must wait until the scheduler has acknowledged that the mission is now

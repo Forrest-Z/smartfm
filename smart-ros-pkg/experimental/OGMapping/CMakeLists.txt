@@ -38,6 +38,10 @@ rosbuild_add_executable(save_pub src/save_pub.cpp)
 rosbuild_add_executable(skeletonization src/skeletonization.cpp)
 target_link_libraries(skeletonization ${OpenCV_LIBRARIES})
 
+rosbuild_add_executable(distance_transform src/distance_transform.cpp)
+target_link_libraries(distance_transform ${OpenCV_LIBRARIES})
+
+
 #target_link_libraries(wrap_example ${OpenCV_LIBRARIES})
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)

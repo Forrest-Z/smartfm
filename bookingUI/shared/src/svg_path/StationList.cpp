@@ -13,10 +13,10 @@ using namespace std;
 
 StationList::StationList()
 {
-    knownStations_.push_back( Station("DCC Workshop", 0) );
-    knownStations_.push_back( Station("McDonald", 1) );
-    knownStations_.push_back( Station("EA", 2) );
-    knownStations_.push_back( Station("E3A", 3) );
+    knownStations_.push_back( Station("CREATE", 0) );
+    knownStations_.push_back( Station("CREATE Garage", 1) );
+    knownStations_.push_back( Station("ENTERPRISE", 2) );
+    knownStations_.push_back( Station("ENTERPRISE Garage", 3) );
 }
 
 const Station & StationList::operator () (unsigned i) const
@@ -68,9 +68,17 @@ bool StationList::exists(const std::string & s) const throw()
 
 void StationList::print() const
 {
+	/*
     cout << "Station list:" <<endl;
+    cout << "(0) CREATE" <<endl;
+    cout << "(1) CREATE Garage" <<endl;
+    cout << "(2) ENTERPRISE" <<endl;
+    cout << "(3) ENTERPRISE Garage" <<endl;
+	*/
+    
     for( StationIterator s=begin(); s<end(); ++s )
         cout <<"    " <<s->number() <<") - " <<s->str() <<endl;
+     
 }
 
 
