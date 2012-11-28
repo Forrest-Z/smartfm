@@ -37,7 +37,7 @@ FeatureClusteringNode::FeatureClusteringNode()
     cluster_pos_bound_x_ = 50.0;
     cluster_pos_bound_y_ = 240.0;
     /** new add **/
-    cluster_pos_bound_ = 200.0;
+    cluster_pos_bound_ = 50.0;
     cluster_speed_bound_ = 10.0;   //magnitude of velocity
     cluster_direction_bound_ = 1.0;  //0.1 rad is approx. 5 degree
 }
@@ -159,17 +159,24 @@ void FeatureClusteringNode::clusterCallback(const vision_opticalflow::Feature::C
             cluster_index = getNearestClusterToFeature(clusters_pos, features_msg, i);
             if(cluster_index != -1)
             {
+                int clusterSize = clusters_pos.clusters_info[cluster_index].members.size();
                 //Add feature to availiable clusture
-                clusters_pos.clusters_info[cluster_index].centroid.x = (clusters_pos.clusters_info[cluster_index].centroid.x + features_msg->found_feature[i].x)/2;
-                clusters_pos.clusters_info[cluster_index].centroid.y = (clusters_pos.clusters_info[cluster_index].centroid.y + features_msg->found_feature[i].y)/2;
-                clusters_pos.clusters_info[cluster_index].centroid_vel.x = (clusters_pos.clusters_info[cluster_index].centroid_vel.x + features_msg->feature_vel[i].x)/2;
-                clusters_pos.clusters_info[cluster_index].centroid_vel.y = (clusters_pos.clusters_info[cluster_index].centroid_vel.y + features_msg->feature_vel[i].y)/2;
-                clusters_pos.clusters_info[cluster_index].centroid_dir = (clusters_pos.clusters_info[cluster_index].centroid_speed_dir + features_msg->feature_speed_dir[i])/2;
+//                 clusters_pos.clusters_info[cluster_index].centroid.x = (clusters_pos.clusters_info[cluster_index].centroid.x + features_msg->found_feature[i].x)/2;
+                clusters_pos.clusters_info[cluster_index].centroid.x = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid.x) + features_msg->found_feature[i].x)/(clusterSize + 1);
+//                 clusters_pos.clusters_info[cluster_index].centroid.y = (clusters_pos.clusters_info[cluster_index].centroid.y + features_msg->found_feature[i].y)/2;
+                clusters_pos.clusters_info[cluster_index].centroid.y = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid.y) + features_msg->found_feature[i].y)/(clusterSize + 1);
+//                 clusters_pos.clusters_info[cluster_index].centroid_vel.x = (clusters_pos.clusters_info[cluster_index].centroid_vel.x + features_msg->feature_vel[i].x)/2;
+                clusters_pos.clusters_info[cluster_index].centroid_vel.x = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid_vel.x) + features_msg->feature_vel[i].x)/(clusterSize + 1);
+//                 clusters_pos.clusters_info[cluster_index].centroid_vel.y = (clusters_pos.clusters_info[cluster_index].centroid_vel.y + features_msg->feature_vel[i].y)/2;
+                clusters_pos.clusters_info[cluster_index].centroid_vel.y = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid_vel.y) + features_msg->feature_vel[i].y)/(clusterSize + 1);
+//                 clusters_pos.clusters_info[cluster_index].centroid_dir = (clusters_pos.clusters_info[cluster_index].centroid_speed_dir + features_msg->feature_speed_dir[i])/2;
+                clusters_pos.clusters_info[cluster_index].centroid_dir = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid_dir) + features_msg->feature_speed_dir[i])/(clusterSize + 1);
                 clusters_pos.clusters_info[cluster_index].members.push_back(features_msg->found_feature[i]);
                 clusters_pos.clusters_info[cluster_index].members_vel.push_back(features_msg->feature_vel[i]);
 
-                clusters_pos.clusters_info[cluster_index].centroid_speed_mag = (clusters_pos.clusters_info[cluster_index].centroid_speed_mag + features_msg->feature_speed_mag[i])/2;
-                clusters_pos.clusters_info[cluster_index].centroid_speed_dir = (clusters_pos.clusters_info[cluster_index].centroid_speed_dir + features_msg->feature_speed_dir[i])/2;
+//                 clusters_pos.clusters_info[cluster_index].centroid_speed_mag = (clusters_pos.clusters_info[cluster_index].centroid_speed_mag + features_msg->feature_speed_mag[i])/2;
+                clusters_pos.clusters_info[cluster_index].centroid_speed_mag = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid_speed_mag) + features_msg->feature_speed_mag[i])/(clusterSize + 1);
+                clusters_pos.clusters_info[cluster_index].centroid_speed_dir = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid_speed_dir) + features_msg->feature_speed_dir[i])/(clusterSize + 1);
                 clusters_pos.clusters_info[cluster_index].members_speed_mag.push_back(features_msg->feature_speed_mag[i]);
                 clusters_pos.clusters_info[cluster_index].members_speed_dir.push_back(features_msg->feature_speed_dir[i]);
             }else{

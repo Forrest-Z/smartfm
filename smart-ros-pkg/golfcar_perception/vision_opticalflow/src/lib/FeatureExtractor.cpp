@@ -11,13 +11,13 @@ FeatureExtractor::FeatureExtractor()
   view_intermediate_images_(true) ///display images resulting from blurring, erosion, dilation, threshold, etc.
 {
     //goodFeaturesToTrack
-    MAX_CORNERS = 100;
+    MAX_CORNERS = 50;
     qualityLevel = 0.2;
     minDistance = 1; //0.1
-    roi_start_pt = cv::Point(0,470);
-    roi_end_pt = cv::Point(960,480);
+    roi_start_pt = cv::Point(0,200);
+    roi_end_pt = cv::Point(120,240);
     
-    win_size = cv::Size(12,12);
+    win_size = cv::Size(24,24);
     //Opticalflow
     maxLevel = 3;
     criteria = cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01);
@@ -163,8 +163,8 @@ vision_opticalflow::Feature FeatureExtractor::extract(cv::Mat gray_input, double
     cv::rectangle(roi_mask_,roi_start_pt,roi_end_pt,cv::Scalar(255,255,255),-1,8);
 //     std::cout << "elemSize: " << gray_input.elemSize() << " depth: " << gray_input.depth() << " channels :" << gray_input.channels() << std::endl;
 //     //Get good feature to track of the current frame, store it in curr_frame_feature_ vector (vector of type float)
-    cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance, roi_mask_);
-//     cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance);     //not using ROI
+//     cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance, roi_mask_);
+    cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance);     //not using ROI
 
     if(prev_frame_.empty() || prev_frame_feature_.size() <= 0)
     {
@@ -184,14 +184,14 @@ vision_opticalflow::Feature FeatureExtractor::extract(cv::Mat gray_input, double
         std_msgs::Header dummy;
         vision_opticalflow::Feature msg_out = getFeatureToMsg(dummy);
 
-        prev_frame_feature_ = found_frame_feature_;
-        for(unsigned int i = 0; i < prev_frame_feature_.size(); i ++)
-        {
-            if(prev_frame_feature_[i].y >= 470 || prev_frame_feature_[i].y <= 120) prev_frame_feature_.erase(prev_frame_feature_.begin() + i);
-        }
-        prev_frame_feature_.insert(prev_frame_feature_.end(),curr_frame_feature_.begin(),curr_frame_feature_.end());
+//         prev_frame_feature_ = found_frame_feature_;
+//         for(unsigned int i = 0; i < prev_frame_feature_.size(); i ++)
+//         {
+//             if(prev_frame_feature_[i].y >= 200 || prev_frame_feature_[i].y <= 20) prev_frame_feature_.erase(prev_frame_feature_.begin() + i);
+//         }
+//         prev_frame_feature_.insert(prev_frame_feature_.end(),curr_frame_feature_.begin(),curr_frame_feature_.end());
         
-//         prev_frame_feature_ = curr_frame_feature_;
+        prev_frame_feature_ = curr_frame_feature_;
         return msg_out;
     }
 }

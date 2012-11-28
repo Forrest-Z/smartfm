@@ -3,7 +3,7 @@
 <launch>
     <!-- Take compressed format from bag file and republish it in raw format-->
     <node pkg="image_transport" type="republish" name="republish"
-        args="compressed in:=/camera/image_raw/ raw out:=camera_front/image_raw">
+        args="compressed in:=/EA/camera/image_raw/ raw out:=camera_front/image_raw">
         
     </node>
 
