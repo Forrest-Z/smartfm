@@ -1,6 +1,7 @@
 /**
  * Displays features. Subscribes to "features" and "image" topics.
 */
+#include <math.h>
 
 #include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>

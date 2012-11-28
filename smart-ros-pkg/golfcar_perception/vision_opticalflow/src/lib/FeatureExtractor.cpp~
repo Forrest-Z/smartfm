@@ -1,21 +1,24 @@
 #include <vision_opticalflow/FeatureExtractor.h>
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 FeatureExtractor::FeatureExtractor()
 : diff_thresh_(30),
   dilate_size_(5),
   erode_size_(5),
   blurring_size_(2),
-  view_intermediate_images_(false)
+  view_intermediate_images_(true) ///display images resulting from blurring, erosion, dilation, threshold, etc.
 {
     //goodFeaturesToTrack
-    MAX_CORNERS = 1000;
+    MAX_CORNERS = 100;
     qualityLevel = 0.2;
-    minDistance = 0.1;
-    roi_start_pt = cv::Point(400,400);
-    roi_end_pt = cv::Point(600,600);
+    minDistance = 1; //0.1
+    roi_start_pt = cv::Point(0,470);
+    roi_end_pt = cv::Point(960,480);
     
-    //Opticalflow
     win_size = cv::Size(12,12);
+    //Opticalflow
     maxLevel = 3;
     criteria = cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01);
     flag = 1;
@@ -80,11 +83,10 @@ void FeatureExtractor::setMask()
         cv::threshold(tmp, bin_mask_, 125, 255, CV_THRESH_BINARY);
     }
 
-    /*
-    cv::imshow("bin mask", bin_mask_);
-    cv::imshow("rgb mask", rgb_mask_);
-    cv::waitKey(10);
-    */
+//     cv::imshow("bin mask", bin_mask_);
+//     cv::imshow("rgb mask", rgb_mask_);
+//     cv::waitKey(10);
+
 }
 
 void FeatureExtractor::diff(cv::Mat frame_in, cv::Mat background_in)
@@ -152,12 +154,17 @@ void FeatureExtractor::erode(cv::Mat & img)
 
 vision_opticalflow::Feature FeatureExtractor::extract(cv::Mat gray_input, double time)
 {
-    cv::Mat gray_input_32F;
-    gray_input.convertTo(gray_input_32F,CV_32F);
+//     cv::Mat gray_input_32F;
+//     gray_input.convertTo(gray_input_32F,CV_32F);
+    curr_frame_feature_.clear();
+    /** Set roi_mask_ **/
+    roi_mask_ = cv::Mat(gray_input.size(),CV_8U);
+    roi_mask_.setTo(cv::Scalar(0,0,0));
+    cv::rectangle(roi_mask_,roi_start_pt,roi_end_pt,cv::Scalar(255,255,255),-1,8);
 //     std::cout << "elemSize: " << gray_input.elemSize() << " depth: " << gray_input.depth() << " channels :" << gray_input.channels() << std::endl;
 //     //Get good feature to track of the current frame, store it in curr_frame_feature_ vector (vector of type float)
-//     cv::goodFeaturesToTrack(curr_frame_gray_, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance, mask_roi);
-    cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance);     //not using ROI
+    cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance, roi_mask_);
+//     cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance);     //not using ROI
 
     if(prev_frame_.empty() || prev_frame_feature_.size() <= 0)
     {
@@ -172,12 +179,19 @@ vision_opticalflow::Feature FeatureExtractor::extract(cv::Mat gray_input, double
         //prev_frame_ and gray_input have to be 8 bit image, but prev_frame_feature_ and found_frame_feature_ have to be floating point
         calcOpticalFlowPyrLK(prev_frame_, gray_input, prev_frame_feature_, found_frame_feature_, opticalFlow_status_, err_, win_size, maxLevel, criteria, flag, minEigThreshold);
 
+        prev_frame_ = gray_input.clone();
+
         std_msgs::Header dummy;
         vision_opticalflow::Feature msg_out = getFeatureToMsg(dummy);
+
+        prev_frame_feature_ = found_frame_feature_;
+        for(unsigned int i = 0; i < prev_frame_feature_.size(); i ++)
+        {
+            if(prev_frame_feature_[i].y >= 470 || prev_frame_feature_[i].y <= 20) prev_frame_feature_.erase(prev_frame_feature_.begin() + i);
+        }
+        prev_frame_feature_.insert(prev_frame_feature_.end(),curr_frame_feature_.begin(),curr_frame_feature_.end());
         
-        prev_frame_ = gray_input.clone();
-        prev_frame_feature_ = curr_frame_feature_;
-//         prev_frame_feature_ = found_frame_feature_;
+//         prev_frame_feature_ = curr_frame_feature_;
         return msg_out;
     }
 }
@@ -186,11 +200,12 @@ vision_opticalflow::Feature FeatureExtractor::getFeatureToMsg(std_msgs::Header h
 {
     geometry_msgs::Point feature_temp;
     geometry_msgs::Point feature_vel;
-    int direction;
     vision_opticalflow::Feature feature_msg;
-
+    float feature_speed_mag;
+    float feature_speed_dir;
+    
     feature_msg.header = header;
-    for(unsigned i = 0; i < prev_frame_feature_.size(); i++)
+    for(unsigned int i = 0; i < prev_frame_feature_.size(); i++)
     {
         //position of previous frame feature
         feature_temp.x = prev_frame_feature_[i].x;
@@ -207,13 +222,21 @@ vision_opticalflow::Feature FeatureExtractor::getFeatureToMsg(std_msgs::Header h
         feature_vel.y = found_frame_feature_[i].y - prev_frame_feature_[i].y;
         feature_msg.feature_vel.push_back(feature_vel);
 
-        //direction of each feature
-        if(feature_vel.x >= 0){
+        //velocity in magnitude
+        feature_speed_mag = sqrt(pow(feature_vel.x,2) + pow(feature_vel.y,2));
+        feature_msg.feature_speed_mag.push_back(feature_speed_mag);
+        
+        //direction of feature in radian
+        feature_speed_dir = atan2(feature_vel.y,feature_vel.x);
+        feature_msg.feature_speed_dir.push_back(feature_speed_dir);       
+//         std::cout << "direction in radian: " << feature_speed_dir << std::endl;
+        
+//         direction of each feature
+        if(feature_speed_dir <= M_PI/2 && feature_speed_dir >= -M_PI/2){
             feature_msg.direction.push_back(0);         //0 -- moving right, 1 -- moving left
         }else{
             feature_msg.direction.push_back(1);         //0 -- moving right, 1 -- moving left
         }
-        
     }
 
     return feature_msg;

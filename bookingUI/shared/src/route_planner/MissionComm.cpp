@@ -175,7 +175,9 @@ bool DBMissionComm::checkMissionCancelled(unsigned id)
 
 void DBMissionComm::initialize()
 {
-    dbi.deleteVehicle();
+    std::cout << "starting thread";
+    //dbi.deleteVehicle();
     dbi.identify();
+    std::cout << "updated location";
     updateCurrentLocation(currentStation_.str());
 }

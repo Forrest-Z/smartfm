@@ -1,5 +1,7 @@
 #include <ros/ros.h>
 #include <math.h>
+#include <vector>
+#include <algorithm>
 
 #include <vision_opticalflow/Feature.h>
 #include <vision_opticalflow/Cluster.h> 
@@ -15,12 +17,15 @@ private:
     ros::Subscriber feature_sub_;
     ros::Publisher cluster_pub_;
 
-    float cluster_vel_bound_x_;
-    float cluster_vel_bound_y_;
     float cluster_pos_bound_x_;
     float cluster_pos_bound_y_;
-    
+    /** new add **/
+    float cluster_pos_bound_;
+    float cluster_speed_bound_;          //speed as in magnitude of speed
+    float cluster_direction_bound_;      //direction of movement in radian
 //     vision_opticalflow::Clusters clusters_;      //vector of cluster
+    int getNearestClusterToFeature(vision_opticalflow::Clusters clusters_pos, const vision_opticalflow::Feature::ConstPtr & input_feature, int feature_index);
+    int min_cluster_id(std::vector<float> vecScoreToCluster);
     void clusterCallback(const vision_opticalflow::Feature::ConstPtr & features_msg);
 };
 
@@ -29,184 +34,186 @@ FeatureClusteringNode::FeatureClusteringNode()
     feature_sub_ = nh_.subscribe("features",10, &FeatureClusteringNode::clusterCallback, this);
     cluster_pub_ = nhp_.advertise<vision_opticalflow::Clusters>("clusters", 10);
 
-    cluster_vel_bound_x_ = 4;
-    cluster_vel_bound_y_ = 8;
-    cluster_pos_bound_x_ = 25;
-    cluster_pos_bound_y_ = 50;
+    cluster_pos_bound_x_ = 50.0;
+    cluster_pos_bound_y_ = 240.0;
+    /** new add **/
+    cluster_pos_bound_ = 200.0;
+    cluster_speed_bound_ = 10.0;   //magnitude of velocity
+    cluster_direction_bound_ = 1.0;  //0.1 rad is approx. 5 degree
+}
+int FeatureClusteringNode::min_cluster_id(std::vector<float> vecScoreToCluster)
+{
+    int min_id = 0;
+    for(unsigned int i = 1; i < vecScoreToCluster.size(); i++)
+    {
+        if(vecScoreToCluster.at(i) < vecScoreToCluster.at(min_id))
+        {
+            min_id = i;
+        }
+    }
+    return min_id;
+}
+int FeatureClusteringNode::getNearestClusterToFeature(vision_opticalflow::Clusters clusters_pos, const vision_opticalflow::Feature::ConstPtr & input_feature, int feature_index)
+{
+    //return index number of the nearet cluster, if don't have any -> return -1
+    int clusterIndex_out;
+    float distToCluster_x, distToCluster_y,speedToCluster,dirToCluster,scoreToCluster;
+    float distToCluster;
+    std::vector<float> vecDistToCluster;
+    std::vector<float> vecDistToCluster_x;
+    std::vector<float> vecDistToCluster_y;
+    std::vector<float> vecSpeedToCluster;
+    std::vector<float> vecDirToCluster;
+    std::vector<float> vecScoreToCluster;
+
+    for(unsigned int l = 0; l < clusters_pos.clusters_info.size(); l++) //search in all cluster in clusters
+    {
+        //distance in x-direction
+        distToCluster_x = input_feature->found_feature[feature_index].x - clusters_pos.clusters_info[l].centroid.x;
+        vecDistToCluster_x.push_back(distToCluster_x);
+        //distance in y-direction
+        distToCluster_y = input_feature->found_feature[feature_index].y - clusters_pos.clusters_info[l].centroid.y;
+        vecDistToCluster_y.push_back(distToCluster_y);
+        //absolute distance
+        distToCluster = sqrt(pow(distToCluster_x,2) + pow(distToCluster_y,2));
+        vecDistToCluster.push_back(distToCluster);
+        
+        //speed difference to cluster
+        speedToCluster = fabs(input_feature->feature_speed_mag[feature_index] - clusters_pos.clusters_info[l].centroid_speed_mag);
+        vecSpeedToCluster.push_back(speedToCluster);
+        //direction difference to cluster
+        dirToCluster = fabs(input_feature->feature_speed_dir[feature_index]- clusters_pos.clusters_info[l].centroid_speed_dir);
+        vecDirToCluster.push_back(dirToCluster);
+        //calculate score
+        scoreToCluster = distToCluster + speedToCluster + dirToCluster;
+//         scoreToCluster = distToCluster_x + distToCluster_y + speedToCluster + dirToCluster;
+//         scoreToCluster = distToCluster_x + distToCluster_y + speedToCluster;
+        vecScoreToCluster.push_back(scoreToCluster);
+    }
+    //get cluster index with lowest score
+    clusterIndex_out = min_cluster_id(vecScoreToCluster);
+
+    //Check boundary value
+    if(
+//         vecDistToCluster_x.at(clusterIndex_out) <= cluster_pos_bound_x_ &&
+//         vecDistToCluster_y.at(clusterIndex_out) <= cluster_pos_bound_y_ &&
+        vecDistToCluster.at(clusterIndex_out) <= cluster_pos_bound_ &&
+        vecSpeedToCluster.at(clusterIndex_out) <= cluster_speed_bound_ &&
+        vecDirToCluster.at(clusterIndex_out) <= cluster_direction_bound_
+    ){
+        clusterIndex_out = clusterIndex_out;
+    }else
+    {
+//         std::cout << "cluster_pos_bound_x_: " << vecDistToCluster_x.at(clusterIndex_out) << std::endl;
+//         std::cout << "cluster_pos_bound_y_: " << vecDistToCluster_y.at(clusterIndex_out) << std::endl;
+//         std::cout << "cluster_speed_bound_: " << vecSpeedToCluster.at(clusterIndex_out) << std::endl;
+//         std::cout << "cluster_direction_bound_: " << vecDirToCluster.at(clusterIndex_out) << std::endl;
+//         std::cout << "###--------------------------------###" << std::endl;
+
+        clusterIndex_out = -1;
+    }
+
+    //return value
+    return clusterIndex_out;
 }
 
 void FeatureClusteringNode::clusterCallback(const vision_opticalflow::Feature::ConstPtr & features_msg)
 {
-    geometry_msgs::Point feature_vel;
-//     vision_opticalflow::Cluster cluster_msg;    //single cluster
-    vision_opticalflow::Cluster cluster_right;
-    vision_opticalflow::Cluster cluster_left;
-    
-    vision_opticalflow::Clusters clusters_vel;     //vector of clusters
-    vision_opticalflow::Clusters clusters_pos;
-    vision_opticalflow::Clusters clusters_pos_right, clusters_pos_left;     //vector of clusters
-    
-    clusters_vel.clusters_info.push_back(cluster_right);   //0 is right
-    clusters_vel.clusters_info.push_back(cluster_left);    //1 is left
-    
-    clusters_vel.header = features_msg->header;
-    clusters_pos_right.header = features_msg->header;
-    clusters_pos_left.header = features_msg->header;
-    clusters_pos.header = features_msg->header;
+    int cluster_index;
+    vision_opticalflow::Clusters clusters_pos,clusters_out;
+    clusters_out.header = features_msg->header;
     unsigned int cluster_num = 0;
 
-    for (unsigned int i = 0; i < features_msg->found_feature.size(); i++)
-    {
-        if((abs(features_msg->feature_vel[i].x) < 2) && (abs(features_msg->feature_vel[i].y) < 2))
+    /** new add**/
+    if(features_msg->found_feature.size() != 0){
+        //go through each feature
+        for (unsigned int i = 0; i < features_msg->found_feature.size(); i++)
         {
-            //ignore none moving feature
-            continue;
-        }
-        
-        if(features_msg->direction[i] == 0)
-        {
-            //moving right cluster
-            clusters_vel.clusters_info[0].members.push_back(features_msg->found_feature[i]);
-            clusters_vel.clusters_info[0].members_vel.push_back(features_msg->feature_vel[i]);
-            clusters_vel.clusters_info[0].centroid.x = (clusters_vel.clusters_info[0].centroid.x + features_msg->found_feature[i].x)/2;
-            clusters_vel.clusters_info[0].centroid_vel.x = (clusters_vel.clusters_info[0].centroid_vel.x + features_msg->feature_vel[i].x)/2;
-            clusters_vel.clusters_info[0].centroid.y = (clusters_vel.clusters_info[0].centroid.y + features_msg->found_feature[i].y)/2;
-            clusters_vel.clusters_info[0].centroid_vel.y = (clusters_vel.clusters_info[0].centroid_vel.y + features_msg->feature_vel[i].y)/2;
-        }else{
-            //moving left cluster
-            clusters_vel.clusters_info[1].members.push_back(features_msg->found_feature[i]);
-            clusters_vel.clusters_info[1].members_vel.push_back(features_msg->feature_vel[i]);
-            clusters_vel.clusters_info[1].centroid.x = (clusters_vel.clusters_info[1].centroid.x + features_msg->found_feature[i].x)/2;
-            clusters_vel.clusters_info[1].centroid_vel.x = (clusters_vel.clusters_info[1].centroid_vel.x + features_msg->feature_vel[i].x)/2;
-            clusters_vel.clusters_info[1].centroid.y = (clusters_vel.clusters_info[1].centroid.y + features_msg->found_feature[i].y)/2;
-            clusters_vel.clusters_info[1].centroid_vel.y = (clusters_vel.clusters_info[1].centroid_vel.y + features_msg->feature_vel[i].y)/2;
-//             std::cout << "left" << std::endl;
-        }
-    }
-//     cluster_pub_.publish(clusters_vel);
-        //right group
-        for(unsigned int k = 0; k < clusters_vel.clusters_info[0].members.size(); k++)
-        {
-            if(clusters_pos_right.clusters_info.size() == 0)
+            //filter out some feature, ignore too low and too high feature
+            if(features_msg->feature_speed_mag[i] < 2 ||features_msg->feature_speed_mag[i] > 20 || features_msg->feature_speed_dir[i] == 0) continue;
+            if(clusters_pos.clusters_info.size() == 0)
             {
-                //intialize clusters_
-//                 std::cout << " intialize clusters_pos " << std::endl;
+                //intialize first cluster
                 vision_opticalflow::Cluster cluster_msg;    //single cluster
-
+                //set id
                 cluster_num = cluster_num + 1;
                 cluster_msg.id = cluster_num;
-                cluster_msg.centroid = clusters_vel.clusters_info[0].members[k];
-                cluster_msg.centroid_vel = clusters_vel.clusters_info[0].members_vel[k];
-                cluster_msg.centroid_dir = 0;   // 0 -- moving in right direction
-                cluster_msg.members_vel.push_back(clusters_vel.clusters_info[0].members_vel[k]);
-                cluster_msg.members.push_back(clusters_vel.clusters_info[0].members[k]);
-
-                clusters_pos_right.clusters_info.push_back(cluster_msg);
-//             return;
+                //set first feature member
+                cluster_msg.centroid.x = features_msg->found_feature[i].x;
+                cluster_msg.centroid.y = features_msg->found_feature[i].y;
+                cluster_msg.centroid_vel.x = features_msg->feature_vel[i].x;
+                cluster_msg.centroid_vel.y = features_msg->feature_vel[i].y;
+                cluster_msg.members.push_back(features_msg->found_feature[i]);
+                cluster_msg.members_vel.push_back(features_msg->feature_vel[i]);
+                cluster_msg.centroid_speed_mag = features_msg->feature_speed_mag[i];
+                cluster_msg.centroid_speed_dir = features_msg->feature_speed_dir[i];
+                cluster_msg.members_speed_mag.push_back(features_msg->feature_speed_mag[i]);   //have only one feature for now
+                cluster_msg.members_speed_dir.push_back(features_msg->feature_speed_dir[i]);   //have only one feature for now
+                //put this first cluster into clusters
+                clusters_pos.clusters_info.push_back(cluster_msg);
+                //nothing else to do next
+                continue;
             }
 
-            bool need_new_cluster_right = true;
-            for(unsigned int l = 0; l < clusters_pos_right.clusters_info.size(); l++){
-                if((abs(clusters_vel.clusters_info[0].members[k].x - clusters_pos_right.clusters_info[l].centroid.x) <= cluster_pos_bound_x_) &&
-                (abs(clusters_vel.clusters_info[0].members[k].y - clusters_pos_right.clusters_info[l].centroid.y) <= cluster_pos_bound_y_)
-                )
-                {
-                    clusters_pos_right.clusters_info[l].members.push_back(clusters_vel.clusters_info[0].members[k]);
-                    clusters_pos_right.clusters_info[l].members_vel.push_back(clusters_vel.clusters_info[0].members_vel[k]);
-                    clusters_pos_right.clusters_info[l].centroid.x = (clusters_pos_right.clusters_info[l].centroid.x + clusters_vel.clusters_info[0].members[k].x)/2;
-                    clusters_pos_right.clusters_info[l].centroid_vel.x = (clusters_pos_right.clusters_info[l].centroid_vel.x + clusters_vel.clusters_info[0].members_vel[k].x)/2;
-                    clusters_pos_right.clusters_info[l].centroid.y = (clusters_pos_right.clusters_info[l].centroid.y + clusters_vel.clusters_info[0].members[k].y)/2;
-                    clusters_pos_right.clusters_info[l].centroid_vel.y = (clusters_pos_right.clusters_info[l].centroid_vel.y + clusters_vel.clusters_info[0].members_vel[k].y)/2;
-                    clusters_pos_right.clusters_info[l].centroid_dir = 0;
-                    need_new_cluster_right = false;
-                }
-            }
-
-            if(need_new_cluster_right == true)
+            //start clustering each feature into cluster in clusters
+            cluster_index = getNearestClusterToFeature(clusters_pos, features_msg, i);
+            if(cluster_index != -1)
             {
-                vision_opticalflow::Cluster cluster_msg;    //single cluster
+                //Add feature to availiable clusture
+                clusters_pos.clusters_info[cluster_index].centroid.x = (clusters_pos.clusters_info[cluster_index].centroid.x + features_msg->found_feature[i].x)/2;
+                clusters_pos.clusters_info[cluster_index].centroid.y = (clusters_pos.clusters_info[cluster_index].centroid.y + features_msg->found_feature[i].y)/2;
+                clusters_pos.clusters_info[cluster_index].centroid_vel.x = (clusters_pos.clusters_info[cluster_index].centroid_vel.x + features_msg->feature_vel[i].x)/2;
+                clusters_pos.clusters_info[cluster_index].centroid_vel.y = (clusters_pos.clusters_info[cluster_index].centroid_vel.y + features_msg->feature_vel[i].y)/2;
+                clusters_pos.clusters_info[cluster_index].centroid_dir = (clusters_pos.clusters_info[cluster_index].centroid_speed_dir + features_msg->feature_speed_dir[i])/2;
+                clusters_pos.clusters_info[cluster_index].members.push_back(features_msg->found_feature[i]);
+                clusters_pos.clusters_info[cluster_index].members_vel.push_back(features_msg->feature_vel[i]);
 
+                clusters_pos.clusters_info[cluster_index].centroid_speed_mag = (clusters_pos.clusters_info[cluster_index].centroid_speed_mag + features_msg->feature_speed_mag[i])/2;
+                clusters_pos.clusters_info[cluster_index].centroid_speed_dir = (clusters_pos.clusters_info[cluster_index].centroid_speed_dir + features_msg->feature_speed_dir[i])/2;
+                clusters_pos.clusters_info[cluster_index].members_speed_mag.push_back(features_msg->feature_speed_mag[i]);
+                clusters_pos.clusters_info[cluster_index].members_speed_dir.push_back(features_msg->feature_speed_dir[i]);
+            }else{
+                //create and initialize new cluster
+                vision_opticalflow::Cluster cluster_msg;    //single cluster
+                //set id
                 cluster_num = cluster_num + 1;
                 cluster_msg.id = cluster_num;
-                cluster_msg.centroid = clusters_vel.clusters_info[0].members[k];
-                cluster_msg.centroid_vel = clusters_vel.clusters_info[0].members_vel[k];
-                cluster_msg.centroid_dir = 0;   // 0 -- moving in right direction
-                cluster_msg.members_vel.push_back(clusters_vel.clusters_info[0].members_vel[k]);
-                cluster_msg.members.push_back(clusters_vel.clusters_info[0].members[k]);
-
-                clusters_pos_right.clusters_info.push_back(cluster_msg);
-                need_new_cluster_right = false;
+                //set first feature member
+                cluster_msg.centroid.x = features_msg->found_feature[i].x;
+                cluster_msg.centroid.y = features_msg->found_feature[i].y;
+                cluster_msg.centroid_vel.x = features_msg->feature_vel[i].x;
+                cluster_msg.centroid_vel.y = features_msg->feature_vel[i].y;
+                cluster_msg.members.push_back(features_msg->found_feature[i]);
+                cluster_msg.members_vel.push_back(features_msg->feature_vel[i]);
+                cluster_msg.centroid_speed_mag = features_msg->feature_speed_mag[i];
+                cluster_msg.centroid_speed_dir = features_msg->feature_speed_dir[i];
+                cluster_msg.members_speed_mag.push_back(features_msg->feature_speed_mag[i]);   //have only one feature for new cluster
+                cluster_msg.members_speed_dir.push_back(features_msg->feature_speed_dir[i]);   //have only one feature for new cluster
+                //put this first cluster into clusters
+                clusters_pos.clusters_info.push_back(cluster_msg);
             }
             
         }
-
-        //left group
-        for(unsigned int k = 0; k < clusters_vel.clusters_info[1].members.size(); k++)
+        //after cluster every feature into a cluster, check if which cluster is too small then discard
+        std::cout << "clusters_pos size: " << clusters_pos.clusters_info.size() << std::endl;
+        for(unsigned int i = 0; i < clusters_pos.clusters_info.size(); i++)
         {
-            if(clusters_pos_left.clusters_info.size() == 0)
+            
+            if(clusters_pos.clusters_info[i].members.size() >= 1)
             {
-                //intialize clusters_
-//                 std::cout << " intialize clusters_pos " << std::endl;
-                vision_opticalflow::Cluster cluster_msg;    //single cluster
+                clusters_out.clusters_info.push_back(clusters_pos.clusters_info[i]);
+//                 std::cout << "erase: " << i << std::endl;
+//                 clusters_pos.clusters_info.erase(clusters_pos.clusters_info.begin()+i);
+//                 std::cout << "cluster size after: " << clusters_pos.clusters_info[i].size() << std::endl;
 
-                cluster_num = cluster_num + 1;
-                cluster_msg.id = cluster_num;
-                cluster_msg.centroid = clusters_vel.clusters_info[1].members[k];
-                cluster_msg.centroid_vel = clusters_vel.clusters_info[1].members_vel[k];
-                cluster_msg.centroid_dir = 1;   // 1 -- moving in left direction
-                cluster_msg.members_vel.push_back(clusters_vel.clusters_info[1].members_vel[k]);
-                cluster_msg.members.push_back(clusters_vel.clusters_info[1].members[k]);
-
-                clusters_pos_left.clusters_info.push_back(cluster_msg);
-//             return;
-            }
-
-            bool need_new_cluster_left = true;
-            for(unsigned int l = 0; l < clusters_pos_left.clusters_info.size(); l++){
-                if((abs(clusters_vel.clusters_info[1].members[k].x - clusters_pos_left.clusters_info[l].centroid.x) <= cluster_pos_bound_x_) &&
-                (abs(clusters_vel.clusters_info[1].members[k].y - clusters_pos_left.clusters_info[l].centroid.y) <= cluster_pos_bound_y_)
-                )
-                {
-                    clusters_pos_left.clusters_info[l].members.push_back(clusters_vel.clusters_info[1].members[k]);
-                    clusters_pos_left.clusters_info[l].members_vel.push_back(clusters_vel.clusters_info[1].members_vel[k]);
-                    clusters_pos_left.clusters_info[l].centroid.x = (clusters_pos_left.clusters_info[l].centroid.x + clusters_vel.clusters_info[1].members[k].x)/2;
-                    clusters_pos_left.clusters_info[l].centroid_vel.x = (clusters_pos_left.clusters_info[l].centroid_vel.x + clusters_vel.clusters_info[1].members_vel[k].x)/2;
-                    clusters_pos_left.clusters_info[l].centroid.y = (clusters_pos_left.clusters_info[l].centroid.y + clusters_vel.clusters_info[1].members[k].y)/2;
-                    clusters_pos_left.clusters_info[l].centroid_vel.y = (clusters_pos_left.clusters_info[l].centroid_vel.y + clusters_vel.clusters_info[1].members_vel[k].y)/2;
-                    clusters_pos_left.clusters_info[l].centroid_dir = 1;
-                    need_new_cluster_left = false;
-                }
-            }
-
-            if(need_new_cluster_left == true)
-            {
-                vision_opticalflow::Cluster cluster_msg;    //single cluster
-
-                cluster_num = cluster_num + 1;
-                cluster_msg.id = cluster_num;
-                cluster_msg.centroid = clusters_vel.clusters_info[1].members[k];
-                cluster_msg.centroid_vel = clusters_vel.clusters_info[1].members_vel[k];
-                cluster_msg.centroid_dir = 1;   // 1 -- moving in left direction
-                cluster_msg.members_vel.push_back(clusters_vel.clusters_info[1].members_vel[k]);
-                cluster_msg.members.push_back(clusters_vel.clusters_info[1].members[k]);
-
-                clusters_pos_left.clusters_info.push_back(cluster_msg);
-                need_new_cluster_left = false;
+            }else{
+//                 std::cout << "cluster size: " << clusters_pos.clusters_info[i].members.size() << std::endl;
             }
         }
-
-    for (unsigned int n = 0; n < clusters_pos_right.clusters_info.size(); n++)
-    {
-        clusters_pos_right.clusters_info[n].centroid_dir = 0;
-        clusters_pos.clusters_info.push_back(clusters_pos_right.clusters_info[n]);
+        std::cout << "clusters_out size: " << clusters_out.clusters_info.size() << std::endl;
+        std::cout << "###------------------------------------###" << std::endl;
     }
-    for (unsigned int m = 0; m < clusters_pos_left.clusters_info.size(); m++)
-    {
-        clusters_pos_left.clusters_info[m].centroid_dir = 1;
-        clusters_pos.clusters_info.push_back(clusters_pos_left.clusters_info[m]);
-    }
-//     std::cout << " cluster_num right: " << clusters_pos_right.clusters_info.size() << " cluster_num left: " << clusters_pos_left.clusters_info.size() << std::endl;
-    cluster_pub_.publish(clusters_pos);
+    cluster_pub_.publish(clusters_out);
     
 }
 

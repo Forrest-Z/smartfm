@@ -82,7 +82,7 @@ void FeatureDisplayNode::spin()
         if( featuresWindowName_.length()==0 )
             ros::Duration(0.1).sleep();
         else
-            if( cv::waitKey(100)=='q' )
+            if( cv::waitKey(10)=='q' )
                 return;
         ros::spinOnce();
     }

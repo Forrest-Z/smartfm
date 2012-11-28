@@ -39,7 +39,7 @@ private:
     int MAX_CORNERS;
     double qualityLevel;
     double minDistance;
-    cv::Mat mask_roi;
+    cv::Mat roi_mask_;
     cv::Point roi_start_pt;
     cv::Point roi_end_pt;
     

@@ -6,8 +6,6 @@
 #include "SimulatedRoutePlanner.h"
 #include "MissionComm.h"
 
-
-
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "route_planner_node");
@@ -43,16 +41,20 @@ int main(int argc, char **argv)
     nh.getParam("use_dbserver", use_dbserver);
     if( use_dbserver )
     {
-        std::string url, vehicleID="golfcart1";
+        std::string url;
+//         std:string vehicleID="golfcart1";
+        int vehicleID=1;
+        
         if( ! nh.getParam("booking_url", url) )
         {
             ROS_FATAL("Parameter booking_url is missing");
             exit(1);
         }
         nh.getParam("vehicleID", vehicleID);
-        ROS_INFO("Connecting to database at URL %s with ID %s.",
-                 url.c_str(), vehicleID.c_str());
-        comm = new DBMissionComm(*rp, *pc, url, vehicleID);
+        ROS_INFO("Connecting to database at URL %s with ID %d.",
+                 url.c_str(), vehicleID);
+//         comm = new DBMissionComm(*rp, *pc, url, vehicleID);
+        comm = new DBMissionComm(*rp, *pc, url, "1");
     }
     else
     {
