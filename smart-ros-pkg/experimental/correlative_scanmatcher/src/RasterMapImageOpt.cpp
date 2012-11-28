@@ -11,6 +11,9 @@ struct transform_info
 	double rotation;
 	double score;
 	vector<cv::Point> pts;
+	cv::Mat K,u;
+	double s;
+	cv::Mat covariance;
 };
 
 class RasterMapImage
@@ -108,7 +111,7 @@ public:
 		//cv::imwrite("map.png", image_);
 	}
 
-	transform_info searchRotation(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization)
+	transform_info searchRotation(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization, bool est_cov)
 	{
 
 		//translate range is directly corresponds to number of cells in the grid
@@ -131,6 +134,9 @@ public:
 		fmutil::Stopwatch sw;
 		int range = translate_range / res_;
 		int step = translate_step / res_;
+
+		cv::Mat K = cv::Mat::zeros(3,3,CV_32F), u = cv::Mat::zeros(3,1,CV_32F);
+		double s = 0.0;
 		for(size_t i=0; i<rotations.size(); i++)
 		{
 
@@ -147,9 +153,15 @@ public:
 			}
 
 
-			transform_info best_trans = searchTranslation(rotated_search_pt, range, step, initialization.translation_2d);
+			transform_info best_trans = searchTranslation(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], est_cov);
 			sw.end(false);
 
+			if(est_cov)
+			{
+				K += best_trans.K;
+				u += best_trans.u;
+				s += best_trans.s;
+			}
 			//best_rotates[i] = best_trans;
 			//#pragma omp critical
 			//cout<<rotations[i]<<" "<<best_trans.translation_2d<<": "<<best_trans.score<<endl;
@@ -160,12 +172,20 @@ public:
 			}
 
 		}
-		//cout<<"Total time spent in searchTranslation = "<<sw.total_/1000.0<<endl;
+		cout<<"Total time spent in searchTranslation = "<<sw.total_/1000.0<<endl;
+
+		if(est_cov)
+		{
+			cv::Mat cov = K/s + (u * u.t())/(s*s);
+			cout<<cov<<endl;
+			cout<<"cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))<<endl;
+			best_rotate.covariance = cov;
+		}
 		return best_rotate;
 
 	}
 
-	transform_info searchTranslation(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt)
+	transform_info searchTranslation(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt, double rotation, bool est_cov)
 	{
 		//investigate why low bottom of confusion matrix has overall higher score
 		//solved: It is a bad idea to normalize the score with only the number of point within the source map
@@ -185,6 +205,11 @@ public:
 		//cout<<startx<<" "<<endx<<" "<<starty<<" "<<endy<<endl;
 		vector<cv::Point> new_search_pt;
 		new_search_pt.resize(search_pt.size());
+		cv::Mat x_i = cv::Mat::zeros(3,1, CV_32F);
+		best_info.K = cv::Mat::zeros(3,3, CV_32F);
+		best_info.u = cv::Mat::zeros(3,1, CV_32F);
+		best_info.s = 0;
+		x_i.at<float>(2,0)= rotation;
 		for(int j=starty; j<=endy; j+=stepsize)
 		{
 			for(int i=startx; i<=endx; i+=stepsize)
@@ -201,6 +226,14 @@ public:
 					best_info.translation_2d.y = j*res_;
 					best_info.score = cur_score;
 					best_info.pts = new_search_pt;
+				}
+				x_i.at<float>(0,0) = i*res_;
+				x_i.at<float>(1,0) = j*res_;
+				if(est_cov)
+				{
+					best_info.K += x_i * x_i.t() * cur_score;
+					best_info.u += x_i * cur_score;
+					best_info.s += cur_score;
 				}
 			}
 			//cout<<endl;
@@ -346,38 +379,25 @@ int main(int argc, char **argcv)
 	sensor_msgs::PointCloud src_pc, dst_pc, query_pc;
 
 	transform_info best_tf;
-	#pragma omp parallel for
-	for(int i=0; i<100; i++)
-	{
-		transform_info best_info;
-		RasterMapImage rm(0.2, 0.5);
-		rm.getInputPoints(raster_pts);
-		best_info = rm.searchRotation(query_pts, 10.0, 1.0, M_PI, M_PI/4., best_info);
-		vector<cv::Point> rotated_search_pt;
-		rotated_search_pt.resize(query_pts.size());
-		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
-		RasterMapImage rm2(0.1, 0.1);
-		rm2.getInputPoints(raster_pts);
-		best_info = rm2.searchRotation(query_pts, 0.75, 0.2, M_PI/8., M_PI/90., best_info);
-		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
-		RasterMapImage rm3(0.02, 0.01);
-		rm3.getInputPoints(raster_pts);
-		best_info = rm3.searchRotation(query_pts, 0.14, 0.02, M_PI/90., M_PI/360., best_info);
-		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
-#pragma omp critical
-		{
-			best_tf = best_info;
-			dst_pc.points.clear();
-			for(size_t i=0; i<best_tf.pts.size();i++)
-			{
-				geometry_msgs::Point32 pt;
-				cv::Point2f cv_pt2f = rm3.realCoordinate(best_info.pts[i]);
-				pt.x = cv_pt2f.x;
-				pt.y = cv_pt2f.y;
-				dst_pc.points.push_back(pt);
-			}
-		}
-	}
+	//#pragma omp parallel for
+
+	transform_info best_info;
+	RasterMapImage rm(0.2, 0.5);
+	rm.getInputPoints(raster_pts);
+	best_info = rm.searchRotation(query_pts, 10.0, 2.0, M_PI, M_PI/8., best_info, false);
+	vector<cv::Point> rotated_search_pt;
+	rotated_search_pt.resize(query_pts.size());
+	//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+	RasterMapImage rm2(0.1, 0.1);
+	rm2.getInputPoints(raster_pts);
+	best_info = rm2.searchRotation(query_pts, 1.5, 0.2, M_PI/16., M_PI/90., best_info, true);
+	//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+	RasterMapImage rm3(0.02, 0.01);
+	rm3.getInputPoints(raster_pts);
+	best_info = rm3.searchRotation(query_pts, 0.14, 0.02, M_PI/90., M_PI/360., best_info, false);
+	//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+	best_tf = best_info;
+
 	sw.end();
 
 
@@ -398,7 +418,14 @@ int main(int argc, char **argcv)
 		pt.y = raster_pts[i].y;
 		src_pc.points.push_back(pt);
 	}
-
+	for(size_t i=0; i<best_tf.pts.size();i++)
+	{
+		geometry_msgs::Point32 pt;
+		cv::Point2f cv_pt2f = rm3.realCoordinate(best_info.pts[i]);
+		pt.x = cv_pt2f.x;
+		pt.y = cv_pt2f.y;
+		dst_pc.points.push_back(pt);
+	}
 	for(size_t i=0; i<query_pts.size();i++)
 	{
 		geometry_msgs::Point32 pt;
