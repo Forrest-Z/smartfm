@@ -8,7 +8,7 @@ import geometry_msgs.msg
 import std_msgs.msg
 
 class Feature(genpy.Message):
-  _md5sum = "7a3f6cc0c7c1094c93d942c7d8ab6677"
+  _md5sum = "c3960232c98ea97d66194a5e93f5dfae"
   _type = "vision_opticalflow/Feature"
   _has_header = True #flag to mark the presence of a Header object
   _full_text = """#It is recommeded to use Point (which float64) wherever possible instead of Point32.
@@ -22,6 +22,10 @@ geometry_msgs/Point[] prev_feature
 geometry_msgs/Point[] found_feature
 geometry_msgs/Point[] feature_vel
 int16[]               direction
+#feature_speed_mag (feature_mag) is magnitude of velocity of the feature
+#feature_speed_dir (direction_mag) is direction of velocity in radian, calculate using atan2 from math library.
+float64[]             feature_speed_mag
+float64[]             feature_speed_dir
 
 ================================================================================
 MSG: std_msgs/Header
@@ -49,8 +53,8 @@ float64 y
 float64 z
 
 """
-  __slots__ = ['header','prev_feature','found_feature','feature_vel','direction']
-  _slot_types = ['std_msgs/Header','geometry_msgs/Point[]','geometry_msgs/Point[]','geometry_msgs/Point[]','int16[]']
+  __slots__ = ['header','prev_feature','found_feature','feature_vel','direction','feature_speed_mag','feature_speed_dir']
+  _slot_types = ['std_msgs/Header','geometry_msgs/Point[]','geometry_msgs/Point[]','geometry_msgs/Point[]','int16[]','float64[]','float64[]']
 
   def __init__(self, *args, **kwds):
     """
@@ -60,7 +64,7 @@ float64 z
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-       header,prev_feature,found_feature,feature_vel,direction
+       header,prev_feature,found_feature,feature_vel,direction,feature_speed_mag,feature_speed_dir
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
@@ -79,12 +83,18 @@ float64 z
         self.feature_vel = []
       if self.direction is None:
         self.direction = []
+      if self.feature_speed_mag is None:
+        self.feature_speed_mag = []
+      if self.feature_speed_dir is None:
+        self.feature_speed_dir = []
     else:
       self.header = std_msgs.msg.Header()
       self.prev_feature = []
       self.found_feature = []
       self.feature_vel = []
       self.direction = []
+      self.feature_speed_mag = []
+      self.feature_speed_dir = []
 
   def _get_types(self):
     """
@@ -125,6 +135,14 @@ float64 z
       buff.write(_struct_I.pack(length))
       pattern = '<%sh'%length
       buff.write(struct.pack(pattern, *self.direction))
+      length = len(self.feature_speed_mag)
+      buff.write(_struct_I.pack(length))
+      pattern = '<%sd'%length
+      buff.write(struct.pack(pattern, *self.feature_speed_mag))
+      length = len(self.feature_speed_dir)
+      buff.write(_struct_I.pack(length))
+      pattern = '<%sd'%length
+      buff.write(struct.pack(pattern, *self.feature_speed_dir))
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -196,6 +214,20 @@ float64 z
       start = end
       end += struct.calcsize(pattern)
       self.direction = struct.unpack(pattern, str[start:end])
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      pattern = '<%sd'%length
+      start = end
+      end += struct.calcsize(pattern)
+      self.feature_speed_mag = struct.unpack(pattern, str[start:end])
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      pattern = '<%sd'%length
+      start = end
+      end += struct.calcsize(pattern)
+      self.feature_speed_dir = struct.unpack(pattern, str[start:end])
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
@@ -235,6 +267,14 @@ float64 z
       buff.write(_struct_I.pack(length))
       pattern = '<%sh'%length
       buff.write(self.direction.tostring())
+      length = len(self.feature_speed_mag)
+      buff.write(_struct_I.pack(length))
+      pattern = '<%sd'%length
+      buff.write(self.feature_speed_mag.tostring())
+      length = len(self.feature_speed_dir)
+      buff.write(_struct_I.pack(length))
+      pattern = '<%sd'%length
+      buff.write(self.feature_speed_dir.tostring())
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -307,6 +347,20 @@ float64 z
       start = end
       end += struct.calcsize(pattern)
       self.direction = numpy.frombuffer(str[start:end], dtype=numpy.int16, count=length)
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      pattern = '<%sd'%length
+      start = end
+      end += struct.calcsize(pattern)
+      self.feature_speed_mag = numpy.frombuffer(str[start:end], dtype=numpy.float64, count=length)
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      pattern = '<%sd'%length
+      start = end
+      end += struct.calcsize(pattern)
+      self.feature_speed_dir = numpy.frombuffer(str[start:end], dtype=numpy.float64, count=length)
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill

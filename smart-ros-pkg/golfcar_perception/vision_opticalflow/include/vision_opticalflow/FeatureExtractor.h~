@@ -56,9 +56,9 @@ private:
     cv::Mat prev_frame_;
     cv::Mat disp_frame_;  //color image clone from input image
 
-    std::vector<cv::Point2i> curr_frame_feature_;       //feature at time n
-    std::vector<cv::Point2i> prev_frame_feature_;       //feature at time n-1
-    std::vector<cv::Point2i> found_frame_feature_;      //feature from time n-1 found at time n
+    std::vector<cv::Point2f> curr_frame_feature_;       //feature at time n
+    std::vector<cv::Point2f> prev_frame_feature_;       //feature at time n-1
+    std::vector<cv::Point2f> found_frame_feature_;      //feature from time n-1 found at time n
 
     /// extract blobs from the gray-scale frame
     vision_opticalflow::Feature extract(cv::Mat inFrameBin, double time);

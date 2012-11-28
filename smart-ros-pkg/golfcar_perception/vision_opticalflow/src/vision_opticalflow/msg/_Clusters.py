@@ -9,7 +9,7 @@ import geometry_msgs.msg
 import std_msgs.msg
 
 class Clusters(genpy.Message):
-  _md5sum = "dd8231f50c9cec7ecea12249072a6049"
+  _md5sum = "2776242fc5f734d3164b0e1985b759ad"
   _type = "vision_opticalflow/Clusters"
   _has_header = True #flag to mark the presence of a Header object
   _full_text = """Header header
@@ -41,6 +41,12 @@ geometry_msgs/Point     centroid_vel
 int16                   centroid_dir
 geometry_msgs/Point[]   members
 geometry_msgs/Point[]   members_vel
+#Add more later by Poon
+float64                 centroid_speed_mag      #magnitude of centroid's speed
+float64                 centroid_speed_dir      #direction of centroid's speed
+float64[]               members_speed_mag       #magnitude of each member's speed
+float64[]               members_speed_dir       #direction of each member's speed
+
 
 ================================================================================
 MSG: geometry_msgs/Point
@@ -119,6 +125,16 @@ float64 z
         for val2 in val1.members_vel:
           _x = val2
           buff.write(_struct_3d.pack(_x.x, _x.y, _x.z))
+        _x = val1
+        buff.write(_struct_2d.pack(_x.centroid_speed_mag, _x.centroid_speed_dir))
+        length = len(val1.members_speed_mag)
+        buff.write(_struct_I.pack(length))
+        pattern = '<%sd'%length
+        buff.write(struct.pack(pattern, *val1.members_speed_mag))
+        length = len(val1.members_speed_dir)
+        buff.write(_struct_I.pack(length))
+        pattern = '<%sd'%length
+        buff.write(struct.pack(pattern, *val1.members_speed_dir))
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -190,6 +206,24 @@ float64 z
           end += 24
           (_x.x, _x.y, _x.z,) = _struct_3d.unpack(str[start:end])
           val1.members_vel.append(val2)
+        _x = val1
+        start = end
+        end += 16
+        (_x.centroid_speed_mag, _x.centroid_speed_dir,) = _struct_2d.unpack(str[start:end])
+        start = end
+        end += 4
+        (length,) = _struct_I.unpack(str[start:end])
+        pattern = '<%sd'%length
+        start = end
+        end += struct.calcsize(pattern)
+        val1.members_speed_mag = struct.unpack(pattern, str[start:end])
+        start = end
+        end += 4
+        (length,) = _struct_I.unpack(str[start:end])
+        pattern = '<%sd'%length
+        start = end
+        end += struct.calcsize(pattern)
+        val1.members_speed_dir = struct.unpack(pattern, str[start:end])
         self.clusters_info.append(val1)
       return self
     except struct.error as e:
@@ -232,6 +266,16 @@ float64 z
         for val2 in val1.members_vel:
           _x = val2
           buff.write(_struct_3d.pack(_x.x, _x.y, _x.z))
+        _x = val1
+        buff.write(_struct_2d.pack(_x.centroid_speed_mag, _x.centroid_speed_dir))
+        length = len(val1.members_speed_mag)
+        buff.write(_struct_I.pack(length))
+        pattern = '<%sd'%length
+        buff.write(val1.members_speed_mag.tostring())
+        length = len(val1.members_speed_dir)
+        buff.write(_struct_I.pack(length))
+        pattern = '<%sd'%length
+        buff.write(val1.members_speed_dir.tostring())
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -304,6 +348,24 @@ float64 z
           end += 24
           (_x.x, _x.y, _x.z,) = _struct_3d.unpack(str[start:end])
           val1.members_vel.append(val2)
+        _x = val1
+        start = end
+        end += 16
+        (_x.centroid_speed_mag, _x.centroid_speed_dir,) = _struct_2d.unpack(str[start:end])
+        start = end
+        end += 4
+        (length,) = _struct_I.unpack(str[start:end])
+        pattern = '<%sd'%length
+        start = end
+        end += struct.calcsize(pattern)
+        val1.members_speed_mag = numpy.frombuffer(str[start:end], dtype=numpy.float64, count=length)
+        start = end
+        end += 4
+        (length,) = _struct_I.unpack(str[start:end])
+        pattern = '<%sd'%length
+        start = end
+        end += struct.calcsize(pattern)
+        val1.members_speed_dir = numpy.frombuffer(str[start:end], dtype=numpy.float64, count=length)
         self.clusters_info.append(val1)
       return self
     except struct.error as e:
@@ -312,4 +374,5 @@ float64 z
 _struct_I = genpy.struct_I
 _struct_h = struct.Struct("<h")
 _struct_3I = struct.Struct("<3I")
+_struct_2d = struct.Struct("<2d")
 _struct_3d = struct.Struct("<3d")

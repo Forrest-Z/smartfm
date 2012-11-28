@@ -90,7 +90,6 @@ void FeatureExtractorNode::imageCallback(const sensor_msgs::ImageConstPtr& image
     feature_msg.header = image->header;
 
     feature_pub_.publish(feature_msg);
-    
 }
 
 int main(int argc, char **argv)
