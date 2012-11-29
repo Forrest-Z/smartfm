@@ -89,7 +89,7 @@ int main(int argc, char **argcv)
 
 	cv::Mat cov = best_tf.covariance;
 			cout<<"cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
-
+			cout<<best_tf.translation_2d<<" "<< best_tf.rotation<<endl;
 	for(size_t i=0; i<best_tf.pts.size();i++)
 	{
 		geometry_msgs::Point32 pt;

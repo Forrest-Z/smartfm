@@ -50,6 +50,7 @@ private:
 		sw_sub.start("1");
 		//cout<<query_pts.size()<<endl;
 		transform_info best_info;
+		best_info.rotation = 0.0;
 		RasterMapImage rm(0.2, 0.5);
 		rm.getInputPoints(raster_pts_);
 		best_info = rm.searchRotation(query_pts, 14.0, 2.0, M_PI, M_PI/4., best_info, false);
@@ -63,11 +64,11 @@ private:
 		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 		sw_sub.end(false);
 		sw_sub.start("3");
-		RasterMapImage rm3(0.03, 0.01);
+		RasterMapImage rm3(0.02, 0.01);
 		rm3.getInputPoints(raster_pts_);
-		best_info = rm3.searchRotation(query_pts, 0.12, 0.03, M_PI/90., M_PI/360., best_info, false);
+		best_info = rm3.searchRotation(query_pts, 0.12, 0.02, M_PI/90., M_PI/360., best_info, false);
 		sw_sub.end(false);
-		cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+		//scout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 
 		best_info.real_pts.resize(best_info.pts.size());
 		for(size_t i=0; i<best_info.pts.size();i++)
