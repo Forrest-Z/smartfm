@@ -2,11 +2,14 @@
 
 <launch>
     <!-- Take compressed format from bag file and republish it in raw format-->
-    <node pkg="image_transport" type="republish" name="republish"
+    <!--node pkg="image_transport" type="republish" name="republish"
         args="compressed in:=/EA/camera/image_raw/ raw out:=camera_front/image_raw">
-        
+    </node-->
+    
+    <node pkg="image_transport" type="republish" name="republish"
+        args="compressed in:=camera/image_raw raw out:=camera_front/image_raw">
     </node>
-
+    
     <!-- Take image in and output background image, pub: "background"-->
     <node pkg="vision_motion_detection" type="background_extractor" name="background_extractor" output="screen">
         <remap from="image" to="camera_front/image_raw" />

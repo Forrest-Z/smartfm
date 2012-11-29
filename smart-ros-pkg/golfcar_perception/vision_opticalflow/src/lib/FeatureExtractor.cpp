@@ -11,13 +11,13 @@ FeatureExtractor::FeatureExtractor()
   view_intermediate_images_(true) ///display images resulting from blurring, erosion, dilation, threshold, etc.
 {
     //goodFeaturesToTrack
-    MAX_CORNERS = 50;
+    MAX_CORNERS = 500;
     qualityLevel = 0.2;
-    minDistance = 1; //0.1
-    roi_start_pt = cv::Point(0,200);
-    roi_end_pt = cv::Point(120,240);
+    minDistance = 0.1; //0.1
+    roi_start_pt = cv::Point(0,380); //cv::Point(0,200)
+    roi_end_pt = cv::Point(960,480); //cv::Point(120,240)
     
-    win_size = cv::Size(24,24);
+    win_size = cv::Size(21,21);
     //Opticalflow
     maxLevel = 3;
     criteria = cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01);
@@ -162,9 +162,9 @@ vision_opticalflow::Feature FeatureExtractor::extract(cv::Mat gray_input, double
     roi_mask_.setTo(cv::Scalar(0,0,0));
     cv::rectangle(roi_mask_,roi_start_pt,roi_end_pt,cv::Scalar(255,255,255),-1,8);
 //     std::cout << "elemSize: " << gray_input.elemSize() << " depth: " << gray_input.depth() << " channels :" << gray_input.channels() << std::endl;
-//     //Get good feature to track of the current frame, store it in curr_frame_feature_ vector (vector of type float)
-//     cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance, roi_mask_);
-    cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance);     //not using ROI
+    //Get good feature to track of the current frame, store it in curr_frame_feature_ vector (vector of type float)
+    cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance, roi_mask_);
+//     cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance);     //not using ROI
 
     if(prev_frame_.empty() || prev_frame_feature_.size() <= 0)
     {
@@ -181,17 +181,49 @@ vision_opticalflow::Feature FeatureExtractor::extract(cv::Mat gray_input, double
 
         prev_frame_ = gray_input.clone();
 
+//         std::cout << "prev_frame_feature_ size: " << prev_frame_feature_.size() << std::endl;
+//         for(unsigned int i = 0; i < prev_frame_feature_.size(); i++){
+//             std::cout << " (" << (float)prev_frame_feature_[i].x << "," << (float)prev_frame_feature_[i].y << ") ,";
+//         }
+//         std::cout << std::endl;
+//         
+//         std::cout << "found_frame_feature_ size: " << found_frame_feature_.size() << std::endl;
+//         for(unsigned int i = 0; i < found_frame_feature_.size(); i++){
+//             std::cout << " (" << (float)found_frame_feature_[i].x << "," << (float)found_frame_feature_[i].y << ") ,";
+//         }
+//         std::cout << std::endl;
+//         
+//         std::cout << "opticalFlow_status_ size: " << opticalFlow_status_.size(); 
+//         for(unsigned int i = 0; i < opticalFlow_status_.size(); i++){
+//             if(opticalFlow_status_[i] == 0) std::cout << " ok";
+//             if(opticalFlow_status_[i] == 1) std::cout << " miss";
+//         }
+//         std::cout << std::endl;
+//         std::cout << "-------------------------------" << std::endl;
+
+        for(unsigned int i = 0; i < opticalFlow_status_.size(); i++){
+            if(opticalFlow_status_[i] != 0){
+                //match is found, check for flow
+                if(prev_frame_feature_[i].x == found_frame_feature_[i].x &&
+                   prev_frame_feature_[i].y == found_frame_feature_[i].y
+                ){
+                    prev_frame_feature_.erase(prev_frame_feature_.begin() + i);
+                    found_frame_feature_.erase(found_frame_feature_.begin() + i);
+                }
+            }else{
+                //match not found
+                prev_frame_feature_.erase(prev_frame_feature_.begin() + i);
+                found_frame_feature_.erase(found_frame_feature_.begin() + i);
+            }
+            
+        }
+
         std_msgs::Header dummy;
         vision_opticalflow::Feature msg_out = getFeatureToMsg(dummy);
 
-//         prev_frame_feature_ = found_frame_feature_;
-//         for(unsigned int i = 0; i < prev_frame_feature_.size(); i ++)
-//         {
-//             if(prev_frame_feature_[i].y >= 200 || prev_frame_feature_[i].y <= 20) prev_frame_feature_.erase(prev_frame_feature_.begin() + i);
-//         }
-//         prev_frame_feature_.insert(prev_frame_feature_.end(),curr_frame_feature_.begin(),curr_frame_feature_.end());
-        
-        prev_frame_feature_ = curr_frame_feature_;
+        prev_frame_feature_ = found_frame_feature_;
+        prev_frame_feature_.insert(prev_frame_feature_.end(),curr_frame_feature_.begin(),curr_frame_feature_.end());
+//         prev_frame_feature_ = curr_frame_feature_;
         return msg_out;
     }
 }
@@ -231,7 +263,7 @@ vision_opticalflow::Feature FeatureExtractor::getFeatureToMsg(std_msgs::Header h
         feature_msg.feature_speed_dir.push_back(feature_speed_dir);       
 //         std::cout << "direction in radian: " << feature_speed_dir << std::endl;
         
-//         direction of each feature
+//         direction of each feature, didn't use anymore
         if(feature_speed_dir <= M_PI/2 && feature_speed_dir >= -M_PI/2){
             feature_msg.direction.push_back(0);         //0 -- moving right, 1 -- moving left
         }else{
