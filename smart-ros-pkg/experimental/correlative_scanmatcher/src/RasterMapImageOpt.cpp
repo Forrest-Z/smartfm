@@ -57,14 +57,14 @@ int main(int argc, char **argcv)
 	ros::init(argc, argcv, "RasterMapImage");
 	ros::NodeHandle nh;
 	ros::Publisher src_pub, dst_pub, query_pub;
-	src_pub = nh.advertise<sensor_msgs::PointCloud>("src_pts", 5);
-	dst_pub = nh.advertise<sensor_msgs::PointCloud>("dst_pts", 5);
-	query_pub = nh.advertise<sensor_msgs::PointCloud>("query_pts", 5);
+	src_pub = nh.advertise<sensor_msgs::PointCloud>("src_pc", 5);
+	dst_pub = nh.advertise<sensor_msgs::PointCloud>("dst_pc", 5);
+	query_pub = nh.advertise<sensor_msgs::PointCloud>("pc_legacy_out", 5);
 	ros::Rate rate(10);
 
 	sensor_msgs::PointCloud src_pc, dst_pc, query_pc;
 
-	src_pc.header.frame_id = dst_pc.header.frame_id = query_pc.header.frame_id = "scan";
+	src_pc.header.frame_id = dst_pc.header.frame_id = query_pc.header.frame_id = "scan_odo";
 	for(size_t i=0; i<raster_pts.size();i++)
 	{
 		geometry_msgs::Point32 pt;

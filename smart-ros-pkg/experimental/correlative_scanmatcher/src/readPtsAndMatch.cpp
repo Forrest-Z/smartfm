@@ -72,19 +72,19 @@ int main(int argc, char **argcv)
 fmutil::Stopwatch sw;
 sw.start("matching...");
 //#pragma omp parallel for
-	for(int i=22; i<size; i++)
+	for(int i=32; i<size; i++)
 	{
 		RasterMapPCL rmpcl;
 		rmpcl.setInputPts(pc_vec[i]);
 		for(int j=0; j<size; j++)
 		{
-			if(abs(j-i)<10) continue;
-			cout<<i<<":"<<j<<'\xd'<<flush;
+			//if(abs(j-i)<10) continue;
+			cout<<i<<":"<<j<<"      \xd"<<flush;
 			transform_info best_tf = rmpcl.getBestTf(pc_vec[j]);
 //#pragma omp critical
 			scores.at<float>(i,j) = best_tf.score;
 
-			if(best_tf.score > 55.)
+			if(best_tf.score > 50.)
 			{
 				src_pc.points = pc_vec[i].points;
 				query_pc.points = pc_vec[j].points;
@@ -111,7 +111,8 @@ sw.start("matching...");
 				ros::spinOnce();
 				char enter_char;
 				cout<<"Match found at "<<i<<" "<<j<<" with score "<<scores.at<float>(i,j);
-				cout<<"cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
+				cout<<" Cov "<<cov;
+				cout<<" cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
 				cout<<best_tf.translation_2d<<" "<< best_tf.rotation/M_PI*180<<endl;
 				cin >> enter_char;
 			}

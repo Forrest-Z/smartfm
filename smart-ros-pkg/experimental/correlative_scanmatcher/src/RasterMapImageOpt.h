@@ -12,9 +12,11 @@ struct transform_info
 	double score;
 	vector<cv::Point> pts;
 	vector<cv::Point2f> real_pts;
-	cv::Mat K,u;
-	double s;
+
 	cv::Mat covariance;
+	//to support variance calculation
+	vector<double> score_vec;
+	vector<cv::Point3f> evaluated_pts;
 };
 
 class RasterMapImage
@@ -144,33 +146,27 @@ public:
 		int step = translate_step / res_;
 
 		cv::Mat K = cv::Mat::zeros(3,3,CV_32F), u = cv::Mat::zeros(3,1,CV_32F);
-		double s = 0.0;
+
 
 		for(size_t i=0; i<rotations.size(); i++)
 		{
 
 			//rotate each point with by using the rotation center at the sensor's origin
-
-
 			for(size_t j=0; j<search_pt.size(); j++)
 			{
 				double rot_x = search_pt[j].x, rot_y = search_pt[j].y;
 				cv::Point2f rot_pt;
 				rot_pt.x = cos_vals[i] * rot_x - sin_vals[i] * rot_y;
 				rot_pt.y = sin_vals[i] * rot_x + cos_vals[i] * rot_y;
-
 				rotated_search_pt[j] = imageCoordinate(rot_pt);
 			}
 
-
 			transform_info best_trans = searchTranslation(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], est_cov);
-
 
 			if(est_cov)
 			{
-				K += best_trans.K;
-				u += best_trans.u;
-				s += best_trans.s;
+				best_rotate.evaluated_pts.insert(best_rotate.evaluated_pts.end(), best_trans.evaluated_pts.begin(), best_trans.evaluated_pts.end());
+				best_rotate.score_vec.insert(best_rotate.score_vec.end(), best_trans.score_vec.begin(), best_trans.score_vec.end());
 			}
 			//best_rotates[i] = best_trans;
 			//#pragma omp critical
@@ -188,15 +184,41 @@ public:
 		//cout<<"Total time spent in searchTranslation = "<<sw.total_/1000.0<<endl;
 
 		if(est_cov)
-		{
-			cv::Mat cov = K/s + (u * u.t())/(s*s);
-			//cout<<cov<<endl;
-			//cout<<"cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
-			best_rotate.covariance = cov;
-		}
+			best_rotate.covariance = getCovariance(best_rotate);
+
 		sw_end.end(false);
 		return best_rotate;
 
+	}
+
+	cv::Mat getCovariance(transform_info best_info)
+	{
+		cv::Mat x_i = cv::Mat::zeros(3,1, CV_32F);
+		cv::Mat K,u;
+		double s = 0.0;
+		K = cv::Mat::zeros(3,3, CV_32F);
+		u = cv::Mat::zeros(3,1, CV_32F);
+
+		for(size_t i=0; i<best_info.evaluated_pts.size(); i++)
+		{
+			x_i.at<float>(0,0) = best_info.evaluated_pts[i].x - best_info.translation_2d.x;
+			x_i.at<float>(1,0) = best_info.evaluated_pts[i].y - best_info.translation_2d.y;
+
+			double rot = best_info.evaluated_pts[i].z - best_info.rotation;
+			if(rot>2*M_PI) x_i.at<float>(2,0)= fabs(rot - 2* M_PI);
+			else if(rot<-2*M_PI) x_i.at<float>(2,0)= fabs(rot + 2*M_PI);
+			else
+				if(rot>M_PI) x_i.at<float>(2,0)= fabs(rot - M_PI);
+			else if(rot<-M_PI) x_i.at<float>(2,0)= fabs(rot + M_PI);
+			else x_i.at<float>(2,0)= fabs(rot);
+			assert(x_i.at<float>(2,0)<M_PI || x_i.at<float>(2,0)>-M_PI);
+			double score = best_info.score_vec[i];
+			K += x_i * x_i.t() * score;
+			u += x_i * score;
+			s += score;
+		}
+
+		return K/s + (u * u.t())/(s*s);
 	}
 
 	transform_info searchTranslation(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt, double rotation, bool est_cov)
@@ -221,11 +243,6 @@ public:
 		//cout<<startx<<" "<<endx<<" "<<starty<<" "<<endy<<endl;
 		//vector<cv::Point> new_search_pt;
 		//new_search_pt.resize(search_pt.size());
-		cv::Mat x_i = cv::Mat::zeros(3,1, CV_32F);
-		best_info.K = cv::Mat::zeros(3,3, CV_32F);
-		best_info.u = cv::Mat::zeros(3,1, CV_32F);
-		best_info.s = 0;
-		x_i.at<float>(2,0)= rotation;
 
 		for(int j=starty; j<=endy; j+=stepsize)
 		{
@@ -253,13 +270,15 @@ public:
 					best_info.score = cur_score;
 					//best_info.pts = search_pt;
 				}
-				x_i.at<float>(0,0) = i*res_;
-				x_i.at<float>(1,0) = j*res_;
+
 				if(est_cov)
 				{
-					best_info.K += x_i * x_i.t() * cur_score;
-					best_info.u += x_i * cur_score;
-					best_info.s += cur_score;
+					best_info.score_vec.push_back(cur_score);
+					cv::Point3f evaluated_pt;
+					evaluated_pt.x = i*res_;
+					evaluated_pt.y = j*res_;
+					evaluated_pt.z = rotation;
+					best_info.evaluated_pts.push_back(evaluated_pt);
 				}
 				sw3.end(false);
 
