@@ -112,10 +112,14 @@ public:
 				this->rasterCircle(pt, j, image_, gaussian_mapping_[j]);
 
 			}
+			//cout<<gaussian_mapping_[j]<<" ";
 
 		}
+		//cout<<endl;
 		sw.end(false);
-		//cv::imwrite("map.png", image_);
+		stringstream ss;
+		ss<<"rastered_map_"<<range_covariance_<<".png";
+		//cv::imwrite(ss.str(), image_);
 	}
 
 	transform_info searchRotation(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization, bool est_cov, bool within_prior=false)

@@ -14,7 +14,7 @@ public:
 	//changing the 1st RasterMap resolution and range from 0.2,0.5 to 0.1,0.1 seems to miss some
 	//good potential close loop while increasing false detection
 	//apparent decreasing the range that causes the above scenario
-	RasterMapPCL(): rm_(0.2, 1.0), rm2_(0.1, 0.1), rm3_(0.01, 0.008)
+	RasterMapPCL(): rm_(0.2, 1.0), rm2_(0.1, 0.1), rm3_(0.01, 0.05)
 	{};
 
 	void setInputPts(sensor_msgs::PointCloud &pc)
