@@ -71,19 +71,19 @@ int main(int argc, char **argcv)
 	cv::Mat scores = cv::Mat::zeros(size, size, CV_32F);
 fmutil::Stopwatch sw;
 sw.start("matching...");
-//#pragma omp parallel for
-	for(int i=32; i<size; i++)
+#pragma omp parallel for
+	for(int i=0; i<size; i++)
 	{
 		RasterMapPCL rmpcl;
 		rmpcl.setInputPts(pc_vec[i]);
 		for(int j=0; j<size; j++)
 		{
 			//if(abs(j-i)<10) continue;
-			cout<<i<<":"<<j<<"      \xd"<<flush;
+			//cout<<i<<":"<<j<<"      \xd"<<flush;
 			transform_info best_tf = rmpcl.getBestTf(pc_vec[j]);
-//#pragma omp critical
+#pragma omp critical
 			scores.at<float>(i,j) = best_tf.score;
-
+/*
 			if(best_tf.score > 50.)
 			{
 				src_pc.points = pc_vec[i].points;
@@ -115,7 +115,7 @@ sw.start("matching...");
 				cout<<" cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
 				cout<<best_tf.translation_2d<<" "<< best_tf.rotation/M_PI*180<<endl;
 				cin >> enter_char;
-			}
+			}*/
 			//cout<<" "<<best_tf.score;
 		}
 		//cout<<endl;

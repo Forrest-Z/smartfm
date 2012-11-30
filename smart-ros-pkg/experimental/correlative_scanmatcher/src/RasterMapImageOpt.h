@@ -48,14 +48,14 @@ public:
 		return cv::Point2f(pt.x*res_+min_pt_.x, (image_.rows - pt.y)* res_ + min_pt_.y);
 	}
 
-	double scorePoints(vector<cv::Point> search_pt, int offset_x, int offset_y)
+	double scorePoints(vector<cv::Point> search_pt, int offset_x, int offset_y, bool within_prior)
 	{
 		//fmutil::Stopwatch sw;
 
 		assert(image_.data != NULL);
 
 		uint score = 0;
-
+		int count = 0;
 
 		//it only takes 25 ms for 6k loops on 0.03 res
 
@@ -67,11 +67,11 @@ public:
 			pt.y -= offset_y;
 			if(outsideMap(image_, pt)) continue;
 			score += getPixel(pt.x, pt.y);
-
+			count++;
 		}
 
 		double norm_score = (double)score/search_pt.size()*100/255;
-
+		if(within_prior) norm_score = (double)score/count*100/255;
 		//cout<<"Score = "<<score/255*100<<"%"<<endl;
 		return norm_score;
 	}
@@ -118,7 +118,7 @@ public:
 		//cv::imwrite("map.png", image_);
 	}
 
-	transform_info searchRotation(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization, bool est_cov)
+	transform_info searchRotation(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization, bool est_cov, bool within_prior=false)
 	{
 
 		//translate range is directly corresponds to number of cells in the grid
@@ -161,7 +161,7 @@ public:
 				rotated_search_pt[j] = imageCoordinate(rot_pt);
 			}
 
-			transform_info best_trans = searchTranslation(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], est_cov);
+			transform_info best_trans = searchTranslation(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], est_cov, within_prior);
 
 			if(est_cov)
 			{
@@ -221,7 +221,7 @@ public:
 		return K/s + (u * u.t())/(s*s);
 	}
 
-	transform_info searchTranslation(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt, double rotation, bool est_cov)
+	transform_info searchTranslation(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt, double rotation, bool est_cov, bool within_prior)
 	{
 		//investigate why low bottom of confusion matrix has overall higher score
 		//solved: It is a bad idea to normalize the score with only the number of point within the source map
@@ -257,7 +257,7 @@ public:
 				}*/
 				sw1.end(false);
 				sw2.start("");
-				double cur_score = scorePoints(search_pt, i, j);
+				double cur_score = scorePoints(search_pt, i, j, within_prior);
 
 				sw2.end(false);
 				sw3.start("");

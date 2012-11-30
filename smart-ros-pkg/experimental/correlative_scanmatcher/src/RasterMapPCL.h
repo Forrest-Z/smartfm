@@ -11,7 +11,10 @@
 class RasterMapPCL
 {
 public:
-	RasterMapPCL(): rm_(0.2, 0.5), rm2_(0.1, 0.1), rm3_(0.01, 0.01)
+	//changing the 1st RasterMap resolution and range from 0.2,0.5 to 0.1,0.1 seems to miss some
+	//good potential close loop while increasing false detection
+	//apparent decreasing the range that causes the above scenario
+	RasterMapPCL(): rm_(0.2, 1.0), rm2_(0.1, 0.1), rm3_(0.01, 0.008)
 	{};
 
 	void setInputPts(sensor_msgs::PointCloud &pc)
@@ -60,8 +63,8 @@ private:
 
 		//7x4 = 28
 		//becareful, the first pass is important to avoid falling into local minimal
-		best_info = rm_.searchRotation(query_pts, 16.0, 2.0, M_PI, M_PI/5., best_info, false);
 
+		best_info = rm_.searchRotation(query_pts, 14.0, 2.0, M_PI, M_PI/10., best_info, false);
 		//best_info = rm_.searchRotation(query_pts, 16.0, 4.0, M_PI, M_PI/4., best_info, false);
 		//best_info = rm_.searchRotation(query_pts, 4.0, 2.0, 0, M_PI/4, best_info, false);
 		//best_info = rm_.searchRotation(query_pts, 1.0, 0.2, M_PI/8, M_PI/16., best_info, false);
