@@ -6,17 +6,17 @@
 
     <include file="$(find Launch)/golfcar/map_to_world.launch" />
 
-    <node pkg="stage" type="stageros" name="stageros" args="$(find hybrid_amcl)/worlds/golfcar_eng.world" respawn="false">
+    <node pkg="stage" type="stageros" name="stageros" args="$(find hybrid_amcl)/worlds/golfcar_eng_sde.world" respawn="false">
         <param name="base_watchdog_timeout" value="0.2"/>
         <remap from="base_scan" to="sick_scan2"/>
     </node>
 
-    <node name="curb_map_server" pkg="map_server" type="map_server" args="$(find hybrid_amcl)/worlds/curb_map.yaml">
+    <!--node name="curb_map_server" pkg="map_server" type="map_server" args="$(find hybrid_amcl)/worlds/curb_map.yaml">
         <remap from="map" to="curb_map"/>
-    </node>
+    </node-->
 
-    <node name="plane_map_server" pkg="map_server" type="map_server" args="$(find hybrid_amcl)/worlds/planar_map.yaml">
-        <remap from="map" to="planar_map"/>
+    <node name="plane_map_server" pkg="map_server" type="map_server" args="$(find hybrid_amcl)/worlds/bigeng_sde_map.yaml">
+        <remap from="map" to="curb_map"/>
     </node>
 
     <include file="$(find Launch)/move_base.launch"/>

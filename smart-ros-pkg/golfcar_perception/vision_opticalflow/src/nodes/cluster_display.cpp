@@ -71,7 +71,7 @@ void ClusterDisplayNode::displayCallback(const sensor_msgs::Image::ConstPtr & fr
     cv_bridge::CvImageConstPtr cvImgFrame = cv_bridge::toCvCopy(frame, "bgr8");
     cv::Mat img = cvImgFrame->image;
 
-    cv::rectangle(img,cv::Point(0,200),cv::Point(100,240),cv::Scalar(0,255,0));
+    cv::rectangle(img,cv::Point(0,380),cv::Point(960,480),cv::Scalar(0,255,0));
     for( unsigned i=0; i< clusters_msg->clusters_info.size(); i++ )
     {
         cluster_pos.x = clusters_msg->clusters_info[i].centroid.x;

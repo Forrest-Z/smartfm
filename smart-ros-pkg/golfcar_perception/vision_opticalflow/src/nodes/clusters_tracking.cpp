@@ -166,7 +166,7 @@ void ClustersTrackingNode::trackerCallback(const vision_opticalflow::Clusters::C
 
     tracker_pub_.publish(clusters_curr_);
     //update
-    if(clusters_prev_.size() >= 2) clusters_prev_.erase(clusters_prev_.begin());
+    if(clusters_prev_.size() >= 2) clusters_prev_.erase(clusters_prev_.begin()); //clusters history
     clusters_prev_.push_back(clusters_curr_);
 //     std::cout << "clusters_prev_.size(): " << clusters_prev_.size() << std::endl;
 }

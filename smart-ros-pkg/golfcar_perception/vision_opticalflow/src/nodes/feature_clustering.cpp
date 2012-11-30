@@ -200,7 +200,7 @@ void FeatureClusteringNode::clusterCallback(const vision_opticalflow::Feature::C
         for(unsigned int i = 0; i < clusters_pos.clusters_info.size(); i++)
         {
             
-            if(clusters_pos.clusters_info[i].members.size() >= 1)
+            if(clusters_pos.clusters_info[i].members.size() >= 0)
             {
                 clusters_out.clusters_info.push_back(clusters_pos.clusters_info[i]);
 //                 std::cout << "erase: " << i << std::endl;
