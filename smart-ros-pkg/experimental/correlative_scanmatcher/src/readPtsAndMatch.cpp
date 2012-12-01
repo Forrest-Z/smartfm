@@ -9,33 +9,8 @@
 #include <sensor_msgs/PointCloud.h>
 #include "pcl/ros/conversions.h"
 #include "RasterMapPCL.h"
+#include "ReadFileHelper.h"
 
-bool readPts(istream &in, sensor_msgs::PointCloud &p)            // read point (false on EOF)
-{
-
-	uint64_t time;
-	int pc_size;
-
-	if(!(in >> time)) return false;
-	if(!(in >> pc_size)) return false;
-	p.points.clear();
-	p.points.resize(pc_size);
-
-	for(int i=0; i<pc_size; i++)
-	{
-		if(!(in >> p.points[i].x))
-		{
-			cout<<"Error reading pt"<<endl;
-			exit(1);
-		}
-		if(!(in >> p.points[i].y))
-		{
-			cout<<"Error reading pt"<<endl;
-			exit(2);
-		}
-	}
-	return true;
-}
 
 
 int main(int argc, char **argcv)
@@ -51,8 +26,8 @@ int main(int argc, char **argcv)
 
 	istream*        data_in         = NULL;         // input for data points
 
-	vector<sensor_msgs::PointCloud> pc_vec;
-	sensor_msgs::PointCloud pc;
+
+
 	ifstream dataStreamSrc, dataStreamDst;
 	dataStreamSrc.open(argcv[1], ios::in);// open data file
 	if (!dataStreamSrc) {
@@ -61,9 +36,8 @@ int main(int argc, char **argcv)
 	}
 	data_in = &dataStreamSrc;
 
-	while(readPts(*data_in, pc))
-		pc_vec.push_back(pc);
-	cout<<"Successfully read "<<pc_vec.size()<<" vectors of data pts"<<endl;
+	vector<sensor_msgs::PointCloud> pc_vec;
+	if(!readFrontEndFile(*data_in, pc_vec)) cout<<"Failed read front end file"<<endl;
 
 
 
@@ -71,20 +45,21 @@ int main(int argc, char **argcv)
 	cv::Mat scores = cv::Mat::zeros(size, size, CV_32F);
 fmutil::Stopwatch sw;
 sw.start("matching...");
-//#pragma omp parallel for
-	for(int i=133; i<size; i++)
+int skip_reading = 1;
+#pragma omp parallel for
+	for(int i=0; i<size; i+=skip_reading)
 	{
 		RasterMapPCL rmpcl;
 		rmpcl.setInputPts(pc_vec[i]);
-		for(int j=0; j<size; j++)
+		for(int j=0; j<size; j+=skip_reading)
 		{
-			if(abs(j-i)<5) continue;
-			cout<<i<<":"<<j<<"      \xd"<<flush;
+			//if(abs(j-i)<5) continue;
+			//cout<<i<<":"<<j<<"      \xd"<<flush;
 			transform_info best_tf = rmpcl.getBestTf(pc_vec[j]);
 
-			//#pragma omp critical
+			#pragma omp critical
 			scores.at<float>(i,j) = best_tf.score;
-
+/*
 			if(best_tf.score > 70.)
 			{
 				src_pc.points = pc_vec[i].points;
@@ -116,16 +91,16 @@ sw.start("matching...");
 				cout<<" cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
 				cout<<best_tf.translation_2d<<" "<< best_tf.rotation/M_PI*180<<endl;
 				cin >> enter_char;
-			}
+			}*/
 			//cout<<" "<<best_tf.score;
 		}
 		//cout<<endl;
 	}
 	sw.end();
 	//cout<<endl;
-	for(int i=0; i<size; i++)
+	for(int i=0; i<size; i+=skip_reading)
 	{
-		for(int j=0; j<size; j++)
+		for(int j=0; j<size; j+=skip_reading)
 		{
 			cout<<" "<<scores.at<float>(i,j);
 		}

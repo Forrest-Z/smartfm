@@ -17,6 +17,7 @@
   <depend package="pcl_ros"/>
   <depend package="fmutil"/>
   <depend package="laser_geometry"/>
+  <depend package="message_filters"/>
    <rosdep name="opencv2"/>
   <!--depend package="slam_backend"/-->
 </package>
