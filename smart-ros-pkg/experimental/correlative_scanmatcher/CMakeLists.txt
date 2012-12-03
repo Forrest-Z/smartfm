@@ -45,7 +45,8 @@ rosbuild_add_executable(RasterMapImage src/RasterMapImage.cpp ${ANN_SRC})
 rosbuild_add_executable(RasterMapImageOpt src/RasterMapImageOpt.cpp)
 rosbuild_add_executable(RasterMapOdom src/RasterMapOdom.cpp)
 rosbuild_add_executable(readPtsAndMatch src/readPtsAndMatch.cpp)
-rosbuild_add_executable(readScoreAndDisplay src/readScoreAndDisplay)
+rosbuild_add_executable(readScoreAndDisplay src/readScoreAndDisplay.cpp)
+rosbuild_add_executable(renderMap src/renderMap.cpp)
 
 target_link_libraries(RasterMap  ${OpenCV_LIBS})
 target_link_libraries(RasterMapImage  ${OpenCV_LIBS})
@@ -53,6 +54,8 @@ target_link_libraries(RasterMapImageOpt  ${OpenCV_LIBS})
 target_link_libraries(RasterMapOdom  ${OpenCV_LIBS})
 target_link_libraries(readPtsAndMatch  ${OpenCV_LIBS})
 target_link_libraries(readScoreAndDisplay  ${OpenCV_LIBS})
+target_link_libraries(renderMap  ${OpenCV_LIBS})
+
 rosbuild_link_boost(RasterMapOdom signals)
 
 rosbuild_add_openmp_flags(RasterMapImage)

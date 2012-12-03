@@ -14,23 +14,20 @@ public:
 	//changing the 1st RasterMap resolution and range from 0.2,0.5 to 0.1,0.1 seems to miss some
 	//good potential close loop while increasing false detection
 	//apparent decreasing the range that causes the above scenario
-	RasterMapPCL(): rm_(0.2, 1.0), rm2_(0.1, 0.1), rm3_(0.01, 0.05)
+	RasterMapPCL(): rm_(1.0, 0.02), rm2_(0.1, 0.02), rm3_(0.01, 0.01)
 	{};
 
-	void setInputPts(sensor_msgs::PointCloud &pc)
+	template <class T>
+	void setInputPts(vector<T> &pc, bool verification=false)
 	{
-		vector<cv::Point2f> raster_pts;
-		for(size_t i=0; i<pc.points.size(); i++)
+		rm2_.getInputPoints(pc);
+		if(!verification)
 		{
-			cv::Point2f pt;
-			pt.x = pc.points[i].x;
-			pt.y = pc.points[i].y;
-			raster_pts.push_back(pt);
+			rm_.getInputPoints(pc);
+			rm3_.getInputPoints(pc);
 		}
-		rm_.getInputPoints(raster_pts);
-		rm2_.getInputPoints(raster_pts);
-		rm3_.getInputPoints(raster_pts);
 	}
+
 	transform_info getBestTf(sensor_msgs::PointCloud &pc)
 	{
 		vector<cv::Point2f>  query_pts;
@@ -43,6 +40,24 @@ public:
 		}
 		return findBestTf(query_pts);
 	}
+
+	template <class T>
+	double getScore(vector<T> &pc)
+	{
+		vector<cv::Point>  query_pts;
+		for(size_t i=0; i<pc.size(); i++)
+		{
+			cv::Point pt;
+			cv::Point2f pt2f;
+			pt2f.x = pc[i].x;
+			pt2f.y = pc[i].y;
+			pt = rm2_.imageCoordinate(pt2f);
+			query_pts.push_back(pt);
+		}
+
+		return rm2_.scorePoints(query_pts, 0,0, false);
+	}
+
 
 private:
 	RasterMapImage rm_, rm2_, rm3_;
@@ -64,19 +79,19 @@ private:
 		//7x4 = 28
 		//becareful, the first pass is important to avoid falling into local minimal
 
-		best_info = rm_.searchRotation(query_pts, 14.0, 2.0, M_PI, M_PI/10., best_info, false);
+		best_info = rm_.searchRotation(query_pts, 14.0, 1.0, M_PI, M_PI/10., best_info, false);
 		//best_info = rm_.searchRotation(query_pts, 16.0, 4.0, M_PI, M_PI/4., best_info, false);
 		//best_info = rm_.searchRotation(query_pts, 4.0, 2.0, 0, M_PI/4, best_info, false);
 		//best_info = rm_.searchRotation(query_pts, 1.0, 0.2, M_PI/8, M_PI/16., best_info, false);
-		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+		cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 
 		sw_sub.end(show_time);
 		sw_sub.start("2");
-		best_info = rm2_.searchRotation(query_pts, 1.2, 0.4, M_PI/10., M_PI/60., best_info, true);
+		best_info = rm2_.searchRotation(query_pts, 1.0, 0.1, M_PI/10., M_PI/60., best_info, true);
 		covariance = best_info.covariance;
-		best_info = rm2_.searchRotation(query_pts, 0.4, 0.2, 0., M_PI/60., best_info, false);
+		//best_info = rm2_.searchRotation(query_pts, 0.4, 0.2, 0., M_PI/60., best_info, false);
 
-		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+		cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 		sw_sub.end(show_time);
 
 		sw_sub.start("3");
@@ -84,7 +99,7 @@ private:
 		best_info = rm3_.searchRotation(query_pts, 0.12, 0.06, M_PI/120., M_PI/720., best_info, false);
 		best_info = rm3_.searchRotation(query_pts, 0.06, 0.01, 0, M_PI/720., best_info, false);
 		sw_sub.end(show_time);
-		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+		cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 
 		best_info.real_pts.resize(best_info.pts.size());
 		for(size_t i=0; i<best_info.pts.size();i++)

@@ -9,7 +9,7 @@
 #include <sensor_msgs/PointCloud.h>
 #include "pcl/ros/conversions.h"
 #include "RasterMapPCL.h"
-
+#include <fstream>
 bool readPt(istream &in, cv::Point2f &p)            // read point (false on EOF)
 {
 
@@ -83,7 +83,7 @@ int main(int argc, char **argcv)
 	}
 
 	RasterMapPCL rmpcl;
-	rmpcl.setInputPts(src_pc);
+	rmpcl.setInputPts(src_pc.points);
 
 	transform_info best_tf = rmpcl.getBestTf(query_pc);
 

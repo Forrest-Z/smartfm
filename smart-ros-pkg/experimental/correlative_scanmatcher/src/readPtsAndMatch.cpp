@@ -45,21 +45,36 @@ int main(int argc, char **argcv)
 	cv::Mat scores = cv::Mat::zeros(size, size, CV_32F);
 fmutil::Stopwatch sw;
 sw.start("matching...");
-int skip_reading = 1;
+int skip_reading = 5;
 #pragma omp parallel for
 	for(int i=0; i<size; i+=skip_reading)
 	{
 		RasterMapPCL rmpcl;
-		rmpcl.setInputPts(pc_vec[i]);
+		rmpcl.setInputPts(pc_vec[i].points);
+
 		for(int j=0; j<size; j+=skip_reading)
 		{
 			//if(abs(j-i)<5) continue;
 			//cout<<i<<":"<<j<<"      \xd"<<flush;
 			transform_info best_tf = rmpcl.getBestTf(pc_vec[j]);
+			RasterMapPCL rmpcl_ver;
+			rmpcl_ver.setInputPts(best_tf.real_pts, true);
+			double temp_score = rmpcl_ver.getScore(pc_vec[i].points);
+			double ver_score = sqrt( temp_score * best_tf.score);
 
 			#pragma omp critical
-			scores.at<float>(i,j) = best_tf.score;
-/*
+			scores.at<float>(i,j) = ver_score;
+
+			/*
+			char enter_char;
+			cout<<"Match found at "<<i<<" "<<j<<" with score "<<best_tf.score <<" ver_score "<<ver_score<<" "<<temp_score<<endl;
+			cv::Mat cov = best_tf.covariance;
+			cout<<" cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
+			cout<<best_tf.translation_2d<<" "<< best_tf.rotation/M_PI*180<<endl;
+
+			cin >> enter_char;
+			if(enter_char == 'x') return 0;
+
 			if(best_tf.score > 70.)
 			{
 				src_pc.points = pc_vec[i].points;

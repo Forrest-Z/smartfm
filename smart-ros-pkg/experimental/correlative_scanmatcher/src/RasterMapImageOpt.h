@@ -1,4 +1,4 @@
-#include <fstream>
+
 #include <fmutil/fm_stopwatch.h>
 #include <cv.h>
 #include <highgui.h>
@@ -19,6 +19,11 @@ struct transform_info
 	vector<cv::Point3f> evaluated_pts;
 };
 
+bool sortScore (transform_info t1, transform_info t2)
+{
+	return (t1.score > t2.score);
+}
+
 class RasterMapImage
 {
 public:
@@ -38,7 +43,8 @@ public:
 
 	}
 
-	inline cv::Point imageCoordinate(cv::Point2f pt)
+	template <class T>
+	inline cv::Point imageCoordinate(T pt)
 	{
 		return cv::Point((pt.x-min_pt_.x)/res_, (int) image_.rows -(pt.y-min_pt_.y)/res_);
 	}
@@ -56,7 +62,7 @@ public:
 
 		uint score = 0;
 		int count = 0;
-
+		uint penalize_pt = 100;
 		//it only takes 25 ms for 6k loops on 0.03 res
 
 		for(vector<cv::Point>::iterator i=search_pt.begin(); i!=search_pt.end(); i++)
@@ -65,8 +71,20 @@ public:
 			//penalized each points fall outside of map to zero
 			pt.x += offset_x;
 			pt.y -= offset_y;
-			if(outsideMap(image_, pt)) continue;
-			score += getPixel(pt.x, pt.y);
+
+			if(outsideMap(image_, pt))
+			{
+				//it forces the alignment with the prior, which might not be correct
+				//got to be careful
+				//if(score>=penalize_pt) score -= penalize_pt;
+				continue;
+			}
+			int score_temp = getPixel(pt.x, pt.y);
+			if(score_temp == 1)
+			{
+				if(score>=penalize_pt) score -= penalize_pt;
+			}
+			else score += score_temp;
 			count++;
 		}
 
@@ -75,7 +93,8 @@ public:
 		//cout<<"Score = "<<score/255*100<<"%"<<endl;
 		return norm_score;
 	}
-	void getInputPoints(vector<cv::Point2f> raster_pt)
+	template <class T>
+	void getInputPoints(vector<T> raster_pt)
 	{
 		fmutil::Stopwatch sw;
 
@@ -97,7 +116,7 @@ public:
 		map_size.x = ceil(map_size.x/res_); map_size.y =ceil(map_size.y/res_);
 		//cout << "Size "<<map_size<<endl;
 		//lost about 10ms when using 32F instead of 8U, and total of 45 ms if draw circle function is called, perhaps too much
-		image_ = cv::Mat::zeros( (int) map_size.y, (int) map_size.x  , CV_8UC1);
+		image_ = cv::Mat::ones( (int) map_size.y, (int) map_size.x  , CV_8UC1);
 
 
 		for(int j=gaussian_mapping_.size()-1; j>=0; j--)
@@ -119,7 +138,7 @@ public:
 		sw.end(false);
 		stringstream ss;
 		ss<<"rastered_map_"<<range_covariance_<<".png";
-		//cv::imwrite(ss.str(), image_);
+		cv::imwrite(ss.str(), image_);
 	}
 
 	transform_info searchRotation(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization, bool est_cov, bool within_prior=false)
@@ -134,6 +153,10 @@ public:
 		{
 			cos_vals.push_back(cos(i));
 			sin_vals.push_back(sin(i));
+
+			//just skip through the same rotation;
+			if(i == M_PI && rot_range == M_PI) continue;
+
 			rotations.push_back(i);
 		}
 
@@ -151,7 +174,7 @@ public:
 
 		cv::Mat K = cv::Mat::zeros(3,3,CV_32F), u = cv::Mat::zeros(3,1,CV_32F);
 
-
+		vector<transform_info> best_trans_s;
 		for(size_t i=0; i<rotations.size(); i++)
 		{
 
@@ -164,9 +187,17 @@ public:
 				rot_pt.y = sin_vals[i] * rot_x + cos_vals[i] * rot_y;
 				rotated_search_pt[j] = imageCoordinate(rot_pt);
 			}
+			//cout<<rotations[i]<<":"<<endl;
+			vector<transform_info> best_trans_s_temp;
+			best_trans_s_temp = searchTranslations(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], est_cov, within_prior);
+			sort(best_trans_s_temp.begin(), best_trans_s_temp.end(), sortScore);
+			best_trans_s.insert(best_trans_s.end(), best_trans_s_temp.begin(), best_trans_s_temp.begin()+3);
+			sort(best_trans_s.begin(), best_trans_s.end(), sortScore);
+			best_trans_s.resize(5);
+			//continue to work on selecting the best initial rotation given the list of possible matchings
+			transform_info best_trans = best_trans_s[1];
 
-			transform_info best_trans = searchTranslation(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], est_cov, within_prior);
-
+			//cout<<endl;
 			if(est_cov)
 			{
 				best_rotate.evaluated_pts.insert(best_rotate.evaluated_pts.end(), best_trans.evaluated_pts.begin(), best_trans.evaluated_pts.end());
@@ -182,6 +213,10 @@ public:
 				best_rotate.pts = rotated_search_pt;
 			}
 
+		}
+		for(size_t k=0; k<best_trans_s.size(); k++)
+		{
+			cout<<best_trans_s[k].translation_2d << " "<<best_trans_s[k].rotation<<": "<<best_trans_s[k].score<<endl;
 		}
 		sw.end(false);
 		sw_end.start("end");
@@ -225,6 +260,90 @@ public:
 		return K/s + (u * u.t())/(s*s);
 	}
 
+	vector<transform_info> searchTranslations(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt, double rotation, bool est_cov, bool within_prior)
+	{
+		//investigate why low bottom of confusion matrix has overall higher score
+		//solved: It is a bad idea to normalize the score with only the number of point within the source map
+
+		fmutil::Stopwatch sw, sw1,sw2,sw3;
+		sw.start("");
+		//result deteriorate when the resolution is more than 0.3. This is due to quantization error when mapping
+		//from pts to grid. Need independent control of map grid size and stepping size
+		int startx = initial_pt.x/res_ - range, endx = initial_pt.x/res_ + range;
+		int starty = initial_pt.y/res_ - range, endy = initial_pt.y/res_ + range;
+		//parallel seems to only improve marginally, and because the whole vector of results need to
+		//be stored into memory, in the end there is no improvement
+		//adding omp critical directive eliminate the need to allocate a large memory
+		//improved calculation from 0.7 to 0.45, further improvement to 0.4 when searchRotation also run in omp
+		transform_info best_info;
+		best_info.score = -1e99;
+
+		//best_info.pts = search_pt;
+		//cout<<startx<<" "<<endx<<" "<<starty<<" "<<endy<<endl;
+		//vector<cv::Point> new_search_pt;
+		//new_search_pt.resize(search_pt.size());
+		vector<transform_info> best_infos;
+		for(int j=starty; j<=endy; j+=stepsize)
+		{
+			for(int i=startx; i<=endx; i+=stepsize)
+			{
+				//gained about 80 ms when fixed size of new_search_pt is used instead of keep pushing the search pt
+				sw1.start("");
+				//elimintate this loop gain much needed boost
+				/*for(size_t k=0; k<search_pt.size(); k++)
+					{
+						new_search_pt[k].x = (cv::Point(search_pt[k].x+i, search_pt[k].y-j));
+					}*/
+				sw1.end(false);
+				sw2.start("");
+				double cur_score = scorePoints(search_pt, i, j, within_prior);
+
+				sw2.end(false);
+				sw3.start("");
+				//cout<<"offset "<<new_search_pt[0]<<" score "<<cur_score<<endl;
+				//cout<<cur_score<<" ";
+				transform_info record_score;
+				record_score.translation_2d.x = i*res_;
+				record_score.translation_2d.y = j*res_;
+				record_score.rotation = rotation;
+				record_score.score = cur_score;
+				best_infos.push_back(record_score);
+				if(cur_score>best_info.score)
+				{
+					best_info.translation_2d.x = i*res_;
+					best_info.translation_2d.y = j*res_;
+					best_info.rotation = rotation;
+					best_info.score = cur_score;
+
+
+					//best_info.pts = search_pt;
+				}
+
+				if(est_cov)
+				{
+					best_info.score_vec.push_back(cur_score);
+					cv::Point3f evaluated_pt;
+					evaluated_pt.x = i*res_;
+					evaluated_pt.y = j*res_;
+					evaluated_pt.z = rotation;
+					best_info.evaluated_pts.push_back(evaluated_pt);
+				}
+				sw3.end(false);
+
+			}
+			//cout<<endl;
+		}
+		sw.end(false);
+		/*double t1 = sw1.total_/1000.0;
+			double t2 = sw2.total_/1000.0;
+			double t3 = sw3.total_/1000.0;
+			cout<<"Detail: "<<sw.total_/1000.0<<" check:"<<t1<<"+"<<t2<<"+"<<t3<<"="<<t1+t2+t3<<endl;
+		 */
+		//cout<<endl;
+
+		return best_infos;
+	}
+
 	transform_info searchTranslation(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt, double rotation, bool est_cov, bool within_prior)
 	{
 		//investigate why low bottom of confusion matrix has overall higher score
@@ -266,7 +385,7 @@ public:
 				sw2.end(false);
 				sw3.start("");
 				//cout<<"offset "<<new_search_pt[0]<<" score "<<cur_score<<endl;
-				//cout<<cur_score<<" ";
+				cout<<cur_score<<" ";
 				if(cur_score>best_info.score)
 				{
 					best_info.translation_2d.x = i*res_;
@@ -287,7 +406,7 @@ public:
 				sw3.end(false);
 
 			}
-			//cout<<endl;
+			cout<<endl;
 		}
 		sw.end(false);
 		/*double t1 = sw1.total_/1000.0;
@@ -318,7 +437,8 @@ private:
 		for(int i=0; i<gausian_length_; i++)
 		{
 			double d = res_ * i;
-			mapping.push_back((int) (255*exp(-d*d/range_covariance_)));
+			int gaussian_value = (int) (254*exp(-d*d/range_covariance_));
+			mapping.push_back(gaussian_value+1);
 			//cout<<d<<":"<<mapping[mapping.size()-1]<<endl;
 		}
 		//cout<<endl;
