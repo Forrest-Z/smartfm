@@ -101,7 +101,7 @@ int main(int argc, char **argcv)
 
 
 	ros::Rate rate(2);
-	for(int i=880; i<size; i+=skip_reading)
+	for(int i=0; i<size; i+=skip_reading)
 	{
 		RasterMapPCL rmpcl;
 		vector<geometry_msgs::Point32> combines_prior, prior_m5, prior_p5;
@@ -111,7 +111,7 @@ int main(int argc, char **argcv)
 		//combines_prior.insert(combines_prior.begin(), prior_m5.begin(), prior_m5.end());
 		//combines_prior.insert(combines_prior.begin(), prior_p5.begin(), prior_p5.end());
 		rmpcl.setInputPts(combines_prior);
-		for(int j=515; j<size; j+=skip_reading)
+		for(int j=0; j<size; j+=skip_reading)
 		{
 			bool overwrite = false;
 

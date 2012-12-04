@@ -141,6 +141,86 @@ public:
 		cv::imwrite(ss.str(), image_);
 	}
 
+	vector<transform_info> searchRotations(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization, bool est_cov, bool within_prior=false)
+	{
+
+		//translate range is directly corresponds to number of cells in the grid
+		//precalculate cosine
+		fmutil::Stopwatch sw_init, sw_end,sw;
+		sw_init.start("searchRotate init");
+		vector<double> cos_vals, sin_vals, rotations;
+		for(double i=initialization.rotation-rot_range; i<=initialization.rotation+rot_range; i+=rot_step)
+		{
+			cos_vals.push_back(cos(i));
+			sin_vals.push_back(sin(i));
+
+			//just skip through the same rotation;
+			if(i == M_PI && rot_range == M_PI) continue;
+
+			rotations.push_back(i);
+		}
+
+		vector<transform_info> best_rotates;
+
+		transform_info best_rotate;
+		best_rotate.score = -1e99;
+		//#pragma omp parallel for
+		vector<cv::Point> rotated_search_pt;
+		rotated_search_pt.resize(search_pt.size());
+		sw_init.end(false);
+		sw.start("calculate");
+		int range = translate_range / res_;
+		int step = translate_step / res_;
+
+		cv::Mat K = cv::Mat::zeros(3,3,CV_32F), u = cv::Mat::zeros(3,1,CV_32F);
+		int eva_top_count = 5;
+		vector<transform_info> best_trans_s;
+		for(size_t i=0; i<rotations.size(); i++)
+		{
+
+			//rotate each point with by using the rotation center at the sensor's origin
+			for(size_t j=0; j<search_pt.size(); j++)
+			{
+				double rot_x = search_pt[j].x, rot_y = search_pt[j].y;
+				cv::Point2f rot_pt;
+				rot_pt.x = cos_vals[i] * rot_x - sin_vals[i] * rot_y;
+				rot_pt.y = sin_vals[i] * rot_x + cos_vals[i] * rot_y;
+				rotated_search_pt[j] = imageCoordinate(rot_pt);
+			}
+			//cout<<rotations[i]<<":"<<endl;
+			vector<transform_info> best_trans_s_temp;
+			best_trans_s_temp = searchTranslations(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], within_prior);
+			sort(best_trans_s_temp.begin(), best_trans_s_temp.end(), sortScore);
+			best_trans_s_temp.resize(eva_top_count);
+			for(size_t i=0; i<best_trans_s_temp.size(); i++)
+				best_trans_s_temp[i].pts = rotated_search_pt;
+			best_trans_s.insert(best_trans_s.end(), best_trans_s_temp.begin(), best_trans_s_temp.begin()+3);
+			sort(best_trans_s.begin(), best_trans_s.end(), sortScore);
+			best_trans_s.resize(eva_top_count);
+			//continue to work on selecting the best initial rotation given the list of possible matchings
+
+			//cout<<endl;
+
+			//best_rotates[i] = best_trans;
+			//#pragma omp critical
+			//cout<<rotations[i]<<" "<<best_trans.translation_2d<<": "<<best_trans.score<<endl;
+		}
+		for(size_t k=0; k<best_trans_s.size(); k++)
+		{
+			cout<<best_trans_s[k].translation_2d << " "<<best_trans_s[k].rotation<<": "<<best_trans_s[k].score<<endl;
+		}
+		sw.end(false);
+		sw_end.start("end");
+		//cout<<"Total time spent in searchTranslation = "<<sw.total_/1000.0<<endl;
+
+		if(est_cov)
+			best_rotate.covariance = getCovariance(best_rotate);
+
+		sw_end.end(false);
+		return best_trans_s;
+
+	}
+
 	transform_info searchRotation(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization, bool est_cov, bool within_prior=false)
 	{
 
@@ -188,15 +268,7 @@ public:
 				rotated_search_pt[j] = imageCoordinate(rot_pt);
 			}
 			//cout<<rotations[i]<<":"<<endl;
-			vector<transform_info> best_trans_s_temp;
-			best_trans_s_temp = searchTranslations(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], est_cov, within_prior);
-			sort(best_trans_s_temp.begin(), best_trans_s_temp.end(), sortScore);
-			best_trans_s.insert(best_trans_s.end(), best_trans_s_temp.begin(), best_trans_s_temp.begin()+3);
-			sort(best_trans_s.begin(), best_trans_s.end(), sortScore);
-			best_trans_s.resize(5);
-			//continue to work on selecting the best initial rotation given the list of possible matchings
-			transform_info best_trans = best_trans_s[1];
-
+			transform_info best_trans = searchTranslation(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], est_cov, within_prior);
 			//cout<<endl;
 			if(est_cov)
 			{
@@ -260,7 +332,7 @@ public:
 		return K/s + (u * u.t())/(s*s);
 	}
 
-	vector<transform_info> searchTranslations(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt, double rotation, bool est_cov, bool within_prior)
+	vector<transform_info> searchTranslations(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt, double rotation, bool within_prior)
 	{
 		//investigate why low bottom of confusion matrix has overall higher score
 		//solved: It is a bad idea to normalize the score with only the number of point within the source map
@@ -308,26 +380,7 @@ public:
 				record_score.rotation = rotation;
 				record_score.score = cur_score;
 				best_infos.push_back(record_score);
-				if(cur_score>best_info.score)
-				{
-					best_info.translation_2d.x = i*res_;
-					best_info.translation_2d.y = j*res_;
-					best_info.rotation = rotation;
-					best_info.score = cur_score;
 
-
-					//best_info.pts = search_pt;
-				}
-
-				if(est_cov)
-				{
-					best_info.score_vec.push_back(cur_score);
-					cv::Point3f evaluated_pt;
-					evaluated_pt.x = i*res_;
-					evaluated_pt.y = j*res_;
-					evaluated_pt.z = rotation;
-					best_info.evaluated_pts.push_back(evaluated_pt);
-				}
 				sw3.end(false);
 
 			}
@@ -385,7 +438,7 @@ public:
 				sw2.end(false);
 				sw3.start("");
 				//cout<<"offset "<<new_search_pt[0]<<" score "<<cur_score<<endl;
-				cout<<cur_score<<" ";
+				//cout<<cur_score<<" ";
 				if(cur_score>best_info.score)
 				{
 					best_info.translation_2d.x = i*res_;
@@ -406,7 +459,7 @@ public:
 				sw3.end(false);
 
 			}
-			cout<<endl;
+			//cout<<endl;
 		}
 		sw.end(false);
 		/*double t1 = sw1.total_/1000.0;
