@@ -90,12 +90,13 @@ private:
 		sw_sub.end(show_time);
 		sw_sub.start("2");
 		for(size_t i=0; i<best_first_pass.size(); i++)
-			best_sec_pass.push_back(rm2_.searchRotation(query_pts, 1.0, 0.2, M_PI/10., M_PI/60., best_first_pass[i], true));
+			best_sec_pass.push_back(rm2_.searchRotation(query_pts, 1.0, 0.2, M_PI/20., M_PI/60., best_first_pass[i], true));
 		for(size_t k=0; k<best_sec_pass.size(); k++)
 			cout<<best_sec_pass[k].translation_2d << " "<<best_sec_pass[k].rotation<<": "<<best_sec_pass[k].score<<endl;
 		sort(best_sec_pass.begin(), best_sec_pass.end(), sortScore);
 		best_info = best_sec_pass[0];
-		covariance = best_sec_pass[0].covariance;
+		//best_info = rm2_.searchRotation(query_pts, 0, 0.2, M_PI/10., M_PI/60., best_info, true);
+		covariance = best_info.covariance;
 		//best_info = rm2_.searchRotation(query_pts, 0.4, 0.2, 0., M_PI/60., best_info, false);
 
 		cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;

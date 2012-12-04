@@ -115,7 +115,7 @@ int main(int argc, char **argcv)
 		{
 			bool overwrite = false;
 
-			//if(j-i == 5) overwrite = true;
+			if(j-i == 5) overwrite = true;
 			if(j-i>0 && !overwrite) continue;
 
 			if(abs(j-i)<20 && !overwrite) continue;

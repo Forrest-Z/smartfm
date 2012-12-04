@@ -173,7 +173,7 @@ public:
 		int step = translate_step / res_;
 
 		cv::Mat K = cv::Mat::zeros(3,3,CV_32F), u = cv::Mat::zeros(3,1,CV_32F);
-		int eva_top_count = 5;
+		int eva_top_count = 10;
 		vector<transform_info> best_trans_s;
 		for(size_t i=0; i<rotations.size(); i++)
 		{
@@ -187,14 +187,16 @@ public:
 				rot_pt.y = sin_vals[i] * rot_x + cos_vals[i] * rot_y;
 				rotated_search_pt[j] = imageCoordinate(rot_pt);
 			}
-			//cout<<rotations[i]<<":"<<endl;
+
 			vector<transform_info> best_trans_s_temp;
+			//cout<<rotations[i]<<":"<<endl;
 			best_trans_s_temp = searchTranslations(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], within_prior);
+			//cout<<endl;
 			sort(best_trans_s_temp.begin(), best_trans_s_temp.end(), sortScore);
 			best_trans_s_temp.resize(eva_top_count);
 			for(size_t i=0; i<best_trans_s_temp.size(); i++)
 				best_trans_s_temp[i].pts = rotated_search_pt;
-			best_trans_s.insert(best_trans_s.end(), best_trans_s_temp.begin(), best_trans_s_temp.begin()+3);
+			best_trans_s.insert(best_trans_s.end(), best_trans_s_temp.begin(), best_trans_s_temp.end());
 			sort(best_trans_s.begin(), best_trans_s.end(), sortScore);
 			best_trans_s.resize(eva_top_count);
 			//continue to work on selecting the best initial rotation given the list of possible matchings
@@ -373,7 +375,7 @@ public:
 				sw2.end(false);
 				sw3.start("");
 				//cout<<"offset "<<new_search_pt[0]<<" score "<<cur_score<<endl;
-				//cout<<cur_score<<" ";
+				cout<<cur_score<<" ";
 				transform_info record_score;
 				record_score.translation_2d.x = i*res_;
 				record_score.translation_2d.y = j*res_;
@@ -384,7 +386,7 @@ public:
 				sw3.end(false);
 
 			}
-			//cout<<endl;
+			cout<<endl;
 		}
 		sw.end(false);
 		/*double t1 = sw1.total_/1000.0;
