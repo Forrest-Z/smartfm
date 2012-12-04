@@ -115,14 +115,14 @@ int main(int argc, char **argcv)
 		{
 			bool overwrite = false;
 
-			if(j-i == 5) overwrite = true;
+			//if(j-i == 5) overwrite = true;
 			if(j-i>0 && !overwrite) continue;
 
 			if(abs(j-i)<20 && !overwrite) continue;
 
 			//cout<<i<<":"<<j<<"      \xd"<<flush;
 
-			if(scores_array[i/skip_reading][j/skip_reading]  > 70. || overwrite)
+			if(scores_array[i/skip_reading][j/skip_reading]  > 60. || overwrite)
 			{
 				//putting rmpcl_ver declaration in line with the
 				//rmpcl causes problem where getScore function produce inconsistent result, strange
@@ -161,13 +161,13 @@ int main(int argc, char **argcv)
 				}
 
 				char enter_char;
-				cout<<"Match found at "<<i<<" "<<j<<" with score "<<best_tf.score <<" recorded "<<scores_array[i/skip_reading][j/skip_reading] <<" ver_score "<<ver_score<<" "<<temp_score<<endl;
+				//cout<<"Match found at "<<i<<" "<<j<<" with score "<<best_tf.score <<" recorded "<<scores_array[i/skip_reading][j/skip_reading] <<" ver_score "<<ver_score<<" "<<temp_score<<endl;
 
 				//cout<<" cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
 				//cout<<best_tf.translation_2d<<" "<< best_tf.rotation/M_PI*180<<endl;
 				cout<<i<<" "<<j<<" "<<best_tf.translation_2d.x<<" "<<best_tf.translation_2d.y<<" "<<best_tf.rotation<<" ";
 				cout<<cov.at<float>(0,0)<<" "<<cov.at<float>(0,1)<<" "<<cov.at<float>(0,2)<<" "<<cov.at<float>(1, 1)<<" "<<cov.at<float>(1,2)<<" "<<cov.at<float>(2,2);
-				cout<<endl;
+				cout<<" ";
 				cin >> enter_char;
 				if(enter_char == 'x') return 0;
 				//rate.sleep();

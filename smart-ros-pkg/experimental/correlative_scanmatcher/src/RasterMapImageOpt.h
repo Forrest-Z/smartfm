@@ -137,11 +137,11 @@ public:
 		//cout<<endl;
 		sw.end(false);
 		stringstream ss;
-		ss<<"rastered_map_"<<range_covariance_<<".png";
+		ss<<"rastered_map_"<<res_<<"_"<< range_covariance_<<".png";
 		cv::imwrite(ss.str(), image_);
 	}
 
-	vector<transform_info> searchRotations(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization, bool est_cov, bool within_prior=false)
+	vector<transform_info> searchRotations(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization, int eva_top_count, bool est_cov, bool within_prior=false)
 	{
 
 		//translate range is directly corresponds to number of cells in the grid
@@ -173,7 +173,7 @@ public:
 		int step = translate_step / res_;
 
 		cv::Mat K = cv::Mat::zeros(3,3,CV_32F), u = cv::Mat::zeros(3,1,CV_32F);
-		int eva_top_count = 10;
+		//eva_top_count = 10;
 		vector<transform_info> best_trans_s;
 		for(size_t i=0; i<rotations.size(); i++)
 		{
@@ -207,10 +207,10 @@ public:
 			//#pragma omp critical
 			//cout<<rotations[i]<<" "<<best_trans.translation_2d<<": "<<best_trans.score<<endl;
 		}
-		for(size_t k=0; k<best_trans_s.size(); k++)
+		/*for(size_t k=0; k<best_trans_s.size(); k++)
 		{
 			cout<<best_trans_s[k].translation_2d << " "<<best_trans_s[k].rotation<<": "<<best_trans_s[k].score<<endl;
-		}
+		}*/
 		sw.end(false);
 		sw_end.start("end");
 		//cout<<"Total time spent in searchTranslation = "<<sw.total_/1000.0<<endl;
@@ -375,7 +375,7 @@ public:
 				sw2.end(false);
 				sw3.start("");
 				//cout<<"offset "<<new_search_pt[0]<<" score "<<cur_score<<endl;
-				cout<<cur_score<<" ";
+				//cout<<cur_score<<" ";
 				transform_info record_score;
 				record_score.translation_2d.x = i*res_;
 				record_score.translation_2d.y = j*res_;
@@ -386,7 +386,7 @@ public:
 				sw3.end(false);
 
 			}
-			cout<<endl;
+			//cout<<endl;
 		}
 		sw.end(false);
 		/*double t1 = sw1.total_/1000.0;
