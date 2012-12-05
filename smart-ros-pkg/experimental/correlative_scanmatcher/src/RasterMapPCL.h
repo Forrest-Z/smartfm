@@ -74,14 +74,13 @@ private:
 		bool show_time = true;
 		sw_sub.start("1");
 		//cout<<query_pts.size()<<endl;
-		transform_info best_info;
-		best_info.rotation = 0.0;
+
 
 		//7x4 = 28
 		//becareful, the first pass is important to avoid falling into local minimal
-
+		transform_info best_info;
 		vector<transform_info> best_first_pass, best_sec_pass;
-		best_first_pass = rm_.searchRotations(query_pts, 10.0, 2.0, M_PI, M_PI/10., best_info, false);
+		best_first_pass = rm_.searchRotations(query_pts, 10.0, 2.0, M_PI, M_PI/10., best_info, 10, false);
 		//best_info = rm_.searchRotation(query_pts, 16.0, 4.0, M_PI, M_PI/4., best_info, false);
 		//best_info = rm_.searchRotation(query_pts, 4.0, 2.0, 0, M_PI/4, best_info, false);
 		//best_info = rm_.searchRotation(query_pts, 1.0, 0.2, M_PI/8, M_PI/16., best_info, false);
@@ -93,11 +92,11 @@ private:
 			best_sec_pass.push_back(rm2_.searchRotation(query_pts, 1.0, 0.2, M_PI/20, M_PI/60., best_first_pass[i], true));
 		//for(size_t k=0; k<best_sec_pass.size(); k++)
 		//	cout<<best_sec_pass[k].translation_2d << " "<<best_sec_pass[k].rotation<<": "<<best_sec_pass[k].score<<endl;
+		covariance = best_sec_pass[0].covariance;
 		sort(best_sec_pass.begin(), best_sec_pass.end(), sortScore);
+
+
 		best_info = best_sec_pass[0];
-		//best_info = rm2_.searchRotation(query_pts, 0, 0.2, M_PI/20., M_PI/60., best_info, true);
-		covariance = best_info.covariance;
-		//best_info = rm2_.searchRotation(query_pts, 0.4, 0.2, 0., M_PI/60., best_info, false);
 
 		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 		sw_sub.end(show_time);
@@ -109,10 +108,16 @@ private:
 		sw_sub.end(show_time);
 		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 
-		best_info.real_pts.resize(best_info.pts.size());
-		for(size_t i=0; i<best_info.pts.size();i++)
+		best_info.real_pts.resize(query_pts.size());
+		double cos_val = cos(best_info.rotation);
+		double sin_val = sin(best_info.rotation);
+		for(size_t i=0; i<query_pts.size();i++)
 		{
-			best_info.real_pts[i] = rm3_.realCoordinate(best_info.pts[i]);
+			double rot_x = query_pts[i].x, rot_y = query_pts[i].y;
+			cv::Point2f rot_pt;
+			rot_pt.x = cos_val * rot_x - sin_val * rot_y;
+			rot_pt.y = sin_val * rot_x + cos_val * rot_y;
+			best_info.real_pts[i] = rot_pt;
 			best_info.real_pts[i].x += best_info.translation_2d.x;
 			best_info.real_pts[i].y += best_info.translation_2d.y;
 		}

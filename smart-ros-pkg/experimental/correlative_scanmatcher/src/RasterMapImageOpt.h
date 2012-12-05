@@ -163,7 +163,7 @@ public:
 		vector<transform_info> best_rotates;
 
 		transform_info best_rotate;
-		best_rotate.score = -1e99;
+
 		//#pragma omp parallel for
 		vector<cv::Point> rotated_search_pt;
 		rotated_search_pt.resize(search_pt.size());
@@ -189,34 +189,26 @@ public:
 			}
 
 			vector<transform_info> best_trans_s_temp;
-			//cout<<rotations[i]<<":"<<endl;
-			best_trans_s_temp = searchTranslations(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], within_prior);
-			//cout<<endl;
-			sort(best_trans_s_temp.begin(), best_trans_s_temp.end(), sortScore);
-			best_trans_s_temp.resize(eva_top_count);
-			for(size_t i=0; i<best_trans_s_temp.size(); i++)
-				best_trans_s_temp[i].pts = rotated_search_pt;
+			best_trans_s_temp = searchTranslations(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], est_cov, within_prior);
 			best_trans_s.insert(best_trans_s.end(), best_trans_s_temp.begin(), best_trans_s_temp.end());
-			sort(best_trans_s.begin(), best_trans_s.end(), sortScore);
-			best_trans_s.resize(eva_top_count);
-			//continue to work on selecting the best initial rotation given the list of possible matchings
 
-			//cout<<endl;
-
-			//best_rotates[i] = best_trans;
-			//#pragma omp critical
-			//cout<<rotations[i]<<" "<<best_trans.translation_2d<<": "<<best_trans.score<<endl;
+			if(est_cov)
+			{
+				best_rotate.evaluated_pts.insert(best_rotate.evaluated_pts.end(), best_trans_s_temp[0].evaluated_pts.begin(), best_trans_s_temp[0].evaluated_pts.end());
+				best_rotate.score_vec.insert(best_rotate.score_vec.end(), best_trans_s_temp[0].score_vec.begin(), best_trans_s_temp[0].score_vec.end());
+			}
 		}
-		/*for(size_t k=0; k<best_trans_s.size(); k++)
-		{
-			cout<<best_trans_s[k].translation_2d << " "<<best_trans_s[k].rotation<<": "<<best_trans_s[k].score<<endl;
-		}*/
 		sw.end(false);
 		sw_end.start("end");
 		//cout<<"Total time spent in searchTranslation = "<<sw.total_/1000.0<<endl;
 
+		sort(best_trans_s.begin(), best_trans_s.end(), sortScore);
+		best_trans_s.resize(eva_top_count);
+
+		best_rotate.rotation = best_trans_s[0].rotation;
+		best_rotate.translation_2d = best_trans_s[0].translation_2d;
 		if(est_cov)
-			best_rotate.covariance = getCovariance(best_rotate);
+			best_trans_s[0].covariance = getCovariance(best_rotate);
 
 		sw_end.end(false);
 		return best_trans_s;
@@ -226,82 +218,11 @@ public:
 	transform_info searchRotation(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization, bool est_cov, bool within_prior=false)
 	{
 
-		//translate range is directly corresponds to number of cells in the grid
-		//precalculate cosine
-		fmutil::Stopwatch sw_init, sw_end,sw;
-		sw_init.start("searchRotate init");
-		vector<double> cos_vals, sin_vals, rotations;
-		for(double i=initialization.rotation-rot_range; i<=initialization.rotation+rot_range; i+=rot_step)
-		{
-			cos_vals.push_back(cos(i));
-			sin_vals.push_back(sin(i));
+		vector<transform_info> best_rotates = searchRotations(search_pt, translate_range, translate_step, rot_range, rot_step, initialization, 1, est_cov, within_prior);
 
-			//just skip through the same rotation;
-			if(i == M_PI && rot_range == M_PI) continue;
+		transform_info best_rotate = best_rotates[0];
 
-			rotations.push_back(i);
-		}
-
-		vector<transform_info> best_rotates;
-
-		transform_info best_rotate;
-		best_rotate.score = -1e99;
-		//#pragma omp parallel for
-		vector<cv::Point> rotated_search_pt;
-		rotated_search_pt.resize(search_pt.size());
-		sw_init.end(false);
-		sw.start("calculate");
-		int range = translate_range / res_;
-		int step = translate_step / res_;
-
-		cv::Mat K = cv::Mat::zeros(3,3,CV_32F), u = cv::Mat::zeros(3,1,CV_32F);
-
-		vector<transform_info> best_trans_s;
-		for(size_t i=0; i<rotations.size(); i++)
-		{
-
-			//rotate each point with by using the rotation center at the sensor's origin
-			for(size_t j=0; j<search_pt.size(); j++)
-			{
-				double rot_x = search_pt[j].x, rot_y = search_pt[j].y;
-				cv::Point2f rot_pt;
-				rot_pt.x = cos_vals[i] * rot_x - sin_vals[i] * rot_y;
-				rot_pt.y = sin_vals[i] * rot_x + cos_vals[i] * rot_y;
-				rotated_search_pt[j] = imageCoordinate(rot_pt);
-			}
-			//cout<<rotations[i]<<":"<<endl;
-			transform_info best_trans = searchTranslation(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], est_cov, within_prior);
-			//cout<<endl;
-			if(est_cov)
-			{
-				best_rotate.evaluated_pts.insert(best_rotate.evaluated_pts.end(), best_trans.evaluated_pts.begin(), best_trans.evaluated_pts.end());
-				best_rotate.score_vec.insert(best_rotate.score_vec.end(), best_trans.score_vec.begin(), best_trans.score_vec.end());
-			}
-			//best_rotates[i] = best_trans;
-			//#pragma omp critical
-			//cout<<rotations[i]<<" "<<best_trans.translation_2d<<": "<<best_trans.score<<endl;
-			if(best_trans.score > best_rotate.score)
-			{
-				best_rotate = best_trans;
-				best_rotate.rotation =rotations[i];
-				best_rotate.pts = rotated_search_pt;
-			}
-
-		}
-		for(size_t k=0; k<best_trans_s.size(); k++)
-		{
-			cout<<best_trans_s[k].translation_2d << " "<<best_trans_s[k].rotation<<": "<<best_trans_s[k].score<<endl;
-		}
-		sw.end(false);
-		sw_end.start("end");
-		//cout<<"Total time spent in searchTranslation = "<<sw.total_/1000.0<<endl;
-
-		if(est_cov)
-			best_rotate.covariance = getCovariance(best_rotate);
-
-		sw_end.end(false);
 		return best_rotate;
-
 	}
 
 	cv::Mat getCovariance(transform_info best_info)
@@ -334,7 +255,7 @@ public:
 		return K/s + (u * u.t())/(s*s);
 	}
 
-	vector<transform_info> searchTranslations(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt, double rotation, bool within_prior)
+	vector<transform_info> searchTranslations(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt, double rotation, bool est_cov, bool within_prior)
 	{
 		//investigate why low bottom of confusion matrix has overall higher score
 		//solved: It is a bad idea to normalize the score with only the number of point within the source map
@@ -349,8 +270,6 @@ public:
 		//be stored into memory, in the end there is no improvement
 		//adding omp critical directive eliminate the need to allocate a large memory
 		//improved calculation from 0.7 to 0.45, further improvement to 0.4 when searchRotation also run in omp
-		transform_info best_info;
-		best_info.score = -1e99;
 
 		//best_info.pts = search_pt;
 		//cout<<startx<<" "<<endx<<" "<<starty<<" "<<endy<<endl;
@@ -383,6 +302,16 @@ public:
 				record_score.score = cur_score;
 				best_infos.push_back(record_score);
 
+				if(est_cov)
+				{
+					//all calculation for covariance is stored on the first item of the vector
+					best_infos[0].score_vec.push_back(cur_score);
+					cv::Point3f evaluated_pt;
+					evaluated_pt.x = i*res_;
+					evaluated_pt.y = j*res_;
+					evaluated_pt.z = rotation;
+					best_infos[0].evaluated_pts.push_back(evaluated_pt);
+				}
 				sw3.end(false);
 
 			}
@@ -399,80 +328,6 @@ public:
 		return best_infos;
 	}
 
-	transform_info searchTranslation(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt, double rotation, bool est_cov, bool within_prior)
-	{
-		//investigate why low bottom of confusion matrix has overall higher score
-		//solved: It is a bad idea to normalize the score with only the number of point within the source map
-
-		fmutil::Stopwatch sw, sw1,sw2,sw3;
-		sw.start("");
-		//result deteriorate when the resolution is more than 0.3. This is due to quantization error when mapping
-		//from pts to grid. Need independent control of map grid size and stepping size
-		int startx = initial_pt.x/res_ - range, endx = initial_pt.x/res_ + range;
-		int starty = initial_pt.y/res_ - range, endy = initial_pt.y/res_ + range;
-		//parallel seems to only improve marginally, and because the whole vector of results need to
-		//be stored into memory, in the end there is no improvement
-		//adding omp critical directive eliminate the need to allocate a large memory
-		//improved calculation from 0.7 to 0.45, further improvement to 0.4 when searchRotation also run in omp
-		transform_info best_info;
-		best_info.score = -1e99;
-
-		//best_info.pts = search_pt;
-		//cout<<startx<<" "<<endx<<" "<<starty<<" "<<endy<<endl;
-		//vector<cv::Point> new_search_pt;
-		//new_search_pt.resize(search_pt.size());
-
-		for(int j=starty; j<=endy; j+=stepsize)
-		{
-			for(int i=startx; i<=endx; i+=stepsize)
-			{
-				//gained about 80 ms when fixed size of new_search_pt is used instead of keep pushing the search pt
-				sw1.start("");
-				//elimintate this loop gain much needed boost
-				/*for(size_t k=0; k<search_pt.size(); k++)
-				{
-					new_search_pt[k].x = (cv::Point(search_pt[k].x+i, search_pt[k].y-j));
-				}*/
-				sw1.end(false);
-				sw2.start("");
-				double cur_score = scorePoints(search_pt, i, j, within_prior);
-
-				sw2.end(false);
-				sw3.start("");
-				//cout<<"offset "<<new_search_pt[0]<<" score "<<cur_score<<endl;
-				//cout<<cur_score<<" ";
-				if(cur_score>best_info.score)
-				{
-					best_info.translation_2d.x = i*res_;
-					best_info.translation_2d.y = j*res_;
-					best_info.score = cur_score;
-					//best_info.pts = search_pt;
-				}
-
-				if(est_cov)
-				{
-					best_info.score_vec.push_back(cur_score);
-					cv::Point3f evaluated_pt;
-					evaluated_pt.x = i*res_;
-					evaluated_pt.y = j*res_;
-					evaluated_pt.z = rotation;
-					best_info.evaluated_pts.push_back(evaluated_pt);
-				}
-				sw3.end(false);
-
-			}
-			//cout<<endl;
-		}
-		sw.end(false);
-		/*double t1 = sw1.total_/1000.0;
-		double t2 = sw2.total_/1000.0;
-		double t3 = sw3.total_/1000.0;
-		cout<<"Detail: "<<sw.total_/1000.0<<" check:"<<t1<<"+"<<t2<<"+"<<t3<<"="<<t1+t2+t3<<endl;
-		*/
-		//cout<<endl;
-
-		return best_info;
-	}
 private:
 	vector<int> gaussian_mapping_;
 	vector<double> circle_segments_cos_, circle_segments_sin_;

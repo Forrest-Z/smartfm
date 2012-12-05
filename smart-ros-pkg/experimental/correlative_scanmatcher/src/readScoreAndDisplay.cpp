@@ -140,7 +140,7 @@ int main(int argc, char **argcv)
 
 				cv::Mat cov = best_tf.covariance;
 				dst_pc.points.clear();
-				for(size_t k=0; k<best_tf.pts.size();k++)
+				for(size_t k=0; k<best_tf.real_pts.size();k++)
 				{
 
 					geometry_msgs::Point32 pt;
@@ -148,7 +148,6 @@ int main(int argc, char **argcv)
 					pt.y = best_tf.real_pts[k].y;
 					dst_pc.points.push_back(pt);
 				}
-
 
 				src_pc.header.stamp = dst_pc.header.stamp = query_pc.header.stamp = ros::Time::now();
 
@@ -161,7 +160,7 @@ int main(int argc, char **argcv)
 				}
 
 				char enter_char;
-				//cout<<"Match found at "<<i<<" "<<j<<" with score "<<best_tf.score <<" recorded "<<scores_array[i/skip_reading][j/skip_reading] <<" ver_score "<<ver_score<<" "<<temp_score<<endl;
+				cout<<"Match found at "<<i<<" "<<j<<" with score "<<best_tf.score <<" recorded "<<scores_array[i/skip_reading][j/skip_reading] <<" ver_score "<<ver_score<<" "<<temp_score<<endl;
 
 				//cout<<" cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
 				//cout<<best_tf.translation_2d<<" "<< best_tf.rotation/M_PI*180<<endl;
