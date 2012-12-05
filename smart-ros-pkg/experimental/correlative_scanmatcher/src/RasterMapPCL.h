@@ -8,14 +8,15 @@
 #include "RasterMapImageOpt.h"
 #include <sensor_msgs/PointCloud.h>
 
-
 class RasterMapPCL
 {
 public:
 	//changing the 1st RasterMap resolution and range from 0.2,0.5 to 0.1,0.1 seems to miss some
 	//good potential close loop while increasing false detection
 	//apparent decreasing the range that causes the above scenario
-	RasterMapPCL(): rm_(1.0, 0.02), rm2_(0.1, 0.02), rm3_(0.01, 0.01)
+
+	//rastering map with too low resolution causes more noise than desired. 0.5 is the bare minimum resolution that is acceptable
+	RasterMapPCL(): rm_(0.5, 0.005), rm2_(0.1, 0.005), rm3_(0.01, 0.005)
 	{};
 
 	template <class T>
@@ -63,6 +64,34 @@ public:
 private:
 	RasterMapImage rm_, rm2_, rm3_;
 
+
+
+
+	void removeRepeatedEntry(vector<transform_info> &tf)
+	{
+		for(size_t i=1; i<tf.size();)
+		{
+			cv::Point2f p1 = tf[i-1].translation_2d, p2 = tf[i].translation_2d;
+			double r1 = tf[i-1].rotation, r2 = tf[i].rotation;
+			if(p1.x == p2.x && p1.x == p2.y && fabs(r1-r2)<0.00001)
+				{
+				cout<<"match found "<<p1<<" "<<p2<<" "<<r1<<" "<<r2<<" "<<endl;
+				tf.erase(tf.begin() + i);
+				}
+			else i++;
+		}
+		/*std::vector<transform_info>::iterator end_pos( tf.end() );
+
+		std::vector<transform_info>::iterator start_pos( tf.begin() );
+
+		transform_info value( *start_pos );
+		while (++start_pos != end_pos)
+		{
+			end_pos = std::remove( start_pos, end_pos, value );
+			value = *start_pos;
+		}
+		tf.erase( end_pos, tf.end() );*/
+	}
 	transform_info findBestTf(vector<cv::Point2f>& query_pts)
 	{
 		fmutil::Stopwatch sw;
@@ -79,32 +108,84 @@ private:
 		//7x4 = 28
 		//becareful, the first pass is important to avoid falling into local minimal
 		transform_info best_info;
-		vector<transform_info> best_first_pass, best_sec_pass;
-		best_first_pass = rm_.searchRotations(query_pts, 10.0, 2.0, M_PI, M_PI/10., best_info, 10, false);
-		//best_info = rm_.searchRotation(query_pts, 16.0, 4.0, M_PI, M_PI/4., best_info, false);
-		//best_info = rm_.searchRotation(query_pts, 4.0, 2.0, 0, M_PI/4, best_info, false);
-		//best_info = rm_.searchRotation(query_pts, 1.0, 0.2, M_PI/8, M_PI/16., best_info, false);
+		//very important initialization
+		best_info.rotation = 0.0;
+		vector<transform_info> best_first_pass_a, best_first_pass_b, best_sec_pass, best_thi_pass;
+
+
+		best_first_pass_a = rm_.searchRotations(query_pts, 10.0, 1.0, M_PI, M_PI/30., best_info, -1, false);
+		sort(best_first_pass_a.begin(), best_first_pass_a.end(), sortScore);
+		size_t first_pass_idx=0;
+		for(; first_pass_idx<best_first_pass_a.size(); first_pass_idx++)
+		{
+			if(best_first_pass_a[first_pass_idx].score<60) break;
+		}
+		if(first_pass_idx < 20) best_first_pass_a.resize(20);
+		else best_first_pass_a.resize(first_pass_idx);
+		/*for(size_t i=0; i<best_first_pass_a.size(); i++)
+		{
+			cout<<i<<": "<<best_first_pass_a[i].translation_2d<<" "<<best_first_pass_a[i].rotation<<" "<<best_first_pass_a[i].score<<endl;
+			//when perform second pass, do not use rotation as it will produce further more local maximal that cannot be handled by small number of top scores
+			vector<transform_info> best_tf_temp = rm_.searchRotations(query_pts, 1.0, 0.5, 0, M_PI/60, best_first_pass_a[i], -1, false);
+			best_first_pass_b.insert(best_first_pass_b.end(), best_tf_temp.begin(), best_tf_temp.end());
+		}*/
+		best_first_pass_b = best_first_pass_a;
+		sort(best_first_pass_b.begin(), best_first_pass_b.end(), sortScore);
+		//remove the repeated entry
+		//cout<<"Before removed "<<best_first_pass_b.size()<<endl;
+		//removeRepeatedEntry(best_first_pass_b);
+		cout<<"Size of first pass "<<best_first_pass_b.size()<<endl;
+		//best_first_pass_b.resize(20);
 		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 
 		sw_sub.end(show_time);
 		sw_sub.start("2");
-		for(size_t i=0; i<best_first_pass.size(); i++)
-			best_sec_pass.push_back(rm2_.searchRotation(query_pts, 1.0, 0.2, M_PI/20, M_PI/60., best_first_pass[i], true));
+
+		for(size_t i=0; i<best_first_pass_b.size(); i++)
+		{
+			cout<<i<<": "<<best_first_pass_b[i].translation_2d<<" "<<best_first_pass_b[i].rotation<<" "<<best_first_pass_b[i].score<<endl;
+			//crashes while removing repeated entry when resolution of 0.25 is used, weird
+			vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts, 0.5, 0.2, 0, M_PI/90., best_first_pass_b[i], -1, true);
+			best_sec_pass.insert(best_sec_pass.end(),  best_tf_temp.begin(), best_tf_temp.end());
+		}
+
 		//for(size_t k=0; k<best_sec_pass.size(); k++)
 		//	cout<<best_sec_pass[k].translation_2d << " "<<best_sec_pass[k].rotation<<": "<<best_sec_pass[k].score<<endl;
 		covariance = best_sec_pass[0].covariance;
 		sort(best_sec_pass.begin(), best_sec_pass.end(), sortScore);
+		//cout<<"Removing repeated entry "<<best_sec_pass.size()<<endl;
+		//removeRepeatedEntry(best_sec_pass);
+		//remove operation is very very slow!!
+		//cout<<"After remove "<<best_sec_pass.size()<<endl;
 
-
-		best_info = best_sec_pass[0];
+		size_t sec_pass_idx = 0;
+		for(; sec_pass_idx<best_sec_pass.size(); sec_pass_idx++)
+		{
+			if(best_sec_pass[sec_pass_idx].score<70) break;
+		}
+		if(sec_pass_idx ==0 ) best_sec_pass.resize(1);
+		else best_sec_pass.resize(sec_pass_idx);
 
 		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 		sw_sub.end(show_time);
 
 		sw_sub.start("3");
-		//best_info = rm3_.searchRotation(query_pts, 0.12, 0.02, M_PI/96., M_PI/768., best_info, false);
-		best_info = rm3_.searchRotation(query_pts, 0.12, 0.06, M_PI/120., M_PI/720., best_info, false);
-		best_info = rm3_.searchRotation(query_pts, 0.06, 0.01, 0, M_PI/720., best_info, false);
+
+		for(size_t i=0; i<best_sec_pass.size(); i++)
+		{
+			cout<<i<<": "<<best_sec_pass[i].translation_2d<<" "<<best_sec_pass[i].rotation<<" "<<best_sec_pass[i].score<<endl;
+			vector<transform_info> best_tf_temp = rm3_.searchRotations(query_pts, 0.1, 0.05, M_PI/60, M_PI/360., best_sec_pass[i], -1, true);
+			best_thi_pass.insert(best_thi_pass.end(),  best_tf_temp.begin(), best_tf_temp.end());
+		}
+		sort(best_thi_pass.begin(), best_thi_pass.end(), sortScore);
+
+		best_info = best_thi_pass[0];
+
+		//best_info.translation_2d.x = -6.3;
+		//best_info.translation_2d.y = -3.31;
+		//best_info.rotation = -3.15032;
+
+		best_info = rm3_.searchRotation(query_pts, 0.025, 0.01, M_PI/720, M_PI/720., best_info, false);
 		sw_sub.end(show_time);
 		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 

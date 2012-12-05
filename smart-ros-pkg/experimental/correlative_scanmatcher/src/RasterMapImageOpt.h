@@ -3,10 +3,23 @@
 #include <cv.h>
 #include <highgui.h>
 #include <fmutil/fm_math.h>
+
+
+#include "pcl/point_cloud.h"
+#include "pcl_ros/point_cloud.h"
+#include "pcl/point_types.h"
+#include "pcl/ros/conversions.h"
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/filters/radius_outlier_removal.h>
+#include <pcl/features/normal_3d_omp.h>
+#include <pcl/filters/conditional_removal.h>
+#include <pcl/filters/voxel_grid.h>
+
 using namespace std;                    // make std:: accessible
 
-struct transform_info
+class transform_info
 {
+public:
 	cv::Point2f translation_2d;
 	double rotation;
 	double score;
@@ -17,6 +30,17 @@ struct transform_info
 	//to support variance calculation
 	vector<double> score_vec;
 	vector<cv::Point3f> evaluated_pts;
+
+	inline bool operator == (const transform_info &b) const
+	{
+		bool match = (b.translation_2d.x == translation_2d.x) &&
+				(b.translation_2d.y==translation_2d.y) &&
+				(b.rotation == rotation);
+		//if(match)
+		//	cout<<"Found match "<<b.translation_2d <<" "<<translation_2d<<" "<<b.rotation<<" "<<rotation<<endl;
+		return match;
+	}
+
 };
 
 bool sortScore (transform_info t1, transform_info t2)
@@ -94,13 +118,20 @@ public:
 		return norm_score;
 	}
 	template <class T>
-	void getInputPoints(vector<T> raster_pt)
+	void getInputPoints(vector<T> raster_pt_input)
 	{
 		fmutil::Stopwatch sw;
 
 		sw.start("Raster Map");
 
 		//very fast process, only needs 5 ms on 1620 points with 1000 loops
+		vector<cv::Point2f> search_pt;search_pt.resize(raster_pt_input.size());
+		for(size_t i=0; i<raster_pt_input.size(); i++)
+		{
+			search_pt[i].x = raster_pt_input[i].x;
+			search_pt[i].y = raster_pt_input[i].y;
+		}
+		vector<cv::Point2f> raster_pt = pcl_downsample(search_pt, res_/2., res_/2., res_/2.);
 
 		for(size_t i=0; i<raster_pt.size(); i++)
 		{
@@ -119,26 +150,80 @@ public:
 		image_ = cv::Mat::ones( (int) map_size.y, (int) map_size.x  , CV_8UC1);
 
 
-		for(int j=gaussian_mapping_.size()-1; j>=0; j--)
+		//no point performing gaussian and draw circle when resolution is too low
+		if(res_<0.1)
 		{
-			//openmp helps reduce the rastering time from 150+ to 60+ms
-			//#pragma omp parallel for
+			for(int j=gaussian_mapping_.size()-1; j>=0; j--)
+			{
+				//openmp helps reduce the rastering time from 150+ to 60+ms
+				//#pragma omp parallel for
+				for(size_t i=0; i<raster_pt.size(); i++)
+				{
+					cv::Point pt =imageCoordinate(raster_pt[i]);
+					if(pt.x >= image_.cols || pt.y >= image_.rows) continue;
+
+					this->rasterCircle(pt, j, image_, gaussian_mapping_[j]);
+
+				}
+				//cout<<gaussian_mapping_[j]<<" ";
+
+			}
+		}
+		else
+		{
 			for(size_t i=0; i<raster_pt.size(); i++)
 			{
 				cv::Point pt =imageCoordinate(raster_pt[i]);
 				if(pt.x >= image_.cols || pt.y >= image_.rows) continue;
-
-				this->rasterCircle(pt, j, image_, gaussian_mapping_[j]);
-
+				setPixel(pt.x, pt.y, image_, 255);
 			}
-			//cout<<gaussian_mapping_[j]<<" ";
-
 		}
 		//cout<<endl;
 		sw.end(false);
 		stringstream ss;
 		ss<<"rastered_map_"<<res_<<"_"<< range_covariance_<<".png";
 		cv::imwrite(ss.str(), image_);
+	}
+
+	vector<cv::Point2f> pcl_downsample(vector<cv::Point2f> &query_pts, double size_x, double size_y, double size_z)
+	{
+		pcl::PointCloud<pcl::PointXYZ> point_cloud;
+		point_cloud.resize(query_pts.size());
+		for(size_t i=0; i<query_pts.size(); i++)
+		{
+			pcl::PointXYZ pt; pt.x = query_pts[i].x; pt.y = query_pts[i].y;
+			point_cloud[i] = pt;
+		}
+
+
+
+		if(point_cloud.size()<100) return query_pts;
+		pcl::VoxelGrid<pcl::PointXYZ> sor;
+		// always good not to use in place filtering as stated in
+		// http://www.pcl-users.org/strange-effect-of-the-downsampling-td3857829.html
+		pcl::PointCloud<pcl::PointXYZ> input_msg_filtered = *(new pcl::PointCloud<pcl::PointXYZ> ());
+		//float downsample_size_ = 0.05;
+		sor.setInputCloud(point_cloud.makeShared());
+		sor.setLeafSize (size_x, size_y, size_z);
+		pcl::PointIndicesPtr pi;
+		sor.filter (input_msg_filtered);
+		/*cout<<"Downsampled colors ";
+		        for(size_t i=0; i<input_msg_filtered->points.size(); i++)
+		        {
+		            cout<<input_msg_filtered->points[i].rgb<<" ";
+		        }
+		        cout<<endl;*/
+		point_cloud = input_msg_filtered;
+
+		vector<cv::Point2f> after_downsample;
+		after_downsample.resize(point_cloud.size());
+		for(size_t i=0; i<point_cloud.size(); i++)
+		{
+			cv::Point2f pt; pt.x = point_cloud[i].x; pt.y = point_cloud[i].y;
+			after_downsample[i] = pt;
+		}
+		return after_downsample;
+
 	}
 
 	vector<transform_info> searchRotations(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization, int eva_top_count, bool est_cov, bool within_prior=false)
@@ -166,6 +251,10 @@ public:
 
 		//#pragma omp parallel for
 		vector<cv::Point> rotated_search_pt;
+
+		//careful with downsampling. May lost matching with a single thin line
+		vector<cv::Point2f> query_pts_downsample = pcl_downsample(search_pt, translate_step/2., translate_step/2., translate_step/2.);
+		search_pt = query_pts_downsample;
 		rotated_search_pt.resize(search_pt.size());
 		sw_init.end(false);
 		sw.start("calculate");
@@ -175,6 +264,8 @@ public:
 		cv::Mat K = cv::Mat::zeros(3,3,CV_32F), u = cv::Mat::zeros(3,1,CV_32F);
 		//eva_top_count = 10;
 		vector<transform_info> best_trans_s;
+
+
 		for(size_t i=0; i<rotations.size(); i++)
 		{
 
@@ -189,7 +280,9 @@ public:
 			}
 
 			vector<transform_info> best_trans_s_temp;
+			//cout<<rotations[i]<<": "<<endl;
 			best_trans_s_temp = searchTranslations(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], est_cov, within_prior);
+			//cout<<endl;
 			best_trans_s.insert(best_trans_s.end(), best_trans_s_temp.begin(), best_trans_s_temp.end());
 
 			if(est_cov)
@@ -202,8 +295,13 @@ public:
 		sw_end.start("end");
 		//cout<<"Total time spent in searchTranslation = "<<sw.total_/1000.0<<endl;
 
-		sort(best_trans_s.begin(), best_trans_s.end(), sortScore);
-		best_trans_s.resize(eva_top_count);
+
+
+		if(eva_top_count != -1)
+		{
+			sort(best_trans_s.begin(), best_trans_s.end(), sortScore);
+			best_trans_s.resize(eva_top_count);
+		}
 
 		best_rotate.rotation = best_trans_s[0].rotation;
 		best_rotate.translation_2d = best_trans_s[0].translation_2d;

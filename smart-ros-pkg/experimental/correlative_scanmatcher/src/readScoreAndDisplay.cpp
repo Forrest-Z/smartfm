@@ -130,9 +130,9 @@ int main(int argc, char **argcv)
 				transform_info best_tf = rmpcl.getBestTf(pc_vec[j]);
 
 				//verification
-				rmpcl_ver.setInputPts(best_tf.real_pts, true);
-				double temp_score = rmpcl_ver.getScore(pc_vec[i].points);
-				double ver_score = sqrt(temp_score * best_tf.score);
+				//rmpcl_ver.setInputPts(best_tf.real_pts, true);
+				double temp_score = 0;//rmpcl_ver.getScore(pc_vec[i].points);
+				double ver_score = best_tf.score;// sqrt(temp_score * best_tf.score);
 
 				src_pc.points = combines_prior;
 				query_pc.points = pc_vec[j].points;
