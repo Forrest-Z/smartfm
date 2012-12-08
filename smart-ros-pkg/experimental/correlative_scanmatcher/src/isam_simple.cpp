@@ -10,7 +10,9 @@
 #include "pcl/ros/conversions.h"
 #include "RasterMapPCL.h"
 #include "ReadFileHelper.h"
+#include "renderMap.h"
 #include <isam/isam.h>
+
 vector<geometry_msgs::Point32> getTransformedPts(geometry_msgs::Point32 pose, vector<geometry_msgs::Point32>& pts)
 {
 	double ct = cos(pose.z), st = sin(pose.z);
@@ -44,10 +46,11 @@ int main(int argc, char **argcv)
 
 	ros::init(argc, argcv, "RasterMapImage");
 	ros::NodeHandle nh;
-	ros::Publisher src_pub, dst_pub, query_pub;
+	ros::Publisher src_pub, dst_pub, query_pub, overall_pub;
 	src_pub = nh.advertise<sensor_msgs::PointCloud>("src_pc", 5);
 	dst_pub = nh.advertise<sensor_msgs::PointCloud>("dst_pc", 5);
 	query_pub = nh.advertise<sensor_msgs::PointCloud>("pc_legacy_out", 5);
+	overall_pub = nh.advertise<sensor_msgs::PointCloud>("pc_graph_overall", 5);
 	sensor_msgs::PointCloud src_pc, dst_pc, query_pc;
 	src_pc.header.frame_id = dst_pc.header.frame_id = query_pc.header.frame_id = "scan_odo";
 
@@ -99,19 +102,45 @@ int main(int argc, char **argcv)
 		cout << "Failed in checking size of pc_vec and scores"<<endl;
 
 
+	// instance of the main class that manages and optimizes the pose graph
+	isam::Slam slam;
+
+	// locally remember poses
+	vector<isam::Pose2d_Node*> pose_nodes;
+
+	isam::Noise noise3 = isam::Information(100. * isam::eye(3));
+	isam::Noise noise2 = isam::Information(100. * isam::eye(2));
+
+	// create a first pose (a node)
+	isam::Pose2d_Node* new_pose_node = new isam::Pose2d_Node();
+	// add it to the graph
+	slam.add_node(new_pose_node);
+	// also remember it locally
+	pose_nodes.push_back(new_pose_node);
+	// create a prior measurement (a factor)
+	isam::Pose2d origin(0., 0., 0.);
+	isam::Pose2d_Factor* prior = new isam::Pose2d_Factor(pose_nodes[0], origin, noise3);
+	// add it to the graph
+	slam.add_factor(prior);
 
 	ros::Rate rate(2);
-	for(int i=0; i<size; i+=skip_reading)
+
+	for(int i=skip_reading; i<size; i+=skip_reading)
 	{
 		RasterMapPCL rmpcl;
 		vector<geometry_msgs::Point32> combines_prior, prior_m5, prior_p5;
-		combines_prior = pc_vec[i].points;
-		//prior_m5 = getTransformedPts(ominus(poses[i-5], poses[i]), pc_vec[i-5].points);
-		//prior_p5 = getTransformedPts(ominus(poses[i+5], poses[i]), pc_vec[i+5].points);
-		//combines_prior.insert(combines_prior.begin(), prior_m5.begin(), prior_m5.end());
-		//combines_prior.insert(combines_prior.begin(), prior_p5.begin(), prior_p5.end());
-		rmpcl.setInputPts(combines_prior);
-		for(int j=0; j<i; j+=skip_reading)
+		geometry_msgs::Point32 odo = ominus(poses[i], poses[i-5]);
+		isam::Pose2d_Node* new_pose_node = new isam::Pose2d_Node();
+		slam.add_node(new_pose_node);
+		pose_nodes.push_back(new_pose_node);
+		// connect to previous with odometry measurement
+		isam::Pose2d odometry(odo.x, odo.y, odo.z); // x,y,theta
+		isam::Pose2d_Pose2d_Factor* constraint = new isam::Pose2d_Pose2d_Factor(pose_nodes[i/skip_reading-1], pose_nodes[i/skip_reading], odometry, noise3);
+		slam.add_factor(constraint);
+
+		rmpcl.setInputPts(pc_vec[i].points);
+
+		for(int j=0; j<skip_reading; j+=skip_reading)
 		{
 			bool overwrite = false;
 
@@ -134,7 +163,7 @@ int main(int argc, char **argcv)
 				double temp_score = rmpcl_ver.getScore(pc_vec[i].points);
 				double ver_score = sqrt(temp_score * best_tf.score);
 
-				src_pc.points = combines_prior;
+				src_pc.points = pc_vec[i].points;
 				query_pc.points = pc_vec[j].points;
 
 
@@ -166,14 +195,52 @@ int main(int argc, char **argcv)
 				//cout<<best_tf.translation_2d<<" "<< best_tf.rotation/M_PI*180<<endl;
 				cout<<i<<" "<<j<<" "<<best_tf.translation_2d.x<<" "<<best_tf.translation_2d.y<<" "<<best_tf.rotation<<" ";
 				cout<<cov.at<float>(0,0)<<" "<<cov.at<float>(0,1)<<" "<<cov.at<float>(0,2)<<" "<<cov.at<float>(1, 1)<<" "<<cov.at<float>(1,2)<<" "<<cov.at<float>(2,2);
-				cout<<" ";
+				cout<<" "<<endl;
 				cin >> enter_char;
 				if(enter_char == 'x') return 0;
 				//rate.sleep();
+				if(enter_char == '1')
+				{
+					isam::Pose2d odometry(best_tf.translation_2d.x, best_tf.translation_2d.y, best_tf.rotation); // x,y,theta
+					isam::Pose2d_Pose2d_Factor* constraint = new isam::Pose2d_Pose2d_Factor(pose_nodes[i/skip_reading], pose_nodes[j/skip_reading], odometry, noise3);
+					slam.add_factor(constraint);
+				}
 			}
+
+		}
+		// optimize the graph
+		slam.batch_optimization();
+		list<isam::Node*> nodes = slam.get_nodes();
+		sensor_msgs::PointCloud overall_pts;
+		overall_pts.header.frame_id = "scan_odo";
+		int node_idx=0;
+		for(std::list<isam::Node*>::const_iterator it = nodes.begin(); it!=nodes.end(); it++) {
+			isam::Node& node = **it;
+			geometry_msgs::Point32 estimated_pt;
+			estimated_pt.x = node.vector(isam::ESTIMATE)[0];
+			estimated_pt.y = node.vector(isam::ESTIMATE)[1];
+			estimated_pt.z = node.vector(isam::ESTIMATE)[2];
+			cout<<estimated_pt.x << " "<< estimated_pt.y<< " "<<estimated_pt.z<<endl;
+			vector<geometry_msgs::Point32> tfed_pts = getTransformedPts(estimated_pt, pc_vec[node_idx++*5].points);
+			overall_pts.points.insert(overall_pts.points.end(), tfed_pts.begin(), tfed_pts.end());
+		}
+		for(int k=0; k<3; k++)
+		{
+			overall_pts.header.stamp = ros::Time::now();
+			RasterMapImage rmi(1,1);
+			vector<geometry_msgs::Point32> downsampled_pt = rmi.pcl_downsample(overall_pts.points, 0.01, 0.01, 0.01);
+			overall_pts.points = downsampled_pt;
+			overall_pub.publish(overall_pts);
+			stringstream ss;
+			ss<<"isam_map_progress"<<i<<".png";
+			drawMap(overall_pts.points, 0.05, ss.str());
+			ros::spinOnce();
 		}
 	}
 
+	// printing the complete graph
+	cout << endl << "Full graph:" << endl;
+	slam.write(cout);
 
 	return 0;
 }

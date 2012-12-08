@@ -151,7 +151,7 @@ public:
 
 
 		//no point performing gaussian and draw circle when resolution is too low
-		if(res_<0.1)
+		if(res_<=0.1)
 		{
 			for(int j=gaussian_mapping_.size()-1; j>=0; j--)
 			{
@@ -185,7 +185,8 @@ public:
 		cv::imwrite(ss.str(), image_);
 	}
 
-	vector<cv::Point2f> pcl_downsample(vector<cv::Point2f> &query_pts, double size_x, double size_y, double size_z)
+	template <typename T>
+	vector<T> pcl_downsample(vector<T> &query_pts, double size_x, double size_y, double size_z)
 	{
 		pcl::PointCloud<pcl::PointXYZ> point_cloud;
 		point_cloud.resize(query_pts.size());
@@ -215,12 +216,13 @@ public:
 		        cout<<endl;*/
 		point_cloud = input_msg_filtered;
 
-		vector<cv::Point2f> after_downsample;
+		vector<T> after_downsample;
 		after_downsample.resize(point_cloud.size());
 		for(size_t i=0; i<point_cloud.size(); i++)
 		{
 			cv::Point2f pt; pt.x = point_cloud[i].x; pt.y = point_cloud[i].y;
-			after_downsample[i] = pt;
+			after_downsample[i].x = pt.x;
+			after_downsample[i].y = pt.y;
 		}
 		return after_downsample;
 

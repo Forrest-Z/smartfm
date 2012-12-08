@@ -16,7 +16,7 @@ public:
 	//apparent decreasing the range that causes the above scenario
 
 	//rastering map with too low resolution causes more noise than desired. 0.5 is the bare minimum resolution that is acceptable
-	RasterMapPCL(): rm_(0.5, 0.005), rm2_(0.1, 0.005), rm3_(0.01, 0.005)
+	RasterMapPCL(): rm_(0.5, 0.005), rm2_(0.1, 0.05), rm3_(0.01, 0.05)
 	{};
 
 	template <class T>
@@ -100,7 +100,7 @@ private:
 		//has to be very careful with quantization error. Rule of thumb, keep ratio between step size and resolution as close to 1 as possible
 		cv::Mat covariance;
 		fmutil::Stopwatch sw_sub;
-		bool show_time = true;
+		bool show_time = false;
 		sw_sub.start("1");
 		//cout<<query_pts.size()<<endl;
 
@@ -118,9 +118,9 @@ private:
 		size_t first_pass_idx=0;
 		for(; first_pass_idx<best_first_pass_a.size(); first_pass_idx++)
 		{
-			if(best_first_pass_a[first_pass_idx].score<60) break;
+			if(best_first_pass_a[first_pass_idx].score<55) break;
 		}
-		if(first_pass_idx < 20) best_first_pass_a.resize(20);
+		if(first_pass_idx == 0) best_first_pass_a.resize(1);
 		else best_first_pass_a.resize(first_pass_idx);
 		/*for(size_t i=0; i<best_first_pass_a.size(); i++)
 		{
@@ -134,16 +134,15 @@ private:
 		//remove the repeated entry
 		//cout<<"Before removed "<<best_first_pass_b.size()<<endl;
 		//removeRepeatedEntry(best_first_pass_b);
-		cout<<"Size of first pass "<<best_first_pass_b.size()<<endl;
-		//best_first_pass_b.resize(20);
-		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+
+		//cout<<"Size of first pass "<<best_first_pass_b.size()<<endl;
 
 		sw_sub.end(show_time);
 		sw_sub.start("2");
 
 		for(size_t i=0; i<best_first_pass_b.size(); i++)
 		{
-			cout<<i<<": "<<best_first_pass_b[i].translation_2d<<" "<<best_first_pass_b[i].rotation<<" "<<best_first_pass_b[i].score<<endl;
+			//cout<<i<<": "<<best_first_pass_b[i].translation_2d<<" "<<best_first_pass_b[i].rotation<<" "<<best_first_pass_b[i].score<<endl;
 			//crashes while removing repeated entry when resolution of 0.25 is used, weird
 			vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts, 0.5, 0.2, 0, M_PI/90., best_first_pass_b[i], -1, true);
 			best_sec_pass.insert(best_sec_pass.end(),  best_tf_temp.begin(), best_tf_temp.end());
@@ -161,7 +160,7 @@ private:
 		size_t sec_pass_idx = 0;
 		for(; sec_pass_idx<best_sec_pass.size(); sec_pass_idx++)
 		{
-			if(best_sec_pass[sec_pass_idx].score<70) break;
+			if(best_sec_pass[sec_pass_idx].score<50) break;
 		}
 		if(sec_pass_idx ==0 ) best_sec_pass.resize(1);
 		else best_sec_pass.resize(sec_pass_idx);
@@ -173,7 +172,7 @@ private:
 
 		for(size_t i=0; i<best_sec_pass.size(); i++)
 		{
-			cout<<i<<": "<<best_sec_pass[i].translation_2d<<" "<<best_sec_pass[i].rotation<<" "<<best_sec_pass[i].score<<endl;
+			//cout<<i<<": "<<best_sec_pass[i].translation_2d<<" "<<best_sec_pass[i].rotation<<" "<<best_sec_pass[i].score<<endl;
 			vector<transform_info> best_tf_temp = rm3_.searchRotations(query_pts, 0.1, 0.05, M_PI/60, M_PI/360., best_sec_pass[i], -1, true);
 			best_thi_pass.insert(best_thi_pass.end(),  best_tf_temp.begin(), best_tf_temp.end());
 		}
