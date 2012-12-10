@@ -34,10 +34,10 @@ void drawMap(vector<geometry_msgs::Point32> raster_pt, double res_, string filen
 		if(raster_pt[i].y > max_pt_.y) max_pt_.y = raster_pt[i].y;
 	}
 
-	cout << "MinMax "<<min_pt_ << " " <<max_pt_<<endl;
+	//cout << "MinMax "<<min_pt_ << " " <<max_pt_<<endl;
 	cv::Point2f map_size(max_pt_.x - min_pt_.x, max_pt_.y - min_pt_.y);
 	map_size.x = ceil(map_size.x/res_); map_size.y =ceil(map_size.y/res_);
-	cout << "Size "<<map_size<<endl;
+	//cout << "Size "<<map_size<<endl;
 	//lost about 10ms when using 32F instead of 8U, and total of 45 ms if draw circle function is called, perhaps too much
 	image_ = cv::Mat::zeros( (int) map_size.y, (int) map_size.x  , CV_8UC1);
 
@@ -50,6 +50,6 @@ void drawMap(vector<geometry_msgs::Point32> raster_pt, double res_, string filen
 
 	}
 
-	sw.end(true);
+	sw.end(false);
 	cv::imwrite(filename, image_);
 }

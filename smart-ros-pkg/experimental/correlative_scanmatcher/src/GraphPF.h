@@ -90,7 +90,7 @@ private:
 			particles_[i].node_idx = fmutil::bound(0., particles_[i].node_idx, (double)nodes_heading_.size()-1);
 		}
 
-		cout<<"Updating motion"<<endl;
+		//cout<<"Updating motion"<<endl;
 		std::map<int, int> particle_sum;
 		for(size_t i=0; i<particles_.size(); i++)
 		{
@@ -119,10 +119,10 @@ private:
 	}
 
 	void printParticles(std::map<int, int> particle_sum)
-	{
+	{/*
 		for(std::map<int, int>::iterator i=particle_sum.begin(); i!=particle_sum.end(); i++)
 					 std::cout << std::fixed << std::setprecision(1) << std::setw(2)
-					                  << i->first << ' ' << std::string(i->second, '*') << '\n';
+					                  << i->first << ' ' << std::string(i->second, '*') << '\n';*/
 	}
 	int updateWeightAndSampling(int matching_node)
 	{
@@ -131,7 +131,7 @@ private:
 		//computation
 
 		//put out the particles with quantities of the weight for sampling
-		cout<<"Attempting matching with node "<<matching_node/skip_reading_<<endl;
+		//cout<<"Attempting matching with node "<<matching_node/skip_reading_<<endl;
 		vector<double> weight_prob;
 		for(size_t i=0; i<particles_.size(); i++)
 		{
@@ -139,7 +139,7 @@ private:
 
 			//penalize nearby particles
 			if(abs(round(particles_[i].node_idx)*skip_reading_ - matching_node) < 20)
-				score /= 2;
+				score /= 5;
 			particles_[i].weight = score;
 			weight_prob.push_back(score);
 		}
@@ -166,7 +166,7 @@ private:
 		//cout<<endl;
 
 		particles_ = new_particles;
-		cout<<"After sampling"<<endl;
+		//cout<<"After sampling"<<endl;
 		std::map<int, int> particle_sum;
 		for(size_t i=0; i<particles_.size(); i++)
 		{
@@ -181,7 +181,7 @@ private:
 		uint window_size = 2;
 		assert(window_size%2==0);
 
-		cout<<"particle_sum size "<<particle_sum.size()<<endl;
+		//cout<<"particle_sum size "<<particle_sum.size()<<endl;
 		for(int i=0; i<(int)particle_sum.size(); i++)
 		{
 
@@ -230,9 +230,14 @@ private:
 				}
 			}
 		}
-		if( max_neighbor_score >50. && max_neighbor_node_id != -1 && max_accu > 45)
+
+		//just a hack for not to activate a close loop when the graph is too small
+		if( matching_node < 100)
+				return -1;
+
+		if( max_neighbor_score >55. && max_neighbor_node_id != -1 && max_accu > 50)
 		{
-				cout<<"close loop found at node "<<max_neighbor_node_id <<" with score "<<max_neighbor_score;
+				cout<<"close loop found at node "<<max_neighbor_node_id <<" with score "<<max_neighbor_score<<endl;
 				return max_neighbor_node_id*skip_reading_;
 		}
 		else return -1;

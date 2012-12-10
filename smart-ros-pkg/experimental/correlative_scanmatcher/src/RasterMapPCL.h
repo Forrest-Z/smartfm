@@ -60,7 +60,25 @@ public:
 		return rm2_.scorePoints(query_pts, 0,0, false);
 	}
 
+	cv::Mat getCovarianceWithTf(sensor_msgs::PointCloud &pc, transform_info best_tf)
+	{
+		vector<cv::Point2f>  query_pts;
+		for(size_t i=0; i<pc.points.size(); i++)
+		{
+			cv::Point2f pt;
+			pt.x = pc.points[i].x;
+			pt.y = pc.points[i].y;
+			query_pts.push_back(pt);
+		}
 
+		vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts, 1.0, 0.2, M_PI/45, M_PI/90., best_tf, -1, true);
+		//complain about positive definite and crashes with inf residual
+		for(int i=0; i<3; i++)
+			for(int j=0; j<3; j++)
+				best_tf_temp[0].covariance.at<float>(i,j) = fabs(best_tf_temp[0].covariance.at<float>(i,j));
+		cout<< best_tf_temp[0].covariance<<endl;
+		return best_tf_temp[0].covariance;//cv::Mat::eye(3,3, CV_32F)*100;
+	}
 private:
 	RasterMapImage rm_, rm2_, rm3_;
 
@@ -92,6 +110,8 @@ private:
 		}
 		tf.erase( end_pos, tf.end() );*/
 	}
+
+
 	transform_info findBestTf(vector<cv::Point2f>& query_pts)
 	{
 		fmutil::Stopwatch sw;

@@ -137,6 +137,21 @@ int main(int argc, char **argcv)
 		pose_nodes.push_back(new_pose_node);
 		// connect to previous with odometry measurement
 		isam::Pose2d odometry(odo.x, odo.y, odo.z); // x,y,theta
+
+		transform_info odo_tf;
+		odo_tf.translation_2d.x = odo.x;
+		odo_tf.translation_2d.y = odo.y;
+		odo_tf.rotation = odo.z;
+		RasterMapPCL rmpcl_odo;
+		rmpcl_odo.setInputPts(pc_vec[i-5].points);
+		cv::Mat odo_cov = rmpcl_odo.getCovarianceWithTf(pc_vec[i], odo_tf);
+
+		Eigen::MatrixXd eigen_noise(3,3);
+		for(int k=0; k<3; k++)
+			for(int j=0; j<3; j++)
+				eigen_noise(k,j) = odo_cov.at<float>(k,j);
+		noise3 = isam::Information(eigen_noise);
+
 		isam::Pose2d_Pose2d_Factor* constraint = new isam::Pose2d_Pose2d_Factor(pose_nodes[i/skip_reading-1], pose_nodes[i/skip_reading], odometry, noise3);
 		slam.add_factor(constraint);
 
@@ -158,6 +173,8 @@ int main(int argc, char **argcv)
 
 
 			cv::Mat cov = best_tf.covariance;
+			cout<<"CL Cov: "<<endl;
+			cout<<cov<<endl;
 			dst_pc.points.clear();
 			for(size_t k=0; k<best_tf.real_pts.size();k++)
 			{
@@ -179,22 +196,26 @@ int main(int argc, char **argcv)
 			}
 
 
-			cout<<"Match found at "<<i<<" "<<j<<" with score "<<best_tf.score <<" recorded "<<scores_array[i/skip_reading][j/skip_reading] <<" ver_score "<<ver_score<<" "<<temp_score<<endl;
+			//cout<<"Match found at "<<i<<" "<<j<<" with score "<<best_tf.score <<" recorded "<<scores_array[i/skip_reading][j/skip_reading] <<" ver_score "<<ver_score<<" "<<temp_score<<endl;
 
-			//cout<<" cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
-			//cout<<best_tf.translation_2d<<" "<< best_tf.rotation/M_PI*180<<endl;
-			cout<<i<<" "<<j<<" "<<best_tf.translation_2d.x<<" "<<best_tf.translation_2d.y<<" "<<best_tf.rotation<<" ";
-			cout<<cov.at<float>(0,0)<<" "<<cov.at<float>(0,1)<<" "<<cov.at<float>(0,2)<<" "<<cov.at<float>(1, 1)<<" "<<cov.at<float>(1,2)<<" "<<cov.at<float>(2,2);
-			cout<<" "<<endl;
+			//cout<<i<<" "<<j<<" "<<best_tf.translation_2d.x<<" "<<best_tf.translation_2d.y<<" "<<best_tf.rotation<<" ";
+			//cout<<cov.at<float>(0,0)<<" "<<cov.at<float>(0,1)<<" "<<cov.at<float>(0,2)<<" "<<cov.at<float>(1, 1)<<" "<<cov.at<float>(1,2)<<" "<<cov.at<float>(2,2);
+			//cout<<" "<<endl;
 			string s;
-			//getline(cin, s);
-			/*if(s.size() > 0)
+			/*getline(cin, s);
+			if(s.size() > 0)
 			{
 				if(s[0] == 'x') return 0;
 			}
 			else
 			{*/
 				isam::Pose2d odometry(best_tf.translation_2d.x, best_tf.translation_2d.y, best_tf.rotation); // x,y,theta
+
+				Eigen::MatrixXd eigen_noise(3,3);
+				for(int k=0; k<3; k++)
+					for(int j=0; j<3; j++)
+						eigen_noise(k,j) = cov.at<float>(k,j);
+				noise3 = isam::Information(eigen_noise);
 				isam::Pose2d_Pose2d_Factor* constraint = new isam::Pose2d_Pose2d_Factor(pose_nodes[i/skip_reading], pose_nodes[j/skip_reading], odometry, noise3);
 				slam.add_factor(constraint);
 			//}
@@ -214,7 +235,7 @@ int main(int argc, char **argcv)
 			estimated_pt.x = node.vector(isam::ESTIMATE)[0];
 			estimated_pt.y = node.vector(isam::ESTIMATE)[1];
 			estimated_pt.z = node.vector(isam::ESTIMATE)[2];
-			cout<<estimated_pt.x << " "<< estimated_pt.y<< " "<<estimated_pt.z<<endl;
+			//cout<<estimated_pt.x << " "<< estimated_pt.y<< " "<<estimated_pt.z<<endl;
 			vector<geometry_msgs::Point32> tfed_pts = getTransformedPts(estimated_pt, pc_vec[node_idx++*5].points);
 			overall_pts.points.insert(overall_pts.points.end(), tfed_pts.begin(), tfed_pts.end());
 		}
