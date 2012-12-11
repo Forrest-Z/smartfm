@@ -182,7 +182,7 @@ public:
 		sw.end(false);
 		stringstream ss;
 		ss<<"rastered_map_"<<res_<<"_"<< range_covariance_<<".png";
-		cv::imwrite(ss.str(), image_);
+		//cv::imwrite(ss.str(), image_);
 	}
 
 	template <typename T>
@@ -335,24 +335,19 @@ public:
 
 		for(size_t i=0; i<best_info.evaluated_pts.size(); i++)
 		{
-			x_i.at<float>(0,0) = best_info.evaluated_pts[i].x - best_info.translation_2d.x;
-			x_i.at<float>(1,0) = best_info.evaluated_pts[i].y - best_info.translation_2d.y;
-
-			double rot = best_info.evaluated_pts[i].z - best_info.rotation;
-			if(rot>2*M_PI) x_i.at<float>(2,0)= fabs(rot - 2* M_PI);
-			else if(rot<-2*M_PI) x_i.at<float>(2,0)= fabs(rot + 2*M_PI);
-			else
-				if(rot>M_PI) x_i.at<float>(2,0)= fabs(rot - M_PI);
-			else if(rot<-M_PI) x_i.at<float>(2,0)= fabs(rot + M_PI);
-			else x_i.at<float>(2,0)= fabs(rot);
-			assert(x_i.at<float>(2,0)<M_PI || x_i.at<float>(2,0)>-M_PI);
+			x_i.at<float>(0,0) = best_info.evaluated_pts[i].x;// - best_info.translation_2d.x;
+			x_i.at<float>(1,0) = best_info.evaluated_pts[i].y;// - best_info.translation_2d.y;
+			x_i.at<float>(2,0) = best_info.evaluated_pts[i].z;
 			double score = best_info.score_vec[i];
 			K += x_i * x_i.t() * score;
 			u += x_i * score;
 			s += score;
 		}
 
-		return K/s + (u * u.t())/(s*s);
+		cv::Mat cov = K/s - (u * u.t())/(s*s);
+		//cout<<cov<<endl;
+
+		return cov;
 	}
 
 	vector<transform_info> searchTranslations(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt, double rotation, bool est_cov, bool within_prior)
