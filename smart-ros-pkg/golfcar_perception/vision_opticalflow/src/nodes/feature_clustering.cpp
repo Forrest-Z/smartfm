@@ -159,17 +159,18 @@ void FeatureClusteringNode::clusterCallback(const vision_opticalflow::Feature::C
             cluster_index = getNearestClusterToFeature(clusters_pos, features_msg, i);
             if(cluster_index != -1)
             {
+                int clusterSize = clusters_pos.clusters_info[cluster_index].members.size();
                 //Add feature to availiable clusture
-                clusters_pos.clusters_info[cluster_index].centroid.x = (clusters_pos.clusters_info[cluster_index].centroid.x + features_msg->found_feature[i].x)/2;
-                clusters_pos.clusters_info[cluster_index].centroid.y = (clusters_pos.clusters_info[cluster_index].centroid.y + features_msg->found_feature[i].y)/2;
-                clusters_pos.clusters_info[cluster_index].centroid_vel.x = (clusters_pos.clusters_info[cluster_index].centroid_vel.x + features_msg->feature_vel[i].x)/2;
-                clusters_pos.clusters_info[cluster_index].centroid_vel.y = (clusters_pos.clusters_info[cluster_index].centroid_vel.y + features_msg->feature_vel[i].y)/2;
-                clusters_pos.clusters_info[cluster_index].centroid_dir = (clusters_pos.clusters_info[cluster_index].centroid_speed_dir + features_msg->feature_speed_dir[i])/2;
+                clusters_pos.clusters_info[cluster_index].centroid.x = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid.x) + features_msg->found_feature[i].x)/(clusterSize + 1);
+                clusters_pos.clusters_info[cluster_index].centroid.y = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid.y) + features_msg->found_feature[i].y)/(clusterSize + 1);
+                clusters_pos.clusters_info[cluster_index].centroid_vel.x = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid_vel.x) + features_msg->feature_vel[i].x)/(clusterSize + 1);
+                clusters_pos.clusters_info[cluster_index].centroid_vel.y = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid_vel.y) + features_msg->feature_vel[i].y)/(clusterSize + 1);
+                clusters_pos.clusters_info[cluster_index].centroid_dir = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid_dir) + features_msg->feature_speed_dir[i])/(clusterSize + 1);
                 clusters_pos.clusters_info[cluster_index].members.push_back(features_msg->found_feature[i]);
                 clusters_pos.clusters_info[cluster_index].members_vel.push_back(features_msg->feature_vel[i]);
 
-                clusters_pos.clusters_info[cluster_index].centroid_speed_mag = (clusters_pos.clusters_info[cluster_index].centroid_speed_mag + features_msg->feature_speed_mag[i])/2;
-                clusters_pos.clusters_info[cluster_index].centroid_speed_dir = (clusters_pos.clusters_info[cluster_index].centroid_speed_dir + features_msg->feature_speed_dir[i])/2;
+                clusters_pos.clusters_info[cluster_index].centroid_speed_mag = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid_speed_mag) + features_msg->feature_speed_mag[i])/(clusterSize + 1);
+                clusters_pos.clusters_info[cluster_index].centroid_speed_dir = ((clusterSize*clusters_pos.clusters_info[cluster_index].centroid_speed_dir) + features_msg->feature_speed_dir[i])/(clusterSize + 1);
                 clusters_pos.clusters_info[cluster_index].members_speed_mag.push_back(features_msg->feature_speed_mag[i]);
                 clusters_pos.clusters_info[cluster_index].members_speed_dir.push_back(features_msg->feature_speed_dir[i]);
             }else{
@@ -199,7 +200,7 @@ void FeatureClusteringNode::clusterCallback(const vision_opticalflow::Feature::C
         for(unsigned int i = 0; i < clusters_pos.clusters_info.size(); i++)
         {
             
-            if(clusters_pos.clusters_info[i].members.size() >= 1)
+            if(clusters_pos.clusters_info[i].members.size() >= 0)
             {
                 clusters_out.clusters_info.push_back(clusters_pos.clusters_info[i]);
 //                 std::cout << "erase: " << i << std::endl;
