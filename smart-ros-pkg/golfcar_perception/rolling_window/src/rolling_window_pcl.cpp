@@ -250,7 +250,7 @@ namespace golfcar_pcl{
 			
 			rolling_window_odom_ 	= rolling_window_odom_ + process_fraction_odom_;
 			process_fraction_odom_ 	= front_buffer_odom_;
-			front_buffer_odom_.points.clear();	
+			front_buffer_odom_.points.clear();
 		}
 		else
 		{
