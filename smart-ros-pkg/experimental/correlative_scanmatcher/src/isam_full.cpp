@@ -150,7 +150,7 @@ int main(int argc, char **argcv)
 		for(int k=0; k<3; k++)
 			for(int j=0; j<3; j++)
 				eigen_noise(k,j) = odo_cov.at<float>(k,j);
-		noise3 = isam::Information(eigen_noise);
+		noise3 = isam::Information(100. * isam::eye(3));
 
 		isam::Pose2d_Pose2d_Factor* constraint = new isam::Pose2d_Pose2d_Factor(pose_nodes[i/skip_reading-1], pose_nodes[i/skip_reading], odometry, noise3);
 		slam.add_factor(constraint);

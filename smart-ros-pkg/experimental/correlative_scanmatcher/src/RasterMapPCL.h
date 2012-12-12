@@ -19,6 +19,7 @@ public:
 	RasterMapPCL(): rm_(0.5, 0.005), rm2_(0.1, 0.05), rm3_(0.01, 0.05)
 	{};
 
+
 	template <class T>
 	void setInputPts(vector<T> &pc, bool verification=false)
 	{
@@ -71,7 +72,7 @@ public:
 			query_pts.push_back(pt);
 		}
 
-		vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts, 1.0, 0.2, M_PI/45, M_PI/90., best_tf, -1, true);
+		vector<transform_info> best_tf_temp = rm_.searchRotations(query_pts, 10.0, 1.0, M_PI, M_PI/30., best_tf, -1, true);// rm2_.searchRotations(query_pts, 1.0, 0.2, M_PI/45, M_PI/90., best_tf, -1, true);
 		//complain about positive definite and crashes with inf residual
 		for(int i=0; i<3; i++)
 			for(int j=0; j<3; j++)
@@ -134,6 +135,7 @@ private:
 
 
 		best_first_pass_a = rm_.searchRotations(query_pts, 10.0, 1.0, M_PI, M_PI/30., best_info, -1, false);
+
 		sort(best_first_pass_a.begin(), best_first_pass_a.end(), sortScore);
 		size_t first_pass_idx=0;
 		for(; first_pass_idx<best_first_pass_a.size(); first_pass_idx++)
@@ -164,13 +166,13 @@ private:
 		{
 			//cout<<i<<": "<<best_first_pass_b[i].translation_2d<<" "<<best_first_pass_b[i].rotation<<" "<<best_first_pass_b[i].score<<endl;
 			//crashes while removing repeated entry when resolution of 0.25 is used, weird
-			vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts, 0.5, 0.2, 0, M_PI/90., best_first_pass_b[i], -1, true);
+			vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts, 0.5, 0.2, 0, M_PI/90., best_first_pass_b[i], -1, false);
 			best_sec_pass.insert(best_sec_pass.end(),  best_tf_temp.begin(), best_tf_temp.end());
 		}
 
 		//for(size_t k=0; k<best_sec_pass.size(); k++)
 		//	cout<<best_sec_pass[k].translation_2d << " "<<best_sec_pass[k].rotation<<": "<<best_sec_pass[k].score<<endl;
-		covariance = best_sec_pass[0].covariance;
+
 		sort(best_sec_pass.begin(), best_sec_pass.end(), sortScore);
 		//cout<<"Removing repeated entry "<<best_sec_pass.size()<<endl;
 		//removeRepeatedEntry(best_sec_pass);
@@ -190,15 +192,23 @@ private:
 
 		sw_sub.start("3");
 
+		transform_info best_thi_tf;
+		best_thi_tf.score = -1;
 		for(size_t i=0; i<best_sec_pass.size(); i++)
 		{
 			//cout<<i<<": "<<best_sec_pass[i].translation_2d<<" "<<best_sec_pass[i].rotation<<" "<<best_sec_pass[i].score<<endl;
-			vector<transform_info> best_tf_temp = rm3_.searchRotations(query_pts, 0.1, 0.05, M_PI/60, M_PI/360., best_sec_pass[i], -1, true);
-			best_thi_pass.insert(best_thi_pass.end(),  best_tf_temp.begin(), best_tf_temp.end());
+			vector<transform_info> best_tf_temp = rm3_.searchRotations(query_pts, 0.1, 0.05, M_PI/60, M_PI/360., best_sec_pass[i], -1, false);
+			sort(best_tf_temp.begin(), best_tf_temp.end(), sortScore);
+			if(best_thi_tf.score < best_tf_temp[0].score)
+				best_thi_tf = best_tf_temp[0];
+			//keeping all the points is useless here, and it may cause bad alloc due to huge memory requirement
+			//best_thi_pass.insert(best_thi_pass.end(),  best_tf_temp.begin(), best_tf_temp.end());
 		}
-		sort(best_thi_pass.begin(), best_thi_pass.end(), sortScore);
 
-		best_info = best_thi_pass[0];
+
+
+
+		best_info = best_thi_tf;
 
 		//best_info.translation_2d.x = -6.3;
 		//best_info.translation_2d.y = -3.31;
@@ -221,8 +231,17 @@ private:
 			best_info.real_pts[i].x += best_info.translation_2d.x;
 			best_info.real_pts[i].y += best_info.translation_2d.y;
 		}
+
+		best_first_pass_a = rm_.searchRotations(query_pts, 4.0, 1.0, M_PI/10, M_PI/90., best_info, -1, true);
+		covariance = best_first_pass_a[0].covariance;
+
 		best_info.covariance = covariance;
 		sw.end(show_time);
+
+		//some house keeping
+		best_sec_pass.clear();
+		best_thi_pass.clear();
+
 		return best_info;
 	}
 };

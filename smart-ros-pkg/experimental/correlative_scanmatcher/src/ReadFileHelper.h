@@ -50,7 +50,10 @@ bool readPts(istream &in, sensor_msgs::PointCloud &p, geometry_msgs::Point32 &po
 	if(!(in >> time)) return false;
 	if(!(in >> pc_size)) return false;
 	p.points.clear();
+
+
 	p.points.resize(pc_size);
+
 
 	for(int i=0; i<pc_size; i++)
 	{
@@ -65,6 +68,7 @@ bool readPts(istream &in, sensor_msgs::PointCloud &p, geometry_msgs::Point32 &po
 			exit(2);
 		}
 	}
+
 	return true;
 }
 
