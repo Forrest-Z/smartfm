@@ -1,3 +1,4 @@
+#START VOXEL STUFF
 map_type: costmap
 unknown_threshold: 9
 mark_threshold: 0
@@ -25,7 +26,7 @@ sickldmrs/cloud: {data_type: PointCloud2,
   observation_persistence: 0.0, marking: false, clearing: true, max_obstacle_height: 2, min_obstacle_height: 0.08, obstacle_range: 50, raytrace_range: 50}
 scan: {data_type: LaserScan, expected_update_rate: 1.0,
   observation_persistence: 0.0, marking: true, clearing: true, max_obstacle_height: 2, min_obstacle_height: 0.08, obstacle_range: 50, raytrace_range: 50}
+#hokuyo_filter: {data_type: LaserScan, expected_update_rate: 1.0,
+  #observation_persistence: 0.0, marking: true, clearing: true, max_obstacle_height: 2, min_obstacle_height: 0.08, obstacle_range: 50, raytrace_range: 50}
 
-#hokuyo_filter: {data_type: LaserScan, expected_update_rate: 1.0, observation_persistence: 0.0, marking: true, clearing: true, max_obstacle_height: 2, min_obstacle_height: 0.08, obstacle_range: 50, raytrace_range: 50}
-- 
 
