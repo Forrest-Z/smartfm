@@ -232,7 +232,7 @@ private:
 			best_info.real_pts[i].y += best_info.translation_2d.y;
 		}
 
-		best_first_pass_a = rm_.searchRotations(query_pts, 4.0, 1.0, M_PI/10, M_PI/90., best_info, -1, true);
+		best_first_pass_a = rm_.searchRotations(query_pts, 4.0, 1.0, M_PI/10, M_PI/45., best_info, -1, true);
 		covariance = best_first_pass_a[0].covariance;
 
 		best_info.covariance = covariance;
@@ -242,6 +242,9 @@ private:
 		best_sec_pass.clear();
 		best_thi_pass.clear();
 
+		//take care case where |rotatation|> M_PI
+		if(best_info.rotation > M_PI) best_info.rotation = best_info.rotation - 2 * M_PI;
+		else if(best_info.rotation < -M_PI) best_info.rotation = best_info.rotation + 2 * M_PI;
 		return best_info;
 	}
 };
