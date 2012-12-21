@@ -10,7 +10,6 @@
 #include "pcl/ros/conversions.h"
 #include "RasterMapPCL.h"
 #include "ReadFileHelper.h"
-#include "renderMap.h"
 #include <isam/isam.h>
 #include "GraphPF.h"
 
@@ -45,6 +44,8 @@ geometry_msgs::Point32 ominus(geometry_msgs::Point32 point2, geometry_msgs::Poin
 int main(int argc, char **argcv)
 {
 
+	fmutil::Stopwatch sw;
+	sw.start("isam_full");
 	ros::init(argc, argcv, "RasterMapImage");
 	ros::NodeHandle nh;
 	ros::Publisher src_pub, dst_pub, query_pub, overall_pub;
@@ -109,8 +110,14 @@ int main(int argc, char **argcv)
 	// locally remember poses
 	vector<isam::Pose2d_Node*> pose_nodes;
 
-	isam::Noise noise3 = isam::Information(100. * isam::eye(3));
+	Eigen::MatrixXd eigen_noise(3,3);
+	eigen_noise(0,0) = 50;
+	eigen_noise(1,1) = 50;
+	eigen_noise(2,2) = 900;
+
+	isam::Noise noise3 = isam::Information(eigen_noise);
 	isam::Noise noise2 = isam::Information(100. * isam::eye(2));
+
 
 	// create a first pose (a node)
 	isam::Pose2d_Node* new_pose_node = new isam::Pose2d_Node();
@@ -126,9 +133,12 @@ int main(int argc, char **argcv)
 
 	ros::Rate rate(2);
 
-	GraphParticleFilter graphPF(scores_array, &slam, 100, skip_reading);
+	GraphParticleFilter graphPF(scores_array, &slam, &pc_vec, 100, skip_reading);
+	sensor_msgs::PointCloud overall_pts;
 	for(int i=skip_reading; i<size; i+=skip_reading)
 	{
+		cout<<"**************************"<<endl;
+		fmutil::Stopwatch sw("overall", true);
 		RasterMapPCL rmpcl;
 		vector<geometry_msgs::Point32> combines_prior, prior_m5, prior_p5;
 		geometry_msgs::Point32 odo = ominus(poses[i], poses[i-skip_reading]);
@@ -142,22 +152,26 @@ int main(int argc, char **argcv)
 		odo_tf.translation_2d.x = odo.x;
 		odo_tf.translation_2d.y = odo.y;
 		odo_tf.rotation = odo.z;
-		RasterMapPCL rmpcl_odo;
+		/*RasterMapPCL rmpcl_odo;
 		rmpcl_odo.setInputPts(pc_vec[i-skip_reading].points);
 		cv::Mat odo_cov = rmpcl_odo.getCovarianceWithTf(pc_vec[i], odo_tf);
-
 		Eigen::MatrixXd eigen_noise(3,3);
 		for(int k=0; k<3; k++)
 			for(int j=0; j<3; j++)
 				eigen_noise(k,j) = odo_cov.at<float>(k,j);
-		noise3 = isam::Information(100. * isam::eye(3));
+		noise3 = isam::Information(100. * isam::eye(3));*/
 
 		isam::Pose2d_Pose2d_Factor* constraint = new isam::Pose2d_Pose2d_Factor(pose_nodes[i/skip_reading-1], pose_nodes[i/skip_reading], odometry, noise3);
 		slam.add_factor(constraint);
 
+		fmutil::Stopwatch sw_cl("close_loop", true); //~100 ms Raster map causes it
 		int cl_node_idx = graphPF.getCloseloop(i);
+		sw_cl.end();
+
+		fmutil::Stopwatch sw_foundcl("found_cl", true);
 		if(cl_node_idx != -1)
 		{
+			fmutil::Stopwatch sw_found_cl_a("found_cl_a");
 			rmpcl.setInputPts(pc_vec[i].points);
 			RasterMapPCL rmpcl_ver;
 			int j= cl_node_idx;
@@ -197,12 +211,12 @@ int main(int argc, char **argcv)
 
 
 			cout<<"Match found at "<<i<<" "<<j<<" with score "<<best_tf.score <<" recorded "<<scores_array[i/skip_reading][j/skip_reading] <<" ver_score "<<ver_score<<" "<<temp_score<<endl;
-
+			//if(temp_score < 55)continue;
 			cout<<i<<" "<<j<<" "<<best_tf.translation_2d.x<<" "<<best_tf.translation_2d.y<<" "<<best_tf.rotation<<" ";
 			//cout<<cov.at<float>(0,0)<<" "<<cov.at<float>(0,1)<<" "<<cov.at<float>(0,2)<<" "<<cov.at<float>(1, 1)<<" "<<cov.at<float>(1,2)<<" "<<cov.at<float>(2,2);
 			//cout<<" "<<endl;
 			string s;
-			getline(cin, s);
+			//getline(cin, s);
 			if(s.size() > 0)
 			{
 				if(s[0] == 'x') return 0;
@@ -220,15 +234,32 @@ int main(int argc, char **argcv)
 				isam::Noise noise = isam::Information(eigen_noise);
 				isam::Pose2d_Pose2d_Factor* constraint = new isam::Pose2d_Pose2d_Factor(pose_nodes[i/skip_reading], pose_nodes[j/skip_reading], odometry, noise);
 				slam.add_factor(constraint);
+				int iteration = slam.batch_optimization();
+				double opt_error = slam._opt.opt_error_;
+				//slam._opt.
+				//seems to be simple addition, but improve things tremendously
+				cout<<"Opt error: "<<opt_error<<endl;
+				if(opt_error > 5.0)
+				{
+					cout<<"Removing factor"<<endl;
+					slam.remove_factor(constraint);
+					slam.update();
+					slam.batch_optimization();
+					cout<<"Batch optimized again"<<endl;
+				}
 			}
 		}
+		sw_foundcl.end();
 
-
+		fmutil::Stopwatch sw_opt("optimization", true);
 		// optimize the graph
 		slam.batch_optimization();
+		sw_opt.end();
 
+		//output and downsampling occupy  when there is no close loop found
+		fmutil::Stopwatch sw_out("output", true); //~130 ms
 		list<isam::Node*> nodes = slam.get_nodes();
-		sensor_msgs::PointCloud overall_pts;
+		overall_pts.points.clear();
 		overall_pts.header.frame_id = "scan_odo";
 		int node_idx=0;
 		for(std::list<isam::Node*>::const_iterator it = nodes.begin(); it!=nodes.end(); it++) {
@@ -241,23 +272,43 @@ int main(int argc, char **argcv)
 			vector<geometry_msgs::Point32> tfed_pts = getTransformedPts(estimated_pt, pc_vec[node_idx++*skip_reading].points);
 			overall_pts.points.insert(overall_pts.points.end(), tfed_pts.begin(), tfed_pts.end());
 		}
+		sw_out.end();
+		fmutil::Stopwatch sw_ds("downsampling", true);
+		RasterMapImage rmi(1,1);
+		/*RenderMap rmap;
+		rmap.drawMap(overall_pts.points, 0.05); //~450 ms, understably as the points exceeding 400k pts after downsampling
+		vector<cv::Point2f> mapped_pts = rmap.mapToRealPts();
+		vector<geometry_msgs::Point32> downsampled_pt;
+		downsampled_pt.resize(mapped_pts.size());
+		for(size_t i=0; i<mapped_pts.size(); i++)
+		{
+			downsampled_pt[i].x = mapped_pts[i].x;
+			downsampled_pt[i].y = mapped_pts[i].y;
+		}*/
+		vector<geometry_msgs::Point32> downsampled_pt = rmi.pcl_downsample(overall_pts.points, 0.05, 0.05, 0.05);
+
+		overall_pts.points = downsampled_pt;
+		stringstream ss;
+		ss<<"isam_map_progress"<<i<<".png";
+		//RenderMap rm;
+		//rm.drawMap(overall_pts.points, 0.05, ss.str());
 		for(int k=0; k<3; k++)
 		{
 			overall_pts.header.stamp = ros::Time::now();
-			RasterMapImage rmi(1,1);
-			vector<geometry_msgs::Point32> downsampled_pt = rmi.pcl_downsample(overall_pts.points, 0.01, 0.01, 0.01);
-			overall_pts.points = downsampled_pt;
 			overall_pub.publish(overall_pts);
-			stringstream ss;
-			ss<<"isam_map_progress"<<i<<".png";
-			drawMap(overall_pts.points, 0.05, ss.str());
+
 			ros::spinOnce();
 		}
-	}
+		sw_ds.end();
 
+		sw.end();
+		cout<<"***********************************"<<endl;
+	}
+	RenderMap rm;
+	rm.drawMap(overall_pts.points, 0.05, "isam_map_overall.png");
 	// printing the complete graph
 	cout << endl << "Full graph:" << endl;
 	slam.write(cout);
-
+	sw.end();
 	return 0;
 }

@@ -82,13 +82,18 @@ int main(int argc, char **argcv)
 		query_pc.points.push_back(pt);
 	}
 
-	RasterMapPCL rmpcl;
+	fmutil::Stopwatch sw("overall");
+	RasterMapPCL rmpcl,rmpcl_ver;
 	rmpcl.setInputPts(src_pc.points);
 
 	transform_info best_tf = rmpcl.getBestTf(query_pc);
-
+	//verification
+	rmpcl_ver.setInputPts(best_tf.real_pts, true);
+	double temp_score = rmpcl_ver.getScore(src_pc.points);
+	double ver_score = sqrt(temp_score * best_tf.score);
+	sw.end();
 	cv::Mat cov = best_tf.covariance;
-			cout<<"cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
+			cout<<"score_scorev "<<best_tf.score<<"_"<<ver_score<<" cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
 			cout<<best_tf.translation_2d<<" "<< best_tf.rotation<<endl;
 	for(size_t i=0; i<best_tf.real_pts.size();i++)
 	{

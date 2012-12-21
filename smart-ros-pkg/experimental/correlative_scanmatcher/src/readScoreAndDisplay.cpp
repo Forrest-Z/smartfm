@@ -73,7 +73,7 @@ int main(int argc, char **argcv)
 	readHeader(*data_in, vec_no);
 	vector< vector<double> > scores_array;
 
-	int skip_reading = 5;
+	int skip_reading = 2;
 	uint scores_size = ceil(vec_no/skip_reading);
 	for(size_t i=0; i<scores_size; i++)
 	{
@@ -101,7 +101,7 @@ int main(int argc, char **argcv)
 
 
 	ros::Rate rate(2);
-	for(int i=0; i<size; i+=skip_reading)
+	for(int i=900; i<size; i+=skip_reading)
 	{
 		RasterMapPCL rmpcl;
 		vector<geometry_msgs::Point32> combines_prior, prior_m5, prior_p5;
@@ -115,7 +115,7 @@ int main(int argc, char **argcv)
 		{
 			bool overwrite = false;
 
-			//if(j-i == 5) overwrite = true;
+			//if(j-i == skip_reading) overwrite = true;
 			//if(j-i>0 && !overwrite) continue;
 
 			if(abs(j-i)<20 && !overwrite) continue;

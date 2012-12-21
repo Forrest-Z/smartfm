@@ -6,6 +6,7 @@
  */
 
 #include "RasterMapImageOpt.h"
+#include "renderMap.h"
 #include <sensor_msgs/PointCloud.h>
 
 class RasterMapPCL
@@ -14,33 +15,62 @@ public:
 	//changing the 1st RasterMap resolution and range from 0.2,0.5 to 0.1,0.1 seems to miss some
 	//good potential close loop while increasing false detection
 	//apparent decreasing the range that causes the above scenario
-
-	//rastering map with too low resolution causes more noise than desired. 0.5 is the bare minimum resolution that is acceptable
-	RasterMapPCL(): rm_(0.5, 0.005), rm2_(0.1, 0.05), rm3_(0.01, 0.05)
-	{};
+	dbgstream dbg;
+	//rastering map with too low resolution causes more noise than desired. 1.0 is the bare minimum resolution that is acceptable
+	RasterMapPCL(): rm_(1.0, 0.05), rm2_(0.1, 0.05), rm3_(0.02, 0.05)
+	{
+		//dbg.enable_output();
+	};
 
 
 	template <class T>
 	void setInputPts(vector<T> &pc, bool verification=false)
 	{
-		rm2_.getInputPoints(pc);
+
+		RenderMap rm;
+		vector<geometry_msgs::Point32> pc_pts;
+		pc_pts.resize(pc.size());
+		for(size_t i=0; i<pc.size(); i++)
+		{
+			pc_pts[i].x = pc[i].x;
+			pc_pts[i].y = pc[i].y;
+		}
+		rm.drawMap(pc_pts, 0.02);
+		vector<cv::Point2f>  query_pts = rm.mapToRealPts();
+
+		vector<T> pt_proc;
+		pt_proc.resize(query_pts.size());
+
+		for(size_t i=0; i<query_pts.size(); i++)
+		{
+			pt_proc[i].x = query_pts[i].x;
+			pt_proc[i].y = query_pts[i].y;
+		}
+		rm2_.getInputPoints(pt_proc);
+
 		if(!verification)
 		{
-			rm_.getInputPoints(pc);
-			rm3_.getInputPoints(pc);
+			rm_.getInputPoints(pt_proc);
+			rm3_.getInputPoints(pt_proc);
+
 		}
 	}
 
 	transform_info getBestTf(sensor_msgs::PointCloud &pc)
 	{
-		vector<cv::Point2f>  query_pts;
-		for(size_t i=0; i<pc.points.size(); i++)
+		RenderMap rm;
+		rm.drawMap(pc.points, 0.02);
+		vector<cv::Point2f>  query_pts = rm.mapToRealPts();
+
+
+		/*for(size_t i=0; i<pc.points.size(); i++)
 		{
 			cv::Point2f pt;
 			pt.x = pc.points[i].x;
 			pt.y = pc.points[i].y;
 			query_pts.push_back(pt);
-		}
+			cout<<pt.x<<" "<<pt.y<<endl;
+		}*/
 		return findBestTf(query_pts);
 	}
 
@@ -77,7 +107,7 @@ public:
 		for(int i=0; i<3; i++)
 			for(int j=0; j<3; j++)
 				best_tf_temp[0].covariance.at<float>(i,j) = fabs(best_tf_temp[0].covariance.at<float>(i,j));
-		cout<< best_tf_temp[0].covariance<<endl;
+		dbg<< best_tf_temp[0].covariance<<endl;
 		return best_tf_temp[0].covariance;//cv::Mat::eye(3,3, CV_32F)*100;
 	}
 private:
@@ -94,7 +124,7 @@ private:
 			double r1 = tf[i-1].rotation, r2 = tf[i].rotation;
 			if(p1.x == p2.x && p1.x == p2.y && fabs(r1-r2)<0.00001)
 				{
-				cout<<"match found "<<p1<<" "<<p2<<" "<<r1<<" "<<r2<<" "<<endl;
+				dbg<<"match found "<<p1<<" "<<p2<<" "<<r1<<" "<<r2<<" "<<endl;
 				tf.erase(tf.begin() + i);
 				}
 			else i++;
@@ -123,7 +153,7 @@ private:
 		fmutil::Stopwatch sw_sub;
 		bool show_time = false;
 		sw_sub.start("1");
-		//cout<<query_pts.size()<<endl;
+		//dbg<<query_pts.size()<<endl;
 
 
 		//7x4 = 28
@@ -134,19 +164,19 @@ private:
 		vector<transform_info> best_first_pass_a, best_first_pass_b, best_sec_pass, best_thi_pass;
 
 
-		best_first_pass_a = rm_.searchRotations(query_pts, 10.0, 1.0, M_PI, M_PI/30., best_info, -1, false);
+		best_first_pass_a = rm_.searchRotations(query_pts, 12.0, 1.0, M_PI, M_PI/10., best_info, -1, false);
 
 		sort(best_first_pass_a.begin(), best_first_pass_a.end(), sortScore);
 		size_t first_pass_idx=0;
 		for(; first_pass_idx<best_first_pass_a.size(); first_pass_idx++)
 		{
-			if(best_first_pass_a[first_pass_idx].score<55) break;
+			if(best_first_pass_a[first_pass_idx].score<50) break;
 		}
-		if(first_pass_idx == 0) best_first_pass_a.resize(1);
+		if(first_pass_idx < 10) best_first_pass_a.resize(10);
 		else best_first_pass_a.resize(first_pass_idx);
 		/*for(size_t i=0; i<best_first_pass_a.size(); i++)
 		{
-			cout<<i<<": "<<best_first_pass_a[i].translation_2d<<" "<<best_first_pass_a[i].rotation<<" "<<best_first_pass_a[i].score<<endl;
+			dbg<<i<<": "<<best_first_pass_a[i].translation_2d<<" "<<best_first_pass_a[i].rotation<<" "<<best_first_pass_a[i].score<<endl;
 			//when perform second pass, do not use rotation as it will produce further more local maximal that cannot be handled by small number of top scores
 			vector<transform_info> best_tf_temp = rm_.searchRotations(query_pts, 1.0, 0.5, 0, M_PI/60, best_first_pass_a[i], -1, false);
 			best_first_pass_b.insert(best_first_pass_b.end(), best_tf_temp.begin(), best_tf_temp.end());
@@ -154,69 +184,75 @@ private:
 		best_first_pass_b = best_first_pass_a;
 		sort(best_first_pass_b.begin(), best_first_pass_b.end(), sortScore);
 		//remove the repeated entry
-		//cout<<"Before removed "<<best_first_pass_b.size()<<endl;
+		//dbg<<"Before removed "<<best_first_pass_b.size()<<endl;
 		//removeRepeatedEntry(best_first_pass_b);
 
-		//cout<<"Size of first pass "<<best_first_pass_b.size()<<endl;
+		//dbg<<"Size of first pass "<<best_first_pass_b.size()<<endl;
 
 		sw_sub.end(show_time);
 		sw_sub.start("2");
 
 		for(size_t i=0; i<best_first_pass_b.size(); i++)
 		{
-			//cout<<i<<": "<<best_first_pass_b[i].translation_2d<<" "<<best_first_pass_b[i].rotation<<" "<<best_first_pass_b[i].score<<endl;
+			dbg<<i<<": "<<best_first_pass_b[i].translation_2d<<" "<<best_first_pass_b[i].rotation<<" "<<best_first_pass_b[i].score<<endl;
 			//crashes while removing repeated entry when resolution of 0.25 is used, weird
-			vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts, 0.5, 0.2, 0, M_PI/90., best_first_pass_b[i], -1, false);
+			vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts, 0.5, 0.1, M_PI/20, M_PI/40., best_first_pass_b[i], -1, false);
 			best_sec_pass.insert(best_sec_pass.end(),  best_tf_temp.begin(), best_tf_temp.end());
 		}
 
 		//for(size_t k=0; k<best_sec_pass.size(); k++)
-		//	cout<<best_sec_pass[k].translation_2d << " "<<best_sec_pass[k].rotation<<": "<<best_sec_pass[k].score<<endl;
+		//	dbg<<best_sec_pass[k].translation_2d << " "<<best_sec_pass[k].rotation<<": "<<best_sec_pass[k].score<<endl;
 
 		sort(best_sec_pass.begin(), best_sec_pass.end(), sortScore);
-		//cout<<"Removing repeated entry "<<best_sec_pass.size()<<endl;
+		//dbg<<"Removing repeated entry "<<best_sec_pass.size()<<endl;
 		//removeRepeatedEntry(best_sec_pass);
 		//remove operation is very very slow!!
-		//cout<<"After remove "<<best_sec_pass.size()<<endl;
+		//dbg<<"After remove "<<best_sec_pass.size()<<endl;
 
 		size_t sec_pass_idx = 0;
 		for(; sec_pass_idx<best_sec_pass.size(); sec_pass_idx++)
 		{
-			if(best_sec_pass[sec_pass_idx].score<50) break;
+			if(best_sec_pass[sec_pass_idx].score<55) break;
 		}
-		if(sec_pass_idx ==0 ) best_sec_pass.resize(1);
+		if(sec_pass_idx < 10 ) best_sec_pass.resize(20);
 		else best_sec_pass.resize(sec_pass_idx);
 
-		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+		//dbg<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 		sw_sub.end(show_time);
 
 		sw_sub.start("3");
 
-		transform_info best_thi_tf;
-		best_thi_tf.score = -1;
+		vector<transform_info> best_thi_tf;
+
 		for(size_t i=0; i<best_sec_pass.size(); i++)
 		{
-			//cout<<i<<": "<<best_sec_pass[i].translation_2d<<" "<<best_sec_pass[i].rotation<<" "<<best_sec_pass[i].score<<endl;
-			vector<transform_info> best_tf_temp = rm3_.searchRotations(query_pts, 0.1, 0.05, M_PI/60, M_PI/360., best_sec_pass[i], -1, false);
-			sort(best_tf_temp.begin(), best_tf_temp.end(), sortScore);
-			if(best_thi_tf.score < best_tf_temp[0].score)
-				best_thi_tf = best_tf_temp[0];
+			dbg<<i<<"/"<<best_sec_pass.size()<<": "<<best_sec_pass[i].translation_2d<<" "<<best_sec_pass[i].rotation<<" "<<best_sec_pass[i].score<<endl;
+			vector<transform_info> best_tf_temp = rm3_.searchRotations(query_pts, 0.06, 0.03, M_PI/60, M_PI/120., best_sec_pass[i], -1, false);
+			best_thi_tf.insert(best_thi_tf.end(), best_tf_temp.begin(), best_tf_temp.end());
 			//keeping all the points is useless here, and it may cause bad alloc due to huge memory requirement
 			//best_thi_pass.insert(best_thi_pass.end(),  best_tf_temp.begin(), best_tf_temp.end());
 		}
+		dbg<<"end best_sec_pass loop total third pass size="<<best_thi_tf.size()<<endl;
+		sort(best_thi_tf.begin(), best_thi_tf.end(), sortScore);
 
+		int thi_count = 0;
+		size_t thi=0;
+		for(; thi<best_thi_tf.size(); thi++)
+		{
+			if(best_thi_tf[thi].translation_2d.x < -1.8) continue;
+			dbg<<thi<<": "<<best_thi_tf[thi].translation_2d<<" "<<best_thi_tf[thi].rotation<<" "<<best_thi_tf[thi].score<<endl;
+			if(thi_count++ > 10) break;
+		}
 
-
-
-		best_info = best_thi_tf;
+		best_info = best_thi_tf[0];
 
 		//best_info.translation_2d.x = -6.3;
 		//best_info.translation_2d.y = -3.31;
 		//best_info.rotation = -3.15032;
 
-		best_info = rm3_.searchRotation(query_pts, 0.025, 0.01, M_PI/720, M_PI/720., best_info, false);
+		best_info = rm3_.searchRotation(query_pts, 0.04, 0.02, M_PI/240, M_PI/720., best_info, false);
 		sw_sub.end(show_time);
-		//cout<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
+		//dbg<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 
 		best_info.real_pts.resize(query_pts.size());
 		double cos_val = cos(best_info.rotation);

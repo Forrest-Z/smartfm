@@ -17,15 +17,14 @@ struct particle
 	particle() : node_idx(0){}
 	//although node_idx should be an integer, this allows motion output in a continuous 1D system, only then it get discretized into int
 	double node_idx;
-	double weight;
 	//the heading would be just +1 or -1 depending on the polarity
 };
 
 class GraphParticleFilter
 {
 public:
-	GraphParticleFilter(vector< vector<double> > scores_array, isam::Slam *slam, int particle_no, int skip_reading):
-		slam_(slam), scores_(scores_array), skip_reading_(skip_reading)
+	GraphParticleFilter(vector< vector<double> > scores_array, isam::Slam *slam, vector<sensor_msgs::PointCloud> *pc_vec, int particle_no, int skip_reading):
+		slam_(slam), pc_vec_(pc_vec), scores_(scores_array), skip_reading_(skip_reading)
 
 	{
 		//initialize particles with node_idx as -1
@@ -38,13 +37,17 @@ public:
 		nodes_heading_.clear();
 
 		list<isam::Node*> nodes = slam_->get_nodes();
-
 		for(std::list<isam::Node*>::const_iterator it = nodes.begin(); it!=nodes.end(); it++) {
 			isam::Node& node = **it;
 			nodes_heading_.push_back(node.vector(isam::ESTIMATE)[2]);
 		}
+		fmutil::Stopwatch sw_motion("updateMotion", true);
 		updateMotion();
+		sw_motion.end();
+
+		fmutil::Stopwatch sw_sample("updateWeightAndSampling", true); //~100 ms cause by RasterMap
 		int cl_idx = updateWeightAndSampling(matching_node);
+		sw_sample.end();
 
 
 		//finally check the modal of the current filter state
@@ -55,6 +58,8 @@ public:
 
 private:
 	isam::Slam *slam_;
+
+	vector<sensor_msgs::PointCloud> *pc_vec_;
 	vector<particle> particles_;
 	//using this for fast development
 	vector< vector<double> > scores_;
@@ -132,16 +137,61 @@ private:
 
 		//put out the particles with quantities of the weight for sampling
 		//cout<<"Attempting matching with node "<<matching_node/skip_reading_<<endl;
+		fmutil::Stopwatch sw1("sw1");
 		vector<double> weight_prob;
+		weight_prob.resize(particles_.size());
+		//RasterMapPCL rmpcl;
+		//rmpcl.setInputPts((*pc_vec_)[matching_node].points);
+		map<int, int> unique_nodes;
+		sw1.end();
+		//find unique nodes
+		for(size_t i=0; i<particles_.size(); i++)
+			++unique_nodes[round(particles_[i].node_idx)];
+
+		//fill in the unique nodes with locally cached score
+		map<int,double> local_cached_score;
+		//local_cached_score.size(score_cache.size());
+		cout<<"Unique nodes size="<<unique_nodes.size()<<endl;
+		vector<int> unique_nodes_array;
+		for(std::map<int, int>::iterator i=unique_nodes.begin(); i!=unique_nodes.end(); i++)
+		{
+			std::cout << i->first << ':' << i->second<<" ";
+			unique_nodes_array.push_back(i->first);
+		}
+		cout<<endl;
+
+		fmutil::Stopwatch sw2("sw2");
+
+//#pragma omp parallel for
+		for(size_t i=0; i<unique_nodes_array.size(); i++)
+		{
+			double score;
+			//was using unique_nodes by directly advancing the iterator using STL, does not work
+
+			//reminder: pc_vec_ has the complete data
+
+			/*transform_info best_tf = rmpcl.getBestTf((*pc_vec_)[unique_nodes_array[i]*skip_reading_]);
+			RasterMapPCL rmpcl_ver;
+			rmpcl_ver.setInputPts(best_tf.real_pts, true);
+			double temp_score = rmpcl_ver.getScore((*pc_vec_)[matching_node].points);
+			score = sqrt( temp_score * best_tf.score);
+			*/score = scores_[matching_node/skip_reading_][unique_nodes_array[i]];
+			//cout<<matching_node/skip_reading_<<"-"<<unique_nodes_array[i]<<":"<<score<<"->"<<score2<<" ";
+			//penalize nearby particles
+			if(abs(unique_nodes_array[i] - matching_node/skip_reading_) < 20)
+				score /= 5;
+			local_cached_score[unique_nodes_array[i]] = score;
+
+		}
+		sw2.end();
+		//cout<<endl;
+
+		fmutil::Stopwatch sw3("sw3");
+		//layout the array weight probabilities with locally cached scores
 		for(size_t i=0; i<particles_.size(); i++)
 		{
-			double score = scores_[matching_node/skip_reading_][round(particles_[i].node_idx)];
-
-			//penalize nearby particles
-			if(abs(round(particles_[i].node_idx)*skip_reading_ - matching_node) < 20)
-				score /= 5;
-			particles_[i].weight = score;
-			weight_prob.push_back(score);
+			//cout<<round(particles_[i].node_idx)<<endl;
+			weight_prob[i] = local_cached_score[round(particles_[i].node_idx)];
 		}
 
 		vector<particle> new_particles;
@@ -151,7 +201,6 @@ private:
 		for(size_t i=0; i<particles_.size()*0.8; i++)
 		{
 			int new_particle_idx = roll_weighted_die(weight_prob);
-			//cout<< new_particle_idx <<" ("<<round(particles_[new_particle_idx].node_idx)<<":"<<particles_[new_particle_idx].weight<<") ";
 			new_particles.push_back(particles_[new_particle_idx]);
 		}
 		size_t inject_particle_no = particles_.size() - new_particles.size();
@@ -174,9 +223,9 @@ private:
 		}
 
 		printParticles(particle_sum);
-
+		sw3.end();
 		//pass through a sliding window to collect possible close loop
-
+		fmutil::Stopwatch sw4("sw4");
 		std::map<int, int> particle_accumulated;
 		uint window_size = 2;
 		assert(window_size%2==0);
@@ -206,7 +255,7 @@ private:
 				max_accu = i->second;
 				max_node_id = i ->first;
 			}
-			cout << i->first << ':' << i->second<< "("<<scores_[matching_node/skip_reading_][i->first]<<") ";
+			cout << i->first << ':' << i->second<< "("<<local_cached_score[i->first]<<") ";
 		}
 		cout<<endl;
 
@@ -222,7 +271,7 @@ private:
 			{
 				//make sure the node id is present in the particles
 				if(particle_sum.find(i) == particle_sum.end()) continue;
-				double matching_score = scores_[matching_node/skip_reading_][i];
+				double matching_score = local_cached_score[i];
 				if(max_neighbor_score < matching_score)
 				{
 					max_neighbor_node_id = i;
@@ -230,12 +279,12 @@ private:
 				}
 			}
 		}
-
+		sw4.end();
 		//just a hack for not to activate a close loop when the graph is too small
 		if( matching_node < 100)
 				return -1;
 
-		if( max_neighbor_score >55. && max_neighbor_node_id != -1 && max_accu > 50)
+		if( max_neighbor_score >45. && max_neighbor_node_id != -1 && max_accu > 40)
 		{
 				cout<<"close loop found at node "<<max_neighbor_node_id <<" with score "<<max_neighbor_score<<endl;
 				return max_neighbor_node_id*skip_reading_;

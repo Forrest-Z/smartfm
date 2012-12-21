@@ -52,7 +52,7 @@ int skip_reading = 2;
 	{
 		RasterMapPCL rmpcl;
 		rmpcl.setInputPts(pc_vec[i].points);
-
+		cout<<"Matching node "<<i<<endl;
 		for(int j=0; j<size; j+=skip_reading)
 		{
 			//if(abs(j-i)<5) continue;
