@@ -983,6 +983,12 @@ namespace golfcar_pcl{
 			boundary_inliers -> indices = boundary_inliers_tmp->indices;
 			boundary_inliers_tmp->indices.clear();
 
+			//to generate classification result with only curvature, for comparision purposes;
+			pcl::PointIndices::Ptr inliers2 (new pcl::PointIndices);
+			pcl::PointIndices::Ptr boundary_inliers2 (new pcl::PointIndices);
+			inliers2->indices = inliers->indices;
+			boundary_inliers2 -> indices = boundary_inliers -> indices;
+
 			//m3: svm-based filtering for single points;
 			if(extract_training_data_point_)
 			{
@@ -1045,6 +1051,7 @@ namespace golfcar_pcl{
 						fprintf(fp_, "%d\n", tentative_value);
 					}
 
+					/*
 					int vector_length = 8;
 					double point_feature_vector[vector_length];
 					point_feature_vector[0]= curvature_tmp;
@@ -1055,9 +1062,17 @@ namespace golfcar_pcl{
 					point_feature_vector[5]= z_var_tmp;
 					point_feature_vector[6]= max_deltZ_tmp;
 					point_feature_vector[7]= density_tmp;
+					*/
+
+					int vector_length = 5;
+					double point_feature_vector[vector_length];
+					point_feature_vector[0]= curvature_tmp;
+					point_feature_vector[1]= angle_tmp;
+					point_feature_vector[2]= z_var_tmp;
+					point_feature_vector[3]= max_deltZ_tmp;
+					point_feature_vector[4]= density_tmp;
 
 					int point_type = point_classifier_->classify_objects(point_feature_vector, vector_length);
-
 
 					//when extract points data, we need to visualize all the potential points in "boundary_pts";
 					if(extract_training_data_point_) point_type = 0;
@@ -1088,9 +1103,9 @@ namespace golfcar_pcl{
 			boundary_inliers -> indices = boundary_inliers_tmp->indices;
 
 
-			//to generate classification result with only curvature, for comparision purposes;
-			pcl::PointIndices::Ptr inliers2 (new pcl::PointIndices);
-			pcl::PointIndices::Ptr boundary_inliers2 (new pcl::PointIndices);
+
+
+			/*
 			inliers2->indices.push_back(pointIdxNKNSearch[0]);
 			for(unsigned int pt=0; pt<inliers2->indices.size(); pt++)
 			{
@@ -1135,6 +1150,7 @@ namespace golfcar_pcl{
 					 }
 				}
 			}
+			*/
 
 			RollingPointCloud raw_pcl_processed;
 			raw_pcl_processed = raw_pcl_buffers_[raw_pcl_buffers_.size()-2];
