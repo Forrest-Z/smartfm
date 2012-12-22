@@ -135,6 +135,7 @@ int main(int argc, char **argcv)
 
 	GraphParticleFilter graphPF(scores_array, &slam, &pc_vec, 100, skip_reading);
 	sensor_msgs::PointCloud overall_pts;
+	double opt_error = 0;
 	for(int i=skip_reading; i<size; i+=skip_reading)
 	{
 		cout<<"**************************"<<endl;
@@ -235,17 +236,32 @@ int main(int argc, char **argcv)
 				isam::Pose2d_Pose2d_Factor* constraint = new isam::Pose2d_Pose2d_Factor(pose_nodes[i/skip_reading], pose_nodes[j/skip_reading], odometry, noise);
 				slam.add_factor(constraint);
 				int iteration = slam.batch_optimization();
-				double opt_error = slam._opt.opt_error_;
+				double diff_opt_error = 0;
+				if(opt_error == 0)
+				{
+					opt_error = slam._opt.opt_error_;
+				}
+				else
+				{
+					diff_opt_error = opt_error - slam._opt.opt_error_;
+
+				}
+
 				//slam._opt.
 				//seems to be simple addition, but improve things tremendously
-				cout<<"Opt error: "<<opt_error<<endl;
-				if(opt_error > 5.0)
+				cout<<"Pre Opt error: "<<opt_error<<" Now Opt error "<<slam._opt.opt_error_<<" diff: "<<diff_opt_error<<endl;
+
+				if(fabs(diff_opt_error) > 1.0)
 				{
 					cout<<"Removing factor"<<endl;
 					slam.remove_factor(constraint);
 					slam.update();
 					slam.batch_optimization();
 					cout<<"Batch optimized again"<<endl;
+				}
+				else
+				{
+					opt_error = slam._opt.opt_error_;
 				}
 			}
 		}

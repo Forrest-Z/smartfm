@@ -5,7 +5,7 @@
  *      Author: demian
  */
 
-#include "RasterMapPCL.h"
+//#include "RasterMapPCL.h"
 #include <nav_msgs/Odometry.h>
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
@@ -17,12 +17,15 @@
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 
+
 #include <fmutil/fm_math.h>
+
+using namespace std;
 
 ros::Publisher *odo_pub_, *src_pc_pub_, *dst_pc_pub_;
 tf::TransformBroadcaster *tf_broadcaster_;
 tf::StampedTransform odo_transform_;
-RasterMapPCL *csm_;
+//RasterMapPCL *csm_;
 ofstream *myfile_;
 bool initialized=false;
 int pcCb_count=0;
@@ -52,7 +55,7 @@ void pcCallback(const sensor_msgs::PointCloudConstPtr& pc_ptr, const nav_msgs::O
 		btQuaternion btq(orientation.x, orientation.y, orientation.z, orientation.w);
 		btMatrix3x3(btq).getEulerYPR(yaw, pitch, roll);
 
-		*myfile_ << odom->pose.pose.position.x << " " << odom->pose.pose.position.y <<" "<< yaw <<" ";
+		*myfile_ << odom->pose.pose.position.x << " " << odom->pose.pose.position.y <<" " << odom->pose.pose.position.z << " " << roll <<" " << pitch<< " "<<yaw<<" ";
 		*myfile_ << pc.header.stamp.toNSec()<<" "<<pc.points.size();
 		for(size_t i=0; i<pc.points.size(); i++)
 			*myfile_<<" "<<pc.points[i].x<<" "<<pc.points[i].y;
@@ -154,8 +157,8 @@ int main(int argc, char** argv)
     ros::Publisher dst_pc_pub = nh.advertise<sensor_msgs::PointCloud>("dst_pc", 10);
     dst_pc_pub_ = &dst_pc_pub;
 
-    RasterMapPCL csm;
-    csm_ = &csm;
+//    RasterMapPCL csm;
+//    csm_ = &csm;
     tf::TransformBroadcaster tf_broadcast;
     tf_broadcaster_ = &tf_broadcast;
     odo_transform_.setRotation(tf::Quaternion::getIdentity());

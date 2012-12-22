@@ -5,6 +5,7 @@
  *      Author: demian
  */
 #include <geometry_msgs/Point32.h>
+#include <geometry_msgs/Pose.h>
 #include <sensor_msgs/PointCloud.h>
 #include <fstream>
 
@@ -35,6 +36,43 @@ bool readScores(istream &in, vector<double>& scores)            // read point (f
 	}
 	//cout<<endl;
 	//cout<<"First score:"<<scores[0]<< " last score:"<<scores[scores.size()]<<endl;
+	return true;
+}
+
+bool readPts(istream &in, sensor_msgs::PointCloud &p, geometry_msgs::Pose &pose)            // read point (false on EOF)
+{
+
+	uint64_t time;
+	int pc_size;
+
+	if(!(in >> pose.position.x )) return false;
+	if(!(in >> pose.position.y)) return false;
+	if(!(in >> pose.position.z)) return false;
+	if(!(in >> pose.orientation.x)) return false;
+	if(!(in >> pose.orientation.y)) return false;
+	if(!(in >> pose.orientation.z)) return false;
+	if(!(in >> time)) return false;
+	if(!(in >> pc_size)) return false;
+	p.points.clear();
+
+
+	p.points.resize(pc_size);
+
+
+	for(int i=0; i<pc_size; i++)
+	{
+		if(!(in >> p.points[i].x))
+		{
+			cout<<"Error reading pt"<<endl;
+			exit(1);
+		}
+		if(!(in >> p.points[i].y))
+		{
+			cout<<"Error reading pt"<<endl;
+			exit(2);
+		}
+	}
+
 	return true;
 }
 
@@ -86,9 +124,22 @@ bool readFrontEndFile(istream& data_in, vector<sensor_msgs::PointCloud>& pc_vec,
 	return true;
 }
 
+bool readFrontEndFile(istream& data_in, vector<sensor_msgs::PointCloud>& pc_vec, vector<geometry_msgs::Pose>& poses)
+{
+	sensor_msgs::PointCloud pc;
+	geometry_msgs::Pose pose;
+	while(readPts(data_in, pc, pose))
+	{
+		pc_vec.push_back(pc);
+		poses.push_back(pose);
+	}
+	cout<<"Successfully read "<<pc_vec.size()<<" vectors of data pts"<<endl;
+	return true;
+}
+
 bool readFrontEndFile(istream& data_in, vector<sensor_msgs::PointCloud>& pc_vec)
 {
-	vector<geometry_msgs::Point32> poses;
+	vector<geometry_msgs::Pose> poses;
 
 	return readFrontEndFile(data_in, pc_vec, poses);
 }

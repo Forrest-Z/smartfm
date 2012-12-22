@@ -44,24 +44,31 @@ set(ISAM_LIBS isam cholmod suitesparseconfig colamd amd lapack blas rt)
 #rosbuild_add_executable(RasterMap src/RasterMap.cpp ${ANN_SRC})
 #rosbuild_add_executable(RasterMapImage src/RasterMapImage.cpp ${ANN_SRC})
 #rosbuild_add_executable(RasterMapImageOpt src/RasterMapImageOpt.cpp)
-#rosbuild_add_executable(RasterMapOdom src/RasterMapOdom.cpp)
-#rosbuild_add_executable(readPtsAndMatch src/readPtsAndMatch.cpp src/dbgstream.cpp)
-rosbuild_add_executable(readScoreAndDisplay src/readScoreAndDisplay.cpp src/dbgstream.cpp)
+
+rosbuild_add_executable(readPtsAndMatch src/readPtsAndMatch.cpp src/dbgstream.cpp)
+target_link_libraries(readPtsAndMatch  ${OpenCV_LIBS})
+rosbuild_add_openmp_flags(readPtsAndMatch)
+
 #rosbuild_add_executable(renderMap src/renderMap.cpp)
+
+rosbuild_add_executable(RasterMapOdom src/RasterMapOdom.cpp)
+target_link_libraries(RasterMapOdom  ${OpenCV_LIBS})
+rosbuild_link_boost(RasterMapOdom signals)
+
+rosbuild_add_executable(readScoreAndDisplay src/readScoreAndDisplay.cpp src/dbgstream.cpp)
+target_link_libraries(readScoreAndDisplay  ${OpenCV_LIBS})
+
+
+#target_link_libraries(renderMap  ${OpenCV_LIBS})
 
 #target_link_libraries(RasterMap  ${OpenCV_LIBS})
 #target_link_libraries(RasterMapImage  ${OpenCV_LIBS})
 #target_link_libraries(RasterMapImageOpt  ${OpenCV_LIBS})
-#target_link_libraries(RasterMapOdom  ${OpenCV_LIBS})
-#target_link_libraries(readPtsAndMatch  ${OpenCV_LIBS})
-target_link_libraries(readScoreAndDisplay  ${OpenCV_LIBS})
-#target_link_libraries(renderMap  ${OpenCV_LIBS})
 
-#rosbuild_link_boost(RasterMapOdom signals)
 
 #rosbuild_add_openmp_flags(RasterMapImage)
 #rosbuild_add_openmp_flags(RasterMapImageOpt)
-#rosbuild_add_openmp_flags(readPtsAndMatch)
+
 
 #rosbuild_add_executable(isam_example src/isam_example.cpp)
 #target_link_libraries(isam_example ${ISAM_LIBS})
@@ -70,9 +77,9 @@ target_link_libraries(readScoreAndDisplay  ${OpenCV_LIBS})
 #target_link_libraries(isam_simple ${ISAM_LIBS} ${OpenCV_LIBS})
 #rosbuild_add_executable(random_test src/random_test.cpp)
 
-#rosbuild_add_executable(isam_full src/isam_full.cpp src/dbgstream.cpp)
-#target_link_libraries(isam_full ${ISAM_LIBS} ${OpenCV_LIBS})
-#rosbuild_add_openmp_flags(isam_full)
+rosbuild_add_executable(isam_full src/isam_full.cpp src/dbgstream.cpp)
+target_link_libraries(isam_full ${ISAM_LIBS} ${OpenCV_LIBS})
+rosbuild_add_openmp_flags(isam_full)
 
 #rosbuild_add_executable(cairo_test src/cairo_test.cpp)
 #target_link_libraries(cairo_test cairo)

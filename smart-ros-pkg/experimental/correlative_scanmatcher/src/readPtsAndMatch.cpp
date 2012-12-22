@@ -45,7 +45,7 @@ int main(int argc, char **argcv)
 	cv::Mat scores = cv::Mat::zeros(size, size, CV_32F);
 fmutil::Stopwatch sw;
 sw.start("matching...");
-int skip_reading = 2;
+int skip_reading = 5;
 //omp_set_num_threads(4);
 #pragma omp parallel for
 	for(int i=0; i<size; i+=skip_reading)
