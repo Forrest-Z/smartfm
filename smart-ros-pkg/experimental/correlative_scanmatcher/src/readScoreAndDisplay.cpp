@@ -11,6 +11,8 @@
 #include "RasterMapPCL.h"
 #include "ReadFileHelper.h"
 #include <isam/isam.h>
+#include "mysql_helper.h"
+
 vector<geometry_msgs::Point32> getTransformedPts(geometry_msgs::Point32 pose, vector<geometry_msgs::Point32>& pts)
 {
 	double ct = cos(pose.z), st = sin(pose.z);
@@ -56,44 +58,58 @@ int main(int argc, char **argcv)
 	vector<sensor_msgs::PointCloud> pc_vec;
 	sensor_msgs::PointCloud pc;
 	ifstream dataStreamSrc, pcStreamSrc;
-	dataStreamSrc.open(argcv[1], ios::in);// open data file
-	if (!dataStreamSrc) {
-		cerr << "Cannot open data file\n";
-		exit(1);
+
+
+	vector< vector<double> > scores_array;
+	int skip_reading = 5;
+	int size;
+	vector<geometry_msgs::Pose> poses;
+
+	if(argc > 2)
+	{
+		double vec_no;
+		readHeader(*data_in, vec_no);
+		size = vec_no;
+		dataStreamSrc.open(argcv[2], ios::in);// open data file
+		if (!dataStreamSrc) {
+			cerr << "Cannot open data file\n";
+			exit(1);
+		}
+		data_in = &dataStreamSrc;
+		uint scores_size = ceil(vec_no/skip_reading);
+		for(size_t i=0; i<scores_size; i++)
+		{
+			vector<double> scores_temp;
+			scores_temp.resize(scores_size);
+			if(!readScores(*data_in, scores_temp))
+			{
+				cout<<"Unexpected end of data at score line "<<i<<endl;
+				exit(1);
+			}
+			scores_array.push_back(scores_temp);
+		}
 	}
-	pcStreamSrc.open(argcv[2], ios::in);// open data file
+	else
+	{
+		MySQLHelper sql(skip_reading, "scanmatch_result", argcv[1]);
+		scores_array = sql.retrieve_score();
+		size = scores_array.size();
+	}
+	cout<<scores_array[0][0]<<" "<<scores_array[scores_array.size()-1][scores_array.size()-1]<<endl;
+
+	cout<<"Successfully read all the scores"<<endl;
+
+
+	pcStreamSrc.open(argcv[1], ios::in);// open data file
 	if (!pcStreamSrc) {
 		cerr << "Cannot open data file\n";
 		exit(1);
 	}
-	data_in = &dataStreamSrc;
 	pc_data_in = &pcStreamSrc;
 
-	double vec_no;
-	readHeader(*data_in, vec_no);
-	vector< vector<double> > scores_array;
-
-	int skip_reading = 2;
-	uint scores_size = ceil(vec_no/skip_reading);
-	for(size_t i=0; i<scores_size; i++)
-	{
-		vector<double> scores_temp;
-		scores_temp.resize(scores_size);
-		if(!readScores(*data_in, scores_temp))
-		{
-			cout<<"Unexpected end of data at score line "<<i<<endl;
-			exit(1);
-		}
-		scores_array.push_back(scores_temp);
-	}
-	cout<<scores_array[0][0]<<" "<<scores_array[scores_size-1][scores_size-1]<<endl;
-	cout<<"Successfully read all the scores"<<endl;
-
-	int size = vec_no;
-	vector<geometry_msgs::Point32> poses;
 	if(!readFrontEndFile(*pc_data_in, pc_vec, poses)) cout<<"Failed read front end file"<<endl;
 
-	if(size == (int)pc_vec.size())
+	if(size == (int)(pc_vec.size()/skip_reading)+1)
 		cout <<"All system green, going for matching"<<endl;
 	else
 		cout << "Failed in checking size of pc_vec and scores"<<endl;
@@ -101,7 +117,7 @@ int main(int argc, char **argcv)
 
 
 	ros::Rate rate(2);
-	for(int i=900; i<size; i+=skip_reading)
+	for(int i=900; i<size*skip_reading; i+=skip_reading)
 	{
 		RasterMapPCL rmpcl;
 		vector<geometry_msgs::Point32> combines_prior, prior_m5, prior_p5;

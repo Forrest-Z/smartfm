@@ -39,10 +39,8 @@ bool readScores(istream &in, vector<double>& scores)            // read point (f
 	return true;
 }
 
-bool readPts(istream &in, sensor_msgs::PointCloud &p, geometry_msgs::Pose &pose)            // read point (false on EOF)
+bool readPts(istream &in, sensor_msgs::PointCloud &p, geometry_msgs::Pose &pose, uint64_t &time)
 {
-
-	uint64_t time;
 	int pc_size;
 
 	if(!(in >> pose.position.x )) return false;
@@ -75,6 +73,13 @@ bool readPts(istream &in, sensor_msgs::PointCloud &p, geometry_msgs::Pose &pose)
 
 	return true;
 }
+
+bool readPts(istream &in, sensor_msgs::PointCloud &p, geometry_msgs::Pose &pose)            // read point (false on EOF)
+{
+	uint64_t time;
+	return readPts(in, p, pose, time);
+}
+
 
 bool readPts(istream &in, sensor_msgs::PointCloud &p, geometry_msgs::Point32 &pose)            // read point (false on EOF)
 {
@@ -124,17 +129,27 @@ bool readFrontEndFile(istream& data_in, vector<sensor_msgs::PointCloud>& pc_vec,
 	return true;
 }
 
-bool readFrontEndFile(istream& data_in, vector<sensor_msgs::PointCloud>& pc_vec, vector<geometry_msgs::Pose>& poses)
+bool readFrontEndFile(istream& data_in, vector<sensor_msgs::PointCloud>& pc_vec, vector<geometry_msgs::Pose>& poses, vector<uint64_t> &times)
 {
 	sensor_msgs::PointCloud pc;
 	geometry_msgs::Pose pose;
-	while(readPts(data_in, pc, pose))
+	uint64_t time;
+	while(readPts(data_in, pc, pose, time))
 	{
 		pc_vec.push_back(pc);
 		poses.push_back(pose);
+		times.push_back(time);
 	}
+	assert(pc_vec.size() == poses.size());
+	assert(pc_vec.size() == times.size());
 	cout<<"Successfully read "<<pc_vec.size()<<" vectors of data pts"<<endl;
 	return true;
+}
+
+bool readFrontEndFile(istream& data_in, vector<sensor_msgs::PointCloud>& pc_vec, vector<geometry_msgs::Pose>& poses)
+{
+	vector<uint64_t> time;
+	return readFrontEndFile(data_in, pc_vec, poses, time);
 }
 
 bool readFrontEndFile(istream& data_in, vector<sensor_msgs::PointCloud>& pc_vec)

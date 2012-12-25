@@ -39,7 +39,7 @@ public:
 		list<isam::Node*> nodes = slam_->get_nodes();
 		for(std::list<isam::Node*>::const_iterator it = nodes.begin(); it!=nodes.end(); it++) {
 			isam::Node& node = **it;
-			nodes_heading_.push_back(node.vector(isam::ESTIMATE)[2]);
+			nodes_heading_.push_back(node.vector(isam::ESTIMATE)[3]);
 		}
 		fmutil::Stopwatch sw_motion("updateMotion", true);
 		updateMotion();
@@ -284,7 +284,7 @@ private:
 		if( matching_node < 100)
 				return -1;
 
-		if( max_neighbor_score >45. && max_neighbor_node_id != -1 && max_accu > 40)
+		if( max_neighbor_score >40. && max_neighbor_node_id != -1 && max_accu > 30)
 		{
 				cout<<"close loop found at node "<<max_neighbor_node_id <<" with score "<<max_neighbor_score<<endl;
 				return max_neighbor_node_id*skip_reading_;

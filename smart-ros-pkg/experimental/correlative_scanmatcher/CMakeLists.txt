@@ -45,9 +45,20 @@ set(ISAM_LIBS isam cholmod suitesparseconfig colamd amd lapack blas rt)
 #rosbuild_add_executable(RasterMapImage src/RasterMapImage.cpp ${ANN_SRC})
 #rosbuild_add_executable(RasterMapImageOpt src/RasterMapImageOpt.cpp)
 
+INCLUDE_DIRECTORIES( "/usr/include/mysql" )
+
+rosbuild_add_executable(mysql_example src/mysql_example.cpp)
+target_link_libraries(mysql_example mysqlpp)
+
+rosbuild_add_executable(mysql_check src/mysql_check.cpp)
+target_link_libraries(mysql_check mysqlpp)
+
 rosbuild_add_executable(readPtsAndMatch src/readPtsAndMatch.cpp src/dbgstream.cpp)
-target_link_libraries(readPtsAndMatch  ${OpenCV_LIBS})
+target_link_libraries(readPtsAndMatch  ${OpenCV_LIBS} mysqlpp)
 rosbuild_add_openmp_flags(readPtsAndMatch)
+
+rosbuild_add_executable(readPtsAndMorph src/readPtsAndMorph.cpp src/dbgstream.cpp)
+target_link_libraries(readPtsAndMorph  ${OpenCV_LIBS})
 
 #rosbuild_add_executable(renderMap src/renderMap.cpp)
 
@@ -56,7 +67,7 @@ target_link_libraries(RasterMapOdom  ${OpenCV_LIBS})
 rosbuild_link_boost(RasterMapOdom signals)
 
 rosbuild_add_executable(readScoreAndDisplay src/readScoreAndDisplay.cpp src/dbgstream.cpp)
-target_link_libraries(readScoreAndDisplay  ${OpenCV_LIBS})
+target_link_libraries(readScoreAndDisplay  ${OpenCV_LIBS} mysqlpp)
 
 
 #target_link_libraries(renderMap  ${OpenCV_LIBS})
@@ -77,9 +88,9 @@ target_link_libraries(readScoreAndDisplay  ${OpenCV_LIBS})
 #target_link_libraries(isam_simple ${ISAM_LIBS} ${OpenCV_LIBS})
 #rosbuild_add_executable(random_test src/random_test.cpp)
 
-rosbuild_add_executable(isam_full src/isam_full.cpp src/dbgstream.cpp)
-target_link_libraries(isam_full ${ISAM_LIBS} ${OpenCV_LIBS})
-rosbuild_add_openmp_flags(isam_full)
+#rosbuild_add_executable(isam_full src/isam_full.cpp src/dbgstream.cpp)
+#target_link_libraries(isam_full mysqlpp ${ISAM_LIBS} ${OpenCV_LIBS})
+#rosbuild_add_openmp_flags(isam_full)
 
 #rosbuild_add_executable(cairo_test src/cairo_test.cpp)
 #target_link_libraries(cairo_test cairo)

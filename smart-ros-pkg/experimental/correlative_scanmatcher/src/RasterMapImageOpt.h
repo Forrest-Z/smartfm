@@ -79,7 +79,7 @@ public:
 		return cv::Point2f(pt.x*res_+min_pt_.x, (image_.rows - pt.y)* res_ + min_pt_.y);
 	}
 
-	inline double scorePoints(vector<cv::Point> search_pt, int offset_x, int offset_y, bool within_prior)
+	inline double scorePoints(vector<cv::Point> &search_pt, int offset_x, int offset_y, bool within_prior)
 	{
 		//fmutil::Stopwatch sw("scorePoints");
 
@@ -121,7 +121,7 @@ public:
 		return norm_score;
 	}
 	template <class T>
-	void getInputPoints(vector<T> raster_pt_input)
+	void getInputPoints(vector<T> const &raster_pt_input)
 	{
 		fmutil::Stopwatch sw;
 
@@ -199,20 +199,42 @@ public:
 		//cv::imwrite(ss.str(), image_);
 	}
 
-	template <typename T>
-	vector<T> pcl_downsample(vector<T> &query_pts, double size_x, double size_y, double size_z)
+
+	vector<cv::Point2f> pcl_downsample(vector<cv::Point2f> const &query_pts, double size_x, double size_y, double size_z)
+	{
+		vector<geometry_msgs::Point32> input_pt, output_pt;
+		vector<cv::Point2f> output_2d_pt;
+		input_pt.resize(query_pts.size());
+		for(size_t i=0; i<query_pts.size(); i++)
+		{
+			input_pt[i].x = query_pts[i].x;
+			input_pt[i].y = query_pts[i].y;
+		}
+		output_pt = pcl_downsample(input_pt, size_x, size_y, size_z);
+		output_2d_pt.resize(output_pt.size());
+		for(size_t i=0; i<output_pt.size(); i++)
+		{
+			output_2d_pt[i].x = output_pt[i].x;
+			output_2d_pt[i].y = output_pt[i].y;
+		}
+		return output_2d_pt;
+	}
+
+		vector<geometry_msgs::Point32> pcl_downsample(vector<geometry_msgs::Point32> &query_pts, double size_x, double size_y, double size_z)
 	{
 		pcl::PointCloud<pcl::PointXYZ> point_cloud;
 		point_cloud.resize(query_pts.size());
 		for(size_t i=0; i<query_pts.size(); i++)
 		{
-			pcl::PointXYZ pt; pt.x = query_pts[i].x; pt.y = query_pts[i].y;
-			point_cloud[i] = pt;
+			point_cloud[i].x = query_pts[i].x;
+			point_cloud[i].y = query_pts[i].y;
+			point_cloud[i].z = query_pts[i].z;
 		}
 
 
 
 		if(point_cloud.size()<100) return query_pts;
+		//cout<<"Inside pcl downsample: "<<point_cloud[point_cloud.size()-1].z<<endl;
 		pcl::VoxelGrid<pcl::PointXYZ> sor;
 		// always good not to use in place filtering as stated in
 		// http://www.pcl-users.org/strange-effect-of-the-downsampling-td3857829.html
@@ -229,20 +251,20 @@ public:
 		        }
 		        dbg<<endl;*/
 		point_cloud = input_msg_filtered;
-
-		vector<T> after_downsample;
+		//cout<<"After pcl downsample: "<<point_cloud[point_cloud.size()-1].z<<endl;
+		vector<geometry_msgs::Point32> after_downsample;
 		after_downsample.resize(point_cloud.size());
 		for(size_t i=0; i<point_cloud.size(); i++)
 		{
-			cv::Point2f pt; pt.x = point_cloud[i].x; pt.y = point_cloud[i].y;
-			after_downsample[i].x = pt.x;
-			after_downsample[i].y = pt.y;
+			after_downsample[i].x = point_cloud[i].x;
+			after_downsample[i].y = point_cloud[i].y;
+			after_downsample[i].z = point_cloud[i].z/4;
 		}
 		return after_downsample;
 
 	}
 
-	vector<transform_info> searchRotations(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization, int eva_top_count, bool est_cov, bool within_prior=false)
+	vector<transform_info> searchRotations(vector<cv::Point2f> const &search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info const &initialization, int eva_top_count, bool est_cov, bool within_prior=false)
 	{
 
 		//translate range is directly corresponds to number of cells in the grid
@@ -270,8 +292,8 @@ public:
 
 		//careful with downsampling. May lost matching with a single thin line
 		vector<cv::Point2f> query_pts_downsample = pcl_downsample(search_pt, translate_step/2., translate_step/2., translate_step/2.);
-		search_pt = query_pts_downsample;
-		rotated_search_pt.resize(search_pt.size());
+		//search_pt = query_pts_downsample;
+		rotated_search_pt.resize(query_pts_downsample.size());
 		sw_init.end(false);
 		sw.start("calculate");
 		int range = translate_range / res_;
@@ -286,9 +308,9 @@ public:
 		{
 
 			//rotate each point with by using the rotation center at the sensor's origin
-			for(size_t j=0; j<search_pt.size(); j++)
+			for(size_t j=0; j<query_pts_downsample.size(); j++)
 			{
-				double rot_x = search_pt[j].x, rot_y = search_pt[j].y;
+				double rot_x = query_pts_downsample[j].x, rot_y = query_pts_downsample[j].y;
 				cv::Point2f rot_pt;
 				rot_pt.x = cos_vals[i] * rot_x - sin_vals[i] * rot_y;
 				rot_pt.y = sin_vals[i] * rot_x + cos_vals[i] * rot_y;
@@ -329,7 +351,7 @@ public:
 
 	}
 
-	transform_info searchRotation(vector<cv::Point2f> search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info initialization, bool est_cov, bool within_prior=false)
+	transform_info searchRotation(vector<cv::Point2f> const &search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info const &initialization, bool est_cov, bool within_prior=false)
 	{
 
 		vector<transform_info> best_rotates = searchRotations(search_pt, translate_range, translate_step, rot_range, rot_step, initialization, 1, est_cov, within_prior);
@@ -339,7 +361,7 @@ public:
 		return best_rotate;
 	}
 
-	cv::Mat getCovariance(transform_info best_info)
+	cv::Mat getCovariance(transform_info &best_info)
 	{
 		cv::Mat x_i = cv::Mat::zeros(3,1, CV_32F);
 		cv::Mat K,u;

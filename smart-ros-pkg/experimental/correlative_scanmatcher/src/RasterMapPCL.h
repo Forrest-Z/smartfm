@@ -28,49 +28,31 @@ public:
 	{
 
 		RenderMap rm;
-		vector<geometry_msgs::Point32> pc_pts;
-		pc_pts.resize(pc.size());
-		for(size_t i=0; i<pc.size(); i++)
-		{
-			pc_pts[i].x = pc[i].x;
-			pc_pts[i].y = pc[i].y;
-		}
-		rm.drawMap(pc_pts, 0.02);
-		vector<cv::Point2f>  query_pts = rm.mapToRealPts();
 
-		vector<T> pt_proc;
-		pt_proc.resize(query_pts.size());
-
-		for(size_t i=0; i<query_pts.size(); i++)
-		{
-			pt_proc[i].x = query_pts[i].x;
-			pt_proc[i].y = query_pts[i].y;
-		}
-		rm2_.getInputPoints(pt_proc);
+		rm2_.getInputPoints(pc);
 
 		if(!verification)
 		{
-			rm_.getInputPoints(pt_proc);
-			rm3_.getInputPoints(pt_proc);
+			rm_.getInputPoints(pc);
+			rm3_.getInputPoints(pc);
 
 		}
 	}
 
 	transform_info getBestTf(sensor_msgs::PointCloud &pc)
 	{
-		RenderMap rm;
-		rm.drawMap(pc.points, 0.02);
-		vector<cv::Point2f>  query_pts = rm.mapToRealPts();
+		/*RenderMap rm;
+		rm.drawMap(pc.points, 0.03);
+		vector<cv::Point2f>  query_pts = rm.mapToRealPts();*/
 
+		vector<cv::Point2f>  query_pts;
+		query_pts.resize(pc.points.size());
 
-		/*for(size_t i=0; i<pc.points.size(); i++)
+		for(size_t i=0; i<pc.points.size(); i++)
 		{
-			cv::Point2f pt;
-			pt.x = pc.points[i].x;
-			pt.y = pc.points[i].y;
-			query_pts.push_back(pt);
-			cout<<pt.x<<" "<<pt.y<<endl;
-		}*/
+			query_pts[i].x =  pc.points[i].x;
+			query_pts[i].y =  pc.points[i].y;
+		}
 		return findBestTf(query_pts);
 	}
 
@@ -186,15 +168,17 @@ private:
 		sw_sub.end(show_time);
 		sw_sub.start("2");
 
+		best_sec_pass.resize(best_first_pass_a.size());
 		for(size_t i=0; i<best_first_pass_a.size(); i++)
 		{
 			dbg<<i<<": "<<best_first_pass_a[i].translation_2d<<" "<<best_first_pass_a[i].rotation<<" "<<best_first_pass_a[i].score<<endl;
 			vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts, 0.5, 0.25, M_PI/20, M_PI/60., best_first_pass_a[i], -1, false);
-			best_sec_pass.insert(best_sec_pass.end(),  best_tf_temp.begin(), best_tf_temp.end());
+			sort(best_tf_temp.begin(), best_tf_temp.end(), sortScore);
+			//was using insert to retain all the scores but crash on bad alloc. Too much elements?
+			//since we only need the best, the following is sufficient
+			best_sec_pass[i] = best_tf_temp[0];
 		}
 		sort(best_sec_pass.begin(), best_sec_pass.end(), sortScore);
-
-		size_t sec_pass_idx = 0;
 
 		best_sec_pass.resize(1);
 
