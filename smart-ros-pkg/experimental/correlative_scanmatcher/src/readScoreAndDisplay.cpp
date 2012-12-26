@@ -60,8 +60,8 @@ int main(int argc, char **argcv)
 	ifstream dataStreamSrc, pcStreamSrc;
 
 
-	vector< vector<double> > scores_array;
-	int skip_reading = 5;
+	vector< vector<double> > scores_array, rotations_array;
+	int skip_reading = 1;
 	int size;
 	vector<geometry_msgs::Pose> poses;
 
@@ -93,7 +93,9 @@ int main(int argc, char **argcv)
 	{
 		MySQLHelper sql(skip_reading, "scanmatch_result", argcv[1]);
 		scores_array = sql.retrieve_score();
+		rotations_array = sql.retrieve_rotation();
 		size = scores_array.size();
+		assert(size == rotations_array.size());
 	}
 	cout<<scores_array[0][0]<<" "<<scores_array[scores_array.size()-1][scores_array.size()-1]<<endl;
 
@@ -109,7 +111,7 @@ int main(int argc, char **argcv)
 
 	if(!readFrontEndFile(*pc_data_in, pc_vec, poses)) cout<<"Failed read front end file"<<endl;
 
-	if(size == (int)(pc_vec.size()/skip_reading)+1)
+	if(size == ceil(pc_vec.size()/(double)skip_reading))
 		cout <<"All system green, going for matching"<<endl;
 	else
 		cout << "Failed in checking size of pc_vec and scores"<<endl;
@@ -117,7 +119,7 @@ int main(int argc, char **argcv)
 
 
 	ros::Rate rate(2);
-	for(int i=900; i<size*skip_reading; i+=skip_reading)
+	for(int i=1101; i<size*skip_reading; i+=skip_reading)
 	{
 		RasterMapPCL rmpcl;
 		vector<geometry_msgs::Point32> combines_prior, prior_m5, prior_p5;
@@ -138,7 +140,7 @@ int main(int argc, char **argcv)
 
 			//cout<<i<<":"<<j<<"      \xd"<<flush;
 
-			if(scores_array[i/skip_reading][j/skip_reading]  > 55. || overwrite)
+			if(scores_array[i/skip_reading][j/skip_reading]  > 40. || overwrite)
 			{
 				//putting rmpcl_ver declaration in line with the
 				//rmpcl causes problem where getScore function produce inconsistent result, strange
@@ -180,7 +182,7 @@ int main(int argc, char **argcv)
 
 				//cout<<" cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
 				//cout<<best_tf.translation_2d<<" "<< best_tf.rotation/M_PI*180<<endl;
-				cout<<i<<" "<<j<<" "<<best_tf.translation_2d.x<<" "<<best_tf.translation_2d.y<<" "<<best_tf.rotation<<" ";
+				cout<<i<<" "<<j<<" "<<best_tf.translation_2d.x<<" "<<best_tf.translation_2d.y<<" "<<best_tf.rotation<<"=="<<rotations_array[i/skip_reading][j/skip_reading]<<" ";
 				cout<<cov.at<float>(0,0)<<" "<<cov.at<float>(0,1)<<" "<<cov.at<float>(0,2)<<" "<<cov.at<float>(1, 1)<<" "<<cov.at<float>(1,2)<<" "<<cov.at<float>(2,2);
 				cout<<" ";
 				cin >> enter_char;

@@ -23,8 +23,8 @@ struct particle
 class GraphParticleFilter
 {
 public:
-	GraphParticleFilter(vector< vector<double> > scores_array, isam::Slam *slam, vector<sensor_msgs::PointCloud> *pc_vec, int particle_no, int skip_reading):
-		slam_(slam), pc_vec_(pc_vec), scores_(scores_array), skip_reading_(skip_reading)
+	GraphParticleFilter(vector< vector<double> > &scores_array, vector<vector<double> > &rotations, isam::Slam *slam, vector<sensor_msgs::PointCloud> *pc_vec, int particle_no, int skip_reading):
+		slam_(slam), pc_vec_(pc_vec), scores_(scores_array), rotations_(rotations), skip_reading_(skip_reading)
 
 	{
 		//initialize particles with node_idx as -1
@@ -63,6 +63,7 @@ private:
 	vector<particle> particles_;
 	//using this for fast development
 	vector< vector<double> > scores_;
+	vector<vector<double> > rotations_;
 	vector<double> nodes_heading_;
 	int skip_reading_;
 
@@ -73,7 +74,7 @@ private:
 	typedef boost::variate_generator<ENG&,NORM_DIST> NORM_GEN;    // Variate generator
 	//typedef boost::uni
 	ENG  eng;
-
+	map<int, double> nodes_match_heading_;
 	void updateMotion()
 	{
 		//Propagate the particles in a meaningful way
@@ -84,7 +85,10 @@ private:
 
 		for(size_t i=0; i<particles_.size(); i++)
 		{
-			double ang_dist = fmutil::angDist(nodes_heading_[nodes_heading_.size()-1], nodes_heading_[(int)particles_[i].node_idx]);
+			double ang_dist = M_PI;
+			//use matched result instead for more robust heading value. If no match found, default to same heading
+			if(nodes_match_heading_.find((int)particles_[i].node_idx)!=nodes_match_heading_.end())
+			  ang_dist = nodes_match_heading_[(int)particles_[i].node_idx];//fmutil::angDist(nodes_heading_[nodes_heading_.size()-1], nodes_heading_[(int)particles_[i].node_idx]);
 			ang_dist = fabs(ang_dist/M_PI); //scaling to 0-1, where a near 0 dist means 2 nodes having the same heading and otherwise
 			ang_dist = (1- ang_dist)*2 -1;// scaling to -1 to 1, where -1 means the nodes having opposite direction, and 1 means same heading hence just inc/dec as the symbols
 
@@ -131,6 +135,7 @@ private:
 	}
 	int updateWeightAndSampling(int matching_node)
 	{
+		cout<<"updateWeightAndSampling: "<<matching_node<<endl;
 		//get likelihood from the front end
 		//check first if the node is already obtained before to reduce
 		//computation
@@ -149,7 +154,7 @@ private:
 			++unique_nodes[round(particles_[i].node_idx)];
 
 		//fill in the unique nodes with locally cached score
-		map<int,double> local_cached_score;
+		map<int,double> local_cached_score, local_cached_weight;
 		//local_cached_score.size(score_cache.size());
 		cout<<"Unique nodes size="<<unique_nodes.size()<<endl;
 		vector<int> unique_nodes_array;
@@ -162,6 +167,7 @@ private:
 
 		fmutil::Stopwatch sw2("sw2");
 
+		nodes_match_heading_.clear();
 //#pragma omp parallel for
 		for(size_t i=0; i<unique_nodes_array.size(); i++)
 		{
@@ -170,18 +176,29 @@ private:
 
 			//reminder: pc_vec_ has the complete data
 
-			/*transform_info best_tf = rmpcl.getBestTf((*pc_vec_)[unique_nodes_array[i]*skip_reading_]);
+/*			transform_info best_tf = rmpcl.getBestTf((*pc_vec_)[unique_nodes_array[i]*skip_reading_]);
+#pragma omp critical
+			nodes_match_heading_[unique_nodes_array[i]] = best_tf.rotation;
 			RasterMapPCL rmpcl_ver;
 			rmpcl_ver.setInputPts(best_tf.real_pts, true);
 			double temp_score = rmpcl_ver.getScore((*pc_vec_)[matching_node].points);
 			score = sqrt( temp_score * best_tf.score);
 			*/score = scores_[matching_node/skip_reading_][unique_nodes_array[i]];
+			nodes_match_heading_[unique_nodes_array[i]] = rotations_[matching_node/skip_reading_][unique_nodes_array[i]];
+			if(score == 0.01) cout<<"Error, unexpected matching of nodes being evaluated: "
+						<<matching_node/skip_reading_<<":"<<unique_nodes_array[i]<<endl;
 			//cout<<matching_node/skip_reading_<<"-"<<unique_nodes_array[i]<<":"<<score<<"->"<<score2<<" ";
 			//penalize nearby particles
-			if(abs(unique_nodes_array[i] - matching_node/skip_reading_) < 20)
-				score /= 5;
+			//todo:
+			//reduce penalize and look for peak to account for multiple possible close loop
+			//find out why there is a significant drift in the raw sensor data
+			double dist = fabs(unique_nodes_array[i] - matching_node/skip_reading_);// < 10)
+			double weight_score;
+			if((int)dist == 1) weight_score = score/5;
+			else weight_score = score - 40*exp(-dist*0.07);
+			if(weight_score < 0) weight_score = 0;
 			local_cached_score[unique_nodes_array[i]] = score;
-
+			local_cached_weight[unique_nodes_array[i]] =weight_score;
 		}
 		sw2.end();
 		//cout<<endl;
@@ -191,7 +208,7 @@ private:
 		for(size_t i=0; i<particles_.size(); i++)
 		{
 			//cout<<round(particles_[i].node_idx)<<endl;
-			weight_prob[i] = local_cached_score[round(particles_[i].node_idx)];
+			weight_prob[i] = local_cached_weight[round(particles_[i].node_idx)];
 		}
 
 		vector<particle> new_particles;
@@ -255,7 +272,7 @@ private:
 				max_accu = i->second;
 				max_node_id = i ->first;
 			}
-			cout << i->first << ':' << i->second<< "("<<local_cached_score[i->first]<<") ";
+			cout << i->first << ':' << i->second<< "("<<local_cached_score[i->first]<<", "<<local_cached_weight[i->first]<<") ";
 		}
 		cout<<endl;
 
@@ -284,7 +301,7 @@ private:
 		if( matching_node < 100)
 				return -1;
 
-		if( max_neighbor_score >40. && max_neighbor_node_id != -1 && max_accu > 30)
+		if( max_neighbor_score >40. && max_neighbor_node_id != -1 && max_accu > 20)
 		{
 				cout<<"close loop found at node "<<max_neighbor_node_id <<" with score "<<max_neighbor_score<<endl;
 				return max_neighbor_node_id*skip_reading_;

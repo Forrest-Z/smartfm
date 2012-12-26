@@ -92,8 +92,8 @@ int main(int argc, char **argcv)
 	ifstream dataStreamSrc, pcStreamSrc;
 
 
-	vector< vector<double> > scores_array;
-	int skip_reading = 10;
+	vector< vector<double> > scores_array, rotations_array;
+	int skip_reading = 1;
 	int size;
 
 	if(argc > 2)
@@ -125,9 +125,12 @@ int main(int argc, char **argcv)
 	{
 		MySQLHelper sql(skip_reading, "scanmatch_result", argcv[1]);
 		scores_array = sql.retrieve_score();
+		rotations_array = sql.retrieve_rotation();
 		size = scores_array.size();
+		assert(scores_array.size() == rotations_array.size());
 	}
 	cout<<scores_array[0][0]<<" "<<scores_array[scores_array.size()-1][scores_array.size()-1]<<endl;
+	cout<<rotations_array[0][0]<<" "<<rotations_array[scores_array.size()-1][scores_array.size()-1]<<endl;
 	cout<<"Successfully read all the scores"<<endl;
 
 	pcStreamSrc.open(argcv[1], ios::in);// open data file
@@ -139,7 +142,7 @@ int main(int argc, char **argcv)
 	vector<geometry_msgs::Pose> poses;
 	if(!readFrontEndFile(*pc_data_in, pc_vec, poses)) cout<<"Failed read front end file"<<endl;
 
-	if(size == (int)(pc_vec.size()/skip_reading)+1)
+	if(size == ceil(pc_vec.size()/(double)skip_reading))
 		cout <<"All system green, going for matching"<<endl;
 	else
 		cout << "Failed in checking size of pc_vec and scores"<<endl;
@@ -147,7 +150,7 @@ int main(int argc, char **argcv)
 
 	// instance of the main class that manages and optimizes the pose graph
 	isam::Slam slam;
-
+	slam._prop.max_iterations = 250;
 	// locally remember poses
 	vector<isam::Pose3d_Node*> pose_nodes;
 
@@ -179,9 +182,11 @@ int main(int argc, char **argcv)
 
 	ros::Rate rate(2);
 
-	GraphParticleFilter graphPF(scores_array, &slam, &pc_vec, 200, skip_reading);
+	GraphParticleFilter graphPF(scores_array, rotations_array, &slam, &pc_vec, 200, skip_reading);
 	sensor_msgs::PointCloud overall_pts;
 	double opt_error = 0;
+	isam::Pose3d_Pose3d_Factor *previous_constraint, *current_constraint;
+	bool previous_cl= false, current_cl= false;
 	for(int i=skip_reading; i<size*skip_reading; i+=skip_reading)
 	{
 		cout<<"**************************"<<endl;
@@ -205,6 +210,7 @@ int main(int argc, char **argcv)
 		sw_cl.end();
 
 		fmutil::Stopwatch sw_foundcl("found_cl", true);
+
 		if(cl_node_idx != -1)
 		{
 			fmutil::Stopwatch sw_found_cl_a("found_cl_a");
@@ -270,6 +276,7 @@ int main(int argc, char **argcv)
 			isam::Noise noise = isam::Information(eigen_noise);
 			isam::Pose3d_Pose3d_Factor* constraint = new isam::Pose3d_Pose3d_Factor(pose_nodes[i/skip_reading], pose_nodes[j/skip_reading], odometry, noise3);
 			slam.add_factor(constraint);
+			current_constraint = constraint;
 			slam.batch_optimization();
 			double diff_opt_error = 0;
 			diff_opt_error = opt_error - slam._opt.opt_error_;
@@ -278,32 +285,56 @@ int main(int argc, char **argcv)
 			//seems to be simple addition, but improve things tremendously
 			cout<<"Pre Opt error: "<<opt_error<<" Now Opt error "<<slam._opt.opt_error_<<" diff: "<<diff_opt_error<<endl;
 
-			string s;
-			getline(cin, s);
-			if(s.size() > 0)
+			if(fabs(diff_opt_error) > 5.0)
 			{
-				if(s[0] == 'x') return 0;
-				if(s[0] == 'n')//fabs(diff_opt_error) > 5.0)
-				{
-					cout<<"Removing factor"<<endl;
-					slam.remove_factor(constraint);
-					slam.update();
-					slam.batch_optimization();
-					cout<<"Batch optimized again"<<endl;
-				}
-				else
-				{
-					opt_error = slam._opt.opt_error_;
-				}
+				cout<<"Removing factor"<<endl;
+				slam.remove_factor(constraint);
+				slam.update();
+				slam.batch_optimization();
+				cout<<"Batch optimized again"<<endl;
+				current_cl = false;
 			}
+			else
+			{
+				current_cl = true;
 
-
+			}
 		}
+		else
+		{
+			current_cl = false;
+		}
+
+		//check if 2 continuous close loop is found, if it is not, remove the previous close loop
+		if(previous_cl)
+		{
+			if(!current_cl)
+			{
+				cout<<"Close loop not continuous, removing previous constraint"<<endl;
+				slam.remove_factor(previous_constraint);
+				slam.update();
+				previous_cl = false;
+			}
+		}
+
+		if(current_cl)
+		{
+			cout<<"Storing current close loop for consistency check in the next iteration"<<endl;
+			previous_constraint = current_constraint;
+			previous_cl = true;
+		}
+		else
+		{
+			previous_cl = false;
+		}
+
 		sw_foundcl.end();
 
 		fmutil::Stopwatch sw_opt("optimization", true);
 		// optimize the graph
 		slam.batch_optimization();
+		//moving the error value outside of the optimization to ensure whatever last optimized error is recorded
+		opt_error = slam._opt.opt_error_;
 		sw_opt.end();
 
 		//output and downsampling occupy  when there is no close loop found

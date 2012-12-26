@@ -60,7 +60,8 @@ void pcCallback(const sensor_msgs::PointCloudConstPtr& pc_ptr, const nav_msgs::O
 		for(size_t i=0; i<pc.points.size(); i++)
 			*myfile_<<" "<<pc.points[i].x<<" "<<pc.points[i].y;
 		*myfile_ <<endl;
-		next_write_pose_ += 1.0;
+		next_write_pose_ += 5.0;
+		src_pc_pub_->publish(pc);
 		cout<<odometer_<<" write \xd"<<flush;
 	}
 	cout<<flush;

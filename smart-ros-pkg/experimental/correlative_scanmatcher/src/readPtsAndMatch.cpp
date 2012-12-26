@@ -45,14 +45,14 @@ int main(int argc, char **argcv)
 	cv::Mat scores = cv::Mat::zeros(size, size, CV_32F);
 	fmutil::Stopwatch sw;
 	sw.start("matching...");
-	int skip_reading = 5;
+	int skip_reading = 1;
 
 	MySQLHelper sql(skip_reading, "scanmatch_result", argcv[1]);
 	sql.create_2dtable(size);
 	cout<<"pc_vec.size() "<<size<<endl;
-	omp_set_num_threads(5);
+	//omp_set_num_threads(5);
 #pragma omp parallel for
-	for(int i=0; i<size; i+=skip_reading)
+	for(int i=1230; i<size; i+=skip_reading)
 	{
 		double first_score = -1;
 		#pragma omp critical
@@ -62,13 +62,14 @@ int main(int argc, char **argcv)
 			RasterMapPCL rmpcl;
 			rmpcl.setInputPts(pc_vec[i].points);
 			cout<<"Matching node "<<i<<endl;
-			vector<double> score_row;
+			vector<double> score_row, rotation_row;
 			//score_row.resize(size/skip_reading);
 			for(int j=0; j<size; j+=skip_reading)
 			{
 				if(j>i) 
 				{
 					score_row.push_back(0.01);
+					rotation_row.push_back(0.01);
 					continue;
 				}
 				//if(abs(j-i)<5) continue;
@@ -83,7 +84,7 @@ int main(int argc, char **argcv)
 
 
 				score_row.push_back(ver_score);
-
+				rotation_row.push_back(best_tf.rotation);
 				/*
 			string s;
 
@@ -136,7 +137,10 @@ int main(int argc, char **argcv)
 			cout<<score_row[k]<<" ";
 		cout<<endl;*/
 #pragma omp critical
-			sql.update_data(score_row, i);
+			{
+				sql.update_data(score_row, i);
+				sql.update_rotation(rotation_row, i);
+			}
 		}
 	}
 	sw.end();

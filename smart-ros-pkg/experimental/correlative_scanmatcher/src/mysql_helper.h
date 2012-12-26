@@ -1,6 +1,7 @@
 #include <mysql++/mysql++.h>
 #include <iostream>
 #include <iomanip>
+#include <math.h>
 
 using namespace std;
 
@@ -23,23 +24,28 @@ public:
 		connect_db(database);
 	}
 
-
 	void create_2dtable(int size)
+	{
+		create_2dtable(size, table_name_);
+		//just to make sure score rotation is created
+		table_size_ = -1;
+		create_2dtable(size, table_name_+"rotation");
+	}
+
+	void create_2dtable(int size, string name)
 	{
 		if(table_size_!=-1)
 		{
-			cout<<"Table found, not going to create one"<<endl;
+			cout<<"Table found, not going to create score table"<<endl;
 			return;
 		}
 
-
-		string name = table_name_;
 		//conn_.query("drop table "+name).execute();
 
 		//mysql has a hard limit on 4096 columns, got to get away around it
 		//practically, it cannot contain more than 400 in this case
 
-		table_size_  = (int)(size/skip_reading_) +1;
+		table_size_  = ceil(size/(double)skip_reading_);
 		int table_count = 0;
 		int fields_now = 0;
 		while(fields_now < table_size_)
@@ -75,6 +81,16 @@ public:
 
 	void update_data(vector<double> data, int node_id)
 	{
+		update_data(data, node_id, table_name_);
+
+	}
+
+	void update_rotation(vector<double> data, int node_id)
+	{
+		update_data(data, node_id, table_name_+"rotation");
+	}
+	void update_data(vector<double> &data, int node_id, string table_name)
+	{
 
 
 		if(data.size() != (size_t)table_size_)
@@ -87,7 +103,7 @@ public:
 		while(fields_now < table_size_)
 		{
 			stringstream update_ss;
-			update_ss<<"update "<<table_name_<<"_"<<table_count<<" set ";
+			update_ss<<"update "<<table_name<<"_"<<table_count<<" set ";
 			int subtable_total = max_fields_per_table_;
 			if(table_size_ - fields_now < max_fields_per_table_) subtable_total = table_size_ - fields_now;
 			for(int j=0; j<subtable_total; j++)
@@ -96,7 +112,7 @@ public:
 				if(j==0) first_word = "node_";
 				update_ss<<first_word<<(j+fields_now)*skip_reading_<<"="<<data[j+fields_now];
 			}
-			update_ss<< " where "<<table_name_<<"_"<<table_count<<".id ="<<node_id;
+			update_ss<< " where "<<table_name<<"_"<<table_count<<".id ="<<node_id;
 			mysqlpp::Query update_query = conn_.query(update_ss.str());
 			if(!update_query.execute())
 				cout<<"Update data failed at fields "<<fields_now<<": "<<update_query.error()<<endl;
@@ -140,13 +156,22 @@ public:
 	}
 	vector<vector<double> > retrieve_score()
 	{
+		return retrieve_2d_data(table_name_);
+	}
+
+	vector<vector<double> > retrieve_rotation()
+	{
+		return retrieve_2d_data(table_name_+"rotation");
+	}
+	vector<vector<double> > retrieve_2d_data(string table_name)
+	{
 
 		vector<vector<vector<double> > > scores;
 		int table_count = int(table_size_/max_fields_per_table_)+1;
 		for(int i=0; i<table_count; i++)
 		{
 			stringstream retrieve_query;
-			retrieve_query<<"select * from "<<table_name_<<"_"<<i;
+			retrieve_query<<"select * from "<<table_name<<"_"<<i;
 			mysqlpp::Query query = conn_.query(retrieve_query.str());
 			vector<vector<double> > score_table;
 			if(mysqlpp::StoreQueryResult res = query.store())

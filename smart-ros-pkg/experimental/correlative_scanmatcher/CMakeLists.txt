@@ -88,9 +88,9 @@ target_link_libraries(readScoreAndDisplay  ${OpenCV_LIBS} mysqlpp)
 #target_link_libraries(isam_simple ${ISAM_LIBS} ${OpenCV_LIBS})
 #rosbuild_add_executable(random_test src/random_test.cpp)
 
-#rosbuild_add_executable(isam_full src/isam_full.cpp src/dbgstream.cpp)
-#target_link_libraries(isam_full mysqlpp ${ISAM_LIBS} ${OpenCV_LIBS})
-#rosbuild_add_openmp_flags(isam_full)
+rosbuild_add_executable(isam_full src/isam_full.cpp src/dbgstream.cpp)
+target_link_libraries(isam_full mysqlpp ${ISAM_LIBS} ${OpenCV_LIBS})
+rosbuild_add_openmp_flags(isam_full)
 
 #rosbuild_add_executable(cairo_test src/cairo_test.cpp)
 #target_link_libraries(cairo_test cairo)
