@@ -22,22 +22,35 @@
 
 int main(int argc, char **argcv)
 {
-	istream*        data_in         = NULL;         // input for data points
-	ifstream dataStreamSrc, dataStreamDst;
-	dataStreamSrc.open(argcv[1], ios::in);// open data file
-	if (!dataStreamSrc) {
-		cerr << "Cannot open data file\n";
-		exit(1);
+
+
+	vector<string> input_files;
+	vector<vector<sensor_msgs::PointCloud> > pc_vecs;
+	for(int i=0; i<3; i++)
+	{
+		stringstream ss;
+		ss<<argcv[1]<<"_"<<i;
+		istream*        data_in         = NULL;         // input for data points
+		ifstream dataStreamSrc;
+		cout<<"Opening "<<ss.str()<<endl;
+		dataStreamSrc.open(ss.str().c_str(), ios::in);// open data file
+		if (!dataStreamSrc) {
+			cerr << "Cannot open data file\n";
+			exit(1);
+		}
+		data_in = &dataStreamSrc;
+
+		vector<sensor_msgs::PointCloud> pc_vec;
+		if(!readFrontEndFile(*data_in, pc_vec)) cout<<"Failed read front end file"<<endl;
+		pc_vecs.push_back(pc_vec);
 	}
-	data_in = &dataStreamSrc;
-
-	vector<sensor_msgs::PointCloud> pc_vec;
-	if(!readFrontEndFile(*data_in, pc_vec)) cout<<"Failed read front end file"<<endl;
+	assert(pc_vecs[0].size() == pc_vecs[1].size());
+	assert(pc_vecs[0].size() == pc_vecs[2].size());
 
 
 
-	int size = pc_vec.size();
-	cv::Mat scores = cv::Mat::zeros(size, size, CV_32F);
+	int size = pc_vecs[0].size();
+
 	fmutil::Stopwatch sw;
 	sw.start("matching...");
 	int skip_reading = 2;
@@ -45,7 +58,7 @@ int main(int argc, char **argcv)
 	MySQLHelper sql(skip_reading, "scanmatch_result", argcv[1]);
 	sql.create_2dtable(size);
 	cout<<"pc_vec.size() "<<size<<endl;
-	omp_set_num_threads(5);
+	//omp_set_num_threads(5);
 #pragma omp parallel for
 	for(int i=0; i<size; i+=skip_reading)
 	{
@@ -55,7 +68,9 @@ int main(int argc, char **argcv)
 		if(first_score == -1)
 		{
 			RasterMapPCL rmpcl;
-			rmpcl.setInputPts(pc_vec[i].points);
+			vector<sensor_msgs::PointCloud> pc_vecs_3;
+			for(int j=0; j<3; j++) pc_vecs_3.push_back(pc_vecs[j][i]);
+			rmpcl.setInputPts(pc_vecs_3);
 			cout<<"Matching node "<<i<<endl;
 			vector<double> score_row, rotation_row;
 			//score_row.resize(size/skip_reading);
@@ -71,10 +86,12 @@ int main(int argc, char **argcv)
 				//cout<<i<<":"<<j<<"      \xd"<<flush;
 
 				transform_info best_tf;
-				best_tf = rmpcl.getBestTf(pc_vec[j]);
+				vector<sensor_msgs::PointCloud> pc_vecs_3;
+				for(int k=0; k<3; k++) pc_vecs_3.push_back(pc_vecs[k][j]);
+				best_tf = rmpcl.getBestTf(pc_vecs_3);
 				RasterMapPCL rmpcl_ver;
 				rmpcl_ver.setInputPts(best_tf.real_pts, true);
-				double temp_score = rmpcl_ver.getScore(pc_vec[i].points);
+				double temp_score = rmpcl_ver.getScore(pc_vecs_3[1].points);
 				double ver_score = sqrt( temp_score * best_tf.score);
 
 

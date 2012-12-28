@@ -36,7 +36,7 @@ public:
 		}
 		return real_pts;
 	}
-	void drawMap(vector<geometry_msgs::Point32> raster_pt, double res)
+	void drawMap(vector<geometry_msgs::Point32> &raster_pt, double res)
 	{
 		fmutil::Stopwatch sw;
 		res_ = res;

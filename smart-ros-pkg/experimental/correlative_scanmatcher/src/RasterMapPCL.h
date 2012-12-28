@@ -22,6 +22,12 @@ public:
 	};
 
 
+	void setInputPts(vector<sensor_msgs::PointCloud> &pcs)
+	{
+		rm_.getInputPoints(pcs[0].points);
+		rm2_.getInputPoints(pcs[1].points);
+		rm3_.getInputPoints(pcs[2].points);
+	}
 	template <class T>
 	void setInputPts(vector<T> &pc, bool verification=false)
 	{
@@ -38,6 +44,23 @@ public:
 		}
 	}
 
+	transform_info getBestTf(vector<sensor_msgs::PointCloud> &pcs)
+	{
+		vector<vector<cv::Point2f> >  query_pts;
+		for(size_t i=0; i<pcs.size(); i++)
+		{
+			vector<cv::Point2f> query_pt;
+			query_pt.resize(pcs[i].points.size());
+
+			for(size_t j=0; j<pcs[i].points.size(); j++)
+			{
+				query_pt[j].x =  pcs[i].points[j].x;
+				query_pt[j].y =  pcs[i].points[j].y;
+			}
+			query_pts.push_back(query_pt);
+		}
+		return findBestTf(query_pts);
+	}
 	transform_info getBestTf(sensor_msgs::PointCloud &pc)
 	{
 		/*RenderMap rm;
@@ -123,9 +146,17 @@ private:
 		tf.erase( end_pos, tf.end() );*/
 	}
 
-
-	transform_info findBestTf(vector<cv::Point2f>& query_pts)
+	transform_info findBestTf(vector<cv::Point2f>& query_pt)
 	{
+		vector<vector<cv::Point2f> > query_pts;
+		for(int i=0; i<3; i++)
+			query_pts.push_back(query_pt);
+		return findBestTf(query_pts);
+	}
+
+	transform_info findBestTf(vector<vector<cv::Point2f> >& query_pts)
+	{
+		assert(query_pts.size() == 3);
 		fmutil::Stopwatch sw;
 		sw.start("New matching apporach");
 
@@ -145,14 +176,14 @@ private:
 		vector<transform_info> best_first_pass_a, best_first_pass_b, best_sec_pass, best_thi_pass;
 
 
-		best_first_pass_a = rm_.searchRotations(query_pts, 10.0, 20.0, 1.0, M_PI, M_PI/20., best_info, -1, false);
+		best_first_pass_a = rm_.searchRotations(query_pts[0], 10.0, 20.0, 1.0, M_PI, M_PI/20., best_info, -1, false);
 
 		sort(best_first_pass_a.begin(), best_first_pass_a.end(), sortScore);
 		size_t first_pass_idx=1;
 		double first_score = best_first_pass_a[0].score;
 		for(; first_pass_idx<best_first_pass_a.size(); first_pass_idx++)
 		{
-			if(best_first_pass_a[first_pass_idx].score<(first_score-20.) || best_first_pass_a[first_pass_idx].score < 10.) break;
+			if(best_first_pass_a[first_pass_idx].score<(first_score-20.) || best_first_pass_a[first_pass_idx].score < 15.) break;
 
 		}
 		best_first_pass_a.resize(first_pass_idx);
@@ -171,7 +202,7 @@ private:
 		for(size_t i=0; i<best_first_pass_a.size(); i++)
 		{
 			dbg<<i<<": "<<best_first_pass_a[i].translation_2d<<" "<<best_first_pass_a[i].rotation<<" "<<best_first_pass_a[i].score<<endl;
-			vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts, 0.5, 0.25, M_PI/40, M_PI/80., best_first_pass_a[i], -1, false);
+			vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts[1], 0.5, 0.25, M_PI/40, M_PI/80., best_first_pass_a[i], -1, false);
 			sort(best_tf_temp.begin(), best_tf_temp.end(), sortScore);
 			//was using insert to retain all the scores but crash on bad alloc. Too much elements?
 			//since we only need the best, the following is sufficient
@@ -189,7 +220,7 @@ private:
 		for(size_t i=0; i<best_sec_pass.size(); i++)
 		{
 			dbg<<i<<"/"<<best_sec_pass.size()<<": "<<best_sec_pass[i].translation_2d<<" "<<best_sec_pass[i].rotation<<" "<<best_sec_pass[i].score<<endl;
-			vector<transform_info> best_tf_temp = rm3_.searchRotations(query_pts, 0.12, 0.03, M_PI/160, M_PI/720., best_sec_pass[i], -1, false);
+			vector<transform_info> best_tf_temp = rm3_.searchRotations(query_pts[2], 0.12, 0.03, M_PI/160, M_PI/720., best_sec_pass[i], -1, false);
 			best_thi_tf.insert(best_thi_tf.end(), best_tf_temp.begin(), best_tf_temp.end());
 			//keeping all the points is useless here, and it may cause bad alloc due to huge memory requirement
 			//best_thi_pass.insert(best_thi_pass.end(),  best_tf_temp.begin(), best_tf_temp.end());
@@ -202,16 +233,16 @@ private:
 		sw_sub.end(show_time);
 		//dbg<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 
-		best_info.real_pts.resize(query_pts.size());
+		best_info.real_pts.resize(query_pts[2].size());
 		//hijack best tf values
 		//best_info.translation_2d.x = -4.5;
 		//best_info.translation_2d.y = -18.5;
 		//best_info.rotation = 3.054326;
 		double cos_val = cos(best_info.rotation);
 		double sin_val = sin(best_info.rotation);
-		for(size_t i=0; i<query_pts.size();i++)
+		for(size_t i=0; i<query_pts[2].size();i++)
 		{
-			double rot_x = query_pts[i].x, rot_y = query_pts[i].y;
+			double rot_x = query_pts[2][i].x, rot_y = query_pts[2][i].y;
 			cv::Point2f rot_pt;
 			rot_pt.x = cos_val * rot_x - sin_val * rot_y;
 			rot_pt.y = sin_val * rot_x + cos_val * rot_y;
@@ -220,7 +251,7 @@ private:
 			best_info.real_pts[i].y += best_info.translation_2d.y;
 		}
 
-		best_first_pass_a = rm_.searchRotations(query_pts, 4.0, 1.0, M_PI/10, M_PI/45., best_info, -1, true);
+		best_first_pass_a = rm_.searchRotations(query_pts[0], 4.0, 1.0, M_PI/10, M_PI/45., best_info, -1, true);
 		covariance = best_first_pass_a[0].covariance;
 
 		best_info.covariance = covariance;
