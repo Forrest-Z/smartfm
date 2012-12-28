@@ -7,7 +7,6 @@
 
 #include "RasterMapImageOpt.h"
 #include "renderMap.h"
-#include <sensor_msgs/PointCloud.h>
 
 class RasterMapPCL
 {
@@ -146,14 +145,14 @@ private:
 		vector<transform_info> best_first_pass_a, best_first_pass_b, best_sec_pass, best_thi_pass;
 
 
-		best_first_pass_a = rm_.searchRotations(query_pts, 11.0, 1.0, M_PI, M_PI/10., best_info, -1, false);
+		best_first_pass_a = rm_.searchRotations(query_pts, 10.0, 20.0, 1.0, M_PI, M_PI/20., best_info, -1, false);
 
 		sort(best_first_pass_a.begin(), best_first_pass_a.end(), sortScore);
 		size_t first_pass_idx=1;
 		double first_score = best_first_pass_a[0].score;
 		for(; first_pass_idx<best_first_pass_a.size(); first_pass_idx++)
 		{
-			if(best_first_pass_a[first_pass_idx].score<(first_score-20.) || best_first_pass_a[first_pass_idx].score < 15.) break;
+			if(best_first_pass_a[first_pass_idx].score<(first_score-20.) || best_first_pass_a[first_pass_idx].score < 10.) break;
 
 		}
 		best_first_pass_a.resize(first_pass_idx);
@@ -172,7 +171,7 @@ private:
 		for(size_t i=0; i<best_first_pass_a.size(); i++)
 		{
 			dbg<<i<<": "<<best_first_pass_a[i].translation_2d<<" "<<best_first_pass_a[i].rotation<<" "<<best_first_pass_a[i].score<<endl;
-			vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts, 0.5, 0.25, M_PI/20, M_PI/60., best_first_pass_a[i], -1, false);
+			vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts, 0.5, 0.25, M_PI/40, M_PI/80., best_first_pass_a[i], -1, false);
 			sort(best_tf_temp.begin(), best_tf_temp.end(), sortScore);
 			//was using insert to retain all the scores but crash on bad alloc. Too much elements?
 			//since we only need the best, the following is sufficient
@@ -190,7 +189,7 @@ private:
 		for(size_t i=0; i<best_sec_pass.size(); i++)
 		{
 			dbg<<i<<"/"<<best_sec_pass.size()<<": "<<best_sec_pass[i].translation_2d<<" "<<best_sec_pass[i].rotation<<" "<<best_sec_pass[i].score<<endl;
-			vector<transform_info> best_tf_temp = rm3_.searchRotations(query_pts, 0.12, 0.03, M_PI/120, M_PI/720., best_sec_pass[i], -1, false);
+			vector<transform_info> best_tf_temp = rm3_.searchRotations(query_pts, 0.12, 0.03, M_PI/160, M_PI/720., best_sec_pass[i], -1, false);
 			best_thi_tf.insert(best_thi_tf.end(), best_tf_temp.begin(), best_tf_temp.end());
 			//keeping all the points is useless here, and it may cause bad alloc due to huge memory requirement
 			//best_thi_pass.insert(best_thi_pass.end(),  best_tf_temp.begin(), best_tf_temp.end());
@@ -204,6 +203,10 @@ private:
 		//dbg<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 
 		best_info.real_pts.resize(query_pts.size());
+		//hijack best tf values
+		//best_info.translation_2d.x = -4.5;
+		//best_info.translation_2d.y = -18.5;
+		//best_info.rotation = 3.054326;
 		double cos_val = cos(best_info.rotation);
 		double sin_val = sin(best_info.rotation);
 		for(size_t i=0; i<query_pts.size();i++)
