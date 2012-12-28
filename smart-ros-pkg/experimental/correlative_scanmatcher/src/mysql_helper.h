@@ -15,9 +15,9 @@ public:
 	const int max_fields_per_table_;
 	MySQLHelper(int skip_reading, string database, string name): skip_reading_(skip_reading), conn_(false), table_size_(-1), max_fields_per_table_(200)
 	{
-		size_t filename_length = name.find(".");
-		if( filename_length != name.length())
-			name.resize(filename_length);
+		//size_t filename_length = name.find(".");
+		//if( filename_length != name.length())
+			//name.resize(filename_length);
 		stringstream table_name;
 		table_name<<name<<"_skip"<<skip_reading;
 		table_name_ = table_name.str();
