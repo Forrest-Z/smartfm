@@ -1,19 +1,8 @@
 
-#include <fmutil/fm_stopwatch.h>
+#include "fmutil/fm_stopwatch.h"
 #include <cv.h>
 #include <highgui.h>
-#include <fmutil/fm_math.h>
-
-
-#include "pcl/point_cloud.h"
-#include "pcl_ros/point_cloud.h"
-#include "pcl/point_types.h"
-#include "pcl/ros/conversions.h"
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/filters/radius_outlier_removal.h>
-#include <pcl/features/normal_3d_omp.h>
-#include <pcl/filters/conditional_removal.h>
-#include <pcl/filters/voxel_grid.h>
+#include "fmutil/fm_math.h"
 
 #include "dbgstream.h"
 using namespace std;                    // make std:: accessible
@@ -222,7 +211,8 @@ public:
 
 		vector<geometry_msgs::Point32> pcl_downsample(vector<geometry_msgs::Point32> &query_pts, double size_x, double size_y, double size_z)
 	{
-		pcl::PointCloud<pcl::PointXYZ> point_cloud;
+			return query_pts;
+		/*pcl::PointCloud<pcl::PointXYZ> point_cloud;
 		point_cloud.resize(query_pts.size());
 		for(size_t i=0; i<query_pts.size(); i++)
 		{
@@ -244,12 +234,7 @@ public:
 		sor.setLeafSize (size_x, size_y, size_z);
 		pcl::PointIndicesPtr pi;
 		sor.filter (input_msg_filtered);
-		/*dbg<<"Downsampled colors ";
-		        for(size_t i=0; i<input_msg_filtered->points.size(); i++)
-		        {
-		            dbg<<input_msg_filtered->points[i].rgb<<" ";
-		        }
-		        dbg<<endl;*/
+
 		point_cloud = input_msg_filtered;
 		//cout<<"After pcl downsample: "<<point_cloud[point_cloud.size()-1].z<<endl;
 		vector<geometry_msgs::Point32> after_downsample;
@@ -260,11 +245,16 @@ public:
 			after_downsample[i].y = point_cloud[i].y;
 			after_downsample[i].z = point_cloud[i].z/4;
 		}
-		return after_downsample;
+		return after_downsample;*/
 
 	}
 
 	vector<transform_info> searchRotations(vector<cv::Point2f> const &search_pt, double translate_range, double translate_step, double rot_range, double rot_step, transform_info const &initialization, int eva_top_count, bool est_cov, bool within_prior=false)
+	{
+		return searchRotations(search_pt, translate_range, translate_range, translate_step, rot_range, rot_step, initialization, eva_top_count, est_cov, within_prior);
+	}
+
+	vector<transform_info> searchRotations(vector<cv::Point2f> const &search_pt, double translate_rangex, double translate_rangey, double translate_step, double rot_range, double rot_step, transform_info const &initialization, int eva_top_count, bool est_cov, bool within_prior=false)
 	{
 
 		//translate range is directly corresponds to number of cells in the grid
@@ -296,7 +286,8 @@ public:
 		rotated_search_pt.resize(query_pts_downsample.size());
 		sw_init.end(false);
 		sw.start("calculate");
-		int range = translate_range / res_;
+		int rangex = translate_rangex / res_;
+		int rangey = translate_rangey / res_;
 		int step = translate_step / res_;
 
 		cv::Mat K = cv::Mat::zeros(3,3,CV_32F), u = cv::Mat::zeros(3,1,CV_32F);
@@ -319,7 +310,7 @@ public:
 
 			vector<transform_info> best_trans_s_temp;
 			//dbg<<rotations[i]<<": "<<endl;
-			best_trans_s_temp = searchTranslations(rotated_search_pt, range, step, initialization.translation_2d, rotations[i], est_cov, within_prior);
+			best_trans_s_temp = searchTranslations(rotated_search_pt, rangex, rangey, step, initialization.translation_2d, rotations[i], est_cov, within_prior);
 			//dbg<<endl;
 			best_trans_s.insert(best_trans_s.end(), best_trans_s_temp.begin(), best_trans_s_temp.end());
 
@@ -388,6 +379,10 @@ public:
 
 	vector<transform_info> searchTranslations(vector<cv::Point> &search_pt, int range, int stepsize, cv::Point2f initial_pt, double rotation, bool est_cov, bool within_prior)
 	{
+		return searchTranslations(search_pt, range, range, stepsize, initial_pt, rotation, est_cov, within_prior);
+	}
+	vector<transform_info> searchTranslations(vector<cv::Point> &search_pt, int rangex, int rangey, int stepsize, cv::Point2f initial_pt, double rotation, bool est_cov, bool within_prior)
+	{
 		//investigate why low bottom of confusion matrix has overall higher score
 		//solved: It is a bad idea to normalize the score with only the number of point within the source map
 
@@ -395,8 +390,8 @@ public:
 		sw.start("");
 		//result deteriorate when the resolution is more than 0.3. This is due to quantization error when mapping
 		//from pts to grid. Need independent control of map grid size and stepping size
-		int startx = initial_pt.x/res_ - range, endx = initial_pt.x/res_ + range;
-		int starty = initial_pt.y/res_ - range, endy = initial_pt.y/res_ + range;
+		int startx = initial_pt.x/res_ - rangex, endx = initial_pt.x/res_ + rangex;
+		int starty = initial_pt.y/res_ - rangey, endy = initial_pt.y/res_ + rangey;
 		//parallel seems to only improve marginally, and because the whole vector of results need to
 		//be stored into memory, in the end there is no improvement
 		//adding omp critical directive eliminate the need to allocate a large memory

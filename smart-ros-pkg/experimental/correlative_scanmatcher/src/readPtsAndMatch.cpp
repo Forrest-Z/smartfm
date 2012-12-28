@@ -5,29 +5,24 @@
  *      Author: demian
  */
 
-#include <ros/ros.h>
-#include <sensor_msgs/PointCloud.h>
-#include "pcl/ros/conversions.h"
+//#include <ros/ros.h>
+//#include <sensor_msgs/PointCloud.h>
+//#include "pcl/ros/conversions.h"
+#include <string>
+#include <stdint.h>
+#include <iostream>
+
+#include "omp.h"
+#include "ros_header.h"
 #include "RasterMapPCL.h"
 #include "ReadFileHelper.h"
 #include "mysql_helper.h"
 
 
+
 int main(int argc, char **argcv)
 {
-	ros::init(argc, argcv, "readPtsAndMatch");
-	ros::NodeHandle nh;
-	ros::Publisher src_pub, dst_pub, query_pub;
-	src_pub = nh.advertise<sensor_msgs::PointCloud>("src_pc", 5);
-	dst_pub = nh.advertise<sensor_msgs::PointCloud>("dst_pc", 5);
-	query_pub = nh.advertise<sensor_msgs::PointCloud>("pc_legacy_out", 5);
-	sensor_msgs::PointCloud src_pc, dst_pc, query_pc;
-	src_pc.header.frame_id = dst_pc.header.frame_id = query_pc.header.frame_id = "scan_odo";
-
 	istream*        data_in         = NULL;         // input for data points
-
-
-
 	ifstream dataStreamSrc, dataStreamDst;
 	dataStreamSrc.open(argcv[1], ios::in);// open data file
 	if (!dataStreamSrc) {
@@ -45,14 +40,14 @@ int main(int argc, char **argcv)
 	cv::Mat scores = cv::Mat::zeros(size, size, CV_32F);
 	fmutil::Stopwatch sw;
 	sw.start("matching...");
-	int skip_reading = 1;
+	int skip_reading = 2;
 
 	MySQLHelper sql(skip_reading, "scanmatch_result", argcv[1]);
 	sql.create_2dtable(size);
 	cout<<"pc_vec.size() "<<size<<endl;
-	//omp_set_num_threads(5);
+	omp_set_num_threads(5);
 #pragma omp parallel for
-	for(int i=1230; i<size; i+=skip_reading)
+	for(int i=0; i<size; i+=skip_reading)
 	{
 		double first_score = -1;
 		#pragma omp critical

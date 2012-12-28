@@ -145,8 +145,8 @@ private:
 		fmutil::Stopwatch sw1("sw1");
 		vector<double> weight_prob;
 		weight_prob.resize(particles_.size());
-		//RasterMapPCL rmpcl;
-		//rmpcl.setInputPts((*pc_vec_)[matching_node].points);
+		RasterMapPCL rmpcl;
+		rmpcl.setInputPts((*pc_vec_)[matching_node].points);
 		map<int, int> unique_nodes;
 		sw1.end();
 		//find unique nodes
@@ -168,7 +168,7 @@ private:
 		fmutil::Stopwatch sw2("sw2");
 
 		nodes_match_heading_.clear();
-//#pragma omp parallel for
+#pragma omp parallel for
 		for(size_t i=0; i<unique_nodes_array.size(); i++)
 		{
 			double score;
@@ -176,26 +176,26 @@ private:
 
 			//reminder: pc_vec_ has the complete data
 
-/*			transform_info best_tf = rmpcl.getBestTf((*pc_vec_)[unique_nodes_array[i]*skip_reading_]);
+			transform_info best_tf = rmpcl.getBestTf((*pc_vec_)[unique_nodes_array[i]*skip_reading_]);
 #pragma omp critical
 			nodes_match_heading_[unique_nodes_array[i]] = best_tf.rotation;
 			RasterMapPCL rmpcl_ver;
 			rmpcl_ver.setInputPts(best_tf.real_pts, true);
 			double temp_score = rmpcl_ver.getScore((*pc_vec_)[matching_node].points);
 			score = sqrt( temp_score * best_tf.score);
-			*/score = scores_[matching_node/skip_reading_][unique_nodes_array[i]];
-			nodes_match_heading_[unique_nodes_array[i]] = rotations_[matching_node/skip_reading_][unique_nodes_array[i]];
+			//score = scores_[matching_node/skip_reading_][unique_nodes_array[i]];
+			//nodes_match_heading_[unique_nodes_array[i]] = rotations_[matching_node/skip_reading_][unique_nodes_array[i]];
 			if(score == 0.01) cout<<"Error, unexpected matching of nodes being evaluated: "
 						<<matching_node/skip_reading_<<":"<<unique_nodes_array[i]<<endl;
 			//cout<<matching_node/skip_reading_<<"-"<<unique_nodes_array[i]<<":"<<score<<"->"<<score2<<" ";
 			//penalize nearby particles
-			//todo:
-			//reduce penalize and look for peak to account for multiple possible close loop
-			//find out why there is a significant drift in the raw sensor data
+
+			//reduce penalize and look for peak to account for multiple possible close loop - done!
+
+			//find out why there is a significant drift in the raw sensor data - done, pitch value incorrect, set to zero for now
 			double dist = fabs(unique_nodes_array[i] - matching_node/skip_reading_);// < 10)
 			double weight_score;
-			if((int)dist == 1) weight_score = score/5;
-			else weight_score = score - 40*exp(-dist*0.07);
+			weight_score = score / (5*exp(-dist*0.7)+1);
 			if(weight_score < 0) weight_score = 0;
 			local_cached_score[unique_nodes_array[i]] = score;
 			local_cached_weight[unique_nodes_array[i]] =weight_score;
@@ -301,7 +301,7 @@ private:
 		if( matching_node < 100)
 				return -1;
 
-		if( max_neighbor_score >40. && max_neighbor_node_id != -1 && max_accu > 20)
+		if( max_neighbor_score >35. && max_neighbor_node_id != -1 && max_accu > 20)
 		{
 				cout<<"close loop found at node "<<max_neighbor_node_id <<" with score "<<max_neighbor_score<<endl;
 				return max_neighbor_node_id*skip_reading_;

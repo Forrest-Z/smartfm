@@ -3,7 +3,7 @@
 int main(int argc, char *argv[])
 {
 
-	MySQLHelper sql(1, "scanmatch_result", argv[1]);
+	MySQLHelper sql(2, "scanmatch_result", argv[1]);
 
 	cout<<sql.retrieve_first_score(0)<<" "<<sql.retrieve_first_score(100)<<endl;
 	//sql.create_2dtable(2100);

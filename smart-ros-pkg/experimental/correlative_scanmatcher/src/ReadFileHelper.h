@@ -4,9 +4,6 @@
  *  Created on: Dec 1, 2012
  *      Author: demian
  */
-#include <geometry_msgs/Point32.h>
-#include <geometry_msgs/Pose.h>
-#include <sensor_msgs/PointCloud.h>
 #include <fstream>
 
 using namespace std;
