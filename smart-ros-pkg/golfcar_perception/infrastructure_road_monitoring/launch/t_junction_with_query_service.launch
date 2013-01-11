@@ -1,4 +1,3 @@
-
 <launch>
 
     <group ns="EA">
@@ -29,6 +28,9 @@
         <rosparam command="load" file="$(find infrastructure_road_monitoring)/launch/t_junction_from_above.yaml"/>
     </node>
 
+    <node pkg="infrastructure_road_monitoring" type="infrastructure_query_service.py" name="infrastructure_query_service" output="screen">
+    </node>
+    
     <node pkg="vision_motion_detection" type="roi_select" name="ea_roi_select" output="screen">
         <remap from="image" to="/EA/camera/image_raw" />
         <param name="poly" value="/t_junction_go/ea_poly" />

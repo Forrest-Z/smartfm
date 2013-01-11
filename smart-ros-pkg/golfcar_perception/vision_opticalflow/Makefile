@@ -187,6 +187,19 @@ cluster_display/fast:
 .PHONY : cluster_display/fast
 
 #=============================================================================
+# Target rules for targets named clusters_to_tracks
+
+# Build rule for target.
+clusters_to_tracks: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 clusters_to_tracks
+.PHONY : clusters_to_tracks
+
+# fast build rule for target.
+clusters_to_tracks/fast:
+	$(MAKE) -f CMakeFiles/clusters_to_tracks.dir/build.make CMakeFiles/clusters_to_tracks.dir/build
+.PHONY : clusters_to_tracks/fast
+
+#=============================================================================
 # Target rules for targets named clusters_tracking
 
 # Build rule for target.
@@ -425,6 +438,21 @@ src/nodes/cluster_display.s:
 .PHONY : src/nodes/cluster_display.s
 
 # target to build an object file
+src/nodes/clusters_to_tracks.o:
+	$(MAKE) -f CMakeFiles/clusters_to_tracks.dir/build.make CMakeFiles/clusters_to_tracks.dir/src/nodes/clusters_to_tracks.o
+.PHONY : src/nodes/clusters_to_tracks.o
+
+# target to preprocess a source file
+src/nodes/clusters_to_tracks.i:
+	$(MAKE) -f CMakeFiles/clusters_to_tracks.dir/build.make CMakeFiles/clusters_to_tracks.dir/src/nodes/clusters_to_tracks.i
+.PHONY : src/nodes/clusters_to_tracks.i
+
+# target to generate assembly for a file
+src/nodes/clusters_to_tracks.s:
+	$(MAKE) -f CMakeFiles/clusters_to_tracks.dir/build.make CMakeFiles/clusters_to_tracks.dir/src/nodes/clusters_to_tracks.s
+.PHONY : src/nodes/clusters_to_tracks.s
+
+# target to build an object file
 src/nodes/clusters_tracking.o:
 	$(MAKE) -f CMakeFiles/clusters_tracking.dir/build.make CMakeFiles/clusters_tracking.dir/src/nodes/clusters_tracking.o
 .PHONY : src/nodes/clusters_tracking.o
@@ -497,6 +525,7 @@ help:
 	@echo "... ROSBUILD_gensrv_lisp"
 	@echo "... clean-test-results"
 	@echo "... cluster_display"
+	@echo "... clusters_to_tracks"
 	@echo "... clusters_tracking"
 	@echo "... edit_cache"
 	@echo "... feature_clustering"
@@ -521,6 +550,9 @@ help:
 	@echo "... src/nodes/cluster_display.o"
 	@echo "... src/nodes/cluster_display.i"
 	@echo "... src/nodes/cluster_display.s"
+	@echo "... src/nodes/clusters_to_tracks.o"
+	@echo "... src/nodes/clusters_to_tracks.i"
+	@echo "... src/nodes/clusters_to_tracks.s"
 	@echo "... src/nodes/clusters_tracking.o"
 	@echo "... src/nodes/clusters_tracking.i"
 	@echo "... src/nodes/clusters_tracking.s"

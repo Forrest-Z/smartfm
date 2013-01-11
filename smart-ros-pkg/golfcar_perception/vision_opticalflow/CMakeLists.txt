@@ -51,3 +51,6 @@ target_link_libraries(cluster_display ${PROJECT_NAME})
 
 ADD_EXECUTABLE(clusters_tracking src/nodes/clusters_tracking.cpp)
 target_link_libraries(clusters_tracking ${PROJECT_NAME})
+
+ADD_EXECUTABLE(clusters_to_tracks src/nodes/clusters_to_tracks.cpp)
+target_link_libraries(clusters_to_tracks ${PROJECT_NAME})

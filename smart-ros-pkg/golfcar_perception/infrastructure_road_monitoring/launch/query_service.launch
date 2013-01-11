@@ -1,0 +1,8 @@
+<launch>
+
+    <param name="/infra_url" type="string" value="http://137.132.22.82:15016/infrastructure" />
+
+    <node pkg="infrastructure_road_monitoring" type="infrastructure_query_service.py" name="infrastructure_query_service" output="screen">
+    </node>
+
+</launch>
