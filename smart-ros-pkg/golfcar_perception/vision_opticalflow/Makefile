@@ -226,6 +226,19 @@ feature_clustering/fast:
 .PHONY : feature_clustering/fast
 
 #=============================================================================
+# Target rules for targets named feature_clustering_DB
+
+# Build rule for target.
+feature_clustering_DB: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 feature_clustering_DB
+.PHONY : feature_clustering_DB
+
+# fast build rule for target.
+feature_clustering_DB/fast:
+	$(MAKE) -f CMakeFiles/feature_clustering_DB.dir/build.make CMakeFiles/feature_clustering_DB.dir/build
+.PHONY : feature_clustering_DB/fast
+
+#=============================================================================
 # Target rules for targets named feature_display
 
 # Build rule for target.
@@ -483,6 +496,21 @@ src/nodes/feature_clustering.s:
 .PHONY : src/nodes/feature_clustering.s
 
 # target to build an object file
+src/nodes/feature_clustering_DB.o:
+	$(MAKE) -f CMakeFiles/feature_clustering_DB.dir/build.make CMakeFiles/feature_clustering_DB.dir/src/nodes/feature_clustering_DB.o
+.PHONY : src/nodes/feature_clustering_DB.o
+
+# target to preprocess a source file
+src/nodes/feature_clustering_DB.i:
+	$(MAKE) -f CMakeFiles/feature_clustering_DB.dir/build.make CMakeFiles/feature_clustering_DB.dir/src/nodes/feature_clustering_DB.i
+.PHONY : src/nodes/feature_clustering_DB.i
+
+# target to generate assembly for a file
+src/nodes/feature_clustering_DB.s:
+	$(MAKE) -f CMakeFiles/feature_clustering_DB.dir/build.make CMakeFiles/feature_clustering_DB.dir/src/nodes/feature_clustering_DB.s
+.PHONY : src/nodes/feature_clustering_DB.s
+
+# target to build an object file
 src/nodes/feature_display.o:
 	$(MAKE) -f CMakeFiles/feature_display.dir/build.make CMakeFiles/feature_display.dir/src/nodes/feature_display.o
 .PHONY : src/nodes/feature_display.o
@@ -529,6 +557,7 @@ help:
 	@echo "... clusters_tracking"
 	@echo "... edit_cache"
 	@echo "... feature_clustering"
+	@echo "... feature_clustering_DB"
 	@echo "... feature_display"
 	@echo "... feature_extractor"
 	@echo "... rebuild_cache"
@@ -559,6 +588,9 @@ help:
 	@echo "... src/nodes/feature_clustering.o"
 	@echo "... src/nodes/feature_clustering.i"
 	@echo "... src/nodes/feature_clustering.s"
+	@echo "... src/nodes/feature_clustering_DB.o"
+	@echo "... src/nodes/feature_clustering_DB.i"
+	@echo "... src/nodes/feature_clustering_DB.s"
 	@echo "... src/nodes/feature_display.o"
 	@echo "... src/nodes/feature_display.i"
 	@echo "... src/nodes/feature_display.s"

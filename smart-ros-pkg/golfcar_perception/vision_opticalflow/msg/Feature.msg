@@ -13,3 +13,6 @@ int16[]               direction
 #feature_speed_dir (direction_mag) is direction of velocity in radian, calculate using atan2 from math library.
 float64[]             feature_speed_mag
 float64[]             feature_speed_dir
+#for DB clustering
+bool[]                    visited
+bool[]                    isnoise

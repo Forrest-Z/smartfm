@@ -46,6 +46,9 @@ target_link_libraries(feature_display ${PROJECT_NAME})
 ADD_EXECUTABLE(feature_clustering src/nodes/feature_clustering.cpp)
 target_link_libraries(feature_clustering ${PROJECT_NAME})
 
+ADD_EXECUTABLE(feature_clustering_DB src/nodes/feature_clustering_DB.cpp)
+target_link_libraries(feature_clustering_DB ${PROJECT_NAME})
+
 ADD_EXECUTABLE(cluster_display src/nodes/cluster_display.cpp)
 target_link_libraries(cluster_display ${PROJECT_NAME})
 
