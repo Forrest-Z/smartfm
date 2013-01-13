@@ -15,8 +15,9 @@ public:
 	//good potential close loop while increasing false detection
 	//apparent decreasing the range that causes the above scenario
 	dbgstream dbg;
+	RasterMapImage rm_, rm2_, rm3_;
 	//rastering map with too low resolution causes more noise than desired. 1.0 is the bare minimum resolution that is acceptable
-	RasterMapPCL(): rm_(1.0, 0.05), rm2_(0.25, 0.05), rm3_(0.03, 0.05)
+	RasterMapPCL(): rm_(1, 0.03), rm2_(0.05, 0.03), rm3_(0.03, 0.03)
 	{
 		//dbg.enable_output();
 	};
@@ -115,7 +116,7 @@ public:
 		return best_tf_temp[0].covariance;//cv::Mat::eye(3,3, CV_32F)*100;
 	}
 private:
-	RasterMapImage rm_, rm2_, rm3_;
+
 
 
 
@@ -171,24 +172,27 @@ private:
 		//7x4 = 28
 		//becareful, the first pass is important to avoid falling into local minimal
 		transform_info best_info;
+
 		//very important initialization
 		best_info.rotation = 0.0;
+
 		vector<transform_info> best_first_pass_a, best_first_pass_b, best_sec_pass, best_thi_pass;
 
 
-		best_first_pass_a = rm_.searchRotations(query_pts[0], 10.0, 20.0, 1.0, M_PI, M_PI/20., best_info, -1, false);
+		best_first_pass_a = rm_.searchRotations(query_pts[0], 14.0, 20.0, 2, M_PI, M_PI/180., best_info, true, false);
 
+    //using local maxima now
 		sort(best_first_pass_a.begin(), best_first_pass_a.end(), sortScore);
-		size_t first_pass_idx=1;
-		double first_score = best_first_pass_a[0].score;
-		for(; first_pass_idx<best_first_pass_a.size(); first_pass_idx++)
-		{
-			if(best_first_pass_a[first_pass_idx].score<(first_score-20.) || best_first_pass_a[first_pass_idx].score < 15.) break;
+		/*best_first_pass_a.resize(1);
 
-		}
-		best_first_pass_a.resize(first_pass_idx);
+		//searching for practically highest score in a slow way
+		best_first_pass_a[0].rotation = 3.06087;
+		best_first_pass_a[0].translation_2d.x =  -8.15 + 12 ;
+		best_first_pass_a[0].translation_2d.y = -18.12;
+*/
+		if(best_first_pass_a.size()>10)
+		best_first_pass_a.resize(10);
 
-		sort(best_first_pass_a.begin(), best_first_pass_a.end(), sortScore);
 		//remove the repeated entry
 		//dbg<<"Before removed "<<best_first_pass_b.size()<<endl;
 		//removeRepeatedEntry(best_first_pass_b);
@@ -196,41 +200,49 @@ private:
 		//dbg<<"Size of first pass "<<best_first_pass_b.size()<<endl;
 
 		sw_sub.end(show_time);
+		//best_sec_pass = best_first_pass_a;
 		sw_sub.start("2");
 
-		best_sec_pass.resize(best_first_pass_a.size());
+		//best_sec_pass.resize(best_first_pass_a.size());
 		for(size_t i=0; i<best_first_pass_a.size(); i++)
 		{
 			dbg<<i<<": "<<best_first_pass_a[i].translation_2d<<" "<<best_first_pass_a[i].rotation<<" "<<best_first_pass_a[i].score<<endl;
-			vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts[1], 0.5, 0.25, M_PI/40, M_PI/80., best_first_pass_a[i], -1, false);
+			vector<transform_info> best_tf_temp = rm2_.searchRotations(query_pts[1], 1.0, 0.05, 0., M_PI/360., best_first_pass_a[i], false, false);
 			sort(best_tf_temp.begin(), best_tf_temp.end(), sortScore);
 			//was using insert to retain all the scores but crash on bad alloc. Too much elements?
 			//since we only need the best, the following is sufficient
-			best_sec_pass[i] = best_tf_temp[0];
+      if(best_tf_temp.size()>0)
+  			best_sec_pass.push_back(best_tf_temp[0]);
 		}
 		sort(best_sec_pass.begin(), best_sec_pass.end(), sortScore);
 
 		best_sec_pass.resize(1);
 
 		sw_sub.end(show_time);
-		sw_sub.start("3");
+		/*sw_sub.start("3");
 
 		vector<transform_info> best_thi_tf;
 
 		for(size_t i=0; i<best_sec_pass.size(); i++)
 		{
-			dbg<<i<<"/"<<best_sec_pass.size()<<": "<<best_sec_pass[i].translation_2d<<" "<<best_sec_pass[i].rotation<<" "<<best_sec_pass[i].score<<endl;
-			vector<transform_info> best_tf_temp = rm3_.searchRotations(query_pts[2], 0.12, 0.03, M_PI/160, M_PI/720., best_sec_pass[i], -1, false);
-			best_thi_tf.insert(best_thi_tf.end(), best_tf_temp.begin(), best_tf_temp.end());
+			cout<<i<<"/"<<best_sec_pass.size()<<": "<<best_sec_pass[i].translation_2d<<" "<<best_sec_pass[i].rotation<<" "<<best_sec_pass[i].score<<endl;
+			vector<transform_info> best_tf_temp = rm3_.searchRotations(query_pts[2], 0.06, 0.03, M_PI/360, M_PI/720., best_sec_pass[i], false, false);
+			sort(best_tf_temp.begin(), best_tf_temp.end(), sortScore);
+			if(best_tf_temp.size()>0)
+				best_thi_tf.push_back(best_tf_temp[0]);
+				//best_thi_tf.insert(best_thi_tf.end(), best_tf_temp.begin(), best_tf_temp.end());
 			//keeping all the points is useless here, and it may cause bad alloc due to huge memory requirement
 			//best_thi_pass.insert(best_thi_pass.end(),  best_tf_temp.begin(), best_tf_temp.end());
 		}
-		dbg<<"end best_sec_pass loop total third pass size="<<best_thi_tf.size()<<endl;
+		//dbg<<"end best_sec_pass loop total third pass size="<<best_thi_tf.size()<<endl;
+		//vector<transform_info> best_thi_tf = rm3_.searchRotations(query_pts[2], 20, 0.05, M_PI, M_PI/360., best_info, false, false);
+
 		sort(best_thi_tf.begin(), best_thi_tf.end(), sortScore);
 
 		best_info = best_thi_tf[0];
 
-		sw_sub.end(show_time);
+		sw_sub.end(show_time);*/
+		best_info = best_sec_pass[0];
 		//dbg<<"Best translation "<<best_info.translation_2d<<" "<<best_info.rotation<<" with score "<<best_info.score<<endl;
 
 		best_info.real_pts.resize(query_pts[2].size());
@@ -251,7 +263,7 @@ private:
 			best_info.real_pts[i].y += best_info.translation_2d.y;
 		}
 
-		best_first_pass_a = rm_.searchRotations(query_pts[0], 4.0, 1.0, M_PI/10, M_PI/45., best_info, -1, true);
+		best_first_pass_a = rm_.searchRotations(query_pts[0], 6.0, 2.0, M_PI/10, M_PI/45., best_info, false, true);
 		covariance = best_first_pass_a[0].covariance;
 
 		best_info.covariance = covariance;
@@ -264,6 +276,41 @@ private:
 		//take care case where |rotatation|> M_PI
 		if(best_info.rotation > M_PI) best_info.rotation = best_info.rotation - 2 * M_PI;
 		else if(best_info.rotation < -M_PI) best_info.rotation = best_info.rotation + 2 * M_PI;
+
+		//built in verification
+		vector<double> scores;
+		scores.push_back(best_info.score/100.);
+		//verification
+		RasterMapPCL rmpcl_ver;
+		rmpcl_ver.setInputPts(best_info.real_pts, true);
+
+		scores.push_back(rmpcl_ver.getScore(rm2_.input_pt_)/100.);
+		//overall score:
+		vector<cv::Point2f> overall_pts;
+		overall_pts = best_info.real_pts;
+		overall_pts.insert(overall_pts.end(), rm2_.input_pt_.begin(), rm2_.input_pt_.end());
+		RenderMap rm;
+		rm.drawMap(overall_pts, rm2_.res_, false);
+		overall_pts = rm.mapToRealPts();
+		scores.push_back(rmpcl_ver.getScore(overall_pts)/100.);
+		rmpcl_ver.setInputPts(rm2_.input_pt_, true);
+		scores.push_back(rmpcl_ver.getScore(overall_pts)/100.);
+		double average_score = 0., score_var = 0.;
+		for(size_t i=0; i<scores.size(); i++) average_score+= scores[i];
+		average_score/=(double)scores.size();
+
+		for(size_t i=0; i<scores.size(); i++)
+		{
+			double score_diff = scores[i]-average_score;
+			score_var+= (score_diff*score_diff);
+		}
+		double score_stddev_rev = 1.0 - sqrt(score_var);
+
+		double ver_score_old = sqrt(scores[0] * scores[1]);
+		double ver_score = average_score * score_stddev_rev;
+		best_info.score = ver_score*100;
+		//cout <<" ver_score "<<ver_score<<" "<<ver_score_old<<endl;
+		//for(size_t i=0; i<scores.size(); i++) cout<< scores[i]<<" "; cout<<score_var<<endl;
 		return best_info;
 	}
 };

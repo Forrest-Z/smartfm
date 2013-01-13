@@ -119,7 +119,7 @@ int main(int argc, char **argcv)
 
 
 	ros::Rate rate(2);
-	for(int i=1101; i<size*skip_reading; i+=skip_reading)
+	for(int i=1000; i<size*skip_reading; i+=skip_reading)
 	{
 		RasterMapPCL rmpcl;
 		vector<geometry_msgs::Point32> combines_prior, prior_m5, prior_p5;

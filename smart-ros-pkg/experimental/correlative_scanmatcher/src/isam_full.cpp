@@ -7,68 +7,15 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud.h>
+#include <geometry_msgs/Pose.h>
 #include "pcl/ros/conversions.h"
 #include "RasterMapPCL.h"
 #include "ReadFileHelper.h"
 #include <isam/isam.h>
 #include "GraphPF.h"
 #include "mysql_helper.h"
-
-vector<geometry_msgs::Point32> getTransformedPts(geometry_msgs::Point32 pose, vector<geometry_msgs::Point32>& pts)
-{
-	double ct = cos(pose.z), st = sin(pose.z);
-	vector<geometry_msgs::Point32> final_pt;
-	final_pt.resize(pts.size());
-	for(size_t j=0; j<pts.size(); j++)
-	{
-
-		geometry_msgs::Point32 pt = pts[j], rot_pt;
-		rot_pt.x = ct * pt.x - st * pt.y + pose.x;
-		rot_pt.y = st * pt.x + ct * pt.y + pose.y;
-		final_pt[j] = rot_pt;
-	}
-	return final_pt;
-}
-
-vector<geometry_msgs::Point32> getTransformedPts(geometry_msgs::Pose pose, vector<geometry_msgs::Point32>& pts)
-		{
-	double ct = cos(pose.orientation.z), st = sin(pose.orientation.z);
-	vector<geometry_msgs::Point32> final_pt;
-	final_pt.resize(pts.size());
-	for(size_t j=0; j<pts.size(); j++)
-	{
-
-		geometry_msgs::Point32 pt = pts[j], rot_pt;
-		rot_pt.x = ct * pt.x - st * pt.y + pose.position.x;
-		rot_pt.y = st * pt.x + ct * pt.y + pose.position.y;
-		rot_pt.z = pose.position.z;
-		final_pt[j] = rot_pt;
-	}
-	return final_pt;
-		}
-geometry_msgs::Point32 ominus(geometry_msgs::Point32 point2, geometry_msgs::Point32 point1)
-{
-	double ctheta = cos(point1.z), stheta = sin(point1.z);
-	geometry_msgs::Point32 relative_tf;
-	relative_tf.x  = (point2.x - point1.x) * ctheta + (point2.y - point1.y) * stheta;
-	relative_tf.y =  -(point2.x - point1.x) * stheta + (point2.y - point1.y) * ctheta;
-	relative_tf.z = point2.z - point1.z;
-	//cout<<relative_tf<<endl;
-	return relative_tf;
-}
-
-geometry_msgs::Pose ominus(geometry_msgs::Pose point2, geometry_msgs::Pose point1)
-{
-	double ctheta = cos(point1.orientation.z), stheta = sin(point1.orientation.z);
-	geometry_msgs::Pose relative_tf;
-	relative_tf.position.x  = (point2.position.x - point1.position.x) * ctheta + (point2.position.y - point1.position.y) * stheta;
-	relative_tf.position.y =  -(point2.position.x - point1.position.x) * stheta + (point2.position.y - point1.position.y) * ctheta;
-	relative_tf.position.z = point2.position.z - point1.position.z;
-	relative_tf.orientation.z = point2.orientation.z - point1.orientation.z;
-	relative_tf.orientation.y = point2.orientation.y - point1.orientation.y;
-	//cout<<relative_tf<<endl;
-	return relative_tf;
-}
+#include "pcl_downsample.h"
+#include "geometry_helper.h"
 
 int main(int argc, char **argcv)
 {
@@ -87,13 +34,13 @@ int main(int argc, char **argcv)
 
 	istream* data_in = NULL, *pc_data_in = NULL;         // input for data points
 
-	vector<sensor_msgs::PointCloud> pc_vec;
+	
 	sensor_msgs::PointCloud pc;
 	ifstream dataStreamSrc, pcStreamSrc;
 
 
 	vector< vector<double> > scores_array, rotations_array;
-	int skip_reading = 1;
+	int skip_reading = 2;
 	int size;
 
 	if(argc > 2)
@@ -131,18 +78,39 @@ int main(int argc, char **argcv)
 	}
 	cout<<scores_array[0][0]<<" "<<scores_array[scores_array.size()-1][scores_array.size()-1]<<endl;
 	cout<<rotations_array[0][0]<<" "<<rotations_array[scores_array.size()-1][scores_array.size()-1]<<endl;
+	for(int i=0; i<rotations_array.size(); i++)
+	{
+		for(int j=0; j<i; j++)
+		{
+			cout<<rotations_array[i][j]<<";";
+		}
+		cout<<endl;
+	}
+	exit(0);
 	cout<<"Successfully read all the scores"<<endl;
 
-	pcStreamSrc.open(argcv[1], ios::in);// open data file
-	if (!pcStreamSrc) {
-		cerr << "Cannot open data file\n";
-		exit(1);
-	}
-	pc_data_in = &pcStreamSrc;
-	vector<geometry_msgs::Pose> poses;
-	if(!readFrontEndFile(*pc_data_in, pc_vec, poses)) cout<<"Failed read front end file"<<endl;
+	vector<vector<sensor_msgs::PointCloud> > pc_vecs;
+  vector<geometry_msgs::Pose> poses;
+	for(int i=0; i<3; i++)
+	{
+		stringstream ss;
+		ss<<argcv[1]<<"_"<<i;
+		istream*        data_in         = NULL;         // input for data points
+		ifstream dataStreamSrc;
+		cout<<"Opening "<<ss.str()<<endl;
+		dataStreamSrc.open(ss.str().c_str(), ios::in);// open data file
+		if (!dataStreamSrc) {
+			cerr << "Cannot open data file\n";
+			exit(1);
+		}
+		data_in = &dataStreamSrc;
 
-	if(size == ceil(pc_vec.size()/(double)skip_reading))
+		vector<sensor_msgs::PointCloud> pc_vec;
+		if(!readFrontEndFile(*data_in, pc_vec, poses)) cout<<"Failed read front end file"<<endl;
+		pc_vecs.push_back(pc_vec);
+	}
+	//size = ceil(pc_vecs[0].size()/(double)skip_reading);
+	if(size == ceil(pc_vecs[0].size()/(double)skip_reading))
 		cout <<"All system green, going for matching"<<endl;
 	else
 		cout << "Failed in checking size of pc_vec and scores"<<endl;
@@ -182,11 +150,12 @@ int main(int argc, char **argcv)
 
 	ros::Rate rate(2);
 
-	GraphParticleFilter graphPF(scores_array, rotations_array, &slam, &pc_vec, 200, skip_reading);
+	GraphParticleFilter graphPF(scores_array, rotations_array, &slam, pc_vecs, 200, skip_reading);
 	sensor_msgs::PointCloud overall_pts;
 	double opt_error = 0;
 	isam::Pose3d_Pose3d_Factor *previous_constraint, *current_constraint;
 	bool previous_cl= false, current_cl= false;
+	int previous_cl_count = 0;
 	for(int i=skip_reading; i<size*skip_reading; i+=skip_reading)
 	{
 		cout<<"**************************"<<endl;
@@ -198,7 +167,7 @@ int main(int argc, char **argcv)
 		slam.add_node(new_pose_node);
 		pose_nodes.push_back(new_pose_node);
 		// connect to previous with odometry measurement
-		isam::Pose3d odometry(odo.position.x, odo.position.y, odo.position.z, odo.orientation.z, odo.orientation.y, 0.); // x,y,theta
+		isam::Pose3d odometry(odo.position.x, odo.position.y, odo.position.z, odo.orientation.z, 0., 0.); // x,y,theta
 
 
 
@@ -214,18 +183,21 @@ int main(int argc, char **argcv)
 		if(cl_node_idx != -1)
 		{
 			fmutil::Stopwatch sw_found_cl_a("found_cl_a");
-			rmpcl.setInputPts(pc_vec[i].points);
+      vector<sensor_msgs::PointCloud> input_pcs, output_pcs;
+      for(int k=0; k<3; k++) input_pcs.push_back(pc_vecs[k][i]);
+			rmpcl.setInputPts(input_pcs);
 			RasterMapPCL rmpcl_ver;
 			int j= cl_node_idx;
-			transform_info best_tf = rmpcl.getBestTf(pc_vec[j]);
+      for(int k=0; k<3; k++) output_pcs.push_back(pc_vecs[k][j]);
+			transform_info best_tf = rmpcl.getBestTf(output_pcs);
 
 			//verification
 			rmpcl_ver.setInputPts(best_tf.real_pts, true);
-			double temp_score = rmpcl_ver.getScore(pc_vec[i].points);
+			double temp_score = rmpcl_ver.getScore(pc_vecs[1][i].points);
 			double ver_score = sqrt(temp_score * best_tf.score);
 
-			src_pc.points = pc_vec[i].points;
-			query_pc.points = pc_vec[j].points;
+			src_pc.points = pc_vecs[2][i].points;
+			query_pc.points = pc_vecs[2][j].points;
 
 
 			cv::Mat cov = best_tf.covariance;
@@ -252,14 +224,14 @@ int main(int argc, char **argcv)
 			}
 
 
-			cout<<"Match found at "<<i<<" "<<j<<" with score "<<best_tf.score <<" recorded "<<scores_array[i/skip_reading][j/skip_reading] <<" ver_score "<<ver_score<<" "<<temp_score<<endl;
+			cout<<"Match found at "<<i<<" "<<j<<" with score "<<endl;//best_tf.score <<" recorded "<<scores_array[i/skip_reading][j/skip_reading] <<" ver_score "<<ver_score<<" "<<temp_score<<endl;
 			//if(temp_score < 55)continue;
 			cout<<i<<" "<<j<<" "<<best_tf.translation_2d.x<<" "<<best_tf.translation_2d.y<<" "<<best_tf.rotation<<" ";
 			//cout<<cov.at<float>(0,0)<<" "<<cov.at<float>(0,1)<<" "<<cov.at<float>(0,2)<<" "<<cov.at<float>(1, 1)<<" "<<cov.at<float>(1,2)<<" "<<cov.at<float>(2,2);
 			//cout<<" "<<endl;
 
 
-			isam::Pose3d odometry(best_tf.translation_2d.x, best_tf.translation_2d.y, 0.0, best_tf.rotation, 0.0, 0.0); // x,y,theta
+			isam::Pose3d odometry(best_tf.translation_2d.x, best_tf.translation_2d.y, 0.00001, best_tf.rotation, 0.00001, 0.00001); // x,y,theta
 
 			Eigen::MatrixXd eigen_noise(6,6);
 			for(int x=0; x<6; x++)
@@ -285,14 +257,17 @@ int main(int argc, char **argcv)
 			//seems to be simple addition, but improve things tremendously
 			cout<<"Pre Opt error: "<<opt_error<<" Now Opt error "<<slam._opt.opt_error_<<" diff: "<<diff_opt_error<<endl;
 
-			if(fabs(diff_opt_error) > 5.0)
+			if(fabs(diff_opt_error) > 15.0)
 			{
 				cout<<"Removing factor"<<endl;
+				//add to false close loop count at GraphPF
+				//falseCL_node_[j/skip_reading]++;
 				slam.remove_factor(constraint);
 				slam.update();
 				slam.batch_optimization();
 				cout<<"Batch optimized again"<<endl;
 				current_cl = false;
+
 			}
 			else
 			{
@@ -308,7 +283,7 @@ int main(int argc, char **argcv)
 		//check if 2 continuous close loop is found, if it is not, remove the previous close loop
 		if(previous_cl)
 		{
-			if(!current_cl)
+			if(!current_cl && previous_cl_count < 2)
 			{
 				cout<<"Close loop not continuous, removing previous constraint"<<endl;
 				slam.remove_factor(previous_constraint);
@@ -322,10 +297,12 @@ int main(int argc, char **argcv)
 			cout<<"Storing current close loop for consistency check in the next iteration"<<endl;
 			previous_constraint = current_constraint;
 			previous_cl = true;
+			previous_cl_count ++;
 		}
 		else
 		{
 			previous_cl = false;
+			previous_cl_count = 0;
 		}
 
 		sw_foundcl.end();
@@ -355,7 +332,7 @@ int main(int argc, char **argcv)
 			estimated_pt.orientation.x = node.vector(isam::ESTIMATE)[5];
 			last_height = estimated_pt.position.z;
 			//cout<<estimated_pt.x << " "<< estimated_pt.y<< " "<<estimated_pt.z<<endl;
-			vector<geometry_msgs::Point32> tfed_pts = getTransformedPts(estimated_pt, pc_vec[node_idx++*skip_reading].points);
+			vector<geometry_msgs::Point32> tfed_pts = getTransformedPts(estimated_pt, pc_vecs[2][node_idx++*skip_reading].points);
 			overall_pts.points.insert(overall_pts.points.end(), tfed_pts.begin(), tfed_pts.end());
 
 		}
@@ -374,7 +351,7 @@ int main(int argc, char **argcv)
 			downsampled_pt[i].x = mapped_pts[i].x;
 			downsampled_pt[i].y = mapped_pts[i].y;
 		}*/
-		vector<geometry_msgs::Point32> downsampled_pt = rmi.pcl_downsample(overall_pts.points, 0.05, 0.05, 0.05);
+		vector<geometry_msgs::Point32> downsampled_pt = pcl_downsample(overall_pts.points, 0.1, 0.1, 0.1);
 
 		overall_pts.points = downsampled_pt;
 		cout<<"After downsampling = "<<overall_pts.points[overall_pts.points.size()-1].z<<endl;
@@ -395,7 +372,7 @@ int main(int argc, char **argcv)
 		cout<<"***********************************"<<endl;
 	}
 	RenderMap rm;
-	rm.drawMap(overall_pts.points, 0.05, "isam_map_overall.png");
+	rm.drawMap(overall_pts.points, 0.1, "isam_map_overall.png");
 	// printing the complete graph
 	cout << endl << "Full graph:" << endl;
 	slam.write(cout);
