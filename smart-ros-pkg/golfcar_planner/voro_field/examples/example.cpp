@@ -51,7 +51,6 @@ int main( int argc, char *argv[] ) {
     exit(-1);
   }
 
-
   bool doPrune = true;
   //if (argc==3) doPrune = true;
   // LOAD PGM MAP AND INITIALIZE THE VORONOI

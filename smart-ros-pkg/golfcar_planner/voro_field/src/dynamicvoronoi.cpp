@@ -13,18 +13,10 @@ DynamicVoronoi::DynamicVoronoi() {
   voro = NULL;
   path = NULL;
   gridMap = NULL;
-  doubleThreshold = 35; //75
+  doubleThreshold = 1; //75
 }
 
 DynamicVoronoi::~DynamicVoronoi() {
-  if (data) {
-    for (int x=0; x<sizeX; x++) delete[] data[x];
-    delete[] data;
-  }
-  if (gridMap) {
-    for (int x=0; x<sizeX; x++) delete[] gridMap[x];
-    delete[] gridMap;
-  }
 }
 
 void DynamicVoronoi::initializeEmpty(int _sizeX, int _sizeY, bool initGridMap) {
@@ -71,7 +63,6 @@ void DynamicVoronoi::initializeEmpty(int _sizeX, int _sizeY, bool initGridMap) {
   c.voronoi = free;
   c.queueing = fwNotQueued;
   c.needsRaise = false;
-
 
   voroCell v;
   v.voroDist = INFINITY;
@@ -171,9 +162,9 @@ void DynamicVoronoi::removeObstacle(int x, int y) {
   data[x][y] = c;
 }
 
-
 void DynamicVoronoi::exchangeObstacles(std::vector<INTPOINT> points) {
-
+	if (debug)
+		cout << "exchangeObstacle"<<lastObstacles.size()<<", "<<points.size()<<endl;
   for (unsigned int i=0; i<lastObstacles.size(); i++) {
     int x = lastObstacles[i].x;
     int y = lastObstacles[i].y;
@@ -184,6 +175,7 @@ void DynamicVoronoi::exchangeObstacles(std::vector<INTPOINT> points) {
   }  
 
   lastObstacles.clear();
+  cout << lastObstacles.size()<<endl;
 
   for (unsigned int i=0; i<points.size(); i++) {
     int x = points[i].x;
@@ -193,6 +185,14 @@ void DynamicVoronoi::exchangeObstacles(std::vector<INTPOINT> points) {
     setObstacle(x,y);
     lastObstacles.push_back(points[i]);
   }  
+  cout << lastObstacles.size()<<endl;
+
+  for (int i =0; i< sizeX; i++ ){
+	  for (int j = 0; j< sizeY; j++){
+		  if (isVoronoi(i,j))
+			  removeVoro(i,j);
+	  }
+  }
 }
 
 
@@ -232,9 +232,10 @@ void DynamicVoronoi::updateObst(bool updateRealDist) {
               nc.sqdist = INT_MAX;
               data[nx][ny] = nc;
             } else {
-            	//voroQ.push(nc.sqdist, INTPOINT(nx, ny));
               if(nc.queueing != fwQueued){
                 open.push(nc.sqdist, INTPOINT(nx,ny));
+                //voroQ.push(nc.sqdist, INTPOINT(nx, ny));
+                //setVoro(nx,ny);
                 nc.queueing = fwQueued;
                 data[nx][ny] = nc;
               }
@@ -278,6 +279,8 @@ void DynamicVoronoi::updateObst(bool updateRealDist) {
               nc.obstX = c.obstX;
               nc.obstY = c.obstY;
             } else { 
+            	//doubleThreshold = ((data[x][y].sqdist -2)<=(data[nx][ny].sqdist-2)?(data[x][y].sqdist -2):(data[nx][ny].sqdist-2)) ;
+            	//cout<<doubleThreshold<<endl;
               checkVoro(x,y,nx,ny,c,nc);
             }
             data[nx][ny] = nc;
@@ -289,25 +292,29 @@ void DynamicVoronoi::updateObst(bool updateRealDist) {
   }
 }
 
-
-
 void DynamicVoronoi::setVoro(int x, int y) {
   voroCell c = voro[x][y];
+  dataCell v = data[x][y];
   if(isVoroOccup(x,y,c)) return;
   voroAddList.push_back(INTPOINT(x,y));
   c.voroX = x;
   c.voroY = y;
+  v.voronoi = free;
   voro[x][y] = c;
+  data[x][y] = v;
 }
 
 void DynamicVoronoi::removeVoro(int x, int y) {
   voroCell c = voro[x][y];
+  dataCell v = data[x][y];
   if(isVoroOccup(x,y,c) == false) return;
   voroRemoveList.push_back(INTPOINT(x,y));
   c.voroX = invalidObstData;
   c.voroY  = invalidObstData;
   c.voroQueueing = bwQueued;
   voro[x][y] = c;
+  v.voronoi = occupied;
+  data[x][y] = v;
 }
 
 
@@ -493,10 +500,11 @@ void DynamicVoronoi::voroCommitAndColorize(bool updateRealDist) {
 }
 
 
+
 void DynamicVoronoi::checkVoro(int x, int y, int nx, int ny, dataCell& c, dataCell& nc) {
 
   if ((c.sqdist>doubleThreshold || nc.sqdist>doubleThreshold) && nc.obstX!=invalidObstData) {
-    if (abs(c.obstX-nc.obstX) > 1 || abs(c.obstY-nc.obstY) > 1) {
+    if (abs(c.obstX-nc.obstX) > 12 || abs(c.obstY-nc.obstY) > 12) {
       //compute dist from x,y to obstacle of nx,ny	 
       int dxy_x = x-nc.obstX;
       int dxy_y = y-nc.obstY;
@@ -523,7 +531,7 @@ void DynamicVoronoi::checkVoro(int x, int y, int nx, int ny, dataCell& c, dataCe
       if(stability_nxy <= stability_xy && nc.sqdist>2) {
         if (nc.voronoi != free) {
           nc.voronoi = free;
-          setVoro(x,y);
+          setVoro(nx,ny);
           reviveVoroNeighbors(nx,ny);
           pruneQueue.push(INTPOINT(nx,ny));
         }
@@ -571,8 +579,6 @@ bool DynamicVoronoi::isVoroOccup(int x, int y) {
 bool DynamicVoronoi::isVoroOccup(int &x, int &y, voroCell &c) {
   return (c.voroX==x && c.voroY==y);
 }
-
-
 
 
 void DynamicVoronoi::prune() {
@@ -727,11 +733,11 @@ DynamicVoronoi::markerMatchResult DynamicVoronoi::markerMatch(int x, int y) {
 void DynamicVoronoi::update()
 {
 	updateObst(true);
+	//recheckVoro();
 	updateVoro(true);
-	updatePathCost(ALPHA, DMAX);
 }
 
-void DynamicVoronoi::updatePathCost(float alpha, float dmax)
+void DynamicVoronoi::updatePathCost(std::vector<geometry_msgs::Point32> &_cost, float resolution)
 {
 	for (int x = 0; x < sizeX; x++)
 	{
@@ -752,12 +758,19 @@ void DynamicVoronoi::updatePathCost(float alpha, float dmax)
 
 			//std::cout << path[x][y].cost <<",";
 				path[x][y].cost = fabs(data[x][y].dist - voro[x][y].voroDist);
+
 				if(data[x][y].sqdist == 0 )
 					path[x][y].cost = FLT_MAX;
+				float f =80+(path[x][y].cost*10);
+				geometry_msgs::Point32 cost;
+				cost.x = x*resolution -10;
+				cost.y = -(y)*resolution +10;
+				cost.z = f;
+				_cost.push_back(cost);
 		}
-		//std::cout <<std::endl;
 	}
 }
+
 
 void DynamicVoronoi::visualize(const char *filename, const char *voroFilename, const char* voroFieldFilename) {
   // write pgm files
@@ -782,13 +795,13 @@ void DynamicVoronoi::visualize(const char *filename, const char *voroFilename, c
     for(int x = 0; x<sizeX; x++){
       unsigned char c = 0;
 
-      /*if (isVoronoi(x,y))
+      if (isVoronoi(x,y))
       {
     	  fputc(255, F);
     	  fputc(0, F);
     	  fputc(0, F);
       }
-      else */ if (data[x][y].sqdist==0) {
+      else if (data[x][y].sqdist==0) {
         fputc( 0, F );
         fputc( 0, F );
         fputc( 0, F );
@@ -860,6 +873,3 @@ void DynamicVoronoi::visualize(const char *filename, const char *voroFilename, c
   }
   fclose(F);
 }
-
-
-
