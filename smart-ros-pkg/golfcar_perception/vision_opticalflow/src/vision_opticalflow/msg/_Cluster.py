@@ -7,13 +7,13 @@ import struct
 import geometry_msgs.msg
 
 class Cluster(genpy.Message):
-  _md5sum = "0015edcfcc5cd42d2883a8f8b506648c"
+  _md5sum = "d10cad16558a5cd56a96a3fc6b87f892"
   _type = "vision_opticalflow/Cluster"
   _has_header = False #flag to mark the presence of a Header object
   _full_text = """uint32 id
 geometry_msgs/Point     centroid
 geometry_msgs/Point     centroid_vel
-int16                   centroid_dir
+float64                 centroid_dir
 geometry_msgs/Point[]   members
 geometry_msgs/Point[]   members_vel
 #Add more later by Poon
@@ -32,7 +32,7 @@ float64 z
 
 """
   __slots__ = ['id','centroid','centroid_vel','centroid_dir','members','members_vel','centroid_speed_mag','centroid_speed_dir','members_speed_mag','members_speed_dir']
-  _slot_types = ['uint32','geometry_msgs/Point','geometry_msgs/Point','int16','geometry_msgs/Point[]','geometry_msgs/Point[]','float64','float64','float64[]','float64[]']
+  _slot_types = ['uint32','geometry_msgs/Point','geometry_msgs/Point','float64','geometry_msgs/Point[]','geometry_msgs/Point[]','float64','float64','float64[]','float64[]']
 
   def __init__(self, *args, **kwds):
     """
@@ -58,7 +58,7 @@ float64 z
       if self.centroid_vel is None:
         self.centroid_vel = geometry_msgs.msg.Point()
       if self.centroid_dir is None:
-        self.centroid_dir = 0
+        self.centroid_dir = 0.
       if self.members is None:
         self.members = []
       if self.members_vel is None:
@@ -75,7 +75,7 @@ float64 z
       self.id = 0
       self.centroid = geometry_msgs.msg.Point()
       self.centroid_vel = geometry_msgs.msg.Point()
-      self.centroid_dir = 0
+      self.centroid_dir = 0.
       self.members = []
       self.members_vel = []
       self.centroid_speed_mag = 0.
@@ -96,7 +96,7 @@ float64 z
     """
     try:
       _x = self
-      buff.write(_struct_I6dh.pack(_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir))
+      buff.write(_struct_I7d.pack(_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir))
       length = len(self.members)
       buff.write(_struct_I.pack(length))
       for val1 in self.members:
@@ -137,8 +137,8 @@ float64 z
       end = 0
       _x = self
       start = end
-      end += 54
-      (_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir,) = _struct_I6dh.unpack(str[start:end])
+      end += 60
+      (_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir,) = _struct_I7d.unpack(str[start:end])
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
@@ -192,7 +192,7 @@ float64 z
     """
     try:
       _x = self
-      buff.write(_struct_I6dh.pack(_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir))
+      buff.write(_struct_I7d.pack(_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir))
       length = len(self.members)
       buff.write(_struct_I.pack(length))
       for val1 in self.members:
@@ -234,8 +234,8 @@ float64 z
       end = 0
       _x = self
       start = end
-      end += 54
-      (_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir,) = _struct_I6dh.unpack(str[start:end])
+      end += 60
+      (_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir,) = _struct_I7d.unpack(str[start:end])
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
@@ -282,5 +282,5 @@ float64 z
 
 _struct_I = genpy.struct_I
 _struct_2d = struct.Struct("<2d")
-_struct_I6dh = struct.Struct("<I6dh")
+_struct_I7d = struct.Struct("<I7d")
 _struct_3d = struct.Struct("<3d")

@@ -15,7 +15,7 @@
             <remap from="features" to="feature_extractor/feature" />
         </node>
 
-        <node pkg="vision_opticalflow" type="feature_clustering" name="feature_clustering" output="screen" respawn="true">
+        <node pkg="vision_opticalflow" type="feature_clustering_DB" name="feature_clustering_DB" output="screen" respawn="true">
             <remap from="features" to="feature_extractor/feature" />
             <remap from="clusters" to="clusters" />
         </node>
@@ -53,7 +53,7 @@
             <remap from="features" to="feature_extractor/feature" />
         </node>
 
-        <node pkg="vision_opticalflow" type="feature_clustering" name="feature_clustering" output="screen" respawn="true">
+        <node pkg="vision_opticalflow" type="feature_clustering_DB" name="feature_clustering_DB" output="screen" respawn="true">
             <remap from="features" to="feature_extractor/feature" />
             <remap from="clusters" to="clusters" />
         </node>

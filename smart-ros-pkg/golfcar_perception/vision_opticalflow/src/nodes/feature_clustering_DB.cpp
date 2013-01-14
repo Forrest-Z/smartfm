@@ -23,7 +23,9 @@ private:
     vision_opticalflow::Clusters clustersDB;
     vision_opticalflow::Feature featureDB;
     
-    void expandCluster(geometry_msgs::Point p, std::vector<int> &neighbor_points);
+    void finalizeCluster(void);
+    void updateCluster(int p_index);
+    void expandCluster(geometry_msgs::Point p, int p_index, std::vector<int> &neighbor_points);
     bool checkMembership(geometry_msgs::Point p);
     void regionQuery(vision_opticalflow::Feature input_feature, geometry_msgs::Point p, std::vector<int> &pointInRegion);
     float distance(geometry_msgs::Point p1,geometry_msgs::Point p2);
@@ -36,22 +38,99 @@ DBClusteringNode::DBClusteringNode()
     cluster_pub_ = nhp_.advertise<vision_opticalflow::Clusters>("clusters", 10);
 
     //set up parameters
-    esp = 4;
-    MinPts = 2;
-    cluster_inx_ = -1;
+    esp = 10;
+    MinPts = 10;
+    cluster_inx_ = 0;
 }
 
-void DBClusteringNode::expandCluster(geometry_msgs::Point p, std::vector<int> &neighbor_points)
+void DBClusteringNode::finalizeCluster(void)
 {
-    clustersDB.clusters_info[cluster_inx_].members.push_back(p);
+    for(int i = 0; i < clustersDB.clusters_info.size(); i++)
+    {
+        //temp variable
+        float sum_centroid_x = 0;
+        float sum_centroid_y = 0;
+        float sum_centroid_vel_x = 0;
+        float sum_centroid_vel_y = 0;
+        float sum_centroid_dir = 0;
+        
+        geometry_msgs::Point centroid;
+        geometry_msgs::Point centroid_vel;
+        int centroid_dir;
+        for(int j = 0; j < clustersDB.clusters_info[i].members.size(); j++)
+        {
+            sum_centroid_x = sum_centroid_x + clustersDB.clusters_info[i].members[j].x;
+            sum_centroid_y = sum_centroid_y + clustersDB.clusters_info[i].members[j].y;
+
+            sum_centroid_vel_x = sum_centroid_vel_x + clustersDB.clusters_info[i].members_vel[j].x;
+            sum_centroid_vel_y = sum_centroid_vel_y + clustersDB.clusters_info[i].members_vel[j].y;
+        }
+        //centroid
+        centroid.x = sum_centroid_x/clustersDB.clusters_info[i].members.size();
+        centroid.y = sum_centroid_y/clustersDB.clusters_info[i].members.size();
+        clustersDB.clusters_info[i].centroid = centroid;
+        //centroid_vel
+        centroid_vel.x = sum_centroid_vel_x/clustersDB.clusters_info[i].members.size();
+        centroid_vel.y = sum_centroid_vel_y/clustersDB.clusters_info[i].members.size();
+        clustersDB.clusters_info[i].centroid_vel = centroid_vel;
+        //centroid_dir --> do we using this??
+        clustersDB.clusters_info[i].centroid_dir = atan2(centroid_vel.y,centroid_vel.x);
+        //centroid_speed_mag
+        clustersDB.clusters_info[i].centroid_speed_mag = sqrt(pow(centroid_vel.x,2) + pow(centroid_vel.y,2));
+        //centroid_speed_dir
+        if((centroid_vel.x != 0) && (centroid_vel.y != 0))
+        {
+            clustersDB.clusters_info[i].centroid_speed_dir = atan2(centroid_vel.y,centroid_vel.x);
+        }else{
+            std::cout << "centroid_vel.x or centroid_vel.y = 0" << std::endl;
+            clustersDB.clusters_info[i].centroid_speed_dir = 0;
+        }
+    }
+
+    if(clustersDB.clusters_info.size() == 0)
+    {
+        //in this case, there are some features, but unable to form a cluster
+        vision_opticalflow::Cluster dummy_cluster;
+        geometry_msgs::Point dummy_p;
+        dummy_p.x = 0.0;
+        dummy_p.y = 0.0;
+
+        dummy_cluster.id = 0;
+        dummy_cluster.centroid = dummy_p;
+        dummy_cluster.centroid_vel = dummy_p;
+        dummy_cluster.centroid_dir = 0;
+        dummy_cluster.members.push_back(dummy_p);
+        dummy_cluster.members_vel.push_back(dummy_p);
+        dummy_cluster.centroid_speed_mag = 0.0;
+        dummy_cluster.centroid_speed_dir = 0.0;
+        dummy_cluster.members_speed_mag.push_back(0.0);
+        dummy_cluster.members_speed_dir.push_back(0.0);
+
+        clustersDB.clusters_info.push_back(dummy_cluster);
+    }
+}
+
+void DBClusteringNode::updateCluster(int p_index)
+{
+    clustersDB.clusters_info[cluster_inx_].members.push_back(featureDB.found_feature[p_index]);
+    clustersDB.clusters_info[cluster_inx_].members_vel.push_back(featureDB.feature_vel[p_index]);
+    clustersDB.clusters_info[cluster_inx_].members_speed_mag.push_back(featureDB.feature_speed_mag[p_index]);
+    clustersDB.clusters_info[cluster_inx_].members_speed_dir.push_back(featureDB.feature_speed_dir[p_index]);
+}
+
+void DBClusteringNode::expandCluster(geometry_msgs::Point p, int p_index, std::vector<int> &neighbor_points)
+{
+//     clustersDB.clusters_info[cluster_inx_].members.push_back(p); // --> p = featureDB.found_feature[p_index]
+//     clustersDB.clusters_info[cluster_inx_].members.push_back(featureDB.found_feature[p_index]);
+    updateCluster(p_index);
     
     std::vector<int> NeighborPts_;
     geometry_msgs::Point npoint_tmp;
 
-    int i = 0;
+    int i = -1;
     while(true)
     {
-        if(i <= neighbor_points.size())
+        if((i+1) < neighbor_points.size())
         {
             i = i + 1;
         }else{
@@ -65,31 +144,32 @@ void DBClusteringNode::expandCluster(geometry_msgs::Point p, std::vector<int> &n
             regionQuery(featureDB, npoint_tmp, NeighborPts_);
             if(NeighborPts_.size() >= MinPts)
             {
-                for(int j = 0; j <= NeighborPts_.size(); j++)
+                for(int j = 0; j < NeighborPts_.size(); j++)
                 {
                     neighbor_points.push_back(NeighborPts_[j]);
                 }
             }
         }
+        
         if(checkMembership(npoint_tmp) != true)
         {
-            clustersDB.clusters_info[cluster_inx_].members.push_back(npoint_tmp);
+//             clustersDB.clusters_info[cluster_inx_].members.push_back(npoint_tmp); //--> npoint_tmp = featureDB.found_feature[neighbor_points[i]];
+//             clustersDB.clusters_info[cluster_inx_].members.push_back(featureDB.found_feature[neighbor_points[i]]);
+            updateCluster(neighbor_points[i]);
         }else{
             //do not thing
         }
-
     }
-
 }
 
 bool DBClusteringNode::checkMembership(geometry_msgs::Point p)
 {
     bool ismember = false;
-    for(int i = 0; i <= clustersDB.clusters_info.size(); i++)
+    for(int i = 0; i < clustersDB.clusters_info.size(); i++)
     {
-        for(int j = 0; j <= clustersDB.clusters_info[i].members.size(); j++)
+        for(int j = 0; j < clustersDB.clusters_info[i].members.size(); j++)
         {
-            if((p.x == clustersDB.clusters_info[i].members[j].x) && (p.x == clustersDB.clusters_info[i].members[j].x))
+            if((p.x == clustersDB.clusters_info[i].members[j].x) && (p.y == clustersDB.clusters_info[i].members[j].y))
             {
                 ismember = true;
             }
@@ -102,7 +182,7 @@ void DBClusteringNode::regionQuery(vision_opticalflow::Feature featureDB, geomet
 {
     pointInRegion.clear();
     geometry_msgs::Point p_tmp;
-    for(int i = 0; i <= featureDB.found_feature.size(); i++)
+    for(int i = 0; i < featureDB.found_feature.size(); i++)
     {
         p_tmp = featureDB.found_feature[i];
         if((distance(p,p_tmp) < esp) && (p.x != p_tmp.x) && (p.y != p_tmp.y))
@@ -119,51 +199,79 @@ float DBClusteringNode::distance(geometry_msgs::Point p1,geometry_msgs::Point p2
     //return distance between two point
     dx = (p1.x - p2.x);
     dy = (p1.y - p2.y);
+    
     return sqrt(pow(dx,2) + pow(dy,2));
 }
 
-//     def DBSCAN(self):
-//         for i in range(len(self.DB)):
-//             p_tmp = self.DB[i]
-//             if (not p_tmp.visited):
-//                 #for each unvisited point P in dataset
-//                 p_tmp.visited = True
-//                 NeighborPts = self.regionQuery(p_tmp)
-//                 if(len(NeighborPts) < self.MinPts):
-//                     #that point is a noise
-//                     p_tmp.isnoise = True
-//                     print p_tmp.show(), 'is a noise'
-//                 else:
-//                     self.cluster.append([])
-//                     self.cluster_inx = self.cluster_inx + 1
-//                     self.expandCluster(p_tmp, NeighborPts)
 
 void DBClusteringNode::clusterCallback(const vision_opticalflow::Feature::ConstPtr &features_msg)
 {
+    //Features
     featureDB = *features_msg;
-
+    //Clusters
+    clustersDB.clusters_info.clear();
+    clustersDB.header = featureDB.header;
+    //index
+    cluster_inx_ = -1;
+    
     geometry_msgs::Point p_tmp;
     vision_opticalflow::Cluster dummy_cluster;
-    for(int i = 0; i <= featureDB.found_feature.size(); i++)
-    {
-        p_tmp = featureDB.found_feature[i];
-        if(featureDB.visited[i] != true)
+    if(featureDB.found_feature.size() > 0){
+        std::cout << "Feature receives: " << featureDB.found_feature.size() << std::endl;
+        //initialize visited and isnoise
+        for(int i = 0; i < featureDB.found_feature.size(); i++)
         {
-            std::vector<int> NeighborPts_;
-            
-            featureDB.visited[i] = true;
-            regionQuery(featureDB, p_tmp, NeighborPts_);
-            if(NeighborPts_.size() < MinPts)
+            featureDB.visited.push_back(false);
+            featureDB.isnoise.push_back(false);
+        }
+        //end initialize
+        
+        for(int i = 0; i < featureDB.found_feature.size(); i++)
+        {
+            p_tmp = featureDB.found_feature[i];
+//             std::cout << "p_tmp[" << i << "]: " << p_tmp.x << " , " << p_tmp.y << std::endl;
+            if(featureDB.visited[i] != true)
             {
-                featureDB.isnoise[i] = true;
-            }else{
-                cluster_inx_ = cluster_inx_ + 1;
-                dummy_cluster.id = cluster_inx_;
-                clustersDB.clusters_info.push_back(dummy_cluster);
-                expandCluster(p_tmp, NeighborPts_);
+//                 std::cout << "check for visited" << std::endl;
+                std::vector<int> NeighborPts_;
+// 
+                featureDB.visited[i] = true;
+                regionQuery(featureDB, p_tmp, NeighborPts_);
+                if(NeighborPts_.size() < MinPts)
+                {
+                    featureDB.isnoise[i] = true;
+                }else{
+                    cluster_inx_ = cluster_inx_ + 1;
+                    dummy_cluster.id = cluster_inx_;
+                    clustersDB.clusters_info.push_back(dummy_cluster);
+                    expandCluster(p_tmp, i, NeighborPts_);
+                }
             }
         }
+        finalizeCluster();
+    }else{
+        //no features input
+        //what can you do? --> put zero cluster into clustersDB
+        geometry_msgs::Point dummy_p;
+        dummy_p.x = 0.0;
+        dummy_p.y = 0.0;
+
+        dummy_cluster.id = 0;
+        dummy_cluster.centroid = dummy_p;
+        dummy_cluster.centroid_vel = dummy_p;
+        dummy_cluster.centroid_dir = 0;
+        dummy_cluster.members.push_back(dummy_p);
+        dummy_cluster.members_vel.push_back(dummy_p);
+        dummy_cluster.centroid_speed_mag = 0.0;
+        dummy_cluster.centroid_speed_dir = 0.0;
+        dummy_cluster.members_speed_mag.push_back(0.0);
+        dummy_cluster.members_speed_dir.push_back(0.0);
+        
+        clustersDB.clusters_info.push_back(dummy_cluster);
     }
+    std::cout << "number of cluster: " << clustersDB.clusters_info.size() << std::endl;
+    std::cout << "###--------------------------###"<< std::endl;
+    
     cluster_pub_.publish(clustersDB);
 }
 

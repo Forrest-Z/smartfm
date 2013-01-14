@@ -72,33 +72,38 @@ void ClusterDisplayNode::displayCallback(const sensor_msgs::Image::ConstPtr & fr
     cv::Mat img = cvImgFrame->image;
 
     cv::rectangle(img,cv::Point(0,380),cv::Point(960,480),cv::Scalar(0,255,0));
-    for( unsigned i=0; i< clusters_msg->clusters_info.size(); i++ )
+    if(clusters_msg->clusters_info.size() > 0)
     {
-        cluster_pos.x = clusters_msg->clusters_info[i].centroid.x;
-        cluster_pos.y = clusters_msg->clusters_info[i].centroid.y;
-        cv::circle(img, cluster_pos, 4, cv::Scalar(0,0,250));
-        //draw line
-        cluster_end.x = clusters_msg->clusters_info[i].centroid.x + 10*((clusters_msg->clusters_info[i].centroid_speed_mag)*cos(clusters_msg->clusters_info[i].centroid_speed_dir));
-        cluster_end.y = clusters_msg->clusters_info[i].centroid.y + 10*((clusters_msg->clusters_info[i].centroid_speed_mag)*sin(clusters_msg->clusters_info[i].centroid_speed_dir));
-        cv::line(img, cluster_pos, cluster_end, cv::Scalar(0,0,250));
-        
-        for(unsigned j=0; j<clusters_msg->clusters_info[i].members.size(); j++)
+        for( unsigned int i = 0; i < clusters_msg->clusters_info.size(); i++ )
         {
-            cluster_pos.x = clusters_msg->clusters_info[i].members[j].x;
-            cluster_pos.y = clusters_msg->clusters_info[i].members[j].y;
-            cv::circle(img, cluster_pos, 2, color[clusters_msg->clusters_info[i].id%30]);
-//             cv::circle(img, cluster_pos, 2, color[i%30]);
+            cluster_pos.x = clusters_msg->clusters_info[i].centroid.x;
+            cluster_pos.y = clusters_msg->clusters_info[i].centroid.y;
+            cv::circle(img, cluster_pos, 4, cv::Scalar(0,0,250));
+            //draw line
+            cluster_end.x = clusters_msg->clusters_info[i].centroid.x + 10*((clusters_msg->clusters_info[i].centroid_speed_mag)*cos(clusters_msg->clusters_info[i].centroid_speed_dir));
+            cluster_end.y = clusters_msg->clusters_info[i].centroid.y + 10*((clusters_msg->clusters_info[i].centroid_speed_mag)*sin(clusters_msg->clusters_info[i].centroid_speed_dir));
+            cv::line(img, cluster_pos, cluster_end, cv::Scalar(0,0,250));
+
+            for(unsigned int j = 0; j < clusters_msg->clusters_info[i].members.size(); j++)
+            {
+                cluster_pos.x = clusters_msg->clusters_info[i].members[j].x;
+                cluster_pos.y = clusters_msg->clusters_info[i].members[j].y;
+                cv::circle(img, cluster_pos, 2, color[clusters_msg->clusters_info[i].id%30]);
+    //             cv::circle(img, cluster_pos, 2, color[i%30]);
+            }
+            for(unsigned int k = 0; k < clusters_msg->clusters_info[i].members.size()-1; k++)
+            {
+                cv::Point2f start_line,end_line;
+                start_line.x = clusters_msg->clusters_info[i].members[k].x;
+                start_line.y = clusters_msg->clusters_info[i].members[k].y;
+                end_line.x = clusters_msg->clusters_info[i].members[k+1].x;
+                end_line.y = clusters_msg->clusters_info[i].members[k+1].y;
+                cv::line(img, start_line, end_line, color[clusters_msg->clusters_info[i].id%30]);
+                cv::circle(img, cluster_pos, 2, color[clusters_msg->clusters_info[i].id%30]);
+            }
         }
-        for(unsigned k=0; k<clusters_msg->clusters_info[i].members.size()-1; k++)
-        {
-            cv::Point2f start_line,end_line;
-            start_line.x = clusters_msg->clusters_info[i].members[k].x;
-            start_line.y = clusters_msg->clusters_info[i].members[k].y;
-            end_line.x = clusters_msg->clusters_info[i].members[k+1].x;
-            end_line.y = clusters_msg->clusters_info[i].members[k+1].y;
-            cv::line(img, start_line, end_line, color[clusters_msg->clusters_info[i].id%30]);
-            cv::circle(img, cluster_pos, 2, color[clusters_msg->clusters_info[i].id%30]);
-        }
+    }else{
+        //what you can do?
     }
     cv::imshow(displayWindowName_, img);
 }

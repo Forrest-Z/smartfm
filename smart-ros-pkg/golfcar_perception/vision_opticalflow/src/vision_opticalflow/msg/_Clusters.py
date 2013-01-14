@@ -9,7 +9,7 @@ import geometry_msgs.msg
 import std_msgs.msg
 
 class Clusters(genpy.Message):
-  _md5sum = "2776242fc5f734d3164b0e1985b759ad"
+  _md5sum = "e57380bc98028f65be6aa9b586807850"
   _type = "vision_opticalflow/Clusters"
   _has_header = True #flag to mark the presence of a Header object
   _full_text = """Header header
@@ -38,7 +38,7 @@ MSG: vision_opticalflow/Cluster
 uint32 id
 geometry_msgs/Point     centroid
 geometry_msgs/Point     centroid_vel
-int16                   centroid_dir
+float64                 centroid_dir
 geometry_msgs/Point[]   members
 geometry_msgs/Point[]   members_vel
 #Add more later by Poon
@@ -114,7 +114,7 @@ float64 z
         _v2 = val1.centroid_vel
         _x = _v2
         buff.write(_struct_3d.pack(_x.x, _x.y, _x.z))
-        buff.write(_struct_h.pack(val1.centroid_dir))
+        buff.write(_struct_d.pack(val1.centroid_dir))
         length = len(val1.members)
         buff.write(_struct_I.pack(length))
         for val2 in val1.members:
@@ -182,8 +182,8 @@ float64 z
         end += 24
         (_x.x, _x.y, _x.z,) = _struct_3d.unpack(str[start:end])
         start = end
-        end += 2
-        (val1.centroid_dir,) = _struct_h.unpack(str[start:end])
+        end += 8
+        (val1.centroid_dir,) = _struct_d.unpack(str[start:end])
         start = end
         end += 4
         (length,) = _struct_I.unpack(str[start:end])
@@ -255,7 +255,7 @@ float64 z
         _v6 = val1.centroid_vel
         _x = _v6
         buff.write(_struct_3d.pack(_x.x, _x.y, _x.z))
-        buff.write(_struct_h.pack(val1.centroid_dir))
+        buff.write(_struct_d.pack(val1.centroid_dir))
         length = len(val1.members)
         buff.write(_struct_I.pack(length))
         for val2 in val1.members:
@@ -324,8 +324,8 @@ float64 z
         end += 24
         (_x.x, _x.y, _x.z,) = _struct_3d.unpack(str[start:end])
         start = end
-        end += 2
-        (val1.centroid_dir,) = _struct_h.unpack(str[start:end])
+        end += 8
+        (val1.centroid_dir,) = _struct_d.unpack(str[start:end])
         start = end
         end += 4
         (length,) = _struct_I.unpack(str[start:end])
@@ -372,7 +372,7 @@ float64 z
       raise genpy.DeserializationError(e) #most likely buffer underfill
 
 _struct_I = genpy.struct_I
-_struct_h = struct.Struct("<h")
-_struct_3I = struct.Struct("<3I")
 _struct_2d = struct.Struct("<2d")
+_struct_3I = struct.Struct("<3I")
+_struct_d = struct.Struct("<d")
 _struct_3d = struct.Struct("<3d")
