@@ -9,6 +9,7 @@
 
 class DBClusteringNode
 {
+//For reference :: Density-Based Spatial Clustering of Application with Noise -> http://en.wikipedia.org/wiki/DBSCAN
 public:
     DBClusteringNode();
 
@@ -22,8 +23,11 @@ private:
     int cluster_inx_;
     vision_opticalflow::Clusters clustersDB;
     vision_opticalflow::Feature featureDB;
-    
-    void finalizeCluster(void);
+
+    int minimum_id(void);
+    int minimum_id_vec(std::vector<float> &input_vector);
+    void finalizeCluster_stage1(void);
+    void finalizeCluster_stage2(void);
     void updateCluster(int p_index);
     void expandCluster(geometry_msgs::Point p, int p_index, std::vector<int> &neighbor_points);
     bool checkMembership(geometry_msgs::Point p);
@@ -43,8 +47,112 @@ DBClusteringNode::DBClusteringNode()
     cluster_inx_ = 0;
 }
 
-void DBClusteringNode::finalizeCluster(void)
+int DBClusteringNode::minimum_id(void)
 {
+    int min_id = 0;
+    for(int i = 0; i < clustersDB.clusters_info[i].members_speed_dir.size(); i++)
+    {
+        if(clustersDB.clusters_info[i].members_speed_dir[i] < clustersDB.clusters_info[i].members_speed_dir[min_id])
+        {
+            min_id = i;
+        }
+    }
+    return min_id;
+}
+
+int DBClusteringNode::minimum_id_vec(std::vector<float> &input_vector)
+{
+    int min_id = 0;
+    for(int i = 0; i < input_vector.size(); i++)
+    {
+        if(input_vector[i] < input_vector[min_id])
+        {
+            min_id = i;
+        }
+    }
+    return min_id;
+}
+
+void DBClusteringNode::finalizeCluster_stage1(void)
+{
+    std::vector<float> sort_dir;
+    //Stage 1 part 1
+    for(int i = 0; i < clustersDB.clusters_info.size(); i++)
+    {
+        vision_opticalflow::Cluster sorted_Cluster;
+        sorted_Cluster.id = i;
+        int min_id;
+        for(int j = 0; j < clustersDB.clusters_info[i].members.size(); j++)
+        {
+            //why I cannot access clustersDB.clusters_info[i].members_speed_dir vector directly??
+            sort_dir.clear();
+            for(int k = 0; k < clustersDB.clusters_info[i].members.size(); k++) sort_dir.push_back(clustersDB.clusters_info[i].members_speed_dir[k]);
+            min_id = minimum_id_vec(sort_dir);
+            //sort it
+            sorted_Cluster.members.push_back(clustersDB.clusters_info[i].members[min_id]);
+            sorted_Cluster.members_vel.push_back(clustersDB.clusters_info[i].members_vel[min_id]);
+            sorted_Cluster.members_speed_mag.push_back(clustersDB.clusters_info[i].members_speed_mag[min_id]);
+            sorted_Cluster.members_speed_dir.push_back(clustersDB.clusters_info[i].members_speed_dir[min_id]);
+            //erase entry
+            clustersDB.clusters_info[i].members.erase(clustersDB.clusters_info[i].members.begin()+min_id);
+            clustersDB.clusters_info[i].members_vel.erase(clustersDB.clusters_info[i].members_vel.begin()+min_id);
+            clustersDB.clusters_info[i].members_speed_mag.erase(clustersDB.clusters_info[i].members_speed_mag.begin()+min_id);
+            clustersDB.clusters_info[i].members_speed_dir.erase(clustersDB.clusters_info[i].members_speed_dir.begin()+min_id);
+            
+        }
+
+        clustersDB.clusters_info[i].to_be_erase = true;
+        clustersDB.clusters_info.push_back(sorted_Cluster);
+    }
+    
+    //Stage 1 part 2
+    for(int i = 0; i < clustersDB.clusters_info.size(); i++)
+    {
+        vision_opticalflow::Cluster tmp_Cluster;
+        int inx_tmp = 0;
+        float diff = 0;
+        //for the first feature
+//         clustersDB.clusters_info.push_back(tmp_Cluster);
+        tmp_Cluster.members.push_back(clustersDB.clusters_info[i].members[0]);
+        tmp_Cluster.members_vel.push_back(clustersDB.clusters_info[i].members_vel[0]);
+        tmp_Cluster.members_speed_mag.push_back(clustersDB.clusters_info[i].members_speed_mag[0]);
+        tmp_Cluster.members_speed_dir.push_back(clustersDB.clusters_info[i].members_speed_dir[0]);
+        for(int j = 0; j < clustersDB.clusters_info[i].members_speed_dir.size()-1; j++)
+        {
+            diff = std::fabs(clustersDB.clusters_info[i].members_speed_dir[inx_tmp] - clustersDB.clusters_info[i].members_speed_dir[inx_tmp+1]);
+            if(diff >= 3.414)
+            {
+                std::cout << "diff: " << diff << std::endl;
+                clustersDB.clusters_info.push_back(tmp_Cluster);
+                //and begin new cluster
+                tmp_Cluster.members.clear();
+                tmp_Cluster.members_vel.clear();
+                tmp_Cluster.members_speed_mag.clear();
+                tmp_Cluster.members_speed_dir.clear();
+                
+                tmp_Cluster.members.push_back(clustersDB.clusters_info[i].members[inx_tmp+1]);
+                tmp_Cluster.members_vel.push_back(clustersDB.clusters_info[i].members_vel[inx_tmp+1]);
+                tmp_Cluster.members_speed_mag.push_back(clustersDB.clusters_info[i].members_speed_mag[inx_tmp+1]);
+                tmp_Cluster.members_speed_dir.push_back(clustersDB.clusters_info[i].members_speed_dir[inx_tmp+1]);
+            }else{
+                //at the feature to cluster
+                tmp_Cluster.members.push_back(clustersDB.clusters_info[i].members[inx_tmp+1]);
+                tmp_Cluster.members_vel.push_back(clustersDB.clusters_info[i].members_vel[inx_tmp+1]);
+                tmp_Cluster.members_speed_mag.push_back(clustersDB.clusters_info[i].members_speed_mag[inx_tmp+1]);
+                tmp_Cluster.members_speed_dir.push_back(clustersDB.clusters_info[i].members_speed_dir[inx_tmp+1]);
+            }             
+            inx_tmp = inx_tmp + 1;
+        }
+        clustersDB.clusters_info.push_back(tmp_Cluster);
+        //kill old cluster
+        clustersDB.clusters_info[i].to_be_erase = true;
+    }
+  
+}
+
+void DBClusteringNode::finalizeCluster_stage2(void)
+{
+    //Stage 2 of 2 for finalizeCluster
     for(int i = 0; i < clustersDB.clusters_info.size(); i++)
     {
         //temp variable
@@ -65,6 +173,8 @@ void DBClusteringNode::finalizeCluster(void)
             sum_centroid_vel_x = sum_centroid_vel_x + clustersDB.clusters_info[i].members_vel[j].x;
             sum_centroid_vel_y = sum_centroid_vel_y + clustersDB.clusters_info[i].members_vel[j].y;
         }
+        //id
+        clustersDB.clusters_info[i].id = i;
         //centroid
         centroid.x = sum_centroid_x/clustersDB.clusters_info[i].members.size();
         centroid.y = sum_centroid_y/clustersDB.clusters_info[i].members.size();
@@ -120,8 +230,6 @@ void DBClusteringNode::updateCluster(int p_index)
 
 void DBClusteringNode::expandCluster(geometry_msgs::Point p, int p_index, std::vector<int> &neighbor_points)
 {
-//     clustersDB.clusters_info[cluster_inx_].members.push_back(p); // --> p = featureDB.found_feature[p_index]
-//     clustersDB.clusters_info[cluster_inx_].members.push_back(featureDB.found_feature[p_index]);
     updateCluster(p_index);
     
     std::vector<int> NeighborPts_;
@@ -153,8 +261,6 @@ void DBClusteringNode::expandCluster(geometry_msgs::Point p, int p_index, std::v
         
         if(checkMembership(npoint_tmp) != true)
         {
-//             clustersDB.clusters_info[cluster_inx_].members.push_back(npoint_tmp); //--> npoint_tmp = featureDB.found_feature[neighbor_points[i]];
-//             clustersDB.clusters_info[cluster_inx_].members.push_back(featureDB.found_feature[neighbor_points[i]]);
             updateCluster(neighbor_points[i]);
         }else{
             //do not thing
@@ -187,7 +293,6 @@ void DBClusteringNode::regionQuery(vision_opticalflow::Feature featureDB, geomet
         p_tmp = featureDB.found_feature[i];
         if((distance(p,p_tmp) < esp) && (p.x != p_tmp.x) && (p.y != p_tmp.y))
         {
-            //pointInRegion.push_back(p_tmp);
             pointInRegion.push_back(i);
         }
     }
@@ -229,12 +334,9 @@ void DBClusteringNode::clusterCallback(const vision_opticalflow::Feature::ConstP
         for(int i = 0; i < featureDB.found_feature.size(); i++)
         {
             p_tmp = featureDB.found_feature[i];
-//             std::cout << "p_tmp[" << i << "]: " << p_tmp.x << " , " << p_tmp.y << std::endl;
             if(featureDB.visited[i] != true)
             {
-//                 std::cout << "check for visited" << std::endl;
                 std::vector<int> NeighborPts_;
-// 
                 featureDB.visited[i] = true;
                 regionQuery(featureDB, p_tmp, NeighborPts_);
                 if(NeighborPts_.size() < MinPts)
@@ -248,7 +350,8 @@ void DBClusteringNode::clusterCallback(const vision_opticalflow::Feature::ConstP
                 }
             }
         }
-        finalizeCluster();
+//         finalizeCluster_stage1();
+        finalizeCluster_stage2();
     }else{
         //no features input
         //what can you do? --> put zero cluster into clustersDB
