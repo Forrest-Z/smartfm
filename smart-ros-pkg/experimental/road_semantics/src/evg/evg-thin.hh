@@ -30,6 +30,15 @@
 #include "datatypes.hh"
 #include "heap.hh"
 
+#include "utils.hh"
+#include <iostream>
+#include <float.h>
+#include <vector>
+#include <stdio.h>
+#include <opencv/cv.h>
+#include <opencv/highgui.h>
+#include <fmutil/fm_math.h>
+
 using namespace std;
 
 
@@ -141,12 +150,21 @@ private:
   
   void find_skel_edge();
 
-  void pre_pruning();
-  void pre_pruning_test();
+  //to further thining the skeleton to single pixel;
+  void skel_thining();
+  bool remove_center_pixel(int x, int y);
+  //this function is used to test the basic idea of function "skel_thining";
+  void skel_thining_test();
+
+  void extract_topology();
+  void Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2, std::vector<CvPoint2D32f> & node_points);
+  void Extract_Edges(CvMat* pSrc, std::vector < std::vector<CvPoint> > & edges);
 
   void build_skel();
   
   void crawl_grid();
+  void calc_nearest_skeleton();
+
   void remove_final_spur();
   void best_to_depth_first();
   void best_to_depth_first_helper(int myindex, int parent_index);

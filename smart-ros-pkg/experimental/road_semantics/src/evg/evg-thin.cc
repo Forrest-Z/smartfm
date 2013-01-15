@@ -23,13 +23,7 @@
 *********************************************************************/
 
 #include "evg-thin.hh"
-#include "utils.hh"
-#include <iostream>
-#include <float.h>
-#include <vector>
-#include <stdio.h>
-#include <opencv/cv.h>
-#include <opencv/highgui.h>
+
 
 evg_thin::evg_thin(const grid_type& curr_grid,
 		   float distance_min, float distance_max, 
@@ -203,8 +197,6 @@ void evg_thin::find_skel() {
   // Convert from a grid to a skeleton_type data structure.
   build_skel();
 }
-
-
 
 /**
    Initialize _step1_grid to be "occupied" for all occupied grid
@@ -529,7 +521,10 @@ void evg_thin::find_skel_edge() {
 	}
 }
 
-void evg_thin::pre_pruning_test(){
+//to thin the skeleton from possible multiple-pixel thickness to single pixel;
+//the basic idea here is to remove redundant pixels without change skeleton topology;
+
+void evg_thin::skel_thining_test(){
 
 	gridtype _step_tmp;
 	vector <State> tmp(3);
@@ -552,11 +547,31 @@ void evg_thin::pre_pruning_test(){
 	bool case2 = (_step_tmp[x-1][y-1]==skel||_step_tmp[x][y-1]==skel||_step_tmp[x+1][y-1]==skel)
 			&& (_step_tmp[x-1][y+1]==skel||_step_tmp[x][y+1]==skel||_step_tmp[x+1][y+1]==skel);
 
+	int count = 0;
+	for (int i=-1; i<=1; i++)
+		for (int j=-1; j<=1; j++)
+			if((i!=0 || j!=0) && (_step_tmp[x+i][y+j]==skel))
+			{
+				count++;
+			}
+
+	bool case3 = (count >1);
+
+	/*
 	if(!case1 && !case2)
 	{
 		printf("not satisfactory\n");
 		return;
 	}
+	*/
+
+	if(!case3)
+	{
+		printf("not satisfactory\n");
+		return;
+	}
+
+
 
 	//do connected-component analysis;
 	int connectivity_serial = 0;
@@ -764,258 +779,305 @@ void evg_thin::pre_pruning_test(){
 	}
 }
 
-void evg_thin::pre_pruning() {
+void evg_thin::skel_thining() {
 
 	int total_skeleton = 0;
 	int erased_skeleton = 0;
-
-
-
+    
+	//first round, using case1 and case2;
 	for (int x=1;x<grid_size_x-1;x++)
 	    for (int y=1;y<grid_size_y-1;y++)
 	    	if (_step2_grid[x][y]==skel)
 	    	{
 	    		total_skeleton++;
+	    		//printf("\t pixel (%d, %d) \t", x, y);
 
-	    		bool case1 = (_step2_grid[x-1][y-1]==skel||_step2_grid[x-1][y]==skel||_step2_grid[x-1][y+1]==skel)
-	    				&& (_step2_grid[x+1][y-1]==skel||_step2_grid[x+1][y]==skel||_step2_grid[x+1][y+1]==skel);
-
-	    		bool case2 = (_step2_grid[x-1][y-1]==skel||_step2_grid[x][y-1]==skel||_step2_grid[x+1][y-1]==skel)
-	    			    && (_step2_grid[x-1][y+1]==skel||_step2_grid[x][y+1]==skel||_step2_grid[x+1][y+1]==skel);
+	    		bool case1 = (_step2_grid[x-1][y-1]==skel||_step2_grid[x-1][y]==skel||_step2_grid[x-1][y+1]==skel) && (_step2_grid[x+1][y-1]==skel||_step2_grid[x+1][y]==skel||_step2_grid[x+1][y+1]==skel);
+	    		bool case2 = (_step2_grid[x-1][y-1]==skel||_step2_grid[x][y-1]==skel||_step2_grid[x+1][y-1]==skel) && (_step2_grid[x-1][y+1]==skel||_step2_grid[x][y+1]==skel||_step2_grid[x+1][y+1]==skel);
 
 
-	    		if(!case1 && !case2) continue;
+	    		if(!case1 && !case2 ) continue;
 
-	    		printf("\n pixel (%d, %d) \n", x, y);
-
-	    		//do connected-component analysis;
-	    		int connectivity_serial = 0;
-	    		std::vector < std::vector<int> > connected_pairs;
-
-	    		bool skel_box[3][3];
-	    		skel_box[1][1]=false;
-	    		for (int i=-1; i<=1; i++)
-	    			for (int j=-1; j<=1; j++)
-	    				if (i!=0 || j!=0)
-	    				{
-	    					int nx = x+i;
-							int ny = y+j;
-							if(_step2_grid[nx][ny]==skel)
-							{
-								skel_box[1+i][1+j]=true;
-								//printf("skel (%d, %d)\t", 1+i, 1+j);
-							}
-							else
-							{
-								skel_box[1+i][1+j]=false;
-							}
-	    				}
-
-	    		//construct "label_box" for labeling
-	    		int label_box[3][3];
-	    		for(int i=-1; i<=1;  i++)
-	    			for(int j=-1; j<=1; j++)
-	    				label_box[1+i][1+j]=-1;
-
-	    		for (int i=-1; i<=1; i++)
-	    			for (int j=-1; j<=1; j++)
-	    				if ((i!=0 || j!=0) && skel_box[1+i][1+j])
-	    				{
-	    					//printf("pixel (%d, %d)\n", 1+i, 1+j);
-
-	    					//check 2 cells: left and up-left;
-	    					for (int m=-1; m<=0; m++)
-	    					{
-	    						int n=-1;
-	    						if(1+i+m>=0 && 1+i+m<=2 && 1+j+n>=0 && 1+j+n<=2)
-	    						{
-	    							if(skel_box[1+i+m][1+j+n]&&label_box[1+i+m][1+j+n]!=-1)
-	    							{
-	    								//printf("neibouring pixel (%d, %d): label %d\t", 1+i+m, 1+j+n, label_box[1+i+m][1+j+n]);
-	    								label_box[1+i][1+j]=label_box[1+i+m][1+j+n];
-	    							}
-	    						}
-	    					}
-
-	    					//check 2 cells: up and up-right;
-	    					for (int n=0; n<=1; n++)
-	    					{
-	    						int m=-1;
-	    						if(1+i+m>=0 && 1+i+m<=2 && 1+j+n>=0 && 1+j+n<=2)
-	    							if(skel_box[1+i+m][1+j+n] && label_box[1+i+m][1+j+n]!=-1)
-	    							{
-	    								//printf("(%d, %d): label %d", 1+i+m, 1+j+n, label_box[1+i+m][1+j+n]);
-
-	    								if(label_box[1+i][1+j]==-1) label_box[1+i][1+j]=label_box[1+i+m][1+j+n];
-	    								else if(label_box[1+i][1+j]!=label_box[1+i+m][1+j+n])
-	    								{
-	    									//already get some serial, but different from the current one;
-	    									std::vector<int> pair_tmp;
-	    									pair_tmp.push_back(label_box[1+i][1+j]);
-	    									pair_tmp.push_back(label_box[1+i+m][1+j+n]);
-	    									//printf("pair_tmp: %d, %d\t", label_box[1+i][1+j], label_box[1+i+m][1+j+n]);
-	    									connected_pairs.push_back(pair_tmp);
-	    								}
-	    							}
-	    					}
-
-	    					if(label_box[1+i][1+j]==-1)
-	    					{
-	    						connectivity_serial ++;
-	    						label_box[1+i][1+j]= connectivity_serial;
-	    					}
-
-	    					//printf("pixel (%d, %d), label %d\n", 1+i, 1+j, label_box[1+i][1+j]);
-	    				}
-
-	    		//re-sorted the connected_pieces, substitute the label, and find how many disconnected pieces exist;
-	    		std::vector < std::vector<int> > connected_unions;
-	    		for(size_t i=0; i<connected_pairs.size(); i++)
+	    		if(remove_center_pixel(x, y))
 	    		{
-	    			bool absorbed = false;
-	    			bool break_mid_loop = false;
-	    			for(size_t j=0; j<connected_unions.size(); j++)
-	    			{
-	    				for(size_t k=0; k<connected_unions[j].size(); k++)
-	    				{
-	    					if(connected_unions[j][k]==connected_pairs[i][0]
-	    						   ||connected_unions[j][k]==connected_pairs[i][1])
-	    					{
-	    						absorbed = true;
-	    						break_mid_loop=true;
-	    						break;
-	    					}
-	    				}
-	    				if(break_mid_loop) break;
-	    			}
+	    			_step2_grid[x][y]=occupied;
+	    			erased_skeleton++;
+	    			printf("erase\t");
 
-	    			if(!absorbed)
-	    			{
-	    				connected_unions.push_back(connected_pairs[i]);
-	    			}
 	    		}
-
-	    		std::vector < std::vector<int> > sorted_unions;
-	    		for(size_t i=0; i<connected_unions.size(); i++)
-	    		{
-	    			//bubble sorting for each union, from small to big;
-	    			for(size_t a=0;a<connected_unions[i].size();a++)
-	    			{
-	    				for(size_t b=0;b<a;b++)
-	    				{
-	    					if(connected_unions[i][a]<connected_unions[i][b])
-	    					{
-	    						int temp=connected_unions[i][a];
-	    						connected_unions[i][a]=connected_unions[i][b];
-	    						connected_unions[i][b]=temp;
-	    					}
-	    				}
-
-	    			}
-
-	    			//for(size_t k=0; k<connected_unions[i].size(); k++) printf("%d\t", connected_unions[i][k]);
-
-	    			std::vector<int> union_tmp;
-	    			union_tmp.push_back(connected_unions[i][0]);
-	    			for(size_t a=1;a<connected_unions[i].size();a++)
-	    			{
-	    				if(connected_unions[i][a]==union_tmp.back())continue;
-	    				else union_tmp.push_back(connected_unions[i][a]);
-	    			}
-	    			sorted_unions.push_back(union_tmp);
-	    		}
-
-	    		bool component_connected = true;
-
-	    		if(sorted_unions.size()==0 )
-	    		{
-	    			//printf("aaa\n");
-	    			for(int i=-1; i<=1; i++)
-	    			{
-	    				for(int j=-1;j<=1; j++)
-	    				{
-	    					//printf("pixel (%d, %d), label %d\t", 1+i, 1+j, label_box[1+i][1+j]);
-
-	    					if(label_box[1+i][1+j]>1)
-	    					{
-	    						component_connected=false;
-	    					}
-	    				}
-	    			}
-	    		}
-	    		else if(sorted_unions.size()>1 )
-	    		{
-	    			component_connected=false;
-	    			printf("bbb\n");
-	    			/*
-	    			for(size_t i=0; i<sorted_unions.size(); i++)
-	    				for(size_t k=0; k<sorted_unions[i].size(); k++)
-	    					printf("%d\t", sorted_unions[i][k]);
-	    			*/
-	    		}
-	    		else if(sorted_unions.size()==1 && sorted_unions[0].front()!=1)
-	    		{
-	    			component_connected=false;
-	    			printf("ccc\n");
-	    			//for(size_t k=0; k<sorted_unions[0].size(); k++) printf("%d\t", sorted_unions[0][k]);
-	    		}
-	    		else if(sorted_unions.size()==1 && sorted_unions[0].front()==1)
-	    		{
-	    			printf("ddd\n");
-	    			//for(size_t k=0; k<sorted_unions[0].size(); k++) printf("%d\t", sorted_unions[0][k]);
-
-	    			for(int i=-1; i<=1;  i++)
-	    				for(int j=-1;j<=1; j++)
-	    				{
-	    					if(label_box[1+i][1+j]>1)
-	    					{
-	    						for(size_t k=0; k<sorted_unions[0].size(); k++)
-	    						{
-	    							if(label_box[1+i][1+j]==sorted_unions[0][k])
-	    							{
-	    								label_box[1+i][1+j]=1; //break;
-	    							}
-	    						}
-	    					}
-	    				}
-
-	    			for(int i=-1; i<=1; i++)
-	    			{
-	    				for(int j=-1;j<=1; j++)
-	    				{
-	    					//printf("pixel (%d, %d), label %d\n", 1+i, 1+j, label_box[1+i][1+j]);
-
-	    					if(label_box[1+i][1+j]>1)
-	    					{
-	    						component_connected=false;
-	    						//break;
-	    					}
-	    				}
-	    			}
-	    		}
-
-	    		if(component_connected)
-				{
-	    		    _step2_grid[x][y] = occupied;
-					erased_skeleton++;
-					printf("erase\t");
-
-					for (int i=-1; i<=1; i++)
-						for (int j=-1; j<=1; j++)
-							if (i!=0 || j!=0)
-							{
-								int nx = x+i;
-								int ny = y+j;
-								if(_step2_grid[nx][ny]==skel)
-								{
-									printf("skel (%d, %d)\t", 1+i, 1+j);
-								}
-							}
-				}
 	    	}
-	    	
 
-	//for visualization purpose;
+	printf("1st round: total skeleton %d\t, erased skeleton pixel %d\t", total_skeleton, erased_skeleton);
+
+	//second round, using case3
+	total_skeleton = 0;
+	erased_skeleton = 0;
+	for (int x=1;x<grid_size_x-1;x++)
+	    for (int y=1;y<grid_size_y-1;y++)
+	    	if (_step2_grid[x][y]==skel)
+	    	{
+	    		total_skeleton++;
+	    		//printf("\t pixel (%d, %d) \t", x, y);
+
+	    		int count = 0;
+	    		for (int i=-1; i<=1; i++)
+	    			    for (int j=-1; j<=1; j++)
+	    			    	if((i!=0 || j!=0) && (_step2_grid[x+i][y+j]==skel))
+	    			    	{
+	    			    		count++;
+	    			    	}
+
+	    		bool case3 = (count >1);
+
+	    		if(!case3) continue;
+
+	    		if(remove_center_pixel(x, y))
+	    		{
+	    			_step2_grid[x][y]=occupied;
+	    			erased_skeleton++;
+	    			printf("erase");
+
+	    		}
+	    	}
+
+	printf("2nd round: total skeleton %d\t, erased skeleton pixel %d\t", total_skeleton, erased_skeleton);
+}
+
+bool evg_thin::remove_center_pixel (int x, int y)
+{
+	//do connected-component analysis;
+	int connectivity_serial = 0;
+	std::vector < std::vector<int> > connected_pairs;
+
+	bool skel_box[3][3];
+	skel_box[1][1]=false;
+	for (int i=-1; i<=1; i++)
+		for (int j=-1; j<=1; j++)
+			if (i!=0 || j!=0)
+			{
+				int nx = x+i;
+				int ny = y+j;
+				if(_step2_grid[nx][ny]==skel)
+				{
+					skel_box[1+i][1+j]=true;
+				}
+				else
+				{
+					skel_box[1+i][1+j]=false;
+				}
+			}
+
+	//construct "label_box" for labeling
+	int label_box[3][3];
+	for(int i=-1; i<=1;  i++)
+		for(int j=-1; j<=1; j++)
+			label_box[1+i][1+j]=-1;
+
+	for (int i=-1; i<=1; i++)
+		for (int j=-1; j<=1; j++)
+			if ((i!=0 || j!=0) && skel_box[1+i][1+j])
+			{
+				//printf("pixel (%d, %d)\n", 1+i, 1+j);
+
+				//check 2 cells: left and up-left;
+				for (int m=-1; m<=0; m++)
+				{
+					int n=-1;
+					if(1+i+m>=0 && 1+i+m<=2 && 1+j+n>=0 && 1+j+n<=2)
+					{
+						if(skel_box[1+i+m][1+j+n]&&label_box[1+i+m][1+j+n]!=-1)
+						{
+							//printf("neibouring pixel (%d, %d): label %d\t", 1+i+m, 1+j+n, label_box[1+i+m][1+j+n]);
+							label_box[1+i][1+j]=label_box[1+i+m][1+j+n];
+						}
+					}
+				}
+
+				//check 2 cells: up and up-right;
+				for (int n=0; n<=1; n++)
+				{
+					int m=-1;
+					if(1+i+m>=0 && 1+i+m<=2 && 1+j+n>=0 && 1+j+n<=2)
+						if(skel_box[1+i+m][1+j+n] && label_box[1+i+m][1+j+n]!=-1)
+						{
+							//printf("(%d, %d): label %d", 1+i+m, 1+j+n, label_box[1+i+m][1+j+n]);
+
+							if(label_box[1+i][1+j]==-1) label_box[1+i][1+j]=label_box[1+i+m][1+j+n];
+							else if(label_box[1+i][1+j]!=label_box[1+i+m][1+j+n])
+							{
+								//already get some serial, but different from the current one;
+								std::vector<int> pair_tmp;
+								pair_tmp.push_back(label_box[1+i][1+j]);
+								pair_tmp.push_back(label_box[1+i+m][1+j+n]);
+								//printf("pair_tmp: %d, %d\t", label_box[1+i][1+j], label_box[1+i+m][1+j+n]);
+								connected_pairs.push_back(pair_tmp);
+							}
+						}
+				}
+
+				if(label_box[1+i][1+j]==-1)
+				{
+					connectivity_serial ++;
+					label_box[1+i][1+j]= connectivity_serial;
+				}
+
+				//printf("pixel (%d, %d), label %d\n", 1+i, 1+j, label_box[1+i][1+j]);
+			}
+
+	//re-sorted the connected_pieces, substitute the label, and find how many disconnected pieces exist;
+	std::vector < std::vector<int> > connected_unions;
+	for(size_t i=0; i<connected_pairs.size(); i++)
+	{
+		bool absorbed = false;
+		bool break_mid_loop = false;
+		for(size_t j=0; j<connected_unions.size(); j++)
+		{
+			for(size_t k=0; k<connected_unions[j].size(); k++)
+			{
+				if(connected_unions[j][k]==connected_pairs[i][0]
+					   ||connected_unions[j][k]==connected_pairs[i][1])
+				{
+					absorbed = true;
+					break_mid_loop=true;
+					break;
+				}
+			}
+			if(break_mid_loop) break;
+		}
+
+		if(!absorbed)
+		{
+			connected_unions.push_back(connected_pairs[i]);
+		}
+	}
+
+
+	std::vector < std::vector<int> > sorted_unions;
+	for(size_t i=0; i<connected_unions.size(); i++)
+	{
+		//bubble sorting for each union, from small to big;
+		for(size_t a=0;a<connected_unions[i].size();a++)
+		{
+			for(size_t b=0;b<a;b++)
+			{
+				if(connected_unions[i][a]<connected_unions[i][b])
+				{
+					int temp=connected_unions[i][a];
+					connected_unions[i][a]=connected_unions[i][b];
+					connected_unions[i][b]=temp;
+				}
+			}
+
+		}
+
+		//for(size_t k=0; k<connected_unions[i].size(); k++) printf("%d\t", connected_unions[i][k]);
+
+		std::vector<int> union_tmp;
+		union_tmp.push_back(connected_unions[i][0]);
+		for(size_t a=1;a<connected_unions[i].size();a++)
+		{
+			if(connected_unions[i][a]==union_tmp.back())continue;
+			else union_tmp.push_back(connected_unions[i][a]);
+		}
+		sorted_unions.push_back(union_tmp);
+	}
+
+	bool component_connected = true;
+
+	if(sorted_unions.size()==0 )
+	{
+		//printf("aaa\n");
+		for(int i=-1; i<=1; i++)
+		{
+			for(int j=-1;j<=1; j++)
+			{
+				//printf("pixel (%d, %d), label %d\t", 1+i, 1+j, label_box[1+i][1+j]);
+
+				if(label_box[1+i][1+j]>1)
+				{
+					component_connected=false;
+				}
+			}
+		}
+	}
+	else if(sorted_unions.size()>1 )
+	{
+		component_connected=false;
+		printf("bbb\n");
+		/*
+		for(size_t i=0; i<sorted_unions.size(); i++)
+			for(size_t k=0; k<sorted_unions[i].size(); k++)
+				printf("%d\t", sorted_unions[i][k]);
+		*/
+	}
+	else if(sorted_unions.size()==1 && sorted_unions[0].front()!=1)
+	{
+		component_connected=false;
+		printf("ccc\n");
+		//for(size_t k=0; k<sorted_unions[0].size(); k++) printf("%d\t", sorted_unions[0][k]);
+	}
+	else if(sorted_unions.size()==1 && sorted_unions[0].front()==1)
+	{
+		printf("ddd\n");
+		//for(size_t k=0; k<sorted_unions[0].size(); k++) printf("%d\t", sorted_unions[0][k]);
+
+		for(int i=-1; i<=1;  i++)
+			for(int j=-1;j<=1; j++)
+			{
+				if(label_box[1+i][1+j]>1)
+				{
+					for(size_t k=0; k<sorted_unions[0].size(); k++)
+					{
+						if(label_box[1+i][1+j]==sorted_unions[0][k])
+						{
+							label_box[1+i][1+j]=1; //break;
+						}
+					}
+				}
+			}
+
+		for(int i=-1; i<=1; i++)
+		{
+			for(int j=-1;j<=1; j++)
+			{
+				//printf("pixel (%d, %d), label %d\n", 1+i, 1+j, label_box[1+i][1+j]);
+
+				if(label_box[1+i][1+j]>1)
+				{
+					component_connected=false;
+					//break;
+				}
+			}
+		}
+	}
+
+	if(component_connected)
+	{
+		/*
+		for (int i=-1; i<=1; i++)
+			for (int j=-1; j<=1; j++)
+				if (i!=0 || j!=0)
+				{
+					int nx = x+i;
+					int ny = y+j;
+					if(_step2_grid[nx][ny]==skel)
+					{
+						printf("skel (%d, %d)\t", 1+i, 1+j);
+					}
+				}
+		*/
+
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+void evg_thin::extract_topology(){
+
+	//1st: to construct a skeleton image from the data "_step2_grid";
 	IplImage *skel_image_ = cvCreateImage( cvSize(grid_size_x, grid_size_y),IPL_DEPTH_8U, 1);
 
 	int skel_height 		= skel_image_ -> height;
@@ -1024,24 +1086,196 @@ void evg_thin::pre_pruning() {
 	uchar * skel_data 	= (uchar*)skel_image_ ->imageData;
 	for(int ih=0; ih < skel_height; ih++)
 	{
-	 for(int iw=0; iw < skel_width; iw++)
+		for(int iw=0; iw < skel_width; iw++)
+		{
+			if(_step2_grid[iw][ih] == skel)
+			{
+				skel_data[ih*skel_step+iw]=255;
+			}
+			else
+			{
+				//sometimes this sentence is necessary;
+				skel_data[ih*skel_step+iw]=0;
+			}
+		}
+	}
+	cvSaveImage( "/home/baoxing/skel_image.jpg", skel_image_ );
+
+	IplImage *img = skel_image_;
+
+    CvMat *mat = cvCreateMat( img->height, img->width, CV_32FC1);
+    CvMat *node_mat = cvCreateMat( img->height, img->width, CV_32FC1);
+    CvMat *edge_mat = cvCreateMat( img->height, img->width, CV_32FC1);
+
+    IplImage  *node =0, *edge = 0, *color_edge = 0;
+    node = cvCreateImage(cvSize(img->width,img->height),IPL_DEPTH_8U, 1);
+    edge = cvCreateImage(cvSize(img->width,img->height),IPL_DEPTH_8U, 1);
+    color_edge = cvCreateImage(cvSize(img->width,img->height),IPL_DEPTH_8U, 3);
+
+	 cvConvert( img, mat);
+
+	 std::vector<CvPoint2D32f> node_points;
+	 Graph_Extraction(mat, node_mat, edge_mat, node_points);
+
+	 //do simple clustering for the node points;
+	 std::vector <std::vector<CvPoint2D32f> > node_clusters;
+	 for(size_t i=0; i<node_points.size(); i++)
 	 {
-		 if(_step2_grid[iw][ih] == skel)
+		 CvPoint2D32f point_tmp = node_points[i];
+		 int cluster_serial = -1;
+
+		 for(size_t j=0; j<node_clusters.size(); j++)
 		 {
-			 skel_data[ih*skel_step+iw]=255;
+			   if(cluster_serial !=-1) break;
+				for(size_t k=0; k<node_clusters[j].size(); k++)
+				{
+					CvPoint2D32f point_tmpp;
+					if(fmutil::distance(point_tmp, point_tmpp) < 5.0)
+					{
+						cluster_serial = j;
+						break;
+					}
+				}
+		 }
+		 if(cluster_serial == -1)
+		 {
+				std::vector<CvPoint2D32f> cluster_tmp;
+				cluster_tmp.push_back(point_tmp);
+				node_clusters.push_back(cluster_tmp);
 		 }
 		 else
 		 {
-			 //sometimes this sentence is necessary;
-			 skel_data[ih*skel_step+iw]=0;
+				node_clusters[cluster_serial].push_back(point_tmp);
 		 }
 	 }
-	}
-	cvSaveImage( "/home/baoxing/skel_image.jpg", skel_image_ );
-    
-	printf("erased skeleton pixel %d\n", erased_skeleton);
-	printf("total skeleton pixel %d\n", total_skeleton);
+
+	 std::vector<CvPoint>  merged_nodes;
+	 for(size_t i=0; i<node_clusters.size(); i++)
+	 {
+		 float points_number = (float)node_clusters[i].size();
+		 float x_tmp =0.0; float  y_tmp = 0.0;
+		 for(size_t j=0; j<node_clusters[i].size(); j++)
+		 {
+			 x_tmp = x_tmp + node_clusters[i][j].x;
+			 y_tmp = y_tmp + node_clusters[i][j].y;
+		 }
+		 x_tmp = x_tmp / points_number;
+		 y_tmp = y_tmp / points_number;
+		 merged_nodes.push_back(cvPoint(x_tmp, y_tmp));
+
+		 cvCircle( color_edge, cvPoint(x_tmp, y_tmp), 5, CV_RGB(0,255,0), 2);
+	 }
+
+	 std::vector < std::vector<CvPoint> > edges;
+     Extract_Edges(edge_mat, edges);
+
+	 for(size_t i=0; i < edges.size(); i++)
+	 {
+		CvScalar ext_color;
+		ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
+		ext_color = CV_RGB( 0, 0, 255 );
+
+        for(size_t j=0; j < edges[i].size(); j++) {
+            int x = edges[i][j].x;
+            int y = edges[i][j].y;
+				cvSet2D(color_edge, y, x, ext_color);
+        }
+    }
+
+    cvConvert( node_mat, node);
+    cvConvert( edge_mat, edge);
+
+    cvSaveImage( "/home/baoxing/node.jpg", node );
+	 cvNamedWindow("node",1);
+    cvShowImage("node", node);
+
+    cvSaveImage( "/home/baoxing/edge.jpg", edge );
+	 cvNamedWindow("edge",1);
+    cvShowImage("edge", edge);
+
+    cvSaveImage( "/home/baoxing/color_edge.jpg", color_edge );
+	 cvNamedWindow("color_edge",1);
+    cvShowImage("color_edge", color_edge);
 }
+
+
+void evg_thin::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2, std::vector<CvPoint2D32f> & node_points)
+{
+		node_points.clear();
+        int rows = pSrc->rows;
+        int cols = pSrc->cols;
+
+        for(int i = 1; i < rows-1; i++) {
+                for(int j = 1; j < cols-1; j++) {
+                        if ( CV_MAT_ELEM(*pSrc, float, i, j) == 255.0) {
+                                /// get 8 neighbors
+                                /// calculate C(p)
+                                int neighbor0 = (int) CV_MAT_ELEM(*pSrc, float, i-1, j-1);
+                                int neighbor1 = (int) CV_MAT_ELEM(*pSrc, float, i-1, j);
+                                int neighbor2 = (int) CV_MAT_ELEM(*pSrc, float, i-1, j+1);
+                                int neighbor3 = (int) CV_MAT_ELEM(*pSrc, float, i, j+1);
+                                int neighbor4 = (int) CV_MAT_ELEM(*pSrc, float, i+1, j+1);
+                                int neighbor5 = (int) CV_MAT_ELEM(*pSrc, float, i+1, j);
+                                int neighbor6 = (int) CV_MAT_ELEM(*pSrc, float, i+1, j-1);
+                                int neighbor7 = (int) CV_MAT_ELEM(*pSrc, float, i, j-1);
+
+                                int Count = neighbor0 + neighbor1 + neighbor2 + neighbor3 + neighbor4 +
+															neighbor5 + neighbor6 + neighbor7;
+
+										  if(Count > 2*255 )
+										  {
+											  CV_MAT_ELEM(*pDst, float, i, j) = 255.0;
+											  node_points.push_back(cvPoint2D32f(j, i));
+										  }
+										  else
+										  {
+											  //only record the remained edge points;
+											  CV_MAT_ELEM(*pDst2, float, i, j) = 255.0;
+										  }
+                        }
+                }
+        }
+}
+
+//Quick and easy connected component (blob) using OpenCV
+//http://nghiaho.com/?p=1102
+void evg_thin::Extract_Edges(CvMat* pSrc, std::vector < std::vector<CvPoint> > & edges)
+{
+    edges.clear();
+    CvMat *label_image = cvCloneMat( pSrc );
+
+    int label_count = 2; // starts at 2 because 0,1 are used already
+
+    for(int y=0; y < label_image->rows; y++) {
+        for(int x=0; x < label_image->cols; x++) {
+            if((int)CV_MAT_ELEM(*label_image, float, y, x) != 1) {
+                continue;
+            }
+
+            cvFloodFill(label_image, cvPoint(x,y), cvScalar(label_count), cvScalar(0), cvScalar(0), NULL, 8, NULL);
+
+            std::vector <CvPoint> edge;
+
+            for(int i= 0 ; i < label_image->rows; i++) {
+                for(int j=0; j < label_image->cols; j++) {
+
+                    if((int)CV_MAT_ELEM(*label_image, float, i, j)!= label_count)
+                    {
+                        continue;
+                    }
+
+                    edge.push_back(cvPoint(j,i));
+                    //CV_MAT_ELEM(*label_image, float, i, j) = 0.0;
+                }
+            }
+
+            edges.push_back(edge);
+
+            label_count++;
+        }
+    }
+}
+
 /** 
     Build the final data structure of the skeleton from the grid with
     cells marked as skeleton or occupied.
@@ -1061,8 +1295,10 @@ void evg_thin::build_skel() {
     //if _distance==-1, then there was no skeleton found near the
     //robot.
 
-	//pre_pruning_test();
-	pre_pruning();
+	//skel_thining_test();
+	skel_thining();
+	//to extract and visualize the topology of the skeleton;
+	extract_topology();
 
 	crawl_grid();
 
@@ -1072,20 +1308,8 @@ void evg_thin::build_skel() {
   }  
 }
 
+void evg_thin::calc_nearest_skeleton(){
 
-
-/**
-   Starting with the closest skelton point to the robot, walk along
-   the skeleton in the grid, building an intermediate skeleton data
-   structure.  Do this in a best-first fashion, using cell distance as
-   the cost function.  Also, if a branch ends but is not an exit (next
-   to the edge or next to unknown cells in the occupancy grid), prune
-   that branch back (basically, make the distance field of nodes in
-   that branch equal to -1).
-**/
-void evg_thin::crawl_grid() {
-
-	//re-calculate the nearest skeleton to the robot, since the one calculated before pruning maybe removed;
 	float rdist=FLT_MAX;
 	_closestx=-1;
 	_closesty=-1;
@@ -1112,25 +1336,39 @@ void evg_thin::crawl_grid() {
 				  _distance=d2;
 				}
 			}
+}
 
+/**
+   Starting with the closest skeleton point to the robot, walk along
+   the skeleton in the grid, building an intermediate skeleton data
+   structure.  Do this in a best-first fashion, using cell distance as
+   the cost function.  Also, if a branch ends but is not an exit (next
+   to the edge or next to unknown cells in the occupancy grid), prune
+   that branch back (basically, make the distance field of nodes in
+   that branch equal to -1).
+**/
+void evg_thin::crawl_grid() {
 
-  _tmp_skel.clear();
-  
-  node new_node;
-  new_node.x=_closestx;
-  new_node.y=_closesty;
-  new_node.distance=0;
-  new_node.parent=-1;
-  
-  heap<node> open_list;
-  //Closest point is root of tree.
-  open_list.push(new_node);
+	//re-calculate the nearest skeleton to the robot, since the one calculated before pruning maybe removed;
+	calc_nearest_skeleton();
 
-  _num_exits=0;
-  _root_index=0;
+    _tmp_skel.clear();
   
-  bool cont;
-  vector<node> children;
+	node new_node;
+	new_node.x=_closestx;
+	new_node.y=_closesty;
+	new_node.distance=0;
+	new_node.parent=-1;
+
+	heap<node> open_list;
+	//Closest point is root of tree.
+	open_list.push(new_node);
+
+	_num_exits=0;
+	_root_index=0;
+
+	bool cont;
+	vector<node> children;
   
   while (!open_list.empty())
   {
