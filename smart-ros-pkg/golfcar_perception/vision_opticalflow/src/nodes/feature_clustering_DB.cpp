@@ -1,4 +1,5 @@
 #include <ros/ros.h>
+#include "std_msgs/Float64.h"
 #include <math.h>
 #include <vector>
 #include <algorithm>
@@ -24,14 +25,14 @@ private:
     vision_opticalflow::Clusters clustersDB;
     vision_opticalflow::Feature featureDB;
 
-    int minimum_id(void);
+    float dir_diff(float dir1, float dir2);
     int minimum_id_vec(std::vector<float> &input_vector);
     void finalizeCluster_stage1(void);
     void finalizeCluster_stage2(void);
     void updateCluster(int p_index);
     void expandCluster(geometry_msgs::Point p, int p_index, std::vector<int> &neighbor_points);
     bool checkMembership(geometry_msgs::Point p);
-    void regionQuery(vision_opticalflow::Feature input_feature, geometry_msgs::Point p, std::vector<int> &pointInRegion);
+    void regionQuery(vision_opticalflow::Feature input_feature, geometry_msgs::Point p, float npoint_dir, std::vector<int> &pointInRegion);
     float distance(geometry_msgs::Point p1,geometry_msgs::Point p2);
     void clusterCallback(const vision_opticalflow::Feature::ConstPtr & features_msg);
 };
@@ -47,17 +48,11 @@ DBClusteringNode::DBClusteringNode()
     cluster_inx_ = 0;
 }
 
-int DBClusteringNode::minimum_id(void)
+float DBClusteringNode::dir_diff(float dir1, float dir2)
 {
-    int min_id = 0;
-    for(int i = 0; i < clustersDB.clusters_info[i].members_speed_dir.size(); i++)
-    {
-        if(clustersDB.clusters_info[i].members_speed_dir[i] < clustersDB.clusters_info[i].members_speed_dir[min_id])
-        {
-            min_id = i;
-        }
-    }
-    return min_id;
+    float delta_dir;
+    delta_dir = std::fabs(dir1 - dir2);
+    return delta_dir;
 }
 
 int DBClusteringNode::minimum_id_vec(std::vector<float> &input_vector)
@@ -234,7 +229,7 @@ void DBClusteringNode::expandCluster(geometry_msgs::Point p, int p_index, std::v
     
     std::vector<int> NeighborPts_;
     geometry_msgs::Point npoint_tmp;
-
+    float npoint_dir;
     int i = -1;
     while(true)
     {
@@ -246,10 +241,11 @@ void DBClusteringNode::expandCluster(geometry_msgs::Point p, int p_index, std::v
         }
 
         npoint_tmp = featureDB.found_feature[neighbor_points[i]];
+        npoint_dir = featureDB.feature_speed_dir[neighbor_points[i]];
         if(featureDB.visited[neighbor_points[i]] != true)
         {
             featureDB.visited[neighbor_points[i]] = true;
-            regionQuery(featureDB, npoint_tmp, NeighborPts_);
+            regionQuery(featureDB, npoint_tmp, npoint_dir, NeighborPts_);
             if(NeighborPts_.size() >= MinPts)
             {
                 for(int j = 0; j < NeighborPts_.size(); j++)
@@ -284,14 +280,16 @@ bool DBClusteringNode::checkMembership(geometry_msgs::Point p)
     return ismember;
 }
 
-void DBClusteringNode::regionQuery(vision_opticalflow::Feature featureDB, geometry_msgs::Point p, std::vector<int> &pointInRegion)
+void DBClusteringNode::regionQuery(vision_opticalflow::Feature featureDB, geometry_msgs::Point p, float npoint_dir, std::vector<int> &pointInRegion)
 {
     pointInRegion.clear();
     geometry_msgs::Point p_tmp;
+    float p_tmp_dir;
     for(int i = 0; i < featureDB.found_feature.size(); i++)
     {
         p_tmp = featureDB.found_feature[i];
-        if((distance(p,p_tmp) < esp) && (p.x != p_tmp.x) && (p.y != p_tmp.y))
+        p_tmp_dir = featureDB.feature_speed_dir[i];
+        if((distance(p,p_tmp) < esp) && (p.x != p_tmp.x) && (p.y != p_tmp.y) && dir_diff(npoint_dir,p_tmp_dir) < 3.414)
         {
             pointInRegion.push_back(i);
         }
@@ -320,6 +318,7 @@ void DBClusteringNode::clusterCallback(const vision_opticalflow::Feature::ConstP
     cluster_inx_ = -1;
     
     geometry_msgs::Point p_tmp;
+    float p_tmp_dir;
     vision_opticalflow::Cluster dummy_cluster;
     if(featureDB.found_feature.size() > 0){
         std::cout << "Feature receives: " << featureDB.found_feature.size() << std::endl;
@@ -334,11 +333,12 @@ void DBClusteringNode::clusterCallback(const vision_opticalflow::Feature::ConstP
         for(int i = 0; i < featureDB.found_feature.size(); i++)
         {
             p_tmp = featureDB.found_feature[i];
+            p_tmp_dir = featureDB.feature_speed_dir[i];
             if(featureDB.visited[i] != true)
             {
                 std::vector<int> NeighborPts_;
                 featureDB.visited[i] = true;
-                regionQuery(featureDB, p_tmp, NeighborPts_);
+                regionQuery(featureDB, p_tmp, p_tmp_dir, NeighborPts_);
                 if(NeighborPts_.size() < MinPts)
                 {
                     featureDB.isnoise[i] = true;
