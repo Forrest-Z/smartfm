@@ -271,7 +271,6 @@ void DBClusteringNode::clusterCallback(const vision_opticalflow::Feature::ConstP
     }
     std::cout << "number of cluster: " << clustersDB.clusters_info.size() << std::endl;
     std::cout << "###--------------------------###"<< std::endl;
-    
     cluster_pub_.publish(clustersDB);
 }
 
