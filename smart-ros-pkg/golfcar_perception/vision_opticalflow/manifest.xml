@@ -17,7 +17,7 @@
   <depend package="dynamic_reconfigure"/>
   <depend package="fmutil"/>
   <depend package="std_msgs"/>
-
+  <depend package="vision_motion_detection"/>
   <export>
     <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lvision_opticalflow"/>
   </export>

@@ -23,8 +23,10 @@ struct particle
 class GraphParticleFilter
 {
 public:
-	GraphParticleFilter(vector< vector<double> > &scores_array, vector<vector<double> > &rotations, isam::Slam *slam, vector<sensor_msgs::PointCloud> *pc_vec, int particle_no, int skip_reading):
-		slam_(slam), pc_vec_(pc_vec), scores_(scores_array), rotations_(rotations), skip_reading_(skip_reading)
+	map<int, int> falseCL_node_;
+
+	GraphParticleFilter(vector< vector<double> > &scores_array, vector<vector<double> > &rotations, isam::Slam *slam, vector<vector<sensor_msgs::PointCloud> > &pc_vec, int particle_no, int skip_reading):
+		slam_(slam), pc_vecs_(pc_vec), scores_(scores_array), rotations_(rotations), skip_reading_(skip_reading)
 
 	{
 		//initialize particles with node_idx as -1
@@ -59,14 +61,13 @@ public:
 private:
 	isam::Slam *slam_;
 
-	vector<sensor_msgs::PointCloud> *pc_vec_;
+	vector<vector<sensor_msgs::PointCloud> > pc_vecs_;
 	vector<particle> particles_;
 	//using this for fast development
 	vector< vector<double> > scores_;
 	vector<vector<double> > rotations_;
 	vector<double> nodes_heading_;
 	int skip_reading_;
-
 	//perform motion based on normal distribution
 
 	typedef boost::mt19937                     ENG;    // Mersenne Twister
@@ -86,7 +87,7 @@ private:
 		for(size_t i=0; i<particles_.size(); i++)
 		{
 			double ang_dist = M_PI;
-			//use matched result instead for more robust heading value. If no match found, default to same heading
+			//use matched result instead for more robust heading value. If no match found, default to reversed heading
 			if(nodes_match_heading_.find((int)particles_[i].node_idx)!=nodes_match_heading_.end())
 			  ang_dist = nodes_match_heading_[(int)particles_[i].node_idx];//fmutil::angDist(nodes_heading_[nodes_heading_.size()-1], nodes_heading_[(int)particles_[i].node_idx]);
 			ang_dist = fabs(ang_dist/M_PI); //scaling to 0-1, where a near 0 dist means 2 nodes having the same heading and otherwise
@@ -145,9 +146,11 @@ private:
 		fmutil::Stopwatch sw1("sw1");
 		vector<double> weight_prob;
 		weight_prob.resize(particles_.size());
-		RasterMapPCL rmpcl;
-		rmpcl.setInputPts((*pc_vec_)[matching_node].points);
-		map<int, int> unique_nodes;
+		/*RasterMapPCL rmpcl;
+    vector<sensor_msgs::PointCloud> matching_pcs;
+    for(int i=0; i<3; i++) matching_pcs.push_back(pc_vecs_[i][matching_node]);
+		rmpcl.setInputPts(matching_pcs);
+		*/map<int, int> unique_nodes;
 		sw1.end();
 		//find unique nodes
 		for(size_t i=0; i<particles_.size(); i++)
@@ -168,23 +171,29 @@ private:
 		fmutil::Stopwatch sw2("sw2");
 
 		nodes_match_heading_.clear();
-#pragma omp parallel for
+//#pragma omp parallel for
 		for(size_t i=0; i<unique_nodes_array.size(); i++)
 		{
 			double score;
 			//was using unique_nodes by directly advancing the iterator using STL, does not work
 
 			//reminder: pc_vec_ has the complete data
-
-			transform_info best_tf = rmpcl.getBestTf((*pc_vec_)[unique_nodes_array[i]*skip_reading_]);
+      vector<sensor_msgs::PointCloud> unique_pcs;
+      for(int j=0; j<3; j++) unique_pcs.push_back(pc_vecs_[j][unique_nodes_array[i]*skip_reading_]);
+			/*transform_info best_tf = rmpcl.getBestTf(unique_pcs);
 #pragma omp critical
 			nodes_match_heading_[unique_nodes_array[i]] = best_tf.rotation;
 			RasterMapPCL rmpcl_ver;
 			rmpcl_ver.setInputPts(best_tf.real_pts, true);
-			double temp_score = rmpcl_ver.getScore((*pc_vec_)[matching_node].points);
+			double temp_score = rmpcl_ver.getScore(pc_vecs_[1][matching_node].points);
 			score = sqrt( temp_score * best_tf.score);
-			//score = scores_[matching_node/skip_reading_][unique_nodes_array[i]];
-			//nodes_match_heading_[unique_nodes_array[i]] = rotations_[matching_node/skip_reading_][unique_nodes_array[i]];
+			*/score = scores_[matching_node/skip_reading_][unique_nodes_array[i]];
+			//penalize the falseCL node
+			if(falseCL_node_.find(unique_nodes_array[i]) != falseCL_node_.end())
+			{
+				score/= falseCL_node_[unique_nodes_array[i]];
+			}
+			nodes_match_heading_[unique_nodes_array[i]] = rotations_[matching_node/skip_reading_][unique_nodes_array[i]];
 			if(score == 0.01) cout<<"Error, unexpected matching of nodes being evaluated: "
 						<<matching_node/skip_reading_<<":"<<unique_nodes_array[i]<<endl;
 			//cout<<matching_node/skip_reading_<<"-"<<unique_nodes_array[i]<<":"<<score<<"->"<<score2<<" ";
@@ -301,7 +310,7 @@ private:
 		if( matching_node < 100)
 				return -1;
 
-		if( max_neighbor_score >35. && max_neighbor_node_id != -1 && max_accu > 20)
+		if( max_neighbor_score >30. && max_neighbor_node_id != -1 && max_accu > 20)
 		{
 				cout<<"close loop found at node "<<max_neighbor_node_id <<" with score "<<max_neighbor_score<<endl;
 				return max_neighbor_node_id*skip_reading_;

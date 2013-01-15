@@ -1,0 +1,100 @@
+
+<launch>
+    <group ns="EA">
+        <node pkg="vision_motion_detection" type="background_extractor" name="background_extractor" output="screen">
+            <remap from="image" to="camera/image_raw" />
+        </node>
+        <!-- Take image in and output good feature to track, pub: "/feature_extractor/feature"-->
+        <node pkg="vision_opticalflow" type="feature_extractor" name="feature_extractor" output="screen">
+            <remap from="camera" to="camera/image_raw" />
+            <remap from="background" to="background_extractor/background" />
+        </node>
+
+        <node pkg="vision_opticalflow" type="feature_display" name="feature_display" output="screen" respawn="true">
+            <remap from="image" to="camera/image_raw" />
+            <remap from="features" to="feature_extractor/feature" />
+        </node>
+
+        <node pkg="vision_opticalflow" type="feature_clustering_DB" name="feature_clustering_DB" output="screen" respawn="true">
+            <remap from="features" to="feature_extractor/feature" />
+            <remap from="clusters" to="clusters" />
+        </node>
+
+        <!-- Subscribe to "clusters" topic of type vision_opticalflow::Clusters, and publish "tracker" of type vision_opticalflow::Clusters-->
+        <node pkg="vision_opticalflow" type="clusters_tracking" name="clusters_tracking" output="screen" respawn="true">
+            <remap from="clusters" to="clusters" />
+            <remap from="tracker" to="tracker" />
+        </node>
+
+        <node pkg="vision_opticalflow" type="cluster_display" name="cluster_display" output="screen" respawn="true">
+            <remap from="image" to="camera/image_raw" />
+            <remap from="clusters" to="tracker" />
+        </node>
+
+        <!-- Subscribe to "tracker" topic of type vision_opticalflow::Clusters, and publish "tracks" of type vision_motion_detection::Tracks-->
+        <node pkg="vision_opticalflow" type="clusters_to_tracks" name="clusters_to_tracks" output="screen" respawn="true">
+            <remap from="clusters" to="clusters" />
+            <remap from="tracker" to="tracker" />
+        </node>
+    </group>
+
+    <group ns="SDE">
+        <node pkg="vision_motion_detection" type="background_extractor" name="background_extractor" output="screen">
+            <remap from="image" to="camera/image_raw" />
+        </node>
+        <!-- Take image in and output good feature to track, pub: "/feature_extractor/feature"-->
+        <node pkg="vision_opticalflow" type="feature_extractor" name="feature_extractor" output="screen">
+            <remap from="camera" to="camera/image_raw" />
+            <remap from="background" to="background_extractor/background" />
+        </node>
+
+        <node pkg="vision_opticalflow" type="feature_display" name="feature_display" output="screen" respawn="true">
+            <remap from="image" to="camera/image_raw" />
+            <remap from="features" to="feature_extractor/feature" />
+        </node>
+
+        <node pkg="vision_opticalflow" type="feature_clustering_DB" name="feature_clustering_DB" output="screen" respawn="true">
+            <remap from="features" to="feature_extractor/feature" />
+            <remap from="clusters" to="clusters" />
+        </node>
+
+        <!-- Subscribe to "clusters" topic of type vision_opticalflow::Clusters, and publish "tracker" of type vision_opticalflow::Clusters-->
+        <node pkg="vision_opticalflow" type="clusters_tracking" name="clusters_tracking" output="screen" respawn="true">
+            <remap from="clusters" to="clusters" />
+            <remap from="tracker" to="tracker" />
+        </node>
+
+        <node pkg="vision_opticalflow" type="cluster_display" name="cluster_display" output="screen" respawn="true">
+            <remap from="image" to="camera/image_raw" />
+            <remap from="clusters" to="tracker" />
+        </node>
+
+        <!-- Subscribe to "tracker" topic of type vision_opticalflow::Clusters, and publish "tracks" of type vision_motion_detection::Tracks-->
+        <node pkg="vision_opticalflow" type="clusters_to_tracks" name="clusters_to_tracks" output="screen" respawn="true">
+            <remap from="clusters" to="clusters" />
+            <remap from="tracker" to="tracker" />
+        </node>
+    </group>
+
+    <param name="/infra_url" type="string" value="http://137.132.22.82:15016/infrastructure" />
+
+    <node pkg="infrastructure_road_monitoring" type="t_junction_go.py" name="t_junction_go" output="screen">
+        <remap from="tracksSDE" to="SDE/tracks"/>
+        <remap from="tracksEA" to="EA/tracks"/>
+        <rosparam command="load" file="$(find infrastructure_road_monitoring)/launch/t_junction_from_above.yaml"/>
+    </node>
+
+    <node pkg="infrastructure_road_monitoring" type="infrastructure_query_service.py" name="infrastructure_query_service" output="screen">
+    </node>
+    
+    <node pkg="vision_motion_detection" type="roi_select" name="ea_roi_select" output="screen">
+        <remap from="image" to="/EA/camera/image_raw" />
+        <param name="poly" value="/t_junction_go/ea_poly" />
+    </node>
+
+    <node pkg="vision_motion_detection" type="roi_select" name="sde_roi_select" output="screen">
+        <remap from="image" to="/SDE/camera/image_raw" />
+        <param name="poly" value="/t_junction_go/sde_poly" />
+    </node>
+
+</launch>

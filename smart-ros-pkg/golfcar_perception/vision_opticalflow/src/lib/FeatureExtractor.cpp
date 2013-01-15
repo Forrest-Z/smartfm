@@ -8,7 +8,7 @@ FeatureExtractor::FeatureExtractor()
   dilate_size_(5),
   erode_size_(5),
   blurring_size_(2),
-  view_intermediate_images_(true) ///display images resulting from blurring, erosion, dilation, threshold, etc.
+  view_intermediate_images_(false) ///display images resulting from blurring, erosion, dilation, threshold, etc.
 {
     //goodFeaturesToTrack
     MAX_CORNERS = 500;
@@ -163,8 +163,8 @@ vision_opticalflow::Feature FeatureExtractor::extract(cv::Mat gray_input, double
     cv::rectangle(roi_mask_,roi_start_pt,roi_end_pt,cv::Scalar(255,255,255),-1,8);
 //     std::cout << "elemSize: " << gray_input.elemSize() << " depth: " << gray_input.depth() << " channels :" << gray_input.channels() << std::endl;
     //Get good feature to track of the current frame, store it in curr_frame_feature_ vector (vector of type float)
-    cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance, roi_mask_);
-//     cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance);     //not using ROI
+//     cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance, roi_mask_);
+    cv::goodFeaturesToTrack(gray_input, curr_frame_feature_, MAX_CORNERS, qualityLevel, minDistance);     //not using ROI
 
     if(prev_frame_.empty() || prev_frame_feature_.size() <= 0)
     {

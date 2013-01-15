@@ -60,7 +60,7 @@ void FeatureDisplayNode::featuresCallback(const sensor_msgs::Image::ConstPtr & f
     cv_bridge::CvImageConstPtr cvImgFrame = cv_bridge::toCvCopy(frame, "bgr8");
     cv::Mat img = cvImgFrame->image;
 
-    for( unsigned i=0; i< features_msg->prev_feature.size(); i++ )
+    for( unsigned int i=0; i< features_msg->prev_feature.size(); i++ )
     {
         prev_feature_cv.x = features_msg->prev_feature[i].x;
         prev_feature_cv.y = features_msg->prev_feature[i].y;

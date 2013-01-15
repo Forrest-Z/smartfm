@@ -17,7 +17,7 @@
 #include "RasterMapPCL.h"
 #include "ReadFileHelper.h"
 #include "mysql_helper.h"
-
+#include "geometry_helper.h"
 
 
 int main(int argc, char **argcv)
@@ -26,6 +26,7 @@ int main(int argc, char **argcv)
 
 	vector<string> input_files;
 	vector<vector<sensor_msgs::PointCloud> > pc_vecs;
+	vector<geometry_msgs::Pose> poses;
 	for(int i=0; i<3; i++)
 	{
 		stringstream ss;
@@ -41,7 +42,7 @@ int main(int argc, char **argcv)
 		data_in = &dataStreamSrc;
 
 		vector<sensor_msgs::PointCloud> pc_vec;
-		if(!readFrontEndFile(*data_in, pc_vec)) cout<<"Failed read front end file"<<endl;
+		if(!readFrontEndFile(*data_in, pc_vec, poses)) cout<<"Failed read front end file"<<endl;
 		pc_vecs.push_back(pc_vec);
 	}
 	assert(pc_vecs[0].size() == pc_vecs[1].size());
@@ -58,7 +59,7 @@ int main(int argc, char **argcv)
 	MySQLHelper sql(skip_reading, "scanmatch_result", argcv[1]);
 	sql.create_2dtable(size);
 	cout<<"pc_vec.size() "<<size<<endl;
-	//omp_set_num_threads(5);
+	//omp_set_num_threads(6);
 #pragma omp parallel for
 	for(int i=0; i<size; i+=skip_reading)
 	{
@@ -69,7 +70,20 @@ int main(int argc, char **argcv)
 		{
 			RasterMapPCL rmpcl;
 			vector<sensor_msgs::PointCloud> pc_vecs_3;
-			for(int j=0; j<3; j++) pc_vecs_3.push_back(pc_vecs[j][i]);
+			//for(int j=0; j<3; j++) pc_vecs_3.push_back(pc_vecs[j][i]);
+			//pc_vecs_3.clear();
+			pc_vecs_3.resize(3);
+			for(int k=-2; k<=0; k++)
+			{
+				if(i+k*skip_reading < 0 || i+k*skip_reading > size) continue;
+				geometry_msgs::Pose odo = ominus(poses[i+k*skip_reading], poses[i]);
+				for(int j=0; j<3; j++)
+				{
+					vector<geometry_msgs::Point32> input_pt_tran= getTransformedPts(odo, pc_vecs[j][i+k*skip_reading].points);
+					pc_vecs_3[j].points.insert(pc_vecs_3[j].points.end(), input_pt_tran.begin(), input_pt_tran.end());
+				}
+
+			}
 			rmpcl.setInputPts(pc_vecs_3);
 			cout<<"Matching node "<<i<<endl;
 			vector<double> score_row, rotation_row;
@@ -82,6 +96,7 @@ int main(int argc, char **argcv)
 					rotation_row.push_back(0.01);
 					continue;
 				}
+
 				//if(abs(j-i)<5) continue;
 				//cout<<i<<":"<<j<<"      \xd"<<flush;
 
@@ -89,13 +104,8 @@ int main(int argc, char **argcv)
 				vector<sensor_msgs::PointCloud> pc_vecs_3;
 				for(int k=0; k<3; k++) pc_vecs_3.push_back(pc_vecs[k][j]);
 				best_tf = rmpcl.getBestTf(pc_vecs_3);
-				RasterMapPCL rmpcl_ver;
-				rmpcl_ver.setInputPts(best_tf.real_pts, true);
-				double temp_score = rmpcl_ver.getScore(pc_vecs_3[1].points);
-				double ver_score = sqrt( temp_score * best_tf.score);
 
-
-				score_row.push_back(ver_score);
+				score_row.push_back(best_tf.score);
 				rotation_row.push_back(best_tf.rotation);
 				/*
 			string s;

@@ -35,7 +35,45 @@ bool readScores(istream &in, vector<double>& scores)            // read point (f
 	//cout<<"First score:"<<scores[0]<< " last score:"<<scores[scores.size()]<<endl;
 	return true;
 }
+bool readPts3D(istream &in, sensor_msgs::PointCloud &p, geometry_msgs::Pose &pose, uint64_t &time)
+{
+	int pc_size;
 
+	if(!(in >> pose.position.x )) return false;
+	if(!(in >> pose.position.y)) return false;
+	if(!(in >> pose.position.z)) return false;
+	if(!(in >> pose.orientation.x)) return false;
+	if(!(in >> pose.orientation.y)) return false;
+	if(!(in >> pose.orientation.z)) return false;
+	if(!(in >> time)) return false;
+	if(!(in >> pc_size)) return false;
+	p.points.clear();
+
+
+	p.points.resize(pc_size);
+
+
+	for(int i=0; i<pc_size; i++)
+	{
+		if(!(in >> p.points[i].x))
+		{
+			cout<<"Error reading pt x"<<endl;
+			exit(1);
+		}
+		if(!(in >> p.points[i].y))
+		{
+			cout<<"Error reading pt y"<<endl;
+			exit(2);
+		}
+		if(!(in >> p.points[i].z))
+		{
+			cout<<"Error reading pt z"<<endl;
+			exit(3);
+		}
+	}
+
+	return true;
+}
 bool readPts(istream &in, sensor_msgs::PointCloud &p, geometry_msgs::Pose &pose, uint64_t &time)
 {
 	int pc_size;
@@ -129,6 +167,7 @@ bool readFrontEndFile(istream& data_in, vector<sensor_msgs::PointCloud>& pc_vec,
 bool readFrontEndFile(istream& data_in, vector<sensor_msgs::PointCloud>& pc_vec, vector<geometry_msgs::Pose>& poses, vector<uint64_t> &times)
 {
 	sensor_msgs::PointCloud pc;
+  poses.clear();
 	geometry_msgs::Pose pose;
 	uint64_t time;
 	while(readPts(data_in, pc, pose, time))

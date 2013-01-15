@@ -8,7 +8,7 @@ FeatureExtractor::FeatureExtractor()
   dilate_size_(5),
   erode_size_(5),
   blurring_size_(2),
-  view_intermediate_images_(true) ///display images resulting from blurring, erosion, dilation, threshold, etc.
+  view_intermediate_images_(false) ///display images resulting from blurring, erosion, dilation, threshold, etc.
 {
     //goodFeaturesToTrack
     MAX_CORNERS = 500;
