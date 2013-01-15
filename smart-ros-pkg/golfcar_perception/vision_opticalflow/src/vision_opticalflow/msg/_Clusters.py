@@ -9,7 +9,7 @@ import geometry_msgs.msg
 import std_msgs.msg
 
 class Clusters(genpy.Message):
-  _md5sum = "e57380bc98028f65be6aa9b586807850"
+  _md5sum = "4bab3a56df7faaa4d1a22b41b9b2c9b3"
   _type = "vision_opticalflow/Clusters"
   _has_header = True #flag to mark the presence of a Header object
   _full_text = """Header header
@@ -46,6 +46,7 @@ float64                 centroid_speed_mag      #magnitude of centroid's speed
 float64                 centroid_speed_dir      #direction of centroid's speed
 float64[]               members_speed_mag       #magnitude of each member's speed
 float64[]               members_speed_dir       #direction of each member's speed
+bool                    to_be_erase
 
 
 ================================================================================
@@ -135,6 +136,7 @@ float64 z
         buff.write(_struct_I.pack(length))
         pattern = '<%sd'%length
         buff.write(struct.pack(pattern, *val1.members_speed_dir))
+        buff.write(_struct_B.pack(val1.to_be_erase))
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -224,6 +226,10 @@ float64 z
         start = end
         end += struct.calcsize(pattern)
         val1.members_speed_dir = struct.unpack(pattern, str[start:end])
+        start = end
+        end += 1
+        (val1.to_be_erase,) = _struct_B.unpack(str[start:end])
+        val1.to_be_erase = bool(val1.to_be_erase)
         self.clusters_info.append(val1)
       return self
     except struct.error as e:
@@ -276,6 +282,7 @@ float64 z
         buff.write(_struct_I.pack(length))
         pattern = '<%sd'%length
         buff.write(val1.members_speed_dir.tostring())
+        buff.write(_struct_B.pack(val1.to_be_erase))
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -366,13 +373,18 @@ float64 z
         start = end
         end += struct.calcsize(pattern)
         val1.members_speed_dir = numpy.frombuffer(str[start:end], dtype=numpy.float64, count=length)
+        start = end
+        end += 1
+        (val1.to_be_erase,) = _struct_B.unpack(str[start:end])
+        val1.to_be_erase = bool(val1.to_be_erase)
         self.clusters_info.append(val1)
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
 
 _struct_I = genpy.struct_I
+_struct_B = struct.Struct("<B")
+_struct_d = struct.Struct("<d")
 _struct_2d = struct.Struct("<2d")
 _struct_3I = struct.Struct("<3I")
-_struct_d = struct.Struct("<d")
 _struct_3d = struct.Struct("<3d")

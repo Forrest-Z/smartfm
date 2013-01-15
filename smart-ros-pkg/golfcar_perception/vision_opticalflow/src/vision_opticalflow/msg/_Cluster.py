@@ -7,7 +7,7 @@ import struct
 import geometry_msgs.msg
 
 class Cluster(genpy.Message):
-  _md5sum = "d10cad16558a5cd56a96a3fc6b87f892"
+  _md5sum = "2c3f923323b1ac4df8722b041891350d"
   _type = "vision_opticalflow/Cluster"
   _has_header = False #flag to mark the presence of a Header object
   _full_text = """uint32 id
@@ -21,6 +21,7 @@ float64                 centroid_speed_mag      #magnitude of centroid's speed
 float64                 centroid_speed_dir      #direction of centroid's speed
 float64[]               members_speed_mag       #magnitude of each member's speed
 float64[]               members_speed_dir       #direction of each member's speed
+bool                    to_be_erase
 
 
 ================================================================================
@@ -31,8 +32,8 @@ float64 y
 float64 z
 
 """
-  __slots__ = ['id','centroid','centroid_vel','centroid_dir','members','members_vel','centroid_speed_mag','centroid_speed_dir','members_speed_mag','members_speed_dir']
-  _slot_types = ['uint32','geometry_msgs/Point','geometry_msgs/Point','float64','geometry_msgs/Point[]','geometry_msgs/Point[]','float64','float64','float64[]','float64[]']
+  __slots__ = ['id','centroid','centroid_vel','centroid_dir','members','members_vel','centroid_speed_mag','centroid_speed_dir','members_speed_mag','members_speed_dir','to_be_erase']
+  _slot_types = ['uint32','geometry_msgs/Point','geometry_msgs/Point','float64','geometry_msgs/Point[]','geometry_msgs/Point[]','float64','float64','float64[]','float64[]','bool']
 
   def __init__(self, *args, **kwds):
     """
@@ -42,7 +43,7 @@ float64 z
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-       id,centroid,centroid_vel,centroid_dir,members,members_vel,centroid_speed_mag,centroid_speed_dir,members_speed_mag,members_speed_dir
+       id,centroid,centroid_vel,centroid_dir,members,members_vel,centroid_speed_mag,centroid_speed_dir,members_speed_mag,members_speed_dir,to_be_erase
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
@@ -71,6 +72,8 @@ float64 z
         self.members_speed_mag = []
       if self.members_speed_dir is None:
         self.members_speed_dir = []
+      if self.to_be_erase is None:
+        self.to_be_erase = False
     else:
       self.id = 0
       self.centroid = geometry_msgs.msg.Point()
@@ -82,6 +85,7 @@ float64 z
       self.centroid_speed_dir = 0.
       self.members_speed_mag = []
       self.members_speed_dir = []
+      self.to_be_erase = False
 
   def _get_types(self):
     """
@@ -117,6 +121,7 @@ float64 z
       buff.write(_struct_I.pack(length))
       pattern = '<%sd'%length
       buff.write(struct.pack(pattern, *self.members_speed_dir))
+      buff.write(_struct_B.pack(self.to_be_erase))
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -179,6 +184,10 @@ float64 z
       start = end
       end += struct.calcsize(pattern)
       self.members_speed_dir = struct.unpack(pattern, str[start:end])
+      start = end
+      end += 1
+      (self.to_be_erase,) = _struct_B.unpack(str[start:end])
+      self.to_be_erase = bool(self.to_be_erase)
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
@@ -213,6 +222,7 @@ float64 z
       buff.write(_struct_I.pack(length))
       pattern = '<%sd'%length
       buff.write(self.members_speed_dir.tostring())
+      buff.write(_struct_B.pack(self.to_be_erase))
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -276,11 +286,16 @@ float64 z
       start = end
       end += struct.calcsize(pattern)
       self.members_speed_dir = numpy.frombuffer(str[start:end], dtype=numpy.float64, count=length)
+      start = end
+      end += 1
+      (self.to_be_erase,) = _struct_B.unpack(str[start:end])
+      self.to_be_erase = bool(self.to_be_erase)
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
 
 _struct_I = genpy.struct_I
 _struct_2d = struct.Struct("<2d")
+_struct_B = struct.Struct("<B")
 _struct_I7d = struct.Struct("<I7d")
 _struct_3d = struct.Struct("<3d")
