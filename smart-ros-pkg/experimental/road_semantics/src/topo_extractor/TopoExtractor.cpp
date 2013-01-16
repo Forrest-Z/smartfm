@@ -1,48 +1,16 @@
-/*********************************************************************
+#include "TopoExtractor.h"
 
-  EVG-THIN v1.1: A Thinning Approximation to the Extended Voronoi Graph
-  
-  Copyright (C) 2006 - Patrick Beeson  (pbeeson@cs.utexas.edu)
-
-
-  This program is free software; you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation; either version 2 of the License, or
-  (at your option) any later version.
-  
-  This program is distributed in the hope that it will be useful, but
-  WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-  General Public License for more details.
-  
-  You should have received a copy of the GNU General Public License
-  along with this program; if not, write to the Free Software
-  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301
-  USA
-
-*********************************************************************/
-
-#include "evg-thin.hh"
-
-
-evg_thin::evg_thin(const grid_type& curr_grid,
+topo_extractor::topo_extractor(const grid_type& curr_grid,
 		   float distance_min, float distance_max, 
-		   bool pruning, bool robot_dependent,
-		   int loc_x, int loc_y) {
+		   bool pruning) {
 
   original_grid=curr_grid;
   coastal_dist=distance_max;
   prune_dist=distance_min;
   prune=pruning;
-  location=robot_dependent;
-
 
   grid_size_x=original_grid.size();
   grid_size_y=original_grid[0].size();
-
-  robot_loc_x=loc_x;
-  robot_loc_y=loc_y;
-
 
   vector <State> tmp(grid_size_y);
   _step1_grid.resize(grid_size_x,tmp);
@@ -51,48 +19,36 @@ evg_thin::evg_thin(const grid_type& curr_grid,
   distance_grid.resize(grid_size_x,tmpcol);
 }
 
+//the core function of "topo_extractor";
+void topo_extractor::extract_topology()
+{
+	//this part mainly from evg-thin;
+	calculate_distances();
+    printf("calculate_distances\n");
+	find_skel();
+	printf("find_skel\n");
 
-/**
-   Resets data structures after a skeleton is found.  
-**/
-void evg_thin::reset() {
-  // Use this before calling generate_skeleton() if you are looping
-  // over a changing grid data structure.
+	//to further thining the skeleton to single pixel;
 
-  // Assumes the grid size is constant, if not, add code to resize
-  // (and clear) _step1_grid and distance_grid based on new grid size.
+	skel_thining();
+	printf("skel_thining\n");
 
-  curr_skel.clear();
-  _step1_queue.clear();
-  _step2_queue.clear();
+	//to extract and visualize the topology of the skeleton;
+	extract_node_edge();
+	printf("extract_node_edge\n");
 }
 
-
-/**
-   Public method that returns the skeleton of a grid
-**/
-skeleton_type evg_thin::generate_skeleton() {
-
-  calculate_distances();
-  find_skel();
-  
-  return curr_skel;
-}
-
-
-bool evg_thin::on_grid(int x, int y) {
+bool topo_extractor::on_grid(int x, int y) {
   return ((x >=0 && x < grid_size_x) &&
 	  (y >=0 && y < grid_size_y));
 }
-
-
 
 /**
    Calculate the distance of each free cell from the closest occupied
    cell.  Stores these (along with the location of the closest
    obstacle) in distance_grid.
 **/
-void evg_thin::calculate_distances() {
+void topo_extractor::calculate_distances() {
 
   heap<dist_cell> hdist;
   dist_cell current_cell;  
@@ -179,23 +135,41 @@ void evg_thin::calculate_distances() {
 
 
 /**
-   Basically, calls the procedures that build the skeleton once the
-   distances to obstacles have been calcuated in calculate_distances()
+  this function comes from evg-thin;
 **/
-void evg_thin::find_skel() {
-  
-  //First initialize the grid by labeling cells
-  initialize();
-  
-  //Then "thin" the grid by flipping free cells that border occupied
-  //cells to occupied (when applicaple).
-  thin();
+void topo_extractor::find_skel()
+{
+	//First initialize the grid by labeling cells
+	initialize();
+	//Then "thin" the grid by flipping free cells that border occupied
+	//cells to occupied (when applicaple).
+	thin();
+	//Search for the actual skeleton cells after then thinning is done.
+	find_skel_edge();
 
-  //Search for the actual skeleton cells after then thinning is done.
-  find_skel_edge();
+	IplImage *skel_image_ = cvCreateImage( cvSize(grid_size_x, grid_size_y),IPL_DEPTH_8U, 1);
 
-  // Convert from a grid to a skeleton_type data structure.
-  build_skel();
+	int skel_height 		= skel_image_ -> height;
+	int skel_width  		= skel_image_ -> width;
+	int skel_step	 		= skel_image_ -> widthStep/sizeof(uchar);
+	uchar * skel_data 	= (uchar*)skel_image_ ->imageData;
+
+	for(int ih=0; ih < skel_height; ih++)
+	{
+		for(int iw=0; iw < skel_width; iw++)
+		{
+			if(_step2_grid[iw][ih] == skel)
+			{
+				skel_data[ih*skel_step+iw]=255;
+			}
+			else
+			{
+				//sometimes this sentence is necessary;
+				skel_data[ih*skel_step+iw]=0;
+			}
+		}
+	}
+	cvSaveImage( "/home/baoxing/skel_image_before_pruning.jpg", skel_image_ );
 }
 
 /**
@@ -204,7 +178,7 @@ void evg_thin::find_skel() {
    or "processing" if they are next to obstacles.  Also, put any
    "processing" cells in the _step1_queue.
 **/
-void evg_thin::initialize() {  
+void topo_extractor::initialize() {
   
   // All cells in _step1_grid need to be labeled based on occ grid.
 	for (int i=0;i<grid_size_x;i++)
@@ -250,7 +224,7 @@ void evg_thin::initialize() {
    (i.e. until _step1_queue and _step2_queue no longer have any more
    "fuel" for the brush fire algorithm).
 **/
-void evg_thin::thin() {
+void topo_extractor::thin() {
   
   bool changing=true;
 
@@ -380,7 +354,7 @@ void evg_thin::thin() {
 
 // the classic thinning algorithm;
 
-evg_thin::State evg_thin::step(gridtype& grid, 
+topo_extractor::State topo_extractor::step(gridtype& grid,
 			       edge& current, bool step1) {
 
   // If there is a bound on the maximum distance (for coastal
@@ -452,16 +426,7 @@ evg_thin::State evg_thin::step(gridtype& grid,
 	return grid[current.x][current.y];
 }
 
-/**
-   After thin() is run, _step1_grid has a bunch of cells marked
-   occupied, free, processed, and skel.  Walk through the grid finding
-   skel or processed cells that border occupied cells.  Those are part
-   of the skeleton, otherwise, mark them occupied in _step2_grid.
-
-   Also, find the closest skeleton point to the robot's current
-   location.
-**/
-void evg_thin::find_skel_edge() {
+void topo_extractor::find_skel_edge() {
   // Don't worry about making _step1_grid and _step2 equal.  After
   // thin(), if there is any difference it would only be that
   // _step1_grid had some cells marked "skel" that are marked
@@ -470,11 +435,6 @@ void evg_thin::find_skel_edge() {
   // occupied in _step2_grid.  Then _step2 grid can be used for
   // pruning and making the skeleton data structure.
 
-  
-  float rdist=FLT_MAX;
-  _closestx=-1;
-  _closesty=-1;
-  _distance=-1;
 
   for (int i=0;i<grid_size_x;i++)
     for (int j=0;j<grid_size_y;j++)
@@ -499,288 +459,12 @@ void evg_thin::find_skel_edge() {
 	  else
 	  {
 	    _step2_grid[i][j]=skel;
-
-	    // Now find closest point to robot.  Make sure the robot
-	    // is within the radius of that point.
-	    float d=dist(robot_loc_x,robot_loc_y,i,j);
-	    float d2=distance_grid[i][j].distance;
-	    if (d < rdist && (!location || d<=d2))
-	    {
-	      rdist=d;
-	      _closestx=i;
-	      _closesty=j;
-	      _distance=d2;
-	    }
-	    else if (d==rdist && (!location || d<=d2) && (d2>_distance))
-	    {
-	      _closestx=i;
-	      _closesty=j;
-	      _distance=d2;
-	    }
-
 	  }
 	}
 }
 
-//to thin the skeleton from possible multiple-pixel thickness to single pixel;
-//the basic idea here is to remove redundant pixels without change skeleton topology;
 
-void evg_thin::skel_thining_test(){
-
-	gridtype _step_tmp;
-	vector <State> tmp(3);
-	_step_tmp.resize(3,tmp);
-	_step_tmp[0][0]= occupied;
-	_step_tmp[0][1]= skel;
-	_step_tmp[0][2]= occupied;
-	_step_tmp[1][0]= occupied;
-	_step_tmp[1][1]= occupied;
-	_step_tmp[1][2]= occupied;
-	_step_tmp[2][0]= occupied;
-	_step_tmp[2][1]= skel;
-	_step_tmp[2][2]= occupied;
-
-	int x =1; int y=1;
-
-	bool case1 = (_step_tmp[x-1][y-1]==skel||_step_tmp[x-1][y]==skel||_step_tmp[x-1][y+1]==skel)
-		    				&& (_step_tmp[x+1][y-1]==skel||_step_tmp[x+1][y]==skel||_step_tmp[x+1][y+1]==skel);
-
-	bool case2 = (_step_tmp[x-1][y-1]==skel||_step_tmp[x][y-1]==skel||_step_tmp[x+1][y-1]==skel)
-			&& (_step_tmp[x-1][y+1]==skel||_step_tmp[x][y+1]==skel||_step_tmp[x+1][y+1]==skel);
-
-	int count = 0;
-	for (int i=-1; i<=1; i++)
-		for (int j=-1; j<=1; j++)
-			if((i!=0 || j!=0) && (_step_tmp[x+i][y+j]==skel))
-			{
-				count++;
-			}
-
-	bool case3 = (count >1);
-
-	/*
-	if(!case1 && !case2)
-	{
-		printf("not satisfactory\n");
-		return;
-	}
-	*/
-
-	if(!case3)
-	{
-		printf("not satisfactory\n");
-		return;
-	}
-
-
-
-	//do connected-component analysis;
-	int connectivity_serial = 0;
-	std::vector < std::vector<int> > connected_pairs;
-
-	bool skel_box[3][3];
-	skel_box[1][1]=false;
-	for (int i=-1; i<=1; i++)
-		for (int j=-1; j<=1; j++)
-			if (i!=0 || j!=0)
-			{
-				if(_step_tmp[1+i][1+j]==skel)
-					skel_box[1+i][1+j]=true;
-			}
-
-	//construct "label_box" for labeling
-	int label_box[3][3];
-	for(int i=-1; i<=1;  i++)
-		for(int j=-1; j<=1; j++)
-			label_box[1+i][1+j]=-1;
-
-	for (int i=-1; i<=1; i++)
-		for (int j=-1; j<=1; j++)
-			if ((i!=0 || j!=0) && skel_box[1+i][1+j])
-			{
-				printf("pixel (%d, %d)\n", 1+i, 1+j);
-
-				//check 2 cells: left and up-left;
-				for (int m=-1; m<=0; m++)
-				{
-					int n=-1;
-					if(1+i+m>=0 && 1+i+m<=2 && 1+j+n>=0 && 1+j+n<=2)
-					{
-						if(skel_box[1+i+m][1+j+n]&&label_box[1+i+m][1+j+n]!=-1)
-						{
-							printf("neibouring pixel (%d, %d): label %d\t", 1+i+m, 1+j+n, label_box[1+i+m][1+j+n]);
-							label_box[1+i][1+j]=label_box[1+i+m][1+j+n];
-						}
-					}
-				}
-
-				//check 2 cells: up and up-right;
-				for (int n=0; n<=1; n++)
-				{
-					int m=-1;
-					if(1+i+m>=0 && 1+i+m<=2 && 1+j+n>=0 && 1+j+n<=2)
-						if(skel_box[1+i+m][1+j+n] && label_box[1+i+m][1+j+n]!=-1)
-						{
-							printf("(%d, %d): label %d", 1+i+m, 1+j+n, label_box[1+i+m][1+j+n]);
-
-							if(label_box[1+i][1+j]==-1) label_box[1+i][1+j]=label_box[1+i+m][1+j+n];
-							else if(label_box[1+i][1+j]!=label_box[1+i+m][1+j+n])
-							{
-								//already get some serial, but different from the current one;
-								std::vector<int> pair_tmp;
-								pair_tmp.push_back(label_box[1+i][1+j]);
-								pair_tmp.push_back(label_box[1+i+m][1+j+n]);
-								printf("pair_tmp: %d, %d\t", label_box[1+i][1+j], label_box[1+i+m][1+j+n]);
-								connected_pairs.push_back(pair_tmp);
-							}
-						}
-				}
-
-				if(label_box[1+i][1+j]==-1)
-				{
-					connectivity_serial ++;
-					label_box[1+i][1+j]= connectivity_serial;
-				}
-
-				printf("pixel (%d, %d), label %d\n", 1+i, 1+j, label_box[1+i][1+j]);
-			}
-
-	//re-sorted the connected_pieces, substitute the label, and find how many disconnected pieces exist;
-	std::vector < std::vector<int> > connected_unions;
-	for(size_t i=0; i<connected_pairs.size(); i++)
-	{
-		bool absorbed = false;
-		bool break_mid_loop = false;
-		for(size_t j=0; j<connected_unions.size(); j++)
-		{
-			for(size_t k=0; k<connected_unions[j].size(); k++)
-			{
-				if(connected_unions[j][k]==connected_pairs[i][0]
-					   ||connected_unions[j][k]==connected_pairs[i][1])
-				{
-					absorbed = true;
-					break_mid_loop=true;
-					break;
-				}
-			}
-			if(break_mid_loop) break;
-		}
-
-		if(!absorbed)
-		{
-			connected_unions.push_back(connected_pairs[i]);
-		}
-	}
-
-	std::vector < std::vector<int> > sorted_unions;
-	for(size_t i=0; i<connected_unions.size(); i++)
-	{
-		//bubble sorting for each union, from small to big;
-		for(size_t a=0;a<connected_unions[i].size();a++)
-		{
-			for(size_t b=0;b<a;b++)
-			{
-				if(connected_unions[i][a]<connected_unions[i][b])
-				{
-					int temp=connected_unions[i][a];
-					connected_unions[i][a]=connected_unions[i][b];
-					connected_unions[i][b]=temp;
-				}
-			}
-
-		}
-
-		for(size_t k=0; k<connected_unions[i].size(); k++) printf("%d\t", connected_unions[i][k]);
-		printf("----");
-
-		std::vector<int> union_tmp;
-		union_tmp.push_back(connected_unions[i][0]);
-		for(size_t a=1;a<connected_unions[i].size();a++)
-		{
-			if(connected_unions[i][a]==union_tmp.back())continue;
-			else union_tmp.push_back(connected_unions[i][a]);
-		}
-		sorted_unions.push_back(union_tmp);
-	}
-
-	bool component_connected = true;
-
-	if(sorted_unions.size()==0 )
-	{
-		printf("aaa\n");
-		for(int i=-1; i<=1; i++)
-		{
-			for(int j=-1;j<=1; j++)
-			{
-				printf("pixel (%d, %d), label %d\n", 1+i, 1+j, label_box[1+i][1+j]);
-
-				if(label_box[1+i][1+j]>1)
-				{
-					component_connected=false;
-				}
-			}
-		}
-	}
-	else if(sorted_unions.size()>1 )
-	{
-		component_connected=false;
-		printf("bbb\n");
-		for(size_t i=0; i<sorted_unions.size(); i++)
-			for(size_t k=0; k<sorted_unions[i].size(); k++)
-				printf("%d\t", sorted_unions[i][k]);
-	}
-	else if(sorted_unions.size()==1 && sorted_unions[0].front()!=1)
-	{
-		component_connected=false;
-		printf("ccc\n");
-		for(size_t k=0; k<sorted_unions[0].size(); k++) printf("%d\t", sorted_unions[0][k]);
-	}
-	else if(sorted_unions.size()==1 && sorted_unions[0].front()==1)
-	{
-		printf("ddd\n");
-		for(size_t k=0; k<sorted_unions[0].size(); k++) printf("%d\t", sorted_unions[0][k]);
-
-		for(int i=-1; i<=1;  i++)
-			for(int j=-1;j<=1; j++)
-			{
-				if(label_box[1+i][1+j]>1)
-				{
-					for(size_t k=0; k<sorted_unions[0].size(); k++)
-					{
-						if(label_box[1+i][1+j]==sorted_unions[0][k])
-						{
-							label_box[1+i][1+j]=1; //break;
-						}
-					}
-				}
-			}
-
-		for(int i=-1; i<=1; i++)
-		{
-			for(int j=-1;j<=1; j++)
-			{
-				printf("pixel (%d, %d), label %d\n", 1+i, 1+j, label_box[1+i][1+j]);
-
-				if(label_box[1+i][1+j]>1)
-				{
-					component_connected=false;
-					//break;
-				}
-			}
-		}
-	}
-
-	if(component_connected)
-	{
-		printf("able to erase\n");
-	}
-	else
-	{
-		printf("unable to erase\n");
-	}
-}
-
-void evg_thin::skel_thining() {
+void topo_extractor::skel_thining() {
 
 	int total_skeleton = 0;
 	int erased_skeleton = 0;
@@ -844,7 +528,7 @@ void evg_thin::skel_thining() {
 	printf("2nd round: total skeleton %d\t, erased skeleton pixel %d\t", total_skeleton, erased_skeleton);
 }
 
-bool evg_thin::remove_center_pixel (int x, int y)
+bool topo_extractor::remove_center_pixel (int x, int y)
 {
 	//do connected-component analysis;
 	int connectivity_serial = 0;
@@ -1076,7 +760,7 @@ bool evg_thin::remove_center_pixel (int x, int y)
 	}
 }
 
-void evg_thin::extract_topology(){
+void topo_extractor::extract_node_edge(){
 
 	//1st: to construct a skeleton image from the data "_step2_grid";
 	IplImage *skel_image_ = cvCreateImage( cvSize(grid_size_x, grid_size_y),IPL_DEPTH_8U, 1);
@@ -1085,6 +769,7 @@ void evg_thin::extract_topology(){
 	int skel_width  		= skel_image_ -> width;
 	int skel_step	 		= skel_image_ -> widthStep/sizeof(uchar);
 	uchar * skel_data 	= (uchar*)skel_image_ ->imageData;
+
 	for(int ih=0; ih < skel_height; ih++)
 	{
 		for(int iw=0; iw < skel_width; iw++)
@@ -1174,7 +859,7 @@ void evg_thin::extract_topology(){
 	 {
 		CvScalar ext_color;
 		ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
-		ext_color = CV_RGB( 0, 0, 255 );
+		//ext_color = CV_RGB( 0, 0, 255 );
 
         for(size_t j=0; j < edges[i].size(); j++) {
             int x = edges[i][j].x;
@@ -1200,7 +885,7 @@ void evg_thin::extract_topology(){
 }
 
 
-void evg_thin::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2, std::vector<CvPoint2D32f> & node_points)
+void topo_extractor::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2, std::vector<CvPoint2D32f> & node_points)
 {
 		node_points.clear();
         int rows = pSrc->rows;
@@ -1240,7 +925,7 @@ void evg_thin::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2, std::vec
 
 //Quick and easy connected component (blob) using OpenCV
 //http://nghiaho.com/?p=1102
-void evg_thin::Extract_Edges(CvMat* pSrc, std::vector < std::vector<CvPoint> > & edges)
+void topo_extractor::Extract_Edges(CvMat* pSrc, std::vector < std::vector<CvPoint> > & edges)
 {
     edges.clear();
     CvMat *label_image = cvCloneMat( pSrc );
@@ -1249,7 +934,7 @@ void evg_thin::Extract_Edges(CvMat* pSrc, std::vector < std::vector<CvPoint> > &
 
     for(int y=0; y < label_image->rows; y++) {
         for(int x=0; x < label_image->cols; x++) {
-            if((int)CV_MAT_ELEM(*label_image, float, y, x) != 1) {
+            if((int)CV_MAT_ELEM(*label_image, float, y, x) != 255) {
                 continue;
             }
 
@@ -1275,356 +960,5 @@ void evg_thin::Extract_Edges(CvMat* pSrc, std::vector < std::vector<CvPoint> > &
             label_count++;
         }
     }
-}
-
-/** 
-    Build the final data structure of the skeleton from the grid with
-    cells marked as skeleton or occupied.
-**/
-void evg_thin::build_skel() {
-  // Use _step2_grid because after find_skel_edge(), it will have only
-  // skel, occupied, and unknown cells.  prune_skel just changes
-  // things in _step2_grid.
-
-
-  // Walk along the skeleton away from the closest point to the robot.
-  // Walk is best-first (using total distance from start).  If a
-  // branch terminates, but is not next to an unknown cell or the
-  // edge, that branch must be pruned.
-  if (_distance>=0)
-  {
-    //if _distance==-1, then there was no skeleton found near the
-    //robot.
-
-	//skel_thining_test();
-	skel_thining();
-	//to extract and visualize the topology of the skeleton;
-	extract_topology();
-
-	crawl_grid();
-
-	remove_final_spur();
-
-	best_to_depth_first();
-  }  
-}
-
-void evg_thin::calc_nearest_skeleton(){
-
-	float rdist=FLT_MAX;
-	_closestx=-1;
-	_closesty=-1;
-	_distance=-1;
-
-	for (int i=0;i<grid_size_x;i++)
-		for (int j=0;j<grid_size_y;j++)
-			if(_step2_grid[i][j]==skel)
-			{
-				// Now find closest point to robot.  Make sure the robot
-				// is within the radius of that point.
-				float d=dist(robot_loc_x,robot_loc_y,i,j);
-				float d2=distance_grid[i][j].distance;
-				if (d < rdist && (!location || d<=d2))
-				{
-				  rdist=d;
-				  _closestx=i;
-				  _closesty=j;
-				  _distance=d2;
-				}
-				else if (d==rdist && (!location || d<=d2) && (d2>_distance))
-				{
-				  //given two nearest skeleton having the same distance to the robot, choosing the one which has larger distance to the obstacle;
-				  _closestx=i;
-				  _closesty=j;
-				  _distance=d2;
-				}
-			}
-}
-
-/**
-   Starting with the closest skeleton point to the robot, walk along
-   the skeleton in the grid, building an intermediate skeleton data
-   structure.  Do this in a best-first fashion, using cell distance as
-   the cost function.  Also, if a branch ends but is not an exit (next
-   to the edge or next to unknown cells in the occupancy grid), prune
-   that branch back (basically, make the distance field of nodes in
-   that branch equal to -1).
-**/
-
-//to fully understand this function;
-//this function has some problem of handling the loop branch;
-//it will break the loop without pruning; with pruning, the broken loop branch will be erased;
-
-void evg_thin::crawl_grid() {
-
-	//re-calculate the nearest skeleton to the robot, since the one calculated before pruning maybe removed;
-	calc_nearest_skeleton();
-
-    _tmp_skel.clear();
-  
-	node new_node;
-	new_node.x=_closestx;
-	new_node.y=_closesty;
-	new_node.distance=0;
-	new_node.parent=-1;
-
-	heap<node> open_list;
-	//Closest point is root of tree.
-	open_list.push(new_node);
-
-	_num_exits=0;
-	_root_index=0;
-
-	bool cont;
-	vector<node> children;
-  
-  while (!open_list.empty())
-  {
-    cont=true;
-    node curr_node=open_list.first();
-    open_list.pop();
-    // If the current node has not yet been processed
-    if (_step2_grid[curr_node.x][curr_node.y]==skel)
-    {
-    	//Mark the node as begin processed.
-    	_step2_grid[curr_node.x][curr_node.y]=occupied;
-    	//If exit (and not the tree root) stop searching this branch
-    	if (is_exit(curr_node) && curr_node.parent>=0)
-    	{
-			_num_exits++;
-			curr_node.num_children=0;
-			curr_node.radius=distance_grid[curr_node.x][curr_node.y].distance;
-			//update parent with the index of this node in _tmp_skel
-			_tmp_skel[curr_node.parent].children.push_back(_tmp_skel.size());
-			//update _tmp_skel with this node
-			_tmp_skel.push_back(curr_node);
-			cont=false;
-    	}
-    	//For non-exits
-    	if (cont)
-    	{
-			//Find neighbors
-			children=find_neighbors(curr_node.x,curr_node.y);
-			curr_node.num_children=children.size();
-			//If there are no children (no neighbors left to process),
-			//this branch is a "spur" and needs to be removed.  Remove
-			//from it's parent's children.
-			if (curr_node.num_children==0)
-			{
-				//Called on parent because this node was never added to
-				//_tmp_skel.
-				remove_branch(curr_node.parent);
-			}
-			//For non-exits with children
-			else
-			{
-				curr_node.radius=distance_grid[curr_node.x][curr_node.y].distance;
-				int curr_index=_tmp_skel.size();
-				//If not the root, update the parent to know the index of this node.
-				if (curr_node.parent>=0) _tmp_skel[curr_node.parent].children.push_back(curr_index);
-				//Add this node to the tree
-
-				_tmp_skel.push_back(curr_node);
-
-				//Now add children to the heap
-				for (uint i=0;i<curr_node.num_children;i++)
-				{
-					new_node.x=children[i].x;
-					new_node.y=children[i].y;
-					//cost is distance (in skeleton nodes) to the root.
-					new_node.distance= dist(new_node.x,new_node.y, curr_node.x,curr_node.y) + curr_node.distance;
-					new_node.parent=curr_index;
-					open_list.push(new_node);
-				}
-			}
-    	}
-    }
-    //If no longer available for processing, remove this node from
-    //it's parent's children.
-    else 
-      remove_branch(curr_node.parent);
-  }
-}
-
-
-/**
-   If a node is removed, because it terminates and is not an exit,
-   mark it's distance = -1, and recurse on its parent, which may now
-   need to be removed as well.
-**/
-void evg_thin::remove_branch(int index, int child_index) {
-  if (prune) 
-    if (index >=0)
-    {
-      //Remove unneccessary child from list of children.
-      if (child_index>=0)
-      {
-    	  vector<uint> new_children;
-    	  for (uint i=0;i<_tmp_skel[index].children.size();i++)
-    		  if (_tmp_skel[index].children[i]!=uint(child_index))
-    			  new_children.push_back(_tmp_skel[index].children[i]);
-    	  _tmp_skel[index].children=new_children;
-      }
-      //Reduce number of children.  Different from children.size()
-      //because not all children may have been processed (thus added to
-      //the tree and updated their parent's children list).
-      _tmp_skel[index].num_children--;
-      
-      //If no more children, prune this node from it's parent's child
-      //list.
-      if (_tmp_skel[index].num_children==0)
-      {
-		//Set distance to -1 so that later, we'll know this is a pruned
-		//node (instead of having to take it out of the tree, which may
-		//be hairy---requires updating indexes of all parents and
-		//chilren which _tmp_skel is rearranged).
-		_tmp_skel[index].distance=-1;
-		remove_branch(_tmp_skel[index].parent, index);
-      }
-    }
-}
-
-/**
-   If a node is next to unknown nodes or an edge of the grid, it is an
-   exit.
-**/
-bool evg_thin::is_exit(const node& curr_node) {
-
-  int i,j,nx,ny;
-
-  for (i=-1;i<=1;i++) {
-    nx=curr_node.x+i;
-    for (j=-1;j<=1;j++)
-      if (i!=0 || j!=0) {
-	ny=curr_node.y+j;
-	if (!on_grid(nx,ny) ||
-	    original_grid[nx][ny]==Unknown)
-	  return true;
-      }
-  }
-  
-  return false;
-}
-
-/**
-   Find the immediate neighbors, save their grid coordinates, and push
-   them all into a list.
- **/
-vector<node> evg_thin::find_neighbors(int x, int y) {
-  vector<node> neighbors;
-  
-  node c1;
-  int i,j,newx,newy;
-  
-  for (i=-1;i<=1;i++) {
-    newx=x+i;
-    for (j=-1;j<=1;j++) 
-      if (i!=0 || j!=0) {
-	newy=y+j;
-	if (on_grid(newx,newy) &&
-	    _step2_grid[newx][newy]==skel) {
-	  c1.x=newx;
-	  c1.y=newy;
-	  neighbors.push_back(c1);
-	}
-      }
-  }
-  return neighbors;
-}
-
-
-/**
-   We used the closest skeleton point to the robot to know which
-   skeleton (thinning may find many) is the correct one to use.
-   Sometimes, the branch that includes the closest point to the robot
-   needs to be pruned.  This does that (essentially reordering the
-   tree to have a new root).
- **/
-void evg_thin::remove_final_spur()
-{
-  if (prune)
-    if (!_tmp_skel.empty())
-      if (_num_exits > 1 && !is_exit(_tmp_skel[0]) && _tmp_skel[0].num_children==1)
-      {
-		//If not an exit and only 1 child (terminal node) and more than
-		//1 exit exists (this isn't the only branch) then prune the
-		//branch.
-		_tmp_skel[0].distance=-1;
-		remove_branch2(_tmp_skel[0].children[0]);
-      }
-}
-
-
-/**
-   Similar to remove_branch, but going down the branch instead of up
-   (to prune the root of the skeleton tree).  
-
-   If a node is removed, because it terminates and is not an exit,
-   mark it's distance = -1, and recurse on its child, which may now
-   need to be removed as well.
-**/
-void evg_thin::remove_branch2(int index) {
-  if (_tmp_skel[index].num_children==1) {
-    _tmp_skel[index].distance=-1;
-    remove_branch2(_tmp_skel[index].children[0]);
-  }
-  else {
-    _tmp_skel[index].parent=-1;
-    _root_index=index;
-  }
-}
-
-/**
-   Go from the intermediate skeleton (from crawl_grid) to a fully
-   pruned data structure.  While doing this, its convient (for other
-   modules that may use the skeleton) to make this depth first.  Also,
-   when we see exits, add them to the internal or external exists list
-   (to be saved in the local topology data structure).
- **/
-void evg_thin::best_to_depth_first() {
-  if (!_tmp_skel.empty())
-    best_to_depth_first_helper(_root_index,-1);
-}
-
-
-/**
-   The recursive function that does the actual work of best_to_depth_first().
- **/
-void evg_thin::best_to_depth_first_helper(int myindex, int parent_index){
-
-  // Check distance (it's set to -1 for pruned nodes).  Only add
-  // non-pruned cells to the final skeleton.
-
-  if (_tmp_skel[myindex].distance>=0)
-  {
-    //Curr node is somewhere (given a depth first search) in the _tmp_skel
-    node curr_node;
-    curr_node.x=_tmp_skel[myindex].x;
-    curr_node.y=_tmp_skel[myindex].y;
-    curr_node.radius=_tmp_skel[myindex].radius;
-    curr_node.distance=_tmp_skel[myindex].distance;
-    curr_node.num_children=_tmp_skel[myindex].children.size();
-
-    //parent has a new index in the depth first tree.
-    curr_node.parent=parent_index;
-    // Delete children indexes.  They will recreate this list when
-    // they get added.
-    
-    uint new_index=curr_skel.size();
-
-    //Update parents list of children to include the new index of the
-    //node.
-    if (parent_index>=0)
-      curr_skel[parent_index].children.push_back(new_index);
-
-    //Add to the new, depth-first tree.
-    curr_skel.push_back(curr_node);
-
-    //Do a depth first traversal of the skeleton.
-    for (uint i=0;i<curr_node.num_children;i++) 
-      best_to_depth_first_helper(_tmp_skel[myindex].children[i],new_index);
-    
-  }
-  
 }
 

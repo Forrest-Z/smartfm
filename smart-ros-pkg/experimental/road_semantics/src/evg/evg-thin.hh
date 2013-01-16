@@ -153,7 +153,8 @@ private:
   //to further thining the skeleton to single pixel;
   void skel_thining();
   bool remove_center_pixel(int x, int y);
-  //this function is used to test the basic idea of function "skel_thining";
+
+  //this function is used to test the basic idea of function "skel_thining" for a single 3 by 3 box;
   void skel_thining_test();
 
   void extract_topology();
