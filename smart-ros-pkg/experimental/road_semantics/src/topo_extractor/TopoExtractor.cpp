@@ -29,7 +29,6 @@ void topo_extractor::extract_topology()
 	printf("find_skel\n");
 
 	//to further thining the skeleton to single pixel;
-
 	skel_thining();
 	printf("skel_thining\n");
 
@@ -528,6 +527,7 @@ void topo_extractor::skel_thining() {
 	printf("2nd round: total skeleton %d\t, erased skeleton pixel %d\t", total_skeleton, erased_skeleton);
 }
 
+//this function can be easily achieved by using "cvFloodFill";
 bool topo_extractor::remove_center_pixel (int x, int y)
 {
 	//do connected-component analysis;
@@ -868,20 +868,17 @@ void topo_extractor::extract_node_edge(){
         }
     }
 
+
     cvConvert( node_mat, node);
     cvConvert( edge_mat, edge);
 
+    //for visualization purposes;
     cvSaveImage( "/home/baoxing/node.jpg", node );
-	 cvNamedWindow("node",1);
-    cvShowImage("node", node);
-
     cvSaveImage( "/home/baoxing/edge.jpg", edge );
-	 cvNamedWindow("edge",1);
-    cvShowImage("edge", edge);
-
     cvSaveImage( "/home/baoxing/color_edge.jpg", color_edge );
-	 cvNamedWindow("color_edge",1);
-    cvShowImage("color_edge", color_edge);
+
+    //further organize the data structure of "node and edge"
+
 }
 
 
@@ -924,20 +921,17 @@ void topo_extractor::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2, st
 }
 
 //Quick and easy connected component (blob) using OpenCV
-//http://nghiaho.com/?p=1102
 void topo_extractor::Extract_Edges(CvMat* pSrc, std::vector < std::vector<CvPoint> > & edges)
 {
     edges.clear();
     CvMat *label_image = cvCloneMat( pSrc );
 
-    int label_count = 2; // starts at 2 because 0,1 are used already
+    int label_count = 256; // starts at 256 because 0,255 are used already
 
     for(int y=0; y < label_image->rows; y++) {
         for(int x=0; x < label_image->cols; x++) {
-            if((int)CV_MAT_ELEM(*label_image, float, y, x) != 255) {
-                continue;
-            }
 
+            if((int)CV_MAT_ELEM(*label_image, float, y, x) != 255) continue;
             cvFloodFill(label_image, cvPoint(x,y), cvScalar(label_count), cvScalar(0), cvScalar(0), NULL, 8, NULL);
 
             std::vector <CvPoint> edge;
@@ -954,9 +948,7 @@ void topo_extractor::Extract_Edges(CvMat* pSrc, std::vector < std::vector<CvPoin
                     //CV_MAT_ELEM(*label_image, float, i, j) = 0.0;
                 }
             }
-
             edges.push_back(edge);
-
             label_count++;
         }
     }

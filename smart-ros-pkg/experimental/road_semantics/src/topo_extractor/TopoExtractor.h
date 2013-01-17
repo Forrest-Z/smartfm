@@ -5,6 +5,7 @@
 #include "datatypes.hh"
 #include "heap.hh"
 #include "utils.hh"
+#include "../topo_graph.hpp"
 
 #include <iostream>
 #include <float.h>
@@ -18,8 +19,8 @@ using namespace std;
 
 class topo_extractor {
 public:
+  topo_graph road_graph_;
   topo_extractor(const grid_type&, float, float, bool);
-
   void extract_topology();
 
 private:

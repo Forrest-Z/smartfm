@@ -72,6 +72,8 @@ void parse_params(int argc, char *argv[]) {
   }
 }
 
+//further write it as a class to handle the image loading and processing;
+
 grid_type image_process(const char* imagefile_para, float image_resolution_para, unsigned int unknown_min_para, unsigned int unknown_max_para)
 {
 	IplImage *img = 0;
