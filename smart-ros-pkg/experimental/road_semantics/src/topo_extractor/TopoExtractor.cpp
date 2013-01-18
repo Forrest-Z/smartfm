@@ -35,6 +35,8 @@ void topo_extractor::extract_topology()
 	//to extract and visualize the topology of the skeleton;
 	extract_node_edge();
 	printf("extract_node_edge\n");
+
+
 }
 
 bool topo_extractor::on_grid(int x, int y) {
@@ -486,7 +488,7 @@ void topo_extractor::skel_thining() {
 	    		{
 	    			_step2_grid[x][y]=occupied;
 	    			erased_skeleton++;
-	    			printf("erase\t");
+	    			//printf("erase\t");
 
 	    		}
 	    	}
@@ -519,8 +521,7 @@ void topo_extractor::skel_thining() {
 	    		{
 	    			_step2_grid[x][y]=occupied;
 	    			erased_skeleton++;
-	    			printf("erase");
-
+	    			//printf("erase");
 	    		}
 	    	}
 
@@ -690,7 +691,6 @@ bool topo_extractor::remove_center_pixel (int x, int y)
 	else if(sorted_unions.size()>1 )
 	{
 		component_connected=false;
-		printf("bbb\n");
 		/*
 		for(size_t i=0; i<sorted_unions.size(); i++)
 			for(size_t k=0; k<sorted_unions[i].size(); k++)
@@ -700,12 +700,10 @@ bool topo_extractor::remove_center_pixel (int x, int y)
 	else if(sorted_unions.size()==1 && sorted_unions[0].front()!=1)
 	{
 		component_connected=false;
-		printf("ccc\n");
 		//for(size_t k=0; k<sorted_unions[0].size(); k++) printf("%d\t", sorted_unions[0][k]);
 	}
 	else if(sorted_unions.size()==1 && sorted_unions[0].front()==1)
 	{
-		printf("ddd\n");
 		//for(size_t k=0; k<sorted_unions[0].size(); k++) printf("%d\t", sorted_unions[0][k]);
 
 		for(int i=-1; i<=1;  i++)
@@ -792,27 +790,36 @@ void topo_extractor::extract_node_edge(){
 			}
 		}
 	}
-	cvSaveImage( "/home/baoxing/skel_image.jpg", skel_image_ );
 
 	///////////////////////////////////////////////////////////////////
 	//2nd: to extract nodes, node clusters, and edges;
 	///////////////////////////////////////////////////////////////////
-
 	IplImage *img = skel_image_;
     CvMat *mat = cvCreateMat( img->height, img->width, CV_32FC1);
     CvMat *node_mat = cvCreateMat( img->height, img->width, CV_32FC1);
     CvMat *edge_mat = cvCreateMat( img->height, img->width, CV_32FC1);
 
+	cvConvert( img, mat);
+	Graph_Extraction(mat, node_mat, edge_mat);
+
+    //////////////////////////////////////////////////////////////////////////////////////
+    //3rd: build the relationship of "node and edge" in "road_graph_";
+    //////////////////////////////////////////////////////////////////////////////////////
+	build_topoloty();
+
+	//////////////////////////////////////////////////////////////////////////////////////
+	//4th: add some filtering algorithm to erase irrelevant edges;
+	//////////////////////////////////////////////////////////////////////////////////////
+	//this function will be extended in the future;
+	topo_filtering();
+
+
+	//for visualization purposes, to check the extracted nodes and edges;
     IplImage  *node =0, *edge = 0, *color_edge = 0;
     node = cvCreateImage(cvSize(img->width,img->height),IPL_DEPTH_8U, 1);
     edge = cvCreateImage(cvSize(img->width,img->height),IPL_DEPTH_8U, 1);
     color_edge = cvCreateImage(cvSize(img->width,img->height),IPL_DEPTH_8U, 3);
 
-	cvConvert( img, mat);
-
-	Graph_Extraction(mat, node_mat, edge_mat);
-
-	//for visualization purposes, to check the extracted nodes and edges;
 	for(size_t i=0; i<road_graph_.nodeClusters.size(); i++)
 	 {
 		 float points_number = (float)road_graph_.nodeClusters[i].nodeIDs.size();
@@ -838,7 +845,6 @@ void topo_extractor::extract_node_edge(){
 		 {
 			 int x = road_graph_.edges[i].points[j].x;
 			 int y = road_graph_.edges[i].points[j].y;
-			 printf("x, y: %d, %d\n", x, y);
 			 cvSet2D(color_edge, y, x, ext_color);
 		 }
 	 }
@@ -847,13 +853,11 @@ void topo_extractor::extract_node_edge(){
     cvConvert( edge_mat, edge);
 
     //for visualization purposes;
+	cvSaveImage( "/home/baoxing/skel_image.jpg", skel_image_ );
     cvSaveImage( "/home/baoxing/node.jpg", node );
     cvSaveImage( "/home/baoxing/edge.jpg", edge );
     cvSaveImage( "/home/baoxing/color_edge.jpg", color_edge );
 
-    //////////////////////////////////////////////////////////////////////////////////////
-    //3rd: build the relationship of "node and edge" in "road_graph_";
-    //////////////////////////////////////////////////////////////////////////////////////
 }
 
 void topo_extractor::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2)
@@ -935,6 +939,9 @@ void topo_extractor::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2)
 			cvFloodFill(edge_label_image, cvPoint(x,y), cvScalar(label_count), cvScalar(0), cvScalar(0), NULL, 8, NULL);
 
 			topo_graph::edge edge_tmp;
+			edge_tmp.head_nodeCluster = -1;
+			edge_tmp.end_nodeCluster = -1;
+
 			for(int i= 0 ; i < edge_label_image->rows; i++) {
 				for(int j=0; j < edge_label_image->cols; j++)
 				{
@@ -957,5 +964,113 @@ void topo_extractor::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2)
 		}
 	}
 }
+
+void topo_extractor::build_topoloty()
+{
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    //pay attention to this bar of code: the logic is a little subtle;
+    //a.assumption:
+    // 	one edge has at most two node (one head and one end) and at least one node (one head); and each edge is single-pixel thick;
+    // 	when the edge is a trunk, it has two node; when the edge is some branch, it has only one head node;
+    // 	before this processing, it is possible that some small broken pieces of edge is not linked to the trunk, they have no nodes, and will be discarded automatically after this process;
+    //b.logic flow
+    //	One nodeCluster tries to find its connecting edge, if this edge hasn't been linked to some node, then this node is its heading node; the connecting point in this edge will be the
+    //	first point of this edge; then this edge will be re-arranged by connecting other points from this first point, one-by-one;
+    //	if this edge has been linked, then it is a end node;
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	vector <bool> edge_flags(road_graph_.edges.size(), false);
+
+	for(size_t i=0; i<road_graph_.nodeClusters.size(); i++)
+	{
+		for(size_t j=0; j<road_graph_.nodeClusters[i].nodeIDs.size(); j++)
+		{
+			//while there are multiple nodes in one single nodeCluster, it is not possible for two nodes to connect one same edge;
+			CvPoint node_tmp = road_graph_.nodes[(road_graph_.nodeClusters[i].nodeIDs[j])];
+			for(size_t k=0; k<road_graph_.edges.size(); k++)
+			{
+				for(size_t p=0; p<road_graph_.edges[k].points.size(); p++)
+				{
+					CvPoint edge_pt_tmp = road_graph_.edges[k].points[p];
+					bool connecting = check_8connectivity(node_tmp, edge_pt_tmp);
+					if(connecting)
+					{
+						if(!edge_flags[k])
+						{
+							//this edge hasn't been linked to some node; find the edge's headCluster serial;
+							edge_flags[k] = true;
+							topo_graph::edge edge_rearrange;
+							edge_rearrange.head_nodeCluster = (int)i;
+							road_graph_.nodeClusters[i].edgeIDs.push_back(k);
+
+							//this edge_pt_tmp will be the first point in the newly re-arranged edge;
+							edge_rearrange.points.push_back(edge_pt_tmp);
+							vector<CvPoint> points_tmp = road_graph_.edges[k].points;
+							points_tmp.erase (points_tmp.begin()+p);
+
+							while(points_tmp.size()!=0)
+							{
+								for(size_t ipp= 0; ipp < points_tmp.size(); ipp++)
+								{
+									if(check_8connectivity(points_tmp[ipp], edge_rearrange.points.back()))
+									{
+										edge_rearrange.points.push_back(points_tmp[ipp]);
+										points_tmp.erase(points_tmp.begin()+ipp);
+										//re-search from the beginning of this vector;
+										ipp = 0;
+									}
+								}
+							}
+
+							road_graph_.edges[k] = edge_rearrange;
+							break;
+						}
+						else
+						{
+							//the edge has been linked to one node and re-arranged;
+							//the only possibility is that this nodeCluster is its "end_nodeCluster";
+							road_graph_.edges[k].end_nodeCluster = (int)i;
+							road_graph_.nodeClusters[i].edgeIDs.push_back(k);
+							break;
+						}
+					}
+				}
+			}
+
+
+		}
+	}
+}
+
+inline bool topo_extractor::check_8connectivity(CvPoint pt1, CvPoint pt2)
+{
+	bool connecting = false;
+	for(int a=-1; a<=1;  a++)
+		for(int b=-1;b<=1; b++)
+			if(a!=0 || b!=0)
+			{
+				CvPoint p1_neighbor;
+				p1_neighbor.x = pt1.x + a;
+				p1_neighbor.y = pt1.y + b;
+				if(p1_neighbor.x==pt2.x && p1_neighbor.y==pt2.y) connecting = true;
+			}
+	return connecting;
+}
+
+void topo_extractor::topo_filtering()
+{
+	//filter the broken pieces of edge segment;
+	vector<topo_graph::edge> edges_tmp;
+	for(size_t k=0; k<road_graph_.edges.size(); k++)
+	{
+		if(road_graph_.edges[k].head_nodeCluster!=-1 || road_graph_.edges[k].end_nodeCluster!=-1)
+		{
+			edges_tmp.push_back(road_graph_.edges[k]);
+		}
+	}
+	road_graph_.edges= edges_tmp;
+}
+
+
 
 

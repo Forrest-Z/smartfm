@@ -21,7 +21,7 @@ public:
 	class edge {
 	public:
 		vector<CvPoint> points;
-		size_t head_nodeCluster, end_nodeCluster;
+		int head_nodeCluster, end_nodeCluster;
 	};
 
 	vector<CvPoint> nodes;
