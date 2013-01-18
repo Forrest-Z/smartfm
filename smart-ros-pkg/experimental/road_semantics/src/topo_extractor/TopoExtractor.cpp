@@ -527,7 +527,9 @@ void topo_extractor::skel_thining() {
 	printf("2nd round: total skeleton %d\t, erased skeleton pixel %d\t", total_skeleton, erased_skeleton);
 }
 
-//this function can be easily achieved by using "cvFloodFill";
+
+//this function can also be easily achieved by using "cvFloodFill"(or its basic idea);
+//just to check whether after removing the center pixel, the connectivity inside the box is changed or not.
 bool topo_extractor::remove_center_pixel (int x, int y)
 {
 	//do connected-component analysis;
@@ -760,16 +762,21 @@ bool topo_extractor::remove_center_pixel (int x, int y)
 	}
 }
 
+//to be continued:
+//a. use uniform data-type of IplImage;
+//b. generate the result in "road_graph_";
+
 void topo_extractor::extract_node_edge(){
 
+	/////////////////////////////////////////////////////////////////////
 	//1st: to construct a skeleton image from the data "_step2_grid";
-	IplImage *skel_image_ = cvCreateImage( cvSize(grid_size_x, grid_size_y),IPL_DEPTH_8U, 1);
+	/////////////////////////////////////////////////////////////////////
 
+	IplImage *skel_image_ 	= cvCreateImage( cvSize(grid_size_x, grid_size_y),IPL_DEPTH_8U, 1);
 	int skel_height 		= skel_image_ -> height;
 	int skel_width  		= skel_image_ -> width;
 	int skel_step	 		= skel_image_ -> widthStep/sizeof(uchar);
 	uchar * skel_data 	= (uchar*)skel_image_ ->imageData;
-
 	for(int ih=0; ih < skel_height; ih++)
 	{
 		for(int iw=0; iw < skel_width; iw++)
@@ -787,8 +794,11 @@ void topo_extractor::extract_node_edge(){
 	}
 	cvSaveImage( "/home/baoxing/skel_image.jpg", skel_image_ );
 
-	IplImage *img = skel_image_;
+	///////////////////////////////////////////////////////////////////
+	//2nd: to extract nodes, node clusters, and edges;
+	///////////////////////////////////////////////////////////////////
 
+	IplImage *img = skel_image_;
     CvMat *mat = cvCreateMat( img->height, img->width, CV_32FC1);
     CvMat *node_mat = cvCreateMat( img->height, img->width, CV_32FC1);
     CvMat *edge_mat = cvCreateMat( img->height, img->width, CV_32FC1);
@@ -798,76 +808,40 @@ void topo_extractor::extract_node_edge(){
     edge = cvCreateImage(cvSize(img->width,img->height),IPL_DEPTH_8U, 1);
     color_edge = cvCreateImage(cvSize(img->width,img->height),IPL_DEPTH_8U, 3);
 
-	 cvConvert( img, mat);
+	cvConvert( img, mat);
 
-	 std::vector<CvPoint2D32f> node_points;
-	 Graph_Extraction(mat, node_mat, edge_mat, node_points);
+	Graph_Extraction(mat, node_mat, edge_mat);
 
-	 //do simple clustering for the node points;
-	 std::vector <std::vector<CvPoint2D32f> > node_clusters;
-	 for(size_t i=0; i<node_points.size(); i++)
+	//for visualization purposes, to check the extracted nodes and edges;
+	for(size_t i=0; i<road_graph_.nodeClusters.size(); i++)
 	 {
-		 CvPoint2D32f point_tmp = node_points[i];
-		 int cluster_serial = -1;
-
-		 for(size_t j=0; j<node_clusters.size(); j++)
-		 {
-			   if(cluster_serial !=-1) break;
-				for(size_t k=0; k<node_clusters[j].size(); k++)
-				{
-					CvPoint2D32f point_tmpp;
-					if(fmutil::distance(point_tmp, point_tmpp) < 5.0)
-					{
-						cluster_serial = j;
-						break;
-					}
-				}
-		 }
-		 if(cluster_serial == -1)
-		 {
-				std::vector<CvPoint2D32f> cluster_tmp;
-				cluster_tmp.push_back(point_tmp);
-				node_clusters.push_back(cluster_tmp);
-		 }
-		 else
-		 {
-				node_clusters[cluster_serial].push_back(point_tmp);
-		 }
-	 }
-
-	 std::vector<CvPoint>  merged_nodes;
-	 for(size_t i=0; i<node_clusters.size(); i++)
-	 {
-		 float points_number = (float)node_clusters[i].size();
+		 float points_number = (float)road_graph_.nodeClusters[i].nodeIDs.size();
 		 float x_tmp =0.0; float  y_tmp = 0.0;
-		 for(size_t j=0; j<node_clusters[i].size(); j++)
+
+		 for(size_t j=0; j<road_graph_.nodeClusters[i].nodeIDs.size(); j++)
 		 {
-			 x_tmp = x_tmp + node_clusters[i][j].x;
-			 y_tmp = y_tmp + node_clusters[i][j].y;
+			 x_tmp = x_tmp + road_graph_.nodes[(road_graph_.nodeClusters[i].nodeIDs[j])].x;
+			 y_tmp = y_tmp + road_graph_.nodes[(road_graph_.nodeClusters[i].nodeIDs[j])].y;
 		 }
 		 x_tmp = x_tmp / points_number;
 		 y_tmp = y_tmp / points_number;
-		 merged_nodes.push_back(cvPoint(x_tmp, y_tmp));
-
+		 road_graph_.nodeClusters[i].cluster_center = cvPoint2D32f(x_tmp, y_tmp);
 		 cvCircle( color_edge, cvPoint(x_tmp, y_tmp), 5, CV_RGB(0,255,0), 2);
 	 }
 
-	 std::vector < std::vector<CvPoint> > edges;
-     Extract_Edges(edge_mat, edges);
-
-	 for(size_t i=0; i < edges.size(); i++)
+	 for(size_t i=0; i<road_graph_.edges.size(); i++)
 	 {
-		CvScalar ext_color;
-		ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
-		//ext_color = CV_RGB( 0, 0, 255 );
+		 CvScalar ext_color;
+		 ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
 
-        for(size_t j=0; j < edges[i].size(); j++) {
-            int x = edges[i][j].x;
-            int y = edges[i][j].y;
-				cvSet2D(color_edge, y, x, ext_color);
-        }
-    }
-
+		 for(size_t j=0; j<road_graph_.edges[i].points.size(); j++)
+		 {
+			 int x = road_graph_.edges[i].points[j].x;
+			 int y = road_graph_.edges[i].points[j].y;
+			 printf("x, y: %d, %d\n", x, y);
+			 cvSet2D(color_edge, y, x, ext_color);
+		 }
+	 }
 
     cvConvert( node_mat, node);
     cvConvert( edge_mat, edge);
@@ -877,80 +851,111 @@ void topo_extractor::extract_node_edge(){
     cvSaveImage( "/home/baoxing/edge.jpg", edge );
     cvSaveImage( "/home/baoxing/color_edge.jpg", color_edge );
 
-    //further organize the data structure of "node and edge"
-
+    //////////////////////////////////////////////////////////////////////////////////////
+    //3rd: build the relationship of "node and edge" in "road_graph_";
+    //////////////////////////////////////////////////////////////////////////////////////
 }
 
-
-void topo_extractor::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2, std::vector<CvPoint2D32f> & node_points)
+void topo_extractor::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2)
 {
-		node_points.clear();
-        int rows = pSrc->rows;
-        int cols = pSrc->cols;
+	int rows = pSrc->rows;
+	int cols = pSrc->cols;
 
-        for(int i = 1; i < rows-1; i++) {
-                for(int j = 1; j < cols-1; j++) {
-                        if ( CV_MAT_ELEM(*pSrc, float, i, j) == 255.0) {
-                                /// get 8 neighbors
-                                /// calculate C(p)
-                                int neighbor0 = (int) CV_MAT_ELEM(*pSrc, float, i-1, j-1);
-                                int neighbor1 = (int) CV_MAT_ELEM(*pSrc, float, i-1, j);
-                                int neighbor2 = (int) CV_MAT_ELEM(*pSrc, float, i-1, j+1);
-                                int neighbor3 = (int) CV_MAT_ELEM(*pSrc, float, i, j+1);
-                                int neighbor4 = (int) CV_MAT_ELEM(*pSrc, float, i+1, j+1);
-                                int neighbor5 = (int) CV_MAT_ELEM(*pSrc, float, i+1, j);
-                                int neighbor6 = (int) CV_MAT_ELEM(*pSrc, float, i+1, j-1);
-                                int neighbor7 = (int) CV_MAT_ELEM(*pSrc, float, i, j-1);
+	for(int i = 1; i < rows-1; i++) {
+		for(int j = 1; j < cols-1; j++) {
+			if ( CV_MAT_ELEM(*pSrc, float, i, j) == 255.0) {
+				/// get 8 neighbors
+				/// calculate C(p)
+				int neighbor0 = (int) CV_MAT_ELEM(*pSrc, float, i-1, j-1);
+				int neighbor1 = (int) CV_MAT_ELEM(*pSrc, float, i-1, j);
+				int neighbor2 = (int) CV_MAT_ELEM(*pSrc, float, i-1, j+1);
+				int neighbor3 = (int) CV_MAT_ELEM(*pSrc, float, i, j+1);
+				int neighbor4 = (int) CV_MAT_ELEM(*pSrc, float, i+1, j+1);
+				int neighbor5 = (int) CV_MAT_ELEM(*pSrc, float, i+1, j);
+				int neighbor6 = (int) CV_MAT_ELEM(*pSrc, float, i+1, j-1);
+				int neighbor7 = (int) CV_MAT_ELEM(*pSrc, float, i, j-1);
 
-                                int Count = neighbor0 + neighbor1 + neighbor2 + neighbor3 + neighbor4 +
-															neighbor5 + neighbor6 + neighbor7;
+				int Count = neighbor0 + neighbor1 + neighbor2 + neighbor3 + neighbor4 + neighbor5 + neighbor6 + neighbor7;
 
-										  if(Count > 2*255 )
-										  {
-											  CV_MAT_ELEM(*pDst, float, i, j) = 255.0;
-											  node_points.push_back(cvPoint2D32f(j, i));
-										  }
-										  else
-										  {
-											  //only record the remained edge points;
-											  CV_MAT_ELEM(*pDst2, float, i, j) = 255.0;
-										  }
-                        }
-                }
-        }
+				//if at least 3 neighborhood skel points;
+				if(Count >= 3*255 )
+				{
+					CV_MAT_ELEM(*pDst, float, i, j) = 255.0;
+					CV_MAT_ELEM(*pDst2, float, i, j) = 0.0;
+				}
+				else
+				{
+					//only record the remained edge points;
+					CV_MAT_ELEM(*pDst, float, i, j) = 0.0;
+					CV_MAT_ELEM(*pDst2, float, i, j) = 255.0;
+				}
+			}
+		}
+	}
+
+	CvMat *node_label_image = cvCloneMat( pDst );
+	int label_count = 256; // starts at 256 because 0,255 are used already
+	int node_serial = 0;
+	for(int y=0; y < node_label_image->rows; y++) {
+		for(int x=0; x < node_label_image->cols; x++) {
+
+			if((int)CV_MAT_ELEM(*node_label_image, float, y, x) != 255) continue;
+
+			cvFloodFill(node_label_image, cvPoint(x,y), cvScalar(label_count), cvScalar(0), cvScalar(0), NULL, 8, NULL);
+
+			topo_graph::node_cluster cluster_tmp;
+			for(int i= 0 ; i < node_label_image->rows; i++) {
+				for(int j=0; j < node_label_image->cols; j++)
+				{
+					if((int)CV_MAT_ELEM(*node_label_image, float, i, j)!= label_count)
+					{
+						continue;
+					}
+					else
+					{
+						CvPoint node_tmp;
+						node_tmp.x = j;
+						node_tmp.y = i;
+						road_graph_.nodes.push_back(node_tmp);
+						cluster_tmp.nodeIDs.push_back(node_serial);
+						node_serial++;
+					}
+				}
+			}
+			road_graph_.nodeClusters.push_back(cluster_tmp);
+			label_count++;
+		}
+	}
+
+	CvMat *edge_label_image = cvCloneMat( pDst2);
+	label_count = 256;
+	for(int y=0; y < edge_label_image->rows; y++) {
+		for(int x=0; x < edge_label_image->cols; x++) {
+			if((int)CV_MAT_ELEM(*edge_label_image, float, y, x) != 255) continue;
+			cvFloodFill(edge_label_image, cvPoint(x,y), cvScalar(label_count), cvScalar(0), cvScalar(0), NULL, 8, NULL);
+
+			topo_graph::edge edge_tmp;
+			for(int i= 0 ; i < edge_label_image->rows; i++) {
+				for(int j=0; j < edge_label_image->cols; j++)
+				{
+					if((int)CV_MAT_ELEM(*edge_label_image, float, i, j)!= label_count)
+					{
+						continue;
+					}
+					else
+					{
+						CvPoint edge_point_tmp;
+						//pay attention to the x, y coordinates;
+						edge_point_tmp.x = j;
+						edge_point_tmp.y = i;
+						edge_tmp.points.push_back(edge_point_tmp);
+					}
+				}
+			}
+			road_graph_.edges.push_back(edge_tmp);
+			label_count++;
+		}
+	}
 }
 
-//Quick and easy connected component (blob) using OpenCV
-void topo_extractor::Extract_Edges(CvMat* pSrc, std::vector < std::vector<CvPoint> > & edges)
-{
-    edges.clear();
-    CvMat *label_image = cvCloneMat( pSrc );
-
-    int label_count = 256; // starts at 256 because 0,255 are used already
-
-    for(int y=0; y < label_image->rows; y++) {
-        for(int x=0; x < label_image->cols; x++) {
-
-            if((int)CV_MAT_ELEM(*label_image, float, y, x) != 255) continue;
-            cvFloodFill(label_image, cvPoint(x,y), cvScalar(label_count), cvScalar(0), cvScalar(0), NULL, 8, NULL);
-
-            std::vector <CvPoint> edge;
-
-            for(int i= 0 ; i < label_image->rows; i++) {
-                for(int j=0; j < label_image->cols; j++) {
-
-                    if((int)CV_MAT_ELEM(*label_image, float, i, j)!= label_count)
-                    {
-                        continue;
-                    }
-
-                    edge.push_back(cvPoint(j,i));
-                    //CV_MAT_ELEM(*label_image, float, i, j) = 0.0;
-                }
-            }
-            edges.push_back(edge);
-            label_count++;
-        }
-    }
-}
 

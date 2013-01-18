@@ -19,8 +19,12 @@ using namespace std;
 
 class topo_extractor {
 public:
+  //the output from "topo_extractor";
   topo_graph road_graph_;
+
   topo_extractor(const grid_type&, float, float, bool);
+
+  //extract nodes and edges from skeleton image, and organize them in "road_graph_";
   void extract_topology();
 
 private:
@@ -76,9 +80,7 @@ private:
   bool remove_center_pixel(int x, int y);
 
   void extract_node_edge();
-  void Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2, std::vector<CvPoint2D32f> & node_points);
-  void Extract_Edges(CvMat* pSrc, std::vector < std::vector<CvPoint> > & edges);
-
+  void Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2);
 };  
 
 #endif //evg_thin_hh 

@@ -13,6 +13,7 @@ public:
 		public:
 		//record its containing node IDs;
 		vector<size_t> nodeIDs;
+		CvPoint2D32f cluster_center;
 		//record its connecting edge IDs;
 		vector<size_t> edgeIDs;
 	};
