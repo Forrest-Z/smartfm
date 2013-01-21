@@ -22,7 +22,7 @@ topo_extractor::topo_extractor(const grid_type& curr_grid,
 //the core function of "topo_extractor";
 void topo_extractor::extract_topology()
 {
-	//this part mainly from evg-thin;
+	//this 2 functions are from evg-thin;
 	calculate_distances();
     printf("calculate_distances\n");
 	find_skel();
@@ -827,8 +827,8 @@ void topo_extractor::extract_node_edge(){
 
 		 for(size_t j=0; j<road_graph_.nodeClusters[i].nodeIDs.size(); j++)
 		 {
-			 x_tmp = x_tmp + road_graph_.nodes[(road_graph_.nodeClusters[i].nodeIDs[j])].x;
-			 y_tmp = y_tmp + road_graph_.nodes[(road_graph_.nodeClusters[i].nodeIDs[j])].y;
+			 x_tmp = x_tmp + road_graph_.nodes[(road_graph_.nodeClusters[i].nodeIDs[j])].position.x;
+			 y_tmp = y_tmp + road_graph_.nodes[(road_graph_.nodeClusters[i].nodeIDs[j])].position.y;
 		 }
 		 x_tmp = x_tmp / points_number;
 		 y_tmp = y_tmp / points_number;
@@ -900,6 +900,9 @@ void topo_extractor::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2)
 	CvMat *node_label_image = cvCloneMat( pDst );
 	int label_count = 256; // starts at 256 because 0,255 are used already
 	int node_serial = 0;
+	int cluster_serial = 0;
+	int edge_serial = 0;
+
 	for(int y=0; y < node_label_image->rows; y++) {
 		for(int x=0; x < node_label_image->cols; x++) {
 
@@ -908,6 +911,9 @@ void topo_extractor::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2)
 			cvFloodFill(node_label_image, cvPoint(x,y), cvScalar(label_count), cvScalar(0), cvScalar(0), NULL, 8, NULL);
 
 			topo_graph::node_cluster cluster_tmp;
+			cluster_tmp.ID = cluster_serial;
+			cluster_serial++;
+
 			for(int i= 0 ; i < node_label_image->rows; i++) {
 				for(int j=0; j < node_label_image->cols; j++)
 				{
@@ -917,9 +923,10 @@ void topo_extractor::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2)
 					}
 					else
 					{
-						CvPoint node_tmp;
-						node_tmp.x = j;
-						node_tmp.y = i;
+						topo_graph::node node_tmp;
+						node_tmp.ID = node_serial;
+						node_tmp.position.x = j;
+						node_tmp.position.y = i;
 						road_graph_.nodes.push_back(node_tmp);
 						cluster_tmp.nodeIDs.push_back(node_serial);
 						node_serial++;
@@ -939,6 +946,8 @@ void topo_extractor::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2)
 			cvFloodFill(edge_label_image, cvPoint(x,y), cvScalar(label_count), cvScalar(0), cvScalar(0), NULL, 8, NULL);
 
 			topo_graph::edge edge_tmp;
+			edge_tmp.ID = edge_serial;
+			edge_serial++;
 			edge_tmp.head_nodeCluster = -1;
 			edge_tmp.end_nodeCluster = -1;
 
@@ -965,6 +974,11 @@ void topo_extractor::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2)
 	}
 }
 
+//-------------------------------------------IMPORTANT---------------------------------------------------
+//pay attention to the IDs of nodes, node_clusters, and edges;
+//before any filtering process, their IDs correspond to their position in the storing vector;
+//we can safely use their position in the storing vector as their IDs;
+
 void topo_extractor::build_topoloty()
 {
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -985,14 +999,17 @@ void topo_extractor::build_topoloty()
 	{
 		for(size_t j=0; j<road_graph_.nodeClusters[i].nodeIDs.size(); j++)
 		{
-			//while there are multiple nodes in one single nodeCluster, it is not possible for two nodes to connect one same edge;
-			CvPoint node_tmp = road_graph_.nodes[(road_graph_.nodeClusters[i].nodeIDs[j])];
+			//While there are multiple nodes in one single nodeCluster, it is not possible for two nodes in the same nodeCluster to connect one same edge;
+
+			size_t node_position_tmp = road_graph_.nodeClusters[i].nodeIDs[j];
+			topo_graph::node node_tmp = road_graph_.nodes[node_position_tmp];
+
 			for(size_t k=0; k<road_graph_.edges.size(); k++)
 			{
 				for(size_t p=0; p<road_graph_.edges[k].points.size(); p++)
 				{
 					CvPoint edge_pt_tmp = road_graph_.edges[k].points[p];
-					bool connecting = check_8connectivity(node_tmp, edge_pt_tmp);
+					bool connecting = check_8connectivity(node_tmp.position, edge_pt_tmp);
 					if(connecting)
 					{
 						if(!edge_flags[k])
@@ -1000,7 +1017,10 @@ void topo_extractor::build_topoloty()
 							//this edge hasn't been linked to some node; find the edge's headCluster serial;
 							edge_flags[k] = true;
 							topo_graph::edge edge_rearrange;
+							edge_rearrange.ID = road_graph_.edges[k].ID;
 							edge_rearrange.head_nodeCluster = (int)i;
+
+							//nodeCluster records its connecting edge (ID);
 							road_graph_.nodeClusters[i].edgeIDs.push_back(k);
 
 							//this edge_pt_tmp will be the first point in the newly re-arranged edge;
@@ -1057,18 +1077,67 @@ inline bool topo_extractor::check_8connectivity(CvPoint pt1, CvPoint pt2)
 	return connecting;
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//pay special attention to the filtering process, i.e. the erase of some edges;
+//it may change the serial number of each edge, then the connectivity between the node and edges;
+////////////////////////////////////////////////////////////////////////////////////////////////////
 void topo_extractor::topo_filtering()
 {
-	//filter the broken pieces of edge segment;
+	for(size_t k=0; k<road_graph_.edges.size(); k++)
+	{
+		road_graph_.edges[k].edge_length = 0.0;
+		for(size_t i=1; i<road_graph_.edges[k].points.size(); i++)
+		{
+			road_graph_.edges[k].edge_length = road_graph_.edges[k].edge_length +
+					fmutil::distance(road_graph_.edges[k].points[i], road_graph_.edges[k].points[i-1]);
+		}
+	}
+
+	//filter the broken pieces of edge segment have no connecting node;
+	//or filter those too-short pieces that have only one connecting node;
+
+	//filter the edges;
 	vector<topo_graph::edge> edges_tmp;
 	for(size_t k=0; k<road_graph_.edges.size(); k++)
 	{
-		if(road_graph_.edges[k].head_nodeCluster!=-1 || road_graph_.edges[k].end_nodeCluster!=-1)
+		printf("head nodeCluster %d, end nodeCluster %d\t", road_graph_.edges[k].head_nodeCluster, road_graph_.edges[k].end_nodeCluster);
+		if(road_graph_.edges[k].end_nodeCluster!=-1)
 		{
 			edges_tmp.push_back(road_graph_.edges[k]);
 		}
+		else if (road_graph_.edges[k].head_nodeCluster !=-1 && road_graph_.edges[k].end_nodeCluster ==-1)
+		{
+			if(road_graph_.edges[k].edge_length < EDGE_LENGTH_THRESHOLD)
+			{
+				//"node_cluster" (in nodeClusters) hasn't been filtered, so we can still use its ID as its position in vector;
+				topo_graph::node_cluster & cluster_tmp = road_graph_.nodeClusters[road_graph_.edges[k].head_nodeCluster];
+				for(size_t i=0; i<cluster_tmp.edgeIDs.size(); i++)
+				{
+					if(cluster_tmp.edgeIDs[i]==road_graph_.edges[k].ID)
+					{
+						cluster_tmp.edgeIDs.erase(cluster_tmp.edgeIDs.begin()+i);
+						break;
+					}
+				}
+			}
+		}
 	}
-	road_graph_.edges= edges_tmp;
+	road_graph_.edges = edges_tmp;
+
+	//filter the nodeCluster;
+	vector<topo_graph::node_cluster> clusters_tmp;
+	for(size_t k=0; k<road_graph_.nodeClusters.size(); k++)
+	{
+		if(road_graph_.nodeClusters[k].edgeIDs.size() <= 2)
+		{
+		}
+		else
+		{
+			clusters_tmp.push_back(road_graph_.nodeClusters[k]);
+		}
+
+	}
+	road_graph_.nodeClusters = clusters_tmp;
 }
 
 

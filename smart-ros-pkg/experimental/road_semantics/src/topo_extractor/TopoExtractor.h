@@ -15,6 +15,8 @@
 #include <opencv/highgui.h>
 #include <fmutil/fm_math.h>
 
+#define EDGE_LENGTH_THRESHOLD 10.0
+
 using namespace std;
 
 class topo_extractor {
