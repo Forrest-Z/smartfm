@@ -146,30 +146,6 @@ void topo_extractor::find_skel()
 	thin();
 	//Search for the actual skeleton cells after then thinning is done.
 	find_skel_edge();
-
-	IplImage *skel_image_ = cvCreateImage( cvSize(grid_size_x, grid_size_y),IPL_DEPTH_8U, 1);
-
-	int skel_height 		= skel_image_ -> height;
-	int skel_width  		= skel_image_ -> width;
-	int skel_step	 		= skel_image_ -> widthStep/sizeof(uchar);
-	uchar * skel_data 	= (uchar*)skel_image_ ->imageData;
-
-	for(int ih=0; ih < skel_height; ih++)
-	{
-		for(int iw=0; iw < skel_width; iw++)
-		{
-			if(_step2_grid[iw][ih] == skel)
-			{
-				skel_data[ih*skel_step+iw]=255;
-			}
-			else
-			{
-				//sometimes this sentence is necessary;
-				skel_data[ih*skel_step+iw]=0;
-			}
-		}
-	}
-	cvSaveImage( "/home/baoxing/skel_image_before_pruning.jpg", skel_image_ );
 }
 
 /**
@@ -795,11 +771,8 @@ void topo_extractor::extract_node_edge(){
 	///////////////////////////////////////////////////////////////////
 	IplImage *img = skel_image_;
     CvMat *mat = cvCreateMat( img->height, img->width, CV_32FC1);
-    CvMat *node_mat = cvCreateMat( img->height, img->width, CV_32FC1);
-    CvMat *edge_mat = cvCreateMat( img->height, img->width, CV_32FC1);
-
 	cvConvert( img, mat);
-	Graph_Extraction(mat, node_mat, edge_mat);
+	Graph_Extraction(mat);
 
     //////////////////////////////////////////////////////////////////////////////////////
     //3rd: build the relationship of "node and edge" in "road_graph_";
@@ -813,10 +786,9 @@ void topo_extractor::extract_node_edge(){
 
 
 	//for visualization purposes, to check the extracted nodes and edges;
-    IplImage  *node =0, *edge = 0, *color_edge = 0;
-    node = cvCreateImage(cvSize(img->width,img->height),IPL_DEPTH_8U, 1);
-    edge = cvCreateImage(cvSize(img->width,img->height),IPL_DEPTH_8U, 1);
+    IplImage *color_edge = 0;
     color_edge = cvCreateImage(cvSize(img->width,img->height),IPL_DEPTH_8U, 3);
+    cvZero(color_edge);
 
 	for(size_t i=0; i<road_graph_.nodeClusters.size(); i++)
 	 {
@@ -847,21 +819,18 @@ void topo_extractor::extract_node_edge(){
 		 }
 	 }
 
-    cvConvert( node_mat, node);
-    cvConvert( edge_mat, edge);
-
-    //for visualization purposes;
-	cvSaveImage( "/home/baoxing/skel_image.jpg", skel_image_ );
-    cvSaveImage( "/home/baoxing/node.jpg", node );
-    cvSaveImage( "/home/baoxing/edge.jpg", edge );
+	 cvSaveImage( "/home/baoxing/skel.jpg", skel_image_ );
     cvSaveImage( "/home/baoxing/color_edge.jpg", color_edge );
 
 }
 
-void topo_extractor::Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2)
+void topo_extractor::Graph_Extraction(CvMat *pSrc)
 {
 	int rows = pSrc->rows;
 	int cols = pSrc->cols;
+
+    CvMat *pDst = cvCreateMat( pSrc->height, pSrc->width, CV_32FC1);
+    CvMat *pDst2 = cvCreateMat( pSrc->height, pSrc->width, CV_32FC1);
 
 	for(int i = 1; i < rows-1; i++) {
 		for(int j = 1; j < cols-1; j++) {
@@ -1183,8 +1152,10 @@ void topo_extractor::topo_filtering()
 			{
 				int edge_ID = road_graph_.nodeClusters[k].edgeIDs[i];
 				int edge_position = road_graph_.find_ID_position <topo_graph::edge> (road_graph_.edges, edge_ID);
-				if(road_graph_.edges[edge_position].end_nodeCluster == k) {pts[i] = road_graph_.edges[edge_position].points.back();}
-				else if(road_graph_.edges[edge_position].head_nodeCluster == k) {pts[i] = road_graph_.edges[edge_position].points.front();}
+				if(edge_position==-1) {printf("cannot find the queried edge ID, some bug happens"); break;}
+
+				if(road_graph_.edges[edge_position].end_nodeCluster == (int)k) {pts[i] = road_graph_.edges[edge_position].points.back();}
+				else if(road_graph_.edges[edge_position].head_nodeCluster == (int)k) {pts[i] = road_graph_.edges[edge_position].points.front();}
 			}
 
 			cvLine(final_image, pts[0], pts[1], gray_value);
@@ -1226,13 +1197,9 @@ void topo_extractor::topo_filtering()
 	cvSaveImage( "/home/baoxing/final_image.jpg", final_image );
 
 	CvMat *mat = cvCreateMat( final_image->height, final_image->width, CV_32FC1);
-	CvMat *node_mat = cvCreateMat( final_image->height, final_image->width, CV_32FC1);
-	CvMat *edge_mat = cvCreateMat( final_image->height, final_image->width, CV_32FC1);
-
 	road_graph_.clear();
-
 	cvConvert( final_image, mat);
-	Graph_Extraction(mat, node_mat, edge_mat);
+	Graph_Extraction(mat);
 	build_topoloty();
 }
 

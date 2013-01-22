@@ -41,16 +41,19 @@ public:
 public:
 	//function template to find the position of certain ID in the vector;
 	template < class T >
-	size_t find_ID_position (vector < T> a, int ID)
+	int find_ID_position (vector < T> a, int ID)
 	{
 		for(size_t i=0; i<a.size(); i++)
 		{
 			if(a[i].ID == ID)
 			{
-				return i;
+				return (int)i;
 				break;
 			}
 		}
+
+		// make sure that it is always able to find the queried ID.
+		return -1;
 	}
 
 	void clear()

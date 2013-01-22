@@ -2,9 +2,9 @@
 #include <iostream>
 #include <float.h>
 #include <math.h>
-#include "datatypes.hh"
-#include "utils.hh"
-#include "TopoExtractor.h"
+#include "topo_extractor/datatypes.hh"
+#include "topo_extractor/utils.hh"
+#include "topo_extractor/TopoExtractor.h"
 #include <ros/ros.h>
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
