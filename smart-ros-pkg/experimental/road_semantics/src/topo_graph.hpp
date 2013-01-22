@@ -48,8 +48,16 @@ public:
 			if(a[i].ID == ID)
 			{
 				return i;
+				break;
 			}
 		}
+	}
+
+	void clear()
+	{
+		nodes.clear();
+		nodeClusters.clear();
+		edges.clear();
 	}
 };  
 

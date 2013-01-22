@@ -84,6 +84,7 @@ private:
   void extract_node_edge();
   void Graph_Extraction(CvMat *pSrc, CvMat *pDst, CvMat *pDst2);
   void build_topoloty();
+  void printf_topology();
   inline bool check_8connectivity(CvPoint pt1, CvPoint pt2);
   void topo_filtering();
 };  
