@@ -1,0 +1,3 @@
+Test Version for topology-extractor based on evg-thining algorithm:
+1. roughly realize topology extraction based on evg-thining, and my previous work in skeletonization found in "OGMapping";
+2. to further make a clean and complete topo-extractor.

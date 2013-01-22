@@ -1,6 +1,6 @@
 <launch>
   <node name="laser_republish" pkg="laser_maxrange_republish" type="laser_repub"/>
-  <!--node name="hokuyo_repub" pkg="laser_maxrange_republish" type="hokuyo_repub"/-->
+  <node name="hokuyo_repub" pkg="laser_maxrange_republish" type="hokuyo_repub"/>
 
 
 

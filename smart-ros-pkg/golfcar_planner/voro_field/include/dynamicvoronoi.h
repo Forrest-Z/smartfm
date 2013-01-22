@@ -7,7 +7,7 @@
 #include <limits.h>
 #include <float.h>
 #include <queue>
-
+#include <geometry_msgs/Point32.h>
 #include "bucketedqueue.h"
 
 const float resolution = 0.05;
@@ -59,7 +59,7 @@ public:
   //! write the current distance map and voronoi diagram as ppm file
   void visualize(const char* filename="obst.ppm", const char* voroFilename="voro.ppm", const char* voroFieldFilename="voro_field.ppm");
   //Update path cost
-  void updatePathCost(float alpha, float dmax);
+  void updatePathCost(std::vector<geometry_msgs::Point32> &_cost, float resolution);
 
   //! returns the horizontal size of the workspace/map
   unsigned int getSizeX() {return sizeX;}
@@ -128,7 +128,6 @@ private:
   BucketPrioQueue voroOpen;
   std::vector<INTPOINT> voroRemoveList;
   std::vector<INTPOINT> voroAddList;
-
 
   //queus for voroQ distance map
   BucketPrioQueue voroQ;

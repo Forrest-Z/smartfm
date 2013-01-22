@@ -7,13 +7,13 @@ import struct
 import geometry_msgs.msg
 
 class Cluster(genpy.Message):
-  _md5sum = "0015edcfcc5cd42d2883a8f8b506648c"
+  _md5sum = "2c3f923323b1ac4df8722b041891350d"
   _type = "vision_opticalflow/Cluster"
   _has_header = False #flag to mark the presence of a Header object
   _full_text = """uint32 id
 geometry_msgs/Point     centroid
 geometry_msgs/Point     centroid_vel
-int16                   centroid_dir
+float64                 centroid_dir
 geometry_msgs/Point[]   members
 geometry_msgs/Point[]   members_vel
 #Add more later by Poon
@@ -21,6 +21,7 @@ float64                 centroid_speed_mag      #magnitude of centroid's speed
 float64                 centroid_speed_dir      #direction of centroid's speed
 float64[]               members_speed_mag       #magnitude of each member's speed
 float64[]               members_speed_dir       #direction of each member's speed
+bool                    to_be_erase
 
 
 ================================================================================
@@ -31,8 +32,8 @@ float64 y
 float64 z
 
 """
-  __slots__ = ['id','centroid','centroid_vel','centroid_dir','members','members_vel','centroid_speed_mag','centroid_speed_dir','members_speed_mag','members_speed_dir']
-  _slot_types = ['uint32','geometry_msgs/Point','geometry_msgs/Point','int16','geometry_msgs/Point[]','geometry_msgs/Point[]','float64','float64','float64[]','float64[]']
+  __slots__ = ['id','centroid','centroid_vel','centroid_dir','members','members_vel','centroid_speed_mag','centroid_speed_dir','members_speed_mag','members_speed_dir','to_be_erase']
+  _slot_types = ['uint32','geometry_msgs/Point','geometry_msgs/Point','float64','geometry_msgs/Point[]','geometry_msgs/Point[]','float64','float64','float64[]','float64[]','bool']
 
   def __init__(self, *args, **kwds):
     """
@@ -42,7 +43,7 @@ float64 z
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-       id,centroid,centroid_vel,centroid_dir,members,members_vel,centroid_speed_mag,centroid_speed_dir,members_speed_mag,members_speed_dir
+       id,centroid,centroid_vel,centroid_dir,members,members_vel,centroid_speed_mag,centroid_speed_dir,members_speed_mag,members_speed_dir,to_be_erase
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
@@ -58,7 +59,7 @@ float64 z
       if self.centroid_vel is None:
         self.centroid_vel = geometry_msgs.msg.Point()
       if self.centroid_dir is None:
-        self.centroid_dir = 0
+        self.centroid_dir = 0.
       if self.members is None:
         self.members = []
       if self.members_vel is None:
@@ -71,17 +72,20 @@ float64 z
         self.members_speed_mag = []
       if self.members_speed_dir is None:
         self.members_speed_dir = []
+      if self.to_be_erase is None:
+        self.to_be_erase = False
     else:
       self.id = 0
       self.centroid = geometry_msgs.msg.Point()
       self.centroid_vel = geometry_msgs.msg.Point()
-      self.centroid_dir = 0
+      self.centroid_dir = 0.
       self.members = []
       self.members_vel = []
       self.centroid_speed_mag = 0.
       self.centroid_speed_dir = 0.
       self.members_speed_mag = []
       self.members_speed_dir = []
+      self.to_be_erase = False
 
   def _get_types(self):
     """
@@ -96,7 +100,7 @@ float64 z
     """
     try:
       _x = self
-      buff.write(_struct_I6dh.pack(_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir))
+      buff.write(_struct_I7d.pack(_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir))
       length = len(self.members)
       buff.write(_struct_I.pack(length))
       for val1 in self.members:
@@ -117,6 +121,7 @@ float64 z
       buff.write(_struct_I.pack(length))
       pattern = '<%sd'%length
       buff.write(struct.pack(pattern, *self.members_speed_dir))
+      buff.write(_struct_B.pack(self.to_be_erase))
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -137,8 +142,8 @@ float64 z
       end = 0
       _x = self
       start = end
-      end += 54
-      (_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir,) = _struct_I6dh.unpack(str[start:end])
+      end += 60
+      (_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir,) = _struct_I7d.unpack(str[start:end])
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
@@ -179,6 +184,10 @@ float64 z
       start = end
       end += struct.calcsize(pattern)
       self.members_speed_dir = struct.unpack(pattern, str[start:end])
+      start = end
+      end += 1
+      (self.to_be_erase,) = _struct_B.unpack(str[start:end])
+      self.to_be_erase = bool(self.to_be_erase)
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
@@ -192,7 +201,7 @@ float64 z
     """
     try:
       _x = self
-      buff.write(_struct_I6dh.pack(_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir))
+      buff.write(_struct_I7d.pack(_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir))
       length = len(self.members)
       buff.write(_struct_I.pack(length))
       for val1 in self.members:
@@ -213,6 +222,7 @@ float64 z
       buff.write(_struct_I.pack(length))
       pattern = '<%sd'%length
       buff.write(self.members_speed_dir.tostring())
+      buff.write(_struct_B.pack(self.to_be_erase))
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -234,8 +244,8 @@ float64 z
       end = 0
       _x = self
       start = end
-      end += 54
-      (_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir,) = _struct_I6dh.unpack(str[start:end])
+      end += 60
+      (_x.id, _x.centroid.x, _x.centroid.y, _x.centroid.z, _x.centroid_vel.x, _x.centroid_vel.y, _x.centroid_vel.z, _x.centroid_dir,) = _struct_I7d.unpack(str[start:end])
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
@@ -276,11 +286,16 @@ float64 z
       start = end
       end += struct.calcsize(pattern)
       self.members_speed_dir = numpy.frombuffer(str[start:end], dtype=numpy.float64, count=length)
+      start = end
+      end += 1
+      (self.to_be_erase,) = _struct_B.unpack(str[start:end])
+      self.to_be_erase = bool(self.to_be_erase)
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
 
 _struct_I = genpy.struct_I
 _struct_2d = struct.Struct("<2d")
-_struct_I6dh = struct.Struct("<I6dh")
+_struct_B = struct.Struct("<B")
+_struct_I7d = struct.Struct("<I7d")
 _struct_3d = struct.Struct("<3d")
