@@ -1,0 +1,162 @@
+/*
+ * RasterMapImageOptSample.cpp
+ *
+ *  Created on: Nov 28, 2012
+ *      Author: demian
+ */
+
+#include <ros/ros.h>
+#include <sensor_msgs/PointCloud.h>
+#include <fmutil/fm_stopwatch.h>
+#include <fmutil/fm_math.h>
+#include <pcl/point_types.h>
+#include <pcl/ros/conversions.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/visualization/pcl_visualizer.h>
+#include "RasterMapPCL.h"
+#include <fstream>
+#include <boost/thread/thread.hpp>
+pcl::PointCloud<pcl::PointNormal> input_cloud, matching_cloud;
+double res_ = 0.05;
+RasterMapImage rmi(res_, 0.03);
+
+boost::shared_ptr<pcl::visualization::PCLVisualizer> initVisualizer ()
+				{
+	// --------------------------------------------
+	// -----Open 3D viewer and add point cloud-----
+	// --------------------------------------------
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+	viewer->setBackgroundColor (0, 0, 0);
+	viewer->addCoordinateSystem (1.0);
+	viewer->initCameraParameters ();
+
+	return (viewer);
+				}
+
+void addPointCloud(boost::shared_ptr<pcl::visualization::PCLVisualizer> &viewer, pcl::PointCloud<pcl::PointNormal> &cloud_in, string cloud_name, string normal_name, bool red_color)
+{
+	cout<<cloud_in.points.size()<<" loaded."<<endl;
+	pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal> *color;
+	if(red_color) color = new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(cloud_in.makeShared(), 255, 0, 0);
+	else color = new pcl::visualization::PointCloudColorHandlerCustom<pcl::PointNormal>(cloud_in.makeShared(), 0, 255, 0);
+	viewer->addPointCloud<pcl::PointNormal> (cloud_in.makeShared(), *color, cloud_name);
+	viewer->addPointCloudNormals<pcl::PointNormal>(cloud_in.makeShared(), 2 ,0.1, normal_name);
+	viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, cloud_name);
+}
+
+double offset_x, offset_y, rotation;
+void keyboardEventOccurred (const pcl::visualization::KeyboardEvent &event,
+		void* viewer_void)
+{
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer = *static_cast<boost::shared_ptr<pcl::visualization::PCLVisualizer> *> (viewer_void);
+	if(event.keyDown())
+	{
+		viewer->removePointCloud("matching_cloud");
+		viewer->removePointCloud("matching_normal_cloud");
+		string keySym = event.getKeySym();
+		if(keySym == "j") offset_y-=res_;
+		else if(keySym == "l") offset_y+=res_;
+		else if(keySym == "k") offset_x-=res_;
+		else if(keySym == "i") offset_x+=res_;
+		else if(keySym == "y") rotation++;
+		else if(keySym == "p") rotation--;
+		vector<cv::Point2f> search_pt;
+		vector<double> normal_pt;
+		pcl::PointCloud<pcl::PointNormal> matching_cloud_tf = matching_cloud;
+		double yaw_rotate = rotation/180.*M_PI;
+		Eigen::Quaternionf bl_rotation (cos(yaw_rotate/2.), 0, 0, -sin(yaw_rotate/2.) );
+		Eigen::Vector3f bl_trans(offset_x, offset_y, 0.);
+		pcl_utils::transformPointCloudWithNormals<pcl::PointNormal>(matching_cloud_tf, matching_cloud_tf, bl_trans, bl_rotation);
+		search_pt.resize(matching_cloud_tf.points.size());
+		normal_pt.resize(matching_cloud_tf.points.size());
+		for(size_t i=0; i<matching_cloud_tf.points.size(); i++)
+		{
+			search_pt[i].x = matching_cloud_tf.points[i].x;
+			search_pt[i].y = matching_cloud_tf.points[i].y;
+			normal_pt[i] = atan2(matching_cloud_tf.points[i].normal_y, matching_cloud_tf.points[i].normal_x);
+		}
+		cout<<rmi.getScoreWithNormal(search_pt, normal_pt)<<endl;
+		addPointCloud(viewer, matching_cloud_tf, "matching_cloud", "matching_normal_cloud", false);
+		cout<<offset_x<<" "<<offset_y<<" "<<rotation<<endl;
+
+	}
+}
+
+void bruteForceSearch()
+{
+	cout<<"Inside bruteForceSearch"<<endl;
+	double best_x, best_y;
+	int best_rotation;
+	double best_score = 0;
+	for(int i=160; i<200; i++)
+	{
+		pcl::PointCloud<pcl::PointNormal> matching_cloud_tf = matching_cloud;
+		double yaw_rotate = i/180.*M_PI;
+		Eigen::Vector3f bl_trans(0, 0, 0.);
+		Eigen::Quaternionf bl_rotation (cos(yaw_rotate/2.), 0, 0, -sin(yaw_rotate/2.) );
+		pcl_utils::transformPointCloudWithNormals<pcl::PointNormal>(matching_cloud_tf, matching_cloud_tf, bl_trans, bl_rotation);
+		vector<double> angular_normals; angular_normals.resize(matching_cloud_tf.size());
+		for(size_t idx=0; idx<matching_cloud_tf.size(); idx++)
+		{
+			angular_normals[idx] = atan2(matching_cloud_tf.points[idx].normal_y, matching_cloud_tf.points[idx].normal_x);
+		}
+		for(double j=-5; j<5; j+=res_)
+		{
+			for(double k=-5; k<5; k+=res_)
+			{
+				vector<cv::Point2f> search_pt;
+				search_pt.resize(matching_cloud_tf.points.size());
+				for(size_t idx=0; idx<matching_cloud_tf.points.size(); idx++)
+				{
+					search_pt[idx].x = matching_cloud_tf.points[idx].x+j;
+					search_pt[idx].y = matching_cloud_tf.points[idx].y+k;
+				}
+				double score = rmi.getScoreWithNormal(search_pt, angular_normals);
+				if(score>best_score)
+				{
+					best_x = j;
+					best_y = k;
+					best_rotation = i;
+					best_score = score;
+				}
+
+			}
+			cout<<setiosflags (ios::fixed | ios::showpoint | ios::right) <<setprecision(3)<<setfill('0')<<setw(3)<<"At offset "<<j<<" "<<" "<<i<<", best tf found so far: "<<best_x<<" "<<best_y<<" "<<best_rotation<<" "<<best_score<<"      \xd"<<flush;
+		}
+
+
+	}
+	cout<<endl;
+	offset_x = best_x;
+	offset_y = best_y;
+	rotation = best_rotation;
+}
+int main(int argc, char **argv)
+{
+
+	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer = initVisualizer ();
+	pcl::io::loadPCDFile(argv[1], input_cloud);
+	addPointCloud(viewer, input_cloud, "input_cloud", "input_normal_cloud", true);
+	pcl::io::loadPCDFile(argv[2], matching_cloud);
+	vector<cv::Point2f> input_pts, input_normals;
+	input_pts.resize(input_cloud.points.size());
+	input_normals.resize(input_cloud.points.size());
+	for(size_t i=0; i<input_cloud.points.size(); i++)
+	{
+		input_pts[i].x = input_cloud.points[i].x;
+		input_pts[i].y = input_cloud.points[i].y;
+		input_normals[i].x = input_cloud.points[i].normal_x;
+		input_normals[i].y = input_cloud.points[i].normal_y;
+	}
+	rmi.getInputPoints(input_pts, input_normals);
+	bruteForceSearch();
+	viewer->registerKeyboardCallback (keyboardEventOccurred, (void*)&viewer);
+
+
+	while (!viewer->wasStopped ())
+	{
+		viewer->spinOnce (100);
+		boost::this_thread::sleep (boost::posix_time::microseconds (100000));
+	}
+	return 0;
+}
