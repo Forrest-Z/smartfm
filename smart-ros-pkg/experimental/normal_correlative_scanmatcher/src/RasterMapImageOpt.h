@@ -41,6 +41,13 @@ bool sortScore (transform_info t1, transform_info t2)
 	return (t1.score > t2.score);
 }
 
+struct ScoreDetails
+{
+	double normal_score;
+	double dist_score;
+	double worst_norm_score;
+	double norm_norm_score;
+};
 class RasterMapImage
 {
 public:
@@ -101,10 +108,11 @@ public:
 
 	inline double scorePoints(vector<cv::Point> &search_pt, int offset_x, int offset_y, bool within_prior)
 	{
-		return scorePoints(search_pt, offset_x, offset_y, within_prior);
+		//ScoreDetails sd;
+		return scorePoints(search_pt, offset_x, offset_y, within_prior);//, sd);
 	}
 
-	double getScoreWithNormal(vector<cv::Point2f> &search_pt, vector<double> &angular_normal)
+	double getScoreWithNormal(vector<cv::Point2f> &search_pt, vector<double> &angular_normal, ScoreDetails &sd)
 	{
 		assert(search_pt.size() == angular_normal.size());
 		vector<cv::Point> search_pt_int;
@@ -116,9 +124,9 @@ public:
 
 
 		}
-		return scorePoints(search_pt_int, angular_normal, 0, 0, false);
+		return scorePoints(search_pt_int, angular_normal, 0, 0, false, sd);
 	}
-	inline double scorePoints(vector<cv::Point> &search_pt, vector<double> &normal_pt, int offset_x, int offset_y, bool within_prior)
+	inline double scorePoints(vector<cv::Point> &search_pt, vector<double> &normal_pt, int offset_x, int offset_y, bool within_prior, ScoreDetails &score_details)
 	{
 		//fmutil::Stopwatch sw("scorePoints");
 
@@ -127,7 +135,7 @@ public:
 		uint score = 0;
 		double norm_score = 0;
 		int count = 0;
-
+		double penalize_norm = M_PI/2.;
 		//it only takes 25 ms for 6k loops on 0.03 res
 
 		for(size_t i=0; i<search_pt.size(); i++)
@@ -142,6 +150,7 @@ public:
 				//it forces the alignment with the prior, which might not be correct
 				//got to be careful
 				//if(score>=penalize_pt) score -= penalize_pt;
+				if(norm_score >= penalize_norm) norm_score-=penalize_norm;
 				continue;
 			}
 			uint score_temp = getPixel(pt.x, pt.y);
@@ -159,7 +168,7 @@ public:
 			{
 				//if no information on the points normal,penalize it
 				//by giving M_PI/2
-				angular_diff = M_PI/2.;// /= 2;
+				angular_diff = penalize_norm;// /= 2;
 			}
 			if(angular_diff > M_PI) angular_diff-= M_PI;
 			if(angular_diff < -M_PI) angular_diff += M_PI;
@@ -173,7 +182,12 @@ public:
 		if(within_prior) final_score = (double)score/(255*count);
 		//dbg<<"Score = "<<score/255*100<<"%"<<endl;
 		//sw.end();
-		double proposed_score = (1-(norm_score/(search_pt.size()*M_PI/2))) * final_score;
+		score_details.worst_norm_score = (search_pt.size()*M_PI/2);
+
+		score_details.dist_score = final_score;
+		score_details.normal_score = norm_score;
+		score_details.norm_norm_score = (1-(norm_score/score_details.worst_norm_score));
+		double proposed_score =  score_details.norm_norm_score * final_score;
 		//cout<<"norm_score = "<<norm_score<<" dist_score="<<final_score<<" proposed_score="<<proposed_score<<endl;
 		//cout<<"Average norm error = "<<norm_score/(search_pt.size()*M_PI/2)<<endl;
 		return proposed_score;

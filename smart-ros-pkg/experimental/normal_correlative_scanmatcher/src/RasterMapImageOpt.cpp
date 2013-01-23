@@ -75,7 +75,11 @@ void keyboardEventOccurred (const pcl::visualization::KeyboardEvent &event,
 			search_pt[i].y = matching_cloud_tf.points[i].y;
 			normal_pt[i] = atan2(matching_cloud_tf.points[i].normal_y, matching_cloud_tf.points[i].normal_x);
 		}
-		cout<<rmi.getScoreWithNormal(search_pt, normal_pt)<<endl;
+		ScoreDetails sd;
+		double best_score = rmi.getScoreWithNormal(search_pt, normal_pt, sd);
+		cout<<"Distance:"<<sd.dist_score<<" Norm:"<< sd.normal_score<<" NNorm:"<<sd.norm_norm_score<<
+							" WorstNorm:"<<sd.worst_norm_score<<" Final:"<<best_score<<"      \xd"<<flush;
+
 		addPointCloud(viewer, matching_cloud_tf, "matching_cloud", "matching_normal_cloud", false);
 		cout<<offset_x<<" "<<offset_y<<" "<<rotation<<endl;
 
@@ -88,6 +92,7 @@ void bruteForceSearch()
 	double best_x, best_y;
 	int best_rotation;
 	double best_score = 0;
+	ScoreDetails best_score_details;
 	for(int i=160; i<200; i++)
 	{
 		pcl::PointCloud<pcl::PointNormal> matching_cloud_tf = matching_cloud;
@@ -111,17 +116,21 @@ void bruteForceSearch()
 					search_pt[idx].x = matching_cloud_tf.points[idx].x+j;
 					search_pt[idx].y = matching_cloud_tf.points[idx].y+k;
 				}
-				double score = rmi.getScoreWithNormal(search_pt, angular_normals);
+				ScoreDetails sd;
+				double score = rmi.getScoreWithNormal(search_pt, angular_normals, sd);
 				if(score>best_score)
 				{
 					best_x = j;
 					best_y = k;
 					best_rotation = i;
 					best_score = score;
+					best_score_details = sd;
 				}
 
 			}
-			cout<<setiosflags (ios::fixed | ios::showpoint | ios::right) <<setprecision(3)<<setfill('0')<<setw(3)<<"At offset "<<j<<" "<<" "<<i<<", best tf found so far: "<<best_x<<" "<<best_y<<" "<<best_rotation<<" "<<best_score<<"      \xd"<<flush;
+			cout<<setiosflags (ios::fixed | ios::showpoint | ios::right) <<setprecision(3)<<setfill('0')<<setw(3)<<"At offset "<<j<<" "<<" "<<i<<", best tf found so far: "<<best_x<<" "<<best_y<<" "<<best_rotation<<
+					" Distance:"<<best_score_details.dist_score<<" Norm:"<< best_score_details.normal_score<<" NNorm:"<<best_score_details.norm_norm_score<<
+					" WorstNorm:"<<best_score_details.worst_norm_score<<" Final:"<<best_score<<"      \xd"<<flush;
 		}
 
 
