@@ -17,8 +17,8 @@ namespace golfcar_vision{
 		private_nh_.param("ipm_ROI_far_width",		ipm_ROI_far_width_,	20.0);
 		private_nh_.param("scale", 					scale_,					30.0);
 		CvSize ipm_size = cvSize((int)(scale_ * ipm_ROI_far_width_), (int)(scale_ * ipm_ROI_height_));
-      ipm_image_ = cvCreateImage(ipm_size, 8,1);
-	   ipm_color_image_ = cvCreateImage(ipm_size, 8, 3);
+        ipm_image_ = cvCreateImage(ipm_size, 8,1);
+	    ipm_color_image_ = cvCreateImage(ipm_size, 8, 3);
 	   
 		string svm_model_path;
 		string svm_scale_path;
@@ -300,6 +300,17 @@ namespace golfcar_vision{
 				cvShowImage("ipm_window", ipm_image_);
 			}
         
+			/*
+			try
+			 {
+				image_pub_.publish(bridge_.cvToImgMsg(ipm_image_, "mono8"));
+			 }
+			catch (sensor_msgs::CvBridgeException error)
+			 {
+				ROS_ERROR("error");
+			 }
+			 */
+
 			try
 			 {
 				image_pub_.publish(bridge_.cvToImgMsg(ipm_image_, "mono8"));

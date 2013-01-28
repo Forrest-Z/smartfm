@@ -15,6 +15,8 @@
 //golfcart 10.04 doesn't have required mrpt-library;
 #include "continuous_lane.h"
 
+#include "ocr_client.h"
+
 #include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -74,7 +76,7 @@ namespace golfcar_vision{
 	     void corresPoints_extrinCalib(int contour_class, CvMat* srcMarkerPts, tf::Pose & markerPose_base);
 	     CvMat* M1_gndPts_, *M2_gndPts_, *M3_gndPts_;
 	     
-	     
+	     OcrClientNode lane_ocr_;
     };
 };
 

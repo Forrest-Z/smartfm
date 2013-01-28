@@ -19,6 +19,7 @@
   <depend package="pcl"/>
   <depend package="pcl_ros"/>
   <depend package="mrpt_libs"/>
+  <depend package="ocr_server"/>
 </package>
 
 

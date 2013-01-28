@@ -142,6 +142,20 @@ namespace golfcar_vision{
         cvAdaptiveThreshold(src, Iat, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, BLOCK_SIZE, OFFSET);
         cvAnd(It, Iat, Itand);
         
+
+        //2013-JAN
+        /*
+        char letter;
+        if(lane_ocr_.recognize(Itand, letter))
+        {
+        	ROS_INFO("huhuhuhuhuhu-----%c", letter);
+        }
+        else
+        {
+        	ROS_WARN("NONONONONONO");
+        }
+        */
+
         cvShowImage("It_image",It);
         cvShowImage("Iat_image",Iat);
         cvShowImage("binary_image",Itand);

@@ -34,7 +34,7 @@
         <param name="image_transport" value="compressed"/>
 	</node>
 	
-<node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
+<!--node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
     <node pkg="robust_road_detection" type="curb_detect" name="curb_detect">
-    </node>
+    </node-->
 </launch>
