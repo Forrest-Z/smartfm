@@ -7,6 +7,7 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud.h>
+#include <sensor_msgs/point_cloud_conversion.h>
 #include <fmutil/fm_stopwatch.h>
 #include <fmutil/fm_math.h>
 #include <pcl/point_types.h>
@@ -16,8 +17,9 @@
 #include "RasterMapPCL.h"
 #include <fstream>
 #include <boost/thread/thread.hpp>
+#include "pcl_downsample.h"
 pcl::PointCloud<pcl::PointNormal> input_cloud, matching_cloud;
-double res_ = 0.05;
+double res_ = 0.1;
 RasterMapImage rmi(res_, 0.03);
 
 boost::shared_ptr<pcl::visualization::PCLVisualizer> initVisualizer ()
@@ -44,7 +46,7 @@ void addPointCloud(boost::shared_ptr<pcl::visualization::PCLVisualizer> &viewer,
 	viewer->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, cloud_name);
 }
 
-double offset_x, offset_y, rotation;
+double offset_x, offset_y, rotation=180.;
 void keyboardEventOccurred (const pcl::visualization::KeyboardEvent &event,
 		void* viewer_void)
 {
@@ -77,8 +79,9 @@ void keyboardEventOccurred (const pcl::visualization::KeyboardEvent &event,
 		}
 		ScoreDetails sd;
 		double best_score = rmi.getScoreWithNormal(search_pt, normal_pt, sd);
+
 		cout<<"Distance:"<<sd.dist_score<<" Norm:"<< sd.normal_score<<" NNorm:"<<sd.norm_norm_score<<
-							" WorstNorm:"<<sd.worst_norm_score<<" Final:"<<best_score<<"      \xd"<<flush;
+							" WorstNorm:"<<sd.worst_norm_score<<" Final:"<<best_score<<endl;
 
 		addPointCloud(viewer, matching_cloud_tf, "matching_cloud", "matching_normal_cloud", false);
 		cout<<offset_x<<" "<<offset_y<<" "<<rotation<<endl;
@@ -140,13 +143,71 @@ void bruteForceSearch()
 	offset_y = best_y;
 	rotation = best_rotation;
 }
+
+map<int,int> getHistogram(pcl::PointCloud<pcl::PointNormal> &pcl)
+{
+	map<int,int> histogram;
+	for(size_t i=0; i<pcl.points.size(); i++)
+	{
+		histogram[int(atan2(pcl.points[i].normal_y, pcl.points[i].normal_x)/M_PI*360)]++;
+	}
+	for(int i=-360; i<=360; i++)
+	{
+		if(histogram.find(i) == histogram.end())
+			histogram[i] = 0;
+	}
+	return histogram;
+
+}
+
+double getHistogramSSE(map<int,int> &hist1, map<int,int> &hist2)
+{
+	assert(hist1.size() == hist2.size());
+	double error = 0;
+	for(map<int,int>::iterator it1 = hist1.begin(), it2 = hist2.begin(); it1!=hist1.end(); it1++, it2++)
+	{
+		double temp = it1->second - it2->second;
+		error += temp*temp;
+	}
+	return error;
+}
+
+void getBestRotationWithHistogram()
+{
+	map<int,int> input_hist = getHistogram(input_cloud);
+	vector<map<int,int> > histograms;
+	double smallest_error = 1e999;
+	int best_rotation=-360;
+	for(int i=-180; i<180; i+=2)
+	{
+		pcl::PointCloud<pcl::PointNormal> matching_cloud_tf = matching_cloud;
+		double yaw_rotate = i/180.*M_PI;
+		Eigen::Vector3f bl_trans(0, 0, 0.);
+		Eigen::Quaternionf bl_rotation (cos(yaw_rotate/2.), 0, 0, -sin(yaw_rotate/2.) );
+		pcl_utils::transformPointCloudWithNormals<pcl::PointNormal>(matching_cloud_tf, matching_cloud_tf, bl_trans, bl_rotation);
+		map<int,int> matching_hist = getHistogram(matching_cloud_tf);
+		double error_now = getHistogramSSE(matching_hist, input_hist);
+		cout<<error_now<<" ";
+		if( error_now < smallest_error)
+		{
+			smallest_error = error_now;
+			best_rotation = i;
+		}
+	}
+	cout<<endl;
+	cout<<"Best rotation found: "<<best_rotation<<" with error: "<<smallest_error<<endl;
+}
 int main(int argc, char **argv)
 {
 
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer = initVisualizer ();
 	pcl::io::loadPCDFile(argv[1], input_cloud);
-	addPointCloud(viewer, input_cloud, "input_cloud", "input_normal_cloud", true);
 	pcl::io::loadPCDFile(argv[2], matching_cloud);
+
+	input_cloud = pcl_downsample(input_cloud, res_/2,res_/2,res_/2);
+	matching_cloud = pcl_downsample(matching_cloud, res_/2,res_/2,res_/2);
+	addPointCloud(viewer, input_cloud, "input_cloud", "input_normal_cloud", true);
+
 	vector<cv::Point2f> input_pts, input_normals;
 	input_pts.resize(input_cloud.points.size());
 	input_normals.resize(input_cloud.points.size());

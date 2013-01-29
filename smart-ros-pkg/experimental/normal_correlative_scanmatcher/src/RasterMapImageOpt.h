@@ -112,6 +112,24 @@ public:
 		return scorePoints(search_pt, offset_x, offset_y, within_prior);//, sd);
 	}
 
+	double getScoreWithNormal(vector<cv::Point2f> &search_pt, vector<double> &angular_normal, int offsetx, int offsety)
+	{
+		assert(search_pt.size() == angular_normal.size());
+		vector<cv::Point> search_pt_int;
+		search_pt_int.resize(search_pt.size());
+
+		for(size_t i=0; i<search_pt.size(); i++)
+		{
+			search_pt_int[i] = imageCoordinate(search_pt[i]);
+
+
+		}
+		ScoreDetails sd;
+		double score = scorePoints(search_pt_int, angular_normal, offsetx, offsety, false, sd);
+
+		return score;
+	}
+
 	double getScoreWithNormal(vector<cv::Point2f> &search_pt, vector<double> &angular_normal, ScoreDetails &sd)
 	{
 		assert(search_pt.size() == angular_normal.size());
@@ -129,7 +147,7 @@ public:
 	inline double scorePoints(vector<cv::Point> &search_pt, vector<double> &normal_pt, int offset_x, int offset_y, bool within_prior, ScoreDetails &score_details)
 	{
 		//fmutil::Stopwatch sw("scorePoints");
-
+		score_details.worst_norm_score = (search_pt.size()*M_PI/2);
 		assert(image_.data != NULL);
 		if(use_normal_) assert(search_pt.size() == normal_pt.size());
 		uint score = 0;
@@ -150,7 +168,7 @@ public:
 				//it forces the alignment with the prior, which might not be correct
 				//got to be careful
 				//if(score>=penalize_pt) score -= penalize_pt;
-				if(norm_score >= penalize_norm) norm_score-=penalize_norm;
+				if((score_details.worst_norm_score - norm_score)>penalize_norm) norm_score+=penalize_norm;
 				continue;
 			}
 			uint score_temp = getPixel(pt.x, pt.y);
@@ -182,14 +200,14 @@ public:
 		if(within_prior) final_score = (double)score/(255*count);
 		//dbg<<"Score = "<<score/255*100<<"%"<<endl;
 		//sw.end();
-		score_details.worst_norm_score = (search_pt.size()*M_PI/2);
+
 
 		score_details.dist_score = final_score;
 		score_details.normal_score = norm_score;
 		score_details.norm_norm_score = (1-(norm_score/score_details.worst_norm_score));
+
 		double proposed_score =  score_details.norm_norm_score * final_score;
-		//cout<<"norm_score = "<<norm_score<<" dist_score="<<final_score<<" proposed_score="<<proposed_score<<endl;
-		//cout<<"Average norm error = "<<norm_score/(search_pt.size()*M_PI/2)<<endl;
+
 		return proposed_score;
 	}
 
@@ -229,7 +247,8 @@ public:
 			if(raster_pt[i].y < min_pt_.y) min_pt_.y = raster_pt[i].y;
 			if(raster_pt[i].y > max_pt_.y) max_pt_.y = raster_pt[i].y;
 		}
-
+		//change the resolution by increasing it to 5 times
+		//res_ /= 5;
 		cv::Point2f map_size(max_pt_.x - min_pt_.x, max_pt_.y - min_pt_.y);
 		map_size.x = ceil(map_size.x/res_); map_size.y =ceil(map_size.y/res_);
 
@@ -276,11 +295,15 @@ public:
 		}
 		sw_draw.end(false);
 
+		//resize it back
+		//cv::resize(image_, image_, cv::Size(0,0), 1/5., 1/5., cv::INTER_CUBIC);
+		//cv::resize(norm_image_, norm_image_, cv::Size(0,0), 1/5., 1/5., cv::INTER_CUBIC);
 		cv::imwrite(distance.str(), image_);
 		cv::Mat norm_image_8bit;
 		cv::normalize(norm_image_, norm_image_8bit, 0, 255, cv::NORM_MINMAX, CV_8UC1);
 		cv::imwrite(norm_file.str(), norm_image_8bit);
 		sw.end(false);
+		//res_ *= 5;
 	}
 
 	//http://stackoverflow.com/questions/5550290/find-local-maxima-in-grayscale-image-using-opencv
