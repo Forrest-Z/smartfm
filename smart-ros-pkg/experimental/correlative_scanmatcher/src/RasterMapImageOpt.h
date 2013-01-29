@@ -49,10 +49,12 @@ public:
 	dbgstream dbg;
 	double res_;
 	vector<cv::Point2f> input_pt_;
-	RasterMapImage(double resolution, double range_covariance): res_(resolution), range_covariance_(range_covariance),
+	cv::Point2f min_pt_, max_pt_;
+	RasterMapImage(double resolution, double range_covariance): res_(resolution),
+			min_pt_(1e99,1e99), max_pt_(-1e99,-1e99),
+			range_covariance_(range_covariance),
 			max_dist_ (sqrt(log(255)*range_covariance)),
-			gausian_length_((int) (max_dist_ / res_ + 1)),
-			min_pt_(1e99,1e99), max_pt_(-1e99,-1e99)
+			gausian_length_((int) (max_dist_ / res_ + 1))
 	{
 		gaussian_mapping_ = makeGaussianLinearMapping();
 	}
@@ -60,6 +62,28 @@ public:
 	~RasterMapImage()
 	{
 
+	}
+
+	vector<geometry_msgs::Point32> mapToRealPts()
+	{
+
+		vector<geometry_msgs::Point32> real_pts;
+		for(int i=0; i<image_.cols; i++)
+		{
+			for(int j=0; j<image_.rows; j++)
+			{
+				if(image_.data[j*image_.cols + i] == 255)
+				{
+					cv::Point2f pt = cv::Point2f(i * res_ + min_pt_.x, -(j- image_.rows)*res_ + min_pt_.y );
+					geometry_msgs::Point32 pt32;
+					pt32.x = pt.x;
+					pt32.y = pt.y;
+					real_pts.push_back(pt32);
+				}
+
+			}
+		}
+		return real_pts;
 	}
 
 	template <class T>
@@ -81,7 +105,7 @@ public:
 
 		uint score = 0;
 		int count = 0;
-		uint penalize_pt = 100;
+
 		//it only takes 25 ms for 6k loops on 0.03 res
 
 		for(vector<cv::Point>::iterator i=search_pt.begin(); i!=search_pt.end(); i++)
@@ -98,7 +122,7 @@ public:
 				//if(score>=penalize_pt) score -= penalize_pt;
 				continue;
 			}
-			int score_temp = getPixel(pt.x, pt.y);
+			uint score_temp = getPixel(pt.x, pt.y);
 			if(score_temp <= 100)
 			{
 				//this has caused mismatch of the EA car park area. Perhaps not a good idea?
@@ -119,11 +143,11 @@ public:
 	template <class T>
 	void getInputPoints(vector<T> const &raster_pt_input)
 	{
-		vector<geometry_msgs::Point32> height_pc;
+		vector<cv::Point3f> height_pc;
 		getInputPoints(raster_pt_input, height_pc);
 	}
 	template <class T>
-	void getInputPoints(vector<T> const &raster_pt_input, vector<geometry_msgs::Point32> const &height_pc)
+	void getInputPoints(vector<T> raster_pt_input, vector<T> height_pc)
 	{
 		fmutil::Stopwatch sw;
 
@@ -164,20 +188,24 @@ public:
 		fmutil::Stopwatch sw_draw("Confirming rastermap time");
 		for(size_t i=0; i<height_pc.size(); i++)
 		{
-			cv::Point pt =imageCoordinate(height_pc[i]);
+			cv::Point pt = imageCoordinate(height_pc[i]);
 			if(pt.x >= image_.cols || pt.y >= image_.rows) continue;
+			if(pt.x < 0 || pt.y <0) continue;
 			int value = image_.at<uchar>(pt.y, pt.x);
 			double height = height_pc[i].z;
 			fmutil::bound(0.0, height , 2.0);
 			int value_height = round(height*50);
-			if(value<value_height) image_.at<uchar>(pt.y, pt.x) = value_height;
+			//using image_.at to alter the value of the matrix causes a lot of trouble, ranging from atomic_exchange_and_add to shared_count segfault
+			//it somehow causes the release of cv::Mat unsuccessful
+			if(value<value_height) //image_.at<uchar>(pt.y, pt.x) = value_height;
+				cv::circle(image_, pt, 0, cv::Scalar(value_height, value_height, value_height), 1);
 		}
 
 		stringstream ss;
 		ss<<"rastered_map_"<<res_<<"_"<< range_covariance_<<".png";
 
 
-		//for(int j=gaussian_mapping_.size()-1; j>=0; j--)
+		for(int j=1; j>=0; j--)
 		{
 			//openmp helps reduce the rastering time from 150+ to 60+ms
 			//#pragma omp parallel for
@@ -185,9 +213,10 @@ public:
 			{
 				cv::Point pt =imageCoordinate(raster_pt[i]);
 				if(pt.x >= image_.cols || pt.y >= image_.rows) continue;
-
-				//this->rasterCircle(pt, j, image_, gaussian_mapping_[j]);
-				image_.at<uchar>(pt.y, pt.x) = 255;
+				if(pt.x < 0 || pt.y < 0) continue;
+				this->rasterCircle(pt, j, image_, gaussian_mapping_[j]);
+				//cv::circle(image_, pt, 0, cv::Scalar(255,255,255),1);
+				//image_.at<uchar>(pt.y, pt.x) = 255;
 			}
 
 		}
@@ -511,7 +540,7 @@ private:
 	vector<double> circle_segments_cos_, circle_segments_sin_;
 	int draw_circle_segments_;
 	double range_covariance_, max_dist_, gausian_length_;
-	cv::Point2f min_pt_, max_pt_;
+
 	inline bool outsideMap(cv::Mat &img, cv::Point pt)
 	{
 		if(pt.x >= img.cols || pt.y >= img.rows) return true;
