@@ -8,7 +8,7 @@
 #include <geometry_msgs/PoseArray.h>
 #include <dynamic_reconfigure/server.h>
 #include <norm_virtual_sensor/NormVirtualSensorConfig.h>
-
+#include <pcl/point_types.h>
 
 class NormVirtualSensor
 {
@@ -19,7 +19,7 @@ class NormVirtualSensor
 
     vector<pcl::PointCloud<pcl::PointXYZRGBNormal> > accumulated_normals_;
     ros::Publisher accumulated_pub_, normal_pc2_pub_;
-    ros::Publisher final_pc2_pub_, final_pc_pub_;
+    ros::Publisher final_pc2_pub_, final_pc_pub_, final_pcl_pub_;
     ros::Publisher latest_normal_pub_, laser_pub_;
     ros::Publisher normals_poses_pub_, filtered_normal_pub_;
     tf::TransformListener *tf_;
@@ -138,9 +138,11 @@ class NormVirtualSensor
         ne.setRadiusSearch (norm_radius_search_);
 
         // Set use point using current sensor pose
-        double viewpoint[] = {cur_sensor_trans_.getOrigin().x(), cur_sensor_trans_.getOrigin().y(), cur_sensor_trans_.getOrigin().z()};
 
-        ne.setViewPoint(0.,0.,0.);//viewpoint[0], viewpoint[1], viewpoint[2]);
+        double viewpoint[] = {cur_sensor_trans_.getOrigin().x()-centroid.x, cur_sensor_trans_.getOrigin().y()-centroid.y, cur_sensor_trans_.getOrigin().z()-centroid.z};
+        //cout<<"Sensor pose in target frame: "<<viewpoint[0]<<" "<<viewpoint[1]<<" "<<viewpoint[2]<<endl;
+        ne.setViewPoint(viewpoint[0], viewpoint[1], viewpoint[2]);
+        //ne.setViewPoint(0.,0.,0.);
         // Compute the features
         stringstream ss;
         ss<<"Compute normals in frame "<<input.header.frame_id;
@@ -250,25 +252,32 @@ class NormVirtualSensor
         return radius_filtered_pcl2;
     }
 
-    void pcl_downsample(pcl::PointCloud<pcl::PointXYZRGB> &point_cloud)
+    template<class T>
+    void pcl_downsample(pcl::PointCloud<T> &point_cloud, double size_x, double size_y, double size_z)
     {
-    	if(point_cloud.size()<100) return;
-        pcl::VoxelGrid<pcl::PointXYZRGB> sor;
+      if(point_cloud.size()<100) return;
+        pcl::VoxelGrid<T> sor;
         // always good not to use in place filtering as stated in
         // http://www.pcl-users.org/strange-effect-of-the-downsampling-td3857829.html
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr input_msg_filtered (new pcl::PointCloud<pcl::PointXYZRGB> ());
+        pcl::PointCloud<T> input_msg_filtered = *(new pcl::PointCloud<T> ());
         //float downsample_size_ = 0.05;
         sor.setInputCloud(point_cloud.makeShared());
-        sor.setLeafSize (downsample_size_, downsample_size_, downsample_size_);
+        sor.setLeafSize (size_x, size_y, size_z);
         pcl::PointIndicesPtr pi;
-        sor.filter (*input_msg_filtered);
+        sor.filter (input_msg_filtered);
         /*cout<<"Downsampled colors ";
         for(size_t i=0; i<input_msg_filtered->points.size(); i++)
         {
             cout<<input_msg_filtered->points[i].rgb<<" ";
         }
         cout<<endl;*/
-        point_cloud = * input_msg_filtered;
+        point_cloud = input_msg_filtered;
+    }
+
+    template<class T>
+    void pcl_downsample(pcl::PointCloud<T> &point_cloud)
+    {
+    	pcl_downsample(point_cloud, downsample_size_, downsample_size_, downsample_size_);
     }
 
     void pcCallback(sensor_msgs::PointCloud2ConstPtr scan)
@@ -331,17 +340,48 @@ class NormVirtualSensor
                 rebuild_normal+=accumulated_normals_[i];
             }
             rebuild_normal+=latest_pcl;
-
+            //include a pointcloud that has a frame parrallel to the odom frame but move with base_link
             sensor_msgs::PointCloud2 out;
             pcl::toROSMsg(rebuild_normal, out);
             out.header = header;
             out.header.frame_id = target_frame_;
             final_pc2_pub_.publish(out);
             sensor_msgs::PointCloud out_pc_legacy;
+            cout<<"before 2d compress: "<<rebuild_normal.size()<<endl;
+            for(size_t i=0; i<rebuild_normal.size(); i++)
+              rebuild_normal[i].z = 0.0;
+            pcl_downsample(rebuild_normal, 0.05, 0.05, 0.05);
+            cout<<"After 2d compress: "<<rebuild_normal.size()<<endl;
+            pcl::toROSMsg(rebuild_normal, out);
+            out.header = header;
+            out.header.frame_id = target_frame_;
             sensor_msgs::convertPointCloud2ToPointCloud(out, out_pc_legacy);
-            tf_->transformPointCloud("/base_link", out_pc_legacy, out_pc_legacy);
+            try
+            {
+            	tf_->transformPointCloud("/odom_baselink", out_pc_legacy, out_pc_legacy);
+            }
+            catch (tf::ExtrapolationException ex)
+            {
+            	cout<<ex.what()<<endl;
+            }
             final_pc_pub_.publish(out_pc_legacy);
-
+            //just to check
+            assert(rebuild_normal.points.size() == out_pc_legacy.points.size());
+	          tf::StampedTransform baselink_transform;
+            tf_->lookupTransform(out_pc_legacy.header.frame_id, target_frame_, out_pc_legacy.header.stamp, baselink_transform);
+	          Eigen::Quaternionf bl_rotation(baselink_transform.getRotation().w(), baselink_transform.getRotation().x(),baselink_transform.getRotation().y(),baselink_transform.getRotation().z()); 
+            Eigen::Vector3f bl_trans(baselink_transform.getOrigin().x(),baselink_transform.getOrigin().y(),baselink_transform.getOrigin().z());
+//         btQuaternion bt_bl_qt = baselink_transform.getRotation(); btVector3 bt_bl_origin = baselink_transform.getOrigin();
+            //copy only the normals and transformed xyz
+            pcl::PointCloud<pcl::PointXYZ> rebuild_normal_pcl;
+            pcl::PointCloud<pcl::PointNormal> rebuild_point_normal;
+            pcl::PointCloud<pcl::Normal> rebuild_normal_only;
+            pcl::copyPointCloud<pcl::PointXYZRGBNormal, pcl::PointNormal>(rebuild_normal, rebuild_point_normal);
+	          pcl_utils::transformPointCloudWithNormals<pcl::PointNormal>(rebuild_point_normal, rebuild_point_normal, bl_trans, bl_rotation);
+            sensor_msgs::PointCloud2 rebuild_point_normal_pc2;
+            pcl::toROSMsg(rebuild_point_normal, rebuild_point_normal_pc2);
+            rebuild_point_normal_pc2.header = out_pc_legacy.header;
+            final_pcl_pub_.publish(rebuild_point_normal_pc2);
             sensor_msgs::LaserScan out_laser;
             this->pointcloudsToLaser(out_pc_legacy, out_laser);
             laser_pub_.publish(out_laser);
@@ -434,6 +474,7 @@ public:
         accumulated_pub_ = n.advertise<sensor_msgs::PointCloud>("accumulated_pts", 10);
         final_pc2_pub_ = n.advertise<sensor_msgs::PointCloud2>("single_pcl", 10);
         final_pc_pub_ = n.advertise<sensor_msgs::PointCloud>("pc_legacy_out", 10);
+        final_pcl_pub_ = n.advertise<sensor_msgs::PointCloud2>("pcl_pointnormal_out", 10);
         latest_normal_pub_ = n.advertise<sensor_msgs::PointCloud2>("latest_normal", 10);
         filtered_normal_pub_ = n.advertise<sensor_msgs::PointCloud2>("filtered_normal", 10);
         laser_pub_ = n.advertise<sensor_msgs::LaserScan>("laser_out", 10);

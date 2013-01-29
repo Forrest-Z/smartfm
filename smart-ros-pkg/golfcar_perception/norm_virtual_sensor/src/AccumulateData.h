@@ -70,6 +70,28 @@ public:
     	cout<<"AccumuateData parameter updated. scan_buffer="<<scan_buffer_<<" min_dist="<<min_dist_<<endl;
     }
     //add latest observation to the sensor and erase the old buffer if necessary
+    void addData(sensor_msgs::PointCloud &src, tf::TransformListener &tf)
+    {
+    	tf::StampedTransform latest_transform;
+    	tf.lookupTransform(target_frame_, src.header.frame_id, src.header.stamp, latest_transform);
+    	sensor_transform_ = latest_transform;
+    	tf.transformPointCloud(target_frame_, src, src);
+    	if(data_.size() == 0)
+    	{
+    		last_transform_ = latest_transform;
+    		insertPointCloud(src);
+    		return;
+    	}
+
+    	if(checkDistance(latest_transform))
+    	{
+    		if(insertPointCloud(src))
+    		{
+    			last_transform_ = latest_transform;
+    			new_data_ = true;
+    		}
+    	}
+    }
     void addData(sensor_msgs::PointCloud2 &src, tf::TransformListener &tf)
     {
         sensor_msgs::PointCloud scan;
@@ -205,5 +227,67 @@ transformPointCloud (const pcl::PointCloud<PointT> &cloud_in,
       t = translation * rotation;
       transformPointCloud (cloud_in, cloud_out, t);
     }
+
+template <typename PointT> void
+transformPointCloudWithNormals (const pcl::PointCloud<PointT> &cloud_in, 
+                                     pcl::PointCloud<PointT> &cloud_out,
+                                     const Eigen::Affine3f &transform)
+{
+  if (&cloud_in != &cloud_out)
+  {
+    // Note: could be replaced by cloud_out = cloud_in
+    cloud_out.header   = cloud_in.header;
+    cloud_out.width    = cloud_in.width;
+    cloud_out.height   = cloud_in.height;
+    cloud_out.is_dense = cloud_in.is_dense;
+    cloud_out.points.reserve (cloud_out.points.size ());
+    cloud_out.points.assign (cloud_in.points.begin (), cloud_in.points.end ());
+  }
+
+  // If the data is dense, we don't need to check for NaN
+  if (cloud_in.is_dense)
+  {
+    for (size_t i = 0; i < cloud_out.points.size (); ++i)
+    {
+      cloud_out.points[i].getVector3fMap() = transform * 
+                                             cloud_in.points[i].getVector3fMap ();
+
+      // Rotate normals
+      cloud_out.points[i].getNormalVector3fMap() = transform.rotation () * 
+                                                   cloud_in.points[i].getNormalVector3fMap ();
+    }
+  }
+  // Dataset might contain NaNs and Infs, so check for them first.
+  else
+  {
+    for (size_t i = 0; i < cloud_out.points.size (); ++i)
+    {
+      if (!pcl_isfinite (cloud_in.points[i].x) || 
+          !pcl_isfinite (cloud_in.points[i].y) || 
+          !pcl_isfinite (cloud_in.points[i].z))
+        continue;
+      cloud_out.points[i].getVector3fMap() = transform * 
+                                             cloud_in.points[i].getVector3fMap ();
+
+      // Rotate normals
+      cloud_out.points[i].getNormalVector3fMap() = transform.rotation () * 
+                                                   cloud_in.points[i].getNormalVector3fMap ();
+    }
+  }
+}
+
+template <typename PointT> inline void
+transformPointCloudWithNormals (const pcl::PointCloud<PointT> &cloud_in, 
+                                     pcl::PointCloud<PointT> &cloud_out,
+                                     const Eigen::Vector3f &offset, 
+                                     const Eigen::Quaternionf &rotation)
+{
+  Eigen::Translation3f translation (offset);
+  // Assemble an Eigen Transform
+  Eigen::Affine3f t;
+  t = translation * rotation;
+  transformPointCloudWithNormals (cloud_in, cloud_out, t);
+}
+
 }
 #endif /* ACCUMULATEDATA_CPP_ */
