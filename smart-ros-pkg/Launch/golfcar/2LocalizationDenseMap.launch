@@ -9,6 +9,7 @@
    <node pkg="norm_virtual_sensor" type="norm_virtual_sensor" name="norm_virtual_sensor" output="screen">
     	<remap from="sick_scan2" to="sick_scan0"/>
     </node>    
+    
     <node pkg="amcl_pc" type="amcl" name="amcl" output="screen">
         <param name="max_particles" value="1500"/>
         <param name="min_particles" value="200"/>

@@ -143,7 +143,7 @@ namespace golfcar_vision{
         cvAnd(It, Iat, Itand);
         
 
-        //2013-JAN
+        //2013-JAN-OCR
         /*
         char letter;
         if(lane_ocr_.recognize(Itand, letter))
@@ -173,7 +173,8 @@ namespace golfcar_vision{
         //int n = cvFindContours(Itand, mem_contours, &contours, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE, cvPoint(0,0));
         //ROS_DEBUG("total contours: %d", n);
         
-        CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        //CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
                 
         //-------------------------------------------------------------------------------------------------------------------------------
         //3. to filter noise at the boundary, and noise too small or too big;
@@ -224,6 +225,27 @@ namespace golfcar_vision{
 			int approxPtNum = int (contour_poly->total);
             //---------------------------------------------------------------------------------------------
             
+			//2013-JAN-OCR;
+			/*
+			int square_side = (int)std::sqrt(cvBox.size.height*cvBox.size.height+ cvBox.size.width*cvBox.size.width);
+			IplImage *character_tmp = cvCreateImage(cvSize(square_side+50, square_side+50),IPL_DEPTH_8U, 1);
+			cvZero(character_tmp);
+			CvPoint offset = cvPoint(square_side/2+25-cvBox.center.x, square_side/2+25 -cvBox.center.y);
+			cvDrawContours(character_tmp, contours, cvScalar(255), cvScalar(0), -1, CV_FILLED, 8, offset);
+	        char letter;
+	        if(lane_ocr_.recognize(character_tmp, letter))
+	        {
+	        	ROS_INFO("huhuhuhuhuhu-----%c", letter);
+	        }
+	        else
+	        {
+	        	ROS_WARN("NONONONONONO");
+	        }
+	        cvShowImage("character_tmp", character_tmp);
+	        cvWaitKey(500);
+	        cvReleaseImage(&character_tmp);
+	        */
+
             int contour_class = classify_contour (contour_weight, contour_perimeter, cvHM, cvBox, approxPtNum);
             
             if(contour_class==-1){ROS_ERROR("NO CLASSIFICATION!!!");}
