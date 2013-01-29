@@ -59,9 +59,11 @@ ped_clustering::ped_clustering()
 	boundary_msg.header.frame_id = "/map";
 	boundary_msg.header.seq = 1;
 
+	/*
 	svg_boundary svg(svg_file.c_str(), 0.1);
 	boundary_ = svg.getPath("crossing_boundary");
 	boundary_msg.polygon.points = boundary_;
+	*/
 
 	boundary_pub_.publish(boundary_msg);
 	sequential_clustering_ = false;
@@ -245,7 +247,7 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
             cluster.height = abs_distance[2];
             cluster.depth = abs_distance[0];
 
-            bool use_boundary_ = true;
+            bool use_boundary_ = false;
             //obtain only points that fall into the specified boundary
             if(use_boundary_)
             {
