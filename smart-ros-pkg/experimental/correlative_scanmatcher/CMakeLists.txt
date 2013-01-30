@@ -75,16 +75,24 @@ rosbuild_add_executable(ostream_vector src/ostream_vector.cpp)
 #target_link_libraries(RasterMapHeightOdom  ${OpenCV_LIBS})
 #rosbuild_link_boost(RasterMapHeightOdom signals)
 
-rosbuild_add_executable(mapHeightGenerate src/mapHeightGenerate.cpp)
+rosbuild_add_executable(mapHeightGenerate src/mapHeightGenerate.cpp src/dbgstream.cpp)
 target_link_libraries(mapHeightGenerate  ${OpenCV_LIBS})
+rosbuild_add_openmp_flags(mapHeightGenerate)
 
-#rosbuild_add_executable(mapheight_reorg src/mapheight_reorg.cpp)
-#target_link_libraries(mapheight_reorg  ${OpenCV_LIBS})
-#rosbuild_add_openmp_flags(mapheight_reorg)
+rosbuild_add_executable(mapheight_reorg src/mapheight_reorg.cpp)
+target_link_libraries(mapheight_reorg  ${OpenCV_LIBS})
+rosbuild_add_openmp_flags(mapheight_reorg)
 
-rosbuild_add_executable(normals_and_height src/normals_and_height.cpp src/dbgstream.cpp)
-target_link_libraries(normals_and_height  ${OpenCV_LIBS})
-rosbuild_add_openmp_flags(normals_and_height)
+rosbuild_add_executable(savePCLOdom src/SavePCLOdom.cpp)
+#rosbuild_add_executable(example_canny_edge src/example_canny_edge.cpp)
+rosbuild_link_boost(savePCLOdom signals)
+#target_link_libraries(example_canny_edge  ${OpenCV_LIBS})
+
+#rosbuild_add_executable(pcl_registration_sample src/pcl_registration_sample.cpp)
+
+#rosbuild_add_executable(normals_and_height src/normals_and_height.cpp src/dbgstream.cpp)
+#target_link_libraries(normals_and_height  ${OpenCV_LIBS})
+#rosbuild_add_openmp_flags(normals_and_height)
 
 #rosbuild_add_executable(SURF_Homography src/SURF_Homography.cpp)
 #target_link_libraries(SURF_Homography  ${OpenCV_LIBS})

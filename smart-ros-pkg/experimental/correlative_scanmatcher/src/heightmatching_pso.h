@@ -5,7 +5,8 @@
  *      Author: demian
  */
 
-#include "RasterMapImageOpt.h"
+//#include "RasterMapImageOpt.h"
+#include "renderMap.h"
 template< int dimension>
 class HeightMatchingProblem
 {
@@ -40,11 +41,25 @@ public:
 
 	static void init(sensor_msgs::PointCloud src, sensor_msgs::PointCloud dst)
 	{
+		init(src.points, dst.points);
+	}
+
+	static void init(vector<cv::Mat> &src_imgs, cv::Mat &dst_img)
+	{
+		trans_res_ = 0.2;
+		rot_res_ = 0.5;
+		rotated_img_ = src_imgs;
+
+		dst_ = dst_img;
+		max_score_ = cv::sum(dst_)[0];
+	}
+	static void init(vector<geometry_msgs::Point32> src, vector<geometry_msgs::Point32> dst, bool write_image=false, int image_idx=0)
+	{
 		fmutil::Stopwatch sw_img("start rotate img");
 		RenderMap rm_src_img;
-		trans_res_ = 0.5;
+		trans_res_ = 0.2;
 		rot_res_ = 0.5;
-		rm_src_img.drawHeightMap(src.points, trans_res_, 140, 140);
+		rm_src_img.drawHeightMap(src, trans_res_, 140, 140);
 		vector<cv::Mat> rotated_img;
 		rotated_img.resize(ceil(360/rot_res_)+1);
 		int begin_rotation = -180/rot_res_;
@@ -57,16 +72,28 @@ public:
 			cv::warpAffine(rm_src_img.image_, rot_base_img, rotationMat, rm_src_img.image_.size(),cv::INTER_NEAREST);
 			rotated_img[i-begin_rotation] = rot_base_img*2;
 			//cv::imshow("rot_base_img", rot_base_img);
-			//	cv::waitKey();
+				//cv::waitKey();
+			if(write_image)
+			{
+				stringstream ss;
+				ss<<"src_"<<setfill('0')<<setw(5)<<image_idx<<"_"<<setfill('0')<<setw(4)<<i-begin_rotation<<".png";
+				cv::imwrite(ss.str(), rot_base_img);
+			}
 		}
 
 		RenderMap rm_dst;
-		rm_dst.drawHeightMap(dst.points, trans_res_, 100, 100);
+		rm_dst.drawHeightMap(dst, trans_res_, 100, 100);
 		rotated_img_ = rotated_img;
 		dst_ = rm_dst.image_;
 		max_score_ = cv::sum(dst_)[0];
-
-
+		//cv::imshow("dst_base_img", dst_);
+		//cv::waitKey();
+		if(write_image)
+		{
+			stringstream ss;
+			ss<<"dst_"<<setfill('0')<<setw(5)<<image_idx<<".png";
+			cv::imwrite(ss.str(), dst_);
+		}
 		sw_img.end();
 	}
 	static void init(cv::Mat input, cv::Mat dst)
@@ -117,7 +144,7 @@ public:
 	{
 		//it seems to have a lower probability to reach global optimum when count is used.
 		//merely co-incidents?
-		return count>10000;// fitness<0.43;// ;
+		return epoch>1000;// fitness<0.43;// ;
 	}
 
 	static double evaluate(void * x)
@@ -185,6 +212,39 @@ public:
 	static RasterMapImage* rm_;//does not name a type??
 	static vector<vector<cv::Point> > rotated_dst_;
 	static double rotate_res_, trans_res_;
+	static void init(cv::Mat &raster_img, cv::Point2f min_pt, cv::Point2f max_pt, vector<geometry_msgs::Point32> &dst)
+	{
+		//pso easier to fall into local minima when higher rotate_res_ is used
+		rotate_res_ = 0.2;
+		trans_res_ = 0.1;
+		rm_ = new RasterMapImage(trans_res_, 0.03);
+		//rm_->getInputPoints(src_norms, src);
+		rm_->image_ = raster_img;
+		rm_->max_pt_ = max_pt;
+		rm_->min_pt_ = min_pt;
+		fmutil::Stopwatch rotate_time("rotate time");
+		rotated_dst_.resize(360/rotate_res_+1);
+		int rotated_dst_idx = 0;
+		for(double i=-180; i<180; i+=rotate_res_)
+		{
+			double cos_val = cos(i/180*M_PI);
+			double sin_val = sin(i/180*M_PI);
+			vector<cv::Point> rotated_search_pt;
+			rotated_search_pt.resize(dst.size());
+			for(size_t j=0; j<dst.size(); j++)
+			{
+				double rot_x = dst[j].x, rot_y = dst[j].y;
+				geometry_msgs::Point32 rot_pt;
+				rot_pt.x = cos_val * rot_x - sin_val * rot_y;
+				rot_pt.y = sin_val * rot_x + cos_val * rot_y;
+				rotated_search_pt[j] = rm_->imageCoordinate(rot_pt);
+			}
+			rotated_dst_[rotated_dst_idx] = rotated_search_pt;
+			rotated_dst_idx++;
+		}
+		rotate_time.end();
+	}
+
 	static void init(vector<geometry_msgs::Point32> &src, vector<geometry_msgs::Point32> &src_norms, vector<geometry_msgs::Point32> &dst)
 	{
 		//pso easier to fall into local minima when higher rotate_res_ is used
@@ -237,7 +297,7 @@ public:
 		//merely co-incidents?
 		//return count>25000;
 		//return fitness<40 || epoch>20000;// ;
-		return epoch>1000;
+		return epoch>2000;
 	}
 
 	static double evaluate(void * x)

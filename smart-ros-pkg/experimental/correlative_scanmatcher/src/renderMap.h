@@ -80,7 +80,7 @@ public:
 			}
 		}
 	}
-	void drawHeightMap(vector<geometry_msgs::Point32> raster_pt, double res, double size_x, double size_y)
+	void drawHeightMap(vector<geometry_msgs::Point32> raster_pt, double res, double size_x=-1., double size_y=-1.)
 	{
 		fmutil::Stopwatch sw;
 		res_ = res;
@@ -91,20 +91,37 @@ public:
 		double pad_y = size_y/2.;
 		for(size_t i=0; i<raster_pt.size(); i++)
 		{
-			raster_pt[i].x += pad_x;
-			raster_pt[i].y += pad_y;
-			/*if(raster_pt[i].x < min_pt_.x) min_pt_.x = raster_pt[i].x;
-			if(raster_pt[i].x > max_pt_.x) max_pt_.x = raster_pt[i].x;
+			if(size_x < 0)
+			{
+				if(raster_pt[i].x < min_pt_.x) min_pt_.x = raster_pt[i].x;
+				if(raster_pt[i].x > max_pt_.x) max_pt_.x = raster_pt[i].x;
 
-			if(raster_pt[i].y < min_pt_.y) min_pt_.y = raster_pt[i].y;
-			if(raster_pt[i].y > max_pt_.y) max_pt_.y = raster_pt[i].y;*/
+				if(raster_pt[i].y < min_pt_.y) min_pt_.y = raster_pt[i].y;
+				if(raster_pt[i].y > max_pt_.y) max_pt_.y = raster_pt[i].y;
+			}
+			else
+			{
+				raster_pt[i].x += pad_x;
+				raster_pt[i].y += pad_y;
+			}
+			/**/
 		}
-		max_pt_.x = size_x;
-		max_pt_.y = size_y;
-		min_pt_.x = min_pt_.y = 0.;
+		cv::Point2f map_size;
+		if(size_x < 0)
+		{
 
-		//cout << "MinMax "<<min_pt_ << " " <<max_pt_<<endl;
-		cv::Point2f map_size(size_x, size_y);//max_pt_.x - min_pt_.x, max_pt_.y - min_pt_.y);
+			map_size = cv::Point2f(max_pt_.x - min_pt_.x, max_pt_.y - min_pt_.y);
+		}
+		else
+		{
+			map_size = cv::Point2f(size_x, size_y);
+			max_pt_.x = size_x;
+			max_pt_.y = size_y;
+			min_pt_.x = min_pt_.y = 0.;
+		}
+		cout << "MinMax "<<min_pt_ << " " <<max_pt_<<endl;
+
+		//
 		map_size.x = ceil(map_size.x/res_); map_size.y =ceil(map_size.y/res_);
 		//cout << "Size "<<map_size<<endl;
 		//lost about 10ms when using 32F instead of 8U, and total of 45 ms if draw circle function is called, perhaps too much
