@@ -5,7 +5,7 @@
  *      Author: demian
  */
 
-
+#include "pcl_downsample.h"
 template< int dimension>
 class NormalsCorrelativeMatchingProblem
 {
@@ -23,7 +23,7 @@ public:
 	static void init(pcl::PointCloud<pcl::PointNormal> input_cloud, pcl::PointCloud<pcl::PointNormal> matching_cloud)
 	{
 		//pso easier to fall into local minima when higher rotate_res_ is used
-		rotate_res_ = 2.0;
+		rotate_res_ = 1.0;
 		//trans_res_ = 0.05;
 		rm_ = new RasterMapImage(trans_res_, 0.03);
 

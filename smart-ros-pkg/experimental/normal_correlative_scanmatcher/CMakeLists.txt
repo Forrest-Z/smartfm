@@ -37,3 +37,5 @@ rosbuild_add_executable(normals_matching_pso src/normals_matching_pso.cpp src/db
 target_link_libraries(normals_matching_pso  ${OpenCV_LIBS} vtkCommon vtkRendering vtkFiltering)
 rosbuild_add_executable(GeneticOpt src/GeneticOpt.cpp src/dbgstream.cpp)
 target_link_libraries(GeneticOpt  ${OpenCV_LIBS} vtkCommon vtkRendering vtkFiltering)
+rosbuild_add_executable(ga_ex9 src/ga_ex9.cpp src/dbgstream.cpp)
+target_link_libraries(ga_ex9  ${OpenCV_LIBS} vtkCommon vtkRendering vtkFiltering)

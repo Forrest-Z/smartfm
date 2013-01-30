@@ -10,10 +10,11 @@
 #include "RasterMapPCL.h"
 #include <fstream>
 #include <boost/thread/thread.hpp>
-#include "pcl_downsample.h"
+
 #include "NormalsCorrelativeMatchingProblem.h"
 #include "problems.h"
-using namespace std;
+using std::cout;
+using std::endl;
 class ValueAndRange
 {
 	//an interface to convert real value to integers and to gray value
@@ -166,7 +167,8 @@ public:
 	void updateScore(NormalsCorrelativeMatchingProblem<3> &ncmp)
 	{
 		vector<double> poses = GraytoPose();
-		if(poses[2]>179) poses[2]=poses[2]-360;
+		if(poses[2]>179 && poses[2]<200) poses[2]=poses[2]-360;
+    if(poses[2]>=200) poses[2] -= 220;
 		double manual_pose[] = {poses[0], poses[1], poses[2]/180.*M_PI};
 		score = ncmp.evaluate(manual_pose);
 	}

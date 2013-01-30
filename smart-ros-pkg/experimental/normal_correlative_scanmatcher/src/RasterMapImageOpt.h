@@ -59,11 +59,10 @@ public:
 	cv::Point2f min_pt_, max_pt_;
 	bool use_normal_;
 	RasterMapImage(double resolution, double range_covariance): res_(resolution),
-			min_pt_(1e99,1e99), max_pt_(-1e99,-1e99),
+			min_pt_(1e99,1e99), max_pt_(-1e99,-1e99),use_normal_(false),
 			range_covariance_(range_covariance),
 			max_dist_ (sqrt(log(255)*range_covariance)),
-			gausian_length_((int) (max_dist_ / res_ + 1)),
-			use_normal_(false)
+			gausian_length_((int) (max_dist_ / res_ + 1))
 	{
 		gaussian_mapping_ = makeGaussianLinearMapping();
 	}
