@@ -22,6 +22,5 @@
 	    <remap from="pd_vision_batch" to="pedestrian_clusters_filtered"/>
 	</node>
 	<include file="$(find dataAssoc_experimental)/dataAssoc.launch"/>
-
 </launch>
 
