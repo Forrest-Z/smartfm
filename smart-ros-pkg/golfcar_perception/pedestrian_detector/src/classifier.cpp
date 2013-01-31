@@ -164,6 +164,7 @@ double HOGClassifier::getAngularDistance(double x)
 
     return angular_dist;
 }
+
 void HOGClassifier::updateParameter()
 {
     ros::NodeHandle nh("~");

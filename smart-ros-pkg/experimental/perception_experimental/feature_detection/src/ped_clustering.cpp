@@ -184,7 +184,7 @@ void ped_clustering::filterPCLOctreeNN(pcl::octree::OctreePointCloudSearch<pcl::
 }
 
 
-
+//core function of ped_clustering, use PCL for pointcloud clustering;
 void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs::PointCloud &ped_poi,
                                 double tolerance, int minSize, int maxSize, bool publish)
 {
@@ -226,12 +226,10 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
 
         ped_poi.points.clear();
 
-
         for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
         {
             feature_detection::cluster cluster;
             Eigen::Vector4f min_pt, max_pt,mid_pt, abs_distance;
-
 
             pcl:getMinMax3D(*cloud_filtered, it->indices, min_pt, max_pt);
 
@@ -372,7 +370,6 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
         clusters_pub_.publish(clusters);
         filter_pub_.publish(pc_temp);
     }
-
 }
 
 void ped_clustering::scanCallback(const sensor_msgs::PointCloud2ConstPtr& pc2)

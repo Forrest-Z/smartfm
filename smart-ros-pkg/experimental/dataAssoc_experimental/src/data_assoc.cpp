@@ -58,6 +58,7 @@ void data_assoc::dynamic_callback(dataAssoc_experimental::CameraParamConfig &con
     cost_threshold_ = config.cost_threhold;
     merge_dist_ = config.merge_dist;
 }
+
 bool sort_clg(centroid_local_global const &a, centroid_local_global const &b)
 {
     return a.local_centroid.x < b.local_centroid.x;
@@ -253,8 +254,6 @@ void data_assoc::updatelPedInViewWithNewCluster(feature_detection::clusters& clu
             lPedInView.pd_vector[minID].cluster.last_update = ros::Time::now();
             lPedInView.pd_vector[minID].decision_flag = true;
             cluster_vector.clusters.erase(cluster_vector.clusters.begin()+i);
-
-
         }
         else
         {
@@ -515,13 +514,12 @@ void data_assoc::publishPed(Mat img)
 
         geometry_msgs::Point32 p;
         p = lPedInView.pd_vector[ii].cluster.centroid;
-        p.z = lPedInView.pd_vector[ii].object_label;
+        //p.z = lPedInView.pd_vector[ii].object_label;
+        p.z = 0.0;
         pc.points.push_back(p);
         ROS_DEBUG("lPenInView.pd_vector confidence = %lf ", lPedInView.pd_vector[ii].confidence);
         if(!imageProjection(img, lPedInView.header, lPedInView.pd_vector[ii], false)) continue;
-
     }
-
     pedPub_.publish(lPedInView);
     visualizer_.publish(pc);
     ROS_DEBUG_STREAM("publishPed end");
