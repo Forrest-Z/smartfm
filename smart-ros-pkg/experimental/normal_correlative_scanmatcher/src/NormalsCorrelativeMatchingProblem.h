@@ -6,6 +6,7 @@
  */
 
 #include "pcl_downsample.h"
+
 template< int dimension>
 class NormalsCorrelativeMatchingProblem
 {
@@ -109,7 +110,8 @@ public:
 		vector<double> rotated_normal_dst = rotated_normal_dst_[rot_value];
 		double score = rm_->getScoreWithNormal(rotated_dst, rotated_normal_dst, offset_x, offset_y);
 		count++;
-		return score;
+    if(score<0) score=0;
+		return sqrt(score);
 	}
 };
 template<int dimension> int     NormalsCorrelativeMatchingProblem<dimension>::count;

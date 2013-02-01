@@ -20,7 +20,7 @@
 #include <complex>
 #include <map>
 #include "NormalMatchingGene.h"
-
+#include "readfrontend.h"
 using namespace std;
 
 bool sortGeneScore(Positional2dGene gen1, Positional2dGene gen2)
@@ -146,7 +146,7 @@ public:
 	int rollWeightedDie(vector<double> &probabilities)
 	{
 		std::vector<double> cumulative;
-
+    
 		std::partial_sum(probabilities.begin(), probabilities.end(),
 				std::back_inserter(cumulative));
 		boost::uniform_real<> dist(0, cumulative.back());
@@ -334,22 +334,23 @@ int main(int argc, char** argv)
 	pcl::PointCloud<pcl::PointNormal> input_cloud, matching_cloud;
 //	pcl::io::loadPCDFile("amcl2_pcd/00750.pcd", input_cloud);
 //	pcl::io::loadPCDFile("amcl2_pcd/01112.pcd", matching_cloud);
-	pcl::io::loadPCDFile(argv[1], input_cloud);
-	pcl::io::loadPCDFile(argv[2], matching_cloud);
+	pcl::io::loadPCDFile(argv[2], input_cloud);
+  append_input_cloud(input_cloud, string(argv[1]), string(argv[2]));
+  pcl::io::loadPCDFile(argv[3], matching_cloud);
 
-	//for initialization purpose
-	/*problem.trans_res_ = 1.0;
+  problem.trans_res_ = 0.1;
 	problem.init(input_cloud, matching_cloud);
-	vector<Positional2dGene> initial_genes;
-	ValueAndRange vnr_x(-10, 10, 0.1);
+	//for initialization purpose
+	/*vector<Positional2dGene> initial_genes;
+	ValueAndRange vnr_x(-15, 15, 0.1);
 	ValueAndRange vnr_y(-20, 20, 0.1);
-	ValueAndRange vnr_r(-180, 179, 1.);
+	ValueAndRange vnr_r(160, 240, 1.);
 	Positional2dGene best_rough_gene(vnr_x, vnr_y, vnr_r);
 	best_rough_gene.score = 0.;
-	for(double i=-180; i<180; i+=2)
+	for(double i=160; i<240; i+=2)
 	{
 	    cout<<i<<": "<<endl;
-		for(double j=-10; j<10; j++)
+		for(double j=-15; j<15; j++)
 		{
 			for(double k=-20; k<20; k++)
 			{
@@ -359,17 +360,16 @@ int main(int argc, char** argv)
 				double score = problem.evaluate(manual_pose);
 				initial_genes[initial_genes.size()-1].score = score;
 				if(best_rough_gene.score<score) best_rough_gene = initial_genes[initial_genes.size()-1];
-				cout<<score<<" ";
+				//cout<<score<<" ";
 			}
 		//for(int k=0; k<3; k++)
 		//cout<<best_rough_gene.pose[k].getRealValue()<<" ";
 		//cout<<best_rough_gene.score<<"      \xd"<<flush;
-			cout<<endl;
+			//cout<<endl;
 		}
 	}
-	cout<<endl;*/
-	problem.trans_res_ = 0.1;
-	problem.init(input_cloud, matching_cloud);
+	//cout<<endl;
+	*/
 	//problems::Ackley<3> problem;
 	//problem.init();
 	GeneticOptimization2D go2d(2000, problem);//, initial_genes);

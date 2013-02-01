@@ -20,7 +20,7 @@
 #include "pcl_downsample.h"
 pcl::PointCloud<pcl::PointNormal> input_cloud, matching_cloud;
 double res_ = 0.1;
-RasterMapImage rmi(res_, 0.03);
+RasterMapImage rmi(res_, 0.2);
 
 boost::shared_ptr<pcl::visualization::PCLVisualizer> initVisualizer ()
 				{
@@ -96,21 +96,22 @@ void bruteForceSearch()
 	int best_rotation;
 	double best_score = 0;
 	ScoreDetails best_score_details;
-	for(int i=160; i<200; i++)
+	for(int i=160; i<200; i+=2)
 	{
 		pcl::PointCloud<pcl::PointNormal> matching_cloud_tf = matching_cloud;
 		double yaw_rotate = i/180.*M_PI;
 		Eigen::Vector3f bl_trans(0, 0, 0.);
 		Eigen::Quaternionf bl_rotation (cos(yaw_rotate/2.), 0, 0, -sin(yaw_rotate/2.) );
 		pcl_utils::transformPointCloudWithNormals<pcl::PointNormal>(matching_cloud_tf, matching_cloud_tf, bl_trans, bl_rotation);
+    //matching_cloud_tf = pcl_downsample(matching_cloud_tf, 0.5, 0.5, 0.5);
 		vector<double> angular_normals; angular_normals.resize(matching_cloud_tf.size());
 		for(size_t idx=0; idx<matching_cloud_tf.size(); idx++)
 		{
 			angular_normals[idx] = atan2(matching_cloud_tf.points[idx].normal_y, matching_cloud_tf.points[idx].normal_x);
 		}
-		for(double j=-5; j<5; j+=res_)
+		for(double j=-15; j<15; j+=0.5)//=res_)
 		{
-			for(double k=-5; k<5; k+=res_)
+			for(double k=-15; k<15; k+=0.5)//res_)
 			{
 				vector<cv::Point2f> search_pt;
 				search_pt.resize(matching_cloud_tf.points.size());
@@ -197,15 +198,18 @@ void getBestRotationWithHistogram()
 	cout<<endl;
 	cout<<"Best rotation found: "<<best_rotation<<" with error: "<<smallest_error<<endl;
 }
+#include "readfrontend.h"
 int main(int argc, char **argv)
 {
 
 	boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer = initVisualizer ();
-	pcl::io::loadPCDFile(argv[1], input_cloud);
-	pcl::io::loadPCDFile(argv[2], matching_cloud);
+  
+	pcl::io::loadPCDFile(argv[2], input_cloud);
+  append_input_cloud(input_cloud, string(argv[1]), string(argv[2]));
+	pcl::io::loadPCDFile(argv[3], matching_cloud);
 
-	input_cloud = pcl_downsample(input_cloud, res_/2,res_/2,res_/2);
-	matching_cloud = pcl_downsample(matching_cloud, res_/2,res_/2,res_/2);
+	input_cloud = pcl_downsample(input_cloud, res_,res_,res_);
+	matching_cloud = pcl_downsample(matching_cloud, res_,res_,res_);
 	addPointCloud(viewer, input_cloud, "input_cloud", "input_normal_cloud", true);
 
 	vector<cv::Point2f> input_pts, input_normals;
