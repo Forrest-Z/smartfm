@@ -327,7 +327,8 @@ namespace golfcar_vision{
 														dstQuad_, projection_matrix_, markers_2nd_,
 														lanes_inImg_										
 														);
-         //PDC_detector_->Detect_PdCrossing(ipm_image_);
+
+			PDC_detector_->Detect_PdCrossing(ipm_image_);
          
 			markers_.header = info_msg -> header;
 			markers_info_pub.publish(markers_);
