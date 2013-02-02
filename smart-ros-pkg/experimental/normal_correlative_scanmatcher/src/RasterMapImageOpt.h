@@ -115,6 +115,12 @@ public:
         return score;
     }
 
+    double getScoreWithNormal(vector<cv::Point> &search_pt,
+            vector<double> &angular_normal, ScoreDetails &sd) {
+        assert(search_pt.size() == angular_normal.size());
+        return scorePoints(search_pt, angular_normal, 0, 0, false, sd);
+    }
+       
     double getScoreWithNormal(vector<cv::Point2f> &search_pt,
             vector<double> &angular_normal, ScoreDetails &sd) {
         assert(search_pt.size() == angular_normal.size());
@@ -127,10 +133,11 @@ public:
         }
         return scorePoints(search_pt_int, angular_normal, 0, 0, false, sd);
     }
+    fmutil::Stopwatch scorepoint_sw_;
     inline double scorePoints(vector<cv::Point> &search_pt,
             vector<double> &normal_pt, int offset_x, int offset_y,
             bool within_prior, ScoreDetails &score_details) {
-        //fmutil::Stopwatch sw("scorePoints");
+        //scorepoint_sw_.start("1");
         score_details.worst_norm_score = (search_pt.size() * M_PI / 2);
         assert(image_.data != NULL);
         if (use_normal_)
@@ -183,7 +190,6 @@ public:
                     score -= 100;
             } else
                 score += score_temp;
-
             double angular_norm = getNormPixel(pt.x, pt.y);
             double angular_diff = angular_norm - normal_pt[i];
             if (fabs(angular_norm) < 0.0001) {
@@ -215,7 +221,7 @@ public:
                 - (norm_score / score_details.worst_norm_score));
 
         double proposed_score = score_details.norm_norm_score * final_score;
-
+        //scorepoint_sw_.end(false);
         return proposed_score;
     }
 

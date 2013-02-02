@@ -96,50 +96,72 @@ void bruteForceSearch()
 	int best_rotation;
 	double best_score = 0;
 	ScoreDetails best_score_details;
-	for(int i=160; i<200; i+=2)
+  fmutil::Stopwatch sw("overall");
+  fmutil::Stopwatch sw_detail, sw_tf, sw_normal;
+	for(int i=160; i<220; i+=4)
 	{
 		pcl::PointCloud<pcl::PointNormal> matching_cloud_tf = matching_cloud;
-		double yaw_rotate = i/180.*M_PI;
+    int rotate_idx=i;
+		if(rotate_idx>200) rotate_idx=210-rotate_idx;
+		double yaw_rotate = rotate_idx/180.*M_PI;
 		Eigen::Vector3f bl_trans(0, 0, 0.);
 		Eigen::Quaternionf bl_rotation (cos(yaw_rotate/2.), 0, 0, -sin(yaw_rotate/2.) );
-		pcl_utils::transformPointCloudWithNormals<pcl::PointNormal>(matching_cloud_tf, matching_cloud_tf, bl_trans, bl_rotation);
+    sw_tf.start("tf");
+		pcl_utils::transformPointCloudWithNormals<pcl::PointNormal>(matching_cloud_tf, matching_cloud_tf, bl_trans, bl_rotation); 
+    sw_tf.end(false);
     //matching_cloud_tf = pcl_downsample(matching_cloud_tf, 0.5, 0.5, 0.5);
 		vector<double> angular_normals; angular_normals.resize(matching_cloud_tf.size());
+    sw_normal.start("2");
 		for(size_t idx=0; idx<matching_cloud_tf.size(); idx++)
 		{
 			angular_normals[idx] = atan2(matching_cloud_tf.points[idx].normal_y, matching_cloud_tf.points[idx].normal_x);
 		}
+    sw_normal.end(false);
+    vector<cv::Point> search_pt_int;
+    search_pt_int.resize(matching_cloud_tf.size());
+
+    for (size_t j = 0; j < matching_cloud_tf.size(); j++) {
+        search_pt_int[j] = rmi.imageCoordinate(matching_cloud_tf.points[j]);
+    }
 		for(double j=-15; j<15; j+=0.5)//=res_)
 		{
+      vector<cv::Point> search_pt;
+			search_pt.resize(search_pt_int.size());
+      int offset_x = j/res_;
+      for(size_t idx=0; idx<search_pt_int.size(); idx++)
+					search_pt[idx].x = search_pt_int[idx].x+ offset_x;
 			for(double k=-15; k<15; k+=0.5)//res_)
 			{
-				vector<cv::Point2f> search_pt;
-				search_pt.resize(matching_cloud_tf.points.size());
-				for(size_t idx=0; idx<matching_cloud_tf.points.size(); idx++)
-				{
-					search_pt[idx].x = matching_cloud_tf.points[idx].x+j;
-					search_pt[idx].y = matching_cloud_tf.points[idx].y+k;
-				}
+        sw_detail.start("getscore time");
+				int offset_y = k/res_;
+				for(size_t idx=0; idx<search_pt_int.size(); idx++)
+					search_pt[idx].y = search_pt_int[idx].y-offset_y;
 				ScoreDetails sd;
+        
 				double score = rmi.getScoreWithNormal(search_pt, angular_normals, sd);
+        sw_detail.end(false);
 				if(score>best_score)
 				{
 					best_x = j;
 					best_y = k;
-					best_rotation = i;
+					best_rotation = rotate_idx;
 					best_score = score;
 					best_score_details = sd;
 				}
 
 			}
-			cout<<setiosflags (ios::fixed | ios::showpoint | ios::right) <<setprecision(3)<<setfill('0')<<setw(3)<<"At offset "<<j<<" "<<" "<<i<<", best tf found so far: "<<best_x<<" "<<best_y<<" "<<best_rotation<<
-					" Distance:"<<best_score_details.dist_score<<" Norm:"<< best_score_details.normal_score<<" NNorm:"<<best_score_details.norm_norm_score<<
-					" WorstNorm:"<<best_score_details.worst_norm_score<<" Final:"<<best_score<<"      \xd"<<flush;
+			//cout<<setiosflags (ios::fixed | ios::showpoint | ios::right) <<setprecision(3)<<setfill('0')<<setw(3)<<"At offset "<<j<<" "<<" "<<i<<", best tf found so far: "<<best_x<<" "<<best_y<<" "<<best_rotation<<
+				//	" Distance:"<<best_score_details.dist_score<<" Norm:"<< best_score_details.normal_score<<" NNorm:"<<best_score_details.norm_norm_score<<
+					//" WorstNorm:"<<best_score_details.worst_norm_score<<" Final:"<<best_score<<"      \xd"<<flush;
 		}
 
 
 	}
-	cout<<endl;
+	sw.end();
+  cout<<"getscore: "<<sw_detail.total_/1000<<" ms"<<endl;
+  cout<<"tf: "<<sw_tf.total_/1000<<" ms"<<endl;
+  cout<<"getscore inner: "<<rmi.scorepoint_sw_.total_/1000<<" ms"<<endl;
+  cout<<"norm rotate: "<<sw_normal.total_/1000<<" ms"<<endl;
 	offset_x = best_x;
 	offset_y = best_y;
 	rotation = best_rotation;
