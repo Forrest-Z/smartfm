@@ -1,8 +1,8 @@
-#include "conti_lane.h"
+#include "ped_crossing.h"
 
 namespace golfcar_vision{
   
-	conti_lane::conti_lane():
+	ped_crossing::ped_crossing():
 				private_nh_("~"),
 				it_(nh_)
     { 
@@ -10,31 +10,28 @@ namespace golfcar_vision{
 	  fixedTf_inited_ = false;
 	  ipm_para_init_ = false;
 
-      string conti_lane_model_path, conti_lane_scale_path;
-	  private_nh_.param("marker_model_path", conti_lane_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
-	  private_nh_.param("marker_scale_path", conti_lane_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
-	  conti_lane_classifier_ = new golfcar_ml::svm_classifier(conti_lane_model_path, conti_lane_scale_path);
-      image_sub_ = it_.subscribe("/camera_front/ipm_binary", 1, &conti_lane::imageCallback, this);
+      string ped_crossing_model_path, ped_crossing_scale_path;
+	  private_nh_.param("ped_crossing_model_path", ped_crossing_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
+	  private_nh_.param("ped_crossing_scale_path", ped_crossing_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
+      ped_crossing_classifier_ = new golfcar_ml::svm_classifier(ped_crossing_model_path, ped_crossing_scale_path);
+      image_sub_ = it_.subscribe("/camera_front/ipm_binary", 1, &ped_crossing::imageCallback, this);
 
-      polygon_sub_ = nh_.subscribe("img_polygon", 10, &conti_lane::polygonCallback, this);
+      polygon_sub_ = nh_.subscribe("img_polygon", 10, &ped_crossing::polygonCallback, this);
       private_nh_.param("scale", scale_, 30.0);
+
       private_nh_.param("extract_training_image", extract_training_image_, false);
       frame_serial_ = 0;
-
-      lanes_pub_ = nh_.advertise<vision_lane_detection::lanes_info>("lanes", 10);
-      lanes_ptcloud_pub_ = nh_.advertise<sensor_msgs::PointCloud>("lanes_ptcloud",2);
-
-	  lane_extractor_ = new ransac_lane();
     }
 
-	void conti_lane::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
+	void ped_crossing::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
 	{
 		polygon_init_ = true;
 		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
-    void conti_lane::imageCallback (const sensor_msgs::ImageConstPtr& msg)
+    void ped_crossing::imageCallback (const sensor_msgs::ImageConstPtr& msg)
     {
+    	printf("\n 1");
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
         {
@@ -77,8 +74,13 @@ namespace golfcar_vision{
 			ROS_ERROR("Failed to convert image");
 			return;
 		}
-		binary_img = cvCreateImage(cvGetSize(color_image),8,1);
-		cvCvtColor(color_image, binary_img, CV_BGR2GRAY);
+		IplImage* img_tmp = cvCreateImage(cvSize(color_image->width,color_image->height),IPL_DEPTH_8U, 3);
+		cvResize(color_image, img_tmp);
+
+		binary_img = cvCreateImage(cvSize(img_tmp->width,img_tmp->height),IPL_DEPTH_8U, 1);
+		cvCvtColor(img_tmp, binary_img, CV_BGR2GRAY);
+		cvReleaseImage(&img_tmp);
+		cvShowImage("ped_binary_image", binary_img);
 
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";
         CvSeq *first_contour = 0;       //always keep one copy of the beginning of this list, for further usage;
@@ -94,113 +96,147 @@ namespace golfcar_vision{
         contours = filter_contours(scanner);
         first_contour = contours;
 
-        ROS_INFO("1");
-        //-------------------------------------------------------------------------------------------------------------------------------
-        //3. classify each remained candidates; visualize the markers detected;
-        //-------------------------------------------------------------------------------------------------------------------------------
-        IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
+		IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
 		IplImage *thining_img = cvCreateImage(cvSize(contour_img->width,contour_img->height),IPL_DEPTH_8U, 1);
 		cvZero(thining_img);
 		cvZero(contour_img);
-        cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
-        CvScalar ext_color;
-        ROS_INFO("2");
+		cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
 
-        CvMoments cvm; 
-        CvHuMoments cvHM;
-        
-        CvBox2D cvBox;
-        CvMemStorage *mem_box;
-        mem_box = cvCreateMemStorage(0);
-        
-        
+		CvMoments cvm;
+		CvHuMoments cvHM;
+
+		CvBox2D cvBox;
+		CvMemStorage *mem_box;
+		mem_box = cvCreateMemStorage(0);
+
 		CvSeq *contour_poly;
 		CvMemStorage *mem_poly;
 		mem_poly = cvCreateMemStorage(0);
 
-		vision_lane_detection::lanes_info lanes_inImg;
-		lanes_inImg.header = msg->header;
-		lanes_inImg.header.frame_id = "base_link";
+		std::vector <size_t> lane_serials;
 
-        int contour_num_in_this_image = 0;   // to calculate the number of contour candidates in one image;
-        int lane_contour_serial = 0;
+		size_t contour_serial = 0;
         for (; contours != 0; contours = contours->h_next)
         {
-            contour_num_in_this_image++;
-            
-            //This denotes how many pixels of one certain object contour;
-            //ROS_DEBUG("total pixels %d", contours->total);
-            ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 ); 
-
-			//---------------------------------------------------------------------------------------------
-			//--Extract features for marker classification;
-			//---------------------------------------------------------------------------------------------
-			//1st feature, weights and perimeter;
-            cvContourMoments(contours, &cvm);
-            double contour_weight = cvm.m00;
-            double contour_perimeter = cvContourPerimeter(contours);
-            //2nd feature, HuMoment;
-            cvGetHuMoments(&cvm, &cvHM);
-            //3rd feature, side lengths of bounding box;
-            cvBox = cvMinAreaRect2(contours, mem_box);
-            //4th feature: number of points after polygon approximation;
+        	cvContourMoments(contours, &cvm);
+			double contour_weight = cvm.m00;
+			double contour_perimeter = cvContourPerimeter(contours);
+			//2nd feature, HuMoment;
+			cvGetHuMoments(&cvm, &cvHM);
+			//3rd feature, side lengths of bounding box;
+			cvBox = cvMinAreaRect2(contours, mem_box);
+			//4th feature: number of points after polygon approximation;
 			contour_poly = cvApproxPoly( contours, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 2, 0 );
 			int approxPtNum = int (contour_poly->total);
+			int contour_class = classify_contour (contour_weight, contour_perimeter, cvHM, cvBox, approxPtNum);
 
-            int contour_class = classify_contour (contour_weight, contour_perimeter, cvHM, cvBox, approxPtNum);
-            
-            if(contour_class==-1){ROS_ERROR("NO CLASSIFICATION!!!");}
-            else if(contour_class==4)
+			contour_class = 1;
+			if(contour_class==1)
 			{
-            	cvDrawContours(contour_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
-
-            	//ransac lanes;
-            	lane_extractor_->multiple_lanes(contours, scale_, thining_img, contour_img, lane_contour_serial, lanes_inImg);
-            	lane_contour_serial++;
+				DrawBox(cvBox, contour_img, CV_RGB(255,255,0));
+				lane_serials.push_back(contour_serial);
 			}
-			else {}
+			contour_serial ++ ;
 		}
-        cvShowImage("lane_contour_img",contour_img);
-        cvShowImage("lane_thining_img",thining_img);
 
-        lanes_pub_.publish(lanes_inImg);
-		sensor_msgs::PointCloud lanes_ptcloud;
-		std::vector<CvPoint2D32f> lanes_pt_inImg;
-		for(unsigned int il=0; il<lanes_inImg.lanes.size(); il++)
-		{
-		  for(unsigned int ip=0; ip< lanes_inImg.lanes[il].points.size(); ip++)
-		  {
-			  CvPoint2D32f pttmp;
-			  pttmp.x = lanes_inImg.lanes[il].points[ip].x;
-			  pttmp.y = lanes_inImg.lanes[il].points[ip].y;
-			  lanes_pt_inImg.push_back(pttmp);
-		  }
-		}
-		IpmImage_to_pcl(lanes_pt_inImg, lanes_ptcloud);
-		lanes_ptcloud.header.stamp = msg -> header.stamp;
-		lanes_ptcloud.header.frame_id = "base_link";
-		lanes_ptcloud_pub_.publish(lanes_ptcloud);
+        contours = first_contour;
 
-        //-----------------------------------------------------------------------------------------------
-        //only use when to extract training pictures;
-        //once entering this loop, meaning at least one contour exist, save image as training sets;
-        //-----------------------------------------------------------------------------------------------
+        std::vector<size_t> best_cluster;
+        if(contours!=0)  best_cluster =  ped_crossing::cluster_contours (contours, lane_serials);
+        printf("\n-----best_cluster size() %ld\n", best_cluster.size());
+        if(best_cluster.size() > 3)
+        {
+        	for(size_t i=0; i<best_cluster.size();i++)
+        	{
+        		contours = first_contour;
+        		size_t j=0;
+				for(; contours != 0; contours = contours->h_next)
+				{
+					if(j==best_cluster[i])
+					{
+						cvDrawContours(contour_img, contours, CV_RGB(255,0,0), CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
+						break;
+					}
+					j++;
+				}
+        	}
+        }
 
-        if(contour_num_in_this_image>0) extract_training_image(binary_img);
+
+        if(contour_serial>0) extract_training_image(binary_img);
+
+
+        printf("2\n");
+
+        cvShowImage("ped_contour_image",contour_img);
+        cvShowImage("ped_thining_img",thining_img);
 
         cvReleaseMemStorage(&mem_contours);
         cvReleaseMemStorage(&mem_box);
-        cvReleaseMemStorage(&mem_poly);
 
         cvWaitKey(1);
         cvReleaseImage(&contour_img);
         cvReleaseImage(&thining_img);
     }
 
-    void conti_lane::extract_training_image(IplImage* binary_img)
+
+
+    std::vector<size_t> ped_crossing::cluster_contours (CvSeq* contour, std::vector <size_t> lane_serials)
     {
-        if(extract_training_image_)
-        {
+    	CvMemStorage* storage = cvCreateMemStorage(0);
+    	CvSeq* serial_seq= cvCreateSeq( 0, sizeof(CvSeq), sizeof(size_t), storage);
+    	for(size_t i=0; i<lane_serials.size(); i++) cvSeqPush( serial_seq, &lane_serials[i]);
+
+    	printf("\n lane_serials %ld \n", lane_serials.size());
+
+    	CvSeq* labels = 0;
+		int class_count = cvSeqPartition(serial_seq,
+										 0,
+										 &labels,
+										 (CvCmpFunc)is_equal,
+										 contour);
+
+		printf("\n cluster number %d \n", class_count);
+
+		std::vector<int> label_counts(class_count, 0);
+
+	    for( size_t i = 0; i < labels->total; i++ )
+	    {
+	    	int class_label = *(int*)cvGetSeqElem( labels, i);
+	    	printf("class_label %d\t", class_label);
+	    	label_counts[class_label] = label_counts[class_label] + 1;
+	    }
+
+	    int class_serial =0;
+	    int max_count = 0;
+	    for( size_t i = 0; i < label_counts.size(); i++ )
+	    {
+
+	    	if(label_counts[i] >max_count)
+	    	{
+	    		max_count = label_counts[i];
+	    		class_serial = i;
+	    	}
+	    	printf("count %ld, class_serial %ld\t", label_counts[i], class_serial);
+	    }
+
+		std::vector<size_t> tmp;
+	    for( size_t i = 0; i < labels->total; i++ )
+	    {
+	    	if(*(int*)cvGetSeqElem( labels, i) == class_serial)
+	    	{
+	    		tmp.push_back(lane_serials[i]);
+	    	}
+	    }
+		return tmp;
+    }
+
+
+
+    void ped_crossing::extract_training_image(IplImage* binary_img)
+	{
+		if(extract_training_image_)
+		{
 			stringstream  name_string;
 			int stored_serial= frame_serial_/2;
 			//pay attention, this path to the folder cannot be too long, or OpenCV will crash;
@@ -212,14 +248,15 @@ namespace golfcar_vision{
 				ROS_ERROR("Cannot save images");
 				return;
 			}
-            frame_serial_++;
-        }
-    }
+			frame_serial_++;
+		}
+	}
+
 
 
     //Use libsvm to classify each contour; input features are of type "CvHuMoments" and "CvBox2D";
     //More and better features may be used in the future;
-    int conti_lane::classify_contour(double weight_input, double perimeter_input,
+    int ped_crossing::classify_contour(double weight_input, double perimeter_input,
 									 CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input)
     {
         float boxAngle  =   Box_input.angle;
@@ -249,11 +286,13 @@ namespace golfcar_vision{
 		marker_feature_vector[11] = polyNum_input;
 
 		int class_label = -1;
-		class_label = conti_lane_classifier_->classify_objects(marker_feature_vector, vector_length);
+		class_label = ped_crossing_classifier_->classify_objects(marker_feature_vector, vector_length);
+
         return class_label;
     }
-    
-    CvSeq* conti_lane::filter_contours (CvContourScanner &scanner)
+
+    //this filtering function can be simply replaced with a svm-classifier;
+    CvSeq* ped_crossing::filter_contours (CvContourScanner &scanner)
     {
         CvSeq* c;
         CvBox2D cvBox;
@@ -273,15 +312,55 @@ namespace golfcar_vision{
 			float long_side = max(height, width);
 			bool  long_side_criterion = long_side > LONG_SIDE_THRESH*scale_;
 
-			bool contour_criteria = len_criterion && long_side_criterion;
+            //3rd criterion: short side should exceed certain threshold;
+			float short_side = min(height, width);
+			bool  short_side_criterion = short_side > SHORT_SIDE_THRESH*scale_;
+
+			//4th criterion: no touching polygon boundary;
+			//this criterion only applies to discrete markers, while not to continuous lanes;
+			bool inside_polygon = true;
+			CvPoint2D32f point[4];
+			calc_cvBoxPoints(cvBox, point);
+
+			for (int i=0; i<4; i++)
+			{
+				for(int a = -1; a<=1; a++)
+				{
+					for(int b = -1; b<=1; b++)
+					{
+						CvPoint tmppoint = cvPoint(point[i].x+a, point[i].y+b);
+
+						if(pointInPolygon <CvPoint> (tmppoint,ipm_polygon_))
+						{
+							inside_polygon = false;
+							break;
+						}
+					}
+					if(!inside_polygon) break;
+				}
+			}
+
+			//5th: the polygon should have 4-5 corners;
+			bool rectangle_criteria = true;
+			CvSeq *contours;
+			CvMemStorage *mem_poly;
+			mem_poly = cvCreateMemStorage(0);
+			contours = cvApproxPoly( c, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 5, 0 );
+			if(contours->total > 6) rectangle_criteria = false;
+
+			inside_polygon=true;
+
+			bool contour_criteria = len_criterion && long_side_criterion && short_side_criterion && inside_polygon && rectangle_criteria;
             if(!contour_criteria) cvSubstituteContour(scanner, NULL);
+
+            cvReleaseMemStorage(&mem_poly);
         }
         CvSeq *contours = cvEndFindContours(&scanner);
         cvReleaseMemStorage(&mem_box);
         return contours;
     }
 
-	void conti_lane::IpmImage_to_pcl(std::vector <CvPoint2D32f> & pts_image, sensor_msgs::PointCloud &pts_3d)
+	void ped_crossing::IpmImage_to_pcl(std::vector <CvPoint2D32f> & pts_image, sensor_msgs::PointCloud &pts_3d)
 	{
 		pts_3d.points.clear();
 		geometry_msgs::Point32 pttmp;
@@ -297,17 +376,16 @@ namespace golfcar_vision{
 	}
 
 
-
-	conti_lane::~conti_lane()
+	ped_crossing::~ped_crossing()
     {
     }
 };
 
 int main(int argc, char** argv)
 {
-	 ros::init(argc, argv, "conti_lane");
+	 ros::init(argc, argv, "ped_crossing");
 	 ros::NodeHandle n;
-	 golfcar_vision::conti_lane conti_lane_node;
+	 golfcar_vision::ped_crossing ped_crossing_node;
      ros::spin();
      return 0;
 }

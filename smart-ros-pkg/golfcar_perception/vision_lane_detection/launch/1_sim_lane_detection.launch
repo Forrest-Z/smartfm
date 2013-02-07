@@ -11,13 +11,21 @@
     <node pkg="vision_lane_detection" type="ipm" name="ipm">
         <param name="image_transport" value="compressed"/>
 	<param name="visualization_flag" value="true"/>
-	<param name="svm_model_path" value="$(find vision_lane_detection)/data_and_model/scaled_20120726.model"/>
-	<param name="svm_scale_path" value="$(find vision_lane_detection)/data_and_model/range_20120726"/>
-	<param name="ipm_center_x" value="9.0"/>
+	<!--param name="ipm_center_x" value="9.0"/-->
+	<param name="ipm_center_x" value="13.0"/>
 	<param name="ipm_center_y" value="0.0"/>
-	<param name="ipm_ROI_height" value="12.0"/>
-	<param name="ipm_ROI_near_width_" value="4.0"/>
-	<param name="ipm_ROI_far_width_" value="20.0"/>
+	<!--param name="ipm_ROI_height" value="12.0"/-->
+	<param name="ipm_ROI_height" value="20.0"/>	
+	<param name="ipm_ROI_near_width" value="4.0"/>
+	<!--param name="ipm_ROI_far_width_" value="20.0"/-->
+	<param name="ipm_ROI_far_width" value="30.0"/>
+	<param name="publish_dis_thresh" value="0.2"/>
+	</node>
+
+
+    <node pkg="vision_lane_detection" type="lane_marker" name="lane_marker">
+	<param name="marker_model_path" value="$(find vision_lane_detection)/data_and_model/scaled_20120726.model"/>
+    	<param name="marker_scale_path" value="$(find vision_lane_detection)/data_and_model/range_20120726"/>
 	</node>
 
     <!--node pkg="vision_lane_detection" type="experimental_rgb" name="experimental_rgb">
@@ -32,7 +40,17 @@
     <node pkg="image_view" type="image_view" name="image_view1">
         <remap from="image" to= "/camera_front/image_ipm"/>
         <param name="image_transport" value="compressed"/>
-	</node>
+    </node>
+
+    <node pkg="image_view" type="image_view" name="image_view2">
+        <remap from="image" to= "/camera_front/ipm_binary"/>
+        <param name="image_transport" value="compressed"/>
+    </node>
+
+    <node pkg="image_view" type="image_view" name="image_view3">
+        <remap from="image" to= "/camera_front/ipm_canny"/>
+        <param name="image_transport" value="compressed"/>
+    </node>
 	
 <!--node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
     <node pkg="robust_road_detection" type="curb_detect" name="curb_detect">

@@ -15,7 +15,7 @@
 #include <vector>
 #include "sensor_msgs/PointCloud.h"
 #include "vision_lane_detection/markers_info.h"
-#include "vision_lane_detection/lanes_info.h"
+#include "vision_lane_detection/conti_lanes.h"
 
 
 //--------------------------------------------Parameters for "ipm"---------------------------------------------
@@ -63,7 +63,6 @@
 #define ZIGZAG_LINE_HEIGHT              4.17
 #define CONTOUR_PERIMETER_THRESH        4.0
 #define LONG_SIDE_THRESH                2.0
-#define SHORT_SIDE_THRESH                0.3
 #define BOUNDARY_MARGIN                 3
 
 using namespace std;
@@ -132,25 +131,6 @@ namespace golfcar_vision{
          cvLine( img, pt[2], pt[3], ext_color, 2, 8, 0 );
          cvLine( img, pt[3], pt[0], ext_color, 2, 8, 0 );
      }
-
-	//http://alienryderflex.com/polygon/
-    template <class T>
-    bool pointInPolygon(T p, std::vector<T> poly)
-	{
-		int polySides = poly.size();
-		int      i, j=polySides-1 ;
-		bool  oddNodes = false      ;
-
-		for (i=0; i<polySides; i++) {
-			if (((poly[i].y< p.y && poly[j].y>=p.y)
-			      ||   (poly[j].y< p.y && poly[i].y>=p.y))
-					&&  (poly[i].x<=p.x || poly[j].x<=p.x)) {
-				          if(poly[i].x+(p.y-poly[i].y)/(poly[j].y-poly[i].y)*(poly[j].x-poly[i].x)<p.x)
-							{oddNodes=!oddNodes;} 			}
-			j=i; }
-
-		return oddNodes;
-	}
 };
 
 #endif
