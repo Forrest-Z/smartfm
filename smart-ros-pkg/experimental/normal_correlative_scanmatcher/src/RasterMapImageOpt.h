@@ -40,11 +40,17 @@ struct ScoreDetails {
     double dist_score;
     double worst_norm_score;
     double norm_norm_score;
+    double best_score;
+    double best_x, best_y;
+    int best_rot, rot_range;
+    double angle_res, trans_res;
+    double trans_x_range, trans_y_range;
 };
 class RasterMapImage {
 public:
 
     cv::Mat image_, norm_image_;
+    vector<float> norm_image_data_;
     dbgstream dbg;
     double res_;
     vector<cv::Point2f> input_pt_;
@@ -120,6 +126,11 @@ public:
         assert(search_pt.size() == angular_normal.size());
         return scorePoints(search_pt, angular_normal, 0, 0, false, sd);
     }
+    double getScoreWithNormalSorted(vector<cv::Point> &search_pt,
+            vector<double> &angular_normal, ScoreDetails &sd) {
+        assert(search_pt.size() == angular_normal.size());
+        return scorePointsSorted(search_pt, angular_normal, 0, 0, false, sd);
+    }
        
     double getScoreWithNormal(vector<cv::Point2f> &search_pt,
             vector<double> &angular_normal, ScoreDetails &sd) {
@@ -164,24 +175,7 @@ public:
                 continue;
             }
             uint score_temp=getPixel(pt.x,pt.y);
-            cv::Point best_sub_pt = pt;
-            /*for(int j=-5; j<5; j++)
-            {
-              for(int k=-5; k<5; k++)
-              {
-                int x_j = pt.x+j, y_k = pt.y+k;
-                if(x_j >=0 && y_k >=0)
-                {
-                  uint score_sub = getPixel(x_j, y_k);
-                  if(score_sub > score_temp) 
-                  {
-                    best_sub_pt = cv::Point(x_j, y_k);
-                    score_temp = score_sub;
-                  }
-                }
-              }
-            }*/
-            pt = best_sub_pt;
+            
             //subsampling nearby points
             if (score_temp == 0) {
                 //this has caused mismatch of the EA car park area. Perhaps not a good idea?
@@ -191,6 +185,86 @@ public:
             } else
                 score += score_temp;
             double angular_norm = getNormPixel(pt.x, pt.y);
+            double angular_diff = angular_norm - normal_pt[i];
+            if (fabs(angular_norm) < 0.0001) {
+                //if no information on the points normal,penalize it
+                angular_diff = penalize_norm;				// /= 2;
+            }
+            if (angular_diff > M_PI)
+                angular_diff -= M_PI;
+            if (angular_diff < -M_PI)
+                angular_diff += M_PI;
+            //try to increase discriminative power by using exp 
+            double norm_score_temp = fabs(angular_diff);
+            //norm_score_temp = (1-exp(-norm_score_temp/0.6))*M_PI;
+            norm_score += norm_score_temp;
+            count++;
+        }
+        //In the end the expected norm_score sum error will be larger than a multiple of 127.5
+        //why 127.5? because the discretization to make raster map in the range of 0-255
+        //the original value was -1 to 1. So the final sum will be the multiply of 255/2
+        double final_score = (double) score / (255 * search_pt.size());
+        if (within_prior)
+            final_score = (double) score / (255 * count);
+        //dbg<<"Score = "<<score/255*100<<"%"<<endl;
+        //sw.end();
+
+        score_details.dist_score = final_score;
+        score_details.normal_score = norm_score;
+        score_details.norm_norm_score = (1
+                - (norm_score / score_details.worst_norm_score));
+
+        double proposed_score = score_details.norm_norm_score * final_score;
+        //scorepoint_sw_.end(false);
+        return proposed_score;
+    }
+
+inline double scorePointsSorted(vector<cv::Point> &search_pt,
+            vector<double> &normal_pt, int offset_x, int offset_y,
+            bool within_prior, ScoreDetails &score_details) {
+        //scorepoint_sw_.start("1");
+        score_details.worst_norm_score = (search_pt.size() * M_PI / 2);
+        assert(image_.data != NULL);
+        if (use_normal_)
+            assert(search_pt.size() == normal_pt.size());
+        uint score = 0;
+        double norm_score = 0;
+        int count = 0;
+        double penalize_norm = M_PI / 3.;
+        //it only takes 25 ms for 6k loops on 0.03 res
+
+        vector<int> insidePtsIdx;
+        vector<double> normalPtsIdx;
+        for (size_t i = 0; i < search_pt.size(); i++) {
+            cv::Point pt = search_pt[i];// cv::Point(0,0);// imageCoordinate(search_pt[i]);
+            //penalized each points fall outside of map to zero
+            pt.x += offset_x;
+            pt.y -= offset_y;
+
+            if (outsideMap(image_, pt)) {
+                //it forces the alignment with the prior, which might not be correct
+                //got to be careful
+                //if(score>=penalize_pt) score -= penalize_pt;
+                if ((score_details.worst_norm_score - norm_score)
+                        > penalize_norm)
+                    norm_score += penalize_norm;
+                continue;
+            }
+            int PtsIdx = (pt.y * image_.cols + pt.x);
+            //normalPtsIdx.push_back(normal_pt[i]);
+        
+        
+            uint score_temp=image_.data[PtsIdx];
+            
+            //subsampling nearby points
+            if (score_temp == 0) {
+                //this has caused mismatch of the EA car park area. Perhaps not a good idea?
+                //changed to using real height value
+                if (score >= 100)
+                    score -= 100;
+            } else
+                score += score_temp;
+            double angular_norm = norm_image_data_[PtsIdx];
             double angular_diff = angular_norm - normal_pt[i];
             if (fabs(angular_norm) < 0.0001) {
                 //if no information on the points normal,penalize it
@@ -276,7 +350,7 @@ public:
         image_ = cv::Mat::zeros((int) map_size.y, (int) map_size.x, CV_8UC1);
         norm_image_ = cv::Mat::zeros((int) map_size.y, (int) map_size.x,
                 CV_32FC1);
-
+        
         fmutil::Stopwatch sw_draw("Confirming rastermap time");
 
         stringstream distance, norm_file;
@@ -316,11 +390,17 @@ public:
         //resize it back
         //cv::resize(image_, image_, cv::Size(0,0), 1/5., 1/5., cv::INTER_CUBIC);
         //cv::resize(norm_image_, norm_image_, cv::Size(0,0), 1/5., 1/5., cv::INTER_CUBIC);
-        cv::imwrite(distance.str(), image_);
+        /*cv::imwrite(distance.str(), image_);
         cv::Mat norm_image_8bit;
         cv::normalize(norm_image_, norm_image_8bit, 0, 255, cv::NORM_MINMAX,
                 CV_8UC1);
-        cv::imwrite(norm_file.str(), norm_image_8bit);
+        cv::imwrite(norm_file.str(), norm_image_8bit);*/
+        
+        //copy data into vector for eventual speed up
+        norm_image_data_.resize(norm_image_.cols * norm_image_.rows);
+        for(int i=0; i<norm_image_.rows; i++)
+          for(int j=0; j<norm_image_.cols; j++)
+            norm_image_data_[i*norm_image_.cols + j] = norm_image_.at<float>(i, j);
         sw.end(false);
         //res_ *= 5;
     }
