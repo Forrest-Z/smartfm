@@ -32,7 +32,7 @@ namespace golfcar_vision{
 		odom_frame_ = "odom";
 		base_frame_ = "base_link";
 		private_nh_.param("destination_frame_id", dest_frame_id_, std::string("base_link"));
-		cam_sub_ = it_.subscribeCamera("/camera_front/image_raw", 1, &ipm::ImageCallBack, this);
+		cam_sub_ = it_.subscribeCamera("camera_front/image_raw", 1, &ipm::ImageCallBack, this);
 		ipm_pub_ = it_.advertise("/camera_front/image_ipm", 1);
 		binary_pub_ = it_.advertise("/camera_front/ipm_binary", 1);
 		canny_pub_ = it_.advertise("/camera_front/ipm_canny", 1);

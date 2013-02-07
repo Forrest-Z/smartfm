@@ -51,6 +51,10 @@ rosbuild_add_executable(ipm_pcl src/ipm_pcl.cpp)
 target_link_libraries(ipm_pcl ${OpenCV_LIBRARIES})
 rosbuild_link_boost(ipm_pcl signals)
 
+rosbuild_add_executable(CP_projector src/CP_projector.cpp)
+target_link_libraries(CP_projector ${OpenCV_LIBRARIES})
+rosbuild_link_boost(CP_projector signals)
+
 rosbuild_add_executable(single_pic src/single_pic.cpp)
 target_link_libraries(single_pic ${OpenCV_LIBRARIES})
 

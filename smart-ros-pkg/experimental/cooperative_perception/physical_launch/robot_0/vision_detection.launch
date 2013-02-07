@@ -1,7 +1,7 @@
 <launch>
 	<node pkg="vision_lane_detection" type="ipm" name="ipm">
 	<param name="image_transport" value="compressed"/>
-	<param name="visualization_flag" value="true"/>
+	<param name="visualization_flag" value="false"/>
 	<param name="svm_model_path" value="$(find vision_lane_detection)/data_and_model/scaled_20120726.model"/>
 	<param name="svm_scale_path" value="$(find vision_lane_detection)/data_and_model/range_20120726"/>
 	<param name="ipm_center_x" value="9.0"/>
