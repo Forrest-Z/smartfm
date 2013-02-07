@@ -20,7 +20,7 @@
 #include <complex>
 #include <map>
 #include "NormalMatchingGene.h"
-
+#include "readfrontend.h"
 using namespace std;
 
 bool sortGeneScore(Positional2dGene gen1, Positional2dGene gen2)
@@ -51,7 +51,7 @@ public:
 	{
 		ValueAndRange vnr_x(-15, 15, 0.1);
 		ValueAndRange vnr_y(-20, 20, 0.1);
-		ValueAndRange vnr_r(160, 220, 1.);
+		ValueAndRange vnr_r(160, 240, 1.);
 		//-2.000 0.300 185
 		//vnr_x.setRealValue(-2.);
 		//vnr_y.setRealValue(0.3);
@@ -69,7 +69,7 @@ public:
 	{
 		Positional2dGene best_genes;
 		best_genes.score = 0.;
-		for(int iteration=0; iteration<20; iteration++)
+		for(int iteration=0; iteration<10; iteration++)
 		//while(best_genes.score<0.4)
 		{
 			for(size_t i=0; i<genes.size(); i++)
@@ -146,7 +146,7 @@ public:
 	int rollWeightedDie(vector<double> &probabilities)
 	{
 		std::vector<double> cumulative;
-
+    
 		std::partial_sum(probabilities.begin(), probabilities.end(),
 				std::back_inserter(cumulative));
 		boost::uniform_real<> dist(0, cumulative.back());
@@ -188,59 +188,84 @@ public:
 		gene.data = gene.VNRtoGray(gene.pose);
 	}
 
+	void elementCrossOver(vector<Positional2dGene> &mated_gene)
+	{
+	    //crossover by exchanging y and x,r
+	    boost::uniform_int<> dist(0, 3);
+	    boost::variate_generator<boost::mt19937&, boost::uniform_int<> > die(eng, dist);
+	    int switch_mode = die();
+	    vector<string> gene1 = mated_gene[0].getIndiviualStr();
+	    vector<string> gene2 = mated_gene[1].getIndiviualStr();
+	    stringstream gene1ss, gene2ss;
+	    record_crossover_type[switch_mode]++;
+
+	    switch (switch_mode)
+	    {
+	    case 0://sandwich switch
+	    gene1ss<<gene1[0]<<gene2[1]<<gene1[2];
+	    gene2ss<<gene2[0]<<gene1[1]<<gene2[2];
+	    break;
+	    case 1://switch x
+	        gene1ss<<gene2[0]<<gene1[1]<<gene1[2];
+	        gene2ss<<gene1[0]<<gene2[1]<<gene2[2];
+	        break;
+	    case 2://switch y
+	        gene1ss<<gene1[0]<<gene2[1]<<gene1[2];
+	        gene2ss<<gene2[0]<<gene1[1]<<gene2[2];
+	        break;
+	    case 3://switch last
+	        gene1ss<<gene1[0]<<gene1[1]<<gene2[2];
+	        gene2ss<<gene2[0]<<gene2[1]<<gene1[2];
+	        break;
+	    case 4://switch xy
+	        gene1ss<<gene2[0]<<gene2[1]<<gene1[2];
+	        gene2ss<<gene1[0]<<gene1[1]<<gene2[2];
+	        break;
+	    case 5://switch yz
+	        gene1ss<<gene1[0]<<gene2[1]<<gene2[2];
+	        gene2ss<<gene2[0]<<gene1[1]<<gene1[2];
+	        break;
+	    case 6://cross switch xy
+	        gene1ss<<gene2[1]<<gene2[0]<<gene1[2];
+	        gene2ss<<gene1[1]<<gene1[0]<<gene2[2];
+	        break;
+	    }
+
+	    mated_gene[0].data = gene1ss.str();
+	    mated_gene[1].data = gene2ss.str();
+	}
+
 	void crossOverOperator(vector<Positional2dGene> &mating_genes, vector<Positional2dGene> &mated_genes)
 	{
 		mated_genes.clear();
 		while(mating_genes.size()>0)
 		{
-			vector<Positional2dGene> mated_gene = pairingGenes(mating_genes);
-			assert(mated_gene.size() == 2);
-			//crossover by exchanging y and x,r
-			boost::uniform_int<> dist(0, 3);
+			vector<Positional2dGene> selected_pair_gene = pairingGenes(mating_genes);
+			assert(selected_pair_gene.size() == 2);
+			boost::uniform_int<> dist(0, 1);
 			boost::variate_generator<boost::mt19937&, boost::uniform_int<> > die(eng, dist);
-			int switch_mode = die();
-			vector<string> gene1 = mated_gene[0].getIndiviualStr();
-			vector<string> gene2 = mated_gene[1].getIndiviualStr();
-			stringstream gene1ss, gene2ss;
-			record_crossover_type[switch_mode]++;
-
-			switch (switch_mode)
-			{
-				case 0://sandwich switch
-					gene1ss<<gene1[0]<<gene2[1]<<gene1[2];
-					gene2ss<<gene2[0]<<gene1[1]<<gene2[2];
-					break;
-				case 1://switch x
-					gene1ss<<gene2[0]<<gene1[1]<<gene1[2];
-					gene2ss<<gene1[0]<<gene2[1]<<gene2[2];
-					break;
-				case 2://switch y
-					gene1ss<<gene1[0]<<gene2[1]<<gene1[2];
-					gene2ss<<gene2[0]<<gene1[1]<<gene2[2];
-					break;
-				case 3://switch last
-					gene1ss<<gene1[0]<<gene1[1]<<gene2[2];
-					gene2ss<<gene2[0]<<gene2[1]<<gene1[2];
-					break;
-				case 4://switch xy
-					gene1ss<<gene2[0]<<gene2[1]<<gene1[2];
-					gene2ss<<gene1[0]<<gene1[1]<<gene2[2];
-					break;
-				case 5://switch yz
-					gene1ss<<gene1[0]<<gene2[1]<<gene2[2];
-					gene2ss<<gene2[0]<<gene1[1]<<gene1[2];
-					break;
-				case 6://cross switch xy
-					gene1ss<<gene2[1]<<gene2[0]<<gene1[2];
-					gene2ss<<gene1[1]<<gene1[0]<<gene2[2];
-					break;
-			}
 			
-			mated_gene[0].data = gene1ss.str();
-			mated_gene[1].data = gene2ss.str();
-			//updateWithBound(mated_gene[0]);
+			Positional2dGene child_gene = selected_pair_gene[0];
+			//performing a 50% mask crossover, may produce infeasible answer
+			for(int i=0; i<child_gene.data.size(); i++)
+			{
+			    int mask = die();
+			    if(mask)
+			        child_gene.data[i] = selected_pair_gene[1].data[i];
+			}
+			Positional2dGene parent_copy;
+			if(selected_pair_gene[0].score > selected_pair_gene[1].score)
+			    parent_copy = selected_pair_gene[0];
+			else
+			    parent_copy = selected_pair_gene[1];
+
+			updateWithBound(child_gene);
+			//here 50% of parent genes are reserved, hence an incremental updating population.
+			mated_genes.push_back(child_gene);
+			mated_genes.push_back(parent_copy);
 			//updateWithBound(mated_gene[1]);
-			mated_genes.insert(mated_genes.begin(), mated_gene.begin(), mated_gene.end());
+			//mated_genes.insert(mated_genes.begin(), mated_gene.begin(), mated_gene.end());
+
 		}
 	}
 
@@ -307,21 +332,25 @@ int main(int argc, char** argv)
 	//move into ubuntu
 	NormalsCorrelativeMatchingProblem<3> problem;
 	pcl::PointCloud<pcl::PointNormal> input_cloud, matching_cloud;
-	pcl::io::loadPCDFile(argv[1], input_cloud);
-	pcl::io::loadPCDFile(argv[2], matching_cloud);
+//	pcl::io::loadPCDFile("amcl2_pcd/00750.pcd", input_cloud);
+//	pcl::io::loadPCDFile("amcl2_pcd/01112.pcd", matching_cloud);
+	pcl::io::loadPCDFile(argv[2], input_cloud);
+  append_input_cloud(input_cloud, string(argv[1]), string(argv[2]));
+  pcl::io::loadPCDFile(argv[3], matching_cloud);
 
-	//for initialization purpose
-/*	problem.trans_res_ = 1.0;
+  problem.trans_res_ = 0.1;
 	problem.init(input_cloud, matching_cloud);
-	vector<Positional2dGene> initial_genes;
-	ValueAndRange vnr_x(-10, 10, 0.1);
+	//for initialization purpose
+	/*vector<Positional2dGene> initial_genes;
+	ValueAndRange vnr_x(-15, 15, 0.1);
 	ValueAndRange vnr_y(-20, 20, 0.1);
-	ValueAndRange vnr_r(-180, 179, 1.);
+	ValueAndRange vnr_r(160, 240, 1.);
 	Positional2dGene best_rough_gene(vnr_x, vnr_y, vnr_r);
 	best_rough_gene.score = 0.;
-	for(double i=-180; i<180; i+=2)
+	for(double i=160; i<240; i+=2)
 	{
-		for(double j=-10; j<10; j++)
+	    cout<<i<<": "<<endl;
+		for(double j=-15; j<15; j++)
 		{
 			for(double k=-20; k<20; k++)
 			{
@@ -331,18 +360,19 @@ int main(int argc, char** argv)
 				double score = problem.evaluate(manual_pose);
 				initial_genes[initial_genes.size()-1].score = score;
 				if(best_rough_gene.score<score) best_rough_gene = initial_genes[initial_genes.size()-1];
+				//cout<<score<<" ";
 			}
-		for(int k=0; k<3; k++)
-		cout<<best_rough_gene.pose[k].getRealValue()<<" ";
-		cout<<best_rough_gene.score<<"      \xd"<<flush;
+		//for(int k=0; k<3; k++)
+		//cout<<best_rough_gene.pose[k].getRealValue()<<" ";
+		//cout<<best_rough_gene.score<<"      \xd"<<flush;
+			//cout<<endl;
 		}
 	}
-	cout<<endl;*/
-	problem.trans_res_ = 0.1;
-	problem.init(input_cloud, matching_cloud);
+	//cout<<endl;
+	*/
 	//problems::Ackley<3> problem;
 	//problem.init();
-	GeneticOptimization2D go2d(1440, problem);//, initial_genes);
+	GeneticOptimization2D go2d(2000, problem);//, initial_genes);
 
 	go2d.generationOpt();
 

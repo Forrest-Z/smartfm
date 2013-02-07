@@ -19,6 +19,7 @@
   <depend package="laser_geometry"/>
   <depend package="message_filters"/>
   <depend package="popot"/>
+  <depend package="ga"/>  
   <rosdep name="opencv2"/>
   <rosdep name="libmysqlclient-dev"/>
 </package>

@@ -16,7 +16,6 @@
 #include "RasterMapPCL.h"
 #include <fstream>
 #include <boost/thread/thread.hpp>
-#include "pcl_downsample.h"
 #include "NormalsCorrelativeMatchingProblem.h"
 #include "pso_def.h"
 
