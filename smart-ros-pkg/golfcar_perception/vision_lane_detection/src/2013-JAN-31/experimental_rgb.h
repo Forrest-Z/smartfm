@@ -16,6 +16,7 @@
 #include <nav_msgs/Odometry.h>
 #include <message_filters/subscriber.h>
 #include "lane_marker_common.h"
+#include "image_proc.h"
 #include "rolling_window/plane_coef.h"
 #include "pcl/point_cloud.h"
 #include "pcl_ros/point_cloud.h"
