@@ -221,7 +221,7 @@ int main(int argc, char **argv) {
         offset_x = ncm.offset_x;
         offset_y = ncm.offset_y;
         rmi = &ncm.rmi;
-        cout<<"Best score = "<<ncm.best_score_<<endl;
+        cout<<"Best score = "<<ncm.best_score_<<" "<<ncm.offset_x<<" "<<ncm.offset_y<<" "<<ncm.rotation<<endl;
         addPointCloud(viewer, best_tf_pt, "matching_cloud",
                     "matching_normal_cloud", false);
       }

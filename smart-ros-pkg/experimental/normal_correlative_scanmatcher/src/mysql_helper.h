@@ -19,7 +19,9 @@ public:
   int table_size_;
 	MySQLHelper(string database, string name): table_name_(name), conn_(false), table_size_(-1)
 	{
+    cout<<"Connecting to table_name_ "<<table_name_<<endl;
 		connect_db(database);
+    current_node_dst = -1;
 	}
 
 	void createTable()
@@ -119,34 +121,57 @@ public:
     return true;
   }
 
-	bool getData(ScoreData &sd)
+  //need to speed up the retrieval of database. It becomes very slow after some queries
+  //auto cache the data, for GraphPF, it is expected it will pull a lot of same node_dst with random node_src
+  int current_node_dst;	
+  map<int, ScoreData> cache_score_data;
+  bool getData(ScoreData &sd)
 	{
 		stringstream ss;
 		double score = -1;
-		ss<<"select * from "<<table_name_<<" where "<<table_name_<<".node_src="<<sd.node_src<<" and ";
-    ss<<table_name_<<".node_dst="<<sd.node_dst;
-		//cout<<ss.str()<<endl;
-		mysqlpp::Query query = conn_.query(ss.str());
-		if(mysqlpp::StoreQueryResult res = query.store())
-		{
-      assert(res.num_rows() <= 1);
-      if(res.num_rows() == 0) return false;
-      sd.id = res[0][0];
-      sd.node_src = res[0][1];
-      sd.node_dst = res[0][2];			
-      sd.score = res[0][3];
-      sd.x = res[0][4];
-      sd.y = res[0][5];
-      sd.t = res[0][6];
-      sd.time_taken = res[0][7];
-      sd.score_ver = res[0][8];
-   //   sd.final_score = res[0][9];
-      return true;
-		}
-		else
-		{
-			return false;
-		}
+    if(current_node_dst == sd.node_dst)
+    {
+      if(cache_score_data.find(sd.node_src) == cache_score_data.end()) return false;
+      else {
+        sd = cache_score_data[sd.node_src];
+        return true;
+      }
+    }
+    else
+    {
+		  ss<<"select * from "<<table_name_<<" where "<<table_name_<<".node_dst="<<sd.node_dst;
+		  mysqlpp::Query query = conn_.query(ss.str());
+		  if(mysqlpp::StoreQueryResult res = query.store())
+		  {
+        if(res.num_rows() == 0) return false;
+        cache_score_data.clear();
+        current_node_dst = sd.node_dst;
+        for(int i=0; i<res.num_rows(); i++)
+        {
+          ScoreData sd_temp;
+          sd_temp.id = res[i][0];
+          sd_temp.node_src = res[i][1];
+          sd_temp.node_dst = res[i][2];			
+          sd_temp.score = res[i][3];
+          sd_temp.x = res[i][4];
+          sd_temp.y = res[i][5];
+          sd_temp.t = res[i][6];
+          sd_temp.time_taken = res[i][7];
+          sd_temp.score_ver = res[i][8];
+          sd_temp.final_score = res[i][9];
+          cache_score_data[sd_temp.node_src] = sd_temp;
+        }
+        if(cache_score_data.find(sd.node_src) == cache_score_data.end()) return false;
+        else {
+          sd = cache_score_data[sd.node_src];
+          return true;
+        }
+		  }
+		  else
+		  {
+			  return false;
+		  }
+    }
 	}
 	
 
@@ -166,7 +191,7 @@ private:
 			exit(1);
 		}
 
-		mysqlpp::Query query = conn_.query("select * from "+table_name_+"_0");
+		mysqlpp::Query query = conn_.query("select * from "+table_name_);
 
 		if(mysqlpp::StoreQueryResult res = query.store())
 		{
