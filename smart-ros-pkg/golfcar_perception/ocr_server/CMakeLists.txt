@@ -30,3 +30,5 @@ rosbuild_gensrv()
 rosbuild_add_executable(ocr_server src/ocr_server.cpp)
 rosbuild_add_executable(simple_client src/simple_client.cpp)
 rosbuild_add_library(ocr_client src/ocr_client.cpp)
+
+rosbuild_add_library(word_identifier src/word_identifier.cpp)

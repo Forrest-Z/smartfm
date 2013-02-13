@@ -141,6 +141,9 @@ namespace golfcar_vision{
         std::vector<size_t> best_cluster;
         if(contours!=0)  best_cluster =  road_roc::cluster_contours (contours, lane_serials);
         printf("\n-----best_cluster size() %ld\n", best_cluster.size());
+
+        int vector_length = 27;
+        int BOW_feature[27] = {0};
         if(best_cluster.size() > 2)
         {
         	for(size_t i=0; i<best_cluster.size();i++)
@@ -179,15 +182,19 @@ namespace golfcar_vision{
 						cvConvert( output_mat, character_tmp);
 						*/
 
-						char letter;
+						char letter = 91;
 				        if(lane_ocr_.recognize(character_tmp, letter))
 				        {
-				        	ROS_INFO("huhuhuhuhuhu-----%c", letter);
+				        	//ROS_INFO("huhuhuhuhuhu-----%c", letter);
 				        }
 				        else
 				        {
-				        	ROS_WARN("NONONONONONO");
+				        	//ROS_WARN("NONONONONONO");
 				        }
+				        //turn to ASCII code;
+				        if(letter>=65 && letter<=90) BOW_feature[letter-65]++;
+				        else BOW_feature[26]++;
+
 				        cvShowImage("character_tmp", character_tmp);
 				        cvWaitKey(1);
 				        cvReleaseImage(&character_tmp);
@@ -200,10 +207,11 @@ namespace golfcar_vision{
         	}
         }
 
+        std::string surface_word;
+        //if(word_detector_.identify(BOW_feature, vector_length, surface_word)) cout<<surface_word<<endl;
+        word_detector_.test();
 
         if(contour_serial>0) extract_training_image(binary_img);
-
-
         printf("2\n");
 
         cvShowImage("ped_contour_image",contour_img);

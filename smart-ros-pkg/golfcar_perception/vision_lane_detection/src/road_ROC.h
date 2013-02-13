@@ -23,7 +23,9 @@
 #include "lane_marker_common.h"
 #include "svm_classifier.h"
 #include "ransac_lane.h"
+
 #include "ocr_client.h"
+#include "word_identifier.h"
 
 using namespace std;
 using namespace ros;
@@ -168,6 +170,7 @@ namespace golfcar_vision{
         
         golfcar_ml::svm_classifier *road_roc_classifier_;
         OcrClientNode lane_ocr_;
+        word_identifier word_detector_;
 
         CvSeq* filter_contours (CvContourScanner &scanner);
         void imageCallback(const sensor_msgs::ImageConstPtr& msg);
