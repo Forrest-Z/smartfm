@@ -185,7 +185,7 @@ namespace golfcar_vision{
 						char letter = 91;
 				        if(lane_ocr_.recognize(character_tmp, letter))
 				        {
-				        	//ROS_INFO("huhuhuhuhuhu-----%c", letter);
+				        	ROS_INFO("huhuhuhuhuhu-----%d", letter);
 				        }
 				        else
 				        {
@@ -208,8 +208,7 @@ namespace golfcar_vision{
         }
 
         std::string surface_word;
-        //if(word_detector_.identify(BOW_feature, vector_length, surface_word)) cout<<surface_word<<endl;
-        word_detector_.test();
+        if(word_detector_.identify(BOW_feature, vector_length, surface_word)) cout<<surface_word<<endl;
 
         if(contour_serial>0) extract_training_image(binary_img);
         printf("2\n");

@@ -21,5 +21,5 @@ public:
   }
   virtual ~OcrClientNode() {
   }
-  bool recognize(IplImage *src, char letter);
+  bool recognize(IplImage *src, char & letter);
 };

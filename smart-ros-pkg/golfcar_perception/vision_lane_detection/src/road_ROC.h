@@ -79,7 +79,7 @@ namespace golfcar_vision{
 		size_t b = *(const size_t*)_b;
 
 		CvSeq *contour = (CvSeq*) userdata;
-		printf("a, b %d,\t%d\t", a, b);
+		//printf("a, b %d,\t%d\t", a, b);
 
 		CvSeq *contour_a = 0;
 		CvSeq *contour_b = 0;
@@ -99,8 +99,8 @@ namespace golfcar_vision{
 
 		cvBox_a = cvMinAreaRect2(contour_a, mem_box_a);
 		cvBox_b = cvMinAreaRect2(contour_b, mem_box_b);
-		printf("cvBox_a center (%3f, %3f), width heigh: (%3f, %3f)\n", cvBox_a.center.x,  cvBox_a.center.y, cvBox_a.size.width, cvBox_a.size.height);
-		printf("cvBox_b center (%3f, %3f), width heigh: (%3f, %3f)\n", cvBox_b.center.x,  cvBox_b.center.y, cvBox_b.size.width, cvBox_b.size.height);
+		//printf("cvBox_a center (%3f, %3f), width heigh: (%3f, %3f)\n", cvBox_a.center.x,  cvBox_a.center.y, cvBox_a.size.width, cvBox_a.size.height);
+		//printf("cvBox_b center (%3f, %3f), width heigh: (%3f, %3f)\n", cvBox_b.center.x,  cvBox_b.center.y, cvBox_b.size.width, cvBox_b.size.height);
 
 		CvPoint2D32f pointA[4], pointB[4];
 		calc_cvBoxPoints(cvBox_a, pointA);
@@ -110,10 +110,10 @@ namespace golfcar_vision{
 		line_calculate(cvBox_a, longsideA, shortsideA);
 		line_calculate(cvBox_b, longsideB, shortsideB);
 
-		printf("lineA long: (%3f,  %3f,  %3f)\t", longsideA[0], longsideA[1], longsideA[2]);
-		printf("lineA short: (%3f,  %3f,  %3f)\n", shortsideA[0], shortsideA[1], shortsideA[2]);
-		printf("lineB long: (%3f,  %3f,  %3f)\t", longsideB[0], longsideB[1], longsideB[2]);
-		printf("lineB short: (%3f,  %3f,  %3f)\n", shortsideB[0], shortsideB[1], shortsideB[2]);
+		//printf("lineA long: (%3f,  %3f,  %3f)\t", longsideA[0], longsideA[1], longsideA[2]);
+		//printf("lineA short: (%3f,  %3f,  %3f)\n", shortsideA[0], shortsideA[1], shortsideA[2]);
+		//printf("lineB long: (%3f,  %3f,  %3f)\t", longsideB[0], longsideB[1], longsideB[2]);
+		//printf("lineB short: (%3f,  %3f,  %3f)\n", shortsideB[0], shortsideB[1], shortsideB[2]);
 
 		double longside_angleA = atan2(longsideA[0], -longsideA[1]);
 		if(longside_angleA<0) longside_angleA = longside_angleA + M_PI;
@@ -123,14 +123,14 @@ namespace golfcar_vision{
 		if(delt_angle>M_PI_2) delt_angle = M_PI - delt_angle;
 		bool angle_criterion = delt_angle < 5.0*M_PI/180.0;
 
-		printf("angle %3f \t", delt_angle);
+		//printf("angle %3f \t", delt_angle);
 
 		//distance of pointB[1] (second box) to the first short line;
 		double distance = fabs(shortsideA[0]*pointB[1].x+shortsideA[1]*pointB[1].y+shortsideA[2])/sqrt(shortsideA[0]*shortsideA[0]+shortsideA[1]*shortsideA[1]);
 
 		bool distance_criterion = distance < 2*30;
 
-		printf("distance %3f \n", distance);
+		//printf("distance %3f \n", distance);
 
 		 cvReleaseMemStorage(&mem_box_a);
 		 cvReleaseMemStorage(&mem_box_b);

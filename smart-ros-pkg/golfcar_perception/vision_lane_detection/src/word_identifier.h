@@ -20,5 +20,4 @@ public:
 
 public:
   bool identify (int* feature_vector, int vector_length, std::string &response);
-  bool test();
 };

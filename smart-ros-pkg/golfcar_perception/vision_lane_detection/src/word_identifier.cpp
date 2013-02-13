@@ -3,7 +3,6 @@
   bool word_identifier::identify(int* feature_vector, int vector_length, std::string &response)
   {
 	  //simplified BOW :)
-
 	  //"AHEAD"
 	  int _ahead = 0;
 	  if(feature_vector[65-65]>0) _ahead++;
@@ -28,25 +27,24 @@
 	  if(_ahead>=2)
 	  {
 		  response = "AHEAD";
+		  printf("\n-----ahead--------\n");
 		  return true;
 	  }
 	  else if(_xing>=3)
 	  {
-		  response = "AHEAD";
+		  response = "X-ING";
+		  printf("\n-----x-ing--------\n");
 		  return true;
 	  }
 	  else if(_slow>=2)
 	  {
-		  response = "AHEAD";
+		  response = "SLOW";
+		  printf("\n-----slow--------\n");
 		  return true;
 	  }
 	  else
 	  {
+		  printf("\n no words ...\n ");
 		  return false;
 	  }
-  }
-
-  bool word_identifier::test()
-  {
-	  return true;
   }
