@@ -8,7 +8,9 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/point_cloud_conversion.h>
+#include <nav_msgs/Path.h>
 #include <geometry_msgs/Pose.h>
+#include <visualization_msgs/MarkerArray.h>
 #include <pcl/ros/conversions.h>
 #include <fmutil/fm_stopwatch.h>
 #include <fmutil/fm_math.h>
@@ -28,19 +30,78 @@ void mat2RPY(const Eigen::Matrix3f& t, double& roll, double& pitch, double& yaw)
     yaw = atan2(t(1,0),t(0,0));
 }
 
+visualization_msgs::Marker getMarker(int id, string text, geometry_msgs::Pose pose)
+{
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "scan_odo";
+    marker.header.stamp = ros::Time();
+    marker.ns = "my_namespace";
+    marker.id = id;
+    marker.type = visualization_msgs::Marker::SPHERE;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose = pose;
+    marker.scale.x = 0.1;
+    marker.scale.y = 0.1;
+    marker.scale.z = 0.1;
+    marker.color.a = 1.0;
+    marker.color.r = 1.0;
+    marker.color.g = 1.0;
+    marker.color.b = 1.0;
+    marker.pose.position.z = 0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+    
+    return marker; 
+}
+
+void publishNodeIdVis(int id, string text, geometry_msgs::Pose pose, ros::Publisher &pub)
+{
+  
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "scan_odo";
+    ros::Time ros_time = ros::Time::now();
+    marker.header.stamp = ros_time;
+    marker.ns = "node_id";
+    marker.id = id;
+    marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose.position.x = pose.position.x;
+    marker.pose.position.y = pose.position.y;
+    marker.pose.position.z = 0;
+    marker.pose.orientation.x = 0.0;
+    marker.pose.orientation.y = 0.0;
+    marker.pose.orientation.z = 0.0;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = 2.;
+    marker.scale.y = 2.;
+    marker.scale.z = 0.5;
+    marker.color.r = 1.;
+    marker.color.g = 0;
+    marker.color.b = 0;
+    marker.color.a = 1.0;
+
+    marker.text = text;
+    pub.publish(marker);
+}
 int main(int argc, char **argv) {
 
     fmutil::Stopwatch sw;
     sw.start("isam_full");
     ros::init(argc, argv, "RasterMapImage");
     ros::NodeHandle nh;
-    ros::Publisher src_pub, dst_pub, query_pub, overall_pub;
+    ros::Publisher src_pub, dst_pub, query_pub, overall_pub, factors_pub, nodeid_pub;
+    ros::Publisher vis_pub = nh.advertise<visualization_msgs::MarkerArray>( "visualization_marker_array", 5 );
     src_pub = nh.advertise<sensor_msgs::PointCloud>("src_pc", 5);
     dst_pub = nh.advertise<sensor_msgs::PointCloud>("dst_pc", 5);
     query_pub = nh.advertise<sensor_msgs::PointCloud>("pc_legacy_out", 5);
     overall_pub = nh.advertise<sensor_msgs::PointCloud>("pc_graph_overall", 5);
+    factors_pub = nh.advertise<nav_msgs::Path>("factors", 5);
+    nodeid_pub = nh.advertise<visualization_msgs::Marker>("visualization_marker", 5);
     sensor_msgs::PointCloud src_pc, dst_pc, query_pc;
-    src_pc.header.frame_id = dst_pc.header.frame_id = query_pc.header.frame_id =
+    nav_msgs::Path factors_msg;
+    factors_msg.header.frame_id = src_pc.header.frame_id = dst_pc.header.frame_id = query_pc.header.frame_id =
             "scan_odo";
 
     istream* data_in = NULL, *pc_data_in = NULL;        // input for data points
@@ -83,7 +144,7 @@ int main(int argc, char **argv) {
     readFrontEndFile(argv[1], poses);
     // instance of the main class that manages and optimizes the pose graph
     isam::Slam slam;
-    slam._prop.max_iterations = 250;
+    slam._prop.max_iterations = 100;
     // locally remember poses
     map<int, isam::Pose3d_Node*> pose_nodes;
 
@@ -143,7 +204,7 @@ int main(int argc, char **argv) {
         sw_cl.end();
 
         fmutil::Stopwatch sw_foundcl("found_cl", true);
-
+        //cl_node_idx = -1;
         if (cl_node_idx != -1) {
             fmutil::Stopwatch sw_found_cl_a("found_cl_a");
             int j = cl_node_idx;
@@ -214,7 +275,7 @@ int main(int argc, char **argv) {
             isam::Noise noise = isam::Information(eigen_noise);
             isam::Pose3d_Pose3d_Factor* constraint =
                     new isam::Pose3d_Pose3d_Factor(pose_nodes[i],
-                            pose_nodes[j], odometry, noise3);
+                            pose_nodes[j-2], odometry, noise3);
             slam.add_factor(constraint);
             current_constraint = constraint;
             slam.batch_optimization();
@@ -281,12 +342,18 @@ int main(int argc, char **argv) {
         //output and downsampling occupy  when there is no close loop found
         fmutil::Stopwatch sw_out("output", true); //~130 ms
         list<isam::Node*> nodes = slam.get_nodes();
+
         overall_pts.points.clear();
         overall_pts.header.frame_id = "scan_odo";
         int node_idx = start_node;
         double last_height = -1;
+
+        //only if using a MESH_RESOURCE marker type:
+
+        visualization_msgs::MarkerArray marker_arr;
+        int node_id = 4;
         for (std::list<isam::Node*>::const_iterator it = nodes.begin();
-                it != nodes.end(); it++) {
+                it != nodes.end(); it++, node_id++) {
             isam::Node& node = **it;
             geometry_msgs::Pose estimated_pt;
             estimated_pt.position.x = node.vector(isam::ESTIMATE)[0];
@@ -301,7 +368,33 @@ int main(int argc, char **argv) {
                     estimated_pt, pc_vecs[node_idx++ * skip_reading].points);
             overall_pts.points.insert(overall_pts.points.end(),
                     tfed_pts.begin(), tfed_pts.end());
+            stringstream ss;
+            ss<<"node_"<<node_id;
+            marker_arr.markers.push_back(getMarker(node_id, ss.str(), estimated_pt));
+            publishNodeIdVis(node_id, ss.str(), estimated_pt, nodeid_pub);
+        }
 
+        list<isam::Factor*> factors = slam.get_factors();
+        factors_msg.poses.clear();
+        factors_msg.header.stamp = ros::Time::now();
+        for(std::list<isam::Factor*>::const_iterator it = factors.begin();
+                it != factors.end(); it++){
+            isam::Factor& factor = **it;
+            vector<isam::Node*> nodes = factor.nodes();
+            for(size_t i=0; i<nodes.size(); i++)
+            {
+                geometry_msgs::PoseStamped factor;
+                factor.header = factors_msg.header;
+                geometry_msgs::Pose estimated_pt;
+                estimated_pt.position.x = nodes[i]->vector(isam::ESTIMATE)[0];
+                estimated_pt.position.y = nodes[i]->vector(isam::ESTIMATE)[1];
+                estimated_pt.position.z = nodes[i]->vector(isam::ESTIMATE)[2];
+                estimated_pt.orientation.z =nodes[i]->vector(isam::ESTIMATE)[3];
+                estimated_pt.orientation.y = nodes[i]->vector(isam::ESTIMATE)[4];
+                estimated_pt.orientation.x = nodes[i]->vector(isam::ESTIMATE)[5];
+                factor.pose = estimated_pt;
+                factors_msg.poses.push_back(factor);
+            }
         }
         cout << "Size of overall_pts = "<<overall_pts.points.size()<<endl;
         cout << "Last opt height = " << last_height << "pointcloud = "
@@ -332,12 +425,16 @@ int main(int argc, char **argv) {
         for (int k = 0; k < 3; k++) {
             overall_pts.header.stamp = ros::Time::now();
             overall_pub.publish(overall_pts);
-
+            factors_pub.publish(factors_msg);
+            vis_pub.publish( marker_arr );
             ros::spinOnce();
         }
         sw_ds.end();
 
         sw.end();
+        string name;
+        std::getline (std::cin,name);
+        
         cout << "***********************************" << endl;
     }
     RenderMap rm;
