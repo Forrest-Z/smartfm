@@ -9,7 +9,7 @@
 #include "ocr_server/TextRecognition.h"
 #include "ocr_client.h"
 
-  bool OcrClientNode::recognize(IplImage *src, char letter)
+  bool OcrClientNode::recognize(IplImage *src, char& letter)
   {
 	ocr_server::TextRecognition srv;
 	sensor_msgs::Image::Ptr load_image =  bridge_.cvToImgMsg(src, "mono8");
@@ -22,8 +22,16 @@
 		for (size_t i=0; i<srv.response.lines.size(); i++) {
 		printf("%i. %s\n", (int)i, srv.response.lines[i].c_str());
 		}
-		const char * firstletter = srv.response.lines[0].c_str();
-		letter = firstletter[0];
+
+		if(srv.response.lines.size()==0)
+		{
+			letter = 91;
+		}
+		else
+		{
+			const char * firstletter = srv.response.lines[0].c_str();
+			letter = firstletter[0];
+		}
 		return true;
 	}
 	else

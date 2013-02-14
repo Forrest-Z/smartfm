@@ -43,6 +43,12 @@ rosbuild_add_executable(ped_crossing src/ped_crossing.cpp)
 target_link_libraries(ped_crossing ${OpenCV_LIBRARIES})
 rosbuild_link_boost(ped_crossing signals)
 
+rosbuild_add_library(word_identifier src/word_identifier.cpp)
+
+rosbuild_add_executable(road_ROC src/road_ROC.cpp)
+target_link_libraries(road_ROC ${OpenCV_LIBRARIES} word_identifier)
+rosbuild_link_boost(road_ROC signals)
+
 rosbuild_add_executable(experimental_rgb src/experimental_rgb.cpp)
 target_link_libraries(experimental_rgb ${OpenCV_LIBRARIES})
 rosbuild_link_boost(experimental_rgb signals)
