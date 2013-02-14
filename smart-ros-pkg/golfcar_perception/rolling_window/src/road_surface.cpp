@@ -24,8 +24,8 @@ namespace golfcar_pcl{
 		
 		pcl::PointXYZ rectangle_p1, rectangle_p2, rectangle_p3, rectangle_p4;
 		rectangle_p1.x = 10.0; rectangle_p1.y = 3.0; 
-		rectangle_p2.x = 4.0;  rectangle_p2.y = 3.0; 
-		rectangle_p3.x = 4.0;  rectangle_p3.y = -3.0; 
+		rectangle_p2.x = 4.0;  rectangle_p2.y = 3.0;
+		rectangle_p3.x = 4.0;  rectangle_p3.y = -3.0;
 		rectangle_p4.x = 10.0; rectangle_p4.y = -3.0; 
 		poly_ROI_.push_back(rectangle_p1);
 		poly_ROI_.push_back(rectangle_p2);
@@ -1432,6 +1432,12 @@ namespace golfcar_pcl{
 		
 		if(coefficients->values.size()!=4) return;
 		
+		float a =coefficients->values[0];
+		float b =coefficients->values[1];
+		float c =coefficients->values[2];
+		float slope_angle = acos(fabs(c/sqrtf(a*a+b*b+c*c)));
+		ROS_INFO("current slope angle %3f in Baselink frame", slope_angle/3.141526*180.0);
+
 		plane_coef.header = surface_pts.header;
 		for(int i=0; i < 4; i++) plane_coef.coefs.push_back(coefficients->values[i]);
 
