@@ -8,7 +8,7 @@
 	  if(feature_vector[65-65]>0) _ahead++;
 	  if(feature_vector[72-65]>0) _ahead++;
 	  if(feature_vector[69-65]>0) _ahead++;
-	  if(feature_vector[78-65]>0) _ahead++;
+	  if(feature_vector[68-65]>0) _ahead++;
 
 	  //"X-ING"
 	  int _xing = 0;
