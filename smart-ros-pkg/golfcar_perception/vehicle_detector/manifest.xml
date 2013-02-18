@@ -22,7 +22,6 @@
   <depend package="image_transport" />
   <!--depend package="people_msgs" /-->
   <depend package="sensing_on_road"/>
-  <depend package="ped_momdp_sarsop"/>
   <rosdep name="opencv2"/>
   
 </package>
