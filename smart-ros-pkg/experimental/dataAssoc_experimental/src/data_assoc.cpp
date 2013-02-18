@@ -411,7 +411,7 @@ void data_assoc::pedClustCallback(sensor_msgs::ImageConstPtr image, feature_dete
     for(size_t i=0; i<cluster_vector.clusters.size(); i++)
     {
         geometry_msgs::Point32 global_point;
-        bool transformed = transformPointToGlobal(cluster_vector.header, cluster_vector.clusters[i].centroid,global_point);
+        bool transformed = transformPointToGlobal(cluster_vector.header, cluster_vector.clusters[i].centroid, global_point);
         if(!transformed) continue;
         sensing_on_road::pedestrian_vision newPed;
         newPed.object_label = latest_id++;
@@ -574,8 +574,5 @@ bool data_assoc::imageProjection(Mat& img, std_msgs::Header& source_header, sens
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "data_assoc");
-
     data_assoc *data_assoc_node = new data_assoc(argc, argv);
-
-
 }

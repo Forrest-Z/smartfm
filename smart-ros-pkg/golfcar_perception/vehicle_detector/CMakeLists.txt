@@ -46,3 +46,7 @@ rosbuild_add_boost_directories()
 rosbuild_add_executable(vehicle_detection src/vehicle_detection.cpp)
 target_link_libraries(vehicle_detection ${OpenCV_LIBS})
 rosbuild_link_boost(vehicle_detection signals)
+
+rosbuild_add_executable(vehicle_detector src/vehicle_haar.cpp)
+target_link_libraries(vehicle_detector ${OpenCV_LIBS})
+rosbuild_link_boost(vehicle_detector signals)

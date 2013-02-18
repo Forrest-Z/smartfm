@@ -1,0 +1,10 @@
+<launch>
+	<include file="$(find vehicle_detector)/launch/laser_feature.launch"/>
+	<include file="$(find vehicle_detector)/launch/vision_haar.launch"/>
+    <node pkg="feature_detection" type="cluster_filter.py" name="cluster_filter_vehicle" output="screen" args="'width &lt; 3.0 and width &gt; 0.5 and depth &lt; 3 and depth &gt; 0.5 and dist &lt; 30'">
+        <remap from="cluster_filter_in" to="vehicle_clusters"/>
+        <remap from="cluster_filter_out" to="vehicle_clusters_filtered"/>
+    </node>
+	<include file="$(find vehicle_detector)/launch/dataAssoc.launch"/>
+</launch>
+
