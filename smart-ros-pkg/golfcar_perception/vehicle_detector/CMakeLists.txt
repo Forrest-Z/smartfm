@@ -50,3 +50,6 @@ rosbuild_link_boost(vehicle_detection signals)
 rosbuild_add_executable(mergevec src/mergevec.cpp src/apps/cvboost.cpp src/apps/cvcommon.cpp src/apps/cvsamples.cpp src/apps/cvhaarclassifier.cpp src/apps/cvhaartraining.cpp)
 target_link_libraries(mergevec ${OpenCV_LIBS})
 
+rosbuild_add_executable(vehicle_detector src/vehicle_haar.cpp)
+target_link_libraries(vehicle_detector ${OpenCV_LIBS})
+rosbuild_link_boost(vehicle_detector signals)

@@ -80,7 +80,7 @@ void detect(IplImage *img)
     1.1, //1.1,//1.5, //-------------------SCALE FACTOR
     1, //2        //------------------MIN NEIGHBOURS
     0, //CV_HAAR_DO_CANNY_PRUNING
-    cvSize(0,0),//cvSize( 30,30), // ------MINSIZE
+    cvSize(60,60),//cvSize( 30,30), // ------MINSIZE
     img_size //cvSize(70,70)//cvSize(640,480)  //---------MAXSIZE
     );
 
