@@ -144,6 +144,7 @@ namespace golfcar_vision{
 
         int vector_length = 27;
         int BOW_feature[27] = {0};
+
         if(best_cluster.size() > 2)
         {
         	for(size_t i=0; i<best_cluster.size();i++)
@@ -208,7 +209,12 @@ namespace golfcar_vision{
         }
 
         std::string surface_word;
-        if(word_detector_.identify(BOW_feature, vector_length, surface_word)) cout<<surface_word<<endl;
+        if(word_detector_.identify(BOW_feature, vector_length, surface_word))
+		{	cout<<surface_word<<endl;
+			ROS_INFO("identify words");
+		}
+        else ROS_INFO("identify no words");
+
 
         if(contour_serial>0) extract_training_image(binary_img);
         printf("2\n");

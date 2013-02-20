@@ -1,7 +1,7 @@
 <launch>
     <param name="use_sim_time" value="true"/>
 
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.75, 0.0, 1.32 -0.0 0.140 -0.0 /base_link /camera_front_base 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.75, 0.0, 1.32 -0.0 0.20 -0.0 /base_link /camera_front_base 100" />
     <node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_img" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /camera_front_base /camera_front_img 100" />
     
 	<!--node pkg="vision_lane_detection" type="addCamInfo" name="addCamInfo">
@@ -20,12 +20,13 @@
 	<!--param name="ipm_ROI_far_width_" value="20.0"/-->
 	<param name="ipm_ROI_far_width" value="30.0"/>
 	<param name="publish_dis_thresh" value="0.2"/>
+	<param name="scale" value="20.0"/>
 	</node>
-
 
     <node pkg="vision_lane_detection" type="lane_marker" name="lane_marker">
 	<param name="marker_model_path" value="$(find vision_lane_detection)/data_and_model/scaled_20120726.model"/>
     	<param name="marker_scale_path" value="$(find vision_lane_detection)/data_and_model/range_20120726"/>
+    	<param name="scale" value="20.0"/>
 	</node>
 
     <!--node pkg="vision_lane_detection" type="experimental_rgb" name="experimental_rgb">

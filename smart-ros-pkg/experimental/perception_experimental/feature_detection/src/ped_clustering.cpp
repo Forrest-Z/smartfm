@@ -212,6 +212,8 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
     }
 
     //Then segmentation
+
+    sensor_msgs::PointCloud total_clusters;
     feature_detection::clusters clusters;
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
     clusters.header = pc.header;
@@ -274,6 +276,7 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
             	p_temp.y = pclpt_temp.y;
             	p_temp.z = pclpt_temp.z;
             	cluster_points.push_back(p_temp);
+            	total_clusters.points.push_back(p_temp);
             }
             cluster.points = cluster_points;
             /*pcl::PointCloud<pcl::PointXYZ> pca_input = cloud_temp;
@@ -356,11 +359,9 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
         }
         ROS_INFO("End of cluster %d\n", cluster_number);
     }
-    sensor_msgs::PointCloud2 total_clusters2;
 
-    pcl::toROSMsg(*cloud_cluster, total_clusters2);
-    sensor_msgs::PointCloud total_clusters;
-    sensor_msgs::convertPointCloud2ToPointCloud(total_clusters2, total_clusters);
+
+
     total_clusters.header = pc.header;
     ped_poi.header = pc.header;
     if(publish)
