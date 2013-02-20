@@ -19,7 +19,7 @@ public:
   int table_size_;
 	MySQLHelper(string database, string name): table_name_(name), conn_(false), table_size_(-1)
 	{
-    cout<<"Connecting to table_name_ "<<table_name_<<endl;
+    cout<<"Connecting to "<<table_name_<<endl;
 		connect_db(database);
     current_node_dst = -1;
 	}
@@ -37,8 +37,8 @@ public:
 		//reminder: mysql has a hard limit on 4096 columns
 		stringstream createtb_ss;
 		createtb_ss << "create table "<<table_name_ <<" (id int not null AUTO_INCREMENT";
-    createtb_ss << ", node_src int not null, node_dst int not null, score double, x double,"; 
-    createtb_ss << " y double, t double, time int, PRIMARY Key(id), INDEX (id), UNIQUE (id))";
+    createtb_ss << ", node_src int not null, node_dst int not null, score double not null, x double not null,"; 
+    createtb_ss << " y double not null, t double not null, time int not null, score_ver double not null, final_score double not null, PRIMARY Key(id), INDEX (id), UNIQUE (id))";
 		mysqlpp::Query createtb_query = conn_.query(createtb_ss.str());
 		mysqlpp::SimpleResult createtb_res = createtb_query.execute();
     cout<<createtb_ss.str()<<endl;
@@ -113,7 +113,7 @@ public:
   bool updateScoreVer(double score_ver, ScoreData data)
   {
     stringstream ss;
-    ss<<"update frontEndData_1358896312661754646 set score_ver="<<score_ver<<", final_score="<<sqrt(score_ver*data.score)<<" where "<<table_name_<<".id="<<data.id;
+    ss<<"update "<<table_name_ << " set score_ver="<<score_ver<<", final_score="<<sqrt(score_ver*data.score)<<" where "<<table_name_<<".id="<<data.id;
     mysqlpp::Query updatedata_query = conn_.query(ss.str());
     mysqlpp::SimpleResult insert_res = updatedata_query.execute();
 		if(insert_res) cout<<"Data "<<data.node_src<<" "<<data.node_dst<<" "<<data.score<<" "<<data.time_taken<<" updated successful \xd"<<flush;
@@ -125,52 +125,85 @@ public:
   //auto cache the data, for GraphPF, it is expected it will pull a lot of same node_dst with random node_src
   int current_node_dst;	
   map<int, ScoreData> cache_score_data;
-  bool getData(ScoreData &sd)
+  bool getData(ScoreData &sd, bool cache=true)
 	{
 		stringstream ss;
 		double score = -1;
-    if(current_node_dst == sd.node_dst)
+    if(cache)
     {
-      if(cache_score_data.find(sd.node_src) == cache_score_data.end()) return false;
-      else {
-        sd = cache_score_data[sd.node_src];
-        return true;
-      }
-    }
-    else
-    {
-		  ss<<"select * from "<<table_name_<<" where "<<table_name_<<".node_dst="<<sd.node_dst;
-		  mysqlpp::Query query = conn_.query(ss.str());
-		  if(mysqlpp::StoreQueryResult res = query.store())
-		  {
-        if(res.num_rows() == 0) return false;
-        cache_score_data.clear();
-        current_node_dst = sd.node_dst;
-        for(int i=0; i<res.num_rows(); i++)
-        {
-          ScoreData sd_temp;
-          sd_temp.id = res[i][0];
-          sd_temp.node_src = res[i][1];
-          sd_temp.node_dst = res[i][2];			
-          sd_temp.score = res[i][3];
-          sd_temp.x = res[i][4];
-          sd_temp.y = res[i][5];
-          sd_temp.t = res[i][6];
-          sd_temp.time_taken = res[i][7];
-          sd_temp.score_ver = res[i][8];
-          sd_temp.final_score = res[i][9];
-          cache_score_data[sd_temp.node_src] = sd_temp;
-        }
+      if(current_node_dst == sd.node_dst)
+      {
         if(cache_score_data.find(sd.node_src) == cache_score_data.end()) return false;
         else {
           sd = cache_score_data[sd.node_src];
           return true;
         }
-		  }
-		  else
-		  {
-			  return false;
-		  }
+      }
+      else
+      {
+		    ss<<"select * from "<<table_name_<<" where "<<table_name_<<".node_dst="<<sd.node_dst;
+		    mysqlpp::Query query = conn_.query(ss.str());
+		    if(mysqlpp::StoreQueryResult res = query.store())
+		    {
+          if(res.num_rows() == 0) 
+          {
+            //cout<<"No result from getData"<<endl;
+            return false;
+          }
+          cache_score_data.clear();
+          current_node_dst = sd.node_dst;
+          for(int i=0; i<res.num_rows(); i++)
+          {
+            ScoreData sd_temp;
+            sd_temp.id = res[i][0];
+            sd_temp.node_src = res[i][1];
+            sd_temp.node_dst = res[i][2];			
+            sd_temp.score = res[i][3];
+            sd_temp.x = res[i][4];
+            sd_temp.y = res[i][5];
+            sd_temp.t = res[i][6];
+            sd_temp.time_taken = res[i][7];
+            sd_temp.score_ver = res[i][8];
+            sd_temp.final_score = res[i][9];
+            cache_score_data[sd_temp.node_src] = sd_temp;
+          }
+          if(cache_score_data.find(sd.node_src) == cache_score_data.end()) return false;
+          else {
+            sd = cache_score_data[sd.node_src];
+            return true;
+          }
+		    }
+		    else
+		    {
+			    return false;
+		    }
+      }
+    }
+    else
+    {
+      ss<<"select * from "<<table_name_<<" where "<<table_name_<<".node_dst="<<sd.node_dst <<" and "<<table_name_<<".node_src="<<sd.node_src;
+	    mysqlpp::Query query = conn_.query(ss.str());
+	    if(mysqlpp::StoreQueryResult res = query.store())
+	    {
+        if(res.num_rows() == 0)  return false;
+        else
+        {
+          ScoreData sd_temp;
+          sd_temp.id = res[0][0];
+          sd_temp.node_src = res[0][1];
+          sd_temp.node_dst = res[0][2];			
+          sd_temp.score = res[0][3];
+          sd_temp.x = res[0][4];
+          sd_temp.y = res[0][5];
+          sd_temp.t = res[0][6];
+          sd_temp.time_taken = res[0][7];
+          sd_temp.score_ver = res[0][8];
+          sd_temp.final_score = res[0][9];
+          sd = sd_temp;
+          return true;
+        }
+      }
+      return false;
     }
 	}
 	

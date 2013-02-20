@@ -50,6 +50,7 @@ geometry_msgs::Pose ominus(geometry_msgs::Pose point2, geometry_msgs::Pose point
 	relative_tf.position.z = point2.position.z - point1.position.z;
 	relative_tf.orientation.z = point2.orientation.z - point1.orientation.z;
 	relative_tf.orientation.y = point2.orientation.y - point1.orientation.y;
+//  cout<<"orientation: "<<point2.orientation.z<<"-"<<point1.orientation.z<<"="<<relative_tf.orientation.z<<endl;
 	//cout<<relative_tf<<endl;
 	return relative_tf;
 }

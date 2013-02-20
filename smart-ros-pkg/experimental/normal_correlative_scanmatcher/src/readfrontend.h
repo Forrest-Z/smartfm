@@ -52,14 +52,14 @@ vector<pcl::PointCloud<pcl::PointNormal> > append_input_cloud(pcl::PointCloud<pc
   int start_append = -4, end_append = 6;
   for(int i=start_append; i<end_append; i++)
   {
-    poses_map[i] = poses[(input_idx+i*2)/2-1];
+    poses_map[i] = poses[input_idx+i];
   }
-  dbgbuf<<"Given 0 pose "<<poses_map[0].position.x<<" "<<poses_map[0].position.y<<" "<<poses_map[0].orientation.z/M_PI*180<<endl;
+  //dbgbuf<<"Given 0 pose "<<poses_map[0].position.x<<" "<<poses_map[0].position.y<<" "<<poses_map[0].orientation.z/M_PI*180<<endl;
   for(int i=start_append; i<end_append; i++)
   {
     if(i==0) continue;
     stringstream add_input_ss;
-    add_input_ss<<folder_str<<setfill('0')<<setw(5)<<input_idx+i*2<<".pcd";
+    add_input_ss<<folder_str<<setfill('0')<<setw(5)<<input_idx+i<<".pcd";
     dbgbuf<<"Reading add_input file: "<<add_input_ss.str()<<endl;
     pcl::PointCloud<pcl::PointNormal> add_input_cloud;
     pcl::io::loadPCDFile(add_input_ss.str(), add_input_cloud);

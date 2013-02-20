@@ -9,6 +9,7 @@
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/point_cloud_conversion.h>
 #include <nav_msgs/Path.h>
+#include <nav_msgs/OccupancyGrid.h>
 #include <geometry_msgs/Pose.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <pcl/ros/conversions.h>
@@ -16,6 +17,12 @@
 #include <fmutil/fm_math.h>
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
+
+#include <occupancy_grid_utils/ray_tracer.h>
+#include <boost/circular_buffer.hpp>
+#include <boost/optional.hpp>
+#include <boost/foreach.hpp>
+
 #include "RasterMapPCL.h"
 #include "readfrontend.h"
 #include <isam/isam.h>
@@ -23,6 +30,10 @@
 #include "GraphPF.h"
 
 #include "pcl_downsample.h"
+
+typedef boost::shared_ptr<occupancy_grid_utils::LocalizedCloud> CloudPtr;
+typedef boost::shared_ptr<occupancy_grid_utils::LocalizedCloud const> CloudConstPtr;
+typedef boost::circular_buffer<CloudConstPtr> CloudBuffer;
 
 void mat2RPY(const Eigen::Matrix3f& t, double& roll, double& pitch, double& yaw) {
     roll = atan2(t(2,1),t(2,2));
@@ -85,6 +96,56 @@ void publishNodeIdVis(int id, string text, geometry_msgs::Pose pose, ros::Publis
     marker.text = text;
     pub.publish(marker);
 }
+
+void computeBoundingBox(vector<geometry_msgs::Point32> &overall_pts, double &sizeX, double &sizeY, double &minX, double &minY){
+    minX = 1e99; minY = 1e99;
+    double maxX = 1e-99, maxY = 1e-99;
+    for(size_t i=0; i<overall_pts.size(); i++) {
+      if(minX > overall_pts[i].x) minX = overall_pts[i].x;
+      if(minY > overall_pts[i].y) minY = overall_pts[i].y;
+      if(maxX < overall_pts[i].x) maxX = overall_pts[i].x;
+      if(maxY < overall_pts[i].y) maxY = overall_pts[i].y;
+    }
+    sizeX = maxX - minX;
+    sizeY = maxY - minY;
+}
+
+void sendOccupancy(vector<geometry_msgs::Point32> &overall_pts, CloudBuffer &clouds, ros::Publisher &map_pub)
+{
+    double sizeX, sizeY, minX, minY;
+    computeBoundingBox(overall_pts, sizeX, sizeY, minX, minY);
+    nav_msgs::OccupancyGrid grid_info;
+    double resolution = 0.1;
+    double min_occ = 0.07;
+    double max_range = 80;
+    grid_info.info.height = sizeY/resolution;
+    grid_info.info.width = sizeX/resolution;
+    geometry_msgs::Pose origin;
+    origin.orientation.w = 1.0;
+    origin.position.x = minX;
+    origin.position.y = minY;
+    grid_info.info.origin = origin;
+    grid_info.info.resolution = resolution;
+    grid_info.info.origin.orientation.w = 1.0;
+    occupancy_grid_utils::OverlayClouds overlay =
+      occupancy_grid_utils::createCloudOverlay(grid_info, "scan_odo", min_occ, max_range, 2);
+    BOOST_FOREACH  (CloudConstPtr cloud, clouds)
+    {
+        //cout<<cloud->cloud.points.size()<<endl;
+        occupancy_grid_utils::addCloud(&overlay, cloud);
+    }
+    nav_msgs::OccupancyGrid::ConstPtr grid = occupancy_grid_utils::getGrid(overlay);
+    map_pub.publish(grid);
+}
+
+sensor_msgs::PointCloud pclToPC(pcl::PointCloud<pcl::PointNormal> &matching_cloud)
+{
+    sensor_msgs::PointCloud2 matching_pc2;
+    sensor_msgs::PointCloud pc_vec;
+    pcl::toROSMsg(matching_cloud, matching_pc2);
+    sensor_msgs::convertPointCloud2ToPointCloud(matching_pc2, pc_vec);
+    return pc_vec;
+}
 int main(int argc, char **argv) {
 
     fmutil::Stopwatch sw;
@@ -93,6 +154,9 @@ int main(int argc, char **argv) {
     ros::NodeHandle nh;
     ros::Publisher src_pub, dst_pub, query_pub, overall_pub, factors_pub, nodeid_pub;
     ros::Publisher vis_pub = nh.advertise<visualization_msgs::MarkerArray>( "visualization_marker_array", 5 );
+    ros::Publisher matching_src = nh.advertise<sensor_msgs::PointCloud>("matching_src", 5);
+    ros::Publisher matching_dst = nh.advertise<sensor_msgs::PointCloud>("matching_dst", 5);
+    ros::Publisher map_pub_ = nh.advertise<nav_msgs::OccupancyGrid>("/map", 1, true);
     src_pub = nh.advertise<sensor_msgs::PointCloud>("src_pc", 5);
     dst_pub = nh.advertise<sensor_msgs::PointCloud>("dst_pc", 5);
     query_pub = nh.advertise<sensor_msgs::PointCloud>("pc_legacy_out", 5);
@@ -110,38 +174,39 @@ int main(int argc, char **argv) {
     ifstream dataStreamSrc, pcStreamSrc;
 
     vector<vector<double> > scores_array, rotations_array;
-    int skip_reading = 1;
-    int size = 647;
+    int skip_reading = atoi(argv[2]);
+
     int start_node = 5;
     double res_ = 0.1;
     vector<pcl::PointCloud<pcl::PointNormal> > matching_clouds;
-    vector<sensor_msgs::PointCloud> pc_vecs;
+    
     string frontend_file = argv[1];
     int startfile_idx = frontend_file.find_last_of("/") + 1;
+    string folder = frontend_file.substr(0, startfile_idx);
     frontend_file = frontend_file.substr(startfile_idx,
             frontend_file.size() - startfile_idx - 4);
     MySQLHelper mysql("normal_scanmatch", frontend_file);
 
+    vector<geometry_msgs::Pose> poses;
+    vector<sensor_msgs::PointCloud> pc_vecs, pc_vecs_raw;
+    readFrontEndFile(argv[1], poses);
 
-    for (int j = 0; j < 654; j++) {
+    for (size_t j = 0; j < poses.size(); j+=skip_reading) {
         stringstream matching_file;
-        matching_file << "amcl2_pcd/" << setfill('0') << setw(5) << j * 2
+        matching_file << folder << setfill('0') << setw(5) << j
                 << ".pcd";
-        pcl::PointCloud<pcl::PointNormal> matching_cloud;
-        pcl::io::loadPCDFile(matching_file.str(), matching_cloud);
-        matching_cloud = pcl_downsample(matching_cloud, res_ * 2, res_ * 2,
+        pcl::PointCloud<pcl::PointNormal> matching_cloud_raw, matching_cloud;
+        pcl::io::loadPCDFile(matching_file.str(), matching_cloud_raw);
+        matching_cloud = pcl_downsample(matching_cloud_raw, res_ * 2, res_ * 2,
                 res_ * 2);
         matching_clouds.push_back(matching_cloud);
-        sensor_msgs::PointCloud2 matching_pc2;
-        sensor_msgs::PointCloud pc_vec;
-        pcl::toROSMsg(matching_cloud, matching_pc2);
-        sensor_msgs::convertPointCloud2ToPointCloud(matching_pc2, pc_vec);
-        pc_vecs.push_back(pc_vec);
+        
+        pc_vecs.push_back(pclToPC(matching_cloud));
+        pc_vecs_raw.push_back(pclToPC(matching_cloud_raw));
         cout<<"reading frontend "<<matching_file.str()<<"          \xd"<<flush;
     }
     cout<<endl;
-    vector<geometry_msgs::Pose> poses;
-    readFrontEndFile(argv[1], poses);
+    int size = poses.size()/skip_reading-6;//647;    
     // instance of the main class that manages and optimizes the pose graph
     isam::Slam slam;
     slam._prop.max_iterations = 100;
@@ -181,12 +246,12 @@ int main(int argc, char **argv) {
     isam::Pose3d_Pose3d_Factor *previous_constraint, *current_constraint;
     bool previous_cl = false, current_cl = false;
     int previous_cl_count = 0;
-    for (int i = start_node; i < size * skip_reading; i += skip_reading) {
+    for (int i = start_node; i < size; i ++) {
         cout << "**************************" << endl;
         fmutil::Stopwatch sw("overall", true);
         RasterMapPCL rmpcl;
         //vector<geometry_msgs::Point32> combines_prior, prior_m5, prior_p5;
-        geometry_msgs::Pose odo = ominus(poses[i], poses[i - skip_reading]);
+        geometry_msgs::Pose odo = ominus(poses[i*skip_reading], poses[i*skip_reading - skip_reading]);
         isam::Pose3d_Node* new_pose_node = new isam::Pose3d_Node();
         slam.add_node(new_pose_node);
         pose_nodes[i] = (new_pose_node);
@@ -195,14 +260,14 @@ int main(int argc, char **argv) {
                 odo.orientation.z, 0., 0.); // x,y,theta
 
         isam::Pose3d_Pose3d_Factor* constraint = new isam::Pose3d_Pose3d_Factor(
-                pose_nodes[i-skip_reading], pose_nodes[i],
+                pose_nodes[i-1], pose_nodes[i],
                 odometry, noise3);
         slam.add_factor(constraint);
 
         fmutil::Stopwatch sw_cl("close_loop", true); //~100 ms Raster map causes it
+        //because first pose start with 00002.pcd
         int cl_node_idx = graphPF.getCloseloop(i);
         sw_cl.end();
-
         fmutil::Stopwatch sw_foundcl("found_cl", true);
         //cl_node_idx = -1;
         if (cl_node_idx != -1) {
@@ -211,6 +276,7 @@ int main(int argc, char **argv) {
 
 
             src_pc.points = pc_vecs[i].points;
+            //another first pose issue here
             query_pc.points = pc_vecs[j].points;
 
             //no covariance estimate for now
@@ -219,8 +285,8 @@ int main(int argc, char **argv) {
             //cout << cov << endl;
             dst_pc.points.clear();
             ScoreData sd;
-            sd.node_src = j;
-            sd.node_dst = i;
+            sd.node_src = j*skip_reading;
+            sd.node_dst = i*skip_reading;
             //sd.t = -sd.t;
             assert(mysql.getData(sd));
             pcl::PointCloud<pcl::PointNormal> matching_cloud = matching_clouds[j];
@@ -275,7 +341,7 @@ int main(int argc, char **argv) {
             isam::Noise noise = isam::Information(eigen_noise);
             isam::Pose3d_Pose3d_Factor* constraint =
                     new isam::Pose3d_Pose3d_Factor(pose_nodes[i],
-                            pose_nodes[j-2], odometry, noise3);
+                            pose_nodes[j], odometry, noise3);
             slam.add_factor(constraint);
             current_constraint = constraint;
             slam.batch_optimization();
@@ -345,13 +411,15 @@ int main(int argc, char **argv) {
 
         overall_pts.points.clear();
         overall_pts.header.frame_id = "scan_odo";
-        int node_idx = start_node;
+        int node_idx = start_node-1;
         double last_height = -1;
 
         //only if using a MESH_RESOURCE marker type:
 
         visualization_msgs::MarkerArray marker_arr;
+        sensor_msgs::PointCloud matching_src_pc, matching_dst_pc;
         int node_id = 4;
+        CloudBuffer clouds(3000);
         for (std::list<isam::Node*>::const_iterator it = nodes.begin();
                 it != nodes.end(); it++, node_id++) {
             isam::Node& node = **it;
@@ -365,14 +433,33 @@ int main(int argc, char **argv) {
             last_height = estimated_pt.position.z;
             //cout<<estimated_pt.x << " "<< estimated_pt.y<< " "<<estimated_pt.z<<endl;
             vector<geometry_msgs::Point32> tfed_pts = getTransformedPts(
-                    estimated_pt, pc_vecs[node_idx++ * skip_reading].points);
+                    estimated_pt, pc_vecs[node_idx].points);
+            if(node_id == cl_node_idx)
+            	matching_dst_pc.points = tfed_pts;
+            if(node_id == i)
+            	matching_src_pc.points = tfed_pts;
             overall_pts.points.insert(overall_pts.points.end(),
                     tfed_pts.begin(), tfed_pts.end());
             stringstream ss;
             ss<<"node_"<<node_id;
             marker_arr.markers.push_back(getMarker(node_id, ss.str(), estimated_pt));
             publishNodeIdVis(node_id, ss.str(), estimated_pt, nodeid_pub);
+
+            //building final occupancy map
+            CloudPtr localized_cloud(new occupancy_grid_utils::LocalizedCloud());
+            localized_cloud->header.frame_id = "scan_odo";
+            localized_cloud->sensor_pose.orientation = tf::createQuaternionMsgFromYaw(estimated_pt.orientation.z);
+            geometry_msgs::Point p = estimated_pt.position;
+            p.z = 0.0;
+            localized_cloud->sensor_pose.position = p;
+            localized_cloud->cloud = pc_vecs_raw[node_idx];
+            clouds.push_back(localized_cloud);
+            node_idx++;
         }
+
+        //send occupancy map
+        if(i==size-1)
+          sendOccupancy(overall_pts.points, clouds, map_pub_);
 
         list<isam::Factor*> factors = slam.get_factors();
         factors_msg.poses.clear();
@@ -427,13 +514,16 @@ int main(int argc, char **argv) {
             overall_pub.publish(overall_pts);
             factors_pub.publish(factors_msg);
             vis_pub.publish( marker_arr );
+            matching_dst_pc.header = matching_src_pc.header = overall_pts.header;
+            matching_src.publish(matching_src_pc);
+            matching_dst.publish(matching_dst_pc);
             ros::spinOnce();
         }
         sw_ds.end();
 
         sw.end();
         string name;
-        std::getline (std::cin,name);
+        //std::getline (std::cin,name);
         
         cout << "***********************************" << endl;
     }

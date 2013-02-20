@@ -179,8 +179,8 @@ private:
 
 			//reminder: pc_vec_ has the complete data
 			ScoreData sd;
-			sd.node_dst = matching_node/skip_reading_;
-			sd.node_src = unique_nodes_array[i];
+			sd.node_dst = matching_node*skip_reading_;
+			sd.node_src = unique_nodes_array[i]*skip_reading_;
 			if(mysql_->getData(sd))
 			    score =  sd.final_score*100;
 			else score = 0.;
@@ -192,16 +192,18 @@ private:
 			}
 			nodes_match_heading_[unique_nodes_array[i]] = sd.t / 180. * M_PI;
 			if(score == 0.01) cout<<"Error, unexpected matching of nodes being evaluated: "
-						<<matching_node/skip_reading_<<":"<<unique_nodes_array[i]<<endl;
+						<<matching_node<<":"<<unique_nodes_array[i]<<endl;
 			//cout<<matching_node/skip_reading_<<"-"<<unique_nodes_array[i]<<":"<<score<<"->"<<score2<<" ";
 			//penalize nearby particles
 
 			//reduce penalize and look for peak to account for multiple possible close loop - done!
 
 			//find out why there is a significant drift in the raw sensor data - done, pitch value incorrect, set to zero for now
-			double dist = fabs(unique_nodes_array[i] - matching_node/skip_reading_);// < 10)
-			double weight_score;
-			weight_score = score / (5*exp(-dist*0.7)+1);
+			double dist = fabs(unique_nodes_array[i] - matching_node);// < 10)
+			double weight_score;//10	0.3
+			double a_t = 10;//5
+			double b_t = 0.3;//0.7
+			weight_score = score / (a_t*exp(-dist*b_t)+1);
 			if(weight_score < 0) weight_score = 0;
 			local_cached_score[unique_nodes_array[i]] = score;
 			local_cached_weight[unique_nodes_array[i]] =weight_score;
@@ -287,7 +289,7 @@ private:
 
 		//search maximum score within the sliding window
 		cout<<"max_node_id:"<<max_node_id<<endl;
-		if(abs(max_node_id*skip_reading_ - matching_node)>10)
+		if(abs(max_node_id - matching_node)>10)
 		{
 			//fixme: more elegant direct sorting would be great
 			for(int i=max_node_id-(int)window_size/2; i<=max_node_id+(int)window_size/2; i++)
@@ -310,7 +312,7 @@ private:
 		if( max_neighbor_score >30. && max_neighbor_node_id != -1 && max_accu > 20)
 		{
 				cout<<"close loop found at node "<<max_neighbor_node_id <<" with score "<<max_neighbor_score<<endl;
-				return max_neighbor_node_id*skip_reading_;
+				return max_neighbor_node_id;
 		}
 		else return -1;
 

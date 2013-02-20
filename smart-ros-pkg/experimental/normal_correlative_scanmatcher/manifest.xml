@@ -22,6 +22,7 @@
   <depend package="ga"/>  
   <rosdep name="opencv2"/>
   <rosdep name="libmysqlclient-dev"/>
+  <depend package="occupancy_grid_utils"/>
 </package>
 
 

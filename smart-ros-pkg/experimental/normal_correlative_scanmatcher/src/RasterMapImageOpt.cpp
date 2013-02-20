@@ -51,6 +51,7 @@ void addPointCloud(boost::shared_ptr<pcl::visualization::PCLVisualizer> &viewer,
 }
 
 int score_sql_idx = 0;
+string folder;
 void keyboardEventOccurred(const pcl::visualization::KeyboardEvent &event,
         void* viewer_void) {
     boost::shared_ptr<pcl::visualization::PCLVisualizer> viewer =
@@ -58,6 +59,7 @@ void keyboardEventOccurred(const pcl::visualization::KeyboardEvent &event,
     if (event.keyDown()) {
         if(matching_mode)
         {
+          cout<<"Matching mode"<<endl;
           viewer->removePointCloud("matching_cloud");
           viewer->removePointCloud("matching_normal_cloud");
           string keySym = event.getKeySym();
@@ -104,23 +106,31 @@ void keyboardEventOccurred(const pcl::visualization::KeyboardEvent &event,
       }
       else
       {
+        cout<<"Continuous mode"<<endl;
         viewer->removePointCloud("input_cloud");
         viewer->removePointCloud("input_normal_cloud");
         viewer->removePointCloud("matching_cloud");
         viewer->removePointCloud("matching_normal_cloud");
 
-        ScoreData sd = score_data_vec[score_sql_idx++];
+        ScoreData sd;
+        //do
+        {
+          sd = score_data_vec[score_sql_idx++];
+        }//while (sd.node_src < 200 || (sd.node_src > 5420 && sd.node_src<5700));
+          
+        
         stringstream input_file;
-        input_file <<"amcl2_pcd/"<<setfill('0')<<setw(5)<<sd.node_src*2<<".pcd";    
+        input_file <<folder<<setfill('0')<<setw(5)<<sd.node_src<<".pcd";    
         pcl::PointCloud<pcl::PointNormal> input_cloud;
         pcl::io::loadPCDFile(input_file.str(), input_cloud);
         vector<pcl::PointCloud<pcl::PointNormal> > input_clouds = append_input_cloud(input_cloud, frontend_file.c_str(), input_file.str());
 
         stringstream matching_file;
-        matching_file <<"amcl2_pcd/"<<setfill('0')<<setw(5)<<sd.node_dst*2<<".pcd";
+        matching_file <<folder<<setfill('0')<<setw(5)<<sd.node_dst<<".pcd";
         pcl::PointCloud<pcl::PointNormal> matching_cloud;
         pcl::io::loadPCDFile(matching_file.str(), matching_cloud);
-
+        cout<<input_file.str()<<endl;
+        cout<<matching_file.str()<<endl;
         double yaw_rotate = sd.t / 180. * M_PI;
         Eigen::Quaternionf bl_rotation(cos(yaw_rotate / 2.), 0, 0,
                   -sin(yaw_rotate / 2.));
@@ -231,7 +241,9 @@ int main(int argc, char **argv) {
         matching_mode = false;
         frontend_file = argv[2];
         int startfile_idx= frontend_file.find_last_of("/")+1;
+        folder = frontend_file.substr(0, startfile_idx);
         string frontend = frontend_file.substr(startfile_idx, frontend_file.size()-startfile_idx-4);
+        cout<<"Folder = "<<folder<<" frontend = "<<frontend<<endl;
         MySQLHelper mysql("normal_scanmatch", frontend);     
         score_data_vec = mysql.getListScoreConstraint(atof(argv[3]), atof(argv[4]), 10); 
       }
