@@ -22,7 +22,7 @@
   <depend package="octomap_ros"/>
   <depend package="octomap_msgs"/>
   <rosdep name="octomap" />
-  <!--depend package="common_rosdeps" /-->
+  <depend package="common_rosdeps" />
   <rosdep name="eigen" />
 </package>
 

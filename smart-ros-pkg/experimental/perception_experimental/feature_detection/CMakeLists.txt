@@ -26,6 +26,11 @@ rosbuild_genmsg()
 
 rosbuild_add_boost_directories()
 
+#find_package(octomap REQUIRED)
+#include_directories(/opt/ros/fuerte/include)
+#link_directories(/opt/ros/fuerte/lib)
+#link_libraries(octomap)
+
 find_package(octomap REQUIRED)
 include_directories(${OCTOMAP_INCLUDE_DIRS})
 link_directories(${OCTOMAP_LIBRARY_DIRS})
