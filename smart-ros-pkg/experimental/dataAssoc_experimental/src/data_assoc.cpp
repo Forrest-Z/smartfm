@@ -26,8 +26,11 @@ data_assoc::data_assoc(int argc, char** argv) : merge_lists(nh_), it_(nh_)
     n.param("poll_decrement", poll_dec_, 0.05);
 
     /// Setting up publishing
+    filtered_cluster_pub_ = nh_.advertise<sensor_msgs::PointCloud>("filtered_clusters",1);
     pedPub_ = nh_.advertise<sensing_on_road::pedestrian_vision_batch>("ped_data_assoc",1); /// topic name
     visualizer_ = nh_.advertise<sensor_msgs::PointCloud>("ped_data_assoc_visual",1);
+    visualize_good_object_ = nh_.advertise<sensor_msgs::PointCloud>("confident_objects",1);
+
     latest_id=0;
 
     listener_ = new tf::TransformListener(ros::Duration(10));
@@ -387,6 +390,18 @@ void data_assoc::pedClustCallback(sensor_msgs::ImageConstPtr image, feature_dete
     catch (cv_bridge::Exception& e){ROS_ERROR("cv_bridge exception: %s", e.what());return;}
     Mat img(cv_image->image);
     feature_detection::clusters cluster_vector = *cluster_vector_ptr;
+
+    sensor_msgs::PointCloud filtered_clusters;
+    filtered_clusters.header = cluster_vector.header;
+    for(size_t i=0; i<cluster_vector.clusters.size(); i++)
+	{
+		for(size_t j=0; j<cluster_vector.clusters[i].points.size(); j++)
+		{
+			filtered_clusters.points.push_back(cluster_vector.clusters[i].points[j]);
+		}
+	}
+    filtered_cluster_pub_.publish(filtered_clusters);
+
     /// loop over clusters to match with existing lPedInView
     //std::vector<feature_detection::cluster> clusters = cluster_vector.clusters;
 
@@ -493,7 +508,6 @@ void data_assoc::cleanUp()
             printf("Erase ped with ID %d due to time out", lPedInView.pd_vector[jj].object_label);
             merge_lists.erase_merge_lists(lPedInView.pd_vector[jj].object_label);
             lPedInView.pd_vector.erase(lPedInView.pd_vector.begin()+jj);
-
         }
         else
             jj++;
@@ -506,22 +520,27 @@ void data_assoc::publishPed(Mat img)
 {
     dataAssoc_experimental::PedDataAssoc_vector lPed;
     sensor_msgs::PointCloud pc;
-    ROS_DEBUG_STREAM("publishPed start");
     pc.header.frame_id = global_frame_;
     pc.header.stamp = ros::Time::now();
+    sensor_msgs::PointCloud ppc;
+    ppc.header.frame_id = global_frame_;
+    ppc.header.stamp = ros::Time::now();
+    ROS_DEBUG_STREAM("publishPed start");
     for(int ii=0; ii <lPedInView.pd_vector.size(); ii++)
     {
-
         geometry_msgs::Point32 p;
         p = lPedInView.pd_vector[ii].cluster.centroid;
         //p.z = lPedInView.pd_vector[ii].object_label;
         p.z = 0.0;
-        pc.points.push_back(p);
         ROS_DEBUG("lPenInView.pd_vector confidence = %lf ", lPedInView.pd_vector[ii].confidence);
+        pc.points.push_back(p);
+        if(lPedInView.pd_vector[ii].confidence > 0.1) ppc.points.push_back(p);
         if(!imageProjection(img, lPedInView.header, lPedInView.pd_vector[ii], false)) continue;
     }
     pedPub_.publish(lPedInView);
     visualizer_.publish(pc);
+    visualize_good_object_.publish(ppc);
+
     ROS_DEBUG_STREAM("publishPed end");
 }
 

@@ -155,8 +155,11 @@ private:
     bool getlPedInViewCentroid(int id, geometry_msgs::Point32& centroid);
 
     void getLocalLPedInView(vector<local_lPedInView>& lPedInView_local);
+    ros::Publisher filtered_cluster_pub_;
     ros::Publisher pedPub_;
     ros::Publisher visualizer_;
+    ros::Publisher visualize_good_object_;
+
     string frame_id_, global_frame_, camera_frame_;
     bool use_sim_time_;
     tf::TransformListener *listener_;
