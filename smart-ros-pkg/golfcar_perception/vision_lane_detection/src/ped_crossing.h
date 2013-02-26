@@ -28,8 +28,6 @@ using namespace std;
 using namespace ros;
 using namespace tf;
 
-#define LANES_CLUSTER_ANGLE_THRESH M_PI*10.0/180.0
-
 namespace golfcar_vision{
 
 	void line_calculate(CvBox2D box, double long_side_parameter[3], double short_side_parameter[3]);
@@ -125,7 +123,7 @@ namespace golfcar_vision{
 		//distance of pointB[1] (second box) to the first short line;
 		double distance = fabs(shortsideA[0]*pointB[1].x+shortsideA[1]*pointB[1].y+shortsideA[2])/sqrt(shortsideA[0]*shortsideA[0]+shortsideA[1]*shortsideA[1]);
 
-		bool distance_criterion = distance < 2*30;
+		bool distance_criterion = distance < 2*20;
 
 		printf("distance %3f \n", distance);
 
@@ -134,8 +132,6 @@ namespace golfcar_vision{
 
 		return (angle_criterion && distance_criterion);
 	}
-
-
 
     class ped_crossing {
         public:

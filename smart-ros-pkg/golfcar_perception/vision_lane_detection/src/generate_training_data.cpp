@@ -8,156 +8,95 @@
 #include <cstdio>
 #include <vector>
 #include <stdlib.h>
+
 using namespace std;
-
+using namespace golfcar_vision;
 CvPoint corners_[4];
+float scale_;
+std::vector<CvPoint> ipm_polygon_;
 
-int height = 360;
-int width  = 640;
-float scale_ = float(height)/GND_HEIGHT;
-    
-void cvBoxPoints( CvBox2D box, CvPoint2D32f pt[4] )
+void load_parameter_file()
 {
-      double angle = - box.angle*M_PI/180.0;
-      float a = (float)cos(angle)*0.5f;
-      float b = (float)sin(angle)*0.5f;
- 
-      pt[0].x = box.center.x - a*box.size.width - b*box.size.height;
-      pt[0].y = box.center.y + b*box.size.width - a*box.size.height;
-      pt[1].x = box.center.x + a*box.size.width - b*box.size.height;
-      pt[1].y = box.center.y - b*box.size.width - a*box.size.height;
-      pt[2].x = 2*box.center.x - pt[0].x;
-      pt[2].y = 2*box.center.y - pt[0].y;
-      pt[3].x = 2*box.center.x - pt[1].x;
-      pt[3].y = 2*box.center.y - pt[1].y;
-} 
+	FILE *fp_restore;
+	fp_restore = fopen("./images/parameter_file","r");
+	if(fp_restore==NULL)
+	{
+		fprintf(stderr,"can't open file \n");
+		exit(1);
+	}
+	cout<<"File opened"<<endl;
 
-void DrawBox(CvBox2D box, IplImage* img, CvScalar ext_color)
-{
-      CvPoint2D32f point[4];
-      int i;
-      for ( i=0; i<4; i++)
-      {
-          point[i].x = 0;
-          point[i].y = 0;
-      }
-      
-     cvBoxPoints(box, point); 
-     CvPoint pt[4];
-     
-     for ( i=0; i<4; i++)
-     {
-         pt[i].x = (int)point[i].x;
-         pt[i].y = (int)point[i].y;
-     }
-     cvLine( img, pt[0], pt[1], ext_color, 2, 8, 0 );
-     cvLine( img, pt[1], pt[2], ext_color, 2, 8, 0 );
-     cvLine( img, pt[2], pt[3], ext_color, 2, 8, 0 );
-     cvLine( img, pt[3], pt[0], ext_color, 2, 8, 0 );
-} 
-
-bool CheckPointInside(CvPoint pt_para)
-{
-    corners_[0].x = int(width/2 - RECT_P0_Y * scale_);    
-    corners_[0].y = height;
-    corners_[1].x = int(width/2 - RECT_P1_Y * scale_);
-    corners_[1].y = height;
-    corners_[2].x = width;   
-    corners_[2].y = 0;
-    corners_[3].x = 0;   
-    corners_[3].y = 0;
-    
-    double delt_x1, delt_y1, delt_x2, delt_y2;
-    delt_x1= corners_[0].x-corners_[3].x;
-    delt_y1= corners_[0].y-corners_[3].y;
-    delt_x2 = corners_[1].x-corners_[2].x;
-    delt_y2 = corners_[1].y-corners_[2].y;
-
-    double para_A1_ = delt_y1/delt_x1;
-    double para_C1_ = corners_[0].y-para_A1_*corners_[0].x;
-    double para_A2_ = delt_y2/delt_x2;
-    double para_C2_ = corners_[1].y-para_A2_*corners_[1].x;
-
-    //The boundary at the upper line is tricky, put the margin to "5";
-    //see the "upper_boundary" picture;
-    bool out_flag1 = pt_para.y+5 > corners_[0].y;
-    bool out_flag2 = pt_para.y-BOUNDARY_MARGIN < 0;
-    bool out_flag3 = pt_para.y+BOUNDARY_MARGIN > para_A1_*pt_para.x+para_C1_;
-    bool out_flag4 = pt_para.y+BOUNDARY_MARGIN > para_A2_*pt_para.x+para_C2_;
-    
-    //printf("pt_para.x, pt_para.y (%d, %d)", pt_para.x, pt_para.y);
-        
-    if(out_flag1||out_flag2||out_flag3||out_flag4) 
-    {
-        //printf("-------outside------\n");
-        return false;
-    }
-    else 
-    {
-        //printf("-------inside------\n");
-        return true;
-    }
+	for(int i=0; i<4; i++) ipm_polygon_.push_back(cvPoint(0, 0));
+	fscanf(fp_restore, "%f\t", &scale_);
+	fscanf(fp_restore, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t", &ipm_polygon_[0].x, &ipm_polygon_[0].y, &ipm_polygon_[1].x, &ipm_polygon_[1].y,
+														   &ipm_polygon_[2].x, &ipm_polygon_[2].y, &ipm_polygon_[3].x, &ipm_polygon_[3].y);
+	fclose(fp_restore);
 }
-    
- CvSeq* Filter_candidates (CvContourScanner &scanner)
+
+CvSeq* Filter_candidates (CvContourScanner &scanner, unsigned int module_type)
 {
     CvSeq* c;
     CvBox2D cvBox;
     CvMemStorage *mem_box;
     mem_box = cvCreateMemStorage(0);
+
     while((c=cvFindNextContour(scanner))!=NULL)
     {
         //1st criterion: perimeter should be long enough;
         double len_pixel = cvContourPerimeter(c);
-        double len_meter = len_pixel * scale_;
-        if(len_meter < CONTOUR_PERIMETER_THRESH)
-        {
-            cvSubstituteContour(scanner, NULL);
-        }
-        else
-        {
-            //2nd criterion: long side should exceed certain threshold;
-            cvBox = cvMinAreaRect2(c, mem_box);
-            float height =  cvBox.size.height;
-            float width  =  cvBox.size.width;
-            float long_side = max(height, width);
-            if(long_side<LONG_SIDE_THRESH*scale_)
-            {
-                cvSubstituteContour(scanner, NULL);
-            }
-            else
-            {
-				/*
-                //3rd criterion: four corners shouldn't appear at the boundary;
-                CvPoint2D32f point[4];
-                cvBoxPoints(cvBox, point); 
-                CvPoint pt[4];
-                for (int i=0; i<4; i++)
-                {
-                    pt[i].x = (int)point[i].x;
-                    pt[i].y = (int)point[i].y;
-                    if(!CheckPointInside(pt[i])) 
-                    {
-                        cvSubstituteContour(scanner, NULL);
-                        break;
-                    }
-                }
-                */ 
-            }   
-        }                       
+        double len_meter = len_pixel/scale_;
+        bool len_criterion = (len_meter > CONTOUR_PERIMETER_THRESH);
+
+        //2nd criterion: long side should exceed certain threshold;
+		cvBox = cvMinAreaRect2(c, mem_box);
+		float height =  cvBox.size.height;
+		float width  =  cvBox.size.width;
+		float long_side = max(height, width);
+		bool  long_side_criterion = long_side > LONG_SIDE_THRESH*scale_;
+
+		//3nd criterion: no touching polygon boundary;
+		//this criterion only applies to discrete markers, while not to continuous lanes;
+		bool inside_polygon = true;
+		CvPoint2D32f point[4];
+		calc_cvBoxPoints(cvBox, point);
+		for (int i=0; i<4; i++)
+		{
+			for(int a = -1; a<=1; a++)
+			{
+				for(int b = -1; b<=1; b++)
+				{
+					CvPoint tmppoint = cvPoint(point[i].x+a, point[i].y+b);
+
+					if(pointInPolygon <CvPoint> (tmppoint,ipm_polygon_))
+					{
+						inside_polygon = false;
+						break;
+					}
+				}
+				if(!inside_polygon) break;
+			}
+		}
+
+		bool contour_criteria;
+		if(module_type == 1 || module_type == 3 || module_type == 4)
+		{
+			contour_criteria = len_criterion && long_side_criterion && inside_polygon;
+		}
+		else if(module_type == 2 )
+		{
+			contour_criteria = len_criterion && long_side_criterion;
+		}
+
+		if(!contour_criteria) cvSubstituteContour(scanner, NULL);
     }
     CvSeq *contours = cvEndFindContours(&scanner);
     cvReleaseMemStorage(&mem_box);
     return contours;
-}
+  }
+
 
 int main(int argc, char** argv) 
 {
-    IplImage *It = 0, *Iat = 0, *Itand = 0;
-    It = cvCreateImage(cvSize(width,height),IPL_DEPTH_8U, 1);
-    Iat = cvCreateImage(cvSize(width,height),IPL_DEPTH_8U, 1);
-    Itand = cvCreateImage(cvSize(width,height),IPL_DEPTH_8U, 1);
-    
     IplImage *Igray = 0;
     CvSeq *contours = 0;
     CvMemStorage *mem_contours;
@@ -178,7 +117,18 @@ int main(int argc, char** argv)
     float boxshortside;
     float boxlongside;
     unsigned int class_type;
-    
+
+    load_parameter_file();
+
+    //--------------------------------------------------------------------------------------
+    //there are multiple modules to be trained, 4 right now.
+    unsigned int module_type;
+    printf("Please key in the module type\n");
+    scanf("%u", &module_type);
+    printf("module type: %u\n", module_type);
+    //--------------------------------------------------------------------------------------
+
+    //--------------------------------------------------------------------------------------
     //key in image range; interact with the code from terminal;
     unsigned int start_num = 0, end_num = 0;
     int image_range_OK = 0;
@@ -186,19 +136,25 @@ int main(int argc, char** argv)
     {
         printf("Please key in the the start number, the end number\n");
         scanf("%u:%u", &start_num, &end_num);
+
         printf("begin to extract training data from images: %u:%u\n", start_num, end_num);
+
         printf("Redo type 0, Go on type 1\n");
         scanf("%d", &image_range_OK);
     }
-    
-    //cvNamedWindow("raw",1);
+    //--------------------------------------------------------------------------------------
+
     cvNamedWindow("contour_image",1);
-    
-    for(unsigned int image_serial =start_num; image_serial<=end_num; image_serial++)
+
+    for(unsigned int image_serial = start_num; image_serial<=end_num; image_serial++)
     {
         //try to open the file to be written;
         FILE *fp;
-        if((fp=fopen("./training_data", "a"))==NULL){printf("cannot open file\n");return 0;}
+        stringstream  training_data_string;
+        training_data_string<<"./images/training_data"<<module_type;
+        const char *training_data_name = training_data_string.str().c_str();
+
+        if((fp=fopen(training_data_name, "a"))==NULL){printf("cannot open file\n");return 0;}
     
         printf("----------------------------------------------------------------------\n");
         printf("process image %u\n", image_serial);
@@ -210,19 +166,16 @@ int main(int argc, char** argv)
         //try to load the image;
         if((Igray = cvLoadImage( input_name, CV_LOAD_IMAGE_GRAYSCALE)) == 0) 
         {return -1;printf("cannot load the required picture");continue;}
-        
-        cvThreshold(Igray,It,BINARY_THRESH,255,CV_THRESH_BINARY);
-        cvAdaptiveThreshold(Igray, Iat, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, BLOCK_SIZE, OFFSET);
-        cvAnd(It, Iat, Itand);
-        
-        printf("thresholding finished\n");
-        
+
         IplImage *contour_img = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 3);
-        cvCvtColor(Itand, contour_img, CV_GRAY2BGR);
+        cvCvtColor(Igray, contour_img, CV_GRAY2BGR);
+        cvShowImage("contour_image",contour_img);
+        cvWaitKey(100);
+
         CvScalar ext_color;
         
-        CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-        contours = Filter_candidates(scanner);
+        CvContourScanner scanner = cvStartFindContours(Igray, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
+        contours = Filter_candidates(scanner, module_type);
         
         printf("contours extracted\n\n");
         
@@ -238,7 +191,7 @@ int main(int argc, char** argv)
         
         //to record the first address of the contours;
         CvSeq *first_contours = contours;
-        
+
         for (; contours != 0; contours = contours->h_next)
         {   
             ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 ); 
@@ -272,7 +225,6 @@ int main(int argc, char** argv)
                         
             printf("contour %u\n", contour_serial_in_this_image);
             cvWaitKey(100);
-            //cvWaitKey(0);                   //it seems not working properly;
             
             class_type = 1;
             printf("please key in the type of this contour\n");
@@ -321,9 +273,9 @@ int main(int argc, char** argv)
 				approxPtNum 	= 	approxNum_vector[contour_serial_in_this_image];
 				
                 fprintf(fp, "%u\t%u\t", image_serial, class_type);
-                fprintf(fp, "%lf\t%lf\t%d\t",contour_weight,contour_perimeter,approxPtNum);
                 fprintf(fp, "%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\t", cvHM.hu1, cvHM.hu2, cvHM.hu3, cvHM.hu4, cvHM.hu5, cvHM.hu6, cvHM.hu7);
-                fprintf(fp, "%lf\t%lf\n", boxshortside, boxlongside);
+                fprintf(fp, "%lf\t%lf\t", boxshortside, boxlongside);
+                fprintf(fp, "%lf\t%lf\t%d\n",contour_weight,contour_perimeter,approxPtNum);
                 
                 printf("image serial: %u, contour serial: %u, contour class: %u\n", image_serial, contour_serial_in_this_image, class_type);
                 printf("H-Moment: %lf\t%lf\t%lf\t%lf\t%lf\t%lf\t%lf\n", cvHM.hu1, cvHM.hu2, cvHM.hu3, cvHM.hu4, cvHM.hu5, cvHM.hu6, cvHM.hu7);
@@ -339,14 +291,11 @@ int main(int argc, char** argv)
     }
     
     cvReleaseImage(&Igray);
-    cvReleaseImage(&It);
-    cvReleaseImage(&Iat);
     cvReleaseMemStorage(&mem_contours);
     cvReleaseMemStorage(&mem_box);
     cvReleaseMemStorage(&mem_poly);
     //cvDestroyWindow("Raw");
     cvDestroyWindow("contour_image");
-    
     return 0;
 }
 

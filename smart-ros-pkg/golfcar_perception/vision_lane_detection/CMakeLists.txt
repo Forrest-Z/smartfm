@@ -75,7 +75,6 @@ target_link_libraries(generate_training_data ${OpenCV_LIBRARIES})
 rosbuild_add_executable(data_formating src/data_formating.cpp)
 rosbuild_add_executable(extrinsic_calibration src/extrinsic_calibration.cpp)
 
-
 #target_link_libraries(wrap_example ${OpenCV_LIBRARIES})
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)

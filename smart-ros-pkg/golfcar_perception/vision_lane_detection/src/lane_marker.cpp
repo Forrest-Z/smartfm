@@ -23,6 +23,9 @@ namespace golfcar_vision{
 
       markers_pub_ = nh_.advertise<vision_lane_detection::markers_info>("markers", 10);
       markers_ptcloud_pub_ = nh_.advertise<sensor_msgs::PointCloud>("markers_ptcloud",2);
+
+	  private_nh_.param("image_folder_path", image_folder_path_, std::string("/home/baoxing/images"));
+      store_parameter_ = true;
     }
 
 	void lane_marker::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
@@ -65,7 +68,7 @@ namespace golfcar_vision{
     	//------------------------------------------------------------------------------------------------------------------------------
         //1. to find the contours from image;
         //------------------------------------------------------------------------------------------------------------------------------
-    	IplImage* color_image, *binary_img;
+    	IplImage* color_image, *binary_img, *binary_copy;
 		try
 		{
 			color_image = bridge_.imgMsgToCv(msg, "bgr8");
@@ -76,7 +79,9 @@ namespace golfcar_vision{
 			return;
 		}
 		binary_img = cvCreateImage(cvGetSize(color_image),8,1);
+		binary_copy = cvCreateImage(cvGetSize(color_image),8,1);
 		cvCvtColor(color_image, binary_img, CV_BGR2GRAY);
+		cvCopy(binary_img, binary_copy);
 
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";
         CvSeq *first_contour = 0;       //always keep one copy of the beginning of this list, for further usage;
@@ -107,7 +112,6 @@ namespace golfcar_vision{
         CvBox2D cvBox;
         CvMemStorage *mem_box;
         mem_box = cvCreateMemStorage(0);
-        
         
 		CvSeq *contour_poly;
 		CvMemStorage *mem_poly;
@@ -212,6 +216,7 @@ namespace golfcar_vision{
 			  markers_pt_inImg.push_back(pttmp);
 		  }
 		}
+
 		lane_marker::IpmImage_to_pcl(markers_pt_inImg, markers_ptcloud);
 		markers_ptcloud.header.stamp = msg -> header.stamp;
 		markers_ptcloud.header.frame_id = "base_link";
@@ -224,7 +229,25 @@ namespace golfcar_vision{
         //only use when to extract training pictures;
         //once entering this loop, meaning at least one contour exist, save image as training sets;
         //-----------------------------------------------------------------------------------------------
-        if(contour_num_in_this_image>0) extract_training_image(binary_img);
+        if(contour_num_in_this_image>0) extract_training_image(binary_copy);
+        if(extract_training_image_ && store_parameter_ )
+        {
+        	store_parameter_ = false;
+        	FILE *fp;
+
+        	stringstream  name_string;
+        	name_string<< image_folder_path_ <<"/parameter_file";
+
+        	const char *param_file_name = name_string.str().c_str();
+        	if((fp=fopen(param_file_name, "w"))==NULL){printf("cannot open file\n");}
+        	else
+        	{
+        		fprintf(fp, "%f\t", scale_);
+        		fprintf(fp, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t", ipm_polygon_[0].x, ipm_polygon_[0].y, ipm_polygon_[1].x, ipm_polygon_[1].y,
+        														ipm_polygon_[2].x, ipm_polygon_[2].y, ipm_polygon_[3].x, ipm_polygon_[3].y);
+        		fclose(fp);
+        	}
+        }
 
         cvReleaseMemStorage(&mem_contours);
         cvReleaseMemStorage(&mem_box);
@@ -232,6 +255,8 @@ namespace golfcar_vision{
 
         cvWaitKey(1);
         cvReleaseImage(&contour_img);
+        cvReleaseImage(&binary_img);
+        cvReleaseImage(&binary_copy);
     }
 
     void lane_marker::extract_training_image(IplImage* binary_img)
@@ -241,7 +266,8 @@ namespace golfcar_vision{
 			stringstream  name_string;
 			int stored_serial= frame_serial_/2;
 			//pay attention, this path to the folder cannot be too long, or OpenCV will crash;
-			name_string<<"/home/baoxing/images/frame"<<stored_serial<<".jpg";
+			name_string<< image_folder_path_ <<"/frame"<<stored_serial<<".jpg";
+
 			const char *output_name = name_string.str().c_str();
 
 			if (!cvSaveImage(output_name, binary_img))
@@ -252,7 +278,6 @@ namespace golfcar_vision{
             frame_serial_++;
         }
     }
-
 
     //Use libsvm to classify each contour; input features are of type "CvHuMoments" and "CvBox2D";
     //More and better features may be used in the future;
@@ -267,8 +292,8 @@ namespace golfcar_vision{
         //Data scaling here enables svm to get better accuracy;
 
         //keep accordance with "data_formating";
-        double long_side_scaled = (max(width, height))/100.0;
-        double short_side_scaled = (min(width, height))/100.0;
+        double long_side_scaled = max(width, height);
+        double short_side_scaled = min(width, height);
 
         int vector_length = 12;
 		double marker_feature_vector[vector_length];
@@ -287,7 +312,6 @@ namespace golfcar_vision{
 
 		int class_label = -1;
 		class_label = marker_classifier_->classify_objects(marker_feature_vector, vector_length);
-
         return class_label;
     }
     
