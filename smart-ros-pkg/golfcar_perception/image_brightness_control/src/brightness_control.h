@@ -42,6 +42,10 @@ namespace golfcar_vision{
 	bool visualization_flag_;
 	void DrawHistogram(IplImage* imgHist, CvHistogram *hist);
 	void generate_ctrl_cmd(image_brightness_control::image_brightness & brightness_indicator);
+	double last_err;
+	double cmd;
+	double k_p, k_i;
+	int ctrl_gain;
     };
 };
 
