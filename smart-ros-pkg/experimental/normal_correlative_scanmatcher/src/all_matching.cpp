@@ -68,7 +68,9 @@ int main(int argc, char** argv)
   frontend_file = frontend_file.substr(startfile_idx, frontend_file.size()-startfile_idx-4);
   MySQLHelper mysql("normal_scanmatch", frontend_file);
   mysql.createTable();
-  for(int j=0; j<total_files/*654*/; j+=skip_read)
+  //start_idx = 225;
+  //end_idx = 340;
+  for(int j=0; j<total_files; j+=skip_read)
   {
     stringstream matching_file;
     matching_file <<folder<<setfill('0')<<setw(5)<<j<<".pcd";
@@ -80,7 +82,7 @@ int main(int argc, char** argv)
   }
   cout<<endl;
 #pragma omp parallel for
-  for(int i=start_idx; i<end_idx; i++)
+  for(int i=556/*start_idx*/; i<816/*end_idx*/; i++)
   {
     if(i%skip_read != 0) continue;
     stringstream input_file;

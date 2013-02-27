@@ -273,7 +273,7 @@ int main(int argc, char **argv) {
         if (cl_node_idx != -1) {
             fmutil::Stopwatch sw_found_cl_a("found_cl_a");
             int j = cl_node_idx;
-
+            if(j<start_node) continue;
 
             src_pc.points = pc_vecs[i].points;
             //another first pose issue here
@@ -322,7 +322,7 @@ int main(int argc, char **argv) {
                 query_pub.publish(query_pc);
                 ros::spinOnce();
             }
-
+            
             cout << "Match found at " << i << " " << j << " with score "
                     << endl; //best_tf.score <<" recorded "<<scores_array[i/skip_reading][j/skip_reading] <<" ver_score "<<ver_score<<" "<<temp_score<<endl;
             //if(temp_score < 55)continue;
