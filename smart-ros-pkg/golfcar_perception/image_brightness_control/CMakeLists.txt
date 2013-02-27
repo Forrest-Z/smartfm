@@ -25,7 +25,7 @@ rosbuild_genmsg()
 #rosbuild_gensrv()
 
 find_package(OpenCV REQUIRED)
-rosbuild_add_executable(brightness_control src/brightness_control.cpp)
+rosbuild_add_executable(brightness_control src/brightness_control_v2.cpp)
                     
 #target_link_libraries(wrap_example ${OpenCV_LIBRARIES})
 #common commands for building c++ executables and libraries
