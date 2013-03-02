@@ -14,7 +14,7 @@
   <depend package="cv_bridge"/>
   <depend package="tf"/>
   <depend package="image_view"/>
-  <!--depend package="mrpt_libs"/-->
+  <depend package="dynamic_reconfigure"/>
 </package>
 
 
