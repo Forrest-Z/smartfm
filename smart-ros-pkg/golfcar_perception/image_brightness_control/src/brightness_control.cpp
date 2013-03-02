@@ -2,7 +2,40 @@
 
 
 namespace golfcar_vision{
+
+  void PID::reset(void)
+  {
+	  err = 0;
+	  pre_err = 0;
+	  pre_pre_err = 0;
+  }
   
+  double PID::update(double err_in)
+  {
+        pre_pre_err = pre_err;
+        pre_err = err;
+        err = err_in;
+
+        double temp  = p * (err - pre_err) + (fabs(err) < i_lim ? i : 0.0) * err + d * (err + pre_pre_err - 2 * pre_err);
+        double temp2 = (fabs(temp) < delta_u_lim ?  temp : ( delta_u_lim * temp / fabs(temp)));
+        if(temp2 > u_lim_up)
+        {
+        	u = u_lim_up;
+        }
+        else if(temp2 < u_lim_down)
+        {
+        	u = u_lim_down;
+        }
+        else
+        {
+        	u = temp2;
+        }
+
+        return u;
+
+
+  }
+
   brightness_control::brightness_control():
     private_nh_("~"),
     it_(nh_)
@@ -22,6 +55,24 @@ namespace golfcar_vision{
 		  cvNamedWindow("histogram",1);
 	 }
 	 
+	 shuttle_pid.p = 0.01;
+	 shuttle_pid.i = 0.0;
+	 shuttle_pid.d = 0.0;
+	 shuttle_pid.reset();
+     shuttle_pid.u = 80;
+     shuttle_pid.u_lim_down = 10;
+     shuttle_pid.u_lim_up = 300;
+     shuttle_pid.delta_u_lim = 20;
+
+     gain_pid.p = 0.01;
+     gain_pid.i = 0.0;
+     gain_pid.d = 0.0;
+     gain_pid.reset();
+     gain_pid.u = 40;
+     gain_pid.u_lim_down = 10;
+     gain_pid.u_lim_up = 250;
+     gain_pid.delta_u_lim = 20;
+
   }
   
   void brightness_control::reconfig(image_brightness_control::brightCTRConfig &config, uint32_t level) 
@@ -38,6 +89,31 @@ namespace golfcar_vision{
 	p_gain_ 			=	config.p_gain;
 	i_gain_ 			=	config.i_gain;
 	d_gain_ 			=	config.d_gain;
+
+	gain_pid.reset();
+	shuttle_pid.reset();
+
+	shuttle_pid.p = config.p_shutter;
+	shuttle_pid.i = config.i_shutter;
+	shuttle_pid.d = config.d_shutter;
+	shuttle_pid.u = config.shutter_value;
+	shuttle_pid.delta_u_lim = config.delta_u_lim_shutter;
+	shuttle_pid.u_lim_down = config.u_lim_down_shutter;
+	shuttle_pid.u_lim_up = config.u_lim_up_shutter;
+	shuttle_pid.i_lim = config.i_lim_shutter;
+
+
+	gain_pid.p = config.p_gain;
+    gain_pid.i = config.i_gain;
+    gain_pid.d = config.d_gain;
+	gain_pid.u = config.gain_value;
+	gain_pid.delta_u_lim = config.delta_u_lim_gain;
+	gain_pid.u_lim_down = config.u_lim_down_gain;
+	gain_pid.u_lim_up = config.u_lim_up_gain;
+	gain_pid.i_lim = config.i_lim_gain;
+
+
+
   }
 	void brightness_control::DrawHistogram(IplImage* imgHist, CvHistogram *hist)
 	{
@@ -128,70 +204,17 @@ namespace golfcar_vision{
   
   void brightness_control::shutter_control(int brightness_centroid)
   {
-	  float error = expected_centroid_ - brightness_centroid;
-	  float i_err  = error;
-
-	  if(fabs(error) > 50)
-	  {
-	    i_err = error *50/fabs(error);
-	  }
+	  double error = expected_centroid_ - brightness_centroid;
 	  
-	  float k_err = (error - last_err);
-	  if(fabs(k_err) > 20)
-	  {
-		  k_err = k_err*20/fabs(k_err);
-	  }
 
-	  float d_err = (error - 2*last_err+last_err2);
-	  float control_step = k_p* k_err+ k_i*i_err+k_d*d_err;
-
-	  last_err2 = last_err;
-	  last_err = error;
-
-	  if(fabs(control_step) > 10)
-	  {
-		   control_step = 10 * control_step / fabs(control_step);
-	  }
-	  
-	  if(fabs(error) < 20)
-	  {
-		  control_step = 0;
-	  }
-	  cmd = cmd + control_step;
-
-	  if(cmd < 10)
-	  {
-		  cmd = 10;
-	  }
-	  else if (cmd > 300)
-	  {
-		  cmd = 300;
-	  }
-
-	  control_command_.gain = cmd;
+	  control_command_.gain = shuttle_pid.update(error);
   }
   
     void brightness_control::gain_control(int brightness_centroid)
   {
 	  	  
-	  float error = expected_centroid_ - brightness_centroid;
-	  int tmp_gain = 0;
-	  if(fabs(error) > 80)
-	  {
-	    tmp_gain = error * 20.0/fabs(error);
-	  }
-	  
-	  gain_value_ += tmp_gain;
-	  if(gain_value_ < 40)
-	  {
-		  gain_value_=40;
-	  }
-	  else if(gain_value_> 250)
-	  {
-		  gain_value_=250;
-	  }
-	 
-	  control_command_.gain = gain_value_;
+	  double error = expected_centroid_ - brightness_centroid;
+	  control_command_.gain = gain_pid.update(error);
   }
   
   brightness_control::~brightness_control()

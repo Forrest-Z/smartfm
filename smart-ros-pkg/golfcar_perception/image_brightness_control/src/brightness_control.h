@@ -25,6 +25,25 @@ using namespace tf;
 
 namespace golfcar_vision{
 
+
+    class PID{
+    public:
+    	double p;
+    	double i;
+    	double d;
+    	double u;
+    	double u_lim_up;
+    	double u_lim_down;
+    	double delta_u_lim;
+    	double err;
+    	double pre_err;
+    	double pre_pre_err;
+    	double i_lim;
+    	void reset(void);
+    	double update(double err_in);
+
+
+    };
     class brightness_control {
 		public:
 		brightness_control();
@@ -44,12 +63,18 @@ namespace golfcar_vision{
 
 		bool visualization_flag_;
 		void DrawHistogram(IplImage* imgHist, CvHistogram *hist);
+		
+		//useless now
 		double last_err, last_err2;
 		double cmd;
 		double k_p, k_i, k_d;
-
+        //useless now
 		double p_shutter_, i_shutter_, d_shutter_;
 		double p_gain_, i_gain_, d_gain_;
+
+		PID shuttle_pid;
+		PID gain_pid;
+
 		int shutter_value_, gain_value_, expected_centroid_;
 		bool shutter_control_, gain_control_, visualization_;
 		void reconfig(image_brightness_control::brightCTRConfig &config, uint32_t level);
