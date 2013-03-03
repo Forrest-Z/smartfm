@@ -1,5 +1,5 @@
-#ifndef GOLFCAR_VISION_ROAD_ROC_H
-#define GOLFCAR_VISION_ROAD_ROC_H
+#ifndef GOLFCAR_VISION_ROAD_ROC2_H
+#define GOLFCAR_VISION_ROAD_ROC2_H
 
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
@@ -32,10 +32,12 @@ using namespace ros;
 using namespace tf;
 
 namespace golfcar_vision{
+
     class road_roc {
         public:
     	road_roc();
         ~road_roc();
+        void imageCallback (const sensor_msgs::ImageConstPtr& msg, const CvMat *warp_matrix_, IplImage *visual_img);
 
         private:
         ros::NodeHandle nh_, private_nh_;
@@ -65,7 +67,6 @@ namespace golfcar_vision{
         word_identifier word_detector_;
 
         CvSeq* filter_contours (CvContourScanner &scanner);
-        void imageCallback(const sensor_msgs::ImageConstPtr& msg);
         void polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in);
         void extract_training_image(IplImage* binary_img);
         int  classify_contour(double weight_input, double perimeter_input, CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input);
