@@ -156,7 +156,7 @@ public:
     sd1.angle_res = 4;
     sd1.trans_res = 0.5;
     sd1.trans_x_range = 15;
-    sd1.trans_y_range = 15;
+    sd1.trans_y_range = 22;
     sd1b = sd1;
     sd1b.best_rot = 0;
     sd1b.rot_range = 12;    

@@ -55,8 +55,9 @@ namespace golfcar_vision{
         std::vector<CvPoint> ipm_polygon_;
 
         //flag decides whether to extract training images or not;
-        bool extract_training_image_;
-        
+        bool extract_training_image_, store_parameter_;
+        string image_folder_path_;
+
         golfcar_ml::svm_classifier *marker_classifier_;
 
         CvSeq* filter_contours (CvContourScanner &scanner);
@@ -73,6 +74,8 @@ namespace golfcar_vision{
         ros::Publisher markers_ptcloud_pub_;
 
         void IpmImage_to_pcl(std::vector <CvPoint2D32f> & pts_image, sensor_msgs::PointCloud &pts_3d);
+
+
     };
 };
 

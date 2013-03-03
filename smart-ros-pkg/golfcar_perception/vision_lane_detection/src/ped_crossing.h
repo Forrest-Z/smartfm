@@ -29,7 +29,6 @@ using namespace ros;
 using namespace tf;
 
 namespace golfcar_vision{
-
     class ped_crossing {
         public:
     	ped_crossing();

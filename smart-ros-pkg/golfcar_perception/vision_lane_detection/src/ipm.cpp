@@ -65,7 +65,6 @@ namespace golfcar_vision{
 		img_polygon_publisher  = nh_.advertise<geometry_msgs::PolygonStamped>("/img_polygon", 10);
 
 		//to maintain several sets of polygons, since the four modules may be interested in different areas;
-
   }
 
   

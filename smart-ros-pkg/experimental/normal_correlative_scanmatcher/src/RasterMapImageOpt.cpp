@@ -14,7 +14,8 @@ pcl::PointCloud<pcl::PointNormal> input_cloud, matching_cloud;
 double res_;
 double offset_x, offset_y, rotation;
 pcl::PointCloud<pcl::PointNormal> best_tf_pt;
-RasterMapImage *rmi;
+NormalCorrelativeMatching *ncm;
+
 bool matching_mode=true;
 vector<ScoreData> score_data_vec;
 string frontend_file;
@@ -63,13 +64,14 @@ void keyboardEventOccurred(const pcl::visualization::KeyboardEvent &event,
           viewer->removePointCloud("matching_cloud");
           viewer->removePointCloud("matching_normal_cloud");
           string keySym = event.getKeySym();
-          if (keySym == "j")
+
+          if (keySym == "Down")
               offset_y -= res_;
-          else if (keySym == "l")
+          else if (keySym == "Up")
               offset_y += res_;
-          else if (keySym == "k")
+          else if (keySym == "Left")
               offset_x -= res_;
-          else if (keySym == "i")
+          else if (keySym == "Right")
               offset_x += res_;
           else if (keySym == "y")
               rotation++;
@@ -94,7 +96,8 @@ void keyboardEventOccurred(const pcl::visualization::KeyboardEvent &event,
                       matching_cloud_tf.points[i].normal_x);
           }
           ScoreDetails sd;
-          double best_score = rmi->getScoreWithNormal(search_pt, normal_pt, sd);
+          assert(ncm->rmi.image_.data != NULL);
+          double best_score = ncm->rmi.getScoreWithNormal(search_pt, normal_pt, sd);
 
           cout << "Distance:" << sd.dist_score << " Norm:" << sd.normal_score
                   << " NNorm:" << sd.norm_norm_score << " WorstNorm:"
@@ -215,23 +218,24 @@ int main(int argc, char **argv) {
         pcl::io::loadPCDFile(argv[4], matching_cloud);
         res_ = 0.05;
         input_cloud = pcl_downsample(input_cloud, res_*2, res_*2, res_*2);
+        
         matching_cloud = pcl_downsample(matching_cloud, res_*2, res_*2, res_*2);
         addPointCloud(viewer, input_cloud, "input_cloud", "input_normal_cloud",
                 true);
 
-        NormalCorrelativeMatching ncm(input_cloud, res_, 0.2);
+        ncm = new NormalCorrelativeMatching(input_cloud, res_, 0.2);
         fmutil::Stopwatch sw("single matching not sorted");
-        ncm.bruteForceSearch(matching_cloud);
+        ncm->bruteForceSearch(matching_cloud);
         sw.end();
         fmutil::Stopwatch sw2("single matching sorted");
-        ncm.bruteForceSearch(matching_cloud, true);
+        ncm->bruteForceSearch(matching_cloud, true);
         sw2.end();
-        best_tf_pt = ncm.best_tf_pt;
-        rotation = ncm.rotation;
-        offset_x = ncm.offset_x;
-        offset_y = ncm.offset_y;
-        rmi = &ncm.rmi;
-        cout<<"Best score = "<<ncm.best_score_<<" "<<ncm.offset_x<<" "<<ncm.offset_y<<" "<<ncm.rotation<<endl;
+        best_tf_pt = ncm->best_tf_pt;
+        rotation = ncm->rotation;
+        offset_x = ncm->offset_x;
+        offset_y = ncm->offset_y;
+        
+        cout<<"Best score = "<<ncm->best_score_<<" "<<ncm->offset_x<<" "<<ncm->offset_y<<" "<<ncm->rotation<<endl;
         addPointCloud(viewer, best_tf_pt, "matching_cloud",
                     "matching_normal_cloud", false);
       }

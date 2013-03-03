@@ -38,7 +38,7 @@
 
 #include <math.h>
 
-#include <sensing_on_road/pedestrian_laser_batch.h>
+#include <sensing_on_road/pedestrian_vision_batch.h>
 using namespace visualization_msgs;
 using namespace std;
 
@@ -50,23 +50,32 @@ ros::Publisher Pedpub_;
 geometry_msgs::Point ped1, ped2, ped3;
 // %EndTag(vars)%
 
+inline geometry_msgs::Point32 convertGeoPt64To32(geometry_msgs::Point p)
+{
+    geometry_msgs::Point32 p32;
+    p32.x = p.x;
+    p32.y = p.y;
+    p32.z = p.z;
+    return p32;
+}
+
 void publish_ped()
 {
-    sensing_on_road::pedestrian_laser_batch psglaser_batch;
-    sensing_on_road::pedestrian_laser psglaser;
+    sensing_on_road::pedestrian_vision_batch psglaser_batch;
+    sensing_on_road::pedestrian_vision psglaser;
 
-    psglaser.pedestrian_laser.header.frame_id = "/map";
-    psglaser.pedestrian_laser.point = ped1;
+    psglaser_batch.header.frame_id = "/map";
+    psglaser.cluster.centroid = convertGeoPt64To32(ped1);
     psglaser.object_label = 1;
-    psglaser_batch.pedestrian_laser_features.push_back(psglaser);
+    psglaser_batch.pd_vector.push_back(psglaser);
 
-    psglaser.pedestrian_laser.point = ped2;
+    psglaser.cluster.centroid = convertGeoPt64To32(ped2);
     psglaser.object_label = 2;
-    psglaser_batch.pedestrian_laser_features.push_back(psglaser);
+    psglaser_batch.pd_vector.push_back(psglaser);
 
-    psglaser.pedestrian_laser.point = ped3;
+    psglaser.cluster.centroid = convertGeoPt64To32(ped3);
     psglaser.object_label = 3;
-    psglaser_batch.pedestrian_laser_features.push_back(psglaser);
+    psglaser_batch.pd_vector.push_back(psglaser);
 
     Pedpub_.publish(psglaser_batch);
 }
@@ -156,7 +165,7 @@ int main(int argc, char** argv)
     ros::NodeHandle n;
 
     server.reset( new interactive_markers::InteractiveMarkerServer("basic_controls","",false) );
-    Pedpub_ = n.advertise<sensing_on_road::pedestrian_laser_batch>("ped_laser_batch", 2);
+    Pedpub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("ped_data_assoc", 2);
     ros::Duration(0.1).sleep();
     std_msgs::ColorRGBA color;
     ped1.x = 1.0; ped1.y = 1.0;

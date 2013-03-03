@@ -5,14 +5,11 @@
    		 <param name="base_watchdog_timeout" value="0.2"/>
    		 <remap from="base_scan" to="sick_scan2"/>
    		 <remap from="odom" to="encoder_odom"/>
-   		 <remap from="cmd_vel" to="momdp_vel"/>
+   		 <!--remap from="cmd_vel" to="momdp_vel"/-->
   	</node>
   	<param name="use_sim_time" value="true"/>
 	<node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find ped_momdp_sarsop)/simulation_full.vcg"/>
 	<node name="dummyPed_marker" pkg="dummyPed" type="dummyPed_marker" respawn="false"/>
-    <node name="ped_momdp_local_transform" pkg="ped_momdp_sarsop" type="local_frame" output="screen">
-	    <param name="global_frame" value="/map"/>
-	</node>
 
 </launch>
 

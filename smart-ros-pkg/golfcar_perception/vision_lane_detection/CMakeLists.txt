@@ -77,7 +77,6 @@ target_link_libraries(generate_training_data ${OpenCV_LIBRARIES})
 rosbuild_add_executable(data_formating src/data_formating.cpp)
 rosbuild_add_executable(extrinsic_calibration src/extrinsic_calibration.cpp)
 
-
 rosbuild_add_library(conti_lane2 src/conti_lane2.cpp)
 rosbuild_add_library(lane_marker2 src/lane_marker2.cpp)
 rosbuild_add_library(ped_crossing2 src/ped_crossing2.cpp)
@@ -86,7 +85,6 @@ rosbuild_add_library(road_ROC2 src/road_ROC2.cpp)
 rosbuild_add_executable(ipm2 src/ipm2.cpp)
 target_link_libraries(ipm2 ${OpenCV_LIBRARIES} conti_lane2 lane_marker2 ped_crossing2 road_ROC2 ransac_lane word_identifier)
 rosbuild_link_boost(ipm2 signals)
-
 #target_link_libraries(wrap_example ${OpenCV_LIBRARIES})
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)

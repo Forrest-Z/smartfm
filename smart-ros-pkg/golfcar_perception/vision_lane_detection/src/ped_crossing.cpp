@@ -97,8 +97,6 @@ namespace golfcar_vision{
         first_contour = contours;
 
 		IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
-		IplImage *thining_img = cvCreateImage(cvSize(contour_img->width,contour_img->height),IPL_DEPTH_8U, 1);
-		cvZero(thining_img);
 		cvZero(contour_img);
 		cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
 
@@ -115,6 +113,8 @@ namespace golfcar_vision{
 
 		std::vector <size_t> lane_serials;
 
+		std::vector<CvPoint2D32f> contour_boxes_centers;
+
 		size_t contour_serial = 0;
         for (; contours != 0; contours = contours->h_next)
         {
@@ -125,6 +125,8 @@ namespace golfcar_vision{
 			cvGetHuMoments(&cvm, &cvHM);
 			//3rd feature, side lengths of bounding box;
 			cvBox = cvMinAreaRect2(contours, mem_box);
+
+			contour_boxes_centers.push_back(cvBox.center);
 			//4th feature: number of points after polygon approximation;
 			contour_poly = cvApproxPoly( contours, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 2, 0 );
 			int approxPtNum = int (contour_poly->total);
@@ -141,6 +143,9 @@ namespace golfcar_vision{
 
         contours = first_contour;
 
+        IplImage *tmp_image = cvCreateImage(cvGetSize(contour_img),8,1);
+        cvZero(tmp_image);
+
         std::vector<size_t> best_cluster;
         if(contours!=0)  best_cluster =  ped_crossing::cluster_contours (contours, lane_serials);
         printf("\n-----best_cluster size() %ld\n", best_cluster.size());
@@ -155,11 +160,41 @@ namespace golfcar_vision{
 					if(j==best_cluster[i])
 					{
 						cvDrawContours(contour_img, contours, CV_RGB(255,0,0), CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
+						cvDrawContours(tmp_image, contours, cvScalar(255), cvScalar(0), -1, CV_FILLED, 8, cvPoint(0,0));
 						break;
 					}
 					j++;
 				}
         	}
+
+            for(size_t i=0; i<best_cluster.size()-1;i++)
+            {
+            	CvPoint center_tmp1, center_tmp2;
+            	center_tmp1.x = (int)contour_boxes_centers[best_cluster[i]].x;
+            	center_tmp1.y = (int)contour_boxes_centers[best_cluster[i]].y;
+            	center_tmp2.x = (int)contour_boxes_centers[best_cluster[i+1]].x;
+            	center_tmp2.y = (int)contour_boxes_centers[best_cluster[i+1]].y;
+            	cvLine(tmp_image, center_tmp1, center_tmp2, cvScalar(255), 5);
+            }
+
+            CvSeq *contour_tmp = 0;       //always keep one copy of the beginning of this list, for further usage;
+            CvMemStorage *mem_contour_tmp;
+            CvMemStorage *mem_box_tmp;
+            mem_contour_tmp = cvCreateMemStorage(0);
+            mem_box_tmp = cvCreateMemStorage(0);
+
+            //cvFindContours(tmp_image, mem_contour_tmp, &contour_tmp);
+
+            CvContourScanner scanner_tmp = cvStartFindContours(tmp_image, mem_contour_tmp, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
+            contour_tmp=cvFindNextContour(scanner_tmp);
+
+            CvBox2D cvBox_tmp;
+            cvBox_tmp = cvMinAreaRect2(contour_tmp, mem_box_tmp);
+            DrawBox(cvBox_tmp, contour_img, CV_RGB(255,255,0));
+
+            cvReleaseMemStorage(&mem_box_tmp);
+            cvReleaseMemStorage(&mem_contour_tmp);
+            cvReleaseImage(&tmp_image);
         }
 
 
@@ -169,14 +204,12 @@ namespace golfcar_vision{
         printf("2\n");
 
         cvShowImage("ped_contour_image",contour_img);
-        cvShowImage("ped_thining_img",thining_img);
 
         cvReleaseMemStorage(&mem_contours);
         cvReleaseMemStorage(&mem_box);
 
         cvWaitKey(1);
         cvReleaseImage(&contour_img);
-        cvReleaseImage(&thining_img);
     }
 
 
