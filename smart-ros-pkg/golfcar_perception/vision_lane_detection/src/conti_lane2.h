@@ -1,5 +1,5 @@
-#ifndef GOLFCAR_VISION_ROAD_ROC_H
-#define GOLFCAR_VISION_ROAD_ROC_H
+#ifndef GOLFCAR_VISION_CONTI_LANE2_H
+#define GOLFCAR_VISION_CONTI_LANE2_H
 
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
@@ -20,22 +20,22 @@
 #include "pcl_ros/point_cloud.h"
 #include "pcl/point_types.h"
 #include <fmutil/fm_math.h>
+
 #include "lane_marker_common.h"
 #include "svm_classifier.h"
 #include "ransac_lane.h"
-
-#include "ocr_client.h"
-#include "word_identifier.h"
 
 using namespace std;
 using namespace ros;
 using namespace tf;
 
 namespace golfcar_vision{
-    class road_roc {
+
+    class conti_lane {
         public:
-    	road_roc();
-        ~road_roc();
+    	conti_lane();
+        ~conti_lane();
+        void imageCallback (const sensor_msgs::ImageConstPtr& msg, const CvMat *warp_matrix_, IplImage *visual_img);
 
         private:
         ros::NodeHandle nh_, private_nh_;
@@ -60,21 +60,21 @@ namespace golfcar_vision{
         //flag decides whether to extract training images or not;
         bool extract_training_image_;
         
-        golfcar_ml::svm_classifier *road_roc_classifier_;
-        OcrClientNode lane_ocr_;
-        word_identifier word_detector_;
+        golfcar_ml::svm_classifier *conti_lane_classifier_;
+		ransac_lane *lane_extractor_;
 
         CvSeq* filter_contours (CvContourScanner &scanner);
-        void imageCallback(const sensor_msgs::ImageConstPtr& msg);
-        void polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in);
-        void extract_training_image(IplImage* binary_img);
-        int  classify_contour(double weight_input, double perimeter_input, CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input);
 
+
+        int classify_contour(double weight_input, double perimeter_input, CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input);
+
+        void extract_training_image(IplImage* binary_img);
+        void polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in);
         long int frame_serial_;
 
+        ros::Publisher lanes_pub_;
+        ros::Publisher lanes_ptcloud_pub_;
         void IpmImage_to_pcl(std::vector <CvPoint2D32f> & pts_image, sensor_msgs::PointCloud &pts_3d);
-        std::vector<size_t> cluster_contours (CvSeq* contour, std::vector <size_t> lane_serials);
-
         void MorphologicalThinning(CvMat *pSrc, CvMat *pDst);
         void ThinSubiteration1(CvMat *pSrc, CvMat *pDst);
         void ThinSubiteration2(CvMat *pSrc, CvMat *pDst);
