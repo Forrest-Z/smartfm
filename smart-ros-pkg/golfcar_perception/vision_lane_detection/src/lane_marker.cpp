@@ -17,7 +17,7 @@ namespace golfcar_vision{
       image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &lane_marker::imageCallback, this);
 
       polygon_sub_ = nh_.subscribe("img_polygon", 10, &lane_marker::polygonCallback, this);
-      private_nh_.param("scale", scale_, 30.0);
+      private_nh_.param("scale", scale_, 20.0);
       private_nh_.param("extract_training_image", extract_training_image_, false);
       frame_serial_ = 0;
 
@@ -26,6 +26,8 @@ namespace golfcar_vision{
 
 	  private_nh_.param("image_folder_path", image_folder_path_, std::string("/home/baoxing/images"));
       store_parameter_ = true;
+
+      mask_init_ = false;
     }
 
 	void lane_marker::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
@@ -83,6 +85,31 @@ namespace golfcar_vision{
 		cvCvtColor(color_image, binary_img, CV_BGR2GRAY);
 		cvCopy(binary_img, binary_copy);
 		Img_preproc(binary_img, binary_img);
+
+		//2013-March
+		if(!mask_init_)
+		{
+			mask_init_ = true;
+			image_mask_ = cvCreateImage(cvGetSize(color_image),8,1);
+			cvZero(image_mask_);
+	        int ipm_height 		= image_mask_ -> height;
+			int ipm_width  		= image_mask_ -> width;
+			int ipm_step	 	= image_mask_ -> widthStep/sizeof(uchar);
+			uchar * ipm_data 	= (uchar*)image_mask_ ->imageData;
+			for(int ih=0; ih < ipm_height; ih++)
+			{
+				for(int iw=0; iw < ipm_width; iw++)
+				{
+					CvPoint tmppoint = cvPoint(iw, ih);
+
+					if(pointInPolygon <CvPoint> (tmppoint,ipm_polygon_))
+					{
+						ipm_data[ih*ipm_step+iw]=255;
+					}
+				}
+			}
+		}
+		cvAnd(image_mask_, binary_img, binary_img);
 
 
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";
@@ -600,6 +627,8 @@ namespace golfcar_vision{
 
     lane_marker::~lane_marker()
     {
+    	//2013-March
+    	if(mask_init_)cvReleaseImage(&image_mask_);
     }
 };
 

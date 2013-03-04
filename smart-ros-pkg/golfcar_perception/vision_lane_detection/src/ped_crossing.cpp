@@ -17,7 +17,7 @@ namespace golfcar_vision{
       image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &ped_crossing::imageCallback, this);
 
       polygon_sub_ = nh_.subscribe("img_polygon", 10, &ped_crossing::polygonCallback, this);
-      private_nh_.param("scale", scale_, 30.0);
+      private_nh_.param("scale", scale_, 20.0);
 
       private_nh_.param("extract_training_image", extract_training_image_, false);
       frame_serial_ = 0;
@@ -77,11 +77,23 @@ namespace golfcar_vision{
 		IplImage* img_tmp = cvCreateImage(cvSize(color_image->width,color_image->height),IPL_DEPTH_8U, 3);
 		cvResize(color_image, img_tmp);
 
+		//2013-March: to erase the small yellow blocks accompanying the white strips;
+		IplImage* yellow_mask = cvCreateImage(cvSize(color_image->width,color_image->height),IPL_DEPTH_8U, 1);
+		IplImage* HSV_image = cvCreateImage(cvSize(color_image->width,color_image->height),IPL_DEPTH_8U, 3);
+		cvCvtColor(color_image, HSV_image, CV_BGR2HSV);
+		cvInRangeS(HSV_image, cvScalar(15, 80, 100), cvScalar(40, 255, 255), yellow_mask);
+		cvThreshold(yellow_mask, yellow_mask, 100, 255, CV_THRESH_BINARY_INV);
+		cvShowImage("yellow_mask", yellow_mask);
+
 		binary_img = cvCreateImage(cvSize(img_tmp->width,img_tmp->height),IPL_DEPTH_8U, 1);
 		cvCvtColor(img_tmp, binary_img, CV_BGR2GRAY);
-		Img_preproc(binary_img, binary_img);
+		Img_preproc_local(binary_img, binary_img);
+		cvAnd(yellow_mask, binary_img, binary_img);
 
 		cvReleaseImage(&img_tmp);
+		cvReleaseImage(&yellow_mask);
+		cvReleaseImage(&HSV_image);
+
 		cvShowImage("ped_binary_image", binary_img);
 
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";

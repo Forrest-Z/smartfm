@@ -75,6 +75,9 @@ namespace golfcar_vision{
 
         void IpmImage_to_pcl(std::vector <CvPoint2D32f> & pts_image, sensor_msgs::PointCloud &pts_3d);
 
+        //2013-March
+        bool mask_init_;
+        IplImage* image_mask_;
 
     };
 };

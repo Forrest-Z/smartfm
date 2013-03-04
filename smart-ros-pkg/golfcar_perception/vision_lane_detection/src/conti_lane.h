@@ -77,6 +77,10 @@ namespace golfcar_vision{
         void MorphologicalThinning(CvMat *pSrc, CvMat *pDst);
         void ThinSubiteration1(CvMat *pSrc, CvMat *pDst);
         void ThinSubiteration2(CvMat *pSrc, CvMat *pDst);
+
+        //2013-March
+        bool mask_init_;
+        IplImage* image_mask_;
     };
 };
 

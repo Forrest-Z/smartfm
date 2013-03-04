@@ -78,7 +78,7 @@ namespace golfcar_vision{
 
 		binary_img = cvCreateImage(cvSize(img_tmp->width,img_tmp->height),IPL_DEPTH_8U, 1);
 		cvCvtColor(img_tmp, binary_img, CV_BGR2GRAY);
-		Img_preproc(binary_img, binary_img);
+		Img_preproc_local(binary_img, binary_img);
 		cvReleaseImage(&img_tmp);
 		cvShowImage("roc_binary_image", binary_img);
 

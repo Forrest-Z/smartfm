@@ -18,9 +18,14 @@ namespace golfcar_vision{
 		private_nh_.param("ipm_center_y", 			ipm_center_y_,			0.0);
 		private_nh_.param("ipm_ROI_height", 		ipm_ROI_height_,		12.0);
 		private_nh_.param("ipm_ROI_near_width",		ipm_ROI_near_width_,	4.0);
-		private_nh_.param("ipm_ROI_far_width",		ipm_ROI_far_width_,		20.0);
+
+		//denotes the small area for arrow/lane marking;
+		private_nh_.param("ipm_ROI_far_width2",		ipm_ROI_far_width_,	8.0);
+		//the whole ipm area;
+		private_nh_.param("ipm_ROI_far_width",		ipm_ROI_far_width2_,	12.0);
+
 		private_nh_.param("scale", 					scale_,					30.0);
-		CvSize ipm_size = cvSize((int)(scale_ * ipm_ROI_far_width_), (int)(scale_ * ipm_ROI_height_));
+		CvSize ipm_size = cvSize((int)(scale_ * ipm_ROI_far_width2_), (int)(scale_ * ipm_ROI_height_));
 		ipm_image_ = cvCreateImage(ipm_size, 8,1);
 		ipm_color_image_ = cvCreateImage(ipm_size, 8, 3);
 
@@ -135,9 +140,9 @@ namespace golfcar_vision{
 			gndQuad_[1].x = ipm_center_x_ + camera_baselink_dis_ - ipm_ROI_height_/2.0 ;
 			gndQuad_[1].y = - ipm_ROI_near_width_ / 2.0;
 			gndQuad_[2].x = ipm_center_x_ + camera_baselink_dis_ + ipm_ROI_height_/2.0;
-			gndQuad_[2].y = - ipm_ROI_far_width_ /2.0;
+			gndQuad_[2].y = - ipm_ROI_far_width2_ /2.0;
 			gndQuad_[3].x = ipm_center_x_ + camera_baselink_dis_ + ipm_ROI_height_/2.0;
-			gndQuad_[3].y = ipm_ROI_far_width_ /2.0;
+			gndQuad_[3].y = ipm_ROI_far_width2_ /2.0;
         }
         
 		//To take into account the uneven of the road surface, the matrix is to be calculated every time;
@@ -159,28 +164,6 @@ namespace golfcar_vision{
 			dstQuad_[2].x, dstQuad_[2].y,
 			dstQuad_[3].x, dstQuad_[3].y
 		);
-
-		gnd_polygon.header = info_msg->header;
-		gnd_polygon.header.frame_id = base_frame_;
-		gnd_polygon.polygon.points.clear();
-		img_polygon.header = info_msg->header;
-		img_polygon.header.frame_id = base_frame_;
-		img_polygon.polygon.points.clear();
-		//last point overlap;
-		for(size_t i=0; i<5; i++)
-		{
-			geometry_msgs::Point32 pttmp;
-			pttmp.x = gndQuad_[(i%4)].x;
-			pttmp.y = gndQuad_[(i%4)].y;
-			gnd_polygon.polygon.points.push_back(pttmp);
-
-			pttmp.x = dstQuad_[(i%4)].x;
-			pttmp.y = dstQuad_[(i%4)].y;
-			img_polygon.polygon.points.push_back(pttmp);
-		}
-		gnd_polygon_publisher.publish(gnd_polygon);
-		img_polygon_publisher.publish(img_polygon);
-
 
 		cvGetPerspectiveTransform(srcQuad_,dstQuad_,  warp_matrix_);
 		cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix_);
@@ -271,7 +254,7 @@ namespace golfcar_vision{
 		sensor_msgs::Image::Ptr ipm_msg, binary_msg;
 		try
 		 {
-			ipm_msg = bridge_.cvToImgMsg(ipm_image_, "mono8");
+			ipm_msg = bridge_.cvToImgMsg(ipm_color_image_, "bgr8");
 			binary_msg = bridge_.cvToImgMsg(binary_image, "mono8");
 		 }
 		catch (sensor_msgs::CvBridgeException error)
@@ -285,6 +268,32 @@ namespace golfcar_vision{
 
 		//this scentence is necessary;
 		cvWaitKey(1);
+
+		//to publish the
+		gndQuad_[2].y = - ipm_ROI_far_width_ /2.0;
+		gndQuad_[3].y = ipm_ROI_far_width_ /2.0;
+		GndPt_to_Dst(gndQuad_, dstQuad_);
+
+		gnd_polygon.header = info_msg->header;
+		gnd_polygon.header.frame_id = base_frame_;
+		gnd_polygon.polygon.points.clear();
+		img_polygon.header = info_msg->header;
+		img_polygon.header.frame_id = base_frame_;
+		img_polygon.polygon.points.clear();
+		//last point overlap;
+		for(size_t i=0; i<5; i++)
+		{
+			geometry_msgs::Point32 pttmp;
+			pttmp.x = gndQuad_[(i%4)].x;
+			pttmp.y = gndQuad_[(i%4)].y;
+			gnd_polygon.polygon.points.push_back(pttmp);
+
+			pttmp.x = dstQuad_[(i%4)].x;
+			pttmp.y = dstQuad_[(i%4)].y;
+			img_polygon.polygon.points.push_back(pttmp);
+		}
+		gnd_polygon_publisher.publish(gnd_polygon);
+		img_polygon_publisher.publish(img_polygon);
 
 		ROS_INFO("ImageCallBack finished");
 

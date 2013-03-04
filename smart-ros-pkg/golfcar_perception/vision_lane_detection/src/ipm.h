@@ -42,7 +42,7 @@ namespace golfcar_vision{
         IplImage *ipm_image_, *ipm_color_image_;
 		double camera_baselink_dis_;
 		double ipm_center_x_, ipm_center_y_;
-		double ipm_ROI_height_, ipm_ROI_near_width_, ipm_ROI_far_width_;
+		double ipm_ROI_height_, ipm_ROI_near_width_, ipm_ROI_far_width_, ipm_ROI_far_width2_;
 		double scale_;
 		  
         image_transport::ImageTransport it_;

@@ -25,6 +25,7 @@ namespace golfcar_vision{
       lanes_ptcloud_pub_ = nh_.advertise<sensor_msgs::PointCloud>("lanes_ptcloud",2);
 
 	  lane_extractor_ = new ransac_lane();
+	  mask_init_ = false;
     }
 
 	void conti_lane::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
@@ -80,6 +81,31 @@ namespace golfcar_vision{
 		binary_img = cvCreateImage(cvGetSize(color_image),8,1);
 		cvCvtColor(color_image, binary_img, CV_BGR2GRAY);
 		Img_preproc(binary_img, binary_img);
+
+		//2013-March
+		if(!mask_init_)
+		{
+			mask_init_ = true;
+			image_mask_ = cvCreateImage(cvGetSize(color_image),8,1);
+			cvZero(image_mask_);
+	        int ipm_height 		= image_mask_ -> height;
+			int ipm_width  		= image_mask_ -> width;
+			int ipm_step	 	= image_mask_ -> widthStep/sizeof(uchar);
+			uchar * ipm_data 	= (uchar*)image_mask_ ->imageData;
+			for(int ih=0; ih < ipm_height; ih++)
+			{
+				for(int iw=0; iw < ipm_width; iw++)
+				{
+					CvPoint tmppoint = cvPoint(iw, ih);
+
+					if(pointInPolygon <CvPoint> (tmppoint,ipm_polygon_))
+					{
+						ipm_data[ih*ipm_step+iw]=255;
+					}
+				}
+			}
+		}
+		cvAnd(image_mask_, binary_img, binary_img);
 
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";
         CvSeq *first_contour = 0;       //always keep one copy of the beginning of this list, for further usage;
@@ -301,6 +327,8 @@ namespace golfcar_vision{
 
 	conti_lane::~conti_lane()
     {
+    	//2013-March
+    	if(mask_init_)cvReleaseImage(&image_mask_);
     }
 };
 

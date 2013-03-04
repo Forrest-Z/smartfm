@@ -47,7 +47,7 @@
 
 //-----------------------------------------Parameters for "image_proc"----------------------------------------
 #define BINARY_THRESH           190
-#define BLOCK_SIZE              55
+#define BLOCK_SIZE              25
 //#define BLOCK_SIZE              65
 #define OFFSET                  -10
 
@@ -74,10 +74,6 @@ namespace golfcar_vision{
 
 void line_calculate(CvBox2D box, double long_side_parameter[3], double short_side_parameter[3]);
 int is_equal( const void* _a, const void* _b, void* userdata );
-
-
-
-
 
     CvPoint2D32f centroid_centering_coordinate(CvPoint original_point, CvPoint2D32f centroid)
     {
@@ -269,8 +265,18 @@ int is_equal( const void* _a, const void* _b, void* userdata );
 		cvThreshold(src,It,BINARY_THRESH,255,CV_THRESH_BINARY);
 		cvAdaptiveThreshold(src, Iat, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, BLOCK_SIZE, OFFSET);
 		cvAnd(It, Iat, binary_image);
+		cvShowImage("It", It);
+		cvShowImage("Iat", Iat);
+		cvWaitKey(1);
 		cvReleaseImage(&It);
 		cvReleaseImage(&Iat);
+	}
+
+	void  Img_preproc_local(IplImage *src, IplImage *binary_image)
+	{
+		cvAdaptiveThreshold(src, binary_image, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, BLOCK_SIZE, OFFSET);
+		cvShowImage("Iat_local", binary_image);
+		cvWaitKey(1);
 	}
 };
 
