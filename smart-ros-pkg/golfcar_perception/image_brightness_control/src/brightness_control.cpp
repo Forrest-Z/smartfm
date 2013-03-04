@@ -17,18 +17,19 @@ namespace golfcar_vision{
         err = err_in;
 
         double temp  = p * (err - pre_err) + (fabs(err) < i_lim ? i : 0.0) * err + d * (err + pre_pre_err - 2 * pre_err);
-        double temp2 = (fabs(temp) < delta_u_lim ?  temp : ( delta_u_lim * temp / fabs(temp)));
-        if(temp2 > u_lim_up)
+        double temp2 = (fabs(temp) < delta_u_lim ?  temp :  (delta_u_lim * temp / fabs(temp)));
+        u += temp2;
+        if(u > u_lim_up)
         {
         	u = u_lim_up;
         }
-        else if(temp2 < u_lim_down)
+        else if(u < u_lim_down)
         {
         	u = u_lim_down;
         }
         else
         {
-        	u = temp2;
+        	u = u;
         }
 
         return u;
@@ -49,6 +50,9 @@ namespace golfcar_vision{
 	 cam_sub_ = it_.subscribeCamera("/camera_front/image_raw", 1, &brightness_control::ImageCallBack, this);
 	 image_brightness_pub = nh_.advertise<image_brightness_control::image_brightness>("image_brightness",2);
 	 control_command_pub = nh_.advertise<image_brightness_control::control_command>("/camera_front/control_command",2);
+	 
+	 control_command_.gain = 40;
+	 control_command_.shutter = 100;
 
 	 if(visualization_)
 	 {
@@ -59,7 +63,7 @@ namespace golfcar_vision{
 	 shuttle_pid.i = 0.0;
 	 shuttle_pid.d = 0.0;
 	 shuttle_pid.reset();
-     shuttle_pid.u = 80;
+     shuttle_pid.u = 100;
      shuttle_pid.u_lim_down = 10;
      shuttle_pid.u_lim_up = 300;
      shuttle_pid.delta_u_lim = 20;
@@ -111,6 +115,10 @@ namespace golfcar_vision{
 	gain_pid.u_lim_down = config.u_lim_down_gain;
 	gain_pid.u_lim_up = config.u_lim_up_gain;
 	gain_pid.i_lim = config.i_lim_gain;
+	
+	
+	control_command_.gain = gain_value_;
+	control_command_.shutter = shutter_value_ ;
 
 
 
@@ -197,23 +205,68 @@ namespace golfcar_vision{
 	  if(visualization_) ROS_INFO("brightness_centroid %d", brightness_centroid);
 	  
 	  control_command_.header = brightness_indicator.header;
-	  shutter_control(brightness_centroid);
-	  gain_control(brightness_centroid);
+	  if(shutter_control_)
+	  {
+	      shutter_control(brightness_centroid);
+      }
+      if(gain_control_)
+      {
+	    gain_control(brightness_centroid);
+	  }
 	  control_command_pub.publish(control_command_);
   }
   
   void brightness_control::shutter_control(int brightness_centroid)
   {
-	  double error = expected_centroid_ - brightness_centroid;
+	  
+	  int threshold = 30;
+	  int fake_expected_centroid = 0;
+	  
+	  if(fabs(expected_centroid_ - brightness_centroid) <= threshold)
+	  {
+		  fake_expected_centroid = brightness_centroid;
+	  }
+	  else if(expected_centroid_ > brightness_centroid)
+	  {
+		 fake_expected_centroid = expected_centroid_ - threshold;
+	  }
+	  else if(expected_centroid_ <= brightness_centroid)
+	  {
+		 fake_expected_centroid = expected_centroid_ + threshold;
+	  }
+	  else 
+	  {
+		  fake_expected_centroid = brightness_centroid;
+	  }
+	  double error = fake_expected_centroid - brightness_centroid;
 	  
 
-	  control_command_.gain = shuttle_pid.update(error);
+	  control_command_.shutter= shuttle_pid.update(error);
   }
   
-    void brightness_control::gain_control(int brightness_centroid)
+  void brightness_control::gain_control(int brightness_centroid)
   {
 	  	  
-	  double error = expected_centroid_ - brightness_centroid;
+	  int threshold = 30;
+	  int fake_expected_centroid = 0;
+	  
+	  if(fabs(expected_centroid_ - brightness_centroid) <= threshold)
+	  {
+		  fake_expected_centroid = brightness_centroid;
+	  }
+	  else if(expected_centroid_ > brightness_centroid)
+	  {
+		 fake_expected_centroid = expected_centroid_ - threshold;
+	  }
+	  else if(expected_centroid_ <= brightness_centroid)
+	  {
+		 fake_expected_centroid = expected_centroid_ + threshold;
+	  }
+	  else 
+	  {
+		  fake_expected_centroid = brightness_centroid;
+	  }
+	  double error = fake_expected_centroid - brightness_centroid;
 	  control_command_.gain = gain_pid.update(error);
   }
   
