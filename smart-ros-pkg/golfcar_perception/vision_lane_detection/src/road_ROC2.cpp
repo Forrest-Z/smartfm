@@ -28,7 +28,7 @@ namespace golfcar_vision{
 		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
-    void road_roc::imageCallback (const sensor_msgs::ImageConstPtr& msg, const CvMat *warp_matrix_, IplImage *visual_img)
+    void road_roc::imageCallback (const sensor_msgs::ImageConstPtr& msg, const CvMat *warp_matrix_, IplImage *visual_img, IplImage *visual_ipm)
     {
     	printf("\n 1");
     	if(!polygon_init_) return;

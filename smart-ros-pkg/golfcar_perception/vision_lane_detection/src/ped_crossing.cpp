@@ -14,7 +14,7 @@ namespace golfcar_vision{
 	  private_nh_.param("ped_crossing_model_path", ped_crossing_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
 	  private_nh_.param("ped_crossing_scale_path", ped_crossing_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
       ped_crossing_classifier_ = new golfcar_ml::svm_classifier(ped_crossing_model_path, ped_crossing_scale_path);
-      image_sub_ = it_.subscribe("/camera_front/ipm_binary", 1, &ped_crossing::imageCallback, this);
+      image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &ped_crossing::imageCallback, this);
 
       polygon_sub_ = nh_.subscribe("img_polygon", 10, &ped_crossing::polygonCallback, this);
       private_nh_.param("scale", scale_, 30.0);
@@ -79,6 +79,8 @@ namespace golfcar_vision{
 
 		binary_img = cvCreateImage(cvSize(img_tmp->width,img_tmp->height),IPL_DEPTH_8U, 1);
 		cvCvtColor(img_tmp, binary_img, CV_BGR2GRAY);
+		Img_preproc(binary_img, binary_img);
+
 		cvReleaseImage(&img_tmp);
 		cvShowImage("ped_binary_image", binary_img);
 

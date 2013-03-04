@@ -260,6 +260,18 @@ int is_equal( const void* _a, const void* _b, void* userdata );
 
     	return (angle_criterion && distance_criterion);
     }
+
+	void  Img_preproc(IplImage *src, IplImage *binary_image)
+	{
+        IplImage *It = 0, *Iat = 0;
+        It = cvCreateImage(cvSize(src->width,src->height),IPL_DEPTH_8U, 1);
+        Iat = cvCreateImage(cvSize(src->width,src->height),IPL_DEPTH_8U, 1);
+		cvThreshold(src,It,BINARY_THRESH,255,CV_THRESH_BINARY);
+		cvAdaptiveThreshold(src, Iat, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, BLOCK_SIZE, OFFSET);
+		cvAnd(It, Iat, binary_image);
+		cvReleaseImage(&It);
+		cvReleaseImage(&Iat);
+	}
 };
 
 #endif

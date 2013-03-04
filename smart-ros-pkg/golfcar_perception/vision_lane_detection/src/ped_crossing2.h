@@ -35,7 +35,7 @@ namespace golfcar_vision{
         public:
     	ped_crossing();
         ~ped_crossing();
-        void imageCallback (const sensor_msgs::ImageConstPtr& msg, const CvMat *warp_matrix_, IplImage *visual_img);
+        void imageCallback (const sensor_msgs::ImageConstPtr& msg, const CvMat *warp_matrix_, IplImage *visual_img, IplImage *visual_ipm);
 
         private:
         ros::NodeHandle nh_, private_nh_;

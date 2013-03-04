@@ -169,6 +169,8 @@ int main(int argc, char** argv)
 
         IplImage *contour_img = cvCreateImage(cvSize(Igray->width,Igray->height),IPL_DEPTH_8U, 3);
         cvCvtColor(Igray, contour_img, CV_GRAY2BGR);
+        Img_preproc(Igray, Igray);
+
         cvShowImage("contour_image",contour_img);
         cvWaitKey(100);
 

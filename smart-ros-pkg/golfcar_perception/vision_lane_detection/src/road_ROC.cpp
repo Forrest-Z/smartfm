@@ -14,7 +14,7 @@ namespace golfcar_vision{
 	  private_nh_.param("road_roc_model_path", road_roc_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
 	  private_nh_.param("road_roc_scale_path", road_roc_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
       road_roc_classifier_ = new golfcar_ml::svm_classifier(road_roc_model_path, road_roc_scale_path);
-      image_sub_ = it_.subscribe("/camera_front/ipm_binary", 1, &road_roc::imageCallback, this);
+      image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &road_roc::imageCallback, this);
 
       polygon_sub_ = nh_.subscribe("img_polygon", 10, &road_roc::polygonCallback, this);
       private_nh_.param("scale", scale_, 30.0);
@@ -78,6 +78,7 @@ namespace golfcar_vision{
 
 		binary_img = cvCreateImage(cvSize(img_tmp->width,img_tmp->height),IPL_DEPTH_8U, 1);
 		cvCvtColor(img_tmp, binary_img, CV_BGR2GRAY);
+		Img_preproc(binary_img, binary_img);
 		cvReleaseImage(&img_tmp);
 		cvShowImage("roc_binary_image", binary_img);
 

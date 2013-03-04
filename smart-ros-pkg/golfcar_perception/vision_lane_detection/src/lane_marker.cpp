@@ -14,7 +14,7 @@ namespace golfcar_vision{
 	  private_nh_.param("marker_model_path", marker_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
 	  private_nh_.param("marker_scale_path", marker_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
       marker_classifier_ = new golfcar_ml::svm_classifier(marker_model_path, marker_scale_path);
-      image_sub_ = it_.subscribe("/camera_front/ipm_binary", 1, &lane_marker::imageCallback, this);
+      image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &lane_marker::imageCallback, this);
 
       polygon_sub_ = nh_.subscribe("img_polygon", 10, &lane_marker::polygonCallback, this);
       private_nh_.param("scale", scale_, 30.0);
@@ -82,6 +82,8 @@ namespace golfcar_vision{
 		binary_copy = cvCreateImage(cvGetSize(color_image),8,1);
 		cvCvtColor(color_image, binary_img, CV_BGR2GRAY);
 		cvCopy(binary_img, binary_copy);
+		Img_preproc(binary_img, binary_img);
+
 
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";
         CvSeq *first_contour = 0;       //always keep one copy of the beginning of this list, for further usage;

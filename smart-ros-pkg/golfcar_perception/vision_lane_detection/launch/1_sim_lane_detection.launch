@@ -48,9 +48,7 @@
         <param name="image_transport" value="compressed"/>
     </node>
 
-    <node pkg="image_view" type="image_view" name="image_view3">
-        <remap from="image" to= "/camera_front/ipm_canny"/>
-        <param name="image_transport" value="compressed"/>
+    <node pkg="ocr_server" type="ocr_server" name="ocr_server">
     </node>
 	
 <!--node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>

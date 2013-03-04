@@ -24,9 +24,7 @@
         <param name="image_transport" value="compressed"/>
     </node>
 
-    <node pkg="image_view" type="image_view" name="image_view2">
-        <remap from="image" to= "/camera_front/ipm_binary"/>
-        <param name="image_transport" value="compressed"/>
+    <node pkg="ocr_server" type="ocr_server" name="ocr_server">
     </node>
 
 </launch>

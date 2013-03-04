@@ -35,7 +35,6 @@ namespace golfcar_vision{
 		cam_sub_ = it_.subscribeCamera("camera_front/image_raw", 1, &ipm::ImageCallBack, this);
 		ipm_pub_ = it_.advertise("/camera_front/image_ipm", 1);
 		binary_pub_ = it_.advertise("/camera_front/ipm_binary", 1);
-		canny_pub_ = it_.advertise("/camera_front/ipm_canny", 1);
 
 		//To visualize the image in the PointCloud way;
 		rbg_pub_ = nh_.advertise<PointCloudRGB>("pts_rgb", 10);
@@ -265,17 +264,15 @@ namespace golfcar_vision{
 			cvShowImage("ipm_window", ipm_color_image_);
 		}
 
-		IplImage *binary_image, *canny_image;
+		IplImage *binary_image;
         binary_image = cvCreateImage(cvGetSize(ipm_image_),8,1);
-        canny_image = cvCreateImage(cvGetSize(ipm_image_),8,1);
-        Img_preproc(ipm_image_, binary_image, canny_image);
+        Img_preproc(ipm_image_, binary_image);
 
-		sensor_msgs::Image::Ptr ipm_msg, binary_msg, canny_msg;
+		sensor_msgs::Image::Ptr ipm_msg, binary_msg;
 		try
 		 {
 			ipm_msg = bridge_.cvToImgMsg(ipm_image_, "mono8");
 			binary_msg = bridge_.cvToImgMsg(binary_image, "mono8");
-			canny_msg = bridge_.cvToImgMsg(canny_image, "mono8");
 		 }
 		catch (sensor_msgs::CvBridgeException error)
 		 {
@@ -285,8 +282,6 @@ namespace golfcar_vision{
 		ipm_pub_.publish(ipm_msg);
 		binary_msg->header = image_msg ->header;
 		binary_pub_.publish(binary_msg);
-		canny_msg->header = image_msg ->header;
-		canny_pub_.publish(canny_msg);
 
 		//this scentence is necessary;
 		cvWaitKey(1);
@@ -299,6 +294,7 @@ namespace golfcar_vision{
 		//so there is no need and it is also not permitted to release its memory space as normal;
 		//cvReleaseImage(&color_image);
 		cvReleaseImage(&gray_image);
+		cvReleaseImage(&binary_image);
   }
   
   //Function "GndPt_to_Src": project ground point in baselink coordinate into camera image;
@@ -552,21 +548,6 @@ namespace golfcar_vision{
 
 		left_pub_.publish(left_accumulated_);
 		right_pub_.publish(right_accumulated_);
-	}
-
-	void  ipm::Img_preproc(IplImage *src, IplImage *binary_image, IplImage *canny_image)
-	{
-        IplImage *It = 0, *Iat = 0;
-        It = cvCreateImage(cvSize(src->width,src->height),IPL_DEPTH_8U, 1);
-        Iat = cvCreateImage(cvSize(src->width,src->height),IPL_DEPTH_8U, 1);
-		cvThreshold(src,It,BINARY_THRESH,255,CV_THRESH_BINARY);
-		cvAdaptiveThreshold(src, Iat, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, BLOCK_SIZE, OFFSET);
-		cvAnd(It, Iat, binary_image);
-
-		cvCanny(src, canny_image, 100, 200, 3);
-
-		cvReleaseImage(&It);
-		cvReleaseImage(&Iat);
 	}
 
   ipm::~ipm()
