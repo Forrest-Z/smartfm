@@ -11,8 +11,8 @@ namespace golfcar_vision{
 	  ipm_para_init_ = false;
 
       string marker_model_path, marker_scale_path;
-	  private_nh_.param("marker_model_path", marker_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
-	  private_nh_.param("marker_scale_path", marker_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
+	  private_nh_.param("arrow_model_path", marker_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
+	  private_nh_.param("arrow_scale_path", marker_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
       marker_classifier_ = new golfcar_ml::svm_classifier(marker_model_path, marker_scale_path);
       image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &lane_marker::imageCallback, this);
 
@@ -230,7 +230,7 @@ namespace golfcar_vision{
             }
 			else {}
 		}
-        cvShowImage("contour_image",contour_img);
+        cvShowImage("arrow_contour_image",contour_img);
         markers_pub_.publish(markers_output);
 
         sensor_msgs::PointCloud markers_ptcloud;

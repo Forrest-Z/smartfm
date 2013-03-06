@@ -59,12 +59,12 @@ CvSeq* Filter_candidates (CvContourScanner &scanner, unsigned int module_type)
 		//bool  long_side_criterion = long_side > LONG_SIDE_THRESH*scale_;
 
         bool len_criterion, long_side_criterion;
-        if(module_type==1||module_type==2||module_type==4)
+        if(module_type==1||module_type==2)
         {
         	len_criterion = (len_meter > CONTOUR_PERIMETER_THRESH);
         	long_side_criterion = long_side > LONG_SIDE_THRESH*scale_;
         }
-        else if(module_type==3)
+        else if(module_type==3||module_type==4)
         {
         	len_criterion = (len_meter > 3.0);
         	long_side_criterion = long_side > 1.5*scale_;
@@ -102,7 +102,6 @@ CvSeq* Filter_candidates (CvContourScanner &scanner, unsigned int module_type)
 			}
         }
         cvReleaseMemStorage(&mem_poly_filter);
-
 
 		bool contour_criteria;
 

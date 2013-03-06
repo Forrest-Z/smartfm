@@ -247,12 +247,12 @@ int is_equal( const void* _a, const void* _b, void* userdata );
     	//distance of pointB[1] (second box) to the first short line;
     	double distance = fabs(shortsideA[0]*pointB[1].x+shortsideA[1]*pointB[1].y+shortsideA[2])/sqrt(shortsideA[0]*shortsideA[0]+shortsideA[1]*shortsideA[1]);
 
-    	bool distance_criterion = distance < 2*30;
+    	bool distance_criterion = distance < 1.0*20;
 
     	printf("distance %3f \n", distance);
 
-    	 cvReleaseMemStorage(&mem_box_a);
-    	 cvReleaseMemStorage(&mem_box_b);
+		cvReleaseMemStorage(&mem_box_a);
+		cvReleaseMemStorage(&mem_box_b);
 
     	return (angle_criterion && distance_criterion);
     }
@@ -275,7 +275,7 @@ int is_equal( const void* _a, const void* _b, void* userdata );
 	void  Img_preproc_local(IplImage *src, IplImage *binary_image)
 	{
 		cvAdaptiveThreshold(src, binary_image, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, BLOCK_SIZE, OFFSET);
-		cvShowImage("Iat_local", binary_image);
+		//cvShowImage("Iat_local", binary_image);
 		cvWaitKey(1);
 	}
 };

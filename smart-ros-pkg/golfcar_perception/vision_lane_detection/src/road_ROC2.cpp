@@ -142,7 +142,7 @@ namespace golfcar_vision{
 
         std::vector<size_t> best_cluster;
         if(contours!=0)  best_cluster =  road_roc::cluster_contours (contours, lane_serials);
-        printf("\n-----best_cluster size() %ld\n", best_cluster.size());
+        ROS_INFO("-----best_cluster size() %ld", best_cluster.size());
 
         int vector_length = 27;
         int BOW_feature[27] = {0};
@@ -212,8 +212,8 @@ namespace golfcar_vision{
 
         std::string surface_word;
         if(word_detector_.identify(BOW_feature, vector_length, surface_word))
-		{	cout<<surface_word<<endl;
-			ROS_INFO("identify words");
+		{
+			ROS_INFO("identify words %s", surface_word.c_str());
 		}
         else ROS_INFO("identify no words");
 
