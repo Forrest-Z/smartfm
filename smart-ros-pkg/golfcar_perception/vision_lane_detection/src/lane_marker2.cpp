@@ -28,10 +28,10 @@ namespace golfcar_vision{
 	void lane_marker::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
 	{
 		polygon_init_ = true;
-		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
+		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
-    void lane_marker::imageCallback (const sensor_msgs::ImageConstPtr& msg, const CvMat *warp_matrix_, IplImage *visual_img, IplImage *visual_ipm)
+    void lane_marker::imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm)
     {
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
@@ -77,6 +77,7 @@ namespace golfcar_vision{
 		}
 		binary_img = cvCreateImage(cvGetSize(color_image),8,1);
 		cvCvtColor(color_image, binary_img, CV_BGR2GRAY);
+		Img_preproc(binary_img, binary_img);
 
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";
         CvSeq *first_contour = 0;       //always keep one copy of the beginning of this list, for further usage;
@@ -145,6 +146,7 @@ namespace golfcar_vision{
             
             if(contour_class==-1){ROS_ERROR("NO CLASSIFICATION!!!");}
             if(contour_class==1||contour_class==2||contour_class==3)
+            if(true)
             {
 				//-----------------------------------------------------------------------------------------------
 				//to visualize all the candidates, together with their bounding box;
@@ -314,18 +316,19 @@ namespace golfcar_vision{
 			//3nd criterion: no touching polygon boundary;
 			//this criterion only applies to discrete markers, while not to continuous lanes;
 			bool inside_polygon = true;
-			CvPoint2D32f point[4];
-			calc_cvBoxPoints(cvBox, point);
-
-			for (int i=0; i<4; i++)
-			{
-				for(int a = -1; a<=1; a++)
+	        CvSeq *contours;
+			CvMemStorage *mem_poly;
+			mem_poly = cvCreateMemStorage(0);
+			contours = cvApproxPoly( c, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 2, 0 );
+	        for(int i=0; i<contours->total; i++)
+	        {
+	            CvPoint* p = (CvPoint*)cvGetSeqElem(contours, i);
+	            for(int a = -1; a<=1; a=a+1)
 				{
-					for(int b = -1; b<=1; b++)
+					for(int b = -1; b<=1; b=b+1)
 					{
-						CvPoint tmppoint = cvPoint(point[i].x+a, point[i].y+b);
-
-						if(pointInPolygon <CvPoint> (tmppoint,ipm_polygon_))
+						CvPoint2D32f tmppoint = cvPoint2D32f(p->x+a, p->y+b);
+						if(!pointInPolygon <CvPoint2D32f> (tmppoint,ipm_polygon_))
 						{
 							inside_polygon = false;
 							break;
@@ -333,7 +336,15 @@ namespace golfcar_vision{
 					}
 					if(!inside_polygon) break;
 				}
-			}
+				//special processing for the upper and lower bound;
+				if(p->y+3 >=ipm_polygon_[0].y || p->y -3 <=ipm_polygon_[3].y)
+				{
+					inside_polygon = false;
+					break;
+				}
+	        }
+	        cvReleaseMemStorage(&mem_poly);
+
 			bool contour_criteria = len_criterion && long_side_criterion && inside_polygon;
             if(!contour_criteria) cvSubstituteContour(scanner, NULL);
         }
@@ -357,6 +368,18 @@ namespace golfcar_vision{
         contour_center.x = (float)marker_para.x;
         contour_center.y = (float)marker_para.y;
         
+        CvMoments *arrow_moment = &cvm;
+        double u11 = cvGetCentralMoment(arrow_moment, 1, 1);
+        double u20 = cvGetCentralMoment(arrow_moment, 2, 0);
+        double u02 = cvGetCentralMoment(arrow_moment, 0, 2);
+
+        marker_para.thetha = 0.5*atan(2*u11/(u20-u02));
+
+        //turn it into the vehicle frame;
+        //this angle is the deflection angle from "vehicle x-axis" to its 1st principal axis;
+        marker_para.thetha = -marker_para.thetha;
+
+        /*
         if(contours->total<5){ROS_DEBUG("this marker is bad! no angle information;");}
         else
         {
@@ -414,7 +437,7 @@ namespace golfcar_vision{
 			longest_serial = find_longest_distance(distance_vec);
 			temp_distance1 = distance_vec[longest_serial];
 			
-			if(temp_distance1<50.0){printf("this marker is not long enough! no angle information;");}
+			if(temp_distance1<2.0*scale_){printf("this marker is not long enough! no angle information;");}
 			else
 			{
 				unsigned int line_front, line_back;
@@ -543,6 +566,8 @@ namespace golfcar_vision{
 				}
 			}
         }
+        */
+
         cvt_pose_baselink(marker_para);
         ROS_DEBUG("---------marker %lf, %lf, %lf----------\n", marker_para.x, marker_para.y, marker_para.thetha);
         cvReleaseMemStorage(&mem_poly);

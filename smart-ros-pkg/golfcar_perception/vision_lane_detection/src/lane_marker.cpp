@@ -33,7 +33,7 @@ namespace golfcar_vision{
 	void lane_marker::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
 	{
 		polygon_init_ = true;
-		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
+		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
     void lane_marker::imageCallback (const sensor_msgs::ImageConstPtr& msg)
@@ -100,9 +100,9 @@ namespace golfcar_vision{
 			{
 				for(int iw=0; iw < ipm_width; iw++)
 				{
-					CvPoint tmppoint = cvPoint(iw, ih);
+					CvPoint2D32f tmppoint = cvPoint2D32f(iw, ih);
 
-					if(pointInPolygon <CvPoint> (tmppoint,ipm_polygon_))
+					if(pointInPolygon <CvPoint2D32f> (tmppoint,ipm_polygon_))
 					{
 						ipm_data[ih*ipm_step+iw]=255;
 					}
@@ -258,7 +258,8 @@ namespace golfcar_vision{
         //only use when to extract training pictures;
         //once entering this loop, meaning at least one contour exist, save image as training sets;
         //-----------------------------------------------------------------------------------------------
-        if(contour_num_in_this_image>0) extract_training_image(binary_copy);
+        if(contour_num_in_this_image>0) extract_training_image(color_image);
+
         if(extract_training_image_ && store_parameter_ )
         {
         	store_parameter_ = false;
@@ -272,7 +273,7 @@ namespace golfcar_vision{
         	else
         	{
         		fprintf(fp, "%f\t", scale_);
-        		fprintf(fp, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t", ipm_polygon_[0].x, ipm_polygon_[0].y, ipm_polygon_[1].x, ipm_polygon_[1].y,
+        		fprintf(fp, "%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t", ipm_polygon_[0].x, ipm_polygon_[0].y, ipm_polygon_[1].x, ipm_polygon_[1].y,
         														ipm_polygon_[2].x, ipm_polygon_[2].y, ipm_polygon_[3].x, ipm_polygon_[3].y);
         		fclose(fp);
         	}
@@ -295,7 +296,7 @@ namespace golfcar_vision{
 			stringstream  name_string;
 			int stored_serial= frame_serial_/2;
 			//pay attention, this path to the folder cannot be too long, or OpenCV will crash;
-			name_string<< image_folder_path_ <<"/frame"<<stored_serial<<".jpg";
+			name_string<< image_folder_path_ <<"/frame"<<stored_serial<<".png";
 
 			const char *output_name = name_string.str().c_str();
 
@@ -364,21 +365,20 @@ namespace golfcar_vision{
 			float long_side = max(height, width);
 			bool  long_side_criterion = long_side > LONG_SIDE_THRESH*scale_;
 
-			//3nd criterion: no touching polygon boundary;
-			//this criterion only applies to discrete markers, while not to continuous lanes;
 			bool inside_polygon = true;
-			CvPoint2D32f point[4];
-			calc_cvBoxPoints(cvBox, point);
-
-			for (int i=0; i<4; i++)
-			{
-				for(int a = -1; a<=1; a++)
+	        CvSeq *contours_filter;
+			CvMemStorage *mem_poly_filter;
+			mem_poly_filter = cvCreateMemStorage(0);
+			contours_filter = cvApproxPoly( c, sizeof(CvContour), mem_poly_filter, CV_POLY_APPROX_DP, 2, 0 );
+	        for(int i=0; i<contours_filter->total; i++)
+	        {
+	            CvPoint* p = (CvPoint*)cvGetSeqElem(contours_filter, i);
+	            for(int a = -1; a<=1; a=a+1)
 				{
-					for(int b = -1; b<=1; b++)
+					for(int b = -1; b<=1; b=b+1)
 					{
-						CvPoint tmppoint = cvPoint(point[i].x+a, point[i].y+b);
-
-						if(pointInPolygon <CvPoint> (tmppoint,ipm_polygon_))
+						CvPoint2D32f tmppoint = cvPoint2D32f(p->x+a, p->y+b);
+						if(!pointInPolygon <CvPoint2D32f> (tmppoint,ipm_polygon_))
 						{
 							inside_polygon = false;
 							break;
@@ -386,7 +386,17 @@ namespace golfcar_vision{
 					}
 					if(!inside_polygon) break;
 				}
-			}
+				//special processing for the upper and lower bound;
+				if(p->y+3 >=ipm_polygon_[0].y || p->y -3 <=ipm_polygon_[3].y)
+				{
+					inside_polygon = false;
+					break;
+				}
+	        }
+	        cvReleaseMemStorage(&mem_poly_filter);
+
+			if(extract_training_image_)inside_polygon = true;
+
 			bool contour_criteria = len_criterion && long_side_criterion && inside_polygon;
             if(!contour_criteria) cvSubstituteContour(scanner, NULL);
         }
@@ -409,7 +419,20 @@ namespace golfcar_vision{
         CvPoint2D32f contour_center;
         contour_center.x = (float)marker_para.x;
         contour_center.y = (float)marker_para.y;
-        
+
+        CvMoments *arrow_moment = &cvm;
+        double u11 = cvGetCentralMoment(arrow_moment, 1, 1);
+        double u20 = cvGetCentralMoment(arrow_moment, 2, 0);
+        double u02 = cvGetCentralMoment(arrow_moment, 0, 2);
+
+        marker_para.thetha = 0.5*atan(2*u11/(u20-u02));
+
+        //turn it into the vehicle frame;
+        //this angle is the deflection angle from "vehicle x-axis" to its 1st principal axis;
+        marker_para.thetha = -marker_para.thetha;
+
+
+        /*
         if(contours->total<5){ROS_DEBUG("this marker is bad! no angle information;");}
         else
         {
@@ -440,7 +463,16 @@ namespace golfcar_vision{
             float vertix_x_old, vertix_y_old;
             float distance;
             std::vector <float> distance_vec;
-            
+                    CvMoments *arrow_moment = &cvm;
+        double u11 = cvGetCentralMoment(arrow_moment, 1, 1);
+        double u20 = cvGetCentralMoment(arrow_moment, 2, 0);
+        double u02 = cvGetCentralMoment(arrow_moment, 0, 2);
+
+        marker_para.thetha = 0.5*atan(2*u11/(u20-u02));
+
+        //turn it into the vehicle frame;
+        //this angle is the deflection angle from "vehicle x-axis" to its 1st principal axis;
+        marker_para.thetha = -marker_para.thetha;
             //pay attention to the sequence, distance from line0 ("n" to "0"), line1 ("0" to "1")...lineN ("n-1" to "n").
             if(vertices.size()>2)   //no need any more, since we have alread denotes the minimum number before;
             {
@@ -596,6 +628,8 @@ namespace golfcar_vision{
 				}
 			}
         }
+        */
+
         cvt_pose_baselink(marker_para);
         ROS_DEBUG("---------marker %lf, %lf, %lf----------\n", marker_para.x, marker_para.y, marker_para.thetha);
         cvReleaseMemStorage(&mem_poly);

@@ -37,7 +37,7 @@ namespace golfcar_vision{
         public:
     	road_roc();
         ~road_roc();
-        void imageCallback (const sensor_msgs::ImageConstPtr& msg, const CvMat *warp_matrix_, IplImage *visual_img, IplImage *visual_ipm);
+        void imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm);
 
         private:
         ros::NodeHandle nh_, private_nh_;
@@ -57,7 +57,7 @@ namespace golfcar_vision{
 
         double scale_;
         //polygon of interest in ipm image for processing;
-        std::vector<CvPoint> ipm_polygon_;
+        std::vector<CvPoint2D32f> ipm_polygon_;
 
         //flag decides whether to extract training images or not;
         bool extract_training_image_;

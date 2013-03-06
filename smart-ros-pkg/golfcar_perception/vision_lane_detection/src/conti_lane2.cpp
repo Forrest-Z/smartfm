@@ -11,13 +11,13 @@ namespace golfcar_vision{
 	  ipm_para_init_ = false;
 
       string conti_lane_model_path, conti_lane_scale_path;
-	  private_nh_.param("marker_model_path", conti_lane_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
-	  private_nh_.param("marker_scale_path", conti_lane_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
+	  private_nh_.param("lane_model_path", conti_lane_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
+	  private_nh_.param("lane_scale_path", conti_lane_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
 	  conti_lane_classifier_ = new golfcar_ml::svm_classifier(conti_lane_model_path, conti_lane_scale_path);
       //image_sub_ = it_.subscribe("/camera_front/ipm_binary", 1, &conti_lane::imageCallback, this);
 
       polygon_sub_ = nh_.subscribe("img_polygon", 10, &conti_lane::polygonCallback, this);
-      private_nh_.param("scale", scale_, 30.0);
+      private_nh_.param("scale", scale_, 20.0);
       private_nh_.param("extract_training_image", extract_training_image_, false);
       frame_serial_ = 0;
 
@@ -33,7 +33,7 @@ namespace golfcar_vision{
 		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
-    void conti_lane::imageCallback (const sensor_msgs::ImageConstPtr& msg, const CvMat *warp_matrix_, IplImage *visual_img, IplImage *visual_ipm)
+    void conti_lane::imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm)
     {
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
@@ -79,6 +79,7 @@ namespace golfcar_vision{
 		}
 		binary_img = cvCreateImage(cvGetSize(color_image),8,1);
 		cvCvtColor(color_image, binary_img, CV_BGR2GRAY);
+		Img_preproc(binary_img, binary_img);
 
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";
         CvSeq *first_contour = 0;       //always keep one copy of the beginning of this list, for further usage;
@@ -102,7 +103,7 @@ namespace golfcar_vision{
 		IplImage *thining_img = cvCreateImage(cvSize(contour_img->width,contour_img->height),IPL_DEPTH_8U, 1);
 		cvZero(thining_img);
 		cvZero(contour_img);
-        cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
+        //cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
         CvScalar ext_color;
         ROS_INFO("2");
 
@@ -150,9 +151,9 @@ namespace golfcar_vision{
             int contour_class = classify_contour (contour_weight, contour_perimeter, cvHM, cvBox, approxPtNum);
             
             if(contour_class==-1){ROS_ERROR("NO CLASSIFICATION!!!");}
-            else if(contour_class==4)
+            else if(contour_class== 1)
 			{
-            	cvDrawContours(contour_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
+            	//cvDrawContours(contour_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
 
             	//ransac lanes;
             	lane_extractor_->multiple_lanes(contours, scale_, thining_img, contour_img, lane_contour_serial, lanes_inImg);
@@ -162,6 +163,8 @@ namespace golfcar_vision{
 		}
         cvShowImage("lane_contour_img",contour_img);
         cvShowImage("lane_thining_img",thining_img);
+
+        cvOr(contour_img, visual_ipm, visual_ipm);
 
         lanes_pub_.publish(lanes_inImg);
 		sensor_msgs::PointCloud lanes_ptcloud;

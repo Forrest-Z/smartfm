@@ -25,7 +25,7 @@ namespace golfcar_vision{
 	void road_roc::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
 	{
 		polygon_init_ = true;
-		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
+		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
     void road_roc::imageCallback (const sensor_msgs::ImageConstPtr& msg)
@@ -369,18 +369,19 @@ namespace golfcar_vision{
 			//4th criterion: no touching polygon boundary;
 			//this criterion only applies to discrete markers, while not to continuous lanes;
 			bool inside_polygon = true;
-			CvPoint2D32f point[4];
-			calc_cvBoxPoints(cvBox, point);
-
-			for (int i=0; i<4; i++)
-			{
-				for(int a = -1; a<=1; a++)
+	        CvSeq *contours_filter;
+			CvMemStorage *mem_poly_filter;
+			mem_poly_filter = cvCreateMemStorage(0);
+			contours_filter = cvApproxPoly( c, sizeof(CvContour), mem_poly_filter, CV_POLY_APPROX_DP, 2, 0 );
+	        for(int i=0; i<contours_filter->total; i++)
+	        {
+	            CvPoint* p = (CvPoint*)cvGetSeqElem(contours_filter, i);
+	            for(int a = -1; a<=1; a=a+1)
 				{
-					for(int b = -1; b<=1; b++)
+					for(int b = -1; b<=1; b=b+1)
 					{
-						CvPoint tmppoint = cvPoint(point[i].x+a, point[i].y+b);
-
-						if(pointInPolygon <CvPoint> (tmppoint,ipm_polygon_))
+						CvPoint2D32f tmppoint = cvPoint2D32f(p->x+a, p->y+b);
+						if(!pointInPolygon <CvPoint2D32f> (tmppoint,ipm_polygon_))
 						{
 							inside_polygon = false;
 							break;
@@ -388,7 +389,14 @@ namespace golfcar_vision{
 					}
 					if(!inside_polygon) break;
 				}
-			}
+				//special processing for the upper and lower bound;
+				if(p->y+3 >=ipm_polygon_[0].y || p->y -3 <=ipm_polygon_[3].y)
+				{
+					inside_polygon = false;
+					break;
+				}
+	        }
+	        cvReleaseMemStorage(&mem_poly_filter);
 
 			//5th: the polygon should have 4-5 corners;
 			bool rectangle_criteria = true;
@@ -398,7 +406,7 @@ namespace golfcar_vision{
 			contours = cvApproxPoly( c, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 5, 0 );
 			if(contours->total > 6) rectangle_criteria = false;
 
-			inside_polygon=true;
+			//inside_polygon=true;
 			rectangle_criteria = true;
 
 			bool contour_criteria = len_criterion && long_side_criterion && short_side_criterion && inside_polygon && rectangle_criteria;

@@ -19,7 +19,7 @@ namespace golfcar_vision{
 		private_nh_.param("ipm_ROI_height", 		ipm_ROI_height_,		12.0);
 		private_nh_.param("ipm_ROI_near_width",		ipm_ROI_near_width_,	4.0);
 		private_nh_.param("ipm_ROI_far_width",		ipm_ROI_far_width_,		20.0);
-		private_nh_.param("scale", 					scale_,					30.0);
+		private_nh_.param("scale", 					scale_,					20.0);
 		CvSize ipm_size = cvSize((int)(scale_ * ipm_ROI_far_width_), (int)(scale_ * ipm_ROI_height_));
 		ipm_image_ = cvCreateImage(ipm_size, 8,1);
 		ipm_color_image_ = cvCreateImage(ipm_size, 8, 3);
@@ -278,7 +278,7 @@ namespace golfcar_vision{
 		sensor_msgs::Image::Ptr ipm_msg, binary_msg, canny_msg;
 		try
 		 {
-			ipm_msg = bridge_.cvToImgMsg(ipm_image_, "mono8");
+			ipm_msg = bridge_.cvToImgMsg(ipm_color_image_, "bgr8");
 			binary_msg = bridge_.cvToImgMsg(binary_image, "mono8");
 		 }
 		catch (sensor_msgs::CvBridgeException error)
@@ -290,11 +290,34 @@ namespace golfcar_vision{
 		binary_msg->header = image_msg ->header;
 		binary_pub_.publish(binary_msg);
 
-		lane_processor_->imageCallback(binary_msg, 	projection_matrix_, color_image_copy, visual_ipm);
-		arrow_processor_->imageCallback(binary_msg, projection_matrix_, color_image_copy, visual_ipm);
-		roc_processor_ ->imageCallback(binary_msg, 	projection_matrix_, color_image_copy, visual_ipm);
-		zebra_processor_->imageCallback(binary_msg, projection_matrix_, color_image_copy, visual_ipm);
+		lane_processor_->imageCallback(ipm_msg,	visual_ipm);
+		arrow_processor_->imageCallback(ipm_msg,	visual_ipm);
+		roc_processor_ ->imageCallback(ipm_msg,	visual_ipm);
+		zebra_processor_->imageCallback(ipm_msg,	visual_ipm);
 
+		cvShowImage("visual_ipm", visual_ipm);
+
+		IplImage* visualize_tmp = cvCreateImage(cvGetSize(color_image_copy),8,3);
+		cvZero(visualize_tmp);
+		cvWarpPerspective( visual_ipm, visualize_tmp, projection_matrix_);
+        int img_height 		= visualize_tmp -> height;
+		int img_width  		= visualize_tmp -> width;
+		for(int ih=0; ih < img_height; ih++)
+		{
+			for(int iw=0; iw < img_width; iw++)
+			{
+				CvPoint pixel;
+				pixel.x = iw;
+				pixel.y = ih;
+				CvScalar s=cvGet2D(visualize_tmp, pixel.y, pixel.x);
+				if(s.val[0]!=0 || s.val[1]!=0 || s.val[2]!=0 )
+				{
+					cvSet2D(color_image_copy, pixel.y, pixel.x, s);
+				}
+			}
+		}
+
+		cvShowImage("visualization_in_all", color_image_copy);
 		//this scentence is necessary;
 		cvWaitKey(1);
 
@@ -309,6 +332,7 @@ namespace golfcar_vision{
 		cvReleaseImage(&binary_image);
 		cvReleaseImage(&color_image_copy);
 		cvReleaseImage(&visual_ipm);
+		cvReleaseImage(&visualize_tmp);
   }
   
   //Function "GndPt_to_Src": project ground point in baselink coordinate into camera image;

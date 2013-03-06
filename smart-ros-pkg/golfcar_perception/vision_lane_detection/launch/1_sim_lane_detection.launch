@@ -10,24 +10,34 @@
     
     <node pkg="vision_lane_detection" type="ipm" name="ipm">
         <param name="image_transport" value="compressed"/>
-	<param name="visualization_flag" value="true"/>
-	<param name="odom_control" value="false"/>
-	<param name="ipm_center_x" value="9.0"/>
-	<param name="ipm_center_y" value="0.0"/>
-	<!--param name="ipm_ROI_height" value="12.0"/-->
-	<param name="ipm_ROI_height" value="12.0"/>	
-	<param name="ipm_ROI_near_width" value="4.0"/>
-	<param name="ipm_ROI_far_width" value="12.0"/>
-	<param name="publish_dis_thresh" value="0.2"/>
-	<param name="scale" value="20.0"/>
+		<param name="visualization_flag" value="false"/>
+		<param name="odom_control" value="false"/>
+		<param name="ipm_center_x" value="9.0"/>
+		<param name="ipm_center_y" value="0.0"/>
+		<!--param name="ipm_ROI_height" value="12.0"/-->
+		<param name="ipm_ROI_height" value="12.0"/>	
+		<param name="ipm_ROI_near_width" value="4.0"/>
+		<param name="ipm_ROI_far_width" value="12.0"/>
+		<param name="publish_dis_thresh" value="0.2"/>
+		<param name="scale" value="20.0"/>
 	</node>
 
     <node pkg="vision_lane_detection" type="lane_marker" name="lane_marker">
-	<param name="marker_model_path" value="$(find vision_lane_detection)/data_and_model/scaled_20120726.model"/>
+		<param name="marker_model_path" value="$(find vision_lane_detection)/data_and_model/scaled_20120726.model"/>
     	<param name="marker_scale_path" value="$(find vision_lane_detection)/data_and_model/range_20120726"/>
-    	<param name="image_folder_path" value="$(find vision_lane_detection)/images"/>
-    	<param name="extract_training_image" value="false"/>
+    	<param name="image_folder_path" value="/home/baoxing/images"/>
+    	<param name="extract_training_image" value="true"/>
 	</node>
+	
+	<!--node pkg="vision_lane_detection" type="conti_lane" name="conti_lane">
+		<param name="lane_model_path" value="$(find vision_lane_detection)/data_and_model/lane_20130305.model"/>
+    	<param name="lane_scale_path" value="$(find vision_lane_detection)/data_and_model/lane_20130305.range"/>
+	</node-->
+
+	<!--node pkg="vision_lane_detection" type="ped_crossing" name="ped_crossing">
+		<param name="ped_crossing_model_path" value="$(find vision_lane_detection)/data_and_model/ped_crossing_20130305.model"/>
+    	<param name="ped_crossing_scale_path" value="$(find vision_lane_detection)/data_and_model/ped_crossing_20130305.range"/>
+	</node-->
 
     <!--node pkg="vision_lane_detection" type="experimental_rgb" name="experimental_rgb">
         <param name="image_transport" value="compressed"/>

@@ -11,8 +11,8 @@ namespace golfcar_vision{
 	  ipm_para_init_ = false;
 
       string conti_lane_model_path, conti_lane_scale_path;
-	  private_nh_.param("marker_model_path", conti_lane_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
-	  private_nh_.param("marker_scale_path", conti_lane_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
+	  private_nh_.param("lane_model_path", conti_lane_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
+	  private_nh_.param("lane_scale_path", conti_lane_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
 	  conti_lane_classifier_ = new golfcar_ml::svm_classifier(conti_lane_model_path, conti_lane_scale_path);
       image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &conti_lane::imageCallback, this);
 
@@ -175,12 +175,11 @@ namespace golfcar_vision{
 			int approxPtNum = int (contour_poly->total);
 
             int contour_class = classify_contour (contour_weight, contour_perimeter, cvHM, cvBox, approxPtNum);
-            
+
             if(contour_class==-1){ROS_ERROR("NO CLASSIFICATION!!!");}
-            else if(contour_class==4)
+            else if(contour_class==1)
 			{
             	cvDrawContours(contour_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
-
             	//ransac lanes;
             	lane_extractor_->multiple_lanes(contours, scale_, thining_img, contour_img, lane_contour_serial, lanes_inImg);
             	lane_contour_serial++;

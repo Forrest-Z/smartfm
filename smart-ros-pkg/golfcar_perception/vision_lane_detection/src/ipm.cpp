@@ -20,11 +20,12 @@ namespace golfcar_vision{
 		private_nh_.param("ipm_ROI_near_width",		ipm_ROI_near_width_,	4.0);
 
 		//denotes the small area for arrow/lane marking;
-		private_nh_.param("ipm_ROI_far_width2",		ipm_ROI_far_width_,	8.0);
+		private_nh_.param("ipm_ROI_far_width",		ipm_ROI_far_width_,	12.0);
 		//the whole ipm area;
-		private_nh_.param("ipm_ROI_far_width",		ipm_ROI_far_width2_,	12.0);
+		private_nh_.param("ipm_ROI_far_width2",		ipm_ROI_far_width2_,	12.0);
 
-		private_nh_.param("scale", 					scale_,					30.0);
+
+		private_nh_.param("scale", 					scale_,					20.0);
 		CvSize ipm_size = cvSize((int)(scale_ * ipm_ROI_far_width2_), (int)(scale_ * ipm_ROI_height_));
 		ipm_image_ = cvCreateImage(ipm_size, 8,1);
 		ipm_color_image_ = cvCreateImage(ipm_size, 8, 3);
