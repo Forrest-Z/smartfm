@@ -32,12 +32,15 @@ namespace golfcar_vision{
 
 	void lane_marker::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
 	{
+		if(!polygon_init_)
+			for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 		polygon_init_ = true;
-		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
     void lane_marker::imageCallback (const sensor_msgs::ImageConstPtr& msg)
     {
+        ROS_INFO("Arrow --------1------------");
+
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
         {
@@ -111,6 +114,7 @@ namespace golfcar_vision{
 		}
 		cvAnd(image_mask_, binary_img, binary_img);
 
+		cvShowImage("arrow_binary_img", binary_img);
 
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";
         CvSeq *first_contour = 0;       //always keep one copy of the beginning of this list, for further usage;
@@ -126,14 +130,15 @@ namespace golfcar_vision{
         contours = filter_contours(scanner);
         first_contour = contours;
 
-        ROS_INFO("1");
+
         //-------------------------------------------------------------------------------------------------------------------------------
         //3. classify each remained candidates; visualize the markers detected;
         //-------------------------------------------------------------------------------------------------------------------------------
         IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
         cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
         CvScalar ext_color;
-        ROS_INFO("2");
+
+        ROS_INFO("Arrow --------2----------");
 
         CvMoments cvm; 
         CvHuMoments cvHM;
@@ -154,7 +159,7 @@ namespace golfcar_vision{
         for (; contours != 0; contours = contours->h_next)
         {
             contour_num_in_this_image++;
-            
+            ROS_INFO("contour %d", contour_num_in_this_image);
             //This denotes how many pixels of one certain object contour;
             //ROS_DEBUG("total pixels %d", contours->total);
             ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 ); 
@@ -370,14 +375,19 @@ namespace golfcar_vision{
 			CvMemStorage *mem_poly_filter;
 			mem_poly_filter = cvCreateMemStorage(0);
 			contours_filter = cvApproxPoly( c, sizeof(CvContour), mem_poly_filter, CV_POLY_APPROX_DP, 2, 0 );
+
+
 	        for(int i=0; i<contours_filter->total; i++)
 	        {
 	            CvPoint* p = (CvPoint*)cvGetSeqElem(contours_filter, i);
+
+
 	            for(int a = -1; a<=1; a=a+1)
 				{
 					for(int b = -1; b<=1; b=b+1)
 					{
 						CvPoint2D32f tmppoint = cvPoint2D32f(p->x+a, p->y+b);
+			            ROS_INFO("%f, %f", tmppoint.x, tmppoint.y);
 						if(!pointInPolygon <CvPoint2D32f> (tmppoint,ipm_polygon_))
 						{
 							inside_polygon = false;
@@ -392,13 +402,20 @@ namespace golfcar_vision{
 					inside_polygon = false;
 					break;
 				}
+				if(!inside_polygon) break;
 	        }
 	        cvReleaseMemStorage(&mem_poly_filter);
 
 			if(extract_training_image_)inside_polygon = true;
 
+			if( !inside_polygon)ROS_INFO("outside polygon");
+			else ROS_INFO("inside polygon");
+
 			bool contour_criteria = len_criterion && long_side_criterion && inside_polygon;
-            if(!contour_criteria) cvSubstituteContour(scanner, NULL);
+            if(!contour_criteria)
+            {
+            	cvSubstituteContour(scanner, NULL);
+            }
         }
         CvSeq *contours = cvEndFindContours(&scanner);
         cvReleaseMemStorage(&mem_box);

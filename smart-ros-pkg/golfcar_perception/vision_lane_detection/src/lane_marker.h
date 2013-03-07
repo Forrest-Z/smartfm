@@ -23,6 +23,9 @@
 #include "lane_marker_common.h"
 #include "svm_classifier.h"
 
+#include <boost/bind.hpp>
+#include <boost/thread/mutex.hpp>
+
 using namespace std;
 using namespace ros;
 using namespace tf;
@@ -78,6 +81,8 @@ namespace golfcar_vision{
         //2013-March
         bool mask_init_;
         IplImage* image_mask_;
+
+        boost::recursive_mutex configuration_mutex_;
 
     };
 };

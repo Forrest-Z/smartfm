@@ -35,7 +35,7 @@ namespace golfcar_vision{
         public:
     	conti_lane();
         ~conti_lane();
-        void imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm);
+        void imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean);
 
         private:
         ros::NodeHandle nh_, private_nh_;

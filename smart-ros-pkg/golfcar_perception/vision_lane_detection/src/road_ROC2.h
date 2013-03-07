@@ -37,7 +37,7 @@ namespace golfcar_vision{
         public:
     	road_roc();
         ~road_roc();
-        void imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm);
+        void imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean);
 
         private:
         ros::NodeHandle nh_, private_nh_;
@@ -79,6 +79,8 @@ namespace golfcar_vision{
         void MorphologicalThinning(CvMat *pSrc, CvMat *pDst);
         void ThinSubiteration1(CvMat *pSrc, CvMat *pDst);
         void ThinSubiteration2(CvMat *pSrc, CvMat *pDst);
+
+        bool visualize_word_info_;
     };
 };
 

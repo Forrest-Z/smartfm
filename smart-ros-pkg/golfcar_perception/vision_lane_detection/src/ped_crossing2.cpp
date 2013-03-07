@@ -26,11 +26,12 @@ namespace golfcar_vision{
 
 	void ped_crossing::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
 	{
+		if(!polygon_init_)
+			for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 		polygon_init_ = true;
-		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
-    void ped_crossing::imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm)
+    void ped_crossing::imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean)
     {
     	printf("\n 1");
 		if(!polygon_init_) return;
@@ -90,6 +91,7 @@ namespace golfcar_vision{
 		cvCvtColor(img_tmp, binary_img, CV_BGR2GRAY);
 		Img_preproc_local(binary_img, binary_img);
 		cvAnd(yellow_mask, binary_img, binary_img);
+		IplImage *binary_img_copy = cvCloneImage(binary_img);
 
 		cvReleaseImage(&img_tmp);
 		cvReleaseImage(&yellow_mask);
@@ -206,13 +208,33 @@ namespace golfcar_vision{
 			cvBox_tmp = cvMinAreaRect2(contour_tmp, mem_box_tmp);
 			DrawBox(cvBox_tmp, contour_img, CV_RGB(255,255,0));
 
-			cvOr(contour_img, visual_ipm, visual_ipm);
+			//to mark all the white pixels (characters) inside the rectangle red;
+			CvPoint2D32f pts_tmp[4];
+			calc_cvBoxPoints( cvBox_tmp, pts_tmp);
+			std::vector<CvPoint2D32f> word_polygon_tmp;
+			for(size_t i=0; i<4; i++) word_polygon_tmp.push_back(pts_tmp[i]);
+	        int img_height 		= contour_img -> height;
+			int img_width  		= contour_img -> width;
+			for(int ih=0; ih < img_height; ih++)
+			{
+				for(int iw=0; iw < img_width; iw++)
+				{
+					CvPoint pixel;
+					pixel.x = iw;
+					pixel.y = ih;
+					CvScalar s=cvGet2D(binary_img_copy, pixel.y, pixel.x);
+					if(s.val[0]!=0 && pointInPolygon(cvPoint2D32f(iw, ih), word_polygon_tmp))
+					{
+						cvSet2D(contour_img, pixel.y, pixel.x, CV_RGB(255, 0, 0));
+					}
+				}
+			}
 
+			merge_images(visual_ipm, contour_img);
+			merge_images(visual_ipm_clean, contour_img);
 			cvReleaseMemStorage(&mem_box_tmp);
 			cvReleaseMemStorage(&mem_contour_tmp);
-			cvReleaseImage(&tmp_image);
 		}
-
 
 		if(contour_serial>0) extract_training_image(binary_img);
 
@@ -221,11 +243,13 @@ namespace golfcar_vision{
 
 		cvShowImage("ped_contour_image",contour_img);
 
+		cvWaitKey(1);
 		cvReleaseMemStorage(&mem_contours);
 		cvReleaseMemStorage(&mem_box);
-
-		cvWaitKey(1);
+		cvReleaseImage(&tmp_image);
 		cvReleaseImage(&contour_img);
+		cvReleaseImage(&binary_img);
+		cvReleaseImage(&binary_img_copy);
     }
 
 

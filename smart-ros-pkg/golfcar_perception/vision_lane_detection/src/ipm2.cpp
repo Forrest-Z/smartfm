@@ -68,6 +68,9 @@ namespace golfcar_vision{
 		arrow_processor_ = new lane_marker();
 		roc_processor_ = new road_roc();
 		zebra_processor_= new ped_crossing();
+
+		cvNamedWindow("visual_ipm");
+		cvNamedWindow("visualization_in_all");
   }
 
   
@@ -186,7 +189,6 @@ namespace golfcar_vision{
 		gnd_polygon_publisher.publish(gnd_polygon);
 		img_polygon_publisher.publish(img_polygon);
 
-
 		cvGetPerspectiveTransform(srcQuad_,dstQuad_,  warp_matrix_);
 		cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix_);
 
@@ -269,10 +271,12 @@ namespace golfcar_vision{
 			cvShowImage("ipm_window", ipm_color_image_);
 		}
 
-		IplImage *binary_image, *visual_ipm;
+		IplImage *binary_image, *visual_ipm, *visual_ipm_clean;
         binary_image = cvCreateImage(cvGetSize(ipm_image_),8,1);
         visual_ipm = cvCreateImage(cvGetSize(ipm_image_),8,3);
+        visual_ipm_clean = cvCreateImage(cvGetSize(ipm_image_),8,3);
         cvZero(visual_ipm);
+        cvZero(visual_ipm_clean);
         Img_preproc(ipm_image_, binary_image);
 
 		sensor_msgs::Image::Ptr ipm_msg, binary_msg, canny_msg;
@@ -290,16 +294,19 @@ namespace golfcar_vision{
 		binary_msg->header = image_msg ->header;
 		binary_pub_.publish(binary_msg);
 
-		lane_processor_->imageCallback(ipm_msg,	visual_ipm);
-		arrow_processor_->imageCallback(ipm_msg,	visual_ipm);
-		roc_processor_ ->imageCallback(ipm_msg,	visual_ipm);
-		zebra_processor_->imageCallback(ipm_msg,	visual_ipm);
+		lane_processor_->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
+		arrow_processor_->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
+		roc_processor_ ->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
+		zebra_processor_->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
 
-		cvShowImage("visual_ipm", visual_ipm);
+		//cvShowImage("visual_ipm", visual_ipm);
+		merge_images(ipm_color_image_, visual_ipm);
+		cvShowImage("visual_ipm", ipm_color_image_);
+
 
 		IplImage* visualize_tmp = cvCreateImage(cvGetSize(color_image_copy),8,3);
 		cvZero(visualize_tmp);
-		cvWarpPerspective( visual_ipm, visualize_tmp, projection_matrix_);
+		cvWarpPerspective( visual_ipm_clean, visualize_tmp, projection_matrix_);
         int img_height 		= visualize_tmp -> height;
 		int img_width  		= visualize_tmp -> width;
 		for(int ih=0; ih < img_height; ih++)
@@ -333,6 +340,7 @@ namespace golfcar_vision{
 		cvReleaseImage(&color_image_copy);
 		cvReleaseImage(&visual_ipm);
 		cvReleaseImage(&visualize_tmp);
+		cvReleaseImage(&visual_ipm_clean);
   }
   
   //Function "GndPt_to_Src": project ground point in baselink coordinate into camera image;
@@ -595,6 +603,9 @@ namespace golfcar_vision{
 	   cvDestroyWindow("src_window");
 	   cvDestroyWindow("ipm_window");
 	}
+	cvDestroyWindow("visual_ipm");
+	cvDestroyWindow("visualization_in_all");
+
     cvReleaseMat(&warp_matrix_);
     cvReleaseMat(&projection_matrix_);
     cvReleaseImage(&ipm_image_);

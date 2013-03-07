@@ -28,16 +28,20 @@ namespace golfcar_vision{
       store_parameter_ = true;
 
       mask_init_ = false;
+
+      private_nh_.param("visualize_arrow_info", visualize_arrow_info_, false);
     }
 
 	void lane_marker::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
 	{
+		if(!polygon_init_)
+			for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 		polygon_init_ = true;
-		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
-    void lane_marker::imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm)
+    void lane_marker::imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean)
     {
+    	ROS_INFO("Arrow -- 1---");
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
         {
@@ -126,14 +130,14 @@ namespace golfcar_vision{
         contours = filter_contours(scanner);
         first_contour = contours;
 
-        ROS_INFO("1");
+        ROS_INFO("Arrow -- 2 ---");
         //-------------------------------------------------------------------------------------------------------------------------------
         //3. classify each remained candidates; visualize the markers detected;
         //-------------------------------------------------------------------------------------------------------------------------------
         IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
-        cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
+        cvZero(contour_img);
+        //cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
         CvScalar ext_color;
-        ROS_INFO("2");
 
         CvMoments cvm;
         CvHuMoments cvHM;
@@ -177,60 +181,64 @@ namespace golfcar_vision{
             int contour_class = classify_contour (contour_weight, contour_perimeter, cvHM, cvBox, approxPtNum);
 
             if(contour_class==-1){ROS_ERROR("NO CLASSIFICATION!!!");}
-            if(contour_class==1||contour_class==2||contour_class==3)
+            if(contour_class==1||contour_class==2||contour_class==3||contour_class==4||contour_class==5||contour_class==6||contour_class==7)
             {
 				//-----------------------------------------------------------------------------------------------
 				//to visualize all the candidates, together with their bounding box;
-				DrawBox(cvBox,contour_img, ext_color);
-				cvDrawContours(contour_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
+				//DrawBox(cvBox,contour_img, ext_color);
+				cvDrawContours(contour_img, contours, CV_RGB(0,255,0), CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
 				//-----------------------------------------------------------------------------------------------
 
                 vision_lane_detection::marker_info marker_output;
                 marker_output.class_label = contour_class;
                 //this default number denotes no angle information;
-                marker_output.thetha = 3*M_PI;
+                //marker_output.thetha = 3*M_PI;
                 pose_contour(contours, cvm, marker_output);
 
-                //to visualize the posing result from
-                CvFont font;
-                double hScale=1.0;
-                double vScale=1.0;
-                int lineWidth=2;
-                CvPoint origin;
-                stringstream  class_string;
-                class_string<<"type "<< contour_class;
-                const char *class_name = class_string.str().c_str();
-                origin.x = (int)cvBox.center.x+10;
-                origin.y = (int)cvBox.center.y;
-                cvInitFont(&font,CV_FONT_ITALIC, hScale, vScale, 0, lineWidth);
-                cvPutText(contour_img, class_name, origin, &font, CV_RGB(0,255,0));
-
-				CvPoint centroid_pt;
-				centroid_pt.x = int(cvm.m10/cvm.m00);
-				centroid_pt.y = int(cvm.m01/cvm.m00);
-                cvCircle( contour_img, centroid_pt, 3, CV_RGB(0,255,0), 2);
                 ROS_INFO("lane marker detected");
-                if(marker_output.thetha!=3*M_PI)
-                {
+                //to visualize the posing result from
+
+                merge_images(visual_ipm_clean, contour_img);
+
+				if(visualize_arrow_info_)
+				{
+					CvFont font;
+					double hScale=0.3;
+					double vScale=0.3;
+					int lineWidth=1;
+					CvPoint origin;
+					stringstream  class_string;
+					class_string<<"arrow class: "<< contour_class;
+					const char *class_name = class_string.str().c_str();
+					origin.x = (int)cvBox.center.x+10;
+					origin.y = (int)cvBox.center.y;
+					cvInitFont(&font,CV_FONT_ITALIC, hScale, vScale, 0, lineWidth);
+					cvPutText(contour_img, class_name, origin, &font, CV_RGB(0,255,0));
+
+					CvPoint centroid_pt;
+					centroid_pt.x = int(cvm.m10/cvm.m00);
+					centroid_pt.y = int(cvm.m01/cvm.m00);
+					cvCircle( contour_img, centroid_pt, 3, CV_RGB(255,255,0), 1);
+
 					CvFont font2;
-					double hScale2=0.5;
-					double vScale2=0.5;
+					double hScale2=0.3;
+					double vScale2=0.3;
 					int lineWidth2=1;
 					CvPoint origin_2;
-					stringstream  pose_string;
-					pose_string<<"pose:(" <<setiosflags(ios::fixed) << setprecision(3) << marker_output.x << ","<<marker_output.y <<","<< marker_output.thetha<<")";
-					const char *pose_info = pose_string.str().c_str();
+					stringstream  position_string;
+					position_string<<"("<<setiosflags(ios::fixed) << setprecision(2) << marker_output.x << ","<<marker_output.y <<","<< marker_output.thetha * M_PI/180.0<<")";
+					const char *position_info = position_string.str().c_str();
 					origin_2.x = (int)cvBox.center.x+10;
 					origin_2.y = (int)cvBox.center.y+20;
 					cvInitFont(&font2,CV_FONT_ITALIC, hScale2, vScale2, 0, lineWidth2);
-					cvPutText(contour_img, pose_info, origin_2, &font2, CV_RGB(0,255,0));
-
-					markers_output.vec.push_back(marker_output);
-				}
+					cvPutText(contour_img, position_info, origin_2, &font2, CV_RGB(0,255,0));
+                }
+                markers_output.vec.push_back(marker_output);
             }
 			else {}
 		}
         cvShowImage("arrow_contour_image",contour_img);
+        merge_images(visual_ipm, contour_img);
         markers_pub_.publish(markers_output);
 
         sensor_msgs::PointCloud markers_ptcloud;
@@ -395,7 +403,7 @@ namespace golfcar_vision{
 	        }
 	        cvReleaseMemStorage(&mem_poly_filter);
 
-			if(extract_training_image_)inside_polygon = true;
+			if(extract_training_image_) inside_polygon = true;
 
 			bool contour_criteria = len_criterion && long_side_criterion && inside_polygon;
             if(!contour_criteria) cvSubstituteContour(scanner, NULL);

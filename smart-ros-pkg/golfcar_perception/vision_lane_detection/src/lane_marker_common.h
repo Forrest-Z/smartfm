@@ -16,7 +16,7 @@
 #include "sensor_msgs/PointCloud.h"
 #include "vision_lane_detection/markers_info.h"
 #include "vision_lane_detection/lanes_info.h"
-
+#include "fmutil/fm_math.h"
 
 //--------------------------------------------Parameters for "ipm"---------------------------------------------
 
@@ -144,15 +144,17 @@ int is_equal( const void* _a, const void* _b, void* userdata );
 	{
 		int polySides = poly.size();
 		int      i, j=polySides-1 ;
-		bool  oddNodes = false      ;
+		bool  oddNodes = false;
 
-		for (i=0; i<polySides; i++) {
-			if (((poly[i].y< p.y && poly[j].y>=p.y)
-			      ||   (poly[j].y< p.y && poly[i].y>=p.y))
-					&&  (poly[i].x<=p.x || poly[j].x<=p.x)) {
-				          if(poly[i].x+(p.y-poly[i].y)/(poly[j].y-poly[i].y)*(poly[j].x-poly[i].x)<p.x)
-							{oddNodes=!oddNodes;} 			}
-			j=i; }
+		for (i=0; i<polySides; i++)
+		{
+			if (((poly[i].y< p.y && poly[j].y>=p.y) || (poly[j].y< p.y && poly[i].y>=p.y)) &&  (poly[i].x<=p.x || poly[j].x<=p.x))
+			{
+				if(poly[i].x+(p.y-poly[i].y)/(poly[j].y-poly[i].y)*(poly[j].x-poly[i].x)<p.x)
+				{oddNodes=!oddNodes;}
+			}
+			j=i;
+		}
 
 		return oddNodes;
 	}
@@ -242,19 +244,22 @@ int is_equal( const void* _a, const void* _b, void* userdata );
     	if(delt_angle>M_PI_2) delt_angle = M_PI - delt_angle;
     	bool angle_criterion = delt_angle < 5.0*M_PI/180.0;
 
-    	printf("angle %3f \t", delt_angle);
+
 
     	//distance of pointB[1] (second box) to the first short line;
-    	double distance = fabs(shortsideA[0]*pointB[1].x+shortsideA[1]*pointB[1].y+shortsideA[2])/sqrt(shortsideA[0]*shortsideA[0]+shortsideA[1]*shortsideA[1]);
+    	double collinear_distance = fabs(shortsideA[0]*pointB[1].x+shortsideA[1]*pointB[1].y+shortsideA[2])/sqrt(shortsideA[0]*shortsideA[0]+shortsideA[1]*shortsideA[1]);
+    	bool collinear_criterion = collinear_distance < 1.0*20;
 
-    	bool distance_criterion = distance < 1.0*20;
+    	double centroid_distance = fmutil::distance(cvBox_a.center, cvBox_b.center);
+    	bool centroid_dist_criterion = centroid_distance < 3*std::max(std::min(cvBox_a.size.height, cvBox_a.size.width), std::min(cvBox_b.size.height, cvBox_b.size.width));
 
-    	printf("distance %3f \n", distance);
+    	//printf("angle %3f \t", delt_angle);
+    	//printf("distance %3f \n", distance);
 
 		cvReleaseMemStorage(&mem_box_a);
 		cvReleaseMemStorage(&mem_box_b);
 
-    	return (angle_criterion && distance_criterion);
+    	return (angle_criterion && collinear_criterion && centroid_dist_criterion);
     }
 
 	void  Img_preproc(IplImage *src, IplImage *binary_image)
@@ -278,6 +283,39 @@ int is_equal( const void* _a, const void* _b, void* userdata );
 		//cvShowImage("Iat_local", binary_image);
 		cvWaitKey(1);
 	}
+
+	void merge_images(IplImage *image_A, IplImage *image_B)
+	{
+		int imgA_height 	= image_A -> height;
+		int imgA_width  	= image_A -> width;
+		int imgA_channel 	= image_A->nChannels;
+		int imgB_height 	= image_B -> height;
+		int imgB_width  	= image_B -> width;
+		int imgB_channel 	= image_B->nChannels;
+
+		assert(imgA_height==imgB_height&&imgA_channel==imgB_channel&&imgA_width==imgB_width);
+
+		for(int ih=0; ih < imgA_height; ih++)
+		{
+			for(int iw=0; iw < imgA_width; iw++)
+			{
+				CvPoint pixel;
+				pixel.x = iw;
+				pixel.y = ih;
+				CvScalar s=cvGet2D(image_B, pixel.y, pixel.x);
+
+				bool imgB_pixel_nonzero = false;
+				for(int c=0; c<imgA_channel; c++){if(s.val[c]!=0) imgB_pixel_nonzero = true;}
+
+
+				if(imgB_pixel_nonzero)
+				{
+					cvSet2D(image_A, pixel.y, pixel.x, s);
+				}
+			}
+		}
+	}
+
 };
 
 #endif

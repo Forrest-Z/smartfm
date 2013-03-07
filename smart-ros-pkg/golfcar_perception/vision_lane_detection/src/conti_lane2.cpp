@@ -29,11 +29,12 @@ namespace golfcar_vision{
 
 	void conti_lane::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
 	{
+		if(!polygon_init_)
+			for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 		polygon_init_ = true;
-		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
-    void conti_lane::imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm)
+    void conti_lane::imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean)
     {
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
@@ -164,7 +165,8 @@ namespace golfcar_vision{
         cvShowImage("lane_contour_img",contour_img);
         cvShowImage("lane_thining_img",thining_img);
 
-        cvOr(contour_img, visual_ipm, visual_ipm);
+        merge_images(visual_ipm, contour_img);
+        merge_images(visual_ipm_clean, contour_img);
 
         lanes_pub_.publish(lanes_inImg);
 		sensor_msgs::PointCloud lanes_ptcloud;

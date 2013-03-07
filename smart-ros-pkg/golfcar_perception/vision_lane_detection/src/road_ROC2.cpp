@@ -17,20 +17,24 @@ namespace golfcar_vision{
       //image_sub_ = it_.subscribe("/camera_front/ipm_binary", 1, &road_roc::imageCallback, this);
 
       polygon_sub_ = nh_.subscribe("img_polygon", 10, &road_roc::polygonCallback, this);
-      private_nh_.param("scale", scale_, 30.0);
+      private_nh_.param("scale", scale_, 20.0);
       private_nh_.param("extract_training_image", extract_training_image_, false);
       frame_serial_ = 0;
+
+      private_nh_.param("visualize_word_info", visualize_word_info_, false);
+
     }
 
 	void road_roc::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
 	{
+		if(!polygon_init_)
+			for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 		polygon_init_ = true;
-		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
-    void road_roc::imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm)
+    void road_roc::imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean)
     {
-    	printf("\n 1");
+    	ROS_INFO("Road ROC-- 1---");
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
         {
@@ -63,7 +67,7 @@ namespace golfcar_vision{
     	//------------------------------------------------------------------------------------------------------------------------------
         //1. to find the contours from image;
         //------------------------------------------------------------------------------------------------------------------------------
-    	IplImage* color_image, *binary_img;
+    	IplImage* color_image, *binary_img, *binary_img_copy;
 		try
 		{
 			color_image = bridge_.imgMsgToCv(msg, "bgr8");
@@ -80,6 +84,8 @@ namespace golfcar_vision{
 		cvCvtColor(img_tmp, binary_img, CV_BGR2GRAY);
 		Img_preproc_local(binary_img, binary_img);
 
+		binary_img_copy = cvCloneImage(binary_img);
+
 		cvReleaseImage(&img_tmp);
 		cvShowImage("roc_binary_image", binary_img);
 
@@ -90,7 +96,7 @@ namespace golfcar_vision{
         
         //CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
         CvContourScanner scanner = cvStartFindContours(binary_img, mem_contours, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
-                
+
         //-------------------------------------------------------------------------------------------------------------------------------
         //2. to filter noise at the boundary, and noise too small or too big; to re-write
         //-------------------------------------------------------------------------------------------------------------------------------
@@ -98,8 +104,9 @@ namespace golfcar_vision{
         first_contour = contours;
 
 		IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
+
 		cvZero(contour_img);
-		cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
+		//cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
 
 		CvMoments cvm;
 		CvHuMoments cvHM;
@@ -114,6 +121,8 @@ namespace golfcar_vision{
 
 		std::vector <size_t> lane_serials;
 
+		std::vector<CvPoint2D32f> contour_boxes_centers;
+
 		size_t contour_serial = 0;
         for (; contours != 0; contours = contours->h_next)
         {
@@ -124,6 +133,8 @@ namespace golfcar_vision{
 			cvGetHuMoments(&cvm, &cvHM);
 			//3rd feature, side lengths of bounding box;
 			cvBox = cvMinAreaRect2(contours, mem_box);
+
+			contour_boxes_centers.push_back(cvBox.center);
 			//4th feature: number of points after polygon approximation;
 			contour_poly = cvApproxPoly( contours, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 2, 0 );
 			int approxPtNum = int (contour_poly->total);
@@ -132,7 +143,7 @@ namespace golfcar_vision{
 			//contour_class = 1;
 			if(contour_class==1)
 			{
-				DrawBox(cvBox, contour_img, CV_RGB(255,255,0));
+				//DrawBox(cvBox, contour_img, CV_RGB(255,255,0));
 				lane_serials.push_back(contour_serial);
 			}
 			contour_serial ++ ;
@@ -142,10 +153,15 @@ namespace golfcar_vision{
 
         std::vector<size_t> best_cluster;
         if(contours!=0)  best_cluster =  road_roc::cluster_contours (contours, lane_serials);
+
         ROS_INFO("-----best_cluster size() %ld", best_cluster.size());
 
         int vector_length = 27;
         int BOW_feature[27] = {0};
+
+        IplImage *tmp_image = cvCreateImage(cvGetSize(contour_img),8,1);
+        cvZero(tmp_image);
+
 
         if(best_cluster.size() > 2)
         {
@@ -158,12 +174,17 @@ namespace golfcar_vision{
 					if(j==best_cluster[i])
 					{
 						cvBox = cvMinAreaRect2(contours, mem_box);
-						cvDrawContours(contour_img, contours, CV_RGB(255,0,0), CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
+
+						//characters to be drawn as a whole word later;
+						//cvDrawContours(contour_img, contours, CV_RGB(255,0,0), CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
+
 						int square_side = (int)std::sqrt(cvBox.size.height*cvBox.size.height+ cvBox.size.width*cvBox.size.width);
 						IplImage *character_tmp = cvCreateImage(cvSize(square_side+50, square_side+50),IPL_DEPTH_8U, 1);
 						cvZero(character_tmp);
 						CvPoint offset = cvPoint(square_side/2+25-cvBox.center.x, square_side/2+25 -cvBox.center.y);
+
 						cvDrawContours(character_tmp, contours, cvScalar(255), cvScalar(0), -1, CV_FILLED, 8, offset);
+						cvDrawContours(tmp_image, contours, cvScalar(255), cvScalar(0), -1, CV_FILLED, 8, cvPoint(0,0));
 
 						double rotate_angle, rotate_scale;
 						rotate_scale = 1.0;
@@ -208,25 +229,93 @@ namespace golfcar_vision{
 					j++;
 				}
         	}
-        }
 
-        std::string surface_word;
-        if(word_detector_.identify(BOW_feature, vector_length, surface_word))
-		{
-			ROS_INFO("identify words %s", surface_word.c_str());
-		}
+			std::string surface_word;
+			if(word_detector_.identify(BOW_feature, vector_length, surface_word))
+			{
+				ROS_INFO("identify words %s", surface_word.c_str());
+			}
+			else ROS_INFO("identify no words");
+
+			//for visualization purposes;
+			for(size_t i=0; i<best_cluster.size()-1;i++)
+			{
+				CvPoint center_tmp1, center_tmp2;
+				center_tmp1.x = (int)contour_boxes_centers[best_cluster[i]].x;
+				center_tmp1.y = (int)contour_boxes_centers[best_cluster[i]].y;
+				center_tmp2.x = (int)contour_boxes_centers[best_cluster[i+1]].x;
+				center_tmp2.y = (int)contour_boxes_centers[best_cluster[i+1]].y;
+				cvLine(tmp_image, center_tmp1, center_tmp2, cvScalar(255), 5);
+			}
+
+			CvSeq *contour_tmp = 0;       //always keep one copy of the beginning of this list, for further usage;
+			CvMemStorage *mem_contour_tmp;
+			CvMemStorage *mem_box_tmp;
+			mem_contour_tmp = cvCreateMemStorage(0);
+			mem_box_tmp = cvCreateMemStorage(0);
+			//cvFindContours(tmp_image, mem_contour_tmp, &contour_tmp);
+			CvContourScanner scanner_tmp = cvStartFindContours(tmp_image, mem_contour_tmp, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
+			contour_tmp=cvFindNextContour(scanner_tmp);
+			//to be send to the original view later;
+			CvBox2D cvBox_tmp;
+			cvBox_tmp = cvMinAreaRect2(contour_tmp, mem_box_tmp);
+			DrawBox(cvBox_tmp, contour_img, CV_RGB(255,255,0));
+
+			//to mark all the white pixels (characters) inside the rectangle red;
+			CvPoint2D32f pts_tmp[4];
+			calc_cvBoxPoints( cvBox_tmp, pts_tmp);
+			std::vector<CvPoint2D32f> word_polygon_tmp;
+			for(size_t i=0; i<4; i++) word_polygon_tmp.push_back(pts_tmp[i]);
+	        int img_height 		= contour_img -> height;
+			int img_width  		= contour_img -> width;
+			for(int ih=0; ih < img_height; ih++)
+			{
+				for(int iw=0; iw < img_width; iw++)
+				{
+					CvPoint pixel;
+					pixel.x = iw;
+					pixel.y = ih;
+					CvScalar s=cvGet2D(binary_img_copy, pixel.y, pixel.x);
+					if(s.val[0]!=0 && pointInPolygon(cvPoint2D32f(iw, ih), word_polygon_tmp))
+					{
+						cvSet2D(contour_img, pixel.y, pixel.x, CV_RGB(255, 0, 0));
+					}
+				}
+			}
+			cvReleaseImage(&binary_img_copy);
+
+			merge_images(visual_ipm_clean, contour_img);
+
+			if(visualize_word_info_)
+			{
+				CvFont font;
+				double hScale=0.4;
+				double vScale=0.4;
+				int lineWidth=1;
+				CvPoint origin;
+				origin.x = (int)cvBox_tmp.center.x+30;
+				origin.y = (int)cvBox_tmp.center.y;
+				cvInitFont(&font,CV_FONT_ITALIC, hScale, vScale, 0, lineWidth);
+				cvPutText(contour_img, surface_word.c_str(), origin, &font, CV_RGB(0,255,0));
+			}
+
+			cvReleaseMemStorage(&mem_box_tmp);
+			cvReleaseMemStorage(&mem_contour_tmp);
+			cvReleaseImage(&tmp_image);
+
+			cvShowImage("roc_contour_image",contour_img);
+			merge_images(visual_ipm, contour_img);
+
+        }
         else ROS_INFO("identify no words");
 
-
         if(contour_serial>0) extract_training_image(binary_img);
-        printf("2\n");
-
-        cvShowImage("roc_contour_image",contour_img);
-
-        cvReleaseMemStorage(&mem_contours);
-        cvReleaseMemStorage(&mem_box);
+        ROS_INFO("Road ROC-- 2---");
 
         cvWaitKey(1);
+        cvReleaseMemStorage(&mem_contours);
+        cvReleaseMemStorage(&mem_box);
+        cvReleaseImage(&tmp_image);
         cvReleaseImage(&contour_img);
     }
 

@@ -33,7 +33,7 @@ namespace golfcar_vision{
         public:
     	lane_marker();
         ~lane_marker();
-        void imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm);
+        void imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean);
 
         private:
         ros::NodeHandle nh_, private_nh_;
@@ -78,6 +78,8 @@ namespace golfcar_vision{
         //2013-March
         bool mask_init_;
         IplImage* image_mask_;
+
+        bool visualize_arrow_info_;
     };
 };
 
