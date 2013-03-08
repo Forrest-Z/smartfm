@@ -440,6 +440,7 @@ namespace golfcar_vision{
         mem_box = cvCreateMemStorage(0);
         while((c=cvFindNextContour(scanner))!=NULL)
         {
+        	if((c->v_prev)->v_next ==NULL) continue;
             //1st criterion: perimeter should be long enough;
             double len_pixel = cvContourPerimeter(c);
             double len_meter = len_pixel/scale_;

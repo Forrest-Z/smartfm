@@ -135,8 +135,9 @@ namespace golfcar_vision{
         //3. classify each remained candidates; visualize the markers detected;
         //-------------------------------------------------------------------------------------------------------------------------------
         IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
+        IplImage *contour_clean_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
         cvZero(contour_img);
-        //cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
+        cvZero(contour_clean_img);
         CvScalar ext_color;
 
         CvMoments cvm;
@@ -187,8 +188,8 @@ namespace golfcar_vision{
 				//to visualize all the candidates, together with their bounding box;
 				//DrawBox(cvBox,contour_img, ext_color);
 				cvDrawContours(contour_img, contours, CV_RGB(0,255,0), CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
+				cvDrawContours(contour_clean_img, contours, CV_RGB(0,255,0), CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
 				//-----------------------------------------------------------------------------------------------
-
                 vision_lane_detection::marker_info marker_output;
                 marker_output.class_label = contour_class;
                 //this default number denotes no angle information;
@@ -198,7 +199,6 @@ namespace golfcar_vision{
                 ROS_INFO("lane marker detected");
                 //to visualize the posing result from
 
-                merge_images(visual_ipm_clean, contour_img);
 
 				if(visualize_arrow_info_)
 				{
@@ -238,7 +238,10 @@ namespace golfcar_vision{
 			else {}
 		}
         cvShowImage("arrow_contour_image",contour_img);
+
+        merge_images(visual_ipm_clean, contour_clean_img);
         merge_images(visual_ipm, contour_img);
+
         markers_pub_.publish(markers_output);
 
         sensor_msgs::PointCloud markers_ptcloud;
@@ -293,6 +296,7 @@ namespace golfcar_vision{
 
         cvWaitKey(1);
         cvReleaseImage(&contour_img);
+        cvReleaseImage(&contour_clean_img);
         cvReleaseImage(&binary_img);
         cvReleaseImage(&binary_copy);
     }

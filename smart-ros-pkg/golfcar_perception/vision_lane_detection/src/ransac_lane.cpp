@@ -116,7 +116,7 @@ namespace golfcar_vision{
 						upper_right.y = inline_cloud->points[j].y;
 					}
 				}
-				cvLine( contour_img, lower_left, upper_right, CV_RGB(0,0,255), 1);
+				cvLine( contour_img, lower_left, upper_right, CV_RGB(0,0,255), 2);
 			}
 		}
 

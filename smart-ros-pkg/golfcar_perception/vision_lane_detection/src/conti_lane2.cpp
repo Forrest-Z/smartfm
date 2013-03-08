@@ -88,12 +88,13 @@ namespace golfcar_vision{
         mem_contours = cvCreateMemStorage(0);
         
         //CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-        CvContourScanner scanner = cvStartFindContours(binary_img, mem_contours, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
-                
+        CvContourScanner scanner = cvStartFindContours(binary_img, mem_contours, sizeof(CvContour), CV_RETR_TREE, CV_CHAIN_APPROX_NONE);
+
         //-------------------------------------------------------------------------------------------------------------------------------
         //2. to filter noise at the boundary, and noise too small or too big; to re-write
         //-------------------------------------------------------------------------------------------------------------------------------
         contours = filter_contours(scanner);
+
         first_contour = contours;
 
         ROS_INFO("1");
@@ -101,9 +102,11 @@ namespace golfcar_vision{
         //3. classify each remained candidates; visualize the markers detected;
         //-------------------------------------------------------------------------------------------------------------------------------
         IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
+        IplImage *contour_img_show = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
 		IplImage *thining_img = cvCreateImage(cvSize(contour_img->width,contour_img->height),IPL_DEPTH_8U, 1);
 		cvZero(thining_img);
 		cvZero(contour_img);
+		cvZero(contour_img_show);
         //cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
         CvScalar ext_color;
         ROS_INFO("2");
@@ -150,12 +153,11 @@ namespace golfcar_vision{
 			int approxPtNum = int (contour_poly->total);
 
             int contour_class = classify_contour (contour_weight, contour_perimeter, cvHM, cvBox, approxPtNum);
-            
+            cvDrawContours(contour_img_show, contours, ext_color, CV_RGB(0,0,0), -2, CV_FILLED, 8, cvPoint(0,0));
+
             if(contour_class==-1){ROS_ERROR("NO CLASSIFICATION!!!");}
             else if(contour_class== 1)
 			{
-            	//cvDrawContours(contour_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
-
             	//ransac lanes;
             	lane_extractor_->multiple_lanes(contours, scale_, thining_img, contour_img, lane_contour_serial, lanes_inImg);
             	lane_contour_serial++;
@@ -163,6 +165,9 @@ namespace golfcar_vision{
 			else {}
 		}
         cvShowImage("lane_contour_img",contour_img);
+        cvShowImage("contour_img_show",contour_img_show);
+        cvSaveImage("/home/baoxing/contour_show.png", contour_img_show);
+
         cvShowImage("lane_thining_img",thining_img);
 
         merge_images(visual_ipm, contour_img);
@@ -199,6 +204,7 @@ namespace golfcar_vision{
 
         cvWaitKey(1);
         cvReleaseImage(&contour_img);
+        cvReleaseImage(&contour_img_show);
         cvReleaseImage(&thining_img);
     }
 
@@ -266,6 +272,10 @@ namespace golfcar_vision{
         mem_box = cvCreateMemStorage(0);
         while((c=cvFindNextContour(scanner))!=NULL)
         {
+        	//not to erase the inner contours;
+        	//the contour hierarchy is confusing here;
+        	if((c->v_prev)->v_next ==NULL) continue;
+
             //1st criterion: perimeter should be long enough;
             double len_pixel = cvContourPerimeter(c);
             double len_meter = len_pixel/scale_;

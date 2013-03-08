@@ -65,7 +65,6 @@ namespace golfcar_vision{
 
         CvSeq* filter_contours (CvContourScanner &scanner);
 
-
         int classify_contour(double weight_input, double perimeter_input, CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input);
 
         void extract_training_image(IplImage* binary_img);

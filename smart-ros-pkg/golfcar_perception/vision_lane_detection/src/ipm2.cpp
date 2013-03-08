@@ -45,7 +45,6 @@ namespace golfcar_vision{
 		if(visualization_flag_)
 		{
 			cvNamedWindow("src_window");
-			cvNamedWindow("ipm_window");
 		}
 
 		//to accumulate the curb points (road_boundary);
@@ -100,7 +99,6 @@ namespace golfcar_vision{
             }
 
         gray_image = cvCreateImage(cvGetSize(color_image),8,1);
-        cvCvtColor(color_image, gray_image, CV_BGR2GRAY);
         color_image_copy = cvCloneImage(color_image);
 
         //assign camera information to "cam_model_";
@@ -192,8 +190,12 @@ namespace golfcar_vision{
 		cvGetPerspectiveTransform(srcQuad_,dstQuad_,  warp_matrix_);
 		cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix_);
 
+        cvCvtColor(color_image_copy, gray_image, CV_BGR2GRAY);
 		cvWarpPerspective( gray_image, ipm_image_, warp_matrix_);
-		cvWarpPerspective( color_image, ipm_color_image_, warp_matrix_);
+		cvWarpPerspective( color_image_copy, ipm_color_image_, warp_matrix_);
+
+		std::vector<CvPoint2D32f> img_polygon_tmp;
+		for(size_t i=0; i<4; i++) img_polygon_tmp.push_back(cvPoint2D32f(img_polygon.polygon.points[i].x,img_polygon.polygon.points[i].y));
 
 		PointCloudRGB rgb_pts;
 		rgb_pts.header.stamp = info_msg->header.stamp;
@@ -211,9 +213,16 @@ namespace golfcar_vision{
 		{
 			for(int iw=0; iw < ipm_width; iw++)
 			{
+				/*
 				if(ipm_data[ih*ipm_step+iw] == 0)
 				{
 					ipm_data[ih*ipm_step+iw]=150;
+				}
+				*/
+				if(!pointInPolygon(cvPoint2D32f(iw, ih), img_polygon_tmp))
+				{
+					ipm_data[ih*ipm_step+iw]=0;
+					cvSet2D(ipm_color_image_, ih, iw, CV_RGB(0, 0, 0));
 				}
 			}
 		}
@@ -260,15 +269,7 @@ namespace golfcar_vision{
 			cvLine( color_image, cvPointFrom32f(srcQuad_[2]), cvPointFrom32f(srcQuad_[3]), CV_RGB(0,0,255), 1);
 			cvLine( color_image, cvPointFrom32f(srcQuad_[3]), cvPointFrom32f(srcQuad_[0]), CV_RGB(0,0,255), 1);
 			cvShowImage("src_window", color_image);
-			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[0]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[1]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[2]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[3]), 6, CV_RGB(0,255,0), 2);
-			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[0]), cvPointFrom32f(dstQuad_[1]), CV_RGB(0,0,255), 1);
-			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[1]), cvPointFrom32f(dstQuad_[2]), CV_RGB(0,0,255), 1);
-			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[2]), cvPointFrom32f(dstQuad_[3]), CV_RGB(0,0,255), 1);
-			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[3]), cvPointFrom32f(dstQuad_[0]), CV_RGB(0,0,255), 1);
-			cvShowImage("ipm_window", ipm_color_image_);
+			cvSaveImage("/home/baoxing/originla_color_image.png", color_image);
 		}
 
 		IplImage *binary_image, *visual_ipm, *visual_ipm_clean;
@@ -278,6 +279,10 @@ namespace golfcar_vision{
         cvZero(visual_ipm);
         cvZero(visual_ipm_clean);
         Img_preproc(ipm_image_, binary_image);
+		cvShowImage("binary_image", binary_image);
+
+		cvSaveImage("/home/baoxing/ipm_color_image.png", ipm_color_image_);
+		cvSaveImage("/home/baoxing/binary_image.png", binary_image);
 
 		sensor_msgs::Image::Ptr ipm_msg, binary_msg, canny_msg;
 		try
@@ -302,7 +307,8 @@ namespace golfcar_vision{
 		//cvShowImage("visual_ipm", visual_ipm);
 		merge_images(ipm_color_image_, visual_ipm);
 		cvShowImage("visual_ipm", ipm_color_image_);
-
+		cvSaveImage("/home/baoxing/visual_ipm.png", visual_ipm);
+		cvSaveImage("/home/baoxing/ipm_color_image_.png", ipm_color_image_);
 
 		IplImage* visualize_tmp = cvCreateImage(cvGetSize(color_image_copy),8,3);
 		cvZero(visualize_tmp);
@@ -325,6 +331,7 @@ namespace golfcar_vision{
 		}
 
 		cvShowImage("visualization_in_all", color_image_copy);
+		cvSaveImage("/home/baoxing/visualization_in_all.png", color_image_copy);
 		//this scentence is necessary;
 		cvWaitKey(1);
 
@@ -601,7 +608,6 @@ namespace golfcar_vision{
 	if(visualization_flag_)
 	{
 	   cvDestroyWindow("src_window");
-	   cvDestroyWindow("ipm_window");
 	}
 	cvDestroyWindow("visual_ipm");
 	cvDestroyWindow("visualization_in_all");
