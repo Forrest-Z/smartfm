@@ -80,6 +80,8 @@ namespace golfcar_vision{
 		cvResize(color_image, img_tmp);
 
 		//2013-March: to erase the small yellow blocks accompanying the white strips;
+		//later to solve using erosion;
+
 		IplImage* yellow_mask = cvCreateImage(cvSize(color_image->width,color_image->height),IPL_DEPTH_8U, 1);
 		IplImage* HSV_image = cvCreateImage(cvSize(color_image->width,color_image->height),IPL_DEPTH_8U, 3);
 		cvCvtColor(color_image, HSV_image, CV_BGR2HSV);
@@ -151,7 +153,7 @@ namespace golfcar_vision{
 			//contour_class = 1;
 			if(contour_class==1)
 			{
-				DrawBox(cvBox, contour_img, CV_RGB(255,255,0));
+				//DrawBox(cvBox, contour_img, CV_RGB(255,255,0));
 				lane_serials.push_back(contour_serial);
 			}
 			contour_serial ++ ;
@@ -230,8 +232,20 @@ namespace golfcar_vision{
 				}
 			}
 
-			merge_images(visual_ipm, contour_img);
+
 			merge_images(visual_ipm_clean, contour_img);
+
+			CvFont font;
+			double hScale=0.6;
+			double vScale=0.6;
+			int lineWidth=2;
+			CvPoint origin;
+			origin.x = (int)cvBox_tmp.center.x;
+			origin.y = (int)cvBox_tmp.center.y-30;
+			cvInitFont(&font,CV_FONT_ITALIC, hScale, vScale, 0, lineWidth);
+			cvPutText(contour_img, "Crossing!", origin, &font, CV_RGB(0,255,0));
+
+			merge_images(visual_ipm, contour_img);
 			cvReleaseMemStorage(&mem_box_tmp);
 			cvReleaseMemStorage(&mem_contour_tmp);
 		}

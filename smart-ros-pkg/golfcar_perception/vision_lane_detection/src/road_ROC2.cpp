@@ -276,9 +276,14 @@ namespace golfcar_vision{
 					pixel.x = iw;
 					pixel.y = ih;
 					CvScalar s=cvGet2D(binary_img_copy, pixel.y, pixel.x);
-					if(s.val[0]!=0 && pointInPolygon(cvPoint2D32f(iw, ih), word_polygon_tmp))
+					if(pointInPolygon(cvPoint2D32f(iw, ih), word_polygon_tmp))
 					{
-						cvSet2D(contour_img, pixel.y, pixel.x, CV_RGB(255, 0, 0));
+						if(s.val[0]!=0)cvSet2D(contour_img, pixel.y, pixel.x, CV_RGB(255, 0, 0));
+						else
+						{
+							cvSet2D(visual_ipm_clean, pixel.y, pixel.x, CV_RGB(0, 0, 0));
+							cvSet2D(visual_ipm, pixel.y, pixel.x, CV_RGB(0, 0, 0));
+						}
 					}
 				}
 			}
@@ -303,11 +308,11 @@ namespace golfcar_vision{
 			cvReleaseMemStorage(&mem_contour_tmp);
 			cvReleaseImage(&tmp_image);
 
-			cvShowImage("roc_contour_image",contour_img);
-			merge_images(visual_ipm, contour_img);
-
         }
         else ROS_INFO("identify no words");
+
+		cvShowImage("roc_contour_image",contour_img);
+		merge_images(visual_ipm, contour_img);
 
         if(contour_serial>0) extract_training_image(binary_img);
         ROS_INFO("Road ROC-- 2---");
