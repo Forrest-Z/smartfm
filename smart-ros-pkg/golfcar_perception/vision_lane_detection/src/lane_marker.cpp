@@ -11,8 +11,8 @@ namespace golfcar_vision{
 	  ipm_para_init_ = false;
 
       string marker_model_path, marker_scale_path;
-	  private_nh_.param("arrow_model_path", marker_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
-	  private_nh_.param("arrow_scale_path", marker_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
+	  private_nh_.param("arrow_model_path", marker_model_path, std::string("/home/baoxing/workspace/data_and_model/arrow_20130308.model"));
+	  private_nh_.param("arrow_scale_path", marker_scale_path, std::string("/home/baoxing/workspace/data_and_model/arrow_20130308.range"));
       marker_classifier_ = new golfcar_ml::svm_classifier(marker_model_path, marker_scale_path);
       image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &lane_marker::imageCallback, this);
 
@@ -39,7 +39,10 @@ namespace golfcar_vision{
 
     void lane_marker::imageCallback (const sensor_msgs::ImageConstPtr& msg)
     {
-        ROS_INFO("Arrow --------1------------");
+        ROS_INFO("Arrow CallBack Begin");
+
+        fmutil::Stopwatch sw;
+        sw.start("image processing");
 
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
@@ -116,6 +119,9 @@ namespace golfcar_vision{
 
 		cvShowImage("arrow_binary_img", binary_img);
 
+		sw.end();
+
+		sw.start("extract contour");
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";
         CvSeq *first_contour = 0;       //always keep one copy of the beginning of this list, for further usage;
         CvMemStorage *mem_contours; 
@@ -130,7 +136,9 @@ namespace golfcar_vision{
         contours = filter_contours(scanner);
         first_contour = contours;
 
+        sw.end();
 
+        sw.start("process contours");
         //-------------------------------------------------------------------------------------------------------------------------------
         //3. classify each remained candidates; visualize the markers detected;
         //-------------------------------------------------------------------------------------------------------------------------------
@@ -292,6 +300,9 @@ namespace golfcar_vision{
         cvReleaseImage(&contour_img);
         cvReleaseImage(&binary_img);
         cvReleaseImage(&binary_copy);
+
+        ROS_INFO("Arrow CallBack End");
+        sw.end();
     }
 
     void lane_marker::extract_training_image(IplImage* binary_img)
@@ -387,7 +398,6 @@ namespace golfcar_vision{
 					for(int b = -1; b<=1; b=b+1)
 					{
 						CvPoint2D32f tmppoint = cvPoint2D32f(p->x+a, p->y+b);
-			            ROS_INFO("%f, %f", tmppoint.x, tmppoint.y);
 						if(!pointInPolygon <CvPoint2D32f> (tmppoint,ipm_polygon_))
 						{
 							inside_polygon = false;
@@ -407,9 +417,6 @@ namespace golfcar_vision{
 	        cvReleaseMemStorage(&mem_poly_filter);
 
 			if(extract_training_image_)inside_polygon = true;
-
-			if( !inside_polygon)ROS_INFO("outside polygon");
-			else ROS_INFO("inside polygon");
 
 			bool contour_criteria = len_criterion && long_side_criterion && inside_polygon;
             if(!contour_criteria)

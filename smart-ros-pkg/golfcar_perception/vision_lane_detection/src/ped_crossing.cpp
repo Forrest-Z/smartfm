@@ -11,8 +11,8 @@ namespace golfcar_vision{
 	  ipm_para_init_ = false;
 
       string ped_crossing_model_path, ped_crossing_scale_path;
-	  private_nh_.param("ped_crossing_model_path", ped_crossing_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
-	  private_nh_.param("ped_crossing_scale_path", ped_crossing_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
+	  private_nh_.param("ped_crossing_model_path", ped_crossing_model_path, std::string("/home/baoxing/workspace/data_and_model/ped_crossing_20130305.model"));
+	  private_nh_.param("ped_crossing_scale_path", ped_crossing_scale_path, std::string("/home/baoxing/workspace/data_and_model/ped_crossing_20130305.range"));
       ped_crossing_classifier_ = new golfcar_ml::svm_classifier(ped_crossing_model_path, ped_crossing_scale_path);
       image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &ped_crossing::imageCallback, this);
 
@@ -32,7 +32,8 @@ namespace golfcar_vision{
 
     void ped_crossing::imageCallback (const sensor_msgs::ImageConstPtr& msg)
     {
-    	printf("\n 1");
+    	ROS_INFO("PED_Crossing----ImageCallBack-----");
+
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
         {
@@ -103,12 +104,15 @@ namespace golfcar_vision{
         
         //CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
         CvContourScanner scanner = cvStartFindContours(binary_img, mem_contours, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
-                
+
         //-------------------------------------------------------------------------------------------------------------------------------
         //2. to filter noise at the boundary, and noise too small or too big; to re-write
         //-------------------------------------------------------------------------------------------------------------------------------
         contours = filter_contours(scanner);
         first_contour = contours;
+
+    	fmutil::Stopwatch sw;
+        sw.start("ped contour");
 
 		IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
 		cvZero(contour_img);
@@ -224,6 +228,10 @@ namespace golfcar_vision{
 
         cvWaitKey(1);
         cvReleaseImage(&contour_img);
+
+        sw.end();
+
+        ROS_INFO("PED_Crossing----ImageCallBack  END-----");
     }
 
 

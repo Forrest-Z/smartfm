@@ -41,7 +41,7 @@ namespace golfcar_vision{
 
     void lane_marker::imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean)
     {
-    	ROS_INFO("Arrow -- 1---");
+    	ROS_INFO("Arrow CallBack Begin");
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
         {
@@ -208,7 +208,7 @@ namespace golfcar_vision{
 					int lineWidth=1;
 					CvPoint origin;
 					stringstream  class_string;
-					class_string<<"arrow class: "<< contour_class;
+					class_string<<"arrow: "<< contour_class;
 					const char *class_name = class_string.str().c_str();
 					origin.x = (int)cvBox.center.x+10;
 					origin.y = (int)cvBox.center.y;
@@ -226,10 +226,10 @@ namespace golfcar_vision{
 					int lineWidth2=1;
 					CvPoint origin_2;
 					stringstream  position_string;
-					position_string<<"("<<setiosflags(ios::fixed) << setprecision(2) << marker_output.x << ","<<marker_output.y <<","<< marker_output.thetha * M_PI/180.0<<")";
+					position_string<<"("<<setiosflags(ios::fixed) << setprecision(2) << marker_output.x << ","<<marker_output.y <<","<< marker_output.thetha * 180.0/M_PI<<")";
 					const char *position_info = position_string.str().c_str();
 					origin_2.x = (int)cvBox.center.x+10;
-					origin_2.y = (int)cvBox.center.y+20;
+					origin_2.y = (int)cvBox.center.y+12;
 					cvInitFont(&font2,CV_FONT_ITALIC, hScale2, vScale2, 0, lineWidth2);
 					cvPutText(contour_img, position_info, origin_2, &font2, CV_RGB(0,255,0));
                 }
@@ -299,6 +299,8 @@ namespace golfcar_vision{
         cvReleaseImage(&contour_clean_img);
         cvReleaseImage(&binary_img);
         cvReleaseImage(&binary_copy);
+
+        ROS_INFO("Arrow CallBack End");
     }
 
     void lane_marker::extract_training_image(IplImage* binary_img)

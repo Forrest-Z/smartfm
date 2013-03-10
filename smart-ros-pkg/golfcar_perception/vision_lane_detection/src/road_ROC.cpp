@@ -11,13 +11,13 @@ namespace golfcar_vision{
 	  ipm_para_init_ = false;
 
       string road_roc_model_path, road_roc_scale_path;
-	  private_nh_.param("road_roc_model_path", road_roc_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
-	  private_nh_.param("road_roc_scale_path", road_roc_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
+	  private_nh_.param("road_roc_model_path", road_roc_model_path, std::string("/home/baoxing/workspace/data_and_model/roc_20130306.model"));
+	  private_nh_.param("road_roc_scale_path", road_roc_scale_path, std::string("/home/baoxing/workspace/data_and_model/roc_20130306.range"));
       road_roc_classifier_ = new golfcar_ml::svm_classifier(road_roc_model_path, road_roc_scale_path);
       image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &road_roc::imageCallback, this);
 
       polygon_sub_ = nh_.subscribe("img_polygon", 10, &road_roc::polygonCallback, this);
-      private_nh_.param("scale", scale_, 30.0);
+      private_nh_.param("scale", scale_, 20.0);
       private_nh_.param("extract_training_image", extract_training_image_, false);
       frame_serial_ = 0;
     }
@@ -31,7 +31,7 @@ namespace golfcar_vision{
 
     void road_roc::imageCallback (const sensor_msgs::ImageConstPtr& msg)
     {
-    	printf("\n 1");
+    	ROS_INFO("ROC----ImageCallBack-----");
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
         {
@@ -97,6 +97,9 @@ namespace golfcar_vision{
         contours = filter_contours(scanner);
         first_contour = contours;
 
+        fmutil::Stopwatch sw;
+        sw.start("roc contour");
+
 		IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
 		cvZero(contour_img);
 		cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
@@ -139,6 +142,8 @@ namespace golfcar_vision{
 		}
 
         contours = first_contour;
+        sw.end();
+
 
         std::vector<size_t> best_cluster;
         if(contours!=0)  best_cluster =  road_roc::cluster_contours (contours, lane_serials);
@@ -157,6 +162,7 @@ namespace golfcar_vision{
 				{
 					if(j==best_cluster[i])
 					{
+				        sw.start("single character");
 						cvBox = cvMinAreaRect2(contours, mem_box);
 						cvDrawContours(contour_img, contours, CV_RGB(255,0,0), CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
 						int square_side = (int)std::sqrt(cvBox.size.height*cvBox.size.height+ cvBox.size.width*cvBox.size.width);
@@ -203,6 +209,7 @@ namespace golfcar_vision{
 				        cvReleaseImage(&character_tmp);
 						//cvReleaseMat(&thining_mat);
 						//cvReleaseMat(&output_mat);
+				        sw.end();
 						break;
 					}
 					j++;
@@ -217,7 +224,6 @@ namespace golfcar_vision{
 		}
         else ROS_INFO("identify no words");
 
-
         if(contour_serial>0) extract_training_image(binary_img);
         printf("2\n");
 
@@ -228,6 +234,8 @@ namespace golfcar_vision{
 
         cvWaitKey(1);
         cvReleaseImage(&contour_img);
+
+        ROS_INFO("ROC----ImageCallBack--END---");
     }
 
 

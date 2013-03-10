@@ -47,7 +47,7 @@ namespace golfcar_vision{
 			pcl::RandomSampleConsensus<pcl::PointXYZ> ransac (model_line);
 			Eigen::VectorXf line_coefficients;
 
-			ransac.setDistanceThreshold (0.1*scale);
+			ransac.setDistanceThreshold (0.5*scale);
 			ransac.computeModel();
 			ransac.getInliers(inliers);
 			ransac.getModelCoefficients(line_coefficients);
@@ -78,7 +78,7 @@ namespace golfcar_vision{
 			float sample_ratio = ((float)inliers.size())/total_points_number;
 
 			bool good_line = false;
-			if(sample_ratio > 0.3) good_line = true;
+			if(sample_ratio > 0.3 && inliers.size() > 10) good_line = true;
 
 			if(good_line)
 			{

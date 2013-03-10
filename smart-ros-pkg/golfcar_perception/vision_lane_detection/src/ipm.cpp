@@ -33,7 +33,7 @@ namespace golfcar_vision{
 		private_nh_.param("publish_dis_thresh",     publish_dis_thresh_,    0.05);
 		private_nh_.param("publish_angle_thresh",   publish_angle_thresh_,  5.0/180.0*M_PI);
 		private_nh_.param("visualization_flag",     visualization_flag_,    false);
-		private_nh_.param("odom_control",     		odom_control_,   		 true);
+		private_nh_.param("odom_control",     		odom_control_,   		 false);
 
 		odom_frame_ = "odom";
 		base_frame_ = "base_link";
@@ -76,7 +76,10 @@ namespace golfcar_vision{
   void ipm::ImageCallBack( const sensor_msgs::ImageConstPtr& image_msg,
                            const sensor_msgs::CameraInfoConstPtr& info_msg)
   {
-        ROS_INFO("ImageCallBack");
+        ROS_INFO("IPM----ImageCallBack-----");
+        fmutil::Stopwatch sw;
+        sw.start("ipm");
+
         ros::Time meas_time = info_msg->header.stamp;
         if(odom_control_) process_control(meas_time);
 		else {publish_flag_ = true;}
@@ -172,6 +175,10 @@ namespace golfcar_vision{
 		cvWarpPerspective( gray_image, ipm_image_, warp_matrix_);
 		cvWarpPerspective( color_image, ipm_color_image_, warp_matrix_);
 		
+		sw.end();
+
+		sw.start("other related processes");
+
 		PointCloudRGB rgb_pts;
 		rgb_pts.header.stamp = info_msg->header.stamp;
 		rgb_pts.header.frame_id = dest_frame_id_;
@@ -296,8 +303,6 @@ namespace golfcar_vision{
 		gnd_polygon_publisher.publish(gnd_polygon);
 		img_polygon_publisher.publish(img_polygon);
 
-		ROS_INFO("ImageCallBack finished");
-
 		//Attention:
 		//color_image is not allocated memory as normal;
 		//it points to some memory space in "cv_bridge" object handled by ROS;
@@ -305,6 +310,9 @@ namespace golfcar_vision{
 		//cvReleaseImage(&color_image);
 		cvReleaseImage(&gray_image);
 		cvReleaseImage(&binary_image);
+
+		sw.end();
+		ROS_INFO("IPM----ImageCallBack END-----");
   }
   
   //Function "GndPt_to_Src": project ground point in baselink coordinate into camera image;

@@ -17,6 +17,7 @@
 #include "vision_lane_detection/markers_info.h"
 #include "vision_lane_detection/lanes_info.h"
 #include "fmutil/fm_math.h"
+#include <fmutil/fm_stopwatch.h>
 
 //--------------------------------------------Parameters for "ipm"---------------------------------------------
 
@@ -200,7 +201,7 @@ int is_equal( const void* _a, const void* _b, void* userdata );
     	size_t b = *(const size_t*)_b;
 
     	CvSeq *contour = (CvSeq*) userdata;
-    	printf("a, b %d,\t%d\t", a, b);
+    	//printf("a, b %d,\t%d\t", a, b);
 
     	CvSeq *contour_a = 0;
     	CvSeq *contour_b = 0;
@@ -220,8 +221,8 @@ int is_equal( const void* _a, const void* _b, void* userdata );
 
     	cvBox_a = cvMinAreaRect2(contour_a, mem_box_a);
     	cvBox_b = cvMinAreaRect2(contour_b, mem_box_b);
-    	printf("cvBox_a center (%3f, %3f), width heigh: (%3f, %3f)\n", cvBox_a.center.x,  cvBox_a.center.y, cvBox_a.size.width, cvBox_a.size.height);
-    	printf("cvBox_b center (%3f, %3f), width heigh: (%3f, %3f)\n", cvBox_b.center.x,  cvBox_b.center.y, cvBox_b.size.width, cvBox_b.size.height);
+    	//printf("cvBox_a center (%3f, %3f), width heigh: (%3f, %3f)\n", cvBox_a.center.x,  cvBox_a.center.y, cvBox_a.size.width, cvBox_a.size.height);
+    	//printf("cvBox_b center (%3f, %3f), width heigh: (%3f, %3f)\n", cvBox_b.center.x,  cvBox_b.center.y, cvBox_b.size.width, cvBox_b.size.height);
 
     	CvPoint2D32f pointA[4], pointB[4];
     	calc_cvBoxPoints(cvBox_a, pointA);
@@ -231,10 +232,10 @@ int is_equal( const void* _a, const void* _b, void* userdata );
     	line_calculate(cvBox_a, longsideA, shortsideA);
     	line_calculate(cvBox_b, longsideB, shortsideB);
 
-    	printf("lineA long: (%3f,  %3f,  %3f)\t", longsideA[0], longsideA[1], longsideA[2]);
-    	printf("lineA short: (%3f,  %3f,  %3f)\n", shortsideA[0], shortsideA[1], shortsideA[2]);
-    	printf("lineB long: (%3f,  %3f,  %3f)\t", longsideB[0], longsideB[1], longsideB[2]);
-    	printf("lineB short: (%3f,  %3f,  %3f)\n", shortsideB[0], shortsideB[1], shortsideB[2]);
+    	//printf("lineA long: (%3f,  %3f,  %3f)\t", longsideA[0], longsideA[1], longsideA[2]);
+    	//printf("lineA short: (%3f,  %3f,  %3f)\n", shortsideA[0], shortsideA[1], shortsideA[2]);
+    	//printf("lineB long: (%3f,  %3f,  %3f)\t", longsideB[0], longsideB[1], longsideB[2]);
+    	//printf("lineB short: (%3f,  %3f,  %3f)\n", shortsideB[0], shortsideB[1], shortsideB[2]);
 
     	double longside_angleA = atan2(longsideA[0], -longsideA[1]);
     	if(longside_angleA<0) longside_angleA = longside_angleA + M_PI;
