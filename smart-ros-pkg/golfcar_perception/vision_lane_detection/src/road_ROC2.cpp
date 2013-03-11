@@ -22,7 +22,6 @@ namespace golfcar_vision{
       frame_serial_ = 0;
 
       private_nh_.param("visualize_word_info", visualize_word_info_, false);
-
     }
 
 	void road_roc::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
@@ -229,6 +228,8 @@ namespace golfcar_vision{
 					j++;
 				}
         	}
+
+        	//Add the save_file function here, to save the word vector, character and the whole image;
 
 			std::string surface_word;
 			if(word_detector_.identify(BOW_feature, vector_length, surface_word))

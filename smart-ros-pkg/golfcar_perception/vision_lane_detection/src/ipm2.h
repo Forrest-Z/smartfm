@@ -116,6 +116,7 @@ namespace golfcar_vision{
 		geometry_msgs::PolygonStamped gnd_polygon, img_polygon;
 		ros::Publisher gnd_polygon_publisher, img_polygon_publisher;
 
+		bool lane_on_, arrow_on_, crossing_on_, word_on_;
 		conti_lane *lane_processor_;
 		lane_marker *arrow_processor_;
 		road_roc* roc_processor_;

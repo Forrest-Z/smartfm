@@ -62,11 +62,17 @@ namespace golfcar_vision{
 		gnd_polygon_publisher  = nh_.advertise<geometry_msgs::PolygonStamped>("/gnd_polygon", 10);
 		img_polygon_publisher  = nh_.advertise<geometry_msgs::PolygonStamped>("/img_polygon", 10);
 
+
+		private_nh_.param("lane_on",     lane_on_,    	true);
+		private_nh_.param("arrow_on",    arrow_on_,   	true);
+		private_nh_.param("crossing_on", crossing_on_,	true);
+		private_nh_.param("word_on",     word_on_,	 	true);
+
 		//to maintain several sets of polygons, since the four modules may be interested in different areas;
-		lane_processor_ = new conti_lane();
-		arrow_processor_ = new lane_marker();
-		roc_processor_ = new road_roc();
-		zebra_processor_= new ped_crossing();
+		if(lane_on_)lane_processor_ = new conti_lane();
+		if(arrow_on_)arrow_processor_ = new lane_marker();
+		if(word_on_)roc_processor_ = new road_roc();
+		if(crossing_on_)zebra_processor_= new ped_crossing();
 
 		cvNamedWindow("visual_ipm");
 		cvNamedWindow("visualization_in_all");
@@ -299,10 +305,10 @@ namespace golfcar_vision{
 		binary_msg->header = image_msg ->header;
 		binary_pub_.publish(binary_msg);
 
-		lane_processor_->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
-		arrow_processor_->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
-		roc_processor_ ->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
-		zebra_processor_->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
+		if(lane_on_)lane_processor_->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
+		if(arrow_on_)arrow_processor_->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
+		if(crossing_on_)zebra_processor_->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
+		if(word_on_)roc_processor_ ->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
 
 		//cvShowImage("visual_ipm", visual_ipm);
 		merge_images(ipm_color_image_, visual_ipm);

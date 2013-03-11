@@ -215,7 +215,6 @@ int main(int argc, char** argv)
 			cvInRangeS(HSV_image, cvScalar(15, 80, 100), cvScalar(40, 255, 255), yellow_mask);
 			cvThreshold(yellow_mask, yellow_mask, 100, 255, CV_THRESH_BINARY_INV);
 			cvShowImage("yellow_mask", yellow_mask);
-
 			cvAnd(yellow_mask, Igray, Igray);
 			cvReleaseImage(&yellow_mask);
 			cvReleaseImage(&HSV_image);

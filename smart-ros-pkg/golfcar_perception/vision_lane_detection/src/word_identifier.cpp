@@ -24,6 +24,13 @@
 	  if(feature_vector[79-65]>0) _slow++;
 	  if(feature_vector[87-65]>0) _slow++;
 
+	  //"HUMP"
+	  int _hump = 0;
+	  if(feature_vector[72-65]>0) _hump++;
+	  if(feature_vector[85-65]>0) _hump++;
+	  if(feature_vector[77-65]>0) _hump++;
+	  if(feature_vector[80-65]>0) _hump++;
+
 	  //"STRIP"
 	  int _strip = 0;
 	  if(feature_vector[83-65]>0) _strip++;
@@ -31,6 +38,7 @@
 	  if(feature_vector[82-65]>0) _strip++;
 	  if(feature_vector[73-65]>0) _strip++;
 	  if(feature_vector[80-65]>0) _strip++;
+
 
 	  if(_ahead>=2)
 	  {
@@ -54,6 +62,12 @@
 	  {
 		  response = "SLOW";
 		  printf("\n-----slow--------\n");
+		  return true;
+	  }
+	  else if(_hump>=2)
+	  {
+		  response = "HUMP";
+		  printf("\n-----hump--------\n");
 		  return true;
 	  }
 	  else

@@ -88,13 +88,15 @@ namespace golfcar_vision{
         mem_contours = cvCreateMemStorage(0);
         
         //CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-        CvContourScanner scanner = cvStartFindContours(binary_img, mem_contours, sizeof(CvContour), CV_RETR_TREE, CV_CHAIN_APPROX_NONE);
+        //CvContourScanner scanner = cvStartFindContours(binary_img, mem_contours, sizeof(CvContour), CV_RETR_TREE, CV_CHAIN_APPROX_NONE);
+
+        cvFindContours(binary_img, mem_contours, &contours, sizeof(CvContour), CV_RETR_TREE, CV_CHAIN_APPROX_NONE, cvPoint(0,0));
 
         //-------------------------------------------------------------------------------------------------------------------------------
         //2. to filter noise at the boundary, and noise too small or too big; to re-write
         //-------------------------------------------------------------------------------------------------------------------------------
-        contours = filter_contours(scanner);
-
+        //contours = filter_contours(scanner);
+        contours = filter_contours2(contours);
         first_contour = contours;
 
         ROS_INFO("1");
@@ -169,6 +171,7 @@ namespace golfcar_vision{
         cvSaveImage("/home/baoxing/contour_show.png", contour_img_show);
 
         cvShowImage("lane_thining_img",thining_img);
+        cvSaveImage("/home/baoxing/thining_img.png", thining_img);
 
         merge_images(visual_ipm, contour_img);
         merge_images(visual_ipm_clean, contour_img);
@@ -294,6 +297,47 @@ namespace golfcar_vision{
         CvSeq *contours = cvEndFindContours(&scanner);
         cvReleaseMemStorage(&mem_box);
         return contours;
+    }
+
+    CvSeq* conti_lane::filter_contours2 (CvSeq* contours)
+    {
+    	CvSeq *first_contour=NULL;
+
+        CvSeq* c;
+        CvBox2D cvBox;
+        CvMemStorage *mem_box;
+        mem_box = cvCreateMemStorage(0);
+        c=contours;
+
+        while(c!=NULL)
+        {
+            //1st criterion: perimeter should be long enough;
+            double len_pixel = cvContourPerimeter(c);
+            double len_meter = len_pixel/scale_;
+            bool len_criterion = (len_meter > CONTOUR_PERIMETER_THRESH);
+
+            //2nd criterion: long side should exceed certain threshold;
+			cvBox = cvMinAreaRect2(c, mem_box);
+			float height =  cvBox.size.height;
+			float width  =  cvBox.size.width;
+			float long_side = max(height, width);
+			bool  long_side_criterion = long_side > LONG_SIDE_THRESH*scale_;
+
+			bool contour_criteria = len_criterion && long_side_criterion;
+
+            if(!contour_criteria)
+            {
+            	if(c->h_prev){(c->h_prev)->h_next=c->h_next;}
+            	if(c->h_next){(c->h_next)->h_prev=c->h_prev;}
+            }
+            else
+            {
+            	if(first_contour==NULL) first_contour = c;
+            }
+            c=c->h_next;
+        }
+        cvReleaseMemStorage(&mem_box);
+        return first_contour;
     }
 
 	void conti_lane::IpmImage_to_pcl(std::vector <CvPoint2D32f> & pts_image, sensor_msgs::PointCloud &pts_3d)

@@ -91,7 +91,8 @@ namespace golfcar_vision{
 
 		binary_img = cvCreateImage(cvSize(img_tmp->width,img_tmp->height),IPL_DEPTH_8U, 1);
 		cvCvtColor(img_tmp, binary_img, CV_BGR2GRAY);
-		Img_preproc_local(binary_img, binary_img);
+		//Img_preproc_local(binary_img, binary_img);
+		Img_preproc(binary_img, binary_img);
 		cvAnd(yellow_mask, binary_img, binary_img);
 		IplImage *binary_img_copy = cvCloneImage(binary_img);
 
@@ -116,6 +117,8 @@ namespace golfcar_vision{
 
 		IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
 		cvZero(contour_img);
+        //IplImage *contour_img_show = cvCreateImage(cvSize(contour_img->width,contour_img->height),IPL_DEPTH_8U, 3);
+		//cvZero(contour_img_show);
 		//cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
 
 		CvMoments cvm;
@@ -136,6 +139,9 @@ namespace golfcar_vision{
 		size_t contour_serial = 0;
 		for (; contours != 0; contours = contours->h_next)
 		{
+			CvScalar ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
+			//cvDrawContours(contour_img_show, contours, ext_color, CV_RGB(0,0,0), -2, CV_FILLED, 8, cvPoint(0,0));
+
 			cvContourMoments(contours, &cvm);
 			double contour_weight = cvm.m00;
 			double contour_perimeter = cvContourPerimeter(contours);
@@ -160,6 +166,9 @@ namespace golfcar_vision{
 		}
 
 		contours = first_contour;
+
+		//cvShowImage("contour_img_show",contour_img_show);
+		//cvSaveImage("/home/baoxing/contour_show.png", contour_img_show);
 
 		IplImage *tmp_image = cvCreateImage(cvGetSize(contour_img),8,1);
 		cvZero(tmp_image);
@@ -210,6 +219,7 @@ namespace golfcar_vision{
 			cvBox_tmp = cvMinAreaRect2(contour_tmp, mem_box_tmp);
 			DrawBox(cvBox_tmp, contour_img, CV_RGB(255,255,0));
 
+			/*
 			//to mark all the white pixels (characters) inside the rectangle red;
 			CvPoint2D32f pts_tmp[4];
 			calc_cvBoxPoints( cvBox_tmp, pts_tmp);
@@ -231,6 +241,7 @@ namespace golfcar_vision{
 					}
 				}
 			}
+			*/
 
 
 			merge_images(visual_ipm_clean, contour_img);
