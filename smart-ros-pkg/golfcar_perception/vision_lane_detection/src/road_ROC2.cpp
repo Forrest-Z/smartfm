@@ -22,6 +22,8 @@ namespace golfcar_vision{
       frame_serial_ = 0;
 
       private_nh_.param("visualize_word_info", visualize_word_info_, false);
+      private_nh_.param("save_word_image", save_word_image_, false);
+      image_serial_ = 0;
     }
 
 	void road_roc::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
@@ -94,13 +96,15 @@ namespace golfcar_vision{
         mem_contours = cvCreateMemStorage(0);
         
         //CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-        CvContourScanner scanner = cvStartFindContours(binary_img, mem_contours, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
-
+        //CvContourScanner scanner = cvStartFindContours(binary_img, mem_contours, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
+        cvFindContours(binary_img, mem_contours, &contours, sizeof(CvContour), CV_RETR_TREE, CV_CHAIN_APPROX_NONE, cvPoint(0,0));
         //-------------------------------------------------------------------------------------------------------------------------------
         //2. to filter noise at the boundary, and noise too small or too big; to re-write
         //-------------------------------------------------------------------------------------------------------------------------------
-        contours = filter_contours(scanner);
-        first_contour = contours;
+        //contours = filter_contours(scanner);
+        //first_contour = contours;
+		contours = filter_contours2(contours);
+		first_contour = contours;
 
 		IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
 
@@ -161,6 +165,12 @@ namespace golfcar_vision{
         IplImage *tmp_image = cvCreateImage(cvGetSize(contour_img),8,1);
         cvZero(tmp_image);
 
+        FILE *fp_word;
+        if(save_word_image_)
+		{
+        	fp_word = fopen("/home/baoxing/word/OCR","a");
+        	fprintf(fp_word, "%d\t", image_serial_);
+		}
 
         if(best_cluster.size() > 2)
         {
@@ -179,6 +189,7 @@ namespace golfcar_vision{
 
 						int square_side = (int)std::sqrt(cvBox.size.height*cvBox.size.height+ cvBox.size.width*cvBox.size.width);
 						IplImage *character_tmp = cvCreateImage(cvSize(square_side+50, square_side+50),IPL_DEPTH_8U, 1);
+
 						cvZero(character_tmp);
 						CvPoint offset = cvPoint(square_side/2+25-cvBox.center.x, square_side/2+25 -cvBox.center.y);
 
@@ -193,6 +204,20 @@ namespace golfcar_vision{
 						cv2DRotationMatrix(cvBox.center, rotate_angle, rotate_scale, rotate_mat);
 						cvWarpAffine(character_tmp, character_tmp, rotate_mat);
 						cvReleaseMat(&rotate_mat);
+
+						if(save_word_image_)
+						{
+							stringstream  name_string_character;
+							//pay attention, this path to the folder cannot be too long, or OpenCV will crash;
+							name_string_character<< "/home/baoxing/word" <<"/frame"<<image_serial_<<"_"<<i<<".png";
+							const char *output_name_character = name_string_character.str().c_str();
+
+							if (!cvSaveImage(output_name_character, character_tmp))
+							{
+								ROS_ERROR("Cannot save images");
+								return;
+							}
+						}
 
 						/*
 						CvMat *thining_mat = cvCreateMat(square_side+50, square_side+50,CV_8UC1);
@@ -214,6 +239,12 @@ namespace golfcar_vision{
 				        {
 				        	//ROS_WARN("NONONONONONO");
 				        }
+
+				        if(save_word_image_)
+				        {
+				        	fprintf(fp_word, "%c\t", letter);
+				        }
+
 				        //turn to ASCII code;
 				        if(letter>=65 && letter<=90) BOW_feature[letter-65]++;
 				        else BOW_feature[26]++;
@@ -230,6 +261,27 @@ namespace golfcar_vision{
         	}
 
         	//Add the save_file function here, to save the word vector, character and the whole image;
+            //-------------save word image------------------;
+        	if(save_word_image_)
+        	{
+        		fprintf(fp_word, "\n");
+        		fclose(fp_word);
+
+				stringstream  name_string;
+				//pay attention, this path to the folder cannot be too long, or OpenCV will crash;
+				name_string<< "/home/baoxing/word" <<"/frame"<<image_serial_<<".png";
+
+				const char *output_name = name_string.str().c_str();
+
+				if (!cvSaveImage(output_name, color_image))
+				{
+					ROS_ERROR("Cannot save images");
+					return;
+				}
+				image_serial_++;
+        	}
+            //-------------save word image------------------;
+
 
 			std::string surface_word;
 			if(word_detector_.identify(BOW_feature, vector_length, surface_word))
@@ -457,7 +509,7 @@ namespace golfcar_vision{
 			float height =  cvBox.size.height;
 			float width  =  cvBox.size.width;
 			float long_side = max(height, width);
-			bool  long_side_criterion = long_side > LONG_SIDE_THRESH*scale_;
+			bool  long_side_criterion = long_side > 1.5*scale_;
 
             //3rd criterion: short side should exceed certain threshold;
 			float short_side = min(height, width);
@@ -495,25 +547,90 @@ namespace golfcar_vision{
 	        }
 	        cvReleaseMemStorage(&mem_poly_filter);
 
-			//5th: the polygon should have 4-5 corners;
-			bool rectangle_criteria = true;
-			CvSeq *contours;
-			CvMemStorage *mem_poly;
-			mem_poly = cvCreateMemStorage(0);
-			contours = cvApproxPoly( c, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 5, 0 );
-			if(contours->total > 6) rectangle_criteria = false;
-
-			//inside_polygon=true;
-			rectangle_criteria = true;
-
-			bool contour_criteria = len_criterion && long_side_criterion && short_side_criterion && inside_polygon && rectangle_criteria;
+			bool contour_criteria = len_criterion && long_side_criterion && short_side_criterion && inside_polygon;
             if(!contour_criteria) cvSubstituteContour(scanner, NULL);
 
-            cvReleaseMemStorage(&mem_poly);
         }
         CvSeq *contours = cvEndFindContours(&scanner);
         cvReleaseMemStorage(&mem_box);
         return contours;
+    }
+
+    CvSeq* road_roc::filter_contours2 (CvSeq* contours)
+    {
+       	CvSeq *first_contour=NULL;
+
+           CvSeq* c;
+           CvBox2D cvBox;
+           CvMemStorage *mem_box;
+           mem_box = cvCreateMemStorage(0);
+           c=contours;
+
+           while(c!=NULL)
+           {
+				//1st criterion: perimeter should be long enough;
+				double len_pixel = cvContourPerimeter(c);
+				double len_meter = len_pixel/scale_;
+				bool len_criterion = (len_meter > CONTOUR_PERIMETER_THRESH);
+
+				//2nd criterion: long side should exceed certain threshold;
+				cvBox = cvMinAreaRect2(c, mem_box);
+				float height =  cvBox.size.height;
+				float width  =  cvBox.size.width;
+				float long_side = max(height, width);
+				bool  long_side_criterion = long_side > 1.5*scale_;
+
+				//3rd criterion: short side should exceed certain threshold;
+				float short_side = min(height, width);
+				bool  short_side_criterion = short_side > SHORT_SIDE_THRESH*scale_;
+
+				//4th criterion: no touching polygon boundary;
+				//this criterion only applies to discrete markers, while not to continuous lanes;
+				bool inside_polygon = true;
+				CvSeq *contours_filter;
+				CvMemStorage *mem_poly_filter;
+				mem_poly_filter = cvCreateMemStorage(0);
+				contours_filter = cvApproxPoly( c, sizeof(CvContour), mem_poly_filter, CV_POLY_APPROX_DP, 2, 0 );
+				for(int i=0; i<contours_filter->total; i++)
+				{
+					CvPoint* p = (CvPoint*)cvGetSeqElem(contours_filter, i);
+					for(int a = -1; a<=1; a=a+1)
+					{
+					for(int b = -1; b<=1; b=b+1)
+					{
+						CvPoint2D32f tmppoint = cvPoint2D32f(p->x+a, p->y+b);
+						if(!pointInPolygon <CvPoint2D32f> (tmppoint,ipm_polygon_))
+						{
+							inside_polygon = false;
+							break;
+						}
+					}
+					if(!inside_polygon) break;
+					}
+					//special processing for the upper and lower bound;
+					if(p->y+3 >=ipm_polygon_[0].y || p->y -3 <=ipm_polygon_[3].y)
+					{
+					inside_polygon = false;
+					break;
+					}
+				}
+				cvReleaseMemStorage(&mem_poly_filter);
+
+				bool contour_criteria = len_criterion && long_side_criterion && short_side_criterion && inside_polygon;
+
+				if(!contour_criteria)
+				{
+					if(c->h_prev){(c->h_prev)->h_next=c->h_next;}
+					if(c->h_next){(c->h_next)->h_prev=c->h_prev;}
+				}
+				else
+				{
+					if(first_contour==NULL) first_contour = c;
+				}
+				c=c->h_next;
+           }
+           cvReleaseMemStorage(&mem_box);
+           return first_contour;
     }
 
 	void road_roc::IpmImage_to_pcl(std::vector <CvPoint2D32f> & pts_image, sensor_msgs::PointCloud &pts_3d)

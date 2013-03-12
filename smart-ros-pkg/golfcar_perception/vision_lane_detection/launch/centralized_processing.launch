@@ -24,7 +24,7 @@
     	<param name="ped_crossing_scale_path" value="$(find vision_lane_detection)/data_and_model/ped_crossing_20130305.range"/>
     	<param name="road_roc_model_path" value="$(find vision_lane_detection)/data_and_model/roc_20130306.model"/>
     	<param name="road_roc_scale_path" value="$(find vision_lane_detection)/data_and_model/roc_20130306.range"/>
-    	
+    	<param name="save_word_image" value="false"/>
     	<param name="lane_on" value="true"/>
     	<param name="arrow_on" value="true"/>
     	<param name="word_on" value="true"/>

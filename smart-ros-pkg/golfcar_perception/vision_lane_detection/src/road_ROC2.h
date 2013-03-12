@@ -67,6 +67,7 @@ namespace golfcar_vision{
         word_identifier word_detector_;
 
         CvSeq* filter_contours (CvContourScanner &scanner);
+        CvSeq* filter_contours2 (CvSeq* contours);
         void polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in);
         void extract_training_image(IplImage* binary_img);
         int  classify_contour(double weight_input, double perimeter_input, CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input);
@@ -81,6 +82,9 @@ namespace golfcar_vision{
         void ThinSubiteration2(CvMat *pSrc, CvMat *pDst);
 
         bool visualize_word_info_;
+
+        int image_serial_;
+        bool save_word_image_;
     };
 };
 

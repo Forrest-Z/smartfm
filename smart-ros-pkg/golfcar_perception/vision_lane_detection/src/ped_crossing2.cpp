@@ -408,7 +408,7 @@ namespace golfcar_vision{
 			float height =  cvBox.size.height;
 			float width  =  cvBox.size.width;
 			float long_side = max(height, width);
-			bool  long_side_criterion = long_side > 1.5*scale_;
+			bool  long_side_criterion = long_side > 1.2*scale_;
 
             //3rd criterion: short side should exceed certain threshold;
 			float short_side = min(height, width);
@@ -447,21 +447,10 @@ namespace golfcar_vision{
 	        }
 	        cvReleaseMemStorage(&mem_poly_filter);
 
-
-			//5th: the polygon should have 4-5 corners;
-			bool rectangle_criteria = true;
-			CvSeq *contours;
-			CvMemStorage *mem_poly;
-			mem_poly = cvCreateMemStorage(0);
-			contours = cvApproxPoly( c, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 5, 0 );
-			if(contours->total > 6) rectangle_criteria = false;
-
 			inside_polygon=true;
 
-			bool contour_criteria = len_criterion && long_side_criterion && short_side_criterion && inside_polygon && rectangle_criteria;
+			bool contour_criteria = len_criterion && long_side_criterion && short_side_criterion && inside_polygon;
             if(!contour_criteria) cvSubstituteContour(scanner, NULL);
-
-            cvReleaseMemStorage(&mem_poly);
         }
         CvSeq *contours = cvEndFindContours(&scanner);
         cvReleaseMemStorage(&mem_box);
