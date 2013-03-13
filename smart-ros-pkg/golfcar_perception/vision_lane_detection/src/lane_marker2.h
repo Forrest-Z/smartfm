@@ -1,5 +1,5 @@
-#ifndef GOLFCAR_VISION_PED_CROSSING_H
-#define GOLFCAR_VISION_PED_CROSSING_H
+#ifndef GOLFCAR_VISION_LANE_MARKER2_H
+#define GOLFCAR_VISION_LANE_MARKER2_H
 
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
@@ -22,17 +22,18 @@
 #include <fmutil/fm_math.h>
 #include "lane_marker_common.h"
 #include "svm_classifier.h"
-#include "ransac_lane.h"
 
 using namespace std;
 using namespace ros;
 using namespace tf;
 
 namespace golfcar_vision{
-    class ped_crossing {
+
+    class lane_marker {
         public:
-    	ped_crossing();
-        ~ped_crossing();
+    	lane_marker();
+        ~lane_marker();
+        void imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean);
 
         private:
         ros::NodeHandle nh_, private_nh_;
@@ -55,18 +56,18 @@ namespace golfcar_vision{
         std::vector<CvPoint2D32f> ipm_polygon_;
 
         //flag decides whether to extract training images or not;
-        bool extract_training_image_;
+        bool extract_training_image_, store_parameter_;
+        string image_folder_path_;
         
-        golfcar_ml::svm_classifier *ped_crossing_classifier_;
-        ransac_lane *lane_extractor_;
+        golfcar_ml::svm_classifier *marker_classifier_;
 
         CvSeq* filter_contours (CvContourScanner &scanner);
-        void imageCallback(const sensor_msgs::ImageConstPtr& msg);
-        void polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in);
+
+        int classify_contour(double weight_input, double perimeter_input, CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input);
+        void pose_contour(CvSeq *contour, CvMoments &cvm, vision_lane_detection::marker_info &marker_para);
+        void cvt_pose_baselink(vision_lane_detection::marker_info &marker_para);
         void extract_training_image(IplImage* binary_img);
-        int  classify_contour(double weight_input, double perimeter_input, CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input);
-
-
+        void polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in);
         long int frame_serial_;
 
         ros::Publisher markers_pub_;
@@ -74,9 +75,11 @@ namespace golfcar_vision{
 
         void IpmImage_to_pcl(std::vector <CvPoint2D32f> & pts_image, sensor_msgs::PointCloud &pts_3d);
 
-        //int is_equal( const void* _a, const void* _b, void* userdata );
-        std::vector<size_t> cluster_contours (CvSeq* contour, std::vector <size_t> lane_serials);
-        //void line_calculate(CvBox2D box, double long_side_parameter[3], double short_side_parameter[3]);
+        //2013-March
+        bool mask_init_;
+        IplImage* image_mask_;
+
+        bool visualize_arrow_info_;
     };
 };
 

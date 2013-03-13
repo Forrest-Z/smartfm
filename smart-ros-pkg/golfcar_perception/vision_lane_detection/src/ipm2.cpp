@@ -1,4 +1,4 @@
-#include "ipm.h"
+#include "ipm2.h"
 
 
 namespace golfcar_vision{
@@ -18,22 +18,16 @@ namespace golfcar_vision{
 		private_nh_.param("ipm_center_y", 			ipm_center_y_,			0.0);
 		private_nh_.param("ipm_ROI_height", 		ipm_ROI_height_,		12.0);
 		private_nh_.param("ipm_ROI_near_width",		ipm_ROI_near_width_,	4.0);
-
-		//denotes the small area for arrow/lane marking;
-		private_nh_.param("ipm_ROI_far_width",		ipm_ROI_far_width_,	12.0);
-		//the whole ipm area;
-		private_nh_.param("ipm_ROI_far_width2",		ipm_ROI_far_width2_,	12.0);
-
-
+		private_nh_.param("ipm_ROI_far_width",		ipm_ROI_far_width_,		20.0);
 		private_nh_.param("scale", 					scale_,					20.0);
-		CvSize ipm_size = cvSize((int)(scale_ * ipm_ROI_far_width2_), (int)(scale_ * ipm_ROI_height_));
+		CvSize ipm_size = cvSize((int)(scale_ * ipm_ROI_far_width_), (int)(scale_ * ipm_ROI_height_));
 		ipm_image_ = cvCreateImage(ipm_size, 8,1);
 		ipm_color_image_ = cvCreateImage(ipm_size, 8, 3);
 
 		private_nh_.param("publish_dis_thresh",     publish_dis_thresh_,    0.05);
 		private_nh_.param("publish_angle_thresh",   publish_angle_thresh_,  5.0/180.0*M_PI);
 		private_nh_.param("visualization_flag",     visualization_flag_,    false);
-		private_nh_.param("odom_control",     		odom_control_,   		 false);
+		private_nh_.param("odom_control",     		odom_control_,   		 true);
 
 		odom_frame_ = "odom";
 		base_frame_ = "base_link";
@@ -51,7 +45,6 @@ namespace golfcar_vision{
 		if(visualization_flag_)
 		{
 			cvNamedWindow("src_window");
-			cvNamedWindow("ipm_window");
 		}
 
 		//to accumulate the curb points (road_boundary);
@@ -69,17 +62,27 @@ namespace golfcar_vision{
 		gnd_polygon_publisher  = nh_.advertise<geometry_msgs::PolygonStamped>("/gnd_polygon", 10);
 		img_polygon_publisher  = nh_.advertise<geometry_msgs::PolygonStamped>("/img_polygon", 10);
 
+
+		private_nh_.param("lane_on",     lane_on_,    	true);
+		private_nh_.param("arrow_on",    arrow_on_,   	true);
+		private_nh_.param("crossing_on", crossing_on_,	true);
+		private_nh_.param("word_on",     word_on_,	 	true);
+
 		//to maintain several sets of polygons, since the four modules may be interested in different areas;
+		if(lane_on_)lane_processor_ = new conti_lane();
+		if(arrow_on_)arrow_processor_ = new lane_marker();
+		if(word_on_)roc_processor_ = new road_roc();
+		if(crossing_on_)zebra_processor_= new ped_crossing();
+
+		cvNamedWindow("visual_ipm");
+		cvNamedWindow("visualization_in_all");
   }
 
   
   void ipm::ImageCallBack( const sensor_msgs::ImageConstPtr& image_msg,
                            const sensor_msgs::CameraInfoConstPtr& info_msg)
   {
-        ROS_INFO("IPM----ImageCallBack-----");
-        fmutil::Stopwatch sw;
-        sw.start("ipm");
-
+        ROS_INFO("ImageCallBack");
         ros::Time meas_time = info_msg->header.stamp;
         if(odom_control_) process_control(meas_time);
 		else {publish_flag_ = true;}
@@ -92,7 +95,7 @@ namespace golfcar_vision{
 		else ROS_INFO("-----------to process image------");
         
 
-        IplImage* color_image, *gray_image;
+        IplImage* color_image, *gray_image, *color_image_copy;
         try {
             color_image = bridge_.imgMsgToCv(image_msg, "bgr8");
             }
@@ -100,9 +103,9 @@ namespace golfcar_vision{
             ROS_ERROR("Failed to convert image");
             return;
             }
-            
+
         gray_image = cvCreateImage(cvGetSize(color_image),8,1);
-        cvCvtColor(color_image, gray_image, CV_BGR2GRAY);
+        color_image_copy = cvCloneImage(color_image);
 
         //assign camera information to "cam_model_";
         cam_model_.fromCameraInfo(info_msg);
@@ -144,9 +147,9 @@ namespace golfcar_vision{
 			gndQuad_[1].x = ipm_center_x_ + camera_baselink_dis_ - ipm_ROI_height_/2.0 ;
 			gndQuad_[1].y = - ipm_ROI_near_width_ / 2.0;
 			gndQuad_[2].x = ipm_center_x_ + camera_baselink_dis_ + ipm_ROI_height_/2.0;
-			gndQuad_[2].y = - ipm_ROI_far_width2_ /2.0;
+			gndQuad_[2].y = - ipm_ROI_far_width_ /2.0;
 			gndQuad_[3].x = ipm_center_x_ + camera_baselink_dis_ + ipm_ROI_height_/2.0;
-			gndQuad_[3].y = ipm_ROI_far_width2_ /2.0;
+			gndQuad_[3].y = ipm_ROI_far_width_ /2.0;
         }
         
 		//To take into account the uneven of the road surface, the matrix is to be calculated every time;
@@ -169,15 +172,36 @@ namespace golfcar_vision{
 			dstQuad_[3].x, dstQuad_[3].y
 		);
 
+		gnd_polygon.header = info_msg->header;
+		gnd_polygon.header.frame_id = base_frame_;
+		gnd_polygon.polygon.points.clear();
+		img_polygon.header = info_msg->header;
+		img_polygon.header.frame_id = base_frame_;
+		img_polygon.polygon.points.clear();
+		//last point overlap;
+		for(size_t i=0; i<5; i++)
+		{
+			geometry_msgs::Point32 pttmp;
+			pttmp.x = gndQuad_[(i%4)].x;
+			pttmp.y = gndQuad_[(i%4)].y;
+			gnd_polygon.polygon.points.push_back(pttmp);
+
+			pttmp.x = dstQuad_[(i%4)].x;
+			pttmp.y = dstQuad_[(i%4)].y;
+			img_polygon.polygon.points.push_back(pttmp);
+		}
+		gnd_polygon_publisher.publish(gnd_polygon);
+		img_polygon_publisher.publish(img_polygon);
+
 		cvGetPerspectiveTransform(srcQuad_,dstQuad_,  warp_matrix_);
 		cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix_);
 
+        cvCvtColor(color_image_copy, gray_image, CV_BGR2GRAY);
 		cvWarpPerspective( gray_image, ipm_image_, warp_matrix_);
-		cvWarpPerspective( color_image, ipm_color_image_, warp_matrix_);
-		
-		sw.end();
+		cvWarpPerspective( color_image_copy, ipm_color_image_, warp_matrix_);
 
-		sw.start("other related processes");
+		std::vector<CvPoint2D32f> img_polygon_tmp;
+		for(size_t i=0; i<4; i++) img_polygon_tmp.push_back(cvPoint2D32f(img_polygon.polygon.points[i].x,img_polygon.polygon.points[i].y));
 
 		PointCloudRGB rgb_pts;
 		rgb_pts.header.stamp = info_msg->header.stamp;
@@ -195,9 +219,16 @@ namespace golfcar_vision{
 		{
 			for(int iw=0; iw < ipm_width; iw++)
 			{
+				/*
 				if(ipm_data[ih*ipm_step+iw] == 0)
 				{
 					ipm_data[ih*ipm_step+iw]=150;
+				}
+				*/
+				if(!pointInPolygon(cvPoint2D32f(iw, ih), img_polygon_tmp))
+				{
+					ipm_data[ih*ipm_step+iw]=0;
+					cvSet2D(ipm_color_image_, ih, iw, CV_RGB(0, 0, 0));
 				}
 			}
 		}
@@ -244,22 +275,22 @@ namespace golfcar_vision{
 			cvLine( color_image, cvPointFrom32f(srcQuad_[2]), cvPointFrom32f(srcQuad_[3]), CV_RGB(0,0,255), 1);
 			cvLine( color_image, cvPointFrom32f(srcQuad_[3]), cvPointFrom32f(srcQuad_[0]), CV_RGB(0,0,255), 1);
 			cvShowImage("src_window", color_image);
-			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[0]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[1]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[2]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[3]), 6, CV_RGB(0,255,0), 2);
-			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[0]), cvPointFrom32f(dstQuad_[1]), CV_RGB(0,0,255), 1);
-			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[1]), cvPointFrom32f(dstQuad_[2]), CV_RGB(0,0,255), 1);
-			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[2]), cvPointFrom32f(dstQuad_[3]), CV_RGB(0,0,255), 1);
-			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[3]), cvPointFrom32f(dstQuad_[0]), CV_RGB(0,0,255), 1);
-			cvShowImage("ipm_window", ipm_color_image_);
+			cvSaveImage("/home/baoxing/originla_color_image.png", color_image);
 		}
 
-		IplImage *binary_image;
+		IplImage *binary_image, *visual_ipm, *visual_ipm_clean;
         binary_image = cvCreateImage(cvGetSize(ipm_image_),8,1);
+        visual_ipm = cvCreateImage(cvGetSize(ipm_image_),8,3);
+        visual_ipm_clean = cvCreateImage(cvGetSize(ipm_image_),8,3);
+        cvZero(visual_ipm);
+        cvZero(visual_ipm_clean);
         Img_preproc(ipm_image_, binary_image);
+		cvShowImage("binary_image", binary_image);
 
-		sensor_msgs::Image::Ptr ipm_msg, binary_msg;
+		cvSaveImage("/home/baoxing/ipm_color_image.png", ipm_color_image_);
+		cvSaveImage("/home/baoxing/binary_image.png", binary_image);
+
+		sensor_msgs::Image::Ptr ipm_msg, binary_msg, canny_msg;
 		try
 		 {
 			ipm_msg = bridge_.cvToImgMsg(ipm_color_image_, "bgr8");
@@ -274,34 +305,43 @@ namespace golfcar_vision{
 		binary_msg->header = image_msg ->header;
 		binary_pub_.publish(binary_msg);
 
+		if(lane_on_)lane_processor_->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
+		if(arrow_on_)arrow_processor_->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
+		if(crossing_on_)zebra_processor_->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
+		if(word_on_)roc_processor_ ->imageCallback(ipm_msg,	visual_ipm, visual_ipm_clean);
+
+		//cvShowImage("visual_ipm", visual_ipm);
+		merge_images(ipm_color_image_, visual_ipm);
+		cvShowImage("visual_ipm", ipm_color_image_);
+		cvSaveImage("/home/baoxing/visual_ipm.png", visual_ipm);
+		cvSaveImage("/home/baoxing/ipm_color_image_.png", ipm_color_image_);
+
+		IplImage* visualize_tmp = cvCreateImage(cvGetSize(color_image_copy),8,3);
+		cvZero(visualize_tmp);
+		cvWarpPerspective( visual_ipm_clean, visualize_tmp, projection_matrix_);
+        int img_height 		= visualize_tmp -> height;
+		int img_width  		= visualize_tmp -> width;
+		for(int ih=0; ih < img_height; ih++)
+		{
+			for(int iw=0; iw < img_width; iw++)
+			{
+				CvPoint pixel;
+				pixel.x = iw;
+				pixel.y = ih;
+				CvScalar s=cvGet2D(visualize_tmp, pixel.y, pixel.x);
+				if(s.val[0]!=0 || s.val[1]!=0 || s.val[2]!=0 )
+				{
+					cvSet2D(color_image_copy, pixel.y, pixel.x, s);
+				}
+			}
+		}
+
+		cvShowImage("visualization_in_all", color_image_copy);
+		cvSaveImage("/home/baoxing/visualization_in_all.png", color_image_copy);
 		//this scentence is necessary;
 		cvWaitKey(1);
 
-		//to publish the
-		gndQuad_[2].y = - ipm_ROI_far_width_ /2.0;
-		gndQuad_[3].y = ipm_ROI_far_width_ /2.0;
-		GndPt_to_Dst(gndQuad_, dstQuad_);
-
-		gnd_polygon.header = info_msg->header;
-		gnd_polygon.header.frame_id = base_frame_;
-		gnd_polygon.polygon.points.clear();
-		img_polygon.header = info_msg->header;
-		img_polygon.header.frame_id = base_frame_;
-		img_polygon.polygon.points.clear();
-		//last point overlap;
-		for(size_t i=0; i<5; i++)
-		{
-			geometry_msgs::Point32 pttmp;
-			pttmp.x = gndQuad_[(i%4)].x;
-			pttmp.y = gndQuad_[(i%4)].y;
-			gnd_polygon.polygon.points.push_back(pttmp);
-
-			pttmp.x = dstQuad_[(i%4)].x;
-			pttmp.y = dstQuad_[(i%4)].y;
-			img_polygon.polygon.points.push_back(pttmp);
-		}
-		gnd_polygon_publisher.publish(gnd_polygon);
-		img_polygon_publisher.publish(img_polygon);
+		ROS_INFO("ImageCallBack finished");
 
 		//Attention:
 		//color_image is not allocated memory as normal;
@@ -310,9 +350,10 @@ namespace golfcar_vision{
 		//cvReleaseImage(&color_image);
 		cvReleaseImage(&gray_image);
 		cvReleaseImage(&binary_image);
-
-		sw.end();
-		ROS_INFO("IPM----ImageCallBack END-----");
+		cvReleaseImage(&color_image_copy);
+		cvReleaseImage(&visual_ipm);
+		cvReleaseImage(&visualize_tmp);
+		cvReleaseImage(&visual_ipm_clean);
   }
   
   //Function "GndPt_to_Src": project ground point in baselink coordinate into camera image;
@@ -573,8 +614,10 @@ namespace golfcar_vision{
 	if(visualization_flag_)
 	{
 	   cvDestroyWindow("src_window");
-	   cvDestroyWindow("ipm_window");
 	}
+	cvDestroyWindow("visual_ipm");
+	cvDestroyWindow("visualization_in_all");
+
     cvReleaseMat(&warp_matrix_);
     cvReleaseMat(&projection_matrix_);
     cvReleaseImage(&ipm_image_);

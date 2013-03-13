@@ -1,4 +1,4 @@
-#include "lane_marker.h"
+#include "lane_marker2.h"
 
 namespace golfcar_vision{
   
@@ -11,10 +11,10 @@ namespace golfcar_vision{
 	  ipm_para_init_ = false;
 
       string marker_model_path, marker_scale_path;
-	  private_nh_.param("arrow_model_path", marker_model_path, std::string("/home/baoxing/workspace/data_and_model/arrow_20130308.model"));
-	  private_nh_.param("arrow_scale_path", marker_scale_path, std::string("/home/baoxing/workspace/data_and_model/arrow_20130308.range"));
+	  private_nh_.param("arrow_model_path", marker_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
+	  private_nh_.param("arrow_scale_path", marker_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
       marker_classifier_ = new golfcar_ml::svm_classifier(marker_model_path, marker_scale_path);
-      image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &lane_marker::imageCallback, this);
+      //image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &lane_marker::imageCallback, this);
 
       polygon_sub_ = nh_.subscribe("img_polygon", 10, &lane_marker::polygonCallback, this);
       private_nh_.param("scale", scale_, 20.0);
@@ -28,6 +28,8 @@ namespace golfcar_vision{
       store_parameter_ = true;
 
       mask_init_ = false;
+
+      private_nh_.param("visualize_arrow_info", visualize_arrow_info_, false);
     }
 
 	void lane_marker::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
@@ -37,13 +39,9 @@ namespace golfcar_vision{
 		polygon_init_ = true;
 	}
 
-    void lane_marker::imageCallback (const sensor_msgs::ImageConstPtr& msg)
+    void lane_marker::imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean)
     {
-        ROS_INFO("Arrow CallBack Begin");
-
-        fmutil::Stopwatch sw;
-        sw.start("image processing");
-
+    	ROS_INFO("Arrow CallBack Begin");
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
         {
@@ -117,44 +115,38 @@ namespace golfcar_vision{
 		}
 		cvAnd(image_mask_, binary_img, binary_img);
 
-		cvShowImage("arrow_binary_img", binary_img);
 
-		sw.end();
-
-		sw.start("extract contour");
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";
         CvSeq *first_contour = 0;       //always keep one copy of the beginning of this list, for further usage;
-        CvMemStorage *mem_contours; 
+        CvMemStorage *mem_contours;
         mem_contours = cvCreateMemStorage(0);
-        
+
         //CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
         CvContourScanner scanner = cvStartFindContours(binary_img, mem_contours, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
-                
+
         //-------------------------------------------------------------------------------------------------------------------------------
         //2. to filter noise at the boundary, and noise too small or too big; to re-write
         //-------------------------------------------------------------------------------------------------------------------------------
         contours = filter_contours(scanner);
         first_contour = contours;
 
-        sw.end();
-
-        sw.start("process contours");
+        ROS_INFO("Arrow -- 2 ---");
         //-------------------------------------------------------------------------------------------------------------------------------
         //3. classify each remained candidates; visualize the markers detected;
         //-------------------------------------------------------------------------------------------------------------------------------
         IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
-        cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
+        IplImage *contour_clean_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
+        cvZero(contour_img);
+        cvZero(contour_clean_img);
         CvScalar ext_color;
 
-        ROS_INFO("Arrow --------2----------");
-
-        CvMoments cvm; 
+        CvMoments cvm;
         CvHuMoments cvHM;
-        
+
         CvBox2D cvBox;
         CvMemStorage *mem_box;
         mem_box = cvCreateMemStorage(0);
-        
+
 		CvSeq *contour_poly;
 		CvMemStorage *mem_poly;
 		mem_poly = cvCreateMemStorage(0);
@@ -167,10 +159,10 @@ namespace golfcar_vision{
         for (; contours != 0; contours = contours->h_next)
         {
             contour_num_in_this_image++;
-            ROS_INFO("contour %d", contour_num_in_this_image);
+
             //This denotes how many pixels of one certain object contour;
             //ROS_DEBUG("total pixels %d", contours->total);
-            ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 ); 
+            ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
 
 			//---------------------------------------------------------------------------------------------
 			//--Extract features for marker classification;
@@ -188,62 +180,68 @@ namespace golfcar_vision{
 			int approxPtNum = int (contour_poly->total);
 
             int contour_class = classify_contour (contour_weight, contour_perimeter, cvHM, cvBox, approxPtNum);
-            
+
             if(contour_class==-1){ROS_ERROR("NO CLASSIFICATION!!!");}
-            if(contour_class==1||contour_class==2||contour_class==3)
+            if(contour_class==1||contour_class==2||contour_class==3||contour_class==4||contour_class==5||contour_class==6||contour_class==7)
             {
 				//-----------------------------------------------------------------------------------------------
 				//to visualize all the candidates, together with their bounding box;
-				DrawBox(cvBox,contour_img, ext_color);
-				cvDrawContours(contour_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
+				//DrawBox(cvBox,contour_img, ext_color);
+				cvDrawContours(contour_img, contours, CV_RGB(0,255,0), CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
+				cvDrawContours(contour_clean_img, contours, CV_RGB(0,255,0), CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
 				//-----------------------------------------------------------------------------------------------
-				
                 vision_lane_detection::marker_info marker_output;
                 marker_output.class_label = contour_class;
                 //this default number denotes no angle information;
-                marker_output.thetha = 3*M_PI;
+                //marker_output.thetha = 3*M_PI;
                 pose_contour(contours, cvm, marker_output);
-                
-                //to visualize the posing result from 
-                CvFont font;
-                double hScale=1.0;
-                double vScale=1.0;
-                int lineWidth=2;
-                CvPoint origin;
-                stringstream  class_string;
-                class_string<<"type "<< contour_class; 
-                const char *class_name = class_string.str().c_str();
-                origin.x = (int)cvBox.center.x+10;
-                origin.y = (int)cvBox.center.y;
-                cvInitFont(&font,CV_FONT_ITALIC, hScale, vScale, 0, lineWidth);
-                cvPutText(contour_img, class_name, origin, &font, CV_RGB(0,255,0));
-                
-				CvPoint centroid_pt; 
-				centroid_pt.x = int(cvm.m10/cvm.m00);
-				centroid_pt.y = int(cvm.m01/cvm.m00);
-                cvCircle( contour_img, centroid_pt, 3, CV_RGB(0,255,0), 2);
+
                 ROS_INFO("lane marker detected");
-                if(marker_output.thetha!=3*M_PI)
-                {
+                //to visualize the posing result from
+
+
+				if(visualize_arrow_info_)
+				{
+					CvFont font;
+					double hScale=0.3;
+					double vScale=0.3;
+					int lineWidth=1;
+					CvPoint origin;
+					stringstream  class_string;
+					class_string<<"arrow: "<< contour_class;
+					const char *class_name = class_string.str().c_str();
+					origin.x = (int)cvBox.center.x+10;
+					origin.y = (int)cvBox.center.y;
+					cvInitFont(&font,CV_FONT_ITALIC, hScale, vScale, 0, lineWidth);
+					cvPutText(contour_img, class_name, origin, &font, CV_RGB(0,255,0));
+
+					CvPoint centroid_pt;
+					centroid_pt.x = int(cvm.m10/cvm.m00);
+					centroid_pt.y = int(cvm.m01/cvm.m00);
+					cvCircle( contour_img, centroid_pt, 3, CV_RGB(255,255,0), 1);
+
 					CvFont font2;
-					double hScale2=0.5;
-					double vScale2=0.5;
+					double hScale2=0.3;
+					double vScale2=0.3;
 					int lineWidth2=1;
 					CvPoint origin_2;
-					stringstream  pose_string;
-					pose_string<<"pose:(" <<setiosflags(ios::fixed) << setprecision(3) << marker_output.x << ","<<marker_output.y <<","<< marker_output.thetha<<")"; 
-					const char *pose_info = pose_string.str().c_str();
+					stringstream  position_string;
+					position_string<<"("<<setiosflags(ios::fixed) << setprecision(2) << marker_output.x << ","<<marker_output.y <<","<< marker_output.thetha * 180.0/M_PI<<")";
+					const char *position_info = position_string.str().c_str();
 					origin_2.x = (int)cvBox.center.x+10;
-					origin_2.y = (int)cvBox.center.y+20;
+					origin_2.y = (int)cvBox.center.y+12;
 					cvInitFont(&font2,CV_FONT_ITALIC, hScale2, vScale2, 0, lineWidth2);
-					cvPutText(contour_img, pose_info, origin_2, &font2, CV_RGB(0,255,0));
-					
-					markers_output.vec.push_back(marker_output);
-				}
+					cvPutText(contour_img, position_info, origin_2, &font2, CV_RGB(0,255,0));
+                }
+                markers_output.vec.push_back(marker_output);
             }
 			else {}
 		}
         cvShowImage("arrow_contour_image",contour_img);
+
+        merge_images(visual_ipm_clean, contour_clean_img);
+        merge_images(visual_ipm, contour_img);
+
         markers_pub_.publish(markers_output);
 
         sensor_msgs::PointCloud markers_ptcloud;
@@ -298,11 +296,11 @@ namespace golfcar_vision{
 
         cvWaitKey(1);
         cvReleaseImage(&contour_img);
+        cvReleaseImage(&contour_clean_img);
         cvReleaseImage(&binary_img);
         cvReleaseImage(&binary_copy);
 
         ROS_INFO("Arrow CallBack End");
-        sw.end();
     }
 
     void lane_marker::extract_training_image(IplImage* binary_img)
@@ -360,7 +358,7 @@ namespace golfcar_vision{
 		class_label = marker_classifier_->classify_objects(marker_feature_vector, vector_length);
         return class_label;
     }
-    
+
     CvSeq* lane_marker::filter_contours (CvContourScanner &scanner)
     {
         CvSeq* c;
@@ -386,13 +384,9 @@ namespace golfcar_vision{
 			CvMemStorage *mem_poly_filter;
 			mem_poly_filter = cvCreateMemStorage(0);
 			contours_filter = cvApproxPoly( c, sizeof(CvContour), mem_poly_filter, CV_POLY_APPROX_DP, 2, 0 );
-
-
 	        for(int i=0; i<contours_filter->total; i++)
 	        {
 	            CvPoint* p = (CvPoint*)cvGetSeqElem(contours_filter, i);
-
-
 	            for(int a = -1; a<=1; a=a+1)
 				{
 					for(int b = -1; b<=1; b=b+1)
@@ -412,17 +406,13 @@ namespace golfcar_vision{
 					inside_polygon = false;
 					break;
 				}
-				if(!inside_polygon) break;
 	        }
 	        cvReleaseMemStorage(&mem_poly_filter);
 
-			if(extract_training_image_)inside_polygon = true;
+			if(extract_training_image_) inside_polygon = true;
 
 			bool contour_criteria = len_criterion && long_side_criterion && inside_polygon;
-            if(!contour_criteria)
-            {
-            	cvSubstituteContour(scanner, NULL);
-            }
+            if(!contour_criteria) cvSubstituteContour(scanner, NULL);
         }
         CvSeq *contours = cvEndFindContours(&scanner);
         cvReleaseMemStorage(&mem_box);
@@ -470,19 +460,19 @@ namespace golfcar_vision{
 					 marker_para.points.push_back(pttmp);
 				}
 				//--------------------------------------------------------
-				
+
             std::vector <CvPoint> vertices;
             std::vector <CvPoint2D32f> centered_vertices;
-            
+
             for(int i=0; i<contours->total; i++)
             {
                 CvPoint* p = (CvPoint*)cvGetSeqElem(contours, i);
                 vertices.push_back(*p);
-                
+
                 CvPoint2D32f centered_vertix = centroid_centering_coordinate(*p, contour_center);
                 centered_vertices.push_back(centered_vertix);
             }
-            
+
             float vertix_x_new, vertix_y_new;
             float vertix_x_old, vertix_y_old;
             float distance;
@@ -513,16 +503,16 @@ namespace golfcar_vision{
                 vertix_y_new = vertices[i].y;
                 vertix_x_old = vertices[i-1].x;
                 vertix_y_old = vertices[i-1].y;
-                
+
                 distance = sqrtf((vertix_x_new-vertix_x_old)*(vertix_x_new-vertix_x_old)+(vertix_y_new-vertix_y_old)*(vertix_y_new-vertix_y_old));
                 distance_vec.push_back(distance);
             }
-            
+
             unsigned int longest_serial;
 			float temp_distance1;
 			longest_serial = find_longest_distance(distance_vec);
 			temp_distance1 = distance_vec[longest_serial];
-			
+
 			if(temp_distance1<50.0){printf("this marker is not long enough! no angle information;");}
 			else
 			{
@@ -530,25 +520,25 @@ namespace golfcar_vision{
 				line_front = longest_serial;
 				if(line_front > 0) {line_back = line_front -1;}
 				else {line_back = line_front + distance_vec.size()-1;}
-				
+
 				unsigned int forward_line_front, backward_line_front;
-				
+
 				if(longest_serial < 2 ){backward_line_front = longest_serial + distance_vec.size() -2;}
 				else {backward_line_front = longest_serial -2;}
 				if(longest_serial + 2 >= distance_vec.size() ){forward_line_front = longest_serial +2 -distance_vec.size();}
 				else {forward_line_front = longest_serial+2;}
-				
+
 				unsigned int forward_line_back, backward_line_back;
 				if(backward_line_front > 0){backward_line_back = backward_line_front - 1;}
 				else{backward_line_back = backward_line_front + distance_vec.size()-1;}
 				if(forward_line_front > 0){forward_line_back = forward_line_front - 1;}
 				else{forward_line_back = forward_line_front + distance_vec.size()-1;}
-				
+
 				bool fd_long = false;
 				bool fd_angle = false;
 				bool bd_long = false;
 				bool bd_angle = false;
-				
+
 				CvPoint frontPt, backPt, fd_frontPt, fd_backPt, bd_frontPt, bd_backPt;
 				frontPt    = vertices[line_front];
 				backPt     = vertices[line_back];
@@ -556,31 +546,31 @@ namespace golfcar_vision{
 				fd_backPt  = vertices[forward_line_back];
 				bd_frontPt = vertices[backward_line_front];
 				bd_backPt  = vertices[backward_line_back];
-				
-				//distance criteria 
+
+				//distance criteria
 				if(distance_vec[forward_line_front]/temp_distance1  > 0.5) {fd_long = true;}
 				if(distance_vec[backward_line_front]/temp_distance1 > 0.5) {bd_long = true;}
 
 				double angle1 = atan2f((backPt.y-frontPt.y), (backPt.x-frontPt.x));
 				double angle2 = atan2f((fd_frontPt.y-fd_backPt.y), (fd_frontPt.x-fd_backPt.x));
 				double fd_abs_delt = fabs(fabs(angle1)-fabs(angle2));
-				
+
 				double angle3 = atan2f((frontPt.y-backPt.y), (frontPt.x-backPt.x));
 				double angle4 = atan2f((bd_backPt.y-bd_frontPt.y), (bd_backPt.x-bd_frontPt.x));
 				double bd_abs_delt = fabs(fabs(angle3)-fabs(angle4));
-				
+
 				if(fd_abs_delt < M_PI_4) {fd_angle = true;}
 				if(bd_abs_delt < M_PI_4) {bd_angle = true;}
 				bool fd_satisfy = fd_long && fd_angle;
 				bool bd_satisfy = bd_long && bd_angle;
-				
+
 				bool find_cor_pts = true;
-				
+
 				unsigned int line1_front_serial, line1_back_serial, line2_front_serial, line2_back_serial;
-				
+
 				CvPoint line1_frontd, line1_backd, line2_frontd, line2_backd;
 				CvPoint2D32f line1_front, line1_back, line2_front, line2_back;
-				
+
 				//line1 is the line at the left side of the marker;
 				if(fd_satisfy && !bd_satisfy)
 				{
@@ -588,7 +578,7 @@ namespace golfcar_vision{
 					line1_back_serial  = line_front;
 					line2_front_serial = forward_line_front;
 					line2_back_serial  = forward_line_back;
-					
+
 					//ROS_DEBUG("use_front_only");
 				}
 				else if (!fd_satisfy && bd_satisfy)
@@ -597,7 +587,7 @@ namespace golfcar_vision{
 					line2_back_serial  = line_back;
 					line1_front_serial = backward_line_back;
 					line1_back_serial  = backward_line_front;
-					
+
 					//ROS_DEBUG("use_back_only");
 				}
 				else if (fd_satisfy && bd_satisfy)
@@ -621,22 +611,22 @@ namespace golfcar_vision{
 				{
 					find_cor_pts = false;
 				}
-				
+
 				if(find_cor_pts)
 				{
 					line1_frontd = vertices[line1_front_serial];
 					line1_backd  = vertices[line1_back_serial];
 					line2_frontd = vertices[line2_front_serial];
 					line2_backd  = vertices[line2_back_serial];
-					
+
 					line1_front  = centered_vertices[line1_front_serial];
 					line1_back   = centered_vertices[line1_back_serial];
 					line2_front  = centered_vertices[line2_front_serial];
 					line2_back   = centered_vertices[line2_back_serial];
-					
+
 					double angle1 = atan2f((line1_front.y-line1_back.y), (line1_front.x-line1_back.x));
 					double angle2 = atan2f((line2_front.y-line2_back.y), (line2_front.x-line2_back.x));
-					
+
 					//remember to filter the case happened in picture 215;
 					double abs_delt = fabs(fabs(angle1)-fabs(angle2));
 					if(abs_delt>M_PI_2){ROS_DEBUG("noisy situation, do not provide angle");}
@@ -689,12 +679,3 @@ namespace golfcar_vision{
     	if(mask_init_)cvReleaseImage(&image_mask_);
     }
 };
-
-int main(int argc, char** argv)
-{
-	 ros::init(argc, argv, "lane_marker");
-	 ros::NodeHandle n;
-	 golfcar_vision::lane_marker lane_marker_node;
-     ros::spin();
-     return 0;
-}

@@ -454,7 +454,7 @@ public:
 		srv.setCallback(f);
 
 		image_pub_ = it_.advertiseCamera("image_raw", 1);
-		brightness_control_sub_ = camera_nh_.subscribe("control_command", 10, &UVCCamNode::control_brightness, this);
+		brightness_control_sub_ = camera_nh_.subscribe("/control_command", 10, &UVCCamNode::control_brightness, this);
 		
 		while (node.ok())
 		{

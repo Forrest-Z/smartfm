@@ -63,6 +63,7 @@ namespace golfcar_vision{
 		ransac_lane *lane_extractor_;
 
         CvSeq* filter_contours (CvContourScanner &scanner);
+
         void imageCallback(const sensor_msgs::ImageConstPtr& msg);
 
         int classify_contour(double weight_input, double perimeter_input, CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input);
@@ -77,6 +78,10 @@ namespace golfcar_vision{
         void MorphologicalThinning(CvMat *pSrc, CvMat *pDst);
         void ThinSubiteration1(CvMat *pSrc, CvMat *pDst);
         void ThinSubiteration2(CvMat *pSrc, CvMat *pDst);
+
+        //2013-March
+        bool mask_init_;
+        IplImage* image_mask_;
     };
 };
 

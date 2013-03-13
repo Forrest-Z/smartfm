@@ -1,5 +1,5 @@
-#ifndef GOLFCAR_VISION_PED_CROSSING_H
-#define GOLFCAR_VISION_PED_CROSSING_H
+#ifndef GOLFCAR_VISION_PED_CROSSING2_H
+#define GOLFCAR_VISION_PED_CROSSING2_H
 
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
@@ -29,10 +29,13 @@ using namespace ros;
 using namespace tf;
 
 namespace golfcar_vision{
+
+
     class ped_crossing {
         public:
     	ped_crossing();
         ~ped_crossing();
+        void imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean);
 
         private:
         ros::NodeHandle nh_, private_nh_;
@@ -61,7 +64,7 @@ namespace golfcar_vision{
         ransac_lane *lane_extractor_;
 
         CvSeq* filter_contours (CvContourScanner &scanner);
-        void imageCallback(const sensor_msgs::ImageConstPtr& msg);
+
         void polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in);
         void extract_training_image(IplImage* binary_img);
         int  classify_contour(double weight_input, double perimeter_input, CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input);

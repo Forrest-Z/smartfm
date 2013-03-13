@@ -1,5 +1,5 @@
 1.use "generate_training_data" to generate labelled contours;
-2.use "data_formating" to format data into svm-supported format;
+2.use "svm_classifier/bin/data_formating" to format data into svm-supported format;
 3.use "./svm-scale -s range_20120726 data/formatted_data_20120726 > scaled_20120726" to scale data; 
   also use "range" file to change the "lower&upper_limit", and "feature_max&min";
 4.use "python ./grid.py ../scaled_20120726" to find the best "C" and "gamma";

@@ -1,4 +1,4 @@
-#include "conti_lane.h"
+#include "conti_lane2.h"
 
 namespace golfcar_vision{
   
@@ -11,13 +11,13 @@ namespace golfcar_vision{
 	  ipm_para_init_ = false;
 
       string conti_lane_model_path, conti_lane_scale_path;
-	  private_nh_.param("lane_model_path", conti_lane_model_path, std::string("/home/baoxing/workspace/data_and_model/lane_20130305.model"));
-	  private_nh_.param("lane_scale_path", conti_lane_scale_path, std::string("/home/baoxing/workspace/data_and_model/lane_20130305.range"));
+	  private_nh_.param("lane_model_path", conti_lane_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
+	  private_nh_.param("lane_scale_path", conti_lane_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
 	  conti_lane_classifier_ = new golfcar_ml::svm_classifier(conti_lane_model_path, conti_lane_scale_path);
-      image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &conti_lane::imageCallback, this);
+      //image_sub_ = it_.subscribe("/camera_front/ipm_binary", 1, &conti_lane::imageCallback, this);
 
       polygon_sub_ = nh_.subscribe("img_polygon", 10, &conti_lane::polygonCallback, this);
-      private_nh_.param("scale", scale_, 30.0);
+      private_nh_.param("scale", scale_, 20.0);
       private_nh_.param("extract_training_image", extract_training_image_, false);
       frame_serial_ = 0;
 
@@ -25,7 +25,6 @@ namespace golfcar_vision{
       lanes_ptcloud_pub_ = nh_.advertise<sensor_msgs::PointCloud>("lanes_ptcloud",2);
 
 	  lane_extractor_ = new ransac_lane();
-	  mask_init_ = false;
     }
 
 	void conti_lane::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
@@ -35,10 +34,8 @@ namespace golfcar_vision{
 		polygon_init_ = true;
 	}
 
-    void conti_lane::imageCallback (const sensor_msgs::ImageConstPtr& msg)
+    void conti_lane::imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean)
     {
-    	ROS_INFO("ContiLane----ImageCallBack-----");
-
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
         {
@@ -85,57 +82,34 @@ namespace golfcar_vision{
 		cvCvtColor(color_image, binary_img, CV_BGR2GRAY);
 		Img_preproc(binary_img, binary_img);
 
-		//2013-March
-		if(!mask_init_)
-		{
-			mask_init_ = true;
-			image_mask_ = cvCreateImage(cvGetSize(color_image),8,1);
-			cvZero(image_mask_);
-	        int ipm_height 		= image_mask_ -> height;
-			int ipm_width  		= image_mask_ -> width;
-			int ipm_step	 	= image_mask_ -> widthStep/sizeof(uchar);
-			uchar * ipm_data 	= (uchar*)image_mask_ ->imageData;
-			for(int ih=0; ih < ipm_height; ih++)
-			{
-				for(int iw=0; iw < ipm_width; iw++)
-				{
-					CvPoint tmppoint = cvPoint(iw, ih);
-
-					if(pointInPolygon <CvPoint> (tmppoint,ipm_polygon_))
-					{
-						ipm_data[ih*ipm_step+iw]=255;
-					}
-				}
-			}
-		}
-		cvAnd(image_mask_, binary_img, binary_img);
-
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";
         CvSeq *first_contour = 0;       //always keep one copy of the beginning of this list, for further usage;
         CvMemStorage *mem_contours; 
         mem_contours = cvCreateMemStorage(0);
         
         //CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
-        CvContourScanner scanner = cvStartFindContours(binary_img, mem_contours, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
-                
+        //CvContourScanner scanner = cvStartFindContours(binary_img, mem_contours, sizeof(CvContour), CV_RETR_TREE, CV_CHAIN_APPROX_NONE);
+
+        cvFindContours(binary_img, mem_contours, &contours, sizeof(CvContour), CV_RETR_TREE, CV_CHAIN_APPROX_NONE, cvPoint(0,0));
+
         //-------------------------------------------------------------------------------------------------------------------------------
         //2. to filter noise at the boundary, and noise too small or too big; to re-write
         //-------------------------------------------------------------------------------------------------------------------------------
-        contours = filter_contours(scanner);
+        //contours = filter_contours(scanner);
+        contours = filter_contours2(contours);
         first_contour = contours;
 
         ROS_INFO("1");
-
-        fmutil::Stopwatch sw;
-        sw.start("conti lane");
         //-------------------------------------------------------------------------------------------------------------------------------
         //3. classify each remained candidates; visualize the markers detected;
         //-------------------------------------------------------------------------------------------------------------------------------
         IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
+        IplImage *contour_img_show = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
 		IplImage *thining_img = cvCreateImage(cvSize(contour_img->width,contour_img->height),IPL_DEPTH_8U, 1);
 		cvZero(thining_img);
 		cvZero(contour_img);
-        cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
+		cvZero(contour_img_show);
+        //cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
         CvScalar ext_color;
         ROS_INFO("2");
 
@@ -181,11 +155,11 @@ namespace golfcar_vision{
 			int approxPtNum = int (contour_poly->total);
 
             int contour_class = classify_contour (contour_weight, contour_perimeter, cvHM, cvBox, approxPtNum);
+            cvDrawContours(contour_img_show, contours, ext_color, CV_RGB(0,0,0), -2, CV_FILLED, 8, cvPoint(0,0));
 
             if(contour_class==-1){ROS_ERROR("NO CLASSIFICATION!!!");}
-            else if(contour_class==1)
+            else if(contour_class== 1)
 			{
-            	cvDrawContours(contour_img, contours, ext_color, CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
             	//ransac lanes;
             	lane_extractor_->multiple_lanes(contours, scale_, thining_img, contour_img, lane_contour_serial, lanes_inImg);
             	lane_contour_serial++;
@@ -193,11 +167,15 @@ namespace golfcar_vision{
 			else {}
 		}
         cvShowImage("lane_contour_img",contour_img);
+        cvShowImage("contour_img_show",contour_img_show);
+        cvSaveImage("/home/baoxing/contour_show.png", contour_img_show);
+
         cvShowImage("lane_thining_img",thining_img);
+        cvSaveImage("/home/baoxing/thining_img.png", thining_img);
 
-        sw.end();
+        merge_images(visual_ipm, contour_img);
+        merge_images(visual_ipm_clean, contour_img);
 
-        sw.start("other related");
         lanes_pub_.publish(lanes_inImg);
 		sensor_msgs::PointCloud lanes_ptcloud;
 		std::vector<CvPoint2D32f> lanes_pt_inImg;
@@ -229,9 +207,8 @@ namespace golfcar_vision{
 
         cvWaitKey(1);
         cvReleaseImage(&contour_img);
+        cvReleaseImage(&contour_img_show);
         cvReleaseImage(&thining_img);
-        sw.end();
-        ROS_INFO("ContiLane----ImageCallBack END-----");
     }
 
     void conti_lane::extract_training_image(IplImage* binary_img)
@@ -298,6 +275,10 @@ namespace golfcar_vision{
         mem_box = cvCreateMemStorage(0);
         while((c=cvFindNextContour(scanner))!=NULL)
         {
+        	//not to erase the inner contours;
+        	//the contour hierarchy is confusing here;
+        	if((c->v_prev)->v_next ==NULL) continue;
+
             //1st criterion: perimeter should be long enough;
             double len_pixel = cvContourPerimeter(c);
             double len_meter = len_pixel/scale_;
@@ -316,6 +297,47 @@ namespace golfcar_vision{
         CvSeq *contours = cvEndFindContours(&scanner);
         cvReleaseMemStorage(&mem_box);
         return contours;
+    }
+
+    CvSeq* conti_lane::filter_contours2 (CvSeq* contours)
+    {
+    	CvSeq *first_contour=NULL;
+
+        CvSeq* c;
+        CvBox2D cvBox;
+        CvMemStorage *mem_box;
+        mem_box = cvCreateMemStorage(0);
+        c=contours;
+
+        while(c!=NULL)
+        {
+            //1st criterion: perimeter should be long enough;
+            double len_pixel = cvContourPerimeter(c);
+            double len_meter = len_pixel/scale_;
+            bool len_criterion = (len_meter > CONTOUR_PERIMETER_THRESH);
+
+            //2nd criterion: long side should exceed certain threshold;
+			cvBox = cvMinAreaRect2(c, mem_box);
+			float height =  cvBox.size.height;
+			float width  =  cvBox.size.width;
+			float long_side = max(height, width);
+			bool  long_side_criterion = long_side > LONG_SIDE_THRESH*scale_;
+
+			bool contour_criteria = len_criterion && long_side_criterion;
+
+            if(!contour_criteria)
+            {
+            	if(c->h_prev){(c->h_prev)->h_next=c->h_next;}
+            	if(c->h_next){(c->h_next)->h_prev=c->h_prev;}
+            }
+            else
+            {
+            	if(first_contour==NULL) first_contour = c;
+            }
+            c=c->h_next;
+        }
+        cvReleaseMemStorage(&mem_box);
+        return first_contour;
     }
 
 	void conti_lane::IpmImage_to_pcl(std::vector <CvPoint2D32f> & pts_image, sensor_msgs::PointCloud &pts_3d)
@@ -337,16 +359,5 @@ namespace golfcar_vision{
 
 	conti_lane::~conti_lane()
     {
-    	//2013-March
-    	if(mask_init_)cvReleaseImage(&image_mask_);
     }
 };
-
-int main(int argc, char** argv)
-{
-	 ros::init(argc, argv, "conti_lane");
-	 ros::NodeHandle n;
-	 golfcar_vision::conti_lane conti_lane_node;
-     ros::spin();
-     return 0;
-}

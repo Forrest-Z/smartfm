@@ -1,0 +1,5 @@
+<launch>
+		<param name="lane_model_path" value="$(find vision_lane_detection)/data_and_model/lane_20130305.model"/>
+    	<param name="lane_scale_path" value="$(find vision_lane_detection)/data_and_model/lane_20130305.range"/>
+    	<param name="scale" value="20.0"/>
+</launch>

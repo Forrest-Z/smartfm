@@ -1,5 +1,5 @@
-#ifndef LANE_MARKER_IPM_H
-#define LANE_MARKER_IPM_H
+#ifndef LANE_MARKER_IPM2_H
+#define LANE_MARKER_IPM2_H
 
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
@@ -23,6 +23,11 @@
 #include <geometry_msgs/PolygonStamped.h>
 #include <sensor_msgs/Imu.h>
 
+#include "conti_lane2.h"
+#include "lane_marker2.h"
+#include "ped_crossing2.h"
+#include "road_ROC2.h"
+
 using namespace std;
 using namespace ros;
 using namespace tf;
@@ -42,7 +47,7 @@ namespace golfcar_vision{
         IplImage *ipm_image_, *ipm_color_image_;
 		double camera_baselink_dis_;
 		double ipm_center_x_, ipm_center_y_;
-		double ipm_ROI_height_, ipm_ROI_near_width_, ipm_ROI_far_width_, ipm_ROI_far_width2_;
+		double ipm_ROI_height_, ipm_ROI_near_width_, ipm_ROI_far_width_;
 		double scale_;
 		  
         image_transport::ImageTransport it_;
@@ -73,6 +78,7 @@ namespace golfcar_vision{
         void ImageCallBack(const sensor_msgs::ImageConstPtr& image_msg, const sensor_msgs::CameraInfoConstPtr& info_msg);
         void GndPt_to_Src(CvPoint2D32f * gnd_pointer, CvPoint2D32f* src_pointer);
         void GndPt_to_Dst(CvPoint2D32f * gnd_pointer, CvPoint2D32f* dst_pointer);
+
 
 		//ros::Subscriber  odom_sub_;
 		tf::Transformer  transformer_;
@@ -109,6 +115,12 @@ namespace golfcar_vision{
 
 		geometry_msgs::PolygonStamped gnd_polygon, img_polygon;
 		ros::Publisher gnd_polygon_publisher, img_polygon_publisher;
+
+		bool lane_on_, arrow_on_, crossing_on_, word_on_;
+		conti_lane *lane_processor_;
+		lane_marker *arrow_processor_;
+		road_roc* roc_processor_;
+		ped_crossing* zebra_processor_;
    };
 };
 

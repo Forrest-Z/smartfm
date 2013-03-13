@@ -26,6 +26,9 @@ rosbuild_genmsg()
 
 find_package(OpenCV REQUIRED)
 
+rosbuild_add_executable(generate_training_data src/generate_training_data.cpp)
+target_link_libraries(generate_training_data ${OpenCV_LIBRARIES})
+
 rosbuild_add_executable(ipm src/ipm.cpp)
 target_link_libraries(ipm ${OpenCV_LIBRARIES})
 rosbuild_link_boost(ipm signals)
@@ -35,9 +38,11 @@ target_link_libraries(lane_marker ${OpenCV_LIBRARIES})
 rosbuild_link_boost(lane_marker signals)
 
 rosbuild_add_library(ransac_lane src/ransac_lane.cpp)
+
 rosbuild_add_executable(conti_lane src/conti_lane.cpp)
 target_link_libraries(conti_lane ${OpenCV_LIBRARIES} ransac_lane)
 rosbuild_link_boost(conti_lane signals)
+
 
 rosbuild_add_executable(ped_crossing src/ped_crossing.cpp)
 target_link_libraries(ped_crossing ${OpenCV_LIBRARIES})
@@ -67,14 +72,20 @@ target_link_libraries(single_pic ${OpenCV_LIBRARIES})
 rosbuild_add_executable(model_geometry src/model_geometry.cpp)
 target_link_libraries(model_geometry ${OpenCV_LIBRARIES})
 
-rosbuild_add_executable(generate_training_data src/generate_training_data.cpp)
-target_link_libraries(generate_training_data ${OpenCV_LIBRARIES})
 
 #rosbuild_add_executable(test_eigen src/test_eigen.cpp)
 #target_link_libraries(test_eigen ${OpenCV_LIBRARIES})
 rosbuild_add_executable(data_formating src/data_formating.cpp)
 rosbuild_add_executable(extrinsic_calibration src/extrinsic_calibration.cpp)
 
+rosbuild_add_library(conti_lane2 src/conti_lane2.cpp)
+rosbuild_add_library(lane_marker2 src/lane_marker2.cpp)
+rosbuild_add_library(ped_crossing2 src/ped_crossing2.cpp)
+rosbuild_add_library(road_ROC2 src/road_ROC2.cpp)
+
+rosbuild_add_executable(ipm2 src/ipm2.cpp)
+target_link_libraries(ipm2 ${OpenCV_LIBRARIES} conti_lane2 lane_marker2 ped_crossing2 road_ROC2 ransac_lane word_identifier)
+rosbuild_link_boost(ipm2 signals)
 #target_link_libraries(wrap_example ${OpenCV_LIBRARIES})
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
