@@ -154,7 +154,7 @@ public:
     sd1.best_y = 0;
     sd1.rot_range = 20;
     sd1.angle_res = 4;
-    sd1.trans_res = 0.5;
+    sd1.trans_res = 1.0;
     sd1.trans_x_range = 15;
     sd1.trans_y_range = 22;
     sd1b = sd1;
@@ -164,11 +164,13 @@ public:
     bruteForceSearch(sd1b, sorted);
     if(sd1b.best_score > sd1.best_score) sd2 = sd1b;
     else sd2= sd1;
-    sd2.rot_range = 5; sd2.angle_res = 1; sd2.trans_res = 0.05;
+    sd2.rot_range = 5; sd2.angle_res = 1; sd2.trans_res = 0.1;
   //performing matching 100 and 1224 doesn't yield a good match, a 0.1 x direction mismatch 
   //this is due to rounding problem where the fast search rounded the value first then perform translation, resulting a misalignment where direct pcl tf only perform rounding at the very end right before getScore. Improved it by increasing the base resolution to 0.05
-    sd2.trans_x_range = 0.5; sd2.trans_y_range = 0.5;
-    bruteForceSearch(sd2);
+    sd2.trans_x_range = 1.0; sd2.trans_y_range = 1.0;
+    //just to simulate the same work load with GPU
+    //for(int i=0; i<10; i++)
+      bruteForceSearch(sd2);
     best_score_ = sd2.best_score;
     return best_score_;
   }

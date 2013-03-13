@@ -6,7 +6,7 @@
 void addScoreVer(pcl::PointCloud<pcl::PointNormal> &matching_clouds_j, vector<pcl::PointCloud<pcl::PointNormal> > &input_clouds,
      ScoreData &sd, MySQLHelper &mysql)
 {
-  RasterMapImage rmi_ver(0.05, 0.2);
+  RasterMapImage rmi_ver(0.1, 0.2);
   pcl::PointCloud<pcl::PointNormal> matching_cloud = matching_clouds_j;
   double yaw_rotate = sd.t / 180. * M_PI;
   Eigen::Quaternionf bl_rotation(cos(yaw_rotate / 2.), 0, 0,
@@ -49,9 +49,16 @@ void addScoreVer(pcl::PointCloud<pcl::PointNormal> &matching_clouds_j, vector<pc
   #pragma omp critical
   mysql.updateScoreVer(ver_score, sd);
 }
+
+int get_num_threads()
+{
+return 8;
+}
+
 int main(int argc, char** argv)
 {
-  double res_ = 0.05;
+ 
+  double res_ = 0.1;
   int start_idx = 5;
   
   int skip_read = atoi(argv[2]);
@@ -81,9 +88,9 @@ int main(int argc, char** argv)
     cout<<"Reading pcd file "<<matching_file.str()<<"     \xd"<<flush;
   }
   cout<<endl;
-#pragma omp parallel for
-  for(int i=556/*start_idx*/; i<816/*end_idx*/; i++)
-  {
+#pragma omp parallel for num_threads(get_num_threads())
+  for(int i=start_idx; i<end_idx; i++)
+  {//1404 1620 //1868 2028// 2348 2432 //136 412 //988 1220
     if(i%skip_read != 0) continue;
     stringstream input_file;
     input_file <<folder<<setfill('0')<<setw(5)<<i<<".pcd";    
@@ -92,14 +99,21 @@ int main(int argc, char** argv)
     vector<pcl::PointCloud<pcl::PointNormal> > input_clouds = append_input_cloud(input_cloud, string(argv[1]), input_file.str());
     input_cloud = pcl_downsample(input_cloud, res_*2, res_*2, res_*2);
     NormalCorrelativeMatching ncm(input_cloud, res_, 0.2);
+    map<int, ScoreData> score_datas;
+    #pragma omp critical
+    score_datas = mysql.getDataFromSrc(i);
     for(int j=i; j<total_files; j++)
     {
       if(j%skip_read!=0) continue;
       ScoreData sd;
-      sd.node_src = i; sd.node_dst = j;   
+      sd.node_src = i; sd.node_dst = j; 
       bool retrieve_data=false;
-      #pragma omp critical
-      retrieve_data = mysql.getData(sd, false);
+      if(score_datas.find(sd.node_dst) != score_datas.end()) {
+	retrieve_data = true;
+	sd = score_datas[sd.node_dst];
+      }
+     
+      //retrieve_data = mysql.getData(sd, false);
       if(retrieve_data)
       {
         cout<<sd.node_src<<" "<<sd.node_dst<<" "<<sd.x<<" "<<sd.y<<" "<<sd.t<<" "<<sd.time_taken<<"\xd"<<flush;
@@ -117,10 +131,9 @@ int main(int argc, char** argv)
         sd.t = ncm.rotation;
         sd.time_taken = sw.total_/1000;
         #pragma omp critical
-        {
-          mysql.insertData(sd);
-          assert(mysql.getData(sd, false));
-        }
+        mysql.insertData(sd);
+	#pragma omp critical
+        assert(mysql.getData(sd, false));
         addScoreVer(matching_clouds[j], input_clouds, sd, mysql);
       }
     }

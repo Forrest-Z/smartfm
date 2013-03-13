@@ -216,7 +216,7 @@ int main(int argc, char **argv) {
         pcl::io::loadPCDFile(argv[3], input_cloud);
         append_input_cloud(input_cloud, string(argv[2]), string(argv[3]));
         pcl::io::loadPCDFile(argv[4], matching_cloud);
-        res_ = 0.05;
+        res_ = 0.1;
         input_cloud = pcl_downsample(input_cloud, res_*2, res_*2, res_*2);
         
         matching_cloud = pcl_downsample(matching_cloud, res_*2, res_*2, res_*2);

@@ -240,7 +240,7 @@ int main(int argc, char **argv) {
 
     ros::Rate rate(2);
 
-    GraphParticleFilter graphPF(&mysql, &slam, 200, skip_reading);
+    GraphParticleFilter graphPF(&mysql, &slam, 50, skip_reading);
     sensor_msgs::PointCloud overall_pts;
     double opt_error = 0;
     isam::Pose3d_Pose3d_Factor *previous_constraint, *current_constraint;

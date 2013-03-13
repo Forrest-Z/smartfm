@@ -15,7 +15,7 @@ rosbuild_init()
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
-set(ISAM_LIBS isam cholmod suitesparseconfig colamd amd lapack blas rt)
+set(ISAM_LIBS isam cholmod colamd amd lapack blas rt)
 #uncomment if you have defined messages
 #rosbuild_genmsg()
 #uncomment if you have defined services

@@ -156,7 +156,7 @@ public:
         uint score = 0;
         double norm_score = 0;
         int count = 0;
-        double penalize_norm = M_PI / 3.;
+        double penalize_norm = 0;//M_PI / 3.;
         //it only takes 25 ms for 6k loops on 0.03 res
 
         for (size_t i = 0; i < search_pt.size(); i++) {
@@ -180,24 +180,36 @@ public:
             if (score_temp == 0) {
                 //this has caused mismatch of the EA car park area. Perhaps not a good idea?
                 //changed to using real height value
-                if (score >= 100)
-                    score -= 100;
-            } else
-                score += score_temp;
+                //if (score >= 100)
+                  //  score -= 100;
+            }// else
+               // score += score_temp;
             double angular_norm = getNormPixel(pt.x, pt.y);
             double angular_diff = angular_norm - normal_pt[i];
             if (fabs(angular_norm) < 0.0001) {
                 //if no information on the points normal,penalize it
                 angular_diff = penalize_norm;				// /= 2;
             }
-            if (angular_diff > M_PI)
+         
+          if (angular_diff > M_PI)
+            angular_diff = -(2*M_PI - angular_diff);
+          if (angular_diff < -M_PI)
+            angular_diff += 2*M_PI;
+            /*if (angular_diff > M_PI)
                 angular_diff -= M_PI;
             if (angular_diff < -M_PI)
-                angular_diff += M_PI;
+                angular_diff += M_PI;*/
+
             //try to increase discriminative power by using exp 
             double norm_score_temp = fabs(angular_diff);
             //norm_score_temp = (1-exp(-norm_score_temp/0.6))*M_PI;
             norm_score += norm_score_temp;
+	    double weighted_score = 1-norm_score_temp/(M_PI/2);
+	    if(weighted_score > 1) weighted_score = 1;
+	    else if(weighted_score < 0) weighted_score = 0;
+	    score_temp = score_temp * weighted_score;
+	    if(score_temp < 0) score_temp = 0;
+	     score += score_temp;
             count++;
         }
         //In the end the expected norm_score sum error will be larger than a multiple of 127.5
@@ -214,7 +226,7 @@ public:
         score_details.norm_norm_score = (1
                 - (norm_score / score_details.worst_norm_score));
 
-        double proposed_score = score_details.norm_norm_score * final_score;
+        double proposed_score = final_score;//score_details.norm_norm_score * ;
         //scorepoint_sw_.end(false);
         return proposed_score;
     }
@@ -357,7 +369,7 @@ inline double scorePointsSorted(vector<cv::Point> &search_pt,
         distance << "rastered_map_" << res_ << "_" << range_covariance_
                 << ".png";
         norm_file << "norm_map_" << res_ << "_" << range_covariance_ << ".png";
-
+        //cout<<"Input points from rastering: "<<raster_pt.size()<<endl;
         for (int j = gaussian_mapping_.size() - 1; j >= 0; j--) {
             //openmp helps reduce the rastering time from 150+ to 60+ms
             //#pragma omp parallel for
@@ -374,6 +386,7 @@ inline double scorePointsSorted(vector<cv::Point> &search_pt,
             }
 
         }
+        
         if (use_normal_) {
             //only draw half the radius of the gaussian's
             int temp_r = gaussian_mapping_.size() / 2;
@@ -385,16 +398,16 @@ inline double scorePointsSorted(vector<cv::Point> &search_pt,
                         -1);
             }
         }
-        sw_draw.end(false);
-
+        
+         sw_draw.end(false);
         //resize it back
         //cv::resize(image_, image_, cv::Size(0,0), 1/5., 1/5., cv::INTER_CUBIC);
         //cv::resize(norm_image_, norm_image_, cv::Size(0,0), 1/5., 1/5., cv::INTER_CUBIC);
-        /*cv::imwrite(distance.str(), image_);
-        cv::Mat norm_image_8bit;
-        cv::normalize(norm_image_, norm_image_8bit, 0, 255, cv::NORM_MINMAX,
-                CV_8UC1);
-        cv::imwrite(norm_file.str(), norm_image_8bit);*/
+        //cv::imwrite(distance.str(), image_);
+        //cv::Mat norm_image_8bit;
+        //cv::normalize(norm_image_, norm_image_8bit, 0, 255, cv::NORM_MINMAX,
+        //        CV_8UC1);
+        //cv::imwrite(norm_file.str(), norm_image_8bit);
         
         //copy data into vector for eventual speed up
         norm_image_data_.resize(norm_image_.cols * norm_image_.rows);
