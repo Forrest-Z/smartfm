@@ -31,7 +31,7 @@
 #include <pcl/common/pca.h>
 #include <laser_geometry/laser_geometry.h>
 
-#include "nearest_neighbor_tracking.h"
+#include "nearest_neighbor_tracking_v2.h"
 
 using std::string;
 using std::cout;
@@ -280,7 +280,7 @@ class LaserVehicle
         private_nh.param("euc_dist_range", euc_dist_range, 1.1);
         int segmented_count = 0;
         //cout<<"----------Start-----------"<<endl;
-        vector<pcl::PointCloud<pcl::PointXYZ> > segmented_5pts;
+        vector<pcl::PointCloud<pcl::PointXYZ> > segmented_pts;
         pcl::PointCloud<pcl::PointXYZ> segmented_pt;
         for(size_t i=1; i<laser_cloud.points.size(); i++)
         {
