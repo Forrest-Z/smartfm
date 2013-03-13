@@ -180,8 +180,8 @@ public:
             if (score_temp == 0) {
                 //this has caused mismatch of the EA car park area. Perhaps not a good idea?
                 //changed to using real height value
-                //if (score >= 100)
-                  //  score -= 100;
+                if (score >= 100)
+                    score -= 100;
             }// else
                // score += score_temp;
             double angular_norm = getNormPixel(pt.x, pt.y);

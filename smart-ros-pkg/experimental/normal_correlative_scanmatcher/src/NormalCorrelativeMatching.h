@@ -11,18 +11,19 @@
 #include <fstream>
 #include <boost/thread/thread.hpp>
 #include "pcl_downsample.h"
-
+#include "mysql_helper.h"
 class NormalCorrelativeMatching{
 public:
   pcl::PointCloud<pcl::PointNormal> input_cloud, matching_cloud;
   double res_;
   double offset_x, offset_y, rotation;
   double best_score_;
+  
   pcl::PointCloud<pcl::PointNormal> best_tf_pt;
   RasterMapImage rmi, rmi_ver;
-
+  double range_cov_;
   NormalCorrelativeMatching(pcl::PointCloud<pcl::PointNormal> input_cl, double res, double range_cov): 
-    input_cloud(input_cl), res_(res), rmi(res_, range_cov), rmi_ver(res_, range_cov) {
+    input_cloud(input_cl), res_(res), rmi(res_, range_cov), rmi_ver(res_, range_cov), range_cov_(range_cov) {
     vector<cv::Point2f> input_pts, input_normals;
     input_pts.resize(input_cloud.points.size());
     input_normals.resize(input_cloud.points.size());
@@ -35,6 +36,52 @@ public:
     rmi.getInputPoints(input_pts, input_normals);
     
   }
+  
+  double veriScore(pcl::PointCloud<pcl::PointNormal> &matching_clouds_j, vector<pcl::PointCloud<pcl::PointNormal> > &input_clouds, ScoreData &sd) {
+    RasterMapImage rmi_ver(res_, range_cov_);
+    pcl::PointCloud<pcl::PointNormal> matching_cloud = matching_clouds_j;
+    double yaw_rotate = sd.t / 180. * M_PI;
+    Eigen::Quaternionf bl_rotation(cos(yaw_rotate / 2.), 0, 0,
+	      -sin(yaw_rotate / 2.));
+    Eigen::Vector3f bl_trans(sd.x, sd.y, 0.);
+    pcl_utils::transformPointCloudWithNormals<pcl::PointNormal>(
+	      matching_cloud, matching_cloud, bl_trans, bl_rotation);
+    vector<cv::Point2f> input_pts, input_normals;
+    input_pts.resize(matching_cloud.points.size());
+    input_normals.resize(matching_cloud.points.size());
+    for (size_t k = 0; k < matching_cloud.points.size(); k++) {
+	input_pts[k].x = matching_cloud.points[k].x;
+	input_pts[k].y = matching_cloud.points[k].y;
+	input_normals[k].x = matching_cloud.points[k].normal_x;
+	input_normals[k].y = matching_cloud.points[k].normal_y;
+    }
+    rmi_ver.getInputPoints(input_pts, input_normals);  
+    double ver_score = 0;
+
+    for(size_t k=0; k<input_clouds.size(); k++)
+    {
+      pcl::PointCloud<pcl::PointNormal> input_cloud_single = input_clouds[k];
+      input_cloud_single = pcl_downsample(input_cloud_single, res_, res_, res_);
+      vector<cv::Point2f> search_pt;
+      vector<double> normal_pt;
+      search_pt.resize(input_cloud_single.points.size());
+      normal_pt.resize(input_cloud_single.points.size());
+      
+      for (size_t l = 0; l < input_cloud_single.points.size(); l++) {
+	  search_pt[l].x = input_cloud_single.points[l].x;
+	  search_pt[l].y = input_cloud_single.points[l].y;
+	  normal_pt[l] = atan2(input_cloud_single.points[l].normal_y,
+		  input_cloud_single.points[l].normal_x);
+      }
+      ScoreDetails s_det;
+      double best_score = rmi_ver.getScoreWithNormal(search_pt, normal_pt, s_det);
+      if(ver_score < best_score)
+	ver_score = best_score;
+    }
+    return ver_score;
+  }
+
+
 
   void bruteForceSearch(ScoreDetails &sd, bool sorted=false) {
     double best_x, best_y;

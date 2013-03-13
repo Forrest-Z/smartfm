@@ -92,10 +92,24 @@ private:
 			  ang_dist = nodes_match_heading_[(int)particles_[i].node_idx];//fmutil::angDist(nodes_heading_[nodes_heading_.size()-1], nodes_heading_[(int)particles_[i].node_idx]);
 			ang_dist = fabs(ang_dist/M_PI); //scaling to 0-1, where a near 0 dist means 2 nodes having the same heading and otherwise
 			ang_dist = (1- ang_dist)*2 -1;// scaling to -1 to 1, where -1 means the nodes having opposite direction, and 1 means same heading hence just inc/dec as the symbols
-
-			NORM_DIST dist(ang_dist,0.5); NORM_GEN gen(eng,dist);
+			int direction = 1, move_dist = 1;
+			if(ang_dist<0) direction = -1;
+			int p_motion = roll_die(10);
+			switch (p_motion) {
+			  case 8:
+			    move_dist = 0;
+			    break;
+			  case 9:
+			    move_dist = 2;
+			    break;
+			  case 10:
+			    move_dist = 3;
+			    break;
+			}
+			particles_[i].node_idx += move_dist * direction;
+			//NORM_DIST dist(ang_dist,0.5); NORM_GEN gen(eng,dist);
 			//with mean defined by the relative difference in orientation
-			particles_[i].node_idx += gen();
+			//particles_[i].node_idx += gen();
 			//let the particles bounded by the available node
 			particles_[i].node_idx = fmutil::bound(0., particles_[i].node_idx, (double)nodes_heading_.size()-1);
 		}

@@ -8,7 +8,7 @@
 
 #include <pcl/visualization/pcl_visualizer.h>
 #include "NormalCorrelativeMatching.h"
-#include "mysql_helper.h"
+//#include "mysql_helper.h"
 #include "readfrontend.h"
 pcl::PointCloud<pcl::PointNormal> input_cloud, matching_cloud;
 double res_;
@@ -214,7 +214,7 @@ int main(int argc, char **argv) {
       {
         cout<<"Matching mode on"<<endl; matching_mode = true;
         pcl::io::loadPCDFile(argv[3], input_cloud);
-        append_input_cloud(input_cloud, string(argv[2]), string(argv[3]));
+        vector<pcl::PointCloud<pcl::PointNormal> > input_clouds = append_input_cloud(input_cloud, string(argv[2]), string(argv[3]));
         pcl::io::loadPCDFile(argv[4], matching_cloud);
         res_ = 0.1;
         input_cloud = pcl_downsample(input_cloud, res_*2, res_*2, res_*2);
@@ -236,6 +236,13 @@ int main(int argc, char **argv) {
         offset_y = ncm->offset_y;
         
         cout<<"Best score = "<<ncm->best_score_<<" "<<ncm->offset_x<<" "<<ncm->offset_y<<" "<<ncm->rotation<<endl;
+	ScoreData sd;
+	sd.score = ncm->best_score_;
+        sd.x = ncm->offset_x;
+        sd.y = ncm->offset_y;
+        sd.t = ncm->rotation;
+	double score_ver = ncm->veriScore(matching_cloud, input_clouds , sd);
+	cout<<"Ver score = "<<score_ver<<" combined: "<<sqrt(score_ver*sd.score)<<endl;
         addPointCloud(viewer, best_tf_pt, "matching_cloud",
                     "matching_normal_cloud", false);
       }
