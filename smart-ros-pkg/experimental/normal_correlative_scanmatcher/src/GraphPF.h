@@ -25,6 +25,7 @@ class GraphParticleFilter
 public:
 	map<int, int> falseCL_node_;
 	MySQLHelper *mysql_;
+        map<int, int> unique_nodes_;
 	GraphParticleFilter(MySQLHelper *mysql, isam::Slam *slam, int particle_no, int skip_reading):
 		mysql_(mysql), slam_(slam), skip_reading_(skip_reading)
 
@@ -107,7 +108,7 @@ private:
 			    break;
 			}
 			particles_[i].node_idx += move_dist * direction;
-			//NORM_DIST dist(ang_dist,0.5); NORM_GEN gen(eng,dist);
+			NORM_DIST dist(ang_dist,0.5); NORM_GEN gen(eng,dist);
 			//with mean defined by the relative difference in orientation
 			//particles_[i].node_idx += gen();
 			//let the particles bounded by the available node
@@ -181,7 +182,7 @@ private:
 			unique_nodes_array.push_back(i->first);
 		}
 		cout<<endl;
-
+                unique_nodes_ = unique_nodes;
 		fmutil::Stopwatch sw2("sw2");
 
 		nodes_match_heading_.clear();
@@ -195,14 +196,18 @@ private:
 			ScoreData sd;
 			sd.node_dst = matching_node*skip_reading_;
 			sd.node_src = unique_nodes_array[i]*skip_reading_;
-			if(mysql_->getData(sd))
-			    score =  sd.final_score*100;
+			if(mysql_->getData(sd)) {
+                          //changed to arg_min from product
+			    score =  sd.score;
+                            if(score > sd.score_ver) score = sd.score_ver;
+                            score *= 100;
+                        }
 			else score = 0.;
       
 			//penalize the falseCL node
 			if(falseCL_node_.find(unique_nodes_array[i]) != falseCL_node_.end())
 			{
-				score/= falseCL_node_[unique_nodes_array[i]];
+				//score/= falseCL_node_[unique_nodes_array[i]];
 			}
 			nodes_match_heading_[unique_nodes_array[i]] = sd.t / 180. * M_PI;
 			if(score == 0.01) cout<<"Error, unexpected matching of nodes being evaluated: "
@@ -220,7 +225,7 @@ private:
 			weight_score = score / (a_t*exp(-dist*b_t)+1);
 			if(weight_score < 0) weight_score = 0;
 			local_cached_score[unique_nodes_array[i]] = score;
-			local_cached_weight[unique_nodes_array[i]] =weight_score;
+			local_cached_weight[unique_nodes_array[i]] =score;//weight_score;
 		}
 		sw2.end(print_sw);
 		//cout<<endl;

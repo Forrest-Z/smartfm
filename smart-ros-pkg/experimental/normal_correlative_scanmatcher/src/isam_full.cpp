@@ -41,7 +41,7 @@ void mat2RPY(const Eigen::Matrix3f& t, double& roll, double& pitch, double& yaw)
     yaw = atan2(t(1,0),t(0,0));
 }
 
-visualization_msgs::Marker getMarker(int id, string text, geometry_msgs::Pose pose)
+visualization_msgs::Marker getMarker(int id, int particle_no, string text, geometry_msgs::Pose pose)
 {
     visualization_msgs::Marker marker;
     marker.header.frame_id = "scan_odo";
@@ -51,13 +51,13 @@ visualization_msgs::Marker getMarker(int id, string text, geometry_msgs::Pose po
     marker.type = visualization_msgs::Marker::SPHERE;
     marker.action = visualization_msgs::Marker::ADD;
     marker.pose = pose;
-    marker.scale.x = 0.1;
-    marker.scale.y = 0.1;
+    marker.scale.x = particle_no;
+    marker.scale.y = particle_no;
     marker.scale.z = 0.1;
-    marker.color.a = 1.0;
+    marker.color.a = 0.5;
     marker.color.r = 1.0;
-    marker.color.g = 1.0;
-    marker.color.b = 1.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
     marker.pose.position.z = 0;
     marker.pose.orientation.x = 0.0;
     marker.pose.orientation.y = 0.0;
@@ -85,8 +85,8 @@ void publishNodeIdVis(int id, string text, geometry_msgs::Pose pose, ros::Publis
     marker.pose.orientation.y = 0.0;
     marker.pose.orientation.z = 0.0;
     marker.pose.orientation.w = 1.0;
-    marker.scale.x = 2.;
-    marker.scale.y = 2.;
+    marker.scale.x = 4.;
+    marker.scale.y = 4.;
     marker.scale.z = 0.5;
     marker.color.r = 1.;
     marker.color.g = 0;
@@ -240,12 +240,13 @@ int main(int argc, char **argv) {
 
     ros::Rate rate(2);
 
-    GraphParticleFilter graphPF(&mysql, &slam, 200, skip_reading);
+    GraphParticleFilter graphPF(&mysql, &slam, 250, skip_reading);
     sensor_msgs::PointCloud overall_pts;
     double opt_error = 0;
     isam::Pose3d_Pose3d_Factor *previous_constraint, *current_constraint;
     bool previous_cl = false, current_cl = false;
     int previous_cl_count = 0;
+    //comment out the cout part to only output node info
     for (int i = start_node; i < size; i ++) {
         cout << "**************************" << endl;
         fmutil::Stopwatch sw("overall", true);
@@ -441,8 +442,11 @@ int main(int argc, char **argv) {
             overall_pts.points.insert(overall_pts.points.end(),
                     tfed_pts.begin(), tfed_pts.end());
             stringstream ss;
-            ss<<"node_"<<node_id;
-            marker_arr.markers.push_back(getMarker(node_id, ss.str(), estimated_pt));
+            int node_particle_no = 0;
+            map<int,int>::iterator node_particle = graphPF.unique_nodes_.find(node_id);
+            if(node_particle != graphPF.unique_nodes_.end()) node_particle_no = node_particle->second;
+            ss<<"node_"<<node_id<<"_"<<node_particle_no;
+            marker_arr.markers.push_back(getMarker(node_id,node_particle_no, ss.str(), estimated_pt));
             publishNodeIdVis(node_id, ss.str(), estimated_pt, nodeid_pub);
 
             //building final occupancy map
@@ -523,7 +527,7 @@ int main(int argc, char **argv) {
 
         sw.end();
         string name;
-        //std::getline (std::cin,name);
+        std::getline (std::cin,name);
         
         cout << "***********************************" << endl;
     }
