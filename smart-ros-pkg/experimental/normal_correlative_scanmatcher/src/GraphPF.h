@@ -272,8 +272,11 @@ private:
 		{
 			//int random_node_idx = 
 			int random_node_idx; 
+			int node_number = slam_->get_nodes().size()-1;
+			//added to fix boost::uniform_real<RealType>::uniform_real(RealType, RealType) [with RealType = double]: Assertion `min_arg <= max_arg' failed.
+			if(node_number<0) node_number = 0;
 			if(weighted_node_distance.size() ==0) 
-                         random_node_idx = roll_die(slam_->get_nodes().size()-1);
+                         random_node_idx = roll_die(node_number);
                         else
 			  random_node_idx = roll_weighted_die(weighted_node_distance);
                   //      if(weighted_node_distance.size() > 0)

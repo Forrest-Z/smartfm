@@ -242,7 +242,7 @@ inline double scorePointsSorted(vector<cv::Point> &search_pt,
         uint score = 0;
         double norm_score = 0;
         int count = 0;
-        double penalize_norm = M_PI / 3.;
+        double penalize_norm =0;// M_PI / 3.;
         //it only takes 25 ms for 6k loops on 0.03 res
 
         vector<int> insidePtsIdx;
@@ -272,8 +272,8 @@ inline double scorePointsSorted(vector<cv::Point> &search_pt,
             if (score_temp == 0) {
                 //this has caused mismatch of the EA car park area. Perhaps not a good idea?
                 //changed to using real height value
-                if (score >= 100)
-                    score -= 100;
+                //if (score >= 100)
+                  //  score -= 100;
             } else
                 score += score_temp;
             double angular_norm = norm_image_data_[PtsIdx];

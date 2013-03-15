@@ -374,7 +374,7 @@ int main(int argc, char **argv) {
         }
 
         //check if 2 continuous close loop is found, if it is not, remove the previous close loop
-        if (previous_cl) {
+        /*if (previous_cl) {
             if (!current_cl && previous_cl_count < 2) {
                 cout
                         << "Close loop not continuous, removing previous constraint"
@@ -383,7 +383,7 @@ int main(int argc, char **argv) {
                 slam.update();
                 previous_cl = false;
             }
-        }
+        }*/
 
         if (current_cl) {
             cout

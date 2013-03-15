@@ -199,7 +199,7 @@ public:
     sd1.best_rot = 180;
     sd1.best_x = 0;
     sd1.best_y = 0;
-    sd1.rot_range = 20;
+    sd1.rot_range = 32;
     sd1.angle_res = 4;
     sd1.trans_res = 1.0;
     sd1.trans_x_range = 15;
