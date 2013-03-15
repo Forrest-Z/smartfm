@@ -355,7 +355,7 @@ private:
 		if( matching_node < 100)
 				return -1;
 
-		if( max_neighbor_score >30. && max_neighbor_node_id != -1 && max_accu > 5)
+		if( max_neighbor_score >22. && max_neighbor_node_id != -1 && max_accu > 5)
 		{
 				cout<<"close loop found at node "<<max_neighbor_node_id <<" with score "<<max_neighbor_score<<endl;
 				return max_neighbor_node_id;
