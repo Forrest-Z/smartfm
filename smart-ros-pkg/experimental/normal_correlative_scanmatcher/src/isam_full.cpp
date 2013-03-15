@@ -421,6 +421,7 @@ int main(int argc, char **argv) {
         sensor_msgs::PointCloud matching_src_pc, matching_dst_pc;
         int node_id = 4;
         CloudBuffer clouds(3000);
+        graphPF.nodes_pose_.clear();
         for (std::list<isam::Node*>::const_iterator it = nodes.begin();
                 it != nodes.end(); it++, node_id++) {
             isam::Node& node = **it;
@@ -446,6 +447,7 @@ int main(int argc, char **argv) {
             map<int,int>::iterator node_particle = graphPF.unique_nodes_.find(node_id);
             if(node_particle != graphPF.unique_nodes_.end()) node_particle_no = node_particle->second;
             ss<<"node_"<<node_id<<"_"<<node_particle_no;
+            graphPF.nodes_pose_[node_id] = estimated_pt.position;
             marker_arr.markers.push_back(getMarker(node_id,node_particle_no, ss.str(), estimated_pt));
             publishNodeIdVis(node_id, ss.str(), estimated_pt, nodeid_pub);
 
@@ -527,7 +529,7 @@ int main(int argc, char **argv) {
 
         sw.end();
         string name;
-        std::getline (std::cin,name);
+        //std::getline (std::cin,name);
         
         cout << "***********************************" << endl;
     }

@@ -26,6 +26,7 @@ public:
 	map<int, int> falseCL_node_;
 	MySQLHelper *mysql_;
         map<int, int> unique_nodes_;
+        map<int, geometry_msgs::Point> nodes_pose_;
 	GraphParticleFilter(MySQLHelper *mysql, isam::Slam *slam, int particle_no, int skip_reading):
 		mysql_(mysql), slam_(slam), skip_reading_(skip_reading)
 
@@ -248,15 +249,41 @@ private:
 			new_particles.push_back(particles_[new_particle_idx]);
 		}
 		size_t inject_particle_no = particles_.size() - new_particles.size();
+                
+                //get the distribution of node according to distance and node idx
+                geometry_msgs::Point latest_pose = nodes_pose_[matching_node-1];
+                vector<double> weighted_node_distance;
+                cout<<"Weighted dist: "<<endl;
+                for(int i=0; i<matching_node-10; i++) {
+                  if(nodes_pose_.find(i) == nodes_pose_.end()) {
+                    weighted_node_distance.push_back(1.0/sqrt(latest_pose.x*latest_pose.x + latest_pose.y*latest_pose.y));
+                    continue;
+                  }
+                  
+                  double dist_x = nodes_pose_[i].x - latest_pose.x;
+                  double dist_y = nodes_pose_[i].y - latest_pose.y;
+                  double dist = sqrt(dist_x*dist_x + dist_y*dist_y);
+                  weighted_node_distance.push_back(1.0/dist);
+                  //cout<<i<<":"<<dist<<" ";
+                }
+                //cout<<endl;
+                cout<<"Random selection: "<<endl;
 		for(size_t i=0; i<inject_particle_no; i++)
 		{
-			int random_node_idx = roll_die(slam_->get_nodes().size()-1);
+			//int random_node_idx = 
+			int random_node_idx; 
+			if(weighted_node_distance.size() ==0) 
+                         random_node_idx = roll_die(slam_->get_nodes().size()-1);
+                        else
+			  random_node_idx = roll_weighted_die(weighted_node_distance);
+                  //      if(weighted_node_distance.size() > 0)
+                    //      weighted_node_distance.erase(weighted_node_distance.begin()+random_node_idx);
 			particle part;
 			part.node_idx = random_node_idx;
 			new_particles.push_back(part);
-			//cout<<" ("<<random_node_idx<<"*) ";
+			cout<<" ("<<random_node_idx<<"*) ";
 		}
-		//cout<<endl;
+		cout<<endl;
 
 		particles_ = new_particles;
 		//cout<<"After sampling"<<endl;
