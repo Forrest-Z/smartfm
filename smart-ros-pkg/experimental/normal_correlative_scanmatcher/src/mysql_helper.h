@@ -51,14 +51,16 @@ public:
   void insertData(ScoreData &data)
   {
     stringstream insertdata_ss;
-    insertdata_ss<<"insert into "<<table_name_<<" (node_src, node_dst, score, x, y, t, time) values (";
+    insertdata_ss<<"insert into "<<table_name_<<" (node_src, node_dst, score, x, y, t, time, score_ver, final_score) values (";
     insertdata_ss<<data.node_src<<", ";
     insertdata_ss<<data.node_dst<<", ";
     insertdata_ss<<data.score<<", ";
     insertdata_ss<<data.x<<", ";
     insertdata_ss<<data.y<<", ";
     insertdata_ss<<data.t<<", ";
-    insertdata_ss<<data.time_taken<<")";
+    insertdata_ss<<data.time_taken<<",";
+    insertdata_ss<<data.score_ver<<",";
+    insertdata_ss<<data.final_score<<")";
     mysqlpp::Query insertdata_query = conn_.query(insertdata_ss.str());
     mysqlpp::SimpleResult insert_res = insertdata_query.execute();
     if(insert_res) cout<<"Data "<<data.node_src<<" "<<data.node_dst<<" "<<data.score<<" "<<data.time_taken<<" inserted successful \xd"<<flush;

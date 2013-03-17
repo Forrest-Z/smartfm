@@ -37,8 +37,8 @@ int main(int argc, char** argv)
   frontend_file = frontend_file.substr(startfile_idx, frontend_file.size()-startfile_idx-4);
   MySQLHelper mysql("normal_scanmatch", frontend_file);
   mysql.createTable();
-  //start_idx = 225;
-  //end_idx = 340;
+  //start_idx = 1188;
+  //end_idx = 1220;
   for(int j=0; j<total_files; j+=skip_read)
   {
     stringstream matching_file;
@@ -78,7 +78,7 @@ int main(int argc, char** argv)
       //retrieve_data = mysql.getData(sd, false);
       if(retrieve_data)
       {
-        cout<<sd.node_src<<" "<<sd.node_dst<<" "<<sd.x<<" "<<sd.y<<" "<<sd.t<<" "<<sd.time_taken<<"\xd"<<flush;
+        //cout<<sd.node_src<<" "<<sd.node_dst<<" "<<sd.x<<" "<<sd.y<<" "<<sd.t<<" "<<sd.time_taken<<"\xd"<<flush;
         if(sd.final_score == 0)
           addScoreVer(matching_clouds[j], input_clouds, sd, mysql, ncm);
       }
@@ -92,13 +92,19 @@ int main(int argc, char** argv)
         sd.y = ncm.offset_y;
         sd.t = ncm.rotation;
         sd.time_taken = sw.total_/1000;
+        
+        
+	//#pragma omp critical
+        double ver_score = ncm.veriScore(matching_clouds[j], input_clouds, sd);
+        sd.score_ver = ver_score;
+        sd.final_score = sqrt(ver_score * ncm.best_score_);
         #pragma omp critical
         mysql.insertData(sd);
-	#pragma omp critical
-        assert(mysql.getData(sd, false));
-        addScoreVer(matching_clouds[j], input_clouds, sd, mysql, ncm);
+        //assert(mysql.getData(sd, false));
+        //addScoreVer(matching_clouds[j], input_clouds, sd, mysql, ncm);
       }
     }
+    cout<<i<<" data all done"<<"\xd"<<flush;
     //cout<<endl;
   }
 }
