@@ -25,6 +25,8 @@ class GraphParticleFilter
 public:
 	map<int, int> falseCL_node_;
 	MySQLHelper *mysql_;
+        map<int, int> unique_nodes_;
+        map<int, geometry_msgs::Point> nodes_pose_;
 	GraphParticleFilter(MySQLHelper *mysql, isam::Slam *slam, int particle_no, int skip_reading):
 		mysql_(mysql), slam_(slam), skip_reading_(skip_reading)
 
@@ -92,10 +94,24 @@ private:
 			  ang_dist = nodes_match_heading_[(int)particles_[i].node_idx];//fmutil::angDist(nodes_heading_[nodes_heading_.size()-1], nodes_heading_[(int)particles_[i].node_idx]);
 			ang_dist = fabs(ang_dist/M_PI); //scaling to 0-1, where a near 0 dist means 2 nodes having the same heading and otherwise
 			ang_dist = (1- ang_dist)*2 -1;// scaling to -1 to 1, where -1 means the nodes having opposite direction, and 1 means same heading hence just inc/dec as the symbols
-
+			int direction = 1, move_dist = 1;
+			if(ang_dist<0) direction = -1;
+			int p_motion = roll_die(10);
+			switch (p_motion) {
+			  case 8:
+			    move_dist = 0;
+			    break;
+			  case 9:
+			    move_dist = 2;
+			    break;
+			  case 10:
+			    move_dist = 3;
+			    break;
+			}
+			particles_[i].node_idx += move_dist * direction;
 			NORM_DIST dist(ang_dist,0.5); NORM_GEN gen(eng,dist);
 			//with mean defined by the relative difference in orientation
-			particles_[i].node_idx += gen();
+			//particles_[i].node_idx += gen();
 			//let the particles bounded by the available node
 			particles_[i].node_idx = fmutil::bound(0., particles_[i].node_idx, (double)nodes_heading_.size()-1);
 		}
@@ -167,7 +183,7 @@ private:
 			unique_nodes_array.push_back(i->first);
 		}
 		cout<<endl;
-
+                unique_nodes_ = unique_nodes;
 		fmutil::Stopwatch sw2("sw2");
 
 		nodes_match_heading_.clear();
@@ -181,14 +197,18 @@ private:
 			ScoreData sd;
 			sd.node_dst = matching_node*skip_reading_;
 			sd.node_src = unique_nodes_array[i]*skip_reading_;
-			if(mysql_->getData(sd))
-			    score =  sd.final_score*100;
+			if(mysql_->getData(sd)) {
+                          //changed to arg_min from product
+			    score =  sd.score;
+                            if(score > sd.score_ver) score = sd.score_ver;
+                            score *= 100;
+                        }
 			else score = 0.;
       
 			//penalize the falseCL node
 			if(falseCL_node_.find(unique_nodes_array[i]) != falseCL_node_.end())
 			{
-				score/= falseCL_node_[unique_nodes_array[i]];
+				//score/= falseCL_node_[unique_nodes_array[i]];
 			}
 			nodes_match_heading_[unique_nodes_array[i]] = sd.t / 180. * M_PI;
 			if(score == 0.01) cout<<"Error, unexpected matching of nodes being evaluated: "
@@ -206,7 +226,7 @@ private:
 			weight_score = score / (a_t*exp(-dist*b_t)+1);
 			if(weight_score < 0) weight_score = 0;
 			local_cached_score[unique_nodes_array[i]] = score;
-			local_cached_weight[unique_nodes_array[i]] =weight_score;
+			local_cached_weight[unique_nodes_array[i]] =score;//weight_score;
 		}
 		sw2.end(print_sw);
 		//cout<<endl;
@@ -229,15 +249,44 @@ private:
 			new_particles.push_back(particles_[new_particle_idx]);
 		}
 		size_t inject_particle_no = particles_.size() - new_particles.size();
+                
+                //get the distribution of node according to distance and node idx
+                geometry_msgs::Point latest_pose = nodes_pose_[matching_node-1];
+                vector<double> weighted_node_distance;
+                cout<<"Weighted dist: "<<endl;
+                for(int i=0; i<matching_node-10; i++) {
+                  if(nodes_pose_.find(i) == nodes_pose_.end()) {
+                    weighted_node_distance.push_back(1.0/sqrt(latest_pose.x*latest_pose.x + latest_pose.y*latest_pose.y));
+                    continue;
+                  }
+                  
+                  double dist_x = nodes_pose_[i].x - latest_pose.x;
+                  double dist_y = nodes_pose_[i].y - latest_pose.y;
+                  double dist = sqrt(dist_x*dist_x + dist_y*dist_y);
+                  weighted_node_distance.push_back(1.0/dist);
+                  //cout<<i<<":"<<dist<<" ";
+                }
+                //cout<<endl;
+                cout<<"Random selection: "<<endl;
 		for(size_t i=0; i<inject_particle_no; i++)
 		{
-			int random_node_idx = roll_die(slam_->get_nodes().size()-1);
+			//int random_node_idx = 
+			int random_node_idx; 
+			int node_number = slam_->get_nodes().size()-1;
+			//added to fix boost::uniform_real<RealType>::uniform_real(RealType, RealType) [with RealType = double]: Assertion `min_arg <= max_arg' failed.
+			if(node_number<0) node_number = 0;
+			if(weighted_node_distance.size() ==0) 
+                         random_node_idx = roll_die(node_number);
+                        else
+			  random_node_idx = roll_weighted_die(weighted_node_distance);
+                  //      if(weighted_node_distance.size() > 0)
+                    //      weighted_node_distance.erase(weighted_node_distance.begin()+random_node_idx);
 			particle part;
 			part.node_idx = random_node_idx;
 			new_particles.push_back(part);
-			//cout<<" ("<<random_node_idx<<"*) ";
+			cout<<" ("<<random_node_idx<<"*) ";
 		}
-		//cout<<endl;
+		cout<<endl;
 
 		particles_ = new_particles;
 		//cout<<"After sampling"<<endl;
@@ -309,7 +358,7 @@ private:
 		if( matching_node < 100)
 				return -1;
 
-		if( max_neighbor_score >30. && max_neighbor_node_id != -1 && max_accu > 20)
+		if( max_neighbor_score >22. && max_neighbor_node_id != -1 && max_accu > 5)
 		{
 				cout<<"close loop found at node "<<max_neighbor_node_id <<" with score "<<max_neighbor_score<<endl;
 				return max_neighbor_node_id;
