@@ -29,6 +29,9 @@ find_package(OpenCV REQUIRED)
 rosbuild_add_executable(generate_training_data src/generate_training_data.cpp)
 target_link_libraries(generate_training_data ${OpenCV_LIBRARIES})
 
+rosbuild_add_executable(word_training_data src/word_training_data.cpp)
+target_link_libraries(word_training_data ${OpenCV_LIBRARIES})
+
 rosbuild_add_executable(ipm src/ipm.cpp)
 target_link_libraries(ipm ${OpenCV_LIBRARIES})
 rosbuild_link_boost(ipm signals)
