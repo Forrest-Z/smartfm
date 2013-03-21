@@ -200,7 +200,7 @@ public:
         is_history_full_ = false;
         start_time_ = cur_pose_.header.stamp;
         pfs_ = new ifstream;
-        pfs_->open("./physical_launch/golfcar_pose_downsample.txt",
+        pfs_->open("/home/baoxing/golfcar_pose_downsample.txt",
         		fstream::in);
         cout<<"reading files"<<endl;
         Refer_pose temp_ref_pose;

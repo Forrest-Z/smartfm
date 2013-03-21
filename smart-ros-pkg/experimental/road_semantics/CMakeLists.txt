@@ -27,3 +27,7 @@ rosbuild_add_library(topo_extractor src/topo_extractor/TopoExtractor.cpp)
 target_link_libraries(topo_extractor ${OpenCV_LIBRARIES})
 rosbuild_add_executable(road_analyzer src/road_analyzer.cpp)
 target_link_libraries(road_analyzer topo_extractor ${OpenCV_LIBRARIES})
+
+rosbuild_add_boost_directories()
+rosbuild_add_executable(test_BGL src/test_BGL.cpp)
+rosbuild_link_boost(test_BGL graph)
