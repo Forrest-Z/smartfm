@@ -109,6 +109,9 @@ namespace golfcar_vision{
 
 		geometry_msgs::PolygonStamped gnd_polygon, img_polygon;
 		ros::Publisher gnd_polygon_publisher, img_polygon_publisher;
+
+		std::string src_img_name_;
+		double show_scale_;
    };
 };
 

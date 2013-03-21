@@ -27,6 +27,8 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/point_cloud_conversion.h>
 
+#include "vehicle_model.hpp"
+
 using namespace std;
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
@@ -46,7 +48,9 @@ namespace golfcar_vision{
         sensor_msgs::CvBridge bridge_;
         tf::TransformListener tf_;
         image_geometry::PinholeCameraModel cam_model_;
-        string odom_frame_, base_frame_, dest_frame_id_;
+        string odom_frame_, dest_frame_id_;
+
+
 
 	message_filters::Subscriber<PointCloudRGB> 	cloud_scan_sub_;
     tf::MessageFilter<PointCloudRGB> 			*cloud_scan_filter_;
@@ -58,6 +62,15 @@ namespace golfcar_vision{
 	int image_width_, image_height_;
 	bool camera_model_initialized_;
 	IplImage* color_image_;
+
+    string own_image_name_, project_image_name_, merged_name_;
+	double show_scale_;
+
+	double vehicle_length_, vehicle_width_, vehicle_height_;
+	vehicle_model *vehicle_box;
+	bool visualize_farest_predecessor_;
+	string predecessor_frameID_;
+	int predecessor_color_mode_;
     };
 };
 

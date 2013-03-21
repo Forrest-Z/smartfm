@@ -17,7 +17,7 @@ int main(int argc, char** argv)
     if((fp_output=fopen("./formatted_data", "a"))==NULL){printf("cannot open output_file\n");return 0;}
 
     int class_label;
-	 double feature_vector[feature_length];
+	double feature_vector[feature_length];
     for(int i=1; i<=total_lines; i++)
     {
     	fscanf(fp_input,  "%d\t", &class_label);

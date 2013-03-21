@@ -273,7 +273,7 @@ int is_equal( const void* _a, const void* _b, void* userdata );
 		cvAnd(It, Iat, binary_image);
 		//cvShowImage("It", It);
 		//cvShowImage("Iat", Iat);
-		cvWaitKey(1);
+		//cvWaitKey(1);
 		cvReleaseImage(&It);
 		cvReleaseImage(&Iat);
 	}
@@ -282,7 +282,7 @@ int is_equal( const void* _a, const void* _b, void* userdata );
 	{
 		cvAdaptiveThreshold(src, binary_image, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, BLOCK_SIZE, OFFSET);
 		//cvShowImage("Iat_local", binary_image);
-		cvWaitKey(1);
+		//cvWaitKey(1);
 	}
 
 	void merge_images(IplImage *image_A, IplImage *image_B)
@@ -316,6 +316,21 @@ int is_equal( const void* _a, const void* _b, void* userdata );
 			}
 		}
 	}
+
+	void resize_show(IplImage *img, double scale_, const char* img_name)
+	{
+		int img_height 	= img -> height;
+		int img_width  = img -> width;
+		int img_show_height = (int)((double)img_height*scale_);
+		int img_show_width = (int)((double)img_width*scale_);
+		IplImage* img_show = cvCreateImage(cvSize(img_show_width, img_show_height),img->depth, img->nChannels);
+
+		cvResize(img, img_show);
+		cvShowImage(img_name, img_show);
+		cvWaitKey(1);
+		cvReleaseImage(&img_show);
+	}
+
 
 };
 

@@ -1,8 +1,0 @@
-<launch>
-	<node pkg="vision_lane_detection" type="CP_projector" name="CP_projector">
-	<param name="image_transport" value="compressed"/>
-	<param name="destination_frame_id" value="/camera_front_img"/>
-	<remap from="pts_rgb" to="robot_1/pts_rgb"/>
-	</node>
-    
-</launch>

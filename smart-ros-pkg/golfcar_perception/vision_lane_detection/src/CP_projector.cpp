@@ -14,7 +14,8 @@ CP_projector::CP_projector():
   {
       cam_sub_ = it_.subscribeCamera("/camera_front/image_raw", 1, &CP_projector::ImageCallBack, this);
 
-	  private_nh_.param("base_frame", base_frame_, std::string("base_link"));
+	  //private_nh_.param("base_frame", base_frame_, std::string("base_link"));
+
 	  private_nh_.param("destination_frame_id", dest_frame_id_, std::string("camera_front_img"));
 	  private_nh_.param("odom_frame", odom_frame_, std::string("/odom"));
 	  private_nh_.param("image_height", 		image_height_,		360);
@@ -29,6 +30,20 @@ CP_projector::CP_projector():
 
 	  CvSize image_size = cvSize(image_width_, image_height_);
 	  color_image_ = cvCreateImage(image_size, 8,3);
+
+	  private_nh_.param("own_image_name", own_image_name_, std::string("vehicle1_img"));
+	  private_nh_.param("project_image_name", project_image_name_, std::string("vehicle2_project"));
+	  private_nh_.param("merged_name", merged_name_, std::string("vehicle2_on_vehicle1"));
+	  private_nh_.param("show_scale",    show_scale_,   		 1.0);
+
+	  private_nh_.param("vehicle_length",    	vehicle_length_,   		 3.5);
+	  private_nh_.param("vehicle_width",    	vehicle_width_,   		 2.0);
+	  private_nh_.param("vehicle_height",    	vehicle_height_,   		 1.7);
+	  vehicle_box = new vehicle_model(vehicle_length_, vehicle_width_, vehicle_height_);
+
+	  private_nh_.param("visualize_farest_predecessor",    visualize_farest_predecessor_,   		 false);
+	  private_nh_.param("predecessor_frameID", predecessor_frameID_, std::string("/robot_1/base_link"));
+	  private_nh_.param("predecessor_color_mode", predecessor_color_mode_, 1);
   }
 
   void CP_projector::pclCallback(const PointCloudRGB::ConstPtr& pcl_in)
@@ -61,7 +76,6 @@ CP_projector::CP_projector():
 			}
 			else
 			{
-
 				CvScalar s;
 				s.val[0] = point_tmp.b;
 				s.val[1] = point_tmp.g;
@@ -69,7 +83,49 @@ CP_projector::CP_projector():
 				cvSet2D(color_image_, pixel.y, pixel.x, s);
 			}
 	  }
-	  cvShowImage("projected_image", color_image_);
+
+	  CvScalar color_plot; //CvScalar-BGR, CvRGB-RGB;
+	  if(predecessor_color_mode_ == 1)color_plot=cvScalar(0,0,255);
+	  else color_plot=cvScalar(255,0,0);
+
+	  PointCloud vehicle_skeleton;
+	  vehicle_skeleton.header = pcl_in->header;
+	  vehicle_skeleton.header.frame_id = predecessor_frameID_.c_str();
+	  vehicle_skeleton.clear();
+	  vehicle_skeleton.height = 1;
+	  for(size_t i=0; i<8; i++)vehicle_skeleton.push_back(vehicle_box->skeleton3D_[i]);
+	  pcl_ros::transformPointCloud(dest_frame_id_, vehicle_skeleton, vehicle_skeleton, tf_);
+	  for(size_t i=0; i<8; i++)
+	  {
+		  pcl::PointXYZ point_tmp = vehicle_skeleton.points[i];
+		  cv::Point3d pt_cv(point_tmp.x, point_tmp.y, point_tmp.z);
+		  cv::Point2d uv;
+		  cam_model_.project3dToPixel(pt_cv, uv);
+		  vehicle_box->skeletonIMG_[i] = cvPoint(uv.x, uv.y);
+	  }
+	  vehicle_box->DrawSkel(color_image_, color_plot, 2);
+
+	  if(visualize_farest_predecessor_)
+	  {
+			vehicle_skeleton.header = pcl_in->header;
+			vehicle_skeleton.header.frame_id = "/robot_2/base_link";
+			vehicle_skeleton.clear();
+			vehicle_skeleton.height = 1;
+			for(size_t i=0; i<8; i++)vehicle_skeleton.push_back(vehicle_box->skeleton3D_[i]);
+			pcl_ros::transformPointCloud(dest_frame_id_, vehicle_skeleton, vehicle_skeleton, tf_);
+			for(size_t i=0; i<8; i++)
+			{
+			  pcl::PointXYZ point_tmp = vehicle_skeleton.points[i];
+			  cv::Point3d pt_cv(point_tmp.x, point_tmp.y, point_tmp.z);
+			  cv::Point2d uv;
+			  cam_model_.project3dToPixel(pt_cv, uv);
+			  vehicle_box->skeletonIMG_[i] = cvPoint(uv.x, uv.y);
+			}
+			vehicle_box->DrawSkel(color_image_, CV_RGB(0,0,255), 2);
+	  }
+
+	  //cvShowImage(dest_frame_id_.c_str(), color_image_);
+	  resize_show(color_image_, show_scale_, project_image_name_.c_str());
 	  cvWaitKey(1);
   }
 
@@ -90,8 +146,8 @@ CP_projector::CP_projector():
             }
         cam_model_.fromCameraInfo(info_msg);
         camera_model_initialized_ = true;
-        cvShowImage("own_image", color_image);
-
+        //cvShowImage("own_image", color_image);
+        resize_show(color_image, show_scale_, own_image_name_.c_str());
         IplImage* merged_image = cvCloneImage(color_image);
 
         cvWaitKey(1);
@@ -112,8 +168,8 @@ CP_projector::CP_projector():
 				}
 			}
 		}
-		cvShowImage("merged_image", merged_image);
-
+		//cvShowImage("merged_image", merged_image);
+		resize_show(merged_image, show_scale_, merged_name_.c_str());
 		cvReleaseImage(&merged_image);
   }
   

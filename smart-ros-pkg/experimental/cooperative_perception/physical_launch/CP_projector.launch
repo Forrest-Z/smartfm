@@ -1,0 +1,30 @@
+<launch>
+	<node pkg="vision_lane_detection" type="CP_projector" name="CP_projector0">
+		<param name="image_transport" value="compressed"/>
+		<param name="destination_frame_id" value="/camera_front_img"/>
+		<remap from="/camera_front/image_raw" to="/camera_front/image_raw"/>
+		<remap from="pts_rgb" to="robot_1/pts_rgb"/>
+		<param name="own_image_name" value="vehicle0"/>
+		<param name="project_image_name" value="vehicle1_on_vehicle0"/>
+		<param name="merged_name" value="overlay_vehicle1_vehicle0"/>
+		<param name="show_scale" value="0.7"/>
+		<param name="visualize_farest_predecessor" value="true"/>
+		<param name="predecessor_frameID" value="/robot_1/base_link"/>
+		<param name="predecessor_color_mode" value="1"/>
+	</node>
+	
+	<node pkg="vision_lane_detection" type="CP_projector" name="CP_projector1">
+		<param name="image_transport" value="compressed"/>
+		<param name="show_scale" value="0.7"/>
+		<param name="destination_frame_id" value="/robot_1/camera_image"/>
+		<remap from="/camera_front/image_raw" to="/robot_1/camera_front/image_raw"/>
+		<remap from="pts_rgb" to="robot_2/pts_rgb"/>
+		<param name="own_image_name" value="vehicle1"/>
+		<param name="project_image_name" value="vehicle2_on_vehicle1"/>
+		<param name="merged_name" value="overlay_vehicle2_vehicle1"/>
+		<param name="show_scale" value="0.7"/>
+		<param name="visualize_farest_predecessor" value="false"/>
+		<param name="predecessor_frameID" value="/robot_2/base_link"/>
+		<param name="predecessor_color_mode" value="2"/>
+	</node>
+</launch>

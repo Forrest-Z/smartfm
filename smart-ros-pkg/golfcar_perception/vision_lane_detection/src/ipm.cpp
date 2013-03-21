@@ -69,7 +69,8 @@ namespace golfcar_vision{
 		gnd_polygon_publisher  = nh_.advertise<geometry_msgs::PolygonStamped>("/gnd_polygon", 10);
 		img_polygon_publisher  = nh_.advertise<geometry_msgs::PolygonStamped>("/img_polygon", 10);
 
-		//to maintain several sets of polygons, since the four modules may be interested in different areas;
+		private_nh_.param("show_scale",    show_scale_,   		 1.0);
+		private_nh_.param("src_img_name", src_img_name_, std::string("camera_front"));
   }
 
   
@@ -243,7 +244,9 @@ namespace golfcar_vision{
 			cvLine( color_image, cvPointFrom32f(srcQuad_[1]), cvPointFrom32f(srcQuad_[2]), CV_RGB(0,0,255), 1);
 			cvLine( color_image, cvPointFrom32f(srcQuad_[2]), cvPointFrom32f(srcQuad_[3]), CV_RGB(0,0,255), 1);
 			cvLine( color_image, cvPointFrom32f(srcQuad_[3]), cvPointFrom32f(srcQuad_[0]), CV_RGB(0,0,255), 1);
-			cvShowImage("src_window", color_image);
+			//cvShowImage("src_window", color_image);
+			resize_show(color_image, show_scale_, src_img_name_.c_str());
+
 			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[0]), 6, CV_RGB(0,255,0), 2);
 			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[1]), 6, CV_RGB(0,255,0), 2);
 			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[2]), 6, CV_RGB(0,255,0), 2);
@@ -252,7 +255,7 @@ namespace golfcar_vision{
 			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[1]), cvPointFrom32f(dstQuad_[2]), CV_RGB(0,0,255), 1);
 			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[2]), cvPointFrom32f(dstQuad_[3]), CV_RGB(0,0,255), 1);
 			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[3]), cvPointFrom32f(dstQuad_[0]), CV_RGB(0,0,255), 1);
-			cvShowImage("ipm_window", ipm_color_image_);
+			//cvShowImage("ipm_window", ipm_color_image_);
 		}
 
 		IplImage *binary_image;
