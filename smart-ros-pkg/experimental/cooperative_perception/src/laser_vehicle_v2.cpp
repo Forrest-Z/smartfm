@@ -31,6 +31,8 @@
 #include <pcl/common/pca.h>
 #include <laser_geometry/laser_geometry.h>
 
+#include <geometry_msgs/TwistStamped.h>
+
 #include "nearest_neighbor_tracking_v2.h"
 
 using std::string;
@@ -142,10 +144,14 @@ class LaserVehicle
     tf::TransformListener *tf_;
     tf::TransformBroadcaster *tf_broadcaster_;
 
-    ros::Publisher poly_pub_, segmented_pub_, filter_res_pub_, filter_size_pub_, vehicle_pub_;
+    ros::Publisher poly_pub_, segmented_pub_, filter_res_pub_, filter_size_pub_, vehicle_pub_ ,vehicle_vel_pub_;
     ros::Publisher DP1_pub_, DP2_pub_, raw_RA_pub_, FR_RA_pub_, DP_RA_pub_;
     ros::Publisher pose_array_pub_;
     ros::Subscriber ref_pose_sub_;
+
+    geometry_msgs::PoseStamped last_pose;
+    bool is_vel_start;
+
     geometry_msgs::PoseArray pa_;
     reference_pose rp_;
     fmutil::LowPassFilter *filter_yaw_;
@@ -758,6 +764,31 @@ class LaserVehicle
 
 			pose_array_pub_.publish(pa_);
 
+			//publish velocity here
+			if(is_vel_start == false)
+			{
+				is_vel_start = true;
+				last_pose = vehicle_pose;
+			}
+			else
+			{
+
+
+				geometry_msgs::TwistStamped twist_msg;
+                twist_msg.header = vehicle_pose.header;
+                double delta_t = vehicle_pose.header.stamp.toSec() - last_pose.header.stamp.toSec();
+                // publish velocity every 500ms
+                if( delta_t > 0.5)
+                {
+                     twist_msg.twist.linear.x = (vehicle_pose.pose.position.x - last_pose.pose.position.x)/delta_t;
+                     twist_msg.twist.linear.y = (vehicle_pose.pose.position.y - last_pose.pose.position.y)/delta_t;
+                     twist_msg.twist.linear.z = (vehicle_pose.pose.position.z - last_pose.pose.position.z)/delta_t;
+
+                     vehicle_pub_.publish(twist_msg);
+                     last_pose = vehicle_pose;
+                }
+			}
+
 
 
 
@@ -804,6 +835,10 @@ public:
         filter_res_pub_ = nh_->advertise<sensor_msgs::PointCloud>("filter_response", 10);
         filter_size_pub_ = nh_->advertise<sensor_msgs::PointCloud2>("size_filtered", 10);
         vehicle_pub_ = nh_->advertise<geometry_msgs::PoseStamped>("vehicle_pose", 10);
+        // add velocity pub
+        vehicle_vel_pub_ = nh_->advertise<geometry_msgs::TwistStamped>("vehicle_vel",10);
+        is_vel_start = false;
+
         pose_array_pub_ = nh_->advertise<geometry_msgs::PoseArray>("pose_array",10);
 
         DP1_pub_ = nh_->advertise<sensor_msgs::PointCloud>("DP1", 10);
