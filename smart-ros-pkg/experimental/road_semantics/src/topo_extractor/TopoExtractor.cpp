@@ -998,6 +998,8 @@ void topo_extractor::build_topoloty()
 							road_graph_.nodeClusters[i].edgeIDs.push_back(k);
 
 							//this edge_pt_tmp will be the first point in the newly re-arranged edge;
+							//the rearrangement is used to sort the order of the points in the edge; in the original edges, sequences of points are sort of random, due to the flood-fill labelling;
+							//after rearrangement, we can calculate the length of this edge for some filtering purposes;
 							edge_rearrange.points.push_back(edge_pt_tmp);
 							vector<CvPoint> points_tmp = road_graph_.edges[k].points;
 							points_tmp.erase (points_tmp.begin()+p);

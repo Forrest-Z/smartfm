@@ -1,4 +1,3 @@
-
 #include <iostream>
 #include <float.h>
 #include <math.h>
@@ -10,7 +9,6 @@
 #include <opencv/highgui.h>
 
 using namespace std;
-
 
 char* imagefile=NULL;
 char* outfile=NULL;

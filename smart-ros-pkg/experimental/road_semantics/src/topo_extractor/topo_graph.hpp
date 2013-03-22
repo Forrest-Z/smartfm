@@ -1,5 +1,5 @@
-#ifndef ROAD_SEMANTICS_TOPO_GRAPH
-#define ROAD_SEMANTICS_TOPO_GRAPH
+#ifndef ROAD_SEMANTICS_TOPO_GRAPH_H
+#define ROAD_SEMANTICS_TOPO_GRAPH_H
 
 #include <vector>
 #include <opencv/cv.h>

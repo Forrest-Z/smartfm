@@ -1,4 +1,3 @@
-
 #ifndef TOPO_EXTRACTOR_H
 #define TOPO_EXTRACTOR_H
 
