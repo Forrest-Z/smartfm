@@ -9,6 +9,14 @@ using namespace std;
 class topo_semantic {
 
 public:
+
+	class path_segment
+	{
+		public:
+		int head_nodeID, tail_nodeID;
+		size_t edgeID;
+	};
+
 	topo_semantic(topo_extractor& topo_extractor_object);
 	void analyze_semantic();
 
