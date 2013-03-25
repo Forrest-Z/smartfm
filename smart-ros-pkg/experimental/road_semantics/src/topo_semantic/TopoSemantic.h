@@ -20,7 +20,14 @@ public:
 	topo_semantic(topo_extractor& topo_extractor_object);
 	void analyze_semantic();
 
+	//the input of the whole semantic analyses;
 	topo_extractor *topo_extractor_pt_;
+
+	//the intermediate information in the semantic analyses;
+	//A cycle is extracted as connected edges as a list, and all the cycles are stored in a vector;
+	vector <vector <topo_semantic::path_segment> > extracted_cycles_;
+
+	//output assembly for road semantics from topology;
 	semantic_assembly road_topo_semantics_;
 
 private:
