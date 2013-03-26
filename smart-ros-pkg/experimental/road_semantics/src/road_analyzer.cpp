@@ -8,6 +8,8 @@
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 
+#include "topo_semantic/TopoSemantic.h"
+
 using namespace std;
 
 char* imagefile=NULL;
@@ -171,6 +173,9 @@ int main(int argc, char *argv[]) {
   Time t;
   topo.extract_topology();
   cout << "Skeleton created in "<<t.get_since()<<" seconds\n\n";
+
+  topo_semantic topo_semantic_analyzer(topo);
+  topo_semantic_analyzer.analyze_semantic();
 
   return 1;
 }

@@ -1,6 +1,7 @@
 #ifndef TOPO_SEMANTIC_H
 #define TOPO_SEMANTIC_H
 
+#include <ros/ros.h>
 #include "../topo_extractor/TopoExtractor.h"
 #include "semantic_datatypes.hpp"
 
@@ -33,10 +34,14 @@ public:
 private:
 	void place_analyze();
 	void roundabout_analyze();
+
+	void cycle_extraction();
+	void recursive_path_search(vector <vector <path_segment> > &growing_paths);
+	void path_growing_branching(vector <path_segment> &path_father, vector < vector <path_segment> > & path_sons);
+	void path_check_remove(vector < vector <path_segment> > & growing_paths);
+	bool cycle_duplicate(vector <path_segment> &cycle_under_check);
 	void intersection_analyze();
-
 	void link_analyze();
-
 	void visualization();
 };  
 
