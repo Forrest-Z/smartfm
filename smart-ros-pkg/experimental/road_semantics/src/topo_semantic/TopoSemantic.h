@@ -43,6 +43,8 @@ private:
 	void intersection_analyze();
 	void link_analyze();
 	void visualization();
+	void visualize_growing(vector < vector <path_segment> > & growing_paths);
+	void cycle_filter();
 };  
 
 #endif //TopoSemantic.h

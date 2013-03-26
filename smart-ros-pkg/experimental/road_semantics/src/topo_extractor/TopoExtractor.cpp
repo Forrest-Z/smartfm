@@ -765,6 +765,7 @@ void topo_extractor::extract_node_edge(){
 			}
 		}
 	}
+	cvSaveImage( "/home/baoxing/raw_skel.jpg", skel_image_ );
 
 	///////////////////////////////////////////////////////////////////
 	//2nd: to extract nodes, node clusters, and edges;
@@ -773,6 +774,7 @@ void topo_extractor::extract_node_edge(){
     CvMat *mat = cvCreateMat( img->height, img->width, CV_32FC1);
 	cvConvert( img, mat);
 	Graph_Extraction(mat);
+
 
     //////////////////////////////////////////////////////////////////////////////////////
     //3rd: build the relationship of "node and edge" in "road_graph_";
@@ -783,7 +785,6 @@ void topo_extractor::extract_node_edge(){
 	//4th: add some filtering algorithm to erase irrelevant edges;
 	//////////////////////////////////////////////////////////////////////////////////////
 	topo_filtering();
-
 
 	//for visualization purposes, to check the extracted nodes and edges;
     IplImage *color_edge = 0;
@@ -819,8 +820,11 @@ void topo_extractor::extract_node_edge(){
 		 }
 	 }
 
-	 cvSaveImage( "/home/baoxing/skel.jpg", skel_image_ );
     cvSaveImage( "/home/baoxing/color_edge.jpg", color_edge );
+
+    cvReleaseMat(&mat);
+    cvReleaseImage(&skel_image_);
+    cvReleaseImage(&color_edge);
 
 }
 
@@ -1160,6 +1164,7 @@ void topo_extractor::topo_filtering()
 				else if(road_graph_.edges[edge_position].head_nodeCluster == (int)k) {pts[i] = road_graph_.edges[edge_position].points.front();}
 			}
 
+			//bug-once-here: this step may lead to some redundant pixels, which need to be thinned in one more thinning step;
 			cvLine(final_image, pts[0], pts[1], gray_value);
 		}
 		else
@@ -1175,7 +1180,6 @@ void topo_extractor::topo_filtering()
 	//re-build topology with the "final_image";
 	 for(size_t i=0; i<road_graph_.edges.size(); i++)
 	 {
-
 		 for(size_t j=0; j<road_graph_.edges[i].points.size(); j++)
 		 {
 			 int x = road_graph_.edges[i].points[j].x;
@@ -1196,6 +1200,39 @@ void topo_extractor::topo_filtering()
 		 }
 	 }
 
+	//add the "one-more" thinning operation caused by the previous "cvLine" step;
+	int img_height 		= final_image -> height;
+	int img_width  		= final_image -> width;
+	int img_step	 	= final_image -> widthStep/sizeof(uchar);
+	uchar * img_data 	= (uchar*)final_image ->imageData;
+	for(int ih=0; ih < img_height; ih++)
+	{
+		for(int iw=0; iw < img_width; iw++)
+		{
+			if(img_data[ih*img_step+iw]==gray_value.val[0])
+			{
+				//free means bright color;
+				_step2_grid[iw][ih]=skel;
+			}
+			else
+			{
+				_step2_grid[iw][ih]=occupied;
+			}
+		}
+	}
+	skel_thining();
+	cvZero(final_image);
+	for(int ih=0; ih < img_height; ih++)
+	{
+		for(int iw=0; iw < img_width; iw++)
+		{
+			if(_step2_grid[iw][ih]==skel)
+			{
+				img_data[ih*img_step+iw]=gray_value.val[0];
+
+			}
+		}
+	}
 	cvSaveImage( "/home/baoxing/final_image.jpg", final_image );
 
 	CvMat *mat = cvCreateMat( final_image->height, final_image->width, CV_32FC1);
