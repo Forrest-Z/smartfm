@@ -5,6 +5,7 @@ topo_semantic::topo_semantic(topo_extractor& topo_extractor_object)
 	topo_extractor_pt_ = new topo_extractor(topo_extractor_object);
 	cvNamedWindow("cycle_window");
 	cvNamedWindow("grow_window");
+	cvNamedWindow("cycle_filter");
 }
 
 void topo_semantic::analyze_semantic()
@@ -53,8 +54,8 @@ void topo_semantic::cycle_extraction()
 	recursive_path_search(growing_paths);
 
 	//remove the outer cycles when some cycles are nested inside;
-	//cycle_filter();
-	//visualization();
+	cycle_filter();
+	visualization();
 }
 
 void topo_semantic::recursive_path_search(vector <vector <path_segment> > &growing_paths)
@@ -99,17 +100,8 @@ void topo_semantic::path_growing_branching(vector <path_segment> &path_father, v
 	{
 		int edgeID_tmp = seedNode.edgeIDs[ie];
 
-		//to handle the case where one node has a cycle edge;
-		if(father_edgeID == edgeID_tmp)
-		{
-			if(topo_extractor_pt_->road_graph_.edges[edgeID_tmp].head_nodeCluster == topo_extractor_pt_->road_graph_.edges[edgeID_tmp].end_nodeCluster)
-			{
-				ROS_INFO("*****************find uni-cycle***************");
-				path_sons.push_back(path_father);
-				continue;
-			}
-			else continue;
-		}
+		//to prevent backward searching;
+		if(father_edgeID == edgeID_tmp) continue;
 
 		vector <path_segment> path_son = path_father;
 		path_segment segment_tmp;
@@ -215,6 +207,9 @@ bool topo_semantic::cycle_duplicate(vector <path_segment> &cycle_under_check)
 //to filter those cycles nesting some small cycles;
 void topo_semantic::cycle_filter()
 {
+	CvSize image_size = cvSize(topo_extractor_pt_->grid_size_x, topo_extractor_pt_->grid_size_y);
+	IplImage *cycle_image = cvCreateImage(image_size, 8,3);
+
 	//1st: find shared path segment between different cycles;
 	map<int,int> edges_number;
 	vector<size_t> shared_edgeIDs;
@@ -234,63 +229,69 @@ void topo_semantic::cycle_filter()
 	{
 		if(it->second>=2)shared_edgeIDs.push_back(it->first);
 	}
+	ROS_INFO("shared_edgeIDs number %ld", shared_edgeIDs.size());
 
 	//2nd: check a cycle (without this edge), whether this edge (its center point) is inside the cycle polygon;
 
-	vector<CvPoint> centerPt_vector;
+	vector<CvPoint2D32f> centerPt_vector;
 	for(size_t i=0; i<shared_edgeIDs.size(); i++)
 	{
 		//find the center point of shared edges;
 		topo_graph::edge edge_tmp = topo_extractor_pt_->road_graph_.edges[size_t(shared_edgeIDs[i])];
 		int center_serial = int(edge_tmp.points.size())/2-1; //each edge has at least 2 points;
 		CvPoint center_tmp = edge_tmp.points[center_serial];
-		centerPt_vector.push_back(center_tmp);
+		centerPt_vector.push_back(cvPoint2D32f(center_tmp.x, center_tmp.y));
 	}
 
 
 	for(size_t i=0; i<extracted_cycles_.size(); i++)
 	{
-		vector <path_segment> cycle_component = extracted_cycles_[i];
-
-		bool cycle_shared_edge = false;
-		for(size_t j=0; j<cycle_component.size(); j++)
-		{
-			if(cycle_shared_edge) break;
-			for(size_t a=0; a<shared_edgeIDs.size(); a++)
-			{
-				if(cycle_component[j].edgeID == shared_edgeIDs[a])
-				{
-					cycle_shared_edge = true;
-					break;
-				}
-			}
-		}
-		if(cycle_shared_edge) continue;
+		cvZero(cycle_image);
 
 		//construct the cycle_polygon;
-		vector<CvPoint> cycle_polygon;
+		vector <path_segment> cycle_component = extracted_cycles_[i];
+		vector<CvPoint2D32f> cycle_polygon;
 		for(size_t j=0; j<cycle_component.size(); j++)
 		{
 			topo_graph::edge edge_tmp = topo_extractor_pt_->road_graph_.edges[size_t(cycle_component[j].edgeID)];
 			for(size_t p=0; p<edge_tmp.points.size(); p++)
 			{
-				cycle_polygon.push_back(edge_tmp.points[p]);
+				cycle_polygon.push_back(cvPoint2D32f(edge_tmp.points[p].x, edge_tmp.points[p].y));
+
+				//cvSet2D(cycle_image, edge_tmp.points[p].y,  edge_tmp.points[p].x, CV_RGB(0,255,0));
+				cvCircle( cycle_image, edge_tmp.points[p], 1, CV_RGB(0,255,0), 1);
 			}
 		}
 
-		//if any shared cycle is nested, this cycle is filtered;
-		for(size_t j=0; j<centerPt_vector.size(); j++)
+		for(size_t a=0; a<shared_edgeIDs.size(); a++)
 		{
-			if(pointInPolygon(centerPt_vector[j], cycle_polygon))
+			bool contain_shared_edge = false;
+			for(size_t j=0; j<cycle_component.size(); j++)
 			{
-				extracted_cycles_.erase(extracted_cycles_.begin()+i);
-				i=i-1;
-				break;
+				if(cycle_component[j].edgeID == shared_edgeIDs[a])
+				{
+					contain_shared_edge = true;
+					break;
+				}
+			}
+
+			if(!contain_shared_edge)
+			{
+				if(pointInPolygon(centerPt_vector[a], cycle_polygon))
+				{
+					cvCircle( cycle_image, cvPointFrom32f(centerPt_vector[a]), 3, CV_RGB(255,0,0), 2);
+					extracted_cycles_.erase(extracted_cycles_.begin()+i);
+					i=i-1;
+					break;
+				}
 			}
 		}
+		cvShowImage("cycle_filter", cycle_image);
+		cvWaitKey(500);
 	}
 
 	ROS_INFO("cycle number after filtering %ld", extracted_cycles_.size());
+	cvReleaseImage(&cycle_image);
 }
 
 
@@ -323,6 +324,8 @@ void topo_semantic::visualization()
 		}
 		cvShowImage("cycle_window", cycle_image);
 	}
+	cvSaveImage( "/home/baoxing/cycle_image.jpg", cycle_image );
+	cvWaitKey(500);
 	cvReleaseImage(&cycle_image);
 }
 
@@ -358,7 +361,7 @@ void topo_semantic::visualize_growing(vector < vector <path_segment> > & growing
 		}
 		cvShowImage("grow_window", cycle_image);
 	}
-	cvWaitKey(0);
+	cvWaitKey(500);
 	cvReleaseImage(&cycle_image);
 }
 

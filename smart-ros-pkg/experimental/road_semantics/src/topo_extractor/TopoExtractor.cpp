@@ -1022,6 +1022,11 @@ void topo_extractor::build_topoloty()
 								}
 							}
 
+							//for the case where one nodeCluster has one cycle edge;
+							bool tail_connecting = check_8connectivity(node_tmp.position, edge_rearrange.points.back());
+							bool long_edge = edge_rearrange.points.size()>=2;
+							if(tail_connecting && long_edge) edge_rearrange.end_nodeCluster = i;
+
 							road_graph_.edges[k] = edge_rearrange;
 							break;
 						}

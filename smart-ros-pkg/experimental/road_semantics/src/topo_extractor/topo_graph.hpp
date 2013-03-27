@@ -7,6 +7,7 @@
 using namespace std;
 
 //http://alienryderflex.com/polygon/
+//ATTENTION: this function is used for float type;
 template <class T>
 bool pointInPolygon(T p, std::vector<T> poly)
 {
