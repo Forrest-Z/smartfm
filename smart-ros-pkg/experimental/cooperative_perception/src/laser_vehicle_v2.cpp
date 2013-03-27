@@ -784,7 +784,7 @@ class LaserVehicle
                      twist_msg.twist.linear.y = (vehicle_pose.pose.position.y - last_pose.pose.position.y)/delta_t;
                      twist_msg.twist.linear.z = (vehicle_pose.pose.position.z - last_pose.pose.position.z)/delta_t;
 
-                     vehicle_pub_.publish(twist_msg);
+                     vehicle_vel_pub_.publish(twist_msg);
                      last_pose = vehicle_pose;
                 }
 			}
