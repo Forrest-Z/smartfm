@@ -9,6 +9,7 @@
 #include <vector>
 #include <pcl/point_cloud.h>
 #include <pcl_ros/point_cloud.h>
+#include <string>
 
 using namespace std;
 using namespace ros;
@@ -51,6 +52,25 @@ namespace golfcar_vision{
         	cvLine(image_draw, skeletonIMG_[2],skeletonIMG_[6], color, 1);
         	cvLine(image_draw, skeletonIMG_[3],skeletonIMG_[7], color, 1);
         };
+
+        void PutInfo(IplImage *image_draw, CvScalar color, double velocity, double distance, CvPoint offset)
+        {
+			CvFont font;
+			double hScale=1.0;
+			double vScale=1.0;
+			int lineWidth=1;
+			CvPoint origin;
+			origin.x = skeletonIMG_[3].x + offset.x;
+			origin.y = skeletonIMG_[3].y + offset.y;
+
+			velocity = velocity * 3.6;
+
+			stringstream  position_string;
+			position_string<<setiosflags(ios::fixed) << setprecision(1) << distance << " m" <<", "<< velocity <<"km/h";
+			cvInitFont(&font,CV_FONT_ITALIC, hScale, vScale, 0, lineWidth);
+			cvPutText(image_draw, position_string.str().c_str(), origin, &font, color);
+        };
+
         vector<pcl::PointXYZ> skeleton3D_;
         vector<CvPoint> skeletonIMG_;
         double length_, width_, height_;

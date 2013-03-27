@@ -7,9 +7,10 @@
 #include <opencv/highgui.h>
 #include <cv_bridge/CvBridge.h>
 #include <image_geometry/pinhole_camera_model.h>
-#include <tf/transform_listener.h>
 #include <cstdio>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <geometry_msgs/TwistStamped.h>
+#include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/message_filter.h>
 #include <nav_msgs/Odometry.h>
@@ -48,7 +49,7 @@ namespace golfcar_vision{
         sensor_msgs::CvBridge bridge_;
         tf::TransformListener tf_;
         image_geometry::PinholeCameraModel cam_model_;
-        string odom_frame_, dest_frame_id_;
+        string odom_frame_, dest_frame_id_, baselink_frame_;
 
 
 
@@ -71,6 +72,18 @@ namespace golfcar_vision{
 	bool visualize_farest_predecessor_;
 	string predecessor_frameID_;
 	int predecessor_color_mode_;
+
+	double predecessor_distance, predecessor_velocity;
+	double farest_distance, farest_velocity;
+
+	ros::Subscriber predecessor_velo_sub_;
+	ros::Subscriber farest_velo_sub_;
+
+	double distance_between_vehicles(std_msgs::Header vehicle1, std_msgs::Header vehicle2);
+
+	void velocity_callback(const geometry_msgs::TwistStamped::ConstPtr& velo_in);
+	void farestVelo_callback(const geometry_msgs::TwistStamped::ConstPtr& velo_in);
+
     };
 };
 

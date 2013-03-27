@@ -18,6 +18,8 @@ CP_projector::CP_projector():
 
 	  private_nh_.param("destination_frame_id", dest_frame_id_, std::string("camera_front_img"));
 	  private_nh_.param("odom_frame", odom_frame_, std::string("/odom"));
+	  private_nh_.param("baselink_frame", baselink_frame_, std::string("/base_link"));
+
 	  private_nh_.param("image_height", 		image_height_,		360);
 	  private_nh_.param("image_width",			image_width_,	640);
 
@@ -44,6 +46,9 @@ CP_projector::CP_projector():
 	  private_nh_.param("visualize_farest_predecessor",    visualize_farest_predecessor_,   		 false);
 	  private_nh_.param("predecessor_frameID", predecessor_frameID_, std::string("/robot_1/base_link"));
 	  private_nh_.param("predecessor_color_mode", predecessor_color_mode_, 1);
+
+	  predecessor_velo_sub_ = nh_.subscribe("/robot_1/vehicle_vel",10, &CP_projector::velocity_callback, this);
+	  farest_velo_sub_ = nh_.subscribe("/robot_2/vehicle_vel",10, &CP_projector::farestVelo_callback, this);
   }
 
   void CP_projector::pclCallback(const PointCloudRGB::ConstPtr& pcl_in)
@@ -105,6 +110,13 @@ CP_projector::CP_projector():
 	  }
 	  vehicle_box->DrawSkel(color_image_, color_plot, 2);
 
+	  std_msgs::Header predecessor = vehicle_skeleton.header;
+	  std_msgs::Header own_vehicle = vehicle_skeleton.header;
+	  own_vehicle.frame_id = baselink_frame_;
+	  predecessor_distance = distance_between_vehicles(predecessor, own_vehicle)>0.0 ? distance_between_vehicles(predecessor, own_vehicle) : predecessor_distance;
+	  vehicle_box->PutInfo(color_image_, color_plot, predecessor_velocity, predecessor_distance, cvPoint(0, -5));
+
+
 	  if(visualize_farest_predecessor_)
 	  {
 			vehicle_skeleton.header = pcl_in->header;
@@ -122,6 +134,10 @@ CP_projector::CP_projector():
 			  vehicle_box->skeletonIMG_[i] = cvPoint(uv.x, uv.y);
 			}
 			vehicle_box->DrawSkel(color_image_, CV_RGB(0,0,255), 2);
+
+			std_msgs::Header farest_predecessor = vehicle_skeleton.header;
+			farest_distance = distance_between_vehicles(farest_predecessor, own_vehicle)>0.0 ? distance_between_vehicles(farest_predecessor, own_vehicle) : farest_distance;
+			vehicle_box->PutInfo(color_image_, CV_RGB(0,0,255), predecessor_velocity, farest_distance, cvPoint(0, -5));
 	  }
 
 	  //cvShowImage(dest_frame_id_.c_str(), color_image_);
@@ -173,11 +189,49 @@ CP_projector::CP_projector():
 		cvReleaseImage(&merged_image);
   }
   
+  double CP_projector::distance_between_vehicles(std_msgs::Header vehicle1, std_msgs::Header vehicle2)
+  {
+	  tf::StampedTransform transform;
+      ros::Time acquisition_time = vehicle1.stamp;
+      ros::Duration timeout(5.0 / 30);
+
+      try
+      {
+    	  tf_.waitForTransform(vehicle1.frame_id, vehicle2.frame_id, acquisition_time, timeout);
+    	  tf_.lookupTransform(vehicle1.frame_id, vehicle2.frame_id, acquisition_time, transform);
+      }
+	  catch (tf::TransformException& ex)
+	  {
+		  ROS_WARN("[draw_frames] TF exception:\n%s", ex.what());
+		  return 0.0;
+	  }
+
+      double vehicle_x = transform.getOrigin().x();
+      double vehicle_y = transform.getOrigin().y();
+      return sqrt(vehicle_x*vehicle_x+vehicle_y*vehicle_y);
+  }
+
+  void CP_projector::velocity_callback(const geometry_msgs::TwistStamped::ConstPtr& velo_in)
+  {
+	  double linear_x, linear_y;
+	  linear_x = velo_in->twist.linear.x;
+	  linear_y = velo_in->twist.linear.y;
+	  predecessor_velocity = sqrt(linear_x*linear_x+linear_y*linear_y);
+  }
+
+  void CP_projector::farestVelo_callback(const geometry_msgs::TwistStamped::ConstPtr& velo_in)
+  {
+	  double linear_x, linear_y;
+	  linear_x = velo_in->twist.linear.x;
+	  linear_y = velo_in->twist.linear.y;
+	  farest_velocity = sqrt(linear_x*linear_x+linear_y*linear_y);
+  }
 
    CP_projector::~CP_projector()
   {
 	   cvReleaseImage(&color_image_);
   }
+
 };
 
 int main(int argc, char** argv)
