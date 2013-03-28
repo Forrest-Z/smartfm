@@ -1,30 +1,23 @@
 <launch>
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_baseH" args="1.75, 0.0, 7.0 -0.0 0.45 -0.0 /base_link /cameraH_base 100" />
+    <node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_imgH" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /cameraH_base /cameraH_front_img 100" />
+    
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base1H" args="1.75, 0.0, 7.0 -0.0 0.45 -0.0 /robot_1/base_link /robot_1/cameraH_base 100" />
+    <node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_img1H" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /robot_1/cameraH_base /robot_1/cameraH_image 100" />
+    
 	<node pkg="vision_lane_detection" type="CP_projector" name="CP_projector0">
 		<param name="image_transport" value="compressed"/>
 		<param name="destination_frame_id" value="/camera_front_img"/>
 		<remap from="/camera_front/image_raw" to="/camera_front/image_raw"/>
-		<remap from="pts_rgb" to="robot_1/pts_rgb"/>
-		<param name="own_image_name" value="vehicle0"/>
-		<param name="project_image_name" value="vehicle1_on_vehicle0"/>
-		<param name="merged_name" value="overlay_vehicle1_vehicle0"/>
 		<param name="show_scale" value="0.7"/>
-		<param name="visualize_farest_predecessor" value="true"/>
-		<param name="predecessor_frameID" value="/robot_1/base_link"/>
-		<param name="predecessor_color_mode" value="1"/>
+		<param name="vehicle_ID" value="robot_0"/>
 	</node>
 	
 	<node pkg="vision_lane_detection" type="CP_projector" name="CP_projector1">
 		<param name="image_transport" value="compressed"/>
-		<param name="show_scale" value="0.7"/>
 		<param name="destination_frame_id" value="/robot_1/camera_image"/>
 		<remap from="/camera_front/image_raw" to="/robot_1/camera_front/image_raw"/>
-		<remap from="pts_rgb" to="robot_2/pts_rgb"/>
-		<param name="own_image_name" value="vehicle1"/>
-		<param name="project_image_name" value="vehicle2_on_vehicle1"/>
-		<param name="merged_name" value="overlay_vehicle2_vehicle1"/>
 		<param name="show_scale" value="0.7"/>
-		<param name="visualize_farest_predecessor" value="false"/>
-		<param name="predecessor_frameID" value="/robot_2/base_link"/>
-		<param name="predecessor_color_mode" value="2"/>
+		<param name="vehicle_ID" value="robot_1"/>
 	</node>
 </launch>

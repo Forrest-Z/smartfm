@@ -834,9 +834,9 @@ public:
         segmented_pub_ = nh_->advertise<sensor_msgs::PointCloud>("segmented_dist_p", 10);
         filter_res_pub_ = nh_->advertise<sensor_msgs::PointCloud>("filter_response", 10);
         filter_size_pub_ = nh_->advertise<sensor_msgs::PointCloud2>("size_filtered", 10);
-        vehicle_pub_ = nh_->advertise<geometry_msgs::PoseStamped>("vehicle_pose", 10);
+        vehicle_pub_ = nh_->advertise<geometry_msgs::PoseStamped>("/vehicle_pose", 10);
         // add velocity pub
-        vehicle_vel_pub_ = nh_->advertise<geometry_msgs::TwistStamped>("vehicle_vel",10);
+        vehicle_vel_pub_ = nh_->advertise<geometry_msgs::TwistStamped>("/vehicle_vel",10);
         is_vel_start = false;
 
         pose_array_pub_ = nh_->advertise<geometry_msgs::PoseArray>("pose_array",10);

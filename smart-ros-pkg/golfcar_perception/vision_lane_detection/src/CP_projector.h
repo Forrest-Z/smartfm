@@ -42,47 +42,63 @@ namespace golfcar_vision{
     	CP_projector();
         ~CP_projector();
 
-        private:
-        ros::NodeHandle nh_, private_nh_;
-        image_transport::ImageTransport it_;
-        image_transport::CameraSubscriber cam_sub_;
-        sensor_msgs::CvBridge bridge_;
-        tf::TransformListener tf_;
-        image_geometry::PinholeCameraModel cam_model_;
-        string odom_frame_, dest_frame_id_, baselink_frame_;
+	private:
+	ros::NodeHandle nh_, private_nh_;
+	image_transport::ImageTransport it_;
+	image_transport::CameraSubscriber cam_sub_;
+	sensor_msgs::CvBridge bridge_;
+	tf::TransformListener tf_;
+	image_geometry::PinholeCameraModel cam_model_;
 
-
+	string vehicle_ID_;
+	string odom_frame_;
+	string vehicle0_dest_frame_, vehicle0_Hdest_frame_;
+	string vehicle1_dest_frame_, vehicle1_Hdest_frame_;
 
 	message_filters::Subscriber<PointCloudRGB> 	cloud_scan_sub_;
     tf::MessageFilter<PointCloudRGB> 			*cloud_scan_filter_;
+
+	message_filters::Subscriber<PointCloudRGB> 	cloud_scan_sub1_;
+    tf::MessageFilter<PointCloudRGB> 			*cloud_scan_filter1_;
+
+    message_filters::Subscriber<PointCloudRGB> 	cloud_scan_sub2_;
+    tf::MessageFilter<PointCloudRGB> 			*cloud_scan_filter2_;
+
     PointCloudRGB pcl_batch_;
 
     void ImageCallBack(const sensor_msgs::ImageConstPtr& image_msg, const sensor_msgs::CameraInfoConstPtr& info_msg);
 	void pclCallback(const PointCloudRGB::ConstPtr& pcl_in);
+	void pcl_process(const PointCloudRGB::ConstPtr& pcl_in, string dest_camera_frame, IplImage *project_image, CvScalar color_plot);
+	void merge_images(IplImage *dst_img, IplImage *src_img);
 
 	int image_width_, image_height_;
 	bool camera_model_initialized_;
-	IplImage* color_image_;
+
+	IplImage* project_image00, *project_image01, *project_image02;
+	IplImage* project_image11, *project_image12;
+	IplImage* project_image22;
+
+	IplImage* project_imageH00, *project_imageH01, *project_imageH02;
+	IplImage* project_imageH11, *project_imageH12;
+	IplImage* project_imageH22;
+
+	CvScalar vehicle1st_color, vehicle2nd_color;
 
     string own_image_name_, project_image_name_, merged_name_;
 	double show_scale_;
 
 	double vehicle_length_, vehicle_width_, vehicle_height_;
 	vehicle_model *vehicle_box;
-	bool visualize_farest_predecessor_;
-	string predecessor_frameID_;
-	int predecessor_color_mode_;
 
-	double predecessor_distance, predecessor_velocity;
-	double farest_distance, farest_velocity;
+	double vehicle01_distance, vehicle02_distance, vehicle1st_velocity;
+	double vehicle12_distance, vehicle2nd_velocity;
 
-	ros::Subscriber predecessor_velo_sub_;
-	ros::Subscriber farest_velo_sub_;
+	ros::Subscriber vehicle1st_velo_sub_, vehicle2nd_velo_sub_;
 
 	double distance_between_vehicles(std_msgs::Header vehicle1, std_msgs::Header vehicle2);
 
-	void velocity_callback(const geometry_msgs::TwistStamped::ConstPtr& velo_in);
-	void farestVelo_callback(const geometry_msgs::TwistStamped::ConstPtr& velo_in);
+	void velocity1st_callback(const geometry_msgs::TwistStamped::ConstPtr& velo_in);
+	void velocity2nd_callback(const geometry_msgs::TwistStamped::ConstPtr& velo_in);
 
     };
 };
