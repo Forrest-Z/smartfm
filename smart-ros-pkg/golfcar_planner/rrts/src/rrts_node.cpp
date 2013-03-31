@@ -295,6 +295,8 @@ void Planner::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
     goal.z = yaw;
     double goal_state[3] = {goal.x, goal.y, goal.z};
     cout<<"got goal: "<< goal.x<<" "<<goal.y<<" "<<goal.z<<endl;
+    cout<<"car_position: "<< car_position.x << " " << car_position.y << " " <<
+      car_position.z << endl;
     if(is_first_map == false)
     {
       setup_rrts();

@@ -19,4 +19,5 @@
   <depend package="geometry_msgs"/>
   <depend package="local_map_ext"/>
   <depend package="golfcar_ppc" />
+  <depend package="pnc_msgs" />
 </package>
