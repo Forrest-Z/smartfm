@@ -53,6 +53,9 @@ namespace golfcar_vision{
 	string vehicle_ID_;
 	string odom_frame_;
 	string vehicle0_dest_frame_, vehicle0_Hdest_frame_;
+	string vehicle0_H2dest_frame_, vehicle0_H3dest_frame_, vehicle0_H4dest_frame_, vehicle0_H5dest_frame_, vehicle0_H6dest_frame_,
+	vehicle0_H7dest_frame_, vehicle0_H8dest_frame_, vehicle0_H9dest_frame_;
+
 	string vehicle1_dest_frame_, vehicle1_Hdest_frame_;
 
 	message_filters::Subscriber<PointCloudRGB> 	cloud_scan_sub_;
@@ -81,6 +84,15 @@ namespace golfcar_vision{
 	IplImage* project_imageH00, *project_imageH01, *project_imageH02;
 	IplImage* project_imageH11, *project_imageH12;
 	IplImage* project_imageH22;
+
+	IplImage* project_image2H01, *project_image2H02;
+	IplImage* project_image3H01, *project_image3H02;
+	IplImage* project_image4H01, *project_image4H02;
+	IplImage* project_image5H01, *project_image5H02;
+	IplImage* project_image6H01, *project_image6H02;
+	IplImage* project_image7H01, *project_image7H02;
+	IplImage* project_image8H01, *project_image8H02;
+	IplImage* project_image9H01, *project_image9H02;
 
 	CvScalar vehicle1st_color, vehicle2nd_color;
 

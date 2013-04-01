@@ -19,7 +19,19 @@ CP_projector::CP_projector():
 	  private_nh_.param("odom_frame", odom_frame_, std::string("/odom"));
 
 	  private_nh_.param("vehicle0_dest_frame", 	vehicle0_dest_frame_, 	std::string("/camera_front_img"));
+
 	  private_nh_.param("vehicle0_Hdest_frame", vehicle0_Hdest_frame_, 	std::string("/cameraH_front_img"));
+
+	  private_nh_.param("vehicle0_H2dest_frame", vehicle0_H2dest_frame_, 	std::string("/cameraH2_front_img"));
+	  private_nh_.param("vehicle0_H3dest_frame", vehicle0_H3dest_frame_, 	std::string("/cameraH3_front_img"));
+	  private_nh_.param("vehicle0_H4dest_frame", vehicle0_H4dest_frame_, 	std::string("/cameraH4_front_img"));
+	  private_nh_.param("vehicle0_H5dest_frame", vehicle0_H5dest_frame_, 	std::string("/cameraH5_front_img"));
+	  private_nh_.param("vehicle0_H6dest_frame", vehicle0_H6dest_frame_, 	std::string("/cameraH6_front_img"));
+	  private_nh_.param("vehicle0_H7dest_frame", vehicle0_H7dest_frame_, 	std::string("/cameraH7_front_img"));
+	  private_nh_.param("vehicle0_H8dest_frame", vehicle0_H8dest_frame_, 	std::string("/cameraH8_front_img"));
+	  private_nh_.param("vehicle0_H9dest_frame", vehicle0_H9dest_frame_, 	std::string("/cameraH9_front_img"));
+
+
 	  private_nh_.param("vehicle1_dest_frame", 	vehicle1_dest_frame_,	std::string("/robot_1/camera_image"));
 	  private_nh_.param("vehicle1_Hdest_frame", vehicle1_Hdest_frame_, 	std::string("/robot_1/cameraH_image"));
 
@@ -62,6 +74,23 @@ CP_projector::CP_projector():
 	  project_imageH12 = cvCreateImage(image_size, 8,3);
 	  project_imageH22 = cvCreateImage(image_size, 8,3);
 
+	  project_image2H01 = cvCreateImage(image_size, 8,3);
+	  project_image2H02 = cvCreateImage(image_size, 8,3);
+	  project_image3H01 = cvCreateImage(image_size, 8,3);
+	  project_image3H02 = cvCreateImage(image_size, 8,3);
+	  project_image4H01 = cvCreateImage(image_size, 8,3);
+	  project_image4H02 = cvCreateImage(image_size, 8,3);
+	  project_image5H01 = cvCreateImage(image_size, 8,3);
+	  project_image5H02 = cvCreateImage(image_size, 8,3);
+	  project_image6H01 = cvCreateImage(image_size, 8,3);
+	  project_image6H02 = cvCreateImage(image_size, 8,3);
+	  project_image7H01 = cvCreateImage(image_size, 8,3);
+	  project_image7H02 = cvCreateImage(image_size, 8,3);
+	  project_image8H01 = cvCreateImage(image_size, 8,3);
+	  project_image8H02 = cvCreateImage(image_size, 8,3);
+	  project_image9H01 = cvCreateImage(image_size, 8,3);
+	  project_image9H02 = cvCreateImage(image_size, 8,3);
+
 	  private_nh_.param("show_scale",    show_scale_,   		 1.0);
 
 	  private_nh_.param("vehicle_length",    	vehicle_length_,   		 3.5);
@@ -92,12 +121,28 @@ CP_projector::CP_projector():
 			  ROS_INFO("/robot_1/base_link");
 			  pcl_process(pcl_in, vehicle0_dest_frame_, project_image01, vehicle1st_color);
 			  pcl_process(pcl_in, vehicle0_Hdest_frame_, project_imageH01, vehicle1st_color);
+			  pcl_process(pcl_in, vehicle0_H2dest_frame_, project_image2H01, vehicle1st_color);
+			  pcl_process(pcl_in, vehicle0_H3dest_frame_, project_image3H01, vehicle1st_color);
+			  pcl_process(pcl_in, vehicle0_H4dest_frame_, project_image4H01, vehicle1st_color);
+			  pcl_process(pcl_in, vehicle0_H5dest_frame_, project_image5H01, vehicle1st_color);
+			  pcl_process(pcl_in, vehicle0_H6dest_frame_, project_image6H01, vehicle1st_color);
+			  pcl_process(pcl_in, vehicle0_H7dest_frame_, project_image7H01, vehicle1st_color);
+			  pcl_process(pcl_in, vehicle0_H8dest_frame_, project_image8H01, vehicle1st_color);
+			  pcl_process(pcl_in, vehicle0_H9dest_frame_, project_image9H01, vehicle1st_color);
 		  }
 		  else if(pcl_frame_id == "robot_2/base_link")
 		  {
 			  ROS_INFO("/robot_2/base_link");
 			  pcl_process(pcl_in, vehicle0_dest_frame_, project_image02, vehicle2nd_color);
 			  pcl_process(pcl_in, vehicle0_Hdest_frame_, project_imageH02, vehicle2nd_color);
+			  pcl_process(pcl_in, vehicle0_H2dest_frame_, project_image2H02, vehicle2nd_color);
+			  pcl_process(pcl_in, vehicle0_H3dest_frame_, project_image3H02, vehicle2nd_color);
+			  pcl_process(pcl_in, vehicle0_H4dest_frame_, project_image4H02, vehicle2nd_color);
+			  pcl_process(pcl_in, vehicle0_H5dest_frame_, project_image5H02, vehicle2nd_color);
+			  pcl_process(pcl_in, vehicle0_H6dest_frame_, project_image6H02, vehicle2nd_color);
+			  pcl_process(pcl_in, vehicle0_H7dest_frame_, project_image7H02, vehicle2nd_color);
+			  pcl_process(pcl_in, vehicle0_H8dest_frame_, project_image8H02, vehicle2nd_color);
+			  pcl_process(pcl_in, vehicle0_H9dest_frame_, project_image9H02, vehicle2nd_color);
 		  }
 	  }
 	  else if(vehicle_ID_ == "robot_1")
@@ -193,7 +238,7 @@ CP_projector::CP_projector():
 	  if(vehicle_ID_ == "robot_0" &&predecessor.frame_id == "robot_1/base_link" )
 	  {
 		  if(dest_camera_frame==vehicle0_dest_frame_ ) project_image_name<<"vehicle1_on_vehicle0";
-		  else if(dest_camera_frame==vehicle0_Hdest_frame_ ) project_image_name<<"Enhanced: vehicle1_on_vehicle0";
+		  else if(dest_camera_frame==vehicle0_Hdest_frame_ ) project_image_name<<"Enhanced: vehicle1_on_vehicle0-"<<vehicle0_Hdest_frame_;
 
 		  vehicle01_distance = distance_between_vehicles(predecessor, own_vehicle)>0.0 ? distance_between_vehicles(predecessor, own_vehicle) : vehicle01_distance;
 		  vehicle_box->PutInfo(project_image, color_plot, vehicle1st_velocity, vehicle01_distance, cvPoint(0, -5));
@@ -201,7 +246,7 @@ CP_projector::CP_projector():
 	  else if(vehicle_ID_ == "robot_0" && predecessor.frame_id == "robot_2/base_link")
 	  {
 		  if(dest_camera_frame==vehicle0_dest_frame_ ) project_image_name<<"vehicle2_on_vehicle0";
-		  else if(dest_camera_frame==vehicle0_Hdest_frame_ ) project_image_name<<"Enhanced: vehicle2_on_vehicle0";
+		  else if(dest_camera_frame==vehicle0_Hdest_frame_ ) project_image_name<<"Enhanced: vehicle2_on_vehicle0-"<<vehicle0_Hdest_frame_;
 
 		  vehicle02_distance = distance_between_vehicles(predecessor, own_vehicle)>0.0 ? distance_between_vehicles(predecessor, own_vehicle) : vehicle02_distance;
 		  vehicle_box->PutInfo(project_image, color_plot, vehicle2nd_velocity, vehicle02_distance, cvPoint(0, -5));
@@ -209,7 +254,7 @@ CP_projector::CP_projector():
 	  else if(vehicle_ID_ == "robot_1" && predecessor.frame_id == "robot_2/base_link")
 	  {
 		  if(dest_camera_frame==vehicle1_dest_frame_ ) project_image_name<<"vehicle2_on_vehicle1";
-		  else if(dest_camera_frame==vehicle1_Hdest_frame_ ) project_image_name<<"Enhanced: vehicle2_on_vehicle1";
+		  else if(dest_camera_frame==vehicle1_Hdest_frame_ ) project_image_name<<"Enhanced: vehicle2_on_vehicle1-"<<vehicle1_Hdest_frame_;
 		  vehicle12_distance = distance_between_vehicles(predecessor, own_vehicle)>0.0 ? distance_between_vehicles(predecessor, own_vehicle) : vehicle12_distance;
 		  vehicle_box->PutInfo(project_image, color_plot, vehicle2nd_velocity, vehicle12_distance, cvPoint(0, -5));
 	  }
@@ -252,8 +297,70 @@ CP_projector::CP_projector():
         	merge_images(merged_image, project_image02);
         	merge_images(merged_Himage, project_imageH01);
         	merge_images(merged_Himage, project_imageH02);
+
         	image_name = "robot0_all";
         	image_Hname = "robot0_enhanced";
+
+        	IplImage* merged_H2image = cvCloneImage(color_image);
+        	IplImage* merged_H3image = cvCloneImage(color_image);
+        	IplImage* merged_H4image = cvCloneImage(color_image);
+        	IplImage* merged_H5image = cvCloneImage(color_image);
+        	IplImage* merged_H6image = cvCloneImage(color_image);
+        	IplImage* merged_H7image = cvCloneImage(color_image);
+        	IplImage* merged_H8image = cvCloneImage(color_image);
+        	IplImage* merged_H9image = cvCloneImage(color_image);
+        	cvZero(merged_H2image);
+        	cvZero(merged_H3image);
+        	cvZero(merged_H4image);
+        	cvZero(merged_H5image);
+        	cvZero(merged_H6image);
+        	cvZero(merged_H7image);
+        	cvZero(merged_H8image);
+        	cvZero(merged_H9image);
+
+        	merge_images(merged_H2image, project_image2H01);
+        	merge_images(merged_H2image, project_image2H02);
+        	merge_images(merged_H3image, project_image3H01);
+        	merge_images(merged_H3image, project_image3H02);
+        	merge_images(merged_H4image, project_image4H01);
+        	merge_images(merged_H4image, project_image4H02);
+        	merge_images(merged_H5image, project_image5H01);
+        	merge_images(merged_H5image, project_image5H02);
+        	merge_images(merged_H6image, project_image6H01);
+        	merge_images(merged_H6image, project_image6H02);
+        	merge_images(merged_H7image, project_image7H01);
+        	merge_images(merged_H7image, project_image7H02);
+        	merge_images(merged_H8image, project_image8H01);
+        	merge_images(merged_H8image, project_image8H02);
+        	merge_images(merged_H9image, project_image9H01);
+        	merge_images(merged_H9image, project_image9H02);
+
+        	string image_H2name = "robot0_enhanced2";
+        	string image_H3name = "robot0_enhanced3";
+        	string image_H4name = "robot0_enhanced4";
+        	string image_H5name = "robot0_enhanced5";
+        	string image_H6name = "robot0_enhanced6";
+        	string image_H7name = "robot0_enhanced7";
+        	string image_H8name = "robot0_enhanced8";
+        	string image_H9name = "robot0_enhanced9";
+
+    		resize_show(merged_H2image, show_scale_, image_H2name.c_str());
+    		resize_show(merged_H3image, show_scale_, image_H3name.c_str());
+    		resize_show(merged_H4image, show_scale_, image_H4name.c_str());
+    		resize_show(merged_H5image, show_scale_, image_H5name.c_str());
+    		resize_show(merged_H6image, show_scale_, image_H6name.c_str());
+    		resize_show(merged_H7image, show_scale_, image_H7name.c_str());
+    		resize_show(merged_H8image, show_scale_, image_H8name.c_str());
+    		resize_show(merged_H9image, show_scale_, image_H9name.c_str());
+
+    		cvReleaseImage(&merged_H2image);
+    		cvReleaseImage(&merged_H3image);
+    		cvReleaseImage(&merged_H4image);
+    		cvReleaseImage(&merged_H5image);
+    		cvReleaseImage(&merged_H6image);
+    		cvReleaseImage(&merged_H7image);
+    		cvReleaseImage(&merged_H8image);
+    		cvReleaseImage(&merged_H9image);
 		}
         else if(vehicle_ID_ == "robot_1")
         {
