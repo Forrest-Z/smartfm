@@ -23,6 +23,10 @@
 #include "dubins_car.cpp"
 #include "rrts.cpp"
 
+#include <dynamic_reconfigure/server.h>
+#include <rrts/rrtsCTRConfig.h>
+#include <rrts/rrts_param.h>
+
 using namespace std;
 
 typedef DubinsCar::StateType state_t;
@@ -106,6 +110,11 @@ class Planner
 
     void publish_tree();
     void on_tree_pub_timer(const ros::TimerEvent &e);
+
+    // Add dynamic parameters reconfiguration for rrts
+    void reconfig(rrts::rrtsCTRConfig &config, uint32_t level);
+    dynamic_reconfigure::Server<rrts::rrtsCTRConfig>  *srv;
+    rrts::rrts_param param_;
 };
 
 Planner::Planner()
@@ -150,12 +159,26 @@ Planner::Planner()
   is_first_map = true;
   for(int i=0; i<NUM_STATUS; i++)
     rrts_status[i] = false;
+
+  //initialize dynamic reconfigure of paprams
+
+	srv = new dynamic_reconfigure::Server<rrts::rrtsCTRConfig> (ros::NodeHandle("~"));
+	dynamic_reconfigure::Server<rrts::rrtsCTRConfig>::CallbackType f = boost::bind(&Planner::reconfig, this, _1, _2);
+	srv->setCallback(f);
+
   ros::spin();
 }
 
 Planner::~Planner()
 {
   clear_committed_trajectory();
+}
+
+
+void Planner::reconfig(rrts::rrtsCTRConfig &config, uint32_t level){
+
+	//TODO: Add more params for dynamic reconfigure
+	param_.obst = config.obst;
 }
 
 void Planner::obs_check()
