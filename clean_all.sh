@@ -16,7 +16,7 @@ for package in `rospack list | grep smartfm | cut -d' ' -f1 | xargs echo`
 do
     echo cleaning package $package
     roscd $package
-    make clean > /dev/null 2>&1
+    rosmake --target=clean > /dev/null 2>&1
 done
 
 )
