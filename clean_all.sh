@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo $ROS_ROOT | grep fuerte >/dev/null 2>&1 \
+echo $ROS_ROOT | grep $ROS_DISTRO >/dev/null 2>&1 \
 && . ${ROS_ROOT}/../rosbash/rosbash \
 || . ${ROS_ROOT}/tools/rosbash/rosbash
 
