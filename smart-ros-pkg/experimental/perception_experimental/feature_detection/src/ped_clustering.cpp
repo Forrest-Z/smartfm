@@ -546,6 +546,7 @@ void ped_clustering::extractCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_fi
 
     ec.extract (cluster_indices);
 }
+
 void ped_clustering::filterLines(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointXYZ>& cloud_out)
 {
     // Create the segmentation object for the planar model and set all the parameters

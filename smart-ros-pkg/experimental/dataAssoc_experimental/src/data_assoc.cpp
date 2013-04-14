@@ -335,8 +335,8 @@ void data_assoc::updateMergeList()//feature_detection::clusters cluster_vector)
                 if(lPedInView.pd_vector[k].object_label == merge_lists.merged_ids[i].peds[j].id)
                     id_updated.push_back(lPedInView.pd_vector[k].object_label);
             }
-
         }
+
         if(id_updated.size()>1)
         {
             for(size_t j = 0; j<id_updated.size(); j++)
@@ -346,6 +346,7 @@ void data_assoc::updateMergeList()//feature_detection::clusters cluster_vector)
             }
         }
     }
+
     //update merge list
     for(size_t i=0; i<merge_lists.merged_ids.size();i++)
     {
@@ -511,7 +512,6 @@ void data_assoc::cleanUp()
         }
         else
             jj++;
-
     }
     ROS_DEBUG_STREAM("cleanup end");
 }
