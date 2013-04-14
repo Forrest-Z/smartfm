@@ -32,7 +32,7 @@
 #include "ros/ros.h"
 #include "ros/console.h"
 #include "nav_msgs/GetMap.h"
-#include "tf2/LinearMath/btMatrix3x3.h"
+#include "LinearMath/btMatrix3x3.h"
 #include "geometry_msgs/Quaternion.h"
 
 using namespace std;
@@ -103,7 +103,7 @@ free_thresh: 0.196
 
       geometry_msgs::Quaternion orientation = map->info.origin.orientation;
       btMatrix3x3 mat(btQuaternion(orientation.x, orientation.y, orientation.z, orientation.w));
-      float yaw, pitch, roll;
+      double yaw, pitch, roll;
       mat.getEulerYPR(yaw, pitch, roll);
 
       fprintf(yaml, "image: %s\nresolution: %f\norigin: [%f, %f, %f]\nnegate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.196\n\n",
