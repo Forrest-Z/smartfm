@@ -58,7 +58,11 @@ namespace golfcar_semantics{
 		string map_frame_, base_frame_;
 		ros::Subscriber	pedestrian_sub_;
 		void pedCallback(const sensing_on_road::pedestrian_vision_batch::ConstPtr& ped_batch_in);
+
+		//three functions;
+		void track_updating(const sensing_on_road::pedestrian_vision_batch::ConstPtr& ped_batch_in);
 		void track_visualization();
+		void track_saving();
 
         IplImage *visual_image_;
 		double map_scale_;
@@ -66,6 +70,9 @@ namespace golfcar_semantics{
         image_transport::ImageTransport it_;
         image_transport::Publisher visual_pub_;
         sensor_msgs::CvBridge bridge_;
+
+        //to do: store the tracks in a file;
+        string file_path_;
    };
 };
 
