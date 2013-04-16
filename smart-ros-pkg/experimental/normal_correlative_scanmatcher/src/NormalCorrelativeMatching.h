@@ -14,7 +14,7 @@
 #include "mysql_helper.h"
 class NormalCorrelativeMatching{
 public:
-  pcl::PointCloud<pcl::PointNormal> input_cloud, matching_cloud;
+  pcl::PointCloud<pcl::PointNormal> input_cloud;//, matching_cloud;
   double res_;
   double offset_x, offset_y, rotation;
   double best_score_;
@@ -83,7 +83,7 @@ public:
 
 
 
-  void bruteForceSearch(ScoreDetails &sd, bool sorted=false) {
+  void bruteForceSearch(ScoreDetails &sd, pcl::PointCloud<pcl::PointNormal> &matching_cloud, bool sorted=false) {
     double best_x, best_y;
     int best_rotation;
     double best_score = 0;
@@ -102,6 +102,7 @@ public:
     int angle_inc = sd.angle_res;
 
     for (int i = rot_start; i < rot_end; i += angle_inc) {
+      cout<<"rotation "<<i<<":"<<endl;
         pcl::PointCloud<pcl::PointNormal> matching_cloud_tf = matching_cloud;
         int rotate_idx = i;
         double yaw_rotate = rotate_idx / 180. * M_PI;
@@ -160,8 +161,9 @@ public:
                     best_tf_pt_int = search_pt;
                     best_norm_tf = matching_cloud_tf;
                 }
-
+                cout<<score<<" ";
             }
+            cout<<endl;
             //cout<<setiosflags (ios::fixed | ios::showpoint | ios::right) <<setprecision(3)<<setfill('0')<<setw(3)<<"At offset "<<j<<" "<<" "<<i<<", best tf found so far: "<<best_x<<" "<<best_y<<" "<<best_rotation<<
             	//" Distance:"<<best_score_details.dist_score<<" Norm:"<< best_score_details.normal_score<<" NNorm:"<<best_score_details.norm_norm_score<<
             //" WorstNorm:"<<best_score_details.worst_norm_score<<" Final:"<<best_score<<"      \xd"<<flush;
@@ -183,18 +185,22 @@ public:
     sd.best_rot =  best_rotation;
     sd.best_x = best_x;
     sd.best_y = best_y;
-    best_tf_pt = best_norm_tf;
+    /*best_tf_pt = best_norm_tf;
     assert(best_tf_pt.size() == best_tf_pt_int.size());
     for(size_t i=0; i<best_tf_pt_int.size(); i++)
     {
       cv::Point2f pt = rmi.realCoordinate(best_tf_pt_int[i]);
       best_tf_pt.points[i].x = pt.x;
       best_tf_pt.points[i].y = pt.y;
-    }
+    }*/
   }
-
-  double bruteForceSearch(pcl::PointCloud<pcl::PointNormal> matching_cl, bool sorted = false){
-    matching_cloud = matching_cl;
+  double bruteForceSearch(pcl::PointCloud<pcl::PointNormal> &matching_cl, bool sorted = false){
+    ScoreDetails sd;
+    double score = bruteForceSearch(matching_cl, sd, sorted);
+    return score;
+  }
+  double bruteForceSearch(pcl::PointCloud<pcl::PointNormal> &matching_cl, ScoreDetails& sd, bool sorted = false){
+    
     ScoreDetails sd1, sd1b, sd2;
     sd1.best_rot = 180;
     sd1.best_x = 0;
@@ -207,8 +213,8 @@ public:
     sd1b = sd1;
     sd1b.best_rot = 0;
     sd1b.rot_range = 12;    
-    bruteForceSearch(sd1, sorted);
-    bruteForceSearch(sd1b, sorted);
+    bruteForceSearch(sd1, matching_cl, sorted);
+    bruteForceSearch(sd1b, matching_cl, sorted);
     if(sd1b.best_score > sd1.best_score) sd2 = sd1b;
     else sd2= sd1;
     sd2.rot_range = 5; sd2.angle_res = 1; sd2.trans_res = 0.1;
@@ -217,8 +223,9 @@ public:
     sd2.trans_x_range = 1.0; sd2.trans_y_range = 1.0;
     //just to simulate the same work load with GPU
     //for(int i=0; i<10; i++)
-      bruteForceSearch(sd2);
+      bruteForceSearch(sd2, matching_cl, sorted);
     best_score_ = sd2.best_score;
+    sd = sd2;
     return best_score_;
   }
 };
