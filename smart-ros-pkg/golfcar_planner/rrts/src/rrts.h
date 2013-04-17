@@ -7,6 +7,8 @@
 #include <list>
 #include <set>
 #include <vector>
+#include <set>
+using namespace std;
 
 namespace RRTstar {
 
