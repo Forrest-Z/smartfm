@@ -5,6 +5,7 @@
 #ifndef _AUTOMATA_H_
 #define	_AUTOMATA_H_
 
+#include <iostream>
 #include <cstdlib>
 #include "typedefs_int.h"
 #include "defs_driving.h"
@@ -373,4 +374,7 @@ class Auto_AB {
     }
 };
 
+Timed_Letter transition_label( const Subset_of_Sigma s_1, 
+                                const Subset_of_Sigma s_2, 
+                                const double duration);
 #endif	/* AUTOMATA_SAFETY_HPP */

@@ -15,6 +15,7 @@
   <depend package="local_map_ext"/>
   <depend package="map_server_ext"/>
   <depend package="golfcar_ppc"/>
+  <depend package="rrts"/>
 
 </package>
 

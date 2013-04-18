@@ -8,20 +8,16 @@
 using namespace std;
 
 State::State (const State &stateIn) {
-
   for (int i = 0; i < 3; i++) 
     x[i] = stateIn.x[i];
 }
 
 
 State& State::operator=(const State &stateIn){
-
   if (this == &stateIn)
     return *this;
-
   for (int i = 0; i < 3; i++) 
     x[i] = stateIn.x[i];
-
   return *this;
 }
 
