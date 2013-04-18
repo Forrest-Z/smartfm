@@ -615,7 +615,7 @@ bool Planner::is_near_end_committed_trajectory()
       delyaw += 2.0*M_PI;
 
     bool res = false;
-    if(dist(car_position.x, car_position.y, 0, last_committed_state[0], last_committed_state[1], 0) < 4.0)
+    if(dist(car_position.x, car_position.y, 0, last_committed_state[0], last_committed_state[1], 0) < 6.0)
       res = true;
     else
       res = false;
@@ -726,6 +726,7 @@ void Planner::publish_committed_trajectory()
 
     committed_control_iter++;
   }
+  cout<<"pnc_size: "<< committed_trajectory.size() << endl;
 
   committed_trajectory_pub.publish(traj_msg);
 

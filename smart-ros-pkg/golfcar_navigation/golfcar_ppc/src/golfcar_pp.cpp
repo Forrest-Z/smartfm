@@ -92,7 +92,7 @@ PurePursuit::PurePursuit()
     if(!private_nh.getParam("coord_frame_id", coord_frame_id_)) coord_frame_id_ = "/odom";
     if(!private_nh.getParam("max_timer", max_timer_)) max_timer_ = 2.0;
     if(!private_nh.getParam("max_timer_complaint", max_timer_complaint_)) max_timer_complaint_ = 5.0;
-    if(!private_nh.getParam("max_silence_cmd_vel", max_silence_cmd_vel_)) max_silence_cmd_vel_ = 0.3;
+    if(!private_nh.getParam("max_silence_cmd_vel", max_silence_cmd_vel_)) max_silence_cmd_vel_ = 1.0;
     if(!private_nh.getParam("neglect_distance", neglect_distance_)) neglect_distance_ = 0.001;
     if(!private_nh.getParam("look_ahead", look_ahead_)) look_ahead_ = 3.0;
     if(!private_nh.getParam("max_steering", max_steering_)) max_steering_ = 0.65;
