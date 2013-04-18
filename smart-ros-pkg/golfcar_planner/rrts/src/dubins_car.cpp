@@ -7,25 +7,6 @@
 
 using namespace std;
 
-region::region () {
-
-}
-
-
-region::~region () {
-
-}
-
-
-State::State () {
-
-}
-
-
-State::~State() {
-}
-
-
 State::State (const State &stateIn) {
 
   for (int i = 0; i < 3; i++) 

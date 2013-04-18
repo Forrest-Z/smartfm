@@ -26,7 +26,7 @@ rosbuild_genmsg()
 #gencfg()
 
 #common commands for building c++ executables and libraries
-rosbuild_add_library(${PROJECT_NAME} src/dubins_car.cpp src/rrts.cpp)
+rosbuild_add_library(${PROJECT_NAME} src/dubins_car.cpp src/rrts.cpp src/kdtree.c)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
