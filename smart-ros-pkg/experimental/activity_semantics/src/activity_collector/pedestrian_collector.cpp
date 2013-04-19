@@ -1,9 +1,5 @@
 #include "pedestrian_collector.h"
 
-#define PIC_GXWX(pic, x, scale) (floor( x / scale + 0.5))
-#define PIC_GYWY(pic, y, scale) (pic->height -1- floor( y / scale + 0.5))
-#define PIC_VALID(pic, i, j) ((i >= 0) && (i < pic->width) && (j >= 0) && (j < pic->height))
-
 namespace golfcar_semantics{
 pedestrian_collector::pedestrian_collector():
 		private_nh_("~"),
@@ -11,13 +7,13 @@ pedestrian_collector::pedestrian_collector():
 	{
 		pedestrian_sub_ = nh_.subscribe("ped_data_assoc", 10, &pedestrian_collector::pedCallback, this);
 
-		private_nh_.param("map_scale",    	map_scale_,   	0.1);
-		private_nh_.param("map_pic_path", 	map_pic_path_, 	std::string("road_map.png"));
-		private_nh_.param("file_path",  	file_path_,     std::string("ped_track.data"));
+		private_nh_.param("map_scale",    				map_scale_,   				0.1);
+		private_nh_.param("map_pic_path", 				map_pic_path_, 				std::string("road_map.png"));
+		private_nh_.param("file_path",  				file_path_,     			std::string("ped_track.data"));
+		private_nh_.param("ped_belief_threshold",    	ped_belief_threshold_,   	0.05);
 
 		if((visual_image_ = cvLoadImage( map_pic_path_.c_str(), CV_LOAD_IMAGE_COLOR)) == 0){ROS_ERROR("unable to load map image");}
 		else {cvNamedWindow("visualization");}
-
 	}
 
 	void pedestrian_collector::pedCallback(const sensing_on_road::pedestrian_vision_batch::ConstPtr& ped_batch_in)
@@ -66,7 +62,7 @@ pedestrian_collector::pedestrian_collector():
 		for(size_t i=0; i<ped_tracks_.size(); i++)
 		{
 			//to adjust this threshold for different results;
-			if(ped_tracks_[i].ped_confidence < 0.05) continue;
+			if(ped_tracks_[i].ped_confidence < ped_belief_threshold_) continue;
 
 			for(size_t j=0; j<ped_tracks_[i].ped_track.size(); j++)
 			{
@@ -87,12 +83,25 @@ pedestrian_collector::pedestrian_collector():
 
 	void pedestrian_collector::track_saving()
 	{
+		//pay attention that above tracks are tracks of all clusters;
+		//erase the low-belief tracks that are probably noise;
+		for(size_t i=0; i<ped_tracks_.size(); )
+		{
+			if(ped_tracks_[i].ped_confidence < ped_belief_threshold_) ped_tracks_.erase(ped_tracks_.begin()+i);
+			else i++;
+		}
+
 		FILE *fp_output;
 	    if((fp_output=fopen(file_path_.c_str(), "a"))==NULL){ROS_ERROR("cannot open output_file\n"); return;}
 	    fprintf(fp_output, "%ld", ped_tracks_.size());
 
 		for(size_t i=0; i<ped_tracks_.size(); i++)
 		{
+			//the following "ped_track" just to illustrates the datatype;
+			track_common ped_track;
+			ped_track.confidence = ped_tracks_[i].ped_confidence;
+			ped_track.track_length =  ped_tracks_[i].ped_track.size();
+
 			fprintf(fp_output, "\n%f\t", ped_tracks_[i].ped_confidence);
 			fprintf(fp_output, "%ld\n", ped_tracks_[i].ped_track.size());
 

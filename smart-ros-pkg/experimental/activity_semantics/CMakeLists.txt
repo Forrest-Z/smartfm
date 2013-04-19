@@ -19,3 +19,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 find_package(OpenCV REQUIRED)
 rosbuild_add_executable(ped_collector src/activity_collector/pedestrian_collector.cpp)
 target_link_libraries(ped_collector ${OpenCV_LIBRARIES})
+
+rosbuild_add_executable(ped_semantics src/semantic_learner/ped_semantics.cpp)
+target_link_libraries(ped_semantics ${OpenCV_LIBRARIES})
+
