@@ -1,7 +1,8 @@
 /*
  * pedestrian_collector
  * author: Baoxing
- * data:   2013/04/14
+ * date:   2013/04/14
+ * description: collect pedestrian track information, visualize the process, and store it into a file;
  */
 
 #ifndef PEDESTRIAN_COLLECTOR_H
@@ -31,6 +32,8 @@
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <cv_bridge/CvBridge.h>
+
+#include "../datatype_semantic.h"
 
 using namespace std;
 using namespace ros;
@@ -73,6 +76,7 @@ namespace golfcar_semantics{
 
         //to do: store the tracks in a file;
         string file_path_;
+        double ped_belief_threshold_;
    };
 };
 
