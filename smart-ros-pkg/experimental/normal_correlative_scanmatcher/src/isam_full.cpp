@@ -5,31 +5,36 @@
  *      Author: demian
  */
 
-#include <ros/ros.h>
+/*#include <ros/ros.h>
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/point_cloud_conversion.h>
-#include <nav_msgs/Path.h>
-#include <nav_msgs/OccupancyGrid.h>
+
+
 #include <geometry_msgs/Pose.h>
-#include <visualization_msgs/MarkerArray.h>
+
 #include <pcl/ros/conversions.h>
 #include <fmutil/fm_stopwatch.h>
 #include <fmutil/fm_math.h>
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
+*/
+
+#include <visualization_msgs/MarkerArray.h>
+#include <nav_msgs/Path.h>
+#include <nav_msgs/OccupancyGrid.h>
 
 #include <occupancy_grid_utils/ray_tracer.h>
 #include <boost/circular_buffer.hpp>
 #include <boost/optional.hpp>
 #include <boost/foreach.hpp>
 
-#include "RasterMapPCL.h"
+#include "NormalCorrelativeMatching.h"
 #include "readfrontend.h"
 #include <isam/isam.h>
-#include "mysql_helper.h"
+//#include "mysql_helper.h"
 #include "GraphPF.h"
 
-#include "pcl_downsample.h"
+//#include "pcl_downsample.h"
 
 typedef boost::shared_ptr<occupancy_grid_utils::LocalizedCloud> CloudPtr;
 typedef boost::shared_ptr<occupancy_grid_utils::LocalizedCloud const> CloudConstPtr;
@@ -51,8 +56,8 @@ visualization_msgs::Marker getMarker(int id, int particle_no, string text, geome
     marker.type = visualization_msgs::Marker::SPHERE;
     marker.action = visualization_msgs::Marker::ADD;
     marker.pose = pose;
-    marker.scale.x = particle_no;
-    marker.scale.y = particle_no;
+    marker.scale.x = particle_no*2;
+    marker.scale.y = particle_no*2;
     marker.scale.z = 0.1;
     marker.color.a = 0.5;
     marker.color.r = 1.0;
@@ -190,7 +195,8 @@ int main(int argc, char **argv) {
     vector<geometry_msgs::Pose> poses;
     vector<sensor_msgs::PointCloud> pc_vecs, pc_vecs_raw;
     readFrontEndFile(argv[1], poses);
-
+    ofstream isam_graph_file("isam_graph.g2o");
+    int cl_count = poses.size()/skip_reading+1;
     for (size_t j = 0; j < poses.size(); j+=skip_reading) {
         stringstream matching_file;
         matching_file << folder << setfill('0') << setw(5) << j
@@ -220,6 +226,13 @@ int main(int argc, char **argv) {
     eigen_noise(3, 3) = 900;
     eigen_noise(4, 4) = 900;
     eigen_noise(5, 5) = 900;
+    Eigen::MatrixXd cl_noise(6, 6);
+    eigen_noise(0, 0) = 50;
+    eigen_noise(1, 1) = 50;
+    eigen_noise(2, 2) = 100;
+    eigen_noise(3, 3) = 900;
+    eigen_noise(4, 4) = 900;
+    eigen_noise(5, 5) = 900;
 
     isam::Noise noise3 = isam::Information(eigen_noise);
 
@@ -237,20 +250,21 @@ int main(int argc, char **argv) {
             noise3);
     // add it to the graph
     slam.add_factor(prior);
-
+    isam_graph_file<<"VERTEX_SE2 "<<start_node-5<<" 0 0 0"<<endl;
+    
     ros::Rate rate(2);
 
-    GraphParticleFilter graphPF(&mysql, &slam, 50, skip_reading);
+    GraphParticleFilter graphPF(&mysql, &slam, 50, skip_reading, argv[1]);
     sensor_msgs::PointCloud overall_pts;
     double opt_error = 0;
     isam::Pose3d_Pose3d_Factor *previous_constraint, *current_constraint;
     bool previous_cl = false, current_cl = false;
     int previous_cl_count = 0;
+    int last_closeloop_idx = -1;
     //comment out the cout part to only output node info
     for (int i = start_node; i < size; i ++) {
         cout << "**************************" << endl;
         fmutil::Stopwatch sw("overall", true);
-        RasterMapPCL rmpcl;
         //vector<geometry_msgs::Point32> combines_prior, prior_m5, prior_p5;
         geometry_msgs::Pose odo = ominus(poses[i*skip_reading], poses[i*skip_reading - skip_reading]);
         isam::Pose3d_Node* new_pose_node = new isam::Pose3d_Node();
@@ -265,6 +279,12 @@ int main(int argc, char **argv) {
                 odometry, noise3);
         slam.add_factor(constraint);
 
+	geometry_msgs::Pose odom = ominus(poses[i*skip_reading], poses[(start_node-1)*skip_reading]);
+	isam_graph_file<<"VERTEX_SE2 "<<i-4<<" "<<odom.position.x<<" "<<odom.position.y<<" "
+	<<odom.orientation.z<<endl;
+	isam_graph_file<<"EDGE_SE2 "<<i-5<<" "<<i-4<<" "<<odo.position.x<<" "<<odo.position.y<<" "
+	<<odo.orientation.z<<" 1000 0 0 1000 0 2000"<<endl;
+	
         fmutil::Stopwatch sw_cl("close_loop", true); //~100 ms Raster map causes it
         //because first pose start with 00002.pcd
         int cl_node_idx = graphPF.getCloseloop(i);
@@ -289,7 +309,9 @@ int main(int argc, char **argv) {
             sd.node_src = j*skip_reading;
             sd.node_dst = i*skip_reading;
             //sd.t = -sd.t;
-            assert(mysql.getData(sd));
+            //mysql.getData(sd);
+	    sd = graphPF.sd_;
+	    cout<<"mysql.getData: "<<sd.x<<" "<<sd.y<<" "<<sd.t<<" "<<sd.score<<" "<<sd.score_ver<<" "<<sd.node_src<<" "<<sd.node_dst<<endl;
             pcl::PointCloud<pcl::PointNormal> matching_cloud = matching_clouds[j];
             double yaw_rotate = sd.t / 180. * M_PI;
             Eigen::Quaternionf bl_rotation(cos(yaw_rotate / 2.), 0, 0,
@@ -331,6 +353,10 @@ int main(int argc, char **argv) {
                     << sd.y << " " << sd.t
                     << " ";
             
+	    isam_graph_file<<"VERTEX_SWITCH "<<cl_count<<" 1"<<endl;
+	    isam_graph_file<<"EDGE_SWITCH_PRIOR "<<cl_count<<" 1 1.0"<<endl;
+	    isam_graph_file<<"EDGE_SE2_SWITCHABLE "<<j-4<<" "<<i-4<<" "<<cl_count++<<" "<<sd.x<<" "<< sd.y<<" "<< sd.t<<" 0.1 0 0 0.1 0 0.25"<<endl;
+	  
             //cout<<cov.at<float>(0,0)<<" "<<cov.at<float>(0,1)<<" "<<cov.at<float>(0,2)<<" "<<cov.at<float>(1, 1)<<" "<<cov.at<float>(1,2)<<" "<<cov.at<float>(2,2);
             //cout<<" "<<endl;
             string str;
@@ -339,7 +365,7 @@ int main(int argc, char **argv) {
                     sd.y, 0.00001, sd.t,
                     0.00001, 0.00001); // x,y,theta
 
-            isam::Noise noise = isam::Information(eigen_noise);
+            isam::Noise noise = isam::Information(cl_noise);
             isam::Pose3d_Pose3d_Factor* constraint =
                     new isam::Pose3d_Pose3d_Factor(pose_nodes[i],
                             pose_nodes[j], odometry, noise3);
@@ -367,14 +393,31 @@ int main(int argc, char **argv) {
 
             } else {
                 current_cl = true;
-
+		previous_cl_count++;
+		last_closeloop_idx = i;
+		previous_constraint = current_constraint;
             }
         } else {
             current_cl = false;
         }
-
+	
+	//if last close loop is not part of the continuous close loop, remove it
+	if(i-last_closeloop_idx == 3) {
+	  if (previous_cl_count < 2) {
+	  cout
+                        << "Close loop not continuous, removing previous constraint"
+                        << endl;
+                slam.remove_factor(previous_constraint);
+                slam.update();
+		previous_cl_count = 0;
+	  }
+	  
+	}
+	cout <<"previous_cl_count:"<<previous_cl_count<<" last_closeloop_idx"<<last_closeloop_idx<<endl;
+	if(i-last_closeloop_idx > 3) previous_cl_count = 0;
+	/*
         //check if 2 continuous close loop is found, if it is not, remove the previous close loop
-        /*if (previous_cl) {
+        if (previous_cl) {
             if (!current_cl && previous_cl_count < 2) {
                 cout
                         << "Close loop not continuous, removing previous constraint"
@@ -383,7 +426,7 @@ int main(int argc, char **argv) {
                 slam.update();
                 previous_cl = false;
             }
-        }*/
+        }
 
         if (current_cl) {
             cout
@@ -395,7 +438,7 @@ int main(int argc, char **argv) {
         } else {
             previous_cl = false;
             previous_cl_count = 0;
-        }
+        }*/
 
         sw_foundcl.end();
 
@@ -505,7 +548,9 @@ int main(int argc, char **argv) {
          downsampled_pt[i].x = mapped_pts[i].x;
          downsampled_pt[i].y = mapped_pts[i].y;
          }*/
-        vector<geometry_msgs::Point32> downsampled_pt = pcl_downsample(
+	vector<geometry_msgs::Point32> downsampled_pt; 
+	//if(i > size - 10)
+        downsampled_pt = pcl_downsample(
                 overall_pts.points, 0.1, 0.1, 0.1);
 
         overall_pts.points = downsampled_pt;
@@ -513,8 +558,9 @@ int main(int argc, char **argv) {
                 << overall_pts.points.size() << endl;
         stringstream ss;
         ss << "isam_map_progress" << i << ".png";
-        //RenderMap rm;
-        //rm.drawMap(overall_pts.points, 0.05, ss.str());
+        RenderMap rm;
+	if(i > size - 10)
+	  rm.drawMap(overall_pts.points, 0.1, ss.str());
         for (int k = 0; k < 3; k++) {
             overall_pts.header.stamp = ros::Time::now();
             overall_pub.publish(overall_pts);

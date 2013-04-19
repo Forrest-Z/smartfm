@@ -156,6 +156,7 @@ public:
   {
     stringstream ss;
     double score = -1;
+    
     if(cache)
     {
       if(current_node_dst == sd.node_dst)

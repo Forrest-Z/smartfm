@@ -88,7 +88,7 @@ int main(int argc, char** argv)
       data_result = &dataStreamResult;
       getResult(*data_result, pfi_result);
     }
-      
+      cv::VideoWriter record("RobotVideo.avi", CV_FOURCC('D','I','V','X'), 30, cv::Size(960, 360), true);
     for(size_t i=0; i<pfi1.size(); i++)
     {
       PoseAndFrameIdx pfi_nearest;
@@ -138,12 +138,23 @@ int main(int argc, char** argv)
         cout <<pfi1[i].frame_idx <<" "<<pfi_nearest.frame_idx << " "<<x_diff<<" "<<y_diff<<" "<<theta_diff/M_PI*180<<" "<<sqrt(dist_diff) <<" "<<sum_error<<endl;
       else
         cout <<pfi_result[i].frame_idx<<" "<<pfi_result[i].matching_frame_idx<<" "<<pfi_result[i].dist<<" "<<pfi_result[i].t<<" "<<pfi_result[i].score<<endl;
+      cv::resize(img1, img1, cv::Size(0,0), 0.5, 0.5);
+      cv::resize(img2, img2, cv::Size(0,0), 0.5, 0.5);
       cv::imshow("img1", img1);
       cv::imshow("img2", img2);
-      cv::imshow("img_diff", img_diff);
+//src.copyTo(dst(Rect(left, top, src.cols, src.rows));
+      cv::Mat ext_img = cv::Mat::ones(360, 960, img1.type());
+      img_diff = (255-img_diff);
+      img_diff.copyTo(ext_img(cv::Rect(320,0,img_diff.cols, img_diff.rows)));
+      img1.copyTo(ext_img(cv::Rect(0,0,img1.cols, img1.rows)));
+      img2.copyTo(ext_img(cv::Rect(0,180,img2.cols, img2.rows)));
+      cv::imshow("img_diff", ext_img);
       stringstream save_img;
-      save_img<<pfi_result[i].frame_idx<<"_"<<pfi_result[i].matching_frame_idx<<".png";
-      cv::imwrite(save_img.str(), img_diff);
+      //save_img<<pfi_result[i].frame_idx<<"_"<<pfi_result[i].matching_frame_idx<<".png";
+      save_img<<pfi1[i].frame_idx<<"_result.png";
+//      cv::imwrite(save_img.str(), ext_img);
+        record << ext_img; 
+      cv::waitKey(1);
     }
     return 0;
 }

@@ -12,6 +12,8 @@
 #include <boost/random/uniform_real.hpp>
 #include <boost/random/uniform_int.hpp>
 #include <numeric>
+
+
 struct particle
 {
 	particle() : node_idx(0){}
@@ -27,10 +29,13 @@ public:
 	MySQLHelper *mysql_;
         map<int, int> unique_nodes_;
         map<int, geometry_msgs::Point> nodes_pose_;
-	GraphParticleFilter(MySQLHelper *mysql, isam::Slam *slam, int particle_no, int skip_reading):
-		mysql_(mysql), slam_(slam), skip_reading_(skip_reading)
+	GraphParticleFilter(MySQLHelper *mysql, isam::Slam *slam, int particle_no, int skip_reading, string frontend_file):
+		mysql_(mysql), slam_(slam), skip_reading_(skip_reading), frontend_file_(frontend_file)
 
 	{
+	  //unsigned int seed = static_cast<unsigned int>(std::time(0));
+	  //eng.seed(seed);
+	  //cout<<seed<<" seed is used"<<endl;
 		//initialize particles with node_idx as -1
 		particles_.resize(particle_no);
 	}
@@ -59,7 +64,7 @@ public:
 		//return the close loop to back end
 		return cl_idx;
 	}
-
+	ScoreData sd_;
 private:
 	isam::Slam *slam_;
 
@@ -70,6 +75,7 @@ private:
 	//vector<vector<double> > rotations_;
 	vector<double> nodes_heading_;
 	int skip_reading_;
+	string frontend_file_;
 	//perform motion based on normal distribution
 
 	typedef boost::mt19937                     ENG;    // Mersenne Twister
@@ -78,6 +84,8 @@ private:
 	//typedef boost::uni
 	ENG  eng;
 	map<int, double> nodes_match_heading_;
+	map<int, pcl::PointCloud<pcl::PointNormal> > matching_clouds_;
+	
 	void updateMotion()
 	{
 		//Propagate the particles in a meaningful way
@@ -187,7 +195,29 @@ private:
 		fmutil::Stopwatch sw2("sw2");
 
 		nodes_match_heading_.clear();
-//#pragma omp parallel for
+		map<int, ScoreData> scores;
+		/*
+		double res_ = 0.1;
+		string frontend_file = frontend_file_;
+		int startfile_idx= frontend_file.find_last_of("/")+1;
+		string folder = frontend_file.substr(0, startfile_idx);
+		stringstream input_file;
+		input_file <<folder<<setfill('0')<<setw(5)<<matching_node*skip_reading_<<".pcd";    
+		pcl::PointCloud<pcl::PointNormal> input_cloud;
+		pcl::io::loadPCDFile(input_file.str(), input_cloud);
+		fmutil::Stopwatch ncm1("NCM initialize");
+		vector<pcl::PointCloud<pcl::PointNormal> > input_clouds = append_input_cloud(input_cloud, frontend_file, input_file.str());
+		input_cloud = pcl_downsample(input_cloud, res_*2, res_*2, res_*2);
+		matching_clouds_[matching_node*skip_reading_] = input_cloud;
+		
+		
+		NormalCorrelativeMatching ncm(input_cloud, res_, 0.2);
+		ncm1.end();
+		fmutil::Stopwatch ncm2("NCM bruteForceSearch");
+		fmutil::Stopwatch ncm3("NCM veriScore");
+		
+		
+		#pragma omp parallel for
 		for(size_t i=0; i<unique_nodes_array.size(); i++)
 		{
 			double score;
@@ -197,21 +227,74 @@ private:
 			ScoreData sd;
 			sd.node_dst = matching_node*skip_reading_;
 			sd.node_src = unique_nodes_array[i]*skip_reading_;
-			if(mysql_->getData(sd)) {
-                          //changed to arg_min from product
-			    score =  sd.score;
-                            if(score > sd.score_ver) score = sd.score_ver;
-                            score *= 100;
-                        }
-			else score = 0.;
+			int j = sd.node_src;
+			if(matching_clouds_.find(j) == matching_clouds_.end()) {
+			  score = 0.;
+			}
+			else {
+			  pcl::PointCloud<pcl::PointNormal> matching_cloud;
+			  #pragma omp critical
+			  matching_cloud = matching_clouds_[j];
+			  ncm2.start();
+			  ScoreDetails sdetails;
+			  ncm.bruteForceSearch(matching_cloud, sdetails, true);
+			  ncm2.end(false);
+			  sd.score = sdetails.best_score;
+			  sd.x = sdetails.best_x;
+			  sd.y = sdetails.best_y;
+			  sd.t = sdetails.best_rot;
+			  ncm3.start();
+			  double ver_score = ncm.veriScore(matching_cloud, input_clouds, sd);
+			  ncm3.end(false);
+			  sd.score_ver = ver_score;
+			  
+			  score =  sd.score;
+			  if(score > sd.score_ver) score = sd.score_ver;
+			  sd.score = score * 100;
+			}
+			#pragma omp critical
+			  scores[unique_nodes_array[i]] = sd;
+		}
+		cout<<"NCM bruteForceSearch: "<<ncm2.total_<<endl;
+		cout<<"NCM ver_score: "<<ncm3.total_<<endl;
+		*/
+		
+		for(size_t i=0; i<unique_nodes_array.size(); i++)
+		{
+		  ScoreData sd;
+		  sd.node_dst = matching_node*skip_reading_;
+		  sd.node_src = unique_nodes_array[i]*skip_reading_;
+		  double score;
+		  
+		  bool data_retrieved = mysql_->getData(sd);
+		  
+		  if(data_retrieved) {
+		    //changed to arg_min from product
+		      score =  sd.score;
+		      if(score > sd.score_ver) score = sd.score_ver;
+		      score *= 100;
+		  }
+		  else score = 0.;
+		
+		  sd.score = score;
+		  scores[unique_nodes_array[i]] = sd;
+			
+		}
+		
+		sw2.end(print_sw);
+		fmutil::Stopwatch sw2a("sw2a");
+		for(size_t i=0; i<unique_nodes_array.size(); i++)
+		{
+			
       
 			//penalize the falseCL node
 			if(falseCL_node_.find(unique_nodes_array[i]) != falseCL_node_.end())
 			{
 				//score/= falseCL_node_[unique_nodes_array[i]];
 			}
-			nodes_match_heading_[unique_nodes_array[i]] = sd.t / 180. * M_PI;
-			if(score == 0.01) cout<<"Error, unexpected matching of nodes being evaluated: "
+			
+			nodes_match_heading_[unique_nodes_array[i]] = scores[unique_nodes_array[i]].t / 180. * M_PI;
+			if(scores[unique_nodes_array[i]].score == 0.01) cout<<"Error, unexpected matching of nodes being evaluated: "
 						<<matching_node<<":"<<unique_nodes_array[i]<<endl;
 			//cout<<matching_node/skip_reading_<<"-"<<unique_nodes_array[i]<<":"<<score<<"->"<<score2<<" ";
 			//penalize nearby particles
@@ -223,12 +306,15 @@ private:
 			double weight_score;//10	0.3
 			double a_t = 10;//5
 			double b_t = 0.3;//0.7
-			weight_score = score / (a_t*exp(-dist*b_t)+1);
-			if(weight_score < 0) weight_score = 0;
-			local_cached_score[unique_nodes_array[i]] = score;
-			local_cached_weight[unique_nodes_array[i]] =score;//weight_score;
+			//weight_score = score / (a_t*exp(-dist*b_t)+1);
+			//if(weight_score < 0) weight_score = 0;
+			
+			local_cached_score[unique_nodes_array[i]] = scores[unique_nodes_array[i]].score;
+			
+			local_cached_weight[unique_nodes_array[i]] =scores[unique_nodes_array[i]].score;//weight_score;
 		}
-		sw2.end(print_sw);
+		
+		sw2a.end(print_sw);
 		//cout<<endl;
 
 		fmutil::Stopwatch sw3("sw3");
@@ -354,11 +440,14 @@ private:
 			}
 		}
 		sw4.end(print_sw);
+		
+		sd_ = scores[max_neighbor_node_id];
+		cout<<"Max match details: "<<sd_.x<<" "<<sd_.y<<" "<<sd_.t<<" "<<sd_.score<<" "<<sd_.score_ver<<" "<<sd_.node_src<<" "<<sd_.node_dst<<endl;
 		//just a hack for not to activate a close loop when the graph is too small
 		if( matching_node < 100)
 				return -1;
-
-		if( max_neighbor_score >22. && max_neighbor_node_id != -1 && max_accu > 5)
+		
+		if( max_neighbor_score >30. && max_neighbor_node_id != -1 && max_accu > 3)
 		{
 				cout<<"close loop found at node "<<max_neighbor_node_id <<" with score "<<max_neighbor_score<<endl;
 				return max_neighbor_node_id;

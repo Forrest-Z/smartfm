@@ -13,8 +13,8 @@
 
 using namespace std;
 
-template< class typeparams >
-RRTstar::Vertex< typeparams >
+template< class T >
+RRTstar::Vertex< T >
 ::Vertex () {
 
   state = NULL;
@@ -26,8 +26,8 @@ RRTstar::Vertex< typeparams >
 }
 
 
-template< class typeparams >
-RRTstar::Vertex< typeparams >
+template< class T >
+RRTstar::Vertex< T >
 ::~Vertex () {
 
   if (state)
@@ -42,8 +42,8 @@ RRTstar::Vertex< typeparams >
 }
 
 
-template< class typeparams >
-RRTstar::Vertex< typeparams >
+template< class T >
+RRTstar::Vertex< T >
 ::Vertex(const vertex_t& vertexIn) {
 
   if (vertexIn.state)
@@ -68,8 +68,8 @@ RRTstar::Vertex< typeparams >
 // }
 
 
-template< class typeparams >
-RRTstar::Planner< typeparams >
+template< class T >
+RRTstar::Planner< T >
 ::Planner () {
 
   gamma = 1.0;
@@ -88,8 +88,8 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
-RRTstar::Planner< typeparams >
+template< class T >
+RRTstar::Planner< T >
 ::~Planner () {
 
   // Delete the kdtree structure
@@ -99,9 +99,9 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::insertIntoKdtree (vertex_t& vertexIn) {
 
   //state_t &s = vertexIn.getState();
@@ -115,9 +115,9 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::getNearestVertex (state_t& stateIn, vertex_t*& vertexPointerOut) {
 
   // Get the state key for the query state
@@ -142,9 +142,9 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::getNearVertices (state_t& stateIn, vector<vertex_t*>& vectorNearVerticesOut) {
 
   // Get the state key for the query state
@@ -182,9 +182,9 @@ RRTstar::Planner< typeparams >
   return 1;
 }
 
-template< class typeparams >
+template< class T >
 int
-  RRTstar::Planner< typeparams >
+  RRTstar::Planner< T >
 ::updateReachability () 
 {
   updateBranchCost(*root, 1);
@@ -197,9 +197,9 @@ int
 }
 
 
-template< class typeparams >
+template< class T >
 int
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::checkUpdateBestVertex (vertex_t& vertexIn) {
 
   if (system->isReachingTarget(vertexIn.getState()))
@@ -216,9 +216,9 @@ RRTstar::Planner< typeparams >
   return 1;
 }
 
-template< class typeparams >
-typename RRTstar::Planner<typeparams>::vertex_t*
-RRTstar::Planner< typeparams >
+template< class T >
+typename RRTstar::Planner<T>::vertex_t*
+RRTstar::Planner< T >
 ::insertTrajectory (vertex_t& vertexStartIn, trajectory_t& trajectoryIn) {
 
   // Check for admissible cost-to-go
@@ -245,9 +245,9 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::insertTrajectory (vertex_t& vertexStartIn, trajectory_t& trajectoryIn, vertex_t& vertexEndIn) {
 
   // Update the costs
@@ -272,9 +272,9 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::setSystem (system_t& systemIn) {
 
   system = &systemIn;
@@ -311,9 +311,9 @@ RRTstar::Planner< typeparams >
 
 
 
-template< class typeparams >
-typename RRTstar::Planner< typeparams >::vertex_t& 
-RRTstar::Planner< typeparams >
+template< class T >
+typename RRTstar::Planner< T >::vertex_t& 
+RRTstar::Planner< T >
 ::getRootVertex () {
 
   return *root;
@@ -321,9 +321,9 @@ RRTstar::Planner< typeparams >
 
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::initialize () {
 
   // If there is no system, then return failure
@@ -382,9 +382,9 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::setGamma (double gammaIn) {
 
   if (gammaIn < 0.0)
@@ -396,9 +396,9 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::setGoalSampleFrequency (double sampleFreqIn) {
 
   if ( (sampleFreqIn < 0.0) || (sampleFreqIn > 1.0) )
@@ -410,17 +410,17 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
-int compareVertexCostPairs (pair<typename RRTstar::Vertex<typeparams>*,double> i, 
-    pair<typename RRTstar::Vertex<typeparams>*,double> j) {
+template< class T >
+int compareVertexCostPairs (pair<typename RRTstar::Vertex<T>*,double> i, 
+    pair<typename RRTstar::Vertex<T>*,double> j) {
 
   return (i.second < j.second);
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::findBestParent (state_t& stateIn, vector<vertex_t*>& vectorNearVerticesIn,
     vertex_t*& vertexBest, trajectory_t& trajectoryOut, bool& exactConnection, list<float>& controlOut) {
 
@@ -442,7 +442,7 @@ RRTstar::Planner< typeparams >
   }
 
   // Sort vertices according to cost
-  sort (vectorVertexCostPairs.begin(), vectorVertexCostPairs.end(), compareVertexCostPairs<typeparams>);
+  sort (vectorVertexCostPairs.begin(), vectorVertexCostPairs.end(), compareVertexCostPairs<T>);
 
   // Try out each extension according to increasing cost
   i = 0;
@@ -470,9 +470,9 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::updateBranchCost (vertex_t& vertexIn, int depth) {
 
 
@@ -492,9 +492,9 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-  RRTstar::Planner< typeparams >
+  RRTstar::Planner< T >
 ::markCost (vertex_t& vertexIn)
 {
   vertexIn.costFromRoot = -1.0;
@@ -509,9 +509,9 @@ int
   return 1;
 }
 
-template< class typeparams >
+template< class T >
 int 
-  RRTstar::Planner< typeparams >
+  RRTstar::Planner< T >
 ::checkTrajectory (vertex_t& vertexIn) 
 {
   vertex_t &parent = vertexIn.getParent();
@@ -537,9 +537,9 @@ int
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-  RRTstar::Planner< typeparams >
+  RRTstar::Planner< T >
 ::checkTree()
 {
   if( root->children.size() > 0)
@@ -605,9 +605,9 @@ int
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::rewireVertices (vertex_t& vertexNew, vector<vertex_t*>& vectorNearVertices) {
 
 
@@ -644,9 +644,9 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::iteration () {
 
   // 1. Sample a new state
@@ -702,9 +702,9 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-  RRTstar::Planner< typeparams >
+  RRTstar::Planner< T >
 ::findDescendantVertices (vertex_t* vertexIn) 
 {
   vertexIn->costFromRoot = (-1.0) * vertexIn->costFromRoot - 1.0;  // Mark the node so that we can understand 
@@ -722,9 +722,9 @@ int
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::recomputeCost (vertex_t* vertexIn) {
 
 
@@ -752,9 +752,9 @@ RRTstar::Planner< typeparams >
 }
 
 // note trajret, controlret is always only appended
-template< class typeparams >
+template< class T >
 int 
-  RRTstar::Planner< typeparams >
+  RRTstar::Planner< T >
 ::switchRoot (double distanceIn, list<double*> &trajret, list<float> &controlret) 
 {
   //cout<<"calling switch_root"<<endl;
@@ -988,9 +988,9 @@ int
 
 
 
-template< class typeparams >
+template< class T >
 int 
-RRTstar::Planner< typeparams >
+RRTstar::Planner< T >
 ::getBestTrajectory (list<double*>& trajectoryOut, list<float> &controlOut ) {
 
   if (lowerBoundVertex == NULL)
@@ -1051,9 +1051,9 @@ RRTstar::Planner< typeparams >
 }
 
 
-template< class typeparams >
+template< class T >
 int 
-  RRTstar::Planner< typeparams >
+  RRTstar::Planner< T >
 ::isSafeTrajectory(list<double*>& trajectory)
 {
   int max_obs_check = 4;
@@ -1073,9 +1073,9 @@ int
 }
 
 
-template< class typeparams >
+template< class T >
 double
-  RRTstar::Planner< typeparams >
+  RRTstar::Planner< T >
 ::getTrajectoryLength(list<double*>& trajectory)
 {
   double len = 0;
@@ -1096,4 +1096,10 @@ double
   return len;
 }
 
+// need prototype templates so that gcc understands the
+// template with which these classes will be called while
+// instantiation. this is required to remove undefined
+// references while linking
+template class RRTstar::Vertex<DubinsCar>;
+template class RRTstar::Planner<DubinsCar>;
 #endif
