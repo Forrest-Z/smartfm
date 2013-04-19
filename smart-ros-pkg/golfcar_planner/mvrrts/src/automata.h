@@ -242,6 +242,12 @@ struct Level_of_US {
     // Return reference to this object;
     return *this;
   }
+  const Level_of_US operator+(const Level_of_US& other) const
+  {
+    Level_of_US toret = *this;
+    toret += other;
+    return toret;
+  }
   /** Compares two levels of unsafety. 
    * @param rhs           Right-hand side level of unsafety. 
    * @return              True if LHS level of unsafety is smaller that 
