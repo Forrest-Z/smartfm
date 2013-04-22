@@ -396,5 +396,4 @@ double MVSystem::extend_dubins_spheres(
   }
 
   return total_distance_travel;
-
 }
