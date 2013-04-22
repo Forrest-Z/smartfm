@@ -26,6 +26,11 @@ class MVSystem : public System
   public:
 
     MVSystem() : System() {};
+    ~MVSystem()
+    {
+      for(list<mvregion*>::iterator i=labeled_regions.begin(); i != labeled_regions.end(); i++)
+        delete *i;
+    }
     
     list<mvregion*> labeled_regions;
     Subset_of_Sigma label_state( double stateIn[3]);
@@ -38,8 +43,6 @@ class MVSystem : public System
     double* &end_state, 
     list<double*>* trajectory, 
     list<float>& control, double turning_radius);
-
-
 };
 
 typedef struct{

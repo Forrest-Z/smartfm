@@ -87,8 +87,16 @@ System::~System () {
 
 int System::getStateKey (State &stateIn, double *stateKey) {
 
+  double tmp[3] = {0};
+  for(int i=0; i<3; i++)
+    tmp[i] = stateIn.x[i] - map_origin[i];
+  while(tmp[2] < -M_PI)
+    tmp[2] += 2.0*M_PI;
+  while(tmp[2] > M_PI)
+    tmp[2] -= 2.0*M_PI;
+
   for (int i = 0; i < 3; i++) 
-    stateKey[i] =  stateIn.x[i] / regionOperating.size[i];
+    stateKey[i] =  tmp[i] / regionOperating.size[i];
 
   return 1;
 }

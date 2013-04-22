@@ -128,12 +128,12 @@ Planner::Planner()
   is_updating_committed_trajectory = false;
   max_length_committed_trajectory = 15.0;
 
-  planner_dt = 0.5;
+  planner_dt = 0.4;
   planner_timer = nh.createTimer(ros::Duration(planner_dt), &Planner::on_planner_timer, this);
   rrts_status_timer = nh.createTimer(ros::Duration(0.5), &Planner::send_rrts_status, this);
   //obs_check_timer = nh.createTimer(ros::Duration(0.3), &Planner::obs_check, this);
 
-  tree_pub_timer = nh.createTimer(ros::Duration(0.3), &Planner::on_tree_pub_timer, this);
+  tree_pub_timer = nh.createTimer(ros::Duration(1.0), &Planner::on_tree_pub_timer, this);
   committed_trajectory_pub_timer = nh.createTimer(ros::Duration(0.3), &Planner::on_committed_trajectory_pub_timer, this);
 
   committed_trajectory_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 2);
@@ -726,7 +726,7 @@ void Planner::publish_committed_trajectory()
 
     committed_control_iter++;
   }
-  cout<<"pnc_size: "<< committed_trajectory.size() << endl;
+  //cout<<"pnc_size: "<< committed_trajectory.size() << endl;
 
   committed_trajectory_pub.publish(traj_msg);
 

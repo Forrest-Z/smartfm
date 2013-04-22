@@ -1,0 +1,58 @@
+This document details the procedure to install ros in a linux environment and
+work with the code for the autonomous golfcart.
+
+Overview
+=======
+
+We use Robot Operating System (ros - www.ros.org/wiki) for development on the
+golfcart. It is set of algorithms and drivers for robots along with a 
+communications framework to enable easy development of software typically
+required for robots, like localization, motion-planning, perception etc. It also
+consists of a number of packages for simulation and visualization. We use
+the "fuerte" version of ros for our development.
+
+The following guide assumes Ubuntu 12.04 (LTS) as the development system.
+Guidelines for other linux distributions differ only in step 1. It is possible
+(though not recommended) to use ros under Mac Os, more information can be found
+at http://www.ros.org/wiki/fuerte/Installation/OSX/Homebrew/Source .
+
+Requirements
+============
+
+1.  Install the desktop-full version of fuerte using guidelines from
+    http://www.ros.org/wiki/fuerte/Installation/Ubuntu
+
+2.  Checkout a version of the golfcar code base using the command
+    "git clone nissan@ares.lids.mit.edu:/home/git/smartfm.git"
+
+3.  Add the following line to the end of ~/.bashrc
+    "export ROS_PACKAGE_PATH=/home/code/smartfm:$ROS_PACKAGE_PATH"
+    where "/home/code/smartfm" is the location of the repository
+    checked out in step 2.
+
+Procedure
+=========
+
+1.  Run
+    "rospack profile"
+    to profile all available packages (in particular the smartfm repository)
+
+2.  The following commands can be used to build the RRT* simulation
+    a.  Build packages rrts, golfcar_ppc, map_server_ext, speed_advisor, 
+        e,g, "rosmake rrts"
+    b.  Launch main simulation 
+        "roslaunch local_map_ext simulation.launch"
+    c.  Launch packages rrts, golfcar_ppc, speed_advisor as follows,
+        "rosrun rrts rrts_node"
+        "rosrun golfcar_ppc golfcar_pp"
+        "rosrun speed_advisor speed_advisor"
+    d.  Launch visualizer as follows
+        "roscd local_map_ext"
+        "rosrun rviz rviz -d rvizconfig.vcg"
+    e.  Click on "2D Nav Goal" button in Rviz to give a goal to the golfcar
+
+
+Bugs
+====
+
+Please email Pratik C. <pratik.ac@gmail.com>

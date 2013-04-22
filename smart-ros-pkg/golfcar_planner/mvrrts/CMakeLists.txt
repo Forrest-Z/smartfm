@@ -7,7 +7,7 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE RelWithDebInfo)
+set(ROS_BUILD_TYPE Debug)
 
 rosbuild_init()
 
@@ -26,5 +26,10 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
-rosbuild_add_executable(mvrrts src/mvtest.cpp src/mvrrts.cpp src/mvdubins.cpp src/automata.cpp)
-#target_link_libraries(example ${PROJECT_NAME})
+#include($ENV{ROS_ROOT}/core/rosbuild/FindPkgConfig.cmake)
+#pkg_check_modules(BOT2 REQUIRED bot2-lcmgl-client bot2-core bot2-vis bot2-lcmgl-renderer)
+#include_directories(${BOT2_INCLUDE_DIRS})
+#link_directories(${BOT2_LIBRARY_DIRS})
+#target_link_libraries(mvrrts ${BOT2_LIBRARIES})
+
+rosbuild_add_executable(mvrrts_node src/mvrrts_node.cpp src/mvrrts.cpp src/mvdubins.cpp src/automata.cpp)

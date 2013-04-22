@@ -22,8 +22,8 @@
   <depend package="pnc_msgs"/>
   
   <export>
-    <!--<cpp cflags="-I${prefix}/src/" lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lrrts"/> -->
-    <cpp cflags="-I${prefix}/src/" lflags="-L${prefix}/lib -lrrts"/>
+    <cpp cflags="-I${prefix}/src/" lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lrrts"/>
+    <!-- <cpp cflags="-I${prefix}/src/" lflags="-L${prefix}/lib -lrrts"/> -->
   </export>
   
 </package>
