@@ -151,6 +151,9 @@ MVRRTstar::Planner< T >
   // Get the state key for the query state
   double *stateKey = new double[numDimensions];
   system->getStateKey (stateIn, stateKey);
+  //cout<<"regionOperating: "<< system->regionOperating.size[0]<<" "<<
+  //  system->regionOperating.size[1]<<" "<<
+  //  system->regionOperating.size[2]<<endl;
 
   // Compute the ball radius
   double ballRadius = gamma * pow( log((double)(numVertices + 1.0))/((double)(numVertices + 1.0)), 1.0/((double)numDimensions) );
@@ -420,7 +423,7 @@ MVRRTstar::Planner< T >
   // Compute the cost of extension for each near vertex
   int numNearVertices = vectorNearVerticesIn.size();
 
-  vector< pair<vertex_t*,Level_of_US*> > vertexCostPairs(numNearVertices);
+  vector< pair<vertex_t*,Level_of_US*> > vertexCostPairs;
 
   int i = 0;
   for (typename vector<vertex_t*>::iterator iter = vectorNearVerticesIn.begin(); iter != vectorNearVerticesIn.end(); iter++) 
@@ -434,9 +437,7 @@ MVRRTstar::Planner< T >
     if((traj_cost > 0) && (traj_cost < DBL_MAX/2.0))
     {
       *candidate_lus += abar->weight(transition_label(vertex_label, stateIn_label, traj_cost));
-      
-      vertexCostPairs[i].first = v;
-      vertexCostPairs[i].second = candidate_lus;
+      vertexCostPairs.push_back(make_pair(v, candidate_lus));
       i++;
     }
   }
@@ -454,7 +455,8 @@ MVRRTstar::Planner< T >
 
     // Extend the current vertex towards stateIn (and this time check for collision with obstacles)
     exactConnection = false;
-    if (system->extendTo(*(vertexCurr->state), stateIn, trajectoryOut, exactConnection, controlOut, true) > 0) {
+    if (system->extendTo(*(vertexCurr->state), stateIn, trajectoryOut, exactConnection, controlOut, true) > 0) 
+    {
       vertexBest = vertexCurr;
       connectionEstablished = true;
       break;
@@ -677,7 +679,7 @@ MVRRTstar::Planner< T >
   // 2. Compute the set of all near vertices
   vector<vertex_t*> vectorNearVertices;
   getNearVertices (stateRandom, vectorNearVertices);
-
+  
 
   // 3. Find the best parent and extend from that parent
   vertex_t* vertexParent = NULL;  
@@ -693,22 +695,23 @@ MVRRTstar::Planner< T >
     if (system->extendTo(vertexParent->getState(), stateRandom, trajectory, exactConnection, control, true) <= 0)
       return 0;
   }
-  else {
-
+  else 
+  {
     // 3.b Extend the best parent within the near vertices
     if (findBestParent (stateRandom, vectorNearVertices, vertexParent, trajectory, exactConnection, control) <= 0) 
+    {
       return 0;
+    }
   }
 
   // 3.c add the trajectory from the best parent to the tree
   vertex_t* vertexNew = insertTrajectory (*vertexParent, trajectory);
   if (vertexNew == NULL) 
     return 0;
-
+  
   // 4. Rewire the tree  
   if (vectorNearVertices.size() > 0) 
     rewireVertices (*vertexNew, vectorNearVertices);
-
 
   return 1;
 }

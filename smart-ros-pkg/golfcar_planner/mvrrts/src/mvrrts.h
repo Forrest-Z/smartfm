@@ -103,8 +103,8 @@ namespace MVRRTstar{
         list<vertex_t*> listVertices;
         int numVertices;
   
-        Auto_AB *abar;
-        system_t *system;
+        Auto_AB* abar;
+        system_t* system;
 
         Planner ();
         ~Planner ();

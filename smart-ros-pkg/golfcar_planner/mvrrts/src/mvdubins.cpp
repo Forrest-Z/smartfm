@@ -2,40 +2,18 @@
 
 Subset_of_Sigma MVSystem::label_state( double stateIn[3]) 
 {
-  bool is_inside;
   Subset_of_Sigma label_of_state;
-
-  float myth = stateIn[2];
-  float myvec[2] = {cos(myth), sin(myth)};
-
-  for( list<mvregion*>::iterator i = labeled_regions.begin(); 
-      i!= labeled_regions.end(); i++) 
+  double zl[2] = {0};
+  // yaw in local frame
+  double yl = 0;
+  transform_map_to_local_map(stateIn, zl[0], zl[1], yl);
+  int map_index = -1;
+  if(get_cell_index(zl[0], zl[1], map_index))
   {
-    mvregion& reg = **i;
-    is_inside = true;
-
-    for( UCH j = 0; j < 2; j++) {
-      if( (stateIn[j] > (reg.center[j] + reg.size[j]/2.0)) || 
-          (stateIn[j] < (reg.center[j] - reg.size[j]/2.0)) ) {
-        is_inside = false; 
-        break;
-      }
-    }
-
-    if (is_inside) {
-      label_of_state.insert_Subset(reg.label);
-      if ( reg.has_dir ) {
-        float regth = reg.center[2];
-        float regvec[2] = {cos(regth), sin(regth)};
-        // If dot product is positive, direction is correct
-        if( (myvec[0]*regvec[0] + myvec[1]*regvec[1]) > 0) {
-          label_of_state.insert_AP(GOOD_DRCT);
-        }
-      }
-    }
-
+    int val = map.data[map_index];
+    if(val == 87)
+      label_of_state.insert_AP(GOOD_DRCT);
   }
-
   return label_of_state;
 }
 

@@ -428,16 +428,15 @@ RRTstar::Planner< T >
   // Compute the cost of extension for each near vertex
   int numNearVertices = vectorNearVerticesIn.size();
 
-  vector< pair<vertex_t*,double> > vectorVertexCostPairs(numNearVertices);
+  vector< pair<vertex_t*,double> > vectorVertexCostPairs;
 
   int i = 0;
   for (typename vector<vertex_t*>::iterator iter = vectorNearVerticesIn.begin(); iter != vectorNearVerticesIn.end(); iter++) 
   {
 
-    vectorVertexCostPairs[i].first = *iter;
     exactConnection = false;
     double trajCost = system->evaluateExtensionCost ( *((*iter)->state), stateIn, exactConnection);
-    vectorVertexCostPairs[i].second = (*iter)->costFromRoot + trajCost;
+    vectorVertexCostPairs.push_back(make_pair(*iter, (*iter)->costFromRoot + trajCost));
     i++;
   }
 

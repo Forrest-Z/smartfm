@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include "typedefs_int.h"
 #include "defs_driving.h"
+#include <cmath>
 
 /** 
  * Subset of atomic propositions. 
@@ -383,4 +384,7 @@ class Auto_AB {
 Timed_Letter transition_label( const Subset_of_Sigma s_1, 
                                 const Subset_of_Sigma s_2, 
                                 const double duration);
+
+double norm_lus(Level_of_US& lus1, Level_of_US& lus2);
+
 #endif	/* AUTOMATA_SAFETY_HPP */

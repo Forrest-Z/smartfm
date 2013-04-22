@@ -36,3 +36,12 @@ Timed_Letter transition_label( const Subset_of_Sigma s_1,
     
     return Timed_Letter( label, (float) duration);
 }
+
+double norm_lus(Level_of_US& lus1, Level_of_US& lus2)
+{
+  double diff = 0;
+  for(int i=0; i< NUM_OF_RULES; i++)
+    diff = diff + pow(2.0,(double)i)*fabs(lus1.level_of_US[i] - lus2.level_of_US[i]);
+  diff += fabs(lus1.metric_cost - lus2.metric_cost);
+  return diff;
+}
