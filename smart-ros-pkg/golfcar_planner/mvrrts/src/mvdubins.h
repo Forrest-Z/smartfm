@@ -25,7 +25,7 @@ class MVSystem : public System
 {
   public:
 
-    MVSystem() : System() {};
+    MVSystem() : System(){};
     ~MVSystem()
     {
       for(list<mvregion*>::iterator i=labeled_regions.begin(); i != labeled_regions.end(); i++)

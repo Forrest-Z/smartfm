@@ -20,26 +20,27 @@
 
 #include <pnc_msgs/local_map.h>
 #include <rrts/rrts_status.h>
-#include "dubins_car.h"
-#include "rrts.h"
+
+#include "mvdubins.h"
+#include "mvrrts.h"
 
 using namespace std;
 
-typedef DubinsCar::StateType state_t;
-typedef DubinsCar::TrajectoryType trajectory_t;
-typedef DubinsCar::SystemType system_t;
+typedef MVDubinsCar::StateType state_t;
+typedef MVDubinsCar::TrajectoryType trajectory_t;
+typedef MVDubinsCar::SystemType system_t;
 
-typedef RRTstar::Vertex <DubinsCar> vertex_t;
-typedef RRTstar::Planner <DubinsCar> planner_t;
+typedef MVRRTstar::Vertex <MVDubinsCar> vertex_t;
+typedef MVRRTstar::Planner <MVDubinsCar> planner_t;
 
-class Planner
+class Planner_node
 {
   public:
-    Planner();
-    ~Planner();
+    Planner_node();
+    ~Planner_node();
 
     system_t system;
-    planner_t rrts;
+    planner_t mvrrts;
     double planner_dt;
 
     geometry_msgs::Point32 goal;
@@ -49,6 +50,9 @@ class Planner
     geometry_msgs::Point32 car_position;
     tf::TransformListener tf_;
     int get_robot_pose();
+
+    Auto_AB abar;
+    int setup_rules();
 
     double max_length_committed_trajectory;
     bool is_updating_committed_trajectory;
@@ -73,10 +77,10 @@ class Planner
 
 #define NUM_STATUS  (6)
     enum status_def{rinc=0, ginc, ginf, ring, rnr, swr};
-    bool rrts_status[NUM_STATUS];
+    bool mvrrts_status[NUM_STATUS];
 
-    ros::Publisher rrts_status_pub, obs_check_pub;
-    ros::Timer rrts_status_timer, obs_check_timer;
+    ros::Publisher mvrrts_status_pub, obs_check_pub;
+    ros::Timer mvrrts_status_timer, obs_check_timer;
 
     ros::Publisher tree_pub;
     ros::Publisher vertex_pub;
@@ -90,7 +94,7 @@ class Planner
 
     // functions
     void on_goal(const geometry_msgs::PoseStamped::ConstPtr p);
-    void send_rrts_status(const ros::TimerEvent &e);
+    void send_mvrrts_status(const ros::TimerEvent &e);
     void on_map(const pnc_msgs::local_map::ConstPtr lm);
     void on_committed_trajectory_pub_timer(const ros::TimerEvent &e);
     void obs_check();
@@ -98,7 +102,7 @@ class Planner
     bool root_in_goal();
     bool is_robot_in_collision();
     void change_goal_region();
-    void setup_rrts();
+    void setup_mvrrts();
     void on_planner_timer(const ros::TimerEvent &e);
     int get_plan();
     float dist(float x1, float y1, float z1, float x2, float y2, float z2)
@@ -110,7 +114,7 @@ class Planner
     void on_tree_pub_timer(const ros::TimerEvent &e);
 };
 
-Planner::Planner()
+Planner_node::Planner_node()
 {
   srand(0);
 
@@ -131,13 +135,13 @@ Planner::Planner()
   is_updating_rrt_tree = false;
   max_length_committed_trajectory = 15.0;
 
-  planner_dt = 0.4;
-  planner_timer = nh.createTimer(ros::Duration(planner_dt), &Planner::on_planner_timer, this);
-  rrts_status_timer = nh.createTimer(ros::Duration(0.5), &Planner::send_rrts_status, this);
-  //obs_check_timer = nh.createTimer(ros::Duration(0.3), &Planner::obs_check, this);
+  planner_dt = 0.5;
+  planner_timer = nh.createTimer(ros::Duration(planner_dt), &Planner_node::on_planner_timer, this);
+  mvrrts_status_timer = nh.createTimer(ros::Duration(0.5), &Planner_node::send_mvrrts_status, this);
+  //obs_check_timer = nh.createTimer(ros::Duration(0.3), &Planner_node::obs_check, this);
 
-  tree_pub_timer = nh.createTimer(ros::Duration(1.0), &Planner::on_tree_pub_timer, this);
-  committed_trajectory_pub_timer = nh.createTimer(ros::Duration(0.3), &Planner::on_committed_trajectory_pub_timer, this);
+  tree_pub_timer = nh.createTimer(ros::Duration(0.3), &Planner_node::on_tree_pub_timer, this);
+  committed_trajectory_pub_timer = nh.createTimer(ros::Duration(0.3), &Planner_node::on_committed_trajectory_pub_timer, this);
 
   committed_trajectory_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 2);
   committed_trajectory_view_pub = nh.advertise<nav_msgs::Path>("pncview_trajectory", 2);
@@ -145,25 +149,27 @@ Planner::Planner()
   vertex_pub = nh.advertise<sensor_msgs::PointCloud>("rrts_vertex", 2);
   control_trajectory_pub = nh.advertise<std_msgs::Int16MultiArray>("control_trajectory_msg", 2);	
   obs_check_pub = nh.advertise<sensor_msgs::PointCloud>("obs_check", 2);
-  map_sub = nh.subscribe("local_map", 2, &Planner::on_map, this);
-  goal_sub = nh.subscribe("pnc_nextpose", 2, &Planner::on_goal, this);
-  rrts_status_pub = nh.advertise<rrts::rrts_status>("rrts_status", 2);
+  map_sub = nh.subscribe("local_map", 2, &Planner_node::on_map, this);
+  goal_sub = nh.subscribe("pnc_nextpose", 2, &Planner_node::on_goal, this);
+  mvrrts_status_pub = nh.advertise<rrts::rrts_status>("rrts_status", 2);
 
   is_first_goal = true;
   is_first_map = true;
   for(int i=0; i<NUM_STATUS; i++)
-    rrts_status[i] = false;
+    mvrrts_status[i] = false;
+
+  setup_rules();
 
   ros::spin();
 }
 
-Planner::~Planner()
+Planner_node::~Planner_node()
 {
   clear_committed_trajectory();
 }
 
 
-void Planner::obs_check()
+void Planner_node::obs_check()
 {
 #if 0
   cout<<"inside obs_check"<<endl;
@@ -185,7 +191,7 @@ void Planner::obs_check()
       {
         tmp[0] = x;
         tmp[1] = y;
-        if(rrts.system->IsInCollision(tmp))
+        if(mvrrts.system->IsInCollision(tmp))
         {
           geometry_msgs::Point32 p;
           p.x = tmp[0];
@@ -200,7 +206,31 @@ void Planner::obs_check()
   cout<<"End of obs_check"<<endl;
 #endif
 }
-int Planner::clear_committed_trajectory()
+
+int Planner_node::setup_rules()
+{
+  Auto_SS_SP* safe_rule = NULL;
+
+  // psi_0,0: "DO NOT DRIVE ON THE SIDEWALK"
+  safe_rule = new Auto_SS_SP( false, SIDE_WALK, 0.0, 1.0);
+  //abar.insert_Auto( safe_rule, 0, 0);
+
+  // psi_1,0: "DO NOT CROSS THE BOLD LINE"
+  safe_rule = new Auto_SS_SP( false, CHNG_BOLD, 1.0, 0.0);
+  //abar.insert_Auto( safe_rule, 1, 0);
+
+  // psy_2,0: "ALWAYS DRIVE ON THE CORRECT DIRECTION"
+  safe_rule = new Auto_SS_SP(  true, GOOD_DRCT, 0.0, 1.0);
+  abar.insert_Auto( safe_rule, 2, 0);
+
+  // psi_2,1: "DO NOT CROSS DOTTED LINES"
+  safe_rule = new Auto_SS_SP( false, CHNG_LANE, 10.0, 0.0);
+  //abar.insert_Auto( safe_rule, 2, 1);
+
+  return 0;
+}
+
+int Planner_node::clear_committed_trajectory()
 {
   is_updating_committed_trajectory = true;
   for(list<double*>::iterator i=committed_trajectory.begin(); i!=committed_trajectory.end(); i++)
@@ -224,7 +254,7 @@ int Planner::clear_committed_trajectory()
 }
 
 // keep doing pop_front on the committed_trajectory until length
-int Planner::clear_committed_trajectory_length()
+int Planner_node::clear_committed_trajectory_length()
 {
   if(get_robot_pose() == 1)
     cout<<"robot_pose failed"<<endl;
@@ -266,25 +296,25 @@ int Planner::clear_committed_trajectory_length()
   return 0;
 }
 
-void Planner::send_rrts_status(const ros::TimerEvent &e)
+void Planner_node::send_mvrrts_status(const ros::TimerEvent &e)
 {
   rrts::rrts_status smsg;
   smsg.header.stamp = ros::Time::now();
-  smsg.robot_in_collision = rrts_status[rinc];
-  smsg.goal_in_collision = rrts_status[ginc];
-  smsg.goal_infeasible = rrts_status[ginf];
-  smsg.root_in_goal = rrts_status[ring];
-  smsg.robot_near_root = rrts_status[rnr];
+  smsg.robot_in_collision = mvrrts_status[rinc];
+  smsg.goal_in_collision = mvrrts_status[ginc];
+  smsg.goal_infeasible = mvrrts_status[ginf];
+  smsg.root_in_goal = mvrrts_status[ring];
+  smsg.robot_near_root = mvrrts_status[rnr];
 
-  smsg.switched_root = rrts_status[swr];
+  smsg.switched_root = mvrrts_status[swr];
 
-  rrts_status_pub.publish(smsg);
+  mvrrts_status_pub.publish(smsg);
 
-  rrts_status[swr] = false;
+  mvrrts_status[swr] = false;
 }
 
 // p is (x,y,yaw) in map coords
-void Planner::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
+void Planner_node::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
 {
   double roll=0, pitch=0, yaw=0;
   tf::Quaternion q;
@@ -304,13 +334,13 @@ void Planner::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
       car_position.z << endl;
     if(is_first_map == false)
     {
-      setup_rrts();
-      if(rrts.system->IsInCollision(goal_state, false))
+      setup_mvrrts();
+      if(mvrrts.system->IsInCollision(goal_state, false))
       {
         cout<<"goal in collision: stopping"<<endl;
-        rrts_status[ginc] = true;
+        mvrrts_status[ginc] = true;
       }
-      rrts_status[ginc] = false;
+      mvrrts_status[ginc] = false;
     }
   }
   // new goal than previous one, change sampling region
@@ -323,19 +353,19 @@ void Planner::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
       goal.z = yaw;
       double goal_state[3] = {goal.x, goal.y, goal.z};
       cout<<"got goal: "<< goal.x<<" "<<goal.y<<" "<<goal.z<<endl;
-      if(rrts.system->IsInCollision(goal_state, false))
+      if(mvrrts.system->IsInCollision(goal_state, false))
       {
         cout<<"goal in collision: sending collision"<<endl;
-        rrts_status[ginc] = true;
+        mvrrts_status[ginc] = true;
       }
       change_goal_region();
-      rrts_status[ginc] = false;
+      mvrrts_status[ginc] = false;
     }
   }
   //ROS_INFO("got goal: %f %f %f", goal.x, goal.y, goal.z);
 }
 
-int Planner::get_robot_pose()
+int Planner_node::get_robot_pose()
 {
   tf::Stamped<tf::Pose> map_pose;
   map_pose.setIdentity();
@@ -386,7 +416,7 @@ int Planner::get_robot_pose()
     /*
        if( (is_first_map==false) && (is_first_goal==false))
        {
-       if(rrts.system->IsInCollision(system.map_origin))
+       if(mvrrts.system->IsInCollision(system.map_origin))
        {
        cout<<"current car position in collision abort"<<endl;
        exit(0);
@@ -398,7 +428,7 @@ int Planner::get_robot_pose()
   return 1;
 }
 
-void Planner::on_map(const pnc_msgs::local_map::ConstPtr lm)
+void Planner_node::on_map(const pnc_msgs::local_map::ConstPtr lm)
 {
   //cout<<"called on_map"<<endl;
   // 1. copy the incoming grid into map
@@ -416,7 +446,7 @@ void Planner::on_map(const pnc_msgs::local_map::ConstPtr lm)
     cout<<"got first map"<<endl;
     if(is_first_goal == false)
     {
-      setup_rrts();
+      setup_mvrrts();
     }
   }
   if(got_pose)
@@ -427,17 +457,17 @@ void Planner::on_map(const pnc_msgs::local_map::ConstPtr lm)
   }
 }
 
-bool Planner::root_in_goal()
+bool Planner_node::root_in_goal()
 {
-  vertex_t &rootVertex = rrts.getRootVertex();
+  vertex_t &rootVertex = mvrrts.getRootVertex();
   state_t &curr_state = rootVertex.getState();
   bool res = system.isReachingTarget(curr_state); 
-  rrts_status[ring] = res;
+  mvrrts_status[ring] = res;
   return res;
 }
 
 
-void Planner::change_goal_region()
+void Planner_node::change_goal_region()
 {
   system.regionGoal.center[0] = (double)goal.x;
   system.regionGoal.center[1] = (double)goal.y;
@@ -448,16 +478,16 @@ void Planner::change_goal_region()
   //cout<<"region_goal: "<< system.regionGoal.center[0]<<" "<<system.regionGoal.center[1]<<" "<<system.regionGoal.center[2]<<endl;
 }
 
-void Planner::setup_rrts()
+void Planner_node::setup_mvrrts()
 {
-  //cout<<"called setup_rrts"<<endl;
+  cout<<"called setup_mvrrts"<<endl;
 
   // get car_position
   if(get_robot_pose() == 1)
     cout<<"robot_pose failed"<<endl;
 
-  rrts.setSystem(system);
-  vertex_t &root = rrts.getRootVertex();  
+  mvrrts.setSystem(system, abar);
+  vertex_t &root = mvrrts.getRootVertex();  
   state_t &rootState = root.getState();
   rootState[0] = car_position.x;
   rootState[1] = car_position.y;
@@ -484,41 +514,41 @@ void Planner::setup_rrts()
   change_goal_region();
 
   // Set planner parameters
-  rrts.setGamma (2.5);
-  rrts.setGoalSampleFrequency (0.2);
+  mvrrts.setGamma (2.5);
+  mvrrts.setGoalSampleFrequency (0.1);
 
   // Initialize the planner
-  rrts.initialize ();
-  //cout<<"setup_rrts complete"<<endl;
+  mvrrts.initialize ();
+  //cout<<"setup_mvrrts complete"<<endl;
 
   // planner parameters about the first committed trajectory
   should_send_new_committed_trajectory = false;
   is_first_committed_trajectory = true;
 }
 
-bool Planner::is_robot_in_collision()
+bool Planner_node::is_robot_in_collision()
 {
   if((!is_first_map) && (!is_first_goal))
   {
     get_robot_pose();
     double tmp[3] = {car_position.x, car_position.y, car_position.z};
-    bool res = rrts.system->IsInCollision(tmp);
-    rrts_status[rinc] = res;
+    bool res = mvrrts.system->IsInCollision(tmp);
+    mvrrts_status[rinc] = res;
     return res;
   }
   else
   {
-    rrts_status[rinc] = false;
+    mvrrts_status[rinc] = false;
     return false;
   }
 }
 
-int Planner::get_plan()
+int Planner_node::get_plan()
 {
+  // hack semaphores to prevent publish_tree being called while checkTree is being executed
   is_updating_committed_trajectory = true;
   is_updating_rrt_tree = true;
-  //rrts.checkTree();
-  rrts.lazyCheckTree();
+  mvrrts.lazyCheckTree();
   is_updating_committed_trajectory = false;
   is_updating_rrt_tree = false;
 
@@ -533,54 +563,65 @@ int Planner::get_plan()
     clear_committed_trajectory();
     return 1;
   }
-  //cout<<"after check_tree num_vert: "<< rrts.numVertices<<endl;
+  //cout<<"after check_tree num_vert: "<< mvrrts.numVertices<<endl;
   bool found_best_path = false;
-  double best_cost=rrts.getBestVertexCost();
-  double prev_best_cost=best_cost;
+
+  Level_of_US best_lus = mvrrts.getBestVertexLUS();
+  Level_of_US prev_best_lus = best_lus;
+
   int samples_this_loop = 0;
-  vertex_t &root_vertex = rrts.getRootVertex();
+  vertex_t &root_vertex = mvrrts.getRootVertex();
   state_t &root_state = root_vertex.getState();
   double root_goal_distance = dist(root_state[0], root_state[1],
-      0., rrts.system->regionGoal.center[0], rrts.system->regionGoal.center[1], 0 );
+      0., mvrrts.system->regionGoal.center[0], mvrrts.system->regionGoal.center[1], 0 );
 
   ros::Time start_current_call_back = ros::Time::now();
-  cout<<"s: "<< rrts.numVertices<<" -- "<<best_cost;
+  cout<<"s: "<< mvrrts.numVertices<<" -- ";
   flush(cout);
-  while((!found_best_path) || (samples_this_loop < 5))
+  best_lus.print();
+
+  while((!found_best_path) || (samples_this_loop < 10))
   {
-    samples_this_loop += rrts.iteration();
-    best_cost = rrts.getBestVertexCost();
-    if(best_cost < 500.0)
+    samples_this_loop += mvrrts.iteration();
+    best_lus = mvrrts.getBestVertexLUS();
+    if(best_lus.metric_cost < 500.0)
     {
-      if( (fabs(prev_best_cost - best_cost) < 0.05) && (rrts.numVertices > 10))
+      if( (norm_lus(best_lus, prev_best_lus) < 0.05) && (mvrrts.numVertices > 10))
         found_best_path = true;
     }
-    //cout<<"n: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
-
+    //cout<< norm_lus(best_lus, prev_best_lus) << endl;
+    /*
+       cout<<"n: "<< mvrrts.numVertices<<" -- ";
+       flush(cout);
+       best_lus.print();
+       */
     if(samples_this_loop %5 == 0)
-      prev_best_cost = best_cost;
+      prev_best_lus = best_lus;
 
     ros::Duration dt = ros::Time::now() - start_current_call_back;
     // give some time to the following code as well
-    if(dt.toSec() > 0.6*planner_dt)
+    if(dt.toSec() > 0.8*planner_dt)
       break;
   }
-  cout<<" e: "<< rrts.numVertices<<" -- "<< best_cost<<endl;
+  cout<<"e: "<< mvrrts.numVertices<<" -- ";
+  best_lus.print();
+  flush(cout);
+
   if(found_best_path)
   {
-    rrts_status[ginf] = false;
+    mvrrts_status[ginf] = false;
     if( should_send_new_committed_trajectory || is_first_committed_trajectory )
     {
       is_updating_committed_trajectory = true;
       is_updating_rrt_tree = true;
-      if(rrts.switchRoot(max_length_committed_trajectory, committed_trajectory, committed_control) == 0)
+      if(mvrrts.switchRoot(max_length_committed_trajectory, committed_trajectory, committed_control) == 0)
       {
         cout<<"cannot switch_root: lowerBoundVertex = NULL"<<endl;
         exit(0);
       }
       else
       {
-        rrts_status[swr] = true;
+        mvrrts_status[swr] = true;
         // change sampling region if successful switch_root
         change_goal_region();
         cout<<"switched root successfully"<<endl;
@@ -595,19 +636,19 @@ int Planner::get_plan()
   }
   else 
   {
-    if(rrts.numVertices > 500)
+    if(mvrrts.numVertices > 500)
     {
-      rrts_status[ginf] = true;
+      mvrrts_status[ginf] = true;
       cout<<"did not find best path: reinitializing"<<endl;
       clear_committed_trajectory();
-      setup_rrts();
+      setup_mvrrts();
       return 1;
     }
   }
   return 0;
 }
 
-bool Planner::is_near_end_committed_trajectory()
+bool Planner_node::is_near_end_committed_trajectory()
 {
   if(!committed_trajectory.empty())
   {
@@ -628,22 +669,22 @@ bool Planner::is_near_end_committed_trajectory()
       res = true;
     else
       res = false;
-    rrts_status[rnr] = res;
+    mvrrts_status[rnr] = res;
     return res;
   }
   return false;
 }
 
-void Planner::on_planner_timer(const ros::TimerEvent &e)
+void Planner_node::on_planner_timer(const ros::TimerEvent &e)
 {
   if(!committed_trajectory.empty())
   {
     // 1. check if trajectory is safe
-    if(!rrts.isSafeTrajectory(committed_trajectory))
+    if(!mvrrts.isSafeTrajectory(committed_trajectory))
     {
       cout<<"committed trajectory unsafe"<<endl;
       clear_committed_trajectory();
-      setup_rrts();
+      setup_mvrrts();
     }
     // 2. check if it is at the end of the trajectory
     else if(is_near_end_committed_trajectory() && (!root_in_goal()))
@@ -670,7 +711,7 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
       {
         cout<<"is_far_away: emergency replan"<<endl;
         clear_committed_trajectory();
-        setup_rrts();
+        setup_mvrrts();
         get_plan();
         return;
       }
@@ -688,7 +729,7 @@ void Planner::on_planner_timer(const ros::TimerEvent &e)
   }
 }
 
-void Planner::publish_control_view_trajectory()
+void Planner_node::publish_control_view_trajectory()
 {
   std_msgs::Int16MultiArray tmp;
 
@@ -699,13 +740,13 @@ void Planner::publish_control_view_trajectory()
   control_trajectory_pub.publish(tmp);
 }
 
-void Planner::on_committed_trajectory_pub_timer(const ros::TimerEvent &e)
+void Planner_node::on_committed_trajectory_pub_timer(const ros::TimerEvent &e)
 {
   publish_committed_trajectory();
   publish_control_view_trajectory();
 }
 
-void Planner::publish_committed_trajectory()
+void Planner_node::publish_committed_trajectory()
 {
   // this flag is set by iterate() if it is going to change the committed_trajectory
   // hacked semaphore
@@ -758,18 +799,17 @@ void Planner::publish_committed_trajectory()
   //cout<<"published committed_trajectory"<<endl;
 }
 
-void Planner::on_tree_pub_timer(const ros::TimerEvent &e)
+void Planner_node::on_tree_pub_timer(const ros::TimerEvent &e)
 {
   publish_tree();
   //cout<<"published tree"<<endl;
 }
-
-void Planner::publish_tree()
+void Planner_node::publish_tree()
 {
   if(is_updating_rrt_tree)
     return;
 
-  int num_nodes = rrts.numVertices;
+  int num_nodes = mvrrts.numVertices;
 
   sensor_msgs::PointCloud pc;
   pc.header.stamp = ros::Time::now();
@@ -781,7 +821,7 @@ void Planner::publish_tree()
 
   if (num_nodes > 0) 
   {    
-    for (list<vertex_t*>::iterator iter = rrts.listVertices.begin(); iter != rrts.listVertices.end(); iter++) 
+    for (list<vertex_t*>::iterator iter = mvrrts.listVertices.begin(); iter != mvrrts.listVertices.end(); iter++) 
     {
       vertex_t &vertexCurr = **iter;
       state_t &stateCurr = vertexCurr.getState ();
@@ -792,14 +832,15 @@ void Planner::publish_tree()
       p.z = 0.0;
       pc.points.push_back(p);
       pc1.points.push_back(p);
-      //cout<<"published_rrts_vertex: "<< p.x<<" "<<p.y<<endl;
+      //cout<<"published_mvrrts_vertex: "<< p.x<<" "<<p.y<<endl;
+#if 1
       vertex_t& vertexParent = vertexCurr.getParent();
       if (&vertexParent != NULL) 
       {
         state_t& stateParent = vertexParent.getState();
         list<double*> trajectory;
         list<float> control;
-        if (system.getTrajectory (stateParent, stateCurr, trajectory, control, true)) 
+        if (system.getTrajectory(stateParent, stateCurr, trajectory, control, true)) 
         {
           int par_num_states = trajectory.size();
           if (par_num_states) 
@@ -820,6 +861,7 @@ void Planner::publish_tree()
           }
         }
       }
+#endif
     }
   }
 
@@ -835,7 +877,7 @@ int main(int argc, char **argv)
 
   ros::init(argc, argv, "rrts_node");
 
-  Planner my_planner;
+  Planner_node my_planner_node;
 
-  ros::spin();
+  return 0;
 };

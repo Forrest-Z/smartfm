@@ -12,6 +12,6 @@
   <node name="fake_localization" pkg="fake_localization" type="fake_localization"/>
   
   <node name="simple_goal" pkg="rrts" type="simple_goal" />
-  <!-- <node name="golfcar_pp" pkg="golfcar_ppc" type="golfcar_pp" /> -->
-  <!-- <node name="speed_advisor" pkg="speed_advisor" type="speed_advisor" /> -->
+  <node name="golfcar_pp" pkg="golfcar_ppc" type="golfcar_pp" />
+  <node name="speed_advisor" pkg="speed_advisor" type="speed_advisor" />
 </launch>

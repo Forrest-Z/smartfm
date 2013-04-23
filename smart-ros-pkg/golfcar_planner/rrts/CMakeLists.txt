@@ -32,5 +32,5 @@ rosbuild_add_library(${PROJECT_NAME} src/dubins_car.cpp src/rrts.cpp src/kdtree.
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
-rosbuild_add_executable(rrts_node src/rrts_node.cpp src/kdtree.c)
+rosbuild_add_executable(rrts_node src/rrts_node.cpp src/kdtree.c src/dubins_car.cpp src/rrts.cpp)
 rosbuild_add_executable(simple_goal src/simple_goal.cpp)

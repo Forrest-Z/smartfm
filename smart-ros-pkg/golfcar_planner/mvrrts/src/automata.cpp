@@ -1,3 +1,4 @@
+#include <cmath>
 #include "automata.h"
 
 Timed_Letter transition_label( const Subset_of_Sigma s_1, 

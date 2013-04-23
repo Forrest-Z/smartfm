@@ -8,7 +8,7 @@ Subset_of_Sigma MVSystem::label_state( double stateIn[3])
   double yl = 0;
   transform_map_to_local_map(stateIn, zl[0], zl[1], yl);
   int map_index = -1;
-  if(get_cell_index(zl[0], zl[1], map_index))
+  if(get_cell_index(zl[0], zl[1], map_index)==0)
   {
     int val = map.data[map_index];
     if(val == 87)
