@@ -544,6 +544,23 @@ int
   return 1;
 }
 
+template< class T >
+int 
+  RRTstar::Planner< T >
+::lazyCheckTree()
+{
+  list<double*> trajectory;
+  list<float> control_trajectory;
+  getBestTrajectory(trajectory, control_trajectory);
+  
+  if(!isSafeTrajectory(trajectory))
+    checkTree();
+  
+  for(list<double*>::iterator i=trajectory.begin(); i!= trajectory.end(); i++)
+    delete *i;
+  
+  return 0;
+}
 
 template< class T >
 int 
@@ -1065,8 +1082,6 @@ MVRRTstar::Planner< T >
     }
 
     vertexCurr = &vertexParent;
-
-    delete [] stateArrCurr;
   }
 
   return 1;
@@ -1078,18 +1093,10 @@ int
   MVRRTstar::Planner< T >
 ::isSafeTrajectory(list<double*>& trajectory)
 {
-  int max_obs_check = 4;
-  int obs_counter = 0;
   for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++)
   {
-    obs_counter++;
-    if(obs_counter == max_obs_check)
-    {
-      obs_counter = 0;
-      double *stateRef = *iter;
-      if( system->IsInCollision(stateRef) )
-        return false;
-    }
+    if( system->IsInCollision(*iter) )
+      return false;
   }
   return true;
 }

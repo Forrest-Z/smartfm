@@ -121,6 +121,7 @@ namespace MVRRTstar{
 
         int isSafeTrajectory(list<double*> &trajectory);
         int checkTree();
+        int lazyCheckTree();
 
         int updateReachability (); 
         int switchRoot (double distance, list<double*> &traj, list<float>& control);

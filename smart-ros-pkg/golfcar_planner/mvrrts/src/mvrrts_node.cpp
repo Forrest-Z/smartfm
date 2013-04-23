@@ -548,7 +548,7 @@ int Planner_node::get_plan()
   // hack semaphores to prevent publish_tree being called while checkTree is being executed
   is_updating_committed_trajectory = true;
   is_updating_rrt_tree = true;
-  mvrrts.checkTree();
+  mvrrts.lazyCheckTree();
   is_updating_committed_trajectory = false;
   is_updating_rrt_tree = false;
 

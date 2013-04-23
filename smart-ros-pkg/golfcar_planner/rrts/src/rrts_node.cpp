@@ -20,8 +20,8 @@
 
 #include <pnc_msgs/local_map.h>
 #include <rrts/rrts_status.h>
-#include "dubins_car.cpp"
-#include "rrts.cpp"
+#include "dubins_car.h"
+#include "rrts.h"
 
 using namespace std;
 
@@ -52,6 +52,8 @@ class Planner
 
     double max_length_committed_trajectory;
     bool is_updating_committed_trajectory;
+    bool is_updating_rrt_tree;
+
     void publish_committed_trajectory();
     list<double*> committed_trajectory;
     list<float> committed_control;
@@ -126,6 +128,7 @@ Planner::Planner()
 
   clear_committed_trajectory();
   is_updating_committed_trajectory = false;
+  is_updating_rrt_tree = false;
   max_length_committed_trajectory = 15.0;
 
   planner_dt = 0.4;
@@ -512,7 +515,12 @@ bool Planner::is_robot_in_collision()
 
 int Planner::get_plan()
 {
-  rrts.checkTree();
+  is_updating_committed_trajectory = true;
+  is_updating_rrt_tree = true;
+  //rrts.checkTree();
+  rrts.lazyCheckTree();
+  is_updating_committed_trajectory = false;
+  is_updating_rrt_tree = false;
 
   if(root_in_goal())
   {
@@ -554,7 +562,7 @@ int Planner::get_plan()
 
     ros::Duration dt = ros::Time::now() - start_current_call_back;
     // give some time to the following code as well
-    if(dt.toSec() > 0.8*planner_dt)
+    if(dt.toSec() > 0.6*planner_dt)
       break;
   }
   cout<<" e: "<< rrts.numVertices<<" -- "<< best_cost<<endl;
@@ -564,6 +572,7 @@ int Planner::get_plan()
     if( should_send_new_committed_trajectory || is_first_committed_trajectory )
     {
       is_updating_committed_trajectory = true;
+      is_updating_rrt_tree = true;
       if(rrts.switchRoot(max_length_committed_trajectory, committed_trajectory, committed_control) == 0)
       {
         cout<<"cannot switch_root: lowerBoundVertex = NULL"<<endl;
@@ -578,6 +587,7 @@ int Planner::get_plan()
         cout<<"committed_trajectory len: "<< committed_trajectory.size()<<endl;
       }
       is_updating_committed_trajectory = false;
+      is_updating_rrt_tree = false;
       should_send_new_committed_trajectory = false;
       is_first_committed_trajectory = false;
     }
@@ -753,8 +763,12 @@ void Planner::on_tree_pub_timer(const ros::TimerEvent &e)
   publish_tree();
   //cout<<"published tree"<<endl;
 }
+
 void Planner::publish_tree()
 {
+  if(is_updating_rrt_tree)
+    return;
+
   int num_nodes = rrts.numVertices;
 
   sensor_msgs::PointCloud pc;

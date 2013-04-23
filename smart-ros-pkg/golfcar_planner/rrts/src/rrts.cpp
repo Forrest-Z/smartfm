@@ -535,6 +535,23 @@ int
   return 1;
 }
 
+template< class T >
+int 
+  RRTstar::Planner< T >
+::lazyCheckTree()
+{
+  list<double*> trajectory;
+  list<float> control_trajectory;
+  getBestTrajectory(trajectory, control_trajectory);
+  
+  if(!isSafeTrajectory(trajectory))
+    checkTree();
+  
+  for(list<double*>::iterator i=trajectory.begin(); i!= trajectory.end(); i++)
+    delete *i;
+  
+  return 0;
+}
 
 template< class T >
 int 
@@ -862,13 +879,14 @@ int
   delete [] stateArrPrev; 
 
   state_t &vertexChildNewState = vertexChildNew->getState();
-  if(system->norm_state(stateRootNew, vertexChildNewState.x) < 1e-4)
+  cout<<"norm_state: "<< system->norm_state(stateRootNew, vertexChildNewState.x) << endl;
+  if(system->norm_state(stateRootNew, vertexChildNewState.x) < 1e-20)
   {
     //cout<<"switch_root length > length of best_trajectory"<<endl;
     state_t& stateRoot = root->getState();
     
-    //for (int i = 0; i < numDimensions; i++)
-      //stateRoot[i] = stateRootNew[i];
+    for (int i = 0; i < numDimensions; i++)
+      stateRoot[i] = stateRootNew[i];
     /*
        cout<<"listVertices before initialize: "<<listVertices.size()<<endl;
        for(typename list<vertex_t*>::iterator lvi=listVertices.begin(); lvi!=listVertices.end(); lvi++)
@@ -1044,7 +1062,7 @@ RRTstar::Planner< T >
 
     vertexCurr = &vertexParent;
 
-    delete [] stateArrCurr;
+    //delete [] stateArrCurr;
   }
 
   return 1;
@@ -1056,18 +1074,10 @@ int
   RRTstar::Planner< T >
 ::isSafeTrajectory(list<double*>& trajectory)
 {
-  int max_obs_check = 4;
-  int obs_counter = 0;
   for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++)
   {
-    obs_counter++;
-    if(obs_counter == max_obs_check)
-    {
-      obs_counter = 0;
-      double *stateRef = *iter;
-      if( system->IsInCollision(stateRef) )
-        return false;
-    }
+    if( system->IsInCollision(*iter) )
+      return false;
   }
   return true;
 }

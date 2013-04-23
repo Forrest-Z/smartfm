@@ -298,6 +298,7 @@ double System::getStateCost(const double stateIn[3])
   return cost/3.0;
 }
 
+#if 1
 int System::sampleState (State &randomStateOut) {
 
   for (int i = 0; i < 3; i++) 
@@ -330,8 +331,8 @@ int System::sampleState (State &randomStateOut) {
 
   return 1;
 }
+#else
 
-/*
 int System::sampleState(State &z)
 {
   int r = (double)(rand()/RAND_MAX+1.0)*free_cells.size();
@@ -368,7 +369,8 @@ int System::sampleState(State &z)
   }
   return 1;
 }
-*/
+#endif
+
 int System::sampleGoalState (State &randomStateOut) {
 
   for (int i = 0; i < 3; i++) {
