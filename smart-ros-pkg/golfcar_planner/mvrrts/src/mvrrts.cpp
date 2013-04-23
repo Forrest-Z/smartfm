@@ -944,8 +944,6 @@ int
     vertexChildNew->trajFromParent = new trajectory_t(connectingTrajectory);
     vertexChildNew->parent = vertexRoot;
     vertexChildNew->lus_from_parent = get_lus_between(*(vertexRoot->state), *(vertexChildNew->state), connectingTrajectory);
-    //vertexChildNew->lus_from_root += vertexChildNew->lus_from_parent;
-    //vertexChildNew->lus_from_root.metric_cost = (-1.0)*vertexChildNew->lus_from_root.metric_cost - 1.0;
     //cout<<"vertexchild_new: "<< vertexChildNew->costFromRoot<< " "<< vertexChildNew->costFromParent<<endl;
 
     // 5. Clear the kdtree
@@ -981,7 +979,6 @@ int
     lowerBoundVertex = NULL;
     lowerBoundLUS = Level_of_US();
     lowerBoundLUS.metric_cost = DBL_MAX;
-
 
     // 7. Repopulate the list of all vertices and recreate the kdtree
     listVertices.push_front (vertexRoot);
