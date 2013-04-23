@@ -6,10 +6,11 @@
 #define	_AUTOMATA_H_
 
 #include <iostream>
+using namespace std;
 #include <cstdlib>
 #include "typedefs_int.h"
 #include "defs_driving.h"
-#include <cmath>
+
 
 /** 
  * Subset of atomic propositions. 
@@ -87,7 +88,7 @@ class Subset_of_Sigma {
     }
     void print()
     {
-      std::cout<<(int)symbol<< std::endl;
+      cout<<(int)symbol<< endl;
     }
 };
 
@@ -119,13 +120,13 @@ struct Timed_Letter {
   
   /** Prints timed letter to standard console. */
   void print() const {
-    std::cout << "TIMED LETTER" << std::endl;
-    std::cout << "\tSubset of Sigma reads: " << std::endl;
+    cout << "TIMED LETTER" << endl;
+    cout << "\tSubset of Sigma reads: " << endl;
     for ( UCH k = 0; k < NUM_OF_APS; k++) {
-      std::cout << "\tSymbol " << (int) k << ":\t" 
-        << subset[k] << std::endl;
+      cout << "\tSymbol " << (int) k << ":\t" 
+        << subset[k] << endl;
     }
-    std::cout << "\tDuration: " << duration << std::endl;
+    cout << "\tDuration: " << duration << endl;
   }
 };
 
@@ -213,20 +214,14 @@ struct Level_of_US {
       level_of_US[k] = original.level_of_US[k];
     }
   }
-  /** Does nothing. */
   ~Level_of_US () {}
   /** Prints level of unsafety */
   void print() {
-    // Print message to console
-    std::cout << "LEVEL OF UNSAFETY" << std::endl;
-    // Iterate through rules
+    cout << "lus:((";
     for ( UCH k = 0; k < NUM_OF_RULES; k++) {
-      // Print level of unsafety of rule to console
-      std::cout << "\tof Rule " << (int) k << ":\t";
-      std::cout << level_of_US[k] << std::endl;
+      cout << level_of_US[k] << ",";
     }
-    // Print metric cost to console
-    std::cout << "\t[Metric Cost]:\t" << metric_cost << std::endl;
+    cout<<"),"<<metric_cost<<")"<<endl;
   }
   /** Increases the level of unsafety by 
    * an amount equal to the RHS level. 
@@ -262,7 +257,7 @@ struct Level_of_US {
       // If RHS level of unsafety of rule is smaller, return false
       else if ( (this -> level_of_US[k]) > rhs.level_of_US[k] )
       {
-        //std::cout<<__LINE__<< "false"<<std::endl;
+        //cout<<__LINE__<< "false"<<endl;
         return false;
       }
     }
@@ -272,14 +267,14 @@ struct Level_of_US {
     // If RHS metric cost is smaller, return false
     else if ( (this -> metric_cost) > rhs.metric_cost )
     {
-      //std::cout<<__LINE__<< "false"<<std::endl;
+      //cout<<__LINE__<< "false"<<endl;
       return false;
     }
     // If this line is reached (extremely unlikely) then 
     // the two levels of unsafety are equal, so return false
     else
     {
-      //std::cout<<__LINE__<< "false"<<std::endl;
+      //cout<<__LINE__<< "false"<<endl;
       return false;
     }
   }
@@ -345,8 +340,8 @@ class Auto_AB {
       }
       // Otherwise, throw error
       else {
-        std::cerr << "INVALID INSERTION of automaton " << \
-          "in object of class Auto_AB!" << std::endl;
+        cerr << "INVALID INSERTION of automaton " << \
+          "in object of class Auto_AB!" << endl;
         exit(EXIT_FAILURE);
       }
     }
@@ -370,8 +365,8 @@ class Auto_AB {
             // associated with this rule and sub-rule
             trans_level.level_of_US[i] += 
               rule[i][j] -> weight(timed_let);
-            //std::cout<<"added weight: "<< (int)i<<" "<< (int)j<<" "<< (rule[i][j]->weight(timed_let))<< std::endl;
-          }
+            //cout<<"added weight: "<< (int)i<<" "<< (int)j<<" "<< (rule[i][j]->weight(timed_let))<<endl;
+          } 
         }
       }
       // Add metric cost

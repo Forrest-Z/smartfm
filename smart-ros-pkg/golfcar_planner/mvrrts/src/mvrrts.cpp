@@ -34,7 +34,7 @@ MVRRTstar::Vertex< T >
 
   if (trajFromParent)
     delete trajFromParent;
-  
+
   children.clear();
 }
 
@@ -54,7 +54,7 @@ MVRRTstar::Vertex< T >
     trajFromParent = new trajectory_t (*(vertexIn.trajFromParent));
   else 
     trajFromParent = NULL;
-  
+
   lus_from_root = vertexIn.lus_from_root;
   lus_from_parent = vertexIn.lus_from_parent;
 }
@@ -94,7 +94,7 @@ MVRRTstar::Planner< T >
 
   if (kdtree)
     kd_free (kdtree);
-  
+
   if(abar)
     delete abar;
 }
@@ -221,7 +221,7 @@ MVRRTstar::Planner< T >
 
 template< class T >
 typename MVRRTstar::Planner<T>::vertex_t*
-MVRRTstar::Planner< T >
+  MVRRTstar::Planner< T >
 ::insertTrajectory (vertex_t& vertexStartIn, trajectory_t& trajectoryIn) 
 {
   // Create a new end vertex
@@ -247,7 +247,7 @@ MVRRTstar::Planner< T >
 
   // Update the costs
   vertexEndIn.lus_from_root = vertexStartIn.lus_from_root;
-  
+
   vertexEndIn.lus_from_parent = get_lus_between(*vertexStartIn.state, *vertexEndIn.state, trajectoryIn);
   vertexEndIn.lus_from_root += vertexEndIn.lus_from_parent;
 
@@ -346,7 +346,8 @@ MVRRTstar::Planner< T >
 
   listVertices.clear();
   numVertices = 0;
-  
+
+  lowerBoundLUS = Level_of_US();
   lowerBoundLUS.metric_cost = DBL_MAX;
   lowerBoundVertex = NULL;
 
@@ -405,11 +406,11 @@ MVRRTstar::Planner< T >
 }
 
 template< class T > bool compareVertexCostPairs( 
-        pair< typename MVRRTstar::Vertex<T>* , Level_of_US* > vwP_i, 
-        pair< typename MVRRTstar::Vertex<T>* , Level_of_US* > vwP_j) {
-    // Return true if vertex-weight pair 'i' is 
-    // less than vertex-weight pair 'j'
-    return ( *(vwP_i.second) < *(vwP_j.second) );
+    pair< typename MVRRTstar::Vertex<T>* , Level_of_US* > vwP_i, 
+    pair< typename MVRRTstar::Vertex<T>* , Level_of_US* > vwP_j) {
+  // Return true if vertex-weight pair 'i' is 
+  // less than vertex-weight pair 'j'
+  return ( *(vwP_i.second) < *(vwP_j.second) );
 }
 
 template< class T >
@@ -603,6 +604,7 @@ int
        }
        */
     lowerBoundVertex = NULL;
+    lowerBoundLUS = Level_of_US();
     lowerBoundLUS.metric_cost = DBL_MAX;
 
     listSurvivingVertices.clear();
@@ -614,7 +616,7 @@ int
 
 template< class T >
 int 
-MVRRTstar::Planner< T >
+  MVRRTstar::Planner< T >
 ::rewireVertices (vertex_t& vertexNew, vector<vertex_t*>& vectorNearVertices) 
 {
   state_t& state_new = *(vertexNew.state);
@@ -630,13 +632,13 @@ MVRRTstar::Planner< T >
     double cost_curr = system->evaluateExtensionCost (state_new, state_curr, exactConnection);
     if ( (exactConnection == false) || (cost_curr < 0) )
       continue;
-    
+
     // calculate lus of the trajectory
     Level_of_US lus_new = Level_of_US(vertexNew.lus_from_root);
     Subset_of_Sigma label_new = system->label_state(state_new.x);
     Subset_of_Sigma label_curr = system->label_state(state_curr.x);
     lus_new += abar->weight(transition_label(label_new, label_curr, cost_curr));
-    
+
     // Check whether the cost of the extension is smaller than current cost
     if(lus_new < vertex_curr.lus_from_root)
     {
@@ -679,7 +681,7 @@ MVRRTstar::Planner< T >
   // 2. Compute the set of all near vertices
   vector<vertex_t*> vectorNearVertices;
   getNearVertices (stateRandom, vectorNearVertices);
-  
+
 
   // 3. Find the best parent and extend from that parent
   vertex_t* vertexParent = NULL;  
@@ -708,7 +710,7 @@ MVRRTstar::Planner< T >
   vertex_t* vertexNew = insertTrajectory (*vertexParent, trajectory);
   if (vertexNew == NULL) 
     return 0;
-  
+
   // 4. Rewire the tree  
   if (vectorNearVertices.size() > 0) 
     rewireVertices (*vertexNew, vectorNearVertices);
@@ -722,24 +724,21 @@ int
   MVRRTstar::Planner< T >
 ::findDescendantVertices (vertex_t* vertexIn) 
 {
-  vertexIn->lus_from_root.metric_cost = (-1.0) * vertexIn->lus_from_root.metric_cost - 1.0;  // Mark the node so that we can understand 
+  // Mark the node so that we can understand 
   // later that it is in the list of descendants
-
+  vertexIn->lus_from_root.metric_cost = (-1.0) * vertexIn->lus_from_root.metric_cost - 1.0;  
 
   for (typename set<vertex_t*>::iterator iter = vertexIn->children.begin(); iter != vertexIn->children.end(); iter++) {
-
     vertex_t* vertexCurr = *iter;
-
     findDescendantVertices (vertexCurr);
   }
-
   return 1;
 }
 
 
 template< class T >
 Level_of_US
-MVRRTstar::Planner< T >
+  MVRRTstar::Planner< T >
 ::get_lus_between(state_t& start, state_t& end, trajectory_t& trajectory)
 {
   Subset_of_Sigma start_label = system->label_state(start.x);
@@ -883,12 +882,12 @@ int
   }
   //cout<<"trajret size: "<< trajret.size()<<endl;
   delete [] stateArrPrev; 
-
+    
   state_t &vertexChildNewState = vertexChildNew->getState();
-  if( (stateRootNew[0] == vertexChildNewState[0]) && (stateRootNew[1] == vertexChildNewState[1]) &&\
-      (stateRootNew[2] == vertexChildNewState[2]) )
+  cout<<"norm_state: "<< system->norm_state(stateRootNew, vertexChildNewState.x) <<endl;
+  if(system->norm_state(stateRootNew, vertexChildNewState.x) < 1e-4)
   {
-    //cout<<"switch_root length > length of best_trajectory"<<endl;
+    cout<<"switch_root length > length of best_trajectory"<<endl;
     state_t& stateRoot = root->getState();
     for (int i = 0; i < numDimensions; i++)
       stateRoot[i] = stateRootNew[i];
@@ -906,6 +905,7 @@ int
   else
   {
     // goal is farther than committed trajectory
+    cout<<"goal further than max_committed_trajectory_length"<<endl;
 
     // 2. Find and store all the decendandts of the new root
     findDescendantVertices (vertexChildNew);
@@ -929,10 +929,11 @@ int
     if (system->extendTo(vertexRoot->getState(), vertexChildNew->getState(), connectingTrajectory, exactConnection, connectingControl, true) <= 0)
     {
       cout << "switchRoot ERR: No extend, reinitializing" << endl;
-
+      /*
       state_t& stateRoot = root->getState();
       for (int i = 0; i < numDimensions; i++)
         stateRoot[i] = stateRootNew[i];
+      */
       initialize();
       return 1;
     }
@@ -943,8 +944,8 @@ int
     vertexChildNew->trajFromParent = new trajectory_t(connectingTrajectory);
     vertexChildNew->parent = vertexRoot;
     vertexChildNew->lus_from_parent = get_lus_between(*(vertexRoot->state), *(vertexChildNew->state), connectingTrajectory);
-    vertexChildNew->lus_from_root += vertexChildNew->lus_from_parent;
-    vertexChildNew->lus_from_root.metric_cost = (-1.0)*vertexChildNew->lus_from_root.metric_cost - 1.0;
+    //vertexChildNew->lus_from_root += vertexChildNew->lus_from_parent;
+    //vertexChildNew->lus_from_root.metric_cost = (-1.0)*vertexChildNew->lus_from_root.metric_cost - 1.0;
     //cout<<"vertexchild_new: "<< vertexChildNew->costFromRoot<< " "<< vertexChildNew->costFromParent<<endl;
 
     // 5. Clear the kdtree
@@ -978,6 +979,7 @@ int
     numVertices = 0;
 
     lowerBoundVertex = NULL;
+    lowerBoundLUS = Level_of_US();
     lowerBoundLUS.metric_cost = DBL_MAX;
 
 
@@ -999,6 +1001,7 @@ int
     listSurvivingVertices.clear();
 
     recomputeCost (vertexRoot);
+
     cout<<"after switchRoot vertices left: "<< numVertices << endl;
 
     // 8. Clear temporary memory  
