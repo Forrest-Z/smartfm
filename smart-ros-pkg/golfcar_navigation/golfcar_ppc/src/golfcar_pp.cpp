@@ -181,7 +181,7 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
         int segment = get_segment(cur_x, cur_y);
 
         goal_dist = get_dist_to_go(segment, cur_x, cur_y);
-        ROS_WARN("[just info] remaining_dist=%lf will be used in speed_advisor", goal_dist);
+        ROS_DEBUG("[just info] remaining_dist=%lf will be used in speed_advisor", goal_dist);
         cmd_steer = get_steering(segment, cur_x, cur_y, cur_yaw, emergency);
         if(segment > -1)
             path_exist = true;
@@ -625,9 +625,9 @@ double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
     // for all the calculations, refer IROS'95 by Ollero and Heredia
     gamma = 2.0/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
     double steering = atan(gamma * car_length_);
-    ROS_WARN("[just info] steering, on_segment=%d lookahead_seg=%d:(%lf,%lf)->(%lf,%lf) at x=%lf y=%lf yaw=%lf",
+    ROS_DEBUG("[just info] steering, on_segment=%d lookahead_seg=%d:(%lf,%lf)->(%lf,%lf) at x=%lf y=%lf yaw=%lf",
              segment, lookahead_segment, ori_x, ori_y, tar_x, tar_y, cur_x, cur_y, cur_yaw);
-    ROS_WARN("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf%s",
+    ROS_DEBUG("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf%s",
              inv_R, L, r, x, theta, gamma, steering, emergency?" emergency!":"");
 
     if(isnan(steering))
