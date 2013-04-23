@@ -352,9 +352,7 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
             cluster.projected_l3 = abs_distance[sorting[0]];
             cluster.projected_points = projected_points;*/
 
-
             clusters.clusters.push_back(cluster);
-
             cluster_number++;
         }
         ROS_INFO("End of cluster %d\n", cluster_number);

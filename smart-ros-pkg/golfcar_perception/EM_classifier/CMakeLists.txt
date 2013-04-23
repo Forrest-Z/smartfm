@@ -29,8 +29,11 @@ find_package(OpenCV REQUIRED)
 rosbuild_add_executable(OpenCV_EM src/OpenCV_EM.cpp)
 target_link_libraries(OpenCV_EM ${OpenCV_LIBRARIES})
 
-rosbuild_add_executable(Mixture_EM src/Mixture_EM)
-target_link_libraries(Mixture_EM ${OpenCV_LIBRARIES})
+rosbuild_add_executable(Self_GMM src/Self_GMM.cpp)
+target_link_libraries(Self_GMM ${OpenCV_LIBRARIES})
+
+rosbuild_add_executable(GMM_Uniform src/GMM_Uniform.cpp)
+target_link_libraries(GMM_Uniform ${OpenCV_LIBRARIES})
 
 #target_link_libraries(wrap_example ${OpenCV_LIBRARIES})
 #common commands for building c++ executables and libraries
