@@ -129,6 +129,7 @@ class System {
     int getNumDimensions () {return 3;}    
     State& getRootState () {return rootState;}
     int getStateKey (State& stateIn, double* stateKey);
+    double norm_state(double s1[3], double s2[3]);
 
     int getxy_from_index(double &x, double &y, const int index);
     int get_cell_index(double x, double y, int &map_index);

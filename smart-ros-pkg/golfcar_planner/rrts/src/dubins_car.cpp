@@ -298,41 +298,40 @@ double System::getStateCost(const double stateIn[3])
   return cost/3.0;
 }
 
-/*
-   int System::sampleState (State &randomStateOut) {
+int System::sampleState (State &randomStateOut) {
 
-   for (int i = 0; i < 3; i++) 
-   {
-   randomStateOut.x[i] = (double)rand()/(RAND_MAX + 1.0)*regionOperating.size[i] 
-   - regionOperating.size[i]/2.0 + regionOperating.center[i];
-   }
-//cout<<"sample_local: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
+  for (int i = 0; i < 3; i++) 
+  {
+    randomStateOut.x[i] = (double)rand()/(RAND_MAX + 1.0)*regionOperating.size[i] 
+      - regionOperating.size[i]/2.0 + regionOperating.center[i];
+  }
+  //cout<<"sample_local: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
 
-// transform the sample from local_map frame to /map frame
-double cyaw = cos(map_origin[2]);
-double syaw = sin(map_origin[2]);
+  // transform the sample from local_map frame to /map frame
+  double cyaw = cos(map_origin[2]);
+  double syaw = sin(map_origin[2]);
 
-double local_map_state[3] = {0};
-local_map_state[0] = randomStateOut.x[0] + map.info.resolution*map.info.height/4.0;
-local_map_state[1] = randomStateOut.x[1];           // the origin of regionOperating is on the X axis of the local_map_frame 
-local_map_state[2] = randomStateOut.x[2];
+  double local_map_state[3] = {0};
+  local_map_state[0] = randomStateOut.x[0] + map.info.resolution*map.info.height/4.0;
+  local_map_state[1] = randomStateOut.x[1];           // the origin of regionOperating is on the X axis of the local_map_frame 
+  local_map_state[2] = randomStateOut.x[2];
 
-randomStateOut.x[0] = map_origin[0] + local_map_state[0]*cyaw + local_map_state[1]*syaw;
-randomStateOut.x[1] = map_origin[1] + -local_map_state[0]*syaw + local_map_state[1]*cyaw;
-randomStateOut.x[2] = map_origin[2] + local_map_state[2];
-while(randomStateOut.x[2] > M_PI)
-randomStateOut.x[2] -= 2.0*M_PI;
-while(randomStateOut.x[2] < -M_PI)
-randomStateOut.x[2] += 2.0*M_PI;
+  randomStateOut.x[0] = map_origin[0] + local_map_state[0]*cyaw + local_map_state[1]*syaw;
+  randomStateOut.x[1] = map_origin[1] -local_map_state[0]*syaw + local_map_state[1]*cyaw;
+  randomStateOut.x[2] = map_origin[2] + local_map_state[2];
+  while(randomStateOut.x[2] > M_PI)
+    randomStateOut.x[2] -= 2.0*M_PI;
+  while(randomStateOut.x[2] < -M_PI)
+    randomStateOut.x[2] += 2.0*M_PI;
 
-//cout<<"sample_transformed: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
-if (IsInCollision (randomStateOut.x))
-return 0;
+  //cout<<"sample_transformed: "<<randomStateOut.x[0]<<" "<<randomStateOut.x[1]<<" "<<randomStateOut.x[2]<<endl;
+  if (IsInCollision (randomStateOut.x))
+    return 0;
 
-return 1;
+  return 1;
 }
-*/
 
+/*
 int System::sampleState(State &z)
 {
   int r = (double)(rand()/RAND_MAX+1.0)*free_cells.size();
@@ -354,7 +353,7 @@ int System::sampleState(State &z)
     state_copy[i] = z[i];
 
   z.x[0] = map_origin[0] + state_copy[0]*cyaw + state_copy[1]*syaw;
-  z.x[1] = map_origin[1] + -state_copy[0]*syaw + state_copy[1]*cyaw;
+  z.x[1] = map_origin[1] -state_copy[0]*syaw + state_copy[1]*cyaw;
   z.x[2] = map_origin[2] + state_copy[2];
   while(z.x[2] > M_PI)
     z.x[2] -= 2.0*M_PI;
@@ -363,11 +362,13 @@ int System::sampleState(State &z)
 
   //cout<<"sampled state: "<<z.x[0]<<" "<<z.x[1]<<" "<<z.x[2]<<endl;
   if (IsInCollision (z.x))
+  {
+    //cout<<"free cell, collision check!"<<endl;
     return 0;
-
+  }
   return 1;
-
 }
+*/
 int System::sampleGoalState (State &randomStateOut) {
 
   for (int i = 0; i < 3; i++) {
@@ -949,4 +950,12 @@ double System::evaluateCostToGo (State& stateIn)
 
   return dist - radius;
 
+}
+
+double System::norm_state(double s1[3], double s2[3])
+{
+  double t = 0;
+  for(int i=0; i<3; i++)
+    t = t + (s1[i]-s2[i])*(s1[i]-s2[i]);
+  return sqrt(t);
 }

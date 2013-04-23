@@ -481,8 +481,8 @@ void Planner::setup_rrts()
   change_goal_region();
 
   // Set planner parameters
-  rrts.setGamma (2.0);
-  rrts.setGoalSampleFrequency (0.5);
+  rrts.setGamma (2.5);
+  rrts.setGoalSampleFrequency (0.2);
 
   // Initialize the planner
   rrts.initialize ();
@@ -513,7 +513,6 @@ bool Planner::is_robot_in_collision()
 int Planner::get_plan()
 {
   rrts.checkTree();
-  rrts.updateReachability();
 
   if(root_in_goal())
   {
@@ -539,7 +538,7 @@ int Planner::get_plan()
   ros::Time start_current_call_back = ros::Time::now();
   cout<<"s: "<< rrts.numVertices<<" -- "<<best_cost;
   flush(cout);
-  while((!found_best_path) || (samples_this_loop < 10))
+  while((!found_best_path) || (samples_this_loop < 5))
   {
     samples_this_loop += rrts.iteration();
     best_cost = rrts.getBestVertexCost();

@@ -862,13 +862,13 @@ int
   delete [] stateArrPrev; 
 
   state_t &vertexChildNewState = vertexChildNew->getState();
-  if( (stateRootNew[0] == vertexChildNewState[0]) && (stateRootNew[1] == vertexChildNewState[1]) &&\
-      (stateRootNew[2] == vertexChildNewState[2]) )
+  if(system->norm_state(stateRootNew, vertexChildNewState.x) < 1e-4)
   {
     //cout<<"switch_root length > length of best_trajectory"<<endl;
     state_t& stateRoot = root->getState();
-    for (int i = 0; i < numDimensions; i++)
-      stateRoot[i] = stateRootNew[i];
+    
+    //for (int i = 0; i < numDimensions; i++)
+      //stateRoot[i] = stateRootNew[i];
     /*
        cout<<"listVertices before initialize: "<<listVertices.size()<<endl;
        for(typename list<vertex_t*>::iterator lvi=listVertices.begin(); lvi!=listVertices.end(); lvi++)
@@ -920,7 +920,7 @@ int
     vertexChildNew->trajFromParent = new trajectory_t(connectingTrajectory);
     vertexChildNew->costFromParent = connectingTrajectory.evaluateCost();
     vertexChildNew->parent = vertexRoot;
-    vertexChildNew->costFromRoot = (-1.0)*vertexChildNew->costFromParent - 1.0;
+    //vertexChildNew->costFromRoot = (-1.0)*vertexChildNew->costFromParent - 1.0;
     //cout<<"vertexchild_new: "<< vertexChildNew->costFromRoot<< " "<< vertexChildNew->costFromParent<<endl;
 
     // 5. Clear the kdtree
@@ -940,6 +940,7 @@ int
 
         // Revert the mark 
         vertexCurrDel->costFromRoot = (-1.0)*(vertexCurrDel->costFromRoot + 1.0);
+        //cout<<"vertexCurrDel: "<< vertexCurrDel->costFromRoot<<endl;
 
         // Add the vertex to the list of surviving vetices
         listSurvivingVertices.push_front (vertexCurrDel);
