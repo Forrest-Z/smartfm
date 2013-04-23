@@ -22,6 +22,7 @@ class track_element
 	double time;
 	double x, y;
 	double width, depth;
+	double local_x, local_y;
 };
 
 class track_common

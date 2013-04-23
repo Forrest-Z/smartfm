@@ -113,6 +113,8 @@ pedestrian_collector::pedestrian_collector():
 				fprintf(fp_output, "%f\t", ped_tracks_[i].ped_track[j].cluster.centroid.y);
 				fprintf(fp_output, "%f\t", ped_tracks_[i].ped_track[j].cluster.width);
 				fprintf(fp_output, "%f\t", ped_tracks_[i].ped_track[j].cluster.depth);
+				fprintf(fp_output, "%f\t", ped_tracks_[i].ped_track[j].local_centroid.x);
+				fprintf(fp_output, "%f\t", ped_tracks_[i].ped_track[j].local_centroid.y);
 			}
 		}
 		fclose(fp_output);

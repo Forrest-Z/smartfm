@@ -62,6 +62,8 @@ namespace golfcar_semantics{
 				fscanf(fp_input, "%lf\t", &ped_track.elements[j].y);
 				fscanf(fp_input, "%lf\t", &ped_track.elements[j].width);
 				fscanf(fp_input, "%lf\t", &ped_track.elements[j].depth);
+				fscanf(fp_input, "%lf\t", &ped_track.elements[j].local_x);
+				fscanf(fp_input, "%lf\t", &ped_track.elements[j].local_y);
 			}
 		}
 		fclose(fp_input);
