@@ -31,7 +31,9 @@
 #include <opencv/highgui.h>
 #include <cv_bridge/CvBridge.h>
 
-#include "../datatype_semantic.h"
+#include "../data_type/datatype_semantic.h"
+#include "../tools/local_track_show.h"
+#include "../tools/global_track_show.h"
 
 using namespace std;
 using namespace ros;
@@ -63,9 +65,16 @@ namespace golfcar_semantics{
 
         double map_scale_;
 		char* image_path_, *file_path_;
+		global_track_show *global_viewer_;
+
 
 		size_t track_size_thresh_;
 		double track_time_thresh_, track_length_thresh_;
+
+		CvSize local_view_size_;
+		double local_show_scale_;
+		local_track_show *local_viewer_;
+		void trajectory_show();
    };
 };
 

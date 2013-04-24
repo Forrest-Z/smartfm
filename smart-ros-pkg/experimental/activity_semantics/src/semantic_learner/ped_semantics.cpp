@@ -7,10 +7,15 @@ namespace golfcar_semantics{
 		map_scale_ = map_scale;
 		image_path_ = image_path;
 		file_path_ 	= file_path;
+		global_viewer_ = new global_track_show(image_path_, map_scale);
 
 		track_size_thresh_ = 20;
 		track_time_thresh_ = 1.0;
 		track_length_thresh_ = track_length_threshold;
+
+		local_view_size_ = cvSize(600, 300);
+		local_show_scale_ = 0.1;
+		local_viewer_ = new local_track_show(local_view_size_, local_show_scale_);
 
 		roadmap_loading();
 		pedtrack_loading();
@@ -73,9 +78,10 @@ namespace golfcar_semantics{
 	{
 		ROS_INFO("ped_EE_extraction");
 
+		trajectory_show();
+
 		//classify tracks;
 		ped_track_classification();
-
 		track_visualization(ped_moving_tracks_, CV_RGB(255, 0, 0), true);
 		cvSaveImage("./data/visualization.jpg", visualize_image_);
 
@@ -151,9 +157,26 @@ namespace golfcar_semantics{
 		cvWaitKey(0);
 	}
 
+	void ped_semantics::trajectory_show()
+	{
+		for(size_t i=0; i<ped_tracks_.size(); i++)
+		{
+			CvPoint prev_point = cvPoint(-1, -1);
+			CvScalar ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
+			for(size_t j=0; j<ped_tracks_[i].elements.size(); j++)
+			{
+				global_viewer_->show_update(ped_tracks_[i].elements[j].x, ped_tracks_[i].elements[j].y, ext_color);
+				//printf("\n local view: %f, %f, %d, %d", ped_tracks_[i].elements[j].local_x, ped_tracks_[i].elements[j].local_y, prev_point.x, prev_point.y);
+				local_viewer_->show_update( ped_tracks_[i].elements[j].local_x, ped_tracks_[i].elements[j].local_y, prev_point, ext_color);
+				cvWaitKey(100);
+			}
+		}
+	}
+
 	ped_semantics::~ped_semantics()
 	{
-
+		delete local_viewer_;
+		delete global_viewer_;
 	}
 };
 

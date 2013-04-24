@@ -16,6 +16,7 @@
 
 namespace golfcar_semantics{
 
+
 class track_element
 {
 	public:

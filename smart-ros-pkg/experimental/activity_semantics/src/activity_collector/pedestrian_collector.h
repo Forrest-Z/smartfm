@@ -33,7 +33,9 @@
 #include <opencv/highgui.h>
 #include <cv_bridge/CvBridge.h>
 
-#include "../datatype_semantic.h"
+#include "../data_type/datatype_semantic.h"
+#include "../tools/local_track_show.h"
+#include "../tools/global_track_show.h"
 
 using namespace std;
 using namespace ros;
@@ -57,6 +59,8 @@ namespace golfcar_semantics{
 
         private:
         ros::NodeHandle nh_, private_nh_;
+        global_track_show *global_viewer_;
+        local_track_show *local_viewer_;
         tf::TransformListener tf_;
 		string map_frame_, base_frame_;
 		ros::Subscriber	pedestrian_sub_;
@@ -64,10 +68,9 @@ namespace golfcar_semantics{
 
 		//three functions;
 		void track_updating(const sensing_on_road::pedestrian_vision_batch::ConstPtr& ped_batch_in);
-		void track_visualization();
+
 		void track_saving();
 
-        IplImage *visual_image_;
 		double map_scale_;
 		string map_pic_path_;
         image_transport::ImageTransport it_;
@@ -77,6 +80,11 @@ namespace golfcar_semantics{
         //to do: store the tracks in a file;
         string file_path_;
         double ped_belief_threshold_;
+
+
+        CvSize local_view_size_;
+        double local_show_scale_;
+		void track_visualization();
    };
 };
 
