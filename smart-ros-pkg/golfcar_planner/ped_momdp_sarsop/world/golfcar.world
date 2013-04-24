@@ -112,7 +112,7 @@ pose [-80.926 130.834 0 90.000]  #for amcl_hokuyo
 
 # throw in a robot
 gc1( pose [-0.779 3.152 0 -179.757] name "gc1" color "red")
-#gc2( pose [-95.109 181.515 0 90.763] name "gc2" color "green")
+#gc2( pose [-1.779 4.152 0 -179.757] name "gc2" color "green")
 #gc3( pose [-95.109 177.739 0 90.763] name "gc3" color "blue")
 block( pose [ -104.223 98.740 0 0 ] color "red")
 block( pose [ -25.628 38.882 0 0 ] color "red")
