@@ -69,7 +69,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
         if(matched)
         {
             //transform found, just update the position
-            //if(ped_batch->pd_vector[i].confidence > threshold_/100)
+            if(ped_batch->pd_vector[i].confidence > threshold_/100)
             {
                 ped_momdp_sarsop::ped_local_frame plf;
                 plf.header.stamp = ped_batch->header.stamp;
@@ -104,23 +104,26 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
         }
         else
         {
-            ROS_INFO("New pedestrian received, creating new transform");
-            ROS_INFO("%d transformations", ped_transforms_.size());
-            //transform not found, add a new transform
-            tf::Transform transform;
-            tf::Stamped<tf::Pose> in_pose, out_pose;
-            //use the current base_link pose as the new frame
-            in_pose.frame_id_ = "base_link";
-            in_pose.setIdentity();
-            in_pose.setOrigin(btVector3(offsetx_,offsety_,0.0));
-            if(!getObjectPose(global_frame_, in_pose, out_pose)) continue;
-            transform.setOrigin( out_pose.getOrigin() );
-            transform.setRotation( out_pose.getRotation() );
-            ped_transforms ped_tr;
-            ped_tr.label = ped_batch->pd_vector[i].object_label;
-            ped_tr.last_update = ped_batch->header.stamp;
-            ped_tr.transform = transform;
-            ped_transforms_.push_back(ped_tr);
+			if(ped_batch->pd_vector[i].confidence > threshold_/100)
+            {
+				ROS_INFO("New pedestrian received, creating new transform");
+				ROS_INFO("%d transformations", ped_transforms_.size());
+				//transform not found, add a new transform
+				tf::Transform transform;
+				tf::Stamped<tf::Pose> in_pose, out_pose;
+				//use the current base_link pose as the new frame
+				in_pose.frame_id_ = "base_link";
+				in_pose.setIdentity();
+				in_pose.setOrigin(btVector3(offsetx_,offsety_,0.0));
+				if(!getObjectPose(global_frame_, in_pose, out_pose)) continue;
+				transform.setOrigin( out_pose.getOrigin() );
+				transform.setRotation( out_pose.getRotation() );
+				ped_transforms ped_tr;
+				ped_tr.label = ped_batch->pd_vector[i].object_label;
+				ped_tr.last_update = ped_batch->header.stamp;
+				ped_tr.transform = transform;
+				ped_transforms_.push_back(ped_tr);
+			}
         }
     }
     //finally publish all the transformed points
