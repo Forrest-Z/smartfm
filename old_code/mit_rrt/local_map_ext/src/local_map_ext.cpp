@@ -297,10 +297,10 @@ void LocalMap::updateMap(sensor_msgs::PointCloud& pc)
         local_map_.header.stamp = pc.header.stamp;
         pnc_msgs::local_map lm;
         lm.occupancy = local_map_;
+        
         vector<int> free_cells;
         publishLocalMapPts(free_cells);
-        
-        //lm.free_cells = free_cells;
+        lm.free_cells = free_cells;
         map_pub_.publish(lm);
     }
 };
