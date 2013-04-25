@@ -5,8 +5,8 @@
  * description: collect pedestrian track information, visualize the process, and store it into a file;
  */
 
-#ifndef PEDESTRIAN_COLLECTOR_H
-#define PEDESTRIAN_COLLECTOR_H
+#ifndef GOLFCAR_SEMANTICS_PEDESTRIAN_COLLECTOR_H
+#define GOLFCAR_SEMANTICS_PEDESTRIAN_COLLECTOR_H
 
 #include <ros/ros.h>
 #include <vector>

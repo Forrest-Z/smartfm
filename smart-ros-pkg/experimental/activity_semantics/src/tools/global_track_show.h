@@ -3,8 +3,8 @@
  * date:   2013/04/24
  */
 
-#ifndef GLOBAL_TRACK_SHOW_H
-#define GLOBAL_TRACK_SHOW_H
+#ifndef GOLFCAR_SEMANTICS_GLOBAL_TRACK_SHOW_H
+#define GOLFCAR_SEMANTICS_GLOBAL_TRACK_SHOW_H
 
 #include <ros/ros.h>
 #include <vector>

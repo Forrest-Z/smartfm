@@ -6,8 +6,8 @@
  * 				offline learning, in the 1st version;
  */
 
-#ifndef PED_SEMANTIC_H
-#define PED_SEMANTIC_H
+#ifndef GOLFCAR_SEMANTICS_PED_SEMANTIC_H
+#define GOLFCAR_SEMANTICS_PED_SEMANTIC_H
 
 #include <ros/ros.h>
 #include <vector>
