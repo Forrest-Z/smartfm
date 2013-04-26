@@ -32,14 +32,17 @@ namespace golfcar_semantics
         ~AM_learner();
 
         void learn_activity_map();
+        void learn_moving_direction();
+
         void view_activity_map();
+        void show_moving_direction();
 
         activity_map *AM_;
 
         private:
-    	void GridMap_init(char* image_path, double map_scale);
-    	double map_resolution_;
-    	Mat road_map_;
+    	void GridMap_init();
+    	char* image_path_;
+    	double map_scale_;
    };
 };
 
