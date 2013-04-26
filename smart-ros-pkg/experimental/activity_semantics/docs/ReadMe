@@ -1,27 +1,4 @@
-1. Pedestrian Detection
+1. Record pedestrian tracks:
 
-a. Overview
-https://sites.google.com/site/fmautonomy/private/documentation/pedestrian_detection
-
-b. Framework of "data_assoc.cpp"
-	---> 3 inputs: 1) raw image; 2) "pedestrian_roi" from vision pedestrian detection; 3) "pedestrian_clusters" from laser clustering;	
-	---> Main functions:
-		(@_@) pedVisionAngularCallback: to update the belief of tracked objects, paralelly from laser related processes;
-		(@_@) pedClustCallback: containing the following functions:
-			(1) updatelPedInViewWithNewCluster(): cluster to update ped tracks; 
-			    	-> each track searches for its nearest input cluster; 
-				-> if distance smaller than Threshold, the track is updated;
-			(2) updateMergeList(): check the mergelist (recording the list of merged tracks);
-				-> check if more than two tracks (in one group) are updated, if so, erase the updated tracks from the group;
-				-> for the groups in the merge-list with one track updated, this track is also used to update other tracks;
-			(3) checkMergedlPedInView(): check two updated tracks, wheter they should be merged; 
-				-> if so, the pairing information is stored in the merge list;
-			(4) add any remaining clusters as new lPedInView;
-			(5) updateImageHash():
-				-> update the compressed image information of unmerged tracks;
-			(6) cleanUp(): delete obsolete tracks;
-			(7) publishPed(): publish various information of the tracked pedestrians;
-
-
-2. Vehicle Detection
-
+2. Learning semantics using recorded pedestrian tracks:
+./bin/ped_semantics -image-file ./launch/road_map.png -data-file ./data/ped_track.data -image-scale 0.5

@@ -12,8 +12,11 @@ pedestrian_collector::pedestrian_collector():
 		private_nh_.param("file_path",  				file_path_,     			std::string("ped_track.data"));
 		private_nh_.param("ped_belief_threshold",    	ped_belief_threshold_,   	0.05);
 
-		if((visual_image_ = cvLoadImage( map_pic_path_.c_str(), CV_LOAD_IMAGE_COLOR)) == 0){ROS_ERROR("unable to load map image");}
-		else {cvNamedWindow("visualization");}
+		global_viewer_ = new global_track_show(map_pic_path_.c_str(), map_scale_);
+
+		local_view_size_ = cvSize(600, 300);
+		local_show_scale_ = 0.1;
+		local_viewer_ = new local_track_show(local_view_size_, local_show_scale_);
 	}
 
 	void pedestrian_collector::pedCallback(const sensing_on_road::pedestrian_vision_batch::ConstPtr& ped_batch_in)
@@ -64,19 +67,15 @@ pedestrian_collector::pedestrian_collector():
 			//to adjust this threshold for different results;
 			if(ped_tracks_[i].ped_confidence < ped_belief_threshold_) continue;
 
+			CvPoint prev_point = cvPoint(-1, -1);
 			for(size_t j=0; j<ped_tracks_[i].ped_track.size(); j++)
 			{
 				geometry_msgs::Point32 track_pt = ped_tracks_[i].ped_track[j].cluster.centroid;
-				CvPoint pixel;
-				pixel.x = PIC_GXWX(visual_image_, track_pt.x, map_scale_);
-				pixel.y = PIC_GYWY(visual_image_, track_pt.y, map_scale_);
-				//ROS_INFO("pixel %d, %d", pixel.x, pixel.y);
+				global_viewer_->show_update(ped_tracks_[i].ped_track[j].cluster.centroid.x, ped_tracks_[i].ped_track[j].cluster.centroid.y, CV_RGB(0,0,255));
+				local_viewer_->show_update( ped_tracks_[i].ped_track[j].local_centroid.x, ped_tracks_[i].ped_track[j].local_centroid.y, prev_point, CV_RGB(0,0,255));
 
-				if(!PIC_VALID(visual_image_, pixel.x, pixel.y)) continue;
-				cvSet2D(visual_image_, pixel.y, pixel.x, CV_RGB(255, 0, 0));
 			}
 		}
-		cvShowImage("visualization", visual_image_);
 		cvWaitKey(1);
 	}
 
@@ -113,6 +112,8 @@ pedestrian_collector::pedestrian_collector():
 				fprintf(fp_output, "%f\t", ped_tracks_[i].ped_track[j].cluster.centroid.y);
 				fprintf(fp_output, "%f\t", ped_tracks_[i].ped_track[j].cluster.width);
 				fprintf(fp_output, "%f\t", ped_tracks_[i].ped_track[j].cluster.depth);
+				fprintf(fp_output, "%f\t", ped_tracks_[i].ped_track[j].local_centroid.x);
+				fprintf(fp_output, "%f\t", ped_tracks_[i].ped_track[j].local_centroid.y);
 			}
 		}
 		fclose(fp_output);
@@ -121,8 +122,8 @@ pedestrian_collector::pedestrian_collector():
 	pedestrian_collector::~pedestrian_collector()
 	{
 		track_saving();
-		cvDestroyWindow("visualization");
-		cvReleaseImage(&visual_image_);
+		delete local_viewer_;
+		delete global_viewer_;
 	}
 };
 

@@ -16,22 +16,34 @@
 
 namespace golfcar_semantics{
 
+typedef enum
+{
+  MOVING,
+  STATIC
+} track_type;
+
 class track_element
 {
 	public:
 	double time;
 	double x, y;
 	double width, depth;
+	double local_x, local_y;
 };
 
 class track_common
 {
 	public:
-	//std::string type;
-
+	track_type ped_activity;
 	double confidence;
 	size_t track_length;
 	std::vector <track_element> elements;
+};
+
+class pd_track_container
+{
+	//more information to add;
+	std::vector<track_common> tracks;
 };
 
 };
