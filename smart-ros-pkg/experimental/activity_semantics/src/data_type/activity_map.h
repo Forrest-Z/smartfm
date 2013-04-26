@@ -71,6 +71,7 @@ namespace golfcar_semantics
 	  // The map data, stored as a grid
 	  activity_grid *cells;
 
+	  Mat road_image;
 	  pd_track_container* pd_container_pointer;
 
 	} activity_map;
