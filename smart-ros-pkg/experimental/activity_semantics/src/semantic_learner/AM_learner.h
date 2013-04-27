@@ -14,9 +14,11 @@
 
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
+#include <opencv2/contrib/contrib.hpp>
 #include <cv_bridge/CvBridge.h>
-
+#include <fmutil/fm_math.h>
 #include "../data_type/activity_map.h"
+
 
 using namespace std;
 using namespace ros;
@@ -30,17 +32,16 @@ namespace golfcar_semantics
         public:
     	AM_learner(char* image_path, double map_scale, pd_track_container* pd_container);
         ~AM_learner();
-
-        void learn_activity_map();
-        void learn_moving_direction();
-
-        void view_activity_map();
-        void show_moving_direction();
-
+    	void GridMap_init();
+    	void learn_activity_map();
+    	void view_activity_map();
         activity_map *AM_;
 
         private:
-    	void GridMap_init();
+    	void accumulate_grid_activity(activity_grid &grid ,track_common track, size_t element_serial);
+        void learn_moving_direction();
+        void show_moving_direction();
+
     	char* image_path_;
     	double map_scale_;
    };
