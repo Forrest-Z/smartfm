@@ -38,9 +38,12 @@ namespace golfcar_vision{
 
 		float total_points_number = (float)cloud->points.size();
 		float residual_sample_ratio = 1.0;
+		int residual_pixel_num = (int)total_points_number;
 		int loop_number = 0;
 
-		while(residual_sample_ratio>0.3 && loop_number < 5){
+		//while(residual_sample_ratio>0.3 && loop_number < 5)
+		while(residual_pixel_num>=30 && loop_number < 10)
+		{
 
 			std::vector<int> inliers;
 			pcl::SampleConsensusModelLine<pcl::PointXYZ>::Ptr model_line(new pcl::SampleConsensusModelLine <pcl::PointXYZ> (cloud));
@@ -51,7 +54,6 @@ namespace golfcar_vision{
 			ransac.computeModel();
 			ransac.getInliers(inliers);
 			ransac.getModelCoefficients(line_coefficients);
-
 
 			pcl::ExtractIndices<pcl::PointXYZ> extract;
 			pcl::PointIndices::Ptr inline_indices (new pcl::PointIndices);
@@ -70,15 +72,25 @@ namespace golfcar_vision{
 			extract.setIndices (inline_indices);
 			extract.setNegative (false);
 			extract.filter (*inline_cloud);
+
+			unsigned int cloud_size = cloud->size();
+
+			extract.setInputCloud (cloud->makeShared());
+			extract.setIndices (inline_indices);
 			extract.setNegative (true);
 			extract.filter (*cloud);
+
+			ROS_INFO("cloud size %ld, inlier size %ld, remained %ld",  cloud_size, inline_cloud->size(), cloud->size());
+			residual_pixel_num = (int)cloud->size();
+			ROS_INFO("residual_pixel_num %d", residual_pixel_num);
 
 			loop_number++;
 			residual_sample_ratio = ((float)cloud->points.size())/total_points_number;
 			float sample_ratio = ((float)inliers.size())/total_points_number;
 
 			bool good_line = false;
-			if(sample_ratio > 0.3) good_line = true;
+			//if(sample_ratio > 0.3 && inliers.size() > 10) good_line = true;
+			if(inliers.size() > 30) good_line = true;
 
 			if(good_line)
 			{
@@ -98,100 +110,32 @@ namespace golfcar_vision{
 				lanes_inImg.lanes.push_back(current_line);
 
 
-				CvPoint lower_left, upper_right;
-				lower_left.x = 1000;
-				lower_left.y = 1000;
-				upper_right.x = 0;
-				upper_right.y = 0;
+				CvPoint lowPt, upPt, leftPt, rightPt;
+				leftPt.x = 1000;
+				rightPt.x = 0;
+				lowPt.y = 1000;
+				upPt.y = 0;
 				for(size_t j=0; j<inline_cloud->points.size(); j++)
 				{
-					if((inline_cloud->points[j].x < lower_left.x)||(inline_cloud->points[j].x == lower_left.x && inline_cloud->points[j].y < lower_left.y))
-					{
-						lower_left.x = inline_cloud->points[j].x;
-						lower_left.y = inline_cloud->points[j].y;
-					}
-					if((inline_cloud->points[j].x > upper_right.x)||(inline_cloud->points[j].x == upper_right.x && inline_cloud->points[j].y > upper_right.y))
-					{
-						upper_right.x = inline_cloud->points[j].x;
-						upper_right.y = inline_cloud->points[j].y;
-					}
+					if(inline_cloud->points[j].x < leftPt.x) 	{leftPt.x = (int) inline_cloud->points[j].x; leftPt.y = (int) inline_cloud->points[j].y;}
+					if(inline_cloud->points[j].x > rightPt.x) 	{rightPt.x = (int) inline_cloud->points[j].x; rightPt.y = (int) inline_cloud->points[j].y;}
+					if(inline_cloud->points[j].y < lowPt.y) {lowPt.x = (int) inline_cloud->points[j].x; lowPt.y = (int) inline_cloud->points[j].y;}
+					if(inline_cloud->points[j].y > upPt.y) {upPt.x = (int) inline_cloud->points[j].x; upPt.y = (int) inline_cloud->points[j].y;}
 				}
-				cvLine( contour_img, lower_left, upper_right, CV_RGB(0,0,255), 1);
+				CvPoint cordPts[2];
+				double distance = 0.0;
+				if(fmutil::distance(lowPt, upPt)>= distance){cordPts[0]=lowPt;cordPts[1]=upPt;distance =fmutil::distance(lowPt, upPt); }
+				if(fmutil::distance(lowPt, leftPt)>= distance){cordPts[0]=lowPt;cordPts[1]=leftPt; distance = fmutil::distance(lowPt, leftPt);}
+				if(fmutil::distance(lowPt, rightPt)>= distance){cordPts[0]=lowPt;cordPts[1]=rightPt;distance = fmutil::distance(lowPt, rightPt);}
+				if(fmutil::distance(upPt, leftPt)>= distance){cordPts[0]=upPt;cordPts[1]=leftPt;distance = fmutil::distance(upPt, leftPt);}
+				if(fmutil::distance(upPt, rightPt)>= distance){cordPts[0]=upPt;cordPts[1]=rightPt;distance = fmutil::distance(upPt, rightPt);}
+				if(fmutil::distance(leftPt, rightPt)>= distance){cordPts[0]=leftPt;cordPts[1]=rightPt;distance = fmutil::distance(leftPt, rightPt);}
+				cvLine( contour_img, cordPts[0], cordPts[1], CV_RGB(0,0,255), 2);
+				cvCircle( contour_img, cordPts[0], 1, CV_RGB(255,255,255), 2);
+				cvCircle( contour_img, cordPts[1], 1, CV_RGB(255,255,255), 2);
 			}
+
 		}
-
-		/*
-		//use HoughLine: however, Hough-line may yield out several lines which are actually one line,
-		//due to the discrete angle and rho in Hough Transform;
-
-		std::vector<CvPoint> points;
-		for(int i = 0; i < output_mat->rows; i++) {
-			for(int j = 0; j < output_mat->cols; j++) {
-				if (CV_MAT_ELEM(*output_mat, uchar, i, j) == 255) {
-					points.push_back(cvPoint(j,i));
-				}
-			}
-		}
-
-		CvMemStorage* storage = cvCreateMemStorage(0);
-		CvSeq* lines = 0;
-		int i;
-		lines = cvHoughLines2( tmp_img,
-							   storage,
-							   CV_HOUGH_STANDARD,
-							   1,
-							   CV_PI/180*1,
-							   100,
-							   0,
-							   0 );
-
-		ROS_INFO("lines number %d", lines->total );
-		for( i = 0; i < MIN(lines->total,10); i++ )
-		{
-
-			float* line = (float*)cvGetSeqElem(lines,i);
-			float rho = line[0];
-			float theta = line[1];
-			vision_lane_detection::lane_info lane_tmp;
-			lane_tmp.contour_serial = contour_serial;
-			double line_params[3];
-
-			//pay attention to the angle representation;
-			//http://docs.opencv.org/doc/tutorials/imgproc/imgtrans/hough_lines/hough_lines.html
-			line_params[0] = cos(theta);
-			line_params[1] = sin(theta);
-			line_params[2] = -rho;
-			lane_tmp.params[0] = line_params[0];
-			lane_tmp.params[1] = line_params[1];
-			lane_tmp.params[2] = line_params[2];
-
-			printf("line parameter: %5f, %5f, %5f\n", line_params[0], line_params[1], line_params[2]);
-
-			CvPoint lower_left, upper_right;
-			lower_left.x = 1000;
-			lower_left.y = 1000;
-			upper_right.x = 0;
-			upper_right.y = 0;
-
-			for(int j=0; j<points.size(); j++)
-			{
-				double dis_point_to_line = fabs(line_params[0]*points[j].x + line_params[1]*points[j].y+ line_params[2]);
-				if(dis_point_to_line < 6)
-				{
-					geometry_msgs::Point32 point_current;
-					point_current.x = points[j].x;
-					point_current.y = points[j].y;
-					point_current.z = 0;
-					lane_tmp.points.push_back(point_current);
-					if((points[j].x < lower_left.x)||(points[j].x == lower_left.x && points[j].y < lower_left.y))lower_left = points[j];
-					if((points[j].x > upper_right.x)||(points[j].x == upper_right.x && points[j].y > upper_right.y))upper_right = points[j];
-				}
-			}
-			cvLine( contour_img, lower_left, upper_right, CV_RGB(0,0,255), 1);
-		}
-		cvReleaseMemStorage(&storage);
-		*/
-
 
         cvWaitKey(1);
 		cvReleaseImage(&tmp_img);

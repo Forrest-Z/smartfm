@@ -209,7 +209,7 @@ public:
 	}
 	void drawMap(vector<geometry_msgs::Point32> raster_pt, double res_, string filename)
 	{
-		drawMap(raster_pt, res_);
+		drawMap(raster_pt, res_, false);
 		cv::imwrite(filename, image_);
 	}
 };

@@ -11,13 +11,13 @@ namespace golfcar_vision{
 	  ipm_para_init_ = false;
 
       string marker_model_path, marker_scale_path;
-	  private_nh_.param("marker_model_path", marker_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
-	  private_nh_.param("marker_scale_path", marker_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
+	  private_nh_.param("arrow_model_path", marker_model_path, std::string("/home/baoxing/workspace/data_and_model/arrow_20130308.model"));
+	  private_nh_.param("arrow_scale_path", marker_scale_path, std::string("/home/baoxing/workspace/data_and_model/arrow_20130308.range"));
       marker_classifier_ = new golfcar_ml::svm_classifier(marker_model_path, marker_scale_path);
-      image_sub_ = it_.subscribe("/camera_front/ipm_binary", 1, &lane_marker::imageCallback, this);
+      image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &lane_marker::imageCallback, this);
 
       polygon_sub_ = nh_.subscribe("img_polygon", 10, &lane_marker::polygonCallback, this);
-      private_nh_.param("scale", scale_, 30.0);
+      private_nh_.param("scale", scale_, 20.0);
       private_nh_.param("extract_training_image", extract_training_image_, false);
       frame_serial_ = 0;
 
@@ -26,16 +26,24 @@ namespace golfcar_vision{
 
 	  private_nh_.param("image_folder_path", image_folder_path_, std::string("/home/baoxing/images"));
       store_parameter_ = true;
+
+      mask_init_ = false;
     }
 
 	void lane_marker::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
 	{
+		if(!polygon_init_)
+			for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 		polygon_init_ = true;
-		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
     void lane_marker::imageCallback (const sensor_msgs::ImageConstPtr& msg)
     {
+        ROS_INFO("Arrow CallBack Begin");
+
+        fmutil::Stopwatch sw;
+        sw.start("image processing");
+
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
         {
@@ -82,7 +90,38 @@ namespace golfcar_vision{
 		binary_copy = cvCreateImage(cvGetSize(color_image),8,1);
 		cvCvtColor(color_image, binary_img, CV_BGR2GRAY);
 		cvCopy(binary_img, binary_copy);
+		Img_preproc(binary_img, binary_img);
 
+		//2013-March
+		if(!mask_init_)
+		{
+			mask_init_ = true;
+			image_mask_ = cvCreateImage(cvGetSize(color_image),8,1);
+			cvZero(image_mask_);
+	        int ipm_height 		= image_mask_ -> height;
+			int ipm_width  		= image_mask_ -> width;
+			int ipm_step	 	= image_mask_ -> widthStep/sizeof(uchar);
+			uchar * ipm_data 	= (uchar*)image_mask_ ->imageData;
+			for(int ih=0; ih < ipm_height; ih++)
+			{
+				for(int iw=0; iw < ipm_width; iw++)
+				{
+					CvPoint2D32f tmppoint = cvPoint2D32f(iw, ih);
+
+					if(pointInPolygon <CvPoint2D32f> (tmppoint,ipm_polygon_))
+					{
+						ipm_data[ih*ipm_step+iw]=255;
+					}
+				}
+			}
+		}
+		cvAnd(image_mask_, binary_img, binary_img);
+
+		cvShowImage("arrow_binary_img", binary_img);
+
+		sw.end();
+
+		sw.start("extract contour");
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";
         CvSeq *first_contour = 0;       //always keep one copy of the beginning of this list, for further usage;
         CvMemStorage *mem_contours; 
@@ -97,14 +136,17 @@ namespace golfcar_vision{
         contours = filter_contours(scanner);
         first_contour = contours;
 
-        ROS_INFO("1");
+        sw.end();
+
+        sw.start("process contours");
         //-------------------------------------------------------------------------------------------------------------------------------
         //3. classify each remained candidates; visualize the markers detected;
         //-------------------------------------------------------------------------------------------------------------------------------
         IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
         cvCvtColor(binary_img, contour_img, CV_GRAY2BGR);
         CvScalar ext_color;
-        ROS_INFO("2");
+
+        ROS_INFO("Arrow --------2----------");
 
         CvMoments cvm; 
         CvHuMoments cvHM;
@@ -125,7 +167,7 @@ namespace golfcar_vision{
         for (; contours != 0; contours = contours->h_next)
         {
             contour_num_in_this_image++;
-            
+            ROS_INFO("contour %d", contour_num_in_this_image);
             //This denotes how many pixels of one certain object contour;
             //ROS_DEBUG("total pixels %d", contours->total);
             ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 ); 
@@ -201,7 +243,7 @@ namespace golfcar_vision{
             }
 			else {}
 		}
-        cvShowImage("contour_image",contour_img);
+        cvShowImage("arrow_contour_image",contour_img);
         markers_pub_.publish(markers_output);
 
         sensor_msgs::PointCloud markers_ptcloud;
@@ -229,7 +271,8 @@ namespace golfcar_vision{
         //only use when to extract training pictures;
         //once entering this loop, meaning at least one contour exist, save image as training sets;
         //-----------------------------------------------------------------------------------------------
-        if(contour_num_in_this_image>0) extract_training_image(binary_copy);
+        if(contour_num_in_this_image>0) extract_training_image(color_image);
+
         if(extract_training_image_ && store_parameter_ )
         {
         	store_parameter_ = false;
@@ -243,7 +286,7 @@ namespace golfcar_vision{
         	else
         	{
         		fprintf(fp, "%f\t", scale_);
-        		fprintf(fp, "%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t", ipm_polygon_[0].x, ipm_polygon_[0].y, ipm_polygon_[1].x, ipm_polygon_[1].y,
+        		fprintf(fp, "%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t", ipm_polygon_[0].x, ipm_polygon_[0].y, ipm_polygon_[1].x, ipm_polygon_[1].y,
         														ipm_polygon_[2].x, ipm_polygon_[2].y, ipm_polygon_[3].x, ipm_polygon_[3].y);
         		fclose(fp);
         	}
@@ -257,6 +300,9 @@ namespace golfcar_vision{
         cvReleaseImage(&contour_img);
         cvReleaseImage(&binary_img);
         cvReleaseImage(&binary_copy);
+
+        ROS_INFO("Arrow CallBack End");
+        sw.end();
     }
 
     void lane_marker::extract_training_image(IplImage* binary_img)
@@ -266,7 +312,7 @@ namespace golfcar_vision{
 			stringstream  name_string;
 			int stored_serial= frame_serial_/2;
 			//pay attention, this path to the folder cannot be too long, or OpenCV will crash;
-			name_string<< image_folder_path_ <<"/frame"<<stored_serial<<".jpg";
+			name_string<< image_folder_path_ <<"/frame"<<stored_serial<<".png";
 
 			const char *output_name = name_string.str().c_str();
 
@@ -335,21 +381,24 @@ namespace golfcar_vision{
 			float long_side = max(height, width);
 			bool  long_side_criterion = long_side > LONG_SIDE_THRESH*scale_;
 
-			//3nd criterion: no touching polygon boundary;
-			//this criterion only applies to discrete markers, while not to continuous lanes;
 			bool inside_polygon = true;
-			CvPoint2D32f point[4];
-			calc_cvBoxPoints(cvBox, point);
+	        CvSeq *contours_filter;
+			CvMemStorage *mem_poly_filter;
+			mem_poly_filter = cvCreateMemStorage(0);
+			contours_filter = cvApproxPoly( c, sizeof(CvContour), mem_poly_filter, CV_POLY_APPROX_DP, 2, 0 );
 
-			for (int i=0; i<4; i++)
-			{
-				for(int a = -1; a<=1; a++)
+
+	        for(int i=0; i<contours_filter->total; i++)
+	        {
+	            CvPoint* p = (CvPoint*)cvGetSeqElem(contours_filter, i);
+
+
+	            for(int a = -1; a<=1; a=a+1)
 				{
-					for(int b = -1; b<=1; b++)
+					for(int b = -1; b<=1; b=b+1)
 					{
-						CvPoint tmppoint = cvPoint(point[i].x+a, point[i].y+b);
-
-						if(pointInPolygon <CvPoint> (tmppoint,ipm_polygon_))
+						CvPoint2D32f tmppoint = cvPoint2D32f(p->x+a, p->y+b);
+						if(!pointInPolygon <CvPoint2D32f> (tmppoint,ipm_polygon_))
 						{
 							inside_polygon = false;
 							break;
@@ -357,9 +406,23 @@ namespace golfcar_vision{
 					}
 					if(!inside_polygon) break;
 				}
-			}
+				//special processing for the upper and lower bound;
+				if(p->y+3 >=ipm_polygon_[0].y || p->y -3 <=ipm_polygon_[3].y)
+				{
+					inside_polygon = false;
+					break;
+				}
+				if(!inside_polygon) break;
+	        }
+	        cvReleaseMemStorage(&mem_poly_filter);
+
+			if(extract_training_image_)inside_polygon = true;
+
 			bool contour_criteria = len_criterion && long_side_criterion && inside_polygon;
-            if(!contour_criteria) cvSubstituteContour(scanner, NULL);
+            if(!contour_criteria)
+            {
+            	cvSubstituteContour(scanner, NULL);
+            }
         }
         CvSeq *contours = cvEndFindContours(&scanner);
         cvReleaseMemStorage(&mem_box);
@@ -380,7 +443,20 @@ namespace golfcar_vision{
         CvPoint2D32f contour_center;
         contour_center.x = (float)marker_para.x;
         contour_center.y = (float)marker_para.y;
-        
+
+        CvMoments *arrow_moment = &cvm;
+        double u11 = cvGetCentralMoment(arrow_moment, 1, 1);
+        double u20 = cvGetCentralMoment(arrow_moment, 2, 0);
+        double u02 = cvGetCentralMoment(arrow_moment, 0, 2);
+
+        marker_para.thetha = 0.5*atan(2*u11/(u20-u02));
+
+        //turn it into the vehicle frame;
+        //this angle is the deflection angle from "vehicle x-axis" to its 1st principal axis;
+        marker_para.thetha = -marker_para.thetha;
+
+
+        /*
         if(contours->total<5){ROS_DEBUG("this marker is bad! no angle information;");}
         else
         {
@@ -411,7 +487,16 @@ namespace golfcar_vision{
             float vertix_x_old, vertix_y_old;
             float distance;
             std::vector <float> distance_vec;
-            
+                    CvMoments *arrow_moment = &cvm;
+        double u11 = cvGetCentralMoment(arrow_moment, 1, 1);
+        double u20 = cvGetCentralMoment(arrow_moment, 2, 0);
+        double u02 = cvGetCentralMoment(arrow_moment, 0, 2);
+
+        marker_para.thetha = 0.5*atan(2*u11/(u20-u02));
+
+        //turn it into the vehicle frame;
+        //this angle is the deflection angle from "vehicle x-axis" to its 1st principal axis;
+        marker_para.thetha = -marker_para.thetha;
             //pay attention to the sequence, distance from line0 ("n" to "0"), line1 ("0" to "1")...lineN ("n-1" to "n").
             if(vertices.size()>2)   //no need any more, since we have alread denotes the minimum number before;
             {
@@ -567,6 +652,8 @@ namespace golfcar_vision{
 				}
 			}
         }
+        */
+
         cvt_pose_baselink(marker_para);
         ROS_DEBUG("---------marker %lf, %lf, %lf----------\n", marker_para.x, marker_para.y, marker_para.thetha);
         cvReleaseMemStorage(&mem_poly);
@@ -598,6 +685,8 @@ namespace golfcar_vision{
 
     lane_marker::~lane_marker()
     {
+    	//2013-March
+    	if(mask_init_)cvReleaseImage(&image_mask_);
     }
 };
 

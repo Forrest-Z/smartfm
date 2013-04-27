@@ -1,0 +1,25 @@
+<package>
+  <description brief="EM_classifier">
+
+     EM_classifier
+
+  </description>
+  <author>Qin Baoxing</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/EM_classifier</url>
+  <rosdep name="opencv2.3"/>
+  <depend package="image_geometry"/>
+  <depend package="image_transport"/>
+  <depend package="cv_bridge"/>
+  <depend package="tf"/>
+  <depend package="image_view"/>
+  <depend package="message_filters"/>
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
+  <depend package="ocr_server"/>
+  <depend package="fmutil"/>
+  <depend package="svm_classifier"/>
+</package>
+
+

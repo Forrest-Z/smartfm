@@ -3,17 +3,28 @@ define block model
   size [0.500 0.500 0.750]
   gui_nose 0
 )
-
-define topurg laser
+define topurg ranger
 (
-  range_min 0.0
-  range_max 80.0
+  sensor(
+  range [0.0 80.0]
   fov 180
   samples 360
+  )
   # generic model properties
   color "black"
   size [ 0.050 0.050 0.100 ]
 )
+
+#define topurg laser
+#(
+#  range_min 0.0
+#  range_max 80.0
+#  fov 180
+#  samples 360
+  # generic model properties
+#  color "black"
+#  size [ 0.050 0.050 0.100 ]
+#)
 
 define gc1 position
 (

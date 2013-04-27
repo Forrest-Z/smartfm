@@ -1,33 +1,30 @@
 <launch>
     <param name="use_sim_time" value="true"/>
 
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.75, 0.0, 1.32 -0.0 0.17 -0.0 /base_link /camera_front_base 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.75, 0.0, 1.32 -0.0 0.21 -0.0 /base_link /camera_front_base 100" />
     <node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_img" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /camera_front_base /camera_front_img 100" />
     
-	<!--node pkg="vision_lane_detection" type="addCamInfo" name="addCamInfo">
-	<param name="image_transport" value="compre5ssed"/>
-	</node-->
-    
-    <node pkg="vision_lane_detection" type="ipm" name="ipm">
-        <param name="image_transport" value="compressed"/>
-	<param name="visualization_flag" value="true"/>
-	<!--param name="ipm_center_x" value="9.0"/-->
-	<param name="ipm_center_x" value="9.0"/>
-	<param name="ipm_center_y" value="0.0"/>
-	<!--param name="ipm_ROI_height" value="12.0"/-->
-	<param name="ipm_ROI_height" value="12.0"/>	
-	<param name="ipm_ROI_near_width" value="4.0"/>
-	<param name="ipm_ROI_far_width_" value="12.0"/>
-	<param name="publish_dis_thresh" value="0.2"/>
-	<param name="scale" value="20.0"/>
-	</node>
+	<!--include file="$(find vision_lane_detection)/launch/ipm.launch"/-->
+	
+	<!--include file="$(find vision_lane_detection)/launch/arrow.launch"/-->
 
-    <node pkg="vision_lane_detection" type="lane_marker" name="lane_marker">
-	<param name="marker_model_path" value="$(find vision_lane_detection)/data_and_model/scaled_20120726.model"/>
-    	<param name="marker_scale_path" value="$(find vision_lane_detection)/data_and_model/range_20120726"/>
-    	<param name="image_folder_path" value="$(find vision_lane_detection)/images"/>
-    	<param name="extract_training_image" value="false"/>
-	</node>
+	<!--node pkg="vision_lane_detection" type="conti_lane" name="conti_lane">
+		<param name="lane_model_path" value="$(find vision_lane_detection)/data_and_model/lane_20130305.model"/>
+    	<param name="lane_scale_path" value="$(find vision_lane_detection)/data_and_model/lane_20130305.range"/>
+    	<param name="scale" value="20.0"/>
+	</node-->
+
+	<!--node pkg="vision_lane_detection" type="ped_crossing" name="ped_crossing">
+		<param name="ped_crossing_model_path" value="$(find vision_lane_detection)/data_and_model/ped_crossing_20130305.model"/>
+    	<param name="ped_crossing_scale_path" value="$(find vision_lane_detection)/data_and_model/ped_crossing_20130305.range"/>
+    	<param name="scale" value="20.0"/>
+	</node-->
+	
+	<!--node pkg="vision_lane_detection" type="road_ROC" name="road_ROC">
+    	<param name="road_roc_model_path" value="$(find vision_lane_detection)/data_and_model/roc_20130306.model"/>
+    	<param name="road_roc_scale_path" value="$(find vision_lane_detection)/data_and_model/roc_20130306.range"/>
+    	<param name="scale" value="20.0"/>
+	</node-->
 
     <!--node pkg="vision_lane_detection" type="experimental_rgb" name="experimental_rgb">
         <param name="image_transport" value="compressed"/>
@@ -48,9 +45,7 @@
         <param name="image_transport" value="compressed"/>
     </node>
 
-    <node pkg="image_view" type="image_view" name="image_view3">
-        <remap from="image" to= "/camera_front/ipm_canny"/>
-        <param name="image_transport" value="compressed"/>
+    <node pkg="ocr_server" type="ocr_server" name="ocr_server">
     </node>
 	
 <!--node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>

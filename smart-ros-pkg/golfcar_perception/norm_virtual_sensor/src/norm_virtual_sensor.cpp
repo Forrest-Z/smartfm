@@ -101,7 +101,17 @@ class NormVirtualSensor
             concatenated_pts.points[i].y = pcl.points[i].y;
             concatenated_pts.points[i].z = pcl.points[i].z;
         }
-        accumulated_pub_.publish(concatenated_pts);
+        vector<sensor_msgs::PointCloud> all_accumulated = all_data_;
+        
+	
+	sensor_msgs::PointCloud all_accumulated_pc;
+	all_accumulated_pc.header = concatenated_pts.header;
+	for(size_t i=0; i<all_accumulated.size(); i++) {
+	  all_accumulated_pc.points.insert(all_accumulated_pc.points.begin(), all_accumulated[i].points.begin(), all_accumulated[i].points.end());
+	}
+	accumulated_pub_.publish(all_accumulated_pc);
+	
+	//accumulated_pub_.publish(concatenated_pts);
         return pcl;
     }
 
@@ -308,7 +318,7 @@ class NormVirtualSensor
         condrem.filter (single_pcl);
         return single_pcl;
     }
-
+    vector<sensor_msgs::PointCloud> all_data_;
     void mainProcess(std_msgs::Header header)
     {
         fmutil::Stopwatch sw;
@@ -317,6 +327,7 @@ class NormVirtualSensor
         if(laser_accumulate_->getLatestAccumulated(data))
         {
             //RGB used as the scan_no
+            all_data_ = data;
             pcl::PointCloud<pcl::PointXYZRGB> pcl_labeled = labelScan(data, header);
             pcl::PointCloud<pcl::PointXYZRGBNormal> temp = normalEstimation(pcl_labeled);
             pcl::PointCloud<pcl::PointXYZRGBNormal> processed_pcl = filterNormal(temp);

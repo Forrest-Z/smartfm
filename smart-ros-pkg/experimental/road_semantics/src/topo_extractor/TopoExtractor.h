@@ -1,4 +1,3 @@
-
 #ifndef TOPO_EXTRACTOR_H
 #define TOPO_EXTRACTOR_H
 
@@ -23,6 +22,7 @@ class topo_extractor {
 public:
   //the output from "topo_extractor";
   topo_graph road_graph_;
+  int grid_size_x,grid_size_y;
 
   topo_extractor(const grid_type&, float, float, bool);
 
@@ -31,7 +31,6 @@ public:
 
 private:
   grid_type original_grid;
-  int grid_size_x,grid_size_y;
   float coastal_dist, prune_dist;
   bool prune;
 

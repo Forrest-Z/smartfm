@@ -23,6 +23,9 @@
 #include "lane_marker_common.h"
 #include "svm_classifier.h"
 
+#include <boost/bind.hpp>
+#include <boost/thread/mutex.hpp>
+
 using namespace std;
 using namespace ros;
 using namespace tf;
@@ -52,7 +55,7 @@ namespace golfcar_vision{
 
         double scale_;
         //polygon of interest in ipm image for processing;
-        std::vector<CvPoint> ipm_polygon_;
+        std::vector<CvPoint2D32f> ipm_polygon_;
 
         //flag decides whether to extract training images or not;
         bool extract_training_image_, store_parameter_;
@@ -75,6 +78,11 @@ namespace golfcar_vision{
 
         void IpmImage_to_pcl(std::vector <CvPoint2D32f> & pts_image, sensor_msgs::PointCloud &pts_3d);
 
+        //2013-March
+        bool mask_init_;
+        IplImage* image_mask_;
+
+        boost::recursive_mutex configuration_mutex_;
 
     };
 };

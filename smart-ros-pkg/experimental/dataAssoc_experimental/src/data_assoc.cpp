@@ -256,6 +256,8 @@ void data_assoc::updatelPedInViewWithNewCluster(feature_detection::clusters& clu
             lPedInView.pd_vector[minID].cluster.centroid = global_point;
             lPedInView.pd_vector[minID].cluster.last_update = ros::Time::now();
             lPedInView.pd_vector[minID].decision_flag = true;
+            //keep a record of centroid position in the original LIDAR frame;
+            lPedInView.pd_vector[minID].local_centroid = cluster_vector.clusters[i].centroid;
             cluster_vector.clusters.erase(cluster_vector.clusters.begin()+i);
         }
         else
@@ -335,8 +337,8 @@ void data_assoc::updateMergeList()//feature_detection::clusters cluster_vector)
                 if(lPedInView.pd_vector[k].object_label == merge_lists.merged_ids[i].peds[j].id)
                     id_updated.push_back(lPedInView.pd_vector[k].object_label);
             }
-
         }
+
         if(id_updated.size()>1)
         {
             for(size_t j = 0; j<id_updated.size(); j++)
@@ -346,6 +348,7 @@ void data_assoc::updateMergeList()//feature_detection::clusters cluster_vector)
             }
         }
     }
+
     //update merge list
     for(size_t i=0; i<merge_lists.merged_ids.size();i++)
     {
@@ -430,8 +433,11 @@ void data_assoc::pedClustCallback(sensor_msgs::ImageConstPtr image, feature_dete
         if(!transformed) continue;
         sensing_on_road::pedestrian_vision newPed;
         newPed.object_label = latest_id++;
+        newPed.cluster = cluster_vector.clusters[i];
         newPed.cluster.centroid = global_point;
         newPed.cluster.last_update = ros::Time::now();
+        newPed.local_centroid = cluster_vector.clusters[i].centroid;
+
         cout<< "Creating new pedestrian with id #" << latest_id << " at x:" << newPed.cluster.centroid.x << " y:" << newPed.cluster.centroid.y<<endl;
         //imageProjection(img, lPedInView.header, newPed, true);
         lPedInView.pd_vector.push_back(newPed);
@@ -511,7 +517,6 @@ void data_assoc::cleanUp()
         }
         else
             jj++;
-
     }
     ROS_DEBUG_STREAM("cleanup end");
 }

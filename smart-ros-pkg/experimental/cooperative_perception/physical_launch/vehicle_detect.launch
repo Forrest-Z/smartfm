@@ -10,5 +10,7 @@
         <param name="range_thres" value="0.2"/>
         <param name="detected_vehicle_frame" value="/robot_1/base_link"/>
         <remap from="scan_in" to="sickldmrs/scan3"/>
+        <remap from="/vehicle_pose" to="/robot_1/vehicle_pose"/>
+        <remap from="/vehicle_vel" to="/robot_1/vehicle_vel"/>
     </node>
 </launch>

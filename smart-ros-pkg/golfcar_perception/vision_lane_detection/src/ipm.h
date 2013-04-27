@@ -42,7 +42,7 @@ namespace golfcar_vision{
         IplImage *ipm_image_, *ipm_color_image_;
 		double camera_baselink_dis_;
 		double ipm_center_x_, ipm_center_y_;
-		double ipm_ROI_height_, ipm_ROI_near_width_, ipm_ROI_far_width_;
+		double ipm_ROI_height_, ipm_ROI_near_width_, ipm_ROI_far_width_, ipm_ROI_far_width2_;
 		double scale_;
 		  
         image_transport::ImageTransport it_;
@@ -73,8 +73,6 @@ namespace golfcar_vision{
         void ImageCallBack(const sensor_msgs::ImageConstPtr& image_msg, const sensor_msgs::CameraInfoConstPtr& info_msg);
         void GndPt_to_Src(CvPoint2D32f * gnd_pointer, CvPoint2D32f* src_pointer);
         void GndPt_to_Dst(CvPoint2D32f * gnd_pointer, CvPoint2D32f* dst_pointer);
-        void Img_preproc(IplImage *src, IplImage *binary_image, IplImage *canny_image);
-
 
 		//ros::Subscriber  odom_sub_;
 		tf::Transformer  transformer_;
@@ -111,6 +109,9 @@ namespace golfcar_vision{
 
 		geometry_msgs::PolygonStamped gnd_polygon, img_polygon;
 		ros::Publisher gnd_polygon_publisher, img_polygon_publisher;
+
+		std::string src_img_name_;
+		double show_scale_;
    };
 };
 

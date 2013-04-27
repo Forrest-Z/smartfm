@@ -3,7 +3,7 @@
 class ScanAlignment
 {
 public:
-	ros::Publisher scan_aligned_pub_, acc_scan_pub_;
+	ros::Publisher scan_aligned_pub_, acc_scan_pub_, acc_pcl_pub_;
 	tf::TransformListener *tf_;
 	message_filters::Subscriber<sensor_msgs::LaserScan> laser_scan_sub_;
 	tf::MessageFilter<sensor_msgs::LaserScan>       *laser_scan_filter_;
@@ -11,7 +11,7 @@ public:
 	tf::MessageFilter<sensor_msgs::PointCloud> *pc_scan_filter_;
 	laser_geometry::LaserProjection projector_;
 	AccumulateData *ad_;
-	ScanAlignment() : tf_(new tf::TransformListener()), ad_(new AccumulateData("odom", 0.05, 200))
+	ScanAlignment() : tf_(new tf::TransformListener()), ad_(new AccumulateData("odom", 0.05, 10))
 	{
 		ros::NodeHandle nh;
 		laser_scan_sub_.subscribe(nh, "scan_in", 10);
@@ -24,6 +24,7 @@ public:
 
 		scan_aligned_pub_ = nh.advertise<sensor_msgs::PointCloud>("scan_aligned", 10);
 		acc_scan_pub_ = nh.advertise<sensor_msgs::PointCloud>("acc_scan", 10);
+		acc_pcl_pub_ = nh.advertise<pcl::PointCloud<pcl::PointXYZ> >("acc_pcl", 10);
 	}
 
 	void scanCallback(sensor_msgs::LaserScanConstPtr scan)
@@ -54,11 +55,12 @@ public:
 			pcl::PointCloud<pcl::PointXYZ> accumulated_pcl;
 			sensor_msgs::convertPointCloudToPointCloud2(accumulated_cloud, accumulated_pc2);
 			pcl::fromROSMsg(accumulated_pc2, accumulated_pcl);
-			pcl_downsample(accumulated_pcl, 0.025, 0.025, 0.025);
+			pcl_downsample(accumulated_pcl, 0.1, 0.1, 0.1);
 			pcl::toROSMsg(accumulated_pcl, accumulated_pc2);
 			sensor_msgs::convertPointCloud2ToPointCloud(accumulated_pc2, accumulated_cloud);
 			tf_->transformPointCloud("odom_baselink", accumulated_cloud, accumulated_cloud);
 			acc_scan_pub_.publish(accumulated_cloud);
+			acc_pcl_pub_.publish(accumulated_pcl);
 		}
 
 	}

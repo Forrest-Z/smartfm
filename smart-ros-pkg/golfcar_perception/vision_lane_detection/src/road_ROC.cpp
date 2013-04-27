@@ -11,26 +11,27 @@ namespace golfcar_vision{
 	  ipm_para_init_ = false;
 
       string road_roc_model_path, road_roc_scale_path;
-	  private_nh_.param("road_roc_model_path", road_roc_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
-	  private_nh_.param("road_roc_scale_path", road_roc_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
+	  private_nh_.param("road_roc_model_path", road_roc_model_path, std::string("/home/baoxing/workspace/data_and_model/roc_20130306.model"));
+	  private_nh_.param("road_roc_scale_path", road_roc_scale_path, std::string("/home/baoxing/workspace/data_and_model/roc_20130306.range"));
       road_roc_classifier_ = new golfcar_ml::svm_classifier(road_roc_model_path, road_roc_scale_path);
-      image_sub_ = it_.subscribe("/camera_front/ipm_binary", 1, &road_roc::imageCallback, this);
+      image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &road_roc::imageCallback, this);
 
       polygon_sub_ = nh_.subscribe("img_polygon", 10, &road_roc::polygonCallback, this);
-      private_nh_.param("scale", scale_, 30.0);
+      private_nh_.param("scale", scale_, 20.0);
       private_nh_.param("extract_training_image", extract_training_image_, false);
       frame_serial_ = 0;
     }
 
 	void road_roc::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
 	{
+		if(!polygon_init_)
+			for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 		polygon_init_ = true;
-		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
     void road_roc::imageCallback (const sensor_msgs::ImageConstPtr& msg)
     {
-    	printf("\n 1");
+    	ROS_INFO("ROC----ImageCallBack-----");
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
         {
@@ -78,6 +79,7 @@ namespace golfcar_vision{
 
 		binary_img = cvCreateImage(cvSize(img_tmp->width,img_tmp->height),IPL_DEPTH_8U, 1);
 		cvCvtColor(img_tmp, binary_img, CV_BGR2GRAY);
+		Img_preproc_local(binary_img, binary_img);
 		cvReleaseImage(&img_tmp);
 		cvShowImage("roc_binary_image", binary_img);
 
@@ -94,6 +96,9 @@ namespace golfcar_vision{
         //-------------------------------------------------------------------------------------------------------------------------------
         contours = filter_contours(scanner);
         first_contour = contours;
+
+        fmutil::Stopwatch sw;
+        sw.start("roc contour");
 
 		IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
 		cvZero(contour_img);
@@ -137,6 +142,8 @@ namespace golfcar_vision{
 		}
 
         contours = first_contour;
+        sw.end();
+
 
         std::vector<size_t> best_cluster;
         if(contours!=0)  best_cluster =  road_roc::cluster_contours (contours, lane_serials);
@@ -155,6 +162,7 @@ namespace golfcar_vision{
 				{
 					if(j==best_cluster[i])
 					{
+				        sw.start("single character");
 						cvBox = cvMinAreaRect2(contours, mem_box);
 						cvDrawContours(contour_img, contours, CV_RGB(255,0,0), CV_RGB(0,0,0), -1, CV_FILLED, 8, cvPoint(0,0));
 						int square_side = (int)std::sqrt(cvBox.size.height*cvBox.size.height+ cvBox.size.width*cvBox.size.width);
@@ -201,6 +209,7 @@ namespace golfcar_vision{
 				        cvReleaseImage(&character_tmp);
 						//cvReleaseMat(&thining_mat);
 						//cvReleaseMat(&output_mat);
+				        sw.end();
 						break;
 					}
 					j++;
@@ -215,7 +224,6 @@ namespace golfcar_vision{
 		}
         else ROS_INFO("identify no words");
 
-
         if(contour_serial>0) extract_training_image(binary_img);
         printf("2\n");
 
@@ -226,6 +234,8 @@ namespace golfcar_vision{
 
         cvWaitKey(1);
         cvReleaseImage(&contour_img);
+
+        ROS_INFO("ROC----ImageCallBack--END---");
     }
 
 
@@ -368,18 +378,19 @@ namespace golfcar_vision{
 			//4th criterion: no touching polygon boundary;
 			//this criterion only applies to discrete markers, while not to continuous lanes;
 			bool inside_polygon = true;
-			CvPoint2D32f point[4];
-			calc_cvBoxPoints(cvBox, point);
-
-			for (int i=0; i<4; i++)
-			{
-				for(int a = -1; a<=1; a++)
+	        CvSeq *contours_filter;
+			CvMemStorage *mem_poly_filter;
+			mem_poly_filter = cvCreateMemStorage(0);
+			contours_filter = cvApproxPoly( c, sizeof(CvContour), mem_poly_filter, CV_POLY_APPROX_DP, 2, 0 );
+	        for(int i=0; i<contours_filter->total; i++)
+	        {
+	            CvPoint* p = (CvPoint*)cvGetSeqElem(contours_filter, i);
+	            for(int a = -1; a<=1; a=a+1)
 				{
-					for(int b = -1; b<=1; b++)
+					for(int b = -1; b<=1; b=b+1)
 					{
-						CvPoint tmppoint = cvPoint(point[i].x+a, point[i].y+b);
-
-						if(pointInPolygon <CvPoint> (tmppoint,ipm_polygon_))
+						CvPoint2D32f tmppoint = cvPoint2D32f(p->x+a, p->y+b);
+						if(!pointInPolygon <CvPoint2D32f> (tmppoint,ipm_polygon_))
 						{
 							inside_polygon = false;
 							break;
@@ -387,7 +398,14 @@ namespace golfcar_vision{
 					}
 					if(!inside_polygon) break;
 				}
-			}
+				//special processing for the upper and lower bound;
+				if(p->y+3 >=ipm_polygon_[0].y || p->y -3 <=ipm_polygon_[3].y)
+				{
+					inside_polygon = false;
+					break;
+				}
+	        }
+	        cvReleaseMemStorage(&mem_poly_filter);
 
 			//5th: the polygon should have 4-5 corners;
 			bool rectangle_criteria = true;
@@ -397,7 +415,7 @@ namespace golfcar_vision{
 			contours = cvApproxPoly( c, sizeof(CvContour), mem_poly, CV_POLY_APPROX_DP, 5, 0 );
 			if(contours->total > 6) rectangle_criteria = false;
 
-			inside_polygon=true;
+			//inside_polygon=true;
 			rectangle_criteria = true;
 
 			bool contour_criteria = len_criterion && long_side_criterion && short_side_criterion && inside_polygon && rectangle_criteria;

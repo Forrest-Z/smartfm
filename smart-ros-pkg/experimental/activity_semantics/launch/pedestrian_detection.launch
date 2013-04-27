@@ -1,0 +1,47 @@
+<launch>    
+    <node pkg="feature_detection" type="ped_clustering" name="ped_clustering" output="screen">
+        <remap from="sickldmrs/scan0" to="sick_scan4"/>
+        <remap from="sickldmrs/cloud" to="sickldmrs/cloud"/>
+        <param name="prior_distance_filter" value="0.2"/>
+        <param name="radius" value="6"/>
+        <param name="use_octomap" value="false"/>
+    </node>
+    
+    <node pkg="feature_detection" type="cluster_filter.py" name="cluster_filter" output="screen" args="'width &lt; 3.0 and depth &lt; 1.5 and dist &lt; 20'">
+        <remap from="cluster_filter_in" to="pedestrian_clusters"/>
+        <remap from="cluster_filter_out" to="pedestrian_clusters_filtered"/>
+    </node>
+
+    <include file="$(find feature_detection)/visualizer.launch"/>
+    
+    <node pkg="sensing_on_road" type="camera_project_pcl" name="camera_project_pcl">
+	    <remap from="camera_project_in" to="pedestrian_clusters_filtered"/>
+	</node>
+	
+    <node pkg="pedestrian_detector" type="classifier" name="classifier" output="screen">
+    	<param name="image_transport" value="compressed"/>
+    	<remap from="image_raw" to="/camera_front/image_raw"/>
+	    <param name="hit_threshold" value="1.5"/>
+	    <param name="scale" value="1.05"/>
+	    <param name="group_threshold" value="2.0"/>
+	    <param name="show_processed_image" value="false"/>
+	    <param name="black_front_roi" value="true"/>
+	    <param name="write_image" value="false"/>
+	    <param name="path" value="/media/MyPassport/ped_cand"/>
+	    <remap from="pd_vision_batch" to="pedestrian_clusters_filtered"/>
+	</node>
+	
+	<node pkg="dataAssoc_experimental" type="dataAssoc" name="dataAssoc" output="screen">
+	    <param name="global_frame" value="map"/>
+	    <param name="time_out" value="3.0"/>
+	    <param name="poll_increment" value="0.1"/>
+	    <param name="poll_decrement" value="0.05"/>
+	    <param name="confirm_threshold" value="0.3"/>
+	    <remap from="pedestrian_clusters" to="pedestrian_clusters_filtered"/>
+	    <remap from="ped_vision" to="veri_pd_vision"/>
+	    <param name="image_transport" value="compressed"/>
+	</node>
+
+</launch>
+
+

@@ -11,13 +11,13 @@ namespace golfcar_vision{
 	  ipm_para_init_ = false;
 
       string ped_crossing_model_path, ped_crossing_scale_path;
-	  private_nh_.param("ped_crossing_model_path", ped_crossing_model_path, std::string("/home/baoxing/workspace/data_and_model/scaled_20120726.model"));
-	  private_nh_.param("ped_crossing_scale_path", ped_crossing_scale_path, std::string("/home/baoxing/workspace/data_and_model/range_20120726"));
+	  private_nh_.param("ped_crossing_model_path", ped_crossing_model_path, std::string("/home/baoxing/workspace/data_and_model/ped_crossing_20130305.model"));
+	  private_nh_.param("ped_crossing_scale_path", ped_crossing_scale_path, std::string("/home/baoxing/workspace/data_and_model/ped_crossing_20130305.range"));
       ped_crossing_classifier_ = new golfcar_ml::svm_classifier(ped_crossing_model_path, ped_crossing_scale_path);
-      image_sub_ = it_.subscribe("/camera_front/ipm_binary", 1, &ped_crossing::imageCallback, this);
+      image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &ped_crossing::imageCallback, this);
 
       polygon_sub_ = nh_.subscribe("img_polygon", 10, &ped_crossing::polygonCallback, this);
-      private_nh_.param("scale", scale_, 30.0);
+      private_nh_.param("scale", scale_, 20.0);
 
       private_nh_.param("extract_training_image", extract_training_image_, false);
       frame_serial_ = 0;
@@ -25,13 +25,15 @@ namespace golfcar_vision{
 
 	void ped_crossing::polygonCallback(const geometry_msgs::PolygonStamped::ConstPtr& polygon_in)
 	{
+		if(!polygon_init_)
+			for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint2D32f(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 		polygon_init_ = true;
-		for(size_t i=0; i<4; i++) ipm_polygon_.push_back(cvPoint(polygon_in->polygon.points[i].x, polygon_in->polygon.points[i].y));
 	}
 
     void ped_crossing::imageCallback (const sensor_msgs::ImageConstPtr& msg)
     {
-    	printf("\n 1");
+    	ROS_INFO("PED_Crossing----ImageCallBack-----");
+
     	if(!polygon_init_) return;
         if(!fixedTf_inited_)
         {
@@ -77,9 +79,22 @@ namespace golfcar_vision{
 		IplImage* img_tmp = cvCreateImage(cvSize(color_image->width,color_image->height),IPL_DEPTH_8U, 3);
 		cvResize(color_image, img_tmp);
 
+		//2013-March: to erase the small yellow blocks accompanying the white strips;
+		IplImage* yellow_mask = cvCreateImage(cvSize(color_image->width,color_image->height),IPL_DEPTH_8U, 1);
+		IplImage* HSV_image = cvCreateImage(cvSize(color_image->width,color_image->height),IPL_DEPTH_8U, 3);
+		cvCvtColor(color_image, HSV_image, CV_BGR2HSV);
+		cvInRangeS(HSV_image, cvScalar(15, 80, 100), cvScalar(40, 255, 255), yellow_mask);
+		cvThreshold(yellow_mask, yellow_mask, 100, 255, CV_THRESH_BINARY_INV);
+		cvShowImage("yellow_mask", yellow_mask);
+
 		binary_img = cvCreateImage(cvSize(img_tmp->width,img_tmp->height),IPL_DEPTH_8U, 1);
 		cvCvtColor(img_tmp, binary_img, CV_BGR2GRAY);
+		Img_preproc_local(binary_img, binary_img);
+		cvAnd(yellow_mask, binary_img, binary_img);
+
 		cvReleaseImage(&img_tmp);
+		cvReleaseImage(&yellow_mask);
+		cvReleaseImage(&HSV_image);
 		cvShowImage("ped_binary_image", binary_img);
 
         CvSeq *contours = 0;            //"contours" is a list of contour sequences, which is the core of "image_proc";
@@ -89,12 +104,15 @@ namespace golfcar_vision{
         
         //CvContourScanner scanner = cvStartFindContours(Itand, mem_contours, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE);
         CvContourScanner scanner = cvStartFindContours(binary_img, mem_contours, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_NONE);
-                
+
         //-------------------------------------------------------------------------------------------------------------------------------
         //2. to filter noise at the boundary, and noise too small or too big; to re-write
         //-------------------------------------------------------------------------------------------------------------------------------
         contours = filter_contours(scanner);
         first_contour = contours;
+
+    	fmutil::Stopwatch sw;
+        sw.start("ped contour");
 
 		IplImage *contour_img = cvCreateImage(cvSize(binary_img->width,binary_img->height),IPL_DEPTH_8U, 3);
 		cvZero(contour_img);
@@ -132,7 +150,7 @@ namespace golfcar_vision{
 			int approxPtNum = int (contour_poly->total);
 			int contour_class = classify_contour (contour_weight, contour_perimeter, cvHM, cvBox, approxPtNum);
 
-			contour_class = 1;
+			//contour_class = 1;
 			if(contour_class==1)
 			{
 				DrawBox(cvBox, contour_img, CV_RGB(255,255,0));
@@ -210,6 +228,10 @@ namespace golfcar_vision{
 
         cvWaitKey(1);
         cvReleaseImage(&contour_img);
+
+        sw.end();
+
+        ROS_INFO("PED_Crossing----ImageCallBack  END-----");
     }
 
 
@@ -336,34 +358,36 @@ namespace golfcar_vision{
             //1st criterion: perimeter should be long enough;
             double len_pixel = cvContourPerimeter(c);
             double len_meter = len_pixel/scale_;
-            bool len_criterion = (len_meter > CONTOUR_PERIMETER_THRESH);
+            bool len_criterion = (len_meter > 3.0);
 
             //2nd criterion: long side should exceed certain threshold;
 			cvBox = cvMinAreaRect2(c, mem_box);
 			float height =  cvBox.size.height;
 			float width  =  cvBox.size.width;
 			float long_side = max(height, width);
-			bool  long_side_criterion = long_side > LONG_SIDE_THRESH*scale_;
+			bool  long_side_criterion = long_side > 1.5*scale_;
 
             //3rd criterion: short side should exceed certain threshold;
 			float short_side = min(height, width);
-			bool  short_side_criterion = short_side > SHORT_SIDE_THRESH*scale_;
+			bool  short_side_criterion = short_side > 0.5*scale_;
 
 			//4th criterion: no touching polygon boundary;
 			//this criterion only applies to discrete markers, while not to continuous lanes;
 			bool inside_polygon = true;
-			CvPoint2D32f point[4];
-			calc_cvBoxPoints(cvBox, point);
 
-			for (int i=0; i<4; i++)
-			{
-				for(int a = -1; a<=1; a++)
+	        CvSeq *contours_filter;
+			CvMemStorage *mem_poly_filter;
+			mem_poly_filter = cvCreateMemStorage(0);
+			contours_filter = cvApproxPoly( c, sizeof(CvContour), mem_poly_filter, CV_POLY_APPROX_DP, 2, 0 );
+	        for(int i=0; i<contours_filter->total; i++)
+	        {
+	            CvPoint* p = (CvPoint*)cvGetSeqElem(contours_filter, i);
+	            for(int a = -1; a<=1; a=a+1)
 				{
-					for(int b = -1; b<=1; b++)
+					for(int b = -1; b<=1; b=b+1)
 					{
-						CvPoint tmppoint = cvPoint(point[i].x+a, point[i].y+b);
-
-						if(pointInPolygon <CvPoint> (tmppoint,ipm_polygon_))
+						CvPoint2D32f tmppoint = cvPoint2D32f(p->x+a, p->y+b);
+						if(!pointInPolygon <CvPoint2D32f> (tmppoint,ipm_polygon_))
 						{
 							inside_polygon = false;
 							break;
@@ -371,7 +395,14 @@ namespace golfcar_vision{
 					}
 					if(!inside_polygon) break;
 				}
-			}
+				//special processing for the upper and lower bound;
+				if(p->y+3 >=ipm_polygon_[0].y || p->y -3 <=ipm_polygon_[3].y)
+				{
+					inside_polygon = false;
+					break;
+				}
+	        }
+	        cvReleaseMemStorage(&mem_poly_filter);
 
 			//5th: the polygon should have 4-5 corners;
 			bool rectangle_criteria = true;

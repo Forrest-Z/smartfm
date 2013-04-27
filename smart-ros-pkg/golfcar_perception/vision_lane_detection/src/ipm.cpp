@@ -18,16 +18,22 @@ namespace golfcar_vision{
 		private_nh_.param("ipm_center_y", 			ipm_center_y_,			0.0);
 		private_nh_.param("ipm_ROI_height", 		ipm_ROI_height_,		12.0);
 		private_nh_.param("ipm_ROI_near_width",		ipm_ROI_near_width_,	4.0);
-		private_nh_.param("ipm_ROI_far_width",		ipm_ROI_far_width_,		20.0);
-		private_nh_.param("scale", 					scale_,					30.0);
-		CvSize ipm_size = cvSize((int)(scale_ * ipm_ROI_far_width_), (int)(scale_ * ipm_ROI_height_));
+
+		//denotes the small area for arrow/lane marking;
+		private_nh_.param("ipm_ROI_far_width",		ipm_ROI_far_width_,	12.0);
+		//the whole ipm area;
+		private_nh_.param("ipm_ROI_far_width2",		ipm_ROI_far_width2_,	12.0);
+
+
+		private_nh_.param("scale", 					scale_,					20.0);
+		CvSize ipm_size = cvSize((int)(scale_ * ipm_ROI_far_width2_), (int)(scale_ * ipm_ROI_height_));
 		ipm_image_ = cvCreateImage(ipm_size, 8,1);
 		ipm_color_image_ = cvCreateImage(ipm_size, 8, 3);
 
 		private_nh_.param("publish_dis_thresh",     publish_dis_thresh_,    0.05);
 		private_nh_.param("publish_angle_thresh",   publish_angle_thresh_,  5.0/180.0*M_PI);
 		private_nh_.param("visualization_flag",     visualization_flag_,    false);
-		private_nh_.param("odom_control",     		odom_control_,   		 true);
+		private_nh_.param("odom_control",     		odom_control_,   		 false);
 
 		odom_frame_ = "odom";
 		base_frame_ = "base_link";
@@ -35,7 +41,6 @@ namespace golfcar_vision{
 		cam_sub_ = it_.subscribeCamera("camera_front/image_raw", 1, &ipm::ImageCallBack, this);
 		ipm_pub_ = it_.advertise("/camera_front/image_ipm", 1);
 		binary_pub_ = it_.advertise("/camera_front/ipm_binary", 1);
-		canny_pub_ = it_.advertise("/camera_front/ipm_canny", 1);
 
 		//To visualize the image in the PointCloud way;
 		rbg_pub_ = nh_.advertise<PointCloudRGB>("pts_rgb", 10);
@@ -64,14 +69,18 @@ namespace golfcar_vision{
 		gnd_polygon_publisher  = nh_.advertise<geometry_msgs::PolygonStamped>("/gnd_polygon", 10);
 		img_polygon_publisher  = nh_.advertise<geometry_msgs::PolygonStamped>("/img_polygon", 10);
 
-		//to maintain several sets of polygons, since the four modules may be interested in different areas;
+		private_nh_.param("show_scale",    show_scale_,   		 1.0);
+		private_nh_.param("src_img_name", src_img_name_, std::string("camera_front"));
   }
 
   
   void ipm::ImageCallBack( const sensor_msgs::ImageConstPtr& image_msg,
                            const sensor_msgs::CameraInfoConstPtr& info_msg)
   {
-        ROS_INFO("ImageCallBack");
+        ROS_INFO("IPM----ImageCallBack-----");
+        fmutil::Stopwatch sw;
+        sw.start("ipm");
+
         ros::Time meas_time = info_msg->header.stamp;
         if(odom_control_) process_control(meas_time);
 		else {publish_flag_ = true;}
@@ -136,9 +145,9 @@ namespace golfcar_vision{
 			gndQuad_[1].x = ipm_center_x_ + camera_baselink_dis_ - ipm_ROI_height_/2.0 ;
 			gndQuad_[1].y = - ipm_ROI_near_width_ / 2.0;
 			gndQuad_[2].x = ipm_center_x_ + camera_baselink_dis_ + ipm_ROI_height_/2.0;
-			gndQuad_[2].y = - ipm_ROI_far_width_ /2.0;
+			gndQuad_[2].y = - ipm_ROI_far_width2_ /2.0;
 			gndQuad_[3].x = ipm_center_x_ + camera_baselink_dis_ + ipm_ROI_height_/2.0;
-			gndQuad_[3].y = ipm_ROI_far_width_ /2.0;
+			gndQuad_[3].y = ipm_ROI_far_width2_ /2.0;
         }
         
 		//To take into account the uneven of the road surface, the matrix is to be calculated every time;
@@ -161,34 +170,16 @@ namespace golfcar_vision{
 			dstQuad_[3].x, dstQuad_[3].y
 		);
 
-		gnd_polygon.header = info_msg->header;
-		gnd_polygon.header.frame_id = base_frame_;
-		gnd_polygon.polygon.points.clear();
-		img_polygon.header = info_msg->header;
-		img_polygon.header.frame_id = base_frame_;
-		img_polygon.polygon.points.clear();
-		//last point overlap;
-		for(size_t i=0; i<5; i++)
-		{
-			geometry_msgs::Point32 pttmp;
-			pttmp.x = gndQuad_[(i%4)].x;
-			pttmp.y = gndQuad_[(i%4)].y;
-			gnd_polygon.polygon.points.push_back(pttmp);
-
-			pttmp.x = dstQuad_[(i%4)].x;
-			pttmp.y = dstQuad_[(i%4)].y;
-			img_polygon.polygon.points.push_back(pttmp);
-		}
-		gnd_polygon_publisher.publish(gnd_polygon);
-		img_polygon_publisher.publish(img_polygon);
-
-
 		cvGetPerspectiveTransform(srcQuad_,dstQuad_,  warp_matrix_);
 		cvGetPerspectiveTransform(dstQuad_, srcQuad_, projection_matrix_);
 
 		cvWarpPerspective( gray_image, ipm_image_, warp_matrix_);
 		cvWarpPerspective( color_image, ipm_color_image_, warp_matrix_);
 		
+		sw.end();
+
+		sw.start("other related processes");
+
 		PointCloudRGB rgb_pts;
 		rgb_pts.header.stamp = info_msg->header.stamp;
 		rgb_pts.header.frame_id = dest_frame_id_;
@@ -253,7 +244,9 @@ namespace golfcar_vision{
 			cvLine( color_image, cvPointFrom32f(srcQuad_[1]), cvPointFrom32f(srcQuad_[2]), CV_RGB(0,0,255), 1);
 			cvLine( color_image, cvPointFrom32f(srcQuad_[2]), cvPointFrom32f(srcQuad_[3]), CV_RGB(0,0,255), 1);
 			cvLine( color_image, cvPointFrom32f(srcQuad_[3]), cvPointFrom32f(srcQuad_[0]), CV_RGB(0,0,255), 1);
-			cvShowImage("src_window", color_image);
+			//cvShowImage("src_window", color_image);
+			resize_show(color_image, show_scale_, src_img_name_.c_str());
+
 			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[0]), 6, CV_RGB(0,255,0), 2);
 			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[1]), 6, CV_RGB(0,255,0), 2);
 			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[2]), 6, CV_RGB(0,255,0), 2);
@@ -262,20 +255,18 @@ namespace golfcar_vision{
 			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[1]), cvPointFrom32f(dstQuad_[2]), CV_RGB(0,0,255), 1);
 			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[2]), cvPointFrom32f(dstQuad_[3]), CV_RGB(0,0,255), 1);
 			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[3]), cvPointFrom32f(dstQuad_[0]), CV_RGB(0,0,255), 1);
-			cvShowImage("ipm_window", ipm_color_image_);
+			//cvShowImage("ipm_window", ipm_color_image_);
 		}
 
-		IplImage *binary_image, *canny_image;
+		IplImage *binary_image;
         binary_image = cvCreateImage(cvGetSize(ipm_image_),8,1);
-        canny_image = cvCreateImage(cvGetSize(ipm_image_),8,1);
-        Img_preproc(ipm_image_, binary_image, canny_image);
+        Img_preproc(ipm_image_, binary_image);
 
-		sensor_msgs::Image::Ptr ipm_msg, binary_msg, canny_msg;
+		sensor_msgs::Image::Ptr ipm_msg, binary_msg;
 		try
 		 {
-			ipm_msg = bridge_.cvToImgMsg(ipm_image_, "mono8");
+			ipm_msg = bridge_.cvToImgMsg(ipm_color_image_, "bgr8");
 			binary_msg = bridge_.cvToImgMsg(binary_image, "mono8");
-			canny_msg = bridge_.cvToImgMsg(canny_image, "mono8");
 		 }
 		catch (sensor_msgs::CvBridgeException error)
 		 {
@@ -285,13 +276,35 @@ namespace golfcar_vision{
 		ipm_pub_.publish(ipm_msg);
 		binary_msg->header = image_msg ->header;
 		binary_pub_.publish(binary_msg);
-		canny_msg->header = image_msg ->header;
-		canny_pub_.publish(canny_msg);
 
 		//this scentence is necessary;
 		cvWaitKey(1);
 
-		ROS_INFO("ImageCallBack finished");
+		//to publish the
+		gndQuad_[2].y = - ipm_ROI_far_width_ /2.0;
+		gndQuad_[3].y = ipm_ROI_far_width_ /2.0;
+		GndPt_to_Dst(gndQuad_, dstQuad_);
+
+		gnd_polygon.header = info_msg->header;
+		gnd_polygon.header.frame_id = base_frame_;
+		gnd_polygon.polygon.points.clear();
+		img_polygon.header = info_msg->header;
+		img_polygon.header.frame_id = base_frame_;
+		img_polygon.polygon.points.clear();
+		//last point overlap;
+		for(size_t i=0; i<5; i++)
+		{
+			geometry_msgs::Point32 pttmp;
+			pttmp.x = gndQuad_[(i%4)].x;
+			pttmp.y = gndQuad_[(i%4)].y;
+			gnd_polygon.polygon.points.push_back(pttmp);
+
+			pttmp.x = dstQuad_[(i%4)].x;
+			pttmp.y = dstQuad_[(i%4)].y;
+			img_polygon.polygon.points.push_back(pttmp);
+		}
+		gnd_polygon_publisher.publish(gnd_polygon);
+		img_polygon_publisher.publish(img_polygon);
 
 		//Attention:
 		//color_image is not allocated memory as normal;
@@ -299,6 +312,10 @@ namespace golfcar_vision{
 		//so there is no need and it is also not permitted to release its memory space as normal;
 		//cvReleaseImage(&color_image);
 		cvReleaseImage(&gray_image);
+		cvReleaseImage(&binary_image);
+
+		sw.end();
+		ROS_INFO("IPM----ImageCallBack END-----");
   }
   
   //Function "GndPt_to_Src": project ground point in baselink coordinate into camera image;
@@ -552,21 +569,6 @@ namespace golfcar_vision{
 
 		left_pub_.publish(left_accumulated_);
 		right_pub_.publish(right_accumulated_);
-	}
-
-	void  ipm::Img_preproc(IplImage *src, IplImage *binary_image, IplImage *canny_image)
-	{
-        IplImage *It = 0, *Iat = 0;
-        It = cvCreateImage(cvSize(src->width,src->height),IPL_DEPTH_8U, 1);
-        Iat = cvCreateImage(cvSize(src->width,src->height),IPL_DEPTH_8U, 1);
-		cvThreshold(src,It,BINARY_THRESH,255,CV_THRESH_BINARY);
-		cvAdaptiveThreshold(src, Iat, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, BLOCK_SIZE, OFFSET);
-		cvAnd(It, Iat, binary_image);
-
-		cvCanny(src, canny_image, 100, 200, 3);
-
-		cvReleaseImage(&It);
-		cvReleaseImage(&Iat);
 	}
 
   ipm::~ipm()

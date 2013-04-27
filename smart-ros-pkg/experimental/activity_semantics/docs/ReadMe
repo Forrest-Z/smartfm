@@ -1,0 +1,4 @@
+1. Record pedestrian tracks:
+
+2. Learning semantics using recorded pedestrian tracks:
+./bin/ped_semantics -image-file ./launch/road_map.png -data-file ./data/ped_track.data -image-scale 0.5

@@ -78,7 +78,6 @@ namespace golfcar_vision{
         void ImageCallBack(const sensor_msgs::ImageConstPtr& image_msg, const sensor_msgs::CameraInfoConstPtr& info_msg);
         void GndPt_to_Src(CvPoint2D32f * gnd_pointer, CvPoint2D32f* src_pointer);
         void GndPt_to_Dst(CvPoint2D32f * gnd_pointer, CvPoint2D32f* dst_pointer);
-        void Img_preproc(IplImage *src, IplImage *binary_image, IplImage *canny_image);
 
 
 		//ros::Subscriber  odom_sub_;
@@ -117,6 +116,7 @@ namespace golfcar_vision{
 		geometry_msgs::PolygonStamped gnd_polygon, img_polygon;
 		ros::Publisher gnd_polygon_publisher, img_polygon_publisher;
 
+		bool lane_on_, arrow_on_, crossing_on_, word_on_;
 		conti_lane *lane_processor_;
 		lane_marker *arrow_processor_;
 		road_roc* roc_processor_;

@@ -33,7 +33,7 @@ namespace golfcar_vision{
         public:
     	lane_marker();
         ~lane_marker();
-        void imageCallback (const sensor_msgs::ImageConstPtr& msg, const CvMat *warp_matrix_, IplImage *visual_img);
+        void imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean);
 
         private:
         ros::NodeHandle nh_, private_nh_;
@@ -53,10 +53,11 @@ namespace golfcar_vision{
 
         double scale_;
         //polygon of interest in ipm image for processing;
-        std::vector<CvPoint> ipm_polygon_;
+        std::vector<CvPoint2D32f> ipm_polygon_;
 
         //flag decides whether to extract training images or not;
-        bool extract_training_image_;
+        bool extract_training_image_, store_parameter_;
+        string image_folder_path_;
         
         golfcar_ml::svm_classifier *marker_classifier_;
 
@@ -73,6 +74,12 @@ namespace golfcar_vision{
         ros::Publisher markers_ptcloud_pub_;
 
         void IpmImage_to_pcl(std::vector <CvPoint2D32f> & pts_image, sensor_msgs::PointCloud &pts_3d);
+
+        //2013-March
+        bool mask_init_;
+        IplImage* image_mask_;
+
+        bool visualize_arrow_info_;
     };
 };
 

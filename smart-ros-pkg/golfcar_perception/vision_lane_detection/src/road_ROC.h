@@ -55,7 +55,7 @@ namespace golfcar_vision{
 
         double scale_;
         //polygon of interest in ipm image for processing;
-        std::vector<CvPoint> ipm_polygon_;
+        std::vector<CvPoint2D32f> ipm_polygon_;
 
         //flag decides whether to extract training images or not;
         bool extract_training_image_;

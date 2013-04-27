@@ -26,6 +26,12 @@ rosbuild_genmsg()
 
 find_package(OpenCV REQUIRED)
 
+rosbuild_add_executable(generate_training_data src/generate_training_data.cpp)
+target_link_libraries(generate_training_data ${OpenCV_LIBRARIES})
+
+rosbuild_add_executable(word_training_data src/word_training_data.cpp)
+target_link_libraries(word_training_data ${OpenCV_LIBRARIES})
+
 rosbuild_add_executable(ipm src/ipm.cpp)
 target_link_libraries(ipm ${OpenCV_LIBRARIES})
 rosbuild_link_boost(ipm signals)
@@ -66,11 +72,12 @@ rosbuild_link_boost(CP_projector signals)
 rosbuild_add_executable(single_pic src/single_pic.cpp)
 target_link_libraries(single_pic ${OpenCV_LIBRARIES})
 
+rosbuild_add_executable(pointcloud_ipm src/pointcloud_ipm.cpp)
+target_link_libraries(pointcloud_ipm ${OpenCV_LIBRARIES})
+
 rosbuild_add_executable(model_geometry src/model_geometry.cpp)
 target_link_libraries(model_geometry ${OpenCV_LIBRARIES})
 
-rosbuild_add_executable(generate_training_data src/generate_training_data.cpp)
-target_link_libraries(generate_training_data ${OpenCV_LIBRARIES})
 
 #rosbuild_add_executable(test_eigen src/test_eigen.cpp)
 #target_link_libraries(test_eigen ${OpenCV_LIBRARIES})

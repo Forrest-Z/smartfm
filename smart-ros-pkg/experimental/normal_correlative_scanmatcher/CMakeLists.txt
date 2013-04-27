@@ -7,7 +7,7 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE RelWithDebInfo)
+#set(ROS_BUILD_TYPE Release)
 
 rosbuild_init()
 
@@ -15,7 +15,7 @@ rosbuild_init()
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
-set(ISAM_LIBS isam cholmod suitesparseconfig colamd amd lapack blas rt)
+set(ISAM_LIBS isam cholmod colamd amd lapack blas rt)
 #uncomment if you have defined messages
 #rosbuild_genmsg()
 #uncomment if you have defined services
@@ -40,6 +40,13 @@ target_link_libraries(allmatching ${OpenCV_LIBS} mysqlpp)
 rosbuild_add_openmp_flags(allmatching)
 rosbuild_add_executable(isam_full src/isam_full.cpp src/dbgstream.cpp)
 target_link_libraries(isam_full ${ISAM_LIBS} ${OpenCV_LIBS} mysqlpp)
+rosbuild_add_openmp_flags(isam_full)
+#rosbuild_add_executable(conf_mat src/confusion_matrix.cpp src/dbgstream.cpp)
+#target_link_libraries(conf_mat ${OpenCV_LIBS} mysqlpp)
+rosbuild_add_executable(robustISAM2 src/robustISAM2.cpp)
+target_link_libraries(robustISAM2 boost_program_options gtsam vertigo-gtsam)
+rosbuild_add_executable(isam2_full src/isam2_full.cpp src/dbgstream.cpp)
+target_link_libraries(isam2_full gtsam boost_program_options vertigo-gtsam ${OpenCV_LIBS} mysqlpp)
 #rosbuild_add_executable(marker_test src/marker_test.cpp)
 #rosbuild_add_executable(normals_matching_pso src/normals_matching_pso.cpp src/dbgstream.cpp)
 #target_link_libraries(normals_matching_pso  ${OpenCV_LIBS} vtkCommon vtkRendering vtkFiltering)

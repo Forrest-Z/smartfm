@@ -35,7 +35,7 @@ namespace golfcar_vision{
         public:
     	conti_lane();
         ~conti_lane();
-        void imageCallback (const sensor_msgs::ImageConstPtr& msg, const CvMat *warp_matrix_, IplImage *visual_img);
+        void imageCallback (const sensor_msgs::ImageConstPtr& msg, IplImage *visual_ipm, IplImage *visual_ipm_clean);
 
         private:
         ros::NodeHandle nh_, private_nh_;
@@ -64,7 +64,7 @@ namespace golfcar_vision{
 		ransac_lane *lane_extractor_;
 
         CvSeq* filter_contours (CvContourScanner &scanner);
-
+        CvSeq* filter_contours2 (CvSeq* contours);
 
         int classify_contour(double weight_input, double perimeter_input, CvHuMoments &HM_input, CvBox2D &Box_input, int polyNum_input);
 
