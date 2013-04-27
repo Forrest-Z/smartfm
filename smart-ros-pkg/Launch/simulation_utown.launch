@@ -16,6 +16,6 @@
     </node>
 
     <include file="$(find Launch)/move_base.launch"/>
-
+<node pkg="tf" type="static_transform_publisher" name="map_to_oppositetraffic" args="158.7 182.9 0 -0.79 0 0 /map /opposite_traffic 100" />
 </launch>
 
