@@ -72,6 +72,9 @@ rosbuild_link_boost(CP_projector signals)
 rosbuild_add_executable(single_pic src/single_pic.cpp)
 target_link_libraries(single_pic ${OpenCV_LIBRARIES})
 
+rosbuild_add_executable(pointcloud_ipm src/pointcloud_ipm.cpp)
+target_link_libraries(pointcloud_ipm ${OpenCV_LIBRARIES})
+
 rosbuild_add_executable(model_geometry src/model_geometry.cpp)
 target_link_libraries(model_geometry ${OpenCV_LIBRARIES})
 

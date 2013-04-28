@@ -1,231 +1,189 @@
-#include "ped_semantics.h"
+#include "AM_learner.h"
 
 namespace golfcar_semantics{
 
-	ped_semantics::ped_semantics(char* image_path, char* file_path, double map_scale, double track_length_threshold)
+	AM_learner::AM_learner(char* image_path, double map_scale, pd_track_container* pd_container)
 	{
 		map_scale_ = map_scale;
 		image_path_ = image_path;
-		file_path_ 	= file_path;
-		global_viewer_ = new global_track_show(image_path_, map_scale);
 
-		track_size_thresh_ = 20;
-		track_time_thresh_ = 1.0;
-		track_length_thresh_ = track_length_threshold;
-
-		local_view_size_ = cvSize(600, 300);
-		local_show_scale_ = 0.1;
-		local_viewer_ = new local_track_show(local_view_size_, local_show_scale_);
-
-		roadmap_loading();
-		pedtrack_loading();
+		AM_ =  map_alloc();
+		AM_->pd_container_pointer = pd_container;
 	}
 
-	void ped_semantics::semantics_learning()
+
+	void AM_learner::GridMap_init()
 	{
-		//1st function: extraction pedestrian Entrance-Exits;
-		ped_EE_extraction();
+		//1st: allocate memory for the grid map;
 
-		//to be developed;
-	}
+		ROS_INFO("GridMap_init");
+		Mat img = imread( image_path_, CV_LOAD_IMAGE_GRAYSCALE );	//Future work: load these parameters from a YAML file using OpenCV API;
+		AM_->road_image = &img;
 
-	void ped_semantics::roadmap_loading()
-	{
-		if((road_image_ = cvLoadImage( image_path_, CV_LOAD_IMAGE_GRAYSCALE)) == 0){ROS_ERROR("unable to load map image");return;}
+		if( !AM_->road_image->data) {ROS_INFO("cannot load image");return;}
 
-		distance_image_ = cvCreateImage( cvGetSize(road_image_), IPL_DEPTH_32F, 1 );
-		visualize_image_ = cvCreateImage( cvGetSize(road_image_), 8, 3 );
-		cvCvtColor(road_image_, visualize_image_, CV_GRAY2RGB);
+		ROS_INFO("loaded");
 
-		int binary_threshold_value = 120;
-		cvThreshold(road_image_, road_image_, binary_threshold_value, 255, CV_THRESH_BINARY);
+		AM_->size_x = AM_->road_image->cols;
+		AM_->size_y = AM_->road_image->rows;
+		AM_->scale	= map_scale_;
 
-		//apply distance transform;
-		cvDistTransform( road_image_, distance_image_, CV_DIST_L2, 3);
-	}
+		AM_->origin_x = 0.0;			//currently these 3 parameters are not in use;
+		AM_->origin_y = 0.0;
+		AM_->yaw = 0.0;
 
-	//initialize "ped_tracks_";
-	void ped_semantics::pedtrack_loading()
-	{
-		FILE *fp_input;
-		if((fp_input=fopen(file_path_, "r"))==NULL){ROS_ERROR("cannot open output_file\n"); return;}
+		AM_->cells = (activity_grid*)malloc(sizeof(activity_grid)*AM_->size_x*AM_->size_y);
+		ROS_ASSERT(AM_->cells);
 
-		size_t track_number;
-		fscanf(fp_input,  "%ld", &track_number);
-		ped_tracks_.resize(track_number);
-
-		for(size_t i=0; i<ped_tracks_.size(); i++)
+		//2nd: perform grid accumulation;
+		ROS_INFO("perform grid accumulation");
+		std::vector<track_common> &tracks =	AM_->pd_container_pointer->tracks;
+		for(size_t i=0; i<tracks.size(); i++)
 		{
-			track_common &ped_track = ped_tracks_[i];
-			fscanf(fp_input, "\n%lf\t", &ped_track.confidence);
-			fscanf(fp_input, "%ld\n", &ped_track.track_length);
-			ped_track.elements.resize(ped_track.track_length);
-			for(size_t j=0; j<ped_track.elements.size(); j++)
+			for(size_t j=0; j<tracks[i].elements.size(); j++)
 			{
-				fscanf(fp_input, "%lf\t", &ped_track.elements[j].time);
-				fscanf(fp_input, "%lf\t", &ped_track.elements[j].x);
-				fscanf(fp_input, "%lf\t", &ped_track.elements[j].y);
-				fscanf(fp_input, "%lf\t", &ped_track.elements[j].width);
-				fscanf(fp_input, "%lf\t", &ped_track.elements[j].depth);
-				fscanf(fp_input, "%lf\t", &ped_track.elements[j].local_x);
-				fscanf(fp_input, "%lf\t", &ped_track.elements[j].local_y);
-			}
-		}
-		fclose(fp_input);
-	}
+				//associate grids to tracks, including noise-tracks;
+				track_element element_tmp = tracks[i].elements[j];
+				int grid_x = MAP_GXWX(AM_, element_tmp.x);
+				int grid_y = MAP_GYWY(AM_, element_tmp.y);
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, grid_x, grid_y)];
 
-	void ped_semantics::ped_EE_extraction()
-	{
-		ROS_INFO("ped_EE_extraction");
-
-		trajectory_show();
-
-		//classify tracks;
-		ped_track_classification();
-		track_visualization(ped_moving_tracks_, CV_RGB(255, 0, 0), true);
-		cvSaveImage("./data/visualization.jpg", visualize_image_);
-
-		track_visualization(ped_static_tracks_, CV_RGB(255, 255, 0), false);
-
-		//analyze moving tracks;
-		for(size_t i=0; i<ped_moving_tracks_.size(); i++)
-		{
-		}
-		//use road maps as prior knowledge;
-		//apply GMM to extract entrances and exits;
-	}
-
-	void ped_semantics::ped_track_classification()
-	{
-		for(size_t i=0; i<ped_tracks_.size(); i++)
-		{
-			track_common &ped_track = ped_tracks_[i];
-			ROS_INFO("elements size %ld, track time %lf", ped_track.elements.size(), ped_track.elements.back().time-ped_track.elements.front().time);
-
-			if(ped_track.elements.size() >= track_size_thresh_ && (ped_track.elements.back().time-ped_track.elements.front().time > track_time_thresh_))
-			{
-				double track_length = 0.0 ;
-				/*
-				for(size_t j=1; j<ped_track.elements.size(); j++)
+				//pay attention to the case where multiple points in one track fall into the same grid;
+				bool grid_updated_already = false;
+				for(size_t a=0; a<grid_tmp.track_serials.size(); a++)
 				{
-					double distance_between_elements = fmutil::distance(ped_track.elements[j-1].x, ped_track.elements[j-1].y, ped_track.elements[j].x, ped_track.elements[j].y);
-					track_length = track_length + distance_between_elements;
+					if(grid_tmp.track_serials[a]== i) grid_updated_already = true;
 				}
-				*/
-				track_length = fmutil::distance(ped_track.elements.front().x, ped_track.elements.front().y, ped_track.elements.back().x, ped_track.elements.back().y);
-
-				if(track_length >= track_length_thresh_) ped_moving_tracks_.push_back(ped_track);
-				else ped_static_tracks_.push_back(ped_track);
-			}
-			else
-			{
-				//tracks classified as noise;
+				if(grid_updated_already) continue;
+				grid_tmp.track_serials.push_back(i);
+				accumulate_grid_activity(grid_tmp, tracks[i], j);
 			}
 		}
-
-		ROS_INFO("total_tracks: %ld, moving_tracks: %ld, static_tracks: %ld", ped_tracks_.size(), ped_moving_tracks_.size(), ped_static_tracks_.size());
 	}
 
-	void ped_semantics::track_visualization(vector<track_common>& ped_tracks, CvScalar color, bool plot_ends)
+	void AM_learner::accumulate_grid_activity(activity_grid &grid ,track_common track, size_t element_serial)
 	{
-		for(size_t i=0; i<ped_tracks.size(); i++)
+		if(track.ped_activity == MOVING)
 		{
-			for(size_t j=0; j<ped_tracks[i].elements.size(); j++)
-			{
-				CvPoint pixel;
-				pixel.x = PIC_GXWX(visualize_image_, ped_tracks[i].elements[j].x, map_scale_);
-				pixel.y = PIC_GYWY(visualize_image_, ped_tracks[i].elements[j].y, map_scale_);
-				//ROS_INFO("pixel %d, %d", pixel.x, pixel.y);
+			moving_activity activity_tmp;
+			activity_tmp.width = track.elements[element_serial].width;
+			activity_tmp.depth = track.elements[element_serial].depth;
 
-				if(!PIC_VALID(visualize_image_, pixel.x, pixel.y)) continue;
-				cvSet2D(visualize_image_, pixel.y, pixel.x, color);
-			}
-
-			if(plot_ends)
+			bool activity_calculated = false;
+			if(element_serial>0)
 			{
-				CvPoint pixel_begin, pixel_end;
-				pixel_begin.x = PIC_GXWX(visualize_image_, ped_tracks[i].elements.front().x, map_scale_);
-				pixel_begin.y = PIC_GYWY(visualize_image_, ped_tracks[i].elements.front().y, map_scale_);
-				pixel_end.x = PIC_GXWX(visualize_image_, ped_tracks[i].elements.back().x, map_scale_);
-				pixel_end.y = PIC_GYWY(visualize_image_, ped_tracks[i].elements.back().y, map_scale_);
-				cvCircle( visualize_image_, pixel_begin, 1, CV_RGB(0,0,255), 1);
-				cvCircle( visualize_image_, pixel_end, 1, CV_RGB(0,0,255), 1);
+				for(size_t i=element_serial-1; i>=0; i--)
+				{
+					double distance = fmutil::distance(track.elements[element_serial], track.elements[i]);
+					if(distance >= 0.3)
+					{
+						activity_tmp.thetha = std::atan2(track.elements[element_serial].y-track.elements[i].y, track.elements[element_serial].x-track.elements[i].x);
+						if(activity_tmp.thetha<0) activity_tmp.thetha = activity_tmp.thetha + M_PI;
+
+						activity_tmp.speed = distance/(track.elements[element_serial].time - track.elements[i].time);
+						activity_calculated = true;
+						break;
+					}
+				}
 			}
+			if(!activity_calculated)
+			{
+				for(size_t i=element_serial; i<track.elements.size(); i++)
+				{
+					double distance = fmutil::distance(track.elements[i], track.elements[element_serial]);
+					if(distance >= 0.3)
+					{
+						activity_tmp.thetha = std::atan2(track.elements[i].y-track.elements[element_serial].y, track.elements[i].x-track.elements[element_serial].x);
+						if(activity_tmp.thetha<0) activity_tmp.thetha = activity_tmp.thetha + M_PI;
+
+						activity_tmp.speed = distance/(track.elements[i].time - track.elements[element_serial].time);
+						break;
+					}
+				}
+			}
+			grid.moving_activities.push_back(activity_tmp);
 		}
-		cvShowImage("pedestrian_track", visualize_image_);
-		ROS_INFO("track visualization");
-		cvWaitKey(0);
-	}
-
-	void ped_semantics::trajectory_show()
-	{
-		for(size_t i=0; i<ped_tracks_.size(); i++)
+		else if(track.ped_activity == STATIC)
 		{
-			CvPoint prev_point = cvPoint(-1, -1);
-			CvScalar ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
-			for(size_t j=0; j<ped_tracks_[i].elements.size(); j++)
+			static_activity activity_tmp;
+			activity_tmp.width = track.elements[element_serial].width;
+			activity_tmp.depth = track.elements[element_serial].depth;
+			activity_tmp.dwell_time =  track.elements.back().time - track.elements.front().time;
+			grid.static_activities.push_back(activity_tmp);
+		}
+	}
+
+	void AM_learner::learn_activity_map()
+	{
+		learn_moving_direction();
+	}
+
+	void AM_learner::learn_moving_direction()
+	{
+		unsigned int i, j;
+		for(j = 0; j < (unsigned int) AM_->size_y; j++)
+		{
+			for (i = 0; i < (unsigned int) AM_->size_x; i++)
 			{
-				global_viewer_->show_update(ped_tracks_[i].elements[j].x, ped_tracks_[i].elements[j].y, ext_color);
-				//printf("\n local view: %f, %f, %d, %d", ped_tracks_[i].elements[j].local_x, ped_tracks_[i].elements[j].local_y, prev_point.x, prev_point.y);
-				local_viewer_->show_update( ped_tracks_[i].elements[j].local_x, ped_tracks_[i].elements[j].local_y, prev_point, ext_color);
-				cvWaitKey(100);
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
+				if(grid_tmp.moving_activities.size()==0)continue;
+
+				Mat direction_mat( (int)grid_tmp.moving_activities.size(), 1, CV_64FC1 );
+
+		    	for(size_t a=0; a<grid_tmp.moving_activities.size(); a++)
+		    	{
+		    		direction_mat.at<double>(a, 0) =  grid_tmp.moving_activities[a].thetha;
+		    	}
+		    	Mat direction_cov, direction_mean;
+		    	calcCovarMatrix(direction_mat, direction_cov, direction_mean, CV_COVAR_NORMAL|CV_COVAR_ROWS|CV_COVAR_SCALE);
+		    	grid_tmp.direction_gaussion.val[0] = direction_mean.at<double>(0,0);
+		    	grid_tmp.direction_gaussion.val[1] = direction_cov.at<double>(0,0);
 			}
 		}
 	}
 
-	ped_semantics::~ped_semantics()
+	void AM_learner::view_activity_map()
 	{
-		delete local_viewer_;
-		delete global_viewer_;
+		show_moving_direction();
+	}
+
+	void AM_learner::show_moving_direction()
+	{
+		Mat direction_color(AM_->size_y,  AM_->size_x, CV_8UC1 );
+		direction_color = Scalar(0);
+
+		unsigned int i, j;
+		for(j = 0; j < (unsigned int) AM_->size_y; j++)
+		{
+			for (i = 0; i < (unsigned int) AM_->size_x; i++)
+			{
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
+				if(grid_tmp.moving_activities.size()==0)continue;
+				int x = i;
+				int y = AM_->size_y-1-j;
+				direction_color.at<uchar>(y,x) = floor(grid_tmp.direction_gaussion.val[0]/M_PI *255.0);
+			}
+		}
+		Mat jetcolor;
+		applyColorMap(direction_color, jetcolor, COLORMAP_JET);
+
+		Mat mask;
+		cvtColor(direction_color, mask, CV_GRAY2RGB);
+		bitwise_and(jetcolor, mask, jetcolor);
+		imshow("direction_map", jetcolor);
+
+		waitKey(0);
+	}
+
+
+
+	AM_learner::~AM_learner()
+	{
+		if( AM_ != NULL )
+		{
+			map_free( AM_ );
+			AM_ = NULL;
+		}
 	}
 };
 
-int main(int argc, char** argv)
-{
-	if (argc < 2)
-	{
-		cout << "Please run with -? for runtime options.\n";
-		exit (0);
-	}
-
-	double map_scale = 0.1;
-	double track_length_threshold = 1.0;
-	char *image_path, *file_path;
-
-	for (int i=1;i<argc;i++)
-	{
-	    if (0==strcmp(argv[i],"-?")) {
-	      cout << "\nTo run : ./bin/ped_semantics -image-file FILENAME1 <options>\n\n";
-	      cout << "options (see README for details):\n";
-	      cout << "-data-file FILENAME2\n";
-	      cout << "-image-scale m/pixel \n";
-	      cout << "-length-thresh \n";
-	      exit (0);
-	    }
-	    else if (i+1 < argc)
-	    {
-		  if (0==strcmp(argv[i],"-image-file"))
-			  image_path=argv[++i];
-		  else if (0==strcmp(argv[i],"-data-file"))
-			  file_path	=argv[++i];
-		  else if (0==strcmp(argv[i],"-image-scale"))
-			  map_scale =atof(argv[++i]);
-		  else if (0==strcmp(argv[i],"-length-thresh"))
-			  track_length_threshold=atof(argv[++i]);
-		  else {
-				cout << "Incorrect parameter list.\n";
-				cout << "Please run with -? for runtime options.\n";
-				exit(0);
-		  	   }
-		}
-		else {
-		  cout << "Incorrect parameter lists.\n";
-		  cout << "Please run with -? for runtime options.\n";
-		  exit(0);
-		}
-	  }
-
-	golfcar_semantics::ped_semantics ped_semantics_node(image_path, file_path, map_scale, track_length_threshold);
-	ped_semantics_node.semantics_learning();
-	return 0;
-}

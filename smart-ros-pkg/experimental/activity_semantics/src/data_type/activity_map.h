@@ -35,24 +35,26 @@ namespace golfcar_semantics
 	typedef struct
 	{
 		double speed, thetha;
-	} dynamic_activity;
+		double width, depth;
+	} moving_activity;
 
 	typedef struct
 	{
 		double dwell_time;
+		double width, depth;
 	} static_activity;
 
 	typedef struct
 	{
-		//---------------raw information----------------
 		//associated tracks, indexed by their serials;
 		std::vector<size_t> track_serials;
 
-		//--------------processed information-----------
 		//for moving tracks;
-		std::vector<dynamic_activity> ped_activities;
+		std::vector<moving_activity> moving_activities;
 		double avg_speed;
-		std::vector<Vec2d> thetha_Gaussians;
+		Vec2d direction_gaussion;
+		//std::vector<Vec2d> thetha_Gaussians;
+
 		//for static tracks;
 		std::vector<static_activity> static_activities;
 
@@ -71,6 +73,7 @@ namespace golfcar_semantics
 	  // The map data, stored as a grid
 	  activity_grid *cells;
 
+	  Mat* road_image;
 	  pd_track_container* pd_container_pointer;
 
 	} activity_map;

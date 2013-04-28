@@ -19,7 +19,8 @@ namespace golfcar_semantics{
 typedef enum
 {
   MOVING,
-  STATIC
+  STATIC,
+  NOISE
 } track_type;
 
 class track_element
@@ -42,6 +43,7 @@ class track_common
 
 class pd_track_container
 {
+	public:
 	//more information to add;
 	std::vector<track_common> tracks;
 };

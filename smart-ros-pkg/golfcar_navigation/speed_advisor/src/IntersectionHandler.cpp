@@ -1,6 +1,7 @@
 #include "IntersectionHandler.h"
 #include "InterarctiveMarkerPolicy.h"
 #include "InfrastructureSensorPolicy.h"
+#include "SimpleBoolPolicy.cpp"
 #include "LaserAreaPolicy.h"
 
 #include <fmutil/fm_math.h>
@@ -122,7 +123,8 @@ void IntersectionHandler::update(const pnc_msgs::move_status & status)
         else
         {
             ROS_DEBUG_NAMED("intersection", "Normal intersection (interactive)");
-            policy_ = new InteractiveMarkerPolicy(int_point_);
+            //policy_ = new InteractiveMarkerPolicy(int_point_);
+            policy_ = new SimpleBoolPolicy();
         }
         policy_->update_dist(dist_to_int_);
     }

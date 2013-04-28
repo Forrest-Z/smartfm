@@ -19,6 +19,9 @@ namespace golfcar_semantics{
 
 		roadmap_loading();
 		pedtrack_loading();
+
+		track_container_ = new pd_track_container();
+		activity_map_learner_ = new AM_learner(image_path_, map_scale_, track_container_);
 	}
 
 	void ped_semantics::semantics_learning()
@@ -82,15 +85,17 @@ namespace golfcar_semantics{
 
 		//classify tracks;
 		ped_track_classification();
+
 		track_visualization(ped_moving_tracks_, CV_RGB(255, 0, 0), true);
 		cvSaveImage("./data/visualization.jpg", visualize_image_);
 
 		track_visualization(ped_static_tracks_, CV_RGB(255, 255, 0), false);
 
+		track_container_->tracks = ped_tracks_;
+		activity_map_learner_->GridMap_init();
+		activity_map_learner_->learn_activity_map();
+		activity_map_learner_->view_activity_map();
 		//analyze moving tracks;
-		for(size_t i=0; i<ped_moving_tracks_.size(); i++)
-		{
-		}
 		//use road maps as prior knowledge;
 		//apply GMM to extract entrances and exits;
 	}
@@ -114,12 +119,21 @@ namespace golfcar_semantics{
 				*/
 				track_length = fmutil::distance(ped_track.elements.front().x, ped_track.elements.front().y, ped_track.elements.back().x, ped_track.elements.back().y);
 
-				if(track_length >= track_length_thresh_) ped_moving_tracks_.push_back(ped_track);
-				else ped_static_tracks_.push_back(ped_track);
+				if(track_length >= track_length_thresh_)
+				{
+					ped_moving_tracks_.push_back(ped_track);
+					ped_track.ped_activity = MOVING;
+				}
+				else
+				{
+					ped_track.ped_activity = STATIC;
+					ped_static_tracks_.push_back(ped_track);
+				}
 			}
 			else
 			{
 				//tracks classified as noise;
+				ped_track.ped_activity = NOISE;
 			}
 		}
 
@@ -165,10 +179,12 @@ namespace golfcar_semantics{
 			CvScalar ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
 			for(size_t j=0; j<ped_tracks_[i].elements.size(); j++)
 			{
+				/*
 				global_viewer_->show_update(ped_tracks_[i].elements[j].x, ped_tracks_[i].elements[j].y, ext_color);
 				//printf("\n local view: %f, %f, %d, %d", ped_tracks_[i].elements[j].local_x, ped_tracks_[i].elements[j].local_y, prev_point.x, prev_point.y);
 				local_viewer_->show_update( ped_tracks_[i].elements[j].local_x, ped_tracks_[i].elements[j].local_y, prev_point, ext_color);
-				cvWaitKey(100);
+				cvWaitKey(10);
+				*/
 			}
 		}
 	}
