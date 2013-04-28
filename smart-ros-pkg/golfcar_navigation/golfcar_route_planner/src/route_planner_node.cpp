@@ -42,8 +42,8 @@ int main(int argc, char **argv)
     if( use_dbserver )
     {
         std::string url;
-//         std:string vehicleID="golfcart1";
-        int vehicleID=1;
+        std::string vehicleID;
+        // int vehicleID=1;
         
         if( ! nh.getParam("booking_url", url) )
         {
@@ -51,10 +51,9 @@ int main(int argc, char **argv)
             exit(1);
         }
         nh.getParam("vehicleID", vehicleID);
-        ROS_INFO("Connecting to database at URL %s with ID %d.",
-                 url.c_str(), vehicleID);
-//         comm = new DBMissionComm(*rp, *pc, url, vehicleID);
-        comm = new DBMissionComm(*rp, *pc, url, "1");
+        ROS_INFO("Connecting to database at URL %s with ID %s.",
+                 url.c_str(), vehicleID.c_str());
+        comm = new DBMissionComm(*rp, *pc, url, vehicleID);
     }
     else
     {

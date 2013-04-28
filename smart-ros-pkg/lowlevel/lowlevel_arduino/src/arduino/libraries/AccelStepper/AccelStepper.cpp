@@ -3,7 +3,14 @@
 // Copyright (C) 2009 Mike McCauley
 // $Id: AccelStepper.cpp,v 1.4 2011/01/05 01:51:01 mikem Exp $
 
-#include "WProgram.h"
+//#include "WProgram.h"
+#if defined(ARDUINO) && ARDUINO >= 100
+  #include "Arduino.h"
+#else
+  #include "WProgram.h"
+  #include <pins_arduino.h>
+#endif
+
 #include "AccelStepper.h"
 
 void AccelStepper::moveTo(long absolute)

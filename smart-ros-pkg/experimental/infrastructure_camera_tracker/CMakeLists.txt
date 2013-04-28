@@ -16,16 +16,15 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-find_package(OpenCV REQUIRED)
+#uncomment if you have defined messages
+#rosbuild_genmsg()
+#uncomment if you have defined services
+#rosbuild_gensrv()
 
-
-rosbuild_add_library(local_track_show src/tools/local_track_show.cpp)
-rosbuild_add_library(global_track_show src/tools/global_track_show.cpp)
-
-rosbuild_add_executable(ped_collector src/activity_collector/pedestrian_collector.cpp)
-target_link_libraries(ped_collector ${OpenCV_LIBRARIES} local_track_show global_track_show)
-
-rosbuild_add_library(AM_learner src/semantic_learner/AM_learner.cpp)
-rosbuild_add_executable(ped_semantics src/semantic_learner/ped_semantics.cpp)
-target_link_libraries(ped_semantics ${OpenCV_LIBRARIES} local_track_show global_track_show AM_learner)
-
+#common commands for building c++ executables and libraries
+#rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
+#target_link_libraries(${PROJECT_NAME} another_library)
+#rosbuild_add_boost_directories()
+#rosbuild_link_boost(${PROJECT_NAME} thread)
+rosbuild_add_executable(tracker src/tracker.cpp)
+#target_link_libraries(example ${PROJECT_NAME})

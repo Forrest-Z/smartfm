@@ -8,7 +8,7 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   sodipodi:docname="utown_east.svg"
+   sodipodi:docname="path_def.svg"
    height="5378"
    width="3362"
    inkscape:version="0.48.3.1 r9886"
@@ -23,13 +23,13 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="1301"
+     inkscape:window-width="1295"
      inkscape:window-height="744"
      id="namedview32"
      showgrid="false"
      inkscape:zoom="2.8284271"
-     inkscape:cx="1961.954"
-     inkscape:cy="1406.1844"
+     inkscape:cx="1899.7286"
+     inkscape:cy="1307.1894"
      inkscape:window-x="65"
      inkscape:window-y="24"
      inkscape:window-maximized="1"
@@ -476,15 +476,15 @@
   <desc
      id="desc6">The paths consist of all the possible route that can be taken by the golfcart to serve 4 stations: DCC, MCD, EA and E3A</desc>
   <image
-     sodipodi:absref="/home/demian/smartfm/bookingUI/shared/SvgPath/utown.png"
+     sodipodi:absref="/home/poon/smartfm/bookingUI/shared/SvgPath/utown.png"
      xlink:href="utown.png"
-     height="5378"
-     width="3362"
-     style="font-size:14px;fill:#aa4400"
-     id="map"
-     x="-0.17677669"
+     inkscape:label="#image3014"
      y="0"
-     inkscape:label="#image3014" />
+     x="-0.17677669"
+     id="map"
+     style="font-size:14px;fill:#aa4400"
+     width="3362"
+     height="5378" />
   <path
      style="fill:none;stroke:#000000;stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      d="m 836.60029,781.10336 -9.75986,-0.54878 -9.00893,-0.29693 -7.63304,0.50586 -8.78998,-0.11989 -10.03839,1.28866 -12.68758,0.31129 -10.85523,0.7809 -10.86666,2.4374 -11.90738,3.4503 -13.06942,7.78306 -13.07828,7.76532 -12.39297,10.78701 -11.92071,10.20962 -11.29998,7.33035 -11.09132,8.99448 -9.74013,7.53867 -8.33588,8.02925 -9.35364,8.41814 -8.875,9.88437 -9.59034,10.51358 -6.44781,9.92722 -7.0464,11.51368 -3.09225,8.68717 -6.45587,21.66711 -1.00481,13.39922 -2.46411,14.62361 -3.13681,11.2346 -1.93881,14.08552 -2.63042,21.15525 -1.91211,18.3522 -2.70511,12.9658 -1.15459,14.3976 -2.0344,12.0029 -1.80419,13.8253 -2.132,20.7599 -2.6321,20.538 -3.5274,31.01 -3.19897,34.8839 -2.91151,34.1119 -3.09011,45.9857"
@@ -549,40 +549,40 @@
      inkscape:label="#path3106"
      sodipodi:nodetypes="ccc" />
   <path
-     style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="fill:none;stroke:#4fa955;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;fill-opacity:1"
      d="m 1932.5,4100 -4,-24 0.5,-19 7,-30 12,-33 c 0,0 10.2626,-11.5084 17,-16 l 21,-14 28,9 39,33 43,42 40,41 47,43 36,32 31,22 28,23 8,22 0,30 -43,5 -40,-4 -44,-6 -77,-11"
      id="DCC_MCD"
      inkscape:connector-curvature="0"
      inkscape:label="#path3077"
      sodipodi:nodetypes="ccccccccccccccccccccc" />
   <path
-     style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="fill:none;stroke:#a3a550;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      d="m 2140,4256 -65,-11 -58,-9 -34,-8 -18,-12 -10.8787,-27.2929 -6.2322,-17.6759 -8.4645,-32.2721 -2.7071,-13.1213"
      id="MCD_DCC"
      inkscape:connector-curvature="0"
      inkscape:label="#path3079"
      sodipodi:nodetypes="ccccccccc" />
   <path
-     style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="fill:none;stroke:#f900ff;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      d="M 1946.5,4151 1934,4104"
      id="DCC_START"
      inkscape:connector-curvature="0"
      inkscape:label="#path3056" />
   <path
-     style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     d="m 1945.25,4147.5 -12.5,-47"
+     style="fill:none;stroke:#ff0700;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     d="m 1944.1893,4147.5 -12.5,-47"
      id="DCC_START2"
      inkscape:connector-curvature="0"
      inkscape:label="#path3056" />
   <path
-     style="fill:none;stroke:#000000;stroke-width:0.57400507px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="fill:none;stroke:#00c4ff;stroke-width:0.57400507000000001px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      d="m 1948.1084,3936.5267 -4.8996,0.2735 -3.9519,0.025 -4.42,0.2906 -7.6704,0.4275"
      id="DCC_END2"
      inkscape:connector-curvature="0"
      inkscape:label="#path3082"
      sodipodi:nodetypes="ccccc" />
   <path
-     style="fill:none;stroke:#000000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+     style="fill:none;stroke:#0005ff;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      d="m 1927.9266,4091.0657 8.1318,33.234"
      id="DCC_END"
      inkscape:connector-curvature="0"

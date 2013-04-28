@@ -1,0 +1,20 @@
+<package>
+  <description brief="infrastructure_camera_tracker">
+
+     infrastructure_camera_tracker
+
+  </description>
+  <author>pvt</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/infrastructure_camera_tracker</url>
+  <depend package="image_transport"/>
+  <depend package="opencv2"/>
+  <depend package="roscpp"/>
+  <depend package="sensor_msgs"/>
+  <depend package="std_msgs"/>
+  <depend package="usb_cam"/>
+
+</package>
+
+
