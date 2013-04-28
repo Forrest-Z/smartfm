@@ -6,8 +6,8 @@
  * 				offline learning, in the 1st version;
  */
 
-#ifndef PED_SEMANTIC_H
-#define PED_SEMANTIC_H
+#ifndef GOLFCAR_SEMANTICS_PED_SEMANTIC_H
+#define GOLFCAR_SEMANTICS_PED_SEMANTIC_H
 
 #include <ros/ros.h>
 #include <vector>
@@ -31,7 +31,11 @@
 #include <opencv/highgui.h>
 #include <cv_bridge/CvBridge.h>
 
-#include "../datatype_semantic.h"
+#include "../data_type/datatype_semantic.h"
+#include "../tools/local_track_show.h"
+#include "../tools/global_track_show.h"
+
+#include "AM_learner.h"
 
 using namespace std;
 using namespace ros;
@@ -56,16 +60,27 @@ namespace golfcar_semantics{
         void ped_track_classification();
 
         IplImage *road_image_, *distance_image_, *visualize_image_;
-        vector<track_common> ped_tracks_;
 
+		pd_track_container *track_container_;
+        vector<track_common> ped_tracks_;
         vector<track_common> ped_moving_tracks_;
         vector<track_common> ped_static_tracks_;
 
         double map_scale_;
 		char* image_path_, *file_path_;
+		global_track_show *global_viewer_;
+
 
 		size_t track_size_thresh_;
 		double track_time_thresh_, track_length_thresh_;
+
+		CvSize local_view_size_;
+		double local_show_scale_;
+		local_track_show *local_viewer_;
+		void trajectory_show();
+
+
+		AM_learner *activity_map_learner_;
    };
 };
 

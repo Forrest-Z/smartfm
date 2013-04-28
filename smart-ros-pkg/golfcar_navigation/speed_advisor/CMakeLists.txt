@@ -39,6 +39,7 @@ rosbuild_add_boost_directories()
 rosbuild_add_executable( speed_advisor
     src/InteractiveMarkerPolicy.cpp
     src/InfrastructureSensorPolicy.cpp
+    src/SimpleBoolPolicy.cpp
     src/OnboardCamPolicy.cpp
     src/SvgBoundary.cpp
     src/LaserAreaPolicy.cpp
