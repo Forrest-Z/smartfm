@@ -12,7 +12,8 @@
 #include <tf/transform_listener.h>
 #include <ped_momdp_sarsop/ped_local_frame_vector.h>
 #include <pnc_msgs/move_status.h>
-
+#include <rrts/rrts_status.h>
+#include <geometry_msgs/Twist.h>
 using namespace std;
 
 struct VehicleParticle{
@@ -189,15 +190,17 @@ public:
 
 class LaserPoseTracking{
   ros::NodeHandle nh_;
-  ros::Subscriber pc_sub_, move_status_sub_;
+  ros::Subscriber pc_sub_, move_status_sub_, speed_cmd_sub_;
   bool first_call_;
 public:
   LaserPoseTracking():first_call_(true) {
     pc_sub_ = nh_.subscribe("pedestrian_poi", 10, &LaserPoseTracking::pcCallback, this);
     move_status_sub_ = nh_.subscribe("move_status", 10, &LaserPoseTracking::moveStatusCallback, this);
+    speed_cmd_sub_ = nh_.subscribe("momdp_vel", 10, &LaserPoseTracking::speedCmdCallback, this);
     particles_pub_ = nh_.advertise<sensor_msgs::PointCloud>("pose_particles", 10);
     mean_particles_pub_ = nh_.advertise<sensor_msgs::PointCloud>("pose_mean", 10);
     pompdp_pub_ = nh_.advertise<ped_momdp_sarsop::ped_local_frame_vector>("ped_local_frame_vector", 10);
+    stopping_cmd_pub_ = nh_.advertise<rrts::rrts_status>("rrts_status", 10);
     object_id_ = 0;
     ros::spin();
   }
@@ -206,7 +209,7 @@ private:
   double time_pre_;
   vector<PosePF> filters_;
   int object_id_;
-  ros::Publisher particles_pub_, mean_particles_pub_, pompdp_pub_;
+  ros::Publisher particles_pub_, mean_particles_pub_, pompdp_pub_, stopping_cmd_pub_;
   tf::TransformListener tf_;
   double distance_cur_;
   double robot_distance_;
@@ -214,6 +217,16 @@ private:
     robot_distance_ = move_status->dist_to_goal;
   }
   
+  void speedCmdCallback(geometry_msgs::TwistConstPtr speed_cmd){
+    //larger number is expected as this is the distance to goal
+    bool stop = false;
+    if(robot_distance_ > 68 ){
+      if(speed_cmd->linear.x < 0.1) stop = true;
+    }
+    rrts::rrts_status stat;
+    stat.robot_in_collision = stop;
+    stopping_cmd_pub_.publish(stat);
+  }
   void publishParticles(vector<VehicleParticle> &particles){
     sensor_msgs::PointCloud pc;
     pc.header.stamp = ros::Time::now();

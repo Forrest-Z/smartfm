@@ -13,6 +13,7 @@
   <depend package="fmutil"/>
   <depend package="ped_momdp_sarsop"/>
   <depend package="pnc_msgs"/>
+  <depend package="rrts"/>
 </package>
 
 
