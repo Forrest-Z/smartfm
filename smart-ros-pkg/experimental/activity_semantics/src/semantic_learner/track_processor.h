@@ -20,7 +20,6 @@
 
 #include "../data_type/activity_map.h"
 
-
 using namespace std;
 using namespace ros;
 using namespace cv;
@@ -31,21 +30,13 @@ namespace golfcar_semantics
     class track_processor {
 
         public:
-    	track_processor();
+    	track_processor(pd_track_container* pd_container, size_t track_size_thresh_, double track_time_thresh_, double track_length_thresh_);
         ~track_processor();
+        pd_track_container *track_container_;
+        void ped_track_classification();
 
-    	void GridMap_init();
-    	void learn_activity_map();
-    	void view_activity_map();
-        activity_map *AM_;
-
-        private:
-    	void accumulate_grid_activity(activity_grid &grid ,track_common track, size_t element_serial);
-        void learn_moving_direction();
-        void show_moving_direction();
-
-    	char* image_path_;
-    	double map_scale_;
+		size_t track_size_thresh_;
+		double track_time_thresh_, track_length_thresh_;
    };
 };
 

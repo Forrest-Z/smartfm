@@ -30,12 +30,15 @@
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <cv_bridge/CvBridge.h>
+#include <iostream>
+#include <string>
 
 #include "../data_type/datatype_semantic.h"
 #include "../tools/local_track_show.h"
 #include "../tools/global_track_show.h"
 
 #include "AM_learner.h"
+#include "track_processor.h"
 
 using namespace std;
 using namespace ros;
@@ -45,32 +48,29 @@ namespace golfcar_semantics{
 
     class ped_semantics {
         public:
-    	ped_semantics(char* image_path, char* file_path, double map_scale, double track_length_threshold);
-        ~ped_semantics();
+    	ped_semantics(char* parameter_file);
+    	~ped_semantics();
 
         //extracted ped_semantic information;
         void semantics_learning();
 
         private:
-
+        //init parameter by reading a parameter file;
+        void parameter_init();
         void roadmap_loading();
         void pedtrack_loading();
-        void track_visualization(vector<track_common> & ped_tracks, CvScalar color, bool plot_ends);
+        void visualize_track_types(CvScalar color, track_type type_para);
         void ped_EE_extraction();
         void ped_track_classification();
 
         IplImage *road_image_, *distance_image_, *visualize_image_;
-
 		pd_track_container *track_container_;
 
-        vector<track_common> ped_tracks_;
-        vector<track_common> ped_moving_tracks_;
-        vector<track_common> ped_static_tracks_;
-
         double map_scale_;
-		char* image_path_, *file_path_;
+		string image_path_, track_file_path_;
 		global_track_show *global_viewer_;
 
+		char* parameter_file_;
 
 		size_t track_size_thresh_;
 		double track_time_thresh_, track_length_thresh_;
@@ -78,10 +78,10 @@ namespace golfcar_semantics{
 		CvSize local_view_size_;
 		double local_show_scale_;
 		local_track_show *local_viewer_;
-		void trajectory_show();
-
+		void track_dynamic_show();
 
 		AM_learner *activity_map_learner_;
+		track_processor *activity_track_processor_;
    };
 };
 
