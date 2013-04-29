@@ -8,7 +8,7 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   sodipodi:docname="path_def.svg"
+   sodipodi:docname="utown_east.svg"
    height="5378"
    width="3362"
    inkscape:version="0.48.3.1 r9886"
@@ -23,13 +23,13 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="1295"
-     inkscape:window-height="744"
+     inkscape:window-width="1535"
+     inkscape:window-height="876"
      id="namedview32"
      showgrid="false"
-     inkscape:zoom="2.8284271"
-     inkscape:cx="1899.7286"
-     inkscape:cy="1307.1894"
+     inkscape:zoom="5.6568542"
+     inkscape:cx="1923.3681"
+     inkscape:cy="1264.3403"
      inkscape:window-x="65"
      inkscape:window-y="24"
      inkscape:window-maximized="1"
@@ -476,15 +476,15 @@
   <desc
      id="desc6">The paths consist of all the possible route that can be taken by the golfcart to serve 4 stations: DCC, MCD, EA and E3A</desc>
   <image
-     sodipodi:absref="/home/poon/smartfm/bookingUI/shared/SvgPath/utown.png"
+     sodipodi:absref="/home/golfcar/SvgPath/utown.png"
      xlink:href="utown.png"
-     inkscape:label="#image3014"
-     y="0"
-     x="-0.17677669"
-     id="map"
-     style="font-size:14px;fill:#aa4400"
+     height="5378"
      width="3362"
-     height="5378" />
+     style="font-size:14px;fill:#aa4400"
+     id="map"
+     x="-0.17677669"
+     y="0"
+     inkscape:label="#image3014" />
   <path
      style="fill:none;stroke:#000000;stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      d="m 836.60029,781.10336 -9.75986,-0.54878 -9.00893,-0.29693 -7.63304,0.50586 -8.78998,-0.11989 -10.03839,1.28866 -12.68758,0.31129 -10.85523,0.7809 -10.86666,2.4374 -11.90738,3.4503 -13.06942,7.78306 -13.07828,7.76532 -12.39297,10.78701 -11.92071,10.20962 -11.29998,7.33035 -11.09132,8.99448 -9.74013,7.53867 -8.33588,8.02925 -9.35364,8.41814 -8.875,9.88437 -9.59034,10.51358 -6.44781,9.92722 -7.0464,11.51368 -3.09225,8.68717 -6.45587,21.66711 -1.00481,13.39922 -2.46411,14.62361 -3.13681,11.2346 -1.93881,14.08552 -2.63042,21.15525 -1.91211,18.3522 -2.70511,12.9658 -1.15459,14.3976 -2.0344,12.0029 -1.80419,13.8253 -2.132,20.7599 -2.6321,20.538 -3.5274,31.01 -3.19897,34.8839 -2.91151,34.1119 -3.09011,45.9857"
@@ -564,13 +564,14 @@
      sodipodi:nodetypes="ccccccccc" />
   <path
      style="fill:none;stroke:#f900ff;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     d="M 1946.5,4151 1934,4104"
+     d="m 1935.8934,4130.6707 -6.3128,-38.338"
      id="DCC_START"
      inkscape:connector-curvature="0"
-     inkscape:label="#path3056" />
+     inkscape:label="#path3056"
+     sodipodi:nodetypes="cc" />
   <path
      style="fill:none;stroke:#ff0700;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     d="m 1944.1893,4147.5 -12.5,-47"
+     d="m 1847.6692,4153.864 -12.5,-47"
      id="DCC_START2"
      inkscape:connector-curvature="0"
      inkscape:label="#path3056" />
@@ -583,8 +584,9 @@
      sodipodi:nodetypes="ccccc" />
   <path
      style="fill:none;stroke:#0005ff;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-     d="m 1927.9266,4091.0657 8.1318,33.234"
+     d="m 1939.417,4130.3101 -5.6567,-31.2895"
      id="DCC_END"
      inkscape:connector-curvature="0"
-     inkscape:label="#path3056" />
+     inkscape:label="#path3056"
+     sodipodi:nodetypes="cc" />
 </svg>
