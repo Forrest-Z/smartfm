@@ -11,7 +11,7 @@ FeatureViewerNode::FeatureViewerNode(): node_handle("~"),
                                         window_name("feature viewer")
 {
   // bind the callback and tell boost::bind() to forward the first and second arguments it receives
-  // boost::function<void (const sensor_msgs::Image::ConstPtr&, const infrastructure_camera_tracker::Features::ConstPtr&)> sync_callback( boost::bind( &FeatureViewerNode::callback, this, _1, _2 ) );
+  // boost::function<void (const sensor_msgs::Image::ConstPtr&, const infrastructure_camera_tracker::FeatureSet::ConstPtr&)> sync_callback( boost::bind( &FeatureViewerNode::callback, this, _1, _2 ) );
   // synchronizer.registerCallback( sync_callback );                                                // this does not work
 
   synchronizer.registerCallback( boost::bind(&FeatureViewerNode::callback, this, _1, _2) );         // but this does
@@ -25,7 +25,7 @@ FeatureViewerNode::~FeatureViewerNode()
 };
 
 void FeatureViewerNode::callback( const sensor_msgs::Image::ConstPtr& image,
-                                  const infrastructure_camera_tracker::Features::ConstPtr& features)
+                                  const infrastructure_camera_tracker::FeatureSet::ConstPtr& features)
 {
   ROS_INFO("received image/features pair\n");
   cv::Mat frame = cv_bridge::toCvCopy(image, "bgr8")->image;
@@ -33,7 +33,7 @@ void FeatureViewerNode::callback( const sensor_msgs::Image::ConstPtr& image,
   // plot features found
   for (unsigned int i = 0; i < features->features.size(); ++i)
   {
-    cv::circle(frame, cv::Point2f(features->features[i].x, features->features[i].y), 1, cv::Scalar(0, 255, 0), -1, CV_AA, 0 );
+    cv::circle(frame, cv::Point2f(features->features[i].position.x, features->features[i].position.y), 1, cv::Scalar(0, 255, 0), -1, CV_AA, 0 );
   }
 
   // display image

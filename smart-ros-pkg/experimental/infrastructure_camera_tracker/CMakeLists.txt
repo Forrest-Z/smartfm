@@ -25,6 +25,7 @@ rosbuild_genmsg()
 rosbuild_add_library(${PROJECT_NAME}
 	src/lib/FeatureDetector.cpp
 	src/node/FeatureDetectorNode.cpp
+	src/node/FeatureTrackerNode.cpp
   src/node/FeatureViewerNode.cpp
 )
 
@@ -33,3 +34,6 @@ target_link_libraries(feature_detector ${PROJECT_NAME})
 
 rosbuild_add_executable(feature_viewer src/node/feature_viewer.cpp)
 target_link_libraries(feature_viewer ${PROJECT_NAME})
+
+rosbuild_add_executable(feature_tracker src/node/feature_tracker.cpp)
+target_link_libraries(feature_tracker ${PROJECT_NAME})

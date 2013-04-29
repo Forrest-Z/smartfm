@@ -1,7 +1,7 @@
 #include <ros/ros.h>                                          // ROS
 
 #include <sensor_msgs/Image.h>                                // Messages
-#include <infrastructure_camera_tracker/Features.h>
+#include <infrastructure_camera_tracker/FeatureSet.h>
 
 #include <image_transport/image_transport.h>
 #include <image_transport/subscriber_filter.h>
@@ -25,14 +25,14 @@ class FeatureViewerNode
 
     image_transport::ImageTransport img_transport;
     image_transport::SubscriberFilter img_subscriber;
-    message_filters::Subscriber<infrastructure_camera_tracker::Features> feature_subscriber;
+    message_filters::Subscriber<infrastructure_camera_tracker::FeatureSet> feature_subscriber;
 
-    typedef message_filters::sync_policies::ExactTime<sensor_msgs::Image, infrastructure_camera_tracker::Features> sync_policy;
+    typedef message_filters::sync_policies::ExactTime<sensor_msgs::Image, infrastructure_camera_tracker::FeatureSet> sync_policy;
 
     message_filters::Synchronizer<sync_policy> synchronizer;
 
     std::string window_name;
 
     void callback(  const sensor_msgs::Image::ConstPtr& image,
-                    const infrastructure_camera_tracker::Features::ConstPtr& features);
+                    const infrastructure_camera_tracker::FeatureSet::ConstPtr& features);
 };
