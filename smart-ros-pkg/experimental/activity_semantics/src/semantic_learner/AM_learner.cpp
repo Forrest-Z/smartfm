@@ -2,7 +2,7 @@
 
 namespace golfcar_semantics{
 
-	AM_learner::AM_learner(char* image_path, double map_scale, pd_track_container* pd_container)
+	AM_learner::AM_learner(const char* image_path, double map_scale, pd_track_container* pd_container)
 	{
 		map_scale_ = map_scale;
 		image_path_ = image_path;
@@ -72,7 +72,7 @@ namespace golfcar_semantics{
 			bool activity_calculated = false;
 			if(element_serial>0)
 			{
-				for(size_t i=element_serial-1; i>=0; i--)
+				for(size_t i=element_serial-1; i<element_serial; i--)
 				{
 					double distance = fmutil::distance(track.elements[element_serial], track.elements[i]);
 					if(distance >= 0.3)

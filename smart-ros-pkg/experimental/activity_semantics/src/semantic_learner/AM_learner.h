@@ -30,7 +30,7 @@ namespace golfcar_semantics
     class AM_learner {
 
         public:
-    	AM_learner(char* image_path, double map_scale, pd_track_container* pd_container);
+    	AM_learner(const char* image_path, double map_scale, pd_track_container* pd_container);
         ~AM_learner();
     	void GridMap_init();
     	void learn_activity_map();
@@ -42,7 +42,7 @@ namespace golfcar_semantics
         void learn_moving_direction();
         void show_moving_direction();
 
-    	char* image_path_;
+    	const char* image_path_;
     	double map_scale_;
    };
 };
