@@ -11,11 +11,9 @@
         <remap from="base_scan" to="sick_scan2"/>
     </node>
 
-    <node name="plane_map_server" pkg="map_server" type="map_server" args="$(find amcl_pc)/maps/utown.yaml">
-        <remap from="map" to="curb_map"/>
-    </node>
+    <node name="plane_map_server" pkg="map_server" type="map_server" args="$(find amcl_pc)/maps/utown.yaml"/>
 
     <include file="$(find Launch)/move_base.launch"/>
-    <include file="$(find utown_tjunction)/tf.launch"/>
+    <node pkg="pose_tracking_pf" type="laser_repub" name="laser_repub"/>
 </launch>
 

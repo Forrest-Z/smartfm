@@ -44,7 +44,9 @@ ped_clustering::ped_clustering()
 	}
 
 	string svg_file;
+    bool use_boundary;
 	private_nh.param("svg_file", svg_file, string(""));
+    private_nh.param("use_boundary", use_boundary_, false);
 	//double polygon[][2] = {{662.155,3136.776},{602.0509,3019.346},{574.7768,3021.24},{567.4532,3005.204},{576.1658,2988.158},{584.6258,2983.612},{588.1613,2974.773},{566.1905,2920.351},{533.108,2843.074},{605.0814,2815.8},{653.8212,2933.736},{649.7806,2937.271},{660.1347,2961.767},{679.3276,2953.939},{694.4799,2983.738},{672.7616,2996.87},{677.8124,3007.729},{680.3377,3006.214},{733.6233,3109.25},{662.155,3136.776}};
 	//int npts = NPTS(polygon);
 	/*for (int i = 0; i < npts; i++)
@@ -59,11 +61,11 @@ ped_clustering::ped_clustering()
 	boundary_msg.header.frame_id = "/map";
 	boundary_msg.header.seq = 1;
 
-	/*
-	svg_boundary svg(svg_file.c_str(), 0.1);
-	boundary_ = svg.getPath("crossing_boundary");
-	boundary_msg.polygon.points = boundary_;
-	*/
+	if(use_boundary_){
+	    svg_boundary svg(svg_file.c_str(), 0.1);
+	    boundary_ = svg.getPath("crossing_boundary");
+	    boundary_msg.polygon.points = boundary_;
+	}
 
 	boundary_pub_.publish(boundary_msg);
 	sequential_clustering_ = false;
@@ -247,7 +249,7 @@ void ped_clustering::clustering(const sensor_msgs::PointCloud2 &pc, sensor_msgs:
             cluster.height = abs_distance[2];
             cluster.depth = abs_distance[0];
 
-            bool use_boundary_ = false;
+            //bool use_boundary_ = false;
             //obtain only points that fall into the specified boundary
             if(use_boundary_)
             {
