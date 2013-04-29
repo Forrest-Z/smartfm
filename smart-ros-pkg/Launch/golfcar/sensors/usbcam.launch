@@ -1,6 +1,6 @@
 <launch>
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.75, 0.0, 1.32 -0.0 0.21 -0.0 /base_link /camera_front_base 100" />
-    <node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_img" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /camera_front_base /camera_front_img 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.75, 0.0, 1.32 -0.0 0.16 -0.0 /base_link /camera_front_base 1000" />
+    <node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_img" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /camera_front_base /camera_front_img 1000" />
 
     <node pkg="uvc_cam" type="uvc_cam_node" name="camera_front" output="screen">
         <remap from="camera" to="camera_front"/>
@@ -18,7 +18,8 @@
         <param name="sharpness" value="250"/>
     </node>
 
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_right_base" args="1.795, 0.0, 0.97 -0.0 0.0 -0.0 /base_link /camera_front_right_base 100" />
+<!-- "Cameras no longer being used"
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_right_base" args="1.795, 0.0, 0.97 -0.0 0.0 -0.0 /base_link /camera_front_right_base 1000" />
     <node pkg="tf" type="static_transform_publisher" name="camera_front_right_base_to_img" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /camera_front_right_base /camera_front_right_img 100" />
     <node pkg="uvc_cam" type="uvc_cam_node" name="camera_front_right" output="screen">
         <remap from="camera" to="camera_front_right"/>
@@ -53,5 +54,6 @@
         <param name="contrast" value="50"/>
         <param name="sharpness" value="250"/>
     </node>
+-->
 
 </launch>

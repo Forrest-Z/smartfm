@@ -119,6 +119,15 @@ public:
 				ROS_ERROR_STREAM("Problem setting absolute exposure. Exception was " << e.what());
 			}
 		}
+		
+		if(config_.gain != control->gain){
+			try {
+		  cam_->set_control(0x980913, control->gain);
+		  	} catch (uvc_cam::Exception& e) {
+				ROS_ERROR_STREAM("Problem setting gain. Exception was " << e.what());
+			}
+		}
+	
 	}
 	/** Close camera device
 	 *
@@ -454,7 +463,7 @@ public:
 		srv.setCallback(f);
 
 		image_pub_ = it_.advertiseCamera("image_raw", 1);
-		brightness_control_sub_ = camera_nh_.subscribe("/control_command", 10, &UVCCamNode::control_brightness, this);
+		brightness_control_sub_ = camera_nh_.subscribe("/camera_front/control_command", 10, &UVCCamNode::control_brightness, this);
 		
 		while (node.ok())
 		{

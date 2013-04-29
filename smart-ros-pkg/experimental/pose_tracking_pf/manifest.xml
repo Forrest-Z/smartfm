@@ -1,0 +1,17 @@
+<package>
+  <description brief="pose_tracking_pf">
+
+     pose_tracking_pf
+
+  </description>
+  <author>demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/pose_tracking_pf</url>
+  <depend package="roscpp"/>
+  <depend package="sensor_msgs"/>
+  <depend package="fmutil"/>
+
+</package>
+
+

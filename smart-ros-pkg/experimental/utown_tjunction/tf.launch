@@ -1,0 +1,19 @@
+<launch>
+    <node pkg="tf" type="static_transform_publisher" name="map_to_oppositetraffic" args="158.7 182.9 0 -0.79 0 0 /map /opposite_traffic 100" />
+    <node pkg="tf" type="static_transform_publisher" name="map_to_light_pole" args="185.3 161 0 -2.36 0 0 /map /sick_lms 100" />
+    <node pkg="tf" type="static_transform_publisher" name="map_to_cameraright_baselink"
+      args="185.3 161 0 -1.13 0 0 map camera_right_baselink 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="cameraright_baselink_to_camera_right" 
+      args="0 0 5 0 0.33 0.0 /camera_right_baselink /camera_right_base 100"/>
+    <node pkg="tf" type="static_transform_publisher" name="camera_right_base_to_img" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /camera_right_base /camera_right 100" />   
+    <node pkg="vision_lane_detection" type="pointcloud_ipm" name="camera_right_ipm" output="screen">
+      <remap from="camera_front/camera_info" to="Cam0/camera/camera_info"/>
+      <remap from="camera_front/image_raw" to="Cam0/camera/image_raw"/>
+      <param name="image_transport" value="compressed"/>
+      <param name="base_frame" value="camera_right_baselink"/>
+      <param name="destination_frame_id" value="camera_right_baselink"/>
+      <param name="ipm_ROI_height" value="40"/>
+      <param name="ipm_center_x" value="30"/>
+      <param name="ipm_ROI_far_width2" value="40"/>
+   </node>
+</launch>
