@@ -11,7 +11,8 @@
   <depend package="roscpp"/>
   <depend package="sensor_msgs"/>
   <depend package="fmutil"/>
-
+  <depend package="ped_momdp_sarsop"/>
+  <depend package="pnc_msgs"/>
 </package>
 
 

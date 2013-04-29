@@ -10,6 +10,9 @@
 #include <boost/random/uniform_int.hpp>
 #include <numeric>
 #include <tf/transform_listener.h>
+#include <ped_momdp_sarsop/ped_local_frame_vector.h>
+#include <pnc_msgs/move_status.h>
+
 using namespace std;
 
 struct VehicleParticle{
@@ -58,7 +61,7 @@ class PosePF{
     }
     mean_x_ = pt.points[0].x;
     mean_y_ = pt.points[0].y;
-    time_pre_ = pt.header.stamp.toSec();
+    time_pre_ = ros::Time::now().toSec();
   }
       
 public:
@@ -136,7 +139,7 @@ public:
     var_y_ = mean_sq_y/new_particles.size() - mean_y*mean_y;
     double diff_y = mean_y_-mean_y;
     double diff_x = mean_x_-mean_x;
-    double time_now = pc.header.stamp.toSec();
+    double time_now = ros::Time::now().toSec();//pc.header.stamp.toSec();
     //not using the time for now, assuming same period of time is used
     //when propagate motion
     mean_v_ = sqrt(diff_y*diff_y+diff_x*diff_x);//(time_now - time_pre_);
@@ -186,13 +189,16 @@ public:
 
 class LaserPoseTracking{
   ros::NodeHandle nh_;
-  ros::Subscriber pc_sub_;
+  ros::Subscriber pc_sub_, move_status_sub_;
   bool first_call_;
 public:
   LaserPoseTracking():first_call_(true) {
     pc_sub_ = nh_.subscribe("pedestrian_poi", 10, &LaserPoseTracking::pcCallback, this);
+    move_status_sub_ = nh_.subscribe("move_status", 10, &LaserPoseTracking::moveStatusCallback, this);
     particles_pub_ = nh_.advertise<sensor_msgs::PointCloud>("pose_particles", 10);
     mean_particles_pub_ = nh_.advertise<sensor_msgs::PointCloud>("pose_mean", 10);
+    pompdp_pub_ = nh_.advertise<ped_momdp_sarsop::ped_local_frame_vector>("ped_local_frame_vector", 10);
+    object_id_ = 0;
     ros::spin();
   }
   
@@ -200,9 +206,14 @@ private:
   double time_pre_;
   vector<PosePF> filters_;
   int object_id_;
-  ros::Publisher particles_pub_, mean_particles_pub_;
+  ros::Publisher particles_pub_, mean_particles_pub_, pompdp_pub_;
   tf::TransformListener tf_;
   double distance_cur_;
+  double robot_distance_;
+  void moveStatusCallback(pnc_msgs::move_statusConstPtr move_status){
+    robot_distance_ = move_status->dist_to_goal;
+  }
+  
   void publishParticles(vector<VehicleParticle> &particles){
     sensor_msgs::PointCloud pc;
     pc.header.stamp = ros::Time::now();
@@ -216,26 +227,41 @@ private:
     }
     particles_pub_.publish(pc);
   }
+  
+  void filterPoints(geometry_msgs::Point32 init_pt, sensor_msgs::PointCloud &pc){
+    for(size_t i=0; i<pc.points.size(); ){
+      if(fmutil::distance<geometry_msgs::Point32>(pc.points[i],
+	init_pt)>10) pc.points.erase(pc.points.begin()+i);
+      else i++;
+    }
+  }
   void pcCallback(sensor_msgs::PointCloud::ConstPtr pc){
     //cout<<pc->points.size()<<" observations received"<<endl;
     //remember to check the time to reset if neg time received
+    geometry_msgs::Point32 init_pt;
+    init_pt.x = 161;
+    init_pt.y = 185.3;
     if(first_call_) {
-      time_pre_ = pc->header.stamp.toSec();
+      time_pre_ = ros::Time::now().toSec();//pc->header.stamp.toSec();
       first_call_ = false;
       object_id_++;
       distance_cur_ = 0.;
     }
     else {
-      if(pc->header.stamp.toSec() - time_pre_ < 0) {
+      if(ros::Time::now().toSec() - time_pre_ < 0) {
 	filters_.clear();
 	first_call_ = true;
 	cout<<"Neg time detected, reseting filter"<<endl;
 	return;
       }
-      time_pre_ = pc->header.stamp.toSec();
+      time_pre_ = ros::Time::now().toSec();
     }
     sensor_msgs::PointCloud pc_copy = *pc;
     if(filters_.size() == 0 && pc->points.size() > 0){
+      //only initialize those points that are within the
+      //starting area
+      filterPoints(init_pt, pc_copy);
+      if(pc_copy.points.size() == 0) return;
       PosePF filter(200, 3.0, 0.8, pc_copy);
       filters_.push_back(filter);
       return;
@@ -259,9 +285,25 @@ private:
       
       mean_particles_pub_.publish(pose);
       filters_[0].updateMotion();
-      tf_.transformPointCloud("opposite_traffic", pose, pose);
-      if(distance_cur_<pose.points[0].x) distance_cur_ = pose.points[0].x;
-      cout<<object_id_<<": "<<distance_cur_<<"\xd"<<flush;
+      try{
+	tf_.transformPointCloud("opposite_traffic", pose, pose);
+      }
+      catch (tf::ExtrapolationException ex){return;}
+      if(distance_cur_<pose.points[0].x) {
+	distance_cur_ = pose.points[0].x;
+	cout<<object_id_<<": "<<distance_cur_<<"\xd"<<flush;
+	ped_momdp_sarsop::ped_local_frame single_stat;
+	single_stat.ped_id = object_id_;
+	if(robot_distance_ > 80)
+	  single_stat.rob_pose.z = 0;
+	else
+	  single_stat.rob_pose.z = 80 - robot_distance_;
+	single_stat.ped_pose.z = distance_cur_;
+	single_stat.header.stamp = ros::Time::now();
+	ped_momdp_sarsop::ped_local_frame_vector pomdp_stat;
+	pomdp_stat.ped_local.push_back(single_stat);
+	pompdp_pub_.publish(pomdp_stat);
+      }
     }
   }
 };
