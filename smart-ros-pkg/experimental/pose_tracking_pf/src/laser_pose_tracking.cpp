@@ -116,7 +116,7 @@ public:
   double mean_x_, mean_y_, mean_r_, mean_v_;
   double var_x_, var_y_;
   double time_pre_;
-  void updateParticleWeight(sensor_msgs::PointCloud &pc, VehicleParticle &particle){
+  bool updateParticleWeight(sensor_msgs::PointCloud &pc, VehicleParticle &particle){
     double dist=1e99;
     for(size_t i=0; i<pc.points.size(); i++){
       double dist_temp = fmutil::mag(pc.points[i].x-particle.x, pc.points[i].y-particle.y);
@@ -127,10 +127,14 @@ public:
     double b_t = 0.5; //gradient
     
     //not to be influenced by observation far far away
-    if(dist > 10) particle.weight = 0;
+    //return false if not observed
+    if(dist > 10) {
+      particle.weight = 0;
+      return false;
+    }
     else
       particle.weight = a_t*exp(-b_t*dist);
-    
+    return true;
     
   }
   
@@ -138,10 +142,14 @@ public:
   void updateObservation(sensor_msgs::PointCloud &pc){
     if(pc.points.size() == 0) return;
     //assigning weight by observed points
+    bool at_least_one_updated_weight = false;
     for(size_t i=0; i<particles_.size(); i++){
-      updateParticleWeight(pc, particles_[i]);
+      bool updated = updateParticleWeight(pc, particles_[i]);
+      if(!at_least_one_updated_weight && updated)
+	at_least_one_updated_weight = true;
     }
-    
+    //resolve the particles running away issue
+    if(!at_least_one_updated_weight) return;
     //collect weighted particle and clean up observed points
     vector<double> weighted_particles;
     for(size_t i=0; i<particles_.size(); i++){
