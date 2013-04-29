@@ -16,7 +16,6 @@ namespace golfcar_semantics{
 		size_t static_track_num=0;
 		size_t noisy_track_num =0;
 
-
 		for(size_t i=0; i<track_container_->tracks.size(); i++)
 		{
 			track_common &ped_track = track_container_->tracks[i];
@@ -45,7 +44,7 @@ namespace golfcar_semantics{
 				noisy_track_num++;
 			}
 		}
-		ROS_INFO("total_tracks: %ld, moving_tracks: %ld, static_tracks: %ld", moving_track_num, static_track_num, noisy_track_num);
+		ROS_INFO("moving_tracks: %ld, : static_tracks: %ld, noisy_tracks %ld", moving_track_num, static_track_num, noisy_track_num);
 	}
 
 	track_processor::~track_processor()

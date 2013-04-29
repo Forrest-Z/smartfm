@@ -29,10 +29,13 @@ namespace golfcar_semantics{
         ~global_track_show();
 
         //extracted ped_semantic information;
-        void show_update(double x, double y, CvScalar bgr_color);
+        void show_update(double x, double y, CvScalar bgr_color, bool draw_circle);
+    	void clear_image();
+    	void save_image(const char* image_name);
 
         private:
         double show_scale_;
+        const char *image_path_;
 		IplImage *global_trajectory_img_;
    };
 };

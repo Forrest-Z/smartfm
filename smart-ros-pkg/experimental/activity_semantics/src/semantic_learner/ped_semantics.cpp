@@ -24,6 +24,7 @@ namespace golfcar_semantics{
 	{
 		ROS_INFO("parameter initialization for pedestrian_semantics");
 		FileStorage fs_read(parameter_file_, FileStorage::READ);
+		if(!fs_read.isOpened())ROS_ERROR("ped_semantics cannot find parameter file");
 
 		string image_path, track_file_path;
 		fs_read["image_path"] >> image_path_;
@@ -95,14 +96,11 @@ namespace golfcar_semantics{
 		ROS_INFO("ped_EE_extraction");
 
 		//1st, visualize all the input tracks;
-		track_dynamic_show();
+		raw_track_show();
 
 		//2nd, perform track classification;
 		activity_track_processor_->ped_track_classification();
-
-		visualize_track_types(CV_RGB(255, 0, 0), MOVING);
-		cvSaveImage("./data/visualization.jpg", visualize_image_);
-		visualize_track_types(CV_RGB(255, 255, 0), STATIC);
+		processed_track_show();
 
 		//3nd, learn activity map given tracks;
 		activity_map_learner_->GridMap_init();
@@ -114,36 +112,7 @@ namespace golfcar_semantics{
 		//apply GMM to extract entrances and exits;
 	}
 
-	void ped_semantics::visualize_track_types(CvScalar color, track_type type_para)
-	{
-		for(size_t i=0; i<track_container_->tracks.size(); i++)
-		{
-			if(track_container_->tracks[i].ped_activity != type_para) continue;
-			for(size_t j=0; j<track_container_->tracks[i].elements.size(); j++)
-			{
-				CvPoint pixel;
-				pixel.x = PIC_GXWX(visualize_image_, track_container_->tracks[i].elements[j].x, map_scale_);
-				pixel.y = PIC_GYWY(visualize_image_, track_container_->tracks[i].elements[j].y, map_scale_);
-				if(!PIC_VALID(visualize_image_, pixel.x, pixel.y)) continue;
-				cvSet2D(visualize_image_, pixel.y, pixel.x, color);
-			}
-			if(type_para == MOVING)
-			{
-				CvPoint pixel_begin, pixel_end;
-				pixel_begin.x = PIC_GXWX(visualize_image_, track_container_->tracks[i].elements.front().x, map_scale_);
-				pixel_begin.y = PIC_GYWY(visualize_image_, track_container_->tracks[i].elements.front().y, map_scale_);
-				pixel_end.x = PIC_GXWX(visualize_image_, track_container_->tracks[i].elements.back().x, map_scale_);
-				pixel_end.y = PIC_GYWY(visualize_image_, track_container_->tracks[i].elements.back().y, map_scale_);
-				cvCircle( visualize_image_, pixel_begin, 1, CV_RGB(0,0,255), 1);
-				cvCircle( visualize_image_, pixel_end, 1, CV_RGB(0,0,255), 1);
-			}
-		}
-		cvShowImage("pedestrian_track", visualize_image_);
-		ROS_INFO("track visualization");
-		cvWaitKey(0);
-	}
-
-	void ped_semantics::track_dynamic_show()
+	void ped_semantics::raw_track_show()
 	{
 		for(size_t i=0; i<track_container_->tracks.size(); i++)
 		{
@@ -151,12 +120,54 @@ namespace golfcar_semantics{
 			CvScalar ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
 			for(size_t j=0; j<track_container_->tracks[i].elements.size(); j++)
 			{
-				global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, ext_color);
+				global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, ext_color, false);
 				local_viewer_->show_update( track_container_->tracks[i].elements[j].local_x, track_container_->tracks[i].elements[j].local_y, prev_point, ext_color);
 				cvWaitKey(10);
 			}
 		}
+		global_viewer_->save_image("./data/raw_global.png");
+		local_viewer_->save_image("./data/raw_local.png");
+		cvWaitKey(0);
+
+		global_viewer_->clear_image();
+		local_viewer_->clear_image();
 	}
+
+	void ped_semantics::processed_track_show()
+	{
+		CvPoint prev_point = cvPoint(-1,-1);
+		for(size_t i=0; i<track_container_->tracks.size(); i++)
+		{
+			if(track_container_->tracks[i].ped_activity == MOVING)
+			{
+				for(size_t j=0; j<track_container_->tracks[i].elements.size(); j++)
+				{
+					global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, CV_RGB(0,0,255), false);
+				}
+				global_viewer_->show_update(track_container_->tracks[i].elements.front().x, track_container_->tracks[i].elements.front().y, CV_RGB(255,0,0), true);
+				global_viewer_->show_update(track_container_->tracks[i].elements.back().x, track_container_->tracks[i].elements.back().y, CV_RGB(255,0,0), true);
+
+				prev_point = cvPoint(-1,-1);
+				local_viewer_->show_update( track_container_->tracks[i].elements.front().local_x, track_container_->tracks[i].elements.front().local_y, prev_point, CV_RGB(0,255,0));
+				prev_point = cvPoint(-1,-1);
+				local_viewer_->show_update( track_container_->tracks[i].elements.back().local_x, track_container_->tracks[i].elements.back().local_y, prev_point, CV_RGB(255,0,0));
+			}
+			else if(track_container_->tracks[i].ped_activity  == STATIC)
+			{
+				for(size_t j=0; j<track_container_->tracks[i].elements.size(); j++)
+				{
+					global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, CV_RGB(255,255,0), true);
+				}
+			}
+			else if(track_container_->tracks[i].ped_activity == NOISE) continue;
+		}
+
+		global_viewer_->save_image("./data/processed_global.png");
+		local_viewer_->save_image("./data/processed_local.png");
+		cvWaitKey(0);
+	}
+
+
 
 	ped_semantics::~ped_semantics()
 	{

@@ -59,9 +59,11 @@ namespace golfcar_semantics{
         void parameter_init();
         void roadmap_loading();
         void pedtrack_loading();
-        void visualize_track_types(CvScalar color, track_type type_para);
+
+        void raw_track_show();
+        void processed_track_show();
+
         void ped_EE_extraction();
-        void ped_track_classification();
 
         IplImage *road_image_, *distance_image_, *visualize_image_;
 		pd_track_container *track_container_;
@@ -78,7 +80,7 @@ namespace golfcar_semantics{
 		CvSize local_view_size_;
 		double local_show_scale_;
 		local_track_show *local_viewer_;
-		void track_dynamic_show();
+
 
 		AM_learner *activity_map_learner_;
 		track_processor *activity_track_processor_;
