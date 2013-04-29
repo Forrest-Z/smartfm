@@ -62,6 +62,7 @@ namespace golfcar_semantics{
         IplImage *road_image_, *distance_image_, *visualize_image_;
 
 		pd_track_container *track_container_;
+
         vector<track_common> ped_tracks_;
         vector<track_common> ped_moving_tracks_;
         vector<track_common> ped_static_tracks_;

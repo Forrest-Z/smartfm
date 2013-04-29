@@ -92,9 +92,11 @@ namespace golfcar_semantics{
 		track_visualization(ped_static_tracks_, CV_RGB(255, 255, 0), false);
 
 		track_container_->tracks = ped_tracks_;
+
 		activity_map_learner_->GridMap_init();
 		activity_map_learner_->learn_activity_map();
 		activity_map_learner_->view_activity_map();
+
 		//analyze moving tracks;
 		//use road maps as prior knowledge;
 		//apply GMM to extract entrances and exits;
