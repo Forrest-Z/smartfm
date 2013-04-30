@@ -135,6 +135,9 @@ namespace golfcar_semantics{
 		    		direction_mat.at<double>(a, 0) =  grid_tmp.moving_activities[a].thetha;
 		    	}
 		    	Mat direction_cov, direction_mean;
+
+		    	//there remains a problem for angle variance calculation:
+		    	//for example, 1 degree and 189 degree should be quite the same in term of direction, and their difference should be very small;
 		    	calcCovarMatrix(direction_mat, direction_cov, direction_mean, CV_COVAR_NORMAL|CV_COVAR_ROWS|CV_COVAR_SCALE);
 		    	grid_tmp.direction_gaussion.val[0] = direction_mean.at<double>(0,0);
 		    	grid_tmp.direction_gaussion.val[1] = direction_cov.at<double>(0,0);
@@ -150,7 +153,10 @@ namespace golfcar_semantics{
 	void AM_learner::show_moving_direction()
 	{
 		Mat direction_color(AM_->size_y,  AM_->size_x, CV_8UC1 );
+		Mat directionVar_color(AM_->size_y,  AM_->size_x, CV_8UC1 );
+
 		direction_color = Scalar(0);
+		directionVar_color =  Scalar(0);
 
 		unsigned int i, j;
 		for(j = 0; j < (unsigned int) AM_->size_y; j++)
@@ -162,16 +168,22 @@ namespace golfcar_semantics{
 				int x = i;
 				int y = AM_->size_y-1-j;
 				direction_color.at<uchar>(y,x) = floor(grid_tmp.direction_gaussion.val[0]/M_PI *255.0);
+				directionVar_color.at<uchar>(y,x)  = floor(sqrt(grid_tmp.direction_gaussion.val[1])/M_PI *255.0);
 			}
 		}
-		Mat jetcolor;
+		Mat jetcolor, jetcolorVar;
 		applyColorMap(direction_color, jetcolor, COLORMAP_JET);
+		applyColorMap(directionVar_color, jetcolorVar, COLORMAP_JET);
 
 		Mat mask;
 		cvtColor(direction_color, mask, CV_GRAY2RGB);
 		bitwise_and(jetcolor, mask, jetcolor);
-		imshow("direction_map", jetcolor);
+		bitwise_and(jetcolorVar, mask, jetcolorVar);
 
+		imshow("direction_map", jetcolor);
+		imshow("directionVar_map", jetcolorVar);
+
+		imwrite( "./data/direction_map.png", jetcolor );
 		waitKey(0);
 	}
 
