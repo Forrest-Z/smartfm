@@ -4,7 +4,7 @@
      Tjunction_momdp_sarsop
 
   </description>
-  <author>tuba</author>
+  <author>volkan</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/Tjunction_momdp_sarsop</url>
@@ -20,6 +20,7 @@
   <depend package="geometry_msgs"/>
   <depend package="rosgraph_msgs"/>
   <depend package="pnc_msgs"/>
+  <depend package="ped_momdp_sarsop"/>
 
 </package>
 
