@@ -12,16 +12,25 @@
 #include <tf/transform_listener.h>
 #include <ped_momdp_sarsop/ped_local_frame_vector.h>
 #include <pnc_msgs/move_status.h>
-
+#include <rrts/rrts_status.h>
+#include <geometry_msgs/Twist.h>
+#include <geometry_msgs/PoseArray.h>
 using namespace std;
 
 struct VehicleParticle{
   double x;
   double y;
   double r;
+  double v;
   double weight;
 };
 
+struct ParticlesStat{
+  double var_x;
+  double var_y;
+  double mean_x;
+  double mean_y;
+};
 class PosePF{
   typedef boost::mt19937                     ENG;    // Mersenne Twister
   typedef boost::normal_distribution<double> NORM_DIST;   // Normal Distribution
@@ -47,23 +56,51 @@ class PosePF{
 
     return (std::lower_bound(cumulative.begin(), cumulative.end(), die()) - cumulative.begin());
   }
-  
+  double v_noise_, r_noise_;
   void initialize_particles(int particle_num, sensor_msgs::PointCloud pt){
     //take the first point for now
     NORM_DIST x_dist(pt.points[0].x, dist_stddev_);
     NORM_DIST y_dist(pt.points[0].y, dist_stddev_);
+    NORM_DIST r_dist(-0.79, r_noise_);
+    NORM_DIST v_dist(0.05, v_noise_);
     NORM_GEN gen_x(eng, x_dist);
     NORM_GEN gen_y(eng, y_dist);
+    NORM_GEN gen_r(eng, r_dist);
+    NORM_GEN gen_v(eng, v_dist);
     particles_.resize(particle_num);
     for(int i=0; i<particle_num; i++){
       particles_[i].x = gen_x();
       particles_[i].y = gen_y();
+      particles_[i].r = gen_r();
+      particles_[i].v = gen_v();
     }
     mean_x_ = pt.points[0].x;
     mean_y_ = pt.points[0].y;
     time_pre_ = ros::Time::now().toSec();
   }
-      
+  ParticlesStat getParticlesStat(vector<VehicleParticle> &new_particles){
+    //get the mean and deviation of the current filter
+    double mean_x = 0, mean_y = 0;
+    double mean_sq_x = 0, mean_sq_y = 0;
+    for(size_t i=0; i<new_particles.size(); i++){
+      mean_x += new_particles[i].x;
+      mean_y += new_particles[i].y;
+      mean_sq_x += new_particles[i].x*new_particles[i].x;
+      mean_sq_y += new_particles[i].y*new_particles[i].y;
+    }
+    ParticlesStat ps;
+    mean_x/=new_particles.size();
+    mean_y/=new_particles.size();
+    
+    double var_x = mean_sq_x/new_particles.size() - mean_x*mean_x;
+    double var_y = mean_sq_y/new_particles.size() - mean_y*mean_y;
+    
+    ps.mean_x = mean_x;
+    ps.mean_y = mean_y;
+    ps.var_x = var_x;
+    ps.var_y = var_y;
+    return ps;
+  }
 public:
   PosePF(int particle_num, double dist_stddev, 
 	 double resampling_ratio, sensor_msgs::PointCloud pts): 
@@ -72,12 +109,14 @@ public:
 	unsigned int seed = static_cast<unsigned int>(std::time(0));
 	eng.seed(seed);
 	initialize_particles(particle_num, pts);
+	v_noise_ = 0.02;
+	r_noise_ = 1./180*M_PI;
   }
   vector<VehicleParticle> particles_;
   double mean_x_, mean_y_, mean_r_, mean_v_;
   double var_x_, var_y_;
   double time_pre_;
-  void updateParticleWeight(sensor_msgs::PointCloud &pc, VehicleParticle &particle){
+  bool updateParticleWeight(sensor_msgs::PointCloud &pc, VehicleParticle &particle){
     double dist=1e99;
     for(size_t i=0; i<pc.points.size(); i++){
       double dist_temp = fmutil::mag(pc.points[i].x-particle.x, pc.points[i].y-particle.y);
@@ -86,22 +125,31 @@ public:
     }
     double a_t = 10; //maximum score
     double b_t = 0.5; //gradient
-    particle.weight = a_t*exp(-b_t*dist);
     
+    //not to be influenced by observation far far away
+    //return false if not observed
+    if(dist > 10) {
+      particle.weight = 0;
+      return false;
+    }
+    else
+      particle.weight = a_t*exp(-b_t*dist);
+    return true;
     
   }
   
   //perform observation, sampling and injection
   void updateObservation(sensor_msgs::PointCloud &pc){
-    if(pc.points.size() == 0) {
-      mean_v_ = 0;
-      return;
-    }
+    if(pc.points.size() == 0) return;
     //assigning weight by observed points
+    bool at_least_one_updated_weight = false;
     for(size_t i=0; i<particles_.size(); i++){
-      updateParticleWeight(pc, particles_[i]);
+      bool updated = updateParticleWeight(pc, particles_[i]);
+      if(!at_least_one_updated_weight && updated)
+	at_least_one_updated_weight = true;
     }
-    
+    //resolve the particles running away issue
+    if(!at_least_one_updated_weight) return;
     //collect weighted particle and clean up observed points
     vector<double> weighted_particles;
     for(size_t i=0; i<particles_.size(); i++){
@@ -123,20 +171,11 @@ public:
       new_particles.push_back(particles_[new_particle_idx]);
     }
     
-    //get the mean and deviation of the current filter
-    double mean_x = 0, mean_y = 0;
-    double mean_sq_x = 0, mean_sq_y = 0;
-    for(size_t i=0; i<new_particles.size(); i++){
-      mean_x += new_particles[i].x;
-      mean_y += new_particles[i].y;
-      mean_sq_x += new_particles[i].x*new_particles[i].x;
-      mean_sq_y += new_particles[i].y*new_particles[i].y;
-    }
-    
-    mean_x/=new_particles.size();
-    mean_y/=new_particles.size();
-    var_x_ = mean_sq_x/new_particles.size() - mean_x*mean_x;
-    var_y_ = mean_sq_y/new_particles.size() - mean_y*mean_y;
+    ParticlesStat ps = getParticlesStat(new_particles);
+    double mean_x = ps.mean_x;
+    double mean_y = ps.mean_y;
+    var_x_ = ps.var_x;
+    var_y_ = ps.var_y;
     double diff_y = mean_y_-mean_y;
     double diff_x = mean_x_-mean_x;
     double time_now = ros::Time::now().toSec();//pc.header.stamp.toSec();
@@ -156,10 +195,16 @@ public:
     NORM_DIST y_dist(mean_y, dist_stddev_);
     NORM_GEN gen_x(eng,x_dist);
     NORM_GEN gen_y(eng, y_dist);
+    NORM_DIST r_dist(-0.79, r_noise_);
+    NORM_DIST v_dist(0.05, v_noise_);
+    NORM_GEN gen_r(eng, r_dist);
+    NORM_GEN gen_v(eng, v_dist);
     while(particles_.size()-new_particles.size()){
       VehicleParticle part_temp;
       part_temp.x = gen_x();
       part_temp.y = gen_y();
+      part_temp.r = gen_r();
+      part_temp.v = gen_v();
       new_particles.push_back(part_temp);
     }
     particles_.clear();
@@ -173,31 +218,39 @@ public:
    else
      current_speed_ -= 0.05;
    if(current_speed_ < 0) current_speed_ = 0;
-   NORM_DIST v_dist(current_speed_, 0.01);
-   NORM_DIST r_dist(mean_r_, 1.0/180.0*M_PI);
+   NORM_DIST v_dist(0, v_noise_);
+   NORM_DIST r_dist(0, r_noise_);
    NORM_GEN v_gen(eng, v_dist);
    NORM_GEN r_gen(eng, r_dist);
    for(size_t i=0; i<particles_.size(); i++){
-     double v_predicted = v_gen();
-     double r_predicted = r_gen();
-     particles_[i].x += v_predicted*cos(r_predicted);
-     particles_[i].y += v_predicted*sin(r_predicted);
+     particles_[i].v += v_gen();
+     particles_[i].r += r_gen();
+     particles_[i].x += particles_[i].v*cos(particles_[i].r);
+     particles_[i].y += particles_[i].v*sin(particles_[i].r);
    }
+   
+   ParticlesStat ps = getParticlesStat(particles_);
+   var_x_ = ps.var_x;
+   var_y_ = ps.var_y;
+   //cout<<"x,y,r,v = "<<mean_x_<<","<<mean_y_<<","<<mean_r_<<","<<mean_v_
+      //<<","<<var_x_<<","<<var_y_<<endl;
   }
   
 };
 
 class LaserPoseTracking{
   ros::NodeHandle nh_;
-  ros::Subscriber pc_sub_, move_status_sub_;
+  ros::Subscriber pc_sub_, move_status_sub_, speed_cmd_sub_;
   bool first_call_;
 public:
   LaserPoseTracking():first_call_(true) {
     pc_sub_ = nh_.subscribe("pedestrian_poi", 10, &LaserPoseTracking::pcCallback, this);
     move_status_sub_ = nh_.subscribe("move_status", 10, &LaserPoseTracking::moveStatusCallback, this);
-    particles_pub_ = nh_.advertise<sensor_msgs::PointCloud>("pose_particles", 10);
+    speed_cmd_sub_ = nh_.subscribe("momdp_vel", 10, &LaserPoseTracking::speedCmdCallback, this);
+    particles_pub_ = nh_.advertise<geometry_msgs::PoseArray>("pose_particles", 10);
     mean_particles_pub_ = nh_.advertise<sensor_msgs::PointCloud>("pose_mean", 10);
     pompdp_pub_ = nh_.advertise<ped_momdp_sarsop::ped_local_frame_vector>("ped_local_frame_vector", 10);
+    stopping_cmd_pub_ = nh_.advertise<rrts::rrts_status>("rrts_status", 10);
     object_id_ = 0;
     ros::spin();
   }
@@ -206,7 +259,7 @@ private:
   double time_pre_;
   vector<PosePF> filters_;
   int object_id_;
-  ros::Publisher particles_pub_, mean_particles_pub_, pompdp_pub_;
+  ros::Publisher particles_pub_, mean_particles_pub_, pompdp_pub_, stopping_cmd_pub_;
   tf::TransformListener tf_;
   double distance_cur_;
   double robot_distance_;
@@ -214,16 +267,28 @@ private:
     robot_distance_ = move_status->dist_to_goal;
   }
   
+  void speedCmdCallback(geometry_msgs::TwistConstPtr speed_cmd){
+    //larger number is expected as this is the distance to goal
+    bool stop = false;
+    if(robot_distance_ > 68 ){
+      if(speed_cmd->linear.x < 0.1) stop = true;
+    }
+    rrts::rrts_status stat;
+    stat.robot_in_collision = stop;
+    stopping_cmd_pub_.publish(stat);
+  }
   void publishParticles(vector<VehicleParticle> &particles){
-    sensor_msgs::PointCloud pc;
+    geometry_msgs::PoseArray pc;
     pc.header.stamp = ros::Time::now();
     pc.header.frame_id = "/map";
     for(size_t i=0; i<particles.size(); i++){
-      geometry_msgs::Point32 pt;
-      pt.x = particles[i].x;
-      pt.y = particles[i].y;
-      pt.z = 0;
-      pc.points.push_back(pt);
+      geometry_msgs::Pose pt;
+      pt.position.x = particles[i].x;
+      pt.position.y = particles[i].y;
+      pt.position.z = 0;
+      tf::Quaternion quad = tf::createQuaternionFromYaw(particles[i].r);
+      tf::quaternionTFToMsg(quad, pt.orientation);
+      pc.poses.push_back(pt);
     }
     particles_pub_.publish(pc);
   }
@@ -262,14 +327,14 @@ private:
       //starting area
       filterPoints(init_pt, pc_copy);
       if(pc_copy.points.size() == 0) return;
-      PosePF filter(200, 3.0, 0.8, pc_copy);
+      PosePF filter(200, 3.0, 0.9, pc_copy);
       filters_.push_back(filter);
       return;
     }
     if(filters_.size() > 0){
       filters_[0].updateObservation(pc_copy);
-      if(filters_[0].var_x_ > 7 || filters_[0].var_y_ > 7){
-	cout<<"Variance too big, resetting filter"<<endl;
+      if(filters_[0].var_x_ > 5 || filters_[0].var_y_ > 5){
+	cout<<endl<<"Variance too big, resetting filter"<<filters_[0].var_x_<<" "<<filters_[0].var_y_<<endl;
 	filters_.clear();
 	first_call_ = true;
 	return;
@@ -285,6 +350,15 @@ private:
       
       mean_particles_pub_.publish(pose);
       filters_[0].updateMotion();
+      //also consider variance here
+      if(pc->points.size() == 0){
+	if(filters_[0].var_x_ > 5 || filters_[0].var_y_ > 5){
+	  cout<<"Variance too big, resetting filter"<<filters_[0].var_x_<<" "<<filters_[0].var_y_<<endl;
+	  filters_.clear();
+	  first_call_ = true;
+	  return;
+	}
+      }
       try{
 	tf_.transformPointCloud("opposite_traffic", pose, pose);
       }
