@@ -3,4 +3,10 @@
 3. roslaunch utown_tjunction vehicle_detect.launch
 4. rosbag play vehicle_example.bag Laser/sick_laser:=scan_real -l
 5. roslaunch Launch 5RoutePlannerSpeedAdvisor.launch
+	(It will ask for current station, use 0 if the vehicle is at the starting point)
+	(To instruct the vehicle from start to end point, use Pickup station: 0 to Dropoff station: 1)
+	(To instruct the vehicle to reset to start point, use Pickup station: 1 to Dropoff station: 0)
+6. rosrun rviz rviz
 
+To view the camera:
+rosrun image_view image_view image:=Cam0/camera/image_raw compressed
