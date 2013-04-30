@@ -270,7 +270,7 @@ private:
   void speedCmdCallback(geometry_msgs::TwistConstPtr speed_cmd){
     //larger number is expected as this is the distance to goal
     bool stop = false;
-    if(robot_distance_ > 68 ){
+    if(robot_distance_ > 58 ){
       if(speed_cmd->linear.x < 0.1) stop = true;
     }
     rrts::rrts_status stat;
@@ -368,10 +368,11 @@ private:
 	cout<<object_id_<<": "<<distance_cur_<<"\xd"<<flush;
 	ped_momdp_sarsop::ped_local_frame single_stat;
 	single_stat.ped_id = object_id_;
-	if(robot_distance_ > 80)
+	if(robot_distance_ > 85)
 	  single_stat.rob_pose.z = 0;
 	else
-	  single_stat.rob_pose.z = 80 - robot_distance_;
+	  single_stat.rob_pose.z = 85 - robot_distance_;
+	if(single_stat.rob_pose.z > 19) single_stat.rob_pose.z = 19;
 	single_stat.ped_pose.z = distance_cur_;
 	single_stat.header.stamp = ros::Time::now();
 	ped_momdp_sarsop::ped_local_frame_vector pomdp_stat;
