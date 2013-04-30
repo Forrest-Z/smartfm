@@ -2,14 +2,29 @@
 
 FeatureDetector::FeatureDetector()
 {
-    // initialize with the default values from opencv
-    max_corners         = 1000;
-    quality_level       = 0.01;
-    min_distance        = 10;
-    cv::Mat mask        = cv::Mat();
-    block_size          = 3;
-    use_Harris_detector = false;
+  // initialize with the default values from opencv
+  max_corners         = 1000;
+  quality_level       = 0.01;
+  min_distance        = 10;
+  mask                = cv::Mat();
+  block_size          = 3;
+  use_Harris_detector = false;
 };
+
+FeatureDetector::FeatureDetector( int maximum_corners = 1000,
+                                  double quality = 0.01,
+                                  double minimum_distance = 10,
+                                  cv::Mat roi = cv::Mat(),
+                                  int block = 3,
+                                  bool use_Harris = false)
+{
+  max_corners         = maximum_corners;
+  quality_level       = quality;
+  min_distance        = minimum_distance;
+  mask                = roi;
+  block_size          = block;
+  use_Harris_detector = use_Harris;
+}
 
 FeatureDetector::~FeatureDetector()
 {
