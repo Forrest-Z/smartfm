@@ -18,13 +18,6 @@ FeatureTracker::FeatureTracker(): predict(false)
   tracker_parameters.min_eig_threshold = 1e-4;
 };
 
-FeatureTracker::FeatureTracker( detectorParameters detector_params,
-                                trackerParameters tracker_params,
-                                const cv::Mat& image)
-{
-
-};
-
 FeatureTracker::~FeatureTracker()
 {
 
@@ -48,6 +41,7 @@ void FeatureTracker::restart( const cv::Mat& image,
                           detector_parameters.mask,
                           detector_parameters.block_size,
                           detector_parameters.use_Harris_detector);
+  std::cout << current_features.size() << " features found!\n";
   // set
   active = std::vector<bool>(current_features.size(), true);
   // assign IDs
@@ -71,62 +65,84 @@ void FeatureTracker::update( const cv::Mat& new_image_bgr, const double& new_tim
   cv::Mat new_image;
   cv::cvtColor(new_image_bgr, new_image, CV_BGR2GRAY);
   // get the currently active features, and the prediction of their location in the new image
-  std::vector<cv::Point2f> current_active_features, new_features;
-  this->getActiveFeatures(current_active_features, new_features, new_time);
+  std::cout << "retrieving active features from set of " << getNumberOfActiveFeatures() << " \n";
+  std::vector<cv::Point2f> previous_active_features, current_active_features, predicted_active_features;
+
+  // get active features and predict their position in the image received
+  if(predict)
+  {
+    for (unsigned int i = 0; i < current_features.size(); ++i)
+    {
+      if(active.at(i))
+      {
+        previous_active_features.push_back(previous_features.at(i));
+        current_active_features.push_back(current_features.at(i));
+      }
+    }
+    predicted_active_features = addWeighted( current_active_features, 1.0, previous_active_features, -1.0);
+    double delta = ((new_time - current_time)/(current_time - previous_time));
+    predicted_active_features = addWeighted( current_active_features, 1.0, previous_active_features, delta);
+  }
+  else
+  {
+    for (unsigned int i = 0; i < current_features.size(); ++i)
+    {
+      if(active.at(i))
+      {
+        current_active_features.push_back(current_features.at(i));
+      }
+    }
+  }
+
+  //getActiveFeatures(current_active_features, predicted_active_features, new_time);
   // compute optical flow
-  std::vector<unsigned char> status(new_features.size());
-  std::vector<float> err(new_features.size());
-  cv::calcOpticalFlowPyrLK( current_image, new_image, current_active_features, new_features, status, err,
+  std::vector<unsigned char> status(predicted_active_features.size());
+  std::vector<float> err(predicted_active_features.size());
+  cv::calcOpticalFlowPyrLK( current_image, new_image, current_active_features, predicted_active_features, status, err,
                             tracker_parameters.window_size, tracker_parameters.maximum_level,
                             tracker_parameters.termination_criteria, tracker_parameters.flags,
                             tracker_parameters.min_eig_threshold);
   // update features and time
-  this->updateActiveFeatures(new_features, status, new_time);
+  updateActiveFeatures(predicted_active_features, status, new_time);
   // update images
   previous_image = current_image;
   current_image = new_image;
-};
 
-unsigned int FeatureTracker::getNumberActiveFeatures(void) const
-{
-  return(active.size());
-}
 
-//  This method returns the currently active features by reference, storing them in the
-//  'current_position' vector. The method takes as an argument 'prediction_time', the time at which
-//  the positions of the currently active features are to be predicted (first order hold prediction)
-void FeatureTracker::getActiveFeatures( std::vector<cv::Point2f>& current_position,
-                                        std::vector<cv::Point2f>& predicted_position,
-                                        const double& prediction_time=0.1 ) const
-{
-  std::vector<cv::Point2f> previous_position;
-  if(!current_position.empty())
+  cv::Mat frame;
+  new_image_bgr.copyTo(frame);
+  for(unsigned int i = 0; i<current_features.size(); ++i)
   {
-    current_position = std::vector<cv::Point2f>();
-  }
-
-  if(!predicted_position.empty())
-  {
-    predicted_position = std::vector<cv::Point2f>();
-  }
-
-  // get active features
-  for (unsigned int i = 0; i < active.size(); ++i)
-  {
-    if(active[i])
+    if(active.at(i))
     {
-      previous_position.push_back(previous_features[i]);
-      current_position.push_back(current_features[i]);
+      cv::circle(frame, current_features.at(i), 1, cv::Scalar(0, 255, 0), -1, CV_AA, 0 );
     }
   }
-  // predict position of active features
-  if(predict)
-  {
-    predicted_position = addWeighted( current_position, 1.0, previous_position, -1.0);
-    double delta = ((prediction_time - current_time)/(current_time - previous_time));
-    predicted_position = addWeighted( current_position, 1.0, previous_position, delta);
-  }
+  cv::imshow("debug", frame);
+  cvWaitKey(3);
 };
+
+//  This method returns the currently active features by reference, storing them in the
+//  'current_position' vector. The method takes as an argument 'new_time', the time at which
+//  the positions of the currently active features are to be predicted (first order hold prediction)
+// void FeatureTracker::getActiveFeatures( std::vector<cv::Point2f>& current_position,
+//                                         std::vector<cv::Point2f>& predicted_position,
+//                                         //const double& prediction_time=0.1 ) const
+// {
+//   // if(!current_position.empty())
+//   // {
+//   //   current_position = std::vector<cv::Point2f>();
+//   // }
+
+//   // if(!predicted_position.empty())
+//   // {
+//   //   predicted_position = std::vector<cv::Point2f>();
+//   // }
+
+//   std::vector<cv::Point2f> previous_position;
+
+
+// };
 
 void FeatureTracker::updateActiveFeatures(  const std::vector<cv::Point2f>& new_points,
                                             const std::vector<unsigned char>& status,
@@ -135,19 +151,24 @@ void FeatureTracker::updateActiveFeatures(  const std::vector<cv::Point2f>& new_
   previous_features = current_features;
   predict = true;   // at this point we have samples at two different time instances, which is
                     // sufficient for us to predict.
-  for (unsigned int i = 0; i < new_points.size(); ++i)
+  unsigned int j = 0;
+  for (unsigned int i = 0; i < current_features.size(); ++i)
   {
-    if (1 == static_cast<int>(status[i])) // active feature
+    if(active.at(i))
     {
-      current_features[i] = new_points[i];
-    }
-    else
-    {
-      active[i] = false;
+      if (1 == static_cast<int>(status[j])) // active feature
+      {
+        current_features[i] = new_points[j];  // non-active features will hold their value
+      }
+      else
+      {
+        active[i] = false;
+      }
+      ++j;
     }
   }
 
-  // update time stamps
+  // // update time stamps
   previous_time = current_time;
   current_time = new_time;
 };

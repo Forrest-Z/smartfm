@@ -24,6 +24,8 @@ rosbuild_genmsg()
 #common commands for building c++ executables and libraries
 rosbuild_add_library(${PROJECT_NAME}
 	src/lib/FeatureDetector.cpp
+  src/lib/FeatureTracker.cpp
+	src/lib/Track.cpp
 	src/node/FeatureDetectorNode.cpp
 	src/node/FeatureTrackerNode.cpp
   src/node/FeatureViewerNode.cpp

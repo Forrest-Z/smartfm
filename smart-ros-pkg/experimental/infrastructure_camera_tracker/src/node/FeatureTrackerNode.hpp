@@ -1,15 +1,13 @@
 #include <ros/ros.h>
 
 #include <sensor_msgs/Image.h>
-#include <infrastructure_camera_tracker/Feature.h>
-#include <infrastructure_camera_tracker/FeatureSet.h>
-#include <infrastructure_camera_tracker/Track.h>
-#include <infrastructure_camera_tracker/TrackSet.h>
-
 #include <image_transport/image_transport.h>
-#include <message_filters/subscriber.h>
 
-enum tracker_state { initialize, resample, track };
+#include <infrastructure_camera_tracker/FeatureTracker.hpp>
+
+#include <std_msgs/Header.h>
+
+enum tracker_state { sample, track };
 
 class FeatureTrackerNode
 {
@@ -20,13 +18,17 @@ class FeatureTrackerNode
   private:
     ros::NodeHandle node_handle;
 
+    FeatureTracker tracker;
+
     image_transport::ImageTransport image_transport;
     image_transport::Subscriber image_subscriber;
-    message_filters::Subscriber<infrastructure_camera_tracker::FeatureSet> feature_subscriber;
+
     ros::Publisher track_publisher;
 
     tracker_state state;
 
-    void featureCallback(const infrastructure_camera_tracker::FeatureSet::ConstPtr& features);
+    std_msgs::Header header;
+
     void imageCallback(const sensor_msgs::Image::ConstPtr& image);
+    void publishFeatures(void);
 };

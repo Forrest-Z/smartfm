@@ -30,10 +30,6 @@ class FeatureTracker
   public:
     FeatureTracker();
 
-    FeatureTracker( detectorParameters detector_params,
-                    trackerParameters tracker_params,
-                    const cv::Mat& image); // use the image to construct the OF pyramid
-
     ~FeatureTracker();
 
     void restart( const cv::Mat& image,
@@ -41,11 +37,44 @@ class FeatureTracker
 
     void update(const cv::Mat& new_image, const double& new_time);
 
-    unsigned int getNumberActiveFeatures(void) const;
+    inline std::vector<bool> getActivity(void) const
+    {
+      return(active);
+    };
 
-    void getActiveFeatures( std::vector<cv::Point2f>& current_position,
-                            std::vector<cv::Point2f>& predicted_position,
-                            const double& prediction_time ) const;
+    inline std::vector<cv::Point2f> getFeatures(void) const
+    {
+      return(current_features);
+    };
+
+    inline std::vector<uint64> getIDs(void) const
+    {
+      return(feature_ids);
+    };
+
+    inline unsigned int getNumberOfActiveFeatures(void) const
+    {
+      unsigned int count = 0;
+      for(unsigned int i = 0; i < active.size(); ++i)
+      {
+        if(active.at(i))
+        {
+          ++count;
+        }
+      }
+      return(count);
+    };
+
+    inline unsigned int getNumberOfFeatures(void) const
+    {
+      return(current_features.size());
+    };
+
+    inline double getTime(void) const
+    {
+      return(current_time);
+    };
+
   private:
     detectorParameters detector_parameters;
     trackerParameters tracker_parameters;
@@ -53,7 +82,8 @@ class FeatureTracker
     cv::Mat previous_image, current_image;
     double previous_time, current_time;
 
-    std::vector<cv::Point2f> previous_features, current_features;
+    std::vector<cv::Point2f> previous_features;
+    std::vector<cv::Point2f> current_features;
     std::vector<bool> active;
     std::vector<uint64> feature_ids;
     static uint64 id_count;
@@ -67,6 +97,11 @@ class FeatureTracker
                                                   const std::vector<cv::Point2f>& v2,
                                                   const double& w2)
     {
+      if(v1.size()!=v2.size())
+      {
+        std::cerr << "vector size does not match!";
+      }
+
       std::vector<cv::Point2f> result(v1.size());
       for (unsigned int i = 0; i < v1.size(); ++i)
       {
@@ -74,6 +109,10 @@ class FeatureTracker
       }
       return(result);
     };
+
+    // void getActiveFeatures( std::vector<cv::Point2f>& current_position,
+    //                         std::vector<cv::Point2f>& predicted_position,
+    //                         const double& prediction_time ) const;
 
     void updateActiveFeatures(  const std::vector<cv::Point2f>& new_points,
                                 const std::vector<unsigned char>& status,
