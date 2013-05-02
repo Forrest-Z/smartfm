@@ -31,8 +31,8 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 <Parent>  null </Parent> 
 <Parameter type = "TBL"> 
 <Entry>  
-<Instance>  sR5  </Instance> 
-<ProbTable>  1  </ProbTable>  
+<Instance>  -  </Instance> 
+<ProbTable>  uniform  </ProbTable>  
 </Entry>  
 </Parameter> 
 </CondProb>  
@@ -61,8 +61,8 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 <Parent>  null </Parent> 
 <Parameter type = "TBL"> 
 <Entry>  
-<Instance>  sT0  </Instance> 
-<ProbTable>  1  </ProbTable>  
+<Instance>  -  </Instance> 
+<ProbTable>  uniform  </ProbTable>  
 </Entry>  
 </Parameter> 
 </CondProb>  
@@ -74,7 +74,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 <Parameter type = "TBL"> 
 <Entry>
 <Instance>     sR0	a0	sR0	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR0	a0	sR1	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR0	a1	sR0	</Instance> 
@@ -86,7 +90,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR1	a0	sR1	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR1	a0	sR2	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR1	a1	sR1	</Instance> 
@@ -98,7 +106,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR2	a0	sR2	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR2	a0	sR3	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR2	a1	sR2	</Instance> 
@@ -110,7 +122,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR3	a0	sR3	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR3	a0	sR4	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR3	a1	sR3	</Instance> 
@@ -122,7 +138,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR4	a0	sR4	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR4	a0	sR5	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR4	a1	sR4	</Instance> 
@@ -134,7 +154,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR5	a0	sR5	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR5	a0	sR6	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR5	a1	sR5	</Instance> 
@@ -146,7 +170,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR6	a0	sR6	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR6	a0	sR7	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR6	a1	sR6	</Instance> 
@@ -158,7 +186,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR7	a0	sR7	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR7	a0	sR8	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR7	a1	sR7	</Instance> 
@@ -170,7 +202,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR8	a0	sR8	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR8	a0	sR9	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR8	a1	sR8	</Instance> 
@@ -182,7 +218,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR9	a0	sR9	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR9	a0	sR10	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR9	a1	sR9	</Instance> 
@@ -194,7 +234,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR10	a0	sR10	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR10	a0	sR11	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR10	a1	sR10	</Instance> 
@@ -206,7 +250,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR11	a0	sR11	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR11	a0	sR12	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR11	a1	sR11	</Instance> 
@@ -218,7 +266,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR12	a0	sR12	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR12	a0	sR13	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR12	a1	sR12	</Instance> 
@@ -230,7 +282,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR13	a0	sR13	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR13	a0	sR14	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR13	a1	sR13	</Instance> 
@@ -242,7 +298,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR14	a0	sR14	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR14	a0	sR15	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR14	a1	sR14	</Instance> 
@@ -254,7 +314,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR15	a0	sR15	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR15	a0	sR16	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR15	a1	sR15	</Instance> 
@@ -266,7 +330,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR16	a0	sR16	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR16	a0	sR17	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR16	a1	sR16	</Instance> 
@@ -278,7 +346,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR17	a0	sR17	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR17	a0	sR18	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR17	a1	sR17	</Instance> 
@@ -290,7 +362,11 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sR18	a0	sR18	</Instance> 
-<ProbTable>1</ProbTable> 
+<ProbTable>0.9</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sR18	a0	sR19	</Instance> 
+<ProbTable>0.1</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sR18	a1	sR18	</Instance> 
@@ -23532,15 +23608,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR0	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR0	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR0	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR0	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR0	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR0	sQ1	sT1	sD28	</Instance> 
@@ -23564,15 +23644,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR1	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR1	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR1	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR1	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR1	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR1	sQ1	sT1	sD28	</Instance> 
@@ -23596,15 +23680,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR2	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR2	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR2	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR2	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR2	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR2	sQ1	sT1	sD28	</Instance> 
@@ -23628,15 +23716,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR3	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR3	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR3	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR3	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR3	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR3	sQ1	sT1	sD28	</Instance> 
@@ -23660,15 +23752,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR4	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR4	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR4	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR4	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR4	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR4	sQ1	sT1	sD28	</Instance> 
@@ -23692,15 +23788,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR5	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR5	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR5	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR5	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR5	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR5	sQ1	sT1	sD28	</Instance> 
@@ -23724,15 +23824,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR6	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR6	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR6	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR6	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR6	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR6	sQ1	sT1	sD28	</Instance> 
@@ -23756,15 +23860,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR7	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR7	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR7	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR7	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR7	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR7	sQ1	sT1	sD28	</Instance> 
@@ -23788,15 +23896,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR8	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR8	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR8	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR8	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR8	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR8	sQ1	sT1	sD28	</Instance> 
@@ -23820,15 +23932,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR9	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR9	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR9	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR9	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR9	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR9	sQ1	sT1	sD28	</Instance> 
@@ -23852,15 +23968,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR10	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR10	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR10	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR10	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR10	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR10	sQ1	sT1	sD28	</Instance> 
@@ -23884,15 +24004,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR11	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR11	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR11	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR11	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR11	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR11	sQ1	sT1	sD28	</Instance> 
@@ -23916,15 +24040,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR12	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR12	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR12	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR12	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR12	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR12	sQ1	sT1	sD28	</Instance> 
@@ -23948,15 +24076,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR13	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR13	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR13	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR13	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR13	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR13	sQ1	sT1	sD28	</Instance> 
@@ -23980,15 +24112,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR14	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR14	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR14	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR14	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR14	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR14	sQ1	sT1	sD28	</Instance> 
@@ -24012,15 +24148,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR15	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR15	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR15	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR15	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR15	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR15	sQ1	sT1	sD28	</Instance> 
@@ -24044,15 +24184,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR16	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR16	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR16	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR16	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR16	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR16	sQ1	sT1	sD28	</Instance> 
@@ -24076,15 +24220,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR17	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR17	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR17	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR17	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR17	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR17	sQ1	sT1	sD28	</Instance> 
@@ -24108,15 +24256,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR18	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR18	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR18	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR18	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR18	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR18	sQ1	sT1	sD28	</Instance> 
@@ -24140,15 +24292,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR19	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR19	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR19	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR19	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR19	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR19	sQ1	sT1	sD28	</Instance> 
@@ -24172,15 +24328,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD27	sR20	sQ1	sT0	sD28	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR20	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
-<Instance>     sD27	sR20	sQ1	sT0	sD30	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<Instance>     sD27	sR20	sQ1	sT0	sD0	</Instance> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD27	sR20	sQ1	sT0	sD35	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD27	sR20	sQ1	sT1	sD28	</Instance> 
@@ -24204,15 +24364,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR0	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR0	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR0	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR0	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR0	sQ1	sT1	sD29	</Instance> 
@@ -24236,15 +24400,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR1	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR1	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR1	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR1	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR1	sQ1	sT1	sD29	</Instance> 
@@ -24268,15 +24436,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR2	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR2	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR2	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR2	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR2	sQ1	sT1	sD29	</Instance> 
@@ -24300,15 +24472,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR3	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR3	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR3	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR3	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR3	sQ1	sT1	sD29	</Instance> 
@@ -24332,15 +24508,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR4	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR4	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR4	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR4	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR4	sQ1	sT1	sD29	</Instance> 
@@ -24364,15 +24544,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR5	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR5	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR5	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR5	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR5	sQ1	sT1	sD29	</Instance> 
@@ -24396,15 +24580,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR6	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR6	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR6	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR6	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR6	sQ1	sT1	sD29	</Instance> 
@@ -24428,15 +24616,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR7	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR7	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR7	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR7	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR7	sQ1	sT1	sD29	</Instance> 
@@ -24460,15 +24652,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR8	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR8	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR8	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR8	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR8	sQ1	sT1	sD29	</Instance> 
@@ -24492,15 +24688,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR9	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR9	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR9	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR9	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR9	sQ1	sT1	sD29	</Instance> 
@@ -24524,15 +24724,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR10	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR10	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR10	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR10	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR10	sQ1	sT1	sD29	</Instance> 
@@ -24556,15 +24760,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR11	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR11	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR11	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR11	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR11	sQ1	sT1	sD29	</Instance> 
@@ -24588,15 +24796,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR12	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR12	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR12	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR12	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR12	sQ1	sT1	sD29	</Instance> 
@@ -24620,15 +24832,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR13	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR13	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR13	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR13	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR13	sQ1	sT1	sD29	</Instance> 
@@ -24652,15 +24868,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR14	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR14	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR14	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR14	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR14	sQ1	sT1	sD29	</Instance> 
@@ -24684,15 +24904,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR15	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR15	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR15	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR15	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR15	sQ1	sT1	sD29	</Instance> 
@@ -24716,15 +24940,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR16	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR16	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR16	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR16	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR16	sQ1	sT1	sD29	</Instance> 
@@ -24748,15 +24976,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR17	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR17	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR17	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR17	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR17	sQ1	sT1	sD29	</Instance> 
@@ -24780,15 +25012,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR18	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR18	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR18	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR18	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR18	sQ1	sT1	sD29	</Instance> 
@@ -24812,15 +25048,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR19	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR19	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR19	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR19	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR19	sQ1	sT1	sD29	</Instance> 
@@ -24844,15 +25084,19 @@ TJunction, driver risk level problem, when should stop the robot by analysing th
 </Entry>
 <Entry>
 <Instance>     sD28	sR20	sQ1	sT0	sD29	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR20	sQ1	sT0	sD35	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR20	sQ1	sT0	sD0	</Instance> 
-<ProbTable>0.316667</ProbTable> 
+<ProbTable>0.2375</ProbTable> 
+</Entry>
+<Entry>
+<Instance>     sD28	sR20	sQ1	sT0	sD1	</Instance> 
+<ProbTable>0.2375</ProbTable> 
 </Entry>
 <Entry>
 <Instance>     sD28	sR20	sQ1	sT1	sD29	</Instance> 
