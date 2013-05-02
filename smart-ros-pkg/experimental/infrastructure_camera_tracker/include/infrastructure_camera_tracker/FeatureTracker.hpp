@@ -18,11 +18,11 @@ struct detectorParameters
 
 struct trackerParameters
 {
-  cv::Size window_size;//=Size(21,21),
-  int maximum_level;//=3,
-  cv::TermCriteria termination_criteria;//=TermCriteria(TermCriteria::COUNT+TermCriteria::EPS, 30, 0.01),
-  int flags;//=0,
-  double min_eig_threshold;//=1e-4
+  cv::Size window_size;
+  int maximum_level;
+  cv::TermCriteria termination_criteria;
+  int flags;
+  double min_eig_threshold;
 };
 
 class FeatureTracker
