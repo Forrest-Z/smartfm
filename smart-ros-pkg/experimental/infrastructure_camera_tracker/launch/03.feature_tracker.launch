@@ -1,0 +1,5 @@
+<launch>
+  <node name="feature_tracker" pkg="infrastructure_camera_tracker" type="feature_tracker" output="screen">
+    <remap from="/feature_tracker/image" to="/usb_cam0/image_raw"/>
+  </node>
+</launch>
