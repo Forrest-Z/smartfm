@@ -23,35 +23,34 @@ void FeatureTrackerNode::imageCallback(const sensor_msgs::Image::ConstPtr& image
   cv::Mat frame = cv_bridge::toCvCopy(image, "bgr8")->image;
   header = image->header;
   double timestamp = image->header.stamp.toSec();
-  ROS_INFO("Received image at time %f", timestamp);
-  if ( sample == state)
+  ROS_DEBUG("Received image at time %f", timestamp);
+  if ( sample == state )
   {
-    ROS_INFO("(re)starting tracking.");
     tracker.restart(frame, timestamp);
-    // publish new set of features
-    publishFeatures();
+    time_last_restart = timestamp;
+    ROS_INFO("(re)starting tracking, %i features found", tracker.getNumberOfFeatures());
     state = track;
+    publishFeatures(true);                                                      // publish new set of features
   }
   else if ( track == state )
   {
-    ROS_INFO("Tracking features.");
-    // compute optical flow
-    tracker.update(frame, timestamp);
-    // publish
-    publishFeatures();
+    ROS_DEBUG("Tracking features.");
+    tracker.update(frame, timestamp);                                           // compute optical flow
+    publishFeatures(false);                                                     // publish update
   }
   else
   {
+    ROS_ERROR("Unexpected state!");
   }
 
-
-  if(10 > tracker.getNumberOfActiveFeatures())
+  // resampling criteria
+  if(10 > tracker.getNumberOfActiveFeatures() || 3 < (timestamp - time_last_restart))
   {
     state = sample;
   }
 };
 
-void FeatureTrackerNode::publishFeatures(void)
+void FeatureTrackerNode::publishFeatures(bool new_set)
 {
   unsigned int n = tracker.getNumberOfFeatures();
   infrastructure_camera_tracker::TrackedFeatureSet message;
@@ -73,6 +72,7 @@ void FeatureTrackerNode::publishFeatures(void)
 
   message.header = header;
   message.features = tracked_features;
+  message.new_set = new_set;
 
   track_publisher.publish(message);
 };

@@ -29,6 +29,8 @@ class FeatureTrackerNode
 
     std_msgs::Header header;
 
+    double time_last_restart;
+
     void imageCallback(const sensor_msgs::Image::ConstPtr& image);
-    void publishFeatures(void);
+    void publishFeatures(bool new_set);
 };
