@@ -1,0 +1,16 @@
+<launch>
+	 <node name="Tjunction_momdp" pkg="Tjunction_momdp_sarsop" type="Tjunc-gap30-realveh" respawn="false" output="screen">
+	    <param name="model_file" value="$(find Tjunction_momdp_sarsop)/policy-files/Tjuncmomdp_wdir_int_unc_sim_v3_5.pomdpx"/>
+	    <param name="policy_file" value="$(find Tjunction_momdp_sarsop)/policy-files/Tjuncmomdp_wdir_int_unc_v3_5.policy"/>
+	    <param name="simLen" value="30"/>
+	    <param name="simNum" value="1"/>
+        <param name="frequency" value="1"/>
+	    <param name="stationary" value="false"/>
+	    <remap from="robot_0/amcl_pose" to="amcl_pose"/>
+	    <remap from="robot_0/cmd_vel" to="momdp_vel"/>
+            <remap from="odom" to="encoder_odom"/>
+	    <remap from="speed_advisor_cmdvel" to="cmd_vel"/>
+	 </node>
+
+	
+</launch>
