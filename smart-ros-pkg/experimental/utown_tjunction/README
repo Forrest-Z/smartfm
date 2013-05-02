@@ -1,12 +1,16 @@
 1. roscore
 2. roslaunch utown_tjunction simulation_utown.launch
 3. roslaunch utown_tjunction vehicle_detect.launch
+   (Remember to launch usb-test.launch to run the real LIDAR)
+   (Subscribe to pose_mean [point_cloud message] to visualize the tracking)
 4. rosbag play vehicle_example.bag Laser/sick_laser:=scan_real -l
+   (Ignore if it is a real test)
 5. roslaunch Launch 5RoutePlannerSpeedAdvisor.launch
 	(It will ask for current station, use 0 if the vehicle is at the starting point)
 	(To instruct the vehicle from start to end point, use Pickup station: 0 to Dropoff station: 1)
 	(To instruct the vehicle to reset to start point, use Pickup station: 1 to Dropoff station: 0)
 6. rosrun rviz rviz
+7. run momdp on golfcar
 
 To view the camera:
 rosrun image_view image_view image:=Cam0/camera/image_raw compressed
