@@ -1,0 +1,15 @@
+<launch>
+
+    <arg name="video_device" />
+    <arg name="frame_id" />
+
+    <node pkg="usb_cam" type="usb_cam_node" name="camera" output="screen">
+        <param name="video_device" type="string" value="$(arg video_device)" />
+        <param name="camera_frame_id" value="$(arg frame_id)" />
+        <param name="image_width" value="640" />
+        <param name="image_height" value="480" />
+        <param name="pixel_format" value="yuyv" />
+        <param name="io_method" value="mmap"/>
+    </node>
+</launch>
+
