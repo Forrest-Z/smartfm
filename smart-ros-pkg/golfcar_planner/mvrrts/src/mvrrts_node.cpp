@@ -135,7 +135,7 @@ Planner_node::Planner_node()
   clear_committed_trajectory();
   is_updating_committed_trajectory = false;
   is_updating_rrt_tree = false;
-  max_length_committed_trajectory = 15.0;
+  max_length_committed_trajectory = 20.0;
 
   planner_dt = 0.5;
   planner_timer = nh.createTimer(ros::Duration(planner_dt), &Planner_node::on_planner_timer, this);
@@ -607,7 +607,7 @@ int Planner_node::get_plan()
   cout<<"e: "<< mvrrts.numVertices<<" -- ";
   best_lus.print();
   flush(cout);
-  cout<<"found_best_path: "<< found_best_path<<endl;
+  //cout<<"found_best_path: "<< found_best_path<<endl;
 
   if(found_best_path)
   {
@@ -642,6 +642,7 @@ int Planner_node::get_plan()
     ros::Duration dt = ros::Time::now() - time_of_last_best_path;
     if( (mvrrts.numVertices > 75) || (dt.toSec() > 10))
     {
+      time_of_last_best_path = ros::Time::now();
       mvrrts_status[ginf] = true;
       cout<<"did not find best path: reinitializing"<<endl;
       clear_committed_trajectory();
@@ -669,7 +670,7 @@ bool Planner_node::is_near_end_committed_trajectory()
       delyaw += 2.0*M_PI;
 
     bool res = false;
-    if(dist(car_position.x, car_position.y, 0, last_committed_state[0], last_committed_state[1], 0) < 6.0)
+    if(dist(car_position.x, car_position.y, 0, last_committed_state[0], last_committed_state[1], 0) < 8.0)
       res = true;
     else
       res = false;

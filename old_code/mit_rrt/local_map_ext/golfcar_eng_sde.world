@@ -55,10 +55,10 @@ window
 ( 
   size [ 824 501 ] 
  #center [327.990 371.960] 
-  center [-260.418 61.249]
+  center [-265.374 61.023]
 #rotate [ 0.000 -1.560 ]
   rotate [ 0.000 -0.000 ]
-  scale 10.838 
+  scale 15.868 
 )
 
 # load an environment bitmap
@@ -73,8 +73,8 @@ floorplan
 )
 
 # throw in a robot
-gc1( pose [-273.790 57.874 0.000 -50.507] name "gc1" color "red")
+gc1( pose [-273.034 71.928 0.000 -50.507] name "gc1" color "red")
 
 block( pose [ -275.091 76.377 0.000 -14.324 ] color "blue")
 block( pose [ -111.896 106.660 0.000 0.000 ] color "blue")
-block( pose [ -268.090 64.341 0.000 -51.566 ] color "blue")
+block( pose [ -254.919 69.509 0.000 -51.566 ] color "blue")
