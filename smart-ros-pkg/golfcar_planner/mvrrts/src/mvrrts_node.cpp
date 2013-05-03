@@ -69,6 +69,7 @@ class Planner_node
     bool is_first_committed_trajectory;
     bool is_near_end_committed_trajectory(); 
     double state_last_clear[3];
+    ros::Time time_of_last_best_path;
 
     // ros
     ros::NodeHandle nh;
@@ -129,6 +130,7 @@ Planner_node::Planner_node()
   state_last_clear[1] = car_position.y;
   state_last_clear[2] = car_position.z;
   //cout<<"state_last_clear: "<< state_last_clear[0]<<" "<<state_last_clear[1]<<" "<<state_last_clear[2]<<endl;
+  time_of_last_best_path = ros::Time::now();
 
   clear_committed_trajectory();
   is_updating_committed_trajectory = false;
@@ -547,7 +549,7 @@ int Planner_node::get_plan()
   // hack semaphores to prevent publish_tree being called while checkTree is being executed
   is_updating_committed_trajectory = true;
   is_updating_rrt_tree = true;
-  mvrrts.lazyCheckTree();
+  mvrrts.checkTree();
   is_updating_committed_trajectory = false;
   is_updating_rrt_tree = false;
 
@@ -579,13 +581,13 @@ int Planner_node::get_plan()
   flush(cout);
   best_lus.print();
 
-  while((!found_best_path) || (samples_this_loop < 10))
+  while((!found_best_path) || (samples_this_loop < 6))
   {
     samples_this_loop += mvrrts.iteration();
     best_lus = mvrrts.getBestVertexLUS();
     if(best_lus.metric_cost < 500.0)
     {
-      if( (norm_lus(best_lus, prev_best_lus) < 0.05) && (mvrrts.numVertices > 10))
+      if( (norm_lus(best_lus, prev_best_lus) < 0.1) && (mvrrts.numVertices > 5))
         found_best_path = true;
     }
     //cout<< norm_lus(best_lus, prev_best_lus) << endl;
@@ -605,9 +607,11 @@ int Planner_node::get_plan()
   cout<<"e: "<< mvrrts.numVertices<<" -- ";
   best_lus.print();
   flush(cout);
+  cout<<"found_best_path: "<< found_best_path<<endl;
 
   if(found_best_path)
   {
+    time_of_last_best_path = ros::Time::now();
     mvrrts_status[ginf] = false;
     if( should_send_new_committed_trajectory || is_first_committed_trajectory )
     {
@@ -635,7 +639,8 @@ int Planner_node::get_plan()
   }
   else 
   {
-    if(mvrrts.numVertices > 500)
+    ros::Duration dt = ros::Time::now() - time_of_last_best_path;
+    if( (mvrrts.numVertices > 75) || (dt.toSec() > 10))
     {
       mvrrts_status[ginf] = true;
       cout<<"did not find best path: reinitializing"<<endl;
@@ -689,7 +694,6 @@ void Planner_node::on_planner_timer(const ros::TimerEvent &e)
     else if(is_near_end_committed_trajectory() && (!root_in_goal()))
     {
       cout<<"appending to committed trajectory"<<endl;
-      //clear_committed_trajectory();
       should_send_new_committed_trajectory = true;
       clear_committed_trajectory_length();
       get_plan();
