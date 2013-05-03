@@ -135,7 +135,7 @@ Planner_node::Planner_node()
   clear_committed_trajectory();
   is_updating_committed_trajectory = false;
   is_updating_rrt_tree = false;
-  max_length_committed_trajectory = 20.0;
+  max_length_committed_trajectory = 15.0;
 
   planner_dt = 0.5;
   planner_timer = nh.createTimer(ros::Duration(planner_dt), &Planner_node::on_planner_timer, this);
@@ -587,7 +587,7 @@ int Planner_node::get_plan()
     best_lus = mvrrts.getBestVertexLUS();
     if(best_lus.metric_cost < 500.0)
     {
-      if( (norm_lus(best_lus, prev_best_lus) < 0.1) && (mvrrts.numVertices > 5))
+      if( (norm_lus(best_lus, prev_best_lus) < 1) && (mvrrts.numVertices > 5))
         found_best_path = true;
     }
     //cout<< norm_lus(best_lus, prev_best_lus) << endl;
@@ -640,7 +640,7 @@ int Planner_node::get_plan()
   else 
   {
     ros::Duration dt = ros::Time::now() - time_of_last_best_path;
-    if( (mvrrts.numVertices > 75) || (dt.toSec() > 10))
+    if( (mvrrts.numVertices > 50) || (dt.toSec() > 25))
     {
       time_of_last_best_path = ros::Time::now();
       mvrrts_status[ginf] = true;

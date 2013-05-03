@@ -94,9 +94,6 @@ MVRRTstar::Planner< T >
 
   if (kdtree)
     kd_free (kdtree);
-
-  if(abar)
-    delete abar;
 }
 
 
