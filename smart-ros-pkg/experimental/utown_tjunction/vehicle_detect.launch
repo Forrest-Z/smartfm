@@ -1,0 +1,9 @@
+<launch>
+    <node pkg="feature_detection" type="simple_detection" name="simple_detection" output="screen">
+        <remap from="input_scan" to="/Laser/sick_laser"/>
+        <param name="svg_file" value="$(find utown_tjunction)/detection_boundary.svg"/>
+    </node>
+    <include file="$(find utown_tjunction)/tf.launch"/>
+    <node pkg="pose_tracking_pf" type="laser_tracking" name="laser_tracking" output="screen"/>
+    
+</launch>

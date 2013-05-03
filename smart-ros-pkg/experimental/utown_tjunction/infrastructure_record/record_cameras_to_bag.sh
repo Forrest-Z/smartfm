@@ -1,0 +1,1 @@
+rosbag record -e "/(.*)/camera/image_raw/compressed(.*)" "/Laser/sick_laser" "/(.*)/camera/camera_info"

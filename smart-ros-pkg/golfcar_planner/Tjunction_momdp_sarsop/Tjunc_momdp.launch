@@ -1,0 +1,20 @@
+<launch>
+	 <node name="Tjunction_momdp" pkg="Tjunction_momdp_sarsop" type="Tjunc-momdp-sarsop" respawn="false" output="screen">
+	    <param name="model_file" value="$(find Tjunction_momdp_sarsop)/policy-files/Tjuncmomdp_wdir_int_unc_sim_v3_5.pomdpx"/>
+	    <param name="policy_file" value="$(find Tjunction_momdp_sarsop)/policy-files/Tjuncmomdp_wdir_int_unc_v3_5.policy"/>
+	    <param name="simLen" value="30"/>
+	    <param name="simNum" value="1"/>
+        <param name="frequency" value="1"/>
+	    <param name="stationary" value="false"/>
+	    <remap from="robot_0/amcl_pose" to="amcl_pose"/>
+	    <remap from="robot_0/cmd_vel" to="cmd_vel"/>
+            <remap from="odom" to="encoder_odom"/>
+	 </node>
+	 <node name="Tjunc_local_transform" pkg="Tjunction_momdp_sarsop" type="Tjunc_local_frame" output="screen">
+	    <param name="global_frame" value="odom"/>
+        <param name="threshold" value="0.0"/>
+	</node>
+	
+	 <node name="wayPoints" pkg="wayPointsFeeder" type="wayPointsFeeder" output="screen">
+	</node>
+</launch>

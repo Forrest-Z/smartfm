@@ -28,6 +28,8 @@ namespace golfcar_semantics{
 
         //extracted ped_semantic information;
         void show_update(double x, double y, CvPoint & prev_point, CvScalar bgr_color);
+    	void clear_image();
+    	void save_image(const char* image_name);
 
         private:
         CvSize image_size_;

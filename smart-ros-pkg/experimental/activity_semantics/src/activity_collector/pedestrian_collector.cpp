@@ -71,7 +71,7 @@ pedestrian_collector::pedestrian_collector():
 			for(size_t j=0; j<ped_tracks_[i].ped_track.size(); j++)
 			{
 				geometry_msgs::Point32 track_pt = ped_tracks_[i].ped_track[j].cluster.centroid;
-				global_viewer_->show_update(ped_tracks_[i].ped_track[j].cluster.centroid.x, ped_tracks_[i].ped_track[j].cluster.centroid.y, CV_RGB(0,0,255));
+				global_viewer_->show_update(ped_tracks_[i].ped_track[j].cluster.centroid.x, ped_tracks_[i].ped_track[j].cluster.centroid.y, CV_RGB(0,0,255), false);
 				local_viewer_->show_update( ped_tracks_[i].ped_track[j].local_centroid.x, ped_tracks_[i].ped_track[j].local_centroid.y, prev_point, CV_RGB(0,0,255));
 
 			}
