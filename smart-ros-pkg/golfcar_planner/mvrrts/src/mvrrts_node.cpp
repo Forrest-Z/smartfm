@@ -118,7 +118,7 @@ Planner_node::Planner_node()
 {
   srand(0);
 
-  ros::Rate wait_rate(0.2);
+  ros::Rate wait_rate(1);
   while(get_robot_pose())
   {
     cout<<"Waiting for robot pose"<<endl;
@@ -375,7 +375,7 @@ int Planner_node::get_robot_pose()
   robot_pose.stamp_ = ros::Time();
   ros::Time current_time = ros::Time::now();
 
-  bool transform_is_correct = false;
+  bool transform_is_correct = true;
   try {
     tf_.transformPose("map", robot_pose, map_pose);
   }
@@ -397,7 +397,6 @@ int Planner_node::get_robot_pose()
         current_time.toSec(), map_pose.stamp_.toSec(), 0.1);
     transform_is_correct = false;
   }
-  transform_is_correct = true;
 
   if(transform_is_correct)
   {
