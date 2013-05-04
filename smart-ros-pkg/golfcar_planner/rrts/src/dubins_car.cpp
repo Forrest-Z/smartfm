@@ -298,7 +298,7 @@ double System::getStateCost(const double stateIn[3])
   return cost/3.0;
 }
 
-#if 1
+#if 0
 int System::sampleState (State &randomStateOut) {
 
   for (int i = 0; i < 3; i++) 
@@ -335,7 +335,7 @@ int System::sampleState (State &randomStateOut) {
 
 int System::sampleState(State &z)
 {
-  int r = (double)(rand()/RAND_MAX+1.0)*free_cells.size();
+  int r = rand()/(RAND_MAX+1.0)*free_cells.size();
   int index = free_cells[r];
   double local_xy[3] ={0, 0, 0};
   getxy_from_index(local_xy[0], local_xy[1], index);
