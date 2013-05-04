@@ -65,11 +65,11 @@ window
 floorplan
 (
   name "willow"
-  bitmap "bigeng_sde_map_0.2_blank.png"
+  bitmap "bigeng_sde_map_0.2.png"
 #  bitmap "bigeng_sde_map_0.2.png"
   size [425.100 452.000 1.000]
 #  pose [12.500 -47.600 0.000 90.000]
-  pose [-226.000    212.550 0.000 90.000]
+  pose [-226.000    212.550 0.000 0.000]
  # pose [0.0 0.0 0.000 90.000]
 )
 

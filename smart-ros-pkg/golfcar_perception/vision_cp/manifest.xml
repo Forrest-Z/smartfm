@@ -16,6 +16,7 @@
   <depend package="image_view"/>
   <depend package="message_filters"/>
   <depend package="fmutil"/>
+  <depend package="geometry_msgs"/>
 </package>
 
 
