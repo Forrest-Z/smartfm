@@ -14,6 +14,8 @@ TrackBuilderNode::~TrackBuilderNode()
 void TrackBuilderNode::featureCallback(const infrastructure_camera_tracker::TrackedFeatureSet::ConstPtr& msg)
 {
   //
+  last_header = msg->header;
+
   unsigned int N = msg->features.size();
   std::vector<long unsigned int> ids(N);
   std::vector<cv::Point2f> points(N);
@@ -70,6 +72,7 @@ void TrackBuilderNode::publishTracks(void) const
     trackv_msg[i].id = id;
   }
 
+  message.header = last_header;
   message.tracks = trackv_msg;
 
   track_publisher.publish(message);
