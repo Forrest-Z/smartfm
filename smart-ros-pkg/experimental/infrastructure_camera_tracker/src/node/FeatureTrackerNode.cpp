@@ -10,7 +10,6 @@ FeatureTrackerNode::FeatureTrackerNode(): node_handle("~"),
 {
   track_publisher = node_handle.advertise<infrastructure_camera_tracker::TrackedFeatureSet>("features", 1000);
   image_subscriber = image_transport.subscribe("image", 100, &FeatureTrackerNode::imageCallback, this);
-  // state = sample;
 };
 
 FeatureTrackerNode::~FeatureTrackerNode()

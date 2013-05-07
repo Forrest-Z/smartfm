@@ -26,8 +26,10 @@ rosbuild_add_library(${PROJECT_NAME}
 	src/lib/FeatureDetector.cpp
   src/lib/FeatureTracker.cpp
 	src/lib/Track.cpp
+	src/lib/TrackBuilder.cpp
 	src/node/FeatureDetectorNode.cpp
 	src/node/FeatureTrackerNode.cpp
+	src/node/TrackBuilderNode.cpp
   src/node/FeatureViewerNode.cpp
 )
 
@@ -39,3 +41,6 @@ target_link_libraries(feature_viewer ${PROJECT_NAME})
 
 rosbuild_add_executable(feature_tracker src/node/feature_tracker.cpp)
 target_link_libraries(feature_tracker ${PROJECT_NAME})
+
+rosbuild_add_executable(track_builder src/node/track_builder.cpp)
+target_link_libraries(track_builder ${PROJECT_NAME})

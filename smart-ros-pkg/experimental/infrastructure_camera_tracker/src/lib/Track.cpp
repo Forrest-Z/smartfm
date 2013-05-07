@@ -1,8 +1,8 @@
 /*
 * Track.cpp
 *
-* Copyright 2013 pvt   <pedro@smart.mit.edu>
-*                      <pvazteixeira@gmail.com>
+* 2013 pvt   <pedro@smart.mit.edu>
+*            <pvazteixeira@gmail.com>
 */
 
 #include <infrastructure_camera_tracker/Track.hpp>

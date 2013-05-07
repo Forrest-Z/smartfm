@@ -9,7 +9,7 @@ FeatureTracker::FeatureTracker(): predict(false)
   detector_parameters.minimum_distance = 10;
   detector_parameters.mask = cv::Mat();
   detector_parameters.block_size = 3;
-  detector_parameters.use_Harris_detector = false;
+  detector_parameters.use_Harris_detector = true;
 
   tracker_parameters.window_size = cv::Size(21, 21);
   tracker_parameters.maximum_level = 3;
@@ -17,6 +17,9 @@ FeatureTracker::FeatureTracker(): predict(false)
   tracker_parameters.flags = 0;
   tracker_parameters.min_eig_threshold = 1e-4;
 };
+
+// MISSING: constructor taking <detector_parameters> and <tracker_parameters> structs as arguments to
+// initialize the detector and the tracker
 
 FeatureTracker::~FeatureTracker()
 {
@@ -41,8 +44,6 @@ void FeatureTracker::restart( const cv::Mat& image,
                           detector_parameters.block_size,
                           detector_parameters.use_Harris_detector);
 
-  std::cout << current_features.size() << " features found!\n";
-
   active = std::vector<bool>(current_features.size(), true);                    // mark all features as active
 
   feature_ids.resize(active.size());                                            // assign IDs
@@ -53,7 +54,6 @@ void FeatureTracker::restart( const cv::Mat& image,
 
   predict = false;                                                              // only after receiving one image will we have enough information to make a prediction
 };
-
 
 // Naming convention in use:
 // previous  = k-1
