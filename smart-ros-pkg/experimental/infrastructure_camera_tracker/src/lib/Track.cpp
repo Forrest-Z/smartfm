@@ -27,7 +27,7 @@ bool Track::getMAVelocity(const unsigned int& n, cv::Point2f& vel) const
 {
   if (n < 1  || n > deltas->size() )
   {
-    return false;
+    return(false);
   }
   /*
   else if ( n > deltas->size())
@@ -44,12 +44,13 @@ bool Track::getMAVelocity(const unsigned int& n, cv::Point2f& vel) const
   else
   {
     cv::Point2f ma(0, 0);
-    for (std::deque<cv::Point2f>::reverse_iterator rit = deltas->rbegin(); rit < deltas->rbegin()+n; ++rit)
+    for ( std::deque<cv::Point2f>::reverse_iterator rit = deltas->rbegin();
+          rit < deltas->rbegin() + n; ++rit)
     {
       ma += *rit;
     }
     vel = (1.0 / n) * ma;
-    return true;
+    return(true);
   }
 }
 
@@ -64,18 +65,31 @@ cv::Point2f Track::getVelocity(void) const
   return(v);
 }
 
-void Track::update( const cv::Point2f &new_point,
-                    const unsigned char &status,
-                    const double &t)
+void Track::update( const cv::Point2f& new_point, const bool& status, const double& t)
 {
+  active = status;  // this way, the last element of points is the last valid position computed
   if (active)
   {
     if (points->size())
     {
-      deltas->push_back(new_point-points->back());
+      deltas->push_back(new_point - points->back());
     }
     points->push_back(cv::Point2f(new_point));
     times->push_back(static_cast<double>(t));
-    (1 == static_cast<int>(status)) ? active = true : active = false;
   }
+}
+
+void Track::update( const cv::Point2f& new_point, const unsigned char& status, const double& t)
+{
+  (1 == static_cast<int>(status)) ? update(new_point, true, t) : update(new_point, false, t);
+  // if (active)
+  // {
+  //   if (points->size())
+  //   {
+  //     deltas->push_back(new_point-points->back());
+  //   }
+  //   points->push_back(cv::Point2f(new_point));
+  //   times->push_back(static_cast<double>(t));
+  //   (1 == static_cast<int>(status)) ? active = true : active = false;
+  // }
 }

@@ -91,6 +91,10 @@ class Track
       cv::putText(dst, label, o, cv::FONT_HERSHEY_SIMPLEX, 0.25, cv::Scalar(255, 255, 255), 1);
     };
 
+    void update( const cv::Point2f& new_point,
+                 const bool& status,
+                 const double& t);
+
     void update(  const cv::Point2f &new_point,
                   const unsigned char &status,
                   const double &t);
