@@ -4,7 +4,7 @@
 #include <infrastructure_camera_tracker/TrackSet.h>           // publishes
 
 #include <vector>
-#include <infrastructure_camera_tracker/Track.hpp>
+#include <infrastructure_camera_tracker/TrackBuilder.hpp>
 
 class TrackBuilderNode
 {
@@ -16,7 +16,9 @@ class TrackBuilderNode
     ros::Publisher  track_publisher;
     ros::Subscriber feature_subscriber;
 
-    std::vector<Track> trackset;
+    TrackBuilder track_builder;
 
-    void featureCallback(const infrastructure_camera_tracker::TrackSet::ConstPtr& msg);
+    void featureCallback(const infrastructure_camera_tracker::TrackedFeatureSet::ConstPtr& msg);
+
+    void publishTracks(void) const;
 };

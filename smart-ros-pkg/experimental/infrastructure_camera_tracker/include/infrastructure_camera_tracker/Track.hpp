@@ -27,8 +27,8 @@ class Track
     bool active;
 
 	public:
-    // default constructor
-    Track(void)
+
+    Track(void) // default constructor
     {
       active = true;
       points = new std::deque<cv::Point2f>;
@@ -38,8 +38,7 @@ class Track
       id = id_count++;
     };
 
-    // copy constructor
-    Track(const Track& other)
+    Track(const Track& other) // copy constructor
     {
       active = other.active;
       points = new std::deque<cv::Point2f>;
@@ -57,16 +56,14 @@ class Track
       id = id_count++;
     };
 
-    // destructor
-    ~Track()
+    ~Track()  // destructor
     {
       delete(points);
       delete(deltas);
       delete(times);
     };
 
-    // assignment
-    Track& operator=( const Track& rhs )
+    Track& operator=( const Track& rhs )  // assignment operator
     {
       active = rhs.active;
       points->clear();
@@ -85,24 +82,25 @@ class Track
       return(*this);
     };
 
-    void drawLabel(cv::Mat& dst, const std::string& label) const
+    inline void drawLabel(cv::Mat& dst, const std::string& label) const
     {
       cv::Point2f o = points->back();
       cv::putText(dst, label, o, cv::FONT_HERSHEY_SIMPLEX, 0.25, cv::Scalar(255, 255, 255), 1);
     };
 
-    void update( const cv::Point2f& new_point,
-                 const bool& status,
-                 const double& t);
-
-    void update(  const cv::Point2f &new_point,
-                  const unsigned char &status,
-                  const double &t);
-
-    inline bool isActive(void) const
+    void get(std::vector<cv::Point2f>& positions, std::vector<double>& timestamps, long unsigned int& tid) const
     {
-      return(active);
-    };
+      positions.resize(points->size());
+      timestamps.resize(times->size());
+      std::deque<cv::Point2f>::iterator itp = points->begin();
+      std::deque<double>::iterator itt = times->begin();
+      for(unsigned int i = 0; (itp!=points->end() && itt!=times->end()); ++i, ++itp, ++itt)
+      {
+        positions[i] = *itp;
+        timestamps[i] = *itt;
+      }
+      tid = id;
+    }
 
     inline cv::Point2f getLast(void) const
     {
@@ -119,6 +117,11 @@ class Track
     bool getMAVelocity(const unsigned int& n, cv::Point2f& vel) const;
 
     cv::Point2f getVelocity(void) const;
+
+    inline bool isActive(void) const
+    {
+      return(active);
+    };
 
     void plot(cv::Mat& dst, const int& radius, const std::vector<cv::Scalar>& colormap) const
     {
@@ -165,7 +168,6 @@ class Track
         std::cout << times->at(i+1) << ", " << deltas->at(i).x << ", " << deltas->at(i).y << "; ";
       }
       std:: cout << "]\n";
-
     };
 
     inline void push_back(const cv::Point2f& point, const double& t)
@@ -190,5 +192,13 @@ class Track
     {
       return(points->size());
     };
+
+    void update( const cv::Point2f& new_point,
+                 const bool& status,
+                 const double& t);
+
+    void update(  const cv::Point2f &new_point,
+                  const unsigned char &status,
+                  const double &t);
 };
 #endif
