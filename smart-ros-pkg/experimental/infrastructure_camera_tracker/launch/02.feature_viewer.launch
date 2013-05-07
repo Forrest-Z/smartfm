@@ -1,6 +1,0 @@
-<launch>
-  <node name="feature_viewer" pkg="infrastructure_camera_tracker" type="feature_viewer">
-    <remap from="/feature_viewer/image" to="/usb_cam0/image_raw"/>
-    <remap from="/feature_viewer/features" to="/feature_detector/features"/>
-  </node>
-</launch>
