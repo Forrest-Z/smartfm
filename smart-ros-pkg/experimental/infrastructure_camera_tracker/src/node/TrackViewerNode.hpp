@@ -35,7 +35,10 @@ class TrackViewerNode
 
     message_filters::Synchronizer<sync_policy> synchronizer;
 
-    std::string window_name;
+    std::string overlay_window_name;
+    std::string track_window_name;
+
+    cv::Mat accumulated_tracks;
 
     void callback(  const sensor_msgs::Image::ConstPtr& image,
                     const ict::TrackSet::ConstPtr& trackset);

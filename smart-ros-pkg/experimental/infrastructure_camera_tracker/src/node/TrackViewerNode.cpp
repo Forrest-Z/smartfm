@@ -48,7 +48,8 @@ TrackViewerNode::TrackViewerNode(): node_handle("~"),
                                     img_subscriber(img_transport, "image", 1),
                                     trackset_subscriber(node_handle, "tracks", 1),
                                     synchronizer(sync_policy(1), img_subscriber, trackset_subscriber),
-                                    window_name("track viewer")
+                                    overlay_window_name("track viewer - overlay"),
+                                    track_window_name("track viewer - track")
 {
   // bind the callback and tell boost::bind() to forward the first and second arguments it receives
   // boost::function<void (const sensor_msgs::Image::ConstPtr&, const infrastructure_camera_tracker::TrackSet::ConstPtr&)> sync_callback( boost::bind( &TrackViewerNode::callback, this, _1, _2 ) );
@@ -56,7 +57,8 @@ TrackViewerNode::TrackViewerNode(): node_handle("~"),
 
   synchronizer.registerCallback( boost::bind(&TrackViewerNode::callback, this, _1, _2) );         // but this does
 
-  cv::namedWindow(window_name, cv::WINDOW_AUTOSIZE);
+  cv::namedWindow(track_window_name, cv::WINDOW_AUTOSIZE);
+  cv::namedWindow(overlay_window_name, cv::WINDOW_AUTOSIZE);
 };
 
 TrackViewerNode::~TrackViewerNode()
@@ -69,7 +71,11 @@ void TrackViewerNode::callback( const sensor_msgs::Image::ConstPtr& image,
 {
   ROS_INFO("received image/trackset pair\n");
   cv::Mat frame = cv_bridge::toCvCopy(image, "bgr8")->image;
-
+  cv::Mat bg(frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
+  if(accumulated_tracks.empty())
+  {
+    accumulated_tracks = cv::Mat(frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
+  }
   // plot tracks
   for(unsigned int i = 0; i < trackset->tracks.size(); ++i)
   {
@@ -78,18 +84,20 @@ void TrackViewerNode::callback( const sensor_msgs::Image::ConstPtr& image,
     for ( ; k < trackset->tracks[i].track.size(); ++j, ++k )
     {
       cv::Point2f a(trackset->tracks[i].track[j].position.x, trackset->tracks[i].track[j].position.y);
-      cv::circle( frame, a, 1, cv::Scalar(0, 255, 0), -1, CV_AA, 0 );
+      // cv::circle( frame, a, 1, cv::Scalar(0, 255, 0), -1, CV_AA, 0 );
       cv::Point2f b(trackset->tracks[i].track[k].position.x, trackset->tracks[i].track[k].position.y);
-      cv::circle( frame, b, 1, cv::Scalar(0, 255, 0), -1, CV_AA, 0 );
+      // cv::circle( frame, b, 1, cv::Scalar(0, 255, 0), -1, CV_AA, 0 );
 
       delta = b - a;
       angle = static_cast<int>((180.0/CV_PI)*(atan2(delta.y, delta.x) + CV_PI));
 
-      cv::line(frame, a, b, colormap.at(angle), 1, 8, 0);
+      cv::line(frame, a, b, colormap.at(angle), 1, CV_AA, 0);
+      cv::line(accumulated_tracks, a, b, colormap.at(angle), 1, CV_AA, 0);
     }
   }
 
   // display image
-  cv::imshow(window_name, frame);
-  cv::waitKey(10);
+  cv::imshow(track_window_name, accumulated_tracks);
+  cv::imshow(overlay_window_name, frame);
+  cv::waitKey(3);
 };
