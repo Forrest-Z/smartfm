@@ -4,8 +4,8 @@ FeatureDetector::FeatureDetector()
 {
   // initialize with the default values from opencv
   max_corners         = 1000;
-  quality_level       = 0.01;
-  min_distance        = 10;
+  quality_level       = 0.1;
+  min_distance        = 1;
   mask                = cv::Mat();
   block_size          = 3;
   use_Harris_detector = false;
