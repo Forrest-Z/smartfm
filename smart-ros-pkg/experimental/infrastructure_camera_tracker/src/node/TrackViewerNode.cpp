@@ -45,13 +45,15 @@ std::vector<cv::Scalar> TrackViewerNode::colormap = getAngleColormap();
 
 TrackViewerNode::TrackViewerNode(): node_handle("~"),
                                     img_transport(node_handle),
-                                    img_subscriber(img_transport, "image", 1),
-                                    trackset_subscriber(node_handle, "tracks", 1),
-                                    synchronizer(sync_policy(1), img_subscriber, trackset_subscriber),
+                                    // img_subscriber(img_transport, "image", 10),
+                                    //trackset_subscriber(node_handle, "tracks", 10),
+                                    // synchronizer(sync_policy(10), img_subscriber, trackset_subscriber),
                                     overlay_window_name("track viewer - overlay"),
                                     track_window_name("track viewer - track")
 {
-  synchronizer.registerCallback( boost::bind(&TrackViewerNode::callback, this, _1, _2) );
+  // synchronizer.registerCallback( boost::bind(&TrackViewerNode::callback, this, _1, _2) );
+  img_subscriber = img_transport.subscribe("image", 10, &TrackViewerNode::imageCallback, this);
+  trackset_subscriber = node_handle.subscribe("tracks", 10, &TrackViewerNode::trackSetCallback, this);
 
   cv::namedWindow(track_window_name, cv::WINDOW_AUTOSIZE);
   cv::namedWindow(overlay_window_name, cv::WINDOW_AUTOSIZE);
@@ -61,15 +63,53 @@ TrackViewerNode::~TrackViewerNode()
 {
 };
 
-void TrackViewerNode::callback( const sensor_msgs::Image::ConstPtr& image,
-                                const ict::TrackSet::ConstPtr& trackset)
+// void TrackViewerNode::callback( const sensor_msgs::Image::ConstPtr& image,
+//                                 const ict::TrackSet::ConstPtr& trackset)
+// {
+//   ROS_INFO("received image/trackset pair");
+//   cv::Mat frame = cv_bridge::toCvCopy(image, "bgr8")->image;
+//   // cv::Mat bg(frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
+//   if(accumulated_tracks.empty())
+//   {
+//     accumulated_tracks = cv::Mat(frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
+//   }
+//   // plot tracks
+//   for(unsigned int i = 0; i < trackset->tracks.size(); ++i)
+//   {
+//     cv::Point2f delta;
+//     unsigned int angle, j = 0, k = 1;
+//     for ( ; k < trackset->tracks[i].track.size(); ++j, ++k )
+//     {
+//       cv::Point2f a(trackset->tracks[i].track[j].position.x, trackset->tracks[i].track[j].position.y);
+//       cv::Point2f b(trackset->tracks[i].track[k].position.x, trackset->tracks[i].track[k].position.y);
+
+//       delta = b - a;
+//       angle = static_cast<int>((180.0/CV_PI)*(atan2(delta.y, delta.x) + CV_PI));
+
+//       cv::line(frame, a, b, colormap.at(angle), 1, CV_AA, 0);
+//       cv::line(accumulated_tracks, a, b, colormap.at(angle), 1, CV_AA, 0);
+//     }
+//   }
+
+//   cv::imshow(track_window_name, accumulated_tracks);
+//   cv::imshow(overlay_window_name, frame);
+//   cv::waitKey(10);
+// };
+
+
+void TrackViewerNode::imageCallback(const sensor_msgs::Image::ConstPtr& image)
 {
-  ROS_INFO("received image/trackset pair\n");
-  cv::Mat frame = cv_bridge::toCvCopy(image, "bgr8")->image;
+  latest_frame = cv_bridge::toCvCopy(image, "bgr8")->image;
+};
+
+void TrackViewerNode::trackSetCallback(const ict::TrackSet::ConstPtr& trackset)
+{
+  ROS_INFO("received image/trackset pair");
+  // cv::Mat frame = cv_bridge::toCvCopy(image, "bgr8")->image;
   // cv::Mat bg(frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
   if(accumulated_tracks.empty())
   {
-    accumulated_tracks = cv::Mat(frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
+    accumulated_tracks = cv::Mat(latest_frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
   }
   // plot tracks
   for(unsigned int i = 0; i < trackset->tracks.size(); ++i)
@@ -84,12 +124,11 @@ void TrackViewerNode::callback( const sensor_msgs::Image::ConstPtr& image,
       delta = b - a;
       angle = static_cast<int>((180.0/CV_PI)*(atan2(delta.y, delta.x) + CV_PI));
 
-      cv::line(frame, a, b, colormap.at(angle), 1, CV_AA, 0);
+      cv::line(latest_frame, a, b, colormap.at(angle), 1, CV_AA, 0);
       cv::line(accumulated_tracks, a, b, colormap.at(angle), 1, CV_AA, 0);
     }
   }
-
   cv::imshow(track_window_name, accumulated_tracks);
-  cv::imshow(overlay_window_name, frame);
+  cv::imshow(overlay_window_name, latest_frame);
   cv::waitKey(10);
 };

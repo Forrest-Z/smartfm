@@ -32,6 +32,7 @@ void TrackBuilderNode::featureCallback(const infrastructure_camera_tracker::Trac
 
   if (msg->new_set)
   {
+    ROS_INFO("Publising track set");
     publishTracks();
     track_builder.clear(); // if stitching isn't implemented
     track_builder.add(ids, points, timestamps);
@@ -72,7 +73,8 @@ void TrackBuilderNode::publishTracks(void) const
     trackv_msg[i].id = id;
   }
 
-  message.header = last_header;
+  // message.header = last_header;
+  message.header.stamp = ros::Time::now();
   message.tracks = trackv_msg;
 
   track_publisher.publish(message);
