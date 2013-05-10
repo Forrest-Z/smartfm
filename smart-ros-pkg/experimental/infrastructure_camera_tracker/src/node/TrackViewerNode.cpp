@@ -51,11 +51,7 @@ TrackViewerNode::TrackViewerNode(): node_handle("~"),
                                     overlay_window_name("track viewer - overlay"),
                                     track_window_name("track viewer - track")
 {
-  // bind the callback and tell boost::bind() to forward the first and second arguments it receives
-  // boost::function<void (const sensor_msgs::Image::ConstPtr&, const infrastructure_camera_tracker::TrackSet::ConstPtr&)> sync_callback( boost::bind( &TrackViewerNode::callback, this, _1, _2 ) );
-  // synchronizer.registerCallback( sync_callback );                                                // this does not work
-
-  synchronizer.registerCallback( boost::bind(&TrackViewerNode::callback, this, _1, _2) );         // but this does
+  synchronizer.registerCallback( boost::bind(&TrackViewerNode::callback, this, _1, _2) );
 
   cv::namedWindow(track_window_name, cv::WINDOW_AUTOSIZE);
   cv::namedWindow(overlay_window_name, cv::WINDOW_AUTOSIZE);
@@ -63,7 +59,6 @@ TrackViewerNode::TrackViewerNode(): node_handle("~"),
 
 TrackViewerNode::~TrackViewerNode()
 {
-  // close window
 };
 
 void TrackViewerNode::callback( const sensor_msgs::Image::ConstPtr& image,
@@ -71,7 +66,7 @@ void TrackViewerNode::callback( const sensor_msgs::Image::ConstPtr& image,
 {
   ROS_INFO("received image/trackset pair\n");
   cv::Mat frame = cv_bridge::toCvCopy(image, "bgr8")->image;
-  cv::Mat bg(frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
+  // cv::Mat bg(frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
   if(accumulated_tracks.empty())
   {
     accumulated_tracks = cv::Mat(frame.size(), CV_8UC3, cv::Scalar(0, 0, 0));
@@ -84,9 +79,7 @@ void TrackViewerNode::callback( const sensor_msgs::Image::ConstPtr& image,
     for ( ; k < trackset->tracks[i].track.size(); ++j, ++k )
     {
       cv::Point2f a(trackset->tracks[i].track[j].position.x, trackset->tracks[i].track[j].position.y);
-      // cv::circle( frame, a, 1, cv::Scalar(0, 255, 0), -1, CV_AA, 0 );
       cv::Point2f b(trackset->tracks[i].track[k].position.x, trackset->tracks[i].track[k].position.y);
-      // cv::circle( frame, b, 1, cv::Scalar(0, 255, 0), -1, CV_AA, 0 );
 
       delta = b - a;
       angle = static_cast<int>((180.0/CV_PI)*(atan2(delta.y, delta.x) + CV_PI));
@@ -96,8 +89,7 @@ void TrackViewerNode::callback( const sensor_msgs::Image::ConstPtr& image,
     }
   }
 
-  // display image
   cv::imshow(track_window_name, accumulated_tracks);
   cv::imshow(overlay_window_name, frame);
-  cv::waitKey(3);
+  cv::waitKey(10);
 };
