@@ -4,17 +4,17 @@ uint64 FeatureTracker::id_count = 0;
 
 FeatureTracker::FeatureTracker(): predict(false)
 {
-  detector_parameters.maximum_corners = 1000;
-  detector_parameters.quality = 0.01;
-  detector_parameters.minimum_distance = 10;
+  detector_parameters.maximum_corners = 100;
+  detector_parameters.quality = 0.1;
+  detector_parameters.minimum_distance = 1;
   detector_parameters.mask = cv::Mat();
   detector_parameters.block_size = 3;
   detector_parameters.use_Harris_detector = true;
 
-  tracker_parameters.window_size = cv::Size(21, 21);
-  tracker_parameters.maximum_level = 3;
-  tracker_parameters.termination_criteria = cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30, 0.01);
-  tracker_parameters.flags = 0;
+  tracker_parameters.window_size = cv::Size(3, 3);
+  tracker_parameters.maximum_level = 5;
+  tracker_parameters.termination_criteria = cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 20, 0.3);
+  tracker_parameters.flags = 0; //cv::OPTFLOW_USE_INITIAL_FLOW;//1;
   tracker_parameters.min_eig_threshold = 1e-4;
 };
 
@@ -39,10 +39,10 @@ void FeatureTracker::restart( const cv::Mat& image,
   cv::goodFeaturesToTrack(current_image, current_features,                      // run good features to track
                           detector_parameters.maximum_corners,
                           detector_parameters.quality,
-                          detector_parameters.minimum_distance,
-                          detector_parameters.mask,
-                          detector_parameters.block_size,
-                          detector_parameters.use_Harris_detector);
+                          detector_parameters.minimum_distance);
+                          // detector_parameters.mask,
+                          // detector_parameters.block_size,
+                          // detector_parameters.use_Harris_detector);
 
   active = std::vector<bool>(current_features.size(), true);                    // mark all features as active
 
@@ -94,16 +94,22 @@ void FeatureTracker::update( const cv::Mat& new_image_bgr, const double& new_tim
         current_active_features.push_back(current_features.at(i));
       }
     }
+    predicted_active_features = current_active_features;
   }
 
   std::vector<unsigned char> status(predicted_active_features.size());
   std::vector<float> err(predicted_active_features.size());
   cv::calcOpticalFlowPyrLK( current_image, new_image,                           // compute optical flow
                             current_active_features, predicted_active_features,
-                            status, err,
-                            tracker_parameters.window_size, tracker_parameters.maximum_level,
-                            tracker_parameters.termination_criteria, tracker_parameters.flags,
-                            tracker_parameters.min_eig_threshold);
+                            status, err);//,
+                            // tracker_parameters.window_size, tracker_parameters.maximum_level,
+                            // tracker_parameters.termination_criteria, tracker_parameters.flags,
+                            // tracker_parameters.min_eig_threshold);
+
+  double max = -1.0;
+  for(unsigned int i = 0; i < err.size(); ++i)
+    err[i] > max ? max=err[i]:max = max;
+  std::cout << err.size() << " active features, maximum error="<< max << std::endl;
 
   updateActiveFeatures(predicted_active_features, status, new_time);            // update features and time
 
@@ -116,7 +122,13 @@ void FeatureTracker::update( const cv::Mat& new_image_bgr, const double& new_tim
   {
     if(active.at(i))
     {
-      cv::circle(frame, current_features.at(i), 1, cv::Scalar(0, 255, 0), -1, CV_AA, 0 );
+      if(err[i]>0)
+      {
+        if(err[i] < 50.0)
+          cv::circle(frame, current_features.at(i), static_cast<int>(err[i]), cv::Scalar(255, 0, 0, 0), 1, CV_AA, 0 );
+        else
+          cv::circle(frame, current_features.at(i), 50, cv::Scalar(255, 0, 255, 0), 1, CV_AA, 0 );
+      }
     }
   }
   // DEBUG code:
