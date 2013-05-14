@@ -10,11 +10,11 @@
 // bool ArrivalEstimator::user_added_point = false;
 unsigned short int ArrivalEstimator::id_count = 0;
 
-bool ArrivalEstimator::getIntersection(const cv::Point2f& position,
-                                  const cv::Point2f& velocity,
-                                  cv::Point2f& intersection_point,
-                                  float& time_to_arrival,
-                                  float& x) const
+bool ArrivalEstimator::getIntersection( const cv::Point2f& position,
+                                        const cv::Point2f& velocity,
+                                        cv::Point2f& intersection_point,
+                                        float& time_to_arrival,
+                                        float& x) const
 {
   cv::Point2f pt_2 = position + velocity;
   intersection_point = this->getIntersectionPoint(position, pt_2);
@@ -22,10 +22,12 @@ bool ArrivalEstimator::getIntersection(const cv::Point2f& position,
   {
     // compute arrival time
     cv::Point2f delta = intersection_point - position;
-    time_to_arrival = ((fabs(velocity.x) > fabs(velocity.y)) ? (delta.x / velocity.x) : (delta.y / velocity.y));
+    //time_to_arrival = ((fabs(velocity.x) > fabs(velocity.y)) ? (delta.x / velocity.x) : (delta.y / velocity.y));
+    time_to_arrival = cv::norm(delta)/cv::norm(velocity);
     //time_to_arrival = std::max(delta.x/velocity.x, delta.y/velocity.y); // shady
     if (time_to_arrival < 0)
     {
+      std::cout << "<";
       return(false);
     }
     else
@@ -40,6 +42,7 @@ bool ArrivalEstimator::getIntersection(const cv::Point2f& position,
   }
   else
   {
+    std::cout  << "!";
     return(false);
   }
 }
