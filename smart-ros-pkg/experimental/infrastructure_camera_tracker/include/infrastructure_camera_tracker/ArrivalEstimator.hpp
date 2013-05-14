@@ -12,8 +12,8 @@
 class ArrivalEstimator
 {
   private:
-    cv::Point2f line_points[2];
-    cv::Point3f theta;
+    cv::Point2f line_points[2]; // used to validate intersection points
+    cv::Point3f theta;          // line parameters
     cv::Scalar color;
     unsigned short int id;
 
@@ -51,9 +51,11 @@ class ArrivalEstimator
 
     ArrivalEstimator(const cv::Point2f& pt1, const cv::Point2f& pt2)
     {
+      line_points[0] = pt1;
+      line_points[1] = pt2;
       id = id_count++;
       color = cv::Scalar(0, 255, 0);
-      theta = getLineParameters(pt1, pt2);
+      theta = getLineParameters(line_points[0], line_points[1]);
     };
 
     ~ArrivalEstimator()
@@ -149,7 +151,7 @@ class ArrivalEstimator
     //   }
     // }
 
-    void print(std::ostream& out) const
+    void print(std::ostream& out=std::cout) const
     {
       out << "arrival line [id = " << id << "]:\n";
       out << "point 1 = " << line_points[0] << "\n";

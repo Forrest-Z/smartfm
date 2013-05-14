@@ -10,7 +10,7 @@ inline geometry_msgs::Point toGeometryMsgsPoint(const cv::Point2f& point)
   return(pt);
 };
 
-inline cv::Point2f toCVPoint(const geometry_msgs::Point& point)
+inline cv::Point2f toOpenCVPoint(const geometry_msgs::Point& point)
 {
   return(cv::Point2f(point.x, point.y));
 }

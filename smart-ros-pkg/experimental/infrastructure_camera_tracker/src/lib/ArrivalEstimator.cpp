@@ -23,11 +23,9 @@ bool ArrivalEstimator::getIntersection( const cv::Point2f& position,
     // compute arrival time
     cv::Point2f delta = intersection_point - position;
     //time_to_arrival = ((fabs(velocity.x) > fabs(velocity.y)) ? (delta.x / velocity.x) : (delta.y / velocity.y));
-    time_to_arrival = cv::norm(delta)/cv::norm(velocity);
-    //time_to_arrival = std::max(delta.x/velocity.x, delta.y/velocity.y); // shady
+    time_to_arrival = cv::norm(delta) / cv::norm(velocity);
     if (time_to_arrival < 0)
     {
-      std::cout << "<";
       return(false);
     }
     else
@@ -42,7 +40,6 @@ bool ArrivalEstimator::getIntersection( const cv::Point2f& position,
   }
   else
   {
-    std::cout  << "!";
     return(false);
   }
 }
