@@ -48,25 +48,28 @@ void ArrivalEstimatorNode::featureCallback(const infrastructure_camera_tracker::
     ict::TrackedFeature feature;
 
     track_builder.update(ids, points, timestamps, active);
+
     // perform arrival estimation
-    std::vector<Track> tracks = track_builder.getTracks();
+    std::vector<Track> tracks = track_builder.getTracks();    // not very efficient
 
     // loop variables
     cv::Point2f arrival_point, feature_velocity;
     float arrival_time, x_arrival;
 
+    // compute intersection
+    int total_arrivals=0;// number
     for(unsigned int i = 0; i < tracks.size(); ++i)
     {
       if(tracks[i].isActive())
       {
         // get moving average of the velocity
-
         if (tracks[i].getMAVelocity(5, feature_velocity))
         {
           if (1 < cv::norm(feature_velocity))
           {
-            if (arrival_line.getIntersection(tracks[i].getLast(), feature_velocity, arrival_point, arrival_time, x_arrival))
+            if (arrival_estimator.getIntersection(tracks[i].getLast(), feature_velocity, arrival_point, arrival_time, x_arrival))
             {
+              ++total_arrivals;
               feature.position = toGeometryMsgsPoint(tracks[i].getLast());
               feature.time = tracks[i].getLastTime();
               feature.id = tracks[i].getID();
@@ -81,21 +84,35 @@ void ArrivalEstimatorNode::featureCallback(const infrastructure_camera_tracker::
         }
       }
     }
-
-    // compute intersection
+    //ROS_INFO("%i arrivals computed", j);
     // publish!
+    if (0<total_arrivals)
+    {
+      arrival_publisher.publish(message);
+    }
   }
 };
 
 void ArrivalEstimatorNode::lineCallback(const infrastructure_camera_tracker::ArrivalLine::ConstPtr& msg)
 {
+  ROS_INFO("Received new arrival line position.");
 
+  // std::cout << toOpenCVPoint(msg->first) << ", " <<toOpenCVPoint(msg->second) << std::endl;
+  arrival_estimator = ArrivalEstimator(toOpenCVPoint(msg->first), toOpenCVPoint(msg->second));
+  arrival_estimator.print();
+  // cv::Mat frame(1000, 1000, CV_8UC3, cv::Scalar(0, 0, 0));
+  // cv::namedWindow("AEN_debug", cv::WINDOW_AUTOSIZE);
+  // cv::imshow("AEN_debug", frame);
+  // cv::waitKey(10);
+  // cv::line(frame, toOpenCVPoint(msg->first), toOpenCVPoint(msg->second), cv::Scalar(255, 255, 255), 1, CV_AA, 0 );
+  // cv::imshow("AEN_debug", frame);
+  // cv::waitKey(10);
 };
 
-void ArrivalEstimatorNode::publishArrivals(void) const
-{
+// void ArrivalEstimatorNode::publishArrivals(void) const
+// {
 
-};
+// };
 
 void ArrivalEstimatorNode::publishTracks(void) const
 {
@@ -117,8 +134,7 @@ void ArrivalEstimatorNode::publishTracks(void) const
 
     for(unsigned int j = 0; j < tracks[i].size(); ++j )
     {
-      featurev_msg[j].position.x = positions[j].x;
-      featurev_msg[j].position.y = positions[j].y;
+      featurev_msg[j].position = toGeometryMsgsPoint(positions[j]);
       featurev_msg[j].time = timestamps[j];
     }
 

@@ -21,7 +21,7 @@ class ArrivalEstimatorNode
     ros::Subscriber feature_subscriber;
     ros::Subscriber line_subscriber;
     std_msgs::Header last_header;
-    ArrivalEstimator arrival_line;
+    ArrivalEstimator arrival_estimator;
     infrastructure_camera_tracker::ArrivalLine arrival_line_msg;
     TrackBuilder  track_builder;
 
@@ -29,7 +29,7 @@ class ArrivalEstimatorNode
 
     void lineCallback(const infrastructure_camera_tracker::ArrivalLine::ConstPtr& msg);
 
-    void publishArrivals(void) const;
+    // void publishArrivals(void) const;
 
     void publishTracks(void) const;
 };
