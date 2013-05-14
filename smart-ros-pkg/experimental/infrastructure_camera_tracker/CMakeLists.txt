@@ -23,25 +23,30 @@ rosbuild_genmsg()
 
 #common commands for building c++ executables and libraries
 rosbuild_add_library(${PROJECT_NAME}
+	src/lib/ArrivalEstimator.cpp
 	src/lib/FeatureDetector.cpp
   src/lib/FeatureTracker.cpp
 	src/lib/Track.cpp
 	src/lib/TrackBuilder.cpp
+	src/node/ArrivalEstimatorNode.cpp
 	src/node/FeatureDetectorNode.cpp
 	src/node/FeatureTrackerNode.cpp
+	src/node/FeatureViewerNode.cpp
 	src/node/TrackBuilderNode.cpp
-  src/node/FeatureViewerNode.cpp
   src/node/TrackViewerNode.cpp
 )
+
+rosbuild_add_executable(arrival_estimator src/node/arrival_estimator.cpp)
+target_link_libraries(arrival_estimator ${PROJECT_NAME})
 
 rosbuild_add_executable(feature_detector src/node/feature_detector.cpp)
 target_link_libraries(feature_detector ${PROJECT_NAME})
 
-rosbuild_add_executable(feature_viewer src/node/feature_viewer.cpp)
-target_link_libraries(feature_viewer ${PROJECT_NAME})
-
 rosbuild_add_executable(feature_tracker src/node/feature_tracker.cpp)
 target_link_libraries(feature_tracker ${PROJECT_NAME})
+
+rosbuild_add_executable(feature_viewer src/node/feature_viewer.cpp)
+target_link_libraries(feature_viewer ${PROJECT_NAME})
 
 rosbuild_add_executable(track_builder src/node/track_builder.cpp)
 target_link_libraries(track_builder ${PROJECT_NAME})
