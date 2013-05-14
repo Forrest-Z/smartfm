@@ -82,6 +82,13 @@ class Track
       return(*this);
     };
 
+    inline void clear(void)
+    {
+      points->clear();
+      times->clear();
+      active = true;
+    };
+
     inline void drawLabel(cv::Mat& dst, const std::string& label) const
     {
       cv::Point2f o = points->back();
@@ -102,10 +109,20 @@ class Track
       tid = id;
     }
 
+    inline long unsigned int getID(void) const
+    {
+      return(id);
+    }
+
     inline cv::Point2f getLast(void) const
     {
       return(points->back());
     };
+
+    inline double getLastTime(void) const
+    {
+      return(times->back());
+    }
 
     double getLength(void) const;
 

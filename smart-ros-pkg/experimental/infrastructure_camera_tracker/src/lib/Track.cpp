@@ -49,7 +49,7 @@ bool Track::getMAVelocity(const unsigned int& n, cv::Point2f& vel) const
     {
       ma += *rit;
     }
-    vel = (1.0 / n) * ma;
+    vel = (1.0 / (*(times->rbegin()) - (*(times->rbegin() + n)))) * ma;
     return(true);
   }
 }
@@ -62,10 +62,11 @@ cv::Point2f Track::getVelocity(void) const
   {
     v = deltas->back();
   }
+  v = (1.0 / (times->back() - *(times->rbegin() - 1) )) * v;
   return(v);
 }
 
-void Track::update( const cv::Point2f& new_point, const bool& status, const double& t)
+void Track::update(const cv::Point2f& new_point, const bool& status, const double& t)
 {
   active = status;  // this way, the last element of points is the last valid position computed
   if (active)
