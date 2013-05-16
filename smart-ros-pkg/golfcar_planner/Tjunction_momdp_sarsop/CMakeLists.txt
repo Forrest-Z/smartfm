@@ -177,6 +177,10 @@ rosbuild_add_executable(Tjunc-momdp-sarsop src/Vehicle_momdp_realPed.cpp src/ROS
 rosbuild_add_compile_flags(Tjunc-momdp-sarsop ${WARNING_FLAGS})
 target_link_libraries(Tjunc-momdp-sarsop appl tinyxml)
 
+rosbuild_add_executable(Tjunc-gap30-realveh src/Vehicle_momdp_realPed_realveh.cpp src/ROS_SimulationEngine.cpp src/gap30_realveh.cpp)
+rosbuild_add_compile_flags(Tjunc-gap30-realveh ${WARNING_FLAGS})
+target_link_libraries(Tjunc-gap30-realveh appl tinyxml)
+
 rosbuild_add_executable(Tjunc-momdp-realveh src/Vehicle_momdp_realPed_realveh.cpp src/ROS_SimulationEngine.cpp src/momdp_realveh.cpp)
 rosbuild_add_compile_flags(Tjunc-momdp-realveh ${WARNING_FLAGS})
 target_link_libraries(Tjunc-momdp-realveh appl tinyxml)

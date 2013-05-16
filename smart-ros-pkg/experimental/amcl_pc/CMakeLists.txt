@@ -36,3 +36,4 @@ rosbuild_link_boost(bin/amcl signals)
 
 target_link_libraries(bin/amcl amcl_sensors amcl_map amcl_pf)
 
+rosbuild_add_executable(simple_nh src/simple_nh.cpp)

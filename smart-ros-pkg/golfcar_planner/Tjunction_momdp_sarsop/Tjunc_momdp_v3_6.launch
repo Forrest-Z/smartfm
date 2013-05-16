@@ -1,7 +1,7 @@
 <launch>
 	 <node name="Tjunction_momdp" pkg="Tjunction_momdp_sarsop" type="Tjunc-momdp-sarsop" respawn="false" output="screen">
-	    <param name="model_file" value="$(find Tjunction_momdp_sarsop)/policy-files/Tjuncmomdp_wdir_int_unc_sim_v3_6_cor.pomdpx"/>
-	    <param name="policy_file" value="$(find Tjunction_momdp_sarsop)/policy-files/Tjuncmomdp_wdir_int_unc_v3_6_cor.policy"/>
+	    <param name="model_file" value="$(find Tjunction_momdp_sarsop)/policy-files/Tjuncmomdp_wdir_int_unc_sim_v3_6.pomdpx"/>
+	    <param name="policy_file" value="$(find Tjunction_momdp_sarsop)/policy-files/Tjuncmomdp_wdir_int_unc_v3_6.policy"/>
 	    <param name="simLen" value="30"/>
 	    <param name="simNum" value="1"/>
         <param name="frequency" value="1"/>
