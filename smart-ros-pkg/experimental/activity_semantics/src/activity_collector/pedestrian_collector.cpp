@@ -22,10 +22,8 @@ pedestrian_collector::pedestrian_collector():
 	void pedestrian_collector::pedCallback(const sensing_on_road::pedestrian_vision_batch::ConstPtr& ped_batch_in)
 	{
 		ROS_INFO("pedCallback BEGIN");
-
 		track_updating(ped_batch_in);
 		track_visualization();
-
 		ROS_INFO("pedCallback END");
 	}
 
@@ -73,7 +71,6 @@ pedestrian_collector::pedestrian_collector():
 				geometry_msgs::Point32 track_pt = ped_tracks_[i].ped_track[j].cluster.centroid;
 				global_viewer_->show_update(ped_tracks_[i].ped_track[j].cluster.centroid.x, ped_tracks_[i].ped_track[j].cluster.centroid.y, CV_RGB(0,0,255), false);
 				local_viewer_->show_update( ped_tracks_[i].ped_track[j].local_centroid.x, ped_tracks_[i].ped_track[j].local_centroid.y, prev_point, CV_RGB(0,0,255));
-
 			}
 		}
 		cvWaitKey(1);

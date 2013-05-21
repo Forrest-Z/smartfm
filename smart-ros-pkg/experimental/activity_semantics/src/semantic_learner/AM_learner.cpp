@@ -66,6 +66,7 @@ namespace golfcar_semantics{
 		if(track.ped_activity == MOVING)
 		{
 			moving_activity activity_tmp;
+			activity_tmp.track_label =  track.track_label;
 			activity_tmp.width = track.elements[element_serial].width;
 			activity_tmp.depth = track.elements[element_serial].depth;
 
@@ -79,7 +80,6 @@ namespace golfcar_semantics{
 					{
 						activity_tmp.thetha = std::atan2(track.elements[element_serial].y-track.elements[i].y, track.elements[element_serial].x-track.elements[i].x);
 						if(activity_tmp.thetha<0) activity_tmp.thetha = activity_tmp.thetha + M_PI;
-
 						activity_tmp.speed = distance/(track.elements[element_serial].time - track.elements[i].time);
 						activity_calculated = true;
 						break;
@@ -118,6 +118,7 @@ namespace golfcar_semantics{
 		learn_moving_direction();
 	}
 
+
 	void AM_learner::learn_moving_direction()
 	{
 		unsigned int i, j;
@@ -132,7 +133,8 @@ namespace golfcar_semantics{
 
 		    	for(size_t a=0; a<grid_tmp.moving_activities.size(); a++)
 		    	{
-		    		direction_mat.at<double>(a, 0) =  grid_tmp.moving_activities[a].thetha;
+		    		//direction_mat.at<double>(a, 0) =  grid_tmp.moving_activities[a].thetha;
+		    		direction_mat.at<double>(a, 0) =  sin(grid_tmp.moving_activities[a].thetha);
 		    	}
 		    	Mat direction_cov, direction_mean;
 
@@ -145,6 +147,7 @@ namespace golfcar_semantics{
 		}
 	}
 
+
 	void AM_learner::view_activity_map()
 	{
 		show_moving_direction();
@@ -152,8 +155,11 @@ namespace golfcar_semantics{
 
 	void AM_learner::show_moving_direction()
 	{
-		Mat direction_color(AM_->size_y,  AM_->size_x, CV_8UC1 );
-		Mat directionVar_color(AM_->size_y,  AM_->size_x, CV_8UC1 );
+		//Mat direction_color(AM_->size_y,  AM_->size_x, CV_8UC1 );
+		//Mat directionVar_color(AM_->size_y,  AM_->size_x, CV_8UC1 );
+
+		Mat direction_color(AM_->size_y,  AM_->size_x, CV_32FC1 );
+		Mat directionVar_color(AM_->size_y,  AM_->size_x, CV_32FC1 );
 
 		direction_color = Scalar(0);
 		directionVar_color =  Scalar(0);
@@ -167,27 +173,72 @@ namespace golfcar_semantics{
 				if(grid_tmp.moving_activities.size()==0)continue;
 				int x = i;
 				int y = AM_->size_y-1-j;
-				direction_color.at<uchar>(y,x) = floor(grid_tmp.direction_gaussion.val[0]/M_PI *255.0);
-				directionVar_color.at<uchar>(y,x)  = floor(sqrt(grid_tmp.direction_gaussion.val[1])/M_PI *255.0);
+				//direction_color.at<uchar>(y,x) = floor(grid_tmp.direction_gaussion.val[0]/M_PI *255.0);
+				//directionVar_color.at<uchar>(y,x)  = floor(sqrt(grid_tmp.direction_gaussion.val[1])/M_PI *255.0);
+				direction_color.at<float>(y,x) = (float)(grid_tmp.direction_gaussion.val[0]);
+				directionVar_color.at<float>(y,x)  = (float)sqrt(grid_tmp.direction_gaussion.val[1]);
 			}
 		}
-		Mat jetcolor, jetcolorVar;
-		applyColorMap(direction_color, jetcolor, COLORMAP_JET);
-		applyColorMap(directionVar_color, jetcolorVar, COLORMAP_JET);
 
+		double minVal, maxVal;
+		minMaxLoc(direction_color, &minVal, &maxVal); //find minimum and maximum intensities
+		Mat draw1;
+		direction_color.convertTo(draw1, CV_8U, 255.0/(maxVal - minVal), -minVal * 255.0/(maxVal - minVal));
+		minMaxLoc(directionVar_color, &minVal, &maxVal); //find minimum and maximum intensities
+		Mat draw2;
+		directionVar_color.convertTo(draw2, CV_8U, 255.0/(maxVal - minVal), -minVal * 255.0/(maxVal - minVal));
+
+		Mat jetcolor, jetcolorVar;
+		applyColorMap(draw1, jetcolor, COLORMAP_JET);
+		applyColorMap(draw2, jetcolorVar, COLORMAP_JET);
+
+		/*
 		Mat mask;
 		cvtColor(direction_color, mask, CV_GRAY2RGB);
 		bitwise_and(jetcolor, mask, jetcolor);
 		bitwise_and(jetcolorVar, mask, jetcolorVar);
+		 */
 
 		imshow("direction_map", jetcolor);
 		imshow("directionVar_map", jetcolorVar);
 
-		imwrite( "./data/direction_map.png", jetcolor );
+		imwrite( "./data/directionVar_map.png", jetcolorVar );
 		waitKey(0);
 	}
 
+	void AM_learner::record_map_into_file()
+	{
+		int cell_number=0;
+		unsigned int i, j;
+		for(j = 0; j < (unsigned int) AM_->size_y; j++)
+		{
+			for (i = 0; i < (unsigned int) AM_->size_x; i++)
+			{
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
+				if(grid_tmp.moving_activities.size()!=0) cell_number ++;
+			}
+		}
 
+		FILE *fp_output;
+	    if((fp_output=fopen("map_data.txt", "a"))==NULL){ROS_ERROR("cannot open output_file\n"); return;}
+	    fprintf(fp_output, "%d", cell_number);
+
+		for(j = 0; j < (unsigned int) AM_->size_y; j++)
+		{
+			for (i = 0; i < (unsigned int) AM_->size_x; i++)
+			{
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
+				if(grid_tmp.moving_activities.size()==0)continue;
+				fprintf(fp_output, "\n%ld\t%ld\t%ld\t", i, j, grid_tmp.moving_activities.size());
+				for(size_t k=0; k<grid_tmp.moving_activities.size(); k++)
+				{
+					fprintf(fp_output, "%lf\t", grid_tmp.moving_activities[k].speed);
+					fprintf(fp_output, "%lf\t", grid_tmp.moving_activities[k].thetha);
+				}
+			}
+		}
+		fclose(fp_output);
+	}
 
 	AM_learner::~AM_learner()
 	{

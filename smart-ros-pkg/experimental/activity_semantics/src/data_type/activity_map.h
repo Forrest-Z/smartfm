@@ -34,6 +34,7 @@ namespace golfcar_semantics
 
 	typedef struct
 	{
+		int track_label;
 		double speed, thetha;
 		double width, depth;
 	} moving_activity;

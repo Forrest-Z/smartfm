@@ -35,6 +35,7 @@ namespace golfcar_semantics
     	void GridMap_init();
     	void learn_activity_map();
     	void view_activity_map();
+    	void record_map_into_file();
         activity_map *AM_;
 
         private:
