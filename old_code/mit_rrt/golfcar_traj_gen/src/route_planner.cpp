@@ -83,7 +83,7 @@ RoutePlanner::RoutePlanner(const int start, const int end)
     nextpose_pub_ = n.advertise<geometry_msgs::PoseStamped>("pnc_nextpose",1);
     norminal_lane_pub_ = n.advertise<std_msgs::Bool>("norminal_lane", 1, true);
     goal_in_collision_sub_ = n.subscribe("rrts_status",1, &RoutePlanner::rrts_status, this);
-    ros::Rate loop_rate(3);
+    ros::Rate loop_rate(1);
     initDest(start, end);
     initialized_ = false;
     goal_collision_ = false;
@@ -162,8 +162,8 @@ bool RoutePlanner::goToDest()
 {
     getRobotGlobalPose();
 
-    ROS_INFO_THROTTLE(3, "Going to %s. Distance=%.0f.", destination_.c_str(), distanceToGoal());
-    cout<<"goToDest() waypointNo="<<waypointNo_<<endl;
+    //ROS_INFO_THROTTLE(3, "Going to %s. Distance=%.0f.", destination_.c_str(), distanceToGoal());
+    cout<<"w #"<<waypointNo_<<endl;
     geometry_msgs::PoseStamped map_pose;
     map_pose.pose.position.x = path_[waypointNo_].x_;
     map_pose.pose.position.y = path_[waypointNo_].y_;
@@ -197,7 +197,8 @@ bool RoutePlanner::goToDest()
     }
 
 
-    if(robot_near_root_ && (switched_root_ || root_in_goal_))
+    //if(robot_near_root_ && (switched_root_ || root_in_goal_))
+    if(root_in_goal_ && robot_near_root_)
     {
         if(waypointNo_>=path_.size())
         {

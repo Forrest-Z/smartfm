@@ -517,8 +517,8 @@ int Planner::get_plan()
 {
   is_updating_committed_trajectory = true;
   is_updating_rrt_tree = true;
-  //rrts.checkTree();
-  rrts.lazyCheckTree();
+  rrts.checkTree();
+  //rrts.lazyCheckTree();
   is_updating_committed_trajectory = false;
   is_updating_rrt_tree = false;
 
@@ -546,23 +546,28 @@ int Planner::get_plan()
   ros::Time start_current_call_back = ros::Time::now();
   cout<<"s: "<< rrts.numVertices<<" -- "<<best_cost;
   flush(cout);
-  while((!found_best_path) || (samples_this_loop < 5))
+  while(!found_best_path)
   {
-    samples_this_loop += rrts.iteration();
+    rrts.iteration();
+    samples_this_loop++;
     best_cost = rrts.getBestVertexCost();
     if(best_cost < 500.0)
     {
       if( (fabs(prev_best_cost - best_cost) < 0.05) && (rrts.numVertices > 10))
+      {
         found_best_path = true;
+        break;
+      }
     }
     //cout<<"n: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
 
-    if(samples_this_loop %5 == 0)
-      prev_best_cost = best_cost;
+    prev_best_cost = best_cost;
 
     ros::Duration dt = ros::Time::now() - start_current_call_back;
     // give some time to the following code as well
-    if(dt.toSec() > 0.6*planner_dt)
+    if((dt.toSec() > 0.5*planner_dt) && (found_best_path && should_send_new_committed_trajectory))
+      break;
+    else if(dt.toSec() > 0.8*planner_dt)
       break;
   }
   cout<<" e: "<< rrts.numVertices<<" -- "<< best_cost<<endl;

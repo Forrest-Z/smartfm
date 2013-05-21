@@ -94,9 +94,6 @@ MVRRTstar::Planner< T >
 
   if (kdtree)
     kd_free (kdtree);
-
-  if(abar)
-    delete abar;
 }
 
 
@@ -224,19 +221,35 @@ typename MVRRTstar::Planner<T>::vertex_t*
   MVRRTstar::Planner< T >
 ::insertTrajectory (vertex_t& vertexStartIn, trajectory_t& trajectoryIn) 
 {
-  // Create a new end vertex
-  vertex_t* vertexNew = new vertex_t;
-  vertexNew->state = new state_t;
-  vertexNew->parent = NULL;
-  trajectoryIn.getEndState(vertexNew->getState());
-  insertIntoKdtree (*vertexNew);  
-  this->listVertices.push_front (vertexNew);
-  this->numVertices++;
+  Level_of_US new_lus = vertexStartIn.lus_from_root;
+  Level_of_US from_parent = get_lus_between(*vertexStartIn.state, trajectoryIn.getEndState(), trajectoryIn);
+  new_lus += from_parent;
 
-  // Insert the trajectory between the start and end vertices
-  insertTrajectory (vertexStartIn, trajectoryIn, *vertexNew);
+  //cout<<"new_lus: "; new_lus.print(); cout<<endl;
+  //cout<<"lower_bound: "; lowerBoundLUS.print(); cout<<endl;
 
-  return vertexNew;
+  if( (!lowerBoundVertex) || (new_lus < lowerBoundLUS))
+  {
+    // Create a new end vertex
+    vertex_t* vertexNew = new vertex_t;
+    vertexNew->state = new state_t;
+    vertexNew->parent = NULL;
+
+    // update cost
+    vertexNew->lus_from_root = new_lus;
+    vertexNew->lus_from_parent = from_parent;
+    checkUpdateBestVertex (*vertexNew);
+
+    trajectoryIn.getEndState(vertexNew->getState());
+    insertIntoKdtree (*vertexNew);  
+    this->listVertices.push_front (vertexNew);
+    this->numVertices++;
+
+    // Insert the trajectory between the start and end vertices
+    insertTrajectory (vertexStartIn, trajectoryIn, *vertexNew);
+    return vertexNew;
+  }
+  return NULL;
 }
 
 
@@ -244,14 +257,8 @@ template< class T >
 int 
 MVRRTstar::Planner< T >
 ::insertTrajectory (vertex_t& vertexStartIn, trajectory_t& trajectoryIn, vertex_t& vertexEndIn) {
-
-  // Update the costs
-  vertexEndIn.lus_from_root = vertexStartIn.lus_from_root;
-
-  vertexEndIn.lus_from_parent = get_lus_between(*vertexStartIn.state, *vertexEndIn.state, trajectoryIn);
-  vertexEndIn.lus_from_root += vertexEndIn.lus_from_parent;
-
-  checkUpdateBestVertex (vertexEndIn);
+  
+  checkUpdateBestVertex(vertexEndIn);
 
   // Update the trajectory between the two vertices
   if (vertexEndIn.trajFromParent)
@@ -546,7 +553,7 @@ int
 
 template< class T >
 int 
-  RRTstar::Planner< T >
+  MVRRTstar::Planner< T >
 ::lazyCheckTree()
 {
   list<double*> trajectory;
