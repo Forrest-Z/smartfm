@@ -2,21 +2,21 @@
 
 topo_extractor::topo_extractor(const grid_type& curr_grid,
 		   float distance_min, float distance_max, 
-		   bool pruning) {
+		   bool pruning)
+{
+	original_grid=curr_grid;
+	coastal_dist=distance_max;
+	prune_dist=distance_min;
+	prune=pruning;
 
-  original_grid=curr_grid;
-  coastal_dist=distance_max;
-  prune_dist=distance_min;
-  prune=pruning;
+	grid_size_x=original_grid.size();
+	grid_size_y=original_grid[0].size();
 
-  grid_size_x=original_grid.size();
-  grid_size_y=original_grid[0].size();
+	vector <State> tmp(grid_size_y);
+	_step1_grid.resize(grid_size_x,tmp);
 
-  vector <State> tmp(grid_size_y);
-  _step1_grid.resize(grid_size_x,tmp);
-
-  dist_col tmpcol(grid_size_y);
-  distance_grid.resize(grid_size_x,tmpcol);
+	dist_col tmpcol(grid_size_y);
+	distance_grid.resize(grid_size_x,tmpcol);
 }
 
 //the core function of "topo_extractor";
@@ -402,7 +402,8 @@ topo_extractor::State topo_extractor::step(gridtype& grid,
 	return grid[current.x][current.y];
 }
 
-void topo_extractor::find_skel_edge() {
+void topo_extractor::find_skel_edge()
+{
   // Don't worry about making _step1_grid and _step2 equal.  After
   // thin(), if there is any difference it would only be that
   // _step1_grid had some cells marked "skel" that are marked

@@ -1,0 +1,5 @@
+<launch>
+  <param name="use_sim_time" value="true"/>
+  <node name="stageros" pkg="stage" type="stageros" args="$(find activity_semantics)/launch/fullopt.world"/>
+  <node name="fake_localization" pkg="fake_localization" type="fake_localization"/>
+</launch>
