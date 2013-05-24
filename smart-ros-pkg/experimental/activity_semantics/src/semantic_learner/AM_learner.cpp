@@ -9,6 +9,8 @@ namespace golfcar_semantics{
 
 		AM_ =  map_alloc();
 		AM_->pd_container_pointer = pd_container;
+
+		gp_file_ = "./launch/gp_file.yaml";
 	}
 
 
@@ -149,10 +151,17 @@ namespace golfcar_semantics{
 		//store the direction information into file, to be used for GP regression in Matlab (current version);
 		record_map_into_file();
 
+		GP_learning();
+	}
+
+	void AM_learner::GP_learning()
+	{
 		//load GP results from Matlab, stored as pictures;
-
-
-
+		//to be replaced in the future by GP using C++;
+		Rect gp_ROI(10,10,200,200);
+		string gp_file = "./launch/gp_file.yaml";
+		FileStorage fs(gp_file, FileStorage::WRITE);
+		fs << "gp_ROI" << gp_ROI;
 	}
 
 

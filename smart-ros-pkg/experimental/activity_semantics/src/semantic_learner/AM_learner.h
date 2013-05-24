@@ -41,10 +41,13 @@ namespace golfcar_semantics
         private:
     	void accumulate_grid_activity(activity_grid &grid ,track_common track, size_t element_serial);
         void learn_moving_direction();
+        void GP_learning();
         void show_moving_direction();
 
     	const char* image_path_;
     	double map_scale_;
+
+    	string gp_file_;
    };
 };
 

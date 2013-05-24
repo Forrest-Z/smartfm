@@ -108,7 +108,6 @@ namespace golfcar_semantics{
 		activity_map_learner_->view_activity_map();
 
 
-
 		//analyze moving tracks;
 		//use road maps as prior knowledge;
 		//apply GMM to extract entrances and exits;
