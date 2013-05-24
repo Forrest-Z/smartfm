@@ -59,6 +59,9 @@ namespace golfcar_semantics
 		//for static tracks;
 		std::vector<static_activity> static_activities;
 
+		//results from GP;
+		Vec2d gp_estimation;
+
 	} activity_grid;
 
 

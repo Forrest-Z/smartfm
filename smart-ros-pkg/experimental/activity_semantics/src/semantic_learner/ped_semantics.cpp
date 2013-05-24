@@ -106,7 +106,8 @@ namespace golfcar_semantics{
 		activity_map_learner_->GridMap_init();
 		activity_map_learner_->learn_activity_map();
 		activity_map_learner_->view_activity_map();
-		activity_map_learner_->record_map_into_file();
+
+
 
 		//analyze moving tracks;
 		//use road maps as prior knowledge;

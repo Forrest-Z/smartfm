@@ -145,6 +145,14 @@ namespace golfcar_semantics{
 		    	grid_tmp.direction_gaussion.val[1] = direction_cov.at<double>(0,0);
 			}
 		}
+
+		//store the direction information into file, to be used for GP regression in Matlab (current version);
+		record_map_into_file();
+
+		//load GP results from Matlab, stored as pictures;
+
+
+
 	}
 
 
@@ -202,6 +210,7 @@ namespace golfcar_semantics{
 		imshow("direction_map", jetcolor);
 		imshow("directionVar_map", jetcolorVar);
 
+		imwrite( "./data/direction_map.png", 	jetcolor );
 		imwrite( "./data/directionVar_map.png", jetcolorVar );
 		waitKey(0);
 	}
