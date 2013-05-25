@@ -1,2 +1,13 @@
 %YAML:1.0
-gp_ROI: [ 10, 10, 200, 200 ]
+
+gp_ROI_x: 424
+gp_ROI_y: 368
+gp_ROI_width: 338
+gp_ROI_height: 89
+mean_min: 0.0
+mean_max: 1.0
+var_min: 0
+var_max: 0.1
+gpMean_path: "./launch/flow_direction.jpg"
+gpVar_path: "./launch/flow_directionVar.jpg"
+binary_img_path: "./launch/binary.jpg"

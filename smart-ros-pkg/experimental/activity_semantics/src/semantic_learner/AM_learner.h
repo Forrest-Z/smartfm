@@ -48,6 +48,7 @@ namespace golfcar_semantics
     	double map_scale_;
 
     	string gp_file_;
+		Rect gp_ROI_;
    };
 };
 

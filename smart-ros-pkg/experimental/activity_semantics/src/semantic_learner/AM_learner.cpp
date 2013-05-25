@@ -156,12 +156,62 @@ namespace golfcar_semantics{
 
 	void AM_learner::GP_learning()
 	{
-		//load GP results from Matlab, stored as pictures;
-		//to be replaced in the future by GP using C++;
-		Rect gp_ROI(10,10,200,200);
-		string gp_file = "./launch/gp_file.yaml";
-		FileStorage fs(gp_file, FileStorage::WRITE);
-		fs << "gp_ROI" << gp_ROI;
+		//1st: load GP results from Matlab, stored as pictures; to be replaced in the future by GP using C++;
+		gp_file_ = "./launch/gp_file.yaml";
+		FileStorage fs_read(gp_file_, FileStorage::READ);
+		if(!fs_read.isOpened())ROS_ERROR("ped_semantics cannot find parameter file");
+
+		gp_ROI_.x = (int)fs_read["gp_ROI_x"];
+		gp_ROI_.y = (int)fs_read["gp_ROI_y"];
+		gp_ROI_.width = (int)fs_read["gp_ROI_width"];
+		gp_ROI_.height = (int)fs_read["gp_ROI_height"];
+		double mean_min = (double)fs_read["mean_min"];
+		double mean_max = (double)fs_read["mean_max"];
+		double var_min = (double)fs_read["var_min"];
+		double var_max = (double)fs_read["var_max"];
+
+		string gpMean_path, gpVar_path;
+		fs_read["gpMean_path"]>> gpMean_path;
+		fs_read["gpVar_path"]>> gpVar_path;
+		Mat gpMean = imread( gpMean_path, CV_LOAD_IMAGE_GRAYSCALE );
+		Mat gpVar  = imread( gpVar_path,   CV_LOAD_IMAGE_GRAYSCALE );
+		double mean_ratio = (mean_max-mean_min)/256.0;
+		double var_ratio  = (var_max-var_min)/256.0;
+		//incorporate the information into "activity_map";
+		int i, j;
+		for(j = 0; j < gp_ROI_.height; j++)
+		{
+			for (i = 0; i < gp_ROI_.width; i++)
+			{
+				int roi_x = i+gp_ROI_.x;
+				int roi_y = gp_ROI_.height-1-j+gp_ROI_.y;
+
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, roi_x, roi_y)];
+		    	grid_tmp.gp_estimation.val[0] = double(gpMean.at<uchar>(j,i))*mean_ratio;
+		    	grid_tmp.gp_estimation.val[1] = double(gpVar.at<uchar>(j,i))*var_ratio;
+			}
+		}
+
+		//2nd: use distance transform to calculate the nearest obstacle for free cells;
+		string binary_img_path;
+		fs_read["binary_img_path"]>> binary_img_path;
+		Mat binary_img = imread(binary_img_path, 0);
+		Mat dist_img;
+		distanceTransform(binary_img, dist_img, CV_DIST_L2, 3);
+		for(j = 0; j < AM_->size_y; j++)
+		{
+			for (i = 0; i < AM_->size_x; i++)
+			{
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
+				grid_tmp.obs_dist = dist_img.at<float>(AM_->size_y-1-j,i)*map_scale_;
+			}
+		}
+
+
+		//3rd: calculate the direction of nearest edge;
+
+		//4th: synthesize above 3 information sources;
+
 	}
 
 
@@ -187,13 +237,13 @@ namespace golfcar_semantics{
 			for (i = 0; i < (unsigned int) AM_->size_x; i++)
 			{
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
-				if(grid_tmp.moving_activities.size()==0)continue;
+				//if(grid_tmp.moving_activities.size()==0)continue;
 				int x = i;
 				int y = AM_->size_y-1-j;
-				//direction_color.at<uchar>(y,x) = floor(grid_tmp.direction_gaussion.val[0]/M_PI *255.0);
-				//directionVar_color.at<uchar>(y,x)  = floor(sqrt(grid_tmp.direction_gaussion.val[1])/M_PI *255.0);
-				direction_color.at<float>(y,x) = (float)(grid_tmp.direction_gaussion.val[0]);
-				directionVar_color.at<float>(y,x)  = (float)sqrt(grid_tmp.direction_gaussion.val[1]);
+				//direction_color.at<float>(y,x) = (float)(grid_tmp.direction_gaussion.val[0]);
+				//directionVar_color.at<float>(y,x)  = (float)sqrt(grid_tmp.direction_gaussion.val[1]);
+				direction_color.at<float>(y,x) = (float)(grid_tmp.gp_estimation.val[0]);
+				directionVar_color.at<float>(y,x)  = (float)sqrt(grid_tmp.gp_estimation.val[1]);
 			}
 		}
 

@@ -62,6 +62,12 @@ namespace golfcar_semantics
 		//results from GP;
 		Vec2d gp_estimation;
 
+		//distance to the nearest obstacle;
+		double obs_dist;
+
+		//direction of its nearest skeleton edge;
+		double skel_angle;
+
 	} activity_grid;
 
 
