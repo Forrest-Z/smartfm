@@ -17,32 +17,34 @@ public:
     string camera_name_, short_cal_, wide_cal_;
     PGRStereoCamera_t stereoCamera_;
     ros::NodeHandle nh_, priv_nh_;
-    image_transport::ImageTransport it_;
+    image_transport::ImageTransport *it_;
 
     image_transport::Publisher wide_left_pub_, narrow_left_pub_, wide_right_pub_, narrow_right_pub_;
     image_transport::Publisher raw_left_pub_, raw_center_pub_, raw_right_pub_;
-    camera_info_manager::CameraInfoManager c_info_narrow_left_, c_info_narrow_right_, c_info_wide_left_, c_info_wide_right_;
+    //camera_info_manager::CameraInfoManager c_info_narrow_left_, c_info_narrow_right_, c_info_wide_left_, c_info_wide_right_;
     TriclopsContext wideTriclops_, shortTriclops_;
     TriclopsInput wideInput, shortInput;
     ros::Timer timerStereo, timerPublish;
     string uri_nl_, uri_nr_, uri_wl_, uri_wr_;
     ros::Publisher info_nl_pub_, info_nr_pub_, info_wl_pub_, info_wr_pub_, narrow_pc_pub_, wide_pc_pub_;
+/*    ros::NodeHandle nh_narrowleft_, nh_narrowright_, nh_wideleft_, nh_wideright_;*/
     int pub_count_;
     ros::Time stamp_;
-    xb3_main() : priv_nh_("~"), it_(nh_),  c_info_narrow_left_(ros::NodeHandle(nh_, "bumblebee/left"),"bumblebee/narrow_left"),
-            c_info_narrow_right_(ros::NodeHandle(nh_,"bumblebee/right"),"bumblebee/narrow_right"),
-            c_info_wide_left_(ros::NodeHandle(nh_, "bumblebee/wide_left"), "bumblebee/wide_left"),
-            c_info_wide_right_(ros::NodeHandle(nh_, "bumblebee/wide_right"), "bumblebee/wide_right")
+    xb3_main() /*,priv_nh_("~"),   nh_narrowleft_("bumblee/narrow_left"), nh_narrowright_("bumblee/narrow_right"),
+        nh_wideleft_("bumblee/wide_left"), nh_wideright_("bumblee/wide_left"), 
+        c_info_narrow_left_(nh_narrowleft_), c_info_narrow_right_(nh_narrowright_),
+         c_info_wide_left_(nh_wideleft_), c_info_wide_right_(nh_wideright_)*/
     {
+        //it_ = new image_transport::ImageTransport(nh_);
         camera_name_ = string("bumblebee/");
-        narrow_left_pub_ = it_.advertise(camera_name_+"left/image_raw", 1);
-        wide_left_pub_ = it_.advertise(camera_name_+"wide_left/image_raw", 1);
-        narrow_right_pub_ = it_.advertise(camera_name_+"right/image_raw", 1);
-        wide_right_pub_ = it_.advertise(camera_name_+"wide_right/image_raw", 1);
+        narrow_left_pub_ = it_->advertise(camera_name_+"left/image_raw", 1);
+        wide_left_pub_ = it_->advertise(camera_name_+"wide_left/image_raw", 1);
+        narrow_right_pub_ = it_->advertise(camera_name_+"right/image_raw", 1);
+        wide_right_pub_ = it_->advertise(camera_name_+"wide_right/image_raw", 1);
 
-        raw_left_pub_ = it_.advertise(camera_name_+"raw_left/image_raw", 1);
-        raw_center_pub_ = it_.advertise(camera_name_+"raw_center/image_raw", 1);
-        raw_right_pub_ = it_.advertise(camera_name_+"raw_right/image_raw", 1);
+        raw_left_pub_ = it_->advertise(camera_name_+"raw_left/image_raw", 1);
+        raw_center_pub_ = it_->advertise(camera_name_+"raw_center/image_raw", 1);
+        raw_right_pub_ = it_->advertise(camera_name_+"raw_right/image_raw", 1);
 
         info_nl_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"left/camera_info", 1);
         info_nr_pub_ = nh_.advertise<sensor_msgs::CameraInfo>(camera_name_+"right/camera_info", 1);
@@ -57,11 +59,11 @@ public:
         priv_nh_.param("uri_wl", uri_wl_, string("package://bumblebeeXB3_1394/calibration/wide_left.ini"));
         priv_nh_.param("uri_wr", uri_wr_, string("package://bumblebeeXB3_1394/calibration/wide_right.ini"));
 
-        c_info_narrow_left_.loadCameraInfo(uri_nl_);
+/*        c_info_narrow_left_.loadCameraInfo(uri_nl_);
         c_info_narrow_right_.loadCameraInfo(uri_nr_);
         c_info_wide_left_.loadCameraInfo(uri_wl_);
         c_info_wide_right_.loadCameraInfo(uri_wr_);
-
+*/
         priv_nh_.param("short_calibration_file", short_cal_, string(""));
         priv_nh_.param("wide_calibration_file", wide_cal_, string(""));
         pub_count_ = 0;
@@ -148,7 +150,7 @@ private:
             publishImage(raw_center_pub_, original_left, camera_name_, time);
             cv::resize(original_left, original_left, image_size);
             image_pub = publishImage(narrow_left_pub_, original_left, camera_name_+"narrow", time);
-            publishCInfo(info_nl_pub_, c_info_narrow_left_, image_pub);
+  //          publishCInfo(info_nl_pub_, c_info_narrow_left_, image_pub);
 
             cv::Mat original_wide_left(stereoCamera_.nRows, stereoCamera_.nCols,CV_8UC3);
             original_wide_left.data = (uchar*)pucLeftRGB;
@@ -156,7 +158,7 @@ private:
             publishImage(raw_left_pub_, original_wide_left, camera_name_, time);
             cv::resize(original_wide_left, original_wide_left, image_size);
             image_pub = publishImage(wide_left_pub_, original_wide_left, camera_name_+"wide", time);
-            publishCInfo(info_wl_pub_, c_info_wide_left_, image_pub);
+    //        publishCInfo(info_wl_pub_, c_info_wide_left_, image_pub);
 
             cv::Mat original_right(stereoCamera_.nRows, stereoCamera_.nCols,CV_8UC3);
             original_right.data = (uchar*)pucRightRGB;
@@ -165,9 +167,9 @@ private:
             publishImage(raw_right_pub_, original_right_rgb, camera_name_, time);
             cv::resize(original_right_rgb, original_right_rgb, image_size);
             image_pub = publishImage(narrow_right_pub_, original_right_rgb, camera_name_+"narrow", time);
-            publishCInfo(info_nr_pub_, c_info_narrow_right_, image_pub);
+        //    publishCInfo(info_nr_pub_, c_info_narrow_right_, image_pub);
             image_pub = publishImage(wide_right_pub_, original_right_rgb, camera_name_+"wide", time);
-            publishCInfo(info_wr_pub_, c_info_wide_right_, image_pub);
+      //      publishCInfo(info_wr_pub_, c_info_wide_right_, image_pub);
             pub_count_++;
         }
     }
@@ -181,8 +183,8 @@ private:
 int main( int argc, char *argv[] )
 {
     ros::init(argc, argv, "xb3");
-    xb3_main xb3;
-
+    //xb3_main xb3;
+    ros::NodeHandle nh;
     return 0;
 }
 

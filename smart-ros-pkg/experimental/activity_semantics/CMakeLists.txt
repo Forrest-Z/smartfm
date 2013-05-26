@@ -22,6 +22,8 @@ find_package(OpenCV REQUIRED)
 rosbuild_add_library(local_track_show src/tools/local_track_show.cpp)
 rosbuild_add_library(global_track_show src/tools/global_track_show.cpp)
 
+rosbuild_add_executable(simu_track_collector src/tools/simul_track_collector.cpp)
+
 rosbuild_add_executable(ped_collector src/activity_collector/pedestrian_collector.cpp)
 target_link_libraries(ped_collector ${OpenCV_LIBRARIES} local_track_show global_track_show)
 

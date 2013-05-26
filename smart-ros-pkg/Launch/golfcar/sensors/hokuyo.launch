@@ -8,6 +8,9 @@
         <param name="max_ang" type="double" value="1.48"/>
         <param name="intensity" type="bool" value="false"/>
     </node>
+  <node name="laser_republish" pkg="laser_maxrange_republish" type="laser_repub"/>
+  <node name="hokuyo_repub" pkg="laser_maxrange_republish" type="hokuyo_repub"/>
 
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_hokuyolaser" args="1.80, 0.0, 0.44 0.00 0 0 /base_link /hokuyo_laser 100" />
+
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_hokuyolaser" args="1.7, 0.05, 0.90 0.00 0 0 /base_link /hokuyo_laser 100" />
 </launch>

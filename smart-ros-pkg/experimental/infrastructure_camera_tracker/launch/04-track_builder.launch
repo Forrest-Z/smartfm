@@ -1,0 +1,5 @@
+<launch>
+  <node name="track_builder" pkg="infrastructure_camera_tracker" type="track_builder" output="screen">
+    <remap from="/track_builder/features" to="/feature_tracker/features"/>
+  </node>
+</launch>

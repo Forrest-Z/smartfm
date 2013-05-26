@@ -6,7 +6,7 @@
 
     <include file="$(find Launch)/golfcar/map_to_world.launch" />
 
-    <node pkg="stage" type="stageros" name="stageros" args="$(find hybrid_amcl)/worlds/golfcar_eng_sde.world" respawn="false">
+    <node pkg="stage" type="stageros" name="stageros" args="$(find amcl_pc)/worlds/golfcar_eng.world" respawn="false">
         <param name="base_watchdog_timeout" value="0.2"/>
         <remap from="base_scan" to="sick_scan2"/>
     </node>
