@@ -553,7 +553,7 @@ int Planner::get_plan()
     best_cost = rrts.getBestVertexCost();
     if(best_cost < 500.0)
     {
-      if( (fabs(prev_best_cost - best_cost) < 0.05) && (rrts.numVertices > 10))
+      if( (fabs(prev_best_cost - best_cost) < 0.05) && (rrts.numVertices > 20))
       {
         found_best_path = true;
         break;
@@ -571,6 +571,8 @@ int Planner::get_plan()
       break;
   }
   cout<<" e: "<< rrts.numVertices<<" -- "<< best_cost<<endl;
+  publish_tree();
+  
   if(found_best_path)
   {
     rrts_status[ginf] = false;
@@ -593,6 +595,8 @@ int Planner::get_plan()
       }
       is_updating_committed_trajectory = false;
       is_updating_rrt_tree = false;
+      publish_tree();
+
       should_send_new_committed_trajectory = false;
       is_first_committed_trajectory = false;
     }

@@ -247,7 +247,7 @@ bool System::IsInCollision (const double stateIn[3], bool debug_flag)
 
   return is_obstructed;
 #endif
-  return true;
+  return false;
 }
 
 double System::getLaneCost(const double zx, const double zy)
@@ -819,9 +819,13 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
     double cost = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
         check_obstacles, false, 
         tmp_exact_connection, tmp_end_state, NULL, tmp_control, turning_radius);
+    if(cost <0)
+      cost = DBL_MAX;
     double rcost = 2*extend_dubins_all (stateTowardsIn.x, stateFromIn.x, 
         check_obstacles, false,
         tmp_exact_connection, tmp_end_state, NULL, tmp_control, turning_radius);
+    if(rcost <0)
+      rcost = DBL_MAX;
     float tmp = min(cost, rcost);
 
     if(tmp > 0.0)
@@ -876,10 +880,13 @@ double System::evaluateExtensionCost (State &stateFromIn, State &stateTowardsIn,
     double cost = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
         false, false, 
         tmp_exact_connection, end_state, NULL, tmp_control, turning_radius);
-
+    if(cost < 0)
+      cost = DBL_MAX;
     double rcost = 2*extend_dubins_all (stateTowardsIn.x, stateFromIn.x, 
         false, false,
         tmp_exact_connection, end_state, NULL, tmp_control, turning_radius);
+    if(rcost < 0)
+      rcost = DBL_MAX;
     float tmp = min(cost, rcost);
     if(tmp > 0.0)
     {
@@ -923,9 +930,13 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
     double cost = extend_dubins_all (stateFromIn.x, stateToIn.x, 
         check_obstacles, true, 
         tmp_exact_connection, end_state, &tmp_traj, tmp_control, turning_radius);
-    double rcost = 2*extend_dubins_all (stateFromIn.x, stateToIn.x, 
+    if(cost < 0)
+      cost = DBL_MAX;
+    double rcost = 2*extend_dubins_all (stateToIn.x, stateFromIn.x, 
         check_obstacles, true, 
         tmp_exact_connection, end_state, &tmp_traj, tmp_control, turning_radius);
+    if(rcost < 0)
+      rcost = DBL_MAX;
     float tmp = min(cost, rcost);
     
     if(tmp > 0.0)
@@ -934,7 +945,15 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
       {
         which_dir = 0;
         if(rcost < cost)
+        {
           which_dir = 1;
+        }
+        else
+        {
+          extend_dubins_all (stateFromIn.x, stateToIn.x, check_obstacles, true, 
+              tmp_exact_connection, end_state, &tmp_traj, tmp_control, turning_radius);
+        }
+        
         min_cost = tmp;
         trajectoryOut = tmp_traj;
         controlOut = tmp_control;
