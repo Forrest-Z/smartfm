@@ -513,6 +513,10 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
 
   if (check_obstacles) 
   {
+
+    if(return_trajectory)
+      clear_tmp_trajectories(*trajectory, control);
+
     // Generate states/inputs
     double del_d = delta_distance;
     double del_t = del_d/turning_radius;
@@ -551,7 +555,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         if (IsInCollision (state_curr))
           return -2.0;
       }
-      if (trajectory) 
+      if (return_trajectory) 
       {
         double *state_new = new double[3];
         for (int i = 0; i < 3; i++) 
@@ -604,7 +608,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         if (IsInCollision (state_curr))
           return -2.0;
       }
-      if (trajectory) {
+      if (return_trajectory) {
         double *state_new = new double [3];
         for (int i = 0; i < 3; i++) 
           state_new[i] = state_curr[i];
@@ -657,7 +661,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         if (IsInCollision (state_curr))
           return -2.0;
       }
-      if (trajectory) 
+      if (return_trajectory) 
       {
         double *state_new = new double [3];
         for (int i = 0; i < 3; i++) 
@@ -815,13 +819,18 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
     double cost = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
         check_obstacles, false, 
         tmp_exact_connection, tmp_end_state, NULL, tmp_control, turning_radius);
-    if(cost > 0.0)
+    double rcost = 2*extend_dubins_all (stateTowardsIn.x, stateFromIn.x, 
+        check_obstacles, false,
+        tmp_exact_connection, tmp_end_state, NULL, tmp_control, turning_radius);
+    float tmp = min(cost, rcost);
+
+    if(tmp > 0.0)
     {
-      if(cost < min_cost)
+      if(tmp < min_cost)
       {
         for(int j=0; j<3; j++)
-          end_state[j] = tmp_end_state[j];
-        min_cost = cost;
+          end_state[j] = stateTowardsIn.x[j];
+        min_cost = tmp;
         best_turning_radius = turning_radius;
         exactConnectionOut = tmp_exact_connection;
         controlOut = tmp_control;
@@ -844,7 +853,6 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
   for (int i = 0; i < 3; i++) {
     trajectoryOut.endState.x[i] = end_state[i];
   }
-
   trajectoryOut.totalVariation = min_cost;
 
   delete [] end_state;
@@ -868,11 +876,16 @@ double System::evaluateExtensionCost (State &stateFromIn, State &stateTowardsIn,
     double cost = extend_dubins_all (stateFromIn.x, stateTowardsIn.x, 
         false, false, 
         tmp_exact_connection, end_state, NULL, tmp_control, turning_radius);
-    if(cost > 0.0)
+
+    double rcost = 2*extend_dubins_all (stateTowardsIn.x, stateFromIn.x, 
+        false, false,
+        tmp_exact_connection, end_state, NULL, tmp_control, turning_radius);
+    float tmp = min(cost, rcost);
+    if(tmp > 0.0)
     {
-      if(cost < min_cost)
+      if(tmp < min_cost)
       {
-        min_cost = cost;
+        min_cost = tmp;
         exactConnectionOut = tmp_exact_connection;
       }
     }
@@ -898,6 +911,7 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
 
   double min_cost = DBL_MAX;
   bool exactConnectionOut = false;
+  int which_dir = -1;
   for(int i=num_turning_radii -1; i >= 0; i--)
   {
     list<double*> tmp_traj;
@@ -909,11 +923,19 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
     double cost = extend_dubins_all (stateFromIn.x, stateToIn.x, 
         check_obstacles, true, 
         tmp_exact_connection, end_state, &tmp_traj, tmp_control, turning_radius);
-    if(cost > 0.0)
+    double rcost = 2*extend_dubins_all (stateFromIn.x, stateToIn.x, 
+        check_obstacles, true, 
+        tmp_exact_connection, end_state, &tmp_traj, tmp_control, turning_radius);
+    float tmp = min(cost, rcost);
+    
+    if(tmp > 0.0)
     {
-      if(cost < min_cost)
+      if(tmp < min_cost)
       {
-        min_cost = cost;
+        which_dir = 0;
+        if(rcost < cost)
+          which_dir = 1;
+        min_cost = tmp;
         trajectoryOut = tmp_traj;
         controlOut = tmp_control;
         exactConnectionOut = tmp_exact_connection;
@@ -932,9 +954,11 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
   {
     return 0;
   }
-
-  trajectoryOut.reverse();
-
+  
+  if(which_dir == 0)
+  {
+    trajectoryOut.reverse();
+  }
   return 1;
 }
 
