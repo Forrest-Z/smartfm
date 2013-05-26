@@ -19,6 +19,7 @@
 #include <fmutil/fm_math.h>
 #include "../data_type/activity_map.h"
 
+#include "road_semantics.h"
 
 using namespace std;
 using namespace ros;
@@ -30,7 +31,7 @@ namespace golfcar_semantics
     class AM_learner {
 
         public:
-    	AM_learner(const char* image_path, double map_scale, pd_track_container* pd_container);
+    	AM_learner(const char* image_path, double map_scale, pd_track_container* pd_container, road_semantics* road_semantics_analyzer);
         ~AM_learner();
     	void GridMap_init();
     	void learn_activity_map();
@@ -49,6 +50,8 @@ namespace golfcar_semantics
 
     	string gp_file_;
 		Rect gp_ROI_;
+
+		road_semantics* road_semantics_analyzer_;
    };
 };
 

@@ -1,0 +1,10 @@
+%YAML:1.0
+
+#road_map picture to load;
+image_path: "./launch/binary.jpg"
+map_scale: 0.5
+unknown_min: 127
+unknown_max: 128
+
+#parameters for topo_extractor;
+#parameters for topo_semantic_analyzer;

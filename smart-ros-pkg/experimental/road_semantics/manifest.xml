@@ -15,6 +15,11 @@
   <depend package="common_rosdeps" />
   <depend package="fmutil" />
   <depend package="message_filters"/>
+  
+  <export>
+    <cpp cflags="-I${prefix}/src" lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lroad_semantics"/>
+  </export>
+  
 </package>
 
 

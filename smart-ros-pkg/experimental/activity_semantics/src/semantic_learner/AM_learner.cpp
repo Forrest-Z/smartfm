@@ -2,7 +2,7 @@
 
 namespace golfcar_semantics{
 
-	AM_learner::AM_learner(const char* image_path, double map_scale, pd_track_container* pd_container)
+	AM_learner::AM_learner(const char* image_path, double map_scale, pd_track_container* pd_container, road_semantics* road_semantics_analyzer)
 	{
 		map_scale_ = map_scale;
 		image_path_ = image_path;
@@ -11,6 +11,7 @@ namespace golfcar_semantics{
 		AM_->pd_container_pointer = pd_container;
 
 		gp_file_ = "./launch/gp_file.yaml";
+		road_semantics_analyzer_ = road_semantics_analyzer;
 	}
 
 
@@ -176,7 +177,9 @@ namespace golfcar_semantics{
 		Mat gpMean = imread( gpMean_path, CV_LOAD_IMAGE_GRAYSCALE );
 		Mat gpVar  = imread( gpVar_path,   CV_LOAD_IMAGE_GRAYSCALE );
 		double mean_ratio = (mean_max-mean_min)/256.0;
+		//pay attention here, may not cover the full range;
 		double var_ratio  = (var_max-var_min)/256.0;
+
 		//incorporate the information into "activity_map";
 		int i, j;
 		for(j = 0; j < gp_ROI_.height; j++)
@@ -187,8 +190,8 @@ namespace golfcar_semantics{
 				int roi_y = gp_ROI_.height-1-j+gp_ROI_.y;
 
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, roi_x, roi_y)];
-		    	grid_tmp.gp_estimation.val[0] = double(gpMean.at<uchar>(j,i))*mean_ratio;
-		    	grid_tmp.gp_estimation.val[1] = double(gpVar.at<uchar>(j,i))*var_ratio;
+		    	grid_tmp.gp_estimation.val[0] = double(gpMean.at<uchar>(j,i))*mean_ratio+mean_min;
+		    	grid_tmp.gp_estimation.val[1] = double(gpVar.at<uchar>(j,i))*var_ratio+var_min;
 			}
 		}
 
@@ -196,6 +199,29 @@ namespace golfcar_semantics{
 		string binary_img_path;
 		fs_read["binary_img_path"]>> binary_img_path;
 		Mat binary_img = imread(binary_img_path, 0);
+
+		//Mat test_show_img(binary_img.rows,binary_img.cols,CV_8UC1);
+		for(j = 0; j < AM_->size_y; j++)
+		{
+			for (i = 0; i < AM_->size_x; i++)
+			{
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
+				//when try to read information from image, or write information as image, pay attention to the upside down coordinate;
+				if(binary_img.at<uchar>(AM_->size_y-1-j,i)> 127)
+				{
+					//test_show_img.at<uchar>(AM_->size_y-1-j,i)= 255;
+					grid_tmp.road_flag = true;
+				}
+				else
+				{
+					//test_show_img.at<uchar>(AM_->size_y-1-j,i)= 0;
+					grid_tmp.road_flag = false;
+				}
+			}
+		}
+		//imshow("testshow", test_show_img);
+		//waitKey(0);
+
 		Mat dist_img;
 		distanceTransform(binary_img, dist_img, CV_DIST_L2, 3);
 		for(j = 0; j < AM_->size_y; j++)
@@ -203,15 +229,138 @@ namespace golfcar_semantics{
 			for (i = 0; i < AM_->size_x; i++)
 			{
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
+				if(!grid_tmp.road_flag) grid_tmp.obs_dist = 0.0;
 				grid_tmp.obs_dist = dist_img.at<float>(AM_->size_y-1-j,i)*map_scale_;
 			}
 		}
 
-
 		//3rd: calculate the direction of nearest edge;
+		topo_graph &road_network = road_semantics_analyzer_-> topology_extractor_ ->road_graph_;
+
+		for(j = 0; j < gp_ROI_.height; j++)
+		{
+			for (i = 0; i < gp_ROI_.width; i++)
+			{
+				int roi_x = i+gp_ROI_.x;
+				int roi_y = j+gp_ROI_.y;
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, roi_x, roi_y)];
+
+				//printf("grid_tmp.obs_dist %f\t", grid_tmp.obs_dist);
+				if(grid_tmp.obs_dist < 0.01) continue;
+
+				double grid_realx = double(roi_x)*map_scale_;
+				double grid_realy = double(roi_y)*map_scale_;
+
+				//find the nearest edge, and the corresponding point;
+				double nearest_dist = DBL_MAX;
+				int    nearest_edgeID = -1;
+				int    nearest_ptID   = -1;
+
+				for(size_t ie=0; ie<road_network.edges.size();ie++)
+				{
+					double current_edge_nearestDist = DBL_MAX;
+					int  current_edge_nearestPt= -1;
+					for(size_t ip=0; ip<road_network.edges[ie].points.size();ip++)
+					{
+						double real_x = (double)road_network.edges[ie].points[ip].x*map_scale_;
+						double real_y = (double)(AM_->size_y-1-road_network.edges[ie].points[ip].y)*map_scale_;
+
+						double dist_tmp = sqrt((grid_realy-real_y)*(grid_realy-real_y)+(grid_realx-real_x)*(grid_realx-real_x));
+						if(dist_tmp<current_edge_nearestDist)
+						{
+							current_edge_nearestPt = ip;
+							current_edge_nearestDist = dist_tmp;
+						}
+					}
+					if(current_edge_nearestDist<nearest_dist)
+					{
+						nearest_edgeID = ie;
+						nearest_ptID = current_edge_nearestPt;
+						nearest_dist = current_edge_nearestDist;
+					}
+				}
+
+				//to calculate the edge angle;
+				double edge_angle = 0.0;
+				int left_end = nearest_ptID;
+				int right_end = nearest_ptID;
+				double dist_between_ends = 0.0;
+				double dist_threshold = 2.0;
+				bool reach_two_ends = false;
+				while(!(reach_two_ends || dist_between_ends>dist_threshold))
+				{
+					reach_two_ends = true;
+					if(left_end>0){left_end--;reach_two_ends = false;}
+					if(right_end+1<(int)road_network.edges[nearest_edgeID].points.size()){right_end++; reach_two_ends = false;}
+
+					double real_x1 = (double)road_network.edges[nearest_edgeID].points[left_end].x*map_scale_;
+					double real_y1 = (double)(AM_->size_y-1-road_network.edges[nearest_edgeID].points[left_end].y)*map_scale_;
+					double real_x2 = (double)road_network.edges[nearest_edgeID].points[right_end].x*map_scale_;
+					double real_y2 = (double)(AM_->size_y-1-road_network.edges[nearest_edgeID].points[right_end].y)*map_scale_;
+
+					dist_between_ends = sqrt((real_y1-real_y2)*(real_y1-real_y2)+(real_x1-real_x2)*(real_x1-real_x2));
+					edge_angle = atan2(real_y1-real_y2, real_x1-real_x2);
+					if(edge_angle < 0.0) edge_angle = edge_angle + M_PI;
+				}
+
+				//grid_tmp.skel_angle = sin(edge_angle);
+				grid_tmp.skel_angle = sin(edge_angle);
+				//printf("dist %f skel_angle %f\t", dist_between_ends, grid_tmp.skel_angle);
+			}
+		}
+
 
 		//4th: synthesize above 3 information sources;
+		for(j = 0; j < gp_ROI_.height; j++)
+		{
+			for (i = 0; i < gp_ROI_.width; i++)
+			{
+				int roi_x = i+gp_ROI_.x;
+				int roi_y = j+gp_ROI_.y;
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, roi_x, roi_y)];
+				if(!grid_tmp.road_flag)
+				{
+					grid_tmp.EE_score = 0.0;
+					continue;
+				}
 
+				double distance_factor;
+				if(grid_tmp.obs_dist<2.0) distance_factor = 2.0-grid_tmp.obs_dist;
+				else distance_factor = 0.0;
+				//distance_factor = 1.0;
+
+				double direction_factor;
+				direction_factor = fabs(grid_tmp.skel_angle-grid_tmp.gp_estimation.val[0]);
+				//direction_factor = 1.0;
+
+				double directionVar_factor;
+				directionVar_factor = 1.0 - 1.0/(var_max-var_min)*(grid_tmp.gp_estimation.val[1]-var_min);
+
+				double intensity_factor;
+				intensity_factor = 1.0+double(grid_tmp.moving_activities.size());
+				//intensity_factor = 1.0;
+
+				grid_tmp.EE_score = distance_factor*direction_factor*directionVar_factor*intensity_factor;
+			}
+		}
+
+		Mat EE_color(AM_->size_y,  AM_->size_x, CV_32FC1 );
+		for(j = 0; j < AM_->size_y; j++)
+		{
+			for (i = 0; i < AM_->size_x; i++)
+			{
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
+				if(grid_tmp.obs_dist < 0.01) continue;
+				int x = i;
+				int y = AM_->size_y-1-j;
+				EE_color.at<float>(y,x) = (float)(grid_tmp.EE_score);
+				//if (grid_tmp.obs_dist>0.1) skeldirection_color.at<float>(y,x) = 1.0;
+			}
+		}
+		normalize(EE_color, EE_color, 0.0, 1.0, NORM_MINMAX);
+		imshow("EE_color", EE_color);
+		waitKey();
+		imwrite( "./data/EE_color.jpg", EE_color );
 	}
 
 
@@ -242,6 +391,7 @@ namespace golfcar_semantics{
 				int y = AM_->size_y-1-j;
 				//direction_color.at<float>(y,x) = (float)(grid_tmp.direction_gaussion.val[0]);
 				//directionVar_color.at<float>(y,x)  = (float)sqrt(grid_tmp.direction_gaussion.val[1]);
+
 				direction_color.at<float>(y,x) = (float)(grid_tmp.gp_estimation.val[0]);
 				directionVar_color.at<float>(y,x)  = (float)sqrt(grid_tmp.gp_estimation.val[1]);
 			}
