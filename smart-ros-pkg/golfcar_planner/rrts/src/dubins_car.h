@@ -152,8 +152,8 @@ class System {
     double evaluateCostToGo (State& stateIn);
 
     int clear_tmp_trajectories(list<double*> &state_traj, list<float> &control_traj);
-    int getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut, list<float> &controlOut, bool check_obstacles);
-
+    int getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut,
+      list<float> &controlOut, list<int>* directionOut=NULL, bool check_obstacles=false);
 };
 
 
