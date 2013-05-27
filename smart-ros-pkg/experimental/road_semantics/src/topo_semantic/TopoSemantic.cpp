@@ -263,6 +263,7 @@ void topo_semantic::cycle_filter()
 			}
 		}
 
+		bool erase_cycle = false;
 		for(size_t a=0; a<shared_edgeIDs.size(); a++)
 		{
 			bool contain_shared_edge = false;
@@ -279,6 +280,7 @@ void topo_semantic::cycle_filter()
 			{
 				if(pointInPolygon(centerPt_vector[a], cycle_polygon))
 				{
+					erase_cycle = true;
 					cvCircle( cycle_image, cvPointFrom32f(centerPt_vector[a]), 3, CV_RGB(255,0,0), 2);
 					extracted_cycles_.erase(extracted_cycles_.begin()+i);
 					i=i-1;
@@ -286,8 +288,11 @@ void topo_semantic::cycle_filter()
 				}
 			}
 		}
+
+		if(!erase_cycle) cycle_polygons_.push_back(cycle_polygon);
+
 		cvShowImage("cycle_filter", cycle_image);
-		cvWaitKey(500);
+		cvWaitKey(100);
 	}
 
 	ROS_INFO("cycle number after filtering %ld", extracted_cycles_.size());
@@ -325,7 +330,7 @@ void topo_semantic::visualization()
 		cvShowImage("cycle_window", cycle_image);
 	}
 	cvSaveImage( "/home/baoxing/cycle_image.jpg", cycle_image );
-	cvWaitKey(500);
+	cvWaitKey(100);
 	cvReleaseImage(&cycle_image);
 }
 
@@ -361,7 +366,7 @@ void topo_semantic::visualize_growing(vector < vector <path_segment> > & growing
 		}
 		cvShowImage("grow_window", cycle_image);
 	}
-	cvWaitKey(500);
+	cvWaitKey(100);
 	cvReleaseImage(&cycle_image);
 }
 
