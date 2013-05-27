@@ -913,9 +913,9 @@ int System::clear_tmp_trajectories(list<double*> &state_traj, list<float> &contr
   return 0;
 }
 
-int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut, list<float>& controlOut, bool check_obstacles) {
-
-
+int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& trajectoryOut,
+    list<float>& controlOut, list<int>* directionOut, bool check_obstacles) 
+{
   double min_cost = DBL_MAX;
   bool exactConnectionOut = false;
   int which_dir = -1;
@@ -977,6 +977,19 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
   if(which_dir == 0)
   {
     trajectoryOut.reverse();
+    if(directionOut)
+    {
+      for(size_t i=0; i< trajectoryOut.size(); i++)
+        directionOut->push_back(1);
+    }
+  }
+  else
+  {
+    if(directionOut)
+    {
+      for(size_t i=0; i< trajectoryOut.size(); i++)
+        directionOut->push_back(-1);
+    }
   }
   return 1;
 }
