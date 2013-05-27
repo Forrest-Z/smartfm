@@ -26,6 +26,7 @@ private:
     ros::Publisher move_status_pub_;
     ros::Subscriber cmd_vel_sub_;
     ros::Publisher cmd_vel_pub_; // only in case of (emergency) && (speed_advisor died)
+    ros::Publisher look_ahead_seg_rviz_pub_; // to visualize the look ahead segment
     ros::Timer timer_;
 
     string robot_frame_id_, coord_frame_id_;
@@ -81,6 +82,7 @@ PurePursuit::PurePursuit()
 {
     ros::NodeHandle n;
     traj_sub_ = n.subscribe("pnc_trajectory", 100, &PurePursuit::trajCallBack, this);
+    look_ahead_seg_rviz_pub_ = n.advertise<nav_msgs::Path>("look_ahead_segment",1);
     cmd_steer_pub_ = n.advertise<geometry_msgs::Twist>("cmd_steer",1);
     cmd_vel_pub_ = n.advertise<geometry_msgs::Twist>("cmd_vel",1); // only in case of (emergency) && (speed_advisor died)
     move_status_pub_ = n.advertise<pnc_msgs::move_status>("move_status", 1);
@@ -629,6 +631,25 @@ double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
              segment, lookahead_segment, ori_x, ori_y, tar_x, tar_y, cur_x, cur_y, cur_yaw);
     ROS_DEBUG("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf%s",
              inv_R, L, r, x, theta, gamma, steering, emergency?" emergency!":"");
+
+    // visualize the look ahead segment
+    nav_msgs::Path seg_msg;
+    seg_msg.header.stamp = time_now;
+    seg_msg.header.frame_id = coord_frame_id_;
+
+    geometry_msgs::PoseStamped point;
+    point.header.stamp = time_now;
+    point.header.frame_id = coord_frame_id_;
+    point.pose.position.x = ori_x;
+    point.pose.position.y = ori_y;
+    point.pose.position.z = 0;
+    point.pose.orientation.w = 1;
+    seg_msg.poses.push_back(point);
+    point.pose.position.x = tar_x;
+    point.pose.position.y = tar_y;
+    seg_msg.poses.push_back(point);
+
+    look_ahead_seg_rviz_pub_.publish(seg_msg);
 
     if(isnan(steering))
     {
