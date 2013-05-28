@@ -990,6 +990,8 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
       for(size_t i=0; i< trajectoryOut.size(); i++)
         directionOut->push_back(-1);
     }
+    for(list<float>::iterator i = controlOut.begin(); i!=controlOut.end(); i++)
+      *i = -(*i);
   }
   return 1;
 }
