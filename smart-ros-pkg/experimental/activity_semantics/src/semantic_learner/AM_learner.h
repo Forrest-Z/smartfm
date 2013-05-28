@@ -42,7 +42,15 @@ namespace golfcar_semantics
         private:
     	void accumulate_grid_activity(activity_grid &grid ,track_common track, size_t element_serial);
         void learn_moving_direction();
-        void GP_learning();
+
+        void map_incorporating_sources();
+        void moving_direction_GP();
+        void obstacle_dist();
+        void boundary_direction();
+        void skel_direction();
+
+        void EE_learning();
+
         void show_moving_direction();
 
     	const char* image_path_;
@@ -50,6 +58,7 @@ namespace golfcar_semantics
 
     	string gp_file_;
 		Rect gp_ROI_;
+		double GPmean_min_,GPmean_max_,GPvar_min_,GPvar_max_;
 
 		road_semantics* road_semantics_analyzer_;
    };
