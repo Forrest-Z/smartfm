@@ -2,7 +2,6 @@
 #--- For high speed ---#
 #----------------------#
 max_speed: 1.5
-#max_speed: 1.0
 acc: 0.3
 max_dec: 2.0
 norm_dec: 0.5
