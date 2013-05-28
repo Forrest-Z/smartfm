@@ -40,6 +40,8 @@
 #include "AM_learner.h"
 #include "track_processor.h"
 
+#include "road_semantics.h"
+
 using namespace std;
 using namespace ros;
 using namespace tf;
@@ -81,9 +83,10 @@ namespace golfcar_semantics{
 		double local_show_scale_;
 		local_track_show *local_viewer_;
 
-
 		AM_learner *activity_map_learner_;
 		track_processor *activity_track_processor_;
+
+		road_semantics *road_semantics_analyzer_;
    };
 };
 

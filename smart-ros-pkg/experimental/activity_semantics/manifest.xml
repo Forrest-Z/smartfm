@@ -1,7 +1,6 @@
 <package>
   <description brief="activity_semantics">
   </description>
-
   <author>Qin Baoxing</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
@@ -21,6 +20,7 @@
   <depend package="sensing_on_road"/>
   <depend package="feature_detection"/>
   <depend package="dataAssoc_experimental"/>  
+  <depend package="road_semantics"/>  
 </package>
 
 

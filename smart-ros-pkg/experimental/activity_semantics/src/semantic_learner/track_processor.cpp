@@ -8,6 +8,7 @@ namespace golfcar_semantics{
 		track_size_thresh_ = track_size_thresh;
 		track_time_thresh_ = track_time_thresh;
 		track_length_thresh_ = track_length_thresh;
+		printf("%ld, %f, %f\n", track_size_thresh_, track_time_thresh, track_length_thresh);
 	}
 
 	void track_processor::ped_track_classification()

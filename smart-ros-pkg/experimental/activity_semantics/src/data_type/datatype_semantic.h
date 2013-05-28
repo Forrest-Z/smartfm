@@ -35,6 +35,9 @@ class track_element
 class track_common
 {
 	public:
+	//for training purposes;
+	int track_label;
+
 	track_type ped_activity;
 	double confidence;
 	size_t track_length;

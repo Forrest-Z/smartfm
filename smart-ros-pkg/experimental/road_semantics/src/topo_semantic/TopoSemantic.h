@@ -31,6 +31,29 @@ public:
 	//output assembly for road semantics from topology;
 	semantic_assembly road_topo_semantics_;
 
+	//cycle polygons: to facilitate later semantic reasoning;
+	std::vector< std::vector<CvPoint2D32f> > cycle_polygons_;
+
+	//http://alienryderflex.com/polygon/
+    template <class T>
+    bool pointInPolygon(T p, std::vector<T> poly)
+	{
+		int polySides = poly.size();
+		int      i, j=polySides-1 ;
+		bool  oddNodes = false;
+
+		for (i=0; i<polySides; i++)
+		{
+			if (((poly[i].y< p.y && poly[j].y>=p.y) || (poly[j].y< p.y && poly[i].y>=p.y)) &&  (poly[i].x<=p.x || poly[j].x<=p.x))
+			{
+				if(poly[i].x+(p.y-poly[i].y)/(poly[j].y-poly[i].y)*(poly[j].x-poly[i].x)<p.x)
+				{oddNodes=!oddNodes;}
+			}
+			j=i;
+		}
+		return oddNodes;
+	}
+
 private:
 	void place_analyze();
 	void roundabout_analyze();

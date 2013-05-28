@@ -29,6 +29,11 @@ rosbuild_add_library(topo_semantic src/topo_semantic/TopoSemantic.cpp)
 target_link_libraries(topo_semantic ${OpenCV_LIBRARIES})
 rosbuild_add_executable(road_analyzer src/road_analyzer.cpp)
 target_link_libraries(road_analyzer topo_extractor topo_semantic ${OpenCV_LIBRARIES})
+rosbuild_add_library (road_semantics src/road_semantics.cpp)
+target_link_libraries(road_semantics topo_extractor topo_semantic ${OpenCV_LIBRARIES})
+
+rosbuild_add_executable(example src/main.cpp)
+target_link_libraries(example road_semantics)
 
 rosbuild_add_boost_directories()
 rosbuild_add_executable(test_BGL src/test_BGL.cpp)
