@@ -26,6 +26,8 @@ private:
     ros::Publisher move_status_pub_;
     ros::Subscriber cmd_vel_sub_;
     ros::Publisher cmd_vel_pub_; // only in case of (emergency) && (speed_advisor died)
+    ros::Publisher look_ahead_seg_rviz_pub_; // to visualize the look ahead segment
+    ros::Publisher pp_segments_rviz_pub_; // to visualize the circular segments by pp
     ros::Timer timer_;
 
     string robot_frame_id_, coord_frame_id_;
@@ -40,6 +42,8 @@ private:
     tf::TransformListener tf_;
     nav_msgs::Path trajectory_;
     int last_segment_;
+    bool last_bwd_;
+    ros::Time last_traj_time_;
     ros::Time last_timer_complaint_;
     ros::Time last_segment_complaint_;
     ros::Time last_time_cmd_vel_;
@@ -48,6 +52,9 @@ private:
     void cmdVelCallBack(const geometry_msgs::Twist &cmd_vel);
     void controlLoop(const ros::TimerEvent &e);
 
+    void publish_pp_segments_rviz(double cur_x, double cur_y, double cur_yaw, double gamma);
+    bool is_segment_backward(int segment);
+    bool need_gear_switch_later(int segment);
     bool getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const;
     double get_distance(double x1, double y1, double x2, double y2);
     bool get_center(double tar_x, double tar_y,
@@ -81,6 +88,8 @@ PurePursuit::PurePursuit()
 {
     ros::NodeHandle n;
     traj_sub_ = n.subscribe("pnc_trajectory", 100, &PurePursuit::trajCallBack, this);
+    look_ahead_seg_rviz_pub_ = n.advertise<nav_msgs::Path>("look_ahead_segment",1);
+    pp_segments_rviz_pub_ = n.advertise<nav_msgs::Path>("pp_segments",1);
     cmd_steer_pub_ = n.advertise<geometry_msgs::Twist>("cmd_steer",1);
     cmd_vel_pub_ = n.advertise<geometry_msgs::Twist>("cmd_vel",1); // only in case of (emergency) && (speed_advisor died)
     move_status_pub_ = n.advertise<pnc_msgs::move_status>("move_status", 1);
@@ -99,6 +108,8 @@ PurePursuit::PurePursuit()
     if(!private_nh.getParam("car_length", car_length_)) car_length_ = 1.632;
 
     last_segment_ = 0;
+    last_bwd_ = false;
+    last_traj_time_ = ros::Time::now();
     last_timer_complaint_ = ros::Time::now();
     last_segment_complaint_ = ros::Time::now();
     last_time_cmd_vel_ = ros::Time::now();
@@ -114,17 +125,75 @@ PurePursuit::PurePursuit()
     std::cout<<"car_length: "<<car_length_<<"\n";
 }
 
+void PurePursuit::publish_pp_segments_rviz(double cur_x, double cur_y,
+                                           double cur_yaw, double gamma)
+{
+    if(gamma == 0.0)
+        return;
+    double R = 1.0/gamma;
+    ros::Time time_now = ros::Time::now();
+
+    nav_msgs::Path seg_msg;
+    seg_msg.header.stamp = time_now;
+    seg_msg.header.frame_id = coord_frame_id_;
+
+    geometry_msgs::PoseStamped point;
+
+    //    pp_segments_rviz_pub_.publish(seg_msg);
+}
+
+bool PurePursuit::is_segment_backward(int segment)
+{
+    return trajectory_.poses[segment].pose.orientation.w < 0.0 ? 1 : 0;
+}
+
+bool PurePursuit::need_gear_switch_later(int segment)
+{
+    if(segment < 0)
+        return false;
+
+    bool backward_driving = is_segment_backward(segment);
+    int on_segment = segment;
+
+    while((int) trajectory_.poses.size() > on_segment+1)
+    {
+        bool backward = is_segment_backward(on_segment);
+        if(backward != backward_driving)
+            return true;
+        on_segment++;
+    }
+
+    return false;
+}
+
 void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
 {
-    last_segment_ = 0;
+    trajectory_.header.stamp = ros::Time::now(); // this is used to see planner's inactivity
+    if(last_traj_time_ == traj->header.stamp) // this is to not re-initialize last_segment_ for same traj
+        return;
 
+    last_traj_time_ = traj->header.stamp;
+    last_segment_ = 0;
     trajectory_.header.frame_id = coord_frame_id_;
-    trajectory_.header.stamp = ros::Time::now();
+
+    bool bwd = last_bwd_;
+    int gear_change = 0;
+    double temp; // for orientation.w, which is a hack to pass fwd/bwd value
     trajectory_.poses.resize(traj->poses.size());
     for(unsigned int i=0; i<traj->poses.size(); i++)
     {
         try {
+            temp = traj->poses[i].pose.orientation.w;
             tf_.transformPose(coord_frame_id_, traj->poses[i], trajectory_.poses[i]);
+            trajectory_.poses[i].pose.orientation.x = 0.0;
+            trajectory_.poses[i].pose.orientation.y = 0.0;
+            trajectory_.poses[i].pose.orientation.z = 0.0;
+            trajectory_.poses[i].pose.orientation.w = temp;
+            if(bwd != is_segment_backward(i))
+            {
+                bwd = is_segment_backward(i);
+                gear_change++;
+            }
         }
         catch(tf::LookupException& ex) {
             ROS_ERROR("No Transform available Error: %s", ex.what());
@@ -139,6 +208,9 @@ void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
             return;
         }
     }
+
+    ROS_INFO("got new traj, size=%d, gear_change=%d from %s",
+             (int) traj->poses.size(), gear_change, last_bwd_ ? "bwd" : "fwd");
 }
 
 void PurePursuit::cmdVelCallBack(const geometry_msgs::Twist &cmd_vel)
@@ -155,6 +227,8 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
 
     bool emergency = false;
     bool path_exist = false;
+    bool backward_driving = last_bwd_;
+    bool want_exact_stop = true;
     ros::Time time_now = ros::Time::now();
     ros::Duration time_diff = time_now - trajectory_.header.stamp;
     double dt = time_diff.toSec();
@@ -181,10 +255,17 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
         int segment = get_segment(cur_x, cur_y);
 
         goal_dist = get_dist_to_go(segment, cur_x, cur_y);
+        want_exact_stop = need_gear_switch_later(segment);
+        //        if(goal_dist == 0.0 && want_exact_stop)
+        //            goal_dist = 0.01; // to prevent complete stop before switching gear
         ROS_DEBUG("[just info] remaining_dist=%lf will be used in speed_advisor", goal_dist);
         cmd_steer = get_steering(segment, cur_x, cur_y, cur_yaw, emergency);
         if(segment > -1)
+        {
             path_exist = true;
+            backward_driving = is_segment_backward(segment);
+            last_bwd_ = backward_driving;
+        }
     }
     else
     {
@@ -206,6 +287,8 @@ void PurePursuit::controlLoop(const ros::TimerEvent &e)
     move_status.obstacles_dist = 99.0;
     move_status.path_exist = path_exist;
     move_status.emergency = emergency;
+    move_status.backward_driving = backward_driving;
+    move_status.want_exact_stop = want_exact_stop;
     move_status_pub_.publish(move_status);
 
     ros::Duration time_diff3 = time_now - last_time_cmd_vel_;
@@ -420,6 +503,7 @@ int PurePursuit::get_segment(double cur_x, double cur_y)
                 segment = -1;
                 bContinue = false;
             }
+            continue;
         }
 
         get_projection(tar_x, tar_y, ori_x, ori_y, inv_R, cur_x, cur_y, prj);
@@ -454,10 +538,15 @@ int PurePursuit::find_lookahead_segment(int segment, double cur_x, double cur_y,
 
     double tar_x, tar_y, ori_x, ori_y, inv_R;
     double center[2];
-
     int on_segment = segment;
+    bool backward_driving = is_segment_backward(on_segment);
+
     while((int) trajectory_.poses.size() > on_segment+1)
     {
+        bool backward = is_segment_backward(on_segment);
+        if(backward != backward_driving)
+            break;
+
         tar_x = trajectory_.poses[on_segment+1].pose.position.x;
         tar_y = trajectory_.poses[on_segment+1].pose.position.y;
         ori_x = trajectory_.poses[on_segment].pose.position.x;
@@ -517,19 +606,29 @@ double PurePursuit::get_dist_to_go(int segment, double cur_x, double cur_y)
 
     double dist_to_go = 0.0;
     int on_segment = segment;
+    bool backward_driving = is_segment_backward(on_segment);
 
     double tar_x = trajectory_.poses[on_segment+1].pose.position.x;
     double tar_y = trajectory_.poses[on_segment+1].pose.position.y;
     double ori_x = trajectory_.poses[on_segment].pose.position.x;
     double ori_y = trajectory_.poses[on_segment].pose.position.y;
+    double inv_R = get_inv_R(trajectory_.poses[on_segment].pose.position.z);
+    double center[2];
+    if(inv_R != 0.0 && !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center))
+        inv_R = 0.0;
+
     double prj[2];
-    get_projection(tar_x, tar_y, ori_x, ori_y, 0.0, cur_x, cur_y, prj);
-    if(btwn_points(tar_x, tar_y, ori_x, ori_y, 0.0, prj[0], prj[1]))
+    get_projection(tar_x, tar_y, ori_x, ori_y, inv_R, cur_x, cur_y, prj);
+    if(btwn_points(tar_x, tar_y, ori_x, ori_y, inv_R, prj[0], prj[1]))
         dist_to_go += get_distance(tar_x, tar_y, prj[0], prj[1]);
     on_segment++;
 
     while((int) trajectory_.poses.size() > on_segment+1)
     {
+        bool backward = is_segment_backward(on_segment);
+        if(backward != backward_driving)
+            break;
+
         dist_to_go += get_distance(trajectory_.poses[on_segment+1].pose.position.x,
                                    trajectory_.poses[on_segment+1].pose.position.y,
                                    trajectory_.poses[on_segment].pose.position.x,
@@ -610,6 +709,10 @@ double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
             theta = cur_yaw - atan2(-cur_x + center[0], cur_y - center[1]);
         }
     }
+
+    if(is_segment_backward(segment))
+        theta += M_PI;
+
     while(theta > M_PI)
         theta -= 2*M_PI;
     while(theta < -M_PI)
@@ -624,11 +727,37 @@ double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
 
     // for all the calculations, refer IROS'95 by Ollero and Heredia
     gamma = 2.0/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
-    double steering = atan(gamma * car_length_);
-    ROS_DEBUG("[just info] steering, on_segment=%d lookahead_seg=%d:(%lf,%lf)->(%lf,%lf) at x=%lf y=%lf yaw=%lf",
-             segment, lookahead_segment, ori_x, ori_y, tar_x, tar_y, cur_x, cur_y, cur_yaw);
+    double steering;
+    if(is_segment_backward(segment))
+        steering = -atan(gamma * car_length_);
+    else
+        steering = atan(gamma * car_length_);
+    ROS_DEBUG("[just info] steering(%s), on_segment=%d lookahead_seg=%d:(%lf,%lf)->(%lf,%lf) at x=%lf y=%lf yaw=%lf",
+              is_segment_backward(segment) ? "bwd" : "fwd", segment, lookahead_segment, ori_x, ori_y, tar_x, tar_y, cur_x, cur_y, cur_yaw);
     ROS_DEBUG("[just info] inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf%s",
              inv_R, L, r, x, theta, gamma, steering, emergency?" emergency!":"");
+
+    // visualize the circular segments by pure pursuit
+    //    publish_pp_segments_rviz(cur_x, cur_y, cur_yaw, gamma);
+
+    // visualize the look ahead segment
+    nav_msgs::Path seg_msg;
+    seg_msg.header.stamp = time_now;
+    seg_msg.header.frame_id = coord_frame_id_;
+
+    geometry_msgs::PoseStamped point;
+    point.header.stamp = time_now;
+    point.header.frame_id = coord_frame_id_;
+    point.pose.position.x = ori_x;
+    point.pose.position.y = ori_y;
+    point.pose.position.z = 0;
+    point.pose.orientation.w = 1;
+    seg_msg.poses.push_back(point);
+    point.pose.position.x = tar_x;
+    point.pose.position.y = tar_y;
+    seg_msg.poses.push_back(point);
+
+    look_ahead_seg_rviz_pub_.publish(seg_msg);
 
     if(isnan(steering))
     {
@@ -664,8 +793,10 @@ bool PurePursuit::intersection_circle_line(double tar_x, double tar_y,
     double discriminant = b*b - 4.0*a*c;
     if(discriminant < 0.0)
     {
+/*
         ROS_DEBUG("No intersection, D(%lf)<0, ori:x=%lf y=%lf, tar:x=%lf y=%lf, current:x=%lf y=%lf",
                   discriminant, ori_x, ori_y, tar_x, tar_y, cen_x, cen_y);
+*/
         return false;
     }
 
@@ -680,8 +811,10 @@ bool PurePursuit::intersection_circle_line(double tar_x, double tar_y,
         return true;
     }
 
+/*
     ROS_DEBUG("No intersection, t1=%lf, t2=%lf, ori:x=%lf y=%lf, tar:x=%lf y=%lf, current:x=%lf y=%lf",
               t1, t2, ori_x, ori_y, tar_x, tar_y, cen_x, cen_y);
+*/
     return false;
 }
 
@@ -758,8 +891,10 @@ bool PurePursuit::intersection_circle_arc(double tar_x, double tar_y,
     if(arg2 < arg_to)
         return true;
 
+/*
     ROS_DEBUG("No intersection, r=%lf ori:x=%lf y=%lf, tar:x=%lf y=%lf, current:x=%lf y=%lf lookahead=%lf",
               r1, ori_x, ori_y, tar_x, tar_y, cen2_x, cen2_y, r2);
+*/
     return false;
 }
 
