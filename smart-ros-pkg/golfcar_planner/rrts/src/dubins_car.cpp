@@ -821,7 +821,7 @@ int System::extendTo (State &stateFromIn, State &stateTowardsIn,
         tmp_exact_connection, tmp_end_state, NULL, tmp_control, turning_radius);
     if(cost <0)
       cost = DBL_MAX;
-    double rcost = 2*extend_dubins_all (stateTowardsIn.x, stateFromIn.x, 
+    double rcost = 5*extend_dubins_all (stateTowardsIn.x, stateFromIn.x, 
         check_obstacles, false,
         tmp_exact_connection, tmp_end_state, NULL, tmp_control, turning_radius);
     if(rcost <0)
@@ -882,7 +882,7 @@ double System::evaluateExtensionCost (State &stateFromIn, State &stateTowardsIn,
         tmp_exact_connection, end_state, NULL, tmp_control, turning_radius);
     if(cost < 0)
       cost = DBL_MAX;
-    double rcost = 2*extend_dubins_all (stateTowardsIn.x, stateFromIn.x, 
+    double rcost = 5*extend_dubins_all (stateTowardsIn.x, stateFromIn.x, 
         false, false,
         tmp_exact_connection, end_state, NULL, tmp_control, turning_radius);
     if(rcost < 0)
@@ -932,7 +932,7 @@ int System::getTrajectory (State& stateFromIn, State& stateToIn, list<double*>& 
         tmp_exact_connection, end_state, &tmp_traj, tmp_control, turning_radius);
     if(cost < 0)
       cost = DBL_MAX;
-    double rcost = 2*extend_dubins_all (stateToIn.x, stateFromIn.x, 
+    double rcost = 5*extend_dubins_all (stateToIn.x, stateFromIn.x, 
         check_obstacles, true, 
         tmp_exact_connection, end_state, &tmp_traj, tmp_control, turning_radius);
     if(rcost < 0)
