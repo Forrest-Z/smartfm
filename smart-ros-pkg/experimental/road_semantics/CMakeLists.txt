@@ -24,8 +24,11 @@ pkg_check_modules( gsl REQUIRED gsl )
 #rosbuild_add_executable(example src/evg/example.cc)
 #target_link_libraries(example evg-thin)
 
+rosbuild_add_library(spline_fitting src/spline_fitting/spline_fitting.cpp )
+target_link_libraries( spline_fitting ${gsl_LIBRARIES} )
+
 rosbuild_add_library(topo_extractor src/topo_extractor/TopoExtractor.cpp)
-target_link_libraries(topo_extractor ${OpenCV_LIBRARIES})
+target_link_libraries(topo_extractor ${OpenCV_LIBRARIES} spline_fitting)
 rosbuild_add_library(topo_semantic src/topo_semantic/TopoSemantic.cpp)
 target_link_libraries(topo_semantic ${OpenCV_LIBRARIES})
 rosbuild_add_executable(road_analyzer src/road_analyzer.cpp)
@@ -38,6 +41,7 @@ target_link_libraries(example road_semantics)
 
 add_executable( gsl_example src/spline_fitting/gsl_example.cpp )
 target_link_libraries( gsl_example ${gsl_LIBRARIES} )
+
 
 rosbuild_add_boost_directories()
 rosbuild_add_executable(test_BGL src/test_BGL.cpp)

@@ -17,6 +17,7 @@
 #define EDGE_LENGTH_THRESHOLD 10.0
 
 using namespace std;
+using namespace cv;
 
 class topo_extractor {
 public:
@@ -86,6 +87,8 @@ private:
   void printf_topology();
   inline bool check_8connectivity(CvPoint pt1, CvPoint pt2);
   void topo_filtering();
+
+  void road_spline_fitting();
 };  
 
 #endif //evg_thin_hh 
