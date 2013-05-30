@@ -17,7 +17,8 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 find_package(OpenCV REQUIRED)
-
+find_package( PkgConfig REQUIRED)
+pkg_check_modules( gsl REQUIRED gsl )
 #rosbuild_add_library(evg-thin src/evg/evg-thin.cc)
 #target_link_libraries(evg-thin ${OpenCV_LIBRARIES})
 #rosbuild_add_executable(example src/evg/example.cc)
@@ -34,6 +35,9 @@ target_link_libraries(road_semantics topo_extractor topo_semantic ${OpenCV_LIBRA
 
 rosbuild_add_executable(example src/main.cpp)
 target_link_libraries(example road_semantics)
+
+add_executable( gsl_example src/spline_fitting/gsl_example.cpp )
+target_link_libraries( gsl_example ${gsl_LIBRARIES} )
 
 rosbuild_add_boost_directories()
 rosbuild_add_executable(test_BGL src/test_BGL.cpp)
