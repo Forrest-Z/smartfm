@@ -89,6 +89,7 @@ class Planner
     ros::Timer planner_timer;
     ros::Timer tree_pub_timer;
     ros::Timer committed_trajectory_pub_timer;
+    ros::Time committed_trajectory_time;
 
     // functions
     void on_goal(const geometry_msgs::PoseStamped::ConstPtr p);
@@ -207,6 +208,7 @@ void Planner::obs_check()
 int Planner::clear_committed_trajectory()
 {
   is_updating_committed_trajectory = true;
+  committed_trajectory_time = ros::Time::now();
   for(list<double*>::iterator i=committed_trajectory.begin(); i!=committed_trajectory.end(); i++)
   {
     double* stateRef = *i;
@@ -559,7 +561,7 @@ int Planner::get_plan()
     best_cost = rrts.getBestVertexCost();
     if(best_cost < 500.0)
     {
-      if( (fabs(prev_best_cost - best_cost) < 0.05) && (rrts.numVertices > 20))
+      if( (fabs(prev_best_cost - best_cost) < 0.05) && (rrts.numVertices > 100))
       {
         found_best_path = true;
         break;
@@ -577,7 +579,6 @@ int Planner::get_plan()
       break;
   }
   cout<<" e: "<< rrts.numVertices<<" -- "<< best_cost<<endl;
-  publish_tree();
   
   if(found_best_path)
   {
@@ -594,6 +595,7 @@ int Planner::get_plan()
       else
       {
         rrts_status[swr] = true;
+        committed_trajectory_time = ros::Time::now();
         // change sampling region if successful switch_root
         change_goal_region();
         cout<<"switched root successfully"<<endl;
@@ -601,7 +603,6 @@ int Planner::get_plan()
       }
       is_updating_committed_trajectory = false;
       is_updating_rrt_tree = false;
-      publish_tree();
 
       should_send_new_committed_trajectory = false;
       is_first_committed_trajectory = false;
@@ -610,7 +611,7 @@ int Planner::get_plan()
   }
   else 
   {
-    if(rrts.numVertices > 500)
+    if(rrts.numVertices > 1000)
     {
       rrts_status[ginf] = true;
       cout<<"did not find best path: reinitializing"<<endl;
@@ -734,7 +735,7 @@ void Planner::publish_committed_trajectory()
     return;
 
   nav_msgs::Path traj_msg;
-  traj_msg.header.stamp = ros::Time::now();
+  traj_msg.header.stamp = committed_trajectory_time;
   traj_msg.header.frame_id = "map";
 
   list<float>::iterator committed_control_iter = committed_control.begin();
@@ -743,7 +744,7 @@ void Planner::publish_committed_trajectory()
   {
     double* stateRef = *iter;
     geometry_msgs::PoseStamped p;
-    p.header.stamp = ros::Time::now();
+    p.header.stamp = committed_trajectory_time;
     p.header.frame_id = "map";
 
     p.pose.position.x = stateRef[0];

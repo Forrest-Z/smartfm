@@ -40,8 +40,8 @@ struct SpeedAttribute
 {
     enum Description
     {
-        no_response, robot_collision, path_noexist, norm_zone, slow_zone,
-        emergency, max_brake, need_brake, e_zone, warn_brake,
+        no_response, robot_collision, path_noexist, norm_zone, slow_zone, bwd_driving,
+        switching_gear, emergency, max_brake, need_brake, e_zone, warn_brake,
         intersection, app_goal, goal, manual_mode
     };
 
@@ -58,6 +58,9 @@ public:
     /// Finds the SpeedAttribute element with the lowest final_speed_,
     /// updates curr_vel_ and clears the SpeedAttribute vector.
     SpeedAttribute select_min_speed();
+
+    bool is_gear_switching() const {return (switching_gear_ > 0);}
+    void switch_gear() {switching_gear_ = 1;}
 
     double curr_vel() const { return curr_vel_; }
 
@@ -97,6 +100,8 @@ protected:
 
     /// the current velocity as given by odometry
     double odo_vel_;
+
+    int switching_gear_;
 };
 
 
@@ -116,15 +121,18 @@ private:
     double max_speed_;
     double acc_, max_dec_, norm_dec_;
     double dec_ints_, dec_station_;
-    double stop_ints_dist_;
     double frequency_;
     double tolerance_; //to track for last update from move_base package
     double e_zone_; //apply full brake if there exist an obstacles within this distance from base link
-    double high_speed_, slow_zone_, slow_speed_, enterstation_speed_;
-    double ppc_stop_dist_, stationspeed_dist_;
+    double high_speed_, slow_zone_, slow_speed_;
+    double bwd_speed_;
+    double min_speed_;
+    double stop_ints_dist_;
+    double ppc_stop_dist_, final_stop_dist_;
 
     ros::NodeHandle nh_;
     tf::TransformListener tf_;
+    ros::Publisher bwd_drive_pub_;
     ros::Publisher recommend_speed_pub_;
     ros::Publisher speed_contribute_pub_;
     ros::Publisher left_blinker_pub_, right_blinker_pub_;
@@ -149,6 +157,7 @@ private:
     pnc_msgs::move_status move_status_;
     rrts::rrts_status rrts_status_;
     geometry_msgs::PoseArray slowZone_;
+    bool bwd_drive_;
 
     SpeedSettings speed_settings_;
 

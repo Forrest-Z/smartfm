@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <opencv/cv.h>
+#include "../spline_fitting/spline_fitting.h"
 
 using namespace std;
 
@@ -55,6 +56,7 @@ public:
 		int head_nodeCluster, end_nodeCluster;
 		vector<CvPoint> points;
 		double edge_length;
+		golfcar_semantics::spline_fitting* cubic_spline;
 	};
 
 	vector<node> nodes;
