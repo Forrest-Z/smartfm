@@ -526,6 +526,8 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
     double t_inc_curr = 0.0;
 
     double state_curr[3] = {0};
+    
+    double last_control = 0;
 
     int obs_check_counter = 0;
     while (t_inc_curr < t_increment_s1) 
@@ -565,16 +567,7 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         control.push_front (direction_s1*turning_radius);
         local_map_cost += getStateCost(state_new);
       }
-
-      if (t_inc_curr * turning_radius > distance_limit)  
-      {
-        fully_extends = false;
-
-        for (int i = 0; i < 3; i++)
-          end_state[i] = state_curr[i];
-
-        return time_cost + local_map_cost;
-      }
+      last_control = direction_s1*turning_radius;
     }
 
     obs_check_counter = 0;
@@ -617,17 +610,9 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         local_map_cost += getStateCost(state_new);
       }
 
-      if (t_inc_curr * turning_radius + d_inc_curr > distance_limit) 
-      {
-        fully_extends = false;
-
-        for (int i = 0; i < 3; i++)
-          end_state[i] = state_curr[i];
-
-        return time_cost + local_map_cost;
-      }
+      last_control = 0;
     }
-
+    
     double t_inc_curr_prev = t_inc_curr;
     t_inc_curr = 0.0;
     obs_check_counter = 0;
@@ -670,15 +655,19 @@ double System::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         control.push_front(turning_radius * direction_s2);
         local_map_cost += getStateCost(state_new);
       }
+      
+      last_control = direction_s2 * turning_radius;
+    }
 
-      if ((t_inc_curr_prev + t_inc_curr) * turning_radius + d_inc_curr > distance_limit) 
-      {
-        fully_extends = false;
-        for (int i = 0; i < 3; i++)
-          end_state[i] = state_curr[i];
-
-        return time_cost + local_map_cost;
-      }
+    if(return_trajectory)
+    {
+      double* state_last = new double[3];
+      state_last[0] = x_s2;
+      state_last[1] = y_s2;
+      state_last[2] = t_s2;
+      trajectory->push_front(state_last);
+      control.push_front(last_control);
+      local_map_cost += getStateCost(state_last);
     }
 
     fully_extends = true;
