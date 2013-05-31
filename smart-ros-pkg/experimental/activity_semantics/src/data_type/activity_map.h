@@ -67,13 +67,18 @@ namespace golfcar_semantics
 		double obs_dist;
 
 		//direction of its nearest skeleton edge;
+		double skel_dist;
 		double skel_angle;
+		int nearest_edge_ID;
 
 		//weighted times of pedestrian activity;
 		double activity_intensity;
 
 		//overall weighting for EE;
 		double EE_score;
+
+		double probe_direction;
+		double probe_distance;
 
 	} activity_grid;
 

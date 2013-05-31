@@ -136,8 +136,8 @@ namespace golfcar_semantics{
 
 		    	for(size_t a=0; a<grid_tmp.moving_activities.size(); a++)
 		    	{
-		    		//direction_mat.at<double>(a, 0) =  grid_tmp.moving_activities[a].thetha;
-		    		direction_mat.at<double>(a, 0) =  sin(grid_tmp.moving_activities[a].thetha);
+		    		direction_mat.at<double>(a, 0) =  grid_tmp.moving_activities[a].thetha;
+		    		//direction_mat.at<double>(a, 0) =  sin(grid_tmp.moving_activities[a].thetha);
 		    	}
 		    	Mat direction_cov, direction_mean;
 
@@ -360,18 +360,8 @@ namespace golfcar_semantics{
 					int  current_edge_nearestPt= -1;
 					vector<CvPoint> &deputy_points = road_network.edges[ie].cubic_spline->output_points_;
 
-					for(size_t ip=0; ip<deputy_points.size();ip++)
-					{
-						double real_x = (double)deputy_points[ip].x*map_scale_;
-						double real_y = (double)(AM_->size_y-1-deputy_points[ip].y)*map_scale_;
+					find_nearest_points(grid_realx, grid_realy, deputy_points, current_edge_nearestPt, current_edge_nearestDist);
 
-						double dist_tmp = sqrt((grid_realy-real_y)*(grid_realy-real_y)+(grid_realx-real_x)*(grid_realx-real_x));
-						if(dist_tmp<current_edge_nearestDist)
-						{
-							current_edge_nearestPt = ip;
-							current_edge_nearestDist = dist_tmp;
-						}
-					}
 					if(current_edge_nearestDist<nearest_dist)
 					{
 						nearest_edgeID = ie;
@@ -404,11 +394,74 @@ namespace golfcar_semantics{
 					if(edge_angle < 0.0) edge_angle = edge_angle + M_PI;
 				}
 
-				//grid_tmp.skel_angle = sin(edge_angle);
+				grid_tmp.skel_dist = nearest_dist;
 				grid_tmp.skel_angle = sin(edge_angle);
+				grid_tmp.nearest_edge_ID = nearest_edgeID;
 				//printf("dist %f skel_angle %f\t", dist_between_ends, grid_tmp.skel_angle);
+
+				//probe distance to the edge skel;
+				direction_probe(roi_x, roi_y);
 			}
 		}
+	}
+
+	void AM_learner::direction_probe(int x_grid, int y_grid)
+	{
+		activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, x_grid, y_grid)];
+		assert(grid_tmp.gp_estimation.val[0]>= 0.0 && grid_tmp.gp_estimation.val[0]<=1.0);
+
+		double angle_gp1 = asin(grid_tmp.gp_estimation.val[0]);
+		double angle_gp2 = M_PI - angle_gp1;
+		double angle_dist1 = fabs(angle_gp1 - grid_tmp.direction_gaussion.val[0]);
+		double angle_dist2 = fabs(angle_gp2 - grid_tmp.direction_gaussion.val[0]);
+
+		grid_tmp.probe_direction = (angle_dist1<angle_dist2)?angle_gp1:angle_gp2;
+
+		double grid_realx = double(x_grid)*map_scale_;
+		double grid_realy = double(y_grid)*map_scale_;
+
+		double probe_length = 5.0;
+
+		Point2d end_point1, end_point2;
+		end_point1.x = grid_realx + probe_length*cos(grid_tmp.probe_direction);
+		end_point1.y = grid_realy + probe_length*sin(grid_tmp.probe_direction);
+		end_point2.x = grid_realx + probe_length*cos(grid_tmp.probe_direction+M_PI);
+		end_point2.y = grid_realy + probe_length*sin(grid_tmp.probe_direction+M_PI);
+
+		int edgeID = grid_tmp.nearest_edge_ID;
+		vector<CvPoint> &deputy_points = road_semantics_analyzer_-> topology_extractor_ ->road_graph_.edges[edgeID].cubic_spline->output_points_;
+
+		double dist1, dist2;
+		int PtID1, PtID2;
+		find_nearest_points(end_point1.x, end_point1.y, deputy_points, PtID1, dist1);
+		find_nearest_points(end_point2.x, end_point2.y, deputy_points, PtID2, dist2);
+
+		//if(PtID1==0||(PtID1+1)==deputy_points.size()) dist1 = 0.1;
+		//if(PtID2==0||(PtID2+1)==deputy_points.size()) dist2 = 0.1;
+
+		grid_tmp.probe_distance = dist1>dist2? dist1:dist2;
+		grid_tmp.probe_distance = grid_tmp.probe_distance - grid_tmp.skel_dist;
+	}
+
+	void AM_learner::find_nearest_points(double gridx, double gridy, vector<CvPoint> &deputy_points, int & nearestPt_ID, double & nearestDist)
+	{
+		double current_edge_nearestDist = DBL_MAX;
+		int  current_edge_nearestPt= -1;
+
+		for(size_t ip=0; ip<deputy_points.size();ip++)
+		{
+			double real_x = (double)deputy_points[ip].x*map_scale_;
+			double real_y = (double)(AM_->size_y-1-deputy_points[ip].y)*map_scale_;
+
+			double dist_tmp = sqrt((gridy-real_y)*(gridy-real_y)+(gridx-real_x)*(gridx-real_x));
+			if(dist_tmp<current_edge_nearestDist)
+			{
+				current_edge_nearestPt = ip;
+				current_edge_nearestDist = dist_tmp;
+			}
+		}
+		nearestPt_ID = current_edge_nearestPt;
+		nearestDist = current_edge_nearestDist;
 	}
 
 	void AM_learner::EE_learning()
@@ -433,13 +486,16 @@ namespace golfcar_semantics{
 				else distance_factor = 0.0;
 				//distance_factor = 1.0;
 
-				double direction_factor;
-				direction_factor = fabs(grid_tmp.skel_angle-grid_tmp.gp_estimation.val[0]);
-				//direction_factor = 1.0;
 
 				double directionVar_factor;
 				directionVar_factor = 1.0 - 1.0/(GPvar_max_-GPvar_min_)*(grid_tmp.gp_estimation.val[1]-GPvar_min_);
 				//directionVar_factor = 1.0;
+
+
+				double direction_factor;
+				//direction_factor = fabs(grid_tmp.skel_angle-grid_tmp.gp_estimation.val[0]);
+				//direction_factor = 1.0;
+				direction_factor = grid_tmp.probe_distance;
 
 				double intensity_factor;
 				intensity_factor = 1.0+double(grid_tmp.moving_activities.size());
