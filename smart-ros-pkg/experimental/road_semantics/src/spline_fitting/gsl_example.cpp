@@ -13,7 +13,12 @@
  /* number of fit coefficients */
  #define NCOEFFS  12
 
- /* nbreak = ncoeffs + 2 - k = ncoeffs - 2 since k = 4 */
+//k is the number of control points to determine one segment; GSL (here) takes it as the order of the spline;
+//in this case, a cubic spline is the order of 4, k=4;
+
+//to understand more about spline fitting in the future;
+
+/* nbreak = ncoeffs + 2 - k = ncoeffs - 2 since k = 4 */
  #define NBREAK   (NCOEFFS - 2)
 
  int
@@ -24,12 +29,13 @@
    const size_t nbreak = NBREAK;
    size_t i, j;
    gsl_bspline_workspace *bw;
-   gsl_vector *B;
-   double dy;
-   gsl_rng *r;
-   gsl_vector *c, *w;
-   gsl_vector *x, *y;
-   gsl_matrix *X, *cov;
+
+   gsl_vector *B;				//basis functions evaluated at certain x;
+   double dy;	   				//noise;
+   gsl_rng *r;					//random generator;
+   gsl_vector *c, *w;			//c is the coefficients, which is to multiply the basis functions at each item; w is the weight of each data point in this example;
+   gsl_vector *x, *y;			//x is the horizontal axis for the spline fitting; y is the vertical axis;
+   gsl_matrix *X, *cov;			//this X is composed of basis function values at different data point x, which will be multiplied by c to get the y; then this is a optimization problem to get c;
    gsl_multifit_linear_workspace *mw;
    double chisq, Rsq, dof, tss;
 

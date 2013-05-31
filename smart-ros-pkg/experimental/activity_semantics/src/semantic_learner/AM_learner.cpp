@@ -358,10 +358,12 @@ namespace golfcar_semantics{
 				{
 					double current_edge_nearestDist = DBL_MAX;
 					int  current_edge_nearestPt= -1;
-					for(size_t ip=0; ip<road_network.edges[ie].points.size();ip++)
+					vector<CvPoint> &deputy_points = road_network.edges[ie].cubic_spline->output_points_;
+
+					for(size_t ip=0; ip<deputy_points.size();ip++)
 					{
-						double real_x = (double)road_network.edges[ie].points[ip].x*map_scale_;
-						double real_y = (double)(AM_->size_y-1-road_network.edges[ie].points[ip].y)*map_scale_;
+						double real_x = (double)deputy_points[ip].x*map_scale_;
+						double real_y = (double)(AM_->size_y-1-deputy_points[ip].y)*map_scale_;
 
 						double dist_tmp = sqrt((grid_realy-real_y)*(grid_realy-real_y)+(grid_realx-real_x)*(grid_realx-real_x));
 						if(dist_tmp<current_edge_nearestDist)
@@ -385,16 +387,17 @@ namespace golfcar_semantics{
 				double dist_between_ends = 0.0;
 				double dist_threshold = 2.0;
 				bool reach_two_ends = false;
+				vector<CvPoint> &deputy_points = road_network.edges[nearest_edgeID].cubic_spline->output_points_;
+
 				while(!(reach_two_ends || dist_between_ends>dist_threshold))
 				{
 					reach_two_ends = true;
 					if(left_end>0){left_end--;reach_two_ends = false;}
-					if(right_end+1<(int)road_network.edges[nearest_edgeID].points.size()){right_end++; reach_two_ends = false;}
-
-					double real_x1 = (double)road_network.edges[nearest_edgeID].points[left_end].x*map_scale_;
-					double real_y1 = (double)(AM_->size_y-1-road_network.edges[nearest_edgeID].points[left_end].y)*map_scale_;
-					double real_x2 = (double)road_network.edges[nearest_edgeID].points[right_end].x*map_scale_;
-					double real_y2 = (double)(AM_->size_y-1-road_network.edges[nearest_edgeID].points[right_end].y)*map_scale_;
+					if(right_end+1<(int)deputy_points.size()){right_end++; reach_two_ends = false;}
+					double real_x1 = (double)deputy_points[left_end].x*map_scale_;
+					double real_y1 = (double)(AM_->size_y-1-deputy_points[left_end].y)*map_scale_;
+					double real_x2 = (double)deputy_points[right_end].x*map_scale_;
+					double real_y2 = (double)(AM_->size_y-1-deputy_points[right_end].y)*map_scale_;
 
 					dist_between_ends = sqrt((real_y1-real_y2)*(real_y1-real_y2)+(real_x1-real_x2)*(real_x1-real_x2));
 					edge_angle = atan2(real_y1-real_y2, real_x1-real_x2);
