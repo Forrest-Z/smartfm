@@ -18,6 +18,7 @@
 #include <cv_bridge/CvBridge.h>
 #include <fmutil/fm_math.h>
 #include "../data_type/activity_map.h"
+#include <assert.h>
 
 #include "road_semantics.h"
 
@@ -47,7 +48,10 @@ namespace golfcar_semantics
         void moving_direction_GP();
         void obstacle_dist();
         void boundary_direction();
+
         void skel_direction();
+        void find_nearest_points(double gridx, double gridy, vector<CvPoint> &deputy_points, int & nearestPt_ID, double & nearestDist);
+        void direction_probe(int x_grid, int y_grid);
 
         void EE_learning();
 
