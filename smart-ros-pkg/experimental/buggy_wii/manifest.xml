@@ -1,0 +1,16 @@
+<package>
+  <description brief="buggy_wii">
+
+     buggy_wii
+
+  </description>
+  <author>golfcar</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/buggy_wii</url>
+    
+    <depend package="roscpp" />
+    <depend package="rospy" />
+</package>
+
+

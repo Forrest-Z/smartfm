@@ -1,0 +1,26 @@
+<launch>
+	<node name="wiimote" type="wiimote_node.py" pkg="wiimote" />
+	<node name="remote" type="buggy_wii" pkg="buggy_wii">
+
+		<param name="axis_linear" type="int" value="1" />
+		<param name="axis_angular" type="int" value="0" />
+		<param name="button_deadman" type="int" value="3" />
+		<param name="button_reverse" type="int" value="0" />
+		<param name="button_full_right" type="int" value="7" />
+		<param name="button_full_left" type="int" value="6" />
+		<param name="scale_steering" type="double" value="-270.0" />
+		<param name="scale_throttle" type="double" value="0.5" />
+		<param name="scale_braking" type="double" value="120.0" />
+		<param name="default_braking" type="double" value="-75" />
+		<param name="full_steer" type="double" value="540.0" />
+
+		<remap from= "/joy1" to="/joy" />
+		<remap from= "/joy2" to="/wiimote/nunchuk" />
+		<remap from="/remote/brake_angle" to="/brake_angle" />
+		<remap from="/remote/steer_angle" to="/steer_angle" />
+		<remap from="/remote/throttle" to="/throttle" />
+		<remap from="/remote/direction_ctrl" to="/direction_ctrl" />
+		<remap from="/remote_enable" to="/button_state_automode" />
+
+	</node>
+</launch>
