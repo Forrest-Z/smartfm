@@ -144,7 +144,7 @@ SpeedAdvisor::SpeedAdvisor()
 
     signal_type_ = -1;
 
-    bwd_drive_pub_ = nh_.advertise<std_msgs::Bool>("please_change_this_name", 1);
+    bwd_drive_pub_ = nh_.advertise<std_msgs::Bool>("direction_ctrl", 1);
     recommend_speed_pub_= nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
     speed_contribute_pub_ = nh_.advertise<pnc_msgs::speed_contribute>("speed_status",1);
     left_blinker_pub_ = nh_.advertise<std_msgs::Bool>("left_blinker",1);
