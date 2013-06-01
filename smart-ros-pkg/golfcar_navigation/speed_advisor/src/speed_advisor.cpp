@@ -42,12 +42,12 @@ void SpeedSettings::odom_callback(const nav_msgs::Odometry & msg)
 
     if(switching_gear_ > 0)
     {
-        if(odo_vel_ < 0.05)
+        if(fabs(odo_vel_) < 0.05)
             switching_gear_++;
         else
             switching_gear_ = 1;
 
-        if(switching_gear_ > 5)
+        if(switching_gear_ > 10)
         {
             switching_gear_ = 0;
             ROS_WARN("Switched gear");
@@ -138,7 +138,6 @@ SpeedAdvisor::SpeedAdvisor()
     ROS_DEBUG_STREAM("Simulated time is "<<use_sim_time_);
     if(use_sim_time_)
     {
-        min_speed_ = 0.5; // to not make the simulation too slow
         ppc_stop_dist_ = 1.0; // to make the vehicle stop near the end in simulation
     }
     final_stop_dist_ = pow(min_speed_, 2) / (2.0 * norm_dec_);
@@ -182,9 +181,9 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
 
     // Add a normal speed profile
     if(move_status_.backward_driving)
-        speed_settings_.add( "norm zone", SpeedAttribute::norm_zone, high_speed_);
-    else // backward normal speed is different
         speed_settings_.add( "bwd driving", SpeedAttribute::bwd_driving, bwd_speed_);
+    else // backward normal speed is different
+        speed_settings_.add( "norm zone", SpeedAttribute::norm_zone, high_speed_);
 
     // switching gear fwd->bwd or bwd->fwd
     if(speed_settings_.is_gear_switching())
@@ -333,10 +332,11 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
         move_speed.angular.z = move_status_.steer_angle;
 
     // Since the speed controller cannot track very small speed, so if we are
-    // not stopped yet (i.e. final_speed>0) and if the target speed is small,
+    // not stopped yet (i.e. final_speed>0) and if the target speed is small(not zero!),
     // impose a minimal velocity.
     static const double minimal_vel = min_speed_;
-    if( sattr.final_speed_>0.0 && sattr.final_speed_<minimal_vel && sattr.target_speed_<minimal_vel )
+    if( sattr.final_speed_>0.0 && sattr.final_speed_<minimal_vel &&
+        sattr.target_speed_>0.0 && sattr.target_speed_<minimal_vel )
         move_speed.linear.x = minimal_vel;
 
     //it was found that, in simulation with stage, although commanded to

@@ -191,18 +191,36 @@ PoseArray.ColorG=0.1
 PoseArray.ColorR=1
 PoseArray.Enabled=0
 PoseArray.Topic=
-Property\ Grid\ Splitter=586,84
-Property\ Grid\ State=expanded=Path.Enabled,Path.Status;splitterratio=0.614232
-QMainWindow=000000ff00000000fd00000003000000000000011d000002f0fc0200000001fb000000100044006900730070006c0061007900730000000034000002f0000000fa00ffffff000000010000012a000001b4fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730000000034000000700000006d00fffffffb0000000a00560069006500770073000000003400000114000000c100fffffffb0000001200530065006c0065006300740069006f006e0000000034000001b40000006d00ffffff000000030000044c0000003efc0100000001fb0000000800540069006d006500000000000000044c0000022500ffffff00000394000002f000000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+Property\ Grid\ Splitter=689,84
+Property\ Grid\ State=expanded=.Global Options,MapExt.Enabled,PointCloud.Enabled,PointCloud2.Enabled,Path.Enabled,Grid.Enabled,Pose.Enabled,Pose.Shape Properties,LaserScan.Enabled,LaserScan2.Enabled,PoseArray.Enabled,PointCloud3.Enabled,ref_segments.Enabled,pp_segments.Enabled;splitterratio=0.614232
+QMainWindow=000000ff00000000fd00000003000000000000011d00000357fc0200000001fb000000100044006900730070006c006100790073000000001d00000357000000ee00ffffff000000010000012a000001b4fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730000000034000000700000006700fffffffb0000000a00560069006500770073000000003400000114000000bb00fffffffb0000001200530065006c0065006300740069006f006e0000000034000001b40000006700ffffff000000030000044c0000003efc0100000001fb0000000800540069006d006500000000000000044c000002bf00ffffff000003b80000035700000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
 Target\ Frame=/base_link
 Tool\ 2D\ Nav\ GoalTopic=/move_base_simple/goal
 Tool\ 2D\ Pose\ EstimateTopic=initialpose
+pp_segments.Alpha=1
+pp_segments.ColorB=0
+pp_segments.ColorG=0
+pp_segments.ColorR=1
+pp_segments.Enabled=1
+pp_segments.Topic=/pp_segments
+ref_segments.Alpha=1
+ref_segments.ColorB=1
+ref_segments.ColorG=0
+ref_segments.ColorR=0
+ref_segments.Enabled=1
+ref_segments.Topic=/ref_segments
 [Display0]
 ClassName=map_ext_rviz_plugin::MapExtDisplay
 Name=MapExt
 [Display1]
 ClassName=rviz::PointCloudDisplay
 Name=PointCloud
+[Display10]
+ClassName=rviz::PathDisplay
+Name=ref_segments
+[Display11]
+ClassName=rviz::PathDisplay
+Name=pp_segments
 [Display2]
 ClassName=rviz::PointCloudDisplay
 Name=PointCloud2
@@ -228,7 +246,7 @@ Name=PoseArray
 ClassName=rviz::PointCloudDisplay
 Name=PointCloud3
 [Window]
-Height=848
-Width=936
-X=708
+Height=920
+Width=968
+X=694
 Y=-26
