@@ -1,7 +1,7 @@
 <package>
   <description brief="ped_navig_perception">
 
-     ped_navig_perception
+     laser_ped ( cluster based) detection and tracking
 
   </description>
   <author>demian</author>

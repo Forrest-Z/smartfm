@@ -1,7 +1,7 @@
 <package>
   <description brief="ped_navig_simulation">
 
-     ped_navig_simulation
+     A place to keep the simulated world and test out the planner of the golfcart.
 
   </description>
   <author>demian</author>
