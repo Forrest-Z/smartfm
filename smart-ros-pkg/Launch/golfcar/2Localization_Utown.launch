@@ -1,10 +1,7 @@
 <launch>
- 
-
 
     <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/map.yaml"/>
-
-	<node name="amcl" pkg="amcl" type="amcl" respawn="false">
+	<node name="amcl" pkg="amcl" type="amcl" respawn="false" output="screen">
 		<remap from="scan" to="scan"/>		
     </node>
 
