@@ -5,7 +5,7 @@ Axes.Reference\ Frame=/base_link
 Background\ ColorB=0
 Background\ ColorG=0
 Background\ ColorR=0
-Camera\ Config=15.4248 7.64199 0.267246 0
+Camera\ Config=2.4244 106.436 93.467 0.005
 Camera\ Type=rviz::FixedOrientationOrthoViewController
 Fixed\ Frame=/map
 Grid\ Cells.Alpha=1
@@ -229,7 +229,7 @@ Pose\ Array.ColorR=1
 Pose\ Array.Enabled=1
 Pose\ Array.Topic=/particlecloud
 Property\ Grid\ Splitter=619,78
-Property\ Grid\ State=expanded=.Global Options,.Global Status,Polygon.Enabled,Polygon2.Enabled,Grid Cells.Enabled,Laser Scan.Enabled,Axes.Enabled,Grid.Enabled,LaserScan.Enabled,PointCloud2.Enabled,TF.Enabled,LaserScan2.Enabled,LaserScan2.Status;splitterratio=0.5
+Property\ Grid\ State=expanded=.Global Options,.Global Status,Polygon.Enabled,Polygon2.Enabled,Grid Cells.Enabled,Odometry3.Enabled,Laser Scan.Enabled,Laser Scan.Status,Axes.Enabled,Grid.Enabled,LaserScan.Enabled,PointCloud2.Enabled,TF.Enabled,LaserScan2.Enabled,LaserScan2.Status;splitterratio=0.5
 QMainWindow=000000ff00000000fd00000003000000000000011d0000030bfc0200000001fb000000100044006900730070006c006100790073010000001d0000030b000000ee00ffffff00000001000001310000030bfc0200000003fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000001d000000e30000006700fffffffb0000000a00560069006500770073010000010600000139000000bb00fffffffb0000001200530065006c0065006300740069006f006e0100000245000000e30000006700ffffff00000003000005ff0000003efc0100000001fb0000000800540069006d00650100000000000005ff000002bf00ffffff000003a50000030b00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
 TF.All\ Enabled=1
 TF.Enabled=0
