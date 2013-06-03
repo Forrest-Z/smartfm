@@ -344,7 +344,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     //compensation is needed
 //    if( use_sim_time_ ) move_speed.linear.x *= 0.3;
 
-    if( use_sim_time_ && move_status_.backward_driving)
+    if(move_status_.backward_driving)
         move_speed.linear.x = -move_speed.linear.x;
     recommend_speed_pub_.publish(move_speed);
 

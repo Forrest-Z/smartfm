@@ -44,6 +44,7 @@ class PID_Speed
         PID_Speed();
 
     private:
+        void bwdDriveCallBack(std_msgs::Bool);
         void cmdVelCallBack(geometry_msgs::Twist);
         void odoCallBack(phidget_encoders::EncoderOdo);
         void emergencyBtnCB(std_msgs::Bool);
@@ -51,11 +52,12 @@ class PID_Speed
         void safetyBrakeCallBack(std_msgs::Bool);
 
         ros::NodeHandle n;
-        ros::Subscriber cmdVelSub, odoSub, emergencyBtnSub, automodeBtnSub, safetyBrakeSub;
+        ros::Subscriber bwdDriveSub, cmdVelSub, odoSub, emergencyBtnSub, automodeBtnSub, safetyBrakeSub;
         ros::Publisher throttlePub, brakePedalPub, pidPub;
 
         Parameters param; ///< parameters of the controller, neatly packed together
 
+        bool bwdDrive; ///< commanded fwd/bwd direction (set by bwdDriveCallBack)
         double cmdVel; ///< The desired velocity (set by cmdVelCallBack)
         bool emergency; ///< is the emergency button pressed (set by emergencyBtnCB)
         bool automode; ///< is the auto mode button pressed (set by automodeBtnCB)
@@ -102,6 +104,7 @@ void Parameters::getParam()
 
 PID_Speed::PID_Speed()
 {
+    bwdDriveSub = n.subscribe("direction_ctrl", 1, &PID_Speed::bwdDriveCallBack, this);
     cmdVelSub = n.subscribe("cmd_vel", 1, &PID_Speed::cmdVelCallBack, this);
     odoSub = n.subscribe("encoder_odo", 1, &PID_Speed::odoCallBack, this);
     emergencyBtnSub = n.subscribe("button_state_emergency", 1, &PID_Speed::emergencyBtnCB, this);
@@ -114,6 +117,7 @@ PID_Speed::PID_Speed()
 
     param.getParam();
 
+    bwdDrive = false;
     cmdVel = e_pre = iTerm = 0.0;
     emergency = false;
     automode = false;
@@ -122,6 +126,10 @@ PID_Speed::PID_Speed()
     vFilter = fmutil::LowPassFilter(param.tau_v);
 }
 
+void PID_Speed::bwdDriveCallBack(std_msgs::Bool msg)
+{
+    bwdDrive = msg.data;
+}
 
 void PID_Speed::cmdVelCallBack(geometry_msgs::Twist cmd_vel)
 {
@@ -157,7 +165,7 @@ void PID_Speed::odoCallBack(phidget_encoders::EncoderOdo enc)
     pid.desired_vel = cmdVel;
 
     double odovel = enc.v;
-    if( emergency || !automode || (cmdVel <= 0 && odovel <= param.full_brake_thres) || safetyBrake_ )
+    if( emergency || !automode || (cmdVel == 0.0 && fabs(odovel) <= param.full_brake_thres) || safetyBrake_ )
     {
         // reset controller
         e_pre = dgain_pre = iTerm = 0.0;
@@ -188,6 +196,16 @@ void PID_Speed::odoCallBack(phidget_encoders::EncoderOdo enc)
         double u = pid.p_gain + pid.i_gain + pid.d_gain;
         pid.u_ctrl = fmutil::symbound<double>(u, 1.0);
 
+        // change the sign for bwd driving assuming pid gains are same for fwd/bwd
+        // this has to be changed if different gains are necessary
+        if( bwdDrive && cmdVel <= 0.0 )
+        {
+            pid.p_gain = -pid.p_gain;
+            pid.i_gain = -pid.i_gain;
+            pid.d_gain = -pid.d_gain;
+            pid.u_ctrl = -pid.u_ctrl;
+        }
+
         //ROS_INFO("Velocity error: %.2f, u_ctrl=%.2f", e_now, pid.u_ctrl);
 
         if(pid.u_ctrl > param.throttle_zero_thres)
@@ -210,7 +228,7 @@ void PID_Speed::odoCallBack(phidget_encoders::EncoderOdo enc)
         }
 
         //to take care unstable stopped behavior and reset integrator
-        if(cmdVel <= 0.1) { //sometimes the commanded velocity may not be exactly 0
+        if(fabs(cmdVel) <= 0.1) { //sometimes the commanded velocity may not be exactly 0
             throttle_msg.data = 0;
             iTerm = 0;
         }
