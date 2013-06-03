@@ -1,0 +1,15 @@
+/**
+\mainpage
+\htmlinclude manifest.html
+
+\b ped_navig_planner 
+
+<!-- 
+node to compute Xarr, Tarr, Tcross from the environment data and laser_pedestrian detection
+node to compute velocity from the scene parameters 
+-->
+
+-->
+
+
+*/
