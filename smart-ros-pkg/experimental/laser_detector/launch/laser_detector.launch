@@ -1,0 +1,15 @@
+<launch>
+
+<node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.75, 0.0, 1.32 -0.0 0.140 -0.0 /base_link /camera_front_base 100" />
+<node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_img" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /camera_front_base /camera_front_img 100" />
+
+
+<node pkg="laser_detector" type="laser_detector" name="laser_detector" output="screen">
+<remap from="laser_in" to="/sickldmrs/scan3"/>
+<param name="base_frame" value="/base_link"/>
+<param name="odom_frame" value="/odom"/>
+<param name="laser_frame" value="/sick_laser2"/>
+<param name="image_transport" value="compressed"/>
+</node>
+
+</launch>
