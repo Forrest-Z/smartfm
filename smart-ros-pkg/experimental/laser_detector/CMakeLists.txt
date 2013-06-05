@@ -33,3 +33,5 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 rosbuild_add_boost_directories()
 rosbuild_add_executable(laser_detector src/laser_detector.cpp)
 rosbuild_link_boost(laser_detector signals)
+
+rosbuild_add_executable(single_scan_clustering src/single_scan_clustering.cpp)

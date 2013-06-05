@@ -1,6 +1,6 @@
 
 /*
- * image_visualizer.cpp
+ *  laser_detector.cpp
  *
  *  Created on: Feb 20, 2013
  *      Author: Shen Xiaotong
