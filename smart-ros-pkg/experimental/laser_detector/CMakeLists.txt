@@ -18,7 +18,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 #uncomment if you have defined messages
-#rosbuild_genmsg()
+rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
@@ -35,3 +35,11 @@ rosbuild_add_executable(laser_detector src/laser_detector.cpp)
 rosbuild_link_boost(laser_detector signals)
 
 rosbuild_add_executable(single_scan_clustering src/single_scan_clustering.cpp)
+
+rosbuild_add_executable(rolling_window_pcl src/rolling_window_pcl.cpp)
+rosbuild_link_boost(rolling_window_pcl signals)
+
+rosbuild_add_executable(road_surface src/road_surface.cpp)
+rosbuild_link_boost(road_surface signals)
+
+
