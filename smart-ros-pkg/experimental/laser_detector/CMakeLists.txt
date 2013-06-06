@@ -42,4 +42,7 @@ rosbuild_link_boost(rolling_window_pcl signals)
 rosbuild_add_executable(road_surface src/road_surface.cpp)
 rosbuild_link_boost(road_surface signals)
 
+rosbuild_add_executable(static_vehicle_recognition src/static_vehicle_recognition.cpp)
+rosbuild_link_boost(static_vehicle_recognition signals)
+
 
