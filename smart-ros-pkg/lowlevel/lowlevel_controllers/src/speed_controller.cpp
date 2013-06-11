@@ -198,7 +198,7 @@ void PID_Speed::odoCallBack(phidget_encoders::EncoderOdo enc)
 
         // change the sign for bwd driving assuming pid gains are same for fwd/bwd
         // this has to be changed if different gains are necessary
-        if( bwdDrive && cmdVel <= 0.0 )
+        if( bwdDrive )
         {
             pid.p_gain = -pid.p_gain;
             pid.i_gain = -pid.i_gain;
