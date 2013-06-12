@@ -1,14 +1,65 @@
 #include <ctime>
+#include <cmath>
 #include <iostream>
+#include <sstream>
 #include <string>
+#include <vector>
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+//message type
+#include <pronto_adapter/Pronto_msg.h>
 
 #define MAX_LEN 1000
 
 using boost::asio::ip::udp;
 using namespace std;
+
+std::vector<double> messageDecodingToDouble (std::string msg_in)
+{
+  std::vector<std::string> vect_out;
+  std::vector<double> vect_double;
+  std::string msg_out;
+  double msg_double;
+  std::string separator = "|";
+  bool end_of_msg = false;
+  unsigned end_pos = 0;
+
+  std::cout << "message in: " << msg_in << std::endl << std::endl;
+    //erase the last "]"
+  msg_in = msg_in.erase(msg_in.size()-1,1);
+  //erase the first "["
+  msg_in = msg_in.erase(0,1);
+  while(!end_of_msg)
+    {
+      end_pos = msg_in.find(separator);
+
+      msg_out = msg_in.substr(0,end_pos);
+      vect_out.push_back(msg_out);
+      //erase the message out fron in put message
+      msg_in = msg_in.erase(0,msg_out.size());
+      //erase the separator "|"
+      msg_in = msg_in.erase(0,1);
+      if(msg_in.size() == 0) end_of_msg = true;
+    
+    }
+
+    for(int i = 0; i < vect_out.size(); i++)
+    {
+      if(!(vect_out[i].at(0) == 'D'))
+    {
+      //if begin with ':','N' or 'C' then we don't want to convert it
+      msg_double = NAN;
+      vect_double.push_back(msg_double);
+    }else{
+        vect_out[i] = vect_out[i].erase(0,1); //erase the 'D'
+        std::stringstream convert(vect_out[i]);
+        if(!(convert >> msg_double)) msg_double = NAN;  //is not convertable then declare as "Not A Number"
+        vect_double.push_back(msg_double);
+      }
+    }
+    return vect_double;
+}
 
 string add_check_sum(string pMsg)
 {
@@ -75,8 +126,8 @@ private:
   {
     string data = "";
     for(size_t i=0; i<bytes_transferred; i++){
-	buffer_+=recv_buffer_[i];
-	int escape_pos = buffer_.find("\r\n");
+      buffer_+=recv_buffer_[i];
+      int escape_pos = buffer_.find("\r\n");
 	
 	if(escape_pos>0){
 	  data = buffer_.substr(0,escape_pos);
