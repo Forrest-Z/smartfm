@@ -122,7 +122,7 @@ namespace RRTstar {
         int lazyCheckTree();
 
         int updateReachability (); 
-        int switchRoot (double distance, list<double*> &traj, list<float>& control);
+        int switchRoot (double distance, list<double*> &traj, list<float>& control, list<int>& direction);
 
         double getBestVertexCost () {return lowerBoundCost;}
         vertex_t& getBestVertex () {return *lowerBoundVertex;}

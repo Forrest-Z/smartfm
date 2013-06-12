@@ -296,7 +296,7 @@ private:
   void filterPoints(geometry_msgs::Point32 init_pt, sensor_msgs::PointCloud &pc){
     for(size_t i=0; i<pc.points.size(); ){
       if(fmutil::distance<geometry_msgs::Point32>(pc.points[i],
-	init_pt)>10) pc.points.erase(pc.points.begin()+i);
+	init_pt)>15) pc.points.erase(pc.points.begin()+i);
       else i++;
     }
   }
@@ -366,6 +366,7 @@ private:
       if(distance_cur_<pose.points[0].x) {
 	distance_cur_ = pose.points[0].x;
 	cout<<object_id_<<": "<<distance_cur_<<"\xd"<<flush;
+    cout<<robot_distance_<<endl;
 	ped_momdp_sarsop::ped_local_frame single_stat;
 	single_stat.ped_id = object_id_;
 	if(robot_distance_ > 85)

@@ -102,7 +102,7 @@ public:
     int angle_inc = sd.angle_res;
 
     for (int i = rot_start; i < rot_end; i += angle_inc) {
-      cout<<"rotation "<<i<<":"<<endl;
+      //cout<<"rotation "<<i<<":"<<endl;
         pcl::PointCloud<pcl::PointNormal> matching_cloud_tf = matching_cloud;
         int rotate_idx = i;
         double yaw_rotate = rotate_idx / 180. * M_PI;
@@ -161,9 +161,9 @@ public:
                     best_tf_pt_int = search_pt;
                     best_norm_tf = matching_cloud_tf;
                 }
-                cout<<score<<" ";
+                //cout<<score<<" ";
             }
-            cout<<endl;
+            //cout<<endl;
             //cout<<setiosflags (ios::fixed | ios::showpoint | ios::right) <<setprecision(3)<<setfill('0')<<setw(3)<<"At offset "<<j<<" "<<" "<<i<<", best tf found so far: "<<best_x<<" "<<best_y<<" "<<best_rotation<<
             	//" Distance:"<<best_score_details.dist_score<<" Norm:"<< best_score_details.normal_score<<" NNorm:"<<best_score_details.norm_norm_score<<
             //" WorstNorm:"<<best_score_details.worst_norm_score<<" Final:"<<best_score<<"      \xd"<<flush;
@@ -207,9 +207,9 @@ public:
     sd1.best_y = 0;
     sd1.rot_range = 32;
     sd1.angle_res = 4;
-    sd1.trans_res = 1.0;
+    sd1.trans_res = 0.5;
     sd1.trans_x_range = 15;
-    sd1.trans_y_range = 22;
+    sd1.trans_y_range = 18;
     sd1b = sd1;
     sd1b.best_rot = 0;
     sd1b.rot_range = 12;    

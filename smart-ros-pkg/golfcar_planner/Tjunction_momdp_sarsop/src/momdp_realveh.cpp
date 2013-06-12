@@ -11,8 +11,8 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
     dX= 3;// step size in X
     /////////////////////////
     ////RealVehicle//////////
-    RobInitSt = 0;
-    DrivInitSt = -2;
+    RobInitSt = 1;
+    DrivInitSt = -1;
     dgrid = 3;//step size for distance value
     /////////////////////////
     momdp_problem_timeout = 5.0;

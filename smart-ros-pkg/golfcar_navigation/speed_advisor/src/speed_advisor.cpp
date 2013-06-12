@@ -9,6 +9,8 @@ SpeedSettings::SpeedSettings()
     automode_sub_ = nh_.subscribe("/button_state_automode", 1, &SpeedSettings::automode_callback, this);
     emergency_sub_ = nh_.subscribe("/button_state_emergency", 1, &SpeedSettings::emergency_callback, this);
     odo_sub_ = nh_.subscribe("/odom", 1, &SpeedSettings::odom_callback, this);
+
+    switching_gear_ = false;
 }
 
 void SpeedSettings::automode_callback(const std_msgs::Bool & msg)
@@ -37,6 +39,20 @@ void SpeedSettings::button_state(bool automode, bool emergency)
 void SpeedSettings::odom_callback(const nav_msgs::Odometry & msg)
 {
     odo_vel_ = msg.twist.twist.linear.x;
+
+    if(switching_gear_ > 0)
+    {
+        if(fabs(odo_vel_) < 0.05)
+            switching_gear_++;
+        else
+            switching_gear_ = 1;
+
+        if(switching_gear_ > 10)
+        {
+            switching_gear_ = 0;
+            ROS_WARN("Switched gear");
+        }
+    }
 }
 
 void SpeedSettings::add(const string & description_str,
@@ -93,6 +109,9 @@ SpeedAdvisor::SpeedAdvisor()
 {
     ros::NodeHandle nh("~");
     nh.param("max_speed", high_speed_, 2.0);
+    nh.param("bwd_speed", bwd_speed_, 0.5);
+    nh.param("min_speed", min_speed_, 0.15);
+    // speed_controller doesn't use accel pedal when below 0.1, so put min_speed_ > 0.1
     nh.param("acc", acc_, 0.5);
     nh.param("max_dec", max_dec_, 2.0);
     nh.param("norm_dec", norm_dec_, 0.7);
@@ -100,9 +119,8 @@ SpeedAdvisor::SpeedAdvisor()
     nh.param("map_frame_id", map_id_, string("map"));
     nh.param("dec_ints", dec_ints_, 0.5);
     nh.param("dec_station", dec_station_, 0.5);
-    nh.param("ppc_stop_dist", ppc_stop_dist_, 5.0); //the stopping distance from ppc.
-    //It was found that the distance given by move_status will reach as small as 4 meter
-    //Hence, stopping distance should be at least larger than 4 for the stopping manoeuvre to work
+    nh.param("stop_ints_dist", stop_ints_dist_, 4.0);
+    nh.param("ppc_stop_dist", ppc_stop_dist_, 3.0);
 
     nh.param("frequency", frequency_,20.0);
     nh.param("tolerance", tolerance_, 0.5);
@@ -110,8 +128,6 @@ SpeedAdvisor::SpeedAdvisor()
     nh.param("slow_zone", slow_zone_, 10.0);
     nh.param("slow_speed", slow_speed_, 1.5);
     nh.param("baselink_carfront_length", baselink_carfront_length_, 2.0);
-    nh.param("enterstation_speed",enterstation_speed_, slow_speed_); //by default, enter station speed is the same as slow speed
-    nh.param("stationspeed_dist", stationspeed_dist_, 20.0);
     nh.param("kinematic_acceleration", kinematics_acc_, true);
 
     speed_settings_.max_neg_speed_ = -max_dec_ / frequency_;
@@ -120,9 +136,15 @@ SpeedAdvisor::SpeedAdvisor()
 
     nh_.param("use_sim_time", use_sim_time_, false);
     ROS_DEBUG_STREAM("Simulated time is "<<use_sim_time_);
+    if(use_sim_time_)
+    {
+        ppc_stop_dist_ = 1.0; // to make the vehicle stop near the end in simulation
+    }
+    final_stop_dist_ = pow(min_speed_, 2) / (2.0 * norm_dec_);
 
     signal_type_ = -1;
 
+    bwd_drive_pub_ = nh_.advertise<std_msgs::Bool>("direction_ctrl", 1);
     recommend_speed_pub_= nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
     speed_contribute_pub_ = nh_.advertise<pnc_msgs::speed_contribute>("speed_status",1);
     left_blinker_pub_ = nh_.advertise<std_msgs::Bool>("left_blinker",1);
@@ -131,6 +153,7 @@ SpeedAdvisor::SpeedAdvisor()
     move_base_speed_ = nh_.subscribe("/move_status", 1, &SpeedAdvisor::moveSpeedCallback, this);
     rrts_sub_ = nh_.subscribe("rrts_status", 1, &SpeedAdvisor::rrts_callback, this);
     slowzone_sub_ = nh_.subscribe("slowZone", 1, &SpeedAdvisor::slowZoneCallback, this);
+    bwd_drive_ = false;
 
     timer_ = nh_.createTimer(ros::Duration(1.0/frequency_),
                                 &SpeedAdvisor::ControlLoop, this);
@@ -157,7 +180,14 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     ROS_DEBUG_NAMED("ctrl_loop", "Control Loop: t=%f", ros::Time::now().toSec());
 
     // Add a normal speed profile
-    speed_settings_.add( "norm zone", SpeedAttribute::norm_zone, high_speed_);
+    if(move_status_.backward_driving)
+        speed_settings_.add( "bwd driving", SpeedAttribute::bwd_driving, bwd_speed_);
+    else // backward normal speed is different
+        speed_settings_.add( "norm zone", SpeedAttribute::norm_zone, high_speed_);
+
+    // switching gear fwd->bwd or bwd->fwd
+    if(speed_settings_.is_gear_switching())
+        speed_settings_.add_brake("switching gear", SpeedAttribute::switching_gear);
 
     // RRTS says robot is in collision --> brake
     if(rrts_status_.robot_in_collision)
@@ -255,8 +285,8 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
         // there are some fundamental problem here:
         // --------- The inaccurate calculation of int dist ------------------
 
-        float d = int_h_.dist_to_int() - ppc_stop_dist_;
-        sc.int_rec = d<=0 ? 0 : sqrt(2 * dec_ints_ * d);
+        float d = int_h_.dist_to_int() - stop_ints_dist_;
+        sc.int_rec = d<=0 ? 0 : sqrt(2 * dec_ints_ * (d - stop_ints_dist_));
 
         ROS_DEBUG_STREAM("Intersection not clear. dist=" << int_h_.dist_to_int()
                 <<". Recommended speed: " <<sc.int_rec);
@@ -264,20 +294,28 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
         speed_settings_.add("Intersection", SpeedAttribute::intersection, sc.int_rec);
     }
 
-
     //
-    // Approaching the goal:
-    // - when closer than stationspeed_dist_, slow down to slow_speed_
-    // - compute a deceleration profile that will make the car stop at the goal.
+    // stopping at the end
     //
-
-    // Getting near the goal: slowing down to slow_speed_
-    if( move_status_.dist_to_goal < stationspeed_dist_ )
-        speed_settings_.add("Approaching goal", SpeedAttribute::app_goal, slow_speed_);
-
-    // Smooth deceleration profile that will make the car stop at the goal
-    double d = move_status_.dist_to_goal - ppc_stop_dist_;
-    sc.goal_rec = d<0 ? 0 : sqrt(2*dec_station_*d);
+    if(move_status_.dist_to_goal > ppc_stop_dist_)
+    {
+        sc.goal_rec = sqrt(2*dec_station_*(move_status_.dist_to_goal-ppc_stop_dist_));
+        sc.goal_rec = fmutil::max(sc.goal_rec, min_speed_);
+    }
+    else if(move_status_.dist_to_goal > final_stop_dist_)
+    {
+        if(move_status_.want_exact_stop)
+            sc.goal_rec = min_speed_; // go slowly if we are short of some dist
+        else
+            sc.goal_rec = 0.0; // stopping early is fine (this is for the final segment)
+    }
+    else
+    {
+        if(move_status_.want_exact_stop)
+            sc.goal_rec = sqrt(2*norm_dec_*move_status_.dist_to_goal);
+        else
+            sc.goal_rec = 0.0;
+    }
     speed_settings_.add("Goal", SpeedAttribute::goal, sc.goal_rec);
 
 
@@ -288,13 +326,17 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     SpeedAttribute sattr = speed_settings_.select_min_speed();
 
     move_speed.linear.x = sattr.final_speed_;
-    move_speed.angular.z = move_status_.steer_angle;
+    if(use_sim_time_) // stage model doesn't match well with ours, little tuning
+        move_speed.angular.z = 0.8*move_status_.steer_angle;
+    else
+        move_speed.angular.z = move_status_.steer_angle;
 
     // Since the speed controller cannot track very small speed, so if we are
-    // not stopped yet (i.e. final_speed>0) and if the target speed is small,
+    // not stopped yet (i.e. final_speed>0) and if the target speed is small(not zero!),
     // impose a minimal velocity.
-    static const double minimal_vel = 0.1;
-    if( sattr.final_speed_>0.0 && sattr.final_speed_<minimal_vel && sattr.target_speed_<minimal_vel )
+    static const double minimal_vel = min_speed_;
+    if( sattr.final_speed_>0.0 && sattr.final_speed_<minimal_vel &&
+        sattr.target_speed_>0.0 && sattr.target_speed_<minimal_vel )
         move_speed.linear.x = minimal_vel;
 
     //it was found that, in simulation with stage, although commanded to
@@ -302,8 +344,13 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     //compensation is needed
 //    if( use_sim_time_ ) move_speed.linear.x *= 0.3;
 
+    if(move_status_.backward_driving)
+        move_speed.linear.x = -move_speed.linear.x;
     recommend_speed_pub_.publish(move_speed);
 
+    std_msgs::Bool backward_driving;
+    backward_driving.data = move_status_.backward_driving;
+    bwd_drive_pub_.publish(backward_driving);
 
     sc.element = sattr.description_;
     sc.description = sattr.description_str_;
@@ -343,6 +390,13 @@ void SpeedAdvisor::moveSpeedCallback(pnc_msgs::move_status status)
             right_blinker_pub_.publish(blinker);
         }
     }
+
+    if(bwd_drive_ != status.backward_driving)
+    {
+        speed_settings_.switch_gear();
+        ROS_WARN("gear will be switched to %s", status.backward_driving == true ? "bwd" : "fwd");
+    }
+    bwd_drive_ = status.backward_driving;
 }
 
 bool SpeedAdvisor::getRobotGlobalPose(tf::Stamped<tf::Pose>& odom_pose) const

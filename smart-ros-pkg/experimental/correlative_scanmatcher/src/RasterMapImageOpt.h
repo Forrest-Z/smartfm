@@ -1,7 +1,7 @@
 
 //#include "fmutil/fm_stopwatch.h"
-#include <cv.h>
-#include <highgui.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
 //#include "fmutil/fm_math.h"
 
 

@@ -34,6 +34,7 @@ namespace golfcar_semantics
 
 	typedef struct
 	{
+		int track_label;
 		double speed, thetha;
 		double width, depth;
 	} moving_activity;
@@ -46,9 +47,10 @@ namespace golfcar_semantics
 
 	typedef struct
 	{
+		bool road_flag;
+
 		//associated tracks, indexed by their serials;
 		std::vector<size_t> track_serials;
-
 		//for moving tracks;
 		std::vector<moving_activity> moving_activities;
 		double avg_speed;
@@ -57,6 +59,26 @@ namespace golfcar_semantics
 
 		//for static tracks;
 		std::vector<static_activity> static_activities;
+
+		//results from GP;
+		Vec2d gp_estimation;
+
+		//distance to the nearest obstacle;
+		double obs_dist;
+
+		//direction of its nearest skeleton edge;
+		double skel_dist;
+		double skel_angle;
+		int nearest_edge_ID;
+
+		//weighted times of pedestrian activity;
+		double activity_intensity;
+
+		//overall weighting for EE;
+		double EE_score;
+
+		double probe_direction;
+		double probe_distance;
 
 	} activity_grid;
 

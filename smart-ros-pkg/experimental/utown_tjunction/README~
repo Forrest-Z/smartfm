@@ -1,0 +1,6 @@
+1. roscore
+2. roslaunch utown_tjunction simulation_utown.launch
+3. roslaunch utown_tjunction vehicle_detect.launch
+4. rosbag play vehicle_example.bag Laser/sick_laser:=scan_real -l
+5. roslaunch Launch 5RoutePlannerSpeedAdvisor.launch
+6. rosrun rviz rviz

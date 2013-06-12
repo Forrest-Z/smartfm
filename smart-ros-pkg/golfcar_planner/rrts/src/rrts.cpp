@@ -771,7 +771,7 @@ RRTstar::Planner< T >
 template< class T >
 int 
   RRTstar::Planner< T >
-::switchRoot (double distanceIn, list<double*> &trajret, list<float> &controlret) 
+::switchRoot (double distanceIn, list<double*> &trajret, list<float> &controlret, list<int>& directionret) 
 {
   //cout<<"calling switch_root"<<endl;
 
@@ -816,7 +816,8 @@ int
     state_t& stateParent = vertexParent.getState();    
     list<double*> trajectory;
     list<float> control;
-    system->getTrajectory (stateParent, stateCurr, trajectory, control, true);
+    list<int> direction;
+    system->getTrajectory (stateParent, stateCurr, trajectory, control, &direction, true);
 
     /*
        cout<<"switchroot gettraj size: "<< trajectory.size()<<endl;
@@ -828,6 +829,7 @@ int
        */
 
     list<float>::iterator iterControl = control.begin();
+    list<int>::iterator iterDirection = direction.begin();
     for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++) 
     {
       double *stateArrCurr = *iter;
@@ -842,8 +844,10 @@ int
       double *stateTmp = new double[3];
       stateTmp[0] = stateArrCurr[0];  stateTmp[1] = stateArrCurr[1]; stateTmp[2] = stateArrCurr[2];
       float controlTmp = *iterControl;
+      int directionTmp = *iterDirection;
       trajret.push_back(stateTmp);
       controlret.push_back(controlTmp);
+      directionret.push_back(directionTmp);
 
       // copy it every time
       for (int i = 0; i < numDimensions; i++)
@@ -879,7 +883,7 @@ int
   delete [] stateArrPrev; 
 
   state_t &vertexChildNewState = vertexChildNew->getState();
-  cout<<"norm_state: "<< system->norm_state(stateRootNew, vertexChildNewState.x) << endl;
+  //cout<<"norm_state: "<< system->norm_state(stateRootNew, vertexChildNewState.x) << endl;
   if(system->norm_state(stateRootNew, vertexChildNewState.x) < 1e-20)
   {
     //cout<<"switch_root length > length of best_trajectory"<<endl;
@@ -1037,7 +1041,7 @@ RRTstar::Planner< T >
 
       list<double*> trajectory;
       list<float> control;
-      system->getTrajectory (stateParent, stateCurr, trajectory, control, false);
+      system->getTrajectory (stateParent, stateCurr, trajectory, control, NULL, false);
 
       trajectory.reverse ();
       control.reverse();

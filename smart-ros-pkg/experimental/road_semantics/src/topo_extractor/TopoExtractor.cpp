@@ -2,21 +2,21 @@
 
 topo_extractor::topo_extractor(const grid_type& curr_grid,
 		   float distance_min, float distance_max, 
-		   bool pruning) {
+		   bool pruning)
+{
+	original_grid=curr_grid;
+	coastal_dist=distance_max;
+	prune_dist=distance_min;
+	prune=pruning;
 
-  original_grid=curr_grid;
-  coastal_dist=distance_max;
-  prune_dist=distance_min;
-  prune=pruning;
+	grid_size_x=original_grid.size();
+	grid_size_y=original_grid[0].size();
 
-  grid_size_x=original_grid.size();
-  grid_size_y=original_grid[0].size();
+	vector <State> tmp(grid_size_y);
+	_step1_grid.resize(grid_size_x,tmp);
 
-  vector <State> tmp(grid_size_y);
-  _step1_grid.resize(grid_size_x,tmp);
-
-  dist_col tmpcol(grid_size_y);
-  distance_grid.resize(grid_size_x,tmpcol);
+	dist_col tmpcol(grid_size_y);
+	distance_grid.resize(grid_size_x,tmpcol);
 }
 
 //the core function of "topo_extractor";
@@ -402,7 +402,8 @@ topo_extractor::State topo_extractor::step(gridtype& grid,
 	return grid[current.x][current.y];
 }
 
-void topo_extractor::find_skel_edge() {
+void topo_extractor::find_skel_edge()
+{
   // Don't worry about making _step1_grid and _step2 equal.  After
   // thin(), if there is any difference it would only be that
   // _step1_grid had some cells marked "skel" that are marked
@@ -1245,6 +1246,56 @@ void topo_extractor::topo_filtering()
 	cvConvert( final_image, mat);
 	Graph_Extraction(mat);
 	build_topoloty();
+
+	road_spline_fitting();
+
+	Mat spline_output(final_image->height, final_image->width, CV_8UC3);
+	spline_output = Scalar(0);
+	Vec3b raw_color, spline_color;
+	raw_color.val[0] = 255;
+	raw_color.val[1] = 0;
+	raw_color.val[2] = 0;
+	spline_color.val[0] = 0;
+	spline_color.val[1] = 0;
+	spline_color.val[2] = 255;
+	for(size_t k=0; k<road_graph_.edges.size(); k++)
+	{
+		for(size_t p=0; p<	road_graph_.edges[k].cubic_spline->raw_points_.size();p++)
+		{
+			Point tmp;
+			tmp.x = road_graph_.edges[k].cubic_spline->raw_points_[p].x;
+			tmp.y = road_graph_.edges[k].cubic_spline->raw_points_[p].y;
+			spline_output.at<Vec3b>(tmp.y, tmp.x) = raw_color;
+		}
+
+		for(size_t p=0; p<	road_graph_.edges[k].cubic_spline->output_points_.size();p++)
+		{
+			Point tmp;
+			tmp.x = road_graph_.edges[k].cubic_spline->output_points_[p].x;
+			tmp.y = road_graph_.edges[k].cubic_spline->output_points_[p].y;
+			spline_output.at<Vec3b>(tmp.y, tmp.x) = spline_color;
+		}
+	}
+	imshow("spline_output", spline_output);
+	waitKey();
+	imwrite( "spline_output.jpg", spline_output );
+}
+
+void topo_extractor::road_spline_fitting()
+{
+	for(size_t k=0; k<road_graph_.edges.size(); k++)
+	{
+		ROS_INFO("road_graph_.edges[%ld] length %3f", k, road_graph_.edges[k].edge_length);
+		road_graph_.edges[k].cubic_spline = new golfcar_semantics::spline_fitting(road_graph_.edges[k].points, 0.5, 10.0);
+
+		if(road_graph_.edges[k].cubic_spline->road_length_<=0.5)
+		{
+			road_graph_.edges[k].cubic_spline->output_points_ = road_graph_.edges[k].cubic_spline->raw_points_;
+			continue;
+		}
+
+		road_graph_.edges[k].cubic_spline->cubicSpline_fitting();
+	}
 }
 
 

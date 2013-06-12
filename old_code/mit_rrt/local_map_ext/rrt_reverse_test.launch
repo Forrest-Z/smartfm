@@ -1,0 +1,18 @@
+<launch>
+  <node name="local_map" pkg="local_map_ext" type="local_map_node">
+    <remap from="scan_in" to="base_scan"/>
+    <remap from="static_map" to="static_map_lane"/>
+  </node>
+  <node name="map_server_lane" pkg="map_server_ext" type="map_server" args="$(find local_map_ext)/lane_map.yaml">
+    <remap from="static_map" to="static_map_lane"/>
+    <remap from="map" to="lane_map"/>
+  </node>
+  <node name="stageros" pkg="stage" type="stageros" args="$(find local_map_ext)/golfcar_eng_sde.world"/>
+  <node name="fake_localization" pkg="fake_localization" type="fake_localization">
+    <remap from="base_pose_ground_truth" to="odom"/>
+  </node>
+  
+  <node name="simple_goal" pkg="rrts" type="simple_goal" />
+  <node name="golfcar_pp" pkg="golfcar_ppc" type="golfcar_pp" />
+  <node name="speed_advisor" pkg="speed_advisor" type="speed_advisor" />
+</launch>

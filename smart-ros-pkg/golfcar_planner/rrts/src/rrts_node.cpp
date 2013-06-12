@@ -57,6 +57,7 @@ class Planner
     void publish_committed_trajectory();
     list<double*> committed_trajectory;
     list<float> committed_control;
+    list<int> committed_direction;
     void publish_control_view_trajectory();
 
     int clear_committed_trajectory();
@@ -81,12 +82,14 @@ class Planner
     ros::Publisher tree_pub;
     ros::Publisher vertex_pub;
     ros::Publisher control_trajectory_pub;
+    ros::Publisher direction_trajectory_pub;
 
     ros::Publisher committed_trajectory_pub;
     ros::Publisher committed_trajectory_view_pub;
     ros::Timer planner_timer;
     ros::Timer tree_pub_timer;
     ros::Timer committed_trajectory_pub_timer;
+    ros::Time committed_trajectory_time;
 
     // functions
     void on_goal(const geometry_msgs::PoseStamped::ConstPtr p);
@@ -144,6 +147,8 @@ Planner::Planner()
   tree_pub = nh.advertise<sensor_msgs::PointCloud>("rrts_tree", 2);
   vertex_pub = nh.advertise<sensor_msgs::PointCloud>("rrts_vertex", 2);
   control_trajectory_pub = nh.advertise<std_msgs::Int16MultiArray>("control_trajectory_msg", 2);	
+  direction_trajectory_pub = nh.advertise<std_msgs::Int16MultiArray>("direction_trajectory_msg",2);
+
   obs_check_pub = nh.advertise<sensor_msgs::PointCloud>("obs_check", 2);
   map_sub = nh.subscribe("local_map", 2, &Planner::on_map, this);
   goal_sub = nh.subscribe("pnc_nextpose", 2, &Planner::on_goal, this);
@@ -203,6 +208,7 @@ void Planner::obs_check()
 int Planner::clear_committed_trajectory()
 {
   is_updating_committed_trajectory = true;
+  committed_trajectory_time = ros::Time::now();
   for(list<double*>::iterator i=committed_trajectory.begin(); i!=committed_trajectory.end(); i++)
   {
     double* stateRef = *i;
@@ -210,6 +216,7 @@ int Planner::clear_committed_trajectory()
   }
   committed_trajectory.clear();
   committed_control.clear();
+  committed_direction.clear();
 
   publish_committed_trajectory();
 
@@ -258,6 +265,7 @@ int Planner::clear_committed_trajectory_length()
     {
       committed_trajectory.pop_front();
       committed_control.pop_front();
+      committed_direction.pop_front();
       n++;
     }
   }
@@ -517,8 +525,8 @@ int Planner::get_plan()
 {
   is_updating_committed_trajectory = true;
   is_updating_rrt_tree = true;
-  //rrts.checkTree();
-  rrts.lazyCheckTree();
+  rrts.checkTree();
+  //rrts.lazyCheckTree();
   is_updating_committed_trajectory = false;
   is_updating_rrt_tree = false;
 
@@ -546,26 +554,32 @@ int Planner::get_plan()
   ros::Time start_current_call_back = ros::Time::now();
   cout<<"s: "<< rrts.numVertices<<" -- "<<best_cost;
   flush(cout);
-  while((!found_best_path) || (samples_this_loop < 5))
+  while(!found_best_path)
   {
-    samples_this_loop += rrts.iteration();
+    rrts.iteration();
+    samples_this_loop++;
     best_cost = rrts.getBestVertexCost();
     if(best_cost < 500.0)
     {
-      if( (fabs(prev_best_cost - best_cost) < 0.05) && (rrts.numVertices > 10))
+      if( (fabs(prev_best_cost - best_cost) < 0.05) && (rrts.numVertices > 100))
+      {
         found_best_path = true;
+        break;
+      }
     }
     //cout<<"n: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
 
-    if(samples_this_loop %5 == 0)
-      prev_best_cost = best_cost;
+    prev_best_cost = best_cost;
 
     ros::Duration dt = ros::Time::now() - start_current_call_back;
     // give some time to the following code as well
-    if(dt.toSec() > 0.6*planner_dt)
+    if((dt.toSec() > 0.5*planner_dt) && (found_best_path && should_send_new_committed_trajectory))
+      break;
+    else if(dt.toSec() > 0.8*planner_dt)
       break;
   }
   cout<<" e: "<< rrts.numVertices<<" -- "<< best_cost<<endl;
+  
   if(found_best_path)
   {
     rrts_status[ginf] = false;
@@ -573,7 +587,7 @@ int Planner::get_plan()
     {
       is_updating_committed_trajectory = true;
       is_updating_rrt_tree = true;
-      if(rrts.switchRoot(max_length_committed_trajectory, committed_trajectory, committed_control) == 0)
+      if(rrts.switchRoot(max_length_committed_trajectory, committed_trajectory, committed_control, committed_direction) == 0)
       {
         cout<<"cannot switch_root: lowerBoundVertex = NULL"<<endl;
         exit(0);
@@ -581,6 +595,7 @@ int Planner::get_plan()
       else
       {
         rrts_status[swr] = true;
+        committed_trajectory_time = ros::Time::now();
         // change sampling region if successful switch_root
         change_goal_region();
         cout<<"switched root successfully"<<endl;
@@ -588,6 +603,7 @@ int Planner::get_plan()
       }
       is_updating_committed_trajectory = false;
       is_updating_rrt_tree = false;
+
       should_send_new_committed_trajectory = false;
       is_first_committed_trajectory = false;
     }
@@ -595,7 +611,7 @@ int Planner::get_plan()
   }
   else 
   {
-    if(rrts.numVertices > 500)
+    if(rrts.numVertices > 1000)
     {
       rrts_status[ginf] = true;
       cout<<"did not find best path: reinitializing"<<endl;
@@ -697,6 +713,12 @@ void Planner::publish_control_view_trajectory()
     tmp.data.push_back((int)(*i));
   }
   control_trajectory_pub.publish(tmp);
+
+  tmp.data.clear();
+  for(list<int>::iterator i=committed_direction.begin(); i!=committed_direction.end(); i++)
+    tmp.data.push_back((int)(*i));
+  direction_trajectory_pub.publish(tmp);
+
 }
 
 void Planner::on_committed_trajectory_pub_timer(const ros::TimerEvent &e)
@@ -713,27 +735,29 @@ void Planner::publish_committed_trajectory()
     return;
 
   nav_msgs::Path traj_msg;
-  traj_msg.header.stamp = ros::Time::now();
+  traj_msg.header.stamp = committed_trajectory_time;
   traj_msg.header.frame_id = "map";
 
   list<float>::iterator committed_control_iter = committed_control.begin();
+  list<int>::iterator committed_direction_iter = committed_direction.begin();
   for (list<double*>::iterator iter = committed_trajectory.begin(); iter != committed_trajectory.end(); iter++) 
   {
     double* stateRef = *iter;
     geometry_msgs::PoseStamped p;
-    p.header.stamp = ros::Time::now();
+    p.header.stamp = committed_trajectory_time;
     p.header.frame_id = "map";
 
     p.pose.position.x = stateRef[0];
     p.pose.position.y = stateRef[1];
     p.pose.position.z = *committed_control_iter;        // send control as the third state
-    p.pose.orientation.w = 1.0;
+    p.pose.orientation.w = *committed_direction_iter;
     traj_msg.poses.push_back(p);
 
     //printf(" [%f, %f, %f]", p.pose.position.x, p.pose.position.y, p.pose.position.z);
     ROS_DEBUG(" [%f, %f, %f]", p.pose.position.x, p.pose.position.y, p.pose.position.z);
 
     committed_control_iter++;
+    committed_direction_iter++;
   }
   //cout<<"pnc_size: "<< committed_trajectory.size() << endl;
 
@@ -799,7 +823,7 @@ void Planner::publish_tree()
         state_t& stateParent = vertexParent.getState();
         list<double*> trajectory;
         list<float> control;
-        if (system.getTrajectory (stateParent, stateCurr, trajectory, control, true)) 
+        if (system.getTrajectory (stateParent, stateCurr, trajectory, control, NULL, true)) 
         {
           int par_num_states = trajectory.size();
           if (par_num_states) 

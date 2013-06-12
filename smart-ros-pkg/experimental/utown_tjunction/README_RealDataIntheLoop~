@@ -1,0 +1,17 @@
+1. roscore
+2. roslaunch utown_tjunction simulation_utown.launch
+3. roslaunch utown_tjunction vehicle_detect.launch
+4. rosbag play vehicle_example.bag Laser/sick_laser:=scan_real -l
+5. roslaunch Launch 5RoutePlannerSpeedAdvisor.launch
+	(It will ask for current station, use 0 if the vehicle is at the starting point)
+	(To instruct the vehicle from start to end point, use Pickup station: 0 to Dropoff station: 1)
+	(To instruct the vehicle to reset to start point, use Pickup station: 1 to Dropoff station: 0)
+6. roslaunch Tjunction_momdp_sarsop Tjunc_momdp_realveh.launch 
+7. rosrun rviz rviz
+
+To view the camera:
+rosrun image_view image_view image:=Cam0/camera/image_raw compressed
+To Plot the Beliefs
+rxplot  /peds_believes/believes[0]/belief_value[0],/peds_believes/believes[0]/belief_value[1],/peds_believes/believes[0]/belief_value[2],/peds_believes/believes[0]/belief_value[3], --period=10 --title="Belief Values of Hidden States" --legend="Safe-Straight","Safe-Turn","Risky-Straight","Risky-Turn"
+To Plot Action
+rxplot  /peds_believes/believes[0]/action, --period=10 --title="Action Command(0:STOP  1:GO)" --legend="Action"

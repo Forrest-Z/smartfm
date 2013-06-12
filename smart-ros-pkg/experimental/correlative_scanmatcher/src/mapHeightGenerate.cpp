@@ -13,8 +13,8 @@
 
 #include <fmutil/fm_math.h>
 #include <fmutil/fm_stopwatch.h>
-#include <cv.h>
-#include <highgui.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
 using namespace std;
 //#include "renderMap.h"
 #include "ReadFileHelper.h"

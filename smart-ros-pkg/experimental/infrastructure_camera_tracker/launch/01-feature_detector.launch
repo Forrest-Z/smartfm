@@ -1,0 +1,5 @@
+<launch>
+  <node name="feature_detector" pkg="infrastructure_camera_tracker" type="feature_detector">
+    <remap from="/feature_detector/image" to="/image_raw"/>
+  </node>
+</launch>

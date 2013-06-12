@@ -5,7 +5,7 @@ image_path: "./launch/road_map.png"
 map_scale: 0.5
 
 #accumulated_track_file to load;
-track_file_path: "./data/ped_track.data"
+track_file_path: "./data/simu_track.data"
 #parameters for track studying purposes, such as classification;
 track_size_thresh: 10
 track_time_thresh: 0.5

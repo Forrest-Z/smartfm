@@ -53,8 +53,8 @@ INCLUDE_DIRECTORIES( "/usr/include/mysql" )
 #rosbuild_add_executable(mysql_check src/mysql_check.cpp)
 #target_link_libraries(mysql_check mysqlpp)
 
-rosbuild_add_executable(pso src/pso.cpp)
-rosbuild_add_openmp_flags(pso)
+#rosbuild_add_executable(pso src/pso.cpp)
+#rosbuild_add_openmp_flags(pso)
 
 #rosbuild_add_executable(readPtsAndMatch src/readPtsAndMatch.cpp src/dbgstream.cpp)
 #target_link_libraries(readPtsAndMatch  ${OpenCV_LIBS} mysqlpp)
@@ -63,7 +63,7 @@ rosbuild_add_openmp_flags(pso)
 #rosbuild_add_executable(readPtsAndMorph src/readPtsAndMorph.cpp src/dbgstream.cpp)
 #target_link_libraries(readPtsAndMorph  ${OpenCV_LIBS})
 
-rosbuild_add_executable(ostream_vector src/ostream_vector.cpp)
+#rosbuild_add_executable(ostream_vector src/ostream_vector.cpp)
 
 #rosbuild_add_executable(renderMap src/renderMap.cpp)
 

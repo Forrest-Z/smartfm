@@ -17,7 +17,12 @@ namespace golfcar_semantics{
 		local_viewer_ = new local_track_show(local_view_size_, local_show_scale_);
 
 		activity_track_processor_ = new track_processor(track_container_, track_size_thresh_, track_time_thresh_, track_length_thresh_);
-		activity_map_learner_ = new AM_learner(image_path_.c_str(), map_scale_, track_container_);
+
+		string road_semantics_file ="./launch/road_semantics_file.yaml";
+		road_semantics_analyzer_ = new road_semantics(road_semantics_file);
+		road_semantics_analyzer_->network_semantics();
+
+		activity_map_learner_ = new AM_learner(image_path_.c_str(), map_scale_, track_container_, road_semantics_analyzer_);
 	}
 
 	void ped_semantics::parameter_init()
@@ -107,6 +112,7 @@ namespace golfcar_semantics{
 		activity_map_learner_->learn_activity_map();
 		activity_map_learner_->view_activity_map();
 
+
 		//analyze moving tracks;
 		//use road maps as prior knowledge;
 		//apply GMM to extract entrances and exits;
@@ -122,12 +128,12 @@ namespace golfcar_semantics{
 			{
 				global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, ext_color, false);
 				local_viewer_->show_update( track_container_->tracks[i].elements[j].local_x, track_container_->tracks[i].elements[j].local_y, prev_point, ext_color);
-				cvWaitKey(10);
+				//cvWaitKey(10);
 			}
 		}
 		global_viewer_->save_image("./data/raw_global.png");
 		local_viewer_->save_image("./data/raw_local.png");
-		cvWaitKey(0);
+		//cvWaitKey(0);
 
 		global_viewer_->clear_image();
 		local_viewer_->clear_image();
@@ -143,6 +149,7 @@ namespace golfcar_semantics{
 				for(size_t j=0; j<track_container_->tracks[i].elements.size(); j++)
 				{
 					global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, CV_RGB(0,0,255), false);
+					//cvWaitKey(10);
 				}
 				global_viewer_->show_update(track_container_->tracks[i].elements.front().x, track_container_->tracks[i].elements.front().y, CV_RGB(255,0,0), true);
 				global_viewer_->show_update(track_container_->tracks[i].elements.back().x, track_container_->tracks[i].elements.back().y, CV_RGB(255,0,0), true);
@@ -151,6 +158,12 @@ namespace golfcar_semantics{
 				local_viewer_->show_update( track_container_->tracks[i].elements.front().local_x, track_container_->tracks[i].elements.front().local_y, prev_point, CV_RGB(0,255,0));
 				prev_point = cvPoint(-1,-1);
 				local_viewer_->show_update( track_container_->tracks[i].elements.back().local_x, track_container_->tracks[i].elements.back().local_y, prev_point, CV_RGB(255,0,0));
+
+				int track_label = -1;
+				//cvWaitKey(100);
+				//printf("please key in the track label as training data");
+				//scanf("%d", &track_label);
+				track_container_->tracks[i].track_label = track_label;
 			}
 			else if(track_container_->tracks[i].ped_activity  == STATIC)
 			{
@@ -164,7 +177,7 @@ namespace golfcar_semantics{
 
 		global_viewer_->save_image("./data/processed_global.png");
 		local_viewer_->save_image("./data/processed_local.png");
-		cvWaitKey(0);
+		//cvWaitKey(0);
 	}
 
 

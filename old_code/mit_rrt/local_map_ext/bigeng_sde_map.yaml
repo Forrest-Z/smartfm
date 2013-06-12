@@ -1,4 +1,5 @@
-image: bigeng_sde_map_0.1_cleaned_path.png
+#image: bigeng_sde_map_0.1_cleaned_path.png
+image: bigeng_sde_map_0.1_empty.png
 resolution: 0.100000
 #origin: [-231.200000, -154.400000, 0.000000]
 origin: [0.0, 0.0, 0.0]
