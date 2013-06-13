@@ -309,6 +309,39 @@ void PurePursuit::trajCallBack(const nav_msgs::Path::ConstPtr &traj)
 
     ROS_INFO("got new traj, size=%d, gear_change=%d from %s",
              (int) traj->poses.size(), gear_change, last_bwd_ ? "bwd" : "fwd");
+
+    // for debuging, given rrt plan seems very weird
+    if(trajectory_.poses.size() < 1)
+        return;
+    double dist = 0.0;
+    double x = trajectory_.poses[0].pose.position.x;
+    double y = trajectory_.poses[0].pose.position.y;
+    double r = trajectory_.poses[0].pose.position.z;
+    bwd = is_segment_backward(0);
+    ROS_INFO("from (%.2lf,%.2lf), r=%.2lf, %s", x, y, r, bwd ? "bwd" : "fwd");
+    for(unsigned int i=1; i<trajectory_.poses.size(); i++)
+    {
+        dist += get_distance(trajectory_.poses[i-1].pose.position.x,
+                             trajectory_.poses[i-1].pose.position.y,
+                             trajectory_.poses[i].pose.position.x,
+                             trajectory_.poses[i].pose.position.y);
+        if((bwd != is_segment_backward(i)) ||
+           (r != trajectory_.poses[i].pose.position.z))
+        {
+            x = trajectory_.poses[i].pose.position.x;
+            y = trajectory_.poses[i].pose.position.y;
+            bwd = is_segment_backward(i);
+            r = trajectory_.poses[i].pose.position.z;
+            ROS_INFO("to (%.2lf,%.2lf), dist=%.2lf", x, y, dist);
+            ROS_INFO("from (%.2lf,%.2lf), r=%.2lf, %s",
+                     x, y, r, bwd ? "bwd" : "fwd");
+            dist = 0.0;
+        }
+    }
+    int i = trajectory_.poses.size()-1;
+    ROS_INFO("end, to (%.2lf,%.2lf), dist=%.2lf",
+             trajectory_.poses[i].pose.position.x,
+             trajectory_.poses[i].pose.position.y, dist);
 }
 
 void PurePursuit::cmdVelCallBack(const geometry_msgs::Twist &cmd_vel)

@@ -1,8 +1,8 @@
 #include <ros/ros.h>
 #include <fmutil/fm_math.h>
 #include <fmutil/fm_stopwatch.h>
-#include <cv.h>
-#include <highgui.h>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/highgui/highgui.hpp>
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/point_cloud_conversion.h>
 #include <geometry_msgs/Pose.h>

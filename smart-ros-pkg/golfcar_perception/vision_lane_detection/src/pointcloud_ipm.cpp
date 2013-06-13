@@ -34,9 +34,9 @@ namespace golfcar_vision{
 		private_nh_.param("publish_angle_thresh",   publish_angle_thresh_,  5.0/180.0*M_PI);
 		private_nh_.param("visualization_flag",     visualization_flag_,    false);
 		private_nh_.param("odom_control",     		odom_control_,   		 false);
-
+		private_nh_.param("base_frame", 		base_frame_, std::string("base_link"));
 		odom_frame_ = "odom";
-		base_frame_ = "base_link";
+		
 		private_nh_.param("destination_frame_id", dest_frame_id_, std::string("base_link"));
 		cam_sub_ = it_.subscribeCamera("camera_front/image_raw", 1, &pointcloud_ipm::ImageCallBack, this);
 		ipm_pub_ = it_.advertise("/camera_front/image_ipm", 1);
