@@ -4,6 +4,7 @@ lib
 msg_gen
 srv_gen
 cmake_install.cmake
+nbproject
 
 *.o
 *.pyc
