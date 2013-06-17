@@ -101,13 +101,13 @@ public:
     
     bool get_center(double tar_x, double tar_y,
                     double ori_x, double ori_y, double inv_R,
-                    double center[2]);
+                    double center[2]) const;
     
     double get_dist_to_go(int segment, double cur_x, double cur_y);
     
-    double get_distance(double x1, double y1, double x2, double y2);
+    double get_distance( double x1, double y1, double x2, double y2) const;
     
-    double get_inv_R(double u);
+    double get_inv_R ( const double u) const;
     
     void get_projection(double tar_x, double tar_y,
                         double ori_x, double ori_y,
@@ -129,9 +129,9 @@ public:
                                  double cen1_x, double cen1_y, double r1,
                                  double cen2_x, double cen2_y, double r2);
     
-    bool is_segment_backward(int segment);
+    bool is_segment_backward( const int segment) const;
     
-    bool need_gear_switch_later(int segment);
+    bool need_gear_switch_later( const int segment) const;
     
     // --------------------------------------------------------------------------------------------
     // OTHER FUNCTIONS: PUBLISHING-RELATED METHODS
@@ -220,7 +220,7 @@ PurePursuit::PurePursuit() {
     
     last_traj_time_ = ros::Time::now();
     
-    // Sets up the control loop timer
+    // Sets up the control loop timer, which is called 20 times per second
     
     timer_ = n.createTimer(ros::Duration(0.05), &PurePursuit::controlLoop, this);
     
@@ -312,6 +312,8 @@ void PurePursuit::controlLoop( const ros::TimerEvent& timer_event) {
 
         goal_dist = get_dist_to_go( segment, cur_x, cur_y);
         
+        ROS_DEBUG( "Goal_dist = %lf will be passed to speed_advisor.", goal_dist);
+        
         // Computes boolean flag indicating whether there will be a change of gears
         
         want_exact_stop = need_gear_switch_later(segment);
@@ -324,9 +326,9 @@ void PurePursuit::controlLoop( const ros::TimerEvent& timer_event) {
             
         }
         
-        ROS_DEBUG( "Goal_dist = %lf will be passed to speed_advisor.", goal_dist);
-        
         // ////////////////////////////////////////////////////////////////////////////////////////
+        
+        // Computes the steering command from the current segment and state
         
         cmd_steer = get_steering( segment, cur_x, cur_y, cur_yaw, emergency);
         
@@ -601,6 +603,425 @@ void PurePursuit::trajCallBack( const nav_msgs::Path::ConstPtr &traj) {
 // OTHER FUNCTIONS: GETTERS AND INQUIRERS
 // ------------------------------------------------------------------------------------------------
 
+bool PurePursuit::get_center( double tar_x, double tar_y,
+                              double ori_x, double ori_y, 
+                              double inv_R,
+                              double center[2]) const {
+    
+    double segment_length = get_distance( ori_x, ori_y, tar_x, tar_y);
+    
+    double hypotenuse_squared = 1.0 / (inv_R * inv_R) 
+                              - (segment_length / 2.0) * (segment_length / 2.0);
+    
+    if ( hypotenuse_squared < 0.0 ) {
+        
+        ROS_ERROR( "R^2 - dist^2 / 4 = %lf < 0, x1 = %lf, y1 = %lf, x2 = %lf, y2 = %lf, inv_R = %lf", 
+                   hypotenuse_squared, ori_x, ori_y, tar_x, tar_y, inv_R);
+        
+        return false;
+        
+    }
+    
+    double hypotenuse_dir = inv_R > 0.0 ? -sqrt(hypotenuse_squared) : sqrt(hypotenuse_squared);
+    
+    double n_hat [] = { tar_y - ori_y, ori_x - tar_x};  // vector obtained by rotating vector from 
+                                                        // origin to target 90 degrees clockwise
+    
+    double dx = hypotenuse_dir * n_hat[0] / segment_length;
+    double dy = hypotenuse_dir * n_hat[1] / segment_length;
+    
+    double mid_point_x = (tar_x + ori_x) / 2.0;
+    double mid_point_y = (tar_y + ori_y) / 2.0;
+    
+    center[0] = mid_point_x + dx;
+    center[1] = mid_point_y + dy;
+    
+    return true;
+    
+}
+
+double PurePursuit::get_distance( double x1, double y1, double x2, double y2) const {
+    
+    return sqrt( (x2-x1) * (x2-x1) + (y2-y1) * (y2-y1) );
+    
+}
+
+double PurePursuit::get_inv_R( const double u) const {
+    
+    return ( abs(u) > 1.0E-6 ? 1.0 / u : 0.0 );
+    
+}
+
+double PurePursuit::get_steering( int segment, 
+                                  double cur_x, 
+                                  double cur_y, 
+                                  double cur_yaw, 
+                                  bool &emergency) {
+    
+    // Carries sanity checks and terminates procedures if any of them fail
+    
+    if ( segment < 0 ) {
+        
+        double delta_t = ( ros::Time::now() - last_segment_complaint_ ).toSec();
+        
+        if ( delta_t > max_timer_complaint_ ) {
+            
+            ROS_WARN("Segment index is negative.");
+            
+            last_segment_complaint_ = ros::Time::now();
+            
+        }
+        
+        emergency = true;
+        
+        return 0.0;
+        
+    }
+    
+    if ( trajectory_.poses.size() < segment + 1 ) {
+        
+        ROS_WARN( "Not possible: Trajectory size = %u, number of segments = %u.", 
+                  (unsigned int) trajectory_.poses.size(), (unsigned int) segment);
+        
+        emergency = true;
+        
+        return 0.0;
+        
+    }
+    
+    // Computes index of look-ahead segment (i.e. the segment we are following) and 
+    // throws error if it is invalid
+    
+    double L = look_ahead_;
+    
+    int lookahead_segment = find_lookahead_segment( segment, cur_x, cur_y, L);
+    
+    if ( lookahead_segment < 0 ) {
+        
+        ROS_WARN("Lookahead segment index is negative.");
+        
+        emergency = true;
+        
+        return 0.0;
+        
+    }
+    
+    // Computes endpoint states of look-ahead segment
+    
+    double tar_x = trajectory_.poses[lookahead_segment+1].pose.position.x;
+    double tar_y = trajectory_.poses[lookahead_segment+1].pose.position.y;
+    
+    double ori_x = trajectory_.poses[lookahead_segment].pose.position.x;
+    double ori_y = trajectory_.poses[lookahead_segment].pose.position.y;
+    
+    double inv_R = get_inv_R( trajectory_.poses[lookahead_segment].pose.position.z);
+    
+    double center[2];
+    
+    // If look-ahead segment is on a turn then compute center of arc
+    
+    if ( inv_R != 0.0 ) {
+        
+        if ( !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center) ) { inv_R = 0.0; }
+        
+    }
+    
+    // For all the calculations, please refer to Ollero & Heredia, IROS'95
+    
+    double a, b, c, x, r, theta, gamma;
+
+    if ( inv_R == 0.0 ) {
+        
+        a = tar_y - ori_y;
+        b = ori_x - tar_x;
+        
+        c = (tar_x - ori_x) * ori_y + ori_x * (ori_y - tar_y);
+        
+        r = 0.0;
+        
+        x = ( a * cur_x + b * cur_y + c ) / sqrt( a * a + b * b );
+        
+        theta = cur_yaw - atan2(tar_y - ori_y, tar_x - ori_x);
+        
+    }
+    
+    else {
+        
+        if ( inv_R > 0.0 ) {
+            
+            r = get_distance(center[0], center[1], cur_x, cur_y) - abs(1.0/inv_R);
+            x = (inv_R*(r*r + L*L) + 2.0*r)/(2.0*(1.0 + inv_R*r));
+            theta = cur_yaw - atan2(cur_x - center[0], center[1] - cur_y);
+        }
+        
+        else {
+            
+            r = -get_distance(center[0], center[1], cur_x, cur_y) + abs(1.0/inv_R);
+            x = (inv_R*(r*r + L*L) + 2.0*r)/(2.0*(1.0 + inv_R*r));
+            theta = cur_yaw - atan2(-cur_x + center[0], cur_y - center[1]);
+            
+        }
+        
+    }
+    
+    if( is_segment_backward(segment) ) { theta += M_PI; }
+    
+    while (theta > +M_PI) { theta -= 2 * M_PI; }
+    
+    while (theta < -M_PI) { theta += 2 * M_PI; }
+    
+    if ( L < abs(x) ) {
+        
+        ROS_WARN("Too off from trajectory, L = %lf < abs( x = %lf ).", L, x);
+        
+        emergency = true;
+        
+        return 0.0;
+        
+    }
+    
+    gamma = 2.0 / ( L * L ) * ( x * cos(theta) - sqrt( L * L - x * x ) * sin(theta) );
+    
+    double steering;
+    
+    if ( is_segment_backward(segment) ) {
+        
+        steering = -atan( gamma * car_length_);   
+        
+    }
+    
+    else {
+        
+        steering = +atan( gamma * car_length_);
+        
+    }
+    
+    // Publishes the circular segments by pure pursuit
+    
+    set_pp_segments_rviz( cur_x, cur_y, cur_yaw, gamma, is_segment_backward(segment));
+    
+    // Publishes the reference segments (lookahead segment) for pure pursuit
+    
+    set_ref_segments_rviz(lookahead_segment);
+    
+    if ( isnan(steering) ) {
+        
+        ROS_WARN("steering isnan, so commanding just 0!");
+        
+        emergency = true;
+        
+        steering = 0.0;
+        
+    }
+    
+    else if ( steering > +max_steering_ ) { steering = max_steering_; }
+    
+    else if ( steering < -max_steering_ ) { steering = -max_steering_; }
+    
+    return steering;
+    
+}
+
+int PurePursuit::find_lookahead_segment( int segment, double cur_x, double cur_y, double L) {
+    
+    // Carries sanity check
+    
+    if( ( segment < 0 ) || ( trajectory_.poses.size() < segment + 2 ) ) { return -1; }
+    
+    // Declares and initializes several temp variables
+    
+    bool backward_driving = is_segment_backward(on_segment);
+    
+    double tar_x, tar_y, ori_x, ori_y, inv_R, center[2];
+    
+    // Iterates through states along trajectory
+    
+    for ( unsigned int curr_segment = segment; 
+            
+          curr_segment < trajectory_.poses.size() - 1; curr_segment++) {
+        
+        // If direction of motion changes then terminate iteration
+        
+        if ( backward_driving != is_segment_backward(curr_segment) ) { break; }
+        
+        // Compute endpoint states of current segment
+        
+        tar_x = trajectory_.poses[curr_segment+1].pose.position.x;
+        tar_y = trajectory_.poses[curr_segment+1].pose.position.y;
+        
+        ori_x = trajectory_.poses[curr_segment].pose.position.x;
+        ori_y = trajectory_.poses[curr_segment].pose.position.y;
+        
+        // If endpoints are too close to each other then move on to next segment
+        
+        if ( get_distance( tar_x, tar_y, ori_x, ori_y) < neglect_distance_) { continue; }
+        
+        // Computes inverse of the turning radius of current segment
+        // (note that computation is robust and returns zero if radius is zero)
+        
+        inv_R = get_inv_R( trajectory_.poses[segment].pose.position.z);
+        
+        // If current segment is on a turn then compute center of arc
+        
+        if ( inv_R != 0.0 ) {
+            
+            if ( !get_center( tar_x, tar_y, ori_x, ori_y, inv_R, center) ) { inv_R = 0.0; }
+            
+        }
+        
+        // Considers the intersection of a circle 
+        // (centered at current pose, radius is look_ahead_) with ...
+        
+        if ( inv_R == 0.0 ) // with a line segment
+        {
+            if ( intersection_circle_line( tar_x, tar_y, ori_x, ori_y, cur_x, cur_y, look_ahead_) )
+            {
+                return curr_segment;
+            }
+        }
+        
+        else if ( inv_R > 0.0 ) // with an arc 1/inv_R > 0
+        {
+            if ( intersection_circle_arc( tar_x, tar_y, ori_x, ori_y, center[0], center[1], 
+                                          +1.0 / inv_R, cur_x, cur_y, look_ahead_) )
+            {
+                return curr_segment;
+            }
+        }
+        
+        else // with an arc 1/inv_R < 0
+        {
+            if ( intersection_circle_arc ( ori_x, ori_y, tar_x, tar_y, center[0], center[1], 
+                                           -1.0 / inv_R, cur_x, cur_y, look_ahead_) )
+            {
+                return curr_segment;
+            }
+        }
+        
+    }
+    
+    // If this line is reached then lookahead segment was not found so return original segment
+    
+    return segment;
+    
+}
+
+// on circle1, (ori_x, ori_y) to (tar_x, tar_y) defines the circular trajectory
+// circle2 is centered at current (x, y) with the radius = look_ahead_
+// if any of the intersection points between two circles are on the circular trajectory,
+// that is the lookahead point we use in pure pursuit strategy
+bool PurePursuit::intersection_circle_arc( double tar_x, double tar_y,
+                                           double ori_x, double ori_y,
+                                           double cen1_x, double cen1_y, double r1,
+                                           double cen2_x, double cen2_y, double r2) {
+    
+    // http://paulbourke.net/geometry/2circle
+
+    double a, d, dx, dy, h, hx, hy;
+    double x2, y2, xi1, yi1, xi2, yi2;
+
+    // dx and dy are distances between the circle centers
+    dx  = cen2_x - cen1_x;
+    dy  = cen2_y - cen1_y;
+    d   = sqrt(dx*dx + dy*dy);
+
+    // check for solvability
+    if ( d >= r1 + r2 )
+    {
+        // circles do not intersect, far each other
+        // '=' case not considered as an intersection since we want an 'arc'
+        return false;
+    }
+    
+    if( d <= fabs(r1 - r2) )
+    {
+        // one circle is contained in the other
+        // '=' case not considered as an intersection since we want an 'arc'
+        if(r1 == r2) // circles overlap, practically not happening
+            return true;
+        else
+            return false;
+    }
+
+    // (x2, y2) is the point where
+    // the line (through the circle intersection points)
+    // crosses the line (between the circle centers)
+    a = (r1*r1 - r2*r2 + d*d) / (2.0*d); // the distance from circle1 to (x2, y2)
+    x2 = cen1_x + dx*a/d;
+    y2 = cen1_y + dy*a/d;
+
+    // the distance from (x2, y2) to either of the intersection points
+    h = sqrt(r1*r1 - a*a);
+
+    // the offsets of the intersection points from (x2, y2)
+    hx = -dy*h/d;
+    hy =  dx*h/d;
+
+    // intersection points
+    xi1 = x2 + hx; xi2 = x2 - hx;
+    yi1 = y2 + hy; yi2 = y2 - hy;
+
+    // determine the trajectory arc
+    double arg_from     = atan2( ori_y - cen1_y, ori_x - cen1_x);
+    double arg_to       = atan2( tar_y - cen1_y, tar_x - cen1_x);
+    
+    while ( arg_to < arg_from ) { arg_to += 2 * M_PI; }
+    
+    // determine the args from intersection points
+    // check whether intersection points are on the trajectory arc
+    
+    double arg1 = atan2( yi1 - cen1_y, xi1 - cen1_x);
+    
+    while (arg1 < arg_from) { arg1 += 2 * M_PI; }
+    
+    if (arg1 < arg_to) { return true; }
+    
+    double arg2 = atan2( yi2 - cen1_y, xi2 - cen1_x);
+    
+    while (arg2 < arg_from) { arg2 += 2 * M_PI; }
+    
+    if (arg2 < arg_to) { return true; }
+    
+    return false;
+    
+}
+
+// check whether the line segment contains the lookahead point 
+// a circle centered at current (x, y) with the radius = look_ahead_
+bool PurePursuit::intersection_circle_line( double tar_x, double tar_y,
+                                            double ori_x, double ori_y,
+                                            double cen_x, double cen_y, double r) {
+    
+    // http://stackoverflow.com/questions/1073336/circle-line-collision-detection
+
+    double dx = tar_x - ori_x;
+    double dy = tar_y - ori_y;
+    
+    double fx = ori_x - cen_x;
+    double fy = ori_y - cen_y;
+
+    double a = dx * dx + dy * dy;
+    
+    double b = 2.0 * (fx * dx + fy * dy);
+    
+    double c = fx * fx + fy * fy - r * r;
+    
+    double discriminant = b * b - 4.0 * a * c;
+    
+    if ( discriminant < 0.0 ) { return false; }
+    
+    double root_1 = ( -b + sqrt(discriminant) ) / ( 2.0 * a);
+    
+    if ( root_1 >= 0.0 && root_1 <= 1.0 ) { return true; }
+    
+    double root_2 = ( -b - sqrt(discriminant) ) / ( 2.0 * a);
+    
+    if ( root_2 >= 0.0 && root_2 <= 1.0 ) { return true; }
+    
+    return false;
+    
+}
+
 bool PurePursuit::is_segment_backward( const int segment) const {
     
     return ( trajectory_.poses[segment].pose.orientation.w < 0.0 ? true : false );
@@ -613,13 +1034,11 @@ bool PurePursuit::need_gear_switch_later( const int segment) const {
     
     bool backward_driving = is_segment_backward(segment);
     
-    for ( unsigned int on_segment = segment; 
+    for ( unsigned int curr_segment = segment; 
             
-          on_segment < trajectory_.poses.size() - 1; on_segment++) {
+          curr_segment < trajectory_.poses.size() - 1; curr_segment++) {
         
-        bool backward = is_segment_backward(on_segment);
-        
-        if ( backward != backward_driving ) { return true; }
+        if ( backward_driving != is_segment_backward(curr_segment) ) { return true; }
         
     }
     
@@ -630,8 +1049,6 @@ bool PurePursuit::need_gear_switch_later( const int segment) const {
 // ------------------------------------------------------------------------------------------------
 // OTHER FUNCTIONS: PUBLISHING-RELATED METHODS
 // ------------------------------------------------------------------------------------------------
-
-
 
 void PurePursuit::set_pp_segments_rviz(double cur_x, double cur_y,
                                        double cur_yaw, double gamma, bool backward)
@@ -742,58 +1159,6 @@ void PurePursuit::set_ref_segments_rviz(int segment)
 
         ref_segments_.poses.push_back(point);
     }
-}
-
-
-
-
-
-
-
-double PurePursuit::get_distance(double x1, double y1, double x2, double y2)
-{
-    return (sqrt((x2-x1)*(x2-x1) + (y2-y1)*(y2-y1)));
-}
-
-bool PurePursuit::get_center(double tar_x, double tar_y,
-                             double ori_x, double ori_y, double inv_R,
-                             double center[2])
-{
-    double a, b, x, y, dl, dx, dy, dist1, dist2;
-    x = (tar_x + ori_x)/2.0;
-    y = (tar_y + ori_y)/2.0;
-    dist1 = get_distance(ori_x, ori_y, tar_x, tar_y);
-    double sq = 1.0/inv_R/inv_R - dist1*dist1/4.0;
-    if(sq < 0.0) {
-        ROS_ERROR("R*R-dist*dist/4=%lf < 0, x1=%lf, y1=%lf, x2=%lf, y2=%lf, inv_R=%lf",
-                  sq, ori_x, ori_y, tar_x, tar_y, inv_R);
-        return false;
-    }
-
-    if(inv_R > 0.0)
-        dist2 = sqrt(sq);
-    else
-        dist2 = -sqrt(sq);
-    a = tar_y - ori_y;
-    b = ori_x - tar_x;
-
-    dl = sqrt(a*a + b*b);
-    dx = -a*dist2/dl;
-    dy = -b*dist2/dl;
-
-    center[0] = x + dx;
-    center[1] = y + dy;
-
-    return true;
-}
-
-double PurePursuit::get_inv_R(double u)
-{
-    double inv_R = 0.0;
-    if(abs(u) > 1.0e-6)
-        inv_R = 1.0/u;
-
-    return inv_R;
 }
 
 bool PurePursuit::btwn_points(double tar_x, double tar_y,
@@ -942,72 +1307,6 @@ int PurePursuit::get_segment(double cur_x, double cur_y)
     return segment;
 }
 
-int PurePursuit::find_lookahead_segment(int segment, double cur_x, double cur_y, double L)
-{
-    if(segment < 0)
-        return -1;
-    if((int) trajectory_.poses.size() < 2)
-        return -1;
-    if((int) trajectory_.poses.size() < segment+2)
-        return -1;
-
-    double tar_x, tar_y, ori_x, ori_y, inv_R;
-    double center[2];
-    int on_segment = segment;
-    bool backward_driving = is_segment_backward(on_segment);
-
-    while((int) trajectory_.poses.size() > on_segment+1)
-    {
-        bool backward = is_segment_backward(on_segment);
-        if(backward != backward_driving)
-            break;
-
-        tar_x = trajectory_.poses[on_segment+1].pose.position.x;
-        tar_y = trajectory_.poses[on_segment+1].pose.position.y;
-        ori_x = trajectory_.poses[on_segment].pose.position.x;
-        ori_y = trajectory_.poses[on_segment].pose.position.y;
-
-        // sometimes trajectory points can collapse
-        if(get_distance(tar_x, tar_y, ori_x, ori_y) < neglect_distance_)
-            on_segment++;
-
-        inv_R = get_inv_R(trajectory_.poses[segment].pose.position.z);
-        if(inv_R != 0.0 && !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center))
-            inv_R = 0.0;
-
-        // consider the intersection of a circle
-        // (centered at current pose, radius is look_ahead_) with ...
-        if(inv_R == 0.0) // with a line segment
-        {
-            if(intersection_circle_line(tar_x, tar_y, ori_x, ori_y, cur_x, cur_y, look_ahead_))
-            {
-                return on_segment;
-            }
-        }
-        else if(inv_R > 0.0) // with an arc 1/inv_R > 0
-        {
-            if(intersection_circle_arc(tar_x, tar_y, ori_x, ori_y, center[0], center[1],
-                                       1.0/inv_R, cur_x, cur_y, look_ahead_))
-            {
-                return on_segment;
-            }
-        }
-        else // with an arc 1/inv_R < 0
-        {
-            if(intersection_circle_arc(ori_x, ori_y, tar_x, tar_y, center[0], center[1],
-                                       -1.0/inv_R, cur_x, cur_y, look_ahead_))
-            {
-                return on_segment;
-            }
-        }
-
-        on_segment++;
-    }
-
-    // if not found, use the current segment
-    return segment;
-}
-
 // this function assumes that trajectory points are reasonably dense
 // if the trajectory points are very sparse like very few points in the arc,
 // this function needs to be changed
@@ -1054,251 +1353,6 @@ double PurePursuit::get_dist_to_go(int segment, double cur_x, double cur_y)
 
     return dist_to_go;
 }
-
-double PurePursuit::get_steering(int segment, double cur_x, double cur_y,
-                                 double cur_yaw, bool &emergency)
-{
-    ros::Time time_now = ros::Time::now();
-    ros::Duration time_diff;
-    double dt;
-
-    if(segment < 0)
-    {
-        time_diff = time_now - last_segment_complaint_;
-        dt = time_diff.toSec();
-        if(dt > max_timer_complaint_)
-        {
-            ROS_WARN("cannot determine, segment = -1");
-            last_segment_complaint_ = time_now;
-        }
-        emergency = true;
-        return 0.0;
-    }
-    if((int) trajectory_.poses.size() < segment+1)
-    {
-        ROS_WARN("trajectory(%d), segment(%d), not possible!", (int) trajectory_.poses.size(), segment);
-        emergency = true;
-        return 0.0;
-    }
-
-    double L = look_ahead_;
-    int lookahead_segment = find_lookahead_segment(segment, cur_x, cur_y, L);
-    if(lookahead_segment < 0)
-    {
-        ROS_WARN("cannot determine, lookahead_segment = -1");
-        emergency = true;
-        return 0.0;
-    }
-
-    double tar_x = trajectory_.poses[lookahead_segment+1].pose.position.x;
-    double tar_y = trajectory_.poses[lookahead_segment+1].pose.position.y;
-    double ori_x = trajectory_.poses[lookahead_segment].pose.position.x;
-    double ori_y = trajectory_.poses[lookahead_segment].pose.position.y;
-    double inv_R = get_inv_R(trajectory_.poses[lookahead_segment].pose.position.z);
-    double center[2];
-    if(inv_R != 0.0 && !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center))
-        inv_R = 0.0;
-
-    double a, b, c, x, r, theta, gamma;
-
-    if(inv_R == 0.0)
-    {
-        a = tar_y - ori_y;
-        b = ori_x - tar_x;
-        c = (tar_x - ori_x)*ori_y + ori_x*(ori_y - tar_y);
-        r = 0.0;
-        x = (a*cur_x + b*cur_y + c)/sqrt(a*a + b*b);
-        theta = cur_yaw - atan2(tar_y - ori_y, tar_x - ori_x);
-    }
-    else
-    {
-        if(inv_R > 0.0)
-        {
-            r = get_distance(center[0], center[1], cur_x, cur_y) - abs(1.0/inv_R);
-            x = (inv_R*(r*r + L*L) + 2.0*r)/(2.0*(1.0 + inv_R*r));
-            theta = cur_yaw - atan2(cur_x - center[0], center[1] - cur_y);
-        }
-        else
-        {
-            r = -get_distance(center[0], center[1], cur_x, cur_y) + abs(1.0/inv_R);
-            x = (inv_R*(r*r + L*L) + 2.0*r)/(2.0*(1.0 + inv_R*r));
-            theta = cur_yaw - atan2(-cur_x + center[0], cur_y - center[1]);
-        }
-    }
-
-    if(is_segment_backward(segment))
-        theta += M_PI;
-
-    while(theta > M_PI)
-        theta -= 2*M_PI;
-    while(theta < -M_PI)
-        theta += 2*M_PI;
-
-    if(L < abs(x))
-    {
-        ROS_WARN("too off from traj, L=%lf < abs(x=%lf)", L, x);
-        emergency = true;
-        return 0.0;
-    }
-
-    // for all the calculations, refer IROS'95 by Ollero and Heredia
-    gamma = 2.0/(L*L)*(x*cos(theta) - sqrt(L*L - x*x)*sin(theta));
-    double steering;
-    if(is_segment_backward(segment))
-        steering = -atan(gamma * car_length_);
-    else
-        steering = atan(gamma * car_length_);
-    ROS_DEBUG("%ssteering(%s), on_segment=%d lookahead_seg=%d:(%lf,%lf)->(%lf,%lf) at x=%lf y=%lf yaw=%lf",
-              emergency ? "emergency! " : "",
-              is_segment_backward(segment) ? "bwd" : "fwd", segment, lookahead_segment,
-              ori_x, ori_y, tar_x, tar_y, cur_x, cur_y, cur_yaw);
-    ROS_DEBUG("inv_R=%lf L=%lf r=%lf x=%lf theta=%lf gamma=%lf steering=%lf",
-              inv_R, L, r, x, theta, gamma, steering);
-
-    // the circular segments by pure pursuit
-    set_pp_segments_rviz(cur_x, cur_y, cur_yaw, gamma, is_segment_backward(segment));
-    // the ref segments (lookahead segment) for pure pursuit
-    set_ref_segments_rviz(lookahead_segment);
-
-    if(isnan(steering))
-    {
-        ROS_WARN("steering isnan, so commanding just 0!");
-        emergency = true;
-        steering = 0.0;
-    }
-    else if(steering > max_steering_)
-        steering = max_steering_;
-    else if(steering < -max_steering_)
-        steering = -max_steering_;
-
-    return steering;
-}
-
-// check whether the line segment contains the lookahead point
-// a circle centered at current (x, y) with the radius = look_ahead_
-bool PurePursuit::intersection_circle_line(double tar_x, double tar_y,
-                                           double ori_x, double ori_y,
-                                           double cen_x, double cen_y, double r)
-{
-    // http://stackoverflow.com/questions/1073336/circle-line-collision-detection
-
-    double dx = tar_x - ori_x;
-    double dy = tar_y - ori_y;
-    double fx = ori_x - cen_x;
-    double fy = ori_y - cen_y;
-
-    double a = dx*dx + dy*dy;
-    double b = 2.0*(fx*dx + fy*dy);
-    double c = fx*fx + fy*fy - r*r;
-
-    double discriminant = b*b - 4.0*a*c;
-    if(discriminant < 0.0)
-    {
-/*
-        ROS_DEBUG("No intersection, D(%lf)<0, ori:x=%lf y=%lf, tar:x=%lf y=%lf, current:x=%lf y=%lf",
-                  discriminant, ori_x, ori_y, tar_x, tar_y, cen_x, cen_y);
-*/
-        return false;
-    }
-
-    double t1 = (-b + sqrt(discriminant)) / (2.0*a);
-    if(t1 >= 0.0 && t1 <= 1.0)
-    {
-        return true;
-    }
-    double t2 = (-b - sqrt(discriminant)) / (2.0*a);
-    if(t2 >= 0.0 && t2 <= 1.0)
-    {
-        return true;
-    }
-
-/*
-    ROS_DEBUG("No intersection, t1=%lf, t2=%lf, ori:x=%lf y=%lf, tar:x=%lf y=%lf, current:x=%lf y=%lf",
-              t1, t2, ori_x, ori_y, tar_x, tar_y, cen_x, cen_y);
-*/
-    return false;
-}
-
-// on circle1, (ori_x, ori_y) to (tar_x, tar_y) defines the circular trajectory
-// circle2 is centered at current (x, y) with the radius = look_ahead_
-// if any of the intersection points between two circles are on the circular trajectory,
-// that is the lookahead point we use in pure pursuit strategy
-bool PurePursuit::intersection_circle_arc(double tar_x, double tar_y,
-                                          double ori_x, double ori_y,
-                                          double cen1_x, double cen1_y, double r1,
-                                          double cen2_x, double cen2_y, double r2)
-{
-    // http://paulbourke.net/geometry/2circle
-
-    double a, d, dx, dy, h, hx, hy;
-    double x2, y2, xi1, yi1, xi2, yi2;
-
-    // dx and dy are distances between the circle centers
-    dx = cen2_x - cen1_x;
-    dy = cen2_y - cen1_y;
-    d = sqrt(dx*dx + dy*dy);
-
-    // check for solvability
-    if(d >= r1 + r2)
-    {
-        // circles do not intersect, far each other
-        // '=' case not considered as an intersection since we want an 'arc'
-        return false;
-    }
-    if(d <= fabs(r1 - r2))
-    {
-        // one circle is contained in the other
-        // '=' case not considered as an intersection since we want an 'arc'
-        if(r1 == r2) // circles overlap, practically not happening
-            return true;
-        else
-            return false;
-    }
-
-    // (x2, y2) is the point where
-    // the line (through the circle intersection points)
-    // crosses the line (between the circle centers)
-    a = (r1*r1 - r2*r2 + d*d) / (2.0*d); // the distance from circle1 to (x2, y2)
-    x2 = cen1_x + dx*a/d;
-    y2 = cen1_y + dy*a/d;
-
-    // the distance from (x2, y2) to either of the intersection points
-    h = sqrt(r1*r1 - a*a);
-
-    // the offsets of the intersection points from (x2, y2)
-    hx = -dy*h/d;
-    hy = dx*h/d;
-
-    // intersection points
-    xi1 = x2 + hx; xi2 = x2 - hx;
-    yi1 = y2 + hy; yi2 = y2 - hy;
-
-    // determine the trajectory arc
-    double arg_from = atan2(ori_y - cen1_y, ori_x - cen1_x);
-    double arg_to = atan2(tar_y - cen1_y, tar_x - cen1_x);
-    while(arg_to < arg_from)
-        arg_to += 2*M_PI;
-
-    // determine the args from intersection points
-    // check whether intersection points are on the trajectory arc
-    double arg1 = atan2(yi1 - cen1_y, xi1 - cen1_x);
-    while(arg1 < arg_from)
-        arg1 += 2*M_PI;
-    if(arg1 < arg_to)
-        return true;
-    double arg2 = atan2(yi2 - cen1_y, xi2 - cen1_x);
-    while(arg2 < arg_from)
-        arg2 += 2*M_PI;
-    if(arg2 < arg_to)
-        return true;
-
-/*
-    ROS_DEBUG("No intersection, r=%lf ori:x=%lf y=%lf, tar:x=%lf y=%lf, current:x=%lf y=%lf lookahead=%lf",
-              r1, ori_x, ori_y, tar_x, tar_y, cen2_x, cen2_y, r2);
-*/
-    return false;
-}
-
 
 int main(int argc, char **argv)
 {
