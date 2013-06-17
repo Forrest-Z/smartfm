@@ -43,7 +43,7 @@ private:
     
     ros::Timer          timer_;
     
-    tf::TransformListener tf_;
+    tf::TransformListener base_link_to_odom_listener;
     
     string robot_frame_id_, coord_frame_id_;
     
@@ -236,48 +236,49 @@ void PurePursuit::cmdVelCallBack( const geometry_msgs::Twist& cmd_vel) {
     
 }
 
-void PurePursuit::controlLoop( const ros::TimerEvent& timerevent) {
+void PurePursuit::controlLoop( const ros::TimerEvent& timer_event) {
     
     // Measures age of trajectory (currently being followed, I assume)
     
-    ros::Time time_now          = ros::Time::now();
+    ros::Time time_now      = ros::Time::now();
     
-    ros::Duration time_diff     = time_now - trajectory_.header.stamp;
+    double traj_age         = ( time_now - trajectory_.header.stamp ).toSec();
     
-    double dt                   = time_diff.toSec();
+    // Declares and initializes several temp variables
     
     double cmd_steer, goal_dist;
 
     bool emergency          = false;
-    bool path_exist         = false;
-    bool backward_driving   = last_bwd_;
+    
     bool want_exact_stop    = true;
     
-    geometry_msgs::Twist cmd_ctrl;
+    bool path_exist         = false;
     
-    pnc_msgs::move_status move_status;
-
+    bool backward_driving   = last_bwd_;
+    
     tf::Stamped<tf::Pose> pose;
+    
+    // FOR DEBUGGING PURPOSES /////////////////////////////////////////////////////////////////
     
     pp_segments_.poses.clear();
     
     ref_segments_.poses.clear();
     
+    // ////////////////////////////////////////////////////////////////////////////////////////
+    
     // If trajectory is older than max_timer_
     
-    if ( dt > max_timer_ ) {
+    if ( traj_age > max_timer_ ) {
         
         // Measures age of trajectory with respect to last timer complaint
         
-        ros::Duration time_diff2    = time_now - last_timer_complaint_;
-        
-        double dt2                  = time_diff2.toSec();
+        double traj_age_wrt_last_timer_complaint = ( time_now - last_timer_complaint_ ).toSec();
         
         // If trajectory (with respect to last timer complaint) is too old then stop
         
-        if( dt2 > max_timer_complaint_ ) {
+        if ( traj_age_wrt_last_timer_complaint > max_timer_complaint_ ) {
             
-            ROS_WARN( "stopping due to timer, %lf sec passed after the last plan!", dt);
+            ROS_WARN( "Stopping because %lf sec have passed since the last plan!", traj_age);
             
             last_timer_complaint_ = time_now;
             
@@ -303,166 +304,328 @@ void PurePursuit::controlLoop( const ros::TimerEvent& timerevent) {
         
         double cur_yaw = tf::getYaw( pose.getRotation() );
         
-        
+        // Computes segment of trajectory currently traversing
         
         int segment = get_segment( cur_x, cur_y);
+        
+        // Computes distance to end of trajectory
 
         goal_dist = get_dist_to_go( segment, cur_x, cur_y);
         
+        // Computes boolean flag indicating whether there will be a change of gears
+        
         want_exact_stop = need_gear_switch_later(segment);
         
-        
-        
+        // FOR DEBUGGING PURPOSES /////////////////////////////////////////////////////////////////
         
         if( goal_dist == 0.0 && want_exact_stop ) {
             
-            ROS_WARN("not good, it seems fwd/bwd labeling is wrong");
+            ROS_WARN("It seems forward / backward labeling is wrong.");
+            
         }
         
-        ROS_DEBUG( "goal_dist=%lf will be passed to speed_advisor", goal_dist);
+        ROS_DEBUG( "Goal_dist = %lf will be passed to speed_advisor.", goal_dist);
+        
+        // ////////////////////////////////////////////////////////////////////////////////////////
         
         cmd_steer = get_steering( segment, cur_x, cur_y, cur_yaw, emergency);
         
-        if( segment > -1 )
-        {
+        if ( segment >= 0 ) {
+            
             path_exist = true;
+            
             backward_driving = is_segment_backward(segment);
+            
             last_bwd_ = backward_driving;
+            
         }
+        
     }
-    else
-    {
-        cmd_steer = 0.0;
-        goal_dist = 0.0;
+    
+    else {
+        
+        // Commands no velocity and throws emergency flag
+        
+        cmd_steer = goal_dist = 0.0;
+        
         emergency = true;
+        
     }
-
-    // vel is not set here using "cmd_steer"
-    // based on move_status, speed_advisor set it using "cmd_vel"
-    cmd_ctrl.linear.x = 0.0;
-    cmd_ctrl.angular.z = cmd_steer;
+    
+    // Declares, initializes and publishes desired angular velocity
+    
+    geometry_msgs::Twist cmd_ctrl;
+    
+    cmd_ctrl.linear.x   = 0.0; // note that node speed_advisor will later take care of speed
+    
+    cmd_ctrl.angular.z  = cmd_steer;
+    
     cmd_steer_pub_.publish(cmd_ctrl);
-
-    move_status.dist_to_goal = goal_dist;
-    move_status.dist_to_ints = 99.0;
-    move_status.dist_to_sig = 99.0;
-    move_status.steer_angle = cmd_steer;
-    move_status.obstacles_dist = 99.0;
-    move_status.path_exist = path_exist;
-    move_status.emergency = emergency;
-    move_status.backward_driving = backward_driving;
-    move_status.want_exact_stop = want_exact_stop;
-    move_status_pub_.publish(move_status);
-
-    if(goal_dist <= 0.0 || emergency || !path_exist)
-        pp_segments_.poses.clear();
-    pp_segments_rviz_pub_.publish(pp_segments_);
-    ref_segments_rviz_pub_.publish(ref_segments_);
-
-    ros::Duration time_diff3 = time_now - last_time_cmd_vel_;
-    double dt3 = time_diff3.toSec();
-    if(dt3 > max_silence_cmd_vel_)
-    {
-        ROS_WARN("speed_advisor did not send out cmd_vel for %lf s, I'm commanding 0.0 for safety", dt3);
-        cmd_ctrl.linear.x = 0.0;
-        cmd_ctrl.angular.z = 0.0;
+    
+    // Measure time since last velocity command and issue safety command if too long has passed
+    
+    double time_since_last_cmd_vel = (time_now - last_time_cmd_vel_).toSec();
+    
+    if ( time_since_last_cmd_vel > max_silence_cmd_vel_ ) {
+        
+        ROS_WARN( "Node speed_advisor has not published cmd_vel for %lf sec.", time_since_last_cmd_vel);
+        
+        ROS_WARN( "Node golfcar_pp is publishing zero cmd_vel for safety.");
+        
+        cmd_ctrl.linear.x   = 0.0;
+        
+        cmd_ctrl.angular.z  = 0.0;
+        
         cmd_vel_pub_.publish(cmd_ctrl);
+        
     }
+    
+    // Declares, initializes and publishes desired move status to node speed_advisor
+    
+    pnc_msgs::move_status move_status;
+    
+    move_status.emergency           = emergency;
+    
+    move_status.steer_angle         = cmd_steer;
+
+    move_status.dist_to_goal        = goal_dist;
+    
+    move_status.path_exist          = path_exist;
+    
+    move_status.backward_driving    = backward_driving;
+    
+    move_status.want_exact_stop     = want_exact_stop;
+    
+    move_status.dist_to_ints        = 99.0;
+    
+    move_status.dist_to_sig         = 99.0;
+    
+    move_status.obstacles_dist      = 99.0;
+    
+    move_status_pub_.publish(move_status);
+    
+    // FOR DEBUGGING PURPOSES /////////////////////////////////////////////////////////////////
+    
+    if ( goal_dist <= 0.0 || emergency || !path_exist ) { pp_segments_.poses.clear(); }
+    
+    pp_segments_rviz_pub_.publish(pp_segments_);
+    
+    ref_segments_rviz_pub_.publish(ref_segments_);
+    
+    // ////////////////////////////////////////////////////////////////////////////////////////
+    
+}
+
+bool PurePursuit::getRobotPose( tf::Stamped<tf::Pose> &odom_pose) const {
+    
+    // Declares and initializes robot state in base link frame
+    
+    tf::Stamped<tf::Pose> robot_pose;
+    
+    robot_pose.frame_id_    = robot_frame_id_;
+    
+    robot_pose.stamp_       = ros::Time();
+    
+    robot_pose.setIdentity();
+    
+    // Initializes robot state in odometry frame
+    
+    odom_pose.setIdentity();
+    
+    // Attempts to transform the state from the base link frame to the odometry frame
+    
+    try {
+        
+        base_link_to_odom_listener.transformPose( coord_frame_id_, robot_pose, odom_pose);
+        
+    }
+    
+    catch( tf::TransformException& ex) {
+        
+        ROS_ERROR( "TF exception: %s", ex.what());
+
+        return false;
+
+    }
+    
+    // Rejects robot state if given odometry pose is too old
+    
+    ros::Time current_time = ros::Time::now();
+    
+    if ( current_time.toSec() - odom_pose.stamp_.toSec() > 0.2 ) {
+        
+        ROS_WARN( "PurePursuit transform timeout. Current time: %.4f, pose(%s) stamp: %.4f, tolerance: %.4f", 
+                  current_time.toSec(), coord_frame_id_.c_str(), odom_pose.stamp_.toSec(), 0.2);
+        
+        return false;
+        
+    }
+    
+    else { return true; }
     
 }
 
 void PurePursuit::trajCallBack( const nav_msgs::Path::ConstPtr &traj) {
     
-    // Measures the age of the trajectory passed; if the trajectory is old then method terminates
+    // If the trajectory is old then method terminates; otherwise, it sets the last time 
+    // a trajectory was received to the current moment
+    
+    if ( last_traj_time_ == traj -> header.stamp ) { return; }
+    
+    else { last_traj_time_ = traj -> header.stamp; }
+    
+    // Sets up header and size of new trajectory
     
     trajectory_.header.stamp = ros::Time::now();
     
-    if ( last_traj_time_ == traj->header.stamp ) { return };
-    
-    
-
-    last_traj_time_ = traj->header.stamp;
-    last_segment_ = 0;
     trajectory_.header.frame_id = coord_frame_id_;
-
-    bool bwd = last_bwd_;
-    int gear_change = 0;
-    double temp; // for orientation.w, which is a hack to pass fwd/bwd value
-    trajectory_.poses.resize(traj->poses.size() );
-    for(unsigned int i=0; i<traj->poses.size(); i++)
-    {
+    
+    trajectory_.poses.resize( traj -> poses.size() );
+    
+    // Re-initializes the last segment index
+    
+    last_segment_ = 0;
+    
+    // Declares and initializes some temp variables
+    
+    double temp_direction_of_motion;    // maintains direction of motion while 
+                                        // transforming pose between frames
+    
+    bool bwd            = last_bwd_;    // helps with computing number of gear changes
+    
+    int gear_change     = 0;            // number of gear (forward / backward) changes
+    
+    // Iterates through states of trajectory
+    
+    for ( unsigned int i = 0; i < (traj -> poses.size()); i++) {
+        
+        // Terminates procedure if an exception is thrown
+        
         try {
-            temp = traj->poses[i].pose.orientation.w;
-            tf_.transformPose(coord_frame_id_, traj->poses[i], trajectory_.poses[i]);
+            
+            // Stores direction of motion
+            
+            temp_direction_of_motion = traj -> poses[i].pose.orientation.w;
+            
+            // Transforms pose from map frame to odometry frame
+            
+            base_link_to_odom_listener.transformPose( coord_frame_id_, traj -> poses[i], trajectory_.poses[i]);
+            
+            // Discards orientation information
+            
             trajectory_.poses[i].pose.orientation.x = 0.0;
             trajectory_.poses[i].pose.orientation.y = 0.0;
             trajectory_.poses[i].pose.orientation.z = 0.0;
-            trajectory_.poses[i].pose.orientation.w = temp;
-            if(bwd != is_segment_backward(i) )
-            {
+            
+            // Retrieves direction of motion
+            
+            trajectory_.poses[i].pose.orientation.w = temp_direction_of_motion;
+            
+            // Updates the number of gear changes
+            
+            if( bwd != is_segment_backward(i) ) {
+                
                 bwd = is_segment_backward(i);
-                gear_change++;
+                
+                ++gear_change;
+                
             }
+            
         }
-        catch(tf::LookupException& ex) {
-            ROS_ERROR("No Transform available Error: %s", ex.what());
+        
+        catch( tf::TransformException& ex) {
+            
+            ROS_ERROR( "TF exception: %s", ex.what());
+            
             return;
+            
         }
-        catch(tf::ConnectivityException& ex) {
-            ROS_ERROR("Connectivity Error: %s", ex.what());
-            return;
-        }
-        catch(tf::ExtrapolationException& ex) {
-            ROS_ERROR("Extrapolation Error: %s", ex.what());
-            return;
-        }
+        
     }
-
-    ROS_INFO("got new traj, size=%d, gear_change=%d from %s",
-             (int) traj->poses.size(), gear_change, last_bwd_ ? "bwd" : "fwd");
-
-    // for debuging, given rrt plan seems very weird
-    if(trajectory_.poses.size() < 1)
-        return;
+    
+    ROS_INFO( "Got new trajectory, size = %u, gear_change = %u from %s", 
+    
+              (int) traj -> poses.size(), gear_change, (last_bwd_ ? "bwd" : "fwd") );
+    
+    // FOR DEBUGGING PURPOSES /////////////////////////////////////////////////////////////////////
+    
+    if ( trajectory_.poses.empty() ) { return; }
+    
     double dist = 0.0;
+    
     double x = trajectory_.poses[0].pose.position.x;
     double y = trajectory_.poses[0].pose.position.y;
     double r = trajectory_.poses[0].pose.position.z;
+    
     bwd = is_segment_backward(0);
-    ROS_INFO("from (%.2lf,%.2lf), r=%.2lf, %s", x, y, r, bwd ? "bwd" : "fwd");
-    for(unsigned int i=1; i<trajectory_.poses.size(); i++)
-    {
-        dist += get_distance(trajectory_.poses[i-1].pose.position.x,
-                             trajectory_.poses[i-1].pose.position.y,
-                             trajectory_.poses[i].pose.position.x,
-                             trajectory_.poses[i].pose.position.y);
-        if((bwd != is_segment_backward(i)) ||
-           (r != trajectory_.poses[i].pose.position.z))
-        {
+    
+    ROS_DEBUG( "From ( %.2lf , %.2lf ), r = %.2lf, %s", x, y, r, (bwd ? "bwd" : "fwd"));
+    
+    for ( unsigned int i = 1; i < trajectory_.poses.size(); i++) {
+        
+        dist += get_distance( trajectory_.poses[i-1].pose.position.x, 
+                              trajectory_.poses[i-1].pose.position.y, 
+                              trajectory_.poses[i].pose.position.x, 
+                              trajectory_.poses[i].pose.position.y);
+        
+        // If the direction of motion changes or if the trajectory begins or stops turning
+        
+        if ( ( bwd != is_segment_backward(i) ) || ( r != trajectory_.poses[i].pose.position.z ) ) {
+            
             x = trajectory_.poses[i].pose.position.x;
             y = trajectory_.poses[i].pose.position.y;
-            bwd = is_segment_backward(i);
             r = trajectory_.poses[i].pose.position.z;
-            ROS_INFO("to (%.2lf,%.2lf), dist=%.2lf", x, y, dist);
-            ROS_INFO("from (%.2lf,%.2lf), r=%.2lf, %s",
-                     x, y, r, bwd ? "bwd" : "fwd");
+            
+            bwd = is_segment_backward(i);
+            
+            ROS_DEBUG("to ( %.2lf , %.2lf ), dist = %.2lf", x, y, dist);
+            
+            ROS_DEBUG("From ( %.2lf , %.2lf ), r = %.2lf, %s", x, y, r, (bwd ? "bwd" : "fwd"));
+            
             dist = 0.0;
+            
         }
+        
     }
+    
     int i = trajectory_.poses.size()-1;
-    ROS_INFO("end, to (%.2lf,%.2lf), dist=%.2lf",
-             trajectory_.poses[i].pose.position.x,
-             trajectory_.poses[i].pose.position.y, dist);
+    
+    ROS_DEBUG( "to ( %.2lf , %.2lf ), dist = %.2lf", trajectory_.poses[i].pose.position.x, 
+                                                     trajectory_.poses[i].pose.position.y, dist);
+    
+    // ////////////////////////////////////////////////////////////////////////////////////////////
+    
 }
-
-
-
-
-
 
 // ------------------------------------------------------------------------------------------------
 // OTHER FUNCTIONS: GETTERS AND INQUIRERS
 // ------------------------------------------------------------------------------------------------
+
+bool PurePursuit::is_segment_backward( const int segment) const {
+    
+    return ( trajectory_.poses[segment].pose.orientation.w < 0.0 ? true : false );
+    
+}
+
+bool PurePursuit::need_gear_switch_later( const int segment) const {
+    
+    if ( segment < 0 ) { return false; }
+    
+    bool backward_driving = is_segment_backward(segment);
+    
+    for ( unsigned int on_segment = segment; 
+            
+          on_segment < trajectory_.poses.size() - 1; on_segment++) {
+        
+        bool backward = is_segment_backward(on_segment);
+        
+        if ( backward != backward_driving ) { return true; }
+        
+    }
+    
+    return false;
+    
+}
 
 // ------------------------------------------------------------------------------------------------
 // OTHER FUNCTIONS: PUBLISHING-RELATED METHODS
@@ -581,65 +744,11 @@ void PurePursuit::set_ref_segments_rviz(int segment)
     }
 }
 
-bool PurePursuit::is_segment_backward(int segment)
-{
-    return trajectory_.poses[segment].pose.orientation.w < 0.0 ? 1 : 0;
-}
-
-bool PurePursuit::need_gear_switch_later(int segment)
-{
-    if(segment < 0)
-        return false;
-
-    bool backward_driving = is_segment_backward(segment);
-    int on_segment = segment;
-
-    while((int) trajectory_.poses.size() > on_segment+1)
-    {
-        bool backward = is_segment_backward(on_segment);
-        if(backward != backward_driving)
-            return true;
-        on_segment++;
-    }
-
-    return false;
-}
 
 
 
-bool PurePursuit::getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const
-{
-    odom_pose.setIdentity();
-    tf::Stamped<tf::Pose> robot_pose;
-    robot_pose.setIdentity();
-    robot_pose.frame_id_ = robot_frame_id_;
-    robot_pose.stamp_ = ros::Time();
-    ros::Time current_time = ros::Time::now(); // save time for checking tf delay later
 
-    try {
-        tf_.transformPose(coord_frame_id_, robot_pose, odom_pose);
-    }
-    catch(tf::LookupException& ex) {
-        ROS_ERROR("No Transform available Error: %s", ex.what());
-        return false;
-    }
-    catch(tf::ConnectivityException& ex) {
-        ROS_ERROR("Connectivity Error: %s", ex.what());
-        return false;
-    }
-    catch(tf::ExtrapolationException& ex) {
-        ROS_ERROR("Extrapolation Error: %s", ex.what());
-        return false;
-    }
-    // check odom_pose timeout
-    if (current_time.toSec() - odom_pose.stamp_.toSec() > 0.2) {
-        ROS_WARN("PurePursuit transform timeout. Current time: %.4f, pose(%s) stamp: %.4f, tolerance: %.4f",
-                 current_time.toSec(), coord_frame_id_.c_str(), odom_pose.stamp_.toSec(), 0.2);
-        return false;
-    }
 
-    return true;
-}
 
 double PurePursuit::get_distance(double x1, double y1, double x2, double y2)
 {
