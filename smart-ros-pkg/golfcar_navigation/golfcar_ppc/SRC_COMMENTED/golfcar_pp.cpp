@@ -312,15 +312,15 @@ void PurePursuit::controlLoop( const ros::TimerEvent& timer_event) {
 
         goal_dist = get_dist_to_go( segment, cur_x, cur_y);
         
-        ROS_DEBUG( "Goal_dist = %lf will be passed to speed_advisor.", goal_dist);
-        
         // Computes boolean flag indicating whether there will be a change of gears
         
         want_exact_stop = need_gear_switch_later(segment);
         
         // FOR DEBUGGING PURPOSES /////////////////////////////////////////////////////////////////
         
-        if( goal_dist == 0.0 && want_exact_stop ) {
+        ROS_DEBUG( "Goal_dist = %lf will be passed to speed_advisor.", goal_dist);
+        
+        if ( goal_dist == 0.0 && want_exact_stop ) {
             
             ROS_WARN("It seems forward / backward labeling is wrong.");
             
@@ -603,6 +603,69 @@ void PurePursuit::trajCallBack( const nav_msgs::Path::ConstPtr &traj) {
 // OTHER FUNCTIONS: GETTERS AND INQUIRERS
 // ------------------------------------------------------------------------------------------------
 
+bool PurePursuit::btwn_points( double tar_x, double tar_y,
+                               double ori_x, double ori_y,
+                               double inv_R, double x, double y) {
+    
+    if (inv_R == 0.0) {
+        
+        double a, b, c;
+        a = tar_x - ori_x;
+        b = tar_y - ori_y;
+        c = (ori_x - tar_x)*x + (ori_y - tar_y)*y;
+        if((a*tar_x + b*tar_y + c)*(a*ori_x + b*ori_y + c) > 0.0)
+            return false;
+        else
+            return true;
+        
+    }
+    
+    else {
+        
+        double center[2];
+        
+        if ( !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center) )
+            return btwn_points(tar_x, tar_y, ori_x, ori_y, 0.0, x, y);
+        
+        double arg1, arg2, arg;
+        
+        arg1 = atan2(ori_y - center[1], ori_x - center[0]);
+        arg2 = atan2(tar_y - center[1], tar_x - center[0]);
+        arg = atan2(y - center[1], x - center[0]);
+        
+        if (inv_R > 0.0) {
+            
+            while(arg2 < arg1)
+                arg2 += 2*M_PI;
+            while(arg < arg1)
+                arg += 2*M_PI;
+            if ( arg > arg2 )
+                return false;
+            else
+                return true;
+            
+        }
+        
+        else {
+            
+            while(arg2 > arg1)
+                arg2 -= 2*M_PI;
+            
+            while(arg > arg1)
+                arg -= 2*M_PI;
+            
+            if ( arg < arg2 )
+                return false;
+            
+            else
+                return true;
+            
+        }
+        
+    }
+    
+}
+
 bool PurePursuit::get_center( double tar_x, double tar_y,
                               double ori_x, double ori_y, 
                               double inv_R,
@@ -640,6 +703,64 @@ bool PurePursuit::get_center( double tar_x, double tar_y,
     
 }
 
+// this function assumes that trajectory points are reasonably dense
+// if the trajectory points are very sparse like very few points in the arc,
+// this function needs to be changed
+double PurePursuit::get_dist_to_go( int segment, double cur_x, double cur_y) {
+    
+    if(segment < 0)
+        return 0.0;
+    if((int) trajectory_.poses.size() < 2)
+        return 0.0;
+    if((int) trajectory_.poses.size() < segment+2)
+        return 0.0;
+
+    double dist_to_go = 0.0;
+    
+    int on_segment = segment;
+    
+    bool backward_driving = is_segment_backward(on_segment);
+
+    double tar_x = trajectory_.poses[on_segment+1].pose.position.x;
+    double tar_y = trajectory_.poses[on_segment+1].pose.position.y;
+    
+    double ori_x = trajectory_.poses[on_segment].pose.position.x;
+    double ori_y = trajectory_.poses[on_segment].pose.position.y;
+    
+    double inv_R = get_inv_R(trajectory_.poses[on_segment].pose.position.z);
+    double center[2];
+    
+    if ( inv_R != 0.0 && !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center) )
+        inv_R = 0.0;
+
+    double prj[2];
+    get_projection(tar_x, tar_y, ori_x, ori_y, inv_R, cur_x, cur_y, prj);
+    
+    if ( btwn_points(tar_x, tar_y, ori_x, ori_y, inv_R, prj[0], prj[1]) )
+        dist_to_go += get_distance(tar_x, tar_y, prj[0], prj[1]);
+    
+    on_segment++;
+
+    while ( (int) trajectory_.poses.size() > on_segment + 1 )
+    {
+        
+        bool backward = is_segment_backward(on_segment);
+        
+        if ( backward != backward_driving )
+            break;
+
+        dist_to_go += get_distance(trajectory_.poses[on_segment+1].pose.position.x,
+                                   trajectory_.poses[on_segment+1].pose.position.y,
+                                   trajectory_.poses[on_segment].pose.position.x,
+                                   trajectory_.poses[on_segment].pose.position.y);
+        on_segment++;
+        
+    }
+
+    return dist_to_go;
+    
+}
+
 double PurePursuit::get_distance( double x1, double y1, double x2, double y2) const {
     
     return sqrt( (x2-x1) * (x2-x1) + (y2-y1) * (y2-y1) );
@@ -649,6 +770,129 @@ double PurePursuit::get_distance( double x1, double y1, double x2, double y2) co
 double PurePursuit::get_inv_R( const double u) const {
     
     return ( abs(u) > 1.0E-6 ? 1.0 / u : 0.0 );
+    
+}
+
+void PurePursuit::get_projection( double tar_x, double tar_y,
+                                  double ori_x, double ori_y,
+                                  double inv_R, double cur_x, double cur_y,
+                                  double proj[2]) {
+    
+    if ( inv_R == 0.0 ) {
+        
+        double a, b, c, x, dl, dx, dy;
+        
+        a = tar_y - ori_y;
+        b = ori_x - tar_x;
+        c = (tar_x - ori_x)*ori_y + ori_x*(ori_y - tar_y);
+        x = (a*cur_x + b*cur_y + c)/sqrt(a*a + b*b);
+
+        dl = sqrt(a*a + b*b);
+        dx = -a*x/dl;
+        dy = -b*x/dl;
+
+        proj[0] = cur_x + dx;
+        proj[1] = cur_y + dy;
+        
+    }
+    
+    else {
+        
+        double center[2];
+        
+        if ( !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center) ) {
+            
+            return get_projection(tar_x, tar_y, ori_x, ori_y, 0.0, cur_x, cur_y, proj);
+            
+        }
+        
+        double dist = get_distance(center[0], center[1], cur_x, cur_y);
+
+        proj[0] = center[0] + (cur_x - center[0])/dist/abs(inv_R);
+        proj[1] = center[1] + (cur_y - center[1])/dist/abs(inv_R);
+        
+    }
+    
+}
+
+int PurePursuit::get_segment( double cur_x, double cur_y) {
+    
+    double tar_x, tar_y, ori_x, ori_y, inv_R;
+    
+    double prj[2], center[2];
+
+    if(last_segment_ < 0)
+        return -1;
+    if((int) trajectory_.poses.size() < 2)
+        return -1;
+    if((int) trajectory_.poses.size() < last_segment_+2)
+        return -1;
+
+    int segment = last_segment_;
+    
+    bool bContinue;
+    
+    do {
+        
+        bContinue = false;
+
+        tar_x = trajectory_.poses[segment+1].pose.position.x;
+        tar_y = trajectory_.poses[segment+1].pose.position.y;
+        
+        ori_x = trajectory_.poses[segment].pose.position.x;
+        ori_y = trajectory_.poses[segment].pose.position.y;
+        
+        // sometimes trajectory points can collapse
+        if ( get_distance( tar_x, tar_y, ori_x, ori_y) < neglect_distance_ ) {
+            
+            segment++;
+            
+            if ( segment+1 < (int) trajectory_.poses.size() ) { bContinue = true; }
+            
+            else {
+                
+                segment = -1;
+                
+                bContinue = false;
+                
+            }
+            
+            continue;
+            
+        }
+        
+        inv_R = get_inv_R( trajectory_.poses[segment].pose.position.z);
+        
+        if ( inv_R != 0.0 && !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center) ) { inv_R = 0.0; }
+        
+        get_projection( tar_x, tar_y, ori_x, ori_y, inv_R, cur_x, cur_y, prj);
+        
+        if ( !btwn_points(tar_x, tar_y, ori_x, ori_y, inv_R, prj[0], prj[1]) ) {
+            
+            if ( get_distance(tar_x, tar_y, prj[0], prj[1]) 
+               < get_distance(ori_x, ori_y, prj[0], prj[1]) ) {
+                
+                segment++;
+                
+                if ( segment+1 < (int) trajectory_.poses.size() ) { bContinue = true; }
+                
+                else {
+                    
+                    segment = -1;
+                    
+                    bContinue = false;
+                    
+                }
+                
+            }
+            
+        }
+        
+    } while(bContinue);
+    
+    last_segment_ = segment;
+    
+    return segment;
     
 }
 
@@ -749,16 +993,21 @@ double PurePursuit::get_steering( int segment,
         
         if ( inv_R > 0.0 ) {
             
-            r = get_distance(center[0], center[1], cur_x, cur_y) - abs(1.0/inv_R);
-            x = (inv_R*(r*r + L*L) + 2.0*r)/(2.0*(1.0 + inv_R*r));
-            theta = cur_yaw - atan2(cur_x - center[0], center[1] - cur_y);
+            r = get_distance( center[0], center[1], cur_x, cur_y) - abs( 1.0 / inv_R );
+            
+            x = ( inv_R * (r * r + L * L) + 2.0 * r ) / ( 2.0 * ( 1.0 + inv_R * r ) );
+            
+            theta = cur_yaw - atan2( +cur_x - center[0], center[1] - cur_y);
+            
         }
         
         else {
             
-            r = -get_distance(center[0], center[1], cur_x, cur_y) + abs(1.0/inv_R);
-            x = (inv_R*(r*r + L*L) + 2.0*r)/(2.0*(1.0 + inv_R*r));
-            theta = cur_yaw - atan2(-cur_x + center[0], cur_y - center[1]);
+            r = -get_distance( center[0], center[1], cur_x, cur_y) + abs( 1.0 / inv_R );
+            
+            x = ( inv_R * (r * r + L * L) + 2.0 * r ) / ( 2.0 * ( 1.0 + inv_R * r ) );
+            
+            theta = cur_yaw - atan2( center[0] - cur_x, cur_y - center[1]);
             
         }
         
@@ -772,7 +1021,7 @@ double PurePursuit::get_steering( int segment,
     
     if ( L < abs(x) ) {
         
-        ROS_WARN("Too off from trajectory, L = %lf < abs( x = %lf ).", L, x);
+        ROS_WARN( "Too off from trajectory, L = %lf < abs( x = %lf ).", L, x);
         
         emergency = true;
         
@@ -806,7 +1055,7 @@ double PurePursuit::get_steering( int segment,
     
     if ( isnan(steering) ) {
         
-        ROS_WARN("steering isnan, so commanding just 0!");
+        ROS_WARN("Steering is NAN; commanding zero!");
         
         emergency = true;
         
@@ -1050,54 +1299,8 @@ bool PurePursuit::need_gear_switch_later( const int segment) const {
 // OTHER FUNCTIONS: PUBLISHING-RELATED METHODS
 // ------------------------------------------------------------------------------------------------
 
-void PurePursuit::set_pp_segments_rviz(double cur_x, double cur_y,
-                                       double cur_yaw, double gamma, bool backward)
-{
-    ros::Time time_now = ros::Time::now();
-    pp_segments_.header.stamp = time_now;
-    pp_segments_.header.frame_id = coord_frame_id_;
-
-    if(gamma == 0.0)
-        return;
-
-    if(backward)
-        gamma = -gamma;
-    double R_abs = fabs(1.0/gamma);
-
-    double center_x, center_y;
-    if(gamma > 0.0)
-    {
-        center_x = cur_x + R_abs*cos(cur_yaw+M_PI_2);
-        center_y = cur_y + R_abs*sin(cur_yaw+M_PI_2);
-    }
-    else
-    {
-        center_x = cur_x + R_abs*cos(cur_yaw-M_PI_2);
-        center_y = cur_y + R_abs*sin(cur_yaw-M_PI_2);
-    }
-    double arg_from = atan2(cur_y - center_y, cur_x - center_x);
-    double arg_diff = 2*asin(look_ahead_*gamma/2);
-    if(backward)
-        arg_diff = -arg_diff;
-
-    geometry_msgs::PoseStamped point;
-    point.header.stamp = time_now;
-    point.header.frame_id = coord_frame_id_;
-    point.pose.position.z = 0.0;
-
-    int arg_step_n = 10;
-    double arg_step = arg_diff/arg_step_n;
-    for(int i = 0; i <= arg_step_n; i++)
-    {
-        point.pose.position.x = center_x + R_abs*cos(arg_from + i*arg_step);
-        point.pose.position.y = center_y + R_abs*sin(arg_from + i*arg_step);
-
-        pp_segments_.poses.push_back(point);
-    }
-}
-
-void PurePursuit::set_ref_segments_rviz(int segment)
-{
+void PurePursuit::set_ref_segments_rviz( int segment) {
+    
     ros::Time time_now = ros::Time::now();
     ref_segments_.header.stamp = time_now;
     ref_segments_.header.frame_id = coord_frame_id_;
@@ -1117,24 +1320,25 @@ void PurePursuit::set_ref_segments_rviz(int segment)
     ori_x = trajectory_.poses[segment].pose.position.x;
     ori_y = trajectory_.poses[segment].pose.position.y;
     inv_R = get_inv_R(trajectory_.poses[segment].pose.position.z);
-    if(inv_R != 0.0 && !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center) )
-        inv_R = 0.0;
+    
+    if ( inv_R != 0.0 && !get_center( tar_x, tar_y, ori_x, ori_y, inv_R, center) ) { inv_R = 0.0; }
 
     geometry_msgs::PoseStamped point;
     point.header.stamp = time_now;
     point.header.frame_id = coord_frame_id_;
     point.pose.position.z = 0.0;
 
-    if(inv_R == 0.0)
-    {
+    if( inv_R == 0.0 ) {
+        
         double dist = get_distance(tar_x, tar_y, ori_x, ori_y);
-        if(dist < neglect_distance_)
+        
+        if ( dist < neglect_distance_ )
             return;
 
         // 1.25 is to visualize extra segments
         point.pose.position.x = ori_x + 1.25*look_ahead_*(ori_x - tar_x)/dist;
         point.pose.position.y = ori_y + 1.25*look_ahead_*(ori_y - tar_y)/dist;
-
+        
         ref_segments_.poses.push_back(point);
 
         point.pose.position.x = tar_x + 1.25*look_ahead_*(tar_x - ori_x)/dist;
@@ -1143,6 +1347,7 @@ void PurePursuit::set_ref_segments_rviz(int segment)
         ref_segments_.poses.push_back(point);
 
         return;
+        
     }
 
     double R_abs = fabs(1.0/inv_R);
@@ -1152,212 +1357,79 @@ void PurePursuit::set_ref_segments_rviz(int segment)
 
     int arg_step_n = 13;
     double arg_step = arg_diff/arg_step_n;
-    for(int i = -arg_step_n; i <= arg_step_n; i++)
+    
+    for ( int i = -arg_step_n; i <= arg_step_n; i++)
     {
         point.pose.position.x = center[0] + R_abs*cos(arg_from + i*arg_step);
         point.pose.position.y = center[1] + R_abs*sin(arg_from + i*arg_step);
 
         ref_segments_.poses.push_back(point);
     }
+    
 }
 
-bool PurePursuit::btwn_points(double tar_x, double tar_y,
-                              double ori_x, double ori_y,
-                              double inv_R, double x, double y)
-{
-    if(inv_R == 0.0)
+void PurePursuit::set_pp_segments_rviz( double cur_x, double cur_y,
+                                        double cur_yaw, double gamma, bool backward) {
+    
+    ros::Time time_now = ros::Time::now();
+    pp_segments_.header.stamp = time_now;
+    pp_segments_.header.frame_id = coord_frame_id_;
+
+    if(gamma == 0.0)
+        return;
+
+    if(backward)
+        gamma = -gamma;
+    
+    double R_abs = fabs(1.0/gamma);
+
+    double center_x, center_y;
+    
+    if ( gamma > 0.0 )
     {
-        double a, b, c;
-        a = tar_x - ori_x;
-        b = tar_y - ori_y;
-        c = (ori_x - tar_x)*x + (ori_y - tar_y)*y;
-        if((a*tar_x + b*tar_y + c)*(a*ori_x + b*ori_y + c) > 0.0)
-            return false;
-        else
-            return true;
+        center_x = cur_x + R_abs*cos(cur_yaw+M_PI_2);
+        center_y = cur_y + R_abs*sin(cur_yaw+M_PI_2);
     }
+    
     else
     {
-        double center[2];
-        if( !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center))
-            return btwn_points(tar_x, tar_y, ori_x, ori_y, 0.0, x, y);
-
-        double arg1, arg2, arg;
-        arg1 = atan2(ori_y - center[1], ori_x - center[0]);
-        arg2 = atan2(tar_y - center[1], tar_x - center[0]);
-        arg = atan2(y - center[1], x - center[0]);
-        if(inv_R > 0.0)
-        {
-            while(arg2 < arg1)
-                arg2 += 2*M_PI;
-            while(arg < arg1)
-                arg += 2*M_PI;
-            if ( arg > arg2 )
-                return false;
-            else
-                return true;
-        }
-        else
-        {
-            while(arg2 > arg1)
-                arg2 -= 2*M_PI;
-            while(arg > arg1)
-                arg -= 2*M_PI;
-            if ( arg < arg2 )
-                return false;
-            else
-                return true;
-        }
+        center_x = cur_x + R_abs*cos(cur_yaw-M_PI_2);
+        center_y = cur_y + R_abs*sin(cur_yaw-M_PI_2);
     }
+    
+    double arg_from = atan2(cur_y - center_y, cur_x - center_x);
+    double arg_diff = 2*asin(look_ahead_*gamma/2);
+    
+    if (backward)
+        arg_diff = -arg_diff;
+    
+    geometry_msgs::PoseStamped point;
+    
+    point.header.stamp = time_now;
+    point.header.frame_id = coord_frame_id_;
+    point.pose.position.z = 0.0;
+    
+    int arg_step_n = 10;
+    double arg_step = arg_diff/arg_step_n;
+    
+    for ( int i = 0; i <= arg_step_n; i++)
+    {
+        point.pose.position.x = center_x + R_abs*cos(arg_from + i*arg_step);
+        point.pose.position.y = center_y + R_abs*sin(arg_from + i*arg_step);
+
+        pp_segments_.poses.push_back(point);
+    }
+    
 }
 
-void PurePursuit::get_projection(double tar_x, double tar_y,
-                                 double ori_x, double ori_y,
-                                 double inv_R, double cur_x, double cur_y,
-                                 double proj[2])
-{
-    if(inv_R == 0.0)
-    {
-        double a, b, c, x, dl, dx, dy;
-        a = tar_y - ori_y;
-        b = ori_x - tar_x;
-        c = (tar_x - ori_x)*ori_y + ori_x*(ori_y - tar_y);
-        x = (a*cur_x + b*cur_y + c)/sqrt(a*a + b*b);
-
-        dl = sqrt(a*a + b*b);
-        dx = -a*x/dl;
-        dy = -b*x/dl;
-
-        proj[0] = cur_x + dx;
-        proj[1] = cur_y + dy;
-    }
-    else
-    {
-        double center[2];
-        if( !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center))
-            return get_projection(tar_x, tar_y, ori_x, ori_y, 0.0, cur_x, cur_y, proj);
-
-        double dist = get_distance(center[0], center[1], cur_x, cur_y);
-
-        proj[0] = center[0] + (cur_x - center[0])/dist/abs(inv_R);
-        proj[1] = center[1] + (cur_y - center[1])/dist/abs(inv_R);
-    }
-}
-
-// which segment of trajectory the robot is on
-int PurePursuit::get_segment(double cur_x, double cur_y)
-{
-    double tar_x, tar_y, ori_x, ori_y, inv_R;
-    double prj[2], center[2];
-
-    if(last_segment_ < 0)
-        return -1;
-    if((int) trajectory_.poses.size() < 2)
-        return -1;
-    if((int) trajectory_.poses.size() < last_segment_+2)
-        return -1;
-
-    int segment = last_segment_;
-    bool bContinue;
-    do
-    {
-        bContinue = false;
-
-        tar_x = trajectory_.poses[segment+1].pose.position.x;
-        tar_y = trajectory_.poses[segment+1].pose.position.y;
-        ori_x = trajectory_.poses[segment].pose.position.x;
-        ori_y = trajectory_.poses[segment].pose.position.y;
-
-        // sometimes trajectory points can collapse
-        if(get_distance(tar_x, tar_y, ori_x, ori_y) < neglect_distance_)
-        {
-            segment++;
-            if(segment+1 < (int) trajectory_.poses.size())
-                bContinue = true;
-            else
-            {
-                segment = -1;
-                bContinue = false;
-            }
-            continue;
-        }
-
-        inv_R = get_inv_R(trajectory_.poses[segment].pose.position.z);
-        if(inv_R != 0.0 && !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center))
-            inv_R = 0.0;
-
-        get_projection(tar_x, tar_y, ori_x, ori_y, inv_R, cur_x, cur_y, prj);
-        if( !btwn_points(tar_x, tar_y, ori_x, ori_y, inv_R, prj[0], prj[1]))
-        {
-            if(get_distance(tar_x, tar_y, prj[0], prj[1]) < get_distance(ori_x, ori_y, prj[0], prj[1]))
-            {
-                segment++;
-                if(segment+1 < (int) trajectory_.poses.size())
-                    bContinue = true;
-                else
-                {
-                    segment = -1;
-                    bContinue = false;
-                }
-            }
-        }
-    } while(bContinue);
-
-    last_segment_ = segment;
-    return segment;
-}
-
-// this function assumes that trajectory points are reasonably dense
-// if the trajectory points are very sparse like very few points in the arc,
-// this function needs to be changed
-double PurePursuit::get_dist_to_go(int segment, double cur_x, double cur_y)
-{
-    if(segment < 0)
-        return 0.0;
-    if((int) trajectory_.poses.size() < 2)
-        return 0.0;
-    if((int) trajectory_.poses.size() < segment+2)
-        return 0.0;
-
-    double dist_to_go = 0.0;
-    int on_segment = segment;
-    bool backward_driving = is_segment_backward(on_segment);
-
-    double tar_x = trajectory_.poses[on_segment+1].pose.position.x;
-    double tar_y = trajectory_.poses[on_segment+1].pose.position.y;
-    double ori_x = trajectory_.poses[on_segment].pose.position.x;
-    double ori_y = trajectory_.poses[on_segment].pose.position.y;
-    double inv_R = get_inv_R(trajectory_.poses[on_segment].pose.position.z);
-    double center[2];
-    if(inv_R != 0.0 && !get_center(tar_x, tar_y, ori_x, ori_y, inv_R, center))
-        inv_R = 0.0;
-
-    double prj[2];
-    get_projection(tar_x, tar_y, ori_x, ori_y, inv_R, cur_x, cur_y, prj);
-    if(btwn_points(tar_x, tar_y, ori_x, ori_y, inv_R, prj[0], prj[1]))
-        dist_to_go += get_distance(tar_x, tar_y, prj[0], prj[1]);
-    on_segment++;
-
-    while((int) trajectory_.poses.size() > on_segment+1)
-    {
-        bool backward = is_segment_backward(on_segment);
-        if(backward != backward_driving)
-            break;
-
-        dist_to_go += get_distance(trajectory_.poses[on_segment+1].pose.position.x,
-                                   trajectory_.poses[on_segment+1].pose.position.y,
-                                   trajectory_.poses[on_segment].pose.position.x,
-                                   trajectory_.poses[on_segment].pose.position.y);
-        on_segment++;
-    }
-
-    return dist_to_go;
-}
-
-int main(int argc, char **argv)
-{
+int main( int argc, char **argv) {
+    
     ros::init(argc, argv, "golfcar_pp");
+    
     PurePursuit pp;
+    
     ros::spin();
+    
     return 0;
+    
 }
