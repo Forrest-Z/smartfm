@@ -1,0 +1,15 @@
+<package>
+
+  <description brief = "dubins_tracking_msgs">
+  
+  Messages from a high-level Dubin's car motion planner to the trajectory tracker. 
+
+  </description>
+  
+  <author> Luis I. Reyes Castro </author>
+  
+  <depend package = "geometry_msgs"/>
+  <depend package = "nav_msgs"/>
+
+</package>
+

@@ -1,0 +1,23 @@
+<package>
+
+  <description brief = "dubins_tracking">
+  
+  Listens to the Dubin's path tracking messages and publishes the translational and angular velocity commands to be given as input to the low-level controllers. 
+  
+  </description>
+  
+  <author> Luis I. Reyes Castro </author>
+  
+  <depend package = "rosconsole"/>
+  <depend package = "roscpp"/>
+  <depend package = "rospy"/>
+  
+  <depend package = "geometry_msgs"/>
+  <depend package = "nav_msgs"/>
+  <depend package = "std_msgs"/>
+  <depend package = "tf"/>
+  
+  <depend package = "dubins_tracking_msgs"/>
+
+</package>
+

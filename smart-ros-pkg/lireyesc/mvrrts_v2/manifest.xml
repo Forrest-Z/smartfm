@@ -1,0 +1,30 @@
+<package>
+
+  <description brief = "mvrrts_v2" >
+  
+  Minimum Violation RRT* Algorithm for the Golf Cart.
+  
+  </description>
+  
+  <author> Luis I. Reyes Castro </author>
+  
+  <depend package = "rosconsole"/>
+  <depend package = "roscpp"/>
+  <depend package = "rospy"/>
+  
+  <depend package = "geometry_msgs"/>
+  <depend package = "laser_geometry"/>
+  <depend package = "local_map_ext"/>
+  <depend package = "nav_msgs"/>
+  <depend package = "sensor_msgs"/>
+  <depend package = "tf"/>
+  
+  <depend package = "golfcar_ppc"/>
+  <depend package = "map_ext_rviz_plugin"/>
+  <depend package = "pnc_msgs"/>
+  <depend package = "rrts"/>
+  
+  <!--cpp cflags="-I${prefix}/src" lflags="-L${prefix}/lib -Wl, -rpath, ${prefix}/lib"/-->
+
+</package>
+
