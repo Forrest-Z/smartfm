@@ -136,7 +136,7 @@ void topo_semantic::path_check_remove(vector < vector <path_segment> > & growing
 	{
 		int path_tail_nodeID = growing_paths[i].back().tail_nodeID;
 		int seg_tail_nodeID = growing_paths[i].back().head_nodeID;
-		ROS_INFO("----------------path_tail_nodeID %d, segment_headID: %d----------", path_tail_nodeID, seg_tail_nodeID);
+		//ROS_INFO("----------------path_tail_nodeID %d, segment_headID: %d----------", path_tail_nodeID, seg_tail_nodeID);
 
 		if(path_tail_nodeID == -1)
 		{
@@ -329,7 +329,7 @@ void topo_semantic::visualization()
 		}
 		cvShowImage("cycle_window", cycle_image);
 	}
-	cvSaveImage( "/home/baoxing/cycle_image.jpg", cycle_image );
+	cvSaveImage( "./data/cycle_image.jpg", cycle_image );
 	cvWaitKey(100);
 	cvReleaseImage(&cycle_image);
 }

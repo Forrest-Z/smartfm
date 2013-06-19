@@ -42,6 +42,15 @@ namespace golfcar_semantics{
 			return src_grid;
 		}
 
+		cvThreshold(img, img, 180, 255, CV_THRESH_BINARY);
+		cvDilate(img, img, NULL, 1);
+		cvErode(img, img, NULL, 1);
+		cvErode(img, img, NULL, 2);
+		cvDilate(img, img, NULL, 2);
+		cvDilate(img, img, NULL, 2);
+		cvErode(img, img, NULL, 2);
+		cvSaveImage( "./data/binary_image.jpg", img );
+
 		int img_height 		= img -> height;
 		int img_width  		= img -> width;
 		int img_step	 	= img -> widthStep/sizeof(uchar);
