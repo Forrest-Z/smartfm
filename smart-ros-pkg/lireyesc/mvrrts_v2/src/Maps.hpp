@@ -130,10 +130,6 @@ protected:
     
     pnc_msgs::local_map::_free_cells_type   free_cells;
     
-    pnc_msgs::local_map::_centerline_type   center_line;
-    
-    std::vector < format_t >                center_line_theta;
-    
 public:
     
     Map_Local();

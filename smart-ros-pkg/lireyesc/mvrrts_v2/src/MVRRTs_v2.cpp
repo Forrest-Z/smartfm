@@ -138,8 +138,6 @@ Golf_Cart_MVRRTs::Golf_Cart_MVRRTs( const format_t turn_radius,
     mvrrts_status_msg.root_in_goal = false;
 
     mvrrts_status_msg.switched_root = true;
-
-    mvrrts_status_msg.too_far_from_committed = false;
     
 }
 

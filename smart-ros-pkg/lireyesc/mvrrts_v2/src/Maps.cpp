@@ -380,7 +380,7 @@ Map_Local::Map_Local() :
 
     // Calls constructor of parent and initializes all other members to trivial values
 
-    Map(), free_cells(), center_line(), center_line_theta() {}
+    Map(), free_cells() {}
 
 Map_Local::~Map_Local() {}
 
@@ -428,83 +428,15 @@ void Map_Local::read_map( const pnc_msgs::local_map& map) {
     
     free_cells          = map.free_cells;
     
-    center_line         = map.centerline;
-    
-    // Declares points along center line
-    
-    format_t center_line_pt [2], center_line_pt_next [2];
-    
-    // Computes center line directions (i.e. angular coordinates of centerline states) 
-    // from the differences in the centerline point positions
-    
-    center_line_theta.clear();
-    
-    for ( unsigned int index = 0; index < center_line.size() - 1; index++) {
-        
-        if ( get_xy_coords( center_line[index + 0], 
-                            center_line_pt[0], center_line_pt[1]) && 
-                
-             get_xy_coords( center_line[index + 1], 
-                            center_line_pt_next[0], center_line_pt_next[1]) ) {            
-            
-            center_line_theta.push_back( atan2( center_line_pt_next[1] - center_line_pt[1], 
-                                                center_line_pt_next[0] - center_line_pt[0] ) );
-            
-        }
-        
-        else {
-            
-            std::cerr << "In line " <<  __LINE__ << " of " << __FILE__ << ": ";
-            std::cerr << "INVALID index value for centerline point" << std::endl;
-            exit(EXIT_FAILURE);
-            
-        }
-        
-    }
-    
 }
 
 void Map_Local::sample_free_space( format_t * state, const format_t heuristic_rate) const {
     
     // Declares temp variables
     
-    unsigned int center_line_index, local_map_cell_index;
+    unsigned int local_map_cell_index;
     
-    // Chooses whether or not to use heuristics, depending on the heuristic sampling rate
-    
-    if ( uniform() < heuristic_rate ) {
-        
-        // Iterates until a collision-free state is found
-        
-        do {
-            
-            // Samples a local map cell along the center line
-            
-            center_line_index = (unsigned int) ( uniform() * center_line.size() );
-            
-            local_map_cell_index = center_line[ center_line_index ];
-            
-            // Computes planar coordinates of cell and adds noise
-            
-            get_xy_coords( local_map_cell_index, state[0], state[1]);
-            
-            state[0] += (uniform() - 0.5) * grid_resolution;
-
-            state[1] += (uniform() - 0.5) * grid_resolution;
-            
-            // Samples angular coordinate according to a Gaussian distribution
-            
-            state[2] = unwrap( gaussian( center_line_theta[center_line_index], M_PI_4) );
-            
-        }
-        
-        while ( is_in_collision(state) );
-        
-    }
-    
-    else {
-        
-        // Iterates until a collision-free state is found
+    // Iterates until a collision-free state is found
         
         do {
             
@@ -527,7 +459,5 @@ void Map_Local::sample_free_space( format_t * state, const format_t heuristic_ra
         }
         
         while ( is_in_collision(state) );
-        
-    }
     
 }

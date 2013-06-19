@@ -24,7 +24,7 @@
   <depend package = "pnc_msgs"/>
   <depend package = "rrts"/>
   
-  <!--cpp cflags="-I${prefix}/src" lflags="-L${prefix}/lib -Wl, -rpath, ${prefix}/lib"/-->
+  <!--cpp cflags="-I${prefix}/src" lflags="-L${prefix}/lib -Wl, -rpath, ${prefix}/lib"-->
 
 </package>
 
