@@ -787,6 +787,8 @@ void topo_extractor::extract_node_edge(){
 			}
 		}
 	}
+
+
 	cvSaveImage( "./data/raw_skel.jpg", skel_image_ );
 
 	///////////////////////////////////////////////////////////////////
@@ -835,8 +837,8 @@ void topo_extractor::visualize_TopoMetric_graph()
 			 //int y = road_graph_.edges[i].cubic_spline->output_points_[j].y;
 			 cvCircle(color_edge, road_graph_.edges[i].cubic_spline->output_points_[j], (int)ceil(road_graph_.edges[i].road_width), CV_RGB( 0,255,0), -1);
 		 }
-		 cvShowImage("color_edge", color_edge);
-		 cvWaitKey(0);
+		 //cvShowImage("color_edge", color_edge);
+		 //cvWaitKey(0);
 	 }
 
 	 for(size_t i=0; i<road_graph_.edges.size(); i++)
@@ -1365,7 +1367,7 @@ void topo_extractor::road_spline_fitting()
 	for(size_t k=0; k<road_graph_.edges.size(); k++)
 	{
 		ROS_INFO("road_graph_.edges[%ld] length %3f", k, road_graph_.edges[k].edge_length);
-		road_graph_.edges[k].cubic_spline = new golfcar_semantics::spline_fitting(road_graph_.edges[k].points, 0.5, 10.0);
+		road_graph_.edges[k].cubic_spline = new golfcar_semantics::spline_fitting(road_graph_.edges[k].points, 0.5, 20.0);
 
 		if(road_graph_.edges[k].cubic_spline->road_length_<=0.5)
 		{
@@ -1376,14 +1378,18 @@ void topo_extractor::road_spline_fitting()
 	}
 
 	Mat spline_output(grid_size_y, grid_size_x, CV_8UC3);
-	spline_output = Scalar(0);
+	spline_output = Scalar(255, 255, 255);
+
+	Mat raw_skel = spline_output.clone();
+
 	Vec3b raw_color, spline_color;
-	raw_color.val[0] = 0;
-	raw_color.val[1] = 255;
+	raw_color.val[0] = 255;
+	raw_color.val[1] = 0;
 	raw_color.val[2] = 0;
-	spline_color.val[0] = 0;
+
+	spline_color.val[0] = 255;
 	spline_color.val[1] = 0;
-	spline_color.val[2] = 255;
+	spline_color.val[2] = 0;
 	for(size_t k=0; k<road_graph_.edges.size(); k++)
 	{
 		for(size_t p=0; p<	road_graph_.edges[k].cubic_spline->raw_points_.size();p++)
@@ -1391,7 +1397,7 @@ void topo_extractor::road_spline_fitting()
 			Point tmp;
 			tmp.x = road_graph_.edges[k].cubic_spline->raw_points_[p].x;
 			tmp.y = road_graph_.edges[k].cubic_spline->raw_points_[p].y;
-			spline_output.at<Vec3b>(tmp.y, tmp.x) = raw_color;
+			raw_skel.at<Vec3b>(tmp.y, tmp.x) = raw_color;
 		}
 
 		for(size_t p=0; p<	road_graph_.edges[k].cubic_spline->output_points_.size();p++)
@@ -1402,16 +1408,25 @@ void topo_extractor::road_spline_fitting()
 			spline_output.at<Vec3b>(tmp.y, tmp.x) = spline_color;
 		}
 	}
+
+	for(size_t k=0; k<road_graph_.nodeClusters.size(); k++)
+	{
+		Point tmp;
+		tmp.x = floor(road_graph_.nodeClusters[k].cluster_center.x);
+		tmp.y = floor(road_graph_.nodeClusters[k].cluster_center.y);
+		circle(raw_skel, tmp, 5, CV_RGB( 255,0,0));
+	}
+
+	imshow("raw_color", raw_skel);
 	imshow("spline_output", spline_output);
 	waitKey();
+	imwrite( "./data/raw_color.jpg", raw_skel);
 	imwrite( "./data/spline_output.jpg", spline_output );
 }
 
 //to merge intersections when one's radius cover the other's center;
 void topo_extractor::merge_intersections()
 {
-	ROS_INFO("user data %x", &road_graph_);
-
 	CvMemStorage* storage = cvCreateMemStorage(0);
 	CvSeq* serial_seq= cvCreateSeq( 0, sizeof(CvSeq), sizeof(size_t), storage);
 	for(size_t i=0; i<road_graph_.nodeClusters.size(); i++) cvSeqPush( serial_seq, &i);
