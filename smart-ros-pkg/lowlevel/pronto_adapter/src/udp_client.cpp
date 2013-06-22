@@ -7,8 +7,9 @@
 #include <boost/array.hpp>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <boost/lexical_cast.hpp>
 //message type
-#include <pronto_adapter/Pronto_msg.h>
+//#include <pronto_adapter/Pronto_msg.h>
 
 #define MAX_LEN 1000
 
@@ -90,23 +91,35 @@ string add_check_sum(string pMsg)
 	return pMsg;
 }
 
-std::string make_daytime_string()
-{
-  using namespace std; // For time_t, time and ctime;
-  time_t now = time(0);
-  return ctime(&now);
-}
-
 class udp_server
 {
   const string PING;
   const string PONG;
 public:
   udp_server(boost::asio::io_service& io_service)
-  : socket_(io_service, udp::endpoint(udp::v4(), 4100)), remote_endpoint_(udp::v4(), 4000),
+  : socket_(io_service),
   PING("[:AB|P0|C78]"),
   PONG("[:BA|G0|C")
   {
+    
+    local_endpoint_ = udp::endpoint(
+      boost::asio::ip::address::from_string("192.168.200.101"), 4100);
+    
+    boost::system::error_code myError;
+    //socket_.open( boost::asio::ip::udp::v4(), myError );
+    //cout<<"Open socket status: "<<myError.message()<<endl;
+    //boost::asio::socket_base::broadcast option(true);
+    //socket_.set_option(option);
+    remote_endpoint_ = boost::asio::ip::udp::endpoint(
+    boost::asio::ip::address::from_string("192.168.200.110"),  4000);
+    cout<<"Listening to " <<   local_endpoint_ << endl;
+    std::cout << "Send to " << remote_endpoint_ << std::endl;
+    
+    /*socket_.connect(remote_endpoint_, myError);
+    cout<<"Connect status: "<<myError.message()<<endl;
+    string data = "Hello world!";
+    //socket_.send_to(boost::asio::buffer(data), remote_endpoint_);
+    */
     start_receive();
   }
   
@@ -114,16 +127,24 @@ private:
   string buffer_; 
   void start_receive()
   {
+    cout<<"Everything done"<<endl;
+    string answer_str = add_check_sum(PONG);
+    //socket_.send_to(boost::asio::buffer(data), remote_endpoint_);
     socket_.async_receive_from(
       boost::asio::buffer(recv_buffer_), remote_endpoint_,
 			       boost::bind(&udp_server::handle_receive, this,
 					   boost::asio::placeholders::error,
 		      boost::asio::placeholders::bytes_transferred));
+    
+    //socket_.send_to(boost::asio::buffer(answer_str), remote_endpoint_);
+  
+    
   }
   
   void handle_receive(const boost::system::error_code& error,
 		      std::size_t bytes_transferred)
   {
+    cout<<"handle_receive status code: "<<error.message()<<endl;
     string data = "";
     for(size_t i=0; i<bytes_transferred; i++){
       buffer_+=recv_buffer_[i];
@@ -142,31 +163,55 @@ private:
       if(data == PING) {
 	cout<<"PING received"<<endl;
 	string answer_str = add_check_sum(PONG);
-	boost::shared_ptr<std::string> message(
-	new std::string(answer_str));
 	cout<<"PONG sent "<<answer_str<<endl;
-	socket_.async_send_to(boost::asio::buffer(*message), remote_endpoint_,
-			  boost::bind(&udp_server::handle_send, this, message,
-				      boost::asio::placeholders::error,
-		  boost::asio::placeholders::bytes_transferred));
+        
+         boost::shared_ptr<std::string> message(new std::string(answer_str));
+        socket_.async_send_to(boost::asio::buffer(*message), remote_endpoint_,
+          boost::bind(&udp_server::handle_send, this, message,
+            boost::asio::placeholders::error,
+            boost::asio::placeholders::bytes_transferred));
+        cout<<remote_endpoint_.address().to_string()<<":"<<remote_endpoint_.port()<<endl;
       }
       start_receive();
     }
   }
   
-  void handle_send(boost::shared_ptr<std::string> /*message*/,
-		   const boost::system::error_code& /*error*/,
-		   std::size_t /*bytes_transferred*/)
+  void handle_send(boost::shared_ptr<std::string> message,
+      const boost::system::error_code& error,
+      std::size_t bytes_transferred)
   {
+    cout<<"send handled"<<endl;
+    cout<<*message<<" "<<error<<" "<<bytes_transferred<<endl;
   }
   
   udp::socket socket_;
-  udp::endpoint remote_endpoint_;
+  udp::endpoint remote_endpoint_, local_endpoint_;
   boost::array<char, 512> recv_buffer_;
 };
 
 int main()
 {
+  boost::system::error_code myError;
+
+   /* boost::asio::ip::udp::endpoint myEndpoint;                  // Create endpoint on specified IP.
+    myEndpoint.address(boost::asio::ip::address::from_string("192.168.200.101"));
+    myEndpoint.port(4100);
+    boost::asio::ip::udp::endpoint remoteEndpoint;                  // Create endpoint on specified IP.
+    remoteEndpoint.address(boost::asio::ip::address::from_string("192.168.200.110"));
+    remoteEndpoint.port(4000);
+    std::cout << "Endpoint IP:   " << myEndpoint.address().to_string() << std::endl;
+    std::cout << "Endpoint Port: " << myEndpoint.port() << std::endl;
+
+    boost::asio::io_service io_service;                         // Create socket and IO service, bind socket to endpoint.
+    udp::socket socket(io_service);
+    socket.open( myEndpoint.protocol(), myError );
+    std::cout << "Open - " << myError.message() << std::endl;
+   
+    char myMessage[] = "UDP Hello World!";                      // Send basig string, enable socket level debugging.
+    socket.send_to(boost::asio::buffer(myMessage, sizeof(myMessage)), remoteEndpoint);
+    
+    std::cout << "Send - " << myError.message() << std::endl;
+    return 0;*/
   try
   {
     boost::asio::io_service io_service;
