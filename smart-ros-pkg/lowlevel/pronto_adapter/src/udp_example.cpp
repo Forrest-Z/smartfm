@@ -8,6 +8,7 @@
 #include <std_msgs/Float64.h>
 #include <std_msgs/Int32.h>
 #include <std_msgs/String.h>
+
 #define MAX_LEN 1000
 
 //Adapter that synchronize with pronto's inbound and outbound list
@@ -146,10 +147,13 @@ class ProntoAdapter
   ros::NodeHandle nh_;
   map<string, PacketTypeAndData> topic_ptd_map_;
   vector<string> subscribed_topics_;
+  vector< ROSPubAndPTD > publishers_;
+  vector<ros::Subscriber> subscribers_;
   void messageToROSSubscriber(string msg, ros::NodeHandle &nh, vector<ros::Subscriber> &subs, map<string, PacketTypeAndData> &topic_ptd_map){
+    cout<<"Raw inbound list received: "<<endl<<msg;
     vector<string> parts;
     split(msg, "|", parts);
-    
+    cout<<"Setting up subscriber:"<<endl;
     for(size_t i=2; i<parts.size(); i++){
       //default to float datatype
         int data_type = 2;
@@ -168,33 +172,33 @@ class ProntoAdapter
        ptd.type = data_type;
        switch(data_type) {
          case 0: 
-         subs.push_back(nh.subscribe<std_msgs::Int32>(ss.str(), 1, boost::bind(&ProntoAdapter::intCallback, this, _1, ss.str())));
-         cout<<"Setting up int type subscriber under topic "<<ss.str()<<endl;
+         subs.push_back(nh.subscribe<std_msgs::Int32>(ss.str(), 1, boost::bind(&ProntoAdapter::callback<std_msgs::Int32>, this, _1, ss.str(), data_type)));
+         cout<<" (int)"<<ss.str();
          break;
          case 2:
-         subs.push_back(nh.subscribe<std_msgs::Float64>(ss.str(), 1, boost::bind(&ProntoAdapter::floatCallback, this, _1, ss.str())));
-         cout<<"Setting up double type subscriber under topic "<<ss.str()<<endl;
+         subs.push_back(nh.subscribe<std_msgs::Float64>(ss.str(), 1, boost::bind(&ProntoAdapter::callback<std_msgs::Float64>, this, _1, ss.str(), data_type)));
+         cout<<" (dou)"<<ss.str();
          break;
          case 4:
-         subs.push_back(nh.subscribe<std_msgs::String>(ss.str(), 1, boost::bind(&ProntoAdapter::strCallback, this, _1, ss.str())));
-         cout<<"Setting up string type subscriber under topic "<<ss.str()<<endl;
+         subs.push_back(nh.subscribe<std_msgs::String>(ss.str(), 1, boost::bind(&ProntoAdapter::callback<std_msgs::String>, this, _1, ss.str(), data_type)));
+         cout<<" (str)"<<ss.str();
          break;
        }
        //initialize the storage for storing incoming data packet
        topic_ptd_map[ss.str()] = ptd; 
        subscribed_topics_.push_back(ss.str());
      }
-     
+     cout<<endl<<endl;
 }
 vector<ROSPubAndPTD> messageToROSPublisher(string msg, ros::NodeHandle &nh) {
 
-  cout<<"Raw outbound list received: "<<msg<<endl;
+  cout<<"Raw outbound list received: "<<endl<<msg;
   vector<string> parts;
   split(msg, "|", parts);  
   
   vector<ROSPubAndPTD> topics;
   
- 
+    cout<<"Setting up publisher:"<<endl;
    for(size_t i=2; i<parts.size(); i++){
        //default to float datatype
        int data_type = 2;
@@ -213,21 +217,21 @@ vector<ROSPubAndPTD> messageToROSPublisher(string msg, ros::NodeHandle &nh) {
        switch(data_type) {
          case 0: 
          pub.publisher = nh.advertise<std_msgs::Int32>(ss.str(), 1);
-         cout<<"Setting up int type publish under topic "<<ss.str()<<endl;
+         cout<<" (int)"<<ss.str();
          break;
          case 2:
          pub.publisher = nh.advertise<std_msgs::Float64>(ss.str(), 1);
-         cout<<"Setting up double type publish under topic "<<ss.str()<<endl;
+         cout<<" (dou)"<<ss.str();
          break;
          case 4:
          pub.publisher = nh.advertise<std_msgs::String>(ss.str(), 1);
-         cout<<"Setting up string type publish under topic "<<ss.str()<<endl;
+         cout<<" (str)"<<ss.str();
          break;
        }
        pub.packet.type = data_type;
        topics.push_back(pub);
      }
-     
+     cout<<endl<<endl;
   return topics;
 }
   string getResponse(string cmd, string expected_match){
@@ -243,13 +247,11 @@ vector<ROSPubAndPTD> messageToROSPublisher(string msg, ros::NodeHandle &nh) {
     }while(response.find(expected_match) == string::npos);
     return response;
   }
-  vector< ROSPubAndPTD > publishers_;
-  vector<ros::Subscriber> subscribers_;
-  void publishData(string data, vector< ROSPubAndPTD > &publishers){
+
+  int publishData(string data, vector< ROSPubAndPTD > &publishers){
     vector<string> data_vec;
     split(data, "|", data_vec);
-    cout<<data_vec.size()<<endl;
-    cout<<publishers.size()<<endl;
+    int published_count = 0;
     if(data_vec.size() == publishers.size() + 3){
       for(size_t i=2; i<data_vec.size()-1; i++){
         string data = data_vec[i];
@@ -260,20 +262,22 @@ vector<ROSPubAndPTD> messageToROSPublisher(string msg, ros::NodeHandle &nh) {
         ROSPubAndPTD *cur_pub = &publishers[i-2];
         switch (cur_pub->packet.type){
           case 0:
-            if(ss>>msg_int.data) cur_pub->packet.last_data_int = msg_int.data;
+            if(ss>>msg_int.data) {cur_pub->packet.last_data_int = msg_int.data;published_count++;}
             else msg_int.data = cur_pub->packet.last_data_int;
             cur_pub->publisher.publish(msg_int);
             break;
           case 2:
-            if(ss>>msg_double.data) cur_pub->packet.last_data_double = msg_double.data;
+            if(ss>>msg_double.data) {cur_pub->packet.last_data_double = msg_double.data;published_count++;}
             else msg_double.data =  (cur_pub->packet.last_data_double);
             cur_pub->publisher.publish(msg_double);
+            
             break;
           case 4:
             std_msgs::String msg_str;
             if(ss.str().size()>0) {
               msg_str.data = ss.str();
               cur_pub->packet.last_data_str = ss.str();
+              published_count++;
             }
             else msg_str.data = cur_pub->packet.last_data_str;
             cur_pub->publisher.publish(msg_str);
@@ -281,7 +285,7 @@ vector<ROSPubAndPTD> messageToROSPublisher(string msg, ros::NodeHandle &nh) {
         }
       }
     }
-      
+      return published_count;
   }
 public:
   ProntoAdapter(boost::asio::io_service& io_service, short port)
@@ -313,46 +317,34 @@ public:
     io_service.run();
   }
   
-  void floatCallback(const ros::MessageEvent<std_msgs::Float64 const>& event, const string topic)
+  ~ProntoAdapter(){
+    cout<<"\xd"<<flush;
+  }
+  template <class T>
+  void callback(const ros::MessageEvent<T const>& event, const string topic, int data_type)
   {
     const std::string& publisher_name = event.getPublisherName();
     ros::M_string header = event.getConnectionHeader();
     ros::Time receipt_time = event.getReceiptTime();
   
-    const std_msgs::Float64ConstPtr& msg = event.getMessage();
-    cout<<publisher_name<<" "<<header["topic"]<<" "<<topic<<" "<<receipt_time<<" "<<msg->data<<endl;
+    T msg = *event.getMessage();
+    ROS_DEBUG_STREAM("Callback: "<<publisher_name<<" "<<header["topic"]<<" "<<topic<<" "<<receipt_time<<" "<<msg.data);
+    
+    //templated data's variable cannot be directly assigned, need to convert to string type
+    stringstream ss;
+    ss << msg.data;
     PacketTypeAndData ptd;
-    ptd.last_data_double = msg->data;
-    ptd.type = 2;
+    int data_int;
+    double data_float;
+    string data_str;
+    switch (data_type){
+      case 0: ss >> data_int; ptd.last_data_int = data_int; break;
+      case 2: ss >> data_float; ptd.last_data_double = data_float; break;
+      case 4: ss >> data_str; ptd.last_data_str = data_str; break;
+    }
+    //ptd.last_data_double = msg.data;
+    ptd.type = data_type;
     topic_ptd_map_[topic] = ptd; 
-  }
-  
-  void strCallback(const ros::MessageEvent<std_msgs::String const>& event, const string topic)
-  {
-    const std::string& publisher_name = event.getPublisherName();
-    ros::M_string header = event.getConnectionHeader();
-    ros::Time receipt_time = event.getReceiptTime();
-  
-    const std_msgs::StringConstPtr& msg = event.getMessage();
-    cout<<publisher_name<<" "<<header["topic"]<<" "<<topic<<" "<<receipt_time<<" "<<msg->data<<endl;
-    PacketTypeAndData ptd;
-    ptd.last_data_str = msg->data;
-    ptd.type = 4;
-    topic_ptd_map_[topic] = ptd;
-  }
-  
-  void intCallback(const ros::MessageEvent<std_msgs::Int32 const>& event, const string topic)
-  {
-    const std::string& publisher_name = event.getPublisherName();
-    ros::M_string header = event.getConnectionHeader();
-    ros::Time receipt_time = event.getReceiptTime();
-  
-    const std_msgs::Int32ConstPtr& msg = event.getMessage();
-    cout<<publisher_name<<" "<<header["topic"]<<" "<<topic<<" "<<receipt_time<<" "<<msg->data<<endl;
-    PacketTypeAndData ptd;
-    ptd.last_data_int = msg->data;
-    ptd.type = 0;
-    topic_ptd_map_[topic] = ptd;
   }
   
   void handleReceiveFrom(const boost::system::error_code& error,
@@ -368,8 +360,7 @@ public:
           int escape_pos = buffer_.find("\r\n");
             
           if(escape_pos>0){
-            data = buffer_.substr(0,escape_pos);
-            cout<<"data received: "<<data<<endl;
+            data = buffer_.substr(0,escape_pos-1);
             buffer_.erase(0, escape_pos+1);
           }
         }
@@ -377,6 +368,10 @@ public:
       
         if(data.size()>0)
         {
+          while(data.find("\n") != string::npos){
+            data.erase(data.find("\n"),1);}
+          while(data.find("\r") != string::npos){
+            data.erase(data.find("\r"),1);}
           string answer_str;
           if(data == PING){
             answer_str = add_check_sum(PONG);
@@ -387,7 +382,8 @@ public:
             boost::asio::placeholders::bytes_transferred));
           }
           else {
-            publishData(data, publishers_);
+            cout<<" \xd"<<flush;
+            cout<<"Var changed: "<<publishData(data, publishers_);
             stringstream ss;
             ss<<"[:BA|N0";
             for(size_t i=0; i<subscribed_topics_.size(); i++){
@@ -400,15 +396,13 @@ public:
               }
             }
             ss<<"|C";
-            //answer_str = boost::str(boost::format("[:BA|N0|D%d|D%d|D%d|D%d|D%d|D%d|D%d|D%d|D%d|D%d|C") %video_mux1 %veh_start %veh_enable %veh_motion 
-            //%joy_steer %veh_steer %veh_brake %veh_throttle %veh_shift %veh_clutch);
             answer_str = add_check_sum(ss.str());
-            cout<<"Sending "<<answer_str<<endl;
+            cout<<" sent: "<<answer_str<<'\xd'<<flush;
             for(map<string, PacketTypeAndData>::iterator it = topic_ptd_map_.begin(); it != topic_ptd_map_.end(); it++){
               switch (it->second.type){
-                case 0: cout<<it->first<<" "<<it->second.type<<" "<<it->second.last_data_int<<endl; break;
-                case 2: cout<<it->first<<" "<<it->second.type<<" "<<it->second.last_data_double<<endl; break;
-                case 4: cout<<it->first<<" "<<it->second.type<<" "<<it->second.last_data_str<<endl; break;
+                case 0: ROS_DEBUG_STREAM("IntVar: "<<it->first<<" "<<it->second.type<<" "<<it->second.last_data_int); break;
+                case 2: ROS_DEBUG_STREAM("DouVar: "<<it->first<<" "<<it->second.type<<" "<<it->second.last_data_double); break;
+                case 4: ROS_DEBUG_STREAM("StrVar: "<<it->first<<" "<<it->second.type<<" "<<it->second.last_data_str); break;
               }
             }
           }
@@ -453,8 +447,5 @@ int main(int argc, char* argv[])
   boost::asio::io_service io_service;
   ProntoAdapter s(io_service, port_number);
   
-  
-  
- 
   return 0;
 }
