@@ -17,6 +17,27 @@ topo_extractor::topo_extractor(const grid_type& curr_grid,
 
 	dist_col tmpcol(grid_size_y);
 	distance_grid.resize(grid_size_x,tmpcol);
+
+	//convert "original_grid" into binary image, to facilitate later distance transform;
+	binary_image_ = cvCreateImage( cvSize(grid_size_x, grid_size_y), IPL_DEPTH_8U, 1);
+	int binary_height 		= binary_image_ -> height;
+	int binary_width  		= binary_image_ -> width;
+	int binary_step	 		= binary_image_ -> widthStep/sizeof(uchar);
+	uchar * binary_data 	= (uchar*)binary_image_ ->imageData;
+	for(int ih=0; ih < binary_height; ih++)
+	{
+		for(int iw=0; iw < binary_width; iw++)
+		{
+			if(original_grid[iw][ih]==Free)
+			{
+				binary_data[ih*binary_step+iw]=255;
+			}
+			else
+			{
+				binary_data[ih*binary_step+iw]= 0;
+			}
+		}
+	}
 }
 
 //the core function of "topo_extractor";
@@ -766,7 +787,9 @@ void topo_extractor::extract_node_edge(){
 			}
 		}
 	}
-	cvSaveImage( "/home/baoxing/raw_skel.jpg", skel_image_ );
+
+
+	cvSaveImage( "./data/raw_skel.jpg", skel_image_ );
 
 	///////////////////////////////////////////////////////////////////
 	//2nd: to extract nodes, node clusters, and edges;
@@ -780,54 +803,77 @@ void topo_extractor::extract_node_edge(){
     //////////////////////////////////////////////////////////////////////////////////////
     //3rd: build the relationship of "node and edge" in "road_graph_";
     //////////////////////////////////////////////////////////////////////////////////////
-	build_topoloty();
+	build_topology();
 
 	//////////////////////////////////////////////////////////////////////////////////////
 	//4th: add some filtering algorithm to erase irrelevant edges;
 	//////////////////////////////////////////////////////////////////////////////////////
 	topo_filtering();
 
+	//////////////////////////////////////////////////////////////////////////////////////
+	//5th: learn the metric properties of the topo_graph;
+	//////////////////////////////////////////////////////////////////////////////////////
+	learn_metric_properties();
+
+	visualize_TopoMetric_graph();
+
+    cvReleaseMat(&mat);
+    cvReleaseImage(&skel_image_);
+}
+
+void topo_extractor::visualize_TopoMetric_graph()
+{
 	//for visualization purposes, to check the extracted nodes and edges;
-    IplImage *color_edge = 0;
-    color_edge = cvCreateImage(cvSize(img->width,img->height),IPL_DEPTH_8U, 3);
-    cvZero(color_edge);
+     IplImage* color_edge = cvCreateImage(cvSize(grid_size_x, grid_size_y), IPL_DEPTH_8U, 3);
+     cvSet(color_edge, cvScalar(255,255,255));
+     //cvZero(color_edge);
 
-	for(size_t i=0; i<road_graph_.nodeClusters.size(); i++)
+	 for(size_t i=0; i<road_graph_.edges.size(); i++)
 	 {
-		 float points_number = (float)road_graph_.nodeClusters[i].nodeIDs.size();
-		 float x_tmp =0.0; float  y_tmp = 0.0;
-
-		 for(size_t j=0; j<road_graph_.nodeClusters[i].nodeIDs.size(); j++)
+		 ROS_INFO("current edge width %3f", road_graph_.edges[i].road_width);
+		 for(size_t j=0; j<	road_graph_.edges[i].cubic_spline->output_points_.size(); j++)
 		 {
-			 x_tmp = x_tmp + road_graph_.nodes[(road_graph_.nodeClusters[i].nodeIDs[j])].position.x;
-			 y_tmp = y_tmp + road_graph_.nodes[(road_graph_.nodeClusters[i].nodeIDs[j])].position.y;
+			 //int x = road_graph_.edges[i].cubic_spline->output_points_[j].x;
+			 //int y = road_graph_.edges[i].cubic_spline->output_points_[j].y;
+			 cvCircle(color_edge, road_graph_.edges[i].cubic_spline->output_points_[j], (int)ceil(road_graph_.edges[i].road_width), CV_RGB( 0,255,0), -1);
 		 }
-		 x_tmp = x_tmp / points_number;
-		 y_tmp = y_tmp / points_number;
-		 road_graph_.nodeClusters[i].cluster_center = cvPoint2D32f(x_tmp, y_tmp);
-		 cvCircle( color_edge, cvPoint(x_tmp, y_tmp), 5, CV_RGB(0,255,0), 2);
+		 //cvShowImage("color_edge", color_edge);
+		 //cvWaitKey(0);
 	 }
 
 	 for(size_t i=0; i<road_graph_.edges.size(); i++)
 	 {
-		 CvScalar ext_color;
-		 ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
-
-		 for(size_t j=0; j<road_graph_.edges[i].points.size(); j++)
+		 for(size_t j=0; j<	road_graph_.edges[i].cubic_spline->output_points_.size(); j++)
 		 {
-			 int x = road_graph_.edges[i].points[j].x;
-			 int y = road_graph_.edges[i].points[j].y;
-			 cvSet2D(color_edge, y, x, ext_color);
+			 int x = road_graph_.edges[i].cubic_spline->output_points_[j].x;
+			 int y = road_graph_.edges[i].cubic_spline->output_points_[j].y;
+			 cvSet2D(color_edge, y, x, CV_RGB( 0, 0, 255 ));
 		 }
 	 }
 
-    cvSaveImage( "/home/baoxing/color_edge.jpg", color_edge );
+	for(size_t k=0; k<road_graph_.nodeClusters.size(); k++)
+	{
+		if(road_graph_.nodeClusters[k].Mcluster_ID!=-1)continue;
+		Point tmp;
+		tmp.x = floor(road_graph_.nodeClusters[k].cluster_center.x);
+		tmp.y = floor(road_graph_.nodeClusters[k].cluster_center.y);
+		cvCircle(color_edge, tmp, (int)ceil(road_graph_.nodeClusters[k].intersection_radius), CV_RGB( 255,255,0), -1);
+		cvCircle(color_edge, tmp, 1, CV_RGB( 255,0,0), -1);
+	}
 
-    cvReleaseMat(&mat);
-    cvReleaseImage(&skel_image_);
+	for(size_t k=0; k<road_graph_.Mclusters_vector.size(); k++)
+	{
+		Point tmp;
+		tmp.x = floor(road_graph_.Mclusters_vector[k].cluster_center.x);
+		tmp.y = floor(road_graph_.Mclusters_vector[k].cluster_center.y);
+		cvCircle(color_edge, tmp, (int)ceil(road_graph_.Mclusters_vector[k].intersection_radius), CV_RGB( 255,255,0), -1);
+		cvCircle(color_edge, tmp, 1, CV_RGB( 255,0,0), -1);
+	}
+
+    cvSaveImage( "./data/color_edge.jpg", color_edge );
     cvReleaseImage(&color_edge);
-
 }
+
 
 void topo_extractor::Graph_Extraction(CvMat *pSrc)
 {
@@ -883,6 +929,7 @@ void topo_extractor::Graph_Extraction(CvMat *pSrc)
 			cvFloodFill(node_label_image, cvPoint(x,y), cvScalar(label_count), cvScalar(0), cvScalar(0), NULL, 8, NULL);
 
 			topo_graph::node_cluster cluster_tmp;
+			cluster_tmp.Mcluster_ID = -1;
 			cluster_tmp.ID = cluster_serial;
 			cluster_serial++;
 
@@ -951,7 +998,7 @@ void topo_extractor::Graph_Extraction(CvMat *pSrc)
 //before any filtering process, their IDs correspond to their position in the storing vector;
 //we can safely use their position in the storing vector as their IDs;
 
-void topo_extractor::build_topoloty()
+void topo_extractor::build_topology()
 {
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //pay attention to this bar of code: the logic is a little subtle;
@@ -1239,25 +1286,110 @@ void topo_extractor::topo_filtering()
 			}
 		}
 	}
-	cvSaveImage( "/home/baoxing/final_image.jpg", final_image );
+	cvSaveImage( "./data/final_image.jpg", final_image );
 
 	CvMat *mat = cvCreateMat( final_image->height, final_image->width, CV_32FC1);
 	road_graph_.clear();
 	cvConvert( final_image, mat);
 	Graph_Extraction(mat);
-	build_topoloty();
+	build_topology();
+}
 
+void topo_extractor::learn_metric_properties()
+{
+	distance_properties();
 	road_spline_fitting();
+	merge_intersections();
+}
 
-	Mat spline_output(final_image->height, final_image->width, CV_8UC3);
-	spline_output = Scalar(0);
+void topo_extractor::distance_properties()
+{
+	IplImage *distance_image_ = cvCreateImage( cvSize(grid_size_x, grid_size_y), IPL_DEPTH_32F, 1);
+	cvZero(distance_image_);
+	cvDistTransform(binary_image_, distance_image_, CV_DIST_L2, 3);
+	int distance_step	 		= distance_image_ -> widthStep/sizeof(float);
+	float * distance_data 	= (float*)distance_image_ ->imageData;
+
+	for(size_t k=0; k<road_graph_.edges.size(); k++)
+	{
+		double distance_total=0.0;
+		for(size_t p=0; p<	road_graph_.edges[k].points.size();p++)
+		{
+			Point tmp;
+			tmp.x = road_graph_.edges[k].points[p].x;
+			tmp.y = road_graph_.edges[k].points[p].y;
+			distance_total = distance_total + distance_data[tmp.y*distance_step+tmp.x];
+		}
+		road_graph_.edges[k].road_width = distance_total/double(road_graph_.edges[k].points.size());
+
+		//pay attention that here is in pixel, and width/2 (since its the distance of the middle line to the boundary);
+		//also need to plus one pixel, the central middle line when calculate the real width;
+
+		ROS_INFO("road edge width: %3f", road_graph_.edges[k].road_width);
+	}
+
+	for(size_t i=0; i<road_graph_.nodeClusters.size(); i++)
+	{
+		 float points_number = (float)road_graph_.nodeClusters[i].nodeIDs.size();
+		 float x_tmp =0.0; float  y_tmp = 0.0;
+
+		 for(size_t j=0; j<road_graph_.nodeClusters[i].nodeIDs.size(); j++)
+		 {
+			 x_tmp = x_tmp + road_graph_.nodes[(road_graph_.nodeClusters[i].nodeIDs[j])].position.x;
+			 y_tmp = y_tmp + road_graph_.nodes[(road_graph_.nodeClusters[i].nodeIDs[j])].position.y;
+		 }
+		 x_tmp = x_tmp / points_number;
+		 y_tmp = y_tmp / points_number;
+		 road_graph_.nodeClusters[i].cluster_center = cvPoint2D32f(x_tmp, y_tmp);
+	}
+
+	for(size_t k=0; k<road_graph_.nodeClusters.size(); k++)
+	{
+		Point tmp;
+		tmp.x = floor(road_graph_.nodeClusters[k].cluster_center.x);
+		tmp.y = floor(road_graph_.nodeClusters[k].cluster_center.y);
+		//road_graph_.nodeClusters[k].intersection_radius = distance_data[tmp.y*distance_step+tmp.x];
+
+		double widest_width = 0.0;
+		for(size_t id=0;id<road_graph_.nodeClusters[k].edgeIDs.size();id++)
+		{
+			int edge_id = road_graph_.nodeClusters[k].edgeIDs[id];
+			if(road_graph_.edges[edge_id].road_width>widest_width) widest_width =road_graph_.edges[edge_id].road_width;
+		}
+
+		road_graph_.nodeClusters[k].intersection_radius = widest_width;
+		ROS_INFO("road intersection radius: %3f", road_graph_.nodeClusters[k].intersection_radius);
+	}
+}
+
+void topo_extractor::road_spline_fitting()
+{
+	for(size_t k=0; k<road_graph_.edges.size(); k++)
+	{
+		ROS_INFO("road_graph_.edges[%ld] length %3f", k, road_graph_.edges[k].edge_length);
+		road_graph_.edges[k].cubic_spline = new golfcar_semantics::spline_fitting(road_graph_.edges[k].points, 0.5, 20.0);
+
+		if(road_graph_.edges[k].cubic_spline->road_length_<=0.5)
+		{
+			road_graph_.edges[k].cubic_spline->output_points_ = road_graph_.edges[k].cubic_spline->raw_points_;
+			continue;
+		}
+		road_graph_.edges[k].cubic_spline->cubicSpline_fitting();
+	}
+
+	Mat spline_output(grid_size_y, grid_size_x, CV_8UC3);
+	spline_output = Scalar(255, 255, 255);
+
+	Mat raw_skel = spline_output.clone();
+
 	Vec3b raw_color, spline_color;
 	raw_color.val[0] = 255;
 	raw_color.val[1] = 0;
 	raw_color.val[2] = 0;
-	spline_color.val[0] = 0;
+
+	spline_color.val[0] = 255;
 	spline_color.val[1] = 0;
-	spline_color.val[2] = 255;
+	spline_color.val[2] = 0;
 	for(size_t k=0; k<road_graph_.edges.size(); k++)
 	{
 		for(size_t p=0; p<	road_graph_.edges[k].cubic_spline->raw_points_.size();p++)
@@ -1265,7 +1397,7 @@ void topo_extractor::topo_filtering()
 			Point tmp;
 			tmp.x = road_graph_.edges[k].cubic_spline->raw_points_[p].x;
 			tmp.y = road_graph_.edges[k].cubic_spline->raw_points_[p].y;
-			spline_output.at<Vec3b>(tmp.y, tmp.x) = raw_color;
+			raw_skel.at<Vec3b>(tmp.y, tmp.x) = raw_color;
 		}
 
 		for(size_t p=0; p<	road_graph_.edges[k].cubic_spline->output_points_.size();p++)
@@ -1276,28 +1408,77 @@ void topo_extractor::topo_filtering()
 			spline_output.at<Vec3b>(tmp.y, tmp.x) = spline_color;
 		}
 	}
+
+	for(size_t k=0; k<road_graph_.nodeClusters.size(); k++)
+	{
+		Point tmp;
+		tmp.x = floor(road_graph_.nodeClusters[k].cluster_center.x);
+		tmp.y = floor(road_graph_.nodeClusters[k].cluster_center.y);
+		circle(raw_skel, tmp, 5, CV_RGB( 255,0,0));
+	}
+
+	imshow("raw_color", raw_skel);
 	imshow("spline_output", spline_output);
 	waitKey();
-	imwrite( "spline_output.jpg", spline_output );
+	imwrite( "./data/raw_color.jpg", raw_skel);
+	imwrite( "./data/spline_output.jpg", spline_output );
 }
 
-void topo_extractor::road_spline_fitting()
+//to merge intersections when one's radius cover the other's center;
+void topo_extractor::merge_intersections()
 {
-	for(size_t k=0; k<road_graph_.edges.size(); k++)
+	CvMemStorage* storage = cvCreateMemStorage(0);
+	CvSeq* serial_seq= cvCreateSeq( 0, sizeof(CvSeq), sizeof(size_t), storage);
+	for(size_t i=0; i<road_graph_.nodeClusters.size(); i++) cvSeqPush( serial_seq, &i);
+
+	CvSeq* labels = 0;
+	int class_count = cvSeqPartition(serial_seq,
+									 0,
+									 &labels,
+									 (CvCmpFunc)is_equal,
+									 &road_graph_);
+
+	std::vector<int> label_counts(class_count, 0);
+
+    for( int i = 0; i < labels->total; i++ )
+    {
+    	int class_label = *(int*)cvGetSeqElem( labels, i);
+    	label_counts[class_label] = label_counts[class_label] + 1;
+    }
+
+    int Mcluster_ID = 0;
+    //for certain partition class i;
+    for( size_t i = 0; i < label_counts.size(); i++ )
 	{
-		ROS_INFO("road_graph_.edges[%ld] length %3f", k, road_graph_.edges[k].edge_length);
-		road_graph_.edges[k].cubic_spline = new golfcar_semantics::spline_fitting(road_graph_.edges[k].points, 0.5, 10.0);
-
-		if(road_graph_.edges[k].cubic_spline->road_length_<=0.5)
+    	//process the class partition with more than one nodeCluster;
+		if(label_counts[i] >= 2)
 		{
-			road_graph_.edges[k].cubic_spline->output_points_ = road_graph_.edges[k].cubic_spline->raw_points_;
-			continue;
+    		topo_graph::merged_cluster tmp_Mcluster;
+    		tmp_Mcluster.ID = Mcluster_ID;
+
+    		float x_total = 0.0;
+    		float y_total = 0.0;
+    		double Mcluster_radius = 0.0;
+			//labels->total is the whole number of nodeCluster;
+		    for( int j = 0; j < labels->total; j++ )
+		    {
+		    	if(*(int*)cvGetSeqElem( labels, j) == (int)i)
+		    	{
+		    		road_graph_.nodeClusters[j].Mcluster_ID = Mcluster_ID;
+		    		tmp_Mcluster.nodeClusterIDs.push_back(j);
+		    		if(road_graph_.nodeClusters[j].intersection_radius > Mcluster_radius) Mcluster_radius = road_graph_.nodeClusters[j].intersection_radius;
+		    		x_total = x_total+road_graph_.nodeClusters[j].cluster_center.x;
+		    		y_total = y_total+road_graph_.nodeClusters[j].cluster_center.y;
+		    	}
+		    }
+		    tmp_Mcluster.intersection_radius =Mcluster_radius;
+		    tmp_Mcluster.cluster_center.x = x_total/label_counts[i];
+		    tmp_Mcluster.cluster_center.y = y_total/label_counts[i];
+		    road_graph_.Mclusters_vector.push_back(tmp_Mcluster);
+		    Mcluster_ID++;
 		}
-
-		road_graph_.edges[k].cubic_spline->cubicSpline_fitting();
 	}
+
 }
-
-
 
 

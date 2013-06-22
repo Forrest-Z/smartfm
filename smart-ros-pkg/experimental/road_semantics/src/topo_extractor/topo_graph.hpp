@@ -45,9 +45,24 @@ public:
 		//record its containing node IDs;
 		int 	ID;
 		vector<int> nodeIDs;
+		int Mcluster_ID;
+
 		CvPoint2D32f cluster_center;
+		double intersection_radius;
+
 		//record its connecting edge IDs;
 		vector<int> edgeIDs;
+	};
+
+	//merged node_clusters, where two node_cluster may be quite near;
+	class merged_cluster
+	{
+		public:
+		//record its containing node IDs;
+		int 	ID;
+		vector<int> nodeClusterIDs;
+		CvPoint2D32f cluster_center;
+		double intersection_radius;
 	};
 
 	class edge {
@@ -56,12 +71,15 @@ public:
 		int head_nodeCluster, end_nodeCluster;
 		vector<CvPoint> points;
 		double edge_length;
+
 		golfcar_semantics::spline_fitting* cubic_spline;
+		double road_width;
 	};
 
 	vector<node> nodes;
 	vector<node_cluster> nodeClusters;
 	vector<edge> edges;
+	vector<merged_cluster> Mclusters_vector;
 
 public:
 	//function template to find the position of certain ID in the vector;
