@@ -288,7 +288,7 @@ vector<ROSPubAndPTD> messageToROSPublisher(string msg, ros::NodeHandle &nh) {
       return published_count;
   }
 public:
-  ProntoAdapter(boost::asio::io_service& io_service, short port)
+  ProntoAdapter(boost::asio::io_service& io_service, short port, string remote_address, int remote_port)
     : io_service_(io_service),
       socket_(io_service, udp::endpoint(udp::v4(), port)),
       PING("[:AB|P0|C78]"),
@@ -299,7 +299,7 @@ public:
       REQ_IN_ANS("[:AB|N0|T")
   {
     remote_endpoint_ = boost::asio::ip::udp::endpoint(
-    boost::asio::ip::address::from_string("192.168.200.110"),  4000);
+    boost::asio::ip::address::from_string(remote_address),  remote_port);
    
     //setup ros message publish list
     publishers_ = messageToROSPublisher(getResponse(REQ_IN, REQ_IN_ANS), nh_);
@@ -442,10 +442,13 @@ int main(int argc, char* argv[])
 {
   ros::init(argc, argv, "pronto_adapter");
   ros::NodeHandle n("~");
-  int port_number;
-  n.param("port", port_number, atoi(argv[1])); 
+  int port_number, remote_port;
+  string remote_address;
+  n.param("sender_port", port_number, 4200); 
+  n.param("pronto_ipaddress", remote_address, string("192.168.200.110"));
+  n.param("pronto_port", remote_port, 4000);
   boost::asio::io_service io_service;
-  ProntoAdapter s(io_service, port_number);
+  ProntoAdapter s(io_service, port_number, remote_address, remote_port);
   
   return 0;
 }
