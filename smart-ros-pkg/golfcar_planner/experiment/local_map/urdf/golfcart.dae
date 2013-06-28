@@ -1,0 +1,217 @@
+<?xml	version="1.0"	encoding="utf-8"?>
+<COLLADA version="1.4.0" xmlns="http://www.collada.org/2005/11/COLLADASchema">
+	<asset>
+		<contributor>
+			<author>NxuStream2 converter - http://www.ageia.com</author>
+			<authoring_tool>PhysX	Rocket,	PhysX	Viewer,	or CreateDynamics</authoring_tool>
+			<comments>questions	to:	jratcliff@ageia.com</comments>
+		</contributor>
+		 <created>2013-04-21T08:55:12.46Z</created>
+		 <modified>2013-04-21T08:55:12.46Z</modified>
+		<unit	meter="1"	name="meter"/>
+		<up_axis>Y_UP</up_axis>
+	</asset>
+	 <library_materials>
+			<material	id="Material"	name="Material">
+				 <instance_effect	url="#Material-fx"></instance_effect>
+			</material>
+	 </library_materials>
+	 <library_effects>
+			<effect	id="Material-fx" name="Material">
+				 <profile_COMMON>
+						<technique id="Material-fx-COMMON-0" sid="COMMON">
+							 <phong>
+									<ambient>
+										 <color>0.803922 0.588235	0.92549	1</color>
+									</ambient>
+									<diffuse>
+										 <color>0.803922 0.588235	0.92549	1</color>
+									</diffuse>
+									<specular>
+										 <color>0.631373 0.631373	0.631373 1</color>
+									</specular>
+									<shininess>
+										 <float>1</float>
+									</shininess>
+									<reflective>
+										 <color>0	0	0	1</color>
+									</reflective>
+									<transparent>
+										 <color>1	1	1	1</color>
+									</transparent>
+									<transparency>
+										 <float>0</float>
+									</transparency>
+							 </phong>
+						</technique>
+				 </profile_COMMON>
+			</effect>
+	 </library_effects>
+	 <library_lights>
+		<light id="Light-0" name="Light-0">
+			<technique_common>
+				<directional>
+					<color>0.300000012 0.300000012 0.300000012</color>
+				</directional>
+			</technique_common>
+		</light>
+		<light id="Light-1" name="Light-1">
+			<technique_common>
+				<directional>
+					<color>0.200000003 0.200000003 0.200000003</color>
+				</directional>
+			</technique_common>
+		</light>
+		<light id="Light-2" name="Light-2">
+			<technique_common>
+				<directional>
+					<color>0.100000001 0.100000001 0.100000001</color>
+				</directional>
+			</technique_common>
+		</light>
+	 </library_lights>
+	 <library_cameras>
+		<camera id="Camera-0" name="Camera-0" >
+			<optics>
+				<technique_common>
+				<perspective>
+					<xfov>26.991464615</xfov>
+					<aspect_ratio>1.294117689</aspect_ratio>
+					<znear>0.100000001</znear>
+					<zfar>5000</zfar>
+				</perspective>
+				</technique_common>
+			</optics>
+		</camera>
+	 </library_cameras>
+	<library_geometries>
+	</library_geometries>
+	<library_visual_scenes>
+		<visual_scene	id="Scene0-Visual"	name="Scene0-Visual">
+			<node id="Light-0-Node" name="Light-0" type="NODE">
+				<translate> 7.099999905 7.099999905 0</translate>
+				<rotate> -0.707106709 0.353553355 0 90</rotate>
+				<instance_light url="#Light-0" />
+			</node>
+			<node id="Light-1-Node" name="Light-1" type="NODE">
+				<translate> -9.199999809 3.400000095 -1.799999952</translate>
+				<rotate> -0.346650153 -0.4689973 0 100.399238586</rotate>
+				<instance_light url="#Light-1" />
+			</node>
+			<node id="Light-2-Node" name="Light-2" type="NODE">
+				<translate> -3.400000095 6.099999905 -7.099999905</translate>
+				<rotate> 0.980710685 0 -0.097732373 218.650192261</rotate>
+				<instance_light url="#Light-2" />
+			</node>
+			<node id="Camera-0-Node" name="Camera-0" type="NODE">
+              <translate>0.157038212	-0.357126981 0.083121173</translate>
+              <rotate>0.58744818 -0.43802765	0.680467784	 131.091644287</rotate>
+				<instance_camera url="#Camera-0" />
+			</node>
+			</visual_scene>
+	</library_visual_scenes>
+	<library_physics_materials>
+		<physics_material	id="pmat0_0-PhysicsMaterial"	name="pmat0_0-PhysicsMaterial">
+			<technique_common>
+				<dynamic_friction>0.029999999</dynamic_friction>
+				<restitution>0</restitution>
+				<static_friction>0.029999999</static_friction>
+			</technique_common>
+		</physics_material>
+		<physics_material	id="pmat1_0-PhysicsMaterial"	name="pmat1_0-PhysicsMaterial">
+			<technique_common>
+				<dynamic_friction>0.100000001</dynamic_friction>
+				<restitution>0.001</restitution>
+				<static_friction>0.100000001</static_friction>
+			</technique_common>
+		</physics_material>
+		<physics_material	id="pmat2_0-PhysicsMaterial"	name="pmat2_0-PhysicsMaterial">
+			<technique_common>
+				<dynamic_friction>0.200000003</dynamic_friction>
+				<restitution>0.002</restitution>
+				<static_friction>0.200000003</static_friction>
+			</technique_common>
+		</physics_material>
+		<physics_material	id="pmat3_0-PhysicsMaterial"	name="pmat3_0-PhysicsMaterial">
+			<technique_common>
+				<dynamic_friction>0.300000012</dynamic_friction>
+				<restitution>0.003</restitution>
+				<static_friction>0.300000012</static_friction>
+			</technique_common>
+		</physics_material>
+		<physics_material	id="pmat4_0-PhysicsMaterial"	name="pmat4_0-PhysicsMaterial">
+			<technique_common>
+				<dynamic_friction>0.400000006</dynamic_friction>
+				<restitution>0.004</restitution>
+				<static_friction>0.400000006</static_friction>
+			</technique_common>
+		</physics_material>
+		<physics_material	id="pmat5_0-PhysicsMaterial"	name="pmat5_0-PhysicsMaterial">
+			<technique_common>
+				<dynamic_friction>0.5</dynamic_friction>
+				<restitution>0.005</restitution>
+				<static_friction>0.5</static_friction>
+			</technique_common>
+		</physics_material>
+		<physics_material	id="pmat6_0-PhysicsMaterial"	name="pmat6_0-PhysicsMaterial">
+			<technique_common>
+				<dynamic_friction>0.600000024</dynamic_friction>
+				<restitution>0.006</restitution>
+				<static_friction>0.600000024</static_friction>
+			</technique_common>
+		</physics_material>
+		<physics_material	id="pmat7_0-PhysicsMaterial"	name="pmat7_0-PhysicsMaterial">
+			<technique_common>
+				<dynamic_friction>0.699999988</dynamic_friction>
+				<restitution>0.007</restitution>
+				<static_friction>0.699999988</static_friction>
+			</technique_common>
+		</physics_material>
+		<physics_material	id="pmat8_0-PhysicsMaterial"	name="pmat8_0-PhysicsMaterial">
+			<technique_common>
+				<dynamic_friction>0.800000012</dynamic_friction>
+				<restitution>0.008</restitution>
+				<static_friction>0.800000012</static_friction>
+			</technique_common>
+		</physics_material>
+		<physics_material	id="pmat9_0-PhysicsMaterial"	name="pmat9_0-PhysicsMaterial">
+			<technique_common>
+				<dynamic_friction>0.900000036</dynamic_friction>
+				<restitution>0.009</restitution>
+				<static_friction>0.900000036</static_friction>
+			</technique_common>
+		</physics_material>
+		<physics_material	id="pmat10_0-PhysicsMaterial"	name="pmat10_0-PhysicsMaterial">
+			<technique_common>
+				<dynamic_friction>1</dynamic_friction>
+				<restitution>0.01</restitution>
+				<static_friction>1</static_friction>
+			</technique_common>
+		</physics_material>
+	</library_physics_materials>
+	<library_physics_models>
+		<physics_model id="Scene0-PhysicsModel">
+		</physics_model>
+		<physics_model id="Scene0-PhysicsInstance">
+			<instance_physics_model	url="#Scene0-PhysicsModel">
+			<extra>
+				<technique profile="PhysX">
+				</technique>
+			</extra>
+			</instance_physics_model>
+		</physics_model>
+	</library_physics_models>
+	<library_physics_scenes>
+		<physics_scene id="SceneInstances-Physics">
+			<instance_physics_model	url="#Scene0-PhysicsInstance"/>
+			<technique_common>
+				<gravity>0	0 0</gravity>
+				<time_step>0.000781</time_step>
+			</technique_common>
+		</physics_scene>
+	</library_physics_scenes>
+	<scene>
+		<instance_physics_scene	url="#SceneInstances-Physics"/>
+		<instance_visual_scene	url="#Scene0-Visual"/>
+	</scene>
+</COLLADA>

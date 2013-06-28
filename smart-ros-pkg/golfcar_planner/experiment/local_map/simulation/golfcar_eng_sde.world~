@@ -1,0 +1,83 @@
+define block model
+(
+  size [2.385 1.200 0.750]
+  gui_nose 0
+)
+
+define topurg ranger
+(
+  sensor(
+  range [0.0 80.0]
+  fov 180
+  samples 360
+  )
+  # generic model properties
+  color "black"
+  size [ 0.050 0.050 0.100 ]
+)
+
+define gc1 position
+(
+  size [2.385 1.200 0.60]
+  origin [0.792 0.000 0.000 0.000]
+  gui_nose 1
+  drive "car"
+  localization "gps"
+  #odom_error [0.01 0.05 0.01 0.02 0.01 0.02]
+
+  topurg(pose [1.985 0.000 0.000 0.000])
+)
+
+define floorplan model
+(
+  # sombre, sensible, artistic
+  color "gray30"
+
+  # most maps will need a bounding box
+  boundary 1
+
+  gui_nose 0
+  gui_grid 0
+#gui_movemask 0
+  gui_outline 0
+  gripper_return 0
+  fiducial_return 0
+  laser_return 1
+)
+
+# set the resolution of the underlying raytrace model in meters
+resolution 0.01
+
+interval_sim 100  # simulation timestep in milliseconds
+#interval_real 100  # real-time interval between simulation updates in milliseconds 
+
+window
+( 
+  size [ 824 501 ] 
+ #center [327.990 371.960] 
+  center [-314.699 43.644]
+#rotate [ 0.000 -1.560 ]
+  rotate [ 0.500 6.000 ]
+  scale 1.610 
+)
+
+# load an environment bitmap
+floorplan
+( 
+  name "willow"
+  bitmap "bigeng_sde_map_0.2.png"
+  size [425.100 452.000 0.300]
+#  pose [12.500 -47.600 0.000 90.000]
+  pose [-225.781 212.593 0.000 90.000]
+ # pose [0.0 0.0 0.000 90.000]
+)
+
+# throw in a robot
+gc1( pose [-274.182 60.706 0.000 -48.771] name "gc1" color "red")
+
+block( pose [ -127.258 164.617 0.000 54.431 ] color "blue")
+block( pose [ -207.465 44.552 0.000 37.242 ] color "blue")
+block( pose [ -232.066 50.458 0.000 28.648 ] color "blue")
+block( pose [ -194.044 79.071 0.000 37.242 ] color "blue")
+block( pose [ -200.501 49.167 0.000 28.648 ] color "blue")
+block( pose [ -163.542 108.212 0.000 60.161 ] color "blue")
