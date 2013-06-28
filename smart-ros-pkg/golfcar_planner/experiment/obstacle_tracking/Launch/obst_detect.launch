@@ -1,0 +1,5 @@
+<launch>
+	<node name ="obst_detect_test" pkg = "obstacle_tracking" type = "obst_detect">
+		<remap from ="scan_in1" to ="base_scan" />
+	</node>
+</launch>

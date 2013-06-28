@@ -1,0 +1,22 @@
+<package>
+  <description brief="obstacle_tracking">
+
+     obstacle_tracking
+
+  </description>
+  <author>LIUWLZ</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/obstacle_tracking</url>
+  <depend package="roscpp"/>
+  <depend package="sensor_msgs"/>
+  <depend package="tf"/>
+  <depend package="geometry_msgs"/>
+  <depend package="pnc_msgs"/>
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
+  <depend package="laser_geometry"/>
+  
+</package>
+
+
