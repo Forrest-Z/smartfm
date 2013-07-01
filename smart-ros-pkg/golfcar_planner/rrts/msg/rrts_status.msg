@@ -5,3 +5,4 @@ bool goal_infeasible
 bool root_in_goal
 bool robot_near_root
 bool switched_root
+bool trajectory_found
