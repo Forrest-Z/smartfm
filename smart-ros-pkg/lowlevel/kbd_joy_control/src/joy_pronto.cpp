@@ -20,7 +20,7 @@
 #define STEER_ANG_MAX 445
 #define FULL_BRAKE 100
 #define FULL_THROTTLE 1000
-ros::Publisher throttle_pub, steering_pub, brake_pub, lblinker_pub, rblinker_pub;
+ros::Publisher throttle_pub, steering_pub, brake_pub, lblinker_pub, rblinker_pub, motion_pub;
 
 
 void joyCallBack(sensor_msgs::Joy joy_msg)
@@ -31,8 +31,9 @@ void joyCallBack(sensor_msgs::Joy joy_msg)
     // axes[2] is the wheel axis: positive upward.
 
     float lat = joy_msg.axes[0];
-    float lon = joy_msg.axes[1];
-
+    float lon = joy_msg.axes[4];
+    float motion = joy_msg.axes[2];
+    
     ROS_INFO("Joystick: axes[0] (lat)=%f, axis[1] (lon)=%f, axis[2] (wheel)=%f",
     joy_msg.axes[0], joy_msg.axes[1], joy_msg.axes[2]);
 
@@ -46,6 +47,15 @@ void joyCallBack(sensor_msgs::Joy joy_msg)
     W.data = lat * STEER_ANG_MAX;
     steering_pub.publish(W);
 
+    //Motion
+    std_msgs::Int32 M;
+    if(motion < 0.5) {
+      M.data = 1;
+    }else{
+      M.data = 0;
+    }
+    motion_pub.publish(M);
+    
     ROS_INFO("Resulting commands: throttle=%d, brake_angle=%d, steer_angle=%f",
     V.data, B.data, W.data);
 
@@ -78,7 +88,8 @@ int main(int argc, char **argv)
     brake_pub = n.advertise<std_msgs::Int32>("brake_angle", 1000);
     lblinker_pub = n.advertise<std_msgs::Bool>("left_blinker", 1000);
     rblinker_pub = n.advertise<std_msgs::Bool>("right_blinker", 1000);
-
+    motion_pub = n.advertise<std_msgs::Int32>("motion_en", 1000);
+    
     puts("Reading from Joystick");
     puts("---------------------------");
 
