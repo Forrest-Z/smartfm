@@ -3,7 +3,7 @@
 #include <boost/bind.hpp>
 #include <boost/asio.hpp>
 #include <boost/tokenizer.hpp>
-#include <pronto_adapter/pronto.h>
+//#include <pronto_adapter/pronto.h>
 #include <ros/ros.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/Int32.h>
@@ -237,13 +237,16 @@ vector<ROSPubAndPTD> messageToROSPublisher(string msg, ros::NodeHandle &nh) {
   string getResponse(string cmd, string expected_match){
     cmd = add_check_sum(cmd);
     string response;
+    //cout<<"getReponse("<<cmd<<", "<<expected_match<<endl;
     do{
     socket_.send_to(boost::asio::buffer(cmd), remote_endpoint_);
+    if(expected_match.size() == 0) break;
     boost::array<char, max_length> recv_buf;
     size_t len = socket_.receive_from(
     boost::asio::buffer(recv_buf), sender_endpoint_);
     response = string(recv_buf.data());
     response = response.substr(0, len);
+    //cout<<"getting response "<<response<<endl;
     }while(response.find(expected_match) == string::npos);
     return response;
   }
@@ -291,7 +294,7 @@ public:
   ProntoAdapter(boost::asio::io_service& io_service, short port, string remote_address, int remote_port)
     : io_service_(io_service),
       socket_(io_service, udp::endpoint(udp::v4(), port)),
-      PING("[:AB|P0|C78]"),
+      PING("[:AB|P0|C78"),
       PONG("[:BA|G0|C"),
       REQ_OUT("[:BA|N?|C"),
       REQ_OUT_ANS("[:AB|L0|T"),
@@ -307,6 +310,7 @@ public:
     //setup ros message subscription
     messageToROSSubscriber(getResponse(REQ_OUT, REQ_OUT_ANS), nh_, subscribers_, topic_ptd_map_);
     
+    getResponse("[:BA|EServoPod|D0,Teleop Start|C","");
     
     socket_.async_receive_from(
         boost::asio::buffer(data_, max_length), sender_endpoint_,
@@ -373,7 +377,9 @@ public:
           while(data.find("\r") != string::npos){
             data.erase(data.find("\r"),1);}
           string answer_str;
+	  cout<<data<<" data received"<<endl;
           if(data == PING){
+	    cout<<"PING received, sending PONG"<<endl;
             answer_str = add_check_sum(PONG);
             socket_.async_send_to(
             boost::asio::buffer(answer_str), remote_endpoint_,
@@ -399,7 +405,7 @@ public:
             answer_str = add_check_sum(ss.str());
             cout<<" sent: "<<answer_str<<'\xd'<<flush;
             for(map<string, PacketTypeAndData>::iterator it = topic_ptd_map_.begin(); it != topic_ptd_map_.end(); it++){
-              switch (it->second.type){
+		switch (it->second.type){
                 case 0: ROS_DEBUG_STREAM("IntVar: "<<it->first<<" "<<it->second.type<<" "<<it->second.last_data_int); break;
                 case 2: ROS_DEBUG_STREAM("DouVar: "<<it->first<<" "<<it->second.type<<" "<<it->second.last_data_double); break;
                 case 4: ROS_DEBUG_STREAM("StrVar: "<<it->first<<" "<<it->second.type<<" "<<it->second.last_data_str); break;
@@ -411,7 +417,7 @@ public:
           boost::bind(&ProntoAdapter::handleSendTo, this,
           boost::asio::placeholders::error,
           boost::asio::placeholders::bytes_transferred));
-        }
+	}
         else {
           socket_.async_receive_from(
           boost::asio::buffer(data_, max_length), sender_endpoint_,
@@ -445,7 +451,7 @@ int main(int argc, char* argv[])
   int port_number, remote_port;
   string remote_address;
   n.param("sender_port", port_number, 4200); 
-  n.param("pronto_ipaddress", remote_address, string("192.168.200.110"));
+  n.param("pronto_ipaddress", remote_address, string("192.168.200.220"));
   n.param("pronto_port", remote_port, 4000);
   boost::asio::io_service io_service;
   ProntoAdapter s(io_service, port_number, remote_address, remote_port);
