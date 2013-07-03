@@ -20,8 +20,14 @@
 #define STEER_ANG_MAX 445
 #define FULL_BRAKE 100
 #define FULL_THROTTLE 1000
-ros::Publisher throttle_pub, steering_pub, brake_pub, lblinker_pub, rblinker_pub, motion_pub;
+ros::Publisher throttle_pub, steering_pub, brake_pub, motion_pub, enable_pub, start_pub, shift_pub;
 
+//For enable button
+float g_enable_state, g_enable_butt_prev;
+//For start button
+float g_start_state, g_start_butt_prev;
+//For gear
+float g_shift_state;
 
 void joyCallBack(sensor_msgs::Joy joy_msg)
 {
@@ -33,6 +39,10 @@ void joyCallBack(sensor_msgs::Joy joy_msg)
     float lat = joy_msg.axes[0];
     float lon = joy_msg.axes[4];
     float motion = joy_msg.axes[2];
+    float enable_butt = joy_msg.buttons[6];
+    float start_butt = joy_msg.buttons[7];
+    float shift_lat = joy_msg.axes[6];
+    float shift_lon = joy_msg.axes[7];
     
     ROS_INFO("Joystick: axes[0] (lat)=%f, axis[1] (lon)=%f, axis[2] (wheel)=%f",
     joy_msg.axes[0], joy_msg.axes[1], joy_msg.axes[2]);
@@ -56,24 +66,45 @@ void joyCallBack(sensor_msgs::Joy joy_msg)
     }
     motion_pub.publish(M);
     
+    //Enable button
+    std_msgs::Int32 En;
+    if((enable_butt == 1) && (g_enable_butt_prev == 0)){
+      if(g_enable_state == 0){
+	g_enable_state = 1;
+      }else{
+	g_enable_state = 0;
+      }
+    }
+    En.data = g_enable_state;
+    g_enable_butt_prev = enable_butt;
+    enable_pub.publish(En);
+    
+    //Start button
+    std_msgs::Int32 St;
+    if((start_butt == 1) && (g_start_butt_prev == 0)){
+      if(g_start_state == 0){
+	g_start_state = 1;
+      }else{
+	g_start_state = 0;
+      }
+    }
+    St.data = g_start_state;
+    g_start_butt_prev = start_butt;
+    start_pub.publish(St);
+    
+    //Shift up-down
+    std_msgs::Int32 Sh;
+    if((lon <= -0.8) && ((shift_lat != 0) || (shift_lon != 0))){
+      if(shift_lat == 1.0) g_shift_state = 0;
+      if(shift_lon == 1.0) g_shift_state = 1;
+      if(shift_lat == -1.0) g_shift_state = 2;
+      if(shift_lon == -1.0) g_shift_state = 3;
+    }
+    Sh.data = g_shift_state;
+    shift_pub.publish(Sh);
+    
     ROS_INFO("Resulting commands: throttle=%d, brake_angle=%d, steer_angle=%f",
     V.data, B.data, W.data);
-
-    std_msgs::Bool L, R;
-    if( W.data > 20 ) {
-        L.data = true;
-        R.data = false;
-    }
-    else if( W.data < -20 ) {
-        L.data = true;
-        R.data = false;
-    }
-    else {
-        L.data = false;
-        R.data = false;
-    }
-    lblinker_pub.publish(L);
-    rblinker_pub.publish(R);
 }
 
 int main(int argc, char **argv)
@@ -86,9 +117,15 @@ int main(int argc, char **argv)
     throttle_pub = n.advertise<std_msgs::Int32>("throttle", 1000);
     steering_pub = n.advertise<std_msgs::Float64>("steer_angle", 1000);
     brake_pub = n.advertise<std_msgs::Int32>("brake_angle", 1000);
-    lblinker_pub = n.advertise<std_msgs::Bool>("left_blinker", 1000);
-    rblinker_pub = n.advertise<std_msgs::Bool>("right_blinker", 1000);
     motion_pub = n.advertise<std_msgs::Int32>("motion_en", 1000);
+    enable_pub = n.advertise<std_msgs::Int32>("enable_sig", 1000);
+    start_pub = n.advertise<std_msgs::Int32>("start_sig", 1000);
+    shift_pub = n.advertise<std_msgs::Int32>("shift", 1000);
+    
+    //Initial state
+    g_enable_state = 0.0;
+    g_start_state = 0.0;
+    g_shift_state = 0.0;
     
     puts("Reading from Joystick");
     puts("---------------------------");
