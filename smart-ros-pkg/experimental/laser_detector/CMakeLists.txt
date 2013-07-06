@@ -39,7 +39,7 @@ rosbuild_add_executable(single_scan_clustering src/single_scan_clustering.cpp)
 rosbuild_add_executable(rolling_window_pcl src/rolling_window_pcl.cpp)
 rosbuild_link_boost(rolling_window_pcl signals)
 
-rosbuild_add_executable(road_surface src/road_surface.cpp)
+rosbuild_add_executable(road_surface src/road_surface.cpp src/cloud_cluster.cpp)
 rosbuild_link_boost(road_surface signals)
 
 rosbuild_add_executable(static_vehicle_recognition src/static_vehicle_recognition.cpp)

@@ -9,6 +9,9 @@
 #include <pcl/common/impl/common.hpp>
 #include <pcl/kdtree/impl/kdtree_flann.hpp>
 
+#include <time.h>
+#include <stdlib.h>
+
 void cloud_cluster::update(void)
 {
 	num_points = pc.size();
@@ -154,7 +157,7 @@ void cluster_group::delete_old_group(void)
 {
 	//any cluster whose id is smaller than last_group id should be deleted
 	//find the cluster who is next to the last group and delete from beginning
-	int sz_old = -1;
+	int sz_old = 0;
 	for(unsigned int  i = 0; i  < clusters.size(); i++)
 	{
 		if(clusters[i].group_id < last_group_id)
@@ -163,7 +166,7 @@ void cluster_group::delete_old_group(void)
 		}
 	}
 
-	if(sz_old >= 0 )
+	if(sz_old > 0 )
 	{
 		clusters.erase(clusters.begin(),clusters.begin() + sz_old);
 	}
@@ -175,8 +178,10 @@ void cluster_group::insert_cluster(cloud_cluster & cluster_in)
 	clusters.push_back(cluster_in);
 }
 
-cluster_group::cluster_group(void)
+cluster_group::cluster_group(double _box_dist_thres, double _cluster_dist_thres)
 {
+	box_dist_thres = _box_dist_thres;
+	cluster_dist_thres = _cluster_dist_thres;
 	last_group_id = 0;
 	cur_group_id = 0;
 }
@@ -214,13 +219,13 @@ void cluster_group::merge_cluster(void)
 
 
 	// step 2, two loops try to merge two groups of clusters
-	unsigned int cur_index = split_index + 1;
+	unsigned int cur_index = split_index;
 	unsigned int last_index = 0;
 	box cur_box, last_box;
-	for(last_index = 0;last_index <= split_index; last_index++)
+	for(last_index = 0;last_index < split_index; last_index++)
 	{
 
-		for(cur_index = split_index + 1;cur_index < clusters.size();cur_index++)
+		for(cur_index = split_index ;cur_index < clusters.size();cur_index++)
 		{
 			cur_box.init(clusters[cur_index].min_pt, clusters[cur_index].max_pt);
 			last_box.init(clusters[last_index].min_pt,clusters[last_index].max_pt);
@@ -233,55 +238,67 @@ void cluster_group::merge_cluster(void)
 			else
 			{
 
+				/*
 				// means that the box distance is small enough to check the cluster distance
 				// construct a kd tree, if the any two points can be connected through the radius ball search
 				// then merge and continue
 				pcl::PointCloud<pcl::PointXYZRGB> cloud_in;
 
-				// the following is use less, because + will take care of all these operations
-				/*
-				cloud_in.header = clusters[cur_index].pc.header;
-				cloud_in.height = 1;
-				*/
+
 				cloud_in = clusters[last_index].pc + clusters[cur_index].pc;
-				const unsigned int last_cluster_size = clusters[last_index].pc.size();
-				const unsigned int cur_cluster_size = clusters[cur_index].pc.size();
+				const  unsigned int last_cluster_size = clusters[last_index].pc.size();
+				const  unsigned int cur_cluster_size = clusters[cur_index].pc.size();
 
 
 
  				// the cluster id information is stored in the index, because
 				// if the index is smaller than the clusters[last_index].size, then
 				// it belongs to the last group
+
 				pcl::KdTreeFLANN<pcl::PointXYZRGB> kd_tree;
 				kd_tree.setInputCloud(cloud_in.makeShared());
 				std::vector<int> pointIdx;
 				std::vector<float> pointDistSquare;
 				bool to_be_merged = false;
+
 				for(unsigned int ii  = 0; ii < last_cluster_size; ii++)
 				{
 					if(kd_tree.radiusSearch(clusters[last_index].pc.points[ii],cluster_dist_thres,pointIdx,pointDistSquare)>0)
 					{
-						if(std::max_element(pointIdx.begin(),pointIdx.end()) > last_cluster_size )
+						if( ((unsigned int) ( *std::max_element(pointIdx.begin(),pointIdx.end()))) >= last_cluster_size )
 						{
 							to_be_merged = true;
 							break;
 						}
 					}
 				}
+				*/
+
+
 
 				// save the to be merged index here first
 				// do all the merge operation outside of the loop
-				pair<unsigned int,unsigned int> tmp_pair (last_index, cur_index) ;
-				merge_pairs.push_back(tmp_pair);
 
+				//only use box check
+				bool to_be_merged = true;
+				if(to_be_merged == true)
+				{
+					pair<unsigned int,unsigned int> tmp_pair (last_index, cur_index) ;
+					merge_pairs.push_back(tmp_pair);
+				}
 			}
 		}
 	}
 
 	// merge operation here
 	merge_op();
+
+	// update merged cluster information
+	update_merged_cluster_info();
+
 	// update the new cloud
 	update_cloud();
+
 
 }
 
@@ -300,7 +317,9 @@ void cluster_group::update_merged_cluster_info(void)
 			break;
 		}
 	}
+	split_index_ = split_index;
 
+	// step 2, update the merge result
 	for(unsigned int j = split_index; j < clusters.size(); j++)
 	{
 		if(clusters[j].merged_flag == true)
@@ -310,16 +329,58 @@ void cluster_group::update_merged_cluster_info(void)
 	}
 }
 
+void cluster_group::prepare_merge_result(void)
+{
+	pcl::PointXYZRGB xyzRGBpt;
+	cur_vis_points.points.clear();
+
+
+	srand(time(NULL));
+	for(unsigned int i = split_index_; i < clusters.size() ; i++)
+	{
+		cur_vis_points.header = clusters[i].pc.header;
+		cur_vis_points.height = 1;
+		size_t sz = cur_vis_points.points.size();
+		cur_vis_points.points.resize(sz + clusters[i].pc.points.size());
+
+		// set the color according to the merged flag, merged in red, others in other colors without any red
+		if(clusters[i].merged_flag == true)
+		{
+			xyzRGBpt.r = 255;
+			xyzRGBpt.g = 0;
+			xyzRGBpt.b = 0;
+		}
+		else
+		{
+			xyzRGBpt.r = 0;
+			xyzRGBpt.g = rand()%255;
+			xyzRGBpt.b = rand()%255;
+		}
+
+		//copy points
+		for(unsigned int j = 0; j < clusters[i].pc.points.size(); j++)
+		{
+			xyzRGBpt.x = clusters[i].pc.points[j].x;
+			xyzRGBpt.y = clusters[i].pc.points[j].y;
+			xyzRGBpt.z = clusters[i].pc.points[j].z;
+			cur_vis_points.points[j + sz] = xyzRGBpt;
+		}
+	}
+	cout<<"the size is !!!!!!!!!!!!!!!!"<<cur_vis_points.points.size()<<endl;
+}
+
 void cluster_group::merge_op(void)
 {
 	// do the merge operation here
 	// step 1 : copy the points from last group to the current group, also update the merged_flag for each cluster
+	cout<< " there are -----!!!!!" << merge_pairs.size() << " pairs to be merged!" << endl;
+	cout<< " there are !!!!!------ " << clusters.size() << "clusters ----" <<endl;
 	for(unsigned int i = 0; i < merge_pairs.size(); i++)
 	{
 		unsigned int last_index = merge_pairs[i].first;
 		unsigned int cur_index = merge_pairs[i].second;
-		unsigned int cur_size = clusters[cur_index].size();
-		unsigned int last_size = clusters[last_index].size();
+		unsigned int cur_size = clusters[cur_index].pc.points.size();
+		unsigned int last_size = clusters[last_index].pc.points.size();
 		// copy the points here
 		clusters[merge_pairs[i].second].pc.points.resize(cur_size + last_size);
 		for(unsigned int j = 0; j < last_size; j++)

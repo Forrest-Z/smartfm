@@ -82,6 +82,9 @@
 #include <boost/bind.hpp>
 #include <boost/thread/mutex.hpp>
 
+#include "cloud_cluster.h"
+#include "cluster_data_types.h"
+
 namespace golfcar_pcl{
 
 	typedef struct
@@ -158,6 +161,14 @@ namespace golfcar_pcl{
 	ros::Publisher	plane_coef_pub_;
 	ros::Publisher  process_fraction_pub_;
 	
+	// add some new variables here for merge clusters
+	cloud_cluster m_cluster_;
+	cluster_group * p_cluster_group_;
+
+	double box_dist_thres_;
+	double cluster_dist_thres_;
+
+
 	void publishNormal(RollingPointNormalCloud& pcl_cloud);
 	ros::Publisher	normals_poses_pub_;
 
