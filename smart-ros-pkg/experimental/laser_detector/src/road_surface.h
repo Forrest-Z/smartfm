@@ -82,6 +82,9 @@
 #include <boost/bind.hpp>
 #include <boost/thread/mutex.hpp>
 
+#include "cloud_cluster.h"
+#include "cluster_data_types.h"
+
 namespace golfcar_pcl{
 
 	typedef struct
@@ -158,6 +161,14 @@ namespace golfcar_pcl{
 	ros::Publisher	plane_coef_pub_;
 	ros::Publisher  process_fraction_pub_;
 	
+	// add some new variables here for merge clusters
+	cloud_cluster m_cluster_;
+	cluster_group * p_cluster_group_;
+
+	double box_dist_thres_;
+	double cluster_dist_thres_;
+
+
 	void publishNormal(RollingPointNormalCloud& pcl_cloud);
 	ros::Publisher	normals_poses_pub_;
 
@@ -183,7 +194,8 @@ namespace golfcar_pcl{
 
 	ros::Publisher  clusters_pub_, normal_visual_pub_, normal_visual_pub2_, surface_slope_pub_, variance_visual_pub_, variance_visual_pub2_, large_curvature_pub_, scan_outlier_pub_, scan_inlier_pub_;
 	//ros::Publisher planes_pub_, pcl_cloud_restPub_;
-
+	// add a publisher for the boxes
+	ros::Publisher clusters_box_pub_;
 	vector<float> jet_r_, jet_g_, jet_b_;
 	double curvature_visual_limit_;
 	double normalZ_visual_limit_;

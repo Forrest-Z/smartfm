@@ -1,4 +1,5 @@
  #include "road_surface.h"
+
  
 namespace golfcar_pcl{
 	
@@ -45,6 +46,11 @@ namespace golfcar_pcl{
 		private_nh_.param("extract_training_data_point", extract_training_data_point_, false);
 		private_nh_.param("boundary_adjust", boundary_adjust_, true);
 
+		// intialization for new variables
+		private_nh_.param("box_dist_thres",box_dist_thres_,0.1);
+		private_nh_.param("cluster_dist_thres",cluster_dist_thres_,0.15);
+		p_cluster_group_ = new cluster_group (box_dist_thres_,cluster_dist_thres_);
+
 		rolling_pcl_sub_ = new message_filters::Subscriber<RollingPointCloud> (nh_, "rolling_window_pcl", 1);
 		pcl_indices_sub_ = new message_filters::Subscriber<laser_detector::pcl_indices> (nh_, "process_fraction_indices", 1);
 		sync_	= new message_filters::TimeSynchronizer<RollingPointCloud, laser_detector::pcl_indices>(*rolling_pcl_sub_, *pcl_indices_sub_, 5);
@@ -83,6 +89,7 @@ namespace golfcar_pcl{
 		clustering_disThresh_   = 15.0;
 
 		clusters_pub_ = nh_.advertise<PointCloudRGB>("clusters_RGBD", 10);
+		clusters_box_pub_ = nh_.advertise<PointCloudRGB>("boxes_RGBD",10);
 		normal_visual_pub_ = nh_.advertise<PointCloudRGB>("normal_visual_RGB", 10);
 		normal_visual_pub2_ = nh_.advertise<PointCloudRGB>("normal_visual_RGB2", 10);
 		variance_visual_pub_ = nh_.advertise<PointCloudRGB>("variance_visual_RGB", 10);
@@ -318,11 +325,27 @@ namespace golfcar_pcl{
 
 				srand ( time(NULL) );
 				std::cout << "cluster_indices size "<<cluster_indices.size()<<endl;
+
+				// now begin to add  a new group
+				p_cluster_group_->add_new_group();
+				m_cluster_.group_id = p_cluster_group_->get_cur_id();
+				m_cluster_.merged_flag = false;
+				m_cluster_.processed_flag = false;
+				int tmp_cluster_id = 0;
+
 				for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it)
 				{
 					xyzRGB_pt.r = rand() % 255;
 					xyzRGB_pt.g = rand() % 255;
 					xyzRGB_pt.b = rand() % 255;
+
+					// new clusters are generated here
+					tmp_cluster_id++;
+					m_cluster_.cluster_id = tmp_cluster_id;
+
+					m_cluster_.pc.header = odom->header;
+					m_cluster_.pc.height = 1;
+					m_cluster_.pc.points.clear();
 
 					for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
 					{
@@ -330,9 +353,22 @@ namespace golfcar_pcl{
 						xyzRGB_pt.x = other_points->points[*pit].x;
 						xyzRGB_pt.y = other_points->points[*pit].y;
 						xyzRGB_pt.z = other_points->points[*pit].z;
+						m_cluster_.pc.push_back(xyzRGB_pt);
 						clusters_tmp.push_back(xyzRGB_pt);
 					}
+
+					// update the cluster information here and insert it into the current group
+					m_cluster_.update();
+					p_cluster_group_->insert_cluster(m_cluster_);
 				}
+
+				//after get a new group of points, try to merge
+				//p_cluster_group_->merge_cluster();
+				//p_cluster_group_->prepare_merge_result();
+
+				p_cluster_group_->show_cluster_box();
+				// prepare the merge result to show
+				clusters_box_pub_.publish(p_cluster_group_->cur_vis_points);
 				clusters_pub_.publish(clusters_tmp);
 			}
 		}
