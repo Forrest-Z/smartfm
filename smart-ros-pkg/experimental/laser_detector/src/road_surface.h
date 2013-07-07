@@ -194,7 +194,8 @@ namespace golfcar_pcl{
 
 	ros::Publisher  clusters_pub_, normal_visual_pub_, normal_visual_pub2_, surface_slope_pub_, variance_visual_pub_, variance_visual_pub2_, large_curvature_pub_, scan_outlier_pub_, scan_inlier_pub_;
 	//ros::Publisher planes_pub_, pcl_cloud_restPub_;
-
+	// add a publisher for the boxes
+	ros::Publisher clusters_box_pub_;
 	vector<float> jet_r_, jet_g_, jet_b_;
 	double curvature_visual_limit_;
 	double normalZ_visual_limit_;

@@ -120,6 +120,9 @@ public:
 // for the current group, prepare the points in the cur_vis_points and show the result
 	void prepare_merge_result(void);
 
+// a big point cloud to show all the boxes
+	void show_cluster_box(void);
+
 
 
 

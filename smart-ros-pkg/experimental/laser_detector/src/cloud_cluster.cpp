@@ -369,6 +369,99 @@ void cluster_group::prepare_merge_result(void)
 	cout<<"the size is !!!!!!!!!!!!!!!!"<<cur_vis_points.points.size()<<endl;
 }
 
+
+void cluster_group::show_cluster_box(void)
+{
+	cur_vis_points.height = 1;
+	cur_vis_points.clear();
+	pcl::PointXYZRGB xyzRGBpt;
+
+	srand(time(NULL));
+	cout<<"--------------------------"<<endl;
+	for(unsigned int i = 0; i < clusters.size(); i++)
+	{
+		cur_vis_points.header = clusters[i].pc.header;
+		if(clusters[i].group_id == last_group_id)
+		{
+		   // no red, all blue, random green
+		   xyzRGBpt.r = 0;
+		   xyzRGBpt.g = rand()%255;
+		   xyzRGBpt.b = 255;
+		}
+		else
+		{
+			xyzRGBpt.b = 0;
+			xyzRGBpt.g = rand()%255;
+			xyzRGBpt.r = 255;
+		}
+		// debug, show the size of each cluster
+		cout<<" the "<<i<< "-th cluster"<<" dx "<<clusters[i].rect_size[0] << " dy "<< clusters[i].rect_size[1] << " dz "<<clusters[i].rect_size[2]<<endl;
+
+		const unsigned int resolution = 40;
+		const float resolution_f = resolution;
+			// for each cluster, use 12 * 10 points to show the box
+			for(unsigned int k = 0 ; k < resolution; k++)
+			{
+				xyzRGBpt.x = (k/resolution_f) * clusters[i].min_pt.x + ((resolution_f - k) / resolution_f) * clusters[i].max_pt.x;
+				xyzRGBpt.y = clusters[i].max_pt.y;
+				xyzRGBpt.z = clusters[i].max_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.y = clusters[i].min_pt.y;
+				xyzRGBpt.z = clusters[i].max_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.y = clusters[i].max_pt.y;
+				xyzRGBpt.z = clusters[i].min_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.y = clusters[i].min_pt.y;
+				xyzRGBpt.z = clusters[i].min_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+
+				xyzRGBpt.y = (k/resolution_f) * clusters[i].min_pt.y + ((resolution_f - k)/resolution_f) * clusters[i].max_pt.y;
+				xyzRGBpt.x = clusters[i].max_pt.x;
+				xyzRGBpt.z = clusters[i].max_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+
+				xyzRGBpt.x = clusters[i].min_pt.x;
+				xyzRGBpt.z = clusters[i].max_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.x = clusters[i].max_pt.x;
+				xyzRGBpt.z = clusters[i].min_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.x = clusters[i].min_pt.x;
+				xyzRGBpt.z = clusters[i].min_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.z = (k/resolution_f)* clusters[i].min_pt.z + ((resolution_f - k)/resolution_f) * clusters[i].max_pt.z;
+				xyzRGBpt.x = clusters[i].max_pt.x;
+				xyzRGBpt.y = clusters[i].max_pt.y;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.x = clusters[i].min_pt.x;
+				xyzRGBpt.y = clusters[i].max_pt.y;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.x = clusters[i].max_pt.x;
+				xyzRGBpt.y = clusters[i].min_pt.y;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.x = clusters[i].min_pt.x;
+				xyzRGBpt.y = clusters[i].min_pt.y;
+				cur_vis_points.push_back(xyzRGBpt);
+
+			}
+
+	}
+
+}
+
+
 void cluster_group::merge_op(void)
 {
 	// do the merge operation here

@@ -45,6 +45,6 @@ rosbuild_link_boost(road_surface signals)
 rosbuild_add_executable(static_vehicle_recognition src/static_vehicle_recognition.cpp)
 rosbuild_link_boost(static_vehicle_recognition signals)
 
-rosbuild_add_executable(test_main, src/test_main.cpp src/cloud_cluster.cpp)
+rosbuild_add_executable(test_main src/test_main.cpp src/cloud_cluster.cpp)
 
 

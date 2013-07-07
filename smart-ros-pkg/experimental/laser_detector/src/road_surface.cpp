@@ -89,6 +89,7 @@ namespace golfcar_pcl{
 		clustering_disThresh_   = 15.0;
 
 		clusters_pub_ = nh_.advertise<PointCloudRGB>("clusters_RGBD", 10);
+		clusters_box_pub_ = nh_.advertise<PointCloudRGB>("boxes_RGBD",10);
 		normal_visual_pub_ = nh_.advertise<PointCloudRGB>("normal_visual_RGB", 10);
 		normal_visual_pub2_ = nh_.advertise<PointCloudRGB>("normal_visual_RGB2", 10);
 		variance_visual_pub_ = nh_.advertise<PointCloudRGB>("variance_visual_RGB", 10);
@@ -344,6 +345,7 @@ namespace golfcar_pcl{
 
 					m_cluster_.pc.header = odom->header;
 					m_cluster_.pc.height = 1;
+					m_cluster_.pc.points.clear();
 
 					for (std::vector<int>::const_iterator pit = it->indices.begin (); pit != it->indices.end (); pit++)
 					{
@@ -361,11 +363,13 @@ namespace golfcar_pcl{
 				}
 
 				//after get a new group of points, try to merge
-				p_cluster_group_->merge_cluster();
-				p_cluster_group_->prepare_merge_result();
+				//p_cluster_group_->merge_cluster();
+				//p_cluster_group_->prepare_merge_result();
 
+				p_cluster_group_->show_cluster_box();
 				// prepare the merge result to show
-				clusters_pub_.publish(p_cluster_group_->cur_vis_points);
+				clusters_box_pub_.publish(p_cluster_group_->cur_vis_points);
+				clusters_pub_.publish(clusters_tmp);
 			}
 		}
 		else
