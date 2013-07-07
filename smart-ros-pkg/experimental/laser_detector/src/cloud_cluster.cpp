@@ -335,7 +335,7 @@ void cluster_group::merge_cluster(void)
 					{
 						if(kd_tree.radiusSearch(clusters[cur_index].pc.points[ii],cluster_dist_thres,pointIdx,pointDistSquare)>0)
 						{
-							if( ((unsigned int) ( *std::max_element(pointIdx.begin(),pointIdx.end()))) < last_cluster_size )
+							if( ((unsigned int) ( *std::min_element(pointIdx.begin(),pointIdx.end()))) < last_cluster_size )
 							{
 								to_be_merged = true;
 								break;
@@ -350,17 +350,17 @@ void cluster_group::merge_cluster(void)
 				// save the to be merged index here first
 				// do all the merge operation outside of the loop
 
-				/*
+
 				//only use box check
-				bool to_be_merged = true;
-				*/
+				//bool to_be_merged = true;
+
 				if(to_be_merged == true)
 				{
 					pair<unsigned int,unsigned int> tmp_pair (last_index, cur_index) ;
 					merge_pairs.push_back(tmp_pair);
 
 					// fixme assuming that a cluster can only be merged with another cluster, not multiple clusters
-					break;
+					//break;
 
 				}
 			}
@@ -402,6 +402,7 @@ void cluster_group::merge_inner_cluster(void)
 			}
 			else
 			{
+
 				pcl::PointCloud<pcl::PointXYZRGB> cloud_in;
 				cloud_in = clusters[i].pc + clusters[j].pc;
 				const unsigned int last_cluster_size = clusters[i].pc.points.size();
@@ -434,7 +435,7 @@ void cluster_group::merge_inner_cluster(void)
 					{
 						if(kd_tree.radiusSearch(clusters[j].pc.points[ii],cluster_dist_thres,pointIdx,pointDistSquare)>0)
 						{
-							if( ((unsigned int) ( *std::max_element(pointIdx.begin(),pointIdx.end()))) < last_cluster_size )
+							if( ((unsigned int) ( *std::min_element(pointIdx.begin(),pointIdx.end()))) < last_cluster_size )
 							{
 								to_be_merged = true;
 								break;
@@ -443,13 +444,15 @@ void cluster_group::merge_inner_cluster(void)
 					}
 				}
 
+				// only use box distance
+				//bool to_be_merged = true;
 				if(to_be_merged == true)
 				{
 					pair<unsigned int, unsigned int> tmp_pair (i,j);
 					merge_inner_pairs.push_back(tmp_pair);
 
 					// fixme assuming that a cluster can only be merged with another cluster, not multiple clusters
-					break;
+					//break;
 				}
 			}
 		}

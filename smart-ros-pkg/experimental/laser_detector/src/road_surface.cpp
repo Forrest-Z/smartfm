@@ -48,7 +48,7 @@ namespace golfcar_pcl{
 
 		// intialization for new variables
 		private_nh_.param("box_dist_thres",box_dist_thres_,0.05);
-		private_nh_.param("cluster_dist_thres",cluster_dist_thres_,40.0);
+		private_nh_.param("cluster_dist_thres",cluster_dist_thres_,0.2);
 		p_cluster_group_ = new cluster_group (box_dist_thres_,cluster_dist_thres_);
 
 		rolling_pcl_sub_ = new message_filters::Subscriber<RollingPointCloud> (nh_, "rolling_window_pcl", 1);
