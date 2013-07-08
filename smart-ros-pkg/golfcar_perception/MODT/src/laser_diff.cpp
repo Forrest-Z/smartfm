@@ -53,8 +53,11 @@ private:
 
 	message_filters::Subscriber<sensor_msgs::LaserScan>     *laser_sub0_;
 	message_filters::Subscriber<sensor_msgs::LaserScan>     *laser_sub1_;
-	message_filters::TimeSynchronizer<sensor_msgs::LaserScan, sensor_msgs::LaserScan> *sync_;
-	void scanProcess (const sensor_msgs::LaserScan::ConstPtr& scan_in1, const sensor_msgs::LaserScan::ConstPtr& scan_in2);
+	message_filters::Subscriber<sensor_msgs::LaserScan>     *laser_sub2_;
+	message_filters::Subscriber<sensor_msgs::LaserScan>     *laser_sub3_;
+	message_filters::TimeSynchronizer<sensor_msgs::LaserScan, sensor_msgs::LaserScan, sensor_msgs::LaserScan, sensor_msgs::LaserScan> *sync_;
+	void scanProcess (const sensor_msgs::LaserScan::ConstPtr& scan_in0, const sensor_msgs::LaserScan::ConstPtr& scan_in1,
+					  const sensor_msgs::LaserScan::ConstPtr& scan_in2, const sensor_msgs::LaserScan::ConstPtr& scan_in3);
 	void extract_moving_points ();
 	bool pointInPolygon(geometry_msgs::Point32 p, vector<geometry_msgs::Point32> poly);
 
@@ -112,8 +115,10 @@ laser_diff::laser_diff()
 
 	laser_sub0_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/sickldmrs/scan0", 100);
 	laser_sub1_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/sickldmrs/scan1", 100);
-	sync_	= new message_filters::TimeSynchronizer<sensor_msgs::LaserScan, sensor_msgs::LaserScan>(*laser_sub0_, *laser_sub1_, 10);
-	sync_->registerCallback(boost::bind(&laser_diff::scanProcess, this, _1, _2));
+	laser_sub2_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/sickldmrs/scan2", 100);
+	laser_sub3_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/sickldmrs/scan3", 100);
+	sync_	= new message_filters::TimeSynchronizer<sensor_msgs::LaserScan, sensor_msgs::LaserScan, sensor_msgs::LaserScan, sensor_msgs::LaserScan>(*laser_sub0_, *laser_sub1_, *laser_sub2_, *laser_sub3_, 10);
+	sync_->registerCallback(boost::bind(&laser_diff::scanProcess, this, _1, _2, _3, _4));
 
 	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub1_, tf_, odom_frame_id_, 10);
 	tf_filter_->registerCallback(boost::bind(&laser_diff::scanCallback, this, _1));
@@ -121,7 +126,7 @@ laser_diff::laser_diff()
 }
 
 
-void laser_diff::scanProcess (const sensor_msgs::LaserScan::ConstPtr& scan_in0, const sensor_msgs::LaserScan::ConstPtr& scan_in1)
+void laser_diff::scanProcess (const sensor_msgs::LaserScan::ConstPtr& scan_in0, const sensor_msgs::LaserScan::ConstPtr& scan_in1,  const sensor_msgs::LaserScan::ConstPtr& scan_in2,  const sensor_msgs::LaserScan::ConstPtr& scan_in3)
 {
 	//1st step: extract vertical laser parts;
 	sensor_msgs::LaserScan vertical_laser;
@@ -131,12 +136,35 @@ void laser_diff::scanProcess (const sensor_msgs::LaserScan::ConstPtr& scan_in0, 
 	{
 		float scan_range0 = scan_in0->ranges[i];
 		float scan_range1 = scan_in1->ranges[i];
-		float longer_range = scan_range0>scan_range1 ? scan_range0:scan_range1;
-		float shorter_range = scan_range0<=scan_range1 ? scan_range0:scan_range1;
-		float angle = atan2(longer_range*thetha, longer_range-shorter_range)+thetha/2.0;
-		if(angle<M_PI/18.0) vertical_laser.ranges[i] = 0.0;
+		float scan_range2 = scan_in2->ranges[i];
+		float scan_range3 = scan_in3->ranges[i];
+
+		float longer_range, shorter_range;
+		if(scan_range0 > scan_in0->range_min)
+		{
+			longer_range = scan_range0 > scan_range1 ? scan_range0:scan_range1;
+			shorter_range = scan_range0 <= scan_range1 ? scan_range0:scan_range1;
+		}
+		else if(scan_range2 > scan_in0->range_min)
+		{
+			longer_range = scan_range2 > scan_range3 ? scan_range2:scan_range3;
+			shorter_range = scan_range2 <= scan_range3 ? scan_range2:scan_range3;
+		}
+
+		if(shorter_range<scan_in0->range_min)vertical_laser.ranges[i] = 0.0;
+		else
+		{
+			float angle = atan2(longer_range*thetha, longer_range-shorter_range)+thetha/2.0;
+			if(angle<M_PI/18.0) vertical_laser.ranges[i] = 0.0;
+			else
+			{
+				if(scan_range2 > scan_in0->range_min) vertical_laser.ranges[i] = scan_in2->ranges[i];
+			}
+		}
 	}
 	vertical_laser_pub_.publish(vertical_laser);
+
+
 
 	try{projector_.transformLaserScanToPointCloud(odom_frame_id_, *scan_in1, current_laser_cloud_, tf_);}
 	catch (tf::TransformException& e){ROS_DEBUG("Wrong!!!!!!!!!!!!!"); std::cout << e.what();return;}
