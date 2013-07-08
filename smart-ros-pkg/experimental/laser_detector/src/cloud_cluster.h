@@ -90,14 +90,18 @@ private:
 
 
 	vector< pair<unsigned int,unsigned int> > merge_pairs; // indexes are stored here, last_index - cur_index
+	vector< pair<unsigned int,unsigned int> > merge_inner_pairs; // inner clusters merging
 // erase the clusters in the older group
 	void delete_old_group(void);
 // after finishing inserting all the points, should update the cloud, simply add the points together according the group
 	void update_cloud(void);
 // copy the points from one cluster to another cluster and upate the merged flag
-	void merge_op(void);
+	void merge_op(vector< pair<unsigned int,unsigned int> > &  _merge_pairs);
 // update the features for each cluster after merge operation for the new group (only for merged ones)
 	void update_merged_cluster_info(void);
+
+// merge the clusters in the group
+	void merge_inner_cluster(void);
 
 
 

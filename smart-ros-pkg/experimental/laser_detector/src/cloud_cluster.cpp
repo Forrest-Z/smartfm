@@ -358,21 +358,102 @@ void cluster_group::merge_cluster(void)
 				{
 					pair<unsigned int,unsigned int> tmp_pair (last_index, cur_index) ;
 					merge_pairs.push_back(tmp_pair);
+
+					// fixme assuming that a cluster can only be merged with another cluster, not multiple clusters
+					break;
+
 				}
 			}
 		}
 	}
 
 	// merge operation here
-	merge_op();
+	merge_op(merge_pairs);
 
 	// update merged cluster information
 	update_merged_cluster_info();
+
+	merge_inner_cluster();
+
+	merge_op(merge_inner_pairs);
 
 	// update the new cloud
 	update_cloud();
 
 
+}
+
+
+void cluster_group::merge_inner_cluster(void)
+{
+	merge_inner_pairs.clear();
+	// split_index_ can be used here since this function is called after update merged cluster info
+	box cur_box, last_box;
+	for(unsigned int i = split_index_; i< clusters.size(); i++)
+	{
+		for(unsigned int j = i + 1; j < clusters.size(); j++)
+		{
+			cur_box.init(clusters[j].min_pt, clusters[j].max_pt);
+			last_box.init(clusters[i].min_pt,clusters[i].max_pt);
+
+			if(cur_box.distance(last_box) > box_dist_thres)
+			{
+				continue;
+			}
+			else
+			{
+				pcl::PointCloud<pcl::PointXYZRGB> cloud_in;
+				cloud_in = clusters[i].pc + clusters[j].pc;
+				const unsigned int last_cluster_size = clusters[i].pc.points.size();
+				const unsigned int cur_cluster_size = clusters[j].pc.points.size();
+
+				pcl::KdTreeFLANN<pcl::PointXYZRGB> kd_tree;
+				kd_tree.setInputCloud(cloud_in.makeShared());
+				std::vector<int> pointIdx;
+				std::vector<float> pointDistSquare;
+				bool to_be_merged = false;
+
+				// between the current clusters and last clusters, choose the small size one to reduce the computation time
+				if(last_cluster_size < cur_cluster_size)
+				{
+					for(unsigned int ii  = 0; ii < last_cluster_size; ii++)
+					{
+						if(kd_tree.radiusSearch(clusters[i].pc.points[ii],cluster_dist_thres,pointIdx,pointDistSquare)>0)
+						{
+							if( ((unsigned int) ( *std::max_element(pointIdx.begin(),pointIdx.end()))) >= last_cluster_size )
+							{
+								to_be_merged = true;
+								break;
+							}
+						}
+					}
+				}
+				else
+				{
+					for(unsigned int ii  = 0; ii < cur_cluster_size; ii++)
+					{
+						if(kd_tree.radiusSearch(clusters[j].pc.points[ii],cluster_dist_thres,pointIdx,pointDistSquare)>0)
+						{
+							if( ((unsigned int) ( *std::max_element(pointIdx.begin(),pointIdx.end()))) < last_cluster_size )
+							{
+								to_be_merged = true;
+								break;
+							}
+						}
+					}
+				}
+
+				if(to_be_merged == true)
+				{
+					pair<unsigned int, unsigned int> tmp_pair (i,j);
+					merge_inner_pairs.push_back(tmp_pair);
+
+					// fixme assuming that a cluster can only be merged with another cluster, not multiple clusters
+					break;
+				}
+			}
+		}
+	}
 }
 
 void cluster_group::update_merged_cluster_info(void)
@@ -554,20 +635,20 @@ void cluster_group::show_cluster_box(void)
 }
 
 
-void cluster_group::merge_op(void)
+void cluster_group::merge_op(vector< pair<unsigned int,unsigned int> > &  _merge_pairs)
 {
 	// do the merge operation here
 	// step 1 : copy the points from last group to the current group, also update the merged_flag for each cluster
-	cout<< " there are -----!!!!!" << merge_pairs.size() << " pairs to be merged!" << endl;
+	cout<< " there are -----!!!!!" << _merge_pairs.size() << " pairs to be merged!" << endl;
 	cout<< " there are !!!!!------ " << clusters.size() << "clusters ----" <<endl;
-	for(unsigned int i = 0; i < merge_pairs.size(); i++)
+	for(unsigned int i = 0; i < _merge_pairs.size(); i++)
 	{
-		unsigned int last_index = merge_pairs[i].first;
-		unsigned int cur_index = merge_pairs[i].second;
+		unsigned int last_index = _merge_pairs[i].first;
+		unsigned int cur_index = _merge_pairs[i].second;
 		unsigned int cur_size = clusters[cur_index].pc.points.size();
 		unsigned int last_size = clusters[last_index].pc.points.size();
 		// copy the points here
-		clusters[merge_pairs[i].second].pc.points.resize(cur_size + last_size);
+		clusters[_merge_pairs[i].second].pc.points.resize(cur_size + last_size);
 		for(unsigned int j = 0; j < last_size; j++)
 		{
 			clusters[cur_index].pc.points[cur_size + j] = clusters[last_index].pc.points[j];
@@ -577,9 +658,9 @@ void cluster_group::merge_op(void)
 		clusters[cur_index].pc.width = clusters[cur_index].pc.points.size();
 	}
 	// step 2 : delete the old clusters that, just delete the points of the point cloud
-	for(unsigned int i = 0; i < merge_pairs.size();i++)
+	for(unsigned int i = 0; i < _merge_pairs.size();i++)
 	{
-		clusters[merge_pairs[i].first].pc.points.clear();
+		clusters[_merge_pairs[i].first].pc.points.clear();
 	}
 }
 
