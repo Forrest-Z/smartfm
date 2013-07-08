@@ -26,6 +26,10 @@ void cloud_cluster::update(void)
 	rect_size[1] = fabs(min_pt.y - max_pt.y)/2;
 	rect_size[2] = fabs(min_pt.z - max_pt.z)/2;
 
+	area = rect_size[0] * rect_size[1];
+	height = rect_size[2];
+	diag_length = sqrt(rect_size[0] * rect_size[0] + rect_size[1] * rect_size[1]);
+
 }
 
 
@@ -176,10 +180,49 @@ void cluster_group::delete_old_group(void)
 
 void cluster_group::insert_cluster(cloud_cluster & cluster_in)
 {
-	clusters.push_back(cluster_in);
+	// update the cluster information before insert
+	cluster_in.update();
+	// filtering according to the size, number of points ...
+	bool to_be_inserted = true;
+
+
+
+	// these filters are just for too big clusters, since we don't know whether the small clusters are part of the car
+	if(cluster_in.num_points >= max_number_points )
+	{
+		to_be_inserted = false;
+	}
+
+	if(*std::max_element(cluster_in.rect_size, cluster_in.rect_size + 3) >= max_length)
+	{
+		to_be_inserted = false;
+	}
+
+	if(cluster_in.height >= max_height)
+	{
+		to_be_inserted = false;
+	}
+
+	if(cluster_in.area >= max_area)
+	{
+		to_be_inserted = false;
+	}
+
+	if(cluster_in.diag_length >= max_diag_length)
+	{
+		to_be_inserted = false;
+	}
+
+
+	if(to_be_inserted)
+	{
+		clusters.push_back(cluster_in);
+	}
 }
 
-cluster_group::cluster_group(double _box_dist_thres, double _cluster_dist_thres)
+cluster_group::cluster_group(double _box_dist_thres, double _cluster_dist_thres):max_number_points(8000),max_length(4.0),
+		max_area(7.0),max_height(3.0), max_diag_length(6.0), min_height(0.2)
+//the max_diag_length may not work because 4*1.414 = 5.6
 {
 	box_dist_thres = _box_dist_thres;
 	cluster_dist_thres = _cluster_dist_thres;
@@ -225,6 +268,15 @@ void cluster_group::merge_cluster(void)
 	box cur_box, last_box;
 	for(last_index = 0;last_index < split_index; last_index++)
 	{
+		if(clusters[last_index].pc.size() >= max_number_points)
+		{
+			continue;   // if size of the cloud exceeds certain limit, skip
+		}
+
+		if(*std::max_element(clusters[last_index].rect_size, clusters[last_index].rect_size+3) >= max_length)
+		{
+			continue;   // if the cloud is already very big, skip
+		}
 
 		for(cur_index = split_index ;cur_index < clusters.size();cur_index++)
 		{

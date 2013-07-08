@@ -368,7 +368,7 @@ namespace golfcar_pcl{
 					}
 
 					// update the cluster information here and insert it into the current group
-					m_cluster_.update();
+					// update operation is moved to the insert function, also the filtering is added to the insert function
 					p_cluster_group_->insert_cluster(m_cluster_);
 				}
 

@@ -28,6 +28,9 @@ public:
 	int num_points;
 	float rect_size[3]; //dx dy dz
 	float position[3];  // x y z
+	float area;
+	float height;
+	float diag_length;
 	bool merged_flag;
 	bool processed_flag;
 	pcl::PointXYZRGB min_pt;
@@ -74,6 +77,14 @@ private:
 	double box_dist_thres;
 	double cluster_dist_thres;
 	unsigned int split_index_; // the start index of the new group clusters, usable after calling update merged cluster info
+
+	const unsigned int max_number_points; // limit the number of points in a cluster
+	const float max_length;				  // limit the length of of each dimension
+	const float max_area;		          // limit the area of the rect
+	const float min_height;               // the minimum height of the box
+	const float max_height;				  // the maximum height of the box
+	const float max_diag_length;          // the maximum diag length
+
 
 	vector< pair<unsigned int,unsigned int> > merge_pairs; // indexes are stored here, last_index - cur_index
 // erase the clusters in the older group
