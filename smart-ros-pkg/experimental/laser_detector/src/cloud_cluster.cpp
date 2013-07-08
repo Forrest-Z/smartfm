@@ -11,6 +11,7 @@
 
 #include <time.h>
 #include <stdlib.h>
+#include <assert.h>
 
 void cloud_cluster::update(void)
 {
@@ -334,10 +335,23 @@ void cluster_group::prepare_merge_result(void)
 	pcl::PointXYZRGB xyzRGBpt;
 	cur_vis_points.points.clear();
 
+	for(unsigned int ii = 0; ii < clusters.size() ; ii++)
+	{
+		if(ii < split_index_)
+		{
+			assert(clusters[ii].group_id == last_group_id);
+		}
+		else
+		{
+			assert(clusters[ii].group_id == cur_group_id);
+		}
+	}
 
 	srand(time(NULL));
+
 	for(unsigned int i = split_index_; i < clusters.size() ; i++)
 	{
+		assert(clusters[i].group_id == cur_group_id);
 		cur_vis_points.header = clusters[i].pc.header;
 		cur_vis_points.height = 1;
 		size_t sz = cur_vis_points.points.size();
@@ -365,8 +379,13 @@ void cluster_group::prepare_merge_result(void)
 			xyzRGBpt.z = clusters[i].pc.points[j].z;
 			cur_vis_points.points[j + sz] = xyzRGBpt;
 		}
+
+
 	}
-	cout<<"the size is !!!!!!!!!!!!!!!!"<<cur_vis_points.points.size()<<endl;
+	// because we are not using push back, remember to update the width
+	cur_vis_points.width = cur_vis_points.points.size();
+	cur_vis_points.height = 1;
+
 }
 
 
@@ -383,13 +402,14 @@ void cluster_group::show_cluster_box(void)
 		cur_vis_points.header = clusters[i].pc.header;
 		if(clusters[i].group_id == last_group_id)
 		{
-		   // no red, all blue, random green
+		   // no red, all blue, random green, the cold color for the last group
 		   xyzRGBpt.r = 0;
 		   xyzRGBpt.g = rand()%255;
 		   xyzRGBpt.b = 255;
 		}
 		else
 		{
+			// all red, no blue, random green, the hot color for the current group
 			xyzRGBpt.b = 0;
 			xyzRGBpt.g = rand()%255;
 			xyzRGBpt.r = 255;
@@ -482,6 +502,7 @@ void cluster_group::merge_op(void)
 		}
 		// update the merged flag here
 		clusters[cur_index].merged_flag = true;
+		clusters[cur_index].pc.width = clusters[cur_index].pc.points.size();
 	}
 	// step 2 : delete the old clusters that, just delete the points of the point cloud
 	for(unsigned int i = 0; i < merge_pairs.size();i++)
@@ -570,4 +591,7 @@ void cluster_group::update_cloud(void)
 			continue; // just in case
 		}
 	}
+
+	cur_group_points.width = cur_group_points.points.size();
+	last_group_points.width = last_group_points.points.size();
 }
