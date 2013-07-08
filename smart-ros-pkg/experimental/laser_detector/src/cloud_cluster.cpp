@@ -220,7 +220,7 @@ void cluster_group::insert_cluster(cloud_cluster & cluster_in)
 	}
 }
 
-cluster_group::cluster_group(double _box_dist_thres, double _cluster_dist_thres):max_number_points(8000),max_length(4.0),
+cluster_group::cluster_group(double _box_dist_thres, double _cluster_dist_thres):max_number_points(5000),max_length(4.0),
 		max_area(7.0),max_height(3.0), max_diag_length(6.0), min_height(0.2)
 //the max_diag_length may not work because 4*1.414 = 5.6
 {
@@ -291,7 +291,7 @@ void cluster_group::merge_cluster(void)
 			else
 			{
 
-				/*
+
 				// means that the box distance is small enough to check the cluster distance
 				// construct a kd tree, if the any two points can be connected through the radius ball search
 				// then merge and continue
@@ -314,26 +314,46 @@ void cluster_group::merge_cluster(void)
 				std::vector<float> pointDistSquare;
 				bool to_be_merged = false;
 
-				for(unsigned int ii  = 0; ii < last_cluster_size; ii++)
+				// between the current clusters and last clusters, choose the small size one to reduce the computation time
+				if(last_cluster_size < cur_cluster_size)
 				{
-					if(kd_tree.radiusSearch(clusters[last_index].pc.points[ii],cluster_dist_thres,pointIdx,pointDistSquare)>0)
+					for(unsigned int ii  = 0; ii < last_cluster_size; ii++)
 					{
-						if( ((unsigned int) ( *std::max_element(pointIdx.begin(),pointIdx.end()))) >= last_cluster_size )
+						if(kd_tree.radiusSearch(clusters[last_index].pc.points[ii],cluster_dist_thres,pointIdx,pointDistSquare)>0)
 						{
-							to_be_merged = true;
-							break;
+							if( ((unsigned int) ( *std::max_element(pointIdx.begin(),pointIdx.end()))) >= last_cluster_size )
+							{
+								to_be_merged = true;
+								break;
+							}
 						}
 					}
 				}
-				*/
+				else
+				{
+					for(unsigned int ii  = 0; ii < cur_cluster_size; ii++)
+					{
+						if(kd_tree.radiusSearch(clusters[cur_index].pc.points[ii],cluster_dist_thres,pointIdx,pointDistSquare)>0)
+						{
+							if( ((unsigned int) ( *std::max_element(pointIdx.begin(),pointIdx.end()))) < last_cluster_size )
+							{
+								to_be_merged = true;
+								break;
+							}
+						}
+					}
+				}
+
 
 
 
 				// save the to be merged index here first
 				// do all the merge operation outside of the loop
 
+				/*
 				//only use box check
 				bool to_be_merged = true;
+				*/
 				if(to_be_merged == true)
 				{
 					pair<unsigned int,unsigned int> tmp_pair (last_index, cur_index) ;

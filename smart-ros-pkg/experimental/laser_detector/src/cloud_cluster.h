@@ -33,6 +33,9 @@ public:
 	float diag_length;
 	bool merged_flag;
 	bool processed_flag;
+
+	float belief;  // 0 - 1, the belief of being a car
+
 	pcl::PointXYZRGB min_pt;
 	pcl::PointXYZRGB max_pt;
 

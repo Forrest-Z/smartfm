@@ -47,7 +47,7 @@ namespace golfcar_pcl{
 		private_nh_.param("boundary_adjust", boundary_adjust_, true);
 
 		// intialization for new variables
-		private_nh_.param("box_dist_thres",box_dist_thres_,0.1);
+		private_nh_.param("box_dist_thres",box_dist_thres_,0.05);
 		private_nh_.param("cluster_dist_thres",cluster_dist_thres_,0.15);
 		p_cluster_group_ = new cluster_group (box_dist_thres_,cluster_dist_thres_);
 
