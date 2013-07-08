@@ -10,6 +10,9 @@
 
 #include <pcl/point_cloud.h>
 #include <pcl/pcl_base.h>
+//#include <pcl/io/impl/pcd_io.hpp>
+#include <pcl/io/io.h>
+#include <pcl/io/pcd_io.h>
 #include "cluster_data_types.h"
 
 #include <deque>
@@ -17,6 +20,15 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <iostream>
+#include <sstream>
+
+#include <ros/ros.h>
+#include <pcl/point_types.h>
+#include <pcl/ros/conversions.h>
+#include <pcl_ros/point_cloud.h>
+#include <sensor_msgs/PointCloud2.h>
+
 
 using namespace std;
 
@@ -43,6 +55,7 @@ public:
 
 	pcl::PointCloud<pcl::PointXYZRGB> pc;
 	void update(void);
+	void analyze(void);
 
 
 };
@@ -88,6 +101,11 @@ private:
 	const float max_height;				  // the maximum height of the box
 	const float max_diag_length;          // the maximum diag length
 
+	// some variables for saving the point cloud to file, the odd number means positive samples and even number means negative samples
+	int positive_index_;
+	int negative_index_;
+	int others_index_;
+
 
 	vector< pair<unsigned int,unsigned int> > merge_pairs; // indexes are stored here, last_index - cur_index
 	vector< pair<unsigned int,unsigned int> > merge_inner_pairs; // inner clusters merging
@@ -105,7 +123,6 @@ private:
 
 
 
-
 public:
 // in the queue, always keep old cluster before new cluster:  begin->end: old->new
 	std::deque<cloud_cluster> clusters;
@@ -113,6 +130,8 @@ public:
 
 
 	pcl::PointCloud<pcl::PointXYZRGB> cur_vis_points;
+
+	pcl::PointCloud<pcl::PointXYZRGB> label_box_points;
 
 	pcl::PointCloud<ClusterPoint> cur_group_points;
 	pcl::PointCloud<ClusterPoint> last_group_points;
@@ -140,6 +159,15 @@ public:
 
 // a big point cloud to show all the boxes
 	void show_cluster_box(void);
+
+// only show the candidate car boxes
+	void show_car_box(void);
+
+// analyze all the clusters in the current group
+	void analyze(void);
+
+// label and write the pointcloud to files
+	void label_clusters(ros::Publisher & cloud_pub);
 
 
 
