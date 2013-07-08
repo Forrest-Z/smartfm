@@ -22,12 +22,15 @@ rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
+find_package(OpenCV REQUIRED)
+
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
 rosbuild_add_boost_directories()
 #rosbuild_add_executable(example examples/example.cpp)
 rosbuild_add_executable(laser_diff src/laser_diff.cpp)
+target_link_libraries(laser_diff ${OpenCV_LIBRARIES})
 rosbuild_link_boost(laser_diff signals)
 #rosbuild_add_executable(curb_track src/curb_track.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
