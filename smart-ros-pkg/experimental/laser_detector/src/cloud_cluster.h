@@ -28,8 +28,14 @@ public:
 	int num_points;
 	float rect_size[3]; //dx dy dz
 	float position[3];  // x y z
+	float area;
+	float height;
+	float diag_length;
 	bool merged_flag;
 	bool processed_flag;
+
+	float belief;  // 0 - 1, the belief of being a car
+
 	pcl::PointXYZRGB min_pt;
 	pcl::PointXYZRGB max_pt;
 
@@ -75,15 +81,27 @@ private:
 	double cluster_dist_thres;
 	unsigned int split_index_; // the start index of the new group clusters, usable after calling update merged cluster info
 
+	const unsigned int max_number_points; // limit the number of points in a cluster
+	const float max_length;				  // limit the length of of each dimension
+	const float max_area;		          // limit the area of the rect
+	const float min_height;               // the minimum height of the box
+	const float max_height;				  // the maximum height of the box
+	const float max_diag_length;          // the maximum diag length
+
+
 	vector< pair<unsigned int,unsigned int> > merge_pairs; // indexes are stored here, last_index - cur_index
+	vector< pair<unsigned int,unsigned int> > merge_inner_pairs; // inner clusters merging
 // erase the clusters in the older group
 	void delete_old_group(void);
 // after finishing inserting all the points, should update the cloud, simply add the points together according the group
 	void update_cloud(void);
 // copy the points from one cluster to another cluster and upate the merged flag
-	void merge_op(void);
+	void merge_op(vector< pair<unsigned int,unsigned int> > &  _merge_pairs);
 // update the features for each cluster after merge operation for the new group (only for merged ones)
 	void update_merged_cluster_info(void);
+
+// merge the clusters in the group
+	void merge_inner_cluster(void);
 
 
 

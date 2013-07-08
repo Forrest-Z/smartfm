@@ -196,6 +196,8 @@ namespace golfcar_pcl{
 	//ros::Publisher planes_pub_, pcl_cloud_restPub_;
 	// add a publisher for the boxes
 	ros::Publisher clusters_box_pub_;
+	ros::Publisher merge_result_pub_;
+
 	vector<float> jet_r_, jet_g_, jet_b_;
 	double curvature_visual_limit_;
 	double normalZ_visual_limit_;

@@ -47,8 +47,8 @@ namespace golfcar_pcl{
 		private_nh_.param("boundary_adjust", boundary_adjust_, true);
 
 		// intialization for new variables
-		private_nh_.param("box_dist_thres",box_dist_thres_,0.1);
-		private_nh_.param("cluster_dist_thres",cluster_dist_thres_,0.15);
+		private_nh_.param("box_dist_thres",box_dist_thres_,0.05);
+		private_nh_.param("cluster_dist_thres",cluster_dist_thres_,0.2);
 		p_cluster_group_ = new cluster_group (box_dist_thres_,cluster_dist_thres_);
 
 		rolling_pcl_sub_ = new message_filters::Subscriber<RollingPointCloud> (nh_, "rolling_window_pcl", 1);
@@ -86,10 +86,16 @@ namespace golfcar_pcl{
 		planefitting_init_ = false;
 		clustering_init_   = false;
 		planefitting_disThresh_ = 0.03;
-		clustering_disThresh_   = 15.0;
+		//clustering_disThresh_   = 15.0;
+
+		private_nh_.param("clustering_disThresh", clustering_disThresh_, 10.0); //change to 10 meters
 
 		clusters_pub_ = nh_.advertise<PointCloudRGB>("clusters_RGBD", 10);
 		clusters_box_pub_ = nh_.advertise<PointCloudRGB>("boxes_RGBD",10);
+		merge_result_pub_ = nh_.advertise<PointCloudRGB>("merge_result",10);
+
+
+
 		normal_visual_pub_ = nh_.advertise<PointCloudRGB>("normal_visual_RGB", 10);
 		normal_visual_pub2_ = nh_.advertise<PointCloudRGB>("normal_visual_RGB2", 10);
 		variance_visual_pub_ = nh_.advertise<PointCloudRGB>("variance_visual_RGB", 10);
@@ -131,6 +137,10 @@ namespace golfcar_pcl{
 	
 	road_surface::~road_surface()
 	{	
+		if(p_cluster_group_ != NULL)
+		{
+			delete p_cluster_group_;
+		}
 	}
 	
 	inline void road_surface::colormap_jet(float plot_value, float upper_limit_, pcl::RGB &point_out)
@@ -358,18 +368,32 @@ namespace golfcar_pcl{
 					}
 
 					// update the cluster information here and insert it into the current group
-					m_cluster_.update();
+					// update operation is moved to the insert function, also the filtering is added to the insert function
 					p_cluster_group_->insert_cluster(m_cluster_);
 				}
 
-				//after get a new group of points, try to merge
-				//p_cluster_group_->merge_cluster();
-				//p_cluster_group_->prepare_merge_result();
 
+				// show original clusters boxes
 				p_cluster_group_->show_cluster_box();
-				// prepare the merge result to show
+				cout<<"boxes point cloud size is "<<p_cluster_group_->cur_vis_points.points.size()<<endl;
 				clusters_box_pub_.publish(p_cluster_group_->cur_vis_points);
+
+
+				//after get a new group of points, try to merge
+				p_cluster_group_->merge_cluster();
+				// prepare the merge result to show
+				p_cluster_group_->prepare_merge_result();
+				cout<<" clusters group point cloud size is "<<p_cluster_group_->cur_vis_points.points.size()<<endl;
+				p_cluster_group_->cur_vis_points.header.stamp = ros::Time::now();
+				merge_result_pub_.publish(p_cluster_group_->cur_vis_points);
+
+
+
+
+
 				clusters_pub_.publish(clusters_tmp);
+				cout<<" the original size is " << clusters_tmp.points.size()<<endl;
+
 			}
 		}
 		else
