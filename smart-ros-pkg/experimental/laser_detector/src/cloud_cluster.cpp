@@ -369,10 +369,18 @@ void cluster_group::label_clusters(ros::Publisher & cloud_pub)
 		//step 2. wait for the input , 0, negative, 1 ,positive
 		//step 3. write it to files
 		cout<<"please label the cluster::::";
+
+
 		while(1)  // quit only when get the correct label
 		{
+			label = -1; //make sure that it will not quit the loop unless the correct value is specified
 			cin.clear();
-			cin>>label;
+			cin.ignore(10000,'\n'); // make sure  the input is correct
+			if(!(cin>>label))
+			{
+				continue;
+			}
+
 			if(label == 0)
 			{
 				negative_index_ +=2;
