@@ -1,0 +1,8 @@
+<launch>
+    <node pkg="MODT" type="verti_laser_sickldmrs" name="verti_laser_sickldmrs" />
+    <node pkg="map_server" type="map_server" name="map_server3" args="$(find MODT)/launch/road_surface.yaml">
+	<remap from="static_map" to="static_road_map"/>
+        <remap from="map" to= "road_map"/>
+    </node>
+</launch>
+

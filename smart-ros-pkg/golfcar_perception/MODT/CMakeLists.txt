@@ -32,8 +32,8 @@ rosbuild_add_boost_directories()
 rosbuild_add_executable(verti_laser_sickldmrs src/verti_laser_sickldmrs.cpp)
 rosbuild_link_boost(verti_laser_sickldmrs signals)
 
-#rosbuild_add_executable(laser_diff src/laser_diff.cpp)
-#target_link_libraries(laser_diff ${OpenCV_LIBRARIES})
-#rosbuild_link_boost(laser_diff signals)
+rosbuild_add_executable(DATMO src/DATMO.cpp)
+target_link_libraries(DATMO ${OpenCV_LIBRARIES})
+rosbuild_link_boost(DATMO signals)
 
 #target_link_libraries(example ${PROJECT_NAME})

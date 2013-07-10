@@ -1,5 +1,4 @@
 #include <ros/ros.h>
-#include <diagnostic_updater/publisher.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
 
@@ -18,6 +17,11 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PolygonStamped.h>
 
+#include <iostream>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/registration/icp.h>
+
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 
@@ -29,16 +33,16 @@
 
 using namespace std;
 using namespace ros;
-//using namespace tf;
 using namespace cv;
+//using namespace tf;
 
 typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
 
-class laser_diff
+class DATMO
 {
 
 public:
-	laser_diff();
+	DATMO();
 
 private:
 
@@ -47,33 +51,24 @@ private:
 
 	std::string base_frame_id_;
 	std::string odom_frame_id_;
+	std::string map_frame_id_;
 
-	laser_geometry::LaserProjection                         projector_;
 	tf::TransformListener tf_;
+	message_filters::Subscriber<sensor_msgs::LaserScan>     *verti_laser_sub_;
+	laser_geometry::LaserProjection                         projector_;
 
-	message_filters::Subscriber<sensor_msgs::LaserScan>     *laser_sub0_;
-	message_filters::Subscriber<sensor_msgs::LaserScan>     *laser_sub1_;
-	message_filters::Subscriber<sensor_msgs::LaserScan>     *laser_sub2_;
-	message_filters::Subscriber<sensor_msgs::LaserScan>     *laser_sub3_;
+	void scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in);
 
-	message_filters::TimeSynchronizer<sensor_msgs::LaserScan, sensor_msgs::LaserScan, sensor_msgs::LaserScan, sensor_msgs::LaserScan> *sync_;
-	void scanProcess (const sensor_msgs::LaserScan::ConstPtr& scan_in0, const sensor_msgs::LaserScan::ConstPtr& scan_in1,
-					  const sensor_msgs::LaserScan::ConstPtr& scan_in2, const sensor_msgs::LaserScan::ConstPtr& scan_in3);
-	void vertical_laser_pair(const sensor_msgs::LaserScan::ConstPtr& scan_in_a, const sensor_msgs::LaserScan::ConstPtr& scan_in_b, sensor_msgs::LaserScan & vertical_scan);
 	bool pointInPolygon(geometry_msgs::Point32 p, vector<geometry_msgs::Point32> poly);
 	void DP_segment (sensor_msgs::PointCloud scan_pointcloud, geometry_msgs::PoseStamped laser_origin);
 	void extract_moving_points();
+
 	void spacePt2ImgP(geometry_msgs::Point32 & spacePt, Point & imgPt);
 	void ImgPt2spacePt(Point & imgPt, geometry_msgs::Point32 & spacePt);
-
 	void process_moving_image(Mat &img_moving, Mat &img_t);
 
 	tf::MessageFilter<sensor_msgs::LaserScan>				*tf_filter_;
-	void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_in);
-
-	ros::Publisher 											vertical_laser_pub_;
 	ros::Publisher                              			approx_polygon_pub_;
-	ros::Publisher 											accumulate_laser_pub_;
 
 	size_t 													interval_;
 	vector<sensor_msgs::PointCloud>                        	cloud_vector_;
@@ -83,13 +78,25 @@ private:
 	double													img_side_length_, img_resolution_;
 	Mat														accumulated_image_;
 	Point													LIDAR_pixel_coord_;
+
+	Mat														road_map_prior_;
+	std::string												map_image_path_;
+	geometry_msgs::Point32									map_origin;
+	double													map_resolution_;
+	void													initialize_roadmap();
+	bool 													check_onRoad(geometry_msgs::Point32 &point);
 };
 
-laser_diff::laser_diff()
+DATMO::DATMO()
 : private_nh_("~")
 {
 	private_nh_.param("base_frame_id",      base_frame_id_,     std::string("base_link"));
 	private_nh_.param("odom_frame_id",      odom_frame_id_,     std::string("odom"));
+	private_nh_.param("map_frame_id",       map_frame_id_,      std::string("map"));
+
+	private_nh_.param("map_resolution",     map_resolution_,    0.05);
+	private_nh_.param("map_image_path",     map_image_path_,    std::string("./launch/road_map.jpg"));
+	initialize_roadmap();
 
 	int inverval_tmp;
 	private_nh_.param("interval",		    inverval_tmp,       	50);
@@ -97,19 +104,10 @@ laser_diff::laser_diff()
 
 	approx_polygon_pub_		=   nh_.advertise<geometry_msgs::PolygonStamped>("approx_polygon", 2);
 
-	vertical_laser_pub_  =   nh_.advertise<sensor_msgs::LaserScan>("vertical_laser0", 2);
-
-	laser_sub0_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/sickldmrs/scan0", 100);
-	laser_sub1_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/sickldmrs/scan1", 100);
-	laser_sub2_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/sickldmrs/scan2", 100);
-	laser_sub3_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/sickldmrs/scan3", 100);
-	sync_	= new message_filters::TimeSynchronizer<sensor_msgs::LaserScan, sensor_msgs::LaserScan, sensor_msgs::LaserScan, sensor_msgs::LaserScan>(*laser_sub0_, *laser_sub1_, *laser_sub2_, *laser_sub3_, 10);
-	sync_->registerCallback(boost::bind(&laser_diff::scanProcess, this, _1, _2, _3, _4));
-
-	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub1_, tf_, odom_frame_id_, 10);
-	tf_filter_->registerCallback(boost::bind(&laser_diff::scanCallback, this, _1));
+	verti_laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/sickldmrs/verti_laser", 100);
+	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*verti_laser_sub_, tf_, map_frame_id_, 10);
+	tf_filter_->registerCallback(boost::bind(&DATMO::scanCallback, this, _1));
 	tf_filter_->setTolerance(ros::Duration(0.05));
-
 
 	private_nh_.param("img_side_length",      img_side_length_,     50.0);
 	private_nh_.param("img_resolution",       img_resolution_,     0.2);
@@ -118,25 +116,36 @@ laser_diff::laser_diff()
 	LIDAR_pixel_coord_.y 	= (int)(img_side_length_/img_resolution_)-1;
 }
 
-
-void laser_diff::scanProcess (const sensor_msgs::LaserScan::ConstPtr& scan_in0, const sensor_msgs::LaserScan::ConstPtr& scan_in1,  const sensor_msgs::LaserScan::ConstPtr& scan_in2,  const sensor_msgs::LaserScan::ConstPtr& scan_in3)
+void DATMO::initialize_roadmap()
 {
-	sensor_msgs::LaserScan verti_laser1, verti_laser2;
-	vertical_laser_pair(scan_in1, scan_in0, verti_laser1);
-	vertical_laser_pair(scan_in2, scan_in3, verti_laser2);
-	sensor_msgs::PointCloud verti_cloud1, verti_cloud2, verti_cloud;
+	map_origin.x = 0.0;
+	map_origin.y = 0.0;
+	road_map_prior_ = imread( map_image_path_.c_str(), CV_LOAD_IMAGE_GRAYSCALE );
 
-	try{projector_.transformLaserScanToPointCloud(odom_frame_id_, verti_laser1, verti_cloud1, tf_);}
-	catch (tf::TransformException& e){ROS_DEBUG("Wrong!!!!!!!!!!!!!"); std::cout << e.what();return;}
-	try{projector_.transformLaserScanToPointCloud(odom_frame_id_, verti_laser2, verti_cloud2, tf_);}
+	int dilation_size = 10;
+	Mat element = getStructuringElement( MORPH_RECT, Size( 2*dilation_size + 1, 2*dilation_size+1 ), Point( dilation_size, dilation_size ) );
+	erode(road_map_prior_, road_map_prior_, element);
+}
+
+inline bool DATMO::check_onRoad(geometry_msgs::Point32 &point)
+{
+	Point2i image_point;
+	image_point.x =  (floor((point.x - map_origin.x) / map_resolution_ + 0.5));
+	image_point.y =  (floor((point.y - map_origin.y) / map_resolution_ + 0.5));
+	if(road_map_prior_.at<uchar>(road_map_prior_.rows-1-image_point.y, image_point.x)> 127) return true;
+	else return false;
+}
+
+void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
+{
+	sensor_msgs::PointCloud verti_cloud;
+	try{projector_.transformLaserScanToPointCloud(map_frame_id_, *verti_scan_in, verti_cloud, tf_);}
 	catch (tf::TransformException& e){ROS_DEBUG("Wrong!!!!!!!!!!!!!"); std::cout << e.what();return;}
 
-	verti_cloud = verti_cloud1;
-	for(size_t i=0; i<verti_cloud2.points.size(); i++)verti_cloud.points.push_back(verti_cloud2.points[i]);
 	cloud_vector_.push_back(verti_cloud);
 
 	geometry_msgs::PoseStamped ident;
-	ident.header = scan_in0->header;
+	ident.header = verti_scan_in->header;
 	ident.pose.position.x=0;
 	ident.pose.position.y=0;
 	ident.pose.position.z=0;
@@ -146,11 +155,11 @@ void laser_diff::scanProcess (const sensor_msgs::LaserScan::ConstPtr& scan_in0, 
 	ident.pose.orientation.w=0;
 	try
 	{
-		this->tf_.transformPose(odom_frame_id_, ident, laser_pose_current_);
+		this->tf_.transformPose(map_frame_id_, ident, laser_pose_current_);
 	}
 	catch(tf::TransformException e)
 	{
-		ROS_WARN("Failed to compute odom pose, skipping scan (%s)", e.what());
+		ROS_WARN("Failed to compute map pose, skipping scan (%s)", e.what());
 		return;
 	}
 	laser_pose_vector_.push_back(ident);
@@ -167,8 +176,54 @@ void laser_diff::scanProcess (const sensor_msgs::LaserScan::ConstPtr& scan_in0, 
 	}
 }
 
-void laser_diff::extract_moving_points()
+void DATMO::extract_moving_points()
 {
+	 /*PCL ICP slow and not working fine;
+	 /*
+	 pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in (new pcl::PointCloud<pcl::PointXYZ>);
+	 pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_out (new pcl::PointCloud<pcl::PointXYZ>);
+	 cloud_in->height   = 1;
+	 cloud_in->is_dense = false;
+	 cloud_out->height   = 1;
+	 cloud_out->is_dense = false;
+	 for(size_t i=0; i<interval_; i++)
+	 {
+		 for(size_t j=0; j<cloud_vector_[i].points.size(); j++)
+		 {
+			 pcl::PointXYZ point_tmp;
+			 geometry_msgs::Point32 spacePt_tmp = cloud_vector_[i].points[j];
+			 point_tmp.x = spacePt_tmp.x;
+			 point_tmp.y = spacePt_tmp.y;
+			 point_tmp.x = 0.0;
+			 cloud_in->push_back(point_tmp);
+		 }
+	 }
+	 for(size_t i=interval_; i<2*interval_; i++)
+	 {
+		 for(size_t j=0; j<cloud_vector_[i].points.size(); j++)
+		 {
+			 pcl::PointXYZ point_tmp;
+			 geometry_msgs::Point32 spacePt_tmp = cloud_vector_[i].points[j];
+			 point_tmp.x = spacePt_tmp.x;
+			 point_tmp.y = spacePt_tmp.y;
+			 point_tmp.x = 0.0;
+			 cloud_out->push_back(point_tmp);
+		 }
+	 }
+	 pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+	 icp.setInputCloud(cloud_in);
+	 icp.setInputTarget(cloud_out);
+	 icp.setMaxCorrespondenceDistance (0.50);
+	 // Set the maximum number of iterations (criterion 1)
+	 icp.setMaximumIterations (50);
+	 pcl::PointCloud<pcl::PointXYZ> Final;
+	 icp.align(Final);
+	 std::cout << "has converged:" << icp.hasConverged() << " score: " <<
+	 icp.getFitnessScore() << std::endl;
+	 std::cout << icp.getFinalTransformation() << std::endl;
+	*/
+
+
 	accumulated_image_ = Scalar(0);
 	Mat current_image = accumulated_image_.clone();
 	Mat image_t = accumulated_image_.clone();
@@ -177,6 +232,7 @@ void laser_diff::extract_moving_points()
 		for(size_t j=0; j<cloud_vector_[i].points.size(); j++)
 		{
 			geometry_msgs::Point32 spacePt_tmp = cloud_vector_[i].points[j];
+			//if(!check_onRoad(spacePt_tmp)) continue;
 			Point imgpt_tmp;
 			spacePt2ImgP(spacePt_tmp, imgpt_tmp);
 			if(imgpt_tmp.y>= 0 && imgpt_tmp.y <accumulated_image_.rows && imgpt_tmp.x>= 0 && imgpt_tmp.x <accumulated_image_.cols)
@@ -192,6 +248,7 @@ void laser_diff::extract_moving_points()
 		for(size_t j=0; j<cloud_vector_[i].points.size(); j++)
 		{
 			geometry_msgs::Point32 spacePt_tmp = cloud_vector_[i].points[j];
+			//if(!check_onRoad(spacePt_tmp)) continue;
 			Point imgpt_tmp;
 			spacePt2ImgP(spacePt_tmp, imgpt_tmp);
 			if(imgpt_tmp.y>= 0 && imgpt_tmp.y <accumulated_image_.rows && imgpt_tmp.x>= 0 && imgpt_tmp.x <accumulated_image_.cols)
@@ -205,7 +262,6 @@ void laser_diff::extract_moving_points()
 		}
 	}
 
-
 	threshold( current_image, current_image, 0, 255, 0 );
 	threshold( image_t, image_t, 0, 255, 0 );
 	imshow("current_image", current_image);
@@ -214,6 +270,25 @@ void laser_diff::extract_moving_points()
 
 	threshold(accumulated_image_, accumulated_image_, 0, 255, 0);
 
+	/*
+	 * try opencv API for scan matching, it helps, but performance not robust;
+	 * 1) it turns out not robust, the estimation is not consistent but jumps a lot;
+	 * 2) it will try to match moving points when other surrounding features not enough, since no odometry information used;
+	 *
+	 * the reason: "estimateRigidTransform" is realized using RANSAC with 3 points, but performance is not guaranteed;
+	 */
+
+	ROS_INFO("1");
+	Mat accumulate_image_8U3C, current_image_8U3C;
+	accumulated_image_.convertTo(accumulate_image_8U3C, CV_8UC3);
+	current_image.convertTo(current_image_8U3C, CV_8UC3);
+	Mat affine_tranform = estimateRigidTransform(accumulate_image_8U3C, current_image_8U3C, false);
+	warpAffine(accumulated_image_, accumulated_image_, affine_tranform, accumulated_image_.size());
+	cout << affine_tranform << endl;
+	ROS_INFO("2");
+
+	//will do grid search for the alignment;
+
 
 	int dilation_size = 1;
 	Mat element = getStructuringElement( MORPH_RECT, Size( 2*dilation_size + 1, 2*dilation_size+1 ), Point( dilation_size, dilation_size ) );
@@ -221,20 +296,6 @@ void laser_diff::extract_moving_points()
 	threshold(accumulated_image_, accumulated_image_, 0, 255, 1);
 	imshow("accumulated_image_", accumulated_image_);
 	waitKey(1);
-
-	/*
-	 * try opencv API for scan matching, it helps, but performance not robust;
-	 * 1) it turns out not robust, the estimation is not consistent but jumps a lot;
-	 * 2) it will try to match moving points when other surrounding features not enough, since no odometry information used;
-	 */
-
-	/*
-	ROS_INFO("1");
-	Mat affine_tranform = estimateRigidTransform(accumulated_image_, current_image, false);
-	warpAffine(accumulated_image_, accumulated_image_, affine_tranform, accumulated_image_.size());
-	cout << affine_tranform << endl;
-	ROS_INFO("2");
-	*/
 
 	bitwise_and(accumulated_image_, current_image, current_image);
 	morphologyEx(current_image, current_image, MORPH_CLOSE, element);
@@ -246,7 +307,7 @@ void laser_diff::extract_moving_points()
 
 }
 
-void laser_diff::process_moving_image(Mat &img_moving, Mat &img_t)
+void DATMO::process_moving_image(Mat &img_moving, Mat &img_t)
 {
 	Mat moving_tmp = img_moving.clone();
 	vector<vector<Point> > contours;
@@ -254,11 +315,11 @@ void laser_diff::process_moving_image(Mat &img_moving, Mat &img_t)
 	findContours( moving_tmp, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0,0) );
 
 	vector<Moments> mu(contours.size() );
-	for( int i = 0; i < contours.size(); i++ ) {mu[i] = moments( contours[i], false );}
+	for( size_t i = 0; i < contours.size(); i++ ) {mu[i] = moments( contours[i], false );}
 	vector<double> area( contours.size() );
-	for( int i = 0; i < contours.size(); i++ ) {area[i] = contourArea(contours[i]);}
+	for( size_t i = 0; i < contours.size(); i++ ) {area[i] = contourArea(contours[i]);}
 	vector<double> length( contours.size() );
-	for( int i = 0; i < contours.size(); i++ ) {length[i] = arcLength(contours[i], true);}
+	for( size_t i = 0; i < contours.size(); i++ ) {length[i] = arcLength(contours[i], true);}
 
 	Mat moving_tmp2 = img_moving.clone();
 	int dilation_size = 2;
@@ -270,19 +331,19 @@ void laser_diff::process_moving_image(Mat &img_moving, Mat &img_t)
 
 
 
-void laser_diff::spacePt2ImgP(geometry_msgs::Point32 & spacePt, Point & imgPt)
+void DATMO::spacePt2ImgP(geometry_msgs::Point32 & spacePt, Point & imgPt)
 {
 	imgPt.x = int((spacePt.x - laser_pose_current_.pose.position.x)/img_resolution_) + LIDAR_pixel_coord_.x;
 	imgPt.y =  accumulated_image_.rows -( int((spacePt.y - laser_pose_current_.pose.position.y)/img_resolution_) + LIDAR_pixel_coord_.y);
 }
-void laser_diff::ImgPt2spacePt(Point & imgPt, geometry_msgs::Point32 & spacePt)
+void DATMO::ImgPt2spacePt(Point & imgPt, geometry_msgs::Point32 & spacePt)
 {
 	spacePt.x = (imgPt.x-LIDAR_pixel_coord_.x)*img_resolution_+laser_pose_current_.pose.position.x;
 	spacePt.y = (accumulated_image_.rows - imgPt.y - LIDAR_pixel_coord_.y)*img_resolution_+laser_pose_current_.pose.position.y;
 }
 
 
-void laser_diff::DP_segment (sensor_msgs::PointCloud scan_pointcloud, geometry_msgs::PoseStamped laser_origin)
+void DATMO::DP_segment (sensor_msgs::PointCloud scan_pointcloud, geometry_msgs::PoseStamped laser_origin)
 {
 	vector<Point2f> raw_cloud;
 	for(size_t i=0; i<scan_pointcloud.points.size(); i++)
@@ -293,6 +354,7 @@ void laser_diff::DP_segment (sensor_msgs::PointCloud scan_pointcloud, geometry_m
 		raw_cloud.push_back(point_tmp);
 	}
 	vector<Point2f> approxy_cloud;
+	if(raw_cloud.size()<5) return;
 	approxPolyDP( Mat(raw_cloud), approxy_cloud, 0.3, false );
 
 	geometry_msgs::PolygonStamped	approxy_polygon;
@@ -314,29 +376,8 @@ void laser_diff::DP_segment (sensor_msgs::PointCloud scan_pointcloud, geometry_m
 	approx_polygon_pub_.publish(approxy_polygon);
 }
 
-void laser_diff::vertical_laser_pair(const sensor_msgs::LaserScan::ConstPtr& scan_in_a, const sensor_msgs::LaserScan::ConstPtr& scan_in_b, sensor_msgs::LaserScan & vertical_scan)
-{
-	vertical_scan = *scan_in_a;
-	float thetha = 0.8*M_PI/180.0;
-	for(size_t i=0; i<vertical_scan.ranges.size(); i++)
-	{
-		float scan_range0 = scan_in_a->ranges[i];
-		float scan_range1 = scan_in_b->ranges[i];
-		float longer_range, shorter_range;
-		longer_range = scan_range0 > scan_range1 ? scan_range0:scan_range1;
-		shorter_range = scan_range0 <= scan_range1 ? scan_range0:scan_range1;
-
-		if(shorter_range<scan_in_a->range_min)vertical_scan.ranges[i] = 0.0;
-		else
-		{
-			float angle = atan2(longer_range*thetha, longer_range-shorter_range)+thetha/2.0;
-			if(angle<M_PI/4.0) vertical_scan.ranges[i] = 0.0;
-		}
-	}
-}
-
 //http://alienryderflex.com/polygon/
-inline bool laser_diff::pointInPolygon(geometry_msgs::Point32 p, vector<geometry_msgs::Point32> poly)
+inline bool DATMO::pointInPolygon(geometry_msgs::Point32 p, vector<geometry_msgs::Point32> poly)
 {
 	int polySides = poly.size();
 	int      i, j=polySides-1 ;
@@ -353,14 +394,11 @@ inline bool laser_diff::pointInPolygon(geometry_msgs::Point32 p, vector<geometry
 	return oddNodes;
 }
 
-//this function actually does nothing; just help to synchronize the tf and topics;
-void laser_diff::scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_in){}
-
 
 int main(int argc, char** argv)
 {
-	ros::init(argc, argv, "laser_diff_node");
-	laser_diff laser_diff_node;
+	ros::init(argc, argv, "DATMO_node");
+	DATMO DATMO_node;
 	ros::spin();
 	return (0);
 }

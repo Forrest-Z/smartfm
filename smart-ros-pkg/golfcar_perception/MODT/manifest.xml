@@ -21,7 +21,8 @@
   <depend package="std_msgs" />
   <depend package="nav_msgs" />
   <depend package="common_rosdeps" />
-  <depend package="diagnostic_updater" />
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
   <rosdep name="eigen" />
 </package>
 

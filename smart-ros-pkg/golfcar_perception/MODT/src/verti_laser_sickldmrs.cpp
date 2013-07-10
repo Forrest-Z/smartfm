@@ -1,5 +1,4 @@
 #include <ros/ros.h>
-#include <diagnostic_updater/publisher.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
 
