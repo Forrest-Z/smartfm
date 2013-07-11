@@ -29,8 +29,9 @@ ObstDetect::ObstDetect(){
 	processed_pts_pub = nh_.advertise<sensor_msgs::PointCloud> ("processed_obst_pts", 10);
 	unprocessed_pts_pub = nh_.advertise<sensor_msgs::PointCloud>("unprocessed_obst_pts", 10);
 	interest_pts_pub = nh_.advertise<sensor_msgs::PointCloud>("interest_pts", 10);
-	obst_polys_pub = nh_.advertise<geometry_msgs::PolygonStamped>("obstacles_polygon", 1);
+	obst_polys_pub = nh_.advertise<POLY>("obstacles_polygon", 1);
 	obst_marker_pub = nh_.advertise<visualization_msgs::MarkerArray>("obstacle_makers", 1);
+	obst_pose_pub = nh_.advertise<sensor_msgs::PointCloud>("obst_pose_measure",1);
 
 	//Dynamic reconfigure of cluster parameters
 	srv = new dynamic_reconfigure::Server<obstacle_tracking::clusterCTRConfig> (ros::NodeHandle("~"));
@@ -38,7 +39,9 @@ ObstDetect::ObstDetect(){
 	srv->setCallback(f);
 
 	obst_channel.name = "obst_type";
-	shape = visualization_msgs::Marker::CUBE;
+	mesh = visualization_msgs::Marker::MESH_RESOURCE;
+	cylinder = visualization_msgs::Marker::CYLINDER;
+	cube = visualization_msgs::Marker::CUBE;
 }
 
 ObstDetect::~ObstDetect(){
@@ -62,7 +65,7 @@ inline sensor_msgs::PointCloud PCLTopointcloud(pcl::PointCloud<pcl::PointXYZ> &p
     return pc;
 }
 
-inline double PointDistance(geometry_msgs::Point32 first_pts, geometry_msgs::Point32 second_pts){
+inline double PointDistCal(POSE first_pts, POSE second_pts){
 	double pts_dist;
 	double x_diff = first_pts.x - second_pts.x;
 	double y_diff = first_pts.y - second_pts.y;
@@ -70,7 +73,7 @@ inline double PointDistance(geometry_msgs::Point32 first_pts, geometry_msgs::Poi
 	return pts_dist;
 }
 
-inline double SlopeCal(geometry_msgs::Point32 first_pts, geometry_msgs::Point32 second_pts){
+inline double SlopeCal(POSE first_pts, POSE second_pts){
 	double slope;
 	double x_diff = first_pts.x - second_pts.x;
 	double y_diff = first_pts.y - second_pts.y;
@@ -81,8 +84,8 @@ inline double SlopeCal(geometry_msgs::Point32 first_pts, geometry_msgs::Point32 
 	return slope;
 }
 
-inline geometry_msgs::Point32 PendicularPointCal(geometry_msgs::Point32 first_pts, geometry_msgs::Point32 second_pts, double dist){
-	geometry_msgs::Point32 pend_point;
+inline POSE PendicularPointCal(POSE first_pts, POSE second_pts, double dist){
+	POSE pend_point;
 	double slope = SlopeCal(first_pts, second_pts);
 	pend_point.y = first_pts.y + sqrt(dist*dist / (1+slope*slope));
 	pend_point.x = first_pts.x - slope*sqrt(dist*dist / (1+slope*slope));
@@ -90,8 +93,8 @@ inline geometry_msgs::Point32 PendicularPointCal(geometry_msgs::Point32 first_pt
 	return pend_point;
 }
 
-inline geometry_msgs::Point32 RectanglePointCal(geometry_msgs::Point32 first_pts, geometry_msgs::Point32 second_pts, geometry_msgs::Point32 third_pts){
-	geometry_msgs::Point32 rect_point;
+inline POSE RectanglePointCal(POSE first_pts, POSE second_pts, POSE third_pts){
+	POSE rect_point;
 	double slope_1 = SlopeCal(first_pts, second_pts);
 	double slope_3 = SlopeCal(second_pts, third_pts);
 	double temp_1 = slope_1*first_pts.y - slope_3*third_pts.y;
@@ -100,6 +103,31 @@ inline geometry_msgs::Point32 RectanglePointCal(geometry_msgs::Point32 first_pts
 	rect_point.x = first_pts.x - slope_1*(rect_point.y - first_pts.y);
 	rect_point.z = first_pts.z;
 	return rect_point;
+}
+
+inline double InnerAngleCal(POSE point_pre, POSE point_curr, POSE point_post){
+	double inner_angle;
+	double dx_pre = point_curr.x - point_pre.x;
+	double dy_pre = point_curr.y - point_pre.y;
+	double dx_post = point_curr.x - point_post.x;
+	double dy_post = point_curr.y - point_post.y;
+	double m_pre = sqrt(dx_pre*dx_pre + dy_pre*dy_pre);
+	double m_post = sqrt(dx_post*dx_post + dy_post*dy_post);
+	inner_angle = acos((dx_pre*dx_post + dy_pre*dy_post)/(m_pre*m_post));
+	return inner_angle*180/M_PI;
+}
+
+inline double RectangleOrienCal(POLY poly){
+	double angle;
+	double dist_pre = PointDistCal(poly.polygon.points[0], poly.polygon.points[1]);
+	double dist_post = PointDistCal(poly.polygon.points[1], poly.polygon.points[2]);
+	if (dist_pre >= dist_post)
+		angle = atan(SlopeCal(poly.polygon.points[0], poly.polygon.points[1]));
+	else
+		angle = atan(SlopeCal(poly.polygon.points[1], poly.polygon.points[2]));
+	if (angle < 0)
+		angle += M_PI;
+	return angle;
 }
 
 void ObstDetect::ParamReconfigure(obstacle_tracking::clusterCTRConfig &config, uint32_t level){
@@ -182,7 +210,8 @@ void ObstDetect::ObstClustering(sensor_msgs::PointCloud obst_pts){
 	obst_channel.values.clear();
 	filtered_interest_pts.points.clear();
 	filtered_interest_pts.channels.clear();
-	obst_polys.clear();
+	veh_polys.clear();
+	ped_poses.clear();
 	markerarray.markers.clear();
 
 	/******************************Using KDTree for Euclidean clusting*******************/
@@ -200,7 +229,7 @@ void ObstDetect::ObstClustering(sensor_msgs::PointCloud obst_pts){
 	ec.setSearchMethod(Kdtree);
 	ec.setInputCloud(obst_pcl);
 	ec.extract(cluster_indices);
-	/*******************************************End*********************************/
+	/*******************************************End****************************************/
 
 	cout << cluster_indices.size()<<endl;
 	ROS_INFO("Extract Clustering");
@@ -239,7 +268,7 @@ void ObstDetect::ObstClustering(sensor_msgs::PointCloud obst_pts){
 	filtered_interest_pts.channels.push_back(obst_channel);
 	interest_pts_pub.publish(filtered_interest_pts);
 
-	ObstMarkerVisualize(obst_polys);
+	ObstPosePub(veh_polys, ped_poses);
 }
 
 void ObstDetect::ObstExtraction(sensor_msgs::PointCloud clustered_pcl){
@@ -251,7 +280,7 @@ void ObstDetect::ObstExtraction(sensor_msgs::PointCloud clustered_pcl){
 
 	interest_pts.points.push_back(clustered_pcl.points.front());
 	for (int i = moving_avg_size; i < (clustered_pcl.points.size()-moving_avg_size); i++ ){
-		geometry_msgs::Point32 current_pts, pre_avg_pts, post_avg_pts;
+		POSE current_pts, pre_avg_pts, post_avg_pts;
 		current_pts = clustered_pcl.points[i];
 
 		//Calculate the average points to address the noise;
@@ -275,20 +304,30 @@ void ObstDetect::ObstExtraction(sensor_msgs::PointCloud clustered_pcl){
 
 	/***************Classification of Obstacles using interest points****************/
 	//If the obst has three interest point(one corner), it will be high likehood to be vehicle
+
 	if (interest_pts.points.size() == 3){
+		double angle = InnerAngleCal(interest_pts.points[0], interest_pts.points[1], interest_pts.points[2] );
+		double pre_dist = PointDistCal(interest_pts.points[0], interest_pts.points[1]);
+		double post_dist = PointDistCal(interest_pts.points[1], interest_pts.points[2]);
+		double min_dist = (pre_dist < post_dist) ? pre_dist : post_dist;
+		double max_dist = (pre_dist > post_dist) ? pre_dist : post_dist;
+		bool angle_crit = (angle < 105 && angle > 75);
+		bool dist_crite = (1.5< max_dist && max_dist < 2.5) && (0.5< min_dist && min_dist <1.5);
+		if (angle_crit && dist_crite){
 		//Store the obstalce type channel for further interpretate, type 3 for obstacle with 3 interest points
-		for (int i = 0; i < interest_pts.points.size(); i++){
-			filtered_interest_pts.points.push_back(interest_pts.points[i]);
+			for (int i = 0; i < interest_pts.points.size(); i++){
+				filtered_interest_pts.points.push_back(interest_pts.points[i]);
 			obst_channel.values.push_back(3);
+			}
+			ObstInterpretate(interest_pts);
 		}
-		ObstInterpretate(interest_pts);
 	}
 
 	//If the obst has two interest point, it will be more complicate to decide its type
 	if (interest_pts.points.size() == 2){
-		geometry_msgs::Point32 first_pts = interest_pts.points[0];
-		geometry_msgs::Point32 second_pts = interest_pts.points[1];
-		double pts_dist = PointDistance(first_pts, second_pts);
+		POSE first_pts = interest_pts.points[0];
+		POSE second_pts = interest_pts.points[1];
+		double pts_dist = PointDistCal(first_pts, second_pts);
 		if (abs(SlopeCal(second_pts, first_pts)) < 0.6){
 			//Front Vehicle feature, two keypoints and processed as retangle
 			if (pts_dist < 2 && pts_dist > 0.8){
@@ -304,22 +343,15 @@ void ObstDetect::ObstExtraction(sensor_msgs::PointCloud clustered_pcl){
 					obst_channel.values.push_back(1);
 					filtered_interest_pts.points.push_back(interest_pts.points[i]);
 				}
+				POSE ped_pose_;
+				ped_pose_.x = (interest_pts.points[0].x+interest_pts.points[1].x)/2;
+				ped_pose_.y = (interest_pts.points[0].y+interest_pts.points[1].y)/2;
+				ped_pose_.z = 0;
+				ped_poses.push_back(ped_pose_);
 			}
 		}
 	}
 	/********************************************End********************************/
-}
-
-double ObstDetect::InnerAngleCal(geometry_msgs::Point32 point_pre, geometry_msgs::Point32 point_curr, geometry_msgs::Point32 point_post){
-	double inner_angle;
-	double dx_pre = point_curr.x - point_pre.x;
-	double dy_pre = point_curr.y - point_pre.y;
-	double dx_post = point_curr.x - point_post.x;
-	double dy_post = point_curr.y - point_post.y;
-	double m_pre = sqrt(dx_pre*dx_pre + dy_pre*dy_pre);
-	double m_post = sqrt(dx_post*dx_post + dy_post*dy_post);
-	inner_angle = acos((dx_pre*dx_post + dy_pre*dy_post)/(m_pre*m_post));
-	return inner_angle*180/M_PI;
 }
 
 //TODO: Interpret the interest points to "refill" the obstacle region
@@ -332,11 +364,11 @@ void ObstDetect::ObstInterpretate(sensor_msgs::PointCloud keypoints){
 	if (keypoints.points.size() == 2){
 		interpreted_ploy.polygon.points.push_back(keypoints.points[0]);
 		interpreted_ploy.polygon.points.push_back(keypoints.points[1]);
-		double width = PointDistance(keypoints.points[0], keypoints.points[1]);
+		double width = PointDistCal(keypoints.points[0], keypoints.points[1]);
 		double height = 2.0 * width;
-		geometry_msgs::Point32 third_point = PendicularPointCal(keypoints.points[1], keypoints.points[0], height);
+		POSE third_point = PendicularPointCal(keypoints.points[1], keypoints.points[0], height);
 		interpreted_ploy.polygon.points.push_back(third_point);
-		geometry_msgs::Point32 fourth_point = PendicularPointCal(keypoints.points[0], keypoints.points[1], height);
+		POSE fourth_point = PendicularPointCal(keypoints.points[0], keypoints.points[1], height);
 		interpreted_ploy.polygon.points.push_back(fourth_point);
 	}
 
@@ -344,53 +376,89 @@ void ObstDetect::ObstInterpretate(sensor_msgs::PointCloud keypoints){
 	if (keypoints.points.size()==3){
 		for (int i = 0; i <3; i++)
 			interpreted_ploy.polygon.points.push_back(keypoints.points[i]);
-		geometry_msgs::Point32 fourth_point = RectanglePointCal(keypoints.points[0], keypoints.points[1], keypoints.points[2]);
+		POSE fourth_point = RectanglePointCal(keypoints.points[0], keypoints.points[1], keypoints.points[2]);
 		interpreted_ploy.polygon.points.push_back(fourth_point);
 	}
-	obst_polys.push_back(interpreted_ploy);
+	veh_polys.push_back(interpreted_ploy);
 	obst_polys_pub.publish(interpreted_ploy);
 }
 
-void ObstDetect::ObstMarkerVisualize(vector<geometry_msgs::PolygonStamped> polys){
-
-	for (int i = 0; i < polys.size(); i++){
+//For visualization only
+void ObstDetect::ObstMarkerVisualize(sensor_msgs::PointCloud obst_pts){
+	for (int i = 0; i < obst_pts.points.size(); i++){
 		visualization_msgs::Marker marker;
-		marker.ns = "vel_obsts";
 		marker.id = i;
-		marker.type = shape;
 		marker.action = visualization_msgs::Marker::ADD;
-		marker.pose.position.x = (polys[i].polygon.points[0].x+polys[i].polygon.points[2].x)/2;
-		marker.pose.position.y = (polys[i].polygon.points[0].y+polys[i].polygon.points[2].y)/2;
+
+		marker.pose.position.x =obst_pts.points[i].x ;
+		marker.pose.position.y =obst_pts.points[i].y ;
 		marker.pose.position.z = 0;
 
-		double angle = atan(SlopeCal(polys[i].polygon.points[0], polys[i].polygon.points[1]));
+		double angle = obst_pts.channels[2].values[i];
 
 		marker.pose.orientation.x = 0.0;
 		marker.pose.orientation.y = 0.0;
 		marker.pose.orientation.z = sin(angle/2);
 		marker.pose.orientation.w = cos(angle/2);
 
-		marker.scale.x = 1.0;
-		marker.scale.y = 1.0;
-		marker.scale.z = 1.0;
-
-		marker.color.r = 0.0f;
-		marker.color.g = 1.0f;
-		marker.color.b = 0.0f;
-		marker.color.a = 1.0;
-
+		if (obst_pts.channels[0].values[i] == 0){
+			marker.ns = "veh_obsts";
+#if (1)
+			marker.type = cube;
+			marker.scale.x = 2.0; marker.scale.y = 1.0; marker.scale.z = 1.0;
+#else if
+			marker.type = mesh;
+			marker.mesh_resource = "package://local_map/urdf/golfcart.STL";
+			marker.scale.x = 0.04; marker.scale.y = 0.04; marker.scale.z = 0.04;
+#endif
+			marker.color.r = 0.0f; marker.color.g = 1.0f; marker.color.b = 0.0f; marker.color.a = 1.0;
+		}
+		if (obst_pts.channels[0].values[i] == 1){
+			marker.ns = "ped_obsts";
+			marker.type = cylinder;
+			marker.scale.x = 0.5; marker.scale.y = 0.5; marker.scale.z = 1.5;
+			marker.color.r = 1.0f; marker.color.g = 0.0f; marker.color.b = 0.0f; marker.color.a = 1.0;
+		}
 		marker.lifetime = ros::Duration();
-
 		marker.header.frame_id = local_frame_;
 		marker.header.stamp = ros::Time::now();
-
 		markerarray.markers.push_back(marker);
 	}
 	obst_marker_pub.publish(markerarray);
 }
 
-void ObstDetect::RegionFilling(geometry_msgs::PolygonStamped polygon){
+void ObstDetect::ObstPosePub(vector<POLY> polys, vector<POSE> poses){
+	sensor_msgs::PointCloud obst_pose;
+	POSE pose_temp;
+	sensor_msgs::ChannelFloat32 _type, _id, _orien;
+	_type.name = "obst_type";
+	_id.name = "obst_id";
+	_orien.name = "obst_orien";
+	for (int i =0; i < polys.size(); i++){
+		pose_temp.x = (polys[i].polygon.points[0].x+polys[i].polygon.points[2].x)/2;
+		pose_temp.y = (polys[i].polygon.points[0].y+polys[i].polygon.points[2].y)/2;
+		pose_temp.z = 0;
+		obst_pose.points.push_back(pose_temp);
+		//Can not decide the exact orientation unless the heading avaiable.
+		double orien = RectangleOrienCal(polys[i]);
+		_type.values.push_back(0);
+		_id.values.push_back(i);
+		_orien.values.push_back(orien);
+	}
+	for (int i = 0; i < poses.size(); i++){
+		obst_pose.points.push_back(poses[i]);
+		_type.values.push_back(1);
+		_id.values.push_back(i);
+		_orien.values.push_back(0);
+	}
+	obst_pose.header.frame_id = local_frame_;
+	obst_pose.header.stamp = ros::Time::now();
+	obst_pose.channels.push_back(_type);
+	obst_pose.channels.push_back(_id);
+	obst_pose.channels.push_back(_orien);
+	obst_pose_pub.publish(obst_pose);
 
+	ObstMarkerVisualize(obst_pose);
 }
 
 int main(int argc, char**argv){
