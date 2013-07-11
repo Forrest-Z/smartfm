@@ -109,7 +109,7 @@ void verti_laser_sickldmrs::scanProcess (const sensor_msgs::LaserScan::ConstPtr&
 		else
 		{
 			float angle = atan2(longer_range*thetha, longer_range-shorter_range)+thetha/2.0;
-			if(angle<M_PI/18.0) vertical_laser.ranges[i] = 0.0;
+			if(angle<verti_angle_threshold_) vertical_laser.ranges[i] = 0.0;
 			else
 			{
 				if(scan_range1 > scan_in1->range_min) vertical_laser.ranges[i] = scan_in1->ranges[i]*cos(thetha);
