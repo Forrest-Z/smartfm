@@ -346,7 +346,7 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 	Mat new_appear_tmp, old_disappear_tmp;
 
 	morphologyEx(combined_img, combined_img, CV_MOP_CLOSE, close_element);
-	morphologyEx(combined_img, combined_img, CV_MOP_DILATE, open_element);
+	//morphologyEx(combined_img, combined_img, CV_MOP_DILATE, open_element);
 	morphologyEx(new_appear, new_appear_tmp,CV_MOP_CLOSE, close_element);
 	//morphologyEx(new_appear_tmp, new_appear_tmp,CV_MOP_OPEN, open_element);
 	morphologyEx(old_disappear, old_disappear_tmp, CV_MOP_CLOSE, close_element);
@@ -359,9 +359,12 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 	findContours( new_appear_tmp, contours_appear, hierarchy_appear, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0,0) );
 	findContours( old_disappear_tmp, contours_disappear, hierarchy_disappear, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0,0) );
 
-	vector<RotatedRect> minAreaRect_combined(contours_combined.size());
-	vector<RotatedRect> minAreaRect_appear(contours_appear.size());
-	vector<RotatedRect> minAreaRect_disappear(contours_disappear.size());
+	vector<RotatedRect> minAreaRect_combined(contours_combined.size()); for( size_t i = 0; i < contours_combined.size(); i++ ) { minAreaRect_combined[i] = minAreaRect( Mat(contours_combined[i]) );}
+	vector<RotatedRect> minAreaRect_appear(contours_appear.size()); for( size_t i = 0; i < contours_appear.size(); i++ ) { minAreaRect_appear[i] = minAreaRect( Mat(contours_appear[i]) );}
+	vector<RotatedRect> minAreaRect_disappear(contours_disappear.size());  for( size_t  i = 0; i < contours_disappear.size(); i++ ) { minAreaRect_disappear[i] = minAreaRect( Mat(contours_disappear[i]) );}
+	vector<double> area_combined( contours_combined.size() ); for( size_t i = 0; i < contours_combined.size(); i++ ) {area_combined[i] = contourArea(contours_combined[i]);}
+	vector<double> area_appear( contours_appear.size() ); for( size_t i = 0; i < contours_appear.size(); i++ ) {area_appear[i] = contourArea(contours_appear[i]);}
+	vector<double> area_disappear( contours_disappear.size() ); for( size_t i = 0; i < contours_disappear.size(); i++ ) {area_disappear[i] = contourArea(contours_disappear[i]);}
 
 	for( int i = 0; i< (int)contours_combined.size(); i++ ) drawContours( combined_img, contours_combined, i, Scalar(255), 1, 8, vector<Vec4i>(), 0, Point() );
 	for( int i = 0; i< (int)contours_appear.size(); i++ ) drawContours( new_appear_tmp, contours_appear, i, Scalar(255), -1, 8, vector<Vec4i>(), 0, Point() );
@@ -370,15 +373,62 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 	Mat three_chanels[3]={new_appear_tmp, combined_img, old_disappear_tmp};
 	Mat merged_visualization;
 	merge(three_chanels, 3, merged_visualization);
+
+	Mat show_final_img = Mat(local_mask_.rows, local_mask_.cols, CV_8UC3);
+	show_final_img = Scalar(0);
+
+	vector<vector<size_t> > combined_enclose_appear, combined_enclose_disappear;
+
+	for(size_t i = 0; i<minAreaRect_combined.size(); i++)
+	{
+		vector<size_t> combined_appear_tmp, combined_disappear_tmp;
+		for(size_t j = 0; j<minAreaRect_appear.size(); j++)
+		{
+			double check = pointPolygonTest(contours_combined[i], minAreaRect_appear[j].center, false);
+			if(check>=0)combined_appear_tmp.push_back(j);
+		}
+		for(size_t j = 0; j<minAreaRect_disappear.size(); j++)
+		{
+			double check = pointPolygonTest(contours_combined[i], minAreaRect_disappear[j].center, false);
+			if(check>=0)combined_disappear_tmp.push_back(j);
+		}
+
+		size_t appear_serial, disappear_serial;
+		double biggest_area_appear = 0.0;
+		double biggest_area_disappear = 0.0;
+
+		for(size_t j = 0; j<combined_appear_tmp.size(); j++)
+		{
+			size_t contour_serial = combined_appear_tmp[j];
+			if(area_appear[contour_serial]>biggest_area_appear)
+			{
+				appear_serial = contour_serial;
+				biggest_area_appear = area_appear[contour_serial];
+			}
+		}
+		for(size_t j = 0; j<combined_disappear_tmp.size(); j++)
+		{
+			size_t contour_serial = combined_disappear_tmp[j];
+			if(area_disappear[contour_serial]>biggest_area_disappear)
+			{
+				disappear_serial = contour_serial;
+				biggest_area_disappear = area_disappear[contour_serial];
+			}
+		}
+
+		//ROS_INFO("biggest_area_appear, biggest_area_disappear, area_combined[i]: (%3f, %3f, %3f)", biggest_area_appear, biggest_area_disappear, area_combined[i]);
+		if(biggest_area_appear > 10.0 && biggest_area_disappear > 10.0)//&& biggest_area_appear>0.1*area_combined[i]&& biggest_area_disappear>0.1*area_combined[i])
+		{
+			drawContours( show_final_img, contours_appear, appear_serial, Scalar(0, 0, 255), -1, 8, vector<Vec4i>(), 0, Point() );
+			drawContours( show_final_img, contours_disappear, disappear_serial, Scalar(255, 0, 0), -1, 8, vector<Vec4i>(), 0, Point() );
+			line(show_final_img, Point((int)minAreaRect_appear[appear_serial].center.x, (int)minAreaRect_appear[appear_serial].center.y), Point((int)minAreaRect_disappear[disappear_serial].center.x, (int)minAreaRect_disappear[disappear_serial].center.y), Scalar(255, 255, 255), 3);
+		}
+	}
+
 	imshow("colorful_plots", merged_visualization);
+	imshow("show_final_img", show_final_img);
 	waitKey(1);
 
-	/*
-	vector<Moments> mu(contours.size() );
-	for( size_t i = 0; i < contours.size(); i++ ) {mu[i] = moments( contours[i], false );}
-	vector<double> area( contours.size() );
-	for( size_t i = 0; i < contours.size(); i++ ) {area[i] = contourArea(contours[i]);}
-	*/
 }
 
 //http://alienryderflex.com/polygon/
