@@ -373,15 +373,14 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 	Mat three_chanels[3]={new_appear_tmp, combined_img, old_disappear_tmp};
 	Mat merged_visualization;
 	merge(three_chanels, 3, merged_visualization);
-	imshow("colorful_plots", merged_visualization);
-	waitKey(1);
 
-	vector<pair<int, int> > appear_disappear_pairs;
+	Mat show_final_img = Mat(local_mask_.rows, local_mask_.cols, CV_8UC3);
+	show_final_img = Scalar(0);
+
+	vector<vector<size_t> > combined_enclose_appear, combined_enclose_disappear;
+
 	for(size_t i = 0; i<minAreaRect_combined.size(); i++)
 	{
-		int appear_serial = -1;
-		int disappear_serial = -1;
-
 		vector<size_t> combined_appear_tmp, combined_disappear_tmp;
 		for(size_t j = 0; j<minAreaRect_appear.size(); j++)
 		{
@@ -394,14 +393,16 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 			if(check>=0)combined_disappear_tmp.push_back(j);
 		}
 
+		size_t appear_serial, disappear_serial;
 		double biggest_area_appear = 0.0;
 		double biggest_area_disappear = 0.0;
+
 		for(size_t j = 0; j<combined_appear_tmp.size(); j++)
 		{
 			size_t contour_serial = combined_appear_tmp[j];
 			if(area_appear[contour_serial]>biggest_area_appear)
 			{
-				appear_serial = (int)contour_serial;
+				appear_serial = contour_serial;
 				biggest_area_appear = area_appear[contour_serial];
 			}
 		}
@@ -410,84 +411,24 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 			size_t contour_serial = combined_disappear_tmp[j];
 			if(area_disappear[contour_serial]>biggest_area_disappear)
 			{
-				disappear_serial = (int)contour_serial;
+				disappear_serial = contour_serial;
 				biggest_area_disappear = area_disappear[contour_serial];
 			}
 		}
-		pair <int,int> appear_disappear_tmp = make_pair(appear_serial, disappear_serial);
-		appear_disappear_pairs.push_back(appear_disappear_tmp);
-	}
 
-	//process the appear-disappear pairs based on their sizes and shapes;
-	Mat visualize_img = Mat(local_mask_.rows, local_mask_.cols, CV_8UC3);
-	visualize_img = Scalar(0);
-	for(size_t i=0;  i<appear_disappear_pairs.size(); i++)
-	{
-		int appear_serial = appear_disappear_pairs[i].first;
-		int disappear_serial = appear_disappear_pairs[i].second;
-		if(appear_serial>=0 && disappear_serial>=0)
+		//ROS_INFO("biggest_area_appear, biggest_area_disappear, area_combined[i]: (%3f, %3f, %3f)", biggest_area_appear, biggest_area_disappear, area_combined[i]);
+		if(biggest_area_appear > 10.0 && biggest_area_disappear > 10.0)//&& biggest_area_appear>0.1*area_combined[i]&& biggest_area_disappear>0.1*area_combined[i])
 		{
-			Mat pair_img = Mat(local_mask_.rows, local_mask_.cols, CV_8UC1);
-			pair_img = Scalar(0);
-			double area_appear_tmp, area_disappear_tmp;
-			area_appear_tmp = area_appear[appear_serial];
-			area_disappear_tmp = area_disappear[disappear_serial];
-
-			ROS_INFO("area %3f, %3f", area_appear_tmp, area_disappear_tmp);
-			if(area_appear_tmp > 10.0 && area_disappear_tmp > 10.0)
-			{
-				drawContours( visualize_img, contours_appear, appear_serial, Scalar(255, 0, 0), -1, 8, vector<Vec4i>(), 0, Point() );
-				drawContours( visualize_img, contours_disappear, disappear_serial, Scalar(0, 0, 255), -1, 8, vector<Vec4i>(), 0, Point() );
-
-				drawContours( pair_img, contours_appear, appear_serial, Scalar(255), -1, 8, vector<Vec4i>(), 0, Point() );
-				drawContours( pair_img, contours_disappear, disappear_serial, Scalar(255), -1, 8, vector<Vec4i>(), 0, Point() );
-				line(pair_img, Point((int)minAreaRect_appear[appear_serial].center.x, (int)minAreaRect_appear[appear_serial].center.y),
-				Point((int)minAreaRect_disappear[disappear_serial].center.x, (int)minAreaRect_disappear[disappear_serial].center.y), Scalar(255), 3);
-				vector<vector<Point> > contours_pair;
-				vector<Vec4i> pair_hierarchy;
-				findContours( pair_img, contours_pair, pair_hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0,0) );
-				RotatedRect minAreaRect_pair;
-				minAreaRect_pair = minAreaRect( Mat(contours_pair[0]));
-				ROS_INFO("minAreaRect_pair %3f, %3f", minAreaRect_pair.size.width, minAreaRect_pair.size.height);
-				Point2f rect_points[4]; minAreaRect_pair.points( rect_points );
-			    for( int j = 0; j < 4; j++ ){line( visualize_img, rect_points[j], rect_points[(j+1)%4], Scalar(0, 255, 255), 1, 8 );}
-
-			    Point2f appear_center = minAreaRect_appear[appear_serial].center;
-			    Point2f disappear_center = minAreaRect_disappear[disappear_serial].center;
-			    Point2f candidate_conner_points[2];
-
-			    float appear_center_distances[4];
-			    for( int j=0; j<4; j++)
-			    {
-			    	appear_center_distances[j] = sqrtf((rect_points[j].x-appear_center.x)*(rect_points[j].x-appear_center.x)+(rect_points[j].y-appear_center.y)*(rect_points[j].y-appear_center.y));
-			    }
-			    float shortest_distance = 1000000.0;
-			    float second_shortest_distance = 100000.0;
-			    int shortest_serial = 0;
-			    int second_shortest_serial =1;
-			    for( int j=0; j<4; j++)
-				{
-					if(appear_center_distances[j]<= shortest_distance)
-					{
-						second_shortest_serial =shortest_serial;
-						second_shortest_distance = shortest_distance;
-						shortest_serial = j;
-						shortest_distance = appear_center_distances[j];
-					}
-					else if(appear_center_distances[j]<= second_shortest_distance)
-					{
-						second_shortest_serial =j;
-						second_shortest_distance = appear_center_distances[j];
-					}
-				}
-			    candidate_conner_points[0] = rect_points[shortest_serial];
-			    candidate_conner_points[1] = rect_points[second_shortest_serial];
-			    line(visualize_img, Point((int)candidate_conner_points[0].x, (int)candidate_conner_points[0].y),Point((int)candidate_conner_points[1].x, (int)candidate_conner_points[1].y), Scalar(0, 0, 255), 3);
-			}
+			drawContours( show_final_img, contours_appear, appear_serial, Scalar(0, 0, 255), -1, 8, vector<Vec4i>(), 0, Point() );
+			drawContours( show_final_img, contours_disappear, disappear_serial, Scalar(255, 0, 0), -1, 8, vector<Vec4i>(), 0, Point() );
+			line(show_final_img, Point((int)minAreaRect_appear[appear_serial].center.x, (int)minAreaRect_appear[appear_serial].center.y), Point((int)minAreaRect_disappear[disappear_serial].center.x, (int)minAreaRect_disappear[disappear_serial].center.y), Scalar(255, 255, 255), 3);
 		}
 	}
-	imshow("visualize_img", visualize_img);
+
+	imshow("colorful_plots", merged_visualization);
+	imshow("show_final_img", show_final_img);
 	waitKey(1);
+
 }
 
 //http://alienryderflex.com/polygon/
