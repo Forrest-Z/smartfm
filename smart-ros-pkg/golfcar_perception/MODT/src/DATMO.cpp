@@ -15,7 +15,9 @@
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/PolygonStamped.h>
+#include <geometry_msgs/PoseArray.h>
 
 #include <iostream>
 #include <pcl/io/pcd_io.h>
@@ -62,23 +64,23 @@ private:
 	bool pointInPolygon(geometry_msgs::Point32 p, vector<geometry_msgs::Point32> poly);
 	void process_accumulated_points();
 	void extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear, Mat& old_disappear, Mat& current_image);
+	void vehicle_pose_generation(vector<pair<pair<Point2f, Point2f>, float> > &vehicle_poses_img);
 
 	tf::MessageFilter<sensor_msgs::LaserScan>				*tf_filter_;
-	ros::Publisher                              			approx_polygon_pub_;
-
 	size_t 													interval_;
 	vector<sensor_msgs::PointCloud>                        	cloud_vector_;
 	vector<geometry_msgs::PoseStamped>						laser_pose_vector_;
 	geometry_msgs::PoseStamped								laser_pose_current_;
+	ros::Publisher                              			vehicle_array_pub_;
 
 	//vehicle local image;
-	double													img_side_length_, img_resolution_;
+	float													img_side_length_, img_resolution_;
 	Mat														local_mask_;
 	Point													LIDAR_pixel_coord_;
 	void 													initialize_local_image();
-	void spacePt2ImgP(geometry_msgs::Point32 & spacePt, Point & imgPt);
-	void ImgPt2spacePt(Point & imgPt, geometry_msgs::Point32 & spacePt);
-	bool LocalPixelValid(Point & imgPt);
+	void spacePt2ImgP(geometry_msgs::Point32 & spacePt, Point2f & imgPt);
+	void ImgPt2spacePt(Point2f & imgPt, geometry_msgs::Point32 & spacePt);
+	bool LocalPixelValid(Point2f & imgPt);
 
 	//roadmap global image;
 	Mat														road_map_prior_;
@@ -105,15 +107,19 @@ DATMO::DATMO()
 	private_nh_.param("interval",		    inverval_tmp,       	50);
 	interval_ = (size_t) inverval_tmp;
 
-	approx_polygon_pub_		=   nh_.advertise<geometry_msgs::PolygonStamped>("approx_polygon", 2);
+	vehicle_array_pub_		=   nh_.advertise<geometry_msgs::PoseArray>("vehicle_array", 2);
 
 	verti_laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/sickldmrs/verti_laser", 100);
 	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*verti_laser_sub_, tf_, odom_frame_id_, 10);
 	tf_filter_->registerCallback(boost::bind(&DATMO::scanCallback, this, _1));
 	tf_filter_->setTolerance(ros::Duration(0.05));
 
-	private_nh_.param("img_side_length",      img_side_length_,     50.0);
-	private_nh_.param("img_resolution",       img_resolution_,     0.2);
+	double img_side_length_tmp, img_resolution_tmp;
+	private_nh_.param("img_side_length",      img_side_length_tmp,     50.0);
+	private_nh_.param("img_resolution",       img_resolution_tmp,     0.2);
+	img_side_length_ = (float)img_side_length_tmp;
+	img_resolution_ = (float)img_resolution_tmp;
+
 	initialize_local_image();
 }
 
@@ -169,20 +175,20 @@ void DATMO::initialize_local_image()
 		}
 }
 
-void DATMO::spacePt2ImgP(geometry_msgs::Point32 & spacePt, Point & imgPt)
+void DATMO::spacePt2ImgP(geometry_msgs::Point32 & spacePt, Point2f & imgPt)
 {
-	imgPt.x = LIDAR_pixel_coord_.x - int(spacePt.y/img_resolution_);
-	imgPt.y = LIDAR_pixel_coord_.y - int(spacePt.x/img_resolution_);
+	imgPt.x = LIDAR_pixel_coord_.x - (spacePt.y/img_resolution_);
+	imgPt.y = LIDAR_pixel_coord_.y - (spacePt.x/img_resolution_);
 }
-void DATMO::ImgPt2spacePt(Point & imgPt, geometry_msgs::Point32 & spacePt)
+void DATMO::ImgPt2spacePt(Point2f & imgPt, geometry_msgs::Point32 & spacePt)
 {
-	//spacePt.x = (imgPt.x-LIDAR_pixel_coord_.x)*img_resolution_;
-	//spacePt.y = (LIDAR_pixel_coord_.y - imgPt.y)*img_resolution_;
+	spacePt.x = (LIDAR_pixel_coord_.y-imgPt.y)*img_resolution_;
+	spacePt.y = (LIDAR_pixel_coord_.x-imgPt.x)*img_resolution_;
 }
 
-inline bool DATMO::LocalPixelValid(Point & imgPt)
+inline bool DATMO::LocalPixelValid(Point2f & imgPt)
 {
-	if(imgPt.x < local_mask_.cols && imgPt.x >=0 && imgPt.y < local_mask_.rows && imgPt.y >=0) return true;
+	if((int)imgPt.x < local_mask_.cols && (int)imgPt.x >=0 && (int)imgPt.y < local_mask_.rows && (int)imgPt.y >=0) return true;
 	else return false;
 }
 
@@ -269,38 +275,39 @@ void DATMO::process_accumulated_points()
 	for(size_t i=0; i<accumulated_TminusOne_pcl.points.size(); i++)
 	{
 		geometry_msgs::Point32 spacePt_tmp = accumulated_TminusOne_pcl.points[i];
-		Point imgpt_tmp;
+		Point2f imgpt_tmp;
 		spacePt2ImgP(spacePt_tmp, imgpt_tmp);
 		if(LocalPixelValid(imgpt_tmp))
 		{
-			if(accumulated_TminusOne_img.at<uchar>(imgpt_tmp.y,imgpt_tmp.x) <255) accumulated_TminusOne_img.at<uchar>(imgpt_tmp.y,imgpt_tmp.x) = accumulated_TminusOne_img.at<uchar>(imgpt_tmp.y,imgpt_tmp.x)+1;
+			if(accumulated_TminusOne_img.at<uchar>((int)imgpt_tmp.y,(int)imgpt_tmp.x) <255) accumulated_TminusOne_img.at<uchar>((int)imgpt_tmp.y,(int)imgpt_tmp.x) = accumulated_TminusOne_img.at<uchar>((int)imgpt_tmp.y,(int)imgpt_tmp.x)+1;
 		}
 	}
 
 	for(size_t i=0; i<accumulated_T_pcl.points.size(); i++)
 	{
 		geometry_msgs::Point32 spacePt_tmp = accumulated_T_pcl.points[i];
-		Point imgpt_tmp;
+		Point2f imgpt_tmp;
 		spacePt2ImgP(spacePt_tmp, imgpt_tmp);
 		if(LocalPixelValid(imgpt_tmp))
 		{
-			if(accumulated_T_img.at<uchar>(imgpt_tmp.y,imgpt_tmp.x) <255) accumulated_T_img.at<uchar>(imgpt_tmp.y,imgpt_tmp.x) = accumulated_T_img.at<uchar>(imgpt_tmp.y,imgpt_tmp.x)+1;
+			if(accumulated_T_img.at<uchar>((int)imgpt_tmp.y,(int)imgpt_tmp.x) <255) accumulated_T_img.at<uchar>((int)imgpt_tmp.y,(int)imgpt_tmp.x) = accumulated_T_img.at<uchar>((int)imgpt_tmp.y,(int)imgpt_tmp.x)+1;
 		}
 	}
 
 	for(size_t i=0; i<current_T_pcl.points.size(); i++)
 	{
 		geometry_msgs::Point32 spacePt_tmp = current_T_pcl.points[i];
-		Point imgpt_tmp;
+		Point2f imgpt_tmp;
 		spacePt2ImgP(spacePt_tmp, imgpt_tmp);
 		if(LocalPixelValid(imgpt_tmp))
 		{
-			if(current_T_image.at<uchar>(imgpt_tmp.y,imgpt_tmp.x) <255) current_T_image.at<uchar>(imgpt_tmp.y,imgpt_tmp.x) = current_T_image.at<uchar>(imgpt_tmp.y,imgpt_tmp.x)+1;
+			if(current_T_image.at<uchar>((int)imgpt_tmp.y,(int)imgpt_tmp.x) <255) current_T_image.at<uchar>((int)imgpt_tmp.y,(int)imgpt_tmp.x) = current_T_image.at<uchar>((int)imgpt_tmp.y,(int)imgpt_tmp.x)+1;
 		}
 	}
 
 	int dilation_size = 1;
 	Mat element = getStructuringElement( MORPH_RECT, Size( 2*dilation_size + 1, 2*dilation_size+1 ), Point( dilation_size, dilation_size ) );
+	threshold(current_T_image, current_T_image, 0, 255, 0 );
 
 	threshold(accumulated_T_img, accumulated_T_img, 0, 255, 0 );
 	threshold(accumulated_TminusOne_img, accumulated_TminusOne_img, 0, 255, 0);
@@ -333,19 +340,20 @@ void DATMO::process_accumulated_points()
 	extract_moving_objects(accumulated_T_img, accumulated_TminusOne_img, new_appear, old_disappear, current_T_image);
 }
 
+//here just for vehicle; some process need to be further modified for pedestrians;
 void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear, Mat& old_disappear, Mat& current_image)
 {
-	//here just for vehicle; some process need to be further modified for pedestrians;
+	vector<pair<pair<Point2f, Point2f>, float> > vehicle_poses_img;
 
-	int open_size = 1; int close_size = 2;
-	Mat open_element = getStructuringElement( MORPH_RECT, Size( 2*open_size + 1, 2*open_size+1 ), Point( open_size, open_size ) );
+	int close_size_acc = 2; int close_size = 3;
+	Mat close_element_acc = getStructuringElement( MORPH_RECT, Size( 2*close_size_acc + 1, 2*close_size_acc+1 ), Point( close_size_acc, close_size_acc ) );
 	Mat close_element = getStructuringElement( MORPH_RECT, Size( 2*close_size + 1, 2*close_size+1 ), Point( close_size, close_size ) );
 
 	Mat combined_img;
 	bitwise_or(accT, accTminusOne, combined_img, local_mask_);
 	Mat new_appear_tmp, old_disappear_tmp;
 
-	morphologyEx(combined_img, combined_img, CV_MOP_CLOSE, close_element);
+	morphologyEx(combined_img, combined_img, CV_MOP_CLOSE, close_element_acc);
 	//morphologyEx(combined_img, combined_img, CV_MOP_DILATE, open_element);
 	morphologyEx(new_appear, new_appear_tmp,CV_MOP_CLOSE, close_element);
 	//morphologyEx(new_appear_tmp, new_appear_tmp,CV_MOP_OPEN, open_element);
@@ -449,23 +457,50 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 				RotatedRect minAreaRect_pair;
 				minAreaRect_pair = minAreaRect( Mat(contours_pair[0]));
 				ROS_INFO("minAreaRect_pair %3f, %3f", minAreaRect_pair.size.width, minAreaRect_pair.size.height);
+
 				Point2f rect_points[4]; minAreaRect_pair.points( rect_points );
-			    for( int j = 0; j < 4; j++ ){line( visualize_img, rect_points[j], rect_points[(j+1)%4], Scalar(0, 255, 255), 1, 8 );}
+				vector<Point2f> rect_boundary;
+			    for( int j = 0; j < 4; j++ ){line( visualize_img, rect_points[j], rect_points[(j+1)%4], Scalar(0, 255, 255), 1, 8 );rect_boundary.push_back(rect_points[j]);}
 
-			    Point2f appear_center = minAreaRect_appear[appear_serial].center;
-			    Point2f disappear_center = minAreaRect_disappear[disappear_serial].center;
-			    Point2f candidate_conner_points[2];
+			    //try to utilize current image information to do filtering;
+			    Point previous_point;
+			    previous_point.x = -1; previous_point.y = -1;
+				for(int p = 0; p < current_image.rows; p++)
+				{
+					for(int q = 0; q < current_image.cols; q++)
+					{
+						if(current_image.at<uchar>(p,q)> 127 && (pointPolygonTest(rect_boundary, Point2f(q, p), false)>=0))
+						{
+							if(previous_point.x >=0 && previous_point.y >=0)line(current_image, Point(q, p), previous_point, Scalar(255), 1);
+							previous_point = Point(q, p);
+						}
+						else current_image.at<uchar>(p,q) = 0;
+					}
+				}
 
-			    float appear_center_distances[4];
-			    for( int j=0; j<4; j++)
-			    {
-			    	appear_center_distances[j] = sqrtf((rect_points[j].x-appear_center.x)*(rect_points[j].x-appear_center.x)+(rect_points[j].y-appear_center.y)*(rect_points[j].y-appear_center.y));
-			    }
-			    float shortest_distance = 1000000.0;
-			    float second_shortest_distance = 100000.0;
-			    int shortest_serial = 0;
-			    int second_shortest_serial =1;
-			    for( int j=0; j<4; j++)
+				vector<vector<Point> > current_contours;
+				vector<Vec4i> current_hierarchy;
+				findContours( current_image, current_contours, current_hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE, Point(0,0));
+				vector<RotatedRect> current_rect(current_contours.size()); for( size_t j = 0; j < current_contours.size(); j++ ) { current_rect[j] = minAreaRect( Mat(current_contours[j]) );}
+				float current_long_side = 0.0;
+				if(current_rect.size()>0)current_long_side = current_rect.front().size.width>current_rect.front().size.height? current_rect.front().size.width:current_rect.front().size.height;
+				double acc_long_side = minAreaRect_pair.size.width>minAreaRect_pair.size.height? minAreaRect_pair.size.width: minAreaRect_pair.size.height;
+				bool vehicle_flag = true; if(acc_long_side<1.0 && current_long_side<1.0) vehicle_flag = false;
+
+				Point2f appear_center = minAreaRect_appear[appear_serial].center;
+				Point2f disappear_center = minAreaRect_disappear[disappear_serial].center;
+				Point2f candidate_conner_points[2];
+
+				float appear_center_distances[4];
+				for( int j=0; j<4; j++)
+				{
+					appear_center_distances[j] = sqrtf((rect_points[j].x-appear_center.x)*(rect_points[j].x-appear_center.x)+(rect_points[j].y-appear_center.y)*(rect_points[j].y-appear_center.y));
+				}
+				float shortest_distance = 1000000.0;
+				float second_shortest_distance = 100000.0;
+				int shortest_serial = 0;
+				int second_shortest_serial =1;
+				for( int j=0; j<4; j++)
 				{
 					if(appear_center_distances[j]<= shortest_distance)
 					{
@@ -480,14 +515,86 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 						second_shortest_distance = appear_center_distances[j];
 					}
 				}
-			    candidate_conner_points[0] = rect_points[shortest_serial];
-			    candidate_conner_points[1] = rect_points[second_shortest_serial];
-			    line(visualize_img, Point((int)candidate_conner_points[0].x, (int)candidate_conner_points[0].y),Point((int)candidate_conner_points[1].x, (int)candidate_conner_points[1].y), Scalar(0, 0, 255), 3);
+				candidate_conner_points[0] = rect_points[shortest_serial];
+				candidate_conner_points[1] = rect_points[second_shortest_serial];
+
+				if(vehicle_flag)
+				{
+					line(visualize_img, Point((int)candidate_conner_points[0].x, (int)candidate_conner_points[0].y),Point((int)candidate_conner_points[1].x, (int)candidate_conner_points[1].y), Scalar(0, 0, 255), 3);
+					pair<pair<Point2f, Point2f>, float> pose_tmp;
+					float moving_direction = atan2f(appear_center.y-disappear_center.y, appear_center.x-disappear_center.x);
+					pose_tmp = make_pair(make_pair(candidate_conner_points[0], candidate_conner_points[1]), moving_direction);
+					vehicle_poses_img.push_back(pose_tmp);
+				}
+				else {ROS_INFO("-----------motorbike---------------");}
+				if(current_contours.size()>0) drawContours( visualize_img, current_contours, 0, Scalar(255, 255, 0), -1, 8, vector<Vec4i>(), 0, Point() );
+
 			}
 		}
 	}
 	imshow("visualize_img", visualize_img);
 	waitKey(1);
+	vehicle_pose_generation(vehicle_poses_img);
+}
+
+void DATMO::vehicle_pose_generation(vector<pair<pair<Point2f, Point2f>, float> > &vehicle_poses_img)
+{
+	geometry_msgs::PoseArray vehicle_array;
+	vehicle_array.header = cloud_vector_.back().header;
+	vehicle_array.header.frame_id = laser_frame_id_;
+
+	for(size_t i=0; i<vehicle_poses_img.size(); i++)
+	{
+		pair<pair<Point2f, Point2f>, float> &pose_img = vehicle_poses_img[i];
+
+		Point2f &front_img_pt1 = pose_img.first.first;
+		Point2f &front_img_pt2 = pose_img.first.second;
+		float moving_angle_img = pose_img.second;
+
+		Point2f ImgPt1(0.0, 0.0);
+		Point2f ImgPt2(cos(moving_angle_img), sin(moving_angle_img));
+		geometry_msgs::Point32 spacePt1, spacePt2;
+		ImgPt2spacePt(ImgPt1, spacePt1);
+		ImgPt2spacePt(ImgPt2, spacePt2);
+		float moving_angle_space = atan2f(spacePt2.y-spacePt1.y, spacePt2.x-spacePt1.x);
+
+		geometry_msgs::Point32 front_space_pt1, front_space_pt2;
+		ImgPt2spacePt(front_img_pt1, front_space_pt1);
+		ImgPt2spacePt(front_img_pt2, front_space_pt2);
+
+		Point2f front_center;
+		float front_width = sqrtf((front_space_pt2.x-front_space_pt1.x)*(front_space_pt2.x-front_space_pt1.x)+(front_space_pt2.y-front_space_pt1.y)*(front_space_pt2.y-front_space_pt1.y));
+		float vehicle_model_width = 1.6;
+		if(front_width>= vehicle_model_width)
+		{
+			front_center.x = (front_space_pt1.x + front_space_pt2.x)/2.0;
+			front_center.y = (front_space_pt1.y + front_space_pt2.y)/2.0;
+		}
+		else
+		{
+			geometry_msgs::Point32 near_conner, far_conner;
+			float distance1 = sqrtf(front_space_pt1.x*front_space_pt1.x+front_space_pt1.y*front_space_pt1.y);
+			float distance2 = sqrtf(front_space_pt2.x*front_space_pt2.x+front_space_pt2.y*front_space_pt2.y);
+			if(distance1<distance2){near_conner = front_space_pt1; far_conner = front_space_pt2;}
+			else {near_conner = front_space_pt2; far_conner = front_space_pt1;}
+
+			float front_side_angle = atan2f(far_conner.y-near_conner.y, far_conner.x-near_conner.x);
+			far_conner.x = near_conner.x + vehicle_model_width*cos(front_side_angle);
+			far_conner.y = near_conner.y + vehicle_model_width*sin(front_side_angle);
+
+			front_center.x = (near_conner.x + far_conner.x)/2.0;
+			front_center.y = (near_conner.y + far_conner.y)/2.0;
+		}
+
+		geometry_msgs::Pose pose_tmp;
+		pose_tmp.position.x = front_center.x;
+		pose_tmp.position.y = front_center.y;
+		pose_tmp.position.z = 0.0;
+		pose_tmp.orientation = tf::createQuaternionMsgFromYaw(moving_angle_space);
+		vehicle_array.poses.push_back(pose_tmp);
+	}
+
+	vehicle_array_pub_.publish(vehicle_array);
 }
 
 //http://alienryderflex.com/polygon/
