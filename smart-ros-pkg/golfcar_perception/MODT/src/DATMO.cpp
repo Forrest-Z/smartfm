@@ -446,7 +446,6 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 			{
 				drawContours( visualize_img, contours_appear, appear_serial, Scalar(255, 0, 0), -1, 8, vector<Vec4i>(), 0, Point() );
 				drawContours( visualize_img, contours_disappear, disappear_serial, Scalar(0, 0, 255), -1, 8, vector<Vec4i>(), 0, Point() );
-
 				drawContours( pair_img, contours_appear, appear_serial, Scalar(255), -1, 8, vector<Vec4i>(), 0, Point() );
 				drawContours( pair_img, contours_disappear, disappear_serial, Scalar(255), -1, 8, vector<Vec4i>(), 0, Point() );
 				line(pair_img, Point((int)minAreaRect_appear[appear_serial].center.x, (int)minAreaRect_appear[appear_serial].center.y),
@@ -463,6 +462,7 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 			    for( int j = 0; j < 4; j++ ){line( visualize_img, rect_points[j], rect_points[(j+1)%4], Scalar(0, 255, 255), 1, 8 );rect_boundary.push_back(rect_points[j]);}
 
 			    //try to utilize current image information to do filtering;
+			    vector<Point> current_points;
 			    Point previous_point;
 			    previous_point.x = -1; previous_point.y = -1;
 				for(int p = 0; p < current_image.rows; p++)
@@ -472,6 +472,7 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 						if(current_image.at<uchar>(p,q)> 127 && (pointPolygonTest(rect_boundary, Point2f(q, p), false)>=0))
 						{
 							if(previous_point.x >=0 && previous_point.y >=0)line(current_image, Point(q, p), previous_point, Scalar(255), 1);
+							current_points.push_back(Point(q, p));
 							previous_point = Point(q, p);
 						}
 						else current_image.at<uchar>(p,q) = 0;
@@ -484,45 +485,154 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 				vector<RotatedRect> current_rect(current_contours.size()); for( size_t j = 0; j < current_contours.size(); j++ ) { current_rect[j] = minAreaRect( Mat(current_contours[j]) );}
 				float current_long_side = 0.0;
 				if(current_rect.size()>0)current_long_side = current_rect.front().size.width>current_rect.front().size.height? current_rect.front().size.width:current_rect.front().size.height;
-				double acc_long_side = minAreaRect_pair.size.width>minAreaRect_pair.size.height? minAreaRect_pair.size.width: minAreaRect_pair.size.height;
-				bool vehicle_flag = true; if(acc_long_side<1.0 && current_long_side<1.0) vehicle_flag = false;
+				double acc_short_side = minAreaRect_pair.size.width<minAreaRect_pair.size.height? minAreaRect_pair.size.width: minAreaRect_pair.size.height;
+				bool vehicle_flag = true; if(acc_short_side<1.0 && current_long_side<1.0) vehicle_flag = false;
 
 				Point2f appear_center = minAreaRect_appear[appear_serial].center;
 				Point2f disappear_center = minAreaRect_disappear[disappear_serial].center;
-				Point2f candidate_conner_points[2];
+				float moving_direction = atan2f(appear_center.y-disappear_center.y, appear_center.x-disappear_center.x);
 
-				float appear_center_distances[4];
-				for( int j=0; j<4; j++)
+				if(current_rect.size()==0) continue;
+				else
 				{
-					appear_center_distances[j] = sqrtf((rect_points[j].x-appear_center.x)*(rect_points[j].x-appear_center.x)+(rect_points[j].y-appear_center.y)*(rect_points[j].y-appear_center.y));
-				}
-				float shortest_distance = 1000000.0;
-				float second_shortest_distance = 100000.0;
-				int shortest_serial = 0;
-				int second_shortest_serial =1;
-				for( int j=0; j<4; j++)
-				{
-					if(appear_center_distances[j]<= shortest_distance)
+
+					Point2f candidate_conner_points[2];
+					float appear_center_distances[4];
+					for( int j=0; j<4; j++)
 					{
-						second_shortest_serial =shortest_serial;
-						second_shortest_distance = shortest_distance;
-						shortest_serial = j;
-						shortest_distance = appear_center_distances[j];
+						appear_center_distances[j] = sqrtf((rect_points[j].x-appear_center.x)*(rect_points[j].x-appear_center.x)+(rect_points[j].y-appear_center.y)*(rect_points[j].y-appear_center.y));
 					}
-					else if(appear_center_distances[j]<= second_shortest_distance)
+					float shortest_distance = 1000000.0;
+					float second_shortest_distance = 100000.0;
+					int shortest_serial = 0;
+					int second_shortest_serial =1;
+					for( int j=0; j<4; j++)
 					{
-						second_shortest_serial =j;
-						second_shortest_distance = appear_center_distances[j];
+						if(appear_center_distances[j]<= shortest_distance)
+						{
+							second_shortest_serial =shortest_serial;
+							second_shortest_distance = shortest_distance;
+							shortest_serial = j;
+							shortest_distance = appear_center_distances[j];
+						}
+						else if(appear_center_distances[j]<= second_shortest_distance)
+						{
+							second_shortest_serial =j;
+							second_shortest_distance = appear_center_distances[j];
+						}
 					}
+					candidate_conner_points[0] = rect_points[shortest_serial];
+					candidate_conner_points[1] = rect_points[second_shortest_serial];
+					/*
+					float conner0_origin_dis = sqrtf(candidate_conner_points[0].x*candidate_conner_points[0].x+candidate_conner_points[0].y*candidate_conner_points[0].y);
+					float conner1_origin_dis = sqrtf(candidate_conner_points[1].x*candidate_conner_points[1].x+candidate_conner_points[1].y*candidate_conner_points[1].y);
+					Point2f nearOrigin_conner, farOrigin_conner;
+					if(conner0_origin_dis < conner1_origin_dis){nearOrigin_conner = candidate_conner_points[0];farOrigin_conner = candidate_conner_points[1];}
+					else {nearOrigin_conner = candidate_conner_points[1];farOrigin_conner = candidate_conner_points[0];}
+					float away_origin_angle = atan2(farOrigin_conner.y-nearOrigin_conner.y, farOrigin_conner.x-nearOrigin_conner.x);
+					*/
+
+					Point2f ImgPt1(0.0, 0.0);
+					Point2f ImgPt2(cos(moving_angle_img), sin(moving_angle_img));
+					geometry_msgs::Point32 spacePt1, spacePt2;
+					ImgPt2spacePt(ImgPt1, spacePt1);
+					ImgPt2spacePt(ImgPt2, spacePt2);
+					float moving_angle_space = atan2f(spacePt2.y-spacePt1.y, spacePt2.x-spacePt1.x);
+
+					geometry_msgs::Point32 front_space_pt1, front_space_pt2;
+					ImgPt2spacePt(candidate_conner_points[0], front_space_pt1);
+					ImgPt2spacePt(candidate_conner_points[1], front_space_pt2);
+
+					Point2f front_center;
+					float front_width = sqrtf((front_space_pt2.x-front_space_pt1.x)*(front_space_pt2.x-front_space_pt1.x)+(front_space_pt2.y-front_space_pt1.y)*(front_space_pt2.y-front_space_pt1.y));
+					float vehicle_model_width = 1.6;
+					if(front_width>= vehicle_model_width)
+					{
+						front_center.x = (front_space_pt1.x + front_space_pt2.x)/2.0;
+						front_center.y = (front_space_pt1.y + front_space_pt2.y)/2.0;
+					}
+					else
+					{
+						geometry_msgs::Point32 near_conner, far_conner;
+						float distance1 = sqrtf(front_space_pt1.x*front_space_pt1.x+front_space_pt1.y*front_space_pt1.y);
+						float distance2 = sqrtf(front_space_pt2.x*front_space_pt2.x+front_space_pt2.y*front_space_pt2.y);
+						if(distance1<distance2){near_conner = front_space_pt1; far_conner = front_space_pt2;}
+						else {near_conner = front_space_pt2; far_conner = front_space_pt1;}
+
+						float front_side_angle = atan2f(far_conner.y-near_conner.y, far_conner.x-near_conner.x);
+						far_conner.x = near_conner.x + vehicle_model_width*cos(front_side_angle);
+						far_conner.y = near_conner.y + vehicle_model_width*sin(front_side_angle);
+
+						front_center.x = (near_conner.x + far_conner.x)/2.0;
+						front_center.y = (near_conner.y + far_conner.y)/2.0;
+					}
+
+
+					Point nearest_movDirectPt, farest_movDirectPt;
+					float nearest_movingDirectDis = 1000000.0;
+					float farest_movDirectDis = 0.0;
+					float perpend_direction = moving_direction + M_PI_2;
+					for(size_t j=0; j<current_points.size(); j++)
+					{
+						//to calculate the moving direction distance to the origin;
+						float a = sin(perpend_direction);
+						float b = -cos(perpend_direction);
+						float c = cos(perpend_direction)*(float)current_points[j].y-sin(perpend_direction)*(float)current_points[j].x;
+						float origin_Dis2line = fabs(a*(float)LIDAR_pixel_coord_.x+b*(float)LIDAR_pixel_coord_.y+c);
+
+						if(origin_Dis2line<nearest_movingDirectDis) 	{nearest_movDirectPt = current_points[j];		nearest_movingDirectDis = origin_Dis2line;}
+						if(origin_Dis2line>farest_movDirectDis)			{farest_movDirectPt  = current_points[j];		farest_movDirectDis = origin_Dis2line; }
+					}
+
+					bool moving_direction_away = true;
+					//when points appear as a line which is perpendicular to the moving direction; this case should be rare;
+					if(nearest_movDirectPt.x==farest_movDirectPt.x && nearest_movDirectPt.y==farest_movDirectPt.y)
+					{
+						Point2f vector_origin_to_pt;
+						vector_origin_to_pt.x = farest_movDirectPt.x - LIDAR_pixel_coord_.x;
+						vector_origin_to_pt.y = farest_movDirectPt.y - LIDAR_pixel_coord_.y;
+						float vector_inner_dot = vector_origin_to_pt.x*cos(moving_direction)+vector_origin_to_pt.y*sin(moving_direction);
+						if(vector_inner_dot>=0)moving_direction_away = true;
+						else moving_direction_away = false;
+					}
+					else
+					{
+						Point2f vector_near_to_far;
+						vector_near_to_far.x = farest_movDirectPt.x - nearest_movDirectPt.x;
+						vector_near_to_far.y = farest_movDirectPt.y - nearest_movDirectPt.y;
+						float vector_inner_dot = vector_near_to_far.x*cos(moving_direction)+vector_near_to_far.y*sin(moving_direction);
+						if(vector_inner_dot>=0)moving_direction_away = true;
+						else moving_direction_away = false;
+					}
+
+					Point2f center_vehicle_MovDirectPt;
+					float center_shift_direction = moving_direction_away? moving_direction : -moving_direction;
+					float vehicle_length = 3.5;
+					center_vehicle_MovDirectPt.x = nearest_movDirectPt.x + cos(center_shift_direction)*vehicle_length;
+					center_vehicle_MovDirectPt.y = nearest_movDirectPt.y + sin(center_shift_direction)*vehicle_length;
+
+					geometry_msgs::Point32 center_projection;
+					geometry_msgs::Point32 center_movDirection_pt;
+					ImgPt2spacePt(center_vehicle_MovDirectPt, center_movDirection_pt);
+
+					float projection_line_angle = moving_angle_space + M_PI_2;
+
+					// to project the "front_center" to the line defined by point "center_movDirection_pt", with angle "projection_line_angle"
+
 				}
-				candidate_conner_points[0] = rect_points[shortest_serial];
-				candidate_conner_points[1] = rect_points[second_shortest_serial];
+
+
+
+
+
+
+
 
 				if(vehicle_flag)
 				{
 					line(visualize_img, Point((int)candidate_conner_points[0].x, (int)candidate_conner_points[0].y),Point((int)candidate_conner_points[1].x, (int)candidate_conner_points[1].y), Scalar(0, 0, 255), 3);
 					pair<pair<Point2f, Point2f>, float> pose_tmp;
-					float moving_direction = atan2f(appear_center.y-disappear_center.y, appear_center.x-disappear_center.x);
+
 					pose_tmp = make_pair(make_pair(candidate_conner_points[0], candidate_conner_points[1]), moving_direction);
 					vehicle_poses_img.push_back(pose_tmp);
 				}
@@ -562,7 +672,7 @@ void DATMO::vehicle_pose_generation(vector<pair<pair<Point2f, Point2f>, float> >
 		ImgPt2spacePt(front_img_pt1, front_space_pt1);
 		ImgPt2spacePt(front_img_pt2, front_space_pt2);
 
-		Point2f front_center;
+		geometry_msgs::Point32 front_center;
 		float front_width = sqrtf((front_space_pt2.x-front_space_pt1.x)*(front_space_pt2.x-front_space_pt1.x)+(front_space_pt2.y-front_space_pt1.y)*(front_space_pt2.y-front_space_pt1.y));
 		float vehicle_model_width = 1.6;
 		if(front_width>= vehicle_model_width)
