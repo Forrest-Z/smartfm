@@ -2,7 +2,7 @@
 	<link name = "/base_link">
 		<visual>
 			<geometry>
-				<mesh filename="package://local_map_ext/urdf/golfcart.STL" scale = "0.04 0.04 0.04" />
+				<mesh filename="package://local_map/urdf/golfcart.STL" scale = "0.04 0.04 0.04" />
 			</geometry>
 			<origin rpy="0 0 3.1415926" xyz="3.0 1.0 0"/>
 			<material name="green">
