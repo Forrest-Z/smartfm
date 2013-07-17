@@ -1,7 +1,7 @@
 <launch>
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.75, 0.0, 1.32 -0.0 0.16 -0.0 /base_link /camera_front_base 1000" />
-    <node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_img" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /camera_front_base /camera_front_img 1000" />
-
+	<!-- here baselink is the ground, actually-->
+    <node pkg="tf" type="static_transform_publisher" name="baselink_to_camera_front_base" args="-0.07, -0.13, 1.3 -0.0 -0.0 -0.0 /base_link /camera_front_base 10" />
+    <node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_img" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /camera_front_base /camera_front_img 10" />
     <node pkg="uvc_cam" type="uvc_cam_node" name="camera_front" output="screen">
         <remap from="camera" to="camera_front"/>
         <param name="width" type="int" value="640" />
@@ -17,4 +17,12 @@
         <param name="contrast" value="50"/>
         <param name="sharpness" value="250"/>
     </node>
+    
+    
+    <node pkg="tf" type="static_transform_publisher" name="ground_to_lms151" args="0.0, 0.0, 0.93 -0.0 0.0 -0.0 /base_link /lms151 10" />
+    <node pkg="LMS1xx" type="LMS100" name="LMS151">
+		<param name="host" value="192.168.0.1"/>
+		<param name="frame_id" value="/lms151"/>
+	</node>
+    
 </launch>
