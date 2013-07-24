@@ -48,11 +48,12 @@ namespace golfcar_pcl{
 
 		// intialization for new variables
 		private_nh_.param("box_dist_thres",box_dist_thres_,0.05);
-		private_nh_.param("cluster_dist_thres",cluster_dist_thres_,0.2);
+		// fixme please tune the cluster_dist_thres_ value to get better results
+		private_nh_.param("cluster_dist_thres",cluster_dist_thres_,0.15);
 		p_cluster_group_ = new cluster_group (box_dist_thres_,cluster_dist_thres_);
 
-		rolling_pcl_sub_ = new message_filters::Subscriber<RollingPointCloud> (nh_, "rolling_window_pcl", 1);
-		pcl_indices_sub_ = new message_filters::Subscriber<laser_detector::pcl_indices> (nh_, "process_fraction_indices", 1);
+		rolling_pcl_sub_ = new message_filters::Subscriber<RollingPointCloud> (nh_, "rolling_window_pcl", 10);
+		pcl_indices_sub_ = new message_filters::Subscriber<laser_detector::pcl_indices> (nh_, "process_fraction_indices", 10);
 		sync_	= new message_filters::TimeSynchronizer<RollingPointCloud, laser_detector::pcl_indices>(*rolling_pcl_sub_, *pcl_indices_sub_, 5);
 		sync_->registerCallback(boost::bind(&road_surface::pclCallback, this, _1, _2));
 		
@@ -80,6 +81,7 @@ namespace golfcar_pcl{
 		scan_outlier_pub_		= 	nh_.advertise<PointCloud>("scan_outlier_pts", 10);
 		scan_inlier_pub_		= 	nh_.advertise<PointCloud>("scan_inlier_pts", 10);
 
+
 		//the pcl batch to extract latest road boundary and surface;
 		pcl_to_process_pub_  	= 	nh_.advertise<RollingPointCloud>("pcl_to_process", 10);
 
@@ -93,7 +95,7 @@ namespace golfcar_pcl{
 		clusters_pub_ = nh_.advertise<PointCloudRGB>("clusters_RGBD", 10);
 		clusters_box_pub_ = nh_.advertise<PointCloudRGB>("boxes_RGBD",10);
 		merge_result_pub_ = nh_.advertise<PointCloudRGB>("merge_result",10);
-
+		label_box_pub_ = nh_.advertise<PointCloudRGB>("label_boxes",10);
 
 
 		normal_visual_pub_ = nh_.advertise<PointCloudRGB>("normal_visual_RGB", 10);
@@ -373,10 +375,12 @@ namespace golfcar_pcl{
 				}
 
 
+				/*
 				// show original clusters boxes
 				p_cluster_group_->show_cluster_box();
 				cout<<"boxes point cloud size is "<<p_cluster_group_->cur_vis_points.points.size()<<endl;
 				clusters_box_pub_.publish(p_cluster_group_->cur_vis_points);
+                */
 
 
 				//after get a new group of points, try to merge
@@ -387,6 +391,12 @@ namespace golfcar_pcl{
 				p_cluster_group_->cur_vis_points.header.stamp = ros::Time::now();
 				merge_result_pub_.publish(p_cluster_group_->cur_vis_points);
 
+				// show basic filtering result
+				p_cluster_group_->analyze();
+				p_cluster_group_->show_car_box();
+				clusters_box_pub_.publish(p_cluster_group_->cur_vis_points);
+
+
 
 
 
@@ -394,6 +404,7 @@ namespace golfcar_pcl{
 				clusters_pub_.publish(clusters_tmp);
 				cout<<" the original size is " << clusters_tmp.points.size()<<endl;
 
+				p_cluster_group_->label_clusters(label_box_pub_);
 			}
 		}
 		else

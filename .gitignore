@@ -4,9 +4,7 @@ build
 bin
 core
 lib
-lireyesc
 msg_gen
-nbproject
 srv_gen
 
 .cproject

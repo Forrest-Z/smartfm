@@ -57,6 +57,8 @@ using namespace std;
 
 typedef pcl::PointCloud<pcl::PointXYZ> PointClound;
 typedef pcl::PointCloud<pcl::PointXYZ>::Ptr PointCloundPtr;
+typedef geometry_msgs::PolygonStamped POLY;
+typedef geometry_msgs::Point32 POSE;
 
 class ObstDetect{
 
@@ -77,6 +79,7 @@ class ObstDetect{
 	ros::Publisher interest_pts_pub;
 	ros::Publisher obst_polys_pub;
 	ros::Publisher obst_marker_pub;
+	ros::Publisher obst_pose_pub;
 
 	laser_geometry::LaserProjection projector_;
 
@@ -96,11 +99,14 @@ class ObstDetect{
 
 	sensor_msgs::PointCloud filtered_interest_pts;
 	sensor_msgs::ChannelFloat32 obst_channel;
-	geometry_msgs::PolygonStamped interpreted_ploy;
-	vector<geometry_msgs::PolygonStamped> obst_polys;
+	POLY interpreted_ploy;
+	vector<POLY> veh_polys;
+	vector<POSE> ped_poses;
 
 	visualization_msgs::MarkerArray markerarray;
-	uint32_t shape;
+	uint32_t mesh;
+	uint32_t cube;
+	uint32_t cylinder;
 
 public:
 	ObstDetect();
@@ -118,8 +124,7 @@ public:
 	void ObstClustering(sensor_msgs::PointCloud obst_pts);
 	void ObstExtraction(sensor_msgs::PointCloud clustered_pcl);
 	void ObstInterpretate(sensor_msgs::PointCloud obst_interest_pts);
-	void ObstMarkerVisualize(vector<geometry_msgs::PolygonStamped> polys);
-	void RegionFilling(geometry_msgs::PolygonStamped polygon);
-	double InnerAngleCal(geometry_msgs::Point32 point_pre, geometry_msgs::Point32 point_curr, geometry_msgs::Point32 point_post);
+	void ObstMarkerVisualize(sensor_msgs::PointCloud obst_pts);
+	void ObstPosePub(vector<POLY> polys, vector<POSE> poses);
 };
 #endif /* OBST_DETECT_H_ */

@@ -33,6 +33,50 @@ void cloud_cluster::update(void)
 }
 
 
+// get the belief of being a car
+void cloud_cluster::analyze(void)
+{
+	//fixme here just use some lowlevel threshold to classify the pointcloud, better methods may be more helpful
+	if(num_points < 20)
+	{
+		belief = 0;
+		return;
+	}
+
+	if(height < 0.25)
+	{
+		belief = 0;
+		return;
+	}
+
+	if(*std::max_element(rect_size,rect_size+3) < 0.75)
+	{
+		belief = 0;
+		return;
+	}
+
+	belief = 1;
+
+}
+
+void cluster_group::analyze(void)
+{
+	for(unsigned int i = split_index_ ; i < clusters.size() ; i++)
+	{
+		if(clusters[i].pc.points.size() < 20)
+		{
+			clusters[i].belief = 0;
+			continue;
+		}
+		else
+		{
+			clusters[i].analyze();
+		}
+	}
+}
+
+
+
 // according to the SAT theorem, only need to check the three axes, since the orientations are the same
 bool box::collision_check(const box & another_box)
 {
@@ -228,6 +272,152 @@ cluster_group::cluster_group(double _box_dist_thres, double _cluster_dist_thres)
 	cluster_dist_thres = _cluster_dist_thres;
 	last_group_id = 0;
 	cur_group_id = 0;
+	positive_index_ = 1;  // +=2 to make it still odd
+	negative_index_ = 2; // +=2 to make it still even
+	others_index_ = 0;
+}
+
+
+void cluster_group::label_clusters(ros::Publisher & cloud_pub)
+{
+	pcl::PCDWriter writer;
+	std::stringstream ss;
+	int label = -1; // label can only be one or two
+	int success = 0;
+
+	pcl::PointXYZRGB xyzRGBpt; // label box is in red
+	xyzRGBpt.r = 255;
+	xyzRGBpt.g = 0;
+	xyzRGBpt.b = 0;
+
+	const unsigned int resolution = 40;
+	const float resolution_f = resolution;
+
+	label_box_points.points.clear();
+	label_box_points.height =1;
+
+
+	for(unsigned int i = split_index_ ; i < clusters.size() ; i++)
+	{
+		// step 1. show the box to be labelled
+		// for each cluster, use 12 * 40 points to show the box
+		label_box_points.points.clear(); //clear old points
+		if(clusters[i].belief < 0.5)
+		{
+			continue; //only label the cluster with high belief
+		}
+
+		label_box_points.header = clusters[i].pc.header;
+		for(unsigned int k = 0 ; k < resolution; k++)
+		{
+			xyzRGBpt.x = (k/resolution_f) * clusters[i].min_pt.x + ((resolution_f - k) / resolution_f) * clusters[i].max_pt.x;
+			xyzRGBpt.y = clusters[i].max_pt.y;
+			xyzRGBpt.z = clusters[i].max_pt.z;
+			label_box_points.push_back(xyzRGBpt);
+
+			xyzRGBpt.y = clusters[i].min_pt.y;
+			xyzRGBpt.z = clusters[i].max_pt.z;
+			label_box_points.push_back(xyzRGBpt);
+
+			xyzRGBpt.y = clusters[i].max_pt.y;
+			xyzRGBpt.z = clusters[i].min_pt.z;
+			label_box_points.push_back(xyzRGBpt);
+
+			xyzRGBpt.y = clusters[i].min_pt.y;
+			xyzRGBpt.z = clusters[i].min_pt.z;
+			label_box_points.push_back(xyzRGBpt);
+
+
+			xyzRGBpt.y = (k/resolution_f) * clusters[i].min_pt.y + ((resolution_f - k)/resolution_f) * clusters[i].max_pt.y;
+			xyzRGBpt.x = clusters[i].max_pt.x;
+			xyzRGBpt.z = clusters[i].max_pt.z;
+			label_box_points.push_back(xyzRGBpt);
+
+
+			xyzRGBpt.x = clusters[i].min_pt.x;
+			xyzRGBpt.z = clusters[i].max_pt.z;
+			label_box_points.push_back(xyzRGBpt);
+
+			xyzRGBpt.x = clusters[i].max_pt.x;
+			xyzRGBpt.z = clusters[i].min_pt.z;
+			label_box_points.push_back(xyzRGBpt);
+
+			xyzRGBpt.x = clusters[i].min_pt.x;
+			xyzRGBpt.z = clusters[i].min_pt.z;
+			label_box_points.push_back(xyzRGBpt);
+
+			xyzRGBpt.z = (k/resolution_f)* clusters[i].min_pt.z + ((resolution_f - k)/resolution_f) * clusters[i].max_pt.z;
+			xyzRGBpt.x = clusters[i].max_pt.x;
+			xyzRGBpt.y = clusters[i].max_pt.y;
+			label_box_points.push_back(xyzRGBpt);
+
+			xyzRGBpt.x = clusters[i].min_pt.x;
+			xyzRGBpt.y = clusters[i].max_pt.y;
+			label_box_points.push_back(xyzRGBpt);
+
+			xyzRGBpt.x = clusters[i].max_pt.x;
+			xyzRGBpt.y = clusters[i].min_pt.y;
+			label_box_points.push_back(xyzRGBpt);
+
+			xyzRGBpt.x = clusters[i].min_pt.x;
+			xyzRGBpt.y = clusters[i].min_pt.y;
+			label_box_points.push_back(xyzRGBpt);
+
+		}
+		cloud_pub.publish(label_box_points);
+
+		//step 2. wait for the input , 0, negative, 1 ,positive
+		//step 3. write it to files
+		cout<<"please label the cluster::::";
+
+
+		while(1)  // quit only when get the correct label
+		{
+			label = -1; //make sure that it will not quit the loop unless the correct value is specified
+			cin.clear();
+			cin.ignore(10000,'\n'); // make sure  the input is correct
+			if(!(cin>>label))
+			{
+				continue;
+			}
+
+			if(label == 0)
+			{
+				negative_index_ +=2;
+				ss<<"/home/sxt/CAR_PCD/negative/negative_"<<negative_index_<<".pcd";
+				success = writer.write<pcl::PointXYZRGB>(ss.str(),clusters[i].pc,false);
+				cout<<"NEGATIVE sample is saved, size is "<<clusters[i].pc.size()<<" , success is "<<success<<endl;
+				ss.str("");
+				ss.clear();
+				break;
+			}
+			else if(label == 1)
+			{
+				positive_index_ += 2;
+				ss<<"/home/sxt/CAR_PCD/positive/positive_"<<positive_index_<<".pcd";
+				success = writer.write<pcl::PointXYZRGB>(ss.str(),clusters[i].pc,false);
+				cout<<"POSITIVE sample is saved, size is "<<clusters[i].pc.size()<<" , success is "<<success<<endl;
+				ss.str("");
+				ss.clear();
+				break;
+			}
+			else if(label == 3)
+			{
+				others_index_ += 1;
+				ss<<"/home/sxt/CAR_PCD/others/others_"<<others_index_<<".pcd";
+				success = writer.write<pcl::PointXYZRGB>(ss.str(),clusters[i].pc,false);
+				cout<<"OTHER sample is saved, size is "<<clusters[i].pc.size()<<" , success is "<<success<<endl;
+				ss.str("");
+				ss.clear();
+				break;
+			}
+			else
+			{
+				cout<<"wrong Input! label is "<<label<<endl;
+			}
+		}
+	}
+	cout<<"label end!!!!!!!!!!!!!!!"<<endl;
 }
 
 // according the minimum distance between the two clusters, if the
@@ -291,7 +481,7 @@ void cluster_group::merge_cluster(void)
 			else
 			{
 
-
+				// fixme the cluster_dist_thres value need to be tuned
 				// means that the box distance is small enough to check the cluster distance
 				// construct a kd tree, if the any two points can be connected through the radius ball search
 				// then merge and continue
@@ -373,9 +563,10 @@ void cluster_group::merge_cluster(void)
 	// update merged cluster information
 	update_merged_cluster_info();
 
-	merge_inner_cluster();
+	// fixme , decide whether or not merge the clusters in a group, maybe no need since euclidean clustering have done this
+	//merge_inner_cluster();
 
-	merge_op(merge_inner_pairs);
+	//merge_op(merge_inner_pairs);
 
 	// update the new cloud
 	update_cloud();
@@ -402,6 +593,8 @@ void cluster_group::merge_inner_cluster(void)
 			}
 			else
 			{
+
+				// fixme , the cluster_dist_thres needs to be tuned
 
 				pcl::PointCloud<pcl::PointXYZRGB> cloud_in;
 				cloud_in = clusters[i].pc + clusters[j].pc;
@@ -572,6 +765,96 @@ void cluster_group::show_cluster_box(void)
 		}
 		// debug, show the size of each cluster
 		cout<<" the "<<i<< "-th cluster"<<" dx "<<clusters[i].rect_size[0] << " dy "<< clusters[i].rect_size[1] << " dz "<<clusters[i].rect_size[2]<<endl;
+
+		const unsigned int resolution = 40;
+		const float resolution_f = resolution;
+			// for each cluster, use 12 * 10 points to show the box
+			for(unsigned int k = 0 ; k < resolution; k++)
+			{
+				xyzRGBpt.x = (k/resolution_f) * clusters[i].min_pt.x + ((resolution_f - k) / resolution_f) * clusters[i].max_pt.x;
+				xyzRGBpt.y = clusters[i].max_pt.y;
+				xyzRGBpt.z = clusters[i].max_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.y = clusters[i].min_pt.y;
+				xyzRGBpt.z = clusters[i].max_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.y = clusters[i].max_pt.y;
+				xyzRGBpt.z = clusters[i].min_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.y = clusters[i].min_pt.y;
+				xyzRGBpt.z = clusters[i].min_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+
+				xyzRGBpt.y = (k/resolution_f) * clusters[i].min_pt.y + ((resolution_f - k)/resolution_f) * clusters[i].max_pt.y;
+				xyzRGBpt.x = clusters[i].max_pt.x;
+				xyzRGBpt.z = clusters[i].max_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+
+				xyzRGBpt.x = clusters[i].min_pt.x;
+				xyzRGBpt.z = clusters[i].max_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.x = clusters[i].max_pt.x;
+				xyzRGBpt.z = clusters[i].min_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.x = clusters[i].min_pt.x;
+				xyzRGBpt.z = clusters[i].min_pt.z;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.z = (k/resolution_f)* clusters[i].min_pt.z + ((resolution_f - k)/resolution_f) * clusters[i].max_pt.z;
+				xyzRGBpt.x = clusters[i].max_pt.x;
+				xyzRGBpt.y = clusters[i].max_pt.y;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.x = clusters[i].min_pt.x;
+				xyzRGBpt.y = clusters[i].max_pt.y;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.x = clusters[i].max_pt.x;
+				xyzRGBpt.y = clusters[i].min_pt.y;
+				cur_vis_points.push_back(xyzRGBpt);
+
+				xyzRGBpt.x = clusters[i].min_pt.x;
+				xyzRGBpt.y = clusters[i].min_pt.y;
+				cur_vis_points.push_back(xyzRGBpt);
+
+			}
+
+	}
+
+}
+
+
+void cluster_group::show_car_box(void)
+{
+	cur_vis_points.height = 1;
+	cur_vis_points.clear();
+	pcl::PointXYZRGB xyzRGBpt;
+
+	srand(time(NULL));
+	cout<<"--------------------------"<<endl;
+	for(unsigned int i = split_index_; i < clusters.size(); i++)
+	{
+		if(clusters[i].belief < 0.5)
+		{
+			continue; // only show the condidate cars, if the belief is too low, then discard it
+		}
+
+		cur_vis_points.header = clusters[i].pc.header;
+
+	   // cars are in green color
+	   xyzRGBpt.r = 0;
+	   xyzRGBpt.g = 255;
+	   xyzRGBpt.b = 0;
+
+		// debug, show the size of each cluster
+		//cout<<" the "<<i<< "-th cluster"<<" dx "<<clusters[i].rect_size[0] << " dy "<< clusters[i].rect_size[1] << " dz "<<clusters[i].rect_size[2]<<endl;
 
 		const unsigned int resolution = 40;
 		const float resolution_f = resolution;
