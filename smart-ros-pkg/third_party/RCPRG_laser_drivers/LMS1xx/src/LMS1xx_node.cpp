@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     scan_msg.header.frame_id = frame_id;
 
     scan_msg.range_min = 0.01;
-    scan_msg.range_max = 20.0;
+    scan_msg.range_max = 50.0;
 
     scan_msg.scan_time = 100.0/cfg.scaningFrequency;
 
