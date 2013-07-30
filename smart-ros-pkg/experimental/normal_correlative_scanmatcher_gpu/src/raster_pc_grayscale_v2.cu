@@ -257,16 +257,17 @@ __global__ void rotateTemplate(int *input, float *data_x, float *data_y, int dat
       int ref_pt_y = roundf((ref_pt_y_f+img_height/2.));
       int ref_offset = ref_pt_x + ref_pt_y * img_width;
       int input_idx = input[ref_offset];
-      float x = data_x[input_idx];
-      float y = data_y[input_idx];
-      float dist_x = x - ref_pt_x_f*res;
-      float dist_y = y - ref_pt_y_f*res;
-      int offset = pt_x + (pt_y * img_width) + (img_width*img_height*rot_idx);
-      
-      float d = sqrtf(dist_x * dist_x + dist_y * dist_y);
-      int gaussian_value = (int) (255 * expf(-d / range_cov));
-      dev_bitmap[offset] = gaussian_value;
-      
+      if(input_idx < data_size && input_idx > 0){
+        float x = data_x[input_idx];
+        float y = data_y[input_idx];
+        float dist_x = x - ref_pt_x_f*res;
+        float dist_y = y - ref_pt_y_f*res;
+        int offset = pt_x + (pt_y * img_width) + (img_width*img_height*rot_idx);
+        
+        float d = sqrtf(dist_x * dist_x + dist_y * dist_y);
+        int gaussian_value = (int) (255 * expf(-d / range_cov));
+        dev_bitmap[offset] = gaussian_value;
+      }
     }
   }
 }
@@ -274,39 +275,35 @@ __global__ void rotateTemplate(int *input, float *data_x, float *data_y, int dat
 
 
 CPUBitmap rotateMap(int *input, float *data_x, float *data_y, int data_size,
-		    int img_width, int img_height,
+		    int img_width, int img_height, vector<float> &cos_data_vec, vector<float> &sin_data_vec,
 		    float min_x, float min_y, float max_x, float max_y,
-		    float res, float rot_res, float range_cov){
+		    float res, float rot_res, float range_cov, unsigned char* dev_bitmap){
   cudaEvent_t start, stop;
   HANDLE_ERROR(cudaEventCreate(&start));
   HANDLE_ERROR(cudaEventCreate(&stop));
   HANDLE_ERROR(cudaEventRecord(start, 0));
   
-  vector<float> cos_data_vec, sin_data_vec;
-  for(float i=0; i<360; i+=rot_res){
-    cos_data_vec.push_back(cos(i/180*PI));
-    sin_data_vec.push_back(sin(i/180*PI));
-  }
+  
   int range_degree = cos_data_vec.size();
-  printf("Generating templates at %f deg with size of %d\n", rot_res, range_degree);
+  //printf("Generating templates at %f deg with size of %d\n", rot_res, range_degree);
   float *cos_data = &cos_data_vec[0];
   float *sin_data = &sin_data_vec[0];
   int *dev_input;
   float *dev_sin, *dev_cos, *dev_data_x, *dev_data_y;
-  unsigned char* dev_bitmap;
+  
   
   CPUBitmap bitmap(img_width, img_height*range_degree);
   HANDLE_ERROR(cudaMalloc((void**)&dev_input, img_width*img_height*sizeof(int)));
-  HANDLE_ERROR(cudaMalloc((void**)&dev_data_x, data_size*sizeof(int)));
-  HANDLE_ERROR(cudaMalloc((void**)&dev_data_y, data_size*sizeof(int)));
-  HANDLE_ERROR(cudaMalloc((void**)&dev_bitmap, img_width*img_height*(range_degree)));
+  HANDLE_ERROR(cudaMalloc((void**)&dev_data_x, data_size*sizeof(float)));
+  HANDLE_ERROR(cudaMalloc((void**)&dev_data_y, data_size*sizeof(float)));
+  
   HANDLE_ERROR(cudaMalloc((void**)&dev_cos, range_degree*sizeof(float)));
   HANDLE_ERROR(cudaMalloc((void**)&dev_sin, range_degree*sizeof(float)));
   dim3 init_grid(ceil(img_width/16.f), ceil(img_height/16.f)*range_degree);
   initImg<<<init_grid, dim3(16,16)>>>(dev_bitmap, img_width*img_height*range_degree);
   HANDLE_ERROR(cudaMemcpy(dev_input, input, img_width*img_height*sizeof(int), cudaMemcpyHostToDevice));
-  HANDLE_ERROR(cudaMemcpy(dev_data_x, data_x, data_size*sizeof(int), cudaMemcpyHostToDevice));
-  HANDLE_ERROR(cudaMemcpy(dev_data_y, data_y, data_size*sizeof(int), cudaMemcpyHostToDevice));
+  HANDLE_ERROR(cudaMemcpy(dev_data_x, data_x, data_size*sizeof(float), cudaMemcpyHostToDevice));
+  HANDLE_ERROR(cudaMemcpy(dev_data_y, data_y, data_size*sizeof(float), cudaMemcpyHostToDevice));
   HANDLE_ERROR(cudaMemcpy(dev_cos, cos_data, range_degree*sizeof(float), cudaMemcpyHostToDevice));
   HANDLE_ERROR(cudaMemcpy(dev_sin, sin_data, range_degree*sizeof(float), cudaMemcpyHostToDevice));
   
@@ -323,11 +320,11 @@ CPUBitmap rotateMap(int *input, float *data_x, float *data_y, int data_size,
   float elapsedTime;
   HANDLE_ERROR(cudaEventElapsedTime(&elapsedTime,
                                         start, stop));
-  printf( "Time to generate:  %3.1f ms\n", elapsedTime);
+  //printf( "Time to generate:  %3.1f ms\n", elapsedTime);
   HANDLE_ERROR( cudaFree( dev_input ) );
   HANDLE_ERROR( cudaFree( dev_data_x ) );
   HANDLE_ERROR( cudaFree( dev_data_y ) );
-  HANDLE_ERROR( cudaFree( dev_bitmap ) );
+  //HANDLE_ERROR( cudaFree( dev_bitmap ) );
   HANDLE_ERROR( cudaFree( dev_cos ) );
   HANDLE_ERROR( cudaFree( dev_sin ) );
   bitmap.rot_size = range_degree;
@@ -387,7 +384,7 @@ void rasterMap(float *data_x, float *data_y, float min_x, float min_y, int data_
   float elapsedTime;
   HANDLE_ERROR(cudaEventElapsedTime(&elapsedTime,
                                         start, stop));
-  printf( "Time to generate:  %3.1f ms\n", elapsedTime);
+  //printf( "Time to generate:  %3.1f ms\n", elapsedTime);
 
  
   HANDLE_ERROR( cudaFree( dev_nn_index ) );
@@ -429,8 +426,8 @@ __global__ void matchTemplate(unsigned char *match_template, int *data_x, int *d
       int x = data_x[i]+center_offset_x;
       int y = data_y[i]+center_offset_y;
       if(x>=0 && y>=0 && x<img_width && y<img_height){
-	//int score_temp = match_template[x + y*img_width + offset_template];
-	int score_temp = tex1Dfetch(tex_dev_template_,x + y*img_width + offset_template);
+	int score_temp = match_template[x + y*img_width + offset_template];
+	//int score_temp = tex1Dfetch(tex_dev_template_,x + y*img_width + offset_template);
 	score += input_data_count[i]*score_temp;
       }
     }
@@ -448,21 +445,23 @@ struct sortMatchScore{
 };
 
 MatchScore findBestMatch(int *data_x, int *data_y, int *input_data_count, int data_size,
-		   int raw_data_size, unsigned char *template_map, int img_width, int img_height,
+		   int raw_data_size, unsigned char *dev_template, int img_width, int img_height,
 		   float res, float deg_res, vector<int> x_steps, vector<int> y_steps, vector<int> r_steps,
 		   int ini_r
 		  ){
   
-  cudaEvent_t start, stop;
+  cudaEvent_t start, stop, start_match, stop_match;
   HANDLE_ERROR(cudaEventCreate(&start));
   HANDLE_ERROR(cudaEventCreate(&stop));
   HANDLE_ERROR(cudaEventRecord(start, 0));
+  HANDLE_ERROR(cudaEventCreate(&start_match));
+  HANDLE_ERROR(cudaEventCreate(&stop_match));
   
   int rot_step = 360.f/deg_res;
   
   
   
-  unsigned char *dev_template;
+ 
   int *dev_data_x, *dev_data_y, *dev_input_data_count;
   //thrust::device_vector<MatchScore> dev_score_vec(x_step*y_step*4*rot_step);
   
@@ -482,7 +481,6 @@ MatchScore findBestMatch(int *data_x, int *data_y, int *input_data_count, int da
   HANDLE_ERROR(cudaMalloc((void**)&dev_score_x, size_of_scores*sizeof(int)));
   HANDLE_ERROR(cudaMalloc((void**)&dev_score_y, size_of_scores*sizeof(int)));
   HANDLE_ERROR(cudaMalloc((void**)&dev_score_rot, size_of_scores*sizeof(int)));
-  HANDLE_ERROR(cudaMalloc((void**)&dev_template, img_width*img_height));
   HANDLE_ERROR(cudaMalloc((void**)&dev_data_x, data_size*sizeof(int)));
   HANDLE_ERROR(cudaMalloc((void**)&dev_data_y, data_size*sizeof(int)));
   HANDLE_ERROR(cudaMalloc((void**)&dev_x_steps, x_steps.size()*sizeof(int)));
@@ -495,18 +493,25 @@ MatchScore findBestMatch(int *data_x, int *data_y, int *input_data_count, int da
   HANDLE_ERROR(cudaMemcpy(dev_x_steps, x_steps_array, x_steps.size()*sizeof(int), cudaMemcpyHostToDevice));
   HANDLE_ERROR(cudaMemcpy(dev_y_steps, y_steps_array, y_steps.size()*sizeof(int), cudaMemcpyHostToDevice));
   HANDLE_ERROR(cudaMemcpy(dev_r_steps, r_steps_array, r_steps.size()*sizeof(int), cudaMemcpyHostToDevice));
-  HANDLE_ERROR(cudaMemcpy(dev_template, template_map, img_width*img_height, cudaMemcpyHostToDevice));
-  HANDLE_ERROR(cudaBindTexture(NULL, tex_dev_template_, dev_template, img_width*img_height));
+ // HANDLE_ERROR(cudaBindTexture(NULL, tex_dev_template_, dev_template, img_width*img_height));
   int threadx = 8, thready = 8, threadrot = 4;
   dim3 threads(threadx,thready,threadrot);
   dim3 grids(ceil(x_steps.size()/(float)threadx), ceil(y_steps.size()/(float)thready), ceil(r_steps.size()/(float)threadrot));
   //std::cout<<"Running cuda with grid size of "<<grids.x<<","<<grids.y<<","<<grids.z<< " matching "<<data_size<<endl;
+  HANDLE_ERROR(cudaEventRecord(start_match, 0));
   matchTemplate<<<grids, threads>>>(dev_template, dev_data_x, dev_data_y, dev_input_data_count,
 				    data_size, dev_scores, dev_score_x, dev_score_y, 
 				    dev_score_rot, img_width, img_height/rot_step,
 				    dev_x_steps, dev_y_steps, dev_r_steps,
 				    x_steps.size(), y_steps.size(), r_steps.size(), ini_r
 				   );
+  HANDLE_ERROR(cudaEventRecord(stop_match,0));
+  HANDLE_ERROR(cudaEventSynchronize(stop_match));
+  float elapsedTimeCore;
+  HANDLE_ERROR(cudaEventElapsedTime(&elapsedTimeCore,
+                                        start_match, stop_match));
+  
+  //printf( "Time for match_core:  %3.1f ms\n", elapsedTimeCore);
   //thrust::sort(dev_score_vec.begin(), dev_score_vec.end(), sortMatchScore());
   HANDLE_ERROR(cudaMemcpy(scores, dev_scores, size_of_scores*sizeof(float), cudaMemcpyDeviceToHost));
   HANDLE_ERROR(cudaMemcpy(score_x, dev_score_x, size_of_scores*sizeof(int), cudaMemcpyDeviceToHost));
@@ -542,7 +547,7 @@ MatchScore findBestMatch(int *data_x, int *data_y, int *input_data_count, int da
   HANDLE_ERROR(cudaEventElapsedTime(&elapsedTime,
                                         start, stop));
   
-  printf( "Time to match:  %3.1f ms\n", elapsedTime);
+  //printf( "Time to match:  %3.1f ms\n", elapsedTime);
   //the following line caused thrust::system::system_error, invalid device pointer
 //  cudaDeviceReset();
   
@@ -550,6 +555,15 @@ MatchScore findBestMatch(int *data_x, int *data_y, int *input_data_count, int da
   free(score_x);
   free(score_y);
   free(score_rot);
-  
+  HANDLE_ERROR(cudaFree(dev_scores));
+  HANDLE_ERROR(cudaFree(dev_score_x));
+  HANDLE_ERROR(cudaFree(dev_score_y));
+  HANDLE_ERROR(cudaFree(dev_score_rot));
+  HANDLE_ERROR(cudaFree(dev_data_x));
+  HANDLE_ERROR(cudaFree(dev_data_y));
+  HANDLE_ERROR(cudaFree(dev_x_steps));
+  HANDLE_ERROR(cudaFree(dev_y_steps));
+  HANDLE_ERROR(cudaFree(dev_r_steps));
+  HANDLE_ERROR(cudaFree(dev_input_data_count));
   return ms;
 }

@@ -27,8 +27,9 @@
 #include <boost/circular_buffer.hpp>
 #include <boost/optional.hpp>
 #include <boost/foreach.hpp>
-
+#include <pcl/common/transforms.h>
 #include "NormalCorrelativeMatching.h"
+#include "geometry_helper.h"
 #include "readfrontend.h"
 #include <isam/isam.h>
 //#include "mysql_helper.h"
@@ -181,7 +182,7 @@ int main(int argc, char **argv) {
     vector<vector<double> > scores_array, rotations_array;
     int skip_reading = atoi(argv[2]);
 
-    int start_node = 5;
+    int start_node = 10;
     double res_ = 0.1;
     vector<pcl::PointCloud<pcl::PointNormal> > matching_clouds;
     
@@ -321,7 +322,7 @@ int main(int argc, char **argv) {
             Eigen::Translation3f translation(bl_trans);
             t = translation * bl_rotation;
             t = t.inverse();
-            pcl_utils::transformPointCloudWithNormals<pcl::PointNormal>(
+            pcl::transformPointCloudWithNormals<pcl::PointNormal>(
                     matching_cloud, matching_cloud, t);
             sd.x = t.translation()(0);
             sd.y = t.translation()(1);

@@ -38,3 +38,6 @@ INCLUDE_DIRECTORIES( "/usr/include/mysql" )
 rosbuild_add_executable(isam_full src/isam_full.cpp src/dbgstream.cpp)
 target_link_libraries(isam_full ${ISAM_LIBS} ${OpenCV_LIBS} mysqlpp raster_map)
 rosbuild_add_openmp_flags(isam_full)
+
+rosbuild_add_executable(all_matching src/all_matching.cpp src/dbgstream.cpp)
+target_link_libraries(all_matching ${ISAM_LIBS} ${OpenCV_LIBS} mysqlpp raster_map)

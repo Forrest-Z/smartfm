@@ -44,7 +44,7 @@ public:
     Eigen::Quaternionf bl_rotation(cos(yaw_rotate / 2.), 0, 0,
 	      -sin(yaw_rotate / 2.));
     Eigen::Vector3f bl_trans(sd.x, sd.y, 0.);
-    pcl_utils::transformPointCloudWithNormals<pcl::PointNormal>(
+    pcl::transformPointCloudWithNormals<pcl::PointNormal>(
 	      matching_cloud, matching_cloud, bl_trans, bl_rotation);
     vector<cv::Point2f> input_pts, input_normals;
     input_pts.resize(matching_cloud.points.size());
@@ -110,7 +110,7 @@ public:
         Eigen::Quaternionf bl_rotation(cos(yaw_rotate / 2.), 0, 0,
                 -sin(yaw_rotate / 2.));
         sw_tf.start("tf");
-        pcl_utils::transformPointCloudWithNormals<pcl::PointNormal>(
+        pcl::transformPointCloudWithNormals<pcl::PointNormal>(
                 matching_cloud_tf, matching_cloud_tf, bl_trans, bl_rotation);
         sw_tf.end(false);
         //matching_cloud_tf = pcl_downsample(matching_cloud_tf, 0.5, 0.5, 0.5);

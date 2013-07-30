@@ -212,6 +212,7 @@ private:
 		input_file <<folder<<setfill('0')<<setw(5)<<matching_node*skip_reading_<<".pcd";    
 		pcl::PointCloud<pcl::PointNormal> input_cloud;
 		pcl::io::loadPCDFile(input_file.str(), input_cloud);
+		cout<<"Load pcd file: "<<input_file.str()<<endl;
 		fmutil::Stopwatch ncm1("NCM initialize");
 		vector<pcl::PointCloud<pcl::PointNormal> > input_clouds = append_input_cloud(input_cloud, frontend_file, input_file.str());
 		//input_cloud = pcl_downsample(input_cloud, res_*2, res_*2, res_*2);

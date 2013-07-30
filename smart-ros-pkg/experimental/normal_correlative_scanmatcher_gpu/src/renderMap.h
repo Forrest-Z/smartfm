@@ -213,7 +213,7 @@ public:
 		cv::imwrite(filename, image_);
 	}
 };
-
+/*
 namespace pcl_utils
 {
 //a copy from common/impl/transform.hpp
@@ -332,3 +332,4 @@ transformPointCloudWithNormals (const pcl::PointCloud<PointT> &cloud_in,
 }
 
 }
+*/
