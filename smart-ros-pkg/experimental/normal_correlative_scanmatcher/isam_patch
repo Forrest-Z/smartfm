@@ -1,0 +1,70 @@
+Index: isamlib/Optimizer.cpp
+===================================================================
+--- isamlib/Optimizer.cpp	(revision 8)
++++ isamlib/Optimizer.cpp	(working copy)
+@@ -350,9 +350,11 @@
+       cout << "Iteration " << num_iter << ": residual ";
+ 
+ #ifdef USE_PDL_STOPPING_CRITERIA
+-      cout << r.squaredNorm();
++      cout << "dj1 "<< r.squaredNorm();
++      opt_error_ = r.squaredNorm();
+ #else
+-      cout << error;
++      cout << "dj2 "<< error;
++      opt_error_ = error;
+ #endif
+       cout << endl;
+     }
+Index: include/isam/Optimizer.h
+===================================================================
+--- include/isam/Optimizer.h	(revision 8)
++++ include/isam/Optimizer.h	(working copy)
+@@ -155,7 +155,7 @@
+     //Initialize the Cholesky object
+     _cholesky = Cholesky::Create();
+   }
+-
++  double opt_error_;
+   /**
+    * Perform batch optimization using the method set in prop
+    */
+Index: include/isam/Slam.h
+===================================================================
+--- include/isam/Slam.h	(revision 8)
++++ include/isam/Slam.h	(working copy)
+@@ -65,11 +65,8 @@
+ class Slam: public Graph, OptimizationInterface {
+   // Graph prohibits copy construction and assignment operator
+ 
+-  int _step;
+ 
+-  Properties _prop;
+ 
+-  Covariances _covariances;
+ 
+ public:
+ 
+@@ -79,7 +76,13 @@
+   * Default constructor.
+   */
+   Slam();
++  int _step;
++  Properties _prop;
+ 
++  Covariances _covariances;
++
++  Optimizer _opt;
++
+   /**
+   * Destructor.
+   */
+@@ -269,7 +272,7 @@
+   int _num_new_measurements;
+   int _num_new_rows;
+ 
+-  Optimizer _opt;
++  
+ 
+   friend class Covariances;
+ 

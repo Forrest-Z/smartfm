@@ -28,9 +28,11 @@ rosbuild_genmsg()
 #rosbuild_gensrv()
 
 #common commands for building c++ executables and libraries
-#rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
+rosbuild_add_library(${PROJECT_NAME} src/particle_filter.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
+rosbuild_add_executable(obst_track src/obst_track.cpp src/particle_filter.cpp)
 rosbuild_add_executable(obst_detect src/obst_detect.cpp)
+rosbuild_link_boost(obst_track signals)
 rosbuild_link_boost(obst_detect signals)
 #target_link_libraries(example ${PROJECT_NAME})

@@ -1,0 +1,2 @@
+rosrun camera_calibration cameracalibrator.py --size 9x6 --square 0.0245 image:=/camera_front/image_raw camera:=/camera_front
+config your computer IP manually to 192.168.0.2, leave the gateway untouched (LMS-151 is 192.168.0.1)

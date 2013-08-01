@@ -80,7 +80,8 @@ namespace golfcar_pcl{
 		planefitting_init_ = false;
 		clustering_init_   = false;
 		planefitting_disThresh_ = 0.03;
-		clustering_disThresh_   = 15.0;
+
+		private_nh_.param("clustering_disThresh", clustering_disThresh_, 10.0);
 
 		clusters_pub_ = nh_.advertise<PointCloudRGB>("clusters_RGBD", 10);
 		normal_visual_pub_ = nh_.advertise<PointCloudRGB>("normal_visual_RGB", 10);

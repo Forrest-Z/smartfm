@@ -1,0 +1,7 @@
+1. roscore
+2. rosparam set use_sim_time true
+3. ~/test_record$ rosbag play clean_data1.bag --clock
+4. roslaunch multiple_amcl 0_sim_basic.launch
+5. roslaunch MODT 2LocalizationDensemap.launch (optional)
+6. rosrun rviz rviz
+7. roslaunch MODT DATMO.launch
