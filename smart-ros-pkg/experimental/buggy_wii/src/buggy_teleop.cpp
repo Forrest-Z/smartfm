@@ -52,7 +52,7 @@ private:
   int linear_, angular_, deadman_axis_, full_left_axis_, full_right_axis_;
   int f_right_, f_left_;
   int reverse_b_;
-  double t_scale_, b_scale_, b_default_, a_scale_, f_steer_;
+  double t_scale_, b_scale_, b_default_, a_scale_, f_steer_, sensitivity_;
   ros::Publisher throttle_pub_;
   ros::Publisher braking_pub_;
   ros::Publisher steering_pub_;
@@ -68,6 +68,7 @@ private:
   bool deadman_pressed_;
   bool enabled_;
   ros::Timer timer_;
+  double pos_joy_range_, neg_joy_range_;
 };
 
 BuggyTeleop::BuggyTeleop():
@@ -85,6 +86,7 @@ BuggyTeleop::BuggyTeleop():
   f_left_(0),
   f_steer_(360),
   reverse_b_(0),
+  sensitivity_(1.0),
   enabled_(false)
 {
   ph_.param("axis_linear", linear_, linear_);
@@ -98,7 +100,9 @@ BuggyTeleop::BuggyTeleop():
   ph_.param("default_braking", b_default_, b_default_);
   ph_.param("full_steer", f_steer_, f_steer_);
   ph_.param("button_reverse", reverse_b_, reverse_b_);
-
+  ph_.param("steering_sensitivity", sensitivity_, 1.0);
+  ph_.param("neg_joy_range", neg_joy_range_, -0.85);
+  ph_.param("pos_joy_range", pos_joy_range_, 1.0); 
   throttle_pub_ = ph_.advertise<std_msgs::Float64>("throttle", 1);
   braking_pub_ = ph_.advertise<std_msgs::Float64>("brake_angle", 1);
   steering_pub_ = ph_.advertise<std_msgs::Float64>("steer_angle", 1);
@@ -132,7 +136,19 @@ void BuggyTeleop::joy2Callback(const sensor_msgs::Joy::ConstPtr& joy)
     throttle.data = 0;
     braking.data = b_scale_ * joy->axes[linear_];
   }
-  steering.data = a_scale_ * joy->axes[angular_];
+  double joy_steer = joy->axes[angular_];
+  (joy_steer > 0) ? joy_steer/=pos_joy_range_ : joy_steer/=neg_joy_range_;
+  int joy_sign = (joy_steer < 0) ? -1 : 1;
+  joy_steer = fabs(joy_steer);
+  if(joy_steer > 1) joy_steer = 1.0;
+
+  //sensitivity_ need a non-zero value
+  if(sensitivity_ <= 0) sensitivity_ = 0.001;
+
+  double steer_expo_cmd = (exp(sensitivity_*joy_steer)-1)/(exp(sensitivity_)-1);
+//  std::cout<<"Sign: "<<joy_sign<<" joy_steer: "<<joy_steer<<" steer_expo_cmd: "<<steer_expo_cmd<<std::endl;
+  steering.data = a_scale_ * joy_sign * steer_expo_cmd;
+  
   reverse.data = joy->buttons[reverse_b_];
 
   last_throttle_published_ = throttle;
