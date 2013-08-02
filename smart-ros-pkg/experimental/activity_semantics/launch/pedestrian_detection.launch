@@ -1,9 +1,9 @@
 <launch>    
     <node pkg="feature_detection" type="ped_clustering" name="ped_clustering" output="screen">
-        <remap from="sickldmrs/scan0" to="sick_scan4"/>
-        <remap from="sickldmrs/cloud" to="sickldmrs/cloud"/>
+        <remap from="scanN" to="scanN"/>
+		<remap from="sickldmrs/cloud" to="moving_cloud"/>
         <param name="prior_distance_filter" value="0.2"/>
-        <param name="radius" value="6"/>
+        <param name="radius" value="2"/>
         <param name="use_octomap" value="false"/>
     </node>
     

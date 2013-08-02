@@ -1,0 +1,9 @@
+Problem happens with pcl1.5 about EuclideanClusterExtraction; segmentation fault happens sometimes with the "extract" function;
+
+Demian's solution:
+Alright, so it seems to be working. Here's what I changed:
+- installed perception-pcl-unstable: sudo apt-get install ros-fuerte-perception-pcl-fuerte-unstable 
+- changed dependency from pcl to pcl16 at manifest.xml
+- removed octomap depency from manifest.xml (Octomap is compiled against pcl1.5)
+- changed all the pcl's header and function to pcl16
+- removed all octomap related functions

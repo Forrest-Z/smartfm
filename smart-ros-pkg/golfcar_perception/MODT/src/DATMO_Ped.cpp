@@ -12,6 +12,9 @@
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/PointCloud.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/point_cloud_conversion.h>
+
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -32,6 +35,7 @@
 using namespace std;
 using namespace ros;
 using namespace cv;
+
 //using namespace tf;
 
 typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
@@ -105,7 +109,7 @@ DATMO::DATMO()
 	interval_ = (size_t) inverval_tmp;
 
 	vehicle_array_pub_		=   nh_.advertise<geometry_msgs::PoseArray>("vehicle_array", 2);
-	moving_cloud_pub_		=   nh_.advertise<sensor_msgs::PointCloud>("moving_cloud", 2);
+	moving_cloud_pub_		=   nh_.advertise<sensor_msgs::PointCloud2>("moving_cloud", 2);
 
 	verti_laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/sickldmrs/verti_laser", 100);
 	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*verti_laser_sub_, tf_, odom_frame_id_, 10);
@@ -172,7 +176,9 @@ void DATMO::initialize_local_image()
 			geometry_msgs::Point32 point_tmp;
 			point_tmp.x = (float)i;
 			point_tmp.y = (float)j;
-			if(pointInPolygon(point_tmp, img_roi))local_mask_.at<uchar>(j,i)=255;
+			//this local mask is introduced to utilize the sensing area information of sickldmrs;
+			//if(pointInPolygon(point_tmp, img_roi))local_mask_.at<uchar>(j,i)=255;
+			local_mask_.at<uchar>(j,i)=255;
 		}
 }
 
@@ -440,11 +446,15 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 
 
 	//------------------2nd: perform classification on the appear-disappear pairs;------------------
-
+	sensor_msgs::PointCloud current_points_space;
+	current_points_space.header.stamp = cloud_vector_.back().header.stamp;
+	current_points_space.header.frame_id = laser_frame_id_;
 	//simple function here: process the appear-disappear pairs based on their sizes and shapes;
 	vector<pair<int, int> > vehicle_pairs;
 	Mat visualize_img = Mat(local_mask_.rows, local_mask_.cols, CV_8UC3);
 	visualize_img = Scalar(0);
+
+	ROS_INFO("appear_disappear_pairs.size() %d", (int)appear_disappear_pairs.size());
 	for(size_t i=0;  i<appear_disappear_pairs.size(); i++)
 	{
 		int appear_serial = appear_disappear_pairs[i].first;
@@ -458,7 +468,7 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 			area_disappear_tmp = area_disappear[disappear_serial];
 
 			ROS_INFO("area %3f, %3f", area_appear_tmp, area_disappear_tmp);
-			if(area_appear_tmp > 10.0 && area_disappear_tmp > 1.0)
+			if(area_appear_tmp > 1.0 && area_disappear_tmp > 1.0)
 			{
 				drawContours( pair_img, contours_appear, appear_serial, Scalar(255), -1, 8, vector<Vec4i>(), 0, Point() );
 				drawContours( pair_img, contours_disappear, disappear_serial, Scalar(255), -1, 8, vector<Vec4i>(), 0, Point() );
@@ -479,23 +489,23 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 			    vector<Point> current_points;
 			    Point previous_point;
 			    previous_point.x = -1; previous_point.y = -1;
-				for(int p = 0; p < current_image.rows; p++)
+
+			    Mat current_image_tmp = current_image.clone();
+				for(int p = 0; p < current_image_tmp.rows; p++)
 				{
-					for(int q = 0; q < current_image.cols; q++)
+					for(int q = 0; q < current_image_tmp.cols; q++)
 					{
-						if(current_image.at<uchar>(p,q)> 127 && (pointPolygonTest(rect_boundary, Point2f(q, p), false)>=0))
+						if(current_image_tmp.at<uchar>(p,q)> 127 && (pointPolygonTest(rect_boundary, Point2f(q, p), false)>=0))
 						{
-							if(previous_point.x >=0 && previous_point.y >=0)line(current_image, Point(q, p), previous_point, Scalar(255), 1);
+							if(previous_point.x >=0 && previous_point.y >=0)line(current_image_tmp, Point(q, p), previous_point, Scalar(255), 1);
 							current_points.push_back(Point(q, p));
 							previous_point = Point(q, p);
 						}
-						else current_image.at<uchar>(p,q) = 0;
+						else current_image_tmp.at<uchar>(p,q) = 0;
 					}
 				}
 
-				sensor_msgs::PointCloud current_points_space;
-				current_points_space.header.stamp = cloud_vector_.back().header.stamp;
-				current_points_space.header.frame_id = laser_frame_id_;
+				ROS_INFO("current_points.size() %d", (int)current_points.size());
 				for(size_t pt = 0; pt<current_points.size(); pt++)
 				{
 					geometry_msgs::Point32 pt_space_tmp;
@@ -504,7 +514,7 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 					ImgPt2spacePt(pt_img_tmp, pt_space_tmp);
 					current_points_space.points.push_back(pt_space_tmp);
 				}
-				moving_cloud_pub_.publish(current_points_space);
+
 
 				bool on_road_flag = true;
 				if(use_prior_map_)
@@ -555,6 +565,9 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 			}
 		}
 	}
+	sensor_msgs::PointCloud2 currrent_points_pcl2;
+	sensor_msgs::convertPointCloudToPointCloud2(current_points_space, currrent_points_pcl2);
+	moving_cloud_pub_.publish(currrent_points_pcl2);
 
 
 	//------------------3rd: generate the vehicle pose based on available information------------------
