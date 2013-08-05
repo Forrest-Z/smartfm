@@ -1,8 +1,8 @@
 <launch>    
     <node pkg="activity_semantics" type="ped_collector" name="ped_collector" output="screen">
-        <!--param name="map_scale" value="0.25"/-->
         <param name="map_scale" value="0.5"/>
         <param name="map_pic_path" value="$(find activity_semantics)/launch/road_map.png"/>
+        <param name="ped_belief_threshold" value="0.05"/>
 	<param name="file_path" value="$(find activity_semantics)/data/ped_track.data"/>
     </node>
 </launch>
