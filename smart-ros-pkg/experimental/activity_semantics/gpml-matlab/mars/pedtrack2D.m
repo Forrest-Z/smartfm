@@ -13,7 +13,7 @@ for xx = 1:fix(size_x/2)
 end
 a = 0*zeros(size_x, size_y);
 
-filename = 'fullmap_simudata.txt';
+filename = 'map_data.txt';
 % open the file
 fid = fopen(filename);
 % read the file headers, find N (one value)
