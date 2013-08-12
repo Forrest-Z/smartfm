@@ -31,13 +31,12 @@ rosbuild_add_library(topo_extractor src/topo_extractor/TopoExtractor.cpp)
 target_link_libraries(topo_extractor ${OpenCV_LIBRARIES} spline_fitting)
 rosbuild_add_library(topo_semantic src/topo_semantic/TopoSemantic.cpp)
 target_link_libraries(topo_semantic ${OpenCV_LIBRARIES})
-rosbuild_add_executable(road_analyzer src/road_analyzer.cpp)
-target_link_libraries(road_analyzer topo_extractor topo_semantic ${OpenCV_LIBRARIES})
+
 rosbuild_add_library (road_semantics src/road_semantics.cpp)
 target_link_libraries(road_semantics topo_extractor topo_semantic ${OpenCV_LIBRARIES})
 
-rosbuild_add_executable(example src/main.cpp)
-target_link_libraries(example road_semantics)
+rosbuild_add_executable(road_semantics_node src/road_semantics_node.cpp)
+target_link_libraries(road_semantics_node road_semantics)
 
 add_executable( gsl_example src/spline_fitting/gsl_example.cpp )
 target_link_libraries( gsl_example ${gsl_LIBRARIES} )
