@@ -74,11 +74,14 @@ namespace golfcar_semantics
 		//weighted times of pedestrian activity;
 		double activity_intensity;
 
-		//overall weighting for EE;
-		double EE_score;
 
 		double probe_direction;
-		double probe_distance;
+		double probe_distance1;
+		double probe_distance2;
+
+		double EE_score;
+		double sidewalk_score;
+		double crossing_score;
 
 	} activity_grid;
 

@@ -1,7 +1,7 @@
 %YAML:1.0
 
 #road_map picture to load;
-image_path: "./launch/road_map.png"
+image_path: "./launch/binary.jpg"
 map_scale: 0.5
 
 #accumulated_track_file to load;
