@@ -35,10 +35,11 @@ for n = 1:N
    times = fscanf(fid, '%d\t', 1);
     for nn=1:times
         total = total+1;
-        thetha(total) = fscanf(fid, '%*f%f\t', 1);
+        speed(total) = fscanf(fid, '%f\t', 1);
+        thetha(total) = fscanf(fid, '%f\t', 1);
         x(total)=x_tmp-offset_x;
         y(total)=y_tmp-offset_y;
-        z(total)= sin(thetha(total));
+        z(total)= speed(total);
         
         if z(total)<0
             %this may happen because precision problem;
@@ -70,6 +71,7 @@ covfunc = @covSEiso;
 likfunc = @likGauss; 
 hyp.cov = log([5.0; 0.7]); hyp.mean = [0]; hyp.lik = log(0.01);
 %hyp = minimize(hyp, @gp, -100, @infExact, meanfunc, covfunc, likfunc, train_data_x, train_data_y);
+
 %grid_size = 400;
 
 width  = size_y;

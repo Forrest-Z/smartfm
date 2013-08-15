@@ -307,8 +307,9 @@ int main(int argc, char** argv)
     
     cvThreshold(destination, img, BINARY_THRESH, 255, CV_THRESH_BINARY);
 
-    cvDilate(img, img, NULL, 1);
-    cvErode(img, img, NULL, 3);
+    cvErode(img, img, NULL, 1);
+    cvDilate(img, img, NULL, 3);
+    cvErode(img, img, NULL, 2);
 
     cvNamedWindow("binary",1);
     cvShowImage("binary", img);

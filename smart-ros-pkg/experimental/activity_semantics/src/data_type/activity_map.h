@@ -48,6 +48,7 @@ namespace golfcar_semantics
 	typedef struct
 	{
 		bool road_flag;
+		bool pedPath_flag;
 
 		//associated tracks, indexed by their serials;
 		std::vector<size_t> track_serials;

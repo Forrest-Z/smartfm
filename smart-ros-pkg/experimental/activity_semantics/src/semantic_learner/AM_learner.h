@@ -53,7 +53,12 @@ namespace golfcar_semantics
         void find_nearest_points(double gridx, double gridy, vector<CvPoint> &deputy_points, int & nearestPt_ID, double & nearestDist);
         void direction_probe(int x_grid, int y_grid);
 
-        void EE_learning();
+        void semantic_learning();
+        void pedestrian_path();
+        void ped_sidewalk();
+        void ped_crossing();
+        void ped_sourcesink();
+
 
         void show_moving_direction();
 
