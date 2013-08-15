@@ -17,10 +17,11 @@
   <depend package="laser_geometry"/>
   <depend package="geometry_msgs"/>
   <depend package="fmutil"/>
-  <depend package="pcl"/>
+  <!--depend package="pcl"/-->
+  <depend package="pcl16"/>
   <depend package="pcl_ros"/>
-  <depend package="octomap_ros"/>
-  <depend package="octomap_msgs"/>
+  <!--depend package="octomap_ros"/>
+  <depend package="octomap_msgs"/-->
   <rosdep name="octomap" />
   <depend package="common_rosdeps" />
   <rosdep name="eigen" />

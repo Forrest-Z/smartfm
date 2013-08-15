@@ -79,7 +79,7 @@ namespace golfcar_semantics{
 				for(size_t i=element_serial-1; i<element_serial; i--)
 				{
 					double distance = fmutil::distance(track.elements[element_serial], track.elements[i]);
-					if(distance >= 0.3)
+					if(distance >= 1.0)
 					{
 						activity_tmp.thetha = std::atan2(track.elements[element_serial].y-track.elements[i].y, track.elements[element_serial].x-track.elements[i].x);
 						if(activity_tmp.thetha<0) activity_tmp.thetha = activity_tmp.thetha + M_PI;
@@ -235,15 +235,20 @@ namespace golfcar_semantics{
 			}
 		}
 
-		Mat dist_img;
+		Mat dist_img, inverted_dist_img;
 		distanceTransform(binary_img, dist_img, CV_DIST_L2, 3);
+
+		Mat binary_image_inverted = binary_img.clone();
+		threshold(binary_img, binary_image_inverted, 128, 255, 1);
+		distanceTransform(binary_image_inverted, inverted_dist_img, CV_DIST_L2, 3);
+
 		for(j = 0; j < AM_->size_y; j++)
 		{
 			for (i = 0; i < AM_->size_x; i++)
 			{
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
-				if(!grid_tmp.road_flag) grid_tmp.obs_dist = 0.0;
-				grid_tmp.obs_dist = dist_img.at<float>(AM_->size_y-1-j,i)*map_scale_;
+				if(grid_tmp.road_flag)grid_tmp.obs_dist = dist_img.at<float>(AM_->size_y-1-j,i)*map_scale_;
+				else grid_tmp.obs_dist = inverted_dist_img.at<float>(AM_->size_y-1-j,i)*map_scale_;
 			}
 		}
 	}
@@ -344,7 +349,7 @@ namespace golfcar_semantics{
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, roi_x, roi_y)];
 
 				//printf("grid_tmp.obs_dist %f\t", grid_tmp.obs_dist);
-				if(grid_tmp.obs_dist < 0.01) continue;
+				if(!grid_tmp.road_flag) continue;
 
 				double grid_realx = double(roi_x)*map_scale_;
 				double grid_realy = double(roi_y)*map_scale_;
@@ -439,8 +444,25 @@ namespace golfcar_semantics{
 		//if(PtID1==0||(PtID1+1)==deputy_points.size()) dist1 = 0.1;
 		//if(PtID2==0||(PtID2+1)==deputy_points.size()) dist2 = 0.1;
 
-		grid_tmp.probe_distance = dist1>dist2? dist1:dist2;
-		grid_tmp.probe_distance = grid_tmp.probe_distance - grid_tmp.skel_dist;
+		grid_tmp.probe_distance1 = dist1>dist2? dist1:dist2;
+		grid_tmp.probe_distance1 = grid_tmp.probe_distance1 - grid_tmp.skel_dist;
+
+
+		//introduce into another measurement: probe_distance2;
+		int endpoint1_x = (int)end_point1.x/map_scale_;
+		int endpoint1_y = (int)end_point1.y/map_scale_;
+		int endpoint2_x = (int)end_point2.x/map_scale_;
+		int endpoint2_y = (int)end_point2.y/map_scale_;
+
+		activity_grid &grid_tmp1 = AM_->cells[MAP_INDEX(AM_, endpoint1_x, endpoint1_y)];
+		activity_grid &grid_tmp2 = AM_->cells[MAP_INDEX(AM_, endpoint2_x, endpoint2_y)];
+
+		double delt_distance1, delt_distance2;
+		if((grid_tmp.road_flag&&(!grid_tmp1.road_flag))||(grid_tmp1.road_flag&&(!grid_tmp.road_flag))) delt_distance1 =grid_tmp.obs_dist+grid_tmp1.obs_dist;
+		else delt_distance1 = fabs(grid_tmp.obs_dist-grid_tmp1.obs_dist);
+		if((grid_tmp.road_flag&&(!grid_tmp2.road_flag))||(grid_tmp2.road_flag&&(!grid_tmp.road_flag))) delt_distance2 =grid_tmp.obs_dist+grid_tmp2.obs_dist;
+		else delt_distance2 = fabs(grid_tmp.obs_dist-grid_tmp2.obs_dist);
+		grid_tmp.probe_distance2 = delt_distance1<delt_distance2?delt_distance1:delt_distance2;
 	}
 
 	void AM_learner::find_nearest_points(double gridx, double gridy, vector<CvPoint> &deputy_points, int & nearestPt_ID, double & nearestDist)
@@ -475,7 +497,7 @@ namespace golfcar_semantics{
 				int roi_x = i+gp_ROI_.x;
 				int roi_y = j+gp_ROI_.y;
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, roi_x, roi_y)];
-				if(!grid_tmp.road_flag)
+				if(!grid_tmp.road_flag && grid_tmp.obs_dist > 2.0)
 				{
 					grid_tmp.EE_score = 0.0;
 					continue;
@@ -483,22 +505,11 @@ namespace golfcar_semantics{
 
 				double distance_factor;
 				if(grid_tmp.obs_dist<2.0) distance_factor = 2.0-grid_tmp.obs_dist;
-				else distance_factor = 0.0;
-				//distance_factor = 1.0;
-
-
-				double directionVar_factor;
-				directionVar_factor = 1.0 - 1.0/(GPvar_max_-GPvar_min_)*(grid_tmp.gp_estimation.val[1]-GPvar_min_);
-				//directionVar_factor = 1.0;
-
-
-				double direction_factor;
-				//direction_factor = fabs(grid_tmp.skel_angle-grid_tmp.gp_estimation.val[0]);
-				//direction_factor = 1.0;
-				direction_factor = grid_tmp.probe_distance;
+				else distance_factor = 0.001;
+				distance_factor = 1.0;
 
 				double intensity_factor;
-				intensity_factor = 1.0+double(grid_tmp.moving_activities.size());
+				intensity_factor = 0.1+log2 (double(grid_tmp.moving_activities.size()+1.0));
 				//intensity_factor = 1.0;
 
 				//add one more criterion about "outside of cycles";
@@ -516,31 +527,57 @@ namespace golfcar_semantics{
 				}
 				if(inside_cycle) cycle_factor = 0.0;
 
-				grid_tmp.EE_score = distance_factor*direction_factor*directionVar_factor*intensity_factor*cycle_factor;
+
+				double directionVar_factor;
+				directionVar_factor = 1.0 - sqrt(1.0/(GPvar_max_-GPvar_min_)*(grid_tmp.gp_estimation.val[1]-GPvar_min_));
+				directionVar_factor = directionVar_factor*directionVar_factor*directionVar_factor;
+				//directionVar_factor = 1.0;
+
+				double direction_factor_crossing;
+				//direction_factor = fabs(grid_tmp.skel_angle-grid_tmp.gp_estimation.val[0]);
+				direction_factor_crossing = 1.0;
+				direction_factor_crossing = grid_tmp.probe_distance1;
+				//direction_factor = 1.0/(0.1+grid_tmp.probe_distance1*grid_tmp.probe_distance1);
+
+				double direction_factor_sidewalk;
+				direction_factor_sidewalk = 1.0;
+				direction_factor_sidewalk = 1.0/(0.1+grid_tmp.probe_distance1*grid_tmp.probe_distance1);
+
+				grid_tmp.crossing_score = distance_factor*directionVar_factor*intensity_factor*cycle_factor*direction_factor_crossing;
+				grid_tmp.sidewalk_score = direction_factor_sidewalk*directionVar_factor;
 			}
 		}
 
 		Mat EE_color(AM_->size_y,  AM_->size_x, CV_32FC1 );
+		Mat crossing_color(AM_->size_y,  AM_->size_x, CV_32FC1 );
+		Mat sidewalk_color(AM_->size_y,  AM_->size_x, CV_32FC1 );
+
 		EE_color = Scalar(0);
+		crossing_color = Scalar(0);
+		sidewalk_color = Scalar(0);
 
 		for(j = 0; j < AM_->size_y; j++)
 		{
 			for (i = 0; i < AM_->size_x; i++)
 			{
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
-				if(grid_tmp.obs_dist < 0.01) continue;
+				//if(!grid_tmp.road_flag) continue;
 				int x = i;
 				int y = AM_->size_y-1-j;
-				EE_color.at<float>(y,x) = (float)(grid_tmp.EE_score);
-				//if (grid_tmp.obs_dist>0.1) skeldirection_color.at<float>(y,x) = 1.0;
+				crossing_color.at<float>(y,x) = (float)(grid_tmp.crossing_score);
+				sidewalk_color.at<float>(y,x) = (float)(grid_tmp.sidewalk_score);
 			}
 		}
-		normalize(EE_color, EE_color, 0.0, 1.0, NORM_MINMAX);
-		imshow("EE_color", EE_color);
-		waitKey();
-		Mat EE_color_tmp;
-		EE_color.convertTo(EE_color_tmp, CV_8U, 255.0, 0.0);
-		imwrite( "./data/EE_color.jpg", EE_color_tmp );
+		normalize(crossing_color, crossing_color, 0.0, 1.0, NORM_MINMAX);
+		Mat crossing_color_tmp;
+		crossing_color.convertTo(crossing_color_tmp, CV_8U, 255.0, 0.0);
+		imwrite( "./data/crossing_color.jpg", crossing_color_tmp );
+
+		normalize(sidewalk_color, sidewalk_color, 0.0, 1.0, NORM_MINMAX);
+		Mat sidewalk_color_tmp;
+		sidewalk_color.convertTo(sidewalk_color_tmp, CV_8U, 255.0, 0.0);
+		imwrite( "./data/sidewalk_color.jpg", sidewalk_color_tmp );
+
 	}
 
 
@@ -619,7 +656,7 @@ namespace golfcar_semantics{
 		}
 
 		FILE *fp_output;
-	    if((fp_output=fopen("map_data.txt", "a"))==NULL){ROS_ERROR("cannot open output_file\n"); return;}
+	    if((fp_output=fopen("map_data.txt", "w"))==NULL){ROS_ERROR("cannot open output_file\n"); return;}
 	    fprintf(fp_output, "%d", cell_number);
 
 		for(j = 0; j < (unsigned int) AM_->size_y; j++)

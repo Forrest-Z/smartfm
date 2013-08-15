@@ -55,7 +55,7 @@ void topo_semantic::cycle_extraction()
 
 	//remove the outer cycles when some cycles are nested inside;
 	cycle_filter();
-	visualization();
+	//visualization();
 }
 
 void topo_semantic::recursive_path_search(vector <vector <path_segment> > &growing_paths)
@@ -65,9 +65,10 @@ void topo_semantic::recursive_path_search(vector <vector <path_segment> > &growi
 
 	//1st: check all the growing paths:
 	//extract cycle paths; remove cycle paths and stopping paths from the growing_paths;
-	visualize_growing(growing_paths);
+
+	//visualize_growing(growing_paths);
 	path_check_remove(growing_paths);
-	visualization();
+	//visualization();
 
 	ROS_INFO("growing_path: %ld, cycle size(): %ld", growing_paths.size(), extracted_cycles_.size());
 
@@ -291,8 +292,8 @@ void topo_semantic::cycle_filter()
 
 		if(!erase_cycle) cycle_polygons_.push_back(cycle_polygon);
 
-		cvShowImage("cycle_filter", cycle_image);
-		cvWaitKey(100);
+		//cvShowImage("cycle_filter", cycle_image);
+		//cvWaitKey(100);
 	}
 
 	ROS_INFO("cycle number after filtering %ld", extracted_cycles_.size());

@@ -67,6 +67,7 @@ private:
 	vector<geometry_msgs::PoseStamped>						laser_pose_vector_;
 	geometry_msgs::PoseStamped								laser_pose_current_;
 	ros::Publisher                              			vehicle_array_pub_;
+	ros::Publisher                              			moving_cloud_pub_;
 	//vehicle local image;
 	float													img_side_length_, img_resolution_;
 	Mat														local_mask_;
@@ -104,6 +105,7 @@ DATMO::DATMO()
 	interval_ = (size_t) inverval_tmp;
 
 	vehicle_array_pub_		=   nh_.advertise<geometry_msgs::PoseArray>("vehicle_array", 2);
+	moving_cloud_pub_		=   nh_.advertise<sensor_msgs::PointCloud>("moving_cloud", 2);
 
 	verti_laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/sickldmrs/verti_laser", 100);
 	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*verti_laser_sub_, tf_, odom_frame_id_, 10);
@@ -135,7 +137,12 @@ inline bool DATMO::check_onRoad(geometry_msgs::Point32 &point)
 	Point2i image_point;
 	image_point.x =  (floor((point.x - map_origin.x) / map_resolution_ + 0.5));
 	image_point.y =  (floor((point.y - map_origin.y) / map_resolution_ + 0.5));
-	if(road_map_prior_.at<uchar>(road_map_prior_.rows-1-image_point.y, image_point.x)> 127) return true;
+
+	if(image_point.x < road_map_prior_.cols && image_point.x >=0 && image_point.y < road_map_prior_.rows && image_point.y >=0)
+	{
+		if(road_map_prior_.at<uchar>(road_map_prior_.rows-1-image_point.y, image_point.x)> 127) return true;
+		else return false;
+	}
 	else return false;
 }
 
@@ -486,20 +493,22 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 					}
 				}
 
+				sensor_msgs::PointCloud current_points_space;
+				current_points_space.header.stamp = cloud_vector_.back().header.stamp;
+				current_points_space.header.frame_id = laser_frame_id_;
+				for(size_t pt = 0; pt<current_points.size(); pt++)
+				{
+					geometry_msgs::Point32 pt_space_tmp;
+					Point2f pt_img_tmp(current_points[pt].x, current_points[pt].y);
+
+					ImgPt2spacePt(pt_img_tmp, pt_space_tmp);
+					current_points_space.points.push_back(pt_space_tmp);
+				}
+				moving_cloud_pub_.publish(current_points_space);
+
 				bool on_road_flag = true;
 				if(use_prior_map_)
 				{
-					sensor_msgs::PointCloud current_points_space;
-					current_points_space.header.stamp = cloud_vector_.back().header.stamp;
-					current_points_space.header.frame_id = laser_frame_id_;
-					for(size_t pt = 0; pt<current_points.size(); pt++)
-					{
-						geometry_msgs::Point32 pt_space_tmp;
-						Point2f pt_img_tmp(current_points[pt].x, current_points[pt].y);
-
-						ImgPt2spacePt(pt_img_tmp, pt_space_tmp);
-						current_points_space.points.push_back(pt_space_tmp);
-					}
 
 					bool transform_to_map_succeed = true;
 

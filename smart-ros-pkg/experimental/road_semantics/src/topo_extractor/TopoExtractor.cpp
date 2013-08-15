@@ -1419,7 +1419,7 @@ void topo_extractor::road_spline_fitting()
 
 	imshow("raw_color", raw_skel);
 	imshow("spline_output", spline_output);
-	waitKey();
+	//waitKey();
 	imwrite( "./data/raw_color.jpg", raw_skel);
 	imwrite( "./data/spline_output.jpg", spline_output );
 }
