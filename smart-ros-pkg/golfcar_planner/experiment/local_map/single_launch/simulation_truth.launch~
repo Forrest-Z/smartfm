@@ -8,7 +8,7 @@
 
   <node name="map_server_lane" pkg="map_server_ext" type="map_server" args="$(find local_map)/simulation/bigeng_sde_map.yaml">
     <remap from="static_map" to="static_map_lane"/>
-    <!--remap from="map" to="lane_map"/-->
+    <remap from="map" to="lane_map"/>
   </node>
 
   <node name="stageros" pkg="stage" type="stageros" args="$(find local_map)/simulation/golfcar_eng_sde.world"/>

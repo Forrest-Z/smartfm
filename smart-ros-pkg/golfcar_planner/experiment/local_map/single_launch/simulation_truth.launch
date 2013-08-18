@@ -19,7 +19,7 @@
 
   <include file="$(find local_map)/urdf/display.launch"/>	
 
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find local_map_ext)/RRT.vcg"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find local_map)/RRT.vcg"/>
 
 
 </launch>
