@@ -32,6 +32,7 @@ ObstDetect::ObstDetect(){
 	obst_polys_pub = nh_.advertise<POLY>("obstacles_polygon", 1);
 	obst_marker_pub = nh_.advertise<visualization_msgs::MarkerArray>("obstacle_makers", 1);
 	obst_pose_pub = nh_.advertise<sensor_msgs::PointCloud>("obst_pose_measure",1);
+	obst_info_pub = nh_.advertise<obstacle_tracking::obst_info>("obst_info", 1);
 
 	//Dynamic reconfigure of cluster parameters
 	srv = new dynamic_reconfigure::Server<obstacle_tracking::clusterCTRConfig> (ros::NodeHandle("~"));
@@ -105,18 +106,6 @@ inline POSE RectanglePointCal(POSE first_pts, POSE second_pts, POSE third_pts){
 	return rect_point;
 }
 
-inline double InnerAngleCal(POSE point_pre, POSE point_curr, POSE point_post){
-	double inner_angle;
-	double dx_pre = point_curr.x - point_pre.x;
-	double dy_pre = point_curr.y - point_pre.y;
-	double dx_post = point_curr.x - point_post.x;
-	double dy_post = point_curr.y - point_post.y;
-	double m_pre = sqrt(dx_pre*dx_pre + dy_pre*dy_pre);
-	double m_post = sqrt(dx_post*dx_post + dy_post*dy_post);
-	inner_angle = acos((dx_pre*dx_post + dy_pre*dy_post)/(m_pre*m_post));
-	return inner_angle*180/M_PI;
-}
-
 inline double RectangleOrienCal(POLY poly){
 	double angle;
 	double dist_pre = PointDistCal(poly.polygon.points[0], poly.polygon.points[1]);
@@ -128,6 +117,18 @@ inline double RectangleOrienCal(POLY poly){
 	if (angle < 0)
 		angle += M_PI;
 	return angle;
+}
+
+inline double InnerAngleCal(POSE point_pre, POSE point_curr, POSE point_post){
+	double inner_angle;
+	double dx_pre = point_curr.x - point_pre.x;
+	double dy_pre = point_curr.y - point_pre.y;
+	double dx_post = point_curr.x - point_post.x;
+	double dy_post = point_curr.y - point_post.y;
+	double m_pre = sqrt(dx_pre*dx_pre + dy_pre*dy_pre);
+	double m_post = sqrt(dx_post*dx_post + dy_post*dy_post);
+	inner_angle = acos((dx_pre*dx_post + dy_pre*dy_post)/(m_pre*m_post));
+	return inner_angle*180/M_PI;
 }
 
 void ObstDetect::ParamReconfigure(obstacle_tracking::clusterCTRConfig &config, uint32_t level){
@@ -143,8 +144,7 @@ void ObstDetect::PointcloudCB(sensor_msgs::PointCloud2ConstPtr pc){
     try{
         tf_.transformPointCloud(local_frame_, obs_pts, obs_pts);
     }
-    catch (tf::TransformException &ex)
-    {
+    catch (tf::TransformException &ex){
         ROS_DEBUG("Failure %s\n", ex.what()); //Print exception which was caught
         return;
     }
@@ -390,35 +390,47 @@ void ObstDetect::ObstMarkerVisualize(sensor_msgs::PointCloud obst_pts){
 		marker.id = i;
 		marker.action = visualization_msgs::Marker::ADD;
 
-		marker.pose.position.x =obst_pts.points[i].x ;
-		marker.pose.position.y =obst_pts.points[i].y ;
-		marker.pose.position.z = 0;
-
-		double angle = obst_pts.channels[2].values[i];
-
-		marker.pose.orientation.x = 0.0;
-		marker.pose.orientation.y = 0.0;
-		marker.pose.orientation.z = sin(angle/2);
-		marker.pose.orientation.w = cos(angle/2);
-
 		if (obst_pts.channels[0].values[i] == 0){
 			marker.ns = "veh_obsts";
-#if (1)
+
+			//The modification of coords here make no sense, just to match the origin of the mesh model for visualization
+			marker.pose.position.x =obst_pts.points[i].x ;
+			marker.pose.position.y =obst_pts.points[i].y - 0.8 ;
+			marker.pose.position.z = 0.25;
+
+			double angle = obst_pts.channels[2].values[i] + M_PI;
+
+			marker.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(M_PI/2,0.0,angle);
+
+#if (0)
 			marker.type = cube;
 			marker.scale.x = 2.0; marker.scale.y = 1.0; marker.scale.z = 1.0;
 #else if
 			marker.type = mesh;
-			marker.mesh_resource = "package://local_map/urdf/golfcart.STL";
-			marker.scale.x = 0.04; marker.scale.y = 0.04; marker.scale.z = 0.04;
+			marker.mesh_resource = "package://local_map/urdf/cool_car.STL";
+			marker.scale.x = 0.011; marker.scale.y = 0.012; marker.scale.z = 0.012;
 #endif
-			marker.color.r = 0.0f; marker.color.g = 1.0f; marker.color.b = 0.0f; marker.color.a = 1.0;
 		}
+
 		if (obst_pts.channels[0].values[i] == 1){
 			marker.ns = "ped_obsts";
-			marker.type = cylinder;
-			marker.scale.x = 0.5; marker.scale.y = 0.5; marker.scale.z = 1.5;
-			marker.color.r = 1.0f; marker.color.g = 0.0f; marker.color.b = 0.0f; marker.color.a = 1.0;
+
+			marker.pose.position.x =obst_pts.points[i].x ;
+			marker.pose.position.y =obst_pts.points[i].y ;
+			marker.pose.position.z =0;
+			double angle = obst_pts.channels[2].values[i] + M_PI;
+			marker.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(M_PI/2,0.0,angle);
+
+#if (0)
+			marker.type = cube;
+			marker.scale.x = 2.0; marker.scale.y = 1.0; marker.scale.z = 1.0;
+#else if
+			marker.type = mesh;
+			marker.mesh_resource = "package://local_map/urdf/android.stl";
+			marker.scale.x = 0.02; marker.scale.y = 0.02; marker.scale.z = 0.02;
+#endif
 		}
+		marker.color.r = 1.0f; marker.color.g = 0.0f; marker.color.b = 0.0f; marker.color.a = 1.0;
 		marker.lifetime = ros::Duration();
 		marker.header.frame_id = local_frame_;
 		marker.header.stamp = ros::Time::now();
@@ -457,6 +469,10 @@ void ObstDetect::ObstPosePub(vector<POLY> polys, vector<POSE> poses){
 	obst_pose.channels.push_back(_id);
 	obst_pose.channels.push_back(_orien);
 	obst_pose_pub.publish(obst_pose);
+
+	obstacles.veh_polys = polys;
+	obstacles.ped_pts = poses;
+	obst_info_pub.publish(obstacles);
 
 	ObstMarkerVisualize(obst_pose);
 }
