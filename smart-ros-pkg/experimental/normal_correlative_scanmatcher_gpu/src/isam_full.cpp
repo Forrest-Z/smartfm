@@ -182,7 +182,7 @@ int main(int argc, char **argv) {
     vector<vector<double> > scores_array, rotations_array;
     int skip_reading = atoi(argv[2]);
 
-    int start_node = 10;
+    int start_node = 5;
     double res_ = 0.1;
     vector<pcl::PointCloud<pcl::PointNormal> > matching_clouds;
     
@@ -204,7 +204,7 @@ int main(int argc, char **argv) {
                 << ".pcd";
         pcl::PointCloud<pcl::PointNormal> matching_cloud_raw, matching_cloud;
         pcl::io::loadPCDFile(matching_file.str(), matching_cloud_raw);
-        //matching_cloud = pcl_downsample(matching_cloud_raw, res_ * 2, res_ * 2,
+        matching_cloud = matching_cloud_raw;//pcl_downsample(matching_cloud_raw, res_ * 2, res_ * 2,
           //      res_ * 2);
         matching_clouds.push_back(matching_cloud_raw);
         
@@ -477,7 +477,7 @@ int main(int argc, char **argv) {
             estimated_pt.orientation.y = node.vector(isam::ESTIMATE)[4];
             estimated_pt.orientation.x = node.vector(isam::ESTIMATE)[5];
             last_height = estimated_pt.position.z;
-            //cout<<estimated_pt.x << " "<< estimated_pt.y<< " "<<estimated_pt.z<<endl;
+            //cout<<estimated_pt.position.x << " "<< estimated_pt.position.y<< " "<<estimated_pt.position.z<<endl;
             vector<geometry_msgs::Point32> tfed_pts = getTransformedPts(
                     estimated_pt, pc_vecs[node_idx].points);
             if(node_id == cl_node_idx)

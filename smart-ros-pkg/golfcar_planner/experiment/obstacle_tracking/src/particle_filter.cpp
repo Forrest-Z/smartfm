@@ -13,9 +13,9 @@ ObstPF::ObstPF(int particle_num, double dist_stddev, double resampling_ratio, se
 	resampling_ratio_(resampling_ratio){
 	unsigned int seed = static_cast<unsigned int>(std::time(0));
 	eng.seed(seed);
-	initialize_particles(particle_num, init_pose);
 	v_noise_ = 0.02;
-	r_noise_ = 1.0/180.0*M_PI;
+	r_noise_ = M_PI/90;
+	initialize_particles(particle_num, init_pose);
 }
 
 ObstPF::~ObstPF(){
@@ -25,34 +25,41 @@ ObstPF::~ObstPF(){
 void ObstPF::initialize_particles(int particle_num, sensor_msgs::PointCloud init_pose){
 
 	//TODO:Enable orientation distribution estimation
+	//TODO:Enable velocity track
+	//TODO:Enable multiple objest tracking
     //Norm distribution to obstacle's pose and vel
 	NORM_DIST x_dist(init_pose.points[0].x, dist_stddev_);
 	NORM_DIST y_dist(init_pose.points[0].y, dist_stddev_);
-	//NORM_DIST r_dist(0.2, r_noise_);
-	//NORM_DIST v_dist(0.05, v_noise_);
+	NORM_DIST r_dist(init_pose.channels[2].values[0], r_noise_);
+	NORM_DIST v_dist(0.0, v_noise_);
 	NORM_GEN gen_x(eng, x_dist);
 	NORM_GEN gen_y(eng, y_dist);
-	//NORM_GEN gen_r(eng, r_dist);
-	//NORM_GEN gen_v(eng, v_dist);
+	NORM_GEN gen_r(eng, r_dist);
+	NORM_GEN gen_v(eng, v_dist);
 	particles_.resize(particle_num);
     for(int i=0; i<particle_num; i++){
     	particles_[i].x = gen_x();
     	particles_[i].y = gen_y();
-    	//particles_[i].r = gen_r();
-    	//particles_[i].v = gen_v();
+    	particles_[i].r = gen_r();
+    	particles_[i].v = gen_v();
     }
     mean_x_ = init_pose.points[0].x;
     mean_y_ = init_pose.points[0].y;
+    mean_r_ = init_pose.channels[2].values[0];
+    mean_v_ = 0;
+
     time_pre_ = ros::Time::now().toSec();
 }
 
+//TODO: Improve motion model
 void ObstPF::updateMotion(){
-   //a naive constant acceleration model, to be upg
+   //a naive constant acceleration model, to be upgrade to more general one
    if(mean_v_ > current_speed_)
-	   current_speed_ += 0.05;
+	   current_speed_ += 0.1;
    else
-	   current_speed_ -= 0.05;
-   if(current_speed_ < 0) current_speed_ = 0;
+	   current_speed_ -= 0.1;
+   if(current_speed_ < 0)
+	   current_speed_ = 0;
    NORM_DIST v_dist(0, v_noise_);
    NORM_DIST r_dist(0, r_noise_);
    NORM_GEN v_gen(eng, v_dist);
@@ -63,16 +70,13 @@ void ObstPF::updateMotion(){
 	   particles_[i].x += particles_[i].v*cos(particles_[i].r);
 	   particles_[i].y += particles_[i].v*sin(particles_[i].r);
    }
-   ParticlesStat ps = getParticlesStat(particles_);
-   var_x_ = ps.var_x;
-   var_y_ = ps.var_y;
-   //cout<<"x,y,r,v = "<<mean_x_<<","<<mean_y_<<","<<mean_r_<<","<<mean_v_
-   //<<","<<var_x_<<","<<var_y_<<endl;
 }
 
-  //perform observation, sampling and injection
+//perform observation, sampling and injection
 void ObstPF::updateObservation(sensor_msgs::PointCloud &pc){
-    if(pc.points.size() == 0) return;
+	cout << "update observation"<<endl;
+    if(pc.points.size() == 0)
+    	return;
     //assigning weight by observed points
     bool at_least_one_updated_weight = false;
     for(size_t i=0; i<particles_.size(); i++){
@@ -106,16 +110,21 @@ void ObstPF::updateObservation(sensor_msgs::PointCloud &pc){
     double mean_y = ps.mean_y;
     var_x_ = ps.var_x;
     var_y_ = ps.var_y;
+
     double diff_y = mean_y_-mean_y;
     double diff_x = mean_x_-mean_x;
     double time_now = ros::Time::now().toSec();//pc.header.stamp.toSec();
-    //not using the time for now, assuming same period of time is used
-    //when propagate motion
-    mean_v_ = sqrt(diff_y*diff_y+diff_x*diff_x);//(time_now - time_pre_);
-    time_pre_ = time_now;
 
+    mean_v_ = sqrt(diff_y*diff_y+diff_x*diff_x);//(time_now - time_pre_);
+    cout << "diff_x" << diff_x << "diff_y" << diff_y <<endl;
+    cout << "time_now" << time_now << "pre_time "<<time_pre_<<"velocity"<<mean_v_<<endl;
+    time_pre_ = time_now;
+    cout << mean_v_<<endl;
     //estimate rotation from mean position
-    mean_r_ = -0.79;//atan2(mean_y-mean_y_, mean_x-mean_x_);
+    if (mean_v_ > 0.2)
+    	mean_r_ = atan2(mean_y-mean_y_, mean_x-mean_x_);
+    else
+    	mean_r_ = M_PI/2;
     mean_x_ = mean_x;
     mean_y_ = mean_y;
     //cout<<"x,y,r,v = "<<mean_x_<<","<<mean_y_<<","<<mean_r_<<","<<mean_v_
@@ -123,12 +132,14 @@ void ObstPF::updateObservation(sensor_msgs::PointCloud &pc){
     //insert random particles using mean
     NORM_DIST x_dist(mean_x, dist_stddev_);
     NORM_DIST y_dist(mean_y, dist_stddev_);
+    NORM_DIST r_dist(mean_r_, r_noise_);
+    NORM_DIST v_dist(mean_v_, v_noise_);
+
     NORM_GEN gen_x(eng,x_dist);
     NORM_GEN gen_y(eng, y_dist);
-    NORM_DIST r_dist(-0.79, r_noise_);
-    NORM_DIST v_dist(0.05, v_noise_);
     NORM_GEN gen_r(eng, r_dist);
     NORM_GEN gen_v(eng, v_dist);
+
     while(particles_.size()-new_particles.size()){
     	VehicleParticle part_temp;
     	part_temp.x = gen_x();
@@ -141,6 +152,7 @@ void ObstPF::updateObservation(sensor_msgs::PointCloud &pc){
     particles_ = new_particles;
 }
 
+//Update particles' weight based on distance
 bool ObstPF::updateParticleWeight(sensor_msgs::PointCloud &pc, VehicleParticle &particle){
     double dist=1e99;
     for(size_t i=0; i<pc.points.size(); i++){

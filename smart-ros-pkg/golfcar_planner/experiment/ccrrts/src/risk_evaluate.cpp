@@ -11,33 +11,24 @@
 RiskEvaluate::RiskEvaluate(){
 	cst_sub_ = nh_.subscribe("cst_info", 1, &RiskEvaluate::ConstraintCallBack, this);
 	risk_pub_ = nh_.advertise<ccrrts::obst_risk>("obst_risk", 1);
-    while(!GetVehicelPose()){
-        ros::spinOnce();
-        ROS_INFO("Waiting for Robot pose");
-    }
-    ros::spin();
 }
 
 RiskEvaluate::~RiskEvaluate(){
 
 }
 
-//TODO: Implement inverse error function
-/*
-inline double InverseErrorFunc(double ){
-	double result = 0;
-	return result;
-}
-*/
-
 void RiskEvaluate::ConstraintCallBack(const ccrrts::obsts_cst cst){
 	risk.obst_id.clear();
 	risk.risk.clear();
-	RiskAssess(cst);
+	constraints = cst;
+	RiskAssess(constraints);
+	//ROS_INFO("CallBack");
 }
 
-//TODO:Implement risk evaluate w.r.t. each obstacle polygon
+//Implement robot risk evaluate w.r.t. each obstacle polygon
 void RiskEvaluate::RiskAssess(ccrrts::obsts_cst obst_cst){
+
+	//ROS_INFO("RiskAssess");
 	while (!GetVehicelPose()){
 		ros::spinOnce();
 		ROS_INFO("Waiting for Vehilce Pose");
@@ -57,7 +48,6 @@ void RiskEvaluate::RiskAssess(ccrrts::obsts_cst obst_cst){
 			double a_1 = i->a_1[j];
 			double a_2 = i->a_2[j];
 			double b = i->b[j];
-			//Check the temp_1, which should not be minus
 			double temp_1 = a_1*vehicle_pose.x + a_2*vehicle_pose.y - b;
 			double temp_2 = sqrt(2.0*(a_1*a_1*vehicle_pose.conv_x + a_2*a_2*vehicle_pose.conv_y));
 			double risk = (1 - boost::math::erf(temp_1/temp_2))/2.0;
@@ -73,6 +63,38 @@ void RiskEvaluate::RiskAssess(ccrrts::obsts_cst obst_cst){
 		//cout<<"rise_size"<<risk.risk.size()<<endl;
 	}
 	risk_pub_.publish(risk);
+}
+
+void RiskEvaluate::CalcaulateRisk(ccrrts::obsts_cst obst_cst, State pose, vector<double>& pose_risk){
+	if (obst_cst.obsts_cst.size() !=0 ){
+		for(vector<ccrrts::constraint>::iterator i = obst_cst.obsts_cst.begin(); i != obst_cst.obsts_cst.end(); i++ ){
+			double min_risk = 1.0;
+			for (int j = 0; j < i->serial_no.size(); j++){
+				double a_1 = i->a_1[j];
+				double a_2 = i->a_2[j];
+				double b = i->b[j];
+				double temp_1 = a_1*pose.x + a_2*pose.y - b;
+				double temp_2 = sqrt(2.0*( (a_1*a_1*pose.conv_x) + (a_2*a_2*pose.conv_y)
+						+ (2*a_1*a_2*pose.conv_xy) ) );
+				double risk = (1 - boost::math::erf(temp_1/temp_2))/2.0;
+
+				/*
+					ROS_INFO("Obst_ID:%d", i->obst_id);
+					ROS_INFO("Sample Pose: x:%f, y:%f, r:%f, con_x:%f, con_y:%f",pose.x, pose.y, pose.r, pose.conv_x, pose.conv_y, pose.conv_xy);
+					ROS_INFO("Temp_1: %f,   temp_2, %f, temp_1/temp_2: %f", temp_1, temp_2, temp_1/temp_2);
+					ROS_INFO("Constrain: a_1:%f, 1_2:%f, b:%f",a_1, a_2, b);
+					ROS_INFO("Calculate risk, %f" , risk);
+					*/
+
+				if (risk < min_risk)
+					min_risk = risk;
+			}
+			pose_risk.push_back(min_risk);
+			//ROS_INFO("Calculate risk, %f" , min_risk);
+		}
+	}
+	else
+		pose_risk.push_back(0.0);
 }
 
 bool RiskEvaluate::GetVehicelPose(){
@@ -102,9 +124,11 @@ bool RiskEvaluate::GetVehicelPose(){
 	return true;
 }
 
+/*
 int main(int argc, char** argv){
 	ros::init(argc, argv, "risk_assess");
-	RiskEvaluate ris_evaluate;
+	RiskEvaluate risk_evaluate;
 	ros::spin();
 	return 0;
 }
+*/

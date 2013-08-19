@@ -8,8 +8,8 @@
  * Modifed from Demain's code in Package /pose_tracking_pf
  */
 
-#ifndef OBST_TRACKING_H_
-#define OBST_TRACKING_H_
+#ifndef PARTICLE_FILTER_H_
+#define PARTICLE_FILTER_H_
 
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud.h>
@@ -56,7 +56,8 @@ public:
 	// for multiple target tracking
 	double dist_stddev_;
 	//Distribution range of obst's velocoity and orientation
-	double v_noise_, r_noise_;
+	double v_noise_;
+	double r_noise_;
 	// 0-1 resampling ratio, percentage of particles to be retained during sampling
 	double resampling_ratio_;
 	double current_speed_;
@@ -75,4 +76,4 @@ public:
 	ParticlesStat getParticlesStat(vector<VehicleParticle> &new_particles);
 };
 
-#endif /* OBST_TRACKING_H_ */
+#endif /* PARTICLE_FILTER_H_ */
