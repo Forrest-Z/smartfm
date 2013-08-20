@@ -210,7 +210,8 @@ void data_assoc::updatelPedInViewWithNewCluster(feature_detection::clusters& clu
         // Get the cluster's centroid in global position
         geometry_msgs::Point32 global_point;
         bool transformed = transformPointToGlobal(cluster_vector.header, cluster_vector.clusters[i].centroid, global_point);
-        if(!transformed) return;
+        //if(!transformed) return;
+        if(!transformed) continue;
 
         // Get the cluster's image hash
         sensing_on_road::pedestrian_vision cluster_vision;

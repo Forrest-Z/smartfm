@@ -56,7 +56,7 @@ int main(int argc, char** argv)
   frontend_file = frontend_file.substr(startfile_idx, frontend_file.size()-startfile_idx-4);
   MySQLHelper mysql("normal_scanmatch", frontend_file);
   mysql.createTable();
-  //start_idx = 1188;
+  start_idx = 2562;
   //end_idx = 1220;
   for(int j=0; j<total_files; j+=skip_read)
   {

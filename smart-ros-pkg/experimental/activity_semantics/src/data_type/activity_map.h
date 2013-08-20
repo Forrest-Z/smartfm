@@ -48,6 +48,8 @@ namespace golfcar_semantics
 	typedef struct
 	{
 		bool road_flag;
+		bool pedPath_flag;
+		bool pedSourceSink_flag;
 
 		//associated tracks, indexed by their serials;
 		std::vector<size_t> track_serials;
@@ -74,11 +76,14 @@ namespace golfcar_semantics
 		//weighted times of pedestrian activity;
 		double activity_intensity;
 
-		//overall weighting for EE;
-		double EE_score;
 
 		double probe_direction;
-		double probe_distance;
+		double probe_distance1;
+		double probe_distance2;
+
+		double EE_score;
+		double sidewalk_score;
+		double crossing_score;
 
 	} activity_grid;
 

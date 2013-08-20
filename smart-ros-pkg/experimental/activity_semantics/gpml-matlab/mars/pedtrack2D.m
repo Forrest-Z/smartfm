@@ -2,7 +2,8 @@ clear all, close all
 write_fig = 0;
 disp(' ')
 
-imOnXY=imread('MCDArea.jpeg');
+%imOnXY=imread('MCDArea.jpeg');
+imOnXY=imread('binary_image.jpg');
 [size_x,size_y,img_width]=size(imOnXY);
 for xx = 1:fix(size_x/2)
     for yy=1:size_y
@@ -13,7 +14,7 @@ for xx = 1:fix(size_x/2)
 end
 a = 0*zeros(size_x, size_y);
 
-filename = 'fullmap_simudata.txt';
+filename = 'map_data.txt';
 % open the file
 fid = fopen(filename);
 % read the file headers, find N (one value)
@@ -21,8 +22,12 @@ N = fscanf(fid, '%d', 1);
 %N = 300;
 total = 0;
 
-offset_x = 424;
-offset_y = 973-516-89;
+%offset_x = 424;
+%offset_y = 973-516-89;
+
+offset_x = 0;
+offset_y = 0;
+
 % read each set of measurements
 for n = 1:N
    x_tmp = fscanf(fid, '\n%d\t', 1);
@@ -63,9 +68,8 @@ end
 meanfunc = {@meanConst};
 covfunc = @covSEiso; 
 likfunc = @likGauss; 
-hyp.cov = log([5.0; 0.7]); hyp.mean = [0]; hyp.lik = log(0.2);
-hyp = minimize(hyp, @gp, -100, @infExact, meanfunc, covfunc, likfunc, train_data_x, train_data_y);
-
+hyp.cov = log([5.0; 0.7]); hyp.mean = [0]; hyp.lik = log(0.01);
+%hyp = minimize(hyp, @gp, -100, @infExact, meanfunc, covfunc, likfunc, train_data_x, train_data_y);
 %grid_size = 400;
 
 width  = size_y;

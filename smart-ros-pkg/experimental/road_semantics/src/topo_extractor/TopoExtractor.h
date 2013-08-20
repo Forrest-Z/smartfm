@@ -14,7 +14,7 @@
 #include <opencv/highgui.h>
 #include <fmutil/fm_math.h>
 
-#define EDGE_LENGTH_THRESHOLD 20.0
+#define EDGE_LENGTH_THRESHOLD 30.0
 
 using namespace std;
 using namespace cv;

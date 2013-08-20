@@ -7,8 +7,6 @@
  * 	Risk evaluation for RRT* vertex: 1) Process obstacle info
  */
 
-
-
 #ifndef CHANCECONSTRAINT_H_
 #define CHANCECONSTRAINT_H_
 
@@ -20,6 +18,8 @@
 #include <obstacle_tracking/obst_info.h>
 #include <ccrrts/constraint.h>
 #include <ccrrts/obsts_cst.h>
+#include <tf/tf.h>
+#include <tf/transform_listener.h>
 
 #include <algorithm>
 #include <vector>
@@ -35,12 +35,12 @@ typedef vector<geometry_msgs::PolygonStamped> POLYS;
 typedef geometry_msgs::Point32 POINT;
 //Static obstacle first, further improving it to dynamic obstacle (Using the particle tracking result)
 class ChanceConstraint{
-
 	ros::NodeHandle nh_;
 	ros::Subscriber obst_info_sub_;
 	ros::Publisher obst_cst_pub_;
 	obstacle_tracking::obst_info infos;
 	ccrrts::obsts_cst csts;
+	tf::TransformListener tf_;
 
 public:
 	ChanceConstraint();
@@ -50,6 +50,7 @@ public:
 	void ObstInfoCallBack(const obstacle_tracking::obst_info obst_info);
 	//Extract the constraints that form the polygon
 	void PolygonAnalyze(geometry_msgs::PolygonStamped poly, ccrrts::constraint &cons);
+	int TransformFromLocalToMap(geometry_msgs::PointStamped pts_in, geometry_msgs::PointStamped& pts_out);
 };
 
 #endif /* CHANCECONSTRAINT_H_ */

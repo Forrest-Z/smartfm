@@ -1,0 +1,10 @@
+\subsubsection parameters ROS parameters
+
+Reads and maintains the following parameters on the ROS server
+
+- \b "~GoalSamplingFreq" : \b [double] GoalSamplingFreq min: 0.0, default: 0.0, max: 1.0
+- \b "~Planner_DT" : \b [double] Planner_DT min: 0.0, default: 0.5, max: 2.0
+- \b "~MAX_Commited_Length" : \b [double] MAX_Commited_Length min: 0.0, default: 25.0, max: 50.0
+- \b "~Gamma" : \b [double] Gamma min: 0.0, default: 1.5, max: 5.0
+- \b "~RiskLimit" : \b [double] RiskLimit min: 0.0, default: 0.5, max: 1.0
+

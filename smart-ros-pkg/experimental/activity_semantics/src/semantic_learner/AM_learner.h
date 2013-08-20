@@ -15,6 +15,8 @@
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 #include <opencv2/contrib/contrib.hpp>
+#include <opencv2/legacy/legacy.hpp>
+
 #include <cv_bridge/CvBridge.h>
 #include <fmutil/fm_math.h>
 #include "../data_type/activity_map.h"
@@ -22,13 +24,13 @@
 
 #include "road_semantics.h"
 
+
 using namespace std;
 using namespace ros;
 using namespace cv;
 
 namespace golfcar_semantics
 {
-
     class AM_learner {
 
         public:
@@ -53,7 +55,13 @@ namespace golfcar_semantics
         void find_nearest_points(double gridx, double gridy, vector<CvPoint> &deputy_points, int & nearestPt_ID, double & nearestDist);
         void direction_probe(int x_grid, int y_grid);
 
-        void EE_learning();
+        void semantic_learning();
+        void pedestrian_path();
+        void ped_sidewalk();
+        void ped_crossing();
+        void ped_sourcesink();
+        void ped_SSEM();
+        void draw_covMatrix_eclipse( Mat img, Mat CurrCovMat, Mat Means, int i);
 
         void show_moving_direction();
 
@@ -65,6 +73,7 @@ namespace golfcar_semantics
 		double GPmean_min_,GPmean_max_,GPvar_min_,GPvar_max_;
 
 		road_semantics* road_semantics_analyzer_;
+		vector <Point2f> SourceSinks_;
    };
 };
 

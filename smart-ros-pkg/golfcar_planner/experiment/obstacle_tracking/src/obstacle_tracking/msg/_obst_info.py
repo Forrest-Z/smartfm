@@ -8,17 +8,16 @@ import geometry_msgs.msg
 import std_msgs.msg
 
 class obst_info(genpy.Message):
-  _md5sum = "27204d6d642300b5e4435df51e73230e"
+  _md5sum = "0fc059335f3f0c3a0de1cb4189b756f1"
   _type = "obstacle_tracking/obst_info"
   _has_header = False #flag to mark the presence of a Header object
-  _full_text = """int32[] obst_index
-geometry_msgs/PoseStamped obst_pose
-geometry_msgs/Twist obst_vel
+  _full_text = """geometry_msgs/PolygonStamped[] veh_polys
+geometry_msgs/Point32[] ped_pts
 ================================================================================
-MSG: geometry_msgs/PoseStamped
-# A Pose with reference coordinate frame and timestamp
+MSG: geometry_msgs/PolygonStamped
+# This represents a Polygon with reference coordinate frame and timestamp
 Header header
-Pose pose
+Polygon polygon
 
 ================================================================================
 MSG: std_msgs/Header
@@ -39,43 +38,26 @@ time stamp
 string frame_id
 
 ================================================================================
-MSG: geometry_msgs/Pose
-# A representation of pose in free space, composed of postion and orientation. 
-Point position
-Quaternion orientation
+MSG: geometry_msgs/Polygon
+#A specification of a polygon where the first and last points are assumed to be connected
+Point32[] points
 
 ================================================================================
-MSG: geometry_msgs/Point
-# This contains the position of a point in free space
-float64 x
-float64 y
-float64 z
+MSG: geometry_msgs/Point32
+# This contains the position of a point in free space(with 32 bits of precision).
+# It is recommeded to use Point wherever possible instead of Point32.  
+# 
+# This recommendation is to promote interoperability.  
+#
+# This message is designed to take up less space when sending
+# lots of points at once, as in the case of a PointCloud.  
 
-================================================================================
-MSG: geometry_msgs/Quaternion
-# This represents an orientation in free space in quaternion form.
-
-float64 x
-float64 y
-float64 z
-float64 w
-
-================================================================================
-MSG: geometry_msgs/Twist
-# This expresses velocity in free space broken into it's linear and angular parts. 
-Vector3  linear
-Vector3  angular
-
-================================================================================
-MSG: geometry_msgs/Vector3
-# This represents a vector in free space. 
-
-float64 x
-float64 y
-float64 z
+float32 x
+float32 y
+float32 z
 """
-  __slots__ = ['obst_index','obst_pose','obst_vel']
-  _slot_types = ['int32[]','geometry_msgs/PoseStamped','geometry_msgs/Twist']
+  __slots__ = ['veh_polys','ped_pts']
+  _slot_types = ['geometry_msgs/PolygonStamped[]','geometry_msgs/Point32[]']
 
   def __init__(self, *args, **kwds):
     """
@@ -85,7 +67,7 @@ float64 z
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-       obst_index,obst_pose,obst_vel
+       veh_polys,ped_pts
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
@@ -94,16 +76,13 @@ float64 z
     if args or kwds:
       super(obst_info, self).__init__(*args, **kwds)
       #message fields cannot be None, assign default values for those that are
-      if self.obst_index is None:
-        self.obst_index = []
-      if self.obst_pose is None:
-        self.obst_pose = geometry_msgs.msg.PoseStamped()
-      if self.obst_vel is None:
-        self.obst_vel = geometry_msgs.msg.Twist()
+      if self.veh_polys is None:
+        self.veh_polys = []
+      if self.ped_pts is None:
+        self.ped_pts = []
     else:
-      self.obst_index = []
-      self.obst_pose = geometry_msgs.msg.PoseStamped()
-      self.obst_vel = geometry_msgs.msg.Twist()
+      self.veh_polys = []
+      self.ped_pts = []
 
   def _get_types(self):
     """
@@ -117,20 +96,31 @@ float64 z
     :param buff: buffer, ``StringIO``
     """
     try:
-      length = len(self.obst_index)
+      length = len(self.veh_polys)
       buff.write(_struct_I.pack(length))
-      pattern = '<%si'%length
-      buff.write(struct.pack(pattern, *self.obst_index))
-      _x = self
-      buff.write(_struct_3I.pack(_x.obst_pose.header.seq, _x.obst_pose.header.stamp.secs, _x.obst_pose.header.stamp.nsecs))
-      _x = self.obst_pose.header.frame_id
-      length = len(_x)
-      if python3 or type(_x) == unicode:
-        _x = _x.encode('utf-8')
+      for val1 in self.veh_polys:
+        _v1 = val1.header
+        buff.write(_struct_I.pack(_v1.seq))
+        _v2 = _v1.stamp
+        _x = _v2
+        buff.write(_struct_2I.pack(_x.secs, _x.nsecs))
+        _x = _v1.frame_id
         length = len(_x)
-      buff.write(struct.pack('<I%ss'%length, length, _x))
-      _x = self
-      buff.write(_struct_13d.pack(_x.obst_pose.pose.position.x, _x.obst_pose.pose.position.y, _x.obst_pose.pose.position.z, _x.obst_pose.pose.orientation.x, _x.obst_pose.pose.orientation.y, _x.obst_pose.pose.orientation.z, _x.obst_pose.pose.orientation.w, _x.obst_vel.linear.x, _x.obst_vel.linear.y, _x.obst_vel.linear.z, _x.obst_vel.angular.x, _x.obst_vel.angular.y, _x.obst_vel.angular.z))
+        if python3 or type(_x) == unicode:
+          _x = _x.encode('utf-8')
+          length = len(_x)
+        buff.write(struct.pack('<I%ss'%length, length, _x))
+        _v3 = val1.polygon
+        length = len(_v3.points)
+        buff.write(_struct_I.pack(length))
+        for val3 in _v3.points:
+          _x = val3
+          buff.write(_struct_3f.pack(_x.x, _x.y, _x.z))
+      length = len(self.ped_pts)
+      buff.write(_struct_I.pack(length))
+      for val1 in self.ped_pts:
+        _x = val1
+        buff.write(_struct_3f.pack(_x.x, _x.y, _x.z))
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -140,35 +130,59 @@ float64 z
     :param str: byte array of serialized message, ``str``
     """
     try:
-      if self.obst_pose is None:
-        self.obst_pose = geometry_msgs.msg.PoseStamped()
-      if self.obst_vel is None:
-        self.obst_vel = geometry_msgs.msg.Twist()
+      if self.veh_polys is None:
+        self.veh_polys = None
+      if self.ped_pts is None:
+        self.ped_pts = None
       end = 0
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
-      pattern = '<%si'%length
-      start = end
-      end += struct.calcsize(pattern)
-      self.obst_index = struct.unpack(pattern, str[start:end])
-      _x = self
-      start = end
-      end += 12
-      (_x.obst_pose.header.seq, _x.obst_pose.header.stamp.secs, _x.obst_pose.header.stamp.nsecs,) = _struct_3I.unpack(str[start:end])
+      self.veh_polys = []
+      for i in range(0, length):
+        val1 = geometry_msgs.msg.PolygonStamped()
+        _v4 = val1.header
+        start = end
+        end += 4
+        (_v4.seq,) = _struct_I.unpack(str[start:end])
+        _v5 = _v4.stamp
+        _x = _v5
+        start = end
+        end += 8
+        (_x.secs, _x.nsecs,) = _struct_2I.unpack(str[start:end])
+        start = end
+        end += 4
+        (length,) = _struct_I.unpack(str[start:end])
+        start = end
+        end += length
+        if python3:
+          _v4.frame_id = str[start:end].decode('utf-8')
+        else:
+          _v4.frame_id = str[start:end]
+        _v6 = val1.polygon
+        start = end
+        end += 4
+        (length,) = _struct_I.unpack(str[start:end])
+        _v6.points = []
+        for i in range(0, length):
+          val3 = geometry_msgs.msg.Point32()
+          _x = val3
+          start = end
+          end += 12
+          (_x.x, _x.y, _x.z,) = _struct_3f.unpack(str[start:end])
+          _v6.points.append(val3)
+        self.veh_polys.append(val1)
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
-      start = end
-      end += length
-      if python3:
-        self.obst_pose.header.frame_id = str[start:end].decode('utf-8')
-      else:
-        self.obst_pose.header.frame_id = str[start:end]
-      _x = self
-      start = end
-      end += 104
-      (_x.obst_pose.pose.position.x, _x.obst_pose.pose.position.y, _x.obst_pose.pose.position.z, _x.obst_pose.pose.orientation.x, _x.obst_pose.pose.orientation.y, _x.obst_pose.pose.orientation.z, _x.obst_pose.pose.orientation.w, _x.obst_vel.linear.x, _x.obst_vel.linear.y, _x.obst_vel.linear.z, _x.obst_vel.angular.x, _x.obst_vel.angular.y, _x.obst_vel.angular.z,) = _struct_13d.unpack(str[start:end])
+      self.ped_pts = []
+      for i in range(0, length):
+        val1 = geometry_msgs.msg.Point32()
+        _x = val1
+        start = end
+        end += 12
+        (_x.x, _x.y, _x.z,) = _struct_3f.unpack(str[start:end])
+        self.ped_pts.append(val1)
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
@@ -181,20 +195,31 @@ float64 z
     :param numpy: numpy python module
     """
     try:
-      length = len(self.obst_index)
+      length = len(self.veh_polys)
       buff.write(_struct_I.pack(length))
-      pattern = '<%si'%length
-      buff.write(self.obst_index.tostring())
-      _x = self
-      buff.write(_struct_3I.pack(_x.obst_pose.header.seq, _x.obst_pose.header.stamp.secs, _x.obst_pose.header.stamp.nsecs))
-      _x = self.obst_pose.header.frame_id
-      length = len(_x)
-      if python3 or type(_x) == unicode:
-        _x = _x.encode('utf-8')
+      for val1 in self.veh_polys:
+        _v7 = val1.header
+        buff.write(_struct_I.pack(_v7.seq))
+        _v8 = _v7.stamp
+        _x = _v8
+        buff.write(_struct_2I.pack(_x.secs, _x.nsecs))
+        _x = _v7.frame_id
         length = len(_x)
-      buff.write(struct.pack('<I%ss'%length, length, _x))
-      _x = self
-      buff.write(_struct_13d.pack(_x.obst_pose.pose.position.x, _x.obst_pose.pose.position.y, _x.obst_pose.pose.position.z, _x.obst_pose.pose.orientation.x, _x.obst_pose.pose.orientation.y, _x.obst_pose.pose.orientation.z, _x.obst_pose.pose.orientation.w, _x.obst_vel.linear.x, _x.obst_vel.linear.y, _x.obst_vel.linear.z, _x.obst_vel.angular.x, _x.obst_vel.angular.y, _x.obst_vel.angular.z))
+        if python3 or type(_x) == unicode:
+          _x = _x.encode('utf-8')
+          length = len(_x)
+        buff.write(struct.pack('<I%ss'%length, length, _x))
+        _v9 = val1.polygon
+        length = len(_v9.points)
+        buff.write(_struct_I.pack(length))
+        for val3 in _v9.points:
+          _x = val3
+          buff.write(_struct_3f.pack(_x.x, _x.y, _x.z))
+      length = len(self.ped_pts)
+      buff.write(_struct_I.pack(length))
+      for val1 in self.ped_pts:
+        _x = val1
+        buff.write(_struct_3f.pack(_x.x, _x.y, _x.z))
     except struct.error as se: self._check_types(se)
     except TypeError as te: self._check_types(te)
 
@@ -205,39 +230,63 @@ float64 z
     :param numpy: numpy python module
     """
     try:
-      if self.obst_pose is None:
-        self.obst_pose = geometry_msgs.msg.PoseStamped()
-      if self.obst_vel is None:
-        self.obst_vel = geometry_msgs.msg.Twist()
+      if self.veh_polys is None:
+        self.veh_polys = None
+      if self.ped_pts is None:
+        self.ped_pts = None
       end = 0
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
-      pattern = '<%si'%length
-      start = end
-      end += struct.calcsize(pattern)
-      self.obst_index = numpy.frombuffer(str[start:end], dtype=numpy.int32, count=length)
-      _x = self
-      start = end
-      end += 12
-      (_x.obst_pose.header.seq, _x.obst_pose.header.stamp.secs, _x.obst_pose.header.stamp.nsecs,) = _struct_3I.unpack(str[start:end])
+      self.veh_polys = []
+      for i in range(0, length):
+        val1 = geometry_msgs.msg.PolygonStamped()
+        _v10 = val1.header
+        start = end
+        end += 4
+        (_v10.seq,) = _struct_I.unpack(str[start:end])
+        _v11 = _v10.stamp
+        _x = _v11
+        start = end
+        end += 8
+        (_x.secs, _x.nsecs,) = _struct_2I.unpack(str[start:end])
+        start = end
+        end += 4
+        (length,) = _struct_I.unpack(str[start:end])
+        start = end
+        end += length
+        if python3:
+          _v10.frame_id = str[start:end].decode('utf-8')
+        else:
+          _v10.frame_id = str[start:end]
+        _v12 = val1.polygon
+        start = end
+        end += 4
+        (length,) = _struct_I.unpack(str[start:end])
+        _v12.points = []
+        for i in range(0, length):
+          val3 = geometry_msgs.msg.Point32()
+          _x = val3
+          start = end
+          end += 12
+          (_x.x, _x.y, _x.z,) = _struct_3f.unpack(str[start:end])
+          _v12.points.append(val3)
+        self.veh_polys.append(val1)
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
-      start = end
-      end += length
-      if python3:
-        self.obst_pose.header.frame_id = str[start:end].decode('utf-8')
-      else:
-        self.obst_pose.header.frame_id = str[start:end]
-      _x = self
-      start = end
-      end += 104
-      (_x.obst_pose.pose.position.x, _x.obst_pose.pose.position.y, _x.obst_pose.pose.position.z, _x.obst_pose.pose.orientation.x, _x.obst_pose.pose.orientation.y, _x.obst_pose.pose.orientation.z, _x.obst_pose.pose.orientation.w, _x.obst_vel.linear.x, _x.obst_vel.linear.y, _x.obst_vel.linear.z, _x.obst_vel.angular.x, _x.obst_vel.angular.y, _x.obst_vel.angular.z,) = _struct_13d.unpack(str[start:end])
+      self.ped_pts = []
+      for i in range(0, length):
+        val1 = geometry_msgs.msg.Point32()
+        _x = val1
+        start = end
+        end += 12
+        (_x.x, _x.y, _x.z,) = _struct_3f.unpack(str[start:end])
+        self.ped_pts.append(val1)
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
 
 _struct_I = genpy.struct_I
-_struct_3I = struct.Struct("<3I")
-_struct_13d = struct.Struct("<13d")
+_struct_2I = struct.Struct("<2I")
+_struct_3f = struct.Struct("<3f")

@@ -18,6 +18,7 @@
 #include <geometry_msgs/PolygonStamped.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
+#include <tf/transform_datatypes.h>
 //PCL
 #include <pcl_ros/point_cloud.h>
 #include <pcl/ros/conversions.h>
@@ -42,9 +43,8 @@
 #include <message_filters/subscriber.h>
 #include <tf/message_filter.h>
 
-#include <obstacle_tracking/obst_info.h>
-
 #include <pnc_msgs/local_map.h>
+#include <obstacle_tracking/obst_info.h>
 
 #include <dynamic_reconfigure/server.h>
 #include "obstacle_tracking/clusterCTRConfig.h"
@@ -80,6 +80,9 @@ class ObstDetect{
 	ros::Publisher obst_polys_pub;
 	ros::Publisher obst_marker_pub;
 	ros::Publisher obst_pose_pub;
+	ros::Publisher obst_info_pub;
+
+	obstacle_tracking::obst_info obstacles;
 
 	laser_geometry::LaserProjection projector_;
 

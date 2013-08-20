@@ -40,7 +40,27 @@ inline LineINFO ConstraintAnalyze(sensor_msgs::PointCloud line_pts){
 	return line_info;
 }
 
+int ChanceConstraint::TransformFromLocalToMap(geometry_msgs::PointStamped pts_in, geometry_msgs::PointStamped& pts_out){
+	try {
+		tf_.transformPoint("/map", pts_in, pts_out);
+	}
+	catch(tf::LookupException& ex) {
+		ROS_ERROR("No Transform available Error: %s\n", ex.what());
+		return 0;
+	}
+	catch(tf::ConnectivityException& ex) {
+		ROS_ERROR("Connectivity Error: %s\n", ex.what());
+		return 0;
+	}
+	catch(tf::ExtrapolationException& ex) {
+		ROS_ERROR("Extrapolation Error: %s\n", ex.what());
+		return 0;
+	}
+	return 1;
+}
+
 void ChanceConstraint::ObstInfoCallBack(const obstacle_tracking::obst_info obst_info){
+	ROS_INFO("Obst Info Received");
 	infos = obst_info;
 	csts.obsts_cst.clear();
 	Initialize(infos.veh_polys);
@@ -68,8 +88,25 @@ void ChanceConstraint::PolygonAnalyze(geometry_msgs::PolygonStamped poly, ccrrts
 	}
 
 	vector<geometry_msgs::Point32> pts;
-	for (vector<geometry_msgs::Point32>::iterator i = poly.polygon.points.begin(); i != poly.polygon.points.end(); i++)
-		pts.push_back(*i);
+	for (vector<geometry_msgs::Point32>::iterator i = poly.polygon.points.begin(); i != poly.polygon.points.end(); i++){
+		geometry_msgs::PointStamped pts_in, pts_out;
+		geometry_msgs::Point32 temp_pts;
+		pts_in.header = poly.header;
+		pts_in.point.x = i->x;
+		pts_in.point.y = i->y;
+		pts_in.point.z = i->z;
+		ros::Rate wait_rate(0.02);
+
+		if(TransformFromLocalToMap(pts_in, pts_out) ==0){
+			return;
+		}
+		temp_pts.x = pts_out.point.x;
+		temp_pts.y = pts_out.point.y;
+		temp_pts.z = pts_out.point.z;
+		//cout << "Pts_orig, x:"<< pts_in.point.x << "y: " <<pts_in.point.y << "z: "<<pts_in.point.z <<endl;
+		//cout << "Pts_test, x: "<< temp_pts.x << "y: "<<temp_pts.y << "z: " <<temp_pts.z <<endl;
+		pts.push_back(temp_pts);
+	}
 	//Check rotation and make sure rotate in counter-clockwise direction
 	double ccw = CheckRotation(pts[0], pts[1], pts[2]);
 
@@ -103,7 +140,6 @@ void ChanceConstraint::PolygonAnalyze(geometry_msgs::PolygonStamped poly, ccrrts
 	}
 }
 
-// How to distinguish the different norms
 int main (int argc, char** argv){
 	ros::init(argc, argv, "constraint_process");
 	ChanceConstraint constrain;
