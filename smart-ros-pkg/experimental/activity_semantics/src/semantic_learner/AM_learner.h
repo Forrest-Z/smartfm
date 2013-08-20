@@ -61,6 +61,8 @@ namespace golfcar_semantics
         void ped_crossing();
         void ped_sourcesink();
         void ped_SSEM();
+        void self_EM( vector<Vec2f>& samples_vector, int & cluster_N, double & loglikelihood_output);
+        double prob_2DGaussian(Mat sample, Mat Mean, Mat CovMat);
         void draw_covMatrix_eclipse( Mat img, Mat CurrCovMat, Mat Means, int i);
 
         void show_moving_direction();
