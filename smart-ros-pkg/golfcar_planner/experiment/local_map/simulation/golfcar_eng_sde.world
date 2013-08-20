@@ -1,6 +1,12 @@
-define block model
+define Veh model
 (
   size [2.385 1.200 0.750]
+  gui_nose 0
+)
+
+define Ped model
+(
+  size [0.500 0.500 1.500]
   gui_nose 0
 )
 
@@ -53,13 +59,13 @@ interval_sim 100  # simulation timestep in milliseconds
 
 window
 ( 
-  size [ 824 501 ] 
+  size [ 1299 715 ] 
  #center [327.990 371.960] 
-  center [-198.839 93.026]
+  center [2.192 58.993]
 #rotate [ 0.000 -1.560 ]
-  rotate [ 0.000 -50.500 ]
-  scale 11.913
-  show_data 1 
+  rotate [ 0.000 85.500 ]
+  scale 8.954
+  show_data 0 
 )
 
 # load an environment bitmap
@@ -74,11 +80,11 @@ floorplan
 )
 
 # throw in a robot
-gc1( pose [-201.804 72.201 0.000 37.173] name "gc1" color "red")
+gc1( pose [-23.859 16.775 0.000 -0.643] name "gc1" color "red")
 
-block( pose [ -127.258 164.617 0.000 54.431 ] color "blue")
-block( pose [ -207.465 44.552 0.000 37.242 ] color "blue")
-block( pose [ -235.841 56.000 0.000 40.107 ] color "blue")
-block( pose [ -192.750 79.796 0.000 37.242 ] color "blue")
-block( pose [ -195.797 73.287 0.000 37.242 ] color "blue")
-block( pose [ -163.542 108.212 0.000 60.161 ] color "blue")
+Veh( pose [ -126.701 164.206 0.000 54.431 ] color "blue")
+Veh( pose [ -244.914 63.674 0.000 28.648 ] color "blue")
+Veh( pose [ -228.804 51.059 0.000 31.513 ] color "blue")
+Ped( pose [ -247.024 55.625 0.000 -51.566 ] color "green")
+Ped( pose [ -228.130 62.498 0.000 34.378 ] color "green")
+Ped( pose [ -163.074 107.983 0.000 60.161 ] color "green")

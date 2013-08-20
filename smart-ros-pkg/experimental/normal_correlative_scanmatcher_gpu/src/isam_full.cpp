@@ -477,7 +477,7 @@ int main(int argc, char **argv) {
             estimated_pt.orientation.y = node.vector(isam::ESTIMATE)[4];
             estimated_pt.orientation.x = node.vector(isam::ESTIMATE)[5];
             last_height = estimated_pt.position.z;
-            cout<<estimated_pt.position.x << " "<< estimated_pt.position.y<< " "<<estimated_pt.position.z<<endl;
+            //cout<<estimated_pt.position.x << " "<< estimated_pt.position.y<< " "<<estimated_pt.position.z<<endl;
             vector<geometry_msgs::Point32> tfed_pts = getTransformedPts(
                     estimated_pt, pc_vecs[node_idx].points);
             if(node_id == cl_node_idx)

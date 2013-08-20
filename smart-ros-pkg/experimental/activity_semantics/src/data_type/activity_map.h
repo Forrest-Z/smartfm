@@ -49,6 +49,7 @@ namespace golfcar_semantics
 	{
 		bool road_flag;
 		bool pedPath_flag;
+		bool pedSourceSink_flag;
 
 		//associated tracks, indexed by their serials;
 		std::vector<size_t> track_serials;
