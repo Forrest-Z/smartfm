@@ -50,6 +50,7 @@ local_frame::local_frame()
 
 void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr ped_batch)
 {
+  //cout<<"Pedcallback size of ped_batch="<<ped_batch->pd_vector.size()<<endl;
     ped_momdp_sarsop::ped_local_frame_vector plf_vector;
     for(size_t i=0;i<ped_batch->pd_vector.size();i++)
     {
@@ -69,7 +70,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
         if(matched)
         {
             //transform found, just update the position
-            if(ped_batch->pd_vector[i].confidence > threshold_/100)
+            //if(ped_batch->pd_vector[i].confidence > threshold_/100)
             {
                 ped_momdp_sarsop::ped_local_frame plf;
                 plf.header.stamp = ped_batch->header.stamp;
@@ -104,7 +105,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
         }
         else
         {
-			if(ped_batch->pd_vector[i].confidence > threshold_/100)
+			//if(ped_batch->pd_vector[i].confidence > threshold_/100)
             {
 				ROS_INFO("New pedestrian received, creating new transform");
 				ROS_INFO("%d transformations", ped_transforms_.size());
