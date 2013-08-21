@@ -623,14 +623,145 @@ namespace golfcar_semantics{
 				int x = i;
 				int y = AM_->size_y-1-j;
 				EE_color.at<float>(y,x) = (float)(grid_tmp.EE_score);
-
 			}
 		}
+
+
 		normalize(EE_color, EE_color, 0.0, 1.0, NORM_MINMAX);
+		for(j = 0; j < AM_->size_y; j++)
+		{
+			for (i = 0; i < AM_->size_x; i++)
+			{
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
+				//if(!grid_tmp.road_flag) continue;
+				int x = i;
+				int y = AM_->size_y-1-j;
+				grid_tmp.EE_score = EE_color.at<float>(y,x);
+			}
+		}
 		Mat EE_color_tmp;
 		EE_color.convertTo(EE_color_tmp, CV_8U, 255.0, 0.0);
 		threshold(EE_color_tmp, EE_color_tmp, 20, 255, 0);
 		imwrite( "./data/EE_color.jpg", EE_color_tmp );
+
+		ped_SSEM();
+	}
+
+	void AM_learner::ped_SSEM()
+	{
+		Mat img_visual = Mat::zeros( Size( AM_->size_y, AM_->size_x ), CV_8UC3 );
+	    const Scalar colors[] =
+	    {
+	        Scalar(0,0,255), Scalar(0,255,0),
+	        Scalar(0,255,255),Scalar(255,255,0),
+	        Scalar(255,0,255), Scalar(128,0,255), Scalar(0,128,255)
+	    };
+
+	    int N = 7;
+	    int i, j;
+
+		//prepare for the grid samples;
+	    vector<Vec2f> samples_vector;
+		for(j = 0; j < AM_->size_y; j++)
+		{
+			for (i = 0; i < AM_->size_x; i++)
+			{
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
+				if(grid_tmp.EE_score>=20.0/255)
+				{
+					Vec2f sample_tmp(i, j);
+					samples_vector.push_back(sample_tmp);
+				}
+			}
+		}
+
+		int nsamples = (int)samples_vector.size();
+	    Mat all_samples( nsamples, 2, CV_32FC1 );
+	    all_samples = all_samples.reshape(2, 0);
+	    for( i = 0; i < nsamples; i ++ )
+	    {
+	    	all_samples.at<float>(i, 0) = samples_vector[i].val[0];
+	    	all_samples.at<float>(i, 1) = samples_vector[i].val[1];
+	    }
+	    all_samples = all_samples.reshape(1, 0);
+
+	    //http://docs.opencv.org/modules/ml/doc/expectation_maximization.html
+	    //first to have a rough estimation;
+	    EM em_model( N, EM::COV_MAT_GENERIC, TermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 300,  0.1));
+	    Mat loglikelihood, labels, probability;
+	    em_model.train( all_samples, loglikelihood, labels, probability);
+	    if(em_model.isTrained()) printf("\n em_model trained\n");
+	    vector<Mat> covMats= em_model.get<vector<Mat> >("covs");
+	    Mat Means = em_model.get<Mat>("means");
+
+
+	    EM em_model2( N, EM::COV_MAT_GENERIC, TermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 2,  0.1));
+	    Mat loglikelihood2, labels2, probability2;
+	    em_model2.trainE( all_samples, Means, loglikelihood2, labels2, probability2);
+	    if(em_model2.isTrained()) printf("\n em_model2 trained\n");
+
+	    vector<Mat> covMats2= em_model2.get<vector<Mat> >("covs");
+	    Mat Means2 = em_model.get<Mat>("means");
+
+	    /*
+	    for( i = 0; i < nsamples; i++ )
+	    {
+	        Point pt(cvRound(all_samples.at<float>(i, 0)), cvRound(all_samples.at<float>(i, 1)));
+	        circle( img_visual, pt, 1, colors[labels2.at<int>(i)], CV_FILLED );
+	    }
+		*/
+
+	    for(i=0; i<covMats.size(); i++)
+		{
+			draw_covMatrix_eclipse(img_visual, covMats2[i], Means2, i);
+			float cx = Means2.at<double>(i,0)*map_scale_;
+			float cy = Means2.at<double>(i,1)*map_scale_;
+			SourceSinks_.push_back(Point2f(cx, cy));
+		}
+
+	    imwrite( "./data/SourceSinks.jpg", img_visual );
+
+	}
+
+	void AM_learner::draw_covMatrix_eclipse( Mat img, Mat CurrCovMat, Mat Means, int i)
+	{
+		double cx = Means.at<double>(i,0);
+		double cy = Means.at<double>(i,1);
+
+		Mat eigenvalues;
+		Mat eigenvectors;
+		eigen( CurrCovMat, eigenvalues, eigenvectors );
+
+		double eigenvec1_len = eigenvalues.at<double>(0,0);
+		double len1          = sqrt(eigenvec1_len)*30;
+		double eigenvec1_x   = eigenvectors.at<double>(0,0) * len1;
+		double eigenvec1_y   = eigenvectors.at<double>(1,0) * len1;
+
+		double eigenvec2_len = eigenvalues.at<double>(1,0);
+		double len2          = sqrt(eigenvec2_len)*30;
+		double eigenvec2_x   = eigenvectors.at<double>(0,1) * len2;
+		double eigenvec2_y   = eigenvectors.at<double>(1,1) * len2;
+
+		// Show axes of ellipse
+		line( img, cv::Point(cx,cy), cv::Point(cx+eigenvec1_x, cy+eigenvec1_y), CV_RGB(255,255,0) );
+		line( img, cv::Point(cx,cy), cv::Point(cx+eigenvec2_x, cy+eigenvec2_y), CV_RGB(0,255,0) );
+
+		// Show ellipse rotated into direction of eigenvec1
+		double dx = eigenvec1_x;
+		double dy = eigenvec1_y;
+		double angle_rad = atan2( dy, dx );
+		double angle_deg = angle_rad * (180.0/M_PI); // convert radians (0,2PI) to degree (0°,360°)
+
+		ROS_INFO("cx, cy, eigenvec1_x, eigenvec1_y, eigenvec2_x, eigenvec2_y, angle_deg: (%3f, %3f), (%3f, %3f), (%3f, %3f), %3f", cx, cy, eigenvec1_x, eigenvec1_y, eigenvec2_x, eigenvec2_y, angle_deg);
+
+		cv::RotatedRect* myRotatedRect = new cv::RotatedRect( cvPoint(cx,cy), cvSize(len1, len2), angle_deg );
+		if (myRotatedRect != NULL)
+		{
+			int g = 1*255.0 * (i+1);
+			cv::Scalar s = CV_RGB(g,g,g);
+			ellipse( img, *myRotatedRect, s );
+			delete myRotatedRect;
+		}
 	}
 
 	void AM_learner::ped_sidewalk()
@@ -725,13 +856,6 @@ namespace golfcar_semantics{
 					continue;
 				}
 
-				double distance_factor;
-				if(grid_tmp.road_flag)
-				{
-					distance_factor = 1.0;
-				}
-				else distance_factor = 0.001;
-
 				double intensity_factor;
 				intensity_factor = 0.1+log2 (double(grid_tmp.moving_activities.size()+1.0));
 				//intensity_factor = 1.0;
@@ -757,18 +881,60 @@ namespace golfcar_semantics{
 				//directionVar_factor = 1.0;
 
 				double direction_factor_crossing;
-				//direction_factor = fabs(grid_tmp.skel_angle-grid_tmp.gp_estimation.val[0]);
 				direction_factor_crossing = 1.0;
-				direction_factor_crossing = grid_tmp.probe_distance1;
+				if(SourceSinks_.size()<2) direction_factor_crossing = 0.001;
+				else
+				{
+					int SS_serial = 0; int SS2nd_serial = 0;
+					double SS_dist = 10000.0; double SS2nd_dist=10000.0;
+					double grid_realx = double(roi_x)*map_scale_;
+					double grid_realy = double(roi_y)*map_scale_;
 
-				//if(grid_tmp.pedPath_flag) intensity_factor = intensity_factor;
-				//else intensity_factor = intensity_factor * 0.1;
+					for(int s=0; s<SourceSinks_.size(); s++)
+					{
+						double dist_tmp = sqrt((grid_realx-SourceSinks_[s].x)*(grid_realx-SourceSinks_[s].x)+(grid_realy-SourceSinks_[s].y)*(grid_realy-SourceSinks_[s].y));
+						if(dist_tmp<SS_dist)
+						{
+							SS2nd_serial = SS_serial;
+							SS2nd_dist = SS_dist;
+							SS_serial = s;
+							SS_dist = dist_tmp;
+						}
+						else if(dist_tmp<SS2nd_dist)
+						{
+							SS2nd_serial = s;
+							SS2nd_dist = dist_tmp;
+						}
+					}
+					double road_width = 8.0;
+					double delt_distance = fabs(SS_dist+SS2nd_dist-road_width);
+					//double sigma = 4.0;
+					//double direction_factor1 = exp(-(delt_distance * delt_distance) / (2 * sigma * sigma));
+					double direction_factor1 = 1.0/(delt_distance+0.1);
+					//direction_factor1 = 1.0;
+					//ROS_INFO("distance %3f", delt_distance);
+
+					int roi_x1 = floor(SourceSinks_[SS_serial].x/map_scale_);
+					int roi_y1 = floor(SourceSinks_[SS_serial].y/map_scale_);
+					int roi_x2 = floor(SourceSinks_[SS2nd_serial].x/map_scale_);
+					int roi_y2 = floor(SourceSinks_[SS2nd_serial].y/map_scale_);
+
+					activity_grid &grid_tmp1 = AM_->cells[MAP_INDEX(AM_, roi_x1, roi_y1)];
+					activity_grid &grid_tmp2 = AM_->cells[MAP_INDEX(AM_, roi_x2, roi_y2)];
+					double direction_factor2 = fabs(grid_tmp1.gp_estimation.val[0]-grid_tmp.gp_estimation.val[0])*fabs(grid_tmp2.gp_estimation.val[0]-grid_tmp1.gp_estimation.val[0]);
+					//ROS_INFO("direction_factor2 %3f", direction_factor2);
+
+					if(direction_factor2 < 0.001) direction_factor2 = 1000.0;
+					else direction_factor2 = 1/direction_factor2;
+					//direction_factor2 = 1.0;
+					direction_factor_crossing = direction_factor1*direction_factor2;
+				}
 
 				float pedPath_factor;
 				if(grid_tmp.pedPath_flag) pedPath_factor = 1.0;
 				else pedPath_factor = 0.1;
 
-				grid_tmp.crossing_score = directionVar_factor*intensity_factor*direction_factor_crossing*distance_factor;
+				grid_tmp.crossing_score = directionVar_factor*intensity_factor*direction_factor_crossing;
 			}
 		}
 
@@ -783,13 +949,13 @@ namespace golfcar_semantics{
 				int x = i;
 				int y = AM_->size_y-1-j;
 				crossing_color.at<float>(y,x) = (float)(grid_tmp.crossing_score);
-
 			}
 		}
 		normalize(crossing_color, crossing_color, 0.0, 1.0, NORM_MINMAX);
 		Mat crossing_color_tmp;
 		crossing_color.convertTo(crossing_color_tmp, CV_8U, 255.0, 0.0);
-		//threshold(crossing_color_tmp, crossing_color_tmp, 2400, 255, 0);
+		imwrite( "./data/crossing_color_probability.jpg", crossing_color_tmp );
+		threshold(crossing_color_tmp, crossing_color_tmp, 20, 255, 0);
 		imwrite( "./data/crossing_color.jpg", crossing_color_tmp );
 	}
 

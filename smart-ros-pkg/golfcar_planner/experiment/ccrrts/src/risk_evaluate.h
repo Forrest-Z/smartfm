@@ -33,6 +33,7 @@ struct State{
 	double r;
 	double conv_x;
 	double conv_y;
+	double conv_xy;
 };
 
 class RiskEvaluate{
@@ -40,16 +41,21 @@ class RiskEvaluate{
 	ros::NodeHandle nh_;
 	ros::Subscriber cst_sub_;
 	ros::Publisher risk_pub_;
-	ccrrts::obst_risk risk;
-	State vehicle_pose;
 	tf::TransformListener tf_;
 	tf::Stamped<tf::Pose> local_pose_;
 
 public:
+
+	ccrrts::obst_risk risk;
+	State vehicle_pose;
+	State sample_pose;
+	ccrrts::obsts_cst constraints;
+
 	RiskEvaluate();
 	~RiskEvaluate();
 	void ConstraintCallBack(const ccrrts::obsts_cst cst);
 	void RiskAssess(ccrrts::obsts_cst obst_cst);
+	void CalcaulateRisk(ccrrts::obsts_cst obst_cst, State pose, vector<double>& risk);
 	bool GetVehicelPose();
 
 };

@@ -467,7 +467,7 @@ void LocalMap::getGradientCost(nav_msgs::OccupancyGrid &gradient_local_map_){
 int main(int argc, char** argcv)
 {
     ros::init(argc, argcv, "local_map");
-    LocalMap lm(40.0, 40.0, 0.2);
+    LocalMap lm(20.0, 30.0, 0.2);
 
     return 0;
 }
