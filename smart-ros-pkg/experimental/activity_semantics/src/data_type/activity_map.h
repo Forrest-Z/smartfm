@@ -81,6 +81,7 @@ namespace golfcar_semantics
 		double probe_distance1;
 		double probe_distance2;
 
+		double path_score;
 		double EE_score;
 		double sidewalk_score;
 		double crossing_score;

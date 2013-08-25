@@ -508,10 +508,14 @@ namespace golfcar_semantics{
 		ped_crossing();
 	}
 
+	//
 	void AM_learner::pedestrian_path()
 	{
 		Mat intensity_image(AM_->size_y,  AM_->size_x, CV_32FC1 );
 		intensity_image = Scalar(0);
+		double road_half_width = 5.0;
+		int neighbour_radius = (int)road_half_width/map_scale_;
+
 		int i, j;
 		for(j = 0; j < AM_->size_y; j++)
 		{
@@ -520,14 +524,43 @@ namespace golfcar_semantics{
 				int x = i;
 				int y = AM_->size_y-1-j;
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
-				//intensity_image.at<float>(y,x) = (float)(grid_tmp.activity_intensity);
-				double intensity_factor;
-				intensity_factor = 0.1+log2 (double(grid_tmp.moving_activities.size()+1.0));
+				int p, q;
+				size_t biggest_activity_number = 0;
+				for (p =-neighbour_radius; p<= neighbour_radius; p++)
+				{
+					for (q =-neighbour_radius; q<= neighbour_radius; q++)
+					{
+						int xp=x+p;
+						int yq=y+q;
+						if(MAP_VALID(AM_, xp, yq))
+						{
+							if(AM_->cells[MAP_INDEX(AM_, xp, yq)].moving_activities.size()>biggest_activity_number) biggest_activity_number = AM_->cells[MAP_INDEX(AM_, xp, yq)].moving_activities.size();
+						}
+					}
+				}
+
+				double intensity_absolute_factor, intensity_local_ratio, intensity_local_factor, intensity_factor;
+
+				//intensity_absolute_factor = 0.1+log2 (double(grid_tmp.moving_activities.size()+1.0));
+				//use sigmoid function instead;
+				double x_shift = -2.0;
+				double y_shift = -1.0/(1+exp(-(x_shift)));
+				intensity_absolute_factor = 1.0/(1+exp(-(double(grid_tmp.moving_activities.size()+x_shift))))+y_shift;
+
+				intensity_local_ratio  = biggest_activity_number > 0 ? (double(grid_tmp.moving_activities.size())/double(biggest_activity_number)) : 1.0;
+				intensity_local_factor = intensity_local_ratio;
+				intensity_factor = intensity_absolute_factor*intensity_local_factor;
 				intensity_image.at<float>(y,x) = (float)(intensity_factor);
 			}
 		}
+
 		GaussianBlur (intensity_image, intensity_image, cv::Size (5, 5), 0);
+		double max_value, min_value;
+		minMaxIdx(intensity_image, &max_value, &min_value, NULL, NULL);
+		ROS_INFO("max_value, min_value %5f, %5f", max_value, min_value);
 		normalize(intensity_image, intensity_image, 0.0, 1.0, NORM_MINMAX);
+
+
 		Mat intensity_image_tmp;
 		intensity_image.convertTo(intensity_image_tmp, CV_8U, 255.0, 0.0);
 		imwrite( "./data/intensity_image.jpg", intensity_image_tmp );
@@ -545,6 +578,8 @@ namespace golfcar_semantics{
 				//if(!grid_tmp.road_flag) continue;
 				int x = i;
 				int y = AM_->size_y-1-j;
+
+				grid_tmp.path_score = intensity_image.at<float>(y,x);
 				if(intensity_image_tmp.at<uchar>(y,x)>127) grid_tmp.pedPath_flag = true;
 			}
 		}
