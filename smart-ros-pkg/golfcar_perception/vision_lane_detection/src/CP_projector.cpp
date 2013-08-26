@@ -53,6 +53,7 @@ CP_projector::CP_projector():
 	  cloud_scan_filter2_->registerCallback(boost::bind(&CP_projector::pclCallback, this, _1));
 	  cloud_scan_filter2_->setTolerance(ros::Duration(0.05));
 
+	  vehicle0_velo_sub_ = nh_.subscribe("/odom",10, &CP_projector::velocity0_callback, this);
 	  vehicle1st_velo_sub_ = nh_.subscribe("/robot_1/vehicle_vel",10, &CP_projector::velocity1st_callback, this);
 	  vehicle2nd_velo_sub_ = nh_.subscribe("/robot_2/vehicle_vel",10, &CP_projector::velocity2nd_callback, this);
 
@@ -67,7 +68,18 @@ CP_projector::CP_projector():
 	  project_image12 = cvCreateImage(image_size, 8,3);
 	  project_image22 = cvCreateImage(image_size, 8,3);
 
+	  /*
 	  project_imageH00 = cvCreateImage(image_size, 8,3);
+	  project_image2H00 = cvCreateImage(image_size, 8,3);
+	  project_image3H00 = cvCreateImage(image_size, 8,3);
+	  project_image4H00 = cvCreateImage(image_size, 8,3);
+	  project_image5H00 = cvCreateImage(image_size, 8,3);
+	  project_image6H00 = cvCreateImage(image_size, 8,3);
+	  project_image7H00 = cvCreateImage(image_size, 8,3);
+	  project_image8H00 = cvCreateImage(image_size, 8,3);
+	  project_image9H00 = cvCreateImage(image_size, 8,3);
+	   */
+
 	  project_imageH01 = cvCreateImage(image_size, 8,3);
 	  project_imageH02 = cvCreateImage(image_size, 8,3);
 	  project_imageH11 = cvCreateImage(image_size, 8,3);
@@ -98,8 +110,29 @@ CP_projector::CP_projector():
 	  private_nh_.param("vehicle_height",    	vehicle_height_,   		 1.7);
 	  vehicle_box = new vehicle_model(vehicle_length_, vehicle_width_, vehicle_height_);
 
-	  vehicle1st_color = CV_RGB(255,0,0);
-	  vehicle2nd_color = CV_RGB(0,255,0);
+	  vehicle0_color = CV_RGB(255,0,0);
+	  vehicle1st_color = CV_RGB(0,255,0);
+	  vehicle2nd_color = CV_RGB(0,0,255);
+
+
+	  cvNamedWindow("robot0_enhanced");
+	  cvNamedWindow("robot0_enhanced2");
+	  cvNamedWindow("robot0_enhanced3");
+	  cvNamedWindow("robot0_enhanced4");
+	  cvNamedWindow("robot0_enhanced5");
+	  cvNamedWindow("robot0_enhanced6");
+	  cvNamedWindow("robot0_enhanced7");
+	  cvNamedWindow("robot0_enhanced8");
+	  cvNamedWindow("robot0_enhanced9");
+
+	  cvNamedWindow("robot_0");
+	  cvNamedWindow("robot0_all");
+	  cvNamedWindow("robot_1");
+	  cvNamedWindow("robot1_all");
+	  cvNamedWindow("vehicle1_src");
+	  cvNamedWindow("vehicle2_src");
+	  cvNamedWindow("vehicle1_on_vehicle0");
+	  cvNamedWindow("vehicle2_on_vehicle0");
   }
 
   void CP_projector::pclCallback(const PointCloudRGB::ConstPtr& pcl_in)
@@ -115,6 +148,17 @@ CP_projector::CP_projector():
 		  if(pcl_frame_id == "base_link")
 		  {
 			  //not showing themselves;
+			  /*
+			  pcl_process(pcl_in, vehicle0_Hdest_frame_,  project_imageH00,  vehicle0_color);
+			  pcl_process(pcl_in, vehicle0_H2dest_frame_, project_image2H00, vehicle0_color);
+			  pcl_process(pcl_in, vehicle0_H3dest_frame_, project_image3H00, vehicle0_color);
+			  pcl_process(pcl_in, vehicle0_H4dest_frame_, project_image4H00, vehicle0_color);
+			  pcl_process(pcl_in, vehicle0_H5dest_frame_, project_image5H00, vehicle0_color);
+			  pcl_process(pcl_in, vehicle0_H6dest_frame_, project_image6H00, vehicle0_color);
+			  pcl_process(pcl_in, vehicle0_H7dest_frame_, project_image7H00, vehicle0_color);
+			  pcl_process(pcl_in, vehicle0_H8dest_frame_, project_image8H00, vehicle0_color);
+			  pcl_process(pcl_in, vehicle0_H9dest_frame_, project_image9H00, vehicle0_color);
+			  */
 		  }
 		  else if(pcl_frame_id== "robot_1/base_link")
 		  {
@@ -225,7 +269,7 @@ CP_projector::CP_projector():
 		  cam_model_.project3dToPixel(pt_cv, uv);
 		  vehicle_box->skeletonIMG_[i] = cvPoint(uv.x, uv.y);
 	  }
-	  vehicle_box->DrawSkel(project_image, color_plot, 2);
+	  vehicle_box->DrawSkel(project_image, color_plot, 3);
 
 	  std_msgs::Header predecessor = vehicle_skeleton.header;
 	  std_msgs::Header own_vehicle = vehicle_skeleton.header;
@@ -259,9 +303,13 @@ CP_projector::CP_projector():
 		  vehicle_box->PutInfo(project_image, color_plot, vehicle2nd_velocity, vehicle12_distance, cvPoint(0, -5));
 	  }
 
-	  resize_show(project_image, show_scale_, project_image_name.str().c_str());
+      IplImage* white_background = cvCloneImage(project_image);
+      cvSet(white_background, cvScalar(255,255,255));
+      merge_images(white_background, project_image);
+	  resize_show(white_background, show_scale_, project_image_name.str().c_str());
 
 	  cvWaitKey(1);
+	  cvReleaseImage(&white_background);
 
 	  ROS_INFO("pcl_process finished");
   }
@@ -288,13 +336,17 @@ CP_projector::CP_projector():
 
         IplImage* merged_image = cvCloneImage(color_image);
         IplImage* merged_Himage = cvCloneImage(color_image);
+        IplImage* white_background = cvCloneImage(color_image);
         cvZero(merged_Himage);
+        cvSet(white_background, cvScalar(255,255,255));
 
         string image_name, image_Hname;
         if(vehicle_ID_ == "robot_0")
 		{
         	merge_images(merged_image, project_image01);
         	merge_images(merged_image, project_image02);
+
+        	//merge_images(merged_Himage, project_imageH00);
         	merge_images(merged_Himage, project_imageH01);
         	merge_images(merged_Himage, project_imageH02);
 
@@ -318,20 +370,35 @@ CP_projector::CP_projector():
         	cvZero(merged_H8image);
         	cvZero(merged_H9image);
 
+        	//merge_images(merged_H2image, project_image2H00);
         	merge_images(merged_H2image, project_image2H01);
         	merge_images(merged_H2image, project_image2H02);
+
+        	//merge_images(merged_H3image, project_image3H00);
         	merge_images(merged_H3image, project_image3H01);
         	merge_images(merged_H3image, project_image3H02);
+
+        	//merge_images(merged_H4image, project_image4H00);
         	merge_images(merged_H4image, project_image4H01);
         	merge_images(merged_H4image, project_image4H02);
+
+        	//merge_images(merged_H5image, project_image5H00);
         	merge_images(merged_H5image, project_image5H01);
         	merge_images(merged_H5image, project_image5H02);
+
+        	//merge_images(merged_H6image, project_image6H00);
         	merge_images(merged_H6image, project_image6H01);
         	merge_images(merged_H6image, project_image6H02);
+
+        	//merge_images(merged_H7image, project_image7H00);
         	merge_images(merged_H7image, project_image7H01);
         	merge_images(merged_H7image, project_image7H02);
+
+        	//merge_images(merged_H8image, project_image8H00);
         	merge_images(merged_H8image, project_image8H01);
         	merge_images(merged_H8image, project_image8H02);
+
+        	//merge_images(merged_H9image, project_image9H00);
         	merge_images(merged_H9image, project_image9H01);
         	merge_images(merged_H9image, project_image9H02);
 
@@ -343,6 +410,31 @@ CP_projector::CP_projector():
         	string image_H7name = "robot0_enhanced7";
         	string image_H8name = "robot0_enhanced8";
         	string image_H9name = "robot0_enhanced9";
+
+        	cvSet(white_background, cvScalar(255,255,255));
+        	merge_images(white_background, merged_H2image);
+        	cvCopy(white_background, merged_H2image);
+        	cvSet(white_background, cvScalar(255,255,255));
+        	merge_images(white_background, merged_H3image);
+        	cvCopy(white_background, merged_H3image);
+        	cvSet(white_background, cvScalar(255,255,255));
+        	merge_images(white_background, merged_H4image);
+        	cvCopy(white_background, merged_H4image);
+        	cvSet(white_background, cvScalar(255,255,255));
+        	merge_images(white_background, merged_H5image);
+        	cvCopy(white_background, merged_H5image);
+        	cvSet(white_background, cvScalar(255,255,255));
+        	merge_images(white_background, merged_H6image);
+        	cvCopy(white_background, merged_H6image);
+        	cvSet(white_background, cvScalar(255,255,255));
+        	merge_images(white_background, merged_H7image);
+        	cvCopy(white_background, merged_H7image);
+        	cvSet(white_background, cvScalar(255,255,255));
+        	merge_images(white_background, merged_H8image);
+        	cvCopy(white_background, merged_H8image);
+        	cvSet(white_background, cvScalar(255,255,255));
+        	merge_images(white_background, merged_H9image);
+        	cvCopy(white_background, merged_H9image);
 
     		resize_show(merged_H2image, show_scale_, image_H2name.c_str());
     		resize_show(merged_H3image, show_scale_, image_H3name.c_str());
@@ -370,11 +462,16 @@ CP_projector::CP_projector():
         	image_Hname = "robot1_enhanced";
         }
 
+		cvSet(white_background, cvScalar(255,255,255));
+		merge_images(white_background, merged_Himage);
+		cvCopy(white_background, merged_Himage);
+
 		resize_show(merged_image, show_scale_, image_name.c_str());
 		resize_show(merged_Himage, show_scale_, image_Hname.c_str());
 
 		cvReleaseImage(&merged_image);
 		cvReleaseImage(&merged_Himage);
+		cvReleaseImage(&white_background);
   }
 
   void CP_projector::merge_images(IplImage *dst_img, IplImage *src_img)
@@ -419,19 +516,30 @@ CP_projector::CP_projector():
       return sqrt(vehicle_x*vehicle_x+vehicle_y*vehicle_y);
   }
 
+  void CP_projector::velocity0_callback(const nav_msgs::Odometry::ConstPtr& velo_in)
+  {
+	  vehicle0_velo_.header = velo_in->header;
+	  vehicle0_velo_.twist = velo_in->twist.twist;
+  }
+
+
   void CP_projector::velocity1st_callback(const geometry_msgs::TwistStamped::ConstPtr& velo_in)
   {
+	  vehicle1st_velo_ = *velo_in;
 	  double linear_x, linear_y;
-	  linear_x = velo_in->twist.linear.x;
-	  linear_y = velo_in->twist.linear.y;
+
+	  linear_x = vehicle1st_velo_.twist.linear.x + vehicle0_velo_.twist.linear.x;
+	  linear_y = vehicle1st_velo_.twist.linear.y + vehicle0_velo_.twist.linear.y;
 	  vehicle1st_velocity = sqrt(linear_x*linear_x+linear_y*linear_y);
   }
 
   void CP_projector::velocity2nd_callback(const geometry_msgs::TwistStamped::ConstPtr& velo_in)
   {
+	  vehicle2nd_velo_ = *velo_in;
 	  double linear_x, linear_y;
-	  linear_x = velo_in->twist.linear.x;
-	  linear_y = velo_in->twist.linear.y;
+
+	  linear_x = vehicle2nd_velo_.twist.linear.x + vehicle1st_velo_.twist.linear.x + vehicle0_velo_.twist.linear.x;
+	  linear_y = vehicle2nd_velo_.twist.linear.y + vehicle1st_velo_.twist.linear.y + vehicle0_velo_.twist.linear.y;
 	  vehicle2nd_velocity = sqrt(linear_x*linear_x+linear_y*linear_y);
   }
 

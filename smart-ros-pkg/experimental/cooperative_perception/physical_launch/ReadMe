@@ -1,0 +1,25 @@
+#############PART-I: to provide basic information of ego-vehicle;###################
+1. roscore
+2. Engin_version: [/media/Baoxi...coop3/ipm/shot2] $ rosbag play robot0_filter.bag robot1_cleanEngin.bag robot2_cleanEngin.bag --clock
+   utown_version: /media/Data/Test_record/20120928_coop3/ipm/Utown$ rosbag play robot0_clean.bag robot_2_clean2.bag robot_1_clean3.bag --clock
+3. [~/smartfm/sm...physical_launch] $ roslaunch multiple_amcl 0_sim_basic.launch 
+4. Engin_version: [~/smartfm/sm...physical_launch] $ roslaunch Launch 2LocalizationDenseMap.launch 
+   utown_version: ~/smartfm/smart-ros-pkg/experimental/cooperative_perception$ roslaunch physical_launch/2LocalizationDenseMap_Utown.launch
+5. [~/smartfm/sm...physical_launch] $ rosrun rviz rviz
+
+#############PART-II: to build connections between multiple vehicles through vehicle detection;#####################
+6. [~/smartfm/sm...physical_launch] $ roslaunch robot_0/robot_1_2_tf.launch 
+7. [~/smartfm/sm...physical_launch] $ roslaunch vehicle_detect.launch 
+8. [~/smartfm/sm...physical_launch] $ roslaunch robot_1/vehicle_detect.launch
+
+#############PART-III: to provide vision related tasks;#########################
+9. [~/smartfm/sm...physical_launch] $ roslaunch robot_0/vision_detection.launch
+10. [~/smartfm/sm...physical_launch] $ roslaunch robot_1/vision_detection.launch
+11. [~/smartfm/sm...physical_launch] $ roslaunch robot_2/vision_detection.launch
+    ~/smartfm/smart-ros-pkg/experimental/cooperative_perception/physical_launch$ roslaunch CP_projector.launch
+
+######################################OPTIONAL VISUALIZATION##############################
+12. [~/smartfm/sm...physical_launch] $ rosrun image_view image_view image:=/camera_front/image_raw compressed
+13. [~/smartfm/sm...physical_launch] $ rosrun image_view image_view image:=/robot_1/camera_front/image_raw compressed
+14. [~/smartfm/sm...physical_launch] $ rosrun image_view image_view image:=/robot_2/camera_front/image_raw compressed
+

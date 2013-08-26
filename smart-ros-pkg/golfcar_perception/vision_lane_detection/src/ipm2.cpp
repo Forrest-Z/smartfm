@@ -525,6 +525,9 @@ namespace golfcar_vision{
 	
    void ipm::IpmImage_to_pclrgb(IplImage* pts_image, PointCloudRGB &pts_rgb)
    {
+		std::vector<CvPoint2D32f> img_polygon_tmp;
+		for(size_t i=0; i<4; i++) img_polygon_tmp.push_back(cvPoint2D32f(img_polygon.polygon.points[i].x,img_polygon.polygon.points[i].y));
+
 		geometry_msgs::Point32 pttmp;
 		float center_x = ipm_center_x_ + camera_baselink_dis_ ;
 		float center_y = ipm_center_y_;
@@ -550,12 +553,7 @@ namespace golfcar_vision{
 				xyzRGB_pt.g = s.val[1];
 				xyzRGB_pt.r = s.val[2];
 				
-				if(xyzRGB_pt.b ==0 && xyzRGB_pt.g ==0 && xyzRGB_pt.r ==0)
-				{
-					xyzRGB_pt.b = 255;
-					xyzRGB_pt.g = 255;
-					xyzRGB_pt.r = 255;
-				}
+				if(!pointInPolygon(cvPoint2D32f(iw, ih), img_polygon_tmp))continue;
 				pts_rgb.points.push_back(xyzRGB_pt);
 			}
 		}

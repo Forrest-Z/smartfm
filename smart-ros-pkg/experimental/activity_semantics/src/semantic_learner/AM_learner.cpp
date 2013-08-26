@@ -508,10 +508,14 @@ namespace golfcar_semantics{
 		ped_crossing();
 	}
 
+	//
 	void AM_learner::pedestrian_path()
 	{
 		Mat intensity_image(AM_->size_y,  AM_->size_x, CV_32FC1 );
 		intensity_image = Scalar(0);
+		double road_half_width = 5.0;
+		int neighbour_radius = (int)road_half_width/map_scale_;
+
 		int i, j;
 		for(j = 0; j < AM_->size_y; j++)
 		{
@@ -520,14 +524,42 @@ namespace golfcar_semantics{
 				int x = i;
 				int y = AM_->size_y-1-j;
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
-				//intensity_image.at<float>(y,x) = (float)(grid_tmp.activity_intensity);
-				double intensity_factor;
-				intensity_factor = 0.1+log2 (double(grid_tmp.moving_activities.size()+1.0));
+				int p, q;
+				size_t biggest_activity_number = 0;
+				for (p =-neighbour_radius; p<= neighbour_radius; p++)
+				{
+					for (q =-neighbour_radius; q<= neighbour_radius; q++)
+					{
+						int xp=x+p;
+						int yq=y+q;
+						if(MAP_VALID(AM_, xp, yq))
+						{
+							if(AM_->cells[MAP_INDEX(AM_, xp, yq)].moving_activities.size()>biggest_activity_number) biggest_activity_number = AM_->cells[MAP_INDEX(AM_, xp, yq)].moving_activities.size();
+						}
+					}
+				}
+
+				double intensity_absolute_factor, intensity_local_ratio, intensity_local_factor, intensity_factor;
+
+				//intensity_absolute_factor = 0.1+log2 (double(grid_tmp.moving_activities.size()+1.0));
+				//use sigmoid function instead;
+				double x_shift = -2.0;
+				double y_shift = -1.0/(1+exp(-(x_shift)));
+				intensity_absolute_factor = 1.0/(1+exp(-(double(grid_tmp.moving_activities.size()+x_shift))))+y_shift;
+
+				intensity_local_ratio  = biggest_activity_number > 0 ? (double(grid_tmp.moving_activities.size())/double(biggest_activity_number)) : 1.0;
+				intensity_local_factor = intensity_local_ratio;
+				intensity_factor = intensity_absolute_factor*intensity_local_factor;
 				intensity_image.at<float>(y,x) = (float)(intensity_factor);
 			}
 		}
+
 		GaussianBlur (intensity_image, intensity_image, cv::Size (5, 5), 0);
+		double max_value, min_value;
+		minMaxIdx(intensity_image, &max_value, &min_value, NULL, NULL);
+		ROS_INFO("max_value, min_value %5f, %5f", max_value, min_value);
 		normalize(intensity_image, intensity_image, 0.0, 1.0, NORM_MINMAX);
+
 		Mat intensity_image_tmp;
 		intensity_image.convertTo(intensity_image_tmp, CV_8U, 255.0, 0.0);
 		imwrite( "./data/intensity_image.jpg", intensity_image_tmp );
@@ -545,6 +577,8 @@ namespace golfcar_semantics{
 				//if(!grid_tmp.road_flag) continue;
 				int x = i;
 				int y = AM_->size_y-1-j;
+
+				grid_tmp.path_score = intensity_image.at<float>(y,x);
 				if(intensity_image_tmp.at<uchar>(y,x)>127) grid_tmp.pedPath_flag = true;
 			}
 		}
@@ -607,8 +641,9 @@ namespace golfcar_semantics{
 
 				float pedPath_factor;
 				if(grid_tmp.pedPath_flag) pedPath_factor = 1.0;
-				else pedPath_factor = 0.1;
-				grid_tmp.EE_score = distance_factor*directionVar_factor*intensity_factor*cycle_factor*direction_factor_crossing*pedPath_factor;
+				else pedPath_factor = 0.00001;
+
+				grid_tmp.EE_score = distance_factor*cycle_factor*direction_factor_crossing*directionVar_factor*pedPath_factor*grid_tmp.path_score;
 			}
 		}
 
@@ -657,7 +692,6 @@ namespace golfcar_semantics{
 	        Scalar(255,0,255), Scalar(128,0,255), Scalar(0,128,255)
 	    };
 
-	    int N = 7;
 	    int i, j;
 
 		//prepare for the grid samples;
@@ -675,52 +709,239 @@ namespace golfcar_semantics{
 			}
 		}
 
+		/*
+		samples_vector.clear();
+		for(i=0; i<100; i++)
+		{
+			float x_tmp = rand()%100+500;
+			float y_tmp = 0.5*x_tmp + rand()%10;
+			Vec2f sample_tmp(x_tmp, y_tmp);
+			samples_vector.push_back(sample_tmp);
+		}
+		*/
+
 		int nsamples = (int)samples_vector.size();
 	    Mat all_samples( nsamples, 2, CV_32FC1 );
-	    all_samples = all_samples.reshape(2, 0);
+	    //all_samples = all_samples.reshape(2, 0);
 	    for( i = 0; i < nsamples; i ++ )
 	    {
 	    	all_samples.at<float>(i, 0) = samples_vector[i].val[0];
 	    	all_samples.at<float>(i, 1) = samples_vector[i].val[1];
 	    }
-	    all_samples = all_samples.reshape(1, 0);
+	    //all_samples = all_samples.reshape(1, 0);
 
+	    //How to determine cluster number "N";
+	    //Method1: use Bayesian Information Criterion (BIC) for module selection, to determine N in this case;
+	    //BIC(θ) = −2logp(X|θ) + k log(n) ∗ λ
+	    //For post processing: may need to merge two over-segmented clusters according to their distances;
+
+	    double bic_min = DBL_MAX;
+	    int bic_N = 0;
+	    int N;
+	    for(N=1; N<20; N++)
+	    {
+	    	double loglikelihood_sum;
+	    	self_EM(samples_vector, N, loglikelihood_sum);
+			double k_tmp = N*6;
+			double lamda_tmp = 1.0;
+			double bic_tmp = -2*(loglikelihood_sum) + k_tmp*std::log(double(nsamples))* lamda_tmp;
+
+			ROS_INFO("cluster N, prob factor, bic_tmp %d, %3f, %3f", N, loglikelihood_sum, bic_tmp);
+
+			if(bic_tmp < bic_min)
+			{
+				bic_min = bic_tmp;
+				bic_N = N;
+			}
+	    }
+
+	    //Method2: use prior knowledge about distance between two SinkSources; the distance should be larger than certain value;
+
+	    N = bic_N;
 	    //http://docs.opencv.org/modules/ml/doc/expectation_maximization.html
-	    //first to have a rough estimation;
-	    EM em_model( N, EM::COV_MAT_GENERIC, TermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 300,  0.1));
-	    Mat loglikelihood, labels, probability;
-	    em_model.train( all_samples, loglikelihood, labels, probability);
-	    if(em_model.isTrained()) printf("\n em_model trained\n");
-	    vector<Mat> covMats= em_model.get<vector<Mat> >("covs");
-	    Mat Means = em_model.get<Mat>("means");
+	    Mat kmeans_labels, kmeans_centers;
+		kmeans(all_samples, N, kmeans_labels, TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 100, 1.0), 10, KMEANS_PP_CENTERS, kmeans_centers);
+		EM em_model2( N, EM::COV_MAT_GENERIC, TermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 100,  0.1));
+		Mat loglikelihood2, labels2, probability2;
+		em_model2.trainE( all_samples, kmeans_centers, Mat(), Mat(), loglikelihood2, labels2, probability2);
+		if(em_model2.isTrained()) printf("\n em_model2 trained\n");
+		vector<Mat> covMats2= em_model2.get<vector<Mat> >("covs");
+		Mat Means2 = em_model2.get<Mat>("means");
 
-
-	    EM em_model2( N, EM::COV_MAT_GENERIC, TermCriteria(CV_TERMCRIT_ITER|CV_TERMCRIT_EPS, 2,  0.1));
-	    Mat loglikelihood2, labels2, probability2;
-	    em_model2.trainE( all_samples, Means, loglikelihood2, labels2, probability2);
-	    if(em_model2.isTrained()) printf("\n em_model2 trained\n");
-
-	    vector<Mat> covMats2= em_model2.get<vector<Mat> >("covs");
-	    Mat Means2 = em_model.get<Mat>("means");
-
-	    /*
 	    for( i = 0; i < nsamples; i++ )
 	    {
 	        Point pt(cvRound(all_samples.at<float>(i, 0)), cvRound(all_samples.at<float>(i, 1)));
-	        circle( img_visual, pt, 1, colors[labels2.at<int>(i)], CV_FILLED );
+	        int label_tmp = labels2.at<int>(i)%7;
+	        circle( img_visual, pt, 1, colors[label_tmp], CV_FILLED );
 	    }
-		*/
-
-	    for(i=0; i<covMats.size(); i++)
+	    for(i=0; i<N; i++)
 		{
-			draw_covMatrix_eclipse(img_visual, covMats2[i], Means2, i);
 			float cx = Means2.at<double>(i,0)*map_scale_;
 			float cy = Means2.at<double>(i,1)*map_scale_;
+			draw_covMatrix_eclipse(img_visual, covMats2[i], Means2, i);
 			SourceSinks_.push_back(Point2f(cx, cy));
+		}
+
+		for(j = 0; j < AM_->size_y/2; j++)
+		{
+			for (i = 0; i < AM_->size_x; i++)
+			{
+				int x = i;
+				int y = AM_->size_y-1-j;
+				Vec3b intensity = img_visual.at<Vec3b>(y, x);
+				img_visual.at<Vec3b>(y, x) = img_visual.at<Vec3b>(j, i);
+				img_visual.at<Vec3b>(j, i) = intensity;
+			}
 		}
 
 	    imwrite( "./data/SourceSinks.jpg", img_visual );
 
+	}
+
+	void AM_learner::self_EM( vector<Vec2f>& samples_vector, int & cluster_N, double & loglikelihood_output)
+	{
+		int N = cluster_N;
+		int nsamples = (int)samples_vector.size();
+	    Mat all_samples( nsamples, 2, CV_32FC1 );
+	    //all_samples = all_samples.reshape(2, 0);
+	    int i, j;
+	    for( i = 0; i < nsamples; i ++ )
+	    {
+	    	all_samples.at<float>(i, 0) = samples_vector[i].val[0];
+	    	all_samples.at<float>(i, 1) = samples_vector[i].val[1];
+	    }
+
+	    int max_iteration = 100;
+		int iteration_time = 0;
+		double likelihood_EPS = 0.005;
+		double last_likelihood = 0.0;
+		double gaussian_fi[N];
+
+		Mat gaussian_means[N];
+		Mat gaussian_cov[N];
+		Mat probsMat( nsamples, N, CV_64FC1 );
+		Mat weightMat( nsamples, N, CV_64FC1 );
+		Mat kmeans_labels, kmeans_centers;
+		kmeans(all_samples, N, kmeans_labels, TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 100, 1.0), 10, KMEANS_PP_CENTERS, kmeans_centers);
+
+		typedef std::vector<int> label_vector;
+		std::vector<label_vector> clusters_labels (N);
+	    for( i = 0; i < nsamples; i++ )
+	    {
+	    	if(kmeans_labels.at<int>(i)<N) clusters_labels[kmeans_labels.at<int>(i)].push_back(i);
+	    }
+		Mat guassian_sample[N];
+		for(i=0; i<N; i++)
+		{
+			//printf("\n cluster label: %d, number: %ld \n", i, clusters_labels[i].size());
+			Mat samples_tmp( (int)clusters_labels[i].size(), 2, CV_32FC1 );
+			//samples_tmp = samples_tmp.reshape(2, 0);
+			for(j=0; j<clusters_labels[i].size(); j++)
+			{
+				samples_tmp.at<float>(j, 0) = all_samples.at<float>(clusters_labels[i][j], 0);
+				samples_tmp.at<float>(j, 1) = all_samples.at<float>(clusters_labels[i][j], 1);
+			}
+			guassian_sample[i] = samples_tmp;
+		}
+		for(i=0; i<N; i++)
+		{
+			gaussian_fi[i]= double(clusters_labels[i].size())/double(nsamples);
+			calcCovarMatrix(guassian_sample[i], gaussian_cov[i], gaussian_means[i], CV_COVAR_NORMAL|CV_COVAR_ROWS | CV_COVAR_SCALE);
+			/*
+			printf("\n == %d, %3f\n", clusters_labels[i].size(), determinant(gaussian_cov[i]) );
+			if(determinant(gaussian_cov[i])  < 0.0000001) cout << guassian_sample[i]<<endl;
+			cout<<gaussian_cov[i]<<endl;
+			*/
+		}
+
+	    //printf("\n Enter EM-iteration \n");
+
+		Mat em_labels(nsamples, 1, CV_32SC1 );
+
+		bool first_time = true;
+		for(iteration_time = 0; iteration_time < max_iteration; iteration_time++)
+		{
+			//printf("\niteration_time %d\n", iteration_time);
+
+			//E-Step: calculate "probsMat";
+			double current_likelihood = 0.0;
+			//for(i=0; i<N; i++) printf("means (%lf, %lf);\t fi:%lf\n", gaussian_means[i].at<double>(0,0), gaussian_means[i].at<double>(0,1), gaussian_fi[i]);
+
+			for(i=0; i<nsamples; i++)
+			{
+				Mat sample_i = all_samples.rowRange(i,i+1);
+				//printf("sample_i (%f, %f)\t", sample_i.at<float>(0,0), sample_i.at<float>(0,1));
+
+				double sample_i_likelihood = 0;
+				double total_weights = 0.0;
+				for(j=0; j<N; j++)
+				{
+					//printf("sample: %d, %d; means: %d, %d; cov: %d, %d\n", sample_i.rows, sample_i.cols, gaussian_means[j].rows, gaussian_means[j].cols, gaussian_cov[j].rows, gaussian_cov[j].cols);
+
+					probsMat.at<double>(i,j) = determinant(gaussian_cov[j])>DBL_MIN ? prob_2DGaussian(sample_i, gaussian_means[j], gaussian_cov[j]) : 1.0/clusters_labels[j].size();
+
+					//printf("probsMat %.12f\t", probsMat.at<double>(i,j));
+
+					sample_i_likelihood = sample_i_likelihood + probsMat.at<double>(i,j)*gaussian_fi[j];
+					total_weights = total_weights + probsMat.at<double>(i,j);
+				}
+
+				double largest_weight = 0.0;
+				int largest_cluster = 0;
+				for(j=0; j<N; j++)
+				{
+					if(probsMat.at<double>(i,j)>=largest_weight){largest_weight = probsMat.at<double>(i,j); largest_cluster=j;}
+					//printf("sample: %d, %d; means: %d, %d; cov: %d, %d\n", sample_i.rows, sample_i.cols, gaussian_means[j].rows, gaussian_means[j].cols, gaussian_cov[j].rows, gaussian_cov[j].cols);
+					weightMat.at<double>(i,j) =  probsMat.at<double>(i,j)/total_weights;
+					//printf("weight %lf\t", weightMat.at<double>(i,j));
+				}
+				em_labels.at<int>(i,0) = largest_cluster;
+
+				current_likelihood = current_likelihood+log(sample_i_likelihood);
+
+				//printf("largest_cluster %d \n", largest_cluster);
+			}
+
+			double delta_likelihood = current_likelihood - last_likelihood;
+			//printf("delta_likelihood %lf;\n", delta_likelihood);
+
+			last_likelihood = current_likelihood;
+			loglikelihood_output = current_likelihood;
+
+			if(first_time) { first_time=false;}
+			else if(delta_likelihood < likelihood_EPS) break;
+
+			//----------------------------------------M-Step: calculate "means, weights, covar matrices"--------------------------------------;
+			for(i=0; i<N; i++)
+			{
+				gaussian_fi[i] = 0.0;
+				gaussian_means[i] = 0.0;
+				gaussian_cov[i] = 0.0;
+
+				for(j=0; j<(nsamples); j++)
+				{
+					Mat sample_j = all_samples.rowRange(j,j+1);
+					Mat sample_j_tmp;
+					sample_j.convertTo(sample_j_tmp, CV_64F);
+					gaussian_fi[i] = gaussian_fi[i] + weightMat.at<double>(j,i);
+					gaussian_means[i] = gaussian_means[i] + weightMat.at<double>(j,i)*sample_j_tmp;
+				}
+				gaussian_means[i] = gaussian_means[i]/gaussian_fi[i];
+				gaussian_fi[i] = gaussian_fi[i]/nsamples;
+
+				//printf("means (%lf, %lf);\t fi:%lf\n", gaussian_means[i].at<double>(0,0), gaussian_means[i].at<double>(0,1), gaussian_fi[i]);
+
+				for(j=0; j<(nsamples); j++)
+				{
+					Mat sample_j = all_samples.rowRange(j,j+1);
+					Mat sample_j_tmp;
+					sample_j.convertTo(sample_j_tmp, CV_64F);
+					gaussian_cov[i] = gaussian_cov[i] + weightMat.at<double>(j,i)*(sample_j_tmp-gaussian_means[i]).t()*(sample_j_tmp-gaussian_means[i]);
+				}
+				gaussian_cov[i] = gaussian_cov[i]/(gaussian_fi[i]*(nsamples));
+
+			}
+		}
 	}
 
 	void AM_learner::draw_covMatrix_eclipse( Mat img, Mat CurrCovMat, Mat Means, int i)
@@ -733,13 +954,13 @@ namespace golfcar_semantics{
 		eigen( CurrCovMat, eigenvalues, eigenvectors );
 
 		double eigenvec1_len = eigenvalues.at<double>(0,0);
-		double len1          = sqrt(eigenvec1_len)*30;
+		double len1          = sqrt(eigenvec1_len)*10;
 		double eigenvec1_x   = eigenvectors.at<double>(0,0) * len1;
-		double eigenvec1_y   = eigenvectors.at<double>(1,0) * len1;
+		double eigenvec1_y   = eigenvectors.at<double>(0,1) * len1;
 
 		double eigenvec2_len = eigenvalues.at<double>(1,0);
-		double len2          = sqrt(eigenvec2_len)*30;
-		double eigenvec2_x   = eigenvectors.at<double>(0,1) * len2;
+		double len2          = sqrt(eigenvec2_len)*10;
+		double eigenvec2_x   = eigenvectors.at<double>(1,0) * len2;
 		double eigenvec2_y   = eigenvectors.at<double>(1,1) * len2;
 
 		// Show axes of ellipse
@@ -752,16 +973,37 @@ namespace golfcar_semantics{
 		double angle_rad = atan2( dy, dx );
 		double angle_deg = angle_rad * (180.0/M_PI); // convert radians (0,2PI) to degree (0°,360°)
 
-		ROS_INFO("cx, cy, eigenvec1_x, eigenvec1_y, eigenvec2_x, eigenvec2_y, angle_deg: (%3f, %3f), (%3f, %3f), (%3f, %3f), %3f", cx, cy, eigenvec1_x, eigenvec1_y, eigenvec2_x, eigenvec2_y, angle_deg);
-
 		cv::RotatedRect* myRotatedRect = new cv::RotatedRect( cvPoint(cx,cy), cvSize(len1, len2), angle_deg );
 		if (myRotatedRect != NULL)
 		{
-			int g = 1*255.0 * (i+1);
+			int g = 1*255.0;
 			cv::Scalar s = CV_RGB(g,g,g);
 			ellipse( img, *myRotatedRect, s );
 			delete myRotatedRect;
 		}
+	}
+
+	double AM_learner::prob_2DGaussian(Mat sample, Mat Mean, Mat CovMat)
+	{
+		//"sample" and "Mean" are row vectors (1x2); CovMat 2x2;
+		Mat sample_tmp;
+		sample.convertTo(sample_tmp, CV_64F);
+
+		/*
+		printf("sample_tmp (%f, %f)\t", sample_tmp.at<double>(0,0), sample_tmp.at<double>(0,1));
+		printf("Mean (%f, %f`)\t", Mean.at<double>(0,0), Mean.at<double>(0,1));
+		printf("CovMat (%f, %f, %f, %f)\t", CovMat.at<double>(0,0), CovMat.at<double>(0,1), CovMat.at<double>(1,0), CovMat.at<double>(1,1));
+		*/
+
+		//Pay attention to the special case where "2D Gaussian degenerates to 1D Gaussian"; lazy solution below;
+		if(determinant(CovMat)<DBL_MIN) return 0.0;
+
+		double p1 = 1/(2*M_PI*sqrt(determinant(CovMat)));
+		double p_tmp = (cv::sum((-0.5)*(sample_tmp-Mean)*CovMat.inv()*(sample_tmp-Mean).t())).val[0];
+		double p2 = std::exp(p_tmp);
+
+		//printf("p1 %f\t p_tmp %f\t p2 %f\t", p1, p_tmp, p2);
+		return p1*p2;
 	}
 
 	void AM_learner::ped_sidewalk()
@@ -782,13 +1024,24 @@ namespace golfcar_semantics{
 				}
 
 				double distance_factor;
-				if(grid_tmp.road_flag) distance_factor = (1.0-0.3*grid_tmp.obs_dist) > 0 ? (1.0-0.3*grid_tmp.obs_dist): 0.0;
-				else distance_factor = (1.0-0.2*grid_tmp.obs_dist) > 0 ? (1.0-0.2*grid_tmp.obs_dist): 0.0;
+				//if(grid_tmp.road_flag) distance_factor = (1.0-0.3*grid_tmp.obs_dist) > 0 ? (1.0-0.3*grid_tmp.obs_dist): 0.0;
+				//use "skel_dist" instead for on-road pedestrian sidewalk;
+				double half_road_width = 5.0;
+				if(grid_tmp.road_flag)
+				{
+					if(grid_tmp.skel_dist>2.0)
+					distance_factor = (0.01+ 0.9*grid_tmp.skel_dist/half_road_width) > 0.0 ? (0.01+ 0.9*grid_tmp.skel_dist/half_road_width): 0.0;
+					else
+					{
+						distance_factor = 0.01 + 2.0*grid_tmp.skel_dist/(grid_tmp.skel_dist+grid_tmp.obs_dist);
+					}
+				}
+				else distance_factor = (1.0-0.3*grid_tmp.obs_dist) > 0 ? (1.0-0.3*grid_tmp.obs_dist): 0.0;
 				//distance_factor = 1.0;
 
-				double intensity_factor;
-				intensity_factor = 0.1+log2 (double(grid_tmp.moving_activities.size()+1.0));
-				//intensity_factor = 1.0;
+				float pedPath_factor;
+				if(grid_tmp.pedPath_flag) pedPath_factor = 1.0;
+				else pedPath_factor = 0.00001;
 
 				//add one more criterion about "outside of cycles";
 				double cycle_factor = 1.0;
@@ -813,7 +1066,7 @@ namespace golfcar_semantics{
 				direction_factor_sidewalk = 1.0;
 				direction_factor_sidewalk = 1.0/(0.1+grid_tmp.probe_distance2*grid_tmp.probe_distance2);
 
-				grid_tmp.sidewalk_score = distance_factor*direction_factor_sidewalk * directionVar_factor*intensity_factor*cycle_factor;
+				grid_tmp.sidewalk_score = distance_factor*direction_factor_sidewalk * directionVar_factor*cycle_factor*pedPath_factor*grid_tmp.path_score;
 
 			}
 		}
@@ -932,9 +1185,9 @@ namespace golfcar_semantics{
 
 				float pedPath_factor;
 				if(grid_tmp.pedPath_flag) pedPath_factor = 1.0;
-				else pedPath_factor = 0.1;
+				else pedPath_factor = 0.00001;
 
-				grid_tmp.crossing_score = directionVar_factor*intensity_factor*direction_factor_crossing;
+				grid_tmp.crossing_score = directionVar_factor*direction_factor_crossing*pedPath_factor*grid_tmp.path_score;
 			}
 		}
 

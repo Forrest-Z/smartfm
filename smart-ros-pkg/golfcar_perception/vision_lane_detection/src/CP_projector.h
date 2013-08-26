@@ -81,7 +81,8 @@ namespace golfcar_vision{
 	IplImage* project_image11, *project_image12;
 	IplImage* project_image22;
 
-	IplImage* project_imageH00, *project_imageH01, *project_imageH02;
+	IplImage* project_imageH00, *project_image2H00, *project_image3H00, *project_image4H00, *project_image5H00, *project_image6H00, *project_image7H00, *project_image8H00, *project_image9H00;
+	IplImage* project_imageH01, *project_imageH02;
 	IplImage* project_imageH11, *project_imageH12;
 	IplImage* project_imageH22;
 
@@ -94,7 +95,7 @@ namespace golfcar_vision{
 	IplImage* project_image8H01, *project_image8H02;
 	IplImage* project_image9H01, *project_image9H02;
 
-	CvScalar vehicle1st_color, vehicle2nd_color;
+	CvScalar vehicle0_color, vehicle1st_color, vehicle2nd_color;
 
     string own_image_name_, project_image_name_, merged_name_;
 	double show_scale_;
@@ -105,10 +106,12 @@ namespace golfcar_vision{
 	double vehicle01_distance, vehicle02_distance, vehicle1st_velocity;
 	double vehicle12_distance, vehicle2nd_velocity;
 
-	ros::Subscriber vehicle1st_velo_sub_, vehicle2nd_velo_sub_;
+	ros::Subscriber vehicle0_velo_sub_, vehicle1st_velo_sub_, vehicle2nd_velo_sub_;
+	geometry_msgs::TwistStamped vehicle0_velo_, vehicle1st_velo_, vehicle2nd_velo_;
 
 	double distance_between_vehicles(std_msgs::Header vehicle1, std_msgs::Header vehicle2);
 
+	void velocity0_callback(const nav_msgs::Odometry::ConstPtr& velo_in);
 	void velocity1st_callback(const geometry_msgs::TwistStamped::ConstPtr& velo_in);
 	void velocity2nd_callback(const geometry_msgs::TwistStamped::ConstPtr& velo_in);
 

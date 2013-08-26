@@ -180,11 +180,7 @@ namespace golfcar_vision{
 
 		sw.start("other related processes");
 
-		PointCloudRGB rgb_pts;
-		rgb_pts.header.stamp = info_msg->header.stamp;
-		rgb_pts.header.frame_id = dest_frame_id_;
-		IpmImage_to_pclrgb (ipm_color_image_, rgb_pts);
-		rbg_pub_.publish(rgb_pts);
+
         
         //------------------------set ipm image values------------------------
         //this helps to reduce the artificial contours in adaptiveThreshold;
@@ -231,32 +227,6 @@ namespace golfcar_vision{
 			  }
 		}
 		  
-		////////////////////////////////////////////////
-		//visualization part;
-		////////////////////////////////////////////////
-		if(visualization_flag_)
-		{
-			cvCircle( color_image, cvPointFrom32f(srcQuad_[0]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( color_image, cvPointFrom32f(srcQuad_[1]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( color_image, cvPointFrom32f(srcQuad_[2]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( color_image, cvPointFrom32f(srcQuad_[3]), 6, CV_RGB(0,255,0), 2);
-			cvLine( color_image, cvPointFrom32f(srcQuad_[0]), cvPointFrom32f(srcQuad_[1]), CV_RGB(0,0,255), 1);
-			cvLine( color_image, cvPointFrom32f(srcQuad_[1]), cvPointFrom32f(srcQuad_[2]), CV_RGB(0,0,255), 1);
-			cvLine( color_image, cvPointFrom32f(srcQuad_[2]), cvPointFrom32f(srcQuad_[3]), CV_RGB(0,0,255), 1);
-			cvLine( color_image, cvPointFrom32f(srcQuad_[3]), cvPointFrom32f(srcQuad_[0]), CV_RGB(0,0,255), 1);
-			//cvShowImage("src_window", color_image);
-			resize_show(color_image, show_scale_, src_img_name_.c_str());
-
-			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[0]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[1]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[2]), 6, CV_RGB(0,255,0), 2);
-			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[3]), 6, CV_RGB(0,255,0), 2);
-			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[0]), cvPointFrom32f(dstQuad_[1]), CV_RGB(0,0,255), 1);
-			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[1]), cvPointFrom32f(dstQuad_[2]), CV_RGB(0,0,255), 1);
-			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[2]), cvPointFrom32f(dstQuad_[3]), CV_RGB(0,0,255), 1);
-			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[3]), cvPointFrom32f(dstQuad_[0]), CV_RGB(0,0,255), 1);
-			//cvShowImage("ipm_window", ipm_color_image_);
-		}
 
 		IplImage *binary_image;
         binary_image = cvCreateImage(cvGetSize(ipm_image_),8,1);
@@ -277,8 +247,7 @@ namespace golfcar_vision{
 		binary_msg->header = image_msg ->header;
 		binary_pub_.publish(binary_msg);
 
-		//this scentence is necessary;
-		cvWaitKey(1);
+
 
 		//to publish the
 		gndQuad_[2].y = - ipm_ROI_far_width_ /2.0;
@@ -305,6 +274,41 @@ namespace golfcar_vision{
 		}
 		gnd_polygon_publisher.publish(gnd_polygon);
 		img_polygon_publisher.publish(img_polygon);
+
+		PointCloudRGB rgb_pts;
+		rgb_pts.header.stamp = info_msg->header.stamp;
+		rgb_pts.header.frame_id = dest_frame_id_;
+		IpmImage_to_pclrgb (ipm_color_image_, rgb_pts);
+		rbg_pub_.publish(rgb_pts);
+
+		////////////////////////////////////////////////
+		//visualization part;
+		////////////////////////////////////////////////
+		if(visualization_flag_)
+		{
+			cvCircle( color_image, cvPointFrom32f(srcQuad_[0]), 6, CV_RGB(0,255,0), 2);
+			cvCircle( color_image, cvPointFrom32f(srcQuad_[1]), 6, CV_RGB(0,255,0), 2);
+			cvCircle( color_image, cvPointFrom32f(srcQuad_[2]), 6, CV_RGB(0,255,0), 2);
+			cvCircle( color_image, cvPointFrom32f(srcQuad_[3]), 6, CV_RGB(0,255,0), 2);
+			cvLine( color_image, cvPointFrom32f(srcQuad_[0]), cvPointFrom32f(srcQuad_[1]), CV_RGB(0,0,255), 1);
+			cvLine( color_image, cvPointFrom32f(srcQuad_[1]), cvPointFrom32f(srcQuad_[2]), CV_RGB(0,0,255), 1);
+			cvLine( color_image, cvPointFrom32f(srcQuad_[2]), cvPointFrom32f(srcQuad_[3]), CV_RGB(0,0,255), 1);
+			cvLine( color_image, cvPointFrom32f(srcQuad_[3]), cvPointFrom32f(srcQuad_[0]), CV_RGB(0,0,255), 1);
+			//cvShowImage("src_window", color_image);
+			resize_show(color_image, show_scale_, src_img_name_.c_str());
+
+			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[0]), 6, CV_RGB(0,255,0), 2);
+			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[1]), 6, CV_RGB(0,255,0), 2);
+			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[2]), 6, CV_RGB(0,255,0), 2);
+			cvCircle( ipm_color_image_, cvPointFrom32f(dstQuad_[3]), 6, CV_RGB(0,255,0), 2);
+			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[0]), cvPointFrom32f(dstQuad_[1]), CV_RGB(0,0,255), 1);
+			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[1]), cvPointFrom32f(dstQuad_[2]), CV_RGB(0,0,255), 1);
+			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[2]), cvPointFrom32f(dstQuad_[3]), CV_RGB(0,0,255), 1);
+			cvLine(   ipm_color_image_, cvPointFrom32f(dstQuad_[3]), cvPointFrom32f(dstQuad_[0]), CV_RGB(0,0,255), 1);
+			//cvShowImage("ipm_window", ipm_color_image_);
+		}
+		//this scentence is necessary;
+		cvWaitKey(1);
 
 		//Attention:
 		//color_image is not allocated memory as normal;
@@ -487,6 +491,9 @@ namespace golfcar_vision{
 	
    void ipm::IpmImage_to_pclrgb(IplImage* pts_image, PointCloudRGB &pts_rgb)
    {
+		std::vector<CvPoint2D32f> img_polygon_tmp;
+		for(size_t i=0; i<4; i++) img_polygon_tmp.push_back(cvPoint2D32f(img_polygon.polygon.points[i].x,img_polygon.polygon.points[i].y));
+
 		geometry_msgs::Point32 pttmp;
 		float center_x = ipm_center_x_ + camera_baselink_dis_ ;
 		float center_y = ipm_center_y_;
@@ -512,16 +519,12 @@ namespace golfcar_vision{
 				xyzRGB_pt.g = s.val[1];
 				xyzRGB_pt.r = s.val[2];
 				
-				if(xyzRGB_pt.b ==0 && xyzRGB_pt.g ==0 && xyzRGB_pt.r ==0)
-				{
-					xyzRGB_pt.b = 255;
-					xyzRGB_pt.g = 255;
-					xyzRGB_pt.r = 255;
-				}
+				if(!pointInPolygon(cvPoint2D32f(iw, ih), img_polygon_tmp))continue;
 				pts_rgb.points.push_back(xyzRGB_pt);
 			}
 		}
 	}
+
 
 
 	void ipm::curbCallback(const sensor_msgs::PointCloudConstPtr  curb_in)
