@@ -560,7 +560,6 @@ namespace golfcar_semantics{
 		ROS_INFO("max_value, min_value %5f, %5f", max_value, min_value);
 		normalize(intensity_image, intensity_image, 0.0, 1.0, NORM_MINMAX);
 
-
 		Mat intensity_image_tmp;
 		intensity_image.convertTo(intensity_image_tmp, CV_8U, 255.0, 0.0);
 		imwrite( "./data/intensity_image.jpg", intensity_image_tmp );
@@ -642,8 +641,9 @@ namespace golfcar_semantics{
 
 				float pedPath_factor;
 				if(grid_tmp.pedPath_flag) pedPath_factor = 1.0;
-				else pedPath_factor = 0.1;
-				grid_tmp.EE_score = distance_factor*directionVar_factor*intensity_factor*cycle_factor*direction_factor_crossing*pedPath_factor;
+				else pedPath_factor = 0.00001;
+
+				grid_tmp.EE_score = distance_factor*cycle_factor*direction_factor_crossing*directionVar_factor*pedPath_factor*grid_tmp.path_score;
 			}
 		}
 
@@ -1024,13 +1024,24 @@ namespace golfcar_semantics{
 				}
 
 				double distance_factor;
-				if(grid_tmp.road_flag) distance_factor = (1.0-0.3*grid_tmp.obs_dist) > 0 ? (1.0-0.3*grid_tmp.obs_dist): 0.0;
-				else distance_factor = (1.0-0.2*grid_tmp.obs_dist) > 0 ? (1.0-0.2*grid_tmp.obs_dist): 0.0;
+				//if(grid_tmp.road_flag) distance_factor = (1.0-0.3*grid_tmp.obs_dist) > 0 ? (1.0-0.3*grid_tmp.obs_dist): 0.0;
+				//use "skel_dist" instead for on-road pedestrian sidewalk;
+				double half_road_width = 5.0;
+				if(grid_tmp.road_flag)
+				{
+					if(grid_tmp.skel_dist>2.0)
+					distance_factor = (0.01+ 0.9*grid_tmp.skel_dist/half_road_width) > 0.0 ? (0.01+ 0.9*grid_tmp.skel_dist/half_road_width): 0.0;
+					else
+					{
+						distance_factor = 0.01 + 2.0*grid_tmp.skel_dist/(grid_tmp.skel_dist+grid_tmp.obs_dist);
+					}
+				}
+				else distance_factor = (1.0-0.3*grid_tmp.obs_dist) > 0 ? (1.0-0.3*grid_tmp.obs_dist): 0.0;
 				//distance_factor = 1.0;
 
-				double intensity_factor;
-				intensity_factor = 0.1+log2 (double(grid_tmp.moving_activities.size()+1.0));
-				//intensity_factor = 1.0;
+				float pedPath_factor;
+				if(grid_tmp.pedPath_flag) pedPath_factor = 1.0;
+				else pedPath_factor = 0.00001;
 
 				//add one more criterion about "outside of cycles";
 				double cycle_factor = 1.0;
@@ -1055,7 +1066,7 @@ namespace golfcar_semantics{
 				direction_factor_sidewalk = 1.0;
 				direction_factor_sidewalk = 1.0/(0.1+grid_tmp.probe_distance2*grid_tmp.probe_distance2);
 
-				grid_tmp.sidewalk_score = distance_factor*direction_factor_sidewalk * directionVar_factor*intensity_factor*cycle_factor;
+				grid_tmp.sidewalk_score = distance_factor*direction_factor_sidewalk * directionVar_factor*cycle_factor*pedPath_factor*grid_tmp.path_score;
 
 			}
 		}
@@ -1174,9 +1185,9 @@ namespace golfcar_semantics{
 
 				float pedPath_factor;
 				if(grid_tmp.pedPath_flag) pedPath_factor = 1.0;
-				else pedPath_factor = 0.1;
+				else pedPath_factor = 0.00001;
 
-				grid_tmp.crossing_score = directionVar_factor*intensity_factor*direction_factor_crossing;
+				grid_tmp.crossing_score = directionVar_factor*direction_factor_crossing*pedPath_factor*grid_tmp.path_score;
 			}
 		}
 
