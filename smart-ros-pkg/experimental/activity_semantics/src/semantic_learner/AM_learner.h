@@ -73,6 +73,8 @@ namespace golfcar_semantics
     	string gp_file_;
 		Rect gp_ROI_;
 		double GPmean_min_,GPmean_max_,GPvar_min_,GPvar_max_;
+		double GPmean_min2_,GPmean_max2_,GPvar_min2_,GPvar_max2_;
+
 
 		road_semantics* road_semantics_analyzer_;
 		vector <Point2f> SourceSinks_;

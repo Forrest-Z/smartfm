@@ -195,6 +195,20 @@ namespace golfcar_semantics{
 		//pay attention here, may not cover the full range;
 		double var_ratio  = (GPvar_max_-GPvar_min_)/256.0;
 
+		GPmean_min2_ = (double)fs_read["mean_min2"];
+		GPmean_max2_ = (double)fs_read["mean_max2"];
+		GPvar_min2_ = (double)fs_read["var_min2"];
+		GPvar_max2_ = (double)fs_read["var_max2"];
+		string gpMean_path2, gpVar_path2;
+		fs_read["gpMean_path2"]>> gpMean_path2;
+		fs_read["gpVar_path2"]>> gpVar_path2;
+		Mat gpMean2 = imread( gpMean_path2, CV_LOAD_IMAGE_GRAYSCALE );
+		Mat gpVar2  = imread( gpVar_path2,   CV_LOAD_IMAGE_GRAYSCALE );
+		double mean_ratio2 = (GPmean_max2_-GPmean_min2_)/256.0;
+		//pay attention here, may not cover the full range;
+		double var_ratio2  = (GPvar_max2_-GPvar_min2_)/256.0;
+
+
 		//incorporate the information into "activity_map";
 		int i, j;
 		for(j = 0; j < gp_ROI_.height; j++)
@@ -205,8 +219,44 @@ namespace golfcar_semantics{
 				int roi_y = gp_ROI_.height-1-j+gp_ROI_.y;
 
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, roi_x, roi_y)];
+				double sinThetha = double(gpMean.at<uchar>(j,i))*mean_ratio+GPmean_min_;
+				double sin2Thetha = double(gpMean2.at<uchar>(j,i))*mean_ratio2+GPmean_min2_;
+				double sinThethaVar = double(gpVar.at<uchar>(j,i))*var_ratio+GPvar_min_;
+				double sin2ThethaVar = double(gpVar2.at<uchar>(j,i))*var_ratio2+GPvar_min2_;
+
+				double thetha_sin[2], thetha_sin2[2];
+
+				thetha_sin[0] = asin(sinThetha);
+				thetha_sin[1] = M_PI - asin(sinThetha);
+
+				if(sin2Thetha>=0)
+				{
+					thetha_sin2[0] = asin(sin2Thetha)*0.5;
+					thetha_sin2[1] = M_PI_2 - asin(sin2Thetha)*0.5;
+				}
+				else
+				{
+					thetha_sin2[0] = M_PI + asin(sin2Thetha)*0.5;
+					thetha_sin2[1] = M_PI_2 - asin(sin2Thetha)*0.5;
+				}
+
+				double delta0_min = (fabs(thetha_sin[0]-thetha_sin2[0])<fabs(thetha_sin[0]-thetha_sin2[1])) ? fabs(thetha_sin[0]-thetha_sin2[0]): fabs(thetha_sin[0]-thetha_sin2[1]);
+				double delta1_min = (fabs(thetha_sin[1]-thetha_sin2[0])<fabs(thetha_sin[1]-thetha_sin2[1])) ? fabs(thetha_sin[1]-thetha_sin2[0]): fabs(thetha_sin[1]-thetha_sin2[1]);
+				grid_tmp.probe_direction = delta0_min < delta1_min ? thetha_sin[0]:thetha_sin[1];
+
+				grid_tmp.gp_estimation.val[0] = grid_tmp.probe_direction;
+				grid_tmp.gp_estimation.val[1] = double(gpVar.at<uchar>(j,i))*var_ratio+GPvar_min_;
+
+				/*
 				grid_tmp.gp_estimation.val[0] = double(gpMean.at<uchar>(j,i))*mean_ratio+GPmean_min_;
 				grid_tmp.gp_estimation.val[1] = double(gpVar.at<uchar>(j,i))*var_ratio+GPvar_min_;
+				assert(grid_tmp.gp_estimation.val[0]>= 0.0 && grid_tmp.gp_estimation.val[0]<=1.0);
+				double angle_gp1 = asin(grid_tmp.gp_estimation.val[0]);
+				double angle_gp2 = M_PI - angle_gp1;
+				double angle_dist1 = fabs(angle_gp1 - grid_tmp.direction_gaussion.val[0]);
+				double angle_dist2 = fabs(angle_gp2 - grid_tmp.direction_gaussion.val[0]);
+				grid_tmp.probe_direction = (angle_dist1<angle_dist2)?angle_gp1:angle_gp2;
+				*/
 			}
 		}
 	}
@@ -413,14 +463,6 @@ namespace golfcar_semantics{
 	void AM_learner::direction_probe(int x_grid, int y_grid)
 	{
 		activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, x_grid, y_grid)];
-		assert(grid_tmp.gp_estimation.val[0]>= 0.0 && grid_tmp.gp_estimation.val[0]<=1.0);
-
-		double angle_gp1 = asin(grid_tmp.gp_estimation.val[0]);
-		double angle_gp2 = M_PI - angle_gp1;
-		double angle_dist1 = fabs(angle_gp1 - grid_tmp.direction_gaussion.val[0]);
-		double angle_dist2 = fabs(angle_gp2 - grid_tmp.direction_gaussion.val[0]);
-
-		grid_tmp.probe_direction = (angle_dist1<angle_dist2)?angle_gp1:angle_gp2;
 
 		double grid_realx = double(x_grid)*map_scale_;
 		double grid_realy = double(y_grid)*map_scale_;
@@ -556,7 +598,7 @@ namespace golfcar_semantics{
 
 		GaussianBlur (intensity_image, intensity_image, cv::Size (5, 5), 0);
 		double max_value, min_value;
-		minMaxIdx(intensity_image, &max_value, &min_value, NULL, NULL);
+		minMaxIdx(intensity_image, &min_value, &max_value, NULL, NULL);
 		ROS_INFO("max_value, min_value %5f, %5f", max_value, min_value);
 		normalize(intensity_image, intensity_image, 0.0, 1.0, NORM_MINMAX);
 
@@ -632,7 +674,6 @@ namespace golfcar_semantics{
 				//directionVar_factor = 1.0;
 
 				double direction_factor_crossing;
-				//direction_factor = fabs(grid_tmp.skel_angle-grid_tmp.gp_estimation.val[0]);
 				direction_factor_crossing = 1.0;
 				direction_factor_crossing = grid_tmp.probe_distance1;
 
@@ -676,7 +717,7 @@ namespace golfcar_semantics{
 		}
 		Mat EE_color_tmp;
 		EE_color.convertTo(EE_color_tmp, CV_8U, 255.0, 0.0);
-		threshold(EE_color_tmp, EE_color_tmp, 20, 255, 0);
+		//threshold(EE_color_tmp, EE_color_tmp, 20, 255, 0);
 		imwrite( "./data/EE_color.jpg", EE_color_tmp );
 
 		ped_SSEM();
@@ -1248,8 +1289,12 @@ namespace golfcar_semantics{
 
 		double minVal, maxVal;
 		minMaxLoc(direction_color, &minVal, &maxVal); //find minimum and maximum intensities
+
+		ROS_INFO("direction_color (minVal, maxVal) (%3f, %3f)", minVal, maxVal);
+
 		Mat draw1;
-		direction_color.convertTo(draw1, CV_8U, 255.0/(maxVal - minVal), -minVal * 255.0/(maxVal - minVal));
+		//direction_color.convertTo(draw1, CV_8U, 255.0/(maxVal - minVal), -minVal * 255.0/(maxVal - minVal));
+		direction_color.convertTo(draw1, CV_8U, 255.0/(M_PI), 0.0);
 		minMaxLoc(directionVar_color, &minVal, &maxVal); //find minimum and maximum intensities
 		Mat draw2;
 		directionVar_color.convertTo(draw2, CV_8U, 255.0/(maxVal - minVal), -minVal * 255.0/(maxVal - minVal));

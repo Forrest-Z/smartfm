@@ -11,8 +11,16 @@ gp_ROI_height: 973
 
 mean_min: 0.0
 mean_max: 1.0
-var_min: 0
-var_max: 0.01
+var_min: 0.0257
+var_max: 0.0855
 gpMean_path: "./launch/flow_direction.jpg"
 gpVar_path: "./launch/flow_directionVar.jpg"
+
+mean_min2: -0.1156
+mean_max2: 0.9878
+var_min2: 0.0368
+var_max2: 0.1124
+gpMean_path2: "./launch/flow_direction_2thetha.jpg"
+gpVar_path2: "./launch/flow_directionVar_2thetha.jpg"
+
 binary_img_path: "./launch/binary.jpg"

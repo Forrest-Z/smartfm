@@ -38,7 +38,7 @@ for n = 1:N
         thetha(total) = fscanf(fid, '%*f%f\t', 1);
         x(total)=x_tmp-offset_x;
         y(total)=y_tmp-offset_y;
-        z(total)= sin(thetha(total));
+        z(total)= sin(2.0*thetha(total));
         
         if z(total)<0
             %this may happen because precision problem;
@@ -117,11 +117,11 @@ minVar_vector = min(s2); minVar = min(minVar_vector);
 maxMean
 minMean
 
-direction_mean = mat2gray(m_deputy, [0.0 1.0]);
-imwrite(direction_mean, 'flow_direction.jpg', 'jpg');
+direction_mean = mat2gray(m_deputy, [minMean maxMean]);
+imwrite(direction_mean, 'flow_direction_2thetha.jpg', 'jpg');
 
 maxVar
 minVar
 
 direction_var = mat2gray(s2_deputy, [minVar maxVar]);
-imwrite(direction_var, 'flow_directionVar.jpg', 'jpg');
+imwrite(direction_var, 'flow_directionVar_2thetha.jpg', 'jpg');
