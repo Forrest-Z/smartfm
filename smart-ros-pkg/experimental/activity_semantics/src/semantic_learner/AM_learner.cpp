@@ -14,7 +14,6 @@ namespace golfcar_semantics{
 		road_semantics_analyzer_ = road_semantics_analyzer;
 	}
 
-
 	void AM_learner::GridMap_init()
 	{
 		//1st: allocate memory for the grid map;
@@ -245,7 +244,20 @@ namespace golfcar_semantics{
 				grid_tmp.probe_direction = delta0_min < delta1_min ? thetha_sin[0]:thetha_sin[1];
 
 				grid_tmp.gp_estimation.val[0] = grid_tmp.probe_direction;
-				grid_tmp.gp_estimation.val[1] = double(gpVar.at<uchar>(j,i))*var_ratio+GPvar_min_;
+				grid_tmp.gp_estimation.val[1] = sinThethaVar;
+
+				/*
+				double sinThetha_deriv = cos(grid_tmp.gp_estimation.val[0]);
+				double sin2Thetha_deriv =2.0*cos(grid_tmp.gp_estimation.val[0]*2.0);
+				if(fabs(sinThetha_deriv)>=fabs(sin2Thetha_deriv))
+				{
+					grid_tmp.gp_estimation.val[1] = sinThethaVar/pow(sinThetha_deriv, 2.0);
+				}
+				else
+				{
+					grid_tmp.gp_estimation.val[1] = sin2ThethaVar/pow(sin2Thetha_deriv, 2.0);
+				}
+				*/
 
 				/*
 				grid_tmp.gp_estimation.val[0] = double(gpMean.at<uchar>(j,i))*mean_ratio+GPmean_min_;
@@ -259,6 +271,8 @@ namespace golfcar_semantics{
 				*/
 			}
 		}
+
+		show_moving_direction();
 	}
 
 	void AM_learner::obstacle_dist()
@@ -303,6 +317,7 @@ namespace golfcar_semantics{
 		}
 	}
 
+	/*
 	void AM_learner::boundary_direction()
 	{
 		FileStorage fs_read(gp_file_, FileStorage::READ);
@@ -380,11 +395,12 @@ namespace golfcar_semantics{
 				}
 
 				//grid_tmp.skel_angle = sin(edge_angle);
-				grid_tmp.skel_angle = sin(edge_angle);
+				grid_tmp.skel_angle = (edge_angle);
 				//printf("dist %f skel_angle %f\t", dist_between_ends, grid_tmp.skel_angle);
 			}
 		}
 	}
+	*/
 
 	void AM_learner::skel_direction()
 	{
@@ -430,7 +446,7 @@ namespace golfcar_semantics{
 				int left_end = nearest_ptID;
 				int right_end = nearest_ptID;
 				double dist_between_ends = 0.0;
-				double dist_threshold = 2.0;
+				double dist_threshold = 5.0;
 				bool reach_two_ends = false;
 				vector<CvPoint> &deputy_points = road_network.edges[nearest_edgeID].cubic_spline->output_points_;
 
@@ -450,7 +466,7 @@ namespace golfcar_semantics{
 				}
 
 				grid_tmp.skel_dist = nearest_dist;
-				grid_tmp.skel_angle = sin(edge_angle);
+				grid_tmp.skel_angle = edge_angle;
 				grid_tmp.nearest_edge_ID = nearest_edgeID;
 				//printf("dist %f skel_angle %f\t", dist_between_ends, grid_tmp.skel_angle);
 
@@ -467,7 +483,7 @@ namespace golfcar_semantics{
 		double grid_realx = double(x_grid)*map_scale_;
 		double grid_realy = double(y_grid)*map_scale_;
 
-		double probe_length1 = 5.0;
+		double probe_length1 = 10.0;
 
 		Point2d end_point1, end_point2;
 		end_point1.x = grid_realx + probe_length1*cos(grid_tmp.probe_direction);
@@ -482,15 +498,21 @@ namespace golfcar_semantics{
 		int PtID1, PtID2;
 		find_nearest_points(end_point1.x, end_point1.y, deputy_points, PtID1, dist1);
 		find_nearest_points(end_point2.x, end_point2.y, deputy_points, PtID2, dist2);
+		//grid_tmp.probe_distance1 = (dist1 - grid_tmp.skel_dist)>(dist2 - grid_tmp.skel_dist)?(dist1 - grid_tmp.skel_dist):(dist2 - grid_tmp.skel_dist);
 
-		//if(PtID1==0||(PtID1+1)==deputy_points.size()) dist1 = 0.1;
-		//if(PtID2==0||(PtID2+1)==deputy_points.size()) dist2 = 0.1;
-
-		//grid_tmp.probe_distance1 = dist1>dist2? dist1:dist2;
-		//grid_tmp.probe_distance1 = grid_tmp.probe_distance1 - grid_tmp.skel_dist;
-
-		grid_tmp.probe_distance1 = (dist1 - grid_tmp.skel_dist)>(dist2 - grid_tmp.skel_dist)?(dist1 - grid_tmp.skel_dist):(dist2 - grid_tmp.skel_dist);
-		grid_tmp.probe_distance1 = (grid_tmp.probe_distance1-1)>0?(grid_tmp.probe_distance1-1):0;
+		int roi_x1 = floor(end_point1.x/map_scale_);
+		int roi_y1 = floor(end_point1.y/map_scale_);
+		int roi_x2 = floor(end_point2.x/map_scale_);
+		int roi_y2 = floor(end_point2.y/map_scale_);
+		activity_grid &grid_tmp1 = AM_->cells[MAP_INDEX(AM_, roi_x1, roi_y1)];
+		activity_grid &grid_tmp2 = AM_->cells[MAP_INDEX(AM_, roi_x2, roi_y2)];
+		double delt_skel_angle1, delt_skel_angle2;
+		delt_skel_angle1 = fabs(grid_tmp1.skel_angle - grid_tmp.gp_estimation[0])<M_PI_2 ? fabs(grid_tmp1.skel_angle - grid_tmp.gp_estimation[0]) : M_PI-fabs(grid_tmp1.skel_angle - grid_tmp.gp_estimation[0]);
+		delt_skel_angle2 = fabs(grid_tmp2.skel_angle - grid_tmp.gp_estimation[0])<M_PI_2 ? fabs(grid_tmp2.skel_angle - grid_tmp.gp_estimation[0]) : M_PI-fabs(grid_tmp2.skel_angle - grid_tmp.gp_estimation[0]);
+		double max_delt_skel = delt_skel_angle1>delt_skel_angle2?delt_skel_angle1:delt_skel_angle2;
+		//grid_tmp.probe_distance1 = fabs(grid_tmp.skel_angle)<M_PI_2?fabs(grid_tmp.skel_angle):M_PI -fabs(grid_tmp.skel_angle);
+		//it turns out that the accuracy of spline's skel_angle is quite important;
+		grid_tmp.probe_distance1 = max_delt_skel;
 
 		//introduce into another measurement: probe_distance2;
 		double probe_length2 = 1.0;
@@ -675,6 +697,7 @@ namespace golfcar_semantics{
 
 				double direction_factor_crossing;
 				direction_factor_crossing = 1.0;
+				//direction_factor_crossing = (grid_tmp.probe_distance1-1.0)>0?(grid_tmp.probe_distance1-1.0):0;
 				direction_factor_crossing = grid_tmp.probe_distance1;
 
 				//if(grid_tmp.pedPath_flag) intensity_factor = intensity_factor;
@@ -685,6 +708,7 @@ namespace golfcar_semantics{
 				else pedPath_factor = 0.00001;
 
 				grid_tmp.EE_score = distance_factor*cycle_factor*direction_factor_crossing*directionVar_factor*pedPath_factor*grid_tmp.path_score;
+				//grid_tmp.EE_score = direction_factor_crossing;
 			}
 		}
 
@@ -701,7 +725,9 @@ namespace golfcar_semantics{
 				EE_color.at<float>(y,x) = (float)(grid_tmp.EE_score);
 			}
 		}
-
+		double minVal, maxVal;
+		minMaxLoc(EE_color, &minVal, &maxVal); //find minimum and maximum intensities
+		ROS_INFO("EE_color, minVAL, maxVal %3f, %3f", minVal, maxVal);
 
 		normalize(EE_color, EE_color, 0.0, 1.0, NORM_MINMAX);
 		for(j = 0; j < AM_->size_y; j++)
@@ -717,7 +743,7 @@ namespace golfcar_semantics{
 		}
 		Mat EE_color_tmp;
 		EE_color.convertTo(EE_color_tmp, CV_8U, 255.0, 0.0);
-		//threshold(EE_color_tmp, EE_color_tmp, 20, 255, 0);
+		//threshold(EE_color_tmp, EE_color_tmp, 30, 255, 0);
 		imwrite( "./data/EE_color.jpg", EE_color_tmp );
 
 		ped_SSEM();
@@ -725,7 +751,7 @@ namespace golfcar_semantics{
 
 	void AM_learner::ped_SSEM()
 	{
-		Mat img_visual = Mat::zeros( Size( AM_->size_y, AM_->size_x ), CV_8UC3 );
+		Mat img_visual = Mat::zeros( AM_->size_y, AM_->size_x, CV_8UC3 );
 	    const Scalar colors[] =
 	    {
 	        Scalar(0,0,255), Scalar(0,255,0),
@@ -742,7 +768,7 @@ namespace golfcar_semantics{
 			for (i = 0; i < AM_->size_x; i++)
 			{
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
-				if(grid_tmp.EE_score>=20.0/255)
+				if(grid_tmp.EE_score>=30.0/255)
 				{
 					Vec2f sample_tmp(i, j);
 					samples_vector.push_back(sample_tmp);
@@ -1108,7 +1134,7 @@ namespace golfcar_semantics{
 				direction_factor_sidewalk = 1.0/(0.1+grid_tmp.probe_distance2*grid_tmp.probe_distance2);
 
 				grid_tmp.sidewalk_score = distance_factor*direction_factor_sidewalk * directionVar_factor*cycle_factor*pedPath_factor*grid_tmp.path_score;
-
+				//grid_tmp.sidewalk_score = direction_factor_sidewalk;
 			}
 		}
 
@@ -1215,12 +1241,17 @@ namespace golfcar_semantics{
 
 					activity_grid &grid_tmp1 = AM_->cells[MAP_INDEX(AM_, roi_x1, roi_y1)];
 					activity_grid &grid_tmp2 = AM_->cells[MAP_INDEX(AM_, roi_x2, roi_y2)];
-					double direction_factor2 = fabs(grid_tmp1.gp_estimation.val[0]-grid_tmp.gp_estimation.val[0])*fabs(grid_tmp2.gp_estimation.val[0]-grid_tmp1.gp_estimation.val[0]);
-					//ROS_INFO("direction_factor2 %3f", direction_factor2);
 
-					if(direction_factor2 < 0.001) direction_factor2 = 1000.0;
-					else direction_factor2 = 1/direction_factor2;
-					//direction_factor2 = 1.0;
+					double delt_angle1 = fabs(grid_tmp1.gp_estimation.val[0]-grid_tmp.gp_estimation.val[0]) < M_PI_2 ? fabs(grid_tmp1.gp_estimation.val[0]-grid_tmp.gp_estimation.val[0]): (M_PI - fabs(grid_tmp1.gp_estimation.val[0]-grid_tmp.gp_estimation.val[0]));
+					double delt_angle2 = fabs(grid_tmp2.gp_estimation.val[0]-grid_tmp.gp_estimation.val[0]) < M_PI_2 ? fabs(grid_tmp2.gp_estimation.val[0]-grid_tmp.gp_estimation.val[0]): (M_PI - fabs(grid_tmp2.gp_estimation.val[0]-grid_tmp.gp_estimation.val[0]));
+
+					double direction_factor2 = (M_PI_2-delt_angle1)*(M_PI_2-delt_angle2);
+
+					//ROS_INFO("direction_factor2 %3f", direction_factor2);
+					if(direction_factor2 < DBL_MIN) direction_factor2 = 0.0;
+					else direction_factor2 =direction_factor2 /(M_PI_2*M_PI_2);
+
+					//direction_factor1 = 1.0;
 					direction_factor_crossing = direction_factor1*direction_factor2;
 				}
 
@@ -1249,7 +1280,7 @@ namespace golfcar_semantics{
 		Mat crossing_color_tmp;
 		crossing_color.convertTo(crossing_color_tmp, CV_8U, 255.0, 0.0);
 		imwrite( "./data/crossing_color_probability.jpg", crossing_color_tmp );
-		threshold(crossing_color_tmp, crossing_color_tmp, 20, 255, 0);
+		threshold(crossing_color_tmp, crossing_color_tmp, 30, 255, 0);
 		imwrite( "./data/crossing_color.jpg", crossing_color_tmp );
 	}
 
@@ -1283,7 +1314,7 @@ namespace golfcar_semantics{
 				//directionVar_color.at<float>(y,x)  = (float)sqrt(grid_tmp.direction_gaussion.val[1]);
 
 				direction_color.at<float>(y,x) = (float)(grid_tmp.gp_estimation.val[0]);
-				directionVar_color.at<float>(y,x)  = (float)sqrt(grid_tmp.gp_estimation.val[1]);
+				directionVar_color.at<float>(y,x)  = (float)(grid_tmp.gp_estimation.val[1]);
 			}
 		}
 
@@ -1295,8 +1326,9 @@ namespace golfcar_semantics{
 		Mat draw1;
 		//direction_color.convertTo(draw1, CV_8U, 255.0/(maxVal - minVal), -minVal * 255.0/(maxVal - minVal));
 		direction_color.convertTo(draw1, CV_8U, 255.0/(M_PI), 0.0);
-		minMaxLoc(directionVar_color, &minVal, &maxVal); //find minimum and maximum intensities
+
 		Mat draw2;
+		minMaxLoc(directionVar_color, &minVal, &maxVal); //find minimum and maximum intensities
 		directionVar_color.convertTo(draw2, CV_8U, 255.0/(maxVal - minVal), -minVal * 255.0/(maxVal - minVal));
 
 		Mat jetcolor, jetcolorVar;
