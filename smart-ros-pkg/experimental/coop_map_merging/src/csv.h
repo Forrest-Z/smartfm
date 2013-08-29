@@ -6,10 +6,10 @@ using namespace std;
 
 #define stringArray std::vector<std::string>
 
-void readInput(char* fileName, stringArray &listString) {
+void readInput(string fileName, stringArray &listString) {
 //    printf("****************ReadInput***************\n");
  
-    ifstream fin(fileName);
+    ifstream fin(fileName.c_str());
     string tmp = ""; // a line in the input file
     while(getline(fin, tmp)) {
         // add string into vector
@@ -52,8 +52,8 @@ void parseValues(sensor_msgs::PointCloud &pcl_scan, stringArray &listString) {
 /*
  * parseValues is to write data at the beginning of file
  */
-void writeToCSV(char* fileName, sensor_msgs::PointCloud &pcl_scan) {
-  ofstream fout(fileName);
+void writeToCSV(string fileName, sensor_msgs::PointCloud &pcl_scan) {
+  ofstream fout(fileName.c_str());
 
   // for each row
   for (int i = 0; i < pcl_scan.points.size(); ++i) {
@@ -63,7 +63,7 @@ void writeToCSV(char* fileName, sensor_msgs::PointCloud &pcl_scan) {
   fout.close();
 }
 
-void CSVtoPointCloud(char* fileName, sensor_msgs::PointCloud &pcl_scan)
+void CSVtoPointCloud(string fileName, sensor_msgs::PointCloud &pcl_scan)
 {
   stringArray listString;
 
