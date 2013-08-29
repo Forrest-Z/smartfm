@@ -51,6 +51,7 @@ void pedestrian_momdp::speedCallback(nav_msgs::Odometry odo)
 
 void pedestrian_momdp::moveSpeedCallback(geometry_msgs::Twist speed)
 {
+    speed.angular.z = -speed.angular.z;
     momdp->updateSteerAnglePublishSpeed(speed);
 
 }
@@ -66,7 +67,9 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
         {
             ///if ped_id does not match the old one create a new pomdp problem.
             ROS_INFO(" Creating  a new pedestrian problem #%d", lPedLocal.ped_local[ii].ped_id);
-            momdp->addNewPed(lPedLocal.ped_local[ii]);
+            //momdp->addNewPed(lPedLocal.ped_local[ii]);
+            Executer* exec=new Executer();
+            momdp->Executers.push_back(exec);
         }
     }
 

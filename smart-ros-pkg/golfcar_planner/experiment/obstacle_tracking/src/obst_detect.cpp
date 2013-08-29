@@ -151,6 +151,7 @@ void ObstDetect::PointcloudCB(sensor_msgs::PointCloud2ConstPtr pc){
 }
 
 void ObstDetect::Laser1CB(sensor_msgs::LaserScanConstPtr scan_in){
+	ROS_INFO("LaserScan");
     sensor_msgs::LaserScan scan_copy = *scan_in;
     sensor_msgs::PointCloud laser_cloud;
     try{

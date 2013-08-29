@@ -190,16 +190,16 @@ void Visualizer::speedCallback(const geometry_msgs::TwistStampedConstPtr cmd, co
     nh.param("speedchart_bg", speedchart_bg, string(""));
     IplImage *img = cvLoadImage(speedchart_bg.c_str());
     setCustomGraphColor(colors[RED]); //red
-    drawFloatGraph(&sp_chart.cmd[0], sp_chart.cmd.size(), img, 0, 2.0, img->width, img->height, "Speed command");
+    //drawFloatGraph(&sp_chart.cmd[0], sp_chart.cmd.size(), img, 0, 2.0, img->width, img->height, "Speed command");
     setCustomGraphColor(colors[GREEN]); //green
     //drawFloatGraph(&sp_chart.feedback[0], sp_chart.feedback.size(), img, 0, 2.5, img->width, img->height);
-    IplImage *img2 = cvCreateImage(cvSize(img->width,img->height), 8, 3);
+    /*IplImage *img2 = cvCreateImage(cvSize(img->width,img->height), 8, 3);
     cvResize(img, img2);
     cvNamedWindow("Speed Command", CV_WINDOW_AUTOSIZE);
-    cvShowImage("Speed Command", img2);
+    cvShowImage("Speed Command", img2);*/
     if((char)cvWaitKey(3) == 's');
     cvReleaseImage(&img);
-    cvReleaseImage(&img2);
+    //cvReleaseImage(&img2);
 
     extrapolateBelief();
     drawBeliefChart();
@@ -284,6 +284,10 @@ void Visualizer::drawBeliefChart()
     string beliefchart_bg;
     nh.param("beliefchart_bg", beliefchart_bg, string(""));
     IplImage *img = cvLoadImage(beliefchart_bg.c_str());
+    if(img == NULL){
+        cout<<"No image available, check beliefchart_bg is loaded"<<endl;
+        return;
+    }
     for(size_t i=0; i<4; i++)
     {
         setCustomGraphColor(colors[i]); //purple
@@ -607,7 +611,7 @@ void Visualizer::colorHist(cv::Mat src)
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "MOMDP_Visualizer");
+    ros::init(argc, argv, "visualizer_laser");
     ros::NodeHandle n;
     Visualizer * ic = new Visualizer(n);
     return 0;
