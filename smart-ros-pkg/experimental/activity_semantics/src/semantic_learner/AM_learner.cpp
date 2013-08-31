@@ -73,6 +73,7 @@ namespace golfcar_semantics{
 			activity_tmp.depth = track.elements[element_serial].depth;
 
 			bool activity_calculated = false;
+
 			if(element_serial>0)
 			{
 				for(size_t i=element_serial-1; i<element_serial; i--)
@@ -88,6 +89,7 @@ namespace golfcar_semantics{
 					}
 				}
 			}
+
 			if(!activity_calculated)
 			{
 				for(size_t i=element_serial; i<track.elements.size(); i++)

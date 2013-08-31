@@ -11,6 +11,14 @@ namespace golfcar_semantics{
 		printf("%ld, %f, %f\n", track_size_thresh_, track_time_thresh, track_length_thresh);
 	}
 
+	void track_processor::process_tracks()
+	{
+		ped_track_classification();
+		calc_speed_and_thetha();
+		cluster_moving_tracks();
+		interpolate_elements();
+	}
+
 	void track_processor::ped_track_classification()
 	{
 		size_t moving_track_num=0;
@@ -29,8 +37,17 @@ namespace golfcar_semantics{
 
 				if(track_length >= track_length_thresh_)
 				{
-					ped_track.ped_activity = MOVING;
-					moving_track_num++;
+					if(!check_Uturn_track(ped_track))
+					{
+						ped_track.ped_activity = MOVING;
+						moving_track_num++;
+					}
+					else
+					{
+						//tracks classified as noise;
+						ped_track.ped_activity = NOISE;
+						noisy_track_num++;
+					}
 				}
 				else
 				{
@@ -46,9 +63,210 @@ namespace golfcar_semantics{
 			}
 		}
 		ROS_INFO("moving_tracks: %ld, : static_tracks: %ld, noisy_tracks %ld", moving_track_num, static_track_num, noisy_track_num);
+	}
 
+	//If this track contains big Uturn, return true; else return false;
+	//When a track has Uturn, it is denoted as noisy track for our motion learning purpose;
+	bool track_processor::check_Uturn_track(track_common &track)
+	{
+		return false;
+	}
+
+	void track_processor::calc_speed_and_thetha()
+	{
+		for(size_t i=0; i<track_container_->tracks.size(); i++)
+		{
+			track_common &track = track_container_->tracks[i];
+			if(track.ped_activity == MOVING)
+			{
+				for(size_t j=0; j<track.elements.size(); j++)
+				{
+					size_t element_serial = j;
+					bool activity_calculated = false;
+
+					if(element_serial>0)
+					{
+						for(size_t p=element_serial-1; p!=0; p--)
+						{
+							double distance = fmutil::distance(track.elements[element_serial], track.elements[p]);
+							if(distance >= 1.0)
+							{
+								track.elements[element_serial].thetha = std::atan2(track.elements[element_serial].y-track.elements[p].y, track.elements[element_serial].x-track.elements[p].x);
+								track.elements[element_serial].speed = distance/(track.elements[element_serial].time - track.elements[p].time);
+								activity_calculated = true;
+								break;
+							}
+						}
+					}
+
+					if(!activity_calculated)
+					{
+						for(size_t p=element_serial; p<track.elements.size(); p++)
+						{
+							double distance = fmutil::distance(track.elements[p], track.elements[element_serial]);
+							if(distance >= 0.3)
+							{
+								track.elements[element_serial].thetha = std::atan2(track.elements[p].y-track.elements[element_serial].y, track.elements[p].x-track.elements[element_serial].x);
+								track.elements[element_serial].speed  = distance/(track.elements[p].time - track.elements[element_serial].time);
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+
+	}
+
+	void track_processor::cluster_moving_tracks()
+	{
+		for(size_t i=0; i<track_container_->tracks.size(); i++)
+		{
+			if(track_container_->tracks[i].ped_activity != MOVING)continue;
+			track_container_->tracks[i].cluster_label = 0;
+		}
+
+		vector<size_t> cluster_a, cluster_b;
+		vector<track_element> elements_a, elements_b;
+
+		//1st step: find the longest track as initial seed of cluster_a; and find its most dissimilar track as initial seed for cluster_b;
+
+		//1.a: to get the longest track;
+		//here the "length" is defined as the number of elements in a track;
+		size_t longest_serial = 0; size_t longest_length = 0;
+		for(size_t i=0; i<track_container_->tracks.size(); i++)
+		{
+			if(track_container_->tracks[i].ped_activity != MOVING)continue;
+
+			track_common &track = track_container_->tracks[i];
+			if(track.track_length>longest_length){longest_length = track.track_length; longest_serial = i;}
+		}
+
+		track_container_->tracks[longest_serial].cluster_label = 1;
+		cluster_a.push_back(longest_serial);
+		for(size_t i=0; i<track_container_->tracks[longest_serial].elements.size(); i++)
+		{elements_a.push_back(track_container_->tracks[longest_serial].elements[i]);}
+
+		//1.b: to get the most dissimilar track;
+		size_t min_similar_serial = 0; double min_similar_score = DBL_MAX;
+		for(size_t i=0; i<track_container_->tracks.size(); i++)
+		{
+			if(track_container_->tracks[i].ped_activity != MOVING)continue;
+
+			if(track_container_->tracks[i].cluster_label!=0)continue;
+			track_common &track = track_container_->tracks[i];
+			double track_MaxSim, track_MinSim;
+			calc_track_MaxMinSimScore(track, elements_a, track_MaxSim,  track_MinSim);
+			if(track_MinSim < min_similar_score){min_similar_score = track_MinSim; min_similar_serial = i;}
+		}
+		track_container_->tracks[min_similar_serial].cluster_label = 2;
+		cluster_b.push_back(min_similar_serial);
+		for(size_t i=0; i<track_container_->tracks[min_similar_serial].elements.size(); i++)
+		{elements_b.push_back(track_container_->tracks[min_similar_serial].elements[i]);}
+
+		ROS_INFO("initial track for cluster_a: %ld; initial track for cluster_b: %ld", longest_serial, min_similar_serial);
+		//2nd step: to concatenate the tracks with initial 2 seeds;
+		bool track_remained_to_cluster = true;
+		while(track_remained_to_cluster)
+		{
+			//if there is still track(s) to be clustered, cluster_a first find its most similar track, "grow from near to far";
+			size_t MaxMscore_track_serial_a = 0; size_t MaxMscore_track_serial_b = 0;
+			double MaxMscore_a = -DBL_MAX; double MaxMscore_b = -DBL_MAX;
+			for(size_t i=0; i<track_container_->tracks.size(); i++)
+			{
+				if(track_container_->tracks[i].ped_activity != MOVING)continue;
+				if(track_container_->tracks[i].cluster_label!=0)continue;
+
+				track_common &track = track_container_->tracks[i];
+				double track_MaxSim_a, track_MinSim_a, track_Mscore_a;
+				calc_track_MaxMinSimScore(track, elements_a, track_MaxSim_a,  track_MinSim_a);
+				track_Mscore_a = (track_MaxSim_a + track_MinSim_a)*0.5;
+				if(track_Mscore_a > MaxMscore_a){MaxMscore_a = track_Mscore_a; MaxMscore_track_serial_a = i;}
+				double track_MaxSim_b, track_MinSim_b, track_Mscore_b;
+				calc_track_MaxMinSimScore(track, elements_b, track_MaxSim_b,  track_MinSim_b);
+				track_Mscore_b = (track_MaxSim_b + track_MinSim_b)*0.5;
+				if(track_Mscore_b > MaxMscore_b){MaxMscore_b = track_Mscore_b; MaxMscore_track_serial_b = i;}
+			}
+
+			ROS_INFO("MaxMscore_a, MaxMscore_B %lf, %lf, %ld, %ld", MaxMscore_a, MaxMscore_b, MaxMscore_track_serial_a, MaxMscore_track_serial_b);
+
+			if(MaxMscore_a > MaxMscore_b)
+			{
+				ROS_INFO("track %ld into cluster_a", MaxMscore_track_serial_a);
+
+				track_container_->tracks[MaxMscore_track_serial_a].cluster_label = 1;
+				cluster_a.push_back(MaxMscore_track_serial_a);
+				for(size_t i=0; i<track_container_->tracks[MaxMscore_track_serial_a].elements.size(); i++)
+				{elements_a.push_back(track_container_->tracks[MaxMscore_track_serial_a].elements[i]);}
+
+			}
+			else
+			{
+				ROS_INFO("track %ld into cluster_b", MaxMscore_track_serial_b);
+
+				track_container_->tracks[MaxMscore_track_serial_b].cluster_label = 2;
+				cluster_b.push_back(MaxMscore_track_serial_b);
+				for(size_t i=0; i<track_container_->tracks[MaxMscore_track_serial_b].elements.size(); i++)
+				{elements_b.push_back(track_container_->tracks[MaxMscore_track_serial_b].elements[i]);}
+			}
+
+			track_remained_to_cluster = false;
+			size_t remained_track_number = 0;
+			printf("\n");
+			for(size_t i=0; i<track_container_->tracks.size(); i++)
+			{
+				if(track_container_->tracks[i].ped_activity != MOVING)continue;
+				if(track_container_->tracks[i].cluster_label == 0)
+				{
+					printf("%ld\t", i);
+					track_remained_to_cluster = true; remained_track_number++;
+				}
+			}
+			printf("\n");
+			ROS_INFO("tracks remained to be classified: %ld", remained_track_number);
+		}
+	}
+
+	void track_processor::calc_track_MaxMinSimScore(track_common & track, vector<track_element> & cluster_elements, double & maxScore_track, double & minScore_track)
+	{
+		maxScore_track = 0.0;
+		minScore_track = 0.0;
+		for(size_t i=0; i<track.elements.size(); i++)
+		{
+			double max_score_element = -DBL_MAX;
+			double min_score_element = DBL_MAX;
+			track_element element_tmp = track.elements[i];
+			for(size_t j=0; j<cluster_elements.size(); j++)
+			{
+				double similarity_score_tmp = similariry_between_elements(element_tmp, cluster_elements[j]);
+				if(similarity_score_tmp > max_score_element) max_score_element = similarity_score_tmp;
+				if(similarity_score_tmp < min_score_element) min_score_element = similarity_score_tmp;
+			}
+			maxScore_track = maxScore_track + max_score_element;
+			minScore_track = minScore_track + min_score_element;
+		}
+	}
+
+	double track_processor::similariry_between_elements(track_element &element_A, track_element &element_B)
+	{
+		double delt_angle = fabs(element_B.thetha - element_A.thetha);
+		if(delt_angle>M_PI) delt_angle = M_PI*2.0-delt_angle;
+		double angle_factor = (M_PI_2 - delt_angle)/M_PI_2;
+
+		double dist2d = sqrt(pow(element_A.x-element_B.x, 2.0)+pow(element_A.y-element_B.y, 2.0));
+		double param_c = 5.0;
+		double dist_factor = param_c/(param_c+dist2d);
+
+		double similarity_score = angle_factor * dist_factor;
+		return(similarity_score);
+	}
+
+	//find some small bugs, the interpolated elements in the vector is not inserted in the correct places;
+	//but it doesn't influence our intensity calculation at all;
+	void track_processor::interpolate_elements()
+	{
 		//to interpolate between the track points;
-		bool interpolate_flag = true;
+		bool interpolate_flag = false;
 		if(interpolate_flag)
 		{
 			double interpolate_distance = 0.3;
@@ -81,7 +299,6 @@ namespace golfcar_semantics{
 							std::vector<track_element>::iterator it;
 							it = ped_track.elements.begin();
 							ped_track.elements.insert (it+j-1, interpolate_elements.begin(),interpolate_elements.end());
-
 							j=j+interpolate_Num;
 						}
 					}
