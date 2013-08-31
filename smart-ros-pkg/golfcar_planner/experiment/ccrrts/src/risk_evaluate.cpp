@@ -53,8 +53,6 @@ void RiskEvaluate::RiskAssess(ccrrts::obsts_cst obst_cst){
 			double risk = (1 - boost::math::erf(temp_1/temp_2))/2.0;
 
 			//cout <<"No.  "<<j<<" x " << vehicle_pose.x << "y" << vehicle_pose.y <<endl;
-
-			//cout <<" 1_ "<<temp_1<<", 2_ "<<temp_2<< "temp "<< temp_1/sqrt(temp_2) << " erf :"<< boost::math::erf(temp_1/temp_2)<< " risk "<< risk<<endl;
 			if (risk < min_risk)
 				min_risk = risk;
 		}
@@ -78,18 +76,20 @@ void RiskEvaluate::CalcaulateRisk(ccrrts::obsts_cst obst_cst, State pose, vector
 						+ (2*a_1*a_2*pose.conv_xy) ) );
 				double risk = (1 - boost::math::erf(temp_1/temp_2))/2.0;
 
-				/*
+/*
 					ROS_INFO("Obst_ID:%d", i->obst_id);
 					ROS_INFO("Sample Pose: x:%f, y:%f, r:%f, con_x:%f, con_y:%f",pose.x, pose.y, pose.r, pose.conv_x, pose.conv_y, pose.conv_xy);
 					ROS_INFO("Temp_1: %f,   temp_2, %f, temp_1/temp_2: %f", temp_1, temp_2, temp_1/temp_2);
 					ROS_INFO("Constrain: a_1:%f, 1_2:%f, b:%f",a_1, a_2, b);
-					ROS_INFO("Calculate risk, %f" , risk);
-					*/
 
+				ROS_INFO("Risk: %f", risk);
+*/
 				if (risk < min_risk)
 					min_risk = risk;
 			}
 			pose_risk.push_back(min_risk);
+			//ROS_INFO("Check Risk StateIn: x: %f, y:%f, x_cov: %f, y_cov: %f, xy_cov: %f",
+			//		pose.x, pose.y, pose.conv_x, pose.conv_y, pose.conv_xy);
 			//ROS_INFO("Calculate risk, %f" , min_risk);
 		}
 	}

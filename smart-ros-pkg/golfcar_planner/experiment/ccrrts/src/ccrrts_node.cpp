@@ -9,7 +9,7 @@
 
 Planner::Planner(){
 
-	srand(0);
+	srand(time(0));
 
 	ros::Rate wait_rate(0.2);
 	while(get_robot_pose()){
@@ -40,6 +40,7 @@ Planner::Planner(){
 	tree_pub = nh.advertise<sensor_msgs::PointCloud>("rrts_tree", 2);
 	vertex_pub = nh.advertise<sensor_msgs::PointCloud>("rrts_vertex", 2);
 	obs_check_pub = nh.advertise<sensor_msgs::PointCloud>("obs_check", 2);
+	planning_result_pub = nh.advertise<ccrrts::rrts_result>("planning_result",2);
 
 	map_sub = nh.subscribe("local_map", 2, &Planner::on_map, this);
 	goal_sub = nh.subscribe("pnc_nextpose", 2, &Planner::on_goal, this);
@@ -55,6 +56,10 @@ Planner::Planner(){
 
 	optimal_criteria.risk = 0.1;
 	optimal_criteria.metric_cost = 0.2;
+
+	result_.risk = 0;
+	result_.cost = 0;
+	result_.num_vertex = 0;
 
 	cylinder = visualization_msgs::Marker::CYLINDER;
 	vertex_marker_pub = nh.advertise<visualization_msgs::MarkerArray>("vertex_conv_marker", 1);
@@ -289,7 +294,7 @@ void Planner::setup_rrts(){
 	system.regionCell.center[2] = 0;
 	system.regionCell.size[0] = map.info.resolution;
 	system.regionCell.size[1] = map.info.resolution;
-	system.regionCell.size[2] = 2.0*M_PI;
+	system.regionCell.size[2] = 1.0*M_PI;
 
 	change_goal_region();
 
@@ -347,6 +352,10 @@ int Planner::get_plan(){
 	sample_view_.header.frame_id = "/map";
 
 	while((!found_best_path)){
+
+		ros::Duration dt = ros::Time::now() - start_current_call_back;
+
+		if (dt.toSec() >0){// 2* planner_dt){
 		samples_this_loop += ccrrts.iteration(sample_view);
 
 		if (sample_view.size()!=0){
@@ -358,32 +367,39 @@ int Planner::get_plan(){
 
 		best_lor = ccrrts.getBestVertexLor();
 		if(best_lor < perform_criteria){
-			//ROS_INFO(" e: %d --- Best Cost: %f ---Best Risk: %f ", ccrrts.numVertices ,best_lor.metric_cost, best_lor.risk);
-			if(best_lor < prev_best_lor){
-				ROS_INFO(" [Feasible Traj] Vertex: %d ---Cost: %f ---Risk: %f ", ccrrts.numVertices ,best_lor.metric_cost, best_lor.risk);
-				committed_control.clear();
-				committed_trajectory.clear();
-				ccrrts.getBestTrajectory(committed_trajectory, committed_control);
-				publish_committed_trajectory();
-				ROS_INFO(" [Committed Traj] Vertex: %d --- Best Cost: %f ---Best Risk: %f ", ccrrts.numVertices ,best_lor.metric_cost, best_lor.risk);
+
+			result_.cost = best_lor.metric_cost;
+			result_.risk = best_lor.risk;
+			committed_control.clear();
+			committed_trajectory.clear();
+			ccrrts.getBestTrajectory(committed_trajectory, committed_control);
+			publish_committed_trajectory();
+			ROS_INFO(" [Committed Traj] Vertex: %d --- Best Cost: %f ---Best Risk: %f ", ccrrts.numVertices ,best_lor.metric_cost, best_lor.risk);
 				//found_best_path = true;
-				prev_best_lor = best_lor;
-			}
+			prev_best_lor = best_lor;
 		}
 
 		sample_view_.header.stamp = ros::Time::now();
 		sampling_view_pub.publish(sample_view_);
 		sample_view_.points.clear();
 
-		ros::Duration dt = ros::Time::now() - start_current_call_back;
+		result_.head.stamp = ros::Time::now();
+		result_.num_vertex = ccrrts.numVertices;
+		planning_result_pub.publish(result_);
 
-		if(dt.toSec() > planner_dt){
-			start_current_call_back = ros::Time::now();
-			ccrrts.checkTree();
+		if(ccrrts.numVertices % 1 == 0){
+			//ccrrts.checkTree();
 			publish_tree();
 		}
-		if (ccrrts.numVertices > 2000)
+
+		start_current_call_back = ros::Time::now();
+		//}
+		/*
+		 * Number of vertexs: 500 for dubins path and 2000 for 2D is the best, experimentallu
+		 */
+		if (ccrrts.numVertices > 500)
 			exit(0);
+		}
 	}
 
 	return 0;
@@ -483,7 +499,7 @@ void Planner::publish_tree(){
 				state_t& stateParent = vertexParent.getState();
 				list<double*> trajectory;
 				list<float> control;
-				if (system.getTrajectory (stateParent, stateCurr, trajectory, control, true, true)){
+				if (system.getTrajectory (stateParent, stateCurr, trajectory, control, vertexCurr.getTurningRadius()) >0){
 					int par_num_states = trajectory.size();
 					if (par_num_states){
 						int stateIndex = 0;

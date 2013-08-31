@@ -34,6 +34,7 @@ SimObst::~SimObst(){
 
 }
 
+#if (0)
 void SimObst::PublishObstInfo(const ros::TimerEvent &e){
 
 
@@ -68,6 +69,66 @@ void SimObst::PublishObstInfo(const ros::TimerEvent &e){
 	obst_info_pub.publish(obst);
 	obst.veh_polys.clear();
 }
+#else
+void SimObst::PublishObstInfo(const ros::TimerEvent &e){
+
+
+	geometry_msgs::Point32 temp_pts_1, temp_pts_2, temp_pts_3, temp_pts_4;
+	geometry_msgs::PolygonStamped temp_poly_1, temp_poly_2,temp_poly_3,temp_poly_4 ;
+	//For first obst
+	temp_pts_1.x = 14.0; temp_pts_1.y = 34.0; temp_pts_1.z = 0;
+	temp_pts_2.x = 14.0; temp_pts_2.y = 36.0; temp_pts_2.z = 0;
+	temp_pts_3.x = 16.0; temp_pts_3.y = 36.0; temp_pts_3.z = 0;
+	temp_pts_4.x = 16.0; temp_pts_4.y = 34.0; temp_pts_4.z = 0;
+
+	temp_poly_1.header.stamp = ros::Time::now();
+	temp_poly_1.header.frame_id = "map";
+	temp_poly_1.polygon.points.push_back(temp_pts_1);
+	temp_poly_1.polygon.points.push_back(temp_pts_2);
+	temp_poly_1.polygon.points.push_back(temp_pts_3);
+	temp_poly_1.polygon.points.push_back(temp_pts_4);
+	obst.veh_polys.push_back(temp_poly_1);
+
+	temp_pts_1.x = 11.5; temp_pts_1.y = 39.0; temp_pts_1.z = 0;
+	temp_pts_2.x = 11.5; temp_pts_2.y = 41.0; temp_pts_2.z = 0;
+	temp_pts_3.x = 14.0; temp_pts_3.y = 41.0; temp_pts_3.z = 0;
+	temp_pts_4.x = 14.0; temp_pts_4.y = 39.0; temp_pts_4.z = 0;
+	temp_poly_2.polygon.points.push_back(temp_pts_1);
+	temp_poly_2.polygon.points.push_back(temp_pts_2);
+	temp_poly_2.polygon.points.push_back(temp_pts_3);
+	temp_poly_2.polygon.points.push_back(temp_pts_4);
+	temp_poly_2.header.stamp = ros::Time::now();
+	temp_poly_2.header.frame_id = "map";
+	obst.veh_polys.push_back(temp_poly_2);
+
+	temp_pts_1.x = 16.0; temp_pts_1.y = 39.0; temp_pts_1.z = 0;
+	temp_pts_2.x = 16.0; temp_pts_2.y = 41.0; temp_pts_2.z = 0;
+	temp_pts_3.x = 18.5; temp_pts_3.y = 41.0; temp_pts_3.z = 0;
+	temp_pts_4.x = 18.5; temp_pts_4.y = 39.0; temp_pts_4.z = 0;
+	temp_poly_3.polygon.points.push_back(temp_pts_1);
+	temp_poly_3.polygon.points.push_back(temp_pts_2);
+	temp_poly_3.polygon.points.push_back(temp_pts_3);
+	temp_poly_3.polygon.points.push_back(temp_pts_4);
+	temp_poly_3.header.stamp = ros::Time::now();
+	temp_poly_3.header.frame_id = "map";
+	obst.veh_polys.push_back(temp_poly_3);
+
+	temp_pts_1.x = 14.0; temp_pts_1.y = 44.0; temp_pts_1.z = 0;
+	temp_pts_2.x = 14.0; temp_pts_2.y = 46.0; temp_pts_2.z = 0;
+	temp_pts_3.x = 16.0; temp_pts_3.y = 46.0; temp_pts_3.z = 0;
+	temp_pts_4.x = 16.0; temp_pts_4.y = 44.0; temp_pts_4.z = 0;
+	temp_poly_4.polygon.points.push_back(temp_pts_1);
+	temp_poly_4.polygon.points.push_back(temp_pts_2);
+	temp_poly_4.polygon.points.push_back(temp_pts_3);
+	temp_poly_4.polygon.points.push_back(temp_pts_4);
+	temp_poly_4.header.stamp = ros::Time::now();
+	temp_poly_4.header.frame_id = "map";
+	obst.veh_polys.push_back(temp_poly_4);
+
+	obst_info_pub.publish(obst);
+	obst.veh_polys.clear();
+}
+#endif
 
 int main(int argc, char** argv){
 	ros::init(argc, argv, "sim_obst_info");

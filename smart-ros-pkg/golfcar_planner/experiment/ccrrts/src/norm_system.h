@@ -11,6 +11,12 @@
 #include <system_exp.h>
 #include "risk_evaluate.h"
 #include <Eigen/Dense>
+#include <boost/math/distributions/normal.hpp>
+#include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int.hpp>
+#include <boost/random/uniform_real.hpp>
+#include <boost/random/variate_generator.hpp>
+#include <boost/math/special_functions/erf.hpp>
 
 using namespace Eigen;
 using namespace std;
@@ -34,7 +40,7 @@ struct Level_OF_Risk{
 		if (risk < lor.risk)
 			risk = lor.risk;
 	    // Increase metric cost
-	    metric_cost += lor.metric_cost;
+	    metric_cost = metric_cost + lor.metric_cost;
 	    return *this;
 	}
 
@@ -99,8 +105,6 @@ public:
 class NormSystem {
 
 	RiskEvaluate *risk_evaluate;
-	double distance_limit;
-	double delta_distance;
 	NormState rootState;
 
 public:
@@ -109,27 +113,22 @@ public:
 	RegionExp regionGoal;
  	RegionExp regionCell;
 
-#define num_turning_radii (1)
- 	double turning_radii[1];
- 	double car_width;
- 	double car_height;
- 	double safe_distance;
- 	double distance_rear_axis_rear;
+	double distance_limit;
+	double delta_distance;
 
- 	nav_msgs::OccupancyGrid map;
+ 	nav_msgs::OccupancyGrid map, dist_map;
  	vector<int> free_cells;
  	double map_origin[3];
+ 	double max_free_dist;
 
  	double risk_limit;
+	boost::mt19937 gen;
 
     NormSystem();
     ~NormSystem();
 
     double extend_line (
-    		double state_ini[3], double state_fin[3],
-    		bool return_trajectory,bool check_risk,vector<double>& obst_risk,
-    		bool& fully_extends, double*& end_state,
-    		list<double*>* trajectory, list<float> &control);
+    		double state_ini[3], double state_fin[3],vector<double>& obst_risk, double*& end_state);
 
     int extendTo (
     		NormState &stateFromIn, NormState &stateTowardsIn,
@@ -140,6 +139,8 @@ public:
     		NormState &stateFromIn, NormState &stateTowardsIn,
     		bool &exactConnectionOut, bool check_risk);
 
+    int getPiecewiseLine(double state_ini[5], double state_fin[5], list<double*>* trajectory, list<float> &control);
+
     int getTrajectory (
     		NormState& stateFromIn, NormState& stateToIn,
     		list<double*>& trajectoryOut, list<float>& controlOut, bool check_obstacles, bool check_risk);
@@ -147,7 +148,9 @@ public:
     int setRiskLimit(double risk);
     int getNumDimensions () {return 2;}
     NormState& getRootState () {return rootState;}
-    int propagatePose(double stateIn[5], double (&stateOut)[5], double theta, double increment);
+//  int propagatePose(double stateIn[5], double (&stateOut)[5], double theta, double increment);
+    int linearConvPropagate(double stateIn[5], double(&stateOut)[5]);
+    int propagatePose(double stateIn[5], double (&stateOut)[5]);
     int evaluateRisk(double stateIn[5], vector<double>& risk);
     int getStateKey (NormState &stateIn, double *stateKey);
     float getGoalCost(const double x[5]);
@@ -162,6 +165,8 @@ public:
     int sampleState(NormState &randomStateOut);
     int sampleGoalState (NormState &randomStateOut);
     double norm_state(double s1[5], double s2[5]);
+    double dynamicRiskLimit(double stateIn[5]);
+    int convTruncation(double StateIn[5], double (&stateOut)[5]);
 };
 
 typedef struct{

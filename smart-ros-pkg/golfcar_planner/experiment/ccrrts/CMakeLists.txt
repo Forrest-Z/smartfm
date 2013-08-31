@@ -21,6 +21,8 @@ rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
+rosbuild_add_boost_directories()
+
 rosbuild_find_ros_package(dynamic_reconfigure)
 include(${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake)
 gencfg()
@@ -30,8 +32,14 @@ rosbuild_add_library(${PROJECT_NAME} src/ccrrts.hpp src/cc_system.cpp src/risk_e
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
+
 rosbuild_add_executable(constraint_process src/ChanceConstraint.cpp)
+rosbuild_link_boost(constraint_process signals)
+
 rosbuild_add_executable(sim_obst src/simulation_cc.cpp)
+
+rosbuild_add_executable(obst_filt src/obst_filter.cpp)
+
 #rosbuild_add_executable(risk_evaluate src/risk_evaluate.cpp)
 
 rosbuild_add_executable(ccrrts src/ccrrts_node.cpp)
