@@ -2,6 +2,11 @@
 // Created 31 July 2013, 
 // by Sean Kim, Xiaotong Shen
 //
+
+#define  EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET 
+#include <mrpt/slam.h>
+#include <mrpt/gui.h>
+
 #include <iostream>
 #include <time.h>
 #include "ros/ros.h"
@@ -24,10 +29,14 @@
 #include "CorrelativeMatchGPU.h"
 #include "pcl_downsample.h"
 
+using namespace mrpt;
+using namespace mrpt::utils;
+using namespace mrpt::slam;
+
 sensor_msgs::PointCloud sourcePCL_, targetPCL_;
 std::ofstream outFile_;
 enum MergingType{
-  ICP, CSM, NONE
+  ICP, MICP, CSM, NONE
 };
 
 void Transformation(sensor_msgs::PointCloud &pcl_scan, float r_theta, float t_x, float t_y, float t_z)
@@ -209,7 +218,7 @@ bool AlignmentTwoPointCloudCSM(sensor_msgs::PointCloud cloud_leader, sensor_msgs
   double y = t.translation()(1);
   double rot = yaw/M_PI*180;
   
-  best_match.score *= 100;
+  outFile_<<"Score: "<<best_match.score *100<<endl;
   pcl::PointCloud<pcl::PointNormal> matching_cloud_tf;
   pcl::PointCloud<pcl::PointNormal> cloud_leader_pcl_ori = ROSPCLtoPCL(cloud_leader);
   pcl::transformPointCloud<pcl::PointNormal>(
@@ -232,7 +241,62 @@ bool AlignmentTwoPointCloudCSM(sensor_msgs::PointCloud cloud_leader, sensor_msgs
   }
   return true;
 }
+bool AlignmentTwoPointCloudMICP(sensor_msgs::  PointCloud &cloud_leader, sensor_msgs::PointCloud &cloud_ego, pcl::PointCloud<pcl::PointXYZ>& Final, Eigen::Matrix4f &tf)
+{
+  if( !cloud_ego.points.size() || !cloud_leader.points.size() )
+  {
+    cout << "No cloud point is given." << endl;
+    return false;
+  }
+
+  outFile_ << "The size of Ego map is " << cloud_ego.points.size() << "." << endl;
+  outFile_ << "The size of Leader map is " << cloud_leader.points.size() << "." << endl;
+  CSimplePointsMap m_ego,m_leader;
   
+  pcl::PointCloud<pcl::PointNormal> cloud_leader_pcl, cloud_ego_pcl;
+  cloud_leader_pcl = ROSPCLtoPCL(cloud_leader, true);
+  cloud_ego_pcl = ROSPCLtoPCL(cloud_ego, true);
+  
+    m_ego.setFromPCLPointCloud<pcl::PointCloud<pcl::PointNormal> >(cloud_ego_pcl);
+    m_leader.setFromPCLPointCloud<pcl::PointCloud<pcl::PointNormal> >(cloud_leader_pcl);
+  
+  CICP ICP;
+  CICP::TReturnInfo info;
+  ICP.options.ICP_algorithm = icpLevenbergMarquardt;
+  ICP.options.maxIterations			= 100;
+  ICP.options.thresholdAng			= DEG2RAD(10.0f);
+  ICP.options.thresholdDist			= 2.5f;
+  ICP.options.ALFA				= 0.5f;
+  ICP.options.smallestThresholdDist		= 0.05f;
+  ICP.options.doRANSAC = false;
+  CPose2D	initialPose(0.0f,0.0f,(float)DEG2RAD(0.0f));
+  float runningTime;
+  CPosePDFPtr pdf = ICP.Align(
+		&m_ego,
+		&m_leader,
+		initialPose,
+		&runningTime,
+		(void*)&info);
+  //printf("ICP run in %.02fms, %d iterations (%.02fms/iter), %.01f%% goodness\n -> ",
+	//		runningTime*1000,
+	//		info.nIterations,
+	//		runningTime*1000.0f/info.nIterations,
+	//		info.goodness*100 );
+  outFile_ <<"Running time: "<< runningTime*1000<<" goodness: "<<info.goodness*100<<endl;
+  outFile_ << "Mean of estimation: " << pdf->getMeanVal() << endl;
+  vector_double mean_pose;
+  pdf->getMeanVal().getAsVector(mean_pose);
+  
+  Eigen::Vector3f bl_trans(mean_pose[0], mean_pose[1], 0.);
+  double yaw_rotate = -mean_pose[2];
+  Eigen::Quaternionf bl_rotation(cos(yaw_rotate / 2.), 0, 0,
+  -sin(yaw_rotate / 2.));
+  Eigen::Translation3f translation (bl_trans);
+  tf = (translation * bl_rotation).matrix();
+  
+  return true;
+}
+
 bool AlignmentTwoPointCloud(sensor_msgs::PointCloud &cloud_leader, sensor_msgs::PointCloud &cloud_ego, pcl::PointCloud<pcl::PointXYZ>& Final, Eigen::Matrix4f &tf) // Ego, Leader, Final 
 { 
   if( !cloud_ego.points.size() || !cloud_leader.points.size() )
@@ -367,6 +431,8 @@ void MapMerging(sensor_msgs::PointCloud &AlignedPCL, sensor_msgs::PointCloud &pc
     break;
     case CSM: merging_success = AlignmentTwoPointCloudCSM(sourcePCL, targetPCL, FinalPCL, tf);
     break;
+    case MICP: merging_success = AlignmentTwoPointCloudMICP(sourcePCL, targetPCL, FinalPCL, tf);
+    break;
     case NONE: merging_success = true;
     tf = Eigen::Matrix4f::Identity();
     break;
@@ -437,12 +503,17 @@ int main(int argc, char **argv)
   if(merging_type_str == "ICP") merging_type = ICP;
   else if(merging_type_str == "CSM") merging_type = CSM;
   else if(merging_type_str == "NONE") merging_type = NONE;
+  else if(merging_type_str == "MICP") merging_type = MICP;
+  
+  if(merging_type == -1){
+    cout<<error_msg<<endl;
+    return 1;
+  }
   
   string log_file = string(folder+"log_"+merging_type_str);
   outFile_.open(log_file.c_str());  
+  outFile_<<"Matching type: "<<merging_type_str<<endl;
   
-  if(merging_type != -1) outFile_<<"Matching type: "<<merging_type_str<<endl;
-  else cout<<error_msg<<endl;
   
   //float l_x=4, l_y=0, l_z=0;	// estimated position of leader vehicle from the perspective of ego vehicle
   // 1(x,y,z)=(7,0,0) for scandata9, 
