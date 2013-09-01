@@ -20,12 +20,18 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
-
+include_directories(/usr/include/vtk-5.8)
+find_package(OpenCV REQUIRED)
+find_package(CUDA REQUIRED)
+CUDA_ADD_LIBRARY(raster_map src/raster_pc_grayscale_v2.cu)
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
-rosbuild_add_executable(recovering_map src/recovering_map.cpp)
+rosbuild_add_executable(recovering_map src/recovering_map.cpp src/dbgstream.cpp)
+target_link_libraries(recovering_map ${OpenCV_LIBS} raster_map)
 rosbuild_add_executable(saving_map src/saving_map.cpp)
+
+rosbuild_add_executable(test_mrpt_icp src/test_mrpt_icp.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
