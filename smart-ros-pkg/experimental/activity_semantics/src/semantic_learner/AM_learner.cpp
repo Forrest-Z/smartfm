@@ -65,7 +65,7 @@ namespace golfcar_semantics{
 
 	void AM_learner::accumulate_grid_activity(activity_grid &grid ,track_common track, size_t element_serial)
 	{
-		if(track.ped_activity == MOVING)
+		if(track.ped_activity == MOVING && track.cluster_label == 1)
 		{
 			moving_activity activity_tmp;
 			activity_tmp.track_label =  track.track_label;
@@ -73,6 +73,7 @@ namespace golfcar_semantics{
 			activity_tmp.depth = track.elements[element_serial].depth;
 
 			bool activity_calculated = false;
+
 			if(element_serial>0)
 			{
 				for(size_t i=element_serial-1; i<element_serial; i--)
@@ -88,6 +89,7 @@ namespace golfcar_semantics{
 					}
 				}
 			}
+
 			if(!activity_calculated)
 			{
 				for(size_t i=element_serial; i<track.elements.size(); i++)
@@ -103,7 +105,8 @@ namespace golfcar_semantics{
 					}
 				}
 			}
-			grid.moving_activities.push_back(activity_tmp);
+
+			if(activity_tmp.speed<3.0)grid.moving_activities.push_back(activity_tmp);
 		}
 		else if(track.ped_activity == STATIC)
 		{

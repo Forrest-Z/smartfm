@@ -94,6 +94,7 @@ namespace NormRRTSNS{
 
 		Level_OF_Risk get_risk_between(vertex_t& start, vertex_t& end, trajectory_t& trajectory);
 		int recomputeLor (vertex_t* vertexIn);
+		int recomputeCov (vertex_t* vertexIn);
 
 		int markCost (vertex_t& vertexIn);
 		int checkTrajectory (vertex_t& vertexIn);
@@ -159,13 +160,15 @@ NormVertex <T>
 		state = new state_t (vertexIn.getState());
 	else
 	    state = NULL;
-	parent = vertexIn.parent;
-	for (typename set<vertex_t*>::const_iterator iter = vertexIn.children.begin(); iter != vertexIn.children.end(); iter++)
-		children.insert (*iter);
+
 	if (vertexIn.trajFromParent)
 		trajFromParent = new trajectory_t (*(vertexIn.trajFromParent));
 	else
 		trajFromParent = NULL;
+
+	parent = vertexIn.parent;
+	for (typename set<vertex_t*>::const_iterator iter = vertexIn.children.begin(); iter != vertexIn.children.end(); iter++)
+		children.insert (*iter);
 
 	lorFromParent = vertexIn.lorFromParent;
 	lorFromRoot = vertexIn.lorFromRoot;
@@ -198,18 +201,17 @@ template <class T>
 int
 NormRRTS <T>
 ::insertIntoKdtree(vertex_t& vertexIN){
-	//ROS_INFO("Num of Dimension, %d", numDimensions);
 	double *stateKey = new double[numDimensions];
 	system->getStateKey ( *(vertexIN.state), stateKey);
 	kd_insert (kdtree, stateKey, &vertexIN);
 	delete [] stateKey;
+	//ROS_INFO("InsertToKdtree, stateKey: x:%f, y:%f", stateKey[0], stateKey[1]);
 	return 1;
 }
 
 template <class T>
 int NormRRTS <T>
 ::getNearestVertex(state_t& stateIn, vertex_t*& vertexPointerOut){
-	// Get the state key for the query state
 	double *stateKey = new double[numDimensions];
 	system->getStateKey (stateIn, stateKey);
 
@@ -222,6 +224,8 @@ int NormRRTS <T>
 	delete [] stateKey;
 	kd_res_free (kdres);
 
+	//ROS_INFO("getNearestVertex");
+
 	// Return a non-positive number if any errors
 	if (vertexPointerOut == NULL)
 		return 0;
@@ -229,22 +233,32 @@ int NormRRTS <T>
 	return 1;
 }
 
+//TODO
 template< class T >
 int
 NormRRTS< T >
 ::getNearVertices (state_t& stateIn, vector<vertex_t*>& vectorNearVerticesOut) {
 
+	//ROS_INFO("GetNearVertex");
 	// Get the state key for the query state
 	double *stateKey = new double[numDimensions];
 	system->getStateKey (stateIn, stateKey);
 
 	// Compute the ball radius
-	double ballRadius = 9.0 * pow( log((double)(numVertices + 1.0))/((double)(numVertices + 1.0)), 1.0/((double)numDimensions) );
+	double ballRadius = 150 * pow( log((double)(numVertices + 1.0))/((double)(numVertices + 1.0)), 1.0/((double)numDimensions) );
 
-	ROS_INFO("Ball Radius: %f", ballRadius);
+	double radius;
+
+	//Minis 0.01 to ensure that the nearest vertex is not included in near vertex for processing
+	if (ballRadius > system->distance_limit)
+		radius = system->distance_limit - 0.01 ;
+	else
+		radius = ballRadius;
+
+	ROS_INFO("Ball Radius: %f", radius);
 
 	// Search kdtree for the set of near vertices
-	kdres_t *kdres = kd_nearest_range (kdtree, stateKey, ballRadius);
+	kdres_t *kdres = kd_nearest_range (kdtree, stateKey, radius);
 	delete [] stateKey;
 
 	// Create the vector data structure for storing the results
@@ -274,22 +288,25 @@ template< class T >
 int
 NormRRTS< T >
 ::updateReachability (){
+	//ROS_INFO("UpdateReachability");
+	recomputeLor(root);
+	lowerBoundLor = getBestVertexLor();
 
-  updateBranchCost(*root, 1);
-  lowerBoundLor = getBestVertexLor();
+	vertex_t &bestVertex = getBestVertex();
+	lowerBoundVertex = &bestVertex;
 
-  vertex_t &bestVertex = getBestVertex();
-  lowerBoundVertex = &bestVertex;
-
-  return 1;
+	return 1;
 }
 
 template< class T >
 int
 NormRRTS<T>
 ::checkUpdateBestVertex (vertex_t& vertexIn) {
+	//ROS_INFO("checkUpdateBestVertex");
 	if (system->isReachingTarget(vertexIn.getState())){
+
 		Level_OF_Risk& risk_vertex = vertexIn.lorFromRoot;
+
 		if( ((lowerBoundVertex != NULL) && (risk_vertex < lowerBoundLor)) || (lowerBoundVertex == NULL)){
 			lowerBoundVertex = &vertexIn;
 			lowerBoundLor = risk_vertex;
@@ -302,26 +319,36 @@ template< class T >
 typename NormRRTS<T>::vertex_t*
 NormRRTS < T >
 ::insertTrajectory (vertex_t& vertexStartIn, trajectory_t& trajectoryIn) {
-
+	//ROS_INFO("insertTrajectory");
+	if (trajectoryIn.evaluateCost() < 0 || trajectoryIn.evaluateCost() > DBL_MAX/2){
+		//ROS_INFO("Get Trajectory Length Problem");
+		exit(0);
+	}
+	/*
 	Level_OF_Risk new_lor = vertexStartIn.lorFromRoot;
 	Level_OF_Risk lor_from_parent;
 	lor_from_parent.metric_cost = trajectoryIn.evaluateCost();
 	lor_from_parent.risk = trajectoryIn.evaluateRisk();
 	new_lor += lor_from_parent;
+	*/
+
+	//ROS_INFO("insertTrajectory: lor_from_root: %f, lor_from_parent:%f, now_lor: %f", vertexStartIn.lorFromRoot.metric_cost, lor_from_parent.metric_cost, new_lor.metric_cost);
 
 	vertex_t* vertexNew = new vertex_t;
 	vertexNew->state = new state_t;
 	vertexNew->parent = NULL;
 
+	/*
 	vertexNew->lorFromRoot= new_lor;
 	vertexNew->lorFromParent = lor_from_parent;
-	checkUpdateBestVertex (*vertexNew);
-
+	*/
 	trajectoryIn.getEndState(vertexNew->getState());
 	insertIntoKdtree (*vertexNew);
+
 	this->listVertices.push_front (vertexNew);
 	this->numVertices++;
 	insertTrajectory (vertexStartIn, trajectoryIn, *vertexNew);
+	//ROS_INFO("insertTrajectory: lor_from_parent: %f", trajectoryIn.evaluateCost());
 	return vertexNew;
 }
 
@@ -330,8 +357,24 @@ int
 NormRRTS < T >
 ::insertTrajectory (vertex_t& vertexStartIn, trajectory_t& trajectoryIn, vertex_t& vertexEndIn) {
 	// Update the trajectory between the two vertices
+
+	if (trajectoryIn.evaluateCost() < 0 || trajectoryIn.evaluateCost() > DBL_MAX/2){
+		ROS_INFO("Problem_1");
+		exit(0);
+	}
+
+	Level_OF_Risk new_lor = vertexStartIn.lorFromRoot;
+	Level_OF_Risk lor_from_parent;
+	lor_from_parent.metric_cost = trajectoryIn.evaluateCost();
+	lor_from_parent.risk = trajectoryIn.evaluateRisk();
+	new_lor += lor_from_parent;
+
+	vertexEndIn.lorFromRoot = new_lor;
+	vertexEndIn.lorFromParent = lor_from_parent;
+
 	if (vertexEndIn.trajFromParent)
 		delete vertexEndIn.trajFromParent;
+
 	vertexEndIn.trajFromParent = new trajectory_t (trajectoryIn);
 
 	// Update the parent to the end vertex
@@ -339,8 +382,14 @@ NormRRTS < T >
 		vertexEndIn.parent->children.erase (&vertexEndIn);
 	vertexEndIn.parent = &vertexStartIn;
 
+	state_t *stateIn = vertexStartIn.state;
+	//ROS_INFO("insertTraj: x %f, y: %f", stateIn->x[0], stateIn->x[1]);
+
 	// Add the end vertex to the set of chilren
 	vertexStartIn.children.insert (&vertexEndIn);
+	//ROS_INFO("insertTrajectory_direct: lor_of_parent: %f, lor_from_parent: %f, lor_from_root %f", vertexStartIn.lorFromRoot.metric_cost, vertexEndIn.lorFromParent.metric_cost, vertexEndIn.lorFromRoot.metric_cost);
+
+	checkUpdateBestVertex (vertexEndIn);
 
 	return 1;
 }
@@ -350,6 +399,7 @@ int
 NormRRTS < T >
 ::setSystem (system_t& systemIn) {
 
+	//ROS_INFO("Set System");
 	system = &systemIn;
 
 	numDimensions = system->getNumDimensions ();
@@ -396,11 +446,12 @@ int
 NormRRTS< T >
 ::initialize () {
 
-  // If there is no system, then return failure
+	//ROS_INFO("Initializw");
+	// If there is no system, then return failure
 	if (!system)
 		return 0;
 
-  // Backup the root
+	// Backup the root
 	vertex_t *rootBackup = NULL;
 	if (root)
 		rootBackup = new vertex_t (*root);
@@ -498,24 +549,25 @@ NormRRTS< T >
 	for (typename vector<vertex_t*>::iterator iter = vectorNearVerticesIn.begin(); iter != vectorNearVerticesIn.end(); iter++){
 		vertex_t* v = *iter;
 		Level_OF_Risk* candidate_lor = new Level_OF_Risk(v->lorFromRoot);
-
+		trajectory_t temp_traj;
 		exactConnection = false;
 		Level_OF_Risk increment_lor;
-		increment_lor = system->evaluateExtension (*(v->state), stateIn, exactConnection, true);
 
-		if (increment_lor.metric_cost > 0 && increment_lor.metric_cost < DBL_MAX/2){
+		if (system->extendTo(*(v->state), stateIn, true, true, temp_traj, exactConnection, controlOut) > 0){
+			increment_lor.risk = temp_traj.evaluateRisk();
+			increment_lor.metric_cost = temp_traj.evaluateCost();
 			*candidate_lor += increment_lor;
+			//ROS_INFO("FineBestParent: Check cost: %f, traj_cost %f", (*candidate_lor).metric_cost, increment_lor.metric_cost);
 			vertexRiskPairs.push_back(make_pair(v, candidate_lor));
 		}
 	}
-	// Sort vertices according to lor
+
 	sort (vertexRiskPairs.begin(), vertexRiskPairs.end(), compareVertexRiskPairs<T>);
 
 	// Try out each extension according to increasing cost
-	i = 0;
+
 	bool connectionEstablished = false;
 	for(typename vector<pair<vertex_t*, Level_OF_Risk*> >::iterator iter = vertexRiskPairs.begin(); iter != vertexRiskPairs.end(); iter++){
-
 		vertex_t* vertexCurr = iter->first;
 		// Extend the current vertex towards stateIn (and this time check for collision with obstacles)
 		exactConnection = false;
@@ -542,8 +594,8 @@ template< class T >
 int
 NormRRTS< T >
 ::markCost (vertex_t& vertexIn){
-
-	vertexIn.lorFromRoot.metric_cost = -1.0;
+	ROS_INFO("MarkCost");
+	vertexIn.lorFromRoot.metric_cost = -2.0;
 	vertex_t &parent = vertexIn.getParent();
 	parent.children.erase(&vertexIn);
 	for (typename set<vertex_t*>::iterator iter = vertexIn.children.begin(); iter != vertexIn.children.end(); iter++){
@@ -556,15 +608,15 @@ template< class T >
 int
 NormRRTS< T >
 ::checkTrajectory (vertex_t& vertexIn){
-
+	//ROS_INFO("CheckTrajectory");
+	state_t &state_in = vertexIn.getState();
 	vertex_t &parent = vertexIn.getParent();
 	state_t  &state_par = parent.getState();
-	state_t &state_in = vertexIn.getState();
 
 	trajectory_t traj;
 	list<float> tmp_control;
 	bool exactConnection;
-	if(system->extendTo(state_par, state_in, true, true, traj, exactConnection, tmp_control)>0){
+	if(system->extendTo(state_par, state_in, true, true, traj, exactConnection, tmp_control) > 0){
 		for (typename set<vertex_t*>::iterator iter = vertexIn.children.begin(); iter != vertexIn.children.end(); iter++){
 			checkTrajectory(**iter);
 		}
@@ -596,6 +648,9 @@ template< class T >
 int
 NormRRTS< T >
 ::checkTree(){
+
+	//ROS_INFO("CheckTree");
+
 	if( root->children.size() > 0){
 		for (typename set<vertex_t*>::iterator iter = root->children.begin(); iter != root->children.end(); iter++){
 			vertex_t &vertex = **iter;
@@ -625,7 +680,7 @@ NormRRTS< T >
 			insertIntoKdtree (**iter);
 		}
 
-		ROS_INFO("Vertex number, %d", numVertices);
+		//ROS_INFO("Vertex number, %d", numVertices);
 
 		lowerBoundVertex = NULL;
 		lowerBoundLor.metric_cost = DBL_MAX;
@@ -643,39 +698,74 @@ NormRRTS< T >
 ::rewireVertices (vertex_t& vertexNew, vector<vertex_t*>& vectorNearVertices){
 	state_t& state_new = *(vertexNew.state);
 
-	//ROS_INFO("Rewire RRTS Tree");
-	// Repeat for all vertices in the set of near vertices
 	for (typename vector<vertex_t*>::iterator iter = vectorNearVertices.begin(); iter != vectorNearVertices.end(); iter++){
-		vertex_t& vertex_curr = **iter;
-		state_t& state_curr = *(vertex_curr.state);
 
-		// Check whether the extension results in an exact connection
-
-		Level_OF_Risk incremental_lor;
-		bool exactConnection = false;
-		incremental_lor = system->evaluateExtension (state_new, state_curr, exactConnection, true);
-		if ((incremental_lor.metric_cost > DBL_MAX/2) || (incremental_lor.metric_cost <= 0)){
+		/*
+		if (*iter == vertexNew.parent){
+			ROS_INFO("It is parent, no rewire");
 			continue;
 		}
+		*/
+		vertex_t& vertex_curr = **iter;
 
-		double dist = sqrt((state_curr[0] - state_new[0])*(state_curr[0] - state_new[0]) + (state_curr[1] - state_new[1])*(state_curr[1] - state_new[1]));
-		if ((incremental_lor.metric_cost - dist) > 0.1 || (incremental_lor.metric_cost - dist) < -0.1)
-			ROS_INFO("RewireVertex, evaluateExtention Metric Check: %f, Risk Check: %f", (incremental_lor.metric_cost - dist), incremental_lor.risk);
+		state_t& state_curr = *(vertex_curr.state);
 
-		// calculate lor of the trajectory
-		Level_OF_Risk new_lor = Level_OF_Risk(vertexNew.lorFromRoot);
-		new_lor += incremental_lor;
+		bool exactConnection = false;
+		trajectory_t trajectory;
+		list<float> tmp_control;
+		if (system->extendTo(state_new, state_curr, true, true, trajectory, exactConnection, tmp_control) < 0 )
+			continue;
+
+		Level_OF_Risk *new_lor = new Level_OF_Risk(vertexNew.lorFromRoot);
+
+		//ROS_INFO("Rewire RRTS Tree: vertexNew: metric_cost %f, risk: %f", new_lor->metric_cost, new_lor->risk );
+		//ROS_INFO("Rewire RRTS Tree: vertexCurrent: metric_cost %f, risk: %f", vertex_curr.lorFromRoot.metric_cost, vertex_curr.lorFromRoot.risk );
+
+		Level_OF_Risk incremental_lor;
+		incremental_lor.risk = trajectory.evaluateRisk();
+		incremental_lor.metric_cost = trajectory.evaluateCost();
+
+		*new_lor += incremental_lor;
+
+		//ROS_INFO("Rewire vertexNew: metric_cost %f, Current metric: %f", new_lor->metric_cost, vertex_curr.lorFromRoot.metric_cost );
 
 		// Check whether the cost of the extension is smaller than current cost
-		if(new_lor < vertex_curr.lorFromRoot){
-			trajectory_t trajectory;
-			list<float> tmp_control;
-			if (system->extendTo(state_new, state_curr, true, true, trajectory, exactConnection, tmp_control) <0 )
-				continue;
-			// Insert the new trajectory to the tree by rewiring
+		if(*new_lor < vertex_curr.lorFromRoot){
+			//ROS_INFO("Got Rewired");
 			insertTrajectory (vertexNew, trajectory, vertex_curr);
-			updateBranchCost (vertex_curr, 0);
+			recomputeLor(&vertex_curr);
+			//recomputeCov(&vertex_curr);
 		}
+	}
+	return 1;
+}
+
+template< class T >
+int
+NormRRTS< T >
+::recomputeCov (vertex_t* vertexIn) {
+	//ROS_INFO("Recompure Cov");
+	for (typename set<vertex_t*>::iterator iter = vertexIn->children.begin(); iter != vertexIn->children.end(); iter++){
+		vertex_t* vertexCurr = *iter;
+		state_t &state_in = vertexCurr->getState();
+		vertex_t &parent = vertexCurr->getParent();
+		state_t  &state_par = parent.getState();
+
+		//system->propagatePose(state_par.x, state_in.x);
+
+
+		vector<double> tmp_risk;
+		double *end_state = new double[5];
+
+		if (system->extend_line(state_par.x, state_in.x, tmp_risk, end_state) > 0){
+			for (int i = 0 ; i < 5;i++)
+				state_in.x[i] = end_state[i];
+		}
+		else
+			ROS_INFO("Cannot find traj");
+		delete[] end_state;
+
+		recomputeCov(vertexCurr);
 	}
 	return 1;
 }
@@ -685,6 +775,7 @@ int
 NormRRTS <T>
 ::iteration(vector<double> &samples){
 
+	//ROS_INFO("Iteration");
 	// 1. Sample a new state
 	state_t stateRandom;
 
@@ -694,8 +785,6 @@ NormRRTS <T>
 			return 0;
 	}
 	else {
-
-
 	if (system->sampleState (stateRandom) <= 0)
 			return 0;
 	}
@@ -704,6 +793,7 @@ NormRRTS <T>
 	samples.push_back(stateRandom.x[1]);
 	samples.push_back(stateRandom.x[2]);
 
+	/*
 	// 2. Compute the set of all near vertices
 	vector<vertex_t*> vectorNearVertices;
 	getNearVertices (stateRandom, vectorNearVertices);
@@ -716,12 +806,10 @@ NormRRTS <T>
 
 	if (vectorNearVertices.size() == 0) {
 	    // 3.a Extend the nearest
-		/*
 		if (getNearestVertex (stateRandom, vertexParent) <= 0)
 			return 0;
 		if (system->extendTo(vertexParent->getState(), stateRandom, true, true, trajectory, exactConnection, control) <= 0)
 			return 0;
-			*/
 		return 0;
 	}
 	else{
@@ -745,6 +833,41 @@ NormRRTS <T>
 	if (vectorNearVertices.size() > 0)
 		rewireVertices (*vertexNew, vectorNearVertices);
 
+	 */
+
+	vector<vertex_t*> vectorNearVertices;
+	vertex_t* vertexParent = NULL;
+	vertex_t* vertexNearest = NULL;
+	state_t stateNew;
+
+	trajectory_t trajectory, temp_traj;
+	list<float> control;
+	bool exactConnection = false;
+
+	if (getNearestVertex (stateRandom, vertexNearest) <= 0)
+		return 0;
+	if (system->extendTo(vertexNearest->getState(), stateRandom, true, true, temp_traj, exactConnection, control) < 0)
+		return 0;
+
+	temp_traj.getEndState(stateNew);
+
+	getNearVertices (stateNew, vectorNearVertices);
+
+	if (vectorNearVertices.size() > 0){
+		if (findBestParent (stateNew, vectorNearVertices, vertexParent, trajectory, exactConnection, control) <= 0)
+			return 0;
+		//ROS_INFO("Get Best Parent");
+	}
+	else{
+		vertexParent = vertexNearest;
+		trajectory = temp_traj;
+	}
+
+	vertex_t* vertexNew = insertTrajectory (*vertexParent, trajectory);
+
+	if (vectorNearVertices.size() > 0)
+		rewireVertices (*vertexNew, vectorNearVertices);
+
 	return 1;
 }
 
@@ -752,7 +875,7 @@ template< class T >
 int
 NormRRTS< T >
 ::updateBranchCost (vertex_t& vertexIn, int depth) {
-	// Update the cost for each children
+	//ROS_INFO("UpdateBranchCost");
 	for (typename set<vertex_t*>::iterator iter = vertexIn.children.begin(); iter != vertexIn.children.end(); iter++){
 		vertex_t& vertex = **iter;
 		vertex.lorFromRoot += vertex.lorFromParent;
@@ -767,6 +890,7 @@ int
 NormRRTS< T >
 ::recomputeLor (vertex_t* vertexIn) {
 
+	//ROS_INFO("RecomputeLor");
 	for (typename set<vertex_t*>::iterator iter = vertexIn->children.begin(); iter != vertexIn->children.end(); iter++){
 		vertex_t* vertexCurr = *iter;
 
@@ -788,7 +912,7 @@ template< class T >
 int
 NormRRTS< T >
 ::getBestTrajectory (list<double*>& trajectoryOut, list<float> &controlOut ) {
-
+	//ROS_INFO("getBestTrajectory");
 	if (lowerBoundVertex == NULL){
 		return 0;
 	}
@@ -815,7 +939,6 @@ NormRRTS< T >
 			control.reverse();
 			for (list<double*>::iterator iter = trajectory.begin(); iter != trajectory.end(); iter++){
 				double *stateArrFromParentCurr = *iter;
-
 				stateArrCurr = new double[5];
 				for (int i = 0; i < 5; i++)
 					stateArrCurr[i] = stateArrFromParentCurr[i];

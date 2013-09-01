@@ -23,25 +23,36 @@ typedef enum
   NOISE
 } track_type;
 
+//this element is a node on track, which has not only position information, but also speed and moving direction; plus object size information;
 class track_element
 {
 	public:
+
+	//original information recorded directly from pedestrian detection;
 	double time;
 	double x, y;
-	double width, depth;
 	double local_x, local_y;
+
+	//processed information by utilizing original information between nodes;
+	double speed;
+	double thetha;
+
+	//size information;
+	double width, depth;
 };
 
 class track_common
 {
 	public:
-	//for training purposes;
-	int track_label;
-
 	track_type ped_activity;
 	double confidence;
 	size_t track_length;
 	std::vector <track_element> elements;
+	//for moving_track, and it should only be "1" or 2";
+	int cluster_label;
+
+	//for training purposes;
+	int track_label;
 };
 
 class pd_track_container

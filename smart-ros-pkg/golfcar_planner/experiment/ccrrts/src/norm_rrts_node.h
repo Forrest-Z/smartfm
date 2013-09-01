@@ -35,6 +35,7 @@
 
 #include <pnc_msgs/local_map.h>
 #include <rrts/rrts_status.h>
+#include <ccrrts/rrts_result.h>
 
 #include <dynamic_reconfigure/server.h>
 #include "ccrrts/ccrrtsCTRConfig.h"
@@ -109,10 +110,12 @@ class NormPlanner{
     ros::Publisher committed_trajectory_view_pub;
     ros::Publisher sampling_view_pub;
     ros::Publisher vertex_marker_pub;
+    ros::Publisher planning_result_pub;
 
     ros::Timer planner_timer;
 
     uint32_t cylinder;
+    ccrrts::rrts_result result_;
 
     sensor_msgs::PointCloud tree, vertex;
     visualization_msgs::MarkerArray vertex_markers;

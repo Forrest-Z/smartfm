@@ -9,7 +9,7 @@
 
 NormPlanner::NormPlanner(){
 
-	srand(0);
+	srand(time(NULL));
 
 	ros::Rate wait_rate(0.2);
 	while(get_robot_pose()){
@@ -31,6 +31,13 @@ NormPlanner::NormPlanner(){
 	risk_limit = 0.1;
 	GoalSampleFreq = 0.00;
 
+	result_.risk = 0.0;
+	result_.cost = 0.0;
+	result_.num_vertex = 0;
+	result_.goal_x_cov = 0;
+	result_.goal_y_cov = 0;
+	result_.goal_xy_cov = 0;
+
 	planner_timer = nh.createTimer(ros::Duration(planner_dt), &NormPlanner::on_planner_timer, this);
 
 	committed_trajectory_view_pub = nh.advertise<sensor_msgs::PointCloud>("pncview_trajectory", 2);
@@ -42,6 +49,7 @@ NormPlanner::NormPlanner(){
 	map_sub = nh.subscribe("local_map", 2, &NormPlanner::on_map, this);
 	goal_sub = nh.subscribe("pnc_nextpose", 2, &NormPlanner::on_goal, this);
 	sampling_view_pub = nh.advertise<sensor_msgs::PointCloud>("samples",2);
+	planning_result_pub = nh.advertise<ccrrts::rrts_result>("planning_result", 2);
 
 	is_first_goal = true;
 	is_first_map = true;
@@ -189,6 +197,7 @@ int NormPlanner::get_robot_pose(){
 void NormPlanner::on_map(const pnc_msgs::local_map::ConstPtr lm){
 
 	system.map = lm->occupancy;
+	system.dist_map = lm->dist;
 	system.free_cells = lm->free_cells;
 
 	bool got_pose = false;
@@ -230,9 +239,9 @@ void NormPlanner::setup_rrts(){
 
 	rootState[0] = car_position.x;
 	rootState[1] = car_position.y;
-	rootState[2]= 0.25;
-	rootState[3]= 0.25;
-	rootState[4]= 0.25*0.3;
+	rootState[2]= 0.06;
+	rootState[3]= 0.06;
+	rootState[4]= 0;
 
 	system.regionOperating.center[0] = 0;
 	system.regionOperating.center[1] = 0;
@@ -291,7 +300,8 @@ int NormPlanner::get_plan(){
 
 	while((!found_best_path)){
 
-		ccrrts.checkTree();
+		ros::Duration dt = ros::Time::now() - start_current_call_back;
+		if(dt.toSec() >0){//  2*planner_dt){
 		samples_this_loop += ccrrts.iteration(sample_view);
 
 		if (sample_view.size()!=0){
@@ -300,30 +310,38 @@ int NormPlanner::get_plan(){
 			sample_view_.points.push_back(p);
 			sample_view.clear();
 		}
-
 		best_lor = ccrrts.getBestVertexLor();
+		vertex_t& vertexBest= ccrrts.getBestVertex();
 		if(best_lor < perform_criteria){
 			//ROS_INFO(" [Feasible Traj] Vertex: %d ---Cost: %f ---Risk: %f ", ccrrts.numVertices ,best_lor.metric_cost, best_lor.risk);
-			if(best_lor < prev_best_lor){
+			//if(best_lor < prev_best_lor){
 				committed_control.clear();
 				committed_trajectory.clear();
-				ccrrts.getBestTrajectory(committed_trajectory, committed_control);
-				publish_committed_trajectory();
-				ROS_INFO(" [Committed Traj] Vertex: %d --- Best Cost: %f ---Best Risk: %f ", ccrrts.numVertices ,best_lor.metric_cost, best_lor.risk);
-				prev_best_lor = best_lor;
-			}
+				if (ccrrts.getBestTrajectory(committed_trajectory, committed_control)>0){
+					publish_committed_trajectory();
+					result_.cost = best_lor.metric_cost;
+					result_.risk = best_lor.risk;
+					result_.goal_x_cov = vertexBest.state->x[2];
+					result_.goal_y_cov = vertexBest.state->x[3];
+					result_.goal_xy_cov = vertexBest.state->x[4];
+					ROS_INFO(" [Committed Traj] Vertex: %d --- Best Cost: %f ---Best Risk: %f ", ccrrts.numVertices ,best_lor.metric_cost, best_lor.risk);
+					prev_best_lor = best_lor;
+				}
+			//}
 		}
+		result_.head.stamp = ros::Time::now();
+		result_.num_vertex = ccrrts.numVertices;
+		planning_result_pub.publish(result_);
 
 		sample_view_.header.stamp = ros::Time::now();
 		sampling_view_pub.publish(sample_view_);
 		sample_view_.points.clear();
 
-		ros::Duration dt = ros::Time::now() - start_current_call_back;
-
-		if(dt.toSec() > planner_dt){
-			start_current_call_back = ros::Time::now();
+		if (ccrrts.numVertices % 1 == 0){
 			publish_tree();
 		}
+		start_current_call_back = ros::Time::now();
+	}
 		if (ccrrts.numVertices > 5000)
 			exit(0);
 	}
@@ -345,9 +363,6 @@ void NormPlanner::publish_committed_trajectory(){
 		rrts_status[trjf] = false;
 	else
 		rrts_status[trjf] = true;
-
-	if (! is_updating_committed_trajectory)
-		return;
 
 	sensor_msgs::PointCloud traj_view;
 	traj_view.header.frame_id = "map";
@@ -432,7 +447,7 @@ void NormPlanner::publish_vertex_conv(state_t stateIn, visualization_msgs::Marke
 
 	Eigen::Matrix2d covMatrix;
 
-	covMatrix << stateIn[2], stateIn[4], stateIn[4], stateIn[2];
+	covMatrix << stateIn[2], stateIn[4], stateIn[4], stateIn[3];
 
 	Eigen::SelfAdjointEigenSolver<Eigen::Matrix2d> eig(covMatrix);
 
@@ -450,8 +465,8 @@ void NormPlanner::publish_vertex_conv(state_t stateIn, visualization_msgs::Marke
 	marker.action = visualization_msgs::Marker::ADD;
 	marker.type = cylinder;
 
-	marker.scale.x = lengthX;
-	marker.scale.y = lengthY;
+	marker.scale.x = 3*lengthX;
+	marker.scale.y = 3*lengthY;
 	marker.scale.z = 0.001;
 
 	marker.pose.position.x =stateIn[0];
@@ -460,8 +475,8 @@ void NormPlanner::publish_vertex_conv(state_t stateIn, visualization_msgs::Marke
 
 	marker.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(0.0,0.0,angle);
 
-	marker.color.r = 1.0f; marker.color.g = 0.0f; marker.color.b = 0.0f; marker.color.a = 0.4;
-	marker.lifetime = ros::Duration(0.45);
+	marker.color.r = 1.0f; marker.color.g = 0.0f; marker.color.b = 0.0f; marker.color.a = 0.3;
+	marker.lifetime = ros::Duration(1.1);
 	marker.header.frame_id = "map";
 	marker.header.stamp = ros::Time::now();
 	vertex_markers.markers.push_back(marker);
