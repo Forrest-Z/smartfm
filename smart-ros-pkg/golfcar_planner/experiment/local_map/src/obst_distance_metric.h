@@ -57,6 +57,6 @@ public:
 	void setProcessedObst(int x, int y);
 	bool isOccupied(int x, int y, mapPts pts);
 	void updateDistMap();
-	void updateCost(nav_msgs::OccupancyGrid &local_cost_map);
+	void updateCost(nav_msgs::OccupancyGrid &local_cost_map, nav_msgs::OccupancyGrid &local_dist_map);
 };
 #endif /* DISTANCE_METRIC_H_ */
