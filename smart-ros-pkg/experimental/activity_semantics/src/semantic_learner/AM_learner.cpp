@@ -65,48 +65,21 @@ namespace golfcar_semantics{
 
 	void AM_learner::accumulate_grid_activity(activity_grid &grid ,track_common track, size_t element_serial)
 	{
-		if(track.ped_activity == MOVING && track.cluster_label == 1)
+		if(track.ped_activity == MOVING)
 		{
 			moving_activity activity_tmp;
 			activity_tmp.track_label =  track.track_label;
 			activity_tmp.width = track.elements[element_serial].width;
 			activity_tmp.depth = track.elements[element_serial].depth;
+			activity_tmp.speed = track.elements[element_serial].speed;
 
-			bool activity_calculated = false;
-
-			if(element_serial>0)
-			{
-				for(size_t i=element_serial-1; i<element_serial; i--)
-				{
-					double distance = fmutil::distance(track.elements[element_serial], track.elements[i]);
-					if(distance >= 1.0)
-					{
-						activity_tmp.thetha = std::atan2(track.elements[element_serial].y-track.elements[i].y, track.elements[element_serial].x-track.elements[i].x);
-						if(activity_tmp.thetha<0) activity_tmp.thetha = activity_tmp.thetha + M_PI;
-						activity_tmp.speed = distance/(track.elements[element_serial].time - track.elements[i].time);
-						activity_calculated = true;
-						break;
-					}
-				}
-			}
-
-			if(!activity_calculated)
-			{
-				for(size_t i=element_serial; i<track.elements.size(); i++)
-				{
-					double distance = fmutil::distance(track.elements[i], track.elements[element_serial]);
-					if(distance >= 0.3)
-					{
-						activity_tmp.thetha = std::atan2(track.elements[i].y-track.elements[element_serial].y, track.elements[i].x-track.elements[element_serial].x);
-						if(activity_tmp.thetha<0) activity_tmp.thetha = activity_tmp.thetha + M_PI;
-
-						activity_tmp.speed = distance/(track.elements[i].time - track.elements[element_serial].time);
-						break;
-					}
-				}
-			}
-
+			//put two clusters of tracks together:
+			//rotate the moving direction of cluster 2 by PI, which means 2 clusters of tracks choose the same direction;
+			//assumption: a pedestrian walkway is bidirectional;
+			if(track.cluster_label == 1)activity_tmp.thetha = track.elements[element_serial].thetha;
+			else if(track.cluster_label == 2)activity_tmp.thetha = track.elements[element_serial].thetha-M_PI;
 			if(activity_tmp.speed<3.0)grid.moving_activities.push_back(activity_tmp);
+
 		}
 		else if(track.ped_activity == STATIC)
 		{

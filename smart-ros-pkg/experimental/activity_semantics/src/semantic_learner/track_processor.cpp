@@ -188,10 +188,11 @@ namespace golfcar_semantics{
 						for(size_t p=element_serial; p<track.elements.size(); p++)
 						{
 							double distance = fmutil::distance(track.elements[p], track.elements[element_serial]);
-							if(distance >= 0.3)
+							if(distance >= 1.0)
 							{
 								track.elements[element_serial].thetha = std::atan2(track.elements[p].y-track.elements[element_serial].y, track.elements[p].x-track.elements[element_serial].x);
 								track.elements[element_serial].speed  = distance/(track.elements[p].time - track.elements[element_serial].time);
+								activity_calculated = true;
 								break;
 							}
 						}
@@ -206,7 +207,7 @@ namespace golfcar_semantics{
 	{
 		for(size_t i=0; i<track_container_->tracks.size(); i++)
 		{
-			if(track_container_->tracks[i].ped_activity != MOVING)continue;
+			if(track_container_->tracks[i].ped_activity != MOVING) continue;
 			track_container_->tracks[i].cluster_label = 0;
 		}
 

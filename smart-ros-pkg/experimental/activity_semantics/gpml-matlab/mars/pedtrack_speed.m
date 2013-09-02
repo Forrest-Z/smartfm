@@ -2,7 +2,7 @@ clear all, close all
 write_fig = 0;
 disp(' ')
 
-%imOnXY=imread('MCDArea.jpeg');
+% 1st step: read the environment image, to initialize the size;
 imOnXY=imread('binary_image.jpg');
 [size_x,size_y,img_width]=size(imOnXY);
 for xx = 1:fix(size_x/2)
@@ -14,9 +14,9 @@ for xx = 1:fix(size_x/2)
 end
 a = 0*zeros(size_x, size_y);
 
-filename = 'map_data_cluster1.txt';
+filename_cluster1 = 'map_data_cluster2.txt';
 % open the file
-fid = fopen(filename);
+fid = fopen(filename_cluster1);
 % read the file headers, find N (one value)
 N = fscanf(fid, '%d', 1);
 %N = 300;
@@ -86,7 +86,7 @@ s2 = reshape(s2, width, height);
 %m = 1.0-m;
 surface(gridy, gridx, m, 'FaceAlpha', 0.5, 'LineStyle', 'none', 'FaceColor', 'interp');
 hold on;
-surface(a,imOnXY, 'FaceColor', 'texturemap', 'EdgeColor', 'none', 'CDataMapping', 'direct')
+surface(a, imOnXY, 'FaceColor', 'texturemap', 'EdgeColor', 'none', 'CDataMapping', 'direct')
 
 m_deputy=m';
 s2_deputy=s2';
@@ -110,13 +110,13 @@ maxMean_speed
 minMean_speed
 
 direction_mean = mat2gray(m_deputy, [minMean_speed, maxMean_speed]);
-imwrite(direction_mean, 'Yspeed.jpg', 'jpg');
+imwrite(direction_mean, 'both_Yspeed.jpg', 'jpg');
 
 maxVar_speed
 minVar_speed
 
 direction_var = mat2gray(s2_deputy, [minVar_speed maxVar_speed]);
-imwrite(direction_var, 'Yspeed_var.jpg', 'jpg');
+imwrite(direction_var, 'both_Yspeed_var.jpg', 'jpg');
 
-save('Yspeed_params.txt', 'maxMean_speed', 'minMean_speed', 'maxVar_speed', 'minVar_speed', '-ASCII')
+save('both_Yspeed_params.txt', 'maxMean_speed', 'minMean_speed', 'maxVar_speed', 'minVar_speed', '-ASCII')
     
