@@ -78,8 +78,7 @@ namespace golfcar_semantics{
 			//assumption: a pedestrian walkway is bidirectional;
 			if(track.cluster_label == 1)activity_tmp.thetha = track.elements[element_serial].thetha;
 			else if(track.cluster_label == 2)activity_tmp.thetha = track.elements[element_serial].thetha-M_PI;
-			if(activity_tmp.speed<3.0)grid.moving_activities.push_back(activity_tmp);
-
+			if(activity_tmp.speed<3.0 && track.cluster_label == 1)grid.moving_activities.push_back(activity_tmp);
 		}
 		else if(track.ped_activity == STATIC)
 		{
@@ -89,6 +88,14 @@ namespace golfcar_semantics{
 			activity_tmp.dwell_time =  track.elements.back().time - track.elements.front().time;
 			grid.static_activities.push_back(activity_tmp);
 		}
+		else if(track.ped_activity == NOISE)
+		{
+			noisy_activity activity_tmp;
+			activity_tmp.width = track.elements[element_serial].width;
+			activity_tmp.depth = track.elements[element_serial].depth;
+			grid.noisy_activities.push_back(activity_tmp);
+		}
+		grid.activity_intensity = grid.activity_intensity+1.0;
 	}
 
 	void AM_learner::learn_activity_map()
@@ -170,20 +177,6 @@ namespace golfcar_semantics{
 		//pay attention here, may not cover the full range;
 		double var_ratio  = (GPvar_max_-GPvar_min_)/256.0;
 
-		GPmean_min2_ = (double)fs_read["mean_min2"];
-		GPmean_max2_ = (double)fs_read["mean_max2"];
-		GPvar_min2_ = (double)fs_read["var_min2"];
-		GPvar_max2_ = (double)fs_read["var_max2"];
-		string gpMean_path2, gpVar_path2;
-		fs_read["gpMean_path2"]>> gpMean_path2;
-		fs_read["gpVar_path2"]>> gpVar_path2;
-		Mat gpMean2 = imread( gpMean_path2, CV_LOAD_IMAGE_GRAYSCALE );
-		Mat gpVar2  = imread( gpVar_path2,   CV_LOAD_IMAGE_GRAYSCALE );
-		double mean_ratio2 = (GPmean_max2_-GPmean_min2_)/256.0;
-		//pay attention here, may not cover the full range;
-		double var_ratio2  = (GPvar_max2_-GPvar_min2_)/256.0;
-
-
 		//incorporate the information into "activity_map";
 		int i, j;
 		for(j = 0; j < gp_ROI_.height; j++)
@@ -194,33 +187,14 @@ namespace golfcar_semantics{
 				int roi_y = gp_ROI_.height-1-j+gp_ROI_.y;
 
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, roi_x, roi_y)];
-				double sinThetha = double(gpMean.at<uchar>(j,i))*mean_ratio+GPmean_min_;
-				double sin2Thetha = double(gpMean2.at<uchar>(j,i))*mean_ratio2+GPmean_min2_;
-				double sinThethaVar = double(gpVar.at<uchar>(j,i))*var_ratio+GPvar_min_;
-				double sin2ThethaVar = double(gpVar2.at<uchar>(j,i))*var_ratio2+GPvar_min2_;
+				double Thetha = double(gpMean.at<uchar>(j,i))*mean_ratio+GPmean_min_;
+				double ThethaVar = double(gpVar.at<uchar>(j,i))*var_ratio+GPvar_min_;
+				if(Thetha>M_PI) Thetha = Thetha-2*M_PI;
 
-				double thetha_sin[2], thetha_sin2[2];
+				grid_tmp.probe_direction = Thetha;
+				grid_tmp.gp_estimation.val[0] = Thetha;
+				grid_tmp.gp_estimation.val[1] = ThethaVar;
 
-				thetha_sin[0] = asin(sinThetha);
-				thetha_sin[1] = M_PI - asin(sinThetha);
-
-				if(sin2Thetha>=0)
-				{
-					thetha_sin2[0] = asin(sin2Thetha)*0.5;
-					thetha_sin2[1] = M_PI_2 - asin(sin2Thetha)*0.5;
-				}
-				else
-				{
-					thetha_sin2[0] = M_PI + asin(sin2Thetha)*0.5;
-					thetha_sin2[1] = M_PI_2 - asin(sin2Thetha)*0.5;
-				}
-
-				double delta0_min = (fabs(thetha_sin[0]-thetha_sin2[0])<fabs(thetha_sin[0]-thetha_sin2[1])) ? fabs(thetha_sin[0]-thetha_sin2[0]): fabs(thetha_sin[0]-thetha_sin2[1]);
-				double delta1_min = (fabs(thetha_sin[1]-thetha_sin2[0])<fabs(thetha_sin[1]-thetha_sin2[1])) ? fabs(thetha_sin[1]-thetha_sin2[0]): fabs(thetha_sin[1]-thetha_sin2[1]);
-				grid_tmp.probe_direction = delta0_min < delta1_min ? thetha_sin[0]:thetha_sin[1];
-
-				grid_tmp.gp_estimation.val[0] = grid_tmp.probe_direction;
-				grid_tmp.gp_estimation.val[1] = sinThethaVar;
 
 				/*
 				double sinThetha_deriv = cos(grid_tmp.gp_estimation.val[0]);
@@ -565,7 +539,7 @@ namespace golfcar_semantics{
 				int y = AM_->size_y-1-j;
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
 				int p, q;
-				size_t biggest_activity_number = 0;
+				double biggest_activity_number = 0;
 				for (p =-neighbour_radius; p<= neighbour_radius; p++)
 				{
 					for (q =-neighbour_radius; q<= neighbour_radius; q++)
@@ -574,7 +548,7 @@ namespace golfcar_semantics{
 						int yq=y+q;
 						if(MAP_VALID(AM_, xp, yq))
 						{
-							if(AM_->cells[MAP_INDEX(AM_, xp, yq)].moving_activities.size()>biggest_activity_number) biggest_activity_number = AM_->cells[MAP_INDEX(AM_, xp, yq)].moving_activities.size();
+							if(AM_->cells[MAP_INDEX(AM_, xp, yq)].activity_intensity>biggest_activity_number) biggest_activity_number = AM_->cells[MAP_INDEX(AM_, xp, yq)].activity_intensity;
 						}
 					}
 				}
@@ -585,9 +559,9 @@ namespace golfcar_semantics{
 				//use sigmoid function instead;
 				double x_shift = -2.0;
 				double y_shift = -1.0/(1+exp(-(x_shift)));
-				intensity_absolute_factor = 1.0/(1+exp(-(double(grid_tmp.moving_activities.size()+x_shift))))+y_shift;
+				intensity_absolute_factor = 1.0/(1+exp(-(double(grid_tmp.activity_intensity + x_shift))))+y_shift;
 
-				intensity_local_ratio  = biggest_activity_number > 0 ? (double(grid_tmp.moving_activities.size())/double(biggest_activity_number)) : 1.0;
+				intensity_local_ratio  = biggest_activity_number > 0 ? (double(grid_tmp.activity_intensity)/double(biggest_activity_number)) : 1.0;
 				intensity_local_factor = intensity_local_ratio;
 				intensity_factor = intensity_absolute_factor*intensity_local_factor;
 				intensity_image.at<float>(y,x) = (float)(intensity_factor);
@@ -1289,7 +1263,7 @@ namespace golfcar_semantics{
 				//direction_color.at<float>(y,x) = (float)(grid_tmp.direction_gaussion.val[0]);
 				//directionVar_color.at<float>(y,x)  = (float)sqrt(grid_tmp.direction_gaussion.val[1]);
 
-				direction_color.at<float>(y,x) = (float)(grid_tmp.gp_estimation.val[0]);
+				direction_color.at<float>(y,x) = sin(fabs((float)(grid_tmp.gp_estimation.val[0])));
 				directionVar_color.at<float>(y,x)  = (float)(grid_tmp.gp_estimation.val[1]);
 			}
 		}
@@ -1300,8 +1274,8 @@ namespace golfcar_semantics{
 		ROS_INFO("direction_color (minVal, maxVal) (%3f, %3f)", minVal, maxVal);
 
 		Mat draw1;
-		//direction_color.convertTo(draw1, CV_8U, 255.0/(maxVal - minVal), -minVal * 255.0/(maxVal - minVal));
-		direction_color.convertTo(draw1, CV_8U, 255.0/(M_PI), 0.0);
+		direction_color.convertTo(draw1, CV_8U, 255.0/(maxVal - minVal), -minVal * 255.0/(maxVal - minVal));
+		//direction_color.convertTo(draw1, CV_8U, 255.0/(M_PI), 0.0);
 
 		Mat draw2;
 		minMaxLoc(directionVar_color, &minVal, &maxVal); //find minimum and maximum intensities
@@ -1321,7 +1295,7 @@ namespace golfcar_semantics{
 		//imshow("direction_map", jetcolor);
 		//imshow("directionVar_map", jetcolorVar);
 
-		imwrite( "./data/direction_map.png", 	jetcolor );
+		imwrite( "./data/direction_map.png", 	draw1 );
 		imwrite( "./data/directionVar_map.png", jetcolorVar );
 		//waitKey(0);
 	}

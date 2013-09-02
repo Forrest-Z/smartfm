@@ -26,7 +26,6 @@ using namespace cv;
 
 namespace golfcar_semantics
 {
-
     class track_processor
     {
         public:

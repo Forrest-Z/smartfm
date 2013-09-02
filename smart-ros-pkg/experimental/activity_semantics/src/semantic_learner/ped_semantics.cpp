@@ -151,16 +151,15 @@ namespace golfcar_semantics{
 				CvScalar global_color;
 				for(size_t j=0; j<track_container_->tracks[i].elements.size(); j++)
 				{
-					//if(track_container_->tracks[i].cluster_label==2 && track_container_->tracks[i].elements[j].thetha <0)ROS_WARN("how come???");
-
+					//if(track_container_->tracks[i].cluster_label==1 && track_container_->tracks[i].elements[j].thetha >0)ROS_WARN("how come???");
 					if(track_container_->tracks[i].cluster_label==1)global_color = CV_RGB(0,0,255);
 					else global_color = CV_RGB(0,255,0);
 					global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, global_color, false);
 					//global_viewer_->clear_image();
 					//cvWaitKey(100);
 				}
-				global_viewer_->show_update(track_container_->tracks[i].elements.front().x, track_container_->tracks[i].elements.front().y, CV_RGB(255,0,0), true);
-				global_viewer_->show_update(track_container_->tracks[i].elements.back().x, track_container_->tracks[i].elements.back().y, CV_RGB(255,0,0), true);
+				//global_viewer_->show_update(track_container_->tracks[i].elements.front().x, track_container_->tracks[i].elements.front().y, CV_RGB(255,0,0), true);
+				//global_viewer_->show_update(track_container_->tracks[i].elements.back().x, track_container_->tracks[i].elements.back().y, CV_RGB(255,0,0), true);
 				//cvWaitKey(500);
 				//global_viewer_->clear_image();
 
@@ -173,6 +172,7 @@ namespace golfcar_semantics{
 				//cvWaitKey(10);
 				//printf("please key in the track label as training data");
 				//scanf("%d", &track_label);
+
 				track_container_->tracks[i].track_label = track_label;
 			}
 			else if(track_container_->tracks[i].ped_activity  == STATIC)
@@ -189,7 +189,7 @@ namespace golfcar_semantics{
 				for(size_t j=0; j<track_container_->tracks[i].elements.size(); j++)
 				{
 					global_color = CV_RGB(255,0,0);
-					global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, global_color, false);
+					//global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, global_color, false);
 					//cvWaitKey(50);
 				}
 				//global_viewer_->show_update(track_container_->tracks[i].elements.front().x, track_container_->tracks[i].elements.front().y, CV_RGB(255,0,0), true);

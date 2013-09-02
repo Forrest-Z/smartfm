@@ -351,14 +351,16 @@ namespace golfcar_semantics{
 	void track_processor::interpolate_elements()
 	{
 		//to interpolate between the track points;
-		bool interpolate_flag = false;
+
+		//when accumulate map_data.txt for GP, turn this off;
+		bool interpolate_flag = true;
 		if(interpolate_flag)
 		{
 			double interpolate_distance = 0.3;
 			for(size_t i=0; i<track_container_->tracks.size(); i++)
 			{
 				track_common &ped_track = track_container_->tracks[i];
-				if(ped_track.ped_activity == MOVING)
+				if(ped_track.ped_activity == MOVING || ped_track.ped_activity == STATIC || ped_track.ped_activity == NOISE)
 				{
 					for(size_t j=1; j<ped_track.elements.size(); j++)
 					{

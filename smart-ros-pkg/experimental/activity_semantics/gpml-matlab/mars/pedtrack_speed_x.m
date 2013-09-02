@@ -1,6 +1,7 @@
 clear all, close all
 write_fig = 0;
 disp(' ')
+tic
 
 % 1st step: read the environment image, to initialize the size;
 imOnXY=imread('binary_image.jpg');
@@ -39,7 +40,7 @@ for n = 1:N
         thetha(total)= fscanf(fid, '%f\t', 1);
         x(total)=x_tmp-offset_x;
         y(total)=y_tmp-offset_y;
-        z(total)= sin(thetha(total))*speed(total);       
+        z(total)= cos(thetha(total))*speed(total);       
     end
 end
 % close the file
@@ -106,18 +107,20 @@ minMean_vector = min(m); minMean_speed = min(minMean_vector);
 maxVar_vector = max(s2); maxVar_speed = max(maxVar_vector);
 minVar_vector = min(s2); minVar_speed = min(minVar_vector);
 
-YmaxMean_speed = maxMean_speed;
-YminMean_speed = minMean_speed;
-YmaxVar_speed  = maxVar_speed;
-YminVar_speed  = minVar_speed;
-y_mean =  m_deputy; y_var = s2_deputy;
-y_hyp = hyp;
-save('GP_speed_y','y_mean','y_var', 'y_hyp', 'YmaxMean_speed', 'YminMean_speed', 'YmaxVar_speed', 'YminVar_speed');
+XmaxMean_speed = maxMean_speed;
+XminMean_speed = minMean_speed;
+XmaxVar_speed  = maxVar_speed;
+XminVar_speed  = minVar_speed;
+x_mean =  m_deputy; x_var = s2_deputy;
+x_hyp = hyp;
+
+save('GP_speed_x','x_mean','x_var', 'x_hyp', 'XmaxMean_speed', 'XminMean_speed', 'XmaxVar_speed', 'XminVar_speed');
 
 direction_mean = mat2gray(m_deputy, [minMean_speed, maxMean_speed]);
-imwrite(direction_mean, 'both_Yspeed.jpg', 'jpg');
+imwrite(direction_mean, 'both_Xspeed.jpg', 'jpg');
 direction_var = mat2gray(s2_deputy, [minVar_speed maxVar_speed]);
-imwrite(direction_var, 'both_Yspeed_var.jpg', 'jpg');
+imwrite(direction_var, 'both_Xspeed_var.jpg', 'jpg');
 
+toc
 %save('cluster1_Xspeed_params.txt', 'maxMean_speed', 'minMean_speed', 'maxVar_speed', 'minVar_speed', '-ASCII')
     

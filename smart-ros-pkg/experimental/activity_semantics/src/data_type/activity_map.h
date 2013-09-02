@@ -47,6 +47,11 @@ namespace golfcar_semantics
 
 	typedef struct
 	{
+		double width, depth;
+	} noisy_activity;
+
+	typedef struct
+	{
 		bool road_flag;
 		bool pedPath_flag;
 		bool pedSourceSink_flag;
@@ -61,6 +66,8 @@ namespace golfcar_semantics
 
 		//for static tracks;
 		std::vector<static_activity> static_activities;
+		std::vector<noisy_activity>  noisy_activities;
+
 
 		//results from GP;
 		Vec2d gp_estimation;
