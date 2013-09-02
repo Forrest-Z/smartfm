@@ -25,6 +25,10 @@ private_nh_("~")
     local_map_.info.height = height/res; //x axis in map frame
     local_map_.info.width = width/res; //-y axis in map frame
 
+    dist_map_.info.resolution = res;
+    dist_map_.info.height = height/res; //x axis in map frame
+    dist_map_.info.width = width/res; //-y axis in map frame
+
     updateMapSkipMax = 5;
     updateMapSkip = 0;
 
@@ -144,14 +148,11 @@ void LocalMap::norminalLane(std_msgs::Bool norminal_lane)
 	updatePriorObsWithLane(norminal_lane.data);
 }
 
-void LocalMap::publishLocalMapPts(vector<int> &free_cells)
-{
+void LocalMap::publishLocalMapPts(vector<int> &free_cells){
     local_map_pts_.header.stamp = ros::Time::now();
     local_map_pts_.points.clear();
-    for(unsigned int i=0; i<local_map_.info.width; i++)
-    {
-        for(unsigned int j=0; j<local_map_.info.height; j++)
-        {
+    for(unsigned int i=0; i<local_map_.info.width; i++){
+        for(unsigned int j=0; j<local_map_.info.height; j++){
             geometry_msgs::Point32 map_p;
             map_p.x = i*local_map_.info.resolution;
             map_p.y = j*local_map_.info.resolution;
@@ -273,6 +274,8 @@ void LocalMap::updateMap(sensor_msgs::PointCloud& pc)
     //a naive implementation where current sensor will just reset the map to prior map with latest obs
     local_map_.data.clear();
     local_map_.data.resize(local_map_.info.width*local_map_.info.height);
+    dist_map_.data.clear();
+    dist_map_.data.resize(dist_map_.info.width*dist_map_.info.height);
     local_map_pts_.points.clear();
     prior_pts_.header.stamp = pc.header.stamp;
     bool getPose = getRobotPose(robot_pose);
@@ -300,15 +303,19 @@ void LocalMap::updateMap(sensor_msgs::PointCloud& pc)
             addPointToMap(laser3_coop_pts_.points[i]);
 
         if (useMetric)
-        	getGradientCost(local_map_);
+        	getGradientCost(local_map_, dist_map_);
 
         geometry_msgs::PoseStamped origin;
         tf::poseStampedTFToMsg(robot_pose, origin);
         local_map_.info.origin =origin.pose;
         local_map_.header.frame_id = global_frame_;
         local_map_.header.stamp = pc.header.stamp;
+        dist_map_.info.origin =origin.pose;
+        dist_map_.header.frame_id = global_frame_;
+        dist_map_.header.stamp = pc.header.stamp;
         pnc_msgs::local_map lm;
         lm.occupancy = local_map_;
+        lm.dist = dist_map_;
         vector<int> free_cells;
         publishLocalMapPts(free_cells);
         lm.free_cells = free_cells;
@@ -458,16 +465,15 @@ void LocalMap::getNearestObst(){
 	obst_dist_pub_.publish(move_status_);
 }
 
-void LocalMap::getGradientCost(nav_msgs::OccupancyGrid &gradient_local_map_){
+void LocalMap::getGradientCost(nav_msgs::OccupancyGrid &gradient_local_map_, nav_msgs::OccupancyGrid &dist_map_){
 	obsMetric -> initObstMap(gradient_local_map_);
 	obsMetric -> updateDistMap();
-	obsMetric->updateCost(gradient_local_map_);
+	obsMetric->updateCost(gradient_local_map_, dist_map_);
 }
 
-int main(int argc, char** argcv)
-{
+int main(int argc, char** argcv){
     ros::init(argc, argcv, "local_map");
-    LocalMap lm(20.0, 30.0, 0.2);
+    LocalMap lm(30.0, 30.0, 0.2);
 
     return 0;
 }

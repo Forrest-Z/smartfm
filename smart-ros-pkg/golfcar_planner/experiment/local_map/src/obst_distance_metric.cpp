@@ -142,11 +142,9 @@ bool obsDistMetric::isOccupied(int x, int y, mapPts pts){
 	return (pts.obstX == x && pts.obstY == y);
 }
 
-
 /* @Algorithm introduced in http://www.informatik.uni-freiburg.de/~lau/dynamicvoronoi/
  * @Raise function is not used currently, will be further employed for efficient incremental update
  * to deal with dynamic obstacles;
- *
  */
 void obsDistMetric::updateDistMap(){
 
@@ -253,7 +251,7 @@ void obsDistMetric::updateDistMap(){
 		ROS_INFO("Update Map End");
 }
 
-void obsDistMetric::updateCost(nav_msgs::OccupancyGrid &local_cost_map){
+void obsDistMetric::updateCost(nav_msgs::OccupancyGrid &local_cost_map, nav_msgs::OccupancyGrid &local_dist_map){
 
 	if (debug_flag)
 		ROS_INFO("Update metric value");
@@ -269,6 +267,7 @@ void obsDistMetric::updateCost(nav_msgs::OccupancyGrid &local_cost_map){
 		for (int y = 0; y < height; y++){
 			unsigned int map_index = y * width + x;
 			pts = ptsCell[map_index];
+			local_dist_map.data[map_index] = pts.sqdist;
 			if (pts.sqdist > max_sqdist)
 				max_sqdist = pts.sqdist;
 		}
@@ -299,6 +298,9 @@ void obsDistMetric::updateCost(nav_msgs::OccupancyGrid &local_cost_map){
 
 			metric = (int) 127 * (dist/(1.5*sqrt(max_sqdist)));
 			local_cost_map.data[map_index] = (127 - metric);
+
+			if(x == 0 || x==(width-1) || y == 0 || y == (height-1))
+				local_cost_map.data[map_index] = 127;
 		}
 	}
 }

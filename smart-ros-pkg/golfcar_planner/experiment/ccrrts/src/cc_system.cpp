@@ -35,22 +35,28 @@ CCState& CCState::operator=(const CCState &stateIn){
 }
 
 CCTrajectory::CCTrajectory () {
-	lor.metric_cost = -1.0;
-	lor.risk = -1.0;
+	dubinsRadius = DBL_MAX;
+	lor.metric_cost = DBL_MAX;
+	lor.risk = DBL_MAX;
 }
 
 CCTrajectory::~CCTrajectory () {
 
 }
 
-CCTrajectory::CCTrajectory (const CCTrajectory &trajectoryIn) : endState(trajectoryIn.getEndState()) {
-
+CCTrajectory::CCTrajectory (const CCTrajectory &trajectoryIn) {
+	dubinsRadius = trajectoryIn.dubinsRadius;
+	endState = trajectoryIn.getEndState();
+	lor.risk = trajectoryIn.lor.risk;
+	lor.metric_cost = trajectoryIn.lor.metric_cost;
 }
 
 CCTrajectory& CCTrajectory::operator=(const CCTrajectory &trajectoryIn) {
 
 	if (this == &trajectoryIn)
 		return *this;
+
+	dubinsRadius = trajectoryIn.dubinsRadius;
 
 	endState = trajectoryIn.getEndState();
 
@@ -66,6 +72,10 @@ int CCTrajectory::getEndState (CCState &getEndStateOut) {
   return 1;
 }
 
+double CCTrajectory::getDubinsRadius(){
+	return dubinsRadius;
+}
+
 double CCTrajectory::evaluateCost () {
 
   return lor.metric_cost;
@@ -76,14 +86,14 @@ double CCTrajectory::evaluateRisk() {
 }
 
 CCSystem::CCSystem (){
-	turning_radii[0] = 3;
-	//turning_radii[1] = 5;
-	//turning_radii[2] = 8;
+	turning_radii[0] = 3.0;
+	turning_radii[1] = 4;
+	turning_radii[2] = 6;
 
-	distance_limit = 20.0;
-	delta_distance = 0.05;
+	distance_limit = 30.0;
+	delta_distance = 0.1;
 
-	risk_limit = 0.5;
+	risk_limit = 0.3;
 	risk_evaluate = new RiskEvaluate();
 	double factor_reduce_size = 1.0;
 	car_width = 1.2/factor_reduce_size;
@@ -94,6 +104,14 @@ CCSystem::CCSystem (){
 
 CCSystem::~CCSystem () {
 
+}
+
+inline double ModTo2Pi(double theta){
+	while (theta < 0)
+		theta += 2.0 * M_PI;
+	while (theta > 2.0*M_PI)
+		theta -= 2.0*M_PI;
+	return theta;
 }
 
 int CCSystem::setRiskLimit(double risk){
@@ -166,15 +184,14 @@ int CCSystem::propagatePoseDubins(double stateIn[7], double (&stateOut)[7], doub
 	stateOut [6] = P_Out(0,1);
 
 	if (false){
-	cout << "Debug" <<endl;
-	cout << "x_conv_in: "<< x_conv <<" y_conv_in: " << y_conv <<"t_conv_in: "<< t_conv <<endl;
-	cout << "A_1: " <<temp_A_1 <<" A_2: " <<temp_A_2<< endl;
-	cout << "V_1:" <<temp_V_1 << " V_2: " << temp_V_2 << "V_3:" <<temp_V_3 << "V_4:" <<temp_V_4<<endl;
-	cout << "x_conv_out: "<< stateOut [3] <<" y_conv_out: " << stateOut [4] <<"t_conv_out: "<< stateOut [5] <<endl;
+		cout << "Debug" <<endl;
+		cout << "x_conv_in: "<< x_conv <<" y_conv_in: " << y_conv <<"t_conv_in: "<< t_conv <<endl;
+		cout << "A_1: " <<temp_A_1 <<" A_2: " <<temp_A_2<< endl;
+		cout << "V_1:" <<temp_V_1 << " V_2: " << temp_V_2 << "V_3:" <<temp_V_3 << "V_4:" <<temp_V_4<<endl;
+		cout << "x_conv_out: "<< stateOut [3] <<" y_conv_out: " << stateOut [4] <<"t_conv_out: "<< stateOut [5] <<endl;
 
-	first_debug = false;
+		first_debug = false;
 	}
-
 	return 1;
 }
 
@@ -195,26 +212,19 @@ int CCSystem::getStateKey (CCState &stateIn, double *stateKey) {
 
 	double tmp[3] = {0};
 	transform_map_to_local_map(stateIn.x, tmp[0], tmp[1], tmp[2]);
-	/*
-	for(int i=0; i<3; i++)
-		tmp[i] = stateIn.x[i] - map_origin[i];
-	while(tmp[2] < -M_PI)
-		tmp[2] += 2.0*M_PI;
-	while(tmp[2] > M_PI)
-		tmp[2] -= 2.0*M_PI;
-		*/
+
 	tmp[0] = tmp[0] + map.info.height*map.info.resolution/4;
 	tmp[1] = tmp[1] + map.info.width*map.info.resolution/2;
 
 	for (int i = 0; i < 3; i++)
 		stateKey[i] =  tmp[i] / regionOperating.size[i];
 
-	//ROS_INFO("State Key: x: %f, y: %f, t: %f ", stateKey[0], stateKey[1], stateKey[2]);
+	//ROS_INFO("getStateKey: State: x: %f, y: %f t: %f. State Key: x: %f, y: %f, t: %f ", stateIn[0], stateIn[1], stateIn[2], stateKey[0], stateKey[1], stateKey[2]);
 
 	return 1;
 }
 
-#define SQ(x)   ((x)*(x))
+#define SQ(x) ((x)*(x))
 float CCSystem::getGoalCost(const double x[7]){
 	double tmp = x[2] - regionGoal.center[2];
 	while(tmp < -M_PI)
@@ -270,9 +280,6 @@ int CCSystem::get_cell_index(double x, double y, int &map_index){
 
 	int cellx = x/map.info.resolution + map.info.height/4.0;
 	int celly = map.info.width/2.0 - y/map.info.resolution;
-
-	//int cellx = x/map.info.resolution;
-	//int celly = y/map.info.resolution;
 
 	if( (cellx >=0) && (cellx < (int)map.info.height) && (celly >= 0) && (celly < (int)map.info.width)){
 		map_index = cellx*map.info.width + celly;
@@ -341,15 +348,11 @@ bool CCSystem::IsInCollision (const double stateIn[7]){
 }
 
 bool CCSystem::IsInCollisionLazy (const double stateIn[7]){
-	// (x,y) in local_map frame
 	double zl[2] = {0};
-	// yaw in local frame
 	double yl = 0;
 	transform_map_to_local_map(stateIn, zl[0], zl[1], yl);
-	//cout<<"zl: "<< zl[0]<<" "<<zl[1]<<" "<<yl<<endl;
 
 	bool is_obstructed = false;
-
 	int map_index = -1;
 
 	if(get_cell_index(zl[0],zl[1], map_index) == 0){
@@ -508,110 +511,114 @@ double CCSystem::extend_dubins_spheres (
 		// Generate states/inputs
 		double del_d = delta_distance;
 		double del_t = del_d/turning_radius;
-		int max_counter = map.info.resolution/del_d;
-		bool init_risk_check = true;
 
-		double t_inc_curr = 0.0;
 		double state_curr[7] = {0.0};
 		double state_in[7];
 		double state_out[7];
-		double temp_t, temp_d;
+
+		double extend_inc_1 = 0;
+		bool should_break = false;
+		bool over_limit = false;
 
 		vector<double> temp_risk;
 
 		for (int i =0; i < 7; i++)
 			state_in[i] = init_state[i];
-		int obs_check_counter = 0;
 
-		while (t_inc_curr < t_increment_s1) {
-			t_inc_curr += del_t;
-			if (t_inc_curr > t_increment_s1) {
-				temp_t = t_inc_curr - del_t;
-				t_inc_curr = t_increment_s1;
+		double t_inc_curr_1 = 0.0;
+		double t_inc_old_1 = 0.0;
+		while ((t_inc_curr_1 < t_increment_s1) && (!over_limit)) {
+
+			t_inc_curr_1 += del_t;
+
+			if (t_inc_curr_1 > t_increment_s1) {
+				t_inc_curr_1 = t_increment_s1;
+				should_break = true;
 			}
 
-			obs_check_counter++;
+			if (t_inc_curr_1*turning_radius > distance_limit){
+				t_inc_curr_1 = distance_limit/turning_radius;
+				over_limit = true;
+			}
 
-			state_curr[0] = x_s1 + turning_radius * cos (direction_s1 * t_inc_curr + t_s1);
-			state_curr[1] = y_s1 + turning_radius * sin (direction_s1 * t_inc_curr + t_s1);
-			state_curr[2] = direction_s1 * t_inc_curr + t_s1 + ( (direction_s1 == 1) ? M_PI_2 : ( 3.0 * M_PI_2) );
+			extend_inc_1 = t_inc_curr_1 - t_inc_old_1;
+
+			state_curr[0] = x_s1 + turning_radius * cos (direction_s1 * t_inc_curr_1 + t_s1);
+			state_curr[1] = y_s1 + turning_radius * sin (direction_s1 * t_inc_curr_1 + t_s1);
+			state_curr[2] = direction_s1 * t_inc_curr_1 + t_s1 + ( (direction_s1 == 1) ? M_PI_2 : ( 3.0 * M_PI_2) );
 
 			while (state_curr[2] < 0)
 				state_curr[2] += 2 * M_PI;
 			while (state_curr[2] > 2 * M_PI)
 				state_curr[2] -= 2 * M_PI;
 
-			// Check for collision
-			if(obs_check_counter == max_counter || t_inc_curr == t_increment_s1){
+			if (IsInCollisionLazy (state_curr)){
+				return -2.0;
+			}
 
-				if (IsInCollisionLazy (state_curr)){
-					//cout <<"angle_inc_1_obst" <<endl;
-					return -2.0;
+			if (check_risk){
+				vector<double> risk;
+				double angle_inc_s1 =0;
+
+				propagatePoseDubins(state_in, state_out, turning_radius, extend_inc_1, direction_s1);
+				evaluateRisk(state_out, risk);
+
+				if (temp_risk.size() == 0){
+					for (int i = 0 ; i < risk.size(); i++){
+						temp_risk.push_back(risk[i]);
+					}
 				}
 
-				if (check_risk){
-					vector<double> risk;
-					double angle_inc_s1 =0;
-
-					if (obs_check_counter == max_counter)
-						angle_inc_s1 = del_t * max_counter;
-					if (t_inc_curr == t_increment_s1)
-						angle_inc_s1 = del_t * obs_check_counter;
-
-					propagatePoseDubins(state_in, state_out, turning_radius, angle_inc_s1, direction_s1);
-					evaluateRisk(state_out, risk);
-
-					if (temp_risk.size() == 0){
-						for (int i = 0 ; i < risk.size(); i++){
-							temp_risk.push_back(risk[i]);
-						}
-					}
-
-					for (int i =0 ; i < risk.size(); i++){
-						if (risk[i] > risk_limit)
-							return -3.0;
-						if (temp_risk[i] < risk[i])
-							temp_risk[i] = risk[i];
-					}
-					for (int i = 0; i < 7; i++)
-						state_in[i] = state_out[i];
-
-					//ROS_INFO("Risk Vector Size Check: %d,,,,,,, %d", temp_risk.size(), temp_risk.size());
+				for (int i =0 ; i < risk.size(); i++){
+					if (risk[i] > risk_limit)
+						return -3.0;
+					if (temp_risk[i] < risk[i])
+						temp_risk[i] = risk[i];
 				}
-				obs_check_counter = 0;
+				for (int i = 0; i < 7; i++)
+					state_in[i] = state_out[i];
 			}
 
 			if (trajectory || return_control){
 				double *state_new = new double[7];
 				for (int i = 0; i < 7; i++)
-					state_new[i] = state_curr[i];
+					state_new[i] = state_out[i];
 				if (trajectory)
 					trajectory->push_front(state_new);
 				if (return_control)
 					control.push_front (direction_s1*turning_radius);
 			}
 
-			if (t_inc_curr * turning_radius > distance_limit){
-				fully_extends = false;
-				double temp_state[7];
-				propagatePoseDubins(state_in, temp_state, turning_radius, (obs_check_counter*del_t), direction_s1);
-				for (int i = 0 ; i < 7; i++)
-					end_state[i] = temp_state[i];
-				for (int i = 0; i < temp_risk.size(); i++){
-					obst_risk.push_back(temp_risk[i]);
-				}
-				return (t_inc_curr * turning_radius);
+			t_inc_old_1 = t_inc_curr_1;
+			if (should_break || over_limit){
+				should_break = false;
+				break;
 			}
 		}
 
-		obs_check_counter = 0;
+		double extend_inc = 0;
+		should_break = false;
 		double d_inc_curr = 0.0;
-		while (d_inc_curr < line_distance){
+		double d_inc_old = 0.0;
+
+		while ((d_inc_curr < line_distance) && (!over_limit)){
+
 			d_inc_curr += del_d;
+
 			if (d_inc_curr > line_distance){
-				temp_d = d_inc_curr = del_d;
 				d_inc_curr = line_distance;
+				should_break = true;
 			}
+
+			double current_total_dist = turning_radius*t_increment_s1 + d_inc_curr;
+
+			if (current_total_dist > distance_limit ){
+				d_inc_curr = distance_limit - turning_radius*t_increment_s1;
+				over_limit = true;
+			}
+
+			extend_inc = d_inc_curr - d_inc_old;
+
 			state_curr[0] = (x_end - x_start) * d_inc_curr / line_distance + x_start;
 			state_curr[1] = (y_end - y_start) * d_inc_curr / line_distance + y_start;
 			state_curr[2] = atan2((y_end-y_start), (x_end-x_start));
@@ -621,164 +628,129 @@ double CCSystem::extend_dubins_spheres (
 			while (state_curr[2] > M_PI)
 				state_curr[2] -= 2.0*M_PI;
 
-			obs_check_counter++;
+			if (IsInCollisionLazy (state_curr))
+				return -2.0;
 
-			if(obs_check_counter == max_counter || d_inc_curr == line_distance){
+			if (check_risk){
 
-				if (IsInCollisionLazy (state_curr))
-					return -2.0;
+				vector<double> risk;
 
-				if (check_risk){
+				propagatePoseDubins(state_in, state_out, DBL_MAX, extend_inc, 0);
+				evaluateRisk(state_out, risk);
 
-					vector<double> risk;
-					double dist_inc = 0;
-
-					if (obs_check_counter == max_counter)
-						dist_inc = del_d * max_counter;
-					if (d_inc_curr == line_distance)
-						dist_inc = obs_check_counter*del_d;
-
-					propagatePoseDubins(state_in, state_out, DBL_MAX, dist_inc, 0);
-
-					/*
-					cout << "Check Incremental_line"<<endl;
-					cout << "distance_inc" << dist_inc << endl;
-					cout << "Dubins pose: x:" << state_curr[0] <<"y:" << state_curr[1] << "z:" <<state_curr[2] << endl;
-					cout << "Propogated pose: x:" << state_out[0] <<"y:" << state_out[1] << "z:" <<state_out[2] <<endl;
-					 */
-					evaluateRisk(state_out, risk);
-
-					if (temp_risk.size() == 0){
-						for (int i = 0 ; i < risk.size(); i++){
-							temp_risk.push_back(risk[i]);
-						}
+				if (temp_risk.size() == 0){
+					for (int i = 0 ; i < risk.size(); i++){
+						temp_risk.push_back(risk[i]);
 					}
-
-					for (int i =0 ; i < risk.size(); i++){
-						if (risk[i] > risk_limit)
-							return -3.0;
-						if (temp_risk[i] < risk[i])
-							temp_risk[i] = risk[i];
-					}
-					for (int i = 0; i < 7; i++)
-						state_in[i] = state_out[i];
 				}
 
-				obs_check_counter = 0;
+				for (int i =0 ; i < risk.size(); i++){
+					if (risk[i] > risk_limit)
+						return -3.0;
+					if (temp_risk[i] < risk[i])
+						temp_risk[i] = risk[i];
+				}
+				for (int i = 0; i < 7; i++)
+					state_in[i] = state_out[i];
 			}
 
 			if (trajectory || return_control){
 				double *state_new = new double[7];
 				for (int i = 0; i < 7; i++)
-					state_new[i] = state_curr[i];
+					state_new[i] = state_out[i];
 				if (trajectory)
 					trajectory->push_front(state_new);
 				if (return_control)
 					control.push_front (0.0);
 			}
 
-			if (t_inc_curr * turning_radius + d_inc_curr > distance_limit) {
-				fully_extends = false;
-				double temp_state[7];
-				propagatePoseDubins(state_in, temp_state, DBL_MAX, (obs_check_counter*del_d), 0);
-				for (int i = 0 ; i < 7; i++)
-					end_state[i] = temp_state[i];
-				for (int i = 0; i < temp_risk.size(); i++){
-					obst_risk.push_back(temp_risk[i]);
-				}
-				return (t_inc_curr * turning_radius + d_inc_curr);
+			d_inc_old = d_inc_curr;
+
+			if (should_break || over_limit){
+				should_break = false;
+				break;
 			}
 		}
 
-		double t_inc_curr_prev = t_inc_curr;
-		t_inc_curr = 0.0;
-		obs_check_counter = 0;
-		while (t_inc_curr < t_increment_s2) {
-			t_inc_curr += del_t;
-			if (t_inc_curr > t_increment_s2){
-				temp_t = t_inc_curr - del_t;
-				t_inc_curr = t_increment_s2;
+		should_break = false;
+		double extend_inc_2 = 0;
+		double t_inc_curr_2 = 0.0;
+		double t_inc_old_2 = 0.0;
+
+		while ((t_inc_curr_2 < t_increment_s2) && (!over_limit)) {
+
+			t_inc_curr_2 += del_t;
+
+			if (t_inc_curr_2 > t_increment_s2){
+				t_inc_curr_2 = t_increment_s2;
+				should_break = true;
 			}
 
-			state_curr[0] = x_s2 + turning_radius * cos (direction_s2 * (t_inc_curr - t_increment_s2) + t_s2);
-			state_curr[1] = y_s2 + turning_radius * sin (direction_s2 * (t_inc_curr - t_increment_s2) + t_s2);
-			state_curr[2] = direction_s2 * (t_inc_curr - t_increment_s2) + t_s2 + ( (direction_s2 == 1) ?  M_PI_2 : 3.0*M_PI_2 );
-			obs_check_counter++;
+			double current_total_dist = turning_radius*(t_increment_s1+t_inc_curr_1) + line_distance;
+
+			if (current_total_dist > distance_limit){
+				t_inc_curr_2 = (distance_limit - turning_radius*t_increment_s1 - line_distance)/turning_radius;
+				over_limit = true;
+			}
+
+			extend_inc_2 = t_inc_curr_2 - t_inc_old_2;
+
+			state_curr[0] = x_s2 + turning_radius * cos (direction_s2 * (t_inc_curr_2 - t_increment_s2) + t_s2);
+			state_curr[1] = y_s2 + turning_radius * sin (direction_s2 * (t_inc_curr_2 - t_increment_s2) + t_s2);
+			state_curr[2] = direction_s2 * (t_inc_curr_2 - t_increment_s2) + t_s2 + ( (direction_s2 == 1) ?  M_PI_2 : 3.0*M_PI_2 );
 
 			while (state_curr[2] < -M_PI)
 				state_curr[2] += 2.0 * M_PI;
 			while (state_curr[2] > M_PI)
 				state_curr[2] -= 2.0*M_PI;
 
-			if(obs_check_counter == max_counter || t_inc_curr == t_increment_s2){
+			if (IsInCollisionLazy (state_curr))
+				return -2.0;
 
-				if (IsInCollisionLazy (state_curr))
-					return -2.0;
+			if (check_risk){
 
-				if (check_risk){
+				vector<double> risk;
 
-					vector<double> risk;
-					double angle_inc_s2 = 0;
+				propagatePoseDubins(state_in, state_out, turning_radius, extend_inc_2, direction_s2);
 
-					if (obs_check_counter == max_counter)
-						angle_inc_s2 = del_t * max_counter;
-					if (t_inc_curr == t_increment_s2)
-						angle_inc_s2 = del_t * obs_check_counter;
+				while (state_out[2] < 0)
+					state_out[2] += 2 * M_PI;
+				while (state_out[2] > 2 * M_PI)
+					state_out[2] -= 2 * M_PI;
 
-					propagatePoseDubins(state_in, state_out, turning_radius, angle_inc_s2, direction_s2);
+				evaluateRisk(state_out, risk);
 
-					while (state_out[2] < 0)
-						state_out[2] += 2 * M_PI;
-					while (state_out[2] > 2 * M_PI)
-						state_out[2] -= 2 * M_PI;
-
-					/*
-					cout << "Check Incremental_curb"<<endl;
-					cout << "angle_inc" << angle_inc_s2 << endl;
-					cout << "Dubins pose: x:" << state_curr[0] <<"y:" << state_curr[1] << "z:" <<state_curr[2] << endl;
-					cout << "Propogated pose: x:" << state_out[0] <<"y:" << state_out[1] << "z:" <<state_out[2] <<endl;
-					 */
-
-					evaluateRisk(state_out, risk);
-
-					if (temp_risk.size() == 0){
-						for (int i = 0 ; i < risk.size(); i++){
-							temp_risk.push_back(risk[i]);
-						}
+				if (temp_risk.size() == 0){
+					for (int i = 0 ; i < risk.size(); i++){
+						temp_risk.push_back(risk[i]);
 					}
-
-					for (int i =0 ; i < risk.size(); i++){
-						if (risk[i] > risk_limit)
-							return -3.0;
-						if (temp_risk[i] < risk[i])
-							temp_risk[i] = risk[i];
-					}
-					for (int i = 0; i < 7; i++)
-						state_in[i] = state_out[i];
 				}
-				obs_check_counter = 0;
+
+				for (int i =0 ; i < risk.size(); i++){
+					if (risk[i] > risk_limit)
+						return -3.0;
+					if (temp_risk[i] < risk[i])
+						temp_risk[i] = risk[i];
+				}
+				for (int i = 0; i < 7; i++)
+					state_in[i] = state_out[i];
 			}
 
 			if (trajectory || return_control){
 				double *state_new = new double[7];
 				for (int i = 0; i < 7; i++)
-					state_new[i] = state_curr[i];
+					state_new[i] = state_out[i];
 				if (trajectory)
 					trajectory->push_front(state_new);
 				if (return_control)
 					control.push_front (direction_s2*turning_radius);
 			}
 
-			if ((t_increment_s1 + t_inc_curr) * turning_radius + line_distance > distance_limit) {
-				fully_extends = false;
-				double temp_state[7];
-				propagatePoseDubins(state_in, temp_state, turning_radius, (obs_check_counter*del_t), direction_s2);
-				for (int i = 0 ; i < 7; i++)
-					end_state[i] = temp_state[i];
-				for (int i = 0; i < temp_risk.size(); i++){
-					obst_risk.push_back(temp_risk[i]);
-				}
-				return ((t_increment_s1 + t_inc_curr) * turning_radius + line_distance);
+			t_inc_old_2 = t_inc_curr_2;
+
+			if (should_break || over_limit){
+				should_break = false;
+				break;
 			}
 		}
 
@@ -786,9 +758,15 @@ double CCSystem::extend_dubins_spheres (
 		for (int i = 0; i < 7; i++)
 			end_state[i] = state_out[i];
 
+		//ROS_INFO("ExtendSphere End state: state_curr: x: %f, y: %f, t: %f. Turning Radius: %f, Traj_length: %f",
+		//		end_state[0], end_state[1], end_state[2], turning_radius, distanceTravel);
+
 		for (int i = 0; i < temp_risk.size(); i++){
 			obst_risk.push_back(temp_risk[i]);
 		}
+
+		if(over_limit)
+			return distance_limit;
 	}
 	return distanceTravel;
 }
@@ -841,53 +819,39 @@ double CCSystem::extend_dubins_all (
 
 	times[0] = extend_dubins_spheres (si_left[0], si_left[1], si_left[2],
 			sf_right[0], sf_right[1], sf_right[2], 1,
-			true, false, true, temp_risk,
+			false, false, false, temp_risk,
 			exact_connection[0], end_state, state_ini,
 			NULL, control, turning_radius);
 	times[1] = extend_dubins_spheres (si_right[0], si_right[1], si_right[2],
 			sf_left[0], sf_left[1], sf_left[2], 2,
-			true, false, true, temp_risk,
+			false, false, false, temp_risk,
 			exact_connection[1], end_state, state_ini,
 			NULL, control, turning_radius);
 	times[2] = extend_dubins_spheres (si_left[0], si_left[1], si_left[2],
 			sf_left[0], sf_left[1], sf_left[2], 3,
-			true, false, true, temp_risk,
+			false, false, false, temp_risk,
 			exact_connection[2], end_state, state_ini,
 			NULL, control, turning_radius);
 	times[3] = extend_dubins_spheres (si_right[0], si_right[1], si_right[2],
 			sf_right[0], sf_right[1], sf_right[2], 4,
-			true, false, true, temp_risk,
+			false, false, false, temp_risk,
 			exact_connection[3], end_state,state_ini,
 			NULL, control, turning_radius);
 
 	temp_risk.empty();
 
-	/*
-	vector<pair < int, double> > trajTimePairs;
-
-	for (int i = 0; i < 4; i++){
-		trajTimePairs.push_back(make_pair(i, times[i]));
-	}
-
-	sort(trajTimePairs.begin(), trajTimePairs.end(), compareTrajTimePairs);
-
-	if ((trajTimePairs[0].second< 0) ||(trajTimePairs[0].second > DBL_MAX/2))
-		return -1.0;
-
-	int comb_min = trajTimePairs[0].first + 1;
-	 */
-
 	double min_time = DBL_MAX;
 	int comb_min = -1;
 	for (int i = 0; i < 4; i++) {
-		if  ((times[i] >= 0.0) && (times[i] < min_time)) {
+		if  ((times[i] >= 0.0) && (times[i] < DBL_MAX/2) && (times[i] < min_time)) {
 			comb_min = i+1;
 			min_time = times[i];
 		}
+		//else
+		//	ROS_INFO("No Solution due to %f", times[i]);
 	}
 	if (comb_min == -1)
 		return -1.0;
-
 
 	if (check_obstacles == false) {
 		fully_extends = exact_connection[comb_min-1];
@@ -956,6 +920,16 @@ int CCSystem::extendTo (
 	while (stateFromIn.x[2] > 2*M_PI)
 		stateFromIn.x[2] -= 2*M_PI;
 
+	//ROS_INFO("ExtendTO: startIn: x %f, y: %f. StateOut: x %f, y %f", stateFromIn.x[0], stateFromIn.x[1], stateTowardsIn[0], stateTowardsIn[1]);
+
+	/*
+	//Limit the orientation change into [0, Pi]
+	if (fabs(ModTo2Pi(stateFromIn[2])-ModTo2Pi(stateTowardsIn[2]) >= M_PI/2)){
+		ROS_INFO("Theta change exceed the limit");
+		return -1;
+	}
+	*/
+
 	double *end_state = new double [7];
 	Level_OF_Risk min_lor;
 	min_lor.metric_cost = DBL_MAX;
@@ -980,8 +954,6 @@ int CCSystem::extendTo (
 
 		if(time_cost > 0.0 && time_cost < DBL_MAX/2){
 
-			//ROS_INFO("Enxtend to Function risk check, %f", tmp_risk[0]);
-
 			double max_risk = 0;
 			for (int i = 0 ; i < tmp_risk.size() ; i ++){
 				if (tmp_risk[i] > max_risk)
@@ -989,8 +961,6 @@ int CCSystem::extendTo (
 			}
 			temp_lor.metric_cost = time_cost;
 			temp_lor.risk = max_risk;
-
-			//ROS_INFO("Enxtend to Function risk check again, %f", temp_lor.risk);
 
 			if(temp_lor < min_lor){
 				for(int j=0; j<7; j++)
@@ -1007,8 +977,10 @@ int CCSystem::extendTo (
 
 	if((min_lor.metric_cost <= 0.0) || (min_lor.metric_cost > DBL_MAX/2)){
 		delete[] end_state;
-		return 0;
+		return -1;
 	}
+
+	//ROS_INFO("Extendto: BestTurningRais: %f, dist: %f, risk: %f", best_turning_radius, min_lor.metric_cost, min_lor.risk);
 
 	while (end_state[2] < -M_PI)
 		end_state[2] += 2.0 * M_PI;
@@ -1019,7 +991,9 @@ int CCSystem::extendTo (
 		trajectoryOut.endState.x[i] = end_state[i];
 	}
 
-	trajectoryOut.lor = min_lor;
+	trajectoryOut.lor.metric_cost = min_lor.metric_cost;
+	trajectoryOut.lor.risk = min_lor.risk;
+	trajectoryOut.dubinsRadius = best_turning_radius;
 
 	delete [] end_state;
 	return 1;
@@ -1080,60 +1054,31 @@ Level_OF_Risk CCSystem::evaluateExtension (CCState &stateFromIn, CCState &stateT
 
 int CCSystem::getTrajectory (
 		CCState& stateFromIn, CCState& stateToIn,
-		list<double*>& trajectoryOut, list<float>& controlOut,
-		bool check_obstacles, bool check_risk) {
+		list<double*>& trajectoryOut, list<float>& controlOut, double turning_radius) {
 
-	Level_OF_Risk min_lor;
-	min_lor.metric_cost = DBL_MAX;
-	min_lor.risk = DBL_MAX;
+	//ROS_INFO("Get Trajectory: Turning Radius: %f", turning_radius);
 
-	bool exactConnectionOut = false;
-	for(int i=num_turning_radii -1; i >= 0; i--){
-		list<double*> tmp_traj;
-		list<float> tmp_control;
-		bool tmp_exact_connection = false;
-		vector<double> temp_risk;
-		double *end_state = new double[7];
-		double turning_radius = turning_radii[i];
+	list<double*> tmp_traj;
+	list<float> tmp_control;
+	bool tmp_exact_connection = false;
+	vector<double> temp_risk;
+	double *end_state = new double[7];
 
-		Level_OF_Risk temp_lor;
-		temp_lor.metric_cost = DBL_MAX;
-		temp_lor.risk = DBL_MAX;
-
-		double time = extend_dubins_all (
-				stateFromIn.x, stateToIn.x,
-				check_obstacles, true, check_risk, temp_risk,
-				tmp_exact_connection, end_state, &tmp_traj, tmp_control, turning_radius);
-		if(time > 0.0 && time < DBL_MAX/2){
-			temp_lor.metric_cost = time;
-
-			double max_risk = 0;
-			for (int i = 0 ; i < temp_risk.size() ; i ++){
-				if (temp_risk[i] > max_risk)
-					max_risk = temp_risk[i];
-			}
-			temp_lor.risk = max_risk;
-
-			if( temp_lor< min_lor){
-				min_lor = temp_lor;
-				trajectoryOut = tmp_traj;
-				controlOut = tmp_control;
-				exactConnectionOut = tmp_exact_connection;
-			}
-		}
-		else{
-			clear_tmp_trajectories(tmp_traj, tmp_control);
-		}
+	double time = extend_dubins_all (
+			stateFromIn.x, stateToIn.x,
+			true, true, true, temp_risk,
+			tmp_exact_connection, end_state, &tmp_traj, tmp_control, turning_radius);
+	if(time > 0.0 && time < DBL_MAX/2){
+		trajectoryOut = tmp_traj;
+		controlOut = tmp_control;
 		delete [] end_state;
+		trajectoryOut.reverse();
+		return 1;
 	}
-
-	if ((min_lor.metric_cost <= 0.0)){// || (exactConnectionOut == false)){
-		return 0;
+	else{
+		//ROS_INFO("Traj can not be found");
+		return -1;
 	}
-
-	trajectoryOut.reverse();
-
-	return 1;
 }
 
 double CCSystem::evaluateCostToGo (CCState& stateIn){
@@ -1177,7 +1122,7 @@ int CCSystem::sampleState(CCState &randomStateOut){
 
 	randomStateOut.x[0] = map_origin[0] + state_copy[0]*cyaw + state_copy[1]*syaw;
 	randomStateOut.x[1] = map_origin[1] + -state_copy[0]*syaw + state_copy[1]*cyaw;
-	randomStateOut.x[2] = map_origin[2] + state_copy[2];
+	randomStateOut.x[2] = map_origin[2] - M_PI/2 + state_copy[2];
 	while(randomStateOut.x[2] > M_PI)
 		randomStateOut.x[2] -= 2.0*M_PI;
 	while(randomStateOut.x[2] < -M_PI)
@@ -1188,9 +1133,10 @@ int CCSystem::sampleState(CCState &randomStateOut){
 	randomStateOut.x[5] =0;
 	randomStateOut.x[6] =0;
 
-
 	if (IsInCollisionLazy (randomStateOut.x))
 		return 0;
+
+	//ROS_INFO("Sampling: x: %f, y: %f, t: %f", randomStateOut[0], randomStateOut[1], randomStateOut[2]);
 
 	return 1;
 }

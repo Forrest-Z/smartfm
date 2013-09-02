@@ -24,6 +24,4 @@
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find local_map)/single_launch/RRT.vcg"/>
 
-  <include file="$(find local_map)/urdf/display_cp.launch"/>
-
 </launch>

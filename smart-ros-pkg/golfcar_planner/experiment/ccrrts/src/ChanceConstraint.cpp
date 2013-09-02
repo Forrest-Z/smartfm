@@ -11,7 +11,14 @@
 bool debug = false;
 
 ChanceConstraint::ChanceConstraint(){
-	obst_info_sub_= nh_.subscribe("obst_info",1,&ChanceConstraint::ObstInfoCallBack, this);
+
+	/*
+	obst_info_sub_.subscriber(nh_, "obst_info", 10);
+    obst_info_filter = new tf::MessageFilter<obstacle_tracking::obst_info>(obst_info_sub_, tf_, "local_map", 10);
+    obst_info_filter->registerCallback(boost::bind(&ChanceConstraint::ObstInfoCallBack, this, _1));
+	*/
+
+	obst_info_sub_ = nh_.subscribe("obst_info", 2, &ChanceConstraint::ObstInfoCallBack, this);
 	obst_cst_pub_ = nh_.advertise<ccrrts::obsts_cst>("cst_info", 1);
 }
 
@@ -42,6 +49,7 @@ inline LineINFO ConstraintAnalyze(sensor_msgs::PointCloud line_pts){
 
 int ChanceConstraint::TransformFromLocalToMap(geometry_msgs::PointStamped pts_in, geometry_msgs::PointStamped& pts_out){
 	try {
+		tf_.waitForTransform("/local_map","/map", ros::Time::now(), ros::Duration(2.0));
 		tf_.transformPoint("/map", pts_in, pts_out);
 	}
 	catch(tf::LookupException& ex) {
@@ -59,10 +67,12 @@ int ChanceConstraint::TransformFromLocalToMap(geometry_msgs::PointStamped pts_in
 	return 1;
 }
 
-void ChanceConstraint::ObstInfoCallBack(const obstacle_tracking::obst_info obst_info){
+void ChanceConstraint::ObstInfoCallBack(const obstacle_tracking::obst_info::ConstPtr obst_info){
 	ROS_INFO("Obst Info Received");
-	infos = obst_info;
+	infos = *obst_info;
 	csts.obsts_cst.clear();
+	if (infos.veh_polys.size() == 0)
+		ROS_INFO("No Vehicle Detected");
 	Initialize(infos.veh_polys);
 	csts.head.stamp = ros::Time::now();
 	obst_cst_pub_.publish(csts);
@@ -92,12 +102,16 @@ void ChanceConstraint::PolygonAnalyze(geometry_msgs::PolygonStamped poly, ccrrts
 		geometry_msgs::PointStamped pts_in, pts_out;
 		geometry_msgs::Point32 temp_pts;
 		pts_in.header = poly.header;
+		pts_in.header.stamp = ros::Time::now();
+		pts_out.header.stamp = ros::Time::now();
+		ROS_INFO("Debug time stamp: %f", poly.header.stamp.toSec());
 		pts_in.point.x = i->x;
 		pts_in.point.y = i->y;
 		pts_in.point.z = i->z;
 		ros::Rate wait_rate(0.02);
 
 		if(TransformFromLocalToMap(pts_in, pts_out) ==0){
+			ROS_INFO("Analyze failed due to tf error");
 			return;
 		}
 		temp_pts.x = pts_out.point.x;
