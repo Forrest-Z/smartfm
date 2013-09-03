@@ -432,6 +432,10 @@ namespace golfcar_semantics{
 			{
 				int roi_x = i+gp_ROI_.x;
 				int roi_y = j+gp_ROI_.y;
+
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, roi_x, roi_y)];
+				if(!grid_tmp.road_flag && grid_tmp.obs_dist>20) continue;
+
 				//probe distance to the edge skel;
 				direction_probe(roi_x, roi_y);
 			}
@@ -682,7 +686,7 @@ namespace golfcar_semantics{
 				else pedPath_factor = 0.00001;
 
 				grid_tmp.EE_score = distance_factor*cycle_factor*direction_factor_crossing*directionVar_factor*pedPath_factor*grid_tmp.path_score;
-				grid_tmp.EE_score = direction_factor_crossing;
+				//grid_tmp.EE_score = direction_factor_crossing;
 			}
 		}
 
@@ -799,7 +803,6 @@ namespace golfcar_semantics{
 	    //Method2: use prior knowledge about distance between two SinkSources; the distance should be larger than certain value;
 
 	    N = bic_N;
-	    N = 8;
 	    //http://docs.opencv.org/modules/ml/doc/expectation_maximization.html
 	    Mat kmeans_labels, kmeans_centers;
 		kmeans(all_samples, N, kmeans_labels, TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 100, 1.0), 10, KMEANS_PP_CENTERS, kmeans_centers);
