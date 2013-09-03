@@ -422,7 +422,16 @@ namespace golfcar_semantics{
 				grid_tmp.skel_angle = edge_angle;
 				grid_tmp.nearest_edge_ID = nearest_edgeID;
 				//printf("dist %f skel_angle %f\t", dist_between_ends, grid_tmp.skel_angle);
+			}
+		}
 
+		//there used to be a bug: must separate this block from the previous one, or skel_angle may be used without calculation;
+		for(j = 0; j < gp_ROI_.height; j++)
+		{
+			for (i = 0; i < gp_ROI_.width; i++)
+			{
+				int roi_x = i+gp_ROI_.x;
+				int roi_y = j+gp_ROI_.y;
 				//probe distance to the edge skel;
 				direction_probe(roi_x, roi_y);
 			}
@@ -459,16 +468,25 @@ namespace golfcar_semantics{
 		int roi_y2 = floor(end_point2.y/map_scale_);
 		activity_grid &grid_tmp1 = AM_->cells[MAP_INDEX(AM_, roi_x1, roi_y1)];
 		activity_grid &grid_tmp2 = AM_->cells[MAP_INDEX(AM_, roi_x2, roi_y2)];
-		double delt_skel_angle, delt_skel_angle1, delt_skel_angle2;
-		delt_skel_angle  = fabs(grid_tmp.skel_angle - grid_tmp.gp_estimation[0])<M_PI_2 ? fabs(grid_tmp.skel_angle - grid_tmp.gp_estimation[0]) : M_PI-fabs(grid_tmp.skel_angle - grid_tmp.gp_estimation[0]);
-		delt_skel_angle1 = fabs(grid_tmp1.skel_angle - grid_tmp.gp_estimation[0])<M_PI_2 ? fabs(grid_tmp1.skel_angle - grid_tmp.gp_estimation[0]) : M_PI-fabs(grid_tmp1.skel_angle - grid_tmp.gp_estimation[0]);
-		delt_skel_angle2 = fabs(grid_tmp2.skel_angle - grid_tmp.gp_estimation[0])<M_PI_2 ? fabs(grid_tmp2.skel_angle - grid_tmp.gp_estimation[0]) : M_PI-fabs(grid_tmp2.skel_angle - grid_tmp.gp_estimation[0]);
 
-		double max_delt_skel = delt_skel_angle1>delt_skel_angle2?delt_skel_angle1:delt_skel_angle2;
-		max_delt_skel = delt_skel_angle > max_delt_skel? delt_skel_angle : max_delt_skel;
+		double delt_skel_angle1, delt_skel_angle2;
+		//pay attention that skel_angle is in [0, PI]; but  gp_estimation angle is converted to [-PI, +PI] when loading;
+		delt_skel_angle1 = fabs(grid_tmp1.skel_angle - grid_tmp.gp_estimation[0])<M_PI ? fabs(grid_tmp1.skel_angle - grid_tmp.gp_estimation[0]) : 2*M_PI-fabs(grid_tmp1.skel_angle - grid_tmp.gp_estimation[0]);
+		delt_skel_angle1 = delt_skel_angle1<M_PI_2? delt_skel_angle1: M_PI - delt_skel_angle1;
+		delt_skel_angle2 = fabs(grid_tmp2.skel_angle - grid_tmp.gp_estimation[0])<M_PI ? fabs(grid_tmp2.skel_angle - grid_tmp.gp_estimation[0]) : 2*M_PI-fabs(grid_tmp2.skel_angle - grid_tmp.gp_estimation[0]);
+		delt_skel_angle2 = delt_skel_angle2<M_PI_2? delt_skel_angle2: M_PI - delt_skel_angle2;
+
+		double max_delt_skel = delt_skel_angle1 >delt_skel_angle2?delt_skel_angle1:delt_skel_angle2;
 		//grid_tmp.probe_distance1 = fabs(grid_tmp.skel_angle)<M_PI_2?fabs(grid_tmp.skel_angle):M_PI -fabs(grid_tmp.skel_angle);
 		//it turns out that the accuracy of spline's skel_angle is quite important;
 		grid_tmp.probe_distance1 = max_delt_skel;
+
+		//probe:
+		if((x_grid ==727 && y_grid == (973-549)) || (x_grid ==464 && y_grid == (973-563)))
+		{
+			ROS_ERROR("Could you please tell me your angles (%d, %d), dude? skel_angle: %3f; gp_angle: %3f; (%3f, %3f)", x_grid, (973-y_grid), grid_tmp.skel_angle, grid_tmp.gp_estimation[0], grid_tmp1.skel_angle, grid_tmp2.skel_angle);
+			ROS_ERROR("roi1 (%d, %d); roi2 (%d, %d)", roi_x1, roi_y1, roi_x2, roi_y2);
+		}
 
 		//introduce into another measurement: probe_distance2;
 		double probe_length2 = 1.0;
