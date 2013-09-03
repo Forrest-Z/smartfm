@@ -775,6 +775,7 @@ namespace golfcar_semantics{
 	    //Method2: use prior knowledge about distance between two SinkSources; the distance should be larger than certain value;
 
 	    N = bic_N;
+	    N = 8;
 	    //http://docs.opencv.org/modules/ml/doc/expectation_maximization.html
 	    Mat kmeans_labels, kmeans_centers;
 		kmeans(all_samples, N, kmeans_labels, TermCriteria( CV_TERMCRIT_EPS+CV_TERMCRIT_ITER, 100, 1.0), 10, KMEANS_PP_CENTERS, kmeans_centers);

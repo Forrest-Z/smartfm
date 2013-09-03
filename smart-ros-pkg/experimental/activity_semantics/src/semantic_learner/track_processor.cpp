@@ -352,7 +352,6 @@ namespace golfcar_semantics{
 	{
 		//to interpolate between the track points;
 
-		//when accumulate map_data.txt for GP, turn this off;
 		bool interpolate_flag = true;
 		if(interpolate_flag)
 		{
@@ -380,16 +379,20 @@ namespace golfcar_semantics{
 								track_element element_tmp;
 								element_tmp.x = ped_track.elements[j-1].x + dist_inverval_x*a;
 								element_tmp.y = ped_track.elements[j-1].y + dist_inverval_y*a;
+								element_tmp.speed = ped_track.elements[j-1].speed;
+								element_tmp.thetha = ped_track.elements[j-1].thetha;
 								element_tmp.time = ped_track.elements[j-1].time + time_inverval*a;
 								interpolate_elements.push_back(element_tmp);
 							}
 							std::vector<track_element>::iterator it;
 							it = ped_track.elements.begin();
-							ped_track.elements.insert (it+j-1, interpolate_elements.begin(),interpolate_elements.end());
+							ped_track.elements.insert (it+j, interpolate_elements.begin(),interpolate_elements.end());
 							j=j+interpolate_Num;
 						}
 					}
 				}
+
+
 			}
 		}
 	}

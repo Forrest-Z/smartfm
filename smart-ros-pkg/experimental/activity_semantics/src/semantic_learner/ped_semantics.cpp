@@ -158,8 +158,8 @@ namespace golfcar_semantics{
 					//global_viewer_->clear_image();
 					//cvWaitKey(100);
 				}
-				//global_viewer_->show_update(track_container_->tracks[i].elements.front().x, track_container_->tracks[i].elements.front().y, CV_RGB(255,0,0), true);
-				//global_viewer_->show_update(track_container_->tracks[i].elements.back().x, track_container_->tracks[i].elements.back().y, CV_RGB(255,0,0), true);
+				global_viewer_->show_update(track_container_->tracks[i].elements.front().x, track_container_->tracks[i].elements.front().y, CV_RGB(255,0,0), false);
+				global_viewer_->show_update(track_container_->tracks[i].elements.back().x, track_container_->tracks[i].elements.back().y, CV_RGB(255,0,0), false);
 				//cvWaitKey(500);
 				//global_viewer_->clear_image();
 
