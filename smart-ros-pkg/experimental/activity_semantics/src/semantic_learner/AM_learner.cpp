@@ -187,6 +187,9 @@ namespace golfcar_semantics{
 				int roi_y = gp_ROI_.height-1-j+gp_ROI_.y;
 
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, roi_x, roi_y)];
+
+				if(j==549 && i==727)ROS_ERROR("Please tell me what's wrong, dude? %d", gpMean.at<uchar>(j,i));
+
 				double Thetha = double(gpMean.at<uchar>(j,i))*mean_ratio+GPmean_min_;
 				double ThethaVar = double(gpVar.at<uchar>(j,i))*var_ratio+GPvar_min_;
 				if(Thetha>M_PI) Thetha = Thetha-2*M_PI;
@@ -456,10 +459,13 @@ namespace golfcar_semantics{
 		int roi_y2 = floor(end_point2.y/map_scale_);
 		activity_grid &grid_tmp1 = AM_->cells[MAP_INDEX(AM_, roi_x1, roi_y1)];
 		activity_grid &grid_tmp2 = AM_->cells[MAP_INDEX(AM_, roi_x2, roi_y2)];
-		double delt_skel_angle1, delt_skel_angle2;
+		double delt_skel_angle, delt_skel_angle1, delt_skel_angle2;
+		delt_skel_angle  = fabs(grid_tmp.skel_angle - grid_tmp.gp_estimation[0])<M_PI_2 ? fabs(grid_tmp.skel_angle - grid_tmp.gp_estimation[0]) : M_PI-fabs(grid_tmp.skel_angle - grid_tmp.gp_estimation[0]);
 		delt_skel_angle1 = fabs(grid_tmp1.skel_angle - grid_tmp.gp_estimation[0])<M_PI_2 ? fabs(grid_tmp1.skel_angle - grid_tmp.gp_estimation[0]) : M_PI-fabs(grid_tmp1.skel_angle - grid_tmp.gp_estimation[0]);
 		delt_skel_angle2 = fabs(grid_tmp2.skel_angle - grid_tmp.gp_estimation[0])<M_PI_2 ? fabs(grid_tmp2.skel_angle - grid_tmp.gp_estimation[0]) : M_PI-fabs(grid_tmp2.skel_angle - grid_tmp.gp_estimation[0]);
+
 		double max_delt_skel = delt_skel_angle1>delt_skel_angle2?delt_skel_angle1:delt_skel_angle2;
+		max_delt_skel = delt_skel_angle > max_delt_skel? delt_skel_angle : max_delt_skel;
 		//grid_tmp.probe_distance1 = fabs(grid_tmp.skel_angle)<M_PI_2?fabs(grid_tmp.skel_angle):M_PI -fabs(grid_tmp.skel_angle);
 		//it turns out that the accuracy of spline's skel_angle is quite important;
 		grid_tmp.probe_distance1 = max_delt_skel;
@@ -658,7 +664,7 @@ namespace golfcar_semantics{
 				else pedPath_factor = 0.00001;
 
 				grid_tmp.EE_score = distance_factor*cycle_factor*direction_factor_crossing*directionVar_factor*pedPath_factor*grid_tmp.path_score;
-				//grid_tmp.EE_score = direction_factor_crossing;
+				grid_tmp.EE_score = direction_factor_crossing;
 			}
 		}
 

@@ -2,6 +2,8 @@ clear all, close all
 write_fig = 0;
 disp(' ')
 
+tic 
+
 load('GP_speed_x','x_mean','x_var', 'XmaxVar_speed');
 load('GP_speed_y','y_mean','y_var', 'YmaxVar_speed');
 
@@ -15,7 +17,6 @@ thetha_var = 0*zeros(size_x, size_y);
 
 for xx = 1:size_x
     display( xx);
-    tic
     for yy=1:size_y
         
         if (x_var(xx,yy) < XmaxVar_speed - 0.0001) && (y_var(xx,yy) < YmaxVar_speed - 0.0001)
@@ -32,7 +33,6 @@ for xx = 1:size_x
             end
         end
     end
-    toc
 end
 
 maxMean_vector = max(thetha_mean); maxMean_speed = max(maxMean_vector);
@@ -46,3 +46,5 @@ thetha_var_img = mat2gray(thetha_var, [minVar_speed maxVar_speed]);
 imwrite(thetha_var_img, 'PN_thetha_var.jpg', 'jpg');
 
 save('PN_thetha_params.txt', 'maxMean_speed', 'minMean_speed', 'maxVar_speed', 'minVar_speed', '-ASCII')
+save('PN_workspace');
+toc

@@ -15,7 +15,7 @@ for xx = 1:fix(size_x/2)
 end
 a = 0*zeros(size_x, size_y);
 
-filename_cluster1 = 'map_data_both.txt';
+filename_cluster1 = 'map_data_0903.txt';
 % open the file
 fid = fopen(filename_cluster1);
 % read the file headers, find N (one value)
@@ -120,6 +120,8 @@ direction_mean = mat2gray(m_deputy, [minMean_speed, maxMean_speed]);
 imwrite(direction_mean, 'both_Xspeed.jpg', 'jpg');
 direction_var = mat2gray(s2_deputy, [minVar_speed maxVar_speed]);
 imwrite(direction_var, 'both_Xspeed_var.jpg', 'jpg');
+
+save('GP_X_workspace');
 
 toc
 %save('cluster1_Xspeed_params.txt', 'maxMean_speed', 'minMean_speed', 'maxVar_speed', 'minVar_speed', '-ASCII')
