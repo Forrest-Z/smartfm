@@ -645,7 +645,7 @@ namespace golfcar_semantics{
 				}
 
 				double distance_factor;
-				if(grid_tmp.obs_dist<1.0) distance_factor = 1.0-grid_tmp.obs_dist;
+				if(grid_tmp.obs_dist<2.0) distance_factor = 2.0-grid_tmp.obs_dist;
 				else distance_factor = 0.001;
 				//distance_factor = 1.0;
 
@@ -1291,7 +1291,7 @@ namespace golfcar_semantics{
 				//direction_color.at<float>(y,x) = (float)(grid_tmp.direction_gaussion.val[0]);
 				//directionVar_color.at<float>(y,x)  = (float)sqrt(grid_tmp.direction_gaussion.val[1]);
 
-				direction_color.at<float>(y,x) = sin(fabs((float)(grid_tmp.gp_estimation.val[0])));
+				direction_color.at<float>(y,x) = M_PI - fabs((float)(grid_tmp.gp_estimation.val[0]));
 				directionVar_color.at<float>(y,x)  = (float)(grid_tmp.gp_estimation.val[1]);
 			}
 		}
