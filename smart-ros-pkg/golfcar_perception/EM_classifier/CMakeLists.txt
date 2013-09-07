@@ -32,6 +32,9 @@ target_link_libraries(OpenCV_EM ${OpenCV_LIBRARIES})
 rosbuild_add_executable(Self_GMM src/Self_GMM.cpp)
 target_link_libraries(Self_GMM ${OpenCV_LIBRARIES})
 
+rosbuild_add_executable(GMM_try src/GMM_try)
+target_link_libraries(GMM_try ${OpenCV_LIBRARIES})
+
 rosbuild_add_executable(GMM_Uniform src/GMM_Uniform.cpp)
 target_link_libraries(GMM_Uniform ${OpenCV_LIBRARIES})
 

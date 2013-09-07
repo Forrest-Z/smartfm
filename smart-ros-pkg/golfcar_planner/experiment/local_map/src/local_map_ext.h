@@ -32,7 +32,6 @@
 
 #include <fmutil/fm_math.h>
 
-
 using namespace cv;
 using namespace std;
 
@@ -52,16 +51,21 @@ class LocalMap
         obsDistMetric *obsMetric;
 
         nav_msgs::OccupancyGrid local_map_;
+        nav_msgs::OccupancyGrid dist_map_;
         nav_msgs::OccupancyGrid prior_map_;
         void pointcloudCallback(sensor_msgs::PointCloud2ConstPtr pc);
+
         tf::MessageFilter<sensor_msgs::PointCloud2> *pointcloud_filter_;
         message_filters::Subscriber<sensor_msgs::PointCloud2> pointcloud_sub_;
+
         ros::Subscriber norminal_lane_sub_;
         void laserCallback(sensor_msgs::LaserScanConstPtr pc);
         void laser2Callback(sensor_msgs::LaserScanConstPtr pc);
         void laser3Callback(sensor_msgs::LaserScanConstPtr pc);
+
         tf::MessageFilter<sensor_msgs::LaserScan> *laser_filter_, *laser2_filter_, *laser3_filter_;
         message_filters::Subscriber<sensor_msgs::LaserScan> laser_sub_, laser2_sub_, laser3_sub_;
+
         laser_geometry::LaserProjection projector_;
         
         int updateMapSkipMax;
@@ -75,7 +79,7 @@ class LocalMap
         void addPointToMap(geometry_msgs::Point32 map_p, int occ);
         bool getRobotPose(tf::Stamped<tf::Pose> &odom_pose) const;
 
-        void getGradientCost(nav_msgs::OccupancyGrid &gradient_local_map_);
+        void getGradientCost(nav_msgs::OccupancyGrid &gradient_local_map_,  nav_msgs::OccupancyGrid &dist_map_);
 
         tf::TransformListener tf_;
         string global_frame_, local_frame_, base_frame_;

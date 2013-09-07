@@ -40,7 +40,7 @@ void draw_covMatrix_eclipse( Mat img, Mat CurrCovMat, Mat Means, int i)
 	cv::RotatedRect* myRotatedRect = new cv::RotatedRect( cvPoint(cx,cy), cvSize(len1, len2), angle_deg );
 	if (myRotatedRect != NULL)
 	{
-		int g = 1*255.0 * (i+1);
+		int g = 1*20.0 * (i+1);
 		cv::Scalar s = CV_RGB(g,g,g);
 		ellipse( img, *myRotatedRect, s );
 		delete myRotatedRect;

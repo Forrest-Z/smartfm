@@ -69,7 +69,7 @@ meanfunc = {@meanConst};
 covfunc = @covSEiso; 
 likfunc = @likGauss; 
 hyp.cov = log([5.0; 0.7]); hyp.mean = [0]; hyp.lik = log(0.01);
-%hyp = minimize(hyp, @gp, -100, @infExact, meanfunc, covfunc, likfunc, train_data_x, train_data_y);
+hyp = minimize(hyp, @gp, -100, @infExact, meanfunc, covfunc, likfunc, train_data_x, train_data_y);
 %grid_size = 400;
 
 width  = size_y;
@@ -92,9 +92,9 @@ disp('[m s2] = gp(hyp, @infExact, meanfunc, covfunc, likfunc, x, y, z);')
 m = reshape(m, width, height);
 s2 = reshape(s2, width, height);
 %m = 1.0-m;
-surface(gridy, gridx, m,'FaceAlpha',0.5,'LineStyle','none','FaceColor','interp');
+surface(gridy, gridx, m, 'FaceAlpha', 0.5, 'LineStyle', 'none', 'FaceColor', 'interp');
 hold on;
-surface(a,imOnXY,'FaceColor','texturemap','EdgeColor','none','CDataMapping','direct')
+surface(a,imOnXY, 'FaceColor', 'texturemap', 'EdgeColor', 'none', 'CDataMapping', 'direct')
 
 m_deputy=m';
 s2_deputy=s2';
@@ -109,7 +109,19 @@ for xx = 1:fix(size_x/2)
     end
 end
 
+maxMean_vector = max(m); maxMean = max(maxMean_vector);
+minMean_vector = min(m); minMean = min(minMean_vector);
+maxVar_vector = max(s2); maxVar = max(maxVar_vector);
+minVar_vector = min(s2); minVar = min(minVar_vector);
+
+maxMean
+minMean
+
 direction_mean = mat2gray(m_deputy, [0.0 1.0]);
 imwrite(direction_mean, 'flow_direction.jpg', 'jpg');
-direction_var = mat2gray(s2_deputy, [0.0 0.1]);
+
+maxVar
+minVar
+
+direction_var = mat2gray(s2_deputy, [minVar maxVar]);
 imwrite(direction_var, 'flow_directionVar.jpg', 'jpg');

@@ -42,15 +42,15 @@ namespace golfcar_vision{
         	cvLine(image_draw, skeletonIMG_[2],skeletonIMG_[3], color, thickness);
         	cvLine(image_draw, skeletonIMG_[3],skeletonIMG_[0], color, thickness);
 
-        	cvLine(image_draw, skeletonIMG_[4],skeletonIMG_[5], color, 1);
-        	cvLine(image_draw, skeletonIMG_[5],skeletonIMG_[6], color, 1);
-        	cvLine(image_draw, skeletonIMG_[6],skeletonIMG_[7], color, 1);
-        	cvLine(image_draw, skeletonIMG_[7],skeletonIMG_[4], color, 1);
+        	cvLine(image_draw, skeletonIMG_[4],skeletonIMG_[5], color, 2);
+        	cvLine(image_draw, skeletonIMG_[5],skeletonIMG_[6], color, 2);
+        	cvLine(image_draw, skeletonIMG_[6],skeletonIMG_[7], color, 2);
+        	cvLine(image_draw, skeletonIMG_[7],skeletonIMG_[4], color, 2);
 
-        	cvLine(image_draw, skeletonIMG_[0],skeletonIMG_[4], color, 1);
-        	cvLine(image_draw, skeletonIMG_[1],skeletonIMG_[5], color, 1);
-        	cvLine(image_draw, skeletonIMG_[2],skeletonIMG_[6], color, 1);
-        	cvLine(image_draw, skeletonIMG_[3],skeletonIMG_[7], color, 1);
+        	cvLine(image_draw, skeletonIMG_[0],skeletonIMG_[4], color, 2);
+        	cvLine(image_draw, skeletonIMG_[1],skeletonIMG_[5], color, 2);
+        	cvLine(image_draw, skeletonIMG_[2],skeletonIMG_[6], color, 2);
+        	cvLine(image_draw, skeletonIMG_[3],skeletonIMG_[7], color, 2);
         };
 
         void PutInfo(IplImage *image_draw, CvScalar color, double velocity, double distance, CvPoint offset)
@@ -58,7 +58,7 @@ namespace golfcar_vision{
 			CvFont font;
 			double hScale=1.0;
 			double vScale=1.0;
-			int lineWidth=1;
+			int lineWidth=2;
 			CvPoint origin;
 			origin.x = skeletonIMG_[3].x + offset.x;
 			origin.y = skeletonIMG_[3].y + offset.y;

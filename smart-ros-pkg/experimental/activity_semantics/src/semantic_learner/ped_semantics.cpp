@@ -104,7 +104,8 @@ namespace golfcar_semantics{
 		raw_track_show();
 
 		//2nd, perform track classification;
-		activity_track_processor_->ped_track_classification();
+		//activity_track_processor_->ped_track_classification();
+		activity_track_processor_->process_tracks();
 		processed_track_show();
 
 		//3nd, learn activity map given tracks;
@@ -144,15 +145,23 @@ namespace golfcar_semantics{
 		CvPoint prev_point = cvPoint(-1,-1);
 		for(size_t i=0; i<track_container_->tracks.size(); i++)
 		{
+			ROS_INFO("visualize track %ld", i);
 			if(track_container_->tracks[i].ped_activity == MOVING)
 			{
+				CvScalar global_color;
 				for(size_t j=0; j<track_container_->tracks[i].elements.size(); j++)
 				{
-					global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, CV_RGB(0,0,255), false);
-					//cvWaitKey(10);
+					//if(track_container_->tracks[i].cluster_label==1 && track_container_->tracks[i].elements[j].thetha >0)ROS_WARN("how come???");
+					if(track_container_->tracks[i].cluster_label==1)global_color = CV_RGB(0,0,255);
+					else global_color = CV_RGB(0,255,0);
+					global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, global_color, false);
+					//global_viewer_->clear_image();
+					//cvWaitKey(200);
 				}
-				global_viewer_->show_update(track_container_->tracks[i].elements.front().x, track_container_->tracks[i].elements.front().y, CV_RGB(255,0,0), true);
-				global_viewer_->show_update(track_container_->tracks[i].elements.back().x, track_container_->tracks[i].elements.back().y, CV_RGB(255,0,0), true);
+				global_viewer_->show_update(track_container_->tracks[i].elements.front().x, track_container_->tracks[i].elements.front().y, CV_RGB(255,0,0), false);
+				global_viewer_->show_update(track_container_->tracks[i].elements.back().x, track_container_->tracks[i].elements.back().y, CV_RGB(255,0,0), false);
+				//cvWaitKey(1000);
+				//global_viewer_->clear_image();
 
 				prev_point = cvPoint(-1,-1);
 				local_viewer_->show_update( track_container_->tracks[i].elements.front().local_x, track_container_->tracks[i].elements.front().local_y, prev_point, CV_RGB(0,255,0));
@@ -160,19 +169,33 @@ namespace golfcar_semantics{
 				local_viewer_->show_update( track_container_->tracks[i].elements.back().local_x, track_container_->tracks[i].elements.back().local_y, prev_point, CV_RGB(255,0,0));
 
 				int track_label = -1;
-				//cvWaitKey(100);
+				//cvWaitKey(10);
 				//printf("please key in the track label as training data");
 				//scanf("%d", &track_label);
+
 				track_container_->tracks[i].track_label = track_label;
 			}
 			else if(track_container_->tracks[i].ped_activity  == STATIC)
 			{
 				for(size_t j=0; j<track_container_->tracks[i].elements.size(); j++)
 				{
-					global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, CV_RGB(255,255,0), true);
+					//global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, CV_RGB(255,255,0), true);
 				}
 			}
-			else if(track_container_->tracks[i].ped_activity == NOISE) continue;
+			else if(track_container_->tracks[i].ped_activity == NOISE)
+			{
+				//continue;
+				CvScalar global_color;
+				for(size_t j=0; j<track_container_->tracks[i].elements.size(); j++)
+				{
+					global_color = CV_RGB(255,0,0);
+					//global_viewer_->show_update(track_container_->tracks[i].elements[j].x, track_container_->tracks[i].elements[j].y, global_color, false);
+					//cvWaitKey(50);
+				}
+				//global_viewer_->show_update(track_container_->tracks[i].elements.front().x, track_container_->tracks[i].elements.front().y, CV_RGB(255,0,0), true);
+				//cvWaitKey(500);
+				//global_viewer_->clear_image();
+			}
 		}
 
 		global_viewer_->save_image("./data/processed_global.png");

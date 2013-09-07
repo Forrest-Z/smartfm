@@ -87,6 +87,7 @@ class CCTrajectory{
 
 	CCState endState;
 	Level_OF_Risk lor;
+	double dubinsRadius;
 
 public:
 
@@ -98,6 +99,7 @@ public:
 	int getEndState (CCState &endStateOut);
 	CCState& getEndState () {return (CCState&)endState;}
 	CCState& getEndState () const {return (CCState&)endState;}
+	double getDubinsRadius();
 	double evaluateCost ();
 	double evaluateRisk();
 	friend class CCSystem;
@@ -106,7 +108,6 @@ public:
 class CCSystem {
 
 	RiskEvaluate *risk_evaluate;
-	double distance_limit;
 	double delta_distance;
 	CCState rootState;
 
@@ -116,12 +117,13 @@ public:
 	RegionExp regionGoal;
  	RegionExp regionCell;
 
-#define num_turning_radii (1)
- 	double turning_radii[1];
+#define num_turning_radii (3)
+ 	double turning_radii[3];
  	double car_width;
  	double car_height;
  	double safe_distance;
  	double distance_rear_axis_rear;
+	double distance_limit;
 
  	nav_msgs::OccupancyGrid map;
  	vector<int> free_cells;
@@ -156,7 +158,7 @@ public:
 
     int getTrajectory (
     		CCState& stateFromIn, CCState& stateToIn,
-    		list<double*>& trajectoryOut, list<float>& controlOut, bool check_obstacles, bool check_risk);
+    		list<double*>& trajectoryOut, list<float>& controlOut, double turning_radius);
 
     int setRiskLimit(double risk);
     int getNumDimensions () {return 3;}

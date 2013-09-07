@@ -38,6 +38,7 @@
 
 #include <dynamic_reconfigure/server.h>
 #include "ccrrts/ccrrtsCTRConfig.h"
+#include <ccrrts/rrts_result.h>
 
 #include "cc_system.h"
 #include "ccrrts.hpp"
@@ -112,8 +113,10 @@ class Planner{
     ros::Publisher committed_trajectory_view_pub;
     ros::Publisher sampling_view_pub;
     ros::Publisher vertex_marker_pub;
+    ros::Publisher planning_result_pub;
 
     ros::Timer planner_timer;
+    ccrrts::rrts_result result_;
 
     uint32_t cylinder;
 

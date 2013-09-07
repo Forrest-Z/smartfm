@@ -1,0 +1,6 @@
+1. filter the /tf; 
+2. rosbag play A_filtered.bag --clock;
+3. roslaunch A_position.launch (to provide necessary /tf);
+4. roslaunch MODT DATMO_Ped.launch
+5. roslaunch activity_semantics pedestrian_detection.launch; (remember to check whether it is working; rostopic echo /ped_data_asso)
+6. roslaunch activity_semantics collector.launch

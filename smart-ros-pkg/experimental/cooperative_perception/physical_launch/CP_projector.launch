@@ -21,7 +21,7 @@
         <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_baseH9" args="1.75, 0.0, 20.0 -0.0 1.2 -0.0 /base_link /cameraH9_base 100" />
     <node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_imgH9" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /cameraH9_base /cameraH9_front_img 100" />
 
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base1H" args="1.75, 0.0, 7.0 -0.0 0.45 -0.0 /robot_1/base_link /robot_1/cameraH_base 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base1H" args="1.75, 0.0, 5.0 -0.0 0.45 -0.0 /robot_1/base_link /robot_1/cameraH_base 100" />
     <node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_img1H" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /robot_1/cameraH_base /robot_1/cameraH_image 100" />
     
 	<node pkg="vision_lane_detection" type="CP_projector" name="CP_projector0">
