@@ -34,13 +34,42 @@ SimObst::~SimObst(){
 
 }
 
-#if (0)
+#if (1)
 void SimObst::PublishObstInfo(const ros::TimerEvent &e){
-
 
 	geometry_msgs::Point32 temp_pts_1, temp_pts_2, temp_pts_3, temp_pts_4;
 	geometry_msgs::PolygonStamped temp_poly_1, temp_poly_2;
 	//For first obst
+	temp_pts_1.x = 20.0; temp_pts_1.y = 60.0; temp_pts_1.z = 0;
+	temp_pts_2.x = 20.0; temp_pts_2.y = 67.0; temp_pts_2.z = 0;
+	temp_pts_3.x = 22.0; temp_pts_3.y = 67.0; temp_pts_3.z = 0;
+	temp_pts_4.x = 22.0; temp_pts_4.y = 60.0; temp_pts_4.z = 0;
+
+	temp_poly_1.header.stamp = ros::Time::now();
+	temp_poly_1.header.frame_id = "map";
+	temp_poly_1.polygon.points.push_back(temp_pts_1);
+	temp_poly_1.polygon.points.push_back(temp_pts_2);
+	temp_poly_1.polygon.points.push_back(temp_pts_3);
+	temp_poly_1.polygon.points.push_back(temp_pts_4);
+	obst.veh_polys.push_back(temp_poly_1);
+
+	temp_pts_1.x = 14.5; temp_pts_1.y = 63.5; temp_pts_1.z = 0;
+	temp_pts_2.x = 14.5; temp_pts_2.y = 70.0; temp_pts_2.z = 0;
+	temp_pts_3.x = 16.5; temp_pts_3.y = 70.0; temp_pts_3.z = 0;
+	temp_pts_4.x = 16.5; temp_pts_4.y = 63.5; temp_pts_4.z = 0;
+	temp_poly_2.polygon.points.push_back(temp_pts_1);
+	temp_poly_2.polygon.points.push_back(temp_pts_2);
+	temp_poly_2.polygon.points.push_back(temp_pts_3);
+	temp_poly_2.polygon.points.push_back(temp_pts_4);
+	temp_poly_2.header.stamp = ros::Time::now();
+	temp_poly_2.header.frame_id = "map";
+	obst.veh_polys.push_back(temp_poly_2);
+
+	obst_info_pub.publish(obst);
+	obst.veh_polys.clear();
+
+	/*
+		//For first obst
 	temp_pts_1.x = 10.0; temp_pts_1.y = 16.5; temp_pts_1.z = 0;
 	temp_pts_2.x = 10.0; temp_pts_2.y = 18.5; temp_pts_2.z = 0;
 	temp_pts_3.x = 12.0; temp_pts_3.y = 18.5; temp_pts_3.z = 0;
@@ -54,8 +83,8 @@ void SimObst::PublishObstInfo(const ros::TimerEvent &e){
 	temp_poly_1.polygon.points.push_back(temp_pts_4);
 	obst.veh_polys.push_back(temp_poly_1);
 
-	temp_pts_1.x = 13.5; temp_pts_1.y = 16.5; temp_pts_1.z = 0;
-	temp_pts_2.x = 13.5; temp_pts_2.y = 18.5; temp_pts_2.z = 0;
+	temp_pts_1.x = 14.5; temp_pts_1.y = 16.5; temp_pts_1.z = 0;
+	temp_pts_2.x = 14.5; temp_pts_2.y = 18.5; temp_pts_2.z = 0;
 	temp_pts_3.x = 20.0; temp_pts_3.y = 18.5; temp_pts_3.z = 0;
 	temp_pts_4.x = 20.0; temp_pts_4.y = 16.5; temp_pts_4.z = 0;
 	temp_poly_2.polygon.points.push_back(temp_pts_1);
@@ -68,6 +97,8 @@ void SimObst::PublishObstInfo(const ros::TimerEvent &e){
 
 	obst_info_pub.publish(obst);
 	obst.veh_polys.clear();
+	*/
+
 }
 #else
 void SimObst::PublishObstInfo(const ros::TimerEvent &e){

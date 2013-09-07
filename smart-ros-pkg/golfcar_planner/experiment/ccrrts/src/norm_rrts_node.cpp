@@ -107,7 +107,6 @@ int NormPlanner::clear_committed_trajectory(){
 	return 0;
 }
 
-
 void NormPlanner::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps){
 	double roll=0, pitch=0, yaw=0;
 	tf::Quaternion q;
@@ -239,8 +238,8 @@ void NormPlanner::setup_rrts(){
 
 	rootState[0] = car_position.x;
 	rootState[1] = car_position.y;
-	rootState[2]= 0.06;
-	rootState[3]= 0.06;
+	rootState[2]= 0.20;
+	rootState[3]= 0.20;
 	rootState[4]= 0;
 
 	system.regionOperating.center[0] = 0;
@@ -291,6 +290,7 @@ int NormPlanner::get_plan(){
 	Level_OF_Risk prev_best_lor=best_lor;
 
 	int samples_this_loop = 0;
+	int iteration = 0;
 	ros::Time start_current_call_back = ros::Time::now();
 	flush(cout);
 
@@ -299,9 +299,9 @@ int NormPlanner::get_plan(){
 	sample_view_.header.frame_id = "/map";
 
 	while((!found_best_path)){
-
+		ROS_INFO("Number of Vertex: %d", ccrrts.numVertices);
 		ros::Duration dt = ros::Time::now() - start_current_call_back;
-		if(dt.toSec() >0){//  2*planner_dt){
+		//if(dt.toSec() >0){//  2*planner_dt){
 		samples_this_loop += ccrrts.iteration(sample_view);
 
 		if (sample_view.size()!=0){
@@ -313,21 +313,18 @@ int NormPlanner::get_plan(){
 		best_lor = ccrrts.getBestVertexLor();
 		vertex_t& vertexBest= ccrrts.getBestVertex();
 		if(best_lor < perform_criteria){
-			//ROS_INFO(" [Feasible Traj] Vertex: %d ---Cost: %f ---Risk: %f ", ccrrts.numVertices ,best_lor.metric_cost, best_lor.risk);
-			//if(best_lor < prev_best_lor){
-				committed_control.clear();
-				committed_trajectory.clear();
-				if (ccrrts.getBestTrajectory(committed_trajectory, committed_control)>0){
-					publish_committed_trajectory();
-					result_.cost = best_lor.metric_cost;
-					result_.risk = best_lor.risk;
-					result_.goal_x_cov = vertexBest.state->x[2];
-					result_.goal_y_cov = vertexBest.state->x[3];
-					result_.goal_xy_cov = vertexBest.state->x[4];
-					ROS_INFO(" [Committed Traj] Vertex: %d --- Best Cost: %f ---Best Risk: %f ", ccrrts.numVertices ,best_lor.metric_cost, best_lor.risk);
-					prev_best_lor = best_lor;
-				}
-			//}
+			committed_control.clear();
+			committed_trajectory.clear();
+			if (ccrrts.getBestTrajectory(committed_trajectory, committed_control)>0){
+				publish_committed_trajectory();
+				result_.cost = best_lor.metric_cost;
+				result_.risk = best_lor.risk;
+				result_.goal_x_cov = vertexBest.state->x[2];
+				result_.goal_y_cov = vertexBest.state->x[3];
+				result_.goal_xy_cov = vertexBest.state->x[4];
+				ROS_INFO(" [Committed Traj] Vertex: %d --- Best Cost: %f ---Best Risk: %f ", ccrrts.numVertices ,best_lor.metric_cost, best_lor.risk);
+				prev_best_lor = best_lor;
+			}
 		}
 		result_.head.stamp = ros::Time::now();
 		result_.num_vertex = ccrrts.numVertices;
@@ -337,13 +334,21 @@ int NormPlanner::get_plan(){
 		sampling_view_pub.publish(sample_view_);
 		sample_view_.points.clear();
 
-		if (ccrrts.numVertices % 1 == 0){
+		if (ccrrts.numVertices % 10 == 0){
 			publish_tree();
 		}
 		start_current_call_back = ros::Time::now();
-	}
-		if (ccrrts.numVertices > 5000)
-			exit(0);
+		if (ccrrts.numVertices >= 5000){
+			/*
+			setup_rrts();
+			clear_committed_trajectory();
+			result_.cost = 0.0; result_.risk = 0;
+			result_.goal_x_cov = 0; result_.goal_xy_cov = 0; result_.goal_y_cov = 0;
+			iteration ++;
+			if (iteration >= 10)
+			*/
+				exit(0);
+		}
 	}
 	return 0;
 }
@@ -378,6 +383,7 @@ void NormPlanner::publish_committed_trajectory(){
 		traj_view.points.push_back(p);
 	}
 	committed_trajectory_view_pub.publish(traj_view);
+	traj_view.points.clear();
 }
 
 void NormPlanner::publish_tree(){

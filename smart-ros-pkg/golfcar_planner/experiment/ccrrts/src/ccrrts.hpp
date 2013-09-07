@@ -247,7 +247,7 @@ CCRRTS< T >
 	else
 		radius = ballRadius;
 
-	ROS_INFO("Ball Radius: %f, %f, %f",steer_dist, ballRadius, radius);
+	//ROS_INFO("Ball Radius: %f, %f, %f",steer_dist, ballRadius, radius);
 
 	// Search kdtree for the set of near vertices
 	kdres_t *kdres = kd_nearest_range (kdtree, stateKey, radius);
@@ -335,7 +335,7 @@ CCRRTS < T >
 		 this->listVertices.push_front (vertexNew);
 		 this->numVertices++;
 		 insertTrajectory (vertexStartIn, trajectoryIn, *vertexNew);
-		 ROS_INFO("insertTrajectory: lor_from_parent: %f", trajectoryIn.evaluateCost());
+		 //ROS_INFO("insertTrajectory: lor_from_parent: %f", trajectoryIn.evaluateCost());
 		 return vertexNew;
 
 	/*
@@ -566,7 +566,7 @@ CCRRTS< T >
 	if (connectionEstablished)
 		return 1;
 
-	ROS_INFO("Connection Failed");
+	//ROS_INFO("Connection Failed");
 	return -1;
 }
 
@@ -575,7 +575,7 @@ template< class T >
 int
 CCRRTS< T >
 ::markCost (vertex_t& vertexIn){
-	ROS_INFO("MakrCost: Please be careful");
+	//ROS_INFO("MakrCost: Please be careful");
 	vertexIn.lorFromRoot.metric_cost = -1.0;
 	vertex_t &parent = vertexIn.getParent();
 	parent.children.erase(&vertexIn);
@@ -732,9 +732,9 @@ CCRRTS< T >
 				true, true, true, temp_risk,
 				tmp_exact_connection, end_state, &tmp_traj, tmp_control, vertexCurr->getTurningRadius());
 
-		ROS_INFO("RecomputerCov: State_orig: x: %f, y: %f, x_cov: %f, y_cov_: %f, xy_cov: %f. State_new: x: %f, y: %f, x_cov: %f, y_cov_: %f, xy_cov: %f",
-				state_in.x[0], state_in.x[1],state_in.x[3],state_in.x[4],state_in.x[6],
-				end_state[0],end_state[1],end_state[3],end_state[4],end_state[6]);
+		//ROS_INFO("RecomputerCov: State_orig: x: %f, y: %f, x_cov: %f, y_cov_: %f, xy_cov: %f. State_new: x: %f, y: %f, x_cov: %f, y_cov_: %f, xy_cov: %f",
+		//		state_in.x[0], state_in.x[1],state_in.x[3],state_in.x[4],state_in.x[6],
+		//		end_state[0],end_state[1],end_state[3],end_state[4],end_state[6]);
 		recomputeCov(vertexCurr);
 	}
 	return 1;
@@ -749,7 +749,7 @@ CCRRTS <T>
 	//ROS_INFO("Iteration");
 	state_t stateRandom;
 	double randGoalSampling = ((double)rand())/(RAND_MAX + 1.0);
-	if (randGoalSampling < 0.05 ) {
+	if (randGoalSampling < 0.2 ) {
 		if (system->sampleGoalState (stateRandom) <= 0)
 			return 0;
 	}
