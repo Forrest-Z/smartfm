@@ -80,7 +80,7 @@ NormSystem::NormSystem (){
 	distance_limit = 1.00;
 	delta_distance = 0.05;
 
-	risk_limit = 0.1;
+	risk_limit = 0.05;
 	risk_evaluate = new RiskEvaluate();
 	max_free_dist = 0;
 
@@ -102,7 +102,7 @@ int NormSystem::setRiskLimit(double risk){
 	return 1;
 }
 
-#define SQ(x) x*x
+#define SQ(x)   ((x)*(x))
 
 int NormSystem::propagatePose(double stateIn[5], double (&stateOut)[5]){
 
@@ -110,14 +110,15 @@ int NormSystem::propagatePose(double stateIn[5], double (&stateOut)[5]){
 	double y_conv = stateIn[3];
 	double xy_conv = stateIn[4];
 
-	double increment =sqrt(SQ(stateIn[0] - stateOut[0]) + SQ(stateIn[1] - stateOut[1]));
+	double increment = sqrt((stateIn[0] - stateOut[0])*(stateIn[0] - stateOut[0]) + (stateIn[1] - stateOut[1])*(stateIn[1] - stateOut[1]));
+	//ROS_INFO("Increment: %f", increment);
 	double theta = atan2((stateOut[1]-stateIn[1]), (stateOut[0]-stateIn[0]));
 
-	double temp_V_1 = cos(theta);
-	double temp_V_2 = sin(theta);
+	double temp_V_1 = cos(theta)*increment;
+	double temp_V_2 = sin(theta)*increment;
 
 	Matrix2d A,  P_In, P_Out;
-	double M = 0.002;
+	double M = 2;
 	MatrixXd V(2,1);
 
 	//Eigen Matrix multiplication
@@ -145,12 +146,12 @@ int NormSystem::linearConvPropagate(double stateIn[5], double (&stateOut)[5]){
 	double increment =sqrt(SQ(stateIn[0] - stateOut[0]) + SQ(stateIn[1] - stateOut[1]));
 	double theta = atan2((stateOut[1]-stateIn[1]), (stateOut[0]-stateIn[0]));
 
-	double temp_V_1 = cos(theta);
-	double temp_V_2 = sin(theta);
+	double temp_V_1 = cos(theta)*increment;
+	double temp_V_2 = sin(theta)*increment;
 
 	Matrix2d A, Q,  LB_In, LB_Out, LC_In, LC_Out;
 	MatrixXd V(2,1);
-	double M = 0.002;
+	double M = 2;
 
 	V << temp_V_1 ,temp_V_2;
 	A << 1, 0, 0 ,1;
@@ -242,7 +243,7 @@ float NormSystem::getGoalCost(const double x[5]){
 
 bool NormSystem::isReachingTarget (NormState &stateIn) {
 	for (int i = 0; i < 2; i++) {
-		if (fabs(stateIn.x[i] - regionGoal.center[i]) > regionGoal.size[i]/3.0 )
+		if (fabs(stateIn.x[i] - regionGoal.center[i]) > regionGoal.size[i]/4.0 )
 			return false;
 	}
 	return true;
@@ -370,9 +371,10 @@ double NormSystem::extend_line (
 				state_in[i] = temp_state[i];
 			is_init_state = false;
 		}
+		/*
 		else
 			convTruncation(state_out, state_in);
-
+		*/
 		/*
 		vector<double> debug_risk;
 		evaluateRisk(state_in, debug_risk);
@@ -400,12 +402,13 @@ double NormSystem::extend_line (
 
 		for (int i =0 ; i < risk.size(); i++){
 			if (risk[i] > risk_limit){
+
 				/*
 				for (int i = 0; i < temp_risk.size(); i++){
 					obst_risk.push_back(temp_risk[i]);
 				}
 				return d_inc_old;
-				*/
+				 */
 				return -3.0;
 			}
 			if (temp_risk[i] < risk[i])
@@ -413,7 +416,7 @@ double NormSystem::extend_line (
 		}
 
 		for (int i = 0; i < 5; i++){
-			//state_in[i] = state_out[i];
+			state_in[i] = state_out[i];
 			end_state[i] = state_out[i];
 		}
 		//convTruncation(state_out, state_in);
@@ -571,12 +574,15 @@ int NormSystem::clear_tmp_trajectories(list<double*> &state_traj, list<float> &c
 }
 
 int NormSystem::sampleState(NormState &randomStateOut){
-#if(1)
+#if(0)
 	boost::uniform_real<> real_dist_x(10.0, 20.0);
 	boost::uniform_real<> real_dist_y(30.0, 50.0);
 #else
+	//boost::uniform_real<> real_dist_x(10.0, 25.0);
+	//boost::uniform_real<> real_dist_y(13.0, 22.0);
+
 	boost::uniform_real<> real_dist_x(10.0, 25.0);
-	boost::uniform_real<> real_dist_y(13.0, 22.0);
+	boost::uniform_real<> real_dist_y(60.0, 70.0);
 #endif
 	boost::variate_generator<boost::mt19937&, boost::uniform_real<> > real_uniform_x(gen, real_dist_x);
 	boost::variate_generator<boost::mt19937&, boost::uniform_real<> > real_uniform_y(gen, real_dist_y);
@@ -664,9 +670,11 @@ int NormSystem::convTruncation(double stateIn[5], double (&stateOut)[5]){
 				double conv_orig = CONV(0,0);
 				double mean_orig = MEAN(0,0);
 				double risk_orig = (1 - boost::math::erf((mean_orig-b)/sqrt(2*conv_orig)))/2.0;
+				//ROS_INFO("Risk_orig: %f", risk_orig);
+				//if (risk_orig < min_risk && risk_orig < risk_limit && risk_orig > 0.002){
+				//if (risk_orig < min_risk && risk_orig < 0){
 
-				//if (risk_orig < min_risk && risk_orig < risk_limit){
-				if (risk_orig < min_risk && risk_orig < 0){
+				if (risk_orig < min_risk && risk_orig < 0.05 && risk_orig > 0.002){
 					double alpha = (b-mean_orig) /sqrt(conv_orig);
 
 					double pdf = boost::math::pdf(norm_dist, alpha);
@@ -695,20 +703,15 @@ int NormSystem::convTruncation(double stateIn[5], double (&stateOut)[5]){
 					if (false){
 						ROS_INFO("StateIn x: %f, y: %f x_conv: %f, y_conv: %f, xy_conv: %f",
 								stateIn[0], stateIn[1], stateIn[2], stateIn[3], stateIn[4]);
-						ROS_INFO("Risk_orig: %f", min_risk);
+						ROS_INFO("Min_risk: %f", min_risk);
 						ROS_INFO("Truncate Debug: alpha: %f, pdf: %f, cdf: %f, lamda: %f, conv factor: %f", alpha, pdf, cdf, lamda, (1-lamda*lamda + alpha*lamda));
 						ROS_INFO("Mean_orig: %f, Conv_orig: %f, Risk_orig, %f", (mean_orig-b), conv_orig ,risk_orig);
 						ROS_INFO("Mean_proc: %f, Conv_proc: %f, Risk_proc, %f", (mean_proc-b), conv_proc ,risk_proc);
-						ROS_INFO("Debug for ConvTruncation now: x: %f, y: %f, x_cov: %f, y_cov: %f, xy_cov: %f", state_inc[0], state_inc[1], state_inc[2], state_inc[3], state_inc[4]);
 					}
 				}
 			}
 			if (need_update){
 				min_risk = 1.0;
-
-				//stateOut[0] = stateIn[0];
-				//stateOut[1] = stateIn[1];
-
 				for(int i = 0 ;i < 5; i++)
 					stateOut[i] = stateIn[i] - state_inc[i];
 				need_update = false;

@@ -46,6 +46,7 @@ ObstFilter::ObstFilter(){
 ObstFilter::~ObstFilter(){
 }
 
+#if(0)
 //TODO: Figure out proper filter
 void ObstFilter::obstInfoCallBack(const obstacle_tracking::obst_info obst){
 	if (obst.veh_polys.size() == 2 && !obst_filted){
@@ -69,6 +70,31 @@ void ObstFilter::obstInfoCallBack(const obstacle_tracking::obst_info obst){
 		}
 	}
 }
+#else if
+void ObstFilter::obstInfoCallBack(const obstacle_tracking::obst_info obst){
+	if (obst.veh_polys.size() == 2 && !obst_filted){
+		geometry_msgs::PolygonStamped veh_1, veh_2;
+		veh_1 = obst.veh_polys[0];
+		veh_2 = obst.veh_polys[1];
+
+		geometry_msgs::Point32 veh_pts_1;
+		geometry_msgs::Point32 veh_pts_2;
+
+		for (int i = 0 ; i < 4; i++){
+			veh_pts_1.x += veh_1.polygon.points[i].x;
+			veh_pts_1.y += veh_1.polygon.points[i].y;
+			veh_pts_2.x += veh_2.polygon.points[i].x;
+			veh_pts_2.y += veh_2.polygon.points[i].y;
+		}
+
+		if (veh_pts_1.x - veh_pts_2.x < 1.0){
+			obst_info = obst;
+			obst_filted = true;
+		}
+	}
+}
+
+#endif
 
 void ObstFilter::PublishCstInfo(const ros::TimerEvent &e){
 	if (obst_filted)

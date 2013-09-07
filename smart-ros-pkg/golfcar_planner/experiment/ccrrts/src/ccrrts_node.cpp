@@ -36,6 +36,7 @@ Planner::Planner(){
 	planner_timer = nh.createTimer(ros::Duration(planner_dt), &Planner::on_planner_timer, this);
 
 	committed_trajectory_view_pub = nh.advertise<sensor_msgs::PointCloud>("pncview_trajectory", 2);
+	committed_trajectory_pub = nh.advertise<nav_msgs::Path>("pnc_trajectory", 2);
 
 	tree_pub = nh.advertise<sensor_msgs::PointCloud>("rrts_tree", 2);
 	vertex_pub = nh.advertise<sensor_msgs::PointCloud>("rrts_vertex", 2);
@@ -353,9 +354,9 @@ int Planner::get_plan(){
 
 	while((!found_best_path)){
 
+		ROS_INFO("Number of Veretex: %d", ccrrts.numVertices);
 		ros::Duration dt = ros::Time::now() - start_current_call_back;
 
-		if (dt.toSec() >0){// 2* planner_dt){
 		samples_this_loop += ccrrts.iteration(sample_view);
 
 		if (sample_view.size()!=0){
@@ -366,8 +367,9 @@ int Planner::get_plan(){
 		}
 
 		best_lor = ccrrts.getBestVertexLor();
-		if(best_lor < perform_criteria){
+		ROS_INFO("Best Lor: Risk: %f, Cost: %f", best_lor.risk, best_lor.metric_cost);
 
+		if(best_lor < perform_criteria){
 			result_.cost = best_lor.metric_cost;
 			result_.risk = best_lor.risk;
 			committed_control.clear();
@@ -388,7 +390,6 @@ int Planner::get_plan(){
 		planning_result_pub.publish(result_);
 
 		if(ccrrts.numVertices % 1 == 0){
-			//ccrrts.checkTree();
 			publish_tree();
 		}
 
@@ -400,7 +401,6 @@ int Planner::get_plan(){
 		if (ccrrts.numVertices > 500)
 			exit(0);
 		}
-	}
 
 	return 0;
 }
@@ -447,6 +447,31 @@ void Planner::publish_committed_trajectory(){
 
 	if (! is_updating_committed_trajectory)
 		return;
+
+	nav_msgs::Path traj_msg;
+	traj_msg.header.stamp = ros::Time::now();
+	traj_msg.header.frame_id = "map";
+
+	list<float>::iterator committed_control_iter = committed_control.begin();
+	for (list<double*>::iterator iter = committed_trajectory.begin(); iter != committed_trajectory.end(); iter++){
+		double* stateRef = *iter;
+		geometry_msgs::PoseStamped p;
+		p.header.stamp = ros::Time::now();
+		p.header.frame_id = "map";
+
+		p.pose.position.x = stateRef[0];
+		p.pose.position.y = stateRef[1];
+		p.pose.position.z = *committed_control_iter;        // send control as the third state
+		p.pose.orientation.w = 1.0;
+		traj_msg.poses.push_back(p);
+
+		  //printf(" [%f, %f, %f]", p.pose.position.x, p.pose.position.y, p.pose.position.z);
+		ROS_DEBUG(" [%f, %f, %f]", p.pose.position.x, p.pose.position.y, p.pose.position.z);
+
+		committed_control_iter++;
+	}
+	committed_trajectory_pub.publish(traj_msg);
+
 
 	sensor_msgs::PointCloud traj_view;
 	traj_view.header.frame_id = "map";

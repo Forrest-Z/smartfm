@@ -111,6 +111,7 @@ class Planner{
     ros::Publisher tree_pub;
     ros::Publisher vertex_pub;
     ros::Publisher committed_trajectory_view_pub;
+    ros::Publisher committed_trajectory_pub;
     ros::Publisher sampling_view_pub;
     ros::Publisher vertex_marker_pub;
     ros::Publisher planning_result_pub;
