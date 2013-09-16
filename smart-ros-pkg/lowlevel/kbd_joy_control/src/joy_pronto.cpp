@@ -17,9 +17,10 @@
 #include <std_msgs/Bool.h>
 
 
-#define STEER_ANG_MAX 445
+#define STEER_ANG_MAX -445
 #define FULL_BRAKE 100
-#define FULL_THROTTLE 1000
+//maximum Throttle was 1000
+#define FULL_THROTTLE 200
 ros::Publisher throttle_pub, steering_pub, brake_pub, motion_pub, enable_pub, start_pub, shift_pub;
 
 //For enable button
