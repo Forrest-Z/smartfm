@@ -1,0 +1,19 @@
+<package>
+  <description brief="planningWithCP">
+
+     planningWithCP
+
+  </description>
+  <author>LIUWLZ</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/planningWithCP</url>
+  <depend package="roscpp"/>
+  <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="pnc_msgs"/>
+  <depend package="obstacle_tracking"/>
+
+</package>
+
+

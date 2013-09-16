@@ -93,7 +93,7 @@ CCSystem::CCSystem (){
 	distance_limit = 30.0;
 	delta_distance = 0.1;
 
-	risk_limit = 0.3;
+	risk_limit = 0.15;
 	risk_evaluate = new RiskEvaluate();
 	double factor_reduce_size = 1.0;
 	car_width = 1.2/factor_reduce_size;

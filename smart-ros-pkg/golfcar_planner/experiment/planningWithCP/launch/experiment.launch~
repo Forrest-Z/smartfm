@@ -1,0 +1,19 @@
+<launch>
+	<include file="$(find local_map)/single_launch/amcl_diff.launch"/>
+    <!--node pkg="map_server" type="map_server" name="map_server2" args="$(find amcl_pc)/maps/bigeng_sde_map.yaml"/-->
+    <node pkg="map_server" type="map_server" name="map_server2" args="$(find amcl_pc)/maps/utown.yaml"/>
+    <!--node pkg="map_server" type="map_server" name="map_server2" args="$(find local_map_ext)/1_0.2.yaml"/-->
+    <include file="$(find local_map)/urdf/display.launch"/>	
+   
+   
+	<node name="local_map" pkg="local_map" type="local_map_node" output="screen">
+		<remap from="scan_in" to="/sickldmrs/scan3"/>
+		<remap from="static_map" to="static_map_lane"/>
+	</node>
+
+	<node name="map_server_lane" pkg="map_server_ext" type="map_server" args="$(find planningWithCP)/utown.yaml">
+		<remap from="static_map" to="static_map_lane"/>
+		<remap from="map" to="lane_map"/>
+	</node>
+</launch>
+

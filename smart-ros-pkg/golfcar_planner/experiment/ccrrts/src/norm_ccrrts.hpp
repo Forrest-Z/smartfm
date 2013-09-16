@@ -119,6 +119,7 @@ namespace NormRRTSNS{
 		int isSafeTrajectory(list<double*> &trajectory);
 		int checkTree();
 		int lazyCheckTree();
+		int clearInvalidBranch(vertex_t& vertexIn);
 
 		vertex_t& getRootVertex ();
 		Level_OF_Risk getBestVertexLor () {return lowerBoundLor;}
@@ -255,7 +256,7 @@ NormRRTS< T >
 	else
 		radius = ballRadius;
 
-	ROS_INFO("Ball Radius: %f", radius);
+	//ROS_INFO("Ball Radius: %f", radius);
 
 	// Search kdtree for the set of near vertices
 	kdres_t *kdres = kd_nearest_range (kdtree, stateKey, radius);
@@ -377,18 +378,19 @@ NormRRTS < T >
 
 	vertexEndIn.trajFromParent = new trajectory_t (trajectoryIn);
 
+	//Update the covariance
+	state_t end_state = trajectoryIn.getEndState();
+	for (int i = 2; i < 5; i++)
+		vertexEndIn.state->x[i] = end_state[i];
+
 	// Update the parent to the end vertex
 	if (vertexEndIn.parent)
 		vertexEndIn.parent->children.erase (&vertexEndIn);
 	vertexEndIn.parent = &vertexStartIn;
 
 	state_t *stateIn = vertexStartIn.state;
-	//ROS_INFO("insertTraj: x %f, y: %f", stateIn->x[0], stateIn->x[1]);
-
 	// Add the end vertex to the set of chilren
 	vertexStartIn.children.insert (&vertexEndIn);
-	//ROS_INFO("insertTrajectory_direct: lor_of_parent: %f, lor_from_parent: %f, lor_from_root %f", vertexStartIn.lorFromRoot.metric_cost, vertexEndIn.lorFromParent.metric_cost, vertexEndIn.lorFromRoot.metric_cost);
-
 	checkUpdateBestVertex (vertexEndIn);
 
 	return 1;
@@ -589,15 +591,12 @@ NormRRTS< T >
 	return 0;
 }
 
-//mark the vertexes that have invalid trajectory
 template< class T >
 int
 NormRRTS< T >
 ::markCost (vertex_t& vertexIn){
 	ROS_INFO("MarkCost");
 	vertexIn.lorFromRoot.metric_cost = -2.0;
-	vertex_t &parent = vertexIn.getParent();
-	parent.children.erase(&vertexIn);
 	for (typename set<vertex_t*>::iterator iter = vertexIn.children.begin(); iter != vertexIn.children.end(); iter++){
 		markCost(**iter);
 	}
@@ -648,14 +647,7 @@ template< class T >
 int
 NormRRTS< T >
 ::checkTree(){
-
-	//ROS_INFO("CheckTree");
-
 	if( root->children.size() > 0){
-		for (typename set<vertex_t*>::iterator iter = root->children.begin(); iter != root->children.end(); iter++){
-			vertex_t &vertex = **iter;
-			checkTrajectory(vertex);
-		}
 
 		list<vertex_t*> listSurvivingVertices;
 		for (typename list<vertex_t*>::iterator iter = listVertices.begin(); iter != listVertices.end(); iter++){
@@ -663,6 +655,8 @@ NormRRTS< T >
 			if( vertex->lorFromRoot.metric_cost > -0.5)
 				listSurvivingVertices.push_front(vertex);
 			else{
+				vertex_t &parent = vertex->getParent();
+				parent.children.erase(vertex);
 				delete vertex;
 			}
 		}
@@ -700,12 +694,6 @@ NormRRTS< T >
 
 	for (typename vector<vertex_t*>::iterator iter = vectorNearVertices.begin(); iter != vectorNearVertices.end(); iter++){
 
-		/*
-		if (*iter == vertexNew.parent){
-			ROS_INFO("It is parent, no rewire");
-			continue;
-		}
-		*/
 		vertex_t& vertex_curr = **iter;
 
 		state_t& state_curr = *(vertex_curr.state);
@@ -734,9 +722,10 @@ NormRRTS< T >
 			//ROS_INFO("Got Rewired");
 			insertTrajectory (vertexNew, trajectory, vertex_curr);
 			recomputeLor(&vertex_curr);
-			//recomputeCov(&vertex_curr);
+			recomputeCov(&vertex_curr);
 		}
 	}
+	//checkTree();
 	return 1;
 }
 
@@ -751,20 +740,20 @@ NormRRTS< T >
 		vertex_t &parent = vertexCurr->getParent();
 		state_t  &state_par = parent.getState();
 
-		//system->propagatePose(state_par.x, state_in.x);
-
-
 		vector<double> tmp_risk;
 		double *end_state = new double[5];
 
-		if (system->extend_line(state_par.x, state_in.x, tmp_risk, end_state) > 0){
+		double extend = system->extend_line(state_par.x, state_in.x, tmp_risk, end_state);
+
+		if (extend > 0){
 			for (int i = 0 ; i < 5;i++)
 				state_in.x[i] = end_state[i];
 		}
-		else
-			ROS_INFO("Cannot find traj");
+		else{
+			ROS_INFO("Cannot find traj: %f", extend);
+			//markCost(*vertexCurr);
+		}
 		delete[] end_state;
-
 		recomputeCov(vertexCurr);
 	}
 	return 1;

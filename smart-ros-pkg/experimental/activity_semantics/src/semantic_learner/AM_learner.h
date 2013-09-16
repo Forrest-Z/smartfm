@@ -65,6 +65,7 @@ namespace golfcar_semantics
         double prob_2DGaussian(Mat sample, Mat Mean, Mat CovMat);
         void draw_covMatrix_eclipse( Mat img, Mat CurrCovMat, Mat Means, int i);
 
+
         void show_moving_direction();
 
     	const char* image_path_;
@@ -74,11 +75,17 @@ namespace golfcar_semantics
 		Rect gp_ROI_;
 		double GPmean_min_,GPmean_max_,GPvar_min_,GPvar_max_;
 		double GPmean_min2_,GPmean_max2_,GPvar_min2_,GPvar_max2_;
-
-
 		road_semantics* road_semantics_analyzer_;
 		vector <Point2f> SourceSinks_;
-   };
+
+		Mat road_image_;
+
+		//for visualization purpose of moving speed and direction;
+		Rect visual_ROI_;
+		void visualize_arrow_ROI();
+		void drawArrow(Mat img, Point arrow_center, int trunk_lenth, double arrow_angle, int side_length, double alpha,  Scalar color, int thickness);
+		void plotVar(Mat img, Point arrow_center, int side_length, float var_value);
+    };
 };
 
 #endif

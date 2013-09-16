@@ -12,6 +12,8 @@ namespace golfcar_semantics{
 
 		gp_file_ = "./launch/gp_file.yaml";
 		road_semantics_analyzer_ = road_semantics_analyzer;
+
+		visual_ROI_ = Rect(424, 510, 338, 100);
 	}
 
 	void AM_learner::GridMap_init()
@@ -19,8 +21,8 @@ namespace golfcar_semantics{
 		//1st: allocate memory for the grid map;
 
 		ROS_INFO("GridMap_init");
-		Mat img = imread( image_path_, CV_LOAD_IMAGE_GRAYSCALE );	//Future work: load these parameters from a YAML file using OpenCV API;
-		AM_->road_image = &img;
+		road_image_ = imread( image_path_, CV_LOAD_IMAGE_COLOR );	//Future work: load these parameters from a YAML file using OpenCV API;
+		AM_->road_image = &road_image_;
 
 		if( !AM_->road_image->data) {ROS_INFO("cannot load image");return;}
 
@@ -61,6 +63,8 @@ namespace golfcar_semantics{
 				accumulate_grid_activity(grid_tmp, tracks[i], j);
 			}
 		}
+
+		visualize_arrow_ROI();
 	}
 
 	void AM_learner::accumulate_grid_activity(activity_grid &grid ,track_common track, size_t element_serial)
@@ -645,7 +649,7 @@ namespace golfcar_semantics{
 				}
 
 				double distance_factor;
-				if(grid_tmp.obs_dist<1.0) distance_factor = 1.0-grid_tmp.obs_dist;
+				if(grid_tmp.obs_dist<2.0) distance_factor = 2.0-grid_tmp.obs_dist;
 				else distance_factor = 0.001;
 				//distance_factor = 1.0;
 
@@ -1266,6 +1270,7 @@ namespace golfcar_semantics{
 	void AM_learner::view_activity_map()
 	{
 		show_moving_direction();
+		visualize_arrow_ROI();
 	}
 
 	void AM_learner::show_moving_direction()
@@ -1291,7 +1296,7 @@ namespace golfcar_semantics{
 				//direction_color.at<float>(y,x) = (float)(grid_tmp.direction_gaussion.val[0]);
 				//directionVar_color.at<float>(y,x)  = (float)sqrt(grid_tmp.direction_gaussion.val[1]);
 
-				direction_color.at<float>(y,x) = sin(fabs((float)(grid_tmp.gp_estimation.val[0])));
+				direction_color.at<float>(y,x) = M_PI - fabs((float)(grid_tmp.gp_estimation.val[0]));
 				directionVar_color.at<float>(y,x)  = (float)(grid_tmp.gp_estimation.val[1]);
 			}
 		}
@@ -1326,6 +1331,134 @@ namespace golfcar_semantics{
 		imwrite( "./data/direction_map.png", 	draw1 );
 		imwrite( "./data/directionVar_map.png", jetcolorVar );
 		//waitKey(0);
+	}
+
+	void AM_learner::visualize_arrow_ROI()
+	{
+		int arrow_square_side = 18;
+		int origin_image_neighbour = 3;
+		double image_resize_factor = double(arrow_square_side)/(double)origin_image_neighbour;
+
+		Mat road_img_ROI(road_image_, visual_ROI_);
+		Mat road_img_ROI_clone = road_img_ROI.clone();
+
+		Mat road_img_ROIresized;
+		resize(road_img_ROI_clone, road_img_ROIresized, Size(), image_resize_factor, image_resize_factor);
+
+		Mat arrow_clean(road_img_ROIresized.rows,  road_img_ROIresized.cols, CV_8UC3);
+		arrow_clean = Scalar(0);
+		Mat directionVar_tmp(road_img_ROIresized.rows,  road_img_ROIresized.cols, CV_32FC1 );
+		directionVar_tmp = Scalar(0.0);
+
+		Rect map_ROI_tmp = Rect(visual_ROI_.x, (AM_->size_y - visual_ROI_.y)-visual_ROI_.height, visual_ROI_.width, visual_ROI_.height);
+		int arrow_x=0; int arrow_y = 0;
+
+		int i, j;
+		for(j = map_ROI_tmp.y; j < map_ROI_tmp.y+map_ROI_tmp.height; j=j+origin_image_neighbour)
+		{
+			arrow_x=0;
+			for(i = map_ROI_tmp.x; i < map_ROI_tmp.x+map_ROI_tmp.width; i=i+origin_image_neighbour)
+			{
+				//printf("\n");
+				//printf("%d, %d\t",j,i);
+				double angle_total=0.0; double var_total = 0.0;
+				int neightbour_count = 0;
+				for(int a=-origin_image_neighbour/2; a <= origin_image_neighbour/2; a++)
+				{
+					for(int b=-origin_image_neighbour/2; b <= origin_image_neighbour/2; b++)
+					{
+						angle_total = angle_total + AM_->cells[MAP_INDEX(AM_, i+a, j+b)].gp_estimation.val[0];
+						var_total = var_total + AM_->cells[MAP_INDEX(AM_, i+a, j+b)].gp_estimation.val[1];
+						//printf("%3f, %3f\t", angle_total, var_total);
+						neightbour_count++;
+					}
+				}
+
+				//due to that the range of angle is [-pi, +pi], straight average may generate strange values;
+				//double angle_avg = angle_total/double(neightbour_count);
+				double angle_avg = AM_->cells[MAP_INDEX(AM_, i, j)].gp_estimation.val[0];
+				double var_avg = var_total/double(neightbour_count);
+				//printf("avg %3f\n", angle_avg);
+
+				Point arrow_center;
+				arrow_center.x = arrow_square_side*(arrow_x) + arrow_square_side/2;
+				arrow_center.y = arrow_square_side*(arrow_y) + arrow_square_side/2;
+				arrow_center.y = road_img_ROIresized.rows - arrow_center.y;
+				//drawArrow(road_img_ROIresized, arrow_center, arrow_square_side-2, angle_avg, 6, M_PI/180.0*30.0, Scalar(0,0,255), 1);
+				drawArrow(arrow_clean, arrow_center, arrow_square_side-2, angle_avg, 6, M_PI/180.0*30.0, Scalar(0,0,255), 1);
+				plotVar(directionVar_tmp, arrow_center, arrow_square_side, float(var_avg));
+				arrow_x++;
+			}
+			arrow_y++;
+		}
+
+		imwrite("./data/road_img_ROIresized.png", road_img_ROIresized);
+		imwrite("./data/arrow_clean.png", arrow_clean);
+
+		double minVal, maxVal;
+		minMaxLoc(directionVar_tmp, &minVal, &maxVal);
+		ROS_INFO("minVal, maxVal %3f, %3f", minVal, maxVal);
+
+		maxVal = 0.13;
+		Mat directionVar8U;
+		directionVar_tmp.convertTo(directionVar8U, CV_8U, 255.0/(maxVal - minVal), -minVal * 255.0/(maxVal - minVal));
+		directionVar8U = Scalar(255)-directionVar8U;
+		imwrite("./data/directionVar_tmp.png", directionVar8U);
+
+		Mat var_color_tmp;
+		cvtColor(directionVar8U, var_color_tmp, CV_GRAY2RGB);
+		Mat blended_img;
+		double alpha = 0.5;
+		addWeighted( road_img_ROIresized, alpha, var_color_tmp, 1-alpha, 0.0, blended_img);
+
+		assert(arrow_clean.cols==road_img_ROIresized.cols && arrow_clean.rows==road_img_ROIresized.rows);
+		for(j=0; j<arrow_clean.rows; j++)
+		{
+			for(i=0; i<arrow_clean.cols; i++)
+			{
+				Vec3b arrow_scalar = arrow_clean.at<Vec3b>(j, i);
+				if(arrow_scalar.val[0]+arrow_scalar.val[1]+arrow_scalar.val[2]!=0)
+				{
+					if(directionVar8U.at<uchar>(j,i)>127)blended_img.at<Vec3b>(j,i)=arrow_scalar;
+					else blended_img.at<Vec3b>(j,i)=blended_img.at<Vec3b>(j,i)*0.5 + arrow_scalar*0.5;
+				}
+			}
+		}
+		imwrite("./data/blended_img.png", blended_img);
+	}
+
+	void AM_learner::drawArrow(Mat img, Point arrow_center, int trunk_lenth, double arrow_angle, int side_length, double alpha,  Scalar color, int thickness)
+	{
+		Point arrow_head, arrow_tail;
+		arrow_head.x = arrow_center.x + int(double(trunk_lenth/2)*cos(arrow_angle));
+		//arrow_head.y = arrow_center.y + int(double(trunk_lenth/2)*sin(arrow_angle));
+
+		//due to that the image angle definition is different from the one in ros-map;
+		arrow_head.y = arrow_center.y - int(double(trunk_lenth/2)*sin(arrow_angle));
+		arrow_tail.x = arrow_center.x + int(double(trunk_lenth/2)*cos(arrow_angle+M_PI));
+		arrow_tail.y = arrow_center.y - int(double(trunk_lenth/2)*sin(arrow_angle+M_PI));
+		line(img, arrow_head, arrow_tail, color, thickness);
+
+		Point arrow_side1, arrow_side2;
+		arrow_side1.x = arrow_head.x + side_length * cos(M_PI+arrow_angle + alpha);
+		arrow_side1.y = arrow_head.y - side_length * sin(M_PI+arrow_angle + alpha);
+		line(img, arrow_head, arrow_side1, color, thickness);
+
+		arrow_side2.x = arrow_head.x + side_length * cos(M_PI+arrow_angle - alpha);
+		arrow_side2.y = arrow_head.y - side_length * sin(M_PI+arrow_angle - alpha);
+		line(img, arrow_head, arrow_side2, color, thickness);
+	}
+
+	void AM_learner::plotVar(Mat img, Point arrow_center, int side_length, float var_value)
+	{
+		for(int i=-side_length/2; i<=side_length/2;i++)
+		{
+			for(int j=-side_length/2; j<=side_length/2;j++)
+			{
+				if((j+arrow_center.y>=0)&&(j+arrow_center.y<img.rows)&&(i+arrow_center.x>=0)&&(i+arrow_center.x<img.cols))
+				img.at<float>(j+arrow_center.y, i+arrow_center.x) = (var_value);
+			}
+		}
 	}
 
 	void AM_learner::record_map_into_file()
