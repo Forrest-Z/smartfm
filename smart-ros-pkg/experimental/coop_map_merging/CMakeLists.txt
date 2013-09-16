@@ -33,5 +33,5 @@ rosbuild_add_executable(recovering_map src/recovering_map.cpp src/dbgstream.cpp)
 target_link_libraries(recovering_map ${OpenCV_LIBS} raster_map)
 rosbuild_add_executable(saving_map src/saving_map.cpp)
 
-rosbuild_add_executable(test_mrpt_icp src/test_mrpt_icp.cpp)
+#rosbuild_add_executable(test_mrpt_icp src/test_mrpt_icp.cpp)
 #target_link_libraries(example ${PROJECT_NAME})

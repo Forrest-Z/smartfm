@@ -147,11 +147,12 @@ void CreateTargetPCL(sensor_msgs::PointCloud &targetPCL, sensor_msgs::PointCloud
   }
 }
 
-pcl::PointCloud<pcl::PointNormal> ROSPCLtoPCL(sensor_msgs::PointCloud input, bool filter=false){
+template <class T>
+pcl::PointCloud<T> ROSPCLtoPCL(sensor_msgs::PointCloud input, bool filter=false){
   
-pcl::PointCloud<pcl::PointNormal> input_pcl;
+pcl::PointCloud<T> input_pcl;
   for(size_t i=0; i<input.points.size(); i++){
-    pcl::PointNormal p;
+    T p;
     p.x = input.points[i].x; p.y = input.points[i].y; p.z = input.points[i].z;
     if(filter && (fabs(p.x) > 30 || fabs(p.y) > 10)) continue;
     input_pcl.push_back(p);
@@ -159,7 +160,8 @@ pcl::PointCloud<pcl::PointNormal> input_pcl;
   return input_pcl;
 }
 
-sensor_msgs::PointCloud PCLtoROSPCL(pcl::PointCloud<pcl::PointNormal> input_pcl){
+template <class T>
+sensor_msgs::PointCloud PCLtoROSPCL(pcl::PointCloud<T> input_pcl){
   sensor_msgs::PointCloud input;
   for(size_t i=0; i<input_pcl.points.size(); i++){
     geometry_msgs::Point32 p;
@@ -187,8 +189,8 @@ bool AlignmentTwoPointCloudCSM(sensor_msgs::PointCloud cloud_leader, sensor_msgs
   }
   pcl::PointCloud<pcl::PointNormal> cloud_leader_pcl, cloud_ego_pcl;
   //doesn't appear to be filtering...
-  cloud_leader_pcl = ROSPCLtoPCL(cloud_leader, true);
-  cloud_ego_pcl = ROSPCLtoPCL(cloud_ego, true);
+  cloud_leader_pcl = ROSPCLtoPCL<pcl::PointNormal>(cloud_leader, true);
+  cloud_ego_pcl = ROSPCLtoPCL<pcl::PointNormal>(cloud_ego, true);
   pcl::io::savePCDFileASCII(string("cloud_leader.pcd"), cloud_leader_pcl);
   pcl::io::savePCDFileASCII(string("cloud_ego.pcd"), cloud_ego_pcl);
   
@@ -220,7 +222,7 @@ bool AlignmentTwoPointCloudCSM(sensor_msgs::PointCloud cloud_leader, sensor_msgs
   
   outFile_<<"Score: "<<best_match.score *100<<endl;
   pcl::PointCloud<pcl::PointNormal> matching_cloud_tf;
-  pcl::PointCloud<pcl::PointNormal> cloud_leader_pcl_ori = ROSPCLtoPCL(cloud_leader);
+  pcl::PointCloud<pcl::PointNormal> cloud_leader_pcl_ori = ROSPCLtoPCL<pcl::PointNormal>(cloud_leader);
   pcl::transformPointCloud<pcl::PointNormal>(
 	    cloud_leader_pcl_ori, matching_cloud_tf, t);
   
@@ -254,8 +256,8 @@ bool AlignmentTwoPointCloudMICP(sensor_msgs::  PointCloud &cloud_leader, sensor_
   CSimplePointsMap m_ego,m_leader;
   
   pcl::PointCloud<pcl::PointNormal> cloud_leader_pcl, cloud_ego_pcl;
-  cloud_leader_pcl = ROSPCLtoPCL(cloud_leader, true);
-  cloud_ego_pcl = ROSPCLtoPCL(cloud_ego, true);
+  cloud_leader_pcl = ROSPCLtoPCL<pcl::PointNormal>(cloud_leader, true);
+  cloud_ego_pcl = ROSPCLtoPCL<pcl::PointNormal>(cloud_ego, true);
   
     m_ego.setFromPCLPointCloud<pcl::PointCloud<pcl::PointNormal> >(cloud_ego_pcl);
     m_leader.setFromPCLPointCloud<pcl::PointCloud<pcl::PointNormal> >(cloud_leader_pcl);
@@ -397,8 +399,7 @@ void TranformFromPCLtoScanPCL(pcl::PointCloud<pcl::PointXYZ> &FinalPCL, sensor_m
 void MapMerging(sensor_msgs::PointCloud &AlignedPCL, sensor_msgs::PointCloud &pcl_scan0, sensor_msgs::PointCloud &pcl_scan1, float l_x, float l_y, float l_z, 
 		sensor_msgs::PointCloud &debugPCL, Eigen::Matrix4f &tf, int merging_type)
 {
-  clock_t begin, end;		// to measure execution time
-  double time_spent;		// to measure execution time
+  
   float max_x_target=0;
 //  Eigen::Matrix4f tf;
 
@@ -411,18 +412,20 @@ void MapMerging(sensor_msgs::PointCloud &AlignedPCL, sensor_msgs::PointCloud &pc
 
   Transformation(pcl_scan1, 0, l_x, l_y, l_z);
 
-  CreateTargetPCL(targetPCL, pcl_scan0, l_x, max_x_target);	// ego
-  CreateSourcePCL(sourcePCL, targetPCL, pcl_scan1, max_x_target, l_x, l_y);// leader
-
+  //CreateTargetPCL(targetPCL, pcl_scan0, l_x, max_x_target);	// ego
+  //CreateSourcePCL(sourcePCL, targetPCL, pcl_scan1, max_x_target, l_x, l_y);// leader
+  targetPCL = pcl_scan0;
+  sourcePCL = pcl_scan1;
+  fmutil::Stopwatch virtualLeadSw("VL");
   AddVirtualLeader(sourcePCL, 0, l_x, l_y, l_z);
-
+  virtualLeadSw.end();
   
   sourcePCL_ = sourcePCL;
   targetPCL_ = targetPCL;
   
   //AlignmentTwoPointCloudCSM(sourcePCL, targetPCL, FinalPCL, tf);
   
-  begin = clock();
+  fmutil::Stopwatch sw("Matching");
 
   // Algorithm start
   bool merging_success =false;
@@ -454,12 +457,9 @@ void MapMerging(sensor_msgs::PointCloud &AlignedPCL, sensor_msgs::PointCloud &pc
     }
   }
   // Algorithm end
-  
-  end = clock();
+  sw.end();
 
-  time_spent = (double)1000.0 * (end - begin) / CLOCKS_PER_SEC;
-
-  outFile_ << "Execution time is " << time_spent << " msec" << endl;
+  outFile_ << "Execution time is " << sw.total_/1000 << " msec" << endl;
 }
 
 void getXYRot(Eigen::Matrix4f t){
@@ -597,7 +597,7 @@ int main(int argc, char **argv)
 
   
   
-  pcl::io::savePCDFileASCII (string(folder+"final_merged_map_"+merging_type_str+".pcd"), ROSPCLtoPCL(AlignedPCL01));
+  pcl::io::savePCDFileASCII (string(folder+"final_merged_map_"+merging_type_str+".pcd"), ROSPCLtoPCL<pcl::PointNormal>(AlignedPCL01));
   outFile_.close();
   ifstream infile;
 
