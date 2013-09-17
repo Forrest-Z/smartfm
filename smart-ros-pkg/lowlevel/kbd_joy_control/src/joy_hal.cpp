@@ -20,7 +20,7 @@
 #define STEER_ANG_MAX 540
 #define FULL_BRAKE 100
 #define FULL_THROTTLE 1
-ros::Publisher throttle_pub, steering_pub, brake_pub, enable_pub;
+ros::Publisher throttle_pub, steering_pub, brake_pub;//, enable_pub;
 
 
 void joyCallBack(sensor_msgs::Joy joy_msg)
@@ -49,17 +49,6 @@ void joyCallBack(sensor_msgs::Joy joy_msg)
     ROS_INFO("Resulting commands: throttle=%lf, brake_angle=%lf, steer_angle=%lf",
     V.data, B.data, W.data);
 
-    std_msgs::Bool L, R;
-    if( W.data > 20 ) {
-        L.data = true;
-    }
-    else if( W.data < -20 ) {
-        L.data = true;
-    }
-    else {
-        L.data = false;
-    }
-    enable_pub.publish(L);
 }
 
 int main(int argc, char **argv)
@@ -72,7 +61,7 @@ int main(int argc, char **argv)
     throttle_pub = n.advertise<std_msgs::Float32>("hal_streamer_float_0", 10);
     steering_pub = n.advertise<std_msgs::Float32>("hal_streamer_float_1", 10);
     brake_pub = n.advertise<std_msgs::Float32>("hal_streamer_float_2", 10);
-    enable_pub = n.advertise<std_msgs::Bool>("hal_streamer_bit_3", 10);
+    //enable_pub = n.advertise<std_msgs::Bool>("hal_streamer_bit_3", 10);
 
     puts("Reading from Joystick");
     puts("---------------------------");
