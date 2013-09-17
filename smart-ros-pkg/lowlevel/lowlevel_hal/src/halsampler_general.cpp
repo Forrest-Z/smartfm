@@ -62,7 +62,9 @@
 
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
-#include <lowlevel_hal/odo.h>
+#include <std_msgs/Int32.h>
+#include <std_msgs/UInt32.h>
+#include <std_msgs/Float32.h>
 
 
 
@@ -79,25 +81,9 @@ char comp_name[HAL_NAME_LEN];	/* name for this instance of sampler */
 
 /***********************************************************************/
 
-/* signal handler */
-static void quit(int sig)
-{
-    if ( ignore_sig ) {
-        return;
-    }
-    if ( shmem_id >= 0 ) {
-        rtapi_shmem_delete(shmem_id, comp_id);
-    }
-    if ( comp_id >= 0 ) {
-        hal_exit(comp_id);
-    }
-    exit(exitval);
-}
-
 #define BUF_SIZE 4000
 
 int channel, retval, size, tag;
-long int samples;
 unsigned long this_sample;
 char *cp, *cp2;
 void *shmem_ptr;
@@ -105,69 +91,7 @@ fifo_t *fifo;
 shmem_data_t *data, *dptr, buf[MAX_PINS];
 int tmpout, newout;
 struct timespec delay;
-ros::Publisher odo_pub, emergency_pub;
-std_msgs::Bool emergency_msg;
-
-
-void getOptions(int argc, char **argv)
-{
-    int n;
-
-    /* set return code to "fail", clear it later if all goes well */
-    exitval = 1;
-    channel = 0;
-    tag = 0;
-    samples = -1;  /* -1 means run forever */
-
-    /* FIXME - if I wasn't so lazy I'd learn how to use getopt() here */
-    for ( n = 1 ; n < argc ; n++ ) {
-        cp = argv[n];
-        if ( *cp != '-' ) {
-            break;
-        }
-        switch ( *(++cp) ) {
-        case 'c':
-            if (( *(++cp) == '\0' ) && ( ++n < argc )) {
-                cp = argv[n];
-            }
-            channel = strtol(cp, &cp2, 10);
-            if (( *cp2 ) || ( channel < 0 ) || ( channel >= MAX_SAMPLERS )) {
-                fprintf(stderr,"ERROR: invalid channel number '%s'\n", cp );
-                exit(1);
-            }
-            break;
-        case 'n':
-            if (( *(++cp) == '\0' ) && ( ++n < argc )) {
-                cp = argv[n];
-            }
-            samples = strtol(cp, &cp2, 10);
-            if (( *cp2 ) || ( samples < 0 )) {
-                fprintf(stderr, "ERROR: invalid sample count '%s'\n", cp );
-                exit(1);
-            }
-            break;
-        case 't':
-            tag = 1;
-            break;
-        default:
-            fprintf(stderr,"ERROR: unknown option '%s'\n", cp );
-            exit(1);
-            break;
-        }
-    }
-
-    if(n < argc) {
-        int fd;
-        if(argc > n+1) {
-            fprintf(stderr, "ERROR: At most one filename may be specified\n");
-            exit(1);
-        }
-        // make stdout be the named file
-        fd = open(argv[n], O_WRONLY | O_CREAT, 0666);
-        close(1);
-        dup2(fd, 1);
-    }
-}
+std::vector<ros::Publisher*> pubs;
 
 bool connectToHal()
 {
@@ -263,77 +187,92 @@ bool waitForData()
     return true;
 }
 
+bool initializePubs(ros::NodeHandle &nh)
+{
+  pubs.resize(fifo->num_pins);
+  for (int n=0; n<fifo->num_pins; n++){
+    std::stringstream topic;
+    topic << "hal_sampler_";
+    switch(fifo->type[n]){
+      case HAL_FLOAT:
+	topic << "float_"<<n;
+	pubs[n] = new ros::Publisher(nh.advertise<std_msgs::Float32>(topic.str(), 10));
+	break;
+      case HAL_BIT:
+	topic << "bit_"<<n;
+	pubs[n] = new ros::Publisher(nh.advertise<std_msgs::Bool>(topic.str(), 10));
+	break;
+      case HAL_U32:
+	topic << "uint_"<<n;
+	pubs[n] = new ros::Publisher(nh.advertise<std_msgs::UInt32>(topic.str(), 10));
+	break;
+      case HAL_S32:
+	topic << "int_"<<n;
+	pubs[n] = new ros::Publisher(nh.advertise<std_msgs::Int32>(topic.str(), 10));
+	break;
+      default:
+	std::cout<<"Unexpected pin type received, exiting..."<<std::endl;
+	return false;
+    }
+  }
+  return true;
+}
+
 bool readAndPublish()
 {
-    lowlevel_hal::odo odo_msg;
-    bool emergency = false;
-
     //printf("num_pins %d", fifo->num_pins);
     for ( int n = 0 ; n < fifo->num_pins ; n++ )
     {
+      std_msgs::Float32 f; 
+      std_msgs::Bool b; 
+      std_msgs::UInt32 u; 
+      std_msgs::Int32 s; 
         switch ( fifo->type[n] ) {
         case HAL_FLOAT:
-            if(n==0) odo_msg.pose = buf[n].f;
-            else if(n==1) odo_msg.vel = buf[n].f;
-            else if(n==2) odo_msg.steering_angle = buf[n].f;
+	    f.data = buf[n].f;
+            pubs[n]->publish(f);
             break;
         case HAL_BIT:
-            if(n==3) emergency = buf[n].b;
+            b.data = buf[n].b;
+	    pubs[n]->publish(b);
             break;
         case HAL_U32:
-            printf ( "%lu ", (unsigned long)buf[n].u);
+	    u.data = buf[n].u;
+            pubs[n]->publish(u);
             break;
         case HAL_S32:
-            printf ( "%ld ", (long)buf[n].s);
+            s.data = buf[n].s;
+	    pubs[n]->publish(s);
             break;
         default:
             /* better not happen */
             return false;
         }
     }
-
-    //printf ( "\n" );
-    //ROS_INFO("Pose=%lf m, Vel=%lf m/s", odo_msg.pose,odo_msg.vel);
-    odo_pub.publish(odo_msg);
-
-    //if( emergency!=emergency_msg.data) {
-        emergency_msg.data = emergency;
-        emergency_pub.publish(emergency_msg);
-    //}
-
     return true;
 }
+
 
 
 int main(int argc, char **argv)
 {
     ros::init(argc, argv, "halsampler");
     ros::NodeHandle n_;
-    odo_pub = n_.advertise<lowlevel_hal::odo>("halsampler", 1000);
-    emergency_pub = n_.advertise<std_msgs::Bool>("button_state_emergency", 1000);
-
-    /* register signal handlers - if the process is killed
-       we need to call hal_exit() to free the shared memory */
-    signal(SIGINT, quit);
-    signal(SIGTERM, quit);
-    signal(SIGPIPE, quit);
-
-    getOptions(argc,argv);
-
-    if( !connectToHal() ) goto out;
-
-    emergency_msg.data = false;
-
-    while ( samples != 0 )
-    {
-        if( !waitForData() ) continue;
-        if( !readAndPublish() ) goto out;
-        if ( samples > 0 ) samples--;
+    
+    bool failedConnectToHal = false;
+    if( !connectToHal() ) failedConnectToHal = true;
+    bool initialize = false;
+    
+    while(ros::ok() && !failedConnectToHal){
+      if( !waitForData() ) continue;
+      if( !initialize) initialize = initializePubs(n_);
+      if( !initialize) break;
+      if( !readAndPublish() ) break;
+      ros::spinOnce();
     }
     /* run was succesfull */
     exitval = 0;
 
-out:
     ignore_sig = 1;
     if ( shmem_id >= 0 ) rtapi_shmem_delete(shmem_id, comp_id);
     if ( comp_id >= 0 ) hal_exit(comp_id);
