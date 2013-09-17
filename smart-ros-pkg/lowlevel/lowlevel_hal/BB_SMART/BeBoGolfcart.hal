@@ -85,6 +85,7 @@ setp hal_pru_generic.stepgen.02.steppin 98
 # P8.44 PRU1.out3
 setp hal_pru_generic.stepgen.02.dirpin 99
 
+
 #Set up Trottle Control
 #tested with BB, running at 200 Hz able to achieve 10mV increment 
 setp hal_pru_generic.pwmgen.00.pwm_period 5000000
@@ -113,23 +114,24 @@ setp hal_pru_generic.pwmgen.00.out.04.enable 1
 setp hal_pru_generic.pwmgen.00.out.04.scale 1
 setp hal_pru_generic.pwmgen.00.out.04.pin 55
 
-#enable motor
-setp bb_gpio.p8.out-14 1
+
 #add streamer
 #find out how to calculate suitable depth size
-loadrt streamer depth=200 cfg=fffb
+loadrt streamer depth=200 cfg=fff
 addf streamer.0 user_thread
-net streamer0 streamer.0.pin.0 hal_pru_generic.pwmgen.00.out.00.value
+net pwm0_sig streamer.0.pin.0 hal_pru_generic.pwmgen.00.out.00.value
 net streamer1 streamer.0.pin.1 hal_pru_generic.stepgen.00.position-cmd
 net streamer2 streamer.0.pin.2 hal_pru_generic.stepgen.01.position-cmd
-net streamer3 streamer.0.pin.3 bb_gpio.p8.out-14
+
+#enable motor
+setp bb_gpio.p8.out-14 true
 
 #add sampler
-loadrt sampler depth=200 cfg=ff
+loadrt sampler depth=200 cfg=fff
 addf sampler.0 sampler_thread 
 net sampler1 sampler.0.pin.0 hal_pru_generic.stepgen.00.position-fb
 net sampler2 sampler.0.pin.1 hal_pru_generic.stepgen.01.position-fb
-
+net pwm0_sig sampler.0.pin.2
 
 start
 

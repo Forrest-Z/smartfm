@@ -115,6 +115,7 @@ double brake_=0;
 
 fifo_t *fifo;
 std::vector<ros::Subscriber*> subs;
+std::vector<ros::Publisher*> pubs;
 /***********************************************************************
 *                           CALL FUNCTIONS                             *
 ************************************************************************/
@@ -342,9 +343,12 @@ void writeFifo()
     stringstream num_pin_ss;
     num_pin_ss << n;
     string num_pin_str = num_pin_ss.str();
+    std_msgs::Float32 data;
     switch(fifo->type[n]){
       case HAL_FLOAT:
 	data_ss<<map_float[num_pin_str];
+	data.data = map_float[num_pin_str];
+	pubs[n]->publish(data);
 	break;
       case HAL_BIT:
 	data_ss<<map_bool[num_pin_str];
@@ -371,19 +375,19 @@ void writeFifo()
 //of topics from same node. This is very apparent in a slow processor.
 void floatCallback(const std_msgs::Float32ConstPtr f, const std::string &topic)
 {//cout<<topic<<endl;return;
-  fmutil::Stopwatch sw(topic);
+  //fmutil::Stopwatch sw(topic);
   string pin_no;
   if(getPinNo(topic,pin_no)){
     map_float[pin_no] = f->data;
     writeFifo();
   }
-  sw.end(false);
-  cout<<topic<<" "<<sw.total_<<" "<<f->data<<endl;
+  //sw.end(false);
+  //cout<<topic<<" "<<sw.total_<<" "<<f->data<<endl;
 }
 
 void bitCallback(const std_msgs::BoolConstPtr b, const std::string &topic)
 {//cout<<topic<<endl;return;
-  fmutil::Stopwatch sw(topic);
+  //fmutil::Stopwatch sw(topic);
   string pin_no;
   if(getPinNo(topic,pin_no)){
     if(b->data)
@@ -392,8 +396,8 @@ void bitCallback(const std_msgs::BoolConstPtr b, const std::string &topic)
       map_bool[pin_no] = 0;
     writeFifo();
   }
-  sw.end(false);
-  cout<<topic<<" "<<sw.total_<<" "<<f->data<<endl;
+  //sw.end(false);
+  //cout<<topic<<" "<<sw.total_<<" "<<f->data<<endl;
 }
 
 void uintCallback(const std_msgs::UInt32ConstPtr u, const std::string &topic)
@@ -417,6 +421,7 @@ void intCallback(const std_msgs::Int32ConstPtr i, const std::string &topic)
 bool initializeSubs(ros::NodeHandle &nh)
 {
   subs.resize(fifo->num_pins);
+  pubs.resize(fifo->num_pins);
   for (int n=0; n<fifo->num_pins; n++){
     std::stringstream topic, num_pin_ss;
     num_pin_ss <<n;
@@ -427,6 +432,8 @@ bool initializeSubs(ros::NodeHandle &nh)
 	topic << "float_"<<n;
 	subs[n] = new ros::Subscriber(
 	  nh.subscribe<std_msgs::Float32>(topic.str(), 1, boost::bind(floatCallback, _1, topic.str())));
+	topic << "fb";
+	pubs[n] = new ros::Publisher(nh.advertise<std_msgs::Float32>(topic.str(), 1));
 	map_float[num_pin_str] = 0;
 	break;
       case HAL_BIT:
