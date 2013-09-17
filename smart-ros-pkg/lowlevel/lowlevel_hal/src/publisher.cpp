@@ -1,10 +1,10 @@
-#include <ros/roscpp.h>
+#include <ros/ros.h>
 #include <std_msgs/Float32.h>
 
 int main(int argc, char **argv){
 	ros::init(argc, argv, "publisher");;
 	ros::NodeHandle nh;
-	ros::Publisher pub = n.advertise<std_msgs::Float32>("latency_test", 1);
+	ros::Publisher pub = nh.advertise<std_msgs::Float32>("latency_test", 1);
 	ros::Rate loop_rate(200);
 
 	int count = -540;
