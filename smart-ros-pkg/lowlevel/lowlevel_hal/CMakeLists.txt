@@ -43,5 +43,7 @@ LINK_DIRECTORIES(/home/linuxcnc/linuxcnc/lib)
 #rosbuild_add_compile_flags(halstreamer_general -DULAPI)
 #rosbuild_add_link_flags(halstreamer_general -llinuxcnchal)
 
-rosbuild_add_executable(publisher src/publisher.cpp)
-rosbuild_add_executable(receiver src/receiver.cpp)
+#rosbuild_add_executable(publisher src/publisher.cpp)
+#rosbuild_add_executable(receiver src/receiver.cpp)
+
+rosbuild_add_executable(test_subscriber src/test_subscriber.cpp)
