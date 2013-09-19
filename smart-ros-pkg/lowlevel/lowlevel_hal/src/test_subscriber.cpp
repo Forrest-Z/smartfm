@@ -50,14 +50,14 @@ void publishThread(ros::Publisher& pub, bool& done)
   {
     msg.data = i;
     pub.publish(msg);
-    ros::WallDuration(0.0001).sleep();
+    ros::WallDuration(0.01).sleep();
     ++i;
   }
 }
 
 void run()
 {
-  const size_t sub_count = 1;
+  const size_t sub_count = 5;
 
   ros::NodeHandle nh;
   bool done = false;
@@ -74,7 +74,7 @@ void run()
     pubs[i] = nh.advertise<std_msgs::UInt32>(topic.str(), 1);
     tg.create_thread(boost::bind(publishThread, boost::ref(pubs[i]), boost::ref(done)));
 
-    subs[i].initialize(2);
+    subs[i].initialize(3);
     subs[i].subscribe(nh, topic.str());
     counts[i] = 0;
     lasts[i] = -1;
