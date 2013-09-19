@@ -25,6 +25,7 @@ rosbuild_genmsg()
 #include_directories(/usr/include/emc2)
 include_directories(/home/linuxcnc/linuxcnc/include /home/linuxcnc/linuxcnc/src/hal/components)
 LINK_DIRECTORIES(/home/linuxcnc/linuxcnc/lib)
+# ****Legacy: As of Sept 20, 2013 replaced with Python****
 # Uncomment only on the lowlevel computer
 #rosbuild_add_executable(halsampler src/halsampler.cpp)
 #rosbuild_add_compile_flags(halsampler -DULAPI)
@@ -42,8 +43,4 @@ LINK_DIRECTORIES(/home/linuxcnc/linuxcnc/lib)
 #rosbuild_add_executable(halstreamer_general src/halstreamer_general.cpp)
 #rosbuild_add_compile_flags(halstreamer_general -DULAPI)
 #rosbuild_add_link_flags(halstreamer_general -llinuxcnchal)
-
-#rosbuild_add_executable(publisher src/publisher.cpp)
-#rosbuild_add_executable(receiver src/receiver.cpp)
-
-rosbuild_add_executable(test_subscriber src/test_subscriber.cpp)
+# ****            End Legacy            *****

@@ -347,8 +347,8 @@ void writeFifo()
     switch(fifo->type[n]){
       case HAL_FLOAT:
 	data_ss<<map_float[num_pin_str];
-	data.data = map_float[num_pin_str];
-	pubs[n]->publish(data);
+	//data.data = map_float[num_pin_str];
+	//pubs[n]->publish(data);
 	break;
       case HAL_BIT:
 	data_ss<<map_bool[num_pin_str];
