@@ -7,8 +7,7 @@
 # ########################################
 
 # Launch the setup script to make sure hardware setup looks good
-loadusr -w /home/linuxcnc/BB_SMART/setup.sh
-
+loadusr -w [CONFIG](PATH)/BB_SMART/setup.sh
 
 # ###################################
 # Core EMC/HAL Loads
@@ -20,6 +19,10 @@ loadrt hal_pru_generic prucode=/home/linuxcnc/linuxcnc/rtlib/xenomai/pru_generic
 
 # create two threads
 loadrt threads name1=user_thread period1=1000000 name2=sampler_thread period2=10000000
+
+# and the ros publisher, subscriber
+loadusr -Wn rossubscriber [CONFIG](PATH)/BB_SMART/hal_ros_subscriber.py -n rossubscriber
+loadusr -Wn rospublisher [CONFIG](PATH)/BB_SMART/hal_ros_publisher.py -n rospublisher
 
 # connect realtime module to threads
 addf bb_gpio.read user_thread
@@ -114,24 +117,15 @@ setp hal_pru_generic.pwmgen.00.out.04.enable 1
 setp hal_pru_generic.pwmgen.00.out.04.scale 1
 setp hal_pru_generic.pwmgen.00.out.04.pin 55
 
-
-#add streamer
-#find out how to calculate suitable depth size
-loadrt streamer depth=2000 cfg=fff
-addf streamer.0 user_thread
-net streamer1 streamer.0.pin.0 hal_pru_generic.stepgen.00.position-cmd
-net streamer2 streamer.0.pin.1 hal_pru_generic.stepgen.01.position-cmd
-net pwm0_sig streamer.0.pin.2 hal_pru_generic.pwmgen.00.out.00.value
-
 #enable motor
 setp bb_gpio.p8.out-14 true
 
-#add sampler
-loadrt sampler depth=2000 cfg=fff
-addf sampler.0 sampler_thread 
-net sampler1 sampler.0.pin.0 hal_pru_generic.stepgen.00.position-fb
-net sampler2 sampler.0.pin.1 hal_pru_generic.stepgen.01.position-fb
-net pwm0_sig sampler.0.pin.2
+net steer_sig rossubscriber.steering_angle hal_pru_generic.stepgen.00.position-cmd
+net brake_sig rossubscriber.brake_angle hal_pru_generic.stepgen.01.position-cmd
+net throttle_sig rossubscriber.throttle hal_pru_generic.pwmgen.00.out.00.value 
+
+net steer_fb_sig rospublisher.steering_angle_fb hal_pru_generic.stepgen.00.position-fb
+net brake_fb_sig rospublisher.brake_angle_fb hal_pru_generic.stepgen.01.position-fb
+net throttle_sig rospublisher.throttle_fb
 
 start
-
