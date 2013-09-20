@@ -1,4 +1,4 @@
-float_topics: [throttle_fb, brake_angle_fb, steering_angle_fb]
-bool_topics: [emergency_button_fb]
-uint_topics: [test_uint_fb]
-int_topics: [test_int_fb]
+float_topics: [throttle_fb, brake_angle_fb, steer_angle_fb]
+bool_topics: [emergency_button, button_state_automode]
+uint_topics: []
+int_topics: []
