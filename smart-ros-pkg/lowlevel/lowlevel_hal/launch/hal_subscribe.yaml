@@ -1,4 +1,4 @@
-float_topics: [throttle, brake_angle, steering_angle]
-bool_topics: [emergency_button]
-uint_topics: [test_uint]
-int_topics: [test_int]
+float_topics: [throttle, brake_angle, steer_angle]
+bool_topics: [direction_ctrl]
+uint_topics: []
+int_topics: []
