@@ -113,9 +113,11 @@ BuggyTeleop::BuggyTeleop():
 
 void BuggyTeleop::enableSignalCallback(const std_msgs::Bool::ConstPtr& en)
 { 
-	enabled_ = en->data;
-	if(enabled_) std::cout<<"Enabling Signal"<<std::endl;
-	else std::cout<<"Disabling Signal"<<std::endl;
+	if(enabled_ != en->data) {
+      	enabled_ = en->data;
+        if(enabled_) std::cout<<"Enabling Signal"<<std::endl;
+    	else std::cout<<"Disabling Signal"<<std::endl;
+    }
 }
 
 void BuggyTeleop::joy2Callback(const sensor_msgs::Joy::ConstPtr& joy)
