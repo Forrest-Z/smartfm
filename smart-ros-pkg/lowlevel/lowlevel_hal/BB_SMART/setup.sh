@@ -29,6 +29,8 @@ for DTBO in BB-SMART-FM cape-bone-iio bone_eqep0 bone_eqep1 bone_eqep2 ; do
 	fi
 done;
 
+sudo chown -R linuxcnc:linuxcnc /sys/devices/ocp.*/*epwmss/
+
 if [ ! -r /sys/devices/ocp.*/helper.*/AIN0 ] ; then
 	echo Analog input files not found in /sys/devices/ocp.*/helper.* >&2
 	exit 1;
