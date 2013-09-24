@@ -27,11 +27,13 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "joy_simulator");
     ros::NodeHandle n;
     throttle_pub = n.advertise<std_msgs::Float32>("throttle", 10);
-    steering_pub = n.advertise<std_msgs::Float32>("steering_angle", 10);
+    steering_pub = n.advertise<std_msgs::Float32>("steer_angle", 10);
     brake_pub = n.advertise<std_msgs::Float32>("brake_angle", 10);
     
-    ros::Rate r(100);
     ros::NodeHandle priv_nh("~");
+    double publish_frequency;
+    priv_nh.param("publish_frequency", publish_frequency, 200.0);
+    ros::Rate r(publish_frequency);
     double steer_frequency, throttle_frequency;
     priv_nh.param("steer_frequency", steer_frequency, 10.0);
     priv_nh.param("throttle_frequency", throttle_frequency, 50.0);
