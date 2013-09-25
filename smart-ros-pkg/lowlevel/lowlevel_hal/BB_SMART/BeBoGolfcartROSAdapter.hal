@@ -14,7 +14,7 @@ loadusr -w [CONFIG](PATH)/BB_SMART/setup.sh
 # ###################################
 
 # load low-level drivers
-loadrt hal_bb_gpio output_pins=114,115 input_pins=120,121
+loadrt hal_bb_gpio output_pins=114,115 input_pins=127,128,129
 loadrt hal_pru_generic prucode=/home/linuxcnc/linuxcnc/rtlib/xenomai/pru_generic.bin pru=1 num_stepgens=3 num_pwmgens=5
 
 # create two threads
@@ -127,6 +127,6 @@ net direction_sig rosadapter.direction_ctrl bb_gpio.p8.out-15
 net steer_fb_sig rosadapter.steer_angle_fb hal_pru_generic.stepgen.00.position-fb
 net brake_fb_sig rosadapter.brake_angle_fb hal_pru_generic.stepgen.02.position-fb
 net throttle_sig rosadapter.throttle_fb
-net emergency_sig rosadapter.button_state_emergency bb_gpio.p8.in-20
-net automode_sig rosadapter.button_state_automode bb_gpio.p8.in-21
+net emergency_sig rosadapter.button_state_emergency bb_gpio.p8.in-27
+net automode_sig rosadapter.button_state_automode bb_gpio.p8.in-28
 start
