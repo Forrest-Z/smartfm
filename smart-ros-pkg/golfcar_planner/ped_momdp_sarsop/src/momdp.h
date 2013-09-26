@@ -28,6 +28,7 @@
 #include <ped_momdp_sarsop/ped_local_frame.h>
 #include <ped_momdp_sarsop/ped_local_frame_vector.h>
 #include <pnc_msgs/speed_contribute.h>
+#include "executer.h"
 
 using namespace std;
 
@@ -76,6 +77,8 @@ public:
 
     void updateSteerAnglePublishSpeed(geometry_msgs::Twist speed);
 
+    vector<Executer*> Executers; 
+
 private:
     int X_SIZE, Y_SIZE;
     double dX, dY;
@@ -105,6 +108,7 @@ private:
     int policy_initialize(string model_file, string policy_file, int simLen, int simNum);
 
     void updateBelief(int id, int safeAction);
+    void updatePomcpBelief(int i, int safeAction);
 
     int getCurrentState(double currRobSpeed, double roby, double pedx, double pedy);
 

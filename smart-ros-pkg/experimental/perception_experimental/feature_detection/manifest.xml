@@ -18,7 +18,7 @@
   <depend package="geometry_msgs"/>
   <depend package="fmutil"/>
   <!--depend package="pcl"/-->
-  <depend package="pcl16"/>
+  <!--depend package="pcl16"/-->
   <depend package="pcl_ros"/>
   <!--depend package="octomap_ros"/>
   <depend package="octomap_msgs"/-->

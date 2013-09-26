@@ -1,12 +1,4 @@
 <launch>
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrsPCL" args="1.7, 0.0, 0.90 0 0 0 /base_link /ldmrs 1000" />
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrs1" args="1.7, 0.0, 0.90 0 0.02094 0 /base_link /ldmrs0 1000" />
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrs2" args="1.7, 0.0, 0.90 0 0.00698 0 /base_link /ldmrs1 1000" />
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrs3" args="1.7, 0.0, 0.90 0 -0.00698 0 /base_link /ldmrs2 1000" />
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrs4" args="1.7, 0.0, 0.90 0 -0.02094 0 /base_link /ldmrs3 1000" />
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sickldmrsAssemble" args="1.7, 0.0, 0.90 0 0 0 /base_link /ldmrsAssemb 1000" />
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_topSick" args="1.58, 0.0, 1.89 0.00 0 0 /base_link /sick_laser 1000" />
-    <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="1.83, -0.36, 0.86 0 0 0 /base_link /sick_laser2 1000" /-->
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser2" args="1.7, 0.0, 1.53 0 0.335 0 /base_link /sick_laser2 1000" />
-    <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_sicklaser3" args="1.7, 0.0, 0.90 0 0 0 /base_link /sick_laser3 1000" /-->
+    <!-- Base link is referenced at the center point of rear axial projected to the ground plane-->
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_top_tilted_lidar" args="1.855, 0.0, 1.77 0 0.40 0 /base_link /top_tilted_lidar 1000" />
 </launch>
