@@ -1,5 +1,5 @@
 <launch>
-	<node name="wiimote" type="wiimote_node.py" pkg="wiimote" />
+	<node name="wiimote" type="wiimote_node.py" pkg="wiimote" output="screen"/>
 	<node name="remote" type="buggy_wii" pkg="buggy_wii" output="screen">
 
 		<param name="axis_linear" type="int" value="1" />
@@ -16,6 +16,7 @@
         <param name="steering_sensitivity" type="double" value="2"/>
         <param name="neg_joy_range" type="double" value="0.85"/>
         <param name="pos_joy_range" type="double" value="0.99"/>
+        <param name="publish_period" type="double" value="0.01"/>
 		<remap from= "/joy1" to="/joy" />
 		<remap from= "/joy2" to="/wiimote/nunchuk" />
 		<remap from="/remote/brake_angle" to="/brake_angle" />

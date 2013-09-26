@@ -26,4 +26,8 @@ rosbuild_add_executable(keyhook_cmdvel src/keyhook_cmdvel.cpp)
 rosbuild_add_executable(joy src/joy.cpp)
 rosbuild_add_executable(joy_cmd_vel src/joy_cmd_vel.cpp)
 rosbuild_add_executable(joy_pronto src/joy_pronto.cpp)
+
 rosbuild_add_executable(joy_logitech_momo src/joy_logitech_momo.cpp)
+rosbuild_add_executable(joy_hal src/joy_hal.cpp)
+rosbuild_add_executable(joy_simulator src/joy_simulator.cpp)
+

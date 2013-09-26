@@ -1,0 +1,13 @@
+# to work with hal adapater that includes emergency response, 
+# the rosadapter component looks for 4 keywords, throttle and 
+# brake for subscribers, emergency and auto for publisher. Without
+# this, it will work as a general version of rosadapter
+float_topics_pub: [throttle_fb, brake_angle_fb, steer_angle_fb]
+bool_topics_pub: [button_state_emergency, button_state_automode]
+uint_topics_pub: []
+int_topics_pub: []
+
+float_topics_sub: [throttle, brake_angle, steer_angle]
+bool_topics_sub: [direction_ctrl]
+uint_topics_sub: []
+int_topics_sub: []

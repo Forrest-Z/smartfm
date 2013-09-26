@@ -31,6 +31,7 @@
 #include <geometry_msgs/TwistStamped.h>
 
 #include "nearest_neighbor_tracking.h"
+#include <std_msgs/Int64.h>
 
 using std::string;
 using std::cout;
@@ -49,7 +50,7 @@ class LaserRangePoint
 
     laser_special laser;
     double angle_increment;
-
+    
 public:
     LaserRangePoint(sensor_msgs::LaserScan &scan, tf::TransformListener &tf, string target_frame)
     {
@@ -106,7 +107,7 @@ class LaserVehicle
 
     ros::Publisher poly_pub_, segmented_pub_, filter_res_pub_, filter_size_pub_, vehicle_pub_, vehicle_vel_pub_;
     ros::Publisher DP1_pub_, DP2_pub_, raw_RA_pub_, FR_RA_pub_, DP_RA_pub_;
-
+    ros::Publisher detection_time_pub_;
 	std::vector<geometry_msgs::PoseStamped> vehicle_pose_vector;
 
     NearestNeighborTracking *nnt_;
@@ -127,12 +128,17 @@ class LaserVehicle
 
         //findDiscontinuousPoint(laser_range_pt);
         //DP_Extraction(laser_range_pt);
+	fmutil::Stopwatch sw("Detect vehicle");
         simpleEuclideanExtraction(laser_range_pt);
         //detectVehicle(laser_cloud);
 
         //need to keep sending the data to keep the tf tree alive
         latest_trans_.stamp_ = ros::Time::now();
         tf_broadcaster_->sendTransform(latest_trans_);
+	sw.end();
+	std_msgs::Int64 detect_time_data;
+	detect_time_data.data = sw.total_;
+	detection_time_pub_.publish(detect_time_data);
     }
 
     inline pcl::PointCloud<pcl::PointXYZ> pointcloudToPCL(sensor_msgs::PointCloud &pc)
@@ -664,9 +670,9 @@ public:
         segmented_pub_ = nh_->advertise<sensor_msgs::PointCloud>("segmented_dist_p", 10);
         filter_res_pub_ = nh_->advertise<sensor_msgs::PointCloud>("filter_response", 10);
         filter_size_pub_ = nh_->advertise<sensor_msgs::PointCloud2>("size_filtered", 10);
-        vehicle_pub_ = nh_->advertise<geometry_msgs::PoseStamped>("/vehicle_pose", 10);
-        vehicle_vel_pub_ = nh_->advertise<geometry_msgs::TwistStamped>("/vehicle_vel",10);
-        
+        vehicle_pub_ = nh_->advertise<geometry_msgs::PoseStamped>("vehicle_pose", 10);
+        vehicle_vel_pub_ = nh_->advertise<geometry_msgs::TwistStamped>("vehicle_vel",10);
+        detection_time_pub_ = nh_->advertise<std_msgs::Int64>("detection_time", 10);
         DP1_pub_ = nh_->advertise<sensor_msgs::PointCloud>("DP1", 10);
         DP2_pub_ = nh_->advertise<sensor_msgs::PointCloud>("DP2", 10);
         raw_RA_pub_ = nh_->advertise<sensor_msgs::PointCloud>("raw_RA", 10);
