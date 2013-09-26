@@ -12,7 +12,6 @@
   <depend package="std_msgs"/>
   <depend package="roscpp"/>
   <depend package="fmutil"/>
-  <depend package="rosrt"/>
 </package>
 
 
