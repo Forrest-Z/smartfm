@@ -1,0 +1,130 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "ti,beaglebone", "ti,beaglebone-black";
+
+	/* identification */
+	part-number = "BB-SMART-FM";
+	version = "00A0";
+
+	/* state the resources this cape uses */
+	exclusive-use =
+		/* the pin header uses */
+		"P8.3",
+		"P8.4",
+		"P8.5",
+		"P8.7",
+		"P8.8",
+		"P8.9",
+		"P8.10",
+		"P8.11",	/* pru0.r30.15		*/
+		"P8.12",	/* pru0.r30.14		*/
+		"P8.13",
+		"P8.14",
+		"P8.15",
+		"P8.16",
+		"P8.17",
+		"P8.27",
+		"P8.28",
+		"P8.44",
+		"P8.45",
+		"P9.11",
+		"P9.12",
+		"P9.13",
+		"P9.14",
+		"P9.15",
+		"P8.20",
+		"P8.21",
+		"P8.22",
+		"P8.23",
+		"P8.24",
+		"P8.25",
+		"P8.26",
+	
+		/* the hardware IP uses */
+		"gpio1_6",
+		"gpio1_7",
+		"gpio1_2",
+		"gpio2_2",
+		"gpio2_3",
+		"gpio2_5",
+		"gpio2_4",
+		"gpio1_13",
+		"gpio1_12",
+		"gpio0_23",
+		"gpio0_26",
+		"gpio1_15",
+		"gpio1_14",
+		"gpio0_27",
+		"gpio2_0",
+		"gpio2_24",
+		"gpio2_9",
+		"gpio2_8",
+		"gpio0_30",
+		"gpio1_28",
+		"gpio0_31",
+		"gpio1_18",
+		"gpio1_16",
+		"gpio1_31",
+		"gpio1_30",
+		"gpio1_5",
+		"gpio1_4",
+		"gpio1_1",
+		"gpio1_0",
+		"gpio1_29",
+		"pru0";
+
+	fragment@0 {
+		target = <&am33xx_pinmux>;
+		__overlay__ {
+
+			foo_pins: foo_pins {
+				pinctrl-single,pins = <
+					0x18 0x3F
+					0x1c 0x3F
+					0x08 0x3F
+					0x90 0x3F
+					0x94 0x3F
+					0x9C 0x3F
+					0x98 0x3F
+					0x34 0x3F	/* p8.11 pru0.r30.15	*/
+					0x30 0x3F	/* p8.12 pru0.r30.14	*/
+					0x24 0x3F
+					0x28 0x3F
+					0x3c 0x3F
+					0x38 0x3F
+					0x2c 0x3F
+					0xe0 0x3F
+					0xe8 0x3F
+					0xac 0x3F
+					0xa0 0x3F
+					0x70 0x3F
+					0x78 0x3F
+					0x74 0x3F
+					0x48 0x3F
+					0x40 0x3F
+					0x84 0x3F
+					0x80 0x3F
+					0x14 0x3F
+					0x10 0x3F
+					0x04 0x3F
+					0x00 0x3F
+					0x7c 0x3F
+				>;
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&pruss>;
+		__overlay__ {
+			status = "okay";
+
+			pinctrl-names = "default";
+			pinctrl-0 = <&foo_pins>;
+
+		};
+	};
+};
+
