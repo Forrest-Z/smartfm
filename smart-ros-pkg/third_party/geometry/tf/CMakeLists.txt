@@ -6,6 +6,15 @@ endif()
 cmake_minimum_required(VERSION 2.4.6)
 include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 set(ROS_BUILD_TYPE RelWithDebInfo)
+
+# Build Bullet
+rosbuild_find_ros_package(bullet)
+execute_process(COMMAND cmake -E chdir ${bullet_PACKAGE_PATH} make -f Makefile.bullet
+                RESULT_VARIABLE _make_failed)
+if(_make_failed)
+  message(FATAL_ERROR "Build of Bullet failed")
+endif(_make_failed)
+
 rosbuild_init()
 
 rosbuild_add_boost_directories()
