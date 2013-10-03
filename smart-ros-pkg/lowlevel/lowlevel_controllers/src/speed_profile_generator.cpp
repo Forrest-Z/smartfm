@@ -30,36 +30,40 @@ void targetSpeedCallback(std_msgs::Float32 target_speed){
   
   
   if(target_active_){
+    if(speed_interval_ == 4) speed_interval_ = 1;
     if(new_target > speed_now_) acceleration_sign_ = 1;
     else if(new_target < speed_now_) acceleration_sign_ = -1;
     double j = acceleration_sign_ * max_jerk_;
     double a = acceleration_sign_ * max_acc_;
     double a_max_sq = max_acc_ * max_acc_;
-
-    cout<<"Target changed: amount="<<target_speed_-v0_<<" j="<<j<<" speed_now="<<speed_now_<<" acc_now="<<acc_now_;
+    ROS_INFO_STREAM("Target changed "<<speed_interval_<<": amount="<<target_speed_-v0_<<" j="<<j<<" speed_now="<<speed_now_<<" acc_now="<<acc_now_);
     switch(speed_interval_){
       case 1:
-	v0_ = speed_now_ - acc_now_*acc_now_/(2*max_jerk_);
+	v0_ = speed_now_ - acc_now_*acc_now_/(2*j);
+	speed_interval_ = 1;
 	break;
       case 2:
-	v0_ = speed_now_ - a_max_sq/(2*max_jerk_);
+	v0_ = speed_now_ - a_max_sq/(2*j);
+	speed_interval_ = 2;
+	break;
+      case 3:
+	v0_ = speed_now_ - acc_now_*acc_now_/(2*j);
+	speed_interval_ = 1;
 	break;
     }
     if( fabs(target_speed_-v0_)>= a_max_sq/max_jerk_){
-      cout<<" Normal target"<<endl;
       fast_target_ = false;
       v1_ = v0_+ a_max_sq/(2*j);
       v2_ = target_speed_ -(a_max_sq/(2*j));
-      cout <<" v0: "<<v0_<<" vt: "<<target_speed_<<" v1: "<<v1_<<" v2: "<<v2_<<endl;
+      ROS_INFO_STREAM("Normal target v0: "<<v0_<<" vt: "<<target_speed_<<" v1: "<<v1_<<" v2: "<<v2_); 
     }
     else {
-      cout<<" Quick target"<<endl;
       fast_target_ = true;
       v1_ = (target_speed_ +v0_)/2;
-      cout <<" v0: "<<v0_<<" vt: "<<target_speed_<<" v1: "<<v1_<<endl;
+      ROS_INFO_STREAM("Quick target v0: "<<v0_<<" vt: "<<target_speed_<<" v1: "<<v1_);
     }
     v0_ = target_speed_;
-    speed_interval_ = 1;
+    
     target_active_ = false;
   }
 }
@@ -91,6 +95,7 @@ void callback(const ros::TimerEvent & event)
 	  if(speed_now_<v1_) change_state = true;
 	}
 	if(change_state){
+	  
 	  if(fast_target_){
 	    j = -j;
 	    speed_interval_ = 3;
@@ -99,6 +104,7 @@ void callback(const ros::TimerEvent & event)
 	    j = 0;
 	    speed_interval_ = 2;
 	  }
+	  ROS_INFO_STREAM("Change state from 1 to "<<speed_interval_);
 	}
 	break;
       case 2:
@@ -113,6 +119,7 @@ void callback(const ros::TimerEvent & event)
 	  j = -j;
 	  acc_now_ = a;
 	  speed_interval_ = 3;
+	  ROS_INFO_STREAM("Change state from 2 to 3");
 	}
 	break;
       case 3:
@@ -128,6 +135,7 @@ void callback(const ros::TimerEvent & event)
 	  acc_now_ = 0;
 	  j = 0;
 	  speed_now_ = target_speed_;
+	  ROS_INFO_STREAM("Change state from 3 to 4");
 	}
 	break;
       case 4:
@@ -142,6 +150,8 @@ void callback(const ros::TimerEvent & event)
     if(counter_++ ==10){
       geometry_msgs::Twist tw;
       tw.linear.x = speed_now_;
+      tw.linear.y = acc_now_;
+      tw.linear.z = j;
       speed_pub.publish(tw);
       counter_ = 1;
     }
