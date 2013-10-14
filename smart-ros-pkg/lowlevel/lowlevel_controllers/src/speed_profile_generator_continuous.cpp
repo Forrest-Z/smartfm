@@ -11,7 +11,8 @@
 
 using namespace std;
 
-double max_jerk_, max_acc_;
+double max_jerk_acc_, max_acc_;
+double max_jerk_dec_, max_dec_;
 double target_speed_, target_jerk;
 double speed_now_, acc_now_;
 double start_time_;
@@ -63,31 +64,41 @@ void targetSpeedCallback(std_msgs::Float64 target_speed){
     acc_sign = 1;
     stateSettings_.acc = true;
   }
+  double acc_set_max, jerk_set_max;
   if(acc_now_ == 0){
-    full_curve = fabs(target_speed_ - speed_now_) >= (max_acc_*max_acc_)/max_jerk_;
+    if(stateSettings_.acc){
+      acc_set_max = max_acc_;
+      jerk_set_max = max_jerk_acc_;
+    }
+    else {
+      acc_set_max = max_dec_;
+      jerk_set_max = max_jerk_dec_;
+    }
+    full_curve = fabs(speed_now_ - target_speed_) >= (acc_set_max*acc_set_max)/jerk_set_max;
+    
     if(full_curve){
 	cout<<"Running full curve"<<endl;
 	
 	//setup profile parameters
 	stateSettings_.state_parameters.resize(4);
-	double v_addition = max_acc_*max_acc_/(2*max_jerk_);
+	double v_addition = acc_set_max*acc_set_max/(2*jerk_set_max);
 	stateSettings_.state_parameters[0].v = speed_now_;
 	stateSettings_.state_parameters[0].a = 0;
-	stateSettings_.state_parameters[0].j = acc_sign * max_jerk_;	
-	stateSettings_.state_parameters[0].t = cur_time + max_acc_/max_jerk_;
+	stateSettings_.state_parameters[0].j = acc_sign * jerk_set_max;	
+	stateSettings_.state_parameters[0].t = cur_time + acc_set_max/jerk_set_max;
 	stateSettings_.state_parameters[0].t_start = cur_time;
 	
 	stateSettings_.state_parameters[1].v = stateSettings_.state_parameters[0].v + acc_sign * v_addition;
-	stateSettings_.state_parameters[1].a = acc_sign * max_acc_;
+	stateSettings_.state_parameters[1].a = acc_sign * acc_set_max;
 	stateSettings_.state_parameters[1].j = 0;
 	stateSettings_.state_parameters[1].t_start = stateSettings_.state_parameters[0].t;
 	
 	stateSettings_.state_parameters[2].v = target_speed_ - acc_sign * v_addition;
 	stateSettings_.state_parameters[1].t = stateSettings_.state_parameters[0].t + 
-	  fabs(stateSettings_.state_parameters[2].v -stateSettings_.state_parameters[1].v)/max_acc_;
-	stateSettings_.state_parameters[2].a = acc_sign * max_acc_;
-	stateSettings_.state_parameters[2].j = - acc_sign * max_jerk_;
-	stateSettings_.state_parameters[2].t = stateSettings_.state_parameters[1].t + max_acc_/max_jerk_;
+	  fabs(stateSettings_.state_parameters[2].v -stateSettings_.state_parameters[1].v)/acc_set_max;
+	stateSettings_.state_parameters[2].a = acc_sign * acc_set_max;
+	stateSettings_.state_parameters[2].j = - acc_sign * jerk_set_max;
+	stateSettings_.state_parameters[2].t = stateSettings_.state_parameters[1].t + acc_set_max/jerk_set_max;
 	stateSettings_.state_parameters[2].t_start = stateSettings_.state_parameters[1].t;
 	
 	stateSettings_.state_parameters[3].v = target_speed_;
@@ -99,21 +110,21 @@ void targetSpeedCallback(std_msgs::Float64 target_speed){
 	
       }
       else {
-	double acc_target = sqrt(fabs(target_speed_ - speed_now_) * max_jerk_);
+	double acc_target = sqrt(fabs(target_speed_ - speed_now_) * jerk_set_max);
 	cout<<"Change in speed too small, limitting max acceleration at "<<acc_target<<endl;
 	stateSettings_.state_parameters.resize(3);
-	double v_addition = acc_target*acc_target/(2*max_jerk_);
+	double v_addition = acc_target*acc_target/(2*jerk_set_max);
 	stateSettings_.state_parameters[0].v = speed_now_;
 	stateSettings_.state_parameters[0].a = 0;
-	stateSettings_.state_parameters[0].j = acc_sign * max_jerk_;
-	stateSettings_.state_parameters[0].t = cur_time + acc_target/max_jerk_;
+	stateSettings_.state_parameters[0].j = acc_sign * jerk_set_max;
+	stateSettings_.state_parameters[0].t = cur_time + acc_target/jerk_set_max;
 	stateSettings_.state_parameters[0].t_start = cur_time;
 	
 	stateSettings_.state_parameters[1].v = stateSettings_.state_parameters[0].v + acc_sign * v_addition;
 	stateSettings_.state_parameters[1].a = acc_sign * acc_target;
-	stateSettings_.state_parameters[1].j = -acc_sign * max_jerk_;
+	stateSettings_.state_parameters[1].j = -acc_sign * jerk_set_max;
 	stateSettings_.state_parameters[1].t_start = stateSettings_.state_parameters[0].t;
-	stateSettings_.state_parameters[1].t = stateSettings_.state_parameters[0].t + acc_target/max_jerk_;
+	stateSettings_.state_parameters[1].t = stateSettings_.state_parameters[0].t + acc_target/jerk_set_max;
 	
 	stateSettings_.state_parameters[2].v = target_speed_;
 	stateSettings_.state_parameters[2].a = 0;
@@ -169,8 +180,10 @@ int main(int argc, char **argv)
     ros::NodeHandle private_nh("~");
     start_time_ = ros::Time::now().toSec();
     speed_pub = n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-    private_nh.param("max_jerk", max_jerk_, 1.0);
+    private_nh.param("max_jerk_acc", max_jerk_acc_, 1.0);
+    private_nh.param("max_jerk_dec", max_jerk_dec_, 2.0);
     private_nh.param("max_acc", max_acc_, 0.5);
+    private_nh.param("max_dec", max_dec_, 1.0);
     private_nh.param("frequency", frequency, 100.0);
     ros::Timer timer = n.createTimer(ros::Duration(1/frequency), callback);
     ros::Subscriber target_sub = n.subscribe("target_speed", 1, targetSpeedCallback);
