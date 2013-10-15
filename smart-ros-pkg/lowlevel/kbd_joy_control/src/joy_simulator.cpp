@@ -17,7 +17,7 @@
 #include <std_msgs/Bool.h>
 
 
-#define STEER_ANG_MAX 540
+#define STEER_ANG_MAX 500
 #define FULL_BRAKE 100
 #define FULL_THROTTLE 1
 ros::Publisher throttle_pub, steering_pub, brake_pub;//, enable_pub;
@@ -51,7 +51,7 @@ int main(int argc, char **argv)
       }
       std_msgs::Float32 steer_msg, throttle_msg, brake_msg;
       steer_msg.data = steer_signal;
-      throttle_msg.data = final_throttle;
+      throttle_msg.data = final_throttle*0.2;
       brake_msg.data = brake;
       throttle_pub.publish(throttle_msg);
       steering_pub.publish(steer_msg);

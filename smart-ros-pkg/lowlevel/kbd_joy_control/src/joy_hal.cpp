@@ -12,12 +12,12 @@
 
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
-#include <std_msgs/Float32.h>
+#include <std_msgs/Float64.h>
 #include <std_msgs/Int32.h>
 #include <std_msgs/Bool.h>
 
 
-#define STEER_ANG_MAX 540
+#define STEER_ANG_MAX -500
 #define FULL_BRAKE 100
 #define FULL_THROTTLE 1
 ros::Publisher throttle_pub, steering_pub, brake_pub;//, enable_pub;
@@ -36,13 +36,13 @@ void joyCallBack(sensor_msgs::Joy joy_msg)
     ROS_INFO("Joystick: axes[1] (lat)=%f, axis[3] (lon)=%f, axis[2] (wheel)=%f",
     joy_msg.axes[1], joy_msg.axes[3], joy_msg.axes[2]);
 
-    std_msgs::Float32 V, B;
+    std_msgs::Float64 V, B;
     V.data = lon>0 ? lon*FULL_THROTTLE : 0;
     B.data = lon>0 ? 0 : -lon*FULL_BRAKE;
     throttle_pub.publish(V);
     brake_pub.publish(B);
 
-    std_msgs::Float32 W;
+    std_msgs::Float64 W;
     W.data = lat * STEER_ANG_MAX;
     steering_pub.publish(W);
 
@@ -58,9 +58,9 @@ int main(int argc, char **argv)
 
     ros::Subscriber sub = n.subscribe("joy", 10, joyCallBack);
 
-    throttle_pub = n.advertise<std_msgs::Float32>("throttle", 1);
-    steering_pub = n.advertise<std_msgs::Float32>("steering_angle", 1);
-    brake_pub = n.advertise<std_msgs::Float32>("brake_angle", 1);
+    throttle_pub = n.advertise<std_msgs::Float64>("throttle", 1);
+    steering_pub = n.advertise<std_msgs::Float64>("steer_angle", 1);
+    brake_pub = n.advertise<std_msgs::Float64>("brake_angle", 1);
     //enable_pub = n.advertise<std_msgs::Bool>("hal_streamer_bit_3", 10);
 
     puts("Reading from Joystick");
