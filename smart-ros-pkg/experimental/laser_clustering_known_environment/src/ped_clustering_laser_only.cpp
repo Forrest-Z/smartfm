@@ -87,6 +87,9 @@ public:
 	new_cluster.height = 0.1;
 	new_cluster.depth = 0.5;
 	new_cluster.centroid = centroid;
+    //the height for centroid is used for visualization earlier. Set it to zero
+    //for correct representation
+    new_cluster.centroid.z = 0.25;
       }
       current_cluster.clear();
       return new_cluster;
@@ -120,7 +123,7 @@ public:
     clusters_pub_.publish(clusters);
   }
   void laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in){
-
+    cout<<"laserCallback"<<endl;
     sensor_msgs::PointCloud pc, pc_filtered;
     try{projector_.transformLaserScanToPointCloud(global_frame_, *scan_in, pc, tf_);}
     catch (tf::TransformException& e){ROS_INFO_STREAM(e.what());return;}
@@ -152,7 +155,9 @@ public:
         geometry_msgs::Point32 local_pt32;
 	local_pt32.x = local_pt.point.x; local_pt32.y = local_pt.point.y;
 	local_pt32.z = 0;
-	pc_filtered.points.push_back(local_pt32);
+    //for some reason it is twice the length
+    if(fabs(local_pt32.x) < 10 && fabs(local_pt32.y) < 3+1.0)
+	    pc_filtered.points.push_back(local_pt32);
       }
     }
     cloud_pub_.publish(pc_filtered);

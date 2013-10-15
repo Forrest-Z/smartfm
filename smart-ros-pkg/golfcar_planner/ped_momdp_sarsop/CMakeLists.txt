@@ -38,6 +38,7 @@ INCLUDE_DIRECTORIES(
     src/problem-solver/OfflineSolver
     src/problem-solver/Evaluator
     src/problem-solver/Simulator
+    src/pomcp
 )
 
 # source files for the appl lib
@@ -141,6 +142,27 @@ SET(LIBAPPL_SRCS
     src/problem-solver/Parser/Cassandra/sparse-matrix.c
 )
 
+
+SET(LIBPOMCP_SRCS
+    src/pomcp/battleship.cpp   
+ 
+    src/pomcp/simulator.cpp
+    src/pomcp/beliefstate.cpp 
+    src/pomcp/mcts.cpp       
+    src/pomcp/pedestrian_dynamic.cpp
+    src/pomcp/pedestrian_changelane.cpp
+    src/pomcp/tag.cpp
+    src/pomcp/coord.cpp   
+    src/pomcp/network.cpp    
+    src/pomcp/testsimulator.cpp
+    src/pomcp/executer.cpp 
+    src/pomcp/node.cpp      
+    src/pomcp/pocman.cpp  
+    src/pomcp/utils.cpp
+    src/pomcp/experiment.cpp 
+    src/pomcp/pedestrian.cpp 
+    src/pomcp/rocksample.cpp
+)
 # There are too many compiler warnings with problem-solver code, so let's disable some:
 set(WARNING_FLAGS "-Wno-sign-compare -Wno-unused-variable -Wno-ignored-qualifiers -Wno-write-strings")
 
@@ -148,6 +170,8 @@ add_definitions(-DDEBUG_LOG_ON)
 
 rosbuild_add_library(appl ${LIBAPPL_SRCS})
 rosbuild_add_compile_flags(appl ${WARNING_FLAGS} -msse2 -mfpmath=sse)
+
+
 
 rosbuild_add_executable(pomdpeval src/problem-solver/Evaluator/Evaluator.cpp)
 rosbuild_add_compile_flags(pomdpeval ${WARNING_FLAGS})
@@ -173,9 +197,11 @@ rosbuild_add_executable(pomdpconvert src/problem-solver/PomdpConvertor/convertor
 rosbuild_add_compile_flags(pomdpconvert ${WARNING_FLAGS})
 target_link_libraries(pomdpconvert appl tinyxml)
 
+
+rosbuild_add_library(pomcp ${LIBPOMCP_SRCS})
 rosbuild_add_executable(ped-momdp-sarsop src/pedestrian_momdp_realPed.cpp src/ROS_SimulationEngine.cpp src/momdp.cpp)
 rosbuild_add_compile_flags(ped-momdp-sarsop ${WARNING_FLAGS})
-target_link_libraries(ped-momdp-sarsop appl tinyxml)
+target_link_libraries(ped-momdp-sarsop pomcp appl tinyxml)
 
 rosbuild_add_executable(local_frame src/local_frame.cpp)
 rosbuild_add_compile_flags(local_frame -std=c++0x)

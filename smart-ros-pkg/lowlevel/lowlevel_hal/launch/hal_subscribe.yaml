@@ -1,0 +1,4 @@
+float_topics: [throttle, brake_angle, steer_angle]
+bool_topics: [direction_ctrl]
+uint_topics: []
+int_topics: []

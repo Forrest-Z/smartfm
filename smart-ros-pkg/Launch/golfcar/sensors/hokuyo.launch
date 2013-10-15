@@ -4,8 +4,8 @@
         <param name="calibrate_time" type="bool" value="false"/>
         <param name="frame_id" value="hokuyo_laser"/>
         <param name="port" type="string" value="/dev/hokuyo"/>
-        <param name="min_ang" type="double" value="-1.48"/>
-        <param name="max_ang" type="double" value="1.48"/>
+        <param name="min_ang" type="double" value="-2.356"/>
+        <param name="max_ang" type="double" value="2.356"/>
         <param name="intensity" type="bool" value="false"/>
     </node>
   <node name="laser_republish" pkg="laser_maxrange_republish" type="laser_repub"/>
@@ -13,5 +13,5 @@
 
 
     <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_hokuyolaser" args="1.7, 0.05, 0.90 0.00 0 0 /base_link /hokuyo_laser 100" /-->
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_hokuyolaser" args="1.7, 0.22, 0.87 0.00 0 0 /base_link /hokuyo_laser 100" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_hokuyolaser" args="2.035, 0.00, 0.92 0.00 0 0 /base_link /hokuyo_laser 100" />
 </launch>

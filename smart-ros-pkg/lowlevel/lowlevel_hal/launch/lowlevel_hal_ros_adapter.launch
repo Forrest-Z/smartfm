@@ -1,0 +1,7 @@
+<launch>
+  <rosparam command="load" file="$(find lowlevel_hal)/launch/hal_ros_adapter.yaml" ns="hal_ros_adapater"/>
+  <node name="hal_module" pkg="lowlevel_hal" type="hal_run.bash" output="screen"/>
+  <node name="bb_encoder" pkg="beaglebone_encoder" type="bb_encoders_odo">
+    <param name="encoder_idx_1" value="2"/>
+  </node>
+</launch>

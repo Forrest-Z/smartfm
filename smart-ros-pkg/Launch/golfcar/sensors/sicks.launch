@@ -8,24 +8,22 @@
         <param name="baud" value="500000"/>
     </node-->
 
-    <node pkg="sicktoolbox_wrapper" type="sicklms" name="sicklms">
-        <param name="port" value="/dev/ftdi2"/>
-        <remap from ="scan" to="scan"/>
-        <param name="resolution" value="0.5"/>
-        <param name="frame_id" value="sick_laser"/>
-        <param name="baud" value="500000"/>
+    <node pkg="LMS1xx" type="LMS100" name="topTilted">
+        <param name="host" value="192.168.1.201"/>
+        <remap from ="scan" to="top_tilted_scan"/>
+        <param name="frame_id" value="top_tilted_lidar"/>
     </node>
 
-    <node pkg="sick_ldmrs" type="sickldmrs.py" name="sickldmrs">
+    <!--node pkg="sick_ldmrs" type="sickldmrs.py" name="sickldmrs">
         <param name="host" value="192.168.1.200" />
-    </node>
+    </node-->
 
-    <node pkg="sicktoolbox_wrapper" type="sicklms" name="sicklms3">
+    <!--node pkg="sicktoolbox_wrapper" type="sicklms" name="sicklms3">
         <param name="port" value="/dev/ftdi3"/>
         <remap from ="scan" to="sick_scan2"/>
         <param name="resolution" value="0.25"/>
         <param name="frame_id" value="sick_laser2"/>
         <param name="baud" value="500000"/>
-    </node>
+    </node-->
 
 </launch>

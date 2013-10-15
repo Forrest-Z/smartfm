@@ -67,8 +67,9 @@ void ped_momdp::updateSteerAnglePublishSpeed(geometry_msgs::Twist speed)
     //fixed ros-pkg ticket #5432
     //if(use_sim_time_) momdp_speed = momdp_speed * 0.3; /// TBP change numbers into parameters
 
-    if(speed.linear.x < momdp_speed_) cmd.linear.x = speed.linear.x;
-    else cmd.linear.x = momdp_speed_;
+    //if(speed.linear.x < momdp_speed_) cmd.linear.x = speed.linear.x;
+    //else 
+    cmd.linear.x = momdp_speed_;
 
     geometry_msgs::Twist cmd_temp;
     cmd_temp = cmd;
@@ -153,7 +154,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 
     if(lPedInView.size()==0)
     {
-        momdp_speed_ = 1.5;
+        momdp_speed_ = 1.0;
         return;
     }
 
@@ -163,7 +164,8 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
     /// Get new action
     for(int ii=0; ii<lPedInView.size(); ii++)
     {
-        lPedInView[ii].currAction = policy->getBestActionLookAhead(*(lPedInView[ii].currBelSt));
+       //lPedInView[ii].currAction = policy->getBestActionLookAhead(*(lPedInView[ii].currBelSt));
+       lPedInView[ii].currAction =Executers[ii]->GetAction();
     }
 
     /// combining the actions by picking the safest action
@@ -189,10 +191,10 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
     {
         /// TBP : Change numbers to parameters
         if(safeAction==0) momdp_speed_ += 0;
-        else if(safeAction==1) momdp_speed_ += 0.5;
+        else if(safeAction==1) momdp_speed_ += 0.1;
         else if(safeAction==2) momdp_speed_ -= 0.5;
         if(momdp_speed_<=0) momdp_speed_ = 0;
-        if(momdp_speed_>=1.5) momdp_speed_ = 1.5;
+        if(momdp_speed_>=1.0) momdp_speed_ = 1.0;
     }
 
 
@@ -202,7 +204,8 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
     for(int ii=0; ii<lPedInView.size(); ii++)
     {
         int id = lPedInView[ii].id;
-        updateBelief(id,safeAction);
+        //updateBelief(id,safeAction);
+        updatePomcpBelief(ii,safeAction);
     }
 
     clean_momdp_problem();
@@ -377,6 +380,40 @@ int ped_momdp::policy_initialize(string model_file, string policy_file, int simL
 
 }
 
+void ped_momdp::updatePomcpBelief(int i, int safeAction)
+{
+    int px = getXGrid(lPedInView[i].ped_pose.x);
+    int py = getYGrid(lPedInView[i].ped_pose.y);
+    if(py==Y_SIZE-1) py=Y_SIZE-2;
+
+
+
+    int ry = getYGrid(lPedInView[i].rob_pose);
+    if(ry==Y_SIZE-1) ry=Y_SIZE-2;
+
+    //if(myDebug)
+    //sprintf(rob_str,"sR%02d",currRobY);
+
+    //cout<<"rob_str"<<endl;
+    if(ry>Y_SIZE-1)
+    {
+        ROS_WARN("Robot went outside of the grid size, pushing the robot pose back to the edge");
+        ry = Y_SIZE-1;
+    }
+
+
+    //dj: discretization of robot speed into 3 int levels (0,1,2)
+    double rvel_double;
+    double currRobSpeed=robotspeedx_;
+    if(currRobSpeed < 0.1) rvel_double = 0;
+    else if(currRobSpeed > 0.1 && currRobSpeed < 2) rvel_double = 1;
+    else if(currRobSpeed > 2) rvel_double = 2;
+    //double rvel_double =  currRobSpeed/1.5*2;//dSpeed;
+    int rvel= (int) rvel_double;
+    //if(rvel_double < 0.0001 )
+    int observation=rvel*500+ry*41+px*11+py;
+	 Executers[i]->Step(safeAction,observation);
+}
 void ped_momdp::updateBelief(int id, int safeAction)
 {
     
@@ -496,11 +533,9 @@ int ped_momdp::getCurrObs(int id)
     sprintf(ped_str,"ox%02dy%02d",px,py);
 
     ObsVal = ObsSymbolMapping[ped_str];
-
     cout << "curr observation is " << ped_str << " id " << ObsVal << endl;
 
-    /// Bin continuous values to get discrete values
-
+    /// Bin continuous values to get discrupdateBeliefete values
     //map<string, string> bb = problem->getObservationsSymbols(2);
     //map<string, string>::iterator it = bb.begin();
     //cout << " curr obs " << (*it).first << " " << (*it).second << endl;

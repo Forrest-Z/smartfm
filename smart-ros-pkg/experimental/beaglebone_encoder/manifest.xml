@@ -10,6 +10,7 @@
   <url>http://ros.org/wiki/beaglebone_encoder</url>
   <depend package="rospy"/>
   <depend package="std_msgs"/>
+  <depend package="roscpp"/>
   <depend package="phidget_encoders"/>
 </package>
 

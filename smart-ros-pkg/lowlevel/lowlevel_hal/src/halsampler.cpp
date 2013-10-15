@@ -268,7 +268,7 @@ bool readAndPublish()
     lowlevel_hal::odo odo_msg;
     bool emergency = false;
 
-    printf("num_pins %d", fifo->num_pins);
+    //printf("num_pins %d", fifo->num_pins);
     for ( int n = 0 ; n < fifo->num_pins ; n++ )
     {
         switch ( fifo->type[n] ) {
@@ -292,14 +292,14 @@ bool readAndPublish()
         }
     }
 
-    printf ( "\n" );
+    //printf ( "\n" );
     //ROS_INFO("Pose=%lf m, Vel=%lf m/s", odo_msg.pose,odo_msg.vel);
     odo_pub.publish(odo_msg);
 
-    if( emergency!=emergency_msg.data) {
+    //if( emergency!=emergency_msg.data) {
         emergency_msg.data = emergency;
         emergency_pub.publish(emergency_msg);
-    }
+    //}
 
     return true;
 }
