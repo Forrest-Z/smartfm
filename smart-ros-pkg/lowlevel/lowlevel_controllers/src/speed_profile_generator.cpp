@@ -171,7 +171,7 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
     ros::NodeHandle private_nh("~");
     speed_pub = n.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-    private_nh.param("max_jerk", max_jerk_, 1.0);
+    private_nh.param("max_jerk", max_jerk_, 0.5);
     private_nh.param("max_acc", max_acc_, 0.5);
     private_nh.param("max_speed", max_speed_, 1.5);
     private_nh.param("frequency", frequency, 1000.0);

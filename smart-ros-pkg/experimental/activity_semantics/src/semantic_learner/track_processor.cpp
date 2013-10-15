@@ -220,7 +220,7 @@ namespace golfcar_semantics{
 		size_t longest_serial = 0; double longest_length = 0;
 		for(size_t i=0; i<track_container_->tracks.size(); i++)
 		{
-			if(track_container_->tracks[i].ped_activity != MOVING)continue;
+			if(track_container_->tracks[i].ped_activity != MOVING) continue;
 
 			track_common &track = track_container_->tracks[i];
 			double track_length_tmp = sqrt(pow(track.elements.front().x - track.elements.back().x, 2.0)+pow(track.elements.front().y - track.elements.back().y, 2.0));
@@ -310,6 +310,8 @@ namespace golfcar_semantics{
 			//printf("\n");
 			//ROS_INFO("tracks remained to be classified: %ld", remained_track_number);
 		}
+
+		ROS_INFO("cluster A track number %ld, cluster B track number %ld", cluster_a.size(), cluster_b.size());
 	}
 
 	void track_processor::calc_track_MaxMinSimScore(track_common & track, vector<track_element> & cluster_elements, double & maxScore_track, double & minScore_track)

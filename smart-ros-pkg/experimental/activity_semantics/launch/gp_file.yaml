@@ -4,6 +4,7 @@
 #gp_ROI_y: 368
 #gp_ROI_width: 338
 #gp_ROI_height: 89
+
 gp_ROI_x: 0
 gp_ROI_y: 0
 gp_ROI_width: 1099
@@ -11,8 +12,9 @@ gp_ROI_height: 973
 
 mean_min: 1.74
 mean_max: 5.17
-var_min: 0.0045062284
-var_max: 0.91628844
+var_min: 0.0039847047
+var_max: 0.99137906
+
 gpMean_path: "./launch/PN_thetha_mean.jpg"
 gpVar_path: "./launch/PN_thetha_var.jpg"
 

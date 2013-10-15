@@ -15,7 +15,7 @@ for xx = 1:fix(size_x/2)
 end
 a = 0*zeros(size_x, size_y);
 
-filename_cluster1 = 'map_data_0903.txt';
+filename_cluster1 = 'map_data_0913.txt';
 % open the file
 fid = fopen(filename_cluster1);
 % read the file headers, find N (one value)

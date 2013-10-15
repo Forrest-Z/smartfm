@@ -13,7 +13,11 @@ namespace golfcar_semantics{
 		gp_file_ = "./launch/gp_file.yaml";
 		road_semantics_analyzer_ = road_semantics_analyzer;
 
+		//roi for McD area;
 		visual_ROI_ = Rect(424, 510, 338, 100);
+
+		//roi for crossing area;
+		//visual_ROI_ = Rect(100, 490, 90, 90);
 	}
 
 	void AM_learner::GridMap_init()
@@ -63,8 +67,7 @@ namespace golfcar_semantics{
 				accumulate_grid_activity(grid_tmp, tracks[i], j);
 			}
 		}
-
-		visualize_arrow_ROI();
+		//visualize_arrow_ROI();
 	}
 
 	void AM_learner::accumulate_grid_activity(activity_grid &grid ,track_common track, size_t element_serial)
@@ -712,6 +715,7 @@ namespace golfcar_semantics{
 		ROS_INFO("EE_color, minVAL, maxVal %3f, %3f", minVal, maxVal);
 
 		normalize(EE_color, EE_color, 0.0, 1.0, NORM_MINMAX);
+
 		for(j = 0; j < AM_->size_y; j++)
 		{
 			for (i = 0; i < AM_->size_x; i++)
@@ -721,6 +725,10 @@ namespace golfcar_semantics{
 				int x = i;
 				int y = AM_->size_y-1-j;
 				grid_tmp.EE_score = EE_color.at<float>(y,x);
+
+				grid_tmp.EE_score = grid_tmp.EE_score * 255.0/70.0;
+				if(grid_tmp.EE_score>1.0) grid_tmp.EE_score =0.98;
+				EE_color.at<float>(y,x) = grid_tmp.EE_score;
 			}
 		}
 		Mat EE_color_tmp;
@@ -750,7 +758,8 @@ namespace golfcar_semantics{
 			for (i = 0; i < AM_->size_x; i++)
 			{
 				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
-				if(grid_tmp.EE_score>=30.0/255)
+				//if(grid_tmp.EE_score>=30.0/255)
+				if(grid_tmp.EE_score>=0.5)
 				{
 					Vec2f sample_tmp(i, j);
 					samples_vector.push_back(sample_tmp);
@@ -1008,13 +1017,13 @@ namespace golfcar_semantics{
 		double eigenvec1_y   = eigenvectors.at<double>(0,1) * len1;
 
 		double eigenvec2_len = eigenvalues.at<double>(1,0);
-		double len2          = sqrt(eigenvec2_len)*10;
+		double len2          = sqrt(eigenvec2_len)*5;
 		double eigenvec2_x   = eigenvectors.at<double>(1,0) * len2;
 		double eigenvec2_y   = eigenvectors.at<double>(1,1) * len2;
 
 		// Show axes of ellipse
-		line( img, cv::Point(cx,cy), cv::Point(cx+eigenvec1_x, cy+eigenvec1_y), CV_RGB(255,255,0) );
-		line( img, cv::Point(cx,cy), cv::Point(cx+eigenvec2_x, cy+eigenvec2_y), CV_RGB(0,255,0) );
+		//line( img, cv::Point(cx,cy), cv::Point(cx+eigenvec1_x, cy+eigenvec1_y), CV_RGB(255,255,0) );
+		//line( img, cv::Point(cx,cy), cv::Point(cx+eigenvec2_x, cy+eigenvec2_y), CV_RGB(0,255,0) );
 
 		// Show ellipse rotated into direction of eigenvec1
 		double dx = eigenvec1_x;
@@ -1134,7 +1143,24 @@ namespace golfcar_semantics{
 				sidewalk_color.at<float>(y,x) = (float)(grid_tmp.sidewalk_score);
 			}
 		}
+
 		normalize(sidewalk_color, sidewalk_color, 0.0, 1.0, NORM_MINMAX);
+
+		for(j = 0; j < AM_->size_y; j++)
+		{
+			for (i = 0; i < AM_->size_x; i++)
+			{
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
+				//if(!grid_tmp.road_flag) continue;
+				int x = i;
+				int y = AM_->size_y-1-j;
+
+				sidewalk_color.at<float>(y,x) = sidewalk_color.at<float>(y,x) * 3.0;
+				if(sidewalk_color.at<float>(y,x) > 1.0) sidewalk_color.at<float>(y,x) = 1.0;
+				grid_tmp.sidewalk_score = sidewalk_color.at<float>(y,x);
+			}
+		}
+
 		Mat sidewalk_color_tmp;
 		sidewalk_color.convertTo(sidewalk_color_tmp, CV_8U, 255.0, 0.0);
 		imwrite( "./data/sidewalk_color.jpg", sidewalk_color_tmp );
@@ -1259,10 +1285,27 @@ namespace golfcar_semantics{
 			}
 		}
 		normalize(crossing_color, crossing_color, 0.0, 1.0, NORM_MINMAX);
+
+
+		for(j = 0; j < AM_->size_y; j++)
+		{
+			for (i = 0; i < AM_->size_x; i++)
+			{
+				activity_grid &grid_tmp = AM_->cells[MAP_INDEX(AM_, i, j)];
+				//if(!grid_tmp.road_flag) continue;
+				int x = i;
+				int y = AM_->size_y-1-j;
+
+				crossing_color.at<float>(y,x) = crossing_color.at<float>(y,x) * 3.0;
+				if(crossing_color.at<float>(y,x) > 1.0) crossing_color.at<float>(y,x) = 1.0;
+				grid_tmp.crossing_score = crossing_color.at<float>(y,x);
+			}
+		}
+
 		Mat crossing_color_tmp;
 		crossing_color.convertTo(crossing_color_tmp, CV_8U, 255.0, 0.0);
 		imwrite( "./data/crossing_color_probability.jpg", crossing_color_tmp );
-		threshold(crossing_color_tmp, crossing_color_tmp, 30, 255, 0);
+		threshold(crossing_color_tmp, crossing_color_tmp, 127, 255, 0);
 		imwrite( "./data/crossing_color.jpg", crossing_color_tmp );
 	}
 
@@ -1341,6 +1384,7 @@ namespace golfcar_semantics{
 
 		Mat road_img_ROI(road_image_, visual_ROI_);
 		Mat road_img_ROI_clone = road_img_ROI.clone();
+		imwrite("./data/MCDROI_satellite.png", road_img_ROI_clone);
 
 		Mat road_img_ROIresized;
 		resize(road_img_ROI_clone, road_img_ROIresized, Size(), image_resize_factor, image_resize_factor);
@@ -1392,8 +1436,8 @@ namespace golfcar_semantics{
 			arrow_y++;
 		}
 
-		imwrite("./data/road_img_ROIresized.png", road_img_ROIresized);
-		imwrite("./data/arrow_clean.png", arrow_clean);
+		imwrite("./data/MCDROI_satellite_resized.png", road_img_ROIresized);
+		imwrite("./data/MCDROI_arrow_clean.png", arrow_clean);
 
 		double minVal, maxVal;
 		minMaxLoc(directionVar_tmp, &minVal, &maxVal);
@@ -1403,7 +1447,7 @@ namespace golfcar_semantics{
 		Mat directionVar8U;
 		directionVar_tmp.convertTo(directionVar8U, CV_8U, 255.0/(maxVal - minVal), -minVal * 255.0/(maxVal - minVal));
 		directionVar8U = Scalar(255)-directionVar8U;
-		imwrite("./data/directionVar_tmp.png", directionVar8U);
+		imwrite("./data/MCDROI_directionVar_tmp.png", directionVar8U);
 
 		Mat var_color_tmp;
 		cvtColor(directionVar8U, var_color_tmp, CV_GRAY2RGB);
@@ -1424,7 +1468,7 @@ namespace golfcar_semantics{
 				}
 			}
 		}
-		imwrite("./data/blended_img.png", blended_img);
+		imwrite("./data/MCDROI_blended_img.png", blended_img);
 	}
 
 	void AM_learner::drawArrow(Mat img, Point arrow_center, int trunk_lenth, double arrow_angle, int side_length, double alpha,  Scalar color, int thickness)

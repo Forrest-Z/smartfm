@@ -14,6 +14,12 @@
         <param name="frame_id" value="top_tilted_lidar"/>
     </node>
 
+    <node pkg="LMS1xx" type="LMS100" name="frontBottom">
+        <param name="host" value="192.168.1.202"/>
+        <remap from ="scan" to="front_bottom_scan"/>
+        <param name="frame_id" value="front_bottom_lidar"/>
+    </node>
+
     <!--node pkg="sick_ldmrs" type="sickldmrs.py" name="sickldmrs">
         <param name="host" value="192.168.1.200" />
     </node-->
