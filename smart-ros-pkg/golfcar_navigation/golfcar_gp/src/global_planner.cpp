@@ -28,6 +28,7 @@ ros::Publisher *goal_pub_ptr_;
 nav_msgs::Path rrt_path_;
 void repubCallback(nav_msgs::Path p){
   cout<<"New path received from rrt, passing it to local planner"<<endl;
+  rrt_path_ = p;
   geometry_msgs::PoseStamped goal;
   goal.header.stamp = ros::Time::now();
   goal.header.frame_id = "/map";
@@ -35,7 +36,6 @@ void repubCallback(nav_msgs::Path p){
   goal.pose.position.y = (double) end_number;
   goal.pose.orientation.z = 1.0;
   goal_pub_ptr_->publish(goal);
-  rrt_path_ = p;
 }
 
 
