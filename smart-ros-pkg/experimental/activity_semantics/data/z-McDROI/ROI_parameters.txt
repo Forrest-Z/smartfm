@@ -1,0 +1,5 @@
+Rect(424, 510, 338, 100);
+
+Top left conner (424, 510);
+height: 338
+width:  100
