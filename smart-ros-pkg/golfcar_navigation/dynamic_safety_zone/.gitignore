@@ -1,0 +1,4 @@
+cfg/*.cfgc
+cfg/cpp/
+docs/
+src/speed_advisor
