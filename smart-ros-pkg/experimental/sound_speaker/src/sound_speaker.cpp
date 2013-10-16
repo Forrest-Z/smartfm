@@ -88,6 +88,7 @@ public:
 		case 1:
 			file_name = sound_path + string("DANGER.WAV");
 			sc_->playWave(file_name.c_str());
+			//sc_->say("Excuse me");
 			break;
 		case 2:
 			file_name = sound_path + string("gameover.wav");

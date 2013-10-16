@@ -24,7 +24,7 @@
 #include <boost/bind.hpp>
 #include <geometry_msgs/PolygonStamped.h>
 #include <std_msgs/UInt16.h>
-
+#include <fmutil/fm_filter.h>
 using namespace std;
 using namespace tf;
 
@@ -35,7 +35,7 @@ class dynamic_safety_zone
     tf::TransformListener tf_;
     tf::MessageFilter<sensor_msgs::LaserScan> * tf_filter_;
     tf::MessageFilter<sensor_msgs::PointCloud2>* tf_pc2_filter_;
-
+    fmutil::LowPassFilter vFilter_;
     string base_frame_;
     ros::Subscriber odo_sub_, advised_speed_sub_;
     ros::Publisher  fused_speed_pub_, current_polygon_pub_, inner_zone_pub_, remained_pcl_pub_;
@@ -60,29 +60,29 @@ class dynamic_safety_zone
     bool stop_time_init_;
     ros::Publisher obstacle_status_pub_;
     double stop_time_threshold_;
-
+    ros::Time filter_time_;
 	dynamic_safety_zone()
 	{
 		ros::NodeHandle private_nh("~");
 
 		private_nh.param("base_frame", base_frame_, string("base_link"));
-		private_nh.param("control_freq", control_freq_, 30.0);
+		private_nh.param("control_freq", control_freq_, 5.0);
 
 		private_nh.param("offcenter_x", offcenter_x_, 1.7);
 		private_nh.param("offcenter_y", offcenter_y_, 0.8);
 		private_nh.param("back_boundary", back_boundary_, 0.5);
 
-		private_nh.param("x_buffer", x_buffer_, 0.5);
+		private_nh.param("x_buffer", x_buffer_, 1.5);
 		private_nh.param("y_buffer", y_buffer_, 0.2);
 		private_nh.param("x_coeff", x_coeff_, 2.0);
-		private_nh.param("y_coeff", y_coeff_, 0.5);
+		private_nh.param("y_coeff", y_coeff_, 0.25);
 
 		private_nh.param("stop_time_threshold", stop_time_threshold_, 5.0);
 
 
 		odo_sub_ = nh_.subscribe("/odom", 1, &dynamic_safety_zone::odom_callback, this);
 
-		laser_sub_.subscribe(nh_, "scan", 10);
+		laser_sub_.subscribe(nh_, "front_bottom_scan", 10);
 		tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, base_frame_, 10);
 		tf_filter_->registerCallback(boost::bind(&dynamic_safety_zone::laserCB, this, _1));
 		tf_filter_->setTolerance(ros::Duration(0.05));
@@ -92,15 +92,16 @@ class dynamic_safety_zone
 	    tf_pc2_filter_->registerCallback(boost::bind(&dynamic_safety_zone::pclCB, this, _1));
 	    tf_pc2_filter_->setTolerance(ros::Duration(0.05));
 
-	    advised_speed_sub_ = nh_.subscribe("/cmd_speed0", 1, &dynamic_safety_zone::adviseSpeedCB, this);
-	    fused_speed_pub_= nh_.advertise<geometry_msgs::Twist>("/fused_cmd_speed", 1);
+	    advised_speed_sub_ = nh_.subscribe("/cmd_speed", 1, &dynamic_safety_zone::adviseSpeedCB, this);
+	    fused_speed_pub_= nh_.advertise<geometry_msgs::Twist>("/cmd_vel", 1);
 	    current_polygon_pub_  = nh_.advertise<geometry_msgs::PolygonStamped>("/dynamic_safety_zoon", 10);
 	    inner_zone_pub_  = nh_.advertise<geometry_msgs::PolygonStamped>("/inner_safety_zoon", 10);
 
 	    remained_pcl_pub_ = nh_.advertise<sensor_msgs::PointCloud>("/remained_pcl", 10);
-
+	
 	    //advised_speed_.linear.x = 1.0;
-
+	    vFilter_ = fmutil::LowPassFilter(0.1);
+	    filter_time_ = ros::Time::now();
 		current_vel_ = 0.0;
 		front_boundary_ = offcenter_x_ + x_buffer_ + x_coeff_*current_vel_;
 		side_boundary_  = offcenter_y_ + y_buffer_ + y_coeff_*current_vel_;
@@ -115,15 +116,17 @@ class dynamic_safety_zone
 		corner[3].y = -side_boundary_;
 		for(int i=0; i<4; i++) inner_safety_zone_.polygon.points.push_back(corner[i]);
 
-		obstacle_status_flag_.data = 0;
-		obstacle_status_pub_ = nh_.advertise<std_msgs::UInt16>("/obstacle_status", 10);
+		obstacle_status_flag_.data = 255;
+		obstacle_status_pub_ = nh_.advertise<std_msgs::UInt16>("/voice_id", 10);
 		stop_time_init_ = false;
 	}
 
 	void odom_callback(const nav_msgs::OdometryConstPtr &odom_in)
 	{
-		current_vel_ = odom_in->twist.twist.linear.x;
-		
+		ros::Time time_now = ros::Time::now();
+		double dt = (time_now - filter_time_).toSec();
+		current_vel_ = fabs(vFilter_.filter_dt(dt, odom_in->twist.twist.linear.x));
+		filter_time_ = time_now;
 		front_boundary_ = offcenter_x_ + x_buffer_ + x_coeff_*current_vel_;
 		side_boundary_  = offcenter_y_ + y_buffer_ + y_coeff_*current_vel_;
 		geometry_msgs::PolygonStamped current_safety_zoon;
@@ -181,7 +184,7 @@ class dynamic_safety_zone
     	for(size_t i=0; i<local_points.points.size(); i++)
     	{
 			geometry_msgs::Point32 point_tmp = local_points.points[i];
-			if(point_tmp.x < 1.7 && point_tmp.y < 0.7 && point_tmp.y > -0.7) continue;
+			//if(point_tmp.x < 1.7 && point_tmp.y < 0.7 && point_tmp.y > -0.7) continue;
 			//if point out of current_polygon, ignore;
 			if((point_tmp.x < -back_boundary_ || point_tmp.x > front_boundary_) || (point_tmp.y>side_boundary_||point_tmp.y<-side_boundary_)) continue;
 
@@ -217,7 +220,8 @@ class dynamic_safety_zone
 		//very important: to avoid sudden acceleration when vehicle is static;
 		if(minimum_speed > current_vel_)
 		{
-			minimum_speed = current_vel_ + (minimum_speed-current_vel_)/control_freq_;
+		  double speed_temp = current_vel_ + (minimum_speed-current_vel_)/control_freq_;
+			minimum_speed = speed_temp > 0.6? speed_temp:0.6;
 		}
 		
     	fused_speed_ = advised_speed_;
@@ -228,18 +232,22 @@ class dynamic_safety_zone
     
     void check_obstacle_status()
     {
-		obstacle_status_flag_.data = 0;
+		obstacle_status_flag_.data = 255;
 		
-		if(remained_pointcloud_.points.size()>0) obstacle_status_flag_.data = 1;
+		if(remained_pointcloud_.points.size()>0) obstacle_status_flag_.data = 2;
 		
-		if(advised_speed_.linear.x > fused_speed_.linear.x && current_vel_ < 0.1)
+		if(remained_pointcloud_.points.size()>0 && current_vel_ < 0.1)
 		{
-			if(!stop_time_init_)stop_time_ = ros::Time::now();
+			if(!stop_time_init_){
+			  stop_time_init_ = true;
+			  stop_time_ = ros::Time::now();
+			}
 			else
 			{
 				ros::Time time_now_tmp = ros::Time::now();
 				double time_difference_tmp = time_now_tmp.toSec() - stop_time_.toSec();
-				if(time_difference_tmp>stop_time_threshold_){obstacle_status_flag_.data = 2;}
+				//cout<<time_difference_tmp<<endl;
+				if(time_difference_tmp>stop_time_threshold_){obstacle_status_flag_.data = 1;}
 			}
 		}
 		else
