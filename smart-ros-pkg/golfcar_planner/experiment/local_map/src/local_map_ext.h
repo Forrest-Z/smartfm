@@ -37,7 +37,6 @@ using namespace std;
 
 #define GOLFCAR_WIDTH 1.2;
 #define GOLFCAR_HEIGHT 2.4;
-#define TRACKING_DIST 5.0;
 
 class LocalMap
 {
@@ -83,6 +82,7 @@ class LocalMap
 
         tf::TransformListener tf_;
         string global_frame_, local_frame_, base_frame_;
+        int track_dist_;
         ros::Publisher map_pub_, prior_pts_pub_, map_pts_pub_;
 
         ros::NodeHandle nh_;
