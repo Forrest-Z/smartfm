@@ -1,0 +1,13 @@
+\subsubsection usage Usage
+\verbatim
+<node name="ped_utown" pkg="ped_utown" type="ped_utown">
+  <param name="path_type" type="int" value="2" />
+  <param name="emergency" type="bool" value="False" />
+  <param name="global_path_exist" type="bool" value="False" />
+  <param name="replan_path_exist" type="bool" value="False" />
+  <param name="reach_destination" type="bool" value="False" />
+  <param name="reach_temp_goal" type="bool" value="False" />
+  <param name="interface_end" type="bool" value="False" />
+</node>
+\endverbatim
+
