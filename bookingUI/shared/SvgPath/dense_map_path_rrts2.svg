@@ -23,14 +23,14 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="1680"
-     inkscape:window-height="1000"
+     inkscape:window-width="1301"
+     inkscape:window-height="744"
      id="namedview32"
      showgrid="false"
      inkscape:zoom="1.4864246"
-     inkscape:cx="777.62856"
-     inkscape:cy="2815.8488"
-     inkscape:window-x="0"
+     inkscape:cx="1090.1407"
+     inkscape:cy="1610.7185"
+     inkscape:window-x="65"
      inkscape:window-y="24"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg2" />
@@ -474,15 +474,15 @@
   <desc
      id="desc6">The paths consist of all the possible route that can be taken by the golfcart to serve 4 stations: DCC, MCD, EA and E3A</desc>
   <image
-     sodipodi:absref="/home/pratik/smartfm/bookingUI/shared/SvgPath/../../../old_code/mit_rrt/local_map_ext/bigeng_sde_map_0.1_cleaned_path.png"
+     sodipodi:absref="/home/liuwlz/smartfm/bookingUI/shared/SvgPath/../../../old_code/mit_rrt/local_map_ext/bigeng_sde_map_0.1_cleaned_path.png"
      xlink:href="../../../old_code/mit_rrt/local_map_ext/bigeng_sde_map_0.1_cleaned_path.png"
-     inkscape:label="#image3014"
-     y="0"
-     x="0"
-     id="map"
-     height="4520"
+     style="fill:#aa4400;font-size:14px"
      width="4251"
-     style="fill:#aa4400;font-size:14px" />
+     height="4520"
+     id="map"
+     x="0"
+     y="0"
+     inkscape:label="#image3014" />
   <path
      id="path3616"
      d="M 481.84616,1360.4032"
@@ -619,18 +619,18 @@
      sodipodi:nodetypes="cccccccccccccccc" />
   <path
      style="fill:none;stroke:#ff0000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#DotL)"
-     d="m 2092.1141,2732.3611 -45.0531,2.9597 -83.8882,20.3262 -51.6652,30.8972 -56.7389,65.5903 -22.4499,82.1007 1.9028,76.9496 41.4201,101.4111 101.5861,158.7703 9.4186,122.4414 -98.8951,45.7474 -181.8558,-110.4806 -176.4546,-115.9579 -161.2994,-106.4534 -171.953,-111.621 -172.2878,-106.8114 -112.28903,-105.6968 -93.39076,-117.5504 -50.42525,-63.7452 -44.81814,-54.5871 -44.81815,-54.5872 -36.07643,-48.7812 -36.07643,-48.7813 -51.19362,-67.704 -36.7888,-50.3874 -71.58902,-109.5024 -31.6161,-55.6505 -30.66638,-51.7131 -23.05502,-82.7553 17.56745,-60.5726 67.5508,-58.0366 149.4388,-122.3192"
+     d="m 2092.1141,2732.3611 -45.0531,2.9597 -83.8882,20.3262 -51.6652,30.8972 -56.7389,65.5903 -22.4499,82.1007 1.9028,76.9496 41.4201,101.4111 101.5861,158.7703 15.1133,69.3215 -5.6947,53.1199 -39.6333,40.4935 -59.2618,5.2539 -181.8558,-110.4806 -176.4546,-115.9579 -161.2994,-106.4534 -171.953,-111.621 -172.2878,-106.8114 -112.28903,-105.6968 -93.39076,-117.5504 -50.42525,-63.7452 -44.81814,-54.5871 -44.81815,-54.5872 -36.07643,-48.7812 -36.07643,-48.7813 -51.19362,-67.704 -36.7888,-50.3874 -71.58902,-109.5024 -31.6161,-55.6505 -30.66638,-51.7131 -23.05502,-82.7553 17.56745,-60.5726 67.5508,-58.0366 149.4388,-122.3192"
      id="DCC_EA"
      inkscape:connector-curvature="0"
-     sodipodi:nodetypes="cccccccccccccccccccccccccccccccc"
+     sodipodi:nodetypes="cccccccccccccccccccccccccccccccccc"
      inkscape:label="#path3073" />
   <path
      style="fill:none;stroke:#ff0000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#DotL)"
-     d="m 537.20582,1842.8991 -35.86196,9.9198 -39.40571,31.5487 -42.36208,35.6542 -36.45559,43.5808 27.72957,75.9617 57.133,103.4838 126.43329,188.1602 140.3711,181.4483 50.52377,63.5481 111.13885,135.1692 98.18747,119.455 177.28807,115.3976 116.3016,76.0151 110.3622,71.5942 113.2165,75.4001 84.6763,55.1823 132.8145,85.9064 158.3199,95.563 65.648,-32.3483 8.5628,-56.1337 -30.9831,-75.0917 -81.2845,-125.6579 -40.911,-156.0328 11.417,-77.065 71.3565,-104.6562 99.7358,-54.3941"
+     d="m 537.20582,1842.8991 -35.86196,9.9198 -45.46051,23.4756 -36.30728,25.5629 -29.14324,31.0821 -12.69439,45.4638 19.4966,52.4707 27.07011,53.0922 43.6779,59.0819 126.43329,188.1602 140.3711,181.4483 50.52377,63.5481 64.04598,82.0216 58.29625,73.5026 54.98355,68.8076 62.94731,55.1843 55.2472,35.3171 91.0941,55.1886 116.3016,76.0151 110.3622,71.5942 113.2165,75.4001 84.6763,55.1823 132.8145,85.9064 149.5741,96.9085 48.508,-6.1573 30.5951,-29.5548 3.8535,-54.1154 -30.9831,-75.0917 -30.1053,-66.1766 -41.7606,-69.5726 -33.3435,-71.9315 -16.9861,-74.01 11.417,-77.065 71.3565,-104.6562 99.7358,-54.3941"
      id="EA_DCC"
      inkscape:connector-curvature="0"
      inkscape:label="#path3075"
-     sodipodi:nodetypes="ccccccccccccccccccccccccccc" />
+     sodipodi:nodetypes="ccccccccccccccccccccccccccccccccccc" />
   <path
      style="fill:none;stroke:#ff0000;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-start:url(#DotL)"
      d="m 728.22023,1633.5868 153.96674,-114.1703 139.63773,-99.8414 125.6929,-93.3546 20.5541,-14.4803 20.554,-14.4803 20.5541,-14.4803 20.5541,-14.4802 m 20.554,-14.4803 20.5541,-14.4803 25.9361,-20.7033 c 0,0 10.1747,-6.5716 15.172,-8.2573 l 14.2041,-2.1795 16.895,2.8662 12.8586,5.5573 7.4766,7.9119 10.2348,14.7609 1.6241,24.5539 -4.7546,11.0294 m -4.7546,11.0293 c 0,0 -3.394,4.3255 -5.091,6.4883 -1.697,2.1627 -5.091,6.4882 -5.091,6.4882 l -12.2003,9.6127 -49.421,31.8895"

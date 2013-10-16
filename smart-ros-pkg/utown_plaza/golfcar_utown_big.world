@@ -88,24 +88,23 @@ window
 ( 
   size [ 651 407 ] 
  #center [327.990 371.960] 
-  center [-93.395 74.991]
+  center [-62.557 47.526]
 #rotate [ 0.000 -1.560 ]
   rotate [ 0.000 -1.000 ]
-  scale 8.954 
+  scale 4.595 
 )
 
 # load an environment bitmap
 floorplan
 ( 
   name "willow"
-  bitmap "utown_square_map.png"
-  size [192.000 191.200 1.000]
+  bitmap "utown_plaza.png"
+  size [406.900 495.750 1.000]
   pose [-95.600 96.000 0.000 90.000]
-
 )
 
 # throw in a robot
-gc1( pose [-98.707 69.760 0.000 -25.652] name "gc1" color "red")
-block( pose [ -87.034 66.899 0.000 0.000 ] color "red")
+gc1( pose [-102.552 70.675 0.000 -25.788] name "gc1" color "red")
+block( pose [ -86.628 66.568 0.000 0.000 ] color "red")
 block( pose [ -71.128 64.815 0.000 0.000 ] color "red")
-block( pose [ -86.096 66.896 0.000 0.000 ] color "red")
+block( pose [ -26.369 37.454 0.000 0.000 ] color "red")

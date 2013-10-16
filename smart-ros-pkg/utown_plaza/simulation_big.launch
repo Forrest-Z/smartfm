@@ -4,16 +4,12 @@
 
     <node name="fake_localization" pkg="fake_localization" type="fake_localization" respawn="false" />
 
-	<!--node name="amcl" pkg="amcl" type="amcl" respawn="false">
-		<remap from="scan" to="sick_scan2"/>		
-	</node-->
-
-    <node pkg="stage" type="stageros" name="stageros" args="$(find utown_plaza)/golfcar_utown.world" respawn="false">
+    <node pkg="stage" type="stageros" name="stageros" args="$(find utown_plaza)/golfcar_utown_big.world" respawn="false">
         <param name="base_watchdog_timeout" value="0.2"/>
         <remap from="base_scan" to="sick_scan2"/>
     </node>
 
-    <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/map.yaml"/>
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find amcl_pc)/maps/utown_plaza.yaml"/>
 
     <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
         <remap from="cmd_vel" to="cmd_steer"/>
@@ -23,7 +19,7 @@
         <param name="controller_patience" value="100.0" />
         <param name="base_global_planner" value="golfcar_gp/GlobalPlan"/>
         <param name="base_local_planner" value="golfcar_purepursuit/PurePursuitBase"/>
-        <param name="PurePursuitBase/tracking_distance" value="5.0"/>
+        <param name="PurePursuitBase/tracking_distance" value="10.0"/>
 
         <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params_simulation.yaml" command="load" ns="global_costmap" />
         <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params_simulation.yaml" command="load" ns="local_costmap" />
