@@ -36,6 +36,7 @@ RePlanner::RePlanner(){
     initialized_ = true;
 
     planner = new PlannerExp;
+    planner->planner_timer.stop();
 
     empty_path.poses.resize(0);
 
@@ -92,7 +93,7 @@ void RePlanner::getNearestWaypoints(){
     do{
         waypointNo_++;
         dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), global_path.poses[waypointNo_].pose.position.x, global_path.poses[waypointNo_].pose.position.y);
-    }while(dist<10);
+    }while(dist<10.5);
 
     ROS_INFO("Initialized waypoint %d", waypointNo_);
     goToDest();
@@ -112,6 +113,16 @@ bool RePlanner::goToDest(){
 	ROS_INFO("Publish waypoint for rrts");
     getRobotGlobalPose();
 
+    if(goal_collision_ || goal_infeasible_){
+        double dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), global_path.poses[waypointNo_].pose.position.x, global_path.poses[waypointNo_].pose.position.y);
+        if(dist < 12){
+            if(waypointNo_ < global_path.poses.size()){
+                waypointNo_ = waypointNo_ + 2;
+                cout<<"Goal in collision/infeasible reported, increment waypoint"<<endl;
+            }
+        }
+    }
+
     sub_goal.pose.position.x = global_path.poses[waypointNo_].pose.position.x;
     sub_goal.pose.position.y = global_path.poses[waypointNo_].pose.position.y;
     double map_yaw = 0;
@@ -125,15 +136,6 @@ bool RePlanner::goToDest(){
 
     sub_goal.pose.orientation = tf::createQuaternionMsgFromYaw(map_yaw);
 
-    if(goal_collision_ || goal_infeasible_){
-        double dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), global_path.poses[waypointNo_].pose.position.x, global_path.poses[waypointNo_].pose.position.y);
-        if(dist < 15){
-            if(waypointNo_ < global_path.poses.size()){
-                waypointNo_ = waypointNo_ + 3;
-                cout<<"Goal in collision/infeasible reported, increment waypoint"<<endl;
-            }
-        }
-    }
     sub_goal.header.frame_id="/map";
     sub_goal.header.stamp=ros::Time::now();
     sub_goal_pub_.publish(sub_goal);
@@ -151,9 +153,10 @@ void RePlanner::rrtsstatusCallBack(rrts_exp::rrts_status rrts_status){
 }
 
 void RePlanner::globalPathCallBack(nav_msgs::Path global_plan){
-	if (global_plan.poses.size() != 0){
+	if (global_plan.poses.size() != 0 && !global_path_found_){
 		ROS_INFO("Received global path");
 		global_path = global_plan;
+		hybrid_path = global_path;
 		global_path_found_ = true;
 	}
 }
@@ -164,8 +167,8 @@ void RePlanner::rrtsPathCallBack(const nav_msgs::Path rrts_path){
 		local_path = rrts_path;
 	}
 }
+
 #if 1
-//Move status based planner reasonning
 void RePlanner::plannerReasonning(){
 	hybrid_path.header.stamp = ros::Time();
 	ROS_INFO("Reasonning about robot state");
@@ -208,6 +211,12 @@ void RePlanner::plannerReasonning(){
 				ROS_INFO("Robot waiting for the path to sub_goal");
 				move_status_.emergency = true;
 				move_status_.path_exist = false;
+				//Extend the sub_goal if the current sub_goal is infeasible
+				/*
+				if (goal_infeasible_){
+					getNearestWaypoints();
+				}
+				*/
 				move_status_pub_.publish(move_status_);
 			}
 		}
@@ -239,6 +248,7 @@ void RePlanner::plannerReasonning(){
 }
 
 #else
+
 void RePlanner::plannerReasonning(){
 	hybrid_path.header.stamp = ros::Time();
 	ROS_INFO("Reasonning about robot state");
@@ -246,41 +256,57 @@ void RePlanner::plannerReasonning(){
         ros::spinOnce();
         ROS_INFO("Waiting for Robot pose");
     }
-    empty_path.header.frame_id = global_path.header.frame_id;
-    empty_path.header.stamp = ros::Time::now();
 
-    double dist_to_dest = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), global_path.poses[global_path.poses.size()-1].pose.position.x, global_path.poses[global_path.poses.size()-1].pose.position.y);
-    if (dist_to_dest < 1.0){
-    	move_status_.path_exist = false;
-    	move_status_.emergency = true;
-    	move_status_pub_.publish(move_status_);
-    	exit(0);
-    }
 	if(move_status_.emergency || rrts_is_replaning_){
 		ROS_INFO("RRTS is planning");
 		rrts_is_replaning_ = true;
 		rrtsReplanning();
-		if (trajectory_found_){
-			ROS_INFO("Robot heading to the sub_goal");
-			hybrid_path_pub_.publish(local_path);
-			move_status_.emergency = false;
-			move_status_.path_exist = true;
-			move_status_pub_.publish(move_status_);
+		double check_dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), sub_goal.pose.position.x, sub_goal.pose.position.y);
+		ROS_INFO("Distance to sub_goal: %f" , check_dist);
+		if (check_dist > 1.5){
+			if (trajectory_found_){
+				ROS_INFO("Robot heading to the sub_goal");
+				combineHybridPlan();
+				hybrid_path_pub_.publish(hybrid_path);
+				move_status_.emergency = false;
+				move_status_.path_exist = true;
+				move_status_pub_.publish(move_status_);
+			}
+			else{
+				ROS_INFO("Robot waiting for the path to sub_goal");
+				move_status_.emergency = true;
+				move_status_.path_exist = false;
+				move_status_pub_.publish(move_status_);
+			}
 		}
 		else{
-			ROS_INFO("Robot waiting for the path to sub_goal");
-			move_status_.emergency = true;
-			move_status_.path_exist = false;
+			ROS_INFO("Robot reached the temporal sub_goal");
+			hybrid_path_pub_.publish(hybrid_path);
 			move_status_pub_.publish(move_status_);
+			rrts_is_replaning_ = false;
+			is_first_goal = true;
 		}
 	}
 
 	if (!rrts_is_replaning_){
 		ROS_INFO("Normal planning");
-
 		hybrid_path_pub_.publish(hybrid_path);
 		planner->planner_timer.stop();
 		move_status_pub_.publish(move_status_);
+	}
+}
+
+void RePlanner::combineHybridPlan(){
+	int local_temp_no = 0;
+	int global_temp_no = waypointNo_ + 1;
+	hybrid_path.poses.clear();
+	while (local_temp_no < local_path.poses.size()){
+		hybrid_path.poses.push_back(local_path.poses[local_temp_no]);
+		local_temp_no ++;
+	}
+	while (global_temp_no < global_path.poses.size()){
+		hybrid_path.poses.push_back(global_path.poses[global_temp_no]);
+		global_temp_no ++;
 	}
 }
 

@@ -35,10 +35,12 @@ private_nh_("~")
     const string default_global = "/map";
     const string default_local = "/local_map";
     const string default_base = "/base_link";
+    const int default_track_dist = 5;
 
     private_nh_.param("global_frame", global_frame_, default_global);
     private_nh_.param("local_frame", local_frame_, default_local);
     private_nh_.param("base_frame", base_frame_, default_base);
+    private_nh_.param("track_dist", track_dist_, default_track_dist);
     //global_frame_ = "/map";
     //local_frame_ = "/local_map";
     //base_frame_ = "/base_link";
@@ -60,13 +62,12 @@ private_nh_("~")
     laser3_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser3_sub_, tf_, local_frame_, 10);
     laser3_filter_->registerCallback(boost::bind(&LocalMap::laser3Callback, this, _1));
 
-
     prior_pts_pub_ = nh_.advertise<sensor_msgs::PointCloud>("prior_pts", 10, true);
     map_pub_ = nh_.advertise<pnc_msgs::local_map>("local_map", 10);
     map_pts_pub_ = nh_.advertise<sensor_msgs::PointCloud>("local_map_pts", 10);
 
     move_status_sub_ = nh_.subscribe("move_status", 1, &LocalMap::movestatusCallBack, this);
-    clear_space_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("clear_space",1);
+    clear_space_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("local_clear_space",1);
     obst_dist_pub_ = nh_.advertise<pnc_msgs::move_status>("move_status_repub",1);
     obst_view_pub_ = nh_.advertise<sensor_msgs::PointCloud>("obst_view",1);
 
@@ -372,21 +373,21 @@ void LocalMap::getClearSpace(){
 	geometry_msgs::Point32 robot_FP_UR;
 
 	robot_FP_UL.x = 1.8;//3/4*GOLFCAR_HEIGHT;
-	robot_FP_UL.y = -0.3;//-1/2*GOLFCAR_WIDTH;
+	robot_FP_UL.y = -0.6;//-1/2*GOLFCAR_WIDTH;
 
 	robot_FP_UR.x = 1.8;//3/4*GOLFCAR_HEIGHT;
-	robot_FP_UR.y = 0.3;//1/2*GOLFCAR_WIDTH;
+	robot_FP_UR.y = 0.6;//1/2*GOLFCAR_WIDTH;
 
 	//collision detection area
 	point = robot_FP_UL;
 	lookahead_points.push_back(point);
 
-	point.x = robot_FP_UL.x+cos(steer_angle)*TRACKING_DIST;
-	point.y = robot_FP_UL.y+sin(steer_angle)*TRACKING_DIST;
+	point.x = robot_FP_UL.x+cos(steer_angle)*track_dist_;
+	point.y = robot_FP_UL.y+sin(steer_angle)*track_dist_;
 	lookahead_points.push_back(point);
 
-	point.x = robot_FP_UR.x+cos(steer_angle)*TRACKING_DIST;
-	point.y = robot_FP_UR.y+sin(steer_angle)*TRACKING_DIST;
+	point.x = robot_FP_UR.x+cos(steer_angle)*track_dist_;
+	point.y = robot_FP_UR.y+sin(steer_angle)*track_dist_;
 	lookahead_points.push_back(point);
 
 	point = robot_FP_UR;
@@ -454,7 +455,7 @@ void LocalMap::getNearestObst(){
 			int index = j*local_map_.info.width + i;
 			if (local_map_.data[index] == obstValue){
 				move_status_.emergency = true;
-				//ROS_INFO("Obst Detected");
+				ROS_INFO("Obst Detected");
 				obst_view.x = i*local_map_.info.resolution;
 				obst_view.y = j*local_map_.info.resolution;
 				obst_detected.points.push_back(obst_view);
@@ -473,7 +474,7 @@ void LocalMap::getGradientCost(nav_msgs::OccupancyGrid &gradient_local_map_, nav
 
 int main(int argc, char** argcv){
     ros::init(argc, argcv, "local_map");
-    LocalMap lm(30.0, 30.0, 0.2);
+    LocalMap lm(20.0, 16.0, 0.2);
 
     return 0;
 }

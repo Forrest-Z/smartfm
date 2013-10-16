@@ -88,7 +88,7 @@ private:
     void obstCallBack(const sensor_msgs::PointCloud obst_pts);
     void plannerReasonning();
     void rrtsReplanning();
-    void replanTimer(const ros::TimerEvent &e);
+    void combineHybridPlan();
 
     PlannerExp *planner;
 };
