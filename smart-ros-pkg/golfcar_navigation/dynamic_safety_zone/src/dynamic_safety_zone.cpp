@@ -99,7 +99,7 @@ class dynamic_safety_zone
 
 	    remained_pcl_pub_ = nh_.advertise<sensor_msgs::PointCloud>("/remained_pcl", 10);
 
-	    advised_speed_.linear.x = 1.0;
+	    //advised_speed_.linear.x = 1.0;
 
 		current_vel_ = 0.0;
 		front_boundary_ = offcenter_x_ + x_buffer_ + x_coeff_*current_vel_;
