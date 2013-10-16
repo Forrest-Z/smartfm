@@ -6,10 +6,12 @@
     <remap from="static_map" to="static_map_lane"/>
   </node>
 
-  <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/map.yaml">
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/map_prior.yaml">
     <remap from="static_map" to="static_map_lane"/>
     <remap from="map" to="lane_map"/>
   </node>
+  
+  <node name="map_server_view" pkg="map_server" type="map_server" args="$(find utown_plaza)/map.yaml"/>
 
   <node name="stageros" pkg="stage" type="stageros" args="$(find local_map)/simulation/golfcar_utown.world"/>
   

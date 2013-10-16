@@ -1,0 +1,18 @@
+<launch>
+	<param name="use_sim_time" value="true"/>
+	<group ns="robot_1">
+		<!--param name="tf_prefix" value="/robot_1"/-->
+		<node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen">
+			<param name="dummy_vehicle" value="false"/>
+			<param name="use_dbserver" value="false"/>
+			<param name="booking_url" type="string" value="http://137.132.22.82:15016/booking"/>
+			<param name="vehicleID" type="string" value="golfcart1" />
+		</node>
+		<node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
+			<rosparam file="$(find local_map)/cp_launch/speed_advisor.yaml" command="load"/>
+			<remap from="laser_area_policy/scan" to="base_scan"/>
+			<remap from="/move_status" to ="/robot_1/move_status"/>
+			<remap from="/odom" to ="/robot_1/odom"/>
+		</node>
+	</group>
+</launch>
