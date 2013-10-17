@@ -210,12 +210,16 @@ void RePlanner::plannerReasonning(){
 		if (check_dist > 2.5){
 			if (trajectory_found_){
 				ROS_INFO("Robot heading to the sub_goal");
-				int temp_no = waypointNo_ + 1;
-				while (temp_no < global_path.poses.size()){
-					local_path.poses.push_back(global_path.poses[temp_no]);
+				/*
+				int temp_no = waypointNo_;
+				while (temp_no < global_path.poses.size()-5){
 					temp_no++;
+					local_path.poses.push_back(global_path.poses[temp_no]);
 				}
 				hybrid_path_pub_.publish(local_path);
+				*/
+				combineHybridPlan();
+				hybrid_path_pub_.publish(hybrid_path);
 				move_status_.emergency = false;
 				move_status_.path_exist = true;
 				move_status_pub_.publish(move_status_);
@@ -303,6 +307,7 @@ void RePlanner::plannerReasonning(){
 		move_status_pub_.publish(move_status_);
 	}
 }
+#endif
 
 void RePlanner::combineHybridPlan(){
 	int local_temp_no = 0;
@@ -318,7 +323,7 @@ void RePlanner::combineHybridPlan(){
 	}
 }
 
-#endif
+
 
 void RePlanner::rrtsReplanning(){
 	/*
