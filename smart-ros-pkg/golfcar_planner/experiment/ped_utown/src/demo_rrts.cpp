@@ -13,6 +13,7 @@ RePlanner::RePlanner(){
     sub_goal_pub_ = n.advertise<geometry_msgs::PoseStamped>("pnc_nextpose",1);
     move_status_pub_ = n.advertise<pnc_msgs::move_status>("move_status_hybrid",1);
     hybrid_path_pub_ = n.advertise<nav_msgs::Path>("global_plan_repub", 1);
+    replan_poly_pub_ = n.advertise<geometry_msgs::PolygonStamped>("replan_poly",1);
 
     global_plan_sub_ = n.subscribe("global_plan", 1,&RePlanner::globalPathCallBack, this);
     rrts_path_sub_ = n.subscribe("pnc_trajectory", 1, &RePlanner::rrtsPathCallBack, this);
@@ -77,6 +78,30 @@ bool RePlanner::getRobotGlobalPose(){
         return false;
     }
     return true;
+}
+
+bool RePlanner::replanZone(){
+	geometry_msgs::Point32 temp_pts_1, temp_pts_2, temp_pts_3, temp_pts_4;
+	geometry_msgs::PolygonStamped replan_region_poly;
+		//For first obst
+	temp_pts_1.x = 100.0; temp_pts_1.y = 106.2; temp_pts_1.z = 0;
+	temp_pts_2.x = 100.0; temp_pts_2.y = 128.2; temp_pts_2.z = 0;
+	temp_pts_3.x = 115.0; temp_pts_3.y = 128.2; temp_pts_3.z = 0;
+	temp_pts_4.x = 115.0; temp_pts_4.y = 106.2; temp_pts_4.z = 0;
+
+	replan_region_poly.header.stamp = ros::Time::now();
+	replan_region_poly.header.frame_id = "map";
+	replan_region_poly.polygon.points.push_back(temp_pts_1);
+	replan_region_poly.polygon.points.push_back(temp_pts_2);
+	replan_region_poly.polygon.points.push_back(temp_pts_3);
+	replan_region_poly.polygon.points.push_back(temp_pts_4);
+	replan_poly_pub_.publish(replan_region_poly);
+	if (global_pose_.getOrigin().x()<115 && global_pose_.getOrigin().x()>100){
+		if (global_pose_.getOrigin().y()>106.2 && global_pose_.getOrigin().y()<128.2){
+			return true;
+		}
+	}
+	return false;
 }
 
 void RePlanner::getNearestWaypoints(){
@@ -187,7 +212,7 @@ void RePlanner::plannerReasonning(){
     	move_status_pub_.publish(move_status_);
     	exit(0);
     }
-	if(move_status_.emergency || rrts_is_replaning_){
+	if((move_status_.emergency || rrts_is_replaning_) && replanZone()){
 		ROS_INFO("RRTS is planning");
 		rrts_is_replaning_ = true;
 		rrtsReplanning();
@@ -246,7 +271,7 @@ void RePlanner::plannerReasonning(){
 		}
 	}
 
-	if (!rrts_is_replaning_){
+	if (!rrts_is_replaning_ || !replanZone()){
 		ROS_INFO("Normal planning");
 		/*
 		if (global_path.poses.size() != 0){

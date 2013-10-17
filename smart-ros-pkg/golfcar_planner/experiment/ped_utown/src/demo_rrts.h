@@ -28,6 +28,7 @@
 #include <rrts_exp/rrts_status.h>
 #include <pnc_msgs/move_status.h>
 #include <rrts_node_exp.h>
+#include <geometry_msgs/PolygonStamped.h>
 
 using namespace std;
 
@@ -42,6 +43,7 @@ private:
     ros::Publisher sub_goal_pub_;
     ros::Publisher hybrid_path_pub_;
     ros::Publisher move_status_pub_;
+    ros::Publisher replan_poly_pub_;
 
     ros::Subscriber rrts_status_sub_;
     ros::Subscriber move_status_sub_;
@@ -78,6 +80,7 @@ private:
 
     unsigned waypointNo_;
 
+    bool replanZone();
     bool goToDest();
     void getNearestWaypoints();
     bool getRobotGlobalPose();
