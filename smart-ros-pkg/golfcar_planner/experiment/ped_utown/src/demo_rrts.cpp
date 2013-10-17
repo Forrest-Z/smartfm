@@ -117,7 +117,7 @@ bool RePlanner::goToDest(){
         double dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), global_path.poses[waypointNo_].pose.position.x, global_path.poses[waypointNo_].pose.position.y);
         if(dist < 12){
             if(waypointNo_ < global_path.poses.size()){
-                waypointNo_ = waypointNo_ + 2;
+                waypointNo_ ++;
                 cout<<"Goal in collision/infeasible reported, increment waypoint"<<endl;
             }
         }
@@ -191,9 +191,23 @@ void RePlanner::plannerReasonning(){
 		ROS_INFO("RRTS is planning");
 		rrts_is_replaning_ = true;
 		rrtsReplanning();
+		if (goal_collision_){
+			getNearestWaypoints();
+		}
+		/*
+		if (goal_infeasible_){
+			ROS_INFO("Infeasible goal, shift back to normal plan");
+			hybrid_path_pub_.publish(empty_path);
+			move_status_pub_.publish(move_status_);
+			rrts_is_replaning_ = false;
+			is_first_goal = true;
+			planner->planner_timer.stop();
+			return;
+		}
+		*/
 		double check_dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), sub_goal.pose.position.x, sub_goal.pose.position.y);
 		ROS_INFO("Distance to sub_goal: %f" , check_dist);
-		if (check_dist > 1.5){
+		if (check_dist > 2.5){
 			if (trajectory_found_){
 				ROS_INFO("Robot heading to the sub_goal");
 				int temp_no = waypointNo_ + 1;
@@ -204,7 +218,6 @@ void RePlanner::plannerReasonning(){
 				hybrid_path_pub_.publish(local_path);
 				move_status_.emergency = false;
 				move_status_.path_exist = true;
-				move_status_.dist_to_goal += 5;
 				move_status_pub_.publish(move_status_);
 			}
 			else{
@@ -212,11 +225,6 @@ void RePlanner::plannerReasonning(){
 				move_status_.emergency = true;
 				move_status_.path_exist = false;
 				//Extend the sub_goal if the current sub_goal is infeasible
-				/*
-				if (goal_infeasible_){
-					getNearestWaypoints();
-				}
-				*/
 				move_status_pub_.publish(move_status_);
 			}
 		}
