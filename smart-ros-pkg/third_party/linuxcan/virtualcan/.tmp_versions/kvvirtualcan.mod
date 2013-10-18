@@ -1,2 +1,2 @@
-/home/sxt/ros_workspace/linuxcan/virtualcan/kvvirtualcan.ko
-/home/sxt/ros_workspace/linuxcan/virtualcan/virtualcan.o /home/sxt/ros_workspace/linuxcan/virtualcan/../common/VCanOsIf.o /home/sxt/ros_workspace/linuxcan/virtualcan/../common/objbuf.o /home/sxt/ros_workspace/linuxcan/virtualcan/../common/osif_functions_kernel.o /home/sxt/ros_workspace/linuxcan/virtualcan/../common/queue.o
+/home/chewbacca/smartfm/smart-ros-pkg/third_party/linuxcan/virtualcan/kvvirtualcan.ko
+/home/chewbacca/smartfm/smart-ros-pkg/third_party/linuxcan/virtualcan/virtualcan.o /home/chewbacca/smartfm/smart-ros-pkg/third_party/linuxcan/virtualcan/../common/VCanOsIf.o /home/chewbacca/smartfm/smart-ros-pkg/third_party/linuxcan/virtualcan/../common/objbuf.o /home/chewbacca/smartfm/smart-ros-pkg/third_party/linuxcan/virtualcan/../common/osif_functions_kernel.o /home/chewbacca/smartfm/smart-ros-pkg/third_party/linuxcan/virtualcan/../common/queue.o
