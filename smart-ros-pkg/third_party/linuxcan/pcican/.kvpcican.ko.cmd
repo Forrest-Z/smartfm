@@ -1,0 +1,1 @@
+cmd_/home/sxt/ros_workspace/linuxcan/pcican/kvpcican.ko := ld -r -m elf_x86_64 -T /usr/src/linux-headers-3.5.0-34-generic/scripts/module-common.lds --build-id  -o /home/sxt/ros_workspace/linuxcan/pcican/kvpcican.ko /home/sxt/ros_workspace/linuxcan/pcican/kvpcican.o /home/sxt/ros_workspace/linuxcan/pcican/kvpcican.mod.o

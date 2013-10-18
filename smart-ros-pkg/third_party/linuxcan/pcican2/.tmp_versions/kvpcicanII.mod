@@ -1,0 +1,2 @@
+/home/sxt/ros_workspace/linuxcan/pcican2/kvpcicanII.ko
+/home/sxt/ros_workspace/linuxcan/pcican2/PciCan2HwIf.o /home/sxt/ros_workspace/linuxcan/pcican2/../common/VCanOsIf.o /home/sxt/ros_workspace/linuxcan/pcican2/../common/objbuf.o /home/sxt/ros_workspace/linuxcan/pcican2/../common/osif_functions_kernel.o /home/sxt/ros_workspace/linuxcan/pcican2/../common/queue.o /home/sxt/ros_workspace/linuxcan/pcican2/memQ.o

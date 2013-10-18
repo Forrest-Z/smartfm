@@ -1,0 +1,2 @@
+/home/sxt/ros_workspace/linuxcan/pcican/kvpcican.ko
+/home/sxt/ros_workspace/linuxcan/pcican/PciCanHwIf.o /home/sxt/ros_workspace/linuxcan/pcican/dallas.o /home/sxt/ros_workspace/linuxcan/pcican/../common/VCanOsIf.o /home/sxt/ros_workspace/linuxcan/pcican/../common/objbuf.o /home/sxt/ros_workspace/linuxcan/pcican/../common/osif_functions_kernel.o /home/sxt/ros_workspace/linuxcan/pcican/../common/queue.o /home/sxt/ros_workspace/linuxcan/pcican/../common/util.o

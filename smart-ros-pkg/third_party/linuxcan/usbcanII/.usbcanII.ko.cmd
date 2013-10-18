@@ -1,0 +1,1 @@
+cmd_/home/sxt/ros_workspace/linuxcan/usbcanII/usbcanII.ko := ld -r -m elf_x86_64 -T /usr/src/linux-headers-3.5.0-34-generic/scripts/module-common.lds --build-id  -o /home/sxt/ros_workspace/linuxcan/usbcanII/usbcanII.ko /home/sxt/ros_workspace/linuxcan/usbcanII/usbcanII.o /home/sxt/ros_workspace/linuxcan/usbcanII/usbcanII.mod.o
