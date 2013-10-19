@@ -252,8 +252,7 @@ void LocalMap::addPointToMap(geometry_msgs::Point32 map_p, int occ)
     int map_px = (map_p.x)/local_map_.info.resolution;
     int map_py = (map_p.y)/local_map_.info.resolution;
     unsigned int map_index = (map_py * local_map_.info.width + map_px);
-    if(map_index < local_map_.data.size())
-    {
+    if(map_index < local_map_.data.size()){
         local_map_.data[map_index] = occ;
         map_p.z = occ/100.0;
     }
