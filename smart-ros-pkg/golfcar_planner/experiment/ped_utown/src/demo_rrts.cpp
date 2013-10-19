@@ -21,11 +21,9 @@ RePlanner::RePlanner(){
     rrts_status_sub_ = n.subscribe("rrts_status",1, &RePlanner::rrtsstatusCallBack, this);
     move_status_sub_ = n.subscribe("move_status_repub",1, &RePlanner::movestatusCallBack, this);
 
-    obst_pts_sub_ = n.subscribe("obst_interest",1,&RePlanner::obstCallBack,this);
-
     ros::Rate loop_rate(3);
     initialized_ = false;
-    is_first_goal = true;
+    is_goal_set = true;
     is_first_replan = true;
     global_path_found_ = false;
 
@@ -41,7 +39,7 @@ RePlanner::RePlanner(){
 
     empty_path.poses.resize(0);
 
-    rrts_is_replaning_ = false;
+    rrts_is_replaning = false;
     goal_collision_ = false;
     goal_infeasible_ = false;
     root_in_goal_ = false;
@@ -80,7 +78,7 @@ bool RePlanner::getRobotGlobalPose(){
     return true;
 }
 
-bool RePlanner::replanZone(){
+bool RePlanner::isReplanZone(){
 	geometry_msgs::Point32 temp_pts_1, temp_pts_2, temp_pts_3, temp_pts_4;
 	geometry_msgs::PolygonStamped replan_region_poly;
 		//For first obst
@@ -90,7 +88,7 @@ bool RePlanner::replanZone(){
 	temp_pts_4.x = 115.0; temp_pts_4.y = 106.2; temp_pts_4.z = 0;
 
 	replan_region_poly.header.stamp = ros::Time::now();
-	replan_region_poly.header.frame_id = "map";
+	replan_region_poly.header.frame_id = "/map";
 	replan_region_poly.polygon.points.push_back(temp_pts_1);
 	replan_region_poly.polygon.points.push_back(temp_pts_2);
 	replan_region_poly.polygon.points.push_back(temp_pts_3);
@@ -101,7 +99,7 @@ bool RePlanner::replanZone(){
 			return true;
 		}
 	}
-	return false;
+	return true;
 }
 
 void RePlanner::getNearestWaypoints(){
@@ -116,20 +114,20 @@ void RePlanner::getNearestWaypoints(){
     }
     double dist=0.0;
     do{
+        dist += fmutil::distance(global_path.poses[waypointNo_].pose.position.x, global_path.poses[waypointNo_].pose.position.y,
+        		global_path.poses[waypointNo_+1].pose.position.x, global_path.poses[waypointNo_+1].pose.position.y);
         waypointNo_++;
-        dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), global_path.poses[waypointNo_].pose.position.x, global_path.poses[waypointNo_].pose.position.y);
+        if (waypointNo_ >= global_path.poses.size()-2){
+        	waypointNo_ = global_path.poses.size() -2 ;
+        	break;
+        }
     }while(dist<10.5);
 
     ROS_INFO("Initialized waypoint %d", waypointNo_);
     goToDest();
 }
 
-void RePlanner::obstCallBack(const sensor_msgs::PointCloud obst_pts){
-	obst_interest = obst_pts;
-}
-
 void RePlanner::movestatusCallBack(pnc_msgs::move_status move_status){
-	ROS_INFO("Got move status");
 	move_status_ = move_status;
 	plannerReasonning();
 }
@@ -137,17 +135,15 @@ void RePlanner::movestatusCallBack(pnc_msgs::move_status move_status){
 bool RePlanner::goToDest(){
 	ROS_INFO("Publish waypoint for rrts");
     getRobotGlobalPose();
-
-    if(goal_collision_ || goal_infeasible_){
+    if(goal_collision_){
         double dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), global_path.poses[waypointNo_].pose.position.x, global_path.poses[waypointNo_].pose.position.y);
         if(dist < 12){
             if(waypointNo_ < global_path.poses.size()){
                 waypointNo_ ++;
-                cout<<"Goal in collision/infeasible reported, increment waypoint"<<endl;
+                ROS_INFO("Goal in collision reported, increment waypoint");
             }
         }
     }
-
     sub_goal.pose.position.x = global_path.poses[waypointNo_].pose.position.x;
     sub_goal.pose.position.y = global_path.poses[waypointNo_].pose.position.y;
     double map_yaw = 0;
@@ -160,7 +156,6 @@ bool RePlanner::goToDest(){
     }
 
     sub_goal.pose.orientation = tf::createQuaternionMsgFromYaw(map_yaw);
-
     sub_goal.header.frame_id="/map";
     sub_goal.header.stamp=ros::Time::now();
     sub_goal_pub_.publish(sub_goal);
@@ -201,10 +196,8 @@ void RePlanner::plannerReasonning(){
         ros::spinOnce();
         ROS_INFO("Waiting for Robot pose");
     }
-
     empty_path.header.frame_id = global_path.header.frame_id;
     empty_path.header.stamp = ros::Time::now();
-
     double dist_to_dest = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), global_path.poses[global_path.poses.size()-1].pose.position.x, global_path.poses[global_path.poses.size()-1].pose.position.y);
     if (dist_to_dest < 1.0){
     	move_status_.path_exist = false;
@@ -212,37 +205,19 @@ void RePlanner::plannerReasonning(){
     	move_status_pub_.publish(move_status_);
     	exit(0);
     }
-	if((move_status_.emergency || rrts_is_replaning_) && replanZone()){
+
+	if((move_status_.emergency || rrts_is_replaning) && isReplanZone()){
 		ROS_INFO("RRTS is planning");
-		rrts_is_replaning_ = true;
+		rrts_is_replaning = true;
 		rrtsReplanning();
 		if (goal_collision_){
 			getNearestWaypoints();
 		}
-		/*
-		if (goal_infeasible_){
-			ROS_INFO("Infeasible goal, shift back to normal plan");
-			hybrid_path_pub_.publish(empty_path);
-			move_status_pub_.publish(move_status_);
-			rrts_is_replaning_ = false;
-			is_first_goal = true;
-			planner->planner_timer.stop();
-			return;
-		}
-		*/
 		double check_dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), sub_goal.pose.position.x, sub_goal.pose.position.y);
 		ROS_INFO("Distance to sub_goal: %f" , check_dist);
 		if (check_dist > 2.5){
 			if (trajectory_found_){
 				ROS_INFO("Robot heading to the sub_goal");
-				/*
-				int temp_no = waypointNo_;
-				while (temp_no < global_path.poses.size()-5){
-					temp_no++;
-					local_path.poses.push_back(global_path.poses[temp_no]);
-				}
-				hybrid_path_pub_.publish(local_path);
-				*/
 				combineHybridPlan();
 				hybrid_path_pub_.publish(hybrid_path);
 				move_status_.emergency = false;
@@ -253,31 +228,20 @@ void RePlanner::plannerReasonning(){
 				ROS_INFO("Robot waiting for the path to sub_goal");
 				move_status_.emergency = true;
 				move_status_.path_exist = false;
-				//Extend the sub_goal if the current sub_goal is infeasible
 				move_status_pub_.publish(move_status_);
 			}
 		}
 		else{
 			ROS_INFO("Robot reached the temporal sub_goal, shift to normal planning");
-			/*
-			if (global_path.poses.size() != 0){
-				hybrid_path_pub_.publish(global_path);
-			}
-			*/
 			hybrid_path_pub_.publish(empty_path);
 			move_status_pub_.publish(move_status_);
-			rrts_is_replaning_ = false;
-			is_first_goal = true;
+			rrts_is_replaning = false;
+			is_goal_set = true;
 		}
 	}
 
-	if (!rrts_is_replaning_ || !replanZone()){
+	if (!rrts_is_replaning || !isReplanZone()){
 		ROS_INFO("Normal planning");
-		/*
-		if (global_path.poses.size() != 0){
-			hybrid_path_pub_.publish(global_path);
-		}
-		*/
 		hybrid_path_pub_.publish(empty_path);
 		planner->planner_timer.stop();
 		move_status_pub_.publish(move_status_);
@@ -348,18 +312,10 @@ void RePlanner::combineHybridPlan(){
 	}
 }
 
-
-
 void RePlanner::rrtsReplanning(){
-	/*
-	if (is_first_replan){
-		planner = new PlannerExp;
-		is_first_replan = false;
-	}
-	*/
-	if (is_first_goal){
+	if (is_goal_set){
 		getNearestWaypoints();
-		is_first_goal =false;
+		is_goal_set =false;
 		planner->planner_timer.start();
 	}
 }
@@ -370,6 +326,3 @@ int main(int argc, char** argcv){
     ros::spin();
     return 0;
 }
-
-
-
