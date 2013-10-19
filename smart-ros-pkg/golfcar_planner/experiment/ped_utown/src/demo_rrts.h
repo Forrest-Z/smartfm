@@ -28,6 +28,7 @@
 #include <rrts_exp/rrts_status.h>
 #include <pnc_msgs/move_status.h>
 #include <rrts_node_exp.h>
+#include <geometry_msgs/PolygonStamped.h>
 
 using namespace std;
 
@@ -42,12 +43,12 @@ private:
     ros::Publisher sub_goal_pub_;
     ros::Publisher hybrid_path_pub_;
     ros::Publisher move_status_pub_;
+    ros::Publisher replan_poly_pub_;
 
     ros::Subscriber rrts_status_sub_;
     ros::Subscriber move_status_sub_;
     ros::Subscriber rrts_path_sub_;
     ros::Subscriber global_plan_sub_;
-    ros::Subscriber obst_pts_sub_;
 
     tf::TransformListener tf_;
     tf::Stamped<tf::Pose> global_pose_;
@@ -69,8 +70,8 @@ private:
 
     bool initialized_;
     bool is_first_replan;
-    bool is_first_goal;
-    bool rrts_is_replaning_;
+    bool is_goal_set;
+    bool rrts_is_replaning;
 
     geometry_msgs::PoseStamped sub_goal;
 
@@ -78,6 +79,7 @@ private:
 
     unsigned waypointNo_;
 
+    bool isReplanZone();
     bool goToDest();
     void getNearestWaypoints();
     bool getRobotGlobalPose();

@@ -7,6 +7,9 @@ while [ 1 ]; do
     if [ "`service ntp status | grep not`" ]; then
         #ntp is not working
         service ntp start
+	echo "start ntp service"
+    else
+	echo "process is running"	
     fi
     sleep 10
 done
