@@ -35,7 +35,7 @@ using namespace std;
 class RePlanner{
 
 public:
-    RePlanner();
+    RePlanner(int start, int end);
     ~RePlanner();
 
 private:
@@ -44,6 +44,7 @@ private:
     ros::Publisher hybrid_path_pub_;
     ros::Publisher move_status_pub_;
     ros::Publisher replan_poly_pub_;
+    ros::Publisher move_base_goal_pub_;
 
     ros::Subscriber rrts_status_sub_;
     ros::Subscriber move_status_sub_;
@@ -73,7 +74,9 @@ private:
     bool is_goal_set;
     bool rrts_is_replaning;
 
-    geometry_msgs::PoseStamped sub_goal;
+    double replan_start_stamp, waiting_tolerance;
+
+    geometry_msgs::PoseStamped sub_goal,goal;
 
     sensor_msgs::PointCloud obst_interest;
 
@@ -83,6 +86,7 @@ private:
     bool goToDest();
     void getNearestWaypoints();
     bool getRobotGlobalPose();
+    bool replanTrigger();
     void rrtsstatusCallBack(rrts_exp::rrts_status rrts_status);
     void globalPathCallBack(const nav_msgs::Path global_plan);
     void rrtsPathCallBack(const nav_msgs::Path rrts_path);
