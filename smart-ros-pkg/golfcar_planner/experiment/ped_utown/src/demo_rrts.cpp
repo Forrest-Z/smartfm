@@ -7,13 +7,14 @@
 
 #include "demo_rrts.h"
 
-RePlanner::RePlanner(){
+RePlanner::RePlanner(int start, int end){
 	ROS_INFO("Initialise re-planner");
 
     sub_goal_pub_ = n.advertise<geometry_msgs::PoseStamped>("pnc_nextpose",1);
     move_status_pub_ = n.advertise<pnc_msgs::move_status>("move_status_hybrid",1);
     hybrid_path_pub_ = n.advertise<nav_msgs::Path>("global_plan_repub", 1);
     replan_poly_pub_ = n.advertise<geometry_msgs::PolygonStamped>("replan_poly",1);
+    move_base_goal_pub_ = n.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
 
     global_plan_sub_ = n.subscribe("global_plan", 1,&RePlanner::globalPathCallBack, this);
     rrts_path_sub_ = n.subscribe("pnc_trajectory", 1, &RePlanner::rrtsPathCallBack, this);
@@ -37,7 +38,15 @@ RePlanner::RePlanner(){
     planner = new PlannerExp;
     planner->planner_timer.stop();
 
+    goal.header.frame_id = "map";
+    goal.pose.position.x = (double) start;
+    goal.pose.position.y = (double) end;
+    goal.pose.orientation.w = 1.0;
+
     empty_path.poses.resize(0);
+
+    replan_start_stamp = 0;
+    waiting_tolerance = 10;
 
     rrts_is_replaning = false;
     goal_collision_ = false;
@@ -117,7 +126,7 @@ void RePlanner::getNearestWaypoints(){
         dist += fmutil::distance(global_path.poses[waypointNo_].pose.position.x, global_path.poses[waypointNo_].pose.position.y,
         		global_path.poses[waypointNo_+1].pose.position.x, global_path.poses[waypointNo_+1].pose.position.y);
         waypointNo_++;
-        if (waypointNo_ >= global_path.poses.size()-2){
+        if (waypointNo_ > global_path.poses.size()-2){
         	waypointNo_ = global_path.poses.size() -2 ;
         	break;
         }
@@ -182,13 +191,13 @@ void RePlanner::globalPathCallBack(nav_msgs::Path global_plan){
 }
 
 void RePlanner::rrtsPathCallBack(const nav_msgs::Path rrts_path){
-	if(rrts_path.poses.size() != 0){
+	if(rrts_path.poses.size() != 0 && rrts_is_replaning){
 		ROS_INFO("Received rrts path");
 		local_path = rrts_path;
 	}
 }
 
-#if 1
+#if 0
 void RePlanner::plannerReasonning(){
 	hybrid_path.header.stamp = ros::Time();
 	ROS_INFO("Reasonning about robot state");
@@ -251,52 +260,99 @@ void RePlanner::plannerReasonning(){
 #else
 
 void RePlanner::plannerReasonning(){
-	hybrid_path.header.stamp = ros::Time();
-	ROS_INFO("Reasonning about robot state");
-    while(!getRobotGlobalPose()){
+	hybrid_path.header.stamp = ros::Time::now();
+
+	while(!getRobotGlobalPose()){
         ros::spinOnce();
         ROS_INFO("Waiting for Robot pose");
     }
 
-	if(move_status_.emergency || rrts_is_replaning_){
+    empty_path.header.frame_id = global_path.header.frame_id;
+    empty_path.header.stamp = ros::Time::now();
+    goal.header.stamp = ros::Time::now();
+
+    double dist_to_dest = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), global_path.poses[global_path.poses.size()-1].pose.position.x, global_path.poses[global_path.poses.size()-1].pose.position.y);
+    if (dist_to_dest < 2.5){
+    	ROS_INFO("Reach destination");
+    	move_status_.path_exist = false;
+    	move_status_.emergency = true;
+    	hybrid_path_pub_.publish(empty_path);
+    	move_base_goal_pub_.publish(goal);
+    	move_status_pub_.publish(move_status_);
+    	planner->planner_timer.stop();
+    	return;
+    	//exit(0);
+    }
+
+	if(replanTrigger()){
 		ROS_INFO("RRTS is planning");
-		rrts_is_replaning_ = true;
+
+		rrts_is_replaning = true;
+
 		rrtsReplanning();
+		if (goal_collision_){
+			getNearestWaypoints();
+		}
+
 		double check_dist = fmutil::distance(global_pose_.getOrigin().x(), global_pose_.getOrigin().y(), sub_goal.pose.position.x, sub_goal.pose.position.y);
 		ROS_INFO("Distance to sub_goal: %f" , check_dist);
-		if (check_dist > 1.5){
+		if (check_dist > 2.5){
 			if (trajectory_found_){
-				ROS_INFO("Robot heading to the sub_goal");
+				ROS_INFO("Replan path found, Robot heading to the sub_goal");
 				combineHybridPlan();
 				hybrid_path_pub_.publish(hybrid_path);
+				move_base_goal_pub_.publish(goal);
 				move_status_.emergency = false;
 				move_status_.path_exist = true;
 				move_status_pub_.publish(move_status_);
+				replan_start_stamp = ros::Time::now().toSec();
 			}
 			else{
-				ROS_INFO("Robot waiting for the path to sub_goal");
+				double replan_duration;
+				replan_duration = ros::Time::now().toSec() - replan_start_stamp;
+				ROS_INFO("Vehicle is waiting for the rrts path to sub_goal: %f",replan_duration);
+				if (replan_duration > waiting_tolerance && move_status_.obstacles_dist > 2){
+					ROS_INFO("Replan failed in %f seconds", waiting_tolerance);
+					getNearestWaypoints();
+				}
 				move_status_.emergency = true;
 				move_status_.path_exist = false;
 				move_status_pub_.publish(move_status_);
 			}
 		}
 		else{
-			ROS_INFO("Robot reached the temporal sub_goal");
-			hybrid_path_pub_.publish(hybrid_path);
+			ROS_INFO("Robot reached the temporal sub_goal, shift to normal planning");
+			hybrid_path_pub_.publish(empty_path);
+			move_base_goal_pub_.publish(goal);
 			move_status_pub_.publish(move_status_);
-			rrts_is_replaning_ = false;
-			is_first_goal = true;
+			rrts_is_replaning = false;
+			is_goal_set = true;
 		}
 	}
 
-	if (!rrts_is_replaning_){
+	if (!rrts_is_replaning || !isReplanZone()){
 		ROS_INFO("Normal planning");
-		hybrid_path_pub_.publish(hybrid_path);
+		hybrid_path_pub_.publish(empty_path);
+		move_base_goal_pub_.publish(goal);
 		planner->planner_timer.stop();
 		move_status_pub_.publish(move_status_);
 	}
 }
 #endif
+
+/*
+ * In order to trigger RRTS replan, it need
+ * 1) Vehicle is outside of invalid replan zone;
+ * 2) Obstacle is detected in the clear space
+ * 3) Obstacle's distance to the vehicle larger than 2.5 meters
+ */
+bool RePlanner::replanTrigger(){
+	if (isReplanZone() && move_status_.obstacles_dist > 2){
+		if (rrts_is_replaning || move_status_.emergency)
+			return true;
+	}
+	return false;
+}
 
 void RePlanner::combineHybridPlan(){
 	int local_temp_no = 0;
@@ -317,12 +373,16 @@ void RePlanner::rrtsReplanning(){
 		getNearestWaypoints();
 		is_goal_set =false;
 		planner->planner_timer.start();
+		replan_start_stamp = ros::Time::now().toSec();
 	}
 }
 
-int main(int argc, char** argcv){
-    ros::init(argc, argcv, "ped_utown");
-    RePlanner rp;
+int main(int argc, char** argv){
+    ros::init(argc, argv, "ped_utown");
+    if(argc<3)
+        std::cout<<"Usage: route_planner start end"<<std::endl;
+    else
+    	RePlanner rp(atoi(argv[1]), atoi(argv[2]));;
     ros::spin();
     return 0;
 }
