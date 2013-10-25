@@ -2,16 +2,24 @@
 
   <param name="use_sim_time" value="true"/>
 
-  <node name="map_server_lane" pkg="map_server_ext" type="map_server" args="$(find local_map_ext)/lane_map.yaml">
+  <node name="map_server_lane" pkg="map_server_ext" type="map_server" args="$(find local_map)/simulation/lane_map.yaml">
     <remap from="static_map" to="/static_map_lane"/>
     <remap from="map" to="lane_map"/>
+    <param name="frame_id" value="/map" />
   </node>
 
-  <node name="map_server" pkg="map_server_ext" type="map_server" args="$(find amcl_pc)/maps/bigeng_sde_map.yaml"/>
+  <node name="plane_map_server" pkg="map_server" type="map_server" args="$(find hybrid_amcl)/worlds/bigeng_sde_map.yaml">
+    <remap from="map" to="/curb_map"/>
+    <param name="frame_id" value="/map" />
+  </node>
+  
+  <!--node name="map_server" pkg="map_server_ext" type="map_server" args="$(find amcl_pc)/maps/bigeng_sde_map.yaml"/-->
 
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find local_map_ext)/RRT.vcg"/> 
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find local_map)/cp_launch/RRT_CP.vcg"/> 
 
-  <node name="stageros" pkg="stage" type="stageros" args="$(find local_map_ext)/golfcar_eng_sde_multi.world"/>
+  <node name="stageros" pkg="stage" type="stageros" args="$(find local_map)/simulation/golfcar_eng_sde_multi.world"/>
+	<!--remap from ="robot_1/cmd_vel" to="robot_1/cmd_steer"/>
+  </node-->
 	
   <node name="fake_localization_0" pkg="fake_localization" type="fake_localization" respawn="false" ns="/robot_0">
         <param name="odom_frame_id" value="/robot_0/odom"/>
@@ -23,10 +31,12 @@
         <param name="base_frame_id" value="/robot_1/base_link"/>
   </node>
 
-  <node name="fake_localization_2" pkg="fake_localization" type="fake_localization" respawn="false" ns="/robot_2">
+  <!--node name="fake_localization_2" pkg="fake_localization" type="fake_localization" respawn="false" ns="/robot_2">
         <param name="odom_frame_id" value="/robot_2/odom"/>
         <param name="base_frame_id" value="/robot_2/base_link"/>
-  </node>
+  </node-->
+  
+  <include file="$(find local_map)/cp_launch/multi_display.launch"/>
 
   <node name="simple_goal" pkg="rrts" type="simple_goal" />
 </launch>

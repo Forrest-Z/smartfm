@@ -1,0 +1,16 @@
+<launch>
+	<group ns = "robot_0">
+	<param name = "tf_prefix" value ="/robot_0"/>
+		<node pkg="golfcar_ppc" type="golfcar_pp" name="golfcar_pp" output="screen" >
+			<param name="coord_frame_id" value="/map"/>
+			<param name="look_ahead" value="3.0"/>
+			<remap from="pnc_trajectory" to= "/robot_0/hybrid_plan" />
+		</node>
+		<node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
+			<rosparam file="$(find local_map)/cp_launch/speed_advisor.yaml" command="load"/>
+			<!--remap from="laser_area_policy/scan" to="/robot_0/base_scan"/-->
+			<remap from="/move_status" to = "/robot_0/move_status_hybrid"/>
+			<remap from="/odom" to = "/robot_0/odom"/>
+		</node>
+	</group>
+</launch>

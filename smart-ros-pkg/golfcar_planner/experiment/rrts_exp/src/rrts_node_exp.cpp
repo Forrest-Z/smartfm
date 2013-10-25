@@ -221,6 +221,7 @@ void PlannerExp::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
       }
       change_goal_region();
       rrts_status[ginc] = false;
+      rrts_status[ginf] = false;
     }
   }
   //ROS_INFO("got goal: %f %f %f", goal.x, goal.y, goal.z);
@@ -238,7 +239,7 @@ int PlannerExp::get_robot_pose()
 
   bool transform_is_correct = false;
   try {
-    tf_.transformPose("map", robot_pose, map_pose);
+    tf_.transformPose("/map", robot_pose, map_pose);
   }
   catch(tf::LookupException& ex) {
     ROS_ERROR("No Transform available Error: %s\n", ex.what());
@@ -454,7 +455,7 @@ int PlannerExp::get_plan()
       if( (fabs(prev_best_cost - best_cost) < 0.05) && (rrts.numVertices > 10))
         found_best_path = true;
     }
-    //cout<<"n: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
+    cout<<"n: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
 
     if(samples_this_loop %5 == 0){
       prev_best_cost = best_cost;
@@ -498,7 +499,7 @@ int PlannerExp::get_plan()
   else 
   {
 	  //cout << "failed to find the best path"<<rrts.numVertices<<endl;
-    if(rrts.numVertices > 500)
+    if(rrts.numVertices > 100)
     {
       rrts_status[ginf] = true;
       //cout<<"did not find best path: reinitializing"<<endl;
@@ -623,7 +624,7 @@ void PlannerExp::publish_committed_trajectory()
 
   nav_msgs::Path traj_msg;
   traj_msg.header.stamp = ros::Time::now();
-  traj_msg.header.frame_id = "map";
+  traj_msg.header.frame_id = "/map";
 
   list<float>::iterator committed_control_iter = committed_control.begin();
   for (list<double*>::iterator iter = committed_trajectory.begin(); iter != committed_trajectory.end(); iter++) 
@@ -631,7 +632,7 @@ void PlannerExp::publish_committed_trajectory()
     double* stateRef = *iter;
     geometry_msgs::PoseStamped p;
     p.header.stamp = ros::Time::now();
-    p.header.frame_id = "map";
+    p.header.frame_id = "/map";
 
     p.pose.position.x = stateRef[0];
     p.pose.position.y = stateRef[1];
@@ -654,7 +655,7 @@ void PlannerExp::publish_committed_trajectory()
     double* stateRef = *iter;
     geometry_msgs::PoseStamped p;
     p.header.stamp = ros::Time::now();
-    p.header.frame_id = "map";
+    p.header.frame_id = "/map";
 
     p.pose.position.x = stateRef[0];
     p.pose.position.y = stateRef[1];
@@ -678,11 +679,11 @@ void PlannerExp::publish_tree()
 
   sensor_msgs::PointCloud pc;
   pc.header.stamp = ros::Time::now();
-  pc.header.frame_id = "map";
+  pc.header.frame_id = "/map";
 
   sensor_msgs::PointCloud pc1;
   pc1.header.stamp = ros::Time::now();
-  pc1.header.frame_id = "map";
+  pc1.header.frame_id = "/map";
 
   if (num_nodes > 0) 
   {    

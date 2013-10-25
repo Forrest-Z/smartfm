@@ -27,8 +27,9 @@ int start_number, end_number;
 ros::Publisher *goal_pub_ptr_;
 nav_msgs::Path rrt_path_;
 void repubCallback(nav_msgs::Path p){
-  cout<<"New path received from rrt, passing it to local planner"<<endl;
+  ROS_INFO("New path received from rrt with size of: %d", p.poses.size());
   rrt_path_ = p;
+  /*
   geometry_msgs::PoseStamped goal;
   goal.header.stamp = ros::Time::now();
   goal.header.frame_id = "/map";
@@ -36,6 +37,7 @@ void repubCallback(nav_msgs::Path p){
   goal.pose.position.y = (double) end_number;
   goal.pose.orientation.z = 1.0;
   goal_pub_ptr_->publish(goal);
+  * */
 }
 
 
@@ -56,7 +58,7 @@ public:
     ros::Publisher poi_pub_;
     
     ros::Subscriber g_plan_repub_sub_;
-
+	ros::Publisher goal_pub_;
     StationPaths sp_;
 };
 
@@ -66,8 +68,8 @@ void GlobalPlan::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_
     slowZone_pub_ = global_node.advertise<geometry_msgs::PoseArray>("slowZone", 1, true);
     poi_pub_ = global_node.advertise<pnc_msgs::poi>("poi", 1, true);
     g_plan_repub_sub_ = global_node.subscribe("global_plan_repub", 1, repubCallback);
-    ros::Publisher goal_pub = global_node.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal", 1);
-    goal_pub_ptr_ = &goal_pub;
+    goal_pub_ = global_node.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal", 1);
+    goal_pub_ptr_ = &goal_pub_;
     ROS_INFO("gplan initialized");
 }
 
@@ -86,8 +88,10 @@ bool GlobalPlan::makePlan(const geometry_msgs::PoseStamped&  start,
                           const geometry_msgs::PoseStamped& goal,
                           std::vector<geometry_msgs::PoseStamped>& plan)
 {
+	ROS_INFO("In make plan");
     if(rrt_path_.poses.size() == 0){
       //all in according to the pixels from global map
+      ROS_INFO("Normal plan");
       geometry_msgs::Pose2D target;
       start_number = (int)goal.pose.position.x;
       end_number = (int)goal.pose.position.y;
@@ -141,7 +145,7 @@ bool GlobalPlan::makePlan(const geometry_msgs::PoseStamped&  start,
 	  pl.pose.orientation.w = 1.0;
 	  plan.push_back(pl);
       }
-      cout<<"Plan with "<<plan.size()<<" points sent."<<endl;
+      ROS_INFO("Plan with %d points sent.", plan.size());
       p.header.stamp = ros::Time();
       p.header.frame_id = "/map";
 
@@ -161,7 +165,7 @@ bool GlobalPlan::makePlan(const geometry_msgs::PoseStamped&  start,
 	ps_temp.pose.orientation.w = 1.0;
 	plan.push_back(ps_temp);
       }
-      cout<<"Plan with rrt "<<plan.size()<<" points sent."<<endl;
+     ROS_INFO("Plan with rrt %d points sent.",plan.size());
     }
     return true;
 }

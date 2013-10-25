@@ -1,0 +1,20 @@
+<launch>
+	<group ns = "robot_1">
+		<param name = "tf_prefix" value ="/robot_1"/>
+		<arg name="model" default="$(find local_map)/cp_launch/golfcar_urdf_1.xml"/>
+		<param name="robot_description" textfile="$(arg model)" />
+		<param name="use_gui" value="False"/>
+		<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+		</node>
+		<node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
+	</group>
+	<group ns = "robot_0">
+		<param name = "tf_prefix" value ="/robot_0"/>
+		<arg name="model" default="$(find local_map)/cp_launch/golfcar_urdf_0.xml"/>
+		<param name="robot_description" textfile="$(arg model)" />
+		<param name="use_gui" value="False"/>
+		<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+		</node>
+		<node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
+	</group>
+</launch>

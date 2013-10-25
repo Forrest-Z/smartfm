@@ -86,7 +86,7 @@ double TrajectoryExp::evaluateCost () {
 
 SystemExp::SystemExp ()
 {
-  turning_radii[0] = 3.5; 
+  turning_radii[0] = 3;
   turning_radii[1] = 5;
   turning_radii[2] = 8;
 

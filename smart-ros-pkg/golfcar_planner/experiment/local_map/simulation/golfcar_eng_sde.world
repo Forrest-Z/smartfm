@@ -59,12 +59,12 @@ interval_sim 100  # simulation timestep in milliseconds
 
 window
 ( 
-  size [ 650 716 ] 
+  size [ 650 715 ] 
  #center [327.990 371.960] 
-  center [-28.769 14.446]
+  center [-54.371 31.907]
 #rotate [ 0.000 -1.560 ]
   rotate [ 0.000 74.000 ]
-  scale 30.912
+  scale 11.918
   show_data 0 
 )
 
@@ -80,7 +80,7 @@ floorplan
 )
 
 # throw in a robot
-gc1( pose [-31.294 15.155 0.000 -179.223] name "gc1" color "red")
+gc1( pose [-60.727 24.253 0.000 -90.415] name "gc1" color "red")
 
 Veh( pose [ -129.160 160.314 0.000 54.431 ] color "blue")
 Veh( pose [ -244.914 63.674 0.000 28.648 ] color "blue")

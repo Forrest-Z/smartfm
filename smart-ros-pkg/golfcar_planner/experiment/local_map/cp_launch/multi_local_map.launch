@@ -1,31 +1,34 @@
 <launch>
+ <param name="use_sim_time" value="true"/>
  
- <node name="local_map_0" pkg="local_map_ext" type="local_map_node" ns="/robot_0">
-    <remap from="scan_in" to="base_scan"/>
+ <node name="local_map_0" pkg="local_map" type="local_map_node" ns="/robot_0">
+    <!--remap from="scan_in2" to="/robot_0/base_scan"/-->
+    <remap from="scan_in" to ="/robot_0/base_scan"/>
     <remap from="static_map" to="/static_map_lane"/>
     <!--param name="tf_prefix" value="robot_0"/-->
     <param name="local_frame" value="/robot_0/local_map"/>
     <param name="base_frame" value="/robot_0/base_link"/>
     <param name="global_frame" value="/map"/>
+    <param name="track_dist" value="7.0"/>
   </node>
   
-  <node name="local_map_1" pkg="local_map_ext" type="local_map_node" ns="/robot_1">
+  <node name="local_map_1" pkg="local_map" type="local_map_node" ns="/robot_1">
     <remap from="scan_in" to="base_scan"/>
     <remap from="static_map" to="/static_map_lane"/>
     <!--param name="tf_prefix" value="robot_1" /-->
     <param name="local_frame" value="/robot_1/local_map"/>
     <param name="base_frame" value="/robot_1/base_link"/>
     <param name="global_frame" value="/map"/>
+    <param name="track_dist" value="3.0"/>
   </node>
   
-  <node name="local_map_2" pkg="local_map_ext" type="local_map_node" ns="/robot_2">
+  <!--node name="local_map_2" pkg="local_map" type="local_map_node" ns="/robot_2">
     <remap from="scan_in" to="base_scan"/>
     <remap from="static_map" to="/static_map_lane"/>
-    <!--param name="tf_prefix" value="robot_2" /-->
     <param name="local_frame" value="/robot_2/local_map"/>
     <param name="base_frame" value="/robot_2/base_link"/>
     <param name="global_frame" value="/map"/>
-  </node>
+  </node-->
 
 </launch>
 
