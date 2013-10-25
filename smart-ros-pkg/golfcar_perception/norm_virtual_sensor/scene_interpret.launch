@@ -3,14 +3,15 @@
     <!--include file="$(find Launch)/golfcar/sensors/sicks_tf.launch"/>    
     <include file="$(find Launch)/golfcar/1LowLevel.launch"/-->
     
-    <node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
+    <!--node pkg="scan_assemble" type="scan_assemble" name="scan_assemble"/>
     <node pkg="robust_road_detection" type="curb_detect" name="curb_detect">
         <remap from="odom" to="odom"/>
+        <remap from="/assembled_sick_scan2" to="/scan_filter"/>
     </node>
-    <node pkg="robust_road_detection" type="road_surface_removal" name="road_surface_removal"/>
+    <node pkg="robust_road_detection" type="road_surface_removal" name="road_surface_removal"/-->
     
     <node pkg="norm_virtual_sensor" type="norm_virtual_sensor" name="norm_virtual_sensor" output="screen">
-    	<remap from="sick_scan2" to="sick_scan2"/>
+    	<remap from="scan_in" to="scan_filter"/>
     </node>    
     <node pkg="norm_virtual_sensor" type="odom_baselink" name="odom_baselink"/>
 
