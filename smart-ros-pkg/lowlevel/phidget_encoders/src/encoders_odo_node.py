@@ -58,7 +58,7 @@ class EncodersOdoNode:
         self.y = rospy.get_param('~y', 0.0)
         self.th = rospy.get_param('~th', 0.0)
 
-        self.pub = rospy.Publisher('encoder_odo', EncoderOdo)
+        self.pub = rospy.Publisher('encoder_odo', Encoders)
         self.odomPub = rospy.Publisher('odom', Odometry)
         self.sub = rospy.Subscriber('encoder_counts', EncoderCounts, self.callback)
 
@@ -67,7 +67,7 @@ class EncodersOdoNode:
         dr = msg.d_right * self.wheelSize
         dl = msg.d_left * self.wheelSize * self.leftCorrectionFactor
 
-        omsg = EncoderOdo()
+        omsg = Encoders()
         omsg.dt = msg.dt
         omsg.stamp = msg.stamp
         omsg.d_dist = (dl+dr)/2
