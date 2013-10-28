@@ -23,6 +23,9 @@ class Parameters
         double kd; ///< Derivative gain
         double ki; ///< Integral gain
 
+	 double kp_brake;
+	 double ki_brake;
+	 
         double kp_sat; ///< Saturation value of the proportional term
         double ki_sat; ///< Saturation value of the integral term
         double kd_sat; ///< Saturation value of the derivative term
@@ -76,6 +79,8 @@ class PID_Speed
         double throttle_old, throttle_new;
 
         fmutil::LowPassFilter vFilter;
+        ros::Time last_time;
+
 };
 
 
@@ -91,6 +96,9 @@ void Parameters::getParam()
     GETP( "ki", ki, 0.08 ); //0.007 was ok for Marcelo's
     GETP( "kd", kd, 0.4 );
 
+    GETP( "kp_brake", kp_brake, 0.6);
+    GETP( "ki_brake", ki_brake, 0.2);
+    
     GETP( "kp_sat", kp_sat, 1.0 );
     GETP( "ki_sat", ki_sat, 0.7 );
     GETP( "kd_sat", kd_sat, 0.3 );
@@ -106,6 +114,7 @@ void Parameters::getParam()
 
      ROS_INFO("kp: %lf, ki: %lf, kd: %lf", kp, ki, kd);
      cout <<"kp: " <<kp <<" ki: " <<ki <<" kd: "<<kd<<" ki_sat: " <<ki_sat <<"\n";
+     cout <<"kp_brake: "<<kp_brake<<" ki_brake: "<<ki_brake<<endl;
      cout <<"coeff_bp: " <<coeff_bp <<" tau_v: " <<tau_v  <<"\n";
      cout <<"throttle_threshold: " <<throttle_zero_thres <<" brake_threshold: " <<brake_zero_thres <<"\n";
 }
@@ -140,6 +149,7 @@ PID_Speed::PID_Speed()
     e_sum = 0;
     throttle_old = 0;
     throttle_new = 0;
+    last_time = ros::Time::now();
 }
 
 void PID_Speed::bwdDriveCallBack(std_msgs::Bool msg)
@@ -180,6 +190,13 @@ void PID_Speed::odoCallBack(phidget_encoders::Encoders enc)
     lowlevel_controllers::PID pid;
     pid.desired_vel = cmdVel;
     double odovel = enc.v;
+
+    double time_interval_tmp =  (ros::Time::now() - last_time).toSec();
+    double time_bound = 0.1;
+    time_interval_tmp = time_interval_tmp<time_bound?time_interval_tmp:time_bound;
+    //enc.dt from phidget is not stable, it can have a very large number which brings havok to the vehicle
+    enc.dt = time_interval_tmp;
+
     if( emergency || !automode || (cmdVel == 0.0 && fabs(odovel) <= param.full_brake_thres) || safetyBrake_ )
     {
         // reset controller
@@ -193,25 +210,26 @@ void PID_Speed::odoCallBack(phidget_encoders::Encoders enc)
     {
         pid.v_filter = vFilter.filter_dt(enc.dt, odovel);
         double e_now = cmdVel - pid.v_filter;
-        e_sum = e_sum + (e_now * enc.dt);
         pid.p_gain = fmutil::symbound<double>(param.kp * e_now, param.kp_sat);
 
         // Accumulate integral error and limit its range
         //iTerm += param.ki * (e_pre + e_now)/2 * enc.dt;
+        e_sum = e_sum + (e_now * enc.dt);
+        e_sum = fmutil::symbound<double>(e_sum, param.ki_sat/param.ki);
         iTerm = param.ki * e_sum;        
-        iTerm = fmutil::symbound<double>(iTerm, param.ki_sat);
         pid.i_gain = iTerm;
 
         double dTerm = kdd * (e_now - e_pre) / enc.dt;
         pid.d_gain = fmutil::symbound<double>(dTerm, param.kd_sat);
 
         // filter out spikes in d_gain
-        if( fabs(dgain_pre - pid.d_gain)>0.2 ) 
-            pid.d_gain = dgain_pre;
-        dgain_pre = pid.d_gain;
+        //if( fabs(dgain_pre - pid.d_gain)>0.2 ) 
+            //pid.d_gain = dgain_pre;
+        //dgain_pre = pid.d_gain;
 
         //double u = pid.p_gain + pid.i_gain + pid.d_gain;
-        double u =  pid.p_gain + pid.i_gain + pid.d_gain;        
+        double u =  pid.p_gain + pid.i_gain + pid.d_gain;
+	
         pid.u_ctrl = fmutil::symbound<double>(u, 1.0);
 
         // change the sign for bwd driving assuming pid gains are same for fwd/bwd
@@ -236,7 +254,11 @@ void PID_Speed::odoCallBack(phidget_encoders::Encoders enc)
         {
             dgain_pre = 0;
             throttle_msg.data = 0;
-            brake_msg.data = param.coeff_bp * pid.u_ctrl + 80;
+	    pid.p_brake_gain = fmutil::symbound<double>(param.kp_brake * e_now, param.kp_sat);
+	    pid.i_brake_gain = fmutil::symbound<double>(param.ki_brake * e_sum, param.ki_sat);
+	    pid.u_brake_ctrl = pid.p_brake_gain + pid.i_brake_gain;
+            brake_msg.data = param.coeff_bp * pid.u_brake_ctrl * 1;
+	    if (brake_msg.data < -param.coeff_bp) brake_msg.data = -param.coeff_bp;
             kdd = 0;
         }
         else
