@@ -29,9 +29,11 @@ private:
     ros::NodeHandle private_nh_, n_;
     image_transport::ImageTransport it_;
     image_transport::Subscriber image_sub_;
+    image_transport::Publisher image_pub_, edge_pub_;
     ros::Publisher vehicle_roi_pub_;
     ros::Publisher polygon_pub_;
-    image_transport::Publisher image_pub_;
     void imageCallback(const sensor_msgs::ImageConstPtr& image);
+    void boundary_find(const Mat& segImg);
+    cv_bridge::CvImagePtr cv_image_;
 };
 
