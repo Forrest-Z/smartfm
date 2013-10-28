@@ -39,8 +39,8 @@ LocalMap::LocalMap(double height, double width, double res):height_(height), wid
     laser3_filter_->registerCallback(boost::bind(&LocalMap::laser3Callback, this, _1));
 
     prior_pts_pub_ = nh_.advertise<sensor_msgs::PointCloud>("prior_pts", 10, true);
-    map_pub_ = nh_.advertise<pnc_msgs::local_map>("local_map", 10);
-    map_pts_pub_ = nh_.advertise<sensor_msgs::PointCloud>("local_map_pts", 10);
+    map_pub_ = nh_.advertise<pnc_msgs::local_map>("local_map", 3);
+    map_pts_pub_ = nh_.advertise<sensor_msgs::PointCloud>("local_map_pts", 3);
 
 
 
@@ -140,7 +140,8 @@ void LocalMap::publishLocalMapPts(vector<int> &free_cells)
             map_p.y = j*local_map_.info.resolution;
             map_p.z = local_map_.data[j * local_map_.info.width +i]/100.0;
             unsigned int map_index = (j * local_map_.info.width + i);
-            if(map_p.z > 0) free_cells.push_back(map_index);
+            if(map_p.z > 0) 
+              free_cells.push_back(map_index);
             local_map_pts_.points.push_back(map_p);
         }
     }
@@ -296,6 +297,7 @@ void LocalMap::updateMap(sensor_msgs::PointCloud& pc)
         local_map_.header.stamp = pc.header.stamp;
         pnc_msgs::local_map lm;
         lm.occupancy = local_map_;
+        
         vector<int> free_cells;
         publishLocalMapPts(free_cells);
         lm.free_cells = free_cells;

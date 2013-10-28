@@ -1,0 +1,4 @@
+1. Record pedestrian tracks:
+	(provide localization before this)
+	a. launch/pedestrian_detection.launch
+	b. launch/collector.launch

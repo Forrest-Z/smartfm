@@ -3,7 +3,7 @@ Launch sequence for MOMDP experiment:
 |**************|
 | For golfcar: |
 ****************
-
+!!FIXME: Re-verify the launch sequence!!
 High level computer
 -------------------
 ./run-core
@@ -34,10 +34,11 @@ roslaunch ped_momdp_sarsop momdp.launch
 *************************
 
 roslaunch ped_momdp_sarsop simulation.launch
-roslaunch ped_momdp_sarsop 3Autonomous.launch
-(Re-position the golfcar position using RViz's 2D Pose Estimate when necessary)
-(Make sure that the pedestrian ID at ped_momdp_sarsop's momdp.launch is "1, 2, 3")
+roslaunch Launch 3Autonomous_momdp.launch
 roslaunch ped_momdp_sarsop momdp.launch
-(Goal position will be automatically given by momdp at (3,25) in "map" frame)
+roslaunch Launch 5RoutePlannerSpeedAdvisor_momdp.launch 
 
+To start the simulation, give a straight goal point using "2D Nav Goal" in RViz. When the simulated vehicle is started moving, use "Interact" to move the simulated pedestrian boxes to investigate the respond of the vehicle due to the movement of the pedestrian.
+To restart the simulation, simply drag the simulated vehicle in Stage back to original location and start by giving "2D Nav Goal" again.
+Please note: The position of the simulated pedestrian is only updated whenever there is a movement of the pedestrian.
 

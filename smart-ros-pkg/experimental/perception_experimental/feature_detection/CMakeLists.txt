@@ -7,7 +7,7 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE RelWithDebInfo)
+set(ROS_BUILD_TYPE Debug)#RelWithDebInfo)
 
 rosbuild_init()
 
@@ -26,6 +26,11 @@ rosbuild_genmsg()
 
 rosbuild_add_boost_directories()
 
+#find_package(octomap REQUIRED)
+#include_directories(/opt/ros/fuerte/include)
+#link_directories(/opt/ros/fuerte/lib)
+#link_libraries(octomap)
+
 find_package(octomap REQUIRED)
 include_directories(${OCTOMAP_INCLUDE_DIRS})
 link_directories(${OCTOMAP_LIBRARY_DIRS})
@@ -40,5 +45,6 @@ rosbuild_link_boost(ped_clustering signals)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
-#rosbuild_add_executable(example examples/example.cpp)
+rosbuild_add_executable(simple_detection src/simple_object_detection.cpp)
+rosbuild_link_boost(simple_detection signals)
 #target_link_libraries(example ${PROJECT_NAME})

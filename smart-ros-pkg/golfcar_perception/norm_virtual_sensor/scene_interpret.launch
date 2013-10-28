@@ -10,7 +10,8 @@
     <node pkg="robust_road_detection" type="road_surface_removal" name="road_surface_removal"/>
     
     <node pkg="norm_virtual_sensor" type="norm_virtual_sensor" name="norm_virtual_sensor" output="screen">
-    	<remap from="sick_scan2" to="sick_scan0"/>
+    	<remap from="sick_scan2" to="sick_scan2"/>
     </node>    
-        
+    <node pkg="norm_virtual_sensor" type="odom_baselink" name="odom_baselink"/>
+
 </launch>

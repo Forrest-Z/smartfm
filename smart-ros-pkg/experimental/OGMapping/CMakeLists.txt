@@ -41,6 +41,9 @@ target_link_libraries(skeletonization ${OpenCV_LIBRARIES})
 rosbuild_add_executable(distance_transform src/distance_transform.cpp)
 target_link_libraries(distance_transform ${OpenCV_LIBRARIES})
 
+rosbuild_add_executable(delaunay src/delaunay.cpp)
+target_link_libraries(delaunay ${OpenCV_LIBRARIES})
+
 
 #target_link_libraries(wrap_example ${OpenCV_LIBRARIES})
 #common commands for building c++ executables and libraries

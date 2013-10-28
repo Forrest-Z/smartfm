@@ -1,0 +1,23 @@
+<package>
+  <description brief="dynamic_safety_zone">
+
+     dynamic_safety_zone
+
+  </description>
+  <author>brice rebsamen</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/dynamic_safety_zone</url>
+
+  <depend package="roscpp"/>
+  <depend package="rosconsole"/>
+  <depend package="rospy" />
+  <depend package="sensor_msgs"/>
+  <depend package="tf"/>
+  <depend package="laser_geometry"/>
+  <depend package="geometry_msgs"/>
+  <depend package="fmutil"/>
+  <!--depend package="speed_advisor"/-->
+</package>
+
+

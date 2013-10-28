@@ -17,6 +17,10 @@ StationList::StationList()
     knownStations_.push_back( Station("CREATE Garage", 1) );
     knownStations_.push_back( Station("ENTERPRISE", 2) );
     knownStations_.push_back( Station("ENTERPRISE Garage", 3) );
+    // knownStations_.push_back( Station("DCC workshop", 0) );
+    // knownStations_.push_back( Station("McDonalds", 1) );
+    // knownStations_.push_back( Station("EA", 2) );
+    // knownStations_.push_back( Station("E3A", 3) );
 }
 
 const Station & StationList::operator () (unsigned i) const
@@ -105,7 +109,7 @@ throw(StationDoesNotExistException)
             cout <<"You have entered an invalid station: " <<e.what() <<endl;
         }
         catch( exception & e ) {
-            cout <<"Unkwown exception: " <<e.what() <<endl;
+            cout <<"Unknown exception: " <<e.what() <<endl;
         }
     }
 

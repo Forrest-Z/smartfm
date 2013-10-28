@@ -15,8 +15,9 @@
 #include <vector>
 #include "sensor_msgs/PointCloud.h"
 #include "vision_lane_detection/markers_info.h"
-#include "vision_lane_detection/conti_lanes.h"
-
+#include "vision_lane_detection/lanes_info.h"
+#include "fmutil/fm_math.h"
+#include <fmutil/fm_stopwatch.h>
 
 //--------------------------------------------Parameters for "ipm"---------------------------------------------
 
@@ -47,7 +48,7 @@
 
 //-----------------------------------------Parameters for "image_proc"----------------------------------------
 #define BINARY_THRESH           190
-#define BLOCK_SIZE              55
+#define BLOCK_SIZE              25
 //#define BLOCK_SIZE              65
 #define OFFSET                  -10
 
@@ -63,11 +64,17 @@
 #define ZIGZAG_LINE_HEIGHT              4.17
 #define CONTOUR_PERIMETER_THRESH        4.0
 #define LONG_SIDE_THRESH                2.0
+#define SHORT_SIDE_THRESH                0.3
 #define BOUNDARY_MARGIN                 3
+
+#define LANES_CLUSTER_ANGLE_THRESH M_PI*10.0/180.0
 
 using namespace std;
 
 namespace golfcar_vision{
+
+void line_calculate(CvBox2D box, double long_side_parameter[3], double short_side_parameter[3]);
+int is_equal( const void* _a, const void* _b, void* userdata );
 
     CvPoint2D32f centroid_centering_coordinate(CvPoint original_point, CvPoint2D32f centroid)
     {
@@ -131,6 +138,200 @@ namespace golfcar_vision{
          cvLine( img, pt[2], pt[3], ext_color, 2, 8, 0 );
          cvLine( img, pt[3], pt[0], ext_color, 2, 8, 0 );
      }
+
+	//http://alienryderflex.com/polygon/
+    template <class T>
+    bool pointInPolygon(T p, std::vector<T> poly)
+	{
+		int polySides = poly.size();
+		int      i, j=polySides-1 ;
+		bool  oddNodes = false;
+
+		for (i=0; i<polySides; i++)
+		{
+			if (((poly[i].y< p.y && poly[j].y>=p.y) || (poly[j].y< p.y && poly[i].y>=p.y)) &&  (poly[i].x<=p.x || poly[j].x<=p.x))
+			{
+				if(poly[i].x+(p.y-poly[i].y)/(poly[j].y-poly[i].y)*(poly[j].x-poly[i].x)<p.x)
+				{oddNodes=!oddNodes;}
+			}
+			j=i;
+		}
+
+		return oddNodes;
+	}
+
+    void line_calculate(CvBox2D box, double long_side_parameter[3], double short_side_parameter[3])
+    {
+    	CvPoint2D32f point_tmp[4];
+    	calc_cvBoxPoints(box, point_tmp);
+    	double first_line_para[3], second_line_para[3];
+    	first_line_para[0] = point_tmp[0].y - point_tmp[1].y;
+    	first_line_para[1] = point_tmp[1].x - point_tmp[0].x;
+    	first_line_para[2] = point_tmp[0].x * point_tmp[1].y -  point_tmp[1].x * point_tmp[0].y;
+
+    	second_line_para[0] = point_tmp[2].y - point_tmp[1].y;
+    	second_line_para[1] = point_tmp[1].x - point_tmp[2].x;
+    	second_line_para[2] = point_tmp[2].x * point_tmp[1].y -  point_tmp[1].x * point_tmp[2].y;
+
+    	if(box.size.width>box.size.height)
+    	{
+    		long_side_parameter[0] = first_line_para[0];
+    		long_side_parameter[1] = first_line_para[1];
+    		long_side_parameter[2] = first_line_para[2];
+    		short_side_parameter[0] = second_line_para[0];
+    		short_side_parameter[1] = second_line_para[1];
+    		short_side_parameter[2] = second_line_para[2];
+    	}
+    	else
+    	{
+    		long_side_parameter[0] = second_line_para[0];
+    		long_side_parameter[1] = second_line_para[1];
+    		long_side_parameter[2] = second_line_para[2];
+    		short_side_parameter[0] = first_line_para[0];
+    		short_side_parameter[1] = first_line_para[1];
+    		short_side_parameter[2] = first_line_para[2];
+    	}
+    }
+
+    //use OpenCV cvSeqPartition();
+    //http://opencv.willowgarage.com/documentation/clustering_and_search_in_multi-dimensional_spaces.html
+    int is_equal( const void* _a, const void* _b, void* userdata )
+    {
+    	size_t a = *(const size_t*)_a;
+    	size_t b = *(const size_t*)_b;
+
+    	CvSeq *contour = (CvSeq*) userdata;
+    	//printf("a, b %d,\t%d\t", a, b);
+
+    	CvSeq *contour_a = 0;
+    	CvSeq *contour_b = 0;
+
+    	size_t i=0;
+    	for (; contour != 0; contour = contour->h_next)
+    	{
+    		if(a==i) contour_a = contour;
+    		if(b==i)contour_b = contour;
+    		if(contour_a!=0 && contour_b!=0) break;
+    		i++;
+    	}
+
+    	CvBox2D cvBox_a, cvBox_b;
+    	CvMemStorage *mem_box_a = cvCreateMemStorage(0);
+    	CvMemStorage *mem_box_b = cvCreateMemStorage(0);
+
+    	cvBox_a = cvMinAreaRect2(contour_a, mem_box_a);
+    	cvBox_b = cvMinAreaRect2(contour_b, mem_box_b);
+    	//printf("cvBox_a center (%3f, %3f), width heigh: (%3f, %3f)\n", cvBox_a.center.x,  cvBox_a.center.y, cvBox_a.size.width, cvBox_a.size.height);
+    	//printf("cvBox_b center (%3f, %3f), width heigh: (%3f, %3f)\n", cvBox_b.center.x,  cvBox_b.center.y, cvBox_b.size.width, cvBox_b.size.height);
+
+    	CvPoint2D32f pointA[4], pointB[4];
+    	calc_cvBoxPoints(cvBox_a, pointA);
+    	calc_cvBoxPoints(cvBox_b, pointB);
+    	double longsideA[3], longsideB[3];
+    	double shortsideA[3], shortsideB[3];
+    	line_calculate(cvBox_a, longsideA, shortsideA);
+    	line_calculate(cvBox_b, longsideB, shortsideB);
+
+    	//printf("lineA long: (%3f,  %3f,  %3f)\t", longsideA[0], longsideA[1], longsideA[2]);
+    	//printf("lineA short: (%3f,  %3f,  %3f)\n", shortsideA[0], shortsideA[1], shortsideA[2]);
+    	//printf("lineB long: (%3f,  %3f,  %3f)\t", longsideB[0], longsideB[1], longsideB[2]);
+    	//printf("lineB short: (%3f,  %3f,  %3f)\n", shortsideB[0], shortsideB[1], shortsideB[2]);
+
+    	double longside_angleA = atan2(longsideA[0], -longsideA[1]);
+    	if(longside_angleA<0) longside_angleA = longside_angleA + M_PI;
+    	double longside_angleB = atan2(longsideB[0], -longsideB[1]);
+    	if(longside_angleB<0) longside_angleB = longside_angleB + M_PI;
+    	double delt_angle = fabs(longside_angleA-longside_angleB);
+    	if(delt_angle>M_PI_2) delt_angle = M_PI - delt_angle;
+    	bool angle_criterion = delt_angle < 5.0*M_PI/180.0;
+
+
+
+    	//distance of pointB[1] (second box) to the first short line;
+    	double collinear_distance = fabs(shortsideA[0]*pointB[1].x+shortsideA[1]*pointB[1].y+shortsideA[2])/sqrt(shortsideA[0]*shortsideA[0]+shortsideA[1]*shortsideA[1]);
+    	bool collinear_criterion = collinear_distance < 1.0*20;
+
+    	double centroid_distance = fmutil::distance(cvBox_a.center, cvBox_b.center);
+    	bool centroid_dist_criterion = centroid_distance < 3*std::max(std::min(cvBox_a.size.height, cvBox_a.size.width), std::min(cvBox_b.size.height, cvBox_b.size.width));
+
+    	//printf("angle %3f \t", delt_angle);
+    	//printf("distance %3f \n", distance);
+
+		cvReleaseMemStorage(&mem_box_a);
+		cvReleaseMemStorage(&mem_box_b);
+
+    	return (angle_criterion && collinear_criterion && centroid_dist_criterion);
+    }
+
+	void  Img_preproc(IplImage *src, IplImage *binary_image)
+	{
+        IplImage *It = 0, *Iat = 0;
+        It = cvCreateImage(cvSize(src->width,src->height),IPL_DEPTH_8U, 1);
+        Iat = cvCreateImage(cvSize(src->width,src->height),IPL_DEPTH_8U, 1);
+		cvThreshold(src,It,BINARY_THRESH,255,CV_THRESH_BINARY);
+		cvAdaptiveThreshold(src, Iat, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, BLOCK_SIZE, OFFSET);
+		cvAnd(It, Iat, binary_image);
+		//cvShowImage("It", It);
+		//cvShowImage("Iat", Iat);
+		//cvWaitKey(1);
+		cvReleaseImage(&It);
+		cvReleaseImage(&Iat);
+	}
+
+	void  Img_preproc_local(IplImage *src, IplImage *binary_image)
+	{
+		cvAdaptiveThreshold(src, binary_image, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY, BLOCK_SIZE, OFFSET);
+		//cvShowImage("Iat_local", binary_image);
+		//cvWaitKey(1);
+	}
+
+	void merge_images(IplImage *image_A, IplImage *image_B)
+	{
+		int imgA_height 	= image_A -> height;
+		int imgA_width  	= image_A -> width;
+		int imgA_channel 	= image_A->nChannels;
+		int imgB_height 	= image_B -> height;
+		int imgB_width  	= image_B -> width;
+		int imgB_channel 	= image_B->nChannels;
+
+		assert(imgA_height==imgB_height&&imgA_channel==imgB_channel&&imgA_width==imgB_width);
+
+		for(int ih=0; ih < imgA_height; ih++)
+		{
+			for(int iw=0; iw < imgA_width; iw++)
+			{
+				CvPoint pixel;
+				pixel.x = iw;
+				pixel.y = ih;
+				CvScalar s=cvGet2D(image_B, pixel.y, pixel.x);
+
+				bool imgB_pixel_nonzero = false;
+				for(int c=0; c<imgA_channel; c++){if(s.val[c]!=0) imgB_pixel_nonzero = true;}
+
+
+				if(imgB_pixel_nonzero)
+				{
+					cvSet2D(image_A, pixel.y, pixel.x, s);
+				}
+			}
+		}
+	}
+
+	void resize_show(IplImage *img, double scale_, const char* img_name)
+	{
+		int img_height 	= img -> height;
+		int img_width  = img -> width;
+		int img_show_height = (int)((double)img_height*scale_);
+		int img_show_width = (int)((double)img_width*scale_);
+		IplImage* img_show = cvCreateImage(cvSize(img_show_width, img_show_height),img->depth, img->nChannels);
+
+		cvResize(img, img_show);
+		cvShowImage(img_name, img_show);
+		cvWaitKey(1);
+		cvReleaseImage(&img_show);
+	}
+
+
 };
 
 #endif

@@ -23,6 +23,13 @@ struct Stopwatch
 		
 		total_ = 0;
 	}
+
+  Stopwatch(string msg, bool start=true)
+	{
+		msg_ = msg;
+		total_ = 0;
+		if(start) time_ = GetTimeMs64();
+	}
 	void reset()
 	{
 		total_ = 0;
@@ -35,10 +42,10 @@ struct Stopwatch
 
 		uint64_t ret = tv.tv_usec;
 		/* Convert from micro seconds (10^-6) to milliseconds (10^-3) */
-		ret /= 1000;
+		//ret /= 1000;
 
 		/* Adds the seconds (10^0) after converting them to milliseconds (10^-3) */
-		ret += (tv.tv_sec * 1000);
+		ret += (tv.tv_sec * 1000000);
 
 		return ret;
 	}
@@ -49,10 +56,14 @@ struct Stopwatch
 		time_ = GetTimeMs64();
 	}
 
+  void start()
+	{
+		time_ = GetTimeMs64();
+	}
 	void end(bool print_msg)
 	{
 		uint64_t time_diff = GetTimeMs64()-time_;
-		if(print_msg)	cout<<msg_<<": "<<time_diff<<" ms"<<endl;
+		if(print_msg)	cout<<msg_<<": "<<time_diff/1000<<" ms"<<endl;
 		total_+=time_diff;
 	}
 

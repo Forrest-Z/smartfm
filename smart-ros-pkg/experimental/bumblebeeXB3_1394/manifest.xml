@@ -9,14 +9,14 @@
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/bumblebeeXB3_1394</url>
   <depend package="roscpp" />
-  <depend package="rospy" />
+  <!--depend package="rospy" /-->
   <depend package="std_msgs" />
-  <depend package="sensor_msgs" />
+  <!--depend package="sensor_msgs" />
   <depend package="image_transport" />
   <depend package="triclops" />
   <depend package="cv_bridge" />
   <depend package="camera_info_manager" />
-  <rosdep name="opencv2"/> 
+  <rosdep name="opencv2"/--> 
 </package>
 
 

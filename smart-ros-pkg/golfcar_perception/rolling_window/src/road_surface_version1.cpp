@@ -882,7 +882,6 @@ namespace golfcar_pcl{
 						  if(boundary_inliers->indices[bd_pt] == nb_serial) no_copy = false;
 					 }
 					 if(no_copy){boundary_inliers->indices.push_back(nb_serial);}
-					 
 				 }
 			}
 		}

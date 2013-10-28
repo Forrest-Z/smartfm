@@ -1,0 +1,26 @@
+<!--Configure the robots urdf-->
+
+<launch>
+
+	<group ns="robot_0">
+		<param name="tf_prefix" value="robot_0" />
+		<include file="$(find local_map)/urdf/display.launch" >
+			<arg name="model" value="$(find local_map_ext)/urdf/golfcar_urdf.xml" />
+		</include>
+	</group>
+  
+	<group ns="robot_1">
+		<param name="tf_prefix" value="robot_1" />
+		<include file="$(find local_map)/urdf/display.launch" >
+			<arg name="model" value="$(find local_map_ext)/urdf/golfcar_urdf.xml" />
+		</include>
+	</group>
+  
+    <group ns="robot_2">
+		<param name="tf_prefix" value="robot_2" />
+		<include file="$(find local_map)/urdf/display.launch" >
+			<arg name="model" value="$(find local_map_ext)/urdf/golfcar_urdf.xml" />
+		</include>
+    </group>
+
+</launch>

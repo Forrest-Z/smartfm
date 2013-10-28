@@ -28,8 +28,10 @@
 #include <pcl/common/common.h>
 #include <pcl/common/pca.h>
 #include <laser_geometry/laser_geometry.h>
+#include <geometry_msgs/TwistStamped.h>
 
 #include "nearest_neighbor_tracking.h"
+#include <std_msgs/Int64.h>
 
 using std::string;
 using std::cout;
@@ -48,7 +50,7 @@ class LaserRangePoint
 
     laser_special laser;
     double angle_increment;
-
+    
 public:
     LaserRangePoint(sensor_msgs::LaserScan &scan, tf::TransformListener &tf, string target_frame)
     {
@@ -103,8 +105,10 @@ class LaserVehicle
     tf::TransformListener *tf_;
     tf::TransformBroadcaster *tf_broadcaster_;
 
-    ros::Publisher poly_pub_, segmented_pub_, filter_res_pub_, filter_size_pub_, vehicle_pub_;
+    ros::Publisher poly_pub_, segmented_pub_, filter_res_pub_, filter_size_pub_, vehicle_pub_, vehicle_vel_pub_;
     ros::Publisher DP1_pub_, DP2_pub_, raw_RA_pub_, FR_RA_pub_, DP_RA_pub_;
+    ros::Publisher detection_time_pub_;
+	std::vector<geometry_msgs::PoseStamped> vehicle_pose_vector;
 
     NearestNeighborTracking *nnt_;
 
@@ -124,12 +128,17 @@ class LaserVehicle
 
         //findDiscontinuousPoint(laser_range_pt);
         //DP_Extraction(laser_range_pt);
+	fmutil::Stopwatch sw("Detect vehicle");
         simpleEuclideanExtraction(laser_range_pt);
         //detectVehicle(laser_cloud);
 
         //need to keep sending the data to keep the tf tree alive
         latest_trans_.stamp_ = ros::Time::now();
         tf_broadcaster_->sendTransform(latest_trans_);
+	sw.end();
+	std_msgs::Int64 detect_time_data;
+	detect_time_data.data = sw.total_;
+	detection_time_pub_.publish(detect_time_data);
     }
 
     inline pcl::PointCloud<pcl::PointXYZ> pointcloudToPCL(sensor_msgs::PointCloud &pc)
@@ -608,12 +617,25 @@ class LaserVehicle
 
     void publishVehicle(geometry_msgs::PoseStamped vehicle_pose)
     {
-
-        vehicle_pub_.publish(vehicle_pose);
-
+		vehicle_pub_.publish(vehicle_pose);
+		
         tf::StampedTransform trans(tf::Transform(), vehicle_pose.header.stamp, vehicle_pose.header.frame_id, veh_frame_);
         tf::poseMsgToTF(vehicle_pose.pose, trans);
         latest_trans_ = trans;
+		tf_broadcaster_->sendTransform(latest_trans_);
+
+        vehicle_pose_vector.push_back(vehicle_pose);
+        if(vehicle_pose_vector.size()>5)
+        {
+			geometry_msgs::TwistStamped twist_msg;
+			twist_msg.header = vehicle_pose_vector.back().header;
+			double delta_t = vehicle_pose_vector.back().header.stamp.toSec() - vehicle_pose_vector.front().header.stamp.toSec();
+			twist_msg.twist.linear.x = (vehicle_pose_vector.back().pose.position.x - vehicle_pose_vector.front().pose.position.x)/delta_t;
+			twist_msg.twist.linear.y = (vehicle_pose_vector.back().pose.position.y - vehicle_pose_vector.front().pose.position.y)/delta_t;
+			twist_msg.twist.linear.z = (vehicle_pose_vector.back().pose.position.z - vehicle_pose_vector.front().pose.position.z)/delta_t;
+			vehicle_vel_pub_.publish(twist_msg);
+			vehicle_pose_vector.erase(vehicle_pose_vector.begin());
+		}
     }
 
 public:
@@ -649,7 +671,8 @@ public:
         filter_res_pub_ = nh_->advertise<sensor_msgs::PointCloud>("filter_response", 10);
         filter_size_pub_ = nh_->advertise<sensor_msgs::PointCloud2>("size_filtered", 10);
         vehicle_pub_ = nh_->advertise<geometry_msgs::PoseStamped>("vehicle_pose", 10);
-
+        vehicle_vel_pub_ = nh_->advertise<geometry_msgs::TwistStamped>("vehicle_vel",10);
+        detection_time_pub_ = nh_->advertise<std_msgs::Int64>("detection_time", 10);
         DP1_pub_ = nh_->advertise<sensor_msgs::PointCloud>("DP1", 10);
         DP2_pub_ = nh_->advertise<sensor_msgs::PointCloud>("DP2", 10);
         raw_RA_pub_ = nh_->advertise<sensor_msgs::PointCloud>("raw_RA", 10);

@@ -5,7 +5,7 @@
         <rosparam file="$(find lowlevel_controllers)/speed_controller.yaml" command="load" />
     </node>
   <node name="local_map" pkg="local_map_ext" type="local_map_node" output="screen">
-    <remap from="scan_in" to="sickldmrs/scan3"/>
+    <remap from="scan_in" to="/hokuyo_scan"/>
     <remap from="scan_in2" to="robot_1/scan"/>
     <remap from="scan_in3" to="robot_2/scan"/>
     <remap from="static_map" to="static_map_lane"/>

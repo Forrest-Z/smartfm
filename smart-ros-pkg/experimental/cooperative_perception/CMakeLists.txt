@@ -27,6 +27,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 rosbuild_add_boost_directories()
 
 rosbuild_add_executable(laser_vehicle src/laser_vehicle.cpp)
+#rosbuild_add_executable(laser_vehicle src/laser_vehicle_v2.cpp)
 rosbuild_add_executable(vehicles_transform src/vehicles_transform.cpp)
 rosbuild_add_executable(front_vehicle_speed src/front_vehicle_speed.cpp)
 rosbuild_link_boost(laser_vehicle signals)

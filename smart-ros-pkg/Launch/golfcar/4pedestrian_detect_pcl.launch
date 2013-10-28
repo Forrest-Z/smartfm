@@ -5,11 +5,13 @@
     </node>
 
     <include file="$(find feature_detection)/visualizer.launch"/>
+    
     <node pkg="sensing_on_road" type="camera_project_pcl" name="camera_project_pcl">
 	    <remap from="camera_project_in" to="pedestrian_clusters_filtered"/>
 	</node>
+	
 	<include file="$(find Launch)/golfcar/pedestrian_detection_laser.launch"/>
-    <!--node pkg="pedestrian_detector" type="classifier" name="classifier" output="screen">
+    <node pkg="pedestrian_detector" type="classifier" name="classifier" output="screen">
     	<param name="image_transport" value="compressed"/>
     	<remap from="image_raw" to="/camera_front/image_raw"/>
 	    <param name="hit_threshold" value="1.5"/>
@@ -20,8 +22,7 @@
 	    <param name="write_image" value="false"/>
 	    <param name="path" value="/media/MyPassport/ped_cand"/>
 	    <remap from="pd_vision_batch" to="pedestrian_clusters_filtered"/>
-	</node-->
+	</node>
 	<include file="$(find dataAssoc_experimental)/dataAssoc.launch"/>
-
 </launch>
 

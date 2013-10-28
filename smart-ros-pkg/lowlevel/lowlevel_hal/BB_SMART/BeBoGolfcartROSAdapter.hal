@@ -1,0 +1,135 @@
+# #######################################
+#
+# HAL file for BeagleBone + BeBoPr cape with 4 steppers
+#
+# Derived from example hm2-stepper config
+#
+# ########################################
+
+# Launch the setup script to make sure hardware setup looks good
+loadusr -w [CONFIG](PATH)/BB_SMART/setup.sh
+
+# ###################################
+# Core EMC/HAL Loads
+# ###################################
+
+# load low-level drivers
+loadrt hal_bb_gpio output_pins=114,115 input_pins=127,128,129
+loadrt hal_pru_generic prucode=/home/linuxcnc/linuxcnc/rtlib/xenomai/pru_generic.bin pru=1 num_stepgens=3 num_pwmgens=5
+
+# create two threads
+loadrt threads name1=user_thread period1=1000000 name2=sampler_thread period2=10000000
+
+# and the ros publisher, subscriber
+loadusr -Wn rosadapter [CONFIG](PATH)/BB_SMART/hal_ros_adapter.py -n rosadapter
+
+# connect realtime module to threads
+addf bb_gpio.read user_thread
+addf bb_gpio.write user_thread
+addf hal_pru_generic.capture-position user_thread
+addf hal_pru_generic.update user_thread 
+
+# ********Parameters***********
+# Note: It make sense on the non-bridge hal, where every pin in the pru_generic
+# is essentially offset by hal_pru_generic pin = ((4 + 1) * 32) + <PRU_pin>
+# Which equalavent to 0xA0 offset to the corresponds pin according to spreadsheet
+# This is not true in this bridge hal, right now it just follows the hal sample
+# It seems like just offset by 0x4A.
+# When it is trying to use GPIO1.30 it is 0x23, GPIO2.25, the number to set is 0x22
+# Worse still, the pin is not what it's thought to be.
+# For example, the stepgen.00.steppin = 0x4C, which thought to be P8.42, but it really is P8.12
+#Set up stepgen at 1000 ns
+#the smallest pulse width able to achieve by BB is 50Khz (10000)
+#hence only stepgen of 10us is possible, which is about 10 times slower than previously possible
+setp hal_pru_generic.stepgen.00.dirhold 10000
+setp hal_pru_generic.stepgen.00.dirsetup 10000
+setp hal_pru_generic.stepgen.00.steplen 10000
+setp hal_pru_generic.stepgen.00.stepspace 10000
+
+setp hal_pru_generic.stepgen.01.dirhold 10000
+setp hal_pru_generic.stepgen.01.dirsetup 10000
+setp hal_pru_generic.stepgen.01.steplen 10000
+setp hal_pru_generic.stepgen.01.stepspace 10000
+
+setp hal_pru_generic.stepgen.02.dirhold 10000
+setp hal_pru_generic.stepgen.02.dirsetup 10000
+setp hal_pru_generic.stepgen.02.steplen 10000
+setp hal_pru_generic.stepgen.02.stepspace 10000
+
+#Set up steering control
+setp hal_pru_generic.stepgen.00.maxvel 540
+setp hal_pru_generic.stepgen.00.maxaccel 1800 
+#1 deg equal 80 pulse
+setp hal_pru_generic.stepgen.00.position-scale 80 
+setp hal_pru_generic.stepgen.00.enable 1
+# P8.27 PRU1.out8
+setp hal_pru_generic.stepgen.00.steppin 71
+# P8.28 PRU1.out10
+setp hal_pru_generic.stepgen.00.dirpin 70
+
+#Set up brake control
+setp hal_pru_generic.stepgen.01.maxvel 540
+setp hal_pru_generic.stepgen.01.maxaccel 1800
+setp hal_pru_generic.stepgen.01.position-scale 80 
+setp hal_pru_generic.stepgen.01.enable 1
+# P8.29 PRU1.out9
+setp hal_pru_generic.stepgen.01.steppin 66
+# P8.30 PRU1.out11
+setp hal_pru_generic.stepgen.01.dirpin 67
+
+#Set up extra stepper control
+setp hal_pru_generic.stepgen.02.maxvel 540
+setp hal_pru_generic.stepgen.02.maxaccel 1800
+setp hal_pru_generic.stepgen.02.position-scale 80
+setp hal_pru_generic.stepgen.02.enable 1
+# P8.43 PRU1.out2
+setp hal_pru_generic.stepgen.02.steppin 99
+# P8.44 PRU1.out3
+setp hal_pru_generic.stepgen.02.dirpin 98
+
+
+#Set up Trottle Control
+#tested with BB, running at 200 Hz able to achieve 10mV increment 
+#tested with Golfcat, running at 200Hz exibit unstable rotation
+#800Hz is recommended, which is found to be able to provide smooth
+#rotation while giving a precision at 1%
+setp hal_pru_generic.pwmgen.00.pwm_period 1250000
+setp hal_pru_generic.pwmgen.00.out.00.value 0
+setp hal_pru_generic.pwmgen.00.out.00.enable 1
+setp hal_pru_generic.pwmgen.00.out.00.scale 1
+setp hal_pru_generic.pwmgen.00.out.00.pin 101
+
+setp hal_pru_generic.pwmgen.00.out.01.value 0
+setp hal_pru_generic.pwmgen.00.out.01.enable 1
+setp hal_pru_generic.pwmgen.00.out.01.scale 1 
+setp hal_pru_generic.pwmgen.00.out.01.pin 100
+
+setp hal_pru_generic.pwmgen.00.out.02.value 0
+setp hal_pru_generic.pwmgen.00.out.02.enable 1
+setp hal_pru_generic.pwmgen.00.out.02.scale 1 
+setp hal_pru_generic.pwmgen.00.out.02.pin 77
+
+setp hal_pru_generic.pwmgen.00.out.03.value 0
+setp hal_pru_generic.pwmgen.00.out.03.enable 1
+setp hal_pru_generic.pwmgen.00.out.03.scale 1
+setp hal_pru_generic.pwmgen.00.out.03.pin 76
+
+setp hal_pru_generic.pwmgen.00.out.04.value 0
+setp hal_pru_generic.pwmgen.00.out.04.enable 1
+setp hal_pru_generic.pwmgen.00.out.04.scale 1
+setp hal_pru_generic.pwmgen.00.out.04.pin 55
+
+#enable motor
+setp bb_gpio.p8.out-14 true
+
+net steer_sig rosadapter.steer_angle hal_pru_generic.stepgen.00.position-cmd
+net brake_sig rosadapter.brake_angle hal_pru_generic.stepgen.02.position-cmd
+net throttle_sig rosadapter.throttle hal_pru_generic.pwmgen.00.out.00.value 
+net direction_sig rosadapter.direction_ctrl bb_gpio.p8.out-15
+
+net steer_fb_sig rosadapter.steer_angle_fb hal_pru_generic.stepgen.00.position-fb
+net brake_fb_sig rosadapter.brake_angle_fb hal_pru_generic.stepgen.02.position-fb
+net throttle_sig rosadapter.throttle_fb
+net emergency_sig rosadapter.button_state_emergency bb_gpio.p8.in-27
+net automode_sig rosadapter.button_state_automode bb_gpio.p8.in-28
+start

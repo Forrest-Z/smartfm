@@ -1,0 +1,21 @@
+<!--Configure the robots urdf-->
+
+<launch>
+
+	<group ns="robot_0">
+		<include file="$(find local_map)/urdf/display.launch"/>
+		<param name="tf_prefix" value="robot_0" />
+	</group>
+  
+	<group ns="robot_1">
+		<include file="$(find local_map)/urdf/display.launch"/>
+		<param name="tf_prefix" value="robot_1" />
+	</group>
+  
+    <group ns="robot_2">
+		<include file="$(find local_map)/urdf/display.launch"/>
+		<param name="tf_prefix" value="robot_2" />
+    </group>
+
+</launch>
+

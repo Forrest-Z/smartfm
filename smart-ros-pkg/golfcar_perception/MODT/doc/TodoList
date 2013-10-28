@@ -1,0 +1,5 @@
+1. to speed up the hyposis generation speed: now use appear-disappear pair up, which has to wait disappear area to happen, is relatively slow;
+2. to come up with better pair-up method, right now may happen under-merging or over-merging issues;
+3. perform more systematic classification on the disappear-appear pair; svm may be used; current hand-coded hard threshold;
+4. to further debug and improve the calculation of vehicle size and pose; right now use one uniform vehicle model ,later may use GMM and also estimate vehicle size;
+5. realize tracking;

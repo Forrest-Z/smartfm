@@ -9,11 +9,11 @@
     <node pkg="rolling_window" type="road_surface" name="road_surface" output="screen">
     <param name="scan_model_path" value="$(find rolling_window)/svm_model/scan_20121115.model"/>
     <param name="scan_scale_path" value="$(find rolling_window)/svm_model/scan_20121115.range"/>
-    <param name="point_model_path" value="$(find rolling_window)/svm_model/point.model"/>
-    <param name="point_scale_path" value="$(find rolling_window)/svm_model/point.range"/>
+    <param name="point_model_path" value="$(find rolling_window)/svm_model/point_20121212.model"/>
+    <param name="point_scale_path" value="$(find rolling_window)/svm_model/point_20121212.range"/>
     <param name="record_path" value="$(find rolling_window)/data_folder"/>
 	<param name="search_radius" value="0.3" type="double" />
-	<param name="curvature_thresh" value="0.005" type="double" />
+	<param name="curvature_thresh" value="0.01" type="double" />
 	<param name="curvature_visual_limit" value="0.1" type="double" />
  	<param name="normalZ_visual_limit_" value="0.2" type="double" />
 	<param name="curvature_visualization" value="true"/>

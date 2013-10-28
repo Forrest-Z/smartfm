@@ -1,0 +1,26 @@
+<package>
+  <description brief="hybrid_planner">
+
+     hybrid_planner
+
+  </description>
+  <author>LIUWLZ</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/hybrid_planner</url>
+  <depend package="roscpp"/>
+  <depend package="nav_msgs"/>
+  <depend package="tf"/>
+  <depend package="pnc_msgs"/>
+  <depend package="golfcar_ppc"/>
+  <depend package="local_map_ext"/>
+  <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="std_msgs"/>
+  <depend package="nav_core"/>
+  <depend package="rrts_exp"/>
+  <depend package="fmutil"/>
+	
+</package>
+
+

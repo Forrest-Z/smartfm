@@ -10,34 +10,36 @@
 #include "pcl/ros/conversions.h"
 #include "RasterMapPCL.h"
 #include "ReadFileHelper.h"
+#include <isam/isam.h>
+#include "mysql_helper.h"
 
-bool readHeader(istream &in, double& vec_no)
+vector<geometry_msgs::Point32> getTransformedPts(geometry_msgs::Point32 pose, vector<geometry_msgs::Point32>& pts)
 {
-	string temp;
-	in >> temp; in>> temp;
-	in >> vec_no;
-	for(int i=0; i<7; i++)
-		in >> temp;
-	cout<<vec_no<<endl;
-	if(vec_no>0) return true;
-	else return false;
-}
-
-bool readScores(istream &in, vector<double>& scores)            // read point (false on EOF)
-{
-	for(size_t i=0; i<scores.size(); i++)
+	double ct = cos(pose.z), st = sin(pose.z);
+	vector<geometry_msgs::Point32> final_pt;
+	final_pt.resize(pts.size());
+	for(size_t j=0; j<pts.size(); j++)
 	{
-		if(!(in >> scores[i]))
-		{
-			cout<<"Read scores stop at "<<i<<endl;
-			return false;
-		}
-		//cout<<scores[i]<<" ";
+
+		geometry_msgs::Point32 pt = pts[j], rot_pt;
+		rot_pt.x = ct * pt.x - st * pt.y + pose.x;
+		rot_pt.y = st * pt.x + ct * pt.y + pose.y;
+		final_pt[j] = rot_pt;
 	}
-	//cout<<endl;
-	//cout<<"First score:"<<scores[0]<< " last score:"<<scores[scores.size()]<<endl;
-	return true;
+	return final_pt;
 }
+
+geometry_msgs::Point32 ominus(geometry_msgs::Point32 point2, geometry_msgs::Point32 point1)
+{
+    double ctheta = cos(point1.z), stheta = sin(point1.z);
+    geometry_msgs::Point32 relative_tf;
+    relative_tf.x  = (point2.x - point1.x) * ctheta + (point2.y - point1.y) * stheta;
+    relative_tf.y =  -(point2.x - point1.x) * stheta + (point2.y - point1.y) * ctheta;
+    relative_tf.z = point2.z - point1.z;
+    cout<<relative_tf<<endl;
+	return relative_tf;
+}
+
 
 int main(int argc, char **argcv)
 {
@@ -56,69 +58,107 @@ int main(int argc, char **argcv)
 	vector<sensor_msgs::PointCloud> pc_vec;
 	sensor_msgs::PointCloud pc;
 	ifstream dataStreamSrc, pcStreamSrc;
-	dataStreamSrc.open(argcv[1], ios::in);// open data file
-	if (!dataStreamSrc) {
-		cerr << "Cannot open data file\n";
-		exit(1);
+
+
+	vector< vector<double> > scores_array, rotations_array;
+	int skip_reading = 1;
+	int size;
+	vector<geometry_msgs::Pose> poses;
+
+	if(argc > 2)
+	{
+		double vec_no;
+		readHeader(*data_in, vec_no);
+		size = vec_no;
+		dataStreamSrc.open(argcv[2], ios::in);// open data file
+		if (!dataStreamSrc) {
+			cerr << "Cannot open data file\n";
+			exit(1);
+		}
+		data_in = &dataStreamSrc;
+		uint scores_size = ceil(vec_no/skip_reading);
+		for(size_t i=0; i<scores_size; i++)
+		{
+			vector<double> scores_temp;
+			scores_temp.resize(scores_size);
+			if(!readScores(*data_in, scores_temp))
+			{
+				cout<<"Unexpected end of data at score line "<<i<<endl;
+				exit(1);
+			}
+			scores_array.push_back(scores_temp);
+		}
 	}
-	pcStreamSrc.open(argcv[2], ios::in);// open data file
+	else
+	{
+		MySQLHelper sql(skip_reading, "scanmatch_result", argcv[1]);
+		scores_array = sql.retrieve_score();
+		rotations_array = sql.retrieve_rotation();
+		size = scores_array.size();
+		assert(size == rotations_array.size());
+	}
+	cout<<scores_array[0][0]<<" "<<scores_array[scores_array.size()-1][scores_array.size()-1]<<endl;
+
+	cout<<"Successfully read all the scores"<<endl;
+
+
+	pcStreamSrc.open(argcv[1], ios::in);// open data file
 	if (!pcStreamSrc) {
 		cerr << "Cannot open data file\n";
 		exit(1);
 	}
-	data_in = &dataStreamSrc;
 	pc_data_in = &pcStreamSrc;
 
-	double vec_no;
-	readHeader(*data_in, vec_no);
-	vector< vector<double> > scores_array;
+	if(!readFrontEndFile(*pc_data_in, pc_vec, poses)) cout<<"Failed read front end file"<<endl;
 
-	for(size_t i=0; i<vec_no; i++)
-	{
-		vector<double> scores_temp;
-		scores_temp.resize(vec_no);
-		if(!readScores(*data_in, scores_temp))
-		{
-			cout<<"Unexpected end of data at score line "<<i<<endl;
-			exit(1);
-		}
-		scores_array.push_back(scores_temp);
-	}
-
-	cout<<"Successfully read all the scores"<<endl;
-
-	int size = vec_no;
-
-	if(!readFrontEndFile(*pc_data_in, pc_vec)) cout<<"Failed read front end file"<<endl;
-
-	if(size == (int)pc_vec.size())
+	if(size == ceil(pc_vec.size()/(double)skip_reading))
 		cout <<"All system green, going for matching"<<endl;
 	else
 		cout << "Failed in checking size of pc_vec and scores"<<endl;
 
-	int skip_reading = 1;
+
 
 	ros::Rate rate(2);
-	for(int i=0; i<size; i+=skip_reading)
+	for(int i=1000; i<size*skip_reading; i+=skip_reading)
 	{
 		RasterMapPCL rmpcl;
-		rmpcl.setInputPts(pc_vec[i]);
-		for(int j=0; j<size; j+=skip_reading)
+		vector<geometry_msgs::Point32> combines_prior, prior_m5, prior_p5;
+		combines_prior = pc_vec[i].points;
+		//prior_m5 = getTransformedPts(ominus(poses[i-5], poses[i]), pc_vec[i-5].points);
+		//prior_p5 = getTransformedPts(ominus(poses[i+5], poses[i]), pc_vec[i+5].points);
+		//combines_prior.insert(combines_prior.begin(), prior_m5.begin(), prior_m5.end());
+		//combines_prior.insert(combines_prior.begin(), prior_p5.begin(), prior_p5.end());
+		rmpcl.setInputPts(combines_prior);
+		for(int j=0; j<i; j+=skip_reading)
 		{
-			//skip the first scan, only contain straight line
-			if(j==0) continue;
-			if(abs(j-i)<10) continue;
+			bool overwrite = false;
+
+			//if(j-i == skip_reading) overwrite = true;
+			//if(j-i>0 && !overwrite) continue;
+
+			if(abs(j-i)<20 && !overwrite) continue;
+
 			//cout<<i<<":"<<j<<"      \xd"<<flush;
 
-			if(scores_array[i][j]  > 80.)
+			if(scores_array[i/skip_reading][j/skip_reading]  > 40. || overwrite)
 			{
+				//putting rmpcl_ver declaration in line with the
+				//rmpcl causes problem where getScore function produce inconsistent result, strange
+				RasterMapPCL rmpcl_ver;
 				transform_info best_tf = rmpcl.getBestTf(pc_vec[j]);
-				src_pc.points = pc_vec[i].points;
+
+				//verification
+				rmpcl_ver.setInputPts(best_tf.real_pts, true);
+				double temp_score = rmpcl_ver.getScore(pc_vec[i].points);
+				double ver_score = sqrt(temp_score * best_tf.score);
+
+				src_pc.points = combines_prior;
 				query_pc.points = pc_vec[j].points;
+
 
 				cv::Mat cov = best_tf.covariance;
 				dst_pc.points.clear();
-				for(size_t k=0; k<best_tf.pts.size();k++)
+				for(size_t k=0; k<best_tf.real_pts.size();k++)
 				{
 
 					geometry_msgs::Point32 pt;
@@ -138,13 +178,16 @@ int main(int argc, char **argcv)
 				}
 
 				char enter_char;
-				cout<<"Match found at "<<i<<" "<<j<<" with score "<<best_tf.score <<" recorded "<<scores_array[i][j];
-				cout<<" Cov "<<cov;
-				cout<<" cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
-				cout<<best_tf.translation_2d<<" "<< best_tf.rotation/M_PI*180<<endl;
-				//cin >> enter_char;
-				//if(enter_char == 'x') return 0;
-				rate.sleep();
+				cout<<"Match found at "<<i<<" "<<j<<" with score "<<best_tf.score <<" recorded "<<scores_array[i/skip_reading][j/skip_reading] <<" ver_score "<<ver_score<<" "<<temp_score<<endl;
+
+				//cout<<" cov_x="<<sqrt(cov.at<float>(0,0))<<" cov_y="<<sqrt(cov.at<float>(1,1))<<" cov_t="<<sqrt(cov.at<float>(2,2))/M_PI*180<<endl;
+				//cout<<best_tf.translation_2d<<" "<< best_tf.rotation/M_PI*180<<endl;
+				cout<<i<<" "<<j<<" "<<best_tf.translation_2d.x<<" "<<best_tf.translation_2d.y<<" "<<best_tf.rotation<<"=="<<rotations_array[i/skip_reading][j/skip_reading]<<" ";
+				cout<<cov.at<float>(0,0)<<" "<<cov.at<float>(0,1)<<" "<<cov.at<float>(0,2)<<" "<<cov.at<float>(1, 1)<<" "<<cov.at<float>(1,2)<<" "<<cov.at<float>(2,2);
+				cout<<" ";
+				cin >> enter_char;
+				if(enter_char == 'x') return 0;
+				//rate.sleep();
 			}
 		}
 	}

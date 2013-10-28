@@ -1,0 +1,19 @@
+<launch>
+
+    <param name="use_sim_time" value="true"/>
+
+    <node name="fake_localization" pkg="fake_localization" type="fake_localization" respawn="false" />
+
+    <include file="$(find Launch)/golfcar/map_to_world.launch" />
+
+    <node pkg="stage" type="stageros" name="stageros" args="$(find hybrid_amcl)/worlds/utown.world" respawn="false">
+        <param name="base_watchdog_timeout" value="0.2"/>
+        <remap from="base_scan" to="sick_scan2"/>
+    </node>
+
+    <node name="plane_map_server" pkg="map_server" type="map_server" args="$(find amcl_pc)/maps/utown.yaml"/>
+
+    <include file="$(find Launch)/move_base.launch"/>
+    <node pkg="pose_tracking_pf" type="laser_repub" name="laser_repub"/>
+</launch>
+

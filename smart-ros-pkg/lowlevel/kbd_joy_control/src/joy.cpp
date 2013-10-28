@@ -13,12 +13,13 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
 #include <std_msgs/Float64.h>
+#include <std_msgs/Int32.h>
 #include <std_msgs/Bool.h>
 
 
-#define STEER_ANG_MAX 540
-#define FULL_BRAKE 180
-
+#define STEER_ANG_MAX 445
+#define FULL_BRAKE 100
+#define FULL_THROTTLE 1000
 ros::Publisher throttle_pub, steering_pub, brake_pub, lblinker_pub, rblinker_pub;
 
 
@@ -35,8 +36,8 @@ void joyCallBack(sensor_msgs::Joy joy_msg)
     ROS_INFO("Joystick: axes[0] (lat)=%f, axis[1] (lon)=%f, axis[2] (wheel)=%f",
     joy_msg.axes[0], joy_msg.axes[1], joy_msg.axes[2]);
 
-    std_msgs::Float64 V, B;
-    V.data = lon>0 ? lon : 0;
+    std_msgs::Int32 V, B;
+    V.data = lon>0 ? lon*FULL_THROTTLE : 0;
     B.data = lon>0 ? 0 : -lon*FULL_BRAKE;
     throttle_pub.publish(V);
     brake_pub.publish(B);
@@ -45,7 +46,7 @@ void joyCallBack(sensor_msgs::Joy joy_msg)
     W.data = lat * STEER_ANG_MAX;
     steering_pub.publish(W);
 
-    ROS_INFO("Resulting commands: throttle=%f, brake_angle=%f, steer_angle=%f",
+    ROS_INFO("Resulting commands: throttle=%d, brake_angle=%d, steer_angle=%f",
     V.data, B.data, W.data);
 
     std_msgs::Bool L, R;
@@ -72,9 +73,9 @@ int main(int argc, char **argv)
 
     ros::Subscriber sub = n.subscribe("joy", 1000, joyCallBack);
 
-    throttle_pub = n.advertise<std_msgs::Float64>("throttle", 1000);
+    throttle_pub = n.advertise<std_msgs::Int32>("throttle", 1000);
     steering_pub = n.advertise<std_msgs::Float64>("steer_angle", 1000);
-    brake_pub = n.advertise<std_msgs::Float64>("brake_angle", 1000);
+    brake_pub = n.advertise<std_msgs::Int32>("brake_angle", 1000);
     lblinker_pub = n.advertise<std_msgs::Bool>("left_blinker", 1000);
     rblinker_pub = n.advertise<std_msgs::Bool>("right_blinker", 1000);
 

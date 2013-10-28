@@ -1,11 +1,20 @@
 #PARAMETERS USED WITH ARDUINO LOWLEVEL SYSTEM
-kp: 0.6
-ki: 0.8
-kd: 0.1
-tau_v: 0.1
+#kp: 0.6
+#ki: 0.8
+#kd: 0.1
+#tau_v: 0.1
 
 #PARAMETERS USED WITH HAL LOWLEVEL SYSTEM
-# kp: 1.5
-# ki: 0.08
-# kd: 0.4
-# tau_v: 0.2
+kp: 0.02    #0.03
+ki: 0.01    #0.05
+kd: 0.06    #0.06
+
+kp_brake: 0.7
+ki_brake: 0.3
+
+tau_v: 0.2
+throttleZeroThres: 0.001
+coeff_brakepedal: 70
+
+err_threshold: 0.01
+#kp=1,kp1 work best for braking

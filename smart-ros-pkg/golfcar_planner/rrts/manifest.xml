@@ -18,5 +18,12 @@
   <depend package="laser_geometry"/>
   <depend package="geometry_msgs"/>
   <depend package="local_map_ext"/>
-  <depend package="golfcar_ppc" />
+  <depend package="golfcar_ppc"/>
+  <depend package="pnc_msgs"/>
+  
+  <export>
+    <cpp cflags="-I${prefix}/src/" lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lrrts"/>
+    <!-- <cpp cflags="-I${prefix}/src/" lflags="-L${prefix}/lib -lrrts"/> -->
+  </export>
+  
 </package>

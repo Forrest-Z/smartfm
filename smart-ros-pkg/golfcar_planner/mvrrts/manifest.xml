@@ -1,0 +1,22 @@
+<package>
+  <description brief="mvrrts">
+
+     mvrrts
+
+  </description>
+  <author>Pratik</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/mvrrts</url>
+  <depend package="roscpp"/>
+  <depend package="rospy"/>
+  <depend package="std_msgs"/>
+  <depend package="pnc_msgs"/>
+  <depend package="local_map_ext"/>
+  <depend package="map_server_ext"/>
+  <depend package="golfcar_ppc"/>
+  <depend package="rrts"/>
+
+</package>
+
+

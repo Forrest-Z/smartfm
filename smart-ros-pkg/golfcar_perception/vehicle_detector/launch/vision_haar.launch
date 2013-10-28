@@ -1,0 +1,7 @@
+<launch>
+	<node pkg="vehicle_detector" type="vehicle_detector" name="vehicle_detector" output="screen">
+    	<param name="image_transport" value="compressed"/>
+	    <param name="cascade_path" value="$(find vehicle_detector)/launch/cars3.xml"/>
+	</node>
+</launch>
+

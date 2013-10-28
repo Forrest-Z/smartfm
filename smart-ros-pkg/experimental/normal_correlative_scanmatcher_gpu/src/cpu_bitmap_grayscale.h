@@ -1,0 +1,1 @@
+/home/demian/project_cuda/v2/cpu_bitmap_grayscale.h

@@ -67,6 +67,7 @@ class Node:
         self.url = test_connection()
         self.delay = rospy.get_param('delay', 3)
         self.get_poly_defs()
+        self.get_junc_defs()
         self.lock = threading.Lock()
 
         self.subEA = rospy.Subscriber('tracksEA', Tracks, self.EA_Callback)
@@ -105,12 +106,17 @@ class Node:
         self.ea_poly = rospy.get_param('~ea_poly', [])
         self.sde_poly = rospy.get_param('~sde_poly', [])
 
+    def get_junc_defs(self):
+        self.junc_id = rospy.get_param('~junc_id', [])
+        
     def timer_Callback(self, event):
         self.get_poly_defs()
 
     def update_db(self, status):
         try:
-            f = urllib2.urlopen(self.url+'/update.php', urllib.urlencode({'Id':'tjunc', 'Status':status}))
+            #f = urllib2.urlopen(self.url+'/update.php', urllib.urlencode({'Id':'tjunc', 'Status':status}))
+            f = urllib2.urlopen(self.url+'/update.php', urllib.urlencode({'Id':self.junc_id, 'Status':status}))
+            
             xml = f.read()
             f.close()
         except urllib2.URLError:

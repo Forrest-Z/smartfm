@@ -1,8 +1,8 @@
 <launch>
+
+
   <node name="laser_republish" pkg="laser_maxrange_republish" type="laser_repub"/>
-  <!--node name="hokuyo_repub" pkg="laser_maxrange_republish" type="hokuyo_repub"/-->
-
-
+  <node name="hokuyo_repub" pkg="laser_maxrange_republish" type="hokuyo_repub"/>
 
     <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller"/>
     <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
@@ -18,7 +18,7 @@
         <param name="controller_patience" value="100.0" />
         <param name="base_global_planner" value="golfcar_gp/GlobalPlan"/>
         <param name="base_local_planner" value="golfcar_purepursuit/PurePursuitBase"/>
-        <param name="PurePursuitBase/tracking_distance" value="15.0"/>
+        <param name="PurePursuitBase/tracking_distance" value="5.0"/>
 
         <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params.yaml" command="load" ns="global_costmap" />
         <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params.yaml" command="load" ns="local_costmap" />

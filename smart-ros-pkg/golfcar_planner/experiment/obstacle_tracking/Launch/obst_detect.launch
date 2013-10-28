@@ -1,0 +1,7 @@
+<launch>
+	<param name="use_sim_time" value="false"/>
+	<node name ="obst_detect_test" pkg = "obstacle_tracking" type = "obst_detect" output="screen">
+		<remap from="base_scan" to ="/sickldmrs/scan0"/>
+	</node>
+	<!--node name ="obst_track_test" pkg = "obstacle_tracking" type = "obst_track" output="screen"/-->
+</launch>

@@ -1,0 +1,11 @@
+Running momdp on marking_the_route2_reamcl_0.1res_2013-08-20-14-49-25.bag
+1. roscore
+2. rosparam set use_sim_time true
+3. rosrun rviz rviz -d vis_file.vcg
+4. roslaunch laser_clustering_known_environment 4pedestrian_detect.launch 
+5. rosbag play marking_the_route2_reamcl_0.1res_2013-08-20-14-49-25.bag
+(Note: run without --clock since clock is included in bag)
+6. rosrun image_view image_view image:=camera_front/image_raw compressed
+7. rosrun map_server map_server utown_momdp.yaml 
+8. roslaunch Launch usbcam.launch (to launch only the camera front's tf)
+9. roslaunch ped_momdp_sarsop momdp.launch

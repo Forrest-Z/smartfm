@@ -120,6 +120,10 @@ void HOGClassifier::imageCallback(const sensor_msgs::ImageConstPtr& image)
     geometry_msgs::Point32 p;
     polyStamped.header = image->header;
     pc.header = image->header;
+
+    polyStamped.header.frame_id = "camera_front_base";
+    pc.header.frame_id  = "camera_front_base";
+
     for(size_t i=0; i< detect_rects.pd_vector.size(); i++)
     {
         double center_x = (detect_rects.pd_vector[i].cvRect_x1 + detect_rects.pd_vector[i].cvRect_x2)/2.0;
@@ -160,6 +164,7 @@ double HOGClassifier::getAngularDistance(double x)
 
     return angular_dist;
 }
+
 void HOGClassifier::updateParameter()
 {
     ros::NodeHandle nh("~");

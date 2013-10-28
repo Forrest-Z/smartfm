@@ -8,10 +8,10 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   sodipodi:docname="path_def.svg"
+   sodipodi:docname="dense_map_path_rrts.svg"
    height="4520"
    width="4251"
-   inkscape:version="0.47 r22583"
+   inkscape:version="0.48.3.1 r9886"
    id="svg2"
    version="1.1">
   <sodipodi:namedview
@@ -23,14 +23,14 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="1600"
-     inkscape:window-height="825"
+     inkscape:window-width="1855"
+     inkscape:window-height="1056"
      id="namedview32"
      showgrid="false"
-     inkscape:zoom="2.9728492"
-     inkscape:cx="1819.1892"
-     inkscape:cy="1552.1084"
-     inkscape:window-x="0"
+     inkscape:zoom="1.4864246"
+     inkscape:cx="1536.8703"
+     inkscape:cy="1361.3073"
+     inkscape:window-x="65"
      inkscape:window-y="24"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg2" />
@@ -475,7 +475,7 @@
      id="desc6">The paths consist of all the possible route that can be taken by the golfcart to serve 4 stations: DCC, MCD, EA and E3A</desc>
   <image
      style="fill:#aa4400;font-size:14px"
-     xlink:href="file:///home/golfcar/smartfm/old_code/mit_rrt/local_map_ext/bigeng_sde_map_0.1_cleaned_path.png"
+     xlink:href="file:///home/liuwlz/smartfm/old_code/mit_rrt/local_map_ext/bigeng_sde_map_0.1_cleaned_path.png"
      width="4251"
      height="4520"
      id="map"

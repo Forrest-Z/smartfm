@@ -1,0 +1,28 @@
+<package>
+  <description brief="laser_detector">
+
+     laser_detector
+
+  </description>
+  <author>sxt</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/laser_detector</url>
+  <depend package="roscpp"/>
+  <depend package="laser_geometry"/>
+  <depend package="opencv2"/>
+  <depend package="tf"/>
+  <depend package="sensor_msgs"/>
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
+  <depend package="nav_msgs"/>
+  <depend package="cv_bridge"/>
+  <depend package="std_msgs"/>
+  <depend package="image_transport"/>
+  <depend package="image_geometry"/>
+  <depend package="fmutil"/>
+  <depend package="svm_classifier"/>
+
+</package>
+
+

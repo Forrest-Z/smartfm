@@ -1,0 +1,23 @@
+<package>
+  <description brief="ped_navig_ped_gen">
+
+    a node to generate simulated pedestrians for the simulated world
+    the generation of pedestrians happen with the following parameters
+    a/ pedestrian arrival density on X and T
+    b/ pedestrian goals that they go navigate towards (future)
+    c/ individual social potential parameters (future)
+
+  </description>
+  <author>demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/ped_navig_ped_gen</url>
+  <depend package="roscpp"/>
+  <depend package="std_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="tf"/>
+
+</package>
+
+

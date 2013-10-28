@@ -1,0 +1,12 @@
+%YAML:1.0
+
+#road_map picture to load;
+image_path: "./launch/black_backgnd.jpg"
+map_scale: 0.5
+
+#accumulated_track_file to load;
+track_file_path: "./launch/ped_track.data"
+#parameters for track studying purposes, such as classification;
+track_size_thresh: 5
+track_time_thresh: 0.5
+track_length_thresh: 2.0

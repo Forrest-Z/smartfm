@@ -16,6 +16,8 @@
 
 #include "image_brightness_control/image_brightness.h"
 #include "image_brightness_control/control_command.h"
+#include <dynamic_reconfigure/server.h>
+#include "image_brightness_control/brightCTRConfig.h"
 
 using namespace std;
 using namespace ros;
@@ -23,26 +25,64 @@ using namespace tf;
 
 namespace golfcar_vision{
 
-    class brightness_control {
-        public:
-        brightness_control();
-        ~brightness_control();        
-    
-        private:
-        ros::NodeHandle nh_, private_nh_;
-        image_transport::ImageTransport it_;
-        image_transport::CameraSubscriber cam_sub_;
-	sensor_msgs::CvBridge bridge_;
-	void ImageCallBack( const sensor_msgs::ImageConstPtr& image_msg,
-					   const sensor_msgs::CameraInfoConstPtr& info_msg);
-   	ros::Publisher image_brightness_pub;
-	ros::Publisher control_command_pub;
-	int control_command_;
-	int expected_centroid_;
-	bool visualization_flag_;
-	void DrawHistogram(IplImage* imgHist, CvHistogram *hist);
-	void generate_ctrl_cmd(image_brightness_control::image_brightness & brightness_indicator);
+
+    class PID{
+    public:
+    	double p;
+    	double i;
+    	double d;
+    	double u;
+    	double u_lim_up;
+    	double u_lim_down;
+    	double delta_u_lim;
+    	double err;
+    	double pre_err;
+    	double pre_pre_err;
+    	double i_lim;
+    	void reset(void);
+    	double update(double err_in);
+
+
     };
+    class brightness_control {
+		public:
+		brightness_control();
+		~brightness_control();        
+
+		private:
+		ros::NodeHandle nh_, private_nh_;
+		image_transport::ImageTransport it_;
+		image_transport::CameraSubscriber cam_sub_;
+		sensor_msgs::CvBridge bridge_;
+		dynamic_reconfigure::Server<image_brightness_control::brightCTRConfig>  *srv;
+
+		void ImageCallBack( const sensor_msgs::ImageConstPtr& image_msg, const sensor_msgs::CameraInfoConstPtr& info_msg);
+					   
+		ros::Publisher image_brightness_pub;
+		ros::Publisher control_command_pub;
+
+		bool visualization_flag_;
+		void DrawHistogram(IplImage* imgHist, CvHistogram *hist);
+		
+		//useless now
+		double last_err, last_err2;
+		double cmd;
+		double k_p, k_i, k_d;
+        //useless now
+		double p_shutter_, i_shutter_, d_shutter_;
+		double p_gain_, i_gain_, d_gain_;
+
+		PID shuttle_pid;
+		PID gain_pid;
+
+		int shutter_value_, gain_value_, expected_centroid_;
+		bool shutter_control_, gain_control_, visualization_;
+		void reconfig(image_brightness_control::brightCTRConfig &config, uint32_t level);
+		image_brightness_control::control_command control_command_;
+		void generate_ctrl_cmd(image_brightness_control::image_brightness & brightness_indicator);
+		void shutter_control(int brightness_centroid);
+		void gain_control(int brightness_centroid);
+		};
 };
 
 #endif

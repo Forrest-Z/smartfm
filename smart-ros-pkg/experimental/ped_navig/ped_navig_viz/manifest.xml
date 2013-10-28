@@ -1,0 +1,21 @@
+<package>
+  <description brief="ped_navig_viz">
+
+  a visualization which shows:
+  a/ the golfcart's position in X-T configuration 
+  b/ the pedestrian shadow generated based on the real data set.
+
+  </description>
+  <author>demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/ped_navig_viz</url>
+  <depend package="roscpp"/>
+  <depend package="std_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="sensor_msgs"/>
+  <depend package="tf"/>
+
+</package>
+
+

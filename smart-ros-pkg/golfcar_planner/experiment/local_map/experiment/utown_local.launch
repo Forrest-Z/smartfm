@@ -1,0 +1,16 @@
+<launch>
+  <param name="use_sim_time" value="true"/>
+
+  <node name="local_map" pkg="local_map" type="local_map_node" output="screen">
+    <remap from="scan_in" to="sick_scan2"/>
+    <remap from="static_map" to="static_map_lane"/>
+  </node>
+
+  <node name="map_server_prior" pkg="map_server" type="map_server" args="$(find utown_plaza)/map_prior.yaml">
+    <remap from="static_map" to="static_map_lane"/>
+    <remap from="map" to="lane_map"/>
+  </node>
+
+  <include file="$(find local_map)/urdf/display.launch"/>	
+
+</launch>

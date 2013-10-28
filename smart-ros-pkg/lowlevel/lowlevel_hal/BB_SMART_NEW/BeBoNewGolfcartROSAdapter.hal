@@ -1,0 +1,43 @@
+# #######################################
+#
+# HAL file for BeagleBone + BigBad Golfcart Cape
+#
+# Derived from example hm2-stepper config
+#
+# ########################################
+
+# Launch the setup script to make sure hardware setup looks good
+loadusr -w [CONFIG](PATH)/BB_SMART_NEW/setup.sh
+
+# ###################################
+# Core EMC/HAL Loads
+# ###################################
+
+# load low-level drivers
+loadrt hal_bb_gpio output_pins=103,104,105,106,107,108,110,111,112,113,114,115,116,117,127,128,144,145 input_pins=211,212,213,214,215,120,121,122,123,124,125,126
+loadrt hal_pru_generic prucode=/home/linuxcnc/linuxcnc/rtlib/xenomai/pru_generic.bin pru=1 num_stepgens=0 num_pwmgens=1
+
+# create two threads
+loadrt threads name1=user_thread period1=1000000 name2=sampler_thread period2=10000000
+
+# and the ros publisher, subscriber
+#loadusr -Wn rosadapter [CONFIG](PATH)/BB_SMART/hal_ros_adapter.py -n rosadapter
+
+# connect realtime module to threads
+addf bb_gpio.read user_thread
+addf bb_gpio.write user_thread
+addf hal_pru_generic.capture-position user_thread
+addf hal_pru_generic.update user_thread 
+
+#Set up Trottle Control
+#tested with BB, running at 200 Hz able to achieve 10mV increment 
+#tested with Golfcat, running at 200Hz exibit unstable rotation
+#800Hz is recommended, which is found to be able to provide smooth
+#rotation while giving a precision at 1%
+setp hal_pru_generic.pwmgen.00.pwm_period 1250000
+setp hal_pru_generic.pwmgen.00.out.00.value 0
+setp hal_pru_generic.pwmgen.00.out.00.enable 1
+setp hal_pru_generic.pwmgen.00.out.00.scale 1
+setp hal_pru_generic.pwmgen.00.out.00.pin 101
+
+start

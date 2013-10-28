@@ -65,12 +65,12 @@ class RoadSurfaceRemoval
 		//remove and publish the laser with road surface removed
 		sensor_msgs::PointCloud laser_filtered = *laser;
 		//remove and publish the laser with only curb points
-		if(filter_laser(laser_filtered))
-		{
-			sensor_msgs::PointCloud2 laser_filtered2;
-			sensor_msgs::convertPointCloudToPointCloud2(laser_filtered, laser_filtered2);
-			laser_pub_.publish(laser_filtered2);
-		}
+		//disregard the status of the filter. This is to correct
+		//initialization problem where there could be no curb
+		filter_laser(laser_filtered);
+		sensor_msgs::PointCloud2 laser_filtered2;
+		sensor_msgs::convertPointCloudToPointCloud2(laser_filtered, laser_filtered2);
+		laser_pub_.publish(laser_filtered2);
 
 	}
 

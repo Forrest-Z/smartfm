@@ -70,7 +70,7 @@ class EncodersOdoNode:
         omsg = Encoders()
         omsg.dt = msg.dt
         omsg.stamp = msg.stamp
-        omsg.d_dist = (dl+dr)/2
+        omsg.d_dist = (dl)#+dr)/2
         omsg.d_th = (dr-dl)/self.distBtwWheels
         if omsg.dt>0:
             omsg.v = omsg.d_dist/omsg.dt

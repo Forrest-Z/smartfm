@@ -5,6 +5,7 @@
         <remap from="sickldmrs/cloud" to="sickldmrs/cloud"/>
         <param name="prior_distance_filter" value="0.2"/>
         <param name="radius" value="6"/>
+        <param name="use_octomap" value="false"/>
     </node>
 </launch>
 

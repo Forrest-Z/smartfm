@@ -1,16 +1,20 @@
+cmake_install.cmake
+
 build
 bin
+core
 lib
 msg_gen
 srv_gen
-cmake_install.cmake
 
+.cproject
+.project
+.pydevproject
+.settings
+
+*.cfgc
 *.o
 *.pyc
+
 .*.kate-swp
-.project
-.cproject
-core
-.pydevproject
-*.cfgc
-.settings
+

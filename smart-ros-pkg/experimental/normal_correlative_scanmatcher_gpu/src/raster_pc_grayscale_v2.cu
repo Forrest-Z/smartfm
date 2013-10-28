@@ -1,0 +1,1 @@
+/home/demian/project_cuda/v2/raster_pc_grayscale_v2.cu

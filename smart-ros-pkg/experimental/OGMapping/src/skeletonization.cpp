@@ -290,8 +290,9 @@ int main(int argc, char** argv)
     if(argc != 2){return -1;}
     if((src = cvLoadImage( argv[1], CV_LOAD_IMAGE_GRAYSCALE)) == 0){
     return -1;}
-    
-    int percent = 25;
+
+    int percent = 100;
+
     IplImage *destination = cvCreateImage( cvSize((int)((src->width*percent)/100) , (int)((src->height*percent)/100)),IPL_DEPTH_8U, 1);
     cvResize(src, destination);
     
@@ -305,14 +306,15 @@ int main(int argc, char** argv)
     color_edge = cvCreateImage(cvSize(destination->width,destination->height),IPL_DEPTH_8U, 3); 
     
     cvThreshold(destination, img, BINARY_THRESH, 255, CV_THRESH_BINARY);
-	 
-	 cvDilate(img, img, NULL, 5);
-	 cvErode(img, img, NULL, 5);
-	 
+
+    cvErode(img, img, NULL, 1);
+    cvDilate(img, img, NULL, 3);
+    cvErode(img, img, NULL, 2);
+
     cvNamedWindow("binary",1);
     cvShowImage("binary", img);
     
-    cvSaveImage( "/home/baoxing/bindary.jpg", img );
+    cvSaveImage( "binary.jpg", img );
     
     CvMat *mat = cvCreateMat( img->height, img->width, CV_32FC1);
     CvMat *Output_mat = cvCreateMat( img->height, img->width, CV_32FC1);
@@ -393,7 +395,8 @@ int main(int argc, char** argv)
 	 
 	 for(size_t i=0; i < edges.size(); i++) {
 					CvScalar ext_color;
-					ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 ); 
+					ext_color = CV_RGB( rand()&255, rand()&255, rand()&255 );
+					ext_color = CV_RGB( 0, 0, 255 );
         
         for(size_t j=0; j < edges[i].size(); j++) {
             int x = edges[i][j].x;
@@ -446,19 +449,19 @@ int main(int argc, char** argv)
 	 } while (!done);
 	 
 	 */
-    cvSaveImage( "/home/baoxing/skel.jpg", skel );
+    cvSaveImage( "skel.jpg", skel );
 	 cvNamedWindow("skeleton",1);
     cvShowImage("skeleton", skel);
     
-    cvSaveImage( "/home/baoxing/node.jpg", node );
+    cvSaveImage( "node.jpg", node );
 	 cvNamedWindow("node",1);
     cvShowImage("node", node);
     
-    cvSaveImage( "/home/baoxing/edge.jpg", edge );
+    cvSaveImage( "edge.jpg", edge );
 	 cvNamedWindow("edge",1);
     cvShowImage("edge", edge);
     
-    cvSaveImage( "/home/baoxing/color_edge.jpg", color_edge );
+    cvSaveImage( "color_edge.jpg", color_edge );
 	 cvNamedWindow("color_edge",1);
     cvShowImage("color_edge", color_edge);
     

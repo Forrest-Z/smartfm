@@ -1,0 +1,9 @@
+<launch>
+
+	<node name = "obst_filt" pkg="ccrrts" type="obst_filt"/>
+	
+	<node name = "constraint_filtered" pkg = "ccrrts" type = "constraint_process" output ="screen">  
+		<remap from="obst_info" to= "obst_info_exp"/>
+	</node>
+
+</launch>

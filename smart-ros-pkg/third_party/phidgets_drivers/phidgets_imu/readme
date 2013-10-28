@@ -1,0 +1,18 @@
+http://tordwessman.blogspot.sg/2012/01/running-phidgets-under-linuxubuntu.html
+
+Make the phidget devices accessable:
+
+*) Open/create the udev rule file
+$ sudo nano /etc/udev/rules.d/80_phidget.rules
+
+*) Add the following content:
+SUBSYSTEMS=="usb", ACTION=="add", ATTRS{idVendor}=="06c2", ATTRS{idProduct}=="00[3-a][0-f]", MODE="666"
+
+*) set USB_DEVFS_PATH to /dev/bus/usb by adding to ~/.bashrc:
+export USB_DEVFS_PATH=/dev/bus/usb
+
+*) restart udev:
+$ sudo service udev restart
+
+*) if it doesn't work. Try the good old:
+$ sudo reboot

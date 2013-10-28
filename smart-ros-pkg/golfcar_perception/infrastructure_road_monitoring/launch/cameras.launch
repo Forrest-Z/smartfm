@@ -14,6 +14,7 @@
         <include file="$(find infrastructure_road_monitoring)/launch/camera.launch">
             <arg name="device" value="/dev/video1" />
             <arg name="frame_id" value="sde_cam_img" />
+	    <!--arg name="absolute_exposure" value="20" /-->
         </include>
         <node pkg="image_view" type="image_view" name="image_view" output="screen">
             <remap from="image" to="camera/image_raw" />

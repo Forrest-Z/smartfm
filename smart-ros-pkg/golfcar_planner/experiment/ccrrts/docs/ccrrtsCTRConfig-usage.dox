@@ -1,0 +1,11 @@
+\subsubsection usage Usage
+\verbatim
+<node name="ccrrts" pkg="ccrrts" type="ccrrts">
+  <param name="GoalSamplingFreq" type="double" value="0.0" />
+  <param name="Planner_DT" type="double" value="0.5" />
+  <param name="MAX_Commited_Length" type="double" value="25.0" />
+  <param name="Gamma" type="double" value="1.5" />
+  <param name="RiskLimit" type="double" value="0.5" />
+</node>
+\endverbatim
+

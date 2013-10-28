@@ -18,7 +18,9 @@
   <depend package="fmutil"/>
   <depend package="laser_geometry"/>
   <depend package="message_filters"/>
-   <rosdep name="opencv2"/>
+  <depend package="popot"/>
+  <rosdep name="opencv2"/>
+  <rosdep name="libmysqlclient-dev"/>
   <!--depend package="slam_backend"/-->
 </package>
 

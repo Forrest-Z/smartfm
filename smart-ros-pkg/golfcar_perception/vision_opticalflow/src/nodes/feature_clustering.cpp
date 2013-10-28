@@ -196,11 +196,11 @@ void FeatureClusteringNode::clusterCallback(const vision_opticalflow::Feature::C
             
         }
         //after cluster every feature into a cluster, check if which cluster is too small then discard
-        std::cout << "clusters_pos size: " << clusters_pos.clusters_info.size() << std::endl;
+//         std::cout << "clusters_pos size: " << clusters_pos.clusters_info.size() << std::endl;
         for(unsigned int i = 0; i < clusters_pos.clusters_info.size(); i++)
         {
             
-            if(clusters_pos.clusters_info[i].members.size() >= 0)
+            if(clusters_pos.clusters_info[i].members.size() > 0)
             {
                 clusters_out.clusters_info.push_back(clusters_pos.clusters_info[i]);
 //                 std::cout << "erase: " << i << std::endl;
@@ -211,8 +211,8 @@ void FeatureClusteringNode::clusterCallback(const vision_opticalflow::Feature::C
 //                 std::cout << "cluster size: " << clusters_pos.clusters_info[i].members.size() << std::endl;
             }
         }
-        std::cout << "clusters_out size: " << clusters_out.clusters_info.size() << std::endl;
-        std::cout << "###------------------------------------###" << std::endl;
+//         std::cout << "clusters_out size: " << clusters_out.clusters_info.size() << std::endl;
+//         std::cout << "###------------------------------------###" << std::endl;
     }
     cluster_pub_.publish(clusters_out);
     
