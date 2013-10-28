@@ -1,14 +1,21 @@
 <launch>
 
-    <!--
+    
     <node pkg="dead_reckoning" name="encoderImu_integrator" type="odom_IMU" output="screen">
         <remap from="odom" to="encoder_imu_odom"/>
+	<remap from="encoder_odo" to="encoder_odo"/>
         <param name="frame_id" value="encoder_imu_odom"/>
     </node>
-    -->
+
+    <node pkg="dead_reckoning" name="encoderImu_integrator_phidget" type="odom_IMU" output="screen">
+        <remap from="odom" to="encoder_imu_odom_phidget"/>
+	<remap from="encoder_odo" to="bb_encoder_odo"/>
+        <param name="frame_id" value="encoder_imu_odom_phidget"/>
+	<!--remap from="/ms/imu/data" to="/imu/data"/-->
+    </node>
 
     <node pkg="dead_reckoning" name="odom_republish" type="odom_republish.py">
-        <remap from="input_topic" to="encoder_odom"/>
+        <remap from="input_topic" to="encoder_imu_odom"/>
     </node>
 
     <node pkg="dead_reckoning" name="simple_odo_node_encoders" type="simple_odo_node" args="encoder_odom" output="screen"/>
