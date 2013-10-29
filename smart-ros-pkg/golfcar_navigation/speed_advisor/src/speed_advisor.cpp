@@ -128,7 +128,7 @@ SpeedAdvisor::SpeedAdvisor()
     nh.param("slow_zone", slow_zone_, 10.0);
     nh.param("slow_speed", slow_speed_, 1.5);
     nh.param("baselink_carfront_length", baselink_carfront_length_, 2.0);
-    nh.param("kinematic_acceleration", kinematics_acc_, true);
+    nh.param("kinematic_acceleration", kinematics_acc_, false);
 
     speed_settings_.max_neg_speed_ = -max_dec_ / frequency_;
     speed_settings_.pos_speed_ = acc_ / frequency_;
@@ -178,7 +178,11 @@ void SpeedAdvisor::slowZoneCallback(geometry_msgs::PoseArrayConstPtr slowzones)
 void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
 {
     ROS_DEBUG_NAMED("ctrl_loop", "Control Loop: t=%f", ros::Time::now().toSec());
-
+    
+    double turning_const = high_speed_*high_speed_/0.8;
+    double turn_speed = sqrt(turning_const*(0.8-move_status_.steer_angle));
+    speed_settings_.add("turning speed", SpeedAttribute::slow_zone, turn_speed);
+    
     // Add a normal speed profile
     if(move_status_.backward_driving)
         speed_settings_.add( "bwd driving", SpeedAttribute::bwd_driving, bwd_speed_);
@@ -237,12 +241,12 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     double obs_dist = move_status_.obstacles_dist;
 
     // Obstacle is very close (emergency zone)
-    if(obs_dist<=e_zone_)
-        speed_settings_.add_brake("Obs within emergency zone!", SpeedAttribute::e_zone);
+    //if(obs_dist<=e_zone_)
+    //    speed_settings_.add_brake("Obs within emergency zone!", SpeedAttribute::e_zone);
 
     // Obstacle is not so close (slow zone)
-    if( obs_dist < slow_zone_ )
-        speed_settings_.add( "Obs within safety zone", SpeedAttribute::warn_brake, slow_speed_);
+    //if( obs_dist < slow_zone_ )
+    //    speed_settings_.add( "Obs within safety zone", SpeedAttribute::warn_brake, slow_speed_);
 
     // Compute some deceleration value based on the distance to the
     // nearest obstacle

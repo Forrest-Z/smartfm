@@ -20,7 +20,7 @@
 
 #include <fmutil/fm_math.h>
 
-#include <phidget_encoders/EncoderOdo.h>
+#include <phidget_encoders/Encoders.h>
 
 
 class OdoIMU
@@ -29,7 +29,7 @@ class OdoIMU
         OdoIMU();
 
     private:
-        void encodersCallBack(phidget_encoders::EncoderOdo);
+        void encodersCallBack(phidget_encoders::Encoders);
         void imuCallBack(sensor_msgs::Imu);
         void publishOdo();
 
@@ -87,7 +87,7 @@ void OdoIMU::imuCallBack(sensor_msgs::Imu imuMsg)
 }
 
 
-void OdoIMU::encodersCallBack(phidget_encoders::EncoderOdo encMsg)
+void OdoIMU::encodersCallBack(phidget_encoders::Encoders encMsg)
 {
     //handle the nan issue. This occurs when the imu is restarted
     if( isnan(roll_) || isnan(pitch_) || isnan(yaw_) )

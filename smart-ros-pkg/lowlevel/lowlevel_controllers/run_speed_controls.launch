@@ -1,0 +1,6 @@
+<launch>
+    <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
+        <rosparam file="$(find lowlevel_controllers)/speed_controller.yaml" command="load" />
+        <remap from="encoder_odo" to="encoder_odo"/>
+    </node>
+</launch>
