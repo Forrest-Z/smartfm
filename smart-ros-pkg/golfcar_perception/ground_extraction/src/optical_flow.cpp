@@ -38,14 +38,15 @@ void optical_flower::imageCallback(const sensor_msgs::ImageConstPtr& image)
 	//cv_bridge::CvImagePtr cv_image;
 	try
 	{
-		cv_image_ = cv_bridge::toCvCopy(image, "bgra8");
+		cv_image_ = cv_bridge::toCvCopy(image, "bgr8");
 	}
 	catch (cv_bridge::Exception& e)
 	{
 		ROS_ERROR("cv_bridge exception: %s", e.what());
 	}
 	cv_image_->image.copyTo(frame1_rgb_);
-	cvtColor(cv_image_->image, frame1_, CV_BGR2GRAY);
+	cvtColor(frame1_rgb_, frame1_, CV_BGR2GRAY);
+
 	if(frame0_.empty()==true)
 	{
 		frame1_.copyTo(frame0_);
@@ -56,6 +57,7 @@ void optical_flower::imageCallback(const sensor_msgs::ImageConstPtr& image)
         // Upload images to the GPU
         frame1GPU.upload(frame1_);
         frame0GPU.upload(frame0_);
+
         // Do the dense optical flow
         dflow(frame0GPU,frame1GPU,uGPU,vGPU);
 
@@ -63,7 +65,9 @@ void optical_flower::imageCallback(const sensor_msgs::ImageConstPtr& image)
         vGPU.download(imgV);
 
         Mat flow_rgb, motion_flow;
-    	// Draw the optical flow results
+    	// Draw the optical flow results;
+        frame1_rgb_.copyTo(flow_rgb);
+        frame1_rgb_.copyTo(motion_flow);
     	drawColorField(imgU,imgV,flow_rgb);
     	drawMotionField(imgU,imgV,motion_flow,15,15,.0,1.0,CV_RGB(0,255,0));
         imshow("Dense Flow",flow_rgb);
@@ -72,6 +76,9 @@ void optical_flower::imageCallback(const sensor_msgs::ImageConstPtr& image)
     	//imshow("meanShiftSeg", seg_img);
     	cv_image_->image = motion_flow;
     	image_pub_.publish(cv_image_->toImageMsg());
+
+		frame1_.copyTo(frame0_);
+		frame1_rgb_.copyTo(frame0_rgb_);
 	}
 }
 
