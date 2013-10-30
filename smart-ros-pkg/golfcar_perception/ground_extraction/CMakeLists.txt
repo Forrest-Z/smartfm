@@ -46,4 +46,10 @@ rosbuild_add_boost_directories()
 
 rosbuild_add_executable(ground_extraction src/ground_extraction.cpp)
 target_link_libraries(ground_extraction ${OpenCV_LIBS})
+
+rosbuild_add_library(flow_functions src/flow_functions.cpp)
+target_link_libraries(flow_functions ${OpenCV_LIBS})
+rosbuild_add_executable(optical_flow src/optical_flow.cpp)
+target_link_libraries(optical_flow ${OpenCV_LIBS} flow_functions)
+
 #rosbuild_link_boost(vehicle_detection signals)
