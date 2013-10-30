@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="map_server" type="map_server" name="map_server2" args="$(find amcl_pc)/maps/bigeng_sde_map.yaml"/>
+    <!--node pkg="map_server" type="map_server" name="map_server2" args="$(find local_map_ext)/1_0.2.yaml"/-->
+</launch>
+

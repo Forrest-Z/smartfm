@@ -1,0 +1,13 @@
+<launch>
+
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find science_center)/science_center4.yaml"/>
+	<node name="amcl" pkg="amcl" type="amcl" respawn="false" output="screen">
+        <param name="odom_alpha3" value="0.2"/>
+        <param name="update_min_d" value="0.2"/>
+        <param name="laser_max_beams" value="70"/>
+		<remap from="scan" to="front_top_scan"/>		
+    </node>
+
+    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find science_center)/science_center_viz.vcg" />
+
+</launch>
