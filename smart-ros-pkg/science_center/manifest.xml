@@ -1,0 +1,14 @@
+<package>
+  <description brief="science_center">
+
+     science_center
+
+  </description>
+  <author>golfcar</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/science_center</url>
+
+</package>
+
+
