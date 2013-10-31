@@ -2,10 +2,11 @@
 
 ground_extracter::ground_extracter(ros::NodeHandle &n) : private_nh_("~"), n_(n), it_(n_)
 {
-    image_sub_ = it_.subscribe("/camera_front/image_ipm", 1, &ground_extracter::imageCallback, this);
+    image_sub_ = it_.subscribe("/camera_front/image_raw", 1, &ground_extracter::imageCallback, this);
     image_pub_ = it_.advertise("/camera_front/image_seg", 1);
     edge_pub_ = it_.advertise("/camera_front/image_edge", 1);
 }
+
 ground_extracter::~ground_extracter()
 {
 
