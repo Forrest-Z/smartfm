@@ -14,6 +14,7 @@
 #include <geometry_msgs/PolygonStamped.h>
 
 #include "farneback_flow.h"
+#include "opencv2/nonfree/features2d.hpp"
 
 using namespace std;
 using namespace message_filters;

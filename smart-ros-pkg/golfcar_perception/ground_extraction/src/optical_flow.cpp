@@ -27,6 +27,7 @@ optical_flower::optical_flower(ros::NodeHandle &n) : private_nh_("~"), n_(n), it
 
     namedWindow("Dense Flow",CV_WINDOW_NORMAL);
     namedWindow("Motion Flow",CV_WINDOW_NORMAL);
+    namedWindow("Feature Points",CV_WINDOW_NORMAL);
 }
 optical_flower::~optical_flower()
 {
@@ -46,6 +47,15 @@ void optical_flower::imageCallback(const sensor_msgs::ImageConstPtr& image)
 	}
 	cv_image_->image.copyTo(frame1_rgb_);
 	cvtColor(frame1_rgb_, frame1_, CV_BGR2GRAY);
+
+	Mat img_copy;
+	frame1_.copyTo(img_copy);
+	int minHessian = 500;
+	cv::SurfFeatureDetector detector( minHessian );
+	std::vector<KeyPoint> keypoints_1;
+	detector.detect( img_copy, keypoints_1 );
+	drawKeypoints(img_copy, keypoints_1, img_copy);
+	imshow("Feature Points", img_copy);
 
 	if(frame0_.empty()==true)
 	{
