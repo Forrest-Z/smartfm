@@ -52,4 +52,10 @@ target_link_libraries(flow_functions ${OpenCV_LIBS})
 rosbuild_add_executable(optical_flow src/optical_flow.cpp)
 target_link_libraries(optical_flow ${OpenCV_LIBS} flow_functions)
 
-#rosbuild_link_boost(vehicle_detection signals)
+rosbuild_add_executable(feature_points src/feature_points.cpp)
+target_link_libraries(feature_points ${OpenCV_LIBS})
+
+rosbuild_add_executable(stereo_object_flow src/stereo_object_flow.cpp)
+target_link_libraries(stereo_object_flow ${OpenCV_LIBS})
+rosbuild_link_boost(stereo_object_flow signals)
+
