@@ -26,7 +26,7 @@ namespace golfcart_vision
 class StereoProcessor
 {
 
-private:
+protected:
 	boost::shared_ptr<image_transport::ImageTransport> it_;
 
 	// Subscriptions
