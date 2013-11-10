@@ -82,7 +82,11 @@ namespace golfcart_vision
 			//pay attention here;
 			disparity_mat = cv_bridge::toCvCopy(disp_msg->image, disp_msg->image.encoding);
 
-			for(size_t i=0; i<keypoints_1_.size(); i++){points3D_1_.points.push_back(keypoint2Dto3D(keypoints_1_[i], disparity_mat->image, disp_msg->min_disparity));}
+			for(size_t i=0; i<keypoints_1_.size(); i++)
+			{
+				geometry_msgs::Point32 point_tmp = keypoint2Dto3D(keypoints_1_[i], disparity_mat->image, disp_msg->min_disparity);
+				if(point_tmp.z < DBL_MAX - 1.0) points3D_1_.points.push_back(point_tmp);
+			}
 
 			try
 			{
