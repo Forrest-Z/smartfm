@@ -10,7 +10,7 @@
 
 #include "stereo_processor_base.h"
 
-#define INVALID_Z_VALUE 1000.0
+#define INVALID_Z_VALUE 1000000.0
 
 using namespace cv;
 
@@ -31,8 +31,9 @@ namespace golfcart_vision
 		std::vector<KeyPoint> keypoints_0_, keypoints_1_;
 		Mat descriptors_0_, descriptors_1_;
 		sensor_msgs::PointCloud points3D_0_, points3D_1_;
+		Mat frame0_, frame1_;
 
-		ros::Publisher objectflow_pub_;
+		ros::Publisher objectflow_pub_, current_POIs_pub_, previous_POIs_pub_;
 		ros::NodeHandle nh_;
 
 		stereo_object_flow()
@@ -49,6 +50,8 @@ namespace golfcart_vision
 			matcher_   = new FlannBasedMatcher();
 
 			objectflow_pub_ = nh_.advertise<geometry_msgs::PoseArray>("objectflow", 2);
+			current_POIs_pub_ = nh_.advertise<sensor_msgs::PointCloud>("current_POIs", 2);
+			previous_POIs_pub_ = nh_.advertise<sensor_msgs::PointCloud>("previous_POIs", 2);
 		}
 
 		void imageCb(const ImageConstPtr& l_image_msg,
@@ -72,6 +75,8 @@ namespace golfcart_vision
 			}
 			Mat current_frame;
 			cvtColor(cv_image_->image, current_frame, CV_BGR2GRAY);
+			current_frame.copyTo(frame1_);
+
 			feature_detector_->detect( current_frame, keypoints_1_ );
 			extractor_->compute( current_frame, keypoints_1_, descriptors_1_ );
 
@@ -85,7 +90,7 @@ namespace golfcart_vision
 			for(size_t i=0; i<keypoints_1_.size(); i++)
 			{
 				geometry_msgs::Point32 point_tmp = keypoint2Dto3D(keypoints_1_[i], disparity_mat->image, disp_msg->min_disparity);
-				if(point_tmp.z < DBL_MAX - 1.0) points3D_1_.points.push_back(point_tmp);
+				points3D_1_.points.push_back(point_tmp);
 			}
 
 			try
@@ -128,9 +133,22 @@ namespace golfcart_vision
 					}
 				}
 
+				Mat img_matches;
+				//there is a bug in drawMatches;
+				//http://answers.opencv.org/question/12048/drawmatches-bug/
+				drawMatches( frame0_, keypoints_1_, frame1_, keypoints_0_, good_matches, img_matches, Scalar::all(-1), Scalar::all(-1), vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
+
+				//-- Show detected matches
+				imshow( "Good Matches", img_matches );
+				waitKey(3);
 				objectflow_pub_.publish(object_flow);
+
+				points3D_0_.header = points3D_1_.header;
+				current_POIs_pub_.publish(points3D_1_);
+				previous_POIs_pub_.publish(points3D_0_);
 			}
 
+			frame1_.copyTo(frame0_);
 			keypoints_0_ = keypoints_1_;
 			descriptors_0_ = descriptors_1_;
 			points3D_0_ = points3D_1_;
@@ -145,8 +163,8 @@ namespace golfcart_vision
 			double disparity_value;
 
 
-			disparity_value = disp_mat.at<float>(left_uv.x,left_uv.y);
-			if(disparity_value <= disp_min){feature3D.x=0.0; feature3D.y=0.0; feature3D.z = DBL_MAX;}
+			disparity_value = disp_mat.at<float>(left_uv.y,left_uv.x);
+			if(disparity_value <= disp_min){feature3D.x=0.0; feature3D.y=0.0; feature3D.z = INVALID_Z_VALUE;}
 			else model_.projectDisparityTo3d(left_uv, disparity_value, feature3D);
 
 			geometry_msgs::Point32 point_tmp;
@@ -159,11 +177,12 @@ namespace golfcart_vision
 		geometry_msgs::Pose calcFlowVector(int current_index, int ref_index)
 		{
 			geometry_msgs::Pose object_flow;
-			object_flow.position.z = INVALID_Z_VALUE + 0.001;
-			if(points3D_1_.points[current_index].z > INVALID_Z_VALUE || points3D_0_.points[current_index].z > INVALID_Z_VALUE) return object_flow;
+            tf::poseTFToMsg(tf::Pose(tf::createIdentityQuaternion(), btVector3(0.0, 0.0, 0.0)), object_flow);
 
-			double delt_x = points3D_1_.points[current_index].x - points3D_0_.points[current_index].x;
-			double delt_y = points3D_1_.points[current_index].y - points3D_0_.points[current_index].y;
+			if(points3D_1_.points[current_index].z > INVALID_Z_VALUE/2.0 || points3D_0_.points[ref_index].z > INVALID_Z_VALUE/2.0) return object_flow;
+
+			double delt_x = points3D_1_.points[current_index].x - points3D_0_.points[ref_index].x;
+			double delt_y = points3D_1_.points[current_index].y - points3D_0_.points[ref_index].y;
 			//double delt_z = points3D_1_.points[current_index].z - points3D_0_.points[current_index].z;
 			double yaw_tmp = atan2(delt_y, delt_x);
 
