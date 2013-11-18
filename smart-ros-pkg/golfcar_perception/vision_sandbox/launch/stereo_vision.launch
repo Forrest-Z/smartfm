@@ -1,0 +1,38 @@
+<launch>
+	<param name="/use_sim_time" value="true"/>
+
+	<node pkg="tf" type="static_transform_publisher" name="odom_combined_to_odom" args="0.0, 0.0, 0.1 0.0 0.0 0.0 /odom_combined /odom 10" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_stereo_camera_base" args="1.75, 0.0, 1.32 -0.0 0.16 -0.0 /base_link /stereo_camera_base 10" />
+    	<node pkg="tf" type="static_transform_publisher" name="stereo_camera_base_to_img" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /stereo_camera_base /stereo_camera 10" />
+	
+	<!--image_transport$ ./bin/republish compressed in:=/stereo_camera/right/image_raw raw out:=/stereo_camera/right/image_raw-->
+	<!--image_transport$ ./bin/republish compressed in:=/stereo_camera/left/image_raw raw out:=/stereo_camera/left/image_raw-->
+	
+	<!-- Arguments -->
+	<arg name="bagfile" default="bagfile.bag"/> <!-- Your bagfile here -->
+	<arg name="camera" default="/stereo_camera" /> <!-- The namespace where images are published -->
+	<arg name="disparity_params" default="disparity_params.yaml"/> <!-- Camera calibration parameters -->	
+
+	<!-- Run the ROS package stereo_image_proc -->
+	<group ns="$(arg camera)" >
+		<node pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc">
+			<!--param name="image_transport" value="compressed"/-->
+			<!--param name="image_transport" value="compressed"/-->
+	    	<!--rosparam file="$(arg disparity_params)"/-->
+		</node>
+	</group>
+
+	<!-- Run the viso2_ros package -->
+	<!--node pkg="viso2_ros" type="stereo_odometer" name="stereo_odometer" output="screen">
+		<remap from="stereo" to="$(arg camera)"/>
+		<remap from="image" to="image_rect"/>
+		<param name= "max_features" value = "10"/>
+	</node-->
+
+	<!--node pkg="elas_ros" type="elas_ros" name="elas" args="stereo:=stereo_camera image:=image_rect_color" respawn="true">
+		<param name="approximate_sync" value="true" />
+	</node-->
+
+	<!--node pkg="elas_ros" type="pc_construction" name="elas_pc"  args="frame_data:=/elas/frame_data pose:=/stereo_odometer/pose base_frame_id:=/odom_combined pose_frame_id:=/base_link" /-->
+	
+</launch>

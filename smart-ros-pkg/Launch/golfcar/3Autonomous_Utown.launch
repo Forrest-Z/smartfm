@@ -7,6 +7,7 @@
     <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller"/>
     <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
         <rosparam file="$(find lowlevel_controllers)/speed_controller.yaml" command="load" />
+        <remap from="encoder_odo" to="encoder_odo"/>
     </node>
 
     <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
@@ -28,5 +29,6 @@
     </node>
 
     <!--node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation.vcg" /-->
-
+    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/>
+    <include file="$(find sound_speaker)/launch/sound_speaker.launch"/>
 </launch>

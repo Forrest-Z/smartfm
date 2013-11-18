@@ -1,0 +1,34 @@
+<launch>
+
+
+  <node name="laser_republish" pkg="laser_maxrange_republish" type="laser_repub"/>
+  <node name="hokuyo_repub" pkg="laser_maxrange_republish" type="hokuyo_repub"/>
+
+    <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller"/>
+    <node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
+        <rosparam file="$(find lowlevel_controllers)/speed_controller.yaml" command="load" />
+        <remap from="encoder_odo" to="encoder_odo"/>
+    </node>
+
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
+        <remap from="cmd_vel" to="cmd_steer"/>
+        <remap from="map" to="curb_map"/>
+
+        <param name="footprint_padding" value="0.01" />
+        <param name="controller_frequency" value="20.0" />
+        <param name="controller_patience" value="100.0" />
+        <param name="base_global_planner" value="golfcar_gp/GlobalPlan"/>
+        <param name="base_local_planner" value="golfcar_purepursuit/PurePursuitBase"/>
+        <param name="PurePursuitBase/tracking_distance" value="5.0"/>
+
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/local_costmap_params_close.yaml" command="load" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/global_costmap_params.yaml" command="load" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/sbpl_global_params.yaml" command="load" />
+    </node>
+
+    <!--node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation.vcg" /-->
+    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/>
+    <include file="$(find sound_speaker)/launch/sound_speaker.launch"/>
+</launch>
