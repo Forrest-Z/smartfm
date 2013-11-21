@@ -29,6 +29,7 @@ private:
     tf::TransformListener tf_;
 
     bool has_reached_;
+    geometry_msgs::PoseStamped goal;
 
     bool goToDest();
     void initDest(const Station & start, const Station & end);
