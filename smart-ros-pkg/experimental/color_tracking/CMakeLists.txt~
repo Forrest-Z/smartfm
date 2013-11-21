@@ -30,6 +30,6 @@ find_package(OpenCV REQUIRED)
 rosbuild_add_executable(color_tracking src/color_tracking.cpp)
 target_link_libraries(color_tracking ${OpenCV_LIBS})
 
-rosbuild_add_executable(color_tracking src/color_tracking.cpp)
-target_link_libraries(color_tracking ${OpenCV_LIBS})
+rosbuild_add_executable(get_HSV_bound src/get_HSV_bound.cpp)
+target_link_libraries(get_HSV_bound ${OpenCV_LIBS})
 
