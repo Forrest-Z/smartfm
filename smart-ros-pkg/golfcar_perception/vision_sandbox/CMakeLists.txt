@@ -59,3 +59,10 @@ rosbuild_add_executable(stereo_object_flow src/stereo_object_flow.cpp)
 target_link_libraries(stereo_object_flow ${OpenCV_LIBS})
 rosbuild_link_boost(stereo_object_flow signals)
 
+rosbuild_add_executable(latentsvm_multidetect src/latentsvm_multidetect.cpp)
+target_link_libraries(latentsvm_multidetect ${OpenCV_LIBS})
+
+rosbuild_add_executable(vehicle_detection src/vehicle_detection.cpp)
+target_link_libraries(vehicle_detection ${OpenCV_LIBS})
+rosbuild_link_boost(vehicle_detection signals)
+
