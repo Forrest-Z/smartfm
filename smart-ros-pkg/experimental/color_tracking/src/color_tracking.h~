@@ -33,6 +33,7 @@
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
+#include <geometry_msgs/Point.h>
 
 //******************************************************************************
 //******************************************************************************
@@ -47,7 +48,7 @@ using namespace cv;
 
 //Class declaration
 
-class color_tracking{
+class color_tracking {
   
 public:
   color_tracking(ros::NodeHandle &n);
@@ -58,17 +59,19 @@ private:
   image_transport::ImageTransport it_;
   image_transport::Subscriber image_sub_;
   image_transport::Publisher image_pub_;
+
   void imageCallback(const sensor_msgs::ImageConstPtr& image);
+  cv::Mat GetThresholdedImage(Mat imgHSV, cv::Scalar lowerBound, cv::Scalar upperBound);
+  cv::Point trackObject(Mat imgThresh);
   cv_bridge::CvImagePtr cv_image_;
   
   Mat frame0_, frame1_hsv_;
   Mat frame0_rgb_, frame1_rgb_;
   Mat imgThresh1_, imgThresh2_;
   
-  cv::Point trackingPoint1;
-  cv::Point trackingPoint2;
-  cv::Point lastPoint1;
-  cv::Point lastPoint2;
-}
+  cv::Point trackingPoint1, trackingPoint2;
+  cv::Point lastPoint1, lastPoint2;
+  geometry_msgs::Point trackingPoint1_ros, trackingPoint2_ros;
+};
 
 #endif // COLOR_TRACKING_H
