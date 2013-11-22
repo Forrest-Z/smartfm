@@ -1,0 +1,34 @@
+<launch>
+     <node pkg="dead_reckoning" name="encoderImu_integrator" type="odom_IMU" output="screen">
+	<remap from="ms/imu/data" to="imu/data"/>
+        <remap from="odom" to="can_imu_odom"/>
+        <param name="frame_id" value="can_imu_odom"/>
+    </node>
+    <node pkg="dead_reckoning" name="odom_republish" type="odom_republish.py">
+        <remap from="encoder_odom" to="can_imu_odom"/>
+    </node>
+    <node pkg="can_reader" name="can_speed_integral" type="can_speed_integral" output="screen"/>
+    <node pkg="can_reader" name="can_reader" type="can_reader" />
+    <!--node pkg="lse_xsens_mti" name="mti_node" type="mti_node">
+	<param name="port" value="/dev/ttyUSB0"/>
+    </node>
+    <include file="$(find phidgets_imu)/launch/imu.launch"/-->
+    <node pkg="xsens_driver" type="mtnode.py" name="xsens_driver" output="screen" >
+	<param name="frame_id" value="/imu" />
+	<param name="device" value="/dev/ttyUSB0"/>
+	<remap from="imu/data" to="imu/data_raw"/>
+    </node>
+    <!--node pkg="ethzasl_xsens_driver" type="imu_filter_node" name="imu_filter">
+      <param name="use_mag" value="false"/>
+      <param name="zeta" value="0.1"/>
+    </node-->
+    <node pkg="nodelet" type="nodelet" name="imu_manager" 
+    args="manager" output="screen" />
+    <node pkg="nodelet" type="nodelet" name="ImuFilterNodelet" 
+      args="load imu_filter_madgwick/ImuFilterNodelet imu_manager" 
+      output="screen">
+      <param name="use_mag" value="false"/>
+      <param name="zeta" value="0.1"/>
+    </node>
+</launch>
+
