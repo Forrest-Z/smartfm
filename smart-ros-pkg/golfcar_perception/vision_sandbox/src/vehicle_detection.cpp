@@ -41,10 +41,12 @@ void vehicle_detection::imageCallback(const sensor_msgs::ImageConstPtr& image)
 	}
 	Mat mat_img;
 	resize(cv_image_->image, mat_img, Size(cv_image_->image.cols, cv_image_->image.rows), 0,0);
+	Rect ROI (0, 0, cv_image_->image.cols, cv_image_->image.rows);
+	Mat imageROI (mat_img, ROI);
 
-	detectAndDrawObjects(mat_img, *LatentSVMdetector_, colors_, overlap_threshold_, threadNum_);
+	detectAndDrawObjects(imageROI, *LatentSVMdetector_, colors_, overlap_threshold_, threadNum_);
 
-	cv_image_->image = mat_img;
+	cv_image_->image = imageROI;
 	image_pub_.publish(cv_image_->toImageMsg());
 	//waitKey(30);
 }

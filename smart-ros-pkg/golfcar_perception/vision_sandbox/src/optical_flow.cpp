@@ -3,7 +3,7 @@
 optical_flower::optical_flower(ros::NodeHandle &n) : private_nh_("~"), n_(n), it_(n_)
 {
     image_sub_ = it_.subscribe("/camera_front/image_raw", 1, &optical_flower::imageCallback, this);
-    image_pub_ = it_.advertise("/camera_front/image_opticalflow", 1)
+    image_pub_ = it_.advertise("/camera_front/image_opticalflow", 1);
 
     // Some global variables for the optical flow
     const int numLevels = 4;
@@ -54,8 +54,7 @@ void optical_flower::imageCallback(const sensor_msgs::ImageConstPtr& image)
 	cv::SurfFeatureDetector detector( minHessian );
 	std::vector<KeyPoint> keypoints_1;
 	detector.detect( img_copy, keypoints_1 );
-	drawKeypoints(im
-g_copy, keypoints_1, img_copy);
+	drawKeypoints(img_copy, keypoints_1, img_copy);
 	imshow("Feature Points", img_copy);
 
 	if(frame0_.empty()==true)
