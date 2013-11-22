@@ -31,11 +31,13 @@ void SimpleGoal::initDest(const Station & start, const Station & end)
     std_msgs::UInt16 sound_data;
     sound_data.data = 1;
     sound_pub_.publish(sound_data);
+
     ROS_INFO("sent goal: [%f %f]", goal.pose.position.x, goal.pose.position.y);
 }
 
 void SimpleGoal::speedStatusCallBack(const pnc_msgs::speed_contribute &msg)
 {
+	goal_pub_.publish(goal);
     has_reached_ = msg.goal;
     eta_ = has_reached_ ? 0 : msg.dist_goal / 2; //velocity is taken as constant 2m/s
 }

@@ -30,6 +30,7 @@ private:
 
     bool has_reached_;
     bool reachSoundPlayed_;
+    geometry_msgs::PoseStamped goal;
     bool goToDest();
     void initDest(const Station & start, const Station & end);
     void speedStatusCallBack(const pnc_msgs::speed_contribute &);

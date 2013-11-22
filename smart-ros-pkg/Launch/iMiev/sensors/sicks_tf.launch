@@ -1,0 +1,6 @@
+<launch>
+    <!-- Base link is referenced at the center point of rear axial projected to the ground plane-->
+    <!--node pkg="tf" type="static_transform_publisher" name="base_link_to_top_tilted_lidar" args="1.825, 0.0, 1.66 0 0.290 0 /base_link /top_tilted_lidar 1000" /-->
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_top_tilted_lidar" args="1.825, 0.0, 1.66 0 0.0 0 /base_link /top_tilted_lidar 1000" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_front_bottom_lidar" args="3.14, 0.0, 0.335 0 -0.096 0 /base_link /front_bottom_lidar 1000" />
+</launch>

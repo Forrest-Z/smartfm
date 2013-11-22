@@ -1,0 +1,11 @@
+<launch>
+    <include file="$(find Launch)/iMiev/sensors/sicks.launch"/>
+    <include file="$(find Launch)/iMiev/sensors/sicks_tf.launch"/>
+    <!--include file="$(find Launch)/iMiev/sensors/usbcam.launch"/-->
+
+    <!--include file="$(find Launch)/iMiev/sensors/gps.launch"/-->
+    <!--include file="$(find Launch)/iMiev/sensors/hokuyo.launch"/-->
+    <!--include file="$(find Launch)/iMiev/sensors/mti_imu.launch"/-->
+    <!--include file="$(find Launch)/iMiev/sensors/ms_imu.launch"/-->
+</launch>
+
