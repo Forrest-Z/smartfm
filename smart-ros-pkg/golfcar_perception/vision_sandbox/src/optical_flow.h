@@ -1,5 +1,5 @@
 #include <ros/ros.h>
-#include "sensor_msgs/Image.h"
+#include "sensor_msgs/Image.h" 
 #include "image_transport/image_transport.h"
 #include "image_transport/subscriber_filter.h"
 #include "cv_bridge/cv_bridge.h"
@@ -24,7 +24,7 @@ using namespace gpu;
 class optical_flower {
 
 public:
-	optical_flower(ros::NodeHandle &n);
+    optical_flower(ros::NodeHandle &n);
     ~optical_flower();
 
 private:

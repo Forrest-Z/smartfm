@@ -1,163 +1,117 @@
-/*
- * reference: http://opencv-srf.blogspot.sg/2010/09/object-detection-using-color-seperation.html
- * Hue range:
-    Orange  0-22
-    Yellow 22- 38
-    Green 38-75
-    Blue 75-130
-    Violet 130-160
-    Red 160-179
- */
-
 #include "color_tracking.h"
 
-using namespace std;
-using namespace cv;
-
-char key;
-
-IplImage* imgTracking;
-int lastX = -1;
-int lastY = -1;
-
-//This function threshold the HSV image and create a binary image
-IplImage* GetThresholdedImage(IplImage* imgHSV, CvScalar lowerBound, CvScalar upperBound){       
-    IplImage* imgThresh=cvCreateImage(cvGetSize(imgHSV),IPL_DEPTH_8U, 1);
-    //cvInRangeS(imgHSV, cvScalar(160,160,60), cvScalar(180,2556,256), imgThresh); 
-    cvInRangeS(imgHSV, lowerBound, upperBound, imgThresh);
-    return imgThresh;
+color_tracking::color_tracking(ros::NodeHandle &n) : private_nh_("~"), n_(n), it_(n)
+{
+  image_sub_ = it_.subscribe("/camera_front/image_raw", 1, &color_tracking::imageCallback, this);
+  //image_pub_ = it_.advertise("/camera_front/tracking_result", 1);
+  
+  tracker_red = n.advertise<geometry_msgs::Point>("/tracker_red", 1);
+  tracker_green = n.advertise<geometry_msgs::Point>("/tracker_green", 1);
+  
+  cv::namedWindow("CameraOutput",WINDOW_AUTOSIZE);
+  cv::namedWindow("Object_Red",WINDOW_AUTOSIZE);
+  cv::namedWindow("Object_Green",WINDOW_AUTOSIZE);
+  
+  trackingPoint1 = cv::Point(-1.0,-1.0);
+  trackingPoint2 = cv::Point(-1.0,-1.0);
+  lastPoint1 = cv::Point(-1.0,-1.0);
+  lastPoint2 = cv::Point(-1.0,-1.0);
 }
 
-CvPoint trackObject(IplImage* imgThresh){
-    // Calculate the moments of 'imgThresh'
-    CvMoments *moments = (CvMoments*)malloc(sizeof(CvMoments));
-    cvMoments(imgThresh, moments, 1);
-    double moment10 = cvGetSpatialMoment(moments, 1, 0);
-    double moment01 = cvGetSpatialMoment(moments, 0, 1);
-    double area = cvGetCentralMoment(moments, 0, 0);
+color_tracking::~color_tracking()
+{
+  destroyAllWindows();
+}
 
-    int posX,posY;
+Mat color_tracking::GetThresholdedImage(Mat imgHSV, cv::Scalar lowerBound, cv::Scalar upperBound)
+{       
+  cv::Mat imgThresh = cv::Mat(imgHSV.size(),CV_8UC1);
+  cv::inRange(imgHSV, lowerBound, upperBound, imgThresh);
+  return imgThresh;
+}
+
+cv::Point color_tracking::trackObject(Mat imgThresh){
+    // Calculate the moments of 'imgThresh'
+    cv::Moments img_moments = cv::moments(imgThresh, true);
+    double moment10 = img_moments.m10;
+    double moment01 = img_moments.m01;
+    double area = img_moments.m00;
+
+    cv::Point pos(0.0,0.0);
      // if the area<1000, I consider that the there are no object in the image and it's because of the noise, the area is not zero 
     if(area>1000){
         // calculate the position of the ball
-        posX = moment10/area;
-        posY = moment01/area;        
-        /*
-       if(lastX>=0 && lastY>=0 && posX>=0 && posY>=0)
-        {
-            // Draw a yellow line from the previous point to the current point
-            cvLine(imgTracking, cvPoint(posX, posY), cvPoint(lastX, lastY), cvScalar(0,0,255), 4);
-        }
-
-         lastX = posX;
-        lastY = posY;
-
-      */
+        pos.x = moment10/area;
+        pos.y = moment01/area;       
     }
-
-     free(moments);
      
-     return cvPoint(posX, posY);
+     return pos;
 }
 
-int main( int argc, char *argv[] )
+void color_tracking::imageCallback(const sensor_msgs::ImageConstPtr& image)
 {
-  cvNamedWindow("Camera_Output", 1);    //Create window
-  cvNamedWindow("Object1", 1);    //Create window
-  cvNamedWindow("Object2", 1);    //Create window
+  cv::Mat flow_rgb, imgThresh1, imgThresh2, img_hsv;
   
-  CvCapture* capture = cvCaptureFromCAM(CV_CAP_ANY);  //Capture using any camera connected to your system
-  if(!capture){
-    std::cout << "Capture failure!" << std::endl;
-    return -1;
+  try
+  {
+    cv_image_ = cv_bridge::toCvCopy(image, "bgr8");
   }
-  //Initial first frame
-  IplImage* frame=0;
-  CvPoint trackingPoint1 = cvPoint(0,0);
-  CvPoint lastPoint1 = cvPoint(-1,-1);
+  catch (cv_bridge::Exception& e)
+  {
+    ROS_ERROR("cv_bridge exception: %s", e.what());
+  }
+  cv_image_->image.copyTo(frame1_rgb_);
+  cv::cvtColor(frame1_rgb_, frame1_hsv_, CV_BGR2HSV);
+  frame1_hsv_.copyTo(img_hsv);
   
-  CvPoint trackingPoint2 = cvPoint(0,0);
-  CvPoint lastPoint2 = cvPoint(-1,-1);
-  
-  frame = cvQueryFrame(capture);           
-  if(!frame) return -1;
-      
-  imgTracking=cvCreateImage(cvGetSize(frame),IPL_DEPTH_8U, 3);
-  cvZero(imgTracking); //covert the image, 'imgTracking' to black
-  //end initialise
-  
-  while(1){ //Create infinte loop for live streaming
-
-    IplImage* frame = cvQueryFrame(capture); //Create image frames from capture
-    /* 
-     * Input code here
-     */
-    //Clone and Smoothen raw input frame
-    frame = cvCloneImage(frame);
-    //cvSmooth(frame, frame, CV_GAUSSIAN,3,3); //smooth the original image using Gaussian kernel
-    
-    //Create HSV image and thresholding
-    IplImage* imgHSV = cvCreateImage(cvGetSize(frame), IPL_DEPTH_8U, 3); 
-    cvCvtColor(frame, imgHSV, CV_BGR2HSV); //Change the color format from BGR to HSV
-    
-    //Do color 1
-    IplImage* imgThresh1 = GetThresholdedImage(imgHSV,cvScalar(160,100,60), cvScalar(180,256,256));
-    trackingPoint1 = trackObject(imgThresh1);	//track the possition of the object
-    /*
-    if(lastPoint1.x>0 && lastPoint1.y>0 && trackingPoint1.x>0 && trackingPoint1.y>0)
-    {
-	// Draw a line from the previous point to the current point
-	cvLine(imgTracking, trackingPoint1, lastPoint1, cvScalar(0,0,255), 4);
-    }
-    cvAdd(frame, imgTracking, frame);	// Add the tracking image and the frame
-    */
-    
-    //Do color 2
-    IplImage* imgThresh2 = GetThresholdedImage(imgHSV,cvScalar(38,45,170), cvScalar(75,256,256));
-    trackingPoint2 = trackObject(imgThresh2);	//track the possition of the object
-    /*
-    if(lastPoint2.x>0 && lastPoint2.y>0 && trackingPoint2.x>0 && trackingPoint2.y>0)
-    {
-	// Draw a line from the previous point to the current point
-	cvLine(imgTracking, trackingPoint2, lastPoint2, cvScalar(0,255,0), 4);
-    }
-    cvAdd(frame, imgTracking, frame);	    // Add the tracking image and the frame
-    */
-    if(trackingPoint1.x>0 && trackingPoint1.y>0 && trackingPoint2.x>0 && trackingPoint2.y>0)
-    {
-	// Draw a line from the previous point to the current point
-	cvLine(imgTracking, trackingPoint1, trackingPoint2, cvScalar(0,255,0), 1);
-    }
-    cvAdd(frame, imgTracking, frame);
-    
-    //Show result
-    cvShowImage("Object1", imgThresh1);
-    cvShowImage("Object2", imgThresh2);
-    cvShowImage("Camera_Output", frame);   //Show image frames on created window
-    
-    //Keep lastPoint
-    lastPoint1 = trackingPoint1;
-    lastPoint2 = trackingPoint2;
-    
-    cvZero(imgTracking);
-    //Clean up used images
-    cvReleaseImage(&imgHSV);
-    cvReleaseImage(&imgThresh1);
-    cvReleaseImage(&imgThresh2);
-    cvReleaseImage(&frame);
-    
-    //wait for exit signal
-    key = cvWaitKey(10);     //Capture Keyboard stroke
-    if (char(key) == 27){
-	break;      //If you hit ESC key loop will break.
-    }
+  //Do thresholding and track :: Red
+  imgThresh1_ = color_tracking::GetThresholdedImage(img_hsv, cv::Scalar(160,100,60), cv::Scalar(180,256,256));
+  trackingPoint1 = color_tracking::trackObject(imgThresh1_);
+  trackingPoint1_ros.x = trackingPoint1.x;
+  trackingPoint1_ros.y = trackingPoint1.y;
+  //Draw line
+  if(trackingPoint1.x>0 && trackingPoint1.y>0 && lastPoint1.x>0 && lastPoint1.y>0)
+  {
+    // Draw a line from the previous point to the current point
+    line(frame1_rgb_, trackingPoint1, lastPoint1, cv::Scalar(0,0,255), 1);
   }
   
-  //Destroy on exit
-  cvDestroyAllWindows() ;
-  cvReleaseCapture(&capture); //Release capture.
-  //cvDestroyWindow("Camera_Output"); //Destroy Window
-  //cvDestroyWindow("Object"); //Destroy Window
+  //Do thresholding and track :: Green
+  imgThresh2_ = color_tracking::GetThresholdedImage(img_hsv, cv::Scalar(38,45,170), cv::Scalar(75,256,256));
+  trackingPoint2 = color_tracking::trackObject(imgThresh2_);
+  trackingPoint2_ros.x = trackingPoint2.x;
+  trackingPoint2_ros.y = trackingPoint2.y;
+  //Draw line
+  if(trackingPoint2.x>0 && trackingPoint2.y>0 && lastPoint2.x>0 && lastPoint2.y>0)
+  {
+    // Draw a line from the previous point to the current point
+    line(frame1_rgb_, trackingPoint2, lastPoint2, cv::Scalar(0,255,0), 1);
+  }
+  
+  imgThresh1_.copyTo(imgThresh1);
+  cv::imshow("Object_Red",imgThresh1);
+  
+  imgThresh2_.copyTo(imgThresh2);
+  cv::imshow("Object_Green",imgThresh2);
+  
+  frame1_rgb_.copyTo(flow_rgb);
+  cv::imshow("CameraOutput",flow_rgb);
+  
+  //cv_image_->image = flow_rgb;
+  //image_pub_.publish(cv_image_->toImageMsg());
+  
+  tracker_red.publish(trackingPoint1_ros);
+  tracker_green.publish(trackingPoint2_ros);
+  lastPoint1 = trackingPoint1;
+  cv:: waitKey(3);
+}
 
+int main(int argc, char** argv)
+{
+  std::cout << "Hello there!" << std::endl;
+  ros::init(argc, argv, "color_tracking");
+  ros::NodeHandle n;
+  color_tracking color_tracking_node(n);
+  ros::spin();
   return 0;
 }

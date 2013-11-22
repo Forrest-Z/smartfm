@@ -18,19 +18,20 @@ void SimpleGoal::initDest(const Station & start, const Station & end)
 {
     has_reached_ = false;
 
-    geometry_msgs::PoseStamped goal;
+    //geometry_msgs::PoseStamped goal;
     goal.header.stamp = ros::Time::now();
     goal.header.frame_id = "/map";
     goal.pose.position.x = (double) start.number();
     goal.pose.position.y = (double) end.number();
     goal.pose.orientation.z = 1.0;
-    goal_pub_.publish(goal);
+    //goal_pub_.publish(goal);
 
     ROS_INFO("sent goal: [%f %f]", goal.pose.position.x, goal.pose.position.y);
 }
 
 void SimpleGoal::speedStatusCallBack(const pnc_msgs::speed_contribute &msg)
 {
+	goal_pub_.publish(goal);
     has_reached_ = msg.goal;
     eta_ = has_reached_ ? 0 : msg.dist_goal / 2; //velocity is taken as constant 2m/s
 }
