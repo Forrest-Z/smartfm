@@ -104,7 +104,30 @@ public:
 	    }
 	    throw runtime_error("Path id not found");
 	}
-
+	
+	vector<vector<geometry_msgs::Point32> > getAllPath(){
+	  TiXmlElement* svgElement;
+	    svgElement = svgDoc_.FirstChildElement();
+	    TiXmlNode* pChild;
+	    int path_no= 0;
+	    vector<vector<geometry_msgs::Point32> > paths;
+	    for ( pChild = svgElement->FirstChild(); pChild != 0; pChild = pChild->NextSibling())
+	    {
+	        TiXmlElement* childElement= pChild->ToElement();
+	        cout<<childElement->Value()<<endl;
+	        if( strcmp(childElement->Value(),"path")==0 )
+	        {
+	            const char * value = childElement->Attribute("id");
+		    cout<<path_no++<<": "<<value<<" ";
+		    value = childElement->Attribute("d");
+	            vector<geometry_msgs::Point32> path = StringToPath(value);
+		    convert_to_meter(path);
+		    paths.push_back(path);
+		}
+	    }
+	    return paths;
+	}
+		    
 	vector<string> SplitString(const char *data, const char* delimiter)
 	{
 		char *str = strdup(data);
