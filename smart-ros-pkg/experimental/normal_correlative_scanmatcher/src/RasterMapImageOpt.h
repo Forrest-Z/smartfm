@@ -1,6 +1,6 @@
 //#include "fmutil/fm_stopwatch.h"
-#include <cv.h>
-#include <highgui.h>
+//#include <opencv2/cv.h>
+#include <opencv2/opencv.hpp>
 //#include "fmutil/fm_math.h"
 
 #include "dbgstream.h"

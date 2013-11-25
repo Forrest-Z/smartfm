@@ -32,9 +32,10 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <unistd.h>
-
 #include "amcl_laser.h"
-
+#include <geometry_msgs/PoseArray.h>
+#include<sensor_msgs/PointCloud.h>
+#include<tf/tf.h>
 using namespace amcl;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +46,6 @@ AMCLLaser::AMCLLaser(size_t max_beams, map_t* map) : AMCLSensor()
 
   this->max_beams = max_beams;
   this->map = map;
-
   return;
 }
 
@@ -81,6 +81,12 @@ AMCLLaser::SetModelLikelihoodField(double z_hit,
   this->sigma_hit = sigma_hit;
 
   map_update_cspace(this->map, max_occ_dist);
+}
+
+void AMCLLaser::SetPublishers(ros::Publisher *pose_pub, ros::Publisher *pc_pub){
+  pose_pub_ = pose_pub;
+  pc_pub_ = pc_pub;
+  
 }
 
 void
@@ -207,6 +213,10 @@ double AMCLLaser::PCLikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* s
   total_weight = 0.0;
 
   // Compute the sample weights
+  geometry_msgs::PoseArray cloud_msg;
+  cloud_msg.header.stamp = ros::Time::now();
+  cloud_msg.header.frame_id = "/map";
+  cloud_msg.poses.resize(set->sample_count);
   for (j = 0; j < set->sample_count; j++)
   {
     sample = set->samples + j;
@@ -223,6 +233,17 @@ double AMCLLaser::PCLikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* s
     double z_rand_mult = 1.0/ 80.0;//data->range_max;
 
     step = (data->range_count - 1) / (self->max_beams - 1);
+    sensor_msgs::PointCloud pc;
+    pf_vector_t array_poses = sample->pose;
+    tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(pose.v[2]),
+					tf::Vector3(pose.v[0],
+							pose.v[1], 0)),
+							cloud_msg.poses[j]);
+      
+    pc.header = cloud_msg.header;
+     
+    
+    
     for (i = 0; i < data->range_count; i += step)
     {
       // This model ignores max range readings
@@ -237,6 +258,9 @@ double AMCLLaser::PCLikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* s
       double sv2 = sin(pose.v[2]);
       hit.v[0] = pose.v[0] + data->ranges[i][0]*cv2 - data->ranges[i][1]*sv2;
       hit.v[1] = pose.v[1] + data->ranges[i][0]*sv2 + data->ranges[i][1]*cv2;
+      geometry_msgs::Point32 pt;
+      pt.x = hit.v[0];
+      pt.y = hit.v[1];
       //if(i==0)
       //printf("hit(%lf,%lf), xy(%lf,%lf), pose(%lf,%lf,%lf)\n", hit.v[0], hit.v[1], data->ranges[i][0], data->ranges[i][1], pose.v[0], pose.v[1], pose.v[2]);
       // Convert to map grid coords.
@@ -250,6 +274,8 @@ double AMCLLaser::PCLikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* s
         z = self->map->max_occ_dist;
       else
         z = self->map->cells[MAP_INDEX(self->map,mi,mj)].occ_dist;
+      pt.z = z;
+      pc.points.push_back(pt);
       // Gaussian model
       // NOTE: this should have a normalization of 1/(sqrt(2pi)*sigma)
       pz += self->z_hit * exp(-(z * z) / z_hit_denom);
@@ -265,10 +291,12 @@ double AMCLLaser::PCLikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* s
       // works well, though...
       p += pz*pz*pz;
     }
-
+    if(j==0)
+      self->pc_pub_->publish(pc);
     sample->weight *= p;
     total_weight += sample->weight;
   }
+  self->pose_pub_->publish(cloud_msg);
   //printf("Total weight = %lf", total_weight);
   return(total_weight);
 }

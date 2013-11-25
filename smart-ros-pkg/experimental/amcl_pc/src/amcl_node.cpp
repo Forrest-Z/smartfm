@@ -198,6 +198,7 @@ private:
 	ros::NodeHandle private_nh_;
 	ros::Publisher pose_pub_;
 	ros::Publisher particlecloud_pub_;
+	ros::Publisher amcllaser_pose_pub_, amcllaser_pc_pub_;
 	ros::ServiceServer global_loc_srv_;
 	ros::Subscriber initial_pose_sub_old_;
 	ros::Subscriber map_sub_;
@@ -381,10 +382,12 @@ AmclNode::AmclNode() :
 
 	pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2);
 	particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2);
+	amcllaser_pose_pub_ = nh_.advertise<geometry_msgs::PoseArray>("amcllaser_pose", 1);
+	amcllaser_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud>("amcllaser_pc", 1);
 	global_loc_srv_ = nh_.advertiseService("global_localization",
 			&AmclNode::globalLocalizationCallback,
 			this);
-	laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 100);
+	laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan>(nh_, scan_topic_, 1);
 	laser_scan_filter_ =
 			new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_,
 					*tf_,
@@ -393,7 +396,7 @@ AmclNode::AmclNode() :
 	laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
 			this, _1));
 
-	pc_scan_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud>(nh_, pc_topic_, 100);
+	pc_scan_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud>(nh_, pc_topic_, 1);
 	pc_scan_filter_ =
 				new tf::MessageFilter<sensor_msgs::PointCloud>(*pc_scan_sub_,
 						*tf_,
@@ -667,6 +670,7 @@ AmclNode::handleMapMessage(const nav_msgs::OccupancyGrid& msg)
 			ROS_INFO("Initializing pc likelihood field model; this can take some time on large maps...");
 			laser_->SetPCModelLikelihoodField(z_hit_, z_rand_, sigma_hit_,
 					laser_likelihood_max_dist_);
+			laser_->SetPublishers(&amcllaser_pose_pub_, &amcllaser_pc_pub_);
 			ROS_INFO("Done initializing likelihood field model.");
 	}
 	else

@@ -32,6 +32,7 @@
 #include "amcl_sensor.h"
 #include "../map/map.h"
 
+#include <ros/ros.h>
 namespace amcl
 {
 
@@ -58,6 +59,8 @@ class AMCLLaserData : public AMCLSensorData
 // Laseretric sensor model
 class AMCLLaser : public AMCLSensor
 {
+  
+  private: ros::Publisher *pose_pub_, *pc_pub_;
   // Default constructor
   public: AMCLLaser(size_t max_beams, map_t* map);
 
@@ -95,7 +98,7 @@ class AMCLLaser : public AMCLSensor
 
   private: static double PCLikelihoodFieldModel(AMCLLaserData *data, pf_sample_set_t* set);
   private: laser_model_t model_type;
-
+public: void SetPublishers(ros::Publisher *pose_pub, ros::Publisher *pc_pub);
   // Current data timestamp
   private: double time;
 

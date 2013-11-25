@@ -24,8 +24,8 @@ namespace golfcart_vision
 		std::string odom_frame_id_, baselink_frame_id_;
 		cv_bridge::CvImagePtr cv_image_;
 
-		SiftFeatureDetector *feature_detector_;
-		SiftDescriptorExtractor *extractor_;
+		SurfFeatureDetector *feature_detector_;
+		SurfDescriptorExtractor *extractor_;
 		FlannBasedMatcher *matcher_;
 
 		std::vector<KeyPoint> keypoints_0_, keypoints_1_;
@@ -36,7 +36,11 @@ namespace golfcart_vision
 		ros::Publisher objectflow_pub_, current_POIs_pub_, previous_POIs_pub_;
 		ros::NodeHandle nh_;
 
-		stereo_object_flow()
+		image_transport::ImageTransport it_;
+		cv_bridge::CvImagePtr matching_image_;
+		image_transport::Publisher matching_pub_;
+
+		stereo_object_flow(ros::NodeHandle &n): it_(n)
 		{
 			ros::NodeHandle private_nh("~");
 
@@ -45,13 +49,15 @@ namespace golfcart_vision
 			private_nh.param("odom_frame", odom_frame_id_, std::string("odom"));
 
 			tf_ = new tf::TransformListener();
-			feature_detector_ = new SiftFeatureDetector(100);
-			extractor_ = new SiftDescriptorExtractor();
-			matcher_   = new FlannBasedMatcher();
+			feature_detector_ = new SurfFeatureDetector(400);
+			extractor_ = new SurfDescriptorExtractor();
+			matcher_   = new FlannBasedMatcher(new flann::KDTreeIndexParams(), new flann::SearchParams(4, 0, true ));
 
 			objectflow_pub_ = nh_.advertise<geometry_msgs::PoseArray>("objectflow", 2);
 			current_POIs_pub_ = nh_.advertise<sensor_msgs::PointCloud>("current_POIs", 2);
 			previous_POIs_pub_ = nh_.advertise<sensor_msgs::PointCloud>("previous_POIs", 2);
+
+			matching_pub_ = it_.advertise("matching_image", 1);
 		}
 
 		void imageCb(const ImageConstPtr& l_image_msg,
@@ -124,7 +130,7 @@ namespace golfcart_vision
 
 				for( int i = 0; i < descriptors_1_.rows; i++ )
 				{
-					if( matches[i].distance <= 10*min_dist )
+					if( matches[i].distance <= 5*min_dist)
 					{
 						good_matches.push_back( matches[i]);
 						int current_index = matches[i].queryIdx;
@@ -139,8 +145,13 @@ namespace golfcart_vision
 				drawMatches( frame0_, keypoints_1_, frame1_, keypoints_0_, good_matches, img_matches, Scalar::all(-1), Scalar::all(-1), vector<char>(), DrawMatchesFlags::NOT_DRAW_SINGLE_POINTS );
 
 				//-- Show detected matches
-				imshow( "Good Matches", img_matches );
-				waitKey(3);
+				//imshow( "Good Matches", img_matches );
+				//waitKey(3);
+				matching_image_ = cv_image_;
+				matching_image_->image = img_matches;
+				matching_image_->encoding = "bgr8";
+				matching_pub_.publish(matching_image_->toImageMsg());
+
 				objectflow_pub_.publish(object_flow);
 
 				points3D_0_.header = points3D_1_.header;
@@ -185,6 +196,8 @@ namespace golfcart_vision
 			double delt_y = points3D_1_.points[current_index].y - points3D_0_.points[ref_index].y;
 			//double delt_z = points3D_1_.points[current_index].z - points3D_0_.points[current_index].z;
 			double yaw_tmp = atan2(delt_y, delt_x);
+			double length = sqrt(delt_x*delt_x+delt_y*delt_y);
+			if(length <0.2)return object_flow;
 
             tf::poseTFToMsg(tf::Pose(tf::createQuaternionFromYaw(yaw_tmp),
                             btVector3(points3D_1_.points[current_index].x,points3D_1_.points[current_index].y, points3D_1_.points[current_index].z)),
@@ -199,7 +212,8 @@ namespace golfcart_vision
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "stereo_object_flow_node");
-  golfcart_vision::stereo_object_flow stereo_object_flow_node;
+  ros::NodeHandle n;
+  golfcart_vision::stereo_object_flow stereo_object_flow_node(n);
   ros::spin();
   return 0;
 }

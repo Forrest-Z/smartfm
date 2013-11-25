@@ -23,13 +23,14 @@ public:
 
 private:
     ros::NodeHandle nh;
-    ros::Publisher goal_pub_;
+    ros::Publisher goal_pub_, sound_pub_;
     ros::Subscriber speed_status_sub_;
     ros::Subscriber world_coord_sub_;
     tf::TransformListener tf_;
 
     bool has_reached_;
-
+    bool reachSoundPlayed_;
+    geometry_msgs::PoseStamped goal;
     bool goToDest();
     void initDest(const Station & start, const Station & end);
     void speedStatusCallBack(const pnc_msgs::speed_contribute &);
