@@ -66,7 +66,7 @@ private:
   cv_bridge::CvImagePtr cv_image_;
   
   Mat frame0_, frame1_hsv_;
-  Mat frame0_rgb_, frame1_rgb_;
+  Mat frame1_rgb_, frame2_rgb_;
   Mat imgThresh1_, imgThresh2_;
   
   cv::Point trackingPoint1, trackingPoint2;
