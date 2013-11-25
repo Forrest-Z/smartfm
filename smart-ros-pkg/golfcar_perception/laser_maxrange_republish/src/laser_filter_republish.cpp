@@ -46,13 +46,16 @@ sensor_msgs::LaserScan reduce_fov(sensor_msgs::LaserScanConstPtr msg, int points
     {
         ls.ranges.erase(ls.ranges.begin());
         ls.ranges.erase(ls.ranges.end()-1);
+        ls.intensities.erase(ls.intensities.begin());
+        ls.intensities.erase(ls.intensities.end()-1);
     }
     return ls;
 }
 
+int reduce_pts_;
 void scanCallback(const sensor_msgs::LaserScanConstPtr msg)
 {
-    sensor_msgs::LaserScan ls = reduce_fov(msg,5);
+    sensor_msgs::LaserScan ls = reduce_fov(msg,reduce_pts_);
     laser_pub_->publish(ls);
 }
 
@@ -61,9 +64,11 @@ int main(int argc, char **argv)
 
   ros::init(argc, argv, "listener");
   ros::NodeHandle n;
+  ros::NodeHandle priv_nh("~");
+  priv_nh.param("fov_truncate_pts", reduce_pts_, 100);
   ros::Publisher laser_pub= n.advertise<sensor_msgs::LaserScan>("scan_filter",1);
   laser_pub_ = &laser_pub;
-  ros::Subscriber sub = n.subscribe("sickldmrs/scan0", 1, scanCallback);
+  ros::Subscriber sub = n.subscribe("scan", 1, scanCallback);
   ros::spin();
 
   return 0;

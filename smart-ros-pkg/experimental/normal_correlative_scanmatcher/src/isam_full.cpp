@@ -254,7 +254,7 @@ int main(int argc, char **argv) {
     
     ros::Rate rate(2);
 
-    GraphParticleFilter graphPF(&mysql, &slam, 50, skip_reading, argv[1]);
+    GraphParticleFilter graphPF(&mysql, &slam, 70, skip_reading, argv[1]);
     sensor_msgs::PointCloud overall_pts;
     double opt_error = 0;
     isam::Pose3d_Pose3d_Factor *previous_constraint, *current_constraint;
@@ -381,7 +381,7 @@ int main(int argc, char **argv) {
                     << slam._opt.opt_error_ << " diff: " << diff_opt_error
                     << endl;
 
-            if (fabs(diff_opt_error) > 10.0) {
+            if (fabs(diff_opt_error) > 12.0) {
                 cout << "Removing factor" << endl;
                 //add to false close loop count at GraphPF
                 //falseCL_node_[j/skip_reading]++;
@@ -402,7 +402,7 @@ int main(int argc, char **argv) {
         }
 	
 	//if last close loop is not part of the continuous close loop, remove it
-	if(i-last_closeloop_idx == 3) {
+	if(i-last_closeloop_idx == 4) {
 	  if (previous_cl_count < 2) {
 	  cout
                         << "Close loop not continuous, removing previous constraint"
@@ -414,7 +414,7 @@ int main(int argc, char **argv) {
 	  
 	}
 	cout <<"previous_cl_count:"<<previous_cl_count<<" last_closeloop_idx"<<last_closeloop_idx<<endl;
-	if(i-last_closeloop_idx > 3) previous_cl_count = 0;
+	if(i-last_closeloop_idx > 4) previous_cl_count = 0;
 	/*
         //check if 2 continuous close loop is found, if it is not, remove the previous close loop
         if (previous_cl) {
