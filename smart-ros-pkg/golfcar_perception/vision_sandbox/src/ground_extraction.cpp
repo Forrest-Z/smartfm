@@ -44,7 +44,9 @@ void ground_extracter::boundary_find(const Mat& segImg)
 	vector<Vec4i> hierarchy;
 	int thresh = 10;
 	Canny( gray_img, canny_output, thresh, thresh*2, 3 );
-	findContours( canny_output, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_NONE, Point(0, 0) );
+
+	/*
+	findContours( canny_output, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_NONE, Point(0, 0) );
 	RNG rng(12345);
 	Mat drawing = Mat::zeros( canny_output.size(), CV_8UC3 );
 	for( int i = 0; i< contours.size(); i++ )
@@ -54,6 +56,10 @@ void ground_extracter::boundary_find(const Mat& segImg)
 	}
 	cv_image_->image = drawing;
 	cv_image_->encoding = "bgr8";
+	*/
+
+	cv_image_->image = canny_output;
+	cv_image_->encoding = "mono8";
 	edge_pub_.publish(cv_image_->toImageMsg());
 	//imshow( "Contours", drawing );
 	//waitKey(30);
