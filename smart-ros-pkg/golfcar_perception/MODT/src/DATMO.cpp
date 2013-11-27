@@ -101,7 +101,7 @@ DATMO::DATMO()
 	initialize_roadmap();
 
 	int inverval_tmp;
-	private_nh_.param("interval",		    inverval_tmp,       	30);
+	private_nh_.param("interval",		    inverval_tmp,       	10);
 	interval_ = (size_t) inverval_tmp;
 
 	vehicle_array_pub_		=   nh_.advertise<geometry_msgs::PoseArray>("vehicle_array", 2);
@@ -148,23 +148,29 @@ inline bool DATMO::check_onRoad(geometry_msgs::Point32 &point)
 
 void DATMO::initialize_local_image()
 {
-	local_mask_				= Mat((int)(img_side_length_/img_resolution_), (int)(img_side_length_/img_resolution_*2), CV_8UC1);
+	local_mask_				= Mat((int)(img_side_length_/img_resolution_*2), (int)(img_side_length_/img_resolution_*2), CV_8UC1);
 	local_mask_				= Scalar(0);
 	LIDAR_pixel_coord_.x 	= (int)(img_side_length_/img_resolution_)-1;
 	LIDAR_pixel_coord_.y 	= (int)(img_side_length_/img_resolution_)-1;
 
 	vector<geometry_msgs::Point32> img_roi;
-	geometry_msgs::Point32 p0, p1, p2;
-	p0.x = (float)LIDAR_pixel_coord_.x;
-	p0.y = (float)LIDAR_pixel_coord_.y;
+	geometry_msgs::Point32 p0, p1, p2, p3, p4;
+	p0.x = 0.0;
+	p0.y = 0.0;
 	p1.x = 0.0;
-	p1.y = 0.0;
-	p2.x = float(local_mask_.cols-1);
-	p2.y = 0.0;
+	p1.y = float(local_mask_.rows-1);
+	p2.x = float(LIDAR_pixel_coord_.x);
+	p2.y = float(LIDAR_pixel_coord_.y);
+	p3.x = float(local_mask_.cols-1);
+	p3.y = float(local_mask_.rows-1);
+	p4.x = float(local_mask_.cols-1);
+	p4.y = 0.0;
 
 	img_roi.push_back(p0);
 	img_roi.push_back(p1);
 	img_roi.push_back(p2);
+	img_roi.push_back(p3);
+	img_roi.push_back(p4);
 
 	for(int i=0; i<(int)local_mask_.cols; i++)
 		for(int j=0; j<(int)local_mask_.rows; j++)
@@ -341,8 +347,8 @@ void DATMO::process_accumulated_points()
 	Mat merged_visualization;
 	merge(three_chanels, 3, merged_visualization);
 
-	imshow("new_appear", new_appear);
-	imshow("old_disappear", old_disappear);
+	//imshow("new_appear", new_appear);
+	//imshow("old_disappear", old_disappear);
 	imshow("accumulated_TminusOne_img", accumulated_TminusOne_img);
 	imshow("accumulated_T_img", accumulated_T_img);
 	imshow("visualize_all", merged_visualization);
