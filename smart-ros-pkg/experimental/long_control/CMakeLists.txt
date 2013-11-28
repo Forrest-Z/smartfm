@@ -16,9 +16,8 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-find_package(OpenCV REQUIRED)
 #uncomment if you have defined messages
-#rosbuild_genmsg()
+rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
@@ -27,9 +26,6 @@ find_package(OpenCV REQUIRED)
 #target_link_libraries(${PROJECT_NAME} another_library)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
-rosbuild_add_executable(color_tracking src/color_tracking.cpp)
-target_link_libraries(color_tracking ${OpenCV_LIBS})
-
-#rosbuild_add_executable(get_HSV_bound src/get_HSV_bound.cpp)
-#target_link_libraries(get_HSV_bound ${OpenCV_LIBS})
-
+#rosbuild_add_executable(example examples/example.cpp)
+#target_link_libraries(example ${PROJECT_NAME})
+rosbuild_add_executable (speedcontroller src/long_control.cpp)
