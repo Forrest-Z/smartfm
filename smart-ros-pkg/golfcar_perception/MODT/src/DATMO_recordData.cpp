@@ -233,8 +233,8 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 	if(cloud_vector_.size()==interval_*2)
 	{
 		process_accumulated_points();
-		cloud_vector_.erase(cloud_vector_.begin());
-		laser_pose_vector_.erase(laser_pose_vector_.begin());
+		cloud_vector_.erase(cloud_vector_.begin(), cloud_vector_.begin()+ interval_);
+		laser_pose_vector_.erase(laser_pose_vector_.begin(), laser_pose_vector_.begin()+interval_);
 	}
 	ROS_INFO("scan callback finished");
 }
@@ -462,7 +462,7 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 			area_disappear_tmp = area_disappear[disappear_serial];
 
 			ROS_INFO("area %3f, %3f", area_appear_tmp, area_disappear_tmp);
-			if(area_appear_tmp > 10.0 && area_disappear_tmp > 1.0)
+			//if(area_appear_tmp > 1.0 && area_disappear_tmp > 1.0)
 			{
 				drawContours( pair_img, contours_appear, appear_serial, Scalar(255), -1, 8, vector<Vec4i>(), 0, Point() );
 				drawContours( pair_img, contours_disappear, disappear_serial, Scalar(255), -1, 8, vector<Vec4i>(), 0, Point() );
@@ -544,9 +544,9 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 				{
 					current_long_side = current_rect.front().size.width>current_rect.front().size.height? current_rect.front().size.width:current_rect.front().size.height;
 					double acc_short_side = minAreaRect_pair.size.width<minAreaRect_pair.size.height? minAreaRect_pair.size.width: minAreaRect_pair.size.height;
-					bool vehicle_flag;
-					if(acc_short_side<1.0 && current_long_side<1.0) vehicle_flag = false;
-					else vehicle_flag = true;
+					bool vehicle_flag = true;
+					//if(acc_short_side<1.0) vehicle_flag = false;
+					//else vehicle_flag = true;
 					if(vehicle_flag)
 					{
 						drawContours( visualize_img, contours_appear, appear_serial, Scalar(255, 0, 0), -1, 8, vector<Vec4i>(), 0, Point() );
