@@ -233,8 +233,8 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 	if(cloud_vector_.size()==interval_*2)
 	{
 		process_accumulated_points();
-		cloud_vector_.erase(cloud_vector_.begin(), cloud_vector_.begin()+ interval_);
-		laser_pose_vector_.erase(laser_pose_vector_.begin(), laser_pose_vector_.begin()+interval_);
+		cloud_vector_.erase(cloud_vector_.begin(), cloud_vector_.begin()+ 1);
+		laser_pose_vector_.erase(laser_pose_vector_.begin(), laser_pose_vector_.begin()+1);
 	}
 	ROS_INFO("scan callback finished");
 }
@@ -345,10 +345,10 @@ void DATMO::process_accumulated_points()
 	Mat merged_visualization;
 	merge(three_chanels, 3, merged_visualization);
 
-	//imshow("new_appear", new_appear);
-	//imshow("old_disappear", old_disappear);
-	//imshow("accumulated_TminusOne_img", accumulated_TminusOne_img);
-	//imshow("accumulated_T_img", accumulated_T_img);
+	imshow("new_appear", new_appear);
+	imshow("old_disappear", old_disappear);
+	imshow("accumulated_TminusOne_img", accumulated_TminusOne_img);
+	imshow("accumulated_T_img", accumulated_T_img);
 	imshow("visualize_all", merged_visualization);
 	waitKey(1);
 
@@ -361,7 +361,7 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 
 	//-----------------1st step: pair-up disappear and appear patches, as moving object candidates;-----------------
 
-	int open_size = 3; int close_size = 3;
+	int open_size = 3; int close_size = 1;
 	Mat open_element = getStructuringElement( MORPH_RECT, Size( 2*open_size + 1, 2*open_size+1 ), Point( open_size, open_size ) );
 	Mat close_element = getStructuringElement( MORPH_RECT, Size( 2*close_size + 1, 2*close_size+1 ), Point( close_size, close_size ) );
 
