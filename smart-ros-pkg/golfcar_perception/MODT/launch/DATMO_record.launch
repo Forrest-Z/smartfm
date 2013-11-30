@@ -6,7 +6,7 @@
         <remap from="map" to= "road_map"/>
     </node>
 
-    <node pkg="MODT" type="DATMO_recordData" name="DATMO_recordData">
+    <node pkg="MODT" type="DATMO_recordData" name="DATMO_recordData" output="screen">
 		<param name="map_image_path" value="$(find MODT)/launch/road_map.jpg"/>
 		<param name="use_prior_map" value="false"/>
 		<remap from="/sickldmrs/verti_laser" to="/front_bottom_scan"/>
