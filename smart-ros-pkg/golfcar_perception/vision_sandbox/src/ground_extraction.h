@@ -35,5 +35,7 @@ private:
     void imageCallback(const sensor_msgs::ImageConstPtr& image);
     void boundary_find(const Mat& segImg);
     cv_bridge::CvImagePtr cv_image_;
+
+    void candidate_extraction(const Mat& segImg);
 };
 

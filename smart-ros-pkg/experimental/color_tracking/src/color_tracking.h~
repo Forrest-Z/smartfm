@@ -72,6 +72,8 @@ private:
   cv::Point trackingPoint1, trackingPoint2;
   cv::Point lastPoint1, lastPoint2;
   geometry_msgs::Point trackingPoint1_ros, trackingPoint2_ros;
+  
+  ros::Publisher tracker_red, tracker_green;
 };
 
 #endif // COLOR_TRACKING_H

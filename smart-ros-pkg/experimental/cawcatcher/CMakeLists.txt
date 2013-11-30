@@ -38,5 +38,9 @@ rosbuild_add_executable(Sweep src/Sweep.cpp)
 rosbuild_add_executable(Sweep2 src/Sweep2.cpp)
 #rosbuild_add_executable(adaptive src/adaptive.cpp)
 rosbuild_add_executable(adaptive_modified src/adaptive_modified.cpp)
+
 rosbuild_add_executable(publishFakeOdom src/publishFakeOdom.cpp)
 rosbuild_add_executable(listenerFake src/listenerFake.cpp)
+
+rosbuild_add_executable(steady src/steady.cpp)
+

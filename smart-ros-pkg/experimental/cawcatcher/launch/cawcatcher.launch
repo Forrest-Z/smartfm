@@ -5,16 +5,16 @@
   
   <node pkg="joy" name="joypad" type="joy_node"/>
   
-  <node pkg="tf" type="static_transform_publisher" name="left_static" args="0 .75 1.69 .785 0 0 world LStaticFrame 100" />
+  <node pkg="tf" type="static_transform_publisher" name="left_static" args="1.62 .75 1.635 .785 0 0 world LStaticFrame 100" />
  
-  <node pkg="tf" type="static_transform_publisher" name="right_static" args="0 -.75 1.69 -.785 0.0 0  world RStaticFrame 100" />
+  <node pkg="tf" type="static_transform_publisher" name="right_static" args="1.62 .75 1.635 -.785 0.0 0  world RStaticFrame 100" />
  
   <node pkg="LMS1xx" name="lidar" ns="left" type="LMS100">
-         <param name="host" value="192.168.1.201" />
+         <param name="host" value="192.168.200.251" />
          <param name="frame_id" value="LRollTF" />  </node>
  
   <node pkg="LMS1xx" name="lidar" ns="right" type="LMS100">
-         <param name="host" value="192.168.1.202" />
+         <param name="host" value="192.168.200.252" />
          <param name="frame_id" value="RRollTF" />
   </node>
  
