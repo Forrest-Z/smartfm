@@ -62,10 +62,10 @@ public:
         lamda_left_ = fmin(compute_lamda(5), lamdamax);
         lamda_right_ = fmin(compute_lamda(20), lamdamax);
 
-        std::cout << "vel: " << velocity << std::endl;
+        std::cout << "vel (km/h): " << velocity << std::endl;
 	std::cout << "dist: " << dist_ << std::endl;
-        std::cout << "lamda_L/lamda_Max: " << (lamda_left_ / lamdamax) << std::endl;
-	std::cout << "lamda_R/lamda_Max: " << (lamda_right_ / lamdamax) << std::endl;
+        std::cout << "lamda_L: " << (lamda_left_) << std::endl;
+	std::cout << "lamda_Max: " << (lamdamax) << std::endl;
         return 0;
     }
 
@@ -76,10 +76,15 @@ public:
         Eigen::VectorXf angle(4);
 
         n_left << width_, dist_ - lamda_left_ * height_, lamda_left_ * width_;
+        std::cout << "vector n: [" << n_left[0] << ", " << n_left[1] << ", " << n_left[2] << "]" << std::endl;
+        std::cout << "norm n: " << n_left.norm() << std::endl;
         n_right << width_, -dist_ + lamda_right_ * height_, lamda_right_ * width_;
         n_left = n_left/n_left.norm();
+        std::cout << "unit vector n: [" << n_left[0] << ", " << n_left[1] << ", " << n_left[2] << "]" << std::endl;
         n_right = n_right/n_right.norm();
         n_left = L * n_left;
+        std::cout << "unit vector nL: [" << n_left[0] << ", " << n_left[1] << ", " << n_left[2] << "]" << std::endl;
+        std::cout << "norm n: " << n_left.norm() << std::endl;
         n_right = R * n_right;
 /*               
         angle(1) = atan2(n_left(0), n_left(2));
@@ -87,10 +92,10 @@ public:
         angle(3) = atan2(n_right(0), n_right(2));
         angle(2) = atan2(-n_right(1) * sin(angle(3)), n_right(0));
 */
-        angle(1) = asin(-n_left(1));
-        angle(0) = asin(n_left(0) / cos(angle(1)));
-        angle(3) = asin(-n_right(1));
-        angle(2) = asin(n_right(0) / cos(angle(3)));
+        angle(0) = asin(-n_left(1));
+        angle(1) = asin(n_left(0) / cos(angle(0)));
+        angle(2) = asin(-n_right(1));
+        angle(3) = asin(n_right(0) / cos(angle(2)));
 
         return angle;
     }
