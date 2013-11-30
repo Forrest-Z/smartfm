@@ -11,8 +11,8 @@ double map(double x, double in_min, double in_max, double out_min, double out_ma
 
 void joy_servo_cb( const sensor_msgs::Joy& joy_msg){
   cawcatcher::AngleComm angle_msg;
-  angle_msg.LRoll_com = map(-1000 * joy_msg.axes[0], -1000, 1000, -45, 45);
-  angle_msg.LPitch_com = map(-1000 * joy_msg.axes[3], -1000, 1000, -45, 45);
+  angle_msg.LRoll_com = map(1000 * joy_msg.axes[0], -1000, 1000, -45, 45);
+  angle_msg.LPitch_com = map(1000 * joy_msg.axes[3], -1000, 1000, -45, 45);
   angle_msg.RRoll_com = map(1000 * joy_msg.axes[0], -1000, 1000, -45, 45);
   angle_msg.RPitch_com = map(1000 * joy_msg.axes[3], -1000, 1000, -45, 45);
   angle_pub->publish(angle_msg);

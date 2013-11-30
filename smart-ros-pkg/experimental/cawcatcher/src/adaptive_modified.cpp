@@ -87,10 +87,10 @@ public:
         angle(3) = atan2(n_right(0), n_right(2));
         angle(2) = atan2(-n_right(1) * sin(angle(3)), n_right(0));
 */
-        angle(1) = asin(-n_left(1));
-        angle(0) = asin(n_left(0) / cos(angle(1)));
-        angle(3) = asin(-n_right(1));
-        angle(2) = asin(n_right(0) / cos(angle(3)));
+        angle(0) = asin(-n_left(1));
+        angle(1) = asin(n_left(0) / cos(angle(0)));
+        angle(2) = asin(-n_right(1));
+        angle(3) = asin(n_right(0) / cos(angle(2)));
 
         return angle;
     }
