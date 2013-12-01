@@ -41,7 +41,8 @@ class DATMO_TrainingScan
 	public:
 	sensor_msgs::LaserScan laser_scan;
 	geometry_msgs::PoseStamped poseInOdom;
-	std::vector < std::vector<size_t> > movingObjectClusters;
+
+	std::vector < std::pair<std::vector<size_t>, size_t> > movingObjectClusters;
 };
 
 class DATMO
@@ -100,6 +101,9 @@ private:
 	bool 													check_onRoad(geometry_msgs::Point32 &point);
 
 	ros::Publisher current_polygon_pub_;
+
+	long int scan_serial_;
+	void save_training_data(std::vector<DATMO_TrainingScan>& training_data_vector,std::vector<vector<Point> > & contour_candidate_vector);
 };
 
 DATMO::DATMO()
@@ -137,6 +141,7 @@ DATMO::DATMO()
 	img_resolution_ = (float)img_resolution_tmp;
 
 	initialize_local_image();
+	scan_serial_ = 0;
 }
 
 void DATMO::initialize_roadmap()
@@ -246,12 +251,13 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 		ROS_WARN("Failed to compute map pose, skipping scan (%s)", e.what());
 		return;
 	}
-	laser_pose_vector_.push_back(ident);
+	laser_pose_vector_.push_back(laser_pose_current_);
 
 	//scan_approxy(verti_cloud, laser_pose_current_);
 
 	assert(cloud_vector_.size() == laser_pose_vector_.size());
 
+	scan_serial_ = scan_vector_.back().header.seq;
 	if(cloud_vector_.size()==interval_*2)
 	{
 		process_accumulated_points();
@@ -259,7 +265,7 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 		laser_pose_vector_.erase(laser_pose_vector_.begin(), laser_pose_vector_.begin()+1);
 		scan_vector_.erase(scan_vector_.begin(), scan_vector_.begin()+ 1);
 	}
-
+	//scan_serial_++;
 	ROS_INFO("scan callback finished");
 }
 
@@ -412,6 +418,11 @@ void DATMO::process_accumulated_points()
 	imshow("visualize_all", merged_visualization);
 	waitKey(1);
 
+	stringstream  visualization_string;
+	visualization_string<<"/home/baoxing/data/image_"<< scan_serial_<<".jpg";
+	const string image_name = visualization_string.str();
+	imwrite(image_name, merged_visualization);
+
 	extract_moving_objects(accumulated_T_img, accumulated_TminusOne_img, new_appear, old_disappear, current_T_image);
 }
 
@@ -506,52 +517,154 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 
 	//------------------2nd: collect training data-------------------------
 	//construct the training data;
-	std::vector<DATMO_TrainingScan> training_data_vector;
-	training_data_vector.resize(scan_vector_.size());
-	for(size_t i=0; i<training_data_vector.size(); i++)
+	if(scan_serial_>0 && scan_serial_ % interval_==0)
 	{
-		DATMO_TrainingScan & trainingscan_tmp = training_data_vector[i];
-		trainingscan_tmp.laser_scan = scan_vector_[i];
-		trainingscan_tmp.poseInOdom = laser_pose_vector_[i];
-	}
+		std::vector<DATMO_TrainingScan> training_data_vector;
 
-	sensor_msgs::PointCloud collected_visualize_pcl;
-	collected_visualize_pcl.header = combined_pointcloud_.header;
-	for(size_t i=0;  i<appear_disappear_pairs.size(); i++)
-	{
-		int appear_serial = appear_disappear_pairs[i].first;
-		int disappear_serial = appear_disappear_pairs[i].second;
-		if(appear_serial>=0 && disappear_serial>=0)
+		//here we only record those possible contours consisting of appear-disappear pairs;
+		std::vector<vector<Point> > contour_candidate_vector;
+		size_t candidate_contour_serial=0;
+
+		training_data_vector.resize(scan_vector_.size());
+		//for(size_t i=0; i<training_data_vector.size(); i++)
+		//{
+			//DATMO_TrainingScan & trainingscan_tmp = training_data_vector[i];
+			//trainingscan_tmp.laser_scan = scan_vector_[i];
+			//trainingscan_tmp.poseInOdom = laser_pose_vector_[i];
+		//}
+
+		sensor_msgs::PointCloud collected_visualize_pcl;
+		collected_visualize_pcl.header = combined_pointcloud_.header;
+		for(size_t i=0;  i<appear_disappear_pairs.size(); i++)
 		{
-			ROS_INFO("appear_serial, disappear: %d, %d", appear_serial, disappear_serial);
-			//record inside LIDAR points;
-			size_t pointSerialInCloud = 0;
-			for(size_t a=0; a<scan_vector_.size();a++)
+			int appear_serial = appear_disappear_pairs[i].first;
+			int disappear_serial = appear_disappear_pairs[i].second;
+			if(appear_serial>=0 && disappear_serial>=0)
 			{
-				std::vector<size_t> serial_in_cluster;
-				for(size_t b=0; b<scan_vector_[a].ranges.size();b++)
+				ROS_INFO("appear_serial, disappear: %d, %d", appear_serial, disappear_serial);
+				//record inside LIDAR points;
+				size_t pointSerialInCloud = 0;
+				for(size_t a=0; a<scan_vector_.size();a++)
 				{
-					if(scan_vector_[a].intensities[b]>0.0)
+					std::vector<size_t> serial_in_cluster;
+					for(size_t b=0; b<scan_vector_[a].ranges.size();b++)
 					{
-						geometry_msgs::Point32 spacePt_tmp = combined_pointcloud_.points[pointSerialInCloud];
-						Point2f imgpt_tmp;
-						spacePt2ImgP(spacePt_tmp, imgpt_tmp);
-						double check = pointPolygonTest(contours_combined[i], imgpt_tmp, true);
-						if(check >= -1.0)
+						if(scan_vector_[a].intensities[b]>0.0)
 						{
-							serial_in_cluster.push_back(b);
-							collected_visualize_pcl.points.push_back(spacePt_tmp);
+							geometry_msgs::Point32 spacePt_tmp = combined_pointcloud_.points[pointSerialInCloud];
+							Point2f imgpt_tmp;
+							spacePt2ImgP(spacePt_tmp, imgpt_tmp);
+							double check = pointPolygonTest(contours_combined[i], imgpt_tmp, true);
+							if(check >= -1.0)
+							{
+								serial_in_cluster.push_back(b);
+								collected_visualize_pcl.points.push_back(spacePt_tmp);
+							}
+							pointSerialInCloud++;
 						}
-						pointSerialInCloud++;
 					}
+
+					std::pair<std::vector<size_t>, size_t> movingObjectCluster = make_pair(serial_in_cluster, candidate_contour_serial);
+					training_data_vector[a].movingObjectClusters.push_back(movingObjectCluster);
 				}
-				training_data_vector[a].movingObjectClusters.push_back(serial_in_cluster);
+				contour_candidate_vector.push_back(contours_combined[i]);
+				candidate_contour_serial++;
 			}
 		}
+		save_training_data(training_data_vector, contour_candidate_vector);
+
+		collected_cloud_pub_.publish(collected_visualize_pcl);
 	}
-	collected_cloud_pub_.publish(collected_visualize_pcl);
+
 }
 
+//save extracted data into files;
+void DATMO::save_training_data(std::vector<DATMO_TrainingScan>& training_data_vector,std::vector<vector<Point> > & contour_candidate_vector)
+{
+	stringstream  record_string;
+	record_string<<"/home/baoxing/data/training_data"<< scan_serial_<<".yml";
+	const string data_name = record_string.str();
+	FileStorage fs(data_name.c_str(), FileStorage::WRITE);
+
+	//1st: record raw information: scan+odom;
+	fs << "scan" << "[";
+	for(size_t i=0; i<scan_vector_.size(); i++)
+	{
+		fs<<"{:"<<"serial"<<(int)scan_vector_[i].header.seq
+			   <<"time"<<scan_vector_[i].header.stamp.toSec()
+			   <<"angle_min"<<scan_vector_[i].angle_min
+			   <<"angle_max"<<scan_vector_[i].angle_increment
+			   <<"time_increment"<<scan_vector_[i].time_increment
+			   <<"scan_time"<<scan_vector_[i].scan_time
+			   <<"range_min"<<scan_vector_[i].range_min
+			   <<"range_max"<<scan_vector_[i].range_max
+			   <<"ranges"<<"[:";
+		for(size_t j=0; j<scan_vector_[i].ranges.size(); j++)
+		{
+			fs << scan_vector_[i].ranges[j];
+		}
+		fs << "]" << "intensities"<<"[:";
+
+		for(size_t j=0; j<scan_vector_[i].intensities.size(); j++)
+		{
+			fs << scan_vector_[i].intensities[j];
+		}
+		fs << "]" << "}";
+	}
+	fs<<"]";
+
+	fs << "odom" << "[";
+	for (size_t i=0; i<laser_pose_vector_.size(); i++)
+	{
+		tf::Quaternion q(laser_pose_vector_[i].pose.orientation.x, laser_pose_vector_[i].pose.orientation.y, laser_pose_vector_[i].pose.orientation.z, laser_pose_vector_[i].pose.orientation.w);
+		tf::Matrix3x3 m(q);
+		double roll, pitch, yaw;
+		m.getRPY(roll, pitch, yaw);
+		fs<<"{:"<<"x"<<laser_pose_vector_[i].pose.position.x
+			    <<"y"<<laser_pose_vector_[i].pose.position.y
+			    <<"z"<<laser_pose_vector_[i].pose.position.z
+			    <<"roll"<<roll
+			    <<"pitch"<<pitch
+			    <<"yaw"<<yaw<<"}";
+	}
+	fs <<"]";
+
+	//2nd: record processed clustering information: contours + movingObjectClusters;
+	fs << "contours" << "[";
+	for(size_t i=0; i<contour_candidate_vector.size(); i++)
+	{
+		fs<<"points"<<"[:";
+		for(size_t j=0; j<contour_candidate_vector[i].size(); j++)
+		{
+			fs<<"{:"<<"x"<< contour_candidate_vector[i][j].x
+					<<"y"<< contour_candidate_vector[i][j].y
+			  <<"}";
+		}
+		fs << "]" ;
+	}
+	fs <<"]";
+
+	fs<<"training_data_vector"<<"[";
+	for(size_t i=0; i<training_data_vector.size(); i++)
+	{
+		fs<<"{:"<<"movingObjectClusters";
+		for(size_t j=0; i<training_data_vector[i].movingObjectClusters.size(); j++)
+		{
+			fs<<"{:"<<"serial_in_cluster"<<"[:";
+			for(size_t k=0; k<training_data_vector[i].movingObjectClusters[j].first.size();k++)
+			{
+				fs<<(int)training_data_vector[i].movingObjectClusters[j].first[k];
+			}
+			fs<<"]";
+			fs<<"corresponding_contour_serial"<<(int)training_data_vector[i].movingObjectClusters[j].second<<"}";
+
+		}
+		fs<<"}";
+	}
+	fs<<"]";
+
+	fs.release();
+}
 
 //http://alienryderflex.com/polygon/
 inline bool DATMO::pointInPolygon(geometry_msgs::Point32 p, vector<geometry_msgs::Point32> poly)
