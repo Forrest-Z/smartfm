@@ -56,7 +56,7 @@ public:
     int update(double velocity)
     {
         dist_ = fmin(pow(velocity/10, 2), max_dist_);
-        dist_ = fmax(dist_, 6.0);
+        dist_ = fmax(dist_, 3.0);
         double delta = sqrt(pow(range_, 2) - pow(width_, 2));
         double lamdamax = dist_ * delta / (width_ * (delta + width_));
         lamda_left_ = fmin(compute_lamda(5), lamdamax);
@@ -125,7 +125,7 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "adaptive");
     ros::NodeHandle n;
-    ros::Rate  r(10);
+    ros::Rate  r(200);
     ros::Subscriber sub = n.subscribe("can_imu_odom", 1, chatterCallback);
     angle_pub = new ros::Publisher(n.advertise<cawcatcher::AngleComm>("cawcatcherIN_2", 1));
 
