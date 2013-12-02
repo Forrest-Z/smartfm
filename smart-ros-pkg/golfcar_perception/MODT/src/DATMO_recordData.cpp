@@ -29,6 +29,8 @@
 #include <vector>
 #include <cmath>
 
+#include "DATMO_datatypes.h"
+
 using namespace std;
 using namespace ros;
 using namespace cv;
@@ -36,14 +38,7 @@ using namespace cv;
 
 typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
 
-class DATMO_TrainingScan
-{
-	public:
-	sensor_msgs::LaserScan laser_scan;
-	geometry_msgs::PoseStamped poseInOdom;
 
-	std::vector < std::pair<std::vector<size_t>, size_t> > movingObjectClusters;
-};
 
 class DATMO
 {
@@ -61,7 +56,7 @@ private:
 	std::string map_frame_id_;
 
 	tf::TransformListener tf_;
-	message_filters::Subscriber<sensor_msgs::LaserScan>     *verti_laser_sub_;
+	message_filters::Subscriber<sensor_msgs::LaserScan>     *laser_sub_;
 	laser_geometry::LaserProjection                         projector_;
 
 	void scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in);
@@ -109,12 +104,12 @@ private:
 DATMO::DATMO()
 : private_nh_("~")
 {
-	private_nh_.param("laser_frame_id",     laser_frame_id_,    std::string("ldmrs"));
+	private_nh_.param("laser_frame_id",     laser_frame_id_,    std::string("front_bottom_lidar"));
 	private_nh_.param("base_frame_id",      base_frame_id_,     std::string("base_link"));
 	private_nh_.param("odom_frame_id",      odom_frame_id_,     std::string("odom"));
 	private_nh_.param("map_frame_id",       map_frame_id_,      std::string("map"));
 
-	private_nh_.param("use_prior_map",       use_prior_map_,    true);
+	private_nh_.param("use_prior_map",       use_prior_map_,    false);
 	private_nh_.param("map_resolution",     map_resolution_,    0.05);
 	private_nh_.param("map_image_path",     map_image_path_,    std::string("./launch/road_map.jpg"));
 	initialize_roadmap();
@@ -126,8 +121,8 @@ DATMO::DATMO()
 	vehicle_array_pub_		=   nh_.advertise<geometry_msgs::PoseArray>("vehicle_array", 2);
 	collected_cloud_pub_		=   nh_.advertise<sensor_msgs::PointCloud>("collected_cloud", 2);
 
-	verti_laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/sickldmrs/verti_laser", 100);
-	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*verti_laser_sub_, tf_, odom_frame_id_, 10);
+	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/front_bottom_scan", 100);
+	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, odom_frame_id_, 10);
 	tf_filter_->registerCallback(boost::bind(&DATMO::scanCallback, this, _1));
 	tf_filter_->setTolerance(ros::Duration(0.05));
 
@@ -519,13 +514,15 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 	//construct the training data;
 	if(scan_serial_>0 && scan_serial_ % interval_==0)
 	{
-		std::vector<DATMO_TrainingScan> training_data_vector;
-
 		//here we only record those possible contours consisting of appear-disappear pairs;
 		std::vector<vector<Point> > contour_candidate_vector;
 		size_t candidate_contour_serial=0;
 
-		training_data_vector.resize(scan_vector_.size());
+		//each scan will has its own training_data from this vector;
+		DATMO_TrainingScan init_training_data;
+		init_training_data.movingObjectClusters.clear();
+		std::vector<DATMO_TrainingScan> training_data_vector(scan_vector_.size(), init_training_data);
+
 		//for(size_t i=0; i<training_data_vector.size(); i++)
 		//{
 			//DATMO_TrainingScan & trainingscan_tmp = training_data_vector[i];
@@ -633,7 +630,7 @@ void DATMO::save_training_data(std::vector<DATMO_TrainingScan>& training_data_ve
 	fs << "contours" << "[";
 	for(size_t i=0; i<contour_candidate_vector.size(); i++)
 	{
-		fs<<"points"<<"[:";
+		fs<<"[:";
 		for(size_t j=0; j<contour_candidate_vector[i].size(); j++)
 		{
 			fs<<"{:"<<"x"<< contour_candidate_vector[i][j].x
@@ -644,22 +641,49 @@ void DATMO::save_training_data(std::vector<DATMO_TrainingScan>& training_data_ve
 	}
 	fs <<"]";
 
+	//debug trick;
+	/*
+	for(size_t i=0; i<training_data_vector.size(); i++)
+	{
+		if(training_data_vector[i].movingObjectClusters.size()>0)
+		{
+			for(size_t j=0; j<training_data_vector[i].movingObjectClusters.size(); j++)
+			{
+				cout<<"size"<<training_data_vector[i].movingObjectClusters[j].first.size()<<"\n";
+				for(size_t k=0; k<training_data_vector[i].movingObjectClusters[j].first.size();k++)
+				{
+					cout <<"point"<<(int)training_data_vector[i].movingObjectClusters[j].first[k]<<"\t";
+				}
+				cout<<"\n corresponding_contour_serial"<<(int)training_data_vector[i].movingObjectClusters[j].second<<endl;
+			}
+		}
+	}
+	*/
+
 	fs<<"training_data_vector"<<"[";
 	for(size_t i=0; i<training_data_vector.size(); i++)
 	{
-		fs<<"{:"<<"movingObjectClusters";
-		for(size_t j=0; i<training_data_vector[i].movingObjectClusters.size(); j++)
+		//if(training_data_vector[i].movingObjectClusters.size()>0)
 		{
-			fs<<"{:"<<"serial_in_cluster"<<"[:";
-			for(size_t k=0; k<training_data_vector[i].movingObjectClusters[j].first.size();k++)
-			{
-				fs<<(int)training_data_vector[i].movingObjectClusters[j].first[k];
-			}
-			fs<<"]";
-			fs<<"corresponding_contour_serial"<<(int)training_data_vector[i].movingObjectClusters[j].second<<"}";
+			fs<<"{:";
+				fs<<"movingObjectClusters"<<"[:";
+					for(size_t j=0; j<training_data_vector[i].movingObjectClusters.size(); j++)
+					{
+						fs<<"{:";
+							fs<<"serial_in_cluster";
+								fs<<"[:";
+								for(size_t k=0; k<training_data_vector[i].movingObjectClusters[j].first.size();k++)
+								{
+									fs<<(int)training_data_vector[i].movingObjectClusters[j].first[k];
+								}
+								fs<<"]";
 
+							fs<<"corresponding_contour_serial"<<(int)training_data_vector[i].movingObjectClusters[j].second;
+						fs<<"}";
+					}
+				fs<<"]";
+			fs<<"}";
 		}
-		fs<<"}";
 	}
 	fs<<"]";
 
