@@ -270,7 +270,6 @@ void DATMO::process_accumulated_points()
 		current_T_pcl.points.push_back(spacePt_tmp);
 	}
 
-
 	try
 	{
 		tf_.transformPointCloud(laser_frame_id_, accumulated_TminusOne_pcl, accumulated_TminusOne_pcl);
@@ -282,7 +281,6 @@ void DATMO::process_accumulated_points()
 		ROS_WARN("Failed to transform accumulated point to laser_frame_id_ (%s)", e.what());
 		return;
 	}
-
 
 	Mat accumulated_TminusOne_img = local_mask_.clone();
 	accumulated_TminusOne_img = Scalar(0);
@@ -349,8 +347,8 @@ void DATMO::process_accumulated_points()
 
 	//imshow("new_appear", new_appear);
 	//imshow("old_disappear", old_disappear);
-	imshow("accumulated_TminusOne_img", accumulated_TminusOne_img);
-	imshow("accumulated_T_img", accumulated_T_img);
+	//imshow("accumulated_TminusOne_img", accumulated_TminusOne_img);
+	//imshow("accumulated_T_img", accumulated_T_img);
 	imshow("visualize_all", merged_visualization);
 	waitKey(1);
 

@@ -1,0 +1,18 @@
+<launch>
+    <!--node pkg="MODT" type="verti_laser_sickldmrs" name="verti_laser_sickldmrs" /-->
+
+    <node pkg="map_server" type="map_server" name="map_server3" args="$(find MODT)/launch/road_surface.yaml">
+	<remap from="static_map" to="static_road_map"/>
+        <remap from="map" to= "road_map"/>
+    </node>
+
+    <node pkg="MODT" type="DATMO_recordData" name="DATMO_recordData" output="screen">
+		<param name="map_image_path" value="$(find MODT)/launch/road_map.jpg"/>
+		<param name="use_prior_map" value="false"/>
+		<remap from="/sickldmrs/verti_laser" to="/front_bottom_scan"/>
+		<param name= "laser_frame_id" value="front_bottom_lidar"/>
+		<param name= "interval" value="10"/>
+    </node>
+
+</launch>
+

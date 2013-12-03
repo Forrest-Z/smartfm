@@ -11,7 +11,8 @@
  
   <node pkg="LMS1xx" name="lidar" ns="left" type="LMS100">
          <param name="host" value="192.168.200.251" />
-         <param name="frame_id" value="LRollTF" />  </node>
+         <param name="frame_id" value="LRollTF" />
+  </node>
  
   <node pkg="LMS1xx" name="lidar" ns="right" type="LMS100">
          <param name="host" value="192.168.200.252" />

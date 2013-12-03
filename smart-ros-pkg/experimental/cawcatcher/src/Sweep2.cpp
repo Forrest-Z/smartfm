@@ -64,7 +64,7 @@ int main(int argc, char **argv)
   int pitch_angle = 0; 
 //  ros::Subscriber sub = n.subscribe("/joy", 1, joy_servo_cb);
 
-  angle_pub = new ros::Publisher(n.advertise<cawcatcher::AngleComm>("cawcatcherIN", 1));
+  angle_pub = new ros::Publisher(n.advertise<cawcatcher::AngleComm>("cawcatcherIN_2", 1));
 
 	ros::Rate  r(10);
 	
