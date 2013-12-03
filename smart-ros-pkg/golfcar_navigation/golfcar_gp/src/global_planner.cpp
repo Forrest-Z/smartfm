@@ -26,6 +26,7 @@ using namespace std;
 int start_number, end_number;
 ros::Publisher *goal_pub_ptr_;
 nav_msgs::Path rrt_path_;
+string map_frame_id_;
 void repubCallback(nav_msgs::Path p){
   ROS_INFO("New path received from rrt with size of: %d", p.poses.size());
   rrt_path_ = p;
@@ -71,6 +72,9 @@ void GlobalPlan::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_
     goal_pub_ = global_node.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal", 1);
     goal_pub_ptr_ = &goal_pub_;
     ROS_INFO("gplan initialized");
+    ros::NodeHandle priv_nh("~");
+    priv_nh.param("map_frame_id", map_frame_id_, string("/map"));
+    ROS_INFO_STREAM("node name: "<<ros::this_node::getName()<<" map_frame_id " << map_frame_id_);
 }
 
 void add_pts(vector<int>& pts, vector<pnc_msgs::sig_pt>* poi, int type)
@@ -98,7 +102,7 @@ bool GlobalPlan::makePlan(const geometry_msgs::PoseStamped&  start,
       StationPath station_path = sp_.getPath(sp_.knownStations()(start_number),
 					    sp_.knownStations()(end_number));
       geometry_msgs::PoseArray slowZones;
-      slowZones.header.frame_id = "/map";
+      slowZones.header.frame_id = map_frame_id_;
       slowZones.header.stamp = ros::Time::now();
 
       for(unsigned int i=0;i<sp_.slowZones_.size();i++)
@@ -132,13 +136,13 @@ bool GlobalPlan::makePlan(const geometry_msgs::PoseStamped&  start,
       p.poses.resize(station_path.size());
       for(unsigned int i=0; i<station_path.size(); i++)
       {
-	  p.poses[i].header.frame_id = "/map";
+	  p.poses[i].header.frame_id = map_frame_id_;
 	  p.poses[i].header.stamp = ros::Time::now();
 	  p.poses[i].pose.position.x = station_path[i].x_;
 	  p.poses[i].pose.position.y = station_path[i].y_;
 	  p.poses[i].pose.orientation.w = 1.0;
 	  geometry_msgs::PoseStamped pl;
-	  pl.header.frame_id = "/map";
+	  pl.header.frame_id = map_frame_id_;
 	  pl.header.stamp = ros::Time::now();
 	  pl.pose.position.x = station_path[i].x_;
 	  pl.pose.position.y = station_path[i].y_;
@@ -147,7 +151,7 @@ bool GlobalPlan::makePlan(const geometry_msgs::PoseStamped&  start,
       }
       ROS_INFO("Plan with %d points sent.", plan.size());
       p.header.stamp = ros::Time();
-      p.header.frame_id = "/map";
+      p.header.frame_id = map_frame_id_;
 
       //p.poses.push_back(start);
       //p.poses.push_back(goal);
@@ -158,7 +162,7 @@ bool GlobalPlan::makePlan(const geometry_msgs::PoseStamped&  start,
     else {
       for(size_t i=0; i<rrt_path_.poses.size(); i++){
 	geometry_msgs::PoseStamped ps_temp;
-	ps_temp.header.frame_id = "/map";
+	ps_temp.header.frame_id = map_frame_id_;
 	ps_temp.header.stamp = ros::Time::now();
 	ps_temp.pose.position.x = rrt_path_.poses[i].pose.position.x;
 	ps_temp.pose.position.y = rrt_path_.poses[i].pose.position.y;
