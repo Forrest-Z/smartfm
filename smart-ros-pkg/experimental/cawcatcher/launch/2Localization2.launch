@@ -1,0 +1,8 @@
+<launch>
+<node name="map_sever" pkg="map_server" type="map_server" args="$(find cawcatcher)/maps/utown_top.yaml" />
+<node pkg="amcl" type="amcl" name="amcl" >
+<remap from="scan" to="front_bottom_scan"/>
+
+</node>
+</launch>
+

@@ -9,6 +9,9 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
 #set(ROS_BUILD_TYPE RelWithDebInfo)
 
+find_package(Eigen REQUIRED)
+include_directories(${Eigen_INCLUDE_DIRS})
+
 rosbuild_init()
 
 #set the default path for built executables to the "bin" directory
@@ -33,3 +36,14 @@ rosbuild_add_executable(listener src/listener.cpp)
 rosbuild_add_executable(joy_command src/joy_command.cpp)
 rosbuild_add_executable(Sweep src/Sweep.cpp)
 rosbuild_add_executable(Sweep2 src/Sweep2.cpp)
+#rosbuild_add_executable(adaptive src/adaptive.cpp)
+rosbuild_add_executable(adaptive_modified src/adaptive_modified.cpp)
+
+rosbuild_add_executable(publishFakeOdom src/publishFakeOdom.cpp)
+rosbuild_add_executable(listenerFake src/listenerFake.cpp)
+
+rosbuild_add_executable(steady src/steady.cpp)
+rosbuild_add_executable(pointcloud2converter src/pointcloud2converter.cpp)
+
+#rosbuild_add_executable(pcl_accumulator src/pcl_accumulator.cpp)
+rosbuild_add_executable(Xiaotong src/Xiaotong.cpp)

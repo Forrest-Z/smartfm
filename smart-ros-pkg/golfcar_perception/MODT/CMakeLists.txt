@@ -36,6 +36,14 @@ rosbuild_add_executable(DATMO src/DATMO.cpp)
 target_link_libraries(DATMO ${OpenCV_LIBRARIES})
 rosbuild_link_boost(DATMO signals)
 
+rosbuild_add_executable(DATMO_recordData src/DATMO_recordData)
+target_link_libraries(DATMO_recordData ${OpenCV_LIBRARIES})
+rosbuild_link_boost(DATMO_recordData signals)
+
+rosbuild_add_executable(DATMO_labellingData src/DATMO_labellingData.cpp)
+target_link_libraries(DATMO_labellingData ${OpenCV_LIBRARIES})
+rosbuild_link_boost(DATMO_labellingData signals)
+
 rosbuild_add_executable(DATMO_Ped src/DATMO_Ped.cpp)
 target_link_libraries(DATMO_Ped ${OpenCV_LIBRARIES})
 rosbuild_link_boost(DATMO_Ped signals)

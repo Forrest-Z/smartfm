@@ -180,7 +180,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
     ROS_DEBUG_NAMED("ctrl_loop", "Control Loop: t=%f", ros::Time::now().toSec());
     
     double turning_const = high_speed_*high_speed_/0.8;
-    double turn_speed = sqrt(turning_const*(0.8-move_status_.steer_angle));
+    double turn_speed = sqrt(turning_const*(0.8-fabs(move_status_.steer_angle)));
     speed_settings_.add("turning speed", SpeedAttribute::slow_zone, turn_speed);
     
     // Add a normal speed profile

@@ -1,0 +1,24 @@
+<package>
+  <description brief="vision_sandbox">
+     vision_sandbox
+  </description>
+  <author>baoxing</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/vision_sandbox</url>
+  <depend package="roscpp"/>
+  <depend package="std_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="cv_bridge"/>
+  <depend package="stereo_msgs"/>
+  <depend package="tf"/>
+  <depend package="visualization_msgs" />
+  <depend package="image_transport" />
+  <rosdep name="opencv2"/>
+  <depend package="nav_msgs"/>
+  <depend package="message_filters"/>
+  <depend package="image_geometry"/>
+  <depend package="pcl_ros"/>
+</package>
+
+

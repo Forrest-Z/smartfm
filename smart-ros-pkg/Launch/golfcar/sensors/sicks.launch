@@ -10,8 +10,8 @@
 
     <node pkg="LMS1xx" type="LMS100" name="topTilted">
         <param name="host" value="192.168.1.201"/>
-        <remap from ="scan" to="top_tilted_scan"/>
-        <param name="frame_id" value="top_tilted_lidar"/>
+        <remap from ="scan" to="front_top_scan"/>
+        <param name="frame_id" value="front_top_lidar"/>
     </node>
 
     <node pkg="LMS1xx" type="LMS100" name="frontBottom">

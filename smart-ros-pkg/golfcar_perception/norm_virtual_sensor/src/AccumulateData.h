@@ -31,6 +31,11 @@
 
 using namespace std;
 
+struct PoinCloudAndDistance{
+  sensor_msgs::PointCloud pc;
+  double dist;
+};
+
 class AccumulateData
 {
     const string target_frame_;
@@ -39,15 +44,15 @@ class AccumulateData
     laser_geometry::LaserProjection projector_;
     tf::StampedTransform last_transform_;
     tf::StampedTransform sensor_transform_;
-    vector<sensor_msgs::PointCloud> data_;
-
-    bool checkDistance(const tf::StampedTransform& newTf)
+    vector<PoinCloudAndDistance> data_;
+    double max_dist_;
+    bool checkDistance(const tf::StampedTransform& newTf, double &mov_dis)
     {
         tf::Transform odom_old_new  = last_transform_.inverse() * newTf;
-        float tx, ty;
+        double tx, ty;
         tx = -odom_old_new.getOrigin().y();
         ty =  odom_old_new.getOrigin().x();
-        float mov_dis = sqrtf(tx*tx + ty*ty);
+        mov_dis = sqrtf(tx*tx + ty*ty);
 
         if(mov_dis > min_dist_) return true;
         else return false;
@@ -61,12 +66,15 @@ public:
     {
     	scan_buffer_ = scan_buffer;
     	min_dist_ = min_dist;
+	max_dist_ = min_dist_*scan_buffer_;
     }
 
     void updateParameter(double min_dist, int scan_buffer)
     {
     	scan_buffer_ = abs(scan_buffer);//data_dist/min_dist+15.0;
     	min_dist_ = min_dist;
+	max_dist_ = min_dist_*scan_buffer_;
+	cout<<"Window keep at "<<max_dist_<<" m."<<endl;
     	cout<<"AccumuateData parameter updated. scan_buffer="<<scan_buffer_<<" min_dist="<<min_dist_<<endl;
     }
     //add latest observation to the sensor and erase the old buffer if necessary
@@ -79,13 +87,13 @@ public:
     	if(data_.size() == 0)
     	{
     		last_transform_ = latest_transform;
-    		insertPointCloud(src);
+    		insertPointCloud(src, 0);
     		return;
     	}
-
-    	if(checkDistance(latest_transform))
+	double move_dist;
+    	if(checkDistance(latest_transform,move_dist))
     	{
-    		if(insertPointCloud(src))
+    		if(insertPointCloud(src, move_dist))
     		{
     			last_transform_ = latest_transform;
     			new_data_ = true;
@@ -104,13 +112,13 @@ public:
         if(data_.size() == 0)
         {
             last_transform_ = latest_transform;
-            insertPointCloud(scan);
+            insertPointCloud(scan, 0);
             return;
         }
-
-        if(checkDistance(latest_transform))
+	double move_dist;
+    	if(checkDistance(latest_transform,move_dist))
         {
-            if(insertPointCloud(scan))
+            if(insertPointCloud(scan, move_dist))
             {
                 last_transform_ = latest_transform;
                 new_data_ = true;
@@ -127,13 +135,13 @@ public:
         {
             //only happens during initialization
             last_transform_ = latest_transform;
-            insertData(scan, tf);
+            insertData(scan, tf, 0);
             return;
         }
-
-        if(checkDistance(latest_transform))
+	double move_dist;
+    	if(checkDistance(latest_transform,move_dist))
         {
-            if(insertData(scan, tf))
+            if(insertData(scan, tf, move_dist))
             {
                 last_transform_ = latest_transform;
                 new_data_ = true;
@@ -141,27 +149,43 @@ public:
         }
     }
 
-    bool insertPointCloud(sensor_msgs::PointCloud &scan)
+    bool insertPointCloud(sensor_msgs::PointCloud &scan, double move_dist)
     {
-        data_.insert(data_.begin(), scan);
-        if(data_.size()>scan_buffer_) data_.resize(scan_buffer_);
+	PoinCloudAndDistance pc_and_dist;
+	pc_and_dist.pc = scan;
+	pc_and_dist.dist = move_dist;
+        data_.insert(data_.begin(), pc_and_dist);
+        if(data_.size()>scan_buffer_ ) data_.resize(scan_buffer_);
+	double total_dist = 0;
+	size_t window_size = 0;
+	for(; window_size<data_.size(); window_size++){
+	  total_dist += data_[window_size++].dist;
+	  if(total_dist > max_dist_) break;
+	}
+	cout<<window_size<<" "<<data_.size()<<" "<<total_dist<<endl;
+	if(window_size<data_.size()) 
+	  data_.resize(window_size);
+	
         return true;
     }
 
-    bool insertData(sensor_msgs::LaserScan &scan, tf::TransformListener &tf)
+    bool insertData(sensor_msgs::LaserScan &scan, tf::TransformListener &tf, double move_dist)
     {
         sensor_msgs::PointCloud laser_cloud;
 
         try{projector_.transformLaserScanToPointCloud(target_frame_, scan, laser_cloud, tf);}
         catch (tf::TransformException& e){ ROS_ERROR("%s",e.what());return false;}
 
-        return insertPointCloud(laser_cloud);
+        return insertPointCloud(laser_cloud, move_dist);
     }
 
     //obtain accumulated points so far that is sorted from new to old transformed by target frame
     bool getLatestAccumulated(vector<sensor_msgs::PointCloud> &data)
     {
-        data = data_;
+      vector<sensor_msgs::PointCloud> pointclouds;
+      for(size_t i=0; i<data_.size(); i++)
+	pointclouds.push_back(data_[i].pc);
+        data = pointclouds;
 
         //A simple flag to say we have new accumulated data
         bool new_data = new_data_;

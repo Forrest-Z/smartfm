@@ -1,0 +1,22 @@
+<launch>
+
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find science_center)/science_center_Wednesday.yaml"/>
+	<node name="amcl" pkg="amcl" type="amcl" respawn="false" output="screen">
+	<param name="odom_alpha1" value="0.4"/>	
+	<param name="odom_alpha2" value="0.4"/>        
+	<param name="odom_alpha3" value="0.7"/>
+	<param name="odom_alpha4" value="0.7"/>
+        <param name="update_min_d" value="0.2"/>
+        <param name="laser_max_beams" value="70"/>
+	<remap from="scan" to="top_tilted_scan"/>
+	<!--param name="initial_pose_x" value="100.0"/>
+	<param name="initial_pose_y" value="100.0"/>
+	<param name="initial_pose_a" value="3.12"/>
+	<param name="initial_cov_xx" value="1"/>
+	<param name="initial_cov_yy" value="1"/>
+	<param name="initial_cov_aa" value="0.1"/-->
+    </node>
+
+    <!--node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find science_center)/science_center_viz.vcg" /-->
+
+</launch>

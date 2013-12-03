@@ -25,5 +25,6 @@
         <rosparam file="$(find golfcar_ppc)/launch/move_base/global_costmap_params.yaml" command="load" />
         <rosparam file="$(find golfcar_ppc)/launch/move_base/sbpl_global_params.yaml" command="load" />
     </node>
-
+    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/>
+    <include file="$(find sound_speaker)/launch/sound_speaker.launch"/>
 </launch>
