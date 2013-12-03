@@ -22,6 +22,7 @@
 
 #include <phidget_encoders/Encoders.h>
 
+#include "tf/transform_broadcaster.h"
 
 class OdoIMU
 {
@@ -38,7 +39,7 @@ class OdoIMU
         ros::Subscriber imu_sub_;
         ros::Publisher odo_imu_pub_;
 
-        std::string frame_id_;
+        std::string parent_frame_id_, child_frame_id_;
         geometry_msgs::Point position_;
         double linear_speed_, angular_speed_;
         bool initialized_;
@@ -50,27 +51,31 @@ class OdoIMU
         double diag_min_freq_, diag_max_freq_;
         diagnostic_updater::FrequencyStatusParam diag_param_fs_;
         diagnostic_updater::FrequencyStatus diag_task_fs_;
+
+
+    	tf::TransformBroadcaster *tfb_;
 };
 
 
 
 OdoIMU::OdoIMU()
-: frame_id_("odom"),
+: parent_frame_id_("odom"), child_frame_id_("base_link"),
   diag_min_freq_(5), diag_max_freq_(50),
   diag_param_fs_(&diag_min_freq_, &diag_max_freq_),
   diag_task_fs_(diag_param_fs_)
 {
-    enc_sub_ = nh_.subscribe("/encoder_odo", 100, &OdoIMU::encodersCallBack, this);
-    imu_sub_ = nh_.subscribe("/ms/imu/data", 100, &OdoIMU::imuCallBack, this);
+    enc_sub_ = nh_.subscribe("encoder_odo", 100, &OdoIMU::encodersCallBack, this);
+    imu_sub_ = nh_.subscribe("ms/imu/data", 100, &OdoIMU::imuCallBack, this);
     odo_imu_pub_ = nh_.advertise<nav_msgs::Odometry>("odom", 100);
 
     ros::NodeHandle n("~");
-    n.getParam("frame_id", frame_id_);
-
+    n.getParam("parent_frame_id", parent_frame_id_);
+    n.getParam("child_frame_id", child_frame_id_);
     initialized_ = false;
     yaw_drift_ = 0;
     roll_ = pitch_ = yaw_ = NAN;
 
+	tfb_ = new tf::TransformBroadcaster();
     diag_updater_.setHardwareID("none");
     diag_updater_.add(diag_task_fs_);
 }
@@ -132,14 +137,21 @@ void OdoIMU::publishOdo()
     // Create the Odometry msg
     nav_msgs::Odometry odoImuMsg;
     odoImuMsg.header.stamp = ros::Time::now();
-    odoImuMsg.header.frame_id = frame_id_;
-    odoImuMsg.child_frame_id = "base_link";
+    odoImuMsg.header.frame_id = parent_frame_id_;
+    odoImuMsg.child_frame_id = child_frame_id_;
     odoImuMsg.pose.pose.position = position_;
     odoImuMsg.pose.pose.orientation = tf::createQuaternionMsgFromRollPitchYaw(roll_, pitch_, yaw_now_);
     odoImuMsg.twist.twist.linear.x = linear_speed_;
     odoImuMsg.twist.twist.angular.z = angular_speed_;
     // Publish it
     odo_imu_pub_.publish(odoImuMsg);
+
+
+        tf::StampedTransform tmp_tf_stamped(tf::Transform(tf::Quaternion(odoImuMsg.pose.pose.orientation.x, odoImuMsg.pose.pose.orientation.y, odoImuMsg.pose.pose.orientation.z, odoImuMsg.pose.pose.orientation.w),
+					tf::Point(odoImuMsg.pose.pose.position.x, odoImuMsg.pose.pose.position.y, odoImuMsg.pose.pose.position.z)),
+				odoImuMsg.header.stamp,
+				parent_frame_id_, child_frame_id_);
+		tfb_->sendTransform(tmp_tf_stamped);
 }
 
 

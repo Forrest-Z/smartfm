@@ -2,24 +2,23 @@
 
     
     <node pkg="dead_reckoning" name="encoderImu_integrator" type="odom_IMU" output="screen">
-        <remap from="odom" to="encoder_imu_odom"/>
+        <remap from="odom" to="odom"/>
 	<remap from="encoder_odo" to="encoder_odo"/>
-        <param name="frame_id" value="encoder_imu_odom"/>
+        <param name="frame_id" value="odom"/>
     </node>
 
-    <node pkg="dead_reckoning" name="encoderImu_integrator_phidget" type="odom_IMU" output="screen">
+    <!--node pkg="dead_reckoning" name="encoderImu_integrator_phidget" type="odom_IMU" output="screen" ns="$(env ROBOT)">
         <remap from="odom" to="encoder_imu_odom_phidget"/>
 	<remap from="encoder_odo" to="bb_encoder_odo"/>
-        <param name="frame_id" value="encoder_imu_odom_phidget"/>
-	<!--remap from="/ms/imu/data" to="/imu/data"/-->
-    </node>
+        <param name="frame_id" value="$(env ROBOT)/encoder_imu_odom_phidget"/>
+    </node-->
 
-    <node pkg="dead_reckoning" name="odom_republish" type="odom_republish.py">
+    <!--node pkg="dead_reckoning" name="odom_republish" type="odom_republish.py" ns="$(env ROBOT)">
         <remap from="input_topic" to="encoder_imu_odom"/>
-    </node>
+    </node-->
 
-    <node pkg="dead_reckoning" name="simple_odo_node_encoders" type="simple_odo_node" args="encoder_odom" output="screen"/>
+    <!--node pkg="dead_reckoning" name="simple_odo_node_encoders" type="simple_odo_node" args="encoder_odom" output="screen" ns="$(env ROBOT)"/>
     
-    <node pkg="dead_reckoning" name="simple_odo_node_encoders_imu" type="simple_odo_node" args="encoder_imu_odom" output="screen"/>
+    <node pkg="dead_reckoning" name="simple_odo_node_encoders_imu" type="simple_odo_node" args="encoder_imu_odom" output="screen" ns="$(env ROBOT)"/-->
 
 </launch>
