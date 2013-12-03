@@ -53,6 +53,7 @@ private:
     void transformMapToOdom(geometry_msgs::PoseStamped *map_pose,
                             geometry_msgs::PointStamped *odom_point);
     double distanceToGoal();
+    std::string map_frame_id_, odom_frame_id_, baselink_frame_id_;
 };
 
 #endif

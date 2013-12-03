@@ -12,6 +12,10 @@ RoutePlannerVehicle::RoutePlannerVehicle(const StationPaths & sp)
     g_plan_pub_ = n.advertise<nav_msgs::Path>("pnc_globalplan", 1);
     pointCloud_pub_ = n.advertise<sensor_msgs::PointCloud>("pnc_waypointVis",1);
     nextpose_pub_ = n.advertise<geometry_msgs::PoseStamped>("pnc_nextpose",1);
+    ros::NodeHandle private_nh("~");
+    private_nh.param("map_frame_id", map_frame_id_, std::string("/map"));
+    private_nh.param("odom_frame_id", odom_frame_id_, std::string("/odom"));
+    private_nh.param("baselink_frame_id", baselink_frame_id_, std::string("/base_link"));
 }
 
 
@@ -24,7 +28,7 @@ void RoutePlannerVehicle::initDest(const Station & start, const Station & end)
     // publish the path (for visualization)
     nav_msgs::Path p;
     p.header.stamp = ros::Time::now();
-    p.header.frame_id = "/map";
+    p.header.frame_id = map_frame_id_;
     p.poses.resize(path_.size());
     for( unsigned i=0; i<path_.size(); i++ )
     {
@@ -39,7 +43,7 @@ void RoutePlannerVehicle::initDest(const Station & start, const Station & end)
     // destination station.
     move_base_msgs::MoveBaseGoal goal;
     goal.target_pose.header.stamp = ros::Time::now();
-    goal.target_pose.header.frame_id = "/map";
+    goal.target_pose.header.frame_id = map_frame_id_;
     goal.target_pose.pose.position.x = (double) start.number();
     goal.target_pose.pose.position.y = (double) end.number();
     goal.target_pose.pose.orientation.w = 1.0;
@@ -75,7 +79,7 @@ bool RoutePlannerVehicle::goToDest()
 
     sensor_msgs::PointCloud pc;
     pc.header.stamp = ros::Time::now();
-    pc.header.frame_id = "/odom";
+    pc.header.frame_id = odom_frame_id_;
     pc.points.resize(1);
     pc.points[0].x = odom_point.point.x;
     pc.points[0].y = odom_point.point.y;
@@ -110,12 +114,12 @@ double RoutePlannerVehicle::distanceToGoal()
 void RoutePlannerVehicle::transformMapToOdom(geometry_msgs::PoseStamped *map_pose,
                                              geometry_msgs::PointStamped *odom_point)
 {
-    map_pose->header.frame_id = "/map";
+    map_pose->header.frame_id = map_frame_id_;
     map_pose->header.stamp = ros::Time();
     geometry_msgs::PoseStamped odom_pose;
 
     try {
-        tf_.transformPose("/odom", *map_pose, odom_pose);
+        tf_.transformPose(odom_frame_id_, *map_pose, odom_pose);
     }
     catch(tf::LookupException& ex) {
         ROS_ERROR("No Transform available Error: %s\n", ex.what());
@@ -140,12 +144,12 @@ bool RoutePlannerVehicle::getRobotGlobalPose()
     global_pose_.setIdentity();
     tf::Stamped<tf::Pose> robot_pose;
     robot_pose.setIdentity();
-    robot_pose.frame_id_ = "/base_link";
+    robot_pose.frame_id_ = baselink_frame_id_;
     robot_pose.stamp_ = ros::Time();
     ros::Time current_time = ros::Time::now(); // save time for checking tf delay later
 
     try {
-        tf_.transformPose("/map", robot_pose, global_pose_);
+        tf_.transformPose(map_frame_id_, robot_pose, global_pose_);
     }
     catch(tf::LookupException& ex) {
         ROS_ERROR("No Transform available Error: %s\n", ex.what());
