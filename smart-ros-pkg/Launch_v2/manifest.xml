@@ -1,0 +1,15 @@
+<package>
+  <description brief="Launch_v2">
+
+     Launch_v2
+
+  </description>
+  <author>demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/Launch_v2</url>
+  <depend package="roscpp"/>
+  <depend package="tf"/>
+</package>
+
+

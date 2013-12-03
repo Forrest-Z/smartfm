@@ -1,0 +1,3 @@
+<launch>
+  <node name="LocalizationLaunch" pkg="Launch_v2" type="update_param.bash" args="1Localization.xml" output="screen"/>
+</launch>

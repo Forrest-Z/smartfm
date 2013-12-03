@@ -1,0 +1,3 @@
+<launch>
+  <node name="NavigationLaunch" pkg="Launch_v2" type="update_param.bash" args="3Navigation.xml" output="screen"/>
+</launch>
