@@ -1,0 +1,10 @@
+digraph G {
+"/golfcart/base_link" -> "/golfcart/front_bottom_lidar"[label="Broadcaster: /golfcart/base_link_to_front_bottom_lidar\nAverage rate: 99.453 Hz\nMost recent transform: -0.001 sec old \nBuffer length: 4.977 sec\n"];
+"/golfcart/base_link" -> "/golfcart/camera_front_base"[label="Broadcaster: /golfcart/base_link_to_camera_front_base\nAverage rate: 99.458 Hz\nMost recent transform: -0.001 sec old \nBuffer length: 4.977 sec\n"];
+"/golfcart/base_link" -> "/golfcart/front_top_lidar"[label="Broadcaster: /golfcart/base_link_to_front_top_lidar\nAverage rate: 99.454 Hz\nMost recent transform: -0.001 sec old \nBuffer length: 4.977 sec\n"];
+"/golfcart/camera_front_base" -> "/golfcart/camera_front_img"[label="Broadcaster: /golfcart/camera_front_base_to_img\nAverage rate: 99.472 Hz\nMost recent transform: -0.003 sec old \nBuffer length: 4.976 sec\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1386073308.068"[ shape=plaintext ] ;
+ }->"/golfcart/base_link";
+}
