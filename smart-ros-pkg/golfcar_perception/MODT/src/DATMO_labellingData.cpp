@@ -22,7 +22,7 @@ private:
 
 	void load_param_file();
 	void read_data_batch(int &batch_serial);
-	void label_data_batch();
+	void label_data_batch(bool lazy_labelling);
 	//this save the labelled scan
 	void save_labelled_batch();
 	void save_abstract_result();
@@ -150,7 +150,7 @@ void DATMO_labellingData::read_data_batch(int &batch_serial)
 	fs_read.release();
 }
 
-void DATMO_labellingData::label_data_batch()
+void DATMO_labellingData::label_data_batch(bool lazy_labelling)
 {
 	batch_T_.clear();
 	for(size_t i=0; i<training_data_vector_.size(); i++)
@@ -171,27 +171,42 @@ void DATMO_labellingData::label_data_batch()
 	//		3-pedestrian;
 
 	std::vector<int> contour_labels(contour_vector_.size());
-	Mat contour_visual_img(visualization_image_size_, CV_8UC1);
 
-	for(size_t i=0; i<contour_vector_.size(); i++)
+	stringstream  image_visual_string;
+	image_visual_string<<input_path_.c_str()<<"/image_"<< batch_T_.back().laser_scan.header.seq<<".jpg";
+	Mat contour_visual_img = imread(image_visual_string.str().c_str(), CV_LOAD_IMAGE_COLOR);
+	imshow("contour_visual_img",contour_visual_img);
+	waitKey(200);
+
+	if(!lazy_labelling)
 	{
-		contour_visual_img = Scalar(0);
-		drawContours( contour_visual_img, contour_vector_, i, Scalar(255), -1, 8, vector<Vec4i>(), 0, Point() );
-		imshow("contour_visual_img",contour_visual_img);
-		waitKey(100);
+		for(size_t i=0; i<contour_vector_.size(); i++)
+		{
+			//contour_visual_img = Scalar(0);
+			drawContours( contour_visual_img, contour_vector_, i, Scalar(255, 255, 255), -1, 8, vector<Vec4i>(), 0, Point() );
+			imshow("contour_visual_img",contour_visual_img);
+			waitKey(100);
 
-		int class_type = 0;
-		printf("please key in the object type of this contour\n");
-		scanf("%d", &class_type);
-		contour_labels[i] = class_type;
+			int class_type = 0;
+			printf("please key in the object type of this contour\n");
+			scanf("%d", &class_type);
+			contour_labels[i] = class_type;
+		}
 	}
+	else
+	{
+		for(size_t i=0; i<contour_vector_.size(); i++)
+		{
+			contour_labels[i] = 0;
+		}
+	}
+
 
 	//2nd: label the LIDAR scans according to its associated contours;
 	//Here need to PAY SPECIAL ATTENTION to those missing range data:
 	//assuming the LIDAR points in one cluster are continuous, simply fill the missing readings with same class type as beginning and ending serials of a cluster;
 	for(size_t i=0; i<training_data_vector_.size(); i++)
 	{
-		DATMO_TrainingScan &TrainingScan_tmp=training_data_vector_[i];
 		DATMO_labelledScan &labelledScan_tmp=batch_T_[i];
 
 		for(size_t j=0; j<training_data_vector_[i].movingObjectClusters.size(); j++)
@@ -203,7 +218,7 @@ void DATMO_labellingData::label_data_batch()
 			{
 				int smallest_serial = labelledScan_tmp.laser_scan.ranges.size();
 				int biggest_serial = 0;
-				for(int k=0; k<pair_tmp.first.size(); k++)
+				for(int k=0; k<(int)pair_tmp.first.size(); k++)
 				{
 					if(pair_tmp.first[k]<smallest_serial)smallest_serial=pair_tmp.first[k];
 					if(pair_tmp.first[k]>biggest_serial)biggest_serial=pair_tmp.first[k];
@@ -217,6 +232,15 @@ void DATMO_labellingData::label_data_batch()
 	}
 
 	//3rd: merge the labelling from the 2nd-half of "batch_Tminus1_" and the 1st-half of "batch_T_", save results;
+	//it should be clarified that the 1st-half in the first batch, and the 2nd-half in the last batch will not be labelled, and hence not stored in the labelled data;
+
+	if(batch_Tminus1_.size()==0)
+	{
+		batch_Tminus1_ = batch_T_;
+		ROS_INFO("initializing batch_Tminus1_");
+		return;
+	}
+
 	for(size_t i=0; i<(size_t)interval_; i++)
 	{
 		DATMO_labelledScan &labelledScan_T =batch_T_[i];
@@ -230,32 +254,121 @@ void DATMO_labellingData::label_data_batch()
 		}
 	}
 
+	//to update the abstract summary;
 	if(AbstractLabelling_.type_masks.size()==0)
 	{
 		AbstractLabelling_.labelled_scan_startSerial = (int)batch_T_[0].laser_scan.header.seq;
-		AbstractLabelling_.labelled_scan_endSerial = (int)batch_T_[interval_-1].laser_scan.header.seq;
-		for(size_t i=0; i<(size_t)interval_; i++) AbstractLabelling_.type_masks.push_back(batch_T_[i].type_mask);
 	}
+	AbstractLabelling_.labelled_scan_endSerial = (int)batch_T_[interval_-1].laser_scan.header.seq;
+	for(size_t i=0; i<(size_t)interval_; i++) AbstractLabelling_.type_masks.push_back(batch_T_[i].type_mask);
 
 	save_labelled_batch();
 	batch_Tminus1_ = batch_T_;
 }
 
+//save the results of the 1st-half in "batch_T_" after merging the 2nd-half of "batch_Tminus1_" and the 1st-half of "batch_T_";
 void DATMO_labellingData::save_labelled_batch()
 {
+	size_t lidarbatch_serial = batch_T_[interval_-1].laser_scan.header.seq;
+	stringstream  data_batch_string;
+	data_batch_string<<output_path_.c_str()<<"/labelled_data"<< lidarbatch_serial<<".yml";
+	cout<<data_batch_string.str().c_str()<<endl;
+	FileStorage fs(data_batch_string.str().c_str(), FileStorage::WRITE);
 
+	fs << "scan" << "[";
+	for(size_t i=0; i<(size_t)interval_; i++)
+	{
+		DATMO_labelledScan &labelledScan_T =batch_T_[i];
+		fs<<"{:"<<"serial"<<(int)labelledScan_T.laser_scan.header.seq
+		   <<"time"<<labelledScan_T.laser_scan.header.stamp.toSec()
+		   <<"angle_min"<<labelledScan_T.laser_scan.angle_min
+		   <<"angle_max"<<labelledScan_T.laser_scan.angle_increment
+		   <<"time_increment"<<labelledScan_T.laser_scan.time_increment
+		   <<"scan_time"<<labelledScan_T.laser_scan.scan_time
+		   <<"range_min"<<labelledScan_T.laser_scan.range_min
+		   <<"range_max"<<labelledScan_T.laser_scan.range_max
+		   <<"ranges"<<"[:";
+
+		for(size_t j=0; j<labelledScan_T.laser_scan.ranges.size(); j++)
+		{
+			fs << labelledScan_T.laser_scan.ranges[j];
+		}
+		fs << "]" << "intensities"<<"[:";
+
+		for(size_t j=0; j<labelledScan_T.laser_scan.intensities.size(); j++)
+		{
+			fs << labelledScan_T.laser_scan.intensities[j];
+		}
+		fs << "]" << "}";
+	}
+	fs<<"]";
+
+	fs << "odom" << "[";
+	for(size_t i=0; i<(size_t)interval_; i++)
+	{
+		DATMO_labelledScan &labelledScan_T =batch_T_[i];
+		tf::Quaternion q(labelledScan_T.poseInOdom.pose.orientation.x, labelledScan_T.poseInOdom.pose.orientation.y, labelledScan_T.poseInOdom.pose.orientation.z, labelledScan_T.poseInOdom.pose.orientation.w);
+		tf::Matrix3x3 m(q);
+		double roll, pitch, yaw;
+		m.getRPY(roll, pitch, yaw);
+		fs<<"{:"<<"x"<<labelledScan_T.poseInOdom.pose.position.x
+			    <<"y"<<labelledScan_T.poseInOdom.pose.position.y
+			    <<"z"<<labelledScan_T.poseInOdom.pose.position.z
+			    <<"roll"<<roll
+			    <<"pitch"<<pitch
+			    <<"yaw"<<yaw<<"}";
+	}
+	fs <<"]";
+
+	fs << "type_masks" << "[";
+	for(size_t i=0; i<(size_t)interval_; i++)
+	{
+		DATMO_labelledScan &labelledScan_T =batch_T_[i];
+		fs<<"[:";
+		for(size_t j=0; j<labelledScan_T.type_mask.size(); j++)
+		{
+			fs<<labelledScan_T.type_mask[j];
+		}
+		fs << "]" ;
+	}
+	fs <<"]";
+
+	fs.release();
 }
 
 void DATMO_labellingData::save_abstract_result()
 {
+	stringstream  abstract_summary;
+	abstract_summary<<output_path_.c_str()<<"/abstract_summary.yml";
+	cout<<"save abstract results"<<abstract_summary.str().c_str()<<endl;
 
+	FileStorage fs(abstract_summary.str().c_str(), FileStorage::WRITE);
+	fs <<"labelled_scan_startSerial"<<AbstractLabelling_.labelled_scan_startSerial;
+	fs <<"labelled_scan_endSerial"<<AbstractLabelling_.labelled_scan_endSerial;
+	fs << "type_masks" << "[";
+	for(size_t i=0; i<AbstractLabelling_.type_masks.size(); i++)
+	{
+		fs<<"[:";
+		for(size_t j=0; j<AbstractLabelling_.type_masks[i].size(); j++)
+		{
+			fs<<AbstractLabelling_.type_masks[i][j];
+		}
+		fs << "]" ;
+	}
+	fs <<"]";
+
+	fs.release();
 }
 
+//lazy_labelling function is for all "background scan" batches;
 void DATMO_labellingData::lazy_labelling_background(int batch_serial, int skipTo_to_batch)
 {
-	ROS_INFO("do lazy labelling for batches between (not included) %d and %d", batch_serial, skipTo_to_batch);
-
-
+	ROS_INFO("do lazy labelling for batches between (but not included) %d and %d", batch_serial, skipTo_to_batch);
+	for(int i=batch_serial+interval_; i<skipTo_to_batch; i=i+interval_)
+	{
+		read_data_batch(i);
+		label_data_batch(true);
+	}
 }
 
 //interactive data labelling: use terminal or GUI interface;
@@ -270,7 +383,7 @@ void DATMO_labellingData::main_loop()
 		ROS_INFO("batch serial %d", batch_serial);
 
 		read_data_batch(batch_serial);
-		label_data_batch();
+		label_data_batch(false);
 
         int use_the_result = 0;
         printf("use your labelled result? Press 1 to use, 0 to redo it \n");
