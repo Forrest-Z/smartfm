@@ -17,6 +17,7 @@
   <depend package="laser_geometry"/>
   <depend package="geometry_msgs"/>
   <depend package="fmutil"/>
+  <depend package="pnc_msgs"/>
   <!--depend package="speed_advisor"/-->
 </package>
 
