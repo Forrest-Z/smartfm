@@ -543,7 +543,7 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 				size_t pointSerialInCloud = 0;
 				for(size_t a=0; a<scan_vector_.size();a++)
 				{
-					std::vector<size_t> serial_in_cluster;
+					std::vector<int> serial_in_cluster;
 					for(size_t b=0; b<scan_vector_[a].ranges.size();b++)
 					{
 						if(scan_vector_[a].intensities[b]>0.0)
@@ -554,14 +554,14 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 							double check = pointPolygonTest(contours_combined[i], imgpt_tmp, true);
 							if(check >= -1.0)
 							{
-								serial_in_cluster.push_back(b);
+								serial_in_cluster.push_back((int)b);
 								collected_visualize_pcl.points.push_back(spacePt_tmp);
 							}
 							pointSerialInCloud++;
 						}
 					}
 
-					std::pair<std::vector<size_t>, size_t> movingObjectCluster = make_pair(serial_in_cluster, candidate_contour_serial);
+					std::pair<std::vector<int>, int> movingObjectCluster = make_pair(serial_in_cluster, candidate_contour_serial);
 					training_data_vector[a].movingObjectClusters.push_back(movingObjectCluster);
 				}
 				contour_candidate_vector.push_back(contours_combined[i]);

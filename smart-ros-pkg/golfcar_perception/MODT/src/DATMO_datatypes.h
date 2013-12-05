@@ -39,7 +39,8 @@ class DATMO_TrainingScan
 	sensor_msgs::LaserScan laser_scan;
 	geometry_msgs::PoseStamped poseInOdom;
 
-	std::vector < std::pair<std::vector<size_t>, size_t> > movingObjectClusters;
+	//the first element of the pair is a cluster of point serial in the LIDAR, the 2nd element is the corresponding id of the contour;
+	std::vector < std::pair<std::vector<int>, int> > movingObjectClusters;
 };
 
 class DATMO_labelledScan
@@ -50,4 +51,12 @@ class DATMO_labelledScan
 
 	//0-nothing, 1-vehicle, 2-motorbike, 3-pedestrian, 4-other;
 	std::vector<int> type_mask;
+};
+
+class DATMO_abstractSummary
+{
+	public:
+	int labelled_scan_startSerial;
+	int labelled_scan_endSerial;
+	std::vector<std::vector<int> > type_masks;
 };
