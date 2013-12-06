@@ -49,7 +49,7 @@ class DATMO_labelledScan
 	sensor_msgs::LaserScan laser_scan;
 	geometry_msgs::PoseStamped poseInOdom;
 
-	//0-nothing, 1-vehicle, 2-motorbike, 3-pedestrian, 4-other;
+	//0-nothing, 1-vehicle, 2-motorbike, 3-pedestrian, 4-under-determined;
 	std::vector<int> type_mask;
 };
 

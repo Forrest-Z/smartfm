@@ -122,9 +122,9 @@ DATMO::DATMO()
 	collected_cloud_pub_		=   nh_.advertise<sensor_msgs::PointCloud>("collected_cloud", 2);
 
 	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/front_bottom_scan", 100);
-	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, odom_frame_id_, 10);
+	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, odom_frame_id_, 100);
 	tf_filter_->registerCallback(boost::bind(&DATMO::scanCallback, this, _1));
-	tf_filter_->setTolerance(ros::Duration(0.05));
+	tf_filter_->setTolerance(ros::Duration(0.1));
 
 	current_polygon_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("/approxy_polygon", 10);
 
@@ -219,7 +219,7 @@ inline bool DATMO::LocalPixelValid(Point2f & imgPt)
 
 void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 {
-	ROS_INFO("scan callback begin");
+	ROS_INFO("scan callback %u ", verti_scan_in->header.seq);
 	sensor_msgs::PointCloud verti_cloud;
 	try{projector_.transformLaserScanToPointCloud(odom_frame_id_, *verti_scan_in, verti_cloud, tf_);}
 	catch (tf::TransformException& e){ROS_DEBUG("Wrong!!!!!!!!!!!!!"); std::cout << e.what();return;}
@@ -248,7 +248,7 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 	}
 	laser_pose_vector_.push_back(laser_pose_current_);
 
-	//scan_approxy(verti_cloud, laser_pose_current_);
+	scan_approxy(verti_cloud, laser_pose_current_);
 
 	assert(cloud_vector_.size() == laser_pose_vector_.size());
 
@@ -414,7 +414,7 @@ void DATMO::process_accumulated_points()
 	waitKey(1);
 
 	stringstream  visualization_string;
-	visualization_string<<"/home/baoxing/data/image_"<< scan_serial_<<".jpg";
+	visualization_string<<"/home/baoxing/data/raw_data/image_"<< scan_serial_<<".jpg";
 	const string image_name = visualization_string.str();
 	imwrite(image_name, merged_visualization);
 
@@ -579,7 +579,7 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 void DATMO::save_training_data(std::vector<DATMO_TrainingScan>& training_data_vector,std::vector<vector<Point> > & contour_candidate_vector)
 {
 	stringstream  record_string;
-	record_string<<"/home/baoxing/data/training_data"<< scan_serial_<<".yml";
+	record_string<<"/home/baoxing/data/raw_data/training_data"<< scan_serial_<<".yml";
 	const string data_name = record_string.str();
 	FileStorage fs(data_name.c_str(), FileStorage::WRITE);
 

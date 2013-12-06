@@ -22,7 +22,7 @@ private:
 
 	void load_param_file();
 	void read_data_batch(int &batch_serial);
-	void label_data_batch(bool lazy_labelling);
+	void label_data_batch(bool lazy_labelling, bool miss_clustering);
 	//this save the labelled scan
 	void save_labelled_batch();
 	void save_abstract_result();
@@ -40,6 +40,7 @@ private:
 
 	std::vector<DATMO_labelledScan> 	batch_T_;
 	std::vector<DATMO_labelledScan> 	batch_Tminus1_;
+	std::vector<DATMO_labelledScan> 	batch_backup_;
 
 	DATMO_abstractSummary AbstractLabelling_;
 };
@@ -150,8 +151,9 @@ void DATMO_labellingData::read_data_batch(int &batch_serial)
 	fs_read.release();
 }
 
-void DATMO_labellingData::label_data_batch(bool lazy_labelling)
+void DATMO_labellingData::label_data_batch(bool lazy_labelling, bool miss_clustering)
 {
+
 	batch_T_.clear();
 	for(size_t i=0; i<training_data_vector_.size(); i++)
 	{
@@ -159,7 +161,8 @@ void DATMO_labellingData::label_data_batch(bool lazy_labelling)
 		single_scan_tmp.laser_scan = training_data_vector_[i].laser_scan;
 		single_scan_tmp.poseInOdom = training_data_vector_[i].poseInOdom;
 		//initialize the mask label to be all 0;
-		single_scan_tmp.type_mask.resize(single_scan_tmp.laser_scan.ranges.size(), 0);
+		if(!miss_clustering)single_scan_tmp.type_mask.resize(single_scan_tmp.laser_scan.ranges.size(), 0);
+		else single_scan_tmp.type_mask.resize(single_scan_tmp.laser_scan.ranges.size(), 4);
 		batch_T_.push_back(single_scan_tmp);
 	}
 
@@ -176,9 +179,9 @@ void DATMO_labellingData::label_data_batch(bool lazy_labelling)
 	image_visual_string<<input_path_.c_str()<<"/image_"<< batch_T_.back().laser_scan.header.seq<<".jpg";
 	Mat contour_visual_img = imread(image_visual_string.str().c_str(), CV_LOAD_IMAGE_COLOR);
 	imshow("contour_visual_img",contour_visual_img);
-	waitKey(200);
+	waitKey(100);
 
-	if(!lazy_labelling)
+	if(!lazy_labelling && !miss_clustering)
 	{
 		for(size_t i=0; i<contour_vector_.size(); i++)
 		{
@@ -193,11 +196,22 @@ void DATMO_labellingData::label_data_batch(bool lazy_labelling)
 			contour_labels[i] = class_type;
 		}
 	}
-	else
+	else if(lazy_labelling)
 	{
 		for(size_t i=0; i<contour_vector_.size(); i++)
 		{
 			contour_labels[i] = 0;
+		}
+	}
+	else if(!lazy_labelling && miss_clustering)
+	{
+		//special consideration: due to clustering problem, some vehicle lidars are not properly clustered together, leading to no contour to label;
+		//in this case, label the whole batch of scans as background are inappropriate, and hence label it as under-determined, while will not be used as training data;
+		//		4-under-determined;
+		ROS_WARN("miss clustering is true, will label the batch as 4");
+		for(size_t i=0; i<contour_vector_.size(); i++)
+		{
+			contour_labels[i] = 4;
 		}
 	}
 
@@ -247,7 +261,7 @@ void DATMO_labellingData::label_data_batch(bool lazy_labelling)
 		DATMO_labelledScan &labelledScan_Tminus1 =batch_Tminus1_[(i+interval_)];
 		for(size_t j=0; j<labelledScan_T.type_mask.size(); j++)
 		{
-			if(labelledScan_T.type_mask[j]==0 && labelledScan_Tminus1.type_mask[j]!=0)
+			if(labelledScan_T.type_mask[j]==0 && (labelledScan_Tminus1.type_mask[j]!=0&&labelledScan_Tminus1.type_mask[j]!=4))
 			{
 				labelledScan_T.type_mask[j] = labelledScan_Tminus1.type_mask[j];
 			}
@@ -263,6 +277,7 @@ void DATMO_labellingData::label_data_batch(bool lazy_labelling)
 	for(size_t i=0; i<(size_t)interval_; i++) AbstractLabelling_.type_masks.push_back(batch_T_[i].type_mask);
 
 	save_labelled_batch();
+	batch_backup_ = batch_Tminus1_;
 	batch_Tminus1_ = batch_T_;
 }
 
@@ -367,7 +382,7 @@ void DATMO_labellingData::lazy_labelling_background(int batch_serial, int skipTo
 	for(int i=batch_serial+interval_; i<skipTo_to_batch; i=i+interval_)
 	{
 		read_data_batch(i);
-		label_data_batch(true);
+		label_data_batch(true, false);
 	}
 }
 
@@ -377,28 +392,32 @@ void DATMO_labellingData::main_loop()
 	ROS_INFO("begin to label data");
 	namedWindow( "contour_visual_img", 1 );
 
+	bool miss_clustering = false;
+
 	for(int batch_serial = starting_serial_; batch_serial<= end_serial_; )
 	{
 		ROS_INFO("---------------------------------------------------------------");
 		ROS_INFO("batch serial %d", batch_serial);
 
 		read_data_batch(batch_serial);
-		label_data_batch(false);
+		label_data_batch(false, miss_clustering);
+		miss_clustering = false;
 
         int use_the_result = 0;
-        printf("use your labelled result? Press 1 to use, 0 to redo it \n");
+        printf("@@@@@@@@@@@@@@@@@@ use your labelled result? Press 0 to redo it, Press 1 to accept, Press 2 to take care of miss_clustering  @@@@@@@@@@@@@@ \n");
         scanf("%d", &use_the_result);
 
         if(use_the_result == 0)
         {
         	printf("redo the labelling of this batch\n");
+        	batch_Tminus1_ = batch_backup_;
         }
-        else
+        else if(use_the_result == 1)
         {
         	printf("labelling of this batch is accepted.\n");
 
         	int skipTo_to_batch = 0;
-    		printf("skip to certain batch? Please enter the number\n");
+    		printf("****************skip to certain batch? Please enter the number**************\n");
     		scanf("%d", &skipTo_to_batch);
 
     		if(skipTo_to_batch > batch_serial+interval_)
@@ -412,6 +431,15 @@ void DATMO_labellingData::main_loop()
     			printf("illegal skip, will process next batch %d\n", batch_serial+interval_);
     			batch_serial=batch_serial+interval_;
 			}
+        }
+        else  if(use_the_result == 2)
+        {
+        	miss_clustering=true;
+        	printf("!!!!!!!!!!missing_clustering is true, redo the labelling of this batch as missing_clustering!!!!!!!!\n");
+        }
+        else
+        {
+        	printf("Only 0, 1, 2 is valid.\n");
         }
 	}
 	save_abstract_result();
