@@ -261,7 +261,7 @@ void DATMO_labellingData::label_data_batch(bool lazy_labelling, bool miss_cluste
 		DATMO_labelledScan &labelledScan_Tminus1 =batch_Tminus1_[(i+interval_)];
 		for(size_t j=0; j<labelledScan_T.type_mask.size(); j++)
 		{
-			if(labelledScan_T.type_mask[j]==0 && (labelledScan_Tminus1.type_mask[j]!=0&&labelledScan_Tminus1.type_mask[j]!=4))
+			if((labelledScan_T.type_mask[j]==0||labelledScan_T.type_mask[j]==4) && (labelledScan_Tminus1.type_mask[j]!=0&&labelledScan_Tminus1.type_mask[j]!=4))
 			{
 				labelledScan_T.type_mask[j] = labelledScan_Tminus1.type_mask[j];
 			}
@@ -410,7 +410,14 @@ void DATMO_labellingData::main_loop()
         if(use_the_result == 0)
         {
         	printf("redo the labelling of this batch\n");
-        	batch_Tminus1_ = batch_backup_;
+        	if(batch_backup_.size()==0)
+        	{
+        		batch_Tminus1_.clear();
+        	}
+        	else
+        	{
+        		batch_Tminus1_ = batch_backup_;
+        	}
         }
         else if(use_the_result == 1)
         {
