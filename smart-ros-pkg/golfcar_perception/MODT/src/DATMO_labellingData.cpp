@@ -48,9 +48,12 @@ private:
 DATMO_labellingData::DATMO_labellingData():private_nh_("~")
 {
 	private_nh_.param("param_file_path", param_file_path_, std::string("/home/baoxing/data/DATMO_Label_Parameters.yaml"));
+
 	load_param_file();
 
-	AbstractLabelling_.type_masks.clear();
+	//AbstractLabelling_.labelled_scan_startSerial = starting_serial_ - interval_+1;
+	//AbstractLabelling_.labelled_scan_endSerial = end_serial_ - interval_;
+	save_abstract_result();
 }
 
 void DATMO_labellingData::load_param_file()
@@ -66,6 +69,7 @@ void DATMO_labellingData::load_param_file()
 	fs_read["input_path"]>> input_path_;
 	fs_read["output_path"]>> output_path_;
 
+	AbstractLabelling_.type_masks.clear();
 	fs_read.release();
 }
 
@@ -261,20 +265,23 @@ void DATMO_labellingData::label_data_batch(bool lazy_labelling, bool miss_cluste
 		DATMO_labelledScan &labelledScan_Tminus1 =batch_Tminus1_[(i+interval_)];
 		for(size_t j=0; j<labelledScan_T.type_mask.size(); j++)
 		{
-			if((labelledScan_T.type_mask[j]==0||labelledScan_T.type_mask[j]==4) && (labelledScan_Tminus1.type_mask[j]!=0&&labelledScan_Tminus1.type_mask[j]!=4))
+			if(
+					((labelledScan_T.type_mask[j]==0)&&(labelledScan_Tminus1.type_mask[j]!=4))
+					||(labelledScan_T.type_mask[j]==4)
+			  )
 			{
 				labelledScan_T.type_mask[j] = labelledScan_Tminus1.type_mask[j];
 			}
 		}
 	}
 
-	//to update the abstract summary;
 	if(AbstractLabelling_.type_masks.size()==0)
 	{
 		AbstractLabelling_.labelled_scan_startSerial = (int)batch_T_[0].laser_scan.header.seq;
 	}
 	AbstractLabelling_.labelled_scan_endSerial = (int)batch_T_[interval_-1].laser_scan.header.seq;
-	for(size_t i=0; i<(size_t)interval_; i++) AbstractLabelling_.type_masks.push_back(batch_T_[i].type_mask);
+	//for(size_t i=0; i<(size_t)interval_; i++) AbstractLabelling_.type_masks.push_back(batch_T_[i].type_mask);
+
 
 	save_labelled_batch();
 	batch_backup_ = batch_Tminus1_;
@@ -353,11 +360,33 @@ void DATMO_labellingData::save_labelled_batch()
 
 void DATMO_labellingData::save_abstract_result()
 {
+	ROS_INFO("save abstract results");
+
+	for(int i= AbstractLabelling_.labelled_scan_startSerial+interval_-1; i<= AbstractLabelling_.labelled_scan_endSerial; i=i+interval_)
+	{
+		stringstream  data_batch_string;
+		data_batch_string<<output_path_.c_str()<<"/labelled_data"<< i<<".yml";
+		FileStorage fs_read(data_batch_string.str().c_str(), FileStorage::READ);
+		if(!fs_read.isOpened()){ROS_ERROR("cannot find labelled data file %u", i); return;}
+
+		FileNode masks = fs_read["type_masks"];
+		FileNodeIterator mask_it = masks.begin(), mask_it_end = masks.end();
+		for(; mask_it!=mask_it_end; mask_it++)
+		{
+			vector<int> mask_tmp;
+			(*mask_it)>>mask_tmp;
+			AbstractLabelling_.type_masks.push_back(mask_tmp);
+		}
+		fs_read.release();
+	}
+
 	stringstream  abstract_summary;
 	abstract_summary<<output_path_.c_str()<<"/abstract_summary.yml";
 	cout<<"save abstract results"<<abstract_summary.str().c_str()<<endl;
 
 	FileStorage fs(abstract_summary.str().c_str(), FileStorage::WRITE);
+	if(!fs.isOpened()){ROS_ERROR("cannot write abstract_summary file"); return;}
+
 	fs <<"labelled_scan_startSerial"<<AbstractLabelling_.labelled_scan_startSerial;
 	fs <<"labelled_scan_endSerial"<<AbstractLabelling_.labelled_scan_endSerial;
 	fs << "type_masks" << "[";
@@ -427,7 +456,7 @@ void DATMO_labellingData::main_loop()
     		printf("****************skip to certain batch? Please enter the number**************\n");
     		scanf("%d", &skipTo_to_batch);
 
-    		if(skipTo_to_batch > batch_serial+interval_)
+    		if(skipTo_to_batch >= batch_serial+interval_ && skipTo_to_batch%interval_==0)
 			{
     			printf("jump to batch %d, will do lazy labelling for scans in between", skipTo_to_batch);
     			lazy_labelling_background(batch_serial, skipTo_to_batch);
@@ -442,10 +471,26 @@ void DATMO_labellingData::main_loop()
         else  if(use_the_result == 2)
         {
         	miss_clustering=true;
+        	if(batch_backup_.size()==0)
+        	{
+        		batch_Tminus1_.clear();
+        	}
+        	else
+        	{
+        		batch_Tminus1_ = batch_backup_;
+        	}
         	printf("!!!!!!!!!!missing_clustering is true, redo the labelling of this batch as missing_clustering!!!!!!!!\n");
         }
         else
         {
+        	if(batch_backup_.size()==0)
+        	{
+        		batch_Tminus1_.clear();
+        	}
+        	else
+        	{
+        		batch_Tminus1_ = batch_backup_;
+        	}
         	printf("Only 0, 1, 2 is valid.\n");
         }
 	}

@@ -99,6 +99,13 @@ private:
 
 	long int scan_serial_;
 	void save_training_data(std::vector<DATMO_TrainingScan>& training_data_vector,std::vector<vector<Point> > & contour_candidate_vector);
+
+	std::string												abstract_summary_path_;
+	int	Lstart_serial_, Lend_serial_;
+	vector<vector<int> > labelled_masks_;
+	void													load_labeledData();
+	ros::Publisher											labelled_scan_pub_;
+	void visualize_labelled_scan(const sensor_msgs::LaserScan::ConstPtr& scan_in);
 };
 
 DATMO::DATMO()
@@ -137,6 +144,51 @@ DATMO::DATMO()
 
 	initialize_local_image();
 	scan_serial_ = 0;
+
+
+	private_nh_.param("abstract_summary_path",       abstract_summary_path_,      std::string("/home/baoxing/data/labelled_data/abstract_summary.yml"));
+	load_labeledData();
+	labelled_scan_pub_		=   nh_.advertise<sensor_msgs::LaserScan>("labelled_scan", 2);
+}
+
+void DATMO::visualize_labelled_scan(const sensor_msgs::LaserScan::ConstPtr& scan_in)
+{
+	if((int)scan_in->header.seq > Lend_serial_ || (int)scan_in->header.seq < Lstart_serial_ )
+	{
+		ROS_WARN("scan %u not labelled", scan_in->header.seq);
+		return;
+	}
+	else
+	{
+		assert(labelled_masks_[((int)scan_in->header.seq-Lstart_serial_)].size() == scan_in->ranges.size());
+		sensor_msgs::LaserScan vis_scan = *scan_in;
+		for(size_t i=0; i<vis_scan.ranges.size(); i++)
+		{
+			if(labelled_masks_[((int)scan_in->header.seq-Lstart_serial_)][i]!=1) vis_scan.ranges[i]=0.0;
+		}
+		labelled_scan_pub_.publish(vis_scan);
+	}
+}
+
+void DATMO::load_labeledData()
+{
+	FileStorage fs_read(abstract_summary_path_.c_str(), FileStorage::READ);
+	if(!fs_read.isOpened()){ROS_ERROR("cannot find data batch file"); return;}
+
+	Lstart_serial_ = (int)fs_read["labelled_scan_startSerial"];
+	Lend_serial_ = (int)fs_read["labelled_scan_endSerial"];
+
+	FileNode masks = fs_read["type_masks"];
+	FileNodeIterator mask_it = masks.begin(), mask_it_end = masks.end();
+	int idx = 0;
+
+	for( ; mask_it != mask_it_end; mask_it++, idx++)
+	{
+		vector<int> mask_tmp;
+		(*mask_it) >> mask_tmp;
+		labelled_masks_.push_back(mask_tmp);
+	}
+	fs_read.release();
 }
 
 void DATMO::initialize_roadmap()
@@ -220,9 +272,11 @@ inline bool DATMO::LocalPixelValid(Point2f & imgPt)
 void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 {
 	ROS_INFO("scan callback %u ", verti_scan_in->header.seq);
+	visualize_labelled_scan(verti_scan_in);
 	sensor_msgs::PointCloud verti_cloud;
 	try{projector_.transformLaserScanToPointCloud(odom_frame_id_, *verti_scan_in, verti_cloud, tf_);}
 	catch (tf::TransformException& e){ROS_DEBUG("Wrong!!!!!!!!!!!!!"); std::cout << e.what();return;}
+
 
 	//pay attention to use the intensity value;
 	scan_vector_.push_back(*verti_scan_in);
@@ -560,6 +614,7 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 							pointSerialInCloud++;
 						}
 					}
+
 					std::pair<std::vector<int>, int> movingObjectCluster = make_pair(serial_in_cluster, candidate_contour_serial);
 					training_data_vector[a].movingObjectClusters.push_back(movingObjectCluster);
 				}
@@ -567,10 +622,11 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 				candidate_contour_serial++;
 			}
 		}
-		save_training_data(training_data_vector, contour_candidate_vector);
+		//save_training_data(training_data_vector, contour_candidate_vector);
 
 		collected_cloud_pub_.publish(collected_visualize_pcl);
 	}
+
 }
 
 //save extracted data into files;
