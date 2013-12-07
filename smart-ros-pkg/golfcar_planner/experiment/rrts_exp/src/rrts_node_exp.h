@@ -29,7 +29,7 @@
 #include <tf/transform_listener.h>
 
 #include <pnc_msgs/local_map.h>
-#include <rrts/rrts_status.h>
+#include <rrts_exp/rrts_status.h>
 
 #include "dubins_car_exp.h"
 #include "rrts_exp.hpp"
@@ -56,6 +56,8 @@ class PlannerExp
     geometry_msgs::Point32 goal;
     nav_msgs::OccupancyGrid map;
     bool is_first_goal, is_first_map;
+
+    nav_msgs::Path traj;
 
     geometry_msgs::Point32 car_position;
     tf::TransformListener tf_;
@@ -92,6 +94,7 @@ class PlannerExp
     ros::Publisher vertex_pub;
     ros::Publisher control_trajectory_pub;
 
+    ros::Publisher subgoal_view_pub;
     ros::Publisher committed_trajectory_pub;
     ros::Publisher committed_trajectory_view_pub;
     ros::Publisher sampling_view_pub;
@@ -101,10 +104,11 @@ class PlannerExp
 
     // functions
     void on_goal(const geometry_msgs::PoseStamped::ConstPtr p);
+    void set_goal(const geometry_msgs::PoseStamped p);
+    void set_root();
     void send_rrts_status(const ros::TimerEvent &e);
     void on_map(const pnc_msgs::local_map::ConstPtr lm);
     void on_committed_trajectory_pub_timer(const ros::TimerEvent &e);
-    void obs_check();
 
     bool root_in_goal();
     bool is_robot_in_collision();

@@ -1,7 +1,6 @@
 #ifndef __RRTS_EXP_H_
 #define __RRTS_EXP_H_
 
-
 #include "kdtree.h"
 #include <list>
 #include <set>
