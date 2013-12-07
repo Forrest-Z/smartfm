@@ -17,10 +17,9 @@
   <depend package="tf"/>
   <depend package="laser_geometry"/>
   <depend package="geometry_msgs"/>
-  <depend package="local_map_ext"/>
+  <depend package="local_map"/>
   <depend package="golfcar_ppc"/>
   <depend package="pnc_msgs"/>
-  <depend package="rrts"/>
   
   <export>
   	<cpp cflags="-I${prefix}/src/" lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lrrts_exp"/>

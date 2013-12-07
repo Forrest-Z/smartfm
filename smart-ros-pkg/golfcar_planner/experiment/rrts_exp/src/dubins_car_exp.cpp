@@ -19,8 +19,8 @@ StateExp::StateExp () {
 
 }
 
-
 StateExp::~StateExp() {
+
 }
 
 StateExp::StateExp (const StateExp &stateIn) {
@@ -28,7 +28,6 @@ StateExp::StateExp (const StateExp &stateIn) {
   for (int i = 0; i < 3; i++) 
     x[i] = stateIn.x[i];
 }
-
 
 StateExp& StateExp::operator=(const StateExp &stateIn){
 
@@ -112,10 +111,8 @@ int SystemExp::getStateKey (StateExp &stateIn, double *stateKey) {
 		tmp[2] += 2.0*M_PI;
 	while(tmp[2] > M_PI)
 		tmp[2] -= 2.0*M_PI;
-
 	for (int i = 0; i < 3; i++)
 		stateKey[i] =  tmp[i] / regionOperating.size[i];
-
 	return 1;
 }
 
@@ -294,7 +291,6 @@ double SystemExp::getStateCost(const double stateIn[3])
   transform_map_to_local_map(stateIn, zlc[0], zlc[1], ylc);
 
   double cost = 0;
-
   double zll[2] = {0};
   double zlr[2] = {0};
   zlr[0] = zlc[0] + car_width/2.0*sin(ylc);
@@ -403,7 +399,6 @@ int SystemExp::sampleGoalState (StateExp &randomStateOut) {
   //cout<<"sampled goal: "<< randomStateOut.x[0]<<" "<< randomStateOut.x[1]<< " "<<randomStateOut.x[2]<<endl;
   return 1;
 }
-
 
 double SystemExp::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
     double x_s2, double y_s2, double t_s2, int comb_no, 

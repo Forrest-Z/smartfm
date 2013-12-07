@@ -70,7 +70,6 @@ class SystemExp {
       bool check_obstacles, bool return_trajectory,
       bool& fully_extends, double*& end_state, list<double*>* TrajectoryExp, list<float> &control, double turning_radius);
 
-
   StateExp rootState;
 
   public:    
