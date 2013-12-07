@@ -60,7 +60,8 @@ encoders_odo_node:
 map_server:
   frame_id: golfcart/map
 amcl:
-  odom_alpha3: 0.2
+  odom_alpha3: 0.5
+  odom_alpha4: 0.5
   update_min_d: 0.2
   odom_frame_id: golfcart/odom
   base_frame_id: golfcart/base_link
@@ -111,3 +112,5 @@ speed_advisor:
   stationspeed_dist: 30.0
   baselink_carfront_length: 2.0
   kinematic_acceleration: false
+dynamic_virtual_bumper:
+  base_frame: golfcart/base_link

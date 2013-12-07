@@ -2,8 +2,8 @@
   <group ns="$(env ROBOT)">
     <!--3Autonomous-->
       <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller"/>
-      <node name="speed_controller_fastStop" pkg="lowlevel_controllers" type="speed_controller_fastStop" output="screen"/>
-      <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
+      <node name="speed_controller_fastStop" pkg="lowlevel_controllers" type="speed_controller_fastStop"/>
+      <node pkg="move_base" type="move_base" respawn="false" name="move_base_node">
 	  <remap from="cmd_vel" to="cmd_steer"/>
 	  <remap from="map" to="curb_map"/>
 	  <rosparam file="$(find Launch_v2)/move_base/costmap_common_params.yaml" command="load" ns="global_costmap" />
@@ -17,7 +17,7 @@
       </node>
       <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/>
       <node name="soundplay_node" pkg="sound_play" type="soundplay_node.py"/>
-      <node name="sound_speaker" pkg="sound_speaker" type="sound_speaker" output="screen">
+      <node name="sound_speaker" pkg="sound_speaker" type="sound_speaker">
 	<param name="sound_path" value="$(find sound_speaker)/sounds/"/>
       </node>
 
