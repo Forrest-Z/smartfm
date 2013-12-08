@@ -30,6 +30,7 @@ private:
 
 	ros::NodeHandle private_nh_;
 	int starting_serial_, end_serial_, interval_;
+	int quick_summary_;
 	cv::Size visualization_image_size_;
 	string param_file_path_;
 	string input_path_;
@@ -51,9 +52,12 @@ DATMO_labellingData::DATMO_labellingData():private_nh_("~")
 
 	load_param_file();
 
-	//AbstractLabelling_.labelled_scan_startSerial = starting_serial_ - interval_+1;
-	//AbstractLabelling_.labelled_scan_endSerial = end_serial_ - interval_;
-	save_abstract_result();
+	//pay special attention to the serial: 掐头去尾;
+	AbstractLabelling_.labelled_scan_startSerial = starting_serial_-interval_ +1;
+	AbstractLabelling_.labelled_scan_endSerial = end_serial_ - interval_;
+
+	//quick_summary mode directly read existing labelled_data files, and generate one abstract summary without labelling the same batches of data again;
+	if(quick_summary_==1) save_abstract_result();
 }
 
 void DATMO_labellingData::load_param_file()
@@ -66,6 +70,7 @@ void DATMO_labellingData::load_param_file()
 	interval_ = (int)fs_read["interval_"];
 	visualization_image_size_.height = (int)fs_read["image_height"];
 	visualization_image_size_.width = (int)fs_read["image_width"];
+	quick_summary_ = (int)fs_read["quick_summary"];
 	fs_read["input_path"]>> input_path_;
 	fs_read["output_path"]>> output_path_;
 
@@ -175,7 +180,7 @@ void DATMO_labellingData::label_data_batch(bool lazy_labelling, bool miss_cluste
 	//		0-background;
 	//		1-vehicle;
 	//		2-motorbike;
-	//		3-pedestrian;
+	//		3-pedestrian (not labelled yet);
 
 	std::vector<int> contour_labels(contour_vector_.size());
 
@@ -275,13 +280,12 @@ void DATMO_labellingData::label_data_batch(bool lazy_labelling, bool miss_cluste
 		}
 	}
 
-	if(AbstractLabelling_.type_masks.size()==0)
-	{
-		AbstractLabelling_.labelled_scan_startSerial = (int)batch_T_[0].laser_scan.header.seq;
-	}
-	AbstractLabelling_.labelled_scan_endSerial = (int)batch_T_[interval_-1].laser_scan.header.seq;
+	//if(AbstractLabelling_.type_masks.size()==0)
+	//{
+	//	AbstractLabelling_.labelled_scan_startSerial = (int)batch_T_[0].laser_scan.header.seq;
+	//}
+	//AbstractLabelling_.labelled_scan_endSerial = (int)batch_T_[interval_-1].laser_scan.header.seq;
 	//for(size_t i=0; i<(size_t)interval_; i++) AbstractLabelling_.type_masks.push_back(batch_T_[i].type_mask);
-
 
 	save_labelled_batch();
 	batch_backup_ = batch_Tminus1_;
@@ -418,6 +422,8 @@ void DATMO_labellingData::lazy_labelling_background(int batch_serial, int skipTo
 //interactive data labelling: use terminal or GUI interface;
 void DATMO_labellingData::main_loop()
 {
+	if(quick_summary_==1)return;
+
 	ROS_INFO("begin to label data");
 	namedWindow( "contour_visual_img", 1 );
 

@@ -39,7 +39,6 @@ using namespace cv;
 typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
 
 
-
 class DATMO
 {
 
@@ -76,7 +75,7 @@ private:
 
 	geometry_msgs::PoseStamped								laser_pose_current_;
 	ros::Publisher                              			vehicle_array_pub_;
-	ros::Publisher                              			collected_cloud_pub_;
+	ros::Publisher                              			collected_cloud_pub_, accumulated_cloud_pub_;
 	//vehicle local image;
 	float													img_side_length_, img_resolution_;
 	Mat														local_mask_;
@@ -120,14 +119,14 @@ DATMO::DATMO()
 
 	vehicle_array_pub_		=   nh_.advertise<geometry_msgs::PoseArray>("vehicle_array", 2);
 	collected_cloud_pub_		=   nh_.advertise<sensor_msgs::PointCloud>("collected_cloud", 2);
+	accumulated_cloud_pub_		=   nh_.advertise<sensor_msgs::PointCloud>("accumulated_cloud", 2);
 
 	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/front_bottom_scan", 100);
 	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, odom_frame_id_, 100);
 	tf_filter_->registerCallback(boost::bind(&DATMO::scanCallback, this, _1));
-	tf_filter_->setTolerance(ros::Duration(0.1));
+	tf_filter_->setTolerance(ros::Duration(0.5));
 
 	current_polygon_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("/approxy_polygon", 10);
-
 
 	double img_side_length_tmp, img_resolution_tmp;
 	private_nh_.param("img_side_length",      img_side_length_tmp,     50.0);
@@ -538,15 +537,17 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 			int disappear_serial = appear_disappear_pairs[i].second;
 			if(appear_serial>=0 && disappear_serial>=0)
 			{
-				ROS_INFO("appear_serial, disappear: %d, %d", appear_serial, disappear_serial);
+				//ROS_INFO("appear_serial, disappear: %d, %d", appear_serial, disappear_serial);
 				//record inside LIDAR points;
 				size_t pointSerialInCloud = 0;
 				for(size_t a=0; a<scan_vector_.size();a++)
 				{
 					std::vector<int> serial_in_cluster;
+					//cout<<"scan:"<<scan_vector_[a].header.seq<<"\t";
 					for(size_t b=0; b<scan_vector_[a].ranges.size();b++)
 					{
-						if(scan_vector_[a].intensities[b]>0.0)
+						//once there was a stupid bug here, when using "if(scan_vector_[a].intensities[b]>0)";
+						if(scan_vector_[a].ranges[b]>=scan_vector_[a].range_min && scan_vector_[a].ranges[b]<=scan_vector_[a].range_max)
 						{
 							geometry_msgs::Point32 spacePt_tmp = combined_pointcloud_.points[pointSerialInCloud];
 							Point2f imgpt_tmp;
@@ -556,10 +557,12 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 							{
 								serial_in_cluster.push_back((int)b);
 								collected_visualize_pcl.points.push_back(spacePt_tmp);
+								//cout<<"point"<<b<<":("<<spacePt_tmp.x<<","<<spacePt_tmp.y<<")\t";
 							}
 							pointSerialInCloud++;
 						}
 					}
+					//cout<<endl;
 					std::pair<std::vector<int>, int> movingObjectCluster = make_pair(serial_in_cluster, candidate_contour_serial);
 					training_data_vector[a].movingObjectClusters.push_back(movingObjectCluster);
 				}
@@ -568,7 +571,7 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 			}
 		}
 		save_training_data(training_data_vector, contour_candidate_vector);
-
+		accumulated_cloud_pub_.publish(combined_pointcloud_);
 		collected_cloud_pub_.publish(collected_visualize_pcl);
 	}
 }

@@ -1,0 +1,10 @@
+%YAML:1.0
+input_path:  "/home/baoxing/data/raw_data"
+output_path: "/home/baoxing/data/labelled_data"
+starting_serial: 5970
+end_serial: 22450
+interval_: 10
+image_height: 500
+image_width: 500
+quick_summary: 1
+

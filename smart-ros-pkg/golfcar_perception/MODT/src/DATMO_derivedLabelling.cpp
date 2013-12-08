@@ -188,6 +188,8 @@ void DATMO::load_labeledData()
 		(*mask_it) >> mask_tmp;
 		labelled_masks_.push_back(mask_tmp);
 	}
+
+	assert(labelled_masks_.size() == (Lend_serial_ - Lstart_serial_+1));
 	fs_read.release();
 }
 
