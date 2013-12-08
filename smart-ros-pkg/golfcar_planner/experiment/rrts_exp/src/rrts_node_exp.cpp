@@ -16,8 +16,7 @@ PlannerExp::PlannerExp()
   state_last_clear[0] = car_position.x;
   state_last_clear[1] = car_position.y;
   state_last_clear[2] = car_position.z;
-  //cout<<"state_last_clear: "<< state_last_clear[0]<<" "<<state_last_clear[1]<<" "<<state_last_clear[2]<<endl;
-
+  
   clear_committed_trajectory();
   is_updating_committed_trajectory = false;
   max_length_committed_trajectory = 25.0;
@@ -262,7 +261,7 @@ int PlannerExp::get_robot_pose()
 
   bool transform_is_correct = false;
   try {
-    tf_.transformPose("/map", robot_pose, map_pose);
+    tf_.transformPose("map", robot_pose, map_pose);
   }
   catch(tf::LookupException& ex) {
     ROS_ERROR("No Transform available Error: %s\n", ex.what());
@@ -445,7 +444,7 @@ int PlannerExp::get_plan()
   std::vector<double> sample_view;
   sensor_msgs::PointCloud sample_view_;
   sample_view_.header.stamp = ros::Time::now();
-  sample_view_.header.frame_id = "/map";
+  sample_view_.header.frame_id = "map";
   while((!found_best_path) || (samples_this_loop < 20))
   {
     samples_this_loop += rrts.iteration(sample_view);
@@ -628,7 +627,7 @@ void PlannerExp::publish_committed_trajectory()
 	  rrts_status[trjf] = true;
 
   traj.header.stamp = ros::Time::now();
-  traj.header.frame_id = "/map";
+  traj.header.frame_id = "map";
   traj.poses.clear();
 
   list<float>::iterator committed_control_iter = committed_control.begin();
@@ -637,7 +636,7 @@ void PlannerExp::publish_committed_trajectory()
     double* stateRef = *iter;
     geometry_msgs::PoseStamped p;
     p.header.stamp = ros::Time::now();
-    p.header.frame_id = "/map";
+    p.header.frame_id = "map";
 
     p.pose.position.x = stateRef[0];
     p.pose.position.y = stateRef[1];
@@ -655,7 +654,7 @@ void PlannerExp::publish_committed_trajectory()
 
   nav_msgs::Path traj_msg;
   traj_msg.header.stamp = ros::Time::now();
-  traj_msg.header.frame_id = "/map";
+  traj_msg.header.frame_id = "map";
   // publish to viewer
   traj_msg.poses.clear();
   for (list<double*>::iterator iter = committed_trajectory.begin(); iter != committed_trajectory.end(); iter++) 
@@ -663,7 +662,7 @@ void PlannerExp::publish_committed_trajectory()
     double* stateRef = *iter;
     geometry_msgs::PoseStamped p;
     p.header.stamp = ros::Time::now();
-    p.header.frame_id = "/map";
+    p.header.frame_id = "map";
 
     p.pose.position.x = stateRef[0];
     p.pose.position.y = stateRef[1];
@@ -687,11 +686,11 @@ void PlannerExp::publish_tree()
 
   sensor_msgs::PointCloud pc;
   pc.header.stamp = ros::Time::now();
-  pc.header.frame_id = "/map";
+  pc.header.frame_id = "map";
 
   sensor_msgs::PointCloud pc1;
   pc1.header.stamp = ros::Time::now();
-  pc1.header.frame_id = "/map";
+  pc1.header.frame_id = "map";
 
   if (num_nodes > 0) 
   {    
