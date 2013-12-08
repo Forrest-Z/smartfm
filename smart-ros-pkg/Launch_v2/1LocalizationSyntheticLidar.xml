@@ -1,0 +1,20 @@
+<launch>
+  <group ns="$(env ROBOT)">
+    <node pkg="norm_virtual_sensor" type="norm_virtual_sensor" name="norm_virtual_sensor" output="screen">
+    	<remap from="scan_in" to="front_top_scan"/>
+	<param name="odom_frame_id" value="$(env ROBOT)/odom"/>
+	<param name="baselink_frame_id" value="$(env ROBOT)/base_link"/>
+	<param name="odom_baselink_frame_id" value="$(env ROBOT)/odom_baselink"/>
+    </node>
+    <node pkg="norm_virtual_sensor" type="odom_baselink" name="odom_baselink">
+        <param name="odom_frame_id" value="$(env ROBOT)/odom"/>
+        <param name="baselink_frame_id" value="$(env ROBOT)/odom_baselink"/>
+    </node>
+    <node pkg="amcl_pc" type="amcl" name="amcl_pc" output="screen">
+        <remap from="scan" to="scan"/>
+        <remap from="pc" to="pc_legacy_out"/>
+    </node>
+    <!--node pkg="map_server" type="map_server" name="map_server2" args="$(find amcl_pc)/maps/bigeng_sde_map.yaml"/-->
+    <node pkg="map_server" type="map_server" name="map_server" args="$(find amcl_pc)/maps/all_utown_pcd.yaml"/>
+  </group>
+</launch>

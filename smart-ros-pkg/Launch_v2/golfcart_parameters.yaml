@@ -9,6 +9,7 @@ frontBottom:
 base_link_to_front_top_lidar:
   x: 1.78
   z: 1.82
+  pitch: 0.24
   parent_frame_id: env_ROBOT/base_link
   child_frame_id: env_ROBOT/front_top_lidar
 base_link_to_front_bottom_lidar:
@@ -59,6 +60,21 @@ encoders_odo_node:
   frame_id: phidget_encoder_odom
 map_server:
   frame_id: env_ROBOT/map
+amcl_pc:
+  max_particles: 500
+  min_particles: 250
+  laser_likelihood_max_dist: 1.0
+  odom_alpha1: 0.4
+  odom_alpha2: 0.1
+  odom_alpha3: 0.2
+  odom_alpha4: 0.1
+  update_min_d: 0.2
+  laser_model_type: pc_likelihood_field
+  laser_max_beams: 70
+  laser_likelihood_max_dist: 0.5
+  odom_frame_id: env_ROBOT/odom
+  base_frame_id: env_ROBOT/base_link
+  global_frame_id: env_ROBOT/map
 amcl:
   odom_alpha3: 0.5
   odom_alpha4: 0.5
