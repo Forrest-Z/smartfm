@@ -14,6 +14,7 @@ SimpleGoal::SimpleGoal(const StationPaths & sp) : RoutePlanner(sp)
     speed_status_sub_ = nh.subscribe("speed_status", 1, &SimpleGoal::speedStatusCallBack, this);
     has_reached_ = false;
     reachSoundPlayed_ = false;
+    initialized = false;
     world_coord_sub_ = nh.subscribe("world_utm_latlon", 1, &SimpleGoal::worldCoordCallBack, this);
     ros::NodeHandle priv_nh("~");
     priv_nh.param("map_frame_id", map_frame_id_, std::string("/map"));
@@ -23,12 +24,13 @@ void SimpleGoal::initDest(const Station & start, const Station & end)
 {
     has_reached_ = false;
     reachSoundPlayed_ = false;
-    geometry_msgs::PoseStamped goal;
+    //geometry_msgs::PoseStamped goal;
     goal.header.stamp = ros::Time::now();
     goal.header.frame_id = map_frame_id_;
     goal.pose.position.x = (double) start.number();
     goal.pose.position.y = (double) end.number();
     goal.pose.orientation.z = 1.0;
+    initialized = true;
     goal_pub_.publish(goal);
     std_msgs::UInt16 sound_data;
     sound_data.data = 1;
@@ -39,7 +41,8 @@ void SimpleGoal::initDest(const Station & start, const Station & end)
 
 void SimpleGoal::speedStatusCallBack(const pnc_msgs::speed_contribute &msg)
 {
-	//goal_pub_.publish(goal);
+	if (initialized)
+		goal_pub_.publish(goal);
     has_reached_ = msg.goal;
     eta_ = has_reached_ ? 0 : msg.dist_goal / 2; //velocity is taken as constant 2m/s
 }
