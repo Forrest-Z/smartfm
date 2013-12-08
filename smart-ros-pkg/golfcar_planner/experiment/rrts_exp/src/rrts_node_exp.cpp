@@ -16,8 +16,7 @@ PlannerExp::PlannerExp()
   state_last_clear[0] = car_position.x;
   state_last_clear[1] = car_position.y;
   state_last_clear[2] = car_position.z;
-  //cout<<"state_last_clear: "<< state_last_clear[0]<<" "<<state_last_clear[1]<<" "<<state_last_clear[2]<<endl;
-
+  
   clear_committed_trajectory();
   is_updating_committed_trajectory = false;
   max_length_committed_trajectory = 25.0;
@@ -37,8 +36,10 @@ PlannerExp::PlannerExp()
   obs_check_pub = nh.advertise<sensor_msgs::PointCloud>("obs_check", 2);
   map_sub = nh.subscribe("local_map", 2, &PlannerExp::on_map, this);
   goal_sub = nh.subscribe("pnc_nextpose", 2, &PlannerExp::on_goal, this);
-  rrts_status_pub = nh.advertise<rrts::rrts_status>("rrts_status", 2);
+  rrts_status_pub = nh.advertise<rrts_exp::rrts_status>("rrts_status", 2);
   sampling_view_pub = nh.advertise<sensor_msgs::PointCloud>("samples",2);
+
+  subgoal_view_pub = nh.advertise<geometry_msgs::PoseStamped>("sub_goal_view",1);
 
   is_first_goal = true;
   is_first_map = true;
@@ -51,44 +52,6 @@ PlannerExp::~PlannerExp()
   clear_committed_trajectory();
 }
 
-void PlannerExp::obs_check()
-{
-#if 0
-
-  cout<<"inside obs_check"<<endl;
-  if((!is_first_map) && (!is_first_goal))
-  {
-    get_robot_pose();
-    double tmp[3];
-    tmp[2] = car_position.z;
-    cout<<"Obs check: "<<car_position.x<<" "<<car_position.y<<" "<<car_position.z<<endl;
-    //system.map_origin[0] = car_position.x; system.map_origin[1] = car_position.y; system.map_origin[2] = car_position.z;
-    //cout<<"map origin: "<<system.map_origin[0]<<" "<<system.map_origin[1]<<" "<<system.map_origin[2]<<endl;
-    sensor_msgs::PointCloud obs_check;
-    obs_check.header.frame_id = "/map";
-    obs_check.header.stamp = ros::Time::now();
-
-    for(double x = car_position.x-10.0; x < car_position.x + 10.0; x+=0.2)
-    {
-      for(double y = car_position.y-10.0; y < car_position.y + 10.0; y+=0.2)
-      {
-        tmp[0] = x;
-        tmp[1] = y;
-        if(rrts.system->IsInCollision(tmp))
-        {
-          geometry_msgs::Point32 p;
-          p.x = tmp[0];
-          p.y = tmp[1];
-          p.z = 1.0;
-          obs_check.points.push_back(p);
-        }
-      }
-    }
-    obs_check_pub.publish(obs_check);
-  }
-  cout<<"End of obs_check"<<endl;
-#endif
-}
 int PlannerExp::clear_committed_trajectory()
 {
 	//cout<<"clear_committed_trajectory"<<endl;
@@ -159,7 +122,7 @@ int PlannerExp::clear_committed_trajectory_length()
 
 void PlannerExp::send_rrts_status(const ros::TimerEvent &e)
 {
-  rrts::rrts_status smsg;
+  rrts_exp::rrts_status smsg;
   smsg.header.stamp = ros::Time::now();
   smsg.robot_in_collision = rrts_status[rinc];
   smsg.goal_in_collision = rrts_status[ginc];
@@ -227,6 +190,65 @@ void PlannerExp::on_goal(const geometry_msgs::PoseStamped::ConstPtr ps)
   //ROS_INFO("got goal: %f %f %f", goal.x, goal.y, goal.z);
 }
 
+void PlannerExp::set_goal(const geometry_msgs::PoseStamped ps)
+{
+  double roll=0, pitch=0, yaw=0;
+  tf::Quaternion q;
+  tf::quaternionMsgToTF(ps.pose.orientation, q);
+  tf::Matrix3x3(q).getRPY(roll, pitch, yaw);
+
+  subgoal_view_pub.publish(ps);
+
+  if(is_first_goal)
+  {
+    is_first_goal = false;
+    cout<<"got first goal"<<endl;
+    goal.x = ps.pose.position.x;
+    goal.y = ps.pose.position.y;
+    goal.z = yaw;
+    double goal_state[3] = {goal.x, goal.y, goal.z};
+    if(is_first_map == false)
+    {
+      setup_rrts();
+      if(rrts.system->IsInCollision(goal_state, false))
+      {
+        cout<<"goal in collision: stopping"<<endl;
+        rrts_status[ginc] = true;
+      }
+      rrts_status[ginc] = false;
+    }
+  }
+  // new goal than previous one, change sampling region
+  if((!is_first_map) && (!is_first_goal))
+  {
+    if( dist(goal.x, goal.y, 0., ps.pose.position.x, ps.pose.position.y, 0.) > 0.5)
+    {
+      goal.x = ps.pose.position.x;
+      goal.y = ps.pose.position.y;
+      goal.z = yaw;
+      double goal_state[3] = {goal.x, goal.y, goal.z};
+      cout<<"got goal: "<< goal.x<<" "<<goal.y<<" "<<goal.z<<endl;
+      if(rrts.system->IsInCollision(goal_state, false))
+      {
+        cout<<"goal in collision: sending collision"<<endl;
+        rrts_status[ginc] = true;
+      }
+      change_goal_region();
+      rrts_status[ginc] = false;
+      rrts_status[ginf] = false;
+    }
+  }
+  //ROS_INFO("got goal: %f %f %f", goal.x, goal.y, goal.z);
+}
+
+void PlannerExp::set_root(){
+	vertex_t &root = rrts.getRootVertex();
+	state_t &rootState = root.getState();
+	rootState[0] = car_position.x;
+	rootState[1] = car_position.y;
+	rootState[2] = car_position.z;
+}
+
 int PlannerExp::get_robot_pose()
 {
   tf::Stamped<tf::Pose> map_pose;
@@ -239,7 +261,7 @@ int PlannerExp::get_robot_pose()
 
   bool transform_is_correct = false;
   try {
-    tf_.transformPose("/map", robot_pose, map_pose);
+    tf_.transformPose("map", robot_pose, map_pose);
   }
   catch(tf::LookupException& ex) {
     ROS_ERROR("No Transform available Error: %s\n", ex.what());
@@ -273,18 +295,6 @@ int PlannerExp::get_robot_pose()
     car_position.x = tmp.pose.position.x;
     car_position.y = tmp.pose.position.y;
     car_position.z = yaw;
-    //cout<<"get_robot_pose: "<< car_position.x<<" "<<car_position.y<<" "<<car_position.z<<endl;
-
-    	/*
-       if( (is_first_map==false) && (is_first_goal==false))
-       {
-       if(rrts.system->IsInCollision(system.map_origin))
-       {
-       cout<<"current car position in collision abort"<<endl;
-       exit(0);
-       }
-       }
-       */
     return 0;
   }
   return 1;
@@ -349,11 +359,7 @@ void PlannerExp::setup_rrts()
     cout<<"robot_pose failed"<<endl;
 
   rrts.setSystem(system);
-  vertex_t &root = rrts.getRootVertex();  
-  state_t &rootState = root.getState();
-  rootState[0] = car_position.x;
-  rootState[1] = car_position.y;
-  rootState[2] = car_position.z;
+  set_root();
 
   system.regionOperating.center[0] = 0;
   system.regionOperating.center[1] = 0;
@@ -438,8 +444,8 @@ int PlannerExp::get_plan()
   std::vector<double> sample_view;
   sensor_msgs::PointCloud sample_view_;
   sample_view_.header.stamp = ros::Time::now();
-  sample_view_.header.frame_id = "/map";
-  while((!found_best_path) || (samples_this_loop < 10))
+  sample_view_.header.frame_id = "map";
+  while((!found_best_path) || (samples_this_loop < 20))
   {
     samples_this_loop += rrts.iteration(sample_view);
     if (sample_view.size()!=0){
@@ -450,12 +456,12 @@ int PlannerExp::get_plan()
     }
 
     best_cost = rrts.getBestVertexCost();
-    if(best_cost < 500.0)
+    if(best_cost < 30.0)
     {
-      if( (fabs(prev_best_cost - best_cost) < 0.05) && (rrts.numVertices > 10))
+      if( (fabs(prev_best_cost - best_cost) < 0.5) && (rrts.numVertices > 25))
         found_best_path = true;
     }
-    cout<<"n: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
+    //cout<<"n: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
 
     if(samples_this_loop %5 == 0){
       prev_best_cost = best_cost;
@@ -499,7 +505,7 @@ int PlannerExp::get_plan()
   else 
   {
 	  //cout << "failed to find the best path"<<rrts.numVertices<<endl;
-    if(rrts.numVertices > 100)
+    if(rrts.numVertices > 200)
     {
       rrts_status[ginf] = true;
       //cout<<"did not find best path: reinitializing"<<endl;
@@ -540,9 +546,7 @@ bool PlannerExp::is_near_end_committed_trajectory()
   return false;
 }
 
-void PlannerExp::on_planner_timer(const ros::TimerEvent &e)
-{
-	ROS_INFO("Planner timer called");
+void PlannerExp::on_planner_timer(const ros::TimerEvent &e){
   if(!committed_trajectory.empty())
   {
     // 1. check if trajectory is safe
@@ -622,9 +626,9 @@ void PlannerExp::publish_committed_trajectory()
   else
 	  rrts_status[trjf] = true;
 
-  nav_msgs::Path traj_msg;
-  traj_msg.header.stamp = ros::Time::now();
-  traj_msg.header.frame_id = "/map";
+  traj.header.stamp = ros::Time::now();
+  traj.header.frame_id = "map";
+  traj.poses.clear();
 
   list<float>::iterator committed_control_iter = committed_control.begin();
   for (list<double*>::iterator iter = committed_trajectory.begin(); iter != committed_trajectory.end(); iter++) 
@@ -632,13 +636,13 @@ void PlannerExp::publish_committed_trajectory()
     double* stateRef = *iter;
     geometry_msgs::PoseStamped p;
     p.header.stamp = ros::Time::now();
-    p.header.frame_id = "/map";
+    p.header.frame_id = "map";
 
     p.pose.position.x = stateRef[0];
     p.pose.position.y = stateRef[1];
     p.pose.position.z = *committed_control_iter;        // send control as the third state
     p.pose.orientation.w = 1.0;
-    traj_msg.poses.push_back(p);
+    traj.poses.push_back(p);
 
     //printf(" [%f, %f, %f]", p.pose.position.x, p.pose.position.y, p.pose.position.z);
     ROS_DEBUG(" [%f, %f, %f]", p.pose.position.x, p.pose.position.y, p.pose.position.z);
@@ -646,8 +650,11 @@ void PlannerExp::publish_committed_trajectory()
     committed_control_iter++;
   }
 
-  committed_trajectory_pub.publish(traj_msg);
+  committed_trajectory_pub.publish(traj);
 
+  nav_msgs::Path traj_msg;
+  traj_msg.header.stamp = ros::Time::now();
+  traj_msg.header.frame_id = "map";
   // publish to viewer
   traj_msg.poses.clear();
   for (list<double*>::iterator iter = committed_trajectory.begin(); iter != committed_trajectory.end(); iter++) 
@@ -655,7 +662,7 @@ void PlannerExp::publish_committed_trajectory()
     double* stateRef = *iter;
     geometry_msgs::PoseStamped p;
     p.header.stamp = ros::Time::now();
-    p.header.frame_id = "/map";
+    p.header.frame_id = "map";
 
     p.pose.position.x = stateRef[0];
     p.pose.position.y = stateRef[1];
@@ -679,11 +686,11 @@ void PlannerExp::publish_tree()
 
   sensor_msgs::PointCloud pc;
   pc.header.stamp = ros::Time::now();
-  pc.header.frame_id = "/map";
+  pc.header.frame_id = "map";
 
   sensor_msgs::PointCloud pc1;
   pc1.header.stamp = ros::Time::now();
-  pc1.header.frame_id = "/map";
+  pc1.header.frame_id = "map";
 
   if (num_nodes > 0) 
   {    
@@ -731,6 +738,5 @@ void PlannerExp::publish_tree()
 
   tree_pub.publish(pc);
   vertex_pub.publish(pc1);
-  obs_check();
   //cout<<"published tree"<<endl;
 }

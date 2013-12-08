@@ -48,4 +48,8 @@ rosbuild_add_executable(DATMO_Ped src/DATMO_Ped.cpp)
 target_link_libraries(DATMO_Ped ${OpenCV_LIBRARIES})
 rosbuild_link_boost(DATMO_Ped signals)
 
+rosbuild_add_executable(DATMO_derivedLabelling src/DATMO_derivedLabelling.cpp)
+target_link_libraries(DATMO_derivedLabelling ${OpenCV_LIBRARIES})
+rosbuild_link_boost(DATMO_derivedLabelling signals)
+
 #target_link_libraries(example ${PROJECT_NAME})
