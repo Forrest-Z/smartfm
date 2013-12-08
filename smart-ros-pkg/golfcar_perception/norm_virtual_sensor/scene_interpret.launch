@@ -9,10 +9,13 @@
         <remap from="/assembled_sick_scan2" to="/scan_filter"/>
     </node>
     <node pkg="robust_road_detection" type="road_surface_removal" name="road_surface_removal"/-->
-    
     <node pkg="norm_virtual_sensor" type="norm_virtual_sensor" name="norm_virtual_sensor" output="screen">
-    	<remap from="scan_in" to="scan_filter"/>
+    	<remap from="scan_in" to="top_tilted_scan"/>
+        <param name="odom_frame_id" value="odom"/>
+        <param name="baselink_frame_id" value="base_link"/>
     </node>    
-    <node pkg="norm_virtual_sensor" type="odom_baselink" name="odom_baselink"/>
-
+    <node pkg="norm_virtual_sensor" type="odom_baselink" name="odom_baselink">
+        <param name="odom_frame_id" value="odom"/>
+        <param name="baselink_frame_id" value="odom_baselink"/>
+    </node>
 </launch>

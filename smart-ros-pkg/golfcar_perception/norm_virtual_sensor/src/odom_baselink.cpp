@@ -9,6 +9,9 @@
 #include <nav_msgs/Odometry.h>
 #include <ros/ros.h>
 
+using namespace std;
+
+string odom_frame_id_, baselink_frame_id_;
 void odomCallback(nav_msgs::OdometryConstPtr msg)
 {
 	static tf::TransformBroadcaster broadcaster_b;
@@ -30,7 +33,7 @@ void odomCallback(nav_msgs::OdometryConstPtr msg)
 	broadcaster_b.sendTransform(
 			tf::StampedTransform(
 					tf::Transform(btqt_temp, tf::Vector3(msg->pose.pose.position.x,msg->pose.pose.position.y,0)),
-					msg->header.stamp, "odom", "odom_baselink"));
+					msg->header.stamp, odom_frame_id_, baselink_frame_id_));
 
 
 }
@@ -39,6 +42,9 @@ int main(int argc, char** argcv)
 {
 	ros::init(argc, argcv, "odom_baselink");
 	ros::NodeHandle nh;
+    ros::NodeHandle priv_nh("~");
+    priv_nh.param("odom_frame_id", odom_frame_id_, string("odom"));
+    priv_nh.param("baselink_frame_id", baselink_frame_id_, string("odom_baselink"));
 	ros::Subscriber odom_sub = nh.subscribe("odom", 10, odomCallback);
 	ros::spin();
 }

@@ -39,7 +39,7 @@ class NormVirtualSensor
     		density_radius_search_,density_min_neighbors_;
     int accummulate_buffer_;
     unsigned int accumulate_size_;
-
+    string odom_frame_id_, baselink_frame_id_, odom_baselink_frame_id_;
     void dynamicCallback(norm_virtual_sensor::NormVirtualSensorConfig &config, uint32_t level)
     {
     	min_pc2laser_ = config.min_pc2laser;
@@ -369,12 +369,15 @@ class NormVirtualSensor
             sensor_msgs::convertPointCloud2ToPointCloud(out, out_pc_legacy);
             try
             {
-            	tf_->transformPointCloud("/odom_baselink", out_pc_legacy, out_pc_legacy);
+            	tf_->transformPointCloud(odom_baselink_frame_id_, out_pc_legacy, out_pc_legacy);
             }
             catch (tf::ExtrapolationException ex)
             {
             	cout<<ex.what()<<endl;
             }
+            for(size_t i=0; i<out_pc_legacy.points.size(); i++)
+              out_pc_legacy.points[i].z = 0.0;
+	    out_pc_legacy.header.frame_id = baselink_frame_id_;
             final_pc_pub_.publish(out_pc_legacy);
             //just to check
             assert(rebuild_normal.points.size() == out_pc_legacy.points.size());
@@ -467,11 +470,13 @@ public:
     NormVirtualSensor(): norm_radius_search_(0.2), min_move_dist_(0.02)
     {
         ros::NodeHandle n;
-
+        ros::NodeHandle priv_nh("~");
         tf_ = new tf::TransformListener();
-
-        target_frame_ = "/odom";
-	string transform_frame = "/odom_baselink";
+        priv_nh.param("odom_frame_id", odom_frame_id_, string("odom"));
+        priv_nh.param("baselink_frame_id", baselink_frame_id_, string("base_link"));
+	priv_nh.param("odom_baselink_frame_id", odom_baselink_frame_id_, string("odom_baselink"));
+        target_frame_ = odom_frame_id_;
+	string transform_frame = odom_baselink_frame_id_;
         laser_accumulate_ = new AccumulateData(target_frame_, min_move_dist_, norm_radius_search_/min_move_dist_+accummulate_buffer_);
 
         laser_scan_sub_.subscribe(n, "scan_in", 1);
