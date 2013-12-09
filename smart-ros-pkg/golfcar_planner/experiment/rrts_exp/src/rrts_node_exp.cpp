@@ -12,7 +12,7 @@ PlannerExp::PlannerExp()
   nh.param("local_frame", local_frame, string("local_map"));
   nh.param("global_frame", global_frame, string("map"));
 
-  ros::Rate wait_rate(0.2);
+  ros::Rate wait_rate(0.5);
   while(get_robot_pose()){
     cout<<"Waiting for robot pose"<<endl;
     ros::spinOnce();
@@ -265,6 +265,7 @@ int PlannerExp::get_robot_pose()
 
   bool transform_is_correct = false;
   try {
+	tf_.waitForTransform(base_frame, global_frame, ros::Time::now(), ros::Duration(0.01));
     tf_.transformPose(global_frame, robot_pose, map_pose);
   }
   catch(tf::LookupException& ex) {
@@ -279,9 +280,8 @@ int PlannerExp::get_robot_pose()
     ROS_ERROR("Extrapolation Error: %s\n", ex.what());
     transform_is_correct = false;
   }
-  // check odom_pose timeout
   if (current_time.toSec() - map_pose.stamp_.toSec() > 0.1) {
-    ROS_WARN("Get robot pose transform timeout. Current time: %.4f, odom_pose stamp: %.4f, tolerance: %.4f",
+    ROS_WARN("Get robot pose transform timeout. Current time: %.4f, map_pose stamp: %.4f, tolerance: %.4f",
         current_time.toSec(), map_pose.stamp_.toSec(), 0.1);
     transform_is_correct = false;
   }
