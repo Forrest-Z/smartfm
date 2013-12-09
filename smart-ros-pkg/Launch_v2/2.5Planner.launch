@@ -1,0 +1,3 @@
+<launch>
+  <node name="PlannerLaunch" pkg="Launch_v2" type="update_param.bash" args="2.5Planner.xml" output="screen"/>
+</launch>
