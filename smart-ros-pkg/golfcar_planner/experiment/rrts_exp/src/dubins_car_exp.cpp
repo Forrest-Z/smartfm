@@ -99,11 +99,13 @@ SystemExp::SystemExp ()
   distance_rear_axis_rear = 0.45/factor_reduce_size; // dist between center of rear axis and rear end
 }
 
-SystemExp::~SystemExp () {
+
+SystemExp::~SystemExp (){
+
 }
 
-int SystemExp::getStateKey (StateExp &stateIn, double *stateKey) {
 
+int SystemExp::getStateKey (StateExp &stateIn, double *stateKey){
 	double tmp[3] = {0};
 	for(int i=0; i<3; i++)
 		tmp[i] = stateIn.x[i] - map_origin[i];
@@ -116,6 +118,7 @@ int SystemExp::getStateKey (StateExp &stateIn, double *stateKey) {
 	return 1;
 }
 
+
 #define SQ(x)   ((x)*(x))
 float SystemExp::getGoalCost(const double x[3])
 {
@@ -126,6 +129,7 @@ float SystemExp::getGoalCost(const double x[3])
     tmp -= 2.0*M_PI;
   return (sqrt(SQ(x[0]-regionGoal.center[0]) + SQ(x[1]-regionGoal.center[1])) + 4.0*fabs(tmp));
 }
+
 
 bool SystemExp::isReachingTarget (StateExp &stateIn) {
 
@@ -276,7 +280,8 @@ double SystemExp::getLaneCost(const double zx, const double zy)
         return 100;
     }
     else
-      return val/127*10;
+    	//TODO: Test the parameter for cost map ratio
+      return val/127*5;
   }
   else
     return 10;
@@ -471,6 +476,8 @@ double SystemExp::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
   x_end = x_s2 + turning_radius * cos (t_end);
   y_end = y_s2 + turning_radius * sin (t_end);
 
+  double line_distance = sqrt ((x_start-x_end)*(x_start-x_end) + (y_start-y_end)*(y_start-y_end) );
+
   int direction_s1 = 1;
   if ( (comb_no == 2) || (comb_no == 4) ) {
     direction_s1 = -1;
@@ -510,9 +517,9 @@ double SystemExp::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
   while(ts2c < -M_PI)
     ts2c += 2.0*M_PI;
 
-  double time_cost = 0.5*(( fabs(ts1c) + fabs(ts2c)) * turning_radius  + distance);
+  double time_cost = (( fabs(ts1c) + fabs(ts2c)) * turning_radius  + line_distance);
   double local_map_cost = 0;
-  double turning_cost = ( fabs(ts1c) + fabs(ts2c));
+  double turning_cost = 2.5 * ( fabs(ts1c) + fabs(ts2c));
   time_cost += turning_cost;
 
   fully_extends = 0;
@@ -557,6 +564,7 @@ double SystemExp::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         if (IsInCollision (state_curr))
           return -2.0;
       }
+      local_map_cost += getStateCost(state_curr);
       if (trajectory) 
       {
         double *state_new = new double[3];
@@ -565,7 +573,6 @@ double SystemExp::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
 
         trajectory->push_front(state_new);
         control.push_front (direction_s1*turning_radius);
-        local_map_cost += getStateCost(state_new);
       }
 
       if (t_inc_curr * turning_radius > distance_limit)  
@@ -610,13 +617,13 @@ double SystemExp::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         if (IsInCollision (state_curr))
           return -2.0;
       }
+      local_map_cost += getStateCost(state_curr);
       if (trajectory) {
         double *state_new = new double [3];
         for (int i = 0; i < 3; i++) 
           state_new[i] = state_curr[i];
         trajectory->push_front(state_new);
         control.push_front (0);
-        local_map_cost += getStateCost(state_new);
       }
 
       if (t_inc_curr * turning_radius + d_inc_curr > distance_limit) 
@@ -663,6 +670,7 @@ double SystemExp::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
         if (IsInCollision (state_curr))
           return -2.0;
       }
+      local_map_cost += getStateCost(state_curr);
       if (trajectory) 
       {
         double *state_new = new double [3];
@@ -670,7 +678,6 @@ double SystemExp::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
           state_new[i] = state_curr[i];
         trajectory->push_front(state_new);
         control.push_front(turning_radius * direction_s2);
-        local_map_cost += getStateCost(state_new);
       }
 
       if ((t_inc_curr_prev + t_inc_curr) * turning_radius + d_inc_curr > distance_limit) 
@@ -688,9 +695,8 @@ double SystemExp::extend_dubins_spheres (double x_s1, double y_s1, double t_s1,
     for (int i = 0; i < 3; i++)
       end_state[i] = state_curr[i];
   }
-
-  return time_cost + local_map_cost;
-
+  //TODO: Decide the ratio
+  return time_cost + 0.5 * local_map_cost;
 }
 
 double 
