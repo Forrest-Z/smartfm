@@ -60,3 +60,22 @@ class DATMO_abstractSummary
 	int labelled_scan_endSerial;
 	std::vector<std::vector<int> > type_masks;
 };
+
+class compressed_scan_segment
+{
+	//raw information;
+	vector<geometry_msgs::Point32> rawPoints;
+
+	//compressed information;
+	geometry_msgs::Point32 KeyPoint[3];
+	float intensities[3];
+	int m, n;
+	float sigmaM, sigmaN;
+};
+
+class object_cluster_segments
+{
+	int object_type;
+	vector <geometry_msgs::Pose> pose_InLatestCoord_vector;
+	vector <compressed_scan_segment> scan_segment_batch;
+};

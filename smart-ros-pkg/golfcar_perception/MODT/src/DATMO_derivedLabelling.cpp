@@ -39,7 +39,6 @@ using namespace cv;
 typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
 
 
-
 class DATMO
 {
 
@@ -70,6 +69,9 @@ private:
 	tf::MessageFilter<sensor_msgs::LaserScan>				*tf_filter_;
 	size_t 													interval_;
 	vector<sensor_msgs::PointCloud>                        	cloud_vector_;
+	vector<sensor_msgs::PointCloud>                        	baselink_cloud_vector_;
+	vector<sensor_msgs::PointCloud>                        	lastest_baselink_cloud_vector_;
+
 	vector<sensor_msgs::LaserScan>                        	scan_vector_;
 	sensor_msgs::PointCloud 								combined_pointcloud_;
 	vector<geometry_msgs::PoseStamped>						laser_pose_vector_;
@@ -149,6 +151,7 @@ DATMO::DATMO()
 	private_nh_.param("abstract_summary_path",       abstract_summary_path_,      std::string("/home/baoxing/data/labelled_data/abstract_summary.yml"));
 	load_labeledData();
 	labelled_scan_pub_		=   nh_.advertise<sensor_msgs::LaserScan>("labelled_scan", 2);
+
 }
 
 void DATMO::visualize_labelled_scan(const sensor_msgs::LaserScan::ConstPtr& scan_in)
@@ -275,14 +278,22 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 {
 	ROS_INFO("scan callback %u ", verti_scan_in->header.seq);
 	visualize_labelled_scan(verti_scan_in);
+
+	//make a local "baselink" copy to facilitate later feature extraction;
+	sensor_msgs::PointCloud baselink_verti_cloud;
+	try{projector_.transformLaserScanToPointCloud(laser_frame_id_, *verti_scan_in, baselink_verti_cloud, tf_);}
+	catch (tf::TransformException& e){ROS_DEBUG("Wrong!!!!!!!!!!!!!"); std::cout << e.what();return;}
 	sensor_msgs::PointCloud verti_cloud;
+	//make a global "odom" copy for later moving object extraction;
 	try{projector_.transformLaserScanToPointCloud(odom_frame_id_, *verti_scan_in, verti_cloud, tf_);}
 	catch (tf::TransformException& e){ROS_DEBUG("Wrong!!!!!!!!!!!!!"); std::cout << e.what();return;}
-
+	//make sure both copies have the same number;
+	assert(baselink_verti_cloud.points.size()==verti_cloud.points.size());
 
 	//pay attention to use the intensity value;
 	scan_vector_.push_back(*verti_scan_in);
 	cloud_vector_.push_back(verti_cloud);
+	baselink_cloud_vector_.push_back(baselink_verti_cloud);
 
 	geometry_msgs::PoseStamped ident;
 	ident.header = verti_scan_in->header;
@@ -315,6 +326,7 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 		cloud_vector_.erase(cloud_vector_.begin(), cloud_vector_.begin()+ 1);
 		laser_pose_vector_.erase(laser_pose_vector_.begin(), laser_pose_vector_.begin()+1);
 		scan_vector_.erase(scan_vector_.begin(), scan_vector_.begin()+ 1);
+		baselink_cloud_vector_.erase(baselink_cloud_vector_.begin(), baselink_cloud_vector_.begin()+1);
 	}
 	//scan_serial_++;
 	ROS_INFO("scan callback finished");
@@ -355,7 +367,6 @@ void DATMO::process_accumulated_points()
 	accumulated_TminusOne_pcl.header = cloud_vector_.back().header;
 	accumulated_T_pcl.header = cloud_vector_.back().header;
 	current_T_pcl.header = cloud_vector_.back().header;
-
 
 	combined_pointcloud_.points.clear();
 	combined_pointcloud_.header = cloud_vector_.back().header;
@@ -399,11 +410,27 @@ void DATMO::process_accumulated_points()
 		return;
 	}
 
+	lastest_baselink_cloud_vector_.clear();
+	for(size_t i=0; i<cloud_vector_.size();i++)
+	{
+		sensor_msgs::PointCloud latest_baselink_cloud;
+		latest_baselink_cloud.header = cloud_vector_.back().header;
+		try
+		{
+			tf_.transformPointCloud(laser_frame_id_, latest_baselink_cloud, latest_baselink_cloud);
+		}
+		catch(tf::TransformException e)
+		{
+			ROS_WARN("Failed to transform accumulated point to laser_frame_id_ (%s)", e.what());
+			return;
+		}
+		lastest_baselink_cloud_vector_.push_back(latest_baselink_cloud);
+	}
+
 	Mat accumulated_TminusOne_img = local_mask_.clone();
 	accumulated_TminusOne_img = Scalar(0);
 	Mat accumulated_T_img = accumulated_TminusOne_img.clone();
 	Mat current_T_image = accumulated_TminusOne_img.clone();
-
 	for(size_t i=0; i<accumulated_TminusOne_pcl.points.size(); i++)
 	{
 		geometry_msgs::Point32 spacePt_tmp = accumulated_TminusOne_pcl.points[i];
@@ -566,68 +593,88 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 
 	}
 
-	//------------------2nd: collect training data-------------------------
-	//construct the training data;
-	if(scan_serial_>0 && scan_serial_ % interval_==0)
+	//------------------2nd: collect derived training data-------------------------
+	//check the "lastest_baselink_cloud_vector_", against with "labelled_masks_";
+
+	if((int)scan_vector_.back().header.seq > Lend_serial_ || (int)scan_vector_.back().header.seq < Lstart_serial_ )
 	{
-		//here we only record those possible contours consisting of appear-disappear pairs;
-		std::vector<vector<Point> > contour_candidate_vector;
-		size_t candidate_contour_serial=0;
+		ROS_INFO("will not saving any training data, since the latest scan is not labelled");
+		return;
+	}
 
-		//each scan will has its own training_data from this vector;
-		DATMO_TrainingScan init_training_data;
-		init_training_data.movingObjectClusters.clear();
-		std::vector<DATMO_TrainingScan> training_data_vector(scan_vector_.size(), init_training_data);
+	std::vector<object_cluster_segments> object_clusters;
 
-		//for(size_t i=0; i<training_data_vector.size(); i++)
-		//{
-			//DATMO_TrainingScan & trainingscan_tmp = training_data_vector[i];
-			//trainingscan_tmp.laser_scan = scan_vector_[i];
-			//trainingscan_tmp.poseInOdom = laser_pose_vector_[i];
-		//}
+	sensor_msgs::PointCloud collected_visualize_pcl;
+	collected_visualize_pcl.header = combined_pointcloud_.header;
 
-		sensor_msgs::PointCloud collected_visualize_pcl;
-		collected_visualize_pcl.header = combined_pointcloud_.header;
-		for(size_t i=0;  i<appear_disappear_pairs.size(); i++)
+	for(size_t i=0;  i<appear_disappear_pairs.size(); i++)
+	{
+		//find the object "scan_segment" in this cluster;
+		int appear_serial = appear_disappear_pairs[i].first;
+		int disappear_serial = appear_disappear_pairs[i].second;
+		if(appear_serial>=0 && disappear_serial>=0)
 		{
-			int appear_serial = appear_disappear_pairs[i].first;
-			int disappear_serial = appear_disappear_pairs[i].second;
-			if(appear_serial>=0 && disappear_serial>=0)
+			object_cluster_segments object_cluster_tmp;
+			assert(scan_vector_.size()>0);
+			bool stop_segment_extraction = false;
+
+			//from the latest batch (noted as 0) to calculate, till the last batches (2*interval_);
+			//if non-object label (or non-labelled scan) happen in between, the cluster will stop, and wrap up the already extracted scan batches;
+
+			for(int a= (int)scan_vector_.size()-1; a>=0; a--)
 			{
-				ROS_INFO("appear_serial, disappear: %d, %d", appear_serial, disappear_serial);
-				//record inside LIDAR points;
-				size_t pointSerialInCloud = 0;
-				for(size_t a=0; a<scan_vector_.size();a++)
+				//extract the segment in scan a;
+
+				if(stop_segment_extraction) break;
+				int pointSerialInCloud = 0;
+				if((int)scan_vector_[a].header.seq > Lend_serial_ || (int)scan_vector_[a].header.seq < Lstart_serial_ )
 				{
-					std::vector<int> serial_in_cluster;
+					stop_segment_extraction = true;
+					break;
+				}
+				else
+				{
 					for(size_t b=0; b<scan_vector_[a].ranges.size();b++)
 					{
-						if(scan_vector_[a].intensities[b]>0.0)
+						compressed_scan_segment scan_segment_tmp;
+						if(scan_vector_[a].ranges[b]>=scan_vector_[a].range_min && scan_vector_[a].ranges[b]<=scan_vector_[a].range_max)
 						{
-							geometry_msgs::Point32 spacePt_tmp = combined_pointcloud_.points[pointSerialInCloud];
+							geometry_msgs::Point32 spacePt_tmp = lastest_baselink_cloud_vector_[a].points[pointSerialInCloud];
 							Point2f imgpt_tmp;
 							spacePt2ImgP(spacePt_tmp, imgpt_tmp);
 							double check = pointPolygonTest(contours_combined[i], imgpt_tmp, true);
 							if(check >= -1.0)
 							{
-								serial_in_cluster.push_back((int)b);
-								collected_visualize_pcl.points.push_back(spacePt_tmp);
+								int type_serial = labelled_masks_[((int)scan_in->header.seq-Lstart_serial_)][a];
+
+								//here the assumption is that all the object in the same clustering will have label "2" or "3", and they are consistent in the same cluster;
+								if(type_serial !=0 && type_serial !=4)
+								{
+									object_cluster_tmp.object_type = type_serial;
+								}
+								else
+								{
+									//go on check each point inside;
+								}
 							}
+
 							pointSerialInCloud++;
 						}
 					}
-
-					std::pair<std::vector<int>, int> movingObjectCluster = make_pair(serial_in_cluster, candidate_contour_serial);
-					training_data_vector[a].movingObjectClusters.push_back(movingObjectCluster);
 				}
-				contour_candidate_vector.push_back(contours_combined[i]);
-				candidate_contour_serial++;
+
 			}
 		}
-		//save_training_data(training_data_vector, contour_candidate_vector);
 
-		collected_cloud_pub_.publish(collected_visualize_pcl);
+
+
 	}
+
+
+	//save the derived training data;
+
+
+
 
 }
 
