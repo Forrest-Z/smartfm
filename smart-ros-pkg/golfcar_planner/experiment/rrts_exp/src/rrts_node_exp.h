@@ -74,6 +74,7 @@ class PlannerExp
     int clear_committed_trajectory_length();
     bool should_send_new_committed_trajectory;
     bool is_first_committed_trajectory;
+    bool is_updating_rrts_tree;
     bool is_near_end_committed_trajectory();
     double state_last_clear[3];
 
@@ -84,6 +85,9 @@ class PlannerExp
     ros::Subscriber map_sub;
 
 #define NUM_STATUS  (7)
+
+    string global_frame, local_frame, base_frame;
+
     enum status_def{rinc=0, ginc, ginf, ring, rnr, swr,trjf};
     bool rrts_status[NUM_STATUS];
 

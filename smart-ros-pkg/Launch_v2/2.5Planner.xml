@@ -1,0 +1,11 @@
+<launch>
+  <group ns="$(env ROBOT)">
+	  <!--Metric_Map-->
+      <node pkg="Metric_Map" type="Local_Map" name="Dist_Map" output = "screen">
+		<remap from = "sick_scan2" to ="front_bottom_scan"/>
+		<remap from = "static_map" to ="/golfcart/static_map"/>
+      </node>
+      <!--StateMachine-->
+      <node pkg="Automoton_Control" type="ObstAvoid" name="Obst_Avoid" output = "screen"/>
+  </group>
+</launch> 

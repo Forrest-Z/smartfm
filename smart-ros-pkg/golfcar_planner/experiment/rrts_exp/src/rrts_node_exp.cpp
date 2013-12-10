@@ -2,13 +2,18 @@
 
 #include "rrts_node_exp.h"
 
+//TODO: Rewrite the whole thing.
+
 PlannerExp::PlannerExp()
 {
   srand(0);
 
-  ros::Rate wait_rate(0.2);
-  while(get_robot_pose())
-  {
+  nh.param("base_frame", base_frame, string("base_link"));
+  nh.param("local_frame", local_frame, string("local_map"));
+  nh.param("global_frame", global_frame, string("map"));
+
+  ros::Rate wait_rate(0.5);
+  while(get_robot_pose()){
     cout<<"Waiting for robot pose"<<endl;
     ros::spinOnce();
     wait_rate.sleep();
@@ -19,11 +24,12 @@ PlannerExp::PlannerExp()
   
   clear_committed_trajectory();
   is_updating_committed_trajectory = false;
+  is_updating_rrts_tree = false;
   max_length_committed_trajectory = 25.0;
 
-  planner_dt = 0.4;
+  planner_dt = 0.3;
   planner_timer = nh.createTimer(ros::Duration(planner_dt), &PlannerExp::on_planner_timer, this);
-  rrts_status_timer = nh.createTimer(ros::Duration(0.5), &PlannerExp::send_rrts_status, this);
+  rrts_status_timer = nh.createTimer(ros::Duration(0.1), &PlannerExp::send_rrts_status, this);
 
   tree_pub_timer = nh.createTimer(ros::Duration(1.0), &PlannerExp::on_tree_pub_timer, this);
   committed_trajectory_pub_timer = nh.createTimer(ros::Duration(0.3), &PlannerExp::on_committed_trajectory_pub_timer, this);
@@ -47,8 +53,7 @@ PlannerExp::PlannerExp()
 	  rrts_status[i] = false;
 }
 
-PlannerExp::~PlannerExp()
-{
+PlannerExp::~PlannerExp(){
   clear_committed_trajectory();
 }
 
@@ -76,7 +81,6 @@ int PlannerExp::clear_committed_trajectory()
   return 0;
 }
 
-// keep doing pop_front on the committed_trajectory until length
 int PlannerExp::clear_committed_trajectory_length()
 {
 	//cout<<"clear_committed_trajectory_length"<<endl;
@@ -255,13 +259,14 @@ int PlannerExp::get_robot_pose()
   map_pose.setIdentity();
   tf::Stamped<tf::Pose> robot_pose;
   robot_pose.setIdentity();
-  robot_pose.frame_id_ = "base_link";
+  robot_pose.frame_id_ = base_frame;
   robot_pose.stamp_ = ros::Time();
   ros::Time current_time = ros::Time::now();
 
   bool transform_is_correct = false;
   try {
-    tf_.transformPose("map", robot_pose, map_pose);
+	tf_.waitForTransform(base_frame, global_frame, ros::Time::now(), ros::Duration(0.01));
+    tf_.transformPose(global_frame, robot_pose, map_pose);
   }
   catch(tf::LookupException& ex) {
     ROS_ERROR("No Transform available Error: %s\n", ex.what());
@@ -275,9 +280,8 @@ int PlannerExp::get_robot_pose()
     ROS_ERROR("Extrapolation Error: %s\n", ex.what());
     transform_is_correct = false;
   }
-  // check odom_pose timeout
   if (current_time.toSec() - map_pose.stamp_.toSec() > 0.1) {
-    ROS_WARN("Get robot pose transform timeout. Current time: %.4f, odom_pose stamp: %.4f, tolerance: %.4f",
+    ROS_WARN("Get robot pose transform timeout. Current time: %.4f, map_pose stamp: %.4f, tolerance: %.4f",
         current_time.toSec(), map_pose.stamp_.toSec(), 0.1);
     transform_is_correct = false;
   }
@@ -413,10 +417,13 @@ bool PlannerExp::is_robot_in_collision()
 
 int PlannerExp::get_plan()
 {
-
+  is_updating_committed_trajectory = true;
+  is_updating_rrts_tree = true;
   //cout<<"get_plan"<<endl;
   rrts.checkTree();
   rrts.updateReachability();
+  is_updating_committed_trajectory = false;
+  is_updating_rrts_tree = false;
 
   if(root_in_goal())
   {
@@ -444,7 +451,7 @@ int PlannerExp::get_plan()
   std::vector<double> sample_view;
   sensor_msgs::PointCloud sample_view_;
   sample_view_.header.stamp = ros::Time::now();
-  sample_view_.header.frame_id = "map";
+  sample_view_.header.frame_id = global_frame;
   while((!found_best_path) || (samples_this_loop < 20))
   {
     samples_this_loop += rrts.iteration(sample_view);
@@ -483,6 +490,7 @@ int PlannerExp::get_plan()
     if( (should_send_new_committed_trajectory || is_first_committed_trajectory))
     {
       is_updating_committed_trajectory = true;
+      is_updating_rrts_tree = true;
       if(rrts.switchRoot(max_length_committed_trajectory, committed_trajectory, committed_control) == 0)
       {
         //cout<<"cannot switch_root: lowerBoundVertex = NULL"<<endl;
@@ -497,6 +505,7 @@ int PlannerExp::get_plan()
         //cout<<"committed_trajectory len: "<< committed_trajectory.size()<<endl;
       }
       is_updating_committed_trajectory = false;
+      is_updating_rrts_tree = false;
       should_send_new_committed_trajectory = false;
       is_first_committed_trajectory = false;
     }
@@ -550,9 +559,9 @@ void PlannerExp::on_planner_timer(const ros::TimerEvent &e){
   if(!committed_trajectory.empty())
   {
     // 1. check if trajectory is safe
-    if(!rrts.isSafeTrajectory(committed_trajectory))
-    {
+    if(!rrts.isSafeTrajectory(committed_trajectory)){
       cout<<"committed trajectory unsafe"<<endl;
+      rrts_status[trjf] = false;
       clear_committed_trajectory();
       setup_rrts();
     }
@@ -599,6 +608,8 @@ void PlannerExp::on_planner_timer(const ros::TimerEvent &e){
 
 void PlannerExp::publish_control_view_trajectory()
 {
+	if(is_updating_committed_trajectory)
+	    return;
   std_msgs::Int16MultiArray tmp;
 
   for(list<float>::iterator i=committed_control.begin(); i!=committed_control.end(); i++)
@@ -608,26 +619,33 @@ void PlannerExp::publish_control_view_trajectory()
   control_trajectory_pub.publish(tmp);
 }
 
-void PlannerExp::on_committed_trajectory_pub_timer(const ros::TimerEvent &e)
-{
+void PlannerExp::on_committed_trajectory_pub_timer(const ros::TimerEvent &e){
   publish_committed_trajectory();
   publish_control_view_trajectory();
 }
 
 void PlannerExp::publish_committed_trajectory()
 {
+	/**TODO: Fix the bug:
+	*When committed traj is unsafe, thus clear_committed_traj() is called.
+	*it will happen that publish_committed_traj is called,
+	*just before is_updating_committed_traj flag is set.
+	*
+	* */
+
   // this flag is set by iterate() if it is going to change the committed_trajectory
   // hacked semaphore
   if(is_updating_committed_trajectory)
     return;
 
-  if (committed_trajectory.size() == 0)
+  if (committed_trajectory.size() == 0){
 	  rrts_status[trjf] = false;
+  }
   else
 	  rrts_status[trjf] = true;
 
   traj.header.stamp = ros::Time::now();
-  traj.header.frame_id = "map";
+  traj.header.frame_id = global_frame;
   traj.poses.clear();
 
   list<float>::iterator committed_control_iter = committed_control.begin();
@@ -636,7 +654,7 @@ void PlannerExp::publish_committed_trajectory()
     double* stateRef = *iter;
     geometry_msgs::PoseStamped p;
     p.header.stamp = ros::Time::now();
-    p.header.frame_id = "map";
+    p.header.frame_id = global_frame;
 
     p.pose.position.x = stateRef[0];
     p.pose.position.y = stateRef[1];
@@ -654,7 +672,7 @@ void PlannerExp::publish_committed_trajectory()
 
   nav_msgs::Path traj_msg;
   traj_msg.header.stamp = ros::Time::now();
-  traj_msg.header.frame_id = "map";
+  traj_msg.header.frame_id = global_frame;
   // publish to viewer
   traj_msg.poses.clear();
   for (list<double*>::iterator iter = committed_trajectory.begin(); iter != committed_trajectory.end(); iter++) 
@@ -662,7 +680,7 @@ void PlannerExp::publish_committed_trajectory()
     double* stateRef = *iter;
     geometry_msgs::PoseStamped p;
     p.header.stamp = ros::Time::now();
-    p.header.frame_id = "map";
+    p.header.frame_id = global_frame;
 
     p.pose.position.x = stateRef[0];
     p.pose.position.y = stateRef[1];
@@ -671,33 +689,34 @@ void PlannerExp::publish_committed_trajectory()
     traj_msg.poses.push_back(p);
   }
   committed_trajectory_view_pub.publish(traj_msg);
-  //cout<<"published committed_trajectory"<<endl;
 }
 
 void PlannerExp::on_tree_pub_timer(const ros::TimerEvent &e)
 {
-  publish_tree();
-  //cout<<"published tree"<<endl;
+  //publish_tree();
 }
 
 void PlannerExp::publish_tree()
 {
+  if(is_updating_rrts_tree || is_updating_committed_trajectory)
+	  return;
+
   int num_nodes = rrts.numVertices;
 
   sensor_msgs::PointCloud pc;
   pc.header.stamp = ros::Time::now();
-  pc.header.frame_id = "map";
+  pc.header.frame_id = global_frame;
 
   sensor_msgs::PointCloud pc1;
   pc1.header.stamp = ros::Time::now();
-  pc1.header.frame_id = "map";
+  pc1.header.frame_id = global_frame;
 
-  if (num_nodes > 0) 
-  {    
-    for (list<vertex_t*>::iterator iter = rrts.listVertices.begin(); iter != rrts.listVertices.end(); iter++) 
-    {
+  if (num_nodes > 0){
+    for (list<vertex_t*>::iterator iter = rrts.listVertices.begin(); iter != rrts.listVertices.end(); iter++){
       vertex_t &vertexCurr = **iter;
-      state_t &stateCurr = vertexCurr.getState ();
+      state_t &stateCurr = vertexCurr.getState();
+
+      //assert (*stateCurr != NULL);
 
       geometry_msgs::Point32 p;
       p.x = stateCurr[0];
@@ -707,21 +726,17 @@ void PlannerExp::publish_tree()
       pc1.points.push_back(p);
       //cout<<"published_rrts_vertex: "<< p.x<<" "<<p.y<<endl;
       vertex_t& vertexParent = vertexCurr.getParent();
-      if (&vertexParent != NULL) 
+      if (&vertexParent != NULL)
       {
         state_t& stateParent = vertexParent.getState();
         list<double*> trajectory;
         list<float> control;
-        if (system.getTrajectory (stateParent, stateCurr, trajectory, control, true)) 
-        {
+        if (system.getTrajectory (stateParent, stateCurr, trajectory, control, true)){
           int par_num_states = trajectory.size();
-          if (par_num_states) 
-          {
+          if (par_num_states) {
             int stateIndex = 0;
-            for (list<double*>::iterator it_state = trajectory.begin(); it_state != trajectory.end(); it_state++) 
-            {
+            for (list<double*>::iterator it_state = trajectory.begin(); it_state != trajectory.end(); it_state++) {
               double *stateTraj = *it_state;
-
               geometry_msgs::Point32 p2;
               p2.x = stateTraj[0];
               p2.y = stateTraj[1];
