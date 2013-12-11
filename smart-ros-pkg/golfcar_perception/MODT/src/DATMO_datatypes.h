@@ -63,18 +63,38 @@ class DATMO_abstractSummary
 
 class compressed_scan_segment
 {
+
+	public:
 	//raw information;
 	vector<geometry_msgs::Point32> rawPoints;
+	vector<float> rawIntensities;
 
 	//compressed information;
 	geometry_msgs::Point32 KeyPoint[3];
 	float intensities[3];
-	int m, n;
-	float sigmaM, sigmaN;
+	int m, n;	//"m" is the point number between the first two key points; similar to "n";
+	float sigmaM, sigmaN;	//"sigmaM" is the largest distance of the points in the first line segment to it; similar to "sigmaN";
+
+	void compress_scan()
+	{
+		assert(rawPoints.size()!=0);
+		assert(rawPoints.size() == rawIntensities.size());
+		if(rawPoints.size()==1)
+		{
+		}
+		else if(rawPoints.size()==2)
+		{
+		}
+		//in cases where at least 3 points;
+		else
+		{
+		}
+	}
 };
 
 class object_cluster_segments
 {
+	public:
 	int object_type;
 	vector <geometry_msgs::Pose> pose_InLatestCoord_vector;
 	vector <compressed_scan_segment> scan_segment_batch;

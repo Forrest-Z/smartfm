@@ -108,6 +108,8 @@ private:
 	void													load_labeledData();
 	ros::Publisher											labelled_scan_pub_;
 	void visualize_labelled_scan(const sensor_msgs::LaserScan::ConstPtr& scan_in);
+	void construct_derived_data(std::vector<object_cluster_segments> &object_clusters);
+	void save_derived_data(std::vector<object_cluster_segments> &object_clusters);
 };
 
 DATMO::DATMO()
@@ -417,7 +419,7 @@ void DATMO::process_accumulated_points()
 		latest_baselink_cloud.header = cloud_vector_.back().header;
 		try
 		{
-			tf_.transformPointCloud(laser_frame_id_, latest_baselink_cloud, latest_baselink_cloud);
+			tf_.transformPointCloud(laser_frame_id_, cloud_vector_[i], latest_baselink_cloud);
 		}
 		catch(tf::TransformException e)
 		{
@@ -425,6 +427,7 @@ void DATMO::process_accumulated_points()
 			return;
 		}
 		lastest_baselink_cloud_vector_.push_back(latest_baselink_cloud);
+		ROS_INFO("lastest_baselink_cloud_vector_: %u, %u", i, lastest_baselink_cloud_vector_[i].points.size());
 	}
 
 	Mat accumulated_TminusOne_img = local_mask_.clone();
@@ -603,10 +606,6 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 	}
 
 	std::vector<object_cluster_segments> object_clusters;
-
-	sensor_msgs::PointCloud collected_visualize_pcl;
-	collected_visualize_pcl.header = combined_pointcloud_.header;
-
 	for(size_t i=0;  i<appear_disappear_pairs.size(); i++)
 	{
 		//find the object "scan_segment" in this cluster;
@@ -621,12 +620,12 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 			//from the latest batch (noted as 0) to calculate, till the last batches (2*interval_);
 			//if non-object label (or non-labelled scan) happen in between, the cluster will stop, and wrap up the already extracted scan batches;
 
+			//loop from latest scan to scan 0;
 			for(int a= (int)scan_vector_.size()-1; a>=0; a--)
 			{
 				//extract the segment in scan a;
 
 				if(stop_segment_extraction) break;
-				int pointSerialInCloud = 0;
 				if((int)scan_vector_[a].header.seq > Lend_serial_ || (int)scan_vector_[a].header.seq < Lstart_serial_ )
 				{
 					stop_segment_extraction = true;
@@ -634,164 +633,135 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 				}
 				else
 				{
+					int pointSerialInCloud = 0;
+					compressed_scan_segment scan_segment_tmp;
 					for(size_t b=0; b<scan_vector_[a].ranges.size();b++)
 					{
-						compressed_scan_segment scan_segment_tmp;
 						if(scan_vector_[a].ranges[b]>=scan_vector_[a].range_min && scan_vector_[a].ranges[b]<=scan_vector_[a].range_max)
 						{
+							//ROS_INFO("pointSerialInCloud %d", pointSerialInCloud);
 							geometry_msgs::Point32 spacePt_tmp = lastest_baselink_cloud_vector_[a].points[pointSerialInCloud];
 							Point2f imgpt_tmp;
 							spacePt2ImgP(spacePt_tmp, imgpt_tmp);
 							double check = pointPolygonTest(contours_combined[i], imgpt_tmp, true);
 							if(check >= -1.0)
 							{
-								int type_serial = labelled_masks_[((int)scan_in->header.seq-Lstart_serial_)][a];
-
+								int type_serial = labelled_masks_[((int)scan_vector_[a].header.seq-Lstart_serial_)][b];
 								//here the assumption is that all the object in the same clustering will have label "2" or "3", and they are consistent in the same cluster;
-								if(type_serial !=0 && type_serial !=4)
+
+								//1st scenario: object clusters (1, 2 or 3) are detected, then incorporate all the labelled points, until "background-0" or "unlabelled-4" are met in the labelled mask;
+								if(type_serial!=0 && type_serial !=4)
 								{
-									object_cluster_tmp.object_type = type_serial;
+									for(int k=b; k<(int)labelled_masks_[((int)scan_vector_[a].header.seq-Lstart_serial_)].size(); k++)
+									{
+										if(scan_vector_[a].ranges[k]>=scan_vector_[a].range_min && scan_vector_[a].ranges[k]<=scan_vector_[a].range_max)
+										{
+											geometry_msgs::Point32 baselinkPt = baselink_cloud_vector_[a].points[pointSerialInCloud];
+											scan_segment_tmp.rawPoints.push_back(baselinkPt);
+											scan_segment_tmp.rawIntensities.push_back(scan_vector_[a].intensities[b]);
+
+											//Thi case should not appear if your derived labelling code use the same parameters as in recordData;
+											if(labelled_masks_[((int)scan_vector_[a].header.seq-Lstart_serial_)][b]==0 && labelled_masks_[((int)scan_vector_[a].header.seq-Lstart_serial_)][b]==4)
+											{
+												ROS_ERROR("can this happen?");
+												scan_segment_tmp.rawPoints.clear();
+												break;
+											}
+											pointSerialInCloud++;
+										}
+									}
+
+									if(object_cluster_tmp.scan_segment_batch.size()==0)object_cluster_tmp.object_type = type_serial;
+
+									//no need to loop the remained points, since they are already found according to the scan mask;
+									break;
 								}
+								//2nd scenario: "background-0" points are labelled in the cluster, then push_back the points inside one by one;
+								else if(type_serial==0)
+								{
+									geometry_msgs::Point32 baselinkPt = baselink_cloud_vector_[a].points[pointSerialInCloud];
+									scan_segment_tmp.rawPoints.push_back(baselinkPt);
+									scan_segment_tmp.rawIntensities.push_back(scan_vector_[a].intensities[b]);
+									if(object_cluster_tmp.scan_segment_batch.size()==0)object_cluster_tmp.object_type = type_serial;
+								}
+								//3rd scenario: "unlabelled-4" are found inside the scan, will not use the scan segments then;
 								else
 								{
-									//go on check each point inside;
+									scan_segment_tmp.rawPoints.clear();
+									break;
 								}
 							}
-
 							pointSerialInCloud++;
 						}
 					}
+
+					if(scan_segment_tmp.rawPoints.size()!=0)
+					{
+						object_cluster_tmp.scan_segment_batch.push_back(scan_segment_tmp);
+					}
+					else
+					{
+						stop_segment_extraction = true;
+						break;
+					}
 				}
-
 			}
+
+			if(object_cluster_tmp.scan_segment_batch.size()>0)object_clusters.push_back(object_cluster_tmp);
 		}
-
-
-
 	}
 
+	//process the extracted raw data;
+	construct_derived_data(object_clusters);
 
 	//save the derived training data;
-
-
-
+	save_derived_data(object_clusters);
 
 }
 
-//save extracted data into files;
-void DATMO::save_training_data(std::vector<DATMO_TrainingScan>& training_data_vector,std::vector<vector<Point> > & contour_candidate_vector)
+void DATMO::construct_derived_data(std::vector<object_cluster_segments> &object_clusters)
 {
-	stringstream  record_string;
-	record_string<<"/home/baoxing/data/raw_data/training_data"<< scan_serial_<<".yml";
-	const string data_name = record_string.str();
-	FileStorage fs(data_name.c_str(), FileStorage::WRITE);
+	ROS_INFO("construct derived data");
+	//calculate the LIDAR pose in latest LIDAR frame;
+	vector<geometry_msgs::Pose> Pose_inLatest_vector;
+	tf::Pose odom_to_latestLIDAR;
+	tf::poseMsgToTF(laser_pose_vector_.back().pose, odom_to_latestLIDAR);
 
-	//1st: record raw information: scan+odom;
-	fs << "scan" << "[";
-	for(size_t i=0; i<scan_vector_.size(); i++)
+	assert(laser_pose_vector_.size() == 2*interval_);
+	for(int i=(int)(laser_pose_vector_.size())-1; i >=0 ; i--)
 	{
-		fs<<"{:"<<"serial"<<(int)scan_vector_[i].header.seq
-			   <<"time"<<scan_vector_[i].header.stamp.toSec()
-			   <<"angle_min"<<scan_vector_[i].angle_min
-			   <<"angle_max"<<scan_vector_[i].angle_increment
-			   <<"time_increment"<<scan_vector_[i].time_increment
-			   <<"scan_time"<<scan_vector_[i].scan_time
-			   <<"range_min"<<scan_vector_[i].range_min
-			   <<"range_max"<<scan_vector_[i].range_max
-			   <<"ranges"<<"[:";
-		for(size_t j=0; j<scan_vector_[i].ranges.size(); j++)
-		{
-			fs << scan_vector_[i].ranges[j];
-		}
-		fs << "]" << "intensities"<<"[:";
-
-		for(size_t j=0; j<scan_vector_[i].intensities.size(); j++)
-		{
-			fs << scan_vector_[i].intensities[j];
-		}
-		fs << "]" << "}";
+		cout<<i<<":";
+		tf::Pose odom_to_LIDAR_tmp;
+		tf::poseMsgToTF(laser_pose_vector_[i].pose, odom_to_LIDAR_tmp);
+		tf::Pose LIDAR_new_to_old = odom_to_latestLIDAR.inverse()*odom_to_LIDAR_tmp;
+		geometry_msgs::Pose pose_inLatest;
+		tf::poseTFToMsg(LIDAR_new_to_old, pose_inLatest);
+		Pose_inLatest_vector.push_back(pose_inLatest);
+		cout<<"("<<pose_inLatest.position.x<<","<<pose_inLatest.position.y<<")"<<"\t";
 	}
-	fs<<"]";
+	cout<<endl;
 
-	fs << "odom" << "[";
-	for (size_t i=0; i<laser_pose_vector_.size(); i++)
+	for(size_t i=0; i<object_clusters.size(); i++)
 	{
-		tf::Quaternion q(laser_pose_vector_[i].pose.orientation.x, laser_pose_vector_[i].pose.orientation.y, laser_pose_vector_[i].pose.orientation.z, laser_pose_vector_[i].pose.orientation.w);
-		tf::Matrix3x3 m(q);
-		double roll, pitch, yaw;
-		m.getRPY(roll, pitch, yaw);
-		fs<<"{:"<<"x"<<laser_pose_vector_[i].pose.position.x
-			    <<"y"<<laser_pose_vector_[i].pose.position.y
-			    <<"z"<<laser_pose_vector_[i].pose.position.z
-			    <<"roll"<<roll
-			    <<"pitch"<<pitch
-			    <<"yaw"<<yaw<<"}";
-	}
-	fs <<"]";
-
-	//2nd: record processed clustering information: contours + movingObjectClusters;
-	fs << "contours" << "[";
-	for(size_t i=0; i<contour_candidate_vector.size(); i++)
-	{
-		fs<<"[:";
-		for(size_t j=0; j<contour_candidate_vector[i].size(); j++)
+		object_cluster_segments &object_cluster_tmp =object_clusters[i];
+		for(size_t j=0; j<object_cluster_tmp.scan_segment_batch.size(); j++)
 		{
-			fs<<"{:"<<"x"<< contour_candidate_vector[i][j].x
-					<<"y"<< contour_candidate_vector[i][j].y
-			  <<"}";
-		}
-		fs << "]" ;
-	}
-	fs <<"]";
+			//matching the odom information with the cluster scan information;
+			//pay attention to the sequence;
+			assert(j<Pose_inLatest_vector.size());
+			object_cluster_tmp.pose_InLatestCoord_vector.push_back(Pose_inLatest_vector[j]);
 
-	//debug trick;
-	/*
-	for(size_t i=0; i<training_data_vector.size(); i++)
-	{
-		if(training_data_vector[i].movingObjectClusters.size()>0)
-		{
-			for(size_t j=0; j<training_data_vector[i].movingObjectClusters.size(); j++)
-			{
-				cout<<"size"<<training_data_vector[i].movingObjectClusters[j].first.size()<<"\n";
-				for(size_t k=0; k<training_data_vector[i].movingObjectClusters[j].first.size();k++)
-				{
-					cout <<"point"<<(int)training_data_vector[i].movingObjectClusters[j].first[k]<<"\t";
-				}
-				cout<<"\n corresponding_contour_serial"<<(int)training_data_vector[i].movingObjectClusters[j].second<<endl;
-			}
+			//compress the scan_segment;
+
 		}
 	}
-	*/
-
-	fs<<"training_data_vector"<<"[";
-	for(size_t i=0; i<training_data_vector.size(); i++)
-	{
-		//if(training_data_vector[i].movingObjectClusters.size()>0)
-		{
-			fs<<"{:";
-				fs<<"movingObjectClusters"<<"[:";
-					for(size_t j=0; j<training_data_vector[i].movingObjectClusters.size(); j++)
-					{
-						fs<<"{:";
-							fs<<"serial_in_cluster";
-								fs<<"[:";
-								for(size_t k=0; k<training_data_vector[i].movingObjectClusters[j].first.size();k++)
-								{
-									fs<<(int)training_data_vector[i].movingObjectClusters[j].first[k];
-								}
-								fs<<"]";
-
-							fs<<"corresponding_contour_serial"<<(int)training_data_vector[i].movingObjectClusters[j].second;
-						fs<<"}";
-					}
-				fs<<"]";
-			fs<<"}";
-		}
-	}
-	fs<<"]";
-
-	fs.release();
 }
+
+void DATMO::save_derived_data(std::vector<object_cluster_segments> &object_clusters)
+{
+
+}
+
 
 //http://alienryderflex.com/polygon/
 inline bool DATMO::pointInPolygon(geometry_msgs::Point32 p, vector<geometry_msgs::Point32> poly)
