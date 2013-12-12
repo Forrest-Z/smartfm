@@ -110,6 +110,7 @@ private:
 	void visualize_labelled_scan(const sensor_msgs::LaserScan::ConstPtr& scan_in);
 	void construct_derived_data(std::vector<object_cluster_segments> &object_clusters);
 	void save_derived_data(std::vector<object_cluster_segments> &object_clusters);
+	std::string												derived_data_path_;
 };
 
 DATMO::DATMO()
@@ -153,6 +154,9 @@ DATMO::DATMO()
 	private_nh_.param("abstract_summary_path",       abstract_summary_path_,      std::string("/home/baoxing/data/labelled_data/abstract_summary.yml"));
 	load_labeledData();
 	labelled_scan_pub_		=   nh_.advertise<sensor_msgs::LaserScan>("labelled_scan", 2);
+
+	private_nh_.param("derived_data_path",       derived_data_path_,      std::string("/home/baoxing/data/derived_data"));
+
 
 }
 
@@ -654,6 +658,8 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 								{
 									for(int k=b; k<(int)labelled_masks_[((int)scan_vector_[a].header.seq-Lstart_serial_)].size(); k++)
 									{
+										if(labelled_masks_[((int)scan_vector_[a].header.seq-Lstart_serial_)][k]!=type_serial)break;
+
 										if(scan_vector_[a].ranges[k]>=scan_vector_[a].range_min && scan_vector_[a].ranges[k]<=scan_vector_[a].range_max)
 										{
 											geometry_msgs::Point32 baselinkPt = baselink_cloud_vector_[a].points[pointSerialInCloud];
@@ -752,14 +758,52 @@ void DATMO::construct_derived_data(std::vector<object_cluster_segments> &object_
 			object_cluster_tmp.pose_InLatestCoord_vector.push_back(Pose_inLatest_vector[j]);
 
 			//compress the scan_segment;
-
+			object_cluster_tmp.scan_segment_batch[j].compress_scan();
 		}
 	}
 }
 
 void DATMO::save_derived_data(std::vector<object_cluster_segments> &object_clusters)
 {
+	for(size_t i=0; i<object_clusters.size(); i++)
+	{
+		object_cluster_segments &object_cluster_tmp =object_clusters[i];
+		for(size_t j=0; j<object_cluster_tmp.scan_segment_batch.size(); j++)
+		{
+			assert(object_cluster_tmp.pose_InLatestCoord_vector.size()==object_cluster_tmp.scan_segment_batch.size());
 
+			FILE *fp_write;
+			stringstream file_path;
+			file_path<<derived_data_path_<<"/"<<(j+1);
+			fp_write = fopen(file_path.str().c_str(),"a");
+			if(fp_write==NULL){ROS_ERROR("cannot write derived data file\n");return;}
+
+			fprintf(fp_write, "%d\t", object_cluster_tmp.object_type);
+			for(size_t k=0; k<=j; k++)
+			{
+				double pose[6];
+				geometry_msgs::Pose pose_tmp = object_cluster_tmp.pose_InLatestCoord_vector[k];
+				pose[0]=pose_tmp.position.x;
+				pose[1]=pose_tmp.position.y;
+				pose[2]=pose_tmp.position.z;
+				tf::Quaternion q(pose_tmp.orientation.x, pose_tmp.orientation.y, pose_tmp.orientation.z, pose_tmp.orientation.w);
+				tf::Matrix3x3 m(q);
+				m.getRPY(pose[3], pose[4], pose[5]);
+
+				//first printf the odometry information;
+				for(size_t a=0; a<6; a++)fprintf(fp_write, "%lf\t", pose[a]);
+
+				//then printf the compressed scan segment;
+				for(size_t a=0; a<3; a++)
+				{
+					fprintf(fp_write, "%f\t%f\t%f\t",object_cluster_tmp.scan_segment_batch[k].KeyPoint[a].x,object_cluster_tmp.scan_segment_batch[k].KeyPoint[a].y, object_cluster_tmp.scan_segment_batch[k].intensities[a]);
+				}
+				fprintf(fp_write, "%d\t%d\t%f\t%f\t", object_cluster_tmp.scan_segment_batch[k].m,object_cluster_tmp.scan_segment_batch[k].n,object_cluster_tmp.scan_segment_batch[k].sigmaM,object_cluster_tmp.scan_segment_batch[k].sigmaN);
+			}
+			fprintf(fp_write, "\n");
+			fclose(fp_write);
+		}
+	}
 }
 
 
