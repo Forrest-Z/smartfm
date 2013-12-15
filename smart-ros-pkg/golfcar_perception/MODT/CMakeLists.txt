@@ -56,4 +56,9 @@ rosbuild_add_executable(DATMO_dataformatting src/DATMO_dataformatting.cpp)
 target_link_libraries(DATMO_dataformatting ${OpenCV_LIBRARIES})
 rosbuild_link_boost(DATMO_dataformatting signals)
 
+rosbuild_add_executable(DATMO_online src/DATMO_online.cpp)
+target_link_libraries(DATMO_online ${OpenCV_LIBRARIES})
+rosbuild_link_boost(DATMO_online signals)
+
+
 #target_link_libraries(example ${PROJECT_NAME})

@@ -167,6 +167,7 @@ class object_cluster_segments
 {
 	public:
 	int object_type;
+	int contour_serial;
 	vector <geometry_msgs::Pose> pose_InLatestCoord_vector;
 	vector <compressed_scan_segment> scan_segment_batch;
 };
