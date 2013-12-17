@@ -1,0 +1,4 @@
+Format the data using "./bin/DATMO_dataformatting"
+./svm-scale -s data/range_4batch data/4formated > data/scaled_4batch
+python tools/grid.py data/scaled_4batch 
+./svm-train -s 0 -c 32 -g 0.5 -e 0.1 data/scaled_4batch

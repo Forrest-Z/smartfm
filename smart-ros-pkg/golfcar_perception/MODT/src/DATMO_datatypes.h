@@ -119,6 +119,7 @@ class compressed_scan_segment
 			KeyPoint[2] = rawPoints.back();
 			intensities[0] = rawIntensities.front();
 			intensities[2] = rawIntensities.back();
+			//cout<<rawPoints.front().x<< ""<<rawPoints.front().y;
 			size_t longest_serial = 1;
 			float longest_distance = 0.0;
 			for(size_t i=1; i<rawPoints.size(); i++)
