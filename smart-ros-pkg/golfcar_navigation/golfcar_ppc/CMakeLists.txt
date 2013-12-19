@@ -28,5 +28,11 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 #target_link_libraries(example ${PROJECT_NAME})
 
+SET( BookingCommonRootDir ${PROJECT_SOURCE_DIR}/../../../bookingUI/shared )
+INCLUDE_DIRECTORIES(${BookingCommonRootDir}/src ${BookingCommonRootDir}/src/route_planner ${BookingCommonRootDir}/src/svg_path)
+LINK_DIRECTORIES (${LINK_DIRECTORIES} ${BookingCommonRootDir})
+
 rosbuild_add_library(${PROJECT_NAME} src/trajector_planner.cpp src/golfcar_purepursuit.cpp)
 rosbuild_add_executable(golfcar_pp src/golfcar_pp.cpp)
+rosbuild_add_executable(purepursuit_controller src/trajectory_planner_standalone.cpp src/golfcar_purepursuit.cpp)
+target_link_libraries(purepursuit_controller bookingcommon)
