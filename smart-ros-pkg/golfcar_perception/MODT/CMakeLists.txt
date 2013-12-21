@@ -60,5 +60,9 @@ rosbuild_add_executable(DATMO_online src/DATMO_online.cpp)
 target_link_libraries(DATMO_online ${OpenCV_LIBRARIES})
 rosbuild_link_boost(DATMO_online signals)
 
+rosbuild_add_executable(MST_seg src/MST_seg.cpp)
+target_link_libraries(MST_seg ${OpenCV_LIBRARIES})
+rosbuild_link_boost(MST_seg graph)
+
 
 #target_link_libraries(example ${PROJECT_NAME})
