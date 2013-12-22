@@ -60,6 +60,8 @@ private:
 
 	void scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in);
 	void scan_approxy(const sensor_msgs::PointCloud& cloud_in, geometry_msgs::PoseStamped& laser_pose);
+	void supervised_segmentation(const sensor_msgs::LaserScan::ConstPtr& scan_in, const sensor_msgs::PointCloud& cloud_in, geometry_msgs::PoseStamped& laser_pose);
+	void segmentation_visulization();
 
 	bool pointInPolygon(geometry_msgs::Point32 p, vector<geometry_msgs::Point32> poly);
 	void process_accumulated_points();
@@ -107,7 +109,7 @@ private:
 	void construct_derived_data(std::vector<object_cluster_segments> &object_clusters);
 	void save_derived_data(std::vector<object_cluster_segments> &object_clusters);
 	std::string												derived_data_path_;
-	 golfcar_ml::svm_classifier *DATMO_classifier_;
+	golfcar_ml::svm_classifier *DATMO_classifier_;
 };
 
 DATMO::DATMO()
@@ -251,6 +253,9 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 	catch (tf::TransformException& e){ROS_DEBUG("Wrong!!!!!!!!!!!!!"); std::cout << e.what();return;}
 	//make sure both copies have the same number;
 	assert(baselink_verti_cloud.points.size()==verti_cloud.points.size());
+	collected_cloud_pub_.publish(baselink_verti_cloud);
+
+	supervised_segmentation(verti_scan_in, baselink_verti_cloud, laser_pose_current_);
 
 	//pay attention to use the intensity value;
 	scan_vector_.push_back(*verti_scan_in);
@@ -279,6 +284,7 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 
 	scan_approxy(verti_cloud, laser_pose_current_);
 
+
 	assert(cloud_vector_.size() == laser_pose_vector_.size());
 
 	scan_serial_ = scan_vector_.back().header.seq;
@@ -294,6 +300,29 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 	ROS_INFO("scan callback finished");
 }
 
+//segment the scan using heuristic prior knowledge;
+//similar to curb_detect::DP_Extraction();
+//1st: objects on road are usually convex in shape;
+//2nd: there should be a jump between range values on different objects;
+//3rd: intensity readings on different objects should also be different;
+void DATMO::supervised_segmentation(const sensor_msgs::LaserScan::ConstPtr& scan_in, const sensor_msgs::PointCloud& cloud_in, geometry_msgs::PoseStamped& laser_pose)
+{
+	sensor_msgs::PointCloud FR_pcl;
+	FR_pcl=cloud_in;
+
+	//1st channel is index; 2nd is for intensity; 3rd is used to put the response of ;
+	assert(FR_pcl.channels.size()==2);
+	sensor_msgs::ChannelFloat32 derivative_channel;
+	derivative_channel.name = "second_order_derivative";
+	derivative_channel.values.resize(FR_pcl.points.size(), 0.0);
+
+}
+
+void DATMO::segmentation_visulization()
+{
+
+}
+
 void DATMO::scan_approxy(const sensor_msgs::PointCloud& cloud_in, geometry_msgs::PoseStamped& laser_pose)
 {
 	std::vector<Point2f> raw_input, approxy_output;
@@ -301,7 +330,7 @@ void DATMO::scan_approxy(const sensor_msgs::PointCloud& cloud_in, geometry_msgs:
 	{
 		raw_input.push_back(Point2f(cloud_in.points[i].x, cloud_in.points[i].y));
 	}
-	approxPolyDP(raw_input, approxy_output, 1.0, false);
+	approxPolyDP(raw_input, approxy_output, 0.5, false);
 
 	geometry_msgs::PolygonStamped approxy_polygon;
 	approxy_polygon.header = cloud_in.header;
@@ -470,9 +499,7 @@ void DATMO::process_accumulated_points()
 //here just for vehicle; some process need to be further modified for pedestrians;
 void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear, Mat& old_disappear, Mat& current_image)
 {
-
 	//-----------------1st step: pair-up disappear and appear patches, as moving object candidates;-----------------
-
 	int open_size = 3; int close_size = 1; int close_size2 = 1;
 	Mat open_element = getStructuringElement( MORPH_RECT, Size( 2*open_size + 1, 2*open_size+1 ), Point( open_size, open_size ) );
 	Mat close_element = getStructuringElement( MORPH_RECT, Size( 2*close_size + 1, 2*close_size+1 ), Point( close_size, close_size ) );
@@ -610,10 +637,10 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 	}
 
 	//process the extracted raw data;
-	construct_derived_data(object_clusters);
+	//construct_derived_data(object_clusters);
 
 	//save the derived training data;
-	save_derived_data(object_clusters);
+	//save_derived_data(object_clusters);
 
 }
 

@@ -107,7 +107,7 @@ private:
 	void construct_derived_data(std::vector<object_cluster_segments> &object_clusters);
 	void save_derived_data(std::vector<object_cluster_segments> &object_clusters);
 	std::string												derived_data_path_;
-	 golfcar_ml::svm_classifier *DATMO_classifier_;
+	golfcar_ml::svm_classifier *DATMO_classifier_;
 };
 
 DATMO::DATMO()
@@ -470,9 +470,7 @@ void DATMO::process_accumulated_points()
 //here just for vehicle; some process need to be further modified for pedestrians;
 void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear, Mat& old_disappear, Mat& current_image)
 {
-
 	//-----------------1st step: pair-up disappear and appear patches, as moving object candidates;-----------------
-
 	int open_size = 3; int close_size = 1; int close_size2 = 1;
 	Mat open_element = getStructuringElement( MORPH_RECT, Size( 2*open_size + 1, 2*open_size+1 ), Point( open_size, open_size ) );
 	Mat close_element = getStructuringElement( MORPH_RECT, Size( 2*close_size + 1, 2*close_size+1 ), Point( close_size, close_size ) );
@@ -610,10 +608,10 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 	}
 
 	//process the extracted raw data;
-	construct_derived_data(object_clusters);
+	//construct_derived_data(object_clusters);
 
 	//save the derived training data;
-	save_derived_data(object_clusters);
+	//save_derived_data(object_clusters);
 
 }
 
