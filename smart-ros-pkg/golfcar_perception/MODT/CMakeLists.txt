@@ -68,10 +68,9 @@ rosbuild_add_executable(supervised_segmentation src/supervised_segmentation.cpp)
 target_link_libraries(supervised_segmentation ${OpenCV_LIBRARIES})
 rosbuild_link_boost(supervised_segmentation signals)
 
-rosbuild_add_executable(graph_segmentation src/segmentation/segment.cpp src/segmentation/segment-image.h src/segmentation/segment-graph.h src/segmentation/disjoint-set.h)
-
+#rosbuild_add_executable(graph_segmentation src/segmentation/segment.cpp src/segmentation/segment-image.h src/segmentation/segment-graph.h src/segmentation/disjoint-set.h)
+rosbuild_add_executable(graph_segmentation src/segmentation/segment.cpp)
 rosbuild_add_executable(spatial_temporal_segmentation src/spatial_temporal_segmentation.cpp)
-target_link_libraries(spatial_temporal_segmentation ${OpenCV_LIBRARIES})
 rosbuild_link_boost(spatial_temporal_segmentation signals)
 
 #target_link_libraries(example ${PROJECT_NAME})
