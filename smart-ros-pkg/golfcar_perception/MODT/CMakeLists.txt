@@ -18,7 +18,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 rosbuild_add_boost_directories()
 #uncomment if you have defined messages
-rosbuild_genmsg()
+#rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
@@ -36,7 +36,7 @@ rosbuild_add_executable(DATMO src/DATMO.cpp)
 target_link_libraries(DATMO ${OpenCV_LIBRARIES})
 rosbuild_link_boost(DATMO signals)
 
-rosbuild_add_executable(DATMO_recordData src/DATMO_recordData)
+rosbuild_add_executable(DATMO_recordData src/DATMO_recordData.cpp)
 target_link_libraries(DATMO_recordData ${OpenCV_LIBRARIES})
 rosbuild_link_boost(DATMO_recordData signals)
 
@@ -68,8 +68,10 @@ rosbuild_add_executable(supervised_segmentation src/supervised_segmentation.cpp)
 target_link_libraries(supervised_segmentation ${OpenCV_LIBRARIES})
 rosbuild_link_boost(supervised_segmentation signals)
 
-rosbuild_add_executable(MST_seg src/MST_seg.cpp)
-target_link_libraries(MST_seg ${OpenCV_LIBRARIES})
-rosbuild_link_boost(MST_seg graph)
+rosbuild_add_executable(graph_segmentation src/segmentation/segment.cpp src/segmentation/segment-image.h src/segmentation/segment-graph.h src/segmentation/disjoint-set.h)
+
+rosbuild_add_executable(spatial_temporal_segmentation src/spatial_temporal_segmentation.cpp)
+target_link_libraries(spatial_temporal_segmentation ${OpenCV_LIBRARIES})
+rosbuild_link_boost(spatial_temporal_segmentation signals)
 
 #target_link_libraries(example ${PROJECT_NAME})
