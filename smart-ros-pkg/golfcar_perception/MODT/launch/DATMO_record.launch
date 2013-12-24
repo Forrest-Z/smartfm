@@ -11,7 +11,7 @@
 		<param name="use_prior_map" value="false"/>
 		<remap from="/sickldmrs/verti_laser" to="/front_bottom_scan"/>
 		<param name= "laser_frame_id" value="front_bottom_lidar"/>
-		<param name= "interval" value="10"/>
+		<param name= "interval" value="3"/>
     </node>
 
 </launch>

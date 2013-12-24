@@ -30,6 +30,7 @@
 #include <cmath>
 
 #include "DATMO_datatypes.h"
+#include "svm_classifier.h"
 
 using namespace std;
 using namespace ros;
@@ -37,7 +38,6 @@ using namespace cv;
 //using namespace tf;
 
 typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
-
 
 class DATMO
 {
@@ -60,6 +60,8 @@ private:
 
 	void scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in);
 	void scan_approxy(const sensor_msgs::PointCloud& cloud_in, geometry_msgs::PoseStamped& laser_pose);
+	void supervised_segmentation(const sensor_msgs::LaserScan::ConstPtr& scan_in, const sensor_msgs::PointCloud& cloud_in, geometry_msgs::PoseStamped& laser_pose);
+	void segmentation_visulization();
 
 	bool pointInPolygon(geometry_msgs::Point32 p, vector<geometry_msgs::Point32> poly);
 	void process_accumulated_points();
@@ -103,14 +105,11 @@ private:
 	void save_training_data(std::vector<DATMO_TrainingScan>& training_data_vector,std::vector<vector<Point> > & contour_candidate_vector);
 
 	std::string												abstract_summary_path_;
-	int	Lstart_serial_, Lend_serial_;
-	vector<vector<int> > labelled_masks_;
-	void													load_labeledData();
 	ros::Publisher											labelled_scan_pub_;
-	void visualize_labelled_scan(const sensor_msgs::LaserScan::ConstPtr& scan_in);
 	void construct_derived_data(std::vector<object_cluster_segments> &object_clusters);
 	void save_derived_data(std::vector<object_cluster_segments> &object_clusters);
 	std::string												derived_data_path_;
+	golfcar_ml::svm_classifier *DATMO_classifier_;
 };
 
 DATMO::DATMO()
@@ -127,7 +126,7 @@ DATMO::DATMO()
 	initialize_roadmap();
 
 	int inverval_tmp;
-	private_nh_.param("interval",		    inverval_tmp,       	10);
+	private_nh_.param("interval",		    inverval_tmp,       	5);
 	interval_ = (size_t) inverval_tmp;
 
 	vehicle_array_pub_		=   nh_.advertise<geometry_msgs::PoseArray>("vehicle_array", 2);
@@ -140,7 +139,6 @@ DATMO::DATMO()
 
 	current_polygon_pub_ = nh_.advertise<geometry_msgs::PolygonStamped>("/approxy_polygon", 10);
 
-
 	double img_side_length_tmp, img_resolution_tmp;
 	private_nh_.param("img_side_length",      img_side_length_tmp,     50.0);
 	private_nh_.param("img_resolution",       img_resolution_tmp,      0.2);
@@ -152,54 +150,15 @@ DATMO::DATMO()
 
 
 	private_nh_.param("abstract_summary_path",       abstract_summary_path_,      std::string("/home/baoxing/data/labelled_data/abstract_summary.yml"));
-	load_labeledData();
 	labelled_scan_pub_		=   nh_.advertise<sensor_msgs::LaserScan>("labelled_scan", 2);
 
 	private_nh_.param("derived_data_path",       derived_data_path_,      std::string("/home/baoxing/data/derived_data"));
 
 
-}
-
-void DATMO::visualize_labelled_scan(const sensor_msgs::LaserScan::ConstPtr& scan_in)
-{
-	if((int)scan_in->header.seq > Lend_serial_ || (int)scan_in->header.seq < Lstart_serial_ )
-	{
-		ROS_WARN("scan %u not labelled", scan_in->header.seq);
-		return;
-	}
-	else
-	{
-		assert(labelled_masks_[((int)scan_in->header.seq-Lstart_serial_)].size() == scan_in->ranges.size());
-		sensor_msgs::LaserScan vis_scan = *scan_in;
-		for(size_t i=0; i<vis_scan.ranges.size(); i++)
-		{
-			if(labelled_masks_[((int)scan_in->header.seq-Lstart_serial_)][i]!=1) vis_scan.ranges[i]=0.0;
-		}
-		labelled_scan_pub_.publish(vis_scan);
-	}
-}
-
-void DATMO::load_labeledData()
-{
-	FileStorage fs_read(abstract_summary_path_.c_str(), FileStorage::READ);
-	if(!fs_read.isOpened()){ROS_ERROR("cannot find data batch file"); return;}
-
-	Lstart_serial_ = (int)fs_read["labelled_scan_startSerial"];
-	Lend_serial_ = (int)fs_read["labelled_scan_endSerial"];
-
-	FileNode masks = fs_read["type_masks"];
-	FileNodeIterator mask_it = masks.begin(), mask_it_end = masks.end();
-	int idx = 0;
-
-	for( ; mask_it != mask_it_end; mask_it++, idx++)
-	{
-		vector<int> mask_tmp;
-		(*mask_it) >> mask_tmp;
-		labelled_masks_.push_back(mask_tmp);
-	}
-
-	assert(labelled_masks_.size() == (Lend_serial_ - Lstart_serial_+1));
-	fs_read.release();
+    string DATMO_model_path, DATMO_scale_path;
+	private_nh_.param("DATMO_model_path", DATMO_model_path, std::string("/home/baoxing/workspace/data_and_model/DATMO.model"));
+	private_nh_.param("DATMO_scale_path", DATMO_scale_path, std::string("/home/baoxing/workspace/data_and_model/DATMO.range"));
+    DATMO_classifier_ = new golfcar_ml::svm_classifier(DATMO_model_path, DATMO_scale_path);
 }
 
 void DATMO::initialize_roadmap()
@@ -283,7 +242,6 @@ inline bool DATMO::LocalPixelValid(Point2f & imgPt)
 void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 {
 	ROS_INFO("scan callback %u ", verti_scan_in->header.seq);
-	visualize_labelled_scan(verti_scan_in);
 
 	//make a local "baselink" copy to facilitate later feature extraction;
 	sensor_msgs::PointCloud baselink_verti_cloud;
@@ -295,6 +253,9 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 	catch (tf::TransformException& e){ROS_DEBUG("Wrong!!!!!!!!!!!!!"); std::cout << e.what();return;}
 	//make sure both copies have the same number;
 	assert(baselink_verti_cloud.points.size()==verti_cloud.points.size());
+	collected_cloud_pub_.publish(baselink_verti_cloud);
+
+	supervised_segmentation(verti_scan_in, baselink_verti_cloud, laser_pose_current_);
 
 	//pay attention to use the intensity value;
 	scan_vector_.push_back(*verti_scan_in);
@@ -323,6 +284,7 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 
 	scan_approxy(verti_cloud, laser_pose_current_);
 
+
 	assert(cloud_vector_.size() == laser_pose_vector_.size());
 
 	scan_serial_ = scan_vector_.back().header.seq;
@@ -338,6 +300,29 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 	ROS_INFO("scan callback finished");
 }
 
+//segment the scan using heuristic prior knowledge;
+//similar to curb_detect::DP_Extraction();
+//1st: objects on road are usually convex in shape;
+//2nd: there should be a jump between range values on different objects;
+//3rd: intensity readings on different objects should also be different;
+void DATMO::supervised_segmentation(const sensor_msgs::LaserScan::ConstPtr& scan_in, const sensor_msgs::PointCloud& cloud_in, geometry_msgs::PoseStamped& laser_pose)
+{
+	sensor_msgs::PointCloud FR_pcl;
+	FR_pcl=cloud_in;
+
+	//1st channel is index; 2nd is for intensity; 3rd is used to put the response of ;
+	assert(FR_pcl.channels.size()==2);
+	sensor_msgs::ChannelFloat32 derivative_channel;
+	derivative_channel.name = "second_order_derivative";
+	derivative_channel.values.resize(FR_pcl.points.size(), 0.0);
+
+}
+
+void DATMO::segmentation_visulization()
+{
+
+}
+
 void DATMO::scan_approxy(const sensor_msgs::PointCloud& cloud_in, geometry_msgs::PoseStamped& laser_pose)
 {
 	std::vector<Point2f> raw_input, approxy_output;
@@ -345,7 +330,7 @@ void DATMO::scan_approxy(const sensor_msgs::PointCloud& cloud_in, geometry_msgs:
 	{
 		raw_input.push_back(Point2f(cloud_in.points[i].x, cloud_in.points[i].y));
 	}
-	approxPolyDP(raw_input, approxy_output, 1.0, false);
+	approxPolyDP(raw_input, approxy_output, 0.5, false);
 
 	geometry_msgs::PolygonStamped approxy_polygon;
 	approxy_polygon.header = cloud_in.header;
@@ -431,7 +416,7 @@ void DATMO::process_accumulated_points()
 			return;
 		}
 		lastest_baselink_cloud_vector_.push_back(latest_baselink_cloud);
-		ROS_INFO("lastest_baselink_cloud_vector_: %u, %u", i, lastest_baselink_cloud_vector_[i].points.size());
+		//ROS_INFO("lastest_baselink_cloud_vector_: %u, %u", i, lastest_baselink_cloud_vector_[i].points.size());
 	}
 
 	Mat accumulated_TminusOne_img = local_mask_.clone();
@@ -514,9 +499,7 @@ void DATMO::process_accumulated_points()
 //here just for vehicle; some process need to be further modified for pedestrians;
 void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear, Mat& old_disappear, Mat& current_image)
 {
-
 	//-----------------1st step: pair-up disappear and appear patches, as moving object candidates;-----------------
-
 	int open_size = 3; int close_size = 1; int close_size2 = 1;
 	Mat open_element = getStructuringElement( MORPH_RECT, Size( 2*open_size + 1, 2*open_size+1 ), Point( open_size, open_size ) );
 	Mat close_element = getStructuringElement( MORPH_RECT, Size( 2*close_size + 1, 2*close_size+1 ), Point( close_size, close_size ) );
@@ -600,15 +583,9 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 
 	}
 
-	//------------------2nd: collect derived training data-------------------------
-	//check the "lastest_baselink_cloud_vector_", against with "labelled_masks_";
 
-	if((int)scan_vector_.back().header.seq > Lend_serial_ || (int)scan_vector_.back().header.seq < Lstart_serial_ )
-	{
-		ROS_INFO("will not saving any training data, since the latest scan is not labelled");
-		return;
-	}
 
+	//------------------2nd: extract candidates and do online classification-------------------------
 	std::vector<object_cluster_segments> object_clusters;
 	for(size_t i=0;  i<appear_disappear_pairs.size(); i++)
 	{
@@ -617,6 +594,7 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 		int disappear_serial = appear_disappear_pairs[i].second;
 		if(appear_serial>=0 && disappear_serial>=0)
 		{
+			ROS_INFO("appear_disappear_pair %u", i);
 			object_cluster_segments object_cluster_tmp;
 			assert(scan_vector_.size()>0);
 			bool stop_segment_extraction = false;
@@ -627,107 +605,48 @@ void DATMO::extract_moving_objects(Mat& accT, Mat& accTminusOne, Mat& new_appear
 			//loop from latest scan to scan 0;
 			for(int a= (int)scan_vector_.size()-1; a>=0; a--)
 			{
-				//extract the segment in scan a;
-
-				if(stop_segment_extraction) break;
-				if((int)scan_vector_[a].header.seq > Lend_serial_ || (int)scan_vector_[a].header.seq < Lstart_serial_ )
+				int pointSerialInCloud = 0;
+				compressed_scan_segment scan_segment_tmp;
+				//cout<<"a:"<<a;
+				for(size_t b=0; b<scan_vector_[a].ranges.size();b++)
 				{
-					stop_segment_extraction = true;
-					break;
-				}
-				else
-				{
-					int pointSerialInCloud = 0;
-					compressed_scan_segment scan_segment_tmp;
-					for(size_t b=0; b<scan_vector_[a].ranges.size();b++)
+					if(scan_vector_[a].ranges[b]>=scan_vector_[a].range_min && scan_vector_[a].ranges[b]<=scan_vector_[a].range_max)
 					{
-						if(scan_vector_[a].ranges[b]>=scan_vector_[a].range_min && scan_vector_[a].ranges[b]<=scan_vector_[a].range_max)
+						geometry_msgs::Point32 spacePt_tmp = lastest_baselink_cloud_vector_[a].points[pointSerialInCloud];
+						Point2f imgpt_tmp;
+						spacePt2ImgP(spacePt_tmp, imgpt_tmp);
+						double check = pointPolygonTest(contours_combined[i], imgpt_tmp, true);
+						if(check >= -2.0)
 						{
-							//ROS_INFO("pointSerialInCloud %d", pointSerialInCloud);
-							geometry_msgs::Point32 spacePt_tmp = lastest_baselink_cloud_vector_[a].points[pointSerialInCloud];
-							Point2f imgpt_tmp;
-							spacePt2ImgP(spacePt_tmp, imgpt_tmp);
-							double check = pointPolygonTest(contours_combined[i], imgpt_tmp, true);
-							if(check >= -1.0)
-							{
-								int type_serial = labelled_masks_[((int)scan_vector_[a].header.seq-Lstart_serial_)][b];
-								//here the assumption is that all the object in the same clustering will have label "2" or "3", and they are consistent in the same cluster;
-
-								//1st scenario: object clusters (1, 2 or 3) are detected, then incorporate all the labelled points, until "background-0" or "unlabelled-4" are met in the labelled mask;
-								if(type_serial!=0 && type_serial !=4)
-								{
-									for(int k=b; k<(int)labelled_masks_[((int)scan_vector_[a].header.seq-Lstart_serial_)].size(); k++)
-									{
-										if(labelled_masks_[((int)scan_vector_[a].header.seq-Lstart_serial_)][k]!=type_serial)break;
-
-										if(scan_vector_[a].ranges[k]>=scan_vector_[a].range_min && scan_vector_[a].ranges[k]<=scan_vector_[a].range_max)
-										{
-											geometry_msgs::Point32 baselinkPt = baselink_cloud_vector_[a].points[pointSerialInCloud];
-											scan_segment_tmp.rawPoints.push_back(baselinkPt);
-											scan_segment_tmp.rawIntensities.push_back(scan_vector_[a].intensities[b]);
-
-											//Thi case should not appear if your derived labelling code use the same parameters as in recordData;
-											if(labelled_masks_[((int)scan_vector_[a].header.seq-Lstart_serial_)][b]==0 && labelled_masks_[((int)scan_vector_[a].header.seq-Lstart_serial_)][b]==4)
-											{
-												ROS_ERROR("can this happen?");
-												scan_segment_tmp.rawPoints.clear();
-												break;
-											}
-											pointSerialInCloud++;
-										}
-									}
-
-									if(object_cluster_tmp.scan_segment_batch.size()==0)object_cluster_tmp.object_type = type_serial;
-
-									//no need to loop the remained points, since they are already found according to the scan mask;
-									break;
-								}
-								//2nd scenario: "background-0" points are labelled in the cluster, then push_back the points inside one by one;
-								else if(type_serial==0)
-								{
-									geometry_msgs::Point32 baselinkPt = baselink_cloud_vector_[a].points[pointSerialInCloud];
-									scan_segment_tmp.rawPoints.push_back(baselinkPt);
-									scan_segment_tmp.rawIntensities.push_back(scan_vector_[a].intensities[b]);
-									if(object_cluster_tmp.scan_segment_batch.size()==0)object_cluster_tmp.object_type = type_serial;
-								}
-								//3rd scenario: "unlabelled-4" are found inside the scan, will not use the scan segments then;
-								else
-								{
-									scan_segment_tmp.rawPoints.clear();
-									break;
-								}
-							}
-							pointSerialInCloud++;
+							geometry_msgs::Point32 baselinkPt = baselink_cloud_vector_[a].points[pointSerialInCloud];
+							scan_segment_tmp.rawPoints.push_back(baselinkPt);
+							scan_segment_tmp.rawIntensities.push_back(scan_vector_[a].intensities[b]);
 						}
+						pointSerialInCloud++;
 					}
-
-					if(scan_segment_tmp.rawPoints.size()!=0)
-					{
-						object_cluster_tmp.scan_segment_batch.push_back(scan_segment_tmp);
-					}
-					else
-					{
-						stop_segment_extraction = true;
-						break;
-					}
+				}
+				if(scan_segment_tmp.rawPoints.size()!=0)
+				{
+					object_cluster_tmp.scan_segment_batch.push_back(scan_segment_tmp);
+					object_cluster_tmp.contour_serial = (int)i;
 				}
 			}
-
 			if(object_cluster_tmp.scan_segment_batch.size()>0)object_clusters.push_back(object_cluster_tmp);
+			else ROS_INFO("batch no enought?");
 		}
 	}
 
 	//process the extracted raw data;
-	construct_derived_data(object_clusters);
+	//construct_derived_data(object_clusters);
 
 	//save the derived training data;
-	save_derived_data(object_clusters);
+	//save_derived_data(object_clusters);
 
 }
 
 void DATMO::construct_derived_data(std::vector<object_cluster_segments> &object_clusters)
 {
-	ROS_INFO("construct derived data");
+	ROS_INFO("construct derived data %u", object_clusters.size());
 	//calculate the LIDAR pose in latest LIDAR frame;
 	vector<geometry_msgs::Pose> Pose_inLatest_vector;
 	tf::Pose odom_to_latestLIDAR;
@@ -736,16 +655,16 @@ void DATMO::construct_derived_data(std::vector<object_cluster_segments> &object_
 	assert(laser_pose_vector_.size() == 2*interval_);
 	for(int i=(int)(laser_pose_vector_.size())-1; i >=0 ; i--)
 	{
-		cout<<i<<":";
+		//cout<<i<<":";
 		tf::Pose odom_to_LIDAR_tmp;
 		tf::poseMsgToTF(laser_pose_vector_[i].pose, odom_to_LIDAR_tmp);
 		tf::Pose LIDAR_new_to_old = odom_to_latestLIDAR.inverse()*odom_to_LIDAR_tmp;
 		geometry_msgs::Pose pose_inLatest;
 		tf::poseTFToMsg(LIDAR_new_to_old, pose_inLatest);
 		Pose_inLatest_vector.push_back(pose_inLatest);
-		cout<<"("<<pose_inLatest.position.x<<","<<pose_inLatest.position.y<<")"<<"\t";
+		//cout<<"("<<pose_inLatest.position.x<<","<<pose_inLatest.position.y<<")"<<"\t";
 	}
-	cout<<endl;
+	//cout<<endl;
 
 	for(size_t i=0; i<object_clusters.size(); i++)
 	{
@@ -765,44 +684,66 @@ void DATMO::construct_derived_data(std::vector<object_cluster_segments> &object_
 
 void DATMO::save_derived_data(std::vector<object_cluster_segments> &object_clusters)
 {
+	ROS_INFO("classify the derived data");
 	for(size_t i=0; i<object_clusters.size(); i++)
 	{
 		object_cluster_segments &object_cluster_tmp =object_clusters[i];
-		for(size_t j=0; j<object_cluster_tmp.scan_segment_batch.size(); j++)
+		size_t j=object_cluster_tmp.scan_segment_batch.size();
+
+		assert(object_cluster_tmp.pose_InLatestCoord_vector.size()==object_cluster_tmp.scan_segment_batch.size());
+
+		if(j!=2*interval_)
 		{
-			assert(object_cluster_tmp.pose_InLatestCoord_vector.size()==object_cluster_tmp.scan_segment_batch.size());
-
-			FILE *fp_write;
-			stringstream file_path;
-			file_path<<derived_data_path_<<"/"<<(j+1);
-			fp_write = fopen(file_path.str().c_str(),"a");
-			if(fp_write==NULL){ROS_ERROR("cannot write derived data file\n");return;}
-
-			fprintf(fp_write, "%d\t", object_cluster_tmp.object_type);
-			for(size_t k=0; k<=j; k++)
-			{
-				double pose[6];
-				geometry_msgs::Pose pose_tmp = object_cluster_tmp.pose_InLatestCoord_vector[k];
-				pose[0]=pose_tmp.position.x;
-				pose[1]=pose_tmp.position.y;
-				pose[2]=pose_tmp.position.z;
-				tf::Quaternion q(pose_tmp.orientation.x, pose_tmp.orientation.y, pose_tmp.orientation.z, pose_tmp.orientation.w);
-				tf::Matrix3x3 m(q);
-				m.getRPY(pose[3], pose[4], pose[5]);
-
-				//first printf the odometry information;
-				for(size_t a=0; a<6; a++)fprintf(fp_write, "%lf\t", pose[a]);
-
-				//then printf the compressed scan segment;
-				for(size_t a=0; a<3; a++)
-				{
-					fprintf(fp_write, "%f\t%f\t%f\t",object_cluster_tmp.scan_segment_batch[k].KeyPoint[a].x,object_cluster_tmp.scan_segment_batch[k].KeyPoint[a].y, object_cluster_tmp.scan_segment_batch[k].intensities[a]);
-				}
-				fprintf(fp_write, "%d\t%d\t%f\t%f\t", object_cluster_tmp.scan_segment_batch[k].m,object_cluster_tmp.scan_segment_batch[k].n,object_cluster_tmp.scan_segment_batch[k].sigmaM,object_cluster_tmp.scan_segment_batch[k].sigmaN);
-			}
-			fprintf(fp_write, "\n");
-			fclose(fp_write);
+			object_cluster_tmp.object_type = 0;
+			ROS_INFO("can this happen? not likely");
+			continue;
 		}
+
+		int vector_length = 19*2*int(interval_);
+		double DATMO_feature_vector[vector_length];
+		int vector_serial=0;
+		for(size_t k=0; k<j; k++)
+		{
+			double pose[6];
+			geometry_msgs::Pose pose_tmp = object_cluster_tmp.pose_InLatestCoord_vector[k];
+			pose[0]=pose_tmp.position.x;
+			pose[1]=pose_tmp.position.y;
+			pose[2]=pose_tmp.position.z;
+			tf::Quaternion q(pose_tmp.orientation.x, pose_tmp.orientation.y, pose_tmp.orientation.z, pose_tmp.orientation.w);
+			tf::Matrix3x3 m(q);
+			m.getRPY(pose[3], pose[4], pose[5]);
+
+			//first printf the odometry information;
+			for(size_t a=0; a<6; a++){DATMO_feature_vector[vector_serial+a]=pose[a];}
+			vector_serial = vector_serial+6;
+			//then printf the compressed scan segment;
+
+			for(size_t a=0; a<3; a++)
+			{
+				DATMO_feature_vector[vector_serial+0]=object_cluster_tmp.scan_segment_batch[k].KeyPoint[a].x;
+				DATMO_feature_vector[vector_serial+1]=object_cluster_tmp.scan_segment_batch[k].KeyPoint[a].y;
+				DATMO_feature_vector[vector_serial+2]=object_cluster_tmp.scan_segment_batch[k].intensities[a];
+				vector_serial = vector_serial+3;
+			}
+
+			DATMO_feature_vector[vector_serial+0] =  object_cluster_tmp.scan_segment_batch[k].m;
+			DATMO_feature_vector[vector_serial+1] =  object_cluster_tmp.scan_segment_batch[k].n;
+			DATMO_feature_vector[vector_serial+2] =  object_cluster_tmp.scan_segment_batch[k].sigmaM;
+			DATMO_feature_vector[vector_serial+3] =  object_cluster_tmp.scan_segment_batch[k].sigmaN;
+			vector_serial = vector_serial+4;
+		}
+		//cout<<endl;
+		//for(int k=0; k<vector_length; k++)
+		//{
+			//cout<<DATMO_feature_vector[k]<<"\t";
+		//}
+		//cout<<endl;
+
+		object_cluster_tmp.object_type = DATMO_classifier_->classify_objects(DATMO_feature_vector, vector_length);
+		if(object_cluster_tmp.object_type ==1){ROS_INFO("vehicle!!!");}
+		else if(object_cluster_tmp.object_type ==2){ROS_INFO("motorbike!!!");}
+		else if (object_cluster_tmp.object_type ==0){ROS_INFO("background noise");}
+		else{ROS_INFO("other type of objects");}
 	}
 }
 

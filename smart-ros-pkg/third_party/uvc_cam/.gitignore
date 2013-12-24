@@ -2,3 +2,4 @@ cfg/cpp
 docs
 src/uvc_cam/__init__.py
 src/uvc_cam/cfg
+*~
