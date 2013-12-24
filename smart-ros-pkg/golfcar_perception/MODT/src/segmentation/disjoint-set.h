@@ -31,7 +31,7 @@ class universe {
 public:
   universe(int elements);
   ~universe();
-  int find(int x);  
+  int find(int x);
   void join(int x, int y);
   int size(int x) const { return elts[x].size; }
   int num_sets() const { return num; }
