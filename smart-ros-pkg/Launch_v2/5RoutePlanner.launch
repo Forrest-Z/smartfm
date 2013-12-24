@@ -1,0 +1,3 @@
+<launch>
+  <node name="RouteLaunch" pkg="Launch_v2" type="update_param.bash" args="5RoutePlannerSpeedAdvisor.xml" output="screen"/>
+</launch>

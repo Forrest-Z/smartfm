@@ -1,0 +1,12 @@
+<launch>
+  <group ns="$(env ROBOT)">
+    <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen">
+        <param name="dummy_vehicle" value="false"/>
+        <param name="use_dbserver" value="false"/>
+    </node>
+    <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
+        <rosparam file="$(find ped_momdp_sarsop)/speed_advisor.yaml" command="load"/>
+        <remap from="cmd_vel" to="speed_advisor_cmdvel"/>
+    </node>
+  </group>
+</launch>

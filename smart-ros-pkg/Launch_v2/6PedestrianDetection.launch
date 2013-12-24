@@ -1,0 +1,3 @@
+<launch>
+  <node name="PedestrianDetectionLaunch" pkg="Launch_v2" type="update_param.bash" args="pedestrian_detection_hog.xml" output="screen"/>
+</launch>
