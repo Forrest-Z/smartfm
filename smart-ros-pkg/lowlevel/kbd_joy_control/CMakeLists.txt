@@ -30,4 +30,4 @@ rosbuild_add_executable(joy_pronto src/joy_pronto.cpp)
 rosbuild_add_executable(joy_logitech_momo src/joy_logitech_momo.cpp)
 rosbuild_add_executable(joy_hal src/joy_hal.cpp)
 rosbuild_add_executable(joy_simulator src/joy_simulator.cpp)
-
+rosbuild_add_executable(system_id src/system_id.cpp)
