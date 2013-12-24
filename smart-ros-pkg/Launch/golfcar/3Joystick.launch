@@ -1,9 +1,0 @@
-<launch>
-	<node pkg="joy" type="joy_node" name="joy_node">
-		<param name="dev" value="/dev/input/js1"/>
-	</node>
-	<node pkg="golfcar_halstreamer" type="joy_multichannel" name="joy_multichannel"/>
-	<node pkg="golfcar_steeringcontrol" type="local_controller" name="local_controller"/> 
-	<node name="speed_controller" pkg="speed_controller" type="speed_controller_PI"/>
-</launch>
-
