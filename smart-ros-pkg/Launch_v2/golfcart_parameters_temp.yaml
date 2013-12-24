@@ -9,6 +9,7 @@ frontBottom:
 base_link_to_front_top_lidar:
   x: 1.78
   z: 1.82
+  pitch: 0.23
   parent_frame_id: golfcart/base_link
   child_frame_id: golfcart/front_top_lidar
 base_link_to_front_bottom_lidar:
