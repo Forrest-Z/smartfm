@@ -29,6 +29,10 @@
     </node>
 
     <!--node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation.vcg" /-->
-    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/>
+    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper">
+        <param name="x_coeff" value="0.1" />
+        <param name="y_coeff" value="0.01" />
+        <param name="angle_coeff" value="0.02" />
+    </node>
     <include file="$(find sound_speaker)/launch/sound_speaker.launch"/>
 </launch>

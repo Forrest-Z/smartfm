@@ -5,15 +5,9 @@ Axes.Reference\ Frame=/base_link
 Background\ ColorB=0
 Background\ ColorG=0
 Background\ ColorR=0
-Camera\ Config=8.54847 34.4506 -6.58954 -0.015
+Camera\ Config=8.01817 -1.20851 8.24581 -0.96
 Camera\ Type=rviz::FixedOrientationOrthoViewController
-Fixed\ Frame=/map
-Grid\ Cells.Alpha=1
-Grid\ Cells.ColorB=0
-Grid\ Cells.ColorG=1
-Grid\ Cells.ColorR=0.1
-Grid\ Cells.Enabled=1
-Grid\ Cells.Topic=/move_base_node/local_costmap/obstacles
+Fixed\ Frame=/golfcart/map
 Grid.Alpha=0.5
 Grid.Cell\ Size=1
 Grid.ColorB=0.5
@@ -44,33 +38,33 @@ Laser\ Scan..AxisColorMax\ Value=10
 Laser\ Scan..AxisColorMin\ Value=-10
 Laser\ Scan..AxisColorUse\ Fixed\ Frame=1
 Laser\ Scan..FlatColorColorB=1
-Laser\ Scan..FlatColorColorG=1
-Laser\ Scan..FlatColorColorR=1
+Laser\ Scan..FlatColorColorG=0
+Laser\ Scan..FlatColorColorR=0
 Laser\ Scan..IntensityAutocompute\ Intensity\ Bounds=1
 Laser\ Scan..IntensityChannel\ Name=intensity
 Laser\ Scan..IntensityMax\ ColorB=1
 Laser\ Scan..IntensityMax\ ColorG=1
 Laser\ Scan..IntensityMax\ ColorR=1
-Laser\ Scan..IntensityMax\ Intensity=1
+Laser\ Scan..IntensityMax\ Intensity=821
 Laser\ Scan..IntensityMin\ ColorB=0
 Laser\ Scan..IntensityMin\ ColorG=0
 Laser\ Scan..IntensityMin\ ColorR=0
-Laser\ Scan..IntensityMin\ Intensity=1
-Laser\ Scan..IntensityUse\ full\ RGB\ spectrum=0
+Laser\ Scan..IntensityMin\ Intensity=111
+Laser\ Scan..IntensityUse\ full\ RGB\ spectrum=1
 Laser\ Scan.Alpha=1
 Laser\ Scan.Billboard\ Size=0.01
-Laser\ Scan.Color\ Transformer=Intensity
+Laser\ Scan.Color\ Transformer=FlatColor
 Laser\ Scan.Decay\ Time=0
 Laser\ Scan.Enabled=1
 Laser\ Scan.Position\ Transformer=XYZ
 Laser\ Scan.Queue\ Size=10
 Laser\ Scan.Selectable=1
 Laser\ Scan.Style=0
-Laser\ Scan.Topic=/sick_scan2
+Laser\ Scan.Topic=/golfcart/front_top_scan
 LaserScan..AxisColorAutocompute\ Value\ Bounds=1
 LaserScan..AxisColorAxis=2
-LaserScan..AxisColorMax\ Value=1.54718
-LaserScan..AxisColorMin\ Value=-0.562071
+LaserScan..AxisColorMax\ Value=0.765994
+LaserScan..AxisColorMin\ Value=0.753317
 LaserScan..AxisColorUse\ Fixed\ Frame=1
 LaserScan..FlatColorColorB=0.498039
 LaserScan..FlatColorColorG=0
@@ -95,7 +89,7 @@ LaserScan.Position\ Transformer=XYZ
 LaserScan.Queue\ Size=10
 LaserScan.Selectable=1
 LaserScan.Style=0
-LaserScan.Topic=/scan
+LaserScan.Topic=/golfcart/scan
 LaserScan2..AxisColorAutocompute\ Value\ Bounds=1
 LaserScan2..AxisColorAxis=2
 LaserScan2..AxisColorMax\ Value=10
@@ -133,7 +127,7 @@ Odometry3.Enabled=1
 Odometry3.Keep=1000
 Odometry3.Length=1
 Odometry3.Position\ Tolerance=0.1
-Odometry3.Topic=/odom
+Odometry3.Topic=/golfcart/encoder_imu_odom
 Path.Alpha=1
 Path.ColorB=0
 Path.ColorG=1
@@ -149,7 +143,7 @@ Path2.Topic=/global_plan_repub
 PlanarMap.Alpha=0.7
 PlanarMap.Draw\ Behind=0
 PlanarMap.Enabled=1
-PlanarMap.Topic=/map
+PlanarMap.Topic=/golfcart/map
 Point\ Cloud..AxisColorAutocompute\ Value\ Bounds=1
 Point\ Cloud..AxisColorAxis=2
 Point\ Cloud..AxisColorMax\ Value=10
@@ -250,11 +244,11 @@ PointCloud3..IntensityChannel\ Name=x
 PointCloud3..IntensityMax\ ColorB=1
 PointCloud3..IntensityMax\ ColorG=1
 PointCloud3..IntensityMax\ ColorR=1
-PointCloud3..IntensityMax\ Intensity=65.4497
+PointCloud3..IntensityMax\ Intensity=97.9725
 PointCloud3..IntensityMin\ ColorB=0
 PointCloud3..IntensityMin\ ColorG=0
 PointCloud3..IntensityMin\ ColorR=0
-PointCloud3..IntensityMin\ Intensity=65.4497
+PointCloud3..IntensityMin\ Intensity=97.9725
 PointCloud3..IntensityUse\ full\ RGB\ spectrum=1
 PointCloud3.Alpha=1
 PointCloud3.Billboard\ Size=0.1
@@ -289,12 +283,41 @@ PointCloud4.Alpha=1
 PointCloud4.Billboard\ Size=0.01
 PointCloud4.Color\ Transformer=Intensity
 PointCloud4.Decay\ Time=0
-PointCloud4.Enabled=1
+PointCloud4.Enabled=0
 PointCloud4.Position\ Transformer=XYZ
 PointCloud4.Queue\ Size=10
 PointCloud4.Selectable=1
 PointCloud4.Style=1
 PointCloud4.Topic=/prior_pts
+PointCloud5..AxisColorAutocompute\ Value\ Bounds=1
+PointCloud5..AxisColorAxis=2
+PointCloud5..AxisColorMax\ Value=10
+PointCloud5..AxisColorMin\ Value=-10
+PointCloud5..AxisColorUse\ Fixed\ Frame=1
+PointCloud5..FlatColorColorB=1
+PointCloud5..FlatColorColorG=1
+PointCloud5..FlatColorColorR=1
+PointCloud5..IntensityAutocompute\ Intensity\ Bounds=1
+PointCloud5..IntensityChannel\ Name=z
+PointCloud5..IntensityMax\ ColorB=1
+PointCloud5..IntensityMax\ ColorG=1
+PointCloud5..IntensityMax\ ColorR=1
+PointCloud5..IntensityMax\ Intensity=1.27
+PointCloud5..IntensityMin\ ColorB=0
+PointCloud5..IntensityMin\ ColorG=0
+PointCloud5..IntensityMin\ ColorR=0
+PointCloud5..IntensityMin\ Intensity=0.02
+PointCloud5..IntensityUse\ full\ RGB\ spectrum=1
+PointCloud5.Alpha=1
+PointCloud5.Billboard\ Size=0.01
+PointCloud5.Color\ Transformer=Intensity
+PointCloud5.Decay\ Time=0
+PointCloud5.Enabled=1
+PointCloud5.Position\ Transformer=XYZ
+PointCloud5.Queue\ Size=10
+PointCloud5.Selectable=1
+PointCloud5.Style=1
+PointCloud5.Topic=/local_map_pts
 Polygon.Alpha=1
 Polygon.ColorB=0
 Polygon.ColorG=1
@@ -306,7 +329,7 @@ Polygon2.ColorB=0
 Polygon2.ColorG=1
 Polygon2.ColorR=0.1
 Polygon2.Enabled=1
-Polygon2.Topic=/move_base_node/local_costmap/robot_footprint
+Polygon2.Topic=/dynamic_safety_zoon
 Polygon3.Alpha=1
 Polygon3.ColorB=0.0941176
 Polygon3.ColorG=0
@@ -315,10 +338,10 @@ Polygon3.Enabled=1
 Polygon3.Topic=/pp_vis
 Polygon4.Alpha=1
 Polygon4.ColorB=0
-Polygon4.ColorG=1
-Polygon4.ColorR=0.1
+Polygon4.ColorG=0
+Polygon4.ColorR=1
 Polygon4.Enabled=1
-Polygon4.Topic=/move_base_node/local_costmap/robot_footprint
+Polygon4.Topic=/dynamic_safety_zoon
 Pose\ Array.Arrow\ Length=0.3
 Pose\ Array.ColorB=0
 Pose\ Array.ColorG=0.1
@@ -336,9 +359,15 @@ Pose.Shaft\ Length=1
 Pose.Shaft\ Radius=0.5
 Pose.Shape=0
 Pose.Topic=/pnc_nextpose
-Property\ Grid\ Splitter=585,78
-Property\ Grid\ State=expanded=.Global Options,PlanarMap.Enabled,Pose Array.Enabled,Path.Enabled,Polygon.Enabled,Polygon2.Enabled,Grid Cells.Enabled,Polygon3.Enabled,Odometry3.Enabled,Polygon4.Enabled,Interactive Markers.Enabled,Laser Scan.Enabled,Point Cloud.Enabled,Axes.Enabled,Grid.Enabled,LaserScan.Enabled,PointCloud2.Enabled,TF.Enabled,LaserScan2.Enabled,PointCloud3.Enabled,Pose.Enabled,Pose.Shape Properties,PointCloud4.Enabled;splitterratio=0.5
-QMainWindow=000000ff00000000fd000000030000000000000146000003e3fc0200000002fb000000100044006900730070006c006100790073010000001d000002e9000000ee00fffffffb0000000a0049006d006100670065010000030c000000f40000001900ffffff0000000100000131000003e3fc0200000003fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000001d000001250000006700fffffffb0000000a0056006900650077007301000001480000018d000000bb00fffffffb0000001200530065006c0065006300740069006f006e01000002db000001250000006700ffffff000000030000074f0000003efc0100000001fb0000000800540069006d006501000000000000074f000002bf00ffffff000004cc000003e300000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+PoseArray.Arrow\ Length=0.3
+PoseArray.ColorB=0
+PoseArray.ColorG=0.1
+PoseArray.ColorR=1
+PoseArray.Enabled=1
+PoseArray.Topic=/golfcart/particlecloud
+Property\ Grid\ Splitter=714,0
+Property\ Grid\ State=expanded=.Global Options,PlanarMap.Enabled,Laser Scan.Enabled,LaserScan.Enabled,TF.Enabled,LaserScan2.Enabled,PointCloud3.Enabled,Pose.Enabled,Pose.Shape Properties,PointCloud4.Enabled,Polygon2.Enabled,Polygon4.Enabled,Polygon4.Status,PointCloud5.Enabled,PoseArray.Enabled;splitterratio=0.5
+QMainWindow=000000ff00000000fd00000003000000000000011d00000377fc0200000002fb000000100044006900730070006c006100790073010000001d0000031c000000ee00fffffffb0000000a0049006d006100670065010000033f000000550000001900ffffff000000010000013100000377fc0200000003fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000001d000001250000006700fffffffb0000000a00560069006500770073010000014800000121000000bb00fffffffb0000001200530065006c0065006300740069006f006e010000026f000001250000006700ffffff000000030000062f0000003efc0100000001fb0000000800540069006d006501000000000000062f000002bf00ffffff000003d50000037700000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
 RobotModel.Alpha=1
 RobotModel.Collision\ Enabled=0
 RobotModel.Enabled=1
@@ -349,12 +378,12 @@ RobotModel.Visual\ Enabled=1
 TF.All\ Enabled=1
 TF.Enabled=0
 TF.Frame\ Timeout=15
-TF.Marker\ Scale=1
+TF.Marker\ Scale=15
 TF.Show\ Arrows=1
 TF.Show\ Axes=1
 TF.Show\ Names=1
 TF.Update\ Interval=0
-Target\ Frame=/base_link
+Target\ Frame=/golfcart/base_link
 Tool\ 2D\ Nav\ GoalTopic=goal
 Tool\ 2D\ Pose\ EstimateTopic=initialpose
 [Display0]
@@ -364,76 +393,79 @@ Name=PlanarMap
 ClassName=rviz::PoseArrayDisplay
 Name=Pose Array
 [Display10]
-ClassName=rviz::LaserScanDisplay
-Name=Laser Scan
-[Display11]
-ClassName=rviz::PointCloudDisplay
-Name=Point Cloud
-[Display12]
-ClassName=rviz::AxesDisplay
-Name=Axes
-[Display13]
 ClassName=rviz::GridDisplay
 Name=Grid
-[Display14]
+[Display11]
 ClassName=rviz::LaserScanDisplay
 Name=LaserScan
-[Display15]
+[Display12]
 ClassName=rviz::PointCloud2Display
 Name=PointCloud2
-[Display16]
+[Display13]
 ClassName=rviz::TFDisplay
 Name=TF
-[Display17]
+[Display14]
 ClassName=rviz::LaserScanDisplay
 Name=LaserScan2
-[Display18]
+[Display15]
 ClassName=rviz::ImageDisplay
 Name=Image
-[Display19]
+[Display16]
 ClassName=rviz::PointCloudDisplay
 Name=PointCloud
+[Display17]
+ClassName=rviz::PathDisplay
+Name=Path2
+[Display18]
+ClassName=rviz::RobotModelDisplay
+Name=RobotModel
+[Display19]
+ClassName=rviz::PointCloudDisplay
+Name=PointCloud3
 [Display2]
 ClassName=rviz::PathDisplay
 Name=Path
 [Display20]
-ClassName=rviz::PathDisplay
-Name=Path2
-[Display21]
-ClassName=rviz::RobotModelDisplay
-Name=RobotModel
-[Display22]
-ClassName=rviz::PointCloudDisplay
-Name=PointCloud3
-[Display23]
 ClassName=rviz::PoseDisplay
 Name=Pose
-[Display24]
+[Display21]
 ClassName=rviz::PointCloudDisplay
 Name=PointCloud4
+[Display22]
+ClassName=rviz::PolygonDisplay
+Name=Polygon2
+[Display23]
+ClassName=rviz::PolygonDisplay
+Name=Polygon4
+[Display24]
+ClassName=rviz::PointCloudDisplay
+Name=PointCloud5
+[Display25]
+ClassName=rviz::PoseArrayDisplay
+Name=PoseArray
 [Display3]
 ClassName=rviz::PolygonDisplay
 Name=Polygon
 [Display4]
 ClassName=rviz::PolygonDisplay
-Name=Polygon2
-[Display5]
-ClassName=rviz::GridCellsDisplay
-Name=Grid Cells
-[Display6]
-ClassName=rviz::PolygonDisplay
 Name=Polygon3
-[Display7]
+[Display5]
 ClassName=rviz::OdometryDisplay
 Name=Odometry3
-[Display8]
-ClassName=rviz::PolygonDisplay
-Name=Polygon4
-[Display9]
+[Display6]
 ClassName=rviz::InteractiveMarkerDisplay
 Name=Interactive Markers
+[Display7]
+ClassName=rviz::LaserScanDisplay
+Name=Laser Scan
+[Display8]
+ClassName=rviz::PointCloudDisplay
+Name=Point Cloud
+[Display9]
+ClassName=rviz::AxesDisplay
+Name=Axes
 [Window]
-Height=1128
-Width=1887
-X=901
-Y=-674
+Height=1020
+Width=1599
+X=974
+Y=-864

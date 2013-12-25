@@ -7,5 +7,9 @@
     <include file="$(find Launch)/golfcar/sensors/hokuyo.launch"/>
     <!--include file="$(find Launch)/golfcar/sensors/mti_imu.launch"/-->
     <!--include file="$(find Launch)/golfcar/sensors/ms_imu.launch"/-->
+    <!--node pkg="xsens_driver" type="mtnode.py" name="xsens_driver" ns="xsens" output="screen" >
+	    <param name="frame_id" value="/imu_xsens" />
+	    <param name="device" value="/dev/ttyUSB0"/>
+    </node-->
 </launch>
 

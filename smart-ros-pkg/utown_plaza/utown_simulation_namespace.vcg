@@ -1,20 +1,20 @@
 Axes.Enabled=1
 Axes.Length=1
 Axes.Radius=0.1
-Axes.Reference\ Frame=/base_link
-Background\ ColorB=1
-Background\ ColorG=1
-Background\ ColorR=1
-Camera\ Config=24.5272 5.16116 9.41408 -13.205
+Axes.Reference\ Frame=/golfcart/base_link
+Background\ ColorB=0
+Background\ ColorG=0
+Background\ ColorR=0
+Camera\ Config=7.26421 -20.0201 16.2829 1.75295e-05
 Camera\ Type=rviz::FixedOrientationOrthoViewController
 Camera.Enabled=1
 Camera.Image\ Rendering=background & overlay
-Camera.Image\ Topic=/camera_front/image_raw
+Camera.Image\ Topic=/golfcart/camera_front/image_raw
 Camera.Overlay\ Alpha=0.5
 Camera.Queue\ Size=2
 Camera.Transport\ Hint=raw
 Camera.Zoom\ Factor=1
-Fixed\ Frame=/map
+Fixed\ Frame=/golfcart/map
 Grid.Alpha=0.5
 Grid.Cell\ Size=1
 Grid.ColorB=0.5
@@ -30,21 +30,6 @@ Grid.OffsetZ=0
 Grid.Plane=0
 Grid.Plane\ Cell\ Count=100
 Grid.Reference\ Frame=<Fixed Frame>
-Grid2.Alpha=0.5
-Grid2.Cell\ Size=2
-Grid2.ColorB=0
-Grid2.ColorG=0
-Grid2.ColorR=1
-Grid2.Enabled=1
-Grid2.Line\ Style=0
-Grid2.Line\ Width=0.03
-Grid2.Normal\ Cell\ Count=0
-Grid2.OffsetX=0
-Grid2.OffsetY=0
-Grid2.OffsetZ=0
-Grid2.Plane=0
-Grid2.Plane\ Cell\ Count=1
-Grid2.Reference\ Frame=/base_link
 Image.Enabled=0
 Image.Image\ Topic=/camera_front/image_raw
 Image.Queue\ Size=2
@@ -82,7 +67,7 @@ Laser\ Scan.Position\ Transformer=XYZ
 Laser\ Scan.Queue\ Size=10
 Laser\ Scan.Selectable=1
 Laser\ Scan.Style=0
-Laser\ Scan.Topic=/front_top_scan
+Laser\ Scan.Topic=/golfcart/front_top_scan
 LaserScan..AxisColorAutocompute\ Value\ Bounds=1
 LaserScan..AxisColorAxis=2
 LaserScan..AxisColorMax\ Value=0.765994
@@ -111,7 +96,7 @@ LaserScan.Position\ Transformer=XYZ
 LaserScan.Queue\ Size=10
 LaserScan.Selectable=1
 LaserScan.Style=0
-LaserScan.Topic=/front_bottom_scan
+LaserScan.Topic=/golfcart/front_bottom_scan
 LaserScan2..AxisColorAutocompute\ Value\ Bounds=1
 LaserScan2..AxisColorAxis=2
 LaserScan2..AxisColorMax\ Value=10
@@ -146,26 +131,26 @@ Odometry3.ColorB=0
 Odometry3.ColorG=0.1
 Odometry3.ColorR=1
 Odometry3.Enabled=1
-Odometry3.Keep=100000
+Odometry3.Keep=1000
 Odometry3.Length=1
 Odometry3.Position\ Tolerance=0.1
-Odometry3.Topic=/odom
-Path.Alpha=1
-Path.ColorB=0
-Path.ColorG=1
-Path.ColorR=0.1
-Path.Enabled=1
-Path.Topic=/global_plan
+Odometry3.Topic=/golfcart/encoder_imu_odom
 Path2.Alpha=1
 Path2.ColorB=0
 Path2.ColorG=1
 Path2.ColorR=0.1
-Path2.Enabled=1
-Path2.Topic=/global_plan_repub
-PlanarMap.Alpha=0.5
+Path2.Enabled=0
+Path2.Topic=/golfcart/global_plan
+Path3.Alpha=1
+Path3.ColorB=1
+Path3.ColorG=0
+Path3.ColorR=0
+Path3.Enabled=1
+Path3.Topic=/golfcart/global_plan_repub
+PlanarMap.Alpha=0.7
 PlanarMap.Draw\ Behind=0
 PlanarMap.Enabled=1
-PlanarMap.Topic=/map
+PlanarMap.Topic=/golfcart/map
 Point\ Cloud..AxisColorAutocompute\ Value\ Bounds=1
 Point\ Cloud..AxisColorAxis=2
 Point\ Cloud..AxisColorMax\ Value=10
@@ -186,15 +171,15 @@ Point\ Cloud..IntensityMin\ ColorR=0
 Point\ Cloud..IntensityMin\ Intensity=0
 Point\ Cloud..IntensityUse\ full\ RGB\ spectrum=0
 Point\ Cloud.Alpha=0.2
-Point\ Cloud.Billboard\ Size=2
-Point\ Cloud.Color\ Transformer=
+Point\ Cloud.Billboard\ Size=0.1
+Point\ Cloud.Color\ Transformer=Intensity
 Point\ Cloud.Decay\ Time=0
 Point\ Cloud.Enabled=1
 Point\ Cloud.Position\ Transformer=XYZ
 Point\ Cloud.Queue\ Size=10
 Point\ Cloud.Selectable=1
 Point\ Cloud.Style=3
-Point\ Cloud.Topic=/pedestrian_crossing
+Point\ Cloud.Topic=/golfcart/samples
 PointCloud..AxisColorAutocompute\ Value\ Bounds=1
 PointCloud..AxisColorAxis=2
 PointCloud..AxisColorMax\ Value=10
@@ -253,64 +238,6 @@ PointCloud2.Queue\ Size=10
 PointCloud2.Selectable=1
 PointCloud2.Style=1
 PointCloud2.Topic=/sickldmrs/cloud
-PointCloud22..AxisColorAutocompute\ Value\ Bounds=1
-PointCloud22..AxisColorAxis=2
-PointCloud22..AxisColorMax\ Value=10
-PointCloud22..AxisColorMin\ Value=-10
-PointCloud22..AxisColorUse\ Fixed\ Frame=1
-PointCloud22..FlatColorColorB=1
-PointCloud22..FlatColorColorG=1
-PointCloud22..FlatColorColorR=1
-PointCloud22..IntensityAutocompute\ Intensity\ Bounds=1
-PointCloud22..IntensityChannel\ Name=intensity
-PointCloud22..IntensityMax\ ColorB=1
-PointCloud22..IntensityMax\ ColorG=1
-PointCloud22..IntensityMax\ ColorR=1
-PointCloud22..IntensityMax\ Intensity=4096
-PointCloud22..IntensityMin\ ColorB=0
-PointCloud22..IntensityMin\ ColorG=0
-PointCloud22..IntensityMin\ ColorR=0
-PointCloud22..IntensityMin\ Intensity=0
-PointCloud22..IntensityUse\ full\ RGB\ spectrum=0
-PointCloud22.Alpha=1
-PointCloud22.Billboard\ Size=0.01
-PointCloud22.Color\ Transformer=Intensity
-PointCloud22.Decay\ Time=0
-PointCloud22.Enabled=1
-PointCloud22.Position\ Transformer=XYZ
-PointCloud22.Queue\ Size=10
-PointCloud22.Selectable=1
-PointCloud22.Style=1
-PointCloud22.Topic=/stereo_camera/points2
-PointCloud23..AxisColorAutocompute\ Value\ Bounds=1
-PointCloud23..AxisColorAxis=2
-PointCloud23..AxisColorMax\ Value=10
-PointCloud23..AxisColorMin\ Value=-10
-PointCloud23..AxisColorUse\ Fixed\ Frame=1
-PointCloud23..FlatColorColorB=1
-PointCloud23..FlatColorColorG=1
-PointCloud23..FlatColorColorR=1
-PointCloud23..IntensityAutocompute\ Intensity\ Bounds=1
-PointCloud23..IntensityChannel\ Name=intensity
-PointCloud23..IntensityMax\ ColorB=1
-PointCloud23..IntensityMax\ ColorG=1
-PointCloud23..IntensityMax\ ColorR=1
-PointCloud23..IntensityMax\ Intensity=4096
-PointCloud23..IntensityMin\ ColorB=0
-PointCloud23..IntensityMin\ ColorG=0
-PointCloud23..IntensityMin\ ColorR=0
-PointCloud23..IntensityMin\ Intensity=0
-PointCloud23..IntensityUse\ full\ RGB\ spectrum=0
-PointCloud23.Alpha=1
-PointCloud23.Billboard\ Size=0.01
-PointCloud23.Color\ Transformer=RGB8
-PointCloud23.Decay\ Time=0
-PointCloud23.Enabled=1
-PointCloud23.Position\ Transformer=XYZ
-PointCloud23.Queue\ Size=10
-PointCloud23.Selectable=1
-PointCloud23.Style=0
-PointCloud23.Topic=/stereo_camera/points2
 PointCloud3..AxisColorAutocompute\ Value\ Bounds=1
 PointCloud3..AxisColorAxis=2
 PointCloud3..AxisColorMax\ Value=10
@@ -339,7 +266,7 @@ PointCloud3.Position\ Transformer=XYZ
 PointCloud3.Queue\ Size=10
 PointCloud3.Selectable=1
 PointCloud3.Style=1
-PointCloud3.Topic=/rrts_tree
+PointCloud3.Topic=/golfcart/rrts_tree
 PointCloud4..AxisColorAutocompute\ Value\ Bounds=1
 PointCloud4..AxisColorAxis=2
 PointCloud4..AxisColorMax\ Value=10
@@ -368,7 +295,7 @@ PointCloud4.Position\ Transformer=XYZ
 PointCloud4.Queue\ Size=10
 PointCloud4.Selectable=1
 PointCloud4.Style=1
-PointCloud4.Topic=/prior_pts
+PointCloud4.Topic=/golfcart/prior_pts
 PointCloud5..AxisColorAutocompute\ Value\ Bounds=1
 PointCloud5..AxisColorAxis=2
 PointCloud5..AxisColorMax\ Value=10
@@ -386,7 +313,7 @@ PointCloud5..IntensityMax\ Intensity=1.27
 PointCloud5..IntensityMin\ ColorB=0
 PointCloud5..IntensityMin\ ColorG=0
 PointCloud5..IntensityMin\ ColorR=0
-PointCloud5..IntensityMin\ Intensity=0.02
+PointCloud5..IntensityMin\ Intensity=0.43
 PointCloud5..IntensityUse\ full\ RGB\ spectrum=1
 PointCloud5.Alpha=1
 PointCloud5.Billboard\ Size=0.01
@@ -397,95 +324,43 @@ PointCloud5.Position\ Transformer=XYZ
 PointCloud5.Queue\ Size=10
 PointCloud5.Selectable=1
 PointCloud5.Style=1
-PointCloud5.Topic=/local_map_pts
-PointCloud6..AxisColorAutocompute\ Value\ Bounds=1
-PointCloud6..AxisColorAxis=2
-PointCloud6..AxisColorMax\ Value=10
-PointCloud6..AxisColorMin\ Value=-10
-PointCloud6..AxisColorUse\ Fixed\ Frame=1
-PointCloud6..FlatColorColorB=1
-PointCloud6..FlatColorColorG=1
-PointCloud6..FlatColorColorR=1
-PointCloud6..IntensityAutocompute\ Intensity\ Bounds=1
-PointCloud6..IntensityChannel\ Name=intensity
-PointCloud6..IntensityMax\ ColorB=1
-PointCloud6..IntensityMax\ ColorG=1
-PointCloud6..IntensityMax\ ColorR=1
-PointCloud6..IntensityMax\ Intensity=4096
-PointCloud6..IntensityMin\ ColorB=0
-PointCloud6..IntensityMin\ ColorG=0
-PointCloud6..IntensityMin\ ColorR=0
-PointCloud6..IntensityMin\ Intensity=0
-PointCloud6..IntensityUse\ full\ RGB\ spectrum=0
-PointCloud6.Alpha=1
-PointCloud6.Billboard\ Size=0.01
-PointCloud6.Color\ Transformer=
-PointCloud6.Decay\ Time=0
-PointCloud6.Enabled=1
-PointCloud6.Position\ Transformer=
-PointCloud6.Queue\ Size=10
-PointCloud6.Selectable=1
-PointCloud6.Style=1
-PointCloud6.Topic=
-PointCloud7..AxisColorAutocompute\ Value\ Bounds=1
-PointCloud7..AxisColorAxis=2
-PointCloud7..AxisColorMax\ Value=10
-PointCloud7..AxisColorMin\ Value=-10
-PointCloud7..AxisColorUse\ Fixed\ Frame=1
-PointCloud7..FlatColorColorB=1
-PointCloud7..FlatColorColorG=1
-PointCloud7..FlatColorColorR=1
-PointCloud7..IntensityAutocompute\ Intensity\ Bounds=1
-PointCloud7..IntensityChannel\ Name=intensity
-PointCloud7..IntensityMax\ ColorB=1
-PointCloud7..IntensityMax\ ColorG=1
-PointCloud7..IntensityMax\ ColorR=1
-PointCloud7..IntensityMax\ Intensity=4096
-PointCloud7..IntensityMin\ ColorB=0
-PointCloud7..IntensityMin\ ColorG=0
-PointCloud7..IntensityMin\ ColorR=0
-PointCloud7..IntensityMin\ Intensity=0
-PointCloud7..IntensityUse\ full\ RGB\ spectrum=0
-PointCloud7.Alpha=1
-PointCloud7.Billboard\ Size=1
-PointCloud7.Color\ Transformer=Intensity
-PointCloud7.Decay\ Time=0
-PointCloud7.Enabled=1
-PointCloud7.Position\ Transformer=XYZ
-PointCloud7.Queue\ Size=10
-PointCloud7.Selectable=1
-PointCloud7.Style=1
-PointCloud7.Topic=/remained_pcl
+PointCloud5.Topic=/golfcart/local_map_pts
 Polygon.Alpha=1
 Polygon.ColorB=0
 Polygon.ColorG=1
 Polygon.ColorR=0.1
-Polygon.Enabled=1
-Polygon.Topic=/local_clear_space
+Polygon.Enabled=0
+Polygon.Topic=/golfcart/clear_space
 Polygon2.Alpha=1
 Polygon2.ColorB=0
-Polygon2.ColorG=1
-Polygon2.ColorR=0.1
+Polygon2.ColorG=0
+Polygon2.ColorR=1
 Polygon2.Enabled=1
-Polygon2.Topic=/dynamic_safety_zoon
+Polygon2.Topic=/golfcart/dead_zone_poly
 Polygon3.Alpha=1
 Polygon3.ColorB=0.0941176
 Polygon3.ColorG=0
 Polygon3.ColorR=1
 Polygon3.Enabled=1
-Polygon3.Topic=/pp_vis
+Polygon3.Topic=/golfcart/pp_vis
 Polygon4.Alpha=1
 Polygon4.ColorB=0
-Polygon4.ColorG=0
-Polygon4.ColorR=1
+Polygon4.ColorG=0.666667
+Polygon4.ColorR=0
 Polygon4.Enabled=1
-Polygon4.Topic=/inner_safety_zoon
+Polygon4.Topic=/golfcart/local_clear_space
+Polygon5.Alpha=1
+Polygon5.ColorB=0
+Polygon5.ColorG=1
+Polygon5.ColorR=0.1
+Polygon5.Enabled=1
+Polygon5.Topic=/golfcart/dynamic_zone_poly
 Pose\ Array.Arrow\ Length=0.3
 Pose\ Array.ColorB=0
 Pose\ Array.ColorG=0.1
 Pose\ Array.ColorR=1
 Pose\ Array.Enabled=1
-Pose\ Array.Topic=/particlecloud
+Pose\ Array.Topic=/golfcart/particlecloud
 Pose.Alpha=1
 Pose.ColorB=0
 Pose.ColorG=0.1
@@ -496,10 +371,10 @@ Pose.Head\ Radius=1
 Pose.Shaft\ Length=1
 Pose.Shaft\ Radius=0.5
 Pose.Shape=0
-Pose.Topic=/pnc_nextpose
-Property\ Grid\ Splitter=210,78
-Property\ Grid\ State=expanded=.Global Options,PlanarMap.Enabled,Pose Array.Enabled,Path.Enabled,Polygon.Enabled,Polygon3.Enabled,Odometry3.Enabled,Interactive Markers.Enabled,Laser Scan.Enabled,Point Cloud.Enabled,Axes.Enabled,Grid.Enabled,LaserScan.Enabled,PointCloud2.Enabled,TF.Enabled,LaserScan2.Enabled,PointCloud3.Enabled,Pose.Enabled,Pose.Shape Properties,PointCloud4.Enabled,Polygon2.Enabled,Polygon4.Enabled,Polygon4.Status,PointCloud5.Enabled,Grid2.Enabled,PointCloud6.Enabled,PointCloud7.Enabled,PointCloud22.Enabled,Camera.Enabled,PointCloud23.Enabled;splitterratio=0.5
-QMainWindow=000000ff00000000fd0000000300000000000001930000030bfc0200000003fb000000100044006900730070006c006100790073010000001d00000172000000ee00fffffffb0000000a0049006d006100670065000000018a000000d40000001900fffffffb0000000c00430061006d0065007200610100000195000001930000001900ffffff00000001000001310000030bfc0200000003fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000001d000001000000006700fffffffb0000000a005600690065007700730100000123000000ff000000bb00fffffffb0000001200530065006c0065006300740069006f006e0100000228000001000000006700ffffff00000003000005ff0000003efc0100000001fb0000000800540069006d00650100000000000005ff000002bf00ffffff0000032f0000030b00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+Pose.Topic=/golfcart/sub_goal_view
+Property\ Grid\ Splitter=432,265
+Property\ Grid\ State=expanded=.Global Options,Camera.Enabled;splitterratio=0.5
+QMainWindow=000000ff00000000fd00000003000000000000011d0000030bfc0200000002fb000000100044006900730070006c006100790073010000001d0000030b000000ee00fffffffb0000000a0049006d0061006700650000000226000000380000001900ffffff00000001000001ab0000030bfc0200000004fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000001d000001070000006700fffffffb0000000a00560069006500770073010000012a000000bb000000bb00fffffffb0000000c00430061006d00650072006101000001eb0000013d0000001900fffffffb0000001200530065006c0065006300740069006f006e0000000279000000af0000006700ffffff00000003000005ff0000003efc0100000001fb0000000800540069006d00650100000000000005ff000002bf00ffffff0000032b0000030b00000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
 RobotModel.Alpha=1
 RobotModel.Collision\ Enabled=0
 RobotModel.Enabled=1
@@ -510,12 +385,12 @@ RobotModel.Visual\ Enabled=1
 TF.All\ Enabled=1
 TF.Enabled=0
 TF.Frame\ Timeout=15
-TF.Marker\ Scale=1
+TF.Marker\ Scale=15
 TF.Show\ Arrows=1
 TF.Show\ Axes=1
 TF.Show\ Names=1
 TF.Update\ Interval=0
-Target\ Frame=/base_link
+Target\ Frame=/golfcart/base_link
 Tool\ 2D\ Nav\ GoalTopic=goal
 Tool\ 2D\ Pose\ EstimateTopic=initialpose
 [Display0]
@@ -525,94 +400,82 @@ Name=PlanarMap
 ClassName=rviz::PoseArrayDisplay
 Name=Pose Array
 [Display10]
-ClassName=rviz::GridDisplay
-Name=Grid
-[Display11]
 ClassName=rviz::LaserScanDisplay
 Name=LaserScan
-[Display12]
+[Display11]
 ClassName=rviz::PointCloud2Display
 Name=PointCloud2
-[Display13]
+[Display12]
 ClassName=rviz::TFDisplay
 Name=TF
-[Display14]
+[Display13]
 ClassName=rviz::LaserScanDisplay
 Name=LaserScan2
-[Display15]
+[Display14]
 ClassName=rviz::ImageDisplay
 Name=Image
-[Display16]
+[Display15]
 ClassName=rviz::PointCloudDisplay
 Name=PointCloud
-[Display17]
+[Display16]
 ClassName=rviz::PathDisplay
 Name=Path2
-[Display18]
+[Display17]
 ClassName=rviz::RobotModelDisplay
 Name=RobotModel
-[Display19]
+[Display18]
 ClassName=rviz::PointCloudDisplay
 Name=PointCloud3
-[Display2]
-ClassName=rviz::PathDisplay
-Name=Path
-[Display20]
+[Display19]
 ClassName=rviz::PoseDisplay
 Name=Pose
-[Display21]
+[Display2]
+ClassName=rviz::PolygonDisplay
+Name=Polygon
+[Display20]
 ClassName=rviz::PointCloudDisplay
 Name=PointCloud4
-[Display22]
+[Display21]
 ClassName=rviz::PolygonDisplay
 Name=Polygon2
-[Display23]
+[Display22]
 ClassName=rviz::PolygonDisplay
 Name=Polygon4
-[Display24]
+[Display23]
 ClassName=rviz::PointCloudDisplay
 Name=PointCloud5
+[Display24]
+ClassName=rviz::PolygonDisplay
+Name=Polygon5
 [Display25]
-ClassName=rviz::GridDisplay
-Name=Grid2
+ClassName=rviz::PathDisplay
+Name=Path3
 [Display26]
-ClassName=rviz::PointCloudDisplay
-Name=PointCloud6
-[Display27]
-ClassName=rviz::PointCloudDisplay
-Name=PointCloud7
-[Display28]
-ClassName=rviz::PointCloud2Display
-Name=PointCloud22
-[Display29]
 ClassName=rviz::CameraDisplay
 Name=Camera
 [Display3]
 ClassName=rviz::PolygonDisplay
-Name=Polygon
-[Display30]
-ClassName=rviz::PointCloud2Display
-Name=PointCloud23
-[Display4]
-ClassName=rviz::PolygonDisplay
 Name=Polygon3
-[Display5]
+[Display4]
 ClassName=rviz::OdometryDisplay
 Name=Odometry3
-[Display6]
+[Display5]
 ClassName=rviz::InteractiveMarkerDisplay
 Name=Interactive Markers
-[Display7]
+[Display6]
 ClassName=rviz::LaserScanDisplay
 Name=Laser Scan
-[Display8]
+[Display7]
 ClassName=rviz::PointCloudDisplay
 Name=Point Cloud
-[Display9]
+[Display8]
 ClassName=rviz::AxesDisplay
 Name=Axes
+[Display9]
+ClassName=rviz::GridDisplay
+Name=Grid
 [Window]
 Height=912
 Width=1551
-X=611
-Y=-1108
+X=974
+Y=-864
