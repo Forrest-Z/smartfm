@@ -31,9 +31,15 @@ namespace golfcar_ml{
         x[feature_length].index = -1;
 
         for(int i=0; i< feature_length; i++) x[i].value = output(x[i].index, x[i].value);
-        
+
         ROS_DEBUG("try to predict");
         class_label = svm_predict(svm_model_,x);
+
+        for(int i=0; i < feature_length; i++)
+		{
+        	ROS_DEBUG("i, value: %d, %lf", i, x[i].value);
+		}
+
         ROS_DEBUG("predict finished");
         free(x);
         return class_label;

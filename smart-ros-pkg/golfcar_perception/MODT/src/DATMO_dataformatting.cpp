@@ -12,16 +12,17 @@ int main(int argc, char** argv)
 	if(!fs_read.isOpened()){ROS_ERROR("cannot find data batch file"); return 0;}
 
 	std::string input_file, output_file;
-	int training_sample_number, batch_number, feature_number_PerBatch;
+	int training_sample_number, batch_number, feature_number_PerBatch, minus_offset;
 
 	fs_read["input_file"]>> input_file;
 	fs_read["output_file"]>> output_file;
 	training_sample_number = (int)fs_read["training_sample_number"];
 	batch_number = (int)fs_read["batch_number"];
 	feature_number_PerBatch = (int)fs_read["feature_number_PerBatch"];
+	minus_offset = (int)fs_read["minus_offset"];
 	fs_read.release();
 
-	int total_feature_number = batch_number*feature_number_PerBatch;
+	int total_feature_number = batch_number*feature_number_PerBatch+minus_offset;
 
     FILE *fp_input, *fp_output;
     if((fp_input=fopen(input_file.c_str(), "r"))==NULL){printf("cannot open input_file\n");return 0;}
