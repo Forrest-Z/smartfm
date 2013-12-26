@@ -97,7 +97,6 @@ private:
     ros::Publisher											debug_pcl_pub_;
 	std::vector<std::pair<int, std::vector<int> > > 		object_cluster_IDs_;
 	std::vector<object_cluster_segments> 					object_feature_vectors_;
-	golfcar_ml::svm_classifier 								*DATMO_classifier_;
 
 	//to load labelled scan masks;
 	std::string												abstract_summary_path_;
@@ -112,6 +111,8 @@ private:
 	int														scanNum_perVector_;
 	size_t 													interval_;
 	double													speed_threshold_;
+
+	golfcar_ml::svm_classifier 								*DATMO_classifier_;
 };
 
 DATMO::DATMO()
@@ -672,6 +673,9 @@ void DATMO::save_training_data()
 void DATMO::classify_clusters()
 {
 	ROS_INFO("classify the derived data");
+	PointCloudRGB vehicle_cloud;
+	vehicle_cloud.header = combined_pcl_.header;
+	vehicle_cloud.points.clear();
 	for(size_t i=0; i<object_feature_vectors_.size(); i++)
 	{
 		object_cluster_segments &object_cluster_tmp =object_feature_vectors_[i];
@@ -686,11 +690,15 @@ void DATMO::classify_clusters()
 
 		std::vector<double> feature_vector = get_vector(object_cluster_tmp);
 
+		for(int k=0; k<vector_length; k++)
+		{
+			DATMO_feature_vector[k]=feature_vector[k];
+		}
+
 		/*
 		cout<<"monitoring feature vector: ";
 		for(int k=0; k<vector_length; k++)
 		{
-			DATMO_feature_vector[k]=feature_vector[k];
 			cout<< k<<"-"<<DATMO_feature_vector[k]<<"\t";
 		}
 		cout<<endl;
@@ -700,9 +708,7 @@ void DATMO::classify_clusters()
 		if(object_cluster_tmp.object_type ==1)
 		{
 			ROS_INFO("vehicle!!!");
-			PointCloudRGB vehicle_cloud;
-			vehicle_cloud.header = combined_pcl_.header;
-			vehicle_cloud.points.clear();
+
 			for(size_t j=0;j<object_cluster_tmp.scan_segment_batch.size(); j++)
 			{
 				for(size_t k=0;k<object_cluster_tmp.scan_segment_batch[j].odomPoints.size(); k++)
@@ -717,7 +723,6 @@ void DATMO::classify_clusters()
 					vehicle_cloud.points.push_back(pt_tmp);
 				}
 			}
-			vehicle_pcl_pub_.publish(vehicle_cloud);
 		}
 		else if(object_cluster_tmp.object_type ==2)
 		{
@@ -732,6 +737,7 @@ void DATMO::classify_clusters()
 			ROS_INFO("other type of objects");
 		}
 	}
+	vehicle_pcl_pub_.publish(vehicle_cloud);
 }
 
 std::vector<double> DATMO::get_vector(object_cluster_segments &object_cluster)
