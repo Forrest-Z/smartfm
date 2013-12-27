@@ -29,7 +29,7 @@ CameraCalibrationParameters::CameraCalibrationParameters()
 }
 
 
-camera_projector::camera_projector() : camera_frame_id_("camera_front_base"), fov_(70), pixel_allowance_(PIXEL_ALLOWANCE),
+camera_projector::camera_projector() : camera_frame_id_("/golfcart/camera_front_base"), fov_(70), pixel_allowance_(PIXEL_ALLOWANCE),
         laser_mounting_height_(LASER_MOUNTING_HEIGHT)
 
 {

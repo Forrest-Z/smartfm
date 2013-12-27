@@ -1,7 +1,9 @@
 <launch>
+
     <node pkg="pedestrian_detector" type="visualizer" name="visualizer_vision" output="screen">
 	    <param name="image_transport" value="compressed"/>
 	    <remap from="image_raw" to="/camera_front/image_raw"/>
+		<remap from="/camera_front/image_raw/compressed" to="/golfcart/camera_front/image_raw/compressed"/>
 	    <param name="ROI_text" value="false"/>
 	    <param name="ROI_rect" value="true"/>
 	    <param name="Publish_verified" value="false"/>
@@ -10,6 +12,7 @@
 		<node pkg="pedestrian_detector" type="visualizer" name="visualizer_laser">
 	    <param name="image_transport" value="compressed"/>
 	    <remap from="image_raw" to="/camera_front/image_raw"/>
+<remap from="/camera_front/image_raw/compressed" to="/golfcart/camera_front/image_raw/compressed"/>
 	    <param name="ROI_text" value="false"/>
 	    <param name="ROI_rect" value="true"/>
 	    <param name="Publish_verified" value="false"/>
@@ -18,6 +21,7 @@
     <node pkg="pedestrian_detector" type="visualizer" name="visualizer_laser_filtered">
 	    <param name="image_transport" value="compressed"/>
 	    <remap from="image_raw" to="/camera_front/image_raw"/>
+<remap from="/camera_front/image_raw/compressed" to="/golfcart/camera_front/image_raw/compressed"/>
 	    <param name="ROI_text" value="false"/>
 	    <param name="ROI_rect" value="true"/>
 	    <param name="Publish_verified" value="true"/>

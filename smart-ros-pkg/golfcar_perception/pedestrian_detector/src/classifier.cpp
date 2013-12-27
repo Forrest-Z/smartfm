@@ -121,8 +121,8 @@ void HOGClassifier::imageCallback(const sensor_msgs::ImageConstPtr& image)
     polyStamped.header = image->header;
     pc.header = image->header;
 
-    polyStamped.header.frame_id = "camera_front_base";
-    pc.header.frame_id  = "camera_front_base";
+    polyStamped.header.frame_id = "/golfcart/camera_front_base";
+    pc.header.frame_id  = "/golfcart/camera_front_base";
 
     for(size_t i=0; i< detect_rects.pd_vector.size(); i++)
     {

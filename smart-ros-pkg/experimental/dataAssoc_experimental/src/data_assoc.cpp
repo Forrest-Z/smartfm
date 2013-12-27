@@ -19,8 +19,8 @@ data_assoc::data_assoc(int argc, char** argv) : merge_lists(nh_), it_(nh_)
 
     ros::NodeHandle n("~");
 
-    n.param("global_frame", global_frame_, string("map"));
-    n.param("camera_frame", camera_frame_, string("camera_front_base"));
+    n.param("global_frame", global_frame_, string("/golfcart/map"));
+    n.param("camera_frame", camera_frame_, string("/golfcart/camera_front_base"));
     n.param("time_out", time_out_, 3.0);
     n.param("poll_increment", poll_inc_, 0.1);
     n.param("poll_decrement", poll_dec_, 0.05);
@@ -39,7 +39,7 @@ data_assoc::data_assoc(int argc, char** argv) : merge_lists(nh_), it_(nh_)
     //laser_tf_filter_ = new tf::MessageFilter<feature_detection::clusters>(pedClustSub_, *listener_, global_frame_, 10);
     //laser_tf_filter_->registerCallback(boost::bind(&data_assoc::pedClustCallback, this, _1));
 
-    vision_angular_tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(pedVisionAngularSub_, *listener_, "camera_front_base", 10);
+    vision_angular_tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(pedVisionAngularSub_, *listener_, "/golfcart/camera_front_base", 10);
     vision_angular_tf_filter_ -> registerCallback(boost::bind(&data_assoc::pedVisionAngularCallback, this, _1));
 
     dynamic_cb = boost::bind(&data_assoc::dynamic_callback, this, _1, _2);
@@ -152,6 +152,7 @@ double dist(geometry_msgs::Point32 A, geometry_msgs::Point32 B)
 
 bool data_assoc::transformGlobalToLocal(geometry_msgs::PointStamped& global_point, geometry_msgs::PointStamped& local_point)
 {
+    ROS_INFO("%s",local_point.header.frame_id.c_str());
     try{
 
         listener_->transformPoint(local_point.header.frame_id, global_point, local_point);
@@ -167,13 +168,17 @@ bool data_assoc::transformGlobalToLocal(geometry_msgs::PointStamped& global_poin
 bool data_assoc::transformPointToGlobal(std_msgs::Header header, geometry_msgs::Point32 input_point, geometry_msgs::Point32& output_point)
 {
     //why there is geometry_msgs::Point32 and geometry_msgs??
+    
     try{
         geometry_msgs::PointStamped global_point, local_point;
         local_point.header = header;
         local_point.point.x = input_point.x;
         local_point.point.y = input_point.y;
         local_point.point.z = input_point.z;
-        listener_->transformPoint(global_frame_, local_point, global_point);
+ROS_INFO("%s",global_frame_.c_str());
+ROS_INFO("%s",local_point.header.frame_id.c_str());   
+ros::spinOnce();
+     listener_->transformPoint(global_frame_, local_point, global_point);
         geometry_msgs::Point32 p32;
         p32.x = global_point.point.x; p32.y = global_point.point.y; p32.z = global_point.point.z;
         output_point = p32;

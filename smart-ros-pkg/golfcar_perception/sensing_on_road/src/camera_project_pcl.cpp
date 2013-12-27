@@ -4,6 +4,7 @@
 #include <message_filters/subscriber.h>
 
 #include <feature_detection/clusters.h>
+#include <iostream>
 
 
 class camera_project_pcl : protected camera_project_node
@@ -32,7 +33,10 @@ private:
 camera_project_pcl::camera_project_pcl()
 {
     ped_pcl_sub_.subscribe(nh_, "camera_project_in", 10);
+    ROS_INFO("printing camera frame id");
+    ROS_INFO("%s",camera_frame_id_.c_str());
     ped_pcl_sub_tf_filter_ = new tf::MessageFilter<feature_detection::clusters>(ped_pcl_sub_, tf_, camera_frame_id_, 10);
+    //ped_pcl_sub_tf_filter_ = new tf::MessageFilter<feature_detection::clusters>(ped_pcl_sub_, tf_, "/golfcart/camera_front_base", 10);
     ped_pcl_sub_tf_filter_->registerCallback(boost::bind(&camera_project_pcl::pcl_in_CB, this, _1));
     ped_pcl_sub_tf_filter_->setTolerance(ros::Duration(0.05));
 }
@@ -42,7 +46,7 @@ void camera_project_pcl::pcl_in_CB(const boost::shared_ptr<const feature_detecti
 {
     // For each cluster detected by the sensor, create a corresponding ROI
     // (a rectangle) in the camera image
-
+    ROS_INFO("here");
     sensing_on_road::pedestrian_vision_batch ped_vision_batch_msg;
     ped_vision_batch_msg.header = clusters_ptr->header;
 
@@ -86,6 +90,8 @@ void camera_project_pcl::pcl_in_CB(const boost::shared_ptr<const feature_detecti
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "camera_project_pcl");
+    std::cout<<"camera project pcl"<<std::endl;
+    ROS_INFO("camera project pcl");
     camera_project_pcl * camera_project_pcl_node = new camera_project_pcl();
     ros::spin();
     delete camera_project_pcl_node;
