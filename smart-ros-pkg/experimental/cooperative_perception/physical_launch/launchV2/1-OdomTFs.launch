@@ -75,7 +75,7 @@
       		<param name="x" value="2.3"/>
 			<param name="z" value="1.35"/>
 			<!--angle already properly adjusted-->
-			<param name="pitch" value="0.3"/>
+			<param name="pitch" value="0.23"/>
 			<param name="parent_frame_id" value="/base_link"/>
 			<param name="child_frame_id"  value="/camera_front_base"/>
       </node>
@@ -89,6 +89,14 @@
 			<param name="child_frame_id"  value="/camera_front_img"/>
       </node>
     </group>
+    
+      <node pkg="dead_reckoning" name="encoderImu_integrator" type="odom_IMU" output="screen" ns="golfcart">
+      		<param name="parent_frame_id" value="/golfcart/odom"/>
+			<param name="child_frame_id"  value="/golfcart/base_link"/>
+      </node>
+      <node name="encoders_odo_node" pkg="phidget_encoders" type="encoders_odo_node.py" output="screen" ns="golfcart">
+		<remap from="odom" to="phidget_encoder_odo"/>
+	  </node>
     
     
 </launch>

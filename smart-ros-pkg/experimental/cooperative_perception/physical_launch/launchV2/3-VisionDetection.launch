@@ -1,0 +1,44 @@
+<launch>
+	<node pkg="vision_lane_detection" type="ipm" name="ipm" ns="/">
+		<param name="image_transport" value="compressed"/>
+		<param name="visualization_flag" value="true"/>
+		<param name="ipm_center_x" value="9.0"/>
+		<param name="ipm_center_y" value="0.0"/>
+		<param name="ipm_ROI_height" value="12.0"/>
+		<param name="ipm_ROI_near_width_" value="4.0"/>
+		<param name="ipm_ROI_far_width_" value="20.0"/>
+		<param name="use_odom_" value="false"/>
+		<param name="destination_frame_id" value="/base_link"/>
+		<param name="src_img_name" value="vehicle1_src"/>
+		<param name="show_scale" value="0.7"/>
+	</node>
+	
+	<node pkg="vision_lane_detection" type="ipm" name="ipm" ns="golfcart">
+		<param name="image_transport" value="compressed"/>
+		<param name="visualization_flag" value="true"/>
+		<param name="ipm_center_x" value="9.0"/>
+		<param name="ipm_center_y" value="0.0"/>
+		<param name="ipm_ROI_height" value="12.0"/>
+		<param name="ipm_ROI_near_width_" value="4.0"/>
+		<param name="ipm_ROI_far_width_" value="20.0"/>
+		<param name="use_odom_" value="false"/>
+		<param name="destination_frame_id" value="golfcart/base_link"/>
+		<param name="src_img_name" value="vehicle2_src"/>
+		<param name="show_scale" value="0.7"/>
+	</node>
+	
+	<node pkg="vision_lane_detection" type="ipm" name="ipm" ns="golfcart2">
+		<param name="image_transport" value="compressed"/>
+		<param name="visualization_flag" value="true"/>
+		<param name="ipm_center_x" value="9.0"/>
+		<param name="ipm_center_y" value="0.0"/>
+		<param name="ipm_ROI_height" value="12.0"/>
+		<param name="ipm_ROI_near_width_" value="4.0"/>
+		<param name="ipm_ROI_far_width_" value="20.0"/>
+		<param name="use_odom_" value="false"/>
+		<param name="destination_frame_id" value="golfcart2/base_link"/>
+		<param name="src_img_name" value="vehicle3_src"/>
+		<param name="show_scale" value="0.7"/>
+	</node>
+	
+</launch>

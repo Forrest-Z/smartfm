@@ -12,16 +12,20 @@ CP_projector::CP_projector():
     private_nh_("~"),
     it_(nh_)
   {
-      cam_sub_ = it_.subscribeCamera("/camera_front/image_raw", 1, &CP_projector::ImageCallBack, this);
+      cam_sub_ = it_.subscribeCamera("camera_front/image_raw", 1, &CP_projector::ImageCallBack, this);
 
+      //use to determine the car camera to be projected to, more flexible;
+      private_nh_.param("EgoVehicle_baselink_ID", 		EgoVehicle_baselink_ID_, 	std::string("golfcart/base_link"));
+      private_nh_.param("FirstLeader_baselink_ID", 		FirstLeader_baselink_ID_, 	std::string("base_link"));
+      private_nh_.param("SecondLeader_baselink_ID",  	SecondLeader_baselink_ID_, std::string("golfcart2/base_link"));
+
+      //the name to differentiate cars in the queue;
       private_nh_.param("vehicle_ID", vehicle_ID_, std::string("robot_0"));
 
 	  private_nh_.param("odom_frame", odom_frame_, std::string("/odom"));
 
 	  private_nh_.param("vehicle0_dest_frame", 	vehicle0_dest_frame_, 	std::string("/camera_front_img"));
-
 	  private_nh_.param("vehicle0_Hdest_frame", vehicle0_Hdest_frame_, 	std::string("/cameraH_front_img"));
-
 	  private_nh_.param("vehicle0_H2dest_frame", vehicle0_H2dest_frame_, 	std::string("/cameraH2_front_img"));
 	  private_nh_.param("vehicle0_H3dest_frame", vehicle0_H3dest_frame_, 	std::string("/cameraH3_front_img"));
 	  private_nh_.param("vehicle0_H4dest_frame", vehicle0_H4dest_frame_, 	std::string("/cameraH4_front_img"));
@@ -42,18 +46,16 @@ CP_projector::CP_projector():
 	  cloud_scan_filter_ = new tf::MessageFilter<PointCloudRGB>(cloud_scan_sub_, tf_, odom_frame_, 100);
 	  cloud_scan_filter_->registerCallback(boost::bind(&CP_projector::pclCallback, this, _1));
 	  cloud_scan_filter_->setTolerance(ros::Duration(0.05));
-
 	  cloud_scan_sub1_.subscribe(nh_, "/robot_1/pts_rgb", 10);
 	  cloud_scan_filter1_ = new tf::MessageFilter<PointCloudRGB>(cloud_scan_sub1_, tf_, odom_frame_, 100);
 	  cloud_scan_filter1_->registerCallback(boost::bind(&CP_projector::pclCallback, this, _1));
 	  cloud_scan_filter1_->setTolerance(ros::Duration(0.05));
-
 	  cloud_scan_sub2_.subscribe(nh_, "/robot_2/pts_rgb", 10);
 	  cloud_scan_filter2_ = new tf::MessageFilter<PointCloudRGB>(cloud_scan_sub2_, tf_, odom_frame_, 100);
 	  cloud_scan_filter2_->registerCallback(boost::bind(&CP_projector::pclCallback, this, _1));
 	  cloud_scan_filter2_->setTolerance(ros::Duration(0.05));
 
-	  vehicle0_velo_sub_ = nh_.subscribe("/odom",10, &CP_projector::velocity0_callback, this);
+	  vehicle0_velo_sub_ = nh_.subscribe("/odom", 10,  &CP_projector::velocity0_callback, this);
 	  vehicle1st_velo_sub_ = nh_.subscribe("/robot_1/vehicle_vel",10, &CP_projector::velocity1st_callback, this);
 	  vehicle2nd_velo_sub_ = nh_.subscribe("/robot_2/vehicle_vel",10, &CP_projector::velocity2nd_callback, this);
 
@@ -68,7 +70,6 @@ CP_projector::CP_projector():
 	  project_image12 = cvCreateImage(image_size, 8,3);
 	  project_image22 = cvCreateImage(image_size, 8,3);
 
-	  /*
 	  project_imageH00 = cvCreateImage(image_size, 8,3);
 	  project_image2H00 = cvCreateImage(image_size, 8,3);
 	  project_image3H00 = cvCreateImage(image_size, 8,3);
@@ -78,7 +79,6 @@ CP_projector::CP_projector():
 	  project_image7H00 = cvCreateImage(image_size, 8,3);
 	  project_image8H00 = cvCreateImage(image_size, 8,3);
 	  project_image9H00 = cvCreateImage(image_size, 8,3);
-	   */
 
 	  project_imageH01 = cvCreateImage(image_size, 8,3);
 	  project_imageH02 = cvCreateImage(image_size, 8,3);
@@ -140,16 +140,19 @@ CP_projector::CP_projector():
 	  ROS_INFO("-------------pcl callback-----------");
 	  std::string pcl_frame_id = pcl_in->header.frame_id;
 
-	  ROS_INFO("pcl frame_id %s", pcl_frame_id.c_str());
+	  ROS_INFO("pcl frame_id %s ,EgoVehicle_baselink_ID_ %s", pcl_frame_id.c_str(), EgoVehicle_baselink_ID_.c_str());
 
 	  if(vehicle_ID_ == "robot_0")
 	  {
 		  ROS_INFO("robot_0");
-		  if(pcl_frame_id == "base_link")
+
+		  //if(pcl_frame_id == EgoVehicle_baselink_ID_)
+		  if(pcl_frame_id == "golfcart/base_link")
 		  {
-			  //not showing themselves;
-			  /*
+			  ROS_INFO(EgoVehicle_baselink_ID_.c_str());
 			  pcl_process(pcl_in, vehicle0_Hdest_frame_,  project_imageH00,  vehicle0_color);
+
+			  /*
 			  pcl_process(pcl_in, vehicle0_H2dest_frame_, project_image2H00, vehicle0_color);
 			  pcl_process(pcl_in, vehicle0_H3dest_frame_, project_image3H00, vehicle0_color);
 			  pcl_process(pcl_in, vehicle0_H4dest_frame_, project_image4H00, vehicle0_color);
@@ -160,11 +163,15 @@ CP_projector::CP_projector():
 			  pcl_process(pcl_in, vehicle0_H9dest_frame_, project_image9H00, vehicle0_color);
 			  */
 		  }
-		  else if(pcl_frame_id== "robot_1/base_link")
+
+		 // else if(pcl_frame_id == FirstLeader_baselink_ID_)
+		  else if(pcl_frame_id=="/base_link")
 		  {
-			  ROS_INFO("/robot_1/base_link");
+			  ROS_INFO(FirstLeader_baselink_ID_.c_str());
 			  pcl_process(pcl_in, vehicle0_dest_frame_, project_image01, vehicle1st_color);
 			  pcl_process(pcl_in, vehicle0_Hdest_frame_, project_imageH01, vehicle1st_color);
+
+			  /*
 			  pcl_process(pcl_in, vehicle0_H2dest_frame_, project_image2H01, vehicle1st_color);
 			  pcl_process(pcl_in, vehicle0_H3dest_frame_, project_image3H01, vehicle1st_color);
 			  pcl_process(pcl_in, vehicle0_H4dest_frame_, project_image4H01, vehicle1st_color);
@@ -173,12 +180,15 @@ CP_projector::CP_projector():
 			  pcl_process(pcl_in, vehicle0_H7dest_frame_, project_image7H01, vehicle1st_color);
 			  pcl_process(pcl_in, vehicle0_H8dest_frame_, project_image8H01, vehicle1st_color);
 			  pcl_process(pcl_in, vehicle0_H9dest_frame_, project_image9H01, vehicle1st_color);
+			  */
 		  }
-		  else if(pcl_frame_id == "robot_2/base_link")
+		  else if(pcl_frame_id == "golfcart2/base_link")
 		  {
-			  ROS_INFO("/robot_2/base_link");
+			  ROS_INFO(SecondLeader_baselink_ID_.c_str());
 			  pcl_process(pcl_in, vehicle0_dest_frame_, project_image02, vehicle2nd_color);
 			  pcl_process(pcl_in, vehicle0_Hdest_frame_, project_imageH02, vehicle2nd_color);
+
+			  /*
 			  pcl_process(pcl_in, vehicle0_H2dest_frame_, project_image2H02, vehicle2nd_color);
 			  pcl_process(pcl_in, vehicle0_H3dest_frame_, project_image3H02, vehicle2nd_color);
 			  pcl_process(pcl_in, vehicle0_H4dest_frame_, project_image4H02, vehicle2nd_color);
@@ -187,20 +197,25 @@ CP_projector::CP_projector():
 			  pcl_process(pcl_in, vehicle0_H7dest_frame_, project_image7H02, vehicle2nd_color);
 			  pcl_process(pcl_in, vehicle0_H8dest_frame_, project_image8H02, vehicle2nd_color);
 			  pcl_process(pcl_in, vehicle0_H9dest_frame_, project_image9H02, vehicle2nd_color);
+			  */
 		  }
 	  }
+
 	  else if(vehicle_ID_ == "robot_1")
 	  {
 		  ROS_INFO("robot_1");
-		  if(pcl_in->header.frame_id == "base_link")
+		  //if(pcl_in->header.frame_id == EgoVehicle_baselink_ID_)
+		  if(pcl_in->header.frame_id == "golfcart/base_link")
 		  {
 
 		  }
-		  else if(pcl_in->header.frame_id == "robot_1/base_link")
+		  //else if(pcl_in->header.frame_id == FirstLeader_baselink_ID_)
+		  else if(pcl_in->header.frame_id == "/base_link")
 		  {
 
 		  }
-		  else if(pcl_in->header.frame_id == "robot_2/base_link")
+		  //else if(pcl_in->header.frame_id == SecondLeader_baselink_ID_)
+		  else if(pcl_in->header.frame_id == "golfcart2/base_link")
 		  {
 			  ROS_INFO("/robot_2/base_link");
 			  pcl_process(pcl_in, vehicle1_dest_frame_, project_image12, vehicle2nd_color);
@@ -224,9 +239,9 @@ CP_projector::CP_projector():
 	  }
 
 	  ROS_INFO("camera_model_initialized");
-
+	  pcl_batch_.points.clear();
 	  pcl_ros::transformPointCloud(dest_camera_frame, *pcl_in, pcl_batch_, tf_);
-
+	  if(pcl_batch_.points.size()==0){ROS_ERROR("cannot transform");return;}
 	  ROS_INFO("pcl transformed");
 
 	  cvZero(project_image);
@@ -254,7 +269,6 @@ CP_projector::CP_projector():
 			  cvSet2D(project_image, pixel.y, pixel.x, s);
 		  }
 	  }
-
 	  PointCloud vehicle_skeleton;
 	  vehicle_skeleton.header = pcl_in->header;
 	  vehicle_skeleton.clear();
@@ -270,16 +284,15 @@ CP_projector::CP_projector():
 		  vehicle_box->skeletonIMG_[i] = cvPoint(uv.x, uv.y);
 	  }
 	  vehicle_box->DrawSkel(project_image, color_plot, 3);
-
 	  std_msgs::Header predecessor = vehicle_skeleton.header;
 	  std_msgs::Header own_vehicle = vehicle_skeleton.header;
 
 	  predecessor.frame_id = pcl_in->header.frame_id;
-	  if(dest_camera_frame==vehicle0_dest_frame_ || dest_camera_frame==vehicle0_Hdest_frame_) own_vehicle.frame_id = "base_link";
-	  else if(dest_camera_frame==vehicle1_dest_frame_ || dest_camera_frame==vehicle1_Hdest_frame_) own_vehicle.frame_id = "robot_1/base_link";
+	  if(dest_camera_frame==vehicle0_dest_frame_ || dest_camera_frame==vehicle0_Hdest_frame_) own_vehicle.frame_id = EgoVehicle_baselink_ID_;
+	  else if(dest_camera_frame==vehicle1_dest_frame_ || dest_camera_frame==vehicle1_Hdest_frame_) own_vehicle.frame_id = FirstLeader_baselink_ID_;
 
 	  stringstream  project_image_name;
-	  if(vehicle_ID_ == "robot_0" &&predecessor.frame_id == "robot_1/base_link" )
+	  if(vehicle_ID_ == "robot_0" &&predecessor.frame_id == "/base_link" ) //predecessor.frame_id == FirstLeader_baselink_ID_;
 	  {
 		  if(dest_camera_frame==vehicle0_dest_frame_ ) project_image_name<<"vehicle1_on_vehicle0";
 		  else if(dest_camera_frame==vehicle0_Hdest_frame_ ) project_image_name<<"Enhanced: vehicle1_on_vehicle0-"<<vehicle0_Hdest_frame_;
@@ -287,7 +300,7 @@ CP_projector::CP_projector():
 		  vehicle01_distance = distance_between_vehicles(predecessor, own_vehicle)>0.0 ? distance_between_vehicles(predecessor, own_vehicle) : vehicle01_distance;
 		  vehicle_box->PutInfo(project_image, color_plot, vehicle1st_velocity, vehicle01_distance, cvPoint(0, -5));
 	  }
-	  else if(vehicle_ID_ == "robot_0" && predecessor.frame_id == "robot_2/base_link")
+	  else if(vehicle_ID_ == "robot_0" && predecessor.frame_id == "golfcart2/base_link") //predecessor.frame_id == SecondLeader_baselink_ID_;
 	  {
 		  if(dest_camera_frame==vehicle0_dest_frame_ ) project_image_name<<"vehicle2_on_vehicle0";
 		  else if(dest_camera_frame==vehicle0_Hdest_frame_ ) project_image_name<<"Enhanced: vehicle2_on_vehicle0-"<<vehicle0_Hdest_frame_;
@@ -295,14 +308,14 @@ CP_projector::CP_projector():
 		  vehicle02_distance = distance_between_vehicles(predecessor, own_vehicle)>0.0 ? distance_between_vehicles(predecessor, own_vehicle) : vehicle02_distance;
 		  vehicle_box->PutInfo(project_image, color_plot, vehicle2nd_velocity, vehicle02_distance, cvPoint(0, -5));
 	  }
-	  else if(vehicle_ID_ == "robot_1" && predecessor.frame_id == "robot_2/base_link")
+	  else if(vehicle_ID_ == "robot_1" && predecessor.frame_id == "golfcart2/base_link") // predecessor.frame_id == SecondLeader_baselink_ID_;
 	  {
 		  if(dest_camera_frame==vehicle1_dest_frame_ ) project_image_name<<"vehicle2_on_vehicle1";
 		  else if(dest_camera_frame==vehicle1_Hdest_frame_ ) project_image_name<<"Enhanced: vehicle2_on_vehicle1-"<<vehicle1_Hdest_frame_;
 		  vehicle12_distance = distance_between_vehicles(predecessor, own_vehicle)>0.0 ? distance_between_vehicles(predecessor, own_vehicle) : vehicle12_distance;
 		  vehicle_box->PutInfo(project_image, color_plot, vehicle2nd_velocity, vehicle12_distance, cvPoint(0, -5));
 	  }
-
+	  ROS_INFO("pcl transformed-5");
       IplImage* white_background = cvCloneImage(project_image);
       cvSet(white_background, cvScalar(255,255,255));
       merge_images(white_background, project_image);
@@ -346,7 +359,7 @@ CP_projector::CP_projector():
         	merge_images(merged_image, project_image01);
         	merge_images(merged_image, project_image02);
 
-        	//merge_images(merged_Himage, project_imageH00);
+        	merge_images(merged_Himage, project_imageH00);
         	merge_images(merged_Himage, project_imageH01);
         	merge_images(merged_Himage, project_imageH02);
 
