@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base" args="1.5, 0.0, 1.73 -0.0 0.25 -0.0 /robot_2/base_link /robot_2/camera_base 10" ns="robot_2"/>
+    <node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_img" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /robot_2/camera_base /robot_2/camera_image 10" ns="robot_2" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_board" args="0.0, 0.30, 0.98 0.0 -1.5707963267949 0.0 /robot_2/base_link /robot_2/board 10" ns="robot_2"  />
+</launch>
