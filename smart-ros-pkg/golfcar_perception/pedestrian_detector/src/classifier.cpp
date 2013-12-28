@@ -12,7 +12,7 @@ HOGClassifier::HOGClassifier(ros::NodeHandle &n) : n_(n), it_(n_)
     people_detect_pub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("pedestrian_detect",1);
     //people_ver_pub_ = n.advertise<people_detector::verified_objs>("verified_objects",1);
     polygon_pub_ = n.advertise<geometry_msgs::PolygonStamped>("pedestrian_detect_visual",1);
-    image_sub_ = it_.subscribe("/camera_front/image_raw", 1, &HOGClassifier::imageCallback, this);
+    image_sub_ = it_.subscribe("camera_front/image_raw", 1, &HOGClassifier::imageCallback, this);
     //First call to hog to ready the CUDA
     cv::gpu::HOGDescriptor g_hog;
 
@@ -121,8 +121,8 @@ void HOGClassifier::imageCallback(const sensor_msgs::ImageConstPtr& image)
     polyStamped.header = image->header;
     pc.header = image->header;
 
-    polyStamped.header.frame_id = "camera_front_base";
-    pc.header.frame_id  = "camera_front_base";
+    polyStamped.header.frame_id = camera_base_id;
+    pc.header.frame_id  = camera_base_id;
 
     for(size_t i=0; i< detect_rects.pd_vector.size(); i++)
     {
@@ -178,6 +178,8 @@ void HOGClassifier::updateParameter()
     nh.param("black_front_roi", temp_bool, true); checkParamChanged(temp_bool, black_front_roi);
     nh.param("write_image", temp_bool, false); checkParamChanged(temp_bool, write_image);
     nh.param("path", temp_str, string("")); checkParamChanged(temp_str, path);
+    nh.param("camera_base_id", temp_str, string("camera_front_base")); checkParamChanged(temp_str, camera_base_id);
+
     nh.param("scale_with_distance", scaleWithDistance, false);
     if(parameter_changed)
     {
