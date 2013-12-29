@@ -1,6 +1,6 @@
 <launch>
   <group ns="$(env ROBOT)">
-      <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/map_pomdp.yaml"/>
+      <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/map.yaml"/>
       <node name="amcl" pkg="amcl" type="amcl" respawn="false" output="screen">
 		<remap from="scan" to="front_top_scan"/>
       </node>

@@ -70,7 +70,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
         if(matched)
         {
             //transform found, just update the position
-            //if(ped_batch->pd_vector[i].confidence > threshold_/100)
+            if(ped_batch->pd_vector[i].confidence > 0.1)
             {
                 ped_momdp_sarsop::ped_local_frame plf;
                 plf.header.stamp = ped_batch->header.stamp;
@@ -93,7 +93,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
 
                 //then update the robot pose with the same frame
                 in_pose.setIdentity();
-                in_pose.frame_id_ = "base_link";
+                in_pose.frame_id_ = "/golfcart/base_link";
                 if(!getObjectPose(plf.header.frame_id, in_pose, out_pose)) continue;
 
                 plf.rob_pose.x = out_pose.getOrigin().getX();
@@ -105,7 +105,8 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
         }
         else
         {
-			//if(ped_batch->pd_vector[i].confidence > threshold_/100)
+	    //if(ped_batch->pd_vector[i].confidence > threshold_/100)
+		if(ped_batch->pd_vector[i].confidence > 0.1)
             {
 				ROS_INFO("New pedestrian received, creating new transform");
 				ROS_INFO("%d transformations", ped_transforms_.size());
@@ -113,7 +114,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
 				tf::Transform transform;
 				tf::Stamped<tf::Pose> in_pose, out_pose;
 				//use the current base_link pose as the new frame
-				in_pose.frame_id_ = "base_link";
+				in_pose.frame_id_ = "/golfcart/base_link";
 				in_pose.setIdentity();
 				in_pose.setOrigin(btVector3(offsetx_,offsety_,0.0));
 				if(!getObjectPose(global_frame_, in_pose, out_pose)) continue;

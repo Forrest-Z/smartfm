@@ -22,6 +22,7 @@
       </node>
 
       <!--5SpeedAdvisor-->
+
       <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen"/>
       <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
 	  <remap from="laser_area_policy/scan" to="sick_scan2"/>

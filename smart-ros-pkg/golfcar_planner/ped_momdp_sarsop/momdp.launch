@@ -1,4 +1,5 @@
 <launch>
+  <group ns="$(env ROBOT)">
 	 <node name="ped_momdp" pkg="ped_momdp_sarsop" type="ped-momdp-sarsop" respawn="false" output="screen">
 	    <param name="model_file" value="$(find ped_momdp_sarsop)/policy-files/20120308/rss-lane-u1.pomdpx"/>
 	    <param name="policy_file" value="$(find ped_momdp_sarsop)/policy-files/20120308/rss-lane-momdp-u1.policy"/>
@@ -11,8 +12,8 @@
             <remap from="odom" to="odom"/>
 	 </node>
 	 <node name="ped_momdp_local_transform" pkg="ped_momdp_sarsop" type="local_frame" output="screen">
-	    <param name="global_frame" value="map"/>
+	    <param name="global_frame" value="/golfcart/map"/>
         <param name="threshold" value="0.0"/>
 	</node>
-
+   </group>
 </launch>
