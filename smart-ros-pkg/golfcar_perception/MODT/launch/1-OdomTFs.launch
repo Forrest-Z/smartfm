@@ -1,0 +1,46 @@
+<launch>    
+    <group ns="golfcart">
+      <node pkg="Launch_v2" type="static_transform_publisher_param" name="base_link_to_front_top_lidar">
+			<param name="x" value="1.78"/>
+			<param name="z" value="1.82"/>
+			<param name="pitch" value="0.0"/>
+			<param name="parent_frame_id" value="golfcart/base_link"/>
+			<param name="child_frame_id"  value="golfcart/front_top_lidar"/>
+      </node>
+      
+      <node pkg="Launch_v2" type="static_transform_publisher_param" name="base_link_to_front_bottom_lidar">
+      		<param name="x" value="1.78"/>
+			<param name="z" value="0.755"/>
+			<param name="pitch" value="0.0"/>
+			<param name="parent_frame_id" value="golfcart/base_link"/>
+			<param name="child_frame_id"  value="golfcart/front_bottom_lidar"/>
+      </node>
+      
+      <node pkg="Launch_v2" type="static_transform_publisher_param" name="base_link_to_camera_front_base">
+      		<param name="x" value="1.75"/>
+			<param name="z" value="1.32"/>
+			<param name="pitch" value="0.19"/>
+			<param name="parent_frame_id" value="golfcart/base_link"/>
+			<param name="child_frame_id"  value="golfcart/camera_front_base"/>
+      </node>
+      
+      <node pkg="Launch_v2" type="static_transform_publisher_param" name="camera_front_base_to_img">
+      		<param name="x" value="0.0"/>
+			<param name="z" value="0.0"/>
+      		<param name="roll" value="-1.5707963267949"/>
+			<param name="yaw" value="-1.5707963267949"/>
+			<param name="parent_frame_id" value="golfcart/camera_front_base"/>
+			<param name="child_frame_id"  value="golfcart/camera_front_img"/>
+      </node>
+    </group>
+    
+      <node pkg="dead_reckoning" name="encoderImu_integrator" type="odom_IMU" output="screen" ns="golfcart">
+      		<param name="parent_frame_id" value="/golfcart/odom"/>
+		<param name="child_frame_id"  value="/golfcart/base_link"/>
+      </node>
+      <node name="encoders_odo_node" pkg="phidget_encoders" type="encoders_odo_node.py" output="screen" ns="golfcart">
+		<remap from="odom" to="phidget_encoder_odo"/>
+	  </node>
+    
+    
+</launch>

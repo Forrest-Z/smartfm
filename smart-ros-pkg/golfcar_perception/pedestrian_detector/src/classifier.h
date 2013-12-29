@@ -62,6 +62,7 @@ private:
     bool scaleWithDistance;
     double hit_threshold, scale, group_threshold, norm_dist;
     std::string path;
+    std::string camera_base_id;
 
     //project camera
     sensing_on_road::pedestrian_vision_batch transformClusterToPedVisionBatch(const feature_detection::clustersConstPtr cl_ptr);

@@ -102,7 +102,7 @@ Visualizer::Visualizer(ros::NodeHandle &n) : n_(n), it_(n_)
     //nh.param("Publish_verified", publish_verified, true);
     nh.param("threshold", threshold_, 0.0);
     // get image from the USB cam
-    image_sub_.subscribe(it_, "/camera_front/image_raw", 20);
+    image_sub_.subscribe(it_, "camera_front/image_raw", 20);
 
     // start processign only after the first image is present
     started = false;

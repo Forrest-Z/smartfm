@@ -1,0 +1,90 @@
+<launch>
+	<!--for the ego vehicle: add "/golfcart"-->
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_baseH" args="1.75, 0.0, 30.0 -0.0 1.15 -0.0 /golfcart/base_link /golfcart/cameraH_base 100" />
+	<node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_imgH" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /golfcart/cameraH_base /golfcart/cameraH_front_img 100" />
+	<!--node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_baseH" args="1.75, 0.0, 7.0 -0.0 0.45 -0.0 /golfcart/base_link /golfcart/cameraH_base 100" />
+	<node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_imgH" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /golfcart/cameraH_base /golfcart/cameraH_front_img 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_baseH2" args="1.75, 0.0, 7.0 -0.0 0.3 -0.0 /golfcart/base_link /golfcart/cameraH2_base 100" />
+	<node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_imgH2" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /golfcart/cameraH2_base /golfcart/cameraH2_front_img 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_baseH3" args="1.75, 0.0, 7.0 -0.0 0.6 -0.0 /golfcart/base_link /golfcart/cameraH3_base 100" />
+	<node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_imgH3" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /golfcart/cameraH3_base /golfcart/cameraH3_front_img 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_baseH4" args="1.75, 0.0, 4.0 -0.0 0.3 -0.0 /golfcart/base_link /golfcart/cameraH4_base 100" />
+	<node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_imgH4" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /golfcart/cameraH4_base /golfcart/cameraH4_front_img 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_baseH5" args="1.75, 0.0, 4.0 -0.0 0.4 -0.0 /golfcart/base_link /golfcart/cameraH5_base 100" />
+	<node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_imgH5" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /golfcart/cameraH5_base /golfcart/cameraH5_front_img 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_baseH6" args="1.75, 0.0, 4.0 -0.0 0.5 -0.0 /golfcart/base_link /golfcart/cameraH6_base 100" />
+	<node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_imgH6" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /golfcart/cameraH6_base /golfcart/cameraH6_front_img 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_baseH7" args="1.75, 0.0, 20.0 -0.0 0.8 -0.0 /golfcart/base_link /golfcart/cameraH7_base 100" />
+	<node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_imgH7" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /golfcart/cameraH7_base /golfcart/cameraH7_front_img 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_baseH8" args="1.75, 0.0, 20.0 -0.0 1.0 -0.0 /golfcart/base_link /golfcart/cameraH8_base 100" />
+	<node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_imgH8" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /golfcart/cameraH8_base /golfcart/cameraH8_front_img 100" />
+	<node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_baseH9" args="1.75, 0.0, 20.0 -0.0 1.2 -0.0 /golfcart/base_link /golfcart/cameraH9_base 100" />
+	<node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_imgH9" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /golfcart/cameraH9_base /golfcart/cameraH9_front_img 100" /-->
+
+	<!--for the first leader: add nothing-->
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_front_base1H" args="1.75, 0.0, 5.0 -0.0 0.45 -0.0 /base_link /cameraH_base 100" />
+    <node pkg="tf" type="static_transform_publisher" name="camera_front_base_to_img1H" args="0.0, 0.0, 0.0 -1.5707963267949 0.0 -1.5707963267949 /cameraH_base /cameraH_image 100" />
+    
+    <!-- for ego vehicle-->
+	<node pkg="vision_lane_detection" type="CP_projector" name="CP_projector" ns ="golfcart" output="screen">
+		<param name="vehicle_ID" value="robot_0"/>
+		<!--param name="EgoVehicle_baselink_ID" value="golfcart/base_link"/>
+		<param name="FirstLeader_baselink_ID" value="base_link"/>
+		<param name="SecondLeader_baselink_ID" value="golfcart2/base_link"/-->
+		
+		<param name="image_transport" value="compressed"/>
+		<param name="odom_frame" value="golfcart/odom"/>
+		
+		<param name="vehicle0_dest_frame" 	value="/golfcart/camera_front_img"/>
+		<param name="vehicle0_Hdest_frame" 	value="/golfcart/cameraH_front_img"/>
+		<param name="vehicle0_H2dest_frame" value="/golfcart/cameraH2_front_img"/>
+		<param name="vehicle0_H3dest_frame" value="/golfcart/cameraH3_front_img"/>
+		<param name="vehicle0_H4dest_frame" value="/golfcart/cameraH4_front_img"/>
+		<param name="vehicle0_H5dest_frame" value="/golfcart/cameraH5_front_img"/>
+		<param name="vehicle0_H6dest_frame" value="/golfcart/cameraH6_front_img"/>
+		<param name="vehicle0_H7dest_frame" value="/golfcart/cameraH7_front_img"/>
+		<param name="vehicle0_H8dest_frame" value="/golfcart/cameraH8_front_img"/>
+		<param name="vehicle0_H9dest_frame" value="/golfcart/cameraH9_front_img"/>
+
+		<param name="vehicle1_dest_frame" value="/camera_front_img"/>
+		<param name="vehicle1_Hdest_frame" value="/cameraH_image"/>
+		
+		<remap from="/odom" to="/golfcart/odom"/>
+		<remap from="/robot_1/vehicle_vel" to="/vehicle_vel"/>
+		<remap from="/robot_2/vehicle_vel" to="/golfcart2/vehicle_vel"/>
+		
+		<remap from="/pts_rgb" to="/golfcart/pts_rgb"/>
+		<remap from="/robot_1/pts_rgb" to="/pts_rgb"/>
+		<remap from="/robot_2/pts_rgb" to="/golfcart2/pts_rgb"/>
+		<param name="show_scale" value= "0.7"/>
+	</node>
+	
+	<node pkg="vision_lane_detection" type="CP_projector" name="CP_projector" ns="/">
+		<param name="vehicle_ID" value="robot_1"/>
+		<param name="image_transport" value="compressed"/>
+		<param name="odom_frame" value="golfcart/odom"/>
+
+		<param name="vehicle0_dest_frame" 	value="/golfcart/camera_front_img"/>
+		<param name="vehicle0_Hdest_frame" 	value="/golfcart/cameraH_front_img"/>
+		<param name="vehicle0_H2dest_frame" value="/golfcart/cameraH2_front_img"/>
+		<param name="vehicle0_H3dest_frame" value="/golfcart/cameraH3_front_img"/>
+		<param name="vehicle0_H4dest_frame" value="/golfcart/cameraH4_front_img"/>
+		<param name="vehicle0_H5dest_frame" value="/golfcart/cameraH5_front_img"/>
+		<param name="vehicle0_H6dest_frame" value="/golfcart/cameraH6_front_img"/>
+		<param name="vehicle0_H7dest_frame" value="/golfcart/cameraH7_front_img"/>
+		<param name="vehicle0_H8dest_frame" value="/golfcart/cameraH8_front_img"/>
+		<param name="vehicle0_H9dest_frame" value="/golfcart/cameraH9_front_img"/>
+
+		<param name="vehicle1_dest_frame" value="/camera_front_img"/>
+		<param name="vehicle1_Hdest_frame" value="/cameraH_image"/>
+		
+		<remap from="/odom" to="/golfcart/odom"/>
+		<remap from="/robot_1/vehicle_vel" to="/vehicle_vel"/>
+		<remap from="/robot_2/vehicle_vel" to="/golfcart2/vehicle_vel"/>
+		
+		<remap from="/pts_rgb" to="/golfcart/pts_rgb"/>
+		<remap from="/robot_1/pts_rgb" to="/pts_rgb"/>
+		<remap from="/robot_2/pts_rgb" to="/golfcart2/pts_rgb"/>
+		<param name="show_scale" value= "0.7"/>
+	</node>
+</launch>

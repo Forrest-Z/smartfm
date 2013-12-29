@@ -66,6 +66,7 @@ class compressed_scan_segment
 	//raw information;
 	vector<int> serial_in_scan;
 	vector<geometry_msgs::Point32> rawPoints;
+	vector<geometry_msgs::Point32> odomPoints;
 	vector<float> rawIntensities;
 
 	//compressed information;
