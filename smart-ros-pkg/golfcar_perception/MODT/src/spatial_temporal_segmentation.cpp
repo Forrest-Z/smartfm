@@ -75,6 +75,7 @@ private:
 	std::vector<double> get_vector(object_cluster_segments &object_cluster);
 
 	void classify_clusters();
+	void calc_rough_pose();
 
 	void load_labeledScanMasks();
 	void visualize_labelled_scan(const sensor_msgs::LaserScan::ConstPtr& scan_in);
@@ -113,6 +114,9 @@ private:
 	double													speed_threshold_;
 
 	golfcar_ml::svm_classifier 								*DATMO_classifier_;
+
+	ros::Publisher											rough_pose_pub_;
+	geometry_msgs::PoseArray								rough_poses_;
 };
 
 DATMO::DATMO()
@@ -146,6 +150,7 @@ DATMO::DATMO()
 	erased_pcl_pub_				=   nh_.advertise<PointCloudRGB>("erased_pcl", 2);
 	vehicle_pcl_pub_			=   nh_.advertise<PointCloudRGB>("vehicle_pcl", 2);
 	debug_pcl_pub_				=   nh_.advertise<sensor_msgs::PointCloud>("debug_cloud", 2);
+	rough_pose_pub_				=   nh_.advertise<geometry_msgs::PoseArray>("rough_poses", 2);
 
     if(program_mode_==0)
     {
@@ -229,7 +234,6 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 			scan_vector_.erase(scan_vector_.begin(), scan_vector_.begin()+ 1);
 			baselink_cloud_vector_.erase(baselink_cloud_vector_.begin(), baselink_cloud_vector_.begin()+1);
 		}
-
 	}
 	ROS_INFO("scan callback finished");
 }
@@ -241,8 +245,15 @@ void DATMO::process_accumulated_data()
 	perform_prefiltering_movingEvidence();
 	construct_feature_vector();
 
-	if(program_mode_==0)save_training_data();
-	else classify_clusters();
+	if(program_mode_==0)
+	{
+		save_training_data();
+	}
+	else
+	{
+		classify_clusters();
+		calc_rough_pose();
+	}
 }
 
 void DATMO::graph_segmentation()
@@ -672,7 +683,7 @@ void DATMO::save_training_data()
 
 void DATMO::classify_clusters()
 {
-	ROS_INFO("classify the derived data");
+	ROS_INFO("classify clusters");
 	PointCloudRGB vehicle_cloud;
 	vehicle_cloud.header = combined_pcl_.header;
 	vehicle_cloud.points.clear();
@@ -738,6 +749,63 @@ void DATMO::classify_clusters()
 		}
 	}
 	vehicle_pcl_pub_.publish(vehicle_cloud);
+}
+
+void DATMO::calc_rough_pose()
+{
+	ROS_INFO("calculate cluster pose");
+	rough_poses_.header = cloud_vector_.back().header;
+	rough_poses_.poses.clear();
+
+	for(size_t i=0; i<object_feature_vectors_.size(); i++)
+	{
+		object_cluster_segments &object_cluster_tmp =object_feature_vectors_[i];
+
+		if(object_cluster_tmp.object_type!=1)continue;
+		//1st, to calculate cluster speed v, and heading direction thetha;
+
+		//a: to calculate the centroids of clusters at different time stamps;
+		std::vector<geometry_msgs::Point32> centroid_position;
+		geometry_msgs::Point32 total_centroid_vis;
+		total_centroid_vis.x = 0.0; total_centroid_vis.y = 0.0; total_centroid_vis.z = 0.0;
+
+		size_t total_point_num=0;
+		for(size_t j=0; j<object_cluster_tmp.scan_segment_batch.size(); j++)
+		{
+			geometry_msgs::Point32 centroid_tmp;
+			centroid_tmp.x = 0.0;
+			centroid_tmp.y = 0.0;
+			centroid_tmp.z = 0.0;
+			for(size_t k=0; k<object_cluster_tmp.scan_segment_batch[j].odomPoints.size(); k++)
+			{
+				centroid_tmp.x = centroid_tmp.x + object_cluster_tmp.scan_segment_batch[j].odomPoints[k].x;
+				centroid_tmp.y = centroid_tmp.y + object_cluster_tmp.scan_segment_batch[j].odomPoints[k].y;
+				total_centroid_vis.x = total_centroid_vis.x + object_cluster_tmp.scan_segment_batch[j].odomPoints[k].x;
+				total_centroid_vis.y = total_centroid_vis.y + object_cluster_tmp.scan_segment_batch[j].odomPoints[k].y;
+			}
+			centroid_tmp.x = centroid_tmp.x/(float)object_cluster_tmp.scan_segment_batch[j].odomPoints.size();
+			centroid_tmp.y = centroid_tmp.y/(float)object_cluster_tmp.scan_segment_batch[j].odomPoints.size();
+			centroid_position.push_back(centroid_tmp);
+
+			total_point_num = total_point_num + object_cluster_tmp.scan_segment_batch[j].odomPoints.size();
+		}
+		total_centroid_vis.x = total_centroid_vis.x/(float)total_point_num;
+		total_centroid_vis.y = total_centroid_vis.y/(float)total_point_num;
+
+		//b: visualize the direction as "rough_pose";
+		float delt_x = centroid_position.back().x-centroid_position.front().x;
+		float delt_y = centroid_position.back().y-centroid_position.front().y;
+		float thetha = std::atan2(delt_y, delt_x);
+		ROS_INFO("centroid_position front: (%f, %f), back:(%f, %f), delt: (%f, %f), thetha: %f", centroid_position.front().x, centroid_position.front().y, centroid_position.back().x, centroid_position.back ().y, delt_x, delt_y, thetha );
+		tf::Pose pose_array;
+		pose_array.setOrigin( tf::Vector3(total_centroid_vis.x, total_centroid_vis.y, 0.0) );
+		pose_array.setRotation( tf::createQuaternionFromYaw(thetha) );
+		geometry_msgs::Pose pose_array_msg;
+		tf::poseTFToMsg(pose_array, pose_array_msg);
+		rough_poses_.poses.push_back(pose_array_msg);
+	}
+
+	rough_pose_pub_.publish(rough_poses_);
 }
 
 std::vector<double> DATMO::get_vector(object_cluster_segments &object_cluster)
