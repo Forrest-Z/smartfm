@@ -22,7 +22,8 @@ public:
 
     ros::Subscriber speedSub_, pedSub_, scanSub_, move_base_speed_;
     ped_momdp* momdp;
-    vector<Executer*> executers;    
+
+	WorldSimulator RealWorld;
 };
 
 #endif /* PEDESTRIAN_MOMDP_H_ */

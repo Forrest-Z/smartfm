@@ -14,8 +14,8 @@
 #include <geometry_msgs/Twist.h>
 #include <sensor_msgs/PointCloud.h>
 #include <sensing_on_road/pedestrian_laser_batch.h>
-#include <dataAssoc_experimental/PedDataAssoc_vector.h>
-#include <dataAssoc_experimental/PedDataAssoc.h>
+//#include <dataAssoc_experimental/PedDataAssoc_vector.h>
+//#include <dataAssoc_experimental/PedDataAssoc.h>
 #include "MOMDP.h"
 #include "ParserSelector.h"
 #include "AlphaVectorPolicy.h"
@@ -28,7 +28,14 @@
 #include <ped_momdp_sarsop/ped_local_frame.h>
 #include <ped_momdp_sarsop/ped_local_frame_vector.h>
 #include <pnc_msgs/speed_contribute.h>
-#include "executer.h"
+//#include "executer.h"
+#include  "world_simulator.h"
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PolygonStamped.h>
+#include <geometry_msgs/PoseArray.h>
+#include "pedestrian_changelane.h"
+#include "mcts.h"
 
 using namespace std;
 
@@ -54,6 +61,7 @@ struct PED_MOMDP
     int currAction;
     int currSVal; /// observed variable
     ros::Time last_update;
+	bool obss_updated;
     /// some grid representation
     //frame id
 };
@@ -76,10 +84,29 @@ public:
     bool updatePedRobPose(ped_momdp_sarsop::ped_local_frame &ped);
 
     void updateSteerAnglePublishSpeed(geometry_msgs::Twist speed);
+	
+	//void simLoop();
+	//void publishROSState();
 
-    vector<Executer*> Executers; 
+    //vector<Executer*> Executers; 
+	//WorldSimulator world;
+	WorldSimulator * RealWorldPt;
+	MCTS*solver;
+
+	PEDESTRIAN_CHANGELANE* RealSimulator;
+	
+	//void initSimulator();
+	void initRealSimulator();
+	//void updatePedPoses();
+	//void updateObsStates();
+	//void clean_momdp_problem_sim();
+
+	ros::Publisher window_pub;
+	ros::Publisher car_pub;
+	ros::Publisher pa_pub;
 
 private:
+	int safeAction;
     int X_SIZE, Y_SIZE;
     double dX, dY;
     double momdp_problem_timeout;
@@ -90,11 +117,15 @@ private:
     vector<GOAL> lPedGoal;
     SolverParams* solver_param;
     SharedPointer<MOMDP> problem;
-    SharedPointer<AlphaVectorPolicy> policy;
+	//SharedPointer<AlphaVectorPolicy> policy;
+	//SharedPointer<AlphaVectorPolicy> qmdp_policy;
+    SharedPointer<AlphaVectorPolicy> policies[5];
+	SharedPointer<AlphaVectorPolicy> qmdp_policies[5];
     ROS_SimulationEngine engine;
     map<string, int> ObsStateMapping;
     map<string, int> ObsSymbolMapping;
     ros::Publisher believesPub_, cmdPub_;
+
 
     void initPedGoal();
     void initPedMOMDP(ped_momdp_sarsop::ped_local_frame& ped_local);
@@ -110,12 +141,17 @@ private:
     void updateBelief(int id, int safeAction);
     void updatePomcpBelief(int i, int safeAction);
 
-    int getCurrentState(double currRobSpeed, double roby, double pedx, double pedy);
+    int getCurrentState(double currRobSpeed, double roby, double pedx, double pedy,int ped_id=-1);
 
     int getCurrObs(int id);
 
     int getXGrid(double x);
 
     int getYGrid(double y);
+
+	//int reactivePolicy(int i);
+	//int getActionMOMDP(int i);
+	//int getActionQMDP(int);
+	//int getActionBML(int);
 };
 #endif /* MOMDP_H_ */

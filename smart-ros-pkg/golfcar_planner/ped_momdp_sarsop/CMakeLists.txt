@@ -38,7 +38,7 @@ INCLUDE_DIRECTORIES(
     src/problem-solver/OfflineSolver
     src/problem-solver/Evaluator
     src/problem-solver/Simulator
-    src/pomcp
+    src/pomcp/src
 )
 
 # source files for the appl lib
@@ -144,24 +144,28 @@ SET(LIBAPPL_SRCS
 
 
 SET(LIBPOMCP_SRCS
-    src/pomcp/battleship.cpp   
+    src/pomcp/src/battleship.cpp   
  
-    src/pomcp/simulator.cpp
-    src/pomcp/beliefstate.cpp 
-    src/pomcp/mcts.cpp       
-    src/pomcp/pedestrian_dynamic.cpp
-    src/pomcp/pedestrian_changelane.cpp
-    src/pomcp/tag.cpp
-    src/pomcp/coord.cpp   
-    src/pomcp/network.cpp    
-    src/pomcp/testsimulator.cpp
-    src/pomcp/executer.cpp 
-    src/pomcp/node.cpp      
-    src/pomcp/pocman.cpp  
-    src/pomcp/utils.cpp
-    src/pomcp/experiment.cpp 
-    src/pomcp/pedestrian.cpp 
-    src/pomcp/rocksample.cpp
+    src/pomcp/src/simulator.cpp
+    src/pomcp/src/beliefstate.cpp 
+    src/pomcp/src/mcts.cpp       
+    src/pomcp/src/pedestrian_dynamic.cpp
+    src/pomcp/src/pedestrian_changelane.cpp
+    src/pomcp/src/tag.cpp
+    src/pomcp/src/coord.cpp   
+    src/pomcp/src/network.cpp    
+    src/pomcp/src/testsimulator.cpp
+    #src/pomcp/src/executer.cpp 
+    src/pomcp/src/node.cpp      
+    src/pomcp/src/pocman.cpp  
+    src/pomcp/src/utils.cpp
+    #src/pomcp/src/experiment.cpp 
+    src/pomcp/src/pedestrian.cpp 
+    src/pomcp/src/rocksample.cpp
+    src/pomcp/src/SFM.cpp
+    src/pomcp/src/window.cpp
+    src/pomcp/src/map.cpp
+    src/pomcp/src/math_utils.cpp
 )
 # There are too many compiler warnings with problem-solver code, so let's disable some:
 set(WARNING_FLAGS "-Wno-sign-compare -Wno-unused-variable -Wno-ignored-qualifiers -Wno-write-strings")
@@ -203,5 +207,9 @@ rosbuild_add_executable(ped-momdp-sarsop src/pedestrian_momdp_realPed.cpp src/RO
 rosbuild_add_compile_flags(ped-momdp-sarsop ${WARNING_FLAGS})
 target_link_libraries(ped-momdp-sarsop pomcp appl tinyxml)
 
-rosbuild_add_executable(local_frame src/local_frame.cpp)
-rosbuild_add_compile_flags(local_frame -std=c++0x)
+#rosbuild_add_executable(pomcp-test src/pomcp/src/executer.cpp)
+#rosbuild_add_compile_flags(pomcp-test ${WARNING_FLAGS})
+#target_link_libraries(pomcp-test pomcp)
+
+#rosbuild_add_executable(local_frame src/local_frame.cpp)
+#rosbuild_add_compile_flags(local_frame -std=c++0x)
