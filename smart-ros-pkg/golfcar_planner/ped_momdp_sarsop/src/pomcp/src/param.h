@@ -3,8 +3,8 @@
 #define MODELPARAMS_H
 
 namespace ModelParams {
-	const double rln=20;
-	const double path_rln=40;
+	const double rln=10;
+	const double path_rln=10;
 	const double pi=3.1415926;
 	const int UCT_CONST=50000;
 	const int XSIZE=5;
@@ -22,7 +22,7 @@ namespace ModelParams {
 	
 	const int goodrob=1;
 	const int goodped=1;
-	const bool debug=false;
+	const bool debug=true;
 	const bool FixedPath=false;
 	const bool SocialForceModel=true;
 	const bool SocialForceWorld=false;

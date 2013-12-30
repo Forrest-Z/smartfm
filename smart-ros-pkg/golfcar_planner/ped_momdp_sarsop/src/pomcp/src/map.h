@@ -21,14 +21,14 @@ public:
 
 	MyMap()
 	{
-		InitGoalsBlank();
+		//InitGoalsBlank();
 		//InitGoalsRound();
-		//InitGoalsUTown();
+		InitGoalsUTown();
 	}
 	void InitGoalsUTown()
 	{
-		LoadMap("utown_map");
-		LoadPath("utown_path");
+		//LoadMap("utown_map2");
+		LoadPath("utown_path2");
 
 		goal_pos[0][0]=40*ModelParams::rln;  //jing wu zhu guan
 		goal_pos[0][1]=21*ModelParams::rln;

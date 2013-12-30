@@ -6,8 +6,7 @@ include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
 #  Debug          : w/ debug symbols, w/o optimization
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
-#  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE RelWithDebInfo)
+#  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries #set(ROS_BUILD_TYPE RelWithDebInfo)
 
 rosbuild_init()
 
@@ -211,5 +210,5 @@ target_link_libraries(ped-momdp-sarsop pomcp appl tinyxml)
 #rosbuild_add_compile_flags(pomcp-test ${WARNING_FLAGS})
 #target_link_libraries(pomcp-test pomcp)
 
-#rosbuild_add_executable(local_frame src/local_frame.cpp)
-#rosbuild_add_compile_flags(local_frame -std=c++0x)
+rosbuild_add_executable(local_frame src/local_frame.cpp)
+rosbuild_add_compile_flags(local_frame -std=c++0x)

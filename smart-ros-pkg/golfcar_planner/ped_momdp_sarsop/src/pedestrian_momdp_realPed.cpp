@@ -12,7 +12,7 @@
 #include <geometry_msgs/PoseArray.h>
 #include "world_simulator.h"
 
-//WorldSimulator RealWorld;
+WorldSimulator RealWorld;
 pedestrian_momdp::pedestrian_momdp()
 {
     ROS_INFO("Starting Pedestrian Avoidance ... ");
@@ -39,7 +39,7 @@ pedestrian_momdp::pedestrian_momdp()
 
     move_base_speed_=nh.subscribe("/speed_advisor_cmdvel",1, &pedestrian_momdp::moveSpeedCallback, this);
     //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
-/*
+
 	momdp = new ped_momdp(model_file, policy_file, simLen, simNum, stationary, frequency, use_sim_time, nh);
 	momdp->RealWorldPt=&RealWorld;
 	//momde->world=&world;
@@ -48,11 +48,10 @@ pedestrian_momdp::pedestrian_momdp()
 	momdp->window_pub=nh.advertise<geometry_msgs::PolygonStamped>("/my_window",1000);
 	momdp->pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);
 	momdp->car_pub=nh.advertise<geometry_msgs::PoseStamped>("car_pose",1000);
-*/
+
 	//momdp->simLoop();
-	new WorldSimulator();
 	cout<<"here"<<endl;
-    //ros::spin();
+    ros::spin();
 }
 
 pedestrian_momdp::~pedestrian_momdp()

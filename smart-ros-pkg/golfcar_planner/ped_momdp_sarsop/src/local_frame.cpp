@@ -94,7 +94,9 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
                 geometry_msgs::Point32 ped_point = ped_batch->pd_vector[i].cluster.centroid;
                 in_pose.setOrigin(tf::Vector3(ped_point.x, ped_point.y, ped_point.z));
                 if(!getObjectPose(plf.header.frame_id, in_pose, out_pose)) continue;
-                plf.ped_id = ped_transforms_[matched_ped].label;
+                //plf.ped_id = ped_transforms_[matched_ped].label;
+				//plf.ped_id = ped_transforms_[matched_ped].label;
+				plf.ped_id = ped_batch->pd_vector[i].object_label;
                 plf.ped_pose.x = out_pose.getOrigin().getX();
                 plf.ped_pose.y = out_pose.getOrigin().getY();
                 plf.ped_pose.z = out_pose.getOrigin().getZ();
@@ -108,7 +110,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
                 plf.rob_pose.y = out_pose.getOrigin().getY();
                 plf.rob_pose.z = out_pose.getOrigin().getZ();
                 plf_vector.ped_local.push_back(plf);
-                ped_transforms_[matched_ped].last_update = ped_batch->header.stamp;
+                //ped_transforms_[matched_ped].last_update = ped_batch->header.stamp;
             }
         }
         else

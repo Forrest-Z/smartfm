@@ -16,6 +16,7 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
   	timer_ = nh.createTimer(ros::Duration(1.0/frequency), &ped_momdp::controlLoop, this);
     //initPedGoal();
     //policy_initialize(model_file, policy_file, simLen, simNum);
+	cout<<"here"<<endl;
 	initRealSimulator();
 
 }
