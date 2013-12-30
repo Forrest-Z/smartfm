@@ -1,11 +1,24 @@
+#define  EIGEN_YES_I_KNOW_SPARSE_MODULE_IS_NOT_STABLE_YET 
+#include <mrpt/slam.h>
+#include <mrpt/gui.h>
+
 #include <norm_virtual_sensor/AccumulateData.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <pcl_ros/transforms.h>
+
+#include <mrpt/slam.h>
+#include <mrpt/gui.h>
+
+using namespace mrpt;
+using namespace mrpt::utils;
+using namespace mrpt::slam;
+
 class MapMergingOptimize{
   laser_geometry::LaserProjection projector_;
   ros::Publisher transformed_template_pub_, transformed_matching_pub_;
+  ros::Publisher matched_matching_pub_;
   tf::TransformListener *tf_;
 public:
   MapMergingOptimize(){
@@ -25,6 +38,8 @@ public:
 				  ("accumulated_pts_tfed", 1);
     transformed_matching_pub_ = nh.advertise<sensor_msgs::PointCloud2>
 				  ("matching_pts_tfed", 1);
+    matched_matching_pub_ = nh.advertise<sensor_msgs::PointCloud2>
+				  ("matched_matching_pub_", 1);
     message_filters::Synchronizer<MySyncPolicy>
       sync(MySyncPolicy(10), pose_sub, observation_sub, scan_sub);
     sync.registerCallback(boost::bind(&MapMergingOptimize::callback,
@@ -62,6 +77,51 @@ public:
     pcl::toROSMsg(pcl_match, pc2);
     pc2.header = pose->header;
     transformed_matching_pub_.publish(pc2);
+    
+    pcl_match.header = pose->header;
+    pcl_template.header = pose->header;
+    
+    MICPMatching(pcl_match, pcl_template);
+  }
+  
+  void MICPMatching(pcl::PointCloud<pcl::PointXYZ> matching_cloud, 
+		    pcl::PointCloud<pcl::PointXYZ> template_cloud){
+    CSimplePointsMap matching_c, template_c;
+    matching_c.setFromPCLPointCloud<pcl::PointCloud<pcl::PointXYZ> >
+      (matching_cloud);
+    template_c.setFromPCLPointCloud<pcl::PointCloud<pcl::PointXYZ> >
+      (template_cloud);
+    CICP ICP;
+    CICP::TReturnInfo info;
+    ICP.options.ICP_algorithm = icpLevenbergMarquardt;
+    ICP.options.maxIterations			= 100;
+    ICP.options.thresholdAng			= DEG2RAD(10.0f);
+    ICP.options.thresholdDist			= 2.5f;
+    ICP.options.ALFA				= 0.5f;
+    ICP.options.smallestThresholdDist		= 0.05f;
+    ICP.options.doRANSAC = false;
+    CPose2D	initialPose(0.0f,0.0f,(float)DEG2RAD(0.0f));
+    float runningTime;
+    CPosePDFPtr pdf = ICP.Align(
+		  &template_c,
+		  &matching_c,
+		  initialPose,
+		  &runningTime,
+		  (void*)&info);
+    vector_double mean_pose;
+    pdf->getMeanVal().getAsVector(mean_pose);
+    cout << "Mean of estimation: " << pdf->getMeanVal() << endl;
+    Eigen::Vector3f bl_trans(mean_pose[0], mean_pose[1], 0.);
+    double yaw_rotate = -mean_pose[2];
+    Eigen::Quaternionf bl_rotation(cos(yaw_rotate / 2.), 0, 0,
+    -sin(yaw_rotate / 2.));
+    Eigen::Translation3f translation (bl_trans);
+    Eigen::Matrix4f tf = (translation * bl_rotation).matrix();
+    pcl::transformPointCloud<pcl::PointXYZ>(matching_cloud, matching_cloud, tf);
+    sensor_msgs::PointCloud2 pc2;
+    pcl::toROSMsg(matching_cloud, pc2);
+    matched_matching_pub_.publish(pc2);
+    
   }
 };
 
