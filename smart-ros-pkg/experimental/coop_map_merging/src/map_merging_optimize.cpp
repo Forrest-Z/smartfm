@@ -61,14 +61,16 @@ inline boost::tuples::tuple<T,T,T> matrixToYawPitchRoll(const Eigen::Matrix<T,3,
   Eigen::Matrix<T,3,1> euler = r.eulerAngles(2, 1, 0);
   return boost::tuples::make_tuple(euler(0,0), euler(1,0), euler(2,0));
 }
-  void eigenAffineTo2DPose(Eigen::Affine3f t, string msg){
+  poseResult eigenAffineTo2DPose(Eigen::Affine3f t, string msg){
     double yaw, pitch, roll;
     boost::tie(yaw,pitch,roll) = matrixToYawPitchRoll(t.rotation());
-    double x = t.translation()(0);
-    double y = t.translation()(1);
-    double rot = yaw/M_PI*180;
+    poseResult offset;
+    offset.x = t.translation()(0);
+    offset.y = t.translation()(1);
+    offset.r = yaw/M_PI*180;
     cout<<msg<<": "<<
-    x<<","<<y<<","<<rot<<endl;
+    offset.x<<","<<offset.y<<","<<offset.r<<endl;
+    return offset;
   }
   void callback(const geometry_msgs::PoseStampedConstPtr& pose,
 		const sensor_msgs::PointCloud2ConstPtr& observation_pc2,
@@ -112,18 +114,18 @@ inline boost::tuples::tuple<T,T,T> matrixToYawPitchRoll(const Eigen::Matrix<T,3,
     Eigen::Affine3f ICP_transpose_correction = MICPMatching(pcl_match_prior, pcl_template);
     Eigen::Affine3f CSM_transpose_correction = CSMMatching(pcl_match_prior, pcl_template);
     //subtract away the correction value given by scan matching to get true transformation
-    Eigen::Affine3f ICP_corrected_tf = t.inverse() * ICP_transpose_correction;
-    Eigen::Affine3f CSM_corrected_tf = t.inverse() * CSM_transpose_correction;
+    Eigen::Affine3f ICP_corrected_tf = ICP_transpose_correction * t.inverse();
+    Eigen::Affine3f CSM_corrected_tf = CSM_transpose_correction * t.inverse();
     eigenAffineTo2DPose(ICP_corrected_tf, string("ICP corrected"));
     eigenAffineTo2DPose(CSM_corrected_tf, string("CSM corrected"));
     
     pcl::PointCloud<pcl::PointXYZ> pcl_template_ICP_corrected,
 				      pcl_template_CSM_corrected;
-    pcl::transformPointCloud<pcl::PointXYZ>(pcl_match, pcl_template_ICP_corrected, t.inverse().matrix());
-    pcl::transformPointCloud<pcl::PointXYZ>(pcl_template_ICP_corrected, pcl_template_ICP_corrected, ICP_transpose_correction.matrix());
+    pcl::transformPointCloud<pcl::PointXYZ>(pcl_match, pcl_template_ICP_corrected, ICP_corrected_tf);
+    //pcl::transformPointCloud<pcl::PointXYZ>(pcl_template_ICP_corrected, pcl_template_ICP_corrected, );
     //the above means that t.inverse()*transpose_correction != transpose(t.inverse()) -> transpose(t.inverse())?
-    pcl::transformPointCloud<pcl::PointXYZ>(pcl_match, pcl_template_CSM_corrected, t.inverse().matrix());
-    pcl::transformPointCloud<pcl::PointXYZ>(pcl_template_CSM_corrected, pcl_template_CSM_corrected, CSM_transpose_correction.matrix());
+    pcl::transformPointCloud<pcl::PointXYZ>(pcl_match, pcl_template_CSM_corrected, CSM_corrected_tf);
+    //pcl::transformPointCloud<pcl::PointXYZ>(pcl_template_CSM_corrected, pcl_template_CSM_corrected, CSM_transpose_correction.matrix());
     pcl_template_CSM_corrected.header = pose->header;
     pcl_template_ICP_corrected.header = pose->header;
     pcl_template.header = pose->header;
