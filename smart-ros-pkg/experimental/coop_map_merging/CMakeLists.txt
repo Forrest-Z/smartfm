@@ -44,4 +44,4 @@ rosbuild_add_executable(map_merging_optimize src/map_merging_optimize.cpp)
 rosbuild_link_boost(map_merging_optimize signals)
 target_link_libraries(map_merging_optimize csm_lib)
 
-
+rosbuild_add_executable(merging_quality_evaluation src/merging_quality_evaluation.cpp)
