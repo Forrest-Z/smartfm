@@ -25,13 +25,15 @@ class MapMergingOptimize{
   ros::Publisher csm_vehicle_pub_, icp_vehicle_pub_;
   tf::TransformListener *tf_;
   tf::TransformBroadcaster *tf_broadcaster_;
-  string base_frame_id_, icp_vehicle_frame_id_, 
-  csm_vehicle_frame_id_, laser_detect_vehicle_frame_id_;
+  string icp_base_frame_id_, csm_base_frame_id_, laser_base_frame_id_,
+  icp_vehicle_frame_id_, csm_vehicle_frame_id_, laser_detect_vehicle_frame_id_;
 public:
   MapMergingOptimize(){
     ros::NodeHandle nh;
     ros::NodeHandle priv_nh("~");
-    priv_nh.param("base_frame_id", base_frame_id_, string("golfcart/base_link"));
+    priv_nh.param("icp_base_frame_id", icp_base_frame_id_, string("golfcart/base_link"));
+    priv_nh.param("csm_base_frame_id", csm_base_frame_id_, string("golfcart/base_link"));
+    priv_nh.param("laser_base_frame_id", laser_base_frame_id_, string("golfcart/base_link"));
     priv_nh.param("icp_vehicle_frame_id", icp_vehicle_frame_id_, string("icp_base_link"));
     priv_nh.param("csm_vehicle_frame_id", csm_vehicle_frame_id_, string("csm_base_link"));
     priv_nh.param("laser_detect_vehicle_frame_id", laser_detect_vehicle_frame_id_, string("laser_base_link"));
@@ -101,7 +103,7 @@ inline boost::tuples::tuple<T,T,T> matrixToYawPitchRoll(const Eigen::Matrix<T,3,
     transformed_template_pub_.publish(pc2);
     Eigen::Translation3f translation (bl_trans);
     Eigen::Affine3f t = translation * bl_rotation;
-    publishVehicle(t, pose->header.stamp, pose->header.frame_id, base_frame_id_,
+    publishVehicle(t, pose->header.stamp, pose->header.frame_id, laser_base_frame_id_,
 		   laser_detect_vehicle_frame_id_);
     eigenAffineTo2DPose(t, string("given transform of leader vehicle based on ego vehicle"));
     tf::StampedTransform cur_sensor_trans;
@@ -125,9 +127,9 @@ inline boost::tuples::tuple<T,T,T> matrixToYawPitchRoll(const Eigen::Matrix<T,3,
     Eigen::Affine3f ICP_corrected_tf = ICP_transpose_correction * t.inverse();
     Eigen::Affine3f CSM_corrected_tf = CSM_transpose_correction * t.inverse();
     icp_vehicle_pub_.publish(publishVehicle(ICP_corrected_tf.inverse(), pose->header.stamp, pose->header.frame_id, 
-		   base_frame_id_, icp_vehicle_frame_id_));
+		   icp_base_frame_id_, icp_vehicle_frame_id_));
     csm_vehicle_pub_.publish(publishVehicle(CSM_corrected_tf.inverse(), pose->header.stamp, pose->header.frame_id, 
-		   base_frame_id_, csm_vehicle_frame_id_));
+		   csm_base_frame_id_, csm_vehicle_frame_id_));
     
     eigenAffineTo2DPose(ICP_corrected_tf, string("ICP corrected"));
     eigenAffineTo2DPose(CSM_corrected_tf, string("CSM corrected"));
