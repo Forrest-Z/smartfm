@@ -87,7 +87,7 @@ inline boost::tuples::tuple<T,T,T> matrixToYawPitchRoll(const Eigen::Matrix<T,3,
 				   orientation.y,orientation.z); 
     Eigen::Vector3f bl_trans(position.x,position.y,position.z);
     pcl::transformPointCloud<pcl::PointXYZ>(pcl_template, pcl_template_prior, bl_trans, bl_rotation);
-    pcl::toROSMsg(pcl_template_prior, pc2);
+    pcl::toROSMsg(pcl_template, pc2);
     pc2.header = pose->header;
     transformed_template_pub_.publish(pc2);
     Eigen::Translation3f translation (bl_trans);
@@ -98,27 +98,32 @@ inline boost::tuples::tuple<T,T,T> matrixToYawPitchRoll(const Eigen::Matrix<T,3,
     tf_->lookupTransform(pose->header.frame_id, scan->header.frame_id, scan->header.stamp, cur_sensor_trans);
     Eigen::Quaternionf bl_rotation_sensor(cur_sensor_trans.getRotation().w(), cur_sensor_trans.getRotation().x(),cur_sensor_trans.getRotation().y(),cur_sensor_trans.getRotation().z()); 
     Eigen::Vector3f bl_trans_sensor(cur_sensor_trans.getOrigin().x(),cur_sensor_trans.getOrigin().y(),cur_sensor_trans.getOrigin().z());
+    pcl::PointCloud<pcl::PointXYZ> pcl_match_prior;
     pcl::transformPointCloud<pcl::PointXYZ>(pcl_match, pcl_match, bl_trans_sensor, bl_rotation_sensor);
+    pcl::transformPointCloud<pcl::PointXYZ>(pcl_match, pcl_match_prior, t.inverse().matrix());
     pcl::toROSMsg(pcl_match, pc2);
     pc2.header = pose->header;
     transformed_matching_pub_.publish(pc2);
-    
+    pcl_match_prior.header = pose->header;
     pcl_match.header = pose->header;
     pcl_template_prior.header = pose->header;
     
     //recheck the calculation here. Doesn't seems to be correct.
-    Eigen::Affine3f ICP_transpose_correction = MICPMatching(pcl_match, pcl_template_prior);
-    Eigen::Affine3f CSM_transpose_correction = CSMMatching(pcl_match, pcl_template_prior);
+    Eigen::Affine3f ICP_transpose_correction = MICPMatching(pcl_match_prior, pcl_template);
+    Eigen::Affine3f CSM_transpose_correction = CSMMatching(pcl_match_prior, pcl_template);
     //subtract away the correction value given by scan matching to get true transformation
-    Eigen::Affine3f ICP_corrected_tf = t * ICP_transpose_correction;
-    Eigen::Affine3f CSM_corrected_tf = t * CSM_transpose_correction;
+    Eigen::Affine3f ICP_corrected_tf = t.inverse() * ICP_transpose_correction;
+    Eigen::Affine3f CSM_corrected_tf = t.inverse() * CSM_transpose_correction;
     eigenAffineTo2DPose(ICP_corrected_tf, string("ICP corrected"));
     eigenAffineTo2DPose(CSM_corrected_tf, string("CSM corrected"));
     
     pcl::PointCloud<pcl::PointXYZ> pcl_template_ICP_corrected,
 				      pcl_template_CSM_corrected;
-    pcl::transformPointCloud<pcl::PointXYZ>(pcl_template, pcl_template_ICP_corrected, ICP_corrected_tf.matrix());
-    pcl::transformPointCloud<pcl::PointXYZ>(pcl_template, pcl_template_CSM_corrected, CSM_corrected_tf.matrix());
+    pcl::transformPointCloud<pcl::PointXYZ>(pcl_match, pcl_template_ICP_corrected, t.inverse().matrix());
+    pcl::transformPointCloud<pcl::PointXYZ>(pcl_template_ICP_corrected, pcl_template_ICP_corrected, ICP_transpose_correction.matrix());
+    //the above means that t.inverse()*transpose_correction != transpose(t.inverse()) -> transpose(t.inverse())?
+    pcl::transformPointCloud<pcl::PointXYZ>(pcl_match, pcl_template_CSM_corrected, t.inverse().matrix());
+    pcl::transformPointCloud<pcl::PointXYZ>(pcl_template_CSM_corrected, pcl_template_CSM_corrected, CSM_transpose_correction.matrix());
     pcl_template_CSM_corrected.header = pose->header;
     pcl_template_ICP_corrected.header = pose->header;
     pcl_template.header = pose->header;
@@ -137,18 +142,12 @@ inline boost::tuples::tuple<T,T,T> matrixToYawPitchRoll(const Eigen::Matrix<T,3,
     pcl::PointCloud<pcl::PointXYZ> cloud_out;
     Eigen::Affine3f transposeAffine = PoseToAffine(result.x, result.y, result.r/180*M_PI);
     Eigen::Matrix4f transform = transposeAffine.matrix();
-    /*Eigen::Matrix4f transform;
-    double d = result.r/180*M_PI;
-    transform<<cos(d),-sin(d),0,result.x,
-		sin(d),cos(d),0,result.y,
-		0,0,1,0,
-		0,0,0,1;*/
     pcl::transformPointCloud(matching_cloud, cloud_out, transform);
     sensor_msgs::PointCloud2 pc2;
     pcl::toROSMsg(cloud_out, pc2);
     matched_matching_CSM_pub_.publish(pc2);
     
-    return PoseToAffine(-result.x, -result.y, -result.r/180*M_PI);
+    return transposeAffine;//PoseToAffine(-result.x, -result.y, -result.r/180*M_PI);
   }
   
   Eigen::Affine3f PoseToAffine(double x, double y, double r){
@@ -194,8 +193,7 @@ inline boost::tuples::tuple<T,T,T> matrixToYawPitchRoll(const Eigen::Matrix<T,3,
     sensor_msgs::PointCloud2 pc2;
     pcl::toROSMsg(matching_cloud, pc2);
     matched_matching_ICP_pub_.publish(pc2); 
-    Eigen::Affine3f tfCorrection = PoseToAffine(-mean_pose[0], -mean_pose[1], -mean_pose[2]);
-    return tfCorrection;
+    return transposeAffine;//PoseToAffine(-mean_pose[0], -mean_pose[1], -mean_pose[2]);
   }
 };
 
