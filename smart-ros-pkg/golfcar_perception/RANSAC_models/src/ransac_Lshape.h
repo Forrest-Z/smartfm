@@ -55,7 +55,7 @@ namespace mrpt
 			void ransac_detect_Lshape(
 				const Eigen::Matrix<NUMTYPE,Eigen::Dynamic,1>  &x,
 				const Eigen::Matrix<NUMTYPE,Eigen::Dynamic,1>  &y,
-				std::pair<mrpt::vector_size_t,Lshape>   	   &out_detected_model,
+				std::vector<std::pair<mrpt::vector_size_t,Lshape> >   	   &out_detected_models,
 				const double           threshold,
 				const size_t           min_inliers_for_valid_model
 				);

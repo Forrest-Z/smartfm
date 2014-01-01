@@ -17,8 +17,33 @@
  *
  *******************************************************************************************************************
  */
+ 
+#include <ros/ros.h>
+#include <mrpt/base.h>
+#include <mrpt/gui.h>
+#include <mrpt/utils.h>
+#include <mrpt/math.h>
+#include <mrpt/slam.h>
+#include <sensor_msgs/PointCloud.h>
 
-#include "ransac_Lshape.h"
+using namespace mrpt;
+using namespace mrpt::utils;
+using namespace mrpt::math;
+using namespace mrpt::random;
+
+
+
+class Lshape {
+	
+	public:
+		Lshape(){};
+		inline Lshape(const TPoint2D &p1, const TPoint2D &p2, const TPoint2D &p3) throw(std::logic_error);
+		inline Lshape(double A,double B,double C, double D);
+		~Lshape(){};
+		double distance(const TPoint2D &point) const;
+		double coefs[4];
+		bool check_degenerate(const TPoint2D &p1, const TPoint2D &p2, const TPoint2D &p3);
+};
 
 //2 lines in Lshape: line1: AX+BY+C=0; line2: BX-AY+D=0;
 
@@ -89,6 +114,24 @@ namespace mrpt
 {
 	namespace math
 	{
+
+		bool check_degenerate_Lshape(const TPoint2D &p1, const TPoint2D &p2, const TPoint2D &p3)
+		{
+			if(p1==p2||p2==p3||p1==p3)return false;
+			else
+			{
+				//check whether it is a blunt angle between line "p2-p1" and line "p2-p3";
+				//it needs to be a blunt angle if we want a "L-shape" with line1 "p1-p2" and line2 "passing p3, perpendicular to line1"
+				double direct1[2], direct2[2];
+				direct1[0]=p1.x-p2.x;
+				direct1[1]=p1.y-p2.y;
+				direct2[0]=p3.x-p2.x;
+				direct2[1]=p3.y-p2.y;
+				double cosine_angle = direct1[0]*direct2[0]+direct1[1]*direct2[1];
+				if(cosine_angle>0) return false;
+				else return true;
+			}
+		}
 		template <typename T>
 		void  ransacLshape_fit(
 			const CMatrixTemplateNumeric<T> &allData,
@@ -155,14 +198,16 @@ namespace mrpt
 				TPoint2D  p1( allData(0,useIndices[0]),allData(1,useIndices[0]) );
 				TPoint2D  p2( allData(0,useIndices[1]),allData(1,useIndices[1]) );
 				TPoint2D  p3( allData(0,useIndices[2]),allData(1,useIndices[2]) );
-				if(Lshape::check_degenerate(p1, p2, p3))return true;
+				if(check_degenerate_Lshape(p1, p2, p3))return true;
 				else return false;
 			}
 
 			template <typename NUMTYPE>
 			void ransac_detect_Lshape(
-				const Eigen::Matrix<NUMTYPE,Eigen::Dynamic,1>  &x,
-				const Eigen::Matrix<NUMTYPE,Eigen::Dynamic,1>  &y,
+				//const Eigen::Matrix<NUMTYPE,Eigen::Dynamic,1>  &x,
+				//const Eigen::Matrix<NUMTYPE,Eigen::Dynamic,1>  &y,
+				dynamicsize_vector<NUMTYPE> &x,
+				dynamicsize_vector<NUMTYPE> &y,
 				std::vector<std::pair<mrpt::vector_size_t,Lshape> >   	   &out_detected_models,
 				const double           threshold,
 				const size_t           min_inliers_for_valid_model
@@ -200,12 +245,13 @@ namespace mrpt
 					if (this_best_inliers.size()>=min_inliers_for_valid_model)
 					{
 						// Add this plane to the output list:
-						out_detected_model = std::make_pair<mrpt::vector_size_t,Lshape>(
+						out_detected_models.push_back(std::make_pair<mrpt::vector_size_t,Lshape>(
 											this_best_inliers,
 											Lshape(this_best_model(0,0), this_best_model(0,1), this_best_model(0,2), this_best_model(0,3))
-											);
+											));
 					}
 				}
 			}//end function;
 	} // end namespace
 } // end namespace
+
