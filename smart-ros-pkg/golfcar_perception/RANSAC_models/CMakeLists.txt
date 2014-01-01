@@ -11,4 +11,5 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 # Declare a program which uses MRPT: 
 # Since we declared a ROS dependencies to mrpt_libs, 
 # there's no need to add further header/lib deps at this point
-# rosbuild_add_executable(example1 src/example1.cpp)
+#rosbuild_add_library(${PROJECT_NAME} src/ransac_Lshape.cpp)
+rosbuild_add_executable(ransac_example src/ransac_node.cpp)

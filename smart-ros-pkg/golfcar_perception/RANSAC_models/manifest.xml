@@ -12,6 +12,10 @@
 	<depend package="mrpt_libs"/>
 	<depend package="pcl"/>
 	<depend package="pcl_ros"/>
+	<export>
+		<cpp cflags="-I${prefix}/src" lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lRANSAC_models"/>
+  </export>
+
 </package>
 
 
