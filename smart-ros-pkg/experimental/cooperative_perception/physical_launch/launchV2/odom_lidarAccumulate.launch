@@ -1,0 +1,14 @@
+<launch>
+    <node pkg="coop_map_merging" name="lidar_rolling_window" type="lidar_rolling_window">
+      <remap from="scan_in" to="front_bottom_scan_filter"/>
+      <param name="odom_frame_id" value="odom"/>
+      <param name="baselink_frame_id" value="base_link"/>
+      <param name="max_dist" value="10"/>
+    </node>
+    <node pkg="coop_map_merging" ns="golfcart2" name="lidar_rolling_window" type="lidar_rolling_window">
+      <remap from="scan_in" to="front_bottom_scan_filter"/>
+      <param name="odom_frame_id" value="golfcart2/odom"/>
+      <param name="baselink_frame_id" value="golfcart2/base_link"/>
+      <param name="max_dist" value="10"/>
+    </node>
+</launch>
