@@ -80,3 +80,4 @@ rosbuild_link_boost(spatial_temporal_segmentation signals)
 target_link_libraries(spatial_temporal_segmentation ${OpenCV_LIBRARIES})
 
 rosbuild_add_executable(vehicle_pose_estimation src/vehicle_pose_estimation.cpp)
+rosbuild_add_executable(ICP_example src/ICP_example.cpp)

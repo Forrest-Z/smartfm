@@ -14,11 +14,19 @@ namespace mrpt{
 	{
 		ROS_INFO("receive batches");
 		if(batches.clusters.size()==0) return;
-		sensor_msgs::PointCloud cloud_to_process = batches.clusters.back().segments.back();
-		RANSAC_shape(cloud_to_process);
+
+		//method 1: try to use RANSAC Lshape model to approximate vehicle shape, and then estimate its position;
+		//sensor_msgs::PointCloud cloud_to_process = batches.clusters.back().segments.back();
+		//RANSAC_shape2motion(cloud_to_process);
+
+		//method 2: try to use ICP to estimate vehicle motion, and then vehicle shape;
+		ICP_motion2shape(batches);
 	}
 
-	void vehicle_pose_estimation::RANSAC_shape(sensor_msgs::PointCloud &input_cloud)
+	//method 1: from "RANSAC shape" to "motion estimation";
+	//idea: to use RANSAC to approximate vehicle shape from one single scan, then compare the movement of the shapes to calculate vehicle motion;
+	//according to the real data, it turns out that estimation in this way is not robust, due to the round shape of some vehicles' front faces;
+	void vehicle_pose_estimation::RANSAC_shape2motion(sensor_msgs::PointCloud &input_cloud)
 	{
 		ROS_INFO("point number: %ld", input_cloud.points.size());
 
@@ -198,6 +206,115 @@ namespace mrpt{
 		polygon_pub_.publish(vehicle_polygon);
 	}
 
+	void vehicle_pose_estimation::ICP_motion2shape(const MODT::segment_pose_batches& batches)
+	{
+		for(size_t i=0; i<batches.clusters.size(); i++)
+		{
+			//1st step: for a single cluster, try to estimate its motion using ICP;
+
+			geometry_msgs::Pose oldest_pose = batches.clusters[i].ego_poses.front();
+			geometry_msgs::Pose newest_pose = batches.clusters[i].ego_poses.back();
+			sensor_msgs::PointCloud oldest_segment = batches.clusters[i].segments.front();
+			sensor_msgs::PointCloud newest_segment = batches.clusters[i].segments.back();
+
+			//construct two scans based on the "pose + pointcloud";
+			CObservation2DRangeScan	scan1, scan2;
+			construct_ICP_scans(oldest_pose, oldest_segment, scan1);
+			construct_ICP_scans(newest_pose, newest_segment, scan2);
+
+			CSimplePointsMap		m1,m2;
+			float					runningTime;
+			CICP::TReturnInfo		info;
+			CICP					ICP;
+
+			m1.insertObservation( &scan1 );
+			m2.insertObservation( &scan2 );
+
+			ICP.options.ICP_algorithm = icpClassic;
+			ICP.options.maxIterations			= 100;
+			ICP.options.thresholdAng			= DEG2RAD(10.0f);
+			ICP.options.thresholdDist			= 0.75f;
+			ICP.options.ALFA					= 0.5f;
+			ICP.options.smallestThresholdDist	= 0.05f;
+			ICP.options.doRANSAC = false;
+			ICP.options.dumpToConsole();
+
+			CPose2D		initialPose(0.0f,0.0f,(float)DEG2RAD(0.0f));
+			CPosePDFPtr pdf = ICP.Align(
+					&m1,
+					&m2,
+					initialPose,
+					&runningTime,
+					(void*)&info);
+
+				printf("ICP run in %.02fms, %d iterations (%.02fms/iter), %.01f%% goodness\n -> ",
+						runningTime*1000,
+						info.nIterations,
+						runningTime*1000.0f/info.nIterations,
+						info.goodness*100 );
+
+				cout << "Mean of estimation: " << pdf->getMeanVal() << endl<< endl;
+		}
+	}
+
+	void vehicle_pose_estimation::construct_ICP_scans(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CObservation2DRangeScan& scan)
+	{
+		//1st step: define the basic information of the scan reading, in the format of MRPT datatype;
+		//give lagest possible aperture to deal with all kinds of possible readings;
+		scan.aperture = 2*M_PIf;
+		scan.rightToLeft = true;
+		//assuming finest possible accuracy is 0.5 degree (remember to change to rad);
+		float resolution = 0.5/180.0*M_PIf;
+		int scan_size =721;
+		scan.validRange.resize( scan_size, 0);
+		scan.scan.resize(scan_size, 0.0);
+
+		//2nd step: input the scan readings with pointcloud readings;
+		tf::Pose lidarTFPose;
+		tf::poseMsgToTF(lidar_pose, lidarTFPose);
+
+		//Found a bug here: inverse tf should have opposite yaw angle, right? But ROS gives the same sign;
+		tf::Pose lidarToOdom = lidarTFPose.inverse();
+		cout<<lidarTFPose.getOrigin().getX()<<","<<lidarTFPose.getOrigin().getY()<<","<<tf::getYaw(lidarTFPose.getRotation())<<endl;
+		cout<<lidarToOdom.getOrigin().getX()<<","<<lidarToOdom.getOrigin().getY()<<","<<tf::getYaw(lidarToOdom.getRotation())<<endl;
+
+		geometry_msgs::Pose temppose;
+		temppose.position.x=0;
+		temppose.position.y=0;
+		temppose.position.z=0;
+		temppose.orientation.x=1;
+		temppose.orientation.y=0;
+		temppose.orientation.z=0;
+		temppose.orientation.w=0;
+
+		for(size_t ip=0; ip<segment_pointcloud.points.size(); ip++)
+		{
+			temppose.position.x = segment_pointcloud.points[ip].x;
+			temppose.position.y = segment_pointcloud.points[ip].y;
+
+			tf::Pose tempTfPose;
+			tf::poseMsgToTF(temppose, tempTfPose);
+
+			tf::Pose pointInlidar = lidarToOdom * tempTfPose;
+			geometry_msgs::Point32 pointtemp;
+			pointtemp.x=(float)pointInlidar.getOrigin().x();
+			pointtemp.y=(float)pointInlidar.getOrigin().y();
+
+			float range_tmp = sqrtf(pointtemp.x*pointtemp.x+pointtemp.y*pointtemp.y);
+			float angle_tmp = atan2f(pointtemp.y, pointtemp.x);
+			float float_serial = (angle_tmp+scan.aperture/2.0 + resolution/2.0)/resolution;
+			int serial_tmp = (int)floor(float_serial);
+
+			//to deal with possible rounding issue;
+			if(serial_tmp<0)serial_tmp=0;
+			if(serial_tmp>scan_size-1)serial_tmp=scan_size-1;
+
+			scan.validRange[serial_tmp] = 1;
+			scan.scan[serial_tmp] = range_tmp;
+
+			cout<<"[x, y, angle, serial, range]"<<pointtemp.x<<","<<pointtemp.y<<","<<angle_tmp<<","<<serial_tmp<<","<<range_tmp<<"\t";
+		}
+	}
 };
 
 int main(int argc, char** argv)
