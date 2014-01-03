@@ -277,7 +277,7 @@ namespace mrpt{
 
 			ICP.options.ICP_algorithm = icpClassic;
 			ICP.options.maxIterations			= 100;
-			ICP.options.thresholdAng			= DEG2RAD(2.0f);
+			ICP.options.thresholdAng			= DEG2RAD(10.0f);
 			ICP.options.thresholdDist			= 0.75f;
 			ICP.options.ALFA					= 0.5f;
 			ICP.options.smallestThresholdDist	= 0.05f;
