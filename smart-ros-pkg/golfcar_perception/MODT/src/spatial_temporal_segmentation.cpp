@@ -180,7 +180,7 @@ DATMO::DATMO()
 
 void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 {
-	ROS_INFO("scan callback %u ", verti_scan_in->header.seq);
+	cout<<verti_scan_in->header.seq <<","<<verti_scan_in->header.frame_id;
 	if(program_mode_==0)visualize_labelled_scan(verti_scan_in);
 
 	//make a local "baselink" copy to facilitate later feature extraction;
@@ -205,10 +205,10 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 	ident.pose.position.x=0;
 	ident.pose.position.y=0;
 	ident.pose.position.z=0;
-	ident.pose.orientation.x=1;
+	ident.pose.orientation.x=0;
 	ident.pose.orientation.y=0;
 	ident.pose.orientation.z=0;
-	ident.pose.orientation.w=0;
+	ident.pose.orientation.w=1;
 	try
 	{
 		this->tf_.transformPose(odom_frame_id_, ident, laser_pose_current_);
@@ -608,7 +608,6 @@ void DATMO::construct_feature_vector()
 		tf::poseTFToMsg(LIDAR_new_to_old, pose_inLatest);
 		Pose_inLatest_vector.push_back(pose_inLatest);
 		Pose_inOdom_vector.push_back(laser_pose_vector_[i].pose);
-		//cout<<"("<<pose_inLatest.position.x<<","<<pose_inLatest.position.y<<")"<<"\t";
 	}
 	//cout<<endl;
 

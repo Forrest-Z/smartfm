@@ -211,13 +211,58 @@ namespace mrpt{
 		for(size_t i=0; i<batches.clusters.size(); i++)
 		{
 			//1st step: for a single cluster, try to estimate its motion using ICP;
-
 			geometry_msgs::Pose oldest_pose = batches.clusters[i].ego_poses.front();
 			geometry_msgs::Pose newest_pose = batches.clusters[i].ego_poses.back();
 			sensor_msgs::PointCloud oldest_segment = batches.clusters[i].segments.front();
 			sensor_msgs::PointCloud newest_segment = batches.clusters[i].segments.back();
 
-			//construct two scans based on the "pose + pointcloud";
+			//please refer to my evernote 20140103 for more information;
+			//a. calculate the rough estimation for the initial pose to speed up ICP;
+
+			std::vector<geometry_msgs::Point32> centroid_position;
+			for(size_t j=0; j<batches.clusters[i].segments.size(); j++)
+			{
+				geometry_msgs::Point32 centroid_tmp;
+				centroid_tmp.x = 0.0;
+				centroid_tmp.y = 0.0;
+				centroid_tmp.z = 0.0;
+				for(size_t k=0; k<batches.clusters[i].segments[j].points.size(); k++)
+				{
+					centroid_tmp.x = centroid_tmp.x + batches.clusters[i].segments[j].points[k].x;
+					centroid_tmp.y = centroid_tmp.y + batches.clusters[i].segments[j].points[k].y;
+				}
+				centroid_tmp.x = centroid_tmp.x/(float)batches.clusters[i].segments[j].points.size();
+				centroid_tmp.y = centroid_tmp.y/(float)batches.clusters[i].segments[j].points.size();
+				centroid_position.push_back(centroid_tmp);
+			}
+			//build the transform from v_(t-1) to v_t;
+			//about name convention: transform "Frame_A_To_Frame_B" is equal to "Frame_B_in_Frame_A";
+			tf::Pose Odom_to_Vtm1 = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(centroid_position.front().x), tfScalar(centroid_position.front().y), tfScalar(0)));
+			tf::Pose Odom_to_Vt = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(centroid_position.back().x), tfScalar(centroid_position.back().y), tfScalar(0)));
+			tf::Pose Vtm1_to_Vt = Odom_to_Vtm1.inverse()*Odom_to_Vt;
+
+			tf::Pose Odom_to_Etm1, Odom_to_Et, Etm1_to_Et;
+			tf::poseMsgToTF(oldest_pose, Odom_to_Etm1);
+			tf::poseMsgToTF(newest_pose, Odom_to_Et);
+			Etm1_to_Et = Odom_to_Etm1.inverse()*Odom_to_Et;
+
+			tf::Pose Vt_to_Et = Odom_to_Vt.inverse()*Odom_to_Et;
+			tf::Pose Vtm1_to_Etvirtual = Vt_to_Et;
+			tf::Pose Etvirtual_to_Et = Vtm1_to_Etvirtual.inverse()*Vtm1_to_Vt*Vt_to_Et;
+			tf::Pose Et_to_Etvirtual = Etvirtual_to_Et.inverse();
+			tf::Pose Etm1_to_Etvirtual = Etm1_to_Et*Et_to_Etvirtual;
+
+			float x_initial = (float)Etm1_to_Etvirtual.getOrigin().getX();
+			float y_initial = (float)Etm1_to_Etvirtual.getOrigin().getY();
+			float yaw_initial = (float) tf::getYaw(Etm1_to_Etvirtual.getRotation());
+
+			cout<<"other vehicle rough movement:"<<Vtm1_to_Vt.getOrigin().getX()<<","<<Vtm1_to_Vt.getOrigin().getY()<<"0"<<endl;
+			cout<<"ego vehicle odom movement:"<<Etm1_to_Et.getOrigin().getX()<<","<<Etm1_to_Et.getOrigin().getY()<<","<<tf::getYaw(Etm1_to_Et.getRotation())<<endl;
+			cout<<"ICP initial guess: "<<x_initial<<","<<y_initial<<","<<yaw_initial<<endl;
+
+			CPose2D	initialPose(x_initial, y_initial, yaw_initial);
+
+			//b. construct two scans based on the "pose + pointcloud";
 			CObservation2DRangeScan	scan1, scan2;
 			construct_ICP_scans(oldest_pose, oldest_segment, scan1);
 			construct_ICP_scans(newest_pose, newest_segment, scan2);
@@ -232,28 +277,42 @@ namespace mrpt{
 
 			ICP.options.ICP_algorithm = icpClassic;
 			ICP.options.maxIterations			= 100;
-			ICP.options.thresholdAng			= DEG2RAD(10.0f);
+			ICP.options.thresholdAng			= DEG2RAD(2.0f);
 			ICP.options.thresholdDist			= 0.75f;
 			ICP.options.ALFA					= 0.5f;
 			ICP.options.smallestThresholdDist	= 0.05f;
 			ICP.options.doRANSAC = false;
 			ICP.options.dumpToConsole();
 
-			CPose2D		initialPose(0.0f,0.0f,(float)DEG2RAD(0.0f));
-			CPosePDFPtr pdf = ICP.Align(
-					&m1,
-					&m2,
-					initialPose,
-					&runningTime,
-					(void*)&info);
+			//CPose2D		initialPose(0.0f,0.0f,(float)DEG2RAD(0.0f));
+			CPosePDFPtr pdf = ICP.Align(&m1, &m2,initialPose,&runningTime,(void*)&info);
 
-				printf("ICP run in %.02fms, %d iterations (%.02fms/iter), %.01f%% goodness\n -> ",
-						runningTime*1000,
-						info.nIterations,
-						runningTime*1000.0f/info.nIterations,
-						info.goodness*100 );
+			printf("ICP run in %.02fms, %d iterations (%.02fms/iter), %.01f%% goodness\n -> ",
+					runningTime*1000,
+					info.nIterations,
+					runningTime*1000.0f/info.nIterations,
+					info.goodness*100 );
 
-				cout << "Mean of estimation: " << pdf->getMeanVal() << endl<< endl;
+			cout << "Mean of estimation: " << pdf->getMeanVal() << endl<< endl;
+
+			CPosePDFGaussian  gPdf;
+			gPdf.copyFrom(*pdf);
+
+			//c: to recover the vehicle pose and speed in the global frame;
+			double ICP_output_x 	= gPdf.mean.x();
+			double ICP_output_y 	= gPdf.mean.y();
+			double ICP_output_yaw 	= gPdf.mean.phi();
+			cout<<"ICP output: "<<ICP_output_x<<","<<ICP_output_y<<","<<ICP_output_yaw<<endl;
+
+			tf::Pose ICP_Etm1_to_Etvirtual = tf::Transform(tf::Matrix3x3(tf::createQuaternionFromYaw(ICP_output_yaw)), tf::Vector3(tfScalar(ICP_output_x), tfScalar(ICP_output_y), tfScalar(0)));
+
+			tf::Pose ICP_Et_To_Etvirtual = Etm1_to_Et.inverse()*ICP_Etm1_to_Etvirtual;
+			tf::Pose ICP_Vtm1_To_Vt = Vtm1_to_Etvirtual*ICP_Et_To_Etvirtual.inverse()*Vt_to_Et.inverse();
+
+			double vehicle_delta_x = ICP_Vtm1_To_Vt.getOrigin().getX();
+			double vehicle_delta_y = ICP_Vtm1_To_Vt.getOrigin().getY();
+			double vehicle_delta_yaw = tf::getYaw(ICP_Vtm1_To_Vt.getRotation());
+			cout<<"vehicle motion: "<<vehicle_delta_x<<","<<vehicle_delta_y<<","<<vehicle_delta_yaw<<endl;
 		}
 	}
 
@@ -273,19 +332,14 @@ namespace mrpt{
 		tf::Pose lidarTFPose;
 		tf::poseMsgToTF(lidar_pose, lidarTFPose);
 
-		//Found a bug here: inverse tf should have opposite yaw angle, right? But ROS gives the same sign;
-		tf::Pose lidarToOdom = lidarTFPose.inverse();
-		cout<<lidarTFPose.getOrigin().getX()<<","<<lidarTFPose.getOrigin().getY()<<","<<tf::getYaw(lidarTFPose.getRotation())<<endl;
-		cout<<lidarToOdom.getOrigin().getX()<<","<<lidarToOdom.getOrigin().getY()<<","<<tf::getYaw(lidarToOdom.getRotation())<<endl;
-
 		geometry_msgs::Pose temppose;
 		temppose.position.x=0;
 		temppose.position.y=0;
 		temppose.position.z=0;
-		temppose.orientation.x=1;
+		temppose.orientation.x=0;
 		temppose.orientation.y=0;
 		temppose.orientation.z=0;
-		temppose.orientation.w=0;
+		temppose.orientation.w=1;
 
 		for(size_t ip=0; ip<segment_pointcloud.points.size(); ip++)
 		{
@@ -295,7 +349,7 @@ namespace mrpt{
 			tf::Pose tempTfPose;
 			tf::poseMsgToTF(temppose, tempTfPose);
 
-			tf::Pose pointInlidar = lidarToOdom * tempTfPose;
+			tf::Pose pointInlidar = lidarTFPose.inverseTimes(tempTfPose);
 			geometry_msgs::Point32 pointtemp;
 			pointtemp.x=(float)pointInlidar.getOrigin().x();
 			pointtemp.y=(float)pointInlidar.getOrigin().y();
@@ -312,7 +366,7 @@ namespace mrpt{
 			scan.validRange[serial_tmp] = 1;
 			scan.scan[serial_tmp] = range_tmp;
 
-			cout<<"[x, y, angle, serial, range]"<<pointtemp.x<<","<<pointtemp.y<<","<<angle_tmp<<","<<serial_tmp<<","<<range_tmp<<"\t";
+			//cout<<"[x, y, angle, serial, range]"<<pointtemp.x<<","<<pointtemp.y<<","<<angle_tmp<<","<<serial_tmp<<","<<range_tmp<<"\t";
 		}
 	}
 };
