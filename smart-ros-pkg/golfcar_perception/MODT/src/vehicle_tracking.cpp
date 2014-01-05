@@ -31,10 +31,10 @@ namespace mrpt{
 
 			//chose the probe point at the last but two batch, which corresponds to the final batch in last measurement;
 			geometry_msgs::Point32 probe_point_tmp = cluster_tmp.segments[cluster_tmp.segments.end()-1];
-			for(size_t j=0; j<object_tracks.size(); j++)
+			for(size_t j=0; j<object_tracks_.size(); j++)
 			{
 				if(registered_to_history) break;
-				sensor_msgs::PointCloud &last_pointcloud = object_tracks[j].last_measurement.segments.back();
+				sensor_msgs::PointCloud &last_pointcloud = object_tracks_[j].last_measurement.segments.back();
 				for(size_t k=0; k<last_pointcloud.points.size(); k++)
 				{
 					geometry_msgs::Point32 &history_pt_tmp = last_pointcloud.points[k];
@@ -60,11 +60,20 @@ namespace mrpt{
 		}
 	}
 
+	//not consider merge-split issues here;
+
 	void vehicle_tracking::update_motionShape(const MODT::segment_pose_batches& batches, std::vector<std::pair<size_t, size_t> > &track_measure_pairs, std::vector<size_t> &unregistered_measurements)
 	{
 		//1st: update the associated tracks;
 		for(size_t i=0; i<track_measure_pairs.size(); i++)
 		{
+			size_t track_serial = track_measure_pairs[i].first;
+			size_t meas_serial	= track_measure_pairs[i].second;
+
+			model_free_track &track_tmp = object_tracks_[track_serial];
+			MODT::segment_pose_batch &lastbatch_tmp = track_tmp.last_measurement;
+			MODT::segment_pose_batch &incoming_meas_tmp = batches[meas_serial];
+
 
 		}
 

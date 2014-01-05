@@ -37,7 +37,7 @@ namespace mrpt{
 	     public:
 
     	//need a datatype to serve as the track history;
-		std::vector<model_free_track> object_tracks;
+		std::vector<model_free_track> object_tracks_;
 
     	ros::Subscriber segpose_batch_sub_;
     	vehicle_tracking();
