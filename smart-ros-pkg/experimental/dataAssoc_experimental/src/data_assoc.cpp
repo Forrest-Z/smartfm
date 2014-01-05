@@ -79,7 +79,7 @@ void data_assoc::increaseConfidence(int id)
 {
     for(size_t i=0; i < lPedInView.pd_vector.size(); i++)
     {
-        if(lPedInView.pd_vector[i].object_label == id) lPedInView.pd_vector[i].confidence+=0.01;
+        if(lPedInView.pd_vector[i].object_label == id) lPedInView.pd_vector[i].confidence+=0.2;
     }
 }
 
