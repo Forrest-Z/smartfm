@@ -5,6 +5,8 @@
 #include <sensing_on_road/pedestrian_laser_batch.h>
 #include <ped_momdp_sarsop/ped_local_frame_vector.h>
 #include <sensing_on_road/pedestrian_vision_batch.h>
+#include <fstream>
+#include <param.h>
 
 using namespace std;
 struct ped_transforms
@@ -18,13 +20,15 @@ class local_frame
 {
 public:
     local_frame();
-    ~local_frame(){};
+    ~local_frame();
 
 private:
     void publishTransform(const ros::TimerEvent& event);
     void pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr ped_batch);
     bool getObjectPose(string& target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
 	void PublishLocalFrames();
+	void loadFilter();
+	bool filtered(double,double);
     vector<ped_transforms> ped_transforms_;
     tf::TransformBroadcaster br_;
     tf::TransformListener tf_;
@@ -33,6 +37,8 @@ private:
     ros::Publisher local_pub_;
     string global_frame_;
     double threshold_, offsetx_, offsety_;
+	vector<pair<double,double>> path_record;
+	vector<pair<double,double>> object_filter;
 };
 
 local_frame::local_frame()
@@ -41,6 +47,7 @@ local_frame::local_frame()
     ped_sub_ = nh.subscribe("ped_data_assoc", 1, &local_frame::pedCallback, this);
     local_pub_ = nh.advertise<ped_momdp_sarsop::ped_local_frame_vector>("ped_local_frame_vector", 1);
 
+	loadFilter();
     ros::NodeHandle n("~");
     //n.param("global_frame", global_frame_, string("/odom"));
 	n.param("global_frame", global_frame_, string("/golfcart/map"));
@@ -50,11 +57,59 @@ local_frame::local_frame()
     timer_ = nh.createTimer(ros::Duration(0.01), &local_frame::publishTransform, this);
     ros::spin();
 }
+local_frame::~local_frame()
+{
+	cout<<"entering destructor"<<endl;
+	//write the path_record to the file
+	ofstream path_out("curr_real_path");
+	path_out<<path_record.size()<<endl;
+	double rln=ModelParams::map_rln;
+	for(int i=0;i<path_record.size();i++)
+	{
+		path_out<<int(path_record[i].first*rln)<<" "<<int(path_record[i].second*rln)<<endl;
+	}
+}
 
+
+/*
+double object_filter[20][20]={
+	{117.609802246,120.935005188},
+	{120.286,117.424}
+
+106.815246582,
+};*/
+void local_frame::loadFilter()
+{
+	double fx,fy;
+	ifstream fin("momdp_object_filter.data");
+	while(fin>>fx)
+	{
+		fin>>fy;
+		object_filter.push_back(make_pair(fx,fy));
+	}
+}
+bool local_frame::filtered(double x,double y)
+{
+	double fx,fy;
+	for (vector<pair<double,double>>::iterator it = object_filter.begin() ; it != object_filter.end(); ++it)
+	{
+		//if(fabs(x-object_filter[k][0])<0.3&&fabs(y-object_filter[k][1])<0.3)
+		fx=it->first;
+		fy=it->second;
+		if(fabs(x-fx)<0.3&&fabs(y-fy)<0.3)
+		{
+			//filterd
+			return true;
+		}
+	}
+	//cout<<"number of filter entry "<<ct<<endl;
+	return false;
+}	
 void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr ped_batch)
 {
   //cout<<"Pedcallback size of ped_batch="<<ped_batch->pd_vector.size()<<endl;
     ped_momdp_sarsop::ped_local_frame_vector plf_vector;
+	//cerr<<"start printing plf vector"<<endl;
     for(size_t i=0;i<ped_batch->pd_vector.size();i++)
     {
         //find if the transform is already available
@@ -72,11 +127,14 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
 
         }*/
         //if(matched)
+		//cout<<"ped batch size "<<ped_batch->pd_vector.size()<<endl;
+		//if(plf_vector.ped_local.size()>5) break;
 		if(true)
         {
             //transform found, just update the position
-            if(ped_batch->pd_vector[i].confidence > 0.1)
+            if(ped_batch->pd_vector[i].confidence > 0.01)
             {
+				
                 ped_momdp_sarsop::ped_local_frame plf;
                 plf.header.stamp = ped_batch->header.stamp;
 				/*
@@ -101,14 +159,19 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
                 plf.ped_pose.y = out_pose.getOrigin().getY();
                 plf.ped_pose.z = out_pose.getOrigin().getZ();
 
+				if(filtered(plf.ped_pose.x,plf.ped_pose.y))
+				{
+					continue;
+				}
                 //then update the robot pose with the same frame
                 in_pose.setIdentity();
-                in_pose.frame_id_ = "base_link";
+                in_pose.frame_id_ = "/golfcart/base_link";
                 if(!getObjectPose(plf.header.frame_id, in_pose, out_pose)) continue;
 
                 plf.rob_pose.x = out_pose.getOrigin().getX();
                 plf.rob_pose.y = out_pose.getOrigin().getY();
                 plf.rob_pose.z = out_pose.getOrigin().getZ();
+			//	cerr<<"plf "<<plf.ped_pose.x<<" "<<plf.ped_pose.y<<endl;
                 plf_vector.ped_local.push_back(plf);
                 //ped_transforms_[matched_ped].last_update = ped_batch->header.stamp;
             }
@@ -116,6 +179,8 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
         else
         {
 	    //if(ped_batch->pd_vector[i].confidence > threshold_/100)
+		//
+		/*
             {
 				ROS_INFO("New pedestrian received, creating new transform");
 				ROS_INFO("%d transformations", ped_transforms_.size());
@@ -134,10 +199,43 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
 				ped_tr.last_update = ped_batch->header.stamp;
 				ped_tr.transform = transform;
 				ped_transforms_.push_back(ped_tr);
-			}
+			}*/
+			//add exception for close pedestrians
+			/*
+			geometry_msgs::Point32 ped_point = ped_batch->pd_vector[i].cluster.centroid;
+			in_pose.setOrigin(tf::Vector3(ped_point.x, ped_point.y, ped_point.z));
+			if(!getObjectPose(plf.header.frame_id, in_pose, out_pose)) continue;
+			*/
         }
     }
     //finally publish all the transformed points
+	//uncomment the following to record the path 
+	/*
+	if(plf_vector.ped_local.size()>0)
+	{
+		cout<<"rob pose "<<plf_vector.ped_local[0].rob_pose.x<<" "<<plf_vector.ped_local[0].rob_pose.y<<endl;
+		if(path_record.size()==0)
+		{
+			double now_x,now_y;
+			now_x=plf_vector.ped_local[0].rob_pose.x;
+			now_y=plf_vector.ped_local[0].rob_pose.y;
+			path_record.push_back(make_pair(now_x,now_y));
+		}
+		else 
+		{
+			double last_x,last_y,now_x,now_y;
+			last_x=path_record[path_record.size()-1].first;
+			last_y=path_record[path_record.size()-1].second;
+			now_x=plf_vector.ped_local[0].rob_pose.x;
+			now_y=plf_vector.ped_local[0].rob_pose.y;
+			double dx=fabs(last_x-now_x);
+			double dy=fabs(last_y-now_y);
+			if(sqrt(dx*dx+dy*dy)>(1.0/ModelParams::path_rln)) //find the next record
+			{
+				path_record.push_back(make_pair(now_x,now_y));	
+			}
+		}
+	}*/
     local_pub_.publish(plf_vector);
 }
 bool local_frame::getObjectPose(string& target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const
@@ -197,6 +295,6 @@ int main(int argc, char** argv){
     local_frame *lf = new local_frame();
 	//PublishLocalFrames();   //this is for simulation
     //
-
+	delete lf;
     return 0;
 };

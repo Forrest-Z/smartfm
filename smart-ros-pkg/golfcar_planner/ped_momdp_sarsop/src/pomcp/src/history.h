@@ -90,7 +90,7 @@ public:
         for (int t = 0; t < History.size(); ++t)
         {
             ostr << "a=" << History[t]._Action <<  " ";
-            if (History[t]._Observation >= 0)
+            //if (History[t]._Observation >= 0)
                 ostr << "o=" << History[t]._Observation << " ";
         }
     }

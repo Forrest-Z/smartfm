@@ -44,7 +44,7 @@ public:
     ~MCTS();
 
     int SelectAction();
-    bool Update(int action, int observation, double reward, STATE*obs_state=0);
+    bool Update(int action, OBS_TYPE observation, double reward, STATE*obs_state=0);
 
     void UCTSearch();
     void RolloutSearch();

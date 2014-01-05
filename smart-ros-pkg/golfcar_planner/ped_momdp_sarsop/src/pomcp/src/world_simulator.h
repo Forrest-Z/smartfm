@@ -20,6 +20,10 @@ public:
 			cout<<"num ped in view "<<" "<<NumPedInView()<<endl;
 			cout<<"rob map size "<<window.rob_map.size()<<endl;
 		}
+		car.carPos=robPos=windowOrigin=0;	
+		car.w=world_map.global_plan[robPos][0];
+		car.h=world_map.global_plan[robPos][1];
+		velGlobal=1.0;
     }
 
 	void Init()
@@ -79,8 +83,8 @@ public:
 		int Y_SIZE=ModelParams::YSIZE;
 		GetCurrState();
 		OBS_T obs=0;// = state.Vel*(X_SIZE*Y_SIZE*rob_map.size())+state.RobPos.Y*(X_SIZE*Y_SIZE)+state.PedPos.X*Y_SIZE+state.PedPos.Y;
-		OBS_T robObs=curr_state.Vel+curr_state.RobPos.Y*3;
-		OBS_T robObsMax=3*ModelParams::RMMax;  //max length of the rob_map
+		OBS_T robObs=curr_state.Vel+curr_state.RobPos.Y*ModelParams::VEL_N;
+		OBS_T robObsMax=ModelParams::VEL_N*ModelParams::RMMax;  //max length of the rob_map
 		OBS_T pedObsMax=X_SIZE*Y_SIZE;
 		OBS_T pedObs=0;
 		//for(int i=0;i<state.PedPoses.size();i++)
@@ -241,9 +245,12 @@ public:
 
 	void ShiftWindow()
 	{
-		if(robPos-windowOrigin>=ModelParams::path_rln*5) 	  windowOrigin=robPos;
+		curr_obs=CalCurrObs();
+		if(robPos-windowOrigin>=ModelParams::path_rln*3) 	  windowOrigin=robPos;
+		Clean();
 		window.RollWindow(windowOrigin);
 		pedInView_list.clear();
+
 		for(int i=0;i<ped_list.size();i++)
 		{
 			if(ped_list[i].w==-1000&&ped_list[i].h==-1000)
@@ -272,7 +279,37 @@ public:
 				cout<<endl;
 			}
 		}
-
+		t_stamp++;
+		cout<<"time stamp "<<t_stamp<<endl;
+	}
+	void Clean()
+	{
+		vector<Pedestrian> ped_list_new;
+		//for(vector<Pedestrian>::iterator it=ped_list.begin();it!=ped_list.end();++it)
+		for(int i=0;i<ped_list.size();i++)
+		{
+			bool insert=true;
+			//for(vector<Pedestrian>::iterator it2=ped_list.begin();it2!=it;++it2)
+			int w1,h1;
+			w1=ped_list[i].w;
+			h1=ped_list[i].h;
+			for(int j=0;j<i;j++)
+			{
+				int w2,h2;
+				w2=ped_list[j].w;
+				h2=ped_list[j].h;
+				//if(abs(it->w-it2->w)<=1&&abs(it->h-it2->h)<=1)
+				if(abs(w1-w2)<=1&&abs(h1-h2)<=1)
+				{
+					insert=false;	
+					break;
+				}
+			}
+			if(t_stamp-ped_list[i].last_update>3) insert=false;
+			if(insert)
+				ped_list_new.push_back(ped_list[i]);
+		}
+		ped_list=ped_list_new;
 	}
 	void ShiftWindow(int pos)
 	{
@@ -311,13 +348,13 @@ public:
 		}
 		else if(rob_vel==1)
 		{
-			if(vel_p<0.8) robY+=ModelParams::path_rln;
-			else if(vel_p<0.9) robY+=2*ModelParams::path_rln;
+			if(vel_p<0.8) robY+=ModelParams::rln;
+			else if(vel_p<0.9) robY+=2*ModelParams::rln;
 		}
 		else
 		{
-			if(vel_p<0.8) robY+=2*ModelParams::path_rln;
-			else if(vel_p<0.9) robY+=ModelParams::path_rln;
+			if(vel_p<0.8) robY+=2*ModelParams::rln;
+			else if(vel_p<0.9) robY+=ModelParams::rln;
 		}
 
 		//if(robY>rob_map.size()-1) robY=rob_map.size()-1;
@@ -352,19 +389,19 @@ public:
 			}
 			else
 			{
-				robY+=ModelParams::path_rln;
+				robY+=ModelParams::rln;
 			}
 
 		}
 		else if(rob_vel==1)
 		{
-			if(vel_p<0.8) robY+=ModelParams::path_rln;
-			else if(vel_p<0.9) robY+=2*ModelParams::path_rln;
+			if(vel_p<0.8) robY+=ModelParams::rln;
+			else if(vel_p<0.9) robY+=2*ModelParams::rln;
 		}
 		else
 		{
-			if(vel_p<0.8) robY+=2*ModelParams::path_rln;
-			else if(vel_p<0.9) robY+=ModelParams::path_rln;
+			if(vel_p<0.8) robY+=2*ModelParams::rln;
+			else if(vel_p<0.9) robY+=ModelParams::rln;
 		}
 
 		//if(robY>rob_map.size()-1) robY=rob_map.size()-1;
@@ -455,6 +492,7 @@ public:
 	void UpdatePedPoseReal(Pedestrian ped)
 	{
 		int i;
+		cout<<"ped pose in simulator"<<endl;
 		for( i=0;i<ped_list.size();i++)
 		{
 			if(ped_list[i].id==ped.id)
@@ -462,13 +500,21 @@ public:
 				//found the corresponding ped,update the pose
 				ped_list[i].w=ped.w;
 				ped_list[i].h=ped.h;
+				ped_list[i].last_update=t_stamp;
 				break;
 			}
+			if(abs(ped_list[i].w-ped.w)<=1&&abs(ped_list[i].h-ped.h)<=1)   //overladp 
+				return;
+			cout<<ped_list[i].w<<" "<<ped_list[i].h<<endl;
 		}
 		if(i==ped_list.size())   //not found, new ped
 		{
+			cout<<"add"<<endl;
+			ped.last_update=t_stamp;
 			ped_list.push_back(ped);
+
 		}
+		cout<<"this ped "<<ped.w<<" "<<ped.h<<" "<<ped.id<<endl;
 	}
 
 	void UpdateRobPoseReal(Car world_car)
@@ -476,7 +522,7 @@ public:
 		//need to find the closest point in the pre-defined path
 		int next=robPos-1;
 		int next_diff=10000;
-		for(int i=robPos;i<world_map.pathLength&&i<robPos+ModelParams::rln;i++)
+		for(int i=robPos;i<world_map.pathLength&&i<robPos+ModelParams::path_rln;i++)
 		{
 			int curr_diff=abs(world_map.global_plan[i][0]-world_car.w)+abs(world_map.global_plan[i][1]-world_car.h);
 			if(curr_diff<next_diff)
@@ -488,6 +534,7 @@ public:
 		robPos=next;
 		car.w=world_map.global_plan[robPos][0];
 		car.h=world_map.global_plan[robPos][1];
+		cout<<"real rob pos"<<robPos<<endl;
 	}
 	void UpdateVelReal(double vel)
 	{
@@ -517,8 +564,15 @@ public:
 	PedestrianState GetCurrState()
 	{
 		int x,y;
+		cout<<"rob pos "<<robPos<<endl;
+		
 		window.GlobalToLocal(world_map.global_plan[robPos][0],world_map.global_plan[robPos][1],x,y);
-		if(ModelParams::debug) cout<<"rob pos global "<<world_map.global_plan[robPos][0]<<" "<<world_map.global_plan[robPos][1]<<endl;
+		if(ModelParams::debug)  {
+			cout<<"rob pos global "<<world_map.global_plan[robPos][0]<<" "<<world_map.global_plan[robPos][1]<<endl;
+			cout<<"rob pos local "<<x<<" "<<y<<endl;
+		}
+
+
 		int i;
 		for(i=0;i<window.rob_map.size();i++)
 		{
@@ -533,6 +587,8 @@ public:
 		{
 			int ped_w,ped_h;
 			window.GlobalToLocal(ped_list[pedInView_list[i]].w,ped_list[pedInView_list[i]].h,ped_w,ped_h);
+			cout<<"global ped x y "<<ped_list[pedInView_list[i]].w<<" "<<ped_list[pedInView_list[i]].h<<endl;
+			cout<<"local ped x y "<<ped_w<<" "<<ped_h<<endl;
 			if(ped_w<0) ped_w=0;
 			if(ped_w>ModelParams::XSIZE-1) ped_w=ModelParams::XSIZE-1;
 			if(ped_h<0) ped_h=0;
@@ -540,10 +596,34 @@ public:
 			curr_state.PedPoses[i].first.X=ped_w;
 		    curr_state.PedPoses[i].first.Y=ped_h;	
 			curr_state.PedPoses[i].second=ped_list[pedInView_list[i]].goal;
-			curr_state.PedPoses[i].third=pedInView_list[i];
+			//curr_state.PedPoses[i].third=pedInView_list[i];
+			curr_state.PedPoses[i].third=ped_list[pedInView_list[i]].id;
 		}
 		curr_state.num=pedInView_list.size();
+
+		/*
+		if(velGlobal<0.5)
+		{
+			curr_state.Vel=0;
+		}
+		else if(velGlobal<1.5)
+		{
+			curr_state.Vel=1;
+		}
+		else 
+		{
+			curr_state.Vel=2;
+		}
 		curr_state.Vel=velGlobal;
+		*/
+		double delta=(ModelParams::vel_levels[ModelParams::VEL_N-1]-ModelParams::vel_levels[0])/ModelParams::VEL_N;
+		for(int i=0;i<ModelParams::VEL_N;i++)
+		{
+			if(fabs(ModelParams::vel_levels[i]-velGlobal)<=delta/2)  {
+				curr_state.Vel=i;
+				break;
+			}
+		}
 		return curr_state;
 	}
 	

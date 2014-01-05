@@ -36,6 +36,8 @@
 #include <geometry_msgs/PoseArray.h>
 #include "pedestrian_changelane.h"
 #include "mcts.h"
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 
 using namespace std;
 
@@ -73,7 +75,7 @@ class ped_momdp
 public:
     vector<PED_MOMDP> lPedInView;
 
-    ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh);
+    ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh,WorldSimulator *);
     
     ~ped_momdp();
     
@@ -86,7 +88,9 @@ public:
     void updateSteerAnglePublishSpeed(geometry_msgs::Twist speed);
 	
 	//void simLoop();
-	//void publishROSState();
+	void publishROSState();
+	void publishBelief();
+	void publishMarker(int id,vector<double> belief);
 
     //vector<Executer*> Executers; 
 	//WorldSimulator world;
@@ -97,6 +101,7 @@ public:
 	
 	//void initSimulator();
 	void initRealSimulator();
+	void momdpInit();
 	//void updatePedPoses();
 	//void updateObsStates();
 	//void clean_momdp_problem_sim();
@@ -104,8 +109,10 @@ public:
 	ros::Publisher window_pub;
 	ros::Publisher car_pub;
 	ros::Publisher pa_pub;
+	ros::Publisher markers_pubs[ModelParams::N_PED_IN];
 
 private:
+	double control_freq;
 	int safeAction;
     int X_SIZE, Y_SIZE;
     double dX, dY;

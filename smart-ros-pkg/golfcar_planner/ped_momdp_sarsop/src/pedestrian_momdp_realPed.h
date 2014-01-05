@@ -19,11 +19,13 @@ public:
     void speedCallback(nav_msgs::Odometry odo);
     void pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector);   
     void moveSpeedCallback(geometry_msgs::Twist speed);
-
+	void publishPath();
     ros::Subscriber speedSub_, pedSub_, scanSub_, move_base_speed_;
+	ros::Publisher pc_pub,path_pub,goal_pub;
     ped_momdp* momdp;
 
 	WorldSimulator RealWorld;
+	bool pathPublished;
 };
 
 #endif /* PEDESTRIAN_MOMDP_H_ */

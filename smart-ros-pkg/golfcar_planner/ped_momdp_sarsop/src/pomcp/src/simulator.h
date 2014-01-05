@@ -126,7 +126,7 @@ public:
     // Accessors
     void SetKnowledge(const KNOWLEDGE& knowledge) { Knowledge = knowledge; }
     int GetNumActions() const { return NumActions; }
-    int GetNumObservations() const { return NumObservations; }
+    OBS_TYPE GetNumObservations() const { return NumObservations; }
     bool IsEpisodic() const { return false; }
     double GetDiscount() const { return Discount; }
     double GetRewardRange() const { return RewardRange; }
@@ -146,7 +146,8 @@ public:
 	bool UseQmdp;
 protected:
 
-    int NumActions, NumObservations;
+    int NumActions;
+	OBS_TYPE NumObservations;
     double Discount, RewardRange;
     KNOWLEDGE Knowledge;
 };

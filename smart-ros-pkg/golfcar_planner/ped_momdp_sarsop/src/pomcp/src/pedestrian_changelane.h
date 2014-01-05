@@ -36,6 +36,7 @@ public:
 
 	double Heuristic(STATE& state);
 	void DisplayBeliefs(const BELIEF_STATE&, std::ostream&)const;
+	vector<vector<double> > GetBeliefVector(const BELIEF_STATE& beliefs) const;
 	void DisplayState(const STATE&, std::ostream&) const;
 	VNODE* MapBelief(VNODE*vn,VNODE*r,const HISTORY &h,int);
 	VNODE* Find(VNODE*v1,const HISTORY &h);

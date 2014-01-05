@@ -19,7 +19,7 @@ MCTS::PARAMS::PARAMS()
 :  
 	Verbose(0),
     MaxDepth(100),
-    NumSimulations(30000),
+    NumSimulations(200000),
     NumStartStates(10000),
     UseTransforms(false),
     NumTransforms(0),
@@ -124,7 +124,7 @@ MCTS::~MCTS()
 }
 
 int ro_count=0;
-bool MCTS::Update(int action, int observation, double reward, STATE*obs_state)
+bool MCTS::Update(int action, OBS_TYPE observation, double reward, STATE*obs_state)
 {		
 
 	//pedproblem_c->map_time=0;
@@ -151,7 +151,10 @@ bool MCTS::Update(int action, int observation, double reward, STATE*obs_state)
     QNODE& qnode = Root->Child(action);
     VNODE* vnode = qnode.Child(observation);
 
-
+	for(int i=0;i<10000;i++)
+	{
+		
+	}
 	//if(false)
 	if(Params.UseQmdp==true)
 	{
@@ -175,18 +178,44 @@ bool MCTS::Update(int action, int observation, double reward, STATE*obs_state)
 	else if (vnode)
     {
         beliefs.Copy(vnode->Beliefs(), Simulator);
+
     }
-    else
+	
+	int n=beliefs.GetNumSamples();
+	int trials=0;
+	while(n<Params.NumStartStates&&trials<10000)
+	{
+		OBS_TYPE obs;
+		double rwd_temp;
+		STATE* state = Root->Beliefs().CreateSample(Simulator);
+		Simulator.Step(*state,action,obs,rwd_temp);
+		if(obs==observation)   //found new consistent particle
+		{
+			beliefs.AddSample(state);	
+			n++;
+		}
+		trials++;
+	}
+
+
+   	if(beliefs.GetNumSamples()==0)
     {
       //  if (Params.Verbose >= 1)
             cout << "No matching node found,need to resample" << endl;
+			cerr << "No matching node found,need to resample" << endl;
+			/*
 			for (int i = 0; i < Params.NumStartStates; i++)
 				beliefs.AddSample(Simulator.CreateStartState());
 			cout<<"resampling finished"<<endl;
+			*/
+			//just keep the previous belief
+			//beliefs=Root->Beliefs();
+			beliefs.Copy(Root->Beliefs(),Simulator);
 			if(ModelParams::debug) 			Simulator.DisplayBeliefs(beliefs,cout);
     }
 
-	if(vnode)	Simulator.ModifyObsStates(beliefs,obs_state);
+	//if(vnode)	Simulator.ModifyObsStates(beliefs,obs_state);
+	Simulator.ModifyObsStates(beliefs,obs_state);
 	if (Params.Verbose >= 1)
 		cout << "Matched " << beliefs.GetNumSamples() << " states" << endl;
 
@@ -229,7 +258,7 @@ bool MCTS::Update(int action, int observation, double reward, STATE*obs_state)
     // Delete old tree and create new root
 
 	
-	//DisplayValue(20,cout);
+	DisplayValue(20,cout);
 
 
 	//cout<<"start free"<<endl;
@@ -270,7 +299,7 @@ bool MCTS::Update(int action, int observation, double reward, STATE*obs_state)
 	//cout<<"end expanding"<<endl;
     newRoot->Beliefs() = beliefs;
     Root = newRoot;
-	Rollout_Root=vnode;
+	//Rollout_Root=vnode;
 	
 
 

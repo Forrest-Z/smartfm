@@ -29,7 +29,7 @@ void MyWindow::UpdateRobMap(int windowOrigin)
 		cout<<rob_w<<" "<<rob_h<<endl;
 	}
 	//pt+=path_ModelParams::rln;
-	pt+=ModelParams::path_rln;  //here we cannot set the step size too small, in case of floating point error
+	pt+=ModelParams::rln;  //here we cannot set the step size too small, in case of floating point error
 	//pt+=10;
 	
 
@@ -59,7 +59,7 @@ void MyWindow::UpdateRobMap(int windowOrigin)
 			}
 		}
 		//pt+=path_ModelParams::rln;
-		pt+=ModelParams::path_rln;
+		pt+=ModelParams::rln;
 		//pt+=10;
 	}
 	if(ModelParams::debug) 	cout<<"rob map size "<<rob_map.size()<<endl;

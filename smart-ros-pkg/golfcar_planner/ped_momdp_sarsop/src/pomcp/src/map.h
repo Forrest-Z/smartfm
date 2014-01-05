@@ -28,8 +28,30 @@ public:
 	void InitGoalsUTown()
 	{
 		//LoadMap("utown_map2");
-		LoadPath("utown_path2");
+		LoadPath("real_path");
+		
+		goal_pos[3][0]=93*ModelParams::map_rln;
+		goal_pos[3][1]=177*ModelParams::map_rln;
+		goal_pos[2][0]=96*ModelParams::map_rln;
+		goal_pos[2][1]=195*ModelParams::map_rln;
+		goal_pos[0][0]=107*ModelParams::map_rln;
+		goal_pos[0][1]=166*ModelParams::map_rln;
+		goal_pos[1][0]=116*ModelParams::map_rln;
+		goal_pos[1][1]=183*ModelParams::map_rln;
+		
+		
+		/*
+		goal_pos[3][0]=106*ModelParams::map_rln;
+		goal_pos[3][1]=117*ModelParams::map_rln;
+		goal_pos[2][0]=110*ModelParams::map_rln;
+		goal_pos[2][1]=134*ModelParams::map_rln;
+		goal_pos[0][0]=126*ModelParams::map_rln;
+		goal_pos[0][1]=112*ModelParams::map_rln;
+		goal_pos[1][0]=129*ModelParams::map_rln;
+		goal_pos[1][1]=128*ModelParams::map_rln;
+		*/
 
+		/*
 		goal_pos[0][0]=40*ModelParams::rln;  //jing wu zhu guan
 		goal_pos[0][1]=21*ModelParams::rln;
 		goal_pos[1][0]=36*ModelParams::rln;  //workshop
@@ -55,7 +77,7 @@ public:
 		goal_pos[11][0]=47*ModelParams::rln;//Wendy's
 		goal_pos[11][1]=52*ModelParams::rln;
 		goal_pos[12][0]=74*ModelParams::rln;
-		goal_pos[12][1]=70*ModelParams::rln;
+		goal_pos[12][1]=70*ModelParams::rln;*/
 		/*
 		goal_pos[1][0]=122;     //create
 		goal_pos[1][1]=height-385;

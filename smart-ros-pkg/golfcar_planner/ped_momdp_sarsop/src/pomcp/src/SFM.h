@@ -31,6 +31,7 @@ public:
 	int w,h,goal;
 	int id;   //each pedestrian has a unique identity
 	int ts;
+	int last_update;
 	SFM*sfm;
 };
 

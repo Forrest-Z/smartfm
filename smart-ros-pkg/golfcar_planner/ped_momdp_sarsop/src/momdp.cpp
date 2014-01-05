@@ -1,6 +1,6 @@
 #include "momdp.h"
 
-ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh)
+ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh,WorldSimulator * rw)
 {
 	cout<<"momdp node start"<<endl;
     X_SIZE=4;
@@ -8,36 +8,95 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
     Y_SIZE=ModelParams::YSIZE;
     dY= 1;// step size in Y
     dX= 1;// step size in X
+	control_freq=frequency;
+
     momdp_problem_timeout = 5.0;
     stationary_ = stationary;
     use_sim_time_ = use_sim_time;
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("robot_0/cmd_vel",1);
-  	timer_ = nh.createTimer(ros::Duration(1.0/frequency), &ped_momdp::controlLoop, this);
+
+
+	char buf[100];
+	for(int i=0;i<ModelParams::N_PED_IN;i++) {
+		sprintf(buf,"pomdp_beliefs%d",i);
+		markers_pubs[i]=nh.advertise<visualization_msgs::MarkerArray>(buf,1);
+	}
     //initPedGoal();
     //policy_initialize(model_file, policy_file, simLen, simNum);
-	cout<<"here"<<endl;
+	safeAction=2;
+	momdp_speed_=0.0;
+	RealWorldPt=rw;
 	initRealSimulator();
+	cout<<"before entering controlloop"<<endl;
+	cout<<"frequency "<<frequency<<endl;
+  	timer_ = nh.createTimer(ros::Duration(1.0/frequency), &ped_momdp::controlLoop, this);
+
+	cout<<"here"<<endl;
+	//initRealSimulator();
 
 }
 
 
+void ped_momdp::momdpInit()
+{
+}
+/*for pomcp
 void ped_momdp::initRealSimulator()
 {
+
 	RealSimulator=new PEDESTRIAN_CHANGELANE(ModelParams::XSIZE,ModelParams::YSIZE);
 	RealSimulator->rob_map=RealWorldPt->window.rob_map;
 	RealSimulator->sfm=&RealWorldPt->sfm;
 
 	PedestrianState startState=RealWorldPt->GetCurrState();
 	RealSimulator->SetStartState(startState);
+	cout<<"Initial State"<<endl;
+	RealSimulator->DisplayState(startState,cout);
 
     MCTS::InitFastUCB(50000);
     MCTS::PARAMS SearchParams;
 	solver=new MCTS(*RealSimulator, SearchParams);
 	solver->root_list.push_back(solver->Root);
 
+	solver->pedproblem_c=RealSimulator;
 
+	//cout<<"Initial Belief"<<endl;
+	//RealSimulator->DisplayBeliefs(solver->Root->Beliefs(),cout);
+
+
+}*/
+
+
+/*for despot*/
+void ped_momdp::initRealSimulator()
+{
+
+	RealSimulator=new PEDESTRIAN_CHANGELANE(ModelParams::XSIZE,ModelParams::YSIZE);
+	RealSimulator->rob_map=RealWorldPt->window.rob_map;
+	RealSimulator->sfm=&RealWorldPt->sfm;
+
+	PedestrianState startState=RealWorldPt->GetCurrState();
+	RealSimulator->SetStartState(startState);
+	cout<<"Initial State"<<endl;
+	RealSimulator->DisplayState(startState,cout);
+
+    MCTS::InitFastUCB(50000);
+    MCTS::PARAMS SearchParams;
+	SearchParams.NumStartStates=500;
+	SearchParams.UseTime=true;
+	SearchParams.Verbose=1;
+	SearchParams.NumSimulations=50000;
+	solver=new MCTS(*RealSimulator, SearchParams);
+	solver->root_list.push_back(solver->Root);
+
+	solver->pedproblem_c=RealSimulator;
+	cout<<"Num Observations"<<RealSimulator->GetNumObservations()<<endl;
+
+	//cout<<"Initial Belief"<<endl;
+	//RealSimulator->DisplayBeliefs(solver->Root->Beliefs(),cout);
 }
+
 
 ped_momdp::~ped_momdp()
 {
@@ -63,7 +122,6 @@ bool ped_momdp::updatePedRobPose(ped_momdp_sarsop::ped_local_frame &ped)
 	//cout<<"updatePedRobPose"<<endl;
     for(int jj=0; jj< lPedInView.size(); jj++)
     {
-
         if(lPedInView[jj].id==ped.ped_id)
         {
             //given in ROS coordinate, convert to momdp compatible format
@@ -83,9 +141,7 @@ bool ped_momdp::updatePedRobPose(ped_momdp_sarsop::ped_local_frame &ped)
             ROS_DEBUG_STREAM( "Updated ped #" << ped.ped_id << " " <<lPedInView[jj].ped_pose.x<<' '<<lPedInView[jj].ped_pose.y);
 			lPedInView[jj].obss_updated=true;
             break;
-
         }
-
     }
     return foundPed;
 }
@@ -317,18 +373,20 @@ int ped_momdp::getActionBML(int i)
 	return qmdp_policies[lane]->getBestAction(*(bmlBelSt));
 }
 
+
+*/
 void ped_momdp::publishROSState()
 {
 	int w0,h0,w1,h1,w2,h2,w3,h3;
-	w0=world.window.w0;
-	h0=world.window.h0;
-	w1=world.window.w1;
-	h1=world.window.h1;
-	w2=world.window.w2;
-	h2=world.window.h2;
-	w3=world.window.w3;
-	h3=world.window.h3;
-	double rln=ModelParams::rln;
+	w0=RealWorldPt->window.w0;
+	h0=RealWorldPt->window.h0;
+	w1=RealWorldPt->window.w1;
+	h1=RealWorldPt->window.h1;
+	w2=RealWorldPt->window.w2;
+	h2=RealWorldPt->window.h2;
+	w3=RealWorldPt->window.w3;
+	h3=RealWorldPt->window.h3;
+	double rln=ModelParams::map_rln;
 
 	geometry_msgs::PolygonStamped plg;
 	geometry_msgs::Point32 pnt;
@@ -343,7 +401,7 @@ void ped_momdp::publishROSState()
 	pnt.x=(w3+0.0)/rln;pnt.y=(h3+0.0)/rln;pnt.z=0;
 	plg.polygon.points.push_back(pnt);
 	plg.header.stamp=ros::Time::now();
-	plg.header.frame_id="map";
+	plg.header.frame_id="/golfcart/map";
 	//plg.points[0].x=w0; plg.points[0].y=h0; plg.points[0].z=0;
 	//plg.points[1].x=w1; plg.points[1].y=h1; plg.points[1].z=0;
 	//plg.points[2].x=w2; plg.points[2].y=h2; plg.points[2].z=0;
@@ -354,21 +412,21 @@ void ped_momdp::publishROSState()
 	
 	geometry_msgs::PoseStamped pose_stamped;
 	pose_stamped.header.stamp=ros::Time::now();
-	pose_stamped.header.frame_id="map";
+	pose_stamped.header.frame_id="/golfcart/map";
 
-	pose_stamped.pose.position.x=(world.car.w+0.0)/rln;
-	pose_stamped.pose.position.y=(world.car.h+0.0)/rln;
+	pose_stamped.pose.position.x=(RealWorldPt->car.w+0.0)/rln;
+	pose_stamped.pose.position.y=(RealWorldPt->car.h+0.0)/rln;
 	pose_stamped.pose.orientation.w=1.0;
 	car_pub.publish(pose_stamped);
 	
 	geometry_msgs::PoseArray pA;
 	pA.header.stamp=ros::Time::now();
-	pA.header.frame_id="map";
-	for(int i=0;i<world.ped_list.size();i++)
+	pA.header.frame_id="/golfcart/map";
+	for(int i=0;i<RealWorldPt->ped_list.size();i++)
 	{
 		//GetCurrentState(ped_list[i]);
-		pose.position.x=(world.ped_list[i].w+0.0)/rln;
-		pose.position.y=(world.ped_list[i].h+0.0)/rln;
+		pose.position.x=(RealWorldPt->ped_list[i].w+0.0)/rln;
+		pose.position.y=(RealWorldPt->ped_list[i].h+0.0)/rln;
 		pose.orientation.w=1.0;
 		pA.poses.push_back(pose);
 		//ped_pubs[i].publish(pose);
@@ -377,8 +435,8 @@ void ped_momdp::publishROSState()
 	pa_pub.publish(pA);
 	window_pub.publish(plg);	
 	ros::Rate loop_rate(1);
-	loop_rate.sleep();
-}*/
+	//loop_rate.sleep();
+}
 
 /*
 int N_Ped=3;
@@ -515,25 +573,108 @@ void ped_momdp::simLoop()
 
 void ped_momdp::controlLoop(const ros::TimerEvent &e)
 {
-        if(RealWorldPt->ped_list.size()==0) return;   //no pedestrian detected yet
+	    cout<<"entering control loop"<<endl;
 		RealWorldPt->ShiftWindow();
+		publishROSState();
+		cout<<"here"<<endl;
+        if(RealWorldPt->NumPedInView()==0) return;   //no pedestrian detected yet
 		RealSimulator->rob_map=RealWorldPt->window.rob_map;
 		OBS_TYPE obs=RealWorldPt->GetCurrObs();
 
+		cout<<"world observation "<<obs<<endl;
 		PedestrianState ped_state=RealWorldPt->GetCurrState();
 		RealSimulator->SetStartState(ped_state);
+		RealSimulator->DisplayState(ped_state,cout);
 
 		double reward;
 		solver->Update(safeAction, obs, reward, &ped_state);
 	
-		////////////////////////////////////////////////////////////////////////
-		//
+		////////////////////////////////////////////////////////////////////
+		
 		safeAction=solver->SelectAction();
+		
+		cout<<"safe action "<<safeAction<<endl;
+
+		
         if(safeAction==0) momdp_speed_ += 0;
         else if(safeAction==1) momdp_speed_ += 1.0;
         else if(safeAction==2) momdp_speed_ -= 1.0;
         if(momdp_speed_<=0) momdp_speed_ = 0;
         if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
+		
+
+		cout<<"momdp_spped "<<momdp_speed_<<endl;
+		publishBelief();
+
+}
+
+double marker_colors[20][3] = {
+	{0.0,1.0,0.0},
+		{1.0,0.0,0.0},
+		{0.0,0.0,1.0},
+		{1.0,1.0,0.0},
+		{0.0,1.0,1.0},
+		{1.0,0.0,1.0},
+		{1.0,1.0,1.0}
+};
+void ped_momdp::publishMarker(int id,vector<double> belief)
+{
+	visualization_msgs::MarkerArray markers;
+	uint32_t shape = visualization_msgs::Marker::CUBE;
+
+	for(int i=0;i<belief.size();i++)
+	{
+		visualization_msgs::Marker marker;			
+		marker.header.frame_id="/golfcart/map";
+		marker.header.stamp=ros::Time::now();
+		marker.ns="basic_shapes";
+		marker.id=i;
+		marker.type=shape;
+		marker.action = visualization_msgs::Marker::ADD;
+
+		double px,py;
+		px=RealWorldPt->ped_list[RealWorldPt->pedInView_list[id]].w/ModelParams::map_rln;
+		py=RealWorldPt->ped_list[RealWorldPt->pedInView_list[id]].h/ModelParams::map_rln;
+		marker.pose.position.x = px+i*0.7;
+		marker.pose.position.y = py+belief[i]*2;
+		marker.pose.position.z = 0;
+		marker.pose.orientation.x = 0.0;
+		marker.pose.orientation.y = 0.0;
+		marker.pose.orientation.z = 0.0;
+		marker.pose.orientation.w = 1.0;
+		cout<<"belief entries "<<px<<" "<<py<<endl;
+		// Set the scale of the marker -- 1x1x1 here means 1m on a side
+		marker.scale.x = 0.5;
+		marker.scale.y = belief[i]*4;
+		if(marker.scale.y<0.2) marker.scale.y=0.2;
+		marker.scale.z = 0.2;
+		//
+		// Set the color -- be sure to set alpha to something non-zero!
+		//marker.color.r = 0.0f;
+		//marker.color.g = 1.0f;
+		//marker.color.b = 0.0f;
+		//marker.color.a = 1.0;
+		marker.color.r = marker_colors[i][0];
+        marker.color.g = marker_colors[i][1];
+		marker.color.b = marker_colors[i][2];//marker.lifetime = ros::Duration();
+		marker.color.a = 1.0;
+
+		ros::Duration d(1/control_freq);
+		marker.lifetime=d;
+		markers.markers.push_back(marker);
+	}
+	markers_pubs[id].publish(markers);
+
+}
+void ped_momdp::publishBelief()
+{
+	vector<vector<double> > ped_beliefs=RealSimulator->GetBeliefVector(solver->Root->Beliefs());	
+
+	cout<<"belief vector size "<<ped_beliefs.size()<<endl;
+	for(int i=0;i<ped_beliefs.size();i++)
+	{
+		publishMarker(i,ped_beliefs[i]);
+	}
 
 }
 /*

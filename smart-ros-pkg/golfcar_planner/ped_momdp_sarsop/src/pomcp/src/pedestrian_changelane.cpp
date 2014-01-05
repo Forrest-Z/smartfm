@@ -85,9 +85,10 @@ PEDESTRIAN_CHANGELANE::PEDESTRIAN_CHANGELANE(int x_size=4,int y_size=9):X_SIZE(x
 	if(ModelParams::goodrob==0)
 	{
 		double updateProb[3][3][3] /*action,vel,updated*/ = {
-		{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}},
-		{{0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.0, 0.0, 1.0}},
-		{{1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.5, 0.5, 0.0}}};
+			{{0.9, 0.1, 0.0}, {0.2, 0.7, 0.1}, {0.1, 0.1, 0.8}},
+			{{0.2, 0.7, 0.1}, {0.1, 0.1, 0.8}, {0.1, 0.1, 0.8}},
+			{{0.9, 0.1, 0.0}, {0.9, 0.1, 0.0}, {0.2, 0.7, 0.1}}};
+
 		memcpy(robotUpdateProb, updateProb, sizeof(updateProb));
 	}
 	else
@@ -124,8 +125,9 @@ void PEDESTRIAN_CHANGELANE::DisplayState(const STATE& state, std::ostream& ostr)
 	{
 		cout << "Ped Pos: " << ped_state.PedPoses[i].first.X << " " <<ped_state.PedPoses[i].first.Y <<endl;
 		cout << "Goal: " << ped_state.PedPoses[i].second << endl;
+		cout << "ID :  " <<ped_state.PedPoses[i].third<<endl;
 	}
-	ostr<<"Ped Vel : "<<ped_state.Vel<<endl;
+	ostr<<"Rob Vel : "<<ped_state.Vel<<endl;
 }
 
 
@@ -173,7 +175,41 @@ void PEDESTRIAN_CHANGELANE::FreeState(STATE* state) const
     MemoryPool.Free(ped_state);
 }
 
+vector<vector<double> > PEDESTRIAN_CHANGELANE::GetBeliefVector(const BELIEF_STATE& beliefs) const
+{
+	int goal_count[10][10]={0};
+	cout<<"Current Belief "<<endl;
+	cout<<"particles num "<<beliefs.GetNumSamples()<<endl;
+	//if(particles.size()==0) return ;
+	//cout<<"first particle "<<endl;
+	//PrintState(particles[0]->state);
 
+	PedestrianState*ped_state;
+	ped_state=safe_cast<PedestrianState*>(beliefs.GetSample(0));
+	if(beliefs.GetNumSamples()>0)
+		DisplayState(*ped_state,cout);
+	for(int i=0;i<beliefs.GetNumSamples();i++)
+	{
+		ped_state=safe_cast<PedestrianState*>(beliefs.GetSample(i));
+		for(int j=0;j<ped_state->num;j++)
+		{
+			goal_count[j][ped_state->PedPoses[j].second]++;
+		}
+	}
+
+
+	vector<vector<double> > belief_vec;
+	for(int j=0;j<ped_state->num;j++)
+	{
+		vector<double> belief;
+		for(int i=0;i<ModelParams::NGOAL;i++)
+		{	
+			belief.push_back((goal_count[j][i]+0.0)/beliefs.GetNumSamples());
+		}
+		belief_vec.push_back(belief);
+	}
+	return belief_vec;
+}
 
 void PEDESTRIAN_CHANGELANE::DisplayBeliefs(const BELIEF_STATE& beliefs, 
     std::ostream& ostr) const
@@ -676,14 +712,16 @@ bool PEDESTRIAN_CHANGELANE::Step(STATE& state,int action, OBS_TYPE & observation
 	observation=Observe(pedestrian_state);
 	if(debug)
 		cout<<"observation "<<observation<<endl;
+	rob_vel=0;
+	robY=0;
 	return false;
 }
 
 OBS_TYPE PEDESTRIAN_CHANGELANE::Observe(const PedestrianState state) const
 {
 	OBS_TYPE obs=0;// = state.Vel*(X_SIZE*Y_SIZE*rob_map.size())+state.RobPos.Y*(X_SIZE*Y_SIZE)+state.PedPos.X*Y_SIZE+state.PedPos.Y;
-	OBS_TYPE robObs=state.Vel+state.RobPos.Y*3;
-	OBS_TYPE robObsMax=3*ModelParams::RMMax;  //max length of the rob_map
+	OBS_TYPE robObs=state.Vel+state.RobPos.Y*ModelParams::VEL_N;
+	OBS_TYPE robObsMax=ModelParams::VEL_N*ModelParams::RMMax;  //max length of the rob_map
 	OBS_TYPE pedObsMax=ModelParams::XSIZE*ModelParams::YSIZE;
 	OBS_TYPE pedObs=0;
 	for(int i=0;i<state.num;i++)

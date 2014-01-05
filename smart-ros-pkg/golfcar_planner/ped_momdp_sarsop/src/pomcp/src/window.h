@@ -20,8 +20,10 @@ public:
 	}
 	void RollWindow(int wO)
 	{
+		cout<<"window Origin "<<wO<<endl;
 		wOrigin=wO;
-		int L=ModelParams::YSIZE*ModelParams::path_rln;
+		//int L=ModelParams::YSIZE*ModelParams::path_rln;
+		int L=3*ModelParams::path_rln;
 		int end=(wOrigin+L<map->pathLength)?(wOrigin+L):(map->pathLength-1);
 		double dh=map->global_plan[end][1]-map->global_plan[wOrigin][1];
 		double dw=map->global_plan[end][0]-map->global_plan[wOrigin][0];	
