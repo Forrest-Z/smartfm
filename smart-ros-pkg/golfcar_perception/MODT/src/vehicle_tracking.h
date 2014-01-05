@@ -19,12 +19,25 @@ using namespace std;
 
 namespace mrpt{
 	
+	class model_free_track
+	{
+		int object_id;
+		int type_label;
+		sensor_msgs::PointCloud contour_points;
+		std::vector<geometry_msgs::Point32> anchor_points;
+
+		double					moving_direction;
+		double 					velocity;
+
+		MODT::segment_pose_batch	last_measurement;
+	};
+
     class vehicle_tracking
     {
 	     public:
 
     	//need a datatype to serve as the track history;
-
+		std::vector<model_free_track> object_tracks;
 
     	ros::Subscriber segpose_batch_sub_;
     	vehicle_tracking();

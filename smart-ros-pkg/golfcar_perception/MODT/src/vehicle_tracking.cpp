@@ -16,13 +16,63 @@ namespace mrpt{
 		register_cluster2history(batches);
 	}
 
+	//Here just use a brutal-and-naive method to do data association;
+	//later will improve it with a more efficient and safe method;
 	void vehicle_tracking::register_cluster2history(const MODT::segment_pose_batches& batches)
 	{
+		//pair.first is track id, second is measure id;
+		std::vector<std::pair<size_t, size_t> > track_measure_pairs;
+		std::vector<size_t> unregistered_measurements;
 
+		for(size_t i=0; i<batches.clusters.size(); i++)
+		{
+			MODT::segment_pose_batch &cluster_tmp = batches.clusters[i];
+			bool registered_to_history = false;
+
+			//chose the probe point at the last but two batch, which corresponds to the final batch in last measurement;
+			geometry_msgs::Point32 probe_point_tmp = cluster_tmp.segments[cluster_tmp.segments.end()-1];
+			for(size_t j=0; j<object_tracks.size(); j++)
+			{
+				if(registered_to_history) break;
+				sensor_msgs::PointCloud &last_pointcloud = object_tracks[j].last_measurement.segments.back();
+				for(size_t k=0; k<last_pointcloud.points.size(); k++)
+				{
+					geometry_msgs::Point32 &history_pt_tmp = last_pointcloud.points[k];
+					float dist_between_pts = sqrtf((history_pt_tmp.x - probe_point_tmp.x)*(history_pt_tmp.x - probe_point_tmp.x)+(history_pt_tmp.y - probe_point_tmp.y)*(history_pt_tmp.y - probe_point_tmp.y));
+
+					//actually they should be the same point;
+					if(dist_between_pts< 0.01)
+					{
+						registered_to_history = true; break;
+					}
+				}
+			}
+
+			if(registered_to_history)
+			{
+				std::pair<size_t, size_t> pair_tmp = std::make_pair(j, i);
+				track_measure_pairs.push_back(pair_tmp);
+			}
+			else
+			{
+				unregistered_measurements.push_back(j);
+			}
+		}
 	}
 
-	void vehicle_tracking::update_motionShape()
+	void vehicle_tracking::update_motionShape(const MODT::segment_pose_batches& batches, std::vector<std::pair<size_t, size_t> > &track_measure_pairs, std::vector<size_t> &unregistered_measurements)
 	{
+		//1st: update the associated tracks;
+		for(size_t i=0; i<track_measure_pairs.size(); i++)
+		{
+
+		}
+
+		//2nd: initiate new unassociated tracks;
+
+
+		//3rd: delete old tracks;
+
 
 	}
 
