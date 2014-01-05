@@ -4,6 +4,6 @@
       <node name="amcl" pkg="amcl" type="amcl" respawn="false" output="screen">
 		<remap from="scan" to="front_top_scan"/>
       </node>
-      <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation_namespace.vcg" />
+	  <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation_namespace_pomdp.vcg" />
   </group>
 </launch>
