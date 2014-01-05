@@ -591,6 +591,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 	
 		////////////////////////////////////////////////////////////////////
 		
+		cout<<"finish belief update"<<endl;
 		safeAction=solver->SelectAction();
 		
 		cout<<"safe action "<<safeAction<<endl;

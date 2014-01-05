@@ -24,6 +24,7 @@ public:
 		car.w=world_map.global_plan[robPos][0];
 		car.h=world_map.global_plan[robPos][1];
 		velGlobal=1.0;
+		t_stamp=0;
     }
 
 	void Init()
