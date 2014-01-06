@@ -39,20 +39,14 @@ namespace golfcar_vision{
 		base_frame_ = "base_link";
 		private_nh_.param("destination_frame_id", dest_frame_id_, std::string("base_link"));
 		cam_sub_ = it_.subscribeCamera("camera_front/image_raw", 1, &ipm::ImageCallBack, this);
-		ipm_pub_ = it_.advertise("/camera_front/image_ipm", 1);
-		binary_pub_ = it_.advertise("/camera_front/ipm_binary", 1);
+		ipm_pub_ = it_.advertise("camera_front/image_ipm", 1);
+		binary_pub_ = it_.advertise("camera_front/ipm_binary", 1);
 
 		//To visualize the image in the PointCloud way;
 		rbg_pub_ = nh_.advertise<PointCloudRGB>("pts_rgb", 10);
 
 		planeCoef_sub_ = nh_.subscribe("plane_coef", 10, &ipm::planeCoefCallback, this);
 		pub_init_ = false;
-
-		if(visualization_flag_)
-		{
-			cvNamedWindow("src_window");
-			cvNamedWindow("ipm_window");
-		}
 
 		//to accumulate the curb points (road_boundary);
 		private_nh_.param("curb_projection",  curb_projection_, false);
@@ -71,6 +65,13 @@ namespace golfcar_vision{
 
 		private_nh_.param("show_scale",    show_scale_,   		 1.0);
 		private_nh_.param("src_img_name", src_img_name_, std::string("camera_front"));
+		private_nh_.param("ipm_img_name", ipm_img_name_, std::string("camera_front_ipm"));
+
+		if(visualization_flag_)
+		{
+			cvNamedWindow(src_img_name_.c_str());
+			//cvNamedWindow(ipm_img_name_.c_str());
+		}
   }
 
   

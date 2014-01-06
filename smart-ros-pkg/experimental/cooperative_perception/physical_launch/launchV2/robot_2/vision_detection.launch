@@ -1,0 +1,17 @@
+<launch>
+    <node pkg="vision_lane_detection" type="ipm" name="ipm" ns="robot_2" output="screen">
+		<param name="image_transport" value="compressed"/>
+		<param name="visualization_flag" value="true"/>
+		<param name="svm_model_path" value="$(find vision_lane_detection)/data_and_model/scaled_20120726.model"/>
+		<param name="svm_scale_path" value="$(find vision_lane_detection)/data_and_model/range_20120726"/>
+		<param name="ipm_center_x" value="9.0"/>
+		<param name="ipm_center_y" value="0.0"/>
+		<param name="ipm_ROI_height" value="12.0"/>
+		<param name="ipm_ROI_near_width_" value="4.0"/>
+		<param name="ipm_ROI_far_width_" value="20.0"/>
+		<param name="use_odom_" value="false"/>
+		<param name="destination_frame_id" value="robot_2/base_link"/>
+		<param name="src_img_name" value="vehicle2_src"/>
+		<param name="show_scale" value="0.7"/>
+    </node>
+</launch>

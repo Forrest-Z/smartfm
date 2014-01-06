@@ -1,0 +1,16 @@
+<launch>
+  <node pkg="tf" type="static_transform_publisher" name="base_link_to_robot1_scan" args="1.45, 0.0, 1.39 0 0 0 /robot_1/base_link /robot_1/laser 10" />
+  <node name="hokuyo" pkg="hokuyo_node" type="hokuyo_node" respawn="false" output="screen" ns="robot_1">
+  
+    <!-- Starts up faster, but timestamps will be inaccurate. --> 
+    <param name="calibrate_time" type="bool" value="false"/> 
+    
+    <!-- Set the port to connect to here -->
+    <param name="port" type="string" value="/dev/ttyACM0"/> 
+  
+    <param name="intensity" type="bool" value="false"/>
+    <param name="frame_id" value="robot_1/laser"/>
+    <param name="min_ang" value="-1.3"/>
+    <param name="max_ang" value="1.3"/>
+  </node>
+</launch>

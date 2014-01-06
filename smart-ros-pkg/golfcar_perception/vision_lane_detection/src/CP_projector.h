@@ -50,6 +50,7 @@ namespace golfcar_vision{
 	tf::TransformListener tf_;
 	image_geometry::PinholeCameraModel cam_model_;
 
+	string EgoVehicle_baselink_ID_, FirstLeader_baselink_ID_, SecondLeader_baselink_ID_;
 	string vehicle_ID_;
 	string odom_frame_;
 	string vehicle0_dest_frame_, vehicle0_Hdest_frame_;

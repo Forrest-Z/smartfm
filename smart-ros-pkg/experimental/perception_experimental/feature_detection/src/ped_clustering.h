@@ -7,21 +7,21 @@
 
 #include <ros/ros.h>
 
-#include <pcl16/ModelCoefficients.h>
-#include <pcl16/point_types.h>
-#include <pcl16/io/pcd_io.h>
-#include <pcl16/features/normal_3d.h>
-#include <pcl16/filters/extract_indices.h>
-#include <pcl16/filters/voxel_grid.h>
-#include <pcl16/kdtree/kdtree.h>
-#include <pcl16/sample_consensus/method_types.h>
-#include <pcl16/sample_consensus/model_types.h>
-#include <pcl16/segmentation/sac_segmentation.h>
-#include <pcl16/segmentation/extract_clusters.h>
-//#include <pcl16/segmentation/extract_clusters.h>
-#include <pcl16/common/common.h>
-#include <pcl16/common/pca.h>
-#include <pcl16/octree/octree_search.h>
+#include <pcl/ModelCoefficients.h>
+#include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/segmentation/extract_clusters.h>
+//#include <pcl/segmentation/extract_clusters.h>
+#include <pcl/common/common.h>
+#include <pcl/common/pca.h>
+#include <pcl/octree/octree_search.h>
 #include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <fmutil/fm_math.h>
@@ -40,7 +40,7 @@
 //#include <octomap_msgs/GetOctomap.h>
 //#include <octomap_msgs/OctomapBinary.h>
 //#include <octomap/octomap.h>
-#include <pcl16/filters/radius_outlier_removal.h>
+#include <pcl/filters/radius_outlier_removal.h>
 
 #include "read_svg.h"
 #include "pnpoly.h"
@@ -55,13 +55,13 @@ private:
     void scanCallback(const sensor_msgs::PointCloud2ConstPtr& pc2);
     void clustering(const sensor_msgs::PointCloud2& pc2, sensor_msgs::PointCloud &ped_poi,
                     double tolerance, int minSize, int maxSize, bool publish);
-    void filterLines(pcl16::PointCloud<pcl16::PointXYZ>::Ptr cloud_in, pcl16::PointCloud<pcl16::PointXYZ>& cloud_out);
-    void extractCluster(pcl16::PointCloud<pcl16::PointXYZ>::Ptr cloud_filtered, std::vector<pcl16::PointIndices>& cluster_indices,
+    void filterLines(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in, pcl::PointCloud<pcl::PointXYZ>& cloud_out);
+    void extractCluster(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered, std::vector<pcl::PointIndices>& cluster_indices,
                         double clusterTolerance, int minSize,int maxSize);
     void laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in);
     //void filterPriorMap(octomap::OcTree& priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub_, double threshold);
-    //void octomapTreeToPCLoctree(octomap_msgs::OctomapBinary& octomap, pcl16::octree::OctreePointCloudSearch<pcl16::PointXYZ>* pcl_octree);
-    //void filterPCLOctreeNN(pcl16::octree::OctreePointCloudSearch<pcl16::PointXYZ> &priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub_, double threshold);
+    //void octomapTreeToPCLoctree(octomap_msgs::OctomapBinary& octomap, pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>* pcl_octree);
+    //void filterPCLOctreeNN(pcl::octree::OctreePointCloudSearch<pcl::PointXYZ> &priorMap, sensor_msgs::PointCloud& pc_in, sensor_msgs::PointCloud& pc_out, ros::Publisher& pub_, double threshold);
     message_filters::Subscriber<sensor_msgs::PointCloud2> cloud_sub_;
     message_filters::Subscriber<sensor_msgs::LaserScan> laser_sub_;
     ros::Publisher cloud_pub_, filter_pub_, after_line_filter_pub_, after_prior_filter_pub_;
@@ -77,7 +77,7 @@ private:
     bool bounding_boxfilter_, line_filter_;
     bool sequential_clustering_, use_octomap_, use_boundary_;
     //octomap::OcTree* global_octMap;
-    //pcl16::octree::OctreePointCloudSearch<pcl16::PointXYZ>* global_pclOctree_;
+    //pcl::octree::OctreePointCloudSearch<pcl::PointXYZ>* global_pclOctree_;
     void getOctomap();
     ros::NodeHandle nh;
 

@@ -66,6 +66,7 @@ class compressed_scan_segment
 	//raw information;
 	vector<int> serial_in_scan;
 	vector<geometry_msgs::Point32> rawPoints;
+	vector<geometry_msgs::Point32> odomPoints;
 	vector<float> rawIntensities;
 
 	//compressed information;
@@ -187,5 +188,8 @@ class object_cluster_segments
 	int object_type;
 	int contour_serial;
 	vector <geometry_msgs::Pose> pose_InLatestCoord_vector;
+	vector <geometry_msgs::Pose> pose_InOdom_vector;
 	vector <compressed_scan_segment> scan_segment_batch;
+
+	float x, y, thetha, v, omega;
 };

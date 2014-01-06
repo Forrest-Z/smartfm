@@ -1,0 +1,2 @@
+1. remember to update your src/svm.cpp svm.h file here with the new version where you train your model;
+2. do not leave identical value features (meaning the feature will always choose the same value);
