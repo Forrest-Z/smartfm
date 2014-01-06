@@ -147,9 +147,7 @@ namespace mrpt{
 			//the first anchor point;
 			new_track_tmp.anchor_points.push_back(centroid_tmp);
 			new_track_tmp.update_time = incoming_meas_tmp.segments.back().header.stamp;
-
-
-
+			calc_motionshape(new_track_tmp);
 
 			object_tracks_.push_back(new_track_tmp);
 			object_total_id_++;
@@ -391,16 +389,154 @@ namespace mrpt{
 	//do grid search;
 	void vehicle_tracking::calc_motionshape(model_free_track &track)
 	{
-		//grids: velocity(5), thetha(5), omega(5);
+		ROS_INFO("calc1");
 
+		sensor_msgs::PointCloud oldest_segment = track.last_measurement.segments.front();
+		sensor_msgs::PointCloud newest_segment = track.last_measurement.segments.back();
+		double time_diff = (newest_segment.header.stamp - oldest_segment.header.stamp).toSec();
+		assert(time_diff>DBL_MIN);
+
+		std::vector<geometry_msgs::Point32> centroid_position;
+		geometry_msgs::Point32 centroid_tmp;
+		centroid_tmp.x = 0.0;
+		centroid_tmp.y = 0.0;
+		centroid_tmp.z = 0.0;
+		for(size_t k=0; k<oldest_segment.points.size(); k++)
+		{
+			centroid_tmp.x = centroid_tmp.x + oldest_segment.points[k].x;
+			centroid_tmp.y = centroid_tmp.y + oldest_segment.points[k].y;
+		}
+		centroid_tmp.x = centroid_tmp.x/(float)oldest_segment.points.size();
+		centroid_tmp.y = centroid_tmp.y/(float)oldest_segment.points.size();
+		centroid_position.push_back(centroid_tmp);
+
+		centroid_tmp.x = 0.0;
+		centroid_tmp.y = 0.0;
+		centroid_tmp.z = 0.0;
+		for(size_t k=0; k<newest_segment.points.size(); k++)
+		{
+			centroid_tmp.x = centroid_tmp.x + newest_segment.points[k].x;
+			centroid_tmp.y = centroid_tmp.y + newest_segment.points[k].y;
+		}
+		centroid_tmp.x = centroid_tmp.x/(float)newest_segment.points.size();
+		centroid_tmp.y = centroid_tmp.y/(float)newest_segment.points.size();
+		centroid_position.push_back(centroid_tmp);
+
+		geometry_msgs::Point32 pt_prev=centroid_position.front();
+		geometry_msgs::Point32 pt_curr=centroid_position.back();
+		double delt_x = pt_curr.x - pt_prev.x;
+		double delt_y = pt_curr.y - pt_prev.y;
+		double initial_angle = atan2(delt_y, delt_x);
+		double initial_velocity = sqrt(delt_x*delt_x+delt_y*delt_y)/time_diff;
+
+		double velo_lower_bond = 0.7*initial_velocity;
+		double velo_upper_bond = 1.3*initial_velocity;
+		double velo_interval   = 0.1*initial_velocity;
+
+		double angle_lower_bond = initial_angle-M_PI/6.0;
+		double angle_upper_bond = initial_angle+M_PI/6.0;
+		double angle_interval   = 1.0/180.0*M_PI;
+
+		double omega_lower_bond = -M_PI/10.0;
+		double omega_upper_bond = +M_PI/10.0;
+		double omega_interval = 0.1;
+
+		double min_distance = DBL_MAX;
+		double optimal_angle, optimal_velo, optimal_omega;
+
+		for(double velo = velo_lower_bond; velo<velo_upper_bond; velo=velo+velo_interval)
+		{
+			for(double angle = angle_lower_bond; angle<angle_upper_bond; angle=angle+angle_interval)
+			{
+				for(double omega = omega_lower_bond; omega<omega_upper_bond; omega=omega+omega_interval)
+				{
+					double distance_tmp = distance_function(track.last_measurement, velo, angle, omega);
+					if(distance_tmp<min_distance)
+					{
+						min_distance =distance_tmp;
+						optimal_angle = angle;
+						optimal_velo = velo;
+						optimal_omega = omega;
+					}
+				}
+			}
+		}
+
+		ROS_INFO("calculated value: %lf, %lf, %lf", optimal_velo, optimal_angle, optimal_omega);
 	}
 
-	double 	vehicle_tracking::distance_function(double velocity, double thetha, double omega)
+	double vehicle_tracking::distance_function(MODT::segment_pose_batch &batch, double velocity, double thetha, double omega)
 	{
-		//1st step: transform the points into the same time stamp;
+		double total_distance = 0.0;
+		double angle_diff = 0.0;
+		//calculate nearest point distance between neighbouring segments;
+		for(size_t i=1; i<batch.segments.size(); i++)
+		{
+			sensor_msgs::PointCloud &previous_cloud = batch.segments[i-1];
+			sensor_msgs::PointCloud &this_cloud = batch.segments[i];
 
-		//2nd step: calculate the distance;
+			double time_diff = (this_cloud.header.stamp - previous_cloud.header.stamp).toSec();
+			double x_diff = velocity*time_diff*cos(thetha+angle_diff);
+			double y_diff = velocity*time_diff*sin(thetha+angle_diff);
+			angle_diff = angle_diff + omega*time_diff;
 
+			tf::Pose previous_to_current = tf::Transform(tf::Matrix3x3(tf::createQuaternionFromYaw(omega*time_diff)), tf::Vector3(tfScalar(x_diff), tfScalar(y_diff), tfScalar(0)));
+			tf::Pose odom_to_current = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(0.0), tfScalar(0.0), tfScalar(0)));
+			tf::Pose odom_to_previoud = odom_to_current*previous_to_current.inverse();
+
+			PointCloud pre_pcl, cur_pcl;
+			pre_pcl.points.clear();
+			cur_pcl.points.clear();
+			for(size_t j=0; j<previous_cloud.points.size(); j++)
+			{
+				geometry_msgs::Point32 &pt_tmp = previous_cloud.points[j];
+				geometry_msgs::Point32 output_tmp;
+				attached_points_transform(pt_tmp, output_tmp, odom_to_previoud, odom_to_current);
+
+				pcl::PointXYZ pclpt_tmp;
+				pclpt_tmp.x = output_tmp.x;
+				pclpt_tmp.y = output_tmp.y;
+				pclpt_tmp.z = 0.0;
+				pre_pcl.points.push_back(pclpt_tmp);
+			}
+
+			for(size_t j=0; j<this_cloud.points.size(); j++)
+			{
+				geometry_msgs::Point32 &pt_tmp = this_cloud.points[j];
+				pcl::PointXYZ pclpt_tmp;
+				pclpt_tmp.x = pt_tmp.x;
+				pclpt_tmp.y = pt_tmp.y;
+				pclpt_tmp.z = 0.0;
+				cur_pcl.points.push_back(pclpt_tmp);
+			}
+
+			if(pre_pcl.points.size()==0 || cur_pcl.points.size()==0) {ROS_WARN("no points?");return DBL_MAX;}
+
+			pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+			kdtree.setInputCloud (pre_pcl.makeShared());
+			int K = 1;
+
+			for(size_t j=0; j<cur_pcl.points.size(); j++)
+			{
+				//choose K nearest points, and add the edges into "edge_vector";
+				std::vector<int> pointIdxNKNSearch(K);
+				std::vector<float> pointNKNSquaredDistance(K);
+				pcl::PointXYZ searchPt_tmp = cur_pcl.points[j];
+
+				int num = kdtree.nearestKSearch (searchPt_tmp, K, pointIdxNKNSearch, pointNKNSquaredDistance);
+				assert(num == (int)pointIdxNKNSearch.size() && num == (int)pointNKNSquaredDistance.size());
+				float dist_tmp = pointNKNSquaredDistance.front();
+				total_distance = total_distance + likelihood_function(dist_tmp);
+			}
+		}
+
+		return total_distance;
+	}
+
+	double vehicle_tracking::likelihood_function(double distance)
+	{
+		double sigma = 0.2;
+		return std::exp(-distance*distance/(2*sigma*sigma));
 	}
 };
 

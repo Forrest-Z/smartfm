@@ -7,6 +7,12 @@
 #include "MODT/segment_pose_batches.h"
 #include <mrpt/slam.h>
 #include <tf/transform_broadcaster.h>
+
+#include "pcl/point_cloud.h"
+#include "pcl_ros/point_cloud.h"
+#include "pcl/point_types.h"
+#include "pcl/ros/conversions.h"
+#include "pcl/kdtree/kdtree_flann.h"
 /*
  * Pay attention here to remove irrelavant header files from ros;
  * It turns out that some header files will mess up the mrpt compilation;
@@ -16,6 +22,8 @@ using namespace mrpt;
 using namespace mrpt::utils;
 using namespace mrpt::slam;
 using namespace std;
+
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 namespace mrpt{
 	
@@ -67,7 +75,8 @@ namespace mrpt{
 		void tracks_visualization();
 
 		void calc_motionshape(model_free_track &track);
-		double 	distance_function(double velocity, double thetha, double omega);
+		double distance_function(MODT::segment_pose_batch &batch, double velocity, double thetha, double omega);
+		double likelihood_function(double distance);
     };
 };
 
