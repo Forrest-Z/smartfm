@@ -92,7 +92,7 @@ namespace mrpt{
 			//remember that object-attached coordinate can be arbitrarily defined, but "object transformation" in the odom frame will be always the same;
 			//it is the "object transformation" that really matters;
 			tf::Pose oldMeas_poseinOdom, newMeas_poseinOdom;
-			ICP_motion2shape(lastbatch_tmp, incoming_meas_tmp, oldMeas_poseinOdom, newMeas_poseinOdom);
+			ICP_motion2shape(track_tmp, lastbatch_tmp, incoming_meas_tmp, oldMeas_poseinOdom, newMeas_poseinOdom);
 
 			//transform "anchor points" and "contour points", and to visualize the results;
 			geometry_msgs::Point32 old_anchor_point = track_tmp.anchor_points.back();
@@ -168,12 +168,13 @@ namespace mrpt{
 		ROS_INFO("updated tracks: %ld; new tracks: %ld; deleted tracks: %ld; remained tracks: %ld", track_measure_pairs.size(), unregistered_measurements.size(), deleted_track_num, object_tracks_.size());
 	}
 
-	void vehicle_tracking::ICP_motion2shape(MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom )
+	void vehicle_tracking::ICP_motion2shape(model_free_track& track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom )
 	{
 		//1st step: for a single cluster, try to estimate its motion using ICP;
 		geometry_msgs::Pose old_pose = old_meas.ego_poses.back();
 		geometry_msgs::Pose new_pose = new_meas.ego_poses.back();
-		sensor_msgs::PointCloud old_segment = old_meas.segments.back();
+		//sensor_msgs::PointCloud old_segment = old_meas.segments.back();
+		sensor_msgs::PointCloud old_segment = track.contour_points;
 		sensor_msgs::PointCloud new_segment = new_meas.segments.back();
 
 		//please refer to my evernote 20140103 for more information;
@@ -245,13 +246,14 @@ namespace mrpt{
 		m1.insertObservation( &scan1 );
 		m2.insertObservation( &scan2 );
 
-		ICP.options.ICP_algorithm = icpClassic;
+		ICP.options.ICP_algorithm = icpLevenbergMarquardt;
 		ICP.options.maxIterations			= 100;
 		ICP.options.thresholdAng			= DEG2RAD(10.0f);
 		ICP.options.thresholdDist			= 0.75f;
 		ICP.options.ALFA					= 0.5f;
 		ICP.options.smallestThresholdDist	= 0.05f;
 		ICP.options.doRANSAC = false;
+		ICP.options.onlyClosestCorrespondences = false;
 		ICP.options.dumpToConsole();
 
 		//CPose2D		initialPose(0.0f,0.0f,(float)DEG2RAD(0.0f));
