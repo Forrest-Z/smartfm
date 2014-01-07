@@ -1,0 +1,24 @@
+<launch>
+  <node ns="golfcart" pkg="coop_map_merging" name="map_merging_optimize" output="screen" type="map_merging_optimize">
+    <remap from="scan_in" to="front_bottom_scan"/>
+    <remap from="vehicle_pose" to="/vehicle_pose"/>
+    <remap from="accumulated_pts" to="/accumulated_pts"/>
+    <param name="icp_base_frame_id" value="golfcart/base_link"/>
+    <param name="csm_base_frame_id" value="golfcart/base_link"/>
+    <param name="laser_base_frame_id" value="golfcart/base_link"/>
+    <param name="icp_vehicle_frame_id" value="icp_base_link"/>
+    <param name="csm_vehicle_frame_id" value="csm_base_link"/>
+    <param name="laser_detect_vehicle_frame_id" value="laser_base_link"/>
+  </node>
+  <node pkg="coop_map_merging" name="map_merging_optimize" type="map_merging_optimize">
+    <remap from="scan_in" to="front_bottom_scan"/>
+    <remap from="vehicle_pose" to="/golfcart2/vehicle_pose"/>
+    <remap from="accumulated_pts" to="/golfcart2/accumulated_pts"/>
+    <param name="icp_base_frame_id" value="icp_base_link"/>
+    <param name="csm_base_frame_id" value="csm_base_link"/>
+    <param name="laser_base_frame_id" value="laser_base_link"/>
+    <param name="icp_vehicle_frame_id" value="golfcart2/icp_base_link"/>
+    <param name="csm_vehicle_frame_id" value="golfcart2/csm_base_link"/>
+    <param name="laser_detect_vehicle_frame_id" value="golfcart2/laser_base_link"/>
+  </node>
+</launch>

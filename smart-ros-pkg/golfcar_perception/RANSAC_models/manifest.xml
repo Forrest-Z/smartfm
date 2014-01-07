@@ -1,0 +1,21 @@
+<package>
+	<description brief="RANSAC_models">
+
+	 RANSAC_models
+
+	</description>
+	<author>Jose Luis</author>
+	<license>BSD</license>
+	<review status="unreviewed" notes=""/>
+	<url>http://ros.org/wiki/RANSAC_models</url>
+	<depend package="roscpp"/>
+	<depend package="mrpt_libs"/>
+	<depend package="pcl"/>
+	<depend package="pcl_ros"/>
+	<export>
+		<cpp cflags="-I${prefix}/src" lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lRANSAC_models"/>
+  </export>
+
+</package>
+
+

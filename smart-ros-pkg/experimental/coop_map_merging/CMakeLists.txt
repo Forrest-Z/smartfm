@@ -35,3 +35,13 @@ rosbuild_add_executable(saving_map src/saving_map.cpp)
 
 #rosbuild_add_executable(test_mrpt_icp src/test_mrpt_icp.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
+
+rosbuild_add_executable(lidar_rolling_window src/lidar_rolling_window.cpp)
+rosbuild_link_boost(lidar_rolling_window signals)
+
+CUDA_ADD_LIBRARY(csm_lib src/csm_cuda/csm_lib.cu)
+rosbuild_add_executable(map_merging_optimize src/map_merging_optimize.cpp)
+rosbuild_link_boost(map_merging_optimize signals)
+target_link_libraries(map_merging_optimize csm_lib)
+
+rosbuild_add_executable(merging_quality_evaluation src/merging_quality_evaluation.cpp)

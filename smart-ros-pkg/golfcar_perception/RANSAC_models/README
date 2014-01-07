@@ -1,0 +1,4 @@
+------------20140101 am--------------
+Currently have some issues to compile the codes if build them as library;
+Now to use the ransac model, just include the model file ".hpp:;
+

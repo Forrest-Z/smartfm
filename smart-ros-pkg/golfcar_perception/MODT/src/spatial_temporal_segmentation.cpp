@@ -38,6 +38,7 @@
 #include <opencv/highgui.h>
 #include "DATMO_datatypes.h"
 #include "svm_classifier.h"
+#include "MODT/segment_pose_batches.h"
 
 using namespace std;
 using namespace ros;
@@ -75,6 +76,8 @@ private:
 	std::vector<double> get_vector(object_cluster_segments &object_cluster);
 
 	void classify_clusters();
+	void calc_rough_pose();
+	void calc_precise_pose();
 
 	void load_labeledScanMasks();
 	void visualize_labelled_scan(const sensor_msgs::LaserScan::ConstPtr& scan_in);
@@ -113,6 +116,11 @@ private:
 	double													speed_threshold_;
 
 	golfcar_ml::svm_classifier 								*DATMO_classifier_;
+
+	ros::Publisher											rough_pose_pub_;
+	geometry_msgs::PoseArray								rough_poses_;
+
+	ros::Publisher											segment_pose_batch_pub_;
 };
 
 DATMO::DATMO()
@@ -146,6 +154,8 @@ DATMO::DATMO()
 	erased_pcl_pub_				=   nh_.advertise<PointCloudRGB>("erased_pcl", 2);
 	vehicle_pcl_pub_			=   nh_.advertise<PointCloudRGB>("vehicle_pcl", 2);
 	debug_pcl_pub_				=   nh_.advertise<sensor_msgs::PointCloud>("debug_cloud", 2);
+	rough_pose_pub_				=   nh_.advertise<geometry_msgs::PoseArray>("rough_poses", 2);
+	segment_pose_batch_pub_		=   nh_.advertise<MODT::segment_pose_batches>("segment_pose_batches", 2);
 
     if(program_mode_==0)
     {
@@ -170,7 +180,7 @@ DATMO::DATMO()
 
 void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 {
-	ROS_INFO("scan callback %u ", verti_scan_in->header.seq);
+	cout<<verti_scan_in->header.seq <<","<<verti_scan_in->header.frame_id;
 	if(program_mode_==0)visualize_labelled_scan(verti_scan_in);
 
 	//make a local "baselink" copy to facilitate later feature extraction;
@@ -195,10 +205,10 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 	ident.pose.position.x=0;
 	ident.pose.position.y=0;
 	ident.pose.position.z=0;
-	ident.pose.orientation.x=1;
+	ident.pose.orientation.x=0;
 	ident.pose.orientation.y=0;
 	ident.pose.orientation.z=0;
-	ident.pose.orientation.w=0;
+	ident.pose.orientation.w=1;
 	try
 	{
 		this->tf_.transformPose(odom_frame_id_, ident, laser_pose_current_);
@@ -229,7 +239,6 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 			scan_vector_.erase(scan_vector_.begin(), scan_vector_.begin()+ 1);
 			baselink_cloud_vector_.erase(baselink_cloud_vector_.begin(), baselink_cloud_vector_.begin()+1);
 		}
-
 	}
 	ROS_INFO("scan callback finished");
 }
@@ -241,8 +250,16 @@ void DATMO::process_accumulated_data()
 	perform_prefiltering_movingEvidence();
 	construct_feature_vector();
 
-	if(program_mode_==0)save_training_data();
-	else classify_clusters();
+	if(program_mode_==0)
+	{
+		save_training_data();
+	}
+	else
+	{
+		classify_clusters();
+		calc_rough_pose();
+		calc_precise_pose();
+	}
 }
 
 void DATMO::graph_segmentation()
@@ -576,7 +593,7 @@ void DATMO::construct_feature_vector()
 	}
 	debug_pcl_pub_.publish(constructed_cloud);
 
-	vector<geometry_msgs::Pose> Pose_inLatest_vector;
+	vector<geometry_msgs::Pose> Pose_inLatest_vector, Pose_inOdom_vector;
 	tf::Pose odom_to_latestLIDAR;
 	tf::poseMsgToTF(laser_pose_vector_.back().pose, odom_to_latestLIDAR);
 
@@ -590,7 +607,7 @@ void DATMO::construct_feature_vector()
 		geometry_msgs::Pose pose_inLatest;
 		tf::poseTFToMsg(LIDAR_new_to_old, pose_inLatest);
 		Pose_inLatest_vector.push_back(pose_inLatest);
-		//cout<<"("<<pose_inLatest.position.x<<","<<pose_inLatest.position.y<<")"<<"\t";
+		Pose_inOdom_vector.push_back(laser_pose_vector_[i].pose);
 	}
 	//cout<<endl;
 
@@ -603,6 +620,7 @@ void DATMO::construct_feature_vector()
 			//pay attention to the sequence;
 			assert(j<Pose_inLatest_vector.size());
 			object_cluster_tmp.pose_InLatestCoord_vector.push_back(Pose_inLatest_vector[j]);
+			object_cluster_tmp.pose_InOdom_vector.push_back(Pose_inOdom_vector[j]);
 			//compress the scan_segment (in another sense to extract the feature vector of the scan segment);
 			object_cluster_tmp.scan_segment_batch[j].compress_scan();
 		}
@@ -672,7 +690,7 @@ void DATMO::save_training_data()
 
 void DATMO::classify_clusters()
 {
-	ROS_INFO("classify the derived data");
+	ROS_INFO("classify clusters");
 	PointCloudRGB vehicle_cloud;
 	vehicle_cloud.header = combined_pcl_.header;
 	vehicle_cloud.points.clear();
@@ -738,6 +756,93 @@ void DATMO::classify_clusters()
 		}
 	}
 	vehicle_pcl_pub_.publish(vehicle_cloud);
+}
+
+void DATMO::calc_rough_pose()
+{
+	ROS_INFO("calculate cluster pose");
+	rough_poses_.header = cloud_vector_.back().header;
+	rough_poses_.poses.clear();
+
+	for(size_t i=0; i<object_feature_vectors_.size(); i++)
+	{
+		object_cluster_segments &object_cluster_tmp =object_feature_vectors_[i];
+
+		if(object_cluster_tmp.object_type!=1)continue;
+		//1st, to calculate cluster speed v, and heading direction thetha;
+
+		//a: to calculate the centroids of clusters at different time stamps;
+		std::vector<geometry_msgs::Point32> centroid_position;
+		geometry_msgs::Point32 total_centroid_vis;
+		total_centroid_vis.x = 0.0; total_centroid_vis.y = 0.0; total_centroid_vis.z = 0.0;
+
+		size_t total_point_num=0;
+		for(size_t j=0; j<object_cluster_tmp.scan_segment_batch.size(); j++)
+		{
+			geometry_msgs::Point32 centroid_tmp;
+			centroid_tmp.x = 0.0;
+			centroid_tmp.y = 0.0;
+			centroid_tmp.z = 0.0;
+			for(size_t k=0; k<object_cluster_tmp.scan_segment_batch[j].odomPoints.size(); k++)
+			{
+				centroid_tmp.x = centroid_tmp.x + object_cluster_tmp.scan_segment_batch[j].odomPoints[k].x;
+				centroid_tmp.y = centroid_tmp.y + object_cluster_tmp.scan_segment_batch[j].odomPoints[k].y;
+				total_centroid_vis.x = total_centroid_vis.x + object_cluster_tmp.scan_segment_batch[j].odomPoints[k].x;
+				total_centroid_vis.y = total_centroid_vis.y + object_cluster_tmp.scan_segment_batch[j].odomPoints[k].y;
+			}
+			centroid_tmp.x = centroid_tmp.x/(float)object_cluster_tmp.scan_segment_batch[j].odomPoints.size();
+			centroid_tmp.y = centroid_tmp.y/(float)object_cluster_tmp.scan_segment_batch[j].odomPoints.size();
+			centroid_position.push_back(centroid_tmp);
+
+			total_point_num = total_point_num + object_cluster_tmp.scan_segment_batch[j].odomPoints.size();
+		}
+		total_centroid_vis.x = total_centroid_vis.x/(float)total_point_num;
+		total_centroid_vis.y = total_centroid_vis.y/(float)total_point_num;
+
+		//b: visualize the direction as "rough_pose";
+		float delt_x = centroid_position.back().x-centroid_position.front().x;
+		float delt_y = centroid_position.back().y-centroid_position.front().y;
+		float thetha = std::atan2(delt_y, delt_x);
+		ROS_INFO("centroid_position front: (%f, %f), back:(%f, %f), delt: (%f, %f), thetha: %f", centroid_position.front().x, centroid_position.front().y, centroid_position.back().x, centroid_position.back ().y, delt_x, delt_y, thetha );
+		tf::Pose pose_array;
+		pose_array.setOrigin( tf::Vector3(total_centroid_vis.x, total_centroid_vis.y, 0.0) );
+		pose_array.setRotation( tf::createQuaternionFromYaw(thetha) );
+		geometry_msgs::Pose pose_array_msg;
+		tf::poseTFToMsg(pose_array, pose_array_msg);
+		rough_poses_.poses.push_back(pose_array_msg);
+	}
+
+	rough_pose_pub_.publish(rough_poses_);
+}
+
+//Here only publish the segmen+pose batches, and will calculate the precise pose in another code;
+void DATMO::calc_precise_pose()
+{
+	MODT::segment_pose_batches extracted_batches;
+	extracted_batches.header = cloud_vector_.back().header;
+	for(size_t i=0; i<object_feature_vectors_.size(); i++)
+	{
+		object_cluster_segments &object_cluster_tmp =object_feature_vectors_[i];
+		if(object_cluster_tmp.object_type!=1)continue;
+		MODT::segment_pose_batch batch_tmp;
+		batch_tmp.object_label = object_cluster_tmp.object_type;
+
+		assert(object_cluster_tmp.scan_segment_batch.size() == object_cluster_tmp.pose_InLatestCoord_vector.size());
+		assert(object_cluster_tmp.scan_segment_batch.size() == cloud_vector_.size());
+		for(size_t j=0; j<object_cluster_tmp.scan_segment_batch.size(); j++)
+		{
+			batch_tmp.ego_poses.push_back(object_cluster_tmp.pose_InOdom_vector[j]);
+			sensor_msgs::PointCloud cloud_tmp;
+			cloud_tmp.header = cloud_vector_[j].header;
+			for(size_t k=0;k<object_cluster_tmp.scan_segment_batch[j].odomPoints.size();k++)
+			{
+				cloud_tmp.points.push_back(object_cluster_tmp.scan_segment_batch[j].odomPoints[k]);
+			}
+			batch_tmp.segments.push_back(cloud_tmp);
+		}
+		extracted_batches.clusters.push_back(batch_tmp);
+	}
+	segment_pose_batch_pub_.publish(extracted_batches);
 }
 
 std::vector<double> DATMO::get_vector(object_cluster_segments &object_cluster)

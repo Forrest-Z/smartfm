@@ -1,0 +1,13 @@
+The evaluation was done by the following steps:
+1. clean up all the tf from 3 seperate bag files
+2. Perform localization on all the bag files to obtain ground truth
+3. Combine into one bag files, RViz should be able to show a nice
+   output of all sensor streams with high accuracy
+4. Perform vehicle detection and disable tf broadcast
+   (Can be improved by renaming correct tf, right now it is taken
+    care by the mapOptimizer.launch)
+   Example: rosbag/20131205_coop/5pm_clean_bag/all_in_one_vehicle_detect.bag
+5. roscd cooperative_perception/physical_launch/launchV2/
+5. roslaunch odom_lidarAccumulate.launch
+6. roslaunch mapOptimizer.launch
+7. rosrun coop_map_merging merging_quality_evaluation 

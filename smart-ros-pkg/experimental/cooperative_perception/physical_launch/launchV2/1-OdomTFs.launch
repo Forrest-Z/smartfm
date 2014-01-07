@@ -64,7 +64,7 @@
     
     <group ns="/">     
       <node pkg="Launch_v2" type="static_transform_publisher_param" name="base_link_to_front_bottom_lidar">
-      		<param name="x" value="3.7"/>
+      		<param name="x" value="3.14"/>
 			<param name="z" value="0.335"/>
 			<param name="pitch" value="-0.015"/>
 			<param name="parent_frame_id" value="/base_link"/>
