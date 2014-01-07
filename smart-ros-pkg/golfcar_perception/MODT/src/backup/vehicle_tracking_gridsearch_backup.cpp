@@ -87,7 +87,6 @@ namespace mrpt{
 			MODT::segment_pose_batch &lastbatch_tmp = track_tmp.last_measurement;
 			MODT::segment_pose_batch &incoming_meas_tmp = batches.clusters[meas_serial];
 
-			/*
 			//calculate the transformation between two measurement;
 
 			//remember that object-attached coordinate can be arbitrarily defined, but "object transformation" in the odom frame will be always the same;
@@ -116,13 +115,9 @@ namespace mrpt{
 				transformed_contour.points.push_back(incoming_meas_tmp.segments.back().points[j]);
 			}
 			track_tmp.contour_points = transformed_contour;
-			*/
 
 			track_tmp.last_measurement = incoming_meas_tmp;
-
 			track_tmp.update_time = incoming_meas_tmp.segments.back().header.stamp;
-			calc_motionshape(track_tmp);
-
 		}
 
 		//2nd: initiate new unassociated tracks;
@@ -153,6 +148,7 @@ namespace mrpt{
 			new_track_tmp.anchor_points.push_back(centroid_tmp);
 			new_track_tmp.update_time = incoming_meas_tmp.segments.back().header.stamp;
 			calc_motionshape(new_track_tmp);
+
 			object_tracks_.push_back(new_track_tmp);
 			object_total_id_++;
 		}
@@ -348,12 +344,12 @@ namespace mrpt{
 	}
 
 	//points attached to vehicle will be transformed together into new places in the "odom" frame;
-	void vehicle_tracking::attached_points_transform(geometry_msgs::Point32& pt_input, geometry_msgs::Point32& pt_output, tf::Pose& srcMeas_poseinOdom, tf::Pose& destMeas_poseinOdom)
+	void vehicle_tracking::attached_points_transform(geometry_msgs::Point32& pt_input, geometry_msgs::Point32& pt_output, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom)
 	{
 		tf::Pose ptPose_inOdom, ptPose_inVehicle, ptPose_inOdom_new;
 		ptPose_inOdom = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(pt_input.x), tfScalar(pt_input.y), tfScalar(0)));
-		ptPose_inVehicle = srcMeas_poseinOdom.inverse()*ptPose_inOdom;
-		ptPose_inOdom_new = destMeas_poseinOdom*ptPose_inVehicle;
+		ptPose_inVehicle = oldMeas_poseinOdom.inverse()*ptPose_inOdom;
+		ptPose_inOdom_new = newMeas_poseinOdom*ptPose_inVehicle;
 		pt_output.x = (float)ptPose_inOdom_new.getOrigin().getX();
 		pt_output.y = (float)ptPose_inOdom_new.getOrigin().getY();
 		pt_output.z = 0.0;
@@ -393,14 +389,13 @@ namespace mrpt{
 	//do grid search;
 	void vehicle_tracking::calc_motionshape(model_free_track &track)
 	{
-		fmutil::Stopwatch sw;
-		sw.start("prepare kdtree");
+		ROS_INFO("calc1");
 
-		//1st step: to calculate the initial conditions: initial_angle, initial_velocity, and initial_omega(takes 0.0);
 		sensor_msgs::PointCloud oldest_segment = track.last_measurement.segments.front();
 		sensor_msgs::PointCloud newest_segment = track.last_measurement.segments.back();
 		double time_diff = (newest_segment.header.stamp - oldest_segment.header.stamp).toSec();
 		assert(time_diff>DBL_MIN);
+
 		std::vector<geometry_msgs::Point32> centroid_position;
 		geometry_msgs::Point32 centroid_tmp;
 		centroid_tmp.x = 0.0;
@@ -434,36 +429,6 @@ namespace mrpt{
 		double initial_angle = atan2(delt_y, delt_x);
 		double initial_velocity = sqrt(delt_x*delt_x+delt_y*delt_y)/time_diff;
 
-		//2nd step: prepare the kdtrees serving as temporary template to compare with;
-		ROS_INFO("track.last_measurement.segments size %ld", track.last_measurement.segments.size()-1);
-		cout<<endl;
-		std::vector<pcl::KdTreeFLANN<pcl::PointXYZ> > kdtrees(track.last_measurement.segments.size()-1);
-		for(size_t i=0; (i+1)<track.last_measurement.segments.size(); i++)
-		{
-			PointCloud pre_pcl;
-			pre_pcl.points.clear();
-			sensor_msgs::PointCloud &previous_cloud = track.last_measurement.segments[i];
-			cout<<"i"<<previous_cloud.points.size()<<"\t";
-			for(size_t j=0; j<previous_cloud.points.size(); j++)
-			{
-				geometry_msgs::Point32 &pt_tmp = previous_cloud.points[j];
-				pcl::PointXYZ pclpt_tmp;
-				pclpt_tmp.x = pt_tmp.x;
-				pclpt_tmp.y = pt_tmp.y;
-				pclpt_tmp.z = 0.0;
-				pre_pcl.points.push_back(pclpt_tmp);
-			}
-			pcl::KdTreeFLANN<pcl::PointXYZ> &kdtree_tmp = kdtrees[i];
-			if(pre_pcl.points.size()==0)
-			{
-				ROS_WARN("no points");return;
-			}
-			kdtree_tmp.setInputCloud(pre_pcl.makeShared());
-		}
-		cout<<endl;
-		sw.end();
-
-		sw.start("grid search");
 		double velo_lower_bond = 0.7*initial_velocity;
 		double velo_upper_bond = 1.3*initial_velocity;
 		double velo_interval   = 0.1*initial_velocity;
@@ -485,7 +450,7 @@ namespace mrpt{
 			{
 				for(double omega = omega_lower_bond; omega<omega_upper_bond; omega=omega+omega_interval)
 				{
-					double distance_tmp = distance_function(track.last_measurement, kdtrees, velo, angle, omega);
+					double distance_tmp = distance_function(track.last_measurement, velo, angle, omega);
 					if(distance_tmp<min_distance)
 					{
 						min_distance =distance_tmp;
@@ -496,65 +461,69 @@ namespace mrpt{
 				}
 			}
 		}
-		ROS_INFO("optimal velo, angle, omega: %5f, %5f, %5f", optimal_velo, optimal_angle, optimal_omega);
-		sw.end();
+
+		ROS_INFO("calculated value: %lf, %lf, %lf", optimal_velo, optimal_angle, optimal_omega);
 	}
 
-	double vehicle_tracking::distance_function(MODT::segment_pose_batch &batch, std::vector<pcl::KdTreeFLANN<pcl::PointXYZ> > &kdtrees, double velocity, double thetha, double omega)
+	double vehicle_tracking::distance_function(MODT::segment_pose_batch &batch, double velocity, double thetha, double omega)
 	{
-		//1st step: calculate transformations between two consecutive segments;
-		std::vector<tf::Pose> prev_to_current_tfs;
-		double angle_prev = thetha;
-		double angle_curr = thetha;
-		for(size_t i=1; i<batch.segments.size(); i++)
-		{
-			sensor_msgs::PointCloud &previous_cloud = batch.segments[i-1];
-			sensor_msgs::PointCloud &current_cloud = batch.segments[i];
-			double time_diff = (current_cloud.header.stamp - previous_cloud.header.stamp).toSec();
-			double x_diff = velocity*time_diff*cos(angle_curr);
-			double y_diff = velocity*time_diff*sin(angle_curr);
-
-			angle_curr = angle_prev + omega*time_diff;
-			tf::Pose previous_to_current = tf::Transform(tf::Matrix3x3(tf::createQuaternionFromYaw(omega*time_diff)), tf::Vector3(tfScalar(x_diff), tfScalar(y_diff), tfScalar(0)));
-			prev_to_current_tfs.push_back(previous_to_current);
-			angle_prev = angle_curr;
-		}
-
 		double total_distance = 0.0;
 		double angle_diff = 0.0;
 		//calculate nearest point distance between neighbouring segments;
 		for(size_t i=1; i<batch.segments.size(); i++)
 		{
-			pcl::KdTreeFLANN<pcl::PointXYZ> &kdtree_tmp = kdtrees[i-1];
-			sensor_msgs::PointCloud &current_cloud = batch.segments[i];
-			tf::Pose previous_to_current = prev_to_current_tfs[i-1];
-			tf::Pose odom_to_current = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(0.0), tfScalar(0.0), tfScalar(0)));
-			tf::Pose odom_to_previous = odom_to_current*previous_to_current.inverse();
+			sensor_msgs::PointCloud &previous_cloud = batch.segments[i-1];
+			sensor_msgs::PointCloud &this_cloud = batch.segments[i];
 
-			PointCloud cur_pcl, cur_in_pre_pcl;
+			double time_diff = (this_cloud.header.stamp - previous_cloud.header.stamp).toSec();
+			double x_diff = velocity*time_diff*cos(thetha+angle_diff);
+			double y_diff = velocity*time_diff*sin(thetha+angle_diff);
+			angle_diff = angle_diff + omega*time_diff;
+
+			tf::Pose previous_to_current = tf::Transform(tf::Matrix3x3(tf::createQuaternionFromYaw(omega*time_diff)), tf::Vector3(tfScalar(x_diff), tfScalar(y_diff), tfScalar(0)));
+			tf::Pose odom_to_current = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(0.0), tfScalar(0.0), tfScalar(0)));
+			tf::Pose odom_to_previoud = odom_to_current*previous_to_current.inverse();
+
+			PointCloud pre_pcl, cur_pcl;
+			pre_pcl.points.clear();
 			cur_pcl.points.clear();
-			cur_in_pre_pcl.points.clear();
-			for(size_t j=0; j<current_cloud.points.size(); j++)
+			for(size_t j=0; j<previous_cloud.points.size(); j++)
 			{
-				geometry_msgs::Point32 &pt_tmp = current_cloud.points[j];
+				geometry_msgs::Point32 &pt_tmp = previous_cloud.points[j];
 				geometry_msgs::Point32 output_tmp;
-				attached_points_transform(pt_tmp, output_tmp, odom_to_current, odom_to_previous);
+				attached_points_transform(pt_tmp, output_tmp, odom_to_previoud, odom_to_current);
 
 				pcl::PointXYZ pclpt_tmp;
 				pclpt_tmp.x = output_tmp.x;
 				pclpt_tmp.y = output_tmp.y;
 				pclpt_tmp.z = 0.0;
-				cur_in_pre_pcl.points.push_back(pclpt_tmp);
+				pre_pcl.points.push_back(pclpt_tmp);
 			}
 
-			int K = 1;
-			for(size_t j=0; j<cur_in_pre_pcl.points.size(); j++)
+			for(size_t j=0; j<this_cloud.points.size(); j++)
 			{
+				geometry_msgs::Point32 &pt_tmp = this_cloud.points[j];
+				pcl::PointXYZ pclpt_tmp;
+				pclpt_tmp.x = pt_tmp.x;
+				pclpt_tmp.y = pt_tmp.y;
+				pclpt_tmp.z = 0.0;
+				cur_pcl.points.push_back(pclpt_tmp);
+			}
+
+			if(pre_pcl.points.size()==0 || cur_pcl.points.size()==0) {ROS_WARN("no points?");return DBL_MAX;}
+
+			pcl::KdTreeFLANN<pcl::PointXYZ> kdtree;
+			kdtree.setInputCloud (pre_pcl.makeShared());
+			int K = 1;
+
+			for(size_t j=0; j<cur_pcl.points.size(); j++)
+			{
+				//choose K nearest points, and add the edges into "edge_vector";
 				std::vector<int> pointIdxNKNSearch(K);
 				std::vector<float> pointNKNSquaredDistance(K);
-				pcl::PointXYZ searchPt_tmp = cur_in_pre_pcl.points[j];
+				pcl::PointXYZ searchPt_tmp = cur_pcl.points[j];
 
-				int num = kdtree_tmp.nearestKSearch (searchPt_tmp, K, pointIdxNKNSearch, pointNKNSquaredDistance);
+				int num = kdtree.nearestKSearch (searchPt_tmp, K, pointIdxNKNSearch, pointNKNSquaredDistance);
 				assert(num == (int)pointIdxNKNSearch.size() && num == (int)pointNKNSquaredDistance.size());
 				float dist_tmp = pointNKNSquaredDistance.front();
 				total_distance = total_distance + likelihood_function(dist_tmp);
