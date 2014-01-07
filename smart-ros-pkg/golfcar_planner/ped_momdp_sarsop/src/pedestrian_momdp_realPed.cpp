@@ -14,7 +14,7 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Path.h>
-#include "world_simulator.h"
+#include "problems/pedestrian_changelane/world_simulator.h"
 
 WorldSimulator RealWorld;
 pedestrian_momdp::pedestrian_momdp()
@@ -44,10 +44,11 @@ pedestrian_momdp::pedestrian_momdp()
     n.param("stationary",stationary, false);
     nh.param("use_sim_time", use_sim_time, false);
 
-    move_base_speed_=nh.subscribe("/speed_advisor_cmdvel",1, &pedestrian_momdp::moveSpeedCallback, this);
+    move_base_speed_=nh.subscribe("momdp_speed_dummy",1, &pedestrian_momdp::moveSpeedCallback, this);
     //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
 
 	momdp = new ped_momdp(model_file, policy_file, simLen, simNum, stationary, frequency, use_sim_time, nh,&RealWorld);
+
 	//momdp->RealWorldPt=&RealWorld;
 	//momdp->momdpInit();
 	//momde->world=&world;

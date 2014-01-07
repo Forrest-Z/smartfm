@@ -92,6 +92,7 @@ public:
             ostr << "a=" << History[t]._Action <<  " ";
             if (History[t]._Observation >= 0)
                 ostr << "o=" << History[t]._Observation << " ";
+			
         }
     }
 

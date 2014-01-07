@@ -183,7 +183,6 @@ bool MCTS::Update(int action, OBS_TYPE observation, double reward, STATE*obs_sta
 	
 	int n=beliefs.GetNumSamples();
 	int trials=0;
-	/*
 	while(n<Params.NumStartStates&&trials<10000)
 	{
 		OBS_TYPE obs;
@@ -196,7 +195,7 @@ bool MCTS::Update(int action, OBS_TYPE observation, double reward, STATE*obs_sta
 			n++;
 		}
 		trials++;
-	}*/
+	}
 
 
    	if(beliefs.GetNumSamples()==0)
@@ -259,14 +258,12 @@ bool MCTS::Update(int action, OBS_TYPE observation, double reward, STATE*obs_sta
     // Delete old tree and create new root
 
 	
-	//DisplayValue(20,cout);
+	DisplayValue(20,cout);
 
 
 	//cout<<"start free"<<endl;
 	//root_list.push_back(Root);	
-	cout<<"before free"<<endl;
     VNODE::Free(Root, Simulator);
-	cout<<"after free"<<endl;
 	//VNODE::PartFree(Root,action,observation,Simulator);
 	//cout<<"end free"<<endl;
 
@@ -302,7 +299,6 @@ bool MCTS::Update(int action, OBS_TYPE observation, double reward, STATE*obs_sta
 	//cout<<"end expanding"<<endl;
     newRoot->Beliefs() = beliefs;
     Root = newRoot;
-	cout<<"here"<<endl;
 	//Rollout_Root=vnode;
 	
 
@@ -411,7 +407,7 @@ void MCTS::UCTSearch()
     {
 
 		//cout<<Root->Value.GetCount()<<endl;
-		cout<<n<<endl;
+		//cout<<n<<endl;
 		curr_sim=n;
         STATE* state = Root->Beliefs().CreateSample(Simulator);
         Simulator.Validate(*state);

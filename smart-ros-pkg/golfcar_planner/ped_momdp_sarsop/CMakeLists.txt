@@ -14,7 +14,8 @@ rosbuild_init()
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
-
+#set(CMAKE_C_COMPILER "gcc-4.8")
+#set(CMAKE_CXX_COMPILER "g++")
 #uncomment if you have defined messages
 rosbuild_genmsg()
 #uncomment if you have defined services
@@ -23,188 +24,70 @@ rosbuild_genmsg()
 # search header files in those sub directories
 # Maybe a glob could be possible
 INCLUDE_DIRECTORIES(
-    src/problem-solver
-    src/problem-solver/Core
-    src/problem-solver/Models/MOMDP
-    src/problem-solver/Bounds
-    src/problem-solver/Algorithms
-    src/problem-solver/Algorithms/SARSOP
-    src/problem-solver/MathLib
-    src/problem-solver/Parser
-    src/problem-solver/Parser/Cassandra
-    src/problem-solver/Parser/POMDPX
-    src/problem-solver/Utils
-    src/problem-solver/OfflineSolver
-    src/problem-solver/Evaluator
-    src/problem-solver/Simulator
-    src/pomcp/src
-)
 
-# source files for the appl lib
-# Maybe a glob could be possible
-SET(LIBAPPL_SRCS
-    src/problem-solver/PolicyGraph/PolicyGraph.cpp
-    src/problem-solver/PolicyGraph/PolicyGraphGenerator.cpp
-    src/problem-solver/Evaluator/EvaluationEngine.cpp
-    src/problem-solver/Evaluator/EvaluatorSampleEngine.cpp
-    src/problem-solver/Simulator/PrintTuple.cpp
-    src/problem-solver/Simulator/SimulationEngine.cpp
-    src/problem-solver/Simulator/SimulationEngine2.cpp
-    src/problem-solver/MathLib/DenseVector.cpp
-    src/problem-solver/MathLib/MathLib.cpp
-    src/problem-solver/MathLib/SparseMatrix.cpp
-    src/problem-solver/MathLib/SparseVector.cpp
-    src/problem-solver/Algorithms/SARSOP/BinManager.cpp
-    src/problem-solver/Algorithms/SARSOP/BinManagerSet.cpp
-    src/problem-solver/Algorithms/SARSOP/Sample.cpp
-    src/problem-solver/Algorithms/SARSOP/SampleBP.cpp
-    src/problem-solver/Algorithms/SARSOP/SARSOP.cpp
-    src/problem-solver/Algorithms/SARSOP/SARSOPPrune.cpp
-    src/problem-solver/Models/MOMDP/StateTransitionX.cpp
-    src/problem-solver/Models/MOMDP/IVariable.cpp
-    src/problem-solver/Models/MOMDP/BooleanVariable.cpp
-    src/problem-solver/Models/MOMDP/BeliefTransitionMOMDPLite.cpp
-    src/problem-solver/Models/MOMDP/Variable.cpp
-    src/problem-solver/Models/MOMDP/IVariableValue.cpp
-    src/problem-solver/Models/MOMDP/StateTransitionXY.cpp
-    src/problem-solver/Models/MOMDP/MOMDP.cpp
-    src/problem-solver/Models/MOMDP/StateTransitionXXpY.cpp
-    src/problem-solver/Models/MOMDP/VariableRelation.cpp
-    src/problem-solver/Models/MOMDP/StateTransitionY.cpp
-    src/problem-solver/Models/MOMDP/VariableValue.cpp
-    src/problem-solver/Models/MOMDP/VariableCombined.cpp
-    src/problem-solver/Models/MOMDP/MOMDPLite.cpp
-    src/problem-solver/Models/MOMDP/Rewards.cpp
-    src/problem-solver/Models/MOMDP/ObservationProbabilities.cpp
-    src/problem-solver/Models/MOMDP/BeliefTransitionMOMDP.cpp
-    src/problem-solver/OfflineSolver/GlobalResource.cpp
-    src/problem-solver/OfflineSolver/solverUtils.cpp
-    src/problem-solver/Bounds/AlphaPlane.cpp
-    src/problem-solver/Bounds/AlphaPlanePool.cpp
-    src/problem-solver/Bounds/AlphaPlanePoolSet.cpp
-    src/problem-solver/Bounds/AlphaVectorPolicy.cpp
-    src/problem-solver/Bounds/BackupAlphaPlaneMOMDP.cpp
-    src/problem-solver/Bounds/BackupAlphaPlaneMOMDPLite.cpp
-    src/problem-solver/Bounds/BackupBeliefValuePairMOMDP.cpp
-    src/problem-solver/Bounds/BackupBeliefValuePairMOMDPLite.cpp
-    src/problem-solver/Bounds/BeliefValuePair.cpp
-    src/problem-solver/Bounds/BeliefValuePairPool.cpp
-    src/problem-solver/Bounds/BeliefValuePairPoolSet.cpp
-    src/problem-solver/Bounds/BlindLBInitializer.cpp
-    src/problem-solver/Bounds/FastInfUBInitializer.cpp
-    src/problem-solver/Bounds/FullObsUBInitializer.cpp
-    src/problem-solver/Bounds/PruneAlphaPlane.cpp
-    src/problem-solver/Bounds/PruneBeliefValuePair.cpp
-    src/problem-solver/Bounds/xml_parse_lib.c
-    src/problem-solver/Core/Actions.cpp
-    src/problem-solver/Core/VariableContainer.cpp
-    src/problem-solver/Core/Belief.cpp
-    src/problem-solver/Core/BeliefCache.cpp
-    src/problem-solver/Core/BeliefException.cpp
-    src/problem-solver/Core/BeliefForest.cpp
-    src/problem-solver/Core/BeliefTreeNode.cpp
-    src/problem-solver/Core/BeliefWithState.cpp
-    src/problem-solver/Core/MObject.cpp
-    src/problem-solver/Core/Observations.cpp
-    src/problem-solver/Core/States.cpp
-    src/problem-solver/Core/UniqueBeliefHeap.cpp
-    src/problem-solver/Parser/Cassandra/Parser.cpp
-    src/problem-solver/Parser/Cassandra/POMDP.cpp
-    src/problem-solver/Parser/Cassandra/pomdpCassandraWrapper.cpp
-    src/problem-solver/Parser/ParserSelector.cpp
-    src/problem-solver/Parser/POMDPX/FactoredPomdp.cpp
-    src/problem-solver/Parser/POMDPX/Function.cpp
-    src/problem-solver/Parser/POMDPX/ObsAct.cpp
-    src/problem-solver/Parser/POMDPX/oldPOMDP.cpp
-    src/problem-solver/Parser/POMDPX/PreCEntry.cpp
-    src/problem-solver/Parser/POMDPX/PreCMatrix.cpp
-    src/problem-solver/Parser/POMDPX/SparseEntry.cpp
-    src/problem-solver/Parser/POMDPX/SparseTable.cpp
-    src/problem-solver/Parser/POMDPX/State.cpp
-    src/problem-solver/Parser/POMDPX/StateObsAct.cpp
-    src/problem-solver/Utils/InfoLog.cpp
-    src/problem-solver/Utils/md5.cpp
-    src/problem-solver/Utils/md5wrapper.cpp
-    src/problem-solver/Utils/CPMemUtils.cpp
-    src/problem-solver/Utils/StatsCollector.cpp
-    src/problem-solver/Utils/SimulationRewardCollector.cpp
-    src/problem-solver/Parser/Cassandra/include/pomdp_spec.tab.cc
-    src/problem-solver/Parser/Cassandra/include/pomdp_spec.yy.cc
-    src/problem-solver/miniposix/getopt.c
-    src/problem-solver/miniposix/getopt1.c
-    src/problem-solver/miniposix/getopt_init.c
-    src/problem-solver/Parser/Cassandra/decision-tree.c
-    src/problem-solver/Parser/Cassandra/imm-reward.c
-    src/problem-solver/Parser/Cassandra/mdpCassandra.c
-    src/problem-solver/Parser/Cassandra/parse_err.c
-    src/problem-solver/Parser/Cassandra/parse_hash.c
-    src/problem-solver/Parser/Cassandra/sparse-matrix.c
+	#src/pomcp/src
+	src/despot_multiple/src
+	#src/despot_multiple/src/belief_update
+	#src/despot_multiple/src/lower_bound
+	#src/despot_multiple/src/upper_bound
+	#src/despot_multiple/src/problems/pedestrian_changelane
+
 )
 
 
-SET(LIBPOMCP_SRCS
-    src/pomcp/src/battleship.cpp   
- 
-    src/pomcp/src/simulator.cpp
-    src/pomcp/src/beliefstate.cpp 
-    src/pomcp/src/mcts.cpp       
-    src/pomcp/src/pedestrian_dynamic.cpp
-    src/pomcp/src/pedestrian_changelane.cpp
-    src/pomcp/src/tag.cpp
-    src/pomcp/src/coord.cpp   
-    src/pomcp/src/network.cpp    
-    src/pomcp/src/testsimulator.cpp
-    #src/pomcp/src/executer.cpp 
-    src/pomcp/src/node.cpp      
-    src/pomcp/src/pocman.cpp  
-    src/pomcp/src/utils.cpp
-    #src/pomcp/src/experiment.cpp 
-    src/pomcp/src/pedestrian.cpp 
-    src/pomcp/src/rocksample.cpp
-    src/pomcp/src/SFM.cpp
-    src/pomcp/src/window.cpp
-    src/pomcp/src/map.cpp
-    src/pomcp/src/math_utils.cpp
+#SET(LIBPOMCP_SRCS
+#    src/pomcp/src/battleship.cpp   
+# 
+#    src/pomcp/src/simulator.cpp
+#    src/pomcp/src/beliefstate.cpp 
+#    src/pomcp/src/mcts.cpp       
+#    src/pomcp/src/pedestrian_dynamic.cpp
+#    src/pomcp/src/pedestrian_changelane.cpp
+#    src/pomcp/src/tag.cpp
+#    src/pomcp/src/coord.cpp   
+#    src/pomcp/src/network.cpp    
+#    src/pomcp/src/testsimulator.cpp
+#    #src/pomcp/src/executer.cpp 
+#    src/pomcp/src/node.cpp      
+#    src/pomcp/src/pocman.cpp  
+#    src/pomcp/src/utils.cpp
+#    #src/pomcp/src/experiment.cpp 
+#    src/pomcp/src/pedestrian.cpp 
+#    src/pomcp/src/rocksample.cpp
+#    src/pomcp/src/SFM.cpp
+#    src/pomcp/src/window.cpp
+#    src/pomcp/src/map.cpp
+#    src/pomcp/src/math_utils.cpp
+#)
+
+
+SET(LIBDESPOT_SRCS
+	src/despot_multiple/src/problems/pedestrian_changelane/pedestrian_state.cpp
+	src/despot_multiple/src/globals.cpp
+	src/despot_multiple/src/random_streams.cpp
+    src/despot_multiple/src/problems/pedestrian_changelane/SFM.cpp
+    src/despot_multiple/src/problems/pedestrian_changelane/window.cpp
+    src/despot_multiple/src/problems/pedestrian_changelane/map.cpp
+    src/despot_multiple/src/problems/pedestrian_changelane/math_utils.cpp
+	src/despot_multiple/src/problems/pedestrian_changelane/coord.cpp
 )
 # There are too many compiler warnings with problem-solver code, so let's disable some:
 set(WARNING_FLAGS "-Wno-sign-compare -Wno-unused-variable -Wno-ignored-qualifiers -Wno-write-strings")
 
 add_definitions(-DDEBUG_LOG_ON)
 
-rosbuild_add_library(appl ${LIBAPPL_SRCS})
-rosbuild_add_compile_flags(appl ${WARNING_FLAGS} -msse2 -mfpmath=sse)
 
 
 
-rosbuild_add_executable(pomdpeval src/problem-solver/Evaluator/Evaluator.cpp)
-rosbuild_add_compile_flags(pomdpeval ${WARNING_FLAGS})
-target_link_libraries(pomdpeval appl tinyxml)
 
-rosbuild_add_executable(pomdpsim src/problem-solver/Simulator/Simulator.cpp)
-rosbuild_add_compile_flags(pomdpsim ${WARNING_FLAGS})
-target_link_libraries(pomdpsim appl tinyxml)
-
-rosbuild_add_executable(pomdpsim-rss src/problem-solver/Simulator/Simulator2.cpp)
-rosbuild_add_compile_flags(pomdpsim-rss ${WARNING_FLAGS})
-target_link_libraries(pomdpsim-rss appl tinyxml)
-
-rosbuild_add_executable(pomdpsol src/problem-solver/OfflineSolver/solver.cpp)
-rosbuild_add_compile_flags(pomdpsol ${WARNING_FLAGS})
-target_link_libraries(pomdpsol appl tinyxml)
-
-rosbuild_add_executable(polgraph src/problem-solver/PolicyGraph/PolicyGraph.cpp)
-rosbuild_add_compile_flags(polgraph ${WARNING_FLAGS})
-target_link_libraries(polgraph appl tinyxml)
-
-rosbuild_add_executable(pomdpconvert src/problem-solver/PomdpConvertor/convertor.cpp)
-rosbuild_add_compile_flags(pomdpconvert ${WARNING_FLAGS})
-target_link_libraries(pomdpconvert appl tinyxml)
-
-
-rosbuild_add_library(pomcp ${LIBPOMCP_SRCS})
-rosbuild_add_executable(ped-momdp-sarsop src/pedestrian_momdp_realPed.cpp src/ROS_SimulationEngine.cpp src/momdp.cpp)
+#rosbuild_add_library(pomcp ${LIBPOMCP_SRCS})
+rosbuild_add_library(despot ${LIBDESPOT_SRCS})
+rosbuild_add_compile_flags(despot -std=c++0x)
+rosbuild_add_executable(ped-momdp-sarsop src/pedestrian_momdp_realPed.cpp src/momdp.cpp)
+rosbuild_add_compile_flags(ped-momdp-sarsop -std=c++0x)
 rosbuild_add_compile_flags(ped-momdp-sarsop ${WARNING_FLAGS})
-target_link_libraries(ped-momdp-sarsop pomcp appl tinyxml)
+
+target_link_libraries(ped-momdp-sarsop despot  tinyxml)
 
 #rosbuild_add_executable(pomcp-test src/pomcp/src/executer.cpp)
 #rosbuild_add_compile_flags(pomcp-test ${WARNING_FLAGS})

@@ -112,6 +112,42 @@ void PEDESTRIAN_CHANGELANE::UpdateModel(int i)
 	}*/
 }
 
+void PEDESTRIAN_CHANGELANE::DisplayBeliefs(const BELIEF_STATE& beliefs)
+{
+    PEDESTRIAN_CHANGELANE_STATE PEDESTRIAN_CHANGELANE_state;
+    int goal_count[4]={0};
+    double ped_posx=0,ped_posy=0;
+    double num=0;
+
+
+
+
+    for (int i=0;i<beliefs.GetNumSamples();i++)
+    {
+    	const STATE* p_PEDESTRIAN_CHANGELANE_state=beliefs.GetSample(i);
+    	PEDESTRIAN_CHANGELANE_state=safe_cast<const PEDESTRIAN_CHANGELANE_STATE&>(*p_PEDESTRIAN_CHANGELANE_state);
+    	goal_count[PEDESTRIAN_CHANGELANE_state.Goal]++;
+    	ped_posx+=PEDESTRIAN_CHANGELANE_state.PedPos.X;
+    	ped_posy+=PEDESTRIAN_CHANGELANE_state.PedPos.Y;
+    	num=num+1;
+    }
+    if(num!=0)
+    {
+			ostr<<"***********current belief***************************"<<endl;
+			const PEDESTRIAN_CHANGELANE_STATE*ts;
+			ts=safe_cast<const PEDESTRIAN_CHANGELANE_STATE*>(beliefs.GetSample(0));
+			ostr<<"Rob Pos :"<<ts->RobPos.X<<" "<<ts->RobPos.Y<<endl;
+			ostr<<"Ped Pos :"<<ts->PedPos.X<<" "<<ts->PedPos.Y<<endl;
+			ostr<<"Beliefs are "<<goal_count[0]/num<<" "<<goal_count[1]/num<<" "<<goal_count[2]/num<<" "<<goal_count[3]/num<<endl;
+			ostr<<"****************************************************"<<endl;
+			//ostr<<"Ped Pos X,Y "<<ped_posx/beliefs.GetNumSamples()<<ped_posy/beliefs.GetNumSamples()<<endl;
+			//ostr<<"Ped Pos X,Y "<<ped_posx/beliefs.GetNumSamples()<<ped_posy/beliefs.GetNumSamples()<<endl;
+    }
+    else
+    	    printf("Belief has no particle");
+
+}
+
 void PEDESTRIAN_CHANGELANE::DisplayBeliefs(const BELIEF_STATE& beliefs, 
     std::ostream& ostr) const
 {

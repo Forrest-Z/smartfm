@@ -120,7 +120,7 @@ MyVector SFM::PedToCar(Pedestrian & ped,int carPos)
 		}
 		else {
 			//random 
-			//cerr<<"goal and car on the same line"<<endl;
+			cerr<<"goal and car on the same line"<<endl;
 			ped_vec.SetAngle(car_vec.GetAngle()+ModelParams::pi/2);
 		}
 	}

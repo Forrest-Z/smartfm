@@ -6,7 +6,7 @@
 #include <ped_momdp_sarsop/ped_local_frame_vector.h>
 #include <sensing_on_road/pedestrian_vision_batch.h>
 #include <fstream>
-#include <param.h>
+#include "problems/pedestrian_changelane/param.h"
 
 using namespace std;
 struct ped_transforms
@@ -96,7 +96,7 @@ bool local_frame::filtered(double x,double y)
 		//if(fabs(x-object_filter[k][0])<0.3&&fabs(y-object_filter[k][1])<0.3)
 		fx=it->first;
 		fy=it->second;
-		if(fabs(x-fx)<0.3&&fabs(y-fy)<0.8)
+		if(fabs(x-fx)<0.3&&fabs(y-fy)<0.3)
 		{
 			//filterd
 			return true;

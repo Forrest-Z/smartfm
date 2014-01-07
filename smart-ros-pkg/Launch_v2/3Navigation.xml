@@ -26,7 +26,7 @@
       <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen"/>
       <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
 	  <remap from="laser_area_policy/scan" to="sick_scan2"/>
-	  <remap from="cmd_vel" to="cmd_speed"/>
+	  <remap from="cmd_vel" to="cmd_speed_dummy"/>
 	  <!--remap from="move_status" to="move_status_hybrid"/-->
       </node>
   </group>
