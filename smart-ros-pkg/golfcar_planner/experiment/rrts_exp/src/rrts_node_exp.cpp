@@ -416,7 +416,6 @@ bool PlannerExp::is_robot_in_collision()
 }
 
 #if 1
-
 int PlannerExp::get_plan()
 {
   is_updating_committed_trajectory = true;
