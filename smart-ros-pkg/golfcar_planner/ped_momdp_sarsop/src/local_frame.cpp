@@ -132,7 +132,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
 		if(true)
         {
             //transform found, just update the position
-            if(ped_batch->pd_vector[i].confidence > 0.01)
+            //if(ped_batch->pd_vector[i].confidence > 0.01)
             {
 				
                 ped_momdp_sarsop::ped_local_frame plf;
@@ -159,10 +159,12 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
                 plf.ped_pose.y = out_pose.getOrigin().getY();
                 plf.ped_pose.z = out_pose.getOrigin().getZ();
 
+				/*
 				if(filtered(plf.ped_pose.x,plf.ped_pose.y))
 				{
 					continue;
 				}
+				*/
                 //then update the robot pose with the same frame
                 in_pose.setIdentity();
                 in_pose.frame_id_ = "/golfcart/base_link";
@@ -211,6 +213,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
     //finally publish all the transformed points
 	//uncomment the following to record the path 
 	
+	/*
 	if(plf_vector.ped_local.size()>0)
 	{
 		cout<<"rob pose "<<plf_vector.ped_local[0].rob_pose.x<<" "<<plf_vector.ped_local[0].rob_pose.y<<endl;
@@ -235,7 +238,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
 				path_record.push_back(make_pair(now_x,now_y));	
 			}
 		}
-	}
+	}*/
     local_pub_.publish(plf_vector);
 }
 bool local_frame::getObjectPose(string& target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const

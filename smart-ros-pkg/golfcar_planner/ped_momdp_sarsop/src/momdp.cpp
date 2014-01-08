@@ -39,7 +39,7 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
     stationary_ = stationary;
     use_sim_time_ = use_sim_time;
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
-    cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_speed",1);
+    cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel",1);
 
 
 	char buf[100];
@@ -134,7 +134,7 @@ void ped_momdp::initRealSimulator()
   solver=new Solver<PedestrianState>(*RealSimulator, RealSimulator->InitialBelief(), *lb, *RealSimulator, *bu, streams);	
   solver->Init();
   int n_trials;
-  solver->Search(Globals::config.time_per_move,n_trials);
+  solver->Search(1.0/control_freq,n_trials);
 
 }
 
@@ -274,7 +274,6 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 void ped_momdp::controlLoop(const ros::TimerEvent &e)
 {
 	    cout<<"entering control loop"<<endl;
-		momdp_speed_=1.0;
 
 
 		if(RealWorldPt->GoalReached())
@@ -288,7 +287,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		RealWorldPt->ShiftWindow();
 		publishROSState();
 		cout<<"here"<<endl;
-        if(RealWorldPt->NumPedInView()==0) return;   //no pedestrian detected yet
+        //if(RealWorldPt->NumPedInView()==0) return;   //no pedestrian detected yet
 		RealSimulator->rob_map=RealWorldPt->window.rob_map;
 		OBS_T obs=RealWorldPt->GetCurrObs();
 
@@ -305,7 +304,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		int n_trials;
 		cout<<"move time "<<Globals::config.time_per_move<<endl;
 
-		safeAction=solver->Search(0.3,n_trials);
+		safeAction=solver->Search(1.0/control_freq,n_trials);
 		cout<<"n trials "<<n_trials<<endl;
 		
 		cout<<"safe action "<<safeAction<<endl;
@@ -316,7 +315,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
         else if(safeAction==1) momdp_speed_ += 1.0;
         else if(safeAction==2) momdp_speed_ -= 1.0;
         if(momdp_speed_<=0.0) momdp_speed_ = 0;
-        if(momdp_speed_>=1.5) momdp_speed_ = 1.5;
+        if(momdp_speed_>=1.5) momdp_speed_ = 1.2;
 		
 		
 
