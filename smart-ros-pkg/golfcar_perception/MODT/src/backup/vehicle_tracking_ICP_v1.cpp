@@ -185,10 +185,7 @@ namespace mrpt{
 			if(count%2!=0)continue;
 			for(size_t j=0; j<old_meas.segments[i].points.size(); j++)
 			{
-				geometry_msgs::Point32 old_shifted;
-				old_shifted = old_meas.segments[i].points[j];
-				old_shifted.x = old_shifted.x + 10.0*count;
-				old_cloud.points.push_back(old_shifted);
+				old_cloud.points.push_back(old_meas.segments[i].points[j]);
 			}
 		}
 
@@ -197,13 +194,10 @@ namespace mrpt{
 			if(count%2!=0)continue;
 			for(size_t j=0; j<new_meas.segments[i].points.size(); j++)
 			{
-				geometry_msgs::Point32 new_shifted;
-				new_shifted = new_meas.segments[i].points[j];
-				new_shifted.x = new_shifted.x + 10.0*count;
-				new_cloud.points.push_back(new_shifted);
+				new_cloud.points.push_back(new_meas.segments[i].points[j]);
 			}
 		}
-		 */
+		*/
 
 		//please refer to my evernote 20140103 for more information;
 		//a. calculate the rough estimation for the initial pose to speed up ICP;
@@ -265,22 +259,6 @@ namespace mrpt{
 		//CObservation2DRangeScan	scan1, scan2;
 		//construct_ICP_scans(old_pose, old_segment, scan1);
 		//construct_ICP_scans(new_pose, new_segment, scan2);
-
-		// a trick to use ICP to get zero-degree rotation :-)
-		size_t old_cloud_size = old_cloud.points.size();
-		for(size_t i=0; i<old_cloud_size; i++)
-		{
-			geometry_msgs::Point32 pt_shift = old_cloud.points[i];
-			pt_shift.x = pt_shift.x + 10.0;
-			old_cloud.points.push_back(pt_shift);
-		}
-		size_t new_cloud_size = new_cloud.points.size();
-		for(size_t i=0; i<new_cloud_size; i++)
-		{
-			geometry_msgs::Point32 pt_shift = new_cloud.points[i];
-			pt_shift.x = pt_shift.x + 10.0;
-			new_cloud.points.push_back(pt_shift);
-		}
 
 		CSimplePointsMap		m1,m2;
 		float					runningTime;
