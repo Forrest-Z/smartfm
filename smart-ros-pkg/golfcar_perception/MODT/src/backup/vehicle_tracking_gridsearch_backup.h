@@ -1,5 +1,5 @@
-#ifndef MODT_VEHICLE_TRACKING_ICP_H
-#define MODT_VEHICLE_TRACKING_ICP_H
+#ifndef MODT_VEHICLE_TRACKING_GRIDSEARCH_H
+#define MODT_VEHICLE_TRACKING_GRIDSEARCH_H
 
 #include <sensor_msgs/PointCloud.h>
 #include <ros/ros.h>
@@ -7,6 +7,12 @@
 #include "MODT/segment_pose_batches.h"
 #include <mrpt/slam.h>
 #include <tf/transform_broadcaster.h>
+
+#include "pcl/point_cloud.h"
+#include "pcl_ros/point_cloud.h"
+#include "pcl/point_types.h"
+#include "pcl/ros/conversions.h"
+#include "pcl/kdtree/kdtree_flann.h"
 /*
  * Pay attention here to remove irrelavant header files from ros;
  * It turns out that some header files will mess up the mrpt compilation;
@@ -16,6 +22,8 @@ using namespace mrpt;
 using namespace mrpt::utils;
 using namespace mrpt::slam;
 using namespace std;
+
+typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
 
 namespace mrpt{
 	
@@ -28,8 +36,8 @@ namespace mrpt{
 		sensor_msgs::PointCloud contour_points;
 		std::vector<geometry_msgs::Point32> anchor_points;
 
-		double					moving_direction;
 		double 					velocity;
+		double					thetha, omega;
 
 		MODT::segment_pose_batch	last_measurement;
 	};
@@ -59,13 +67,16 @@ namespace mrpt{
 		void update_motionShape(MODT::segment_pose_batches& batches, std::vector<std::pair<size_t, size_t> > &track_measure_pairs, std::vector<size_t> &unregistered_measurements);
 
 		//update object's position and shape using ICP;
-		void ICP_motion2shape(model_free_track &track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
+		void ICP_motion2shape(MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
 		void construct_ICP_scans(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CObservation2DRangeScan& scan);
 
-		void attached_points_transform(geometry_msgs::Point32& pt_input, geometry_msgs::Point32& pt_output, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
+		inline void attached_points_transform(geometry_msgs::Point32& pt_input, geometry_msgs::Point32& pt_output, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
 
 		void tracks_visualization();
-		void constructPtsMap(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CSimplePointsMap &map);
+
+		void calc_motionshape(model_free_track &track);
+		double distance_function(MODT::segment_pose_batch &batch, double velocity, double thetha, double omega);
+		double likelihood_function(double distance);
     };
 };
 

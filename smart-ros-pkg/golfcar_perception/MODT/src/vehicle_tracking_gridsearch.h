@@ -13,6 +13,9 @@
 #include "pcl/point_types.h"
 #include "pcl/ros/conversions.h"
 #include "pcl/kdtree/kdtree_flann.h"
+
+#include <fmutil/fm_stopwatch.h>
+
 /*
  * Pay attention here to remove irrelavant header files from ros;
  * It turns out that some header files will mess up the mrpt compilation;
@@ -70,12 +73,12 @@ namespace mrpt{
 		void ICP_motion2shape(MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
 		void construct_ICP_scans(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CObservation2DRangeScan& scan);
 
-		inline void attached_points_transform(geometry_msgs::Point32& pt_input, geometry_msgs::Point32& pt_output, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
+		inline void attached_points_transform(geometry_msgs::Point32& pt_input, geometry_msgs::Point32& pt_output, tf::Pose& srcMeas_poseinOdom, tf::Pose& destMeas_poseinOdom);
 
 		void tracks_visualization();
 
 		void calc_motionshape(model_free_track &track);
-		double distance_function(MODT::segment_pose_batch &batch, double velocity, double thetha, double omega);
+		double distance_function(MODT::segment_pose_batch &batch, std::vector<pcl::KdTreeFLANN<pcl::PointXYZ> > &kdtrees, double velocity, double thetha, double omega);
 		double likelihood_function(double distance);
     };
 };

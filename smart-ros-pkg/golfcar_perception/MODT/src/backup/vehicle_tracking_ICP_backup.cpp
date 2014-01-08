@@ -173,37 +173,9 @@ namespace mrpt{
 		//1st step: for a single cluster, try to estimate its motion using ICP;
 		geometry_msgs::Pose old_pose = old_meas.ego_poses.back();
 		geometry_msgs::Pose new_pose = new_meas.ego_poses.back();
-
 		//sensor_msgs::PointCloud old_segment = old_meas.segments.back();
-		sensor_msgs::PointCloud old_cloud = track.contour_points;
-		sensor_msgs::PointCloud new_cloud = new_meas.segments.back();
-
-		/*
-		sensor_msgs::PointCloud old_cloud, new_cloud;
-		for(int i= (int)old_meas.segments.size()-1, count=0; i>=0; i--, count++)
-		{
-			if(count%2!=0)continue;
-			for(size_t j=0; j<old_meas.segments[i].points.size(); j++)
-			{
-				geometry_msgs::Point32 old_shifted;
-				old_shifted = old_meas.segments[i].points[j];
-				old_shifted.x = old_shifted.x + 10.0*count;
-				old_cloud.points.push_back(old_shifted);
-			}
-		}
-
-		for(int i= (int)new_meas.segments.size()-1, count = 0; i>=0; i--, count++)
-		{
-			if(count%2!=0)continue;
-			for(size_t j=0; j<new_meas.segments[i].points.size(); j++)
-			{
-				geometry_msgs::Point32 new_shifted;
-				new_shifted = new_meas.segments[i].points[j];
-				new_shifted.x = new_shifted.x + 10.0*count;
-				new_cloud.points.push_back(new_shifted);
-			}
-		}
-		 */
+		sensor_msgs::PointCloud old_segment = track.contour_points;
+		sensor_msgs::PointCloud new_segment = new_meas.segments.back();
 
 		//please refer to my evernote 20140103 for more information;
 		//a. calculate the rough estimation for the initial pose to speed up ICP;
@@ -213,25 +185,25 @@ namespace mrpt{
 		centroid_tmp.x = 0.0;
 		centroid_tmp.y = 0.0;
 		centroid_tmp.z = 0.0;
-		for(size_t k=0; k<old_cloud.points.size(); k++)
+		for(size_t k=0; k<old_segment.points.size(); k++)
 		{
-			centroid_tmp.x = centroid_tmp.x + old_cloud.points[k].x;
-			centroid_tmp.y = centroid_tmp.y + old_cloud.points[k].y;
+			centroid_tmp.x = centroid_tmp.x + old_segment.points[k].x;
+			centroid_tmp.y = centroid_tmp.y + old_segment.points[k].y;
 		}
-		centroid_tmp.x = centroid_tmp.x/(float)old_cloud.points.size();
-		centroid_tmp.y = centroid_tmp.y/(float)old_cloud.points.size();
+		centroid_tmp.x = centroid_tmp.x/(float)old_segment.points.size();
+		centroid_tmp.y = centroid_tmp.y/(float)old_segment.points.size();
 		centroid_position.push_back(centroid_tmp);
 
 		centroid_tmp.x = 0.0;
 		centroid_tmp.y = 0.0;
 		centroid_tmp.z = 0.0;
-		for(size_t k=0; k<new_cloud.points.size(); k++)
+		for(size_t k=0; k<new_segment.points.size(); k++)
 		{
-			centroid_tmp.x = centroid_tmp.x + new_cloud.points[k].x;
-			centroid_tmp.y = centroid_tmp.y + new_cloud.points[k].y;
+			centroid_tmp.x = centroid_tmp.x + new_segment.points[k].x;
+			centroid_tmp.y = centroid_tmp.y + new_segment.points[k].y;
 		}
-		centroid_tmp.x = centroid_tmp.x/(float)new_cloud.points.size();
-		centroid_tmp.y = centroid_tmp.y/(float)new_cloud.points.size();
+		centroid_tmp.x = centroid_tmp.x/(float)new_segment.points.size();
+		centroid_tmp.y = centroid_tmp.y/(float)new_segment.points.size();
 		centroid_position.push_back(centroid_tmp);
 
 		//build the transform from v_(t-1) to v_t;
@@ -262,42 +234,24 @@ namespace mrpt{
 		CPose2D	initialPose(x_initial, y_initial, yaw_initial);
 
 		//b. construct two scans based on the "pose + pointcloud";
-		//CObservation2DRangeScan	scan1, scan2;
-		//construct_ICP_scans(old_pose, old_segment, scan1);
-		//construct_ICP_scans(new_pose, new_segment, scan2);
-
-		// a trick to use ICP to get zero-degree rotation :-)
-		size_t old_cloud_size = old_cloud.points.size();
-		for(size_t i=0; i<old_cloud_size; i++)
-		{
-			geometry_msgs::Point32 pt_shift = old_cloud.points[i];
-			pt_shift.x = pt_shift.x + 10.0;
-			old_cloud.points.push_back(pt_shift);
-		}
-		size_t new_cloud_size = new_cloud.points.size();
-		for(size_t i=0; i<new_cloud_size; i++)
-		{
-			geometry_msgs::Point32 pt_shift = new_cloud.points[i];
-			pt_shift.x = pt_shift.x + 10.0;
-			new_cloud.points.push_back(pt_shift);
-		}
+		CObservation2DRangeScan	scan1, scan2;
+		construct_ICP_scans(old_pose, old_segment, scan1);
+		construct_ICP_scans(new_pose, new_segment, scan2);
 
 		CSimplePointsMap		m1,m2;
 		float					runningTime;
 		CICP::TReturnInfo		info;
 		CICP					ICP;
-		constructPtsMap(old_pose, old_cloud, m1);
-		constructPtsMap(new_pose, new_cloud, m2);
 
-		//m1.insertObservation( &scan1 );
-		//m2.insertObservation( &scan2 );
+		m1.insertObservation( &scan1 );
+		m2.insertObservation( &scan2 );
 
 		ICP.options.ICP_algorithm = icpLevenbergMarquardt;
 		ICP.options.maxIterations			= 100;
 		ICP.options.thresholdAng			= DEG2RAD(10.0f);
 		ICP.options.thresholdDist			= 0.75f;
 		ICP.options.ALFA					= 0.5f;
-		ICP.options.smallestThresholdDist	= 0.01f;
+		ICP.options.smallestThresholdDist	= 0.05f;
 		ICP.options.doRANSAC = false;
 		ICP.options.onlyClosestCorrespondences = false;
 		ICP.options.dumpToConsole();
@@ -334,37 +288,6 @@ namespace mrpt{
 
 		newMeas_poseinOdom = Odom_to_Vt;
 		oldMeas_poseinOdom = Odom_to_Vt*ICP_Vtm1_To_Vt.inverse();
-	}
-
-	void vehicle_tracking::constructPtsMap(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CSimplePointsMap &map)
-	{
-		//2nd step: input the scan readings with pointcloud readings;
-		tf::Pose lidarTFPose;
-		tf::poseMsgToTF(lidar_pose, lidarTFPose);
-
-		geometry_msgs::Pose temppose;
-		temppose.position.x=0;
-		temppose.position.y=0;
-		temppose.position.z=0;
-		temppose.orientation.x=0;
-		temppose.orientation.y=0;
-		temppose.orientation.z=0;
-		temppose.orientation.w=1;
-
-		for(size_t ip=0; ip<segment_pointcloud.points.size(); ip++)
-		{
-			temppose.position.x = segment_pointcloud.points[ip].x;
-			temppose.position.y = segment_pointcloud.points[ip].y;
-
-			tf::Pose tempTfPose;
-			tf::poseMsgToTF(temppose, tempTfPose);
-
-			tf::Pose pointInlidar = lidarTFPose.inverseTimes(tempTfPose);
-			geometry_msgs::Point32 pointtemp;
-			pointtemp.x=(float)pointInlidar.getOrigin().x();
-			pointtemp.y=(float)pointInlidar.getOrigin().y();
-			map.insertPoint(pointtemp.x, pointtemp.y, 0.0);
-		}
 	}
 
 	void vehicle_tracking::construct_ICP_scans(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CObservation2DRangeScan& scan)
