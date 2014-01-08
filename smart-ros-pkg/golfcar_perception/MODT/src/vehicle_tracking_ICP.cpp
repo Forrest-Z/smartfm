@@ -14,7 +14,8 @@ namespace mrpt{
 	void vehicle_tracking::measurement_callback(const MODT::segment_pose_batches& batches)
 	{
 		if(batches.clusters.size()==0) return;
-		ROS_INFO("measurement_callback");
+		cout<<endl;
+		cout<<"measurement_callback"<<batches.clusters.back().segments.back().header.seq<<endl;
 		MODT::segment_pose_batches batches_copy = batches;
 		register_cluster2history(batches_copy);
 		tracks_visualization();
@@ -38,6 +39,7 @@ namespace mrpt{
 			//pay attention here;
 			if(cluster_tmp.segments[cluster_tmp.segments.size()-2].points.size()==0)continue;
 
+			//this may fail to break a track into 2, when measurements are not able to process in time and dropped;
 			geometry_msgs::Point32 probe_point_tmp = cluster_tmp.segments[cluster_tmp.segments.size()-2].points.front();
 
 			for(size_t j=0; j<object_tracks_.size(); j++)
@@ -66,6 +68,8 @@ namespace mrpt{
 			}
 			else
 			{
+				cout<<endl;
+				cout<<"segment not registered"<<cluster_tmp.segments.back().header.seq<<endl;
 				unregistered_measurements.push_back(i);
 			}
 		}
@@ -166,6 +170,18 @@ namespace mrpt{
 		}
 
 		ROS_INFO("updated tracks: %ld; new tracks: %ld; deleted tracks: %ld; remained tracks: %ld", track_measure_pairs.size(), unregistered_measurements.size(), deleted_track_num, object_tracks_.size());
+
+		/*
+		for(size_t i=0; i<object_tracks_.size(); i++)
+		{
+			cout<<"object tracks last measurements "<<object_tracks_[i].last_measurement.segments.back().header.seq<<":";
+			for(size_t j=0; j<object_tracks_[i].last_measurement.segments.back().points.size(); j++)
+			{
+				cout<<"("<<object_tracks_[i].last_measurement.segments.back().points[j].x<<","<<object_tracks_[i].last_measurement.segments.back().points[j].y<<")\t";
+			}
+			cout<<endl;
+		}
+		*/
 	}
 
 	void vehicle_tracking::ICP_motion2shape(model_free_track& track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom )
