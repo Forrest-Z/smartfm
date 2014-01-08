@@ -4,11 +4,24 @@
 
 int main(int argc, char** argv){
   pcl::PointCloud<pcl::PointNormal> cloud, cloud2;
-  pcl::io::loadPCDFile(argv[1], cloud);
-  pcl::io::loadPCDFile(argv[2], cloud2);
+  pcl::io::loadPCDFile("/home/demian/smartfm/smart-ros-pkg/experimental/csm_cuda_node/examples_pcd/00135.pcd", cloud);
+  pcl::io::loadPCDFile("/home/demian/smartfm/smart-ros-pkg/experimental/csm_cuda_node/examples_pcd/00556.pcd", cloud2);
   cout<<cloud.size()<<" point loaded."<<endl;
-  fmutil::Stopwatch sw("voronoi_construction");
   
+  //just to initialize 
+  
+  /*4.5.2 Runtime API
+    4.5.2.1 Initialization
+    There is no explicit initialization function for the runtime API; 
+    it initializes the first time a runtime function is called. 
+    One needs to keep this in mind when timing runtime function calls 
+    and when interpreting the error code from the first call into the runtime.
+    */
+  if(true)
+    CsmGPU<pcl::PointNormal> csmGPU_Init(0.1, cv::Point2d(50.0, 75.0), cloud, false);
+  
+  
+  fmutil::Stopwatch sw("voronoi_construction");
   CsmGPU<pcl::PointNormal> csmGPU(0.1, cv::Point2d(50.0, 75.0), cloud, false);
   sw.end();
   fmutil::Stopwatch sw1("Overall");
