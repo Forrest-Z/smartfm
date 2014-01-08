@@ -1,47 +1,19 @@
-#include <opencv2/opencv.hpp>
-#include <pcl/point_types.h>
-#include <pcl/ros/conversions.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl_ros/transforms.h>
-#include <thrust/device_vector.h>
-
-#define PRINT_DEBUG 0
-using namespace std;
-using namespace thrust;
-
-struct poseResult{
-  double x,y,r,score;
-};
-
 extern poseResult best_translation(float res, float step_size,
 			int x_step, int y_step, int x_range, int y_range,
 			vector<int> point_x, vector<int> point_y,
 			int voronoi_width, int voronoi_height,
 			device_vector<int> &dev_px, device_vector<int> &dev_py,
 			device_vector<int> &dev_voronoi_data);
-host_vector<int> voronoi_jfa(int voronoi_width, int voronoi_height, 
+extern host_vector<int> voronoi_jfa(int voronoi_width, int voronoi_height, 
 		 vector<int> point_x, vector<int> point_y,
 		 device_vector<int> &dev_px, device_vector<int> &dev_py,
 		 device_vector<int> &dev_voronoi_data
 		);
-
-struct rowMajorData{
-    int x, y, data_idx;
-};
-  
-  bool rowMajorDataSort(rowMajorData d1, rowMajorData d2){
+bool rowMajorDataSort(rowMajorData d1, rowMajorData d2){
    return d1.data_idx < d2.data_idx;
  }
- 
 template <class T>
-class CsmGPU{
-public:
-  cv::Size voronoi_size_;
-  double res_;
-  device_vector<int> dev_voronoi_data_;
-  device_vector<int> dev_px_, dev_py_;
-
-  CsmGPU(double res, cv::Point2d template_size, 
+CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size, 
 	  pcl::PointCloud<T> &cloud, bool visualize):
   res_(res)
   {  
@@ -61,7 +33,8 @@ public:
     if(visualize)
       visualize_data(voronoi_data, string("voronoi"));
   }
-  poseResult getBestMatch(double x_step, double y_step, double r_step,
+  template <class T>
+  poseResult CsmGPU<T>::getBestMatch(double x_step, double y_step, double r_step,
 		    double x_range, double y_range, double r_range,
 		    pcl::PointCloud<T> &matching_pts,
 		    poseResult offset
@@ -91,8 +64,8 @@ public:
     }
     return best_result;
   }
-      
-  poseResult getBestTranslation(double x_step, double y_step, 
+  template <class T>
+  poseResult CsmGPU<T>::getBestTranslation(double x_step, double y_step, 
 			  double x_range, double y_range,
 			  pcl::PointCloud<T> &matching_pts){
     vector<int> px, py;
@@ -110,10 +83,8 @@ public:
   
   }
   
-private:
-  
- 
- cv::Mat removeRepeatedPts(pcl::PointCloud<T> &cloud,
+  template <class T>
+ cv::Mat CsmGPU<T>::removeRepeatedPts(pcl::PointCloud<T> &cloud,
 			vector<int> &seeds_x, vector<int> &seeds_y){
     uint16_t total_seed = 1;
     seeds_x.clear(); seeds_y.clear();
@@ -147,7 +118,8 @@ private:
     return voronoi_data;
  }
  
- void visualize_data(host_vector<int> voronoi_data, string name){
+ template <class T>
+ void CsmGPU<T>::visualize_data(host_vector<int> voronoi_data, string name){
   //visualize
   cv::Mat voronoi_img(voronoi_size_.width, voronoi_size_.height, CV_16UC1);
   for(int i=0; i<voronoi_size_.width; i++){
@@ -177,8 +149,8 @@ private:
   cv::waitKey(0);
 }
 
-
-cv::Vec3b HSVtoRGB(float hue, float sat, float value){
+template <class T>
+cv::Vec3b CsmGPU<T>::HSVtoRGB(float hue, float sat, float value){
   float fH, fS, fV;
   float fR, fG, fB;
   const float FLOAT_TO_BYTE = 255.0f;
@@ -266,7 +238,3 @@ cv::Vec3b HSVtoRGB(float hue, float sat, float value){
   
   return pRGB;
 }
-
-
-};
-

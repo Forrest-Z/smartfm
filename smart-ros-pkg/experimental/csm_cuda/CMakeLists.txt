@@ -24,10 +24,7 @@ link_libraries(-llog4cxx)
 find_package(CUDA REQUIRED)
 find_package(OpenCV REQUIRED)
 include_directories(/usr/include/vtk-5.8)
-CUDA_ADD_LIBRARY(csm_LIBS src/csm_lib.cu)
-
-rosbuild_add_executable(csmlib src/csm_lib.cpp)
-target_link_libraries(csmlib csm_LIBS ${OpenCV_LIBS})
+CUDA_ADD_LIBRARY(${PROJECT_NAME} src/csm_lib.cu)
 
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
