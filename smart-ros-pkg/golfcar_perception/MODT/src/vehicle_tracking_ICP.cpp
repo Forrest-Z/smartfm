@@ -283,25 +283,31 @@ namespace mrpt{
 		//construct_ICP_scans(new_pose, new_segment, scan2);
 
 		// a trick to use ICP to get zero-degree rotation :-)
-		size_t old_cloud_size = old_cloud.points.size();
-		for(size_t i=0; i<old_cloud_size; i++)
+		sensor_msgs::PointCloud old_cloud_shiftAdded, new_cloud_shiftAdded;
+		for(size_t i=0; i<old_cloud.points.size(); i++)
 		{
 			geometry_msgs::Point32 pt_shift = old_cloud.points[i];
+			old_cloud_shiftAdded.points.push_back(pt_shift);
 			pt_shift.x = pt_shift.x + 10.0;
-			old_cloud.points.push_back(pt_shift);
-		}
-		size_t new_cloud_size = new_cloud.points.size();
-		for(size_t i=0; i<new_cloud_size; i++)
-		{
-			geometry_msgs::Point32 pt_shift = new_cloud.points[i];
-			pt_shift.x = pt_shift.x + 10.0;
-			new_cloud.points.push_back(pt_shift);
+			old_cloud_shiftAdded.points.push_back(pt_shift);
 		}
 
-		CSimplePointsMap		m1,m2;
+		for(size_t i=0; i<new_cloud.points.size(); i++)
+		{
+			geometry_msgs::Point32 pt_shift = new_cloud.points[i];
+			new_cloud_shiftAdded.points.push_back(pt_shift);
+			pt_shift.x = pt_shift.x + 10.0;
+			new_cloud_shiftAdded.points.push_back(pt_shift);
+		}
+
+
+		CSimplePointsMap		m1, m2, m1_shiftAdded, m2_shiftAdded;
 		float					runningTime;
 		CICP::TReturnInfo		info;
 		CICP					ICP;
+		constructPtsMap(old_pose, old_cloud_shiftAdded, m1_shiftAdded);
+		constructPtsMap(new_pose, new_cloud_shiftAdded, m2_shiftAdded);
+
 		constructPtsMap(old_pose, old_cloud, m1);
 		constructPtsMap(new_pose, new_cloud, m2);
 
@@ -319,23 +325,28 @@ namespace mrpt{
 		ICP.options.dumpToConsole();
 
 		//CPose2D		initialPose(0.0f,0.0f,(float)DEG2RAD(0.0f));
-		CPosePDFPtr pdf = ICP.Align(&m1, &m2,initialPose,&runningTime,(void*)&info);
+		CPosePDFPtr pdf = ICP.Align(&m1_shiftAdded, &m2_shiftAdded, initialPose,&runningTime,(void*)&info);
+		CPosePDFGaussian  gPdf;
+		gPdf.copyFrom(*pdf);
 
 		printf("ICP run in %.02fms, %d iterations (%.02fms/iter), %.01f%% goodness\n -> ",
 				runningTime*1000,
 				info.nIterations,
 				runningTime*1000.0f/info.nIterations,
 				info.goodness*100 );
-
 		cout << "Mean of estimation: " << pdf->getMeanVal() << endl<< endl;
 
-		CPosePDFGaussian  gPdf;
-		gPdf.copyFrom(*pdf);
+		CPose2D	initialPose_step2(gPdf.mean.x(), gPdf.mean.y(), gPdf.mean.phi());
+		ICP.options.onlyClosestCorrespondences = true;
+		ICP.options.maxIterations			= 1;
+		CPosePDFPtr pdf2 = ICP.Align(&m1, &m2, initialPose_step2, &runningTime,(void*)&info);
 
+		CPosePDFGaussian  gPdf2;
+		gPdf2.copyFrom(*pdf2);
 		//c: to recover the vehicle pose and speed in the global frame;
-		double ICP_output_x 	= gPdf.mean.x();
-		double ICP_output_y 	= gPdf.mean.y();
-		double ICP_output_yaw 	= gPdf.mean.phi();
+		double ICP_output_x 	= gPdf2.mean.x();
+		double ICP_output_y 	= gPdf2.mean.y();
+		double ICP_output_yaw 	= gPdf2.mean.phi();
 		cout<<"ICP output: "<<ICP_output_x<<","<<ICP_output_y<<","<<ICP_output_yaw<<endl;
 
 		tf::Pose ICP_Etm1_to_Etvirtual = tf::Transform(tf::Matrix3x3(tf::createQuaternionFromYaw(ICP_output_yaw)), tf::Vector3(tfScalar(ICP_output_x), tfScalar(ICP_output_y), tfScalar(0)));
