@@ -1,5 +1,5 @@
 #include <fmutil/fm_stopwatch.h>
-#include "csm.h"
+#include <csm_cuda/csm.h>
 
 
 int main(int argc, char** argv){
@@ -39,6 +39,6 @@ int main(int argc, char** argv){
   ss<<"result.pcd";
   pcl::transformPointCloudWithNormals (cloud2, cloud_out, transform);
   swTfCloud.end();
-  //pcl::io::savePCDFileASCII(ss.str(), cloud_out);
+  pcl::io::savePCDFileASCII(ss.str(), cloud_out);
   return 0;
 }

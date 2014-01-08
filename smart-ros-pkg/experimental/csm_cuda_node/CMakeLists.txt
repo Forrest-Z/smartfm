@@ -20,12 +20,11 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
-link_libraries(-llog4cxx)
-find_package(CUDA REQUIRED)
 find_package(OpenCV REQUIRED)
-include_directories(/usr/include/vtk-5.8)
-CUDA_ADD_LIBRARY(${PROJECT_NAME} src/csm_lib.cu)
-
+include_directories(/usr/local/cuda-5.5/include/)
+rosbuild_add_executable(csmlib src/csm_lib.cpp)
+FIND_LIBRARY(cudalibs cudart /usr/local/cuda-5.5/lib64)
+target_link_libraries(csmlib ${cudalibs} ${OpenCV_LIBS})
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
