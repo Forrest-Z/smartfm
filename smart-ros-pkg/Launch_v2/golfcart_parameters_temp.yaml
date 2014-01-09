@@ -98,8 +98,8 @@ route_planner:
 speed_advisor:
   map_frame_id: golfcart/map 
   robot_frame_id: golfcart/base_link
-  max_speed: 1.5
-  acc: 0.2
+  max_speed: 3.0
+  acc: 0.4
   max_dec: 1.0
   norm_dec: 0.3
   dec_ints: 0.1

@@ -415,6 +415,7 @@ bool PlannerExp::is_robot_in_collision()
   }
 }
 
+#if 1
 int PlannerExp::get_plan()
 {
   is_updating_committed_trajectory = true;
@@ -526,6 +527,122 @@ int PlannerExp::get_plan()
   //cout<<"get_plan_end"<<endl;
   return 0;
 }
+
+#else if
+
+int PlannerExp::get_plan()
+{
+  is_updating_committed_trajectory = true;
+  is_updating_rrts_tree = true;
+  //cout<<"get_plan"<<endl;
+  rrts.checkTree();
+  rrts.updateReachability();
+  is_updating_committed_trajectory = false;
+  is_updating_rrts_tree = false;
+
+  if(root_in_goal())
+  {
+    //cout<<"root in goal"<<endl;
+    return 0;
+  }
+  if(is_robot_in_collision()){
+    cout<<"robot in collision"<<endl;
+    clear_committed_trajectory();
+    return 1;
+  }
+  //cout<<"after check_tree num_vert: "<< rrts.numVertices<<endl;
+  bool found_best_path = false;
+  double best_cost=rrts.getBestVertexCost();
+  double prev_best_cost=best_cost;
+  int samples_this_loop = 0;
+  vertex_t &root_vertex = rrts.getRootVertex();
+  state_t &root_state = root_vertex.getState();
+  double root_goal_distance = dist(root_state[0], root_state[1],
+      0., rrts.system->regionGoal.center[0], rrts.system->regionGoal.center[1], 0 );
+
+  ros::Time start_current_call_back = ros::Time::now();
+  //cout<<"s: "<< rrts.numVertices<<" -- "<<best_cost;
+  flush(cout);
+  std::vector<double> sample_view;
+  sensor_msgs::PointCloud sample_view_;
+  sample_view_.header.stamp = ros::Time::now();
+  sample_view_.header.frame_id = global_frame;
+  while((!found_best_path) || (samples_this_loop < 50))
+  {
+    samples_this_loop += rrts.iteration(sample_view);
+    if (sample_view.size()!=0){
+    	geometry_msgs::Point32 p;
+    	p.x = sample_view[0]; p.y = sample_view[1]; p.z = sample_view[2];
+    	sample_view_.points.push_back(p);
+    	sample_view.clear();
+    }
+
+    best_cost = rrts.getBestVertexCost();
+    if(best_cost < 50.0)
+    {
+      if( (fabs(prev_best_cost - best_cost) < 0.5) && (rrts.numVertices > 25))
+        found_best_path = true;
+    }
+    //cout<<"n: "<< rrts.numVertices<<" best_cost: "<< best_cost<<endl;
+
+    if(samples_this_loop %5 == 0){
+      prev_best_cost = best_cost;
+      //cout << prev_best_cost<<endl;
+    }
+
+    ros::Duration dt = ros::Time::now() - start_current_call_back;
+    // give some time to the following code as well
+    if(dt.toSec() > 0.8*planner_dt)
+      break;
+  }
+  if (best_cost < 10000)
+  	  ROS_INFO(" e: %d --- Best Cost: %f ", rrts.numVertices ,best_cost);
+  sampling_view_pub.publish(sample_view_);
+  sample_view_.points.clear();
+  if(found_best_path)
+  {
+    rrts_status[ginf] = false;
+    if( (should_send_new_committed_trajectory || is_first_committed_trajectory))
+    {
+      is_updating_committed_trajectory = true;
+      is_updating_rrts_tree = true;
+      if(rrts.switchRoot(max_length_committed_trajectory, committed_trajectory, committed_control) == 0)
+      {
+        //cout<<"cannot switch_root: lowerBoundVertex = NULL"<<endl;
+        exit(0);
+      }
+      else
+      {
+        rrts_status[swr] = true;
+        // change sampling region if successful switch_root
+        change_goal_region();
+        //cout<<"switched root successfully"<<endl;
+        //cout<<"committed_trajectory len: "<< committed_trajectory.size()<<endl;
+      }
+      is_updating_committed_trajectory = false;
+      is_updating_rrts_tree = false;
+      should_send_new_committed_trajectory = false;
+      is_first_committed_trajectory = false;
+    }
+    return 0;
+  }
+  else 
+  {
+	  //cout << "failed to find the best path"<<rrts.numVertices<<endl;
+    if(rrts.numVertices > 400)
+    {
+      rrts_status[ginf] = true;
+      //cout<<"did not find best path: reinitializing"<<endl;
+      clear_committed_trajectory();
+      setup_rrts();
+      return 1;
+    }
+  }
+  //cout<<"get_plan_end"<<endl;
+  return 0;
+}
+
+#endif
 
 bool PlannerExp::is_near_end_committed_trajectory()
 {
@@ -693,7 +810,7 @@ void PlannerExp::publish_committed_trajectory()
 
 void PlannerExp::on_tree_pub_timer(const ros::TimerEvent &e)
 {
-  //publish_tree();
+  publish_tree();
 }
 
 void PlannerExp::publish_tree()

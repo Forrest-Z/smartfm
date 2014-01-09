@@ -486,6 +486,7 @@ namespace mrpt{
 				}
 			}
 		}
+
 		contour_cloud_pub_.publish(contour_pcl);
 		anchor_point_pub_.publish(anchor_pcl);
 	}
