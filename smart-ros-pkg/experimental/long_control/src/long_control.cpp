@@ -35,11 +35,18 @@ class Parameters
 	double ki_sat; ///< Saturation value of the integral term
 	double kd_sat; ///< Saturation value of the derivative term
 
+	double kp_sat_brake; ///< Saturation value of the proportional term
+	double ki_sat_brake; ///< Saturation value of the integral term
+	double kd_sat_brake; ///< Saturation value of the derivative term
+
 	double coeff_bp; ///< Brake angle corresponding to a full brake
-	double throttle_zero_thres; ///< Only apply the throttle if the control signal is above that value
 	double brake_zero_thres; ///< Only brake if we are above that value
 	double full_brake_thres; ///< If the measured velocity is below this value, we consider the car has stopped.
 	double vel_error_thres;	///Use by switching logic to decide whether to apply throttle or brake.
+    double throttle_to_brake_thres;
+    double throttle_to_neutral_thres;
+    double brake_to_throttle_thres;
+    double neutral_to_throttle_thres;
 	
 	double tau_v; ///< Time constant for the velocity filter
 	double err_threshold;
@@ -79,7 +86,6 @@ class PID_Controller
         double e_pre; ///< previous error (velocity) --> used for some kind of filtering of the error term
         double e_diff;
         double kdd; ///<we are switching between PID and PI
-        double iTerm; ///< the integral term
         double dgain_pre;
 
         double filteredV;
@@ -111,8 +117,11 @@ void Parameters::getParam()
 	nh.param( "ki_sat", ki_sat, 0.7 );
 	nh.param( "kd_sat", kd_sat, 0.3 );
 
+	nh.param( "kp_sat_brake", kp_sat_brake, 1.0 );
+	nh.param( "ki_sat_brake", ki_sat_brake, 0.7 );
+	nh.param( "kd_sat_brake", kd_sat_brake, 0.3 );
+
 	nh.param( "coeff_brakepedal", coeff_bp, 120.0 ); //120
-	nh.param( "throttleZeroThres", throttle_zero_thres, 0.7 ); //to eliminate the unstable behavior after braking
 	nh.param( "brakeZeroThres", brake_zero_thres, -0.5 ); // 5
 	nh.param( "fullBrakeThres", full_brake_thres, 0.25 );
 
@@ -125,7 +134,7 @@ void Parameters::getParam()
 	cout <<"kp: " <<kp <<" ki: " <<ki <<" kd: "<<kd<<" ki_sat: " <<ki_sat <<"\n";
 	cout <<"kp_brake: "<<kp_brake<<" ki_brake: "<<ki_brake<<endl;
 	cout <<"coeff_bp: " <<coeff_bp <<" tau_v: " <<tau_v  <<"\n";
-	cout <<"throttle_threshold: " <<throttle_zero_thres <<" brake_threshold: " <<brake_zero_thres <<"\n";
+	cout <<"brake_threshold: " <<brake_zero_thres <<"\n";
 }
 
 PID_Controller::PID_Controller()
@@ -216,12 +225,13 @@ double PID_Controller::getLookupTable_brake(double delta_vel)
   //the function take desired_vel as an input and output throttle value (0 - 1).
   double output_sig = 0.0;
   output_sig = 10.802*pow(delta_vel,5) + 85.502*pow(delta_vel,4) + 254.74*pow(delta_vel,3)+ 355.09*pow(delta_vel,2) + 252.65*pow(delta_vel,1) +44.879;
+  //the curve starts from 44.879 and go down to negative
+  if(output_sig > 0) output_sig = 0;
   return output_sig;
 }
 
 void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 {
-    std_msgs::Float64 throttle_msg, brake_msg;
     long_control::PID_Msg pid_msg;
   
     pid_msg.desired_vel = cmdVel;
@@ -236,11 +246,14 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
     if( emergency || !automode || (cmdVel == 0.0 && fabs(odovel) <= param.full_brake_thres) || safetyBrake_ )
     {
       // reset controller
-      e_pre = iTerm = 0.0;
-
+      e_pre = 0.0;
+      e_sum = 0.0;
+      e_sum_brake = 0.0;
+      pid_msg.vel_err = 0.0;
       vFilter.reset();
       if( safetyBrake_ ) ROS_INFO("safety brake");
-      brake_msg.data = -param.coeff_bp;
+      pid_msg.u_brake_ctrl = -param.coeff_bp;
+      pid_msg.u_ctrl = 0.0;
     }
     else
     {
@@ -294,11 +307,7 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 	//Get velocity error
 	double e_now = cmdVel - pid_msg.v_filter;
 	e_sum_brake = 0.0;
-	if(cmdVel <= param.throttle_zero_thres)
-	{
-	  pid_msg.u_ctrl = 0.0; //Throttle command
-	  pid_msg.u_brake_ctrl = 0.0;	//Brake command
-	}else{
+	
 	  //Get look-up table
 	  pid_msg.table = getLookupTable(cmdVel);
 	  
@@ -317,8 +326,9 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 	  double u =  pid_msg.table + (pid_msg.p_term + pid_msg.i_term + pid_msg.d_term);
 	  
 	  pid_msg.u_ctrl = fmutil::symbound<double>(u, 1.0); //Throttle command
+      if(pid_msg.u_ctrl < 0.0) pid_msg.u_ctrl = 0.0;
 	  pid_msg.u_brake_ctrl = 0.0;	//Brake command
-	}
+	
 
     }else{
       	//--------------------------------//
@@ -336,15 +346,15 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 	  u_brake_ffw = getLookupTable_brake(e_now);
   
 	  //P term
-	  pid_msg.p_brake_term = fmutil::symbound<double>(param.kp_brake * e_now, param.kp_sat);
+	  pid_msg.p_brake_term = fmutil::symbound<double>(param.kp_brake * e_now, param.kp_sat_brake);
 	  
 	  //I term
 	  e_sum_brake = e_sum_brake + (e_now * enc.dt);	//Integral of error
-	  pid_msg.i_brake_term = fmutil::symbound<double>(param.ki_brake * e_sum_brake, param.ki_sat);
+	  pid_msg.i_brake_term = fmutil::symbound<double>(param.ki_brake * e_sum_brake, param.ki_sat_brake);
 	  
 	  //D term
 	  e_diff = (e_now - e_pre) / enc.dt;
-	  pid_msg.d_brake_term = fmutil::symbound<double>(param.kd_brake * e_diff, param.kd_sat);
+	  pid_msg.d_brake_term = fmutil::symbound<double>(param.kd_brake * e_diff, param.kd_sat_brake);
 	  
 	  double u_brake = u_brake_ffw + (pid_msg.p_brake_term + pid_msg.i_brake_term + pid_msg.d_brake_term);
 	  pid_msg.u_brake_ctrl = fmutil::symbound<double>(u_brake, param.coeff_bp); //Brake command
@@ -353,6 +363,11 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 	  
 
     }
+    std_msgs::Float64 throttle_value, brake_value;
+    brake_value.data = pid_msg.u_brake_ctrl;
+    throttle_value.data = pid_msg.u_ctrl;
+    brakePedalPub.publish(brake_value);
+    throttlePub.publish(throttle_value);
     pidPub.publish(pid_msg);
 }
 

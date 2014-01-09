@@ -1,13 +1,19 @@
-kp: 0.00    #0.03
-ki: 0.00    #0.05
-kd: 0.00    #0.06
+kp: 0.05    #0.03
+ki: 0.01    #0.05
+kd: 0.06    #0.06
 
-kp_brake: 0.0
-ki_brake: 0.0
+kp_brake: 80.0
+ki_brake: 5.0
 kd_brake: 0.0
 
+#to make sure the car will stop at the end
+full_brake_thres: 0.5
+
+kp_sat_brake: 100.0
+ki_sat_brake: 70.0
+kd_sat_brake: 0.0
+
 tau_v: 0.2
-throttleZeroThres: 0.7
 coeff_brakepedal: 70
 
 rolling_fiction: 0.33
