@@ -311,7 +311,7 @@ void DATMO::graph_segmentation()
 	pcl::KdTreeFLANN<pcl::PointXYZRGB> kdtree;
 	if(combined_pcl_.points.size()==0) return;
 	kdtree.setInputCloud (combined_pcl_.makeShared());
-	int K = 50;
+	int K = 20;
 
 	for(size_t i=0; i<combined_pcl_.points.size(); i++)
 	{
