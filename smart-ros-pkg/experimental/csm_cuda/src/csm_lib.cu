@@ -119,6 +119,7 @@ __global__ void translationKernel(float res, float step_size, int voronoi_width,
 }
 
 //form a euclidean based voronoi and return a device pointer of the resultant img
+cudaStream_t stream_array[3];
 host_vector<int> voronoi_jfa(int voronoi_width, int voronoi_height, 
 		 vector<int> point_x, vector<int> point_y,
 		 device_vector<int> &dev_px, device_vector<int> &dev_py,
@@ -140,6 +141,8 @@ host_vector<int> voronoi_jfa(int voronoi_width, int voronoi_height,
   for(int k=512; k>0; k/=2)
     jfaKernel<<<grids,threads>>>(k, voronoi_width, voronoi_height, dev_px_ptr, dev_py_ptr, dev_voronoi_data_ptr);
   voronoi_data = dev_voronoi_data;
+  
+  for(int i=0; i<3; i++) cudaStreamCreate(&stream_array[i]);
   return voronoi_data;
 }
 
@@ -171,8 +174,13 @@ poseResult best_translation(float resolution, float step_size, int x_step, int y
   int *dev_py_ptr = raw_pointer_cast(dev_py.data());
   int *dev_voronoi_data_ptr = raw_pointer_cast(dev_voronoi_data.data());
   cudaBindTexture(NULL, tex_dev_voronoi_data_, dev_voronoi_data_ptr, dev_voronoi_data.size()*sizeof(int));
-  
+  int *dev_match_x_ptr, *dev_match_y_ptr;
+  cudaMalloc(&dev_match_x_ptr, 1024*sizeof(int));
+  cudaMalloc(&dev_match_y_ptr, 1024*sizeof(int));
   float *dev_scores_ptr = raw_pointer_cast(dev_scores.data());
+  
+
+  
   for(int i=0; i<point_x.size(); i++){
     int match_size;
     if(point_x[i]>=0 && point_y[i]>=0 && point_x[i]<voronoi_width && point_y[i]<voronoi_height){
@@ -182,17 +190,15 @@ poseResult best_translation(float resolution, float step_size, int x_step, int y
     else continue;
     match_size = match_x.size();
     if(match_size == 1024 || i == point_x.size()-1){
-      device_vector<int> dev_match_x(match_x);
-      device_vector<int> dev_match_y(match_y);
-      int *dev_match_x_ptr = raw_pointer_cast(dev_match_x.data());
-      int *dev_match_y_ptr = raw_pointer_cast(dev_match_y.data());
+      cudaMemcpyAsync(dev_match_x_ptr, &match_x[0], match_size*sizeof(int), cudaMemcpyHostToDevice, stream_array[0]);
+      cudaMemcpyAsync(dev_match_y_ptr, &match_y[0], match_size*sizeof(int), cudaMemcpyHostToDevice, stream_array[0]);
       dim3 grids(x_range/x_step,y_range/y_step);
       dim3 threads(1024);
       if(PRINT_DEBUG){
 	cout<<"Grid size of "<<grids.x<<"x"<<grids.y<<" initiated."<<endl;
 	cout<<"Thread size of "<<match_size<<" used."<<endl;
       }
-      translationKernel<<<grids, threads, threads.x*sizeof(float)>>>
+      translationKernel<<<grids, threads, threads.x*sizeof(float), stream_array[1]>>>
 				    (resolution, step_size,
 				      voronoi_width, voronoi_height, 
 				    x_step, y_step, x_range, match_size,
@@ -202,7 +208,7 @@ poseResult best_translation(float resolution, float step_size, int x_step, int y
       match_y.clear();
     }
   }
-  
+  cudaDeviceSynchronize();
   host_scores = dev_scores;
   int max_x, max_y;
   float max_value=0;

@@ -14,8 +14,7 @@ namespace mrpt{
 	void vehicle_tracking::measurement_callback(const MODT::segment_pose_batches& batches)
 	{
 		if(batches.clusters.size()==0) return;
-		cout<<endl;
-		cout<<"measurement_callback"<<batches.clusters.back().segments.back().header.seq<<endl;
+		ROS_INFO("measurement_callback");
 		MODT::segment_pose_batches batches_copy = batches;
 		register_cluster2history(batches_copy);
 		tracks_visualization();
@@ -39,7 +38,6 @@ namespace mrpt{
 			//pay attention here;
 			if(cluster_tmp.segments[cluster_tmp.segments.size()-2].points.size()==0)continue;
 
-			//this may fail to break a track into 2, when measurements are not able to process in time and dropped;
 			geometry_msgs::Point32 probe_point_tmp = cluster_tmp.segments[cluster_tmp.segments.size()-2].points.front();
 
 			for(size_t j=0; j<object_tracks_.size(); j++)
@@ -68,8 +66,6 @@ namespace mrpt{
 			}
 			else
 			{
-				cout<<endl;
-				cout<<"segment not registered"<<cluster_tmp.segments.back().header.seq<<endl;
 				unregistered_measurements.push_back(i);
 			}
 		}
@@ -170,18 +166,6 @@ namespace mrpt{
 		}
 
 		ROS_INFO("updated tracks: %ld; new tracks: %ld; deleted tracks: %ld; remained tracks: %ld", track_measure_pairs.size(), unregistered_measurements.size(), deleted_track_num, object_tracks_.size());
-
-		/*
-		for(size_t i=0; i<object_tracks_.size(); i++)
-		{
-			cout<<"object tracks last measurements "<<object_tracks_[i].last_measurement.segments.back().header.seq<<":";
-			for(size_t j=0; j<object_tracks_[i].last_measurement.segments.back().points.size(); j++)
-			{
-				cout<<"("<<object_tracks_[i].last_measurement.segments.back().points[j].x<<","<<object_tracks_[i].last_measurement.segments.back().points[j].y<<")\t";
-			}
-			cout<<endl;
-		}
-		*/
 	}
 
 	void vehicle_tracking::ICP_motion2shape(model_free_track& track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom )
@@ -189,37 +173,9 @@ namespace mrpt{
 		//1st step: for a single cluster, try to estimate its motion using ICP;
 		geometry_msgs::Pose old_pose = old_meas.ego_poses.back();
 		geometry_msgs::Pose new_pose = new_meas.ego_poses.back();
-
 		//sensor_msgs::PointCloud old_segment = old_meas.segments.back();
-		sensor_msgs::PointCloud old_cloud = track.contour_points;
-		sensor_msgs::PointCloud new_cloud = new_meas.segments.back();
-
-		/*
-		sensor_msgs::PointCloud old_cloud, new_cloud;
-		for(int i= (int)old_meas.segments.size()-1, count=0; i>=0; i--, count++)
-		{
-			if(count%2!=0)continue;
-			for(size_t j=0; j<old_meas.segments[i].points.size(); j++)
-			{
-				geometry_msgs::Point32 old_shifted;
-				old_shifted = old_meas.segments[i].points[j];
-				old_shifted.x = old_shifted.x + 10.0*count;
-				old_cloud.points.push_back(old_shifted);
-			}
-		}
-
-		for(int i= (int)new_meas.segments.size()-1, count = 0; i>=0; i--, count++)
-		{
-			if(count%2!=0)continue;
-			for(size_t j=0; j<new_meas.segments[i].points.size(); j++)
-			{
-				geometry_msgs::Point32 new_shifted;
-				new_shifted = new_meas.segments[i].points[j];
-				new_shifted.x = new_shifted.x + 10.0*count;
-				new_cloud.points.push_back(new_shifted);
-			}
-		}
-		 */
+		sensor_msgs::PointCloud old_segment = track.contour_points;
+		sensor_msgs::PointCloud new_segment = new_meas.segments.back();
 
 		//please refer to my evernote 20140103 for more information;
 		//a. calculate the rough estimation for the initial pose to speed up ICP;
@@ -229,25 +185,25 @@ namespace mrpt{
 		centroid_tmp.x = 0.0;
 		centroid_tmp.y = 0.0;
 		centroid_tmp.z = 0.0;
-		for(size_t k=0; k<old_cloud.points.size(); k++)
+		for(size_t k=0; k<old_segment.points.size(); k++)
 		{
-			centroid_tmp.x = centroid_tmp.x + old_cloud.points[k].x;
-			centroid_tmp.y = centroid_tmp.y + old_cloud.points[k].y;
+			centroid_tmp.x = centroid_tmp.x + old_segment.points[k].x;
+			centroid_tmp.y = centroid_tmp.y + old_segment.points[k].y;
 		}
-		centroid_tmp.x = centroid_tmp.x/(float)old_cloud.points.size();
-		centroid_tmp.y = centroid_tmp.y/(float)old_cloud.points.size();
+		centroid_tmp.x = centroid_tmp.x/(float)old_segment.points.size();
+		centroid_tmp.y = centroid_tmp.y/(float)old_segment.points.size();
 		centroid_position.push_back(centroid_tmp);
 
 		centroid_tmp.x = 0.0;
 		centroid_tmp.y = 0.0;
 		centroid_tmp.z = 0.0;
-		for(size_t k=0; k<new_cloud.points.size(); k++)
+		for(size_t k=0; k<new_segment.points.size(); k++)
 		{
-			centroid_tmp.x = centroid_tmp.x + new_cloud.points[k].x;
-			centroid_tmp.y = centroid_tmp.y + new_cloud.points[k].y;
+			centroid_tmp.x = centroid_tmp.x + new_segment.points[k].x;
+			centroid_tmp.y = centroid_tmp.y + new_segment.points[k].y;
 		}
-		centroid_tmp.x = centroid_tmp.x/(float)new_cloud.points.size();
-		centroid_tmp.y = centroid_tmp.y/(float)new_cloud.points.size();
+		centroid_tmp.x = centroid_tmp.x/(float)new_segment.points.size();
+		centroid_tmp.y = centroid_tmp.y/(float)new_segment.points.size();
 		centroid_position.push_back(centroid_tmp);
 
 		//build the transform from v_(t-1) to v_t;
@@ -278,75 +234,46 @@ namespace mrpt{
 		CPose2D	initialPose(x_initial, y_initial, yaw_initial);
 
 		//b. construct two scans based on the "pose + pointcloud";
-		//CObservation2DRangeScan	scan1, scan2;
-		//construct_ICP_scans(old_pose, old_segment, scan1);
-		//construct_ICP_scans(new_pose, new_segment, scan2);
+		CObservation2DRangeScan	scan1, scan2;
+		construct_ICP_scans(old_pose, old_segment, scan1);
+		construct_ICP_scans(new_pose, new_segment, scan2);
 
-		// a trick to use ICP to get zero-degree rotation :-)
-		sensor_msgs::PointCloud old_cloud_shiftAdded, new_cloud_shiftAdded;
-		for(size_t i=0; i<old_cloud.points.size(); i++)
-		{
-			geometry_msgs::Point32 pt_shift = old_cloud.points[i];
-			old_cloud_shiftAdded.points.push_back(pt_shift);
-			pt_shift.x = pt_shift.x + 10.0;
-			old_cloud_shiftAdded.points.push_back(pt_shift);
-		}
-
-		for(size_t i=0; i<new_cloud.points.size(); i++)
-		{
-			geometry_msgs::Point32 pt_shift = new_cloud.points[i];
-			new_cloud_shiftAdded.points.push_back(pt_shift);
-			pt_shift.x = pt_shift.x + 10.0;
-			new_cloud_shiftAdded.points.push_back(pt_shift);
-		}
-
-
-		CSimplePointsMap		m1, m2, m1_shiftAdded, m2_shiftAdded;
+		CSimplePointsMap		m1,m2;
 		float					runningTime;
 		CICP::TReturnInfo		info;
 		CICP					ICP;
-		constructPtsMap(old_pose, old_cloud_shiftAdded, m1_shiftAdded);
-		constructPtsMap(new_pose, new_cloud_shiftAdded, m2_shiftAdded);
 
-		constructPtsMap(old_pose, old_cloud, m1);
-		constructPtsMap(new_pose, new_cloud, m2);
-
-		//m1.insertObservation( &scan1 );
-		//m2.insertObservation( &scan2 );
+		m1.insertObservation( &scan1 );
+		m2.insertObservation( &scan2 );
 
 		ICP.options.ICP_algorithm = icpLevenbergMarquardt;
 		ICP.options.maxIterations			= 100;
 		ICP.options.thresholdAng			= DEG2RAD(10.0f);
 		ICP.options.thresholdDist			= 0.75f;
 		ICP.options.ALFA					= 0.5f;
-		ICP.options.smallestThresholdDist	= 0.01f;
+		ICP.options.smallestThresholdDist	= 0.05f;
 		ICP.options.doRANSAC = false;
 		ICP.options.onlyClosestCorrespondences = false;
 		ICP.options.dumpToConsole();
 
 		//CPose2D		initialPose(0.0f,0.0f,(float)DEG2RAD(0.0f));
-		CPosePDFPtr pdf = ICP.Align(&m1_shiftAdded, &m2_shiftAdded, initialPose,&runningTime,(void*)&info);
-		CPosePDFGaussian  gPdf;
-		gPdf.copyFrom(*pdf);
+		CPosePDFPtr pdf = ICP.Align(&m1, &m2,initialPose,&runningTime,(void*)&info);
 
 		printf("ICP run in %.02fms, %d iterations (%.02fms/iter), %.01f%% goodness\n -> ",
 				runningTime*1000,
 				info.nIterations,
 				runningTime*1000.0f/info.nIterations,
 				info.goodness*100 );
+
 		cout << "Mean of estimation: " << pdf->getMeanVal() << endl<< endl;
 
-		CPose2D	initialPose_step2(gPdf.mean.x(), gPdf.mean.y(), gPdf.mean.phi());
-		ICP.options.onlyClosestCorrespondences = true;
-		ICP.options.maxIterations			= 1;
-		CPosePDFPtr pdf2 = ICP.Align(&m1, &m2, initialPose_step2, &runningTime,(void*)&info);
+		CPosePDFGaussian  gPdf;
+		gPdf.copyFrom(*pdf);
 
-		CPosePDFGaussian  gPdf2;
-		gPdf2.copyFrom(*pdf2);
 		//c: to recover the vehicle pose and speed in the global frame;
-		double ICP_output_x 	= gPdf2.mean.x();
-		double ICP_output_y 	= gPdf2.mean.y();
-		double ICP_output_yaw 	= gPdf2.mean.phi();
+		double ICP_output_x 	= gPdf.mean.x();
+		double ICP_output_y 	= gPdf.mean.y();
+		double ICP_output_yaw 	= gPdf.mean.phi();
 		cout<<"ICP output: "<<ICP_output_x<<","<<ICP_output_y<<","<<ICP_output_yaw<<endl;
 
 		tf::Pose ICP_Etm1_to_Etvirtual = tf::Transform(tf::Matrix3x3(tf::createQuaternionFromYaw(ICP_output_yaw)), tf::Vector3(tfScalar(ICP_output_x), tfScalar(ICP_output_y), tfScalar(0)));
@@ -361,37 +288,6 @@ namespace mrpt{
 
 		newMeas_poseinOdom = Odom_to_Vt;
 		oldMeas_poseinOdom = Odom_to_Vt*ICP_Vtm1_To_Vt.inverse();
-	}
-
-	void vehicle_tracking::constructPtsMap(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CSimplePointsMap &map)
-	{
-		//2nd step: input the scan readings with pointcloud readings;
-		tf::Pose lidarTFPose;
-		tf::poseMsgToTF(lidar_pose, lidarTFPose);
-
-		geometry_msgs::Pose temppose;
-		temppose.position.x=0;
-		temppose.position.y=0;
-		temppose.position.z=0;
-		temppose.orientation.x=0;
-		temppose.orientation.y=0;
-		temppose.orientation.z=0;
-		temppose.orientation.w=1;
-
-		for(size_t ip=0; ip<segment_pointcloud.points.size(); ip++)
-		{
-			temppose.position.x = segment_pointcloud.points[ip].x;
-			temppose.position.y = segment_pointcloud.points[ip].y;
-
-			tf::Pose tempTfPose;
-			tf::poseMsgToTF(temppose, tempTfPose);
-
-			tf::Pose pointInlidar = lidarTFPose.inverseTimes(tempTfPose);
-			geometry_msgs::Point32 pointtemp;
-			pointtemp.x=(float)pointInlidar.getOrigin().x();
-			pointtemp.y=(float)pointInlidar.getOrigin().y();
-			map.insertPoint(pointtemp.x, pointtemp.y, 0.0);
-		}
 	}
 
 	void vehicle_tracking::construct_ICP_scans(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CObservation2DRangeScan& scan)
