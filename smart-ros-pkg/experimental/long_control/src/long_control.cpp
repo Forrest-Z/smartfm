@@ -86,7 +86,7 @@ class PID_Controller
 	bool do_brake;
         std::vector<double> out_avg;
         int counter;
-        double e_sum,e_now;
+        double e_sum, e_sum_brake, e_now;
         double throttle_old, throttle_new;
 
         fmutil::LowPassFilter vFilter;
@@ -162,8 +162,9 @@ PID_Controller::PID_Controller()
     e_pre = 0.0;
     e_now = 0.0;
     
-    e_sum = 0.0;    
-    e_diff = 0.0;
+		e_sum = 0.0;    
+    e_sum_brake = 0.0; 
+		e_diff = 0.0;
     
 }
 
@@ -250,32 +251,33 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
       //Logic switching, Throttle or Brake
       if(pid_msg.vel_err >= 0.0)
       {
-	param.controller_state = 0;	///Throttle
-	do_brake = false;
+				param.controller_state = 0;	///Throttle
+				do_brake = false;
       }
       else if((pid_msg.vel_err < 0.0) && (pid_msg.vel_err >= param.brake_zero_thres))
       {
-	param.controller_state = 1;	///Neutral
-	//-----------------------------------------------//
-	//----- Neutral stage, Keep braking state -------//
-	//-----------------------------------------------//
-	if(param.controller_state_prev == 2)
-	{
-	  //Brake --> Neutral then brake
-	  do_brake = true;
-	}else if(param.controller_state_prev == 0)
-	{
-	  //Throttle --> Neutral then no brake
-	  do_brake = false;
-	}else{
-	  //Neutral --> Neutral, do have to do anything?
-	  std::cout << "At Neutral state!" << std::endl;
-	}
+				param.controller_state = 1;	///Neutral
+				//-----------------------------------------------//
+				//----- Neutral stage, Keep braking state -------//
+				//-----------------------------------------------//
+				if(param.controller_state_prev == 2)
+				{
+					//Brake --> Neutral then brake
+					do_brake = true;
+					
+				}else if(param.controller_state_prev == 0)
+				{
+					//Throttle --> Neutral then no brake
+					do_brake = false;
+				}else{
+					//Neutral --> Neutral, do have to do anything?
+					std::cout << "At Neutral state!" << std::endl;
+				}
       }
       else
       {
-	param.controller_state = 2;	///Brake
-	do_brake = true;
+				param.controller_state = 2;	///Brake
+				do_brake = true;
 
       }
       param.controller_state_prev = param.controller_state;
@@ -291,7 +293,7 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 	//--------------------------------//
 	//Get velocity error
 	double e_now = cmdVel - pid_msg.v_filter;
-	
+	e_sum_brake = 0.0;
 	if(cmdVel <= param.throttle_zero_thres)
 	{
 	  pid_msg.u_ctrl = 0.0; //Throttle command
@@ -325,6 +327,7 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 	//Get velocity error
 	double e_now = cmdVel - pid_msg.v_filter;
 	double u_brake_ffw = 0.0;
+	e_sum = 0.0;
 	if(e_now >= param.rolling_fiction)
 	{
 	  pid_msg.u_brake_ctrl = 0.0;
@@ -336,8 +339,8 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 	  pid_msg.p_brake_term = fmutil::symbound<double>(param.kp_brake * e_now, param.kp_sat);
 	  
 	  //I term
-	  e_sum = e_sum + (e_now * enc.dt);	//Integral of error
-	  pid_msg.i_brake_term = fmutil::symbound<double>(param.ki_brake * e_sum, param.ki_sat);
+	  e_sum_brake = e_sum_brake + (e_now * enc.dt);	//Integral of error
+	  pid_msg.i_brake_term = fmutil::symbound<double>(param.ki_brake * e_sum_brake, param.ki_sat);
 	  
 	  //D term
 	  e_diff = (e_now - e_pre) / enc.dt;
