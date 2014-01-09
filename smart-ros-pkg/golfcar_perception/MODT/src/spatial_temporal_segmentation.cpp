@@ -39,6 +39,7 @@
 #include "DATMO_datatypes.h"
 #include "svm_classifier.h"
 #include "MODT/segment_pose_batches.h"
+#include <fmutil/fm_stopwatch.h>
 
 using namespace std;
 using namespace ros;
@@ -245,10 +246,20 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 
 void DATMO::process_accumulated_data()
 {
+	cout<<endl;
+	fmutil::Stopwatch sw;
+	sw.start("graph segmentation");
 	graph_segmentation();
+	sw.end();
+
 	//perform_prefiltering_simpleThresholding();
+	sw.start("prefilter moving evidence");
 	perform_prefiltering_movingEvidence();
+	sw.end();
+
+	sw.start("construct feature vector");
 	construct_feature_vector();
+	sw.end();
 
 	if(program_mode_==0)
 	{
@@ -256,14 +267,24 @@ void DATMO::process_accumulated_data()
 	}
 	else
 	{
+		sw.start("classify clusters");
 		classify_clusters();
+		sw.end();
+
+		sw.start("calculate rough pose");
 		calc_rough_pose();
+		sw.end();
+
+		sw.start("calculate accurate pose");
 		calc_precise_pose();
+		sw.end();
 	}
 }
 
 void DATMO::graph_segmentation()
 {
+	fmutil::Stopwatch sw;
+	sw.start("1st: edge vector construction");
 	combined_pcl_.points.clear();
 	combined_pcl_.header = cloud_vector_.back().header;
 	srand (time(NULL));
@@ -314,8 +335,11 @@ void DATMO::graph_segmentation()
 	//edge edges[edge_num];
 	//for(int i=0; i<edge_num; i++) edges[i] = edge_vector[i];
 	float c = 3.0;
-	universe *u = segment_graph(vertix_num, edge_num, &edge_vector[0], c);
+	sw.end();
 
+	sw.start("2nd: graph segmentation");
+
+	universe *u = segment_graph(vertix_num, edge_num, &edge_vector[0], c);
 	object_cluster_IDs_.clear();
 	for(size_t i=0; i<combined_pcl_.points.size(); i++)
 	{
@@ -345,6 +369,9 @@ void DATMO::graph_segmentation()
 			object_cluster_IDs_.push_back(new_cluster);
 		}
 	}
+
+	sw.end();
+
 	segmented_pcl_pub_.publish(combined_pcl_);
 }
 
