@@ -16,6 +16,7 @@
   <depend package="std_msgs"/>
   <depend package="fmutil"/>
   <depend package="mrpt_icp_slam_2d"/>
+  <depend package="norm_virtual_sensor"/>
 </package>
 
 

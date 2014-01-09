@@ -1,0 +1,20 @@
+<launch>
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
+        <remap from="cmd_vel" to="cmd_steer"/>
+        <remap from="map" to="curb_map"/>
+
+        <param name="footprint_padding" value="0.01" />
+        <param name="controller_frequency" value="20.0" />
+        <param name="controller_patience" value="100.0" />
+        <param name="base_global_planner" value="golfcar_gp/GlobalPlan"/>
+        <param name="base_local_planner" value="golfcar_purepursuit/PurePursuitBase"/>
+        <param name="PurePursuitBase/tracking_distance" value="15.0"/>
+
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params_simulation.yaml" command="load" ns="global_costmap" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params_simulation.yaml" command="load" ns="local_costmap" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/local_costmap_params_close.yaml" command="load" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/global_costmap_params.yaml" command="load" />
+        <rosparam file="$(find golfcar_ppc)/launch/move_base/sbpl_global_params.yaml" command="load" />
+    </node>
+</launch>
+

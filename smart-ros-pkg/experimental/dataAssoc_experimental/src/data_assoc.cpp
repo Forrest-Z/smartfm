@@ -11,16 +11,18 @@ data_assoc::data_assoc(int argc, char** argv) : merge_lists(nh_), it_(nh_)
     ROS_DEBUG("Starting Pedestrian Avoidance ... ");
 
     /// Setting up subsciption
-    image_sub_.subscribe(it_, "/camera_front/image_raw", 20);
+    image_sub_.subscribe(it_, "camera_front/image_raw", 50);
 
-    pedClustSub_.subscribe(nh_, "pedestrian_clusters", 10);
-    pedVisionAngularSub_.subscribe(nh_, "pedestrian_roi", 10);
+    pedClustSub_.subscribe(nh_, "pedestrian_clusters", 50);
+    pedVisionAngularSub_.subscribe(nh_, "pedestrian_roi", 100);
     /// TBP : how to add multiple subscription to same call back ????
 
     ros::NodeHandle n("~");
 
     n.param("global_frame", global_frame_, string("map"));
     n.param("camera_frame", camera_frame_, string("camera_front_base"));
+    projector.camera_frame_id_ = camera_frame_;
+
     n.param("time_out", time_out_, 3.0);
     n.param("poll_increment", poll_inc_, 0.1);
     n.param("poll_decrement", poll_dec_, 0.05);
@@ -39,8 +41,9 @@ data_assoc::data_assoc(int argc, char** argv) : merge_lists(nh_), it_(nh_)
     //laser_tf_filter_ = new tf::MessageFilter<feature_detection::clusters>(pedClustSub_, *listener_, global_frame_, 10);
     //laser_tf_filter_->registerCallback(boost::bind(&data_assoc::pedClustCallback, this, _1));
 
-    vision_angular_tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(pedVisionAngularSub_, *listener_, "camera_front_base", 10);
+    vision_angular_tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(pedVisionAngularSub_, *listener_, camera_frame_, 100);
     vision_angular_tf_filter_ -> registerCallback(boost::bind(&data_assoc::pedVisionAngularCallback, this, _1));
+    vision_angular_tf_filter_->setTolerance(ros::Duration(0.1));
 
     dynamic_cb = boost::bind(&data_assoc::dynamic_callback, this, _1, _2);
     dynamic_server.setCallback(dynamic_cb);
@@ -103,9 +106,9 @@ void data_assoc::getLocalLPedInView(vector<local_lPedInView>& lPedInView_local)
 
 void data_assoc::pedVisionAngularCallback(sensor_msgs::PointCloudConstPtr pedestrian_vision_angular)
 {
-    ROS_DEBUG(" Entering vision call back with lPedInView %d", lPedInView.pd_vector.size());
+    ROS_INFO(" Entering vision call back with lPedInView %d", lPedInView.pd_vector.size());
     std::vector<geometry_msgs::Point32> vision_point = pedestrian_vision_angular->points;
-    ROS_DEBUG("Getting new id if any. Vision roi points received=%d", vision_point.size());
+    ROS_INFO("Getting new id if any. Vision roi points received=%d", vision_point.size());
 
     //get a copy lPedInView in local frame and sort it
     vector<local_lPedInView> lPedInView_local;
@@ -387,6 +390,7 @@ void data_assoc::updateMergeList()//feature_detection::clusters cluster_vector)
 
 void data_assoc::pedClustCallback(sensor_msgs::ImageConstPtr image, feature_detection::clustersConstPtr cluster_vector_ptr)
 {
+	ROS_INFO("Hurray!");
     ROS_DEBUG_STREAM( " Entering pedestrian call back with lPedInView " << lPedInView.pd_vector.size() << " With frame id "<< frame_id_ );
 
     cv_bridge::CvImagePtr cv_image;

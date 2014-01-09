@@ -25,6 +25,8 @@
   <depend package="pcl_ros"/>
   <rosdep name="eigen" />
   <depend package="svm_classifier"/>
+  <depend package="mrpt_libs"/>
+  <depend package="fmutil"/>
 </package>
 
 

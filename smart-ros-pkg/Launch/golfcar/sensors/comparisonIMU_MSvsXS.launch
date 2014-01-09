@@ -1,0 +1,12 @@
+<launch>
+    <node name="ms_rpy" pkg="microstrain_rpy" type="rpy" ns="ms">
+        <remap from="data" to="imu/data"/>
+    </node>
+    <node name="xs_rpy" pkg="microstrain_rpy" type="rpy" ns="xsens">
+        <remap from="data" to="imu/data"/>
+    </node>
+    <node pkg="xsens_driver" type="mtnode.py" name="xsens_driver" ns="xsens" output="screen" >
+	    <param name="frame_id" value="/imu_xsens" />
+	    <param name="device" value="/dev/ttyUSB0"/>
+    </node>
+</launch>

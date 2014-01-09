@@ -109,7 +109,7 @@ class LaserVehicle
     ros::Publisher DP1_pub_, DP2_pub_, raw_RA_pub_, FR_RA_pub_, DP_RA_pub_;
     ros::Publisher detection_time_pub_;
 	std::vector<geometry_msgs::PoseStamped> vehicle_pose_vector;
-
+    bool publish_tf_;
     NearestNeighborTracking *nnt_;
 
     string target_frame_, veh_frame_;
@@ -134,7 +134,8 @@ class LaserVehicle
 
         //need to keep sending the data to keep the tf tree alive
         latest_trans_.stamp_ = ros::Time::now();
-        tf_broadcaster_->sendTransform(latest_trans_);
+	if(publish_tf_)
+	  tf_broadcaster_->sendTransform(latest_trans_);
 	sw.end();
 	std_msgs::Int64 detect_time_data;
 	detect_time_data.data = sw.total_;
@@ -561,7 +562,8 @@ class LaserVehicle
                     i++;
                     //final selection of curve using nearest dist
                     pcl::PointXYZ pt_center((pt_max.x + pt_min.x)/2, (pt_max.y + pt_min.y)/2, 0);
-                    double bumper_dist = fmutil::distance(pt_center.x, pt_center.y, 0, 0);
+                    //simple hack so that the segment located right in front is selected 
+		    double bumper_dist = fabs(pt_center.y);// fmutil::distance(pt_center.x, pt_center.y, 0, 0);
                     if(bumper_dist < nearest_dist)
                     {
                         final_yaw = yaw;
@@ -622,6 +624,7 @@ class LaserVehicle
         tf::StampedTransform trans(tf::Transform(), vehicle_pose.header.stamp, vehicle_pose.header.frame_id, veh_frame_);
         tf::poseMsgToTF(vehicle_pose.pose, trans);
         latest_trans_ = trans;
+	if(publish_tf_)
 		tf_broadcaster_->sendTransform(latest_trans_);
 
         vehicle_pose_vector.push_back(vehicle_pose);
@@ -651,7 +654,8 @@ public:
         private_nh.param("detect_angle_tolerance", angle_tol_, 90.0);
         private_nh.param("range_thres", range_thres_, 0.1);
         private_nh.param("detected_vehicle_frame", veh_frame_, string("/robot_1/base_link"));
-        std::string::size_type delimiter_position( nh_->getNamespace().find('/') );
+        private_nh.param("publish_tf", publish_tf_, true);
+	std::string::size_type delimiter_position( nh_->getNamespace().find('/') );
 
         //the getNamespace() return //namespace for some reason...
         //only search at most 2 delimited text, which is sufficient in this simple case
@@ -670,8 +674,8 @@ public:
         segmented_pub_ = nh_->advertise<sensor_msgs::PointCloud>("segmented_dist_p", 10);
         filter_res_pub_ = nh_->advertise<sensor_msgs::PointCloud>("filter_response", 10);
         filter_size_pub_ = nh_->advertise<sensor_msgs::PointCloud2>("size_filtered", 10);
-        vehicle_pub_ = nh_->advertise<geometry_msgs::PoseStamped>("vehicle_pose", 10);
-        vehicle_vel_pub_ = nh_->advertise<geometry_msgs::TwistStamped>("vehicle_vel",10);
+        vehicle_pub_ = nh_->advertise<geometry_msgs::PoseStamped>("/vehicle_pose", 10);
+        vehicle_vel_pub_ = nh_->advertise<geometry_msgs::TwistStamped>("/vehicle_vel",10);
         detection_time_pub_ = nh_->advertise<std_msgs::Int64>("detection_time", 10);
         DP1_pub_ = nh_->advertise<sensor_msgs::PointCloud>("DP1", 10);
         DP2_pub_ = nh_->advertise<sensor_msgs::PointCloud>("DP2", 10);

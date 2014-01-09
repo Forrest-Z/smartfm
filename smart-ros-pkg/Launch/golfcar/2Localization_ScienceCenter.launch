@@ -1,10 +1,13 @@
 <launch>
 
-    <node name="map_server" pkg="map_server" type="map_server" args="$(find science_center)/science_center4.yaml"/>
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find science_center)/maps/science_center_Wednesday.yaml"/>
 	<node name="amcl" pkg="amcl" type="amcl" respawn="false" output="screen">
-        <param name="odom_alpha3" value="0.2"/>
-        <param name="update_min_d" value="0.2"/>
-        <param name="laser_max_beams" value="70"/>
+        <param name="odom_alpha1" value="0.3"/>  
+        <param name="odom_alpha2" value="0.2"/>      
+        <param name="odom_alpha3" value="0.3"/>
+        <param name="odom_alpha4" value="0.3"/>
+        <param name="update_min_a" value="3.14159265/18.0"/>
+        <param name="laser_max_beams" value="50"/>
 		<remap from="scan" to="front_top_scan"/>		
     </node>
 

@@ -86,9 +86,10 @@ public:
     CvRectangle project(const geometry_msgs::PointStamped & centroid, double width, double height) const;
     void setPixelAllowance(const double pixel);
     void setLaserMountingHeight(const double height);
-protected:
+
     /// Frame ID of the camera (where to project). Defaults to "camera_front_base"
     std::string camera_frame_id_;
+protected:
 
     // Field of view of the camera. Defaults to 70 degree
     double fov_;

@@ -1,0 +1,37 @@
+<launch>    
+
+	<!--golfcart to detect iMiev-->
+    <node name="vehicle_detect" pkg="cooperative_perception" type="laser_vehicle" output="screen" ns="golfcart">
+        <param name="target_frame" value="/golfcart/base_link"/>
+        <param name="discontinue_thres" value="0.5"/>
+        <param name="filter_pts" value="2"/>
+        <param name="car_width" value="1.0"/>
+        <param name="width_tolerance" value="0.5"/>
+        <param name="detect_angle_tolerance" value="90"/>
+        <param name="euc_dist_range" value="4.0"/>
+        <param name="range_thres" value="0.2"/>
+        <remap from="scan_in" to="front_bottom_scan" />
+        <param name="detected_vehicle_frame" value="/base_link"/>
+        <remap from="/vehicle_pose" to="/vehicle_pose"/>
+        <remap from="/vehicle_vel" to="/vehicle_vel"/>
+        <param name="publish_tf" value="false"/>
+    </node>
+    
+    <!--iMiev to detect golfcart2-->
+	<node name="vehicle_detect" pkg="cooperative_perception" type="laser_vehicle" output="screen" ns="/">
+		<param name="target_frame" value="/base_link"/>
+		<param name="discontinue_thres" value="0.5"/>
+		<param name="filter_pts" value="2"/>
+		<param name="car_width" value="1.0"/>
+		<param name="width_tolerance" value="0.5"/>
+		<param name="detect_angle_tolerance" value="90"/>
+		<param name="euc_dist_range" value="4.0"/>
+		<param name="range_thres" value="0.2"/>
+		<remap from="scan_in" to="front_bottom_scan_filter" />
+		<param name="detected_vehicle_frame" value="/golfcart2/base_link"/>
+		<remap from="/vehicle_pose" to="/golfcart2/vehicle_pose"/>
+		<remap from="/vehicle_vel" to="/golfcart2/vehicle_vel"/>
+		<param name="publish_tf" value="false"/>
+	</node>
+	
+</launch>

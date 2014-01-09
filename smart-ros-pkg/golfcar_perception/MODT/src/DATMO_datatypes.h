@@ -31,7 +31,6 @@
 
 using namespace std;
 using namespace ros;
-using namespace cv;
 
 class DATMO_TrainingScan
 {
@@ -63,10 +62,11 @@ class DATMO_abstractSummary
 
 class compressed_scan_segment
 {
-
 	public:
 	//raw information;
+	vector<int> serial_in_scan;
 	vector<geometry_msgs::Point32> rawPoints;
+	vector<geometry_msgs::Point32> odomPoints;
 	vector<float> rawIntensities;
 
 	//compressed information;
@@ -82,9 +82,27 @@ class compressed_scan_segment
 
 	void compress_scan()
 	{
-		assert(rawPoints.size()!=0);
 		assert(rawPoints.size() == rawIntensities.size());
-		if(rawPoints.size()==1)
+		if(rawPoints.size()==0)
+		{
+			//cout<<"rawPoints size 0"<<endl;
+			geometry_msgs::Point32 virtual_deputy;
+			virtual_deputy.x = 0.0;
+			virtual_deputy.y = 0.0;
+			virtual_deputy.z = 0.0;
+			KeyPoint[0] = virtual_deputy;
+			KeyPoint[1] = virtual_deputy;
+			KeyPoint[2] = virtual_deputy;
+			intensities[0] = 0.0;
+			intensities[1] = 0.0;
+			intensities[2] = 0.0;
+			m = 0;
+			n = 0;
+			sigmaM = 0.0;
+			sigmaN = 0.0;
+		}
+
+		else if(rawPoints.size()==1)
 		{
 			KeyPoint[0] = rawPoints.front();
 			KeyPoint[1] = rawPoints.front();
@@ -170,5 +188,8 @@ class object_cluster_segments
 	int object_type;
 	int contour_serial;
 	vector <geometry_msgs::Pose> pose_InLatestCoord_vector;
+	vector <geometry_msgs::Pose> pose_InOdom_vector;
 	vector <compressed_scan_segment> scan_segment_batch;
+
+	float x, y, thetha, v, omega;
 };

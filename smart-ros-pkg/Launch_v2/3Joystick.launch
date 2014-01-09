@@ -1,0 +1,11 @@
+<launch>
+  <group ns="$(env ROBOT)">
+	<node pkg="joy" type="joy_node" name="joy_node">
+		<param name="dev" value="/dev/input/js0"/>
+        <param name="autorepeat_rate" value="50"/>
+	</node>
+	<node pkg="kbd_joy_control" type="joy_hal" name="joy_hal">
+    </node>
+  </group>
+</launch>
+

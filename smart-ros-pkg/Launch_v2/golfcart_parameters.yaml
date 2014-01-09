@@ -9,7 +9,7 @@ frontBottom:
 base_link_to_front_top_lidar:
   x: 1.78
   z: 1.82
-  pitch: 0.24
+  pitch: 0.0
   parent_frame_id: env_ROBOT/base_link
   child_frame_id: env_ROBOT/front_top_lidar
 base_link_to_front_bottom_lidar:
@@ -48,6 +48,9 @@ ms/microstrain_3dmgx2_node:
   frameid: env_ROBOT/imu
   autocalibrate: true
   angular_velocity_stdev: 0.00017
+xsens_driver:
+  frame_id: env_ROBOT/imu
+  device: /dev/ttyUSB0
 encoderImu_integrator:
   parent_frame_id: env_ROBOT/odom
   child_frame_id: env_ROBOT/base_link
@@ -130,3 +133,11 @@ speed_advisor:
   kinematic_acceleration: false
 dynamic_virtual_bumper:
   base_frame: env_ROBOT/base_link
+Dist_Map:
+  base_frame: env_ROBOT/base_link
+  global_frame: env_ROBOT/map
+  local_frame: env_ROBOT/local_map
+Obst_Avoid:
+  base_frame: env_ROBOT/base_link
+  global_frame: env_ROBOT/map
+  local_frame: env_ROBOT/local_map
