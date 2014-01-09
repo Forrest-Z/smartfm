@@ -40,7 +40,7 @@ class CsmGPU{
 	
     poseResult getBestTranslation(double x_step, double y_step, 
 			    double x_range, double y_range,
-			    pcl::PointCloud<T> &matching_pts);
+			    pcl::PointCloud<T> &matching_pts, int stream_idx);
   private:
     
   

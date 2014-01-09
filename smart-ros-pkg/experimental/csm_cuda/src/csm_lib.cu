@@ -10,7 +10,8 @@
 using namespace std;
 using namespace thrust;
 texture<int> tex_dev_voronoi_data_;
-
+#define stream_number 4
+cudaStream_t stream_array[stream_number];
 struct poseResult{
   double x,y,r,score;
 };
@@ -63,7 +64,7 @@ __global__ void jfaKernel(int step, int voronoi_width, int voronoi_height, int *
 __global__ void translationKernel(float res, float step_size, int voronoi_width, int voronoi_height, 
 				 int x_step, int y_step, int x_range, int match_size,
 				 int y_range, int* match_x, int* match_y, 
-				 int* voronoi_data, int* px, int* py, float* scores){
+				 int* px, int* py, float* scores){
   //check index
   //single thread dimension with xy grid for each offset
   //maximum thread is limited to 1024, hence need to call this function repeatedly
@@ -119,7 +120,6 @@ __global__ void translationKernel(float res, float step_size, int voronoi_width,
 }
 
 //form a euclidean based voronoi and return a device pointer of the resultant img
-cudaStream_t stream_array[3];
 host_vector<int> voronoi_jfa(int voronoi_width, int voronoi_height, 
 		 vector<int> point_x, vector<int> point_y,
 		 device_vector<int> &dev_px, device_vector<int> &dev_py,
@@ -142,7 +142,8 @@ host_vector<int> voronoi_jfa(int voronoi_width, int voronoi_height,
     jfaKernel<<<grids,threads>>>(k, voronoi_width, voronoi_height, dev_px_ptr, dev_py_ptr, dev_voronoi_data_ptr);
   voronoi_data = dev_voronoi_data;
   
-  for(int i=0; i<3; i++) cudaStreamCreate(&stream_array[i]);
+  cudaBindTexture(NULL, tex_dev_voronoi_data_, dev_voronoi_data_ptr, dev_voronoi_data.size()*sizeof(int));
+  for(int i=0; i<stream_number; i++) cudaStreamCreate(&stream_array[i]);
   return voronoi_data;
 }
 
@@ -150,7 +151,7 @@ poseResult best_translation(float resolution, float step_size, int x_step, int y
   vector<int> point_x, vector<int> point_y,
   int voronoi_width, int voronoi_height,
   device_vector<int> &dev_px, device_vector<int> &dev_py,
-  device_vector<int> &dev_voronoi_data
+  device_vector<int> &dev_voronoi_data, int stream_idx
 		    )
 {
   //step size will determine the resoution used when calculating
@@ -167,17 +168,18 @@ poseResult best_translation(float resolution, float step_size, int x_step, int y
   if(PRINT_DEBUG)
   cout<<"Total scores to be generated "<<total_scores <<
   "(range:"<<x_range<<"x"<<y_range<<", step:"<<x_step<<"x"<<y_step<<")"<<endl;
-  device_vector<float> dev_scores(total_scores, 0.0);
-  host_vector<float> host_scores;
+  vector<float> host_scores(total_scores, 0.0);
+  float *dev_scores_ptr;
+  cudaMalloc(&dev_scores_ptr, total_scores*sizeof(float));
+  cudaMemcpyAsync(dev_scores_ptr, &host_scores[0], total_scores*sizeof(float), cudaMemcpyHostToDevice, stream_array[stream_idx]);
+ // host_vector<float> host_scores;
   vector<int> match_x, match_y;
   int *dev_px_ptr = raw_pointer_cast(dev_px.data());
   int *dev_py_ptr = raw_pointer_cast(dev_py.data());
-  int *dev_voronoi_data_ptr = raw_pointer_cast(dev_voronoi_data.data());
-  cudaBindTexture(NULL, tex_dev_voronoi_data_, dev_voronoi_data_ptr, dev_voronoi_data.size()*sizeof(int));
   int *dev_match_x_ptr, *dev_match_y_ptr;
   cudaMalloc(&dev_match_x_ptr, 1024*sizeof(int));
   cudaMalloc(&dev_match_y_ptr, 1024*sizeof(int));
-  float *dev_scores_ptr = raw_pointer_cast(dev_scores.data());
+  //float *dev_scores_ptr = raw_pointer_cast(dev_scores.data());
   
 
   
@@ -190,26 +192,26 @@ poseResult best_translation(float resolution, float step_size, int x_step, int y
     else continue;
     match_size = match_x.size();
     if(match_size == 1024 || i == point_x.size()-1){
-      cudaMemcpyAsync(dev_match_x_ptr, &match_x[0], match_size*sizeof(int), cudaMemcpyHostToDevice, stream_array[0]);
-      cudaMemcpyAsync(dev_match_y_ptr, &match_y[0], match_size*sizeof(int), cudaMemcpyHostToDevice, stream_array[0]);
+      cudaMemcpyAsync(dev_match_x_ptr, &match_x[stream_idx], match_size*sizeof(int), cudaMemcpyHostToDevice, stream_array[stream_idx]);
+      cudaMemcpyAsync(dev_match_y_ptr, &match_y[stream_idx], match_size*sizeof(int), cudaMemcpyHostToDevice, stream_array[stream_idx]);
       dim3 grids(x_range/x_step,y_range/y_step);
       dim3 threads(1024);
       if(PRINT_DEBUG){
 	cout<<"Grid size of "<<grids.x<<"x"<<grids.y<<" initiated."<<endl;
 	cout<<"Thread size of "<<match_size<<" used."<<endl;
       }
-      translationKernel<<<grids, threads, threads.x*sizeof(float), stream_array[1]>>>
+      translationKernel<<<grids, threads, threads.x*sizeof(float), stream_array[stream_idx]>>>
 				    (resolution, step_size,
 				      voronoi_width, voronoi_height, 
 				    x_step, y_step, x_range, match_size,
 				    y_range, dev_match_x_ptr, dev_match_y_ptr, 
-				    dev_voronoi_data_ptr, dev_px_ptr, dev_py_ptr, dev_scores_ptr);
+				    dev_px_ptr, dev_py_ptr, dev_scores_ptr);
       match_x.clear();
       match_y.clear();
     }
   }
-  cudaDeviceSynchronize();
-  host_scores = dev_scores;
+  //cudaDeviceSynchronize();
+  cudaMemcpyAsync(&host_scores[0], dev_scores_ptr, total_scores*sizeof(float), cudaMemcpyDeviceToHost, stream_array[stream_idx]);
   int max_x, max_y;
   float max_value=0;
   

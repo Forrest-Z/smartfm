@@ -3,7 +3,7 @@ extern poseResult best_translation(float res, float step_size,
 			vector<int> point_x, vector<int> point_y,
 			int voronoi_width, int voronoi_height,
 			device_vector<int> &dev_px, device_vector<int> &dev_py,
-			device_vector<int> &dev_voronoi_data);
+			device_vector<int> &dev_voronoi_data, int stream_idx);
 extern host_vector<int> voronoi_jfa(int voronoi_width, int voronoi_height, 
 		 vector<int> point_x, vector<int> point_y,
 		 device_vector<int> &dev_px, device_vector<int> &dev_py,
@@ -41,6 +41,7 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
  			){
     poseResult best_result;
     best_result.score = 0.0;
+    int stream_count = 0;
     for(double r = -r_range+offset.r; r<= r_range+offset.r; r+=r_step){
       pcl::PointCloud<T> cloud_out;
       Eigen::Matrix4f transform;
@@ -53,8 +54,13 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
       stringstream ss;
       ss<<"rotate_"<<r<<".pcd";
       pcl::transformPointCloud (matching_pts, cloud_out, transform);
+      
+      
+      //cudaDeviceSynchronize();
       //pcl::io::savePCDFileASCII (ss.str(), cloud_out);
-      poseResult result = getBestTranslation(x_step, y_step, x_range, y_range, cloud_out);
+      int stream_idx = stream_count%4;
+      poseResult result = getBestTranslation(x_step, y_step, x_range, y_range, cloud_out,stream_idx);
+      stream_count++;
       result.r = r;
       result.x += offset.x;
       result.y += offset.y;
@@ -67,7 +73,7 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
   template <class T>
   poseResult CsmGPU<T>::getBestTranslation(double x_step, double y_step, 
 			  double x_range, double y_range,
-			  pcl::PointCloud<T> &matching_pts){
+			  pcl::PointCloud<T> &matching_pts, int stream_idx){
     vector<int> px, py;
     removeRepeatedPts(matching_pts, px, py);
     double step_size = x_step;
@@ -78,7 +84,7 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
     return best_translation(res_, step_size, x_step/res_, y_step/res_, x_range/res_, y_range/res_,
 		     px, py, 
 		     voronoi_size_.width, voronoi_size_.height,
-		     dev_px_, dev_py_, dev_voronoi_data_
+		     dev_px_, dev_py_, dev_voronoi_data_,stream_idx
 		    );
   
   }
