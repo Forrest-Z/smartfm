@@ -51,7 +51,6 @@ class Parameters
 	double tau_v; ///< Time constant for the velocity filter
 	int controller_state; ///0 : Throttle, 1 : Neutral, 2 : Brake
 	int controller_state_prev;	///previous state of controller
-	double rolling_fiction;
 	void getParam();
 };
 
@@ -120,7 +119,6 @@ void Parameters::getParam()
 	nh.param( "fullBrakeThres", full_brake_thres, 0.25 ); // if cmdVel = 0.0 and vehicle's speed go below this value, then apply full-brakes
 
 	nh.param( "tau_v", tau_v, 0.2 );
-	nh.param( "rolling_fiction", rolling_fiction, -0.33 );
 
 	ROS_INFO("kp: %lf, ki: %lf, kd: %lf", kp, ki, kd);
 	cout <<"kp: " <<kp <<" ki: " <<ki <<" kd: "<<kd<<" ki_sat: " <<ki_sat <<"\n";
@@ -211,7 +209,8 @@ double PID_Controller::getLookupTable_brake(double delta_vel)
   double output_sig = 0.0;
   output_sig = 10.802*pow(delta_vel,5) + 85.502*pow(delta_vel,4) + 254.74*pow(delta_vel,3)+ 355.09*pow(delta_vel,2) + 252.65*pow(delta_vel,1) +44.879;
   //the curve starts from 44.879 and go down to negative, bacause delta_vel here will be a negative value
-	
+  //this actually take care of the natural rolling friction of the vehicle
+  //in golfcart it is about 0.33
   if(output_sig > 0.0) output_sig = 0.0;
   return output_sig;
 }
@@ -327,29 +326,24 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 		//Get velocity error
 		double e_now = cmdVel - pid_msg.v_filter;
 		e_sum = 0.0;
-		if(e_now >= param.rolling_fiction)
-		{
-			pid_msg.u_brake_ctrl = 0.0;
-			pid_msg.u_ctrl = 0.0;
-		}else{
-			//Get look-up table
-			pid_msg.table_brake = getLookupTable_brake(e_now);
+		//Get look-up table
+		pid_msg.table_brake = getLookupTable_brake(e_now);
+	
+		//P term
+		pid_msg.p_brake_term = fmutil::symbound<double>(param.kp_brake * e_now, param.kp_sat_brake);
 		
-			//P term
-			pid_msg.p_brake_term = fmutil::symbound<double>(param.kp_brake * e_now, param.kp_sat_brake);
-			
-			//I term
-			e_sum_brake = e_sum_brake + (e_now * enc.dt);	//Integral of error
-			pid_msg.i_brake_term = fmutil::symbound<double>(param.ki_brake * e_sum_brake, param.ki_sat_brake);
-			
-			//D term
-			e_diff = (e_now - e_pre) / enc.dt;
-			pid_msg.d_brake_term = fmutil::symbound<double>(param.kd_brake * e_diff, param.kd_sat_brake);
-			
-			double u_brake = pid_msg.table_brake + (pid_msg.p_brake_term + pid_msg.i_brake_term + pid_msg.d_brake_term);
-			pid_msg.u_brake_ctrl = fmutil::symbound<double>(u_brake, param.coeff_bp); //Brake command
-			pid_msg.u_ctrl = 0.0;	//Throttle command
-		}	
+		//I term
+		e_sum_brake = e_sum_brake + (e_now * enc.dt);	//Integral of error
+		pid_msg.i_brake_term = fmutil::symbound<double>(param.ki_brake * e_sum_brake, param.ki_sat_brake);
+		
+		//D term
+		e_diff = (e_now - e_pre) / enc.dt;
+		pid_msg.d_brake_term = fmutil::symbound<double>(param.kd_brake * e_diff, param.kd_sat_brake);
+		
+		double u_brake = pid_msg.table_brake + (pid_msg.p_brake_term + pid_msg.i_brake_term + pid_msg.d_brake_term);
+		pid_msg.u_brake_ctrl = fmutil::symbound<double>(u_brake, param.coeff_bp); //Brake command
+		pid_msg.u_ctrl = 0.0;	//Throttle command
+	
 	}
 
 	std_msgs::Float64 throttle_value, brake_value;
