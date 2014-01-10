@@ -192,8 +192,8 @@ poseResult best_translation(float resolution, float step_size, int x_step, int y
     else continue;
     match_size = match_x.size();
     if(match_size == 1024 || i == point_x.size()-1){
-      cudaMemcpyAsync(dev_match_x_ptr, &match_x[stream_idx], match_size*sizeof(int), cudaMemcpyHostToDevice, stream_array[stream_idx]);
-      cudaMemcpyAsync(dev_match_y_ptr, &match_y[stream_idx], match_size*sizeof(int), cudaMemcpyHostToDevice, stream_array[stream_idx]);
+      cudaMemcpyAsync(dev_match_x_ptr, &match_x[0], match_size*sizeof(int), cudaMemcpyHostToDevice, stream_array[stream_idx]);
+      cudaMemcpyAsync(dev_match_y_ptr, &match_y[0], match_size*sizeof(int), cudaMemcpyHostToDevice, stream_array[stream_idx]);
       dim3 grids(x_range/x_step,y_range/y_step);
       dim3 threads(1024);
       if(PRINT_DEBUG){

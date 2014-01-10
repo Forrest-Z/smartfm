@@ -42,17 +42,21 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
     poseResult best_result;
     best_result.score = 0.0;
     int stream_count = 0;
-    for(double r = -r_range+offset.r; r<= r_range+offset.r; r+=r_step){
+    vector<double> r_array;
+    for(double r = -r_range+offset.r; r<= r_range+offset.r; r+=r_step) r_array.push_back(r);
+    vector<poseResult> results(r_array.size());
+#pragma omp parallel for
+    for(size_t i=0; i<r_array.size(); i++){
       pcl::PointCloud<T> cloud_out;
       Eigen::Matrix4f transform;
-      double d = r/180*M_PI;
+      double d = r_array[i]/180*M_PI;
       transform<<cos(d),-sin(d),0,offset.x,
 		  sin(d),cos(d),0,offset.y,
 		  0,0,1,0,
 		  0,0,0,1;
       //cout<<r<<"deg ="<<endl<<transform<<endl;
       stringstream ss;
-      ss<<"rotate_"<<r<<".pcd";
+      ss<<"rotate_"<<r_array[i]<<".pcd";
       pcl::transformPointCloud (matching_pts, cloud_out, transform);
       
       
@@ -61,11 +65,16 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
       int stream_idx = stream_count%4;
       poseResult result = getBestTranslation(x_step, y_step, x_range, y_range, cloud_out,stream_idx);
       stream_count++;
-      result.r = r;
+      result.r = r_array[i];
       result.x += offset.x;
       result.y += offset.y;
+      results.push_back(result);
+    }
+    
+    for(size_t i=0; i<results.size(); i++){
+      poseResult result = results[i];
       if(PRINT_DEBUG)
-      cout<<r<<" deg = "<< result.x<<", "<<result.y<<", "<<result.r<<": "<<result.score<<endl;
+	cout<<result.r<<" deg = "<< result.x<<", "<<result.y<<", "<<result.r<<": "<<result.score<<endl;
       if(best_result.score < result.score) best_result = result;
     }
     return best_result;
