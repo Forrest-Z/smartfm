@@ -29,7 +29,7 @@ target_link_libraries(csmlib ${cudalibs} ${OpenCV_LIBS})
 rosbuild_add_openmp_flags(csmlib)
 rosbuild_add_executable(csm_node src/csm_node.cpp src/dbgstream.cpp)
 target_link_libraries(csm_node ${cudalibs} ${OpenCV_LIBS} libvtkCommon.so libvtkFiltering.so libvtkRendering.so)
-
+rosbuild_add_openmp_flags(csm_node)
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
 #target_link_libraries(${PROJECT_NAME} another_library)
