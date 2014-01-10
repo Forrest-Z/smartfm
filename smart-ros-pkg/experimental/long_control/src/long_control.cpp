@@ -40,7 +40,8 @@ class Parameters
 	double kd_sat_brake; ///< Saturation value of the derivative term
 
 	double coeff_bp; ///< Brake angle corresponding to a full brake
-	double brake_zero_thres; ///< Only brake if we are above that value
+	double brake_zero_thres; ///< Only brake if we are below that value
+	double throttle_zero_thres; ///< Only throttle if we are above that value
 	double full_brake_thres; ///< If the measured velocity is below this value, we consider the car has stopped.
 	double throttle_to_brake_thres;
 	double throttle_to_neutral_thres;
@@ -115,6 +116,7 @@ void Parameters::getParam()
 
 	nh.param( "coeff_brakepedal", coeff_bp, 120.0 ); // full brake value
 	nh.param( "brakeZeroThres", brake_zero_thres, -0.5 ); // if velocity difference less than this value then go to braking state
+	nh.param( "throttleZeroThres", throttle_zero_thres, 0.1 ); //if velocity difference larger than this value then go to throttle state
 	nh.param( "fullBrakeThres", full_brake_thres, 0.25 ); // if cmdVel = 0.0 and vehicle's speed go below this value, then apply full-brakes
 
 	nh.param( "tau_v", tau_v, 0.2 );
@@ -252,12 +254,12 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 		pid_msg.vel_err = cmdVel - pid_msg.v_filter;
 		
 		//Logic switching, Throttle or Brake
-		if(pid_msg.vel_err >= 0.0)
+		if(pid_msg.vel_err >= param.throttle_zero_thres)
 		{
 			param.controller_state = 0;	///Throttle
 			do_brake = false;
 		}
-		else if((pid_msg.vel_err < 0.0) && (pid_msg.vel_err >= param.brake_zero_thres))
+		else if((pid_msg.vel_err < param.throttle_zero_thres) && (pid_msg.vel_err >= param.brake_zero_thres))
 		{
 			param.controller_state = 1;	///Neutral
 			//-----------------------------------------------//
@@ -325,8 +327,7 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 		//Get velocity error
 		double e_now = cmdVel - pid_msg.v_filter;
 		e_sum = 0.0;
-		//rolling_fiction = -0.33
-		if(e_now < param.rolling_fiction)
+		if(e_now >= param.rolling_fiction)
 		{
 			pid_msg.u_brake_ctrl = 0.0;
 			pid_msg.u_ctrl = 0.0;

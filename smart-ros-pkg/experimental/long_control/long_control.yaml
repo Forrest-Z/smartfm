@@ -6,6 +6,8 @@ kp_brake: 80.0
 ki_brake: 5.0
 kd_brake: 0.0
 
+brake_zero_thres: -0.5
+throttle_zero_thres: 0.1
 #to make sure the car will stop at the end
 full_brake_thres: 0.5
 
@@ -16,7 +18,4 @@ kd_sat_brake: 0.0
 tau_v: 0.2
 coeff_brakepedal: 70
 
-rolling_fiction: 0.33
-
-err_threshold: 0.01
-#kp=1,kp1 work best for braking
+rolling_fiction: 0.0 #0.33
