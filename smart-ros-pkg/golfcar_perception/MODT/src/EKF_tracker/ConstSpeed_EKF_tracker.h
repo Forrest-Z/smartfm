@@ -2,6 +2,7 @@
 #define MODT_CONST_SPEED_TRACKER_H
 
 #include <ros/ros.h>
+#include <tf/tf.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 #include <filter/extendedkalmanfilter.h>
@@ -24,13 +25,19 @@ class constspeed_ekf_tracker
 	BFL::ExtendedKalmanFilter*                              filter_;
 	MatrixWrapper::SymmetricMatrix                          predict_covariance, meas_covariance;
 
+	ros::Time												last_update_time;
+
 	constspeed_ekf_tracker();
 	~constspeed_ekf_tracker();
 
-	void set_params(double sys_noise_sig);
-	void predict(ros::Time time);
-	void update(double x, double y);
-	void getEstimate(geometry_msgs::PoseWithCovarianceStamped& estimate);
+	void set_params(double sys_sig1,
+					double sys_sig2,
+					double sys_sig3,
+					double sys_sig4,
+					double sys_sig5,
+					double meas_sig1,
+					double meas_sig2);
+	void getEstimate(ros::Time time, geometry_msgs::PoseWithCovarianceStamped& estimate);
 };
 
 
