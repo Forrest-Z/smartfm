@@ -1,0 +1,74 @@
+mkdir -p bin build .deps
+/home/h/haoyu/local/x86_64/gcc48/bin/g++ -O3 -std=c++0x -c -Wall -Wno-sign-compare -I src src/main.cpp -o build/main.o 
+In file included from src/problems/pedestrian_changelane/SFM.h:5:0,
+                 from src/problems/pedestrian_changelane/pedestrian_changelane.h:14,
+                 from src/main.cpp:9:
+src/problems/pedestrian_changelane/map.h: In member function ‘void MyMap::InitGoalsBlank()’:
+src/problems/pedestrian_changelane/map.h:150:7: warning: unused variable ‘delta’ [-Wunused-variable]
+   int delta=ModelParams::rln*7;
+       ^
+src/problems/pedestrian_changelane/map.h:151:7: warning: unused variable ‘ct’ [-Wunused-variable]
+   int ct=0;
+       ^
+src/problems/pedestrian_changelane/map.h:152:7: warning: unused variable ‘x1’ [-Wunused-variable]
+   int x1=ModelParams::rln,x2=ModelParams::rln*10;
+       ^
+src/problems/pedestrian_changelane/map.h:152:27: warning: unused variable ‘x2’ [-Wunused-variable]
+   int x1=ModelParams::rln,x2=ModelParams::rln*10;
+                           ^
+In file included from src/problems/pedestrian_changelane/pedestrian_changelane.h:14:0,
+                 from src/main.cpp:9:
+src/problems/pedestrian_changelane/SFM.h: In member function ‘void SFM::UpdateSFM()’:
+src/problems/pedestrian_changelane/SFM.h:225:6: error: ‘SocialForce’ is not a member of ‘ModelParams’
+   if(ModelParams::SocialForce)
+      ^
+src/problems/pedestrian_changelane/SFM.h:227:6: error: ‘PedForce’ is not a member of ‘ModelParams’
+   if(ModelParams::PedForce)
+      ^
+In file included from src/main.cpp:9:0:
+src/problems/pedestrian_changelane/pedestrian_changelane.h: In member function ‘PedestrianState Model<PedestrianState>::RandomState(unsigned int&, PedestrianState) const’:
+src/problems/pedestrian_changelane/pedestrian_changelane.h:57:11: warning: unused variable ‘prob’ [-Wunused-variable]
+    double prob;
+           ^
+src/problems/pedestrian_changelane/pedestrian_changelane.h: In constructor ‘Model<PedestrianState>::Model(const RandomStreams&, std::string)’:
+src/problems/pedestrian_changelane/pedestrian_changelane.h:315:2: warning: unused variable ‘sum’ [-Wunused-variable]
+  sum = 0;
+  ^
+In file included from src/main.cpp:21:0:
+src/problems/pedestrian_changelane/world_simulator.h: In member function ‘bool WorldSimulator::InRealCollision(int)’:
+src/problems/pedestrian_changelane/world_simulator.h:543:8: warning: unused variable ‘rob_vel’ [-Wunused-variable]
+    int rob_vel=curr_state.Vel;
+        ^
+src/main.cpp: In function ‘void Plan()’:
+src/main.cpp:179:7: warning: unused variable ‘crashed’ [-Wunused-variable]
+  bool crashed=false;
+       ^
+src/main.cpp: In function ‘int RunMultiple(Model<T>*, ILowerBound<T>*, IUpperBound<T>*, BeliefUpdate<T>*, const RandomStreams&)’:
+src/main.cpp:388:1: warning: no return statement in function returning non-void [-Wreturn-type]
+ }
+ ^
+src/main.cpp: In instantiation of ‘int RunMultiple(Model<T>*, ILowerBound<T>*, IUpperBound<T>*, BeliefUpdate<T>*, const RandomStreams&) [with T = PedestrianState]’:
+src/main.cpp:468:54:   required from here
+src/main.cpp:306:6: warning: unused variable ‘num_ped’ [-Wunused-variable]
+  int num_ped = Globals::config.number;
+      ^
+In file included from src/belief_update/belief_update_exact.h:4:0,
+                 from src/main.cpp:1:
+src/belief_update/belief_update.h: In instantiation of ‘BeliefUpdate<T>::BeliefUpdate(unsigned int, const Model<T>&) [with T = PedestrianState]’:
+src/belief_update/belief_update_particle.h:16:50:   required from ‘ParticleFilterUpdate<T>::ParticleFilterUpdate(unsigned int, const Model<T>&) [with T = PedestrianState]’
+src/main.cpp:457:82:   required from here
+src/belief_update/belief_update.h:55:11: warning: ‘BeliefUpdate<PedestrianState>::belief_update_seed_’ will be initialized after [-Wreorder]
+  unsigned belief_update_seed_;
+           ^
+src/belief_update/belief_update.h:54:19: warning:   ‘const Model<PedestrianState>& BeliefUpdate<PedestrianState>::model_’ [-Wreorder]
+   const Model<T>& model_;
+                   ^
+src/belief_update/belief_update.h:12:3: warning:   when initialized here [-Wreorder]
+   BeliefUpdate(unsigned belief_update_seed, const Model<T>& model) :
+   ^
+In file included from src/main.cpp:21:0:
+src/problems/pedestrian_changelane/world_simulator.h: In member function ‘Pedestrian WorldSimulator::InitOnePed()’:
+src/problems/pedestrian_changelane/world_simulator.h:152:2: warning: control reaches end of non-void function [-Wreturn-type]
+  }
+  ^
+make: *** [build/main.o] Error 1
