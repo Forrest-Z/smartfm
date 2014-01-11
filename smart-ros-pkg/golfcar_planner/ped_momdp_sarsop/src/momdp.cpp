@@ -40,8 +40,7 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
     use_sim_time_ = use_sim_time;
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel",1);
-
-
+	actionPub_ = nh.advertise<geometry_msgs::Twist>("pomdp_action",1);
 	char buf[100];
 	for(int i=0;i<ModelParams::N_PED_IN;i++) {
 		sprintf(buf,"pomdp_beliefs%d",i);
@@ -92,6 +91,27 @@ void ped_momdp::initRealSimulator()
 
 
 }*/
+bool ped_momdp::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const
+{
+    out_pose.setIdentity();
+
+    try {
+        tf_.transformPose(target_frame, in_pose, out_pose);
+    }
+    catch(tf::LookupException& ex) {
+        ROS_ERROR("No Transform available Error: %s\n", ex.what());
+        return false;
+    }
+    catch(tf::ConnectivityException& ex) {
+        ROS_ERROR("Connectivity Error: %s\n", ex.what());
+        return false;
+    }
+    catch(tf::ExtrapolationException& ex) {
+        ROS_ERROR("Extrapolation Error: %s\n", ex.what());
+        return false;
+    }
+    return true;
+}
 
 
 /*for despot*/
@@ -274,7 +294,19 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 void ped_momdp::controlLoop(const ros::TimerEvent &e)
 {
 	    cout<<"entering control loop"<<endl;
+			
 
+        tf::Stamped<tf::Pose> in_pose, out_pose;
+		in_pose.setIdentity();
+		in_pose.frame_id_ = "/golfcart/base_link";
+		if(!getObjectPose("/golfcart/map", in_pose, out_pose)) {
+			cerr<<"transform error within control loop"<<endl;
+		} else {
+			Car world_car;
+			world_car.w=out_pose.getOrigin().getX()*ModelParams::map_rln;
+			world_car.h=out_pose.getOrigin().getY()*ModelParams::map_rln;
+			RealWorldPt->UpdateRobPoseReal(world_car);
+		}
 
 		if(RealWorldPt->GoalReached())
 		{
@@ -305,6 +337,11 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		cout<<"move time "<<Globals::config.time_per_move<<endl;
 
 		safeAction=solver->Search(1.0/control_freq,n_trials);
+
+		geometry_msgs::Twist action;
+        action.linear.x = safeAction;
+		actionPub_.publish(action);
+
 		cout<<"n trials "<<n_trials<<endl;
 		
 		cout<<"safe action "<<safeAction<<endl;

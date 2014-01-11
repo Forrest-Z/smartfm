@@ -34,7 +34,9 @@
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 #include "problems/pedestrian_changelane/param.h"
-
+#include <tf/tf.h>
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 #include  "problems/pedestrian_changelane/world_simulator.h"
 
 /*
@@ -71,7 +73,7 @@ public:
 	void publishROSState();
 	void publishBelief();
 	void publishMarker(int id,vector<double> belief);
-
+	bool getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
     //vector<Executer*> Executers; 
 	//WorldSimulator world;
 	//for pomcp
@@ -93,6 +95,7 @@ public:
 	ros::Publisher pa_pub;
 	ros::Publisher markers_pubs[ModelParams::N_PED_IN];
 
+    tf::TransformListener tf_;
 	WorldSimulator * RealWorldPt;
 
 private:
@@ -107,7 +110,7 @@ private:
     ros::Timer timer_,timer_speed;
 	//SharedPointer<AlphaVectorPolicy> policy;
 	//SharedPointer<AlphaVectorPolicy> qmdp_policy;
-    ros::Publisher believesPub_, cmdPub_;
+    ros::Publisher believesPub_, cmdPub_,actionPub_;
 
 
     void controlLoop(const ros::TimerEvent &e);

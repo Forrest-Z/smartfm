@@ -173,7 +173,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
                 plf.rob_pose.x = out_pose.getOrigin().getX();
                 plf.rob_pose.y = out_pose.getOrigin().getY();
                 plf.rob_pose.z = out_pose.getOrigin().getZ();
-			//	cerr<<"plf "<<plf.ped_pose.x<<" "<<plf.ped_pose.y<<endl;
+				//cerr<<"plf "<<plf.rob_pose.x<<" "<<plf.rob_pose.y<<endl;
                 plf_vector.ped_local.push_back(plf);
                 //ped_transforms_[matched_ped].last_update = ped_batch->header.stamp;
             }
@@ -213,7 +213,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
     //finally publish all the transformed points
 	//uncomment the following to record the path 
 	
-	/*
+	/*	
 	if(plf_vector.ped_local.size()>0)
 	{
 		cout<<"rob pose "<<plf_vector.ped_local[0].rob_pose.x<<" "<<plf_vector.ped_local[0].rob_pose.y<<endl;
@@ -238,7 +238,8 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
 				path_record.push_back(make_pair(now_x,now_y));	
 			}
 		}
-	}*/
+	}
+	*/
     local_pub_.publish(plf_vector);
 }
 bool local_frame::getObjectPose(string& target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const

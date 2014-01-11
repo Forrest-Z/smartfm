@@ -151,7 +151,7 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 	Car world_car;
 	world_car.w=ped.rob_pose.x*ModelParams::map_rln;
 	world_car.h=ped.rob_pose.y*ModelParams::map_rln;
-	RealWorld.UpdateRobPoseReal(world_car);
+	//RealWorld.UpdateRobPoseReal(world_car);
 	//update the ped poses
 	//cout<<"rob pose "<<ped.rob_pose.x<<" "<<ped.rob_pose.y<<endl;
 	//cout<<"Number of Pedestrians "<<lPedLocal.ped_local.size()<<endl;
