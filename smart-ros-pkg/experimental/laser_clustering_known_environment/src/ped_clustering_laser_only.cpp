@@ -38,22 +38,22 @@ public:
   ped_clustering(){
     ros::NodeHandle private_nh("~");
     ros::NodeHandle nh;
-    private_nh.param("global_frame", global_frame_, string("map"));
-    private_nh.param("laser_frame", laser_frame_id_, string("hokuyo_laser"));
-    private_nh.param("svg_file", svg_file_, string("utown_plaza_ped_boundary.svg"));
-    private_nh.param("dist_thres", dist_thres_, 0.5);
-    laser_sub_.subscribe(nh, "/hokuyo_scan", 10);
-    boundary_pub_ = nh.advertise<geometry_msgs::PolygonStamped>("ped_boundary",1, true);
+    private_nh.param("global_frame", global_frame_, string("/golfcart/map"));
+    private_nh.param("laser_frame", laser_frame_id_, string("/golfcart/front_bottom_lidar"));
+    private_nh.param("svg_file", svg_file_, string("utown_exp_launch_files/utown_plaza_ped_boundary.svg"));
+    private_nh.param("dist_thres", dist_thres_, 1.0);
+    laser_sub_.subscribe(nh, "/golfcart/front_bottom_scan", 10);
+    boundary_pub_ = nh.advertise<geometry_msgs::PolygonStamped>("/golfcart/ped_boundary",1, true);
     tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, global_frame_, 10);
-    cloud_pub_ = nh.advertise<sensor_msgs::PointCloud>("laser_cloud", 1);
-    centroid_pub_ = nh.advertise<sensor_msgs::PointCloud>("ped_centroid", 1);
-    clusters_pub_ = nh.advertise<feature_detection::clusters>("pedestrian_clusters",1);
+    cloud_pub_ = nh.advertise<sensor_msgs::PointCloud>("/golfcart/laser_cloud", 1);
+    centroid_pub_ = nh.advertise<sensor_msgs::PointCloud>("/golfcart/ped_centroid", 1);
+    clusters_pub_ = nh.advertise<feature_detection::clusters>("/golfcart/pedestrian_clusters",1);
     tf_filter_->registerCallback(boost::bind(&ped_clustering::laserCallback, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
     
     geometry_msgs::PolygonStamped boundary_msg;
     boundary_msg.header.stamp = ros::Time::now();
-    boundary_msg.header.frame_id = "/map";
+    boundary_msg.header.frame_id = "/golfcart/map";
     boundary_msg.header.seq = 1;
     svg_boundary svg(svg_file_.c_str(), 0.1);
     
@@ -123,7 +123,7 @@ public:
     clusters_pub_.publish(clusters);
   }
   void laserCallback(const sensor_msgs::LaserScanConstPtr& scan_in){
-    cout<<"laserCallback"<<endl;
+    //cout<<"laserCallback"<<endl;
     sensor_msgs::PointCloud pc, pc_filtered;
     try{projector_.transformLaserScanToPointCloud(global_frame_, *scan_in, pc, tf_);}
     catch (tf::TransformException& e){ROS_INFO_STREAM(e.what());return;}
