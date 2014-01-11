@@ -121,8 +121,20 @@ namespace mrpt{
 			}
 			track_tmp.contour_points = transformed_contour;
 
+			double time_difference = (incoming_meas_tmp.segments.back().header.stamp - lastbatch_tmp.segments.back().header.stamp).toSec();
 			track_tmp.last_measurement = incoming_meas_tmp;
 			track_tmp.update_time = incoming_meas_tmp.segments.back().header.stamp;
+
+			/*newly added*/
+
+			double delt_anchor_pt_x = new_anchor_point.x - old_anchor_point.x;
+			double delt_anchor_pt_y = new_anchor_point.y - old_anchor_point.y;
+			double vehicle_delt_dist = sqrt(delt_anchor_pt_x*delt_anchor_pt_x+delt_anchor_pt_y*delt_anchor_pt_y);
+			double vehicle_velocity = vehicle_delt_dist/time_difference;
+			track_tmp.velocity = vehicle_velocity;
+			track_tmp.moving_direction = atan2(delt_anchor_pt_y, delt_anchor_pt_x);
+			track_tmp.tracking_inited = true;
+
 		}
 
 		//2nd: initiate new unassociated tracks;
@@ -134,6 +146,7 @@ namespace mrpt{
 			model_free_track new_track_tmp;
 			new_track_tmp.object_id = object_total_id_;
 			new_track_tmp.last_measurement = incoming_meas_tmp;
+			new_track_tmp.tracking_inited = false;
 
 			//calculate the anchor point;
 			geometry_msgs::Point32 centroid_tmp;
@@ -187,6 +200,8 @@ namespace mrpt{
 
 	void vehicle_tracking::ICP_motion2shape(model_free_track& track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom )
 	{
+		double time_difference = (new_meas.segments.back().header.stamp - old_meas.segments.back().header.stamp).toSec();
+
 		//1st step: for a single cluster, try to estimate its motion using ICP;
 		geometry_msgs::Pose old_pose = old_meas.ego_poses.back();
 		geometry_msgs::Pose new_pose = new_meas.ego_poses.back();
@@ -194,6 +209,29 @@ namespace mrpt{
 		//sensor_msgs::PointCloud old_segment = old_meas.segments.back();
 		sensor_msgs::PointCloud old_cloud = track.contour_points;
 		sensor_msgs::PointCloud new_cloud = new_meas.segments.back();
+
+		//predicting using tracking information;
+		geometry_msgs::Pose old_to_predict;
+		old_to_predict.orientation.x = 0.0;
+		old_to_predict.orientation.y = 0.0;
+		old_to_predict.orientation.z = 0.0;
+		old_to_predict.orientation.w = 1.0;
+		old_to_predict.position.x = 0.0;
+		old_to_predict.position.y = 0.0;
+		old_to_predict.position.z = 0.0;
+		if(track.tracking_inited)
+		{
+			old_to_predict.position.x = time_difference*track.velocity*cos(track.moving_direction);
+			old_to_predict.position.y = time_difference*track.velocity*sin(track.moving_direction);
+
+			cout<<"old_to_predict: "<<time_difference<<","<<track.velocity<<","<<old_to_predict.position.x<<","<<old_to_predict.position.y<<endl;
+
+			for(size_t i=0; i<old_cloud.points.size(); i++)
+			{
+				old_cloud.points[i].x = old_cloud.points[i].x+ (float)old_to_predict.position.x;
+				old_cloud.points[i].y = old_cloud.points[i].y+ (float)old_to_predict.position.y;
+			}
+		}
 
 		/*
 		sensor_msgs::PointCloud old_cloud, new_cloud;
@@ -238,6 +276,7 @@ namespace mrpt{
 		centroid_tmp.x = centroid_tmp.x/(float)old_cloud.points.size();
 		centroid_tmp.y = centroid_tmp.y/(float)old_cloud.points.size();
 		centroid_position.push_back(centroid_tmp);
+		cout<<"centrod_position 1:"<<centroid_tmp.x<<","<<centroid_tmp.y;
 
 		centroid_tmp.x = 0.0;
 		centroid_tmp.y = 0.0;
@@ -250,6 +289,7 @@ namespace mrpt{
 		centroid_tmp.x = centroid_tmp.x/(float)new_cloud.points.size();
 		centroid_tmp.y = centroid_tmp.y/(float)new_cloud.points.size();
 		centroid_position.push_back(centroid_tmp);
+		cout<<"centrod_position 2:"<<centroid_tmp.x<<","<<centroid_tmp.y;
 
 		//build the transform from v_(t-1) to v_t;
 		//about name convention: transform "Frame_A_To_Frame_B" is equal to "Frame_B_in_Frame_A";
@@ -358,10 +398,20 @@ namespace mrpt{
 		double vehicle_delta_x = ICP_Vtm1_To_Vt.getOrigin().getX();
 		double vehicle_delta_y = ICP_Vtm1_To_Vt.getOrigin().getY();
 		double vehicle_delta_yaw = tf::getYaw(ICP_Vtm1_To_Vt.getRotation());
+
+		track.omega = vehicle_delta_yaw/time_difference;
+
 		cout<<"vehicle motion: "<<vehicle_delta_x<<","<<vehicle_delta_y<<","<<vehicle_delta_yaw<<endl;
 
 		newMeas_poseinOdom = Odom_to_Vt;
 		oldMeas_poseinOdom = Odom_to_Vt*ICP_Vtm1_To_Vt.inverse();
+
+		if(track.tracking_inited)
+		{
+			double x_in_odom = oldMeas_poseinOdom.getOrigin().x() - old_to_predict.position.x;
+			double y_in_odom = oldMeas_poseinOdom.getOrigin().y() - old_to_predict.position.y;
+			oldMeas_poseinOdom.setOrigin(tf::Vector3(x_in_odom, y_in_odom, 0.0));
+		}
 	}
 
 	void vehicle_tracking::constructPtsMap(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CSimplePointsMap &map)

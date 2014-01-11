@@ -28,8 +28,11 @@ namespace mrpt{
 		sensor_msgs::PointCloud contour_points;
 		std::vector<geometry_msgs::Point32> anchor_points;
 
+		bool 					tracking_inited;
+
 		double					moving_direction;
 		double 					velocity;
+		double 					omega;
 
 		MODT::segment_pose_batch	last_measurement;
 	};
