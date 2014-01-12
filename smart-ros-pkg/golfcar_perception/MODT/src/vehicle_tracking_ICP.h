@@ -78,6 +78,7 @@ namespace mrpt{
 
 		void tracks_visualization();
 		void constructPtsMap(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CSimplePointsMap &map);
+		void ICP_deputy_cloud(sensor_msgs::PointCloud &meas_cloud, sensor_msgs::PointCloud &model_cloud,  tf::Pose lidar_pose, sensor_msgs::PointCloud &deputy_meas_cloud, sensor_msgs::PointCloud &deputy_model_cloud);
     };
 };
 

@@ -179,7 +179,7 @@ namespace mrpt{
 			object_total_id_++;
 
 
-			new_track_tmp.tracker->set_params(1.0, 1.0, M_PI/180.0*180.0, 10.0, M_PI/180.0*180.0, 0.3, 0.3);
+			new_track_tmp.tracker->set_params(1.0, 1.0, M_PI/180.0*30.0, 3.0, M_PI/180.0*30.0, 0.05, 0.05);
 			new_track_tmp.tracker->update(centroid_tmp.x, centroid_tmp.y, new_track_tmp.update_time);
 		}
 
@@ -212,6 +212,263 @@ namespace mrpt{
 		*/
 	}
 
+	//generate deputy points for ICP;
+	//two purposes: 1, to take into account beam model;
+	//				2, to allow only shift, and no orientation;
+	void vehicle_tracking::ICP_deputy_cloud(sensor_msgs::PointCloud &meas_cloud, sensor_msgs::PointCloud &model_cloud,  tf::Pose lidar_pose, sensor_msgs::PointCloud &deputy_meas_cloud, sensor_msgs::PointCloud &deputy_model_cloud)
+	{
+		deputy_meas_cloud = meas_cloud;
+		deputy_model_cloud = model_cloud;
+
+		//1: add constraint points to take into account beam model while doing ICP;
+		int constraint_pts_num = 10*2;
+		int constraint_pts_num2 = 20*2;
+		float constraint_pts_interval = 0.05;
+		double scan_angle_max = M_PI*0.75, scan_angle_min = -M_PI*0.75;
+		bool add_pts_angleMax = false, add_pts_angleMin = false;
+
+		double meas_angle_max = -M_PI, meas_angle_min = M_PI;
+		double angle_tolerance = M_PI/180.0*3.0;
+		geometry_msgs::Point32 meas_angleMax_pt, meas_angleMin_pt;
+
+		geometry_msgs::Pose temppose;
+		temppose.position.x=0;
+		temppose.position.y=0;
+		temppose.position.z=0;
+		temppose.orientation.x=0;
+		temppose.orientation.y=0;
+		temppose.orientation.z=0;
+		temppose.orientation.w=1;
+		for(size_t ip=0; ip<meas_cloud.points.size(); ip++)
+		{
+			temppose.position.x = meas_cloud.points[ip].x;
+			temppose.position.y = meas_cloud.points[ip].y;
+
+			tf::Pose tempTfPose;
+			tf::poseMsgToTF(temppose, tempTfPose);
+
+			tf::Pose pointInlidar = lidar_pose.inverseTimes(tempTfPose);
+			geometry_msgs::Point32 pointtemp;
+			pointtemp.x=(float)pointInlidar.getOrigin().x();
+			pointtemp.y=(float)pointInlidar.getOrigin().y();
+			float angle_tmp = atan2f(pointtemp.y, pointtemp.x);
+
+			if(angle_tmp>meas_angle_max)
+			{
+				meas_angle_max = angle_tmp;
+				meas_angleMax_pt = meas_cloud.points[ip];
+			}
+
+			if(angle_tmp<meas_angle_min)
+			{
+				meas_angle_min = angle_tmp;
+				meas_angleMin_pt = meas_cloud.points[ip];
+			}
+		}
+
+		//if object exceed scan angle boundary, add deputy points to the other side of the objects, to convey the scenario of beam model;
+		//pay attention that it is "the other side";
+		ROS_INFO("meas_angle_min, meas_angle_max %lf, %lf", meas_angle_min, meas_angle_max);
+		if(meas_angle_max+angle_tolerance>scan_angle_max) add_pts_angleMin = true;
+		if(meas_angle_min-angle_tolerance<scan_angle_min) add_pts_angleMax = true;
+
+		geometry_msgs::Point32 lidar_origin;
+		lidar_origin.x = lidar_pose.getOrigin().getX();
+		lidar_origin.y = lidar_pose.getOrigin().getY();
+
+		if(add_pts_angleMax)
+		{
+			ROS_INFO("add deputy points around angle max for ICP");
+			//add points to deputy_meas_cloud;
+			float lidar_pt_dist = sqrtf((meas_angleMax_pt.x-lidar_origin.x)*(meas_angleMax_pt.x-lidar_origin.x)+(meas_angleMax_pt.y-lidar_origin.y)*(meas_angleMax_pt.y-lidar_origin.y));
+			geometry_msgs::Point32 delt_point;
+			delt_point.x = meas_angleMax_pt.x-lidar_origin.x;
+			delt_point.y = meas_angleMax_pt.y-lidar_origin.y;
+			for(int i=1; i<=constraint_pts_num/2; i++)
+			{
+				geometry_msgs::Point32 constraint_pt_tmp;
+				constraint_pt_tmp.x = meas_angleMax_pt.x + (constraint_pts_interval*i)/lidar_pt_dist*delt_point.x;
+				constraint_pt_tmp.y = meas_angleMax_pt.y + (constraint_pts_interval*i)/lidar_pt_dist*delt_point.y;
+				deputy_meas_cloud.points.push_back(constraint_pt_tmp);
+				constraint_pt_tmp.x = meas_angleMax_pt.x - (constraint_pts_interval*i)/lidar_pt_dist*delt_point.x;
+				constraint_pt_tmp.y = meas_angleMax_pt.y - (constraint_pts_interval*i)/lidar_pt_dist*delt_point.y;
+				deputy_meas_cloud.points.push_back(constraint_pt_tmp);
+			}
+
+			//add points to deputy_model_cloud;
+
+			//find the corresponding boundary point on the model cloud;
+			geometry_msgs::Point32 model_boundary_point;
+			double odom_origin_dist_min = DBL_MAX;
+			double odom_origin_dist_max = 0.0;
+			geometry_msgs::Point32 max_dist_pt, min_dist_pt;
+
+			//Ax+By+C=0;
+			//A=sin(thetha), B= -cos(thetha), C=cos(thetha)*y-sin(thetha)*x;
+			//origin to line dist: fabs(c)/sqrtf(A^2+B^2);
+			for(size_t ip=0;ip<model_cloud.points.size(); ip++)
+			{
+				double a_tmp = sin(meas_angle_max);
+				double b_tmp = -cos(meas_angle_max);
+				double c_tmp = cos(meas_angle_max)*model_cloud.points[ip].y-sin(meas_angle_max)*model_cloud.points[ip].x;
+				double origin_to_line_dist_tmp = fabs(c_tmp)/sqrt(a_tmp*a_tmp+b_tmp*b_tmp);
+				if(origin_to_line_dist_tmp>odom_origin_dist_max)
+				{
+					odom_origin_dist_max = origin_to_line_dist_tmp;
+					max_dist_pt = model_cloud.points[ip];
+				}
+				else if(origin_to_line_dist_tmp<odom_origin_dist_min)
+				{
+					odom_origin_dist_min = origin_to_line_dist_tmp;
+					min_dist_pt = model_cloud.points[ip];
+				}
+			}
+
+			temppose.position.x = max_dist_pt.x;
+			temppose.position.y = max_dist_pt.y;
+			tf::Pose tempTfPose;
+			tf::poseMsgToTF(temppose, tempTfPose);
+			tf::Pose pointInlidar = lidar_pose.inverseTimes(tempTfPose);
+			geometry_msgs::Point32 pointtemp;
+			pointtemp.x=(float)pointInlidar.getOrigin().x();
+			pointtemp.y=(float)pointInlidar.getOrigin().y();
+			float max_dist_angle_tmp = atan2f(pointtemp.y, pointtemp.x);
+
+			temppose.position.x = min_dist_pt.x;
+			temppose.position.y = min_dist_pt.y;
+			tf::poseMsgToTF(temppose, tempTfPose);
+			pointInlidar = lidar_pose.inverseTimes(tempTfPose);
+			pointtemp.x=(float)pointInlidar.getOrigin().x();
+			pointtemp.y=(float)pointInlidar.getOrigin().y();
+			float min_dist_angle_tmp = atan2f(pointtemp.y, pointtemp.x);
+
+			//find the point in the lidar coordinate with bigger angle;
+			model_boundary_point = max_dist_angle_tmp>min_dist_angle_tmp?max_dist_pt:min_dist_pt;
+
+			float lidar_pt_dist2 = sqrtf((model_boundary_point.x-lidar_origin.x)*(model_boundary_point.x-lidar_origin.x)+(model_boundary_point.y-lidar_origin.y)*(model_boundary_point.y-lidar_origin.y));
+			geometry_msgs::Point32 delt_point2;
+			delt_point2.x = model_boundary_point.x-lidar_origin.x;
+			delt_point2.y = model_boundary_point.y-lidar_origin.y;
+			for(int i=1; i<=constraint_pts_num2 /2; i++)
+			{
+				geometry_msgs::Point32 constraint_pt_tmp;
+				constraint_pt_tmp.x = model_boundary_point.x + (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.x;
+				constraint_pt_tmp.y = model_boundary_point.y + (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.y;
+				deputy_model_cloud.points.push_back(constraint_pt_tmp);
+				constraint_pt_tmp.x = model_boundary_point.x - (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.x;
+				constraint_pt_tmp.y = model_boundary_point.y - (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.y;
+				deputy_model_cloud.points.push_back(constraint_pt_tmp);
+			}
+
+		}
+
+		if(add_pts_angleMin)
+		{
+			ROS_INFO("add deputy points around angle min for ICP");
+
+			//add points to deputy_meas_cloud;
+			float lidar_pt_dist = sqrtf((meas_angleMin_pt.x-lidar_origin.x)*(meas_angleMin_pt.x-lidar_origin.x)+(meas_angleMin_pt.y-lidar_origin.y)*(meas_angleMin_pt.y-lidar_origin.y));
+			geometry_msgs::Point32 delt_point;
+			delt_point.x = meas_angleMin_pt.x-lidar_origin.x;
+			delt_point.y = meas_angleMin_pt.y-lidar_origin.y;
+			for(int i=1; i<=constraint_pts_num/2; i++)
+			{
+				geometry_msgs::Point32 constraint_pt_tmp;
+				constraint_pt_tmp.x = meas_angleMin_pt.x + (constraint_pts_interval*i)/lidar_pt_dist*delt_point.x;
+				constraint_pt_tmp.y = meas_angleMin_pt.y + (constraint_pts_interval*i)/lidar_pt_dist*delt_point.y;
+				deputy_meas_cloud.points.push_back(constraint_pt_tmp);
+				constraint_pt_tmp.x = meas_angleMin_pt.x - (constraint_pts_interval*i)/lidar_pt_dist*delt_point.x;
+				constraint_pt_tmp.y = meas_angleMin_pt.y - (constraint_pts_interval*i)/lidar_pt_dist*delt_point.y;
+				deputy_meas_cloud.points.push_back(constraint_pt_tmp);
+			}
+
+			//add points to deputy_model_cloud;
+
+			//find the corresponding boundary point on the model cloud;
+			geometry_msgs::Point32 model_boundary_point;
+			double odom_origin_dist_min = DBL_MAX;
+			double odom_origin_dist_max = 0.0;
+			geometry_msgs::Point32 max_dist_pt, min_dist_pt;
+
+			//Ax+By+C=0;
+			//A=sin(thetha), B= -cos(thetha), C=cos(thetha)*y-sin(thetha)*x;
+			//origin to line dist: fabs(c)/sqrtf(A^2+B^2);
+			for(size_t ip=0;ip<model_cloud.points.size(); ip++)
+			{
+				double a_tmp = sin(meas_angle_min);
+				double b_tmp = -cos(meas_angle_min);
+				double c_tmp = cos(meas_angle_min)*model_cloud.points[ip].y-sin(meas_angle_min)*model_cloud.points[ip].x;
+				double origin_to_line_dist_tmp = fabs(c_tmp)/sqrt(a_tmp*a_tmp+b_tmp*b_tmp);
+				if(origin_to_line_dist_tmp>odom_origin_dist_max)
+				{
+					odom_origin_dist_max = origin_to_line_dist_tmp;
+					max_dist_pt = model_cloud.points[ip];
+				}
+				else if(origin_to_line_dist_tmp<odom_origin_dist_min)
+				{
+					odom_origin_dist_min = origin_to_line_dist_tmp;
+					min_dist_pt = model_cloud.points[ip];
+				}
+			}
+
+			temppose.position.x = max_dist_pt.x;
+			temppose.position.y = max_dist_pt.y;
+			tf::Pose tempTfPose;
+			tf::poseMsgToTF(temppose, tempTfPose);
+			tf::Pose pointInlidar = lidar_pose.inverseTimes(tempTfPose);
+			geometry_msgs::Point32 pointtemp;
+			pointtemp.x=(float)pointInlidar.getOrigin().x();
+			pointtemp.y=(float)pointInlidar.getOrigin().y();
+			float max_dist_angle_tmp = atan2f(pointtemp.y, pointtemp.x);
+
+			temppose.position.x = min_dist_pt.x;
+			temppose.position.y = min_dist_pt.y;
+			tf::poseMsgToTF(temppose, tempTfPose);
+			pointInlidar = lidar_pose.inverseTimes(tempTfPose);
+			pointtemp.x=(float)pointInlidar.getOrigin().x();
+			pointtemp.y=(float)pointInlidar.getOrigin().y();
+			float min_dist_angle_tmp = atan2f(pointtemp.y, pointtemp.x);
+
+			//find the point in the lidar coordinate with smaller angle;
+			model_boundary_point = max_dist_angle_tmp<min_dist_angle_tmp?max_dist_pt:min_dist_pt;
+
+			float lidar_pt_dist2 = sqrtf((model_boundary_point.x-lidar_origin.x)*(model_boundary_point.x-lidar_origin.x)+(model_boundary_point.y-lidar_origin.y)*(model_boundary_point.y-lidar_origin.y));
+			geometry_msgs::Point32 delt_point2;
+			delt_point2.x = model_boundary_point.x-lidar_origin.x;
+			delt_point2.y = model_boundary_point.y-lidar_origin.y;
+			for(int i=1; i<=constraint_pts_num2 /2; i++)
+			{
+				geometry_msgs::Point32 constraint_pt_tmp;
+				constraint_pt_tmp.x = model_boundary_point.x + (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.x;
+				constraint_pt_tmp.y = model_boundary_point.y + (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.y;
+				deputy_model_cloud.points.push_back(constraint_pt_tmp);
+				constraint_pt_tmp.x = model_boundary_point.x - (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.x;
+				constraint_pt_tmp.y = model_boundary_point.y - (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.y;
+				deputy_model_cloud.points.push_back(constraint_pt_tmp);
+			}
+
+		}
+
+		//2: futher add points to allow only shift of the object;
+		sensor_msgs::PointCloud meas_deputy_tmp, model_deputy_tmp;
+		for(size_t i=0; i<deputy_meas_cloud.points.size(); i++)
+		{
+			geometry_msgs::Point32 pt_shift = deputy_meas_cloud.points[i];
+			meas_deputy_tmp.points.push_back(pt_shift);
+			pt_shift.x = pt_shift.x + 10.0;
+			meas_deputy_tmp.points.push_back(pt_shift);
+		}
+		for(size_t i=0; i<deputy_model_cloud.points.size(); i++)
+		{
+			geometry_msgs::Point32 pt_shift = deputy_model_cloud.points[i];
+			model_deputy_tmp.points.push_back(pt_shift);
+			pt_shift.x = pt_shift.x + 10.0;
+			model_deputy_tmp.points.push_back(pt_shift);
+		}
+		deputy_meas_cloud  = meas_deputy_tmp;
+		deputy_model_cloud = model_deputy_tmp;
+	}
+
 	void vehicle_tracking::ICP_motion2shape(model_free_track& track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom )
 	{
 		double time_difference = (new_meas.segments.back().header.stamp - old_meas.segments.back().header.stamp).toSec();
@@ -225,6 +482,7 @@ namespace mrpt{
 		sensor_msgs::PointCloud new_cloud = new_meas.segments.back();
 
 		//predicting using tracking information;
+		/*
 		geometry_msgs::Pose old_to_predict;
 		old_to_predict.orientation.x = 0.0;
 		old_to_predict.orientation.y = 0.0;
@@ -246,6 +504,7 @@ namespace mrpt{
 				old_cloud.points[i].y = old_cloud.points[i].y+ (float)old_to_predict.position.y;
 			}
 		}
+		*/
 
 		/*
 		sensor_msgs::PointCloud old_cloud, new_cloud;
@@ -338,6 +597,7 @@ namespace mrpt{
 		//construct_ICP_scans(new_pose, new_segment, scan2);
 
 		// a trick to use ICP to get zero-degree rotation :-)
+		/*
 		sensor_msgs::PointCloud old_cloud_shiftAdded, new_cloud_shiftAdded;
 		for(size_t i=0; i<old_cloud.points.size(); i++)
 		{
@@ -354,6 +614,12 @@ namespace mrpt{
 			pt_shift.x = pt_shift.x + 10.0;
 			new_cloud_shiftAdded.points.push_back(pt_shift);
 		}
+		*/
+
+		sensor_msgs::PointCloud old_cloud_shiftAdded, new_cloud_shiftAdded;
+		tf::Pose lidarPose_tf;
+		tf::poseMsgToTF(new_pose, lidarPose_tf);
+		ICP_deputy_cloud(new_cloud, old_cloud,  lidarPose_tf, new_cloud_shiftAdded, old_cloud_shiftAdded);
 
 
 		CSimplePointsMap		m1, m2, m1_shiftAdded, m2_shiftAdded;
@@ -420,12 +686,14 @@ namespace mrpt{
 		newMeas_poseinOdom = Odom_to_Vt;
 		oldMeas_poseinOdom = Odom_to_Vt*ICP_Vtm1_To_Vt.inverse();
 
+		/*
 		if(track.tracking_inited)
 		{
 			double x_in_odom = oldMeas_poseinOdom.getOrigin().x() - old_to_predict.position.x;
 			double y_in_odom = oldMeas_poseinOdom.getOrigin().y() - old_to_predict.position.y;
 			oldMeas_poseinOdom.setOrigin(tf::Vector3(x_in_odom, y_in_odom, 0.0));
 		}
+		*/
 	}
 
 	void vehicle_tracking::constructPtsMap(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CSimplePointsMap &map)
