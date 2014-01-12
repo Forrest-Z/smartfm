@@ -9,9 +9,25 @@ extern host_vector<int> voronoi_jfa(int voronoi_width, int voronoi_height,
 		 device_vector<int> &dev_px, device_vector<int> &dev_py,
 		 device_vector<int> &dev_voronoi_data
 		);
+extern void setDevFreeSpaceData(device_vector<float> &device_free_space);
+
 bool rowMajorDataSort(rowMajorData d1, rowMajorData d2){
    return d1.data_idx < d2.data_idx;
  }
+ 
+template <class T>
+void CsmGPU<T>::getVoronoiTemplate(pcl::PointCloud<T> &cloud, bool visualize){
+  vector<int> seeds_x, seeds_y;
+  cv::Mat voronoi_initial_data = removeRepeatedPts(cloud, seeds_x, seeds_y);
+  host_vector<int> voronoi_data = voronoi_jfa(voronoi_size_.width, voronoi_size_.height,
+				  seeds_x, seeds_y, dev_px_, dev_py_,
+				  dev_voronoi_data_
+					);
+  
+  if(visualize)
+    visualize_data(voronoi_data, string("voronoi"));
+}
+
 template <class T>
 CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size, 
 	  pcl::PointCloud<T> &cloud, bool visualize):
@@ -22,17 +38,141 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
     vector<cv::Vec3b> id_rgbs;
     map<int, cv::Vec3b> color_map;
     cv::Mat voronoi_temp(voronoi_size, CV_16UC1);
-    fmutil::Stopwatch sw("voronoi construction");
-   
-    vector<int> seeds_x, seeds_y;
-    cv::Mat voronoi_initial_data = removeRepeatedPts(cloud, seeds_x, seeds_y);
-    host_vector<int> voronoi_data = voronoi_jfa(voronoi_size_.width, voronoi_size_.height,
-				    seeds_x, seeds_y, dev_px_, dev_py_,
-				    dev_voronoi_data_
-					  );
-    if(visualize)
-      visualize_data(voronoi_data, string("voronoi"));
+    
+    getVoronoiTemplate(cloud, false);
   }
+  
+  void drawPathOnOpenCV(ClipperLib::Path &path, cv::Mat &freeSpaceTemplate, cv::Scalar color, 
+			bool gaussian=false, double std_dev=0.0){
+    cv::Point cv_poly[1][path.size()];
+    for(size_t i=0; i<path.size(); i++){
+      cv_poly[0][i].x = path[i].X;
+      cv_poly[0][i].y = path[i].Y;
+    }
+    const cv::Point* ppt[1] = {cv_poly[0]};
+    int npt[] = {path.size()};
+    
+    if(gaussian){
+      cv::fillPoly(freeSpaceTemplate, ppt, npt, 1, color, 8);
+      cv::GaussianBlur(freeSpaceTemplate, freeSpaceTemplate, cv::Size(), std_dev);
+    }
+    else
+      cv::polylines(freeSpaceTemplate, ppt, npt, 1, true, color, 1, 4);
+    
+    
+  }
+  
+  void drawPathOnOpenCV(ClipperLib::Paths &paths, cv::Mat &freeSpaceTemplate, cv::Scalar color, 
+			bool gaussian = false, double std_dev=0.0){
+    for(size_t i=0; i<paths.size(); i++)
+      drawPathOnOpenCV(paths[i], freeSpaceTemplate, color, gaussian, std_dev);
+  }
+  
+  template <class T>
+  void CsmGPU<T>::drawFreeSpace(sensor_msgs::PointCloud &cloud, cv::Size template_size, bool try_param=true){
+    ClipperLib::Path path;
+    ClipperLib::IntPoint p;
+    p.X = template_size.width/2;
+    p.Y = template_size.height/2;
+    path.push_back(p);
+    for(size_t i=0; i<cloud.points.size(); i++){
+      ClipperLib::IntPoint temp_p;
+      temp_p.X = cloud.points[i].x/res_ + p.X;
+      temp_p.Y = cloud.points[i].y/res_ + p.Y;
+      path.push_back(temp_p);
+    }
+    ClipperLib::ClipperOffset clipperOffset;
+    clipperOffset.AddPath(path, ClipperLib::jtMiter, ClipperLib::etClosedPolygon);
+    cv::Mat freeSpaceTemplate = cv::Mat(template_size, CV_32F, cv::Scalar(1.0));
+    int offset = -3;
+    double std_dev = 2;
+    if(try_param){
+      cout<<"use left right arrow key to adjust polygon offset"<<endl;
+      cout<<"and up down arrow key to adjust gaussian std dev"<<endl;
+      int capture_key = 1113938;
+      while(true){
+	freeSpaceTemplate = cv::Mat(template_size, CV_32F, cv::Scalar(1.0));
+	switch (capture_key){
+	  case 1113939: // right arrow
+	    offset++;
+	    break;	  
+	  case 1113937: // left arrow
+	    offset--;
+	    break;
+	  case 1113938: // up arrow
+	    std_dev+=0.5;
+	    break;
+	  case 1113940: // down arrow
+	    std_dev-=0.5;
+	    break;
+	  default:
+	    return;
+	}
+	cout<<offset<<" "<<std_dev<<endl;
+	vector<ClipperLib::Path> paths;
+	clipperOffset.Execute(paths, offset);
+	drawPathOnOpenCV(paths, freeSpaceTemplate, cv::Scalar(0.0), true, std_dev);
+	drawPathOnOpenCV(path, freeSpaceTemplate, cv::Scalar(0.0));
+	cv::imshow("freeSpaceTemplate", freeSpaceTemplate);
+	capture_key = cv::waitKey(0);
+      }
+    }
+    else {
+      vector<ClipperLib::Path> paths;
+      clipperOffset.Execute(paths, offset);
+      drawPathOnOpenCV(paths, freeSpaceTemplate, cv::Scalar(0.0), true, std_dev);
+    }
+    
+    host_vector<float> free_space_data;
+    for(int i=0; i<freeSpaceTemplate.rows; i++){
+      for(int j=0; j<freeSpaceTemplate.cols; j++){
+	float data = freeSpaceTemplate.at<float>(j, i);
+	free_space_data.push_back(data);
+      }
+    }
+    dev_free_space_ = free_space_data;
+    setDevFreeSpaceData(dev_free_space_);
+    //just to check
+    /*
+    cv::Mat mat_check(template_size, CV_32F);
+    for(int i=0; i<template_size.height; i++){
+      for(int j=0; j<template_size.width; j++){
+	mat_check.at<float>(j,i) = free_space_data[j+i*template_size.width];
+      }
+    }
+    cv::imshow("Verification",mat_check);
+    cv::waitKey(0);*/
+  }
+  
+  template <class T>
+  CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size, sensor_msgs::LaserScan &laser, bool visualize):res_(res){
+    cv::Size voronoi_size(template_size.x/res_, template_size.y/res_);
+    voronoi_size_ = voronoi_size;
+    laser_geometry::LaserProjection projector;
+    sensor_msgs::PointCloud cloud;
+    projector.projectLaser(laser, cloud);
+    bool try_param = false;
+    drawFreeSpace(cloud, voronoi_size, try_param);
+    pcl::PointCloud<T> pcl_pts;
+    for(size_t i=0; i<cloud.points.size(); i++)
+      pcl_pts.push_back(T(cloud.points[i].x, cloud.points[i].y, 0.0));
+    getVoronoiTemplate(pcl_pts, false);
+  }
+
+  template <class T>
+  poseResult CsmGPU<T>::getBestMatch(double x_step, double y_step, double r_step,
+				     double x_range, double y_range, double r_range,
+				     sensor_msgs::LaserScan &matching_scan,
+				     poseResult offset){
+    laser_geometry::LaserProjection projector;
+    sensor_msgs::PointCloud cloud;
+    projector.projectLaser(matching_scan, cloud);
+    pcl::PointCloud<T> pcl_pts;
+    for(size_t i=0; i<cloud.points.size(); i++)
+      pcl_pts.push_back(T(cloud.points[i].x, cloud.points[i].y, 0.0));
+    return getBestMatch(x_step, y_step, r_step, x_range, y_range, r_range, pcl_pts, offset);
+  }
+		      
   template <class T>
   poseResult CsmGPU<T>::getBestMatch(double x_step, double y_step, double r_step,
 		    double x_range, double y_range, double r_range,

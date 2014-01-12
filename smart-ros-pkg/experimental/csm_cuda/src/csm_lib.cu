@@ -10,6 +10,8 @@
 using namespace std;
 using namespace thrust;
 texture<int> tex_dev_voronoi_data_;
+texture<float> tex_dev_free_space_data_;
+bool use_free_space_=false;
 #define stream_number 4
 cudaStream_t stream_array[stream_number];
 struct poseResult{
@@ -64,7 +66,7 @@ __global__ void jfaKernel(int step, int voronoi_width, int voronoi_height, int *
 __global__ void translationKernel(float res, float step_size, int voronoi_width, int voronoi_height, 
 				 int x_step, int y_step, int x_range, int match_size,
 				 int y_range, int* match_x, int* match_y, 
-				 int* px, int* py, float* scores){
+				 int* px, int* py, float* scores, bool use_free_space){
   //check index
   //single thread dimension with xy grid for each offset
   //maximum thread is limited to 1024, hence need to call this function repeatedly
@@ -84,6 +86,9 @@ __global__ void translationKernel(float res, float step_size, int voronoi_width,
     int y = temp_y + offset_y;
     if(x < voronoi_width && x >= 0 && y < voronoi_height && y >= 0){
       int grid_idx = x+y*voronoi_width;
+      float free_space_data = 1.0;
+      if(use_free_space)
+	free_space_data = tex1Dfetch(tex_dev_free_space_data_, grid_idx);
       int nearest_seed = tex1Dfetch(tex_dev_voronoi_data_, grid_idx)-1;
       int nearest_x = px[nearest_seed];
       int nearest_y = py[nearest_seed];
@@ -91,7 +96,7 @@ __global__ void translationKernel(float res, float step_size, int voronoi_width,
       int dist_nearest_y = nearest_y - y;
       int dist_nearest_pixel = (int)(sqrtf((dist_nearest_x*dist_nearest_x + dist_nearest_y*dist_nearest_y)*res)/step_size);
       float dist_nearest = dist_nearest_pixel * step_size;
-      scores_per_block[match_idx] = expf(-0.3*dist_nearest);
+      scores_per_block[match_idx] = expf(-0.3*dist_nearest)*free_space_data;
     }
   }
   
@@ -117,6 +122,12 @@ __global__ void translationKernel(float res, float step_size, int voronoi_width,
     int score_idx = blockIdx.x + blockIdx.y * gridDim.x; 
     scores[score_idx] += scores_per_block[0];
   }
+}
+
+void setDevFreeSpaceData(device_vector<float> &device_free_space){
+  cudaBindTexture(NULL, tex_dev_free_space_data_, raw_pointer_cast(device_free_space.data()),
+		  device_free_space.size()*sizeof(float));
+  use_free_space_ = true;
 }
 
 //form a euclidean based voronoi and return a device pointer of the resultant img
@@ -205,7 +216,7 @@ poseResult best_translation(float resolution, float step_size, int x_step, int y
 				      voronoi_width, voronoi_height, 
 				    x_step, y_step, x_range, match_size,
 				    y_range, dev_match_x_ptr, dev_match_y_ptr, 
-				    dev_px_ptr, dev_py_ptr, dev_scores_ptr);
+				    dev_px_ptr, dev_py_ptr, dev_scores_ptr, use_free_space_);
       match_x.clear();
       match_y.clear();
     }
