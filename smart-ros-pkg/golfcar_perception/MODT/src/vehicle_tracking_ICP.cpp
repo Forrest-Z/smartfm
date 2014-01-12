@@ -9,6 +9,10 @@ namespace mrpt{
 		contour_cloud_pub_	= nh.advertise<sensor_msgs::PointCloud>("contour_pcl", 2);
 		anchor_point_pub_   = nh.advertise<sensor_msgs::PointCloud>("anchor_pcl", 2);
 		filtered_anchor_point_pub_ = nh.advertise<sensor_msgs::PointCloud>("filtered_anchor_pcl", 2);
+
+		meas_deputy_pub_	= nh.advertise<sensor_msgs::PointCloud>("meas_deputy", 2);
+		model_deputy_pub_   = nh.advertise<sensor_msgs::PointCloud>("model_deputy", 2);
+
 		object_total_id_ = 0;
 	}
 
@@ -271,6 +275,8 @@ namespace mrpt{
 		ROS_INFO("meas_angle_min, meas_angle_max %lf, %lf", meas_angle_min, meas_angle_max);
 		if(meas_angle_max+angle_tolerance>scan_angle_max) add_pts_angleMin = true;
 		if(meas_angle_min-angle_tolerance<scan_angle_min) add_pts_angleMax = true;
+		//add_pts_angleMin = true;
+		add_pts_angleMax = true;
 
 		geometry_msgs::Point32 lidar_origin;
 		lidar_origin.x = lidar_pose.getOrigin().getX();
@@ -284,6 +290,8 @@ namespace mrpt{
 			geometry_msgs::Point32 delt_point;
 			delt_point.x = meas_angleMax_pt.x-lidar_origin.x;
 			delt_point.y = meas_angleMax_pt.y-lidar_origin.y;
+			float meas_angleMax_inodom = (float)atan2(delt_point.y, delt_point.x);
+
 			for(int i=1; i<=constraint_pts_num/2; i++)
 			{
 				geometry_msgs::Point32 constraint_pt_tmp;
@@ -345,18 +353,14 @@ namespace mrpt{
 			//find the point in the lidar coordinate with bigger angle;
 			model_boundary_point = max_dist_angle_tmp>min_dist_angle_tmp?max_dist_pt:min_dist_pt;
 
-			float lidar_pt_dist2 = sqrtf((model_boundary_point.x-lidar_origin.x)*(model_boundary_point.x-lidar_origin.x)+(model_boundary_point.y-lidar_origin.y)*(model_boundary_point.y-lidar_origin.y));
-			geometry_msgs::Point32 delt_point2;
-			delt_point2.x = model_boundary_point.x-lidar_origin.x;
-			delt_point2.y = model_boundary_point.y-lidar_origin.y;
 			for(int i=1; i<=constraint_pts_num2 /2; i++)
 			{
 				geometry_msgs::Point32 constraint_pt_tmp;
-				constraint_pt_tmp.x = model_boundary_point.x + (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.x;
-				constraint_pt_tmp.y = model_boundary_point.y + (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.y;
+				constraint_pt_tmp.x = model_boundary_point.x + (constraint_pts_interval*i)*cos(meas_angleMax_inodom);
+				constraint_pt_tmp.y = model_boundary_point.y + (constraint_pts_interval*i)*sin(meas_angleMax_inodom);
 				deputy_model_cloud.points.push_back(constraint_pt_tmp);
-				constraint_pt_tmp.x = model_boundary_point.x - (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.x;
-				constraint_pt_tmp.y = model_boundary_point.y - (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.y;
+				constraint_pt_tmp.x = model_boundary_point.x - (constraint_pts_interval*i)*cos(meas_angleMax_inodom);
+				constraint_pt_tmp.y = model_boundary_point.y - (constraint_pts_interval*i)*sin(meas_angleMax_inodom);
 				deputy_model_cloud.points.push_back(constraint_pt_tmp);
 			}
 
@@ -371,6 +375,8 @@ namespace mrpt{
 			geometry_msgs::Point32 delt_point;
 			delt_point.x = meas_angleMin_pt.x-lidar_origin.x;
 			delt_point.y = meas_angleMin_pt.y-lidar_origin.y;
+			float meas_angleMin_inodom = (float)atan2(delt_point.y, delt_point.x);
+
 			for(int i=1; i<=constraint_pts_num/2; i++)
 			{
 				geometry_msgs::Point32 constraint_pt_tmp;
@@ -432,18 +438,14 @@ namespace mrpt{
 			//find the point in the lidar coordinate with smaller angle;
 			model_boundary_point = max_dist_angle_tmp<min_dist_angle_tmp?max_dist_pt:min_dist_pt;
 
-			float lidar_pt_dist2 = sqrtf((model_boundary_point.x-lidar_origin.x)*(model_boundary_point.x-lidar_origin.x)+(model_boundary_point.y-lidar_origin.y)*(model_boundary_point.y-lidar_origin.y));
-			geometry_msgs::Point32 delt_point2;
-			delt_point2.x = model_boundary_point.x-lidar_origin.x;
-			delt_point2.y = model_boundary_point.y-lidar_origin.y;
 			for(int i=1; i<=constraint_pts_num2 /2; i++)
 			{
 				geometry_msgs::Point32 constraint_pt_tmp;
-				constraint_pt_tmp.x = model_boundary_point.x + (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.x;
-				constraint_pt_tmp.y = model_boundary_point.y + (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.y;
+				constraint_pt_tmp.x = model_boundary_point.x + (constraint_pts_interval*i)*cos(meas_angleMin_inodom);
+				constraint_pt_tmp.y = model_boundary_point.y + (constraint_pts_interval*i)*sin(meas_angleMin_inodom);
 				deputy_model_cloud.points.push_back(constraint_pt_tmp);
-				constraint_pt_tmp.x = model_boundary_point.x - (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.x;
-				constraint_pt_tmp.y = model_boundary_point.y - (constraint_pts_interval*i)/lidar_pt_dist2*delt_point2.y;
+				constraint_pt_tmp.x = model_boundary_point.x - (constraint_pts_interval*i)*cos(meas_angleMin_inodom);
+				constraint_pt_tmp.y = model_boundary_point.y - (constraint_pts_interval*i)*sin(meas_angleMin_inodom);
 				deputy_model_cloud.points.push_back(constraint_pt_tmp);
 			}
 
@@ -465,8 +467,11 @@ namespace mrpt{
 			pt_shift.x = pt_shift.x + 10.0;
 			model_deputy_tmp.points.push_back(pt_shift);
 		}
-		deputy_meas_cloud  = meas_deputy_tmp;
-		deputy_model_cloud = model_deputy_tmp;
+		deputy_meas_cloud.points  = meas_deputy_tmp.points;
+		deputy_model_cloud.points = model_deputy_tmp.points;
+
+		meas_deputy_pub_.publish(deputy_meas_cloud);
+		model_deputy_pub_.publish(deputy_model_cloud);
 	}
 
 	void vehicle_tracking::ICP_motion2shape(model_free_track& track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom )

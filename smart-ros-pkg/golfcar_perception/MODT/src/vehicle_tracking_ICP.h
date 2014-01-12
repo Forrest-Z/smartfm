@@ -55,7 +55,7 @@ namespace mrpt{
 		std::vector<model_free_track> object_tracks_;
 
     	ros::Subscriber segpose_batch_sub_;
-    	ros::Publisher contour_cloud_pub_, anchor_point_pub_, filtered_anchor_point_pub_;
+    	ros::Publisher contour_cloud_pub_, anchor_point_pub_, filtered_anchor_point_pub_, meas_deputy_pub_, model_deputy_pub_;
     	ros::Time latest_input_time_;
     	vehicle_tracking();
 		~vehicle_tracking(){};
