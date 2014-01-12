@@ -39,6 +39,7 @@
 #include "DATMO_datatypes.h"
 #include "svm_classifier.h"
 #include "MODT/segment_pose_batches.h"
+
 #include <fmutil/fm_stopwatch.h>
 
 using namespace std;
