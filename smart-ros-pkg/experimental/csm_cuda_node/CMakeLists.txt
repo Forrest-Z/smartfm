@@ -23,12 +23,24 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 include_directories(/usr/include/vtk-5.8)
 find_package(OpenCV REQUIRED)
 include_directories(/usr/local/cuda-5.5/include/)
-rosbuild_add_executable(csmlib src/csm_lib.cpp)
 FIND_LIBRARY(cudalibs cudart /usr/local/cuda-5.5/lib64)
+
+rosbuild_add_executable(csmlib src/csm_lib.cpp)
 target_link_libraries(csmlib ${cudalibs} ${OpenCV_LIBS})
 rosbuild_add_openmp_flags(csmlib)
+
 rosbuild_add_executable(csm_node src/csm_node.cpp src/dbgstream.cpp)
 target_link_libraries(csm_node ${cudalibs} ${OpenCV_LIBS} libvtkCommon.so libvtkFiltering.so libvtkRendering.so)
+rosbuild_add_openmp_flags(csm_node)
+
+rosbuild_add_boost_directories()
+rosbuild_add_executable(save_laser src/save_laser_scan.cpp)
+rosbuild_link_boost(save_laser system)
+
+rosbuild_add_executable(csm_laser src/csm_laser.cpp)
+target_link_libraries(csm_laser ${cudalibs} ${OpenCV_LIBS})
+rosbuild_add_openmp_flags(csm_laser)
+rosbuild_link_boost(csm_laser system)
 
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
