@@ -53,7 +53,7 @@ namespace BFL
       virtual MatrixWrapper::Matrix          dfGet(unsigned int i)       const;
 
       //customized function;
-      MatrixWrapper::ColumnVector NonLinearAnalyticConditionalGaussianOdo::getEstimate(double delt_time_para);
+      MatrixWrapper::ColumnVector getEstimate(double delt_time_para);
 	  double delt_time;
 
     private:

@@ -37,7 +37,9 @@ class constspeed_ekf_tracker
 					double sys_sig5,
 					double meas_sig1,
 					double meas_sig2);
+
 	void getEstimate(ros::Time time, geometry_msgs::PoseWithCovarianceStamped& estimate);
+	void update(double x, double y, ros::Time update_time);
 };
 
 

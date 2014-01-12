@@ -8,6 +8,7 @@ namespace mrpt{
 		segpose_batch_sub_  = nh.subscribe("segment_pose_batches", 1, &vehicle_tracking::measurement_callback, this);
 		contour_cloud_pub_	= nh.advertise<sensor_msgs::PointCloud>("contour_pcl", 2);
 		anchor_point_pub_   = nh.advertise<sensor_msgs::PointCloud>("anchor_pcl", 2);
+		filtered_anchor_point_pub_ = nh.advertise<sensor_msgs::PointCloud>("filtered_anchor_pcl", 2);
 		object_total_id_ = 0;
 	}
 
@@ -135,6 +136,13 @@ namespace mrpt{
 			track_tmp.moving_direction = atan2(delt_anchor_pt_y, delt_anchor_pt_x);
 			track_tmp.tracking_inited = true;
 
+			geometry_msgs::PoseWithCovarianceStamped filtered_pose;
+			track_tmp.tracker->update(new_anchor_point.x, new_anchor_point.y, track_tmp.update_time);
+			track_tmp.tracker->getEstimate(track_tmp.update_time, filtered_pose);
+			geometry_msgs::Point32 filtered_anchor_point;
+			filtered_anchor_point.x = (float)filtered_pose.pose.pose.position.x;
+			filtered_anchor_point.y = (float)filtered_pose.pose.pose.position.y;
+			track_tmp.filtered_anchor_points.push_back(filtered_anchor_point);
 		}
 
 		//2nd: initiate new unassociated tracks;
@@ -164,9 +172,15 @@ namespace mrpt{
 
 			//the first anchor point;
 			new_track_tmp.anchor_points.push_back(centroid_tmp);
+			new_track_tmp.filtered_anchor_points.push_back(centroid_tmp);
+
 			new_track_tmp.update_time = incoming_meas_tmp.segments.back().header.stamp;
 			object_tracks_.push_back(new_track_tmp);
 			object_total_id_++;
+
+
+			new_track_tmp.tracker->set_params(1.0, 1.0, M_PI/180.0*180.0, 10.0, M_PI/180.0*180.0, 0.3, 0.3);
+			new_track_tmp.tracker->update(centroid_tmp.x, centroid_tmp.y, new_track_tmp.update_time);
 		}
 
 		//3rd: delete old tracks;
@@ -512,11 +526,13 @@ namespace mrpt{
 
 	void vehicle_tracking::tracks_visualization()
 	{
-		sensor_msgs::PointCloud contour_pcl, anchor_pcl;
+		sensor_msgs::PointCloud contour_pcl, anchor_pcl, filtered_anchor_pcl;
 		contour_pcl.header.frame_id = "odom";
 		anchor_pcl.header.frame_id = "odom";
+		filtered_anchor_pcl.header.frame_id = "odom";
 		contour_pcl.header.stamp = latest_input_time_;
 		anchor_pcl.header.stamp = latest_input_time_;
+		filtered_anchor_pcl.header.stamp = latest_input_time_;
 
 		for(size_t i=0; i<object_tracks_.size(); i++)
 		{
@@ -534,10 +550,16 @@ namespace mrpt{
 				{
 					anchor_pcl.points.push_back(object_tracks_[i].anchor_points[j]);
 				}
+
+				for(size_t j=0; j<object_tracks_[i].filtered_anchor_points.size(); j++)
+				{
+					filtered_anchor_pcl.points.push_back(object_tracks_[i].filtered_anchor_points[j]);
+				}
 			}
 		}
 		contour_cloud_pub_.publish(contour_pcl);
 		anchor_point_pub_.publish(anchor_pcl);
+		filtered_anchor_point_pub_.publish(filtered_anchor_pcl);
 	}
 
 };

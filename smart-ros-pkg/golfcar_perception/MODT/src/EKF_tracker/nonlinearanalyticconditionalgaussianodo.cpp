@@ -9,7 +9,7 @@
  * ***********************************************
  */
 
-#include <robot_pose_ekf/nonlinearanalyticconditionalgaussianodo.h>
+#include "nonlinearanalyticconditionalgaussianodo.h"
 #include <wrappers/rng/rng.h> // Wrapper around several rng
                               // libraries
 #define NUMCONDARGUMENTS_MOBILE 2
@@ -72,7 +72,7 @@ namespace BFL
       }
   }
 
-  ColumnVector NonLinearAnalyticConditionalGaussianOdo::getEstimate(double delt_time_para)
+  MatrixWrapper::ColumnVector NonLinearAnalyticConditionalGaussianOdo::getEstimate(double delt_time_para)
   {
     ColumnVector state = ConditionalArgumentGet(0);
     state(1) += state(4)*cos(state(3))*delt_time_para;

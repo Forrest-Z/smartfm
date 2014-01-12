@@ -11,9 +11,9 @@ constspeed_ekf_tracker::constspeed_ekf_tracker():
 	meas_covariance(2)
 {
     // create SYSTEM MODEL
-    ColumnVector sysNoise_Mu(6);  sysNoise_Mu = 0;
-    SymmetricMatrix sysNoise_Cov(6); sysNoise_Cov = 0;
-    for (unsigned int i=1; i<=6; i++) sysNoise_Cov(i,i) = pow(1000.0,2);
+    ColumnVector sysNoise_Mu(5);  sysNoise_Mu = 0;
+    SymmetricMatrix sysNoise_Cov(5); sysNoise_Cov = 0;
+    for (unsigned int i=1; i<=5; i++) sysNoise_Cov(i,i) = pow(1000.0,2);
     Gaussian 	system_Uncertainty(sysNoise_Mu, sysNoise_Cov);
     sys_pdf_   = new NonLinearAnalyticConditionalGaussianOdo(system_Uncertainty);
     sys_model_ = new AnalyticSystemModelGaussianUncertainty(sys_pdf_);
@@ -27,6 +27,12 @@ constspeed_ekf_tracker::constspeed_ekf_tracker():
     Hodom(1,1) = 1;    Hodom(2,2) = 1;
     meas_pdf_   = new LinearAnalyticConditionalGaussian(Hodom, measurement_Uncertainty_Odom);
     meas_model_ = new LinearAnalyticMeasurementModelGaussianUncertainty(meas_pdf_);
+
+    ColumnVector prior_Mu(5); prior_Mu = 0.0;
+    SymmetricMatrix prior_Cov(5); prior_Cov = 0.0;
+    for(int i=1; i<=5; i++)prior_Cov(i,i) = 1000.0;
+    prior_  = new Gaussian(prior_Mu,prior_Cov);
+    filter_ = new ExtendedKalmanFilter(prior_);
 }
 
 void constspeed_ekf_tracker::set_params(double sys_sig1,
@@ -74,8 +80,10 @@ void constspeed_ekf_tracker::update(double x, double y, ros::Time update_time)
 
 void constspeed_ekf_tracker::getEstimate(ros::Time time, geometry_msgs::PoseWithCovarianceStamped& estimate)
 {
-	ros::Time delt_time_tmp = (time-last_update_time).toSec();
+	double delt_time_tmp = (time-last_update_time).toSec();
+
 	ColumnVector state_tmp = sys_pdf_->getEstimate(delt_time_tmp);
+
 	estimate.pose.pose.position.x = state_tmp(1);
 	estimate.pose.pose.position.y = state_tmp(2);
 	estimate.pose.pose.position.z = 0.0;
@@ -85,5 +93,11 @@ void constspeed_ekf_tracker::getEstimate(ros::Time time, geometry_msgs::PoseWith
 
 constspeed_ekf_tracker::~constspeed_ekf_tracker()
 {
+	delete            	sys_model_;
+	delete           	sys_pdf_;
+	delete             	meas_pdf_;
+	delete 				meas_model_;
+	delete           	prior_;
+	delete          	filter_;
 
 }
