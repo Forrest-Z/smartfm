@@ -18,12 +18,32 @@ namespace mrpt{
 
 	void vehicle_tracking::measurement_callback(const MODT::segment_pose_batches& batches)
 	{
+		delete_obsolete_tracks(batches.header.stamp);
+
 		if(batches.clusters.size()==0) return;
 		cout<<endl;
 		cout<<"measurement_callback"<<batches.clusters.back().segments.back().header.seq<<endl;
+
 		MODT::segment_pose_batches batches_copy = batches;
 		register_cluster2history(batches_copy);
 		tracks_visualization();
+	}
+
+	void vehicle_tracking::delete_obsolete_tracks(ros::Time current_time)
+	{
+		size_t deleted_track_num = 0;
+		latest_input_time_ = current_time;
+		for(size_t i=0; i<object_tracks_.size(); )
+		{
+			double time_passed = (latest_input_time_ - object_tracks_[i].update_time).toSec();
+			ROS_INFO("time passed %lf, %lf, %lf", latest_input_time_.toSec(), object_tracks_[i].update_time.toSec(), time_passed);
+			if(time_passed > 1.0)
+			{
+				object_tracks_.erase(object_tracks_.begin()+i);
+				deleted_track_num++;
+			}
+			else i++;
+		}
 	}
 
 	//Here just use a brutal-and-naive method to do data association;
@@ -141,12 +161,22 @@ namespace mrpt{
 			track_tmp.tracking_inited = true;
 
 			geometry_msgs::PoseWithCovarianceStamped filtered_pose;
-			track_tmp.tracker->update(new_anchor_point.x, new_anchor_point.y, track_tmp.update_time);
+			track_tmp.tracker->update(new_anchor_point.x, new_anchor_point.y, track_tmp.omega, track_tmp.update_time);
 			track_tmp.tracker->getEstimate(track_tmp.update_time, filtered_pose);
+
+			MatrixWrapper::ColumnVector ekf_output_tmp = track_tmp.tracker->filter_->PostGet()->ExpectedValueGet();
+			track_tmp.velocity = ekf_output_tmp(4);
+			track_tmp.moving_direction =  ekf_output_tmp(3);
+			track_tmp.omega = ekf_output_tmp(5);
+
 			geometry_msgs::Point32 filtered_anchor_point;
 			filtered_anchor_point.x = (float)filtered_pose.pose.pose.position.x;
 			filtered_anchor_point.y = (float)filtered_pose.pose.pose.position.y;
 			track_tmp.filtered_anchor_points.push_back(filtered_anchor_point);
+
+			ROS_INFO("model points number before downsample %zu", track_tmp.contour_points.points.size());
+			track_tmp.downsample_model();
+			ROS_INFO("model points number after downsample %zu", track_tmp.contour_points.points.size());
 		}
 
 		//2nd: initiate new unassociated tracks;
@@ -182,26 +212,18 @@ namespace mrpt{
 			object_tracks_.push_back(new_track_tmp);
 			object_total_id_++;
 
+			//due to the noisy characteristics, the omega value from ICP actually helps little;
+			new_track_tmp.tracker->set_params(1.0, 1.0, M_PI/180.0*30.0, 3.0, M_PI/180.0*30.0, 0.05, 0.05, M_PI*10.0);
+			new_track_tmp.tracker->update(centroid_tmp.x, centroid_tmp.y,  0.0, new_track_tmp.update_time);
 
-			new_track_tmp.tracker->set_params(1.0, 1.0, M_PI/180.0*30.0, 3.0, M_PI/180.0*30.0, 0.05, 0.05);
-			new_track_tmp.tracker->update(centroid_tmp.x, centroid_tmp.y, new_track_tmp.update_time);
+			new_track_tmp.downsample_model();
 		}
 
 		//3rd: delete old tracks;
-		size_t deleted_track_num = 0;
-		latest_input_time_ = batches.header.stamp;
-		for(size_t i=0; i<object_tracks_.size(); )
-		{
-			double time_passed = (latest_input_time_ - object_tracks_[i].update_time).toSec();
-			if(time_passed > 1.0)
-			{
-				object_tracks_.erase(object_tracks_.begin()+i);
-				deleted_track_num++;
-			}
-			else i++;
-		}
+		//move to the most front;
+		//delete_obsolete_tracks();
 
-		ROS_INFO("updated tracks: %ld; new tracks: %ld; deleted tracks: %ld; remained tracks: %ld", track_measure_pairs.size(), unregistered_measurements.size(), deleted_track_num, object_tracks_.size());
+		ROS_INFO("updated tracks: %ld; new tracks: %ld; remained tracks: %ld", track_measure_pairs.size(), unregistered_measurements.size(), object_tracks_.size());
 
 		/*
 		for(size_t i=0; i<object_tracks_.size(); i++)
@@ -225,8 +247,8 @@ namespace mrpt{
 		deputy_model_cloud = model_cloud;
 
 		//1: add constraint points to take into account beam model while doing ICP;
-		int constraint_pts_num = 10*2;
-		int constraint_pts_num2 = 20*2;
+		int constraint_pts_num = 5*2;
+		int constraint_pts_num2 = 10*2;
 		float constraint_pts_interval = 0.05;
 		double scan_angle_max = M_PI*0.75, scan_angle_min = -M_PI*0.75;
 		bool add_pts_angleMax = false, add_pts_angleMin = false;
@@ -448,7 +470,6 @@ namespace mrpt{
 				constraint_pt_tmp.y = model_boundary_point.y - (constraint_pts_interval*i)*sin(meas_angleMin_inodom);
 				deputy_model_cloud.points.push_back(constraint_pt_tmp);
 			}
-
 		}
 
 		//2: futher add points to allow only shift of the object;
@@ -487,7 +508,6 @@ namespace mrpt{
 		sensor_msgs::PointCloud new_cloud = new_meas.segments.back();
 
 		//predicting using tracking information;
-		/*
 		geometry_msgs::Pose old_to_predict;
 		old_to_predict.orientation.x = 0.0;
 		old_to_predict.orientation.y = 0.0;
@@ -496,6 +516,7 @@ namespace mrpt{
 		old_to_predict.position.x = 0.0;
 		old_to_predict.position.y = 0.0;
 		old_to_predict.position.z = 0.0;
+
 		if(track.tracking_inited)
 		{
 			old_to_predict.position.x = time_difference*track.velocity*cos(track.moving_direction);
@@ -509,7 +530,6 @@ namespace mrpt{
 				old_cloud.points[i].y = old_cloud.points[i].y+ (float)old_to_predict.position.y;
 			}
 		}
-		*/
 
 		/*
 		sensor_msgs::PointCloud old_cloud, new_cloud;
@@ -586,9 +606,13 @@ namespace mrpt{
 		tf::Pose Et_to_Etvirtual = Etvirtual_to_Et.inverse();
 		tf::Pose Etm1_to_Etvirtual = Etm1_to_Et*Et_to_Etvirtual;
 
-		float x_initial = (float)Etm1_to_Etvirtual.getOrigin().getX();
-		float y_initial = (float)Etm1_to_Etvirtual.getOrigin().getY();
-		float yaw_initial = (float) tf::getYaw(Etm1_to_Etvirtual.getRotation());
+		//float x_initial = (float)Etm1_to_Etvirtual.getOrigin().getX();
+		//float y_initial = (float)Etm1_to_Etvirtual.getOrigin().getY();
+		//float yaw_initial = (float) tf::getYaw(Etm1_to_Etvirtual.getRotation());
+
+		float x_initial = 0.0;
+		float y_initial = 0.0;
+		float yaw_initial = 0.0;
 
 		cout<<"other vehicle rough movement:"<<Vtm1_to_Vt.getOrigin().getX()<<","<<Vtm1_to_Vt.getOrigin().getY()<<"0"<<endl;
 		cout<<"ego vehicle odom movement:"<<Etm1_to_Et.getOrigin().getX()<<","<<Etm1_to_Et.getOrigin().getY()<<","<<tf::getYaw(Etm1_to_Et.getRotation())<<endl;
@@ -648,7 +672,7 @@ namespace mrpt{
 		ICP.options.smallestThresholdDist	= 0.01f;
 		ICP.options.doRANSAC = false;
 		ICP.options.onlyClosestCorrespondences = false;
-		ICP.options.dumpToConsole();
+		//ICP.options.dumpToConsole();
 
 		//CPose2D		initialPose(0.0f,0.0f,(float)DEG2RAD(0.0f));
 		CPosePDFPtr pdf = ICP.Align(&m1_shiftAdded, &m2_shiftAdded, initialPose, &runningTime,(void*)&info);
@@ -669,10 +693,17 @@ namespace mrpt{
 
 		CPosePDFGaussian  gPdf2;
 		gPdf2.copyFrom(*pdf2);
+
 		//c: to recover the vehicle pose and speed in the global frame;
 		double ICP_output_x 	= gPdf2.mean.x();
 		double ICP_output_y 	= gPdf2.mean.y();
 		double ICP_output_yaw 	= gPdf2.mean.phi();
+
+		/*
+		double ICP_output_x 	= gPdf.mean.x();
+		double ICP_output_y 	= gPdf.mean.y();
+		double ICP_output_yaw 	= gPdf.mean.phi();
+		*/
 		cout<<"ICP output: "<<ICP_output_x<<","<<ICP_output_y<<","<<ICP_output_yaw<<endl;
 
 		tf::Pose ICP_Etm1_to_Etvirtual = tf::Transform(tf::Matrix3x3(tf::createQuaternionFromYaw(ICP_output_yaw)), tf::Vector3(tfScalar(ICP_output_x), tfScalar(ICP_output_y), tfScalar(0)));
@@ -680,25 +711,19 @@ namespace mrpt{
 		tf::Pose ICP_Et_To_Etvirtual = Etm1_to_Et.inverse()*ICP_Etm1_to_Etvirtual;
 		tf::Pose ICP_Vtm1_To_Vt = Vtm1_to_Etvirtual*ICP_Et_To_Etvirtual.inverse()*Vt_to_Et.inverse();
 
-		double vehicle_delta_x = ICP_Vtm1_To_Vt.getOrigin().getX();
-		double vehicle_delta_y = ICP_Vtm1_To_Vt.getOrigin().getY();
 		double vehicle_delta_yaw = tf::getYaw(ICP_Vtm1_To_Vt.getRotation());
-
 		track.omega = vehicle_delta_yaw/time_difference;
-
-		cout<<"vehicle motion: "<<vehicle_delta_x<<","<<vehicle_delta_y<<","<<vehicle_delta_yaw<<endl;
+		//cout<<"track omega: "<<track.omega<<endl;
 
 		newMeas_poseinOdom = Odom_to_Vt;
 		oldMeas_poseinOdom = Odom_to_Vt*ICP_Vtm1_To_Vt.inverse();
 
-		/*
 		if(track.tracking_inited)
 		{
 			double x_in_odom = oldMeas_poseinOdom.getOrigin().x() - old_to_predict.position.x;
 			double y_in_odom = oldMeas_poseinOdom.getOrigin().y() - old_to_predict.position.y;
 			oldMeas_poseinOdom.setOrigin(tf::Vector3(x_in_odom, y_in_odom, 0.0));
 		}
-		*/
 	}
 
 	void vehicle_tracking::constructPtsMap(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CSimplePointsMap &map)
