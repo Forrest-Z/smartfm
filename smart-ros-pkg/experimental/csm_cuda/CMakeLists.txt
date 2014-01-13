@@ -24,7 +24,7 @@ link_libraries(-llog4cxx)
 find_package(CUDA REQUIRED)
 find_package(OpenCV REQUIRED)
 include_directories(/usr/include/vtk-5.8)
-CUDA_ADD_LIBRARY(${PROJECT_NAME} src/csm_lib.cu)
+CUDA_ADD_LIBRARY(${PROJECT_NAME} src/csm_lib.cu src/clipper.cpp)
 
 #common commands for building c++ executables and libraries
 #rosbuild_add_library(${PROJECT_NAME} src/example.cpp)

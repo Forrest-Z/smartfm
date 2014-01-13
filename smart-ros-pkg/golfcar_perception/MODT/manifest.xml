@@ -27,6 +27,7 @@
   <depend package="svm_classifier"/>
   <depend package="mrpt_libs"/>
   <depend package="fmutil"/>
+  <depend package="bfl"/>
 </package>
 
 

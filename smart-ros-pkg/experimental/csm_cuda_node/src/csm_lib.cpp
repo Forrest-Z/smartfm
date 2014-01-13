@@ -1,7 +1,6 @@
 #include <fmutil/fm_stopwatch.h>
 #include <csm_cuda/csm.h>
 
-
 int main(int argc, char** argv){
   pcl::PointCloud<pcl::PointNormal> cloud, cloud2;
   pcl::io::loadPCDFile("/home/demian/smartfm/smart-ros-pkg/experimental/csm_cuda_node/examples_pcd/00135.pcd", cloud);
@@ -28,6 +27,7 @@ int main(int argc, char** argv){
   fmutil::Stopwatch sw2("Matching1");
   poseResult result;
   result.x = result.y = result.r = 0.0;
+  cout<<cloud2.size()<<" matching size loaded."<<endl;
   result = csmGPU.getBestMatch(2.0, 2.0, 5, 20, 20, 180, cloud2, result);
   cout<<"Best score 1 found: "<< result.x<<", "<<result.y<<", "<<result.r<<": "<<result.score<<endl;
   sw2.end(); fmutil::Stopwatch sw3("Matching2");
