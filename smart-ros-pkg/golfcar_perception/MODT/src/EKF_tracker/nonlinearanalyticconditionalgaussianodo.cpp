@@ -43,6 +43,7 @@ namespace BFL
     state(3) += state(5)*delt_time;
     state(4) = state(4);
     state(5) = state(5);
+
     return state + AdditiveNoiseMuGet();
   }
 

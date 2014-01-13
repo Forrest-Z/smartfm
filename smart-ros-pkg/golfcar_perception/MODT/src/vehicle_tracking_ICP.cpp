@@ -165,6 +165,7 @@ namespace mrpt{
 			track_tmp.tracker->getEstimate(track_tmp.update_time, filtered_pose);
 
 			MatrixWrapper::ColumnVector ekf_output_tmp = track_tmp.tracker->filter_->PostGet()->ExpectedValueGet();
+
 			track_tmp.velocity = ekf_output_tmp(4);
 			track_tmp.moving_direction =  ekf_output_tmp(3);
 			track_tmp.omega = ekf_output_tmp(5);
@@ -174,9 +175,9 @@ namespace mrpt{
 			filtered_anchor_point.y = (float)filtered_pose.pose.pose.position.y;
 			track_tmp.filtered_anchor_points.push_back(filtered_anchor_point);
 
-			ROS_INFO("model points number before downsample %zu", track_tmp.contour_points.points.size());
+			ROS_DEBUG("model points number before downsample %zu", track_tmp.contour_points.points.size());
 			track_tmp.downsample_model();
-			ROS_INFO("model points number after downsample %zu", track_tmp.contour_points.points.size());
+			ROS_DEBUG("model points number after downsample %zu", track_tmp.contour_points.points.size());
 		}
 
 		//2nd: initiate new unassociated tracks;
@@ -204,6 +205,21 @@ namespace mrpt{
 			centroid_tmp.x = centroid_tmp.x/(float)incoming_meas_tmp.segments.back().points.size();
 			centroid_tmp.y = centroid_tmp.y/(float)incoming_meas_tmp.segments.back().points.size();
 
+			geometry_msgs::Point32 centroid_tmp2;
+			centroid_tmp2.x = 0.0;
+			centroid_tmp2.y = 0.0;
+			centroid_tmp2.z = 0.0;
+			for(size_t k=0; k<incoming_meas_tmp.segments.front().points.size(); k++)
+			{
+				centroid_tmp2.x = centroid_tmp2.x + incoming_meas_tmp.segments.front().points[k].x;
+				centroid_tmp2.y = centroid_tmp2.y + incoming_meas_tmp.segments.front().points[k].y;
+				new_track_tmp.contour_points.points.push_back(incoming_meas_tmp.segments.front().points[k]);
+			}
+			centroid_tmp2.x = centroid_tmp2.x/(float)incoming_meas_tmp.segments.front().points.size();
+			centroid_tmp2.y = centroid_tmp2.y/(float)incoming_meas_tmp.segments.front().points.size();
+
+			double angle_init = atan2(centroid_tmp.y-centroid_tmp2.y, centroid_tmp.x-centroid_tmp2.x);
+
 			//the first anchor point;
 			new_track_tmp.anchor_points.push_back(centroid_tmp);
 			new_track_tmp.filtered_anchor_points.push_back(centroid_tmp);
@@ -213,8 +229,9 @@ namespace mrpt{
 			object_total_id_++;
 
 			//due to the noisy characteristics, the omega value from ICP actually helps little;
+
 			new_track_tmp.tracker->set_params(1.0, 1.0, M_PI/180.0*30.0, 3.0, M_PI/180.0*30.0, 0.05, 0.05, M_PI*10.0);
-			new_track_tmp.tracker->update(centroid_tmp.x, centroid_tmp.y,  0.0, new_track_tmp.update_time);
+			new_track_tmp.tracker->init_filter(centroid_tmp.x, centroid_tmp.y, angle_init);
 
 			new_track_tmp.downsample_model();
 		}
@@ -241,10 +258,11 @@ namespace mrpt{
 	//generate deputy points for ICP;
 	//two purposes: 1, to take into account beam model;
 	//				2, to allow only shift, and no orientation;
-	void vehicle_tracking::ICP_deputy_cloud(sensor_msgs::PointCloud &meas_cloud, sensor_msgs::PointCloud &model_cloud,  tf::Pose lidar_pose, sensor_msgs::PointCloud &deputy_meas_cloud, sensor_msgs::PointCloud &deputy_model_cloud)
+	void vehicle_tracking::ICP_deputy_cloud(bool &forbidden_rotation_flag, sensor_msgs::PointCloud &meas_cloud, sensor_msgs::PointCloud &model_cloud,  tf::Pose lidar_pose, sensor_msgs::PointCloud &deputy_meas_cloud, sensor_msgs::PointCloud &deputy_model_cloud)
 	{
 		deputy_meas_cloud = meas_cloud;
 		deputy_model_cloud = model_cloud;
+
 
 		//1: add constraint points to take into account beam model while doing ICP;
 		int constraint_pts_num = 5*2;
@@ -254,7 +272,7 @@ namespace mrpt{
 		bool add_pts_angleMax = false, add_pts_angleMin = false;
 
 		double meas_angle_max = -M_PI, meas_angle_min = M_PI;
-		double angle_tolerance = M_PI/180.0*3.0;
+		double angle_tolerance = M_PI/180.0*45.0;
 		geometry_msgs::Point32 meas_angleMax_pt, meas_angleMin_pt;
 
 		geometry_msgs::Pose temppose;
@@ -295,10 +313,9 @@ namespace mrpt{
 		//if object exceed scan angle boundary, add deputy points to the other side of the objects, to convey the scenario of beam model;
 		//pay attention that it is "the other side";
 		ROS_INFO("meas_angle_min, meas_angle_max %lf, %lf", meas_angle_min, meas_angle_max);
-		if(meas_angle_max+angle_tolerance>scan_angle_max) add_pts_angleMin = true;
-		if(meas_angle_min-angle_tolerance<scan_angle_min) add_pts_angleMax = true;
-		//add_pts_angleMin = true;
-		add_pts_angleMax = true;
+		if(meas_angle_max+angle_tolerance>scan_angle_max) {add_pts_angleMin = true; forbidden_rotation_flag = true;}
+		if(meas_angle_min-angle_tolerance<scan_angle_min) {add_pts_angleMax = true; forbidden_rotation_flag = true;}
+
 
 		geometry_msgs::Point32 lidar_origin;
 		lidar_origin.x = lidar_pose.getOrigin().getX();
@@ -497,6 +514,8 @@ namespace mrpt{
 
 	void vehicle_tracking::ICP_motion2shape(model_free_track& track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom )
 	{
+		bool heuristic_forbidden_rotation = false;
+
 		double time_difference = (new_meas.segments.back().header.stamp - old_meas.segments.back().header.stamp).toSec();
 
 		//1st step: for a single cluster, try to estimate its motion using ICP;
@@ -522,7 +541,7 @@ namespace mrpt{
 			old_to_predict.position.x = time_difference*track.velocity*cos(track.moving_direction);
 			old_to_predict.position.y = time_difference*track.velocity*sin(track.moving_direction);
 
-			cout<<"old_to_predict: "<<time_difference<<","<<track.velocity<<","<<old_to_predict.position.x<<","<<old_to_predict.position.y<<endl;
+			cout<<"old_to_predict: "<<time_difference<<","<<track.velocity<<","<<track.moving_direction<<","<<old_to_predict.position.x<<","<<old_to_predict.position.y<<endl;
 
 			for(size_t i=0; i<old_cloud.points.size(); i++)
 			{
@@ -530,6 +549,9 @@ namespace mrpt{
 				old_cloud.points[i].y = old_cloud.points[i].y+ (float)old_to_predict.position.y;
 			}
 		}
+
+		double move_distance = sqrt((old_to_predict.position.x*old_to_predict.position.x+old_to_predict.position.y*old_to_predict.position.y));
+		if(move_distance>0.5) heuristic_forbidden_rotation = true;
 
 		/*
 		sensor_msgs::PointCloud old_cloud, new_cloud;
@@ -648,7 +670,7 @@ namespace mrpt{
 		sensor_msgs::PointCloud old_cloud_shiftAdded, new_cloud_shiftAdded;
 		tf::Pose lidarPose_tf;
 		tf::poseMsgToTF(new_pose, lidarPose_tf);
-		ICP_deputy_cloud(new_cloud, old_cloud,  lidarPose_tf, new_cloud_shiftAdded, old_cloud_shiftAdded);
+		ICP_deputy_cloud(heuristic_forbidden_rotation, new_cloud, old_cloud,  lidarPose_tf, new_cloud_shiftAdded, old_cloud_shiftAdded);
 
 
 		CSimplePointsMap		m1, m2, m1_shiftAdded, m2_shiftAdded;
@@ -686,6 +708,12 @@ namespace mrpt{
 				info.goodness*100 );
 		cout << "Mean of estimation: " << pdf->getMeanVal() << endl<< endl;
 
+		bool use_EKF_estimation = false;
+		if(info.goodness<0.7)
+		{
+			use_EKF_estimation = true;
+		}
+
 		CPose2D	initialPose_step2(gPdf.mean.x(), gPdf.mean.y(), gPdf.mean.phi());
 		ICP.options.onlyClosestCorrespondences = true;
 		ICP.options.maxIterations			= 1;
@@ -699,11 +727,25 @@ namespace mrpt{
 		double ICP_output_y 	= gPdf2.mean.y();
 		double ICP_output_yaw 	= gPdf2.mean.phi();
 
-		/*
-		double ICP_output_x 	= gPdf.mean.x();
-		double ICP_output_y 	= gPdf.mean.y();
-		double ICP_output_yaw 	= gPdf.mean.phi();
-		*/
+		if(heuristic_forbidden_rotation)
+		{
+			ICP_output_x 	= gPdf.mean.x();
+			ICP_output_y 	= gPdf.mean.y();
+			ICP_output_yaw 	= gPdf.mean.phi();
+		}
+
+		if(heuristic_forbidden_rotation && use_EKF_estimation)
+		{
+			track.only_relyon_tracker = true;
+		}
+
+		if(track.only_relyon_tracker)
+		{
+			ICP_output_x 	= 0.0;
+			ICP_output_y 	= 0.0;
+			ICP_output_yaw 	= 0.0;
+		}
+
 		cout<<"ICP output: "<<ICP_output_x<<","<<ICP_output_y<<","<<ICP_output_yaw<<endl;
 
 		tf::Pose ICP_Etm1_to_Etvirtual = tf::Transform(tf::Matrix3x3(tf::createQuaternionFromYaw(ICP_output_yaw)), tf::Vector3(tfScalar(ICP_output_x), tfScalar(ICP_output_y), tfScalar(0)));

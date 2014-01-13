@@ -44,9 +44,12 @@ namespace mrpt{
 		MODT::segment_pose_batch	last_measurement;
 		constspeed_ekf_tracker 		*tracker;
 
+		bool only_relyon_tracker;
+
 		model_free_track()
 		{
 			tracker = new constspeed_ekf_tracker();
+			only_relyon_tracker = false;
 		}
 
 		void downsample_model()
@@ -114,7 +117,7 @@ namespace mrpt{
 
 		void tracks_visualization();
 		void constructPtsMap(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CSimplePointsMap &map);
-		void ICP_deputy_cloud(sensor_msgs::PointCloud &meas_cloud, sensor_msgs::PointCloud &model_cloud,  tf::Pose lidar_pose, sensor_msgs::PointCloud &deputy_meas_cloud, sensor_msgs::PointCloud &deputy_model_cloud);
+		void ICP_deputy_cloud(bool &forbidden_rotation_flag, sensor_msgs::PointCloud &meas_cloud, sensor_msgs::PointCloud &model_cloud,  tf::Pose lidar_pose, sensor_msgs::PointCloud &deputy_meas_cloud, sensor_msgs::PointCloud &deputy_model_cloud);
 		void delete_obsolete_tracks(ros::Time current_time);
     };
 };
