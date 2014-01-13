@@ -6,10 +6,10 @@ kp_brake: 80.0
 ki_brake: 5.0
 kd_brake: 0.0
 
-brake_zero_thres: -0.5
-throttle_zero_thres: 0.1
+brakeZeroThres: -0.2
+throttleZeroThres: 0.1
 #to make sure the car will stop at the end
-full_brake_thres: 0.5
+fullBrakeThres: 0.05
 
 kp_sat_brake: 100.0
 ki_sat_brake: 70.0

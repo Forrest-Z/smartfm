@@ -51,6 +51,7 @@ class Parameters
 	double tau_v; ///< Time constant for the velocity filter
 	int controller_state; ///0 : Throttle, 1 : Neutral, 2 : Brake
 	int controller_state_prev;	///previous state of controller
+	double pre_brake_ctrl;
 	void getParam();
 };
 
@@ -127,6 +128,13 @@ void Parameters::getParam()
 	cout <<"brake_threshold: " <<brake_zero_thres <<"\n";
 }
 
+
+enum controllerState{
+  THROTTLE,
+  NEUTRAL,
+  BRAKE
+};
+
 PID_Controller::PID_Controller()
 {
     bwdDriveSub = n.subscribe("direction_ctrl", 1, &PID_Controller::bwdDriveCallBack, this);
@@ -150,8 +158,8 @@ PID_Controller::PID_Controller()
 
     last_time = ros::Time::now();
     
-    param.controller_state = 2;	///Brake
-    param.controller_state_prev = 2;	///Brake
+    param.controller_state = BRAKE;	///Brake
+    param.controller_state_prev = BRAKE;	///Brake
     //Initial PID_Controller
     e_pre = 0.0;
     e_now = 0.0;
@@ -159,6 +167,8 @@ PID_Controller::PID_Controller()
 		e_sum = 0.0;    
     e_sum_brake = 0.0; 
 		e_diff = 0.0;
+		
+		
     
 }
 
@@ -241,117 +251,132 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 		pid_msg.u_brake_ctrl = -param.coeff_bp;
 		pid_msg.u_ctrl = 0.0;
 		
-		//reset controller state
-		param.controller_state = 2;	///Brake
-    param.controller_state_prev = 2;	///Brake
     
 	}
 	else
 	{
-		//Main part of the code here
-		pid_msg.v_filter = vFilter.filter_dt(enc.dt, odovel);
-		pid_msg.vel_err = cmdVel - pid_msg.v_filter;
+	    //Main part of the code here
+	    pid_msg.v_filter = vFilter.filter_dt(enc.dt, odovel);
+	    pid_msg.vel_err = cmdVel - pid_msg.v_filter;
+	    
+	    //Logic switching, Throttle or Brake
+	    switch (param.controller_state){
+	      case THROTTLE:
+		do_brake = false;
+		if(pid_msg.vel_err < param.brake_zero_thres){
+		  param.controller_state_prev = param.controller_state;
+		  param.controller_state = BRAKE;
+		  do_brake = true;
+		}
+		if(pid_msg.vel_err < param.throttle_zero_thres){
+		  param.controller_state_prev = param.controller_state;
+		  param.controller_state = NEUTRAL;
+		  do_brake = false;
+		}
+		break;
+	      case NEUTRAL:
+		//check originated from which state
+		  do_brake = false;
+		if(param.controller_state_prev == BRAKE)
+		  do_brake = true;
 		
-		//Logic switching, Throttle or Brake
-		if(pid_msg.vel_err >= param.throttle_zero_thres)
-		{
-			param.controller_state = 0;	///Throttle
-			do_brake = false;
+		if(pid_msg.vel_err < param.brake_zero_thres){
+		  param.controller_state_prev = param.controller_state;
+		  param.controller_state = BRAKE;
+		  do_brake = true;
 		}
-		else if((pid_msg.vel_err < param.throttle_zero_thres) && (pid_msg.vel_err >= param.brake_zero_thres))
-		{
-			param.controller_state = 1;	///Neutral
-			//-----------------------------------------------//
-			//----- Neutral stage, Keep braking state -------//
-			//-----------------------------------------------//
-			if(param.controller_state_prev == 2)
-			{
-				//Brake --> Neutral then brake
-				do_brake = true;
-				
-			}else if(param.controller_state_prev == 0)
-			{
-				//Throttle --> Neutral then no brake
-				do_brake = false;
-			}else{
-				//Neutral --> Neutral, do have to do anything?
-				std::cout << "At Neutral state!" << std::endl;
-			}
+		if(pid_msg.vel_err >= param.throttle_zero_thres){
+		  if(param.pre_brake_ctrl >= -20){
+		    param.controller_state_prev = param.controller_state;
+		    param.controller_state = THROTTLE;
+		    do_brake = false;
+		  }
 		}
-		else
-		{
-			param.controller_state = 2;	///Brake
-			do_brake = true;
-
+		break;
+	      case BRAKE:
+		do_brake = true;
+		if(pid_msg.vel_err >= param.brake_zero_thres){
+		  param.controller_state_prev = param.controller_state;
+		  param.controller_state = NEUTRAL;
+		  do_brake = true;
 		}
-		param.controller_state_prev = param.controller_state;
-		//Done calculate PID
-		e_pre = e_now;
+		if(pid_msg.vel_err >= param.throttle_zero_thres){
+		  param.controller_state_prev = param.controller_state;
+		  param.controller_state = THROTTLE;
+		  do_brake = false;
+		}	
+		break;
+	    }
+	    
+	    //Done calculate PID
+	    e_pre = e_now;
+	  
+	  
+	  if(!do_brake)
+	  {
+		  //--------------------------------//
+		  //--- Apply Throttle, no Brake ---//
+		  //--------------------------------//
+		  //Get velocity error
+		  double e_now = cmdVel - pid_msg.v_filter;
+		  e_sum_brake = 0.0;
+	  
+		  //Get look-up table
+		  pid_msg.table = getLookupTable(cmdVel);
+		  
+		  //P term
+		  pid_msg.p_term = fmutil::symbound<double>(param.kp * e_now, param.kp_sat);
+		  
+		  //I term
+		  e_sum = e_sum + (e_now * enc.dt);	//Integral of error
+		  pid_msg.i_term = fmutil::symbound<double>(param.ki * e_sum, param.ki_sat);
+		  
+		  //D term
+		  e_diff = (e_now - e_pre) / enc.dt;
+		  pid_msg.d_term = fmutil::symbound<double>(param.kd * e_diff, param.kd_sat);
+		  
+		  //Sum it all up
+		  double u =  pid_msg.table + (pid_msg.p_term + pid_msg.i_term + pid_msg.d_term);
+		  
+		  pid_msg.u_ctrl = fmutil::symbound<double>(u, 1.0); //Throttle command
+			  if(pid_msg.u_ctrl < 0.0) pid_msg.u_ctrl = 0.0;
+		  pid_msg.u_brake_ctrl = 0.0;	//Brake command
+		  //if(param.controller_state == NEUTRAL)
+		    //pid_msg.u_ctrl = 0.0;
+	  }else{
+		  //--------------------------------//
+		  //--- Apply Brake, no Throttle ---//
+		  //--------------------------------//
+		  //Get velocity error
+		  double e_now = cmdVel - pid_msg.v_filter;
+		  e_sum = 0.0;
+		  //Get look-up table
+		  pid_msg.table_brake = getLookupTable_brake(e_now);
+	  
+		  //P term
+		  pid_msg.p_brake_term = fmutil::symbound<double>(param.kp_brake * e_now, param.kp_sat_brake);
+		  
+		  //I term
+		  e_sum_brake = e_sum_brake + (e_now * enc.dt);	//Integral of error
+		  pid_msg.i_brake_term = fmutil::symbound<double>(param.ki_brake * e_sum_brake, param.ki_sat_brake);
+		  
+		  //D term
+		  e_diff = (e_now - e_pre) / enc.dt;
+		  pid_msg.d_brake_term = fmutil::symbound<double>(param.kd_brake * e_diff, param.kd_sat_brake);
+		  
+		  double u_brake = pid_msg.table_brake + (pid_msg.p_brake_term + pid_msg.i_brake_term + pid_msg.d_brake_term);
+		  pid_msg.u_brake_ctrl = fmutil::symbound<double>(u_brake, param.coeff_bp); //Brake command
+		  pid_msg.u_ctrl = 0.0;	//Throttle command
+	  
+	  }
 	}
-	
-	if(!do_brake)
-	{
-		//--------------------------------//
-		//--- Apply Throttle, no Brake ---//
-		//--------------------------------//
-		//Get velocity error
-		double e_now = cmdVel - pid_msg.v_filter;
-		e_sum_brake = 0.0;
-	
-		//Get look-up table
-		pid_msg.table = getLookupTable(cmdVel);
-		
-		//P term
-		pid_msg.p_term = fmutil::symbound<double>(param.kp * e_now, param.kp_sat);
-		
-		//I term
-		e_sum = e_sum + (e_now * enc.dt);	//Integral of error
-		pid_msg.i_term = fmutil::symbound<double>(param.ki * e_sum, param.ki_sat);
-		
-		//D term
-		e_diff = (e_now - e_pre) / enc.dt;
-		pid_msg.d_term = fmutil::symbound<double>(param.kd * e_diff, param.kd_sat);
-		
-		//Sum it all up
-		double u =  pid_msg.table + (pid_msg.p_term + pid_msg.i_term + pid_msg.d_term);
-		
-		pid_msg.u_ctrl = fmutil::symbound<double>(u, 1.0); //Throttle command
-			if(pid_msg.u_ctrl < 0.0) pid_msg.u_ctrl = 0.0;
-		pid_msg.u_brake_ctrl = 0.0;	//Brake command
-		
-	}else{
-		//--------------------------------//
-		//--- Apply Brake, no Throttle ---//
-		//--------------------------------//
-		//Get velocity error
-		double e_now = cmdVel - pid_msg.v_filter;
-		e_sum = 0.0;
-		//Get look-up table
-		pid_msg.table_brake = getLookupTable_brake(e_now);
-	
-		//P term
-		pid_msg.p_brake_term = fmutil::symbound<double>(param.kp_brake * e_now, param.kp_sat_brake);
-		
-		//I term
-		e_sum_brake = e_sum_brake + (e_now * enc.dt);	//Integral of error
-		pid_msg.i_brake_term = fmutil::symbound<double>(param.ki_brake * e_sum_brake, param.ki_sat_brake);
-		
-		//D term
-		e_diff = (e_now - e_pre) / enc.dt;
-		pid_msg.d_brake_term = fmutil::symbound<double>(param.kd_brake * e_diff, param.kd_sat_brake);
-		
-		double u_brake = pid_msg.table_brake + (pid_msg.p_brake_term + pid_msg.i_brake_term + pid_msg.d_brake_term);
-		pid_msg.u_brake_ctrl = fmutil::symbound<double>(u_brake, param.coeff_bp); //Brake command
-		pid_msg.u_ctrl = 0.0;	//Throttle command
-	
-	}
-
 	std_msgs::Float64 throttle_value, brake_value;
 	brake_value.data = pid_msg.u_brake_ctrl;
 	throttle_value.data = pid_msg.u_ctrl;
 	brakePedalPub.publish(brake_value);
 	throttlePub.publish(throttle_value);
 	pidPub.publish(pid_msg);
+	param.pre_brake_ctrl = pid_msg.u_brake_ctrl;
 }
 
 int main(int argc, char**argv)
