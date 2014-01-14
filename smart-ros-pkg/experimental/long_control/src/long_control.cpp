@@ -209,8 +209,9 @@ double PID_Controller::getLookupTable(double desired_vel)
 {
   double output_sig = 0.0;
   output_sig = 0.0024*pow(desired_vel,3) - 0.0265*pow(desired_vel,2) + 0.1758*desired_vel - 0.0112;
-	
-	if(output_sig < 0.0) output_sig = 0.0;
+  //golfcart won't react when when throttle signal is below 0.1
+  if(output_sig < 0.1) output_sig = 0.1;
+  if(output_sig < 0.0) output_sig = 0.0;
   return output_sig;
 }
 

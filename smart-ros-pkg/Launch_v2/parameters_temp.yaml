@@ -97,6 +97,23 @@ speed_controller_fastStop:
   throttleZeroThres: 0.001
   coeff_brakepedal: 70
   err_threshold: 0.01
+speed_controller_v2:
+  kp: 0.01    
+  ki: 0.01    
+  kd: 0.005    
+  kp_brake: 90.0 #80
+  ki_brake: 10.0 #5
+  kd_brake: 0.0
+  brakeZeroThres: -0.2
+  throttleZeroThres: 0.1
+  #to make sure the car will stop at the end
+  fullBrakeThres: 0.05
+  kp_sat_brake: 100.0
+  ki_sat_brake: 70.0
+  kd_sat_brake: 0.0
+  tau_v: 0.2
+  #full brake value
+  coeff_brakepedal: 70
 move_base_node:
   footprint_padding: 0.01
   controller_frequency: 20.0
