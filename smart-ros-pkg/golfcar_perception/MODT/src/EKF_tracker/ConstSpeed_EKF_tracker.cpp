@@ -30,18 +30,23 @@ constspeed_ekf_tracker::constspeed_ekf_tracker():
     meas_model_ = new LinearAnalyticMeasurementModelGaussianUncertainty(meas_pdf_);
 }
 
-void constspeed_ekf_tracker::init_filter(double x, double y, double thetha)
+void constspeed_ekf_tracker::init_filter(double x, double y, double vx, double vy, double omega)
 {
     ColumnVector prior_Mu(5); prior_Mu = 0.0;
     prior_Mu(1) = x;
     prior_Mu(2) = y;
-    prior_Mu(3) = thetha;
+    prior_Mu(3) = vx;
+    prior_Mu(4) = vy;
+    prior_Mu(5) = omega;
 
     SymmetricMatrix prior_Cov(5); prior_Cov = 0.0;
     for(int i=1; i<=5; i++)prior_Cov(i,i) = 1000000.0;
-    prior_Cov(1,1) = 0.01*0.01;
-    prior_Cov(2,2) = 0.01*0.01;
-    prior_Cov(3,3) = (M_PI/180.0*30.0)*(M_PI/180.0*30.0);
+    //fix the anchor point during initialization;
+    prior_Cov(1,1) = 0.0001*0.0001;
+    prior_Cov(2,2) = 0.0001*0.0001;
+    prior_Cov(3,3) = 10.0*10.0;
+    prior_Cov(4,4) = 10.0*10.0;
+    prior_Cov(5,5) = (M_PI*10.0)*(M_PI*10.0);
 
     prior_  = new Gaussian(prior_Mu,prior_Cov);
     filter_ = new ExtendedKalmanFilter(prior_);
@@ -75,6 +80,7 @@ void constspeed_ekf_tracker::update(double x, double y, double omega, ros::Time 
 {
 	sys_pdf_->delt_time = (update_time-last_update_time).toSec();
 	ROS_ERROR("sys_pdf delt_time %lf", sys_pdf_->delt_time );
+
 	sys_pdf_->AdditiveNoiseSigmaSet(predict_covariance * pow(sys_pdf_->delt_time,2));
 
 	//this vel_desi is not actually in use;

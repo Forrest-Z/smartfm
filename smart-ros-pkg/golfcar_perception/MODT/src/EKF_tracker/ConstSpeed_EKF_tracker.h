@@ -41,7 +41,7 @@ class constspeed_ekf_tracker
 
 	void getEstimate(ros::Time time, geometry_msgs::PoseWithCovarianceStamped& estimate);
 	void update(double x, double y, double omega, ros::Time update_time);
-	void init_filter(double x, double y, double thetha);
+	void init_filter(double x, double y, double vx, double vy, double omega);
 
 };
 

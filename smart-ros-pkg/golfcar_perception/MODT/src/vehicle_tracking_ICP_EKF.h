@@ -1,5 +1,5 @@
-#ifndef MODT_VEHICLE_TRACKING_ICP_H
-#define MODT_VEHICLE_TRACKING_ICP_H
+#ifndef MODT_VEHICLE_TRACKING_ICP_EKF_H
+#define MODT_VEHICLE_TRACKING_ICP_EKF_H
 
 #include <sensor_msgs/PointCloud.h>
 #include <ros/ros.h>
@@ -7,8 +7,9 @@
 #include "MODT/segment_pose_batches.h"
 #include <mrpt/slam.h>
 #include <tf/transform_broadcaster.h>
-
 #include "EKF_tracker/ConstSpeed_EKF_tracker.h"
+
+
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/filters/voxel_grid.h>
@@ -32,12 +33,15 @@ namespace mrpt{
 		ros::Time update_time;
 		sensor_msgs::PointCloud contour_points;
 		std::vector<geometry_msgs::Point32> anchor_points;
+		std::vector<geometry_msgs::Point32> filtered_anchor_points;
+
+		bool 					tracking_inited;
 
 		double					moving_direction;
 		double 					velocity;
+		double 					omega;
 
 		MODT::segment_pose_batch	last_measurement;
-
 		constspeed_ekf_tracker 		*tracker;
 
 		bool only_relyon_tracker;
@@ -90,7 +94,7 @@ namespace mrpt{
 		std::vector<model_free_track> object_tracks_;
 
     	ros::Subscriber segpose_batch_sub_;
-    	ros::Publisher contour_cloud_pub_, anchor_point_pub_;
+    	ros::Publisher contour_cloud_pub_, anchor_point_pub_, filtered_anchor_point_pub_, meas_deputy_pub_, model_deputy_pub_;
     	ros::Time latest_input_time_;
     	vehicle_tracking();
 		~vehicle_tracking(){};
@@ -113,6 +117,8 @@ namespace mrpt{
 
 		void tracks_visualization();
 		void constructPtsMap(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CSimplePointsMap &map);
+		void ICP_deputy_cloud(bool &forbidden_rotation_flag, sensor_msgs::PointCloud &meas_cloud, sensor_msgs::PointCloud &model_cloud,  tf::Pose lidar_pose, sensor_msgs::PointCloud &deputy_meas_cloud, sensor_msgs::PointCloud &deputy_model_cloud);
+		void delete_obsolete_tracks(ros::Time current_time);
     };
 };
 
