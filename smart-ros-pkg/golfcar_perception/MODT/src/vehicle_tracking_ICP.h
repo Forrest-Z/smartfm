@@ -40,13 +40,16 @@ namespace mrpt{
 		MODT::segment_pose_batch	last_measurement;
 		constspeed_ekf_tracker 		*tracker;
 
-		//status 0-normal, 1-forbid orientation, 2-rely on tracker and no measurement update;
+		double vehicle_evidence;
+
+		//status 0-normal, 1-rely on tracker;
 		int track_status;
 
 		model_free_track()
 		{
 			tracker = new constspeed_ekf_tracker();
 			track_status = 0;
+			vehicle_evidence = 0;
 		}
 
 		void downsample_model()
@@ -80,6 +83,13 @@ namespace mrpt{
 			}
 		}
 
+		void update_object_belief(bool evidence)
+		{
+			if(evidence){vehicle_evidence = vehicle_evidence + 1.0;}
+			else if(!evidence) {vehicle_evidence = vehicle_evidence - 1.0;}
+			if(vehicle_evidence > 10.0) vehicle_evidence = DBL_MAX;
+		}
+
 	};
 
     class vehicle_tracking
@@ -91,7 +101,7 @@ namespace mrpt{
 		std::vector<model_free_track> object_tracks_;
 
     	ros::Subscriber segpose_batch_sub_;
-    	ros::Publisher contour_cloud_pub_, anchor_point_pub_, filtered_anchor_point_pub_, meas_deputy_pub_, model_deputy_pub_;
+    	ros::Publisher contour_cloud_pub_, anchor_point_pub_, filtered_anchor_point_pub_, meas_deputy_pub_, model_deputy_pub_, contour_cloud_debug_pub_;
     	ros::Time latest_input_time_;
     	vehicle_tracking();
 		~vehicle_tracking(){};

@@ -11,6 +11,7 @@ namespace mrpt{
 		filtered_anchor_point_pub_ = nh.advertise<sensor_msgs::PointCloud>("filtered_anchor_pcl", 2);
 		meas_deputy_pub_	= nh.advertise<sensor_msgs::PointCloud>("meas_deputy", 2);
 		model_deputy_pub_   = nh.advertise<sensor_msgs::PointCloud>("model_deputy", 2);
+		contour_cloud_debug_pub_	= nh.advertise<sensor_msgs::PointCloud>("contour_pcl_debug", 2);
 		object_total_id_ = 0;
 	}
 
@@ -136,13 +137,16 @@ namespace mrpt{
 			geometry_msgs::PoseWithCovarianceStamped filtered_pose;
 			track_tmp.tracker->update(new_anchor_point.x, new_anchor_point.y, track_tmp.omega, track_tmp.update_time);
 			track_tmp.tracker->getEstimate(track_tmp.update_time, filtered_pose);
-
 			MatrixWrapper::ColumnVector ekf_output_tmp = track_tmp.tracker->filter_->PostGet()->ExpectedValueGet();
 			cout<<"ekf_output_tmp: "<<ekf_output_tmp(1)<<","<<ekf_output_tmp(2)<<","<<ekf_output_tmp(3)<<","<<ekf_output_tmp(4)<<","<<ekf_output_tmp(5)<<endl;
+
 			geometry_msgs::Point32 filtered_anchor_point;
 			filtered_anchor_point.x = (float)filtered_pose.pose.pose.position.x;
 			filtered_anchor_point.y = (float)filtered_pose.pose.pose.position.y;
 			track_tmp.filtered_anchor_points.push_back(filtered_anchor_point);
+
+			if(incoming_meas_tmp.object_label==1)track_tmp.update_object_belief(true);
+			else {track_tmp.update_object_belief(false);}
 		}
 
 		//2nd: initiate new unassociated tracks;
@@ -150,6 +154,7 @@ namespace mrpt{
 		{
 			size_t meas_serial	= unregistered_measurements[i];
 			MODT::segment_pose_batch &incoming_meas_tmp = batches.clusters[meas_serial];
+			if(incoming_meas_tmp.object_label != 1) continue;
 
 			model_free_track new_track_tmp;
 			new_track_tmp.object_id = object_total_id_;
@@ -203,6 +208,7 @@ namespace mrpt{
 
 			new_track_tmp.tracker->set_params(3.0, 3.0, 3.0, 3.0, M_PI*0.2, 0.3, 0.3, M_PI*100);
 			new_track_tmp.tracker->init_filter(centroid_tmp.x, centroid_tmp.y, vx_value, vy_value, 0.0);
+			new_track_tmp.update_object_belief(true);
 		}
 
 		//3rd: delete old tracks;
@@ -243,19 +249,17 @@ namespace mrpt{
 		old_to_predict.position.x = 0.0;
 		old_to_predict.position.y = 0.0;
 		old_to_predict.position.z = 0.0;
-
-		track.velocity = 0.0;
+		//track.velocity = 0.0;
 		old_to_predict.position.x = time_difference*track.velocity*cos(track.moving_direction);
 		old_to_predict.position.y = time_difference*track.velocity*sin(track.moving_direction);
 		cout<<"old_to_predict: "<<time_difference<<","<<track.velocity<<","<<track.moving_direction<<","<<old_to_predict.position.x<<","<<old_to_predict.position.y<<endl;
-		for(size_t i=0; i<old_cloud.points.size(); i++)
-		{
-			old_cloud.points[i].x = old_cloud.points[i].x+ (float)old_to_predict.position.x;
-			old_cloud.points[i].y = old_cloud.points[i].y+ (float)old_to_predict.position.y;
-		}
 		double move_distance = sqrt((old_to_predict.position.x*old_to_predict.position.x+old_to_predict.position.y*old_to_predict.position.y));
-		if(move_distance>0.5) track.track_status = 1;
 
+		if(move_distance>3.0)
+		{
+			ROS_WARN("moving distance too long");
+			track.track_status = 1;
+		}
 
 		//please refer to my evernote 20140103 for more information;
 		//a. calculate the rough estimation for the initial pose to speed up ICP;
@@ -273,20 +277,23 @@ namespace mrpt{
 		centroid_tmp.y = centroid_tmp.y/(float)old_cloud.points.size();
 		centroid_position.push_back(centroid_tmp);
 
-		centroid_tmp.x = 0.0;
-		centroid_tmp.y = 0.0;
-		centroid_tmp.z = 0.0;
-		for(size_t k=0; k<new_cloud.points.size(); k++)
-		{
-			centroid_tmp.x = centroid_tmp.x + new_cloud.points[k].x;
-			centroid_tmp.y = centroid_tmp.y + new_cloud.points[k].y;
-		}
-		centroid_tmp.x = centroid_tmp.x/(float)new_cloud.points.size();
-		centroid_tmp.y = centroid_tmp.y/(float)new_cloud.points.size();
+		centroid_tmp.x = centroid_tmp.x + old_to_predict.position.x;
+		centroid_tmp.y = centroid_tmp.y + old_to_predict.position.y;
 		centroid_position.push_back(centroid_tmp);
 
 		//build the transform from v_(t-1) to v_t;
 		//about name convention: transform "Frame_A_To_Frame_B" is equal to "Frame_B_in_Frame_A";
+		if(track.track_status==1)
+		{
+			ROS_WARN("only use tracker");
+			tf::Pose Odom_to_Vtm1 = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(centroid_position.front().x), tfScalar(centroid_position.front().y), tfScalar(0)));
+			tf::Pose Odom_to_Vt = tf::Transform(tf::Matrix3x3(tf::createQuaternionFromYaw(0.0)), tf::Vector3(tfScalar(centroid_position.back().x), tfScalar(centroid_position.back().y), tfScalar(0)));
+			tf::Pose Vtm1_to_Vt = Odom_to_Vtm1.inverse()*Odom_to_Vt;
+			newMeas_poseinOdom = Odom_to_Vt;
+			oldMeas_poseinOdom = Odom_to_Vt*Vtm1_to_Vt.inverse();
+			return;
+		}
+
 		tf::Pose Odom_to_Vtm1 = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(centroid_position.front().x), tfScalar(centroid_position.front().y), tfScalar(0)));
 		tf::Pose Odom_to_Vt = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(centroid_position.back().x), tfScalar(centroid_position.back().y), tfScalar(0)));
 		tf::Pose Vtm1_to_Vt = Odom_to_Vtm1.inverse()*Odom_to_Vt;
@@ -329,10 +336,11 @@ namespace mrpt{
 		constructPtsMap(old_pose, old_cloud, m1);
 		constructPtsMap(new_pose, new_cloud, m2);
 
-		ICP.options.ICP_algorithm = icpLevenbergMarquardt;
+		ICP.options.ICP_algorithm =  icpLevenbergMarquardt;
 		ICP.options.maxIterations			= 100;
 		ICP.options.thresholdAng			= DEG2RAD(10.0f);
 		ICP.options.thresholdDist			= 0.75f;
+		//ICP.options.thresholdDist			= 2.0f;
 		ICP.options.ALFA					= 0.5f;
 		ICP.options.smallestThresholdDist	= 0.01f;
 		ICP.options.doRANSAC = false;
@@ -362,6 +370,16 @@ namespace mrpt{
 		double ICP_output_x 	= gPdf2.mean.x();
 		double ICP_output_y 	= gPdf2.mean.y();
 		double ICP_output_yaw 	= gPdf2.mean.phi();
+
+		/*
+		if(track.track_status==1)
+		{
+			ICP_output_x 	= gPdf.mean.x();
+			ICP_output_y 	= gPdf.mean.y();
+			ICP_output_yaw 	= gPdf.mean.phi();
+		}
+		*/
+
 		cout<<"ICP output: "<<ICP_output_x<<","<<ICP_output_y<<","<<ICP_output_yaw<<endl;
 
 		tf::Pose ICP_Etm1_to_Etvirtual = tf::Transform(tf::Matrix3x3(tf::createQuaternionFromYaw(ICP_output_yaw)), tf::Vector3(tfScalar(ICP_output_x), tfScalar(ICP_output_y), tfScalar(0)));
@@ -378,11 +396,12 @@ namespace mrpt{
 		newMeas_poseinOdom = Odom_to_Vt;
 		oldMeas_poseinOdom = Odom_to_Vt*ICP_Vtm1_To_Vt.inverse();
 
+		/*
 		double x_in_odom = oldMeas_poseinOdom.getOrigin().x() - old_to_predict.position.x;
 		double y_in_odom = oldMeas_poseinOdom.getOrigin().y() - old_to_predict.position.y;
 		oldMeas_poseinOdom.setOrigin(tf::Vector3(x_in_odom, y_in_odom, 0.0));
+		*/
 	}
-
 
 	//generate deputy points for ICP;
 	//two purposes: 1, to take into account beam model;
@@ -444,13 +463,26 @@ namespace mrpt{
 
 		if(meas_angle_max+angle_tolerance>scan_angle_max)
 		{
+			ROS_WARN("angle too large");
 			add_pts_angleMin = true;
-			track.track_status = 2;
+			track.track_status = 1;
 		}
+		else
+		{
+			add_pts_angleMin = false;
+			track.track_status = 0;
+		}
+
 		if(meas_angle_min-angle_tolerance<scan_angle_min)
 		{
+			ROS_WARN("angle too small");
 			add_pts_angleMax = true;
-			track.track_status = 2;
+			track.track_status = 1;
+		}
+		else
+		{
+			if(!add_pts_angleMin) track.track_status = 0;
+			add_pts_angleMax = false;
 		}
 
 		add_pts_angleMax = true;
@@ -486,7 +518,7 @@ namespace mrpt{
 			//find the corresponding boundary point on the model cloud;
 			geometry_msgs::Point32 model_boundary_point;
 			double odom_origin_dist_min = DBL_MAX;
-			double odom_origin_dist_max = 0.0;
+			double odom_origin_dist_max = -(DBL_MAX-0.1);
 			geometry_msgs::Point32 max_dist_pt, min_dist_pt;
 
 			//Ax+By+C=0;
@@ -497,13 +529,15 @@ namespace mrpt{
 				double a_tmp = sin(meas_angle_max);
 				double b_tmp = -cos(meas_angle_max);
 				double c_tmp = cos(meas_angle_max)*model_cloud.points[ip].y-sin(meas_angle_max)*model_cloud.points[ip].x;
-				double origin_to_line_dist_tmp = fabs(c_tmp)/sqrt(a_tmp*a_tmp+b_tmp*b_tmp);
+				double origin_to_line_dist_tmp = (c_tmp)/sqrt(a_tmp*a_tmp+b_tmp*b_tmp);
+
 				if(origin_to_line_dist_tmp>odom_origin_dist_max)
 				{
 					odom_origin_dist_max = origin_to_line_dist_tmp;
 					max_dist_pt = model_cloud.points[ip];
 				}
-				else if(origin_to_line_dist_tmp<odom_origin_dist_min)
+
+				if(origin_to_line_dist_tmp<odom_origin_dist_min)
 				{
 					odom_origin_dist_min = origin_to_line_dist_tmp;
 					min_dist_pt = model_cloud.points[ip];
@@ -581,13 +615,15 @@ namespace mrpt{
 				double a_tmp = sin(meas_angle_min);
 				double b_tmp = -cos(meas_angle_min);
 				double c_tmp = cos(meas_angle_min)*model_cloud.points[ip].y-sin(meas_angle_min)*model_cloud.points[ip].x;
-				double origin_to_line_dist_tmp = fabs(c_tmp)/sqrt(a_tmp*a_tmp+b_tmp*b_tmp);
+				double origin_to_line_dist_tmp = (c_tmp)/sqrt(a_tmp*a_tmp+b_tmp*b_tmp);
+
 				if(origin_to_line_dist_tmp>odom_origin_dist_max)
 				{
 					odom_origin_dist_max = origin_to_line_dist_tmp;
 					max_dist_pt = model_cloud.points[ip];
 				}
-				else if(origin_to_line_dist_tmp<odom_origin_dist_min)
+
+				if(origin_to_line_dist_tmp<odom_origin_dist_min)
 				{
 					odom_origin_dist_min = origin_to_line_dist_tmp;
 					min_dist_pt = model_cloud.points[ip];
@@ -613,7 +649,7 @@ namespace mrpt{
 			float min_dist_angle_tmp = atan2f(pointtemp.y, pointtemp.x);
 
 			//find the point in the lidar coordinate with smaller angle;
-			model_boundary_point = max_dist_angle_tmp<min_dist_angle_tmp?max_dist_pt:min_dist_pt;
+			model_boundary_point = max_dist_angle_tmp<min_dist_angle_tmp ? max_dist_pt:min_dist_pt;
 
 			for(int i=1; i<=constraint_pts_num2 /2; i++)
 			{
@@ -649,6 +685,7 @@ namespace mrpt{
 
 		meas_deputy_pub_.publish(deputy_meas_cloud);
 		model_deputy_pub_.publish(deputy_model_cloud);
+		contour_cloud_debug_pub_.publish(model_cloud);
 	}
 
 
@@ -708,6 +745,7 @@ namespace mrpt{
 		for(size_t i=0; i<object_tracks_.size(); i++)
 		{
 			bool visualize_flag = (latest_input_time_-object_tracks_[i].update_time).toSec()<0.001;
+			if(object_tracks_[i].vehicle_evidence<0.0) visualize_flag = false;
 
 			//bool visualize_flag = true;
 			if(visualize_flag)
