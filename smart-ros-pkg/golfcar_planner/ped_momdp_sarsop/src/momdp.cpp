@@ -349,8 +349,8 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		
 		
         if(safeAction==0) momdp_speed_ += 0;
-        else if(safeAction==1) momdp_speed_ += 1.0;
-        else if(safeAction==2) momdp_speed_ -= 1.0;
+        else if(safeAction==1) momdp_speed_ += 0.5;
+        else if(safeAction==2) momdp_speed_ -= 0.5;
         if(momdp_speed_<=0.0) momdp_speed_ = 0;
         if(momdp_speed_>=1.5) momdp_speed_ = 1.2;
 		

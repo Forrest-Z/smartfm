@@ -97,7 +97,7 @@ public:
 
     tf::TransformListener tf_;
 	WorldSimulator * RealWorldPt;
-
+	double	momdp_speed_,real_speed_;
 private:
 	double control_freq;
 	int safeAction;
@@ -105,7 +105,7 @@ private:
     double dX, dY;
     double momdp_problem_timeout;
     bool robot_pose_available;
-    double robotx_, roboty_, robotspeedx_, momdp_speed_;
+    double robotx_, roboty_, robotspeedx_;
     bool use_sim_time_, stationary_;
     ros::Timer timer_,timer_speed;
 	//SharedPointer<AlphaVectorPolicy> policy;
