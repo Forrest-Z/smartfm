@@ -126,6 +126,7 @@ void pedestrian_momdp::speedCallback(nav_msgs::Odometry odo)
 	//cout<<"speed callback!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"<<endl;
     //momdp->updateRobotSpeed(odo.twist.twist.linear.x);
 	RealWorld.UpdateVelReal(odo.twist.twist.linear.x);
+	momdp->real_speed_=odo.twist.twist.linear.x;
 }
 
 void pedestrian_momdp::moveSpeedCallback(geometry_msgs::Twist speed)

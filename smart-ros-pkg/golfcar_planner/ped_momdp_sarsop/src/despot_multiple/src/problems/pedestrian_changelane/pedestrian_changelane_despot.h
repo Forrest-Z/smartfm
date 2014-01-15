@@ -460,8 +460,8 @@ void Model<PedestrianState>::InitModel()
 
 uint64_t Model<PedestrianState>::Observe(const PedestrianState& state) const {
 	uint64_t obs=0;// = state.Vel*(X_SIZE*Y_SIZE*rob_map.size())+state.RobPos.Y*(X_SIZE*Y_SIZE)+state.PedPos.X*Y_SIZE+state.PedPos.Y;
-	uint64_t robObs=state.Vel+state.RobPos.Y*3;
-	uint64_t robObsMax=3*ModelParams::RMMax;  //max length of the rob_map
+	uint64_t robObs=state.Vel+state.RobPos.Y*5;
+	uint64_t robObsMax=5*ModelParams::RMMax;  //max length of the rob_map
 	uint64_t pedObsMax=X_SIZE*Y_SIZE;
 	uint64_t pedObs=0;
 	//for(int i=0;i<state.PedPoses.size();i++)
@@ -564,6 +564,18 @@ void Model<PedestrianState>::StepMultiple(vector<PedestrianState>& states, doubl
 	}
 }
 
+int action_vel[3]={0,1,-1};
+void UpdateVel(int &vel,int action,UtilUniform &unif)
+{
+
+	double prob=unif.next();		
+	if(prob<0.2) vel=vel;
+	else if(prob<0.6) vel=vel+action_vel[action];
+	else vel=vel+action_vel[action]*2;
+	if(vel<0) vel=0;	
+	if(vel>4) vel=4;
+}
+
 void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int action, double& reward, uint64_t& obs) const {
 	reward = 0;
 	obs = TerminalObs();
@@ -607,10 +619,14 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 
 	//RobStep(state, action, unif);
 	double p = unif.next();
-	robY += robotNoisyMove[rob_vel][lookup(robotMoveProbs[rob_vel], p)];
+	int real_vel=rob_vel/2;
+	//robY += robotNoisyMove[rob_vel][lookup(robotMoveProbs[rob_vel], p)];
+	robY += robotNoisyMove[real_vel][lookup(robotMoveProbs[real_vel], p)];
 	if(robY >= rob_map.size()-1) robY = rob_map.size() - 1;
 	p = unif.next();
-	rob_vel = robotVelUpdate[action][rob_vel][lookup(robotUpdateProb[action][rob_vel], p)];
+
+	//rob_vel = robotVelUpdate[action][rob_vel][lookup(robotUpdateProb[action][rob_vel], p)];
+	UpdateVel(rob_vel,action,unif);
 
 	PedStep(state, unif);
 

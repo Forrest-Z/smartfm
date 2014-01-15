@@ -616,6 +616,7 @@ public:
 		}
 		curr_state.Vel=velGlobal;
 		*/
+		/*
 		double delta=(ModelParams::vel_levels[ModelParams::VEL_N-1]-ModelParams::vel_levels[0])/ModelParams::VEL_N;
 		for(int i=0;i<ModelParams::VEL_N;i++)
 		{
@@ -623,7 +624,8 @@ public:
 				curr_state.Vel=i;
 				break;
 			}
-		}
+		}*/
+		curr_state.Vel=velGlobal*2;
 		return curr_state;
 	}
 	
