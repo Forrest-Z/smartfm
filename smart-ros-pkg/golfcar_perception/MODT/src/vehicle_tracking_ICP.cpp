@@ -249,9 +249,13 @@ namespace mrpt{
 		old_to_predict.position.x = 0.0;
 		old_to_predict.position.y = 0.0;
 		old_to_predict.position.z = 0.0;
-		//track.velocity = 0.0;
+
+		if(!track.using_prediction_before_ICP)track.velocity = 0.0;
 		old_to_predict.position.x = time_difference*track.velocity*cos(track.moving_direction);
 		old_to_predict.position.y = time_difference*track.velocity*sin(track.moving_direction);
+
+		//track.velocity = 0.0;
+
 		cout<<"old_to_predict: "<<time_difference<<","<<track.velocity<<","<<track.moving_direction<<","<<old_to_predict.position.x<<","<<old_to_predict.position.y<<endl;
 		double move_distance = sqrt((old_to_predict.position.x*old_to_predict.position.x+old_to_predict.position.y*old_to_predict.position.y));
 
@@ -412,8 +416,9 @@ namespace mrpt{
 		deputy_model_cloud = model_cloud;
 
 		//1: add constraint points to take into account beam model while doing ICP;
-		int constraint_pts_num = 5*2;
-		int constraint_pts_num2 = 10*2;
+		int constraint_pts_num = track.beam_constraint_number*2;
+		int constraint_pts_num2 = track.beam_constraint_number*2*2;
+
 		float constraint_pts_interval = 0.05;
 		double scan_angle_max = M_PI*0.75, scan_angle_min = -M_PI*0.75;
 		bool add_pts_angleMax = false, add_pts_angleMin = false;
@@ -518,19 +523,21 @@ namespace mrpt{
 			//find the corresponding boundary point on the model cloud;
 			geometry_msgs::Point32 model_boundary_point;
 			double odom_origin_dist_min = DBL_MAX;
-			double odom_origin_dist_max = -(DBL_MAX-0.1);
+			double odom_origin_dist_max = DBL_MIN;
 			geometry_msgs::Point32 max_dist_pt, min_dist_pt;
 
 			//Ax+By+C=0;
 			//A=sin(thetha), B= -cos(thetha), C=cos(thetha)*y-sin(thetha)*x;
 			//origin to line dist: fabs(c)/sqrtf(A^2+B^2);
+			cout<<"max angle"<<endl;
 			for(size_t ip=0;ip<model_cloud.points.size(); ip++)
 			{
-				double a_tmp = sin(meas_angle_max);
-				double b_tmp = -cos(meas_angle_max);
-				double c_tmp = cos(meas_angle_max)*model_cloud.points[ip].y-sin(meas_angle_max)*model_cloud.points[ip].x;
+				double a_tmp = sin(meas_angleMax_inodom);
+				double b_tmp = -cos(meas_angleMax_inodom);
+				double c_tmp = cos(meas_angleMax_inodom)*model_cloud.points[ip].y-sin(meas_angleMax_inodom)*model_cloud.points[ip].x;
 				double origin_to_line_dist_tmp = (c_tmp)/sqrt(a_tmp*a_tmp+b_tmp*b_tmp);
 
+				//cout<<"("<<model_cloud.points[ip].x<<","<<model_cloud.points[ip].y<<","<<origin_to_line_dist_tmp<<")"<<"\t";
 				if(origin_to_line_dist_tmp>odom_origin_dist_max)
 				{
 					odom_origin_dist_max = origin_to_line_dist_tmp;
@@ -543,6 +550,7 @@ namespace mrpt{
 					min_dist_pt = model_cloud.points[ip];
 				}
 			}
+			cout<<endl;
 
 			temppose.position.x = max_dist_pt.x;
 			temppose.position.y = max_dist_pt.y;
@@ -604,7 +612,7 @@ namespace mrpt{
 			//find the corresponding boundary point on the model cloud;
 			geometry_msgs::Point32 model_boundary_point;
 			double odom_origin_dist_min = DBL_MAX;
-			double odom_origin_dist_max = 0.0;
+			double odom_origin_dist_max = DBL_MIN;
 			geometry_msgs::Point32 max_dist_pt, min_dist_pt;
 
 			//Ax+By+C=0;
@@ -612,9 +620,9 @@ namespace mrpt{
 			//origin to line dist: fabs(c)/sqrtf(A^2+B^2);
 			for(size_t ip=0;ip<model_cloud.points.size(); ip++)
 			{
-				double a_tmp = sin(meas_angle_min);
-				double b_tmp = -cos(meas_angle_min);
-				double c_tmp = cos(meas_angle_min)*model_cloud.points[ip].y-sin(meas_angle_min)*model_cloud.points[ip].x;
+				double a_tmp = sin(meas_angleMin_inodom);
+				double b_tmp = -cos(meas_angleMin_inodom);
+				double c_tmp = cos(meas_angleMin_inodom)*model_cloud.points[ip].y-sin(meas_angleMin_inodom)*model_cloud.points[ip].x;
 				double origin_to_line_dist_tmp = (c_tmp)/sqrt(a_tmp*a_tmp+b_tmp*b_tmp);
 
 				if(origin_to_line_dist_tmp>odom_origin_dist_max)

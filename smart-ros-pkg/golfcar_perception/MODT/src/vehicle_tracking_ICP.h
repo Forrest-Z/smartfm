@@ -39,17 +39,23 @@ namespace mrpt{
 
 		MODT::segment_pose_batch	last_measurement;
 		constspeed_ekf_tracker 		*tracker;
-
 		double vehicle_evidence;
 
 		//status 0-normal, 1-rely on tracker;
 		int track_status;
+
+		//tracker parameters, which matters much to ICP tracker;
+		int beam_constraint_number;
+		bool using_prediction_before_ICP;
 
 		model_free_track()
 		{
 			tracker = new constspeed_ekf_tracker();
 			track_status = 0;
 			vehicle_evidence = 0;
+
+			beam_constraint_number = 5;
+			using_prediction_before_ICP = true;
 		}
 
 		void downsample_model()
