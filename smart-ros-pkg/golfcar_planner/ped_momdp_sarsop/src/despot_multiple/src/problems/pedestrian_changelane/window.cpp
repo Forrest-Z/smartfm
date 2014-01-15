@@ -144,8 +144,8 @@ void MyWindow::GlobalToLocal(int globalW,int globalH,int &localW,int&localH)
 
 	//cout<<n01<<" "<<n03<<" "<<l01<<" "<<l03<<endl;
 
-	localW=l01/n01;
-	localH=l03/n03;
+	localW=floor(l01/n01);
+	localH=floor(l03/n03);
 }
 
 void MyWindow::LocalToGlobalPreComp(int localW,int localH,int & globalW,int & globalH)

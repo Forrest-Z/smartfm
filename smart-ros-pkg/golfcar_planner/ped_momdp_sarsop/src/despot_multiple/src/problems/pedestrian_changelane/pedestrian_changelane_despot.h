@@ -276,8 +276,8 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		}
 };
 
-const int CRASH_PENALTY =-1000000;
-const int GOAL_REWARD = 100;
+const int CRASH_PENALTY =-100000;
+const int GOAL_REWARD = 1000;
 
 Model<PedestrianState>::Model(const RandomStreams& streams, string filename) : IUpperBound<PedestrianState>(streams)
 {

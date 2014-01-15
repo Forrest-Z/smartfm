@@ -70,9 +70,9 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
   cout<<"After update "<<endl;
   this->model_.Statistics(ans);
 
-  //cout<<"After Modify "<<endl;
-  //this->model_.Statistics(ans);
-  if (ans.empty()) {
+
+  //if (ans.empty()) {
+  if (ans.size()<10) {
     // No resulting state is consistent with the given observation, so create
     // states randomly until we have enough that are consistent.
     cerr << "WARNING: Particle filter empty. Bootstrapping with random states"
@@ -87,7 +87,6 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
         ans.push_back(new_particle);
 	}
 
-   this->model_.ModifyObsStates(ans,obs_state,this->belief_update_seed_);
 	/*
     int n_sampled = 0;
     while (n_sampled < N) {
@@ -148,7 +147,9 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
     ans = resampled_ans;
   } 
 
-  cout<<"here"<<endl;
+  this->model_.ModifyObsStates(ans,obs_state,this->belief_update_seed_);
+  cout<<"After Modify "<<endl;
+  this->model_.Statistics(ans);
   return ans;
 }
 

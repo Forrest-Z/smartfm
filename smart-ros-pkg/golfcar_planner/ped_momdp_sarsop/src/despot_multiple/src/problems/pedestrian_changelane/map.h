@@ -29,7 +29,7 @@ public:
 	{
 		//LoadMap("utown_map2");
 		LoadPath("real_path");
-
+/*
 		goal_pos[3][0]=131*ModelParams::map_rln;
 		goal_pos[3][1]=136*ModelParams::map_rln;
 		goal_pos[2][0]=128*ModelParams::map_rln;
@@ -39,9 +39,9 @@ public:
 		goal_pos[1][0]=100*ModelParams::map_rln;
 		goal_pos[1][1]=112*ModelParams::map_rln;
 
+*/
 
 
-/*
 		
 		goal_pos[3][0]=93*ModelParams::map_rln;
 		goal_pos[3][1]=177*ModelParams::map_rln;
@@ -51,7 +51,7 @@ public:
 		goal_pos[0][1]=166*ModelParams::map_rln;
 		goal_pos[1][0]=116*ModelParams::map_rln;
 		goal_pos[1][1]=183*ModelParams::map_rln;
-*/			
+			
 		
 	/*	
 		goal_pos[3][0]=106*ModelParams::map_rln;

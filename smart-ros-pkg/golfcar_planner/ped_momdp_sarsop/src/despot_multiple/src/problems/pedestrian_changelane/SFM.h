@@ -150,8 +150,8 @@ public:
 			//if(angle<ModelParams::pi/4) return 100;
 			//if(angle<ModelParams::pi/2) return 5;
 			//else 	return 2;	
-			if(angle<ModelParams::pi/4) return 50;
-			if(angle<ModelParams::pi/2) return 5;
+			if(angle<ModelParams::pi/4) return 10000;
+			if(angle<ModelParams::pi/2) return 5000;
 			else return 2;
 		}
 	}
@@ -161,8 +161,8 @@ public:
 		{
 			//if(length<1.5) return 5;
 			//else return 2.5;
-			if(length<3.5)  return 10;
-			else 	return 5;
+			if(length<1.5)  return 5000;
+			else 	return 2000;
 		}
 		double diff;
 		diff=angle-phase_angles[phase];  //[-2*pi,2*pi]
