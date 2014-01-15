@@ -84,6 +84,4 @@ rosbuild_add_executable(ICP_example src/ICP_example.cpp)
 
 rosbuild_add_executable(vehicle_tracking_ICP src/vehicle_tracking_ICP.cpp src/EKF_tracker/ConstSpeed_EKF_tracker.cpp src/EKF_tracker/nonlinearanalyticconditionalgaussianodo.cpp)
 
-rosbuild_add_executable(vehicle_tracking_ICP_EKF src/vehicle_tracking_ICP_EKF.cpp src/EKF_tracker/ConstSpeed_EKF_tracker.cpp src/EKF_tracker/nonlinearanalyticconditionalgaussianodo.cpp)
-
 rosbuild_add_executable(vehicle_tracking_gridsearch src/vehicle_tracking_gridsearch.cpp)

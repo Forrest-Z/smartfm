@@ -1,5 +1,5 @@
-#ifndef MODT_VEHICLE_TRACKING_ICP_EKF_H
-#define MODT_VEHICLE_TRACKING_ICP_EKF_H
+#ifndef MODT_VEHICLE_TRACKING_ICP_H
+#define MODT_VEHICLE_TRACKING_ICP_H
 
 #include <sensor_msgs/PointCloud.h>
 #include <ros/ros.h>
@@ -7,9 +7,8 @@
 #include "MODT/segment_pose_batches.h"
 #include <mrpt/slam.h>
 #include <tf/transform_broadcaster.h>
+
 #include "EKF_tracker/ConstSpeed_EKF_tracker.h"
-
-
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/filters/voxel_grid.h>
@@ -32,24 +31,22 @@ namespace mrpt{
 		int type_label;
 		ros::Time update_time;
 		sensor_msgs::PointCloud contour_points;
-		std::vector<geometry_msgs::Point32> anchor_points;
-		std::vector<geometry_msgs::Point32> filtered_anchor_points;
-
-		bool 					tracking_inited;
+		std::vector<geometry_msgs::Point32> anchor_points, filtered_anchor_points;
 
 		double					moving_direction;
 		double 					velocity;
-		double 					omega;
+		double					omega;
 
 		MODT::segment_pose_batch	last_measurement;
 		constspeed_ekf_tracker 		*tracker;
 
-		bool only_relyon_tracker;
+		//status 0-normal, 1-forbid orientation, 2-rely on tracker and no measurement update;
+		int track_status;
 
 		model_free_track()
 		{
 			tracker = new constspeed_ekf_tracker();
-			only_relyon_tracker = false;
+			track_status = 0;
 		}
 
 		void downsample_model()
@@ -111,14 +108,14 @@ namespace mrpt{
 
 		//update object's position and shape using ICP;
 		void ICP_motion2shape(model_free_track &track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
-		void construct_ICP_scans(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CObservation2DRangeScan& scan);
+
+		void ICP_deputy_cloud(model_free_track& track, tf::Pose lidar_pose, sensor_msgs::PointCloud &meas_cloud, sensor_msgs::PointCloud &model_cloud,  sensor_msgs::PointCloud &deputy_meas_cloud, sensor_msgs::PointCloud &deputy_model_cloud);
+
 
 		void attached_points_transform(geometry_msgs::Point32& pt_input, geometry_msgs::Point32& pt_output, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
 
 		void tracks_visualization();
 		void constructPtsMap(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CSimplePointsMap &map);
-		void ICP_deputy_cloud(bool &forbidden_rotation_flag, sensor_msgs::PointCloud &meas_cloud, sensor_msgs::PointCloud &model_cloud,  tf::Pose lidar_pose, sensor_msgs::PointCloud &deputy_meas_cloud, sensor_msgs::PointCloud &deputy_model_cloud);
-		void delete_obsolete_tracks(ros::Time current_time);
     };
 };
 
