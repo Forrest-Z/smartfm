@@ -165,6 +165,7 @@ def build_tasks():
     config = json.load(open('config.json'))
     tasks = config['tasks']
     ts = [Task(name, command, tmuxman) for name, command in tasks.items()]
+    ts = sorted(ts, key=lambda t: t.name)
     return ts
 
 def task_menu(tasks):

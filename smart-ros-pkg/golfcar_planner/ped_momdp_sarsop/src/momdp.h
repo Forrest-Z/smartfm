@@ -98,7 +98,6 @@ public:
     tf::TransformListener tf_;
 	WorldSimulator * RealWorldPt;
 	double momdp_speed_,real_speed_;
-
 private:
 	double control_freq;
 	int safeAction;
