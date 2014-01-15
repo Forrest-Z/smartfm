@@ -1,0 +1,9 @@
+{
+    "tasks": {
+        "foo": "./test.sh foo",
+        "bar": "./test.sh bar",
+        "test2": "./test2.sh",
+        "lowlevel": "./test.sh lowlevel",
+        "sensors": "roslaunch Launch_v2 0Sensors.launch"
+    }
+}
