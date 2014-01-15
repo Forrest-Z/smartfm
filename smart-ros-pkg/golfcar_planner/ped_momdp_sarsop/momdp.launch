@@ -10,7 +10,7 @@
 	    <remap from="robot_0/cmd_vel" to="cmd_vel"/>
             <remap from="odom" to="odom"/>
 	 </node>
-	 <node name="ped_momdp_local_transform" pkg="ped_momdp_sarsop" type="local_frame"  ns="/golfcart">
+	 <node name="ped_momdp_local_transform" pkg="ped_momdp_sarsop" type="local_frame" output="screen"  ns="/golfcart">
 	    <param name="global_frame" value="/golfcart/map"/>
         <param name="threshold" value="0.0"/>
 	</node>
