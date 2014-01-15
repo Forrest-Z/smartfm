@@ -161,8 +161,8 @@ public:
 		{
 			//if(length<1.5) return 5;
 			//else return 2.5;
-			if(length<1.5)  return 5000;
-			else 	return 2000;
+			if(length<1.5)  return 10000;
+			else 	return 5000;
 		}
 		double diff;
 		diff=angle-phase_angles[phase];  //[-2*pi,2*pi]

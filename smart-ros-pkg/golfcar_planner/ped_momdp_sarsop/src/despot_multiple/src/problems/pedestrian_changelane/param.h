@@ -8,8 +8,8 @@ namespace ModelParams {
 	const double map_rln=10;
 	const double pi=3.1415926;
 	const int UCT_CONST=50000;
-	const int XSIZE=7;
-	const int YSIZE=15;
+	const int XSIZE=10;
+	const int YSIZE=20;
 	const int RMMax=20;   //maximum length of the rob_map structure
 	const int N_PED_IN=7;
 
@@ -22,14 +22,14 @@ namespace ModelParams {
 	const int GOAL_DIST=100;
 	
 	const int goodrob=0;
-	const int goodped=1;
+	const int goodped=0;
 	const bool debug=true;
 	const bool FixedPath=false;
 	const bool SocialForceModel=false;
 	const bool SocialForceWorld=false;
 
 	const double vel_levels [10] = { 0.0, 1.0, 2.0 };
-	const int  VEL_N=3;
+	const int  VEL_N=5;
 };
 
 #endif

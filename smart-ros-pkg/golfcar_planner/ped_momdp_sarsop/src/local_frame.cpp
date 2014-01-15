@@ -159,6 +159,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
                 plf.ped_pose.y = out_pose.getOrigin().getY();
                 plf.ped_pose.z = out_pose.getOrigin().getZ();
 
+				// cout<<"incoming ped "<<plf.ped_pose.x<<" "<<plf.ped_pose.y<<endl;
 				/*
 				if(filtered(plf.ped_pose.x,plf.ped_pose.y))
 				{

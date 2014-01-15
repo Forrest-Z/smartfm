@@ -1,8 +1,11 @@
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <network_delay_experiment/delay.h>
+#include <iostream>
 
 ros::Publisher *delay_pub;
+
+using namespace std;
 
 void ImageCallBack( const sensor_msgs::ImageConstPtr& image_msg)
 {
@@ -14,6 +17,7 @@ void ImageCallBack( const sensor_msgs::ImageConstPtr& image_msg)
     delay.scan_time = image_msg->header.stamp;
     delay.nsec_delay = (time_now - image_msg->header.stamp).toNSec();
     delay_pub->publish(delay);  
+    cout<< (time_now - image_msg->header.stamp).toSec()<<endl;
 }
 
 int main(int argc, char** argcv)
@@ -24,7 +28,7 @@ int main(int argc, char** argcv)
     ros::Publisher pub;
     
     image_transport::ImageTransport it_(n);
-    image_transport::Subscriber cam_sub_ = it_.subscribe("/camera_front/image_raw", 1, ImageCallBack);
+    image_transport::Subscriber cam_sub_ = it_.subscribe("/golfcart/camera_front/image_repub", 1, ImageCallBack);
     pub = n.advertise<network_delay_experiment::delay>("vision_delay", 10);
     delay_pub = &pub;
     ros::spin();

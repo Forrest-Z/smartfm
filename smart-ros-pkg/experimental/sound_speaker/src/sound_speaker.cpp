@@ -9,6 +9,7 @@
 #include <std_msgs/String.h>
 #include <std_msgs/UInt16.h>
 #include <sound_play/sound_play.h>
+#include <std_msgs/Bool.h>
 #include <unistd.h>
 #include <string>
 
@@ -137,6 +138,16 @@ void music_timer_CB(const ros::TimerEvent & event)
 	}
 }
 
+void CPvoiceCB(const std_msgs::Bool::ConstPtr id_ptr)
+{   
+	string file_name;
+    if (id_ptr->data == 1){
+		ros::Rate r(1.0);
+        file_name = sound_path + string("two_times_warning.wav");
+	    sc_->playWave(file_name.c_str());
+	    r.sleep();
+	}
+}
 
 int main(int argc, char ** argv)
 {
@@ -149,10 +160,10 @@ int main(int argc, char ** argv)
 	sound_play::SoundClient sc;
 	sc_ = & sc;
 
-	ros::Subscriber voice_str_sub = nh.subscribe("voice_str",20,voiceStrCB);
-	ros::Subscriber voice_id_sub = nh.subscribe("voice_id",20,voiceIdCB);
-
-	ros::Timer music_timer = nh.createTimer(ros::Duration(4.0),music_timer_CB);
+	//ros::Subscriber voice_str_sub = nh.subscribe("voice_str",20,voiceStrCB);
+	//ros::Subscriber voice_id_sub = nh.subscribe("voice_id",20,voiceIdCB);
+    ros::Subscriber waring_id_sub = nh.subscribe("/replan_trigger",1,CPvoiceCB);
+	//ros::Timer music_timer = nh.createTimer(ros::Duration(4.0),music_timer_CB);
 
 	ros::spin();
 	return 0;

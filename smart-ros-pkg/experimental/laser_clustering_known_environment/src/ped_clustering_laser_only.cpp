@@ -156,9 +156,9 @@ public:
 	local_pt32.x = local_pt.point.x; local_pt32.y = local_pt.point.y;
 	local_pt32.z = 0;
     //for some reason it is twice the length
-    if(fabs(local_pt32.x) < 10 && fabs(local_pt32.y) < 3+1.0)
+   // if(fabs(local_pt32.x) < 10 && fabs(local_pt32.y) < 3+1.0)
 	    pc_filtered.points.push_back(local_pt32);
-      }
+     }
     }
     cloud_pub_.publish(pc_filtered);
     

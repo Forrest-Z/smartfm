@@ -190,7 +190,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 
 		int NumStates() const { 
 			cout<<"print NumStates"<<endl;
-			return pow((X_SIZE * Y_SIZE*N_GOAL),ModelParams::N_PED_IN) * ModelParams::RMMax* 3 +1;  //plus one dummy state	
+			return pow((X_SIZE * Y_SIZE*N_GOAL),ModelParams::N_PED_IN) * ModelParams::RMMax* 5 +1;  //plus one dummy state	
 		}
 		int NumActions() const { return 3; }
 		bool IsTerminal(PedestrianState s) const {
@@ -198,7 +198,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		}
 
 		uint64_t MaxObs() const {
-			return pow(X_SIZE*Y_SIZE,ModelParams::N_PED_IN)*(ModelParams::RMMax)*3+2;
+			return pow(X_SIZE*Y_SIZE,ModelParams::N_PED_IN)*(ModelParams::RMMax)*5+2;
 		}
 		uint64_t TerminalObs() const {
 			return MaxObs()-1;

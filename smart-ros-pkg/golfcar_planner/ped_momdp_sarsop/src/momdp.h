@@ -71,6 +71,7 @@ public:
 	void publishSpeed(const ros::TimerEvent &e);
 	//void simLoop();
 	void publishROSState();
+	void publishAction(int);
 	void publishBelief();
 	void publishMarker(int id,vector<double> belief);
 	bool getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;

@@ -71,13 +71,14 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
   this->model_.Statistics(ans);
 
 
-  //if (ans.empty()) {
+//  if (ans.empty()) {
   if (ans.size()<10) {
     // No resulting state is consistent with the given observation, so create
     // states randomly until we have enough that are consistent.
-    cerr << "WARNING: Particle filter empty. Bootstrapping with random states"
+    cout << "WARNING: Particle filter empty. Bootstrapping with random states"
          << endl;
 	
+/*	
 	cout<<"N= "<<N<<endl;
 	int n_sampled=0;
 	double obs_prob=1.0;
@@ -85,24 +86,24 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
         Particle<T>* new_particle = this->model_.Allocate();
         *new_particle = {p->state, n_sampled++, obs_prob};
         ans.push_back(new_particle);
+		if(n_sampled>=N) break;
 	}
-
-	/*
+*/
+	
     int n_sampled = 0;
     while (n_sampled < N) {
       T s = this->model_.RandomState(this->belief_update_seed_, obs_state);
-      //double obs_prob = this->model_.ObsProb(obs, s, act);
+      double obs_prob = this->model_.ObsProb(obs, s, act);
 	  //this->model_.PrintState(s);
-      double obs_prob=1;
+      //double obs_prob=1;
 	  if (obs_prob) {
         Particle<T>* new_particle = this->model_.Allocate();
         *new_particle = {s, n_sampled++, obs_prob};
         ans.push_back(new_particle);
       }
     }
-    this->Normalize(ans);
-    return ans;
-	*/
+    //this->Normalize(ans);
+   // return ans;
   }
 
   this->Normalize(ans);

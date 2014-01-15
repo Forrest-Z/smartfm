@@ -40,7 +40,7 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
     use_sim_time_ = use_sim_time;
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel",1);
-	actionPub_ = nh.advertise<geometry_msgs::Twist>("pomdp_action",1);
+	actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
 	char buf[100];
 	for(int i=0;i<ModelParams::N_PED_IN;i++) {
 		sprintf(buf,"pomdp_beliefs%d",i);
@@ -289,7 +289,59 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 
 }*/
 
+double marker_colors[20][3] = {
+	{0.0,1.0,0.0},
+		{1.0,0.0,0.0},
+		{0.0,0.0,1.0},
+		{1.0,1.0,0.0},
+		{0.0,1.0,1.0},
+		{1.0,0.0,1.0},
+		{1.0,1.0,1.0}
+};
 
+int action_map[3]={2,0,1};
+
+void ped_momdp::publishAction(int action)
+{
+		uint32_t shape = visualization_msgs::Marker::CUBE;
+		visualization_msgs::Marker marker;			
+		marker.header.frame_id="/golfcart/map";
+		marker.header.stamp=ros::Time::now();
+		marker.ns="basic_shapes";
+		marker.id=0;
+		marker.type=shape;
+		marker.action = visualization_msgs::Marker::ADD;
+
+		double px,py;
+		px=RealWorldPt->car.w/ModelParams::map_rln;
+		py=RealWorldPt->car.h/ModelParams::map_rln;
+		marker.pose.position.x = px+1;
+		marker.pose.position.y = py+1;
+		marker.pose.position.z = 0;
+		marker.pose.orientation.x = 0.0;
+		marker.pose.orientation.y = 0.0;
+		marker.pose.orientation.z = 0.0;
+		marker.pose.orientation.w = 1.0;
+		// Set the scale of the marker -- 1x1x1 here means 1m on a side
+		marker.scale.x = 0.2;
+		marker.scale.y = 1;
+		marker.scale.z = 0.2;
+		//
+		// Set the color -- be sure to set alpha to something non-zero!
+		//marker.color.r = 0.0f;
+		//marker.color.g = 1.0f;
+		//marker.color.b = 0.0f;
+		//marker.color.a = 1.0;
+		marker.color.r = marker_colors[action_map[action]][0];
+        marker.color.g = marker_colors[action_map[action]][1];
+		marker.color.b = marker_colors[action_map[action]][2];//marker.lifetime = ros::Duration();
+		marker.color.a = 1.0;
+
+		ros::Duration d(1/control_freq);
+		marker.lifetime=d;
+		actionPub_.publish(marker);		
+
+}
 //for despot
 void ped_momdp::controlLoop(const ros::TimerEvent &e)
 {
@@ -307,17 +359,25 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			world_car.h=out_pose.getOrigin().getY()*ModelParams::map_rln;
 			RealWorldPt->UpdateRobPoseReal(world_car);
 		}
+		
+		publishROSState();
 
 		if(RealWorldPt->GoalReached())
 		{
 			safeAction=2;
-			momdp_speed_=0.0;
+
+			momdp_speed_=real_speed_;
+			if(safeAction==0) momdp_speed_ += 0;
+			else if(safeAction==1) momdp_speed_ += 0.5;
+			else if(safeAction==2) momdp_speed_ -= 0.5;
+			if(momdp_speed_<=0.0) momdp_speed_ = 0;
+			if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
+
 			return;
 		}
 
 
 		RealWorldPt->ShiftWindow();
-		publishROSState();
 		cout<<"here"<<endl;
         //if(RealWorldPt->NumPedInView()==0) return;   //no pedestrian detected yet
 		RealSimulator->rob_map=RealWorldPt->window.rob_map;
@@ -338,9 +398,8 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 
 		safeAction=solver->Search(1.0/control_freq,n_trials);
 
-		geometry_msgs::Twist action;
-        action.linear.x = safeAction;
-		actionPub_.publish(action);
+		//actionPub_.publish(action);
+		publishAction(safeAction);
 
 		cout<<"n trials "<<n_trials<<endl;
 		
@@ -365,15 +424,6 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 }
 
 
-double marker_colors[20][3] = {
-	{0.0,1.0,0.0},
-		{1.0,0.0,0.0},
-		{0.0,0.0,1.0},
-		{1.0,1.0,0.0},
-		{0.0,1.0,1.0},
-		{1.0,0.0,1.0},
-		{1.0,1.0,1.0}
-};
 void ped_momdp::publishMarker(int id,vector<double> belief)
 {
 	visualization_msgs::MarkerArray markers;
