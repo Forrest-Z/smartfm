@@ -63,6 +63,7 @@ public:
 
   virtual double getLookupTable(double desired_vel, double speed_now) = 0;
   virtual double getLookupTable_brake(double delta_vel, double speed_now) = 0;
+  virtual void publishCtrlSignal(double throttle, double brake) = 0;
   
 private:
   void bwdDriveCallBack(std_msgs::Bool);
@@ -99,36 +100,36 @@ using namespace std;
 
 void Parameters::getParam()
 {
-	ros::NodeHandle nh("~");
+  ros::NodeHandle nh("~");
 
-	nh.param( "kp", kp, 2.5 );
-	nh.param( "ki", ki, 0.08 ); //0.007 was ok for Marcelo's
-	nh.param( "kd", kd, 0.4 );
+  nh.param( "kp", kp, 2.5 );
+  nh.param( "ki", ki, 0.08 ); //0.007 was ok for Marcelo's
+  nh.param( "kd", kd, 0.4 );
 
-	nh.param( "kp_brake", kp_brake, 0.6);
-	nh.param( "ki_brake", ki_brake, 0.2);
+  nh.param( "kp_brake", kp_brake, 0.6);
+  nh.param( "ki_brake", ki_brake, 0.2);
 
-	nh.param( "kp_sat", kp_sat, 1.0 );
-	nh.param( "ki_sat", ki_sat, 0.7 );
-	nh.param( "kd_sat", kd_sat, 0.3 );
+  nh.param( "kp_sat", kp_sat, 1.0 );
+  nh.param( "ki_sat", ki_sat, 0.7 );
+  nh.param( "kd_sat", kd_sat, 0.3 );
 
-	nh.param( "kp_sat_brake", kp_sat_brake, 1.0 );
-	nh.param( "ki_sat_brake", ki_sat_brake, 0.7 );
-	nh.param( "kd_sat_brake", kd_sat_brake, 0.3 );
+  nh.param( "kp_sat_brake", kp_sat_brake, 1.0 );
+  nh.param( "ki_sat_brake", ki_sat_brake, 0.7 );
+  nh.param( "kd_sat_brake", kd_sat_brake, 0.3 );
 
-	nh.param( "coeff_brakepedal", coeff_bp, 120.0 ); // full brake value
-	nh.param( "brakeZeroThres", brake_zero_thres, -0.5 ); // if velocity difference less than this value then go to braking state
-	nh.param( "throttleZeroThres", throttle_zero_thres, 0.1 ); //if velocity difference larger than this value then go to throttle state
-	nh.param( "fullBrakeThres", full_brake_thres, 0.25 ); // if cmdVel = 0.0 and vehicle's speed go below this value, then apply full-brakes
-	nh.param( "fullThrottleThres", full_throttle_thres, 1.0);
-	nh.param( "brakeToThrottleThres", brake_to_throttle_thres, -20.0);
-	nh.param( "tau_v", tau_v, 0.2 );
+  nh.param( "coeff_brakepedal", coeff_bp, 120.0 ); // full brake value
+  nh.param( "brakeZeroThres", brake_zero_thres, -0.5 ); // if velocity difference less than this value then go to braking state
+  nh.param( "throttleZeroThres", throttle_zero_thres, 0.1 ); //if velocity difference larger than this value then go to throttle state
+  nh.param( "fullBrakeThres", full_brake_thres, 0.25 ); // if cmdVel = 0.0 and vehicle's speed go below this value, then apply full-brakes
+  nh.param( "fullThrottleThres", full_throttle_thres, 1.0);
+  nh.param( "brakeToThrottleThres", brake_to_throttle_thres, -20.0);
+  nh.param( "tau_v", tau_v, 0.2 );
 
-	ROS_INFO("kp: %lf, ki: %lf, kd: %lf", kp, ki, kd);
-	cout <<"kp: " <<kp <<" ki: " <<ki <<" kd: "<<kd<<" ki_sat: " <<ki_sat <<"\n";
-	cout <<"kp_brake: "<<kp_brake<<" ki_brake: "<<ki_brake<<endl;
-	cout <<"coeff_bp: " <<coeff_bp <<" tau_v: " <<tau_v  <<"\n";
-	cout <<"brake_threshold: " <<brake_zero_thres <<"\n";
+  ROS_INFO("kp: %lf, ki: %lf, kd: %lf", kp, ki, kd);
+  cout <<"kp: " <<kp <<" ki: " <<ki <<" kd: "<<kd<<" ki_sat: " <<ki_sat <<"\n";
+  cout <<"kp_brake: "<<kp_brake<<" ki_brake: "<<ki_brake<<endl;
+  cout <<"coeff_bp: " <<coeff_bp <<" tau_v: " <<tau_v  <<"\n";
+  cout <<"brake_threshold: " <<brake_zero_thres <<"\n";
 }
 
 
@@ -147,8 +148,8 @@ PID_Controller::PID_Controller()
     automodeBtnSub = n.subscribe("button_state_automode", 1, &PID_Controller::automodeBtnCB, this);
     safetyBrakeSub = n.subscribe("safety_stop", 1, &PID_Controller::safetyBrakeCallBack, this);
 
-    throttlePub = n.advertise<std_msgs::Float64>("throttle", 1);
-    brakePedalPub = n.advertise<std_msgs::Float64>("brake_angle", 1);
+    //throttlePub = n.advertise<std_msgs::Float64>("throttle", 1);
+    //brakePedalPub = n.advertise<std_msgs::Float64>("brake_angle", 1);
     pidPub = n.advertise<long_control::PID_Msg>("pid_term",1);
     param.getParam();
 
@@ -362,8 +363,9 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 	std_msgs::Float64 throttle_value, brake_value;
 	brake_value.data = pid_msg.u_brake_ctrl;
 	throttle_value.data = pid_msg.u_ctrl;
-	brakePedalPub.publish(brake_value);
-	throttlePub.publish(throttle_value);
+	publishCtrlSignal(pid_msg.u_ctrl, pid_msg.u_brake_ctrl);
+	//brakePedalPub.publish(brake_value);
+	//throttlePub.publish(throttle_value);
 	pidPub.publish(pid_msg);
 	param.pre_brake_ctrl = pid_msg.u_brake_ctrl;
 }
