@@ -17,6 +17,10 @@
  * It turns out that some header files will mess up the mrpt compilation;
  */
 
+#include "opencv2/imgproc/imgproc.hpp"
+#include "opencv2/highgui/highgui.hpp"
+using namespace cv;
+
 using namespace mrpt;
 using namespace mrpt::utils;
 using namespace mrpt::slam;
@@ -56,6 +60,35 @@ namespace mrpt{
 
 			beam_constraint_number = 5;
 			using_prediction_before_ICP = true;
+		}
+
+		void filter_model()
+		{
+			//1st, remove points inside;
+			//construct polygon formed by latest measurement and laser origin;
+			/*
+			vector<Point2f> vertices;
+			for(size_t i=0; i<last_measurement.segments.back().points.size(); i++)
+			{
+				vertices.push_back(Point2f(last_measurement.segments.back().points[i].x, last_measurement.segments.back().points[i].y));
+			}
+			geometry_msgs::Pose &ego_pose = last_measurement.ego_poses.back();
+			vertices.push_back(Point2f((float)ego_pose.position.x, (float)ego_pose.position.y));
+
+			for(size_t i=0; i<contour_points.points.size();)
+			{
+				Point2f point_under_check = Point2f(contour_points.points[i].x, contour_points.points[i].y);
+
+				double dist_to_polygon = cv::pointPolygonTest( vertices, point_under_check, true );
+
+				if(dist_to_polygon>0.01)contour_points.points.erase(contour_points.points.begin()+i);
+				else i++;
+			}
+			*/
+			//2nd, keep points at the convex boundary;
+
+			//3rd, downsample the remained points;
+			downsample_model();
 		}
 
 		void downsample_model()

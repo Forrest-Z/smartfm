@@ -37,7 +37,8 @@ namespace mrpt{
 		{
 			MODT::segment_pose_batch &cluster_tmp = batches.clusters[i];
 			bool registered_to_history = false;
-			size_t associated_track_id;
+			size_t associated_track_id = 0;
+
 			//chose the probe point at the last but two batch, which corresponds to the final batch in last measurement;
 
 			//pay attention here;
@@ -131,7 +132,7 @@ namespace mrpt{
 			track_tmp.contour_points = transformed_contour;
 			track_tmp.last_measurement = incoming_meas_tmp;
 			track_tmp.update_time = incoming_meas_tmp.segments.back().header.stamp;
-			track_tmp.downsample_model();
+			track_tmp.filter_model();
 
 
 			geometry_msgs::PoseWithCovarianceStamped filtered_pose;
@@ -139,6 +140,8 @@ namespace mrpt{
 			track_tmp.tracker->getEstimate(track_tmp.update_time, filtered_pose);
 			MatrixWrapper::ColumnVector ekf_output_tmp = track_tmp.tracker->filter_->PostGet()->ExpectedValueGet();
 			cout<<"ekf_output_tmp: "<<ekf_output_tmp(1)<<","<<ekf_output_tmp(2)<<","<<ekf_output_tmp(3)<<","<<ekf_output_tmp(4)<<","<<ekf_output_tmp(5)<<endl;
+
+			track_tmp.omega = ekf_output_tmp(5);
 
 			geometry_msgs::Point32 filtered_anchor_point;
 			filtered_anchor_point.x = (float)filtered_pose.pose.pose.position.x;
@@ -204,7 +207,7 @@ namespace mrpt{
 			object_tracks_.push_back(new_track_tmp);
 			object_total_id_++;
 
-			new_track_tmp.downsample_model();
+			new_track_tmp.filter_model();
 
 			new_track_tmp.tracker->set_params(3.0, 3.0, 3.0, 3.0, M_PI*0.2, 0.3, 0.3, M_PI*100);
 			new_track_tmp.tracker->init_filter(centroid_tmp.x, centroid_tmp.y, vx_value, vy_value, 0.0);
@@ -366,6 +369,7 @@ namespace mrpt{
 		CPose2D	initialPose_step2(gPdf.mean.x(), gPdf.mean.y(), gPdf.mean.phi());
 		ICP.options.onlyClosestCorrespondences = true;
 		ICP.options.maxIterations			= 1;
+		ICP.options.thresholdDist			= 0.75f;
 		CPosePDFPtr pdf2 = ICP.Align(&m1, &m2, initialPose_step2, &runningTime,(void*)&info);
 
 		CPosePDFGaussian  gPdf2;
