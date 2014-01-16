@@ -423,9 +423,9 @@ void Model<PedestrianState>::PrintState(const PedestrianState& state, ostream& o
 	{
 		cout << "Ped Pos: " << state.PedPoses[i].first.X << " " <<state.PedPoses[i].first.Y <<endl;
 		cout << "Goal: " << state.PedPoses[i].second << endl;
+		cout << "id: " << state.PedPoses[i].third << endl;
 	}
 	cout << "Vel: " << state.Vel << endl;
-	cout << "id:  " << state.id  << endl;
 	cout<<  "num  " << state.num << endl;
 }
 
@@ -569,9 +569,13 @@ void UpdateVel(int &vel,int action,UtilUniform &unif)
 {
 
 	double prob=unif.next();		
-	if(prob<0.2) vel=vel;
-	else if(prob<0.6) vel=vel+action_vel[action];
-	else vel=vel+action_vel[action]*2;
+	if(prob<0.15) vel=vel;
+	else if(prob<0.5) vel=vel+action_vel[action];
+	else if(prob<0.85)vel=vel+action_vel[action]*2;
+	else {
+		prob=unif.next();
+		vel=int(prob*5);
+	}
 	if(vel<0) vel=0;	
 	if(vel>4) vel=4;
 }

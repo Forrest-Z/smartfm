@@ -166,8 +166,8 @@ public:
 			}
 			else
 			{
-				if(length<1.5)  return 10000;
-				else 	return 5000;
+				if(length<1.5)  return 20000;
+				else 	return 20000;
 			}
 		}
 		double diff;

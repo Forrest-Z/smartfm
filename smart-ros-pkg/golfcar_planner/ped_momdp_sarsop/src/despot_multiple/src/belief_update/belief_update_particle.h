@@ -74,6 +74,8 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
     // states randomly until we have enough that are consistent.
     cerr << "WARNING: Particle filter empty. Bootstrapping with random states"
          << endl;
+    cout << "WARNING: Particle filter empty. Bootstrapping with random states"
+         << endl;
 	
 	
 	for(int i=0;i<ans.size();i++)

@@ -492,7 +492,7 @@ public:
 	void UpdatePedPoseReal(Pedestrian ped)
 	{
 		int i;
-		cout<<"ped pose in simulator"<<endl;
+	//	cout<<"ped pose in simulator"<<endl;
 		for( i=0;i<ped_list.size();i++)
 		{
 			if(ped_list[i].id==ped.id)
@@ -505,16 +505,16 @@ public:
 			}
 			if(abs(ped_list[i].w-ped.w)<=1&&abs(ped_list[i].h-ped.h)<=1)   //overladp 
 				return;
-			cout<<ped_list[i].w<<" "<<ped_list[i].h<<endl;
+	//		cout<<ped_list[i].w<<" "<<ped_list[i].h<<endl;
 		}
 		if(i==ped_list.size())   //not found, new ped
 		{
-			cout<<"add"<<endl;
+	//		cout<<"add"<<endl;
 			ped.last_update=t_stamp;
 			ped_list.push_back(ped);
 
 		}
-		cout<<"this ped "<<ped.w<<" "<<ped.h<<" "<<ped.id<<endl;
+	///	cout<<"this ped "<<ped.w<<" "<<ped.h<<" "<<ped.id<<endl;
 	}
 
 	void UpdateRobPoseReal(Car world_car)

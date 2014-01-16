@@ -3,7 +3,7 @@
 #define MODELPARAMS_H
 
 namespace ModelParams {
-	const double rln=10;
+	const double rln=15;
 	const double path_rln=10;
 	const double map_rln=10;
 	const double pi=3.1415926;
@@ -11,7 +11,7 @@ namespace ModelParams {
 	const int XSIZE=10;
 	const int YSIZE=20;
 	const int RMMax=20;   //maximum length of the rob_map structure
-	const int N_PED_IN=7;
+	const int N_PED_IN=5;
 
 	
 	/*!!!!!!!!!!Need to modify for different experiment map!!!!!!!*/

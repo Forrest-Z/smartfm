@@ -323,9 +323,9 @@ void ped_momdp::publishAction(int action)
 		marker.pose.orientation.z = 0.0;
 		marker.pose.orientation.w = 1.0;
 		// Set the scale of the marker -- 1x1x1 here means 1m on a side
-		marker.scale.x = 0.2;
-		marker.scale.y = 1;
-		marker.scale.z = 0.2;
+		marker.scale.x = 0.6;
+		marker.scale.y = 3;
+		marker.scale.z = 0.6;
 		//
 		// Set the color -- be sure to set alpha to something non-zero!
 		//marker.color.r = 0.0f;
@@ -370,13 +370,16 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			if(safeAction==0) momdp_speed_ += 0;
 			else if(safeAction==1) momdp_speed_ += 0.5;
 			else if(safeAction==2) momdp_speed_ -= 0.5;
-			if(momdp_speed_<=0.0) momdp_speed_ = 0;
+			if(momdp_speed_<=0.1) momdp_speed_ = 0.1;
 			if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
 
 			return;
 		}
 
 
+
+		cout<<"State before shift window"<<endl;
+		RealSimulator->PrintState(RealWorldPt->GetCurrState());
 		RealWorldPt->ShiftWindow();
 		cout<<"here"<<endl;
         //if(RealWorldPt->NumPedInView()==0) return;   //no pedestrian detected yet
@@ -410,9 +413,15 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 
 		momdp_speed_=real_speed_;
         if(safeAction==0) momdp_speed_ += 0;
-        else if(safeAction==1) momdp_speed_ += 0.5;
+        else if(safeAction==1) {
+			if(momdp_speed_ < 0.6) {
+				momdp_speed_ = 0.7;
+			} else {
+				momdp_speed_ += 0.5;
+			}
+		}
         else if(safeAction==2) momdp_speed_ -= 0.5;
-        if(momdp_speed_<=0.0) momdp_speed_ = 0;
+        if(momdp_speed_<=0.1) momdp_speed_ = 0.1;
         if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
 		
 		
