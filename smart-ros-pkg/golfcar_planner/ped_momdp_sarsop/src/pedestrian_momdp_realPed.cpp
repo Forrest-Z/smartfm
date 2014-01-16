@@ -62,7 +62,7 @@ pedestrian_momdp::pedestrian_momdp()
 
     ros::spin();
 }
-
+extern double marker_colors[20][3];
 void pedestrian_momdp::publishPath()
 {
 	nav_msgs::Path msg;
@@ -107,10 +107,10 @@ void pedestrian_momdp::publishPath()
 		marker.scale.x = 1;
 		marker.scale.y = 1;
 		marker.scale.z = 1;
+		marker.color.r = marker_colors[i][0];
+		marker.color.g = marker_colors[i][1];
+		marker.color.b = marker_colors[i][2];
 		marker.color.a = 1.0;
-		marker.color.r = 0.0;
-		marker.color.g = 0.0;
-		marker.color.b = 1.0;
 		
 		markers.markers.push_back(marker);
 	}
@@ -143,6 +143,7 @@ bool sortFn(Pedestrian p1,Pedestrian p2)
 
 void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector lPedLocal)
 {
+	
 	if(!pathPublished)  {
 		pathPublished=true;
 		publishPath();
@@ -202,8 +203,6 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "mdp");
-
-
 	
     srand(unsigned(time(0)));
     pedestrian_momdp mdp_node;

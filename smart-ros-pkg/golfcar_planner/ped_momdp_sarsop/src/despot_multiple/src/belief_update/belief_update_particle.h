@@ -67,18 +67,19 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
 		  lcount++;
   }
 
-  cout<<"After update "<<endl;
-  this->model_.Statistics(ans);
-
 
 //  if (ans.empty()) {
   if (ans.size()<10) {
     // No resulting state is consistent with the given observation, so create
     // states randomly until we have enough that are consistent.
-    cout << "WARNING: Particle filter empty. Bootstrapping with random states"
+    cerr << "WARNING: Particle filter empty. Bootstrapping with random states"
          << endl;
 	
-/*	
+	
+	for(int i=0;i<ans.size();i++)
+		this->model_.Free(ans[i]);
+
+	ans.clear();
 	cout<<"N= "<<N<<endl;
 	int n_sampled=0;
 	double obs_prob=1.0;
@@ -86,10 +87,10 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
         Particle<T>* new_particle = this->model_.Allocate();
         *new_particle = {p->state, n_sampled++, obs_prob};
         ans.push_back(new_particle);
-		if(n_sampled>=N) break;
+		if(ans.size()>=N) break;
 	}
-*/
-	
+
+	/*	
     int n_sampled = 0;
     while (n_sampled < N) {
       T s = this->model_.RandomState(this->belief_update_seed_, obs_state);
@@ -102,10 +103,20 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
         ans.push_back(new_particle);
       }
     }
+	*/
     //this->Normalize(ans);
    // return ans;
   }
 
+  cout<<"After update "<<endl;
+  this->model_.Statistics(ans);
+  /*
+  cout<<"particle ids after update"<<endl;
+  for(int i=0;i<ans.size();i++)
+  {
+  	cout<<ans[i]->id<<" ";	
+  }
+*/
   this->Normalize(ans);
 
   // Remove all particles below a threshold
@@ -151,6 +162,14 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
   this->model_.ModifyObsStates(ans,obs_state,this->belief_update_seed_);
   cout<<"After Modify "<<endl;
   this->model_.Statistics(ans);
+  /*
+  cout<<"particle ids after modify"<<endl;
+  for(int i=0;i<ans.size();i++)
+  {
+  	cout<<ans[i]->id<<" ";	
+  }
+  cout<<endl;
+  */
   return ans;
 }
 
