@@ -39,7 +39,7 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
     stationary_ = stationary;
     use_sim_time_ = use_sim_time;
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
-    cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel",1);
+    cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp",1);
 	actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
 	char buf[100];
 	for(int i=0;i<ModelParams::N_PED_IN;i++) {
@@ -55,7 +55,7 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
 	cout<<"before entering controlloop"<<endl;
 	cout<<"frequency "<<frequency<<endl;
   	timer_ = nh.createTimer(ros::Duration(1.0/frequency), &ped_momdp::controlLoop, this);
-	timer_speed=nh.createTimer(ros::Duration(0.1), &ped_momdp::publishSpeed, this);
+	timer_speed=nh.createTimer(ros::Duration(0.05), &ped_momdp::publishSpeed, this);
 
 
 
@@ -415,7 +415,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
         if(safeAction==0) momdp_speed_ += 0;
         else if(safeAction==1) {
 			if(momdp_speed_ < 0.6) {
-				momdp_speed_ = 0.8;
+				momdp_speed_ = 1.0;
 			} else {
 				momdp_speed_ += 0.5;
 			}
