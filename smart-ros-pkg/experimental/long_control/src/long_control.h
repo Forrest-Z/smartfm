@@ -64,7 +64,8 @@ public:
   virtual double getLookupTable(double desired_vel, double speed_now) = 0;
   virtual double getLookupTable_brake(double delta_vel, double speed_now) = 0;
   virtual void publishCtrlSignal(double throttle, double brake) = 0;
-  
+  ros::Publisher throttlePub, brakePedalPub;
+  ros::NodeHandle n;
 private:
   void bwdDriveCallBack(std_msgs::Bool);
   void cmdVelCallBack(geometry_msgs::Twist);
@@ -73,9 +74,8 @@ private:
   void automodeBtnCB(std_msgs::Bool);
   void safetyBrakeCallBack(std_msgs::Bool);
 
-  ros::NodeHandle n;
   ros::Subscriber bwdDriveSub, cmdVelSub, odoSub, emergencyBtnSub, automodeBtnSub, safetyBrakeSub;
-  ros::Publisher throttlePub, brakePedalPub, pidPub;
+  ros::Publisher pidPub;
 
   Parameters param; ///< parameters of the controller, neatly packed together
 
@@ -148,8 +148,6 @@ PID_Controller::PID_Controller()
     automodeBtnSub = n.subscribe("button_state_automode", 1, &PID_Controller::automodeBtnCB, this);
     safetyBrakeSub = n.subscribe("safety_stop", 1, &PID_Controller::safetyBrakeCallBack, this);
 
-    //throttlePub = n.advertise<std_msgs::Float64>("throttle", 1);
-    //brakePedalPub = n.advertise<std_msgs::Float64>("brake_angle", 1);
     pidPub = n.advertise<long_control::PID_Msg>("pid_term",1);
     param.getParam();
 
@@ -364,8 +362,6 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 	brake_value.data = pid_msg.u_brake_ctrl;
 	throttle_value.data = pid_msg.u_ctrl;
 	publishCtrlSignal(pid_msg.u_ctrl, pid_msg.u_brake_ctrl);
-	//brakePedalPub.publish(brake_value);
-	//throttlePub.publish(throttle_value);
 	pidPub.publish(pid_msg);
 	param.pre_brake_ctrl = pid_msg.u_brake_ctrl;
 }

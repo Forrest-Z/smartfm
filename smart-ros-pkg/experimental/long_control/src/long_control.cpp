@@ -1,8 +1,20 @@
 #include "long_control.h"
 
 class GolfcartControls : public PID_Controller {
-public:
   
+public:
+  GolfcartControls() : PID_Controller(){
+    throttlePub = n.advertise<std_msgs::Float64>("throttle", 1);
+    brakePedalPub = n.advertise<std_msgs::Float64>("brake_angle", 1);
+  }
+  
+  void publishCtrlSignal(double throttle, double brake){
+    std_msgs::Float64 d_t; d_t.data = throttle;
+    std_msgs::Float64 d_b; d_b.data = brake;
+    throttlePub.publish(d_t);
+    brakePedalPub.publish(d_b);
+  }
+    
   double getLookupTable(double desired_vel, double speed_now){
   double output_sig = 0.0;
   output_sig = 0.0024*pow(desired_vel,3) - 0.0265*pow(desired_vel,2) + 0.1758*desired_vel - 0.0112;

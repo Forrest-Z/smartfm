@@ -1,7 +1,20 @@
 #include "long_control.h"
+#include <std_msgs/Int32.h>
 
 class iMievControls : public PID_Controller {
 public:
+  
+  iMievControls() : PID_Controller(){
+    throttlePub = n.advertise<std_msgs::Int32>("pronto/throttle", 1);
+    brakePedalPub = n.advertise<std_msgs::Int32>("pronto/brake_angle", 1);
+  }
+  
+  void publishCtrlSignal(double throttle, double brake){
+    std_msgs::Int32 d_t; d_t.data = throttle;
+    std_msgs::Int32 d_b; d_b.data = brake;
+    throttlePub.publish(d_t);
+    brakePedalPub.publish(d_b);
+  }
   
   double getLookupTable(double desired_vel, double speed_now){
   double output_sig = 0.0;
