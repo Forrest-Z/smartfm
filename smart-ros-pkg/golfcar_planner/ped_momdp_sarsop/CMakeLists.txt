@@ -95,3 +95,5 @@ target_link_libraries(ped-momdp-sarsop despot  tinyxml)
 
 rosbuild_add_executable(local_frame src/local_frame.cpp)
 rosbuild_add_compile_flags(local_frame -std=c++0x)
+
+rosbuild_add_executable(vel_publisher src/VelPublisher.cpp)

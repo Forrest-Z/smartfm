@@ -14,4 +14,6 @@
 	    <param name="global_frame" value="/golfcart/map"/>
         <param name="threshold" value="0.0"/>
 	</node>
+
+	 <node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher"   ns="/golfcart"/>
 </launch>

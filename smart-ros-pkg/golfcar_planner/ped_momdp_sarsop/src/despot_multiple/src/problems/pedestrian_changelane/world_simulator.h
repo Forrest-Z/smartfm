@@ -198,7 +198,6 @@ public:
 
 	bool OneStep(int action)
 	{
-		t_stamp++;
 		if(GoalReached())       return true;	
 		if(InCollision(action)) return true;  	
 		UpdateCar(action);
@@ -280,7 +279,7 @@ public:
 			}
 		}
 		t_stamp++;
-		cout<<"time stamp "<<t_stamp<<endl;
+		cout<<"time stamp simulator"<<t_stamp<<endl;
 	}
 	void Clean()
 	{
@@ -305,7 +304,7 @@ public:
 					break;
 				}
 			}
-			if(t_stamp-ped_list[i].last_update>3) insert=false;
+			if(t_stamp-ped_list[i].last_update>1) insert=false;
 			if(insert)
 				ped_list_new.push_back(ped_list[i]);
 		}

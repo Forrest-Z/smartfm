@@ -346,7 +346,7 @@ void ped_momdp::publishAction(int action)
 void ped_momdp::controlLoop(const ros::TimerEvent &e)
 {
 	    cout<<"entering control loop"<<endl;
-			
+		cout<<"time stamp: "<<RealWorldPt->t_stamp<<endl;
 
         tf::Stamped<tf::Pose> in_pose, out_pose;
 		in_pose.setIdentity();
@@ -410,10 +410,12 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 
 		
 		
+		publishBelief();
+
+        if(safeAction==0) {return;}
 
 		momdp_speed_=real_speed_;
-        if(safeAction==0) momdp_speed_ += 0;
-        else if(safeAction==1) {
+        if(safeAction==1) {
 			if(momdp_speed_ < 0.6) {
 				momdp_speed_ = 1.0;
 			} else {
@@ -428,7 +430,6 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 
 		cout<<"momdp_spped "<<momdp_speed_<<endl;
 
-		publishBelief();
 
 }
 

@@ -22,7 +22,7 @@ namespace ModelParams {
 	const int GOAL_DIST=100;
 	
 	const int goodrob=0;
-	const int goodped=1;
+	const int goodped=0;
 	const bool debug=true;
 	const bool FixedPath=false;
 	const bool SocialForceModel=false;
