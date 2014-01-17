@@ -313,20 +313,21 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 		  pid_msg.table = getLookupTable(cmdVel, pid_msg.v_filter);
 		  
 		  //P term
-		  pid_msg.p_term = fmutil::zerobound<double>(param.kp * e_now, param.kp_sat);
+		  pid_msg.p_term = fmutil::symbound<double>(param.kp * e_now, param.kp_sat);
 		  
 		  //I term
 		  e_sum = e_sum + (e_now * enc.dt);	//Integral of error
-		  pid_msg.i_term = fmutil::zerobound<double>(param.ki * e_sum, param.ki_sat);
+		  e_sum = fmutil::symbound<double>(e_sum, param.ki_sat/param.ki); //an integral wind up
+		  pid_msg.i_term = fmutil::symbound<double>(param.ki * e_sum, param.ki_sat);
 		  
 		  //D term
 		  e_diff = (e_now - e_pre) / enc.dt;
-		  pid_msg.d_term = fmutil::zerobound<double>(param.kd * e_diff, param.kd_sat);
+		  pid_msg.d_term = fmutil::symbound<double>(param.kd * e_diff, param.kd_sat);
 		  
 		  //Sum it all up
 		  double u =  pid_msg.table + (pid_msg.p_term + pid_msg.i_term + pid_msg.d_term);
 		  
-		  pid_msg.u_ctrl = fmutil::zerobound<double>(u, param.full_throttle_thres); //Throttle command
+		  pid_msg.u_ctrl = fmutil::symbound<double>(u, param.full_throttle_thres); //Throttle command
 			  if(pid_msg.u_ctrl < 0.0) pid_msg.u_ctrl = 0.0;
 		  pid_msg.u_brake_ctrl = 0.0;	//Brake command
 		  //if(param.controller_state == NEUTRAL)
@@ -342,18 +343,19 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 		  pid_msg.table_brake = getLookupTable_brake(e_now, pid_msg.v_filter);
 	  
 		  //P term
-		  pid_msg.p_brake_term = fmutil::zerobound<double>(-param.kp_brake * e_now, param.kp_sat_brake);
+		  pid_msg.p_brake_term = fmutil::symbound<double>(-param.kp_brake * e_now, param.kp_sat_brake);
 		  
 		  //I term
 		  e_sum_brake = e_sum_brake + (e_now * enc.dt);	//Integral of error
-		  pid_msg.i_brake_term = fmutil::zerobound<double>(-param.ki_brake * e_sum_brake, param.ki_sat_brake);
+		  e_sum_brake = fmutil::symbound<double>(e_sum_brake, param.ki_sat_brake/param.ki_brake);
+		  pid_msg.i_brake_term = fmutil::symbound<double>(-param.ki_brake * e_sum_brake, param.ki_sat_brake);
 		  
 		  //D term
 		  e_diff = (e_now - e_pre) / enc.dt;
-		  pid_msg.d_brake_term = fmutil::zerobound<double>(-param.kd_brake * e_diff, param.kd_sat_brake);
+		  pid_msg.d_brake_term = fmutil::symbound<double>(-param.kd_brake * e_diff, param.kd_sat_brake);
 		  
 		  double u_brake = pid_msg.table_brake + (pid_msg.p_brake_term + pid_msg.i_brake_term + pid_msg.d_brake_term);
-		  pid_msg.u_brake_ctrl = fmutil::zerobound<double>(u_brake, param.coeff_bp); //Brake command
+		  pid_msg.u_brake_ctrl = fmutil::symbound<double>(u_brake, param.coeff_bp); //Brake command
 		  pid_msg.u_ctrl = 0.0;	//Throttle command
 	  
 	  }
