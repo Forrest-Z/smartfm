@@ -3,14 +3,14 @@
 #define MODELPARAMS_H
 
 namespace ModelParams {
-	const double rln=15;
+	const double rln=5;
 	const double path_rln=10;
 	const double map_rln=10;
 	const double pi=3.1415926;
 	const int UCT_CONST=50000;
-	const int XSIZE=10;
-	const int YSIZE=20;
-	const int RMMax=20;   //maximum length of the rob_map structure
+	const int XSIZE=20;
+	const int YSIZE=30;
+	const int RMMax=36;   //maximum length of the rob_map structure
 	const int N_PED_IN=5;
 
 	
@@ -22,7 +22,7 @@ namespace ModelParams {
 	const int GOAL_DIST=100;
 	
 	const int goodrob=0;
-	const int goodped=0;
+	const int goodped=1;
 	const bool debug=true;
 	const bool FixedPath=false;
 	const bool SocialForceModel=false;

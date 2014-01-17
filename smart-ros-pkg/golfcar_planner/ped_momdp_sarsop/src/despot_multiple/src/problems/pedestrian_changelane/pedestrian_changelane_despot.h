@@ -276,7 +276,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		}
 };
 
-const int CRASH_PENALTY =-100000;
+const int CRASH_PENALTY =-50000;
 const int GOAL_REWARD = 1000;
 
 Model<PedestrianState>::Model(const RandomStreams& streams, string filename) : IUpperBound<PedestrianState>(streams)
@@ -594,7 +594,18 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	{
 		int &pedX = state.PedPoses[i].first.X;
 		int &pedY = state.PedPoses[i].first.Y;
-
+		int rx=rob_map[robY].first;
+		int ry=rob_map[robY].second;
+		int rangeX=ModelParams::map_rln/ModelParams::rln;
+		rangeX/=2;
+		int rangeY=ModelParams::map_rln/ModelParams::rln;
+		if(abs(rx-pedX)<=rangeX&&ry-rx>=0&&ry-rx<=rangeY) 
+		{
+			reward=CRASH_PENALTY;
+			state.Vel=-1;
+			return;
+		}
+		/*
 
 		if(pedX==rob_map[robY].first && rob_map[robY].second==pedY) {
 			reward = CRASH_PENALTY;
@@ -616,7 +627,8 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 				state.Vel = -1;
 				return;
 			}
-		}
+		}*/
+
 	}
 
 	UtilUniform unif(rNum);
@@ -624,12 +636,27 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	//RobStep(state, action, unif);
 	double p = unif.next();
 	int real_vel=rob_vel/2;
+	//int real_vel;
+	/*
+	if(rob_vel==0||rob_vel==1)
+		real_vel=0;
+	else if(rob_vel==2)
+		real_vel=1;
+	else real_vel=2;
+	*/
 	//robY += robotNoisyMove[rob_vel][lookup(robotMoveProbs[rob_vel], p)];
 	robY += robotNoisyMove[real_vel][lookup(robotMoveProbs[real_vel], p)];
 	if(robY >= rob_map.size()-1) robY = rob_map.size() - 1;
+
+
 	p = unif.next();
 
 	//rob_vel = robotVelUpdate[action][rob_vel][lookup(robotUpdateProb[action][rob_vel], p)];
+	//
+	
+	if(rob_vel<=2&&action==2) reward=-500;
+	else if(action==2)  reward=-100;
+	else  reward=-50;
 	UpdateVel(rob_vel,action,unif);
 
 	PedStep(state, unif);
@@ -637,7 +664,6 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	state.Vel=rob_vel;
 	state.RobPos.Y=robY;
 
-	reward=-50;
 	obs = Observe(state);
 }
 

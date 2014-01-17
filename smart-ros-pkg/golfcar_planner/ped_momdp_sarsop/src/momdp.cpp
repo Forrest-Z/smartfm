@@ -343,6 +343,7 @@ void ped_momdp::publishAction(int action)
 
 }
 //for despot
+int brake_counts=0;
 void ped_momdp::controlLoop(const ros::TimerEvent &e)
 {
 	    cout<<"entering control loop"<<endl;
@@ -397,7 +398,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		////////////////////////////////////////////////////////////////////
 		
 		int n_trials;
-		cout<<"move time "<<Globals::config.time_per_move<<endl;
+
 
 		safeAction=solver->Search(1.0/control_freq,n_trials);
 
@@ -422,10 +423,24 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 				momdp_speed_ += 0.5;
 			}
 		}
-        else if(safeAction==2) momdp_speed_ -= 0.5;
+        else if(safeAction==2) {
+			if (momdp_speed_ < 0.6) {
+				momdp_speed_ -= 0.05;
+			}
+			else if(momdp_speed_ < 1.0) {
+				momdp_speed_-=0.2;
+			} else {
+				momdp_speed_ -= 0.7;
+				if(momdp_speed_<=0.6) momdp_speed_ = 0.6;
+			}
+		}
         if(momdp_speed_<=0.1) momdp_speed_ = 0.1;
         if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
 		
+		if(safeAction==2) brake_counts++;
+		if(safeAction==1) brake_counts=0;
+
+	//	if(brake_counts>=5)  momdp_speed_=0.1;
 		
 
 		cout<<"momdp_spped "<<momdp_speed_<<endl;

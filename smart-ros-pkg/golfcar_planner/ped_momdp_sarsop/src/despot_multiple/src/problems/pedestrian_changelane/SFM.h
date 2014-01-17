@@ -161,13 +161,13 @@ public:
 		{
 			if(ModelParams::goodped==0)
 			{
-				if(length<1.5) return 5;
-				else return 2.5;
+				if(length<1.5) return 10;
+				else return 5;
 			}
 			else
 			{
-				if(length<1.5)  return 20000;
-				else 	return 20000;
+				if(length<1.5)  return 10000;
+				else 	return 10000;
 			}
 		}
 		double diff;
