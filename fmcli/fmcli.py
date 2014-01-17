@@ -122,6 +122,9 @@ class Task(object):
             self.pane = None
             self.status = 'STOPPED'
 
+    def focus(self):
+        self.pane.select_pane()
+
 STATUS_COLORS = {'OK': 'light green', 'STOPPED': 'dark red'}
 
 class TaskButton(urwid.Columns):
@@ -144,12 +147,14 @@ class TaskButton(urwid.Columns):
             self.task.terminate()
             self.task.start()
             self.update_status()
+        elif key == 'g':
+            self.task.focus()
         else:
             return self.__super.keypress(size, key)
 
 
     def on_task_clicked(self, button):
-        self.task.spawn()
+        self.task.start()
         self.update_status()
 
     def update_status(self):
@@ -181,6 +186,7 @@ def task_menu(tasks):
 DOC = """
 s: start
 t: terminate
+g: goto pane
 r: restart
 q: quit
 """
