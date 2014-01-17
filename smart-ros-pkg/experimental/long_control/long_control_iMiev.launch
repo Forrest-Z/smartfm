@@ -1,0 +1,5 @@
+<launch>
+	<node pkg="long_control" name="long_control" type="iMiev_speedcontroller" output="screen">
+		<rosparam file="$(find long_control)/long_control_iMiev.yaml" command="load" />
+	</node>
+</launch>

@@ -45,6 +45,20 @@ T bound(T m, T *x, T M)
     return *x;
 }
 
+/** Bounds the argument between 0 and a max/minimum
+ * 
+ * @param m the lower/upper bound
+ * @param x the value to be bounded
+ * @return -m if m given is smaller than zero and x < -m, 
+ * 0 if m given is larger than zero and x < 0
+ */
+ template<typename T>
+ T zerobound(T x, T m)
+ {
+   if(m > 0) return x<0 ? 0 : x>m ? m : x;
+   else return x<m ? m : x>0 ? 0 : x;
+ }
+ 
 /** Bounds the value between -m and m
  *
  * @param x the value to be bounded

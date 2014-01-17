@@ -116,6 +116,7 @@ private:
 	int														scanNum_perVector_;
 	size_t 													interval_;
 	double													speed_threshold_;
+	double													minimum_size_, maximum_size_;
 
 	golfcar_ml::svm_classifier 								*DATMO_classifier_;
 
@@ -138,7 +139,9 @@ DATMO::DATMO()
 	//				"1" - online classification mode;
 	private_nh_.param("program_mode",			program_mode_,     		1);
 	private_nh_.param("feature_num",			feature_num_,       	13);
-	private_nh_.param("speed_threshold",		speed_threshold_,      	3.0);
+	private_nh_.param("speed_threshold",		speed_threshold_,      	1.0);
+	private_nh_.param("minimum_size",		    minimum_size_,      	0.3);
+	private_nh_.param("maximum_size",			maximum_size_,      	15.0);
 
 	//to reduce the size of feature vector;
 	private_nh_.param("downsample_interval",	downsample_interval_,    4);
@@ -500,7 +503,7 @@ void DATMO::perform_prefiltering_movingEvidence()
 			float x_dim1 = max_pt1.x - min_pt1.x;
 			float y_dim1 = max_pt1.y - min_pt1.y;
 			float max_dim1 = (float)sqrt(x_dim1*x_dim1+y_dim1*y_dim1);
-			cluster_tobe_filtered = cluster_tobe_filtered || (max_dim1 < 2.0);
+			cluster_tobe_filtered = cluster_tobe_filtered || (max_dim1 < minimum_size_);
 
 			//a-2: for latest scan points;
 			pcl::PointXYZ min_pt2, max_pt2;
@@ -508,7 +511,7 @@ void DATMO::perform_prefiltering_movingEvidence()
 			float x_dim2 = max_pt2.x - min_pt2.x;
 			float y_dim2 = max_pt2.y - min_pt2.y;
 			float max_dim2 = (float)sqrt(x_dim2*x_dim2+y_dim2*y_dim2);
-			cluster_tobe_filtered = cluster_tobe_filtered || (max_dim2 > 15.0);
+			cluster_tobe_filtered = cluster_tobe_filtered || (max_dim2 > maximum_size_);
 
 			//b: moving evidence;
 			double moving_evidence_threshold = speed_threshold_ * (cloud_vector_.back().header.stamp.toSec()- cloud_vector_.front().header.stamp.toSec());
