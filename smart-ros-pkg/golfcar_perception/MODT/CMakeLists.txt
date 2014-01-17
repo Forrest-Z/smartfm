@@ -79,14 +79,18 @@ rosbuild_add_executable(spatial_temporal_segmentation src/spatial_temporal_segme
 rosbuild_link_boost(spatial_temporal_segmentation signals)
 target_link_libraries(spatial_temporal_segmentation ${OpenCV_LIBRARIES})
 
+rosbuild_add_executable(ST_GenRawTrainingData src/ST_GenRawTrainingData.cpp)
+rosbuild_link_boost(ST_GenRawTrainingData signals)
+target_link_libraries(ST_GenRawTrainingData ${OpenCV_LIBRARIES})
+
 rosbuild_add_executable(simple_moving_check src/simple_moving_check.cpp)
 rosbuild_link_boost(simple_moving_check signals)
 target_link_libraries(simple_moving_check ${OpenCV_LIBRARIES})
 
 rosbuild_add_executable(vehicle_pose_estimation src/vehicle_pose_estimation.cpp)
-rosbuild_add_executable(ICP_example src/ICP_example.cpp)
 
 rosbuild_add_executable(vehicle_tracking_ICP src/vehicle_tracking_ICP.cpp src/EKF_tracker/ConstSpeed_EKF_tracker.cpp src/EKF_tracker/nonlinearanalyticconditionalgaussianodo.cpp)
 target_link_libraries(vehicle_tracking_ICP ${OpenCV_LIBRARIES})
 
-rosbuild_add_executable(vehicle_tracking_gridsearch src/vehicle_tracking_gridsearch.cpp)
+#rosbuild_add_executable(vehicle_tracking_gridsearch src/vehicle_tracking_gridsearch.cpp)
+#rosbuild_add_executable(ICP_example src/ICP_example.cpp)
