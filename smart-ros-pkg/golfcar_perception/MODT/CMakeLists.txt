@@ -18,7 +18,7 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 rosbuild_add_boost_directories()
 #uncomment if you have defined messages
-#rosbuild_genmsg()
+rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
@@ -69,10 +69,19 @@ target_link_libraries(supervised_segmentation ${OpenCV_LIBRARIES})
 rosbuild_link_boost(supervised_segmentation signals)
 
 #rosbuild_add_executable(graph_segmentation src/segmentation/segment.cpp src/segmentation/segment-image.h src/segmentation/segment-graph.h src/segmentation/disjoint-set.h)
-
 rosbuild_add_executable(graph_segmentation src/segmentation/segment.cpp)
+
+rosbuild_add_library(shape_analyzer src/RANSAC_model/shape_analyzer.cpp)
+rosbuild_add_executable(ransac_node src/RANSAC_model/ransac_node.cpp)
+target_link_libraries(ransac_node shape_analyzer)
+
 rosbuild_add_executable(spatial_temporal_segmentation src/spatial_temporal_segmentation.cpp)
 rosbuild_link_boost(spatial_temporal_segmentation signals)
 target_link_libraries(spatial_temporal_segmentation ${OpenCV_LIBRARIES})
 
-#target_link_libraries(example ${PROJECT_NAME})
+rosbuild_add_executable(vehicle_pose_estimation src/vehicle_pose_estimation.cpp)
+rosbuild_add_executable(ICP_example src/ICP_example.cpp)
+
+rosbuild_add_executable(vehicle_tracking_ICP src/vehicle_tracking_ICP.cpp src/EKF_tracker/ConstSpeed_EKF_tracker.cpp src/EKF_tracker/nonlinearanalyticconditionalgaussianodo.cpp)
+
+rosbuild_add_executable(vehicle_tracking_gridsearch src/vehicle_tracking_gridsearch.cpp)

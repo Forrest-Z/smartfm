@@ -1,13 +1,16 @@
+int8 controller_state
+float32 vel_err
+float32 v_filter
+float32 desired_vel
 float32 p_term
 float32 i_term
 float32 d_term
 float32 table
-float32 vel_err
-float32 desired_vel
 float32 u_ctrl
 float32 p_brake_term
 float32 i_brake_term
 float32 d_brake_term
-float32 brake_err
+float32 table_brake
 float32 u_brake_ctrl
-float32 v_filter
+
+

@@ -4,7 +4,7 @@
  *  Created on: Sep 2, 2012
  *      Author: demian
  */
-#include "AccumulateData.h"
+#include <norm_virtual_sensor/AccumulateData.h>
 #include <geometry_msgs/PoseArray.h>
 #include <dynamic_reconfigure/server.h>
 #include <norm_virtual_sensor/NormVirtualSensorConfig.h>

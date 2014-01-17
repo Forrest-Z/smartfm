@@ -1,0 +1,18 @@
+<package>
+  <description brief="csm_cuda_node">
+
+     csm_cuda_node
+
+  </description>
+  <author>demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/csm_cuda_node</url>
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
+  <depend package="roscpp"/>
+  <depend package="fmutil"/>
+  <depend package="csm_cuda"/>
+</package>
+
+

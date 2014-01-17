@@ -41,7 +41,7 @@ public:
     private_nh.param("global_frame", global_frame_, string("/golfcart/map"));
     private_nh.param("laser_frame", laser_frame_id_, string("/golfcart/front_bottom_lidar"));
     private_nh.param("svg_file", svg_file_, string("utown_exp_launch_files/utown_plaza_ped_boundary.svg"));
-    private_nh.param("dist_thres", dist_thres_, 1.0);
+    private_nh.param("dist_thres", dist_thres_, 0.5);
     laser_sub_.subscribe(nh, "/golfcart/front_bottom_scan", 10);
     boundary_pub_ = nh.advertise<geometry_msgs::PolygonStamped>("/golfcart/ped_boundary",1, true);
     tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, global_frame_, 10);

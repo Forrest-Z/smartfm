@@ -1,0 +1,21 @@
+<package>
+  <description brief="csm_cuda">
+
+     csm_cuda
+
+  </description>
+  <author>demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/csm_cuda</url>
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
+  <depend package="roscpp"/>
+  <depend package="fmutil"/>
+  <depend package="laser_geometry"/>
+  <export>
+    <cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lcsm_cuda"/>
+  </export>
+</package>
+
+
