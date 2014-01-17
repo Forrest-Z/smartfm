@@ -276,8 +276,8 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		}
 };
 
-const int CRASH_PENALTY =-50000;
-const int GOAL_REWARD = 1000;
+const int CRASH_PENALTY =-1000000;
+const int GOAL_REWARD = 500;
 
 Model<PedestrianState>::Model(const RandomStreams& streams, string filename) : IUpperBound<PedestrianState>(streams)
 {
@@ -654,9 +654,9 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	//rob_vel = robotVelUpdate[action][rob_vel][lookup(robotUpdateProb[action][rob_vel], p)];
 	//
 	
-	if(rob_vel<=2&&action==2) reward=-500;
-	else if(action==2)  reward=-100;
-	else  reward=-50;
+	//if(rob_vel<=2&&action==2) reward=-100;
+	if(action == 2)  reward=-20;
+	else  reward=-10;
 	UpdateVel(rob_vel,action,unif);
 
 	PedStep(state, unif);

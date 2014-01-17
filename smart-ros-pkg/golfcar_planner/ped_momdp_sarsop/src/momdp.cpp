@@ -369,9 +369,9 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 
 			momdp_speed_=real_speed_;
 			if(safeAction==0) momdp_speed_ += 0;
-			else if(safeAction==1) momdp_speed_ += 0.5;
-			else if(safeAction==2) momdp_speed_ -= 0.5;
-			if(momdp_speed_<=0.1) momdp_speed_ = 0.1;
+			else if(safeAction==1) momdp_speed_ += 0.3;
+			else if(safeAction==2) momdp_speed_ -= 0.3;
+			if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
 			if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
 
 			return;
@@ -414,7 +414,14 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		publishBelief();
 
         if(safeAction==0) {return;}
+	
+		momdp_speed_=real_speed_;
+		if(safeAction==1) momdp_speed_ += 0.3;
+		else if(safeAction==2) momdp_speed_ -= 0.3;
+		if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
+		if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
 
+		/*
 		momdp_speed_=real_speed_;
         if(safeAction==1) {
 			if(momdp_speed_ < 0.6) {
@@ -424,23 +431,26 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			}
 		}
         else if(safeAction==2) {
+			/
 			if (momdp_speed_ < 0.6) {
 				momdp_speed_ -= 0.2;
 			}
 			else if(momdp_speed_ < 1.0) {
 				momdp_speed_-=0.3;
 			} else {
+			/
 				momdp_speed_ -= 0.7;
-				if(momdp_speed_<=0.1) momdp_speed_ = 0.1;
-			}
+		//		if(momdp_speed_<=0.1) momdp_speed_ = 0.1;
+			
 		}
-        if(momdp_speed_<=0.1) momdp_speed_ = 0.1;
+        if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
         if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
 		
 		if(safeAction==2) brake_counts++;
 		if(safeAction==1) brake_counts=0;
 
 	//	if(brake_counts>=5)  momdp_speed_=0.1;
+		*/
 		
 
 		cout<<"momdp_spped "<<momdp_speed_<<endl;
