@@ -638,10 +638,19 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	}
 
 	UtilUniform unif(rNum);
+	double p = unif.next();
+
+	//rob_vel = robotVelUpdate[action][rob_vel][lookup(robotUpdateProb[action][rob_vel], p)];
+	//
+	
+	//if(rob_vel<=2&&action==2) reward=-100;
+	if(action == 2)  reward=-20;
+	else  reward=-10;
+	UpdateVel(rob_vel,action,unif);
 
 	//RobStep(state, action, unif);
-	double p = unif.next();
-	int real_vel=rob_vel/2;
+	p = unif.next();
+	if (rob_vel == 1) real_vel = 1;
 	//int real_vel;
 	/*
 	if(rob_vel==0||rob_vel==1)
@@ -651,19 +660,11 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	else real_vel=2;
 	*/
 	//robY += robotNoisyMove[rob_vel][lookup(robotMoveProbs[rob_vel], p)];
+	
+	int real_vel=rob_vel/2;
 	robY += robotNoisyMove[real_vel][lookup(robotMoveProbs[real_vel], p)];
 	if(robY >= rob_map.size()-1) robY = rob_map.size() - 1;
 
-
-	p = unif.next();
-
-	//rob_vel = robotVelUpdate[action][rob_vel][lookup(robotUpdateProb[action][rob_vel], p)];
-	//
-	
-	//if(rob_vel<=2&&action==2) reward=-100;
-	if(action == 2)  reward=-20;
-	else  reward=-10;
-	UpdateVel(rob_vel,action,unif);
 
 	PedStep(state, unif);
 
