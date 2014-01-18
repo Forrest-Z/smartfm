@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <utility>
+#include <algorithm>
 #include "globals.h"
 #include "model.h"
 #include "coord.h"
@@ -85,7 +86,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		
 		vector<vector<double> > GetBeliefVector(const vector<Particle<PedestrianState>*> particles) const
 		{
-			int goal_count[10][10]={0};
+			double goal_count[10][10]={0};
 
 
 			PedestrianState state_0=particles[0]->state;
@@ -94,7 +95,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 				PedestrianState state=particles[i]->state;
 				for(int j=0;j<state.num;j++)
 				{
-						goal_count[j][state.PedPoses[j].second]++;
+						goal_count[j][state.PedPoses[j].second]+=particles[i]->wt;
 				}
 			}
 			
@@ -104,7 +105,8 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 				vector<double> belief;
 				for(int i=0;i<ModelParams::NGOAL;i++)
 				{	
-					belief.push_back((goal_count[j][i]+0.0)/particles.size());
+					//belief.push_back((goal_count[j][i]+0.0)/particles.size());
+					belief.push_back((goal_count[j][i]+0.0));
 				}
 				belief_vec.push_back(belief);
 			}
@@ -115,7 +117,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 
 		void Statistics(const vector<Particle<PedestrianState>*> particles) const {
 			
-			int goal_count[10][10]={0};
+			double goal_count[10][10]={0};
 			cout<<"Current Belief "<<endl;
 			cout<<"particles num "<<particles.size()<<endl;
 			if(particles.size()==0) return;
@@ -128,7 +130,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 				PedestrianState state=particles[i]->state;
 				for(int j=0;j<state.num;j++)
 				{
-						goal_count[j][state.PedPoses[j].second]++;
+						goal_count[j][state.PedPoses[j].second]+=particles[i]->wt;
 				}
 			}
 			
@@ -137,7 +139,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 				cout<<"Ped "<<j<<" Belief is ";
 				for(int i=0;i<N_GOAL;i++)
 				{
-					cout<<(goal_count[j][i]+0.0)/particles.size()<<" ";
+					cout<<(goal_count[j][i]+0.0)<<" ";
 				}
 				cout<<endl;
 			}
@@ -674,18 +676,20 @@ double Model<PedestrianState>::TransProbJoint(const PedestrianState& s_old, cons
 
 	int real_vel=s_old.Vel/2;
 	//robY += robotNoisyMove[rob_vel][lookup(robotMoveProbs[rob_vel], p)];
+	double this_prob=0.01;
 	for(int i=0;i<3;i++)
 	{
 		if(robotNoisyMove[real_vel][i]==s_new.RobPos.Y-s_old.RobPos.Y) 
 		{
-			prob*=robotMoveProbs[real_vel][i];	
+			this_prob=robotMoveProbs[real_vel][i];	
 			break;
 		}
 	}
+	prob*=this_prob;
 
 	int v0=s_old.Vel;
 	int v1=s_new.Vel;
-	double vel_prob=0;
+	double vel_prob=0.01;
 	if(action==1)
 	{
 		if(v1-v0==0) {
@@ -766,6 +770,10 @@ PedestrianState ObsToState(uint64_t obs)
 		i++;
 	}
 	state.num=i;
+	for(int i=0;i<state.num/2;i++)
+	{
+		std::swap(state.PedPoses[i],state.PedPoses[state.num-i-1]);
+	}
 	return state;
 }
 

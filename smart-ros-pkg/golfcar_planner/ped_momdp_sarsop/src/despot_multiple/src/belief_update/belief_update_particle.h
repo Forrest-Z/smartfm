@@ -56,10 +56,11 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
         new_state.PedPoses[i].second = old_state.PedPoses[i].second;
         new_state.PedPoses[i].third = old_state.PedPoses[i].third;
     }
-    double obs_prob = this->model_.TransProbJoint(old_state, new_state, act);
+    double obs_prob = this->model_.TransProbJoint(old_state, new_state, act) + 1e-10;
+	assert(obs_prob > 0);
     if (obs_prob > 0) {
         Particle<T>* new_particle = this->model_.Copy(p);
-        new_particle->wt = p->wt * obs_prob;
+        new_particle->wt = (p->wt + 1e-4) * obs_prob;
         new_particle->state = new_state;
         ans.push_back(new_particle);
     }
@@ -158,6 +159,7 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
     this->Normalize(ans);
   }
 	*/
+  /*
 	int cur = 0;
 	auto last = ans.begin();
 	for(auto particle : ans) {
@@ -169,9 +171,11 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
 		}
 	}
 	ans = decltype(ans)(ans.begin(), last);
+	*/
 
   // Resample if we have < N particles or # effective particles drops below 
   // the threshold
+  /*
   double num_eff_particles = 0;
   for (auto it: ans)
     num_eff_particles += it->wt * it->wt;
@@ -182,6 +186,7 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
       this->model_.Free(it);
     ans = resampled_ans;
   } 
+  */
 
   this->model_.ModifyObsStates(ans,obs_state,this->belief_update_seed_);
   cout<<"After Modify "<<endl;

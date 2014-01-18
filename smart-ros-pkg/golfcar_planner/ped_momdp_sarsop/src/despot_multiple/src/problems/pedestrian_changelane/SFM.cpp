@@ -390,27 +390,16 @@ double SFM::ModelTransProb(PedestrianState state,PedestrianState state_new)
 
 		MyVector vec1=goal_model[x][y][g];
 
-		if(debug)
-			cout<<"goal force "<<vec1.dw<<" "<<vec1.dh<<endl;
 		MyVector vec2=car_model[x][y][ry][g];
-		if(debug)
-			cout<<"car force "<<vec2.dw<<" "<<vec2.dh<<endl;
 		MyVector vec;
 		if(ModelParams::SocialForceModel)
 			vec=vec1+vec2;	
 		else
 			vec=vec1;//+vec2;
-		if(debug)
-			cout<<"total force "<<vec.dw<<" "<<vec.dh<<endl;
 		
-	/*	
-		if(x==2&&y==6&&ry==4&&g==4)
-			cout<<"total force "<<vec2.dw<<" "<<vec2.dh<<endl;
-			*/
 
 
 		double ped_angle=vec.GetAngle();
-		if(debug)  cout<<ped_angle<<" "<<window_angle<<endl;
 
 		if(ped_angle<0) ped_angle+=2*ModelParams::pi;   //[0,2*ModelParams::pi]
 		double angle=window_angle-ped_angle;  //[-2*pi,2*pi]
@@ -437,14 +426,11 @@ double SFM::ModelTransProb(PedestrianState state,PedestrianState state_new)
 				weight*=GetAngularWeight(p,angle,vec.GetLength());	
 				weight*=GetLaneWeight(next_i);
 				total_weight+=weight;
-				/*
-				if(x==2&&y==9)
-				{
-					cout<<g<<" "<<next_i<<" "<<next_j<<" "<<weight<<endl;
-				}*/
+
 			}
 		}
 
+		double this_prob=0.001;
 		for(int p=0;p<9;p++)
 		{
 			next_i=curr_i+next_grid[p][0];
@@ -458,15 +444,15 @@ double SFM::ModelTransProb(PedestrianState state,PedestrianState state_new)
 
 				weight*=GetAngularWeight(p,angle,vec.GetLength());	
 				weight*=GetLaneWeight(next_i);
-				std::cout<<"next i next j prob "<<next_i<<" "<<next_j<<" "<<weight/total_weight<<std::endl;
 			}
 			if(next_i==state_new.PedPoses[i].first.X&&next_j==state_new.PedPoses[i].first.Y)
 			{
-				total_prob*=(weight/total_weight);
+				this_prob=(weight/total_weight);
 				break;
 			}
 
 		}
+		total_prob*=this_prob;
 	}
 	return total_prob;
 }

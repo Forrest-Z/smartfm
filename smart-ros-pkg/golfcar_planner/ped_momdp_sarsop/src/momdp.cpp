@@ -488,7 +488,7 @@ void ped_momdp::publishMarker(int id,vector<double> belief)
 		// Set the scale of the marker -- 1x1x1 here means 1m on a side
 		marker.scale.x = 0.5;
 		marker.scale.y = belief[i]*4;
-		if(marker.scale.y<0.2) marker.scale.y=0.2;
+		//if(marker.scale.y<0.2) marker.scale.y=0.2;
 		marker.scale.z = 0.2;
 		//
 		// Set the color -- be sure to set alpha to something non-zero!
