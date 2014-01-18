@@ -600,21 +600,28 @@ public:
 		}
 		curr_state.num=pedInView_list.size();
 
-		/*
-		if(velGlobal<0.5)
+		
+		if(velGlobal<0.25)
 		{
 			curr_state.Vel=0;
 		}
-		else if(velGlobal<1.5)
+		else if(velGlobal<0.75)
 		{
 			curr_state.Vel=1;
 		}
-		else 
+		else if(velGlobal<1.25)
 		{
 			curr_state.Vel=2;
 		}
-		curr_state.Vel=velGlobal;
-		*/
+		else if(velGlobal<1.75)
+		{
+			curr_state.Vel=3;
+		}
+		else
+		{
+			curr_state.Vel=4;
+		}
+		
 		/*
 		double delta=(ModelParams::vel_levels[ModelParams::VEL_N-1]-ModelParams::vel_levels[0])/ModelParams::VEL_N;
 		for(int i=0;i<ModelParams::VEL_N;i++)
@@ -624,7 +631,8 @@ public:
 				break;
 			}
 		}*/
-		curr_state.Vel=velGlobal*2;
+
+		//curr_state.Vel=velGlobal*2;
 		return curr_state;
 	}
 	
