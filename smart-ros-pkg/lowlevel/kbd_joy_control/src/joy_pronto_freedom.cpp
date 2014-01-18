@@ -22,9 +22,9 @@
 
 
 #define STEER_ANG_MAX -445
-#define FULL_BRAKE 100
+#define FULL_BRAKE 0 //was 100
 //maximum Throttle was 1000
-#define FULL_THROTTLE 200
+#define FULL_THROTTLE 500
 
 #define MAX_JOY_VALUE 32767
 
@@ -45,9 +45,9 @@ void joyCallBack(sensor_msgs::Joy joy_msg)
 		//Each axis value ranges from -32767 to 32767 
 		//Botton just have a value of 'on' and 'off'
 
-    float lat = joy_msg.axes[0]/MAX_JOY_VALUE; //left-right
-    float lon = -1*joy_msg.axes[3]/MAX_JOY_VALUE; //throttle
-    float motion = joy_msg.buttons[1];
+    float lat = joy_msg.axes[0]; //left-right
+    float lon = joy_msg.axes[3]; //throttle
+    
     float enable_butt = joy_msg.buttons[6];
     float start_butt = joy_msg.buttons[7];
 		
@@ -56,7 +56,7 @@ void joyCallBack(sensor_msgs::Joy joy_msg)
     float shift_lon = joy_msg.axes[7];
     
     ROS_INFO("Joystick: axes[0] (lat)=%f, axis[1] (lon)=%f",
-    (joy_msg.axes[0]/MAX_JOY_VALUE), (joy_msg.axes[3]/MAX_JOY_VALUE));
+    (joy_msg.axes[0]), (joy_msg.axes[3]));
 
     std_msgs::Int32 V, B;
     V.data = lon>0 ? lon*FULL_THROTTLE : 0;
@@ -70,11 +70,7 @@ void joyCallBack(sensor_msgs::Joy joy_msg)
 
     //Motion
     std_msgs::Int32 M;
-    if(motion < 0.5) {
-      M.data = 1;
-    }else{
-      M.data = 0;
-    }
+    M.data = joy_msg.buttons[1];
     motion_pub.publish(M);
     
     //Enable button

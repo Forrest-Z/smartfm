@@ -20,7 +20,7 @@
 #define STEER_ANG_MAX -445
 #define FULL_BRAKE 100
 //maximum Throttle was 1000
-#define FULL_THROTTLE 200
+#define FULL_THROTTLE 300
 ros::Publisher throttle_pub, steering_pub, brake_pub, motion_pub, enable_pub, start_pub, shift_pub;
 
 //For enable button
