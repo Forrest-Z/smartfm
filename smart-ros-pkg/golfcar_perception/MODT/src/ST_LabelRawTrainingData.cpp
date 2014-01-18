@@ -299,14 +299,28 @@ void DATMO_labellingData::label_data_batch(bool perform_fast_labeling)
 	//visualize the final results;
 	for(size_t i=0; i<raw_training_data_.clusters_baselink.size(); i++)
 	{
-		Vec3b vehicle_color;
+		Vec3b vehicle_color, motobike_color, ped_color;
 		vehicle_color.val[0] = 0;
 		vehicle_color.val[1] = 0;
 		vehicle_color.val[2] = 255;
 
+		motobike_color.val[0] = 255;
+		motobike_color.val[1] = 0;
+		motobike_color.val[2] = 0;
+
+		ped_color.val[0] = 255;
+		ped_color.val[1] = 255;
+		ped_color.val[2] = 0;
+
+		Vec3b show_color;
+
 		int labelled_class_type = curr_cluster_labels_[i];
-		if(labelled_class_type == 1)
+		if(labelled_class_type == 1 || labelled_class_type ==2 || labelled_class_type ==3)
 		{
+			if(labelled_class_type == 1) show_color = vehicle_color;
+			else if(labelled_class_type == 2) show_color = motobike_color;
+			else show_color = ped_color;
+
 			for(size_t j=0; j<raw_training_data_.clusters_baselink[i].points.size(); j++)
 			{
 				Point2f imgpt_tmp;
@@ -314,7 +328,7 @@ void DATMO_labellingData::label_data_batch(bool perform_fast_labeling)
 
 				if(LocalPixelValid(imgpt_tmp))
 				{
-					contour_visual_img.at<Vec3b>((int)imgpt_tmp.y,(int)imgpt_tmp.x) = vehicle_color;
+					contour_visual_img.at<Vec3b>((int)imgpt_tmp.y,(int)imgpt_tmp.x) = show_color;
 				}
 			}
 
