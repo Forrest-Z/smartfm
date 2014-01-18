@@ -32,6 +32,7 @@ class TrajectoryPlannerStandalone
   tf::TransformListener* tf_;
   nav_msgs::Path rrt_path_;
   StationPaths sp_;
+  pnc_msgs::poi poi_;
 public:
   TrajectoryPlannerStandalone(){
     forward_ = true;
@@ -110,7 +111,7 @@ private:
       //poi.rightsig_pts.insert(poi.rightsig_pts.begin(),station_path.rightsig_pts_.begin(),station_path.rightsig_pts_.end());
       //poi.offsig_pts.insert(poi.offsig_pts.begin(),station_path.offsig_pts_.begin(),station_path.offsig_pts_.end());// = station_path.leftsig_pts_;
       poi.int_pts.insert(poi.int_pts.begin(),station_path.ints_pts_.begin(),station_path.ints_pts_.end());// = station_path.leftsig_pts_;
-
+      poi_ = poi;
       poi_pub_.publish(poi);
 
       vector<geometry_msgs::PoseStamped> final_targets;
@@ -163,6 +164,26 @@ private:
     pp_-> path_.poses = plan;
   }
   
+  double getIntDist(geometry_msgs::Point* int_point){
+	
+    //the intersections points is strictly increasing, getting the distance is easier
+    for( unsigned i=0; i<poi_.int_pts.size(); i++ )
+    {
+        if( poi_.int_pts[i] >= pp_->path_n_ )
+        {
+            double dist;
+            *int_point = pp_->path_.poses[poi_.int_pts[i]].pose.position;
+            if( pp_->current_pos_to_point_dist_simple(poi_.int_pts[i], &dist) )
+            {
+				ROS_DEBUG("int_pt %d, path_n %d", poi_.int_pts[i], pp_->path_n_);
+				return dist;
+			}
+            else return -1;
+        }
+    }
+    return -1;
+  }
+  
   void controlLoop(const ros::TimerEvent& event){
     
     geometry_msgs::Twist cmd_vel;
@@ -175,10 +196,11 @@ private:
       tf::poseStampedTFToMsg(robot_pose, robot_pose_msg);
       pp_->vehicle_base_ = robot_pose_msg.pose;
       double dist_to_goal;
-      //tbc...
       bool path_exist = pp_->steering_control(&steer_angle, &dist_to_goal);
       move_status.dist_to_goal = dist_to_goal;
-      move_status.dist_to_ints = 123;
+      geometry_msgs::Point int_point;
+      move_status.dist_to_ints = getIntDist(&int_point);
+      move_status.int_point = int_point;
       move_status.sig_type = -1;
       if(path_exist){
 	move_status.steer_angle = steer_angle;

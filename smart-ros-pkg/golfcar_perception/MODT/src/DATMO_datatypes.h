@@ -47,8 +47,6 @@ class DATMO_labelledScan
 	public:
 	sensor_msgs::LaserScan laser_scan;
 	geometry_msgs::PoseStamped poseInOdom;
-
-	//0-nothing, 1-vehicle, 2-motorbike, 3-pedestrian, 4-under-determined;
 	std::vector<int> type_mask;
 };
 
@@ -57,6 +55,8 @@ class DATMO_abstractSummary
 	public:
 	int labelled_scan_startSerial;
 	int labelled_scan_endSerial;
+	//the numbers in between lower and upper bounds are used to label different object with the same object class;
+	//(0~999)-nothing, (1000~1999)-vehicle, (2000~2999)-motorbike, (3000~3999)-pedestrian, (4000~4999)-under-determined;
 	std::vector<std::vector<int> > type_masks;
 };
 
@@ -193,3 +193,17 @@ class object_cluster_segments
 
 	float x, y, thetha, v, omega;
 };
+
+class DATMO_RawTrainingData
+{
+	public:
+
+	std::vector <int> scan_serials;
+	//here "-1" is for background noise, and object cluster labels begin with "0";
+	std::vector <std::vector<int> > scan_ClusterLabel_vector;
+	std::vector <sensor_msgs::PointCloud> clusters_odom;
+	std::vector <sensor_msgs::PointCloud> clusters_baselink;
+};
+
+
+
