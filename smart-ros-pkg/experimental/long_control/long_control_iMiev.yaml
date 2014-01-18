@@ -5,14 +5,14 @@ fullBrakeThres: 0.05 #to make sure the car will stop at the end
 ###Throttle Settings###
 fullThrottleThres: 1000.0
 kp: 10.0    
-ki: 10.0    
-kd: 5.0 
+ki: 0.0    
+kd: 0.0 
 kp_sat: 1000.0
 ki_sat: 700.0
 kd_sat: 300.0
 ###Brake Settings###
 kp_brake: 90.0 #80
-ki_brake: 10.0 #5
+ki_brake: 0.0 #5
 kd_brake: 0.0
 kp_sat_brake: 100.0
 ki_sat_brake: 70.0

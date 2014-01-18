@@ -8,6 +8,7 @@
 #include <ros/ros.h>
 #include <iostream>
 #include <can_reader/CanMsg.h>
+#include <phidget_encoders/Encoders.h>
 #include <std_msgs/Float32.h>
 #include <nav_msgs/Odometry.h>
 #include <string.h>
@@ -45,7 +46,7 @@ bool reverse_flag = false;
 
 ros::Publisher * can_move_dist_pub_;
 ros::Publisher * can_move_delta_dist_pub_;
-
+ros::Publisher * fake_encoder_pub_;
 #define TIMER_INTERVAL 0.01
 
 class counter
@@ -111,8 +112,8 @@ public:
 
 // Just update the speed and counter here
 //counter motor_counter(0.001,"can_motor_msg");
-counter motor_counter(0.5,"can_motor_msg");
-counter backwheel_counter(0.15,"can_backwheel_speed_msg");
+counter motor_counter(1.0,"can_motor_msg");//was 0.5
+counter backwheel_counter(0.5,"can_backwheel_speed_msg");//was0.15
 
 void canMsgCallback(can_reader::CanMsg::ConstPtr can_msg_ptr)
 {
@@ -159,6 +160,7 @@ class numeric_integral
 	bool initial_;
 	double delta_;
 	double integral_;
+	double vel_;
 	ros::Time last_time_;
 	ros::Duration interval_;
 public:
@@ -167,12 +169,18 @@ public:
 		initial_ = false;
 		delta_ = 0.0;
 		integral_ = 0.0;
+		vel_ = 0;
 	}
 	void reset(void)
 	{
 		initial_ = false;
 		delta_ = 0.0;
 		integral_ = 0.0;
+		vel_ = 0;
+	}
+	double getVelocity(void)
+	{
+		return vel_;
 	}
 	void update(double derivative)
 	{
@@ -195,12 +203,13 @@ public:
 				ROS_WARN("can odom, numerical intergral timer is not updated as expected");
 			}
 		}
+		vel_ = derivative;
 	}
 
 	double getDelta(void)
 	{
-		//return delta_;
-		return interval_.toSec();
+		return delta_;
+		//return interval_.toSec();
 	}
 	double getIntegral(void)
 	{
@@ -215,6 +224,9 @@ void publishTimerCallback(const ros::TimerEvent & event)
 {
 	static int error_count = 0;
 	std_msgs::Float32 float_msg;
+	double vel = 0;
+	double delta_dist;
+	phidget_encoders::Encoders fake_encoder_msg;
 	// maximum speed is 20.0
 	if(fabs(speed) > 20.0)
 	{
@@ -230,8 +242,17 @@ void publishTimerCallback(const ros::TimerEvent & event)
 		// publish the data here ...
 		float_msg.data = ni_odom.getIntegral();
 		can_move_dist_pub_->publish(float_msg);
-		float_msg.data = ni_odom.getDelta();
+		delta_dist = ni_odom.getDelta();
+		//cout<<ni_odom.getDelta()<<" "<<speed<<endl;
+                float_msg.data = delta_dist;
 		can_move_delta_dist_pub_->publish(float_msg);
+	 	//convert it to encoder msg
+                fake_encoder_msg.dt = 0;
+		fake_encoder_msg.d_dist = delta_dist ;
+		fake_encoder_msg.d_th = 0;
+		fake_encoder_msg.v = ni_odom.getVelocity();
+		fake_encoder_msg.w = 0;
+		fake_encoder_pub_->publish(fake_encoder_msg);
 	}
 	else
 	{
@@ -256,12 +277,12 @@ int main(int argc, char ** argv)
 	ros::Subscriber can_sub = nh.subscribe("can_msg",100,&canMsgCallback);
 	ros::Publisher can_move_dist_pub = nh.advertise<std_msgs::Float32>("can_move_dist",20);
 	ros::Publisher can_move_delta_dist_pub = nh.advertise<std_msgs::Float32>("can_move_delta_dist",20);
-
+	ros::Publisher fake_encoder_pub = nh.advertise<phidget_encoders::Encoders>("encoder_odo", 20);
 	ros::Timer publish_timer = nh.createTimer(ros::Duration(TIMER_INTERVAL),publishTimerCallback);
 
 	can_move_dist_pub_ = & can_move_dist_pub;
 	can_move_delta_dist_pub_ = & can_move_delta_dist_pub;
-
+	fake_encoder_pub_ = & fake_encoder_pub;
 	ros::spin();
 	return 0;
 }
