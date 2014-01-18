@@ -1,0 +1,188 @@
+#robot_name: &ROBOT_NAME !!python/object/apply:os.getenv ['ROBOT']
+#frame_id: &FRAME_ID !!python/object/apply:string.replace ['robot_name/front_top_lidar', robot_name, *ROBOT_NAME]
+topTilted:
+#if($vehicle=="buggy")  host: 192.168.1.201
+#elseif($vehicle=="car")  host: 192.168.200.201
+#end
+  frame_id: $ROBOT/front_top_lidar
+frontBottom:
+#if($vehicle=="car")  host: 192.168.1.202
+#elseif($vehicle=="buggy")  host: 192.168.1.203
+#end
+  frame_id: $ROBOT/front_bottom_lidar
+base_link_to_front_top_lidar:
+#if($vehicle=="buggy")
+  x: 1.78
+  z: 1.82
+  pitch: 0.0
+#elseif($vehicle=="car")
+  x: 1.825
+  z: 1.66
+  pitch: 0.28
+#end
+  parent_frame_id: $ROBOT/base_link
+  child_frame_id: $ROBOT/front_top_lidar
+base_link_to_front_bottom_lidar:
+#if($vehicle=="buggy")
+  x: 1.78
+  z: 0.755
+#elseif($vehicle=="car")
+  x: 3.17
+  z: 0.76
+#end
+  parent_frame_id: $ROBOT/base_link
+  child_frame_id: $ROBOT/front_bottom_lidar
+base_link_to_camera_front_base:
+  x: 1.75
+  z: 1.32
+  pitch: 0.16
+  parent_frame_id: $ROBOT/base_link
+  child_frame_id: $ROBOT/camera_front_base
+camera_front_base_to_img:
+  roll: -1.5707963267949
+  yaw: -1.5707963267949
+  parent_frame_id: $ROBOT/camera_front_base
+  child_frame_id: $ROBOT/camera_front_img
+camera_front:
+  width: 640
+  height: 360
+  frame_rate: 20
+  device: /dev/video0
+  camera_name: camera_front
+  format_mode: 2
+  exposure: 3
+  brightness: 100
+  contrast: 100
+  sharpness: 250
+  frame_id: $ROBOT/camera_front_img
+  
+ms/microstrain_3dmgx2_node:
+  time_offset: -0.040
+  port: /dev/msimu
+  autostart: true
+  frameid: $ROBOT/imu
+  autocalibrate: true
+  angular_velocity_stdev: 0.00017
+xsens_driver:
+  frame_id: $ROBOT/imu
+  device: /dev/xsens
+encoderImu_integrator:
+  parent_frame_id: $ROBOT/odom
+  child_frame_id: $ROBOT/base_link
+encoders_node:
+  min_pub_period: 0.05
+encoders_odo_node:
+  wheel_size: 1.315825176
+  dist_btw_wheels: 0.9866
+  left_correction_factor: 1
+  frame_id: phidget_encoder_odom
+map_server:
+  frame_id: $ROBOT/map
+amcl_pc:
+  max_particles: 500
+  min_particles: 250
+  laser_likelihood_max_dist: 1.0
+  odom_alpha1: 0.5
+  odom_alpha2: 0.1
+  odom_alpha3: 1.0
+  odom_alpha4: 0.1
+  update_min_d: 0.2
+  laser_model_type: pc_likelihood_field
+  laser_max_beams: 70
+  laser_likelihood_max_dist: 0.5
+  odom_frame_id: $ROBOT/odom
+  base_frame_id: $ROBOT/base_link
+  global_frame_id: $ROBOT/map
+norm_virtual_sensor:
+  odom_frame_id: $ROBOT/odom
+  baselink_frame_id: $ROBOT/base_link
+  odom_baselink_frame_id: $ROBOT/odom_baselink
+odom_baselink:
+  odom_frame_id: $ROBOT/odom
+  baselink_frame_id: $ROBOT/odom_baselink
+amcl:
+  odom_alpha3: 0.5
+  odom_alpha4: 0.5
+  update_min_d: 0.2
+  odom_frame_id: $ROBOT/odom
+  base_frame_id: $ROBOT/base_link
+  global_frame_id: $ROBOT/map
+speed_controller_fastStop:
+  kp: 0.03    #0.02
+  ki: 0.01    #0.01
+  kd: 0.06    #0.06
+  ki2: 0.05
+  kp_brake: 0.7   #0.7
+  ki_brake: 0.5   #0.3
+  #ki_sat: 0.3
+  tau_v: 0.2
+  throttleZeroThres: 0.001
+  coeff_brakepedal: 70
+  err_threshold: 0.01
+speed_controller_v2:
+  tau_v: 0.2
+  throttleZeroThres: 0.1 #main switching surface of throttle
+  brakeZeroThres: -0.2 #main switching surface of brake
+  fullBrakeThres: 0.05 #to make sure the car will stop at the end
+###Throttle Settings###
+  fullThrottleThres: 1.0
+  kp: 0.05    
+  ki: 0.01    
+  kd: 0.005 
+  kp_sat: 1.0
+  ki_sat: 0.7
+  kd_sat: 0.3
+###Brake Settings###
+  kp_brake: -90.0 #80
+  ki_brake: -10.0 #5
+  kd_brake: -0.0
+  kp_sat_brake: -100.0
+  ki_sat_brake: -70.0
+  kd_sat_brake: -0.0
+  #full brake value
+  coeff_brakepedal: -70
+  brakeToThrottleThres: -20
+move_base_node:
+  footprint_padding: 0.01
+  controller_frequency: 20.0
+  controller_patience: 100.0
+  base_global_planner: golfcar_gp/GlobalPlan
+  base_local_planner: golfcar_purepursuit/PurePursuitBase
+  PurePursuitBase/tracking_distance: 5.0
+  map_frame_id: $ROBOT/map
+route_planner:
+  dummy_vehicle: false
+  use_dbserver: false
+  booking_url: http://137.132.22.82:15016/booking
+  vehicleID: golfcart1
+  map_frame_id: $ROBOT/map
+  odom_frame_id: $ROBOT/odom
+  baselink_frame_id: $ROBOT/base_link
+speed_advisor:
+  map_frame_id: $ROBOT/map 
+  robot_frame_id: $ROBOT/base_link
+  max_speed: 1.5
+  acc: 0.2
+  max_dec: 1.0
+  norm_dec: 0.3
+  dec_ints: 0.1
+  dec_station: 0.4
+  frequency: 20.0
+  tolerance: 0.5
+  emergency_zone: 3.0
+  slow_zone: 7.0
+  slow_speed: 1.5
+  enterstation_speed: 1.5
+  stationspeed_dist: 30.0
+  baselink_carfront_length: 2.0
+  kinematic_acceleration: false
+dynamic_virtual_bumper:
+  base_frame: $ROBOT/base_link
+Dist_Map:
+  base_frame: $ROBOT/base_link
+  global_frame: $ROBOT/map
+  local_frame: $ROBOT/local_map
+Obst_Avoid:
+  base_frame: $ROBOT/base_link
+  global_frame: $ROBOT/map
+  local_frame: $ROBOT/local_map

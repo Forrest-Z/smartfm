@@ -1,0 +1,10 @@
+#Robot's name
+ROBOT: "golfcart"
+#Vehicle's type {buggy, car}
+vehicle: "buggy"
+#Seperate lowlevel launch {1(yes), 0(no)}
+lowlevel: 1
+#IMU type {xsens, microstrain}
+imu: "microstrain"
+#localization method {normal, synthetic}
+localization: "normal"
