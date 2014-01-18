@@ -37,15 +37,16 @@ private:
 	string output_path_;
 
 	DATMO_RawTrainingData raw_training_data_;
-	std::vector<sensor_msgs::PointCloud> prev_clusters_;
-	std::vector<geometry_msgs::Point32>  prev_centroids_;
 
-	std::vector<int> prev_cluster_labels_;
+	std::vector<sensor_msgs::PointCloud> prev_clusters_, prev_clusters_copy_;
+	std::vector<geometry_msgs::Point32>  prev_centroids_, prev_centroids_copy_;
+	std::vector<int> prev_cluster_labels_, prev_cluster_labels_copy_;
+
 	std::vector<sensor_msgs::PointCloud> curr_clusters_;
 	std::vector<int> curr_cluster_labels_;
 	std::vector<geometry_msgs::Point32>  curr_centroids_;
 
-	DATMO_abstractSummary AbstractLabelling_;
+	DATMO_abstractSummary AbstractLabelling_, AbstractLabelling_copy_;
 
 	double													img_side_length_, img_resolution_;
 	cv::Mat													local_mask_;
@@ -53,6 +54,9 @@ private:
 	void initialize_local_image();
 	void spacePt2ImgP(geometry_msgs::Point32 & spacePt, Point2f & imgPt);
 	inline bool LocalPixelValid(Point2f & imgPt);
+
+	void fast_labeling_save_a_copy();
+	void fast_labeling_recover_from_copy();
 };
 
 DATMO_labellingData::DATMO_labellingData():private_nh_("~")
@@ -279,7 +283,7 @@ void DATMO_labellingData::label_data_batch(bool perform_fast_labeling)
 			if(cluster_label_tmp == -1) class_label_tmp=0;
 			else
 			{
-				assert(cluster_label_tmp>=0 && cluster_label_tmp  < curr_cluster_labels_.size());
+				assert(cluster_label_tmp>=0 && cluster_label_tmp  < (int)curr_cluster_labels_.size());
 				{
 					class_label_tmp = curr_cluster_labels_[cluster_label_tmp];
 					//cout<<cluster_label_tmp<<","<<class_label_tmp<<"\t";
@@ -370,6 +374,21 @@ void DATMO_labellingData::fast_label(int batch_serial, int skipTo_to_batch)
 	}
 }
 
+void DATMO_labellingData::fast_labeling_save_a_copy()
+{
+	prev_clusters_copy_ = prev_clusters_;
+	prev_centroids_copy_ = prev_centroids_;
+	prev_cluster_labels_copy_ = prev_cluster_labels_;
+	AbstractLabelling_copy_ = AbstractLabelling_;
+}
+void DATMO_labellingData::fast_labeling_recover_from_copy()
+{
+	prev_clusters_ = prev_clusters_copy_;
+	prev_centroids_ = prev_centroids_copy_;
+	prev_cluster_labels_ = prev_cluster_labels_copy_;
+	AbstractLabelling_ = AbstractLabelling_copy_;
+}
+
 void DATMO_labellingData::update_labelling_history()
 {
 	int current_head_serial = raw_training_data_.scan_serials.front();
@@ -419,17 +438,34 @@ void DATMO_labellingData::main_loop()
         	printf("labelling of this batch is accepted, fuse it with the history.\n");
         	update_labelling_history();
 
-
         	int skipTo_to_batch = 0;
     		printf("****************skip to certain batch? Please enter the number**************\n");
     		scanf("%d", &skipTo_to_batch);
 
     		if(skipTo_to_batch > batch_serial+1)
 			{
-    			printf("jump to batch %d, will do fast labelling for scans in between", skipTo_to_batch);
+    			printf("jump to batch %d, will do fast labelling for scans in between\n", skipTo_to_batch);
+    			fast_labeling_save_a_copy();
     			fast_label(batch_serial, skipTo_to_batch);
+		        int use_the_fast_result = 0;
 
-				batch_serial=skipTo_to_batch;
+		        printf("use the fast result? 0 to redo it, Press 1 to accept \n");
+		        scanf("%d", &use_the_fast_result);
+
+		        if(use_the_fast_result == 0)
+		        {
+		        	printf("cancel the fast result\n");
+		        	fast_labeling_recover_from_copy();
+		        }
+		        else if(use_the_fast_result == 1)
+		        {
+		        	printf("use the fast result\n");
+		        	batch_serial=skipTo_to_batch;
+		        }
+		        else
+		        {
+		        	printf("Only 0, 1 is valid.\n");
+		        }
 			}
     		else
 			{
