@@ -25,7 +25,7 @@ public:
 private:
     void publishTransform(const ros::TimerEvent& event);
     void pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr ped_batch);
-    bool getObjectPose(string& target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
+    bool getObjectPose(const string& target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
 	void PublishLocalFrames();
 	void loadFilter();
 	bool filtered(double,double);
@@ -214,36 +214,11 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
     //finally publish all the transformed points
 	//uncomment the following to record the path 
 	
-	/*	
-	if(plf_vector.ped_local.size()>0)
-	{
-		cout<<"rob pose "<<plf_vector.ped_local[0].rob_pose.x<<" "<<plf_vector.ped_local[0].rob_pose.y<<endl;
-		if(path_record.size()==0)
-		{
-			double now_x,now_y;
-			now_x=plf_vector.ped_local[0].rob_pose.x;
-			now_y=plf_vector.ped_local[0].rob_pose.y;
-			path_record.push_back(make_pair(now_x,now_y));
-		}
-		else 
-		{
-			double last_x,last_y,now_x,now_y;
-			last_x=path_record[path_record.size()-1].first;
-			last_y=path_record[path_record.size()-1].second;
-			now_x=plf_vector.ped_local[0].rob_pose.x;
-			now_y=plf_vector.ped_local[0].rob_pose.y;
-			double dx=fabs(last_x-now_x);
-			double dy=fabs(last_y-now_y);
-			if(sqrt(dx*dx+dy*dy)>(1.0/ModelParams::path_rln)) //find the next record
-			{
-				path_record.push_back(make_pair(now_x,now_y));	
-			}
-		}
-	}
-	*/	
+		
+		
     local_pub_.publish(plf_vector);
 }
-bool local_frame::getObjectPose(string& target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const
+bool local_frame::getObjectPose(const string& target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const
 {
     out_pose.setIdentity();
 
@@ -267,7 +242,40 @@ bool local_frame::getObjectPose(string& target_frame, tf::Stamped<tf::Pose>& in_
 
 void local_frame::publishTransform(const ros::TimerEvent& event)
 {
-    for(size_t i=0; i<ped_transforms_.size(); i++)
+
+	/*
+        tf::Stamped<tf::Pose> in_pose, out_pose;
+		in_pose.setIdentity();
+		in_pose.frame_id_ = "/golfcart/base_link";
+		if(!getObjectPose("/golfcart/map", in_pose, out_pose)) {
+			cerr<<"transform error within control loop"<<endl;
+		} else {
+			if(path_record.size()==0)
+			{
+				double now_x,now_y;
+				now_x=out_pose.getOrigin().getX();
+				now_y=out_pose.getOrigin().getY();
+				path_record.push_back(make_pair(now_x,now_y));
+			}
+			else 
+			{
+				double last_x,last_y,now_x,now_y;
+				last_x=path_record[path_record.size()-1].first;
+				last_y=path_record[path_record.size()-1].second;
+				now_x=out_pose.getOrigin().getX();
+				now_y=out_pose.getOrigin().getY();
+				double dx=fabs(last_x-now_x);
+				double dy=fabs(last_y-now_y);
+				if(sqrt(dx*dx+dy*dy)>(1.0/ModelParams::path_rln)) //find the next record
+				{
+					path_record.push_back(make_pair(now_x,now_y));	
+				}
+			}
+
+		}
+		*/
+		
+	for(size_t i=0; i<ped_transforms_.size(); i++)
     {
         stringstream frame_id;
         frame_id<<"ped_"<<ped_transforms_[i].label;

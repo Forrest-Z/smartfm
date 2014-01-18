@@ -352,7 +352,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 
         tf::Stamped<tf::Pose> in_pose, out_pose;
 		in_pose.setIdentity();
-		in_pose.frame_id_ = "/golfcart/base_link";
+		in_pose.frame_id_ = "/golfcart/front_bottom_lidar";
 		if(!getObjectPose("/golfcart/map", in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 		} else {

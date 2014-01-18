@@ -7,7 +7,6 @@
             <param name="frequency" value="3.0"/>
 	    <param name="stationary" value="false"/>
 	    <remap from="robot_0/amcl_pose" to="amcl_pose"/>
-	    <remap from="robot_0/cmd_vel" to="cmd_vel"/>
             <remap from="odom" to="odom"/>
 	 </node>
 	 <node name="ped_momdp_local_transform" pkg="ped_momdp_sarsop" type="local_frame"   ns="/golfcart">
@@ -15,5 +14,7 @@
         <param name="threshold" value="0.0"/>
 	</node>
 
-	 <node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher"   ns="/golfcart"/>
+	 <node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher"   ns="/golfcart">
+	    <remap from="cmd_vel" to="cmd_vel"/>
+	 </node>
 </launch>

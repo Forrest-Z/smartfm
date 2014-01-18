@@ -4,7 +4,7 @@
 
 namespace ModelParams {
 	const double rln=5;
-	const double ped_rln=20;
+	const double ped_rln=5;
 	const double path_rln=10;
 	const double map_rln=10;
 	const double pi=3.1415926;
