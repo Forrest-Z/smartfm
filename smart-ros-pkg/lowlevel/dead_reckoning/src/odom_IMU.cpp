@@ -65,7 +65,7 @@ OdoIMU::OdoIMU()
   diag_task_fs_(diag_param_fs_)
 {
     enc_sub_ = nh_.subscribe("encoder_odo", 100, &OdoIMU::encodersCallBack, this);
-    imu_sub_ = nh_.subscribe("ms/imu/data", 100, &OdoIMU::imuCallBack, this);
+    imu_sub_ = nh_.subscribe("imu/data", 100, &OdoIMU::imuCallBack, this);
     odo_imu_pub_ = nh_.advertise<nav_msgs::Odometry>("odom", 100);
 
     ros::NodeHandle n("~");
