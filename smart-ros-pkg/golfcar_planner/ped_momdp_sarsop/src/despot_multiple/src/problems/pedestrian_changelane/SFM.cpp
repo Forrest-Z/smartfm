@@ -373,6 +373,89 @@ void SFM::UpdateCarModel()
 				}*/
 			}
 }
+double SFM::ModelTransProb(PedestrianState state,PedestrianState state_new)
+{
+	double window_angle=w_angle;
+	double total_prob=1.0;
+	for(int i=0;i<state.num;i++)
+	{
+		int x,y,g,ry;
+		x=state.PedPoses[i].first.X;
+		y=state.PedPoses[i].first.Y;
+
+		ry=state.RobPos.Y;
+		g=state.PedPoses[i].second;	
+
+		if(x==local_goals[g][0]&&y==local_goals[g][1]) continue;   //reach the goal
+
+		MyVector vec1=goal_model[x][y][g];
+
+		MyVector vec2=car_model[x][y][ry][g];
+		MyVector vec;
+		if(ModelParams::SocialForceModel)
+			vec=vec1+vec2;	
+		else
+			vec=vec1;//+vec2;
+		
+
+
+		double ped_angle=vec.GetAngle();
+
+		if(ped_angle<0) ped_angle+=2*ModelParams::pi;   //[0,2*ModelParams::pi]
+		double angle=window_angle-ped_angle;  //[-2*pi,2*pi]
+		if(angle<-ModelParams::pi)     angle=angle+2*ModelParams::pi;
+		else if(angle>ModelParams::pi)  angle=-(2*ModelParams::pi-angle);   //[-pi,pi]					
+		
+		if(angle<0)   angle+=2*ModelParams::pi;  //[0,2*pi]
+
+		double sum=0;
+		int next_i,next_j,curr_i=state.PedPoses[i].first.X,curr_j=state.PedPoses[i].first.Y;
+		double total_weight=0;
+		double weight=1.0;
+		for(int p=0;p<9;p++)
+		{
+			next_i=curr_i+next_grid[p][0];
+			next_j=curr_j+next_grid[p][1];
+			weight=1.0;
+			int next_w,next_h;
+			sfm_window->LocalToGlobal(next_i,next_j,next_w,next_h); 
+			if(next_i>=0&&next_i<ModelParams::XSIZE&&next_j>=0&&next_j<ModelParams::YSIZE&&sfm_map->Free(next_w,next_h)) {
+				//pedestrian crashing onto the car, not allowed
+				if(next_i==sfm_window->rob_map[ry].first&&next_j==sfm_window->rob_map[ry].second) continue;
+
+				weight*=GetAngularWeight(p,angle,vec.GetLength());	
+				weight*=GetLaneWeight(next_i);
+				total_weight+=weight;
+
+			}
+		}
+
+		double this_prob=0.001;
+		for(int p=0;p<9;p++)
+		{
+			next_i=curr_i+next_grid[p][0];
+			next_j=curr_j+next_grid[p][1];
+			weight=1.0;
+			int next_w,next_h;
+			sfm_window->LocalToGlobal(next_i,next_j,next_w,next_h); 
+			if(next_i>=0&&next_i<ModelParams::XSIZE&&next_j>=0&&next_j<ModelParams::YSIZE&&sfm_map->Free(next_w,next_h)) {
+				//pedestrian crashing onto the car, not allowed
+				if(next_i==sfm_window->rob_map[ry].first&&next_j==sfm_window->rob_map[ry].second) continue;
+
+				weight*=GetAngularWeight(p,angle,vec.GetLength());	
+				weight*=GetLaneWeight(next_i);
+			}
+			if(next_i==state_new.PedPoses[i].first.X&&next_j==state_new.PedPoses[i].first.Y)
+			{
+				this_prob=(weight/total_weight);
+				break;
+			}
+
+		}
+		total_prob*=this_prob;
+	}
+	return total_prob;
+}
 void SFM::ModelTransFast(PedestrianState&state,UtilUniform &unif)
 {
 	double window_angle=w_angle;

@@ -3,6 +3,8 @@
 
 #include "belief_update/belief_update.h"
 
+PedestrianState ObsToState(uint64_t obs);
+
 //#include "problems/pedestrian/pedestrian.h"
 
 /* This class implements a strategy for sequential importance resampling of
@@ -41,11 +43,31 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
 
   vector<Particle<T>*> ans;
   double reward;
-	
+
   cout<<"Belief before update "<<endl;
   this->model_.Statistics(particles);
 
+  PedestrianState new_state = ObsToState(obs);
+  for (auto p: particles) {
+    PedestrianState& old_state = p->state;
+    // copy goal and id
+    assert(new_state.num == old_state.num);
+    for (int i=0; i<old_state.num; i++) {
+        new_state.PedPoses[i].second = old_state.PedPoses[i].second;
+        new_state.PedPoses[i].third = old_state.PedPoses[i].third;
+    }
+    double obs_prob = this->model_.TransProbJoint(old_state, new_state, act) + 1e-10;
+	assert(obs_prob > 0);
+    if (obs_prob > 0) {
+        Particle<T>* new_particle = this->model_.Copy(p);
+        new_particle->wt = (p->wt + 1e-4) * obs_prob;
+        new_particle->state = new_state;
+        ans.push_back(new_particle);
+    }
+  }
+
   // Step forward all particles
+  /*
   int lcount=0;
   while(ans.size()<100&&lcount<100){
 		  for (auto p: particles) {
@@ -66,6 +88,7 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
 		  }
 		  lcount++;
   }
+  */
 
 
 //  if (ans.empty()) {
@@ -136,6 +159,7 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
     this->Normalize(ans);
   }
 	*/
+  /*
 	int cur = 0;
 	auto last = ans.begin();
 	for(auto particle : ans) {
@@ -147,9 +171,11 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
 		}
 	}
 	ans = decltype(ans)(ans.begin(), last);
+	*/
 
   // Resample if we have < N particles or # effective particles drops below 
   // the threshold
+  /*
   double num_eff_particles = 0;
   for (auto it: ans)
     num_eff_particles += it->wt * it->wt;
@@ -160,6 +186,7 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
       this->model_.Free(it);
     ans = resampled_ans;
   } 
+  */
 
   this->model_.ModifyObsStates(ans,obs_state,this->belief_update_seed_);
   cout<<"After Modify "<<endl;
