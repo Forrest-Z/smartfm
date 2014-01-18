@@ -8,20 +8,17 @@
         <remap from="encoder_odom" to="can_imu_odom"/>
     </node>
     <node pkg="can_reader" name="can_speed_integral" type="can_speed_integral" output="screen"/>
-    <node pkg="can_reader" name="can_reader" type="can_reader" />
-    <!--node pkg="lse_xsens_mti" name="mti_node" type="mti_node">
-	<param name="port" value="/dev/ttyUSB0"/>
-    </node>
-    <include file="$(find phidgets_imu)/launch/imu.launch"/-->
-    <node pkg="xsens_driver" type="mtnode.py" name="xsens_driver" output="screen" >
-	<param name="frame_id" value="/imu" />
-	<param name="device" value="/dev/ttyUSB0"/>
-	<remap from="imu/data" to="imu/data_raw"/>
-    </node>
-    <!--node pkg="ethzasl_xsens_driver" type="imu_filter_node" name="imu_filter">
-      <param name="use_mag" value="false"/>
-      <param name="zeta" value="0.1"/>
+    <node pkg="can_reader" name="can_reader" type="can_reader"/>
+
+    <!--node pkg="microstrain_3dmgx2_imu" type="imu_node" name="microstrain_3dmgx2_node" output="screen">
+        <param name="time_offset" value="-0.040" />
+        <param name="port"  type="string" value="/dev/ttyACM0" />
+        <param name="autostart" type="bool" value="true" />
+        <param name="frameid"  type="string" value="imu" />
+        <param name="autocalibrate" type="bool" value="true" />
+        <param name="angular_velocity_stdev" type="double" value="0.00017" />
     </node-->
+
     <node pkg="nodelet" type="nodelet" name="imu_manager" 
     args="manager" output="screen" />
     <node pkg="nodelet" type="nodelet" name="ImuFilterNodelet" 
@@ -30,5 +27,19 @@
       <param name="use_mag" value="false"/>
       <param name="zeta" value="0.1"/>
     </node>
+
+    <node pkg="xsens_driver" type="mtnode.py" name="xsens_driver" output="screen" >
+	<param name="frame_id" value="/imu" />
+	<param name="device" value="/dev/xsens"/>
+	<remap from="imu/data" to="imu/data_raw"/>
+    </node>
+    <!--node pkg="lse_xsens_mti" name="mti_node" type="mti_node">
+	<param name="port" value="/dev/ttyUSB0"/>
+    </node>
+    <include file="$(find phidgets_imu)/launch/imu.launch"/-->
+    <!--node pkg="ethzasl_xsens_driver" type="imu_filter_node" name="imu_filter">
+      <param name="use_mag" value="false"/>
+      <param name="zeta" value="0.1"/>
+    </node-->
 </launch>
 
