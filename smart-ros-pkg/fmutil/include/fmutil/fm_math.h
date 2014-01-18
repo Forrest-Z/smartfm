@@ -28,6 +28,7 @@ T bound(T m, T x, T M)
 template<typename T>
 T symbound(T x, T m)
 {
+  if(m <0) m = -m;
     return x<-m ? -m : x>m ? m : x;
 }
 
@@ -68,6 +69,7 @@ T bound(T m, T *x, T M)
 template<typename T>
 T symbound(T *x, T m)
 {
+  if(m<0) m=-m;
     *x = *x<-m ? -m : *x>m ? m : *x;
     return *x;
 }
