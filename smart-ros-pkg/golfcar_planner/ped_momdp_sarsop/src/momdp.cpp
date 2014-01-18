@@ -8,6 +8,7 @@ Model<PedestrianState>* RealSimulator;
 Solver<PedestrianState>* solver;
 ILowerBound<PedestrianState>* lb;
 BeliefUpdate<PedestrianState>* bu;
+
 RandomStreams streams(Globals::config.n_particles, Globals::config.search_depth, 
                         Globals::config.root_seed);
 

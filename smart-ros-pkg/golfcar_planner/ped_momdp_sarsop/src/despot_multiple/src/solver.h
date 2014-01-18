@@ -127,7 +127,7 @@ int Solver<T>::Search(double max_time, int& n_trials) {
     n_trials++;
   }
 
-	//cerr<<"number of trials "<<n_trials<<endl;
+	cerr<<"number of trials "<<n_trials<<endl;
 	lb_.CollectSearchInformation(this);
 
 	cout<<"start printing tree "<<endl;
