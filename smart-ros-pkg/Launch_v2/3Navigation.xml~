@@ -17,13 +17,16 @@
 	  <rosparam file="$(find Launch_v2)/move_base/global_costmap_params.yaml" command="load" />
       </node>
 	  
-	  
-      <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/>
+	  <!--	 	  
+      <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper">
+		<remap from="cmd_vel" to="cmd_vel_pomdp"/>
+	</node>
       <node name="soundplay_node" pkg="sound_play" type="soundplay_node.py"/>
       <node name="sound_speaker" pkg="sound_speaker" type="sound_speaker">
 	<param name="sound_path" value="$(find sound_speaker)/sounds/"/>
       </node>
 	  
+	 --> 
 
       <!--5SpeedAdvisor-->
 

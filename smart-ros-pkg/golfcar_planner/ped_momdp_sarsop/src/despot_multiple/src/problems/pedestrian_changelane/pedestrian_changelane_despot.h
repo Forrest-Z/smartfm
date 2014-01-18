@@ -605,7 +605,15 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		int rangeX=ModelParams::map_rln/ModelParams::rln;
 		rangeX/=2;
 		int rangeY=ModelParams::map_rln/ModelParams::rln;
-		if(abs(rx-pedX)<=rangeX&&ry-rx>=0&&ry-rx<=rangeY) 
+		if(abs(rx-pedX)<=rangeX&&pedY-ry>=-rangeY&&pedY-ry<=rangeY) 
+		{
+			reward=CRASH_PENALTY;
+			state.Vel=-1;
+			return;
+		}
+		rangeX*=2;
+		rangeY*=2;
+		if(action==1&&abs(rx-pedX)<=rangeX&&pedY-ry>=-rangeY&&pedY-ry<=rangeY) 
 		{
 			reward=CRASH_PENALTY;
 			state.Vel=-1;
@@ -650,6 +658,8 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 
 	//RobStep(state, action, unif);
 	p = unif.next();
+	
+	int real_vel=rob_vel/2;
 	if (rob_vel == 1) real_vel = 1;
 	//int real_vel;
 	/*
@@ -661,7 +671,6 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	*/
 	//robY += robotNoisyMove[rob_vel][lookup(robotMoveProbs[rob_vel], p)];
 	
-	int real_vel=rob_vel/2;
 	robY += robotNoisyMove[real_vel][lookup(robotMoveProbs[real_vel], p)];
 	if(robY >= rob_map.size()-1) robY = rob_map.size() - 1;
 

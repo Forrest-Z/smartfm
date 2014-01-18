@@ -54,7 +54,7 @@ local_frame::local_frame()
     n.param("threshold", threshold_, 3.0);
     n.param("offsetx", offsetx_, 0.0);
     n.param("offsety", offsety_, 3.0);
-    timer_ = nh.createTimer(ros::Duration(0.01), &local_frame::publishTransform, this);
+    //timer_ = nh.createTimer(ros::Duration(0.01), &local_frame::publishTransform, this);
     ros::spin();
 }
 local_frame::~local_frame()
@@ -243,10 +243,10 @@ bool local_frame::getObjectPose(const string& target_frame, tf::Stamped<tf::Pose
 void local_frame::publishTransform(const ros::TimerEvent& event)
 {
 
-	/*
+	
         tf::Stamped<tf::Pose> in_pose, out_pose;
 		in_pose.setIdentity();
-		in_pose.frame_id_ = "/golfcart/base_link";
+		in_pose.frame_id_ = "/golfcart/front_bottom_lidar";
 		if(!getObjectPose("/golfcart/map", in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 		} else {
@@ -273,14 +273,16 @@ void local_frame::publishTransform(const ros::TimerEvent& event)
 			}
 
 		}
-		*/
 		
+		
+	/*
 	for(size_t i=0; i<ped_transforms_.size(); i++)
     {
         stringstream frame_id;
         frame_id<<"ped_"<<ped_transforms_[i].label;
         br_.sendTransform(tf::StampedTransform(ped_transforms_[i].transform, ros::Time::now(), global_frame_, frame_id.str()));
     }
+	*/
 }
 
 /*

@@ -2,13 +2,18 @@
 #include <geometry_msgs/Twist.h>
 ros::Subscriber vel_sub;
 double vel,vel_average;
-const double alpha = 0.7;
+const double alpha0 = 0.5;
+const double alpha1 = 0.7;
 ros::Publisher cmd_pub;
 void velCallBack(geometry_msgs::TwistConstPtr pomdp_vel)
 {
 	vel=pomdp_vel->linear.x;
-	vel_average=vel_average*(1-alpha)+vel*alpha;
+	if(vel > vel_average)
+		vel_average=vel_average*(1-alpha0)+vel*alpha0;
+	else
+		vel_average=vel_average*(1-alpha1)+vel*alpha1;
 }
+
 void publishSpeed(const ros::TimerEvent& event)
 {
 	geometry_msgs::Twist cmd;
