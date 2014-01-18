@@ -61,7 +61,7 @@ struct Config {
     discount(0.95),
     root_seed(42),
     time_per_move(1),
-    n_particles(5000),
+    n_particles(500),
     pruning_constant(0),
     eta(0.95),
     sim_len(90),
