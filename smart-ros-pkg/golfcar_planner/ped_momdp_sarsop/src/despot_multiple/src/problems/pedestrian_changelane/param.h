@@ -4,12 +4,12 @@
 
 namespace ModelParams {
 	const double rln=5;
-	const double ped_rln=5;
+	const double ped_rln=20;
 	const double path_rln=10;
 	const double map_rln=10;
 	const double pi=3.1415926;
 	const int UCT_CONST=50000;
-	const int XSIZE=20;
+	const int XSIZE=30;
 	const int YSIZE=30;
 	const int RMMax=36;   //maximum length of the rob_map structure
 	const int N_PED_IN=5;
