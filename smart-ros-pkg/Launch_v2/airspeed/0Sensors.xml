@@ -50,6 +50,7 @@
     <node #if($lowlevel)machine="lowlevel"#end name="encoders_node" pkg="phidget_encoders" type="encoders_node.py" output="screen"/>
     <node #if($lowlevel)machine="lowlevel"#end name="encoders_odo_node" pkg="phidget_encoders" type="encoders_odo_node.py" output="screen">
 	<remap from="odom" to="phidget_encoder_odo"/>
-    </node>     
+    </node>
+    <!--TBC: add pronto support for car-->
   </group>
 </launch>

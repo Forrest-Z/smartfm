@@ -12,5 +12,5 @@ echo $generated_xml_file
 echo $launch_flags_file
 rosrun Launch_v2 launch_helper.py $package_path $template_file $generated_xml_file $launch_flags_file
 rosrun Launch_v2 launch_helper.py $package_path $parameters_file $generated_parameters_file  $launch_flags_file
-#rosparam load $package_path/_gen_parameters.yaml
-#roslaunch $generated_xml_file
+rosparam load $generated_parameters_file
+roslaunch $generated_xml_file
