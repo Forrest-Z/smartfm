@@ -1,5 +1,5 @@
-#ifndef DATMO_LABELLING_DATA
-#define DATMO_LABELLING_DATA
+#ifndef ST_LABEL_RAW_TRAINING_DATA
+#define ST_LABEL_RAW_TRAINING_DATA
 
 #include <ros/ros.h>
 #include <opencv/cv.h>
@@ -30,18 +30,29 @@ private:
 
 	ros::NodeHandle private_nh_;
 	int starting_serial_, end_serial_, interval_;
+	int scan_range_size_;
 	cv::Size visualization_image_size_;
 	string param_file_path_;
 	string input_path_;
 	string output_path_;
 
-	std::vector<int> cluster_label_history_;
-
 	DATMO_RawTrainingData raw_training_data_;
 	std::vector<sensor_msgs::PointCloud> prev_clusters_;
+	std::vector<geometry_msgs::Point32>  prev_centroids_;
+
 	std::vector<int> prev_cluster_labels_;
+	std::vector<sensor_msgs::PointCloud> curr_clusters_;
+	std::vector<int> curr_cluster_labels_;
+	std::vector<geometry_msgs::Point32>  curr_centroids_;
 
 	DATMO_abstractSummary AbstractLabelling_;
+
+	double													img_side_length_, img_resolution_;
+	cv::Mat													local_mask_;
+	cv::Point												LIDAR_pixel_coord_;
+	void initialize_local_image();
+	void spacePt2ImgP(geometry_msgs::Point32 & spacePt, Point2f & imgPt);
+	inline bool LocalPixelValid(Point2f & imgPt);
 };
 
 DATMO_labellingData::DATMO_labellingData():private_nh_("~")
@@ -55,8 +66,15 @@ DATMO_labellingData::DATMO_labellingData():private_nh_("~")
 	//									   only keep those labels with "interval_-1" scans both before and after, to guarantee reliable result;
 	AbstractLabelling_.labelled_scan_startSerial = starting_serial_;
 	AbstractLabelling_.labelled_scan_endSerial = end_serial_ - interval_+1;
+	AbstractLabelling_.process_scan_startSerial = starting_serial_-interval_+1;
+	AbstractLabelling_.process_scan_endSerial = end_serial_;
 
-	save_abstract_result();
+	int total_scans_involved = end_serial_ - starting_serial_+interval_;
+
+	std::vector<int> default_mask(scan_range_size_, 0);
+	AbstractLabelling_.masks_under_processing.resize(total_scans_involved, default_mask);
+
+	initialize_local_image();
 }
 
 void DATMO_labellingData::load_param_file()
@@ -66,12 +84,15 @@ void DATMO_labellingData::load_param_file()
 
 	starting_serial_ = (int)fs_read["starting_serial"];
 	end_serial_ = (int)fs_read["end_serial"];
-	interval_ = (int)fs_read["interval_"];
+	interval_ = (int)fs_read["interval"];
+	scan_range_size_ = (int)fs_read["scan_range_size"];
 
 	visualization_image_size_.height = (int)fs_read["image_height"];
 	visualization_image_size_.width = (int)fs_read["image_width"];
 	fs_read["input_path"]>> input_path_;
 	fs_read["output_path"]>> output_path_;
+	img_side_length_ = (double)fs_read["img_side_length"];
+	img_resolution_ = (double)fs_read["img_resolution"];
 
 	AbstractLabelling_.type_masks.clear();
 	fs_read.release();
@@ -85,8 +106,10 @@ void DATMO_labellingData::read_data_batch(int batch_serial)
 	raw_training_data_.clusters_baselink.clear();
 
 	stringstream  data_batch_string;
-	data_batch_string<<input_path_.c_str()<<"/training_data"<< batch_serial <<".yml";
+	data_batch_string<<input_path_.c_str()<<"/data/training_data"<< batch_serial <<".yml";
+
 	cout<<data_batch_string.str().c_str()<<endl;
+
 	FileStorage fs_read(data_batch_string.str().c_str(), FileStorage::READ);
 	if(!fs_read.isOpened()){ROS_ERROR("cannot find data batch file"); return;}
 
@@ -101,9 +124,11 @@ void DATMO_labellingData::read_data_batch(int batch_serial)
 		(*scan_ClusterLabel_vector_it)>>raw_training_data_.scan_ClusterLabel_vector[idx];
 	}
 
+	cout<<"odom_points"<<endl;
+
 	FileNode odom_points = fs_read["odom_points"];
 	FileNodeIterator odom_points_it = odom_points.begin(), odom_points_it_end = odom_points.end();
-	for(int cluster_idx=0; odom_points_it != odom_points_it_end; odom_points_it_end++, cluster_idx++)
+	for(int cluster_idx=0; odom_points_it != odom_points_it_end; odom_points_it++, cluster_idx++)
 	{
 		sensor_msgs::PointCloud cluster_tmp;
 		FileNode cluster_odom_points = (*odom_points_it);
@@ -118,9 +143,11 @@ void DATMO_labellingData::read_data_batch(int batch_serial)
 		raw_training_data_.clusters_odom.push_back(cluster_tmp);
 	}
 
+	cout<<"baselink_points"<<endl;
+
 	FileNode baselink_points = fs_read["baselink_points"];
 	FileNodeIterator baselink_points_it = baselink_points.begin(), baselink_points_it_end = baselink_points.end();
-	for(int cluster_idx=0; baselink_points_it != baselink_points_it_end; baselink_points_it_end++, cluster_idx++)
+	for(int cluster_idx=0; baselink_points_it != baselink_points_it_end; baselink_points_it++, cluster_idx++)
 	{
 		sensor_msgs::PointCloud cluster_tmp;
 		FileNode cluster_baselink_points = (*baselink_points_it);
@@ -135,161 +162,177 @@ void DATMO_labellingData::read_data_batch(int batch_serial)
 		raw_training_data_.clusters_baselink.push_back(cluster_tmp);
 	}
 
+	//cout<<"finish loading data"<<endl;
 	fs_read.release();
 }
 
 void DATMO_labellingData::label_data_batch(bool perform_fast_labeling)
 {
-
-	batch_T_.clear();
-	for(size_t i=0; i<training_data_vector_.size(); i++)
-	{
-		DATMO_labelledScan single_scan_tmp;
-		single_scan_tmp.laser_scan = training_data_vector_[i].laser_scan;
-		single_scan_tmp.poseInOdom = training_data_vector_[i].poseInOdom;
-		//initialize the mask label to be all 0;
-		if(!miss_clustering)single_scan_tmp.type_mask.resize(single_scan_tmp.laser_scan.ranges.size(), 0);
-		else single_scan_tmp.type_mask.resize(single_scan_tmp.laser_scan.ranges.size(), 4);
-		batch_T_.push_back(single_scan_tmp);
-	}
-
-	//1st: draw the contour on the visualization image, label the contour;
-	//class types:
-	//		0-background;
-	//		1-vehicle;
-	//		2-motorbike;
-	//		3-pedestrian (not labelled yet);
-
-	std::vector<int> contour_labels(contour_vector_.size());
-
 	stringstream  image_visual_string;
-	image_visual_string<<input_path_.c_str()<<"/image_"<< batch_T_.back().laser_scan.header.seq<<".jpg";
+	image_visual_string<<input_path_.c_str()<<"/vis_image/image_"<< raw_training_data_.scan_serials.back()<<".jpg";
 	Mat contour_visual_img = imread(image_visual_string.str().c_str(), CV_LOAD_IMAGE_COLOR);
 	imshow("contour_visual_img",contour_visual_img);
-	waitKey(100);
+	waitKey(10);
 
-	if(!lazy_labelling && !miss_clustering)
+	curr_clusters_ = raw_training_data_.clusters_odom;
+	curr_cluster_labels_.clear();
+	curr_cluster_labels_.resize(raw_training_data_.clusters_baselink.size(), 0);
+	curr_centroids_.clear();
+
+	for(size_t i=0; i<curr_clusters_.size(); i++)
 	{
-		for(size_t i=0; i<contour_vector_.size(); i++)
+		geometry_msgs::Point32 centroid_point;
+		centroid_point.x = 0.0;
+		centroid_point.y = 0.0;
+		centroid_point.z = 0.0;
+
+		for(size_t j=0; j<curr_clusters_[i].points.size(); j++)
 		{
-			//contour_visual_img = Scalar(0);
-			drawContours( contour_visual_img, contour_vector_, i, Scalar(255, 255, 255), -1, 8, vector<Vec4i>(), 0, Point() );
+			centroid_point.x = centroid_point.x + curr_clusters_[i].points[j].x;
+			centroid_point.y = centroid_point.y + curr_clusters_[i].points[j].y;
+		}
+		centroid_point.x = centroid_point.x/(float)curr_clusters_[i].points.size();
+		centroid_point.y = centroid_point.y/(float)curr_clusters_[i].points.size();
+		curr_centroids_.push_back(centroid_point);
+	}
+
+	std::vector<int> default_classtype (scan_range_size_, 0);
+	raw_training_data_.scan_ClassType_vector.clear();
+	raw_training_data_.scan_ClassType_vector.resize(raw_training_data_.scan_ClusterLabel_vector.size(), default_classtype);
+
+	if(!perform_fast_labeling)
+	{
+		for(size_t i=0; i<raw_training_data_.clusters_baselink.size(); i++)
+		{
+			Vec3b cluster_color;
+			cluster_color.val[0] = 0;
+			cluster_color.val[1] = 255;
+			cluster_color.val[2] = 0;
+
+			for(size_t j=0; j<raw_training_data_.clusters_baselink[i].points.size(); j++)
+			{
+				Point2f imgpt_tmp;
+				spacePt2ImgP(raw_training_data_.clusters_baselink[i].points[j], imgpt_tmp);
+
+				if(LocalPixelValid(imgpt_tmp))
+				{
+					contour_visual_img.at<Vec3b>((int)imgpt_tmp.y,(int)imgpt_tmp.x) = cluster_color;
+				}
+			}
+
 			imshow("contour_visual_img",contour_visual_img);
 			waitKey(100);
 
 			int class_type = 0;
 			printf("please key in the object type of this contour\n");
 			scanf("%d", &class_type);
-			contour_labels[i] = class_type;
+			curr_cluster_labels_[i] = class_type;
 		}
 	}
-	else if(lazy_labelling)
+	else
 	{
-		for(size_t i=0; i<contour_vector_.size(); i++)
+		cout<<"fast labelling"<<endl;
+		cout<<"current cluster size, prev_clusters size: "<<curr_centroids_.size()<<","<<prev_centroids_.size()<<endl;
+
+		//try to inherit current cluster labels from previous cluster, who has overlap between each other;
+		double attach_threshold = 1.0;
+
+		for(size_t i=0; i<curr_centroids_.size(); i++)
 		{
-			contour_labels[i] = 0;
-		}
-	}
-	else if(!lazy_labelling && miss_clustering)
-	{
-		//special consideration: due to clustering problem, some vehicle lidars are not properly clustered together, leading to no contour to label;
-		//in this case, label the whole batch of scans as background are inappropriate, and hence label it as under-determined, while will not be used as training data;
-		//		4-under-determined;
-		ROS_WARN("miss clustering is true, will label the batch as 4");
-		for(size_t i=0; i<contour_vector_.size(); i++)
-		{
-			contour_labels[i] = 4;
-		}
-	}
+			geometry_msgs::Point32 &probe_point = curr_centroids_[i];
+			bool attach_prev_cluster = false;
+			int attach_cluster = 0;
 
-
-	//2nd: label the LIDAR scans according to its associated contours;
-	//Here need to PAY SPECIAL ATTENTION to those missing range data:
-	//assuming the LIDAR points in one cluster are continuous, simply fill the missing readings with same class type as beginning and ending serials of a cluster;
-	for(size_t i=0; i<training_data_vector_.size(); i++)
-	{
-		DATMO_labelledScan &labelledScan_tmp=batch_T_[i];
-
-		for(size_t j=0; j<training_data_vector_[i].movingObjectClusters.size(); j++)
-		{
-			std::pair<std::vector<int>, int> &pair_tmp = training_data_vector_[i].movingObjectClusters[j];
-			assert(pair_tmp.second < (int)contour_labels.size());
-
-			if(contour_labels[pair_tmp.second]!=0)
+			for(size_t j=0; j<prev_centroids_.size(); j++)
 			{
-				int smallest_serial = labelledScan_tmp.laser_scan.ranges.size();
-				int biggest_serial = 0;
-				for(int k=0; k<(int)pair_tmp.first.size(); k++)
+				geometry_msgs::Point32 &check_point = prev_centroids_[j];
+				double distance_undercheck = sqrt((check_point.x- probe_point.x)*(check_point.x- probe_point.x)+(check_point.y- probe_point.y)*(check_point.y- probe_point.y));
+				if(distance_undercheck<attach_threshold)
 				{
-					if(pair_tmp.first[k]<smallest_serial)smallest_serial=pair_tmp.first[k];
-					if(pair_tmp.first[k]>biggest_serial)biggest_serial=pair_tmp.first[k];
+					attach_prev_cluster =true;
+					attach_cluster = int(j);
+					break;
 				}
-				for(int k=smallest_serial; k<=biggest_serial; k++)
+			}
+
+			if(attach_prev_cluster)
+			{
+				curr_cluster_labels_[i]=prev_cluster_labels_[attach_cluster];
+			}
+			else
+			{
+				//if cannot find, then treat it as "background";
+				//so when choose fast-labelling, make sure there is no new unlabelled object appear;
+				curr_cluster_labels_[i]=0;
+			}
+		}
+	}
+
+	//import the cluster class label into scan label;
+	for(size_t i=0; i<raw_training_data_.scan_ClusterLabel_vector.size(); i++)
+	{
+		for(size_t j=0; j<raw_training_data_.scan_ClusterLabel_vector[i].size(); j++)
+		{
+			int &cluster_label_tmp 	= raw_training_data_.scan_ClusterLabel_vector[i][j];
+			int &class_label_tmp 	= raw_training_data_.scan_ClassType_vector[i][j];
+
+			if(cluster_label_tmp == -1) class_label_tmp=0;
+			else
+			{
+				assert(cluster_label_tmp>=0 && cluster_label_tmp  < curr_cluster_labels_.size());
 				{
-					labelledScan_tmp.type_mask[k]=contour_labels[pair_tmp.second];
+					class_label_tmp = curr_cluster_labels_[cluster_label_tmp];
+					//cout<<cluster_label_tmp<<","<<class_label_tmp<<"\t";
 				}
 			}
 		}
 	}
 
-	//3rd: merge the labelling from the 2nd-half of "batch_Tminus1_" and the 1st-half of "batch_T_", save results;
-	//it should be clarified that the 1st-half in the first batch, and the 2nd-half in the last batch will not be labelled, and hence not stored in the labelled data;
+	prev_clusters_ = curr_clusters_;
+	prev_cluster_labels_ = curr_cluster_labels_;
+	prev_centroids_ = curr_centroids_;
 
-	if(batch_Tminus1_.size()==0)
+	//visualize the final results;
+	for(size_t i=0; i<raw_training_data_.clusters_baselink.size(); i++)
 	{
-		batch_Tminus1_ = batch_T_;
-		ROS_INFO("initializing batch_Tminus1_");
-		return;
-	}
+		Vec3b vehicle_color;
+		vehicle_color.val[0] = 0;
+		vehicle_color.val[1] = 0;
+		vehicle_color.val[2] = 255;
 
-	for(size_t i=0; i<(size_t)interval_; i++)
-	{
-		DATMO_labelledScan &labelledScan_T =batch_T_[i];
-		DATMO_labelledScan &labelledScan_Tminus1 =batch_Tminus1_[(i+interval_)];
-		for(size_t j=0; j<labelledScan_T.type_mask.size(); j++)
+		int labelled_class_type = curr_cluster_labels_[i];
+		if(labelled_class_type == 1)
 		{
-			if(
-					((labelledScan_T.type_mask[j]==0)&&(labelledScan_Tminus1.type_mask[j]!=4))
-					||(labelledScan_T.type_mask[j]==4)
-			  )
+			for(size_t j=0; j<raw_training_data_.clusters_baselink[i].points.size(); j++)
 			{
-				labelledScan_T.type_mask[j] = labelledScan_Tminus1.type_mask[j];
+				Point2f imgpt_tmp;
+				spacePt2ImgP(raw_training_data_.clusters_baselink[i].points[j], imgpt_tmp);
+
+				if(LocalPixelValid(imgpt_tmp))
+				{
+					contour_visual_img.at<Vec3b>((int)imgpt_tmp.y,(int)imgpt_tmp.x) = vehicle_color;
+				}
 			}
+
+			imshow("contour_visual_img",contour_visual_img);
+			waitKey(100);
 		}
 	}
 
-	//if(AbstractLabelling_.type_masks.size()==0)
-	//{
-	//	AbstractLabelling_.labelled_scan_startSerial = (int)batch_T_[0].laser_scan.header.seq;
-	//}
-	//AbstractLabelling_.labelled_scan_endSerial = (int)batch_T_[interval_-1].laser_scan.header.seq;
-	//for(size_t i=0; i<(size_t)interval_; i++) AbstractLabelling_.type_masks.push_back(batch_T_[i].type_mask);
 
-	save_labelled_batch();
-	batch_backup_ = batch_Tminus1_;
-	batch_Tminus1_ = batch_T_;
 }
+
 
 void DATMO_labellingData::save_abstract_result()
 {
 	ROS_INFO("save abstract results");
 
-	for(int i= AbstractLabelling_.labelled_scan_startSerial+interval_-1; i<= AbstractLabelling_.labelled_scan_endSerial; i=i+interval_)
+	for(int i = AbstractLabelling_.labelled_scan_startSerial; i<= AbstractLabelling_.labelled_scan_endSerial; i=i+1)
 	{
-		stringstream  data_batch_string;
-		data_batch_string<<output_path_.c_str()<<"/labelled_data"<< i<<".yml";
-		FileStorage fs_read(data_batch_string.str().c_str(), FileStorage::READ);
-		if(!fs_read.isOpened()){ROS_ERROR("cannot find labelled data file %u", i); return;}
+		int serial_in_underprocessing = i - AbstractLabelling_.process_scan_startSerial;
 
-		FileNode masks = fs_read["type_masks"];
-		FileNodeIterator mask_it = masks.begin(), mask_it_end = masks.end();
-		for(; mask_it!=mask_it_end; mask_it++)
-		{
-			vector<int> mask_tmp;
-			(*mask_it)>>mask_tmp;
-			AbstractLabelling_.type_masks.push_back(mask_tmp);
-		}
-		fs_read.release();
+		std::vector<int> mask_tmp = AbstractLabelling_.masks_under_processing[serial_in_underprocessing];
+		AbstractLabelling_.type_masks.push_back(mask_tmp);
 	}
 
 	stringstream  abstract_summary;
@@ -316,19 +359,35 @@ void DATMO_labellingData::save_abstract_result()
 	fs.release();
 }
 
-//lazy_labelling function is for all "background scan" batches;
-void DATMO_labellingData::lazy_labelling_background(int batch_serial, int skipTo_to_batch)
+void DATMO_labellingData::fast_label(int batch_serial, int skipTo_to_batch)
 {
-	ROS_INFO("do lazy labelling for batches between (but not included) %d and %d", batch_serial, skipTo_to_batch);
-	for(int i=batch_serial+interval_; i<skipTo_to_batch; i=i+interval_)
+	ROS_INFO("do fast labelling for batches between (but not included) %d and %d", batch_serial, skipTo_to_batch);
+	for(int i=batch_serial+1; i<skipTo_to_batch; i=i+1)
 	{
 		read_data_batch(i);
 		label_data_batch(true);
+		update_labelling_history();
 	}
 }
 
 void DATMO_labellingData::update_labelling_history()
 {
+	int current_head_serial = raw_training_data_.scan_serials.front();
+	int current_tail_serial = raw_training_data_.scan_serials.back();
+	assert(current_tail_serial = current_head_serial+interval_);
+
+	size_t head_in_history = current_head_serial - AbstractLabelling_.process_scan_startSerial;
+
+	for(size_t i=0; i<raw_training_data_.scan_ClassType_vector.size(); i++)
+	{
+		std::vector<int> &labelled_scan_mask 	= raw_training_data_.scan_ClassType_vector[i];
+		std::vector<int> &history_scan_mask		= AbstractLabelling_.masks_under_processing[i+head_in_history];
+		assert(labelled_scan_mask.size() == history_scan_mask.size());
+		for(size_t j=0; j<labelled_scan_mask.size(); j++)
+		{
+			if(history_scan_mask[j]==0 && labelled_scan_mask[j]!=0) history_scan_mask[j] = labelled_scan_mask[j];
+		}
+	}
 
 }
 
@@ -336,9 +395,10 @@ void DATMO_labellingData::update_labelling_history()
 void DATMO_labellingData::main_loop()
 {
 	ROS_INFO("begin to label data");
+
 	namedWindow( "contour_visual_img", 1 );
 
-	for(int batch_serial = starting_serial_; batch_serial<= end_serial_; )
+	for(int batch_serial = starting_serial_; batch_serial <= end_serial_; )
 	{
 		ROS_INFO("---------------------------------------------------------------");
 		ROS_INFO("batch serial %d", batch_serial);
@@ -353,49 +413,85 @@ void DATMO_labellingData::main_loop()
         if(use_the_result == 0)
         {
         	printf("redo the labelling of this batch\n");
-        	if(batch_backup_.size()==0)
-        	{
-        		batch_Tminus1_.clear();
-        	}
-        	else
-        	{
-        		batch_Tminus1_ = batch_backup_;
-        	}
         }
         else if(use_the_result == 1)
         {
-        	printf("labelling of this batch is accepted.\n");
+        	printf("labelling of this batch is accepted, fuse it with the history.\n");
+        	update_labelling_history();
+
 
         	int skipTo_to_batch = 0;
     		printf("****************skip to certain batch? Please enter the number**************\n");
     		scanf("%d", &skipTo_to_batch);
 
-    		if(skipTo_to_batch >= batch_serial+interval_ && skipTo_to_batch%interval_==0)
+    		if(skipTo_to_batch > batch_serial+1)
 			{
-    			printf("jump to batch %d, will do lazy labelling for scans in between", skipTo_to_batch);
-    			lazy_labelling_background(batch_serial, skipTo_to_batch);
+    			printf("jump to batch %d, will do fast labelling for scans in between", skipTo_to_batch);
+    			fast_label(batch_serial, skipTo_to_batch);
+
 				batch_serial=skipTo_to_batch;
 			}
     		else
 			{
-    			printf("illegal skip, will process next batch %d\n", batch_serial+interval_);
-    			batch_serial=batch_serial+interval_;
+    			printf("illegal skip, will process next batch %d\n", batch_serial+1);
+    			batch_serial=batch_serial+1;
 			}
         }
         else
         {
-        	if(batch_backup_.size()==0)
-        	{
-        		batch_Tminus1_.clear();
-        	}
-        	else
-        	{
-        		batch_Tminus1_ = batch_backup_;
-        	}
-        	printf("Only 0, 1, 2 is valid.\n");
+        	printf("Only 0, 1 is valid.\n");
         }
 	}
+
 	save_abstract_result();
+}
+
+void DATMO_labellingData::initialize_local_image()
+{
+	local_mask_				= Mat((int)(img_side_length_/img_resolution_*2), (int)(img_side_length_/img_resolution_*2), CV_8UC1);
+	local_mask_				= Scalar(0);
+	LIDAR_pixel_coord_.x 	= (int)(img_side_length_/img_resolution_)-1;
+	LIDAR_pixel_coord_.y 	= (int)(img_side_length_/img_resolution_)-1;
+
+	vector<Point2f> img_roi;
+	Point2f p0, p1, p2, p3, p4;
+	p0.x = 0.0;
+	p0.y = 0.0;
+	p1.x = 0.0;
+	p1.y = float(local_mask_.rows-1);
+	p2.x = float(LIDAR_pixel_coord_.x);
+	p2.y = float(LIDAR_pixel_coord_.y);
+	p3.x = float(local_mask_.cols-1);
+	p3.y = float(local_mask_.rows-1);
+	p4.x = float(local_mask_.cols-1);
+	p4.y = 0.0;
+
+	img_roi.push_back(p0);
+	img_roi.push_back(p1);
+	img_roi.push_back(p2);
+	img_roi.push_back(p3);
+	img_roi.push_back(p4);
+
+	for(int i=0; i<(int)local_mask_.cols; i++)
+		for(int j=0; j<(int)local_mask_.rows; j++)
+		{
+			Point2f point_tmp;
+			point_tmp.x = (float)i;
+			point_tmp.y = (float)j;
+			if(cv::pointPolygonTest(img_roi, point_tmp, false)>0)local_mask_.at<uchar>(j,i)=255;
+		}
+}
+
+void DATMO_labellingData::spacePt2ImgP(geometry_msgs::Point32 & spacePt, Point2f & imgPt)
+{
+	imgPt.x = LIDAR_pixel_coord_.x - (spacePt.y/img_resolution_);
+	imgPt.y = LIDAR_pixel_coord_.y - (spacePt.x/img_resolution_);
+}
+
+inline bool DATMO_labellingData::LocalPixelValid(Point2f & imgPt)
+{
+	if((int)imgPt.x < local_mask_.cols && (int)imgPt.x >=0 && (int)imgPt.y < local_mask_.rows && (int)imgPt.y >=0) return true;
+	else return false;
 }
 
 

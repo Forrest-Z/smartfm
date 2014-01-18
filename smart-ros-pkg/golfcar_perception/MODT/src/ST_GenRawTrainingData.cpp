@@ -464,7 +464,10 @@ void DATMO::construct_raw_training_data()
 
 	for(size_t i=0; i<scan_vector_.size(); i++)raw_training_data_.scan_serials.push_back((int)scan_vector_[i].header.seq);
 
-	//here "-1" is for background noise, and object cluster labels begin with "0";
+	//don't be confused by the "cluster label" here and the "object class" later;
+	//Here "-1" is for background cluster, which is a symbol to tell later labelling process, that its class type is "0"-background noise;
+	//object cluster labels begin with "0", and its class-type will be labelled manually later in the labelling code;
+
 	std::vector<int> default_label(scan_vector_.back().ranges.size(), -1);
 	raw_training_data_.scan_ClusterLabel_vector.resize(interval_, default_label);
 	raw_training_data_.clusters_odom.resize(object_cluster_IDs_.size());
