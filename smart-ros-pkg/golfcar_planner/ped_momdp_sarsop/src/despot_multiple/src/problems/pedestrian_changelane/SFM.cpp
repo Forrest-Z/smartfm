@@ -419,7 +419,7 @@ double SFM::ModelTransProb(PedestrianState state,PedestrianState state_new)
 		
 		if(angle<0)   angle+=2*ModelParams::pi;  //[0,2*pi]
 
-		double prob=unif.next(),sum=0;
+		double sum=0;
 		int next_i,next_j,curr_i=state.PedPoses[i].first.X,curr_j=state.PedPoses[i].first.Y;
 		double total_weight=0;
 		double weight=1.0;

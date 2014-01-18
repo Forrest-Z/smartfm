@@ -213,6 +213,7 @@ public:
 	void ModelTrans(PedestrianState&state,UtilUniform &unif);
 	void WorldTrans(vector<Pedestrian> &ped_list,Car&car,UtilUniform &unif);
 	void ModelTransFast(PedestrianState&state,UtilUniform &unif);
+	double ModelTransProb(PedestrianState state,PedestrianState state_new);
 	void UpdateGoalModel();
 	void UpdateCarModel();
 	void UpdateSFM()
