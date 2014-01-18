@@ -104,7 +104,7 @@ speed_controller_v2:
   fullBrakeThres: 0.05 #to make sure the car will stop at the end
   ###Throttle Settings###
   fullThrottleThres: 1.0
-  kp: 0.01    
+  kp: 0.05    
   ki: 0.01    
   kd: 0.005 
   kp_sat: 1.0
