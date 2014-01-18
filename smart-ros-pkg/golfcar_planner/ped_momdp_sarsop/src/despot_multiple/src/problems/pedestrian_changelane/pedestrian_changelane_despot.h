@@ -38,7 +38,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 			return Step(state, rNum, action, reward, obs);
 		}
 		double ObsProb(uint64_t z, const PedestrianState s, int action) const;
-		double TransProbJoint(const PedestrianState s_old, const PedestrianState s_new, int action) const; 
+		double TransProbJoint(const PedestrianState& s_old, const PedestrianState& s_new, int action) const; 
 		double FringeUpperBound(const PedestrianState& s) const;
 
 		double UpperBound(const vector<Particle<PedestrianState>*>& particles,
@@ -668,7 +668,7 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	obs = Observe(state);
 }
 
-double Model<PedestrianState>::TransProbJoint(const PedestrianState s_old, const PedestrianState s_new, int action) const {
+double Model<PedestrianState>::TransProbJoint(const PedestrianState& s_old, const PedestrianState& s_new, int action) const {
 	double prob=1.0;
 	prob*=sfm->ModelTransProb(s_old,s_new);
 
@@ -740,6 +740,7 @@ double Model<PedestrianState>::TransProbJoint(const PedestrianState s_old, const
 	//rob_vel = robotVelUpdate[action][rob_vel][lookup(robotUpdateProb[action][rob_vel], p)];
 	
 	//trans vel
+    return prob;
 }
 
 PedestrianState ObsToState(uint64_t obs)
