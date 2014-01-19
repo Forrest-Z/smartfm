@@ -55,7 +55,6 @@ $ROBOT/camera_front:
   contrast: 100
   sharpness: 250
   frame_id: $ROBOT/camera_front_img
-  
 $ROBOT/microstrain_3dmgx2_node:
   time_offset: -0.040
   port: /dev/msimu
@@ -142,6 +141,11 @@ $ROBOT/speed_controller_v2:
   #full brake value
   coeff_brakepedal: -70
   brakeToThrottleThres: -20
+$ROBOT/ppc:
+  global_frame: $ROBOT/map
+  robot_frame: $ROBOT/base_link
+  max_pose_delay: 0.1
+  frequency: 50
 $ROBOT/move_base_node:
   footprint_padding: 0.01
   controller_frequency: 20.0

@@ -10,6 +10,7 @@
     </node>
     <node pkg="long_control" type="iMiev_speedcontroller" name="speed_controller_v2" output="screen"/>
 #end
+#if($ppc=="move_base")
     <node pkg="move_base" type="move_base" respawn="false" name="move_base_node">
 	<remap from="cmd_vel" to="cmd_steer"/>
 	<remap from="map" to="curb_map"/>
@@ -22,6 +23,9 @@
 	<rosparam file="$(find Launch_v2)/move_base/local_costmap_params_close.yaml" command="load" />
 	<rosparam file="$(find Launch_v2)/move_base/global_costmap_params.yaml" command="load" />
     </node>
+#elseif($ppc=="standalone")
+  <node pkg="golfcar_ppc" type="purepursuit_controller" name="ppc"/>
+#end
     <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/>
     <node name="soundplay_node" pkg="sound_play" type="soundplay_node.py"/>
     <node name="sound_speaker" pkg="sound_speaker" type="sound_speaker">

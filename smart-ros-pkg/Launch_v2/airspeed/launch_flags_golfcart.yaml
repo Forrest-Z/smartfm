@@ -10,3 +10,5 @@ imu: "microstrain"
 localization: "normal"
 #run rrt {1(yes), 0(no)}
 rrt: 0
+#ppc settings {move_base, standalone}
+ppc: standalone
