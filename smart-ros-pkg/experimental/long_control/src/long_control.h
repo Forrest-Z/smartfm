@@ -296,8 +296,6 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 		break;
 	    }
 	    
-	    //Done calculate PID
-	    e_pre = e_now;
 	  
 	  
 	  if(!do_brake)
@@ -332,6 +330,7 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 		  pid_msg.u_brake_ctrl = 0.0;	//Brake command
 		  //if(param.controller_state == NEUTRAL)
 		    //pid_msg.u_ctrl = 0.0;
+		  e_pre = e_now;
 	  }else{
 		  //--------------------------------//
 		  //--- Apply Brake, no Throttle ---//
@@ -357,7 +356,7 @@ void PID_Controller::odoCallBack(phidget_encoders::Encoders enc)
 		  double u_brake = pid_msg.table_brake + (pid_msg.p_brake_term + pid_msg.i_brake_term + pid_msg.d_brake_term);
 		  pid_msg.u_brake_ctrl = fmutil::symbound<double>(u_brake, param.coeff_bp); //Brake command
 		  pid_msg.u_ctrl = 0.0;	//Throttle command
-	  
+		  e_pre = e_now;
 	  }
 	}
 	std_msgs::Float64 throttle_value, brake_value;
