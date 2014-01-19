@@ -1,0 +1,3 @@
+<launch>
+  <node name="SensorsLaunch" pkg="Launch_v2" type="launch_helper.bash" args="0Sensors.xml" output="screen"/>
+</launch>

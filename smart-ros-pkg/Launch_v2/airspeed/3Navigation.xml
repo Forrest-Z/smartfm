@@ -1,0 +1,56 @@
+<launch>
+  <group ns="$ROBOT">
+    <!--3Autonomous-->
+#if($vehicle=="buggy")    
+    <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller"/>
+    <node pkg="long_control" type="speedcontroller" name="speed_controller_v2" output="screen"/>
+#elseif($vehicle=="car")
+    <node pkg="lowlevel_controllers" type="steering_controller_iMiev" name="steering_controller">
+	<remap from="steer_angle" to="pronto/joy_steer"/>
+    </node>
+    <node pkg="long_control" type="iMiev_speedcontroller" name="speed_controller_v2" output="screen"/>
+#end
+#if($ppc=="move_base")
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base_node">
+	<remap from="cmd_vel" to="cmd_steer"/>
+	<remap from="map" to="curb_map"/>
+	<rosparam file="$(find Launch_v2)/move_base/costmap_common_params.yaml" command="load" ns="global_costmap" />
+	<param name="global_costmap/global_frame" value="$ROBOT/map"/>
+	<param name="global_costmap/robot_base_frame" value="$ROBOT/base_link"/>
+	<rosparam file="$(find Launch_v2)/move_base/costmap_common_params.yaml" command="load" ns="local_costmap" />
+	<param name="local_costmap/global_frame" value="$ROBOT/map"/>
+	<param name="local_costmap/robot_base_frame" value="$ROBOT/base_link"/>
+	<rosparam file="$(find Launch_v2)/move_base/local_costmap_params_close.yaml" command="load" />
+	<rosparam file="$(find Launch_v2)/move_base/global_costmap_params.yaml" command="load" />
+    </node>
+#elseif($ppc=="standalone")
+  <node pkg="golfcar_ppc" type="purepursuit_controller" name="ppc"/>
+#end
+#if($!rrt)
+    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/>
+#end
+    <node name="soundplay_node" pkg="sound_play" type="soundplay_node.py"/>
+    <node name="sound_speaker" pkg="sound_speaker" type="sound_speaker">
+      <param name="sound_path" value="$(find sound_speaker)/sounds/"/>
+    </node>
+
+    <!--5SpeedAdvisor-->
+    <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen"/>
+    <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
+	<remap from="laser_area_policy/scan" to="sick_scan2"/>
+	<remap from="cmd_vel" to="cmd_speed"/>
+#if($rrt)
+	<remap from="move_status" to="move_status_hybrid"/>
+#end
+    </node>
+#if($rrt)
+      <!--Metric_Map-->
+      <node pkg="Metric_Map" type="Local_Map" name="Dist_Map">
+		<remap from = "sick_scan2" to ="front_bottom_scan"/>
+		<remap from = "static_map" to ="/golfcart/static_map"/>
+      </node>
+      <!--StateMachine-->
+      <node pkg="Automoton_Control" type="ObstAvoid" name="Obst_Avoid" output="screen"/>
+#end
+  </group>
+</launch> 

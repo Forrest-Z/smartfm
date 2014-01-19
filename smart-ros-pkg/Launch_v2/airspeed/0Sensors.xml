@@ -1,0 +1,56 @@
+<launch>
+  <group ns="$ROBOT">
+    <node pkg="LMS1xx" type="LMS100" name="topTilted">
+	<remap from ="scan" to="front_top_scan"/>
+    </node>
+    <node pkg="LMS1xx" type="LMS100" name="frontBottom">
+	<remap from ="scan" to="front_bottom_scan"/>
+    </node>
+#if($vehicle=="car")
+    <node pkg="laser_maxrange_republish" type="laser_repub" name="front_bottom_lidar_fov_reduce">
+	<remap from="scan" to="front_bottom_scan"/>
+	<remap from="scan_filter" to="front_bottom_scan_filtered"/>
+    </node>
+#end
+    <node pkg="Launch_v2" type="static_transform_publisher_param" name="base_link_to_front_top_lidar"/>
+    <node pkg="Launch_v2" type="static_transform_publisher_param" name="base_link_to_front_bottom_lidar"/>
+    <node pkg="Launch_v2" type="static_transform_publisher_param" name="base_link_to_camera_front_base"/>
+    <node pkg="Launch_v2" type="static_transform_publisher_param" name="camera_front_base_to_img"/>
+    <node pkg="uvc_cam" type="uvc_cam_node" name="camera_front" output="screen">
+	<remap from="camera" to="camera_front"/>
+	<param name="camera_info_url" value="file://$(find Launch)/golfcar/sensors/logitech_webcam_param_camera0_LD.ini"/>
+    </node>
+#if($lowlevel and $vehicle=="buggy")
+    <machine name="lowlevel" address="golfcart-lowlevel" env-loader="/opt/ros/fuerte/env.sh" user="golfcar"/>
+#end
+
+#if($imu=="microstrain")
+    <node #if($lowlevel)machine="lowlevel"#end pkg="microstrain_3dmgx2_imu" type="imu_node" name="microstrain_3dmgx2_node" output="screen"/>
+#elseif($imu=="xsens")
+    <node pkg="nodelet" type="nodelet" name="imu_manager" 
+    args="manager" output="screen" />
+    <node pkg="nodelet" type="nodelet" name="ImuFilterNodelet" 
+      args="load imu_filter_madgwick/ImuFilterNodelet imu_manager" 
+      output="screen">
+      <param name="use_mag" value="false"/>
+      <param name="zeta" value="0.1"/>
+    </node>
+    <node pkg="xsens_driver" type="mtnode.py" name="xsens_driver" output="screen" >
+	<param name="frame_id" value="/imu" />
+	<param name="device" value="/dev/xsens"/>
+	<remap from="imu/data" to="imu/data_raw"/>
+    </node>
+#end
+
+    <node #if($lowlevel)machine="lowlevel"#end pkg="dead_reckoning" name="encoderImu_integrator" type="odom_IMU" output="screen"/>
+#if($vehicle=="car")
+    <node pkg="can_reader" name="can_speed_integral" type="can_speed_integral" output="screen"/>
+    <node pkg="can_reader" name="can_reader" type="can_reader"/>
+#end
+    <node #if($lowlevel)machine="lowlevel"#end name="encoders_node" pkg="phidget_encoders" type="encoders_node.py" output="screen"/>
+    <node #if($lowlevel)machine="lowlevel"#end name="encoders_odo_node" pkg="phidget_encoders" type="encoders_odo_node.py" output="screen">
+	<remap from="odom" to="phidget_encoder_odo"/>
+    </node>
+    <!--TBC: add pronto support for car-->
+  </group>
+</launch>
