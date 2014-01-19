@@ -143,7 +143,10 @@ public:
 		if(ModelParams::goodped==0)
 		{
 			if(angle<0.15) angle=0.15;
-			return ModelParams::pi/angle; 
+			double weight=ModelParams::pi/angle; 
+			//weight=weight/2;
+			//if(weight<1) weight=1;
+			return sqrt(weight) + 5;
 		}
 		else
 		{
@@ -161,8 +164,8 @@ public:
 		{
 			if(ModelParams::goodped==0)
 			{
-				if(length<1.5) return 10;
-				else return 5;
+				if(length<1.5) return 3 + 5;
+				else return 1.5 + 5;
 			}
 			else
 			{

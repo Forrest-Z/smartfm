@@ -604,10 +604,10 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		int ry=rob_map[robY].second;
 		int rangeX=ModelParams::map_rln/ModelParams::rln;
 		rangeX/=2;
-		int rangeY=ModelParams::map_rln/ModelParams::rln;
+		int rangeY=ModelParams::map_rln/ModelParams::rln + 1;
 		if(abs(rx-pedX)<=rangeX&&pedY-ry>=-rangeY&&pedY-ry<=rangeY) 
 		{
-			reward=CRASH_PENALTY;
+			reward=CRASH_PENALTY * rob_vel;
 			state.Vel=-1;
 			return;
 		}
@@ -615,7 +615,7 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		rangeY*=2;
 		if(action==1&&abs(rx-pedX)<=rangeX&&pedY-ry>=-rangeY&&pedY-ry<=rangeY) 
 		{
-			reward=CRASH_PENALTY;
+			reward=CRASH_PENALTY * rob_vel;
 			state.Vel=-1;
 			return;
 		}
@@ -652,8 +652,8 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	//
 	
 	//if(rob_vel<=2&&action==2) reward=-100;
-	if(action == 2)  reward=-20;
-	else  reward=-10;
+	if(action ==2)  reward=-5;
+	else  reward=-1;
 	UpdateVel(rob_vel,action,unif);
 
 	//RobStep(state, action, unif);
@@ -809,7 +809,7 @@ double Model<PedestrianState>::FringeUpperBound(const PedestrianState& s) const 
 }
 
 double Model<PedestrianState>::FringeLowerBound(const vector<Particle<PedestrianState>*>& particles) const {
-	return CRASH_PENALTY;
+	return CRASH_PENALTY*4;
 }
 
 void Model<PedestrianState>::SetStartState(PedestrianState& state) {
