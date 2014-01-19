@@ -2,7 +2,7 @@
 #include <geometry_msgs/Twist.h>
 
 const double freq = 20;
-const double acceleration = 1.5;
+const double acceleration = 1.0;
 
 const double alpha0 = 0.5;
 const double alpha1 = 0.7;
@@ -62,10 +62,12 @@ class VelPublisher2 : public VelPublisher {
 
     void publishSpeed(const ros::TimerEvent& event) {
         double delta = acceleration / freq;
-        if(target_vel > curr_vel)
+        if(target_vel > curr_vel + delta)
             curr_vel += delta;
-        else
+        else if(target_vel < curr_vel - delta)
             curr_vel -= delta;
+		else
+			curr_vel = target_vel;
 
         _publishSpeed();
     }

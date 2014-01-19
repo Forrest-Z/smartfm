@@ -6,7 +6,7 @@
     <node name="amcl" pkg="amcl" type="amcl" respawn="false" output="screen">
       <remap from="scan" to="front_top_scan"/>		
     </node>
-    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find Launch_v2)/airspeed/amcl_normal_rviz.vcg" />    
+    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation_namespace_pomdp.vcg" />    
 #elseif($localization=="synthetic")
     <node pkg="amcl_pc" type="amcl" name="amcl_pc" output="screen">
       <remap from="scan" to="front_top_scan"/>
@@ -17,7 +17,7 @@
     </node>
     <node pkg="norm_virtual_sensor" type="odom_baselink" name="odom_baselink"/>
     <node pkg="map_server" type="map_server" name="map_server" args="$(find amcl_pc)/maps/all_utown_pcd.yaml"/>
-    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find Launch_v2)/airspeed/amcl_synthetic_rviz.vcg" />    
+    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation_namespace_pomdp.vcg" />    
 #end
   </group>
 </launch>

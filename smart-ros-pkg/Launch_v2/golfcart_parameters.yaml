@@ -1,34 +1,34 @@
 #robot_name: &ROBOT_NAME !!python/object/apply:os.getenv ['ROBOT']
 #frame_id: &FRAME_ID !!python/object/apply:string.replace ['robot_name/front_top_lidar', robot_name, *ROBOT_NAME]
-topTilted:
+golfcart/topTilted:
   host: 192.168.1.201
-  frame_id: env_ROBOT/front_top_lidar
-frontBottom:
+  frame_id: golfcart/front_top_lidar
+golfcart/frontBottom:
   host: 192.168.1.202
-  frame_id: env_ROBOT/front_bottom_lidar
-base_link_to_front_top_lidar:
+  frame_id: golfcart/front_bottom_lidar
+golfcart/base_link_to_front_top_lidar:
   x: 1.78
   z: 1.82
   pitch: 0.0
-  parent_frame_id: env_ROBOT/base_link
-  child_frame_id: env_ROBOT/front_top_lidar
-base_link_to_front_bottom_lidar:
+  parent_frame_id: golfcart/base_link
+  child_frame_id: golfcart/front_top_lidar
+golfcart/base_link_to_front_bottom_lidar:
   x: 1.78
   z: 0.755
-  parent_frame_id: env_ROBOT/base_link
-  child_frame_id: env_ROBOT/front_bottom_lidar
-base_link_to_camera_front_base:
+  parent_frame_id: golfcart/base_link
+  child_frame_id: golfcart/front_bottom_lidar
+golfcart/base_link_to_camera_front_base:
   x: 1.75
   z: 1.32
   pitch: 0.16
-  parent_frame_id: env_ROBOT/base_link
-  child_frame_id: env_ROBOT/camera_front_base
-camera_front_base_to_img:
+  parent_frame_id: golfcart/base_link
+  child_frame_id: golfcart/camera_front_base
+golfcart/camera_front_base_to_img:
   roll: -1.5707963267949
   yaw: -1.5707963267949
-  parent_frame_id: env_ROBOT/camera_front_base
-  child_frame_id: env_ROBOT/camera_front_img
-camera_front:
+  parent_frame_id: golfcart/camera_front_base
+  child_frame_id: golfcart/camera_front_img
+golfcart/camera_front:
   width: 640
   height: 360
   frame_rate: 20
@@ -39,53 +39,59 @@ camera_front:
   brightness: 100
   contrast: 100
   sharpness: 250
-  frame_id: env_ROBOT/camera_front_img
-  
-ms/microstrain_3dmgx2_node:
+  frame_id: golfcart/camera_front_img
+golfcart/microstrain_3dmgx2_node:
   time_offset: -0.040
   port: /dev/msimu
   autostart: true
-  frameid: env_ROBOT/imu
+  frameid: golfcart/imu
   autocalibrate: true
   angular_velocity_stdev: 0.00017
-xsens_driver:
-  frame_id: env_ROBOT/imu
-  device: /dev/ttyUSB0
-encoderImu_integrator:
-  parent_frame_id: env_ROBOT/odom
-  child_frame_id: env_ROBOT/base_link
-encoders_node:
+golfcart/xsens_driver:
+  frame_id: golfcart/imu
+  device: /dev/xsens
+golfcart/encoderImu_integrator:
+  parent_frame_id: golfcart/odom
+  child_frame_id: golfcart/base_link
+golfcart/encoders_node:
   min_pub_period: 0.05
-encoders_odo_node:
+golfcart/encoders_odo_node:
   wheel_size: 1.315825176
   dist_btw_wheels: 0.9866
   left_correction_factor: 1
   frame_id: phidget_encoder_odom
-map_server:
-  frame_id: env_ROBOT/map
-amcl_pc:
+golfcart/map_server:
+  frame_id: golfcart/map
+golfcart/amcl_pc:
   max_particles: 500
   min_particles: 250
   laser_likelihood_max_dist: 1.0
-  odom_alpha1: 0.4
+  odom_alpha1: 0.5
   odom_alpha2: 0.1
-  odom_alpha3: 0.2
+  odom_alpha3: 1.0
   odom_alpha4: 0.1
   update_min_d: 0.2
   laser_model_type: pc_likelihood_field
   laser_max_beams: 70
   laser_likelihood_max_dist: 0.5
-  odom_frame_id: env_ROBOT/odom
-  base_frame_id: env_ROBOT/base_link
-  global_frame_id: env_ROBOT/map
-amcl:
+  odom_frame_id: golfcart/odom
+  base_frame_id: golfcart/base_link
+  global_frame_id: golfcart/map
+golfcart/norm_virtual_sensor:
+  odom_frame_id: golfcart/odom
+  baselink_frame_id: golfcart/base_link
+  odom_baselink_frame_id: golfcart/odom_baselink
+golfcart/odom_baselink:
+  odom_frame_id: golfcart/odom
+  baselink_frame_id: golfcart/odom_baselink
+golfcart/amcl:
   odom_alpha3: 0.5
   odom_alpha4: 0.5
   update_min_d: 0.2
-  odom_frame_id: env_ROBOT/odom
-  base_frame_id: env_ROBOT/base_link
-  global_frame_id: env_ROBOT/map
-speed_controller_fastStop:
+  odom_frame_id: golfcart/odom
+  base_frame_id: golfcart/base_link
+  global_frame_id: golfcart/map
+golfcart/speed_controller_fastStop:
   kp: 0.03    #0.02
   ki: 0.01    #0.01
   kd: 0.06    #0.06
@@ -97,12 +103,11 @@ speed_controller_fastStop:
   throttleZeroThres: 0.001
   coeff_brakepedal: 70
   err_threshold: 0.01
-speed_controller_v2:
+golfcart/speed_controller_v2:
   tau_v: 0.2
   throttleZeroThres: 0.1 #main switching surface of throttle
   brakeZeroThres: -0.2 #main switching surface of brake
   fullBrakeThres: 0.05 #to make sure the car will stop at the end
-  ###Throttle Settings###
   fullThrottleThres: 1.0
   kp: 0.05    
   ki: 0.01    
@@ -110,7 +115,6 @@ speed_controller_v2:
   kp_sat: 1.0
   ki_sat: 0.7
   kd_sat: 0.3
-  ###Brake Settings###
   kp_brake: -90.0 #80
   ki_brake: -10.0 #5
   kd_brake: -0.0
@@ -120,25 +124,30 @@ speed_controller_v2:
   #full brake value
   coeff_brakepedal: -70
   brakeToThrottleThres: -20
-move_base_node:
+golfcart/ppc:
+  global_frame: golfcart/map
+  robot_frame: golfcart/base_link
+  max_pose_delay: 0.1
+  frequency: 50
+golfcart/move_base_node:
   footprint_padding: 0.01
   controller_frequency: 20.0
   controller_patience: 100.0
   base_global_planner: golfcar_gp/GlobalPlan
   base_local_planner: golfcar_purepursuit/PurePursuitBase
   PurePursuitBase/tracking_distance: 5.0
-  map_frame_id: env_ROBOT/map
-route_planner:
+  map_frame_id: golfcart/map
+golfcart/route_planner:
   dummy_vehicle: false
   use_dbserver: false
   booking_url: http://137.132.22.82:15016/booking
   vehicleID: golfcart1
-  map_frame_id: env_ROBOT/map
-  odom_frame_id: env_ROBOT/odom
-  baselink_frame_id: env_ROBOT/base_link
-speed_advisor:
-  map_frame_id: env_ROBOT/map 
-  robot_frame_id: env_ROBOT/base_link
+  map_frame_id: golfcart/map
+  odom_frame_id: golfcart/odom
+  baselink_frame_id: golfcart/base_link
+golfcart/speed_advisor:
+  map_frame_id: golfcart/map 
+  robot_frame_id: golfcart/base_link
   max_speed: 1.5
   acc: 0.2
   max_dec: 1.0
@@ -154,13 +163,14 @@ speed_advisor:
   stationspeed_dist: 30.0
   baselink_carfront_length: 2.0
   kinematic_acceleration: false
-dynamic_virtual_bumper:
-  base_frame: env_ROBOT/base_link
-Dist_Map:
-  base_frame: env_ROBOT/base_link
-  global_frame: env_ROBOT/map
-  local_frame: env_ROBOT/local_map
-Obst_Avoid:
-  base_frame: env_ROBOT/base_link
-  global_frame: env_ROBOT/map
-  local_frame: env_ROBOT/local_map
+golfcart/dynamic_virtual_bumper:
+  base_frame: golfcart/base_link
+golfcart/Dist_Map:
+  base_frame: golfcart/base_link
+  global_frame: golfcart/map
+  local_frame: golfcart/local_map
+golfcart/Obst_Avoid:
+  base_frame: golfcart/base_link
+  global_frame: golfcart/map
+  local_frame: golfcart/local_map
+  obst_avoid_trigger: false

@@ -5,10 +5,10 @@
 		"1-roscore": "roscore",
 		"2-lowlevel-sync-ntp": "ssh golfcart-lowlevel 'sudo ./force_sync_ntp_check.sh'",
         "3-lowlevel": "ssh linuxcnc@arm 'roslaunch lowlevel_hal lowlevel_hal_ros_adapter.launch'",
-        "4-sensors": "roslaunch Launch_v2 0Sensors.launch",
-		"5-localization": "roslaunch Launch_v2 1Localization.launch",
+        "4-sensors": "roslaunch $(rospack find Launch_v2)/airspeed/0Sensors.launch",
+		"5-localization": "roslaunch $(rospack find Launch_v2)/airspeed/1Localization.launch",
 		"6-ped-detection": "roslaunch Launch_v2 4pedestrian_detect_pomdp.launch",
-		"7-navigation": "roslaunch Launch_v2 3Navigation.launch",
+		"7-navigation": "roslaunch $(rospack find Launch_v2)/airspeed/3Navigation.launch",
 		"pomdp": "roslaunch ped_momdp_sarsop momdp.launch",
 		"reset-steering": "rostopic pub /golfcart/steer_angle std_msgs/Float64 0"
     }

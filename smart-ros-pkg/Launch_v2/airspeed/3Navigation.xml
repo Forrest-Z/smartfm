@@ -27,7 +27,9 @@
   <node pkg="golfcar_ppc" type="purepursuit_controller" name="ppc"/>
 #end
 #if($!rrt)
+<!--
     <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/>
+	-->
 #end
     <node name="soundplay_node" pkg="sound_play" type="soundplay_node.py"/>
     <node name="sound_speaker" pkg="sound_speaker" type="sound_speaker">
@@ -38,7 +40,7 @@
     <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen"/>
     <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
 	<remap from="laser_area_policy/scan" to="sick_scan2"/>
-	<remap from="cmd_vel" to="cmd_speed"/>
+	<remap from="cmd_vel" to="cmd_speed_dummy"/>
 #if($rrt)
 	<remap from="move_status" to="move_status_hybrid"/>
 #end
