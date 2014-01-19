@@ -168,7 +168,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
 				*/
                 //then update the robot pose with the same frame
                 in_pose.setIdentity();
-                in_pose.frame_id_ = "/golfcart/base_link";
+                in_pose.frame_id_ = "/golfcart/front_bottom_lidar";
                 if(!getObjectPose(plf.header.frame_id, in_pose, out_pose)) continue;
 
                 plf.rob_pose.x = out_pose.getOrigin().getX();
