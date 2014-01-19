@@ -190,3 +190,4 @@ $ROBOT/Obst_Avoid:
   base_frame: $ROBOT/base_link
   global_frame: $ROBOT/map
   local_frame: $ROBOT/local_map
+  obst_avoid_trigger: false
