@@ -6,8 +6,8 @@ $ROBOT/topTilted:
 #end
   frame_id: $ROBOT/front_top_lidar
 $ROBOT/frontBottom:
-#if($vehicle=="car")  host: 192.168.1.202
-#elseif($vehicle=="buggy")  host: 192.168.1.203
+#if($vehicle=="buggy")  host: 192.168.1.202
+#elseif($vehicle=="car")  host: 192.168.200.200
 #end
   frame_id: $ROBOT/front_bottom_lidar
 $ROBOT/base_link_to_front_top_lidar:
