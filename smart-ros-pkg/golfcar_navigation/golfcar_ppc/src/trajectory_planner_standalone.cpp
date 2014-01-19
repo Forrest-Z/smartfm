@@ -42,7 +42,7 @@ public:
     tf_ = new tf::TransformListener();
     ros::NodeHandle nh, priv_nh("~");
     move_status_pub_ = nh.advertise<pnc_msgs::move_status>("move_status",1);
-    cmd_steer_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+    cmd_steer_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_steer", 1);
     global_plan_pub_ = nh.advertise<nav_msgs::Path>("global_plan", 1);
     slowZone_pub_ = nh.advertise<geometry_msgs::PoseArray>("slowZone", 1, true);
     poi_pub_ = nh.advertise<pnc_msgs::poi>("poi", 1, true);
@@ -237,7 +237,7 @@ private:
     }
     move_status_pub_.publish(move_status);
     cmd_vel.angular.z = move_status.steer_angle;
-    //cmd_steer_pub_.publish(cmd_vel);
+    cmd_steer_pub_.publish(cmd_vel);
   }
   
     
