@@ -83,6 +83,10 @@ rosbuild_add_executable(ST_GenRawTrainingData src/ST_GenRawTrainingData.cpp)
 rosbuild_link_boost(ST_GenRawTrainingData signals)
 target_link_libraries(ST_GenRawTrainingData ${OpenCV_LIBRARIES})
 
+rosbuild_add_executable(ST_LabelRawTrainingData src/ST_LabelRawTrainingData.cpp)
+rosbuild_link_boost(ST_LabelRawTrainingData signals)
+target_link_libraries(ST_LabelRawTrainingData ${OpenCV_LIBRARIES})
+
 rosbuild_add_executable(simple_moving_check src/simple_moving_check.cpp)
 rosbuild_link_boost(simple_moving_check signals)
 target_link_libraries(simple_moving_check ${OpenCV_LIBRARIES})

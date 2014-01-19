@@ -1,6 +1,10 @@
 <launch>
     <include file="$(find Launch)/iMiev/sensors/sicks.launch"/>
     <include file="$(find Launch)/iMiev/sensors/sicks_tf.launch"/>
+	 <node pkg="laser_maxrange_republish" type="laser_repub" name="front_bottom_lidar_fov_reduce">
+		<remap from="scan" to="front_bottom_scan"/>
+		<remap from="scan_filter" to="front_bottom_scan_filtered"/>
+	</node>
     <!--include file="$(find Launch)/iMiev/sensors/usbcam.launch"/-->
 
     <!--include file="$(find Launch)/iMiev/sensors/gps.launch"/-->

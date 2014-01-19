@@ -55,8 +55,13 @@ class DATMO_abstractSummary
 	public:
 	int labelled_scan_startSerial;
 	int labelled_scan_endSerial;
-	//the numbers in between lower and upper bounds are used to label different object with the same object class;
-	//(0~999)-nothing, (1000~1999)-vehicle, (2000~2999)-motorbike, (3000~3999)-pedestrian, (4000~4999)-under-determined;
+
+	int process_scan_startSerial;
+	int process_scan_endSerial;
+
+	std::vector<std::vector<int> > masks_under_processing;
+
+	//0-nothing, 1-vehicle, 2-motorbike, 3-pedestrian;
 	std::vector<std::vector<int> > type_masks;
 };
 
@@ -203,6 +208,10 @@ class DATMO_RawTrainingData
 	std::vector <std::vector<int> > scan_ClusterLabel_vector;
 	std::vector <sensor_msgs::PointCloud> clusters_odom;
 	std::vector <sensor_msgs::PointCloud> clusters_baselink;
+
+
+	//0-nothing, 1-vehicle, 2-motorbike, 3-pedestrian;
+	std::vector <std::vector<int> > scan_ClassType_vector;
 };
 
 

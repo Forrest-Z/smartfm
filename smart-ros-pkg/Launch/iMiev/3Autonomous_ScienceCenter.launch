@@ -2,8 +2,8 @@
     <node pkg="lowlevel_controllers" type="steering_controller_iMiev" name="steering_controller">
 	<remap from="steer_angle" to="pronto/joy_steer"/>
     </node>
-    <!--node name="speed_controller" pkg="lowlevel_controllers" type="speed_controller" output="screen">
-        <rosparam file="$(find lowlevel_controllers)/speed_controller.yaml" command="load" />
+    <!--node name="speed_controller_iMiev" pkg="lowlevel_controllers" type="speed_controller_iMiev" output="screen">
+        <rosparam file="$(find lowlevel_controllers)/speed_controller_iMiev.yaml" command="load" />
         <remap from="encoder_odo" to="encoder_odo"/>
     </node-->
 
@@ -26,6 +26,12 @@
     </node>
 
     <!--node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation.vcg" /-->
-    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/>
+    <!--node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper">
+      <remap from="front_bottom_scan" to="front_bottom_scan_filtered"/>
+      <param name="offcenter_x" value="2.5"/>
+      <param name="offcenter_y" value="1.5"/>
+      <param name="x_buffer" value="2.5"/>
+      <param name="y_buffer" value="0.2"/>
+    </node-->
     <include file="$(find sound_speaker)/launch/sound_speaker.launch"/>
 </launch>

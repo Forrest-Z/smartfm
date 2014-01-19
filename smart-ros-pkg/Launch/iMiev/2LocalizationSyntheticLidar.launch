@@ -10,14 +10,14 @@
         <param name="baselink_frame_id" value="odom_baselink"/>
     </node>
     <node pkg="amcl_pc" type="amcl" name="amcl_pc" output="screen">
-        <remap from="scan" to="scan"/>
+        <remap from="scan" to="front_bottom_scan"/>
         <remap from="pc" to="pc_legacy_out"/>
         <param name="max_particles" value="500"/>
         <param name="min_particles" value="250"/>
         <param name="laser_likelihood_max_dist" value="1.0"/>
-        <param name="odom_alpha1" value="2.0"/>
+        <param name="odom_alpha1" value="0.5"/>
         <param name="odom_alpha2" value="0.1"/>
-        <param name="odom_alpha3" value="5.0"/>
+        <param name="odom_alpha3" value="1.0"/>
         <param name="odom_alpha4" value="0.1"/>
         <param name="update_min_d" value="0.2"/>
         <param name="laser_model_type" value="pc_likelihood_field"/>
