@@ -122,7 +122,7 @@ void PurePursuitBase::initialize(string name, tf::TransformListener* tf,
     move_status_pub_ = global_node.advertise<pnc_msgs::move_status>("move_status",1);
     poi_sub_ = global_node.subscribe("/poi", 1, &PurePursuitBase::PoiCallback, this);
 
-    pp_ = new PurePursuit(costmap_ros_->getGlobalFrameID());
+    pp_ = new PurePursuit(costmap_ros_->getGlobalFrameID(), 3.0, 1.0, 1.632);
 }
 
 void PurePursuitBase::PoiCallback(pnc_msgs::poi poi)
@@ -149,7 +149,7 @@ double PurePursuitBase::getIntDist(geometry_msgs::Point* int_point)
             *int_point = pp_->path_.poses[poi_.int_pts[i]].pose.position;
             if( pp_->current_pos_to_point_dist_simple(poi_.int_pts[i], &dist) )
             {
-				ROS_DEBUG("int_pt %d, path_n %d", poi_.int_pts[i], pp_->path_n_);
+				ROS_DEBUG_STREAM("int_p "<<poi_.int_pts[i]<<" path_n "<< pp_->path_n_);
 				return dist;
 			}
             else return -1;
