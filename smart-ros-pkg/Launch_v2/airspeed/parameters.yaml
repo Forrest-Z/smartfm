@@ -1,5 +1,16 @@
 #robot_name: &ROBOT_NAME !!python/object/apply:os.getenv ['ROBOT']
 #frame_id: &FRAME_ID !!python/object/apply:string.replace ['robot_name/front_top_lidar', robot_name, *ROBOT_NAME]
+$ROBOT/purepursuitController:
+  global_frame: $ROBOT/map
+  robot_frame: $ROBOT/base_link
+  max_pose_delay: 0.1
+  frequency: 50
+#if($vehicle=="car")
+  car_length: 2.55
+  min_lookahead: 5.0
+#elseif($vehicle=="buggy")
+  min_lookahead: 2.5
+#end
 $ROBOT/topTilted:
 #if($vehicle=="buggy")  host: 192.168.1.201
 #elseif($vehicle=="car")  host: 192.168.200.201
@@ -57,7 +68,7 @@ $ROBOT/camera_front:
   frame_id: $ROBOT/camera_front_img
 $ROBOT/microstrain_3dmgx2_node:
   time_offset: -0.040
-  port: /dev/msimu
+  port: /dev/ttyACM0
   autostart: true
   frameid: $ROBOT/imu
   autocalibrate: true
@@ -119,6 +130,7 @@ $ROBOT/speed_controller_fastStop:
   coeff_brakepedal: 70
   err_threshold: 0.01
 $ROBOT/speed_controller_v2:
+#if($vehicle=="buggy")
   tau_v: 0.2
   throttleZeroThres: 0.1 #main switching surface of throttle
   brakeZeroThres: -0.2 #main switching surface of brake
@@ -141,11 +153,29 @@ $ROBOT/speed_controller_v2:
   #full brake value
   coeff_brakepedal: -70
   brakeToThrottleThres: -20
-$ROBOT/ppc:
-  global_frame: $ROBOT/map
-  robot_frame: $ROBOT/base_link
-  max_pose_delay: 0.1
-  frequency: 50
+#elseif($vehicle=="car")
+  throttleZeroThres: 0.1 #main switching surface of throttle
+  brakeZeroThres: -0.5 #main switching surface of brake
+  fullBrakeThres: 0.5 #to make sure the car will stop at the end
+###Throttle Settings###
+  fullThrottleThres: 1000.0
+  kp: 250.0    
+  ki: 3.0    
+  kd: 30.0 
+  kp_sat: 1000.0
+  ki_sat: 700.0
+  kd_sat: 300.0
+###Brake Settings###
+  kp_brake: 5.0 #80
+  ki_brake: 1.0 #5
+  kd_brake: 0.0
+  kp_sat_brake: 100.0
+  ki_sat_brake: 70.0
+  kd_sat_brake: 0.0
+#full brake value
+  coeff_brakepedal: 100
+  brakeToThrottleThres: 20
+#end
 $ROBOT/move_base_node:
   footprint_padding: 0.01
   controller_frequency: 20.0
@@ -165,7 +195,7 @@ $ROBOT/route_planner:
 $ROBOT/speed_advisor:
   map_frame_id: $ROBOT/map 
   robot_frame_id: $ROBOT/base_link
-  max_speed: 1.5
+  max_speed: 3.0
   acc: 0.2
   max_dec: 1.0
   norm_dec: 0.3
@@ -191,7 +221,3 @@ $ROBOT/Obst_Avoid:
   global_frame: $ROBOT/map
   local_frame: $ROBOT/local_map
   obst_avoid_trigger: true
-$ROBOT/ppc:
-  min_lookahead: 2.5
-  anchor_pt_dist: 1.0
-  car_length: 1.632
