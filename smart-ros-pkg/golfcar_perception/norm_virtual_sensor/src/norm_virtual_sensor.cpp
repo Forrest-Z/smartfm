@@ -479,11 +479,11 @@ public:
 	string transform_frame = odom_baselink_frame_id_;
         laser_accumulate_ = new AccumulateData(target_frame_, min_move_dist_, norm_radius_search_/min_move_dist_+accummulate_buffer_);
 
-        laser_scan_sub_.subscribe(n, "scan_in", 1);
+        laser_scan_sub_.subscribe(n, "scan_in", 10);
         laser_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_scan_sub_, *tf_, transform_frame, 10);
         laser_scan_filter_->registerCallback(boost::bind(&NormVirtualSensor::scanCallback, this, _1));
 
-        pointcloud_sub_.subscribe(n, "laser_surface_removed", 1);
+        pointcloud_sub_.subscribe(n, "laser_surface_removed", 10);
         pointcloud_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud2>(pointcloud_sub_, *tf_, transform_frame, 10);
         pointcloud_filter_->registerCallback(boost::bind(&NormVirtualSensor::pcCallback, this, _1));
 
