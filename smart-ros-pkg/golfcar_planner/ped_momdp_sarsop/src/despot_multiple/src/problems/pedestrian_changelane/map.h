@@ -40,8 +40,10 @@ public:
 		goal_pos[1][1]=112*ModelParams::map_rln;
 
 		//last goal is the dummy goal for stopping intentioni
+		/*
 		goal_pos[4][0]=-10000;
 		goal_pos[4][1]=-10000;
+		*/
 
 		for(int i=0;i<4;i++)
 		{

@@ -19,7 +19,7 @@ namespace ModelParams {
 	//const int NGOAL=13;
 	//const int GOAL_DIST=22;  /*the distance between ped and its goal*/
 	
-	const int NGOAL=4+1;  //plus one stop intention
+	const int NGOAL=4;  //plus one stop intention
 	const int GOAL_DIST=1000000;
 	
 	const int goodrob=0;
