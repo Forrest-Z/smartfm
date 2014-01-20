@@ -12,10 +12,11 @@ namespace MPAV{
 	ObstAvoid::ObstAvoid(){
 
 		ROS_INFO("Enter ObstAvoid StateMachine");
-		nh.param("base_frame", base_frame, string("base_link"));
-		nh.param("global_frame", global_frame, string("map"));
-		nh.param("local_frame", local_frame, string("local_map"));
-
+		ros::NodeHandle priv_nh("~");
+		priv_nh.param("base_frame", base_frame, string("base_link"));
+		priv_nh.param("global_frame", global_frame, string("map"));
+		priv_nh.param("local_frame", local_frame, string("local_map"));
+		priv_nh.param("replan_trigger", obst_avoid_trigger, true);
 		navi_sm.RRTStar = new PlannerExp();
 		navi_sm.RRTStar->base_frame = base_frame;
 		navi_sm.RRTStar->local_frame = local_frame;
@@ -91,7 +92,7 @@ namespace MPAV{
 #if 1
 	void ObstAvoid::MoveStatusCB(const pnc_msgs::move_status::ConstPtr &move_status){
 		navi_sm.SMStatus[ObstDetect] = move_status->emergency;
-		if (move_status->emergency && !navi_sm.RRTStar->is_first_map)
+		if (move_status->emergency && !navi_sm.RRTStar->is_first_map && obst_avoid_trigger)
 			navi_sm.process_event(Ev_Obst_Detected());
 		CopyMoveStatus(*move_status);
 		move_status_hybrid_pub.publish(navi_sm.move_status);
