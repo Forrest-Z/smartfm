@@ -1,0 +1,29 @@
+<launch>
+  <group ns="$ROBOT">
+      <!--node name="map_server" pkg="map_server" type="map_server" args="$(find GP)/maps/final.yaml"/-->
+#if($localization=="normal")      
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/map.yaml"/>
+	<node name="fake_localization"   pkg="fake_localization_pomdp" type="static_odom_broadcaster.py" output="screen">
+		<param name="odom_frame_id" value="$ROBOT/odom"/>
+		<param name="base_frame_id" value="$ROBOT/base_link"/>
+		<param name="map_frame_id" value="$ROBOT/map"/>
+	</node>
+    <node name="amcl" pkg="amcl" type="amcl" respawn="false" output="screen">
+      <remap from="scan" to="front_top_scan"/>		
+	  <remap from="odom" to="phidget_encoder_odo"/>		
+    </node>
+    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation_namespace_pomdp.vcg" />    
+#elseif($localization=="synthetic")
+    <node pkg="amcl_pc" type="amcl" name="amcl_pc" output="screen">
+      <remap from="scan" to="front_top_scan"/>
+      <remap from="pc" to="pc_legacy_out"/>
+    </node>
+    <node pkg="norm_virtual_sensor" type="norm_virtual_sensor" name="norm_virtual_sensor" output="screen">
+    	<remap from="scan_in" to="front_top_scan"/>
+    </node>
+    <node pkg="norm_virtual_sensor" type="odom_baselink" name="odom_baselink"/>
+    <node pkg="map_server" type="map_server" name="map_server" args="$(find amcl_pc)/maps/all_utown_pcd.yaml"/>
+    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation_namespace_pomdp.vcg" />    
+#end
+  </group>
+</launch>
