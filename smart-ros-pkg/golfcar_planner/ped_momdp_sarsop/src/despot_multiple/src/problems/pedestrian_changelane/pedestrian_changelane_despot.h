@@ -144,14 +144,16 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 				cout<<endl;
 			}
 		}
+
 		void ModifyObsStates(const vector<Particle<PedestrianState>*> &particles,PedestrianState&new_state,unsigned & seed) const
 		{
-			for(int i=0;i<particles.size();i++)
-			{
-				PedestrianState state=particles[i]->state;
-				for(int j=0;j<new_state.num;j++)   
-				{
-					new_state.PedPoses[j].second=-1;
+			int num_ped = new_state.num;
+
+			// Copy pedestrians and goals of existing pedestrians
+			for (int i=0; i<particles.size(); i++) {
+				PedestrianState state = particles[i]->state;
+				for (int j=0; j<num_ped; j++) {
+					new_state.PedPoses[j].second = -1;
 					for(int k=0;k<state.num;k++)
 					{
 						if(state.PedPoses[k].third==new_state.PedPoses[j].third)  {
@@ -159,32 +161,29 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 							break;
 						}
 					}
-					if(new_state.PedPoses[j].second==-1)  //new state,assign a random goal
-					{
-						double prob=(double)rand_r(&(seed)) / RAND_MAX;
-						int x=new_state.PedPoses[j].first.X;
-						int y=new_state.PedPoses[j].first.Y;
+				}
+				particles[i]->state = new_state;
+			}
 
-						int sum=0;
-						int g;
-						for(g=0;g<ModelParams::NGOAL;g++)
-						{
-							if(fabs(sfm->local_goals[g][0]-x)<ModelParams::GOAL_DIST&&fabs(sfm->local_goals[g][1]-y)<ModelParams::GOAL_DIST)
-							{sum++;}
-						}
-						int next=prob*sum;
-						sum=0;
-						for(g=0;g<ModelParams::NGOAL;g++)
-						{
-							if(fabs(sfm->local_goals[g][0]-x)<ModelParams::GOAL_DIST&&fabs(sfm->local_goals[g][1]-y)<ModelParams::GOAL_DIST)
-							{sum++;}
-							if(sum>next) break;
-						}
-						//new_state.PedPoses[j].second=prob*ModelParams::NGOAL;
-						//new_state.PedPoses[j].second=g;
+			// Assign goal to new pedestrians
+			for(int j=0;j<num_ped;j++)   {
+				vector<int> perm;
+				for (int i=0; i<particles.size(); i++)
+					perm.push_back(i);
+				random_shuffle(perm.begin(), perm.end());
+				double cur_wgt = 0, cur_goal = 0, unit = 1.0 / ModelParams::NGOAL;
+
+				for(int i : perm) {
+					PedestrianState state=particles[i]->state;
+					if(state.PedPoses[j].second==-1)  
+						particles[i]->state.PedPoses[j].second = cur_goal;
+
+					cur_wgt += particles[i]->wt;
+					if (cur_wgt >= unit) {
+						cur_goal ++;
+						unit += 1.0 /ModelParams::NGOAL;
 					}
 				}
-				particles[i]->state=new_state;	
 			}
 		}
 
