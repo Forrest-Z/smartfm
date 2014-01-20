@@ -209,6 +209,9 @@ class object_cluster_segments
 	vector <geometry_msgs::Pose> pose_InOdom_vector;
 	vector <compressed_scan_segment> scan_segment_batch;
 	float x, y, thetha, v, omega;
+
+	cv::Moments ST_moments;
+	double  ST_Humoment[7];
 };
 
 class DATMO_RawTrainingData
