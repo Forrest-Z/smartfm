@@ -1,4 +1,44 @@
 #include <ros/ros.h>
+struct hist_elem {
+	double pedx,pedy,robx,roby;	
+};
+struct hist  {
+	vector<hist_elem> hist_list;	
+	int id;
+};
+struct my_ped {
+	double pedx,pedy; 	
+	int id;
+};
+
+vector <hist> data;
+void UpdatePedPoseReal(Pedestrian ped)
+{
+	int i;
+	//	cout<<"ped pose in simulator"<<endl;
+	for( i=0;i<data.size();i++)
+	{
+		if(data[i].id==ped.id)
+		{
+			//found the corresponding ped,update the pose
+			ped_list[i].w=ped.w;
+			ped_list[i].h=ped.h;
+			ped_list[i].last_update=t_stamp;
+			break;
+		}
+		if(abs(ped_list[i].w-ped.w)<=1&&abs(ped_list[i].h-ped.h)<=1)   //overladp 
+			return;
+		//		cout<<ped_list[i].w<<" "<<ped_list[i].h<<endl;
+	}
+	if(i==ped_list.size())   //not found, new ped
+	{
+		//		cout<<"add"<<endl;
+		ped.last_update=t_stamp;
+		ped_list.push_back(ped);
+
+	}
+	///	cout<<"this ped "<<ped.w<<" "<<ped.h<<" "<<ped.id<<endl;
+}
 void pedestrianCallBack(ped_momdp_sarsop::ped_local_frame_vector lPedLocal)
 {
 	ped_momdp_sarsop::ped_local_frame ped=lPedLocal.ped_local[0];

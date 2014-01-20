@@ -464,7 +464,7 @@ void ped_momdp::publishMarker(int id,vector<double> belief)
 {
 	visualization_msgs::MarkerArray markers;
 	uint32_t shape = visualization_msgs::Marker::CUBE;
-
+	cout<<"belief vector size "<<belief.size()<<endl;
 	for(int i=0;i<belief.size();i++)
 	{
 		visualization_msgs::Marker marker;			
@@ -512,7 +512,7 @@ void ped_momdp::publishMarker(int id,vector<double> belief)
 void ped_momdp::publishBelief()
 {
 	vector<vector<double> > ped_beliefs=RealSimulator->GetBeliefVector(solver->root_->particles());	
-	cout<<"belief vector size "<<ped_beliefs.size()<<endl;
+	//cout<<"belief vector size "<<ped_beliefs.size()<<endl;
 	for(int i=0;i<ped_beliefs.size();i++)
 	{
 		publishMarker(i,ped_beliefs[i]);
