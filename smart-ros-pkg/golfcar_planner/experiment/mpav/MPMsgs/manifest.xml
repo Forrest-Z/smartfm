@@ -1,0 +1,15 @@
+<package>
+  <description brief="MPMsgs">
+
+     MPMsgs
+
+  </description>
+  <author>LIUWLZ</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/MPMsgs</url>
+  <depend package="roscpp"/>
+
+</package>
+
+

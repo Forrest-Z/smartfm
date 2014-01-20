@@ -1,0 +1,26 @@
+<package>
+  <description brief="Speed_Control">
+
+     Speed_Control
+
+  </description>
+  <author>LIUWLZ</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/Speed_Control</url>
+  <depend package="roscpp"/>
+  <depend package="sensor_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="nav_msgs"/>
+  <depend package="tf"/>
+  <depend package="laser_geometry"/>
+  <depend package="pnc_msgs"/>
+  <depend package="fmutil"/>
+  
+  <export>
+  	<cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lSpeed_Control"/>
+  </export>
+
+</package>
+
+
