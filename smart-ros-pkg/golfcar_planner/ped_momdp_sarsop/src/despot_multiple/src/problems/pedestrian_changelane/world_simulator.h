@@ -86,7 +86,7 @@ public:
 		OBS_T robObs=curr_state.Vel+curr_state.RobPos.Y*ModelParams::VEL_N;
 		OBS_T robObsMax=ModelParams::VEL_N*ModelParams::RMMax;  //max length of the rob_map
 		OBS_T pedObsMax=X_SIZE*Y_SIZE;
-		OBS_T pedObs=0;
+		OBS_T pedObs=1;
 		//for(int i=0;i<state.PedPoses.size();i++)
 		for(int i=0;i<curr_state.num;i++)
 		{
@@ -601,7 +601,7 @@ public:
 		curr_state.num=pedInView_list.size();
 
 		
-		if(velGlobal<0.25)
+		if(velGlobal<0.1)
 		{
 			curr_state.Vel=0;
 		}
