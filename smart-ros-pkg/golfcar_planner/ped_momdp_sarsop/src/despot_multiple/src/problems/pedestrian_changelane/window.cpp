@@ -88,7 +88,8 @@ bool MyWindow::InWindow(int w,int h)
 void MyWindow::MapWindowSplit(double w,double h,double yaw)
 {
 	int robw=(int)(w);
-	int robh=(int)(h-ModelParams::rln/2);
+	//int robh=(int)(h-ModelParams::rln/2);
+	int robh=(int)(h);
 	double yaw0=asin(yaw)*2+ModelParams::pi/2;
 	double yaw1=asin(yaw)*2-ModelParams::pi/2;
 
@@ -146,6 +147,10 @@ void MyWindow::GlobalToLocal(int globalW,int globalH,int &localW,int&localH)
 
 	localW=floor(l01/n01);
 	localH=floor(l03/n03);
+
+	//if (localH == -1) {
+		//cout << localW << " " << localH << " " << w0 << " " << h0 << " " << w1 << " << w
+	//}
 }
 
 void MyWindow::LocalToGlobalPreComp(int localW,int localH,int & globalW,int & globalH)

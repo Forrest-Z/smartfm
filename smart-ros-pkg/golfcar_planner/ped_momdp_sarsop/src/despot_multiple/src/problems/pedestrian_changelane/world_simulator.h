@@ -245,7 +245,7 @@ public:
 	void ShiftWindow()
 	{
 		curr_obs=CalCurrObs();
-		if(robPos-windowOrigin>=ModelParams::path_rln*2) 	  windowOrigin=robPos;
+		if(robPos-windowOrigin>=ModelParams::path_rln*2) 	  windowOrigin=robPos-ModelParams::path_rln/2;
 		Clean();
 		window.RollWindow(windowOrigin);
 		pedInView_list.clear();

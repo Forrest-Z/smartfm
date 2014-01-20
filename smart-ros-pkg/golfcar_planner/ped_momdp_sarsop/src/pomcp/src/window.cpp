@@ -129,7 +129,7 @@ void MyWindow::GlobalToLocal(int globalW,int globalH,int &localW,int&localH)
 	double vec03_w=w3-w0,vec03_h=h3-h0;
 	double vec_w=globalW-w0,vec_h=globalH-h0;
 
-	//get the uniform vector
+	//get the unit vector
 	double u01_w,u01_h,u03_w,u03_h;
 	Uniform(vec01_w,vec01_h,u01_w,u01_h);
 	Uniform(vec03_w,vec03_h,u03_w,u03_h);

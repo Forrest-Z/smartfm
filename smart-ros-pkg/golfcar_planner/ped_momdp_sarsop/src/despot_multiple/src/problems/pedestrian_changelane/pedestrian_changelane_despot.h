@@ -181,7 +181,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 							if(sum>next) break;
 						}
 						//new_state.PedPoses[j].second=prob*ModelParams::NGOAL;
-						new_state.PedPoses[j].second=g;
+						//new_state.PedPoses[j].second=g;
 					}
 				}
 				particles[i]->state=new_state;	
