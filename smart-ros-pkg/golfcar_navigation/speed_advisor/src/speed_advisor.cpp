@@ -6,9 +6,9 @@
 SpeedSettings::SpeedSettings()
 : automode_(true), emergency_(false), curr_vel_(0), odo_vel_(0)
 {
-    automode_sub_ = nh_.subscribe("/button_state_automode", 1, &SpeedSettings::automode_callback, this);
-    emergency_sub_ = nh_.subscribe("/button_state_emergency", 1, &SpeedSettings::emergency_callback, this);
-    odo_sub_ = nh_.subscribe("/odom", 1, &SpeedSettings::odom_callback, this);
+    automode_sub_ = nh_.subscribe("button_state_automode", 1, &SpeedSettings::automode_callback, this);
+    emergency_sub_ = nh_.subscribe("button_state_emergency", 1, &SpeedSettings::emergency_callback, this);
+    odo_sub_ = nh_.subscribe("odom", 1, &SpeedSettings::odom_callback, this);
 
     switching_gear_ = false;
 }
@@ -150,7 +150,7 @@ SpeedAdvisor::SpeedAdvisor()
     left_blinker_pub_ = nh_.advertise<std_msgs::Bool>("left_blinker",1);
     right_blinker_pub_ = nh_.advertise<std_msgs::Bool>("right_blinker",1);
 
-    move_base_speed_ = nh_.subscribe("/move_status", 1, &SpeedAdvisor::moveSpeedCallback, this);
+    move_base_speed_ = nh_.subscribe("move_status", 1, &SpeedAdvisor::moveSpeedCallback, this);
     rrts_sub_ = nh_.subscribe("rrts_status", 1, &SpeedAdvisor::rrts_callback, this);
     slowzone_sub_ = nh_.subscribe("slowZone", 1, &SpeedAdvisor::slowZoneCallback, this);
     bwd_drive_ = false;
