@@ -5,8 +5,8 @@ class iMievControls : public PID_Controller {
 public:
   
   iMievControls() : PID_Controller(){
-    throttlePub = n.advertise<std_msgs::Int32>("pronto/throttle", 1);
-    brakePedalPub = n.advertise<std_msgs::Int32>("pronto/brake_angle", 1);
+    throttlePub = n.advertise<std_msgs::Int32>("pronto/veh_throttle", 1);
+    brakePedalPub = n.advertise<std_msgs::Int32>("pronto/veh_brake", 1);
   }
   
   void publishCtrlSignal(double throttle, double brake){

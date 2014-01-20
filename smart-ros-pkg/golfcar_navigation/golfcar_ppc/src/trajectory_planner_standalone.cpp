@@ -26,7 +26,7 @@ class TrajectoryPlannerStandalone
   double frequency_, delay_;
   ros::Publisher move_status_pub_, cmd_steer_pub_, global_plan_pub_;
   ros::Publisher slowZone_pub_, poi_pub_;
-  ros::Subscriber origin_destination_pt_sub_, g_plan_repub_sub_;
+  ros::Subscriber origin_destination_pt_sub_, g_plan_repub_sub_, cmd_vel_sub_;
   golfcar_purepursuit::PurePursuit* pp_;
   string global_frame_, robot_frame_;
   tf::TransformListener* tf_;
@@ -48,12 +48,16 @@ public:
     poi_pub_ = nh.advertise<pnc_msgs::poi>("poi", 1, true);
     g_plan_repub_sub_ = nh.subscribe("global_plan_repub", 1, &TrajectoryPlannerStandalone::repubCallback, this);
     origin_destination_pt_sub_ = nh.subscribe("move_base_simple/goal", 1, &TrajectoryPlannerStandalone::originDestinationCallback, this);
+    cmd_vel_sub_ = nh.subscribe("cmd_vel", 1, &TrajectoryPlannerStandalone::cmdVelCallback, this);
     priv_nh.param("global_frame", global_frame_, string("/map")); 
     priv_nh.param("robot_frame", robot_frame_, string("/base_link"));
     priv_nh.param("frequency", frequency_, 100.0);
     priv_nh.param("max_pose_delay", delay_, 0.015);
-    
-    pp_ = new golfcar_purepursuit::PurePursuit(global_frame_.c_str());
+    double min_lookahead, anchor_pt_dist, car_length;
+    priv_nh.param("min_lookahead", min_lookahead, 3.0);
+    priv_nh.param("anchor_pt_dist", anchor_pt_dist, 1.0);
+    priv_nh.param("car_length", car_length, 1.632);
+    pp_ = new golfcar_purepursuit::PurePursuit(global_frame_.c_str(), min_lookahead, anchor_pt_dist, car_length);
     
     //without a variable to hold the timer, the timer won't start!!!
     ros::Timer timer = nh.createTimer(ros::Duration(1.0/frequency_), &TrajectoryPlannerStandalone::controlLoop, this);
@@ -62,6 +66,10 @@ public:
   }
   
 private:
+  void cmdVelCallback(geometry_msgs::Twist twist){
+    pp_->updateCommandedSpeed(twist.linear.x);
+  }
+  
   void repubCallback(nav_msgs::PathConstPtr p){
     ROS_INFO("New path received from rrt with size of: %d", (int)p->poses.size());
     rrt_path_ = *p;
@@ -169,17 +177,17 @@ private:
     //the intersections points is strictly increasing, getting the distance is easier
     for( unsigned i=0; i<poi_.int_pts.size(); i++ )
     {
-        if( poi_.int_pts[i] >= pp_->path_n_ )
-        {
-            double dist;
-            *int_point = pp_->path_.poses[poi_.int_pts[i]].pose.position;
-            if( pp_->current_pos_to_point_dist_simple(poi_.int_pts[i], &dist) )
-            {
-				ROS_DEBUG("int_pt %d, path_n %d", poi_.int_pts[i], pp_->path_n_);
-				return dist;
-			}
-            else return -1;
-        }
+      if( poi_.int_pts[i] >= pp_->path_n_ )
+      {
+	double dist;
+	*int_point = pp_->path_.poses[poi_.int_pts[i]].pose.position;
+	if( pp_->current_pos_to_point_dist_simple(poi_.int_pts[i], &dist) )
+	{
+	  ROS_DEBUG_STREAM("int_p "<<poi_.int_pts[i]<<" path_n "<< pp_->path_n_);
+	  return dist;
+	}
+	else return -1;
+      }
     }
     return -1;
   }

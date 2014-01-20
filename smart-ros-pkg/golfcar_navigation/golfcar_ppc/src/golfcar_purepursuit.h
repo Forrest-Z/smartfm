@@ -21,7 +21,7 @@ namespace golfcar_purepursuit
 class PurePursuit
 {
 public:
-    PurePursuit(string global_frameID);
+    PurePursuit(string global_frameID, double min_look_ahead_dist, double forward_achor_pt_dist, double car_length);
 
     bool steering_control(double *wheel_angle, double *dist_to_goal);
     bool current_pos_to_point_dist(int end_point, double* path_dist);
@@ -31,13 +31,13 @@ public:
     int path_n_;
     bool initialized_;
     double dist_to_final_point;
-
+    void updateCommandedSpeed(double speed);
 private:
     geometry_msgs::Point current_point_, next_point_;
 
     ros::Publisher pp_vis_pub_;
 
-    double Lfw_, lfw_;
+    double Lfw_, lfw_, min_lookahead_;
     int nextPathThres_;
     int nextPathCount_;
     string global_frameID_;

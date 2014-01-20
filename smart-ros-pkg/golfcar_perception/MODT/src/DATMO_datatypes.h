@@ -72,7 +72,14 @@ class compressed_scan_segment
 	vector<int> serial_in_scan;
 	vector<geometry_msgs::Point32> rawPoints;
 	vector<geometry_msgs::Point32> odomPoints;
+	//points in the latest LIDAR frame;
+	vector<geometry_msgs::Point32> lidarPoints;
 	vector<float> rawIntensities;
+
+	//negative value means object is the foreground, which has shorter distance than background from LIDAR;
+	//positive value means the opposite;
+	//near 0.0 value means out of FOV, out-of-range background readings, etc;
+	double front_dist2background, back_dist2background;
 
 	//compressed information;
 	geometry_msgs::Point32 KeyPoint[3];
@@ -83,10 +90,16 @@ class compressed_scan_segment
 	compressed_scan_segment()
 	{
 		m=0; n=0; sigmaM=0.0; sigmaN=0.0;
+		front_dist2background = 0.0;
+		back_dist2background  = 0.0;
 	}
 
 	void compress_scan()
 	{
+		//for(size_t i=0; i<serial_in_scan.size(); i++)cout<<serial_in_scan[i]<<"\t"; cout<<endl;
+		//for(size_t i=0; i<rawPoints.size(); i++)cout<<rawPoints[i].x<<","<<rawPoints[i].y<<"\t"; cout<<endl;
+		//cout<<front_dist2background<<","<<back_dist2background<<"\t"<<endl;
+
 		assert(rawPoints.size() == rawIntensities.size());
 		if(rawPoints.size()==0)
 		{
@@ -195,7 +208,6 @@ class object_cluster_segments
 	vector <geometry_msgs::Pose> pose_InLatestCoord_vector;
 	vector <geometry_msgs::Pose> pose_InOdom_vector;
 	vector <compressed_scan_segment> scan_segment_batch;
-
 	float x, y, thetha, v, omega;
 };
 

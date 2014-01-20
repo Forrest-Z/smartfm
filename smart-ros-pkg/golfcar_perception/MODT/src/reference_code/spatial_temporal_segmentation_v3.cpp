@@ -79,6 +79,10 @@ private:
 	std::vector<double> get_vector_new(object_cluster_segments &object_cluster);
 	std::vector<double> get_vector_V3(object_cluster_segments &object_cluster);
 
+	void calculate_moments_and_Humoment(std::vector<cv::Point2f>& pointset, cv::Moments& moments, double Humoment[7]);
+	void calc_central_moment(std::vector<cv::Point2f>& pointset, int i, int j, double &central_moment);
+	void calc_moment(std::vector<cv::Point2f>& pointset, int i, int j, double & moment_value);
+
 	void classify_clusters();
 	void calc_rough_pose();
 	void calc_precise_pose();
@@ -151,10 +155,10 @@ DATMO::DATMO()
 	interval_ = (downsample_interval_)*(scanNum_perVector_-1) +1;
 
 	//for version2;
-	private_nh_.param("feature_vector_length",	feature_vector_length_,    33);
+	//private_nh_.param("feature_vector_length",	feature_vector_length_,    33);
 
 	//for version3;
-	//private_nh_.param("feature_vector_length",	feature_vector_length_,    20);
+	private_nh_.param("feature_vector_length",	feature_vector_length_,    20);
 
 	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/front_bottom_scan", 100);
 	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, odom_frame_id_, 100);
@@ -790,8 +794,8 @@ void DATMO::save_training_data()
 		if(fp_write==NULL){ROS_ERROR("cannot write derived data file\n");return;}
 
 		fprintf(fp_write, "%d\t", object_cluster_tmp.object_type);
-		std::vector<double> feature_vector = get_vector_new(object_cluster_tmp);
-		//std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
+		//std::vector<double> feature_vector = get_vector_new(object_cluster_tmp);
+		std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
 		for(size_t k=0; k<feature_vector.size(); k++) fprintf(fp_write, "%lf\t", feature_vector[k]);
 		fprintf(fp_write, "\n");
 		fclose(fp_write);
@@ -817,8 +821,8 @@ void DATMO::classify_clusters()
 		int vector_length = feature_vector_length_;
 		double DATMO_feature_vector[vector_length];
 
-		std::vector<double> feature_vector = get_vector_new(object_cluster_tmp);
-		//std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
+		//std::vector<double> feature_vector = get_vector_new(object_cluster_tmp);
+		std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
 
 		for(int k=0; k<vector_length; k++)
 		{
@@ -1075,14 +1079,21 @@ std::vector<double> DATMO::get_vector_V3(object_cluster_segments &object_cluster
 		}
 	}
 
-	ST_moments = cv::moments( ST_pointset, false );
-	latest_moments = cv::moments( latest_pointset, false );
-	cv::HuMoments(ST_moments, ST_Humoments);
-	cv::HuMoments(latest_moments, latest_Humoments);
+	//ST_moments = cv::moments( ST_pointset, false );
+	//latest_moments = cv::moments( latest_pointset, false );
+	//cv::HuMoments(ST_moments, ST_Humoments);
+	//cv::HuMoments(latest_moments, latest_Humoments);
+
+	calculate_moments_and_Humoment(ST_pointset, ST_moments, ST_Humoments);
+	calculate_moments_and_Humoment(latest_pointset, latest_moments, latest_Humoments);
 
 	double ST_weight = ST_moments.m00, latest_weight = latest_moments.m00;
-	double ST_distance = sqrt(ST_moments.m10*ST_moments.m10+ST_moments.m01*ST_moments.m01);
-	double latest_distance = sqrt(latest_moments.m10*latest_moments.m10+latest_moments.m01*latest_moments.m01);
+	double x_avg = ST_moments.m10/ST_moments.m00;
+	double y_avg = ST_moments.m01/ST_moments.m00;
+	double ST_distance = sqrt(x_avg*x_avg + y_avg*y_avg);
+	x_avg = latest_moments.m10/latest_moments.m00;
+	y_avg = latest_moments.m01/latest_moments.m00;
+	double latest_distance = sqrt(x_avg*x_avg + y_avg*y_avg);
 
 	feature_vector.push_back(object_cluster.scan_segment_batch.back().front_dist2background);
 	feature_vector.push_back(object_cluster.scan_segment_batch.back().back_dist2background);
@@ -1092,12 +1103,80 @@ std::vector<double> DATMO::get_vector_V3(object_cluster_segments &object_cluster
 	feature_vector.push_back(latest_distance);
 	for(size_t i=0; i<7; i++)
 	{
-		feature_vector.push_back(ST_Humoments[7]);
-		feature_vector.push_back(latest_Humoments[7]);
+		feature_vector.push_back(ST_Humoments[i]);
+		feature_vector.push_back(latest_Humoments[i]);
 	}
 
 	assert((int)feature_vector.size() == feature_vector_length_);
 	return feature_vector;
+}
+
+void DATMO::calculate_moments_and_Humoment(std::vector<cv::Point2f>& pointset, cv::Moments& moments, double Humoment[7])
+{
+    CvMoments cvm;
+    CvHuMoments cvHM;
+
+    //calculate the point-set moments;
+    calc_moment(pointset, 0, 0, cvm.m00); 	moments.m00 = cvm.m00;
+    calc_moment(pointset, 1, 0, cvm.m10); 	moments.m10 = cvm.m10;
+    calc_moment(pointset, 0, 1, cvm.m01); 	moments.m01 = cvm.m01;
+    calc_moment(pointset, 2, 0, cvm.m20); 	moments.m20 = cvm.m20;
+    calc_moment(pointset, 1, 1, cvm.m11); 	moments.m11 = cvm.m11;
+    calc_moment(pointset, 0, 2, cvm.m02);	moments.m02 = cvm.m02;
+    calc_moment(pointset, 3, 0, cvm.m30);	moments.m30 = cvm.m30;
+    calc_moment(pointset, 2, 1, cvm.m21);	moments.m21 = cvm.m21;
+    calc_moment(pointset, 1, 2, cvm.m12);	moments.m12 = cvm.m12;
+    calc_moment(pointset, 0, 3, cvm.m03);	moments.m03 = cvm.m03;
+
+    calc_central_moment(pointset, 2, 0, cvm.mu20);	moments.mu20 = cvm.mu20;
+    calc_central_moment(pointset, 1, 1, cvm.mu11);	moments.mu11 = cvm.mu11;
+    calc_central_moment(pointset, 0, 2, cvm.mu02);	moments.mu02 = cvm.mu02;
+    calc_central_moment(pointset, 3, 0, cvm.mu30);	moments.mu30 = cvm.mu30;
+    calc_central_moment(pointset, 2, 1, cvm.mu21);	moments.mu21 = cvm.mu21;
+    calc_central_moment(pointset, 1, 2, cvm.mu12);	moments.mu12 = cvm.mu12;
+    calc_central_moment(pointset, 0, 3, cvm.mu03);	moments.mu03 = cvm.mu03;
+
+    cvm.inv_sqrt_m00 = 0.0;
+    if(fabs(cvm.m00)>DBL_EPSILON)cvm.inv_sqrt_m00 = 1/sqrt(fabs(cvm.m00));
+
+    cvGetHuMoments(&cvm, &cvHM);
+
+    Humoment[0]=cvHM.hu1;
+    Humoment[1]=cvHM.hu2;
+    Humoment[2]=cvHM.hu3;
+    Humoment[3]=cvHM.hu4;
+    Humoment[4]=cvHM.hu5;
+    Humoment[5]=cvHM.hu6;
+    Humoment[6]=cvHM.hu7;
+}
+
+void DATMO::calc_moment(std::vector<cv::Point2f>& pointset, int i, int j, double & moment_value)
+{
+	moment_value = 0;
+	double point_weight = 1;
+	for(size_t k=0; k<pointset.size(); k++)
+	{
+		moment_value = moment_value+pow(pointset[k].x,i)*pow(pointset[k].y,j)*point_weight;
+	}
+}
+
+void DATMO::calc_central_moment(std::vector<cv::Point2f>& pointset, int i, int j, double &central_moment)
+{
+	double x_avg, y_avg;
+	double m00, m10, m01;
+	calc_moment(pointset, 0, 0, m00);
+	calc_moment(pointset, 0, 1, m01);
+	calc_moment(pointset, 1, 0, m10);
+
+	x_avg = m10/(m00+1/DBL_MAX);
+	y_avg = m01/(m00+1/DBL_MAX);
+
+	central_moment = 0;
+	double point_weight = 1;
+	for(size_t k=0; k<pointset.size(); k++)
+	{
+		central_moment = central_moment+pow(pointset[k].x - x_avg,i)*pow(pointset[k].y - y_avg,j)*point_weight;
+	}
 }
 
 
