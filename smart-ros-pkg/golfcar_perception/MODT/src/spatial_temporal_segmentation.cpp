@@ -79,6 +79,7 @@ private:
 	std::vector<double> get_vector(object_cluster_segments &object_cluster);
 	std::vector<double> get_vector_new(object_cluster_segments &object_cluster);
 	std::vector<double> get_vector_V3(object_cluster_segments &object_cluster);
+	std::vector<double> get_vector_V4(object_cluster_segments &object_cluster);
 
 	void classify_clusters();
 	void calc_rough_pose();
@@ -170,8 +171,11 @@ DATMO::DATMO()
 	//for version2;
 	//private_nh_.param("feature_vector_length",	feature_vector_length_,    33);
 
-	//for version3;
-	private_nh_.param("feature_vector_length",	feature_vector_length_,    40);
+	//V3: with ST_contour shape information added;
+	//private_nh_.param("feature_vector_length",	feature_vector_length_,    40);
+
+	//V4: with roll, pitch, and intensities[3] added;
+	private_nh_.param("feature_vector_length",	feature_vector_length_,    45);
 
 	private_nh_.param("img_side_length",	img_side_length_,    50.0);
 	private_nh_.param("img_resolution",		img_resolution_,     0.2);
@@ -275,10 +279,9 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 
 	if(cloud_vector_.size()== interval_)
 	{
-		process_accumulated_data(process_scan_flag_);
-
 		if(program_mode_==0)
 		{
+			process_accumulated_data(true);
 			laser_pose_vector_.clear();
 			cloud_vector_.clear();
 			scan_vector_.clear();
@@ -286,6 +289,7 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 		}
 		else
 		{
+			process_accumulated_data(process_scan_flag_);
 			laser_pose_vector_.erase(laser_pose_vector_.begin(), laser_pose_vector_.begin()+1);
 			cloud_vector_.erase(cloud_vector_.begin(), cloud_vector_.begin()+ 1);
 			scan_vector_.erase(scan_vector_.begin(), scan_vector_.begin()+ 1);
@@ -871,8 +875,8 @@ void DATMO::save_training_data()
 		if(fp_write==NULL){ROS_ERROR("cannot write derived data file\n");return;}
 
 		fprintf(fp_write, "%d\t", object_cluster_tmp.object_type);
-		//std::vector<double> feature_vector = get_vector_new(object_cluster_tmp);
-		std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
+		//std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
+		std::vector<double> feature_vector = get_vector_V4(object_cluster_tmp);
 		for(size_t k=0; k<feature_vector.size(); k++) fprintf(fp_write, "%lf\t", feature_vector[k]);
 		fprintf(fp_write, "\n");
 		fclose(fp_write);
@@ -898,8 +902,8 @@ void DATMO::classify_clusters()
 		int vector_length = feature_vector_length_;
 		double DATMO_feature_vector[vector_length];
 
-		//std::vector<double> feature_vector = get_vector_new(object_cluster_tmp);
-		std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
+		//std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
+		std::vector<double> feature_vector = get_vector_V4(object_cluster_tmp);
 
 		for(int k=0; k<vector_length; k++)
 		{
@@ -1146,11 +1150,11 @@ std::vector<double> DATMO::get_vector_V3(object_cluster_segments &object_cluster
 	pose[0]=pose_tmp.position.x;
 	pose[1]=pose_tmp.position.y;
 	pose[2]=pose_tmp.position.z;
-	tf::Quaternion q(pose_tmp.orientation.x, pose_tmp.orientation.y, pose_tmp.orientation.z, pose_tmp.orientation.w);
-	tf::Matrix3x3 m(q);
-	m.getRPY(pose[3], pose[4], pose[5]);
-
+	//tf::Quaternion q(pose_tmp.orientation.x, pose_tmp.orientation.y, pose_tmp.orientation.z, pose_tmp.orientation.w);
+	//tf::Matrix3x3 m(q);
+	//m.getRPY(pose[3], pose[4], pose[5]);
 	feature_vector.push_back(pose[0]);
+
 	feature_vector.push_back(object_cluster.scan_segment_batch.back().front_dist2background);
 	feature_vector.push_back(object_cluster.scan_segment_batch.back().back_dist2background);
 
@@ -1176,11 +1180,68 @@ std::vector<double> DATMO::get_vector_V3(object_cluster_segments &object_cluster
 		feature_vector.push_back(object_cluster.ST_Humoment[i]);
 	}
 
-	//very important: ignore the first 3 odom readings;
-	//int vector_length = (feature_num_-3)*int(scanNum_perVector_)+3;
 	assert((int)feature_vector.size() == feature_vector_length_);
 	return feature_vector;
 }
+
+std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster)
+{
+	std::vector<double> feature_vector;
+	size_t j=object_cluster.scan_segment_batch.size();
+	assert(object_cluster.pose_InLatestCoord_vector.size()==object_cluster.scan_segment_batch.size());
+	assert(j==interval_);
+
+	//the latest delt pose;
+	double pose[6];
+	geometry_msgs::Pose pose_tmp = object_cluster.pose_InLatestCoord_vector[j-2];
+	pose[0]=pose_tmp.position.x;
+	pose[1]=pose_tmp.position.y;
+	pose[2]=pose_tmp.position.z;
+	//tf::Quaternion q(pose_tmp.orientation.x, pose_tmp.orientation.y, pose_tmp.orientation.z, pose_tmp.orientation.w);
+	//tf::Matrix3x3 m(q);
+	//m.getRPY(pose[3], pose[4], pose[5]);
+	feature_vector.push_back(pose[0]);
+
+
+	//use latest "roll" and "pitch";
+	pose_tmp = object_cluster.pose_InOdom_vector.back();
+	tf::Quaternion q(pose_tmp.orientation.x, pose_tmp.orientation.y, pose_tmp.orientation.z, pose_tmp.orientation.w);
+	tf::Matrix3x3 m(q);
+	m.getRPY(pose[3], pose[4], pose[5]);
+	feature_vector.push_back(pose[3]);
+	feature_vector.push_back(pose[4]);
+
+	feature_vector.push_back(object_cluster.scan_segment_batch.back().front_dist2background);
+	feature_vector.push_back(object_cluster.scan_segment_batch.back().back_dist2background);
+
+	//remember to reordered the sequence;
+	//use "downsample_interval" to reduce the size of training data;
+	for(int k=int(j)-1; k>=0; k=k-downsample_interval_)
+	{
+		//then printf the compressed scan segment;
+		for(size_t a=0; a<3; a++)
+		{
+			feature_vector.push_back((double)object_cluster.scan_segment_batch[k].KeyPoint[a].x);
+			feature_vector.push_back((double)object_cluster.scan_segment_batch[k].KeyPoint[a].y);
+		}
+
+		feature_vector.push_back((double)object_cluster.scan_segment_batch[k].m);
+		feature_vector.push_back((double)object_cluster.scan_segment_batch[k].n);
+		feature_vector.push_back((double)object_cluster.scan_segment_batch[k].sigmaM);
+		feature_vector.push_back((double)object_cluster.scan_segment_batch[k].sigmaN);
+	}
+
+	for(size_t i=0; i<7; i++)
+	{
+		feature_vector.push_back(object_cluster.ST_Humoment[i]);
+	}
+
+	for(size_t i=0; i<3; i++) feature_vector.push_back(object_cluster.scan_segment_batch.back().intensities[i]);
+
+	assert((int)feature_vector.size() == feature_vector_length_);
+	return feature_vector;
+}
+
 
 
 void DATMO::load_labeledScanMasks()
