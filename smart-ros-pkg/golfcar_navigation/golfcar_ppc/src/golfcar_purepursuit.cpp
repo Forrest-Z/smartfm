@@ -5,12 +5,13 @@
 namespace golfcar_purepursuit
 {
 
-PurePursuit::PurePursuit(string global_frameID)
+PurePursuit::PurePursuit(string global_frameID, double min_look_ahead_dist, double forward_achor_pt_dist, double car_length)
 {
     global_frameID_ = global_frameID;
     Lfw_ = 3;
-    lfw_ = 1;
-    car_length_ = 1.632;
+    min_lookahead_ = min_look_ahead_dist;
+    lfw_ = forward_achor_pt_dist;
+    car_length_ = car_length;
     nextPathThres_ = 5;
     dist_to_final_point = 100;
     initialized_ = false;
@@ -20,6 +21,16 @@ PurePursuit::PurePursuit(string global_frameID)
     pp_vis_pub_ = n.advertise<geometry_msgs::PolygonStamped>("pp_vis", 1);
 }
 
+void PurePursuit::updateCommandedSpeed(double speed_now){
+  speed_now = fabs(speed_now);
+  double Lfw = 2.24*speed_now;
+  if(Lfw < min_lookahead_)
+    Lfw_ = min_lookahead_;
+  else if(Lfw > 12.0)
+    Lfw_ = 12.0;
+  else
+    Lfw_ = Lfw;
+}
 
 bool PurePursuit::steering_control(double *wheel_angle, double *dist_to_goal)
 {
@@ -97,7 +108,7 @@ bool PurePursuit::current_pos_to_point_dist(int end_point, double* path_dist)
         return false;
     }
 
-    for( unsigned i=path_n_+1; i<end_point; i++ )
+    for( int i=path_n_+1; i<end_point; i++ )
     {
         *path_dist += fmutil::distance(path_.poses[i].pose.position,
                                         path_.poses[i+1].pose.position);
