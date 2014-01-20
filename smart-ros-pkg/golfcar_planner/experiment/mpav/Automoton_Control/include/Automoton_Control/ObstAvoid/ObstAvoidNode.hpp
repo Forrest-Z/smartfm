@@ -48,7 +48,7 @@ namespace MPAV{
 
 		enum Events{ObstDetect=0, ReachTemp, ReachDest, RRTSPathFound, RRTSPathUnsafe, RefPathFound};
 
-		bool got_station_goal, init_hybrid_path;
+		bool got_station_goal, init_hybrid_path, obst_avoid_trigger;
 
 	public:
 		ObstAvoid();
