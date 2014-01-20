@@ -50,6 +50,13 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
   PedestrianState new_state = ObsToState(obs);
   for (auto p: particles) {
     PedestrianState& old_state = p->state;
+
+    if (new_state.num != old_state.num) {
+		cout << "old state" << endl;
+		this->model_.PrintState(old_state);
+		cout << "new state" << endl;
+		this->model_.PrintState(new_state);
+	}
     // copy goal and id
     assert(new_state.num == old_state.num);
     for (int i=0; i<old_state.num; i++) {

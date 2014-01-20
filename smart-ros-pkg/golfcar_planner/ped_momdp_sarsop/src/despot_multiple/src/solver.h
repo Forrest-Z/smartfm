@@ -280,7 +280,7 @@ int Solver<T>::Trial(unique_ptr<VNode<T>>& node, bool debug) {
 
 template<typename T>
 void Solver<T>::PrintTree(unique_ptr<VNode<T>>& node) {
-	if(node->depth()>3 || !node->in_tree()) return;
+	if(node->depth()>1 || !node->in_tree()) return;
 
   vector<QNode<T>>& qnodes = node->Children();
 

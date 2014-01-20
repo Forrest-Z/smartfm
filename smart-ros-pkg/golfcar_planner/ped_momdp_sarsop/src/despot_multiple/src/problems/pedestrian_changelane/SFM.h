@@ -174,7 +174,7 @@ public:
 				else 	return 10000;
 			}
 		}
-		if(length<1) return 2;
+		if(length<1) return 3;
 		double diff;
 		diff=angle-phase_angles[phase];  //[-2*pi,2*pi]
 		if(diff<-ModelParams::pi) diff=diff+2*ModelParams::pi;
