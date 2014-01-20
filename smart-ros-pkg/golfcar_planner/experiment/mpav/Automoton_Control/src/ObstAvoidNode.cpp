@@ -16,7 +16,7 @@ namespace MPAV{
 		priv_nh.param("base_frame", base_frame, string("base_link"));
 		priv_nh.param("global_frame", global_frame, string("map"));
 		priv_nh.param("local_frame", local_frame, string("local_map"));
-		priv_nh.param("replan_trigger", obst_avoid_trigger, true);
+		priv_nh.param("obst_avoid_trigger", obst_avoid_trigger, true);
 		navi_sm.RRTStar = new PlannerExp();
 		navi_sm.RRTStar->base_frame = base_frame;
 		navi_sm.RRTStar->local_frame = local_frame;
