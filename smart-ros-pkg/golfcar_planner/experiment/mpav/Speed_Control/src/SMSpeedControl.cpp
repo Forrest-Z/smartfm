@@ -158,7 +158,7 @@ namespace MPAV{
 	}
 
 	void SMSpeedControl::NormalPlanSpeedControl(){
-		ROS_INFO("Normal Speed Phase");
+		//ROS_INFO("Normal Speed Phase");
 		double dynamic_speed;
 		GetDynamicSpeed(dynamic_speed);
     	processed_vel = advised_vel;
@@ -167,7 +167,7 @@ namespace MPAV{
 	}
 
 	void SMSpeedControl::SlowMoveSpeedControl(){
-		ROS_INFO("SlowMove Speed Phase");
+		//ROS_INFO("SlowMove Speed Phase");
 		double dynamic_speed;
 		GetDynamicSpeed(dynamic_speed);
 		processed_vel = advised_vel;
@@ -177,7 +177,7 @@ namespace MPAV{
 
 	void SMSpeedControl::ReplanSpeedControl(){
 		//TODO: Test the necessary for add dynamic_speed inside replan speed for safety.
-		ROS_INFO("Replan Speed Control Phase");
+		//ROS_INFO("Replan Speed Control Phase");
 		double dynamic_speed, replan_speed;
 		GetDynamicSpeed(dynamic_speed);
 		replan_speed = replan_vel;
@@ -197,8 +197,9 @@ namespace MPAV{
 
 	void SMSpeedControl::TempStopControl(){
 		processed_vel = advised_vel;
-		double speed_temp = current_vel - temp_stop_dec;
-		processed_vel.linear.x = speed_temp > 0 ? speed_temp : 0;
+		//double speed_temp = current_vel - temp_stop_dec;
+		//processed_vel.linear.x = speed_temp > 0 ? speed_temp : 0;
+		processed_vel.linear.x = 0;
 		processed_vel_pub_.publish(processed_vel);
 	}
 

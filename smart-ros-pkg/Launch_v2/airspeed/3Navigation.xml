@@ -26,7 +26,7 @@
 #elseif($ppc=="standalone")
   <node pkg="golfcar_ppc" type="purepursuit_controller" name="ppc"/>
 #end
-#if($!rrt)
+#if($dynamic_safety)
     <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/>
 #end
     <node name="soundplay_node" pkg="sound_play" type="soundplay_node.py"/>
@@ -50,7 +50,9 @@
 		<remap from = "static_map" to ="/golfcart/static_map"/>
       </node>
       <!--StateMachine-->
-      <node pkg="Automoton_Control" type="ObstAvoid" name="Obst_Avoid" output="screen"/>
+      <node pkg="Automoton_Control" type="ObstAvoid" name="Obst_Avoid" output="screen">
+	<remap from="cmd_sm" to="cmd_vel"/>
+      </node>
 #end
   </group>
 </launch> 

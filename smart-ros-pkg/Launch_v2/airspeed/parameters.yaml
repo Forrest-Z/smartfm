@@ -125,7 +125,7 @@ $ROBOT/speed_controller_v2:
   fullBrakeThres: 0.05 #to make sure the car will stop at the end
 ###Throttle Settings###
   fullThrottleThres: 1.0
-  kp: 0.05    
+  kp: 0.06    
   ki: 0.01    
   kd: 0.005 
   kp_sat: 1.0
@@ -190,4 +190,8 @@ $ROBOT/Obst_Avoid:
   base_frame: $ROBOT/base_link
   global_frame: $ROBOT/map
   local_frame: $ROBOT/local_map
-  obst_avoid_trigger: false
+  obst_avoid_trigger: true
+$ROBOT/ppc:
+  min_lookahead: 2.5
+  anchor_pt_dist: 1.0
+  car_length: 1.632
