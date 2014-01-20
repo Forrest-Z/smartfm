@@ -68,7 +68,7 @@ private:
 	laser_geometry::LaserProjection                         projector_;
 
 	void scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in);
-	void process_accumulated_data();
+	void process_accumulated_data(bool process_flag);
 	void graph_segmentation();
 
 	void perform_prefiltering_simpleThresholding();
@@ -137,6 +137,10 @@ private:
 	void initialize_local_image();
 	void spacePt2ImgP(geometry_msgs::Point32 & spacePt, cv::Point2f & imgPt);
 	inline bool LocalPixelValid(cv::Point2f & imgPt);
+
+	int														skip_scan_times_;
+	bool 													process_scan_flag_;
+	int														scan_count_;
 };
 
 DATMO::DATMO()
@@ -159,6 +163,10 @@ DATMO::DATMO()
 	private_nh_.param("scanNum_perVector",	scanNum_perVector_,    3);
 	interval_ = (downsample_interval_)*(scanNum_perVector_-1) +1;
 
+	//to process the scan at a lower rate;
+	private_nh_.param("skip_scan_times",		skip_scan_times_,    2);
+	scan_count_ = 0;
+
 	//for version2;
 	//private_nh_.param("feature_vector_length",	feature_vector_length_,    33);
 
@@ -168,7 +176,7 @@ DATMO::DATMO()
 	private_nh_.param("img_side_length",	img_side_length_,    50.0);
 	private_nh_.param("img_resolution",		img_resolution_,     0.2);
 
-	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/front_bottom_scan", 100);
+	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "front_bottom_scan", 100);
 	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, odom_frame_id_, 100);
 	tf_filter_->registerCallback(boost::bind(&DATMO::scanCallback, this, _1));
 	tf_filter_->setTolerance(ros::Duration(0.1));
@@ -209,6 +217,12 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 {
 	cout<<verti_scan_in->header.seq <<","<<verti_scan_in->header.frame_id;
 	if(program_mode_==0)visualize_labelled_scan(verti_scan_in);
+
+	if(scan_count_%skip_scan_times_==0)process_scan_flag_ = true;
+	else process_scan_flag_ = false;
+
+	scan_count_++;
+
 
 	//make a local "baselink" copy to facilitate later feature extraction;
 	sensor_msgs::PointCloud baselink_verti_cloud;
@@ -261,7 +275,8 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 
 	if(cloud_vector_.size()== interval_)
 	{
-		process_accumulated_data();
+		process_accumulated_data(process_scan_flag_);
+
 		if(program_mode_==0)
 		{
 			laser_pose_vector_.clear();
@@ -280,8 +295,10 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 	ROS_INFO("scan callback finished");
 }
 
-void DATMO::process_accumulated_data()
+void DATMO::process_accumulated_data(bool process_flag)
 {
+	if(!process_flag)return;
+
 	cout<<endl;
 	fmutil::Stopwatch sw;
 	sw.start("graph segmentation");
