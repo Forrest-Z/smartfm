@@ -125,7 +125,7 @@ DATMO::DATMO()
 	private_nh_.param("scanNum_perVector",	scanNum_perVector_,    9);
 	interval_ = (downsample_interval_)*(scanNum_perVector_-1) +1;
 
-	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/front_bottom_scan", 100);
+	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "front_bottom_scan", 100);
 	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, odom_frame_id_, 100);
 	tf_filter_->registerCallback(boost::bind(&DATMO::scanCallback, this, _1));
 	tf_filter_->setTolerance(ros::Duration(0.1));
