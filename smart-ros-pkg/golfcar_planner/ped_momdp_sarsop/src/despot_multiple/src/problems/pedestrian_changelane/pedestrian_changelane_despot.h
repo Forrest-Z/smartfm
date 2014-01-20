@@ -279,7 +279,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		}
 };
 
-const int CRASH_PENALTY =-1000000;
+const int CRASH_PENALTY =-100000;
 const int GOAL_REWARD = 500;
 
 Model<PedestrianState>::Model(const RandomStreams& streams, string filename) : IUpperBound<PedestrianState>(streams)
@@ -468,7 +468,7 @@ uint64_t Model<PedestrianState>::Observe(const PedestrianState& state) const {
 	
 	double pedObsRate=ModelParams::rln/ModelParams::ped_rln;
 	uint64_t pedObsMax=uint64_t(X_SIZE*pedObsRate)*uint64_t(Y_SIZE*pedObsRate);
-	uint64_t pedObs=0;
+	uint64_t pedObs=1;
 	//for(int i=0;i<state.PedPoses.size();i++)
 	for(int i=0;i<state.num;i++)
 	{
@@ -605,8 +605,8 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		rangeX/=2;
 		int rangeY=ModelParams::map_rln/ModelParams::rln + 1;
 		if(abs(rx-pedX)<=rangeX&&pedY-ry>=-rangeY&&pedY-ry<=rangeY) 
-		{
-			reward=CRASH_PENALTY * rob_vel;
+		{	
+			reward=CRASH_PENALTY * (rob_vel+1);
 			state.Vel=-1;
 			return;
 		}
@@ -614,7 +614,7 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		rangeY*=2;
 		if(action==1&&abs(rx-pedX)<=rangeX&&pedY-ry>=-rangeY&&pedY-ry<=rangeY) 
 		{
-			reward=CRASH_PENALTY * rob_vel;
+			reward=CRASH_PENALTY * (rob_vel+1);
 			state.Vel=-1;
 			return;
 		}
@@ -769,7 +769,7 @@ PedestrianState ObsToState(uint64_t obs)
 	uint64_t pedObs=obs/robObsMax;
 	int i=0;
 	uint64_t pedObsMax=X_SIZE*Y_SIZE;
-	while(pedObs>0)
+	while(pedObs>1)
 	{
 		uint64_t this_obs;
 		this_obs=pedObs%pedObsMax;
