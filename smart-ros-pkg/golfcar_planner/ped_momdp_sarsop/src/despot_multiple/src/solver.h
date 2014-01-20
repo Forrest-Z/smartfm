@@ -130,20 +130,27 @@ int Solver<T>::Search(double max_time, int& n_trials) {
 	cerr<<"number of trials "<<n_trials<<endl;
 	lb_.CollectSearchInformation(this);
 
-	cout<<"start printing tree "<<endl;
-	//PrintTree(root_);
 
   if (Globals::config.pruning_constant) {
     // Number of non-child belief nodes in the search tree that are pruned
     int total_pruned = 0;
     root_->Prune(total_pruned);
     int act = root_->pruned_action(); 
+	cout<<"start printing tree "<<endl;
+	PrintTree(root_);
     return act == -1 ? default_action_ : act;
   }
-  else if (!(root_->in_tree()))
+  else if (!(root_->in_tree())) {
+	cout << "Default" << endl;
+	cout << "Action = " << default_action_ << endl;
     return default_action_;
-  else
+  } else {
+	cout << "Optimal" << endl;
+	cout << "Action = " << root_->OptimalAction() << endl;
+	cout<<"start printing tree "<<endl;
+	PrintTree(root_);
     return root_->OptimalAction();
+  }
 }
 
 template<typename T>
@@ -259,6 +266,7 @@ int Solver<T>::Trial(unique_ptr<VNode<T>>& node, bool debug) {
   // Sanity check
   if (node->lbound() > node->ubound() + Globals::TINY) {
     cerr << "depth = " << node->depth() << endl;
+	cerr << "Larger = " << (node->lbound() > node->ubound() + Globals::TINY) << endl;
     cerr << node->lbound() << " " << node->ubound() << endl;
     assert(false);
   }
@@ -274,7 +282,7 @@ int Solver<T>::Trial(unique_ptr<VNode<T>>& node, bool debug) {
 
 template<typename T>
 void Solver<T>::PrintTree(unique_ptr<VNode<T>>& node) {
-	if(!node->in_tree()) return;
+	if(node->depth() > 1 || !node->in_tree()) return;
 
   vector<QNode<T>>& qnodes = node->Children();
 
@@ -286,7 +294,7 @@ void Solver<T>::PrintTree(unique_ptr<VNode<T>>& node) {
 
 		for(int j=0; j<node->depth(); j++)
 			cout << "  ";
-		cout << "a=" << a << endl;
+		cout << "a=" << a << " (" << (qnode.first_step_reward() + qnode.LowerBound()) << " " << (qnode.first_step_reward() + qnode.UpperBound()) << ")" << endl;
 
 		for(int i=0; i<labels.size(); i++) {
 			for(int j=0; j<node->depth(); j++)
