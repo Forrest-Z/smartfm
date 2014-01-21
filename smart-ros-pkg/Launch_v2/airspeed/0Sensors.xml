@@ -46,8 +46,26 @@
 #if($vehicle=="car")
     <node pkg="can_reader" name="can_speed_integral" type="can_speed_integral" output="screen"/>
     <node pkg="can_reader" name="can_reader" type="can_reader"/>
+    <node pkg="pronto_adapter" type="pronto_adapter" name="pronto_adapter" output="screen"/>
+    <node pkg="joy" type="joy_node" name="joy_input">
+      <param name="dev" type="string" value="/dev/input/js0"/>
+      <param name="deadzone" type="double" value="0.05"/>
+      <param name="autorepeat_rate" type="double" value="0.0"/>
+    </node>
+    <node pkg="kbd_joy_control" type="joy_pronto_freedom" name="joy_to_pronto">
+      <remap from="brake_angle" to="pronto/veh_brake"/>
+      <remap from="steer_angle" to="pronto/joy_steer"/>
+      <remap from="throttle" to="pronto/veh_throttle"/>
+      <remap from="motion_en" to="pronto/veh_motion"/>
+      <remap from="enable_sig" to="pronto/veh_enable"/>
+      <remap from="start_sig" to="pronto/veh_start"/>
+      <remap from="shift" to="pronto/veh_shift"/>
+    </node>
 #end
+
+#if($vehicle=="buggy")  
     <node #if($lowlevel)machine="lowlevel"#end name="encoders_node" pkg="phidget_encoders" type="encoders_node.py" output="screen"/>
+#end
     <node #if($lowlevel)machine="lowlevel"#end name="encoders_odo_node" pkg="phidget_encoders" type="encoders_odo_node.py" output="screen">
 	<remap from="odom" to="phidget_encoder_odo"/>
     </node>

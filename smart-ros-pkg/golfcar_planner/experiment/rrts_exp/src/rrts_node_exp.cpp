@@ -464,7 +464,7 @@ int PlannerExp::get_plan()
     }
 
     best_cost = rrts.getBestVertexCost();
-    if(best_cost < 30.0)
+    if(best_cost < 50.0)
     {
       if( (fabs(prev_best_cost - best_cost) < 0.5) && (rrts.numVertices > 25))
         found_best_path = true;

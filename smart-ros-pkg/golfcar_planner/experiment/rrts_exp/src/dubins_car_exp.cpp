@@ -85,18 +85,18 @@ double TrajectoryExp::evaluateCost () {
 
 SystemExp::SystemExp ()
 {
-  turning_radii[0] = 3;
-  turning_radii[1] = 5;
+  turning_radii[0] = 4.5;
+  turning_radii[1] = 6;
   turning_radii[2] = 8;
 
   distance_limit = 100.0;
   delta_distance = 0.05;
 
   double factor_reduce_size = 1.0;
-  car_width = 1.2/factor_reduce_size;
-  car_height = 2.28/factor_reduce_size;
+  car_width = 1.8/factor_reduce_size;
+  car_height = 3.6/factor_reduce_size;
   safe_distance = 0.2/factor_reduce_size;    // car footprint is blown up by this distance for collision checking
-  distance_rear_axis_rear = 0.45/factor_reduce_size; // dist between center of rear axis and rear end
+  distance_rear_axis_rear = 0.50/factor_reduce_size; // dist between center of rear axis and rear end
 }
 
 

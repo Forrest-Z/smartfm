@@ -24,10 +24,14 @@
 	<rosparam file="$(find Launch_v2)/move_base/global_costmap_params.yaml" command="load" />
     </node>
 #elseif($ppc=="standalone")
-  <node pkg="golfcar_ppc" type="purepursuit_controller" name="ppc"/>
+  <node pkg="golfcar_ppc" type="purepursuit_controller" name="purepursuitController"/>
 #end
-#if($!rrt)
-    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/>
+#if($dynamic_safety)
+    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper">
+#if($vehicle=="car")
+      <remap from="front_bottom_scan" to="front_bottom_scan_filtered"/>
+#end
+      </node>
 #end
     <node name="soundplay_node" pkg="sound_play" type="soundplay_node.py"/>
     <node name="sound_speaker" pkg="sound_speaker" type="sound_speaker">
@@ -46,11 +50,15 @@
 #if($rrt)
       <!--Metric_Map-->
       <node pkg="Metric_Map" type="Local_Map" name="Dist_Map">
-		<remap from = "sick_scan2" to ="front_bottom_scan"/>
-		<remap from = "static_map" to ="/golfcart/static_map"/>
+		<remap from = "sick_scan2" to ="front_bottom_scan_filtered"/>
+		<remap from = "static_map" to ="/iMiev/static_map"/>
       </node>
       <!--StateMachine-->
-      <node pkg="Automoton_Control" type="ObstAvoid" name="Obst_Avoid" output="screen"/>
+      <node pkg="Automoton_Control" type="ObstAvoid" name="Obst_Avoid" output="screen">
+	<remap from="cmd_sm" to="cmd_vel"/>
+	<remap from="front_bottom_scan" to="front_bottom_scan_filtered"/>
+      </node>
 #end
+  <node pkg="speed_advisor" type="simple_intersection_sm" name="simple_intersection_sm"/>
   </group>
 </launch> 

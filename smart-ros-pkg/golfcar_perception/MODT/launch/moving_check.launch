@@ -1,13 +1,17 @@
 <launch>
 
-    <node pkg="MODT" type="spatial_temporal_segmentation" name="simple_moving_check" output="screen">
+    <node pkg="MODT" type="spatial_temporal_segmentation" name="spatial_temporal_segmentation" output="screen">
 		<param name="program_mode_" value="1"/>
+		<param name="skip_scan_times" value="2"/>
+		<param name="speed_threshold" value="3.0"/>
 		<param name="DATMO_model_path" value="$(find MODT)/data_and_model/MODT.model"/>
 		<param name="DATMO_scale_path" value="$(find MODT)/data_and_model/MODT.range"/>
-		<param name="speed_threshold" value="1.0"/>
-		<param name="minimum_size" value="0.3"/>
-		<param name="maximum_size" value="15.0"/>
     </node>
-
+    
+     <node pkg="MODT" type="simple_moving_check" name="simple_moving_check" output="screen">
+		<param name="time_window" value="50"/>
+		<param name="moving_threshold" value="0.5"/>
+     </node>
+    
 </launch>
 

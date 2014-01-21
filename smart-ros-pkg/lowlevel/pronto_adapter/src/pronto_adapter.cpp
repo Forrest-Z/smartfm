@@ -167,7 +167,7 @@ class ProntoAdapter
        string topic(parts[i]);
        topic = topic.erase(0,1);
        stringstream ss;
-       ss << "/pronto/"<<topic;
+       ss << "pronto/"<<topic;
        PacketTypeAndData ptd;
        ptd.type = data_type;
        switch(data_type) {
@@ -305,9 +305,11 @@ public:
     boost::asio::ip::address::from_string(remote_address),  remote_port);
    
     //setup ros message publish list
+	 cout<<"Setting up publishers"<<endl;
     publishers_ = messageToROSPublisher(getResponse(REQ_IN, REQ_IN_ANS), nh_);
     
     //setup ros message subscription
+	 cout<<"Setting up subscribers"<<endl;
     messageToROSSubscriber(getResponse(REQ_OUT, REQ_OUT_ANS), nh_, subscribers_, topic_ptd_map_);
     
     getResponse("[:BA|EServoPod|D0,Teleop Start|C","");
