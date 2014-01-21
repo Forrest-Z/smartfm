@@ -43,8 +43,9 @@ int RandomPolicyLowerBound<T>::Action(
     const vector<Particle<T>*>& particles,
     const Model<T>& model,
     const History& history) const {
-	if (1 == 1) return 2;
+//	if (1 == 1) return 2;
 
+   return model.DefaultPolicy(particles);
   const T& state = 
     particles[rand_r(&action_root_seed_) % particles.size()]->state;
 
