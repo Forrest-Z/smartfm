@@ -1,8 +1,15 @@
 Background\ ColorB=0
 Background\ ColorG=0
 Background\ ColorR=0
-Camera\ Config=10 -5.01618 6.19178 -2.055
+Camera\ Config=8.16225 88.6144 135.317 -2.115
 Camera\ Type=rviz::FixedOrientationOrthoViewController
+Camera.Enabled=0
+Camera.Image\ Rendering=background & overlay
+Camera.Image\ Topic=/iMiev/camera_front/image_raw
+Camera.Overlay\ Alpha=0.5
+Camera.Queue\ Size=2
+Camera.Transport\ Hint=raw
+Camera.Zoom\ Factor=1
 Fixed\ Frame=/iMiev/map
 Grid.Alpha=0.5
 Grid.Cell\ Size=1
@@ -19,6 +26,10 @@ Grid.OffsetZ=0
 Grid.Plane=0
 Grid.Plane\ Cell\ Count=10
 Grid.Reference\ Frame=/iMiev/base_link
+Image.Enabled=1
+Image.Image\ Topic=/iMiev/camera_front/image_raw
+Image.Queue\ Size=2
+Image.Transport\ Hint=raw
 LaserScan..AxisColorAutocompute\ Value\ Bounds=1
 LaserScan..AxisColorAxis=2
 LaserScan..AxisColorMax\ Value=10
@@ -139,7 +150,7 @@ PointCloud2..IntensityMax\ Intensity=1.27
 PointCloud2..IntensityMin\ ColorB=0
 PointCloud2..IntensityMin\ ColorG=0
 PointCloud2..IntensityMin\ ColorR=0
-PointCloud2..IntensityMin\ Intensity=0.44
+PointCloud2..IntensityMin\ Intensity=0.43
 PointCloud2..IntensityUse\ full\ RGB\ spectrum=1
 PointCloud2.Alpha=0.1
 PointCloud2.Billboard\ Size=0.01
@@ -238,12 +249,12 @@ PoseArray.ColorG=0.1
 PoseArray.ColorR=1
 PoseArray.Enabled=1
 PoseArray.Topic=/iMiev/particlecloud
-Property\ Grid\ Splitter=431,265
-Property\ Grid\ State=expanded=.Global Options,Map.Enabled,PointCloud.Enabled,PointCloud.Status,PoseArray.Enabled,LaserScan.Enabled,Path.Enabled;splitterratio=0.5
-QMainWindow=000000ff00000000fd00000003000000000000011d0000030afc0200000002fb000000100044006900730070006c006100790073010000001d0000030a000000ee00fffffffb0000000a0049006d006100670065000000022600000038000000000000000000000001000001ab0000030afc0200000004fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000001d000001d40000006700fffffffb0000000a0056006900650077007301000001f700000130000000bb00fffffffb0000000c00430061006d00650072006100000001ef000001390000000000000000fb0000001200530065006c0065006300740069006f006e0000000279000000af0000006700ffffff000000030000055f0000003ffc0100000001fb0000000800540069006d006501000000000000055f000002bf00ffffff0000028b0000030a00000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
-Target\ Frame=/iMiev/base_link
+Property\ Grid\ Splitter=412,78
+Property\ Grid\ State=expanded=.Global Options,Map.Enabled,PointCloud.Enabled,PointCloud.Status,PoseArray.Enabled,LaserScan.Enabled,Path.Enabled,Camera.Enabled,Image.Enabled;splitterratio=0.5
+QMainWindow=000000ff00000000fd0000000300000000000001480000032efc0200000003fb000000100044006900730070006c006100790073010000001d0000023c000000ee00fffffffb0000000c00430061006d006500720061000000011c0000001a0000001900fffffffb0000000a0049006d006100670065010000025f000000ec0000001900ffffff00000001000001ab0000032efc0200000003fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000001d000001ea0000006700fffffffb0000000a00560069006500770073010000020d0000013e000000bb00fffffffb0000001200530065006c0065006300740069006f006e0000000279000000af0000006700ffffff000000030000056f0000003ffc0100000001fb0000000800540069006d006501000000000000056f000002bf00ffffff000002700000032e00000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+Target\ Frame=/iMiev/map
 Tool\ 2D\ Nav\ GoalTopic=goal
-Tool\ 2D\ Pose\ EstimateTopic=iMiev/initialpose
+Tool\ 2D\ Pose\ EstimateTopic=/iMiev/initialpose
 [Display0]
 ClassName=rviz::MapDisplay
 Name=Map
@@ -262,6 +273,12 @@ Name=Path2
 [Display13]
 ClassName=rviz::PoseDisplay
 Name=Pose
+[Display14]
+ClassName=rviz::CameraDisplay
+Name=Camera
+[Display15]
+ClassName=rviz::ImageDisplay
+Name=Image
 [Display2]
 ClassName=rviz::PoseArrayDisplay
 Name=PoseArray
@@ -287,7 +304,7 @@ Name=PointCloud2
 ClassName=rviz::PolygonDisplay
 Name=Polygon2
 [Window]
-Height=912
-Width=1391
-X=-428
-Y=-275
+Height=948
+Width=1407
+X=-451
+Y=-331

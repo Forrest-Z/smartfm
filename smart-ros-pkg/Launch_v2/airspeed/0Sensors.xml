@@ -46,7 +46,7 @@
 #if($vehicle=="car")
     <node pkg="can_reader" name="can_speed_integral" type="can_speed_integral" output="screen"/>
     <node pkg="can_reader" name="can_reader" type="can_reader"/>
-    <node pkg="pronto_adapter" type="pronto_adapter" name="pronto_adapter"/>
+    <node pkg="pronto_adapter" type="pronto_adapter" name="pronto_adapter" output="screen"/>
     <node pkg="joy" type="joy_node" name="joy_input">
       <param name="dev" type="string" value="/dev/input/js0"/>
       <param name="deadzone" type="double" value="0.05"/>

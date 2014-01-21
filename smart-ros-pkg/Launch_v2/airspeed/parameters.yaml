@@ -7,7 +7,7 @@ $ROBOT/purepursuitController:
   frequency: 50
 #if($vehicle=="car")
   car_length: 2.55
-  min_lookahead: 5.0
+  min_lookahead: 4.0
 #elseif($vehicle=="buggy")
   min_lookahead: 2.5
 #end
@@ -195,7 +195,7 @@ $ROBOT/route_planner:
 $ROBOT/speed_advisor:
   map_frame_id: $ROBOT/map 
   robot_frame_id: $ROBOT/base_link
-  max_speed: 3.0
+  max_speed: 2.0
   acc: 0.2
   max_dec: 1.0
   norm_dec: 0.3
@@ -221,3 +221,6 @@ $ROBOT/Obst_Avoid:
   global_frame: $ROBOT/map
   local_frame: $ROBOT/local_map
   obst_avoid_trigger: true
+  offcenter_x: 3.5
+  offcenter_y: 0.9
+  slow_move_vel: 0.1

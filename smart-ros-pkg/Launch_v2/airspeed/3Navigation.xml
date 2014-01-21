@@ -56,7 +56,9 @@
       <!--StateMachine-->
       <node pkg="Automoton_Control" type="ObstAvoid" name="Obst_Avoid" output="screen">
 	<remap from="cmd_sm" to="cmd_vel"/>
+	<remap from="front_bottom_scan" to="front_bottom_scan_filtered"/>
       </node>
 #end
+  <node pkg="speed_advisor" type="simple_intersection_sm" name="simple_intersection_sm"/>
   </group>
 </launch> 
