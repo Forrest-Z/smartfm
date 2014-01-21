@@ -2,6 +2,7 @@
 #include "belief_update/belief_update_particle.h"
 #include "vnode.h"
 #include "solver.h"
+#include "globals.h"
 #include "problems/pedestrian_changelane/pedestrian_changelane_despot.h"
 
 Model<PedestrianState>* RealSimulator;
@@ -123,6 +124,9 @@ void ped_momdp::initRealSimulator()
   cout<<"root seed "<<Globals::config.root_seed<<endl;
   cout<<"search depth"<<Globals::config.search_depth<<endl;
 
+  ifstream fin("despot.config");
+  fin >> Globals::config.pruning_constant;
+  cout << "Pruning constant = " << Globals::config.pruning_constant << endl;
 
   RealSimulator  = new Model<PedestrianState>(streams, "pedestrian.config");
   RealSimulator->control_freq=control_freq;
@@ -402,7 +406,8 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		int n_trials;
 
 
-		safeAction=solver->Search(1.0/control_freq,n_trials);
+		//safeAction=solver->Search(1.0/control_freq,n_trials);
+		safeAction=solver->Search(0.01,n_trials);
 
 		//actionPub_.publish(action);
 		publishAction(safeAction);

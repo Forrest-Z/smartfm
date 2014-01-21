@@ -127,16 +127,16 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 			{
 				int px=state.PedPoses[i].first.X;
 				int py=state.PedPoses[i].first.Y;
-				if(abs(px-rx)<=rangeX+2&&abs(py-ry)<=rangeY+2)
+				if(abs(px-rx)<=rangeX+4&&abs(py-ry)<=rangeY+4)
 				{
 					return 2;
 				}
-				if(abs(px-rx)<=rangeX*2+2&&abs(py-ry)<=rangeY*2+2)
+				if(abs(px-rx)<=rangeX*2+4&&abs(py-ry)<=rangeY*2+4)
 				{
 					return 0;
 				}
 			}
-			return 1;
+			return 0;
 		}
 		void Statistics(const vector<Particle<PedestrianState>*> particles) const {
 			
@@ -646,16 +646,16 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		if(abs(rx-pedX)<=rangeX&&pedY-ry>=-rangeY&&pedY-ry<=rangeY) 
 		{	
 			reward+=CRASH_PENALTY * (rob_vel+1);
-		//state.Vel=-1;
-		//	return;
+			//state.Vel=-1;
+			//return;
 		}
 		rangeX*=2;
 		rangeY*=2;
 		if(action==1&&abs(rx-pedX)<=rangeX&&pedY-ry>=-rangeY&&pedY-ry<=rangeY) 
 		{
 			reward+=CRASH_PENALTY * (rob_vel+1);
-		//state.Vel=-1;
-		//	return;
+			//state.Vel=-1;
+			//return;
 		}
 		/*
 
