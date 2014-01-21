@@ -11,22 +11,23 @@ namespace MPAV{
 
 	SMSpeedControl::SMSpeedControl(){
 		ROS_INFO("SM Speed Control");
-		nh.param("base_frame", base_frame, string("base_link"));
+		ros::NodeHandle priv_nh("~");
+		priv_nh.param("base_frame", base_frame, string("base_link"));
 
-		nh.param("offcenter_x", offcenter_x, 1.7);
-		nh.param("offcenter_y", offcenter_y, 0.8);
-		nh.param("back_boundary", back_boundary, 0.5);
+		priv_nh.param("offcenter_x", offcenter_x, 1.7);
+		priv_nh.param("offcenter_y", offcenter_y, 0.8);
+		priv_nh.param("back_boundary", back_boundary, 0.5);
 
-		nh.param("x_buffer", x_buffer, 1.5);
-		nh.param("y_buffer", y_buffer, 0.2);
-		nh.param("x_coeff", x_coeff, 2.0);
-		nh.param("y_coeff", y_coeff, 0.25);
-		nh.param("angle_coeff", angle_coeff, 2.0);
-		nh.param("vel_inc", vel_inc, 0.3);
-		nh.param("replan_vel_inc", replan_vel_inc, 0.5);
-		nh.param("replan_vel", replan_vel, 0.8);
-		nh.param("slow_move_vel", slow_move_ratio, 0.6);
-		nh.param("temp_stop_dec", temp_stop_dec, 0.4);
+		priv_nh.param("x_buffer", x_buffer, 1.5);
+		priv_nh.param("y_buffer", y_buffer, 0.2);
+		priv_nh.param("x_coeff", x_coeff, 2.0);
+		priv_nh.param("y_coeff", y_coeff, 0.25);
+		priv_nh.param("angle_coeff", angle_coeff, 2.0);
+		priv_nh.param("vel_inc", vel_inc, 0.3);
+		priv_nh.param("replan_vel_inc", replan_vel_inc, 0.5);
+		priv_nh.param("replan_vel", replan_vel, 0.8);
+		priv_nh.param("slow_move_vel", slow_move_ratio, 0.6);
+		priv_nh.param("temp_stop_dec", temp_stop_dec, 0.4);
 
 		//base_frame = "base_link";
 
@@ -101,6 +102,7 @@ namespace MPAV{
 	}
 
 	void SMSpeedControl::LaserCallBack(const laser_t::ConstPtr &laserIn){
+	  cout<<"base_frame: "<<base_frame<<endl;
         laser_pc.points.clear();
 		try{
         	projector_.transformLaserScanToPointCloud(base_frame, *laserIn, laser_pc, tf_);
