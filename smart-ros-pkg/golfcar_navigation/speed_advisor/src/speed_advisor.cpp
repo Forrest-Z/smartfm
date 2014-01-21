@@ -295,7 +295,7 @@ void SpeedAdvisor::ControlLoop(const ros::TimerEvent& event)
         ROS_DEBUG_STREAM("Intersection not clear. dist=" << int_h_.dist_to_int()
                 <<". Recommended speed: " <<sc.int_rec);
 
-        speed_settings_.add("Intersection", SpeedAttribute::intersection, sc.int_rec);
+        //speed_settings_.add("Intersection", SpeedAttribute::intersection, sc.int_rec);
     }
 
     //

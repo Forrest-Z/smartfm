@@ -78,7 +78,7 @@ class dynamic_safety_zone
 
 		private_nh.param("x_buffer", x_buffer_, 1.5);
 		private_nh.param("y_buffer", y_buffer_, 0.2);
-		private_nh.param("x_coeff", x_coeff_, 2.0);
+		private_nh.param("x_coeff", x_coeff_, 3.0);
 		private_nh.param("y_coeff", y_coeff_, 0.25);
 		private_nh.param("angle_coeff", angle_coeff_, 2.0);
 
@@ -230,7 +230,7 @@ class dynamic_safety_zone
 		{
             double speed_temp;
 		  //double speed_temp = current_vel_ + (minimum_speed-current_vel_)/control_freq_;
-            if(minimum_speed-current_vel_ >0.3) speed_temp = current_vel_ + 0.3;
+            if(minimum_speed-current_vel_ >1.0) speed_temp = current_vel_ + 0.5;
             else speed_temp = current_vel_ + (minimum_speed-current_vel_);
 			minimum_speed = speed_temp > 0.6? speed_temp:0.6;
 		}

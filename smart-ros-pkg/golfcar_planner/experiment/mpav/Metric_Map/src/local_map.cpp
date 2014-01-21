@@ -26,11 +26,11 @@ namespace MPAV{
 		const string default_global = "map";
 		const string default_local = "local_map";
 		const string default_base = "base_link";
-		const int default_track_dist = 5;
-		const double default_width = 16;
-		const double default_height = 20;
+		const int default_track_dist = 8;
+		const double default_width = 20;
+		const double default_height = 30;
 		const double default_resolution = 0.2;
-		const double default_extend = 6.0;
+		const double default_extend = 8.0;
 
 		private_nh_.param("global_frame", global_frame_, default_global);
 		private_nh_.param("local_frame", local_frame_, default_local);
@@ -284,6 +284,7 @@ namespace MPAV{
 		local_map_pts_.points.clear();
 		prior_pts_.header.stamp = pc.header.stamp;
 		bool getPose = getRobotPose(robot_pose);
+		//cout<<"Getpose?? "<<getPose<< " and updateMapInit "<<updateMapInit<<endl;
 		if(!getPose) ROS_WARN("getRobotPose failed");
 		if(getPose){
 			try{
@@ -397,11 +398,11 @@ namespace MPAV{
 		geometry_msgs::Point32 robot_FP_UL;
 		geometry_msgs::Point32 robot_FP_UR;
 
-		robot_FP_UL.x = 1.8;//3/4*GOLFCAR_HEIGHT;
-		robot_FP_UL.y = -0.6;//-1/2*GOLFCAR_WIDTH;
+		robot_FP_UL.x = 2.0;//3/4*GOLFCAR_HEIGHT;
+		robot_FP_UL.y = -0.7;//-1/2*GOLFCAR_WIDTH;
 
-		robot_FP_UR.x = 1.8;//3/4*GOLFCAR_HEIGHT;
-		robot_FP_UR.y = 0.6;//1/2*GOLFCAR_WIDTH;
+		robot_FP_UR.x = 2.0;//3/4*GOLFCAR_HEIGHT;
+		robot_FP_UR.y = 0.7;//1/2*GOLFCAR_WIDTH;
 
 		//collision detection area
 		point = robot_FP_UL;

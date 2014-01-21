@@ -25,7 +25,7 @@ class TrajectoryPlannerStandalone
   int waypointPassed_;
   double frequency_, delay_;
   ros::Publisher move_status_pub_, cmd_steer_pub_, global_plan_pub_;
-  ros::Publisher slowZone_pub_, poi_pub_;
+  ros::Publisher slowZone_pub_, poi_pub_, intersections_pub_;
   ros::Subscriber origin_destination_pt_sub_, g_plan_repub_sub_, cmd_vel_sub_;
   golfcar_purepursuit::PurePursuit* pp_;
   string global_frame_, robot_frame_;
@@ -45,6 +45,7 @@ public:
     cmd_steer_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_steer", 1);
     global_plan_pub_ = nh.advertise<nav_msgs::Path>("global_plan", 1);
     slowZone_pub_ = nh.advertise<geometry_msgs::PoseArray>("slowZone", 1, true);
+    intersections_pub_ = nh.advertise<sensor_msgs::PointCloud>("intersection_pts", 1, true);
     poi_pub_ = nh.advertise<pnc_msgs::poi>("poi", 1, true);
     g_plan_repub_sub_ = nh.subscribe("global_plan_repub", 1, &TrajectoryPlannerStandalone::repubCallback, this);
     origin_destination_pt_sub_ = nh.subscribe("move_base_simple/goal", 1, &TrajectoryPlannerStandalone::originDestinationCallback, this);
@@ -150,6 +151,17 @@ private:
       //p.poses.push_back(goal);
       global_plan_pub_.publish(p);
       //plan.push_back(targets);
+      sensor_msgs::PointCloud int_pc;
+      int_pc.header.frame_id = global_frame_;
+      int_pc.header.stamp = ros::Time::now();
+      
+      for(size_t j=0; j<poi_.int_pts.size(); j++){
+	geometry_msgs::Point32 p;
+	p.x = plan[poi_.int_pts[j]].pose.position.x;
+	p.y = plan[poi_.int_pts[j]].pose.position.y;
+	int_pc.points.push_back(p);
+      }
+      intersections_pub_.publish(int_pc);
     }
     //send the rrt path to the local planner
     else {
