@@ -50,13 +50,19 @@
 #if($rrt)
       <!--Metric_Map-->
       <node pkg="Metric_Map" type="Local_Map" name="Dist_Map">
+#if($vehicle=="car")
 		<remap from = "sick_scan2" to ="front_bottom_scan_filtered"/>
-		<remap from = "static_map" to ="/iMiev/static_map"/>
+#elseif($vehicle=="buggy")
+		<remap from = "sick_scan2" to ="front_bottom_scan"/>
+#end
+		<remap from = "static_map" to ="/$ROBOT/static_map"/>
       </node>
       <!--StateMachine-->
       <node pkg="Automoton_Control" type="ObstAvoid" name="Obst_Avoid" output="screen">
 	<remap from="cmd_sm" to="cmd_vel"/>
+#if($vehicle=="car")
 	<remap from="front_bottom_scan" to="front_bottom_scan_filtered"/>
+#end
       </node>
 #end
   <node pkg="speed_advisor" type="simple_intersection_sm" name="simple_intersection_sm"/>
