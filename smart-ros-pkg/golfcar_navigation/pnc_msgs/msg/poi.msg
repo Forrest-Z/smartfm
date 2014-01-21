@@ -5,3 +5,5 @@ pnc_msgs/sig_pt[] sig_pts
 # click to let the car move.
 # defined as the waypoint number on the path
 int64[] int_pts
+
+int64 cur_node
