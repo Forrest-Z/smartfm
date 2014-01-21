@@ -28,7 +28,7 @@ namespace MPAV{
 		nh.param("slow_move_vel", slow_move_ratio, 0.6);
 		nh.param("temp_stop_dec", temp_stop_dec, 0.4);
 
-		base_frame = "base_link";
+		//base_frame = "base_link";
 
 		vFilter_ = fmutil::LowPassFilter(0.1);
 		filter_time = ros::Time::now();
