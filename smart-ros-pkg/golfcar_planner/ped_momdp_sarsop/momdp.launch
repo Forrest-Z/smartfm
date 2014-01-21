@@ -7,7 +7,7 @@
 	    <param name="policy_file" value="$(find ped_momdp_sarsop)/policy-files/20120308/rss-lane-momdp-u1.policy"/>
 	    <param name="simLen" value="30"/>
 	    <param name="simNum" value="1"/>
-            <param name="frequency" value="3.0"/>
+        <param name="frequency" value="3.0"/>
 	    <param name="stationary" value="false"/>
 	    <remap from="robot_0/amcl_pose" to="amcl_pose"/>
             <remap from="odom" to="odom"/>

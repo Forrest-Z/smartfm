@@ -2,6 +2,7 @@
 #include "belief_update/belief_update_particle.h"
 #include "vnode.h"
 #include "solver.h"
+#include "globals.h"
 #include "problems/pedestrian_changelane/pedestrian_changelane_despot.h"
 
 Model<PedestrianState>* RealSimulator;
@@ -123,9 +124,13 @@ void ped_momdp::initRealSimulator()
   cout<<"root seed "<<Globals::config.root_seed<<endl;
   cout<<"search depth"<<Globals::config.search_depth<<endl;
 
+  ifstream fin("despot.config");
+  fin >> Globals::config.pruning_constant;
+  cout << "Pruning constant = " << Globals::config.pruning_constant << endl;
 
   RealSimulator  = new Model<PedestrianState>(streams, "pedestrian.config");
-
+  RealSimulator->control_freq=control_freq;
+  RealWorldPt->control_freq=control_freq;
 
 
 
@@ -401,7 +406,8 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		int n_trials;
 
 
-		safeAction=solver->Search(1.0/control_freq,n_trials);
+		//safeAction=solver->Search(1.0/control_freq,n_trials);
+		safeAction=solver->Search(0.01,n_trials);
 
 		//actionPub_.publish(action);
 		publishAction(safeAction);
@@ -464,7 +470,7 @@ void ped_momdp::publishMarker(int id,vector<double> belief)
 {
 	visualization_msgs::MarkerArray markers;
 	uint32_t shape = visualization_msgs::Marker::CUBE;
-	cout<<"belief vector size "<<belief.size()<<endl;
+	//cout<<"belief vector size "<<belief.size()<<endl;
 	for(int i=0;i<belief.size();i++)
 	{
 		visualization_msgs::Marker marker;			
@@ -485,7 +491,7 @@ void ped_momdp::publishMarker(int id,vector<double> belief)
 		marker.pose.orientation.y = 0.0;
 		marker.pose.orientation.z = 0.0;
 		marker.pose.orientation.w = 1.0;
-		cout<<"belief entries "<<px<<" "<<py<<endl;
+	//	cout<<"belief entries "<<px<<" "<<py<<endl;
 		// Set the scale of the marker -- 1x1x1 here means 1m on a side
 		marker.scale.x = 0.5;
 		marker.scale.y = belief[i]*4;

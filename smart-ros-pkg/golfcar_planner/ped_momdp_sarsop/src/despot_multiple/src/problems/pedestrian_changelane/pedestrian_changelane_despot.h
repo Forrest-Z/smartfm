@@ -29,7 +29,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		PedestrianState GetStartState() const;
 		//vector<PedestrianState> GetStartStates(int num_ped) const;
 		uint64_t Observe(const PedestrianState& state) const; // Observation for non-terminal state
-		void RobStep(PedestrianState& state, int action, UtilUniform &unif) const;
+		void RobStep(int &robY,int &rob_vel, int action, UtilUniform &unif) const;
 		void PedStep(PedestrianState& state, UtilUniform &unif) const;
 		void StepMultiple(vector<PedestrianState>& states, double rNum, int action, vector<double>& rewards, vector<uint64_t>& obss) const;
 		void Step(PedestrianState& state, double rNum, int action, double& reward, uint64_t& obs) const;
@@ -115,6 +115,29 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 
 
 
+		int DefaultPolicy(const vector<Particle<PedestrianState>*> particles) const 
+		{
+			PedestrianState state=particles[0]->state;
+			int robY=state.RobPos.Y;		
+			int rx=rob_map[robY].first;
+			int ry=rob_map[robY].second;
+			int rangeX=(ModelParams::map_rln/ModelParams::rln)*1;
+			int rangeY=(ModelParams::map_rln/ModelParams::rln)*3;
+			for(int i=0;i<state.num;i++)
+			{
+				int px=state.PedPoses[i].first.X;
+				int py=state.PedPoses[i].first.Y;
+				if(abs(px-rx)<=rangeX+4&&abs(py-ry)<=rangeY+4)
+				{
+					return 2;
+				}
+				if(abs(px-rx)<=rangeX*2+4&&abs(py-ry)<=rangeY*2+4)
+				{
+					return 0;
+				}
+			}
+			return 0;
+		}
 		void Statistics(const vector<Particle<PedestrianState>*> particles) const {
 			
 			double goal_count[10][10]={0};
@@ -192,7 +215,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 
 		int NumStates() const { 
 			cout<<"print NumStates"<<endl;
-			return pow((X_SIZE * Y_SIZE*N_GOAL),ModelParams::N_PED_IN) * ModelParams::RMMax* 5 +1;  //plus one dummy state	
+			return pow((X_SIZE * Y_SIZE*N_GOAL),ModelParams::N_PED_IN) * ModelParams::RMMax* ModelParams::VEL_N +1;  //plus one dummy state	
 		}
 		int NumActions() const { return 3; }
 		bool IsTerminal(PedestrianState s) const {
@@ -201,7 +224,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 
 		uint64_t MaxObs() const {
 			double pedObsRate=ModelParams::rln/ModelParams::ped_rln;
-			return pow(int(X_SIZE*pedObsRate)*int(Y_SIZE*pedObsRate),ModelParams::N_PED_IN)*(ModelParams::RMMax)*5+2;
+			return pow(int(X_SIZE*pedObsRate)*int(Y_SIZE*pedObsRate),ModelParams::N_PED_IN)*(ModelParams::RMMax)*ModelParams::VEL_N+2;
 		}
 		uint64_t TerminalObs() const {
 			return MaxObs()-1;
@@ -246,6 +269,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 	//double model[ModelParams::XSIZE][ModelParams::YSIZE][ModelParams::NGOAL][ModelParams::R][9];  
 	std::vector<std::pair<int,int> > rob_map;
 	SFM*sfm;
+	double control_freq;
 
 	protected:
 		double OBSTACLE_PROB;
@@ -268,6 +292,10 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		double robotVelUpdate[3][3][3]; /*action,vel,new vel*/ 
 		double robotUpdateProb[3][3][3];
 
+		double gaussian(double dist)  const{
+			if(dist<0.15) dist=0.15;
+			return 1/dist;	
+		}
 		int lookup(const double probs[], double prob) const {
 			int pos = 0;
 			double sum = probs[0];
@@ -463,8 +491,8 @@ void Model<PedestrianState>::InitModel()
 
 uint64_t Model<PedestrianState>::Observe(const PedestrianState& state) const {
 	uint64_t obs=0;// = state.Vel*(X_SIZE*Y_SIZE*rob_map.size())+state.RobPos.Y*(X_SIZE*Y_SIZE)+state.PedPos.X*Y_SIZE+state.PedPos.Y;
-	uint64_t robObs=state.Vel+state.RobPos.Y*5;
-	uint64_t robObsMax=5*ModelParams::RMMax;  //max length of the rob_map
+	uint64_t robObs=state.Vel+state.RobPos.Y*ModelParams::VEL_N;
+	uint64_t robObsMax=ModelParams::VEL_N*ModelParams::RMMax;  //max length of the rob_map
 	
 	double pedObsRate=ModelParams::rln/ModelParams::ped_rln;
 	uint64_t pedObsMax=uint64_t(X_SIZE*pedObsRate)*uint64_t(Y_SIZE*pedObsRate);
@@ -479,33 +507,43 @@ uint64_t Model<PedestrianState>::Observe(const PedestrianState& state) const {
 	return obs;
 }
 
-void Model<PedestrianState>::RobStep(PedestrianState& state, int action, UtilUniform &unif) const {
-	int &robY= state.RobPos.Y;
-	int &rob_vel = state.Vel;
+void Model<PedestrianState>::RobStep(int &robY,int &rob_vel, int action, UtilUniform &unif) const {
 
-	double p = unif.next();
 
-	// cout << robY;
+	/*
 	robY += robotNoisyMove[rob_vel][lookup(robotMoveProbs[rob_vel], p)];
-	// cout << " " << robotNoisyMove[rob_vel][lookup(robotMoveProbs[rob_vel], p)] << " " << robY << endl;
-	/*
-		 for(int i=0; i<3; i++)
-		 cout << robotMoveProbs[rob_vel][i] << ":" << robotNoisyMove[rob_vel][i] << " ";
-		 cout << p << " " << lookup(robotMoveProbs[rob_vel], p) << endl;
-		 */
-
 	if(robY >= Y_SIZE) robY = Y_SIZE - 1;
-
 	p = unif.next();
-
-	// cout << rob_vel ;
 	rob_vel = robotVelUpdate[action][rob_vel][lookup(robotUpdateProb[action][rob_vel], p)];
-	/*
-		 cout << " " << rob_vel << " " << action << endl;
-		 for(int i=0; i<3; i++)
-		 cout << robotUpdateProb[action][rob_vel][i] << ":" << robotVelUpdate[action][rob_vel][i] << " ";
-		 cout << p << " " << lookup(robotUpdateProb[action][rob_vel], p) << endl;
-		 */
+	*/
+
+	double vmax=ModelParams::VEL_MAX/control_freq*ModelParams::map_rln/ModelParams::rln;
+	double delta=vmax/ModelParams::VEL_N;
+	double v=rob_vel*delta;
+	double next_center=robY+v;
+	double weight[10];
+	double weight_sum=0;
+	int max_dist=int(vmax*1.3);
+	for(int i=robY;i<rob_map.size()&&i<=robY+max_dist;i++)
+	{
+		weight[i]=gaussian(fabs(next_center-i));
+		weight_sum+=weight[i];
+	}
+
+	double p = unif.next()*weight_sum;
+	weight_sum=0;
+	int dist=-1;
+	for(int i=robY;i<rob_map.size()&&i<=robY+max_dist;i++)
+	{
+		weight[i]=gaussian(fabs(next_center-i));
+		weight_sum+=weight[i];
+		if(weight_sum>p) {
+			dist=i;
+			break;
+		}
+	}
+	//cout<<dist-robY<<endl;
+	robY=dist;
 }
 
 void Model<PedestrianState>::PedStep(PedestrianState& state, UtilUniform &unif) const
@@ -573,16 +611,17 @@ int action_vel[3]={0,1,-1};
 void UpdateVel(int &vel,int action,UtilUniform &unif)
 {
 
+
 	double prob=unif.next();		
 	if(prob<0.15) vel=vel;
 	else if(prob<0.5) vel=vel+action_vel[action];
 	else if(prob<0.85)vel=vel+action_vel[action]*2;
 	else {
 		prob=unif.next();
-		vel=int(prob*5);
+		vel=int(prob*ModelParams::VEL_N);
 	}
 	if(vel<0) vel=0;	
-	if(vel>4) vel=4;
+	if(vel>ModelParams::VEL_N-1) vel=ModelParams::VEL_N-1;
 }
 
 void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int action, double& reward, uint64_t& obs) const {
@@ -607,16 +646,16 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		if(abs(rx-pedX)<=rangeX&&pedY-ry>=-rangeY&&pedY-ry<=rangeY) 
 		{	
 			reward+=CRASH_PENALTY * (rob_vel+1);
-		//state.Vel=-1;
-		//	return;
+			//state.Vel=-1;
+			//return;
 		}
 		rangeX*=2;
 		rangeY*=2;
 		if(action==1&&abs(rx-pedX)<=rangeX&&pedY-ry>=-rangeY&&pedY-ry<=rangeY) 
 		{
 			reward+=CRASH_PENALTY * (rob_vel+1);
-		//state.Vel=-1;
-		//	return;
+			//state.Vel=-1;
+			//return;
 		}
 		/*
 
@@ -654,12 +693,12 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	if(action ==2)  reward+=-5;
 	else  reward+=-1;
 	UpdateVel(rob_vel,action,unif);
-
-	//RobStep(state, action, unif);
-	p = unif.next();
+	RobStep(robY,rob_vel, action, unif);
 	
-	int real_vel=rob_vel/2;
-	if (rob_vel == 1) real_vel = 1;
+	//p = unif.next();
+	
+	//int real_vel=rob_vel/2;
+	//if (rob_vel == 1) real_vel = 1;
 	//int real_vel;
 	/*
 	if(rob_vel==0||rob_vel==1)
@@ -670,7 +709,7 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	*/
 	//robY += robotNoisyMove[rob_vel][lookup(robotMoveProbs[rob_vel], p)];
 	
-	robY += robotNoisyMove[real_vel][lookup(robotMoveProbs[real_vel], p)];
+	//robY += robotNoisyMove[real_vel][lookup(robotMoveProbs[real_vel], p)];
 	if(robY >= rob_map.size()-1) robY = rob_map.size() - 1;
 
 
@@ -684,8 +723,9 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 
 double Model<PedestrianState>::TransProbJoint(const PedestrianState& s_old, const PedestrianState& s_new, int action) const {
 	double prob=1.0;
+	
 	prob*=sfm->ModelTransProb(s_old,s_new);
-
+/*
 	int real_vel=s_old.Vel/2;
 	//robY += robotNoisyMove[rob_vel][lookup(robotMoveProbs[rob_vel], p)];
 	double this_prob=0.01;
@@ -750,6 +790,7 @@ double Model<PedestrianState>::TransProbJoint(const PedestrianState& s_old, cons
 	}
 
 	prob*=vel_prob;
+	*/
 	//if(robY >= rob_map.size()-1) robY = rob_map.size() - 1;
 	//p = unif.next();
 
@@ -762,10 +803,10 @@ double Model<PedestrianState>::TransProbJoint(const PedestrianState& s_old, cons
 PedestrianState ObsToState(uint64_t obs)
 {
 	PedestrianState state;
-	uint64_t robObsMax=5*ModelParams::RMMax;
+	uint64_t robObsMax=ModelParams::VEL_N*ModelParams::RMMax;
 	uint64_t robObs=obs%robObsMax;
-	state.Vel=robObs%5;
-	state.RobPos.Y=robObs/5;
+	state.Vel=robObs%ModelParams::VEL_N;
+	state.RobPos.Y=robObs/ModelParams::VEL_N;
 	uint64_t pedObs=obs/robObsMax;
 	int i=0;
 	uint64_t pedObsMax=X_SIZE*Y_SIZE;
@@ -802,13 +843,16 @@ double Model<PedestrianState>::FringeUpperBound(const PedestrianState& s) const 
 		return 0;
 	}
 
-	int d = (int)(fabs(rob_map.size() - s.RobPos.Y)) / 3;
+
+	double vmax=ModelParams::VEL_MAX/control_freq*ModelParams::map_rln/ModelParams::rln;
+	int max_dist=int(vmax*1.3);
+	int d = (int)(fabs(rob_map.size() - s.RobPos.Y)) / (max_dist+1);
 	/* TODO: There was a bug caused by not using the global discount factor - UpperBound table.*/
 	return GOAL_REWARD * pow(Globals::config.discount, d);
 }
 
 double Model<PedestrianState>::FringeLowerBound(const vector<Particle<PedestrianState>*>& particles) const {
-	return CRASH_PENALTY*5*ModelParams::N_PED_IN / 0.05;
+	return CRASH_PENALTY*ModelParams::VEL_N*ModelParams::N_PED_IN / 0.05;
 }
 
 void Model<PedestrianState>::SetStartState(PedestrianState& state) {
