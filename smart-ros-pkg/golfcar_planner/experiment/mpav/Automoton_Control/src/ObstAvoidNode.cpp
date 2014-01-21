@@ -129,7 +129,7 @@ namespace MPAV{
 	void ObstAvoid::RefPathCB(const nav_msgs::Path global_path){
 		reference_path = global_path;
 		navi_sm.SMStatus[RefPathFound] = true;
-		navi_sm.SubGoal = new ReplanGoal(reference_path, 12);
+		navi_sm.SubGoal = new ReplanGoal(reference_path, 16);
 		navi_sm.SubGoal->base_frame = base_frame;
 		navi_sm.SubGoal->local_frame = local_frame;
 		navi_sm.SubGoal->global_frame = global_frame;
@@ -164,7 +164,7 @@ namespace MPAV{
 	}
 
 	void ObstAvoid::MakePlanTimer(const ros::TimerEvent &e){
-		if (navi_sm.state_downcast<const HeadSubGoal*>() != 0){
+		if (navi_sm.state_downcast<const HeadSubGoal*>() != 0 && replan_path.poses.size()>0){
 			hybrid_path.poses.clear();
 			size_t local_temp_no = 0;
 			size_t global_temp_no = navi_sm.SubGoal->getWaypointNo() + 1;

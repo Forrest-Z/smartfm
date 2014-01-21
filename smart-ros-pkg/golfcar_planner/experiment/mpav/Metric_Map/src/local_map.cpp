@@ -26,7 +26,7 @@ namespace MPAV{
 		const string default_global = "map";
 		const string default_local = "local_map";
 		const string default_base = "base_link";
-		const int default_track_dist = 6;
+		const int default_track_dist = 8;
 		const double default_width = 20;
 		const double default_height = 30;
 		const double default_resolution = 0.2;
@@ -398,11 +398,11 @@ namespace MPAV{
 		geometry_msgs::Point32 robot_FP_UL;
 		geometry_msgs::Point32 robot_FP_UR;
 
-		robot_FP_UL.x = 1.8;//3/4*GOLFCAR_HEIGHT;
-		robot_FP_UL.y = -0.6;//-1/2*GOLFCAR_WIDTH;
+		robot_FP_UL.x = 2.0;//3/4*GOLFCAR_HEIGHT;
+		robot_FP_UL.y = -0.7;//-1/2*GOLFCAR_WIDTH;
 
-		robot_FP_UR.x = 1.8;//3/4*GOLFCAR_HEIGHT;
-		robot_FP_UR.y = 0.6;//1/2*GOLFCAR_WIDTH;
+		robot_FP_UR.x = 2.0;//3/4*GOLFCAR_HEIGHT;
+		robot_FP_UR.y = 0.7;//1/2*GOLFCAR_WIDTH;
 
 		//collision detection area
 		point = robot_FP_UL;
