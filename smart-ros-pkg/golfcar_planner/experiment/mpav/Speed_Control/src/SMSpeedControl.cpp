@@ -102,7 +102,7 @@ namespace MPAV{
 	}
 
 	void SMSpeedControl::LaserCallBack(const laser_t::ConstPtr &laserIn){
-	  cout<<"base_frame: "<<base_frame<<endl;
+	  //cout<<"base_frame: "<<base_frame<<endl;
         laser_pc.points.clear();
 		try{
         	projector_.transformLaserScanToPointCloud(base_frame, *laserIn, laser_pc, tf_);

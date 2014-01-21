@@ -25,7 +25,7 @@ namespace MPAV{
 
 		navi_sm.SpeedControl = new SMSpeedControl();
 		navi_sm.SpeedControl->base_frame = base_frame;
-
+		cout<<"Update BASE FRAME "<<navi_sm.SpeedControl->base_frame<<" given "<<base_frame<<endl;
 		navi_sm.SubGoal = NULL;
 
 		/**
