@@ -564,7 +564,7 @@ public:
 	{
 		int x,y;
 		cout<<"rob pos "<<robPos<<endl;
-		
+
 		window.GlobalToLocal(world_map.global_plan[robPos][0],world_map.global_plan[robPos][1],x,y);
 		if(ModelParams::debug)  {
 			cout<<"rob pos global "<<world_map.global_plan[robPos][0]<<" "<<world_map.global_plan[robPos][1]<<endl;
@@ -572,16 +572,20 @@ public:
 		}
 
 
-		int i;
-		for(i=0;i<window.rob_map.size();i++)
+        int min_drift = 100;
+        int best_i=curr_state.RobPos.Y;
+		for(int i=0;i<window.rob_map.size();i++)
 		{
-			if(x==window.rob_map[i].first&&y==window.rob_map[i].second) 
+            int dist = abs(window.rob_map[i].first-x) + abs(window.rob_map[i].second-y);
+			if(dist < min_drift)
 			{
-				curr_state.RobPos.Y=i;
-				break;
+                min_drift = dist;
+                best_i = i;
 			}
 		}
-		if(i==window.rob_map.size())  cout<<"!!!!!!!!car drift out of the predefined path"<<endl;
+        curr_state.RobPos.Y = best_i;
+        if(min_drift> 0) cout << "car drift distance = " << min_drift << endl;
+
 		for(int i=0;i<pedInView_list.size();i++)
 		{
 			int ped_w,ped_h;
@@ -593,7 +597,7 @@ public:
 			if(ped_h<0) ped_h=0;
 			if(ped_h>ModelParams::YSIZE-1) ped_h=ModelParams::YSIZE-1;
 			curr_state.PedPoses[i].first.X=ped_w;
-		    curr_state.PedPoses[i].first.Y=ped_h;	
+		    curr_state.PedPoses[i].first.Y=ped_h;
 			curr_state.PedPoses[i].second=ped_list[pedInView_list[i]].goal;
 			//curr_state.PedPoses[i].third=pedInView_list[i];
 			curr_state.PedPoses[i].third=ped_list[pedInView_list[i]].id;
