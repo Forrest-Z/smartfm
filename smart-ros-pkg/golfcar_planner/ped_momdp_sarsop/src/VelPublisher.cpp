@@ -3,7 +3,7 @@
 
 const double freq = 20;
 const double acceleration0 = 0.5;
-const double acceleration1 = 1.0;
+const double acceleration1 = 0.8;
 
 const double alpha0 = 0.5;
 const double alpha1 = 0.7;

@@ -406,8 +406,8 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		int n_trials;
 
 
-		//safeAction=solver->Search(1.0/control_freq,n_trials);
-		safeAction=solver->Search(0.01,n_trials);
+		safeAction=solver->Search(1.0/control_freq,n_trials);
+		//safeAction=solver->Search(0.01,n_trials);
 
 		//actionPub_.publish(action);
 		publishAction(safeAction);

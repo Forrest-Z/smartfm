@@ -127,16 +127,17 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 			{
 				int px=state.PedPoses[i].first.X;
 				int py=state.PedPoses[i].first.Y;
-				if(abs(px-rx)<=rangeX+4&&abs(py-ry)<=rangeY+4)
+				if(abs(px-rx)<=rangeX+2&&abs(py-ry)<=rangeY+2)
 				{
 					return 2;
 				}
-				if(abs(px-rx)<=rangeX*2+4&&abs(py-ry)<=rangeY*2+4)
+				if(abs(px-rx)<=rangeX*2+2&&abs(py-ry)<=rangeY*2+2)
 				{
-					return 0;
+					if(state.Vel==0) return 1;
+					else   return 0;
 				}
 			}
-			return 0;
+			return 1;
 		}
 		void Statistics(const vector<Particle<PedestrianState>*> particles) const {
 			
@@ -307,7 +308,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		}
 };
 
-const int CRASH_PENALTY =-100000;
+const int CRASH_PENALTY =-30000;
 const int GOAL_REWARD = 500;
 
 Model<PedestrianState>::Model(const RandomStreams& streams, string filename) : IUpperBound<PedestrianState>(streams)
@@ -852,6 +853,7 @@ double Model<PedestrianState>::FringeUpperBound(const PedestrianState& s) const 
 }
 
 double Model<PedestrianState>::FringeLowerBound(const vector<Particle<PedestrianState>*>& particles) const {
+	//return CRASH_PENALTY*ModelParams::VEL_N;
 	return CRASH_PENALTY*ModelParams::VEL_N*ModelParams::N_PED_IN / 0.05;
 }
 

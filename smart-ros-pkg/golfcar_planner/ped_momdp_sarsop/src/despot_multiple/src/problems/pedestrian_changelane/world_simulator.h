@@ -521,7 +521,7 @@ public:
 		//need to find the closest point in the pre-defined path
 		int next=robPos-1;
 		int next_diff=10000;
-		for(int i=robPos;i<world_map.pathLength&&i<robPos+ModelParams::path_rln*100;i++)
+		for(int i=robPos;i<world_map.pathLength&&i<robPos+ModelParams::path_rln*5;i++)
 		{
 			int curr_diff=abs(world_map.global_plan[i][0]-world_car.w)+abs(world_map.global_plan[i][1]-world_car.h);
 			if(curr_diff<next_diff)
@@ -605,7 +605,16 @@ public:
 		curr_state.num=pedInView_list.size();
 
 		double vmax=ModelParams::VEL_MAX/control_freq*ModelParams::map_rln/ModelParams::rln;
-		curr_state.Vel=velGlobal/ModelParams::VEL_MAX*ModelParams::VEL_N;
+		if(velGlobal<0.05) curr_state.Vel=0;
+		else
+		{
+			double unit=ModelParams::VEL_MAX*ModelParams::VEL_N;
+			curr_state.Vel= floor(velGlobal/ModelParams::VEL_MAX*(ModelParams::VEL_N-1) + 0.5);
+			if (curr_state.Vel == 0)
+				curr_state.Vel = 1;
+			if (curr_state.Vel > ModelParams::VEL_N)
+				curr_state.Vel = ModelParams::VEL_N - 1;
+		}
 		
 	/*	
 		if(velGlobal<0.1)
