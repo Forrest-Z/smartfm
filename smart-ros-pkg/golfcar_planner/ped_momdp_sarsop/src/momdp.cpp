@@ -29,7 +29,7 @@ int RandomActionSeed() {
 
 ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh,WorldSimulator*rw)
 {
-	cout<<"momdp node start"<<endl;
+	cerr <<"DEBUG: Entering ped_momdp()"<<endl;
     X_SIZE=4;
 	//X_SIZE=ModelParams::XSIZE;
     Y_SIZE=ModelParams::YSIZE;
@@ -37,6 +37,7 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
     dX= 1;// step size in X
 	control_freq=frequency;
 
+	cerr << "DEBUG: Initializing publishers..." << endl;
     momdp_problem_timeout = 5.0;
     stationary_ = stationary;
     use_sim_time_ = use_sim_time;
@@ -53,15 +54,14 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
 	safeAction=2;
 	momdp_speed_=0.0;
 	RealWorldPt=rw;
+	cerr << "DEBUG: Init simulator" << endl;
 	initRealSimulator();
-	cout<<"before entering controlloop"<<endl;
-	cout<<"frequency "<<frequency<<endl;
+
+	cerr <<"frequency "<<frequency<<endl;
+	cerr <<"DEBUG: before entering controlloop"<<endl;
   	timer_ = nh.createTimer(ros::Duration(1.0/frequency), &ped_momdp::controlLoop, this);
 	timer_speed=nh.createTimer(ros::Duration(0.05), &ped_momdp::publishSpeed, this);
 
-
-
-	cout<<"here"<<endl;
 	//initRealSimulator();
 
 }
@@ -120,13 +120,13 @@ bool ped_momdp::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pos
 void ped_momdp::initRealSimulator()
 {
   Globals::config.root_seed=1024;
-  cout<<"global particle "<<Globals::config.n_particles<<endl;
-  cout<<"root seed "<<Globals::config.root_seed<<endl;
-  cout<<"search depth"<<Globals::config.search_depth<<endl;
+  cerr <<"global particle "<<Globals::config.n_particles<<endl;
+  cerr <<"root seed "<<Globals::config.root_seed<<endl;
+  cerr <<"search depth"<<Globals::config.search_depth<<endl;
 
   ifstream fin("despot.config");
   fin >> Globals::config.pruning_constant;
-  cout << "Pruning constant = " << Globals::config.pruning_constant << endl;
+  cerr << "Pruning constant = " << Globals::config.pruning_constant << endl;
 
   RealSimulator  = new Model<PedestrianState>(streams, "pedestrian.config");
   RealSimulator->control_freq=control_freq;
@@ -302,7 +302,7 @@ double marker_colors[20][3] = {
 		{1.0,1.0,0.0},
 		{0.0,1.0,1.0},
 		{1.0,0.0,1.0},
-		{1.0,1.0,1.0}
+		{0.0,0.0,0.0}
 };
 
 int action_map[3]={2,0,1};

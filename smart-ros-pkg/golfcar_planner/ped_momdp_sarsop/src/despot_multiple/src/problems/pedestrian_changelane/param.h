@@ -12,14 +12,14 @@ namespace ModelParams {
 	const int XSIZE=30;
 	const int YSIZE=30;
 	const int RMMax=36;   //maximum length of the rob_map structure
-	const int N_PED_IN=5;
+	const int N_PED_IN=10;
 
 	
 	/*!!!!!!!!!!Need to modify for different experiment map!!!!!!!*/
 	//const int NGOAL=13;
 	//const int GOAL_DIST=22;  /*the distance between ped and its goal*/
 	
-	const int NGOAL=4;  //plus one stop intention
+	const int NGOAL=7;  //plus one stop intention
 	const int GOAL_DIST=1000000;
 	
 	const int goodrob=0;

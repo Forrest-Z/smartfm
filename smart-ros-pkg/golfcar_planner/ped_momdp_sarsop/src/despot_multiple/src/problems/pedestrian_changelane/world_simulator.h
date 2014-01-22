@@ -16,7 +16,7 @@ public:
     {
 		if(ModelParams::debug)
 		{
-			cout<<"seed "<<random_num<<endl;
+			cout<<"DEBUG: seed "<<random_num<<endl;
 			cout<<"num ped in view "<<" "<<NumPedInView()<<endl;
 			cout<<"rob map size "<<window.rob_map.size()<<endl;
 		}
@@ -24,10 +24,12 @@ public:
 		car.w=world_map.global_plan[robPos][0];
 		car.h=world_map.global_plan[robPos][1];
 		velGlobal=1.0;
+		cerr << "DEBUG: Finished initializing WorldSimulator" << endl;
     }
 
 	void Init()
 	{
+		cerr << "DEBUG: Call Init() in WorldSimulator" << endl;
 		t_stamp=0;
 		car.carPos=robPos=windowOrigin=0;	
 		car.w=world_map.global_plan[robPos][0];
@@ -41,6 +43,7 @@ public:
 		ShiftWindow();
 		InitPedestriansBlank();
 		ShiftWindow();
+		cerr << "DEBUG: Done Init() in WorldSimulator" << endl;
 		//sfm.UpdateSFM();
 	}
 	void InitTestPaths()
@@ -246,7 +249,7 @@ public:
 	void ShiftWindow()
 	{
 		curr_obs=CalCurrObs();
-		if(robPos-windowOrigin>=ModelParams::path_rln*2) 	  windowOrigin=robPos-ModelParams::path_rln/2;
+		if(robPos-windowOrigin>=ModelParams::path_rln*3) 	  windowOrigin=robPos-ModelParams::path_rln;
 		Clean();
 		window.RollWindow(windowOrigin);
 		pedInView_list.clear();

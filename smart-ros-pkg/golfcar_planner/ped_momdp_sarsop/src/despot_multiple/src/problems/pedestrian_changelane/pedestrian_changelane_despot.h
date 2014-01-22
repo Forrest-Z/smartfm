@@ -540,7 +540,7 @@ void Model<PedestrianState>::RobStep(int &robY,int &rob_vel, int action, UtilUni
 	double delta=vmax/ModelParams::VEL_N;
 	double v=rob_vel*delta;
 	double next_center=robY+v;
-	double weight[10];
+	double weight[ModelParams::RMMax+10];
 	double weight_sum=0;
 	int max_dist=int(vmax*1.3);
 	for(int i=robY;i<rob_map.size()&&i<=robY+max_dist;i++)

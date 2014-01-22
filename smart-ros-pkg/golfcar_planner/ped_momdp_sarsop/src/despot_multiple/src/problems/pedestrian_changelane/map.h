@@ -13,8 +13,8 @@ public:
 
 	int width;
 	int height;
-	bool full_map[1000][1000];
-	bool map_obs[1000][1000];
+	bool full_map[100][100];
+	bool map_obs[100][100];
 	int global_plan[10000][2];   //maximum 10000 points
 	int goal_pos[ModelParams::NGOAL][2];
 	int pathLength;
@@ -32,14 +32,25 @@ public:
 		bool utown=true;
 		if(utown)
 		{
-			goal_pos[3][0]=114*ModelParams::map_rln;
-			goal_pos[3][1]=145*ModelParams::map_rln;
-			goal_pos[2][0]=128*ModelParams::map_rln;
-			goal_pos[2][1]=118*ModelParams::map_rln;
-			goal_pos[0][0]=95*ModelParams::map_rln;
-			goal_pos[0][1]=153*ModelParams::map_rln;
-			goal_pos[1][0]=100*ModelParams::map_rln;
-			goal_pos[1][1]=112*ModelParams::map_rln;
+
+
+			goal_pos[0][0]=107*ModelParams::map_rln;
+			goal_pos[0][1]=167*ModelParams::map_rln;
+			goal_pos[1][0]=121*ModelParams::map_rln;
+			goal_pos[1][1]=169*ModelParams::map_rln;
+			goal_pos[2][0]=125*ModelParams::map_rln;
+			goal_pos[2][1]=143*ModelParams::map_rln;
+
+			goal_pos[3][0]=109*ModelParams::map_rln;
+			goal_pos[3][1]=109*ModelParams::map_rln;
+			goal_pos[4][0]=122*ModelParams::map_rln;
+			goal_pos[4][1]=114*ModelParams::map_rln;
+
+			goal_pos[5][0]=139*ModelParams::map_rln;
+			goal_pos[5][1]=115*ModelParams::map_rln;
+
+			goal_pos[6][0]=105*ModelParams::map_rln;
+			goal_pos[6][1]=149*ModelParams::map_rln;
 
 			//last goal is the dummy goal for stopping intentioni
 
@@ -47,11 +58,6 @@ public:
 			//	goal_pos[4][1]=-10000;
 
 
-			for(int i=0;i<4;i++)
-			{
-				goal_pos[i][0]+=10*ModelParams::map_rln;
-				goal_pos[i][1]-=3*ModelParams::map_rln;
-			}
 		}
 		else  //lab
 		{

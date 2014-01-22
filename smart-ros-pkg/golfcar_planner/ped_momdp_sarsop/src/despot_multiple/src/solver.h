@@ -117,6 +117,7 @@ void Solver<T>::Reset() {
 
 template<typename T>
 int Solver<T>::Search(double max_time, int& n_trials) {
+	cerr << "Starting despot search..." << endl;
 
   clock_t begin = clock();
   n_trials = 0;
@@ -150,6 +151,7 @@ int Solver<T>::Search(double max_time, int& n_trials) {
 	PrintTree(root_);
     return root_->OptimalAction();
   }
+  cerr << "Despot search done!" << endl;
 }
 
 template<typename T>

@@ -645,7 +645,7 @@ bool PEDESTRIAN_CHANGELANE::Step(STATE& state,int action, OBS_TYPE & observation
 		cout<<"rob map size "<<rob_map.size()<<endl;
 	PedestrianState& pedestrian_state=safe_cast<PedestrianState&>(state);
 	reward=0;
-	observation=MaxObs()-1;
+	observation= 2<<63-1; //MaxObs()-1;
 
 
 	int robY=pedestrian_state.RobPos.Y;

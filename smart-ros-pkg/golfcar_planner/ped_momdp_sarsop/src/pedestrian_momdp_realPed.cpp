@@ -21,6 +21,7 @@ pedestrian_momdp::pedestrian_momdp()
 {
     ROS_INFO("Starting Pedestrian Avoidance ... ");
 
+	cerr << "DEBUG: Setting up subscription..." << endl;
     /// Setting up subsciption
     ros::NodeHandle nh;
     speedSub_ = nh.subscribe("odom", 1, &pedestrian_momdp::speedCallback, this);
@@ -47,6 +48,7 @@ pedestrian_momdp::pedestrian_momdp()
     move_base_speed_=nh.subscribe("momdp_speed_dummy",1, &pedestrian_momdp::moveSpeedCallback, this);
     //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
 
+	cerr << "DEBUG: Creating ped_momdp instance" << endl;
 	momdp = new ped_momdp(model_file, policy_file, simLen, simNum, stationary, frequency, use_sim_time, nh,&RealWorld);
 
 	//momdp->RealWorldPt=&RealWorld;
@@ -65,6 +67,7 @@ pedestrian_momdp::pedestrian_momdp()
 extern double marker_colors[20][3];
 void pedestrian_momdp::publishPath()
 {
+	cerr << "DEBUG: Call publishPath() " << endl;
 	nav_msgs::Path msg;
 	msg.header.frame_id="/golfcart/map";
 	msg.header.stamp=ros::Time::now();
@@ -115,6 +118,7 @@ void pedestrian_momdp::publishPath()
 		markers.markers.push_back(marker);
 	}
 	goal_pub.publish(markers);
+	cerr << "DEBUG: Done publishPath() " << endl;
 }
 pedestrian_momdp::~pedestrian_momdp()
 {
@@ -206,6 +210,4 @@ int main(int argc, char** argv)
 	
     srand(unsigned(time(0)));
     pedestrian_momdp mdp_node;
-
-
 }
