@@ -2,7 +2,7 @@
   <group ns="$ROBOT">
       <!--node name="map_server" pkg="map_server" type="map_server" args="$(find GP)/maps/final.yaml"/-->
 #if($localization=="normal")      
-    <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/map.yaml"/>
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find Launch_v2)/airspeed/map/chopshop.yaml"/>
     <node name="amcl" pkg="amcl" type="amcl" respawn="false" output="screen">
       <remap from="scan" to="front_top_scan"/>		
     </node>
