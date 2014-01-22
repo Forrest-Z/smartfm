@@ -77,8 +77,9 @@ public:
 	{
 		unif.seed_=new_seed_;
 	}
-	OBS_T CalCurrObs()
+	PedestrianState CalCurrObs()
 	{
+		return GetCurrState();
 		int X_SIZE=ModelParams::XSIZE;
 		int Y_SIZE=ModelParams::YSIZE;
 		GetCurrState();
@@ -97,7 +98,7 @@ public:
 		if(ModelParams::debug) 	cout<<"world observation "<<obs<<endl;
 		return obs;
 	}
-	OBS_T GetCurrObs()
+	PedestrianState GetCurrObs()
 	{return curr_obs;}
 
 	bool InSafeZone(int w,int h)
@@ -730,7 +731,7 @@ public:
 	vector<int> pedInView_list;
 	PedestrianState curr_state;
 	double control_freq;	
-	OBS_T curr_obs;
+	PedestrianState curr_obs;
 	UtilUniform unif;
 	int ped_paths[3][100][2];
 };

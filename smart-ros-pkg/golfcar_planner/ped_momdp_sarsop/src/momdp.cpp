@@ -391,15 +391,19 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		cout<<"here"<<endl;
         //if(RealWorldPt->NumPedInView()==0) return;   //no pedestrian detected yet
 		RealSimulator->rob_map=RealWorldPt->window.rob_map;
-		OBS_T obs=RealWorldPt->GetCurrObs();
+		//OBS_T obs=RealWorldPt->GetCurrObs();
+		PedestrianState new_state_old=RealWorldPt->GetCurrObs();
 
-		cout<<"world observation "<<obs<<endl;
+		cout<<"world observation: ";//<<obs<<endl;
+		RealSimulator->PrintState(new_state_old);
+
+
 		PedestrianState ped_state=RealWorldPt->GetCurrState();
 		cout<<"current state"<<endl;
 		RealSimulator->PrintState(ped_state);
 
 		double reward;
-		solver->UpdateBelief(safeAction, obs,  ped_state);
+		solver->UpdateBelief(safeAction, ped_state,new_state_old);
 	
 		////////////////////////////////////////////////////////////////////
 		

@@ -43,7 +43,7 @@ class Solver {
 
   // Updates the agent's current belief and initializes a new tree rooted at
   // the new belief.
-  void UpdateBelief(int act, uint64_t obs,T  new_state);
+  void UpdateBelief(int act, T  new_state,T new_state_old);
 
   // Resets the solver to its initial state (as if it were just constructed and
   // Init()-ialized). Useful to run experiments without reconstructing the 
@@ -348,16 +348,18 @@ bool Solver<T>::Finished() const {
 }
 
 template<typename T>
-void Solver<T>::UpdateBelief(int act, uint64_t obs,T new_state) {
+void Solver<T>::UpdateBelief(int act, T new_state,T new_state_old) {
   vector<Particle<T>*> particles = bu_.Update(root_->particles(), 
-      Globals::config.n_particles, act, obs,new_state);
+  Globals::config.n_particles, act, new_state,new_state_old);
 
-	history_.Add(act, obs);
+
+  int obs_dummy=0;
+  history_.Add(act, obs_dummy);
 
 	//this->model_.ModifyObsStates(particles,new_state,bu_.belief_update_seed_);
 
   // Clear memory and renew root
-  cout<<"act obs "<<act<<" "<<obs<<endl;
+  //cout<<"act obs "<<act<<" "<<obs<<endl;
 
   pair<double, int> lb = lb_.LowerBound(particles, model_, 0, history_);
 

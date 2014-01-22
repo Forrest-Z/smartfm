@@ -507,6 +507,8 @@ vector<int> Model<PedestrianState>::ObserveVector(const PedestrianState& state) 
 	return obs_vec;
 }
 uint64_t Model<PedestrianState>::Observe(const PedestrianState& state) const {
+	hash<vector<int>> myhash;
+	return myhash(ObserveVector(state));
 	uint64_t obs=0;// = state.Vel*(X_SIZE*Y_SIZE*rob_map.size())+state.RobPos.Y*(X_SIZE*Y_SIZE)+state.PedPos.X*Y_SIZE+state.PedPos.Y;
 	uint64_t robObs=state.Vel+state.RobPos.Y*ModelParams::VEL_N;
 	uint64_t robObsMax=ModelParams::VEL_N*ModelParams::RMMax;  //max length of the rob_map

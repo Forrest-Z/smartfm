@@ -29,8 +29,8 @@ class BeliefUpdate {
   vector<Particle<T>*> Update(const vector<Particle<T>*>& particles,
                               int N, 
                               int act, 
-                              uint64_t obs,T obs_state) {
-    vector<Particle<T>*> ans = UpdateImpl(particles, N, act, obs,obs_state);
+                              T obs_state,T obs_state_old) {
+    vector<Particle<T>*> ans = UpdateImpl(particles, N, act, obs_state,obs_state_old);
     num_updates_++;
     return ans;
   }
@@ -58,7 +58,7 @@ class BeliefUpdate {
   virtual vector<Particle<T>*> UpdateImpl(const vector<Particle<T>*>& particles,
                                           int N, 
                                           int act, 
-                                          uint64_t obs, T obs_state) = 0;
+                                           T obs_state,T obs_state_old) = 0;
 
   const unsigned init_belief_update_seed_;
 };

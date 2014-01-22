@@ -26,8 +26,8 @@ class ParticleFilterUpdate : public BeliefUpdate<T> {
       const vector<Particle<T>*>& particles,
       int N,
       int act,
-      uint64_t obs,
-	  T obs_state);
+	  T obs_state,
+	  T obs_state_old);
 };
 
 template<typename T>
@@ -38,8 +38,8 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
     const vector<Particle<T>*>& particles,
     int N,
     int act,
-    uint64_t obs,
-	T obs_state) {
+	T obs_state,
+	T obs_state_old) {
 
   vector<Particle<T>*> ans;
   double reward;
@@ -47,7 +47,8 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
   cout<<"Belief before update "<<endl;
   this->model_.Statistics(particles);
 
-  PedestrianState new_state = ObsToState(obs);
+  //PedestrianState new_state = ObsToState(obs);
+  PedestrianState new_state = obs_state_old;
   for (auto p: particles) {
     PedestrianState& old_state = p->state;
 
