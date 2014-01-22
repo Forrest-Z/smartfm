@@ -68,6 +68,7 @@ public:
 	int weight[10];
 	MyVector goal_model[ModelParams::XSIZE][ModelParams::YSIZE][ModelParams::NGOAL];
 	MyVector car_model[ModelParams::XSIZE][ModelParams::YSIZE][ModelParams::RMMax][ModelParams::NGOAL];
+	int crash_model[ModelParams::XSIZE][ModelParams::YSIZE];
 	int local_goals[ModelParams::NGOAL][2];
 	MyMap *sfm_map;	
 	MyWindow *sfm_window;
@@ -221,6 +222,7 @@ public:
 	double ModelTransProb(PedestrianState state,PedestrianState state_new);
 	void UpdateGoalModel();
 	void UpdateCarModel();
+	void UpdateCrashModel();
 	void UpdateSFM()
 	{
 
@@ -233,6 +235,8 @@ public:
 		}
 		UpdateGoalModel();
 		UpdateCarModel();
+		UpdateCrashModel();
+
 	}
 	bool Danger(int x,int y,Car car)
 	{

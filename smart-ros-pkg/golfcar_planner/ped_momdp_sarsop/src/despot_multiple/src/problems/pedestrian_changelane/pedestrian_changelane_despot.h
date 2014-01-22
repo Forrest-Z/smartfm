@@ -29,6 +29,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		PedestrianState GetStartState() const;
 		//vector<PedestrianState> GetStartStates(int num_ped) const;
 		uint64_t Observe(const PedestrianState& state) const; // Observation for non-terminal state
+		vector<int> ObserveVector(const PedestrianState& state)   const;
 		void RobStep(int &robY,int &rob_vel, int action, UtilUniform &unif) const;
 		void PedStep(PedestrianState& state, UtilUniform &unif) const;
 		void StepMultiple(vector<PedestrianState>& states, double rNum, int action, vector<double>& rewards, vector<uint64_t>& obss) const;
@@ -127,11 +128,14 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 			{
 				int px=state.PedPoses[i].first.X;
 				int py=state.PedPoses[i].first.Y;
-				if(abs(px-rx)<=rangeX+2&&abs(py-ry)<=rangeY+2)
+				int crash_point=sfm->crash_model[px][py];
+				int crashx=rob_map[crash_point].first;
+				int crashy=rob_map[crash_point].second;
+				if(abs(px-crashx)<=rangeX+2&&crashy-ry>=-2&&crashy-ry<=rangeY)
 				{
 					return 2;
 				}
-				if(abs(px-rx)<=rangeX*2+2&&abs(py-ry)<=rangeY*2+2)
+				if(abs(px-crashx)<=rangeX*2+2&&crashy-ry>=-4&&crashy-ry<=rangeY*2+2)
 				{
 					if(state.Vel==0) return 1;
 					else   return 0;
@@ -490,6 +494,18 @@ void Model<PedestrianState>::InitModel()
 	cerr << endl;
 }
 
+vector<int> Model<PedestrianState>::ObserveVector(const PedestrianState& state) const {
+	vector<int> obs_vec;
+	uint64_t robObs=state.Vel+state.RobPos.Y*ModelParams::VEL_N;
+	double pedObsRate=ModelParams::rln/ModelParams::ped_rln;
+	obs_vec.push_back(robObs);
+	for(int i=0;i<state.num;i++)
+	{
+		int this_obs=int(state.PedPoses[i].first.X*pedObsRate)*int(Y_SIZE*pedObsRate)+int(state.PedPoses[i].first.Y*pedObsRate);	
+		obs_vec.push_back(this_obs);
+	}
+	return obs_vec;
+}
 uint64_t Model<PedestrianState>::Observe(const PedestrianState& state) const {
 	uint64_t obs=0;// = state.Vel*(X_SIZE*Y_SIZE*rob_map.size())+state.RobPos.Y*(X_SIZE*Y_SIZE)+state.PedPos.X*Y_SIZE+state.PedPos.Y;
 	uint64_t robObs=state.Vel+state.RobPos.Y*ModelParams::VEL_N;
@@ -641,10 +657,16 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		int &pedY = state.PedPoses[i].first.Y;
 		int rx=rob_map[robY].first;
 		int ry=rob_map[robY].second;
+
+		//retrieve the closest point to the pedestrian on the path according to x coord
+		int crash_point=sfm->crash_model[pedX][pedY];
+		int crashx=rob_map[crash_point].first;
+		int crashy=rob_map[crash_point].second;
 		int rangeX=ModelParams::map_rln/ModelParams::rln;
 		rangeX/=2;
 		int rangeY=ModelParams::map_rln/ModelParams::rln + 1;
-		if(abs(rx-pedX)<=rangeX&&pedY-ry>=-rangeY&&pedY-ry<=rangeY) 
+
+		if(abs(crashx-pedX)<=rangeX&&crashy-ry>=-2&&crashy-ry<=rangeY) 
 		{	
 			reward+=CRASH_PENALTY * (rob_vel+1);
 			//state.Vel=-1;
@@ -652,7 +674,7 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		}
 		rangeX*=2;
 		rangeY*=2;
-		if(action==1&&abs(rx-pedX)<=rangeX&&pedY-ry>=-rangeY&&pedY-ry<=rangeY) 
+		if(action==1&&abs(crashx-pedX)<=rangeX&&crashy-ry>=-4&&crashy-ry<=rangeY) 
 		{
 			reward+=CRASH_PENALTY * (rob_vel+1);
 			//state.Vel=-1;

@@ -343,6 +343,27 @@ void SFM::UpdateGoalModel()
 				goal_model[x][y][g]=vec;	
 			}
 }
+
+void SFM::UpdateCrashModel()
+{
+	for(int x=0;x<ModelParams::XSIZE;x++)
+		for(int y=0;y<ModelParams::YSIZE;y++)
+		{
+
+			int min_dist=10000;
+			for(int ry=0;ry<sfm_window->rob_map.size();ry++)
+			{
+				int	robx,roby;
+				robx=sfm_window->rob_map[ry].first;
+				roby=sfm_window->rob_map[ry].second;
+				if(abs(roby-y)<min_dist)
+				{
+					min_dist=abs(roby-y);	
+					crash_model[x][y]=ry;
+				}
+			}
+		}
+}
 void SFM::UpdateCarModel()
 {
 	for(int x=0;x<ModelParams::XSIZE;x++)
