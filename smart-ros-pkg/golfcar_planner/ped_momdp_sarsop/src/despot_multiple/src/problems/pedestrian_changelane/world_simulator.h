@@ -254,6 +254,16 @@ public:
 		window.RollWindow(windowOrigin);
 		pedInView_list.clear();
 
+
+		cout<<"all pedestrians after shift window"<<endl;
+		for(int i=0;i<ped_list.size();i++)
+		{
+			//cout<<ped_list[i].w<<" "<<ped_list[i].h<<" "<<ped_list[i].id<<endl;
+			int x,y;
+			window.GlobalToLocal(ped_list[i].w,ped_list[i].h,x,y);
+			cout<<"x,y,id "<<x<<" "<<y<<" "<<ped_list[i].id<<endl;
+		}
+
 		for(int i=0;i<ped_list.size();i++)
 		{
 			if(ped_list[i].w==-1000&&ped_list[i].h==-1000)

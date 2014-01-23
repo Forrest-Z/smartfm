@@ -47,7 +47,6 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
   cout<<"Belief before update "<<endl;
   this->model_.Statistics(particles);
 
-  //PedestrianState new_state = ObsToState(obs);
   PedestrianState new_state = obs_state_old;
   for (auto p: particles) {
     PedestrianState& old_state = p->state;
@@ -65,11 +64,14 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
         new_state.PedPoses[i].second = old_state.PedPoses[i].second;
         new_state.PedPoses[i].third = old_state.PedPoses[i].third;
     }
-    double obs_prob = this->model_.TransProbJoint(old_state, new_state, act) + 1e-10;
+    double obs_prob = this->model_.TransProbJoint(old_state, new_state, act);
+	this->model_.PrintState(new_state);
+	// cout << "obs_prob = " << obs_prob << endl;
 	assert(obs_prob > 0);
     if (obs_prob > 0) {
         Particle<T>* new_particle = this->model_.Copy(p);
-        new_particle->wt = (p->wt + 1e-4) * obs_prob;
+        //new_particle->wt = (p->wt + 1e-6) * obs_prob;
+		new_particle->wt = (p->wt) * obs_prob;
         new_particle->state = new_state;
         ans.push_back(new_particle);
     }
