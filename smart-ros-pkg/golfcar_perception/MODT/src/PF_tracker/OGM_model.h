@@ -1,9 +1,9 @@
 #ifndef MODT_OGM_MODEL_H
 #define MODT_OGM_MODEL_H
 
-#include <sensor_msgs/PointCloud.h>
 #include <ros/ros.h>
 #include <geometry_msgs/PolygonStamped.h>
+#include <sensor_msgs/PointCloud.h>
 #include <tf/transform_broadcaster.h>
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
