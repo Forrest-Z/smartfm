@@ -31,6 +31,8 @@ class Solver {
         streams_(random_streams),
         history_(History())
   {}
+
+
   unique_ptr<VNode<T>> root_; // Root of the search tree
   void Init();
 
@@ -74,6 +76,7 @@ class Solver {
 
   const Model<T>& model_;
   vector<pair<T, double>> initial_belief_;
+  vector<Particle<T>*> belief_;
   ILowerBound<T>& lb_;
   IUpperBound<T>& ub_;
   BeliefUpdate<T>& bu_;
@@ -94,7 +97,11 @@ void Solver<T>::Init() {
   }
   random_shuffle(pool.begin(), pool.end());
 
-  auto particles = bu_.Sample(pool, Globals::config.n_particles);
+  belief_ = bu_.Sample(pool, Globals::config.n_belief_particles);
+  cerr << "DEBUG: Initialized initial belief with " << belief_.size() << endl;
+
+  auto particles = bu_.Sample(belief_, Globals::config.n_particles);
+  cerr << "DEBUG: Sampled " << particles.size() << " particles from initial belief" << endl; 
 
   pair<double, int> lb = lb_.LowerBound(particles, model_, 0, history_);
   default_action_ = lb.second;
@@ -350,10 +357,11 @@ bool Solver<T>::Finished() const {
 }
 
 template<typename T>
-void Solver<T>::UpdateBelief(int act, T new_state,T new_state_old) {
-  vector<Particle<T>*> particles = bu_.Update(root_->particles(), 
-  Globals::config.n_particles, act, new_state,new_state_old);
-
+void Solver<T>::UpdateBelief(int act, uint64_t obs,T new_state) {
+  belief_ = bu_.Update(belief_, Globals::config.n_belief_particles, act, obs,new_state);
+  cerr << "DEBUG: Current number of particles in belief: " << belief_.size() << endl;
+  vector<Particle<T>*> particles = bu_.Sample(belief_, Globals::config.n_particles);
+  cerr << "DEBUG: Sampled " << particles.size() << " particles from initial belief" << endl; 
 
   int obs_dummy=0;
   history_.Add(act, obs_dummy);

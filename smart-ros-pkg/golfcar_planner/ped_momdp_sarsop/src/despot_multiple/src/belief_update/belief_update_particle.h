@@ -52,14 +52,15 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
   for (auto p: particles) {
     PedestrianState& old_state = p->state;
 
-    if (new_state.num != old_state.num) {
+    if (new_state.num != old_state.num) { // Sanity check
 		cout << "old state" << endl;
 		this->model_.PrintState(old_state);
 		cout << "new state" << endl;
 		this->model_.PrintState(new_state);
 	}
-    // copy goal and id
-    assert(new_state.num == old_state.num);
+    
+	assert(new_state.num == old_state.num);
+	// Copy goal and id
     for (int i=0; i<old_state.num; i++) {
         new_state.PedPoses[i].second = old_state.PedPoses[i].second;
         new_state.PedPoses[i].third = old_state.PedPoses[i].third;
@@ -181,20 +182,24 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
 	ans = decltype(ans)(ans.begin(), last);
 	*/
 
-  // Resample if we have < N particles or # effective particles drops below 
-  // the threshold
-  /*
+  // Resample if we have < N particles or # effective particles drops below the threshold
   double num_eff_particles = 0;
   for (auto it: ans)
     num_eff_particles += it->wt * it->wt;
   num_eff_particles = 1 / num_eff_particles;
+  cerr << "num_eff_particles " << num_eff_particles << endl;
+  if(num_eff_particles<30) {
+	cout<<"print particle weight"<<endl;
+  	for(auto it:ans)
+		cout<<it->wt<<endl;
+  }
   if (num_eff_particles < N * NUM_EFF_PARTICLE_FRACTION || ans.size() < N) {
     auto resampled_ans = this->Sample(ans, N);
     for (auto it: ans)
       this->model_.Free(it);
     ans = resampled_ans;
+	cerr << "DEBUG: Resampled " << ans.size() << " particles in belief" << endl;
   } 
-  */
 
   this->model_.ModifyObsStates(ans,obs_state,this->belief_update_seed_);
   cout<<"After Modify "<<endl;

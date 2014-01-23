@@ -42,6 +42,8 @@ struct Config {
   // The amount of CPU time available to construct the search tree, not
   // including the the time taken to prune the tree and update the belief.
   double time_per_move;
+  // Number of particles used in belief
+  int n_belief_particles;
   // Number of starting states.
   int n_particles;
   // Whether the search tree should be pruned after construction.
@@ -61,6 +63,7 @@ struct Config {
     discount(0.95),
     root_seed(42),
     time_per_move(1),
+	n_belief_particles(1000),
     n_particles(500),
     pruning_constant(0),
     eta(0.95),

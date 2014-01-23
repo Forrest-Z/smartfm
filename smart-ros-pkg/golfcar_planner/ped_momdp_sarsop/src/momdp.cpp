@@ -120,9 +120,12 @@ bool ped_momdp::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pos
 void ped_momdp::initRealSimulator()
 {
   Globals::config.root_seed=1024;
-  cerr <<"global particle "<<Globals::config.n_particles<<endl;
-  cerr <<"root seed "<<Globals::config.root_seed<<endl;
-  cerr <<"search depth"<<Globals::config.search_depth<<endl;
+  Globals::config.n_belief_particles=500;
+  Globals::config.n_particles=500;
+
+  cout<<"global particle "<<Globals::config.n_particles<<endl;
+  cout<<"root seed "<<Globals::config.root_seed<<endl;
+  cout<<"search depth"<<Globals::config.search_depth<<endl;
 
   ifstream fin("despot.config");
   fin >> Globals::config.pruning_constant;
@@ -133,7 +136,6 @@ void ped_momdp::initRealSimulator()
   RealWorldPt->control_freq=control_freq;
 
 
-
   int knowledge = 2;
   lb = new RandomPolicyLowerBound<PedestrianState>(
 		  streams, knowledge, RandomActionSeed());
@@ -141,6 +143,7 @@ void ped_momdp::initRealSimulator()
   cout<<"lower bound address "<<lb<<endl;
   //IUpperBound<PedestrianState>* ub =
       //new UpperBoundStochastic<PedestrianState>(streams, *model);
+
 
   bu = new ParticleFilterUpdate<PedestrianState>(BeliefUpdateSeed(), *RealSimulator);
 
