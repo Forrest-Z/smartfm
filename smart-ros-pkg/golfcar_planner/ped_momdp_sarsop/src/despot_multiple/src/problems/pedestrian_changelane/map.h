@@ -54,8 +54,8 @@ public:
 
 			//last goal is the dummy goal for stopping intentioni
 
-			//goal_pos[4][0]=-10000;
-			//	goal_pos[4][1]=-10000;
+			goal_pos[6][0]=-10000;
+			goal_pos[6][1]=-10000;
 
 
 		}

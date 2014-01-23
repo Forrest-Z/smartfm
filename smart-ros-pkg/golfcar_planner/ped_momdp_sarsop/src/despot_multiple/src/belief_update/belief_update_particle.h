@@ -54,7 +54,7 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
     if (new_state.num != old_state.num) { // Sanity check
 		cout << "old state" << endl;
 		this->model_.PrintState(old_state);
-		cout << "new state" << endl;
+		cout << "new  state" << endl;
 		this->model_.PrintState(new_state);
 	}
     
@@ -65,13 +65,13 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
         new_state.PedPoses[i].third = old_state.PedPoses[i].third;
     }
     double obs_prob = this->model_.TransProbJoint(old_state, new_state, act);
-	this->model_.PrintState(new_state);
+	//this->model_.PrintState(new_state);
 	// cout << "obs_prob = " << obs_prob << endl;
 	assert(obs_prob > 0);
     if (obs_prob > 0) {
         Particle<T>* new_particle = this->model_.Copy(p);
-        //new_particle->wt = (p->wt + 1e-6) * obs_prob;
-		new_particle->wt = (p->wt) * obs_prob;
+        new_particle->wt = (p->wt + 1e-6) * obs_prob;
+		//new_particle->wt = (p->wt) * obs_prob;
         new_particle->state = new_state;
         ans.push_back(new_particle);
     }
@@ -196,6 +196,15 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
 		cout<<it->wt<<endl;
   }
   if (num_eff_particles < N * NUM_EFF_PARTICLE_FRACTION || ans.size() < N) {
+
+	for (int i=0; i<N; i++) {
+        Particle<T>* new_particle = this->model_.Allocate();
+		T s = this->model_.RandomState(this->belief_update_seed_, obs_state_old);
+        *new_particle = {s, i, 1.0 / N};
+        ans.push_back(new_particle);
+	}
+    this->Normalize(ans);
+
     auto resampled_ans = this->Sample(ans, N);
     for (auto it: ans)
       this->model_.Free(it);

@@ -5,9 +5,9 @@ Axes.Reference\ Frame=/golfcart/base_link
 Background\ ColorB=0
 Background\ ColorG=0
 Background\ ColorR=0
-Camera\ Config=7.36299 -6.07124 34.7951 1.335
-Camera\ Type=rviz::FixedOrientationOrthoViewController
-Camera.Enabled=0
+Camera\ Config=1.2498 6.2236 81.7928 19.7566 9.2988 -4.36143e-07
+Camera\ Type=rviz::XYOrbitViewController
+Camera.Enabled=1
 Camera.Image\ Rendering=background & overlay
 Camera.Image\ Topic=/golfcart/camera_front/image_raw
 Camera.Overlay\ Alpha=0.5
@@ -157,6 +157,7 @@ MarkerArray6.basic_shapes=1
 MarkerArray7.Enabled=1
 MarkerArray7.Marker\ Array\ Topic=/golfcart/pomdp_beliefs5
 MarkerArray7.Queue\ Size=100
+MarkerArray7.basic_shapes=1
 MarkerArray8.Enabled=1
 MarkerArray8.Marker\ Array\ Topic=/golfcart/pomdp_beliefs6
 MarkerArray8.Queue\ Size=100
@@ -487,9 +488,9 @@ Pose2.Shaft\ Length=1
 Pose2.Shaft\ Radius=0.5
 Pose2.Shape=0
 Pose2.Topic=/golfcart/car_pose
-Property\ Grid\ Splitter=510,255
-Property\ Grid\ State=expanded=.Global Options,TF.Enabled,TF.Frames,Polygon5.Enabled,Camera.Enabled,PointCloud6.Enabled,Polygon6.Enabled,Pose2.Enabled,Pose2.Shape Properties,Path.Enabled,PointCloud7.Enabled,MarkerArray.Enabled,MarkerArray2.Enabled,MarkerArray3.Enabled,MarkerArray4.Enabled,MarkerArray5.Enabled,Marker.Enabled,MarkerArray6.Enabled,MarkerArray7.Enabled,MarkerArray8.Enabled;splitterratio=0.5
-QMainWindow=000000ff00000000fd0000000200000000000001630000034ffc0200000002fb000000100044006900730070006c006100790073010000001d0000034f000000ee00fffffffb0000000a0049006d0061006700650000000226000000380000001900ffffff00000001000000a10000034ffc0200000005fb0000000c00430061006d006500720061000000001d0000004e0000001900fffffffb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000001d0000034f0000006700fffffffb0000000a00560069006500770073000000001d0000034f000000bb00fffffffb0000000800540069006d006502000000410000033e000005ff00000046fb0000001200530065006c0065006300740069006f006e0000000279000000af0000006700ffffff000003ef0000034f00000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+Property\ Grid\ Splitter=500,255
+Property\ Grid\ State=expanded=.Global Options,Polygon5.Enabled,Camera.Enabled,PointCloud6.Enabled,Polygon6.Enabled,Pose2.Enabled,Pose2.Shape Properties,Path.Enabled,PointCloud7.Enabled,MarkerArray.Enabled,MarkerArray2.Enabled,MarkerArray3.Enabled,MarkerArray4.Enabled,MarkerArray5.Enabled,Marker.Enabled,MarkerArray6.Enabled,MarkerArray7.Enabled,MarkerArray8.Enabled;splitterratio=0.5
+QMainWindow=000000ff00000000fd00000002000000000000017400000345fc0200000002fb000000100044006900730070006c006100790073010000001d00000345000000ee00fffffffb0000000a0049006d0061006700650000000226000000380000001900ffffff000000010000027500000345fc0200000005fb0000000c00430061006d006500720061010000001d000001bf0000001900fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007301000001e2000000670000006700fffffffb0000000a00560069006500770073010000024f00000113000000bb00fffffffb0000000800540069006d006502000000410000033e000005ff00000046fb0000001200530065006c0065006300740069006f006e0000000279000000af0000006700ffffff000002000000034500000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
 RobotModel.Alpha=1
 RobotModel.Collision\ Enabled=0
 RobotModel.Enabled=1
@@ -498,7 +499,7 @@ RobotModel.TF\ Prefix=
 RobotModel.Update\ Interval=0
 RobotModel.Visual\ Enabled=1
 TF.All\ Enabled=0
-TF.Enabled=0
+TF.Enabled=1
 TF.Frame\ Timeout=15
 TF.Marker\ Scale=15
 TF.Show\ Arrows=1
@@ -631,8 +632,17 @@ Name=Axes
 [Display9]
 ClassName=rviz::GridDisplay
 Name=Grid
+[TF.Frames.]
+[TF.Frames./golfcart]
+base_link.Enabled=1
+camera_front_base.Enabled=1
+camera_front_img.Enabled=0
+front_bottom_lidar.Enabled=0
+front_top_lidar.Enabled=1
+map.Enabled=0
+odom.Enabled=0
 [Window]
-Height=876
-Width=1535
-X=-1949
-Y=-637
+Height=866
+Width=1525
+X=-1822
+Y=-471

@@ -4,7 +4,7 @@
 
 const double freq = 20;
 const double acceleration0 = 0.5;
-const double acceleration1 = 0.8;
+const double acceleration1 = 0.6;
 
 const double alpha0 = 0.5;
 const double alpha1 = 0.7;
@@ -67,6 +67,9 @@ public:
 class VelPublisher2 : public VelPublisher {
     void velCallBack(geometry_msgs::TwistConstPtr pomdp_vel) {
         target_vel = pomdp_vel->linear.x;
+		if(0.2<target_vel && target_vel < 0.5) {
+			target_vel = 0.6;
+		}
     }
 
     void publishSpeed(const ros::TimerEvent& event) {

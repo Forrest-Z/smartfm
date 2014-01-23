@@ -19,11 +19,11 @@ namespace ModelParams {
 	//const int NGOAL=13;
 	//const int GOAL_DIST=22;  /*the distance between ped and its goal*/
 	
-	const int NGOAL=7;  //plus one stop intention
+	const int NGOAL=6+1;  //plus one stop intention
 	const int GOAL_DIST=1000000;
 	
 	const int goodrob=0;
-	const int goodped=0;
+	const int goodped=1;
 	const bool debug=true;
 	const bool FixedPath=false;
 	const bool SocialForceModel=false;

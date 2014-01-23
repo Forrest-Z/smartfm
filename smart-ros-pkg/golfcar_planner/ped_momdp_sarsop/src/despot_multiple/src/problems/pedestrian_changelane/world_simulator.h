@@ -719,7 +719,7 @@ public:
 	}
 	bool GoalReached()
 	{
-		if(world_map.pathLength-robPos<ModelParams::path_rln*4)	 return true;
+		if(world_map.pathLength-robPos<ModelParams::path_rln*1)	 return true;
 		//if(robPos>ModelParams::path_rln*(ModelParams::YSIZE-2))	 return true;
 		else return false;
 	}

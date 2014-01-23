@@ -417,11 +417,11 @@ double SFM::ModelTransProb(PedestrianState state,PedestrianState state_new)
 			vec=vec1+vec2;	
 		else
 			vec=vec1;//+vec2;
-	/*	
+		
 
 		if(g==ModelParams::NGOAL-1) 
 			vec.AdjustLength(0.5);
-			*/
+			
 		double ped_angle=vec.GetAngle();
 
 		if(ped_angle<0) ped_angle+=2*ModelParams::pi;   //[0,2*ModelParams::pi]
@@ -512,10 +512,10 @@ void SFM::ModelTransFast(PedestrianState&state,UtilUniform &unif)
 		if(x==2&&y==6&&ry==4&&g==4)
 			cout<<"total force "<<vec2.dw<<" "<<vec2.dh<<endl;
 			*/
-		/*
+		
 		if(g==ModelParams::NGOAL-1)  //stop intention
 			vec.AdjustLength(0.5);
-			*/
+			
 		double ped_angle=vec.GetAngle();
 		if(debug)  cout<<ped_angle<<" "<<window_angle<<endl;
 
