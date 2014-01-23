@@ -1,5 +1,6 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
+#include <csignal>
 
 const double freq = 20;
 const double acceleration0 = 0.5;
@@ -7,6 +8,13 @@ const double acceleration1 = 0.8;
 
 const double alpha0 = 0.5;
 const double alpha1 = 0.7;
+
+sig_atomic_t emergency_break = 0;
+
+void sig_break(int param) {
+    emergency_break = 1;
+    std::cerr << "Emergency break!" << std::endl;
+}
 
 class VelPublisher {
 public:
@@ -29,7 +37,7 @@ public:
     {
         geometry_msgs::Twist cmd;
         cmd.angular.z = 0;
-        cmd.linear.x = curr_vel;
+        cmd.linear.x = emergency_break? 0 : curr_vel;
         cmd_pub.publish(cmd);
     }
 
@@ -80,6 +88,7 @@ class VelPublisher2 : public VelPublisher {
 int main(int argc,char**argv)
 {
 	ros::init(argc,argv,"vel_publisher");
+    signal(SIGUSR1, sig_break);
     VelPublisher2 velpub;
     velpub.spin();
 	return 0;
