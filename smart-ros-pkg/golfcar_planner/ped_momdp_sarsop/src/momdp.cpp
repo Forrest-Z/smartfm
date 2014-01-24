@@ -372,12 +372,12 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		
 		publishROSState();
 
-		/*
+		
 		if(RealWorldPt->Emergency())
 		{
-			momdp_speed_=0.0;	
+			momdp_speed_=-1;	
 			return;
-		}*/
+		}
 		if(RealWorldPt->GoalReached())
 		{
 			safeAction=2;

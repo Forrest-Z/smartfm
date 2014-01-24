@@ -66,10 +66,16 @@ public:
 
 class VelPublisher2 : public VelPublisher {
     void velCallBack(geometry_msgs::TwistConstPtr pomdp_vel) {
+		if(pomdp_vel->linear.x==-1)  {
+			curr_vel=0.0;	
+			target_vel=0.0;
+			return;
+		}
         target_vel = pomdp_vel->linear.x;
 		if(0.2<target_vel && target_vel < 0.5) {
 			target_vel = 0.6;
 		}
+
     }
 
     void publishSpeed(const ros::TimerEvent& event) {
