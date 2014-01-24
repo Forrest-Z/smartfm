@@ -5,7 +5,7 @@ Axes.Reference\ Frame=/golfcart/base_link
 Background\ ColorB=0
 Background\ ColorG=0
 Background\ ColorR=0
-Camera\ Config=17.7843 0.399126 -1.2088 1.49
+Camera\ Config=11.9707 -23.7504 19.7077 1.185
 Camera\ Type=rviz::FixedOrientationOrthoViewController
 Camera.Enabled=1
 Camera.Image\ Rendering=background & overlay
@@ -34,8 +34,8 @@ Image.Enabled=0
 Image.Image\ Topic=/camera_front/image_raw
 Image.Queue\ Size=2
 Image.Transport\ Hint=raw
-Image2.Enabled=1
-Image2.Image\ Topic=/camera_front/image_raw
+Image2.Enabled=0
+Image2.Image\ Topic=/golfcart/camera_front/image_raw
 Image2.Queue\ Size=2
 Image2.Transport\ Hint=compressed
 Interactive\ Markers.Enabled=1
@@ -124,12 +124,21 @@ LaserScan2.Alpha=1
 LaserScan2.Billboard\ Size=0.1
 LaserScan2.Color\ Transformer=FlatColor
 LaserScan2.Decay\ Time=0
-LaserScan2.Enabled=1
+LaserScan2.Enabled=0
 LaserScan2.Position\ Transformer=XYZ
 LaserScan2.Queue\ Size=10
 LaserScan2.Selectable=1
 LaserScan2.Style=1
 LaserScan2.Topic=/hokuyo_scan
+Odometry.Angle\ Tolerance=0.1
+Odometry.ColorB=0
+Odometry.ColorG=0.1
+Odometry.ColorR=1
+Odometry.Enabled=1
+Odometry.Keep=300
+Odometry.Length=1
+Odometry.Position\ Tolerance=0.1
+Odometry.Topic=/golfcart/odom
 Odometry3.Angle\ Tolerance=0.1
 Odometry3.ColorB=0
 Odometry3.ColorG=0.1
@@ -213,7 +222,7 @@ PointCloud.Alpha=1
 PointCloud.Billboard\ Size=0.1
 PointCloud.Color\ Transformer=Intensity
 PointCloud.Decay\ Time=0
-PointCloud.Enabled=0
+PointCloud.Enabled=1
 PointCloud.Position\ Transformer=XYZ
 PointCloud.Queue\ Size=10
 PointCloud.Selectable=1
@@ -261,11 +270,11 @@ PointCloud3..IntensityChannel\ Name=x
 PointCloud3..IntensityMax\ ColorB=1
 PointCloud3..IntensityMax\ ColorG=1
 PointCloud3..IntensityMax\ ColorR=1
-PointCloud3..IntensityMax\ Intensity=84.5537
+PointCloud3..IntensityMax\ Intensity=93.6135
 PointCloud3..IntensityMin\ ColorB=0
 PointCloud3..IntensityMin\ ColorG=0
 PointCloud3..IntensityMin\ ColorR=0
-PointCloud3..IntensityMin\ Intensity=83.545
+PointCloud3..IntensityMin\ Intensity=85.6425
 PointCloud3..IntensityUse\ full\ RGB\ spectrum=1
 PointCloud3.Alpha=1
 PointCloud3.Billboard\ Size=0.1
@@ -300,7 +309,7 @@ PointCloud4.Alpha=1
 PointCloud4.Billboard\ Size=0.01
 PointCloud4.Color\ Transformer=Intensity
 PointCloud4.Decay\ Time=0
-PointCloud4.Enabled=0
+PointCloud4.Enabled=1
 PointCloud4.Position\ Transformer=XYZ
 PointCloud4.Queue\ Size=10
 PointCloud4.Selectable=1
@@ -355,16 +364,16 @@ Polygon3.Enabled=1
 Polygon3.Topic=/golfcart/pp_vis
 Polygon4.Alpha=1
 Polygon4.ColorB=0
-Polygon4.ColorG=0.666667
-Polygon4.ColorR=0
+Polygon4.ColorG=0
+Polygon4.ColorR=0.666667
 Polygon4.Enabled=1
-Polygon4.Topic=/golfcart/local_clear_space
+Polygon4.Topic=/golfcart/inner_safety_zoon
 Polygon5.Alpha=1
 Polygon5.ColorB=0
 Polygon5.ColorG=1
 Polygon5.ColorR=0.1
 Polygon5.Enabled=1
-Polygon5.Topic=/golfcart/dynamic_zone_poly
+Polygon5.Topic=/golfcart/dynamic_safety_zoon
 Pose\ Array.Arrow\ Length=0.3
 Pose\ Array.ColorB=0
 Pose\ Array.ColorG=0.1
@@ -382,9 +391,9 @@ Pose.Shaft\ Length=1
 Pose.Shaft\ Radius=0.5
 Pose.Shape=0
 Pose.Topic=/golfcart/sub_goal_view
-Property\ Grid\ Splitter=230,265
-Property\ Grid\ State=expanded=.Global Options,Camera.Enabled,Path.Enabled,Image2.Enabled;splitterratio=0.5
-QMainWindow=000000ff00000000fd00000003000000000000011d0000030bfc0200000003fb000000100044006900730070006c006100790073010000001d00000241000000ee00fffffffb0000000a0049006d0061006700650000000226000000380000001900fffffffb0000000c0049006d00610067006500320100000264000000c40000001900ffffff00000001000001ab0000030bfc0200000004fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000001d000001020000006700fffffffb0000000a005600690065007700730100000125000000c4000000bb00fffffffb0000000c00430061006d00650072006101000001ef000001390000001900fffffffb0000001200530065006c0065006300740069006f006e0000000279000000af0000006700ffffff00000003000005ff0000003efc0100000001fb0000000800540069006d00650100000000000005ff000002bf00ffffff0000032b0000030b00000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+Property\ Grid\ Splitter=618,79
+Property\ Grid\ State=expanded=.Global Options,PointCloud2.Enabled,LaserScan2.Enabled,PointCloud.Enabled,PointCloud3.Enabled,Pose.Enabled,Pose.Shape Properties,PointCloud4.Enabled,Polygon4.Enabled,Polygon5.Enabled,Camera.Enabled,Path.Enabled,Image2.Enabled,Odometry.Enabled;splitterratio=0.430085
+QMainWindow=000000ff00000000fd0000000300000000000001ea0000030bfc0200000003fb000000100044006900730070006c006100790073010000001d0000030b000000ee00fffffffb0000000a0049006d0061006700650000000226000000380000001900fffffffb0000000c0049006d0061006700650032000000029a000000d60000001900ffffff00000001000001ab0000030bfc0200000004fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000001d000000c50000006700fffffffb0000000a0056006900650077007301000000e8000000c8000000bb00fffffffb0000000c00430061006d00650072006101000001b6000001720000001900fffffffb0000001200530065006c0065006300740069006f006e0000000279000000af0000006700ffffff00000003000005ff0000003efc0100000001fb0000000800540069006d00650100000000000005ff000002bf00ffffff0000025e0000030b00000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
 RobotModel.Alpha=1
 RobotModel.Collision\ Enabled=0
 RobotModel.Enabled=1
@@ -410,32 +419,32 @@ Name=PlanarMap
 ClassName=rviz::PoseArrayDisplay
 Name=Pose Array
 [Display10]
-ClassName=rviz::LaserScanDisplay
-Name=LaserScan
-[Display11]
 ClassName=rviz::PointCloud2Display
 Name=PointCloud2
-[Display12]
+[Display11]
 ClassName=rviz::TFDisplay
 Name=TF
-[Display13]
+[Display12]
 ClassName=rviz::LaserScanDisplay
 Name=LaserScan2
-[Display14]
+[Display13]
 ClassName=rviz::ImageDisplay
 Name=Image
-[Display15]
+[Display14]
 ClassName=rviz::PointCloudDisplay
 Name=PointCloud
-[Display16]
+[Display15]
 ClassName=rviz::PathDisplay
 Name=Path2
-[Display17]
+[Display16]
 ClassName=rviz::RobotModelDisplay
 Name=RobotModel
-[Display18]
+[Display17]
 ClassName=rviz::PointCloudDisplay
 Name=PointCloud3
+[Display18]
+ClassName=rviz::PolygonDisplay
+Name=Polygon3
 [Display19]
 ClassName=rviz::PoseDisplay
 Name=Pose
@@ -469,29 +478,32 @@ Name=Path
 [Display28]
 ClassName=rviz::ImageDisplay
 Name=Image2
+[Display29]
+ClassName=rviz::OdometryDisplay
+Name=Odometry
 [Display3]
-ClassName=rviz::PolygonDisplay
-Name=Polygon3
-[Display4]
 ClassName=rviz::OdometryDisplay
 Name=Odometry3
-[Display5]
+[Display4]
 ClassName=rviz::InteractiveMarkerDisplay
 Name=Interactive Markers
-[Display6]
+[Display5]
 ClassName=rviz::LaserScanDisplay
 Name=Laser Scan
-[Display7]
+[Display6]
 ClassName=rviz::PointCloudDisplay
 Name=Point Cloud
-[Display8]
+[Display7]
 ClassName=rviz::AxesDisplay
 Name=Axes
-[Display9]
+[Display8]
 ClassName=rviz::GridDisplay
 Name=Grid
+[Display9]
+ClassName=rviz::LaserScanDisplay
+Name=LaserScan
 [Window]
-Height=876
-Width=1535
-X=-431
-Y=-1805
+Height=912
+Width=1551
+X=-458
+Y=-1862
