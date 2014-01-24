@@ -547,6 +547,8 @@ public:
 		robPos=next;
 		car.w=world_map.global_plan[robPos][0];
 		car.h=world_map.global_plan[robPos][1];
+		car_ground_truth.w=world_car.w;
+		car_ground_truth.h=world_car.h;
 		cout<<"real rob pos"<<robPos<<endl;
 	}
 	void UpdateVelReal(double vel)
@@ -717,6 +719,24 @@ public:
 		}
 		return false;
 	}
+	
+	bool Emergency()
+	{
+		int car_w=car_ground_truth.w;
+		int car_h=car_ground_truth.h;
+		int rx,ry;
+		window.GlobalToLocal(car_w,car_h,rx,ry);
+		for(int i=0;i<ped_list.size();i++)
+		{
+			int px,py;
+			window.GlobalToLocal(ped_list[i].w,ped_list[i].h,px,py);
+			if(abs(px-rx)<=1&&py-ry>=-1&&py-ry<=1)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
 	bool GoalReached()
 	{
 		if(world_map.pathLength-robPos<ModelParams::path_rln*1)	 return true;
@@ -733,6 +753,7 @@ public:
 	MyMap  world_map;
 	MyWindow  window;
 	Car car;
+	Car car_ground_truth;
 	SFM sfm;
 	int NumPedTotal;
 	int robPos;

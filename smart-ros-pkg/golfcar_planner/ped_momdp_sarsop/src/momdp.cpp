@@ -120,7 +120,7 @@ bool ped_momdp::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pos
 void ped_momdp::initRealSimulator()
 {
   Globals::config.root_seed=1024;
-  Globals::config.n_belief_particles=500;
+  Globals::config.n_belief_particles=2000;
   Globals::config.n_particles=500;
 
   cout<<"global particle "<<Globals::config.n_particles<<endl;
@@ -372,6 +372,12 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		
 		publishROSState();
 
+		/*
+		if(RealWorldPt->Emergency())
+		{
+			momdp_speed_=0.0;	
+			return;
+		}*/
 		if(RealWorldPt->GoalReached())
 		{
 			safeAction=2;

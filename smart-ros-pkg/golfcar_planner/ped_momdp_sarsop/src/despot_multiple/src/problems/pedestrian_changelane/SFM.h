@@ -182,7 +182,7 @@ public:
 			}
 			else
 			{
-				return 500;
+				return 2000;
 			}
 		}
 		double diff;

@@ -19,7 +19,7 @@ class ParticleFilterUpdate : public BeliefUpdate<T> {
   {}
 
  protected:
-  static constexpr double NUM_EFF_PARTICLE_FRACTION = 0.05;
+  static constexpr double NUM_EFF_PARTICLE_FRACTION = 0.10;
 
  private:
   vector<Particle<T>*> UpdateImpl(
@@ -144,8 +144,6 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
    // return ans;
   }
 
-  cout<<"After update "<<endl;
-  this->model_.Statistics(ans);
   /*
   cout<<"particle ids after update"<<endl;
   for(int i=0;i<ans.size();i++)
@@ -154,6 +152,8 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
   }
 */
   this->Normalize(ans);
+  cout<<"After update "<<endl;
+  this->model_.Statistics(ans);
 
   // Remove all particles below a threshold
 	/* // This is buggy
@@ -200,7 +200,7 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
 	for (int i=0; i<N; i++) {
         Particle<T>* new_particle = this->model_.Allocate();
 		T s = this->model_.RandomState(this->belief_update_seed_, obs_state_old);
-        *new_particle = {s, i, 1.0 / N};
+        *new_particle = {s, i, 0.1 / N};
         ans.push_back(new_particle);
 	}
     this->Normalize(ans);
@@ -210,6 +210,8 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
       this->model_.Free(it);
     ans = resampled_ans;
 	cerr << "DEBUG: Resampled " << ans.size() << " particles in belief" << endl;
+	cout<<"After resample "<<endl;
+	this->model_.Statistics(ans);
   } 
 
   this->model_.ModifyObsStates(ans,obs_state,this->belief_update_seed_);
@@ -223,6 +225,7 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
   }
   cout<<endl;
   */
+
   return ans;
 }
 

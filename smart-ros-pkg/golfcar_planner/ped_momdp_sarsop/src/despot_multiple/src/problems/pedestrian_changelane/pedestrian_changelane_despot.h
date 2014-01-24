@@ -676,7 +676,7 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		}
 		rangeX*=2;
 		rangeY*=2;
-		if(rob_vel > 2 &&abs(crashx-pedX)<=rangeX&&crashy-ry>=-4&&crashy-ry<=rangeY) 
+		if(rob_vel > 2 &&abs(crashx-pedX)<=rangeX&&crashy-ry>=-2&&crashy-ry<=rangeY-2) 
 		{
 			//reward+=CRASH_PENALTY * (rob_vel+1);
 			reward=CRASH_PENALTY/2;
