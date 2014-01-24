@@ -58,7 +58,7 @@ $ROBOT/camera_front:
   width: 640
   height: 360
   frame_rate: 20
-  device: /dev/video0
+  device: /dev/video1
   camera_name: camera_front
   format_mode: 2
   exposure: 3
@@ -235,6 +235,6 @@ $ROBOT/Obst_Avoid:
   offcenter_y: 0.9
 #elseif($vehicle=="buggy")
   slow_move_vel: 0.6
-  offcenter_x: 1.1
+  offcenter_x: 0.9
   offcenter_y: 0.7
 #end
