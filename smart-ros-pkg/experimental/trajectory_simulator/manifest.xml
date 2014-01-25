@@ -10,7 +10,9 @@
   <url>http://ros.org/wiki/trajectory_simulator</url>
   <depend package="golfcar_ppc"/>
   <depend package="stage"/>
-
+  <depend package="fmutil"/>
+  <depend package="pcl"/>
+  <depend package="pcl_ros"/>
 </package>
 
 
