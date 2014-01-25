@@ -8,7 +8,7 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   sodipodi:docname="path_def.svg"
+   sodipodi:docname="utown_momdp.svg"
    height="2832"
    width="2000"
    inkscape:version="0.48.3.1 r9886"
@@ -27,9 +27,9 @@
      inkscape:window-height="876"
      id="namedview32"
      showgrid="false"
-     inkscape:zoom="1.0510609"
-     inkscape:cx="1211.5632"
-     inkscape:cy="1402.2401"
+     inkscape:zoom="2.9728492"
+     inkscape:cx="1135.8497"
+     inkscape:cy="1556.5386"
      inkscape:window-x="65"
      inkscape:window-y="24"
      inkscape:window-maximized="1"
@@ -603,13 +603,13 @@
   <image
      sodipodi:absref="/home/golfcar/smartfm/bookingUI/shared/SvgPath/utown_momdp.png"
      xlink:href="utown_momdp.png"
-     inkscape:label="#image3014"
-     y="0"
-     x="0"
-     id="map"
-     height="2832"
+     style="fill:none;font-size:14px;stroke:#000000;stroke-opacity:1"
      width="2000"
-     style="fill:none;font-size:14px;stroke:#000000;stroke-opacity:1" />
+     height="2832"
+     id="map"
+     x="0"
+     y="0"
+     inkscape:label="#image3014" />
   <path
      style="fill:none;stroke:#000000;stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
      d="m 350.17469,1697.4002 2.9458,7.3425 2.3307,7.3666 7.8183,9.5649 13.1666,9.6057 8.9667,6.6768 14.0533,-6.225 7.6552,-12.9187 1.4201,-8.7698 0.058,-9.344 -2.9529,-32.7593 -1.2878,-18.9636"
@@ -698,10 +698,10 @@
      sodipodi:nodetypes="ccccccccc" />
   <path
      style="fill:none;stroke:#000000;stroke-width:6.42387772;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-start:url(#DotL);marker-mid:none;marker-end:url(#Arrow1Lend-1)"
-     d="m 1230.4209,1595.9079 -59.5788,-34.7857 -21.9913,-15.2353 -17.6883,-18.7542 -11.3118,-20.6255 -7.5616,-23.5425 -4.1968,-24.1964 -2.5585,-23.5424 -0.1683,-33.8906 2.0002,-28.3427 2.6988,-37.1824"
+     d="m 1230.4209,1595.9079 -59.5788,-34.7857 -21.9913,-15.2353 -17.6883,-18.7542 -11.3118,-20.6255 -7.5616,-23.5425 -6.8878,-29.9148 -4.9131,-36.6612 -2.3977,-40.4549 -0.9357,-35.1279 0.9332,-52.1159 1.0072,-56.2533"
      id="DCC_MCD"
      inkscape:connector-curvature="0"
-     sodipodi:nodetypes="ccccccccccc"
+     sodipodi:nodetypes="cccccccccccc"
      inkscape:label="#path4689" />
   <path
      style="fill:none;stroke:#ffff00;stroke-width:0.5px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"

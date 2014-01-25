@@ -135,10 +135,14 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 				{
 					return 2;
 				}
-				if(abs(px-crashx)<=rangeX*2+2&&crashy-ry>=-4&&crashy-ry<=rangeY*2+2)
+				//if(abs(px-crashx)<=rangeX*2+2&&crashy-ry>=-4&&crashy-ry<=rangeY*2+2)
+				if(abs(px-crashx)<=rangeX*2+1&&crashy-ry>=-2&&crashy-ry<=rangeY*2)
 				{
-					if(state.Vel==0) return 1;
-					else   return 0;
+					//if(state.Vel==0) return 1;
+					//else   return 0;
+					if(state.Vel>2) return 2;
+					else if(state.Vel<1) return 1;
+					else return 0;
 				}
 			}
 			return 1;
@@ -632,13 +636,14 @@ void UpdateVel(int &vel,int action,UtilUniform &unif)
 
 
 	double prob=unif.next();		
-	if(prob<0.15) vel=vel;
-	else if(prob<0.5) vel=vel+action_vel[action];
-	else if(prob<0.85)vel=vel+action_vel[action]*2;
-	else {
-		prob=unif.next();
-		vel=int(prob*ModelParams::VEL_N);
-	}
+	if(prob<0.2) vel=vel;
+	else vel=vel+action_vel[action];
+	//else if(prob<0.5) vel=vel+action_vel[action];
+	//else if(prob<0.85)vel=vel+action_vel[action]*2;
+	//else {
+//		prob=unif.next();
+//		vel=int(prob*ModelParams::VEL_N);
+//	}
 	if(vel<0) vel=0;	
 	if(vel>ModelParams::VEL_N-1) vel=ModelParams::VEL_N-1;
 }

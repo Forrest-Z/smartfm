@@ -54,6 +54,7 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
 	safeAction=2;
 	momdp_speed_=0.0;
 	RealWorldPt=rw;
+	goal_reached=false;
 	cerr << "DEBUG: Init simulator" << endl;
 	initRealSimulator();
 
@@ -378,7 +379,12 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			momdp_speed_=-1;	
 			return;
 		}
+
 		if(RealWorldPt->GoalReached())
+		{
+			goal_reached=true;
+		}
+		if(goal_reached==true)
 		{
 			safeAction=2;
 

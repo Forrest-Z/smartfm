@@ -101,6 +101,7 @@ public:
 	double momdp_speed_,real_speed_;
 private:
 	double control_freq;
+	bool goal_reached;
 	int safeAction;
     int X_SIZE, Y_SIZE;
     double dX, dY;
