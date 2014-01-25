@@ -123,7 +123,8 @@ class Task(object):
             self.status = 'STOPPED'
 
     def focus(self):
-        self.pane.select_pane()
+		if self.pane:
+			self.pane.select_pane()
 
 STATUS_COLORS = {'OK': 'light green', 'STOPPED': 'dark red'}
 

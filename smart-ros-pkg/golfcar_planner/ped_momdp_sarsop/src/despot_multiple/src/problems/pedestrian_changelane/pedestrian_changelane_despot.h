@@ -673,18 +673,26 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		rangeX/=2;
 		int rangeY=ModelParams::map_rln/ModelParams::rln + 1;
 
+		if(abs(crashx-pedX)<=1&&crashy-ry>=-1&&crashy-ry<=1) {
+			// emergency break
+			reward+=CRASH_PENALTY * 20;
+			state.Vel=-1;
+			return;
+
+
+		}
 		if(abs(crashx-pedX)<=rangeX&&crashy-ry>=-2&&crashy-ry<=rangeY) 
-		{	
+		{
 			reward+=CRASH_PENALTY * (rob_vel+1);
 			//state.Vel=-1;
 			//return;
 		}
-		rangeX*=2;
+		rangeX*=2+1;
 		rangeY*=2;
 		if(rob_vel > 2 &&abs(crashx-pedX)<=rangeX&&crashy-ry>=-2&&crashy-ry<=rangeY-2) 
 		{
 			//reward+=CRASH_PENALTY * (rob_vel+1);
-			reward=CRASH_PENALTY/2;
+			reward+=CRASH_PENALTY/2;
 			//state.Vel=-1;
 			//return;
 		}
@@ -721,7 +729,7 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	//
 	
 	//if(rob_vel<=2&&action==2) reward=-100;
-	if(action ==2)  reward+=-5;
+	if(action ==2)  reward+=-20;
 	else  reward+=-1;
 	UpdateVel(rob_vel,action,unif);
 	RobStep(robY,rob_vel, action, unif);

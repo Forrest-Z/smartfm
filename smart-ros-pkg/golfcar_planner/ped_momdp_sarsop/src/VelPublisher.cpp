@@ -3,7 +3,7 @@
 #include <csignal>
 
 const double freq = 20;
-const double acceleration0 = 0.6;
+const double acceleration0 = 0.5;
 const double acceleration1 = 0.7;
 
 const double alpha0 = 0.5;
@@ -75,7 +75,6 @@ class VelPublisher2 : public VelPublisher {
 		if(0.2<target_vel && target_vel < 0.5) {
 			target_vel = 0.6;
 		}
-
     }
 
     void publishSpeed(const ros::TimerEvent& event) {

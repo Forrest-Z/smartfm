@@ -27,9 +27,9 @@
   <node pkg="golfcar_ppc" type="purepursuit_controller" name="ppc"/>
 #end
 #if($!rrt)
-<!--
-    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/>
-	-->
+
+<!--    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/> -->
+	
 #end
     <node name="soundplay_node" pkg="sound_play" type="soundplay_node.py"/>
     <node name="sound_speaker" pkg="sound_speaker" type="sound_speaker">

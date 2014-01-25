@@ -372,13 +372,8 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		}
 		
 		publishROSState();
-
 		
-		if(RealWorldPt->Emergency())
-		{
-			momdp_speed_=-1;	
-			return;
-		}
+
 
 		if(RealWorldPt->GoalReached())
 		{
@@ -391,7 +386,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			momdp_speed_=real_speed_;
 			if(safeAction==0) momdp_speed_ += 0;
 			else if(safeAction==1) momdp_speed_ += 0.3;
-			else if(safeAction==2) momdp_speed_ -= 0.3;
+			else if(safeAction==2) momdp_speed_ -= 0.5;
 			if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
 			if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
 
@@ -399,10 +394,11 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		}
 
 
-
 		cout<<"State before shift window"<<endl;
 		RealSimulator->PrintState(RealWorldPt->GetCurrState());
 		RealWorldPt->ShiftWindow();
+
+
 		cout<<"here"<<endl;
         //if(RealWorldPt->NumPedInView()==0) return;   //no pedestrian detected yet
 		RealSimulator->rob_map=RealWorldPt->window.rob_map;
@@ -421,6 +417,13 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		solver->UpdateBelief(safeAction, ped_state,new_state_old);
 	
 		////////////////////////////////////////////////////////////////////
+
+		if(RealWorldPt->Emergency())
+		{
+			momdp_speed_=-1;	
+			return;
+		}
+
 		
 		int n_trials;
 
