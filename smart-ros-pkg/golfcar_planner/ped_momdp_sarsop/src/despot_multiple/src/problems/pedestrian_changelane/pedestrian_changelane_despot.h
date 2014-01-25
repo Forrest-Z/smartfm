@@ -140,8 +140,10 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 				{
 					//if(state.Vel==0) return 1;
 					//else   return 0;
-					if(state.Vel>2) return 2;
-					else if(state.Vel<1) return 1;
+
+					double unit=ModelParams::VEL_MAX/ModelParams::VEL_N;
+					if(state.Vel>1.0/unit) return 2;
+					else if(state.Vel<0.5/unit) return 1;
 					else return 0;
 				}
 			}
@@ -546,7 +548,7 @@ void Model<PedestrianState>::RobStep(int &robY,int &rob_vel, int action, UtilUni
 	double next_center=robY+v;
 	double weight[ModelParams::RMMax+10];
 	double weight_sum=0;
-	int max_dist=int(vmax*1.3);
+	int max_dist=int(vmax*1.3+1.0);
 	for(int i=robY;i<rob_map.size()&&i<=robY+max_dist;i++)
 	{
 		weight[i]=gaussian(fabs(next_center-i));
@@ -689,7 +691,9 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		}
 		rangeX*=2+1;
 		rangeY*=2;
-		if(rob_vel > 2 &&abs(crashx-pedX)<=rangeX&&crashy-ry>=-2&&crashy-ry<=rangeY-2) 
+
+		double unit=ModelParams::VEL_MAX/ModelParams::VEL_N;
+		if(rob_vel > 1.0/unit &&abs(crashx-pedX)<=rangeX&&crashy-ry>=-2&&crashy-ry<=rangeY-2) 
 		{
 			//reward+=CRASH_PENALTY * (rob_vel+1);
 			reward+=CRASH_PENALTY/2;

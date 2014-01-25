@@ -388,7 +388,9 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			else if(safeAction==1) momdp_speed_ += 0.3;
 			else if(safeAction==2) momdp_speed_ -= 0.5;
 			if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
-			if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
+			//if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
+
+			if(momdp_speed_>=ModelParams::VEL_MAX) momdp_speed_ = ModelParams::VEL_MAX;
 
 			return;
 		}
@@ -448,7 +450,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		if(safeAction==1) momdp_speed_ += 0.3;
 		else if(safeAction==2) momdp_speed_ -= 0.5;
 		if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
-		if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
+		if(momdp_speed_>=ModelParams::VEL_MAX) momdp_speed_ = ModelParams::VEL_MAX;
 
 		/*
 		momdp_speed_=real_speed_;

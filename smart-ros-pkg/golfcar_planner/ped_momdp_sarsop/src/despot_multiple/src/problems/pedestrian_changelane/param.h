@@ -30,8 +30,11 @@ namespace ModelParams {
 	const bool SocialForceWorld=false;
 
 	const double vel_levels [10] = { 0.0, 1.0, 2.0 };
-	const int  VEL_N=7;
-	const double VEL_MAX=2.0;
+	//const int  VEL_N=7;
+	//const double VEL_MAX=2.0;
+	
+	const int  VEL_N=9;
+	const double VEL_MAX=2.5;
 };
 
 #endif
