@@ -86,7 +86,7 @@ class vehicle_tracking_box
 	std::vector<box_model_track> object_tracks_;
 
 	ros::Subscriber segpose_batch_sub_;
-	ros::Publisher contour_cloud_pub_, anchor_point_pub_, filtered_anchor_point_pub_;
+	ros::Publisher contour_cloud_pub_, anchor_point_pub_, filtered_anchor_point_pub_, meas_polygon_pub_;
 	ros::Time latest_input_time_;
 	std::string				odom_frame_id_;
 	vehicle_tracking_box();
@@ -104,6 +104,8 @@ class vehicle_tracking_box
 
 	//update object's position and shape using ICP;
 	void ICP_motion2shape(box_model_track &track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
+	void calculate_measurement_box(MODT::segment_pose_batch& new_meas, double current_moving_direction, box_model &measurement_box);
+	void update_box_track(box_model_track &track, box_model &measurement_box);
 
 	void attached_points_transform(geometry_msgs::Point32& pt_input, geometry_msgs::Point32& pt_output, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
 

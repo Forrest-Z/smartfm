@@ -9,6 +9,7 @@ vehicle_tracking_box::vehicle_tracking_box():
 		anchor_point_pub_   = nh.advertise<sensor_msgs::PointCloud>("anchor_pcl", 2);
 		filtered_anchor_point_pub_ = nh.advertise<sensor_msgs::PointCloud>("filtered_anchor_pcl", 2);
 		contour_cloud_pub_	= nh.advertise<sensor_msgs::PointCloud>("contour_pcl", 2);
+		meas_polygon_pub_  = nh.advertise<geometry_msgs::PolygonStamped>("meas_polygon_debug", 10);
 		object_total_id_ = 0;
 
 		private_nh_.param("odom_frame_id",      odom_frame_id_,     std::string("odom"));
@@ -103,6 +104,19 @@ vehicle_tracking_box::vehicle_tracking_box():
 			//it is the "object transformation" that really matters;
 			tf::Pose oldMeas_poseinOdom, newMeas_poseinOdom;
 			ICP_motion2shape(track_tmp, lastbatch_tmp, incoming_meas_tmp, oldMeas_poseinOdom, newMeas_poseinOdom);
+			tf::Pose oldMeas_to_newMeas = oldMeas_poseinOdom.inverse()*newMeas_poseinOdom;
+			double delt_x = newMeas_poseinOdom.getOrigin().x() - oldMeas_poseinOdom.getOrigin().x();
+			double delt_y = newMeas_poseinOdom.getOrigin().y() - oldMeas_poseinOdom.getOrigin().y();
+			//double delt_thetha =  tf::getYaw(oldMeas_to_newMeas.getRotation());
+			//double current_moving_direction = atan2(delt_y, delt_x)+delt_thetha;
+			double current_moving_direction = atan2(delt_y, delt_x);
+
+			box_model measure_box;
+			calculate_measurement_box(incoming_meas_tmp, current_moving_direction, measure_box);
+
+			//todo: to update the model box using the measurement box;
+			update_box_track(track_tmp, measure_box);
+
 
 			//transform "anchor points" and "contour points", and to visualize the results;
 			geometry_msgs::Point32 old_anchor_point = track_tmp.anchor_points.back();
@@ -237,13 +251,26 @@ vehicle_tracking_box::vehicle_tracking_box():
 
 		//sensor_msgs::PointCloud old_cloud = track.contour_points;
 		sensor_msgs::PointCloud new_cloud, old_cloud;
+
 		for(size_t i=0; i<new_meas.segments.size(); i++)
 			for(size_t j=0; j<new_meas.segments[i].points.size(); j++)
+			{
 				new_cloud.points.push_back(new_meas.segments[i].points[j]);
+				geometry_msgs::Point32 deputy_point;
+				deputy_point.x = new_meas.segments[i].points[j].x + 10.0;
+				deputy_point.y = new_meas.segments[i].points[j].y;
+				new_cloud.points.push_back(deputy_point);
+			}
 
 		for(size_t i=0; i<old_meas.segments.size(); i++)
 			for(size_t j=0; j<old_meas.segments[i].points.size(); j++)
+			{
 				old_cloud.points.push_back(old_meas.segments[i].points[j]);
+				geometry_msgs::Point32 deputy_point;
+				deputy_point.x = old_meas.segments[i].points[j].x + 10.0;
+				deputy_point.y = old_meas.segments[i].points[j].y;
+				old_cloud.points.push_back(deputy_point);
+			}
 
 		//predicting using tracking information;
 		geometry_msgs::Pose old_to_predict;
@@ -361,6 +388,108 @@ vehicle_tracking_box::vehicle_tracking_box():
 
 		newMeas_poseinOdom = Odom_to_Vt;
 		oldMeas_poseinOdom = Odom_to_Vt*ICP_Vtm1_To_Vt.inverse();
+	}
+
+	void vehicle_tracking_box::calculate_measurement_box(MODT::segment_pose_batch& new_meas, double current_moving_direction, box_model &measurement_box)
+	{
+		geometry_msgs::PolygonStamped meas_polygon;
+		meas_polygon.header = new_meas.segments.back().header;
+
+		geometry_msgs::Pose lidar_pose = new_meas.ego_poses.back();
+		sensor_msgs::PointCloud meas_cloud = new_meas.segments.back();
+
+		TPoint2D lidar_point;
+		lidar_point.x = lidar_pose.position.x;
+		lidar_point.y = lidar_pose.position.y;
+		double perpendicular_direction = current_moving_direction + M_PI_2;
+
+		TLine2D side1, side2, bottom1, bottom2;
+
+		double side1_dist=DBL_MAX, side2_dist = -DBL_MAX;
+		double bottom1_dist=DBL_MAX, bottom2_dist = -DBL_MAX;
+
+		for(size_t i=0; i<meas_cloud.points.size(); i++)
+		{
+			//Ax+By+C=0;
+			//A=sin(thetha), B= -cos(thetha), C=cos(thetha)*y0-sin(thetha)*x0;
+			double a_tmp = sin(current_moving_direction);
+			double b_tmp = -cos(current_moving_direction);
+			double c_tmp = cos(current_moving_direction)*meas_cloud.points[i].y-sin(current_moving_direction)*meas_cloud.points[i].x;
+			TLine2D line_tmp(a_tmp, b_tmp, c_tmp);
+			double dist_tmp = line_tmp.signedDistance(lidar_point);
+			if(dist_tmp<side1_dist)
+			{
+				side1_dist = dist_tmp;
+				side1 = line_tmp;
+			}
+			if(dist_tmp>side2_dist)
+			{
+				side2_dist = dist_tmp;
+				side2 = line_tmp;
+			}
+
+			double a_tmp2 = sin(perpendicular_direction);
+			double b_tmp2 = -cos(perpendicular_direction);
+			double c_tmp2 = cos(perpendicular_direction)*meas_cloud.points[i].y-sin(perpendicular_direction)*meas_cloud.points[i].x;
+			TLine2D line2_tmp(a_tmp2, b_tmp2, c_tmp2);
+			double dist_tmp2 = line2_tmp.signedDistance(lidar_point);
+
+			if(dist_tmp2<bottom1_dist)
+			{
+				bottom1_dist = dist_tmp2;
+				bottom1 = line2_tmp;
+			}
+			if(dist_tmp2>bottom2_dist)
+			{
+				bottom2_dist = dist_tmp2;
+				bottom2 = line2_tmp;
+			}
+		}
+
+		//cout << "side1:" <<side1.coefs[0]<<","<<side1.coefs[1]<<","<<side1.coefs[2]<<endl;
+		//cout << "side2:" <<side2.coefs[0]<<","<<side2.coefs[1]<<","<<side2.coefs[2]<<endl;
+		//cout << "bottom1:" <<bottom1.coefs[0]<<","<<bottom1.coefs[1]<<","<<bottom1.coefs[2]<<":"<<bottom1_dist<<endl;
+		//cout << "bottom2:" <<bottom2.coefs[0]<<","<<bottom2.coefs[1]<<","<<bottom2.coefs[2]<<":"<<bottom2_dist<<endl;
+
+		TLine2D line_tmp;
+		if(fabs(side1_dist)>fabs(side2_dist))
+		{
+			line_tmp = side1;
+			side1 = side2;
+			side2 = line_tmp;
+		}
+		if(fabs(bottom1_dist)>fabs(bottom2_dist))
+		{
+			line_tmp = bottom1;
+			bottom1 = bottom2;
+			bottom2 = line_tmp;
+		}
+
+		geometry_msgs::Point32 intersect_pt[4];
+		TObject2D intersection_obj[4];
+		intersect(side1, bottom1, intersection_obj[0]);
+		intersect(side2, bottom1, intersection_obj[1]);
+		intersect(side2, bottom2, intersection_obj[2]);
+		intersect(side1, bottom2, intersection_obj[3]);
+
+		for(size_t i=0; i<4; i++)
+		{
+			TPoint2D intersection_pt;
+			intersection_obj[i].getPoint(intersection_pt);
+			intersect_pt[i].x = (float)intersection_pt.x;
+			intersect_pt[i].y = (float)intersection_pt.y;
+			meas_polygon.polygon.points.push_back(intersect_pt[i]);
+		}
+
+		meas_polygon_pub_.publish(meas_polygon);
+
+		//todo: to construct the measurement box;
+
+	}
+
+	void vehicle_tracking_box::update_box_track(box_model_track &track, box_model &measurement_box)
+	{
+
 	}
 
 	void vehicle_tracking_box::constructPtsMap(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CSimplePointsMap &map)
