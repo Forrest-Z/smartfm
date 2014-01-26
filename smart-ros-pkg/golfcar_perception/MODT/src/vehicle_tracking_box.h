@@ -33,12 +33,8 @@ class box_model
 	public:
 	//point 0 is the initial refPt;
 	geometry_msgs::Point32 corner_points[4];
+	float lidar_angle[4];
 	int refPt_seial;
-
-	//direction is represented by a vector, from origin_pt, to dest_pt;
-	int originPt_serial, destPt_serial;
-
-	//the following information can be derived from corner points;
 	double moving_direction;
 	double width, length;
 };
@@ -52,6 +48,7 @@ class box_model_track
 	ros::Time update_time;
 	sensor_msgs::PointCloud contour_points;
 	std::vector<geometry_msgs::Point32> anchor_points, filtered_anchor_points;
+	box_model				shape;
 
 	double					moving_direction;
 	double 					velocity;
@@ -104,9 +101,11 @@ class vehicle_tracking_box
 
 	//update object's position and shape using ICP;
 	void ICP_motion2shape(box_model_track &track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
+	void ICP_motion2shape_v2(box_model_track &track, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
+
 	void calculate_measurement_box(MODT::segment_pose_batch& new_meas, double current_moving_direction, box_model &measurement_box);
 	void update_box_track(box_model_track &track, box_model &measurement_box);
-
+	void measPt_lidarAngle(geometry_msgs::Pose &lidar_pose, geometry_msgs::Point32 measPt, float &lidarAngle);
 	void attached_points_transform(geometry_msgs::Point32& pt_input, geometry_msgs::Point32& pt_output, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
 
 	void tracks_visualization();
