@@ -539,7 +539,7 @@ void SFM::ModelTransFast(PedestrianState&state,UtilUniform &unif)
 			sfm_window->LocalToGlobal(next_i,next_j,next_w,next_h); 
 			if(next_i>=0&&next_i<ModelParams::XSIZE&&next_j>=0&&next_j<ModelParams::YSIZE&&sfm_map->Free(next_w,next_h)) {
 				//pedestrian crashing onto the car, not allowed
-				if(next_i==sfm_window->rob_map[ry].first&&next_j==sfm_window->rob_map[ry].second) continue;
+			//	if(next_i==sfm_window->rob_map[ry].first&&next_j==sfm_window->rob_map[ry].second) continue;
 
 				weight*=GetAngularWeight(p,angle,vec.GetLength());	
 				weight*=GetLaneWeight(next_i);
@@ -562,7 +562,7 @@ void SFM::ModelTransFast(PedestrianState&state,UtilUniform &unif)
 				sfm_window->LocalToGlobal(next_i,next_j,next_w,next_h); 
 				if(next_i>=0&&next_i<ModelParams::XSIZE&&next_j>=0&&next_j<ModelParams::YSIZE&&sfm_map->Free(next_w,next_h)) {
 				//pedestrian crashing onto the car, not allowed
-				if(next_i==sfm_window->rob_map[ry].first&&next_j==sfm_window->rob_map[ry].second) continue;
+				//if(next_i==sfm_window->rob_map[ry].first&&next_j==sfm_window->rob_map[ry].second) continue;
 
 				weight*=GetAngularWeight(p,angle,vec.GetLength());	
 				weight*=GetLaneWeight(next_i);
@@ -580,7 +580,7 @@ void SFM::ModelTransFast(PedestrianState&state,UtilUniform &unif)
 			sfm_window->LocalToGlobal(next_i,next_j,next_w,next_h); 
 			if(next_i>=0&&next_i<ModelParams::XSIZE&&next_j>=0&&next_j<ModelParams::YSIZE&&sfm_map->Free(next_w,next_h)) {
 				//pedestrian crashing onto the car, not allowed
-				if(next_i==sfm_window->rob_map[ry].first&&next_j==sfm_window->rob_map[ry].second) continue;
+				//if(next_i==sfm_window->rob_map[ry].first&&next_j==sfm_window->rob_map[ry].second) continue;
 
 				weight*=GetAngularWeight(p,angle,vec.GetLength());	
 				weight*=GetLaneWeight(next_i);

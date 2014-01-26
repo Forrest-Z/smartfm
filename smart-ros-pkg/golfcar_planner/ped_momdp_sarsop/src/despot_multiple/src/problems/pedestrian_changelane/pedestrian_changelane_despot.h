@@ -686,6 +686,7 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 			//state.Vel=-1;
 			//return;
 		}
+		
 		rangeX=3;
 		rangeY*=2;
 
