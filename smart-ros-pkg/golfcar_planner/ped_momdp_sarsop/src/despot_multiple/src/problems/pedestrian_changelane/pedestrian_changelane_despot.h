@@ -304,8 +304,8 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		double robotUpdateProb[3][3][3];
 
 		double gaussian(double dist)  const{
-			if(dist<0.15) dist=0.15;
-			return 1/dist;	
+			if(dist<0.1) dist=0.1;
+			return 1/dist;
 		}
 		int lookup(const double probs[], double prob) const {
 			int pos = 0;
@@ -318,7 +318,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		}
 };
 
-const int CRASH_PENALTY =-30000;
+const int CRASH_PENALTY =-5000;
 const int GOAL_REWARD = 500;
 
 Model<PedestrianState>::Model(const RandomStreams& streams, string filename) : IUpperBound<PedestrianState>(streams)
@@ -542,7 +542,7 @@ void Model<PedestrianState>::RobStep(int &robY,int &rob_vel, int action, UtilUni
 	rob_vel = robotVelUpdate[action][rob_vel][lookup(robotUpdateProb[action][rob_vel], p)];
 	*/
 
-	double vmax=ModelParams::VEL_MAX/control_freq*ModelParams::map_rln/ModelParams::rln;
+	double vmax=ModelParams::VEL_MAX/control_freq * 10.0/ModelParams::rln; // grids per control
 	double delta=vmax/ModelParams::VEL_N;
 	double v=rob_vel*delta;
 	double next_center=robY+v;
@@ -560,7 +560,6 @@ void Model<PedestrianState>::RobStep(int &robY,int &rob_vel, int action, UtilUni
 	int dist=-1;
 	for(int i=robY;i<rob_map.size()&&i<=robY+max_dist;i++)
 	{
-		weight[i]=gaussian(fabs(next_center-i));
 		weight_sum+=weight[i];
 		if(weight_sum>p) {
 			dist=i;
@@ -677,11 +676,9 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 
 		if(abs(crashx-pedX)<=1&&crashy-ry>=-1&&crashy-ry<=1) {
 			// emergency break
-			reward+=CRASH_PENALTY * 20;
+			reward+=CRASH_PENALTY * 20 * rob_vel;
 			state.Vel=-1;
 			return;
-
-
 		}
 		if(abs(crashx-pedX)<=rangeX&&crashy-ry>=-2&&crashy-ry<=rangeY) 
 		{
@@ -733,11 +730,10 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	//
 	
 	//if(rob_vel<=2&&action==2) reward=-100;
-	if(action ==2)  reward+=-20;
+	if(action ==2)  reward+=-10;
 	else  reward+=-1;
-	UpdateVel(rob_vel,action,unif);
 	RobStep(robY,rob_vel, action, unif);
-	
+	UpdateVel(rob_vel,action,unif);
 	//p = unif.next();
 	
 	//int real_vel=rob_vel/2;

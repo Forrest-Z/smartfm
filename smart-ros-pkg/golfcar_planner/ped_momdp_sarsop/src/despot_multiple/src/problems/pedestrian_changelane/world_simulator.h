@@ -553,7 +553,7 @@ public:
 	}
 	void UpdateVelReal(double vel)
 	{
-		if(vel>2) vel=2;	
+		if(vel>ModelParams::VEL_MAX) vel=ModelParams::VEL_MAX;	
 		if(vel<0) vel=0;
 		velGlobal=vel;
 	}
@@ -624,7 +624,6 @@ public:
 		if(velGlobal<0.05) curr_state.Vel=0;
 		else
 		{
-			double unit=ModelParams::VEL_MAX*ModelParams::VEL_N;
 			curr_state.Vel= floor(velGlobal/ModelParams::VEL_MAX*(ModelParams::VEL_N-1) + 0.5);
 			if (curr_state.Vel == 0)
 				curr_state.Vel = 1;

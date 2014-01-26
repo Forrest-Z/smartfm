@@ -444,11 +444,10 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		
 		publishBelief();
 
-        if(safeAction==0) {return;}
-	
 		momdp_speed_=real_speed_;
-		if(safeAction==1) momdp_speed_ += 0.3;
-		else if(safeAction==2) momdp_speed_ -= 0.5;
+        if(safeAction==0) {}
+		else if(safeAction==1) momdp_speed_ += 0.3*2;
+		else if(safeAction==2) momdp_speed_ -= 0.5*2;
 		if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
 		if(momdp_speed_>=ModelParams::VEL_MAX) momdp_speed_ = ModelParams::VEL_MAX;
 

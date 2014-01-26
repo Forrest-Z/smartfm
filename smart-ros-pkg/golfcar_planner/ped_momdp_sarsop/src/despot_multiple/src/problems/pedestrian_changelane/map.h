@@ -34,6 +34,7 @@ public:
 		{
 
 
+			/*
 			goal_pos[0][0]=107*ModelParams::map_rln;
 			goal_pos[0][1]=167*ModelParams::map_rln;
 			goal_pos[1][0]=121*ModelParams::map_rln;
@@ -56,6 +57,23 @@ public:
 
 			goal_pos[6][0]=-10000;
 			goal_pos[6][1]=-10000;
+			*/
+
+			goal_pos[0][0]=107*ModelParams::map_rln;
+			goal_pos[0][1]=167*ModelParams::map_rln;
+			goal_pos[1][0]=121*ModelParams::map_rln;
+			goal_pos[1][1]=154*ModelParams::map_rln;
+			goal_pos[2][0]=139*ModelParams::map_rln;
+			goal_pos[2][1]=115*ModelParams::map_rln;
+			goal_pos[3][0]=103*ModelParams::map_rln;
+			goal_pos[3][1]=109*ModelParams::map_rln;
+			goal_pos[4][0]=122*ModelParams::map_rln;
+			goal_pos[4][1]=114*ModelParams::map_rln;
+
+			//last goal is the dummy goal for stopping intentioni
+
+			goal_pos[5][0]=-10000;
+			goal_pos[5][1]=-10000;
 
 
 		}
