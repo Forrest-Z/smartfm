@@ -33,8 +33,8 @@ namespace ModelParams {
 	//const int  VEL_N=7;
 	//const double VEL_MAX=2.0;
 	
-	const int  VEL_N=9;
-	const double VEL_MAX=2.5;
+	const int  VEL_N=7;
+	const double VEL_MAX=2;
 };
 
 #endif
