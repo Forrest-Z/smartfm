@@ -654,7 +654,8 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	obs = TerminalObs();
 	int robY = state.RobPos.Y;
 	int rob_vel = state.Vel;
-	if(robY >= rob_map.size()-6) {
+	//if(robY >= rob_map.size()-6) {
+	if(robY >= 15 ) {
 		reward = GOAL_REWARD;
 		state.Vel = -1;
 		return;
@@ -889,7 +890,7 @@ double Model<PedestrianState>::FringeUpperBound(const PedestrianState& s) const 
 
 	double vmax=ModelParams::VEL_MAX/control_freq*ModelParams::map_rln/ModelParams::rln;
 	int max_dist=int(vmax*1.3);
-	int d = int((fabs(rob_map.size()-6 - s.RobPos.Y)) / (max_dist+3));
+	int d = int((fabs(15 - s.RobPos.Y)) / (max_dist+3));
 	/* TODO: There was a bug caused by not using the global discount factor - UpperBound table.*/
 	return GOAL_REWARD * pow(Globals::config.discount, d);
 }
