@@ -318,7 +318,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		}
 };
 
-const int CRASH_PENALTY =-500;
+const int CRASH_PENALTY =-1000;
 const int GOAL_REWARD = 500;
 
 Model<PedestrianState>::Model(const RandomStreams& streams, string filename) : IUpperBound<PedestrianState>(streams)
@@ -685,7 +685,6 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		if(abs(crashx-pedX)<=rangeX&&crashy-ry>=-2&&crashy-ry<=rangeY) 
 		{
 			reward+=CRASH_PENALTY * (rob_vel+1);
-			break;
 			//state.Vel=-1;
 			//return;
 		}
@@ -698,7 +697,6 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		{
 			//reward+=CRASH_PENALTY * (rob_vel+1);
 			reward+=CRASH_PENALTY/2;
-			break;
 			//state.Vel=-1;
 			//return;
 		}

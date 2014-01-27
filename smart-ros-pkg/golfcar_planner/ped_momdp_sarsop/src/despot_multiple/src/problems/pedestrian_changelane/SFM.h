@@ -155,7 +155,7 @@ public:
 			//if(angle<ModelParams::pi/2) return 5;
 			//else 	return 2;	
 			if(angle<ModelParams::pi/4) return 10000;
-			if(angle<ModelParams::pi/2) return 5000;
+			if(angle<ModelParams::pi/2) return 1000;
 			else return 2;
 		}
 	}
