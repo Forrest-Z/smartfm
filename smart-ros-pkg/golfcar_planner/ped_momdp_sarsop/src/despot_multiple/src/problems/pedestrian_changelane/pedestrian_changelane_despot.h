@@ -318,7 +318,7 @@ class Model<PedestrianState> : public IUpperBound<PedestrianState>
 		}
 };
 
-const int CRASH_PENALTY =-1000;
+const int CRASH_PENALTY =-500;
 const int GOAL_REWARD = 500;
 
 Model<PedestrianState>::Model(const RandomStreams& streams, string filename) : IUpperBound<PedestrianState>(streams)
@@ -654,7 +654,7 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 	obs = TerminalObs();
 	int robY = state.RobPos.Y;
 	int rob_vel = state.Vel;
-	if(robY >= rob_map.size()-1) {
+	if(robY >= rob_map.size()-6) {
 		reward = GOAL_REWARD;
 		state.Vel = -1;
 		return;
@@ -674,15 +674,17 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		rangeX/=2;
 		int rangeY=ModelParams::map_rln/ModelParams::rln + 1;
 
+		/*
 		if(abs(crashx-pedX)<=1&&crashy-ry>=-1&&crashy-ry<=1) {
 			// emergency break
 			reward+=CRASH_PENALTY * 20 * rob_vel;
 			state.Vel=-1;
 			return;
-		}
+		}*/
 		if(abs(crashx-pedX)<=rangeX&&crashy-ry>=-2&&crashy-ry<=rangeY) 
 		{
 			reward+=CRASH_PENALTY * (rob_vel+1);
+			break;
 			//state.Vel=-1;
 			//return;
 		}
@@ -695,6 +697,7 @@ void Model<PedestrianState>::Step(PedestrianState& state, double rNum, int actio
 		{
 			//reward+=CRASH_PENALTY * (rob_vel+1);
 			reward+=CRASH_PENALTY/2;
+			break;
 			//state.Vel=-1;
 			//return;
 		}
@@ -886,7 +889,7 @@ double Model<PedestrianState>::FringeUpperBound(const PedestrianState& s) const 
 
 	double vmax=ModelParams::VEL_MAX/control_freq*ModelParams::map_rln/ModelParams::rln;
 	int max_dist=int(vmax*1.3);
-	int d = (int)(fabs(rob_map.size() - s.RobPos.Y)) / (max_dist+1);
+	int d = int((fabs(rob_map.size()-6 - s.RobPos.Y)) / (max_dist+3));
 	/* TODO: There was a bug caused by not using the global discount factor - UpperBound table.*/
 	return GOAL_REWARD * pow(Globals::config.discount, d);
 }
