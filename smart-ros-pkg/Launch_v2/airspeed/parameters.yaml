@@ -134,7 +134,7 @@ $ROBOT/speed_controller_v2:
   tau_v: 0.2
   throttleZeroThres: 0.1 #main switching surface of throttle
   brakeZeroThres: -0.2 #main switching surface of brake
-  fullBrakeThres: 0.05 #to make sure the car will stop at the end
+  fullBrakeThres: 0.5 #to make sure the car will stop at the end
 ###Throttle Settings###
   fullThrottleThres: 1.0
   kp: 0.06    
@@ -174,7 +174,7 @@ $ROBOT/speed_controller_v2:
   kd_sat_brake: 0.0
 #full brake value
   coeff_brakepedal: 100
-  brakeToThrottleThres: 20
+  brakeToThrottleThres: 10
 #end
 $ROBOT/move_base_node:
   footprint_padding: 0.01
@@ -195,7 +195,7 @@ $ROBOT/route_planner:
 $ROBOT/speed_advisor:
   map_frame_id: $ROBOT/map 
   robot_frame_id: $ROBOT/base_link
-  max_speed: 2.0
+  max_speed: 3.0
   acc: 0.2
   max_dec: 1.0
   norm_dec: 0.3
@@ -204,14 +204,22 @@ $ROBOT/speed_advisor:
   frequency: 20.0
   tolerance: 0.5
   emergency_zone: 3.0
-  slow_zone: 7.0
+  slow_zone: 10.0
   slow_speed: 1.5
-  enterstation_speed: 1.5
+  enterstation_speed: 2.5
   stationspeed_dist: 30.0
   baselink_carfront_length: 2.0
   kinematic_acceleration: false
 $ROBOT/dynamic_virtual_bumper:
   base_frame: $ROBOT/base_link
+  offcenter_x: 4.0
+  offcenter_y: 0.8
+  x_buffer: 1.5
+  y_buffer: 0.2
+  x_coeff_: 2.0
+  y_coeff: 0.2 #0.001 was used for utown to counter the narrow lanes
+  speed_increment: 0.2 #0.5 was used for utown to counter the slope
+  min_speed: 0.05
 $ROBOT/Dist_Map:
   base_frame: $ROBOT/base_link
   global_frame: $ROBOT/map
