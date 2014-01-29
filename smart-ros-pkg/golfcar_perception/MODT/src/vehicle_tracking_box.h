@@ -37,6 +37,12 @@ class box_model
 	int refPt_seial;
 	double moving_direction;
 	double width, length;
+	bool init;
+
+	box_model()
+	{
+		init = false;
+	}
 };
 
 class box_model_track

@@ -220,12 +220,29 @@ vehicle_tracking_box::vehicle_tracking_box():
 			//the first anchor point;
 			new_track_tmp.anchor_points.push_back(centroid_tmp);
 			new_track_tmp.update_time = incoming_meas_tmp.segments.back().header.stamp;
-			object_tracks_.push_back(new_track_tmp);
-			object_total_id_++;
 
 			new_track_tmp.tracker->set_params(3.0, 3.0, 3.0, 3.0, M_PI*0.2, 0.3, 0.3, M_PI*100);
 			new_track_tmp.tracker->init_filter(centroid_tmp.x, centroid_tmp.y, vx_value, vy_value, 0.0);
 			new_track_tmp.update_object_belief(true);
+
+			//remember that object-attached coordinate can be arbitrarily defined, but "object transformation" in the odom frame will be always the same;
+			//it is the "object transformation" that really matters;
+			tf::Pose oldMeas_poseinOdom, newMeas_poseinOdom;
+			//ICP_motion2shape(track_tmp, lastbatch_tmp, incoming_meas_tmp, oldMeas_poseinOdom, newMeas_poseinOdom);
+			ICP_motion2shape_v2(new_track_tmp, incoming_meas_tmp, oldMeas_poseinOdom, newMeas_poseinOdom);
+			tf::Pose oldMeas_to_newMeas = oldMeas_poseinOdom.inverse()*newMeas_poseinOdom;
+			double delt_x = newMeas_poseinOdom.getOrigin().x() - oldMeas_poseinOdom.getOrigin().x();
+			double delt_y = newMeas_poseinOdom.getOrigin().y() - oldMeas_poseinOdom.getOrigin().y();
+			//double delt_thetha =  tf::getYaw(oldMeas_to_newMeas.getRotation());
+			//double current_moving_direction = atan2(delt_y, delt_x)+delt_thetha;
+			double current_moving_direction = atan2(delt_y, delt_x);
+			box_model measure_box;
+			calculate_measurement_box(incoming_meas_tmp, current_moving_direction, measure_box);
+			//todo: to update the model box using the measurement box;
+			update_box_track(new_track_tmp, measure_box);
+
+			object_tracks_.push_back(new_track_tmp);
+			object_total_id_++;
 		}
 
 		//3rd: delete old tracks;
@@ -649,10 +666,65 @@ vehicle_tracking_box::vehicle_tracking_box():
 		meas_polygon_pub_.publish(meas_polygon);
 	}
 
+	//bugs inside;
 	void vehicle_tracking_box::update_box_track(box_model_track &track, box_model &measurement_box)
 	{
+		ROS_WARN("update box track %d", track.object_id);
 
+		if(measurement_box.length<0.001 || measurement_box.width<0.001)
+		{
+			ROS_WARN("measurement box too small, unreliable");
+		}
 
+		if(track.shape.init==false)
+		{
+			track.shape = measurement_box;
+			track.shape.init=true;
+		}
+		else
+		{
+			//1st: update the shape model with new measurement box;
+			geometry_msgs::Point32 new_points[4];
+			for(size_t i=0; i<4; i++) new_points[i]=measurement_box.corner_points[i];
+
+			//take into account limited FOV;
+			/*
+			if(fabs(measurement_box.lidar_angle[0])> M_PI*(130.0/180.0) && fabs(measurement_box.lidar_angle[3])< M_PI*(130.0/180.0))
+			{
+				geometry_msgs::Point32 point_tmp;
+				point_tmp = new_points[0];
+				new_points[0] = new_points[3];
+				new_points[3] = point_tmp;
+				point_tmp = new_points[1];
+				new_points[1] = new_points[2];
+				new_points[2] = point_tmp;
+			}
+			*/
+
+			geometry_msgs::Point32 shape_points[4];
+			shape_points[0]=new_points[0];
+
+			double scale_ratio_width = track.shape.width/measurement_box.width > 1.0 ? track.shape.width/measurement_box.width: 1.0;
+			double scale_ratio_length = track.shape.length/measurement_box.length > 1.0 ? track.shape.length/measurement_box.length:1.0;
+
+			cout<<"track shape"<<" "<<track.shape.width<<" "<<track.shape.length<<" "<<endl;
+			cout<<"measurement_box"<<" "<<measurement_box.width<<" "<<measurement_box.length<<" "<<endl;
+			cout<<"scale ration"<<" "<<scale_ratio_width<<" "<<scale_ratio_length<<endl;
+
+			track.shape.width = measurement_box.width*scale_ratio_width;
+			track.shape.length = measurement_box.length*scale_ratio_length;
+
+			shape_points[1].x = shape_points[0].x + scale_ratio_width *(new_points[1].x-new_points[0].x);
+			shape_points[1].y = shape_points[0].y + scale_ratio_width *(new_points[1].y-new_points[0].y);
+			shape_points[2].x = shape_points[1].x + scale_ratio_length *(new_points[2].x-new_points[1].x);
+			shape_points[2].y = shape_points[1].y + scale_ratio_length *(new_points[2].y-new_points[1].y);
+			shape_points[3].x = shape_points[0].x + scale_ratio_length *(new_points[3].x-new_points[0].x);
+			shape_points[3].y = shape_points[0].y + scale_ratio_length *(new_points[3].y-new_points[0].y);
+			for(size_t i=0; i<4; i++) track.shape.corner_points[i]=shape_points[i];
+
+			//2nd: find the nearest point to the old anchor point;
+
+		}
 	}
 
 	void vehicle_tracking_box::measPt_lidarAngle(geometry_msgs::Pose &lidar_pose, geometry_msgs::Point32 measPt, float &lidarAngle)
@@ -739,10 +811,17 @@ vehicle_tracking_box::vehicle_tracking_box():
 			//bool visualize_flag = true;
 			if(visualize_flag)
 			{
+				for(size_t j=0; j<4; j++)
+				{
+					contour_pcl.points.push_back(object_tracks_[i].shape.corner_points[j]);
+				}
+
+				/*
 				for(size_t j=0; j<object_tracks_[i].contour_points.points.size(); j++)
 				{
 					contour_pcl.points.push_back(object_tracks_[i].contour_points.points[j]);
 				}
+				*/
 
 				for(size_t j=0; j<object_tracks_[i].anchor_points.size(); j++)
 				{
