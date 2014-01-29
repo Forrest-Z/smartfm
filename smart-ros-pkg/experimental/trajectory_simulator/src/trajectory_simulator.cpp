@@ -15,6 +15,21 @@ struct poseVec{
     x(_x), y(_y), a(_a){}
 };
 
+struct PointInfo{
+  geometry_msgs::Point position;
+  double dist, curvature, max_speed, speed_profile;
+  double acceleration, jerk, time;
+  int idx;
+};
+
+bool compareByMaxSpeed(const PointInfo &a, const PointInfo &b){
+  return a.max_speed < b.max_speed;
+}
+
+bool compareByIdx(const PointInfo &a, const PointInfo &b){
+  return a.idx < b.idx;
+}
+
 class CarModel{
 public:
   
@@ -22,13 +37,14 @@ public:
   
   double time_step_;
   double time_now_;
+  
   poseVec vel_, pose_;
   CarModel(double wheelbase, double time_step): wheelbase_(wheelbase), 
   time_step_(time_step), time_now_(0.0){}
   CarModel(double wheelbase, double time_step, poseVec init_pose):
   wheelbase_(wheelbase), time_step_(time_step), time_now_(0.0), pose_(init_pose){}
     
-  void SetSpeed(double x, double y, double a){
+  double SetSpeed(double x, double a){
     //we want to maintain a fixed distance, not time fixed
     
     
@@ -45,6 +61,7 @@ public:
     pose_.x += dx * cosa;
     pose_.y += dx * sina;
     time_now_+=time_step_;
+    return dx;
   }
   
 private:
@@ -94,6 +111,7 @@ public:
 
   double solveCubic(double a, double b, double c, double d){
     //http://www.1728.org/cubic2.htm
+    //example: time_step = solveCubic(jerk, acc_pt_pre, speed_pt_pre, -0.05);
     if(fabs(a)<1e-9){
       cout<<fabs(a)<<endl;
       a=b;
@@ -138,6 +156,31 @@ public:
     
   }
   
+  vector<PointInfo> localMinimaSearch(vector<PointInfo> path_info){
+    //simple local minima search
+    //accelerate true, deccelerate false
+    
+    bool last_acc_sign;
+    double cur_vel = 0.0;
+    vector<PointInfo> minima_pts;
+    
+    //minima_pts.push_back(path_info[1]);
+    last_acc_sign = (path_info[1].max_speed - path_info[0].max_speed) > 0;
+    cout<<last_acc_sign<<endl;
+    for(size_t i=2; i<path_info.size(); i++){
+      double vel_speed = path_info[i].max_speed - path_info[i-1].max_speed;
+      bool acc_sign = vel_speed > 0;
+      if(acc_sign != last_acc_sign){
+	//only find out the part where minimum pt occur
+	if(acc_sign){
+	  minima_pts.push_back(path_info[i]);
+	}
+	last_acc_sign = acc_sign;
+      }
+    }
+    return minima_pts;
+  }
+      
   TrajectorySimulator(int argc, char** argv){
     double a=atof(argv[1]);
     double b=atof(argv[2]);
@@ -160,18 +203,20 @@ public:
     pp_ = new golfcar_purepursuit::PurePursuit(global_frame_, min_look_ahead_dist, forward_achor_pt_dist, car_length);
     
     sensor_msgs::PointCloud pc;
-    ros::Publisher pub, global_path_pub, curvature_pub, max_speed_pub, speed_pub, acc_pub, jerk_pub;
+    ros::Publisher pub, global_path_pub, curvature_pub, dist_pub;
+    ros::Publisher max_speed_pub, speed_pub, acc_pub, jerk_pub;
     
-    pub = nh.advertise<nav_msgs::Path>("simulated_path", 1, true);
     global_path_pub = nh.advertise<nav_msgs::Path>("global_path", 1, true);
     curvature_pub = nh.advertise<sensor_msgs::PointCloud>("curvature_pt", 1, true);
     max_speed_pub = nh.advertise<sensor_msgs::PointCloud>("max_speed_pt", 1, true);
     speed_pub = nh.advertise<sensor_msgs::PointCloud>("speed_pt", 1, true);
     acc_pub = nh.advertise<sensor_msgs::PointCloud>("acc_pt", 1, true);
     jerk_pub = nh.advertise<sensor_msgs::PointCloud>("jerk_pt", 1, true);
+    dist_pub = nh.advertise<sensor_msgs::PointCloud>("dist_pt", 1, true);
     
     setGlobalPath(global_path_pub);
-    nav_msgs::Path simulated_path;
+    
+    vector<PointInfo> path_info;
     
     geometry_msgs::Point first_pt = pp_->path_.poses[0].pose.position;
     geometry_msgs::Point sec_pt = pp_->path_.poses[1].pose.position;
@@ -182,114 +227,96 @@ public:
     
     bool path_exist = true;
     fmutil::Stopwatch sw("Simulation took");
-    sensor_msgs::PointCloud curve_pc, max_speed_pc, speed_pc, acc_pc, jerk_pc;
     vector<int> speed_intervals;
     double speed_now = 3.0, acc_now = 0;
+    double dist_travel = 0.0;
+    int path_no = 0;
     while(path_exist && ros::ok()){
+      double steer_angle, dist_to_goal;
+      PointInfo point_info;
+      point_info.position.x = model.pose_.x;
+      point_info.position.y = model.pose_.y;
+      point_info.position.z = model.pose_.a;
       geometry_msgs::PoseStamped p;
       p.header.frame_id =global_frame_;
       p.header.stamp = ros::Time::now();
       p.pose.position.x = model.pose_.x;
       p.pose.position.y = model.pose_.y;
       p.pose.orientation = tf::createQuaternionMsgFromYaw(model.pose_.a);
-      simulated_path.poses.push_back(p);
       pp_->vehicle_base_ = p.pose;
-      double steer_angle, dist_to_goal;
       path_exist = pp_->steering_control(&steer_angle, &dist_to_goal);
       
-      model.SetSpeed(speed_now, 0.0, steer_angle);
+      dist_travel += model.SetSpeed(speed_now, steer_angle);
+      point_info.dist = dist_travel;
       pp_->updateCommandedSpeed(speed_now);
-      
-      geometry_msgs::Point32 curve_pt, max_speed_pt, speed_pt, acc_pt, jerk_pt;
-      curve_pt.x = model.pose_.x;
-      curve_pt.y = model.pose_.y;
-      max_speed_pt = speed_pt = acc_pt = jerk_pt = curve_pt;
-      max_speed_pt.y+=100.0;
-      speed_pt.y+=200.0;
-      acc_pt.y+=300.0;
-      jerk_pt.y+=400.0;
       double turning_rad = fabs(car_length / tan(steer_angle));
-      curve_pt.z = turning_rad;
-      max_speed_pt.z = sqrt(max_lat_acc*turning_rad);
-      if(max_speed_pt.z > max_speed) max_speed_pt.z = max_speed;
-      
-      curve_pc.points.push_back(curve_pt);
-      max_speed_pc.points.push_back(max_speed_pt);
-      speed_pc.points.push_back(speed_pt);
-      acc_pc.points.push_back(acc_pt);
-      jerk_pc.points.push_back(jerk_pt);
+      point_info.curvature = turning_rad;
+      point_info.max_speed = sqrt(max_lat_acc*turning_rad);
+      point_info.idx = path_no++;
+      if(point_info.max_speed > max_speed) point_info.max_speed = max_speed;
+      path_info.push_back(point_info);
     }
-    for(int i=0; i<1; i++){
-      int min_speed_idx=0;
-      double min_speed=max_speed_pc.points[0].z;
-      for(size_t j=1; j<max_speed_pc.points.size(); j++){
-	double speed_temp = max_speed_pc.points[j].z ;
-	if(speed_temp< min_speed){
-	  min_speed = speed_temp;
-	  min_speed_idx=j;
-	}
+    
+    cout<<path_info.size()<<" point size"<<endl;
+    vector<PointInfo> local_minima_pts = localMinimaSearch(path_info);
+    sort(local_minima_pts.begin(), local_minima_pts.end(), compareByMaxSpeed);
+    cout<<local_minima_pts.size()<<" local minima found"<<endl;
+    for(size_t i=0; i<local_minima_pts.size(); i++){
+      vector<PointInfo> split_sections;
+      split_sections.insert(split_sections.end(), local_minima_pts.begin(), local_minima_pts.begin()+i);
+      sort(split_sections.begin(), split_sections.end(), compareByIdx);
+      cout<<local_minima_pts[i].max_speed<<": ";
+      for(size_t j=0; j<split_sections.size(); j++){
+	cout<<split_sections[j].idx<<", ";
+	//cout<<split_sections[j].idx<<":"<<split_sections[j].max_speed<<" ";
       }
-      
-      double v1 = 0 + 0.5 * max_acc*max_acc/max_jerk;
-      double v2 = min_speed - max_acc*max_acc*0.5*max_jerk;
-      double v3 = min_speed;
-      
-      int interval_idx = 0;
-      for(size_t j=1; j<max_speed_pc.points.size(); j++){
-	//figure out the time for each segment
-	double jerk = 0;
-	double acc_pt_pre = acc_pc.points[j-1].z;
-	double speed_pt_pre = speed_pc.points[j-1].z;
-	double acc_pt = acc_pc.points[j].z;
-	double speed_pt = speed_pc.points[j].z;
-	double time_step;
-	switch (interval_idx){
-	  case 0:
-	    jerk = max_jerk;
-	    time_step = solveCubic(jerk, acc_pt_pre, speed_pt_pre, -0.05);
-	    acc_pt = acc_pt_pre + time_step * jerk;
-	    speed_pt = speed_pt_pre + time_step * acc_pt;
-	    if(speed_pt > v1) interval_idx++;
-	    break;
-	  case 1:
-	    jerk = 0.0;
-	    time_step = solveCubic(jerk, acc_pt_pre, speed_pt_pre, -0.05);
-	    acc_pt = acc_pt_pre + time_step * jerk;
-	    speed_pt = speed_pt_pre + time_step * acc_pt;
-	    if(speed_pt > v2) interval_idx++;
-	    break;
-	  case 2:
-	    jerk = -max_jerk;
-	    time_step = solveCubic(jerk, acc_pt_pre, speed_pt_pre, -0.05);
-	    acc_pt = acc_pt_pre + time_step * jerk;
-	    speed_pt = speed_pt_pre + time_step * acc_pt;
-	    if(speed_pt > v3) {
-	      interval_idx++;
-	      acc_pt = 0.0;
-	      speed_pt = v3;
-	    }
-	    break;
-	  case 3:
-	    speed_pt = v3;
-	    break;
-	}
-	acc_pc.points[j].z = acc_pt;
-	jerk_pc.points[j].z = jerk;
-	speed_pc.points[j].z = speed_pt;
-      }
+      cout<<endl;      
     }
     sw.end();
-    simulated_path.header.frame_id = global_frame_;
-    simulated_path.header.stamp = ros::Time::now();
-    max_speed_pc.header = speed_pc.header = acc_pc.header = jerk_pc.header = curve_pc.header = simulated_path.header;
+    sensor_msgs::PointCloud curve_pc, max_speed_pc, speed_pc, acc_pc, jerk_pc, dist_pc;
+    dist_pc.header.frame_id = global_frame_;
+    dist_pc.header.stamp = ros::Time::now();
+    max_speed_pc.header = speed_pc.header = acc_pc.header = jerk_pc.header = curve_pc.header = dist_pc.header;
+    for(size_t i=0; i<path_info.size(); i++){
+      geometry_msgs::Point32 p;
+      p.x = path_info[i].position.x;
+      p.y = path_info[i].position.y;
+      p.z = path_info[i].curvature;
+      curve_pc.points.push_back(p);
+      p.y += 100;
+      p.z = path_info[i].max_speed;
+      max_speed_pc.points.push_back(p);
+      p.y += 100;
+      p.z = path_info[i].dist;
+      dist_pc.points.push_back(p);
+      p.y += 100;
+      p.z = path_info[i].speed_profile;
+      speed_pc.points.push_back(p);
+      p.y += 100;
+      p.z = path_info[i].acceleration;
+      acc_pc.points.push_back(p);
+      p.y += 100;
+      p.z = path_info[i].jerk;
+      jerk_pc.points.push_back(p);
+    }
     curvature_pub.publish(curve_pc);
     max_speed_pub.publish(max_speed_pc);
     speed_pub.publish(speed_pc);
     acc_pub.publish(acc_pc);
     jerk_pub.publish(jerk_pc);
-    pub.publish(simulated_path);
+    dist_pub.publish(dist_pc);
     
-    
+    sensor_msgs::PointCloud local_pc;
+    local_pc.header = max_speed_pc.header;
+    ros::Publisher local_min_pub = nh.advertise<sensor_msgs::PointCloud>("local_min_puts", 1, true);
+    for(size_t i=0; i<local_minima_pts.size(); i++){
+      geometry_msgs::Point32 p;
+      p.x = local_minima_pts[i].position.x;
+      p.y = local_minima_pts[i].position.y+=100;
+      p.z = local_minima_pts[i].max_speed;
+      local_pc.points.push_back(p);
+    }
+    local_min_pub.publish(local_pc);
     
       
     ros::spin();
