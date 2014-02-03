@@ -278,6 +278,17 @@ public:
     return acceleration;
   }
   
+  void printLocalMinimaStatus(string msg, vector<PointInfo> &local_minima_pts){
+    cout<<endl<<"********* start:"<<msg<<"**********"<<endl;
+    for(size_t i=0; i<local_minima_pts.size(); i++){
+      cout<<local_minima_pts[i].idx<<"\t"<<local_minima_pts[i].dist<<"\t"
+      <<local_minima_pts[i].max_speed<<"\t"<<local_minima_pts[i].verified_ok<<"\t"
+      <<local_minima_pts[i].min_dist
+      <<endl;
+    }
+    cout<<endl<<"********* end:"<<msg<<"**********"<<endl;
+    cout<<endl;
+  }
   TrajectorySimulator(int argc, char** argv){
     
     double a_pre=0.0;
@@ -386,7 +397,7 @@ public:
     sort(local_minima_pts.begin(), local_minima_pts.end(), compareByIdx);
     cout<<"v1\tv2\tms\tidx\tdist\ttype\tmin\tstat"<<endl;
     bool last_acc_sign = true;
-    
+    printLocalMinimaStatus("before adding maximum speed", local_minima_pts);
     //add maximum speed
     for(size_t i=1; i<local_minima_pts.size(); i++){
       
@@ -421,26 +432,73 @@ public:
 	}
       }
     }
+    printLocalMinimaStatus("after added maximum speed", local_minima_pts);
     
     //final check and combine indices that are closely pack together
-    cout<<endl<<"***********Further*************"<<endl;
     //important functions
 	//double getMinDist(v0, v1)
 	//double getNewMaxSpeed(dist, initial_speed)
 	//bool determineAcceleration(v0_in, v1_in, v0_out[opt], v1_out[opt])
-    //By default, assume first pt and last pt is verified
+    //By default, assume first pt is verified
     local_minima_pts[0].verified_ok = true;
-    local_minima_pts[local_minima_pts.size()-1].verified_ok = true;
     for(size_t i=1; i<local_minima_pts.size(); i++){
-      double v0, v1;
+      
       bool is_acc = determineAcceleration(local_minima_pts[i].max_speed, 
-					  local_minima_pts[i-1].max_speed, v0, v1);
-      double min_dist = getMinDist(v0, v1);
-      local_minima_pts[i].min_dist = min_dist;
-      if(min_dist <= local_minima_pts[i].dist - local_minima_pts[i-1].dist)
-	local_minima_pts[i].verified_ok = true;
+					  local_minima_pts[i-1].max_speed);
+      int local_min_pts_idx = i;
+      cout<<"Evaluating local minima pt "<<i<<endl;
+      while(local_min_pts_idx > 0){
+	if(!local_minima_pts[local_min_pts_idx-1].verified_ok) {
+	  local_min_pts_idx--;
+	  continue;
+	}
+	double v0, v1;
+	bool is_acc_pre = determineAcceleration(local_minima_pts[local_min_pts_idx].max_speed, 
+					  local_minima_pts[local_min_pts_idx-1].max_speed);
+	if(is_acc_pre){
+	  v1 = local_minima_pts[local_min_pts_idx-1].max_speed;
+	  v0 = local_minima_pts[i].max_speed;
+	}
+	else {
+	  v1 = local_minima_pts[i].max_speed;
+	  v0 = local_minima_pts[local_min_pts_idx-1].max_speed;
+	}
+	cout<<"\t"<<local_min_pts_idx<<": max_speed "<<v0<<" "<<v1<<" "<<is_acc_pre<<" "<<is_acc<<endl;
+	//only proceed if previous local min has the same acceleration state as the current one
+	//if not have to reconsider the maximum speed of this previous local min
+	if(is_acc_pre == is_acc){
+	  double min_dist = getMinDist(v0, v1);
+	  local_minima_pts[i].min_dist = min_dist;
+	  if(min_dist <= local_minima_pts[i].dist - local_minima_pts[local_min_pts_idx-1].dist){
+	    local_minima_pts[i].verified_ok = true;
+	    break;
+	  }
+	  else {
+	    local_minima_pts[local_min_pts_idx-1].verified_ok = false;
+	    local_min_pts_idx--;
+	  }
+	}
+	else{
+	  cout<<"Need a new speed on "<<local_minima_pts[i].max_speed<<" "<<local_minima_pts[local_min_pts_idx].max_speed<<endl;
+	  double the_dist = local_minima_pts[i].dist - local_minima_pts[local_min_pts_idx].dist;
+	  double set_speed, new_speed;
+	  if(is_acc)
+	    set_speed = local_minima_pts[i].max_speed;
+	  else
+	    set_speed = local_minima_pts[local_min_pts_idx].max_speed;
+	  new_speed = getNewMaxSpeed(the_dist, set_speed);
+	  cout<<"New speed obtained: "<<new_speed<<endl;
+	  if(is_acc)
+	    local_minima_pts[i].max_speed = new_speed;
+	  else
+	    local_minima_pts[local_min_pts_idx].max_speed = new_speed;
+	  local_minima_pts[local_min_pts_idx].verified_ok = true;
+	  local_minima_pts[i].verified_ok = true;
+	  break;
+	}
+      }
     }
-    cout<<endl;
+    printLocalMinimaStatus("after verification", local_minima_pts);
       /*
       vector<PointInfo> split_sections;
       split_sections.push_back(path_info[0]);
@@ -522,13 +580,7 @@ public:
 	}
       }    
     }*/
-    cout<<"*********local minima(s)**********"<<endl;
-    for(size_t i=0; i<local_minima_pts.size(); i++){
-      cout<<local_minima_pts[i].idx<<"\t"<<local_minima_pts[i].dist<<"\t"
-      <<local_minima_pts[i].max_speed<<"\t"<<local_minima_pts[i].verified_ok<<"\t"
-      <<local_minima_pts[i].min_dist
-      <<endl;
-    }
+    
     sw.end();
     sensor_msgs::PointCloud curve_pc, max_speed_pc, speed_pc, acc_pc, jerk_pc, dist_pc;
     dist_pc.header.frame_id = global_frame_;
