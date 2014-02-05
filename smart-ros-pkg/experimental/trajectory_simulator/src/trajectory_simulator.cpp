@@ -430,13 +430,13 @@ public:
   }
   
   double getNewNewSpeed(double v0, double v1, double local_dist){
-    double a = 1.0/(2*max_acc_);
+    double a = 1.0/max_acc_;
     double b = max_acc_/max_jerk_;
-    double c = max_acc_/(2*max_jerk_)*(v0+v1) - 1.0/(2*max_acc_)*(v0*v0+v1*v1) - local_dist;
+    double c = max_acc_/(2*max_jerk_)*(v0+v1) - 1.0/(2*max_acc_)*(v0*v0+v1*v1) - (local_dist - 2*0.05);
     double bsq_4ac = sqrt(b*b-4*a*c);
     double answer1 = (-b+bsq_4ac)/(2*a);
     double answer2 = (-b-bsq_4ac)/(2*a);
-    cout << " answer1 "<<answer1<<" answer2 "<<answer2<<" "<<a<<" "<<b<<" "<<c<<" ";
+    //cout << " answer1 "<<answer1<<" answer2 "<<answer2<<" "<<a<<" "<<b<<" "<<c<<" ";
     if(answer1 > answer2 && answer2>0) answer1 = answer2;
     
     return answer1;
@@ -549,9 +549,9 @@ public:
     local_minima_pts.push_back(path_info[0]);
     local_minima_pts.push_back(path_info[path_info.size()-1]);
     sort(local_minima_pts.begin(), local_minima_pts.end(), compareByIdx);
-    cout<<"v1\tv2\tms\tidx\tdist\ttype\tmin\tstat"<<endl;
     bool last_acc_sign = true;
     printLocalMinimaStatus("before adding maximum speed", local_minima_pts);
+    cout<<"v1\tv2\tms\tidx\tdist\tmax"<<endl;
     //add maximum speed
     for(size_t i=1; i<local_minima_pts.size(); i++){
       
@@ -563,43 +563,36 @@ public:
 	is_acc = false;
       }
       cout<<v0<<"\t"<<v1<<"\t";
-      cout<<local_minima_pts[i].max_speed<<"\t"<<local_minima_pts[i].idx<<"\t"<<local_minima_pts[i].dist;
-      if(is_acc)
-	min_dist = getMinDist(v0, v1);
-      else
-	min_dist = getMinDist(v1, v0);
       double local_dist = local_minima_pts[i].dist - local_minima_pts[i-1].dist;
-      cout<<"\t"<<min_dist<<"\t"<<local_dist;
-      if(local_dist > min_dist){
-	cout<<"\tOK!"<<endl;
-	double suggested_max_speed = getNewNewSpeed(v0, v1, local_dist);
-	double max_speed_offset = 1.0;
-	//get the suggested max speed based on the available distance and speed difference
-	if(suggested_max_speed > max_speed - 1.0){
+      cout<<local_minima_pts[i].max_speed<<"\t"<<local_minima_pts[i].idx<<"\t"<<local_dist;
+      double suggested_max_speed = getNewNewSpeed(v0, v1, local_dist);
+      cout<<"\t"<<suggested_max_speed<<endl;
+      double offset = 1.0;
+      //only proceed when maximum speed is larger than both v0 and v1
+      if(suggested_max_speed > v0 && suggested_max_speed > v1){
+	if(suggested_max_speed > max_speed - offset){
 	  if(suggested_max_speed > max_speed) suggested_max_speed = max_speed;
-	  double min_dist_a = getMinDist(v0, suggested_max_speed);
-	  double min_dist_b = getMinDist(v1, suggested_max_speed);
-	  cout<<" suggested_speed "<<suggested_max_speed<<" min_dist_a "<<min_dist_a<<" min_dist_b "<<min_dist_b<<endl;
-	  if(min_dist_a + min_dist_b < local_dist){
-	    int new_idx = (min_dist_a)/0.05 + local_minima_pts[i-1].idx;
-	    int new_idx2 = -(min_dist_b)/0.05 + local_minima_pts[i].idx;
-	    cout<<" Add max speed at "<<new_idx<<" min_dist="<<min_dist_a<<" check new idx dist="<<
-	    (new_idx-local_minima_pts[i-1].idx)*0.05<<endl;
-	    PointInfo new_max_speed;
-	    new_max_speed.max_speed = suggested_max_speed;
-	    new_max_speed.idx = new_idx;
-	    new_max_speed.dist = new_idx * 0.05;
-	    local_minima_pts.insert(local_minima_pts.begin()+i, new_max_speed);
-	    i++;
-	    new_max_speed.idx = new_idx2;
-	    new_max_speed.dist = new_idx2 * 0.05;
-	    local_minima_pts.insert(local_minima_pts.begin()+i, new_max_speed);
-	    i++;
-	  }
+	  double dist_a = getMinDist(v0, suggested_max_speed);
+	  double dist_b = getMinDist(v1, suggested_max_speed);
+	  cout<<"suggested_max_speed="<<suggested_max_speed<<" dist_a="<<dist_a<<" dist_b="<<dist_b<<" total="<<dist_a+dist_b<<endl;
+	  PointInfo info_temp;
+	  vector<PointInfo> new_speed_info;
+	  info_temp.max_speed = suggested_max_speed;
+	  info_temp.dist = local_minima_pts[i-1].dist + dist_a + 0.05;
+	  info_temp.idx = local_minima_pts[i-1].idx + dist_a/0.05 + 1;
+	  new_speed_info.push_back(info_temp);
+	  cout<<"new idx " <<info_temp.idx<<" new dist "<<info_temp.dist<<" with max speed "<<info_temp.max_speed<<endl;
+	  info_temp.dist = local_minima_pts[i].dist - dist_b - 0.05;
+	  info_temp.idx = local_minima_pts[i].idx - dist_b/0.05 - 1;
+	  new_speed_info.push_back(info_temp);
+	  local_minima_pts.insert(local_minima_pts.begin()+ i, new_speed_info.begin(), new_speed_info.end());
+	  cout<<"new idx " <<info_temp.idx<<" new dist "<<info_temp.dist<<" with max speed "<<info_temp.max_speed<<endl;
+	  i += new_speed_info.size();
 	}
       }
     }
     printLocalMinimaStatus("after added maximum speed", local_minima_pts);
+    
     cout<<verifyAndModifyLocalMinima(local_minima_pts)<<" modification made"<<endl;
     printLocalMinimaStatus("after verification", local_minima_pts);
     
