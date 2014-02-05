@@ -448,19 +448,20 @@ public:
   void publishPathInfo(vector<PointInfo> &path_info, vector<PointInfo> &local_minima_pts){
     sensor_msgs::PointCloud pc;
     ros::Publisher pub, curvature_pub, dist_pub;
-    ros::Publisher max_speed_pub, speed_pub, acc_pub, jerk_pub;
+    ros::Publisher max_speed_pub, speed_pub, speed_xy_pub, acc_pub, jerk_pub;
     ros::NodeHandle nh;
     
     curvature_pub = nh.advertise<sensor_msgs::PointCloud>("curvature_pt", 1, true);
     max_speed_pub = nh.advertise<sensor_msgs::PointCloud>("max_speed_pt", 1, true);
     speed_pub = nh.advertise<sensor_msgs::PointCloud>("speed_pt", 1, true);
+    speed_xy_pub = nh.advertise<sensor_msgs::PointCloud>("speed_xy_pt", 1, true);
     acc_pub = nh.advertise<sensor_msgs::PointCloud>("acc_pt", 1, true);
     jerk_pub = nh.advertise<sensor_msgs::PointCloud>("jerk_pt", 1, true);
     dist_pub = nh.advertise<sensor_msgs::PointCloud>("dist_pt", 1, true);
-    sensor_msgs::PointCloud curve_pc, max_speed_pc, speed_pc, acc_pc, jerk_pc, dist_pc;
+    sensor_msgs::PointCloud curve_pc, max_speed_pc, speed_pc, acc_pc, jerk_pc, dist_pc, speed_xy_pc;
     dist_pc.header.frame_id = global_frame_;
     dist_pc.header.stamp = ros::Time::now();
-    max_speed_pc.header = speed_pc.header = acc_pc.header = jerk_pc.header = curve_pc.header = dist_pc.header;
+    speed_xy_pc.header = max_speed_pc.header = speed_pc.header = acc_pc.header = jerk_pc.header = curve_pc.header = dist_pc.header;
     double time_t = 0.0;
     path_info[0].time = 0.0;
     for(size_t i=0; i<path_info.size(); i++){
@@ -473,6 +474,9 @@ public:
       p.y += 100;
       p.z = path_info[i].dist;
       dist_pc.points.push_back(p);
+      p.y += 100;
+      p.z = path_info[i].speed_profile;
+      speed_xy_pc.points.push_back(p);
       p.x = time_t;
       p.y = path_info[i].curve_max_speed + 100;;
       p.z = path_info[i].curve_max_speed;
@@ -495,6 +499,7 @@ public:
     acc_pub.publish(acc_pc);
     jerk_pub.publish(jerk_pc);
     dist_pub.publish(dist_pc);
+    speed_xy_pub.publish(speed_xy_pc);
     
     sensor_msgs::PointCloud local_pc;
     local_pc.header = max_speed_pc.header;
@@ -617,7 +622,13 @@ public:
       double v0 = local_minima_pts[i-1].max_speed;
       double v1 = local_minima_pts[i].max_speed;
       if(fabs(v1-v0)<1e-5){
-	//trivial case just ok
+	//last couple of points are zero, make sure this don't happen
+	//so the vehicle will stop at the very end
+	if(v1 < 1e-5 && i == local_minima_pts.size()-1){
+	  local_minima_pts.erase(local_minima_pts.begin()+i-1);
+	  i-=2;
+	}
+	//trivial case just ok  
 	cout<<i<<": Same speed OK!"<<endl;
 	double constant_time_step = 0.05/local_minima_pts[i].max_speed;
 	for(int j=local_minima_pts[i-1].idx; j<=local_minima_pts[i].idx; j++){
@@ -823,12 +834,7 @@ public:
       }
     }
     sw.end();
-    //clean up the last couple of zero to ensure the speed ends at the final point
-    for(size_t i=local_minima_pts.size()-1; i>0; i--){
-      if(i == local_minima_pts.size()-1) continue;
-      if(fabs(local_minima_pts[i].max_speed) < 1e-5)
-	local_minima_pts.erase(local_minima_pts.begin()+i);
-    }
+    
     printLocalMinimaStatus("temp minima pts", local_minima_pts);
     publishPathInfo(path_info, local_minima_pts);
     
