@@ -442,6 +442,70 @@ public:
     return answer1;
   }
   
+  void publishPathInfo(vector<PointInfo> &path_info, vector<PointInfo> &local_minima_pts){
+    sensor_msgs::PointCloud pc;
+    ros::Publisher pub, curvature_pub, dist_pub;
+    ros::Publisher max_speed_pub, speed_pub, acc_pub, jerk_pub;
+    ros::NodeHandle nh;
+    
+    curvature_pub = nh.advertise<sensor_msgs::PointCloud>("curvature_pt", 1, true);
+    max_speed_pub = nh.advertise<sensor_msgs::PointCloud>("max_speed_pt", 1, true);
+    speed_pub = nh.advertise<sensor_msgs::PointCloud>("speed_pt", 1, true);
+    acc_pub = nh.advertise<sensor_msgs::PointCloud>("acc_pt", 1, true);
+    jerk_pub = nh.advertise<sensor_msgs::PointCloud>("jerk_pt", 1, true);
+    dist_pub = nh.advertise<sensor_msgs::PointCloud>("dist_pt", 1, true);
+    sensor_msgs::PointCloud curve_pc, max_speed_pc, speed_pc, acc_pc, jerk_pc, dist_pc;
+    dist_pc.header.frame_id = global_frame_;
+    dist_pc.header.stamp = ros::Time::now();
+    max_speed_pc.header = speed_pc.header = acc_pc.header = jerk_pc.header = curve_pc.header = dist_pc.header;
+    double time_t = 0.0;
+    path_info[0].time = 0.0;
+    for(size_t i=0; i<path_info.size(); i++){
+      time_t += path_info[i].time;
+      geometry_msgs::Point32 p;
+      p.x = path_info[i].position.x;
+      p.y = path_info[i].position.y;
+      p.z = path_info[i].curvature;
+      curve_pc.points.push_back(p);
+      p.y += 100;
+      p.z = path_info[i].dist;
+      dist_pc.points.push_back(p);
+      p.x = time_t;
+      p.y = path_info[i].max_speed + 100;;
+      p.z = path_info[i].max_speed;
+      max_speed_pc.points.push_back(p);
+      p.y = path_info[i].speed_profile + 100;
+      p.z = path_info[i].speed_profile;
+      //cout<<path_info[i].time<<" "<<p.z<<endl;
+      speed_pc.points.push_back(p);
+      p.y = path_info[i].acceleration + 200;
+      p.z = path_info[i].acceleration;
+      acc_pc.points.push_back(p);
+      p.y = path_info[i].jerk + 300;
+      p.z = path_info[i].jerk;
+      jerk_pc.points.push_back(p);
+      //cout<<path_info[i].speed_profile<<" "<<path_info[i].max_speed<<" "<<path_info[i].acceleration<<endl;
+    }
+    curvature_pub.publish(curve_pc);
+    max_speed_pub.publish(max_speed_pc);
+    speed_pub.publish(speed_pc);
+    acc_pub.publish(acc_pc);
+    jerk_pub.publish(jerk_pc);
+    dist_pub.publish(dist_pc);
+    
+    sensor_msgs::PointCloud local_pc;
+    local_pc.header = max_speed_pc.header;
+    ros::Publisher local_min_pub = nh.advertise<sensor_msgs::PointCloud>("local_min_puts", 1, true);
+    for(size_t i=0; i<local_minima_pts.size(); i++){
+      geometry_msgs::Point32 p;
+      p.x = local_minima_pts[i].position.x;
+      p.y = local_minima_pts[i].position.y+=100;
+      p.z = local_minima_pts[i].max_speed;
+      local_pc.points.push_back(p);
+    }
+    local_min_pub.publish(local_pc);
+  }
+  
   TrajectorySimulator(int argc, char** argv){
     
     double a_pre=0.0;
@@ -476,18 +540,9 @@ public:
     max_speed_ = max_speed;
     global_frame_ = "/robot_0/map";
     pp_ = new golfcar_purepursuit::PurePursuit(global_frame_, min_look_ahead_dist, forward_achor_pt_dist, car_length);
-    
-    sensor_msgs::PointCloud pc;
-    ros::Publisher pub, global_path_pub, curvature_pub, dist_pub;
-    ros::Publisher max_speed_pub, speed_pub, acc_pub, jerk_pub;
-    
+    ros::Publisher global_path_pub;
     global_path_pub = nh.advertise<nav_msgs::Path>("global_path", 1, true);
-    curvature_pub = nh.advertise<sensor_msgs::PointCloud>("curvature_pt", 1, true);
-    max_speed_pub = nh.advertise<sensor_msgs::PointCloud>("max_speed_pt", 1, true);
-    speed_pub = nh.advertise<sensor_msgs::PointCloud>("speed_pt", 1, true);
-    acc_pub = nh.advertise<sensor_msgs::PointCloud>("acc_pt", 1, true);
-    jerk_pub = nh.advertise<sensor_msgs::PointCloud>("jerk_pt", 1, true);
-    dist_pub = nh.advertise<sensor_msgs::PointCloud>("dist_pt", 1, true);
+    
     setGlobalPath(global_path_pub);
     
     vector<PointInfo> path_info;
@@ -710,56 +765,7 @@ public:
 
     
     sw.end();
-    sensor_msgs::PointCloud curve_pc, max_speed_pc, speed_pc, acc_pc, jerk_pc, dist_pc;
-    dist_pc.header.frame_id = global_frame_;
-    dist_pc.header.stamp = ros::Time::now();
-    max_speed_pc.header = speed_pc.header = acc_pc.header = jerk_pc.header = curve_pc.header = dist_pc.header;
-    double time_t = 0.0;
-    path_info[0].time = 0.0;
-    for(size_t i=0; i<path_info.size(); i++){
-      time_t += path_info[i].time;
-      geometry_msgs::Point32 p;
-      p.x = path_info[i].position.x;
-      p.y = path_info[i].position.y;
-      p.z = path_info[i].curvature;
-      curve_pc.points.push_back(p);
-      p.y += 100;
-      p.z = path_info[i].dist;
-      dist_pc.points.push_back(p);
-      p.x = time_t;
-      p.y = path_info[i].max_speed + 100;;
-      p.z = path_info[i].max_speed;
-      max_speed_pc.points.push_back(p);
-      p.y = path_info[i].speed_profile + 100;
-      p.z = path_info[i].speed_profile;
-      //cout<<path_info[i].time<<" "<<p.z<<endl;
-      speed_pc.points.push_back(p);
-      p.y = path_info[i].acceleration + 200;
-      p.z = path_info[i].acceleration;
-      acc_pc.points.push_back(p);
-      p.y = path_info[i].jerk + 300;
-      p.z = path_info[i].jerk;
-      jerk_pc.points.push_back(p);
-      //cout<<path_info[i].speed_profile<<" "<<path_info[i].max_speed<<" "<<path_info[i].acceleration<<endl;
-    }
-    curvature_pub.publish(curve_pc);
-    max_speed_pub.publish(max_speed_pc);
-    speed_pub.publish(speed_pc);
-    acc_pub.publish(acc_pc);
-    jerk_pub.publish(jerk_pc);
-    dist_pub.publish(dist_pc);
-    
-    sensor_msgs::PointCloud local_pc;
-    local_pc.header = max_speed_pc.header;
-    ros::Publisher local_min_pub = nh.advertise<sensor_msgs::PointCloud>("local_min_puts", 1, true);
-    for(size_t i=0; i<local_minima_pts.size(); i++){
-      geometry_msgs::Point32 p;
-      p.x = local_minima_pts[i].position.x;
-      p.y = local_minima_pts[i].position.y+=100;
-      p.z = local_minima_pts[i].max_speed;
-      local_pc.points.push_back(p);
-    }
-    local_min_pub.publish(local_pc);
+    publishPathInfo(path_info, local_minima_pts);
     
       
     ros::spin();
