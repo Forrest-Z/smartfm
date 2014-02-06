@@ -321,13 +321,15 @@ public:
 				    -pow(low_speed, 3) - max_jerk_*distance*distance);
     double new_speed_2 = solveCubic(0.0, 1/(2*max_acc_), -low_speed/(2*max_acc_)+max_acc_/(2*max_jerk_), -distance);
     cout<<"New speed "<<new_speed_1<<" "<<new_speed_2<<" given "<<distance<<" "<<low_speed;
-    if(new_speed_1 - low_speed < max_acc_*max_acc_/max_jerk_) {
+    /*if(new_speed_1 - low_speed < max_acc_*max_acc_/max_jerk_) {
       cout<<" speed1 selected"<<endl;
       return new_speed_1;
     }
     cout<<" speed2 selected"<<endl;
     cout<<" recheck: "<<new_speed_2/2*((new_speed_2-low_speed)/max_acc_ + max_acc_/max_jerk_)<<endl;
-    return new_speed_2;
+    */
+    
+    return new_speed_2>new_speed_1? new_speed_1 : new_speed_2;
   }
   
   inline bool determineAcceleration(double v0_in, double v1_in){
@@ -521,6 +523,13 @@ public:
     fmutil::Stopwatch sw2("connecting points");
     double req_speed_inc = max_acc*max_acc/max_jerk;
     for(size_t i=1; i<local_minima_pts.size(); i++){
+      //if 2 local minima happens at very near each other, the one have the lower speed wins
+      if(local_minima_pts[i].idx - local_minima_pts[i-1].idx <= 5){
+	if(local_minima_pts[i].max_speed < local_minima_pts[i-1].max_speed)
+	  local_minima_pts[i-1].max_speed = local_minima_pts[i].max_speed;
+	else
+	  local_minima_pts[i].max_speed = local_minima_pts[i-1].max_speed;
+      }
       double v0 = local_minima_pts[i-1].max_speed;
       double v1 = local_minima_pts[i].max_speed;
       if(fabs(v1-v0)<1e-5){
@@ -662,7 +671,7 @@ public:
 	      else
 		min_dist_alt = getMinDist(v1, v0);
 	      cout<<min_dist_alt<<" < "<<dist<<"? ";
-	      if(min_dist_alt <= dist) {
+	      if(dist-min_dist_alt >= -1e-6) {
 		cout<<" OK!"<<endl;
 		double delta_t = sqrt(fabs(v1-v0)/max_jerk);
 		int end = local_minima_pts[i].idx;
@@ -688,7 +697,7 @@ public:
 		} 
 	      }
 	      else {
-		cout<<" Nah! Got to look backward"<<endl;
+		cout<<" Nah2! Got to look backward"<<endl;
 		//final resort to changing the higher speed to lower one
 		/*int new_idx = min_dist_alt/0.05 - 1;
 		local_minima_pts[i-1].idx -= new_idx;
@@ -707,7 +716,7 @@ public:
 		  cout<<"Possible new speed "<<getNewMaxSpeed(dist, v0)<<endl;
 		}
 		else {
-		  local_minima_pts[i-1].max_speed = getNewMaxSpeed(dist, v0);
+		  local_minima_pts[i-1].max_speed = getNewMaxSpeed(dist, v1);
 		  cout<<"Possible new speed "<<getNewMaxSpeed(dist, v1)<<endl;
 		}
 		i-=2;
@@ -716,14 +725,14 @@ public:
 	  }
 	  else {
 	    double min_dist_alt;
-	    cout<<"Nah2!"<<endl<<"    Hmm, alright, how about this?"<<endl;
+	    cout<<"Nah3!"<<endl<<"    Hmm, alright, how about this?"<<endl;
 	    cout<<"      velocity diff to small criteria ";
 	    if(v1>v0)
 	      min_dist_alt = getMinDist(v0, v1);
 	    else
 	      min_dist_alt = getMinDist(v1, v0);
-	    cout<<min_dist_alt<<" < "<<dist<<"? ";
-	    if(min_dist_alt <= dist) {
+	    cout<<min_dist_alt<<" < "<<dist<<" dist-min_dist_alt "<<dist-min_dist_alt<<"? ";
+	    if(dist - min_dist_alt >= -1e-6) {
 	      cout<<" OK!"<<endl;
 	      double delta_t = sqrt(fabs(v1-v0)/max_jerk);
 	      int end = local_minima_pts[i].idx;
@@ -749,7 +758,7 @@ public:
 	      } 
 	    }
 	    else {
-	      cout<<" Nah! Got to look backward"<<endl;
+	      cout<<" Nah4! Got to look backward"<<endl;
 	      //final resort to changing the higher speed to lower one
 	      /*
 	      int new_idx = min_dist_alt/0.05 - 1;
@@ -883,10 +892,13 @@ public:
     local_minima_pts.push_back(path_info[0]);
     local_minima_pts.push_back(path_info[path_info.size()-1]);
     sort(local_minima_pts.begin(), local_minima_pts.end(), compareByIdx);
+    
+    vector<PointInfo> local_minima_pts_copy = local_minima_pts;
     //sort(local_minima_pts.begin(), local_minima_pts.end(), compareByMaxSpeed);
     printLocalMinimaStatus("temp minima pts", local_minima_pts);
     mainFunction(local_minima_pts, path_info, max_speed, max_acc, max_jerk);
-    
+    publishPathInfo(path_info, local_minima_pts_copy);
+    return;
     //check for error
     vector<PointInfo> error_pts;
     for(size_t i=0; i<path_info.size(); i++){
@@ -910,7 +922,6 @@ public:
       local_minima_pts.push_back(new_local_minima[i]);
     }
     sort(local_minima_pts.begin(), local_minima_pts.end(), compareByIdx);
-    vector<PointInfo> local_minima_pts_copy = local_minima_pts;
     printLocalMinimaStatus("temp minima pts 2", local_minima_pts);
     mainFunction(local_minima_pts, path_info, max_speed, max_acc, max_jerk);
     publishPathInfo(path_info, local_minima_pts_copy);
