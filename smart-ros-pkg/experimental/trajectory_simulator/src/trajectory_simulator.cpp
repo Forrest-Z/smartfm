@@ -544,7 +544,7 @@ public:
 	double dist = local_minima_pts[i].dist - local_minima_pts[i-1].dist;
 	double speed_check = getNewNewSpeed(v0, v1, dist);
 	if(speed_check > max_speed) speed_check = max_speed;
-	cout<<i<<": Speed check v0 "<<v0<<" v1 "<<v1<<" suggested speed "<<speed_check;
+	cout<<i<<": Speed check v0 "<<v0<<" v1 "<<v1<<" dist "<<dist<<" suggested speed "<<speed_check;
 	if(speed_check > v0 && speed_check > v1){
 	  cout<<" OK! ";
 	  //double check
@@ -662,7 +662,7 @@ public:
 	      else
 		min_dist_alt = getMinDist(v1, v0);
 	      cout<<min_dist_alt<<" < "<<dist<<"? ";
-	      if(min_dist_alt < dist) {
+	      if(min_dist_alt <= dist) {
 		cout<<" OK!"<<endl;
 		double delta_t = sqrt(fabs(v1-v0)/max_jerk);
 		int end = local_minima_pts[i].idx;
@@ -690,10 +690,26 @@ public:
 	      else {
 		cout<<" Nah! Got to look backward"<<endl;
 		//final resort to changing the higher speed to lower one
-		if(v1>v0)
-		  local_minima_pts[i].max_speed = v0;
-		else 
-		  local_minima_pts[i-1].max_speed = v1;
+		/*int new_idx = min_dist_alt/0.05 - 1;
+		local_minima_pts[i-1].idx -= new_idx;
+		local_minima_pts[i-1].dist = local_minima_pts[i-1].idx * 0.05;
+		int j=1;
+		while(local_minima_pts[i-j-1].idx > local_minima_pts[i-j].idx){
+		  cout<<local_minima_pts[i-j-1].idx<<" > "<<local_minima_pts[i-j].idx<<endl;
+		  cout<<"Earlier idx is larger, need to change!!!"<<endl;
+		  local_minima_pts[i-j-1].idx = local_minima_pts[i-j].idx-1;
+		  local_minima_pts[i-j-1].dist = local_minima_pts[i-j-1].idx * 0.05;
+		  j++;
+		  i--;
+		}*/
+		if(v1>v0){
+		  local_minima_pts[i].max_speed = getNewMaxSpeed(dist, v0);
+		  cout<<"Possible new speed "<<getNewMaxSpeed(dist, v0)<<endl;
+		}
+		else {
+		  local_minima_pts[i-1].max_speed = getNewMaxSpeed(dist, v0);
+		  cout<<"Possible new speed "<<getNewMaxSpeed(dist, v1)<<endl;
+		}
 		i-=2;
 	      }
 	    }
@@ -707,7 +723,7 @@ public:
 	    else
 	      min_dist_alt = getMinDist(v1, v0);
 	    cout<<min_dist_alt<<" < "<<dist<<"? ";
-	    if(min_dist_alt < dist) {
+	    if(min_dist_alt <= dist) {
 	      cout<<" OK!"<<endl;
 	      double delta_t = sqrt(fabs(v1-v0)/max_jerk);
 	      int end = local_minima_pts[i].idx;
@@ -735,11 +751,30 @@ public:
 	    else {
 	      cout<<" Nah! Got to look backward"<<endl;
 	      //final resort to changing the higher speed to lower one
-	      if(v1>v0)
-		local_minima_pts[i].max_speed = v0;
-	      else 
-		local_minima_pts[i-1].max_speed = v1;
+	      /*
+	      int new_idx = min_dist_alt/0.05 - 1;
+	      local_minima_pts[i-1].idx -= new_idx;
+	      local_minima_pts[i-1].dist = local_minima_pts[i-1].idx  * 0.05;
+	      int j=1;
+	      cout<<local_minima_pts[i-j-1].idx<<" > "<<local_minima_pts[i-j].idx<<endl;
+	      while(local_minima_pts[i-j-1].idx > local_minima_pts[i-j].idx){
+		cout<<local_minima_pts[i-j-1].idx<<" > "<<local_minima_pts[i-j].idx<<endl;
+		cout<<"Earlier idx is larger, need to change!!!"<<endl;
+		local_minima_pts[i-j-1].idx = local_minima_pts[i-j].idx-1;
+		local_minima_pts[i-j-1].dist = local_minima_pts[i-j-1].idx * 0.05;
+		j++;
+		i--;
+	      }*/
+		if(v1>v0){
+		  local_minima_pts[i].max_speed = getNewMaxSpeed(dist, v0);
+		  cout<<"Possible new speed "<<getNewMaxSpeed(dist, v0)<<endl;
+		}
+		else {
+		  local_minima_pts[i-1].max_speed = getNewMaxSpeed(dist, v1);
+		  cout<<"Possible new speed "<<getNewMaxSpeed(dist, v1)<<endl;
+		}
 	      i-=2;
+	      
 	    }
 	  }
 	}
