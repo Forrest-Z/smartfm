@@ -30,7 +30,7 @@
 
 #include <pluginlib/class_list_macros.h>
 
-#include "golfcar_purepursuit.h"
+#include <golfcar_ppc/golfcar_purepursuit.h>
 #include <pnc_msgs/move_status.h>
 #include <pnc_msgs/poi.h>
 #include <fmutil/fm_math.h>

@@ -1,4 +1,4 @@
-#include "golfcar_purepursuit.h"
+#include <golfcar_ppc/golfcar_purepursuit.h>
 
 #include <fmutil/fm_math.h>
 
