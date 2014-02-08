@@ -23,7 +23,7 @@ struct PointInfo{
   double acceleration, jerk, time;
   int idx;
   bool verified_ok;
-  PointInfo(): verified_ok(false){};
+  PointInfo(): jerk(0.0), verified_ok(false){};
   void copy(const PointInfo &p){
     this->speed_profile = p.speed_profile;
     this->acceleration = p.acceleration;
@@ -144,7 +144,7 @@ public:
     return solveCubic(jerk/6.0, acc/2.0, speed, -dist);
   }
   
-  double solveCubic(double a, double b, double c, double d){
+  double solveCubic(double a, double b, double c, double d, bool showOutput=false){
     //http://www.1728.org/cubic2.htm
     //example: time_step = solveCubic(jerk, acc_pt_pre, speed_pt_pre, -0.05);
     if(fabs(a)<1e-9){
@@ -156,16 +156,21 @@ public:
       //cout <<a<<" "<<b<<" "<<c<<" "<< temp<<endl;
       return (-b + sqrt(temp))/(2*a);
     }
+    if(showOutput)
+      cout <<a<<" "<<b<<" "<<c<<" "<< d<<endl;
     double f = ((3*c/a)-((b*b)/(a*a)))/3;
     double g = ((2*pow(b,3)/pow(a,3))-(9*b*c/pow(a,2))+(27*d/a))/27.0;
     double h = pow(g,2)/4.0+pow(f,3)/27.0;
     
     if(h > 0){
       double r = -g/2.0+sqrt(h);
-      double s = pow(r, 1/3.0);
+      double s = sgn(r)*pow(fabs(r), 1/3.0);
       double t = -g/2.0-sqrt(h);
       double u = sgn(t) * pow(fabs(t),1/3.0);
-      return s+u-(b/(3*a));
+      double answer = s+u-(b/(3*a));
+      if(showOutput)
+	cout<<" solveCubic "<<answer<<" r "<<r<<" s "<<s<<" t "<<t<<" u "<<u<<endl;
+      return answer;
     }
     else {
       double i = sqrt((pow(g,2)/4)-h);
@@ -180,7 +185,8 @@ public:
       double x3= l*(m-n)+p;
       double minx = 999.0;
       bool match_criteria = false;
-      //cout<<x1<<" "<<x2<<" "<<x3<<endl;
+      if(showOutput)
+	cout<<" solveCubic "<<x1<<" "<<x2<<" "<<x3<<endl;
       if(x1 < minx && x1>=0) {minx = x1; match_criteria=true;}
       if(x2 < minx && x2>=0) {minx = x2; match_criteria=true;}
       if(x3 < minx && x3>=0) {minx = x3; match_criteria=true;}
@@ -474,65 +480,83 @@ public:
 	  if(v0<v1){
 	    double single_profile_dist = getMinDistFullProfile(v0, v1);
 	    double given_dist = local_minima_pts[i].dist - local_minima_pts[i-1].dist;
+	    vector<PointInfo> acc_single_profile;
 	    if(given_dist > single_profile_dist){
 	      cout<<" Acc single"<<endl;
-	      vector<PointInfo> acc_single_profile;
 	      if(v1 - v0 > req_speed_inc){
 		acc_single_profile = completeAccelerationProfile(v0, v1);
 	      }
 	      else {
 		acc_single_profile = shortAccelerationProfile(v0, v1, max_jerk, dist_res);
 	      }
-	      cout <<" Ok prepare for single acc profile "<<given_dist<<" "<<single_profile_dist<<" "<<acc_single_profile.size()*dist_res<<endl;
-	      for(size_t j=0; j<acc_single_profile.size(); j++, start_idx++){
-		path_info[start_idx].copy(acc_single_profile[j]);
-	      }
-	      PointInfo constant_speed;
-	      constant_speed.speed_profile = v1;
-	      constant_speed.time = dist_res_/v1;
-	      for(int j=start_idx; j<=end_idx; j++)
-		path_info[j].copy(constant_speed);
+	      
 	    }
 	    else {
 	      single_profile_dist = getMinDist(v0, v1);
-	      if(single_profile_dist < given_dist){
-		cout <<" Ok prepare for single short acc profile "<<given_dist<<" "<<single_profile_dist<<endl;
+	      if(fabs(single_profile_dist - given_dist)<1e-5){
+		acc_single_profile = shortAccelerationProfile(v0, v1, max_jerk, dist_res);
+		cout <<" Ok prepare for single short acc profile "<<given_dist<<" "<<single_profile_dist<<" "<<acc_single_profile.size()<<endl;
+	      }
+	      else {
+		double new_speed = getNewSpeedShortProfile(v0, given_dist);
+		local_minima_pts[i].max_speed = new_speed;
+		i-=2;
 	      }
 	    }
+	    cout <<" Ok prepare for single acc profile "<<given_dist<<" "<<single_profile_dist<<" "<<acc_single_profile.size()*dist_res<<endl;  
+	    for(size_t j=0; j<acc_single_profile.size(); j++, start_idx++){
+	      path_info[start_idx].copy(acc_single_profile[j]);
+	    }
+	    PointInfo constant_speed;
+	    constant_speed.speed_profile = v1;
+	    constant_speed.time = dist_res_/v1;
+	    for(int j=start_idx; j<=end_idx; j++)
+	      path_info[j].copy(constant_speed);
 	  }
 	  else{
 	    double single_profile_dist = getMinDistFullProfile(v1, v0);
 	    double given_dist = local_minima_pts[i].dist - local_minima_pts[i-1].dist;
+	    vector<PointInfo> dec_single_profile;
 	    if(given_dist > single_profile_dist){
 	      cout<<" Dec single"<<endl;
-	      vector<PointInfo> dec_single_profile;
 	      if(v0 - v1 > req_speed_inc){
 		dec_single_profile = completeDeccelerationProfile(v0, v1);
 	      }
 	      else {
 		dec_single_profile = shortAccelerationProfile(v0, v1, -max_jerk, dist_res);
 	      }
-	      cout <<" Ok prepare for single dec profile "<<given_dist<<" "<<single_profile_dist<<" "<<dec_single_profile.size()*dist_res<<endl;
-	      for(int j=(int)dec_single_profile.size()-1; j>=0; j--, end_idx--){
-		path_info[end_idx].copy(dec_single_profile[j]);
-	      }
-	      PointInfo constant_speed;
-	      constant_speed.speed_profile = v0;
-	      constant_speed.time = dist_res_/v0;
-	      for(int j=start_idx; j<=end_idx; j++)
-		path_info[j].copy(constant_speed);
 	    }
 	    else {
 	      single_profile_dist = getMinDist(v1, v0);
-	      if(single_profile_dist < given_dist){
-		cout <<" Ok prepare for single short dec profile "<<given_dist<<" "<<single_profile_dist<<endl;
+	      cout<<" single_profile_dist "<<single_profile_dist<<" "<<given_dist<<" ";
+	      if(fabs(single_profile_dist - given_dist)<1e-5) {
+		cout <<" Ok prepare for single short dec profile "<<given_dist<<" "<<single_profile_dist<<" v0 "<<v0<<" v1 "<<v1<<endl;
+		dec_single_profile = shortAccelerationProfile(v0, v1, -max_jerk, dist_res, true);
+	      }
+	      else {
+		double new_speed = getNewSpeedShortProfile(v1, given_dist);
+		local_minima_pts[i-1].max_speed = new_speed;
+		i-=2;
 	      }
 	    }
+	    cout <<" Ok prepare for single dec profile "<<given_dist<<" "<<single_profile_dist<<" "<<dec_single_profile.size()*dist_res<<endl;
+	    for(int j=(int)dec_single_profile.size()-1; j>=0; j--, end_idx--){
+	      path_info[end_idx].copy(dec_single_profile[j]);
+	    }
+	    PointInfo constant_speed;
+	    constant_speed.speed_profile = v0;
+	    constant_speed.time = dist_res_/v0;
+	    for(int j=start_idx; j<=end_idx; j++)
+	      path_info[j].copy(constant_speed);
 	  }
 	}
       }
     }  
+    sw2.end();
     publishPathInfo(path_info, local_minima_pts);
+  }
+  double getNewSpeedShortProfile(double v0, double dist){
+    return solveCubic(1.0, v0, -v0*v0, -pow(v0, 3)-max_jerk_*dist*dist);
   }
   double getMinDist(double v0, double v1){
     return (v1+v0)*sqrt((v1-v0)/max_jerk_);
@@ -573,7 +597,7 @@ public:
     completeProfile.insert(completeProfile.end(), acc_p3.begin(), acc_p3.end());
     return completeProfile;
   }
-  vector<PointInfo> shortAccelerationProfile(double v0, double v1, double max_jerk, double dist_res){
+  vector<PointInfo> shortAccelerationProfile(double v0, double v1, double max_jerk, double dist_res, bool debug=false){
     vector<PointInfo> speed_profile;
     double v_switch = (v0 + v1)/2.0;
     PointInfo pt;
@@ -600,18 +624,24 @@ public:
     }
     while(true){
       double time_step = getTimeStep(-max_jerk, acc_now, speed_now, dist_res);
+      //due to quantization of distance, it could be a case where the time step is too huge overwhelming
+      //speed now and turning into the other side of the profile, which we will have to avoid at all cost
       speed_now += acc_now*time_step - max_jerk*time_step*time_step*0.5;
       acc_now -= max_jerk*time_step;
       pt.speed_profile = speed_now;
       pt.time = time_step;
       pt.acceleration = acc_now;
-      pt.jerk = max_jerk;
+      pt.jerk = -max_jerk;
       if(acc_acc){
 	if(speed_now > v1)
+	  break;
+	if(speed_now < speed_profile[speed_profile.size()-1].speed_profile)
 	  break;
       }
       else {
 	if(speed_now < v1)
+	  break;
+	if(speed_now > speed_profile[speed_profile.size()-1].speed_profile)
 	  break;
       }
       speed_profile.push_back(pt);
