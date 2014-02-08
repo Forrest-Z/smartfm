@@ -32,4 +32,6 @@ LINK_DIRECTORIES (${LINK_DIRECTORIES} ${BookingCommonRootDir})
 
 rosbuild_add_executable(trajectory_simulator src/trajectory_simulator.cpp)
 target_link_libraries(trajectory_simulator bookingcommon)
+rosbuild_add_executable(trajectory_simulator_2 src/trajectory_simulator_2.cpp)
+target_link_libraries(trajectory_simulator_2 bookingcommon)
 #target_link_libraries(example ${PROJECT_NAME})

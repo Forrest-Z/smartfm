@@ -185,6 +185,30 @@ public:
 	last_acc_sign = acc_sign;
       }
     }
+    bool limit_exceeded = false;
+    minima_pts[0].verified_ok = true;
+    for(size_t i=1; i<minima_pts.size(); i++){
+      double speed_diff = minima_pts[i].max_speed - minima_pts[i-1].max_speed;
+      double dist = minima_pts[i].dist - minima_pts[i-1].dist;
+      double acc = speed_diff/(dist/max_speed_);
+      cout<<i<<": acc="<<acc<<endl;
+      bool cur_acc_sign = acc > 0;
+      if(limit_exceeded){
+	if(last_acc_sign == cur_acc_sign)
+	  minima_pts[i-1].verified_ok =false;
+	limit_exceeded = false;
+      }
+      if(fabs(acc) > max_acc_)
+	limit_exceeded = true;
+      minima_pts[i].verified_ok = true;
+      last_acc_sign = cur_acc_sign;
+    }
+    for(size_t i=0; i<minima_pts.size();){
+      if(!minima_pts[i].verified_ok)
+	minima_pts.erase(minima_pts.begin()+i);
+      else
+	i++;
+    }
     return minima_pts;
   }
   
@@ -518,7 +542,44 @@ public:
     local_min_pub.publish(local_pc);
     ros::spin();
   }
-  
+  void simpleAccelerationProfile(double v0, double v1, vector<PointInfo> &path_info, int &last_acceleration_idx, int end){
+    //double delta_t = sqrt(fabs(speed_check-v0)/max_jerk);
+    //double v_switch = v0 + 0.5*max_jerk*delta_t*delta_t;
+    double acc_pt_pre = 0.0;
+    double v_switch = (v0+v1)/2.0;
+    bool speed_limit = true;
+    dynamicAccelerationProfile(end, max_jerk_, path_info, acc_pt_pre, v0, last_acceleration_idx, speed_limit, v_switch);
+    cout<<"v_switch = "<<v_switch<<endl;
+    dynamicAccelerationProfile(end, -max_jerk_, path_info, acc_pt_pre, v0, last_acceleration_idx);
+}
+
+  void simpleDeccelerationProfile(double v0, double v1, vector<PointInfo> &path_info, int &last_acceleration_idx, int end){
+    //double delta_t = sqrt(fabs(speed_check-v0)/max_jerk);
+    //double v_switch = v0 + 0.5*max_jerk*delta_t*delta_t;
+    double min_dist = getMinDistFullProfile(v0, v1);
+    int dist_buffer = min_dist/0.05 + 10;
+    vector<PointInfo> path_info_temp;
+    path_info_temp.resize(dist_buffer);
+    int last_dec_idx = 0;
+    double acc_pt_pre = 0.0;
+    double v_switch = (v0+v1)/2.0;
+    cout<<"v0 "<<v0<<" v1 "<<v1<<" v_switch "<<v_switch<<endl;
+    bool speed_limit = true;
+    dynamicDecclerationProfile(dist_buffer, -max_jerk_, path_info_temp, acc_pt_pre, v1, last_dec_idx, speed_limit, v_switch);
+    dynamicDecclerationProfile(dist_buffer, max_jerk_, path_info_temp, acc_pt_pre, v1, last_dec_idx);
+    fillUpDecceleration(last_dec_idx, last_acceleration_idx, path_info, path_info_temp, end); 
+    
+    
+}
+
+  void fillUpDecceleration(int last_dec_idx, int &path_info_idx, vector<PointInfo> &path_info, vector<PointInfo> &path_info_temp, int end){
+    for(int j=last_dec_idx; j>=0 || path_info_idx>end; j--, path_info_idx--){
+	path_info[path_info_idx].speed_profile = path_info_temp[j].speed_profile;
+	path_info[path_info_idx].jerk = path_info_temp[j].jerk;
+	path_info[path_info_idx].acceleration = path_info_temp[j].acceleration;
+	path_info[path_info_idx].time = path_info_temp[j].time;
+      }
+  }	
   void mainFunction(vector<PointInfo> &local_minima_pts, vector<PointInfo> &path_info, double &max_speed, double &max_acc, double &max_jerk){
     fmutil::Stopwatch sw2("connecting points");
     double req_speed_inc = max_acc*max_acc/max_jerk;
@@ -561,7 +622,7 @@ public:
 	  double min_dist_b = getMinDistFullProfile(v1, speed_check);
 	  int path_info_idx = local_minima_pts[i].idx;
 	  double v_start, v_end;
-	  double end = local_minima_pts[i].idx;
+	  int end = local_minima_pts[i].idx;
 	  double acc_pt_pre = 0.0;
 	  int last_acceleration_idx;
 	  last_acceleration_idx = local_minima_pts[i-1].idx;
@@ -576,18 +637,15 @@ public:
 	    dynamicAccelerationProfile(end, -max_jerk, path_info, local_max_acc, v0, last_acceleration_idx);
 	  }
 	  else {
-	    double delta_t = sqrt(fabs(speed_check-v0)/max_jerk);
-	    double v_switch = v0 + 0.5*max_jerk*delta_t*delta_t;
-	    bool speed_limit = true;
-	    dynamicAccelerationProfile(end, max_jerk, path_info, acc_pt_pre, v0, last_acceleration_idx, speed_limit, v_switch);
-	    dynamicAccelerationProfile(end, -max_jerk, path_info, acc_pt_pre, v0, last_acceleration_idx);
+	    cout<<"In simple acceleration profile"<<endl;
+	    simpleAccelerationProfile(v0, speed_check, path_info, last_acceleration_idx, end);
 	  }
-	  acc_pt_pre = 0.0;
-	  int dist_buffer = min_dist_b/0.05 + 10;
-	  vector<PointInfo> path_info_temp;
-	  path_info_temp.resize(dist_buffer);
-	  int last_dec_idx = 0;
 	  if(speed_check-v1 > req_speed_inc){
+	    acc_pt_pre = 0.0;
+	    int dist_buffer = min_dist_b/0.05 + 10;
+	    vector<PointInfo> path_info_temp;
+	    path_info_temp.resize(dist_buffer);
+	    int last_dec_idx = 0;
 	    v_start = v1 + req_speed_inc/2.0;
 	    double max_dec = -max_acc;
 	    double start_dec_speed = speed_check;
@@ -596,19 +654,11 @@ public:
 	    constDeccelerationProfile(dist_buffer, v_start, path_info_temp, max_dec, start_dec_speed, last_dec_idx);
 	    max_dec = -max_acc;
 	    dynamicDecclerationProfile(dist_buffer, max_jerk, path_info_temp, max_dec, start_dec_speed, last_dec_idx);
+	    fillUpDecceleration(last_dec_idx, path_info_idx, path_info, path_info_temp, last_acceleration_idx);
 	  }
 	  else {
-	    double delta_t = sqrt(fabs(speed_check-v1)/max_jerk);
-	    double v_switch = v1 + 0.5*max_jerk*delta_t*delta_t;
-	    bool speed_limit = true;
-	    dynamicDecclerationProfile(end, -max_jerk, path_info_temp, acc_pt_pre, v0, last_dec_idx, speed_limit, v_switch);
-	    dynamicDecclerationProfile(end, max_jerk, path_info_temp, acc_pt_pre, v0, last_dec_idx);
-	  }
-	  for(int j=last_dec_idx; j>=0; j--, path_info_idx--){
-	    path_info[path_info_idx].speed_profile = path_info_temp[j].speed_profile;
-	    path_info[path_info_idx].jerk = path_info_temp[j].jerk;
-	    path_info[path_info_idx].acceleration = path_info_temp[j].acceleration;
-	    path_info[path_info_idx].time = path_info_temp[j].time;
+	    cout<<"In simple decceleration profile"<<endl;
+	    simpleDeccelerationProfile(v1, speed_check, path_info, path_info_idx, end);
 	  }
 	  double constant_time_step = 0.05/speed_check;
 	  for(int j=last_acceleration_idx; j<=path_info_idx; j++){
@@ -671,7 +721,7 @@ public:
 	      else
 		min_dist_alt = getMinDist(v1, v0);
 	      cout<<min_dist_alt<<" < "<<dist<<"? ";
-	      if(dist-min_dist_alt >= -1e-6) {
+	      if(true) {
 		cout<<" OK!"<<endl;
 		double delta_t = sqrt(fabs(v1-v0)/max_jerk);
 		int end = local_minima_pts[i].idx;
@@ -732,7 +782,7 @@ public:
 	    else
 	      min_dist_alt = getMinDist(v1, v0);
 	    cout<<min_dist_alt<<" < "<<dist<<" dist-min_dist_alt "<<dist-min_dist_alt<<"? ";
-	    if(dist - min_dist_alt >= -1e-6) {
+	    if(true) {
 	      cout<<" OK!"<<endl;
 	      double delta_t = sqrt(fabs(v1-v0)/max_jerk);
 	      int end = local_minima_pts[i].idx;
@@ -740,22 +790,26 @@ public:
 	      int last_acceleration_idx = local_minima_pts[i-1].idx;
 	      bool speed_limit = true;
 	      if(v1>v0) {
-		double v_switch = v0 + 0.5*max_jerk*delta_t*delta_t;
-		dynamicAccelerationProfile(end, max_jerk, path_info, acc_pt_pre, v0, last_acceleration_idx, speed_limit, v_switch);
-		dynamicAccelerationProfile(end, -max_jerk, path_info, acc_pt_pre, v0, last_acceleration_idx);
+		double v_switch = (v0 + v1)/2.0;// 0.5*max_jerk*delta_t*delta_t;
+		simpleAccelerationProfile(v0, v1, path_info, last_acceleration_idx, end);
+		//dynamicAccelerationProfile(end, max_jerk, path_info, acc_pt_pre, v0, last_acceleration_idx, speed_limit, v_switch);
+		//dynamicAccelerationProfile(end, -max_jerk, path_info, acc_pt_pre, v0, last_acceleration_idx);
+		double constant_time_step = 0.05/v1;
+		for(int j=last_acceleration_idx; j<=local_minima_pts[i].idx; j++){
+		  path_info[j].speed_profile = v1;
+		  path_info[j].jerk = 0.0;
+		  path_info[j].acceleration = 0.0;
+		  path_info[j].time = constant_time_step;
+		}
 	      }
 	      else {
-		double v_switch = v1 + 0.5*max_jerk*delta_t*delta_t;
-		dynamicDecclerationProfile(end, -max_jerk, path_info, acc_pt_pre, v0, last_acceleration_idx, speed_limit, v_switch);
-		dynamicDecclerationProfile(end, max_jerk, path_info, acc_pt_pre, v0, last_acceleration_idx);
+		double v_switch = (v0 + v1)/2.0;//v1 + 0.5*max_jerk*delta_t*delta_t;
+	        
+		simpleDeccelerationProfile(v1, v0, path_info, local_minima_pts[i].idx, last_acceleration_idx);
+		//dynamicDecclerationProfile(end, -max_jerk, path_info, acc_pt_pre, v0, last_acceleration_idx, speed_limit, v_switch);
+		//dynamicDecclerationProfile(end, max_jerk, path_info, acc_pt_pre, v0, last_acceleration_idx);
 	      }
-	      double constant_time_step = 0.05/v1;
-	      for(int j=last_acceleration_idx; j<=local_minima_pts[i].idx; j++){
-		path_info[j].speed_profile = v1;
-		path_info[j].jerk = 0.0;
-		path_info[j].acceleration = 0.0;
-		path_info[j].time = constant_time_step;
-	      } 
+	       
 	    }
 	    else {
 	      cout<<" Nah4! Got to look backward"<<endl;
