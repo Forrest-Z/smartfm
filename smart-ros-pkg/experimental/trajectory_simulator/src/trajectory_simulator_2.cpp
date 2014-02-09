@@ -222,7 +222,8 @@ public:
       }
     }
     bool limit_exceeded = false;
-    minima_pts[0].verified_ok = true;
+    if(minima_pts.size()>0)
+      minima_pts[0].verified_ok = true;
     for(size_t i=1; i<minima_pts.size(); i++){
       double speed_diff = minima_pts[i].max_speed - minima_pts[i-1].max_speed;
       double dist = minima_pts[i].dist - minima_pts[i-1].dist;
@@ -342,7 +343,7 @@ public:
     double forward_achor_pt_dist = 1.0;
     double car_length = 2.55;
     double dist_res, max_lat_acc, max_speed, max_acc, max_jerk;
-    double acc_ini, speed_ini;
+    double acc_ini, speed_ini, max_sim_length;
     priv_nh.param("dist_res", dist_res, 0.05);
     priv_nh.param("max_lat_acc", max_lat_acc, 1.0);
     priv_nh.param("max_speed", max_speed, 5.0);
@@ -350,7 +351,7 @@ public:
     priv_nh.param("max_jerk", max_jerk, 0.5);
     priv_nh.param("acc_ini", acc_ini, 0.0);
     priv_nh.param("speed_ini", speed_ini, 0.0);
-    
+    priv_nh.param("max_sim_length", max_sim_length, 50.0);
     max_acc_ = max_acc;
     max_jerk_ = max_jerk;
     max_speed_ = max_speed;
@@ -389,6 +390,7 @@ public:
     initial_point.idx = path_no++;
     path_info.push_back(initial_point);
     fmutil::Stopwatch steering_sw("steering", false);
+    size_t total_max_path = max_sim_length/dist_res;
     while(path_exist && ros::ok()){
       double steer_angle, dist_to_goal;
       steering_sw.start();
@@ -416,8 +418,8 @@ public:
       point_info.curve_max_speed = point_info.max_speed;
       point_info.time = dist_res/max_speed;
       path_info.push_back(point_info);
+      if(path_info.size() > total_max_path) break;
     }
-    sw.end();
     cout<<steering_sw.total_/1000<<" ms"<<endl;
     cout<<path_info.size()<<" point size"<<endl;
     vector<PointInfo> local_minima_pts = localMinimaSearch(path_info);
@@ -575,6 +577,7 @@ public:
       }
     }  
     sw2.end();
+    sw.end();
     publishPathInfo(path_info, local_minima_pts);
   }
   double getNewSpeedShortProfile(double low_speed, double high_speed, double dist){
