@@ -153,8 +153,11 @@ public:
       b=c;
       c=d;
       double temp = b*b - 4*a*c;
-      //cout <<a<<" "<<b<<" "<<c<<" "<< temp<<endl;
-      return (-b + sqrt(temp))/(2*a);
+      //this may occur if decceleration overshoot given a distance
+      if(showOutput)
+	cout<<" a b c temp "<<a<<" "<<b<<" "<<c<<" "<<temp<<endl;
+      if(temp < 0) return 1e9;
+      else return (-b + sqrt(temp))/(2*a);
     }
     if(showOutput)
       cout <<a<<" "<<b<<" "<<c<<" "<< d<<endl;
@@ -339,11 +342,15 @@ public:
     double forward_achor_pt_dist = 1.0;
     double car_length = 2.55;
     double dist_res, max_lat_acc, max_speed, max_acc, max_jerk;
+    double acc_ini, speed_ini;
     priv_nh.param("dist_res", dist_res, 0.05);
     priv_nh.param("max_lat_acc", max_lat_acc, 1.0);
     priv_nh.param("max_speed", max_speed, 5.0);
     priv_nh.param("max_acc", max_acc, 0.5);
     priv_nh.param("max_jerk", max_jerk, 0.5);
+    priv_nh.param("acc_ini", acc_ini, 0.0);
+    priv_nh.param("speed_ini", speed_ini, 0.0);
+    
     max_acc_ = max_acc;
     max_jerk_ = max_jerk;
     max_speed_ = max_speed;
@@ -381,9 +388,12 @@ public:
     initial_point.curve_max_speed = max_speed;
     initial_point.idx = path_no++;
     path_info.push_back(initial_point);
+    fmutil::Stopwatch steering_sw("steering", false);
     while(path_exist && ros::ok()){
       double steer_angle, dist_to_goal;
+      steering_sw.start();
       path_exist = pp_->steering_control(&steer_angle, &dist_to_goal);
+      steering_sw.end(false);
       dist_travel += model.SetSpeed(speed_now, steer_angle);
       PointInfo point_info;
       point_info.position.x = model.pose_.x;
@@ -407,10 +417,11 @@ public:
       point_info.time = dist_res/max_speed;
       path_info.push_back(point_info);
     }
-    sw.end();    
+    sw.end();
+    cout<<steering_sw.total_/1000<<" ms"<<endl;
     cout<<path_info.size()<<" point size"<<endl;
     vector<PointInfo> local_minima_pts = localMinimaSearch(path_info);
-    path_info[0].max_speed = 0.0;
+    path_info[0].max_speed = speed_ini;
     path_info[path_info.size()-1].max_speed = 0.0;
     local_minima_pts.push_back(path_info[0]);
     local_minima_pts.push_back(path_info[path_info.size()-1]);
@@ -485,7 +496,8 @@ public:
 	    double single_profile_dist = getMinDistFullProfile(v0, v1);
 	    double given_dist = local_minima_pts[i].dist - local_minima_pts[i-1].dist;
 	    vector<PointInfo> acc_single_profile;
-	    if(given_dist > single_profile_dist){
+	    cout<<" given_dist vs single_profile_dist "<<given_dist<<" "<<single_profile_dist<<" "<<given_dist-single_profile_dist;
+	    if(given_dist >= single_profile_dist || fabs(given_dist-single_profile_dist)<1e-9){
 	      cout<<" Acc single"<<endl;
 	      if(v1 - v0 > req_speed_inc){
 		acc_single_profile = completeAccelerationProfile(v0, v1);
@@ -496,19 +508,19 @@ public:
 	      
 	    }
 	    else {
-	      single_profile_dist = getMinDist(v0, v1);
+	      /*single_profile_dist = getMinDist(v0, v1);
 	      cout<<" single_profile_dist "<<single_profile_dist<<" "<<given_dist<<" ";
 	      if(fabs(single_profile_dist - given_dist)<1e-5 || single_profile_dist<given_dist){
 		acc_single_profile = shortAccelerationProfile(v0, v1, max_jerk, dist_res);
 		cout <<" Ok prepare for single short acc profile "<<given_dist<<" "<<single_profile_dist<<" "<<acc_single_profile.size()<<endl;
 	      }
-	      else {
-		double new_speed = getNewSpeedShortProfile(v0, given_dist);
+	      else {*/
+		double new_speed = getNewSpeedShortProfile(v0,v1, given_dist);
 		//if(new_speed < local_minima_pts[i].max_speed)
+		cout<<"Reversing at acc at new speed "<<new_speed<<endl;
 		local_minima_pts[i].max_speed = new_speed;
-		cout<<"Reversing at acc at new speed "<<local_minima_pts[i].max_speed<<endl;
 		i-=2;
-	      }
+	      //}
 	    }
 	    cout <<" Ok prepare for single acc profile "<<given_dist<<" "<<single_profile_dist<<" "<<acc_single_profile.size()*dist_res<<endl;  
 	    for(size_t j=0; j<acc_single_profile.size(); j++, start_idx++){
@@ -524,7 +536,8 @@ public:
 	    double single_profile_dist = getMinDistFullProfile(v1, v0);
 	    double given_dist = local_minima_pts[i].dist - local_minima_pts[i-1].dist;
 	    vector<PointInfo> dec_single_profile;
-	    if(given_dist > single_profile_dist){
+	    cout<<" given_dist vs single_profile_dist "<<given_dist<<" "<<single_profile_dist<<" "<<given_dist-single_profile_dist;
+	    if(given_dist >= single_profile_dist || fabs(given_dist-single_profile_dist)<1e-9){
 	      cout<<" Dec single"<<endl;
 	      if(v0 - v1 > req_speed_inc){
 		dec_single_profile = completeDeccelerationProfile(v0, v1);
@@ -534,19 +547,19 @@ public:
 	      }
 	    }
 	    else {
-	      single_profile_dist = getMinDist(v1, v0);
+	      /*single_profile_dist = getMinDist(v1, v0);
 	      cout<<" single_profile_dist "<<single_profile_dist<<" "<<given_dist<<" ";
 	      if(fabs(single_profile_dist - given_dist)<1e-5 || single_profile_dist<given_dist) {
 		cout <<" Ok prepare for single short dec profile "<<given_dist<<" "<<single_profile_dist<<" v0 "<<v0<<" v1 "<<v1<<endl;
 		dec_single_profile = shortAccelerationProfile(v0, v1, -max_jerk, dist_res, true);
 	      }
-	      else {
-		double new_speed = getNewSpeedShortProfile(v1, given_dist);
+	      else {*/
+		double new_speed = getNewSpeedShortProfile(v1,v0, given_dist);
 		//if(new_speed < local_minima_pts[i-1].max_speed)
+		cout<<"Reversing at dec new max speed "<<new_speed<<endl;
 		  local_minima_pts[i-1].max_speed = new_speed;
-		cout<<"Reversing at dec new max speed "<<local_minima_pts[i-1].max_speed<<endl;
 		i-=2;
-	      }
+	      //}
 	    }
 	    cout <<" Ok prepare for single dec profile "<<given_dist<<" "<<single_profile_dist<<" "<<dec_single_profile.size()*dist_res<<endl;
 	    for(int j=(int)dec_single_profile.size()-1; j>=0; j--, end_idx--){
@@ -564,10 +577,21 @@ public:
     sw2.end();
     publishPathInfo(path_info, local_minima_pts);
   }
-  double getNewSpeedShortProfile(double v0, double dist){
-    return solveCubic(1.0, v0, -v0*v0, -pow(v0, 3)-max_jerk_*dist*dist);
+  double getNewSpeedShortProfile(double low_speed, double high_speed, double dist){
+    
+    double suggest_speed_1 = solveCubic(0.0, 0.5/max_acc_, 0.5*max_acc_/max_jerk_, 
+					0.5*low_speed/max_jerk_ - 0.5*low_speed*low_speed/max_acc_-dist);
+    //just don't deal with speed that is smaller
+    if(suggest_speed_1 - low_speed < max_acc_*max_acc_/max_jerk_)
+      suggest_speed_1 = low_speed;
+    //cout<<"Not implemented yet!! suggested "<<suggest_speed_1<<" "<<min_dist<<" given "<<high_speed<<" "<<dist<<endl;
+    return suggest_speed_1;
+    //this also not respect maximum acceleration
+    //return solveCubic(1.0, v0, -v0*v0, -pow(v0, 3)-max_jerk_*dist*dist);
+    
   }
   double getMinDist(double v0, double v1){
+    //this function will not respect maximum acceleration
     return (v1+v0)*sqrt((v1-v0)/max_jerk_);
   }
   double getMinDistFullProfile(double v0, double v1){
