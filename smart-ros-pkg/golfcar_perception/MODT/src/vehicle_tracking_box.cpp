@@ -118,7 +118,7 @@ vehicle_tracking_box::vehicle_tracking_box():
 			box_model measure_box;
 			calculate_measurement_box(incoming_meas_tmp, current_moving_direction, measure_box);
 
-			//todo: to update the model box using the measurement box;
+			//to update the model box using the measurement box;
 			update_box_track(track_tmp, measure_box);
 
 
@@ -336,6 +336,12 @@ vehicle_tracking_box::vehicle_tracking_box():
 		tf::Pose Odom_to_Vt = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(centroid_position.back().x), tfScalar(centroid_position.back().y), tfScalar(0)));
 		tf::Pose Vtm1_to_Vt = Odom_to_Vtm1.inverse()*Odom_to_Vt;
 
+		//when only use contour centroid displacement as object movement;
+		//which is very stable, compared to ICP;
+		newMeas_poseinOdom = Odom_to_Vt;
+		oldMeas_poseinOdom = Odom_to_Vt*Vtm1_to_Vt.inverse();
+
+		/*
 		tf::Pose Odom_to_Etm1, Odom_to_Et, Etm1_to_Et;
 		tf::poseMsgToTF(old_pose, Odom_to_Etm1);
 		tf::poseMsgToTF(new_pose, Odom_to_Et);
@@ -411,9 +417,9 @@ vehicle_tracking_box::vehicle_tracking_box():
 		double vehicle_delta_yaw = tf::getYaw(ICP_Vtm1_To_Vt.getRotation());
 		cout<<"vehicle motion: "<<vehicle_delta_x<<","<<vehicle_delta_y<<","<<vehicle_delta_yaw<<endl;
 		track.omega = vehicle_delta_yaw/time_difference;
-
 		newMeas_poseinOdom = Odom_to_Vt;
 		oldMeas_poseinOdom = Odom_to_Vt*ICP_Vtm1_To_Vt.inverse();
+		*/
 	}
 
 	void vehicle_tracking_box::ICP_motion2shape(box_model_track& track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom )
