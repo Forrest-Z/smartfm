@@ -349,7 +349,7 @@ public:
       local_min_pub = nh.advertise<sensor_msgs::PointCloud>("local_min_puts", 1, true);
     };
   
-  double getJerk(double speed_ini, double acc_ini, double jerk_ini) {  
+  PointInfo getJerk(double speed_ini, double acc_ini, double jerk_ini, geometry_msgs::Pose initial_pose) {  
     double min_look_ahead_dist = 4.0;
     double forward_achor_pt_dist = 1.0;
     double car_length = 2.55;
@@ -374,7 +374,6 @@ public:
     double speed_now = 3.0;
     double dist_travel = 0.0;
     int path_no = 0;
-    geometry_msgs::Pose initial_pose;
     initial_pose.position = first_pt;
     initial_pose.orientation = tf::createQuaternionMsgFromYaw(car_init_orientation);
     pp_->vehicle_base_ = initial_pose;
@@ -586,7 +585,7 @@ public:
     sw2.end();
     sw.end();
     publishPathInfo(path_info, local_minima_pts);
-    return path_info[0].jerk;
+    return path_info[0];
   }
   double getNewSpeedShortProfile(double low_speed, double high_speed, double dist){
     
@@ -661,7 +660,7 @@ public:
       pt.time = time_step;
       pt.acceleration = acc_now;
       pt.jerk = max_jerk;
-      cout<<"p1"<<pt.time<<" "<<pt.speed_profile<<" "<<pt.acceleration<<" "<<pt.jerk<<endl;
+      //cout<<"p1 "<<pt.time<<" "<<pt.speed_profile<<" "<<pt.acceleration<<" "<<pt.jerk<<endl;
       if(a0 > 0){
 	if(acc_now < 0 || acc_now > max_acc_){
 	  if(acc_now > max_acc_) continue_neg_jerk = true;
@@ -694,7 +693,7 @@ public:
 	pt.time = time_step;
 	pt.acceleration = acc_now;
 	pt.jerk = max_jerk;
-	cout<<"p2"<<pt.time<<" "<<pt.speed_profile<<" "<<pt.acceleration<<" "<<pt.jerk<<endl;
+	//cout<<"p2 "<<pt.time<<" "<<pt.speed_profile<<" "<<pt.acceleration<<" "<<pt.jerk<<endl;
 	if(a0 > 0){
 	  if(acc_now < 0)
 	    break;
@@ -706,10 +705,17 @@ public:
       }
     }
     PointInfo virtual_pt;
-    virtual_pt = speed_profile[speed_profile.size()-1];
-    virtual_pt.max_speed = virtual_pt.speed_profile;
-    virtual_pt.idx = -speed_profile.size();
-    virtual_pt.dist = virtual_pt.idx*dist_res_;
+    if(speed_profile.size()>0){
+      virtual_pt = speed_profile[speed_profile.size()-1];
+      virtual_pt.max_speed = virtual_pt.speed_profile;
+      virtual_pt.idx = -speed_profile.size();
+      virtual_pt.dist = virtual_pt.idx*dist_res_;
+    }
+    else {
+      virtual_pt.max_speed = v0;
+      virtual_pt.idx = 0.0;
+      virtual_pt.dist = 0.0;
+    }
     return virtual_pt;
   }
   vector<PointInfo> shortAccelerationProfile(double v0, double v1, double max_jerk, double dist_res, bool debug=false){
@@ -822,7 +828,7 @@ int main(int argc, char** argv){
   ros::NodeHandle nh;
   ros::NodeHandle priv_nh("~");
   double dist_res, max_lat_acc, max_speed, max_acc, max_jerk;
-  double acc_ini, speed_ini, max_sim_length, jerk_ini;
+  double acc_ini, speed_ini, max_sim_length, jerk_ini, running_freq;
   priv_nh.param("dist_res", dist_res, 0.05);
   priv_nh.param("max_lat_acc", max_lat_acc, 1.0);
   priv_nh.param("max_speed", max_speed, 5.0);
@@ -832,9 +838,32 @@ int main(int argc, char** argv){
   priv_nh.param("acc_ini", acc_ini, 0.0);
   priv_nh.param("speed_ini", speed_ini, 0.0);
   priv_nh.param("jerk_ini", jerk_ini, 0.0);
+  priv_nh.param("running_freq", running_freq, 25.0);
+  geometry_msgs::Pose robot_pose;
   TrajectorySimulator ts(max_lat_acc, max_speed, max_acc, max_jerk, dist_res, max_sim_length,nh);
-  double jerk = ts.getJerk(speed_ini, acc_ini, jerk_ini);
-  cout<<"Jerk requested "<<jerk<<endl;
+  speed_ini = 0.0;
+  acc_ini = 0.0;
+  jerk_ini = 0.0;
+  double speed_now = 0.0;
+  double acc_now = 0.0;
+  
+  ros::Rate r(running_freq);
+  double sleep_time = 1.0/running_freq;
+  while(ros::ok()){
+    PointInfo info = ts.getJerk(speed_ini, acc_ini, jerk_ini,robot_pose);
+    double jerk = info.jerk;
+    acc_now = acc_ini + jerk * sleep_time;
+    speed_now = speed_ini + acc_ini * sleep_time + 0.5 * jerk * sleep_time * sleep_time;
+    cout<<"SAJ: "<<speed_now<<" "<<acc_now<<" "<<jerk<<endl;
+    if(acc_now > max_acc) acc_now = max_acc;
+    if(acc_now < 0) acc_now = 0;
+    if(fabs(jerk) < 1e-9){
+      if(fabs(info.acceleration) < 1e-9)
+	acc_now = 0.0;
+    }
+    acc_ini = acc_now;
+    speed_ini = speed_now;
+  }
   ros::spin();
   return 0;
 }
