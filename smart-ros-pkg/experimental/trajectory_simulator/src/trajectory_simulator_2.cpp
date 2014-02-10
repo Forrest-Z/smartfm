@@ -144,6 +144,10 @@ public:
     return solveCubic(jerk/6.0, acc/2.0, speed, -dist);
   }
   
+  double getReversedTimeStep(double jerk, double acc, double speed, double dist){
+    return solveCubic(jerk/6.0, -acc/2.0, speed, -dist);
+  }
+  
   double solveCubic(double a, double b, double c, double d, bool showOutput=false){
     //http://www.1728.org/cubic2.htm
     //example: time_step = solveCubic(jerk, acc_pt_pre, speed_pt_pre, -0.05);
@@ -343,7 +347,7 @@ public:
     double forward_achor_pt_dist = 1.0;
     double car_length = 2.55;
     double dist_res, max_lat_acc, max_speed, max_acc, max_jerk;
-    double acc_ini, speed_ini, max_sim_length;
+    double acc_ini, speed_ini, max_sim_length, jerk_ini;
     priv_nh.param("dist_res", dist_res, 0.05);
     priv_nh.param("max_lat_acc", max_lat_acc, 1.0);
     priv_nh.param("max_speed", max_speed, 5.0);
@@ -351,6 +355,7 @@ public:
     priv_nh.param("max_jerk", max_jerk, 0.5);
     priv_nh.param("acc_ini", acc_ini, 0.0);
     priv_nh.param("speed_ini", speed_ini, 0.0);
+    priv_nh.param("jerk_ini", jerk_ini, 0.0);
     priv_nh.param("max_sim_length", max_sim_length, 50.0);
     max_acc_ = max_acc;
     max_jerk_ = max_jerk;
@@ -389,13 +394,10 @@ public:
     initial_point.curve_max_speed = max_speed;
     initial_point.idx = path_no++;
     path_info.push_back(initial_point);
-    fmutil::Stopwatch steering_sw("steering", false);
     size_t total_max_path = max_sim_length/dist_res;
     while(path_exist && ros::ok()){
       double steer_angle, dist_to_goal;
-      steering_sw.start();
       path_exist = pp_->steering_control(&steer_angle, &dist_to_goal);
-      steering_sw.end(false);
       dist_travel += model.SetSpeed(speed_now, steer_angle);
       PointInfo point_info;
       point_info.position.x = model.pose_.x;
@@ -420,12 +422,20 @@ public:
       path_info.push_back(point_info);
       if(path_info.size() > total_max_path) break;
     }
-    cout<<steering_sw.total_/1000<<" ms"<<endl;
     cout<<path_info.size()<<" point size"<<endl;
     vector<PointInfo> local_minima_pts = localMinimaSearch(path_info);
-    path_info[0].max_speed = speed_ini;
+    PointInfo start_pt;
+    if(fabs(acc_ini)<1e-9) {
+      start_pt.max_speed = speed_ini;
+      start_pt.dist = 0.0;
+      start_pt.idx = 0;
+    }
+    else 
+      start_pt = addVirtualPoint(speed_ini, acc_ini, jerk_ini);
+    cout<<"start_pt: "<<start_pt.max_speed<<" "<<start_pt.dist<<endl;
+    
     path_info[path_info.size()-1].max_speed = 0.0;
-    local_minima_pts.push_back(path_info[0]);
+    local_minima_pts.push_back(start_pt);
     local_minima_pts.push_back(path_info[path_info.size()-1]);
     sort(local_minima_pts.begin(), local_minima_pts.end());
     printLocalMinimaStatus("after sort 2", local_minima_pts);
@@ -455,8 +465,8 @@ public:
 	double full_jerk_max_speed = path_info[full_jerk_idx].max_speed;
 	cout<<" full jerk speed "<<full_jerk_max_speed<<" @ full_jerk_idx"<<full_jerk_idx<<" ";
 	if(full_jerk_max_speed>=speed_check && speed_check > v0 && speed_check > v1){
-	  cout<<" OK! "<<endl;
 	  int start_idx = local_minima_pts[i-1].idx;
+	  cout<<" OK! and start at "<<start_idx<<endl;
 	  int end_idx = local_minima_pts[i].idx;
 	  double req_speed_inc = max_acc*max_acc/max_jerk;
 	  vector<PointInfo> acc_profile;
@@ -470,6 +480,7 @@ public:
 	    cout<<"Need acceleration profile for short speed diff "<<acc_profile.size()<<endl;
 	  }
 	  for(size_t j=0; j<acc_profile.size(); j++, start_idx++){
+	    if(start_idx<0) continue;
 	    path_info[start_idx].copy(acc_profile[j]);
 	  }
 	  vector<PointInfo> dec_profile;
@@ -487,8 +498,10 @@ public:
 	  PointInfo constant_speed;
 	  constant_speed.speed_profile = speed_check;
 	  constant_speed.time = dist_res_/speed_check;
-	  for(int j=start_idx; j<=end_idx; j++)
+	  for(int j=start_idx; j<=end_idx; j++){
+	    if(start_idx<0) continue;
 	    path_info[j].copy(constant_speed);
+	  }
 	}
 	else {
 	  int start_idx = local_minima_pts[i-1].idx;
@@ -526,6 +539,7 @@ public:
 	    }
 	    cout <<" Ok prepare for single acc profile "<<given_dist<<" "<<single_profile_dist<<" "<<acc_single_profile.size()*dist_res<<endl;  
 	    for(size_t j=0; j<acc_single_profile.size(); j++, start_idx++){
+	      if(start_idx<0) continue;
 	      path_info[start_idx].copy(acc_single_profile[j]);
 	    }
 	    PointInfo constant_speed;
@@ -570,8 +584,10 @@ public:
 	    PointInfo constant_speed;
 	    constant_speed.speed_profile = v0;
 	    constant_speed.time = dist_res_/v0;
-	    for(int j=start_idx; j<=end_idx; j++)
-	      path_info[j].copy(constant_speed);
+	    for(int j=start_idx; j<=end_idx; j++){
+	      if(start_idx<0) continue;
+		path_info[j].copy(constant_speed);
+	    }
 	  }
 	}
       }
@@ -632,6 +648,71 @@ public:
     completeProfile.insert(completeProfile.end(), acc_p2.begin(), acc_p2.end());
     completeProfile.insert(completeProfile.end(), acc_p3.begin(), acc_p3.end());
     return completeProfile;
+  }
+  PointInfo addVirtualPoint(double v0, double a0, double j0){
+    vector<PointInfo> speed_profile;
+    PointInfo pt;
+    double max_jerk = j0;
+    double acc_now = a0;
+    double speed_now = v0;
+    cout<<"Adding virtual point"<<endl;
+    bool continue_neg_jerk = false;
+    while(true){
+      double time_step = getReversedTimeStep(max_jerk, acc_now, speed_now, dist_res_);
+      speed_now += -acc_now*time_step + max_jerk*time_step*time_step*0.5;
+      acc_now -= max_jerk*time_step;
+      pt.speed_profile = speed_now;
+      pt.time = time_step;
+      pt.acceleration = acc_now;
+      pt.jerk = max_jerk;
+      if(a0 > 0){
+	if(acc_now < 0 || acc_now > max_acc_){
+	  if(acc_now > max_acc_) continue_neg_jerk = true;
+	  break;
+	}
+      } else {
+	if(acc_now > 0 || acc_now < -max_acc_){
+	  if(acc_now < -max_acc_) continue_neg_jerk = true;
+	  break;
+	}
+      }
+      speed_profile.push_back(pt);
+    }
+    
+    if(continue_neg_jerk){
+      max_jerk = -j0;
+      if(speed_profile.size() > 0){
+	acc_now = speed_profile[speed_profile.size()-1].acceleration;
+	speed_now = speed_profile[speed_profile.size()-1].speed_profile;
+      }
+      else {
+	cout<<"Please check the initial condition. ";
+	cout<<"This may occur when the combination of jerk and acceleration is not proper. Will continue for now"<<endl;
+      }
+      while(true){
+	double time_step = getReversedTimeStep(max_jerk, acc_now, speed_now, dist_res_);
+	speed_now += -acc_now*time_step + max_jerk*time_step*time_step*0.5;
+	acc_now -= max_jerk*time_step;
+	pt.speed_profile = speed_now;
+	pt.time = time_step;
+	pt.acceleration = acc_now;
+	pt.jerk = max_jerk;
+	if(a0 > 0){
+	  if(acc_now < 0)
+	    break;
+	} else {
+	  if(acc_now > 0)
+	    break;
+	}
+	speed_profile.push_back(pt);
+      }
+    }
+    PointInfo virtual_pt;
+    virtual_pt = speed_profile[speed_profile.size()-1];
+    virtual_pt.max_speed = virtual_pt.speed_profile;
+    virtual_pt.idx = -speed_profile.size();
+    virtual_pt.dist = virtual_pt.idx*dist_res_;
+    return virtual_pt;
   }
   vector<PointInfo> shortAccelerationProfile(double v0, double v1, double max_jerk, double dist_res, bool debug=false){
     vector<PointInfo> speed_profile;
