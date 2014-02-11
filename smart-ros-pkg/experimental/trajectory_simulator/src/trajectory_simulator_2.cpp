@@ -317,6 +317,7 @@ public:
       p.z = local_minima_pts[i].max_speed;
       local_pc.points.push_back(p);
     }
+    cout<<"Publishing "<<local_minima_pts.size()<<" with "<<path_info.size()<<" paths"<<endl;
     local_min_pub.publish(local_pc);
   }
   
@@ -364,8 +365,14 @@ public:
     geometry_msgs::Point first_pt = pp_->path_.poses[0].pose.position;
     geometry_msgs::Point sec_pt = pp_->path_.poses[1].pose.position;
     double car_init_orientation = atan2(sec_pt.y-first_pt.y, sec_pt.x-first_pt.x);
-    CarModel model(car_length, dist_res_, poseVec(pp_-> path_.poses[0].pose.position.x, 
-						  pp_-> path_.poses[0].pose.position.y, car_init_orientation));
+    //CarModel model(car_length, dist_res_, poseVec(pp_-> path_.poses[0].pose.position.x, 
+	//					  pp_-> path_.poses[0].pose.position.y, car_init_orientation));
+    geometry_msgs::Quaternion orientation = initial_pose.orientation;
+    btQuaternion btq(orientation.x, orientation.y, orientation.z, orientation.w);
+    btScalar pitch, roll, yaw;
+    btMatrix3x3(btq).getEulerYPR(yaw, pitch, roll);
+    CarModel model(car_length, dist_res_, poseVec(initial_pose.position.x, 
+						  initial_pose.position.y, yaw));
     
     
     bool path_exist = true;
@@ -374,9 +381,10 @@ public:
     double speed_now = 3.0;
     double dist_travel = 0.0;
     int path_no = 0;
-    initial_pose.position = first_pt;
-    initial_pose.orientation = tf::createQuaternionMsgFromYaw(car_init_orientation);
+    //initial_pose.position = first_pt;
+    //initial_pose.orientation = tf::createQuaternionMsgFromYaw(car_init_orientation);
     pp_->vehicle_base_ = initial_pose;
+    cout<<initial_pose<<endl;
     PointInfo initial_point;
     initial_point.position = initial_pose.position;
     initial_point.dist = 0.0;
@@ -413,24 +421,33 @@ public:
       if(path_info.size() > total_max_path) break;
     }
     cout<<path_info.size()<<" point size"<<endl;
-    vector<PointInfo> local_minima_pts = localMinimaSearch(path_info);
+    vector<PointInfo> local_minima_path_pts = path_info;
     PointInfo start_pt;
     if(fabs(acc_ini)<1e-9) {
       start_pt.max_speed = speed_ini;
       start_pt.dist = 0.0;
       start_pt.idx = 0;
     }
-    else 
-      start_pt = addVirtualPoint(speed_ini, acc_ini, jerk_ini);
+    else {
+      vector<PointInfo> start_pts = addVirtualPoint(speed_ini, acc_ini, jerk_ini);
+      start_pt = start_pts[0];
+      local_minima_path_pts.insert(local_minima_path_pts.begin(), start_pts.begin(), start_pts.end());
+      
+    }
     cout<<"start_pt: "<<start_pt.max_speed<<" "<<start_pt.dist<<endl;
     
-    path_info[path_info.size()-1].max_speed = 0.0;
+    vector<PointInfo> local_minima_pts = localMinimaSearch(local_minima_path_pts);
+    //publishPathInfo(path_info, local_minima_pts);
+    //return path_info[0];
+    //ros::spin();
     local_minima_pts.push_back(start_pt);
+    path_info[path_info.size()-1].max_speed = 0.0;
     local_minima_pts.push_back(path_info[path_info.size()-1]);
     sort(local_minima_pts.begin(), local_minima_pts.end());
+    //a quick hack to avoid idx=2 constraint that keep seg fault
+    if(local_minima_pts[1].idx == 2) local_minima_pts.erase(local_minima_pts.begin()+1);
     printLocalMinimaStatus("after sort 2", local_minima_pts);
     fmutil::Stopwatch sw2("connecting points");
-    
     for(size_t i=1; i<local_minima_pts.size(); i++){
       double v0 = local_minima_pts[i-1].max_speed;
       double v1 = local_minima_pts[i].max_speed;
@@ -452,7 +469,9 @@ public:
 	cout<<i<<": Speed check v0 "<<v0<<" v1 "<<v1<<" dist "<<dist<<" suggested speed "<<speed_check;
 	double full_jerk_dist = getMinDistFullProfile(v0, speed_check);
 	int full_jerk_idx = full_jerk_dist/dist_res_+local_minima_pts[i-1].idx;
-	double full_jerk_max_speed = path_info[full_jerk_idx].max_speed;
+	double full_jerk_max_speed;
+	if(full_jerk_idx <0) full_jerk_max_speed = speed_check;
+	else full_jerk_max_speed = path_info[full_jerk_idx].max_speed;
 	cout<<" full jerk speed "<<full_jerk_max_speed<<" @ full_jerk_idx"<<full_jerk_idx<<" ";
 	if(full_jerk_max_speed>=speed_check && speed_check > v0 && speed_check > v1){
 	  int start_idx = local_minima_pts[i-1].idx;
@@ -520,11 +539,12 @@ public:
 		cout <<" Ok prepare for single short acc profile "<<given_dist<<" "<<single_profile_dist<<" "<<acc_single_profile.size()<<endl;
 	      }
 	      else {*/
-		double new_speed = getNewSpeedShortProfile(v0,v1, given_dist);
-		//if(new_speed < local_minima_pts[i].max_speed)
-		cout<<"Reversing at acc at new speed "<<new_speed<<endl;
-		local_minima_pts[i].max_speed = new_speed;
-		i-=2;
+	      
+	      double new_speed = getNewSpeedShortProfile(v0,v1, given_dist);
+	      //if(new_speed < local_minima_pts[i].max_speed)
+	      cout<<"Reversing at acc at new speed "<<new_speed<<endl;
+	      local_minima_pts[i].max_speed = new_speed;
+	      i--;
 	      //}
 	    }
 	    cout <<" Ok prepare for single acc profile "<<given_dist<<" "<<single_profile_dist<<" "<<acc_single_profile.size()*dist_res_<<endl;  
@@ -560,11 +580,21 @@ public:
 		dec_single_profile = shortAccelerationProfile(v0, v1, -max_jerk, dist_res, true);
 	      }
 	      else {*/
-		double new_speed = getNewSpeedShortProfile(v1,v0, given_dist);
+	      double new_speed;
+	      if(i==1){
+		//need to reduce self speed instead, impossible to change the current one
+		new_speed = getNewSpeedShortProfile(v1,v0, given_dist);
+		cout<<"Slight reversing at dec new max speed "<<new_speed<<endl;
+		local_minima_pts[i-1].max_speed = new_speed;
+		i--;
+	      }
+	      else {
+		new_speed = getNewSpeedShortProfile(v1,v0, given_dist);
 		//if(new_speed < local_minima_pts[i-1].max_speed)
 		cout<<"Reversing at dec new max speed "<<new_speed<<endl;
-		  local_minima_pts[i-1].max_speed = new_speed;
+		local_minima_pts[i-1].max_speed = new_speed;
 		i-=2;
+	      }
 	      //}
 	    }
 	    cout <<" Ok prepare for single dec profile "<<given_dist<<" "<<single_profile_dist<<" "<<dec_single_profile.size()*dist_res_<<endl;
@@ -640,7 +670,7 @@ public:
     completeProfile.insert(completeProfile.end(), acc_p3.begin(), acc_p3.end());
     return completeProfile;
   }
-  PointInfo addVirtualPoint(double v0, double a0, double j0){
+  vector<PointInfo> addVirtualPoint(double v0, double a0, double j0){
     vector<PointInfo> speed_profile;
     PointInfo pt;
     if(fabs(j0)<1e-9){
@@ -656,10 +686,12 @@ public:
       double time_step = getReversedTimeStep(max_jerk, acc_now, speed_now, dist_res_);
       speed_now += -acc_now*time_step + max_jerk*time_step*time_step*0.5;
       acc_now -= max_jerk*time_step;
-      pt.speed_profile = speed_now;
+      pt.max_speed = speed_now;
       pt.time = time_step;
       pt.acceleration = acc_now;
       pt.jerk = max_jerk;
+      pt.idx = -speed_profile.size();
+      pt.dist = pt.idx*dist_res_;
       //cout<<"p1 "<<pt.time<<" "<<pt.speed_profile<<" "<<pt.acceleration<<" "<<pt.jerk<<endl;
       if(a0 > 0){
 	if(acc_now < 0 || acc_now > max_acc_){
@@ -689,10 +721,12 @@ public:
 	double time_step = getReversedTimeStep(max_jerk, acc_now, speed_now, dist_res_);
 	speed_now += -acc_now*time_step + max_jerk*time_step*time_step*0.5;
 	acc_now -= max_jerk*time_step;
-	pt.speed_profile = speed_now;
+	pt.max_speed = speed_now;
 	pt.time = time_step;
 	pt.acceleration = acc_now;
 	pt.jerk = max_jerk;
+	pt.idx = -speed_profile.size();
+	pt.dist = pt.idx*dist_res_;
 	//cout<<"p2 "<<pt.time<<" "<<pt.speed_profile<<" "<<pt.acceleration<<" "<<pt.jerk<<endl;
 	if(a0 > 0){
 	  if(acc_now < 0)
@@ -704,19 +738,18 @@ public:
 	speed_profile.push_back(pt);
       }
     }
-    PointInfo virtual_pt;
+   
     if(speed_profile.size()>0){
-      virtual_pt = speed_profile[speed_profile.size()-1];
-      virtual_pt.max_speed = virtual_pt.speed_profile;
-      virtual_pt.idx = -speed_profile.size();
-      virtual_pt.dist = virtual_pt.idx*dist_res_;
+      reverse(speed_profile.begin(), speed_profile.end());
     }
     else {
+      PointInfo virtual_pt;
       virtual_pt.max_speed = v0;
       virtual_pt.idx = 0.0;
       virtual_pt.dist = 0.0;
+      speed_profile.push_back(virtual_pt);
     }
-    return virtual_pt;
+    return speed_profile;
   }
   vector<PointInfo> shortAccelerationProfile(double v0, double v1, double max_jerk, double dist_res, bool debug=false){
     vector<PointInfo> speed_profile;
@@ -821,7 +854,47 @@ public:
     return speed_profile;
   }
 };
+tf::TransformListener* tf_;
+double delay_;
+string global_frame_, robot_frame_;
+ros::Subscriber *cmd_steer_sub_;
+ros::Publisher *cmd_vel_pub_;
+geometry_msgs::Twist cmd_steer_;
 
+bool getRobotPose(tf::Stamped<tf::Pose> &robot_pose) {
+    robot_pose.setIdentity();
+    tf::Stamped<tf::Pose> i_pose;
+    i_pose.setIdentity();
+    i_pose.frame_id_ = robot_frame_;
+    i_pose.stamp_ = ros::Time();
+    ros::Time current_time = ros::Time::now(); // save time for checking tf delay later
+    try {
+        tf_->transformPose(global_frame_, i_pose, robot_pose);
+    }
+    catch(tf::LookupException& ex) {
+        ROS_ERROR("No Transform available Error: %s", ex.what());
+        return false;
+    }
+    catch(tf::ConnectivityException& ex) {
+        ROS_ERROR("Connectivity Error: %s", ex.what());
+        return false;
+    }
+    catch(tf::ExtrapolationException& ex) {
+        ROS_ERROR("Extrapolation Error: %s", ex.what());
+        return false;
+    }
+    // check robot_pose timeout
+    if (current_time.toSec() - robot_pose.stamp_.toSec() > delay_) {
+        ROS_WARN("PurePursuit transform timeout. Current time: %.4f, pose(%s) stamp: %.4f, tolerance: %.4f",
+                 current_time.toSec(), global_frame_.c_str(), robot_pose.stamp_.toSec(), delay_);
+        return false;
+    }
+    return true;
+ }
+
+void cmdSteerCallback(geometry_msgs::Twist twist){
+  cmd_steer_ = twist;
+}
 
 int main(int argc, char** argv){
   ros::init(argc, argv, "trajectory_simulator");
@@ -829,6 +902,7 @@ int main(int argc, char** argv){
   ros::NodeHandle priv_nh("~");
   double dist_res, max_lat_acc, max_speed, max_acc, max_jerk;
   double acc_ini, speed_ini, max_sim_length, jerk_ini, running_freq;
+  tf_ = new tf::TransformListener();
   priv_nh.param("dist_res", dist_res, 0.05);
   priv_nh.param("max_lat_acc", max_lat_acc, 1.0);
   priv_nh.param("max_speed", max_speed, 5.0);
@@ -839,8 +913,16 @@ int main(int argc, char** argv){
   priv_nh.param("speed_ini", speed_ini, 0.0);
   priv_nh.param("jerk_ini", jerk_ini, 0.0);
   priv_nh.param("running_freq", running_freq, 25.0);
+  priv_nh.param("global_frame", global_frame_, string("robot_0/map"));
+  priv_nh.param("robot_frame", robot_frame_, string("robot_0/base_link"));
+  priv_nh.param("max_pose_delay", delay_, 0.2);
   geometry_msgs::Pose robot_pose;
   TrajectorySimulator ts(max_lat_acc, max_speed, max_acc, max_jerk, dist_res, max_sim_length,nh);
+  ros::Subscriber cmd_steer_sub = nh.subscribe("cmd_steer", 1, cmdSteerCallback);
+  ros::Publisher cmd_vel_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+  cmd_steer_sub_ = &cmd_steer_sub;
+  cmd_vel_pub_ = &cmd_vel_pub;
+  
   speed_ini = 0.0;
   acc_ini = 0.0;
   jerk_ini = 0.0;
@@ -850,6 +932,16 @@ int main(int argc, char** argv){
   ros::Rate r(running_freq);
   double sleep_time = 1.0/running_freq;
   while(ros::ok()){
+    tf::Stamped<tf::Pose> robot_pose_tf;
+    if(getRobotPose(robot_pose_tf)){
+      geometry_msgs::PoseStamped robot_pose_msg;
+      tf::poseStampedTFToMsg(robot_pose_tf, robot_pose_msg);
+      robot_pose = robot_pose_msg.pose;
+    }
+//     robot_pose.position.x = 101.781;
+//     robot_pose.position.y = 130.314;
+//     robot_pose.orientation.z = -0.299976;
+//     robot_pose.orientation.w = 0.953947;
     PointInfo info = ts.getJerk(speed_ini, acc_ini, jerk_ini,robot_pose);
     double jerk = info.jerk;
     acc_now = acc_ini + jerk * sleep_time;
@@ -863,7 +955,14 @@ int main(int argc, char** argv){
     }
     acc_ini = acc_now;
     speed_ini = speed_now;
+    geometry_msgs::Twist final_cmd;
+    final_cmd = cmd_steer_;
+    final_cmd.linear.x = speed_now;
+    //ros::spin();
+    cmd_vel_pub.publish(final_cmd);
+    ros::spinOnce();
+    r.sleep();
   }
-  ros::spin();
+  
   return 0;
 }
