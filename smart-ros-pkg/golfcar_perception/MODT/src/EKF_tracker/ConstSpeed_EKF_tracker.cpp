@@ -79,7 +79,7 @@ void constspeed_ekf_tracker::set_params(double sys_sig1,
 void constspeed_ekf_tracker::update(double x, double y, double omega, ros::Time update_time)
 {
 	sys_pdf_->delt_time = (update_time-last_update_time).toSec();
-	ROS_ERROR("sys_pdf delt_time %lf", sys_pdf_->delt_time );
+	ROS_INFO("sys_pdf delt_time %lf", sys_pdf_->delt_time );
 
 	sys_pdf_->AdditiveNoiseSigmaSet(predict_covariance * pow(sys_pdf_->delt_time,2));
 

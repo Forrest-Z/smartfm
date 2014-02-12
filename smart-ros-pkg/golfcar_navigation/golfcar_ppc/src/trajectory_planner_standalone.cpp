@@ -10,7 +10,7 @@
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/PoseArray.h>
-#include "golfcar_purepursuit.h"
+#include <golfcar_ppc/golfcar_purepursuit.h>
 #include <pnc_msgs/move_status.h>
 #include <pnc_msgs/poi.h>
 #include <fmutil/fm_math.h>
@@ -255,6 +255,8 @@ private:
 
 
     }
+    poi_.cur_node = pp_->path_n_;
+    poi_pub_.publish(poi_);
     move_status_pub_.publish(move_status);
     cmd_vel.angular.z = move_status.steer_angle;
     cmd_steer_pub_.publish(cmd_vel);

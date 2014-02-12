@@ -36,3 +36,5 @@ rosbuild_add_library(${PROJECT_NAME} src/trajector_planner.cpp src/golfcar_purep
 rosbuild_add_executable(golfcar_pp src/golfcar_pp.cpp)
 rosbuild_add_executable(purepursuit_controller src/trajectory_planner_standalone.cpp src/golfcar_purepursuit.cpp)
 target_link_libraries(purepursuit_controller bookingcommon)
+rosbuild_add_executable(path_repub src/path_repub.cpp)
+rosbuild_link_boost(path_repub signals)

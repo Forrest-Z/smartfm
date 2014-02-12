@@ -1,0 +1,8 @@
+<launch>
+
+    <node pkg="MODT" type="vehicle_tracking_box" name="vehicle_tracking_box" ns="iMiev" output="screen">
+		<param name="odom_frame_id" value="iMiev/odom"/>
+    </node>
+
+</launch>
+
