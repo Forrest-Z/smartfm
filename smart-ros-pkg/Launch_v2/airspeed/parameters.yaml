@@ -58,7 +58,7 @@ $ROBOT/camera_front:
   width: 640
   height: 360
   frame_rate: 20
-  device: /dev/video1
+  device: /dev/video0
   camera_name: camera_front
   format_mode: 2
   exposure: 3
@@ -220,6 +220,21 @@ $ROBOT/speed_advisor:
   kinematic_acceleration: false
 $ROBOT/dynamic_virtual_bumper:
   base_frame: $ROBOT/base_link
+#if($vehicle=="car")
+  speed_increment: 0.5
+  relative_speed_diff: 1.0
+  x_coeff: 3.0
+  y_coeff: 0.25
+  offcenter_y: 0.8
+  offcenter_x: 1.7
+#elseif($vehicle=="buggy")
+  speed_increment: 0.3
+  relative_speed_diff: 0.3
+  x_coeff: 2.0
+  y_coeff: 0.2
+  offcenter_y: 0.7
+  offcenter_x: 1.7
+#end
 $ROBOT/Dist_Map:
   base_frame: $ROBOT/base_link
   global_frame: $ROBOT/map
