@@ -827,7 +827,7 @@ namespace golfcar_semantics{
 	    double bic_min = DBL_MAX;
 	    int bic_N = 0;
 	    int N;
-	    for(N=1; N<20; N++)
+	    for(N=1; N<15; N++)
 	    {
 	    	double loglikelihood_sum;
 	    	self_EM(samples_vector, N, loglikelihood_sum);
