@@ -14,3 +14,5 @@ dynamic_safety: 1
 rrt: 0
 #ppc settings {move_base, standalone}
 ppc: standalone
+#speed generator by reflexxes, on/off
+reflexxes: 1
