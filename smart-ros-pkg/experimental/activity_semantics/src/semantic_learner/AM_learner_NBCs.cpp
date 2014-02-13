@@ -703,7 +703,8 @@ namespace golfcar_semantics{
 				int max_min_times = 2;
 				assert(GPvar_max_/GPvar_min_ > (double)max_min_times);
 				//Fdv_EE[0] = 2.0*(grid_tmp.gp_estimation.val[1]-GPvar_min_)/((GPvar_max_-GPvar_min_)*(GPvar_max_-GPvar_min_));
-				Fdv_EE[0] = 2.0*(grid_tmp.gp_estimation.val[1]-GPvar_min_)/((GPvar_max_/double(max_min_times)-GPvar_min_)*(GPvar_max_/double(max_min_times)-GPvar_min_));
+				//Fdv_EE[0] = 2.0*(grid_tmp.gp_estimation.val[1]-GPvar_min_)/((GPvar_max_/double(max_min_times)-GPvar_min_)*(GPvar_max_/double(max_min_times)-GPvar_min_));
+				Fdv_EE[0] = 2.0*(GPvar_max_-grid_tmp.gp_estimation.val[1])/((GPvar_max_/double(max_min_times)-GPvar_min_)*(GPvar_max_/double(max_min_times)-GPvar_min_));
 				Fdv_EE[1] = 1.0/(GPvar_max_-GPvar_min_);
 
 
