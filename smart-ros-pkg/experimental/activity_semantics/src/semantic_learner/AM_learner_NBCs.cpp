@@ -463,7 +463,6 @@ namespace golfcar_semantics{
 		end_point1.y = grid_realy + probe_length1*sin(grid_tmp.probe_direction);
 		end_point2.x = grid_realx + probe_length1*cos(grid_tmp.probe_direction+M_PI);
 		end_point2.y = grid_realy + probe_length1*sin(grid_tmp.probe_direction+M_PI);
-
 		int edgeID = grid_tmp.nearest_edge_ID;
 		vector<CvPoint> &deputy_points = road_semantics_analyzer_-> topology_extractor_ ->road_graph_.edges[edgeID].cubic_spline->output_points_;
 
@@ -687,26 +686,37 @@ namespace golfcar_semantics{
 				//epsilon is used to avoid degeneration case;
 				//kee is the probability of pedestrian-path given non-EE, which is approximated to the ratio of pedestrian-path in all the road;
 				double epsilon = 0.0000001, kee = 0.1;
-				if(grid_tmp.pedPath_flag){Fpp_EE[0] = 1.0 - epsilon; Fpp_EE[1] = epsilon;}
-				else {Fpp_EE[0] = kee; Fpp_EE[1] = 1-kee;}
+				if(grid_tmp.pedPath_flag){Fpp_EE[0] = 1.0 - epsilon; Fpp_EE[1] = kee;}
+				else {Fpp_EE[0] = epsilon; Fpp_EE[1] = 1-kee;}
 
 				//2nd feature, moving direction Fd;
 				double Fd_EE[2];
 				Fd_EE[0]= grid_tmp.probe_distance1/M_PI_2;
 				Fd_EE[1]= 1/M_PI;
 
+				Fd_EE[0] = Fd_EE[0]*Fd_EE[0]*Fd_EE[0]*Fd_EE[0];
+				Fd_EE[1] = Fd_EE[1]*Fd_EE[1]*Fd_EE[1]*Fd_EE[1];
+
 				//3rd feature, moving direction variance Fdv;
 				double Fdv_EE[2];
-				Fdv_EE[0] = 2.0*(grid_tmp.gp_estimation.val[1]-GPvar_min_)/((GPvar_max_-GPvar_min_)*(GPvar_max_-GPvar_min_));
+
+				int max_min_times = 2;
+				assert(GPvar_max_/GPvar_min_ > (double)max_min_times);
+				//Fdv_EE[0] = 2.0*(grid_tmp.gp_estimation.val[1]-GPvar_min_)/((GPvar_max_-GPvar_min_)*(GPvar_max_-GPvar_min_));
+				Fdv_EE[0] = 2.0*(grid_tmp.gp_estimation.val[1]-GPvar_min_)/((GPvar_max_/double(max_min_times)-GPvar_min_)*(GPvar_max_/double(max_min_times)-GPvar_min_));
 				Fdv_EE[1] = 1.0/(GPvar_max_-GPvar_min_);
+
 
 				//4th feature, distance to road boundary;
 				double Fp_EE[2];
 				Fp_EE[0] = 1.0-grid_tmp.obs_dist/2.0 >0.0 ? 1.0-grid_tmp.obs_dist/2.0 : 0.00001;
 				Fp_EE[1] = 2.0/8.0;
 
-				double EE_score = Fpp_EE[0]*Fd_EE[0]*Fdv_EE[0]*Fp_EE[0];
-				double non_EEscore = Fpp_EE[1]*Fd_EE[1]*Fdv_EE[1]*Fp_EE[1];
+				double EE_score = Fpp_EE[0]*Fd_EE[0]*(Fdv_EE[0])*Fp_EE[0];
+				double non_EEscore = Fpp_EE[1]*Fd_EE[1]*(Fdv_EE[1])*Fp_EE[1];
+
+				//double EE_score = Fd_EE[0]*Fdv_EE[0];
+				//double non_EEscore = Fd_EE[1]*Fdv_EE[1];
 
 				grid_tmp.EE_score = EE_score/(EE_score+non_EEscore);
 
@@ -757,7 +767,7 @@ namespace golfcar_semantics{
 				int y = AM_->size_y-1-j;
 				grid_tmp.EE_score = EE_color.at<float>(y,x);
 
-				grid_tmp.EE_score = grid_tmp.EE_score * 255.0/70.0;
+				//grid_tmp.EE_score = grid_tmp.EE_score * 255.0/70.0;
 				if(grid_tmp.EE_score>1.0) grid_tmp.EE_score =0.98;
 				EE_color.at<float>(y,x) = grid_tmp.EE_score;
 			}
