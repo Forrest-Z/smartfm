@@ -13,6 +13,7 @@
   <depend package="fmutil"/>
   <depend package="pcl"/>
   <depend package="pcl_ros"/>
+  <depend package="reflexxes"/>
 </package>
 
 

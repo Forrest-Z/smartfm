@@ -98,7 +98,6 @@ class TrajectorySimulator{
   double max_lat_acc_, max_speed_;
   double max_acc_, max_jerk_;
   double dist_res_;
-  double max_sim_length_, ;
   ros::Publisher global_path_pub_;
   ros::Publisher pub, curvature_pub, dist_pub;
   ros::Publisher max_speed_pub, speed_pub, speed_xy_pub, acc_pub, jerk_pub;
@@ -261,7 +260,7 @@ public:
   }
   
   
-  void publishPathInfo(vector<PointInfo> &path_info, vector<PointInfo> &local_minima_pts){
+  void publishPathInfo(vector<PointInfo> path_info, vector<PointInfo> local_minima_pts){
     sensor_msgs::PointCloud pc;
     
     
@@ -337,8 +336,8 @@ public:
   
   
   TrajectorySimulator(double max_lat_acc, double max_speed, double max_acc, double max_jerk, double dist_res, 
-		      double max_sim_length, ros::NodeHandle &nh):max_lat_acc_(max_lat_acc), max_speed_(max_speed), max_acc_(max_acc),
-		      max_jerk_(max_jerk), dist_res_(dist_res), max_sim_length_(max_sim_length){
+		      ros::NodeHandle &nh):max_lat_acc_(max_lat_acc), max_speed_(max_speed), max_acc_(max_acc),
+		      max_jerk_(max_jerk), dist_res_(dist_res){
       global_path_pub_ = nh.advertise<nav_msgs::Path>("global_path", 1, true);
       curvature_pub = nh.advertise<sensor_msgs::PointCloud>("curvature_pt", 1, true);
       max_speed_pub = nh.advertise<sensor_msgs::PointCloud>("max_speed_pt", 1, true);
@@ -350,7 +349,7 @@ public:
       local_min_pub = nh.advertise<sensor_msgs::PointCloud>("local_min_puts", 1, true);
     };
   
-  PointInfo getJerk(double speed_ini, double acc_ini, double jerk_ini, geometry_msgs::Pose initial_pose) {  
+  vector<PointInfo> getSpeedProfile(double speed_ini) {  
     double min_look_ahead_dist = 4.0;
     double forward_achor_pt_dist = 1.0;
     double car_length = 2.55;
@@ -365,14 +364,8 @@ public:
     geometry_msgs::Point first_pt = pp_->path_.poses[0].pose.position;
     geometry_msgs::Point sec_pt = pp_->path_.poses[1].pose.position;
     double car_init_orientation = atan2(sec_pt.y-first_pt.y, sec_pt.x-first_pt.x);
-    //CarModel model(car_length, dist_res_, poseVec(pp_-> path_.poses[0].pose.position.x, 
-	//					  pp_-> path_.poses[0].pose.position.y, car_init_orientation));
-    geometry_msgs::Quaternion orientation = initial_pose.orientation;
-    btQuaternion btq(orientation.x, orientation.y, orientation.z, orientation.w);
-    btScalar pitch, roll, yaw;
-    btMatrix3x3(btq).getEulerYPR(yaw, pitch, roll);
-    CarModel model(car_length, dist_res_, poseVec(initial_pose.position.x, 
-						  initial_pose.position.y, yaw));
+    CarModel model(car_length, dist_res_, poseVec(pp_-> path_.poses[0].pose.position.x, 
+						  pp_-> path_.poses[0].pose.position.y, car_init_orientation));
     
     
     bool path_exist = true;
@@ -381,8 +374,9 @@ public:
     double speed_now = 3.0;
     double dist_travel = 0.0;
     int path_no = 0;
-    //initial_pose.position = first_pt;
-    //initial_pose.orientation = tf::createQuaternionMsgFromYaw(car_init_orientation);
+    geometry_msgs::Pose initial_pose;
+    initial_pose.position = first_pt;
+    initial_pose.orientation = tf::createQuaternionMsgFromYaw(car_init_orientation);
     pp_->vehicle_base_ = initial_pose;
     cout<<initial_pose<<endl;
     PointInfo initial_point;
@@ -392,7 +386,6 @@ public:
     initial_point.curve_max_speed = max_speed_;
     initial_point.idx = path_no++;
     path_info.push_back(initial_point);
-    size_t total_max_path = max_sim_length_/dist_res_;
     while(path_exist && ros::ok()){
       double steer_angle, dist_to_goal;
       path_exist = pp_->steering_control(&steer_angle, &dist_to_goal);
@@ -418,25 +411,14 @@ public:
       point_info.curve_max_speed = point_info.max_speed;
       point_info.time = dist_res_/max_speed_;
       path_info.push_back(point_info);
-      if(path_info.size() > total_max_path) break;
     }
     cout<<path_info.size()<<" point size"<<endl;
-    vector<PointInfo> local_minima_path_pts = path_info;
     PointInfo start_pt;
-    if(fabs(acc_ini)<1e-9) {
-      start_pt.max_speed = speed_ini;
-      start_pt.dist = 0.0;
-      start_pt.idx = 0;
-    }
-    else {
-      vector<PointInfo> start_pts = addVirtualPoint(speed_ini, acc_ini, jerk_ini);
-      start_pt = start_pts[0];
-      local_minima_path_pts.insert(local_minima_path_pts.begin(), start_pts.begin(), start_pts.end());
-      
-    }
-    cout<<"start_pt: "<<start_pt.max_speed<<" "<<start_pt.dist<<endl;
+    start_pt.max_speed = speed_ini;
+    start_pt.dist = 0.0;
+    start_pt.idx = 0;
     
-    vector<PointInfo> local_minima_pts = localMinimaSearch(local_minima_path_pts);
+    vector<PointInfo> local_minima_pts = localMinimaSearch(path_info);
     //publishPathInfo(path_info, local_minima_pts);
     //return path_info[0];
     //ros::spin();
@@ -615,7 +597,7 @@ public:
     sw2.end();
     sw.end();
     publishPathInfo(path_info, local_minima_pts);
-    return path_info[0];
+    return path_info;
   }
   double getNewSpeedShortProfile(double low_speed, double high_speed, double dist){
     
@@ -896,41 +878,56 @@ void cmdSteerCallback(geometry_msgs::Twist twist){
   cmd_steer_ = twist;
 }
 
+#include <ReflexxesAPI.h>
+#include <RMLVelocityFlags.h>
+#include <RMLVelocityInputParameters.h>
+#include <RMLVelocityOutputParameters.h>
+#include <ReflexxesOutputValuesToFile.h>
+
 int main(int argc, char** argv){
   ros::init(argc, argv, "trajectory_simulator");
   ros::NodeHandle nh;
   ros::NodeHandle priv_nh("~");
   double dist_res, max_lat_acc, max_speed, max_acc, max_jerk;
-  double acc_ini, speed_ini, max_sim_length, jerk_ini, running_freq;
+  double speed_ini, running_freq;
   tf_ = new tf::TransformListener();
   priv_nh.param("dist_res", dist_res, 0.05);
   priv_nh.param("max_lat_acc", max_lat_acc, 1.0);
   priv_nh.param("max_speed", max_speed, 5.0);
   priv_nh.param("max_acc", max_acc, 0.5);
   priv_nh.param("max_jerk", max_jerk, 0.5);
-  priv_nh.param("max_sim_length", max_sim_length, 50.0);
-  priv_nh.param("acc_ini", acc_ini, 0.0);
   priv_nh.param("speed_ini", speed_ini, 0.0);
-  priv_nh.param("jerk_ini", jerk_ini, 0.0);
   priv_nh.param("running_freq", running_freq, 25.0);
   priv_nh.param("global_frame", global_frame_, string("robot_0/map"));
   priv_nh.param("robot_frame", robot_frame_, string("robot_0/base_link"));
   priv_nh.param("max_pose_delay", delay_, 0.2);
   geometry_msgs::Pose robot_pose;
-  TrajectorySimulator ts(max_lat_acc, max_speed, max_acc, max_jerk, dist_res, max_sim_length,nh);
+  TrajectorySimulator ts(max_lat_acc, max_speed, max_acc, max_jerk, dist_res,nh);
   ros::Subscriber cmd_steer_sub = nh.subscribe("cmd_steer", 1, cmdSteerCallback);
   ros::Publisher cmd_vel_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1);
   cmd_steer_sub_ = &cmd_steer_sub;
   cmd_vel_pub_ = &cmd_vel_pub;
   
-  speed_ini = 0.0;
-  acc_ini = 0.0;
-  jerk_ini = 0.0;
-  double speed_now = 0.0;
-  double acc_now = 0.0;
+  
+  vector<PointInfo> info = ts.getSpeedProfile(speed_ini);
   
   ros::Rate r(running_freq);
   double sleep_time = 1.0/running_freq;
+  double speed_now= speed_ini;
+  double acc_ini = 0.0, acc_now=0.0;
+  
+  ReflexxesAPI *RML = new ReflexxesAPI(1, sleep_time);
+  RMLVelocityInputParameters *IP = new RMLVelocityInputParameters(1);
+  RMLVelocityOutputParameters *OP = new RMLVelocityOutputParameters(1);
+  RMLVelocityFlags Flags;
+  Flags.SynchronizationBehavior = RMLFlags::ONLY_TIME_SYNCHRONIZATION;
+  IP->CurrentPositionVector->VecData[0] = 0.0;
+  IP->CurrentVelocityVector->VecData[0] = 0.0;
+  IP->CurrentAccelerationVector->VecData[0] = 0.0;
+  IP->MaxAccelerationVector->VecData[0] = max_acc;
+  IP->MaxJerkVector->VecData[0] = max_jerk;
+  IP->SelectionVector->VecData[0] = true;
+  int ResultValue;
   while(ros::ok()){
     tf::Stamped<tf::Pose> robot_pose_tf;
     if(getRobotPose(robot_pose_tf)){
@@ -938,27 +935,40 @@ int main(int argc, char** argv){
       tf::poseStampedTFToMsg(robot_pose_tf, robot_pose_msg);
       robot_pose = robot_pose_msg.pose;
     }
-//     robot_pose.position.x = 101.781;
-//     robot_pose.position.y = 130.314;
-//     robot_pose.orientation.z = -0.299976;
-//     robot_pose.orientation.w = 0.953947;
-    PointInfo info = ts.getJerk(speed_ini, acc_ini, jerk_ini,robot_pose);
-    double jerk = info.jerk;
+    int nearest_idx = 0;
+    double nearest_dist = 1e9;
+    for(size_t i=0; i<info.size(); i++){
+      double x = info[i].position.x - robot_pose.position.x;
+      double y = info[i].position.y - robot_pose.position.y;
+      double dist = sqrt(x*x + y*y);
+      if(dist < nearest_dist){
+	nearest_idx = i;
+	nearest_dist = dist;
+      }
+    }
+    //cout<<"Advised speed = "<<info[nearest_idx].speed_profile<<" at "<<nearest_idx<<" found at dist "<<nearest_dist<<endl;
+    double advised_speed = info[nearest_idx].speed_profile;
+    /*double jerk = info[nearest_idx].jerk;
     acc_now = acc_ini + jerk * sleep_time;
     speed_now = speed_ini + acc_ini * sleep_time + 0.5 * jerk * sleep_time * sleep_time;
-    cout<<"SAJ: "<<speed_now<<" "<<acc_now<<" "<<jerk<<endl;
-    if(acc_now > max_acc) acc_now = max_acc;
-    if(acc_now < 0) acc_now = 0;
-    if(fabs(jerk) < 1e-9){
-      if(fabs(info.acceleration) < 1e-9)
-	acc_now = 0.0;
+    
+    cout<<"SAJ: "<<speed_now<<" "<<acc_now<<" "<<jerk<<endl;*/
+    IP->TargetVelocityVector->VecData[0] = advised_speed;
+    ResultValue	=	RML->RMLVelocity(*IP, OP, Flags);
+    if(ResultValue < 0)
+    {
+	printf("An error occurred (%d).\n", ResultValue	);
+	break;
     }
+    
+    *IP->CurrentPositionVector		=	*OP->NewPositionVector		;
+    *IP->CurrentVelocityVector		=	*OP->NewVelocityVector		;
+    *IP->CurrentAccelerationVector	=	*OP->NewAccelerationVector	;
     acc_ini = acc_now;
     speed_ini = speed_now;
     geometry_msgs::Twist final_cmd;
     final_cmd = cmd_steer_;
-    final_cmd.linear.x = speed_now;
-    //ros::spin();
+    final_cmd.linear.x = OP->NewVelocityVector->VecData[0];
     cmd_vel_pub.publish(final_cmd);
     ros::spinOnce();
     r.sleep();
