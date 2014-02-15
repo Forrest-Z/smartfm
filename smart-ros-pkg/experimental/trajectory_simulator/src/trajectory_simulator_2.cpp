@@ -349,11 +349,11 @@ public:
       local_min_pub = nh.advertise<sensor_msgs::PointCloud>("local_min_puts", 1, true);
     };
   
-  vector<PointInfo> getSpeedProfile(double speed_ini) {  
+  vector<PointInfo> getSpeedProfile() {  
     double min_look_ahead_dist = 4.0;
     double forward_achor_pt_dist = 1.0;
     double car_length = 2.55;
-    
+    double speed_ini = max_speed_;
     global_frame_ = "/robot_0/map";
     pp_ = new golfcar_purepursuit::PurePursuit(global_frame_, min_look_ahead_dist, forward_achor_pt_dist, car_length);
     
@@ -419,17 +419,46 @@ public:
     start_pt.idx = 0;
     
     vector<PointInfo> local_minima_pts = localMinimaSearch(path_info);
-    //publishPathInfo(path_info, local_minima_pts);
-    //return path_info[0];
-    //ros::spin();
+   
     local_minima_pts.push_back(start_pt);
     path_info[path_info.size()-1].max_speed = 0.0;
     local_minima_pts.push_back(path_info[path_info.size()-1]);
     sort(local_minima_pts.begin(), local_minima_pts.end());
-    //a quick hack to avoid idx=2 constraint that keep seg fault
-    if(local_minima_pts[1].idx == 2) local_minima_pts.erase(local_minima_pts.begin()+1);
     printLocalMinimaStatus("after sort 2", local_minima_pts);
     fmutil::Stopwatch sw2("connecting points");
+    connectingPathGivenLocalMin(path_info, local_minima_pts);
+    //compare again
+    vector<PointInfo> speed_errors;
+    for(size_t i=0; i<path_info.size(); i++){
+      PointInfo err;
+      err.position = path_info[i].position;
+      err.speed_profile = path_info[i].max_speed;
+      err.max_speed = path_info[i].max_speed - path_info[i].speed_profile;
+      err.idx = path_info[i].idx;
+      err.curvature = path_info[i].curvature;
+      err.time = path_info[i].time;
+      err.dist = path_info[i].dist;
+      if(err.max_speed < -0.1)
+	speed_errors.push_back(err);
+    }
+    
+    vector<PointInfo> error_local_minima = localMinimaSearch(speed_errors);
+    printLocalMinimaStatus("err to be added", error_local_minima);
+    for(size_t i=0; i<error_local_minima.size(); i++){
+      PointInfo new_local_minima = error_local_minima[i];
+      new_local_minima.max_speed = new_local_minima.speed_profile;
+      local_minima_pts.push_back(new_local_minima);
+    }
+    sort(local_minima_pts.begin(), local_minima_pts.end());
+    printLocalMinimaStatus("after sort 3", local_minima_pts);
+    connectingPathGivenLocalMin(path_info, local_minima_pts);
+    sw2.end();
+    sw.end();
+    publishPathInfo(path_info, local_minima_pts);
+    return path_info;
+  }
+  
+  void connectingPathGivenLocalMin(vector<PointInfo> &path_info, vector<PointInfo> &local_minima_pts){
     for(size_t i=1; i<local_minima_pts.size(); i++){
       double v0 = local_minima_pts[i-1].max_speed;
       double v1 = local_minima_pts[i].max_speed;
@@ -594,10 +623,6 @@ public:
 	}
       }
     }  
-    sw2.end();
-    sw.end();
-    publishPathInfo(path_info, local_minima_pts);
-    return path_info;
   }
   double getNewSpeedShortProfile(double low_speed, double high_speed, double dist){
     
@@ -873,17 +898,7 @@ bool getRobotPose(tf::Stamped<tf::Pose> &robot_pose) {
     }
     return true;
  }
-
-void cmdSteerCallback(geometry_msgs::Twist twist){
-  cmd_steer_ = twist;
-}
-
-#include <ReflexxesAPI.h>
-#include <RMLVelocityFlags.h>
-#include <RMLVelocityInputParameters.h>
-#include <RMLVelocityOutputParameters.h>
-#include <ReflexxesOutputValuesToFile.h>
-
+ 
 int main(int argc, char** argv){
   ros::init(argc, argv, "trajectory_simulator");
   ros::NodeHandle nh;
@@ -903,76 +918,45 @@ int main(int argc, char** argv){
   priv_nh.param("max_pose_delay", delay_, 0.2);
   geometry_msgs::Pose robot_pose;
   TrajectorySimulator ts(max_lat_acc, max_speed, max_acc, max_jerk, dist_res,nh);
-  ros::Subscriber cmd_steer_sub = nh.subscribe("cmd_steer", 1, cmdSteerCallback);
-  ros::Publisher cmd_vel_pub = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-  cmd_steer_sub_ = &cmd_steer_sub;
-  cmd_vel_pub_ = &cmd_vel_pub;
   
-  
-  vector<PointInfo> info = ts.getSpeedProfile(speed_ini);
+  vector<PointInfo> info = ts.getSpeedProfile();
   
   ros::Rate r(running_freq);
   double sleep_time = 1.0/running_freq;
   double speed_now= speed_ini;
   double acc_ini = 0.0, acc_now=0.0;
-  
-  ReflexxesAPI *RML = new ReflexxesAPI(1, sleep_time);
-  RMLVelocityInputParameters *IP = new RMLVelocityInputParameters(1);
-  RMLVelocityOutputParameters *OP = new RMLVelocityOutputParameters(1);
-  RMLVelocityFlags Flags;
-  Flags.SynchronizationBehavior = RMLFlags::ONLY_TIME_SYNCHRONIZATION;
-  IP->CurrentPositionVector->VecData[0] = 0.0;
-  IP->CurrentVelocityVector->VecData[0] = 0.0;
-  IP->CurrentAccelerationVector->VecData[0] = 0.0;
-  IP->MaxAccelerationVector->VecData[0] = max_acc;
-  IP->MaxJerkVector->VecData[0] = max_jerk;
-  IP->SelectionVector->VecData[0] = true;
-  int ResultValue;
-  while(ros::ok()){
-    tf::Stamped<tf::Pose> robot_pose_tf;
-    if(getRobotPose(robot_pose_tf)){
-      geometry_msgs::PoseStamped robot_pose_msg;
-      tf::poseStampedTFToMsg(robot_pose_tf, robot_pose_msg);
-      robot_pose = robot_pose_msg.pose;
-    }
-    int nearest_idx = 0;
-    double nearest_dist = 1e9;
-    for(size_t i=0; i<info.size(); i++){
-      double x = info[i].position.x - robot_pose.position.x;
-      double y = info[i].position.y - robot_pose.position.y;
-      double dist = sqrt(x*x + y*y);
-      if(dist < nearest_dist){
-	nearest_idx = i;
-	nearest_dist = dist;
-      }
-    }
-    //cout<<"Advised speed = "<<info[nearest_idx].speed_profile<<" at "<<nearest_idx<<" found at dist "<<nearest_dist<<endl;
-    double advised_speed = info[nearest_idx].speed_profile;
-    /*double jerk = info[nearest_idx].jerk;
-    acc_now = acc_ini + jerk * sleep_time;
-    speed_now = speed_ini + acc_ini * sleep_time + 0.5 * jerk * sleep_time * sleep_time;
-    
-    cout<<"SAJ: "<<speed_now<<" "<<acc_now<<" "<<jerk<<endl;*/
-    IP->TargetVelocityVector->VecData[0] = advised_speed;
-    ResultValue	=	RML->RMLVelocity(*IP, OP, Flags);
-    if(ResultValue < 0)
-    {
-	printf("An error occurred (%d).\n", ResultValue	);
-	break;
-    }
-    
-    *IP->CurrentPositionVector		=	*OP->NewPositionVector		;
-    *IP->CurrentVelocityVector		=	*OP->NewVelocityVector		;
-    *IP->CurrentAccelerationVector	=	*OP->NewAccelerationVector	;
-    acc_ini = acc_now;
-    speed_ini = speed_now;
-    geometry_msgs::Twist final_cmd;
-    final_cmd = cmd_steer_;
-    final_cmd.linear.x = OP->NewVelocityVector->VecData[0];
-    cmd_vel_pub.publish(final_cmd);
-    ros::spinOnce();
-    r.sleep();
-  }
+  ros::spin();
+//   while(ros::ok()){
+//     tf::Stamped<tf::Pose> robot_pose_tf;
+//     if(getRobotPose(robot_pose_tf)){
+//       geometry_msgs::PoseStamped robot_pose_msg;
+//       tf::poseStampedTFToMsg(robot_pose_tf, robot_pose_msg);
+//       robot_pose = robot_pose_msg.pose;
+//     }
+//     int nearest_idx = 0;
+//     double nearest_dist = 1e9;
+//     for(size_t i=0; i<info.size(); i++){
+//       double x = info[i].position.x - robot_pose.position.x;
+//       double y = info[i].position.y - robot_pose.position.y;
+//       double dist = sqrt(x*x + y*y);
+//       if(dist < nearest_dist){
+// 	nearest_idx = i;
+// 	nearest_dist = dist;
+//       }
+//     }
+//     //cout<<"Advised speed = "<<info[nearest_idx].speed_profile<<" at "<<nearest_idx<<" found at dist "<<nearest_dist<<endl;
+//     double advised_speed = info[nearest_idx].speed_profile;
+//     /*double jerk = info[nearest_idx].jerk;
+//     acc_now = acc_ini + jerk * sleep_time;
+//     speed_now = speed_ini + acc_ini * sleep_time + 0.5 * jerk * sleep_time * sleep_time;
+//     
+//     cout<<"SAJ: "<<speed_now<<" "<<acc_now<<" "<<jerk<<endl;*/
+//     cout<<advised_speed<<endl;
+//     acc_ini = acc_now;
+//     speed_ini = speed_now;
+//     ros::spinOnce();
+//     r.sleep();
+//   }
   
   return 0;
 }
