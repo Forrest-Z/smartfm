@@ -11,12 +11,12 @@ class ImageDistortViewer {
   void init();
   void HMDInfoCallback(const oculus_msgs::HMDInfoPtr& info);
   void show();
+  Viewer viewer_;
  private:
   DistortImage left_;
   DistortImage right_;
   ros::Subscriber sub_;
   bool use_display_;
-  Viewer viewer_;
 };
 
 ImageDistortViewer::ImageDistortViewer()
@@ -32,13 +32,13 @@ void ImageDistortViewer::init() {
                         1,
                         &ImageDistortViewer::HMDInfoCallback,
                         this);
-  ros::NodeHandle private_node("~");
-  int32_t offset_x = 0;
-  private_node.param<int32_t>("display_offset_x", offset_x, 0);
-  int32_t offset_y = 0;
-  private_node.param<int32_t>("display_offset_y", offset_y, 0);
-  viewer_.setDisplayOffset(offset_x, offset_y);
   
+  ros::NodeHandle private_node("~");	
+  int32_t offset_x = 0;
+  private_node.param<int32_t>("display_offset_x", offset_x, 60);
+  int32_t offset_y = 0;
+  private_node.param<int32_t>("display_offset_y", offset_y, 17);
+  viewer_.setDisplayOffset(offset_x, offset_y);
   private_node.param<bool>("use_display", use_display_, true);
 }
 
@@ -46,7 +46,7 @@ void ImageDistortViewer::show() {
   if (use_display_) {
     if ((!right_.getImage().empty()) &&
         (!left_.getImage().empty())) {
-      viewer_.show(right_.getImage(), left_.getImage());
+      viewer_.show(left_.getImage(), right_.getImage());
     }
   }
 }
@@ -73,6 +73,7 @@ int main(int argc, char** argv) {
   try {
     oculus_viewer::ImageDistortViewer dis;
     dis.init();
+      ros::NodeHandle private_node("~");
     while(ros::ok()) {
       cv::waitKey(100);
       ros::spinOnce();
