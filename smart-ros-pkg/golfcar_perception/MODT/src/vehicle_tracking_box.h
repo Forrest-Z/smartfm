@@ -37,6 +37,12 @@ class box_model
 	int refPt_seial;
 	double moving_direction;
 	double width, length;
+	bool init;
+
+	box_model()
+	{
+		init = false;
+	}
 };
 
 class box_model_track
@@ -97,19 +103,14 @@ class vehicle_tracking_box
 
 	//perform some tracker's basic operations;
 	//1st: initiate new tracks; 2nd: merge and split; 3rd: update with measurements; 4th: delete obsolete tracks;
-	void update_motionShape(MODT::segment_pose_batches& batches, std::vector<std::pair<size_t, size_t> > &track_measure_pairs, std::vector<size_t> &unregistered_measurements);
-
-	//update object's position and shape using ICP;
-	void ICP_motion2shape(box_model_track &track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
-	void ICP_motion2shape_v2(box_model_track &track, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
+	void maintain_tracks(MODT::segment_pose_batches& batches, std::vector<std::pair<size_t, size_t> > &track_measure_pairs, std::vector<size_t> &unregistered_measurements);
+	void motion_estimation(MODT::segment_pose_batch& new_meas, double &delt_x, double &delt_y);
 
 	void calculate_measurement_box(MODT::segment_pose_batch& new_meas, double current_moving_direction, box_model &measurement_box);
 	void update_box_track(box_model_track &track, box_model &measurement_box);
 	void measPt_lidarAngle(geometry_msgs::Pose &lidar_pose, geometry_msgs::Point32 measPt, float &lidarAngle);
-	void attached_points_transform(geometry_msgs::Point32& pt_input, geometry_msgs::Point32& pt_output, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom);
 
 	void tracks_visualization();
-	void constructPtsMap(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CSimplePointsMap &map);
 };
 
 

@@ -49,7 +49,7 @@ class dynamic_safety_zone
 
     double current_vel_;
     double current_angle_;
-    
+    double speed_increment_, relative_speed_diff_;
     double front_boundary_, side_boundary_, back_boundary_;
     geometry_msgs::PolygonStamped inner_safety_zone_;
     sensor_msgs::PointCloud remained_pointcloud_;
@@ -81,7 +81,9 @@ class dynamic_safety_zone
 		private_nh.param("x_coeff", x_coeff_, 3.0);
 		private_nh.param("y_coeff", y_coeff_, 0.25);
 		private_nh.param("angle_coeff", angle_coeff_, 2.0);
-
+		
+		private_nh.param("speed_increment", speed_increment_, 0.3);
+		private_nh.param("relative_speed_diff", relative_speed_diff_, 0.3);
 		private_nh.param("stop_time_threshold", stop_time_threshold_, 5.0);
 
 
@@ -230,7 +232,9 @@ class dynamic_safety_zone
 		{
             double speed_temp;
 		  //double speed_temp = current_vel_ + (minimum_speed-current_vel_)/control_freq_;
-            if(minimum_speed-current_vel_ >1.0) speed_temp = current_vel_ + 0.5;
+	    //relative_speed_diff_ 1.0 for iMiev, 0.3 for golfcart
+	    //speed_increment_ 0.5 for iMiev, 0.3 for golfcart
+            if(minimum_speed-current_vel_ >relative_speed_diff_) speed_temp = current_vel_ + speed_increment_;
             else speed_temp = current_vel_ + (minimum_speed-current_vel_);
 			minimum_speed = speed_temp > 0.6? speed_temp:0.6;
 		}

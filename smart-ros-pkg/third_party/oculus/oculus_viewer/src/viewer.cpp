@@ -30,7 +30,7 @@ void Viewer::show(const cv::Mat& right_image,
   dst_right.copyTo(roi_right);
   cv::Mat roi_left =
       combined(cv::Rect(display_size_.width/2 - display_offset_x_/2,
-                        centering_offset_y,
+                        -display_offset_y_ + centering_offset_y,
                         dst_left.cols,
                         dst_left.rows));
   dst_left.copyTo(roi_left);

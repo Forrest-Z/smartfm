@@ -27,7 +27,8 @@ rosbuild_add_executable(simu_track_collector src/tools/simul_track_collector.cpp
 rosbuild_add_executable(ped_collector src/activity_collector/pedestrian_collector.cpp)
 target_link_libraries(ped_collector ${OpenCV_LIBRARIES} local_track_show global_track_show)
 
-rosbuild_add_library(AM_learner src/semantic_learner/AM_learner.cpp)
+#rosbuild_add_library(AM_learner src/semantic_learner/AM_learner.cpp)
+rosbuild_add_library(AM_learner src/semantic_learner/AM_learner_NBCs.cpp)
 rosbuild_add_library(track_processor src/semantic_learner/track_processor.cpp)
 rosbuild_add_executable(ped_semantics src/semantic_learner/ped_semantics.cpp)
 target_link_libraries(ped_semantics ${OpenCV_LIBRARIES} local_track_show global_track_show AM_learner track_processor)

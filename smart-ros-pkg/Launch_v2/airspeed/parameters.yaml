@@ -220,14 +220,24 @@ $ROBOT/speed_advisor:
   kinematic_acceleration: false
 $ROBOT/dynamic_virtual_bumper:
   base_frame: $ROBOT/base_link
-  offcenter_x: 4.0
-  offcenter_y: 0.8
   x_buffer: 1.2
   y_buffer: 0.2
-  x_coeff_: 2.0
-  y_coeff: 0.02 #0.001 was used for utown to counter the narrow lanes
-  speed_increment: 0.5 #0.5 was used for utown to counter the slope
   min_speed: 0.05
+#if($vehicle=="car")
+  x_coeff: 2.0
+  y_coeff: 0.02 #0.001 was used for utown to counter the narrow lanes
+  speed_increment: 0.5
+  relative_speed_diff: 1.0
+  offcenter_x: 4.0
+  offcenter_y: 0.8
+#elseif($vehicle=="buggy")
+  speed_increment: 0.3
+  relative_speed_diff: 0.3
+  x_coeff: 2.0
+  y_coeff: 0.2
+  offcenter_y: 0.7
+  offcenter_x: 1.7
+#end
 $ROBOT/Dist_Map:
   base_frame: $ROBOT/base_link
   global_frame: $ROBOT/map
@@ -243,6 +253,6 @@ $ROBOT/Obst_Avoid:
   offcenter_y: 0.9
 #elseif($vehicle=="buggy")
   slow_move_vel: 0.6
-  offcenter_x: 1.1
+  offcenter_x: 0.9
   offcenter_y: 0.7
 #end

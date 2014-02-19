@@ -22,6 +22,20 @@ vehicle_tracking_box::vehicle_tracking_box():
 		cout<<"measurement_callback"<<batches.clusters.back().segments.back().header.seq<<endl;
 		MODT::segment_pose_batches batches_copy = batches;
 
+		size_t deleted_track_num = 0;
+		latest_input_time_ = batches.header.stamp;
+		for(size_t i=0; i<object_tracks_.size(); )
+		{
+			double time_passed = (latest_input_time_ - object_tracks_[i].update_time).toSec();
+			if(time_passed > 1.0)
+			{
+				object_tracks_.erase(object_tracks_.begin()+i);
+				deleted_track_num++;
+			}
+			else i++;
+		}
+		ROS_INFO("deleted track num %ld", deleted_track_num);
+
 		register_cluster2history(batches_copy);
 		tracks_visualization();
 	}
@@ -34,39 +48,75 @@ vehicle_tracking_box::vehicle_tracking_box():
 		std::vector<std::pair<size_t, size_t> > track_measure_pairs;
 		std::vector<size_t> unregistered_measurements;
 
+		sensor_msgs::PointCloud current_centroids, prev_centroids;
+		cout<<"current_centroids:";
 		for(size_t i=0; i<batches.clusters.size(); i++)
 		{
 			MODT::segment_pose_batch &cluster_tmp = batches.clusters[i];
+			geometry_msgs::Point32 current_centroid;
+			current_centroid.x = 0.0;
+			current_centroid.y = 0.0;
+			current_centroid.z = 0.0;
+			int current_total_point_num = 0;
+			for(size_t j=0; j<cluster_tmp.segments.size(); j++)
+			{
+				for(size_t k=0; k<cluster_tmp.segments[j].points.size(); k++)
+				{
+					current_centroid.x = current_centroid.x + cluster_tmp.segments[j].points[k].x;
+					current_centroid.y = current_centroid.y + cluster_tmp.segments[j].points[k].y;
+					current_total_point_num ++;
+				}
+			}
+			current_centroid.x = current_centroid.x/(float)current_total_point_num;
+			current_centroid.y = current_centroid.y/(float)current_total_point_num;
+			current_centroids.points.push_back(current_centroid);
+			cout<<"("<<current_centroid.x<<","<<current_centroid.y<<")\t";
+		}
+		cout<<endl;
+
+		cout<<"prev_centroids:";
+		for(size_t j=0; j<object_tracks_.size(); j++)
+		{
+			geometry_msgs::Point32 current_centroid;
+			current_centroid.x = 0.0;
+			current_centroid.y = 0.0;
+			current_centroid.z = 0.0;
+			int current_total_point_num = 0;
+			for(size_t a = 0; a<object_tracks_[j].last_measurement.segments.size(); a++)
+				for(size_t b=0; b<object_tracks_[j].last_measurement.segments[a].points.size(); b++)
+				{
+					current_centroid.x = current_centroid.x + object_tracks_[j].last_measurement.segments[a].points[b].x;
+					current_centroid.y = current_centroid.y + object_tracks_[j].last_measurement.segments[a].points[b].y;
+					current_total_point_num ++;
+				}
+			current_centroid.x = current_centroid.x/(float)current_total_point_num;
+			current_centroid.y = current_centroid.y/(float)current_total_point_num;
+			prev_centroids.points.push_back(current_centroid);
+			cout<<"("<<current_centroid.x<<","<<current_centroid.y<<")\t";
+		}
+		cout<<endl;
+
+		for(size_t i=0; i<batches.clusters.size(); i++)
+		{
+			geometry_msgs::Point32 &curr_centroid_tmp = current_centroids.points[i];
 			bool registered_to_history = false;
 			size_t associated_track_id = 0;
-
-			//chose the probe point at the last but two batch, which corresponds to the final batch in last measurement;
-
-			//pay attention here;
-			if(cluster_tmp.segments[cluster_tmp.segments.size()-2].points.size()==0)continue;
-
-			//this may fail to break a track into 2, when measurements are not able to process in time and dropped;
-			geometry_msgs::Point32 probe_point_tmp = cluster_tmp.segments[cluster_tmp.segments.size()-2].points.front();
+			double nearest_distance = DBL_MAX;
 
 			for(size_t j=0; j<object_tracks_.size(); j++)
 			{
-				if(registered_to_history) break;
-				sensor_msgs::PointCloud &last_pointcloud = object_tracks_[j].last_measurement.segments.back();
-				for(size_t k=0; k<last_pointcloud.points.size(); k++)
-				{
-					geometry_msgs::Point32 &history_pt_tmp = last_pointcloud.points[k];
-					float dist_between_pts = sqrtf((history_pt_tmp.x - probe_point_tmp.x)*(history_pt_tmp.x - probe_point_tmp.x)+(history_pt_tmp.y - probe_point_tmp.y)*(history_pt_tmp.y - probe_point_tmp.y));
+				geometry_msgs::Point32 &prev_centroid_tmp = prev_centroids.points[j];
 
-					//actually they should be the same point;
-					//if(dist_between_pts< 0.01)
-					if(dist_between_pts< 0.5)
-					{
-						registered_to_history = true;
-						associated_track_id = j;
-						break;
-					}
+				float dist_between_pts = sqrtf((prev_centroid_tmp.x - curr_centroid_tmp.x)*(prev_centroid_tmp.x - curr_centroid_tmp.x)+(prev_centroid_tmp.y - curr_centroid_tmp.y)*(prev_centroid_tmp.y - curr_centroid_tmp.y));
+				if(dist_between_pts<nearest_distance){nearest_distance = dist_between_pts; associated_track_id = j;}
+
+				if(nearest_distance< 1.0)
+				{
+					registered_to_history = true;
+					break;
 				}
 			}
+			cout<<nearest_distance<<","<<i<<","<<associated_track_id<<"\n";
 
 			if(registered_to_history)
 			{
@@ -75,18 +125,16 @@ vehicle_tracking_box::vehicle_tracking_box():
 			}
 			else
 			{
-				cout<<endl;
-				cout<<"segment not registered"<<cluster_tmp.segments.back().header.seq<<endl;
+				cout<<"segment not registered"<<i<<endl;
 				unregistered_measurements.push_back(i);
 			}
 		}
 
-		update_motionShape(batches, track_measure_pairs, unregistered_measurements);
+		maintain_tracks(batches, track_measure_pairs, unregistered_measurements);
 	}
 
 	//not consider merge-split issues here;
-
-	void vehicle_tracking_box::update_motionShape(MODT::segment_pose_batches& batches, std::vector<std::pair<size_t, size_t> > &track_measure_pairs, std::vector<size_t> &unregistered_measurements)
+	void vehicle_tracking_box::maintain_tracks(MODT::segment_pose_batches& batches, std::vector<std::pair<size_t, size_t> > &track_measure_pairs, std::vector<size_t> &unregistered_measurements)
 	{
 		//1st: update the associated tracks;
 		for(size_t i=0; i<track_measure_pairs.size(); i++)
@@ -98,58 +146,31 @@ vehicle_tracking_box::vehicle_tracking_box():
 			MODT::segment_pose_batch &lastbatch_tmp = track_tmp.last_measurement;
 			MODT::segment_pose_batch &incoming_meas_tmp = batches.clusters[meas_serial];
 
-			//calculate the transformation between two measurement;
-
-			//remember that object-attached coordinate can be arbitrarily defined, but "object transformation" in the odom frame will be always the same;
-			//it is the "object transformation" that really matters;
-			tf::Pose oldMeas_poseinOdom, newMeas_poseinOdom;
-
-			//ICP_motion2shape(track_tmp, lastbatch_tmp, incoming_meas_tmp, oldMeas_poseinOdom, newMeas_poseinOdom);
-			ICP_motion2shape_v2(track_tmp, incoming_meas_tmp, oldMeas_poseinOdom, newMeas_poseinOdom);
-
-			tf::Pose oldMeas_to_newMeas = oldMeas_poseinOdom.inverse()*newMeas_poseinOdom;
-			double delt_x = newMeas_poseinOdom.getOrigin().x() - oldMeas_poseinOdom.getOrigin().x();
-			double delt_y = newMeas_poseinOdom.getOrigin().y() - oldMeas_poseinOdom.getOrigin().y();
-			//double delt_thetha =  tf::getYaw(oldMeas_to_newMeas.getRotation());
-			//double current_moving_direction = atan2(delt_y, delt_x)+delt_thetha;
-
+			double delt_x, delt_y;
+			motion_estimation(incoming_meas_tmp, delt_x, delt_y);
 			double current_moving_direction = atan2(delt_y, delt_x);
 
 			box_model measure_box;
 			calculate_measurement_box(incoming_meas_tmp, current_moving_direction, measure_box);
 
-			//todo: to update the model box using the measurement box;
+			//to update the model box using the measurement box;
 			update_box_track(track_tmp, measure_box);
 
-
+			/*
 			//transform "anchor points" and "contour points", and to visualize the results;
 			geometry_msgs::Point32 old_anchor_point = track_tmp.anchor_points.back();
 			geometry_msgs::Point32 new_anchor_point;
 			attached_points_transform(old_anchor_point, new_anchor_point, oldMeas_poseinOdom, newMeas_poseinOdom);
 			ROS_INFO("old anchor: (%3f, %3f); new anchor: (%3f, %3f)", old_anchor_point.x, old_anchor_point.y, new_anchor_point.x, new_anchor_point.y);
 			track_tmp.anchor_points.push_back(new_anchor_point);
+			*/
+			geometry_msgs::Point32 new_anchor_point = track_tmp.anchor_points.back();
+			geometry_msgs::Point32 old_anchor_point = track_tmp.anchor_points[track_tmp.anchor_points.size()-2];
 
 			double anchor_pt_dist = sqrt((new_anchor_point.x-old_anchor_point.x)*(new_anchor_point.x-old_anchor_point.x)+(new_anchor_point.y-old_anchor_point.y)*(new_anchor_point.y-old_anchor_point.y));
 			double time_difference = (incoming_meas_tmp.segments.back().header.stamp - lastbatch_tmp.segments.back().header.stamp).toSec();
 			track_tmp.moving_direction = atan2(new_anchor_point.y-old_anchor_point.y, new_anchor_point.x-old_anchor_point.x);
 			track_tmp.velocity = anchor_pt_dist/time_difference;
-
-			sensor_msgs::PointCloud transformed_contour;
-			transformed_contour.header =incoming_meas_tmp.segments.back().header;
-			for(size_t j=0; j<track_tmp.contour_points.points.size(); j++)
-			{
-				geometry_msgs::Point32 old_contour_point = track_tmp.contour_points.points[j];
-				geometry_msgs::Point32 new_contour_point;
-				attached_points_transform(old_contour_point, new_contour_point, oldMeas_poseinOdom, newMeas_poseinOdom);
-				transformed_contour.points.push_back(new_contour_point);
-			}
-			for(size_t j=0; j<incoming_meas_tmp.segments.back().points.size(); j++)
-			{
-				transformed_contour.points.push_back(incoming_meas_tmp.segments.back().points[j]);
-			}
-			track_tmp.contour_points = transformed_contour;
-			track_tmp.last_measurement = incoming_meas_tmp;
-			track_tmp.update_time = incoming_meas_tmp.segments.back().header.stamp;
 
 			geometry_msgs::PoseWithCovarianceStamped filtered_pose;
 			track_tmp.tracker->update(new_anchor_point.x, new_anchor_point.y, track_tmp.omega, track_tmp.update_time);
@@ -164,6 +185,8 @@ vehicle_tracking_box::vehicle_tracking_box():
 			filtered_anchor_point.y = (float)filtered_pose.pose.pose.position.y;
 			track_tmp.filtered_anchor_points.push_back(filtered_anchor_point);
 
+			track_tmp.last_measurement = incoming_meas_tmp;
+			track_tmp.update_time = incoming_meas_tmp.segments.back().header.stamp;
 			if(incoming_meas_tmp.object_label==1)track_tmp.update_object_belief(true);
 			else {track_tmp.update_object_belief(false);}
 		}
@@ -220,39 +243,27 @@ vehicle_tracking_box::vehicle_tracking_box():
 			//the first anchor point;
 			new_track_tmp.anchor_points.push_back(centroid_tmp);
 			new_track_tmp.update_time = incoming_meas_tmp.segments.back().header.stamp;
-			object_tracks_.push_back(new_track_tmp);
-			object_total_id_++;
 
 			new_track_tmp.tracker->set_params(3.0, 3.0, 3.0, 3.0, M_PI*0.2, 0.3, 0.3, M_PI*100);
 			new_track_tmp.tracker->init_filter(centroid_tmp.x, centroid_tmp.y, vx_value, vy_value, 0.0);
 			new_track_tmp.update_object_belief(true);
+
+			double delt_x, delt_y;
+			motion_estimation(incoming_meas_tmp, delt_x, delt_y);
+			double current_moving_direction = atan2(delt_y, delt_x);
+			box_model measure_box;
+			calculate_measurement_box(incoming_meas_tmp, current_moving_direction, measure_box);
+			update_box_track(new_track_tmp, measure_box);
+
+			object_tracks_.push_back(new_track_tmp);
+			object_total_id_++;
 		}
 
-		//3rd: delete old tracks;
-		size_t deleted_track_num = 0;
-		latest_input_time_ = batches.header.stamp;
-		for(size_t i=0; i<object_tracks_.size(); )
-		{
-			double time_passed = (latest_input_time_ - object_tracks_[i].update_time).toSec();
-			if(time_passed > 1.0)
-			{
-				object_tracks_.erase(object_tracks_.begin()+i);
-				deleted_track_num++;
-			}
-			else i++;
-		}
-
-		ROS_INFO("updated tracks: %ld; new tracks: %ld; deleted tracks: %ld; remained tracks: %ld", track_measure_pairs.size(), unregistered_measurements.size(), deleted_track_num, object_tracks_.size());
+		ROS_INFO("updated tracks: %ld; new tracks: %ld; remained tracks: %ld", track_measure_pairs.size(), unregistered_measurements.size(), object_tracks_.size());
 	}
 
-	void vehicle_tracking_box::ICP_motion2shape_v2(box_model_track& track, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom )
+	void vehicle_tracking_box::motion_estimation(MODT::segment_pose_batch& new_meas, double &delt_x, double &delt_y)
 	{
-		double time_difference = (new_meas.segments.back().header.stamp - new_meas.segments[new_meas.segments.size()-2].header.stamp).toSec();
-
-		//1st step: for a single cluster, try to estimate its motion using ICP;
-		geometry_msgs::Pose old_pose = new_meas.ego_poses[new_meas.ego_poses.size()-2];
-		geometry_msgs::Pose new_pose = new_meas.ego_poses.back();
-
 		//sensor_msgs::PointCloud old_cloud = track.contour_points;
 		sensor_msgs::PointCloud new_cloud, old_cloud;
 
@@ -263,10 +274,6 @@ vehicle_tracking_box::vehicle_tracking_box():
 			for(size_t j=0; j<new_meas.segments[i].points.size(); j++)
 			{
 				new_cloud.points.push_back(new_meas.segments[i].points[j]);
-				geometry_msgs::Point32 deputy_point;
-				deputy_point.x = new_meas.segments[i].points[j].x + 10.0;
-				deputy_point.y = new_meas.segments[i].points[j].y;
-				new_cloud.points.push_back(deputy_point);
 			}
 
 		batch_serial=0;
@@ -274,26 +281,7 @@ vehicle_tracking_box::vehicle_tracking_box():
 			for(size_t j=0; j<new_meas.segments[i].points.size(); j++)
 			{
 				old_cloud.points.push_back(new_meas.segments[i].points[j]);
-				geometry_msgs::Point32 deputy_point;
-				deputy_point.x = new_meas.segments[i].points[j].x + 10.0;
-				deputy_point.y = new_meas.segments[i].points[j].y;
-				old_cloud.points.push_back(deputy_point);
 			}
-
-		//predicting using tracking information;
-		geometry_msgs::Pose old_to_predict;
-		old_to_predict.orientation.x = 0.0;
-		old_to_predict.orientation.y = 0.0;
-		old_to_predict.orientation.z = 0.0;
-		old_to_predict.orientation.w = 1.0;
-		old_to_predict.position.x = 0.0;
-		old_to_predict.position.y = 0.0;
-		old_to_predict.position.z = 0.0;
-
-		//old_to_predict.position.x = time_difference*track.velocity*cos(track.moving_direction);
-		//old_to_predict.position.y = time_difference*track.velocity*sin(track.moving_direction);
-
-		cout<<"old_to_predict: "<<time_difference<<","<<track.velocity<<","<<track.moving_direction<<","<<old_to_predict.position.x<<","<<old_to_predict.position.y<<endl;
 
 		//please refer to my evernote 20140103 for more information;
 		//a. calculate the rough estimation for the initial pose to speed up ICP;
@@ -311,241 +299,19 @@ vehicle_tracking_box::vehicle_tracking_box():
 		centroid_tmp.y = centroid_tmp.y/(float)old_cloud.points.size();
 		centroid_position.push_back(centroid_tmp);
 
-		centroid_tmp.x = centroid_tmp.x + old_to_predict.position.x;
-		centroid_tmp.y = centroid_tmp.y + old_to_predict.position.y;
-		centroid_position.push_back(centroid_tmp);
-
-		tf::Pose Odom_to_Vtm1 = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(centroid_position.front().x), tfScalar(centroid_position.front().y), tfScalar(0)));
-		tf::Pose Odom_to_Vt = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(centroid_position.back().x), tfScalar(centroid_position.back().y), tfScalar(0)));
-		tf::Pose Vtm1_to_Vt = Odom_to_Vtm1.inverse()*Odom_to_Vt;
-
-		tf::Pose Odom_to_Etm1, Odom_to_Et, Etm1_to_Et;
-		tf::poseMsgToTF(old_pose, Odom_to_Etm1);
-		tf::poseMsgToTF(new_pose, Odom_to_Et);
-		Etm1_to_Et = Odom_to_Etm1.inverse()*Odom_to_Et;
-
-		tf::Pose Vt_to_Et = Odom_to_Vt.inverse()*Odom_to_Et;
-		tf::Pose Vtm1_to_Etvirtual = Vt_to_Et;
-		tf::Pose Etvirtual_to_Et = Vtm1_to_Etvirtual.inverse()*Vtm1_to_Vt*Vt_to_Et;
-		tf::Pose Et_to_Etvirtual = Etvirtual_to_Et.inverse();
-		tf::Pose Etm1_to_Etvirtual = Etm1_to_Et*Et_to_Etvirtual;
-
-		float x_initial = (float)Etm1_to_Etvirtual.getOrigin().getX();
-		float y_initial = (float)Etm1_to_Etvirtual.getOrigin().getY();
-		float yaw_initial = (float) tf::getYaw(Etm1_to_Etvirtual.getRotation());
-
-		cout<<"other vehicle rough movement:"<<Vtm1_to_Vt.getOrigin().getX()<<","<<Vtm1_to_Vt.getOrigin().getY()<<"0"<<endl;
-		cout<<"ego vehicle odom movement:"<<Etm1_to_Et.getOrigin().getX()<<","<<Etm1_to_Et.getOrigin().getY()<<","<<tf::getYaw(Etm1_to_Et.getRotation())<<endl;
-		cout<<"ICP initial guess: "<<x_initial<<","<<y_initial<<","<<yaw_initial<<endl;
-
-		//CPose2D	initialPose(x_initial, y_initial, yaw_initial);
-		CPose2D	initialPose(x_initial, y_initial, 0.0);
-
-		//to calculate the deputy cloud;
-		sensor_msgs::PointCloud old_cloud_shiftAdded, new_cloud_shiftAdded;
-		tf::Pose lidarPose_tf;
-		tf::poseMsgToTF(new_pose, lidarPose_tf);
-
-		CSimplePointsMap		m1, m2;
-		float					runningTime;
-		CICP::TReturnInfo		info;
-		CICP					ICP;
-
-		constructPtsMap(old_pose, old_cloud, m1);
-		constructPtsMap(new_pose, new_cloud, m2);
-
-		ICP.options.ICP_algorithm =  icpLevenbergMarquardt;
-		ICP.options.maxIterations			= 100;
-		ICP.options.thresholdAng			= DEG2RAD(10.0f);
-		ICP.options.thresholdDist			= 0.75f;
-		//ICP.options.thresholdDist			= 2.0f;
-		ICP.options.ALFA					= 0.5f;
-		ICP.options.smallestThresholdDist	= 0.01f;
-		ICP.options.doRANSAC = false;
-		ICP.options.onlyClosestCorrespondences = false;
-		//ICP.options.dumpToConsole();
-
-		//CPose2D		initialPose(0.0f,0.0f,(float)DEG2RAD(0.0f));
-		CPosePDFPtr pdf = ICP.Align(&m1, &m2, initialPose, &runningTime,(void*)&info);
-		CPosePDFGaussian  gPdf;
-		gPdf.copyFrom(*pdf);
-
-		printf("ICP run in %.02fms, %d iterations (%.02fms/iter), %.01f%% goodness\n -> ",
-				runningTime*1000,
-				info.nIterations,
-				runningTime*1000.0f/info.nIterations,
-				info.goodness*100 );
-		cout << "Mean of estimation: " << pdf->getMeanVal() << endl<< endl;
-
-		//c: to recover the vehicle pose and speed in the global frame;
-		double ICP_output_x 	= gPdf.mean.x();
-		double ICP_output_y 	= gPdf.mean.y();
-		double ICP_output_yaw 	= gPdf.mean.phi();
-
-		cout<<"ICP output: "<<ICP_output_x<<","<<ICP_output_y<<","<<ICP_output_yaw<<endl;
-
-		tf::Pose ICP_Etm1_to_Etvirtual = tf::Transform(tf::Matrix3x3(tf::createQuaternionFromYaw(ICP_output_yaw)), tf::Vector3(tfScalar(ICP_output_x), tfScalar(ICP_output_y), tfScalar(0)));
-
-		tf::Pose ICP_Et_To_Etvirtual = Etm1_to_Et.inverse()*ICP_Etm1_to_Etvirtual;
-		tf::Pose ICP_Vtm1_To_Vt = Vtm1_to_Etvirtual*ICP_Et_To_Etvirtual.inverse()*Vt_to_Et.inverse();
-
-		double vehicle_delta_x = ICP_Vtm1_To_Vt.getOrigin().getX();
-		double vehicle_delta_y = ICP_Vtm1_To_Vt.getOrigin().getY();
-		double vehicle_delta_yaw = tf::getYaw(ICP_Vtm1_To_Vt.getRotation());
-		cout<<"vehicle motion: "<<vehicle_delta_x<<","<<vehicle_delta_y<<","<<vehicle_delta_yaw<<endl;
-		track.omega = vehicle_delta_yaw/time_difference;
-
-		newMeas_poseinOdom = Odom_to_Vt;
-		oldMeas_poseinOdom = Odom_to_Vt*ICP_Vtm1_To_Vt.inverse();
-	}
-
-	void vehicle_tracking_box::ICP_motion2shape(box_model_track& track, MODT::segment_pose_batch& old_meas, MODT::segment_pose_batch& new_meas, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom )
-	{
-		double time_difference = (new_meas.segments.back().header.stamp - old_meas.segments.back().header.stamp).toSec();
-
-		//1st step: for a single cluster, try to estimate its motion using ICP;
-		geometry_msgs::Pose old_pose = old_meas.ego_poses.back();
-		geometry_msgs::Pose new_pose = new_meas.ego_poses.back();
-
-		//sensor_msgs::PointCloud old_cloud = track.contour_points;
-		sensor_msgs::PointCloud new_cloud, old_cloud;
-
-		for(size_t i=0; i<new_meas.segments.size(); i++)
-			for(size_t j=0; j<new_meas.segments[i].points.size(); j++)
-			{
-				new_cloud.points.push_back(new_meas.segments[i].points[j]);
-				geometry_msgs::Point32 deputy_point;
-				deputy_point.x = new_meas.segments[i].points[j].x + 10.0;
-				deputy_point.y = new_meas.segments[i].points[j].y;
-				new_cloud.points.push_back(deputy_point);
-			}
-
-		for(size_t i=0; i<old_meas.segments.size(); i++)
-			for(size_t j=0; j<old_meas.segments[i].points.size(); j++)
-			{
-				old_cloud.points.push_back(old_meas.segments[i].points[j]);
-				geometry_msgs::Point32 deputy_point;
-				deputy_point.x = old_meas.segments[i].points[j].x + 10.0;
-				deputy_point.y = old_meas.segments[i].points[j].y;
-				old_cloud.points.push_back(deputy_point);
-			}
-
-		//predicting using tracking information;
-		geometry_msgs::Pose old_to_predict;
-		old_to_predict.orientation.x = 0.0;
-		old_to_predict.orientation.y = 0.0;
-		old_to_predict.orientation.z = 0.0;
-		old_to_predict.orientation.w = 1.0;
-		old_to_predict.position.x = 0.0;
-		old_to_predict.position.y = 0.0;
-		old_to_predict.position.z = 0.0;
-
-		old_to_predict.position.x = time_difference*track.velocity*cos(track.moving_direction);
-		old_to_predict.position.y = time_difference*track.velocity*sin(track.moving_direction);
-
-		cout<<"old_to_predict: "<<time_difference<<","<<track.velocity<<","<<track.moving_direction<<","<<old_to_predict.position.x<<","<<old_to_predict.position.y<<endl;
-
-		//please refer to my evernote 20140103 for more information;
-		//a. calculate the rough estimation for the initial pose to speed up ICP;
-		std::vector<geometry_msgs::Point32> centroid_position;
-		geometry_msgs::Point32 centroid_tmp;
 		centroid_tmp.x = 0.0;
 		centroid_tmp.y = 0.0;
-		centroid_tmp.z = 0.0;
-		for(size_t k=0; k<old_cloud.points.size(); k++)
+		for(size_t k=0; k<new_cloud.points.size(); k++)
 		{
-			centroid_tmp.x = centroid_tmp.x + old_cloud.points[k].x;
-			centroid_tmp.y = centroid_tmp.y + old_cloud.points[k].y;
+			centroid_tmp.x = centroid_tmp.x + new_cloud.points[k].x;
+			centroid_tmp.y = centroid_tmp.y + new_cloud.points[k].y;
 		}
-		centroid_tmp.x = centroid_tmp.x/(float)old_cloud.points.size();
-		centroid_tmp.y = centroid_tmp.y/(float)old_cloud.points.size();
+		centroid_tmp.x = centroid_tmp.x/(float)new_cloud.points.size();
+		centroid_tmp.y = centroid_tmp.y/(float)new_cloud.points.size();
 		centroid_position.push_back(centroid_tmp);
 
-		centroid_tmp.x = centroid_tmp.x + old_to_predict.position.x;
-		centroid_tmp.y = centroid_tmp.y + old_to_predict.position.y;
-		centroid_position.push_back(centroid_tmp);
-
-		tf::Pose Odom_to_Vtm1 = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(centroid_position.front().x), tfScalar(centroid_position.front().y), tfScalar(0)));
-		tf::Pose Odom_to_Vt = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(centroid_position.back().x), tfScalar(centroid_position.back().y), tfScalar(0)));
-		tf::Pose Vtm1_to_Vt = Odom_to_Vtm1.inverse()*Odom_to_Vt;
-
-		tf::Pose Odom_to_Etm1, Odom_to_Et, Etm1_to_Et;
-		tf::poseMsgToTF(old_pose, Odom_to_Etm1);
-		tf::poseMsgToTF(new_pose, Odom_to_Et);
-		Etm1_to_Et = Odom_to_Etm1.inverse()*Odom_to_Et;
-
-		tf::Pose Vt_to_Et = Odom_to_Vt.inverse()*Odom_to_Et;
-		tf::Pose Vtm1_to_Etvirtual = Vt_to_Et;
-		tf::Pose Etvirtual_to_Et = Vtm1_to_Etvirtual.inverse()*Vtm1_to_Vt*Vt_to_Et;
-		tf::Pose Et_to_Etvirtual = Etvirtual_to_Et.inverse();
-		tf::Pose Etm1_to_Etvirtual = Etm1_to_Et*Et_to_Etvirtual;
-
-		float x_initial = (float)Etm1_to_Etvirtual.getOrigin().getX();
-		float y_initial = (float)Etm1_to_Etvirtual.getOrigin().getY();
-		float yaw_initial = (float) tf::getYaw(Etm1_to_Etvirtual.getRotation());
-
-		cout<<"other vehicle rough movement:"<<Vtm1_to_Vt.getOrigin().getX()<<","<<Vtm1_to_Vt.getOrigin().getY()<<"0"<<endl;
-		cout<<"ego vehicle odom movement:"<<Etm1_to_Et.getOrigin().getX()<<","<<Etm1_to_Et.getOrigin().getY()<<","<<tf::getYaw(Etm1_to_Et.getRotation())<<endl;
-		cout<<"ICP initial guess: "<<x_initial<<","<<y_initial<<","<<yaw_initial<<endl;
-
-		CPose2D	initialPose(x_initial, y_initial, yaw_initial);
-
-		//to calculate the deputy cloud;
-		sensor_msgs::PointCloud old_cloud_shiftAdded, new_cloud_shiftAdded;
-		tf::Pose lidarPose_tf;
-		tf::poseMsgToTF(new_pose, lidarPose_tf);
-
-		CSimplePointsMap		m1, m2;
-		float					runningTime;
-		CICP::TReturnInfo		info;
-		CICP					ICP;
-
-		constructPtsMap(old_pose, old_cloud, m1);
-		constructPtsMap(new_pose, new_cloud, m2);
-
-		ICP.options.ICP_algorithm =  icpLevenbergMarquardt;
-		ICP.options.maxIterations			= 100;
-		ICP.options.thresholdAng			= DEG2RAD(10.0f);
-		ICP.options.thresholdDist			= 0.75f;
-		//ICP.options.thresholdDist			= 2.0f;
-		ICP.options.ALFA					= 0.5f;
-		ICP.options.smallestThresholdDist	= 0.01f;
-		ICP.options.doRANSAC = false;
-		ICP.options.onlyClosestCorrespondences = false;
-		//ICP.options.dumpToConsole();
-
-		//CPose2D		initialPose(0.0f,0.0f,(float)DEG2RAD(0.0f));
-		CPosePDFPtr pdf = ICP.Align(&m1, &m2, initialPose, &runningTime,(void*)&info);
-		CPosePDFGaussian  gPdf;
-		gPdf.copyFrom(*pdf);
-
-		printf("ICP run in %.02fms, %d iterations (%.02fms/iter), %.01f%% goodness\n -> ",
-				runningTime*1000,
-				info.nIterations,
-				runningTime*1000.0f/info.nIterations,
-				info.goodness*100 );
-		cout << "Mean of estimation: " << pdf->getMeanVal() << endl<< endl;
-
-		//c: to recover the vehicle pose and speed in the global frame;
-		double ICP_output_x 	= gPdf.mean.x();
-		double ICP_output_y 	= gPdf.mean.y();
-		double ICP_output_yaw 	= gPdf.mean.phi();
-
-		cout<<"ICP output: "<<ICP_output_x<<","<<ICP_output_y<<","<<ICP_output_yaw<<endl;
-
-		tf::Pose ICP_Etm1_to_Etvirtual = tf::Transform(tf::Matrix3x3(tf::createQuaternionFromYaw(ICP_output_yaw)), tf::Vector3(tfScalar(ICP_output_x), tfScalar(ICP_output_y), tfScalar(0)));
-
-		tf::Pose ICP_Et_To_Etvirtual = Etm1_to_Et.inverse()*ICP_Etm1_to_Etvirtual;
-		tf::Pose ICP_Vtm1_To_Vt = Vtm1_to_Etvirtual*ICP_Et_To_Etvirtual.inverse()*Vt_to_Et.inverse();
-
-		double vehicle_delta_x = ICP_Vtm1_To_Vt.getOrigin().getX();
-		double vehicle_delta_y = ICP_Vtm1_To_Vt.getOrigin().getY();
-		double vehicle_delta_yaw = tf::getYaw(ICP_Vtm1_To_Vt.getRotation());
-		cout<<"vehicle motion: "<<vehicle_delta_x<<","<<vehicle_delta_y<<","<<vehicle_delta_yaw<<endl;
-		track.omega = vehicle_delta_yaw/time_difference;
-
-		newMeas_poseinOdom = Odom_to_Vt;
-		oldMeas_poseinOdom = Odom_to_Vt*ICP_Vtm1_To_Vt.inverse();
+		delt_x = centroid_position.back().x - centroid_position.front().x;
+		delt_y = centroid_position.back().y - centroid_position.front().y;
 	}
 
 	void vehicle_tracking_box::calculate_measurement_box(MODT::segment_pose_batch& new_meas, double current_moving_direction, box_model &measurement_box)
@@ -649,10 +415,86 @@ vehicle_tracking_box::vehicle_tracking_box():
 		meas_polygon_pub_.publish(meas_polygon);
 	}
 
+	//bugs inside;
 	void vehicle_tracking_box::update_box_track(box_model_track &track, box_model &measurement_box)
 	{
+		ROS_WARN("update box track %d", track.object_id);
 
+		if(measurement_box.length<0.001 || measurement_box.width<0.001)
+		{
+			ROS_WARN("measurement box too small, unreliable");
+		}
 
+		if(track.shape.init==false)
+		{
+			track.shape = measurement_box;
+			track.shape.init=true;
+		}
+		else
+		{
+			//1st: update the shape model with new measurement box;
+			geometry_msgs::Point32 new_points[4];
+			for(size_t i=0; i<4; i++) new_points[i]=measurement_box.corner_points[i];
+
+			//take into account limited FOV;
+			/*
+			if(fabs(measurement_box.lidar_angle[0])> M_PI*(130.0/180.0) && fabs(measurement_box.lidar_angle[3])< M_PI*(130.0/180.0))
+			{
+				geometry_msgs::Point32 point_tmp;
+				point_tmp = new_points[0];
+				new_points[0] = new_points[3];
+				new_points[3] = point_tmp;
+				point_tmp = new_points[1];
+				new_points[1] = new_points[2];
+				new_points[2] = point_tmp;
+			}
+			*/
+
+			geometry_msgs::Point32 shape_points[4];
+			shape_points[0]=new_points[0];
+
+			double scale_ratio_width = track.shape.width/measurement_box.width > 1.0 ? track.shape.width/measurement_box.width: 1.0;
+			double scale_ratio_length = track.shape.length/measurement_box.length > 1.0 ? track.shape.length/measurement_box.length:1.0;
+
+			cout<<"track shape"<<" "<<track.shape.width<<" "<<track.shape.length<<" "<<endl;
+			cout<<"measurement_box"<<" "<<measurement_box.width<<" "<<measurement_box.length<<" "<<endl;
+			cout<<"scale ration"<<" "<<scale_ratio_width<<" "<<scale_ratio_length<<endl;
+
+			track.shape.width = measurement_box.width*scale_ratio_width;
+			track.shape.length = measurement_box.length*scale_ratio_length;
+
+			shape_points[1].x = shape_points[0].x + scale_ratio_width *(new_points[1].x-new_points[0].x);
+			shape_points[1].y = shape_points[0].y + scale_ratio_width *(new_points[1].y-new_points[0].y);
+			shape_points[2].x = shape_points[1].x + scale_ratio_length *(new_points[2].x-new_points[1].x);
+			shape_points[2].y = shape_points[1].y + scale_ratio_length *(new_points[2].y-new_points[1].y);
+			shape_points[3].x = shape_points[0].x + scale_ratio_length *(new_points[3].x-new_points[0].x);
+			shape_points[3].y = shape_points[0].y + scale_ratio_length *(new_points[3].y-new_points[0].y);
+			for(size_t i=0; i<4; i++) track.shape.corner_points[i]=shape_points[i];
+
+			//2nd: find the nearest point to the old anchor point;
+			/*
+			geometry_msgs::Point32 prev_anchorPt = track.anchor_points.back();
+			size_t nearest_serial = 0;
+			double shortest_dist = DBL_MAX;
+			for(size_t i=0; i<4; i++)
+			{
+				geometry_msgs::Point32 &shape_pt_tmp = shape_points[i];
+				double dist_tmp = sqrt((shape_pt_tmp.x-prev_anchorPt.x)*(shape_pt_tmp.x-prev_anchorPt.x)+(shape_pt_tmp.y-prev_anchorPt.y)*(shape_pt_tmp.y-prev_anchorPt.y));
+				nearest_serial = dist_tmp<shortest_dist? i:nearest_serial;
+			}
+			track.anchor_points.push_back(shape_points[nearest_serial]);
+			*/
+
+			geometry_msgs::Point32 shape_centroid;
+			for(size_t i=0; i<4; i++)
+			{
+				shape_centroid.x = shape_centroid.x + shape_points[i].x;
+				shape_centroid.y = shape_centroid.y + shape_points[i].y;
+			}
+			shape_centroid.x = shape_centroid.x/4.0;
+			shape_centroid.y = shape_centroid.y/4.0;
+			track.anchor_points.push_back(shape_centroid);
+		}
 	}
 
 	void vehicle_tracking_box::measPt_lidarAngle(geometry_msgs::Pose &lidar_pose, geometry_msgs::Point32 measPt, float &lidarAngle)
@@ -678,49 +520,6 @@ vehicle_tracking_box::vehicle_tracking_box():
 		lidarAngle = pt_angle;
 	}
 
-	void vehicle_tracking_box::constructPtsMap(geometry_msgs::Pose &lidar_pose, sensor_msgs::PointCloud &segment_pointcloud, CSimplePointsMap &map)
-	{
-		//2nd step: input the scan readings with pointcloud readings;
-		tf::Pose lidarTFPose;
-		tf::poseMsgToTF(lidar_pose, lidarTFPose);
-
-		geometry_msgs::Pose temppose;
-		temppose.position.x=0;
-		temppose.position.y=0;
-		temppose.position.z=0;
-		temppose.orientation.x=0;
-		temppose.orientation.y=0;
-		temppose.orientation.z=0;
-		temppose.orientation.w=1;
-
-		for(size_t ip=0; ip<segment_pointcloud.points.size(); ip++)
-		{
-			temppose.position.x = segment_pointcloud.points[ip].x;
-			temppose.position.y = segment_pointcloud.points[ip].y;
-
-			tf::Pose tempTfPose;
-			tf::poseMsgToTF(temppose, tempTfPose);
-
-			tf::Pose pointInlidar = lidarTFPose.inverseTimes(tempTfPose);
-			geometry_msgs::Point32 pointtemp;
-			pointtemp.x=(float)pointInlidar.getOrigin().x();
-			pointtemp.y=(float)pointInlidar.getOrigin().y();
-			map.insertPoint(pointtemp.x, pointtemp.y, 0.0);
-		}
-	}
-
-	//points attached to vehicle will be transformed together into new places in the "odom" frame;
-	void vehicle_tracking_box::attached_points_transform(geometry_msgs::Point32& pt_input, geometry_msgs::Point32& pt_output, tf::Pose& oldMeas_poseinOdom, tf::Pose& newMeas_poseinOdom)
-	{
-		tf::Pose ptPose_inOdom, ptPose_inVehicle, ptPose_inOdom_new;
-		ptPose_inOdom = tf::Transform(tf::Matrix3x3(tf::createIdentityQuaternion()), tf::Vector3(tfScalar(pt_input.x), tfScalar(pt_input.y), tfScalar(0)));
-		ptPose_inVehicle = oldMeas_poseinOdom.inverse()*ptPose_inOdom;
-		ptPose_inOdom_new = newMeas_poseinOdom*ptPose_inVehicle;
-		pt_output.x = (float)ptPose_inOdom_new.getOrigin().getX();
-		pt_output.y = (float)ptPose_inOdom_new.getOrigin().getY();
-		pt_output.z = 0.0;
-	}
-
 	void vehicle_tracking_box::tracks_visualization()
 	{
 		sensor_msgs::PointCloud contour_pcl, anchor_pcl, filtered_anchor_pcl;
@@ -739,9 +538,9 @@ vehicle_tracking_box::vehicle_tracking_box():
 			//bool visualize_flag = true;
 			if(visualize_flag)
 			{
-				for(size_t j=0; j<object_tracks_[i].contour_points.points.size(); j++)
+				for(size_t j=0; j<4; j++)
 				{
-					contour_pcl.points.push_back(object_tracks_[i].contour_points.points[j]);
+					contour_pcl.points.push_back(object_tracks_[i].shape.corner_points[j]);
 				}
 
 				for(size_t j=0; j<object_tracks_[i].anchor_points.size(); j++)

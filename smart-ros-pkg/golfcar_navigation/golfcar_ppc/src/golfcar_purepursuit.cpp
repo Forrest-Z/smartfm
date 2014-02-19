@@ -1,4 +1,4 @@
-#include "golfcar_purepursuit.h"
+#include <golfcar_ppc/golfcar_purepursuit.h>
 
 #include <fmutil/fm_math.h>
 
@@ -68,13 +68,15 @@ bool PurePursuit::heading_lookahead(double *heading_la, double *dist_to_goal)
     //reverse search to ensure that the pursuing point will always
     //be the one in front of the vehicle
     *dist_to_goal = 0;
-    for( path_n_=(int)path_.poses.size()-2; path_n_>=0; path_n_-- )
-    {
-        current_point_ = path_.poses[path_n_].pose.position;
-        next_point_ = path_.poses[path_n_+1].pose.position;
-        if( circle_line_collision(anchor_pt, &collided_pt_) ) break;
+    
+    if( !circle_line_collision(anchor_pt, &collided_pt_)){
+      for( path_n_=(int)path_.poses.size()-2; path_n_>=0; path_n_-- )
+      {
+	  current_point_ = path_.poses[path_n_].pose.position;
+	  next_point_ = path_.poses[path_n_+1].pose.position;
+	  if( circle_line_collision(anchor_pt, &collided_pt_) ) break;
+      }
     }
-
     //calculate distance to goal
     if( ! current_pos_to_point_dist(path_.poses.size()-1, dist_to_goal) )
     	return false;

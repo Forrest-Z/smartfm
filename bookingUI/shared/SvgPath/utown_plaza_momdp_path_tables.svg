@@ -8,7 +8,7 @@
    xmlns:xlink="http://www.w3.org/1999/xlink"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   sodipodi:docname="utown_plaza_momdp_path_tables.svg"
+   sodipodi:docname="path_def.svg"
    height="2832"
    width="2000"
    inkscape:version="0.48.3.1 r9886"
@@ -27,9 +27,9 @@
      inkscape:window-height="876"
      id="namedview32"
      showgrid="false"
-     inkscape:zoom="0.52553046"
-     inkscape:cx="1006.1855"
-     inkscape:cy="1161.6039"
+     inkscape:zoom="2.1021218"
+     inkscape:cx="1128.2416"
+     inkscape:cy="1866.9109"
      inkscape:window-x="65"
      inkscape:window-y="24"
      inkscape:window-maximized="1"
@@ -476,7 +476,7 @@
   <desc
      id="desc6">The paths consist of all the possible route that can be taken by the golfcart to serve 4 stations: DCC, MCD, EA and E3A</desc>
   <image
-     sodipodi:absref="/home/golfcar/smartfm/bookingUI/shared/SvgPath/utown_momdp.png"
+     sodipodi:absref="/home/golfcar/SvgPath/utown_momdp.png"
      xlink:href="utown_momdp.png"
      inkscape:label="#image3014"
      y="0"
