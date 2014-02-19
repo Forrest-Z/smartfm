@@ -96,5 +96,8 @@ rosbuild_add_executable(vehicle_pose_estimation src/vehicle_pose_estimation.cpp)
 rosbuild_add_executable(vehicle_tracking_ICP src/vehicle_tracking_ICP.cpp src/EKF_tracker/ConstSpeed_EKF_tracker.cpp src/EKF_tracker/nonlinearanalyticconditionalgaussianodo.cpp)
 target_link_libraries(vehicle_tracking_ICP ${OpenCV_LIBRARIES})
 
+rosbuild_add_executable(vehicle_tracking_box src/vehicle_tracking_box.cpp src/EKF_tracker/ConstSpeed_EKF_tracker.cpp src/EKF_tracker/nonlinearanalyticconditionalgaussianodo.cpp)
+target_link_libraries(vehicle_tracking_box ${OpenCV_LIBRARIES})
+
 #rosbuild_add_executable(vehicle_tracking_gridsearch src/vehicle_tracking_gridsearch.cpp)
 #rosbuild_add_executable(ICP_example src/ICP_example.cpp)

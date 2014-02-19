@@ -68,7 +68,11 @@ $ROBOT/camera_front:
   frame_id: $ROBOT/camera_front_img
 $ROBOT/microstrain_3dmgx2_node:
   time_offset: -0.040
+#if($vehicle=="car")  
   port: /dev/ttyACM0
+#elseif($vehicle=="buggy")
+  port: /dev/msimu
+#end
   autostart: true
   frameid: $ROBOT/imu
   autocalibrate: true
@@ -195,7 +199,11 @@ $ROBOT/route_planner:
 $ROBOT/speed_advisor:
   map_frame_id: $ROBOT/map 
   robot_frame_id: $ROBOT/base_link
-  max_speed: 3.0
+#if($vehicle=="car")  
+  max_speed: 5.0
+#elseif($vehicle=="buggy")
+  max_speed: 1.5
+#end
   acc: 0.2
   max_dec: 1.0
   norm_dec: 0.3
@@ -204,21 +212,21 @@ $ROBOT/speed_advisor:
   frequency: 20.0
   tolerance: 0.5
   emergency_zone: 3.0
-  slow_zone: 10.0
+  slow_zone: 15.0
   slow_speed: 1.5
-  enterstation_speed: 2.5
-  stationspeed_dist: 30.0
+  enterstation_speed: 2.0
+  stationspeed_dist: 40.0
   baselink_carfront_length: 2.0
   kinematic_acceleration: false
 $ROBOT/dynamic_virtual_bumper:
   base_frame: $ROBOT/base_link
   offcenter_x: 4.0
   offcenter_y: 0.8
-  x_buffer: 1.5
+  x_buffer: 1.2
   y_buffer: 0.2
   x_coeff_: 2.0
-  y_coeff: 0.2 #0.001 was used for utown to counter the narrow lanes
-  speed_increment: 0.2 #0.5 was used for utown to counter the slope
+  y_coeff: 0.02 #0.001 was used for utown to counter the narrow lanes
+  speed_increment: 0.5 #0.5 was used for utown to counter the slope
   min_speed: 0.05
 $ROBOT/Dist_Map:
   base_frame: $ROBOT/base_link
@@ -229,6 +237,12 @@ $ROBOT/Obst_Avoid:
   global_frame: $ROBOT/map
   local_frame: $ROBOT/local_map
   obst_avoid_trigger: true
+#if($vehicle=="car")  
+  slow_move_vel: 0.1
   offcenter_x: 3.5
   offcenter_y: 0.9
-  slow_move_vel: 0.1
+#elseif($vehicle=="buggy")
+  slow_move_vel: 0.6
+  offcenter_x: 1.1
+  offcenter_y: 0.7
+#end

@@ -1,10 +1,10 @@
 <robot name = "golfcar">
-	<link name = "/base_link">
+	<link name = "iMiev/base_link">
 		<visual>
 			<geometry>
-				<mesh filename="package://local_map/urdf/golfcart.STL" scale = "0.025 0.025 0.025" />
+				<mesh filename="package://local_map/urdf/SCOT_bin.stl" scale = "0.001 0.001 0.001" />
 			</geometry>
-			<origin rpy="0 0 3.1415926" xyz="1.8 0.6 0"/>
+			<origin rpy="0 0 1.5707963268" xyz="3 -1.0 -0.4"/>
 			<material name="green">
 				<color rgba="0.8 0.69 0.584 1"/>
 			</material>
