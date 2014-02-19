@@ -33,8 +33,8 @@ bool OculusRos::init() {
   if (sensor_) {
     fusion_result_.AttachToSensor(sensor_);
     pub_ = node_.advertise<geometry_msgs::Quaternion>("/oculus/orientation", 10);
-    pan_pub_ = node_.advertise<std_msgs::Float32>("/pan_servo_angle", 10);
-    tilt_pub_ = node_.advertise<std_msgs::Float32>("/tilt_servo_angle", 10);
+    pan_pub_ = node_.advertise<std_msgs::Float32>("/pan_servo_angle_udp", 10);
+    tilt_pub_ = node_.advertise<std_msgs::Float32>("/tilt_servo_angle_udp", 10);
   }
   return is_info_loaded_ || sensor_;
 }
@@ -79,8 +79,8 @@ void OculusRos::publish() {
     cout<<"Pan="<<yaw_degree<<"\t"<<"Pitch= "<<pitch_degree<<"\xd"<<flush;
     
     std_msgs::Float32 yaw_msg, pitch_msg;
-    yaw_msg.data = yaw_degree;
-    pitch_msg.data = pitch_degree;
+    yaw_msg.data = -yaw_degree;
+    pitch_msg.data = -pitch_degree;
     pan_pub_.publish(yaw_msg);
     tilt_pub_.publish(pitch_msg);
     convertYPRToMsg(-yaw, pitch, roll, q_msg);
