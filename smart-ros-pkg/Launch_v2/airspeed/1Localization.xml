@@ -3,6 +3,7 @@
       <!--node name="map_server" pkg="map_server" type="map_server" args="$(find GP)/maps/final.yaml"/-->
 #if($localization=="normal")      
     <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/map.yaml"/>
+<!--     <node name="map_server" pkg="map_server" type="map_server" args="$(find science_center)/maps/science_wednesday.yaml"/> -->
     <node name="amcl" pkg="amcl" type="amcl" respawn="false" output="screen">
       <remap from="scan" to="front_top_scan"/>		
     </node>
@@ -17,7 +18,10 @@
     </node>
     <node pkg="norm_virtual_sensor" type="odom_baselink" name="odom_baselink"/>
     <node pkg="map_server" type="map_server" name="map_server" args="$(find amcl_pc)/maps/all_utown_pcd.yaml"/>
-    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find Launch_v2)/airspeed/amcl_synthetic_rviz.vcg" />    
+<!--     <node pkg="map_server" type="map_server" name="map_server" args="$(find science_center)/maps/scienceCenterSynthetic.yaml"/> -->
+#if($run_rviz)    
+  <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find Launch_v2)/airspeed/amcl_synthetic_rviz.vcg" />    
+#end
 #end
   </group>
 </launch>
