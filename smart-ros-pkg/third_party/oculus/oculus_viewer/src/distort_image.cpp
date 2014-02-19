@@ -78,9 +78,11 @@ void DistortImage::imageCb(const sensor_msgs::ImageConstPtr& msg) {
   }
   IplImage img = ptr->image;
   if (K_.size() > 2) {
-    barrel_dist(&img,
-                (msg->width / 2 * (1.0 + offset_)), msg->height / 2,
-                K_.at(0), K_.at(1), K_.at(2));
+    double cx = (msg->width) / 2 + offset_;
+    double cy = msg->height / 2;
+//     std::cout<<cx<<" "<<cy<<" "<<offset_<<" "<<K_[0]<<" "<<K_[1]<<" "<<K_[2]<<std::endl;
+    barrel_dist(&img, cx, cy, 
+                K_[0], K_[1], K_[2]);
     cv::Mat resized_image;
     cv::resize(ptr->image, resized_image, cv::Size(), scale_, scale_);
     ptr->image = resized_image(
