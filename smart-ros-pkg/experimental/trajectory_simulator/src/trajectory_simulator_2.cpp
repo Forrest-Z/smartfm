@@ -312,7 +312,7 @@ public:
     for(size_t i=0; i<local_minima_pts.size(); i++){
       geometry_msgs::Point32 p;
       p.x = speed_pc.points[local_minima_pts[i].idx].x;
-      p.y = local_minima_pts[i].max_speed+=100;
+      p.y = local_minima_pts[i].max_speed+100;
       p.z = local_minima_pts[i].max_speed;
       local_pc.points.push_back(p);
     }
@@ -431,7 +431,8 @@ public:
     double percent=0.0;
     for(; percent<=1.05; percent+=0.05){
       vector<PointInfo> *path_copy= new vector<PointInfo>(path_info);
-      speedProfileProfilingMinimas(local_minima_pts, *path_copy, percent);
+      vector<PointInfo> *minima_copy= new vector<PointInfo>(local_minima_pts);
+      speedProfileProfilingMinimas(*minima_copy, *path_copy, percent);
       bool violated = false;
       for(size_t i=0; i<path_copy->size(); i++)
 	if((*path_copy)[i].speed_profile - (*path_copy)[i].max_speed > 0.1){
@@ -454,6 +455,7 @@ public:
     //for each local minima build decceleration and acceleration profile given a minima
     double req_speed_inc = max_acc_*max_acc_/max_jerk_;
     int path_size = path_info.size();
+    vector<PointInfo> new_start_end_pts;
     for(size_t i=0; i<local_minima_pts.size(); i++){
       if(fabs(local_minima_pts[i].max_speed - max_speed_)<1e-5) continue;
       vector<PointInfo> new_profile_temp;
@@ -471,9 +473,12 @@ public:
 //       printLocalMinimaStatus("new profile", new_profile_temp);
      
 //       cout<<i<<": "<<new_profile_temp.size()<<" "<<local_minima_pts[i].max_speed<<endl;
-      for(int j=0, path_idx = local_minima_pts[i].idx; j<new_profile_temp.size(); j++, path_idx++){
+      PointInfo start_acc_pt_rec, end_acc_pt_rec, start_dec_pt_rec, end_dec_pt_rec;
+      int path_idx, j;
+      int last_continuous_seg = -1;
+      for(j=0, path_idx = local_minima_pts[i].idx; j<new_profile_temp.size(); j++, path_idx++){
+// 	cout<<local_minima_pts[i].idx<<" i "<<i<<" j "<<j<<" path_idx "<<path_idx<<" speed_violated "<<speed_violated<<" stop_arguing "<<stop_arguing<<endl;
 	if(fabs(path_info[path_idx].max_speed / max_speed_)>allowable_percent) stop_arguing = true;
-// 	cout<<"j "<<j<<" path_idx "<<path_idx<<" speed_violated "<<speed_violated<<" stop_arguing "<<stop_arguing<<endl;
 	if(path_idx > path_size) break;
 	if(speed_violated){
 // 	  cout<<"Speed violated. Assinging constant speed from "<<local_minima_pts[i].idx<<" to "<<path_idx<<endl;
@@ -495,14 +500,37 @@ public:
 	  if(path_info[path_idx].speed_profile > new_profile_temp[j].speed_profile){
 	    path_info[path_idx].copy(new_profile_temp[j]);
 // 	    path_info[path_idx].curve_max_speed = j;
+	    if(last_continuous_seg==-1){
+	      start_acc_pt_rec.max_speed = new_profile_temp[j].speed_profile;
+	      start_acc_pt_rec.idx = path_idx;
+	      last_continuous_seg = path_idx;
+	    }
+	    else {
+	      if(path_idx - last_continuous_seg == 1){
+		end_acc_pt_rec.max_speed = new_profile_temp[j].speed_profile;
+		end_acc_pt_rec.idx = path_idx;
+		last_continuous_seg = path_idx;
+	      }
+	      else{
+		//consider only the last segment
+		j--;
+		path_idx--;
+		last_continuous_seg = -1;
+	      }
+	    }
 	  }
 	}
       }
-      int path_idx = local_minima_pts[i].idx;
+      path_idx = local_minima_pts[i].idx;
       speed_violated = false;
       stop_arguing = false;
 //       cout<<i<<": "<<new_profile_temp.size()<<" "<<local_minima_pts[i].max_speed<<endl;
-      for(int j=0, path_idx = local_minima_pts[i].idx; j<new_profile_temp.size(); j++, path_idx--){
+      last_continuous_seg = -1;
+      //it could be the case where now acceleration occur and skipped to decceleration.
+      //need to initialize to avoid crash
+      start_dec_pt_rec.max_speed = new_profile_temp[0].speed_profile;
+      start_dec_pt_rec.idx = 0;
+      for(j=0, path_idx = local_minima_pts[i].idx; j<new_profile_temp.size(); j++, path_idx--){
 // 	cout<<"j "<<j<<" path_idx "<<path_idx<<" speed_violated "<<speed_violated<<" stop_arguing "<<stop_arguing<<endl;
 	if(path_idx < 0) break;
 	if(fabs(path_info[path_idx].max_speed /max_speed_)>allowable_percent) stop_arguing = true;
@@ -523,13 +551,50 @@ public:
 	else {
 	  if(path_info[path_idx].speed_profile > new_profile_temp[j].speed_profile){
 	    path_info[path_idx].copy(new_profile_temp[j]);
+	    if(last_continuous_seg==-1){
+	      end_dec_pt_rec.max_speed = new_profile_temp[j].speed_profile;
+	      end_dec_pt_rec.idx = path_idx;
+	      last_continuous_seg = path_idx;
+	    }
+	    else {
+	      if(last_continuous_seg - path_idx == 1){
+		start_dec_pt_rec.max_speed = new_profile_temp[j].speed_profile;
+		start_dec_pt_rec.idx = path_idx;
+		last_continuous_seg = path_idx;
+	      }
+	      else {
+		j--;
+		path_idx++;
+		last_continuous_seg = -1;
+	      }
+	    }
 // 	    path_info[path_idx].curve_max_speed = j;
 	  }
 	}
 // 	cout<<"path_idx and j "<<path_idx<<" "<<j<<endl;
       }
+      new_start_end_pts.push_back((start_dec_pt_rec));
+      new_start_end_pts.push_back((end_dec_pt_rec));
+      new_start_end_pts.push_back((start_acc_pt_rec));
+      new_start_end_pts.push_back((end_acc_pt_rec));
+      cout<<"DEC start_idx "<<start_dec_pt_rec.idx<<"("<<start_dec_pt_rec.max_speed<<") ";
+      cout<<"DEC end_idx "<<end_dec_pt_rec.idx<<"("<<end_dec_pt_rec.max_speed<<") ";
+      cout<<"ACC start_idx "<<start_acc_pt_rec.idx<<"("<<start_acc_pt_rec.max_speed<<") ";
+      cout<<"ACC end_idx "<<end_acc_pt_rec.idx<<"("<<end_acc_pt_rec.max_speed<<")"<<endl;
+    }
+    local_minima_pts.clear();// = new_start_end_pts;
+    for(size_t i=0; i<new_start_end_pts.size(); i++){
+      if(fabs(path_info[new_start_end_pts[i].idx].speed_profile - new_start_end_pts[i].max_speed) < 1e-5)
+	local_minima_pts.push_back(new_start_end_pts[i]);
     }
   }
+  PointInfo visualizeLocalMinimaPt(PointInfo pt){
+    PointInfo pt_temp;
+    pt_temp.idx = pt.idx;
+    pt_temp.max_speed = pt.speed_profile;
+    return pt_temp;
+  }
+    
   void speedProfileConnectingMinima(vector<PointInfo> &local_minima_pts, vector<PointInfo> &path_info){
     
     connectingPathGivenLocalMin(path_info, local_minima_pts);
