@@ -1,0 +1,16 @@
+<package>
+  <description brief="pan_tilt_udp_remap">
+
+     pan_tilt_udp_remap
+
+  </description>
+  <author>admin</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/pan_tilt_udp_remap</url>
+  <depend package="roscpp"/>
+  <depend package="std_msgs"/>
+
+</package>
+
+

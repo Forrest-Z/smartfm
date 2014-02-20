@@ -123,7 +123,6 @@ private:
 
 	size_t 													interval_;
 	double													speed_threshold_;
-	double 													gating_min_size_, gating_max_size_;
 
 	golfcar_ml::svm_classifier 								*DATMO_classifier_;
 
@@ -151,21 +150,18 @@ DATMO::DATMO()
 	private_nh_.param("laser_frame_id",     laser_frame_id_,    std::string("front_bottom_lidar"));
 	private_nh_.param("base_frame_id",      base_frame_id_,     std::string("base_link"));
 	private_nh_.param("odom_frame_id",      odom_frame_id_,     std::string("odom"));
-	private_nh_.param("gating_min_size",    gating_min_size_,   0.5);
-	private_nh_.param("gating_max_size",    gating_max_size_,   15.0);
+	private_nh_.param("map_frame_id",       map_frame_id_,      std::string("map"));
 
 
 	//program_mode: "0" - save training data mode;
 	//				"1" - online classification mode;
-	private_nh_.param("program_mode",			program_mode_,     		0);
+	private_nh_.param("program_mode",			program_mode_,     		1);
 	private_nh_.param("feature_num",			feature_num_,       	13);
-	private_nh_.param("speed_threshold",		speed_threshold_,      	2.0);
-	private_nh_.param("speed_threshold",		speed_threshold_,      	2.0);
-	private_nh_.param("speed_threshold",		speed_threshold_,      	2.0);
+	private_nh_.param("speed_threshold",		speed_threshold_,      	3.0);
 
 	//to reduce the size of feature vector;
-	private_nh_.param("downsample_interval",	downsample_interval_,    1);
-	private_nh_.param("scanNum_perVector",	scanNum_perVector_,    1);
+	private_nh_.param("downsample_interval",	downsample_interval_,    4);
+	private_nh_.param("scanNum_perVector",	scanNum_perVector_,    3);
 	interval_ = (downsample_interval_)*(scanNum_perVector_-1) +1;
 
 	//to process the scan at a lower rate;
@@ -179,7 +175,7 @@ DATMO::DATMO()
 	//private_nh_.param("feature_vector_length",	feature_vector_length_,    40);
 
 	//V4: with roll, pitch, and intensities[3] added;
-	private_nh_.param("feature_vector_length",	feature_vector_length_,    25);
+	private_nh_.param("feature_vector_length",	feature_vector_length_,    45);
 
 	private_nh_.param("img_side_length",	img_side_length_,    50.0);
 	private_nh_.param("img_resolution",		img_resolution_,     0.2);
@@ -226,10 +222,11 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 	cout<<verti_scan_in->header.seq <<","<<verti_scan_in->header.frame_id;
 	if(program_mode_==0)visualize_labelled_scan(verti_scan_in);
 
-	if(scan_count_%skip_scan_times_==0) process_scan_flag_ = true;
+	if(scan_count_%skip_scan_times_==0)process_scan_flag_ = true;
 	else process_scan_flag_ = false;
 
 	scan_count_++;
+
 
 	//make a local "baselink" copy to facilitate later feature extraction;
 	sensor_msgs::PointCloud baselink_verti_cloud;
@@ -284,27 +281,11 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 	{
 		if(program_mode_==0)
 		{
-
-			bool to_process_flag;
-			//to control the same size of training sample, even when the time window is different;
-			int control_trainingSample_number = 10;
-
-			if(scan_count_%control_trainingSample_number==0) to_process_flag = true;
-			else to_process_flag = false;
-
-			process_accumulated_data(to_process_flag);
-
-			/*
+			process_accumulated_data(true);
 			laser_pose_vector_.clear();
 			cloud_vector_.clear();
 			scan_vector_.clear();
 			baselink_cloud_vector_.clear();
-			*/
-
-			laser_pose_vector_.erase(laser_pose_vector_.begin(), laser_pose_vector_.begin()+1);
-			cloud_vector_.erase(cloud_vector_.begin(), cloud_vector_.begin()+ 1);
-			scan_vector_.erase(scan_vector_.begin(), scan_vector_.begin()+ 1);
-			baselink_cloud_vector_.erase(baselink_cloud_vector_.begin(), baselink_cloud_vector_.begin()+1);
 		}
 		else
 		{
@@ -387,7 +368,7 @@ void DATMO::graph_segmentation()
 	pcl::KdTreeFLANN<pcl::PointXYZRGB> kdtree;
 	if(combined_pcl_.points.size()==0) return;
 	kdtree.setInputCloud (combined_pcl_.makeShared());
-	int K = 10;
+	int K = 20;
 
 	for(size_t i=0; i<combined_pcl_.points.size(); i++)
 	{
@@ -575,7 +556,7 @@ void DATMO::perform_prefiltering_movingEvidence()
 			float x_dim1 = max_pt1.x - min_pt1.x;
 			float y_dim1 = max_pt1.y - min_pt1.y;
 			float max_dim1 = (float)sqrt(x_dim1*x_dim1+y_dim1*y_dim1);
-			cluster_tobe_filtered = cluster_tobe_filtered || (max_dim1 < gating_min_size_);
+			cluster_tobe_filtered = cluster_tobe_filtered || (max_dim1 < 2.0);
 
 			//a-2: for latest scan points;
 			pcl::PointXYZ min_pt2, max_pt2;
@@ -583,9 +564,7 @@ void DATMO::perform_prefiltering_movingEvidence()
 			float x_dim2 = max_pt2.x - min_pt2.x;
 			float y_dim2 = max_pt2.y - min_pt2.y;
 			float max_dim2 = (float)sqrt(x_dim2*x_dim2+y_dim2*y_dim2);
-			cluster_tobe_filtered = cluster_tobe_filtered || (max_dim2 > gating_max_size_);
-
-			//if(!cluster_tobe_filtered)ROS_INFO("size OK");
+			cluster_tobe_filtered = cluster_tobe_filtered || (max_dim2 > 15.0);
 
 			//b: moving evidence;
 			double moving_evidence_threshold = speed_threshold_ * (cloud_vector_.back().header.stamp.toSec()- cloud_vector_.front().header.stamp.toSec());
@@ -602,8 +581,22 @@ void DATMO::perform_prefiltering_movingEvidence()
 				pcl::PointXYZ searchPt_tmp = oldest_scanPoints.points[p];
 				int num = kdtree_newest.nearestKSearch (searchPt_tmp, 1, pointIdxNKNSearch, pointNKNSquaredDistance);
 				assert(num==1);
-				if(pointNKNSquaredDistance.front()+0.0001>moving_evidence_threshold)oldest_far++;
+				if(pointNKNSquaredDistance.front()>moving_evidence_threshold)oldest_far++;
 			}
+
+			/*
+			newest_far = 0;
+			for(size_t p=0; p<newest_scanPoints.points.size();p++)
+			{
+				std::vector<int> pointIdxNKNSearch(1);
+				std::vector<float> pointNKNSquaredDistance(1);
+				pcl::PointXYZ searchPt_tmp = newest_scanPoints.points[p];
+				int num = kdtree_oldest.nearestKSearch (searchPt_tmp, 1, pointIdxNKNSearch, pointNKNSquaredDistance);
+				assert(num==1);
+				if(pointNKNSquaredDistance.front()>moving_evidence_threshold)newest_far++;
+			}
+			if(oldest_far>=2 && newest_far>=2)cluster_tobe_filtered = false;
+			*/
 
 			if(oldest_far<1)cluster_tobe_filtered = true;
 		}
@@ -820,16 +813,8 @@ void DATMO::calc_ST_shapeFeatures(object_cluster_segments &object_cluster)
 	vector<vector<cv::Point> > contours;
 	vector<cv::Vec4i> hierarchy;
 	cv::findContours( ST_shape_image, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
-
-	if(contours.size()>0)
-	{
-		object_cluster.ST_moments = cv::moments( contours.front(), true );
-		cv::HuMoments(object_cluster.ST_moments, object_cluster.ST_Humoment);
-	}
-	else
-	{
-		for(size_t i=0; i<7; i++) object_cluster.ST_Humoment[i]=0.0;
-	}
+	object_cluster.ST_moments = cv::moments( contours.front(), true );
+	cv::HuMoments(object_cluster.ST_moments, object_cluster.ST_Humoment);
 
 	//cv::drawContours( ST_shape_image_show, contours, 0, cv::Scalar(0, 255, 255), 2, 8, hierarchy, 0, cv::Point() );
 	//cv::imshow("ST_contour_shape", ST_shape_image_show);
@@ -1208,20 +1193,10 @@ std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster
 
 	//the latest delt pose;
 	double pose[6];
-	geometry_msgs::Pose pose_tmp;
-	if(object_cluster.pose_InLatestCoord_vector.size()>1)
-		{
-			pose_tmp = object_cluster.pose_InLatestCoord_vector[j-2];
-			pose[0]=pose_tmp.position.x;
-			pose[1]=pose_tmp.position.y;
-			pose[2]=pose_tmp.position.z;
-		}
-	else {
-		pose[0]= 0.0;
-		pose[1]= 0.0;
-		pose[2]= 0.0;
-	}
-
+	geometry_msgs::Pose pose_tmp = object_cluster.pose_InLatestCoord_vector[j-2];
+	pose[0]=pose_tmp.position.x;
+	pose[1]=pose_tmp.position.y;
+	pose[2]=pose_tmp.position.z;
 	//tf::Quaternion q(pose_tmp.orientation.x, pose_tmp.orientation.y, pose_tmp.orientation.z, pose_tmp.orientation.w);
 	//tf::Matrix3x3 m(q);
 	//m.getRPY(pose[3], pose[4], pose[5]);
@@ -1262,8 +1237,6 @@ std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster
 	}
 
 	for(size_t i=0; i<3; i++) feature_vector.push_back(object_cluster.scan_segment_batch.back().intensities[i]);
-
-
 
 	assert((int)feature_vector.size() == feature_vector_length_);
 	return feature_vector;

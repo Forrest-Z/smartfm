@@ -1,5 +1,0 @@
-This package aims for integrating old planner with RRT*, in which vehicle is tracking pre-defined path for navigation and RRT* is utilized to replan and find feasible trajectory when obstacle is encountered.
-
-This strategy is suggested by Prof Ang, which can ensure the trajectory's smoothness for normal navigation using pre-defined path, and enable efficient obstacle avoidance using RRT* as well. 
-
-

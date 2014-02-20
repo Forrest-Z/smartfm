@@ -6,7 +6,7 @@ int main(int argc, char** argv) {
   ros::NodeHandle node;
   oculus_driver::OculusRos oculus(node);
   ros::NodeHandle local_node("~");
-  double frequency(50.0);
+  double frequency(30.0);
   local_node.getParam("frequency", frequency);
   ros::Rate r(frequency);
   if(oculus.init()) {
