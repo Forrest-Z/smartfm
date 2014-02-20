@@ -353,7 +353,7 @@ public:
     double min_look_ahead_dist = 4.0;
     double forward_achor_pt_dist = 1.0;
     double car_length = 2.55;
-    double speed_ini = max_speed_;
+    double speed_ini = 0.0;
     global_frame_ = "/robot_0/map";
     pp_ = new golfcar_purepursuit::PurePursuit(global_frame_, min_look_ahead_dist, forward_achor_pt_dist, car_length);
     
@@ -408,24 +408,130 @@ public:
       point_info.max_speed = sqrt(max_lat_acc_*turning_rad);
       point_info.idx = path_no++;
       if(point_info.max_speed > max_speed_) point_info.max_speed = max_speed_;
+      point_info.speed_profile = max_speed_;
       point_info.curve_max_speed = point_info.max_speed;
       point_info.time = dist_res_/max_speed_;
       path_info.push_back(point_info);
     }
     cout<<path_info.size()<<" point size"<<endl;
+    
+    vector<PointInfo> local_minima_pts = localMinimaSearch(path_info);
     PointInfo start_pt;
     start_pt.max_speed = speed_ini;
     start_pt.dist = 0.0;
     start_pt.idx = 0;
-    
-    vector<PointInfo> local_minima_pts = localMinimaSearch(path_info);
-   
     local_minima_pts.push_back(start_pt);
     path_info[path_info.size()-1].max_speed = 0.0;
     local_minima_pts.push_back(path_info[path_info.size()-1]);
     sort(local_minima_pts.begin(), local_minima_pts.end());
     printLocalMinimaStatus("after sort 2", local_minima_pts);
+    
     fmutil::Stopwatch sw2("connecting points");
+//     speedProfileConnectingMinima(local_minima_pts, path_info);
+    double percent=0.0;
+    for(; percent<=1.05; percent+=0.05){
+      vector<PointInfo> *path_copy= new vector<PointInfo>(path_info);
+      speedProfileProfilingMinimas(local_minima_pts, *path_copy, percent);
+      bool violated = false;
+      for(size_t i=0; i<path_copy->size(); i++)
+	if((*path_copy)[i].speed_profile - (*path_copy)[i].max_speed > 0.1){
+	  cout<<(*path_copy)[i].speed_profile - (*path_copy)[i].max_speed<<endl;
+	  violated = true;
+	  break;
+	}
+      cout<<"Percent "<<percent<<" "<<violated<<endl;
+      if(!violated) break;
+    }
+    speedProfileProfilingMinimas(local_minima_pts, path_info, percent);
+    sw2.end();
+    sw.end();
+    publishPathInfo(path_info, local_minima_pts);
+    return path_info;
+  }
+  
+  void speedProfileProfilingMinimas(vector<PointInfo> &local_minima_pts, vector<PointInfo> &path_info, double allowable_percent){
+    
+    //for each local minima build decceleration and acceleration profile given a minima
+    double req_speed_inc = max_acc_*max_acc_/max_jerk_;
+    int path_size = path_info.size();
+    for(size_t i=0; i<local_minima_pts.size(); i++){
+      if(fabs(local_minima_pts[i].max_speed - max_speed_)<1e-5) continue;
+      vector<PointInfo> new_profile_temp;
+      if(max_speed_ - local_minima_pts[i].max_speed >= req_speed_inc)
+	 new_profile_temp = completeAccelerationProfile(local_minima_pts[i].max_speed, max_speed_);
+      else
+	new_profile_temp = shortAccelerationProfile(local_minima_pts[i].max_speed, max_speed_, max_jerk_, dist_res_);
+      //fill up the acc part
+      bool speed_violated = false;
+      bool stop_arguing = false;
+      PointInfo constant_speed;
+      constant_speed.speed_profile = local_minima_pts[i].max_speed;
+      constant_speed.time = dist_res_/local_minima_pts[i].max_speed;
+      
+//       printLocalMinimaStatus("new profile", new_profile_temp);
+     
+//       cout<<i<<": "<<new_profile_temp.size()<<" "<<local_minima_pts[i].max_speed<<endl;
+      for(int j=0, path_idx = local_minima_pts[i].idx; j<new_profile_temp.size(); j++, path_idx++){
+	if(fabs(path_info[path_idx].max_speed / max_speed_)>allowable_percent) stop_arguing = true;
+// 	cout<<"j "<<j<<" path_idx "<<path_idx<<" speed_violated "<<speed_violated<<" stop_arguing "<<stop_arguing<<endl;
+	if(path_idx > path_size) break;
+	if(speed_violated){
+// 	  cout<<"Speed violated. Assinging constant speed from "<<local_minima_pts[i].idx<<" to "<<path_idx<<endl;
+	  //max speed exceeded. All acceleration will be delayed to until this idx
+	  //profile before this will just be a constant speed
+	  for(int k=local_minima_pts[i].idx; k<path_idx; k++){
+	    if(path_info[k].speed_profile > constant_speed.speed_profile)
+	      path_info[k].copy(constant_speed);
+	  }
+	  speed_violated = false;
+	  j=0;
+	}
+	if(new_profile_temp[j].speed_profile > path_info[path_idx].max_speed && !stop_arguing){
+	  speed_violated = true;
+// 	  cout<<i<<": at "<<j<<" speed "<<new_profile_temp[j].speed_profile<<" larger than "<<path_idx<<" "<<path_info[path_idx].max_speed<<endl;
+	  continue;
+	}
+	else {
+	  if(path_info[path_idx].speed_profile > new_profile_temp[j].speed_profile){
+	    path_info[path_idx].copy(new_profile_temp[j]);
+// 	    path_info[path_idx].curve_max_speed = j;
+	  }
+	}
+      }
+      int path_idx = local_minima_pts[i].idx;
+      speed_violated = false;
+      stop_arguing = false;
+//       cout<<i<<": "<<new_profile_temp.size()<<" "<<local_minima_pts[i].max_speed<<endl;
+      for(int j=0, path_idx = local_minima_pts[i].idx; j<new_profile_temp.size(); j++, path_idx--){
+// 	cout<<"j "<<j<<" path_idx "<<path_idx<<" speed_violated "<<speed_violated<<" stop_arguing "<<stop_arguing<<endl;
+	if(path_idx < 0) break;
+	if(fabs(path_info[path_idx].max_speed /max_speed_)>allowable_percent) stop_arguing = true;
+	if(speed_violated || (!stop_arguing && path_idx == 0)){
+// 	  cout<<"Speed violated. Assinging constant speed from "<<local_minima_pts[i].idx<<" to "<<path_idx<<endl;
+	  for(int k=local_minima_pts[i].idx; k>=path_idx; k--){
+	    if(path_info[k].speed_profile > constant_speed.speed_profile)
+	      path_info[k].copy(constant_speed);
+	  }
+	  speed_violated = false;
+	  j=0;
+	}
+	if(new_profile_temp[j].speed_profile > path_info[path_idx].max_speed && !stop_arguing){
+	  speed_violated = true;
+// 	  cout<<"Speed violated at "<<path_idx<<" with "<<j<<endl;
+	  continue;
+	}
+	else {
+	  if(path_info[path_idx].speed_profile > new_profile_temp[j].speed_profile){
+	    path_info[path_idx].copy(new_profile_temp[j]);
+// 	    path_info[path_idx].curve_max_speed = j;
+	  }
+	}
+// 	cout<<"path_idx and j "<<path_idx<<" "<<j<<endl;
+      }
+    }
+  }
+  void speedProfileConnectingMinima(vector<PointInfo> &local_minima_pts, vector<PointInfo> &path_info){
+    
     connectingPathGivenLocalMin(path_info, local_minima_pts);
     //compare again
     vector<PointInfo> speed_errors;
@@ -452,12 +558,7 @@ public:
     sort(local_minima_pts.begin(), local_minima_pts.end());
     printLocalMinimaStatus("after sort 3", local_minima_pts);
     connectingPathGivenLocalMin(path_info, local_minima_pts);
-    sw2.end();
-    sw.end();
-    publishPathInfo(path_info, local_minima_pts);
-    return path_info;
   }
-  
   void connectingPathGivenLocalMin(vector<PointInfo> &path_info, vector<PointInfo> &local_minima_pts){
     for(size_t i=1; i<local_minima_pts.size(); i++){
       double v0 = local_minima_pts[i-1].max_speed;
