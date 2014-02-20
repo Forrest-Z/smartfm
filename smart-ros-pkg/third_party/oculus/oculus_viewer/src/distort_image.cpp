@@ -59,7 +59,8 @@ void DistortImage::init(const std::string& topic_name) {
   ros::NodeHandle node;
   try {
     pub_ = it_.advertise(topic_name + "/distorted", 1);
-    sub_ = it_.subscribe(topic_name, 1, &DistortImage::imageCb, this);
+    sub_ = it_.subscribe(topic_name, 1, &DistortImage::imageCb, this,
+	image_transport::TransportHints("compressed",ros::TransportHints().udp()));
   } catch(ros::Exception& e) {
     ROS_ERROR("init ROS error: %s", e.what());
   } catch(image_transport::TransportLoadException& e) {
