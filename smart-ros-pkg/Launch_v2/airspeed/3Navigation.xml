@@ -8,7 +8,9 @@
     <node pkg="lowlevel_controllers" type="steering_controller_iMiev" name="steering_controller">
 	<remap from="steer_angle" to="pronto/joy_steer"/>
     </node>
-    <node pkg="long_control" type="iMiev_speedcontroller" name="speed_controller_v2" output="screen"/>
+    <node pkg="long_control" type="iMiev_speedcontroller" name="speed_controller_v2" output="screen">
+      <!--remap from="pronto/veh_throttle" to="p_pronto/veh_throttle"/-->
+    </node>
 #end
 #if($ppc=="move_base")
     <node pkg="move_base" type="move_base" respawn="false" name="move_base_node">

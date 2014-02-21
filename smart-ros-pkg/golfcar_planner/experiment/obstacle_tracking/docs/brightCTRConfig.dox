@@ -1,8 +1,0 @@
-\subsubsection parameters ROS parameters
-
-Reads and maintains the following parameters on the ROS server
-
-- \b "~cluster_tolerance" : \b [double] tolerate_value min: 0.0, default: 0.1, max: 20.0
-- \b "~min_cluster_size" : \b [int] min_cluster min: 0, default: 2, max: 200
-- \b "~max_cluster_size" : \b [int] max_cluster min: 0, default: 1000, max: 2000
-
