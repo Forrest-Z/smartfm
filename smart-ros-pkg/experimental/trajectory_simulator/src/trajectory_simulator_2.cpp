@@ -95,7 +95,7 @@ class TrajectorySimulator{
   StationPaths sp_;
   string global_frame_;
   
-  double max_lat_acc_, max_speed_;
+  double max_lat_acc_, speed_ini_, max_speed_;
   double max_acc_, max_jerk_;
   double dist_res_;
   ros::Publisher global_path_pub_;
@@ -335,8 +335,8 @@ public:
   }
   
   
-  TrajectorySimulator(double max_lat_acc, double max_speed, double max_acc, double max_jerk, double dist_res, 
-		      ros::NodeHandle &nh):max_lat_acc_(max_lat_acc), max_speed_(max_speed), max_acc_(max_acc),
+  TrajectorySimulator(double max_lat_acc, double speed_ini, double max_speed, double max_acc, double max_jerk, double dist_res, 
+		      ros::NodeHandle &nh):max_lat_acc_(max_lat_acc), speed_ini_(speed_ini), max_speed_(max_speed), max_acc_(max_acc),
 		      max_jerk_(max_jerk), dist_res_(dist_res){
       global_path_pub_ = nh.advertise<nav_msgs::Path>("global_path", 1, true);
       curvature_pub = nh.advertise<sensor_msgs::PointCloud>("curvature_pt", 1, true);
@@ -353,7 +353,7 @@ public:
     double min_look_ahead_dist = 4.0;
     double forward_achor_pt_dist = 1.0;
     double car_length = 2.55;
-    double speed_ini = 0.0;
+    double speed_ini = speed_ini_;
     global_frame_ = "/robot_0/map";
     pp_ = new golfcar_purepursuit::PurePursuit(global_frame_, min_look_ahead_dist, forward_achor_pt_dist, car_length);
     
@@ -444,9 +444,18 @@ public:
       if(!violated) break;
     }
     speedProfileProfilingMinimas(local_minima_pts, path_info, percent);
-    conditionLocalMinima(local_minima_pts, path_info);
-    connectLocalMinima(local_minima_pts, path_info);
-    deccelerationLastPart(local_minima_pts, path_info);
+//     conditionLocalMinima(local_minima_pts, path_info);
+    deccelerationLastPart(path_info);
+    for(size_t i=0; i<path_info.size(); i++){
+      if(path_info[i].speed_profile < speed_ini){
+	path_info[i].speed_profile = speed_ini;
+	path_info[i].time = dist_res_/speed_ini;
+	path_info[i].jerk = 0.0;
+	path_info[i].acceleration = 0.0;
+      }
+    }
+//     smoothingAcceleration(path_info);
+//     connectLocalMinima(local_minima_pts, path_info);
     
     sw2.end();
     sw.end();
@@ -454,28 +463,73 @@ public:
     return path_info;
   }
   
-  void deccelerationLastPart(vector<PointInfo> &local_minima_pts, vector<PointInfo> &path_info){
-    for(int i=local_minima_pts.size()-1; i>=0; i--){
-      vector<PointInfo> last_profile = completeAccelerationProfile(0.0, local_minima_pts[i].max_speed);
-      if(last_profile.size() < (path_info.size() - local_minima_pts[i].idx -1)){
+  void smoothingAcceleration(vector<PointInfo> &path_info){
+    //restrict the smoothing to the p+4 to p-4 to avoid aliasing issue due to very low speed
+    for(size_t i=4; i<path_info.size()-4; i++){
+      double jerk_check = (path_info[i].acceleration - path_info[i-1].acceleration)/path_info[i].time;
+      //taking care some boundary issue
+      if(fabs(path_info[i].acceleration - max_acc_)>1e-3 && fabs(path_info[i].acceleration) > 1e-3){
+	if(fabs(jerk_check) - max_jerk_ > 0.1){
+	  cout<<"path idx "<<path_info[i].idx<<" exceeded jerk "<<jerk_check<<endl;
+	  int path_idx;
+	  double acc_now;
+	  double speed_now;
+	  PointInfo pt;
+	  double max_jerk;
+	  if(jerk_check > 0){
+// 	    max_jerk = max_jerk_;
+// 	    path_idx = path_info[i-1].idx;
+// 	    speed_now = path_info[i-1].speed_profile;
+// 	    acc_now = path_info[i-1].acceleration;
+// 	    for(;path_idx<path_info.size(); path_idx++){
+// 	      double time_step = getTimeStep(max_jerk, acc_now, speed_now, dist_res);
+// 	      speed_now += acc_now*time_step + max_jerk*time_step*time_step*0.5;
+// 	      acc_now += max_jerk*time_step;
+// 	    }
+	  }
+	  else {
+// 	    max_jerk = -max_jerk_;
+// 	    path_idx = path_info[i].idx-1;
+// 	    speed_now = path_info[i].speed_profile;
+// 	    acc_now = path_info[i].acceleration;
+// 	    for(;path_idx>=0; path_idx--){
+// 	      double time_step = getTimeStep(max_jerk, acc_now, speed_now, dist_res_);
+// 	      speed_now += - acc_now*time_step - max_jerk*time_step*time_step*0.5;
+// 	      acc_now -= max_jerk*time_step;
+// // 	      cout<<"At path "<<path_idx<<" speed_now "<<speed_now<<" acc_now "<<acc_now<<" path acc "<<path_info[path_idx].acceleration<<endl;
+// 	      if(acc_now > path_info[path_idx].acceleration) break;
+// 	      pt.speed_profile = speed_now;
+// 	      pt.time = time_step;
+// 	      pt.acceleration = acc_now;
+// 	      pt.jerk = max_jerk;
+// 	      path_info[path_idx].copy(pt);
+// 	    }
+	  }
+	}
+      }
+    }
+//     double speed_now = 0.0;
+//     for(size_t i=1; i<path_info.size(); i++){
+//       double acc_now = path_info[i].acceleration;
+//       double jerk_now = -max_jerk_;
+//       if(acc_now > path_info[i-1].acceleration) jerk_now = max_jerk_;
+//       if(fabs(acc_now-path_info[i-1].acceleration)<1e-5) jerk_now = 0.0;
+//       
+//       double time_step = getTimeStep(jerk_now, acc_now, speed_now, dist_res_);
+//       cout<<i<<" "<<time_step<<" "<<speed_now<<" "<<acc_now<<" "<<jerk_now<<endl;
+//       speed_now += acc_now*time_step + jerk_now*time_step*time_step*0.5;
+//       path_info[i].speed_profile = speed_now;
+//     }
+  }
+  void deccelerationLastPart(vector<PointInfo> &path_info){
+      vector<PointInfo> last_profile = completeAccelerationProfile(0.0, max_speed_);
 	int path_idx = path_info.size()-1;
 	for(size_t i=0; i<last_profile.size(); i++, path_idx--){
+	  if(path_info[path_idx].speed_profile > last_profile[i].speed_profile)
 	    path_info[path_idx].copy(last_profile[i]);
 	}
-	PointInfo constantSpeed;
-	constantSpeed.speed_profile = local_minima_pts[i].max_speed;
-	constantSpeed.time = dist_res_/constantSpeed.speed_profile;
-	for(size_t j=local_minima_pts[i].idx; j<=path_idx; j++)
-	  path_info[j].copy(constantSpeed);
-	break;
-      }
-      else
-	local_minima_pts.erase(local_minima_pts.begin()+i);
-    }
-    PointInfo last_pt = path_info[path_info.size()-1];
-    last_pt.max_speed = 0.0;
-    local_minima_pts.push_back(last_pt);
   }
+  
   void connectLocalMinima(vector<PointInfo> &local_minima_pts, vector<PointInfo> &path_info){
     double req_speed_inc = max_acc_*max_acc_/max_jerk_;
     for(size_t i=1; i<local_minima_pts.size(); i++){
@@ -649,6 +703,7 @@ public:
 	else {
 	  if(path_info[path_idx].speed_profile > new_profile_temp[j].speed_profile){
 	    path_info[path_idx].copy(new_profile_temp[j]);
+	    path_info[path_idx].acceleration = -path_info[path_idx].acceleration;
 	    if(last_continuous_seg==-1){
 	      end_dec_pt_rec.max_speed = new_profile_temp[j].speed_profile;
 	      end_dec_pt_rec.idx = path_idx;
@@ -1291,13 +1346,13 @@ int main(int argc, char** argv){
   priv_nh.param("max_speed", max_speed, 5.0);
   priv_nh.param("max_acc", max_acc, 0.5);
   priv_nh.param("max_jerk", max_jerk, 0.5);
-  priv_nh.param("speed_ini", speed_ini, 0.0);
+  priv_nh.param("speed_ini", speed_ini, 0.6);
   priv_nh.param("running_freq", running_freq, 25.0);
   priv_nh.param("global_frame", global_frame_, string("robot_0/map"));
   priv_nh.param("robot_frame", robot_frame_, string("robot_0/base_link"));
   priv_nh.param("max_pose_delay", delay_, 0.2);
   geometry_msgs::Pose robot_pose;
-  TrajectorySimulator ts(max_lat_acc, max_speed, max_acc, max_jerk, dist_res,nh);
+  TrajectorySimulator ts(max_lat_acc, speed_ini, max_speed, max_acc, max_jerk, dist_res,nh);
   
   vector<PointInfo> info = ts.getSpeedProfile();
   
