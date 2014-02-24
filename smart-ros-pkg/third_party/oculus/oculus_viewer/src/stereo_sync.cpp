@@ -16,7 +16,7 @@ using namespace message_filters;
 
 class StereoSync
 {
-  image_transport::ImageTransport it_left_, it_right_, it_pub_;
+  image_transport::ImageTransport it_;
   image_transport::SubscriberFilter image_left_sub_, image_right_sub_;
   image_transport::Publisher image_pub_;
   cv::Mat sensorMsgsToCv(const sensor_msgs::ImageConstPtr& msg_ptr)
@@ -51,10 +51,10 @@ class StereoSync
     image_pub_.publish(cv_img.toImageMsg());
   }
 public:
-  StereoSync(ros::NodeHandle &n): it_left_(n), it_right_(n), it_pub_(n){
-    image_left_sub_.subscribe(it_left_, "minoru_left/image_raw", 20);
-    image_right_sub_.subscribe(it_right_, "minoru_right/image_raw", 20);
-    image_pub_ = it_pub_.advertise("minoru_sync/image_raw", 20);
+  StereoSync(ros::NodeHandle &n): it_(n){
+    image_left_sub_.subscribe(it_, "minoru_left/image_raw", 20);
+    image_right_sub_.subscribe(it_, "minoru_right/image_raw", 20);
+    image_pub_ = it_.advertise("minoru_sync/image_raw", 20);
     typedef sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> imageSyncPolicy;
     Synchronizer<imageSyncPolicy> imageSync(imageSyncPolicy(20), image_left_sub_, image_right_sub_);
     imageSync.registerCallback(boost::bind(&StereoSync::syncCallback, this, _1, _2));

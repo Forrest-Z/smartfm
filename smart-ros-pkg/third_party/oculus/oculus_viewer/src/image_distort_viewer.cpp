@@ -16,6 +16,7 @@ class ImageDistortViewer {
   DistortImage left_;
   DistortImage right_;
   ros::Subscriber sub_;
+  image_transport::Subscriber img_sub_;
   bool use_display_;
 };
 
