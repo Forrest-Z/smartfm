@@ -32,12 +32,14 @@ int main(int argc, char** argv) {
   
 	ros::init(argc, argv, "gscam_publisher");
 	ros::NodeHandle nh;
-	string gscam_config;
 	ros::NodeHandle priv_nh("~");
-	priv_nh.param("config", gscam_config, 
+	int port;
+	priv_nh.param("port", port, 1234);
+	stringstream ss;
+	ss<<"udpsrc port="<<port<<" ! application/x-rtp, payload=127 ! rtph264depay ! ffdec_h264 ! ffmpegcolorspace";
 // 		 string("v4l2src device=/dev/video2 ! video/x-raw-rgb,width=320,height=240,framerate=30/1 ! ffmpegcolorspace"));
- 		 string("udpsrc port=1234 ! application/x-rtp, payload=127 ! rtph264depay ! ffdec_h264 ! ffmpegcolorspace"));
-	cout<<"Pipeline configuration received "<<gscam_config<<endl;
+	cout<<"Pipeline configuration received "<<ss.str()<<endl;
+	string gscam_config = ss.str();
 	const char *config = gscam_config.c_str();
 	if (config == NULL) {
 		std::cout << "Problem getting GSCAM_CONFIG variable." << std::endl;

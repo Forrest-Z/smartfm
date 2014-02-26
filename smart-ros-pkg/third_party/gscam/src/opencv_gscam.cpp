@@ -182,10 +182,11 @@ main (int argc, char *argv[])
   //app->pipeline = gst_parse_launch("appsrc name=mysource ! videorate ! ffmpegcolorspace ! videoscale method=1 ! video/x-raw-yuv,width=640,height=240,framerate=\(fraction\)15/1 ! theoraenc bitrate=700 ! udpsink host=127.0.0.1 port=5000", NULL);
 
   ros::NodeHandle priv_n("~");
-  string receiver_address, port;
+  string receiver_address;
+  int port;
   int frame_rate, bitrate;
   priv_n.param("receiver_address", receiver_address, string("127.0.0.1"));
-  priv_n.param("port", port, string("1234"));
+  priv_n.param("port", port, 1234);
   priv_n.param("img_width", img_width_, 640);
   priv_n.param("img_height", img_height_, 240);
   priv_n.param("frame_rate", frame_rate, 30);
