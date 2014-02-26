@@ -33,6 +33,11 @@ struct _App
 
 cv::Mat image_;
 
+App s_app;
+GstBus *bus;
+static IplImage* rgbImage_;
+int img_width_, img_height_;
+
 cv::Mat sensorMsgsToCv(const sensor_msgs::ImageConstPtr& msg_ptr)
 {
   ROS_DEBUG("SensorMsgs to CV");
@@ -43,13 +48,20 @@ cv::Mat sensorMsgsToCv(const sensor_msgs::ImageConstPtr& msg_ptr)
   catch (cv_bridge::Exception& e) {
       ROS_ERROR("cv_bridge exception: %s", e.what());
   }
+  int epochSec = msg_ptr->header.stamp.toSec();
+  
+  time_t raw_time = epochSec;
+  struct tm* timeinfo;
+  timeinfo = localtime(&raw_time);
+  string time_str = asctime(timeinfo);
+  stringstream ss;
+  ss<<time_str<<" "<<(msg_ptr->header.stamp.toSec() - epochSec)*1000;
+  
+  cv::putText(cv_image->image, ss.str(), cv::Point(0, img_height_), 
+	      cv::FONT_HERSHEY_PLAIN, 0.8,cvScalar(0,0,0), 1, 8);
   return cv_image->image;
 };
 
-App s_app;
-GstBus *bus;
-static IplImage* rgbImage_;
-int img_width_, img_height_;
 static gboolean
 read_data (App * app)
 {
