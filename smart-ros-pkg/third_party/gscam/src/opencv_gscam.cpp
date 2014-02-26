@@ -5,9 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
-#include <gdk-pixbuf/gdk-pixbuf.h>
-
 GST_DEBUG_CATEGORY (appsrc_pipeline_debug);
 #define GST_CAT_DEFAULT appsrc_pipeline_debug
 
@@ -17,6 +14,8 @@ GST_DEBUG_CATEGORY (appsrc_pipeline_debug);
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
+
+using namespace std;
 
 typedef struct _App App;
 
@@ -48,36 +47,36 @@ cv::Mat sensorMsgsToCv(const sensor_msgs::ImageConstPtr& msg_ptr)
 };
 
 App s_app;
+GstBus *bus;
+static IplImage* rgbImage_;
+int img_width_, img_height_;
 static gboolean
 read_data (App * app)
 {
-  ros::spinOnce();
+  if(ros::ok())
+    ros::spinOnce();
+  else {
+    gst_element_set_state (app->pipeline, GST_STATE_NULL);
+    gst_object_unref (bus);
+    g_main_loop_unref (app->loop);
+    exit(0);
+  }
+  
     GstFlowReturn ret;
     gdouble ms;
 
     ms = g_timer_elapsed(app->timer, NULL);
-    if (ms > 1.0/30.0) {
+    if (ms > 1.0/20.0) {
         GstBuffer *buffer;
         gboolean ok = TRUE;
 
-        buffer = gst_buffer_new();
-
 	if(image_.data == NULL) return TRUE;
-	IplImage* rgbImage = new IplImage( image_ );
-	GdkPixbuf *pixbuf = gdk_pixbuf_new_from_data ((guchar*)rgbImage->imageData,
-	GDK_COLORSPACE_RGB,
-	FALSE,
-      rgbImage->depth,
-      rgbImage->width,
-      rgbImage->height,
-	(rgbImage->widthStep),
-	NULL,
-	NULL);
-        GST_BUFFER_DATA (buffer) = gdk_pixbuf_get_pixels(pixbuf);//IMG_data;
-        GST_BUFFER_SIZE (buffer) = 640*480*3*sizeof(guchar);
-	cvShowImage("img", rgbImage);
-	cvWaitKey(1);
-
+	buffer = gst_buffer_new_and_alloc(img_width_*img_height_*3*sizeof(guchar));
+	memcpy(GST_BUFFER_DATA(buffer),rgbImage_->imageData, GST_BUFFER_SIZE(buffer));
+        GST_BUFFER_SIZE (buffer) = img_height_*img_width_*3*sizeof(guchar);
+// 	cvShowImage("img", rgbImage_);
+// 	cvWaitKey(1);
+	
         GST_DEBUG ("feed buffer");
         g_signal_emit_by_name (app->appsrc, "push-buffer", buffer, &ret);
         gst_buffer_unref (buffer);
@@ -152,20 +151,20 @@ bus_message (GstBus * bus, GstMessage * message, App * app)
 void imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr){
 //   std::cout<<"Image callback!"<<std::endl;
   image_ = sensorMsgsToCv(msg_ptr);
+  rgbImage_ =  new IplImage(image_);
 }
 
 int
 main (int argc, char *argv[])
 {
   App *app = &s_app;
-  GstBus *bus;
   GstCaps *caps;
 
   gst_init (&argc, &argv);
   ros::init(argc, argv, "GstAdapter");
   ros::NodeHandle n;
   image_transport::ImageTransport it(n);
-  image_transport::Subscriber sub = it.subscribe("camera_front/image_raw", 1, &imageCallback);
+  image_transport::Subscriber sub = it.subscribe("minoru_sync/image_raw", 1, &imageCallback);
   GST_DEBUG_CATEGORY_INIT (appsrc_pipeline_debug, "appsrc-pipeline", 0,
       "appsrc pipeline example");
 
@@ -175,15 +174,30 @@ main (int argc, char *argv[])
   app->timer = g_timer_new();
 
   // Option 1: Display on screen via xvimagesink
-  //app->pipeline = gst_parse_launch("appsrc name=mysource ! video/x-raw-rgb,width=640,height=480 ! ffmpegcolorspace ! videoscale method=1 ! xvimagesink", NULL);
+  //app->pipeline = gst_parse_launch("appsrc name=mysource ! video/x-raw-rgb,width=640,height=240 ! ffmpegcolorspace ! videoscale method=1 ! xvimagesink", NULL);
 
   // Option 2: Encode using Theora and stream through UDP
   // NOTE: first launch receiver by executing:
   //       gst-launch udpsrc port=5000 ! theoradec ! ffmpegcolorspace ! xvimagesink
-  //app->pipeline = gst_parse_launch("appsrc name=mysource ! videorate ! ffmpegcolorspace ! videoscale method=1 ! video/x-raw-yuv,width=640,height=480,framerate=\(fraction\)15/1 ! theoraenc bitrate=700 ! udpsink host=127.0.0.1 port=5000", NULL);
+  //app->pipeline = gst_parse_launch("appsrc name=mysource ! videorate ! ffmpegcolorspace ! videoscale method=1 ! video/x-raw-yuv,width=640,height=240,framerate=\(fraction\)15/1 ! theoraenc bitrate=700 ! udpsink host=127.0.0.1 port=5000", NULL);
 
+  ros::NodeHandle priv_n("~");
+  string receiver_address, port;
+  int frame_rate, bitrate;
+  priv_n.param("receiver_address", receiver_address, string("127.0.0.1"));
+  priv_n.param("port", port, string("1234"));
+  priv_n.param("img_width", img_width_, 640);
+  priv_n.param("img_height", img_height_, 240);
+  priv_n.param("frame_rate", frame_rate, 30);
+  priv_n.param("bitrate", bitrate, 400);
+  stringstream ss;
+  ss<<"appsrc name=mysource ! videorate ! ffmpegcolorspace ! videoscale method=1 ! video/x-raw-yuv,";
+  ss<<"width="<<img_width_<<",height="<<img_height_<<",framerate="<<frame_rate<<"/1 ! ";
+  ss<<"x264enc bitrate="<<bitrate<<" pass=qual quantizer=20 tune=zerolatency ! rtph264pay ! ";
+  ss<<"udpsink host="<<receiver_address<<" port="<<port;
+  cout<<"Configuration: "<<ss.str()<<endl;
   // Option 3: Encode using H.264 and stream through RTP
-  app->pipeline = gst_parse_launch("appsrc name=mysource ! videorate ! ffmpegcolorspace ! videoscale method=1 ! video/x-raw-yuv,width=640,height=480,framerate=(fraction)30/1 !  x264enc bitrate=400 pass=qual quantizer=20 tune=zerolatency ! rtph264pay ! udpsink host=192.168.1.70 port=1234", NULL);
+  app->pipeline = gst_parse_launch(ss.str().c_str(), NULL);
   g_assert (app->pipeline);
 
   bus = gst_pipeline_get_bus (GST_PIPELINE (app->pipeline));
@@ -200,7 +214,7 @@ main (int argc, char *argv[])
     g_signal_connect (app->appsrc, "enough-data", G_CALLBACK (stop_feed), app);
 
   /* set the caps on the source */
-  caps = gst_video_format_new_caps(GST_VIDEO_FORMAT_RGB, 640, 480, 0, 1, 4, 3);
+  caps = gst_video_format_new_caps(GST_VIDEO_FORMAT_RGB, img_width_, img_height_, 0, 1, 4, 3);
   gst_app_src_set_caps(GST_APP_SRC(app->appsrc), caps);
 
 
@@ -209,7 +223,6 @@ main (int argc, char *argv[])
 
   /* this mainloop is stopped when we receive an error or EOS */
   g_main_loop_run (app->loop);
-
   GST_DEBUG ("stopping");
 
   gst_element_set_state (app->pipeline, GST_STATE_NULL);

@@ -35,4 +35,4 @@ rosbuild_add_executable(gscam src/gscam.cpp)
 target_link_libraries(gscam gstreamer-0.10 gstbase-0.10 gobject-2.0 gmodule-2.0 gthread-2.0 rt xml2 glib-2.0 gstapp-0.10 pthread)
 
 rosbuild_add_executable(opencv_gscam src/opencv_gscam.cpp)
-target_link_libraries(opencv_gscam gstvideo-0.10 gstreamer-0.10 gstbase-0.10 gobject-2.0 gmodule-2.0 gthread-2.0 rt xml2 glib-2.0 gstapp-0.10 pthread gdk_pixbuf-2.0)
+target_link_libraries(opencv_gscam gstvideo-0.10 gstreamer-0.10 gstbase-0.10 gobject-2.0 gmodule-2.0 gthread-2.0 rt xml2 glib-2.0 gstapp-0.10 pthread)
