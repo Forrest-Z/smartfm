@@ -13,6 +13,9 @@ extern "C"{
 #include <sensor_msgs/CameraInfo.h>
 #include <sensor_msgs/SetCameraInfo.h>
 #include <camera_calibration_parsers/parse_ini.h>
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/opencv.hpp>
 
 #include <unistd.h>
 #include <sys/ipc.h>
@@ -26,6 +29,35 @@ bool setCameraInfo(sensor_msgs::SetCameraInfo::Request &req, sensor_msgs::SetCam
 bool gstreamerPad, rosPad;
 int width, height;
 sensor_msgs::CameraInfo camera_info;
+
+using namespace std;
+
+sensor_msgs::Image addTimeStamp(sensor_msgs::Image& msg)
+{
+  ros::Time time_now = ros::Time::now();
+  ROS_DEBUG("SensorMsgs to CV");
+  cv_bridge::CvImagePtr cv_image;
+  try {
+      cv_image = cv_bridge::toCvCopy(msg, "rgb8");
+  }
+  catch (cv_bridge::Exception& e) {
+      ROS_ERROR("cv_bridge exception: %s", e.what());
+  }
+  int epochSec = time_now.toSec();
+  
+  time_t raw_time = epochSec;
+  struct tm* timeinfo;
+  timeinfo = localtime(&raw_time);
+  string time_str = asctime(timeinfo);
+  stringstream ss;
+  ss<<time_str<<" "<<(time_now.toSec() - epochSec)*1000;
+  
+  cv::putText(cv_image->image, ss.str(), cv::Point(0, msg.height-10), 
+	      cv::FONT_HERSHEY_PLAIN, 0.8,cvScalar(0,0,0), 1, 8);
+  
+  cv_bridge::CvImage cv_img(msg.header, msg.encoding, cv_image->image);
+  return *cv_img.toImageMsg();
+};
 
 using namespace std; 
 int main(int argc, char** argv) {
@@ -175,7 +207,7 @@ int main(int argc, char** argv) {
 		msg.step = width*3;
 		msg.data.resize(width*height*3);
 		std::copy(buf->data, buf->data+(width*height*3), msg.data.begin());
-
+		msg = addTimeStamp(msg);
 		pub.publish(msg, camera_info);
 
                 gst_buffer_unref(buf);
