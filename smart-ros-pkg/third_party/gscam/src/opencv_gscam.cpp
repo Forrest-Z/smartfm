@@ -37,6 +37,7 @@ App s_app;
 GstBus *bus;
 static IplImage* rgbImage_;
 int img_width_, img_height_;
+int frame_rate, bitrate;
 
 cv::Mat sensorMsgsToCv(const sensor_msgs::ImageConstPtr& msg_ptr)
 {
@@ -62,10 +63,12 @@ cv::Mat sensorMsgsToCv(const sensor_msgs::ImageConstPtr& msg_ptr)
   return cv_image->image;
 };
 
+int total_frame;
 static gboolean
 read_data (App * app)
 {
-  if(ros::ok())
+  
+    if(ros::ok())
     ros::spinOnce();
   else {
     gst_element_set_state (app->pipeline, GST_STATE_NULL);
@@ -78,11 +81,20 @@ read_data (App * app)
     gdouble ms;
 
     ms = g_timer_elapsed(app->timer, NULL);
-    if (ms > 1.0/20.0) {
+    if (ms > 1.0/double(frame_rate)) {
         GstBuffer *buffer;
         gboolean ok = TRUE;
-
+	  
 	if(image_.data == NULL) return TRUE;
+	
+// 	cout<<total_frame<<endl;
+// 	total_frame++;
+// 	if(total_frame > 1000){
+// 	  gst_element_set_state (app->pipeline, GST_STATE_NULL);
+// 	  gst_object_unref (bus);
+// 	  g_main_loop_unref (app->loop);
+// 	  exit(0);
+// 	}
 	buffer = gst_buffer_new_and_alloc(img_width_*img_height_*3*sizeof(guchar));
 	memcpy(GST_BUFFER_DATA(buffer),rgbImage_->imageData, GST_BUFFER_SIZE(buffer));
         GST_BUFFER_SIZE (buffer) = img_height_*img_width_*3*sizeof(guchar);
@@ -171,7 +183,7 @@ main (int argc, char *argv[])
 {
   App *app = &s_app;
   GstCaps *caps;
-
+  total_frame = 0;
   gst_init (&argc, &argv);
   ros::init(argc, argv, "GstAdapter");
   ros::NodeHandle n;
@@ -196,12 +208,11 @@ main (int argc, char *argv[])
   ros::NodeHandle priv_n("~");
   string receiver_address;
   int port;
-  int frame_rate, bitrate;
   priv_n.param("receiver_address", receiver_address, string("127.0.0.1"));
   priv_n.param("port", port, 1234);
   priv_n.param("img_width", img_width_, 640);
   priv_n.param("img_height", img_height_, 240);
-  priv_n.param("frame_rate", frame_rate, 30);
+  priv_n.param("frame_rate", frame_rate, 15);
   priv_n.param("bitrate", bitrate, 400);
   stringstream ss;
   ss<<"appsrc name=mysource ! videorate ! ffmpegcolorspace ! videoscale method=1 ! video/x-raw-yuv,";
@@ -230,7 +241,8 @@ main (int argc, char *argv[])
   caps = gst_video_format_new_caps(GST_VIDEO_FORMAT_RGB, img_width_, img_height_, 0, 1, 4, 3);
   gst_app_src_set_caps(GST_APP_SRC(app->appsrc), caps);
 
-
+  /* enable time stamp */
+  gst_base_src_set_do_timestamp(GST_BASE_SRC(app->appsrc), false);
   /* go to playing and wait in a mainloop. */
   gst_element_set_state (app->pipeline, GST_STATE_PLAYING);
 

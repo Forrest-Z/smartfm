@@ -187,10 +187,19 @@ int main(int argc, char** argv) {
 	rosPad = false;
 	gstreamerPad = true;
 	gst_element_set_state(pipeline, GST_STATE_PLAYING);
+	int total_frame = 0;
 	while(nh.ok()) {
                 // This should block until a new frame is awake, this way, we'll run at the 
                 // actual capture framerate of the device.
 		GstBuffer* buf = gst_app_sink_pull_buffer(GST_APP_SINK(sink));
+		cout<<buf->duration<<endl;
+		total_frame++;
+// 		cout<<total_frame<<endl;
+		gboolean live, upstream_live;
+		GstClockTime min_latency, max_latency;
+		gst_base_sink_query_latency(GST_BASE_SINK(sink), &live, &upstream_live, &min_latency, &max_latency); 
+// 		cout<<live<<" "<<upstream_live<<endl;
+// 		cout<<GST_TIME_AS_MSECONDS(min_latency)<<" "<<GST_TIME_AS_MSECONDS(max_latency)<<endl;
 		if (!buf) break;
 
 		GstPad* pad = gst_element_get_static_pad(sink, "sink");
