@@ -25,7 +25,7 @@ class OculusRos {
   OVR::Ptr<OVR::SensorDevice> sensor_;
   OVR::SensorFusion fusion_result_;
   OVR::HMDInfo info_;
-  ros::Publisher pub_, pan_pub_, tilt_pub_;
+  ros::Publisher pub_, pan_tilt_pub_;//pan_pub_, tilt_pub_;
   ros::Publisher hmd_pub_;
   tf::TransformBroadcaster br_;
   float yaw_init_;
