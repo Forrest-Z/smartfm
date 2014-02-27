@@ -2,10 +2,16 @@
   <node pkg="gscam" type="gscam" name="gscam">
     <param name="port" value="1234"/>
   </node>
-  <node pkg=image_view" type="image_view" name="rtp_stream_img">
+  <node pkg="image_view" type="image_view" name="rtp_stream_img">
     <remap from="image" to="gscam/image_raw"/>
-    <param name="image_transport" to="compressed"/>
+    <param name="image_transport" value="compressed"/>
   </node>
   <node pkg="oculus_driver" type="oculus_node" name="oculus_node"/>
   <node pkg="oculus_viewer" type="image_distort_viewer" name="image_distort_viewer"/>
+  <node pkg="joy" type="joy_node" name="joy_node" ns="iMiev">
+    <param name="deadzone" value="0.02"/>
+    <param name="autorepeat_rate" value="20"/>
+    <param name="coalesce_interval" value="0.01"/>
+    <param name="dev" value="/dev/input/js0"/>
+  </node>
 </launch>
