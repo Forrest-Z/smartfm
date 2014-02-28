@@ -5,7 +5,7 @@ using namespace std;
 
 void signalCallback(std_msgs::Time t){
   double delay = (ros::Time::now() - t.data).toSec();
-  cout<<delay*100<<endl;
+  cout<<delay*1000<<" ms"<<endl;
 }
 
 int main(int argc, char** argv){
