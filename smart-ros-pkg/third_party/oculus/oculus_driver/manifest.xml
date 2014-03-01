@@ -14,7 +14,7 @@
   <depend package="image_transport"/>
   <depend package="cv_bridge"/>
   <depend package="oculus_msgs"/>
-
+  <depend package="pan_tilt_udp_remap" />
 </package>
 
 

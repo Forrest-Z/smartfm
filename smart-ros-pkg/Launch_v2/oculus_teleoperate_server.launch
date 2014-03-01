@@ -1,0 +1,18 @@
+<launch>
+  <node pkg="gscam" type="opencv_gscam" name="opencv_gscam">
+    <param name="receiver_address" value="119.234.187.235"/>
+    <param name="port" value="1234"/>
+    <param name="img_width" value="640"/>
+    <param name="img_height" value="240"/>
+    <param name="frame_rate" value="15"/>
+    <param name="bitrate" value="400"/>
+  </node>
+  <node pkg="pan_tilt_udp_remap" type="pan_tilt_udp_remap" name="pan_tilt_udp_remap"/>
+  <node pkg="rosserial_python" type="serial_node.py" name="serial_node" args="/dev/ttyACM1"/>
+  <node pkg="read_network_usage" type="read_bandwidth_usage.py" name="read_server_bandwidth" >
+	<param name="script_path" value="$(find read_network_usage)/src" />
+	<param name="network_port" value="ppp0" />
+	<remap from="network_usage" to="server_network_usage" />
+  </node>
+  
+</launch>

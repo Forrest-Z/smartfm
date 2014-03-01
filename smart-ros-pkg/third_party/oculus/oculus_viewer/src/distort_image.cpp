@@ -59,7 +59,6 @@ void DistortImage::init(const std::string& topic_name) {
   ros::NodeHandle node;
   try {
     pub_ = it_.advertise(topic_name + "/distorted", 1);
-    sub_ = it_.subscribe(topic_name, 1, &DistortImage::imageCb, this);
   } catch(ros::Exception& e) {
     ROS_ERROR("init ROS error: %s", e.what());
   } catch(image_transport::TransportLoadException& e) {
@@ -69,29 +68,26 @@ void DistortImage::init(const std::string& topic_name) {
   }
 }
 
-void DistortImage::imageCb(const sensor_msgs::ImageConstPtr& msg) {
-  cv_bridge::CvImagePtr ptr;
-  try {
-    ptr = cv_bridge::toCvCopy(msg, enc::BGR8);
-  } catch (cv_bridge::Exception& e) {
-    ROS_ERROR("cv_bridge exception: %s", e.what());
-  }
-  IplImage img = ptr->image;
+void DistortImage::process(cv::Mat &image) {
+  IplImage img = image;
   if (K_.size() > 2) {
-    double cx = (msg->width) / 2 + offset_;
-    double cy = msg->height / 2;
+    double cx = (image.cols) / 2 + offset_;
+    double cy = image.rows / 2;
 //     std::cout<<cx<<" "<<cy<<" "<<offset_<<" "<<K_[0]<<" "<<K_[1]<<" "<<K_[2]<<std::endl;
     barrel_dist(&img, cx, cy, 
                 K_[0], K_[1], K_[2]);
     cv::Mat resized_image;
-    cv::resize(ptr->image, resized_image, cv::Size(), scale_, scale_);
-    ptr->image = resized_image(
-        cv::Rect((resized_image.cols - ptr->image.cols) / 2,
-                 (resized_image.rows - ptr->image.rows) /2,
-                 ptr->image.cols,
-                 ptr->image.rows));
-    img_ = ptr->image;
-    pub_.publish(ptr->toImageMsg());
+    cv::resize(image, resized_image, cv::Size(), scale_, scale_);
+    image = resized_image(
+        cv::Rect((resized_image.cols - image.cols) / 2,
+                 (resized_image.rows - image.rows) /2,
+                 image.cols,
+                 image.rows));
+    img_ = image;
+    std_msgs::Header header;
+    header.stamp = ros::Time::now();
+    cv_bridge::CvImage cv_img(header, "bgr8", image);
+    pub_.publish(cv_img.toImageMsg());
   }
 }
 

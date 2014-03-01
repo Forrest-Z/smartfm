@@ -17,19 +17,14 @@ set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 #uncomment if you have defined messages
-#rosbuild_genmsg()
+rosbuild_genmsg()
 #uncomment if you have defined services
 #rosbuild_gensrv()
 
-rosbuild_add_executable(keyhook src/keyhook.cpp)
-rosbuild_add_executable(keyhook_cmdvel src/keyhook_cmdvel.cpp)
-rosbuild_add_executable(joy src/joy.cpp)
-rosbuild_add_executable(joy_cmd_vel src/joy_cmd_vel.cpp)
-rosbuild_add_executable(joy_pronto src/joy_pronto.cpp)
-rosbuild_add_executable(joy_pronto_freedom src/joy_pronto_freedom.cpp)
-
-rosbuild_add_executable(joy_logitech_momo src/joy_logitech_momo.cpp)
-rosbuild_add_executable(joy_hal src/joy_hal.cpp)
-rosbuild_add_executable(joy_simulator src/joy_simulator.cpp)
-rosbuild_add_executable(joy_logitech_momo_iMiev src/joy_logitech_momo_iMiev.cpp)
-#rosbuild_add_executable(system_id src/system_id.cpp)
+#common commands for building c++ executables and libraries
+#rosbuild_add_library(${PROJECT_NAME} src/example.cpp)
+#target_link_libraries(${PROJECT_NAME} another_library)
+#rosbuild_add_boost_directories()
+#rosbuild_link_boost(${PROJECT_NAME} thread)
+#rosbuild_add_executable(example examples/example.cpp)
+#target_link_libraries(example ${PROJECT_NAME})
