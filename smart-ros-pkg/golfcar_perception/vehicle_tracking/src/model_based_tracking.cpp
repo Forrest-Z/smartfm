@@ -79,7 +79,7 @@ model_based_tracking::model_based_tracking()
 	private_nh_.param("laser_frame_id",     laser_frame_id_,    std::string("front_bottom_lidar"));
 	private_nh_.param("base_frame_id",      base_frame_id_,     std::string("base_link"));
 	private_nh_.param("odom_frame_id",      odom_frame_id_,     std::string("odom"));
-	private_nh_.param("temporal_window",	temporal_window_,   20);
+	private_nh_.param("temporal_window",	temporal_window_,   500);
 	private_nh_.param("beam_number",		beam_number_,       541);
 
 	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "front_bottom_scan", 100);
@@ -134,6 +134,7 @@ void model_based_tracking::updateScanImages (const sensor_msgs::LaserScan::Const
 		{
 			scan_state_vec_.push_back(255);
 		}
+
 		scan_reading_vec_.push_back(scan_in->ranges[i]);
 	}
 
@@ -145,15 +146,21 @@ void model_based_tracking::updateScanImages (const sensor_msgs::LaserScan::Const
 
 	std::cout<<temporal_window_<<","<<beam_number_<<","<<scan_state_vec_.size()<<endl;
 
-	uchar scan_sate_data[scan_state_vec_.size()];
-	for(size_t i=0; i<scan_state_vec_.size(); i++) scan_sate_data[i]=scan_state_vec_[i];
+	uchar scan_state_data[scan_state_vec_.size()];
+	float scan_reading_data[scan_state_vec_.size()];
+	for(size_t i=0; i<scan_state_vec_.size(); i++)
+	{
+		scan_state_data[i]=scan_state_vec_[i];
+		scan_reading_data[i]=scan_reading_vec_[i]/50.0;
+	}
 	scan_state_  =	cv::Mat(temporal_window_, beam_number_, CV_8UC1);
-	scan_state_.data = scan_sate_data;
+	scan_state_.data = scan_state_data;
+	scan_reading_ =	cv::Mat(temporal_window_, beam_number_, CV_32FC1, scan_reading_data);
 
-	//scan_reading_  		=	cv::Mat(temporal_window_, beam_number_, CV_32FC1, &scan_reading_vec_);
 
 	cv::imshow("scan_state", scan_state_);
-	//cv::imshow("scan_reading", scan_reading_);
+	cv::imshow("scan_reading", scan_reading_);
+
 	cv::waitKey(3);
 }
 
