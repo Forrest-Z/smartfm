@@ -31,7 +31,13 @@ static GstFlowReturn on_new_sample_from_sink (GstElement * elt){
 //   cout<<gst_structure_to_string(structure)<<endl;
   gst_structure_get_int(structure,"width",&width);
   gst_structure_get_int(structure,"height",&height);
-  
+//   cout<<GST_BUFFER_TIMESTAMP (buffer)<<" "<<GST_BUFFER_TIMESTAMP_IS_VALID(buffer)<<endl;
+  GstClockTime time_now = gst_clock_get_time (gst_element_get_clock (source));
+  GstClockTime running_time = GST_BUFFER_TIMESTAMP(buffer);
+  GstClockTime buffer_timestamp = gst_element_get_base_time(source)+running_time;
+  cout<<"Running time "<<running_time/1e9<<" Delay "<<double(time_now-buffer_timestamp)/1e6<<" ms"<<endl;
+//   cout<<GST_BUFFER_DURATION (buffer)<<endl;
+// 	cout<<"DTS:"<<GST_BUFFER_DTS(buffer)<<" PTS:"<<GST_BUFFER_PTS(buffer)<<endl;
   sensor_msgs::Image msg;
   msg.width = width; 
   msg.height = height;
