@@ -36,7 +36,7 @@ include_directories(/usr/local/include/gstreamer-1.0
 # target_link_libraries(gscam gstreamer-1.0  gstbase-1.0 gstapp-1.0)
 
 rosbuild_add_executable(gst_opencv_streamer src/gst_opencv_streamer.cpp)
-target_link_libraries(gst_opencv_streamer gstreamer-1.0  gstbase-1.0 gstapp-1.0 gstvideo-1.0 gstrtsp-1.0 gstrtspserver-1.0)
+target_link_libraries(gst_opencv_streamer gstreamer-1.0  gstbase-1.0 gstapp-1.0 gstvideo-1.0)
 
 rosbuild_add_executable(gst_opencv_receiver src/gst_opencv_receiver.cpp)
-target_link_libraries(gst_opencv_receiver gstreamer-1.0  gstbase-1.0 gstapp-1.0 gstvideo-1.0 gstrtsp-1.0 gstrtspserver-1.0)
+target_link_libraries(gst_opencv_receiver gstreamer-1.0  gstbase-1.0 gstapp-1.0 gstvideo-1.0)
