@@ -4,7 +4,7 @@
 		<param name="car_model" value="$(find vision_sandbox)/model/car_final.xml"/>
 	</node>
 
-	<node pkg="vision_sandbox" type="ground_extraction" name="ground_extraction" output="screen">
+	<!--node pkg="vision_sandbox" type="ground_extraction" name="ground_extraction" output="screen">
 		<param name="image_transport" value="compressed" />
-	</node>
+	</node-->
 </launch>
