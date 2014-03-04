@@ -29,14 +29,17 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
-include_directories(/usr/local/include/gstreamer-1.0
+include_directories(/usr/local/include/gstreamer-1.0 /usr/local/include/zbar
  /usr/include/glib-2.0 /usr/lib/x86_64-linux-gnu/glib-2.0/include)
 #  
 # rosbuild_add_executable(gscam src/gscam.cpp)
 # target_link_libraries(gscam gstreamer-1.0  gstbase-1.0 gstapp-1.0)
 
 rosbuild_add_executable(gst_opencv_streamer src/gst_opencv_streamer.cpp)
-target_link_libraries(gst_opencv_streamer gstreamer-1.0  gstbase-1.0 gstapp-1.0 gstvideo-1.0)
+target_link_libraries(gst_opencv_streamer gstreamer-1.0  gstbase-1.0 gstapp-1.0 gstvideo-1.0 qrencode zbar)
 
 rosbuild_add_executable(gst_opencv_receiver src/gst_opencv_receiver.cpp)
-target_link_libraries(gst_opencv_receiver gstreamer-1.0  gstbase-1.0 gstapp-1.0 gstvideo-1.0)
+target_link_libraries(gst_opencv_receiver gstreamer-1.0  gstbase-1.0 gstapp-1.0 gstvideo-1.0 qrencode zbar)
+
+rosbuild_add_executable(qr_code_generator src/qr_code_generator.cpp)
+target_link_libraries(qr_code_generator qrencode zbar)

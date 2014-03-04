@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/Image.h>
+#include <std_msgs/Float64.h>
 #include "addTimeStamp.h"
 
 using namespace std;
@@ -15,10 +16,10 @@ GMainLoop *loop;
 GstElement *source;
 
 image_transport::Publisher *pub_;
-
+ros::Publisher *delay_pub_;
 static GstFlowReturn on_new_sample_from_sink (GstElement * elt){
 
-  GstClockTime time_now = gst_clock_get_time (gst_element_get_clock (source));
+  GstClockTime gst_time_now = gst_clock_get_time (gst_element_get_clock (source));
   if(!ros::ok())
     g_main_loop_quit (loop);
   
@@ -36,9 +37,10 @@ static GstFlowReturn on_new_sample_from_sink (GstElement * elt){
 //   cout<<GST_BUFFER_TIMESTAMP (buffer)<<" "<<GST_BUFFER_TIMESTAMP_IS_VALID(buffer)<<endl;
   GstClockTime running_time = GST_BUFFER_TIMESTAMP(buffer);
   GstClockTime buffer_timestamp = gst_element_get_base_time(source)+running_time;
-  cout<<buffer->offset<<": Running time "<<running_time/1e9<<" Delay "<<double(time_now-buffer_timestamp)/1e6<<" ms"<<endl;
+  double delay_ms = double(gst_time_now-buffer_timestamp)/1e6;
+//   cout<<buffer->offset<<": Running time "<<running_time/1e9<<" Delay "<<delay_ms<<" ms"<<endl;
 //   cout<<GST_BUFFER_DURATION (buffer)<<endl;
-// 	cout<<"DTS:"<<GST_BUFFER_DTS(buffer)<<" PTS:"<<GST_BUFFER_PTS(buffer)<<endl;
+//   cout<<"DTS:"<<GST_BUFFER_DTS(buffer)<<" PTS:"<<GST_BUFFER_PTS(buffer)<<endl;
   sensor_msgs::Image msg;
   msg.width = width; 
   msg.height = height;
@@ -49,8 +51,30 @@ static GstFlowReturn on_new_sample_from_sink (GstElement * elt){
   GstMapInfo info;
   gst_buffer_map(buffer, &info, GST_MAP_READ);
   std::copy(info.data, info.data+(width*height*3), msg.data.begin());
+  cv_bridge::CvImagePtr cv_image = sensorMsgToMat(msg);
+  cv::Mat final_img = cv_image->image;
   
-  pub_->publish(addTimeStamp(msg, 10));
+  ros::Time time_now = ros::Time::now();
+  //put time stamp both for text and QR
+  cv::Mat time_img = addTimeStamp(time_now);
+  cv::Mat roi = final_img(cv::Rect(msg.width-time_img.cols, 0, time_img.cols, time_img.rows));
+  time_img.copyTo(roi);
+  cv::Mat qr_img = getQRCode(time_now);
+  roi = final_img(cv::Rect(msg.width-qr_img.cols, msg.height-qr_img.rows, qr_img.cols, qr_img.rows));
+  qr_img.copyTo(roi);
+  
+  
+  //get latency
+  cv::Mat received_qr_roi = final_img(cv::Rect(0, msg.height-qr_img.rows, qr_img.cols, qr_img.rows));
+  uint64_t capture_time_ns = retriveQrCode(received_qr_roi);
+  if(capture_time_ns > 0){
+    uint64_t latency = time_now.toNSec() - capture_time_ns;
+    std_msgs::Float64 delay_msg;
+    delay_msg.data = (double)latency/1e6;
+    delay_pub_->publish(delay_msg);
+  }
+  cv_bridge::CvImage cv_img_msg(msg.header, msg.encoding, final_img);
+  pub_->publish(cv_img_msg.toImageMsg());
   gst_buffer_unmap (buffer, &info);
   gst_sample_unref (sample);
   ros::spinOnce();
@@ -88,9 +112,10 @@ int main(int argc, char** argv){
   image_transport::ImageTransport it(n);
   image_transport::Publisher pub = it.advertise("gst/image_raw", 1);
   pub_ = &pub;
+  delay_pub_ = new ros::Publisher(n.advertise<std_msgs::Float64>("delay_ms", 1));
   stringstream ss;
   ss<<"udpsrc port=1234 ! application/x-rtp, payload=127 ! rtph264depay ! avdec_h264 ! ";
-  ss<<"videoconvert ! videoscale ! appsink name=testsink caps=\"video/x-raw, format=RGB\"";
+  ss<<"videoconvert ! videoscale ! appsink name=testsink caps=\"video/x-raw, format=BGR\"";
   cout<<ss.str()<<endl;
   loop = g_main_loop_new(NULL, FALSE);
   source = gst_parse_launch(ss.str().c_str(), NULL);

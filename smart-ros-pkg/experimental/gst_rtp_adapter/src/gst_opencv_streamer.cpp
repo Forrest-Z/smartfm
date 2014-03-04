@@ -14,8 +14,16 @@ GMainLoop *loop;
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr){
   
-  sensor_msgs::Image time_stamp_img = *msg_ptr;
-  time_stamp_img = addTimeStamp(time_stamp_img, 0);
+  sensor_msgs::Image msg = *msg_ptr;
+  cv_bridge::CvImagePtr cv_image = sensorMsgToMat(msg);
+  cv::Mat final_img = cv_image->image;
+  ros::Time time_now = msg_ptr->header.stamp;
+  cv::Mat time_img = addTimeStamp(time_now);
+  cv::Mat roi = final_img(cv::Rect(0, 0, time_img.cols, time_img.rows));
+  time_img.copyTo(roi);
+  cv::Mat qr_img = getQRCode(time_now);
+  roi = final_img(cv::Rect(0, msg.height-qr_img.rows, qr_img.cols, qr_img.rows));
+  qr_img.copyTo(roi);
   
   GstBuffer *buffer;
   guint size;
@@ -24,8 +32,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr){
   size = img_width_*img_height_*3;
 
   buffer = gst_buffer_new_allocate (NULL, size, NULL);
-  gst_buffer_fill(buffer, 0, &(time_stamp_img.data[0]), size);
-  buffer->offset = 12345;
+  gst_buffer_fill(buffer, 0, &(final_img.data[0]), size);
   g_signal_emit_by_name (appsrc, "push-buffer", buffer, &ret);
   gst_buffer_unref(buffer);
 }
@@ -58,7 +65,7 @@ int main(int argc, char** argv){
   stringstream ss;
   ss<<"appsrc name=testsource ! video/x-raw, format=\"BGR\", ";
   ss<<"width="<<img_width_<<",height="<<img_height_<<",framerate="<<frame_rate<<"/1 ! videoconvert ! ";
-  ss<<"x264enc bitrate="<<bitrate<<" tune=zerolatency ! rtph264pay ! ";
+  ss<<"x264enc bitrate="<<bitrate<<" byte-stream=true tune=zerolatency ! rtph264pay ! ";
   ss<<"udpsink host="<<receiver_address<<" port="<<port;
   
   loop = g_main_loop_new(NULL, FALSE);
@@ -76,7 +83,7 @@ int main(int argc, char** argv){
           "height", G_TYPE_INT, img_height_,
           "framerate", GST_TYPE_FRACTION, frame_rate, 1, NULL), NULL);
   /* enable time stamp */
-  gst_base_src_set_do_timestamp(GST_BASE_SRC(appsrc), true);
+  gst_base_src_set_do_timestamp(GST_BASE_SRC(appsrc), false);
   g_object_set (G_OBJECT (appsrc), "format", GST_FORMAT_TIME, NULL);
   gst_element_set_state (sink, GST_STATE_PLAYING);
   printf ("Let's run!\n");
