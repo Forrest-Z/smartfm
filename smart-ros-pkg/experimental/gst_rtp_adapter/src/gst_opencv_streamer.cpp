@@ -3,6 +3,7 @@
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/Image.h>
+#include "addTimeStamp.h"
 
 using namespace std;
 
@@ -12,6 +13,10 @@ GstElement *appsrc;
 GMainLoop *loop;
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr){
+  
+  sensor_msgs::Image time_stamp_img = *msg_ptr;
+  time_stamp_img = addTimeStamp(time_stamp_img, 0);
+  
   GstBuffer *buffer;
   guint size;
   GstFlowReturn ret;
@@ -19,7 +24,8 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr){
   size = img_width_*img_height_*3;
 
   buffer = gst_buffer_new_allocate (NULL, size, NULL);
-  gst_buffer_fill(buffer, 0, &(msg_ptr->data[0]), size);
+  gst_buffer_fill(buffer, 0, &(time_stamp_img.data[0]), size);
+  buffer->offset = 12345;
   g_signal_emit_by_name (appsrc, "push-buffer", buffer, &ret);
   gst_buffer_unref(buffer);
 }

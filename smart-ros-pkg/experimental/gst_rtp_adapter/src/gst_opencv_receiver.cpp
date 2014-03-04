@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/Image.h>
+#include "addTimeStamp.h"
 
 using namespace std;
 
@@ -17,6 +18,7 @@ image_transport::Publisher *pub_;
 
 static GstFlowReturn on_new_sample_from_sink (GstElement * elt){
 
+  GstClockTime time_now = gst_clock_get_time (gst_element_get_clock (source));
   if(!ros::ok())
     g_main_loop_quit (loop);
   
@@ -32,10 +34,9 @@ static GstFlowReturn on_new_sample_from_sink (GstElement * elt){
   gst_structure_get_int(structure,"width",&width);
   gst_structure_get_int(structure,"height",&height);
 //   cout<<GST_BUFFER_TIMESTAMP (buffer)<<" "<<GST_BUFFER_TIMESTAMP_IS_VALID(buffer)<<endl;
-  GstClockTime time_now = gst_clock_get_time (gst_element_get_clock (source));
   GstClockTime running_time = GST_BUFFER_TIMESTAMP(buffer);
   GstClockTime buffer_timestamp = gst_element_get_base_time(source)+running_time;
-  cout<<"Running time "<<running_time/1e9<<" Delay "<<double(time_now-buffer_timestamp)/1e6<<" ms"<<endl;
+  cout<<buffer->offset<<": Running time "<<running_time/1e9<<" Delay "<<double(time_now-buffer_timestamp)/1e6<<" ms"<<endl;
 //   cout<<GST_BUFFER_DURATION (buffer)<<endl;
 // 	cout<<"DTS:"<<GST_BUFFER_DTS(buffer)<<" PTS:"<<GST_BUFFER_PTS(buffer)<<endl;
   sensor_msgs::Image msg;
@@ -48,7 +49,8 @@ static GstFlowReturn on_new_sample_from_sink (GstElement * elt){
   GstMapInfo info;
   gst_buffer_map(buffer, &info, GST_MAP_READ);
   std::copy(info.data, info.data+(width*height*3), msg.data.begin());
-  pub_->publish(msg);
+  
+  pub_->publish(addTimeStamp(msg, 10));
   gst_buffer_unmap (buffer, &info);
   gst_sample_unref (sample);
   ros::spinOnce();
