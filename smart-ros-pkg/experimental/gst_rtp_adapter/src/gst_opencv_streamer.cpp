@@ -63,9 +63,14 @@ int main(int argc, char** argv){
   priv_n.param("frame_rate", frame_rate, 30);
   priv_n.param("bitrate", bitrate, 400);
   stringstream ss;
+  //gst-launch-1.0 v4l2src device=/dev/video1 ! 'video/x-raw,
+  //format="YUY2",width=640,height=360' ! videoconvert 
+  //! x264enc bitrate=600 tune=zerolatency intra-refresh=true 
+  //bframes=0 ref=1 key-int-max=30  ! rtph264pay ! udpsink host=119.234.131.195  port=1234
+
   ss<<"appsrc name=testsource ! video/x-raw, format=\"BGR\", ";
   ss<<"width="<<img_width_<<",height="<<img_height_<<",framerate="<<frame_rate<<"/1 ! videoconvert ! ";
-  ss<<"x264enc bitrate="<<bitrate<<" byte-stream=true tune=zerolatency ! rtph264pay ! ";
+  ss<<"x264enc bitrate="<<bitrate<<" tune=zerolatency intra-refresh=true ! rtph264pay ! ";
   ss<<"udpsink host="<<receiver_address<<" port="<<port;
   
   loop = g_main_loop_new(NULL, FALSE);
