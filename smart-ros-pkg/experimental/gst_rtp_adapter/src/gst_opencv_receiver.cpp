@@ -68,7 +68,7 @@ static GstFlowReturn on_new_sample_from_sink (GstElement * elt){
   cv::Mat received_qr_roi = final_img(cv::Rect(0, msg.height-qr_img.rows, qr_img.cols, qr_img.rows));
   uint64_t capture_time_ns = retriveQrCode(received_qr_roi);
   if(capture_time_ns > 0){
-    uint64_t latency = time_now.toNSec() - capture_time_ns;
+    int64_t latency = time_now.toNSec() - capture_time_ns;
     std_msgs::Float64 delay_msg;
     delay_msg.data = (double)latency/1e6;
     delay_pub_->publish(delay_msg);
@@ -114,7 +114,7 @@ int main(int argc, char** argv){
   pub_ = &pub;
   delay_pub_ = new ros::Publisher(n.advertise<std_msgs::Float64>("delay_ms", 1));
   stringstream ss;
-  ss<<"udpsrc port=1234 ! application/x-rtp, payload=127 ! rtpjitterbuffer latency=100 ! rtph264depay ! avdec_h264 ! ";
+  ss<<"udpsrc port=1234 ! application/x-rtp, payload=127 ! rtpjitterbuffer latency=100 do-lost=true do-retransmission=true ! rtph264depay ! avdec_h264 ! ";
   ss<<"videoconvert ! videoscale ! appsink name=testsink caps=\"video/x-raw, format=BGR\"";
   cout<<ss.str()<<endl;
   loop = g_main_loop_new(NULL, FALSE);
