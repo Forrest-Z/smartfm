@@ -8,7 +8,7 @@ from decimal import Decimal
 def timeOffset():
   pub = rospy.Publisher('timeOffset', Float64)
   rospy.init_node('timeOffset')
-  host = rospy.get_param('~host', '203.123.48.218')
+  host = rospy.get_param('~host', '0x.sg')
   fh = open("NUL","w")
   while not rospy.is_shutdown():
     process = Popen(['ntpdate', '-q', str(host)], stdout=PIPE, stderr=fh)

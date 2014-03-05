@@ -109,12 +109,15 @@ int main(int argc, char** argv){
   gst_init(&argc, &argv);
   ros::init(argc, argv, "gst_opencv_receiver");
   ros::NodeHandle n;
+  ros::NodeHandle priv_nh("~");
+  int port;
+  priv_nh.param("port", port, 1234);
   image_transport::ImageTransport it(n);
   image_transport::Publisher pub = it.advertise("gst/image_raw", 1);
   pub_ = &pub;
   delay_pub_ = new ros::Publisher(n.advertise<std_msgs::Float64>("delay_ms", 1));
   stringstream ss;
-  ss<<"udpsrc port=1234 ! application/x-rtp, payload=127 ! rtpjitterbuffer latency=100 ! rtph264depay ! avdec_h264 ! ";
+  ss<<"udpsrc port="<<port<<" ! application/x-rtp, payload=127 ! rtpjitterbuffer latency=100 ! rtph264depay ! avdec_h264 ! ";
   ss<<"videoconvert ! videoscale ! appsink name=testsink caps=\"video/x-raw, format=BGR\"";
   cout<<ss.str()<<endl;
   loop = g_main_loop_new(NULL, FALSE);
