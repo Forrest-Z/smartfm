@@ -114,7 +114,7 @@ int main(int argc, char** argv){
   pub_ = &pub;
   delay_pub_ = new ros::Publisher(n.advertise<std_msgs::Float64>("delay_ms", 1));
   stringstream ss;
-  ss<<"udpsrc port=1234 ! application/x-rtp, payload=127 ! rtph264depay ! avdec_h264 ! ";
+  ss<<"udpsrc port=1234 ! application/x-rtp, payload=127 ! rtpjitterbuffer latency=100 ! rtph264depay ! avdec_h264 ! ";
   ss<<"videoconvert ! videoscale ! appsink name=testsink caps=\"video/x-raw, format=BGR\"";
   cout<<ss.str()<<endl;
   loop = g_main_loop_new(NULL, FALSE);
