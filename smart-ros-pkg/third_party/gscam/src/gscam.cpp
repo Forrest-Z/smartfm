@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
 	string gscam_config;
 	ros::NodeHandle priv_nh("~");
 	priv_nh.param("config", gscam_config, 
-// 		 string("v4l2src device=/dev/video2 ! video/x-raw-rgb,width=320,height=240,framerate=30/1 ! ffmpegcolorspace"));
- 		 string("udpsrc port=1234 ! application/x-rtp, payload=127 ! rtph264depay ! ffdec_h264 ! ffmpegcolorspace"));
+ 		 string("v4l2src device=/dev/video0 ! image/jpeg,width=1280,height=720,framerate=30/1 ! jpegdec ! ffmpegcolorspace"));
+// 		 string("udpsrc port=1234 ! application/x-rtp, payload=127 ! rtph264depay ! ffdec_h264 ! ffmpegcolorspace"));
 	cout<<"Pipeline configuration received "<<gscam_config<<endl;
 	const char *config = gscam_config.c_str();
 	if (config == NULL) {
@@ -172,6 +172,7 @@ int main(int argc, char** argv) {
 		msg.is_bigendian = false;
 		msg.step = width*3;
 		msg.data.resize(width*height*3);
+		msg.header.stamp = ros::Time::now();
 		std::copy(buf->data, buf->data+(width*height*3), msg.data.begin());
 
 		pub.publish(msg, camera_info);
