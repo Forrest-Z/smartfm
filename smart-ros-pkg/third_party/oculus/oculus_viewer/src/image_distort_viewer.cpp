@@ -65,8 +65,8 @@ void ImageDistortViewer::init() {
                         1,
                         &ImageDistortViewer::HMDInfoCallback,
                         this);
-  img_sub_ = it_.subscribe("minoru_sync/image_raw", 1, &ImageDistortViewer::imageCallback, 
-			   this, image_transport::TransportHints("theora", ros::TransportHints().udp()));
+  img_sub_ = it_.subscribe("gscam/image_raw", 1, &ImageDistortViewer::imageCallback, 
+			   this, image_transport::TransportHints("compressed"));
   
   ros::NodeHandle private_node("~");	
   int32_t offset_x = 0;

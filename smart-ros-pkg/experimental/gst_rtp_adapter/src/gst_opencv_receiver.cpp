@@ -68,7 +68,7 @@ static GstFlowReturn on_new_sample_from_sink (GstElement * elt){
   cv::Mat received_qr_roi = final_img(cv::Rect(0, msg.height-qr_img.rows, qr_img.cols, qr_img.rows));
   uint64_t capture_time_ns = retriveQrCode(received_qr_roi);
   if(capture_time_ns > 0){
-    uint64_t latency = time_now.toNSec() - capture_time_ns;
+    int64_t latency = time_now.toNSec() - capture_time_ns;
     std_msgs::Float64 delay_msg;
     delay_msg.data = (double)latency/1e6;
     delay_pub_->publish(delay_msg);

@@ -54,7 +54,7 @@ TrackViewerNode::TrackViewerNode(): node_handle("~"),
   // synchronizer.registerCallback( boost::bind(&TrackViewerNode::callback, this, _1, _2) );
   img_subscriber = img_transport.subscribe("image", 10, &TrackViewerNode::imageCallback, this);
   trackset_subscriber = node_handle.subscribe("tracks", 10, &TrackViewerNode::trackSetCallback, this);
-
+  img_tracker_pub = img_transport.advertise("overlay", 1);
   cv::namedWindow(track_window_name, cv::WINDOW_AUTOSIZE);
   cv::namedWindow(overlay_window_name, cv::WINDOW_AUTOSIZE);
 };
@@ -129,6 +129,10 @@ void TrackViewerNode::trackSetCallback(const ict::TrackSet::ConstPtr& trackset)
     }
   }
   cv::imshow(track_window_name, accumulated_tracks);
+  cv_bridge::CvImage overlay_msg;
+  overlay_msg.image = latest_frame;
+  overlay_msg.encoding = "bgr8";
+  img_tracker_pub.publish(overlay_msg.toImageMsg());
   cv::imshow(overlay_window_name, latest_frame);
   cv::waitKey(10);
 };

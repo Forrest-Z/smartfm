@@ -5,7 +5,7 @@
 # This is a bit harsh but it's usefull when the offset is so large that it
 # would take chrony hours to converge...
 
-offset=`ntpdate -q golfcart-master | awk '$1 ~ ntpdate { offset=$10 } END { print offset }'`
+offset=`ntpdate -q chewbacca | awk '$1 ~ ntpdate { offset=$10 } END { print offset }'`
 echo offset is $offset. Synchronizing...
 
 if [ `id -u` -eq 0 ]
@@ -13,7 +13,7 @@ then
 
 (
 service chrony stop
-ntpdate golfcart-master
+ntpdate chewbacca
 service chrony start
 ) > /dev/null 2>&1
 
@@ -22,6 +22,6 @@ else
         exit 1
 fi
 
-offset=`ntpdate -q golfcart-master | awk '$1 ~ ntpdate { offset=$10 } END { print offset }'`
+offset=`ntpdate -q chewbacca | awk '$1 ~ ntpdate { offset=$10 } END { print offset }'`
 echo ... offset is now $offset.
 exit 0
