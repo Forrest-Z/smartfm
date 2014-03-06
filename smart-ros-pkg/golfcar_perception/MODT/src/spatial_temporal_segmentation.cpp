@@ -1263,8 +1263,6 @@ std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster
 
 	for(size_t i=0; i<3; i++) feature_vector.push_back(object_cluster.scan_segment_batch.back().intensities[i]);
 
-
-
 	assert((int)feature_vector.size() == feature_vector_length_);
 	return feature_vector;
 }

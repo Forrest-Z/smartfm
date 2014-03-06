@@ -1,0 +1,4 @@
+1. download voc-release4.0.1, copy the "model_convert_mat_xml.m" into that folder;
+2. use matlab to open the "VOC-2009/car_final.mat", change the parameter of the "model.thresh", and save;
+3. use the function "model_convert_mat_xml.m" to convert the changed matlab model into the xml model for opencv;
+

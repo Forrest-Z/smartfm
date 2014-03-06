@@ -6,7 +6,7 @@ int main(int, char**) {
     cv::VideoCapture vcap;
     cv::Mat image;
 
-    const std::string videoStreamAddress = "rtsp://192.168.1.13:8554/vlc"; 
+    const std::string videoStreamAddress = "rtsp://127.0.0.1:8554/test"; 
     /* it may be an address of an mjpeg stream, 
     e.g. "http://user:pass@cam_address:8081/cgi/mjpg/mjpg.cgi?.mjpg" */
 

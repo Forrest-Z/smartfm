@@ -29,7 +29,7 @@ public:
     nav_msgs::Path path_;
     geometry_msgs::Pose vehicle_base_;
     int path_n_;
-    bool initialized_;
+    bool initialized_, lookahead_ini_;
     double dist_to_final_point;
     void updateCommandedSpeed(double speed);
 private:

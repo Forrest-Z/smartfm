@@ -75,7 +75,9 @@ void vehicle_detection::detectAndDrawObjects( Mat& image, LatentSvmDetector& det
     {
         const LatentSvmDetector::ObjectDetection& od = detections[i];
         putText( image, classNames[od.classID], Point(od.rect.x+4,od.rect.y+13), FONT_HERSHEY_SIMPLEX, 0.55, colors[od.classID], 2 );
+        cout<<od.score<<"\t";
     }
+    cout<<endl;
 }
 
 int main(int argc, char** argv)

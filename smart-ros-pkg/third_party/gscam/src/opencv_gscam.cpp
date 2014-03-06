@@ -39,84 +39,13 @@ static IplImage* rgbImage_;
 int img_width_, img_height_;
 int frame_rate, bitrate;
 
-cv::Mat sensorMsgsToCv(const sensor_msgs::ImageConstPtr& msg_ptr)
-{
-  ROS_DEBUG("SensorMsgs to CV");
-  cv_bridge::CvImagePtr cv_image;
-  try {
-      cv_image = cv_bridge::toCvCopy(msg_ptr, "rgb8");
-  }
-  catch (cv_bridge::Exception& e) {
-      ROS_ERROR("cv_bridge exception: %s", e.what());
-  }
-  int epochSec = msg_ptr->header.stamp.toSec();
-  
-  time_t raw_time = epochSec;
-  struct tm* timeinfo;
-  timeinfo = localtime(&raw_time);
-  string time_str = asctime(timeinfo);
-  stringstream ss;
-  ss<<time_str<<" "<<(msg_ptr->header.stamp.toSec() - epochSec)*1000;
-  
-  cv::putText(cv_image->image, ss.str(), cv::Point(0, img_height_), 
-	      cv::FONT_HERSHEY_PLAIN, 0.8,cvScalar(0,0,0), 1, 8);
-  return cv_image->image;
-};
 
 int total_frame;
 static gboolean
 read_data (App * app)
 {
-  
-    if(ros::ok())
-    ros::spinOnce();
-  else {
-    gst_element_set_state (app->pipeline, GST_STATE_NULL);
-    gst_object_unref (bus);
-    g_main_loop_unref (app->loop);
-    exit(0);
-  }
-  
-    GstFlowReturn ret;
-    gdouble ms;
-
-    ms = g_timer_elapsed(app->timer, NULL);
-    if (ms > 1.0/double(frame_rate)) {
-        GstBuffer *buffer;
-        gboolean ok = TRUE;
-	  
-	if(image_.data == NULL) return TRUE;
-	
-// 	cout<<total_frame<<endl;
-// 	total_frame++;
-// 	if(total_frame > 1000){
-// 	  gst_element_set_state (app->pipeline, GST_STATE_NULL);
-// 	  gst_object_unref (bus);
-// 	  g_main_loop_unref (app->loop);
-// 	  exit(0);
-// 	}
-	buffer = gst_buffer_new_and_alloc(img_width_*img_height_*3*sizeof(guchar));
-	memcpy(GST_BUFFER_DATA(buffer),rgbImage_->imageData, GST_BUFFER_SIZE(buffer));
-        GST_BUFFER_SIZE (buffer) = img_height_*img_width_*3*sizeof(guchar);
-// 	cvShowImage("img", rgbImage_);
-// 	cvWaitKey(1);
-	
-        GST_DEBUG ("feed buffer");
-        g_signal_emit_by_name (app->appsrc, "push-buffer", buffer, &ret);
-        gst_buffer_unref (buffer);
-
-        if (ret != GST_FLOW_OK) {
-            /* some error, stop sending data */
-            GST_DEBUG ("some error");
-            ok = FALSE;
-        }
-
-        g_timer_start(app->timer);
-
-        return ok;
-    }
-
-    // g_signal_emit_by_name (app->appsrc, "end-of-stream", &ret);
+    ros::spin();
+    g_main_loop_quit (app->loop);
     return TRUE;
 }
 
@@ -173,9 +102,29 @@ bus_message (GstBus * bus, GstMessage * message, App * app)
 }
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg_ptr){
-//   std::cout<<"Image callback!"<<std::endl;
-  image_ = sensorMsgsToCv(msg_ptr);
-  rgbImage_ =  new IplImage(image_);
+int epochSec = msg_ptr->header.stamp.toSec();
+  
+//   time_t raw_time = epochSec;
+//   struct tm* timeinfo;
+//   timeinfo = localtime(&raw_time);
+//   string time_str = asctime(timeinfo);
+//   stringstream ss;
+//   ss<<time_str<<" "<<(msg_ptr->header.stamp.toSec() - epochSec)*1000;
+//   cv::putText(cv_image->image, ss.str(), cv::Point(0, img_height_), 
+// 	      cv::FONT_HERSHEY_PLAIN, 0.8,cvScalar(0,0,0), 1, 8);
+  
+  GstBuffer *buffer;
+  guint size;
+  GstFlowReturn ret;
+
+  size = img_width_*img_height_*3;
+
+  buffer = gst_buffer_new_allocate (NULL, size, NULL);
+
+  /* this makes the image black/white */
+//   gst_buffer_memset (buffer, 0, 0xff , size);
+  gst_buffer_fill(buffer, 0, &(msg_ptr->data[0]), size);
+  g_signal_emit_by_name (s_app.appsrc, "push-buffer", buffer, &ret);
 }
 
 int
@@ -215,8 +164,8 @@ main (int argc, char *argv[])
   priv_n.param("frame_rate", frame_rate, 15);
   priv_n.param("bitrate", bitrate, 400);
   stringstream ss;
-  ss<<"appsrc name=mysource ! videorate ! ffmpegcolorspace ! videoscale method=1 ! video/x-raw-yuv,";
-  ss<<"width="<<img_width_<<",height="<<img_height_<<",framerate="<<frame_rate<<"/1 ! ";
+  ss<<"appsrc name=mysource ! video/x-raw, format=\"BGR\", ";
+  ss<<"width="<<img_width_<<",height="<<img_height_<<",framerate="<<frame_rate<<"/1 ! videoconvert ! ";
   ss<<"x264enc bitrate="<<bitrate<<" pass=qual quantizer=20 tune=zerolatency ! rtph264pay ! ";
   ss<<"udpsink host="<<receiver_address<<" port="<<port;
   cout<<"Configuration: "<<ss.str()<<endl;
@@ -237,12 +186,15 @@ main (int argc, char *argv[])
     g_signal_connect (app->appsrc, "need-data", G_CALLBACK (start_feed), app);
     g_signal_connect (app->appsrc, "enough-data", G_CALLBACK (stop_feed), app);
 
-  /* set the caps on the source */
-  caps = gst_video_format_new_caps(GST_VIDEO_FORMAT_RGB, img_width_, img_height_, 0, 1, 4, 3);
-  gst_app_src_set_caps(GST_APP_SRC(app->appsrc), caps);
-
+  /* configure the caps of the video */
+  g_object_set (G_OBJECT (app->appsrc), "caps",
+      gst_caps_new_simple ("video/x-raw",
+          "format", G_TYPE_STRING, "BGR",
+          "width", G_TYPE_INT, img_width_,
+          "height", G_TYPE_INT, img_height_,
+          "framerate", GST_TYPE_FRACTION, frame_rate, 1, NULL), NULL);
   /* enable time stamp */
-  gst_base_src_set_do_timestamp(GST_BASE_SRC(app->appsrc), false);
+  gst_base_src_set_do_timestamp(GST_BASE_SRC(app->appsrc), true);
   /* go to playing and wait in a mainloop. */
   gst_element_set_state (app->pipeline, GST_STATE_PLAYING);
 
