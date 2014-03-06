@@ -31,6 +31,10 @@
         <param name="sharpness" value="250"/>
         <param name="gain" value="0"/>
     </node>
+    <node pkg="oculus_viewer" type="stereo_sync" name="stereo_sync"/>
+    <node pkg="image_view" type="image_view" name="minoru_sync_viewer">
+        <remap from="image" to="minoru_sync/image_raw"/>
+    </node>
     <node pkg="image_view" type="image_view" name="minoru_left_viewer">
         <remap from="image" to="minoru_left/image_raw"/>
     </node>
