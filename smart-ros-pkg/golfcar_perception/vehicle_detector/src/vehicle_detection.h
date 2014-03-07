@@ -18,6 +18,8 @@
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/contrib/contrib.hpp"
+#include <boost/bind.hpp>
+#include <boost/thread/mutex.hpp>
 
 #include "MODT/segment_pose_batches.h"
 
@@ -60,6 +62,10 @@ private:
 	std::string map_frame_id_;
 	image_geometry::PinholeCameraModel cam_model_;
 	bool camera_initialized_;
+	tf::MessageFilter<sensor_msgs::CameraInfo>				*tf_filter_;
+	message_filters::Subscriber<sensor_msgs::CameraInfo> 	*camera_info_sub_;
+	void cameraInfo_callback(const sensor_msgs::CameraInfoConstPtr& camera_info_ptr);
 
+	boost::recursive_mutex configuration_mutex_;
 };
 
