@@ -1308,7 +1308,12 @@ int thresholdFunctionalScore(const CvLSVMFilterObject **all_F, int n,
     
 
     //for (l = LAMBDA; l < H->numLevels; l++)
-    for (l = H->numLevels-3; l < H->numLevels; l++)
+    
+    //to modify the original code, to reduce the searching space;
+    if( H->numLevels >= 2*LAMBDA) l = H->numLevels-LAMBDA;
+    else  l = LAMBDA;
+    
+    for (; l < H->numLevels; l++)
     {
         k = l - LAMBDA;
         //printf("Score at the level %i\n", l);
