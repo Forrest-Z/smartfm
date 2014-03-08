@@ -128,26 +128,12 @@ void vehicle_detection::lidarMeas_callback(const MODT::segment_pose_batches& bat
 		left_upper.header = cluster_centroids.header;
 		right_lower.header = cluster_centroids.header;
 
-		if(cluster_centroids.points[i].x <= 0.0)
-		{
-			right_lower.point.x = cluster_centroids.points[i].x-3.0;
-			right_lower.point.y = cluster_centroids.points[i].y-3.0;
-			right_lower.point.z = 0;
-
-			left_upper.point.x = cluster_centroids.points[i].x+3.0;
-			left_upper.point.y = cluster_centroids.points[i].y+3.0;
-			left_upper.point.z = 3.0;
-		}
-		else
-		{
-			right_lower.point.x = cluster_centroids.points[i].x + 3.0;
-			right_lower.point.y = cluster_centroids.points[i].y - 3.0;
-			right_lower.point.z = 0;
-
-			left_upper.point.x = cluster_centroids.points[i].x + 3.0;
-			left_upper.point.y = cluster_centroids.points[i].y + 3.0;
-			left_upper.point.z = 3.0;
-		}
+		right_lower.point.x = cluster_centroids.points[i].x;
+		right_lower.point.y = cluster_centroids.points[i].y-3.0;
+		right_lower.point.z = 0;
+		left_upper.point.x = cluster_centroids.points[i].x;
+		left_upper.point.y = cluster_centroids.points[i].y+3.0;
+		left_upper.point.z = 3.0;
 
 		try{tf_.transformPoint(camera_frame_id_, right_lower, right_lower);}
 		catch (tf::TransformException& e){ROS_DEBUG("Wrong!!!!!!!!!!!!!"); std::cout << e.what();continue;}
@@ -175,7 +161,8 @@ void vehicle_detection::lidarMeas_callback(const MODT::segment_pose_batches& bat
 		int width  = right_lower_uv.x-left_upper_uv.x;
 		int height = right_lower_uv.y-left_upper_uv.y;
 
-		if(width<=40||height<=40) {continue;}
+		//the opencv code will appear some segmentation faults when the image is too small; should be some bugs;
+		if( width< 40 || height<40) {continue;}
 
 		cout<<left_upper_uv.x<<","<<left_upper_uv.y<<","<<width<<","<<height<<endl;
 
@@ -190,7 +177,7 @@ void vehicle_detection::lidarMeas_callback(const MODT::segment_pose_batches& bat
 	Rect roi_to_use = image_ROIs.front();
 	cout<<"roi to use:"<<roi_to_use.x<<","<<roi_to_use.y<<","<<roi_to_use.width<<","<<roi_to_use.height<<endl;
 
-	Mat imageROI = mat_img(roi_to_use);
+	Mat imageROI = mat_img;//(roi_to_use);
 
 	detectAndDrawObjects(imageROI, *LatentSVMdetector_, colors_, overlap_threshold_, threadNum_);
 
