@@ -2,7 +2,6 @@
 
 vehicle_detection::vehicle_detection(ros::NodeHandle &n) : private_nh_("~"), n_(n), it_(n_)
 {
-
 	std::string model_name;
 	private_nh_.param("car_model", model_name, std::string("/home/baoxing/workspace/data_and_model/car.xml"));
 	private_nh_.param("overlap_threshold", overlap_threshold_, 0.5);
@@ -19,16 +18,21 @@ vehicle_detection::vehicle_detection(ros::NodeHandle &n) : private_nh_("~"), n_(
 
 	generateColors( colors_, LatentSVMdetector_->getClassNames().size() );
 
-    cam_sub_ = it_.subscribeCamera("/camera_front/image_raw", 1, &vehicle_detection::imageCallback, this);
-    segpose_batch_sub_  = n_.subscribe("/segment_pose_batches", 1, &vehicle_detection::lidarMeas_callback, this);
-
-    image_pub_ = it_.advertise("/camera_front/vehicle_detection", 1);
+    cam_sub_ = it_.subscribeCamera("camera_front/image_raw", 1, &vehicle_detection::imageCallback, this);
+    segpose_batch_sub_  = n_.subscribe("segment_pose_batches", 1, &vehicle_detection::lidarMeas_callback, this);
+    image_pub_ = it_.advertise("camera_front/vehicle_detection", 1);
 
 	private_nh_.param("laser_frame_id",     laser_frame_id_,    std::string("front_bottom_lidar"));
 	private_nh_.param("base_frame_id",      base_frame_id_,     std::string("base_link"));
 	private_nh_.param("odom_frame_id",      odom_frame_id_,     std::string("odom"));
-	private_nh_.param("camera_frame_id",    camera_frame_id_,     std::string("/camera_front_img"));
+	private_nh_.param("camera_frame_id",    camera_frame_id_,     std::string("camera_front_img"));
 	camera_initialized_ = false;
+
+	private_nh_.param("z_low_bound", z_low_bound_, -1.0);
+	private_nh_.param("z_high_bound", z_high_bound_, 2.0);
+	private_nh_.param("x_inflat_dist", x_inflat_dist_, 0.5);
+	private_nh_.param("y_inflat_dist", y_inflat_dist_, 0.5);
+	new_image_ = true;
 }
 
 vehicle_detection::~vehicle_detection()
@@ -39,60 +43,36 @@ vehicle_detection::~vehicle_detection()
 void vehicle_detection::imageCallback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& info_msg)
 {
 	//cv_bridge::CvImagePtr cv_image;
-	try
-	{
-		cv_image_ = cv_bridge::toCvCopy(image, "bgr8");
-	}
-	catch (cv_bridge::Exception& e)
-	{
-		ROS_ERROR("cv_bridge exception: %s", e.what());
-	}
+	try{cv_image_ = cv_bridge::toCvCopy(image, "bgr8");}
+	catch (cv_bridge::Exception& e){ROS_ERROR("cv_bridge exception: %s", e.what());}
+	new_image_ = true;
 
-	if(!camera_initialized_){
+	if(!camera_initialized_)
+	{
 		cam_model_.fromCameraInfo(info_msg);
 		camera_initialized_ = true;
 	}
-
-
-}
-
-void vehicle_detection::detectAndDrawObjects( Mat& image, LatentSvmDetector& detector, const vector<Scalar>& colors, float overlapThreshold, int numThreads )
-{
-    vector<LatentSvmDetector::ObjectDetection> detections;
-
-    TickMeter tm;
-    tm.start();
-    detector.detect( image, detections, overlapThreshold, numThreads);
-    tm.stop();
-
-    cout << "Detection time = " << tm.getTimeSec() << " sec" << endl;
-
-    const vector<string> classNames = detector.getClassNames();
-    CV_Assert( colors.size() == classNames.size() );
-
-    for( size_t i = 0; i < detections.size(); i++ )
-    {
-        const LatentSvmDetector::ObjectDetection& od = detections[i];
-        rectangle( image, od.rect, colors[od.classID], 3 );
-    }
-    // put text over the all rectangles
-    for( size_t i = 0; i < detections.size(); i++ )
-    {
-        const LatentSvmDetector::ObjectDetection& od = detections[i];
-        putText( image, classNames[od.classID], Point(od.rect.x+4,od.rect.y+13), FONT_HERSHEY_SIMPLEX, 0.55, colors[od.classID], 2 );
-        cout<<od.score<<"\t";
-    }
-    cout<<endl;
 }
 
 void vehicle_detection::lidarMeas_callback(const MODT::segment_pose_batches& batches)
 {
 	boost::recursive_mutex::scoped_lock l(configuration_mutex_);
+	if(!new_image_) return;
+	cv_image_copy_ = cv_image_;
+
+	new_image_ = false;
 
 	ROS_INFO("lidarMeas_callback size(): %ld", batches.clusters.size());
-
 	if(!camera_initialized_)return;
 
+	std::vector<sensor_msgs::PointCloud> object_clusters;
+	for(size_t i=0; i<batches.clusters.size(); i++){object_clusters.push_back(batches.clusters[i].segments.back());}
+	std::vector<Rect> object_ROIs;
+	calcROIs(object_clusters, object_ROIs);
+
+	image_pub_.publish(cv_image_copy_->toImageMsg());
+
+	/*
 	//1st: calculate centroids in the baselink frame;
 	sensor_msgs::PointCloud cluster_centroids;
 	cluster_centroids.header = batches.header;
@@ -177,7 +157,7 @@ void vehicle_detection::lidarMeas_callback(const MODT::segment_pose_batches& bat
 	Rect roi_to_use = image_ROIs.front();
 	cout<<"roi to use:"<<roi_to_use.x<<","<<roi_to_use.y<<","<<roi_to_use.width<<","<<roi_to_use.height<<endl;
 
-	Mat imageROI = mat_img;//(roi_to_use);
+	Mat imageROI = mat_img(roi_to_use);
 
 	detectAndDrawObjects(imageROI, *LatentSVMdetector_, colors_, overlap_threshold_, threadNum_);
 
@@ -185,7 +165,100 @@ void vehicle_detection::lidarMeas_callback(const MODT::segment_pose_batches& bat
 	cv_image_->image = imageROI;
 	image_pub_.publish(cv_image_->toImageMsg());
 	waitKey(3);
+	*/
 }
+
+void vehicle_detection::calcROIs(std::vector<sensor_msgs::PointCloud> & object_clusters, std::vector<Rect> & object_ROIs)
+{
+	srand (time(NULL));
+	for(size_t i=0; i<object_clusters.size(); i++)
+	{
+		//1st: transform the points into baselink frame;
+		object_clusters[i].header.stamp = cv_image_copy_->header.stamp;
+		sensor_msgs::PointCloud cloud_tmp;
+		try{tf_.transformPointCloud(base_frame_id_, object_clusters[i], cloud_tmp);}
+		catch (tf::TransformException& e){ROS_DEBUG("cannot transform into baselink frame"); std::cout << e.what(); continue;}
+
+		//2nd: inflate the points, and transform into the camera frame;
+		sensor_msgs::PointCloud inflatted_cloud_tmp;
+		inflatted_cloud_tmp.header = cloud_tmp.header;
+		for(size_t j=0; j<cloud_tmp.points.size(); j++)
+		{
+			geometry_msgs::Point32 point_tmp;
+			for(int a=-1; a<=1; a=a+2)
+				for(int b=-1; b<=1; b=b+2)
+				{
+					point_tmp.x = cloud_tmp.points[j].x + a*x_inflat_dist_;
+					point_tmp.y = cloud_tmp.points[j].y + b*y_inflat_dist_;
+					point_tmp.z = cloud_tmp.points[j].z + z_low_bound_;
+					inflatted_cloud_tmp.points.push_back(point_tmp);
+					point_tmp.z = cloud_tmp.points[j].z + z_high_bound_;
+					inflatted_cloud_tmp.points.push_back(point_tmp);
+				}
+		}
+
+		try{tf_.transformPointCloud(camera_frame_id_, inflatted_cloud_tmp, inflatted_cloud_tmp);}
+		catch (tf::TransformException& e){ROS_DEBUG("cannot transform into camera frame"); std::cout << e.what(); continue;}
+
+		Scalar color_tmp( rand() % 256,  rand() % 256,  rand() % 256);
+
+		//3rd: project the points onto the images;
+		Point upper_left(cv_image_copy_->image.cols-1, cv_image_copy_->image.rows-1), lower_right(0, 0);
+		for(size_t j=0; j<inflatted_cloud_tmp.points.size(); j++)
+		{
+			//in case when points are projected at the behind of the camera;
+			if(inflatted_cloud_tmp.points[j].z<0.1) continue;
+
+			cv::Point3d pt3d_cv(inflatted_cloud_tmp.points[j].x, inflatted_cloud_tmp.points[j].y, inflatted_cloud_tmp.points[j].z);
+			cv::Point2d ptImg_uv;
+			cam_model_.project3dToPixel(pt3d_cv, ptImg_uv);
+			Point point_tmp(ptImg_uv.x, ptImg_uv.y);
+			circle(cv_image_copy_->image, point_tmp, 3, color_tmp, -1);
+
+			if(point_tmp.x<upper_left.x) upper_left.x = point_tmp.x;
+			if(point_tmp.y<upper_left.y) upper_left.y = point_tmp.y;
+			if(point_tmp.x>lower_right.x) lower_right.x = point_tmp.x;
+			if(point_tmp.y>lower_right.y) lower_right.y = point_tmp.y;
+		}
+		if(upper_left.x>=lower_right.x || upper_left.y>=lower_right.y) continue;
+		printf("upper_left (%d, %d), lower_right (%d, %d)\n", upper_left.x, upper_left.y, lower_right.x, lower_right.y);
+
+		Rect rectangle_tmp(upper_left.x, upper_left.y, (lower_right.x- upper_left.x), (lower_right.y- upper_left.y));
+		object_ROIs.push_back(rectangle_tmp);
+		rectangle(cv_image_copy_->image, upper_left, lower_right, Scalar(0, 255, 0), 3);
+	}
+
+}
+
+void vehicle_detection::detectAndDrawObjects( Mat& image, LatentSvmDetector& detector, const vector<Scalar>& colors, float overlapThreshold, int numThreads )
+{
+    vector<LatentSvmDetector::ObjectDetection> detections;
+
+    TickMeter tm;
+    tm.start();
+    detector.detect( image, detections, overlapThreshold, numThreads);
+    tm.stop();
+
+    cout << "Detection time = " << tm.getTimeSec() << " sec" << endl;
+
+    const vector<string> classNames = detector.getClassNames();
+    CV_Assert( colors.size() == classNames.size() );
+
+    for( size_t i = 0; i < detections.size(); i++ )
+    {
+        const LatentSvmDetector::ObjectDetection& od = detections[i];
+        rectangle( image, od.rect, colors[od.classID], 3 );
+    }
+    // put text over the all rectangles
+    for( size_t i = 0; i < detections.size(); i++ )
+    {
+        const LatentSvmDetector::ObjectDetection& od = detections[i];
+        putText( image, classNames[od.classID], Point(od.rect.x+4,od.rect.y+13), FONT_HERSHEY_SIMPLEX, 0.55, colors[od.classID], 2 );
+        cout<<od.score<<"\t";
+    }
+    cout<<endl;
+}
+
 
 int main(int argc, char** argv)
 {

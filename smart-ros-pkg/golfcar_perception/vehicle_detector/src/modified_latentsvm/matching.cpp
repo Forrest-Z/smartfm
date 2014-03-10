@@ -887,7 +887,7 @@ int thresholdFunctionalScoreFixedLevel(const CvLSVMFilterObject **all_F, int n,
     dimX = H->pyramid[level]->sizeX;
     dimY = H->pyramid[level]->sizeY;
     
-	printf("dimX, dimY: %d, %d\n", dimX, dimY);
+	//printf("dimX, dimY: %d, %d\n", dimX, dimY);
 
     // Number of features
     //p = H->pyramid[level]->numFeatures;
@@ -1330,7 +1330,7 @@ int thresholdFunctionalScore(const CvLSVMFilterObject **all_F, int n,
             tmpPartsDisplacement[k]);
         clock_t delt_time = clock() - begin_time;
         
-        printf("Score at the level %i, time %f \n", l, (float)delt_time/CLOCKS_PER_SEC);
+        //{printf("Score at the level %i, time %f \n", l, (float)delt_time/CLOCKS_PER_SEC);}
         
         //fprintf(file, "%i;%lf;\n", l, tmpScore[k]);
         if (res != LATENT_SVM_OK)

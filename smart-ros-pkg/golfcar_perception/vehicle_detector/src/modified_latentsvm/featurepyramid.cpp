@@ -66,6 +66,8 @@ int getFeatureMaps(const IplImage* image, const int k, CvLSVMFeatureMap **map)
     p     = px;
     stringSize = sizeX * p;
     allocFeatureMapObject(map, sizeX, sizeY, p);
+    
+    //printf("height, width, k, sizeX, sizeY (%d, %d, %d, %d, %d)\t", height, width, k, sizeX, sizeY);
 
     cvFilter2D(image, dx, &kernel_dx, cvPoint(-1, 0));
     cvFilter2D(image, dy, &kernel_dy, cvPoint(0, -1));
@@ -441,13 +443,21 @@ static int getPathOfFeaturePyramid(IplImage * image,
 
     for(i = 0; i < numStep; i++)
     {
-        scale = 1.0f / powf(step, (float)i);
+		//modified: scale = 1.0f / powf(step, (float)i);
+		
+		//rescale from LAMBDA level, as implied in the original code;
+        if(startIndex<LAMBDA)scale = 1.0f / powf(step, (float)i);
+        else scale = 1.0f / powf(step, (float)(i+startIndex-LAMBDA));
+        
         scaleTmp = resize_opencv (image, scale);
         getFeatureMaps(scaleTmp, sideLength, &map);
         normalizeAndTruncate(map, VAL_OF_TRUNCATE);
         PCAFeatureMaps(map);
         (*maps)->pyramid[startIndex + i] = map;
         cvReleaseImage(&scaleTmp);
+      
+        //{printf("pyramid level, scale: %d, %f\n", startIndex + i, scale);}
+        
     }/*for(i = 0; i < numStep; i++)*/
     return LATENT_SVM_OK;
 }
@@ -496,6 +506,10 @@ int getFeaturePyramid(IplImage * image, CvLSVMFeaturePyramid **maps)
     {
         maxNumCells = H / SIDE_LENGTH;
     }
+    
+    //according to the printf information, the minimum blocks in image is 5.0, so this 5.0f is used to determine "the minimum cell number - minNumCells" in the resized image;
+    //minNumCells * [step^(numStep-1)] = maxNumCells;
+    
     numStep = (int)(logf((float) maxNumCells / (5.0f)) / logf( step )) + 1;
 
     allocFeaturePyramidObject(maps, numStep + LAMBDA);
@@ -503,6 +517,7 @@ int getFeaturePyramid(IplImage * image, CvLSVMFeaturePyramid **maps)
 	//modify the source code, to speed up the detection;
 	if(!REDUCE_FEATURE_PYRAMID)
 	{
+		//{printf("\n all \n");}
 		getPathOfFeaturePyramid(imgResize, step   , LAMBDA, 0,
 								SIDE_LENGTH / 2, maps);
 		getPathOfFeaturePyramid(imgResize, step, numStep, LAMBDA,
@@ -511,7 +526,8 @@ int getFeaturePyramid(IplImage * image, CvLSVMFeaturePyramid **maps)
 	else
 	{		
 		if(numStep>=2*LAMBDA)
-		{		
+		{	
+			//{printf("\n reduced \n");}	
 			//the "+LAMBDA" is to deal with the last LAMBDA octave;
 			int begin_level = numStep+LAMBDA-2*LAMBDA;
 			//printf("\n numStep, begin_level: %d, %d \n", numStep, begin_level);
@@ -519,8 +535,8 @@ int getFeaturePyramid(IplImage * image, CvLSVMFeaturePyramid **maps)
 		}
 		else
 		{
-				getPathOfFeaturePyramid(imgResize, step, LAMBDA, 0, SIDE_LENGTH / 2, maps);
-				getPathOfFeaturePyramid(imgResize, step, numStep, LAMBDA, SIDE_LENGTH, maps);
+			getPathOfFeaturePyramid(imgResize, step, LAMBDA, 0, SIDE_LENGTH / 2, maps);
+			getPathOfFeaturePyramid(imgResize, step, numStep, LAMBDA, SIDE_LENGTH, maps);
 		} 
 	}
 	
@@ -530,7 +546,7 @@ int getFeaturePyramid(IplImage * image, CvLSVMFeaturePyramid **maps)
 		int level_tmp = (*maps)->numLevels - 2*LAMBDA +i;
 		x_size_tmp = (*maps)->pyramid[level_tmp]->sizeX;
 		y_size_tmp = (*maps)->pyramid[level_tmp]->sizeY;
-		printf("level, x_size_tmp, x_size_tmp: (%d, %d, %d)\t", level_tmp, x_size_tmp, y_size_tmp);
+		//{printf("level, x_size_tmp, x_size_tmp: (%d, %d, %d)\t", level_tmp, x_size_tmp, y_size_tmp);}
 	}
 	
 	                  

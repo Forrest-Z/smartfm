@@ -20,6 +20,7 @@
 // We need Lambda levels to resize image twice
 #define LAMBDA 10
 
+#define DEBUG_AND_LEARN_PRINTF false;
 #define REDUCE_FEATURE_PYRAMID true
 #define REDUCE_SEARCHING_SPACE true
 
