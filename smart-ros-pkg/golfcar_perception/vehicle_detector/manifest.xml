@@ -1,10 +1,10 @@
 <package>
-  <description brief="pedestrian_detector_HOG">
+  <description brief="vehicle_detector">
 
-     pedestrian_detector_HOG
+     vehicle_detector
 
   </description>
-  <author>Caroline Pantofaru</author>
+  <author>baoxing</author>
   <license>BSD</license>
   <review status="unreviewed" notes=""/>
   <url>http://ros.org/wiki/pedestrian_detector_HOG</url>
@@ -21,7 +21,8 @@
   <depend package="visualization_msgs" />
   <depend package="image_transport" />
   <!--depend package="people_msgs" /-->
-  <depend package="sensing_on_road"/>
+  <depend package="MODT"/>
+  <depend package="image_geometry"/>
   <rosdep name="opencv2"/>
   
 </package>
