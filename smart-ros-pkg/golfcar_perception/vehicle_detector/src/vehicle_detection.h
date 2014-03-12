@@ -29,7 +29,15 @@ using namespace message_filters;
 using namespace cv;
 using namespace gpu;
 
+
+struct vehicle_ROI
+{
+	int long_side;
+	Rect original_ROI, ROI;
+};
+
 class vehicle_detection {
+
 
 public:
 	vehicle_detection(ros::NodeHandle &n);
@@ -50,8 +58,10 @@ private:
     void calcROIs(std::vector<sensor_msgs::PointCloud> & object_clusters, std::vector<Rect> & object_ROIs);
     double x_inflat_dist_, y_inflat_dist_;
     double z_low_bound_, z_high_bound_;
+    void filterROIs(std::vector<Rect> & object_ROIs, std::vector<vehicle_ROI> & filtered_ROIs);
 
-    void detectAndDrawObjects( Mat& image, LatentSvmDetector& detector, const vector<Scalar>& colors, float overlapThreshold, int numThreads );
+    void detectAndDrawObjects(std::vector<vehicle_ROI> & filtered_ROIs, LatentSvmDetector& detector, const vector<Scalar>& colors, float overlapThreshold, int numThreads );
+    double detection_threshold_;
 
     LatentSvmDetector *LatentSVMdetector_;
     vector<Scalar> colors_;

@@ -32,6 +32,8 @@ vehicle_detection::vehicle_detection(ros::NodeHandle &n) : private_nh_("~"), n_(
 	private_nh_.param("z_high_bound", z_high_bound_, 2.0);
 	private_nh_.param("x_inflat_dist", x_inflat_dist_, 0.5);
 	private_nh_.param("y_inflat_dist", y_inflat_dist_, 0.5);
+	private_nh_.param("detection_threshold", detection_threshold_, -0.3);
+
 	new_image_ = true;
 }
 
@@ -69,7 +71,10 @@ void vehicle_detection::lidarMeas_callback(const MODT::segment_pose_batches& bat
 	for(size_t i=0; i<batches.clusters.size(); i++){object_clusters.push_back(batches.clusters[i].segments.back());}
 	std::vector<Rect> object_ROIs;
 	calcROIs(object_clusters, object_ROIs);
+	std::vector<vehicle_ROI> filtered_ROIs;
+	filterROIs(object_ROIs, filtered_ROIs);
 
+	detectAndDrawObjects(filtered_ROIs, *LatentSVMdetector_, colors_, overlap_threshold_, threadNum_);
 	image_pub_.publish(cv_image_copy_->toImageMsg());
 
 	/*
@@ -221,42 +226,77 @@ void vehicle_detection::calcROIs(std::vector<sensor_msgs::PointCloud> & object_c
 			if(point_tmp.y>lower_right.y) lower_right.y = point_tmp.y;
 		}
 		if(upper_left.x>=lower_right.x || upper_left.y>=lower_right.y) continue;
+
 		printf("upper_left (%d, %d), lower_right (%d, %d)\n", upper_left.x, upper_left.y, lower_right.x, lower_right.y);
 
 		Rect rectangle_tmp(upper_left.x, upper_left.y, (lower_right.x- upper_left.x), (lower_right.y- upper_left.y));
 		object_ROIs.push_back(rectangle_tmp);
 		rectangle(cv_image_copy_->image, upper_left, lower_right, Scalar(0, 255, 0), 3);
 	}
-
 }
 
-void vehicle_detection::detectAndDrawObjects( Mat& image, LatentSvmDetector& detector, const vector<Scalar>& colors, float overlapThreshold, int numThreads )
+void vehicle_detection::filterROIs(std::vector<Rect> & object_ROIs, std::vector<vehicle_ROI> & filtered_ROIs)
+{
+	for(size_t i=0; i<object_ROIs.size(); i++)
+	{
+		vehicle_ROI roi_tmp;
+		roi_tmp.original_ROI = object_ROIs[i];
+
+		Point upper_left, lower_right;
+		upper_left.x = roi_tmp.original_ROI.x;
+		upper_left.y = roi_tmp.original_ROI.y;
+		lower_right.x = roi_tmp.original_ROI.x + roi_tmp.original_ROI.width;
+		lower_right.y = roi_tmp.original_ROI.y + roi_tmp.original_ROI.height;
+
+		if((upper_left.x >= cv_image_->image.cols && upper_left.y >=cv_image_->image.rows) || (lower_right.x <= 0 || lower_right.y <=0)) continue;
+
+		if(upper_left.x <0) upper_left.x = 0;
+		if(upper_left.y <0) upper_left.y = 0;
+		if(lower_right.x>= cv_image_->image.cols ) lower_right.x = cv_image_->image.cols -1;
+		if(lower_right.y>= cv_image_->image.rows ) lower_right.y = cv_image_->image.rows -1;
+		roi_tmp.ROI = Rect(upper_left.x, upper_left.y, lower_right.x - upper_left.x, lower_right.y - upper_left.y);
+		rectangle(cv_image_copy_->image, upper_left, lower_right, Scalar(255, 0, 0), 3);
+
+		//here actually choose the shorter side of the two sides, even though it is named as long side (compared to the later cropped side, it is longer);
+		roi_tmp.long_side = roi_tmp.ROI.height>roi_tmp.ROI.width? roi_tmp.ROI.height: roi_tmp.ROI.width;
+
+		if(roi_tmp.ROI.height >= 40 && roi_tmp.ROI.width  >= 40) filtered_ROIs.push_back(roi_tmp);
+	}
+}
+
+void vehicle_detection::detectAndDrawObjects(std::vector<vehicle_ROI> &filtered_ROIs, LatentSvmDetector& detector, const vector<Scalar>& colors, float overlapThreshold, int numThreads )
 {
     vector<LatentSvmDetector::ObjectDetection> detections;
 
     TickMeter tm;
     tm.start();
-    detector.detect( image, detections, overlapThreshold, numThreads);
+
+    for(size_t i=0; i<filtered_ROIs.size(); i++)
+	{
+        const vector<string> classNames = detector.getClassNames();
+        CV_Assert( colors.size() == classNames.size() );
+
+        cout<<"filtered_ROIs:"<<filtered_ROIs[i].ROI.x<<","<<filtered_ROIs[i].ROI.y<<","<<filtered_ROIs[i].ROI.width<<","<<filtered_ROIs[i].ROI.height<<","<<filtered_ROIs[i].long_side<<endl;
+
+        Mat imageROI = cv_image_copy_->image(filtered_ROIs[i].ROI);
+    	detector.detect( imageROI, detections, filtered_ROIs[i].long_side, overlapThreshold, numThreads);
+
+    	for( size_t j = 0; j < detections.size(); j++ )
+        {
+            const LatentSvmDetector::ObjectDetection& od = detections[j];
+            if(od.score > detection_threshold_)
+            {
+            	Rect RectInFullPic(od.rect.x + filtered_ROIs[i].ROI.x, od.rect.y + filtered_ROIs[i].ROI.y, od.rect.width, od.rect.height);
+            	rectangle( cv_image_copy_->image, RectInFullPic, colors[od.classID], 3 );
+            	putText( cv_image_copy_->image, classNames[od.classID], Point(RectInFullPic.x+4,RectInFullPic.y+13), FONT_HERSHEY_SIMPLEX, 0.55, colors[od.classID], 2 );
+            }
+            cout<<"score:"<<od.score<<"\t";
+        }
+        cout<<endl;
+	}
+
     tm.stop();
-
     cout << "Detection time = " << tm.getTimeSec() << " sec" << endl;
-
-    const vector<string> classNames = detector.getClassNames();
-    CV_Assert( colors.size() == classNames.size() );
-
-    for( size_t i = 0; i < detections.size(); i++ )
-    {
-        const LatentSvmDetector::ObjectDetection& od = detections[i];
-        rectangle( image, od.rect, colors[od.classID], 3 );
-    }
-    // put text over the all rectangles
-    for( size_t i = 0; i < detections.size(); i++ )
-    {
-        const LatentSvmDetector::ObjectDetection& od = detections[i];
-        putText( image, classNames[od.classID], Point(od.rect.x+4,od.rect.y+13), FONT_HERSHEY_SIMPLEX, 0.55, colors[od.classID], 2 );
-        cout<<od.score<<"\t";
-    }
-    cout<<endl;
 }
 
 
