@@ -80,6 +80,7 @@ public:
     //add latest observation to the sensor and erase the old buffer if necessary
     void addData(sensor_msgs::PointCloud &src, tf::TransformListener &tf)
     {
+      cout<<"addData"<<endl;
     	tf::StampedTransform latest_transform;
     	tf.lookupTransform(target_frame_, src.header.frame_id, src.header.stamp, latest_transform);
     	sensor_transform_ = latest_transform;
@@ -172,7 +173,6 @@ public:
     bool insertData(sensor_msgs::LaserScan &scan, tf::TransformListener &tf, double move_dist)
     {
         sensor_msgs::PointCloud laser_cloud;
-
         try{projector_.transformLaserScanToPointCloud(target_frame_, scan, laser_cloud, tf);}
         catch (tf::TransformException& e){ ROS_ERROR("%s",e.what());return false;}
 

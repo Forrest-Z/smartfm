@@ -1,10 +1,10 @@
 <launch>
 
     
-    <node pkg="dead_reckoning" name="encoderImu_integrator" type="odom_IMU" output="screen">
+    <node pkg="dead_reckoning" name="encoderImu_integrator" type="odom_IMU" output="screen" ns="golfcart">
         <remap from="odom" to="odom"/>
 	<remap from="encoder_odo" to="encoder_odo"/>
-        <param name="frame_id" value="odom"/>
+        <param name="frame_id" value="golfcart/odom"/>
     </node>
 
     <!--node pkg="dead_reckoning" name="encoderImu_integrator_phidget" type="odom_IMU" output="screen" ns="$(env ROBOT)">

@@ -1,5 +1,5 @@
 #Robot's name
-ROBOT: "golfcart"
+ROBOT: "robot_0"
 #Vehicle's type {buggy, car}
 vehicle: "buggy"
 #Seperate lowlevel launch {1(yes), 0(no)}
@@ -9,7 +9,7 @@ imu: "microstrain"
 #localization method {normal, synthetic}
 localization: "normal"
 #dynamic safety zone (not used when rrt enabled)
-dynamic_safety: 1
+dynamic_safety: 0
 #run rrt {1(yes), 0(no)}
 rrt: 0
 #ppc settings {move_base, standalone}

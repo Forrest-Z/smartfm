@@ -3,6 +3,8 @@
 #include <oculus_viewer/distort.h>
 #include <oculus_viewer/viewer.h>
 
+using namespace std;
+
 namespace oculus_viewer {
 
 class ImageDistortViewer {
@@ -10,6 +12,7 @@ class ImageDistortViewer {
   ImageDistortViewer();
   void init();
   void HMDInfoCallback(const oculus_msgs::HMDInfoPtr& info);
+  void imageCallback(const sensor_msgs::ImageConstPtr& msg);
   void show();
   Viewer viewer_;
  private:
@@ -17,13 +20,43 @@ class ImageDistortViewer {
   DistortImage right_;
   ros::Subscriber sub_;
   bool use_display_;
+  ros::NodeHandle nh_;
+  image_transport::Subscriber img_sub_;
+  image_transport::ImageTransport it_;
 };
 
 ImageDistortViewer::ImageDistortViewer()
-  : use_display_(true)
-  , viewer_("oculus camera view") {
+  : viewer_("oculus camera view")
+  , use_display_(true)
+  , nh_()
+  , it_(nh_){
 }
 
+void ImageDistortViewer::imageCallback(const sensor_msgs::ImageConstPtr& msg){
+  cv_bridge::CvImagePtr ptr;
+  try{
+    ptr = cv_bridge::toCvCopy(msg, "bgr8");
+  }
+  catch(ros::Exception& e) {
+    ROS_ERROR("init ROS error: %s", e.what());
+  } catch(image_transport::TransportLoadException& e) {
+    ROS_ERROR("image_transport error: %s", e.what());
+  } catch(...) {
+    ROS_ERROR("some error");
+  }
+  
+  cv::Mat raw_img = ptr->image;
+  int img_width = ptr->image.cols/2, img_height = ptr->image.rows;
+  cv::Mat left_img = raw_img(cv::Rect(img_width, 0, img_width, img_height));
+  cv::Mat right_img = raw_img(cv::Rect(0, 0, img_width, img_height));
+  cv::imshow("distort img", raw_img);
+  cv::imshow("left img", left_img);
+  cv::imshow("right img", right_img);
+  left_.process(left_img);
+  right_.process(right_img);
+  show();
+  cvWaitKey(1);
+}
 void ImageDistortViewer::init() {
 	ros::NodeHandle node;
   left_.init("minoru_left/image_raw");
@@ -32,6 +65,8 @@ void ImageDistortViewer::init() {
                         1,
                         &ImageDistortViewer::HMDInfoCallback,
                         this);
+  img_sub_ = it_.subscribe("gscam/image_raw", 1, &ImageDistortViewer::imageCallback, 
+			   this, image_transport::TransportHints("compressed"));
   
   ros::NodeHandle private_node("~");	
   int32_t offset_x = 0;
@@ -73,12 +108,8 @@ int main(int argc, char** argv) {
   try {
     oculus_viewer::ImageDistortViewer dis;
     dis.init();
-      ros::NodeHandle private_node("~");
-    while(ros::ok()) {
-      cv::waitKey(100);
-      ros::spinOnce();
-      dis.show();
-    }
+    ros::spin();
+   
   } catch(ros::Exception& e) {
     ROS_ERROR("ros error: %s", e.what());
   } catch(...) {

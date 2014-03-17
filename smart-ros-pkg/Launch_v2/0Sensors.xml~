@@ -5,7 +5,9 @@
       <node pkg="LMS1xx" type="LMS100" name="topTilted">
 	  <remap from ="scan" to="front_top_scan"/>
       </node>
-      <node pkg="LMS1xx" type="LMS100" name="frontBottom"/>
+      <node pkg="LMS1xx" type="LMS100" name="frontBottom">
+	  <remap from ="scan" to="front_bottom_scan"/>
+	</node>
       <node pkg="Launch_v2" type="static_transform_publisher_param" name="base_link_to_front_top_lidar"/>
       <node pkg="Launch_v2" type="static_transform_publisher_param" name="base_link_to_front_bottom_lidar"/>
       <node pkg="Launch_v2" type="static_transform_publisher_param" name="base_link_to_camera_front_base"/>
@@ -21,7 +23,10 @@
       <rosparam command="load" file="$(find lowlevel_hal)/launch/hal_ros_adapter.yaml" ns="hal_ros_adapater"/>
       <node machine="arm" name="hal_module" pkg="lowlevel_hal" type="hal_run.bash" output="screen"/-->
       <machine name="lowlevel" address="golfcart-lowlevel" env-loader="/opt/ros/fuerte/env.sh" user="golfcar"/>
-      <node machine="lowlevel" pkg="microstrain_3dmgx2_imu" ns="ms" type="imu_node" name="microstrain_3dmgx2_node" output="screen"/>
+      <node machine="lowlevel" pkg="microstrain_3dmgx2_imu" ns="ms" type="imu_node" name="microstrain_3dmgx2_node" output="screen">
+      <!--node machine="lowlevel" pkg="xsens_driver" type="mtnode.py" name="xsens_driver" output="screen" -->
+	    <!--remap from="imu/data" to="ms/imu/data"/-->
+	  </node>
       <node machine="lowlevel" pkg="dead_reckoning" name="encoderImu_integrator" type="odom_IMU" output="screen"/>
       <node machine="lowlevel" name="encoders_node" pkg="phidget_encoders" type="encoders_node.py" output="screen"/>
       <node machine="lowlevel" name="encoders_odo_node" pkg="phidget_encoders" type="encoders_odo_node.py" output="screen">

@@ -19,7 +19,7 @@ class DistortImage {
   void setK(const std::vector<float>& K) {
     K_ = K;
   }
-  void imageCb(const sensor_msgs::ImageConstPtr& msg);
+  void process(cv::Mat &image);
   const cv::Mat& getImage() const {
     return img_;
   }
@@ -30,7 +30,6 @@ class DistortImage {
 
  private:
   ros::NodeHandle nh_;
-  image_transport::Subscriber sub_;
   image_transport::Publisher pub_;
   image_transport::ImageTransport it_;
   std::vector<float> K_;

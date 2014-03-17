@@ -8,6 +8,7 @@
 		<param name="laser_frame_id" value="iMiev/front_bottom_lidar"/>
 		<param name="odom_frame_id" value="iMiev/odom"/>
 		<param name="derived_data_path" value="$(find MODT)/data"/>
+		<param name="abstract_summary_path" value="$(find MODT)/data/abstract_summary.yml"/>
     </node>
 </launch>
 

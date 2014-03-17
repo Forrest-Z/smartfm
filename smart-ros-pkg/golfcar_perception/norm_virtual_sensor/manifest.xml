@@ -21,6 +21,9 @@
   <depend package="fmutil"/>
   <depend package="dynamic_reconfigure"/>
   <depend package="occupancy_grid_utils"/>
+  <export>
+    <cpp cflags="-I${prefix}/include"/>
+  </export>
 </package>
 
 
