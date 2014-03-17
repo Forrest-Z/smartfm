@@ -69,7 +69,8 @@ bool PurePursuit::heading_lookahead(double *heading_la, double *dist_to_goal)
     //be the one in front of the vehicle
     *dist_to_goal = 0;
     
-    if( !circle_line_collision(anchor_pt, &collided_pt_)){
+    //if( !circle_line_collision(anchor_pt, &collided_pt_))
+    {
       for( path_n_=(int)path_.poses.size()-2; path_n_>=0; path_n_-- )
       {
 	  current_point_ = path_.poses[path_n_].pose.position;
