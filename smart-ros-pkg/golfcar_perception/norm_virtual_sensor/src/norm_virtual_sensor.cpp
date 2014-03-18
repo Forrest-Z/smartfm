@@ -378,7 +378,7 @@ class NormVirtualSensor
             for(size_t i=0; i<out_pc_legacy.points.size(); i++)
               out_pc_legacy.points[i].z = 0.0;
 	    out_pc_legacy.header.frame_id = baselink_frame_id_;
-            final_pc_pub_.publish(out_pc_legacy);
+            //final_pc_pub_.publish(out_pc_legacy);
             //just to check
             assert(rebuild_normal.points.size() == out_pc_legacy.points.size());
 	          tf::StampedTransform baselink_transform;
