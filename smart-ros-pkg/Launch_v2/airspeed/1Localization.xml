@@ -14,7 +14,7 @@
 #elseif($localization=="synthetic")
     <node pkg="amcl_pc" type="amcl" name="amcl_pc" output="screen">
       <remap from="scan" to="front_top_scan"/>
-      <remap from="pc" to="pc_legacy_out"/>
+      <remap from="pc" to="pcl_pointnormal_out"/>
     </node>
     <node pkg="norm_virtual_sensor" type="norm_virtual_sensor" name="norm_virtual_sensor" output="screen">
     	<remap from="scan_in" to="front_top_scan"/>
