@@ -23,6 +23,9 @@
 
 #include "MODT/segment_pose_batches.h"
 
+#include <laser_geometry/laser_geometry.h>
+
+#include <sensor_msgs/LaserScan.h>
 
 using namespace std;
 using namespace message_filters;
@@ -54,10 +57,6 @@ private:
     cv_bridge::CvImagePtr cv_image_, cv_image_copy_;
 
     void imageCallback(const sensor_msgs::ImageConstPtr& image, const sensor_msgs::CameraInfoConstPtr& info_msg);
-    void lidarMeas_callback(const MODT::segment_pose_batches& batches);
-    void calcROIs(std::vector<sensor_msgs::PointCloud> & object_clusters, std::vector<Rect> & object_ROIs);
-    double x_inflat_dist_, y_inflat_dist_;
-    double z_low_bound_, z_high_bound_;
     void filterROIs(std::vector<Rect> & object_ROIs, std::vector<vehicle_ROI> & filtered_ROIs);
 
     void detectAndDrawObjects(std::vector<vehicle_ROI> & filtered_ROIs, LatentSvmDetector& detector, const vector<Scalar>& colors, float overlapThreshold, int numThreads );
@@ -69,7 +68,14 @@ private:
     int threadNum_;
 
     tf::TransformListener tf_;
-    ros::Subscriber segpose_batch_sub_;
+
+	tf::MessageFilter<sensor_msgs::LaserScan>				*tf_filter_;
+	message_filters::Subscriber<sensor_msgs::LaserScan>     *laser_sub_;
+	laser_geometry::LaserProjection                         projector_;
+	ros::Publisher											beam_pub_, endPt_pub_;
+	void scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_in);
+	double angle_aperture_thresh_, vehicle_width_, vehicle_height_, max_detection_range_;
+	int x_buff_, y_buff_;
 
     std::string camera_frame_id_;
     std::string laser_frame_id_;
@@ -78,10 +84,6 @@ private:
 	std::string map_frame_id_;
 	image_geometry::PinholeCameraModel cam_model_;
 	bool camera_initialized_;
-	tf::MessageFilter<sensor_msgs::CameraInfo>				*tf_filter_;
-	message_filters::Subscriber<sensor_msgs::CameraInfo> 	*camera_info_sub_;
-	void cameraInfo_callback(const sensor_msgs::CameraInfoConstPtr& camera_info_ptr);
-
 	boost::recursive_mutex configuration_mutex_;
 	bool new_image_;
 };

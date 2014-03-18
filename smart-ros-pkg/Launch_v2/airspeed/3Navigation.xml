@@ -33,13 +33,21 @@
 #if($vehicle=="car")
       <remap from="front_bottom_scan" to="front_bottom_scan_filtered"/>
 #end
+#if($reflexxes)
+        <remap from="cmd_vel" to="cmd_cmd"/>
+#end
       </node>
 #end
     <node name="soundplay_node" pkg="sound_play" type="soundplay_node.py"/>
     <node name="sound_speaker" pkg="sound_speaker" type="sound_speaker">
       <param name="sound_path" value="$(find sound_speaker)/sounds/"/>
     </node>
-
+#if($reflexxes)
+    <node pkg="trajectory_simulator" type="speed_generator" name="speed_generator">
+        <remap from="cmd_vel" to="cmd_cmd"/>
+        <remap from="cmd_generator" to="cmd_vel"/>
+    </node>
+#end
     <!--5SpeedAdvisor-->
     <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen"/>
     <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
