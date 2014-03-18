@@ -38,8 +38,9 @@ $ROBOT/base_link_to_front_bottom_lidar:
   x: 1.78
   z: 0.755
 #elseif($vehicle=="car")
-  x: 3.17
-  z: 0.76
+  x: 3.17 #previously 3.14
+  z: 0.76 #previously 0.27
+  roll: 0 #previously 180
 #end
   parent_frame_id: $ROBOT/base_link
   child_frame_id: $ROBOT/front_bottom_lidar
@@ -212,8 +213,8 @@ $ROBOT/speed_advisor:
   frequency: 20.0
   tolerance: 0.5
   emergency_zone: 3.0
-  slow_zone: 15.0
-  slow_speed: 1.5
+  slow_zone: 40.0
+  slow_speed: 2.0
   enterstation_speed: 2.0
   stationspeed_dist: 40.0
   baselink_carfront_length: 2.0
