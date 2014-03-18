@@ -1,5 +1,6 @@
 <launch>
-	<node pkg="vehicle_detector" type="vehicle_detection_blackcar" name="vehicle_detector" output="screen">
+	<node pkg="vehicle_detector" type="vehicle_detection" name="vehicle_detector" output="screen">
+	<!--node pkg="vehicle_detector" type="vehicle_detection_blackcar" name="vehicle_detector" output="screen"-->
 		<param name="image_transport" value="compressed" />
 		<param name="car_model" value="$(find vehicle_detector)/model/car.xml"/>
 		<param name="bus_model" value="$(find vehicle_detector)/model/bus.xml"/>
