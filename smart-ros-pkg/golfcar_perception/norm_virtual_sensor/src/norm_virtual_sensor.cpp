@@ -356,7 +356,7 @@ class NormVirtualSensor
             pcl::toROSMsg(rebuild_normal, out);
             out.header = header;
             out.header.frame_id = target_frame_;
-            final_pc2_pub_.publish(out);
+            //final_pc2_pub_.publish(out);
             sensor_msgs::PointCloud out_pc_legacy;
             cout<<"before 2d compress: "<<rebuild_normal.size()<<endl;
             for(size_t i=0; i<rebuild_normal.size(); i++)
