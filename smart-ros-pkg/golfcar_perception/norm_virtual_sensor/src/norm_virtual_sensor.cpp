@@ -356,7 +356,7 @@ class NormVirtualSensor
             pcl::toROSMsg(rebuild_normal, out);
             out.header = header;
             out.header.frame_id = target_frame_;
-            final_pc2_pub_.publish(out);
+            //final_pc2_pub_.publish(out);
             sensor_msgs::PointCloud out_pc_legacy;
             cout<<"before 2d compress: "<<rebuild_normal.size()<<endl;
             for(size_t i=0; i<rebuild_normal.size(); i++)
@@ -378,7 +378,7 @@ class NormVirtualSensor
             for(size_t i=0; i<out_pc_legacy.points.size(); i++)
               out_pc_legacy.points[i].z = 0.0;
 	    out_pc_legacy.header.frame_id = baselink_frame_id_;
-            final_pc_pub_.publish(out_pc_legacy);
+            //final_pc_pub_.publish(out_pc_legacy);
             //just to check
             assert(rebuild_normal.points.size() == out_pc_legacy.points.size());
 	          tf::StampedTransform baselink_transform;
