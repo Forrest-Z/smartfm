@@ -1,0 +1,8 @@
+<launch>
+
+    <node pkg="OGMapping" type="grid_utils_mapper" name="grid_utils_mapper" output="screen" ns="golfcart">
+
+    </node>
+
+</launch>
+
