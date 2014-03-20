@@ -28,6 +28,10 @@ public:
       cerr << "DB connection failed: " << conn_.error() << endl;
       exit(1);
     }
+    if(table_name_.size() > 255) {
+      table_name_.substr(table_name_.size()-255, 255);
+      cout<<"table size too large, trucating to the maximum size "<<table_name_<<endl;
+    }
     mysqlpp::Query query = conn_.query("select * from "+table_name_);
     if(mysqlpp::StoreQueryResult res = query.store()){
       cout << "Table "<<table_name_<<" have "<<res.num_fields()<<"x"<<res.num_rows()<<endl;
@@ -41,26 +45,45 @@ public:
     first_update_ = true;
   }
   
-  void updateData(double autonomous_dist, ros::Time starttime, ros::Time endtime, double total_time, double max_speed, double average_speed){
+  void updateData(double autonomous_dist, ros::Time starttime, ros::Time endtime, double total_time, double max_speed, double average_speed, int status){
     mysqlpp::DateTime sql_s_time((time_t)starttime.toSec()), sql_e_time((time_t)endtime.toSec());
     string sql_s_time_str = sql_s_time.str();
     string sql_e_time_str = sql_e_time.str();
-    if(first_update_){
-      first_update_ = false;
-      if(!createRecord(autonomous_dist, sql_s_time_str, sql_e_time_str, total_time, max_speed, average_speed)){
-	cout<<"Data is available, not going to process the odometer"<<endl;
-	exit(1);
-      }
+    updateDetails(autonomous_dist, sql_e_time_str, total_time, max_speed, average_speed, status);
+  }
+  bool createRecord(double autonomous_dist, string starttime, string endtime, double total_time, double max_speed, double average_speed, int status){
+    stringstream insertdata_ss;
+    insertdata_ss<<"insert into "<<table_name_<<" (id, starttime, endtime, distance, totaltime, maxspeed, averagespeed, status) values (";
+    insertdata_ss<<"'"<<record_id_<<"', ";
+    insertdata_ss<<"'"<<starttime<<"', ";
+    insertdata_ss<<"'"<<endtime<<"', ";
+    insertdata_ss<<autonomous_dist<<", ";
+    insertdata_ss<<total_time<<", ";
+    insertdata_ss<<max_speed<<", ";
+    insertdata_ss<<average_speed<<", ";
+    insertdata_ss<<status<<")";
+    mysqlpp::Query insertdata_query = conn_.query(insertdata_ss.str());
+    mysqlpp::SimpleResult insert_res = insertdata_query.execute();
+    if(!insert_res) cout<<"Failed "<<insertdata_query.error()<<endl;
+    return insert_res;
+  }
+  int getData(string id){
+    stringstream ss;
+    ss<<"select * from "<<table_name_<<" where "<<table_name_<<".id='"<<id<<"'";
+    mysqlpp::Query query = conn_.query(ss.str());
+    if(mysqlpp::StoreQueryResult res = query.store()){
+      if(res.num_rows() == 0) return -1;
+      return res[0][7];
     }
-    updateDetails(autonomous_dist, sql_e_time_str, total_time, max_speed, average_speed);
+    return -1;
   }
 private:
   void createTable()
   {
     //reminder: mysql has a hard limit on 4096 columns
     stringstream createtb_ss;
-    createtb_ss << "create table "<<table_name_ <<" (id varchar(100) not null, starttime datetime not null, endtime datetime not null";
-    createtb_ss << ", distance double not null, totaltime double not null, maxspeed double not null, averagespeed double not null"; 
+    createtb_ss << "create table "<<table_name_ <<" (id varchar(255) not null, starttime datetime not null, endtime datetime not null";
+    createtb_ss << ", distance double not null, totaltime double not null, maxspeed double not null, averagespeed double not null, status int not null"; 
     createtb_ss << ", PRIMARY Key(id))";
     mysqlpp::Query createtb_query = conn_.query(createtb_ss.str());
     mysqlpp::SimpleResult createtb_res = createtb_query.execute();
@@ -68,30 +91,16 @@ private:
     if(createtb_res) cout<<"Table create successful"<<endl;
     else cout<<"Table create failed: "<<createtb_query.error()<<endl;
   }
-  void updateDetails(double autonomous_dist, string endtime, double total_time, double max_speed, double average_speed){
+  void updateDetails(double autonomous_dist, string endtime, double total_time, double max_speed, double average_speed, int status){
     stringstream ss;
-    ss<<"update "<<table_name_ << " set distance="<<autonomous_dist<<", totaltime="<<total_time;
+    ss<<"update "<<table_name_ << " set distance="<<autonomous_dist<<", totaltime="<<total_time<<", status="<<status;
     ss<<", endtime='"<<endtime<<"', maxspeed="<<max_speed<<", averagespeed="<<average_speed<<" where "<<table_name_<<".id='"<<record_id_<<"'";
     mysqlpp::Query updatedata_query = conn_.query(ss.str());
     mysqlpp::SimpleResult insert_res = updatedata_query.execute();
     if(!insert_res) 
       cout<<"Update failed: "<<updatedata_query.error()<<endl;
   }
-  bool createRecord(double autonomous_dist, string starttime, string endtime, double total_time, double max_speed, double average_speed){
-    stringstream insertdata_ss;
-    insertdata_ss<<"insert into "<<table_name_<<" (id, starttime, endtime, distance, totaltime, maxspeed, averagespeed) values (";
-    insertdata_ss<<"'"<<record_id_<<"', ";
-    insertdata_ss<<"'"<<starttime<<"', ";
-    insertdata_ss<<"'"<<endtime<<"', ";
-    insertdata_ss<<autonomous_dist<<", ";
-    insertdata_ss<<total_time<<", ";
-    insertdata_ss<<max_speed<<", ";
-    insertdata_ss<<average_speed<<")";
-    mysqlpp::Query insertdata_query = conn_.query(insertdata_ss.str());
-    mysqlpp::SimpleResult insert_res = insertdata_query.execute();
-    if(!insert_res) cout<<"Failed "<<insertdata_query.error()<<endl;
-    return insert_res;
-  }
+  
   
 };
 
@@ -137,6 +146,7 @@ void pidCallback(T pid){
   speed_now_ = pid.v_filter;
 }
 
+int pid_type = 0;
 void amclposeCallback(geometry_msgs::PoseWithCovarianceStamped amcl_pose){
   geometry_msgs::Point cur_point = amcl_pose.pose.pose.position;
   double x = last_point_.x - cur_point.x;
@@ -166,7 +176,7 @@ void amclposeCallback(geometry_msgs::PoseWithCovarianceStamped amcl_pose){
     endtime_ = amcl_pose.header.stamp;
     if(fabs(speed_now_)>1e-3){
       total_time_+=dist/speed_now_;
-      sql_->updateData(autonomous_dist_, starttime_, endtime_, total_time_, max_speed_, autonomous_dist_/total_time_);
+      sql_->updateData(autonomous_dist_, starttime_, endtime_, total_time_, max_speed_, autonomous_dist_/total_time_, pid_type);
     }
   }
 //   cout<<"Distance_travel "<<dist<<" joysteer "<<joy_steer_<<" steerang "<<steer_ang_<<" speed_stat "<<speed_status_positive
@@ -253,11 +263,29 @@ string findTopicAndHash(string match_topic, string match_hash, TopicNames &topic
   return final_topic;
 }
 
+string checkout_topics(string topic, vector<bool> &topic_checkout){
+  if(topic.size()==0) topic_checkout.push_back(false);
+  return topic;
+}
+
 #include <fstream>
 int main(int argc, char** argv){
   ros::init(argc, argv, "iMiev_autonomous_odo");
   if(argc < 2) {
     cout<<"Please give a bag file for the current run"<<endl;
+    return 1;
+  }
+  
+  MySQLHelper sql(string("autonomous_odometer"), string("SCOT"), string(argv[1]));
+  sql_ = &sql;
+  int database_status = sql.getData(string(argv[1]));
+  // -1: not found
+  // 0: no matching topics
+  // 1: pid long_control_new
+  // 2: pid long_control_old
+  // 3: pid lowlevel_controllers
+  if(database_status != -1) {
+    cout<<"Record found, not going through again. "<<argv[1]<<endl;
     return 1;
   }
 //   stringstream bag_open_cmd;
@@ -285,10 +313,11 @@ int main(int argc, char** argv){
   string long_control_old = "053e89c94725c4fc2fe528580fd49042";
   string lowlevel_control = "f6afedc367dc1ac3ed37c0fd2e923fd9";
   
-  string speed_status_topic = findTopicAndHash(string("speed_status"), speed_contribute_md5, topic_names, topic_types);
-  string joy_steer_topic = findTopicAndHash(string("joy_steer"), float64_md5, topic_names, topic_types);
-  string steerang_topic = findTopicAndHash(string("steerang"), float64_md5, topic_names, topic_types);
-  string amcl_pose_topic = findTopicAndHash(string("amcl_pose"), PoseWithCovarianceStamped_md5, topic_names, topic_types);
+  vector<bool> topics_checkout;
+  string speed_status_topic = checkout_topics(findTopicAndHash(string("speed_status"), speed_contribute_md5, topic_names, topic_types), topics_checkout);
+  string joy_steer_topic = checkout_topics(findTopicAndHash(string("joy_steer"), float64_md5, topic_names, topic_types), topics_checkout);
+  string steerang_topic = checkout_topics(findTopicAndHash(string("steerang"), float64_md5, topic_names, topic_types), topics_checkout);
+  string amcl_pose_topic = checkout_topics(findTopicAndHash(string("amcl_pose"), PoseWithCovarianceStamped_md5, topic_names, topic_types), topics_checkout);
   string pid_term_new = findTopicAndHash(string("pid"), long_control_new, topic_names, topic_types);
   string pid_term_old  = findTopicAndHash(string("pid"), long_control_old, topic_names, topic_types);
   string lowlevel_pid = findTopicAndHash(string("pid"), lowlevel_control, topic_names, topic_types);
@@ -296,24 +325,32 @@ int main(int argc, char** argv){
   ros::NodeHandle nh;
   if(pid_term_new.size() > 0){
     pid_sub = nh.subscribe(pid_term_new, 10, pidCallback<long_control::PID_Msg>);
+    pid_type = 1;
   }
   else if(pid_term_old.size() > 0){
     pid_sub = nh.subscribe(pid_term_old, 10, pidCallback<long_control::PID_Msg_old>);
+    pid_type = 2;
   }
   else if(lowlevel_pid.size() > 0) {
     pid_sub = nh.subscribe(lowlevel_pid, 10, pidCallback<lowlevel_controllers::PID>);
+    pid_type = 3;
   }
   else {
-    cout<<"No PID foud!!!"<<endl;
+    topics_checkout.push_back(false);
   }
-  
+  mysqlpp::DateTime sql_time((time_t)0);
+  if(topics_checkout.size()>0){
+    sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, 0);
+    return 1;
+  }
+  else
+    sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, pid_type);
   ros::Subscriber joysteer_sub = nh.subscribe(joy_steer_topic, 10, joysteerCallback);
   ros::Subscriber  steerang_sub = nh.subscribe(steerang_topic, 10, steerangCallback);
   ros::Subscriber amclpose_sub = nh.subscribe(amcl_pose_topic, 10, amclposeCallback);
   ros::Subscriber speed_status = nh.subscribe(speed_status_topic, 10, speedStatusCallback);
    
-  MySQLHelper sql(string("autonomous_odometer"), string("SCOT"), string(argv[1]));
-  sql_ = &sql;
+  
   ros::spin();
 
   return 0;
