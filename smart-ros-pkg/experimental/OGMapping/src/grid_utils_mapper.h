@@ -4,6 +4,9 @@
 #include <ros/ros.h>
 #include <boost/bind.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/circular_buffer.hpp>
+#include <boost/optional.hpp>
+#include <boost/foreach.hpp>
 
 #include <pcl_ros/point_cloud.h>
 #include <pcl_ros/transforms.h>
@@ -28,7 +31,7 @@ namespace golfcar_perception{
 
 	typedef boost::shared_ptr<gu::LocalizedCloud> CloudPtr;
 	typedef boost::shared_ptr<gu::LocalizedCloud const> CloudConstPtr;
-
+	typedef boost::circular_buffer<CloudConstPtr> CloudBuffer;
 	class grid_utils_mapper
 	{
 		
@@ -36,18 +39,20 @@ namespace golfcar_perception{
 		grid_utils_mapper();
 
 		private:
-		ros::NodeHandle nh_, private_nh_;
 		boost::recursive_mutex configuration_mutex_;
-		void scanCallback (const sm::LaserScan& scan);
-
-		nm::MapMetaData info_;
-
-		//double origin_x_, origin_y_, origin_yaw_;
-		//unsigned int xsize_, ysize_; double resolution_;
-
+		ros::NodeHandle nh_, private_nh_;
 		tf::TransformListener tf_;
-		ros::Subscriber scan_sub_;
+		tf::MessageFilter<sensor_msgs::LaserScan>				*tf_filter_;
+		message_filters::Subscriber<sensor_msgs::LaserScan>     *laser_sub_;
+		laser_geometry::LaserProjection                         projector_;
+		std::string laser_frame_id_, map_frame_id_;
+
+		void scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan_in);
+		nm::MapMetaData info_;
+		gu::OverlayClouds overlay_;
+
 		ros::Publisher grid_pub_;
+		CloudConstPtr last_cloud_;
 
 	};
 };
