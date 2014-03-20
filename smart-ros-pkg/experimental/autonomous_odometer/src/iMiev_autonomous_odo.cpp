@@ -5,6 +5,8 @@
 #include <pnc_msgs/speed_contribute.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <long_control/PID_Msg.h>
+#include <long_control/PID_Msg_old.h>
+#include <lowlevel_controllers/PID.h>
 #include <mysql++/mysql++.h>
 #include <yaml-cpp/yaml.h>
 #include <phidget_encoders/Encoders.h>
@@ -128,8 +130,10 @@ void steerangCallback(std_msgs::Float64 steer_ang){
 }
 
 double speed_now_;
-void pidCallback(long_control::PID_Msg pid){
-  speed_err_ = pid.vel_err;
+
+template <typename T>
+void pidCallback(T pid){
+  speed_err_ = pid.v_filter-pid.desired_vel;
   speed_now_ = pid.v_filter;
 }
 
@@ -206,6 +210,7 @@ void operator >> (const YAML::Node& node, TopicNames& t){
     node[i]["topic"] >> tt.topic;
     node[i]["type"] >> tt.type;
     node[i]["messages"] >> tt.messages;
+    t.topic_names.push_back(tt);
   }
 }
 
@@ -221,6 +226,33 @@ std::string exec(const char* cmd) {
     pclose(pipe);
     return result;
 }
+
+string findTopicAndHash(string match_topic, string match_hash, TopicNames &topic_names, TopicTypes &topic_types){
+  string topic="";
+  string hash="";
+  string type="";
+  bool topic_match = false;
+  for(size_t i=0; i<topic_names.topic_names.size(); i++){
+//     cout<<"searching for match "<<topic_names.topic_names[i].topic<<" == "<<match_topic<<" ?"<<endl;
+    if(topic_names.topic_names[i].topic.find(match_topic) != string::npos){
+      topic = topic_names.topic_names[i].topic;
+      type = topic_names.topic_names[i].type;
+      topic_match = true;
+    }
+  }
+  string final_topic="";
+  if(topic_match){
+//     cout<<"found match: "<<topic<<endl;
+    for(size_t i=0; i<topic_types.topic_types.size(); i++){
+      if(topic_types.topic_types[i].md5.compare(match_hash) == 0){
+// 	cout<<"found md5"<<endl;
+	final_topic=topic;
+      }
+    }
+  }
+  return final_topic;
+}
+
 #include <fstream>
 int main(int argc, char** argv){
   ros::init(argc, argv, "iMiev_autonomous_odo");
@@ -233,27 +265,53 @@ int main(int argc, char** argv){
 //   string output = exec(bag_open_cmd.str().c_str());
 //   istringstream output_istream(output);
 //   YAML::Parser parser(output_istream);
-//   std::ifstream fin(argv[1]);
-//   YAML::Parser parser(fin);
-// 
-//   YAML::Node doc;
-//   parser.GetNextDocument(doc);
-//   const YAML::Node& topic_type_node = doc["types"];
-//   TopicTypes topic_types;
-//   topic_type_node >> topic_types;
-//   
-//   const YAML::Node& topic_name_node = doc["topics"];
-//   TopicNames topic_names;
-//   topic_name_node >> topic_names;
-// 
-//   
-//   return 0;
+  std::ifstream fin(argv[1]);
+  YAML::Parser parser(fin);
+
+  YAML::Node doc;
+  parser.GetNextDocument(doc);
+  const YAML::Node& topic_type_node = doc["types"];
+  TopicTypes topic_types;
+  topic_type_node >> topic_types;
+  
+  const YAML::Node& topic_name_node = doc["topics"];
+  TopicNames topic_names;
+  topic_name_node >> topic_names;
+
+  string speed_contribute_md5 = "2fdc008d2a7c0e8f6d1a11c04f3f9536";
+  string float64_md5 = "fdb28210bfa9d7c91146260178d9a584";
+  string PoseWithCovarianceStamped_md5 = "953b798c0f514ff060a53a3498ce6246";
+  string long_control_new = "7da7da52c4166a35ed80e28993284bbc";
+  string long_control_old = "053e89c94725c4fc2fe528580fd49042";
+  string lowlevel_control = "f6afedc367dc1ac3ed37c0fd2e923fd9";
+  
+  string speed_status_topic = findTopicAndHash(string("speed_status"), speed_contribute_md5, topic_names, topic_types);
+  string joy_steer_topic = findTopicAndHash(string("joy_steer"), float64_md5, topic_names, topic_types);
+  string steerang_topic = findTopicAndHash(string("steerang"), float64_md5, topic_names, topic_types);
+  string amcl_pose_topic = findTopicAndHash(string("amcl_pose"), PoseWithCovarianceStamped_md5, topic_names, topic_types);
+  string pid_term_new = findTopicAndHash(string("pid"), long_control_new, topic_names, topic_types);
+  string pid_term_old  = findTopicAndHash(string("pid"), long_control_old, topic_names, topic_types);
+  string lowlevel_pid = findTopicAndHash(string("pid"), lowlevel_control, topic_names, topic_types);
+  ros::Subscriber pid_sub;
   ros::NodeHandle nh;
-  ros::Subscriber joysteer_sub = nh.subscribe("iMiev/pronto/joy_steer", 10, joysteerCallback);
-  ros::Subscriber  steerang_sub = nh.subscribe("iMiev/pronto/steerang", 10, steerangCallback);
-  ros::Subscriber amclpose_sub = nh.subscribe("iMiev/amcl_pose", 10, amclposeCallback);
-  ros::Subscriber speed_status = nh.subscribe("iMiev/speed_status", 10, speedStatusCallback);
-  ros::Subscriber pid_sub = nh.subscribe("iMiev/pid_term", 10, pidCallback);
+  if(pid_term_new.size() > 0){
+    pid_sub = nh.subscribe(pid_term_new, 10, pidCallback<long_control::PID_Msg>);
+  }
+  else if(pid_term_old.size() > 0){
+    pid_sub = nh.subscribe(pid_term_old, 10, pidCallback<long_control::PID_Msg_old>);
+  }
+  else if(lowlevel_pid.size() > 0) {
+    pid_sub = nh.subscribe(lowlevel_pid, 10, pidCallback<lowlevel_controllers::PID>);
+  }
+  else {
+    cout<<"No PID foud!!!"<<endl;
+  }
+  
+  ros::Subscriber joysteer_sub = nh.subscribe(joy_steer_topic, 10, joysteerCallback);
+  ros::Subscriber  steerang_sub = nh.subscribe(steerang_topic, 10, steerangCallback);
+  ros::Subscriber amclpose_sub = nh.subscribe(amcl_pose_topic, 10, amclposeCallback);
+  ros::Subscriber speed_status = nh.subscribe(speed_status_topic, 10, speedStatusCallback);
+   
   MySQLHelper sql(string("autonomous_odometer"), string("SCOT"), string(argv[1]));
   sql_ = &sql;
   ros::spin();
