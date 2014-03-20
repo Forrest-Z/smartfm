@@ -49,7 +49,7 @@ public:
     mysqlpp::DateTime sql_s_time((time_t)starttime.toSec()), sql_e_time((time_t)endtime.toSec());
     string sql_s_time_str = sql_s_time.str();
     string sql_e_time_str = sql_e_time.str();
-    updateDetails(autonomous_dist, sql_e_time_str, total_time, max_speed, average_speed, status);
+    updateDetails(autonomous_dist, sql_s_time_str, sql_e_time_str, total_time, max_speed, average_speed, status);
   }
   bool createRecord(double autonomous_dist, string starttime, string endtime, double total_time, double max_speed, double average_speed, int status){
     stringstream insertdata_ss;
@@ -91,9 +91,9 @@ private:
     if(createtb_res) cout<<"Table create successful"<<endl;
     else cout<<"Table create failed: "<<createtb_query.error()<<endl;
   }
-  void updateDetails(double autonomous_dist, string endtime, double total_time, double max_speed, double average_speed, int status){
+  void updateDetails(double autonomous_dist, string starttime, string endtime, double total_time, double max_speed, double average_speed, int status){
     stringstream ss;
-    ss<<"update "<<table_name_ << " set distance="<<autonomous_dist<<", totaltime="<<total_time<<", status="<<status;
+    ss<<"update "<<table_name_ << " set distance="<<autonomous_dist<<", totaltime="<<total_time<<", status="<<status<<", starttime='"<<starttime<<"'";
     ss<<", endtime='"<<endtime<<"', maxspeed="<<max_speed<<", averagespeed="<<average_speed<<" where "<<table_name_<<".id='"<<record_id_<<"'";
     mysqlpp::Query updatedata_query = conn_.query(ss.str());
     mysqlpp::SimpleResult insert_res = updatedata_query.execute();
@@ -146,7 +146,7 @@ void pidCallback(T pid){
   speed_now_ = pid.v_filter;
 }
 
-int pid_type = 0;
+int pid_type_ = 0;
 void amclposeCallback(geometry_msgs::PoseWithCovarianceStamped amcl_pose){
   geometry_msgs::Point cur_point = amcl_pose.pose.pose.position;
   double x = last_point_.x - cur_point.x;
@@ -171,12 +171,14 @@ void amclposeCallback(geometry_msgs::PoseWithCovarianceStamped amcl_pose){
     autonomous_dist_+=dist;
     if(max_speed_ < speed_now_) max_speed_ = speed_now_;
     
-    if(first_odo_)
+    if(first_odo_){
       starttime_ = amcl_pose.header.stamp;
+      first_odo_ = false;
+    }
     endtime_ = amcl_pose.header.stamp;
     if(fabs(speed_now_)>1e-3){
       total_time_+=dist/speed_now_;
-      sql_->updateData(autonomous_dist_, starttime_, endtime_, total_time_, max_speed_, autonomous_dist_/total_time_, pid_type);
+      sql_->updateData(autonomous_dist_, starttime_, endtime_, total_time_, max_speed_, autonomous_dist_/total_time_, pid_type_);
     }
   }
 //   cout<<"Distance_travel "<<dist<<" joysteer "<<joy_steer_<<" steerang "<<steer_ang_<<" speed_stat "<<speed_status_positive
@@ -268,6 +270,16 @@ string checkout_topics(string topic, vector<bool> &topic_checkout){
   return topic;
 }
 
+string rosbag_file_;
+void *startROSbagPlay(void *threadid){
+  stringstream bag_play_cmd; 
+  bag_play_cmd<<"rosbag play -r3 "<<rosbag_file_;
+  cout<<bag_play_cmd.str()<<endl;
+  string output = exec(bag_play_cmd.str().c_str());
+  cout<<endl;
+  exit(0);
+}
+
 #include <fstream>
 int main(int argc, char** argv){
   ros::init(argc, argv, "iMiev_autonomous_odo");
@@ -275,7 +287,7 @@ int main(int argc, char** argv){
     cout<<"Please give a bag file for the current run"<<endl;
     return 1;
   }
-  
+  rosbag_file_ = argv[1];
   MySQLHelper sql(string("autonomous_odometer"), string("SCOT"), string(argv[1]));
   sql_ = &sql;
   int database_status = sql.getData(string(argv[1]));
@@ -288,13 +300,14 @@ int main(int argc, char** argv){
     cout<<"Record found, not going through again. "<<argv[1]<<endl;
     return 1;
   }
-//   stringstream bag_open_cmd;
-//   bag_open_cmd<<"rosbag info --yaml "<<argv[1];
-//   string output = exec(bag_open_cmd.str().c_str());
-//   istringstream output_istream(output);
-//   YAML::Parser parser(output_istream);
-  std::ifstream fin(argv[1]);
-  YAML::Parser parser(fin);
+  stringstream bag_open_cmd;
+  bag_open_cmd<<"rosbag info --yaml "<<argv[1];
+  string output = exec(bag_open_cmd.str().c_str());
+  istringstream output_istream(output);
+  YAML::Parser parser(output_istream);
+  cout<<"rosbag "<<rosbag_file_<< " parsed"<<endl;
+//   std::ifstream fin(argv[1]);
+//   YAML::Parser parser(fin);
 
   YAML::Node doc;
   parser.GetNextDocument(doc);
@@ -325,15 +338,15 @@ int main(int argc, char** argv){
   ros::NodeHandle nh;
   if(pid_term_new.size() > 0){
     pid_sub = nh.subscribe(pid_term_new, 10, pidCallback<long_control::PID_Msg>);
-    pid_type = 1;
+    pid_type_ = 1;
   }
   else if(pid_term_old.size() > 0){
     pid_sub = nh.subscribe(pid_term_old, 10, pidCallback<long_control::PID_Msg_old>);
-    pid_type = 2;
+    pid_type_ = 2;
   }
   else if(lowlevel_pid.size() > 0) {
     pid_sub = nh.subscribe(lowlevel_pid, 10, pidCallback<lowlevel_controllers::PID>);
-    pid_type = 3;
+    pid_type_ = 3;
   }
   else {
     topics_checkout.push_back(false);
@@ -344,13 +357,16 @@ int main(int argc, char** argv){
     return 1;
   }
   else
-    sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, pid_type);
+    sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, pid_type_);
   ros::Subscriber joysteer_sub = nh.subscribe(joy_steer_topic, 10, joysteerCallback);
   ros::Subscriber  steerang_sub = nh.subscribe(steerang_topic, 10, steerangCallback);
   ros::Subscriber amclpose_sub = nh.subscribe(amcl_pose_topic, 10, amclposeCallback);
   ros::Subscriber speed_status = nh.subscribe(speed_status_topic, 10, speedStatusCallback);
-   
   
+  pthread_t threads[1];
+  int thread = 0;
+  int rc = pthread_create(&threads[0], NULL, startROSbagPlay, (void *)thread);
+  if(rc) cout<<"Unable to create thread"<<endl;
   ros::spin();
 
   return 0;
