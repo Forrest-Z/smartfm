@@ -1,18 +1,16 @@
 #include <ros/ros.h>
+#include <rosbag/bag.h>
+#include <rosbag/view.h>
 #include <std_msgs/Float64.h>
 #include <pnc_msgs/speed_contribute.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <long_control/PID_Msg.h>
 #include <mysql++/mysql++.h>
+#include <yaml-cpp/yaml.h>
+#include <phidget_encoders/Encoders.h>
 
 using namespace std;
 
-bool speed_status_positive = false;
-double speedstatus_lastreceived_ = 0.0;
-double joy_steer_=0.0, steer_ang_=0.0;
-double joysteer_lastreceived_=0.0, steerang_lastreceived_=0.0;
-double speed_err_ = 999.9;
-geometry_msgs::Point last_point_;
 class MySQLHelper{
 public:
   string table_name_, record_id_;
@@ -94,7 +92,22 @@ private:
   }
   
 };
-  
+
+
+bool speed_status_positive = false;
+double speedstatus_lastreceived_ = 0.0;
+double joy_steer_=100.0, steer_ang_=0.0;
+double joysteer_lastreceived_=0.0, steerang_lastreceived_=0.0;
+double speed_err_ = 999.9;
+geometry_msgs::Point last_point_;
+double autonomous_dist_ = 0.0;
+double total_time_ = 0.0;
+double max_speed_ = 0.0;
+double last_steer_ang_ = 0.0;
+bool first_odo_ = true;
+ros::Time starttime_, endtime_;
+MySQLHelper *sql_;
+
 void speedStatusCallback(pnc_msgs::speed_contribute speed_status){
   speedstatus_lastreceived_=ros::Time::now().toSec();
   if(speed_status.element == 0 /*no response*/ || speed_status.element == 2 /*no path*/
@@ -120,13 +133,6 @@ void pidCallback(long_control::PID_Msg pid){
   speed_now_ = pid.v_filter;
 }
 
-double autonomous_dist_ = 0.0;
-double total_time_ = 0.0;
-double max_speed_ = 0.0;
-double last_steer_ang_ = 0.0;
-bool first_odo_ = true;
-ros::Time starttime_, endtime_;
-MySQLHelper *sql_;
 void amclposeCallback(geometry_msgs::PoseWithCovarianceStamped amcl_pose){
   geometry_msgs::Point cur_point = amcl_pose.pose.pose.position;
   double x = last_point_.x - cur_point.x;
@@ -161,18 +167,87 @@ void amclposeCallback(geometry_msgs::PoseWithCovarianceStamped amcl_pose){
   }
 //   cout<<"Distance_travel "<<dist<<" joysteer "<<joy_steer_<<" steerang "<<steer_ang_<<" speed_stat "<<speed_status_positive
 //   <<" speed_err "<<speed_err<<" auto_dist "<<autonomous_dist_<<endl;
-//   cout<<"Summary: Odometer:"<<autonomous_dist_<<" s_t:"<<starttime_.toSec()<<" e_t:"<<endtime_.toSec()<<" total time:"<<total_time_<<" max speed:"<<max_speed_<<" average speed:"<<autonomous_dist_/total_time_<<endl;
+   cout<<"Summary: Odometer:"<<autonomous_dist_<<" s_t:"<<starttime_.toSec()<<" e_t:"<<endtime_.toSec()<<" total time:"<<total_time_<<" max speed:"<<max_speed_<<" average speed:"<<autonomous_dist_/total_time_<<"\xd"<<flush;
   last_steer_ang_=steer_ang_;
   last_point_ =cur_point ;
 }
 
+struct TopicType{
+  string type;
+  string md5;
+};
 
+struct TopicTypes{
+  vector<TopicType> topic_types;
+};
+
+struct TopicName{
+  string topic;
+  string type;
+  int messages;
+};
+
+struct TopicNames{
+  vector<TopicName> topic_names;
+};
+
+void operator >> (const YAML::Node& node, TopicTypes& t){
+  for(size_t i=0; i<node.size(); i++){
+    TopicType tt;
+    node[i]["type"] >> tt.type;
+    node[i]["md5"] >> tt.md5;
+    t.topic_types.push_back(tt);
+  }
+}
+
+void operator >> (const YAML::Node& node, TopicNames& t){
+  for(size_t i=0; i<node.size(); i++){
+    TopicName tt;
+    node[i]["topic"] >> tt.topic;
+    node[i]["type"] >> tt.type;
+    node[i]["messages"] >> tt.messages;
+  }
+}
+
+std::string exec(const char* cmd) {
+    FILE* pipe = popen(cmd, "r");
+    if (!pipe) return "ERROR";
+    char buffer[128];
+    std::string result = "";
+    while(!feof(pipe)) {
+    	if(fgets(buffer, 128, pipe) != NULL)
+    		result += buffer;
+    }
+    pclose(pipe);
+    return result;
+}
+#include <fstream>
 int main(int argc, char** argv){
   ros::init(argc, argv, "iMiev_autonomous_odo");
   if(argc < 2) {
-    cout<<"Please give a record id for the current run"<<endl;
+    cout<<"Please give a bag file for the current run"<<endl;
     return 1;
   }
+//   stringstream bag_open_cmd;
+//   bag_open_cmd<<"rosbag info --yaml "<<argv[1];
+//   string output = exec(bag_open_cmd.str().c_str());
+//   istringstream output_istream(output);
+//   YAML::Parser parser(output_istream);
+//   std::ifstream fin(argv[1]);
+//   YAML::Parser parser(fin);
+// 
+//   YAML::Node doc;
+//   parser.GetNextDocument(doc);
+//   const YAML::Node& topic_type_node = doc["types"];
+//   TopicTypes topic_types;
+//   topic_type_node >> topic_types;
+//   
+//   const YAML::Node& topic_name_node = doc["topics"];
+//   TopicNames topic_names;
+//   topic_name_node >> topic_names;
+// 
+//   
+//   return 0;
   ros::NodeHandle nh;
   ros::Subscriber joysteer_sub = nh.subscribe("iMiev/pronto/joy_steer", 10, joysteerCallback);
   ros::Subscriber  steerang_sub = nh.subscribe("iMiev/pronto/steerang", 10, steerangCallback);

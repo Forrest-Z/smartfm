@@ -12,6 +12,7 @@
   <depend package="std_msgs"/>
   <depend package="pnc_msgs"/>
   <depend package="long_control"/>
+  <depend package="rosbag"/>
 </package>
 
 
