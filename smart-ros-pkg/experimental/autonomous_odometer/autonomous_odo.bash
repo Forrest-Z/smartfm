@@ -4,7 +4,8 @@ find . -name '*.bag' | while IFS=$'\n' read -r FILE; do
 	dir="${FILE:0:${#FILE} - ${#filename}}"
 	extension="${filename##*.}"
 	filename="${filename%.*}"
-	#echo $FILE
+	echo $FILE
 	rosrun "autonomous_odometer" "iMiev_autonomous_odo" $FILE
+	echo "Done playback"
 done
 

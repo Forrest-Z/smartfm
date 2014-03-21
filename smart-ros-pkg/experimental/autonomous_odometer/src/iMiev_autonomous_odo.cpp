@@ -273,11 +273,11 @@ string checkout_topics(string topic, vector<bool> &topic_checkout){
 string rosbag_file_;
 void *startROSbagPlay(void *threadid){
   stringstream bag_play_cmd; 
-  bag_play_cmd<<"rosbag play -r3 "<<rosbag_file_;
+  bag_play_cmd<<"rosbag play -r3 --clock "<<rosbag_file_;
   cout<<bag_play_cmd.str()<<endl;
   string output = exec(bag_play_cmd.str().c_str());
   cout<<endl;
-  exit(0);
+  ros::shutdown();
 }
 
 #include <fstream>
