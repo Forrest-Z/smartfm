@@ -1,24 +1,28 @@
 <launch>
 
-    <node pkg="MODT" type="spatial_temporal_segmentation" name="spatial_temporal_segmentation" ns="golfcart" output="screen">
+    <node pkg="MODT" type="ST_autolabelling" name="ST_autolabelling" ns="golfcart" output="screen">
     <!--node pkg="MODT" type="spatial_temporal_segmentation" name="spatial_temporal_segmentation" output="screen"-->
 		<param name="program_mode" value="1"/>
 		<param name="skip_scan_times" value="1"/>
 		<param name="downsample_interval" value="1"/>
 		<param name="scanNum_perVector" value="6"/>
 		<param name="feature_vector_length" value="75"/>
-		<param name="DATMO_model_path" value="$(find MODT)/data_and_model/MODT_campus_fused.model"/>
-		<param name="DATMO_scale_path" value="$(find MODT)/data_and_model/MODT_campus_fused.range"/>
+		<param name="map_image_path" value="$(find MODT)/launch/obstacle_layer.png"/>
 		<param name="laser_frame_id" value="golfcart/front_bottom_lidar"/>
 		<param name="odom_frame_id" value="golfcart/odom"/>
+		<param name="map_frame_id" value = "golfcart/map"/>
 		<param name="speed_threshold" value="0.0"/>
 		<param name="gating_min_size" value="0.0"/>
 		<param name="graph_seg_k" value="0.5"/>
 		<param name="search_neighbourNum" value="20"/>
+		<param name="dilation_size" value="1"/>
 
 		<!--param name="speed_threshold" value="2.0"/>
 		<param name="gating_min_size" value="0.5"/-->
     </node>
-
+	<node name="map_server" pkg="map_server" type="map_server" args="$(find MODT)/launch/obstacle_layer.yaml">
+		<param name="frame_id" value = "golfcart/map"/>
+		<remap from ="map" to = "obstacle_layer"/>
+	</node>
 </launch>
 

@@ -16,8 +16,8 @@ namespace golfcar_perception{
 		double 	origin_x_, origin_y_, origin_yaw_;
 		int		sizeX, sizeY;
 		double 	resolution_;
-		private_nh_.param("sizeX",      	sizeX,     		5000);
-		private_nh_.param("sizeY",      	sizeY,     		5000);
+		private_nh_.param("sizeX",      	sizeX,     		4832);
+		private_nh_.param("sizeY",      	sizeY,     		2784);
 		private_nh_.param("resolution",		resolution_,	0.1);
 
 		double min_occ, max_range, min_pass_through;
@@ -37,30 +37,43 @@ namespace golfcar_perception{
 	    fake_grid.info = info_;
 		overlay_ = gu::createCloudOverlay(fake_grid, map_frame_id_, min_occ, max_range, min_pass_through);
 		grid_pub_ = nh_.advertise<nm::OccupancyGrid>("local_grid", 1);
+
+		private_nh_.param("process_interval",	process_interval_,	10);
+		scan_accNum_ = 0;
+
+		 CloudBuffer clouds(process_interval_);
+		 clouds_ = clouds;
+		 collected_cloud_pub_		=   nh_.advertise<sensor_msgs::PointCloud>("collected_cloud", 2);
 	}
 
 	void grid_utils_mapper::scanCallback(const sensor_msgs::LaserScan::ConstPtr& scan_in)
 	{
-		CloudBuffer clouds;
+		scan_accNum_++;
+
 		// Figure out current sensor position
 	    tf::Pose identity(tf::createIdentityQuaternion(), btVector3(0, 0, 0));
 	    tf::Stamped<tf::Pose> map_pose;
 	    tf_.transformPose(map_frame_id_, tf::Stamped<tf::Pose> (identity, ros::Time(), laser_frame_id_), map_pose);
 
 	    // Project scan from sensor frame (which varies over time) to odom (which doesn't)
-	    sm::PointCloud fixed_frame_cloud;
-		try{projector_.transformLaserScanToPointCloud(map_frame_id_, *scan_in, fixed_frame_cloud, tf_);}
-		catch (tf::TransformException& e){ROS_INFO("Cannot Transform Into Global Frame"); std::cout << e.what(); return;}
+	    sm::PointCloud laser_frame_cloud;
+		try{projector_.transformLaserScanToPointCloud(laser_frame_id_, *scan_in, laser_frame_cloud, tf_);}
+		catch (tf::TransformException& e){ROS_INFO("Cannot Transform Into sensor Frame"); std::cout << e.what(); return;}
 
         CloudPtr localized_cloud(new occupancy_grid_utils::LocalizedCloud());
-        localized_cloud->cloud.points = fixed_frame_cloud.points;
+        localized_cloud->cloud.points = laser_frame_cloud.points;
         tf::poseTFToMsg(map_pose, localized_cloud->sensor_pose);
         localized_cloud->header.frame_id = map_frame_id_;
         last_cloud_ = localized_cloud;
-        clouds.push_back(last_cloud_);
-        last_cloud_.reset();
+        clouds_.push_back(last_cloud_);
 
-        BOOST_FOREACH  (CloudConstPtr cloud, clouds) gu::addCloud(&overlay_, cloud);
+        collected_cloud_pub_.publish(laser_frame_cloud);
+
+        if(scan_accNum_%process_interval_ !=0) return;
+
+        BOOST_FOREACH  (CloudConstPtr cloud, clouds_) gu::addCloud(&overlay_, cloud);
+
+        //last_cloud_.reset();
 
         nm::OccupancyGrid::ConstPtr grid = gu::getGrid(overlay_);
         ROS_INFO ("Done building grid");
