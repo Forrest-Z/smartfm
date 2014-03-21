@@ -113,7 +113,7 @@ private:
 	int	Lstart_serial_, Lend_serial_;
 	vector<vector<int> > labelled_masks_;
 	ros::Publisher											labelled_scan_pub_;
-	std::string												derived_data_path_;
+	std::string												derived_data_path_, autolabelled_data_path_;
 
 	int														program_mode_;
 	int 													feature_num_;
@@ -149,6 +149,19 @@ private:
 	//this is the k parameter in the graph segmentation paper;
 	double													graph_seg_k_;
 	int 													control_trainingSample_number_;
+
+	void load_obstacle_map();
+	void autolabelling_data();
+	int label_cluster_using_map(sensor_msgs::PointCloud &cluster_pcl);
+	bool check_onRoad(geometry_msgs::Point32 &point);
+
+	cv::Mat													map_prior_;
+	std::string												map_image_path_;
+	double													map_resolution_;
+	int 													dilation_size_, free_threshold_;
+	double													free_ratio_threshold_;
+	int 													tobe_labeled_label_;
+	ros::Publisher                              			labeled_positive_objects_pub_;
 };
 
 DATMO::DATMO()
@@ -157,6 +170,7 @@ DATMO::DATMO()
 	private_nh_.param("laser_frame_id",     laser_frame_id_,    std::string("front_bottom_lidar"));
 	private_nh_.param("base_frame_id",      base_frame_id_,     std::string("base_link"));
 	private_nh_.param("odom_frame_id",      odom_frame_id_,     std::string("odom"));
+	private_nh_.param("map_frame_id",      	map_frame_id_,    	std::string("map"));
 	private_nh_.param("gating_min_size",    gating_min_size_,   0.5);
 	private_nh_.param("gating_max_size",    gating_max_size_,   15.0);
 	private_nh_.param("gating_min_size",    gating_min_size_,   0.5);
@@ -198,7 +212,7 @@ DATMO::DATMO()
 	private_nh_.param("img_resolution",		img_resolution_,     0.2);
 
 	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "front_bottom_scan", 10);
-	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, odom_frame_id_, 10);
+	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, map_frame_id_, 10);
 	tf_filter_->registerCallback(boost::bind(&DATMO::scanCallback, this, _1));
 	tf_filter_->setTolerance(ros::Duration(0.1));
 
@@ -218,7 +232,27 @@ DATMO::DATMO()
 		private_nh_.param("derived_data_path",       derived_data_path_,      std::string("/home/baoxing/data/derived_data"));
 		load_labeledScanMasks();
     }
-    else if(program_mode_==1)
+    else if(program_mode_ == 1)
+    {
+    	private_nh_.param("dilation_size",		dilation_size_,    0);
+    	private_nh_.param("free_threshold_",	free_threshold_,   220);
+    	//local obstacle map;
+    	private_nh_.param("map_image_path",     map_image_path_,      std::string("obstacle_layer.pgm"));
+
+    	map_prior_ = cv::imread( map_image_path_.c_str(), CV_LOAD_IMAGE_GRAYSCALE );
+    	cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*dilation_size_ + 1, 2*dilation_size_+1 ), cv::Point( dilation_size_, dilation_size_ ) );
+    	cv::threshold(map_prior_, map_prior_, free_threshold_, 255, 0 );
+    	cv::erode(map_prior_, map_prior_, element);
+    	cv::imwrite("/home/baoxing/threshold_map.png", map_prior_);
+
+    	private_nh_.param("autolabelled_data_path",   	autolabelled_data_path_,     	std::string("/home/baoxing/data/auto_data"));
+    	private_nh_.param("free_ratio_threshold",		free_ratio_threshold_,   		1.0);
+    	private_nh_.param("tobe_labeled_label",			tobe_labeled_label_,   			2);
+    	labeled_positive_objects_pub_		=   nh_.advertise<sensor_msgs::PointCloud>("labeled_positive_objects", 2);
+    	private_nh_.param("map_resolution",     map_resolution_,      0.1);
+
+    }
+    else if(program_mode_ == 2)
 	{
 	    string DATMO_model_path, DATMO_scale_path;
 		private_nh_.param("DATMO_model_path", DATMO_model_path, std::string("/home/baoxing/workspace/data_and_model/MODT.model"));
@@ -295,7 +329,7 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 
 	if(cloud_vector_.size()== interval_)
 	{
-		if(program_mode_==0)
+		if(program_mode_==0 || program_mode_ ==1)
 		{
 
 			bool to_process_flag;
@@ -351,6 +385,10 @@ void DATMO::process_accumulated_data(bool process_flag)
 	if(program_mode_==0)
 	{
 		save_training_data();
+	}
+	else if(program_mode_==1)
+	{
+		autolabelling_data();
 	}
 	else
 	{
@@ -1374,6 +1412,96 @@ void DATMO::spacePt2ImgP(geometry_msgs::Point32 & spacePt, cv::Point2f & imgPt)
 inline bool DATMO::LocalPixelValid(cv::Point2f & imgPt)
 {
 	if((int)imgPt.x < local_mask_.cols && (int)imgPt.x >=0 && (int)imgPt.y < local_mask_.rows && (int)imgPt.y >=0) return true;
+	else return false;
+}
+
+//label the clusters by checking its position in the prior obstacle map;
+void DATMO::autolabelling_data()
+{
+	//try to generate the label "object_feature_vectors_" from labelled scan mask;
+	sensor_msgs::PointCloud visualize_pedestrian_cluster;
+	visualize_pedestrian_cluster.header = combined_pcl_.header;
+	visualize_pedestrian_cluster.header.frame_id = map_frame_id_;
+	std::vector<object_cluster_segments> object_feature_vectors_deputy_tmp;
+	for(size_t i=0; i<object_feature_vectors_.size(); i++)
+	{
+		object_cluster_segments &object_cluster_tmp =object_feature_vectors_[i];
+		size_t j=object_cluster_tmp.scan_segment_batch.size();
+		assert(object_cluster_tmp.pose_InLatestCoord_vector.size()==object_cluster_tmp.scan_segment_batch.size());
+		assert(j==interval_);
+
+		sensor_msgs::PointCloud global_pcl;
+		global_pcl.header = combined_pcl_.header;
+		global_pcl.header.frame_id = odom_frame_id_;
+		global_pcl.header.stamp = ros::Time::now();
+
+		for(size_t j=0;j<object_cluster_tmp.scan_segment_batch.size(); j++)
+		{
+			for(size_t k=0;k<object_cluster_tmp.scan_segment_batch[j].odomPoints.size(); k++)
+			{
+				geometry_msgs::Point32 pt_tmp;
+				pt_tmp.x = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].x;
+				pt_tmp.y = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].y;
+				pt_tmp.z = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].z;
+				global_pcl.points.push_back(pt_tmp);
+			}
+		}
+
+		try{tf_.transformPointCloud(map_frame_id_, global_pcl, global_pcl);}
+		catch (tf::TransformException& e){ROS_WARN("cannot transform into map frame"); std::cout << e.what();return;}
+
+		object_cluster_tmp.object_type = label_cluster_using_map(global_pcl);
+		object_feature_vectors_deputy_tmp.push_back(object_cluster_tmp);
+		if(object_cluster_tmp.object_type == tobe_labeled_label_){for(size_t j=0; j<global_pcl.points.size(); j++) visualize_pedestrian_cluster.points.push_back(global_pcl.points[j]);}
+	}
+	object_feature_vectors_ = object_feature_vectors_deputy_tmp;
+	labeled_positive_objects_pub_.publish(visualize_pedestrian_cluster);
+
+	//save derived training data;
+	for(size_t i=0; i<object_feature_vectors_.size(); i++)
+	{
+		object_cluster_segments &object_cluster_tmp =object_feature_vectors_[i];
+		size_t j=object_cluster_tmp.scan_segment_batch.size();
+		assert(object_cluster_tmp.pose_InLatestCoord_vector.size()==object_cluster_tmp.scan_segment_batch.size());
+		FILE *fp_write;
+		stringstream file_path;
+		file_path<<autolabelled_data_path_<<"/autolabel_"<< j << "_" <<downsample_interval_;
+		fp_write = fopen(file_path.str().c_str(),"a");
+		if(fp_write==NULL){ROS_ERROR("cannot write auto data file\n");return;}
+
+		fprintf(fp_write, "%d\t", object_cluster_tmp.object_type);
+		//std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
+		std::vector<double> feature_vector = get_vector_V4(object_cluster_tmp);
+		for(size_t k=0; k<feature_vector.size(); k++) fprintf(fp_write, "%lf\t", feature_vector[k]);
+		fprintf(fp_write, "\n");
+		fclose(fp_write);
+	}
+}
+
+int DATMO::label_cluster_using_map(sensor_msgs::PointCloud &cluster_pcl)
+{
+	int onroad_number=0, offroad_number=0;
+	for(size_t i=0; i<cluster_pcl.points.size(); i++)
+	{
+		if(check_onRoad(cluster_pcl.points[i]))onroad_number++;
+		else offroad_number++;
+	}
+	ROS_INFO("onroad_number, offroad_number %d, %d", onroad_number, offroad_number);
+	if(onroad_number > free_ratio_threshold_*offroad_number) return tobe_labeled_label_;
+	else return 0;
+}
+
+inline bool DATMO::check_onRoad(geometry_msgs::Point32 &point)
+{
+	cv::Point2i image_point;
+	image_point.x =  (floor((point.x) / map_resolution_ + 0.5));
+	image_point.y =  (floor((point.y) / map_resolution_ + 0.5));
+
+	if(image_point.x < map_prior_.cols && image_point.x >=0 && image_point.y < map_prior_.rows && image_point.y >=0)
+	{
+		if(map_prior_.at<uchar>(map_prior_.rows-1-image_point.y, image_point.x)==255) return true;
+		else return false;
+	}
 	else return false;
 }
 

@@ -51,8 +51,11 @@ namespace golfcar_perception{
 		nm::MapMetaData info_;
 		gu::OverlayClouds overlay_;
 
-		ros::Publisher grid_pub_;
+		ros::Publisher grid_pub_, collected_cloud_pub_;
 		CloudConstPtr last_cloud_;
+		int process_interval_;
+		int scan_accNum_;
+		CloudBuffer clouds_;
 
 	};
 };
