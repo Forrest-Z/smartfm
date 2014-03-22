@@ -12,6 +12,7 @@
 #include <yaml-cpp/yaml.h>
 #include <phidget_encoders/Encoders.h>
 #include <old_msgs/angle.h>
+#include <old_msgs/halsampler.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Twist.h>
 
@@ -127,6 +128,9 @@ void automodeCallback(std_msgs::Bool automode){
   auto_state_ = automode.data;
 }
 
+void samplerCallback(old_msgs::halsampler sampler){
+  speed_now_ = sampler.vel;
+}
 void odomCallback(nav_msgs::Odometry odom){
   speed_now_ = odom.twist.twist.linear.x;
 }
@@ -316,6 +320,7 @@ int main(int argc, char** argv){
   string nav_msgs_path_md5 = "6227e2b7e9cce15051f669a5e197bbf7";
   string nav_msgs_odom_md5 = "cd5e73d190d741a2f92e81eda573aca7";
   string std_msgs_bool = "8b94c1b53db61fb6aed406028ad6332a";
+  string sampler_md5 = "e68537df914d3d6ed7f2787b0001f4ed";
   vector<bool> topics_checkout;
   
   string autonomode_topic = checkout_topics(findTopicAndHash(string("button_state_automode"), std_msgs_bool, topic_names, topic_types), topics_checkout);
@@ -353,11 +358,18 @@ int main(int argc, char** argv){
       sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, 0);
       return 1;
     }
+    //checked for odom but priority for getting the speed is on golfcar_sampler
+    string sampler_topic = checkout_topics(findTopicAndHash(string("sampler"), sampler_md5, topic_names, topic_types), topics_checkout);
+    
     automode_ = 2;
     sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, automode_);
     ros::Subscriber amclpose_sub = nh.subscribe(amcl_pose_topic, 10, amclposeCallback);
     ros::Subscriber steering_sub = nh.subscribe(golfcar_steering, 10, steeringCallback);
-    ros::Subscriber odom_sub = nh.subscribe(odom_topic, 10, odomCallback);
+    ros::Subscriber speed_sub;
+    if(sampler_topic.size()>0)
+      speed_sub = nh.subscribe(sampler_topic, 10, samplerCallback);
+    else
+      speed_sub = nh.subscribe(odom_topic, 10, odomCallback);
     ros::Subscriber cmd_vel_sub = nh.subscribe(cmd_vel, 10, cmdvelCallback);
     pthread_t threads[1];
     int thread = 0;
