@@ -984,9 +984,9 @@ void DATMO::classify_clusters()
 		*/
 
 		object_cluster_tmp.object_type = DATMO_classifier_->classify_objects(DATMO_feature_vector, vector_length);
-		if(object_cluster_tmp.object_type ==1)
+		if(object_cluster_tmp.object_type ==2)
 		{
-			ROS_DEBUG("vehicle!!!");
+			ROS_DEBUG("pedestrians!!!");
 
 			for(size_t j=0;j<object_cluster_tmp.scan_segment_batch.size(); j++)
 			{
@@ -1003,9 +1003,9 @@ void DATMO::classify_clusters()
 				}
 			}
 		}
-		else if(object_cluster_tmp.object_type ==2)
+		else if(object_cluster_tmp.object_type ==1)
 		{
-			ROS_DEBUG("motorbike!!!");
+			ROS_DEBUG("car!!!");
 		}
 		else if (object_cluster_tmp.object_type ==0)
 		{
