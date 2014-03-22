@@ -361,15 +361,18 @@ int main(int argc, char** argv){
     //checked for odom but priority for getting the speed is on golfcar_sampler
     string sampler_topic = checkout_topics(findTopicAndHash(string("sampler"), sampler_md5, topic_names, topic_types), topics_checkout);
     
-    automode_ = 2;
     sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, automode_);
     ros::Subscriber amclpose_sub = nh.subscribe(amcl_pose_topic, 10, amclposeCallback);
     ros::Subscriber steering_sub = nh.subscribe(golfcar_steering, 10, steeringCallback);
     ros::Subscriber speed_sub;
-    if(sampler_topic.size()>0)
+    if(sampler_topic.size()>0){
       speed_sub = nh.subscribe(sampler_topic, 10, samplerCallback);
-    else
+      automode_ = 3;
+    }
+    else{
       speed_sub = nh.subscribe(odom_topic, 10, odomCallback);
+      automode_ = 2;
+    }
     ros::Subscriber cmd_vel_sub = nh.subscribe(cmd_vel, 10, cmdvelCallback);
     pthread_t threads[1];
     int thread = 0;
