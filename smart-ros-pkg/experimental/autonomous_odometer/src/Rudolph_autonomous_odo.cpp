@@ -2,6 +2,7 @@
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
 #include <std_msgs/Float64.h>
+#include <std_msgs/Bool.h>
 #include <pnc_msgs/speed_contribute.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <long_control/PID_Msg.h>
@@ -10,6 +11,10 @@
 #include <mysql++/mysql++.h>
 #include <yaml-cpp/yaml.h>
 #include <phidget_encoders/Encoders.h>
+#include <old_msgs/angle.h>
+#include <old_msgs/halsampler.h>
+#include <nav_msgs/Odometry.h>
+#include <geometry_msgs/Twist.h>
 
 using namespace std;
 
@@ -34,7 +39,7 @@ public:
     }
     mysqlpp::Query query = conn_.query("select * from "+table_name_);
     if(mysqlpp::StoreQueryResult res = query.store()){
-      cout << "Table "<<table_name_<<" have "<<res.num_fields()<<"x"<<res.num_rows()<<endl;
+      cout << "Table "<<table_name_<<" has "<<res.num_fields()<<"x"<<res.num_rows()<<endl;
       if (res.num_fields() > 0)
 	table_size_ = res.num_rows();
     }
@@ -105,87 +110,72 @@ private:
 };
 
 
-bool speed_status_positive = false;
-double speedstatus_lastreceived_ = 0.0;
-double joy_steer_=100.0, steer_ang_=0.0;
-double joysteer_lastreceived_=0.0, steerang_lastreceived_=0.0;
-double speed_err_ = 999.9;
-geometry_msgs::Point last_point_;
 double autonomous_dist_ = 0.0;
 double total_time_ = 0.0;
 double max_speed_ = 0.0;
 double last_steer_ang_ = 0.0;
 bool first_odo_ = true;
 ros::Time starttime_, endtime_;
+double speed_now_ = 0.0;
+double last_cmd_speed_ = 0.0;
 MySQLHelper *sql_;
-
-void speedStatusCallback(pnc_msgs::speed_contribute speed_status){
-  speedstatus_lastreceived_=ros::Time::now().toSec();
-  if(speed_status.element == 0 /*no response*/ || speed_status.element == 2 /*no path*/
-    || speed_status.element == 7 /*emergency*/ || speed_status.element == 15 /*manual*/)
-    speed_status_positive = false;
-  else
-    speed_status_positive = true;
+geometry_msgs::Point last_point_;
+ros::Time last_amcl_stamp_;
+ros::Time last_steering_callback_;
+int automode_ = 0;
+bool auto_state_ = false;
+void automodeCallback(std_msgs::Bool automode){
+  auto_state_ = automode.data;
 }
 
-void joysteerCallback(std_msgs::Float64 joy_steer){
-  joysteer_lastreceived_=ros::Time::now().toSec();
-  joy_steer_ = joy_steer.data;
+void samplerCallback(old_msgs::halsampler sampler){
+  speed_now_ = sampler.vel;
+}
+void odomCallback(nav_msgs::Odometry odom){
+  speed_now_ = odom.twist.twist.linear.x;
+}
+void steeringCallback(old_msgs::angle angle){
+  last_steering_callback_ = ros::Time::now();
+}
+void cmdvelCallback(geometry_msgs::Twist tw){
+  last_cmd_speed_ = tw.linear.x;
 }
 
-void steerangCallback(std_msgs::Float64 steer_ang){
-  steerang_lastreceived_=ros::Time::now().toSec();
-  steer_ang_ = steer_ang.data;
-}
-
-double speed_now_;
-
-template <typename T>
-void pidCallback(T pid){
-  speed_err_ = pid.v_filter-pid.desired_vel;
-  speed_now_ = pid.v_filter;
-}
-
-int pid_type_ = 0;
 void amclposeCallback(geometry_msgs::PoseWithCovarianceStamped amcl_pose){
   geometry_msgs::Point cur_point = amcl_pose.pose.pose.position;
   double x = last_point_.x - cur_point.x;
   double y = last_point_.y - cur_point.y;
   double dist = sqrt(x*x + y*y);
   
-  vector<bool> flags;
-  flags.push_back(dist < 1.0);
-  flags.push_back(fabs(joy_steer_ - steer_ang_) < 5.0 || fabs(last_steer_ang_ - steer_ang_)>1e-3);
-  flags.push_back(fabs(speed_err_) < 1.5);
-  double time_now = ros::Time::now().toSec();
-  flags.push_back(time_now - joysteer_lastreceived_ < 1.0);
-  flags.push_back(time_now - steerang_lastreceived_ < 1.0);
-  bool add_odo = true;
-  for(size_t i=0; i<flags.size(); i++){
-    if(!flags[i]) {
-      add_odo = false;
-      break;
-    }
+  bool add_odo = false;
+  if(automode_ == 1)
+    add_odo = auto_state_;
+  else if(automode_ == 2){
+    double time_diff = fabs((ros::Time::now().toSec() - last_steering_callback_.toSec()));
+    double speed_diff = fabs(last_cmd_speed_ - speed_now_);
+    add_odo = time_diff < 0.5 && speed_diff < 1.5;
   }
   if(add_odo){
-    autonomous_dist_+=dist;
-    if(max_speed_ < speed_now_) max_speed_ = speed_now_;
-    
     if(first_odo_){
       starttime_ = amcl_pose.header.stamp;
+      last_amcl_stamp_ = starttime_;
       first_odo_ = false;
+      dist = 0.0;
     }
+    if(dist > 1.0) return;
+    autonomous_dist_+=dist;
+    double duration = (amcl_pose.header.stamp-last_amcl_stamp_).toSec();
     endtime_ = amcl_pose.header.stamp;
-    if(fabs(speed_now_)>1e-3){
-      total_time_+=dist/speed_now_;
-      sql_->updateData(autonomous_dist_, starttime_, endtime_, total_time_, max_speed_, autonomous_dist_/total_time_, pid_type_);
-    }
+    total_time_+= duration;
+    if(max_speed_<speed_now_) max_speed_ = speed_now_;
+    sql_->updateData(autonomous_dist_, starttime_, endtime_, total_time_, max_speed_, autonomous_dist_/total_time_, automode_);
   }
 //   cout<<"Distance_travel "<<dist<<" joysteer "<<joy_steer_<<" steerang "<<steer_ang_<<" speed_stat "<<speed_status_positive
 //   <<" speed_err "<<speed_err<<" auto_dist "<<autonomous_dist_<<endl;
    cout<<"Summary: Odometer:"<<autonomous_dist_<<" s_t:"<<starttime_.toSec()<<" e_t:"<<endtime_.toSec()<<" total time:"<<total_time_<<" max speed:"<<max_speed_<<" average speed:"<<autonomous_dist_/total_time_<<"\xd"<<flush;
-  last_steer_ang_=steer_ang_;
+
   last_point_ =cur_point ;
+  last_amcl_stamp_ = amcl_pose.header.stamp;
 }
 
 struct TopicType{
@@ -247,9 +237,12 @@ string findTopicAndHash(string match_topic, string match_hash, TopicNames &topic
   for(size_t i=0; i<topic_names.topic_names.size(); i++){
 //     cout<<"searching for match "<<topic_names.topic_names[i].topic<<" == "<<match_topic<<" ?"<<endl;
     if(topic_names.topic_names[i].topic.find(match_topic) != string::npos){
+      //quick hack
+      if(topic_names.topic_names[i].topic.find("gps") != string::npos) continue;
       topic = topic_names.topic_names[i].topic;
       type = topic_names.topic_names[i].type;
       topic_match = true;
+      break;
     }
   }
   string final_topic="";
@@ -282,13 +275,13 @@ void *startROSbagPlay(void *threadid){
 
 #include <fstream>
 int main(int argc, char** argv){
-  ros::init(argc, argv, "iMiev_autonomous_odo");
+  ros::init(argc, argv, "Rudolph_autonomous_odo");
   if(argc < 2) {
     cout<<"Please give a bag file for the current run"<<endl;
     return 1;
   }
   rosbag_file_ = argv[1];
-  MySQLHelper sql(string("autonomous_odometer"), string("SCOT"), string(argv[1]));
+  MySQLHelper sql(string("autonomous_odometer"), string("Rudolph"), string(argv[1]));
   sql_ = &sql;
   int database_status = sql.getData(string(argv[1]));
   // -1: not found
@@ -319,55 +312,76 @@ int main(int argc, char** argv){
   TopicNames topic_names;
   topic_name_node >> topic_names;
 
-  string speed_contribute_md5 = "2fdc008d2a7c0e8f6d1a11c04f3f9536";
+  string angle_md5 = "2d11dcdbe5a6f73dd324353dc52315ab";
+  string throttle_md5 = "0d974440801c3c58757fe6ef22b11eb3";
   string float64_md5 = "fdb28210bfa9d7c91146260178d9a584";
+  string geometry_twist_md5 = "9f195f881246fdfa2798d1d3eebca84a";
   string PoseWithCovarianceStamped_md5 = "953b798c0f514ff060a53a3498ce6246";
-  string long_control_new = "7da7da52c4166a35ed80e28993284bbc";
-  string long_control_old = "053e89c94725c4fc2fe528580fd49042";
-  string lowlevel_control = "f6afedc367dc1ac3ed37c0fd2e923fd9";
-  
+  string nav_msgs_path_md5 = "6227e2b7e9cce15051f669a5e197bbf7";
+  string nav_msgs_odom_md5 = "cd5e73d190d741a2f92e81eda573aca7";
+  string std_msgs_bool = "8b94c1b53db61fb6aed406028ad6332a";
+  string sampler_md5 = "e68537df914d3d6ed7f2787b0001f4ed";
   vector<bool> topics_checkout;
-  string speed_status_topic = checkout_topics(findTopicAndHash(string("speed_status"), speed_contribute_md5, topic_names, topic_types), topics_checkout);
-  string joy_steer_topic = checkout_topics(findTopicAndHash(string("joy_steer"), float64_md5, topic_names, topic_types), topics_checkout);
-  string steerang_topic = checkout_topics(findTopicAndHash(string("steerang"), float64_md5, topic_names, topic_types), topics_checkout);
+  
+  string autonomode_topic = checkout_topics(findTopicAndHash(string("button_state_automode"), std_msgs_bool, topic_names, topic_types), topics_checkout);
   string amcl_pose_topic = checkout_topics(findTopicAndHash(string("amcl_pose"), PoseWithCovarianceStamped_md5, topic_names, topic_types), topics_checkout);
-  string pid_term_new = findTopicAndHash(string("pid"), long_control_new, topic_names, topic_types);
-  string pid_term_old  = findTopicAndHash(string("pid"), long_control_old, topic_names, topic_types);
-  string lowlevel_pid = findTopicAndHash(string("pid"), lowlevel_control, topic_names, topic_types);
-  ros::Subscriber pid_sub;
-  ros::NodeHandle nh;
-  if(pid_term_new.size() > 0){
-    pid_sub = nh.subscribe(pid_term_new, 10, pidCallback<long_control::PID_Msg>);
-    pid_type_ = 1;
-  }
-  else if(pid_term_old.size() > 0){
-    pid_sub = nh.subscribe(pid_term_old, 10, pidCallback<long_control::PID_Msg_old>);
-    pid_type_ = 2;
-  }
-  else if(lowlevel_pid.size() > 0) {
-    pid_sub = nh.subscribe(lowlevel_pid, 10, pidCallback<lowlevel_controllers::PID>);
-    pid_type_ = 3;
-  }
-  else {
-    topics_checkout.push_back(false);
-  }
+  string odom_topic = checkout_topics(findTopicAndHash(string("odom"), nav_msgs_odom_md5, topic_names, topic_types), topics_checkout);
   mysqlpp::DateTime sql_time((time_t)0);
-  if(topics_checkout.size()>0){
+  if(amcl_pose_topic.size() == 0){
     sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, 0);
     return 1;
   }
-  else
-    sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, pid_type_);
-  ros::Subscriber joysteer_sub = nh.subscribe(joy_steer_topic, 10, joysteerCallback);
-  ros::Subscriber  steerang_sub = nh.subscribe(steerang_topic, 10, steerangCallback);
-  ros::Subscriber amclpose_sub = nh.subscribe(amcl_pose_topic, 10, amclposeCallback);
-  ros::Subscriber speed_status = nh.subscribe(speed_status_topic, 10, speedStatusCallback);
+  ros::NodeHandle nh;
+  if(topics_checkout.size() == 0){
+    //easy, automode topic is available
+    automode_ = 1;
+    sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, automode_);
+    ros::Subscriber amclpose_sub = nh.subscribe(amcl_pose_topic, 10, amclposeCallback);
+    ros::Subscriber automode_sub = nh.subscribe(autonomode_topic, 10, automodeCallback);
+    ros::Subscriber odom_sub = nh.subscribe(odom_topic, 10, odomCallback);
+    pthread_t threads[1];
+    int thread = 0;
+    int rc = pthread_create(&threads[0], NULL, startROSbagPlay, (void *)thread);
+    if(rc) cout<<"Unable to create thread"<<endl;
+    ros::spin();
+  } else {
+    //alright for the very old bags....
+    topics_checkout.clear();
+    string amcl_pose_topic = checkout_topics(findTopicAndHash(string("amcl_pose"), PoseWithCovarianceStamped_md5, topic_names, topic_types), topics_checkout);
+    string golfcar_brake = checkout_topics(findTopicAndHash(string("golfcar_brake"), angle_md5, topic_names, topic_types), topics_checkout);
+    string golfcar_steering = checkout_topics(findTopicAndHash(string("golfcar_steering"), angle_md5, topic_names, topic_types), topics_checkout);
+    string golfcar_speed = checkout_topics(findTopicAndHash(string("golfcar_speed"), throttle_md5, topic_names, topic_types), topics_checkout);
+    string cmd_vel = checkout_topics(findTopicAndHash(string("cmd_vel"), geometry_twist_md5, topic_names, topic_types), topics_checkout);
+    string odom_topic = checkout_topics(findTopicAndHash(string("odom"), nav_msgs_odom_md5, topic_names, topic_types), topics_checkout);
+    string global_plan = checkout_topics(findTopicAndHash(string("global_plan"), nav_msgs_path_md5, topic_names, topic_types), topics_checkout);
+    if(topics_checkout.size()>0){
+      sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, 0);
+      return 1;
+    }
+    //checked for odom but priority for getting the speed is on golfcar_sampler
+    string sampler_topic = checkout_topics(findTopicAndHash(string("sampler"), sampler_md5, topic_names, topic_types), topics_checkout);
+    
+    sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, automode_);
+    ros::Subscriber amclpose_sub = nh.subscribe(amcl_pose_topic, 10, amclposeCallback);
+    ros::Subscriber steering_sub = nh.subscribe(golfcar_steering, 10, steeringCallback);
+    ros::Subscriber speed_sub;
+    if(sampler_topic.size()>0){
+      speed_sub = nh.subscribe(sampler_topic, 10, samplerCallback);
+      automode_ = 3;
+    }
+    else{
+      speed_sub = nh.subscribe(odom_topic, 10, odomCallback);
+      automode_ = 2;
+    }
+    ros::Subscriber cmd_vel_sub = nh.subscribe(cmd_vel, 10, cmdvelCallback);
+    pthread_t threads[1];
+    int thread = 0;
+    int rc = pthread_create(&threads[0], NULL, startROSbagPlay, (void *)thread);
+    if(rc) cout<<"Unable to create thread"<<endl;
+    ros::spin();
+  }
   
-  pthread_t threads[1];
-  int thread = 0;
-  int rc = pthread_create(&threads[0], NULL, startROSbagPlay, (void *)thread);
-  if(rc) cout<<"Unable to create thread"<<endl;
-  ros::spin();
+ 
 
   return 0;
 }
