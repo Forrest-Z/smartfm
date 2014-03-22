@@ -14,7 +14,7 @@ extern void setDevFreeSpaceData(device_vector<float> &device_free_space);
 bool rowMajorDataSort(rowMajorData d1, rowMajorData d2){
    return d1.data_idx < d2.data_idx;
  }
- 
+ //add calculation of normal value as part of the scores
 template <class T>
 void CsmGPU<T>::getVoronoiTemplate(pcl::PointCloud<T> &cloud, bool visualize){
   vector<int> seeds_x, seeds_y;
@@ -170,14 +170,14 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
     pcl::PointCloud<T> pcl_pts;
     for(size_t i=0; i<cloud.points.size(); i++)
       pcl_pts.push_back(T(cloud.points[i].x, cloud.points[i].y, 0.0));
-    return getBestMatch(x_step, y_step, r_step, x_range, y_range, r_range, pcl_pts, offset);
+    return getBestMatch(x_step, y_step, r_step, x_range, y_range, r_range, pcl_pts, offset, &pcl::transformPointCloud);
   }
-		      
   template <class T>
   poseResult CsmGPU<T>::getBestMatch(double x_step, double y_step, double r_step,
 		    double x_range, double y_range, double r_range,
 		    pcl::PointCloud<T> &matching_pts,
-		    poseResult offset
+		    poseResult offset,void(*transformFunc)(const pcl::PointCloud< T > &, pcl::PointCloud< T > &, const Eigen::Matrix4f &)
+		    = &pcl::transformPointCloudWithNormals
  			){
     poseResult best_result;
     best_result.score = 0.0;
@@ -197,9 +197,8 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
       //cout<<r<<"deg ="<<endl<<transform<<endl;
       stringstream ss;
       ss<<"rotate_"<<r_array[i]<<".pcd";
-      pcl::transformPointCloud (matching_pts, cloud_out, transform);
-      
-      
+      transformFunc(matching_pts, cloud_out, transform);
+	
       //cudaDeviceSynchronize();
       //pcl::io::savePCDFileASCII (ss.str(), cloud_out);
       int stream_idx = stream_count%4;

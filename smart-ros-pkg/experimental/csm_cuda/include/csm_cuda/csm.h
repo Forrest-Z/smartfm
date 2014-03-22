@@ -37,12 +37,6 @@ class CsmGPU{
     
     void drawFreeSpace(sensor_msgs::PointCloud &cloud, cv::Size template_size, bool try_param);
     void getVoronoiTemplate(pcl::PointCloud<T>& data, bool visualize);
-    
-    poseResult getBestMatch(double x_step, double y_step, double r_step,
-		      double x_range, double y_range, double r_range,
-		      pcl::PointCloud<T> &matching_pts,
-		      poseResult offset
-			  );
 	
     poseResult getBestMatch(double x_step, double y_step, double r_step,
 		      double x_range, double y_range, double r_range,
@@ -52,6 +46,11 @@ class CsmGPU{
     poseResult getBestTranslation(double x_step, double y_step, 
 			    double x_range, double y_range,
 			    pcl::PointCloud<T> &matching_pts, int stream_idx);
+      
+  poseResult getBestMatch(double x_step, double y_step, double r_step,
+		    double x_range, double y_range, double r_range,
+		    pcl::PointCloud<T> &matching_pts,
+		    poseResult offset,void(*transformFunc)(const pcl::PointCloud< T > &, pcl::PointCloud< T > &, const Eigen::Matrix4f & ));
   private:
   cv::Mat removeRepeatedPts(pcl::PointCloud<T> &cloud,
 			  vector<int> &seeds_x, vector<int> &seeds_y);
