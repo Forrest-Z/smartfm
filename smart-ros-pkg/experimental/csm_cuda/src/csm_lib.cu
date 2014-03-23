@@ -6,6 +6,7 @@
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 #include <csm_cuda/cudaVarType.h>
+#include <math_constants.h>
 #define PRINT_DEBUG 0
 using namespace std;
 using namespace thrust;
@@ -67,7 +68,7 @@ __global__ void jfaKernel(int step, int voronoi_width, int voronoi_height, cudaP
 __global__ void translationKernel(float res, float step_size, int voronoi_width, int voronoi_height, 
 				 int x_step, int y_step, int x_range, int match_size,
 				 int y_range, cudaPointNormal* match_p, 
-				 cudaPointNormal* p, float* scores, bool use_free_space){
+				 cudaPointNormal* p, float* scores, bool use_free_space, bool use_normal){
   //check index
   //single thread dimension with xy grid for each offset
   //maximum thread is limited to 1024, hence need to call this function repeatedly
@@ -97,7 +98,19 @@ __global__ void translationKernel(float res, float step_size, int voronoi_width,
       int dist_nearest_y = nearest_y - y;
       int dist_nearest_pixel = (int)(sqrtf((dist_nearest_x*dist_nearest_x + dist_nearest_y*dist_nearest_y)*res)/step_size);
       float dist_nearest = dist_nearest_pixel * step_size;
-      scores_per_block[match_idx] = expf(-0.3*dist_nearest)*free_space_data;
+      float angle_diff = 1.0;
+      if(use_normal){
+	float a_x = p[nearest_seed].normal_x;
+	float a_y = p[nearest_seed].normal_y;
+	float b_x = match_p[match_idx].normal_x;
+	float b_y = match_p[match_idx].normal_y;
+	float scalar_product = a_x*b_x + a_y*b_y;
+	float mag = sqrt(a_x*a_x + a_y*a_y) * sqrt(b_x*b_x + b_y*b_y);
+	float cos_angle = scalar_product/mag;
+	float angle = acos(cos_angle);
+	angle_diff = (CUDART_PI_F - angle)/CUDART_PI_F;
+      }
+      scores_per_block[match_idx] = expf(-0.3*dist_nearest)*free_space_data*angle_diff;
     }
   }
   
@@ -190,8 +203,6 @@ poseResult best_translation(float resolution, float step_size, int x_step, int y
   cudaMalloc(&dev_match_ptr, 1024*sizeof(cudaPointNormal));
   //float *dev_scores_ptr = raw_pointer_cast(dev_scores.data());
   
-
-  
   for(int i=0; i<point.size(); i++){
     int match_size;
     if(point[i].x>=0 && point[i].y>=0 && point[i].x<voronoi_width && point[i].y<voronoi_height){
@@ -212,7 +223,7 @@ poseResult best_translation(float resolution, float step_size, int x_step, int y
 				      voronoi_width, voronoi_height, 
 				    x_step, y_step, x_range, match_size,
 				    y_range, dev_match_ptr, 
-				    dev_p_ptr, dev_scores_ptr, use_free_space_);
+				    dev_p_ptr, dev_scores_ptr, use_free_space_, got_normal_);
       match_p.clear();
     }
   }
