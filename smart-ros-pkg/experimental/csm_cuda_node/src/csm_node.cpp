@@ -137,6 +137,7 @@ int main( int argc, char** argv ) {
       cout<<"Usage = csm frontEnd.txt input_idx matching_idx"<<endl; 
       cout<<"For 20120924_utownDataCollect/pcd_files2 a good example is"<<endl;
       cout<<"csm pcd_files2/frontEndData_1361213147933776514.txt 129 562"<<endl;
+      cout<<"csm pcd_files2/frontEndData_1361213147933776514.txt 291 404"<<endl;
       return 1;
     }
     state_ = SELECT_SOURCE_PCD;

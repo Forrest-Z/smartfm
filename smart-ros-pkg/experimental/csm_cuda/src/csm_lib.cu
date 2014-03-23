@@ -98,19 +98,22 @@ __global__ void translationKernel(float res, float step_size, int voronoi_width,
       int dist_nearest_y = nearest_y - y;
       int dist_nearest_pixel = (int)(sqrtf((dist_nearest_x*dist_nearest_x + dist_nearest_y*dist_nearest_y)*res)/step_size);
       float dist_nearest = dist_nearest_pixel * step_size;
-      float angle_diff = 1.0;
+      float angle_score = 1.0;
       if(use_normal){
-	float a_x = p[nearest_seed].normal_x;
-	float a_y = p[nearest_seed].normal_y;
-	float b_x = match_p[match_idx].normal_x;
-	float b_y = match_p[match_idx].normal_y;
-	float scalar_product = a_x*b_x + a_y*b_y;
-	float mag = sqrt(a_x*a_x + a_y*a_y) * sqrt(b_x*b_x + b_y*b_y);
-	float cos_angle = scalar_product/mag;
-	float angle = acos(cos_angle);
-	angle_diff = (CUDART_PI_F - angle)/CUDART_PI_F;
+	if(dist_nearest > 0.3) angle_score = 0;
+	else {
+	  float a_x = p[nearest_seed].normal_x;
+	  float a_y = p[nearest_seed].normal_y;
+	  float b_x = match_p[match_idx].normal_x;
+	  float b_y = match_p[match_idx].normal_y;
+	  float scalar_product = a_x*b_x + a_y*b_y;
+	  float mag = sqrt(a_x*a_x + a_y*a_y) * sqrt(b_x*b_x + b_y*b_y);
+	  float cos_angle = scalar_product/mag;
+	  float angle = acos(cos_angle);
+	  angle_score = (CUDART_PI_F - angle)/CUDART_PI_F;
+	}
       }
-      scores_per_block[match_idx] = expf(-0.3*dist_nearest)*free_space_data*angle_diff;
+      scores_per_block[match_idx] = .7 * expf(-0.3*dist_nearest)*free_space_data + .3 * angle_score;
     }
   }
   
