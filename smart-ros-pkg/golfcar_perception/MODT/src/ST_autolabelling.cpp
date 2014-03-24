@@ -162,6 +162,8 @@ private:
 	double													free_ratio_threshold_;
 	int 													tobe_labeled_label_;
 	ros::Publisher                              			labeled_positive_objects_pub_;
+
+	double													seg_time_coeff_;
 };
 
 DATMO::DATMO()
@@ -210,6 +212,7 @@ DATMO::DATMO()
 
 	private_nh_.param("img_side_length",	img_side_length_,    50.0);
 	private_nh_.param("img_resolution",		img_resolution_,     0.2);
+	private_nh_.param("seg_time_coeff",		seg_time_coeff_,     1.0);
 
 	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "front_bottom_scan", 10);
 	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, map_frame_id_, 10);
@@ -417,10 +420,13 @@ void DATMO::graph_segmentation()
 	{
 		for(size_t j=0; j<cloud_vector_[i].points.size(); j++)
 		{
+			double time_delayed = cloud_vector_.back().header.stamp.toSec() - cloud_vector_[i].header.stamp.toSec();
 			pcl::PointXYZRGB pt_tmp;
 			pt_tmp.x = cloud_vector_[i].points[j].x;
 			pt_tmp.y = cloud_vector_[i].points[j].y;
-			pt_tmp.z = cloud_vector_[i].points[j].z;
+			//pt_tmp.z = cloud_vector_[i].points[j].z;
+			pt_tmp.z = cloud_vector_[i].points[j].z + time_delayed*seg_time_coeff_;
+
 			pt_tmp.r = rand() % 256;
 			pt_tmp.g = rand() % 256;
 			pt_tmp.b = rand() % 256;
