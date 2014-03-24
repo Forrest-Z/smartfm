@@ -6,6 +6,7 @@
 #include <thrust/device_vector.h>
 #include <laser_geometry/laser_geometry.h>
 #include <csm_cuda/clipper.h>
+#include <csm_cuda/cudaVarType.h>
 #define PRINT_DEBUG 0
 using namespace std;
 using namespace thrust;
@@ -17,18 +18,17 @@ struct poseResult{
 
 
 struct rowMajorData{
-    int x, y, data_idx;
+  int x, y, data_idx;
+  float normal_x, normal_y;
 };
-  
-  
- 
+
 template <class T>
 class CsmGPU{
   public:
     cv::Size voronoi_size_;
     double res_;
     device_vector<int> dev_voronoi_data_;
-    device_vector<int> dev_px_, dev_py_;
+    device_vector<cudaPointNormal> dev_p_;
     device_vector<float> dev_free_space_;
     CsmGPU(double res, cv::Point2d template_size, 
 	    pcl::PointCloud<T> &cloud, bool visualize);
@@ -37,12 +37,6 @@ class CsmGPU{
     
     void drawFreeSpace(sensor_msgs::PointCloud &cloud, cv::Size template_size, bool try_param);
     void getVoronoiTemplate(pcl::PointCloud<T>& data, bool visualize);
-    
-    poseResult getBestMatch(double x_step, double y_step, double r_step,
-		      double x_range, double y_range, double r_range,
-		      pcl::PointCloud<T> &matching_pts,
-		      poseResult offset
-			  );
 	
     poseResult getBestMatch(double x_step, double y_step, double r_step,
 		      double x_range, double y_range, double r_range,
@@ -52,9 +46,15 @@ class CsmGPU{
     poseResult getBestTranslation(double x_step, double y_step, 
 			    double x_range, double y_range,
 			    pcl::PointCloud<T> &matching_pts, int stream_idx);
+      
+  poseResult getBestMatch(double x_step, double y_step, double r_step,
+		    double x_range, double y_range, double r_range,
+		    pcl::PointCloud<T> &matching_pts,
+		    poseResult offset,void(*transformFunc)(const pcl::PointCloud< T > &, pcl::PointCloud< T > &, const Eigen::Matrix4f & ));
   private:
+  bool gotNormal_;
   cv::Mat removeRepeatedPts(pcl::PointCloud<T> &cloud,
-			  vector<int> &seeds_x, vector<int> &seeds_y);
+			  vector<cudaPointNormal> &seeds);
   
   void visualize_data(host_vector<int> voronoi_data, string name);
 

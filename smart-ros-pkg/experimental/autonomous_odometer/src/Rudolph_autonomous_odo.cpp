@@ -137,6 +137,9 @@ void odomCallback(nav_msgs::Odometry odom){
 void steeringCallback(old_msgs::angle angle){
   last_steering_callback_ = ros::Time::now();
 }
+void steeringFloatCallback(std_msgs::Float64 angle){
+  last_steering_callback_ = ros::Time::now();
+}
 void cmdvelCallback(geometry_msgs::Twist tw){
   last_cmd_speed_ = tw.linear.x;
 }
@@ -150,7 +153,7 @@ void amclposeCallback(geometry_msgs::PoseWithCovarianceStamped amcl_pose){
   bool add_odo = false;
   if(automode_ == 1)
     add_odo = auto_state_;
-  else if(automode_ == 2){
+  else if(automode_ == 2 || automode_ == 3 || automode_ == 4){
     double time_diff = fabs((ros::Time::now().toSec() - last_steering_callback_.toSec()));
     double speed_diff = fabs(last_cmd_speed_ - speed_now_);
     add_odo = time_diff < 0.5 && speed_diff < 1.5;
@@ -354,31 +357,54 @@ int main(int argc, char** argv){
     string cmd_vel = checkout_topics(findTopicAndHash(string("cmd_vel"), geometry_twist_md5, topic_names, topic_types), topics_checkout);
     string odom_topic = checkout_topics(findTopicAndHash(string("odom"), nav_msgs_odom_md5, topic_names, topic_types), topics_checkout);
     string global_plan = checkout_topics(findTopicAndHash(string("global_plan"), nav_msgs_path_md5, topic_names, topic_types), topics_checkout);
-    if(topics_checkout.size()>0){
-      sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, 0);
-      return 1;
+    if(topics_checkout.size()==0){ 
+      //checked for odom but priority for getting the speed is on golfcar_sampler
+      string sampler_topic = checkout_topics(findTopicAndHash(string("sampler"), sampler_md5, topic_names, topic_types), topics_checkout);
+      
+      sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, automode_);
+      ros::Subscriber amclpose_sub = nh.subscribe(amcl_pose_topic, 10, amclposeCallback);
+      ros::Subscriber steering_sub = nh.subscribe(golfcar_steering, 10, steeringCallback);
+      ros::Subscriber speed_sub;
+      if(sampler_topic.size()>0){
+	speed_sub = nh.subscribe(sampler_topic, 10, samplerCallback);
+	automode_ = 3;
+      }
+      else{
+	speed_sub = nh.subscribe(odom_topic, 10, odomCallback);
+	automode_ = 2;
+      }
+      ros::Subscriber cmd_vel_sub = nh.subscribe(cmd_vel, 10, cmdvelCallback);
+      pthread_t threads[1];
+      int thread = 0;
+      int rc = pthread_create(&threads[0], NULL, startROSbagPlay, (void *)thread);
+      if(rc) cout<<"Unable to create thread"<<endl;
+      ros::spin();
     }
-    //checked for odom but priority for getting the speed is on golfcar_sampler
-    string sampler_topic = checkout_topics(findTopicAndHash(string("sampler"), sampler_md5, topic_names, topic_types), topics_checkout);
-    
-    sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, automode_);
-    ros::Subscriber amclpose_sub = nh.subscribe(amcl_pose_topic, 10, amclposeCallback);
-    ros::Subscriber steering_sub = nh.subscribe(golfcar_steering, 10, steeringCallback);
-    ros::Subscriber speed_sub;
-    if(sampler_topic.size()>0){
-      speed_sub = nh.subscribe(sampler_topic, 10, samplerCallback);
-      automode_ = 3;
+    else {
+      topics_checkout.clear();
+      string amcl_pose_topic = checkout_topics(findTopicAndHash(string("amcl_pose"), PoseWithCovarianceStamped_md5, topic_names, topic_types), topics_checkout);
+      string golfcar_brake = checkout_topics(findTopicAndHash(string("brake"), float64_md5, topic_names, topic_types), topics_checkout);
+      string golfcar_steering = checkout_topics(findTopicAndHash(string("steer"), float64_md5, topic_names, topic_types), topics_checkout);
+      string golfcar_speed = checkout_topics(findTopicAndHash(string("throttle"), float64_md5, topic_names, topic_types), topics_checkout);
+      string cmd_vel = checkout_topics(findTopicAndHash(string("cmd_vel"), geometry_twist_md5, topic_names, topic_types), topics_checkout);
+      string odom_topic = checkout_topics(findTopicAndHash(string("odom"), nav_msgs_odom_md5, topic_names, topic_types), topics_checkout);
+      string global_plan = checkout_topics(findTopicAndHash(string("global_plan"), nav_msgs_path_md5, topic_names, topic_types), topics_checkout);
+      if(topics_checkout.size()>0){
+	sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, -4);
+	return 1;
+      }
+      automode_ = 4;
+      sql.createRecord(0.0, sql_time.str(), sql_time.str(), 0.0, 0.0, 0.0, automode_);
+      ros::Subscriber amclpose_sub = nh.subscribe(amcl_pose_topic, 10, amclposeCallback);
+      ros::Subscriber steering_sub = nh.subscribe(golfcar_steering, 10, steeringFloatCallback);
+      ros::Subscriber speed_sub = nh.subscribe(odom_topic, 10, odomCallback);
+      ros::Subscriber cmd_vel_sub = nh.subscribe(cmd_vel, 10, cmdvelCallback);
+      pthread_t threads[1];
+      int thread = 0;
+      int rc = pthread_create(&threads[0], NULL, startROSbagPlay, (void *)thread);
+      if(rc) cout<<"Unable to create thread"<<endl;
+      ros::spin();
     }
-    else{
-      speed_sub = nh.subscribe(odom_topic, 10, odomCallback);
-      automode_ = 2;
-    }
-    ros::Subscriber cmd_vel_sub = nh.subscribe(cmd_vel, 10, cmdvelCallback);
-    pthread_t threads[1];
-    int thread = 0;
-    int rc = pthread_create(&threads[0], NULL, startROSbagPlay, (void *)thread);
-    if(rc) cout<<"Unable to create thread"<<endl;
-    ros::spin();
   }
   
  
