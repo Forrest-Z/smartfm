@@ -153,15 +153,18 @@ private:
 	void load_obstacle_map();
 	void autolabelling_data();
 	int label_cluster_using_map(sensor_msgs::PointCloud &cluster_pcl);
-	bool check_onRoad(geometry_msgs::Point32 &point);
+	int check_onRoad(geometry_msgs::Point32 &point);
 
-	cv::Mat													map_prior_;
+	cv::Mat													map_prior_, map_prior_unknown_;
+
 	std::string												map_image_path_;
 	double													map_resolution_;
-	int 													dilation_size_, free_threshold_;
-	double													free_ratio_threshold_;
+	int 													dilation_size_, free_threshold_, unknown_threshold_;
+	double													free_ratio_threshold_, unknown_ratio_threshold_;
 	int 													tobe_labeled_label_;
 	ros::Publisher                              			labeled_positive_objects_pub_;
+
+	double													seg_time_coeff_;
 };
 
 DATMO::DATMO()
@@ -210,6 +213,7 @@ DATMO::DATMO()
 
 	private_nh_.param("img_side_length",	img_side_length_,    50.0);
 	private_nh_.param("img_resolution",		img_resolution_,     0.2);
+	private_nh_.param("seg_time_coeff",		seg_time_coeff_,     1.0);
 
 	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "front_bottom_scan", 10);
 	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, map_frame_id_, 10);
@@ -235,18 +239,25 @@ DATMO::DATMO()
     else if(program_mode_ == 1)
     {
     	private_nh_.param("dilation_size",		dilation_size_,    0);
-    	private_nh_.param("free_threshold_",	free_threshold_,   220);
+    	private_nh_.param("free_threshold",		free_threshold_,   220);
+    	private_nh_.param("unknown_threshold",	unknown_threshold_,   100);
     	//local obstacle map;
     	private_nh_.param("map_image_path",     map_image_path_,      std::string("obstacle_layer.pgm"));
 
     	map_prior_ = cv::imread( map_image_path_.c_str(), CV_LOAD_IMAGE_GRAYSCALE );
+    	map_prior_unknown_ = map_prior_.clone();
+
     	cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 2*dilation_size_ + 1, 2*dilation_size_+1 ), cv::Point( dilation_size_, dilation_size_ ) );
     	cv::threshold(map_prior_, map_prior_, free_threshold_, 255, 0 );
     	cv::erode(map_prior_, map_prior_, element);
     	cv::imwrite("/home/baoxing/threshold_map.png", map_prior_);
 
+    	cv::inRange(map_prior_unknown_, unknown_threshold_, free_threshold_, map_prior_unknown_);
+    	cv::imwrite("/home/baoxing/unknown_area.png", map_prior_unknown_);
+
     	private_nh_.param("autolabelled_data_path",   	autolabelled_data_path_,     	std::string("/home/baoxing/data/auto_data"));
-    	private_nh_.param("free_ratio_threshold",		free_ratio_threshold_,   		1.0);
+    	private_nh_.param("free_ratio_threshold",		free_ratio_threshold_,   		0.5);
+    	private_nh_.param("unknown_ratio_threshold",	unknown_ratio_threshold_,   		0.4);
     	private_nh_.param("tobe_labeled_label",			tobe_labeled_label_,   			2);
     	labeled_positive_objects_pub_		=   nh_.advertise<sensor_msgs::PointCloud>("labeled_positive_objects", 2);
     	private_nh_.param("map_resolution",     map_resolution_,      0.1);
@@ -417,10 +428,13 @@ void DATMO::graph_segmentation()
 	{
 		for(size_t j=0; j<cloud_vector_[i].points.size(); j++)
 		{
+			double time_delayed = cloud_vector_.back().header.stamp.toSec() - cloud_vector_[i].header.stamp.toSec();
 			pcl::PointXYZRGB pt_tmp;
 			pt_tmp.x = cloud_vector_[i].points[j].x;
 			pt_tmp.y = cloud_vector_[i].points[j].y;
-			pt_tmp.z = cloud_vector_[i].points[j].z;
+			//pt_tmp.z = cloud_vector_[i].points[j].z;
+			pt_tmp.z = cloud_vector_[i].points[j].z + time_delayed*seg_time_coeff_;
+
 			pt_tmp.r = rand() % 256;
 			pt_tmp.g = rand() % 256;
 			pt_tmp.b = rand() % 256;
@@ -1451,6 +1465,8 @@ void DATMO::autolabelling_data()
 		catch (tf::TransformException& e){ROS_WARN("cannot transform into map frame"); std::cout << e.what();return;}
 
 		object_cluster_tmp.object_type = label_cluster_using_map(global_pcl);
+		if(object_cluster_tmp.object_type ==-1) continue;
+
 		object_feature_vectors_deputy_tmp.push_back(object_cluster_tmp);
 		if(object_cluster_tmp.object_type == tobe_labeled_label_){for(size_t j=0; j<global_pcl.points.size(); j++) visualize_pedestrian_cluster.points.push_back(global_pcl.points[j]);}
 	}
@@ -1480,29 +1496,33 @@ void DATMO::autolabelling_data()
 
 int DATMO::label_cluster_using_map(sensor_msgs::PointCloud &cluster_pcl)
 {
-	int onroad_number=0, offroad_number=0;
+	int onroad_number=0, offroad_number=0, unknown_number=0;
 	for(size_t i=0; i<cluster_pcl.points.size(); i++)
 	{
-		if(check_onRoad(cluster_pcl.points[i]))onroad_number++;
+		if(check_onRoad( cluster_pcl.points[i]) == -1) unknown_number++;
+		else if(check_onRoad( cluster_pcl.points[i]) == 1) onroad_number++;
 		else offroad_number++;
 	}
-	ROS_INFO("onroad_number, offroad_number %d, %d", onroad_number, offroad_number);
-	if(onroad_number > free_ratio_threshold_*offroad_number) return tobe_labeled_label_;
+	ROS_INFO("onroad_number, offroad_number, unknown_number, %d, %d, %d", onroad_number, offroad_number, unknown_number);
+	if(unknown_number > unknown_ratio_threshold_*(onroad_number+offroad_number+unknown_number )) return -1;
+	else if(onroad_number > free_ratio_threshold_*(onroad_number+offroad_number+unknown_number )) return tobe_labeled_label_;
 	else return 0;
 }
 
-inline bool DATMO::check_onRoad(geometry_msgs::Point32 &point)
+inline int DATMO::check_onRoad(geometry_msgs::Point32 &point)
 {
 	cv::Point2i image_point;
 	image_point.x =  (floor((point.x) / map_resolution_ + 0.5));
 	image_point.y =  (floor((point.y) / map_resolution_ + 0.5));
 
+	int status_flag = -1;
 	if(image_point.x < map_prior_.cols && image_point.x >=0 && image_point.y < map_prior_.rows && image_point.y >=0)
 	{
-		if(map_prior_.at<uchar>(map_prior_.rows-1-image_point.y, image_point.x)==255) return true;
-		else return false;
+		if(map_prior_unknown_.at<uchar>(map_prior_unknown_.rows-1-image_point.y, image_point.x)==255) {status_flag = -1; return status_flag;}
+		else if(map_prior_.at<uchar>(map_prior_.rows-1-image_point.y, image_point.x)==255){status_flag = 1; return status_flag;}
+		else {status_flag = 0; return status_flag;}
 	}
-	else return false;
+	else return status_flag;
 }
 
 
