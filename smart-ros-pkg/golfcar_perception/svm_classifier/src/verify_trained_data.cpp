@@ -71,7 +71,9 @@ int main(int argc, char** argv){
     while ( getline (input_filestream,line) ){
       vector<string> data_str = split(line, '\t');
       vector<double> feature_vec;
+
       assert((int)data_str.size() == feature_length + 1);
+
       labels.push_back(atoi(data_str[0].c_str()));
       for(int i=1; i<feature_length+1; i++){
 	vector<string> data_temp = split(data_str[i], ':');
@@ -115,7 +117,7 @@ int main(int argc, char** argv){
       if(results[i].grid_x < 0 || results[i].grid_y < 0) continue;
       if(results[i].grid_x > grid_length*2 || results[i].grid_y > grid_length*2) continue;
       int idx = results[i].grid_x + results[i].grid_y * grid_length;
-      if(results[i].label == 1)
+      if(results[i].label == 2)
       {
 	training_sample[idx]++;
 	if(results[i].match_label) total_correct_count[idx]++;
@@ -127,8 +129,8 @@ int main(int argc, char** argv){
 	int idx = i + j*grid_length;
 	int diff = training_sample[idx] - total_correct_count[idx];
 	if(training_sample[idx] > 0)
-// 	  cout<<(double)diff/training_sample[idx]*100.0<<" ";
-	  cout<<training_sample[idx]<<" ";
+ 	  cout<<(double)diff/training_sample[idx]*100.0<<" ";
+	  //cout<<training_sample[idx]<<" ";
 	else
 	  cout<<-1<<" ";
 	just_checking+=total_correct_count[idx];
