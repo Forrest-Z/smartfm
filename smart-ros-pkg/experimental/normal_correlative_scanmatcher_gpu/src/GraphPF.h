@@ -13,7 +13,7 @@
 #include <boost/random/uniform_int.hpp>
 #include <numeric>
 #include "boost/tuple/tuple.hpp"
-#include "CorrelativeMatchGPU.h"
+#include <csm_cuda/csm.h>
 
 struct particle
 {
@@ -218,15 +218,7 @@ private:
 		//input_cloud = pcl_downsample(input_cloud, res_*2, res_*2, res_*2);
 		matching_clouds_[matching_node*skip_reading_] = input_cloud;
 		
-		vector<Simple2D> res; res.resize(2);
-		res[0].x = res[0].y = 0.5;
-		res[0].ang = 2;
-		res[1].x = res[1].y = 0.2;
-		res[1].ang = 1;
-		vector<Simple2D> ranges; ranges.resize(2);
-		ranges[0].x = 15; ranges[0].y = 20; ranges[0].ang = 180;
-		ranges[1].x = 1; ranges[1].y = 1; ranges[1].ang = 5;
-		CorrelativeMatchGPU cmgpu(input_cloud, res, ranges, 1.0, 0); 
+		CsmGPU<pcl::PointNormal> csm_gpu(0.1, cv::Point2d(50.0, 75.0), input_cloud, false);
 		ncm1.end();
 		fmutil::Stopwatch ncm2("NCM bruteForceSearch");
 		fmutil::Stopwatch ncm3("NCM veriScore");
@@ -251,12 +243,15 @@ private:
 			  //#pragma omp critical
 			  matching_cloud = matching_clouds_[j];
 			  ncm2.start();
-			  ScoreDetails sdetails;
-			  Simple2D best_match = cmgpu.getBestMatch(matching_cloud);
+			  poseResult best_match;
+			  best_match.x = best_match.y = best_match.r = 0.0;
+			  best_match = csm_gpu.getBestMatch(2.0, 2.0, 5, 20, 20, 180, matching_cloud, best_match);
+			  best_match = csm_gpu.getBestMatch(0.5, 0.5, 2, 2, 2, 10, matching_cloud, best_match);
+			  best_match = csm_gpu.getBestMatch(0.1, 0.1, 0.5, 0.5, 0.5, 4.0, matching_cloud, best_match);
 			  ncm2.end(false);
 			  sd.score = best_match.score;
 			  Eigen::Vector3f bl_trans(-best_match.x, -best_match.y, 0.);
-			  double yaw_rotate = -best_match.ang / 180. * M_PI;
+			  double yaw_rotate = -best_match.r / 180. * M_PI;
 			  Eigen::Quaternionf bl_rotation(cos(yaw_rotate / 2.), 0, 0,
 			  -sin(yaw_rotate / 2.));
 			  Eigen::Translation3f translation (bl_trans);
@@ -269,7 +264,7 @@ private:
 			  sd.y = t.translation()(1);
 			  sd.t = yaw/M_PI*180;
 			  
-			  sd.score *= 100;
+			  //sd.score *= 100;
 			}
 			//#pragma omp critical
 			  scores[unique_nodes_array[i]] = sd;

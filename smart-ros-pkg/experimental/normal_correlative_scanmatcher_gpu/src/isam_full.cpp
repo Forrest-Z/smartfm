@@ -50,7 +50,7 @@ void mat2RPY(const Eigen::Matrix3f& t, double& roll, double& pitch, double& yaw)
 visualization_msgs::Marker getMarker(int id, int particle_no, string text, geometry_msgs::Pose pose)
 {
     visualization_msgs::Marker marker;
-    marker.header.frame_id = "scan_odo";
+    marker.header.frame_id = "map";
     marker.header.stamp = ros::Time();
     marker.ns = "my_namespace";
     marker.id = id;
@@ -77,7 +77,7 @@ void publishNodeIdVis(int id, string text, geometry_msgs::Pose pose, ros::Publis
 {
   
     visualization_msgs::Marker marker;
-    marker.header.frame_id = "scan_odo";
+    marker.header.frame_id = "map";
     ros::Time ros_time = ros::Time::now();
     marker.header.stamp = ros_time;
     marker.ns = "node_id";
@@ -134,7 +134,7 @@ void sendOccupancy(vector<geometry_msgs::Point32> &overall_pts, CloudBuffer &clo
     grid_info.info.resolution = resolution;
     grid_info.info.origin.orientation.w = 1.0;
     occupancy_grid_utils::OverlayClouds overlay =
-      occupancy_grid_utils::createCloudOverlay(grid_info, "scan_odo", min_occ, max_range, 2);
+      occupancy_grid_utils::createCloudOverlay(grid_info, "map", min_occ, max_range, 2);
     BOOST_FOREACH  (CloudConstPtr cloud, clouds)
     {
         //cout<<cloud->cloud.points.size()<<endl;
@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
     sensor_msgs::PointCloud src_pc, dst_pc, query_pc;
     nav_msgs::Path factors_msg;
     factors_msg.header.frame_id = src_pc.header.frame_id = dst_pc.header.frame_id = query_pc.header.frame_id =
-            "scan_odo";
+            "map";
 
     istream* data_in = NULL, *pc_data_in = NULL;        // input for data points
 
@@ -455,7 +455,7 @@ int main(int argc, char **argv) {
         list<isam::Node*> nodes = slam.get_nodes();
 
         overall_pts.points.clear();
-        overall_pts.header.frame_id = "scan_odo";
+        overall_pts.header.frame_id = "map";
         int node_idx = start_node-1;
         double last_height = -1;
 
@@ -497,7 +497,7 @@ int main(int argc, char **argv) {
 
             //building final occupancy map
             CloudPtr localized_cloud(new occupancy_grid_utils::LocalizedCloud());
-            localized_cloud->header.frame_id = "scan_odo";
+            localized_cloud->header.frame_id = "map";
             localized_cloud->sensor_pose.orientation = tf::createQuaternionMsgFromYaw(estimated_pt.orientation.z);
             geometry_msgs::Point p = estimated_pt.position;
             p.z = 0.0;
