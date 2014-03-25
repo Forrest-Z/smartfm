@@ -14,7 +14,7 @@
 		<param name="odom_frame_id" value="golfcart/odom"/>
 		<param name="map_frame_id" value = "golfcart/map"/>
 		<param name="speed_threshold" value="0.0"/>
-		<param name="gating_min_size" value="0.0"/>
+		<param name="gating_min_size" value="0.1"/>
 		<param name="graph_seg_k" value="0.5"/>
 		<param name="search_neighbourNum" value="20"/>
 		<param name="control_trainingSample_number" value="10"/>
