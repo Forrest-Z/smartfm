@@ -100,8 +100,8 @@ class compressed_scan_segment
 		//for(size_t i=0; i<rawPoints.size(); i++)cout<<rawPoints[i].x<<","<<rawPoints[i].y<<"\t"; cout<<endl;
 		//cout<<front_dist2background<<","<<back_dist2background<<"\t"<<endl;
 
-		assert(rawPoints.size() == rawIntensities.size());
-		if(rawPoints.size()==0)
+		assert(odomPoints.size() == rawIntensities.size());
+		if(odomPoints.size()==0)
 		{
 			//cout<<"rawPoints size 0"<<endl;
 			geometry_msgs::Point32 virtual_deputy;
@@ -120,11 +120,11 @@ class compressed_scan_segment
 			sigmaN = 0.0;
 		}
 
-		else if(rawPoints.size()==1)
+		else if(odomPoints.size()==1)
 		{
-			KeyPoint[0] = rawPoints.front();
-			KeyPoint[1] = rawPoints.front();
-			KeyPoint[2] = rawPoints.front();
+			KeyPoint[0] = odomPoints.front();
+			KeyPoint[1] = odomPoints.front();
+			KeyPoint[2] = odomPoints.front();
 
 			intensities[0] = rawIntensities.front();
 			intensities[1] = rawIntensities.front();
@@ -135,11 +135,11 @@ class compressed_scan_segment
 			sigmaM = 0.0;
 			sigmaN = 0.0;
 		}
-		else if(rawPoints.size()==2)
+		else if(odomPoints.size()==2)
 		{
-			KeyPoint[0] = rawPoints.front();
-			KeyPoint[1] = rawPoints.front();
-			KeyPoint[2] = rawPoints.back();
+			KeyPoint[0] = odomPoints.front();
+			KeyPoint[1] = odomPoints.front();
+			KeyPoint[2] = odomPoints.back();
 			intensities[0] = rawIntensities.front();
 			intensities[1] = rawIntensities.front();
 			intensities[2] = rawIntensities.back();
@@ -151,23 +151,23 @@ class compressed_scan_segment
 		//in cases where at least 3 points;
 		else
 		{
-			KeyPoint[0] = rawPoints.front();
-			KeyPoint[2] = rawPoints.back();
+			KeyPoint[0] = odomPoints.front();
+			KeyPoint[2] = odomPoints.back();
 			intensities[0] = rawIntensities.front();
 			intensities[2] = rawIntensities.back();
 			//cout<<rawPoints.front().x<< ""<<rawPoints.front().y;
 			size_t longest_serial = 1;
 			float longest_distance = 0.0;
-			for(size_t i=1; i<rawPoints.size(); i++)
+			for(size_t i=1; i<odomPoints.size(); i++)
 			{
-				float pt2line_dist = DistPoint2Line(KeyPoint[0], KeyPoint[2], rawPoints[i]);
+				float pt2line_dist = DistPoint2Line(KeyPoint[0], KeyPoint[2], odomPoints[i]);
 				if(pt2line_dist>longest_distance)
 				{
 					longest_distance = pt2line_dist;
 					longest_serial = i;
 				}
 			}
-			KeyPoint[1] = rawPoints[longest_serial];
+			KeyPoint[1] = odomPoints[longest_serial];
 			intensities[1] = rawIntensities[longest_serial];
 
 			m=1;n=1;
@@ -175,16 +175,18 @@ class compressed_scan_segment
 
 			for(size_t i=1; i<longest_serial; i++)
 			{
-				float pt2line_dist = DistPoint2Line(KeyPoint[0], KeyPoint[1], rawPoints[i]);
+				float pt2line_dist = DistPoint2Line(KeyPoint[0], KeyPoint[1], odomPoints[i]);
 				if(pt2line_dist>sigmaM) sigmaM = pt2line_dist;
 				m++;
 			}
-			for(size_t i=longest_serial+1; i<rawPoints.size()-1; i++)
+
+			for(size_t i=longest_serial+1; i<odomPoints.size()-1; i++)
 			{
-				float pt2line_dist = DistPoint2Line(KeyPoint[1], KeyPoint[2], rawPoints[i]);
+				float pt2line_dist = DistPoint2Line(KeyPoint[1], KeyPoint[2], odomPoints[i]);
 				if(pt2line_dist>sigmaN) sigmaN = pt2line_dist;
 				n++;
 			}
+
 		}
 	}
 
@@ -212,6 +214,50 @@ class object_cluster_segments
 
 	cv::Moments ST_moments;
 	double  ST_Humoment[7];
+
+	//for new feature set;
+	geometry_msgs::Point32 latest_centroid_odom;
+	double rough_direction_odom;
+
+	void GenPosInvariantCompressedSegment()
+	{
+		//1st: calculate cluster's rough moving direction, and determine the local coordinate;
+		std::vector<geometry_msgs::Point32> centroid_position;
+		for(size_t j=0; j<scan_segment_batch.size(); j=j+scan_segment_batch.size()-1)
+		{
+			geometry_msgs::Point32 centroid_tmp;
+			centroid_tmp.x = 0.0;
+			centroid_tmp.y = 0.0;
+			centroid_tmp.z = 0.0;
+			for(size_t k=0; k<scan_segment_batch[j].odomPoints.size(); k++)
+			{
+				centroid_tmp.x = centroid_tmp.x + scan_segment_batch[j].odomPoints[k].x;
+				centroid_tmp.y = centroid_tmp.y + scan_segment_batch[j].odomPoints[k].y;
+				centroid_tmp.z = centroid_tmp.z + scan_segment_batch[j].odomPoints[k].z;
+			}
+			centroid_tmp.x = centroid_tmp.x/(float)scan_segment_batch[j].odomPoints.size();
+			centroid_tmp.y = centroid_tmp.y/(float)scan_segment_batch[j].odomPoints.size();
+			centroid_tmp.z = centroid_tmp.z/(float)scan_segment_batch[j].odomPoints.size();
+			centroid_position.push_back(centroid_tmp);
+		}
+		latest_centroid_odom = centroid_position.back();
+		rough_direction_odom = atan2(centroid_position.back().y-centroid_position.front().y, centroid_position.back().x-centroid_position.front().x);
+		tf::Pose localcoord_inOdom(tf::Matrix3x3(tf::createQuaternionFromYaw(rough_direction_odom)), tf::Vector3(tfScalar(centroid_position.front().x), tfScalar(centroid_position.front().y), tfScalar(centroid_position.front().z)));
+		//ROS_INFO("localcoord_inOdom: %f, %f", localcoord_inOdom.getOrigin().getX(), localcoord_inOdom.getOrigin().getY());
+
+		//2nd: transform the compressed scan segment into the local coordinate;
+		for(size_t j=0; j<scan_segment_batch.size(); j++)
+		{
+			for(size_t k=0; k<3; k++)
+			{
+				tf::Pose keypoint_odom(tf::Matrix3x3(tf::createQuaternionFromYaw(0.0)), tf::Vector3(tfScalar(scan_segment_batch[j].KeyPoint[k].x), tfScalar(scan_segment_batch[j].KeyPoint[k].y), tfScalar(scan_segment_batch[j].KeyPoint[k].z)));
+				tf::Pose keypoint_local = localcoord_inOdom.inverse()*keypoint_odom;
+				scan_segment_batch[j].KeyPoint[k].x = (float)keypoint_local.getOrigin().getX();
+				scan_segment_batch[j].KeyPoint[k].y = (float)keypoint_local.getOrigin().getY();
+				scan_segment_batch[j].KeyPoint[k].z = (float)keypoint_local.getOrigin().getZ();
+			}
+		}
+	}
 };
 
 class DATMO_RawTrainingData

@@ -2,14 +2,15 @@
 
     <node pkg="MODT" type="ST_autolabelling" name="ST_autolabelling" ns="golfcart" output="screen">
     <!--node pkg="MODT" type="spatial_temporal_segmentation" name="spatial_temporal_segmentation" output="screen"-->
-		<param name="program_mode" value="1"/>
+		<param name="program_mode" value="2"/>
 		<param name="skip_scan_times" value="1"/>
 		<param name="downsample_interval" value="1"/>
-		<param name="scanNum_perVector" value="6"/>
-		<param name="feature_vector_length" value="75"/>
+		<param name="scanNum_perVector" value="15"/>
+		<param name="feature_vector_length" value="166"/>
+		
 		<param name="map_image_path" value="$(find MODT)/launch/obstacle_layer_modifiedunknown.png"/>
-		<param name="DATMO_model_path" value="$(find MODT)/data_and_model/plaza6-1.model"/>
-		<param name="DATMO_scale_path" value="$(find MODT)/data_and_model/plaza6-1.range"/>
+		<param name="DATMO_model_path" value="$(find MODT)/data_and_model/plaza151.model"/>
+		<param name="DATMO_scale_path" value="$(find MODT)/data_and_model/plaza151.range"/>
 		<param name="laser_frame_id" value="golfcart/front_bottom_lidar"/>
 		<param name="odom_frame_id" value="golfcart/odom"/>
 		<param name="map_frame_id" value = "golfcart/map"/>
