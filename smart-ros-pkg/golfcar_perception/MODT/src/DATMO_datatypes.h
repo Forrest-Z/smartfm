@@ -210,6 +210,8 @@ class object_cluster_segments
 	vector <geometry_msgs::Pose> pose_InLatestCoord_vector;
 	vector <geometry_msgs::Pose> pose_InOdom_vector;
 	vector <compressed_scan_segment> scan_segment_batch;
+	vector <geometry_msgs::Point32> centroid_position;
+
 	float x, y, thetha, v, omega;
 
 	cv::Moments ST_moments;
@@ -222,8 +224,7 @@ class object_cluster_segments
 	void GenPosInvariantCompressedSegment()
 	{
 		//1st: calculate cluster's rough moving direction, and determine the local coordinate;
-		std::vector<geometry_msgs::Point32> centroid_position;
-		for(size_t j=0; j<scan_segment_batch.size(); j=j+scan_segment_batch.size()-1)
+		for(size_t j=0; j<scan_segment_batch.size(); j++)
 		{
 			geometry_msgs::Point32 centroid_tmp;
 			centroid_tmp.x = 0.0;
@@ -235,13 +236,20 @@ class object_cluster_segments
 				centroid_tmp.y = centroid_tmp.y + scan_segment_batch[j].odomPoints[k].y;
 				centroid_tmp.z = centroid_tmp.z + scan_segment_batch[j].odomPoints[k].z;
 			}
-			centroid_tmp.x = centroid_tmp.x/(float)scan_segment_batch[j].odomPoints.size();
-			centroid_tmp.y = centroid_tmp.y/(float)scan_segment_batch[j].odomPoints.size();
-			centroid_tmp.z = centroid_tmp.z/(float)scan_segment_batch[j].odomPoints.size();
+
+			if(scan_segment_batch[j].odomPoints.size()!=0)
+			{
+				centroid_tmp.x = centroid_tmp.x/(float)scan_segment_batch[j].odomPoints.size();
+				centroid_tmp.y = centroid_tmp.y/(float)scan_segment_batch[j].odomPoints.size();
+				centroid_tmp.z = centroid_tmp.z/(float)scan_segment_batch[j].odomPoints.size();
+			}
 			centroid_position.push_back(centroid_tmp);
 		}
 		latest_centroid_odom = centroid_position.back();
-		rough_direction_odom = atan2(centroid_position.back().y-centroid_position.front().y, centroid_position.back().x-centroid_position.front().x);
+
+		if(centroid_position.back().x-centroid_position.front().x!=0.0) rough_direction_odom = atan2(centroid_position.back().y-centroid_position.front().y, centroid_position.back().x-centroid_position.front().x);
+		else rough_direction_odom = 0.0;
+
 		tf::Pose localcoord_inOdom(tf::Matrix3x3(tf::createQuaternionFromYaw(rough_direction_odom)), tf::Vector3(tfScalar(centroid_position.front().x), tfScalar(centroid_position.front().y), tfScalar(centroid_position.front().z)));
 		//ROS_INFO("localcoord_inOdom: %f, %f", localcoord_inOdom.getOrigin().getX(), localcoord_inOdom.getOrigin().getY());
 
@@ -256,6 +264,13 @@ class object_cluster_segments
 				scan_segment_batch[j].KeyPoint[k].y = (float)keypoint_local.getOrigin().getY();
 				scan_segment_batch[j].KeyPoint[k].z = (float)keypoint_local.getOrigin().getZ();
 			}
+			tf::Pose centroid_odom(tf::Matrix3x3(tf::createQuaternionFromYaw(0.0)), tf::Vector3(tfScalar(centroid_position[j].x), tfScalar(centroid_position[j].y), tfScalar(centroid_position[j].z)));
+			tf::Pose keypoint_local = localcoord_inOdom.inverse()*centroid_odom;
+
+			centroid_position[j].x = (float)keypoint_local.getOrigin().getX();
+			centroid_position[j].y = (float)keypoint_local.getOrigin().getY();
+			centroid_position[j].z = (float)keypoint_local.getOrigin().getZ();
+			//ROS_INFO("centroid_position[j].x, y: %f, %f", centroid_position[j].x, centroid_position[j].y);
 		}
 	}
 };
