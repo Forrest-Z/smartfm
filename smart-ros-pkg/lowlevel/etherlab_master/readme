@@ -1,0 +1,8 @@
+To run the etherlab_master:
+1. Install ethercat-1.5.2 according to INSTALL instruction located at third party
+2. compile this package
+3. /etc/init.d/ethercat start
+4. rosrun etherlab_master DuetflController
+// Optionally running with Joystick
+5. roslaunch Launch 3Joystick.launch 
+6. rosrun kbd_joy_control joy_hal 
