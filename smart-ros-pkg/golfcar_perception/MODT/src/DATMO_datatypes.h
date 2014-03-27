@@ -144,7 +144,7 @@ class compressed_scan_segment
 			intensities[1] = rawIntensities.front();
 			intensities[2] = rawIntensities.back();
 			m = 0;
-			n = 1;
+			n = 0;
 			sigmaM = 0.0;
 			sigmaN = 0.0;
 		}
@@ -170,23 +170,30 @@ class compressed_scan_segment
 			KeyPoint[1] = odomPoints[longest_serial];
 			intensities[1] = rawIntensities[longest_serial];
 
-			m=1;n=1;
+			m=0;n=0;
 			sigmaM = 0.0; sigmaN = 0.0;
 
+			std::vector<float> distance_vecM, distance_vecN;
+			float total_distM=0.0, total_distN = 0.0;
 			for(size_t i=1; i<longest_serial; i++)
 			{
 				float pt2line_dist = DistPoint2Line(KeyPoint[0], KeyPoint[1], odomPoints[i]);
-				if(pt2line_dist>sigmaM) sigmaM = pt2line_dist;
+				total_distM = total_distM + pt2line_dist;
+				distance_vecM.push_back(pt2line_dist);
 				m++;
 			}
+			float avgM = total_distM/((float)m + 0.000000001);
+			for(size_t i=0; i<distance_vecM.size(); i++)sigmaM = sigmaM + (distance_vecM[i]-avgM)*(distance_vecM[i]-avgM)/(float(m)+0.000000001);
 
 			for(size_t i=longest_serial+1; i<odomPoints.size()-1; i++)
 			{
 				float pt2line_dist = DistPoint2Line(KeyPoint[1], KeyPoint[2], odomPoints[i]);
-				if(pt2line_dist>sigmaN) sigmaN = pt2line_dist;
+				total_distN = total_distN + pt2line_dist;
+				distance_vecN.push_back(pt2line_dist);
 				n++;
 			}
-
+			float avgN = total_distN/((float)n + 0.000000001);
+			for(size_t i=0; i<distance_vecN.size(); i++)sigmaN = sigmaN + (distance_vecN[i]-avgN)*(distance_vecN[i]-avgN)/(float(n)+0.000000001);
 		}
 	}
 

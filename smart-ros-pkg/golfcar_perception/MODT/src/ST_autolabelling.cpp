@@ -1170,7 +1170,7 @@ std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster
 	//add new feature;
 	feature_vector.push_back(object_cluster.ST_moments.m00);
 
-	//for(size_t i=0; i<3; i++) feature_vector.push_back(object_cluster.scan_segment_batch.back().intensities[i]);
+	for(size_t i=0; i<3; i++) feature_vector.push_back(object_cluster.scan_segment_batch.back().intensities[i]);
 
 	//remember to reordered the sequence;
 	//use "downsample_interval" to reduce the size of training data;
