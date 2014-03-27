@@ -801,7 +801,9 @@ void DATMO::construct_feature_vector()
 		}
 
 		calc_ST_shapeFeatures(cluster_tmp);
-		object_feature_vectors_.push_back(cluster_tmp);
+
+		//erase cluster who is generated without the latest lidar scan;
+		if(cluster_tmp.scan_segment_batch.back().odomPoints.size()!=0) object_feature_vectors_.push_back(cluster_tmp);
 	}
 	debug_pcl_pub_.publish(constructed_cloud);
 
@@ -836,7 +838,6 @@ void DATMO::construct_feature_vector()
 			//compress the scan_segment (in another sense to extract the feature vector of the scan segment);
 			object_cluster_tmp.scan_segment_batch[j].compress_scan();
 		}
-
 		object_cluster_tmp.GenPosInvariantCompressedSegment();
 	}
 }
@@ -934,6 +935,7 @@ void DATMO::save_training_data()
 		}
 
 		if(object_cluster_tmp.object_type != 4) object_feature_vectors_deputy_tmp.push_back(object_cluster_tmp);
+
 		ROS_INFO("object labelled as %d", object_cluster_tmp.object_type);
 	}
 	object_feature_vectors_ = object_feature_vectors_deputy_tmp;
@@ -1168,7 +1170,6 @@ std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster
 	//add new feature;
 	feature_vector.push_back(object_cluster.ST_moments.m00);
 
-
 	for(size_t i=0; i<3; i++) feature_vector.push_back(object_cluster.scan_segment_batch.back().intensities[i]);
 
 	//remember to reordered the sequence;
@@ -1185,6 +1186,10 @@ std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster
 		feature_vector.push_back((double)object_cluster.scan_segment_batch[k].n);
 		feature_vector.push_back((double)object_cluster.scan_segment_batch[k].sigmaM);
 		feature_vector.push_back((double)object_cluster.scan_segment_batch[k].sigmaN);
+
+		//the last pair of positions is always 0;
+		if(k!= 0) feature_vector.push_back((double)object_cluster.centroid_position[k].x);
+		if(k!= 0) feature_vector.push_back((double)object_cluster.centroid_position[k].y);
 	}
 
 	assert((int)feature_vector.size() == feature_vector_length_);

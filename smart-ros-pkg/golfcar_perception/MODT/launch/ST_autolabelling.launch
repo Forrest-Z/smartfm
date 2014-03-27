@@ -6,7 +6,7 @@
 		<param name="skip_scan_times" value="1"/>
 		<param name="downsample_interval" value="1"/>
 		<param name="scanNum_perVector" value="15"/>
-		<param name="feature_vector_length" value="166"/>
+		<param name="feature_vector_length" value="194"/>
 		
 		<param name="map_image_path" value="$(find MODT)/launch/obstacle_layer_modifiedunknown.png"/>
 		<param name="DATMO_model_path" value="$(find MODT)/data_and_model/plaza151.model"/>
