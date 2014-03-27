@@ -404,7 +404,7 @@ int main(int argc, char **argv) {
 	
 	//if last close loop is not part of the continuous close loop, remove it
 	if(i-last_closeloop_idx == 3) {
-	  if (previous_cl_count < 2) {
+	  if (previous_cl_count < 4) {
 	  cout
                         << "Close loop not continuous, removing previous constraint"
                         << endl;
