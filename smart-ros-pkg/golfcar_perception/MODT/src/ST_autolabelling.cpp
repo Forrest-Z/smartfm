@@ -213,7 +213,10 @@ DATMO::DATMO()
 	private_nh_.param("seg_time_coeff",		seg_time_coeff_,     1.0);
 
 	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "front_bottom_scan", 10);
-	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, map_frame_id_, 10);
+
+	if(program_mode_ == 1) tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, map_frame_id_, 10);
+	else  tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, odom_frame_id_, 10);
+
 	tf_filter_->registerCallback(boost::bind(&DATMO::scanCallback, this, _1));
 	tf_filter_->setTolerance(ros::Duration(0.1));
 
@@ -278,8 +281,8 @@ DATMO::DATMO()
 
 void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 {
-	cout<<verti_scan_in->header.seq <<","<<verti_scan_in->header.frame_id;
-	if(program_mode_==0)visualize_labelled_scan(verti_scan_in);
+	cout<<verti_scan_in->header.seq <<endl;
+	if(program_mode_==0){ROS_INFO("use scan mask"); visualize_labelled_scan(verti_scan_in);}
 
 	if(scan_count_%skip_scan_times_==0) process_scan_flag_ = true;
 	else process_scan_flag_ = false;
@@ -998,9 +1001,9 @@ void DATMO::classify_clusters()
 		*/
 
 		object_cluster_tmp.object_type = DATMO_classifier_->classify_objects(DATMO_feature_vector, vector_length);
-		if(object_cluster_tmp.object_type ==2)
+		if(object_cluster_tmp.object_type ==1)
 		{
-			ROS_DEBUG("pedestrians!!!");
+			ROS_DEBUG("car!!!!!!");
 
 			for(size_t j=0;j<object_cluster_tmp.scan_segment_batch.size(); j++)
 			{
@@ -1017,9 +1020,9 @@ void DATMO::classify_clusters()
 				}
 			}
 		}
-		else if(object_cluster_tmp.object_type ==1)
+		else if(object_cluster_tmp.object_type ==2)
 		{
-			ROS_DEBUG("car!!!");
+			ROS_DEBUG("pedestrian!!!");
 		}
 		else if (object_cluster_tmp.object_type ==0)
 		{
@@ -1217,6 +1220,7 @@ void DATMO::load_labeledScanMasks()
 
 	assert(labelled_masks_.size() == (Lend_serial_ - Lstart_serial_+1));
 	fs_read.release();
+	ROS_INFO("scan masks loaded");
 }
 
 void DATMO::visualize_labelled_scan(const sensor_msgs::LaserScan::ConstPtr& scan_in)
