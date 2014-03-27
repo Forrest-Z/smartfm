@@ -143,6 +143,12 @@ private:
 	int														skip_scan_times_;
 	bool 													process_scan_flag_;
 	int														scan_count_;
+
+	//this influence the quality (& speed) in the graph segmentation: in idea case, the bigger the better; but to speed up the process, this is set to some reasonable number; when setting a small number may lead to over-segmentation;
+	int 													search_neighbourNum_;
+	//this is the k parameter in the graph segmentation paper;
+	double													graph_seg_k_;
+	int 													control_trainingSample_number_;
 };
 
 DATMO::DATMO()
@@ -153,14 +159,21 @@ DATMO::DATMO()
 	private_nh_.param("odom_frame_id",      odom_frame_id_,     std::string("odom"));
 	private_nh_.param("gating_min_size",    gating_min_size_,   0.5);
 	private_nh_.param("gating_max_size",    gating_max_size_,   15.0);
+	private_nh_.param("gating_min_size",    gating_min_size_,   0.5);
 
+	//for vehicle detection;
+	//private_nh_.param("graph_seg_k",    			graph_seg_k_,   		3.0);
+	//private_nh_.param("search_neighbourNum",  	search_neighbourNum_,  	10);
+
+	//for plaza pedestrian environment;
+	private_nh_.param("graph_seg_k",    						graph_seg_k_,   		0.5);
+	private_nh_.param("search_neighbourNum",  					search_neighbourNum_,  	50);
+	private_nh_.param("control_trainingSample_number",  		control_trainingSample_number_,  	10);
 
 	//program_mode: "0" - save training data mode;
 	//				"1" - online classification mode;
 	private_nh_.param("program_mode",			program_mode_,     		0);
 	private_nh_.param("feature_num",			feature_num_,       	13);
-	private_nh_.param("speed_threshold",		speed_threshold_,      	2.0);
-	private_nh_.param("speed_threshold",		speed_threshold_,      	2.0);
 	private_nh_.param("speed_threshold",		speed_threshold_,      	2.0);
 
 	//to reduce the size of feature vector;
@@ -184,8 +197,8 @@ DATMO::DATMO()
 	private_nh_.param("img_side_length",	img_side_length_,    50.0);
 	private_nh_.param("img_resolution",		img_resolution_,     0.2);
 
-	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "front_bottom_scan", 100);
-	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, odom_frame_id_, 100);
+	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "front_bottom_scan", 10);
+	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, odom_frame_id_, 10);
 	tf_filter_->registerCallback(boost::bind(&DATMO::scanCallback, this, _1));
 	tf_filter_->setTolerance(ros::Duration(0.1));
 
@@ -287,9 +300,7 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 
 			bool to_process_flag;
 			//to control the same size of training sample, even when the time window is different;
-			int control_trainingSample_number = 10;
-
-			if(scan_count_%control_trainingSample_number==0) to_process_flag = true;
+			if(scan_count_%control_trainingSample_number_==0) to_process_flag = true;
 			else to_process_flag = false;
 
 			process_accumulated_data(to_process_flag);
@@ -387,7 +398,7 @@ void DATMO::graph_segmentation()
 	pcl::KdTreeFLANN<pcl::PointXYZRGB> kdtree;
 	if(combined_pcl_.points.size()==0) return;
 	kdtree.setInputCloud (combined_pcl_.makeShared());
-	int K = 10;
+	int K = search_neighbourNum_;
 
 	for(size_t i=0; i<combined_pcl_.points.size(); i++)
 	{
@@ -410,7 +421,7 @@ void DATMO::graph_segmentation()
 	int edge_num = (int)edge_vector.size();
 	//edge edges[edge_num];
 	//for(int i=0; i<edge_num; i++) edges[i] = edge_vector[i];
-	float c = 3.0;
+	float c = (float)graph_seg_k_;
 	sw.end();
 
 	sw.start("2nd: graph segmentation");
@@ -937,7 +948,7 @@ void DATMO::classify_clusters()
 		object_cluster_tmp.object_type = DATMO_classifier_->classify_objects(DATMO_feature_vector, vector_length);
 		if(object_cluster_tmp.object_type ==1)
 		{
-			ROS_INFO("vehicle!!!");
+			ROS_DEBUG("vehicle!!!");
 
 			for(size_t j=0;j<object_cluster_tmp.scan_segment_batch.size(); j++)
 			{
@@ -956,15 +967,15 @@ void DATMO::classify_clusters()
 		}
 		else if(object_cluster_tmp.object_type ==2)
 		{
-			ROS_INFO("motorbike!!!");
+			ROS_DEBUG("motorbike!!!");
 		}
 		else if (object_cluster_tmp.object_type ==0)
 		{
-			ROS_INFO("background noise");
+			ROS_DEBUG("background noise");
 		}
 		else
 		{
-			ROS_INFO("other type of objects");
+			ROS_DEBUG("other type of objects");
 		}
 	}
 	vehicle_pcl_pub_.publish(vehicle_cloud);
@@ -972,7 +983,7 @@ void DATMO::classify_clusters()
 
 void DATMO::calc_rough_pose()
 {
-	ROS_INFO("calculate cluster pose");
+	ROS_DEBUG("calculate cluster pose");
 	rough_poses_.header = cloud_vector_.back().header;
 	rough_poses_.poses.clear();
 
@@ -1015,7 +1026,7 @@ void DATMO::calc_rough_pose()
 		float delt_x = centroid_position.back().x-centroid_position.front().x;
 		float delt_y = centroid_position.back().y-centroid_position.front().y;
 		float thetha = std::atan2(delt_y, delt_x);
-		ROS_INFO("centroid_position front: (%f, %f), back:(%f, %f), delt: (%f, %f), thetha: %f", centroid_position.front().x, centroid_position.front().y, centroid_position.back().x, centroid_position.back ().y, delt_x, delt_y, thetha );
+		ROS_DEBUG("centroid_position front: (%f, %f), back:(%f, %f), delt: (%f, %f), thetha: %f", centroid_position.front().x, centroid_position.front().y, centroid_position.back().x, centroid_position.back ().y, delt_x, delt_y, thetha );
 		tf::Pose pose_array;
 		pose_array.setOrigin( tf::Vector3(total_centroid_vis.x, total_centroid_vis.y, 0.0) );
 		pose_array.setRotation( tf::createQuaternionFromYaw(thetha) );

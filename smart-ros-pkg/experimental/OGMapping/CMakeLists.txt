@@ -33,6 +33,9 @@ rosbuild_add_executable(OGMapper src/OGMapper.cpp)
 target_link_libraries(OGMapper SDL SDL_image yaml-cpp)
 rosbuild_link_boost(OGMapper signals)
 
+rosbuild_add_executable(grid_utils_mapper src/grid_utils_mapper.cpp)
+rosbuild_link_boost(grid_utils_mapper signals)
+
 rosbuild_add_executable(save_pub src/save_pub.cpp)
 
 rosbuild_add_executable(skeletonization src/skeletonization.cpp)

@@ -1,0 +1,15 @@
+<package>
+  <description brief="old_msgs">
+
+     old_msgs
+
+  </description>
+  <author>demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/old_msgs</url>
+  <depend package="std_msgs"/>
+
+</package>
+
+

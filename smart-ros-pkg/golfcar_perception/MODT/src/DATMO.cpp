@@ -132,6 +132,7 @@ void DATMO::initialize_roadmap()
 	Mat element = getStructuringElement( MORPH_RECT, Size( 2*dilation_size + 1, 2*dilation_size+1 ), Point( dilation_size, dilation_size ) );
 	erode(road_map_prior_, road_map_prior_, element);
 }
+
 inline bool DATMO::check_onRoad(geometry_msgs::Point32 &point)
 {
 	Point2i image_point;
