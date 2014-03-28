@@ -30,6 +30,8 @@ public:
 	MySQLHelper *mysql_;
         map<int, int> unique_nodes_;
         map<int, geometry_msgs::Point> nodes_pose_;
+	ros::Publisher source_pub_, match_pub_, matched_pub_;
+	CsmGPU<pcl::PointNormal> *cm_;
 	GraphParticleFilter(isam::Slam *slam, int particle_no, int skip_reading, string frontend_file):
 		slam_(slam), skip_reading_(skip_reading), frontend_file_(frontend_file)
 
@@ -38,6 +40,10 @@ public:
 	  //eng.seed(seed);
 	  //cout<<seed<<" seed is used"<<endl;
 		//initialize particles with node_idx as -1
+		ros::NodeHandle nh;
+		source_pub_ = nh.advertise<pcl::PointCloud<pcl::PointNormal> >("gf_source_cloud", 1, true);
+		match_pub_ = nh.advertise<pcl::PointCloud<pcl::PointNormal> >("gf_match_cloud", 1, true);
+		matched_pub_ = nh.advertise<pcl::PointCloud<pcl::PointNormal> >("gf_matched_cloud", 1, true);
 		particles_.resize(particle_no);
 	}
 
@@ -214,20 +220,23 @@ private:
 		pcl::io::loadPCDFile(input_file.str(), input_cloud);
 		cout<<"Load pcd file: "<<input_file.str()<<endl;
 		fmutil::Stopwatch ncm1("NCM initialize");
-		vector<pcl::PointCloud<pcl::PointNormal> > input_clouds = append_input_cloud(input_cloud, frontend_file, input_file.str());
-		//input_cloud = pcl_downsample(input_cloud, res_*2, res_*2, res_*2);
 		matching_clouds_[matching_node*skip_reading_] = input_cloud;
 		
-		CsmGPU<pcl::PointNormal> csm_gpu(0.1, cv::Point2d(50.0, 75.0), input_cloud, false);
+		vector<pcl::PointCloud<pcl::PointNormal> > input_clouds = append_input_cloud(input_cloud, frontend_file, input_file.str());
+		//input_cloud = pcl_downsample(input_cloud, res_*2, res_*2, res_*2);
+		cout<<"Src cloud "<<matching_node*skip_reading_<<" size="<< input_cloud.points.size()<<endl;
+		delete cm_;
+		cm_ = new CsmGPU<pcl::PointNormal>(0.1, cv::Point2d(50.0, 75.0), input_cloud, false);
 		ncm1.end();
 		fmutil::Stopwatch ncm2("NCM bruteForceSearch");
 		fmutil::Stopwatch ncm3("NCM veriScore");
-		
+		input_cloud.header.stamp = ros::Time::now();
+		input_cloud.header.frame_id = "map";
+		//source_pub_.publish(input_cloud);
 		
 		//#pragma omp parallel for
 		for(size_t i=0; i<unique_nodes_array.size(); i++)
 		{
-			double score;
 			//was using unique_nodes by directly advancing the iterator using STL, does not work
 
 			//reminder: pc_vec_ has the complete data
@@ -236,20 +245,34 @@ private:
 			sd.node_src = unique_nodes_array[i]*skip_reading_;
 			int j = sd.node_src;
 			if(matching_clouds_.find(j) == matching_clouds_.end()) {
-			  score = 0.;
+			  sd.score = 0.;
+			  
 			}
 			else {
 			  pcl::PointCloud<pcl::PointNormal> matching_cloud;
 			  //#pragma omp critical
 			  matching_cloud = matching_clouds_[j];
+			  matching_cloud.header.stamp = ros::Time::now();
+			  matching_cloud.header.frame_id = "map";
 			  ncm2.start();
 			  poseResult best_match;
 			  best_match.x = best_match.y = best_match.r = 0.0;
-			  best_match = csm_gpu.getBestMatch(2.0, 2.0, 5, 20, 20, 180, matching_cloud, best_match);
-			  best_match = csm_gpu.getBestMatch(0.5, 0.5, 2, 2, 2, 10, matching_cloud, best_match);
-			  best_match = csm_gpu.getBestMatch(0.1, 0.1, 0.5, 0.5, 0.5, 4.0, matching_cloud, best_match);
+			  //match_pub_.publish(matching_cloud);
+			  ros::spinOnce();
+// 			  cout<<"Matching cloud "<<j<<" size="<< matching_cloud.points.size()<<endl;
+			  
+		
+		//why not the same result? The input and matching cloud appears to be the same...
+			  //Remember to add PCL_NORMAL compiler flags!!!
+			  best_match = cm_->getBestMatch(2.0, 2.0, 5, 20, 20, 180, matching_cloud, best_match);
+// 	  cout<<"Best score 1 found: "<< best_match.x<<", "<<best_match.y<<", "<<best_match.r<<": "<<best_match.score<<endl;
+			  best_match = cm_->getBestMatch(0.5, 0.5, 2, 2, 2, 10, matching_cloud, best_match);
+// 	  cout<<"Best score 2 found: "<< best_match.x<<", "<<best_match.y<<", "<<best_match.r<<": "<<best_match.score<<endl;
+			  best_match = cm_->getBestMatch(0.1, 0.1, 0.5, 0.5, 0.5, 4.0, matching_cloud, best_match);
+// 	  cout<<"Best score 3 found: "<< best_match.x<<", "<<best_match.y<<", "<<best_match.r<<": "<<best_match.score<<endl;
 			  ncm2.end(false);
 			  sd.score = best_match.score;
+// 			  cout<<"i x j "<<sd.node_dst<<" x "<<j<<" score= "<<sd.score<<endl;
 			  Eigen::Vector3f bl_trans(-best_match.x, -best_match.y, 0.);
 			  double yaw_rotate = -best_match.r / 180. * M_PI;
 			  Eigen::Quaternionf bl_rotation(cos(yaw_rotate / 2.), 0, 0,
@@ -260,11 +283,14 @@ private:
 			  t = t.inverse();
 			  double yaw, pitch, roll;
 			  boost::tie(yaw,pitch,roll) = matrixToYawPitchRoll(t.rotation());
-			  sd.x = t.translation()(0);
-			  sd.y = t.translation()(1);
-			  sd.t = yaw/M_PI*180;
-			  
-			  //sd.score *= 100;
+			  sd.x = best_match.x;//t.translation()(0);
+			  sd.y = best_match.y;//t.translation()(1);
+			  sd.t = best_match.r;//yaw/M_PI*180;
+			  sd.score_ver = sd.score;
+			  //sd.score = 100;
+			  //std::cout << "Press ENTER to continue...";
+			  //std::cin.ignore( std::numeric_limits <std::streamsize> ::max(), '\n' );
+
 			}
 			//#pragma omp critical
 			  scores[unique_nodes_array[i]] = sd;
@@ -333,7 +359,7 @@ private:
 		//layout the array weight probabilities with locally cached scores
 		for(size_t i=0; i<particles_.size(); i++)
 		{
-			//cout<<round(particles_[i].node_idx)<<endl;
+// 			cout<<round(particles_[i].node_idx)<<endl;
 			weight_prob[i] = local_cached_weight[round(particles_[i].node_idx)];
 		}
 
@@ -456,10 +482,10 @@ private:
 		sd_ = scores[max_neighbor_node_id];
 		cout<<"Max match details: "<<sd_.x<<" "<<sd_.y<<" "<<sd_.t<<" "<<sd_.score<<" "<<sd_.score_ver<<" "<<sd_.node_src<<" "<<sd_.node_dst<<endl;
 		//just a hack for not to activate a close loop when the graph is too small
-		if( matching_node < 100)
+		if( matching_node < 20)
 				return -1;
 		
-		if( max_neighbor_score >30. && max_neighbor_node_id != -1 && max_accu > 3)
+		if( max_neighbor_score >65. && max_neighbor_node_id != -1 && max_accu > 3)
 		{
 				cout<<"close loop found at node "<<max_neighbor_node_id <<" with score "<<max_neighbor_score<<endl;
 				return max_neighbor_node_id;

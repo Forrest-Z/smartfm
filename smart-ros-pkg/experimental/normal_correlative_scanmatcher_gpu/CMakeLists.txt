@@ -37,6 +37,11 @@ FIND_LIBRARY(cudalibs cudart /usr/local/cuda/lib64)
 INCLUDE_DIRECTORIES( "/usr/include/mysql" )
 rosbuild_add_executable(isam_full src/isam_full.cpp src/dbgstream.cpp)
 target_link_libraries(isam_full ${ISAM_LIBS} ${cudalibs} ${OpenCV_LIBS} mysqlpp)
+
+set_property(
+   TARGET isam_full
+   PROPERTY COMPILE_DEFINITIONS PCLNORMAL
+   )   
 rosbuild_add_openmp_flags(isam_full)
 # 
 # rosbuild_add_executable(all_matching src/all_matching.cpp src/dbgstream.cpp)
