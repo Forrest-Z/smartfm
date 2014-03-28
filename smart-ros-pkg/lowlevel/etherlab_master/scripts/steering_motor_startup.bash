@@ -1,10 +1,12 @@
+#!/bin/bash
+
 package_path=`rospack find etherlab_master`
 motor_port=1
 bash $package_path/scripts/0x1600.bash $motor_port
 bash $package_path/scripts/0x1601.bash $motor_port
 cmd="sudo /opt/etherlab/bin/ethercat download --position=$motor_port --type "
 #everything in 0.1 deg and secs
-uint32 0x6093 1 8192
+$cmd uint32 0x6093 1 8192
 $cmd uint32 0x6093 2 25
 $cmd uint32 0x6094 1 3
 $cmd uint32 0x6094 2 10

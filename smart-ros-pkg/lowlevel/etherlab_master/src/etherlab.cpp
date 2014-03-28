@@ -127,6 +127,9 @@ fm_auto::DuetflEthercatController::DuetflEthercatController()
     needDoHoming_SlaveZero = false;
     needDoHoming_SlaveOne = false;
 
+    target_velocity_slave_zero = 0;
+    target_velocity_slave_one = 0;
+
     steering_slave_number = 1;
     braking_slave_number = 0;
 }
@@ -966,13 +969,14 @@ bool fm_auto::DuetflEthercatController::initSDOs_SlaveOne()
 bool fm_auto::DuetflEthercatController::initROS()
 {
     ros::NodeHandle n;
-    n.param("has_slave_one", hasSlaveOne, true);
-    n.param("need_do_homing_slave_zero", needDoHoming_SlaveZero, true);
-    n.param("need_do_homing_slave_one", needDoHoming_SlaveOne, true);
-    n.param("max_steering_angle", maxSteeringCmd, 4500); // 450 degree
-    n.param("max_braking_angle", maxBrakingCmd, 600); // 60 degree
-    n.param("steering_slave_number", steering_slave_number, 1); // steering is default salve one
-    n.param("braking_slave_number", braking_slave_number, 0); // braking is default salve zero
+    ros::NodeHandle priv_nh("~");
+    priv_nh.param("has_slave_one", hasSlaveOne, true);
+    priv_nh.param("need_do_homing_slave_zero", needDoHoming_SlaveZero, false);
+    priv_nh.param("need_do_homing_slave_one", needDoHoming_SlaveOne, false);
+    priv_nh.param("max_steering_angle", maxSteeringCmd, 6300); // 450 degree
+    priv_nh.param("max_braking_angle", maxBrakingCmd, 1000); // 60 degree
+    priv_nh.param("steering_slave_number", steering_slave_number, 1); // steering is default salve one
+    priv_nh.param("braking_slave_number", braking_slave_number, 0); // braking is default salve zero
 
     ROS_INFO("has_slave_one %d\n",hasSlaveOne);
     ROS_INFO("need_do_homing_slave_zero %d\n",needDoHoming_SlaveZero);
@@ -2030,9 +2034,9 @@ bool fm_auto::DuetflEthercatController::writePDOData_VelocityControl()
         calculateTargetVelocity_SlaveOne(steering_cmd_new);
         writeTargetVelocity_PDO_SlaveOne(target_velocity_slave_one);
 
-        if(steering_slave_number == 0)  // slave zero
+        if(braking_slave_number == 0)  // slave zero
         {
-            calculateTargetVelocity_SlaveZero(steering_cmd_new);
+            calculateTargetVelocity_SlaveZero(braking_cmd_new);
             writeTargetVelocity_PDO_SlaveZero(target_velocity_slave_zero);
         }
     }
