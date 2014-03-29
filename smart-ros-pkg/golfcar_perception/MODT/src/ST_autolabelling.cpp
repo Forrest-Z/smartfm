@@ -1201,6 +1201,7 @@ std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster
 	{
 		feature_vector.push_back(object_cluster.ST_Humoment[i]);
 	}
+	//feature 16;
 	feature_vector.push_back(object_cluster.ST_moments.m00);
 
 	/*
@@ -1231,17 +1232,20 @@ std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster
 		feature_vector.push_back((double)object_cluster.scan_segment_batch[k].sigmaN);
 
 		//the last pair of positions is always 0;
+		/*
 		if(pose_variant_features_)
 		{
 			feature_vector.push_back((double)object_cluster.rawpoints_centroids[k].x);
 			feature_vector.push_back((double)object_cluster.rawpoints_centroids[k].y);
 		}
-		else
+		*/
+
+		if(!pose_variant_features_)
 		{
 			if(k!= 0)
 			{
-				feature_vector.push_back((double)object_cluster.centroid_position[k].x);
-				feature_vector.push_back((double)object_cluster.centroid_position[k].y);
+				feature_vector.push_back((double)object_cluster.cluster_attached_centroids[k].x);
+				feature_vector.push_back((double)object_cluster.cluster_attached_centroids[k].y);
 			}
 		}
 	}

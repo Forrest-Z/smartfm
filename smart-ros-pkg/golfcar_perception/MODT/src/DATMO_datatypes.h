@@ -328,7 +328,7 @@ class object_cluster_segments
 
 	//in latest-Baselink frame;
 	double rough_direction_latestLIDAR;
-	vector <geometry_msgs::Point32> centroid_position, rawpoints_centroids;
+	vector <geometry_msgs::Point32> rawpoints_centroids, centroid_position, cluster_attached_centroids;
 
 	void GetCentroid_rawPoints()
 	{
@@ -401,9 +401,11 @@ class object_cluster_segments
 			}
 			tf::Pose centroid_LIDAR(tf::Matrix3x3(tf::createQuaternionFromYaw(0.0)), tf::Vector3(tfScalar(centroid_position[j].x), tfScalar(centroid_position[j].y), tfScalar(centroid_position[j].z)));
 			tf::Pose keypoint_local = localcoord_inLIDAR.inverse()*centroid_LIDAR;
-			centroid_position[j].x = (float)keypoint_local.getOrigin().getX();
-			centroid_position[j].y = (float)keypoint_local.getOrigin().getY();
-			centroid_position[j].z = (float)keypoint_local.getOrigin().getZ();
+			geometry_msgs::Point32 cluster_attached_coord_centroid;
+			cluster_attached_coord_centroid.x = (float)keypoint_local.getOrigin().getX();
+			cluster_attached_coord_centroid.y = (float)keypoint_local.getOrigin().getY();
+			cluster_attached_coord_centroid.z = (float)keypoint_local.getOrigin().getZ();
+			cluster_attached_centroids.push_back(cluster_attached_coord_centroid);
 		}
 	}
 
