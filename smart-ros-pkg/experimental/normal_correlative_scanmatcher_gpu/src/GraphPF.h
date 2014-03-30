@@ -154,9 +154,16 @@ private:
 	    return die();
 	}
 
-	int roll_weighted_die(vector<double> &probabilities) {
+	int roll_weighted_die(vector<double> &probabilities, bool debug=false) {
 		std::vector<double> cumulative;
-
+		if(debug){
+		  cout<<"*****Start rolling the die*****"<<endl;
+		  for(size_t i=0; i<probabilities.size(); i++){
+		    cout<<probabilities[i]<<" ";
+		  }
+		  cout<<endl;
+		  cout<<"**********End display***********"<<endl;
+		}
 		std::partial_sum(probabilities.begin(), probabilities.end(),
 				std::back_inserter(cumulative));
 		boost::uniform_real<> dist(0, cumulative.back());
@@ -225,7 +232,10 @@ private:
 		vector<pcl::PointCloud<pcl::PointNormal> > input_clouds = append_input_cloud(input_cloud, frontend_file, input_file.str());
 		//input_cloud = pcl_downsample(input_cloud, res_*2, res_*2, res_*2);
 		cout<<"Src cloud "<<matching_node*skip_reading_<<" size="<< input_cloud.points.size()<<endl;
-		delete cm_;
+		size_t free_byte ;
+		size_t total_byte ;
+		cudaMemGetInfo( &free_byte, &total_byte ) ;
+		cout<<"Cuda usage before: remaining "<<free_byte/1024000.0<<"MiB out of "<<total_byte/1024000.0<<"MiB"<<endl;
 		cm_ = new CsmGPU<pcl::PointNormal>(0.1, cv::Point2d(50.0, 75.0), input_cloud, false);
 		ncm1.end();
 		fmutil::Stopwatch ncm2("NCM bruteForceSearch");
@@ -244,7 +254,8 @@ private:
 			sd.node_dst = matching_node*skip_reading_;
 			sd.node_src = unique_nodes_array[i]*skip_reading_;
 			int j = sd.node_src;
-			if(matching_clouds_.find(j) == matching_clouds_.end()) {
+			//added the second OR to ensure node too near not going to be evaluated
+			if(matching_clouds_.find(j) == matching_clouds_.end() || abs(unique_nodes_array[i] - matching_node) < 20) {
 			  sd.score = 0.;
 			  
 			}
@@ -273,19 +284,9 @@ private:
 			  ncm2.end(false);
 			  sd.score = best_match.score;
 // 			  cout<<"i x j "<<sd.node_dst<<" x "<<j<<" score= "<<sd.score<<endl;
-			  Eigen::Vector3f bl_trans(-best_match.x, -best_match.y, 0.);
-			  double yaw_rotate = -best_match.r / 180. * M_PI;
-			  Eigen::Quaternionf bl_rotation(cos(yaw_rotate / 2.), 0, 0,
-			  -sin(yaw_rotate / 2.));
-			  Eigen::Translation3f translation (bl_trans);
-			  Eigen::Affine3f t;
-			  t = translation * bl_rotation;
-			  t = t.inverse();
-			  double yaw, pitch, roll;
-			  boost::tie(yaw,pitch,roll) = matrixToYawPitchRoll(t.rotation());
-			  sd.x = best_match.x;//t.translation()(0);
-			  sd.y = best_match.y;//t.translation()(1);
-			  sd.t = best_match.r;//yaw/M_PI*180;
+			  sd.x = best_match.x;
+			  sd.y = best_match.y;
+			  sd.t = best_match.r;
 			  sd.score_ver = sd.score;
 			  //sd.score = 100;
 			  //std::cout << "Press ENTER to continue...";
@@ -295,7 +296,10 @@ private:
 			//#pragma omp critical
 			  scores[unique_nodes_array[i]] = sd;
 		}
-		
+		delete cm_;
+		cudaMemGetInfo( &free_byte, &total_byte ) ;
+		cout<<"Cuda usage after: remaining "<<free_byte/1024000.0<<"MiB out of "<<total_byte/1024000.0<<"MiB"<<endl;
+	      
 		/*
 		for(size_t i=0; i<unique_nodes_array.size(); i++)
 		{
@@ -377,8 +381,9 @@ private:
                 //get the distribution of node according to distance and node idx
                 geometry_msgs::Point latest_pose = nodes_pose_[matching_node-1];
                 vector<double> weighted_node_distance;
-                cout<<"Weighted dist: "<<endl;
-                for(int i=0; i<matching_node-10; i++) {
+                cout<<"Weighted dist with xy: "<<latest_pose.x<<"|"<<latest_pose.y<<endl;
+		int node_offset = 20; //was 10 with skip = 2
+                for(int i=0; i<matching_node-node_offset; i++) {
                   if(nodes_pose_.find(i) == nodes_pose_.end()) {
                     weighted_node_distance.push_back(1.0/sqrt(latest_pose.x*latest_pose.x + latest_pose.y*latest_pose.y));
                     continue;
@@ -388,12 +393,14 @@ private:
                   double dist_y = nodes_pose_[i].y - latest_pose.y;
                   double dist = sqrt(dist_x*dist_x + dist_y*dist_y);
                   weighted_node_distance.push_back(1.0/dist);
-                  //cout<<i<<":"<<dist<<" ";
+                  cout<<i<<":"<<nodes_pose_[i].x<<"|"<<nodes_pose_[i].y<<" ";
                 }
-                //cout<<endl;
+                cout<<endl;
                 cout<<"Random selection: "<<endl;
 		for(size_t i=0; i<inject_particle_no; i++)
 		{
+		  bool debug = false;
+		  if(i==0) debug = true;
 			//int random_node_idx = 
 			int random_node_idx; 
 			int node_number = slam_->get_nodes().size()-1;
@@ -402,7 +409,7 @@ private:
 			if(weighted_node_distance.size() ==0) 
                          random_node_idx = roll_die(node_number);
                         else
-			  random_node_idx = roll_weighted_die(weighted_node_distance);
+			  random_node_idx = roll_weighted_die(weighted_node_distance, debug);
                   //      if(weighted_node_distance.size() > 0)
                     //      weighted_node_distance.erase(weighted_node_distance.begin()+random_node_idx);
 			particle part;

@@ -9,6 +9,7 @@ extern host_vector<int> voronoi_jfa(int voronoi_width, int voronoi_height,
 		 device_vector<cudaPointNormal> &dev_p,
 		 device_vector<int> &dev_voronoi_data, bool gotNormal
 		);
+extern void clearCSM();
 extern void setDevFreeSpaceData(device_vector<float> &device_free_space);
 
 bool rowMajorDataSort(rowMajorData d1, rowMajorData d2){
@@ -30,10 +31,25 @@ void CsmGPU<T>::getVoronoiTemplate(pcl::PointCloud<T> &cloud, bool visualize){
 }
 
 template <class T>
+CsmGPU<T>::~CsmGPU(){
+  clearCSM();
+}
+
+template <class T>
 CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size, 
 	  pcl::PointCloud<T> &cloud, bool visualize):
   res_(res)
-  {  
+  {
+    cudaSetDevice(0);
+    cudaDeviceSynchronize();
+    cudaThreadSynchronize();
+    
+    size_t free_byte ;
+    size_t total_byte ;
+
+    cudaMemGetInfo( &free_byte, &total_byte ) ;
+    cout<<"Cuda usage: remaining "<<free_byte/1024000.0<<"MiB out of "<<total_byte/1024000.0<<"MiB"<<endl;
+	      
     cv::Size voronoi_size(template_size.x/res_, template_size.y/res_);
     voronoi_size_ = voronoi_size;
     vector<cv::Vec3b> id_rgbs;
@@ -44,7 +60,7 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
     gotNormal_ = true;
     if(pclFieldList.find("normal") == string::npos)
       gotNormal_ = false;
-    getVoronoiTemplate(cloud, false);
+    getVoronoiTemplate(cloud, visualize);
   }
   
   void drawPathOnOpenCV(ClipperLib::Path &path, cv::Mat &freeSpaceTemplate, cv::Scalar color, 
@@ -191,7 +207,7 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
     vector<double> r_array;
     for(double r = -r_range+offset.r; r<= r_range+offset.r; r+=r_step) r_array.push_back(r);
     vector<poseResult> results(r_array.size());
-#pragma omp parallel for
+//#pragma omp parallel for
     for(size_t i=0; i<r_array.size(); i++){
       pcl::PointCloud<T> cloud_out;
       Eigen::Matrix4f transform;

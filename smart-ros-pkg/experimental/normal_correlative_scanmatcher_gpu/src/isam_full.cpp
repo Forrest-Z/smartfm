@@ -228,12 +228,13 @@ int main(int argc, char **argv) {
     eigen_noise(4, 4) = 900;
     eigen_noise(5, 5) = 900;
     Eigen::MatrixXd cl_noise(6, 6);
-    eigen_noise(0, 0) = 50;
-    eigen_noise(1, 1) = 50;
-    eigen_noise(2, 2) = 100;
-    eigen_noise(3, 3) = 900;
-    eigen_noise(4, 4) = 900;
-    eigen_noise(5, 5) = 900;
+    eigen_noise(0, 0) = 600;
+    eigen_noise(1, 1) = 600;
+    eigen_noise(2, 2) = 600;
+    eigen_noise(3, 3) = 600;
+    eigen_noise(4, 4) = 600;
+    eigen_noise(5, 5) = 600;
+    isam::Noise noise6 = isam::Information(100. * isam::eye(6));
 
     isam::Noise noise3 = isam::Information(eigen_noise);
 
@@ -264,6 +265,7 @@ int main(int argc, char **argv) {
     int last_closeloop_idx = -1;
     //comment out the cout part to only output node info
     for (int i = start_node; i < size; i ++) {
+      if(!ros::ok()) exit(0);
         cout << "**************************" << endl;
         fmutil::Stopwatch sw("overall", true);
         //vector<geometry_msgs::Point32> combines_prior, prior_m5, prior_p5;
@@ -314,20 +316,14 @@ int main(int argc, char **argv) {
 	    sd = graphPF.sd_;
 	    cout<<"mysql.getData: "<<sd.x<<" "<<sd.y<<" "<<sd.t<<" "<<sd.score<<" "<<sd.score_ver<<" "<<sd.node_src<<" "<<sd.node_dst<<endl;
             pcl::PointCloud<pcl::PointNormal> matching_cloud = matching_clouds[j];
-            double yaw_rotate = sd.t / 180. * M_PI;
-            Eigen::Quaternionf bl_rotation(cos(yaw_rotate / 2.), 0, 0,
-                    -sin(yaw_rotate / 2.));
-            Eigen::Vector3f bl_trans(sd.x, sd.y, 0.);
-            Eigen::Affine3f t;
-            Eigen::Translation3f translation(bl_trans);
-            t = translation * bl_rotation;
-            t = t.inverse();
+            Eigen::Matrix4f transform;
+	  double d = sd.t/180*M_PI;
+	  transform<<cos(d),-sin(d),0,sd.x,
+		      sin(d),cos(d),0,sd.y,
+		      0,0,1,0,
+		      0,0,0,1;
             pcl::transformPointCloudWithNormals<pcl::PointNormal>(
-                    matching_cloud, matching_cloud, t);
-            sd.x = t.translation()(0);
-            sd.y = t.translation()(1);
-            double pitch, roll;
-            mat2RPY(t.rotation(), roll, pitch, sd.t); 
+                    matching_cloud, matching_cloud, transform);
             
             for (size_t k = 0; k < matching_cloud.points.size(); k++) {
 
@@ -363,15 +359,15 @@ int main(int argc, char **argv) {
             string str;
             //cin >> str;
             isam::Pose3d odometry(sd.x,
-                    sd.y, 0.00001, sd.t,
+                    sd.y, 0.00001, sd.t/180.0*M_PI,
                     0.00001, 0.00001); // x,y,theta
 
             isam::Noise noise = isam::Information(cl_noise);
-            isam::Pose3d_Pose3d_Factor* constraint =
+            isam::Pose3d_Pose3d_Factor* cl_constraint =
                     new isam::Pose3d_Pose3d_Factor(pose_nodes[i],
                             pose_nodes[j], odometry, noise3);
-            slam.add_factor(constraint);
-            current_constraint = constraint;
+            slam.add_factor(cl_constraint);
+            current_constraint = cl_constraint;
             slam.batch_optimization();
             double diff_opt_error = 0;
             diff_opt_error = opt_error - slam._opt.opt_error_;
@@ -386,9 +382,11 @@ int main(int argc, char **argv) {
                 cout << "Removing factor" << endl;
                 //add to false close loop count at GraphPF
                 //falseCL_node_[j/skip_reading]++;
-                slam.remove_factor(constraint);
-                slam.update();
+                slam.remove_factor(current_constraint);
+		 slam.remove_factor(constraint);
+                //slam.update();
                 slam.batch_optimization();
+		slam.add_factor(constraint);
                 cout << "Batch optimized again" << endl;
                 current_cl = false;
 
@@ -404,7 +402,7 @@ int main(int argc, char **argv) {
 	
 	//if last close loop is not part of the continuous close loop, remove it
 	if(i-last_closeloop_idx == 3) {
-	  if (previous_cl_count < 4) {
+	  if (previous_cl_count < 2) {
 	  cout
                         << "Close loop not continuous, removing previous constraint"
                         << endl;
@@ -466,6 +464,15 @@ int main(int argc, char **argv) {
         int node_id = 4;
         CloudBuffer clouds(3000);
         graphPF.nodes_pose_.clear();
+	
+	//using Powell's dog leg optimizer that optionally a robust estimator (pseudo Huber) to deal with occasional outliers
+	//hopefully solve the optimizer disintegration when an wrong node is added and removed
+	//not using it, some modification needed to bring on the residual value
+	//Now remove both the close loop factor and last odometry's node
+// 	isam::Properties prop = slam.properties();
+// 	prop.method = isam::DOG_LEG;
+// 	slam.set_properties(prop);
+
         for (std::list<isam::Node*>::const_iterator it = nodes.begin();
                 it != nodes.end(); it++, node_id++) {
             isam::Node& node = **it;
