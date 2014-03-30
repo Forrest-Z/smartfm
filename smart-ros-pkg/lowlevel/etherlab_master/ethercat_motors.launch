@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="etherlab_master" type="steering_motor_startup.bash" name="steering_motor_startup"/>
+  <node pkg="etherlab_master" type="brake_motor_startup.bash" name="brake_motor_startup"/>
+</launch>

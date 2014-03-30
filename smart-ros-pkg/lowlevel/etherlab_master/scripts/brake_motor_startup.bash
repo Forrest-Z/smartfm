@@ -1,3 +1,5 @@
+#!/bin/bash
+
 package_path=`rospack find etherlab_master`
 motor_port=0
 bash $package_path/scripts/0x1600.bash $motor_port

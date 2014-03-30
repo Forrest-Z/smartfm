@@ -100,7 +100,8 @@ private:
 	PointCloudRGB 											combined_pcl_;
 	ros::Publisher											segmented_pcl_pub_;
 	ros::Publisher											filtered_pcl_pub_, erased_pcl_pub_;
-    ros::Publisher											vehicle_pcl_pub_;
+    ros::Publisher											vehicle_pcl_pub_, pedestrian_pcl_pub_;
+
     ros::Publisher											debug_pcl_pub_;
 	std::vector<std::pair<int, std::vector<int> > > 		object_cluster_IDs_;
 	std::vector<object_cluster_segments> 					object_feature_vectors_;
@@ -162,6 +163,9 @@ private:
 	ros::Publisher                              			labeled_positive_objects_pub_;
 
 	double													seg_time_coeff_;
+
+	//choose whether to use "pose-variant" or "pose-invariant" features;
+	bool													pose_variant_features_;
 };
 
 DATMO::DATMO()
@@ -173,7 +177,6 @@ DATMO::DATMO()
 	private_nh_.param("map_frame_id",      	map_frame_id_,    	std::string("map"));
 	private_nh_.param("gating_min_size",    gating_min_size_,   0.5);
 	private_nh_.param("gating_max_size",    gating_max_size_,   15.0);
-	private_nh_.param("gating_min_size",    gating_min_size_,   0.5);
 
 	//for vehicle detection;
 	//private_nh_.param("graph_seg_k",    			graph_seg_k_,   		3.0);
@@ -186,9 +189,10 @@ DATMO::DATMO()
 
 	//program_mode: "0" - save training data mode;
 	//				"1" - online classification mode;
-	private_nh_.param("program_mode",			program_mode_,     		0);
-	private_nh_.param("feature_num",			feature_num_,       	13);
-	private_nh_.param("speed_threshold",		speed_threshold_,      	2.0);
+	private_nh_.param("program_mode",			program_mode_,     			0);
+	private_nh_.param("feature_num",			feature_num_,       		13);
+	private_nh_.param("speed_threshold",		speed_threshold_,      		2.0);
+	private_nh_.param("pose_variant_features",	pose_variant_features_,     true);
 
 	//to reduce the size of feature vector;
 	private_nh_.param("downsample_interval",	downsample_interval_,    1);
@@ -225,6 +229,7 @@ DATMO::DATMO()
 	filtered_pcl_pub_			=   nh_.advertise<PointCloudRGB>("filtered_pcl", 2);
 	erased_pcl_pub_				=   nh_.advertise<PointCloudRGB>("erased_pcl", 2);
 	vehicle_pcl_pub_			=   nh_.advertise<PointCloudRGB>("vehicle_pcl", 2);
+	pedestrian_pcl_pub_			=   nh_.advertise<PointCloudRGB>("pedestrian_pcl", 2);
 	debug_pcl_pub_				=   nh_.advertise<sensor_msgs::PointCloud>("debug_cloud", 2);
 	rough_pose_pub_				=   nh_.advertise<geometry_msgs::PoseArray>("rough_poses", 2);
 	segment_pose_batch_pub_		=   nh_.advertise<MODT::segment_pose_batches>("segment_pose_batches", 2);
@@ -785,7 +790,7 @@ void DATMO::construct_feature_vector()
 			int back_scanSerial  = cluster_tmp.scan_segment_batch[j].serial_in_scan.back();
 
 			//to deal with the FOV issue;
-			if(front_scanSerial==0)cluster_tmp.scan_segment_batch[j].front_dist2background = 0.0;
+			if(front_scanSerial==0) cluster_tmp.scan_segment_batch[j].front_dist2background = 0.0;
 			else
 			{
 				double front_backgroundDistance =scan_vector_[j].ranges[front_scanSerial-1];
@@ -839,9 +844,14 @@ void DATMO::construct_feature_vector()
 			object_cluster_tmp.pose_InLatestCoord_vector.push_back(Pose_inLatest_vector[j]);
 			object_cluster_tmp.pose_InOdom_vector.push_back(Pose_inOdom_vector[j]);
 			//compress the scan_segment (in another sense to extract the feature vector of the scan segment);
-			object_cluster_tmp.scan_segment_batch[j].compress_scan();
+
+			if(pose_variant_features_)object_cluster_tmp.scan_segment_batch[j].compress_scan();
+			else object_cluster_tmp.scan_segment_batch[j].compress_scan_latestLIDAR();
 		}
-		object_cluster_tmp.GenPosInvariantCompressedSegment();
+		object_cluster_tmp.GetCentroid_latestLIDAR();
+
+		if(pose_variant_features_) object_cluster_tmp.GetCentroid_rawPoints();
+		else object_cluster_tmp.GenPosInvariantCompressedSegment();
 	}
 }
 
@@ -967,9 +977,12 @@ void DATMO::save_training_data()
 void DATMO::classify_clusters()
 {
 	ROS_INFO("classify clusters");
-	PointCloudRGB vehicle_cloud;
+	PointCloudRGB vehicle_cloud, pedestrian_cloud;
 	vehicle_cloud.header = combined_pcl_.header;
+	pedestrian_cloud.header = combined_pcl_.header;
 	vehicle_cloud.points.clear();
+	pedestrian_cloud.points.clear();
+
 	for(size_t i=0; i<object_feature_vectors_.size(); i++)
 	{
 		object_cluster_segments &object_cluster_tmp =object_feature_vectors_[i];
@@ -1003,7 +1016,7 @@ void DATMO::classify_clusters()
 		object_cluster_tmp.object_type = DATMO_classifier_->classify_objects(DATMO_feature_vector, vector_length);
 		if(object_cluster_tmp.object_type ==1)
 		{
-			ROS_DEBUG("car!!!!!!");
+			ROS_DEBUG("vehicle !!!!!!");
 
 			for(size_t j=0;j<object_cluster_tmp.scan_segment_batch.size(); j++)
 			{
@@ -1023,6 +1036,20 @@ void DATMO::classify_clusters()
 		else if(object_cluster_tmp.object_type ==2)
 		{
 			ROS_DEBUG("pedestrian!!!");
+			for(size_t j=0;j<object_cluster_tmp.scan_segment_batch.size(); j++)
+			{
+				for(size_t k=0;k<object_cluster_tmp.scan_segment_batch[j].odomPoints.size(); k++)
+				{
+					pcl::PointXYZRGB pt_tmp;
+					pt_tmp.x = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].x;
+					pt_tmp.y = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].y;
+					pt_tmp.z = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].z;
+					pt_tmp.r = 255;
+					pt_tmp.g = 0;
+					pt_tmp.b = 0;
+					pedestrian_cloud.points.push_back(pt_tmp);
+				}
+			}
 		}
 		else if (object_cluster_tmp.object_type ==0)
 		{
@@ -1034,6 +1061,7 @@ void DATMO::classify_clusters()
 		}
 	}
 	vehicle_pcl_pub_.publish(vehicle_cloud);
+	pedestrian_pcl_pub_.publish(pedestrian_cloud);
 }
 
 void DATMO::calc_rough_pose()
@@ -1165,15 +1193,28 @@ std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster
 	feature_vector.push_back(object_cluster.scan_segment_batch.back().front_dist2background);
 	feature_vector.push_back(object_cluster.scan_segment_batch.back().back_dist2background);
 
-	//feature 6-13 about moments;
+	//feature 6-8 about intensities;
+	for(size_t i=0; i<3; i++) feature_vector.push_back(object_cluster.scan_segment_batch.back().intensities[i]);
+
+	//feature 9-15 about Hu-moments;
 	for(size_t i=0; i<7; i++)
 	{
 		feature_vector.push_back(object_cluster.ST_Humoment[i]);
 	}
-	//add new feature;
+	//feature 16;
 	feature_vector.push_back(object_cluster.ST_moments.m00);
 
-	for(size_t i=0; i<3; i++) feature_vector.push_back(object_cluster.scan_segment_batch.back().intensities[i]);
+	/*
+	feature_vector.push_back(object_cluster.ST_moments.m01);
+	feature_vector.push_back(object_cluster.ST_moments.m10);
+	feature_vector.push_back(object_cluster.ST_moments.m20);
+	feature_vector.push_back(object_cluster.ST_moments.m11);
+	feature_vector.push_back(object_cluster.ST_moments.m02);
+	feature_vector.push_back(object_cluster.ST_moments.m30);
+	feature_vector.push_back(object_cluster.ST_moments.m21);
+	feature_vector.push_back(object_cluster.ST_moments.m03);
+	feature_vector.push_back(object_cluster.ST_moments.m12);
+	 */
 
 	//remember to reordered the sequence;
 	//use "downsample_interval" to reduce the size of training data;
@@ -1191,8 +1232,22 @@ std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster
 		feature_vector.push_back((double)object_cluster.scan_segment_batch[k].sigmaN);
 
 		//the last pair of positions is always 0;
-		if(k!= 0) feature_vector.push_back((double)object_cluster.centroid_position[k].x);
-		if(k!= 0) feature_vector.push_back((double)object_cluster.centroid_position[k].y);
+		/*
+		if(pose_variant_features_)
+		{
+			feature_vector.push_back((double)object_cluster.rawpoints_centroids[k].x);
+			feature_vector.push_back((double)object_cluster.rawpoints_centroids[k].y);
+		}
+		*/
+
+		if(!pose_variant_features_)
+		{
+			if(k!= 0)
+			{
+				feature_vector.push_back((double)object_cluster.cluster_attached_centroids[k].x);
+				feature_vector.push_back((double)object_cluster.cluster_attached_centroids[k].y);
+			}
+		}
 	}
 
 	assert((int)feature_vector.size() == feature_vector_length_);
