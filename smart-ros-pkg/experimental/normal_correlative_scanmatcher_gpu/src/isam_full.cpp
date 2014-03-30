@@ -152,6 +152,55 @@ sensor_msgs::PointCloud pclToPC(pcl::PointCloud<pcl::PointNormal> &matching_clou
     sensor_msgs::convertPointCloud2ToPointCloud(matching_pc2, pc_vec);
     return pc_vec;
 }
+
+struct FactorGraph{
+  int i, j;
+  isam::Pose3d pose;
+  isam::Noise noise;
+  bool new_node;
+  FactorGraph(int _i, int _j, isam::Pose3d _pose, isam::Noise _noise, bool _new_node=false):
+  i(_i), j(_j), pose(_pose), noise(_noise), new_node(_new_node) {};
+};
+
+void removeLastFactor(isam::Slam **slam,
+		      vector<FactorGraph> &factors,
+		      map<int, isam::Pose3d_Node*> &pose_nodes,
+		      int factor_idx = -1
+		     ){
+  cout<<"Memory address of isam before "<<*slam<<endl;
+  delete *slam;
+  *slam = new isam::Slam();
+  pose_nodes.clear();
+  (*slam)->_prop.max_iterations = 100;
+  cout<<"Before erase there are "<<factors.size()<<" factors"<<endl;
+  if(factor_idx<0)
+    factors.erase(factors.end()-1);
+  else
+    factors.erase(factors.begin()+factor_idx);
+  cout<<"After erase there are "<<factors.size()<<" factors"<<endl;
+  for(size_t i=0; i<factors.size(); i++){
+    isam::Pose3d_Node* new_pose_node = new isam::Pose3d_Node();
+    if(factors[i].new_node){
+      (*slam)->add_node(new_pose_node);
+      pose_nodes[factors[i].j] = new_pose_node;
+    }
+    if(i==0){
+      isam::Pose3d_Factor* factor = new isam::Pose3d_Factor(pose_nodes[factors[i].j], 
+							    factors[i].pose, factors[i].noise);
+      (*slam)->add_factor(factor);
+    }
+    else {
+      isam::Pose3d_Pose3d_Factor* factor = 
+      new isam::Pose3d_Pose3d_Factor(pose_nodes[factors[i].i], pose_nodes[factors[i].j],
+					factors[i].pose, factors[i].noise);
+      (*slam)->add_factor(factor);
+    }
+  }
+  (*slam)->batch_optimization();
+  cout<<"Memory address of isam after "<<*slam<<endl;
+}
+
+  
 int main(int argc, char **argv) {
 
     fmutil::Stopwatch sw;
@@ -215,8 +264,8 @@ int main(int argc, char **argv) {
     cout<<endl;
     int size = poses.size()/skip_reading-6;//647;    
     // instance of the main class that manages and optimizes the pose graph
-    isam::Slam slam;
-    slam._prop.max_iterations = 100;
+    isam::Slam *slam = new isam::Slam();
+    slam->_prop.max_iterations = 100;
     // locally remember poses
     map<int, isam::Pose3d_Node*> pose_nodes;
 
@@ -228,12 +277,12 @@ int main(int argc, char **argv) {
     eigen_noise(4, 4) = 900;
     eigen_noise(5, 5) = 900;
     Eigen::MatrixXd cl_noise(6, 6);
-    eigen_noise(0, 0) = 600;
-    eigen_noise(1, 1) = 600;
-    eigen_noise(2, 2) = 600;
-    eigen_noise(3, 3) = 600;
-    eigen_noise(4, 4) = 600;
-    eigen_noise(5, 5) = 600;
+//     eigen_noise(0, 0) = 600;
+//     eigen_noise(1, 1) = 600;
+//     eigen_noise(2, 2) = 600;
+//     eigen_noise(3, 3) = 600;
+//     eigen_noise(4, 4) = 600;
+//     eigen_noise(5, 5) = 600;
     isam::Noise noise6 = isam::Information(100. * isam::eye(6));
 
     isam::Noise noise3 = isam::Information(eigen_noise);
@@ -243,26 +292,29 @@ int main(int argc, char **argv) {
     // create a first pose (a node)
     isam::Pose3d_Node* new_pose_node = new isam::Pose3d_Node();
     // add it to the graph
-    slam.add_node(new_pose_node);
+    slam->add_node(new_pose_node);
     // also remember it locally
     pose_nodes[start_node-1] = (new_pose_node);
+    
+    vector<FactorGraph> factors;
     // create a prior measurement (a factor)
     isam::Pose3d origin(0., 0., 0., 0., 0., 0.);
     isam::Pose3d_Factor* prior = new isam::Pose3d_Factor(pose_nodes[start_node-1], origin,
             noise3);
+    factors.push_back(FactorGraph(0, start_node-1, origin, noise3, true));
     // add it to the graph
-    slam.add_factor(prior);
+    slam->add_factor(prior);
     isam_graph_file<<"VERTEX_SE2 "<<start_node-5<<" 0 0 0"<<endl;
     
     ros::Rate rate(2);
 
-    GraphParticleFilter graphPF(&slam, 50, skip_reading, argv[1]);
+    GraphParticleFilter graphPF(50, skip_reading, argv[1]);
     sensor_msgs::PointCloud overall_pts;
     double opt_error = 0;
-    isam::Pose3d_Pose3d_Factor *previous_constraint, *current_constraint;
     bool previous_cl = false, current_cl = false;
     int previous_cl_count = 0;
     int last_closeloop_idx = -1;
+    vector<int> added_closeloop_factor_idx;
     //comment out the cout part to only output node info
     for (int i = start_node; i < size; i ++) {
       if(!ros::ok()) exit(0);
@@ -271,7 +323,7 @@ int main(int argc, char **argv) {
         //vector<geometry_msgs::Point32> combines_prior, prior_m5, prior_p5;
         geometry_msgs::Pose odo = ominus(poses[i*skip_reading], poses[i*skip_reading - skip_reading]);
         isam::Pose3d_Node* new_pose_node = new isam::Pose3d_Node();
-        slam.add_node(new_pose_node);
+        slam->add_node(new_pose_node);
         pose_nodes[i] = (new_pose_node);
         // connect to previous with odometry measurement
         isam::Pose3d odometry(odo.position.x, odo.position.y, odo.position.z,
@@ -280,8 +332,10 @@ int main(int argc, char **argv) {
         isam::Pose3d_Pose3d_Factor* constraint = new isam::Pose3d_Pose3d_Factor(
                 pose_nodes[i-1], pose_nodes[i],
                 odometry, noise3);
-        slam.add_factor(constraint);
-
+	factors.push_back(FactorGraph(i-1, i, odometry, noise3, true));
+	
+        slam->add_factor(constraint);
+	
 	geometry_msgs::Pose odom = ominus(poses[i*skip_reading], poses[(start_node-1)*skip_reading]);
 	isam_graph_file<<"VERTEX_SE2 "<<i-4<<" "<<odom.position.x<<" "<<odom.position.y<<" "
 	<<odom.orientation.z<<endl;
@@ -290,7 +344,7 @@ int main(int argc, char **argv) {
 	
         fmutil::Stopwatch sw_cl("close_loop", true); //~100 ms Raster map causes it
         //because first pose start with 00002.pcd
-        int cl_node_idx = graphPF.getCloseloop(i);
+        int cl_node_idx = graphPF.getCloseloop(slam, i);
         sw_cl.end();
         fmutil::Stopwatch sw_foundcl("found_cl", true);
         //cl_node_idx = -1;
@@ -366,35 +420,32 @@ int main(int argc, char **argv) {
             isam::Pose3d_Pose3d_Factor* cl_constraint =
                     new isam::Pose3d_Pose3d_Factor(pose_nodes[i],
                             pose_nodes[j], odometry, noise3);
-            slam.add_factor(cl_constraint);
-            current_constraint = cl_constraint;
-            slam.batch_optimization();
+	    factors.push_back(FactorGraph(i, j, odometry, noise3));
+	    
+            slam->add_factor(cl_constraint);
+            slam->batch_optimization();
             double diff_opt_error = 0;
-            diff_opt_error = opt_error - slam._opt.opt_error_;
+            diff_opt_error = opt_error - slam->_opt.opt_error_;
 
             //slam._opt.
             //seems to be simple addition, but improve things tremendously
             cout << "Pre Opt error: " << opt_error << " Now Opt error "
-                    << slam._opt.opt_error_ << " diff: " << diff_opt_error
+                    << slam->_opt.opt_error_ << " diff: " << diff_opt_error
                     << endl;
 
             if (fabs(diff_opt_error) > 10.0) {
-                cout << "Removing factor" << endl;
+                cout << "Removing factors" << endl;
                 //add to false close loop count at GraphPF
                 //falseCL_node_[j/skip_reading]++;
-                slam.remove_factor(current_constraint);
-		 slam.remove_factor(constraint);
-                //slam.update();
-                slam.batch_optimization();
-		slam.add_factor(constraint);
-                cout << "Batch optimized again" << endl;
+		removeLastFactor(&slam, factors, pose_nodes);
+                cout << "Batch optimized again checking address " <<slam<< endl;
                 current_cl = false;
 
             } else {
                 current_cl = true;
 		previous_cl_count++;
 		last_closeloop_idx = i;
-		previous_constraint = current_constraint;
+		added_closeloop_factor_idx.push_back(factors.size()-1);
             }
         } else {
             current_cl = false;
@@ -403,11 +454,8 @@ int main(int argc, char **argv) {
 	//if last close loop is not part of the continuous close loop, remove it
 	if(i-last_closeloop_idx == 3) {
 	  if (previous_cl_count < 2) {
-	  cout
-                        << "Close loop not continuous, removing previous constraint"
-                        << endl;
-                slam.remove_factor(previous_constraint);
-                slam.update();
+	  cout<< "Close loop not continuous, removing previous constraint"<< endl;
+		removeLastFactor(&slam, factors, pose_nodes, added_closeloop_factor_idx[added_closeloop_factor_idx.size()-1]);
 		previous_cl_count = 0;
 	  }
 	  
@@ -443,14 +491,14 @@ int main(int argc, char **argv) {
 
         fmutil::Stopwatch sw_opt("optimization", true);
         // optimize the graph
-        slam.batch_optimization();
+        slam->batch_optimization();
         //moving the error value outside of the optimization to ensure whatever last optimized error is recorded
-        opt_error = slam._opt.opt_error_;
+        opt_error = slam->_opt.opt_error_;
         sw_opt.end();
 
         //output and downsampling occupy  when there is no close loop found
         fmutil::Stopwatch sw_out("output", true); //~130 ms
-        list<isam::Node*> nodes = slam.get_nodes();
+        list<isam::Node*> nodes = slam->get_nodes();
 
         overall_pts.points.clear();
         overall_pts.header.frame_id = "map";
@@ -518,7 +566,7 @@ int main(int argc, char **argv) {
         if(i==size-1)
           sendOccupancy(overall_pts.points, clouds, map_pub_);
 
-        list<isam::Factor*> factors = slam.get_factors();
+        list<isam::Factor*> factors = slam->get_factors();
         factors_msg.poses.clear();
         factors_msg.header.stamp = ros::Time::now();
         for(std::list<isam::Factor*>::const_iterator it = factors.begin();
@@ -591,7 +639,7 @@ int main(int argc, char **argv) {
     rm.drawMap(overall_pts.points, 0.1, "isam_map_overall.png");
     // printing the complete graph
     cout << endl << "Full graph:" << endl;
-    slam.write(cout);
+    slam->write(cout);
     sw.end();
     return 0;
 }

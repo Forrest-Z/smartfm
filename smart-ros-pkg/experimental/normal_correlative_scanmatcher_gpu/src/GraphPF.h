@@ -32,8 +32,8 @@ public:
         map<int, geometry_msgs::Point> nodes_pose_;
 	ros::Publisher source_pub_, match_pub_, matched_pub_;
 	CsmGPU<pcl::PointNormal> *cm_;
-	GraphParticleFilter(isam::Slam *slam, int particle_no, int skip_reading, string frontend_file):
-		slam_(slam), skip_reading_(skip_reading), frontend_file_(frontend_file)
+	GraphParticleFilter(int particle_no, int skip_reading, string frontend_file):
+		skip_reading_(skip_reading), frontend_file_(frontend_file)
 
 	{
 	  //unsigned int seed = static_cast<unsigned int>(std::time(0));
@@ -47,12 +47,12 @@ public:
 		particles_.resize(particle_no);
 	}
 
-	int getCloseloop(int matching_node)
+	int getCloseloop(isam::Slam *slam, int matching_node)
 	{
 		//because number of nodes will only increment with the time, we will just track the number of node
 		nodes_heading_.clear();
 
-		list<isam::Node*> nodes = slam_->get_nodes();
+		list<isam::Node*> nodes = slam->get_nodes();
 		for(std::list<isam::Node*>::const_iterator it = nodes.begin(); it!=nodes.end(); it++) {
 			isam::Node& node = **it;
 			nodes_heading_.push_back((double)node.vector(isam::ESTIMATE)[3]);
@@ -62,7 +62,7 @@ public:
 		sw_motion.end();
 
 		fmutil::Stopwatch sw_sample("updateWeightAndSampling", true); //~100 ms cause by RasterMap
-		int cl_idx = updateWeightAndSampling(matching_node);
+		int cl_idx = updateWeightAndSampling(slam, matching_node);
 		sw_sample.end();
 
 
@@ -79,7 +79,6 @@ private:
 	  Eigen::Matrix<T,3,1> euler = r.eulerAngles(2, 1, 0);
 	  return boost::tuples::make_tuple(euler(0,0), euler(1,0), euler(2,0));
 	}
-	isam::Slam *slam_;
 
 	vector<vector<sensor_msgs::PointCloud> > pc_vecs_;
 	vector<particle> particles_;
@@ -178,7 +177,7 @@ private:
 					 std::cout << std::fixed << std::setprecision(1) << std::setw(2)
 					                  << i->first << ' ' << std::string(i->second, '*') << '\n';*/
 	}
-	int updateWeightAndSampling(int matching_node)
+	int updateWeightAndSampling(isam::Slam *slam, int matching_node)
 	{
 		cout<<"updateWeightAndSampling: "<<matching_node<<endl;
 		//get likelihood from the front end
@@ -403,7 +402,7 @@ private:
 		  if(i==0) debug = true;
 			//int random_node_idx = 
 			int random_node_idx; 
-			int node_number = slam_->get_nodes().size()-1;
+			int node_number = slam->get_nodes().size()-1;
 			//added to fix boost::uniform_real<RealType>::uniform_real(RealType, RealType) [with RealType = double]: Assertion `min_arg <= max_arg' failed.
 			if(node_number<0) node_number = 0;
 			if(weighted_node_distance.size() ==0) 
