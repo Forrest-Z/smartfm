@@ -46,7 +46,18 @@ public:
 		matched_pub_ = nh.advertise<pcl::PointCloud<pcl::PointNormal> >("gf_matched_cloud", 1, true);
 		particles_.resize(particle_no);
 	}
-
+	
+	void probNormalize(vector<double> &prob){
+	  double total = 0.0;
+	  for(size_t i=0; i<prob.size(); i++){
+	    total+=prob[i];
+	    cout<<total<<": "<<prob[i]<<" ";
+	  }
+	  if(total > 1e-5){
+	    for(size_t i=0; i<prob.size(); i++)
+	      prob[i]/=total;
+	  }
+	}
 	int getCloseloop(isam::Slam *slam, int matching_node)
 	{
 		//because number of nodes will only increment with the time, we will just track the number of node
@@ -370,7 +381,13 @@ private:
 
 		//retain 80 percent of the particles
 		//cout<<"Weight Sampling, selected particles"<<endl;
-		for(size_t i=0; i<particles_.size()*0.8; i++)
+		
+		//normalize
+		probNormalize(weight_prob);
+		for(size_t i=0; i<weight_prob.size(); i++)
+		    cout<<i<<":"<<weight_prob[i]<<" ";
+                cout<<endl;
+		for(size_t i=0; i<particles_.size()*0.6; i++)
 		{
 			int new_particle_idx = roll_weighted_die(weight_prob);
 			new_particles.push_back(particles_[new_particle_idx]);
@@ -380,7 +397,7 @@ private:
                 //get the distribution of node according to distance and node idx
                 geometry_msgs::Point latest_pose = nodes_pose_[matching_node-1];
                 vector<double> weighted_node_distance;
-                cout<<"Weighted dist with xy: "<<latest_pose.x<<"|"<<latest_pose.y<<endl;
+//                 cout<<"Weighted dist with xy: "<<latest_pose.x<<"|"<<latest_pose.y<<endl;
 		int node_offset = 20; //was 10 with skip = 2
                 for(int i=0; i<matching_node-node_offset; i++) {
                   if(nodes_pose_.find(i) == nodes_pose_.end()) {
@@ -391,15 +408,18 @@ private:
                   double dist_x = nodes_pose_[i].x - latest_pose.x;
                   double dist_y = nodes_pose_[i].y - latest_pose.y;
                   double dist = sqrt(dist_x*dist_x + dist_y*dist_y);
-                  weighted_node_distance.push_back(1.0/dist);
-                  cout<<i<<":"<<nodes_pose_[i].x<<"|"<<nodes_pose_[i].y<<" ";
+		  double dist_score = exp(-0.1*dist);
+                  weighted_node_distance.push_back(dist_score);
                 }
+                probNormalize(weighted_node_distance);
+		for(size_t i=0; i<weighted_node_distance.size(); i++)
+		    cout<<i<<":"<<weighted_node_distance[i]<<" ";
                 cout<<endl;
                 cout<<"Random selection: "<<endl;
 		for(size_t i=0; i<inject_particle_no; i++)
 		{
 		  bool debug = false;
-		  if(i==0) debug = true;
+		  if(i==0) debug = false;
 			//int random_node_idx = 
 			int random_node_idx; 
 			int node_number = slam->get_nodes().size()-1;

@@ -433,7 +433,7 @@ int main(int argc, char **argv) {
                     << slam->_opt.opt_error_ << " diff: " << diff_opt_error
                     << endl;
 
-            if (fabs(diff_opt_error) > 10.0) {
+            if (fabs(diff_opt_error) > 10.0 || std::isnan(slam->_opt.opt_error_)) {
                 cout << "Removing factors" << endl;
                 //add to false close loop count at GraphPF
                 //falseCL_node_[j/skip_reading]++;
