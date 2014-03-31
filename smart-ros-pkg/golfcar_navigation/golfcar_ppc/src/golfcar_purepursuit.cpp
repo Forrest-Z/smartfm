@@ -69,7 +69,8 @@ bool PurePursuit::heading_lookahead(double *heading_la, double *dist_to_goal)
     //reverse search to ensure that the pursuing point will always
     //be the one in front of the vehicle
     *dist_to_goal = 0;
-    if( !circle_line_collision(anchor_pt, &collided_pt_) || !lookahead_ini_){
+    //if( !circle_line_collision(anchor_pt, &collided_pt_) || !lookahead_ini_)
+    {
       lookahead_ini_ = true;
       for( path_n_=(int)path_.poses.size()-2; path_n_>=0; path_n_-- )
       {
