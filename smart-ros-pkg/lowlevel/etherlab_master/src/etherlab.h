@@ -129,6 +129,7 @@ public:
 
        bool setSlavesTargetVelocity2Zero();
        bool setTargetVelocitySDO(fm_sdo *sdo_target_velocity_write,int32_t &value);
+       bool getTargetVelocitySDO(fm_sdo *sdo_target_velocity_write,int32_t &target_velocity_value);
 
        bool setSlaveZeroMotorOperatingMode2ProfilePosition();
        bool setSlaveZeroMotorOperatingMode2ProfileVelocity();

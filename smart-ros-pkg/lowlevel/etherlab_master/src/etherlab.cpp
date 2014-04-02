@@ -527,6 +527,27 @@ bool fm_auto::DuetflEthercatController::setTargetVelocitySDO(fm_sdo *sdo_target_
     }
     return true;
 }
+bool fm_auto::DuetflEthercatController::getTargetVelocitySDO(fm_sdo *sdo_target_velocity_write, int32_t &target_velocity_value)
+{
+    target_velocity_value=0xffff;
+    //1. send read sdo request
+    if(!sendOneReadSDO(sdo_target_velocity_write))
+    {
+        ROS_ERROR("getTargetVelocitySDO failed");
+        return false;
+    }
+    if(waitSDORequestSuccess(sdo_target_velocity_write,READ))
+    {
+        target_velocity_value = EC_READ_S32(ecrt_sdo_request_data(sdo_target_velocity_write->sdo));
+        ROS_INFO("get target velocity: 0x%08x %d",target_velocity_value,target_velocity_value);
+        return true;
+    }
+    else
+    {
+        ROS_ERROR("getTargetVelocitySDO failed");
+        return false;
+    }
+}
 
 bool fm_auto::DuetflEthercatController::setSlaveZeroMotorOperatingMode2ProfileVelocity()
 {
