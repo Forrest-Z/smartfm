@@ -42,6 +42,12 @@
 
 #include <fmutil/fm_stopwatch.h>
 
+#include <pcl/ModelCoefficients.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+
 using namespace std;
 using namespace ros;
 
@@ -77,6 +83,12 @@ private:
 	void construct_feature_vector();
 	void calc_ST_shapeFeatures(object_cluster_segments &object_cluster);
 	std::vector<double> get_vector_V4(object_cluster_segments &object_cluster);
+
+	std::vector<double> get_vector_3Dfeatures(object_cluster_segments &object_cluster);
+	std::vector<double> ultrafast_shape_recognition(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
+	std::vector<double> moments2refpoint(pcl::PointCloud<pcl::PointXYZ> &st_cloud, pcl::PointXYZ &ref_point);
+
+	std::vector<double> VFH(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
 
 	void classify_clusters();
 	void calc_rough_pose();
@@ -967,7 +979,7 @@ void DATMO::save_training_data()
 		if(fp_write==NULL){ROS_ERROR("cannot write derived data file\n");return;}
 
 		fprintf(fp_write, "%d\t", object_cluster_tmp.object_type);
-		std::vector<double> feature_vector = get_vector_V4(object_cluster_tmp);
+		std::vector<double> feature_vector = get_vector_3Dfeatures(object_cluster_tmp);
 		for(size_t k=0; k<feature_vector.size(); k++) fprintf(fp_write, "%lf\t", feature_vector[k]);
 		fprintf(fp_write, "\n");
 		fclose(fp_write);
@@ -997,7 +1009,7 @@ void DATMO::classify_clusters()
 		double DATMO_feature_vector[vector_length];
 
 		//std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
-		std::vector<double> feature_vector = get_vector_V4(object_cluster_tmp);
+		std::vector<double> feature_vector = get_vector_3Dfeatures(object_cluster_tmp);
 
 		for(int k=0; k<vector_length; k++)
 		{
@@ -1254,6 +1266,127 @@ std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster
 	return feature_vector;
 }
 
+std::vector<double> DATMO::get_vector_3Dfeatures(object_cluster_segments &object_cluster)
+{
+	std::vector<double> feature_vector;
+
+	//1st: contruct 3D data;
+	pcl::PointCloud<pcl::PointXYZ> ST_cluster;
+	for(size_t i=0; i<object_cluster.scan_segment_batch.size(); i++)
+	{
+		double time_delayed = cloud_vector_.back().header.stamp.toSec() - cloud_vector_[i].header.stamp.toSec();
+		for(size_t j=0; j<object_cluster.scan_segment_batch[i].lidarPoints.size(); j++)
+		{
+			pcl::PointXYZ pt_tmp;
+			pt_tmp.x = object_cluster.scan_segment_batch[i].lidarPoints[j].x;
+			pt_tmp.y = object_cluster.scan_segment_batch[i].lidarPoints[j].y;
+			pt_tmp.z = object_cluster.scan_segment_batch[i].lidarPoints[j].z + time_delayed*seg_time_coeff_;
+			ST_cluster.push_back(pt_tmp);
+		}
+	}
+
+	//2nd: extract 3D features;
+	feature_vector = ultrafast_shape_recognition(ST_cluster);
+
+	assert((int)feature_vector.size() == feature_vector_length_);
+	return feature_vector;
+}
+
+std::vector<double> DATMO::ultrafast_shape_recognition(pcl::PointCloud<pcl::PointXYZ> &st_cloud)
+{
+	std::vector<double> moments_sets;
+
+	//find 4 keypoints;
+	pcl::PointXYZ ctd, cst, fct, ftf;
+	ctd.x = 0.0; ctd.y=0.0; ctd.z = 0.0;
+	cst.x = 0.0; cst.y=0.0; cst.z = 0.0;
+	fct.x = 0.0; fct.y=0.0; fct.z = 0.0;
+	ftf.x = 0.0; ftf.y=0.0; ftf.z = 0.0;
+
+	//calculate ctd;
+	for(size_t i=0; i<st_cloud.size(); i++) {ctd.x +=st_cloud[i].x; ctd.y +=st_cloud[i].y; ctd.z +=st_cloud[i].z;}
+	ctd.x = ctd.x/((float)st_cloud.size()+0.0000001);
+	ctd.y = ctd.y/((float)st_cloud.size()+0.0000001);
+	ctd.z = ctd.z/((float)st_cloud.size()+0.0000001);
+
+	//calculate cst and fct;
+	float cst2ctd = (float)DBL_MAX;
+	float fct2ctd = 0.0;
+	for(size_t i=0; i<st_cloud.size(); i++)
+	{
+		float distance_tmp = sqrtf((st_cloud[i].x-ctd.x)*(st_cloud[i].x-ctd.x)+(st_cloud[i].y-ctd.y)*(st_cloud[i].y-ctd.y)+(st_cloud[i].z-ctd.z)*(st_cloud[i].z-ctd.z));
+		if(distance_tmp<cst2ctd){ cst2ctd = distance_tmp; cst = st_cloud[i];}
+		if(distance_tmp>fct2ctd){ fct2ctd = distance_tmp; fct = st_cloud[i];}
+	}
+
+	//calculate ftf;
+	float ftf2fct = 0.0;
+	for(size_t i=0; i<st_cloud.size(); i++)
+	{
+		float distance_tmp = sqrtf((st_cloud[i].x-fct.x)*(st_cloud[i].x-fct.x)+(st_cloud[i].y-fct.y)*(st_cloud[i].y-fct.y)+(st_cloud[i].z-fct.z)*(st_cloud[i].z-fct.z));
+		if(distance_tmp>ftf2fct){ ftf2fct = distance_tmp; ftf = st_cloud[i];}
+	}
+
+	//calculate the 3-Moments according to each point;
+	std::vector<double> ctd_moments = moments2refpoint(st_cloud, ctd);
+	std::vector<double> cst_moments = moments2refpoint(st_cloud, cst);
+	std::vector<double> fct_moments = moments2refpoint(st_cloud, fct);
+	std::vector<double> ftf_moments = moments2refpoint(st_cloud, ftf);
+	for(size_t i=0; i<3; i++)moments_sets.push_back(ctd_moments[i]);
+	for(size_t i=0; i<3; i++)moments_sets.push_back(cst_moments[i]);
+	for(size_t i=0; i<3; i++)moments_sets.push_back(fct_moments[i]);
+	for(size_t i=0; i<3; i++)moments_sets.push_back(ftf_moments[i]);
+
+	return moments_sets;
+}
+
+//in this application only consider first 3 orders of moments
+//http://en.wikipedia.org/wiki/Moment_(mathematics)
+std::vector<double> DATMO::moments2refpoint(pcl::PointCloud<pcl::PointXYZ> &st_cloud, pcl::PointXYZ &ref_point)
+{
+	std::vector<double> moments;
+
+	std::vector<float> distance_values;
+	float moments1st = 0.0, moments2nd=0.0, moments3rd=0.0;
+
+	for(size_t i=0; i<st_cloud.size(); i++)
+	{
+		float distance_tmp = sqrtf((st_cloud[i].x-ref_point.x)*(st_cloud[i].x-ref_point.x)+(st_cloud[i].y-ref_point.y)*(st_cloud[i].y-ref_point.y)+(st_cloud[i].z-ref_point.z)*(st_cloud[i].z-ref_point.z));
+		distance_values.push_back(distance_tmp);
+	}
+
+	for(size_t i=0; i<distance_values.size(); i++)
+	{
+		moments1st+=distance_values[i];
+	}
+	moments1st = moments1st/((float)st_cloud.size()+0.0000001);
+
+	for(size_t i=0; i<distance_values.size(); i++)
+	{
+		moments2nd += (distance_values[i]-moments1st)*(distance_values[i]-moments1st);
+	}
+	moments2nd = moments2nd/((float)st_cloud.size()*st_cloud.size()+0.0000001);
+
+	for(size_t i=0; i<distance_values.size(); i++)
+	{
+		moments3rd += std::pow((distance_values[i]-moments1st), 3.0);
+	}
+	moments3rd = moments3rd/((float)st_cloud.size()*st_cloud.size()*st_cloud.size()+0.0000001);
+	moments3rd = moments3rd/(std::pow(moments2nd,1.5)+0.0000001);
+
+	moments.push_back(moments1st);
+	moments.push_back(moments2nd);
+	moments.push_back(moments3rd);
+
+	return moments;
+}
+
+std::vector<double> DATMO::VFH(pcl::PointCloud<pcl::PointXYZ> &st_cloud)
+{
+	std::vector<double> feature_set;
+	return feature_set;
+}
+
 void DATMO::load_labeledScanMasks()
 {
 	cv::FileStorage fs_read(abstract_summary_path_.c_str(), cv::FileStorage::READ);
@@ -1410,7 +1543,7 @@ void DATMO::autolabelling_data()
 
 		fprintf(fp_write, "%d\t", object_cluster_tmp.object_type);
 		//std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
-		std::vector<double> feature_vector = get_vector_V4(object_cluster_tmp);
+		std::vector<double> feature_vector = get_vector_3Dfeatures(object_cluster_tmp);
 		for(size_t k=0; k<feature_vector.size(); k++) fprintf(fp_write, "%lf\t", feature_vector[k]);
 		fprintf(fp_write, "\n");
 		fclose(fp_write);
