@@ -2,6 +2,7 @@
  *
  */
 
+#include <iostream>
 #include <ros/ros.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/Bool.h>
@@ -12,7 +13,7 @@
 
 int main(int argc, char**argv)
 {
-    ROS_INFO("Hello there?!");
+//    ROS_INFO("Hello there?!");
     ros::init(argc, argv, "Duet_FL_motor_controller");
     ros::NodeHandle n;
 //    ros::Rate loop_rate(10);
@@ -38,17 +39,61 @@ int main(int argc, char**argv)
 
     if(duetController.needDoHoming_SlaveZero)
     {
-        if(!duetController.doHoming_SlaveZero())
+        //check actual position value 0x6064
+        int32_t brakingPositionValue=0xff;
+        if(!duetController.getPositionActualValue(fm_auto::slave0_position_actual_value_fmsdo,brakingPositionValue))
         {
-            ROS_ERROR("doHoming_SlaveZero failed");
+            ROS_ERROR("get braking position_actual_value failed");
+            return false;
+        }
+        // let user start homing
+//        ROS_INFO("current brake position 0x%08x %d",positionValue,positionValue);
+        std::cout<<"current brake position"<< brakingPositionValue<<" do homing(enter yes to confirm):";
+        std::string user_input;
+        std::cin>>user_input;
+        if(user_input == "yes")
+        {
+            if(!duetController.doHoming_SlaveZero())
+            {
+                ROS_ERROR("doHoming_SlaveZero failed");
+                return 0;
+            }
+            else
+            {
+                ROS_INFO("brake homing operate success");
+            }
+        }
+        else
+        {
+            ROS_INFO("brake homing quit,as user input %s",user_input.c_str());
             return 0;
         }
     }// if need homing slave zero
     if(duetController.hasSlaveOne && duetController.needDoHoming_SlaveOne)
     {
-        if(!duetController.doHoming_SlaveOne())
+        //check actual position value 0x6064
+        int32_t steeringPositionValue=0xff;
+        if(!duetController.getPositionActualValue(fm_auto::slave0_position_actual_value_fmsdo,steeringPositionValue))
         {
-            ROS_ERROR("doHoming_SlaveOne failed");
+            ROS_ERROR("get steering position_actual_value failed");
+            return false;
+        }
+        // let user start homing
+//        ROS_INFO("current brake position 0x%08x %d",positionValue,positionValue);
+        std::cout<<"current steering position"<< steeringPositionValue<<" do homing(enter yes to confirm):";
+        std::string user_input;
+        std::cin>>user_input;
+        if(user_input == "yes")
+        {
+            if(!duetController.doHoming_SlaveOne())
+            {
+                ROS_ERROR("doHoming_SlaveOne failed");
+                return 0;
+            }
+        }
+        else
+        {
+            ROS_INFO("quit steering homing,as user input %s",user_input.c_str());
             return 0;
         }
     }// if need homing slave zero
