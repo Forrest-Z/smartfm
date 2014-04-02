@@ -46,6 +46,7 @@ enum CONTROLLER_STATE
 
 };
 
+// slave zero
 static unsigned int OFFSET_CONTROLWORD;/* Controlword */
 static unsigned int OFFSET_PROFILE_VELOCITY;/* Profile_Velocity */
 static unsigned int OFFSET_PROFILE_ACCELERATION;/* Profile_Acceleration */
@@ -88,6 +89,7 @@ static unsigned int OFFSET_TORQUE_ACTURAL_VALUE_SLAVE_ONE;/* Torque_Actual_Value
 #define ADDRESS_STATUSWORD                  0x6041
 #define ADDRESS_POSITION_ACTUAL_VALUE       0x6064
 #define ADDRESS_TARGET_POSITION             0x607a
+#define ADDRESS_TARGET_VELOCITY             0x60ff
 #define READ  true
 #define WRITE false
 
@@ -202,6 +204,7 @@ static ec_slave_config_t *slave_zero = NULL;
 
 static ec_sdo_request_t *slave0_sdo_operation_mode_display = NULL;
 static ec_sdo_request_t *slave0_sdo_homing_method = NULL;
+static ec_sdo_request_t *slave0_sdo_target_velocity = NULL;
 static ec_sdo_request_t *slave0_sdo_statusword_read = NULL;
 static ec_sdo_request_t *slave0_sdo_velocity_demand_value_read = NULL;
 
@@ -214,6 +217,7 @@ static ec_sdo_request_t *slave0_sdo_target_position_read_write = NULL;
 
 static fm_sdo *slave0_operation_mode_display_fmsdo = NULL;
 static fm_sdo *slave0_operation_mode_write_fmsdo = NULL;
+static fm_sdo *slave0_target_velocity_write_fmsdo = NULL;
 static fm_sdo *slave0_homing_method_fmSdo = NULL;
 
 static fm_sdo *slave0_statusword_fmsdo = NULL;
@@ -228,6 +232,7 @@ static ec_slave_config_t *slave_one = NULL;
 
 static ec_sdo_request_t *slave1_sdo_operation_mode_display = NULL;
 static ec_sdo_request_t *slave1_sdo_homing_method = NULL;
+static ec_sdo_request_t *slave1_sdo_target_velocity = NULL;
 static ec_sdo_request_t *slave1_sdo_statusword_read = NULL;
 static ec_sdo_request_t *slave1_sdo_velocity_demand_value_read = NULL;
 
@@ -240,6 +245,7 @@ static ec_sdo_request_t *slave1_sdo_target_position_read_write = NULL;
 
 static fm_sdo *slave1_operation_mode_display_fmsdo = NULL;
 static fm_sdo *slave1_operation_mode_write_fmsdo = NULL;
+static fm_sdo *slave1_target_velocity_write_fmsdo = NULL;
 static fm_sdo *slave1_homing_method_fmSdo = NULL;
 
 static fm_sdo *slave1_statusword_fmsdo = NULL;

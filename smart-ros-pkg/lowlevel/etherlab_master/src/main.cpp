@@ -29,6 +29,8 @@ int main(int argc, char**argv)
 //    duetController.test_goToPositionNewSetPoint_SDO_SlaveZero();//  <----- tested ok
 //    duetController.test_goToPositionChangeSetImt_SDO_SlaveZero();//  <----- how test?
 
+    // set target velocity zero
+
     if(duetController.needDoHoming_SlaveZero)
     {
         if(!duetController.doHoming_SlaveZero())
