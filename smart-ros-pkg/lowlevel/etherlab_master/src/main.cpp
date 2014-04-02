@@ -144,6 +144,31 @@ int main(int argc, char**argv)
             }
         }
     }
+
+    //get target position, before enable controller
+    int32_t brakingPositionValue=0xffff;
+    if(!duetController.getPositionActualValue(fm_auto::slave0_position_actual_value_fmsdo,brakingPositionValue))
+    {
+        ROS_ERROR("get braking position_actual_value failed");
+        return false;
+    }
+    int32_t steeringPositionValue=0xffff;
+    if(!duetController.getPositionActualValue(fm_auto::slave0_position_actual_value_fmsdo,steeringPositionValue))
+    {
+        ROS_ERROR("get steering position_actual_value failed");
+        return false;
+    }
+
+    ROS_INFO("brake position %d",brakingPositionValue);
+    ROS_INFO("steering position %d",steeringPositionValue);
+    std::cout<<"enable brake and steering motor(enter yes to confirm):";
+    std::string user_input2;
+    std::cin>>user_input2;
+    if(user_input2 != "yes")
+    {
+        return 0;
+    }
+
     // enable the controller
     if(!duetController.enableControlSDO_SlaveZero())
     {
