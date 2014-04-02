@@ -30,6 +30,11 @@ int main(int argc, char**argv)
 //    duetController.test_goToPositionChangeSetImt_SDO_SlaveZero();//  <----- how test?
 
     // set target velocity zero
+    if(!duetController.setSlavesTargetVelocity2Zero())
+    {
+        ROS_ERROR("set slaves target velocity to zero failed");
+        return 0;
+    }
 
     if(duetController.needDoHoming_SlaveZero)
     {
