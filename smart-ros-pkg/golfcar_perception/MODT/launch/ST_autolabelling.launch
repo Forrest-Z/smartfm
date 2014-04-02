@@ -9,7 +9,9 @@
 		<param name="pose_variant_features" value ="false"/>
 		<!--for pose-variant features: 16 + 10*n-->
 		<!--for pose-invariant features: 16 + 12*n -2 -->
-		<param name="feature_vector_length" value="194"/>
+		<!--for usr 12 -->
+		<param name="feature_vector_length" value="12"/>
+
 		<param name="map_image_path" value="$(find MODT)/launch/obstacle_layer_modifiedunknown.png"/>
 		<param name="DATMO_model_path" value="$(find MODT)/data_and_model/vehicle101.model"/>
 		<param name="DATMO_scale_path" value="$(find MODT)/data_and_model/vehicle101.range"/>
@@ -29,9 +31,9 @@
 		<!--param name="speed_threshold" value="2.0"/>
 		<param name="gating_min_size" value="0.5"/-->
     </node>
-	<!--node name="map_server" pkg="map_server" type="map_server" args="$(find MODT)/launch/obstacle_layer.yaml">
+	<node name="map_server" pkg="map_server" type="map_server" args="$(find MODT)/launch/obstacle_layer.yaml">
 		<param name="frame_id" value = "golfcart/map"/>
 		<remap from ="map" to = "obstacle_layer"/>
-	</node-->
+	</node>
 </launch>
 
