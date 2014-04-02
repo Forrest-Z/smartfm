@@ -20,6 +20,14 @@ struct poseResult{
   double x,y,r,score;
 };
 
+void clearCSM(){
+  cudaUnbindTexture(tex_dev_voronoi_data_);
+  if(use_free_space_)
+    cudaUnbindTexture(tex_dev_free_space_data_);
+  for(int i=0; i<stream_number; i++)
+    cudaStreamDestroy(stream_array[i]);
+}
+
 __global__ void jfaKernel(int step, int voronoi_width, int voronoi_height, cudaPointNormal *p, int *voronoi_data){
   int i = threadIdx.x + blockIdx.x * blockDim.x;
   int j = threadIdx.y + blockIdx.y * blockDim.y;
@@ -113,7 +121,7 @@ __global__ void translationKernel(float res, float step_size, int voronoi_width,
 	  angle_score = (CUDART_PI_F - angle)/CUDART_PI_F;
 	}
       }
-      scores_per_block[match_idx] = .7 * expf(-0.3*dist_nearest)*free_space_data + .3 * angle_score;
+      scores_per_block[match_idx] = .7 * expf(-0.3*dist_nearest) + .3 * angle_score;
     }
   }
   
@@ -137,7 +145,7 @@ __global__ void translationKernel(float res, float step_size, int voronoi_width,
   }
   if(threadIdx.x == 0){
     int score_idx = blockIdx.x + blockIdx.y * gridDim.x; 
-    scores[score_idx] += scores_per_block[0];
+    scores[score_idx] +=  scores_per_block[0];
   }
 }
 
@@ -259,5 +267,7 @@ poseResult best_translation(float resolution, float step_size, int x_step, int y
   pose_result.x = (max_x-x_range/x_step/2)*x_step*resolution;
   pose_result.y = (max_y-y_range/y_step/2)*y_step*resolution;
   pose_result.score = max_value/(double)point.size()*100;
+  cudaFree(dev_match_ptr);
+  cudaFree(dev_scores_ptr);
   return pose_result;
 }

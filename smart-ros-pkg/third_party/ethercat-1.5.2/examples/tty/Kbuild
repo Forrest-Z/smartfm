@@ -40,7 +40,7 @@ ec_tty_example-objs := \
 CFLAGS_tty.o := -I$(src)
 
 KBUILD_EXTRA_SYMBOLS := \
-	/home/motor/ethercat-1.5.2/$(LINUX_SYMVERS) \
-	/home/motor/ethercat-1.5.2/master/$(LINUX_SYMVERS)
+	/home/r2d2/smartfm/smart-ros-pkg/third_party/ethercat-1.5.2/$(LINUX_SYMVERS) \
+	/home/r2d2/smartfm/smart-ros-pkg/third_party/ethercat-1.5.2/master/$(LINUX_SYMVERS)
 
 #------------------------------------------------------------------------------

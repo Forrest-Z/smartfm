@@ -116,7 +116,7 @@ const static ec_pdo_entry_reg_t domain_input_regs[] = {
     {SlaveZeroAliasAndPosition,  VendorID_ProductCode, 0x1001, 0, &OFFSET_REGISTER,NULL},
     {SlaveZeroAliasAndPosition,  VendorID_ProductCode, 0x6064, 0, &OFFSET_POSITION_ACTURAL_VALUE,NULL},
     {SlaveZeroAliasAndPosition,  VendorID_ProductCode, 0x6078, 0, &OFFSET_CURRENT_ACTURAL_VALUE,NULL},
-    //{SlaveZeroAliasAndPosition,  VendorID_ProductCode, 0x6077, 0, &OFFSET_TORQUE_ACTURAL_VALUE, NULL},
+    {SlaveZeroAliasAndPosition,  VendorID_ProductCode, 0x6077, 0, &OFFSET_TORQUE_ACTURAL_VALUE, NULL},
 
     {SlaveOneAliasAndPosition,  VendorID_ProductCode, 0x6061, 0, &OFFSET_MODES_OF_OPERATION_DISPLAY_SLAVE_ONE,NULL},
     {SlaveOneAliasAndPosition,  VendorID_ProductCode, 0x6041, 0, &OFFSET_STATUSWORD_SLAVE_ONE,NULL},
@@ -124,6 +124,7 @@ const static ec_pdo_entry_reg_t domain_input_regs[] = {
     {SlaveOneAliasAndPosition,  VendorID_ProductCode, 0x1001, 0, &OFFSET_REGISTER_SLAVE_ONE,NULL},
     {SlaveOneAliasAndPosition,  VendorID_ProductCode, 0x6064, 0, &OFFSET_POSITION_ACTURAL_VALUE_SLAVE_ONE,NULL},
     {SlaveOneAliasAndPosition,  VendorID_ProductCode, 0x6078, 0, &OFFSET_CURRENT_ACTURAL_VALUE_SLAVE_ONE,NULL},
+    {SlaveOneAliasAndPosition,  VendorID_ProductCode, 0x6077, 0, &OFFSET_TORQUE_ACTURAL_VALUE_SLAVE_ONE, NULL},
     {}
 };
 
@@ -143,13 +144,13 @@ static ec_pdo_entry_info_t slave_0_pdo_entries[] = {
     {0x6064, 0x00, 32}, /* Position_Actual_Value */
     {0x6078, 0x00, 16}, /* Current_Actual_Value */
 //    {0x606c, 0x00, 32}, /* Velocity_Actual_Value */
-//    {0x6077, 0x00, 16}, /* Torque_Actual_Value */
+    {0x6077, 0x00, 16}, /* Torque_Actual_Value */
 };
 static ec_pdo_info_t slave_0_pdos[] = {
     {0x1600, 2, slave_0_pdo_entries + 0}, /* Outputs */
     {0x1601, 2, slave_0_pdo_entries + 2}, /* Outputs */
     {0x1A00, 4, slave_0_pdo_entries + 4}, /* Inputs */
-    {0x1A01, 2, slave_0_pdo_entries + 8}, /* Inputs */
+    {0x1A01, 3, slave_0_pdo_entries + 8}, /* Inputs */
 };
 
 static ec_sync_info_t slave_0_syncs[] = {
@@ -176,13 +177,13 @@ static ec_pdo_entry_info_t slave_1_pdo_entries[] = {
     {0x6064, 0x00, 32}, /* Position_Actual_Value */
     {0x6078, 0x00, 16}, /* Current_Actual_Value */
 //    {0x606c, 0x00, 32}, /* Velocity_Actual_Value */
-//    {0x6077, 0x00, 16}, /* Torque_Actual_Value */
+    {0x6077, 0x00, 16}, /* Torque_Actual_Value */
 };
 static ec_pdo_info_t slave_1_pdos[] = {
     {0x1600, 2, slave_1_pdo_entries + 0}, /* Outputs */
     {0x1601, 2, slave_1_pdo_entries + 2}, /* Outputs */
     {0x1A00, 4, slave_1_pdo_entries + 4}, /* Inputs */
-    {0x1A01, 2, slave_1_pdo_entries + 8}, /* Inputs */
+    {0x1A01, 3, slave_1_pdo_entries + 8}, /* Inputs */
 };
 
 static ec_sync_info_t slave_1_syncs[] = {

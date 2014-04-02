@@ -2453,8 +2453,12 @@ bool fm_auto::DuetflEthercatController::readPDOsData()
     position_actual_value_PDO_data_slave_one = EC_READ_S32(domain_input_pd + fm_auto::OFFSET_POSITION_ACTURAL_VALUE_SLAVE_ONE);
     velocity_actual_value_PDO_data_slave_one = EC_READ_S32(domain_input_pd + fm_auto::OFFSET_VELOCITY_ACTUAL_VALUE_SLAVE_ONE);
     current_actual_value_PDO_data_slave_one = EC_READ_S16(domain_input_pd + fm_auto::OFFSET_CURRENT_ACTURAL_VALUE_SLAVE_ONE);
-    printf("slave one pdo pos: %04d  vel: %04d cur: %04d \n",
-            position_actual_value_PDO_data_slave_one, velocity_actual_value_PDO_data_slave_one, current_actual_value_PDO_data_slave_one);
+    torque_actual_value_PDO_data_slave_one = EC_READ_S16(domain_input_pd + fm_auto::OFFSET_TORQUE_ACTURAL_VALUE_SLAVE_ONE);
+    printf("slave one pdo pos: %04d  vel: %04d cur: %04d tor: %04d\n",
+            position_actual_value_PDO_data_slave_one,
+           velocity_actual_value_PDO_data_slave_one,
+           current_actual_value_PDO_data_slave_one,
+           torque_actual_value_PDO_data_slave_one);
 
 //    printf("pdo statusword value: %04x offset %u\n",
 //            EC_READ_U16(domain_input_pd + OFFSET_STATUSWORD),OFFSET_STATUSWORD);

@@ -250,6 +250,7 @@ private:
        int32_t position_actual_value_PDO_data_slave_one;
        int32_t velocity_actual_value_PDO_data_slave_one;
        int16_t current_actual_value_PDO_data_slave_one;
+       int16_t torque_actual_value_PDO_data_slave_one;
 
        bool PDO_OK;
 
