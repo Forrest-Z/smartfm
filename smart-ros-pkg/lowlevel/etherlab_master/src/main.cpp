@@ -123,7 +123,27 @@ int main(int argc, char**argv)
     }
 
     // check target velocity, make sure it is zero
-
+    int32_t slave0_target_velo_value;
+    if(!duetController.getTargetVelocitySDO(fm_auto::slave0_target_velocity_write_fmsdo,slave0_target_velo_value))
+    {
+        if(slave0_target_velo_value != 0)
+        {
+            ROS_ERROR("brake motor target velocity not zero %d",slave0_target_velo_value);
+            return 0;
+        }
+    }
+    if(duetController.hasSlaveOne)
+    {
+        int32_t slave1_target_velo_value;
+        if(!duetController.getTargetVelocitySDO(fm_auto::slave1_target_velocity_write_fmsdo,slave1_target_velo_value))
+        {
+            if(slave1_target_velo_value != 0)
+            {
+                ROS_ERROR("steering motor target velocity not zero %d",slave1_target_velo_value);
+                return 0;
+            }
+        }
+    }
     // enable the controller
     if(!duetController.enableControlSDO_SlaveZero())
     {
