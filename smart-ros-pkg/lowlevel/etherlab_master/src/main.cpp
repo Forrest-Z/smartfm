@@ -99,27 +99,33 @@ int main(int argc, char**argv)
     }// if need homing slave zero
 
     // profile velocity mode is mandatory
+    std::cout<<"set brake motor mode to profile velocity...";
     if(!duetController.setSlaveZeroMotorOperatingMode2ProfileVelocity())
     {
         ROS_ERROR("setSlaveZeroMotorOperatingMode2ProfileVelocity failed");
         return 0;
     }
-    else
-    {
-        ROS_INFO_ONCE("setSlaveZeroMotorOperatingMode2ProfileVelocity ok\n");
-    }
+//    else
+//    {
+//        ROS_INFO_ONCE("setSlaveZeroMotorOperatingMode2ProfileVelocity ok\n");
+//    }
+    std::cout<<"...done"<<std::endl;
+
     if(duetController.hasSlaveOne)
     {
+        std::cout<<"set steering motor mode to profile velocity...";
         if(!duetController.setSlaveOneMotorOperatingMode2ProfileVelocity())
         {
             ROS_ERROR("setSlaveOneMotorOperatingMode2ProfileVelocity failed");
             return 0;
         }
-        else
-        {
-            ROS_INFO_ONCE("setSlaveOneMotorOperatingMode2ProfileVelocity ok\n");
-        }
+//        else
+//        {
+//            ROS_INFO_ONCE("setSlaveOneMotorOperatingMode2ProfileVelocity ok\n");
+//        }
+        std::cout<<"...done"<<std::endl;
     }
+
 
     // enable the controller
     if(!duetController.enableControlSDO_SlaveZero())
