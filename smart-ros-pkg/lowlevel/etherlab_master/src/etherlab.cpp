@@ -498,6 +498,36 @@ bool fm_auto::DuetflEthercatController::setMotorOperatingModeSDO(fm_sdo *sdo_ope
     }
     return true;
 }
+bool fm_auto::DuetflEthercatController::setSlavesTargetVelocity2Zero()
+{
+    int32_t value = 0;
+    bool res = true;
+    if(!setTargetVelocitySDO(fm_auto::slave0_target_velocity_write_fmsdo,value))
+    {
+        ROS_ERROR("setSlavesTargetVelocity2Zero: set slave zero target velocity failed");
+        res=false;
+    }
+    if(!setTargetVelocitySDO(fm_auto::slave1_target_velocity_write_fmsdo,value))
+    {
+        ROS_ERROR("setSlavesTargetVelocity2Zero: set slave one target velocity failed");
+        res=false;
+    }
+
+    return res;
+}
+
+bool fm_auto::DuetflEthercatController::setTargetVelocitySDO(fm_sdo *sdo_target_velocity_write,
+                                                             int32_t &value)
+{
+    EC_WRITE_S32(ecrt_sdo_request_data(sdo_target_velocity_write->sdo),value);
+    sendOneWriteSDO(sdo_target_velocity_write);
+    if(!waitSDORequestSuccess(sdo_target_velocity_write,false))
+    {
+        ROS_ERROR("setMotorHomingModeSDO: set target velocity failed",value);
+    }
+    return true;
+}
+
 bool fm_auto::DuetflEthercatController::setSlaveZeroMotorOperatingMode2ProfileVelocity()
 {
     //1. check current operation mode
