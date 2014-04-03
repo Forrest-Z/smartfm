@@ -498,6 +498,57 @@ bool fm_auto::DuetflEthercatController::setMotorOperatingModeSDO(fm_sdo *sdo_ope
     }
     return true;
 }
+bool fm_auto::DuetflEthercatController::setSlavesTargetVelocity2Zero()
+{
+    int32_t value = 0;
+    bool res = true;
+    if(!setTargetVelocitySDO(fm_auto::slave0_target_velocity_write_fmsdo,value))
+    {
+        ROS_ERROR("setSlavesTargetVelocity2Zero: set slave zero target velocity failed");
+        res=false;
+    }
+    if(!setTargetVelocitySDO(fm_auto::slave1_target_velocity_write_fmsdo,value))
+    {
+        ROS_ERROR("setSlavesTargetVelocity2Zero: set slave one target velocity failed");
+        res=false;
+    }
+
+    return res;
+}
+
+bool fm_auto::DuetflEthercatController::setTargetVelocitySDO(fm_sdo *sdo_target_velocity_write,
+                                                             int32_t &value)
+{
+    EC_WRITE_S32(ecrt_sdo_request_data(sdo_target_velocity_write->sdo),value);
+    sendOneWriteSDO(sdo_target_velocity_write);
+    if(!waitSDORequestSuccess(sdo_target_velocity_write,false))
+    {
+        ROS_ERROR("setMotorHomingModeSDO: set target velocity failed",value);
+    }
+    return true;
+}
+bool fm_auto::DuetflEthercatController::getTargetVelocitySDO(fm_sdo *sdo_target_velocity_write, int32_t &target_velocity_value)
+{
+    target_velocity_value=0xffff;
+    //1. send read sdo request
+    if(!sendOneReadSDO(sdo_target_velocity_write))
+    {
+        ROS_ERROR("getTargetVelocitySDO failed");
+        return false;
+    }
+    if(waitSDORequestSuccess(sdo_target_velocity_write,READ))
+    {
+        target_velocity_value = EC_READ_S32(ecrt_sdo_request_data(sdo_target_velocity_write->sdo));
+        ROS_INFO("get target velocity: 0x%08x %d",target_velocity_value,target_velocity_value);
+        return true;
+    }
+    else
+    {
+        ROS_ERROR("getTargetVelocitySDO failed");
+        return false;
+    }
+}
+
 bool fm_auto::DuetflEthercatController::setSlaveZeroMotorOperatingMode2ProfileVelocity()
 {
     //1. check current operation mode
@@ -778,6 +829,19 @@ bool fm_auto::DuetflEthercatController::initSDOs_SlaveZero()
     fm_auto::slave0_operation_mode_display_fmsdo->descrption = "operation_mode_display 0x6061";
     fm_auto::slave0_operation_mode_display_fmsdo->controller = this;
 
+    ROS_INFO("Creating Target Velocity SDO requests...\n");
+    if (!(fm_auto::slave0_sdo_target_velocity = ecrt_slave_config_create_sdo_request(fm_auto::slave_zero,
+                                                                                            ADDRESS_TARGET_VELOCITY,
+                                                                                            0, 4))) // uint8 data size 1
+    {
+        ROS_ERROR("Failed to create SDO slave0_sdo_target_position_read_write 0x60ff request.\n");
+        return false;
+    }
+    fm_auto::slave0_target_velocity_write_fmsdo = new fm_sdo();
+    fm_auto::slave0_target_velocity_write_fmsdo->sdo = fm_auto::slave0_sdo_target_velocity;
+    fm_auto::slave0_target_velocity_write_fmsdo->descrption = "target velocity 0x60ff";
+    fm_auto::slave0_target_velocity_write_fmsdo->controller = this;
+
     ROS_INFO("Creating Homing Method read SDO requests...\n");
     if (!(fm_auto::slave0_sdo_homing_method = ecrt_slave_config_create_sdo_request(fm_auto::slave_zero,
                                                                                             ADDRESS_HOMING_METHOD,
@@ -857,6 +921,7 @@ bool fm_auto::DuetflEthercatController::initSDOs_SlaveZero()
     ecrt_sdo_request_timeout(fm_auto::slave0_sdo_operation_mode_display, 500); // ms
     ecrt_sdo_request_timeout(fm_auto::slave0_sdo_operation_mode_write, 500); // ms
     ecrt_sdo_request_timeout(fm_auto::slave0_sdo_controlword_write, 500); // ms
+    ecrt_sdo_request_timeout(fm_auto::slave0_sdo_target_velocity, 500); // ms
     ecrt_sdo_request_timeout(fm_auto::slave0_sdo_statusword_read, 500); // ms
     ecrt_sdo_request_timeout(fm_auto::slave0_sdo_position_actual_value_read, 500); // ms
     ecrt_sdo_request_timeout(fm_auto::slave0_sdo_target_position_read_write, 500); // ms
@@ -880,6 +945,19 @@ bool fm_auto::DuetflEthercatController::initSDOs_SlaveOne()
     fm_auto::slave1_operation_mode_display_fmsdo->sdo = fm_auto::slave1_sdo_operation_mode_display;
     fm_auto::slave1_operation_mode_display_fmsdo->descrption = "slave1 operation_mode_display 0x6061";
     fm_auto::slave1_operation_mode_display_fmsdo->controller = this;
+
+    ROS_INFO("Creating Target Velocity SDO requests...\n");
+    if (!(fm_auto::slave1_sdo_target_velocity = ecrt_slave_config_create_sdo_request(fm_auto::slave_one,
+                                                                                            ADDRESS_TARGET_VELOCITY,
+                                                                                            0, 4))) // uint8 data size 1
+    {
+        ROS_ERROR("Failed to create SDO slave0_sdo_target_position_read_write 0x60ff request.\n");
+        return false;
+    }
+    fm_auto::slave1_target_velocity_write_fmsdo = new fm_sdo();
+    fm_auto::slave1_target_velocity_write_fmsdo->sdo = fm_auto::slave1_sdo_target_velocity;
+    fm_auto::slave1_target_velocity_write_fmsdo->descrption = "target velocity 0x60ff";
+    fm_auto::slave1_target_velocity_write_fmsdo->controller = this;
 
     ROS_INFO("Creating slave1 Homing Method read SDO requests...\n");
     if (!(fm_auto::slave1_sdo_homing_method = ecrt_slave_config_create_sdo_request(fm_auto::slave_one,
@@ -959,6 +1037,7 @@ bool fm_auto::DuetflEthercatController::initSDOs_SlaveOne()
 
     ecrt_sdo_request_timeout(fm_auto::slave1_sdo_operation_mode_display, 500); // ms
     ecrt_sdo_request_timeout(fm_auto::slave1_sdo_operation_mode_write, 500); // ms
+    ecrt_sdo_request_timeout(fm_auto::slave1_sdo_target_velocity, 500); // ms
     ecrt_sdo_request_timeout(fm_auto::slave1_sdo_controlword_write, 500); // ms
     ecrt_sdo_request_timeout(fm_auto::slave1_sdo_statusword_read, 500); // ms
     ecrt_sdo_request_timeout(fm_auto::slave1_sdo_position_actual_value_read, 500); // ms

@@ -127,6 +127,10 @@ public:
        bool getMotorOperatingModeSDO(fm_sdo *operation_mode_display_fmsdo,fm_auto::OPERATION_MODE &mode);
        bool setMotorOperatingModeSDO(fm_sdo *sdo_operation_mode_write,fm_auto::OPERATION_MODE &value);
 
+       bool setSlavesTargetVelocity2Zero();
+       bool setTargetVelocitySDO(fm_sdo *sdo_target_velocity_write,int32_t &value);
+       bool getTargetVelocitySDO(fm_sdo *sdo_target_velocity_write,int32_t &target_velocity_value);
+
        bool setSlaveZeroMotorOperatingMode2ProfilePosition();
        bool setSlaveZeroMotorOperatingMode2ProfileVelocity();
        bool setSlaveZeroMotorOperatingMode2Homing();
