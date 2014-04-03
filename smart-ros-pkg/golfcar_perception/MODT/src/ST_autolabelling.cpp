@@ -82,8 +82,10 @@ private:
 
 	void construct_feature_vector();
 	void calc_ST_shapeFeatures(object_cluster_segments &object_cluster);
-	std::vector<double> get_vector_V4(object_cluster_segments &object_cluster);
 
+	int feature_extraction_type_;
+	std::vector<double> (DATMO::*get_feature_vector_)(object_cluster_segments &object_cluster);
+	std::vector<double> get_vector_V4(object_cluster_segments &object_cluster);
 	std::vector<double> get_vector_3Dfeatures(object_cluster_segments &object_cluster);
 	std::vector<double> ultrafast_shape_recognition(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
 	std::vector<double> moments2refpoint(pcl::PointCloud<pcl::PointXYZ> &st_cloud, pcl::PointXYZ &ref_point);
@@ -178,6 +180,8 @@ private:
 
 	//choose whether to use "pose-variant" or "pose-invariant" features;
 	bool													pose_variant_features_;
+
+
 };
 
 DATMO::DATMO()
@@ -227,6 +231,21 @@ DATMO::DATMO()
 	private_nh_.param("img_side_length",	img_side_length_,    50.0);
 	private_nh_.param("img_resolution",		img_resolution_,     0.2);
 	private_nh_.param("seg_time_coeff",		seg_time_coeff_,     1.0);
+
+	private_nh_.param("feature_extraction_type",		feature_extraction_type_,     1);
+
+	if(feature_extraction_type_==1)
+	{
+		get_feature_vector_ = &DATMO::get_vector_V4;
+	}
+	else if(feature_extraction_type_ ==2)
+	{
+		get_feature_vector_ = &DATMO::get_vector_3Dfeatures;
+	}
+	else
+	{
+		ROS_ERROR("please select the correct feature type");
+	}
 
 	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "front_bottom_scan", 10);
 
@@ -979,7 +998,7 @@ void DATMO::save_training_data()
 		if(fp_write==NULL){ROS_ERROR("cannot write derived data file\n");return;}
 
 		fprintf(fp_write, "%d\t", object_cluster_tmp.object_type);
-		std::vector<double> feature_vector = get_vector_3Dfeatures(object_cluster_tmp);
+		std::vector<double> feature_vector = (this->*get_feature_vector_)(object_cluster_tmp);
 		for(size_t k=0; k<feature_vector.size(); k++) fprintf(fp_write, "%lf\t", feature_vector[k]);
 		fprintf(fp_write, "\n");
 		fclose(fp_write);
@@ -1009,7 +1028,7 @@ void DATMO::classify_clusters()
 		double DATMO_feature_vector[vector_length];
 
 		//std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
-		std::vector<double> feature_vector = get_vector_3Dfeatures(object_cluster_tmp);
+		std::vector<double> feature_vector = (this->*get_feature_vector_)(object_cluster_tmp);
 
 		for(int k=0; k<vector_length; k++)
 		{
@@ -1543,7 +1562,7 @@ void DATMO::autolabelling_data()
 
 		fprintf(fp_write, "%d\t", object_cluster_tmp.object_type);
 		//std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
-		std::vector<double> feature_vector = get_vector_3Dfeatures(object_cluster_tmp);
+		std::vector<double> feature_vector = (this->*get_feature_vector_)(object_cluster_tmp);
 		for(size_t k=0; k<feature_vector.size(); k++) fprintf(fp_write, "%lf\t", feature_vector[k]);
 		fprintf(fp_write, "\n");
 		fclose(fp_write);
