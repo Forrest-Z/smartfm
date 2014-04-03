@@ -123,8 +123,14 @@ int main(int argc, char**argv)
     }
 
     // check target velocity, make sure it is zero
+if(!duetController.checkSlavesTargetVelocityAreZero())
+{
+ ROS_ERROR("checkSlavesTargetVelocityAreZero failed");
+            return 0;
+}
+/*
     int32_t slave0_target_velo_value;
-    if(!duetController.getTargetVelocitySDO(fm_auto::slave0_target_velocity_write_fmsdo,slave0_target_velo_value))
+    if(duetController.getTargetVelocitySDO(fm_auto::slave0_target_velocity_write_fmsdo,slave0_target_velo_value))
     {
         if(slave0_target_velo_value != 0)
         {
@@ -132,10 +138,15 @@ int main(int argc, char**argv)
             return 0;
         }
     }
+    else
+    {
+ROS_ERROR("get brake motor target velocity failed");
+            return 0;
+    }
     if(duetController.hasSlaveOne)
     {
         int32_t slave1_target_velo_value;
-        if(!duetController.getTargetVelocitySDO(fm_auto::slave1_target_velocity_write_fmsdo,slave1_target_velo_value))
+        if(duetController.getTargetVelocitySDO(fm_auto::slave1_target_velocity_write_fmsdo,slave1_target_velo_value))
         {
             if(slave1_target_velo_value != 0)
             {
@@ -143,9 +154,15 @@ int main(int argc, char**argv)
                 return 0;
             }
         }
+    else
+    {
+ROS_ERROR("get steering motor target velocity failed");
+            return 0;
     }
-
+    }
+*/
     //get target position, before enable controller
+/*
     int32_t brakingPositionValue=0xffff;
     if(!duetController.getPositionActualValue(fm_auto::slave0_position_actual_value_fmsdo,brakingPositionValue))
     {
@@ -158,6 +175,20 @@ int main(int argc, char**argv)
         ROS_ERROR("get steering position_actual_value failed");
         return false;
     }
+*/
+    int32_t brakingPositionValue=0xffff;
+    if(!duetController.getPositionActualValue_slave0(brakingPositionValue))
+    {
+        ROS_ERROR("get braking position_actual_value failed");
+        return 0;
+    }
+    int32_t steeringPositionValue=0xffff;
+    if(!duetController.getPositionActualValue_slave1(steeringPositionValue))
+    {
+        ROS_ERROR("get steering position_actual_value failed");
+        return 0;
+    }
+
 
     ROS_INFO("brake position %d",brakingPositionValue);
     ROS_INFO("steering position %d",steeringPositionValue);

@@ -137,6 +137,10 @@ public:
 
        bool doHoming_SlaveZero();
 
+       bool checkSlavesTargetVelocityAreZero();
+       bool getPositionActualValue_slave0(int32_t& value);
+       bool getPositionActualValue_slave1(int32_t& value);
+
        //slave one
        bool setSlaveOneMotorOperatingMode2Homing();
        bool setSlaveOneMotorOperatingMode2ProfileVelocity();

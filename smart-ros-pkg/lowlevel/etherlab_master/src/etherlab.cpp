@@ -103,7 +103,7 @@ bool fm_auto::DuetflEthercatController::getPositionActualValue(fm_sdo* position_
     if(waitSDORequestSuccess(position_actual_value_fmSdo,READ))
     {
         value = EC_READ_S32(ecrt_sdo_request_data(position_actual_value_fmSdo->sdo));
-        ROS_INFO("get statusword: 0x%08x %d",value,value);
+        ROS_INFO("getPositionActualValue: 0x%08x %d",value,value);
         return true;
     }
     else
@@ -523,19 +523,61 @@ bool fm_auto::DuetflEthercatController::setTargetVelocitySDO(fm_sdo *sdo_target_
     sendOneWriteSDO(sdo_target_velocity_write);
     if(!waitSDORequestSuccess(sdo_target_velocity_write,false))
     {
-        ROS_ERROR("setMotorHomingModeSDO: set target velocity failed",value);
+        ROS_ERROR("setTargetVelocitySDO: set target velocity failed ",value);
     }
     return true;
+}
+bool fm_auto::DuetflEthercatController::checkSlavesTargetVelocityAreZero()
+{
+int32_t slave0_target_velo_value;
+    if(getTargetVelocitySDO(fm_auto::slave0_target_velocity_write_fmsdo,slave0_target_velo_value))
+    {
+        if(slave0_target_velo_value != 0)
+        {
+            ROS_ERROR("brake motor target velocity not zero %d",slave0_target_velo_value);
+            return false;
+        }
+    }
+    else
+    {
+ROS_ERROR("get brake motor target velocity failed");
+            return false;
+    }
+    if(hasSlaveOne)
+    {
+        int32_t slave1_target_velo_value;
+        if(getTargetVelocitySDO(fm_auto::slave1_target_velocity_write_fmsdo,slave1_target_velo_value))
+        {
+            if(slave1_target_velo_value != 0)
+            {
+                ROS_ERROR("steering motor target velocity not zero %d",slave1_target_velo_value);
+                return false;
+            }
+        }
+    else
+    {
+ROS_ERROR("get steering motor target velocity failed");
+            return false;
+    }
+    }
+return true;
 }
 bool fm_auto::DuetflEthercatController::getTargetVelocitySDO(fm_sdo *sdo_target_velocity_write, int32_t &target_velocity_value)
 {
     target_velocity_value=0xffff;
     //1. send read sdo request
+//ROS_INFO("asdf1");
+if(!sdo_target_velocity_write)
+{
+ROS_ERROR("bad");
+return false;
+}
     if(!sendOneReadSDO(sdo_target_velocity_write))
     {
         ROS_ERROR("getTargetVelocitySDO failed");
         return false;
     }
+//ROS_INFO("asdf");
     if(waitSDORequestSuccess(sdo_target_velocity_write,READ))
     {
         target_velocity_value = EC_READ_S32(ecrt_sdo_request_data(sdo_target_velocity_write->sdo));
@@ -548,7 +590,28 @@ bool fm_auto::DuetflEthercatController::getTargetVelocitySDO(fm_sdo *sdo_target_
         return false;
     }
 }
-
+bool fm_auto::DuetflEthercatController::getPositionActualValue_slave0(int32_t& value)
+{
+    value=0xffff;
+    if(!getPositionActualValue(fm_auto::slave0_position_actual_value_fmsdo,value))
+    {
+        ROS_ERROR("get braking position_actual_value failed");
+        return false;
+    }
+return true;
+}
+bool fm_auto::DuetflEthercatController::getPositionActualValue_slave1(int32_t& value)
+{
+{
+    value=0xffff;
+    if(!getPositionActualValue(fm_auto::slave1_position_actual_value_fmsdo,value))
+    {
+        ROS_ERROR("get braking position_actual_value failed");
+        return false;
+    }
+return true;
+}
+}
 bool fm_auto::DuetflEthercatController::setSlaveZeroMotorOperatingMode2ProfileVelocity()
 {
     //1. check current operation mode
@@ -1065,7 +1128,7 @@ bool fm_auto::DuetflEthercatController::initROS()
     ROS_INFO("steering_slave_number %d\n",steering_slave_number);
     ROS_INFO("braking_slave_number %d\n",braking_slave_number);
 
-    ROS_INFO("asdfd");
+    //ROS_INFO("asdfd");
 //    sub = n.subscribe(str,10,&fm_auto::DuetflEthercatController::callback_steering,this);
     sub = n.subscribe("steer_angle", 1, &fm_auto::DuetflEthercatController::callback_steering2, this);
     emergency_button_sub = n.subscribe("joy", 1, &fm_auto::DuetflEthercatController::callback_joy, this);
@@ -1171,13 +1234,13 @@ ROS_INFO_ONCE("debug1---1");
     }
 #endif
     // set pid priority
-    pid_t pid = getpid();
-    if (setpriority(PRIO_PROCESS, pid, -19))
-    {
-        ROS_ERROR("Warning: Failed to set priority: %s\n",
-                strerror(errno));
-    }
-ROS_INFO_ONCE("debug2");
+    //pid_t pid = getpid();
+    //if (setpriority(PRIO_PROCESS, pid, -19))
+    //{
+    //    ROS_ERROR("Warning: Failed to set priority: %s\n",
+   //             strerror(errno));
+    //}
+//ROS_INFO_ONCE("debug2");
 
 
     // signal handler
@@ -1267,6 +1330,7 @@ bool fm_auto::DuetflEthercatController::sendOneReadSDO(fm_sdo *fmSdo_read)
         ROS_ERROR("sendOneReadSDO: sdo is NULL");
         return false;
     }
+//ROS_INFO("asdf2");
     ecrt_sdo_request_read(fmSdo_read->sdo);
     return true;
 //    ecrt_master_send(master);
@@ -1727,7 +1791,7 @@ void fm_auto::DuetflEthercatController::callback_steering2(std_msgs::Float64 ste
     int32_t v = static_cast<int32_t>(steering_cmd.data);
 //    if(steering_cmd_current != v)
 //    {
-        steering_cmd_new = v * 10;
+        steering_cmd_new = v;
 //        hasNewSteeringData = true;
 //    }
 //    ROS_INFO("callback_steering: %d %f %d",steering_cmd_new,steering_cmd.data,positionControlState);
@@ -1739,7 +1803,7 @@ void fm_auto::DuetflEthercatController::callback_braking(std_msgs::Float64 braki
 
     int32_t v = static_cast<int32_t>(braking_cmd.data);
 
-    braking_cmd_new = v * 10;
+    braking_cmd_new = v;
 
 }
 bool fm_auto::DuetflEthercatController::writeTargetVelocity_PDO_SlaveZero(int32_t &value)
