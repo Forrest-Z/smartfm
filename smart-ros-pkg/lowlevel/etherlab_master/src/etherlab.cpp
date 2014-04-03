@@ -1700,11 +1700,7 @@ bool fm_auto::DuetflEthercatController::cyclic_task()
     writeControlword_PDO_SlaveOne(controlword_PDO);
     // read PDO data
     bool res = readPDOsData();
-    if(!PDO_OK)
-    {
-        return false;
-    }
-    if(res)
+    if(PDO_OK)
     {
         ROS_INFO_ONCE("PDO_ok");
         writePDOData_VelocityControl();
@@ -2582,9 +2578,9 @@ bool fm_auto::DuetflEthercatController::readPDOsData()
     position_actual_value_PDO_data_slave_zero = EC_READ_S32(domain_input_pd + fm_auto::OFFSET_POSITION_ACTURAL_VALUE);
     velocity_actual_value_PDO_data = EC_READ_S32(domain_input_pd + fm_auto::OFFSET_VELOCITY_ACTUAL_VALUE);
     current_actual_value_PDO_data = EC_READ_S16(domain_input_pd + fm_auto::OFFSET_CURRENT_ACTURAL_VALUE);
-    torque_actual_value_PDO_data = EC_READ_S16(domain_input_pd + fm_auto::OFFSET_TORQUE_ACTURAL_VALUE);
-        printf("pdo pos: %04d  vel: %04d cur: %04d tor: %04d\n",
-                position_actual_value_PDO_data_slave_zero, velocity_actual_value_PDO_data, current_actual_value_PDO_data, torque_actual_value_PDO_data);
+    //torque_actual_value_PDO_data = EC_READ_S16(domain_input_pd + fm_auto::OFFSET_TORQUE_ACTURAL_VALUE);
+        printf("pdo pos: %04d  vel: %04d cur: %04d\n",
+                position_actual_value_PDO_data_slave_zero, velocity_actual_value_PDO_data, current_actual_value_PDO_data);
     etherlab_master::EthercatPDO pdo_msg;
     pdo_msg.position = position_actual_value_PDO_data_slave_zero;
     pdo_msg.velocity = velocity_actual_value_PDO_data;
@@ -2596,12 +2592,11 @@ bool fm_auto::DuetflEthercatController::readPDOsData()
     position_actual_value_PDO_data_slave_one = EC_READ_S32(domain_input_pd + fm_auto::OFFSET_POSITION_ACTURAL_VALUE_SLAVE_ONE);
     velocity_actual_value_PDO_data_slave_one = EC_READ_S32(domain_input_pd + fm_auto::OFFSET_VELOCITY_ACTUAL_VALUE_SLAVE_ONE);
     current_actual_value_PDO_data_slave_one = EC_READ_S16(domain_input_pd + fm_auto::OFFSET_CURRENT_ACTURAL_VALUE_SLAVE_ONE);
-    torque_actual_value_PDO_data_slave_one = EC_READ_S16(domain_input_pd + fm_auto::OFFSET_TORQUE_ACTURAL_VALUE_SLAVE_ONE);
-    printf("slave one pdo pos: %04d  vel: %04d cur: %04d tor: %04d\n",
+    //torque_actual_value_PDO_data_slave_one = EC_READ_S16(domain_input_pd + fm_auto::OFFSET_TORQUE_ACTURAL_VALUE_SLAVE_ONE);
+    printf("slave one pdo pos: %04d  vel: %04d cur: %04d\n",
             position_actual_value_PDO_data_slave_one,
            velocity_actual_value_PDO_data_slave_one,
-           current_actual_value_PDO_data_slave_one,
-           torque_actual_value_PDO_data_slave_one);
+           current_actual_value_PDO_data_slave_one);
 
 //    printf("pdo statusword value: %04x offset %u\n",
 //            EC_READ_U16(domain_input_pd + OFFSET_STATUSWORD),OFFSET_STATUSWORD);
@@ -2616,7 +2611,7 @@ bool fm_auto::DuetflEthercatController::readPDOsData()
     // read velocity
     velocity_actual_value = EC_READ_U16(domain_input_pd + fm_auto::OFFSET_VELOCITY_ACTUAL_VALUE);
 //    ROS_INFO("readPDOsData: velocity_actual_value %d",velocity_actual_value);
-    PDO_OK = true;
+    PDO_OK = false;
     switch (state) {
         case fm_auto::CS_FAULT: // request was not used yet
             ROS_ERROR("readPDOsData: CS_FAULT");
@@ -2624,26 +2619,26 @@ bool fm_auto::DuetflEthercatController::readPDOsData()
 //            return false;
             PDO_OK = false;
             break;
-//        case fm_auto::CS_SWITCH_ON_DISABLED:
-//            return false;
-//            break;
-//        case fm_auto::CS_READY_TO_SWITCH_ON:
-//            return false;
-//            break;
-//        case fm_auto::CS_SWITCH_ON:
-//            return false;
-//            break;
-//        case fm_auto::CS_OPERATION_ENABLE:
-//            // controller enabled
-//            return true;
-//            break;
-//        case fm_auto::CS_NOT_READY_TO_SWITCH_ON:
-//            return false;
-//            break;
+        case fm_auto::CS_SWITCH_ON_DISABLED:
+            return false;
+            break;
+        case fm_auto::CS_READY_TO_SWITCH_ON:
+            return false;
+            break;
+        case fm_auto::CS_SWITCH_ON:
+            return false;
+            break;
+        case fm_auto::CS_OPERATION_ENABLE:
+            // controller enabled
+            PDO_OK = true;
+	    return true;
+            break;
+        case fm_auto::CS_NOT_READY_TO_SWITCH_ON:
+            return false;
+            break;
     default:
-//        ROS_ERROR("enableControlSDO: unkown state %04x",state);
-
-        return true;
+        ROS_ERROR("enableControlSDO: unkown state %04x",state);
+        return false;
     }
     return true;
 }
