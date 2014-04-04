@@ -208,7 +208,7 @@ private:
        bool setValueToAddress(uint &address);
 
 private:
-       bool checkNeedHal(int32_t las_cmd,int32_t new_cmd);
+//       bool checkNeedHal(int32_t las_cmd,int32_t new_cmd);
 
 public:
        bool hasSlaveOne; // has two motor connected to master
@@ -253,7 +253,7 @@ private:
        int32_t velocity_actual_value_PDO_data;
        int16_t current_actual_value_PDO_data;
        int16_t torque_actual_value_PDO_data;
-       uint32_t velocity_actual_value;
+//       uint32_t velocity_actual_value;
        // slave one PDO data
        int32_t position_actual_value_PDO_data_slave_one;
        int32_t velocity_actual_value_PDO_data_slave_one;
@@ -261,6 +261,7 @@ private:
        int16_t torque_actual_value_PDO_data_slave_one;
 
        bool PDO_OK;
+       int err_state_count;
 
        bool needWrite_0xf_2controlword;
        int positionControlState;
