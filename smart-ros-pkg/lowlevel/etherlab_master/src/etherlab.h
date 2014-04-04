@@ -229,7 +229,7 @@ private:
        // EtherCAT
        ec_master_state_t master_state;
        ec_domain_t *domain_output;
-       ec_domain_t *domain_output_target_velocity;
+//       ec_domain_t *domain_output_target_velocity;
 //       ec_domain_t *domain_output_controlword;
 //       ec_domain_t *domain_output_target_position;
        ec_domain_t *domain_input;
