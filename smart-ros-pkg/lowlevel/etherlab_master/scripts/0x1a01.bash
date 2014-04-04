@@ -6,7 +6,9 @@
 
 /opt/etherlab/bin/ethercat download --type=uint32 --position=$1 0x1a01 2 0x60780010
 
-/opt/etherlab/bin/ethercat download --type=uint8 --position=$1 0x1a01 0 2
+/opt/etherlab/bin/ethercat download --type=uint32 --position=$1 0x1a01 3 0x60770010
+
+/opt/etherlab/bin/ethercat download --type=uint8 --position=$1 0x1a01 0 3
 
 /opt/etherlab/bin/ethercat download --type=uint8 --position=$1 0x1801 2 0xfe
 
