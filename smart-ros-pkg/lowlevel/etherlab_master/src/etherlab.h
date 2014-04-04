@@ -137,6 +137,10 @@ public:
 
        bool doHoming_SlaveZero();
 
+       bool checkSlavesTargetVelocityAreZero();
+       bool getPositionActualValue_slave0(int32_t& value);
+       bool getPositionActualValue_slave1(int32_t& value);
+
        //slave one
        bool setSlaveOneMotorOperatingMode2Homing();
        bool setSlaveOneMotorOperatingMode2ProfileVelocity();
@@ -152,6 +156,8 @@ public:
        bool disableControlSDO_bool(fm_sdo *statusword_fmSdo,fm_sdo *controlword_fmSdo);
        bool disableControlSDO_SlaveZero();
        bool disableControlSDO_SlaveOne();
+
+       bool disableAll();
 
 
        void check_master_state();
@@ -172,7 +178,7 @@ public:
        ///        current positioning order will be interrupted by the new one.
        bool goToPositionChangeSetImt_SDO_SlaveZero();
        /// get target position setted in 0x607A
-       bool getSlaveZeroTargetPositionSetting(int32_t &target_position);
+//       bool getSlaveZeroTargetPositionSetting(int32_t &target_position);
        /// set target position to 0x607A
        bool setSlaveZeroTargetPosition(int32_t &value);
 
@@ -204,7 +210,7 @@ private:
        bool setValueToAddress(uint &address);
 
 private:
-       bool checkNeedHal(int32_t las_cmd,int32_t new_cmd);
+//       bool checkNeedHal(int32_t las_cmd,int32_t new_cmd);
 
 public:
        bool hasSlaveOne; // has two motor connected to master
@@ -223,7 +229,7 @@ private:
        // EtherCAT
        ec_master_state_t master_state;
        ec_domain_t *domain_output;
-       ec_domain_t *domain_output_target_velocity;
+//       ec_domain_t *domain_output_target_velocity;
 //       ec_domain_t *domain_output_controlword;
 //       ec_domain_t *domain_output_target_position;
        ec_domain_t *domain_input;
@@ -249,7 +255,7 @@ private:
        int32_t velocity_actual_value_PDO_data;
        int16_t current_actual_value_PDO_data;
        int16_t torque_actual_value_PDO_data;
-       uint32_t velocity_actual_value;
+//       uint32_t velocity_actual_value;
        // slave one PDO data
        int32_t position_actual_value_PDO_data_slave_one;
        int32_t velocity_actual_value_PDO_data_slave_one;
@@ -257,6 +263,7 @@ private:
        int16_t torque_actual_value_PDO_data_slave_one;
 
        bool PDO_OK;
+       int err_state_count;
 
        bool needWrite_0xf_2controlword;
        int positionControlState;

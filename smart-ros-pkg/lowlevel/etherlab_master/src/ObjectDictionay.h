@@ -145,7 +145,6 @@ static ec_pdo_entry_info_t slave_0_pdo_entries[] = {
 
     {0x6064, 0x00, 32}, /* Position_Actual_Value */
     {0x6078, 0x00, 16}, /* Current_Actual_Value */
-//    {0x606c, 0x00, 32}, /* Velocity_Actual_Value */
     {0x6077, 0x00, 16}, /* Torque_Actual_Value */
 };
 static ec_pdo_info_t slave_0_pdos[] = {
@@ -178,7 +177,6 @@ static ec_pdo_entry_info_t slave_1_pdo_entries[] = {
 
     {0x6064, 0x00, 32}, /* Position_Actual_Value */
     {0x6078, 0x00, 16}, /* Current_Actual_Value */
-//    {0x606c, 0x00, 32}, /* Velocity_Actual_Value */
     {0x6077, 0x00, 16}, /* Torque_Actual_Value */
 };
 static ec_pdo_info_t slave_1_pdos[] = {
