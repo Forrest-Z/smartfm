@@ -47,6 +47,8 @@
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/features/vfh.h>
 
 using namespace std;
 using namespace ros;
@@ -87,9 +89,11 @@ private:
 	std::vector<double> (DATMO::*get_feature_vector_)(object_cluster_segments &object_cluster);
 	std::vector<double> get_vector_V4(object_cluster_segments &object_cluster);
 	std::vector<double> get_vector_3Dfeatures(object_cluster_segments &object_cluster);
+
+	int calc_3dfeautres_method_;
+	std::vector<double> (DATMO::*calc_3d_features_)(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
 	std::vector<double> ultrafast_shape_recognition(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
 	std::vector<double> moments2refpoint(pcl::PointCloud<pcl::PointXYZ> &st_cloud, pcl::PointXYZ &ref_point);
-
 	std::vector<double> VFH(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
 
 	void classify_clusters();
@@ -246,6 +250,21 @@ DATMO::DATMO()
 	{
 		ROS_ERROR("please select the correct feature type");
 	}
+
+	private_nh_.param("calc_3dfeautres_method",		calc_3dfeautres_method_,     1);
+	if(calc_3dfeautres_method_==1)
+	{
+		calc_3d_features_ = &DATMO::ultrafast_shape_recognition;
+	}
+	else if(calc_3dfeautres_method_ ==2)
+	{
+		calc_3d_features_ = &DATMO::VFH;
+	}
+	else
+	{
+		ROS_ERROR("please select the method for 3d features calculation, if in use");
+	}
+
 
 	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "front_bottom_scan", 10);
 
@@ -1305,7 +1324,7 @@ std::vector<double> DATMO::get_vector_3Dfeatures(object_cluster_segments &object
 	}
 
 	//2nd: extract 3D features;
-	feature_vector = ultrafast_shape_recognition(ST_cluster);
+	feature_vector = (this->*calc_3d_features_)(ST_cluster);
 
 	assert((int)feature_vector.size() == feature_vector_length_);
 	return feature_vector;
@@ -1403,6 +1422,37 @@ std::vector<double> DATMO::moments2refpoint(pcl::PointCloud<pcl::PointXYZ> &st_c
 std::vector<double> DATMO::VFH(pcl::PointCloud<pcl::PointXYZ> &st_cloud)
 {
 	std::vector<double> feature_set;
+
+	// Object for storing the normals.
+	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+	// Object for storing the VFH descriptor.
+	pcl::PointCloud<pcl::VFHSignature308>::Ptr descriptor(new pcl::PointCloud<pcl::VFHSignature308>);
+
+	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimation;
+	normalEstimation.setInputCloud(st_cloud.makeShared());
+	normalEstimation.setRadiusSearch(0.3);
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZ>);
+	normalEstimation.setSearchMethod(kdtree);
+	normalEstimation.compute(*normals);
+
+	pcl::VFHEstimation<pcl::PointXYZ, pcl::Normal, pcl::VFHSignature308> vfh;
+	vfh.setInputCloud(st_cloud.makeShared());
+	vfh.setInputNormals(normals);
+	vfh.setSearchMethod(kdtree);
+	// Optionally, we can normalize the bins of the resulting histogram,
+	vfh.setNormalizeBins(true);
+	// Also, we can normalize the SDC with the maximum size found between
+	// the centroid and any of the cluster's points.
+	vfh.setNormalizeDistance(false);
+	vfh.setViewPoint(0.0,0.0,0.0);
+	vfh.compute(*descriptor);
+
+	//descriptor->points.size () should be of size 1;
+	for(size_t i=0; i<308; i++)
+	{
+		feature_set.push_back(descriptor->points.front().histogram[i]);
+	}
+
 	return feature_set;
 }
 
