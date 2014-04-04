@@ -27,11 +27,11 @@
 #include <vector>
 #include <cmath>
 
-#include "pcl/point_cloud.h"
-#include "pcl_ros/point_cloud.h"
-#include "pcl/point_types.h"
-#include "pcl/ros/conversions.h"
-#include "pcl/kdtree/kdtree_flann.h"
+#include <pcl16_ros/point_cloud.h>
+#include <pcl16/point_cloud.h>
+#include <pcl16/point_types.h>
+#include <pcl16/ros/conversions.h>
+#include <pcl16/kdtree/kdtree_flann.h>
 #include "segmentation/segment-graph.h"
 
 #include <opencv/cv.h>
@@ -42,22 +42,21 @@
 
 #include <fmutil/fm_stopwatch.h>
 
-#include <pcl/ModelCoefficients.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/sample_consensus/method_types.h>
-#include <pcl/sample_consensus/model_types.h>
-#include <pcl/segmentation/sac_segmentation.h>
-#include <pcl/features/normal_3d.h>
-#include <pcl/features/vfh.h>
-
-//#include <pcl1.6/features/esf.h>
+#include <pcl16/ModelCoefficients.h>
+#include <pcl16/io/pcd_io.h>
+#include <pcl16/sample_consensus/method_types.h>
+#include <pcl16/sample_consensus/model_types.h>
+#include <pcl16/segmentation/sac_segmentation.h>
+#include <pcl16/features/normal_3d.h>
+#include <pcl16/features/vfh.h>
+#include <pcl16/features/esf.h>
 
 using namespace std;
 using namespace ros;
 
 typedef boost::shared_ptr<nav_msgs::Odometry const> OdomConstPtr;
-typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-typedef pcl::PointCloud<pcl::PointXYZRGB> PointCloudRGB;
+typedef pcl16::PointCloud<pcl16::PointXYZ> PointCloud;
+typedef pcl16::PointCloud<pcl16::PointXYZRGB> PointCloudRGB;
 
 class DATMO
 {
@@ -93,12 +92,12 @@ private:
 	std::vector<double> get_vector_3Dfeatures(object_cluster_segments &object_cluster);
 
 	int calc_3dfeautres_method_;
-	std::vector<double> (DATMO::*calc_3d_features_)(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
-	std::vector<double> ultrafast_shape_recognition(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
-	std::vector<double> moments2refpoint(pcl::PointCloud<pcl::PointXYZ> &st_cloud, pcl::PointXYZ &ref_point);
+	std::vector<double> (DATMO::*calc_3d_features_)(pcl16::PointCloud<pcl16::PointXYZ> &st_cloud);
+	std::vector<double> ultrafast_shape_recognition(pcl16::PointCloud<pcl16::PointXYZ> &st_cloud);
+	std::vector<double> moments2refpoint(pcl16::PointCloud<pcl16::PointXYZ> &st_cloud, pcl16::PointXYZ &ref_point);
 
-	std::vector<double> VFH(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
-	std::vector<double> ESF(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
+	std::vector<double> VFH(pcl16::PointCloud<pcl16::PointXYZ> &st_cloud);
+	std::vector<double> ESF(pcl16::PointCloud<pcl16::PointXYZ> &st_cloud);
 
 	void classify_clusters();
 	void calc_rough_pose();
@@ -263,6 +262,10 @@ DATMO::DATMO()
 	else if(calc_3dfeautres_method_ ==2)
 	{
 		calc_3d_features_ = &DATMO::VFH;
+	}
+	else if(calc_3dfeautres_method_ ==3)
+	{
+		calc_3d_features_ = &DATMO::ESF;
 	}
 	else
 	{
@@ -488,7 +491,7 @@ void DATMO::graph_segmentation()
 		for(size_t j=0; j<cloud_vector_[i].points.size(); j++)
 		{
 			double time_delayed = cloud_vector_.back().header.stamp.toSec() - cloud_vector_[i].header.stamp.toSec();
-			pcl::PointXYZRGB pt_tmp;
+			pcl16::PointXYZRGB pt_tmp;
 			pt_tmp.x = cloud_vector_[i].points[j].x;
 			pt_tmp.y = cloud_vector_[i].points[j].y;
 			//pt_tmp.z = cloud_vector_[i].points[j].z;
@@ -506,7 +509,7 @@ void DATMO::graph_segmentation()
 	int vertix_num = (int)combined_pcl_.points.size();
 	std::vector<edge> edge_vector;
 
-	pcl::KdTreeFLANN<pcl::PointXYZRGB> kdtree;
+	pcl16::KdTreeFLANN<pcl16::PointXYZRGB> kdtree;
 	if(combined_pcl_.points.size()==0) return;
 	kdtree.setInputCloud (combined_pcl_.makeShared());
 	int K = search_neighbourNum_;
@@ -516,7 +519,7 @@ void DATMO::graph_segmentation()
 		//choose K nearest points, and add the edges into "edge_vector";
 		std::vector<int> pointIdxNKNSearch(K);
 		std::vector<float> pointNKNSquaredDistance(K);
-		pcl::PointXYZRGB searchPt_tmp = combined_pcl_.points[i];
+		pcl16::PointXYZRGB searchPt_tmp = combined_pcl_.points[i];
 		int num = kdtree.nearestKSearch (searchPt_tmp, K, pointIdxNKNSearch, pointNKNSquaredDistance);
 		assert(num == (int)pointIdxNKNSearch.size() && num == (int)pointNKNSquaredDistance.size());
 		for(size_t j=0; j<pointIdxNKNSearch.size(); j++)
@@ -591,8 +594,8 @@ void DATMO::perform_prefiltering_simpleThresholding()
 		}
 
 		bool cluster_tobe_filtered;
-		pcl::PointXYZRGB min_pt, max_pt;
-		pcl::getMinMax3D (cloud_tmp, min_pt, max_pt);
+		pcl16::PointXYZRGB min_pt, max_pt;
+		pcl16::getMinMax3D (cloud_tmp, min_pt, max_pt);
 		float x_dim = max_pt.x - min_pt.x;
 		float y_dim = max_pt.y - min_pt.y;
 		float max_dim = (float)sqrt(x_dim*x_dim+y_dim*y_dim);
@@ -669,7 +672,7 @@ void DATMO::perform_prefiltering_movingEvidence()
 		PointCloud oldest_scanPoints, newest_scanPoints;
 		for(size_t p=0;p<cluster_tmp.scan_segment_batch.front().odomPoints.size();p++)
 		{
-			pcl::PointXYZ pt_tmp;
+			pcl16::PointXYZ pt_tmp;
 			pt_tmp.x = cluster_tmp.scan_segment_batch.front().odomPoints[p].x;
 			pt_tmp.y = cluster_tmp.scan_segment_batch.front().odomPoints[p].y;
 			pt_tmp.z = cluster_tmp.scan_segment_batch.front().odomPoints[p].z;
@@ -677,7 +680,7 @@ void DATMO::perform_prefiltering_movingEvidence()
 		}
 		for(size_t p=0;p<cluster_tmp.scan_segment_batch.back().odomPoints.size();p++)
 		{
-			pcl::PointXYZ pt_tmp;
+			pcl16::PointXYZ pt_tmp;
 			pt_tmp.x = cluster_tmp.scan_segment_batch.back().odomPoints[p].x;
 			pt_tmp.y = cluster_tmp.scan_segment_batch.back().odomPoints[p].y;
 			pt_tmp.z = cluster_tmp.scan_segment_batch.back().odomPoints[p].z;
@@ -692,16 +695,16 @@ void DATMO::perform_prefiltering_movingEvidence()
 		{
 			//a. geometric constraint;
 			//a-1: for accumulated points;
-			pcl::PointXYZRGB min_pt1, max_pt1;
-			pcl::getMinMax3D (cloud_tmp, min_pt1, max_pt1);
+			pcl16::PointXYZRGB min_pt1, max_pt1;
+			pcl16::getMinMax3D (cloud_tmp, min_pt1, max_pt1);
 			float x_dim1 = max_pt1.x - min_pt1.x;
 			float y_dim1 = max_pt1.y - min_pt1.y;
 			float max_dim1 = (float)sqrt(x_dim1*x_dim1+y_dim1*y_dim1);
 			cluster_tobe_filtered = cluster_tobe_filtered || (max_dim1 < gating_min_size_);
 
 			//a-2: for latest scan points;
-			pcl::PointXYZ min_pt2, max_pt2;
-			pcl::getMinMax3D (newest_scanPoints, min_pt2, max_pt2);
+			pcl16::PointXYZ min_pt2, max_pt2;
+			pcl16::getMinMax3D (newest_scanPoints, min_pt2, max_pt2);
 			float x_dim2 = max_pt2.x - min_pt2.x;
 			float y_dim2 = max_pt2.y - min_pt2.y;
 			float max_dim2 = (float)sqrt(x_dim2*x_dim2+y_dim2*y_dim2);
@@ -712,7 +715,7 @@ void DATMO::perform_prefiltering_movingEvidence()
 			//b: moving evidence;
 			double moving_evidence_threshold = speed_threshold_ * (cloud_vector_.back().header.stamp.toSec()- cloud_vector_.front().header.stamp.toSec());
 
-			pcl::KdTreeFLANN<pcl::PointXYZ> kdtree_oldest, kdtree_newest;
+			pcl16::KdTreeFLANN<pcl16::PointXYZ> kdtree_oldest, kdtree_newest;
 			kdtree_oldest.setInputCloud (oldest_scanPoints.makeShared());
 			kdtree_newest.setInputCloud (newest_scanPoints.makeShared());
 
@@ -721,7 +724,7 @@ void DATMO::perform_prefiltering_movingEvidence()
 			{
 				std::vector<int> pointIdxNKNSearch(1);
 				std::vector<float> pointNKNSquaredDistance(1);
-				pcl::PointXYZ searchPt_tmp = oldest_scanPoints.points[p];
+				pcl16::PointXYZ searchPt_tmp = oldest_scanPoints.points[p];
 				int num = kdtree_newest.nearestKSearch (searchPt_tmp, 1, pointIdxNKNSearch, pointNKNSquaredDistance);
 				assert(num==1);
 				if(pointNKNSquaredDistance.front()+0.0001>moving_evidence_threshold)oldest_far++;
@@ -1076,7 +1079,7 @@ void DATMO::classify_clusters()
 			{
 				for(size_t k=0;k<object_cluster_tmp.scan_segment_batch[j].odomPoints.size(); k++)
 				{
-					pcl::PointXYZRGB pt_tmp;
+					pcl16::PointXYZRGB pt_tmp;
 					pt_tmp.x = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].x;
 					pt_tmp.y = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].y;
 					pt_tmp.z = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].z;
@@ -1094,7 +1097,7 @@ void DATMO::classify_clusters()
 			{
 				for(size_t k=0;k<object_cluster_tmp.scan_segment_batch[j].odomPoints.size(); k++)
 				{
-					pcl::PointXYZRGB pt_tmp;
+					pcl16::PointXYZRGB pt_tmp;
 					pt_tmp.x = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].x;
 					pt_tmp.y = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].y;
 					pt_tmp.z = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].z;
@@ -1313,13 +1316,13 @@ std::vector<double> DATMO::get_vector_3Dfeatures(object_cluster_segments &object
 	std::vector<double> feature_vector;
 
 	//1st: contruct 3D data;
-	pcl::PointCloud<pcl::PointXYZ> ST_cluster;
+	pcl16::PointCloud<pcl16::PointXYZ> ST_cluster;
 	for(size_t i=0; i<object_cluster.scan_segment_batch.size(); i++)
 	{
 		double time_delayed = cloud_vector_.back().header.stamp.toSec() - cloud_vector_[i].header.stamp.toSec();
 		for(size_t j=0; j<object_cluster.scan_segment_batch[i].lidarPoints.size(); j++)
 		{
-			pcl::PointXYZ pt_tmp;
+			pcl16::PointXYZ pt_tmp;
 			pt_tmp.x = object_cluster.scan_segment_batch[i].lidarPoints[j].x;
 			pt_tmp.y = object_cluster.scan_segment_batch[i].lidarPoints[j].y;
 			pt_tmp.z = object_cluster.scan_segment_batch[i].lidarPoints[j].z + time_delayed*seg_time_coeff_;
@@ -1334,12 +1337,12 @@ std::vector<double> DATMO::get_vector_3Dfeatures(object_cluster_segments &object
 	return feature_vector;
 }
 
-std::vector<double> DATMO::ultrafast_shape_recognition(pcl::PointCloud<pcl::PointXYZ> &st_cloud)
+std::vector<double> DATMO::ultrafast_shape_recognition(pcl16::PointCloud<pcl16::PointXYZ> &st_cloud)
 {
 	std::vector<double> moments_sets;
 
 	//find 4 keypoints;
-	pcl::PointXYZ ctd, cst, fct, ftf;
+	pcl16::PointXYZ ctd, cst, fct, ftf;
 	ctd.x = 0.0; ctd.y=0.0; ctd.z = 0.0;
 	cst.x = 0.0; cst.y=0.0; cst.z = 0.0;
 	fct.x = 0.0; fct.y=0.0; fct.z = 0.0;
@@ -1384,7 +1387,7 @@ std::vector<double> DATMO::ultrafast_shape_recognition(pcl::PointCloud<pcl::Poin
 
 //in this application only consider first 3 orders of moments
 //http://en.wikipedia.org/wiki/Moment_(mathematics)
-std::vector<double> DATMO::moments2refpoint(pcl::PointCloud<pcl::PointXYZ> &st_cloud, pcl::PointXYZ &ref_point)
+std::vector<double> DATMO::moments2refpoint(pcl16::PointCloud<pcl16::PointXYZ> &st_cloud, pcl16::PointXYZ &ref_point)
 {
 	std::vector<double> moments;
 
@@ -1423,23 +1426,23 @@ std::vector<double> DATMO::moments2refpoint(pcl::PointCloud<pcl::PointXYZ> &st_c
 	return moments;
 }
 
-std::vector<double> DATMO::VFH(pcl::PointCloud<pcl::PointXYZ> &st_cloud)
+std::vector<double> DATMO::VFH(pcl16::PointCloud<pcl16::PointXYZ> &st_cloud)
 {
 	std::vector<double> feature_set;
 
 	// Object for storing the normals.
-	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+	pcl16::PointCloud<pcl16::Normal>::Ptr normals(new pcl16::PointCloud<pcl16::Normal>);
 	// Object for storing the VFH descriptor.
-	pcl::PointCloud<pcl::VFHSignature308>::Ptr descriptor(new pcl::PointCloud<pcl::VFHSignature308>);
+	pcl16::PointCloud<pcl16::VFHSignature308>::Ptr descriptor(new pcl16::PointCloud<pcl16::VFHSignature308>);
 
-	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimation;
+	pcl16::NormalEstimation<pcl16::PointXYZ, pcl16::Normal> normalEstimation;
 	normalEstimation.setInputCloud(st_cloud.makeShared());
 	normalEstimation.setRadiusSearch(0.3);
-	pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZ>);
+	pcl16::search::KdTree<pcl16::PointXYZ>::Ptr kdtree(new pcl16::search::KdTree<pcl16::PointXYZ>);
 	normalEstimation.setSearchMethod(kdtree);
 	normalEstimation.compute(*normals);
 
-	pcl::VFHEstimation<pcl::PointXYZ, pcl::Normal, pcl::VFHSignature308> vfh;
+	pcl16::VFHEstimation<pcl16::PointXYZ, pcl16::Normal, pcl16::VFHSignature308> vfh;
 	vfh.setInputCloud(st_cloud.makeShared());
 	vfh.setInputNormals(normals);
 	vfh.setSearchMethod(kdtree);
@@ -1461,15 +1464,16 @@ std::vector<double> DATMO::VFH(pcl::PointCloud<pcl::PointXYZ> &st_cloud)
 }
 
 //too bad that ESF is not supported yet by pcl1.5;
-std::vector<double> DATMO::ESF(pcl::PointCloud<pcl::PointXYZ> &st_cloud)
+//ESF in pcl1.6-unstable can get stucked in 20140109-bags, not quite reliable;
+std::vector<double> DATMO::ESF(pcl16::PointCloud<pcl16::PointXYZ> &st_cloud)
 {
+	ROS_INFO("ESF START");
 	std::vector<double> feature_set;
 
-	/*
 	// Object for storing the ESF descriptor.
-	pcl::PointCloud<pcl::ESFSignature640>::Ptr descriptor(new pcl::PointCloud<pcl::ESFSignature640>);
+	pcl16::PointCloud<pcl16::ESFSignature640>::Ptr descriptor(new pcl16::PointCloud<pcl16::ESFSignature640>);
 	// ESF estimation object.
-	pcl::ESFEstimation<pcl::PointXYZ, pcl::ESFSignature640> esf;
+	pcl16::ESFEstimation<pcl16::PointXYZ, pcl16::ESFSignature640> esf;
 	esf.setInputCloud(st_cloud.makeShared());
 	// Compute the features
 	esf.compute(*descriptor);
@@ -1479,8 +1483,8 @@ std::vector<double> DATMO::ESF(pcl::PointCloud<pcl::PointXYZ> &st_cloud)
 	{
 		feature_set.push_back(descriptor->points.front().histogram[i]);
 	}
-	*/
 
+	ROS_INFO("ESF END");
 	return feature_set;
 }
 
