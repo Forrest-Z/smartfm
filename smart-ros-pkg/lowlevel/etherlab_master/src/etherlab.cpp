@@ -1589,6 +1589,28 @@ bool fm_auto::DuetflEthercatController::disableControlSDO_SlaveOne()
     }
     return true;
 }
+bool fm_auto::DuetflEthercatController::disableAll()
+{
+    // set target velocity zero, at least try 3 times
+    if(!setSlavesTargetVelocity2Zero())
+    {
+        if(!setSlavesTargetVelocity2Zero())
+        {
+            setSlavesTargetVelocity2Zero();
+        }
+    }
+
+    // disable controllers
+    if(!disableControlSDO_SlaveOne())
+    {
+        if(!disableControlSDO_SlaveOne())
+        {
+            disableControlSDO_SlaveOne();
+        }
+    }
+    disableControlSDO_SlaveZero();
+}
+
 void fm_auto::DuetflEthercatController::disableControlSDO(fm_sdo *statusword_fmSdo,fm_sdo *controlword_fmSdo)
 {
     // write controlword 0x0002
@@ -2621,8 +2643,8 @@ bool fm_auto::DuetflEthercatController::readPDOsData()
         case fm_auto::CS_FAULT:
             ROS_ERROR("readPDOsData: CS_FAULT");
             PDO_OK = false;
-            disableControlSDO(fm_auto::slave0_statusword_fmsdo,fm_auto::slave0_controlword_fmsdo);
-            disableControlSDO(fm_auto::slave1_statusword_fmsdo,fm_auto::slave1_controlword_fmsdo);
+            controlword_PDO = 0x0002;
+            disableAll();
             return false;
             break;
         case fm_auto::CS_SWITCH_ON_DISABLED:

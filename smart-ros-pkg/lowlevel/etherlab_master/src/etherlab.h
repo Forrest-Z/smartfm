@@ -157,6 +157,8 @@ public:
        bool disableControlSDO_SlaveZero();
        bool disableControlSDO_SlaveOne();
 
+       bool disableAll();
+
 
        void check_master_state();
 
