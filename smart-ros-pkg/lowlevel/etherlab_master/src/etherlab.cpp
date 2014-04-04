@@ -1723,6 +1723,7 @@ bool fm_auto::DuetflEthercatController::cyclic_task()
     if(!res)
     {
         err_state_count++;
+        setSlavesTargetVelocity2Zero();
         if(err_state_count>10)
         {
             return false;
