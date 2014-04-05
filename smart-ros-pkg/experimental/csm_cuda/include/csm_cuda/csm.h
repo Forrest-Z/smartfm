@@ -51,15 +51,16 @@ class CsmGPU{
 		    double x_range, double y_range, double r_range,
 		    pcl::PointCloud<T> &matching_pts,
 		    poseResult offset,void(*transformFunc)(const pcl::PointCloud< T > &, pcl::PointCloud< T > &, const Eigen::Matrix4f & ));
+
+  ~CsmGPU();  
   private:
-  bool gotNormal_;
-  cv::Mat removeRepeatedPts(pcl::PointCloud<T> &cloud,
-			  vector<cudaPointNormal> &seeds);
-  
-  void visualize_data(host_vector<int> voronoi_data, string name);
+    bool gotNormal_;
+    cv::Mat removeRepeatedPts(pcl::PointCloud<T> &cloud,
+			    vector<cudaPointNormal> &seeds);
+    
+    void visualize_data(host_vector<int> voronoi_data, string name);
 
-
-  cv::Vec3b HSVtoRGB(float hue, float sat, float value);
+    cv::Vec3b HSVtoRGB(float hue, float sat, float value);
 
 
 };

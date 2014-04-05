@@ -1,5 +1,5 @@
 To setup the etherlab_master:
-1. Install ethercat-1.5.2 located at third party
+1. Install ethercat-1.5.2 located at third_party
    - ./configure --disable-8139too --enable-generic
    - make all modules
    - sudo make modules_install install
@@ -9,7 +9,7 @@ To setup the etherlab_master:
    - edit /etc/sysconfig to look something similar to
 	MASTER0_DEVICE="94:de:80:69:a4:1b"
 	DEVICE_MODULES="generic"
-TO run the etherlab_master
+To run the etherlab_master
 2. sudo /etc/init.d/ethercat start
 3. check connected slaves
    - sudo /opt/etherlab/bin/ethercat slaves

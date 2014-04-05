@@ -41,17 +41,17 @@ REV := $(shell if test -s $(TOPDIR)/revision; then \
 
 ifeq (0,1)
 	EC_E1000_OBJ := \
-		e1000_main-3.2-ethercat.o \
-		e1000_hw-3.2-ethercat.o \
-		e1000_ethtool-3.2-ethercat.o \
-		e1000_param-3.2-ethercat.o
+		e1000_main-3.8-ethercat.o \
+		e1000_hw-3.8-ethercat.o \
+		e1000_ethtool-3.8-ethercat.o \
+		e1000_param-3.8-ethercat.o
 	obj-m += ec_e1000.o
 	ec_e1000-objs := $(EC_E1000_OBJ)
-	CFLAGS_e1000_main-3.2-ethercat.o = -DREV=$(REV)
+	CFLAGS_e1000_main-3.8-ethercat.o = -DREV=$(REV)
 endif
 
 KBUILD_EXTRA_SYMBOLS := \
-	/home/motor/ethercat-1.5.2/$(LINUX_SYMVERS) \
-	/home/motor/ethercat-1.5.2/master/$(LINUX_SYMVERS)
+	/home/r2d2/smartfm/smart-ros-pkg/third_party/ethercat-1.5.2/$(LINUX_SYMVERS) \
+	/home/r2d2/smartfm/smart-ros-pkg/third_party/ethercat-1.5.2/master/$(LINUX_SYMVERS)
 
 #------------------------------------------------------------------------------
