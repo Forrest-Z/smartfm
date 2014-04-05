@@ -1467,8 +1467,8 @@ std::vector<double> DATMO::VFH(pcl16::PointCloud<pcl16::PointXYZ> &st_cloud)
 //ESF in pcl1.6-unstable can get stucked in 20140109-bags, not quite reliable;
 std::vector<double> DATMO::ESF(pcl16::PointCloud<pcl16::PointXYZ> &st_cloud)
 {
-	ROS_INFO("ESF START");
-	std::vector<double> feature_set;
+
+	std::vector<double> feature_set(640, 0.0);
 
 	// Object for storing the ESF descriptor.
 	pcl16::PointCloud<pcl16::ESFSignature640>::Ptr descriptor(new pcl16::PointCloud<pcl16::ESFSignature640>);
@@ -1476,15 +1476,20 @@ std::vector<double> DATMO::ESF(pcl16::PointCloud<pcl16::PointXYZ> &st_cloud)
 	pcl16::ESFEstimation<pcl16::PointXYZ, pcl16::ESFSignature640> esf;
 	esf.setInputCloud(st_cloud.makeShared());
 	// Compute the features
-	esf.compute(*descriptor);
 
-	//descriptor->points.size () should be of size 1;
-	for(size_t i=0; i<640; i++)
+	ROS_DEBUG("ESF START: %ld", st_cloud.points.size());
+	//there is a minimum pointcloud size for ESF features: set a limit, otherwise the code will hang;
+	size_t minimum_size_for_esf = 8;
+	if(st_cloud.points.size()>= minimum_size_for_esf)
 	{
-		feature_set.push_back(descriptor->points.front().histogram[i]);
+		esf.compute(*descriptor);
+		//descriptor->points.size () should be of size 1;
+		for(size_t i=0; i<640; i++)
+		{
+			feature_set[i] = (descriptor->points.front().histogram[i]);
+		}
 	}
-
-	ROS_INFO("ESF END");
+	ROS_DEBUG("ESF END");
 	return feature_set;
 }
 
