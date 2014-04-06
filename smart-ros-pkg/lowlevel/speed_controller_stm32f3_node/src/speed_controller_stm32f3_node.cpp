@@ -2,72 +2,132 @@
 #include <SerialStream.h>
 #include <SerialPort.h>
 #include "simpleSerialFraming.h"
+#include <geometry_msgs/Twist.h>
+#include <std_msgs/Bool.h>
+#include <speed_controller_stm32f3_node/PID_stm32.h>
+#include <phidget_encoders/Encoders.h>
+
 using namespace std;
 using namespace LibSerial;
-  
+
+SerialStream *serial_port_;
+double kp_ = 0.0;
+double ki_ = 0.0;
+double kd_ = 0.0;
+double kp_br_ = 0.0;
+double ki_br_ = 0.0;
+double kd_br_ = 0.0;
+double cmd_linear_x_ = 0.0;
+int automode_ = 0;
+
+
+void updateCmd(){
+  uint8_t *packet = (uint8_t*)malloc(128*sizeof(uint8_t));
+  int packet_size=0;
+  serialAddInt(packet, &packet_size, automode_);
+  serialAddDouble(packet, &packet_size, cmd_linear_x_);
+  serialAddDouble(packet, &packet_size, kp_);
+  serialAddDouble(packet, &packet_size, ki_);
+  serialAddDouble(packet, &packet_size, kd_);
+  serialAddDouble(packet, &packet_size, kp_br_);
+  serialAddDouble(packet, &packet_size, ki_br_);
+  serialAddDouble(packet, &packet_size, kd_br_);
+  packData(packet, &packet_size);
+  serial_port_->write((char*)packet, packet_size);
+  free(packet);
+}
+
+void automodeCallback(std_msgs::Bool auto_mode){
+  automode_  = auto_mode.data;
+  updateCmd();
+}
+
+void cmdSpeedCallback(geometry_msgs::Twist cmd){
+  cmd_linear_x_ = cmd.linear.x;
+  updateCmd();
+}
 
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "stm32f3");
   
   ros::NodeHandle n;
+  ros::NodeHandle priv_nh("~");
+  priv_nh.param("kp", kp_, 1.0);
+  priv_nh.param("ki", ki_, 0.1);
+  priv_nh.param("kd", kd_, 0.01);
+  priv_nh.param("kp_br", kp_br_, 1.0);
+  priv_nh.param("ki_br", ki_br_, 0.1);
+  priv_nh.param("kd_br", kd_br_, 0.01);
   
-  ros::Rate loop_rate(100);
-  double small_speed = 0.1;
-  
-//   double data = 342.34;
-//   stringstream small_speed_ss;
-//   small_speed_ss<<data;
-//   vector<uint8_t> sumsum;
-//   uint16_t csum1 = fletcher16((uint8_t *)small_speed_ss.str().c_str(), small_speed_ss.str().size(), sumsum);
-//   cout<<"Uint16 output: "<<csum1<<" for "<<small_speed_ss.str()<<endl;
-//   cout<<"sum1 "<<(int)sumsum[0]<<" sum2 "<<(int)sumsum[1]<<endl;
-  SerialStream serial_port(string("/dev/ttyACM0"), SerialStreamBuf::BAUD_19200,
+  serial_port_ = new SerialStream(string("/dev/ttyACM0"), SerialStreamBuf::BAUD_19200,
 			   SerialStreamBuf::CHAR_SIZE_8, SerialStreamBuf::PARITY_NONE, 1, SerialStreamBuf::FLOW_CONTROL_NONE);
-//   serial_port.Open();
 
   //Error management for serial port
-  if ( ! serial_port.IsOpen() ) {
+  if ( ! serial_port_->IsOpen() ) {
       cerr << "[" << __FILE__ << ":" << __LINE__ << "] "
 		<< "Error: Could not open serial port." 
 		<< endl ;
       exit(1) ;
   }
-  // while( serial_port.rdbuf()->in_avail() > 0  ) 
-  double cmd_speed = 0.0;
+  
+  ros::Subscriber cmd_sub = n.subscribe("cmd_generator", 1, &cmdSpeedCallback);
+  ros::Subscriber auto_sub = n.subscribe("automode", 1, &automodeCallback);
+  ros::Publisher mc_pub = n.advertise<speed_controller_stm32f3_node::PID_stm32>("pid_stm32f3", 1);
+  ros::Publisher encoder_pub = n.advertise<phidget_encoders::Encoders>("encoder_odo", 1);
+  ros::Rate loop(1000);
+  expected_packet_size =  13 * sizeof(double) + 3 * sizeof(int);
   while (ros::ok()) {
-    cmd_speed+=0.01;
-    double check_no = sin(cmd_speed);
-    cout<<"Looping "<<check_no<<endl;
-    uint8_t *packet = (uint8_t*)malloc(128*sizeof(uint8_t));
-    int packet_size=0;
-    serialAdd(packet, &packet_size, check_no);
-    packData(packet, &packet_size);
-    
-//     cout<<"New packet size "<<packet_size<<endl;
-//     for(size_t i=0; i<packet_size; i++){
-//       cout<<(int)packet[i]<<" ";
-//     }
-//     cout<<endl;
-    //for(int i=0; i<packet_size; i++)
-      serial_port.write((char*)packet, packet_size);
-    free(packet);
-
-    while(serial_port.rdbuf()->in_avail()>0){
-      char buffer = serial_port.rdbuf()->sbumpc();
+    while(serial_port_->rdbuf()->in_avail()>0){
+      char buffer = serial_port_->rdbuf()->sbumpc();
       if(serialReceive((uint8_t*)&buffer, 1)){
-	int data_length = 3 * sizeof(double);
+	int data_length = expected_packet_size;
 	uint8_t data_received_local[data_length];
 	for(int i=0; i<data_length; i++)
 	  data_received_local[i] = received_data[i];
-	double target_speed, encoder1_speed, encoder2_speed;
-	unpackData(data_received_local, &data_length, &target_speed);
-	unpackData(data_received_local, &data_length, &encoder1_speed);
-	unpackData(data_received_local, &data_length, &encoder2_speed);
-	cout<<target_speed<<" "<<encoder1_speed<<" "<<encoder2_speed<<endl;
+	double target_speed, kp, ki, kd;
+	double p, i, d, u, feedback_speed, feedback_err;
+	double enc1_dt, enc2_dt, dt;
+	int enc1_diff, enc2_diff;
+	int automode;
+	unpackDataDouble(data_received_local, &data_length, &dt);
+	unpackDataInt(data_received_local, &data_length, &automode);
+	unpackDataDouble(data_received_local, &data_length, &target_speed);
+	unpackDataDouble(data_received_local, &data_length, &kp);
+	unpackDataDouble(data_received_local, &data_length, &ki);
+	unpackDataDouble(data_received_local, &data_length, &kd);
+	unpackDataDouble(data_received_local, &data_length, &p);
+	unpackDataDouble(data_received_local, &data_length, &i);
+	unpackDataDouble(data_received_local, &data_length, &d);
+	unpackDataDouble(data_received_local, &data_length, &u);
+	unpackDataDouble(data_received_local, &data_length, &feedback_speed);
+	unpackDataDouble(data_received_local, &data_length, &feedback_err);
+	unpackDataDouble(data_received_local, &data_length, &enc1_dt);
+	unpackDataDouble(data_received_local, &data_length, &enc2_dt);
+	unpackDataInt(data_received_local, &data_length, &enc1_diff);
+	unpackDataInt(data_received_local, &data_length, &enc2_diff);
+	speed_controller_stm32f3_node::PID_stm32 pid;
+	pid.automode = automode;
+	pid.target_speed = target_speed;
+	pid.kp = kp;
+	pid.ki = ki;
+	pid.kd = kd;
+	pid.p = p;
+	pid.i = i;
+	pid.d = d;
+	pid.u = u;
+	pid.feedback_speed = feedback_speed;
+	pid.feedback_err = feedback_err;
+	mc_pub.publish(pid);
+	phidget_encoders::Encoders encoder_msg;
+	encoder_msg.dt = dt;
+	encoder_msg.d_dist = (enc1_dt + enc2_dt)/2.0;
+	encoder_msg.v = feedback_speed;
+	encoder_pub.publish(encoder_msg);
       }
     }
-    loop_rate.sleep();
+    loop.sleep();
+    ros::spinOnce();
   }
   return 0;
 }

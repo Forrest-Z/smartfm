@@ -2,7 +2,7 @@
 
 #define BUFFER_SIZE 256
 typedef enum _serial_state{
-	SER_HEADER1, SER_HEADER2, SER_DATA
+  SER_HEADER1, SER_HEADER2, SER_DATA
 }serial_state_t;
 
 serial_state_t serial_receiver_state = SER_HEADER1;
@@ -19,7 +19,7 @@ uint16_t fletcher16( uint8_t *data, size_t bytes){
     size_t tlen = bytes > 20 ? 20 : bytes;
     bytes -= tlen;
     do {
-		    sum2 += sum1 += *data++;
+        sum2 += sum1 += *data++;
     } while (--tlen);
     sum1 = (sum1 & 0xff) + (sum1 >> 8);
     sum2 = (sum2 & 0xff) + (sum2 >> 8);
@@ -87,9 +87,15 @@ int serialReceive(uint8_t *packet, int packet_size){
 }
 
 
-void serialAdd(uint8_t *packet, int *packet_size, double data){
+void serialAddDouble(uint8_t *packet, int *packet_size, double data){
   int new_packet_size = *packet_size + sizeof(double);
   memcpy(packet+ (*packet_size), &data, sizeof(double));
+  *packet_size = new_packet_size;
+}
+
+void serialAddInt(uint8_t *packet, int *packet_size, int data){
+  int new_packet_size = *packet_size + sizeof(int);
+  memcpy(packet+ (*packet_size), &data, sizeof(int));
   *packet_size = new_packet_size;
 }
 
@@ -107,7 +113,7 @@ void packData(uint8_t *packet, int *packet_size){
   *packet_size = new_packet_size;
 }
 
-void unpackData(uint8_t *packet, int *packet_size, double *data){
+void unpackDataDouble(uint8_t *packet, int *packet_size, double *data){
   int new_packet_size = *packet_size - sizeof(double);
   double data_t;
   memcpy(&data_t, packet, sizeof(double));
@@ -117,3 +123,15 @@ void unpackData(uint8_t *packet, int *packet_size, double *data){
   }
   *packet_size = new_packet_size;
 }
+
+void unpackDataInt(uint8_t *packet, int *packet_size, int *data){
+  int new_packet_size = *packet_size - sizeof(int);
+  int data_t;
+  memcpy(&data_t, packet, sizeof(int));
+  *data = data_t;
+  if(new_packet_size > 0) {
+    memmove(packet, packet+sizeof(int), new_packet_size);
+  }
+  *packet_size = new_packet_size;
+}
+

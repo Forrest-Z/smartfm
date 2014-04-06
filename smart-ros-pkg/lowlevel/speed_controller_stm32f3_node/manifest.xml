@@ -10,7 +10,7 @@
   <url>http://ros.org/wiki/speed_controller_stm32f3_node</url>
   <depend package="std_msgs"/>
   <depend package="roscpp"/>
-
+  <depend package="phidget_encoders"/>
 </package>
 
 
