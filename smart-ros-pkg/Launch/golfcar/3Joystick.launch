@@ -1,0 +1,10 @@
+<launch>
+	<node pkg="joy" type="joy_node" name="joy_node">
+		<param name="dev" value="/dev/input/js0"/>
+                <param name="coalesce_interval" value="0.01"/>
+	</node>
+	<!--node pkg="golfcar_halstreamer" type="joy_multichannel" name="joy_multichannel"/-->
+	<!--node pkg="golfcar_steeringcontrol" type="local_controller" name="local_controller"/--> 
+	<!--node name="speed_controller" pkg="speed_controller" type="speed_controller_PI"/-->
+</launch>
+

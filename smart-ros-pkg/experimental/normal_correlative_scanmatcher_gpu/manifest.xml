@@ -23,6 +23,7 @@
   <rosdep name="opencv2"/>
   <rosdep name="libmysqlclient-dev"/>
   <depend package="occupancy_grid_utils"/>
+  <depend package="csm_cuda"/>
 </package>
 
 

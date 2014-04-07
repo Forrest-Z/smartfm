@@ -22,7 +22,6 @@ vehicle_detection::vehicle_detection(ros::NodeHandle &n) : private_nh_("~"), n_(
 	generateColors( colors_, LatentSVMdetector_->getClassNames().size() );
 
     cam_sub_ = it_.subscribeCamera("camera_front/image_raw", 1, &vehicle_detection::imageCallback, this);
-    segpose_batch_sub_  = n_.subscribe("segment_pose_batches", 1, &vehicle_detection::lidarMeas_callback, this);
     image_pub_ = it_.advertise("camera_front/vehicle_detection", 1);
 
 	private_nh_.param("laser_frame_id",     laser_frame_id_,    std::string("front_bottom_lidar"));
@@ -31,11 +30,7 @@ vehicle_detection::vehicle_detection(ros::NodeHandle &n) : private_nh_("~"), n_(
 	private_nh_.param("camera_frame_id",    camera_frame_id_,     std::string("camera_front_img"));
 	camera_initialized_ = false;
 
-	private_nh_.param("z_low_bound", z_low_bound_, -1.0);
-	private_nh_.param("z_high_bound", z_high_bound_, 2.0);
-	private_nh_.param("x_inflat_dist", x_inflat_dist_, 0.5);
-	private_nh_.param("y_inflat_dist", y_inflat_dist_, 0.5);
-	private_nh_.param("detection_threshold", detection_threshold_, -0.3);
+	private_nh_.param("detection_threshold", detection_threshold_, -1.3);
 
 	new_image_ = false;
 
@@ -46,6 +41,12 @@ vehicle_detection::vehicle_detection(ros::NodeHandle &n) : private_nh_("~"), n_(
 
 	beam_pub_	= n_.advertise<geometry_msgs::PolygonStamped>("scan_beam", 2);
 	endPt_pub_  = n_.advertise<sensor_msgs::PointCloud>("endPoints", 2);
+	private_nh_.param("x_buff", x_buff_, 10);
+	private_nh_.param("y_buff", y_buff_, 10);
+	private_nh_.param("angle_aperture_thresh", angle_aperture_thresh_, 5.0);
+	private_nh_.param("vehicle_width", vehicle_width_, 1.5);
+	private_nh_.param("vehicle_height", vehicle_height_, 3.0);
+	private_nh_.param("max_detection_range", max_detection_range_, 40.0);
 }
 
 vehicle_detection::~vehicle_detection()
@@ -68,30 +69,15 @@ void vehicle_detection::imageCallback(const sensor_msgs::ImageConstPtr& image, c
 	}
 }
 
-void vehicle_detection::lidarMeas_callback(const MODT::segment_pose_batches& batches)
-{
-	boost::recursive_mutex::scoped_lock l(configuration_mutex_);
-	if(!new_image_) return;
-
-	new_image_ = false;
-
-	ROS_INFO("lidarMeas_callback size(): %ld", batches.clusters.size());
-	if(!camera_initialized_)return;
-
-	std::vector<sensor_msgs::PointCloud> object_clusters;
-	for(size_t i=0; i<batches.clusters.size(); i++){object_clusters.push_back(batches.clusters[i].segments.back());}
-	std::vector<Rect> object_ROIs;
-	calcROIs(object_clusters, object_ROIs);
-	std::vector<vehicle_ROI> filtered_ROIs;
-	filterROIs(object_ROIs, filtered_ROIs);
-
-	detectAndDrawObjects(filtered_ROIs, *LatentSVMdetector_, colors_, overlap_threshold_, threadNum_);
-	image_pub_.publish(cv_image_copy_->toImageMsg());
-}
-
 void vehicle_detection::scanCallback (const sensor_msgs::LaserScan::ConstPtr& scan_in)
 {
 	boost::recursive_mutex::scoped_lock scl(configuration_mutex_);
+	ROS_INFO("scan callback");
+
+	if(!new_image_) return;
+	new_image_ = false;
+	if(!camera_initialized_)return;
+	std::vector<Rect> object_ROIs;
 
 	sensor_msgs::PointCloud baselink_cloud, camera_cloud;
 	try{projector_.transformLaserScanToPointCloud(laser_frame_id_, *scan_in, baselink_cloud, tf_);}
@@ -99,6 +85,7 @@ void vehicle_detection::scanCallback (const sensor_msgs::LaserScan::ConstPtr& sc
 	try{projector_.transformLaserScanToPointCloud(camera_frame_id_, *scan_in, camera_cloud, tf_);}
 	catch (tf::TransformException& e){ROS_WARN("LASER CANNOT TRANSFER INTO CAMERA FRAME CLOUD"); std::cout << e.what();return;}
 
+	//visualize the laser readings;
 	geometry_msgs::PolygonStamped lidar_beams;
 	lidar_beams.header = baselink_cloud.header;
 	geometry_msgs::Point32 origin_pt, end_pt;
@@ -115,83 +102,81 @@ void vehicle_detection::scanCallback (const sensor_msgs::LaserScan::ConstPtr& sc
 
 	if(!camera_initialized_) {ROS_WARN("camera not initialized!");return;}
 
+	//visualize the laser readings on image; calculate the ROIs of black vehicles;
+	std::vector<Point> image_points;
 	for(size_t j=0; j<camera_cloud.points.size(); j++)
 	{
 		//in case when points are projected at the behind of the camera;
-		if(camera_cloud.points[j].z<0.1) continue;
-
 		cv::Point3d pt3d_cv(camera_cloud.points[j].x, camera_cloud.points[j].y, camera_cloud.points[j].z);
 		cv::Point2d ptImg_uv;
 		cam_model_.project3dToPixel(pt3d_cv, ptImg_uv);
 
+		if(camera_cloud.points[j].z<1.0) {continue;}
+
 		Point point_tmp(ptImg_uv.x, ptImg_uv.y);
-
-		//ROS_INFO("pt %d, %d", point_tmp.x, point_tmp.y);
-
 		circle(cv_image_copy_->image, point_tmp, 4, Scalar(0, 0, 255), -1);
-	}
-}
 
-void vehicle_detection::calcROIs(std::vector<sensor_msgs::PointCloud> & object_clusters, std::vector<Rect> & object_ROIs)
-{
-	srand (time(NULL));
-	for(size_t i=0; i<object_clusters.size(); i++)
-	{
-		//1st: transform the points into baselink frame;
-		object_clusters[i].header.stamp = cv_image_copy_->header.stamp;
-		sensor_msgs::PointCloud cloud_tmp;
-		try{tf_.transformPointCloud(base_frame_id_, object_clusters[i], cloud_tmp);}
-		catch (tf::TransformException& e){ROS_DEBUG("cannot transform into baselink frame"); std::cout << e.what(); continue;}
 
-		//2nd: inflate the points, and transform into the camera frame;
-		sensor_msgs::PointCloud inflatted_cloud_tmp;
-		inflatted_cloud_tmp.header = cloud_tmp.header;
-		for(size_t j=0; j<cloud_tmp.points.size(); j++)
+		assert(camera_cloud.channels[1].name == "index");
+		if(j>0)
 		{
-			geometry_msgs::Point32 point_tmp;
-			for(int a=-1; a<=1; a=a+2)
-				for(int b=-1; b<=1; b=b+2)
+			int ID_in_scan = (int)camera_cloud.channels[1].values[j];
+			int ID_in_scan_prev = (int)camera_cloud.channels[1].values[j-1];
+
+			double angle_diff = (ID_in_scan - ID_in_scan_prev)*scan_in->angle_increment;
+
+			if(angle_diff > 5.0*M_PI/180.0)
+			{
+				double angle_tmp = ID_in_scan*scan_in->angle_increment +scan_in->angle_min;
+				double angle_prev_tmp = ID_in_scan_prev*scan_in->angle_increment +scan_in->angle_min;
+
+				double dist_tmp = vehicle_width_/(tan(angle_tmp) - tan(angle_prev_tmp));
+				geometry_msgs::PointStamped pt_baselink_tmp, pt_baselink_top_tmp;
+
+				pt_baselink_tmp.header = baselink_cloud.header;
+				pt_baselink_top_tmp.header = baselink_cloud.header;
+ 				pt_baselink_tmp.point.x = dist_tmp;
+				pt_baselink_tmp.point.y = 0.0;
+				pt_baselink_tmp.point.z = 0.0;
+				pt_baselink_top_tmp.point.x = max_detection_range_;
+				pt_baselink_top_tmp.point.y = 0.0;
+				pt_baselink_top_tmp.point.z = vehicle_height_;
+
+				try{tf_.transformPoint(camera_frame_id_, pt_baselink_tmp, pt_baselink_tmp);}
+				catch (tf::TransformException& e){ROS_WARN("cannot transform back into camera frame"); std::cout << e.what(); continue;}
+				try{tf_.transformPoint(camera_frame_id_, pt_baselink_top_tmp, pt_baselink_top_tmp);}
+				catch (tf::TransformException& e){ROS_WARN("cannot transform back into camera frame"); std::cout << e.what(); continue;}
+
+				cv::Point3d pt3d_center_tmp(pt_baselink_tmp.point.x, pt_baselink_tmp.point.y, pt_baselink_tmp.point.z);
+				cv::Point3d pt3d_center_top_tmp(pt_baselink_top_tmp.point.x, pt_baselink_top_tmp.point.y, pt_baselink_top_tmp.point.z);
+				cv::Point2d ptImg_center_tmp, ptImg_center_top_tmp;
+				cam_model_.project3dToPixel(pt3d_center_tmp, ptImg_center_tmp);
+				cam_model_.project3dToPixel(pt3d_center_top_tmp, ptImg_center_top_tmp);
+
+				Point center_tmp(ptImg_center_tmp.x, ptImg_center_tmp.y);
+				Point center_top_tmp(ptImg_center_top_tmp.x, ptImg_center_top_tmp.y);
+
+				if(image_points.size()>0)
 				{
-					point_tmp.x = cloud_tmp.points[j].x + a*x_inflat_dist_;
-					point_tmp.y = cloud_tmp.points[j].y + b*y_inflat_dist_;
-					point_tmp.z = cloud_tmp.points[j].z + z_low_bound_;
-					inflatted_cloud_tmp.points.push_back(point_tmp);
-					point_tmp.z = cloud_tmp.points[j].z + z_high_bound_;
-					inflatted_cloud_tmp.points.push_back(point_tmp);
+					Point lower_left(point_tmp.x, center_tmp.y), upper_left(point_tmp.x, center_top_tmp.y);
+					Point lower_right(image_points.back().x, center_tmp.y), upper_right(image_points.back().x, center_top_tmp.y);
+
+					Rect black_ROI(upper_left.x - x_buff_, upper_left.y - y_buff_, (lower_right.x - upper_left.x)+ 2*x_buff_, (lower_right.y- upper_left.y)+ 2*y_buff_);
+					//rectangle(cv_image_copy_->image, upper_left, lower_right, Scalar(0, 255, 255), 3);
+					object_ROIs.push_back(black_ROI);
 				}
+			}
 		}
 
-		try{tf_.transformPointCloud(camera_frame_id_, inflatted_cloud_tmp, inflatted_cloud_tmp);}
-		catch (tf::TransformException& e){ROS_DEBUG("cannot transform into camera frame"); std::cout << e.what(); continue;}
-
-		Scalar color_tmp( rand() % 256,  rand() % 256,  rand() % 256);
-
-		//3rd: project the points onto the images;
-		Point upper_left(cv_image_copy_->image.cols-1, cv_image_copy_->image.rows-1), lower_right(0, 0);
-		for(size_t j=0; j<inflatted_cloud_tmp.points.size(); j++)
-		{
-			//in case when points are projected at the behind of the camera;
-			if(inflatted_cloud_tmp.points[j].z<0.1) continue;
-
-			cv::Point3d pt3d_cv(inflatted_cloud_tmp.points[j].x, inflatted_cloud_tmp.points[j].y, inflatted_cloud_tmp.points[j].z);
-			cv::Point2d ptImg_uv;
-			cam_model_.project3dToPixel(pt3d_cv, ptImg_uv);
-			Point point_tmp(ptImg_uv.x, ptImg_uv.y);
-			circle(cv_image_copy_->image, point_tmp, 3, color_tmp, -1);
-
-			if(point_tmp.x<upper_left.x) upper_left.x = point_tmp.x;
-			if(point_tmp.y<upper_left.y) upper_left.y = point_tmp.y;
-			if(point_tmp.x>lower_right.x) lower_right.x = point_tmp.x;
-			if(point_tmp.y>lower_right.y) lower_right.y = point_tmp.y;
-		}
-		if(upper_left.x>=lower_right.x || upper_left.y>=lower_right.y) continue;
-
-		printf("upper_left (%d, %d), lower_right (%d, %d)\n", upper_left.x, upper_left.y, lower_right.x, lower_right.y);
-
-		Rect rectangle_tmp(upper_left.x, upper_left.y, (lower_right.x- upper_left.x), (lower_right.y- upper_left.y));
-		object_ROIs.push_back(rectangle_tmp);
-		rectangle(cv_image_copy_->image, upper_left, lower_right, Scalar(0, 255, 0), 3);
+		image_points.push_back(point_tmp);
 	}
+
+	std::vector<vehicle_ROI> filtered_ROIs;
+	filterROIs(object_ROIs, filtered_ROIs);
+	detectAndDrawObjects(filtered_ROIs, *LatentSVMdetector_, colors_, overlap_threshold_, threadNum_);
+	image_pub_.publish(cv_image_copy_->toImageMsg());
+
+
 }
 
 void vehicle_detection::filterROIs(std::vector<Rect> & object_ROIs, std::vector<vehicle_ROI> & filtered_ROIs)

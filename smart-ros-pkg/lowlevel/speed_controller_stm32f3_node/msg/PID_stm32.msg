@@ -1,0 +1,11 @@
+int32 automode
+float64 target_speed
+float64 kp
+float64 ki
+float64 kd
+float64 p
+float64 i
+float64 d
+float64 u
+float64 feedback_speed
+float64 feedback_err
