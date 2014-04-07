@@ -76,7 +76,7 @@ int main(int argc, char **argv)
   ros::Publisher mc_pub = n.advertise<speed_controller_stm32f3_node::PID_stm32>("pid_stm32f3", 1);
   ros::Publisher encoder_pub = n.advertise<phidget_encoders::Encoders>("encoder_odo", 1);
   ros::Rate loop(1000);
-  expected_packet_size =  13 * sizeof(double) + 3 * sizeof(int);
+  expected_packet_size =  13 * sizeof(double) + 1 * sizeof(int) + 2 * sizeof(uint32_t);
   while (ros::ok()) {
     while(serial_port_->rdbuf()->in_avail()>0){
       char buffer = serial_port_->rdbuf()->sbumpc();
@@ -88,7 +88,7 @@ int main(int argc, char **argv)
 	double target_speed, kp, ki, kd;
 	double p, i, d, u, feedback_speed, feedback_err;
 	double enc1_dt, enc2_dt, dt;
-	int enc1_count, enc2_count;
+	uint32_t enc1_count, enc2_count;
 	int automode;
 	unpackDataDouble(data_received_local, &data_length, &dt);
 	unpackDataInt(data_received_local, &data_length, &automode);
@@ -104,8 +104,8 @@ int main(int argc, char **argv)
 	unpackDataDouble(data_received_local, &data_length, &feedback_err);
 	unpackDataDouble(data_received_local, &data_length, &enc1_dt);
 	unpackDataDouble(data_received_local, &data_length, &enc2_dt);
-	unpackDataInt(data_received_local, &data_length, &enc1_count);
-	unpackDataInt(data_received_local, &data_length, &enc2_count);
+	unpackDataUInt32(data_received_local, &data_length, &enc1_count);
+	unpackDataUInt32(data_received_local, &data_length, &enc2_count);
 	speed_controller_stm32f3_node::PID_stm32 pid;
 	pid.automode = automode;
 	pid.target_speed = target_speed;

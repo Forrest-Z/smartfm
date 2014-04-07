@@ -99,6 +99,12 @@ void serialAddInt(uint8_t *packet, int *packet_size, int data){
   *packet_size = new_packet_size;
 }
 
+void serialAddUInt32(uint8_t *packet, int *packet_size, uint32_t data){
+  int new_packet_size = *packet_size + sizeof(uint32_t);
+  memcpy(packet+ (*packet_size), &data, sizeof(uint32_t));
+  *packet_size = new_packet_size;
+}
+
 void packData(uint8_t *packet, int *packet_size){
   int new_packet_size = *packet_size + 5;
   uint16_t fletcher_sum = fletcher16(packet, *packet_size);
@@ -135,3 +141,13 @@ void unpackDataInt(uint8_t *packet, int *packet_size, int *data){
   *packet_size = new_packet_size;
 }
 
+void unpackDataUInt32(uint8_t *packet, int *packet_size, uint32_t *data){
+  int new_packet_size = *packet_size - sizeof(uint32_t);
+  uint32_t data_t;
+  memcpy(&data_t, packet, sizeof(uint32_t));
+  *data = data_t;
+  if(new_packet_size > 0) {
+    memmove(packet, packet+sizeof(uint32_t), new_packet_size);
+  }
+  *packet_size = new_packet_size;
+}
