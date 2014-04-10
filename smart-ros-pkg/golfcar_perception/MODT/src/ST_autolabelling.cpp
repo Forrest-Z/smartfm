@@ -42,6 +42,16 @@
 
 #include <fmutil/fm_stopwatch.h>
 
+#include <pcl/ModelCoefficients.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/features/vfh.h>
+
+//#include <pcl1.6/features/esf.h>
+
 using namespace std;
 using namespace ros;
 
@@ -76,7 +86,19 @@ private:
 
 	void construct_feature_vector();
 	void calc_ST_shapeFeatures(object_cluster_segments &object_cluster);
+
+	int feature_extraction_type_;
+	std::vector<double> (DATMO::*get_feature_vector_)(object_cluster_segments &object_cluster);
 	std::vector<double> get_vector_V4(object_cluster_segments &object_cluster);
+	std::vector<double> get_vector_3Dfeatures(object_cluster_segments &object_cluster);
+
+	int calc_3dfeautres_method_;
+	std::vector<double> (DATMO::*calc_3d_features_)(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
+	std::vector<double> ultrafast_shape_recognition(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
+	std::vector<double> moments2refpoint(pcl::PointCloud<pcl::PointXYZ> &st_cloud, pcl::PointXYZ &ref_point);
+
+	std::vector<double> VFH(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
+	std::vector<double> ESF(pcl::PointCloud<pcl::PointXYZ> &st_cloud);
 
 	void classify_clusters();
 	void calc_rough_pose();
@@ -100,7 +122,8 @@ private:
 	PointCloudRGB 											combined_pcl_;
 	ros::Publisher											segmented_pcl_pub_;
 	ros::Publisher											filtered_pcl_pub_, erased_pcl_pub_;
-    ros::Publisher											vehicle_pcl_pub_;
+    ros::Publisher											vehicle_pcl_pub_, pedestrian_pcl_pub_;
+
     ros::Publisher											debug_pcl_pub_;
 	std::vector<std::pair<int, std::vector<int> > > 		object_cluster_IDs_;
 	std::vector<object_cluster_segments> 					object_feature_vectors_;
@@ -162,6 +185,11 @@ private:
 	ros::Publisher                              			labeled_positive_objects_pub_;
 
 	double													seg_time_coeff_;
+
+	//choose whether to use "pose-variant" or "pose-invariant" features;
+	bool													pose_variant_features_;
+
+
 };
 
 DATMO::DATMO()
@@ -173,7 +201,6 @@ DATMO::DATMO()
 	private_nh_.param("map_frame_id",      	map_frame_id_,    	std::string("map"));
 	private_nh_.param("gating_min_size",    gating_min_size_,   0.5);
 	private_nh_.param("gating_max_size",    gating_max_size_,   15.0);
-	private_nh_.param("gating_min_size",    gating_min_size_,   0.5);
 
 	//for vehicle detection;
 	//private_nh_.param("graph_seg_k",    			graph_seg_k_,   		3.0);
@@ -186,9 +213,10 @@ DATMO::DATMO()
 
 	//program_mode: "0" - save training data mode;
 	//				"1" - online classification mode;
-	private_nh_.param("program_mode",			program_mode_,     		0);
-	private_nh_.param("feature_num",			feature_num_,       	13);
-	private_nh_.param("speed_threshold",		speed_threshold_,      	2.0);
+	private_nh_.param("program_mode",			program_mode_,     			0);
+	private_nh_.param("feature_num",			feature_num_,       		13);
+	private_nh_.param("speed_threshold",		speed_threshold_,      		2.0);
+	private_nh_.param("pose_variant_features",	pose_variant_features_,     true);
 
 	//to reduce the size of feature vector;
 	private_nh_.param("downsample_interval",	downsample_interval_,    1);
@@ -212,8 +240,41 @@ DATMO::DATMO()
 	private_nh_.param("img_resolution",		img_resolution_,     0.2);
 	private_nh_.param("seg_time_coeff",		seg_time_coeff_,     1.0);
 
+	private_nh_.param("feature_extraction_type",		feature_extraction_type_,     1);
+
+	if(feature_extraction_type_==1)
+	{
+		get_feature_vector_ = &DATMO::get_vector_V4;
+	}
+	else if(feature_extraction_type_ ==2)
+	{
+		get_feature_vector_ = &DATMO::get_vector_3Dfeatures;
+	}
+	else
+	{
+		ROS_ERROR("please select the correct feature type");
+	}
+
+	private_nh_.param("calc_3dfeautres_method",		calc_3dfeautres_method_,     1);
+	if(calc_3dfeautres_method_==1)
+	{
+		calc_3d_features_ = &DATMO::ultrafast_shape_recognition;
+	}
+	else if(calc_3dfeautres_method_ ==2)
+	{
+		calc_3d_features_ = &DATMO::VFH;
+	}
+	else
+	{
+		ROS_ERROR("please select the method for 3d features calculation, if in use");
+	}
+
+
 	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "front_bottom_scan", 10);
-	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, map_frame_id_, 10);
+
+	if(program_mode_ == 1) tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, map_frame_id_, 10);
+	else  tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, odom_frame_id_, 10);
+
 	tf_filter_->registerCallback(boost::bind(&DATMO::scanCallback, this, _1));
 	tf_filter_->setTolerance(ros::Duration(0.1));
 
@@ -222,6 +283,7 @@ DATMO::DATMO()
 	filtered_pcl_pub_			=   nh_.advertise<PointCloudRGB>("filtered_pcl", 2);
 	erased_pcl_pub_				=   nh_.advertise<PointCloudRGB>("erased_pcl", 2);
 	vehicle_pcl_pub_			=   nh_.advertise<PointCloudRGB>("vehicle_pcl", 2);
+	pedestrian_pcl_pub_			=   nh_.advertise<PointCloudRGB>("pedestrian_pcl", 2);
 	debug_pcl_pub_				=   nh_.advertise<sensor_msgs::PointCloud>("debug_cloud", 2);
 	rough_pose_pub_				=   nh_.advertise<geometry_msgs::PoseArray>("rough_poses", 2);
 	segment_pose_batch_pub_		=   nh_.advertise<MODT::segment_pose_batches>("segment_pose_batches", 2);
@@ -278,8 +340,8 @@ DATMO::DATMO()
 
 void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 {
-	cout<<verti_scan_in->header.seq <<","<<verti_scan_in->header.frame_id;
-	if(program_mode_==0)visualize_labelled_scan(verti_scan_in);
+	cout<<verti_scan_in->header.seq <<endl;
+	if(program_mode_==0){ROS_INFO("use scan mask"); visualize_labelled_scan(verti_scan_in);}
 
 	if(scan_count_%skip_scan_times_==0) process_scan_flag_ = true;
 	else process_scan_flag_ = false;
@@ -782,7 +844,7 @@ void DATMO::construct_feature_vector()
 			int back_scanSerial  = cluster_tmp.scan_segment_batch[j].serial_in_scan.back();
 
 			//to deal with the FOV issue;
-			if(front_scanSerial==0)cluster_tmp.scan_segment_batch[j].front_dist2background = 0.0;
+			if(front_scanSerial==0) cluster_tmp.scan_segment_batch[j].front_dist2background = 0.0;
 			else
 			{
 				double front_backgroundDistance =scan_vector_[j].ranges[front_scanSerial-1];
@@ -801,7 +863,9 @@ void DATMO::construct_feature_vector()
 		}
 
 		calc_ST_shapeFeatures(cluster_tmp);
-		object_feature_vectors_.push_back(cluster_tmp);
+
+		//erase cluster who is generated without the latest lidar scan;
+		if(cluster_tmp.scan_segment_batch.back().odomPoints.size()!=0) object_feature_vectors_.push_back(cluster_tmp);
 	}
 	debug_pcl_pub_.publish(constructed_cloud);
 
@@ -834,10 +898,14 @@ void DATMO::construct_feature_vector()
 			object_cluster_tmp.pose_InLatestCoord_vector.push_back(Pose_inLatest_vector[j]);
 			object_cluster_tmp.pose_InOdom_vector.push_back(Pose_inOdom_vector[j]);
 			//compress the scan_segment (in another sense to extract the feature vector of the scan segment);
-			object_cluster_tmp.scan_segment_batch[j].compress_scan();
-		}
 
-		object_cluster_tmp.GenPosInvariantCompressedSegment();
+			if(pose_variant_features_)object_cluster_tmp.scan_segment_batch[j].compress_scan();
+			else object_cluster_tmp.scan_segment_batch[j].compress_scan_latestLIDAR();
+		}
+		object_cluster_tmp.GetCentroid_latestLIDAR();
+
+		if(pose_variant_features_) object_cluster_tmp.GetCentroid_rawPoints();
+		else object_cluster_tmp.GenPosInvariantCompressedSegment();
 	}
 }
 
@@ -934,6 +1002,7 @@ void DATMO::save_training_data()
 		}
 
 		if(object_cluster_tmp.object_type != 4) object_feature_vectors_deputy_tmp.push_back(object_cluster_tmp);
+
 		ROS_INFO("object labelled as %d", object_cluster_tmp.object_type);
 	}
 	object_feature_vectors_ = object_feature_vectors_deputy_tmp;
@@ -952,7 +1021,7 @@ void DATMO::save_training_data()
 		if(fp_write==NULL){ROS_ERROR("cannot write derived data file\n");return;}
 
 		fprintf(fp_write, "%d\t", object_cluster_tmp.object_type);
-		std::vector<double> feature_vector = get_vector_V4(object_cluster_tmp);
+		std::vector<double> feature_vector = (this->*get_feature_vector_)(object_cluster_tmp);
 		for(size_t k=0; k<feature_vector.size(); k++) fprintf(fp_write, "%lf\t", feature_vector[k]);
 		fprintf(fp_write, "\n");
 		fclose(fp_write);
@@ -962,9 +1031,12 @@ void DATMO::save_training_data()
 void DATMO::classify_clusters()
 {
 	ROS_INFO("classify clusters");
-	PointCloudRGB vehicle_cloud;
+	PointCloudRGB vehicle_cloud, pedestrian_cloud;
 	vehicle_cloud.header = combined_pcl_.header;
+	pedestrian_cloud.header = combined_pcl_.header;
 	vehicle_cloud.points.clear();
+	pedestrian_cloud.points.clear();
+
 	for(size_t i=0; i<object_feature_vectors_.size(); i++)
 	{
 		object_cluster_segments &object_cluster_tmp =object_feature_vectors_[i];
@@ -979,7 +1051,7 @@ void DATMO::classify_clusters()
 		double DATMO_feature_vector[vector_length];
 
 		//std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
-		std::vector<double> feature_vector = get_vector_V4(object_cluster_tmp);
+		std::vector<double> feature_vector = (this->*get_feature_vector_)(object_cluster_tmp);
 
 		for(int k=0; k<vector_length; k++)
 		{
@@ -996,9 +1068,9 @@ void DATMO::classify_clusters()
 		*/
 
 		object_cluster_tmp.object_type = DATMO_classifier_->classify_objects(DATMO_feature_vector, vector_length);
-		if(object_cluster_tmp.object_type ==2)
+		if(object_cluster_tmp.object_type ==1)
 		{
-			ROS_DEBUG("pedestrians!!!");
+			ROS_DEBUG("vehicle !!!!!!");
 
 			for(size_t j=0;j<object_cluster_tmp.scan_segment_batch.size(); j++)
 			{
@@ -1015,9 +1087,23 @@ void DATMO::classify_clusters()
 				}
 			}
 		}
-		else if(object_cluster_tmp.object_type ==1)
+		else if(object_cluster_tmp.object_type ==2)
 		{
-			ROS_DEBUG("car!!!");
+			ROS_DEBUG("pedestrian!!!");
+			for(size_t j=0;j<object_cluster_tmp.scan_segment_batch.size(); j++)
+			{
+				for(size_t k=0;k<object_cluster_tmp.scan_segment_batch[j].odomPoints.size(); k++)
+				{
+					pcl::PointXYZRGB pt_tmp;
+					pt_tmp.x = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].x;
+					pt_tmp.y = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].y;
+					pt_tmp.z = object_cluster_tmp.scan_segment_batch[j].odomPoints[k].z;
+					pt_tmp.r = 255;
+					pt_tmp.g = 0;
+					pt_tmp.b = 0;
+					pedestrian_cloud.points.push_back(pt_tmp);
+				}
+			}
 		}
 		else if (object_cluster_tmp.object_type ==0)
 		{
@@ -1029,6 +1115,7 @@ void DATMO::classify_clusters()
 		}
 	}
 	vehicle_pcl_pub_.publish(vehicle_cloud);
+	pedestrian_pcl_pub_.publish(pedestrian_cloud);
 }
 
 void DATMO::calc_rough_pose()
@@ -1160,16 +1247,28 @@ std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster
 	feature_vector.push_back(object_cluster.scan_segment_batch.back().front_dist2background);
 	feature_vector.push_back(object_cluster.scan_segment_batch.back().back_dist2background);
 
-	//feature 6-13 about moments;
+	//feature 6-8 about intensities;
+	for(size_t i=0; i<3; i++) feature_vector.push_back(object_cluster.scan_segment_batch.back().intensities[i]);
+
+	//feature 9-15 about Hu-moments;
 	for(size_t i=0; i<7; i++)
 	{
 		feature_vector.push_back(object_cluster.ST_Humoment[i]);
 	}
-	//add new feature;
+	//feature 16;
 	feature_vector.push_back(object_cluster.ST_moments.m00);
 
-
-	for(size_t i=0; i<3; i++) feature_vector.push_back(object_cluster.scan_segment_batch.back().intensities[i]);
+	/*
+	feature_vector.push_back(object_cluster.ST_moments.m01);
+	feature_vector.push_back(object_cluster.ST_moments.m10);
+	feature_vector.push_back(object_cluster.ST_moments.m20);
+	feature_vector.push_back(object_cluster.ST_moments.m11);
+	feature_vector.push_back(object_cluster.ST_moments.m02);
+	feature_vector.push_back(object_cluster.ST_moments.m30);
+	feature_vector.push_back(object_cluster.ST_moments.m21);
+	feature_vector.push_back(object_cluster.ST_moments.m03);
+	feature_vector.push_back(object_cluster.ST_moments.m12);
+	 */
 
 	//remember to reordered the sequence;
 	//use "downsample_interval" to reduce the size of training data;
@@ -1185,10 +1284,204 @@ std::vector<double> DATMO::get_vector_V4(object_cluster_segments &object_cluster
 		feature_vector.push_back((double)object_cluster.scan_segment_batch[k].n);
 		feature_vector.push_back((double)object_cluster.scan_segment_batch[k].sigmaM);
 		feature_vector.push_back((double)object_cluster.scan_segment_batch[k].sigmaN);
+
+		//the last pair of positions is always 0;
+		/*
+		if(pose_variant_features_)
+		{
+			feature_vector.push_back((double)object_cluster.rawpoints_centroids[k].x);
+			feature_vector.push_back((double)object_cluster.rawpoints_centroids[k].y);
+		}
+		*/
+
+		if(!pose_variant_features_)
+		{
+			if(k!= 0)
+			{
+				feature_vector.push_back((double)object_cluster.cluster_attached_centroids[k].x);
+				feature_vector.push_back((double)object_cluster.cluster_attached_centroids[k].y);
+			}
+		}
 	}
 
 	assert((int)feature_vector.size() == feature_vector_length_);
 	return feature_vector;
+}
+
+std::vector<double> DATMO::get_vector_3Dfeatures(object_cluster_segments &object_cluster)
+{
+	std::vector<double> feature_vector;
+
+	//1st: contruct 3D data;
+	pcl::PointCloud<pcl::PointXYZ> ST_cluster;
+	for(size_t i=0; i<object_cluster.scan_segment_batch.size(); i++)
+	{
+		double time_delayed = cloud_vector_.back().header.stamp.toSec() - cloud_vector_[i].header.stamp.toSec();
+		for(size_t j=0; j<object_cluster.scan_segment_batch[i].lidarPoints.size(); j++)
+		{
+			pcl::PointXYZ pt_tmp;
+			pt_tmp.x = object_cluster.scan_segment_batch[i].lidarPoints[j].x;
+			pt_tmp.y = object_cluster.scan_segment_batch[i].lidarPoints[j].y;
+			pt_tmp.z = object_cluster.scan_segment_batch[i].lidarPoints[j].z + time_delayed*seg_time_coeff_;
+			ST_cluster.push_back(pt_tmp);
+		}
+	}
+
+	//2nd: extract 3D features;
+	feature_vector = (this->*calc_3d_features_)(ST_cluster);
+
+	assert((int)feature_vector.size() == feature_vector_length_);
+	return feature_vector;
+}
+
+std::vector<double> DATMO::ultrafast_shape_recognition(pcl::PointCloud<pcl::PointXYZ> &st_cloud)
+{
+	std::vector<double> moments_sets;
+
+	//find 4 keypoints;
+	pcl::PointXYZ ctd, cst, fct, ftf;
+	ctd.x = 0.0; ctd.y=0.0; ctd.z = 0.0;
+	cst.x = 0.0; cst.y=0.0; cst.z = 0.0;
+	fct.x = 0.0; fct.y=0.0; fct.z = 0.0;
+	ftf.x = 0.0; ftf.y=0.0; ftf.z = 0.0;
+
+	//calculate ctd;
+	for(size_t i=0; i<st_cloud.size(); i++) {ctd.x +=st_cloud[i].x; ctd.y +=st_cloud[i].y; ctd.z +=st_cloud[i].z;}
+	ctd.x = ctd.x/((float)st_cloud.size()+0.0000001);
+	ctd.y = ctd.y/((float)st_cloud.size()+0.0000001);
+	ctd.z = ctd.z/((float)st_cloud.size()+0.0000001);
+
+	//calculate cst and fct;
+	float cst2ctd = (float)DBL_MAX;
+	float fct2ctd = 0.0;
+	for(size_t i=0; i<st_cloud.size(); i++)
+	{
+		float distance_tmp = sqrtf((st_cloud[i].x-ctd.x)*(st_cloud[i].x-ctd.x)+(st_cloud[i].y-ctd.y)*(st_cloud[i].y-ctd.y)+(st_cloud[i].z-ctd.z)*(st_cloud[i].z-ctd.z));
+		if(distance_tmp<cst2ctd){ cst2ctd = distance_tmp; cst = st_cloud[i];}
+		if(distance_tmp>fct2ctd){ fct2ctd = distance_tmp; fct = st_cloud[i];}
+	}
+
+	//calculate ftf;
+	float ftf2fct = 0.0;
+	for(size_t i=0; i<st_cloud.size(); i++)
+	{
+		float distance_tmp = sqrtf((st_cloud[i].x-fct.x)*(st_cloud[i].x-fct.x)+(st_cloud[i].y-fct.y)*(st_cloud[i].y-fct.y)+(st_cloud[i].z-fct.z)*(st_cloud[i].z-fct.z));
+		if(distance_tmp>ftf2fct){ ftf2fct = distance_tmp; ftf = st_cloud[i];}
+	}
+
+	//calculate the 3-Moments according to each point;
+	std::vector<double> ctd_moments = moments2refpoint(st_cloud, ctd);
+	std::vector<double> cst_moments = moments2refpoint(st_cloud, cst);
+	std::vector<double> fct_moments = moments2refpoint(st_cloud, fct);
+	std::vector<double> ftf_moments = moments2refpoint(st_cloud, ftf);
+	for(size_t i=0; i<3; i++)moments_sets.push_back(ctd_moments[i]);
+	for(size_t i=0; i<3; i++)moments_sets.push_back(cst_moments[i]);
+	for(size_t i=0; i<3; i++)moments_sets.push_back(fct_moments[i]);
+	for(size_t i=0; i<3; i++)moments_sets.push_back(ftf_moments[i]);
+
+	return moments_sets;
+}
+
+//in this application only consider first 3 orders of moments
+//http://en.wikipedia.org/wiki/Moment_(mathematics)
+std::vector<double> DATMO::moments2refpoint(pcl::PointCloud<pcl::PointXYZ> &st_cloud, pcl::PointXYZ &ref_point)
+{
+	std::vector<double> moments;
+
+	std::vector<float> distance_values;
+	float moments1st = 0.0, moments2nd=0.0, moments3rd=0.0;
+
+	for(size_t i=0; i<st_cloud.size(); i++)
+	{
+		float distance_tmp = sqrtf((st_cloud[i].x-ref_point.x)*(st_cloud[i].x-ref_point.x)+(st_cloud[i].y-ref_point.y)*(st_cloud[i].y-ref_point.y)+(st_cloud[i].z-ref_point.z)*(st_cloud[i].z-ref_point.z));
+		distance_values.push_back(distance_tmp);
+	}
+
+	for(size_t i=0; i<distance_values.size(); i++)
+	{
+		moments1st+=distance_values[i];
+	}
+	moments1st = moments1st/((float)st_cloud.size()+0.0000001);
+
+	for(size_t i=0; i<distance_values.size(); i++)
+	{
+		moments2nd += (distance_values[i]-moments1st)*(distance_values[i]-moments1st);
+	}
+	moments2nd = moments2nd/((float)st_cloud.size()*st_cloud.size()+0.0000001);
+
+	for(size_t i=0; i<distance_values.size(); i++)
+	{
+		moments3rd += std::pow((distance_values[i]-moments1st), 3.0);
+	}
+	moments3rd = moments3rd/((float)st_cloud.size()*st_cloud.size()*st_cloud.size()+0.0000001);
+	moments3rd = moments3rd/(std::pow(moments2nd,1.5)+0.0000001);
+
+	moments.push_back(moments1st);
+	moments.push_back(moments2nd);
+	moments.push_back(moments3rd);
+
+	return moments;
+}
+
+std::vector<double> DATMO::VFH(pcl::PointCloud<pcl::PointXYZ> &st_cloud)
+{
+	std::vector<double> feature_set;
+
+	// Object for storing the normals.
+	pcl::PointCloud<pcl::Normal>::Ptr normals(new pcl::PointCloud<pcl::Normal>);
+	// Object for storing the VFH descriptor.
+	pcl::PointCloud<pcl::VFHSignature308>::Ptr descriptor(new pcl::PointCloud<pcl::VFHSignature308>);
+
+	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> normalEstimation;
+	normalEstimation.setInputCloud(st_cloud.makeShared());
+	normalEstimation.setRadiusSearch(0.3);
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr kdtree(new pcl::search::KdTree<pcl::PointXYZ>);
+	normalEstimation.setSearchMethod(kdtree);
+	normalEstimation.compute(*normals);
+
+	pcl::VFHEstimation<pcl::PointXYZ, pcl::Normal, pcl::VFHSignature308> vfh;
+	vfh.setInputCloud(st_cloud.makeShared());
+	vfh.setInputNormals(normals);
+	vfh.setSearchMethod(kdtree);
+	// Optionally, we can normalize the bins of the resulting histogram,
+	vfh.setNormalizeBins(true);
+	// Also, we can normalize the SDC with the maximum size found between
+	// the centroid and any of the cluster's points.
+	vfh.setNormalizeDistance(false);
+	vfh.setViewPoint(0.0,0.0,0.0);
+	vfh.compute(*descriptor);
+
+	//descriptor->points.size () should be of size 1;
+	for(size_t i=0; i<308; i++)
+	{
+		feature_set.push_back(descriptor->points.front().histogram[i]);
+	}
+
+	return feature_set;
+}
+
+//too bad that ESF is not supported yet by pcl1.5;
+std::vector<double> DATMO::ESF(pcl::PointCloud<pcl::PointXYZ> &st_cloud)
+{
+	std::vector<double> feature_set;
+
+	/*
+	// Object for storing the ESF descriptor.
+	pcl::PointCloud<pcl::ESFSignature640>::Ptr descriptor(new pcl::PointCloud<pcl::ESFSignature640>);
+	// ESF estimation object.
+	pcl::ESFEstimation<pcl::PointXYZ, pcl::ESFSignature640> esf;
+	esf.setInputCloud(st_cloud.makeShared());
+	// Compute the features
+	esf.compute(*descriptor);
+
+	//descriptor->points.size () should be of size 1;
+	for(size_t i=0; i<640; i++)
+	{
+		feature_set.push_back(descriptor->points.front().histogram[i]);
+	}
+	*/
+
+	return feature_set;
 }
 
 void DATMO::load_labeledScanMasks()
@@ -1212,6 +1505,7 @@ void DATMO::load_labeledScanMasks()
 
 	assert(labelled_masks_.size() == (Lend_serial_ - Lstart_serial_+1));
 	fs_read.release();
+	ROS_INFO("scan masks loaded");
 }
 
 void DATMO::visualize_labelled_scan(const sensor_msgs::LaserScan::ConstPtr& scan_in)
@@ -1346,7 +1640,7 @@ void DATMO::autolabelling_data()
 
 		fprintf(fp_write, "%d\t", object_cluster_tmp.object_type);
 		//std::vector<double> feature_vector = get_vector_V3(object_cluster_tmp);
-		std::vector<double> feature_vector = get_vector_V4(object_cluster_tmp);
+		std::vector<double> feature_vector = (this->*get_feature_vector_)(object_cluster_tmp);
 		for(size_t k=0; k<feature_vector.size(); k++) fprintf(fp_write, "%lf\t", feature_vector[k]);
 		fprintf(fp_write, "\n");
 		fclose(fp_write);

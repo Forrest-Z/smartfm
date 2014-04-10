@@ -1,8 +1,25 @@
-To run the etherlab_master:
-1. Install ethercat-1.5.2 according to INSTALL instruction located at third party
-2. compile this package
-3. /etc/init.d/ethercat start
-4. rosrun etherlab_master DuetflController
+To setup the etherlab_master:
+1. Install ethercat-1.5.2 located at third_party
+   - ./configure --disable-8139too --enable-generic
+   - make all modules
+   - sudo make modules_install install
+   - sudo depmod
+   - ln -s /opt/etherlab/etc/init.d/ethercat /etc/init.d/ethercat 
+   - sudo rsync /opt/etherlab/etc/sysconfig/ethercat  /etc/sysconfig/
+   - edit /etc/sysconfig to look something similar to
+	MASTER0_DEVICE="94:de:80:69:a4:1b"
+	DEVICE_MODULES="generic"
+To run the etherlab_master
+2. sudo /etc/init.d/ethercat start
+3. check connected slaves
+   - sudo /opt/etherlab/bin/ethercat slaves
+4. roscd etherlab_master
+5. bash scripts/motor_startup.bash
+6. sudo -s
+7. ./bin/DuetflController
+// Optionally running with bash
+8. bash no_brake.bash
+9. bash full_brake.bash
 // Optionally running with Joystick
-5. roslaunch Launch 3Joystick.launch 
-6. rosrun kbd_joy_control joy_hal 
+10. roslaunch Launch 3Joystick.launch 
+11. rosrun kbd_joy_control joy_hal 

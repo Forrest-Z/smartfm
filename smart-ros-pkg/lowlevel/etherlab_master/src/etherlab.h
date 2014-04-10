@@ -56,7 +56,9 @@ public:
        void run();
        bool init();
        bool initEthercat();
-       bool initSDOs();
+       bool initEthercat_SlaveOne();
+       bool initSDOs_SlaveZero();
+       bool initSDOs_SlaveOne();
        bool initROS();
        bool cyclic_task();
        bool cyclic_task_SDO();
@@ -64,12 +66,14 @@ public:
        /* ROS callback */
 //       void callback_steering(const etherlab_master::steering::ConstPtr& steering_cmd);
        void callback_steering2(std_msgs::Float64 steering_cmd);
+       void callback_braking(std_msgs::Float64 braking_cmd);
        void callback_joy(sensor_msgs::Joy joy_cmd);
 public:
        /* homing */
        bool setHomingMethod2CurrentPosition(fm_sdo* homing_method_fmSdo);
        /// trigger home position,shall be current position
-       bool operateSteeringMotorHomingMethod();
+       bool operateSteeringMotorHomingMethod_SlaveZero();
+       bool operateSteeringMotorHomingMethod_SlaveOne();
 
 public:
        // sdo method
@@ -86,12 +90,16 @@ public:
        // pdo method
        bool readPDOsData();
        bool writeTargetPosition_PDO_SlaveZero(int32_t &value);
+       bool writeTargetPosition_PDO_SlaveOne(int32_t &value);
        bool writeTargetVelocity_PDO_SlaveZero(int32_t &value);
+       bool writeTargetVelocity_PDO_SlaveOne(int32_t &value);
        bool writeControlword_PDO_SlaveZero(uint16_t &value);
+       bool writeControlword_PDO_SlaveOne(uint16_t &value);
        bool writePDOData_SlaveZero();
        bool writePDOData_SlaveZero2();//only 3 state
-       bool calculateTargetVelocity(); // use pid calculate target velocity
-       bool writePDOData_SlaveZero_VelocityControl(); // use velocity mode
+       bool calculateTargetVelocity_SlaveZero(int32_t &target_pos); // use pid calculate target velocity slave 0
+       bool calculateTargetVelocity_SlaveOne(int32_t &target_pos);
+       bool writePDOData_VelocityControl(); // use velocity mode
        bool writePDOData_SlaveZero3();//only change_set_immediately is set
 
 public:
@@ -119,19 +127,37 @@ public:
        bool getMotorOperatingModeSDO(fm_sdo *operation_mode_display_fmsdo,fm_auto::OPERATION_MODE &mode);
        bool setMotorOperatingModeSDO(fm_sdo *sdo_operation_mode_write,fm_auto::OPERATION_MODE &value);
 
+       bool setSlavesTargetVelocity2Zero();
+       bool setTargetVelocitySDO(fm_sdo *sdo_target_velocity_write,int32_t &value);
+       bool getTargetVelocitySDO(fm_sdo *sdo_target_velocity_write,int32_t &target_velocity_value);
+
        bool setSlaveZeroMotorOperatingMode2ProfilePosition();
        bool setSlaveZeroMotorOperatingMode2ProfileVelocity();
        bool setSlaveZeroMotorOperatingMode2Homing();
 
+       bool doHoming_SlaveZero();
+
+       bool checkSlavesTargetVelocityAreZero();
+       bool getPositionActualValue_slave0(int32_t& value);
+       bool getPositionActualValue_slave1(int32_t& value);
+
+       //slave one
+       bool setSlaveOneMotorOperatingMode2Homing();
+       bool setSlaveOneMotorOperatingMode2ProfileVelocity();
+       bool doHoming_SlaveOne();
        /* controller */
        /// @brief send SDO to enable control
        /// do check target velocity ,check target position before trigger the motor
        /// make sure motor shaft rolling is safe
        bool enableControlSDO(fm_sdo *statusword_fmSdo,fm_sdo *controlword_fmSdo);
        bool enableControlSDO_SlaveZero();
+       bool enableControlSDO_SlaveOne();
        static void disableControlSDO(fm_sdo *statusword_fmSdo,fm_sdo *controlword_fmSdo);
        bool disableControlSDO_bool(fm_sdo *statusword_fmSdo,fm_sdo *controlword_fmSdo);
        bool disableControlSDO_SlaveZero();
+       bool disableControlSDO_SlaveOne();
+
+       bool disableAll();
 
 
        void check_master_state();
@@ -152,7 +178,7 @@ public:
        ///        current positioning order will be interrupted by the new one.
        bool goToPositionChangeSetImt_SDO_SlaveZero();
        /// get target position setted in 0x607A
-       bool getSlaveZeroTargetPositionSetting(int32_t &target_position);
+//       bool getSlaveZeroTargetPositionSetting(int32_t &target_position);
        /// set target position to 0x607A
        bool setSlaveZeroTargetPosition(int32_t &value);
 
@@ -184,8 +210,14 @@ private:
        bool setValueToAddress(uint &address);
 
 private:
-       bool checkNeedHal(int32_t las_cmd,int32_t new_cmd);
+//       bool checkNeedHal(int32_t las_cmd,int32_t new_cmd);
 
+public:
+       bool hasSlaveOne; // has two motor connected to master
+       bool needDoHoming_SlaveZero; // do homing operate , normally do once
+       bool needDoHoming_SlaveOne;
+       int steering_slave_number; // steering motor is which slave, default shall be slave one
+       int braking_slave_number; // braking motor is which slave ,default slave zero
 private:
        /// store sdo request
        std::list<fm_sdo*> activeSdoPool;
@@ -197,7 +229,7 @@ private:
        // EtherCAT
        ec_master_state_t master_state;
        ec_domain_t *domain_output;
-       ec_domain_t *domain_output_target_velocity;
+//       ec_domain_t *domain_output_target_velocity;
 //       ec_domain_t *domain_output_controlword;
 //       ec_domain_t *domain_output_target_position;
        ec_domain_t *domain_input;
@@ -206,22 +238,32 @@ private:
        uint8_t *domain_output_target_velocity_pd;
        uint8_t *domain_input_pd;
 
-       ros::Subscriber sub, brake_sub;
+       ros::Subscriber sub, emergency_button_sub,braking_sub;
        ros::Publisher pub;
-       ros::Publisher pub_position_cmd;
+       ros::Publisher pub_position_cmd,pub_braking_cmd;
        int32_t steering_cmd_new;
+       int32_t braking_cmd_new;
        int32_t steering_cmd_writing;
        int32_t steering_cmd_current;
 
        bool hasNewSteeringData;
        bool isNeedHal;// when new position cmd is diff direction of last cmd, need hal
+
+       // slave zero PDO data
        uint16_t statusword_PDO_data;
-       int32_t position_actual_value_PDO_data;
+       int32_t position_actual_value_PDO_data_slave_zero;
        int32_t velocity_actual_value_PDO_data;
        int16_t current_actual_value_PDO_data;
        int16_t torque_actual_value_PDO_data;
-       uint32_t velocity_actual_value;
+//       uint32_t velocity_actual_value;
+       // slave one PDO data
+       int32_t position_actual_value_PDO_data_slave_one;
+       int32_t velocity_actual_value_PDO_data_slave_one;
+       int16_t current_actual_value_PDO_data_slave_one;
+       int16_t torque_actual_value_PDO_data_slave_one;
+
        bool PDO_OK;
+       int err_state_count;
 
        bool needWrite_0xf_2controlword;
        int positionControlState;
@@ -232,8 +274,10 @@ private:
        bool is_TargetReached_Set;
 public:
        fmutil::LowPassFilter vFilter;
-
-       int32_t target_velocity;
+       int32_t maxSteeringCmd;
+       int32_t maxBrakingCmd;
+       int32_t target_velocity_slave_zero;
+       int32_t target_velocity_slave_one;
        double kp;
        double ki;
        double kd;
@@ -249,6 +293,20 @@ public:
        double e_now;
        double iTerm;
        double e_pre;
+
+       //slave one PID para
+       double kp_slave_one;
+       double ki_slave_one;
+       double kd_slave_one;
+
+       double kp_sat_slave_one;
+       double ki_sat_slave_one;
+       double kd_sat_slave_one;
+       double v_sat_slave_one; //velocity limit
+
+       double e_now_slave_one;
+       double iTerm_slave_one;
+       double e_pre_slave_one;
 
 //       std::mutex counter_mutex;
 

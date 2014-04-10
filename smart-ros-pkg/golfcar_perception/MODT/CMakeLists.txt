@@ -83,6 +83,10 @@ rosbuild_add_executable(ST_autolabelling src/ST_autolabelling.cpp)
 rosbuild_link_boost(ST_autolabelling signals)
 target_link_libraries(ST_autolabelling ${OpenCV_LIBRARIES})
 
+rosbuild_add_executable(ST_autolabelling_pcl16 src/ST_autolabelling_pcl16.cpp)
+rosbuild_link_boost(ST_autolabelling_pcl16 signals)
+target_link_libraries(ST_autolabelling_pcl16 ${OpenCV_LIBRARIES})
+
 rosbuild_add_executable(ST_GenRawTrainingData src/ST_GenRawTrainingData.cpp)
 rosbuild_link_boost(ST_GenRawTrainingData signals)
 target_link_libraries(ST_GenRawTrainingData ${OpenCV_LIBRARIES})

@@ -38,7 +38,7 @@ ec_rtai_sample-objs := rtai_sample.o
 EXTRA_CFLAGS := -I/include
 
 KBUILD_EXTRA_SYMBOLS := \
-	/home/motor/ethercat-1.5.2/$(LINUX_SYMVERS) \
-	/home/motor/ethercat-1.5.2/master/$(LINUX_SYMVERS)
+	/home/r2d2/smartfm/smart-ros-pkg/third_party/ethercat-1.5.2/$(LINUX_SYMVERS) \
+	/home/r2d2/smartfm/smart-ros-pkg/third_party/ethercat-1.5.2/master/$(LINUX_SYMVERS)
 
 #------------------------------------------------------------------------------

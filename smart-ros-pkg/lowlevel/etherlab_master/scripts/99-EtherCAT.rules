@@ -1,0 +1,4 @@
+# copy to /etc/udev/rules.d and /etc/init.d/ethercat restart
+# check: ll /dev/EtherCAT0
+# result: crw-rw-r-- 1 root root 249, 0 Mar 31 10:44 /dev/EtherCAT0
+KERNEL =="EtherCAT[0-9]*" , MODE ="0664"

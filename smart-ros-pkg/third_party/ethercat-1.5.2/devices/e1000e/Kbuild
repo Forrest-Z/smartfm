@@ -41,33 +41,33 @@ REV := $(shell if test -s $(TOPDIR)/revision; then \
 
 ifeq (0,1)
 	EC_E1000E_OBJ := \
-		82571-3.2-ethercat.o \
-		ethtool-3.2-ethercat.o \
-		ich8lan-3.2-ethercat.o \
-		netdev-3.2-ethercat.o \
-		param-3.2-ethercat.o \
-		phy-3.2-ethercat.o
+		82571-3.8-ethercat.o \
+		ethtool-3.8-ethercat.o \
+		ich8lan-3.8-ethercat.o \
+		netdev-3.8-ethercat.o \
+		param-3.8-ethercat.o \
+		phy-3.8-ethercat.o
 
 	ifeq (0,1)
 		EC_E1000E_OBJ += \
-			80003es2lan-3.2-ethercat.o \
-			mac-3.2-ethercat.o \
-			manage-3.2-ethercat.o \
-			nvm-3.2-ethercat.o
+			80003es2lan-3.8-ethercat.o \
+			mac-3.8-ethercat.o \
+			manage-3.8-ethercat.o \
+			nvm-3.8-ethercat.o
 	else
 		EC_E1000E_OBJ += \
-			es2lan-3.2-ethercat.o \
-			lib-3.2-ethercat.o
+			es2lan-3.8-ethercat.o \
+			lib-3.8-ethercat.o
 	endif
 
 	obj-m += ec_e1000e.o
 	ec_e1000e-objs := $(EC_E1000E_OBJ)
 
-	CFLAGS_netdev-3.2-ethercat.o = -DREV=$(REV)
+	CFLAGS_netdev-3.8-ethercat.o = -DREV=$(REV)
 endif
 
 KBUILD_EXTRA_SYMBOLS := \
-	/home/motor/ethercat-1.5.2/$(LINUX_SYMVERS) \
-	/home/motor/ethercat-1.5.2/master/$(LINUX_SYMVERS)
+	/home/r2d2/smartfm/smart-ros-pkg/third_party/ethercat-1.5.2/$(LINUX_SYMVERS) \
+	/home/r2d2/smartfm/smart-ros-pkg/third_party/ethercat-1.5.2/master/$(LINUX_SYMVERS)
 
 #------------------------------------------------------------------------------
