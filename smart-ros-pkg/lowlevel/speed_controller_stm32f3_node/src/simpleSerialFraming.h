@@ -52,7 +52,7 @@ int serialReceive(uint8_t *packet, int packet_size){
         //ensure there is enough packet to process. There might be a chance
         //that '\n' occur on the first byte, which is what exactly happened
         //to 0.09
-        if(packet[i]=='\n' && packet_received >= expected_packet_size){
+        if(packet_received == expected_packet_size + 2){
 //          CDC_Send_DATA("LF received\n", 12);
           //2 bytes before LF are Fletcher's checksum
           int packet_size = packet_received - 2;
@@ -66,7 +66,7 @@ int serialReceive(uint8_t *packet, int packet_size){
             for(int j=0; j<packet_size; j++)
               received_data[j] = data_packet[j];
           }
-          serial_receiver_state = SER_HEADER1;
+          serial_receiver_state = SER_HEADER2;
           packet_received = 0;
         }
         else {
@@ -87,9 +87,9 @@ int serialReceive(uint8_t *packet, int packet_size){
 }
 
 
-void serialAddDouble(uint8_t *packet, int *packet_size, double data){
-  int new_packet_size = *packet_size + sizeof(double);
-  memcpy(packet+ (*packet_size), &data, sizeof(double));
+void serialAddFloat(uint8_t *packet, int *packet_size, float data){
+  int new_packet_size = *packet_size + sizeof(float);
+  memcpy(packet+ (*packet_size), &data, sizeof(float));
   *packet_size = new_packet_size;
 }
 
@@ -106,7 +106,7 @@ void serialAddUInt32(uint8_t *packet, int *packet_size, uint32_t data){
 }
 
 void packData(uint8_t *packet, int *packet_size){
-  int new_packet_size = *packet_size + 5;
+  int new_packet_size = *packet_size + 4;
   uint16_t fletcher_sum = fletcher16(packet, *packet_size);
   uint8_t packet_temp[*packet_size];
   memcpy(packet_temp, packet, *packet_size); 
@@ -115,17 +115,17 @@ void packData(uint8_t *packet, int *packet_size){
   memcpy(packet+2, packet_temp, *packet_size);
   packet[*packet_size + 2] = (fletcher_sum >> 8)&0xff;
   packet[*packet_size + 3] = fletcher_sum&0xff;
-  packet[*packet_size + 4] = '\n';
+  //packet[*packet_size + 4] = '\n';
   *packet_size = new_packet_size;
 }
 
-void unpackDataDouble(uint8_t *packet, int *packet_size, double *data){
-  int new_packet_size = *packet_size - sizeof(double);
-  double data_t;
-  memcpy(&data_t, packet, sizeof(double));
+void unpackDataFloat(uint8_t *packet, int *packet_size, float *data){
+  int new_packet_size = *packet_size - sizeof(float);
+  float data_t;
+  memcpy(&data_t, packet, sizeof(float));
   *data = data_t;
   if(new_packet_size > 0) {
-    memmove(packet, packet+sizeof(double), new_packet_size);
+    memmove(packet, packet+sizeof(float), new_packet_size);
   }
   *packet_size = new_packet_size;
 }
