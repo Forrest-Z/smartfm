@@ -180,9 +180,9 @@ int main(int argc, char **argv)
 	      kp_ = /*0.75*/0.2;;//0.66;
 	      ki_ = /*0.4901960784*/0.2861952862;//1.53;//0.464475;
 	      b_weight_ = 0.1;//0.008;
-	      kp_br_ = kp_;//kp_test[count_test];
-	      ki_br_ = ki_;//ki_test[count_test];
-	      b_weight_br_ = b_weight_;//kd_test[count_test];
+	      kp_br_ = 0.1;//kp_;//kp_test[count_test];
+	      ki_br_ = 0.25;//ki_;//ki_test[count_test];
+	      b_weight_br_ = 1.0;//kd_test[count_test];
 	      cmd_linear_x_ = 0.0;
 	      automode_ = 0;
 	      updateCmd();
@@ -192,7 +192,7 @@ int main(int argc, char **argv)
 	      }
 	      break;
 	    case STEP1:
-	      cmd_linear_x_ = 2.0;
+	      cmd_linear_x_ = 1.5;
 	      updateCmd();
 	      abs_error += fabs(feedback_err);
 	      if(max_overshoot < feedback_speed) max_overshoot = feedback_speed;
@@ -202,7 +202,7 @@ int main(int argc, char **argv)
 		test_state = STEP2;
 	      break;
 	    case STEP2:
-	      cmd_linear_x_ = 1.5;
+	      cmd_linear_x_ = 1.2;
 	      updateCmd();
 	      abs_error += fabs(feedback_err);
 	      if(min_u > u) min_u = u;
