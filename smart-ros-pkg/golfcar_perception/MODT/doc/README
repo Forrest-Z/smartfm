@@ -11,3 +11,6 @@ Below is a description of how to use this MODT package for object detection;
 	 python tools/grid.py data/scaled_9_4
 	./svm-train -s 0 -c 32 -g 0.5 -e 0.1 data/scaled_9_4
 5. Run the detection online using "spatial_temporal_segmentation" by setting the program mode to "1";
+
+python tools/subset.py data/scaled_ped151 3000 data/subsetPed151 data/subsetPed151rest
+
