@@ -18,7 +18,7 @@
 		<!-- type1 uses my compressed scan method; type2 use 3d features-->
 		<param name="feature_extraction_type" value="2"/>
 		
-		<!--for my method-->
+		<!--for my method: see function "get_vector_V4" -->
 		<!--for pose-variant features: 16 + 10*n-->
 		<!--for pose-invariant features: 16 + 12*n -2 -->
 		<param name="pose_variant_features" value ="false"/>
