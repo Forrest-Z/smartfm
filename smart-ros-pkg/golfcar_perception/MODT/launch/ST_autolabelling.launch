@@ -6,16 +6,21 @@
 		<param name="odom_frame_id" value="golfcart/odom"/>
 		<param name="map_frame_id" value = "golfcart/map"/-->
 		
+	<node pkg="MODT" type="ST_autolabelling_pcl16" name="ST_autolabelling_pcl16" ns="iMiev" output="screen">
+		<param name="laser_frame_id" value="iMiev/front_bottom_lidar"/>
+		<param name="odom_frame_id" value="iMiev/odom"/>
+		<param name="map_frame_id" value = "iMiev/map"/>
+		
 	<!--head used for vehicle dataset-->
-	<node pkg="MODT" type="ST_autolabelling_pcl16" name="ST_autolabelling_pcl16" output="screen">
+	<!--node pkg="MODT" type="ST_autolabelling_pcl16" name="ST_autolabelling_pcl16" output="screen"-->
 
 		<!--derived labelling-0, auto labelling 1, detection 2-->
 		<param name="program_mode" value="0"/>
 		<param name="skip_scan_times" value="1"/>
 		<param name="downsample_interval" value="1"/>
-		<param name="scanNum_perVector" value="10"/>
+		<param name="scanNum_perVector" value="2"/>
 		
-		<!-- type1 uses my compressed scan method; type2 use 3d features-->
+		<!-- type-1 uses my compressed scan method; type-2 use 3d features-->
 		<param name="feature_extraction_type" value="2"/>
 		
 		<!--for my method: see function "get_vector_V4" -->
@@ -53,5 +58,6 @@
 		<param name="frame_id" value = "golfcart/map"/>
 		<remap from ="map" to = "obstacle_layer"/>
 	</node>
+	
 </launch>
 
