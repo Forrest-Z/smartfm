@@ -15,29 +15,29 @@
 	<!--node pkg="MODT" type="ST_autolabelling_pcl16" name="ST_autolabelling_pcl16" output="screen"-->
 
 		<!--derived labelling-0, auto labelling 1, detection 2-->
-		<param name="program_mode" value="0"/>
+		<param name="program_mode" value="2"/>
 		<param name="skip_scan_times" value="1"/>
 		<param name="downsample_interval" value="1"/>
 		<param name="scanNum_perVector" value="2"/>
 		
 		<!-- type-1 uses my compressed scan method; type-2 use 3d features-->
-		<param name="feature_extraction_type" value="2"/>
+		<param name="feature_extraction_type" value="1"/>
 		
 		<!--for my method: see function "get_vector_V4" -->
 		<!--for pose-variant features: 16 + 10*n-->
 		<!--for pose-invariant features: 16 + 12*n -2 -->
-		<param name="pose_variant_features" value ="false"/>
+		<param name="pose_variant_features" value ="true"/>
 		
 		<!--for 3d features method-->
 		<!--method 1 for usr: 12 -->
 		<!--method 2 for vfh: 308 -->
 		<!--method 3 for esf: 640 -->
 		<param name="calc_3dfeautres_method" value="3"/>
-		<param name="feature_vector_length" value="640"/>
+		<param name="feature_vector_length" value="36"/>
 
 		<param name="map_image_path" value="$(find MODT)/launch/obstacle_layer_modifiedunknown.png"/>
-		<param name="DATMO_model_path" value="$(find MODT)/data_and_model/vehicle101.model"/>
-		<param name="DATMO_scale_path" value="$(find MODT)/data_and_model/vehicle101.range"/>
+		<param name="DATMO_model_path" value="$(find MODT)/data_and_model/highway21.model"/>
+		<param name="DATMO_scale_path" value="$(find MODT)/data_and_model/highway21.range"/>
 		
 		<!--parameters for autolabelling of plaza pedestrian data -->
 		<!--param name="speed_threshold" value="0.0"/>
@@ -58,6 +58,8 @@
 		<param name="frame_id" value = "golfcart/map"/>
 		<remap from ="map" to = "obstacle_layer"/>
 	</node>
+	
+	<node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find MODT)/launch/iMiev.vcg" />
 	
 </launch>
 
