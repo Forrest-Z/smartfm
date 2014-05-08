@@ -12,3 +12,5 @@ float64 feedback_speed
 float64 filtered_speed
 float64 feedback_err
 int32 serial_received
+int32 enc1_penalty
+int32 enc2_penalty
