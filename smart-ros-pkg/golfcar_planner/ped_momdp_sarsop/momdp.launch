@@ -21,4 +21,10 @@
 	 <node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher"   ns="/golfcart">
 	    <remap from="cmd_vel" to="cmd_vel"/>
 	 </node>
+
+
+     <!-- **** cost map and path planning **** -->
+     <node name="ped_path_planner" pkg="ped_momdp_sarsop" type="path_planner"  ns="/golfcart">
+         <rosparam file="$(find ped_momdp_sarsop)/path_planner.yaml" command="load" />
+     </node>
 </launch>
