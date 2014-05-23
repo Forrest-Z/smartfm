@@ -143,7 +143,7 @@ void pedestrian_momdp::speedCallback(nav_msgs::Odometry odo)
 {
 	//cout<<"speed callback!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"<<endl;
     //momdp->updateRobotSpeed(odo.twist.twist.linear.x);
-	RealWorld.UpdateVelReal(odo.twist.twist.linear.x);
+    momdp->worldStateTracker.updateVel(odo.twist.twist.linear.x);
 	momdp->real_speed_=odo.twist.twist.linear.x;
 }
 
@@ -211,7 +211,7 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 	std::sort(ped_list.begin(),ped_list.end(),sortFn);
 	for(int i=0;i<ped_list.size();i++)
 	{
-		RealWorld.UpdatePedPoseReal(ped_list[i]);
+		momdp->worldStateTracker.updatePed(ped_list[i]);
 		//cout<<ped_list[i].id<<" ";
 	}
 	//cout<<endl;

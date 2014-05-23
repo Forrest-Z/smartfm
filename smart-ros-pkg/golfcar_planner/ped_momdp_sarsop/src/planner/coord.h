@@ -8,40 +8,40 @@
 
 struct COORD
 {
-  int X, Y;
+  double x, y;
   
   COORD() {}
 
-  COORD(int x, int y) : X(x), Y(y) {}
+  COORD(int _x, int _y) : x(_x), y(_y) {}
 
   bool Valid() const {
-    return X >= 0 && Y >= 0;
+    return x >= 0 && y >= 0;
   }
 
   bool operator==(COORD rhs) const {
-    return X == rhs.X && Y == rhs.Y;
+    return x == rhs.x && y == rhs.y;
   }
 
   bool operator<(const COORD& other) const {
-    return X < other.X || (X == other.X && Y < other.Y);
+    return x < other.x || (x == other.x && y < other.y);
   }
   
   bool operator!=(COORD rhs) const {
-    return X != rhs.X || Y != rhs.Y;
+    return x != rhs.x || y != rhs.y;
   }
 
   void operator+=(COORD offset) {
-    X += offset.X;
-    Y += offset.Y;
+    x += offset.x;
+    y += offset.y;
   }
 
   COORD operator+(COORD rhs) const {
-    return COORD(X + rhs.X, Y + rhs.Y);
+    return COORD(x + rhs.x, y + rhs.y);
   }
   
   COORD operator*(int mul) const
   {
-    return COORD(X * mul, Y * mul);
+    return COORD(x * mul, y * mul);
   }
 
   enum {
@@ -72,26 +72,26 @@ struct COORD
 };
 
 inline double COORD::EuclideanDistance(COORD lhs, COORD rhs) {
-  return sqrt((lhs.X - rhs.X) * (lhs.X - rhs.X) + 
-              (lhs.Y - rhs.Y) * (lhs.Y - rhs.Y));
+  return sqrt((lhs.x - rhs.x) * (lhs.x - rhs.x) + 
+              (lhs.y - rhs.y) * (lhs.y - rhs.y));
 }
 
 inline int COORD::ManhattanDistance(COORD lhs, COORD rhs) {
-  return abs(lhs.X - rhs.X) + abs(lhs.Y - rhs.Y);
+  return abs(lhs.x - rhs.x) + abs(lhs.y - rhs.y);
 }
 
 inline int COORD::DirectionalDistance(COORD lhs, COORD rhs, int direction) {
   switch (direction) {
-    case E_NORTH: return rhs.Y - lhs.Y;
-    case E_EAST: return rhs.X - lhs.X;
-    case E_SOUTH: return lhs.Y - rhs.Y;
-    case E_WEST: return lhs.X - rhs.X;
+    case E_NORTH: return rhs.y - lhs.y;
+    case E_EAST: return rhs.x - lhs.x;
+    case E_SOUTH: return lhs.y - rhs.y;
+    case E_WEST: return lhs.x - rhs.x;
     default: assert(false);
   }
 }
 
 inline std::ostream& operator<<(std::ostream& ostr, COORD& COORD) {
-  ostr << "(" << COORD.X << ", " << COORD.Y << ")";
+  ostr << "(" << COORD.x << ", " << COORD.y << ")";
   return ostr;
 }
 

@@ -14,6 +14,7 @@ namespace ModelParams {
 	const int YSIZE=15;
 	const int RMMax=30;   //maximum length of the rob_map structure
 	const int N_PED_IN=10;
+	const int GOAL_TRAVELLED=10;
 
 	//const int NGOAL=13;
 	//const int GOAL_DIST=22;  //the distance between ped and its goal
@@ -30,6 +31,9 @@ namespace ModelParams {
 	const bool FixedPath=false;
 	const bool SocialForceModel=false;
 	const bool SocialForceWorld=false;
+
+    const double NOISE_GOAL_ANGLE = 1.0;
+    const double PED_SPEED = 1.2;
 
 	const double vel_levels [10] = { 0.0, 1.0, 2.0 };
 	//const int  VEL_N=7;

@@ -9,31 +9,24 @@ using namespace std;
 struct  PedStruct 
 {
 	PedStruct(){}
-	PedStruct(COORD a,int b,int c) {first=a;second=b;third=c;}
-	COORD first; //pos
-	int second;  //goal
-	int third;   //id
+	PedStruct(COORD a,int b,int c) {pos=a;goal=b;id=c;}
+	COORD pos; //pos
+	int goal;  //goal
+	int id;   //id
 };
-class PedestrianState
+struct CarStruct
+{
+	COORD pos;
+	double vel;
+	double dist_travelled;
+};
+class PomdpState 
 {
 	public:
-		COORD RobPos;
-		//vector<pair<COORD,int>> PedPoses;    //(coor,goal)
-		//pair<COORD,int> PedPoses[ModelParams::N_PED];
-		PedStruct PedPoses[ModelParams::N_PED_IN];
-		COORD PedPos;
-		int Vel;
-		int Lane;
+		CarStruct car;
 		int num;
-		int id;
-
-
+		PedStruct peds[ModelParams::N_PED_IN];
 		PedestrianState() {}
-
-		//PedestrianState(int id);
-
-		/* TODO: bug due to wrong mapping - UpperBound table*/
-		//operator int() const ;
 };
 
 #endif

@@ -104,7 +104,8 @@ public:
 	ros::ServiceClient path_client;
 
     tf::TransformListener tf_;
-	WorldSimulator * RealWorldPt;
+    WorldStateTracker worldStateTracker;
+    WorldModel worldModel;
 	double momdp_speed_,real_speed_;
 private:
 	double control_freq;
@@ -121,7 +122,7 @@ private:
 	//SharedPointer<AlphaVectorPolicy> qmdp_policy;
     ros::Publisher believesPub_, cmdPub_,actionPub_;
 
-
+    
     void controlLoop(const ros::TimerEvent &e);
 
     

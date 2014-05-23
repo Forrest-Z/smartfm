@@ -54,10 +54,10 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
     //policy_initialize(model_file, policy_file, simLen, simNum);
 	safeAction=2;
 	momdp_speed_=0.0;
-	RealWorldPt=rw;
 	goal_reached=false;
 	cerr << "DEBUG: Init simulator" << endl;
 	initRealSimulator();
+    RetrievePath();
 
 	cerr <<"frequency "<<frequency<<endl;
 	cerr <<"DEBUG: before entering controlloop"<<endl;
@@ -135,7 +135,7 @@ void ped_momdp::initRealSimulator()
 
   RealSimulator  = new Model<PedestrianState>(streams, "pedestrian.config");
   RealSimulator->control_freq=control_freq;
-  RealWorldPt->control_freq=control_freq;
+  RealSimulator->worldModelPt=&worldModel;
 
 
   int knowledge = 2;
@@ -151,12 +151,10 @@ void ped_momdp::initRealSimulator()
 
   // int ret = Run(model, lb, ub, bu, streams);
   VNode<PedestrianState>::set_model(*RealSimulator);
-  RealSimulator->rob_map=RealWorldPt->window.rob_map;
-  RealSimulator->sfm=&RealWorldPt->sfm;
   int action;
   int i;
 
-  PedestrianState ped_state=RealWorldPt->GetCurrState();
+  PomdpState ped_state=worldStateTracker.getPomdpState();
 
   cout<<"start state"<<endl;
   RealSimulator->PrintState(ped_state);
@@ -199,38 +197,11 @@ void ped_momdp::publishSpeed(const ros::TimerEvent &e)
 
 void ped_momdp::publishROSState()
 {
-	int w0,h0,w1,h1,w2,h2,w3,h3;
-	w0=RealWorldPt->window.w0;
-	h0=RealWorldPt->window.h0;
-	w1=RealWorldPt->window.w1;
-	h1=RealWorldPt->window.h1;
-	w2=RealWorldPt->window.w2;
-	h2=RealWorldPt->window.h2;
-	w3=RealWorldPt->window.w3;
-	h3=RealWorldPt->window.h3;
 	double rln=ModelParams::map_rln;
-
-	geometry_msgs::PolygonStamped plg;
 	geometry_msgs::Point32 pnt;
 	
-	
-	pnt.x=(w0+0.0)/rln;pnt.y=(h0+0.0)/rln;pnt.z=0;
-	plg.polygon.points.push_back(pnt);
-	pnt.x=(w1+0.0)/rln;pnt.y=(h1+0.0)/rln;pnt.z=0;
-	plg.polygon.points.push_back(pnt);
-	pnt.x=(w2+0.0)/rln;pnt.y=(h2+0.0)/rln;pnt.z=0;
-	plg.polygon.points.push_back(pnt);
-	pnt.x=(w3+0.0)/rln;pnt.y=(h3+0.0)/rln;pnt.z=0;
-	plg.polygon.points.push_back(pnt);
-	plg.header.stamp=ros::Time::now();
-
 	char buf[100];
 	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-	plg.header.frame_id=buf;
-	//plg.points[0].x=w0; plg.points[0].y=h0; plg.points[0].z=0;
-	//plg.points[1].x=w1; plg.points[1].y=h1; plg.points[1].z=0;
-	//plg.points[2].x=w2; plg.points[2].y=h2; plg.points[2].z=0;
-	//plg.points[3].x=w3; plg.points[3].y=h3; plg.points[3].z=0;
 	
 
 	geometry_msgs::Pose pose;
@@ -241,8 +212,8 @@ void ped_momdp::publishROSState()
 	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
 	pose_stamped.header.frame_id=buf;
 
-	pose_stamped.pose.position.x=(RealWorldPt->car.w+0.0)/rln;
-	pose_stamped.pose.position.y=(RealWorldPt->car.h+0.0)/rln;
+	pose_stamped.pose.position.x=(worldStateTracker.car.pos.x+0.0)/rln;
+	pose_stamped.pose.position.y=(worldStateTracker.car.pos.y+0.0)/rln;
 	pose_stamped.pose.orientation.w=1.0;
 	car_pub.publish(pose_stamped);
 	
@@ -251,18 +222,17 @@ void ped_momdp::publishROSState()
 
 	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
 	pA.header.frame_id=buf;
-	for(int i=0;i<RealWorldPt->ped_list.size();i++)
+	for(int i=0;i<worldStateTracker.ped_list.size();i++)
 	{
 		//GetCurrentState(ped_list[i]);
-		pose.position.x=(RealWorldPt->ped_list[i].w+0.0)/rln;
-		pose.position.y=(RealWorldPt->ped_list[i].h+0.0)/rln;
+		pose.position.x=(worldStateTracker.ped_list[i].w+0.0)/rln;
+		pose.position.y=(worldStateTracker.ped_list[i].h+0.0)/rln;
 		pose.orientation.w=1.0;
 		pA.poses.push_back(pose);
 		//ped_pubs[i].publish(pose);
 	}
 
 	pa_pub.publish(pA);
-	window_pub.publish(plg);	
 	ros::Rate loop_rate(1);
 	//loop_rate.sleep();
 }
@@ -334,8 +304,8 @@ void ped_momdp::publishAction(int action)
 		marker.action = visualization_msgs::Marker::ADD;
 
 		double px,py;
-		px=RealWorldPt->car.w/ModelParams::map_rln;
-		py=RealWorldPt->car.h/ModelParams::map_rln;
+		px=worldStateTracker.car.pos.x/ModelParams::map_rln;
+		py=worldStateTracker.car.pos.y/ModelParams::map_rln;
 		marker.pose.position.x = px+1;
 		marker.pose.position.y = py+1;
 		marker.pose.position.z = 0;
@@ -384,12 +354,9 @@ void ped_momdp::RetrievePaths()
 	geometry_msgs::PoseStamped pose;
 	pose.header.stamp=ros::Time::now();
 	pose.header.frame_id="/map";
-	//pose.pose.position.x=RealWorldPt->car.w/10.0;
-	//pose.pose.position.y=RealWorldPt->car.h/10.0;
 	
-	cout<<"real world car poses "<<RealWorldPt->car.w<<" "<<RealWorldPt->car.h<<endl;
-	pose.pose.position.x=RealWorldPt->car_ground_truth.w/10.0;
-	pose.pose.position.y=RealWorldPt->car_ground_truth.h/10.0;
+	pose.pose.position.x=worldStateTracker.car.pos.x;
+	pose.pose.position.y=worldStateTracker.car.pos.y;
 	srv.request.start=pose;
 	pose.pose.position.x=18;
 	pose.pose.position.y=49;
@@ -400,21 +367,46 @@ void ped_momdp::RetrievePaths()
 	//p.header.stamp=ros::Time::now();
 	//p.poses=srv.response.plan;
 	cout<<"receive path from navfn "<<srv.response.plan.poses.size()<<endl;
-	
-	RealWorldPt->world_map.pathLength=srv.response.plan.poses.size();
+    Path p;
 	for(int i=0;i<srv.response.plan.poses.size();i++)
 	{
-		RealWorldPt->world_map.global_plan[i][0]=srv.response.plan.poses[i].pose.position.x*10;
-		RealWorldPt->world_map.global_plan[i][1]=srv.response.plan.poses[i].pose.position.y*10;
+        COORD coord;
+		coord.x=srv.response.plan.poses[i].pose.position.x;
+		coord.y=srv.response.plan.poses[i].pose.position.y;
+        p.push_back(coord);
 	}
+    stateModel.setPath(p);
 	pathPub_.publish(srv.response.plan);
+}
+
+void ped_momdp::updatePedPoseReal(PedStruct ped) { 
+    for(int i=0;i<ped_list.size();i++)
+    {
+        if(ped_list[i].id==ped.id)
+        {
+            //found the corresponding ped,update the pose
+            ped_list[i].w=ped.w;
+            ped_list[i].h=ped.h;
+            ped_list[i].last_update=t_stamp;
+            break;
+        }
+        if(abs(ped_list[i].w-ped.w)<=1&&abs(ped_list[i].h-ped.h)<=1)   //overladp 
+            return;
+        //		cout<<ped_list[i].w<<" "<<ped_list[i].h<<endl;
+    }
+    if(i==ped_list.size())   //not found, new ped
+    {
+        //		cout<<"add"<<endl;
+        ped.last_update=t_stamp;
+        ped_list.push_back(ped);
+
+    }
 }
 
 int brake_counts=0;
 void ped_momdp::controlLoop(const ros::TimerEvent &e)
 {
 	    cout<<"entering control loop"<<endl;
-		cout<<"time stamp: "<<RealWorldPt->t_stamp<<endl;
 
         tf::Stamped<tf::Pose> in_pose, out_pose;
 		in_pose.setIdentity();
@@ -426,15 +418,15 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		if(!getObjectPose(buf, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 		} else {
-			Car world_car;
-			world_car.w=out_pose.getOrigin().getX()*ModelParams::map_rln;
-			world_car.h=out_pose.getOrigin().getY()*ModelParams::map_rln;
-			RealWorldPt->UpdateRobPoseReal(world_car);
+            COORD coord;
+			coord.x=out_pose.getOrigin().getX()*ModelParams::map_rln;
+			coord.y=out_pose.getOrigin().getY()*ModelParams::map_rln;
+			worldStateTracker.updateCar(coord);
 		}
 		
 		publishROSState();
 		
-		if(RealWorldPt->GoalReached())
+		if(stateModel.isGlobalGoal(worldStateTracker.car))
 		{
 			goal_reached=true;
 		}
@@ -458,12 +450,10 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		cout<<"State before shift window"<<endl;
 		RealSimulator->PrintState(RealWorldPt->GetCurrState());
 		RealWorldPt->ShiftWindow();
+        worldStateTracker.cleanPed();
 
 
 		cout<<"here"<<endl;
-        //if(RealWorldPt->NumPedInView()==0) return;   //no pedestrian detected yet
-		RealSimulator->rob_map=RealWorldPt->window.rob_map;
-		//OBS_T obs=RealWorldPt->GetCurrObs();
 		PedestrianState new_state_old=RealWorldPt->GetCurrObs();
 
 		cout<<"world observation: ";//<<obs<<endl;
