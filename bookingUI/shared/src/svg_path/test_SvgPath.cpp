@@ -7,6 +7,7 @@ using namespace std;
 
 void print_vector(string msg, vector<int>* points)
 {
+	cout<<"here"<<endl;
     if(points->size()==0) return;
     cout<<msg;
     for(int i=0; i<points->size(); i++)
@@ -46,6 +47,7 @@ int main(int argc, char* argv[])
         StationPaths complete;
         //complete.svgpath_.loadFile(argv[1], 0.1);
         StationList sl;
+		/*
         for (int i=0; i<sl.size(); i++)
         {
             for (int j=0; j<sl.size(); j++)
@@ -56,7 +58,10 @@ int main(int argc, char* argv[])
                 cout<<endl;
             }
             cout<<endl<<endl;
-        }
+        }*/
+		StationPath path = complete.getPath(sl.get(0),sl.get(1));
+		print_signals(&path);
+
 
     }
     catch (runtime_error & error)

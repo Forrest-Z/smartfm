@@ -257,6 +257,7 @@ void SFM::WorldTrans(vector<Pedestrian> &ped_list,Car&car,UtilUniform &unif)
 		MyVector vec=SocialForce(ped,sfm_list,car);
 		sfm_list.insert(sfm_list.begin()+i,ped);
 
+			
 		double ped_angle=vec.GetAngle();
 		if(debug)  cout<<ped_angle<<" "<<window_angle<<endl;
 
@@ -419,8 +420,6 @@ double SFM::ModelTransProb(PedestrianState state,PedestrianState state_new)
 			vec=vec1;//+vec2;
 		
 
-		if(g==ModelParams::NGOAL-1) 
-			vec.AdjustLength(0.5);
 			
 		double ped_angle=vec.GetAngle();
 

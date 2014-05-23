@@ -15,7 +15,8 @@ public:
 	int height;
 	bool full_map[100][100];
 	bool map_obs[100][100];
-	int global_plan[10000][2];   //maximum 10000 points
+	int global_plan[10000][2]; 
+	int global_plan_multi[ModelParams::NPATH][10000][2];   //maximum 10000 points
 	int goal_pos[ModelParams::NGOAL][2];
 	int pathLength;
 
@@ -25,11 +26,26 @@ public:
 		//InitGoalsRound();
 		InitGoalsUTown();
 	}
+	void InitSimulation()
+	{
+		LoadPath("path1",0);
+		LoadPath("path2",1);
+		goal_pos[0][0]=11*20;
+		goal_pos[0][1]=21*20;
+		goal_pos[1][0]=0.5*20;
+		goal_pos[1][1]=20*20;
+		goal_pos[2][0]=0.5*20;
+		goal_pos[2][1]=12*20;
+		goal_pos[3][0]=0.5*20;
+		goal_pos[3][1]=3*20;
+		goal_pos[4][0]=12*20;
+		goal_pos[4][1]=0.5*20;
+	}
 	void InitGoalsUTown()
 	{
 		//LoadMap("utown_map2");
-		LoadPath("real_path");
-		bool utown=true;
+		//LoadPath("path1");
+		bool utown=false;
 		if(utown)
 		{
 
@@ -59,36 +75,38 @@ public:
 			goal_pos[6][1]=-10000;
 			*/
 
-			goal_pos[0][0]=107*ModelParams::map_rln;
-			goal_pos[0][1]=167*ModelParams::map_rln;
-			goal_pos[1][0]=121*ModelParams::map_rln;
-			goal_pos[1][1]=154*ModelParams::map_rln;
-			goal_pos[2][0]=139*ModelParams::map_rln;
-			goal_pos[2][1]=115*ModelParams::map_rln;
-			goal_pos[3][0]=103*ModelParams::map_rln;
-			goal_pos[3][1]=109*ModelParams::map_rln;
-			goal_pos[4][0]=122*ModelParams::map_rln;
-			goal_pos[4][1]=114*ModelParams::map_rln;
+			goal_pos[0][0]=54*ModelParams::map_rln;
+			goal_pos[0][1]=4*ModelParams::map_rln;
+			goal_pos[1][0]=31*ModelParams::map_rln;
+			goal_pos[1][1]=4*ModelParams::map_rln;
+			goal_pos[2][0]=5*ModelParams::map_rln;
+			goal_pos[2][1]=5*ModelParams::map_rln;
+			goal_pos[3][0]=44*ModelParams::map_rln;
+			goal_pos[3][1]=49*ModelParams::map_rln;
+			goal_pos[4][0]=18*ModelParams::map_rln;
+			goal_pos[4][1]=62*ModelParams::map_rln;
 
 			//last goal is the dummy goal for stopping intentioni
 
-			goal_pos[5][0]=-10000;
-			goal_pos[5][1]=-10000;
+			//goal_pos[5][0]=-10000;
+			//goal_pos[5][1]=-10000;
+			width=height=2500;
 
 
 		}
 		else  //lab
 		{
 
-
-			goal_pos[3][0]=93*ModelParams::map_rln;
-			goal_pos[3][1]=177*ModelParams::map_rln;
-			goal_pos[2][0]=96*ModelParams::map_rln;
-			goal_pos[2][1]=195*ModelParams::map_rln;
-			goal_pos[0][0]=107*ModelParams::map_rln;
-			goal_pos[0][1]=166*ModelParams::map_rln;
-			goal_pos[1][0]=116*ModelParams::map_rln;
-			goal_pos[1][1]=183*ModelParams::map_rln;			
+			goal_pos[0][0]=54*ModelParams::map_rln;
+			goal_pos[0][1]=4*ModelParams::map_rln;
+			goal_pos[1][0]=31*ModelParams::map_rln;
+			goal_pos[1][1]=4*ModelParams::map_rln;
+			goal_pos[2][0]=5*ModelParams::map_rln;
+			goal_pos[2][1]=5*ModelParams::map_rln;
+			goal_pos[3][0]=44*ModelParams::map_rln;
+			goal_pos[3][1]=49*ModelParams::map_rln;
+			goal_pos[4][0]=18*ModelParams::map_rln;
+			goal_pos[4][1]=62*ModelParams::map_rln;	
 			//		goal_pos[4][0]=-10000;
 			//		goal_pos[4][1]=-10000;
 		}	
@@ -163,16 +181,16 @@ public:
 	void InitGoalsRound()
 	{
 		
-		goal_pos[0][0]=11*ModelParams::rln;
-		goal_pos[0][1]=21*ModelParams::rln;
-		goal_pos[1][0]=0.5*ModelParams::rln;
-		goal_pos[1][1]=20*ModelParams::rln;
-		goal_pos[2][0]=0.5*ModelParams::rln;
-		goal_pos[2][1]=12*ModelParams::rln;
-		goal_pos[3][0]=0.5*ModelParams::rln;
-		goal_pos[3][1]=3*ModelParams::rln;
-		goal_pos[4][0]=12*ModelParams::rln;
-		goal_pos[4][1]=0.5*ModelParams::rln;
+		goal_pos[0][0]=11*20;
+		goal_pos[0][1]=21*20;
+		goal_pos[1][0]=0.5*20;
+		goal_pos[1][1]=20*20;
+		goal_pos[2][0]=0.5*20;
+		goal_pos[2][1]=12*20;
+		goal_pos[3][0]=0.5*20;
+		goal_pos[3][1]=3*20;
+		goal_pos[4][0]=12*20;
+		goal_pos[4][1]=0.5*20;
 
 		LoadMap("round_map");
 		LoadPath("round_path");
@@ -253,11 +271,11 @@ public:
 		goal_pos[5][0]=150;
 		goal_pos[5][1]=300;
 		
-		//LoadMap("blank_map");
+		LoadMap("blank_map");
 		LoadPath("blank_path");
 	}
 	void LoadMap(const char*);
-	void LoadPath(const char*);
+	void LoadPath(const char*, int id=0);
 	bool Free(int w,int h)
 	{
 		return true;

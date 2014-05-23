@@ -123,8 +123,8 @@ class Task(object):
             self.status = 'STOPPED'
 
     def focus(self):
-		if self.pane:
-			self.pane.select_pane()
+        if self.pane:
+            self.pane.select_pane()
 
 STATUS_COLORS = {'OK': 'light green', 'STOPPED': 'dark red'}
 
@@ -167,8 +167,8 @@ class TaskButton(urwid.Columns):
 urwid.command_map['j'] = 'cursor down'
 urwid.command_map['k'] = 'cursor up'
 
-def build_tasks():
-    config = json.load(open('config.json'))
+def build_tasks(conf):
+    config = json.load(open(conf))
     tasks = config['tasks']
     ts = [Task(name, command, tmuxman) for name, command in tasks.items()]
     ts = sorted(ts, key=lambda t: t.name)
@@ -199,7 +199,12 @@ PALETTE = [
             ]
 
 def main():
-    tasks = build_tasks()
+    import sys
+    if len(sys.argv) > 1:
+        conf = sys.argv[1]
+    else:
+        conf = 'config.json'
+    tasks = build_tasks(conf)
 
     def exit_on_q(key):
         if key in ('q', 'Q'):

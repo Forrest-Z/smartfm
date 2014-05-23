@@ -3,14 +3,15 @@
 # -----------------------
 
 CXX = clang++
-CXXFLAGS = -O3 -std=c++0x -stdlib=libc++ -c -Wall
+CXXFLAGS = -O3 -std=c++0x -stdlib=libc++ -c -Wall 
 LDFLAGS = -O3 -std=c++0x -stdlib=libc++
 
 # Use these options when compiling with gcc toolset
 
+#CXX = g++
 CXX = /home/h/haoyu/local/x86_64/gcc48/bin/g++
 #CXX = g++
-CXXFLAGS = -O3 -std=c++0x -c -Wall -Wno-sign-compare
+CXXFLAGS = -O0 -g -std=c++0x -c -Wall -Wno-sign-compare 
 LDFLAGS = -O3 -std=c++0x -Wno-sign-compare
 
 # -----------

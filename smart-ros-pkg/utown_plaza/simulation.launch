@@ -8,13 +8,13 @@
 		<remap from="scan" to="sick_scan2"/>		
 	</node-->
 
-    <node pkg="stage" type="stageros" name="stageros" args="$(find utown_plaza)/golfcar_utown.world" respawn="false">
+    <node pkg="stage" type="stageros" name="stageros" args="$(find utown_plaza)/empty_world.world" respawn="false">
         <param name="base_watchdog_timeout" value="0.2"/>
         <remap from="base_scan" to="sick_scan2"/>
     </node>
 
-    <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/map.yaml"/>
-
+    <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/blank_map.yaml"/>
+<!--
     <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
         <remap from="cmd_vel" to="cmd_steer"/>
         <remap from="map" to="curb_map"/>
@@ -26,13 +26,34 @@
         <param name="PurePursuitBase/tracking_distance" value="5.0"/>
 
         <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params_simulation.yaml" command="load" ns="global_costmap" />
-        <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params_simulation.yaml" command="load" ns="local_costmap" />
-        <rosparam file="$(find golfcar_ppc)/launch/move_base/local_costmap_params_close.yaml" command="load" />
-        <rosparam file="$(find golfcar_ppc)/launch/move_base/global_costmap_params.yaml" command="load" />
-        <rosparam file="$(find golfcar_ppc)/launch/move_base/sbpl_global_params.yaml" command="load" />
-    </node>
+		<rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params_simulation.yaml" command="load" ns="local_costmap" />
+		<rosparam file="$(find golfcar_ppc)/launch/move_base/local_costmap_params_close.yaml" command="load" />
+		<rosparam file="$(find golfcar_ppc)/launch/move_base/global_costmap_params.yaml" command="load" />
+		<rosparam file="$(find golfcar_ppc)/launch/move_base/sbpl_global_params.yaml" command="load" />
+		</node>
+		-->
+		<node pkg="golfcar_ppc" type="purepursuit_controller" name="purepursuitController" output="screen"/>
 
-    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation.vcg" />
+		<node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen">
+		<param name="dummy_vehicle" value="false"/>
+		<param name="use_dbserver" value="false"/>
+		</node>
+		<node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
+		<remap from="laser_area_policy/scan" to="sick_scan2"/>
+		<remap from="cmd_vel" to="cmd_speed_dummy"/>
+		</node>
+
+
+
+		<node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher"   ns="/golfcart">
+		<remap from="cmd_vel" to="cmd_vel"/>
+		</node>
+
+<!--    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation.vcg" />  -->
+
+    <node pkg="rviz" type="rviz" name="rviz" respawn="false" />  
+	<node pkg="velmixer" type="vel_miexer" name="vel_mixer" respawn="false"/>
+	<node pkg="dummyPed" type="dummyPed_marker" name="dummyPed" respawn="false"/>
 
 </launch>
 

@@ -9,6 +9,7 @@ void MyMap::LoadMap(const char*map_name)
 	in>>width;
 	in>>height;
 
+	cout<<"map size "<<width<<" "<<height<<endl;
 	//need to check the index order here
 	for(int i=0;i<height;i++)
 	{
@@ -50,7 +51,7 @@ void MyMap::LoadMap(const char*map_name)
 	//cout<<map_obs[110][220]<<" "<<full_map[126][220]<<endl;
 }
 
-void MyMap::LoadPath(const char*path_name)
+void MyMap::LoadPath(const char*path_name, int id)
 {
 	std::ifstream in(path_name);
 	in>>pathLength;
@@ -58,10 +59,16 @@ void MyMap::LoadPath(const char*path_name)
 	//pathLength=
 	for(int i=0;i<pathLength;i++)
 	{
+//		in>>global_plan_multi[id][i][0];
+//		in>>global_plan_multi[id][i][1];
+
+//		if(id==0)  //use the first path as the default path
+
 		in>>global_plan[i][0];
 		in>>global_plan[i][1];
 		//std::cout<<global_plan[i][0]<<" "<<global_plan[i][1]<<std::endl;
 	}
+
 }
 
 

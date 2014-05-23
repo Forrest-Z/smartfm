@@ -142,7 +142,8 @@ private:
     ros::NodeHandle nh_;
     image_transport::SubscriberFilter image_sub_;
     image_transport::ImageTransport it_;
-    void pedClustCallback(sensor_msgs::ImageConstPtr image,feature_detection::clustersConstPtr cluster_vector);
+    //void pedClustCallback(sensor_msgs::ImageConstPtr image,feature_detection::clustersConstPtr cluster_vector);
+	void pedClustCallback(feature_detection::clustersConstPtr cluster_vector);
     void pedVisionAngularCallback(sensor_msgs::PointCloudConstPtr pedestrian_vision_angular);
     void publishPed(Mat img);
     bool transformPointToGlobal(std_msgs::Header header, geometry_msgs::Point32 input_point, geometry_msgs::Point32& output_point);
@@ -165,7 +166,8 @@ private:
     tf::TransformListener *listener_;
     tf::MessageFilter<feature_detection::clusters> * laser_tf_filter_;
     tf::MessageFilter<sensor_msgs::PointCloud> * vision_angular_tf_filter_;
-    message_filters::Subscriber<feature_detection::clusters> pedClustSub_;
+    //message_filters::Subscriber<feature_detection::clusters> pedClustSub_;
+	ros::Subscriber pedClustSub_;
     message_filters::Subscriber<sensor_msgs::PointCloud> pedVisionAngularSub_;
     sensing_on_road::pedestrian_vision_batch lPedInView;
     double time_out_, poll_inc_, poll_dec_, threshold_;

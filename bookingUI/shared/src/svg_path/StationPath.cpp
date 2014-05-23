@@ -184,7 +184,9 @@ StationPaths::StationPaths()
     sp.loadFile((tilde_expand(SVG_FILE).c_str()),RESOLUTION);
     svgpath_ = sp;
     storeFromMultipleSVGs(&stationPaths_[0][1], "DCC_START", "DCC_MCD");
-    storeFromMultipleSVGs(&stationPaths_[0][2], "DCC_START2", "DCC_EA", "EA_END3","EA_END2");
+
+    //storeFromMultipleSVGs(&stationPaths_[0][2], "DCC_START", "DCC_START3");
+	storeFromMultipleSVGs(&stationPaths_[0][2], "DCC_START2", "DCC_EA", "EA_END3","EA_END2");
     storeFromMultipleSVGs(&stationPaths_[0][3], "DCC_START2", "DCC_EA", "EA_E3A");
 
     storeFromMultipleSVGs(&stationPaths_[1][0], "MCD_DCC", "DCC_END");

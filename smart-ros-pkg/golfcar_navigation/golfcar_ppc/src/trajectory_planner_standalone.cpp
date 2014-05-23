@@ -26,7 +26,7 @@ class TrajectoryPlannerStandalone
   double frequency_, delay_;
   ros::Publisher move_status_pub_, cmd_steer_pub_, global_plan_pub_;
   ros::Publisher slowZone_pub_, poi_pub_;
-  ros::Subscriber origin_destination_pt_sub_, g_plan_repub_sub_;
+  ros::Subscriber origin_destination_pt_sub_, g_plan_repub_sub_, switch_sub;
   golfcar_purepursuit::PurePursuit* pp_;
   string global_frame_, robot_frame_;
   tf::TransformListener* tf_;
@@ -47,6 +47,7 @@ public:
     slowZone_pub_ = nh.advertise<geometry_msgs::PoseArray>("slowZone", 1, true);
     poi_pub_ = nh.advertise<pnc_msgs::poi>("poi", 1, true);
     g_plan_repub_sub_ = nh.subscribe("global_plan_repub", 1, &TrajectoryPlannerStandalone::repubCallback, this);
+	switch_sub= nh.subscribe("new_global_plan", 1, &TrajectoryPlannerStandalone::switchCallback, this);
     origin_destination_pt_sub_ = nh.subscribe("move_base_simple/goal", 1, &TrajectoryPlannerStandalone::originDestinationCallback, this);
     priv_nh.param("global_frame", global_frame_, string("/map")); 
     priv_nh.param("robot_frame", robot_frame_, string("/base_link"));
@@ -65,6 +66,41 @@ private:
   void repubCallback(nav_msgs::PathConstPtr p){
     ROS_INFO("New path received from rrt with size of: %d", (int)p->poses.size());
     rrt_path_ = *p;
+
+  }
+
+  void switchCallback(nav_msgs::PathConstPtr p){
+    ROS_INFO("New path received from path swtiching module with size of: %d", (int)p->poses.size());
+    std::vector<geometry_msgs::PoseStamped> plan;
+	for(size_t i=0; i<p->poses.size(); i++){
+		geometry_msgs::PoseStamped ps_temp;
+		ps_temp.header.frame_id = global_frame_;
+		ps_temp.header.stamp = ros::Time::now();
+		ps_temp.pose.position.x = p->poses[i].pose.position.x;
+		ps_temp.pose.position.y = p->poses[i].pose.position.y;
+		ps_temp.pose.orientation.w = 1.0;
+		plan.push_back(ps_temp);
+	}
+
+	nav_msgs::Path gp;
+	gp.poses.resize(plan.size());
+	for(unsigned int i=0; i<plan.size(); i++)
+	{
+		gp.poses[i].header.frame_id = global_frame_;
+		gp.poses[i].header.stamp = ros::Time::now();
+		gp.poses[i].pose.position.x = plan[i].pose.position.x;
+		gp.poses[i].pose.position.y = plan[i].pose.position.y;
+		gp.poses[i].pose.orientation.w = 1.0;
+	}
+	ROS_INFO("Plan with %d points sent.", (int)plan.size());
+	gp.header.stamp = ros::Time();
+	gp.header.frame_id = global_frame_;
+	global_plan_pub_.publish(gp);
+    pp_-> path_.poses = plan;
+    pp_-> initialized_ = false;
+    pp_-> dist_to_final_point = 100;
+    pp_-> path_n_ =0;
+    pp_-> path_.poses = plan;
   }
   void add_pts(vector<int>& pts, vector<pnc_msgs::sig_pt>* poi, int type)
   {
@@ -191,6 +227,8 @@ private:
     pnc_msgs::move_status move_status;
     move_status.path_exist = false;
     double steer_angle;
+	for(int i=0;i<pp_->path_.poses.size();i++)
+	//	cout<<pp_->path_.poses[i].pose.position.x<<" "<<pp_->path_.poses[i].pose.position.y<<endl;
     if(pp_->path_.poses.size()>0 && getRobotPose(robot_pose)){
       geometry_msgs::PoseStamped robot_pose_msg;
       tf::poseStampedTFToMsg(robot_pose, robot_pose_msg);

@@ -10,6 +10,7 @@
 
 
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
 #include <sensor_msgs/LaserScan.h>
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
@@ -38,6 +39,9 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include  "problems/pedestrian_changelane/world_simulator.h"
+#include <pomdp_path_planner/GetPomdpPath.h>
+#include <pomdp_path_planner/PomdpPath.h>
+#include <nav_msgs/GetPlan.h>
 
 /*
 #include "belief_update/belief_update_exact.h"
@@ -87,6 +91,7 @@ public:
 	//void initSimulator();
 	void initRealSimulator();
 	void momdpInit();
+	void RetrievePaths();
 	//void updatePedPoses();
 	//void updateObsStates();
 	//void clean_momdp_problem_sim();
@@ -94,7 +99,9 @@ public:
 	ros::Publisher window_pub;
 	ros::Publisher car_pub;
 	ros::Publisher pa_pub;
+	ros::Publisher pathPub_;
 	ros::Publisher markers_pubs[ModelParams::N_PED_IN];
+	ros::ServiceClient path_client;
 
     tf::TransformListener tf_;
 	WorldSimulator * RealWorldPt;

@@ -20,7 +20,9 @@
 #include "read_svg.h"
 #include "pnpoly.h"
 using namespace std;
-
+const char ns[100]="";
+const char laser_frame[100]="/base_laser_link";
+const char laser_topic[100]="sick_scan2";
 class ped_clustering
 {
 public:
@@ -38,22 +40,39 @@ public:
   ped_clustering(){
     ros::NodeHandle private_nh("~");
     ros::NodeHandle nh;
-    private_nh.param("global_frame", global_frame_, string("/golfcart/map"));
-    private_nh.param("laser_frame", laser_frame_id_, string("/golfcart/front_bottom_lidar"));
+	char buf[100];
+	sprintf(buf,"%s%s",ns,"/map");
+    private_nh.param("global_frame", global_frame_, string(buf));
+
+	sprintf(buf,"%s%s",ns,laser_frame);
+    private_nh.param("laser_frame", laser_frame_id_, string(buf));
     private_nh.param("svg_file", svg_file_, string("utown_exp_launch_files/utown_plaza_ped_boundary.svg"));
     private_nh.param("dist_thres", dist_thres_, 0.5);
-    laser_sub_.subscribe(nh, "/golfcart/front_bottom_scan", 10);
-    boundary_pub_ = nh.advertise<geometry_msgs::PolygonStamped>("/golfcart/ped_boundary",1, true);
+
+
+	sprintf(buf,"%s%s",ns,laser_topic);
+    laser_sub_.subscribe(nh, buf, 10);
+
+	sprintf(buf,"%s%s",ns,"/ped_boundary");
+    boundary_pub_ = nh.advertise<geometry_msgs::PolygonStamped>(buf,1, true);
     tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(laser_sub_, tf_, global_frame_, 10);
-    cloud_pub_ = nh.advertise<sensor_msgs::PointCloud>("/golfcart/laser_cloud", 1);
-    centroid_pub_ = nh.advertise<sensor_msgs::PointCloud>("/golfcart/ped_centroid", 1);
-    clusters_pub_ = nh.advertise<feature_detection::clusters>("/golfcart/pedestrian_clusters",1);
+
+	sprintf(buf,"%s%s",ns,"/laser_cloud");
+    cloud_pub_ = nh.advertise<sensor_msgs::PointCloud>(buf, 1);
+
+	sprintf(buf,"%s%s",ns,"/ped_centroid");
+    centroid_pub_ = nh.advertise<sensor_msgs::PointCloud>(buf, 1);
+
+	sprintf(buf,"%s%s",ns,"/pedestrian_clusters");
+    clusters_pub_ = nh.advertise<feature_detection::clusters>(buf,1);
     tf_filter_->registerCallback(boost::bind(&ped_clustering::laserCallback, this, _1));
     tf_filter_->setTolerance(ros::Duration(0.05));
     
     geometry_msgs::PolygonStamped boundary_msg;
     boundary_msg.header.stamp = ros::Time::now();
-    boundary_msg.header.frame_id = "/golfcart/map";
+
+	sprintf(buf,"%s%s",ns,"/map");
+    boundary_msg.header.frame_id = buf;
     boundary_msg.header.seq = 1;
     svg_boundary svg(svg_file_.c_str(), 0.1);
     

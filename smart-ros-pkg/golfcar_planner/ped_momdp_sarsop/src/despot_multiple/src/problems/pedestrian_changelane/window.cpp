@@ -12,7 +12,7 @@ void MyWindow::UpdateRobMap(int windowOrigin)
 {
 	rob_map.clear();
 	int rob_w,rob_h,w_old,h_old;
-	int pt=windowOrigin;
+	int pt=windowOrigin+ModelParams::path_rln/2;
 	rob_w=map->global_plan[pt][0];
 	rob_h=map->global_plan[pt][1];
 	
@@ -32,6 +32,7 @@ void MyWindow::UpdateRobMap(int windowOrigin)
 	pt+=ModelParams::rln;  //here we cannot set the step size too small, in case of floating point error
 	//pt+=10;
 	
+	cout<<"robot map rln "<<ModelParams::rln<<endl;
 
 	while(InWindow(map->global_plan[pt][0],map->global_plan[pt][1]))
 	{

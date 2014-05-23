@@ -13,7 +13,8 @@ data_assoc::data_assoc(int argc, char** argv) : merge_lists(nh_), it_(nh_)
     /// Setting up subsciption
     image_sub_.subscribe(it_, "camera_front/image_raw", 50);
 
-    pedClustSub_.subscribe(nh_, "pedestrian_clusters", 50);
+    //pedClustSub_.subscribe(nh_, "pedestrian_clusters", 50);
+	pedClustSub_=nh_.subscribe("pedestrian_clusters", 50, &data_assoc::pedClustCallback, this);
     pedVisionAngularSub_.subscribe(nh_, "pedestrian_roi", 100);
     /// TBP : how to add multiple subscription to same call back ????
 
@@ -41,20 +42,17 @@ data_assoc::data_assoc(int argc, char** argv) : merge_lists(nh_), it_(nh_)
     //laser_tf_filter_ = new tf::MessageFilter<feature_detection::clusters>(pedClustSub_, *listener_, global_frame_, 10);
     //laser_tf_filter_->registerCallback(boost::bind(&data_assoc::pedClustCallback, this, _1));
 
-<<<<<<< HEAD
     vision_angular_tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(pedVisionAngularSub_, *listener_, "/golfcart/camera_front_base", 10);
-=======
-    vision_angular_tf_filter_ = new tf::MessageFilter<sensor_msgs::PointCloud>(pedVisionAngularSub_, *listener_, camera_frame_, 100);
->>>>>>> master
     vision_angular_tf_filter_ -> registerCallback(boost::bind(&data_assoc::pedVisionAngularCallback, this, _1));
     vision_angular_tf_filter_->setTolerance(ros::Duration(0.1));
 
     dynamic_cb = boost::bind(&data_assoc::dynamic_callback, this, _1, _2);
     dynamic_server.setCallback(dynamic_cb);
 
-    typedef sync_policies::ApproximateTime<sensor_msgs::Image, feature_detection::clusters> MySyncPolicy;
-    Synchronizer<MySyncPolicy> sync(MySyncPolicy(20), image_sub_, pedClustSub_);
-    sync.registerCallback(boost::bind(&data_assoc::pedClustCallback,this, _1, _2));
+    //typedef sync_policies::ApproximateTime<sensor_msgs::Image, feature_detection::clusters> MySyncPolicy;
+    //Synchronizer<MySyncPolicy> sync(MySyncPolicy(20), image_sub_, pedClustSub_);
+	
+    //sync.registerCallback(boost::bind(&data_assoc::pedClustCallback,this, _1, _2));
 
     ros::spin();
 }
@@ -397,15 +395,17 @@ void data_assoc::updateMergeList()//feature_detection::clusters cluster_vector)
     }
 }
 
-void data_assoc::pedClustCallback(sensor_msgs::ImageConstPtr image, feature_detection::clustersConstPtr cluster_vector_ptr)
+//void data_assoc::pedClustCallback(sensor_msgs::ImageConstPtr image, feature_detection::clustersConstPtr cluster_vector_ptr)
+void data_assoc::pedClustCallback(feature_detection::clustersConstPtr cluster_vector_ptr)
 {
 	ROS_INFO("Hurray!");
     ROS_DEBUG_STREAM( " Entering pedestrian call back with lPedInView " << lPedInView.pd_vector.size() << " With frame id "<< frame_id_ );
 
-    cv_bridge::CvImagePtr cv_image;
-    try{cv_image = cv_bridge::toCvCopy(image, "bgra8");}
-    catch (cv_bridge::Exception& e){ROS_ERROR("cv_bridge exception: %s", e.what());return;}
-    Mat img(cv_image->image);
+  //  cv_bridge::CvImagePtr cv_image;
+   // try{cv_image = cv_bridge::toCvCopy(image, "bgra8");}
+   // catch (cv_bridge::Exception& e){ROS_ERROR("cv_bridge exception: %s", e.what());return;}
+   // Mat img(cv_image->image);
+	Mat img= Mat_<std::complex<double> >(3, 3);
     feature_detection::clusters cluster_vector = *cluster_vector_ptr;
 
     sensor_msgs::PointCloud filtered_clusters;

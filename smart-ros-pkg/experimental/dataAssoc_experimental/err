@@ -5,7 +5,7 @@ cd build && cmake -Wdev -DCMAKE_TOOLCHAIN_FILE=`rospack find rosbuild`/rostoolch
 [rosbuild] Including /opt/ros/fuerte/share/rospy/rosbuild/rospy.cmake
 [rosbuild] Including /opt/ros/fuerte/share/roslisp/rosbuild/roslisp.cmake
 MSG: gencfg_cpp on:cameraproject_param.cfg
-Finding dependencies for /home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/cfg/cameraproject_param.cfg
+Finding dependencies for /home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/cfg/cameraproject_param.cfg
 -- Configuring done
 -- Generating done
 CMake Warning:
@@ -14,74 +14,75 @@ CMake Warning:
     CMAKE_TOOLCHAIN_FILE
 
 
--- Build files have been written to: /home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build
+-- Build files have been written to: /home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build
 cd build && make 
-make[1]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[2]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[3]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[3]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[3]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[1]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[2]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 [ 11%] Generating ../cfg/cpp/dataAssoc_experimental/cameraproject_paramConfig.h, ../docs/cameraproject_paramConfig.dox, ../docs/cameraproject_paramConfig-usage.dox, ../src/dataAssoc_experimental/cfg/cameraproject_paramConfig.py, ../docs/cameraproject_paramConfig.wikidoc
 Generating reconfiguration files for CameraParam in dataAssoc_experimental
-make[3]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 [ 11%] Built target ROSBUILD_gencfg_cpp
-make[3]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[3]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 [ 11%] Built target rospack_gencfg
-make[3]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[3]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 [ 11%] Built target rospack_genmsg_libexe
-make[3]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[3]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 [ 11%] Built target rosbuild_premsgsrvgen
-make[3]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[3]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 [ 33%] Built target ROSBUILD_genmsg_lisp
-make[3]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[3]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 [ 55%] Built target ROSBUILD_genmsg_cpp
-make[3]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[3]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 [ 88%] Built target ROSBUILD_genmsg_py
-make[3]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[3]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 [ 88%] Built target rospack_genmsg
-make[3]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[3]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 [ 88%] Built target rosbuild_precompile
-make[3]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[3]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
-make[3]: Entering directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Entering directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 [100%] Building CXX object CMakeFiles/dataAssoc.dir/src/data_assoc.o
-In file included from /home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:2:0:
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h: In member function 'void MergeList::create_merge_lists(PedImgHash, PedImgHash)':
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h:123:13: warning: format '%d' expects argument of type 'int', but argument 10 has type 'std::vector<MergeID>::size_type {aka long unsigned int}' [-Wformat]
-In file included from /home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:2:0:
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h: In member function 'void data_assoc::colorHist(cv::Mat&, std::vector<double>&)':
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h:237:16: warning: unused variable 'maxVal' [-Wunused-variable]
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h: In constructor 'data_assoc::data_assoc(int, char**)':
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h:174:15: warning: 'data_assoc::merge_lists' will be initialized after [-Wreorder]
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h:144:37: warning:   'image_transport::ImageTransport data_assoc::it_' [-Wreorder]
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:9:1: warning:   when initialized here [-Wreorder]
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp: In member function 'void data_assoc::pedVisionAngularCallback(sensor_msgs::PointCloudConstPtr)':
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:106:5: warning: format '%d' expects argument of type 'int', but argument 8 has type 'std::vector<sensing_on_road::pedestrian_vision_<std::allocator<void> >, std::allocator<sensing_on_road::pedestrian_vision_<std::allocator<void> > > >::size_type {aka long unsigned int}' [-Wformat]
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:108:5: warning: format '%d' expects argument of type 'int', but argument 8 has type 'std::vector<geometry_msgs::Point32_<std::allocator<void> > >::size_type {aka long unsigned int}' [-Wformat]
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:126:17: warning: format '%d' expects argument of type 'int', but argument 10 has type 'std::vector<geometry_msgs::Point32_<std::allocator<void> > >::size_type {aka long unsigned int}' [-Wformat]
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp: In member function 'bool data_assoc::transformPointToGlobal(std_msgs::Header, geometry_msgs::Point32, geometry_msgs::Point32&)':
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:172:5: error: 'local_point' was not declared in this scope
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp: In member function 'void data_assoc::checkMergedlPedInView(cv::Mat&)':
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:286:52: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp: In member function 'void data_assoc::cleanUp()':
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:512:49: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:515:9: warning: format '%d' expects argument of type 'int', but argument 8 has type 'int64_t {aka long int}' [-Wformat]
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp: In member function 'void data_assoc::publishPed(cv::Mat)':
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:538:49: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp: In function 'int main(int, char**)':
-/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:605:17: warning: unused variable 'data_assoc_node' [-Wunused-variable]
+In file included from /home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:2:0:
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h: In member function ‘void MergeList::create_merge_lists(PedImgHash, PedImgHash)’:
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h:123:13: warning: format ‘%d’ expects argument of type ‘int’, but argument 10 has type ‘std::vector<MergeID>::size_type {aka long unsigned int}’ [-Wformat]
+In file included from /home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:2:0:
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h: In member function ‘void data_assoc::colorHist(cv::Mat&, std::vector<double>&)’:
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h:239:16: warning: unused variable ‘maxVal’ [-Wunused-variable]
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h: In constructor ‘data_assoc::data_assoc(int, char**)’:
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h:176:15: warning: ‘data_assoc::merge_lists’ will be initialized after [-Wreorder]
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.h:144:37: warning:   ‘image_transport::ImageTransport data_assoc::it_’ [-Wreorder]
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:9:1: warning:   when initialized here [-Wreorder]
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp: In member function ‘void data_assoc::pedVisionAngularCallback(sensor_msgs::PointCloudConstPtr)’:
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:111:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 8 has type ‘std::vector<sensing_on_road::pedestrian_vision_<std::allocator<void> >, std::allocator<sensing_on_road::pedestrian_vision_<std::allocator<void> > > >::size_type {aka long unsigned int}’ [-Wformat]
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:113:5: warning: format ‘%d’ expects argument of type ‘int’, but argument 8 has type ‘std::vector<geometry_msgs::Point32_<std::allocator<void> > >::size_type {aka long unsigned int}’ [-Wformat]
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:131:17: warning: format ‘%d’ expects argument of type ‘int’, but argument 10 has type ‘std::vector<geometry_msgs::Point32_<std::allocator<void> > >::size_type {aka long unsigned int}’ [-Wformat]
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp: In member function ‘void data_assoc::checkMergedlPedInView(cv::Mat&)’:
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:293:52: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:304:14: warning: variable ‘update_image_hash’ set but not used [-Wunused-but-set-variable]
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp: In member function ‘void data_assoc::pedClustCallback(feature_detection::clustersConstPtr)’:
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:405:40: error: ‘image’ was not declared in this scope
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp: In member function ‘void data_assoc::cleanUp()’:
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:521:49: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:524:9: warning: format ‘%d’ expects argument of type ‘int’, but argument 8 has type ‘int64_t {aka long int}’ [-Wformat]
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp: In member function ‘void data_assoc::publishPed(cv::Mat)’:
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:547:49: warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp: In function ‘int main(int, char**)’:
+/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/src/data_assoc.cpp:614:17: warning: unused variable ‘data_assoc_node’ [-Wunused-variable]
 make[3]: *** [CMakeFiles/dataAssoc.dir/src/data_assoc.o] Error 1
-make[3]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[3]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 make[2]: *** [CMakeFiles/dataAssoc.dir/all] Error 2
-make[2]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[2]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 make[1]: *** [all] Error 2
-make[1]: Leaving directory `/home/golfcar/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
+make[1]: Leaving directory `/home/david/smartfm/smart-ros-pkg/experimental/dataAssoc_experimental/build'
 make: *** [all] Error 2

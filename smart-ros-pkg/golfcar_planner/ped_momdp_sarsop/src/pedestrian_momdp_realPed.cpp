@@ -15,6 +15,9 @@
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Path.h>
 #include "problems/pedestrian_changelane/world_simulator.h"
+#include <pomdp_path_planner/GetPomdpPath.h>
+#include <pomdp_path_planner/PomdpPath.h>
+#include <navfn/MakeNavPlan.h>
 
 WorldSimulator RealWorld;
 pedestrian_momdp::pedestrian_momdp()
@@ -26,6 +29,7 @@ pedestrian_momdp::pedestrian_momdp()
     ros::NodeHandle nh;
     speedSub_ = nh.subscribe("odom", 1, &pedestrian_momdp::speedCallback, this);
     pedSub_ = nh.subscribe("ped_local_frame_vector", 1, &pedestrian_momdp::pedPoseCallback, this); 
+	//pathSub_=nh.subscribe("global_plan", 1, &pedestrian_momdp::pathCallback,this);
 	pc_pub=nh.advertise<sensor_msgs::PointCloud>("confident_objects_momdp",1);
 	path_pub=nh.advertise<nav_msgs::Path>("momdp_path",10);
 	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
@@ -59,6 +63,10 @@ pedestrian_momdp::pedestrian_momdp()
 	momdp->window_pub=nh.advertise<geometry_msgs::PolygonStamped>("/my_window",1000);
 	momdp->pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);
 	momdp->car_pub=nh.advertise<geometry_msgs::PoseStamped>("car_pose",1000);
+	//momdp->path_client=nh.serviceClient<pomdp_path_planner::GetPomdpPath>("get_pomdp_paths");
+	momdp->path_client=nh.serviceClient<nav_msgs::GetPlan>("/ped_path_planner/planner/make_plan");
+
+	
 
 	//momdp->simLoop();
 
@@ -69,7 +77,10 @@ void pedestrian_momdp::publishPath()
 {
 	cerr << "DEBUG: Call publishPath() " << endl;
 	nav_msgs::Path msg;
-	msg.header.frame_id="/golfcart/map";
+
+	char buf[100];
+	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
+	msg.header.frame_id=buf;
 	msg.header.stamp=ros::Time::now();
 	int length=RealWorld.world_map.pathLength;
 	msg.poses.resize(length);
@@ -91,7 +102,10 @@ void pedestrian_momdp::publishPath()
 	for(int i=0;i<ModelParams::NGOAL;i++)
 	{
 		visualization_msgs::Marker marker;			
-		marker.header.frame_id="/golfcart/map";
+
+		char buf[100];
+		sprintf(buf,"%s%s",ModelParams::rosns,"/map");
+		marker.header.frame_id=buf;
 		marker.header.stamp=ros::Time::now();
 		marker.ns="basic_shapes";
 		marker.id=i;
@@ -135,9 +149,7 @@ void pedestrian_momdp::speedCallback(nav_msgs::Odometry odo)
 
 void pedestrian_momdp::moveSpeedCallback(geometry_msgs::Twist speed)
 {
-
     momdp->updateSteerAnglePublishSpeed(speed);
-
 }
 
 bool sortFn(Pedestrian p1,Pedestrian p2)
@@ -162,7 +174,10 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 	//cout<<"rob pose "<<ped.rob_pose.x<<" "<<ped.rob_pose.y<<endl;
 	//cout<<"Number of Pedestrians "<<lPedLocal.ped_local.size()<<endl;
 	sensor_msgs::PointCloud pc;
-	pc.header.frame_id="/golfcart/map";
+
+	char buf[100];
+	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
+	pc.header.frame_id=buf;
 	pc.header.stamp=lPedLocal.ped_local[0].header.stamp;
 	//RealWorld.ped_list.clear();
 	vector<Pedestrian> ped_list;

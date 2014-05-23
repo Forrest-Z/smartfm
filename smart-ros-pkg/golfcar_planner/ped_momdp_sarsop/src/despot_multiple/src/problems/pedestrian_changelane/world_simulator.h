@@ -21,8 +21,8 @@ public:
 			cout<<"rob map size "<<window.rob_map.size()<<endl;
 		}
 		car.carPos=robPos=windowOrigin=0;	
-		car.w=world_map.global_plan[robPos][0];
-		car.h=world_map.global_plan[robPos][1];
+		car.w=world_map.global_plan[0][0];
+		car.h=world_map.global_plan[0][1];
 		velGlobal=1.0;
 		cerr << "DEBUG: Finished initializing WorldSimulator" << endl;
     }
@@ -31,9 +31,8 @@ public:
 	{
 		cerr << "DEBUG: Call Init() in WorldSimulator" << endl;
 		t_stamp=0;
-		car.carPos=robPos=windowOrigin=0;	
-		car.w=world_map.global_plan[robPos][0];
-		car.h=world_map.global_plan[robPos][1];
+		car.w=world_map.global_plan[0][0];
+		car.h=world_map.global_plan[0][1];
 		velGlobal=1.0;
 
 
@@ -70,9 +69,7 @@ public:
 	Car GetCarPos()
 	{
 		Car local_car;
-		int car_w=world_map.global_plan[robPos][0];
-		int car_h=world_map.global_plan[robPos][1];
-		window.GlobalToLocal(car_w,car_h,local_car.w,local_car.h);
+		window.GlobalToLocal(car.w,car.h,local_car.w,local_car.h);
 		if(ModelParams::debug) 	cout<<"local car "<<local_car.w<<" "<<local_car.h<<endl;
 		return local_car;
 	}
@@ -83,6 +80,7 @@ public:
 	PedestrianState CalCurrObs()
 	{
 		return GetCurrState();
+		/*
 		int X_SIZE=ModelParams::XSIZE;
 		int Y_SIZE=ModelParams::YSIZE;
 		GetCurrState();
@@ -100,15 +98,14 @@ public:
 		obs=pedObs*robObsMax+robObs;
 		if(ModelParams::debug) 	cout<<"world observation "<<obs<<endl;
 		return obs;
+		*/
 	}
 	PedestrianState GetCurrObs()
 	{return curr_obs;}
 
 	bool InSafeZone(int w,int h)
 	{
-		int car_w=world_map.global_plan[robPos][0];
-		int car_h=world_map.global_plan[robPos][1];
-		if(fabs(w-car_w)+fabs(h-car_h)<=ModelParams::rln*3) return false;	
+		if(fabs(w-car.w)+fabs(h-car.h)<=ModelParams::map_rln*3) return false;	
 		else return true;
 	}
 	Pedestrian InitOnePed()
@@ -134,6 +131,7 @@ public:
 		int goal_w,goal_h;
 		goal_w=world_map.goal_pos[goal][0];
 		goal_h=world_map.goal_pos[goal][1];
+		cout<<goal_w<<" "<<goal_h<<endl;
 		int rln=ModelParams::rln/2;
 		int range=(ModelParams::GOAL_DIST-2)*ModelParams::rln;
 		int sum=0;
@@ -141,6 +139,7 @@ public:
 			for(int y=goal_h-range;y<goal_h+range;y+=rln)
 			{
 				if(world_map.InMap(x,y)&&InSafeZone(x,y))  sum++; 
+		//		if(true) sum++;
 			}
 		int grid=unif.next()*sum;
 		sum=0;
@@ -148,13 +147,14 @@ public:
 		for(int x=goal_w-range;x<goal_w+range&&inner==false;x+=rln)
 			for(int y=goal_h-range;y<goal_h+range;y+=rln)
 			{
+		//		if(true) sum++;
 				if(world_map.InMap(x,y)&&InSafeZone(x,y))  sum++; 
 				if(sum>grid)  
 				{
 					inner=true;
 					//ped_list.push_back(Pedestrian(x,y,goal,0));
 					if(ModelParams::debug)  cout<<"initial ped "<<" "<<x<<" "<<y<<" "<<goal<<endl;
-					return Pedestrian(x,y,goal,0);
+					return Pedestrian(x,y,goal,ped_list.size());
 					break;
 				}
 			}
@@ -186,35 +186,25 @@ public:
 				ped_list[i].ts=i;
 			}
 		}
-		//if(ModelParams::FixedPath) ChangePath();
-		//Pedestrian ped1(20*ModelParams::rln,8*ModelParams::rln,2,0);
-		//ped_list.push_back(ped1);
-		//Pedestrian ped2(18*ModelParams::rln,7*ModelParams::rln,3,0);
-		//ped_list.push_back(ped2);
-		//Pedestrian ped3(17*ModelParams::rln,5*ModelParams::rln,0,0);	
-		//ped_list.push_back(ped3);
-		//cout<<"ped 2 "<<ped2.w<<" "<<ped2.h<<endl;
-		//char buf[50];
-		//sprintf(buf,"/ped_pose_%d",0);
-		//	ped_pubs.push_back(n_pt->advertise<geometry_msgs::PoseStamped>(buf,1000));
-
+		cout<<"finish initial pedestrians"<<endl;
 	}
 
 	bool OneStep(int action)
 	{
 		if(GoalReached())       return true;	
-		if(InCollision(action)) return true;  	
-		UpdateCar(action);
-		Display();
-		UpdatePed();
-		
+		//if(InCollision(action)) return true; 		
+		if(InCollision()) return true; 		
 		if(ModelParams::FixedPath)
 		{
 			for(int i=0;i<ped_list.size();i++)
 				ped_list[i].ts++;
 		}
 			
-		if(ModelParams::FixedPath)  ChangePath();
+		if(ModelParams::FixedPath)  ChangePath(); 	
+		UpdateCarGaussian(action);
+		//Display();
+		UpdatePed();
+
 		GetCurrState();
 			
 		if(ModelParams::debug)
@@ -231,7 +221,7 @@ public:
 			Display();
 		}
 		
-		curr_obs=CalCurrObs();
+		//curr_obs=CalCurrObs();
 
 		//ShiftWindow();
 		return false;
@@ -246,22 +236,21 @@ public:
 		}
 	}
 
+	void SwitchPath(int p)
+	{
+		
+	}
 	void ShiftWindow()
 	{
 		curr_obs=CalCurrObs();
-		if(robPos-windowOrigin>=ModelParams::path_rln*3) 	  windowOrigin=robPos-ModelParams::path_rln;
-		Clean();
+		if(robPos-windowOrigin>=ModelParams::path_rln*3) 	  windowOrigin=robPos-ModelParams::path_rln/2;
 		window.RollWindow(windowOrigin);
 		pedInView_list.clear();
 
-
-		cout<<"all pedestrians after shift window"<<endl;
 		for(int i=0;i<ped_list.size();i++)
 		{
-			//cout<<ped_list[i].w<<" "<<ped_list[i].h<<" "<<ped_list[i].id<<endl;
 			int x,y;
 			window.GlobalToLocal(ped_list[i].w,ped_list[i].h,x,y);
-			cout<<"x,y,id "<<x<<" "<<y<<" "<<ped_list[i].id<<endl;
 		}
 
 		for(int i=0;i<ped_list.size();i++)
@@ -293,7 +282,6 @@ public:
 			}
 		}
 		t_stamp++;
-		cout<<"time stamp simulator"<<t_stamp<<endl;
 	}
 	void Clean()
 	{
@@ -341,6 +329,61 @@ public:
 			}
 		}
 		sfm.UpdateSFM();//update the precompute staff
+	}
+	void UpdateVel(int action)
+	{
+		int action_vel[3]={0,1,-1};
+		double prob=unif.next();		
+		if(prob<0.05) ;
+		else velGlobal=velGlobal+action_vel[action]*control_time*ModelParams::AccSpeed;
+
+		if(velGlobal<0) velGlobal=0;	
+		if(velGlobal>ModelParams::VEL_MAX) velGlobal=ModelParams::VEL_MAX;
+	}
+	double gaussian(double dist)  const{
+		if(dist<0.1) dist=1;
+		return 1/dist;
+	}
+	void UpdateCarGaussian(int action) 
+	{
+
+
+		/*
+		   robY += robotNoisyMove[rob_vel][lookup(robotMoveProbs[rob_vel], p)];
+		   if(robY >= Y_SIZE) robY = Y_SIZE - 1;
+		   p = unif.next();
+		   rob_vel = robotVelUpdate[action][rob_vel][lookup(robotUpdateProb[action][rob_vel], p)];
+		   */
+
+
+		double next_center=robPos+velGlobal*ModelParams::path_rln*control_time;
+		//int max_grid=ModelParams::path_rln*ModelParams::VEL_MAX*control_time*2;  //double range of velocity noise
+
+		double weight[int(ModelParams::path_rln*5)];
+		double weight_sum=0;
+
+		int offset=abs(next_center-robPos)*0.2;
+		
+		for(int i=next_center-offset;i<world_map.pathLength&&i<=next_center+offset;i++)
+		{
+			weight[i-robPos]=gaussian(fabs(next_center-i));
+			weight_sum+=weight[i-robPos];
+		}
+
+		double p = unif.next()*weight_sum;
+		weight_sum=0;
+		int dist=-1;
+		for(int i=next_center-offset;i<world_map.pathLength&&i<=next_center+offset;i++)
+		{
+			weight_sum+=weight[i-robPos];
+			if(weight_sum>p) {
+				dist=i;
+				break;
+			}
+		}
+		//cout<<dist-robY<<endl;
+		robPos=dist;
+		UpdateVel(action);
 	}
 	void UpdateCarGood(int action)
 	{
@@ -492,14 +535,12 @@ public:
 	void UpdatePed()
 	{
 		//here we update the ped poses based on the old car position
-		sfm.debug=true;
 		sfm.WorldTrans(ped_list,car,unif);	
-		sfm.debug=false;
 
 		
-		car.w=world_map.global_plan[robPos][0];
-		car.h=world_map.global_plan[robPos][1];
-		car.carPos=robPos;
+		//car.w=world_map.global_plan[robPos][0];
+		//car.h=world_map.global_plan[robPos][1];
+		//car.carPos=robPos;
 	}
 
 	void UpdatePedPoseReal(Pedestrian ped)
@@ -566,6 +607,7 @@ public:
 		cout<<"Window Pos "<<windowOrigin<<endl;
 		cout<<"Rob Pos "<<robPos<<endl;
 		cout<<"ped num "<<pedInView_list.size()<<endl;
+		cout<<"real velocity "<<velGlobal<<endl;
 		/*
 		for(int i=0;i<pedInView_list.size();i++)
 		{
@@ -573,13 +615,12 @@ public:
 		}*/
 		for(int i=0;i<ped_list.size();i++)
 		{
-			cout<<"Real Ped Pos "<<ped_list[i].w<<" "<<ped_list[i].h<<endl;
+			cout<<"Real Ped Pos "<<ped_list[i].w<<" "<<ped_list[i].h<<" "<<ped_list[i].goal<<endl;
 		}
 	}
 	PedestrianState GetCurrState()
 	{
 		int x,y;
-		cout<<"rob pos "<<robPos<<endl;
 
 		window.GlobalToLocal(world_map.global_plan[robPos][0],world_map.global_plan[robPos][1],x,y);
 		if(ModelParams::debug)  {
@@ -606,8 +647,11 @@ public:
 		{
 			int ped_w,ped_h;
 			window.GlobalToLocal(ped_list[pedInView_list[i]].w,ped_list[pedInView_list[i]].h,ped_w,ped_h);
-			cout<<"global ped x y "<<ped_list[pedInView_list[i]].w<<" "<<ped_list[pedInView_list[i]].h<<endl;
-			cout<<"local ped x y "<<ped_w<<" "<<ped_h<<endl;
+			if(ModelParams::debug)
+			{
+				cout<<"global ped x y "<<ped_list[pedInView_list[i]].w<<" "<<ped_list[pedInView_list[i]].h<<endl;
+				cout<<"local ped x y "<<ped_w<<" "<<ped_h<<endl;
+			}
 			if(ped_w<0) ped_w=0;
 			if(ped_w>ModelParams::XSIZE-1) ped_w=ModelParams::XSIZE-1;
 			if(ped_h<0) ped_h=0;
@@ -667,6 +711,7 @@ public:
 		return curr_state;
 	}
 	
+	/*
 	bool InCollision(int action)
 	{
 		GetCurrState();
@@ -698,6 +743,22 @@ public:
 		}
 		return false;
 	}
+	*/
+
+
+	bool InCollision()
+	{
+		for(int i=0;i<pedInView_list.size();i++)
+		{
+			int pX=ped_list[pedInView_list[i]].w;	
+			int pY=ped_list[pedInView_list[i]].h;
+			int rX=car.w;
+			int rY=car.h;
+			if(abs(pX-rX)<ModelParams::map_rln/2&&abs(pY-rY)<ModelParams::map_rln/2)  return true;
+		}
+		return false;
+	}
+
 
 	bool InRealCollision(int action)
 	{
@@ -738,7 +799,11 @@ public:
 	}
 	bool GoalReached()
 	{
-		if(world_map.pathLength-robPos<ModelParams::path_rln*12)	 return true;
+		double rate=ModelParams::path_rln/ModelParams::rln;
+		if(world_map.pathLength-robPos<ModelParams::path_rln*((ModelParams::YSIZE+5)/rate))	 {
+			cout<<"goal reached"<<endl;
+			return true;
+		}
 		//if(robPos>ModelParams::path_rln*(ModelParams::YSIZE-2))	 return true;
 		else return false;
 	}
@@ -751,11 +816,12 @@ public:
 
 	MyMap  world_map;
 	MyWindow  window;
+	int robPos;
 	Car car;
 	Car car_ground_truth;
 	SFM sfm;
 	int NumPedTotal;
-	int robPos;
+	//int robPos;
 	int windowOrigin;
 	int t_stamp;
 	double velGlobal;
@@ -764,6 +830,7 @@ public:
 	vector<int> pedInView_list;
 	PedestrianState curr_state;
 	double control_freq;	
+	double control_time;
 	PedestrianState curr_obs;
 	UtilUniform unif;
 	int ped_paths[3][100][2];

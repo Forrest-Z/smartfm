@@ -175,17 +175,7 @@ public:
 				else 	return 10000;
 			}
 		}
-		if(length<1) {
-			if(ModelParams::goodped==0)
-			{
-				return 3;	
-			}
-			else
-			{
-				//return 2000;
-				return 100;
-			}
-		}
+
 		double diff;
 		diff=angle-phase_angles[phase];  //[-2*pi,2*pi]
 		if(diff<-ModelParams::pi) diff=diff+2*ModelParams::pi;

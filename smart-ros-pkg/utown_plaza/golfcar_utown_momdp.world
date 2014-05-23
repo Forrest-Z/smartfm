@@ -20,15 +20,14 @@ define gc1 position
 (
   #size [0.65 0.65 0.25]
   #origin [-0.05 0 0 0]
-  size [2.385 1.200 0.250]
+  size [23.85 12.00 0.250]
   
   origin [0.792 0.000 0.000 0.000]
   gui_nose 1
   drive "car"
   localization "gps"
   #odom_error [0.01 0.05 0.01 0.02 0.01 0.02]
-
-  topurg(pose [1.985 0.000 0.000 0.000])
+topurg(pose [1.985 0.000 0.000 0.000])
 )
 
 define gc2 position
@@ -79,32 +78,32 @@ define floorplan model
 )
 
 # set the resolution of the underlying raytrace model in meters
-resolution 0.1
+resolution 1.0
 
 interval_sim 100  # simulation timestep in milliseconds
 #interval_real 100  # real-time interval between simulation updates in milliseconds 
 
-window
-( 
-  size [ 651 407 ] 
- #center [327.990 371.960] 
-  center [-12.581 11.179]
-#rotate [ 0.000 -1.560 ]
-  rotate [ 0.000 -1.000 ]
-  scale 6.116 
-)
+#window
+#( 
+#  size [ 651 407 ] 
+# #center [327.990 371.960] 
+#  center [-12.581 11.179]
+##rotate [ 0.000 -1.560 ]
+#  rotate [ 0.000 -1.000 ]
+#  scale 6.116 
+#)
 
 # load an environment bitmap
 floorplan
 ( 
   name "willow"
   bitmap "utown_momdp.png"
-  size [200.000 283.200 1.000]
-  pose [0.000 0.000 0.000 0.000]
+  size [2000.00 2832.00 1.000]
+  pose [-1416 1000 0.000 90]
 )
 
 # throw in a robot
-gc1( pose [-10.360 12.094 0.000 -91.678] name "gc1" color "red")
-block( pose [ -86.628 66.568 0.000 0.000 ] color "red")
-block( pose [ -71.128 64.815 0.000 0.000 ] color "red")
-block( pose [ -26.369 37.454 0.000 0.000 ] color "red")
+gc1( pose [-117 144 0.000 -91.678] name "gc1" color "red")
+#block( pose [ -86.628 66.568 0.000 0.000 ] color "red")
+#block( pose [ -71.128 64.815 0.000 0.000 ] color "red")
+#block( pose [ -26.369 37.454 0.000 0.000 ] color "red")

@@ -39,6 +39,7 @@
 #include <math.h>
 
 #include <sensing_on_road/pedestrian_vision_batch.h>
+#include <sensor_msgs/PointCloud.h>
 using namespace visualization_msgs;
 using namespace std;
 
@@ -80,6 +81,17 @@ void publish_ped()
     Pedpub_.publish(psglaser_batch);
 }
 
+
+//void publish_ped()
+//{
+//	sensor_msgs::PointCloud pc;
+//    pc.header.frame_id = "/map";
+//    pc.points.push_back( convertGeoPt64To32(ped1));
+//    pc.points.push_back( convertGeoPt64To32(ped2));
+//    pc.points.push_back( convertGeoPt64To32(ped3));
+//
+//    Pedpub_.publish(pc);
+//}
 // %Tag(processFeedback)%
 void processFeedback( const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback )
 {
@@ -166,6 +178,7 @@ int main(int argc, char** argv)
 
     server.reset( new interactive_markers::InteractiveMarkerServer("basic_controls","",false) );
     Pedpub_ = n.advertise<sensing_on_road::pedestrian_vision_batch>("ped_data_assoc", 2);
+	//Pedpub_ = n.advertise<sensor_msgs::PointCloud>("confident_objects_momdp", 2);
     ros::Duration(0.1).sleep();
     std_msgs::ColorRGBA color;
     ped1.x = 1.0; ped1.y = 1.0;

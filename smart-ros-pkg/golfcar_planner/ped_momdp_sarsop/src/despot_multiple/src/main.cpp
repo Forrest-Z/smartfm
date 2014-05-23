@@ -20,6 +20,8 @@
 #include <iomanip>
 #include "problems/pedestrian_changelane/world_simulator.h"
 
+
+
 using namespace std;
 
 Model<PedestrianState>* Simulator;
@@ -49,130 +51,143 @@ int RandomActionSeed() {
 }
 
 WorldSimulator world;
+WorldSimulator*RealWorldPt;
 
-void TestSimulator()
+Solver<PedestrianState>* solver;
+ILowerBound<PedestrianState>* lb;
+BeliefUpdate<PedestrianState>* bu;
+
+
+
+void controlLoop();
+void initRealSimulator()
 {
-	Simulator->sfm=&world.sfm;
-	Simulator->rob_map=world.window.rob_map;
-	cout<<"test simulator"<<endl;
+  Globals::config.n_belief_particles=2000;
+  Globals::config.n_particles=500;
+  RandomStreams streams(Globals::config.n_particles, Globals::config.search_depth, 
+		                        Globals::config.root_seed);
 
-    VNode<PedestrianState>::set_model(*Simulator);
-    World<PedestrianState> test_world = World<PedestrianState>(Globals::config.root_seed ^ Globals::config.n_particles, *Simulator);
-	//world.SetStartStates(states);
-	PedestrianState state=Simulator->GetStartState();
-	Simulator->PrintState(state,cout);
-	Solver<PedestrianState>* solver = new Solver<PedestrianState>(*Simulator, Simulator->InitialBelief(), *lb_global, *ub_global, *bu_global, *streams_global);
-	solver->Init();
-	int action;
-	uint64_t observation;
-	double reward;
-	bool crashed=false;
-	int i;
 
-	for(i=0;i<100&&!solver->Finished() ;
-i++)  //10 steps
-	{
-		cout<<"curr sim "<<i<<endl;
-	//	Simulator->PrintState(world,cout);
-		int n_trials;
-		action=2;
-		action=solver->Search(Globals::config.time_per_move,n_trials);
-		cout<<"action "<<action<<endl;
-		Simulator->sfm->debug=true;
-		test_world.Step(action, observation, reward); 
-		Simulator->sfm->debug=false;
-		if(reward<-2000) crashed=true;
-		Simulator->rob_map=world.window.rob_map;
+  cout<<"global particle "<<Globals::config.n_particles<<endl;
+  cout<<"root seed "<<Globals::config.root_seed<<endl;
+  cout<<"search depth"<<Globals::config.search_depth<<endl;
 
-		//cout<<"solver finished "<<solver->Finished()<<endl;
-		PedestrianState state=test_world.GetState();
-		solver->UpdateBelief(action,observation,state);
+  ifstream fin("despot.config");
+  fin >> Globals::config.pruning_constant;
+  cerr << "Pruning constant = " << Globals::config.pruning_constant << endl;
 
-	}
-	if(crashed)
-		cout << "\nTotal  fail reward after " << i << " steps = "<<endl; 
-	else
-		cout << "\nTotal success reward after " << i << " steps = "<<endl;
+  Simulator  = new Model<PedestrianState>(streams, "pedestrian.config");
+  double control_freq=ModelParams::control_freq;
+  cout<<"control freq "<<control_freq<<endl;
+
+  Simulator->control_freq=control_freq;
+  RealWorldPt->control_freq=control_freq;
+  RealWorldPt->control_time=1.0/control_freq;
+
+
+  int knowledge = 2;
+  lb = new RandomPolicyLowerBound<PedestrianState>(
+		  streams, knowledge, RandomActionSeed());
+
+  //IUpperBound<PedestrianState>* ub =
+      //new UpperBoundStochastic<PedestrianState>(streams, *model);
+
+
+  bu = new ParticleFilterUpdate<PedestrianState>(BeliefUpdateSeed(), *Simulator);
+
+  // int ret = Run(model, lb, ub, bu, streams);
+  VNode<PedestrianState>::set_model(*Simulator);
+  Simulator->rob_map=RealWorldPt->window.rob_map;
+  Simulator->sfm=&RealWorldPt->sfm;
+  int action;
+  int i;
+
+  PedestrianState ped_state=RealWorldPt->GetCurrState();
+
+  cout<<"start state"<<endl;
+  Simulator->PrintState(ped_state);
+
+  Simulator->SetStartState(ped_state);
+  solver=new Solver<PedestrianState>(*Simulator, Simulator->InitialBelief(), *lb, *Simulator, *bu, streams);	
+  solver->Init();
+  controlLoop();
+
+
 }
-/*
-void Plan()
+
+
+
+
+void controlLoop()
 {
-
-
-	robPosGlobal=0;	
-	windowOrigin=robPosGlobal;
-
-	PedestrianState temp_state=Simulator->GetStartState();
-	curr_state=&temp_state;
-	UpdateSim();
-
-	MyWorld.Init();
-
-	world.Init();
-
-	InitPedestrians();
-	int safeAction=0;
-	int i;
-	int crush=0;
-	velGlobal=1.0;
-
-	//TestSimulator();
-	//return;
-
-	for(i=1;i<15;i++)
-	{
-		cout<<"!!!!!!!!!curr horizon "<<i<<endl;
-		safeAction=0;
-
-
-		//select action
-		char buf[20];
-		sprintf(buf,"tree %d",i);
-		ofstream out(buf);
-
-		int action= solver->Search(Globals::config.time_per_move,n_trials);
-		//safeAction=1;
-		cout<<"safeAction "<<safeAction<<endl;
-
-		
-		//update environment
-
-			
-
-
-		bool terminal=Update(safeAction);
-		if(terminal)   {crush++;break;}
-		if(GoalReached()) break;
-
-		if(i%5==0)
+		int i;
+		for(i=0;i<1000;i++)
 		{
-			//move the horizon forward
-			windowOrigin=robPosGlobal;
-			int end=(windowOrigin+200<my_map.pathLength)?(windowOrigin+200):(my_map.pathLength-1);
-			double dh=my_map.global_plan[end][1]-my_map.global_plan[windowOrigin][1];
-			double dw=my_map.global_plan[end][0]-my_map.global_plan[windowOrigin][0];
-			double angle=atan2(dw,dh);
-			cout<<"dw dh angle "<<dw<<" "<<dh<<" "<<angle<<endl;
-			cout<<"path length "<<my_map.pathLength<<endl;
-			double yaw=sin(-angle/2);
-			cout<<"yaw "<<yaw<<endl;
 
-			//mapWindowSplit(init_w*rln,init_h*rln,yaw);
-			my_window.MapWindowSplit(my_map.global_plan[windowOrigin][0],my_map.global_plan[windowOrigin][1],yaw);
-			TransitionModel();
-			my_window.UpdateRobMap(windowOrigin);
-			UpdateSim();
+			int n_trials;
+			int safeAction=solver->Search(Globals::config.time_per_move,n_trials);
+
+			cout<<"action "<<safeAction<<endl;
+
+			/*
+
+			Car world_car;
+			world_car.w=out_pose.getOrigin().getX()*ModelParams::map_rln;
+			world_car.h=out_pose.getOrigin().getY()*ModelParams::map_rln;
+			RealWorldPt->UpdateRobPoseReal(world_car);
+			*/
+			if(RealWorldPt->OneStep(safeAction)) break;
+
+			if(ModelParams::debug)
+			{
+				cout<<"State before shift window"<<endl;
+				Simulator->PrintState(RealWorldPt->GetCurrState());
+			}
+			RealWorldPt->ShiftWindow();
+
+
+			cout<<"here"<<endl;
+			//if(RealWorldPt->NumPedInView()==0) return;   //no pedestrian detected yet
+			Simulator->rob_map=RealWorldPt->window.rob_map;
+			PedestrianState new_state_old=RealWorldPt->GetCurrObs();
+
+			cout<<"world observation: ";//<<obs<<endl;
+			Simulator->PrintState(new_state_old);
+
+
+			PedestrianState ped_state=RealWorldPt->GetCurrState();
+
+			if(ModelParams::debug)
+			{
+				cout<<"current state"<<endl;
+				Simulator->PrintState(ped_state);
+			}
+
+			cout<<"vel after action "<<ped_state.Vel<<endl;
+			cout<<"vel global after action "<<world.velGlobal<<endl;
+			cout<<"car pose after action "<<world.robPos<<endl;
+			cout<<"car x y after action "<<world.car.w<<" "<<world.car.h<<endl;
+
+
+
+
+			double reward;
+			solver->UpdateBelief(safeAction, ped_state,new_state_old);
+
+
 		}
-	}
-	
-	cout<<"total number of runs "<<i<<endl;
-	cout<<"total number of crush "<<crush<<endl;
-}*/
-
+		if(world.InCollision())
+		{
+			cout << "\nTotal  fail reward after " << i << " steps = "<<endl; 
+		}
+		else
+			cout << "\nTotal success reward after " << i << " steps = "<<endl;
+}
 
 
 void Plan()
 {
+	cout<<"start planning"<<endl;
 	//TestSimulator();
 	Solver<PedestrianState>* solver=0;// = new Solver<PedestrianState>(*Simulator, Simulator->InitialBelief(), *lb_global, *ub_global, *bu_global, *streams_global);
 
@@ -210,7 +225,7 @@ void Plan()
 			Simulator->PrintState(world.GetCurrState(),cout);
 			world.Display();
 		}
-		uint64_t obs=world.GetCurrObs();
+		PedestrianState obs=world.GetCurrObs();
 		Simulator->rob_map=world.window.rob_map;
 		/*
 		if(world.NumPedInView()==0&&solver) 
@@ -219,17 +234,16 @@ void Plan()
 			delete solver;
 			solver=0;
 		}*/
-		if(ModelParams::debug)  cout<<"observation "<<obs<<endl;
 		if(solver)   {
 			PedestrianState ped_state=world.GetCurrState();
-			solver->UpdateBelief(action,obs,ped_state);	
+			solver->UpdateBelief(action,ped_state,obs);	
 			//cout<<"solver finished "<<solver->Finished()<<endl;
 			//if(solver->Finished()) break;
 		}
 	}
-	if(world.InCollision(action))
+	/*
+	if(world.InCollision())
 	{
-		if(world.InRealCollision(action))
 		{
 			cout << "\nTotal  fail reward after " << i << " steps = "<<endl; 
 		}
@@ -237,6 +251,7 @@ void Plan()
 	}
 	else
 		cout << "\nTotal success reward after " << i << " steps = "<<endl;
+		*/
 }
 
 
@@ -501,21 +516,29 @@ int main(int argc, char* argv[]) {
   if (options[APPROX_BOUNDS]) Globals::config.approximate_bounds = true;
 	if (options[NUMBER]) Globals::config.number = atoi(options[NUMBER].arg);
 
+
+	/*
   RandomStreams streams(Globals::config.n_particles, Globals::config.search_depth, 
                         Globals::config.root_seed);
 
   cout<<"option seed "<<Globals::config.root_seed<<endl;
 
   streams_global=&streams;
+  */
   world.SetSeed(WorldSeed());
+  cout<<"world seed "<<WorldSeed()<<endl;
   world.NumPedTotal=Globals::config.number;
   world.Init();
+  RealWorldPt=&world;
 
+  /*
   if (problem == "pedestrian")
     return RunPedestrian(options, streams);
   else
 	  cout << "Problem must be one of tag, lasertag, rocksample, tiger, bridge "
-          "and pocman.\n";
+          "and pocman.\n";*/
+
+  initRealSimulator();
 
   return 1;
 }

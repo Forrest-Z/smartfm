@@ -3,6 +3,8 @@
 
 #include "belief_update/belief_update.h"
 
+#include "problems/pedestrian_changelane/pedestrian_state.h"
+
 PedestrianState ObsToState(uint64_t obs);
 
 //#include "problems/pedestrian/pedestrian.h"
@@ -44,8 +46,11 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
   vector<Particle<T>*> ans;
   double reward;
 
-  cout<<"Belief before update "<<endl;
-  this->model_.Statistics(particles);
+  if(ModelParams::debug)
+  {
+	  cout<<"Belief before update "<<endl;
+	  this->model_.Statistics(particles);
+  }
 
   PedestrianState new_state = obs_state_old;
   for (auto p: particles) {
@@ -152,8 +157,11 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
   }
 */
   this->Normalize(ans);
-  cout<<"After update "<<endl;
-  this->model_.Statistics(ans);
+  if(ModelParams::debug)
+  {
+	  cout<<"After update "<<endl;
+	  this->model_.Statistics(ans);
+  }
 
   // Remove all particles below a threshold
 	/* // This is buggy
@@ -210,13 +218,20 @@ vector<Particle<T>*> ParticleFilterUpdate<T>::UpdateImpl(
       this->model_.Free(it);
     ans = resampled_ans;
 	cerr << "DEBUG: Resampled " << ans.size() << " particles in belief" << endl;
-	cout<<"After resample "<<endl;
-	this->model_.Statistics(ans);
+	if(ModelParams::debug)
+	{
+		cout<<"After resample "<<endl;
+		this->model_.Statistics(ans);
+	}
   } 
 
+  
   this->model_.ModifyObsStates(ans,obs_state,this->belief_update_seed_);
-  cout<<"After Modify "<<endl;
-  this->model_.Statistics(ans);
+  if(ModelParams::debug)
+  {
+	  cout<<"After Modify "<<endl;
+	  this->model_.Statistics(ans);
+  }
   /*
   cout<<"particle ids after modify"<<endl;
   for(int i=0;i<ans.size();i++)

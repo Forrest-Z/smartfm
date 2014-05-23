@@ -134,6 +134,7 @@ int Solver<T>::Search(double max_time, int& n_trials) {
     Trial(root_);
     n_trials++;
   }
+  cout<<"number of trials "<<n_trials<<endl;
 
 	lb_.CollectSearchInformation(this);
 
@@ -144,7 +145,7 @@ int Solver<T>::Search(double max_time, int& n_trials) {
     int act = root_->pruned_action(); 
     cout << "Action = " << (act == -1 ? default_action_ : act) << endl;
 	cout<<"start printing tree "<<endl;
-	PrintTree(root_);
+	//PrintTree(root_);
     return act == -1 ? default_action_ : act;
   }
   else if (!(root_->in_tree())) {
@@ -155,7 +156,7 @@ int Solver<T>::Search(double max_time, int& n_trials) {
 	cout << "Optimal" << endl;
 	cout << "Action = " << root_->OptimalAction() << endl;
 	cout<<"start printing tree "<<endl;
-	PrintTree(root_);
+//	PrintTree(root_);
     return root_->OptimalAction();
   }
   cerr << "Despot search done!" << endl;

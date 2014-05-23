@@ -21,7 +21,7 @@
   <depend package="nav_msgs"/>
   <depend package="visualization_msgs"/>
   <depend package="costmap_2d"/>
-  <depend package="navfn"/>
+  <depend package="navfn_pomdp"/>
   <depend package="pomdp_path_planner"/>
 </package>
 

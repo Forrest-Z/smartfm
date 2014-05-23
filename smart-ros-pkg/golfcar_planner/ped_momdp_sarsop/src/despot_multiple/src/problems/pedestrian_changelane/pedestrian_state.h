@@ -30,10 +30,10 @@ class PedestrianState
 
 		PedestrianState() {}
 
-		PedestrianState(int id);
+		//PedestrianState(int id);
 
 		/* TODO: bug due to wrong mapping - UpperBound table*/
-		operator int() const ;
+		//operator int() const ;
 };
 
 #endif

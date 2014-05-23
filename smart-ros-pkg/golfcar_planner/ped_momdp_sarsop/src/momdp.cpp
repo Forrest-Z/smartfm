@@ -3,7 +3,7 @@
 #include "vnode.h"
 #include "solver.h"
 #include "globals.h"
-#include "problems/pedestrian_changelane/pedestrian_changelane_despot.h"
+#include "problems/pedestrian_changelane/pedestrian_changelane.h"
 
 Model<PedestrianState>* RealSimulator;
 Solver<PedestrianState>* solver;
@@ -44,6 +44,7 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp",1);
 	actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
+	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1);
 	char buf[100];
 	for(int i=0;i<ModelParams::N_PED_IN;i++) {
 		sprintf(buf,"pomdp_beliefs%d",i);
@@ -222,7 +223,10 @@ void ped_momdp::publishROSState()
 	pnt.x=(w3+0.0)/rln;pnt.y=(h3+0.0)/rln;pnt.z=0;
 	plg.polygon.points.push_back(pnt);
 	plg.header.stamp=ros::Time::now();
-	plg.header.frame_id="/golfcart/map";
+
+	char buf[100];
+	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
+	plg.header.frame_id=buf;
 	//plg.points[0].x=w0; plg.points[0].y=h0; plg.points[0].z=0;
 	//plg.points[1].x=w1; plg.points[1].y=h1; plg.points[1].z=0;
 	//plg.points[2].x=w2; plg.points[2].y=h2; plg.points[2].z=0;
@@ -233,7 +237,9 @@ void ped_momdp::publishROSState()
 	
 	geometry_msgs::PoseStamped pose_stamped;
 	pose_stamped.header.stamp=ros::Time::now();
-	pose_stamped.header.frame_id="/golfcart/map";
+
+	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
+	pose_stamped.header.frame_id=buf;
 
 	pose_stamped.pose.position.x=(RealWorldPt->car.w+0.0)/rln;
 	pose_stamped.pose.position.y=(RealWorldPt->car.h+0.0)/rln;
@@ -242,7 +248,9 @@ void ped_momdp::publishROSState()
 	
 	geometry_msgs::PoseArray pA;
 	pA.header.stamp=ros::Time::now();
-	pA.header.frame_id="/golfcart/map";
+
+	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
+	pA.header.frame_id=buf;
 	for(int i=0;i<RealWorldPt->ped_list.size();i++)
 	{
 		//GetCurrentState(ped_list[i]);
@@ -315,7 +323,10 @@ void ped_momdp::publishAction(int action)
 {
 		uint32_t shape = visualization_msgs::Marker::CUBE;
 		visualization_msgs::Marker marker;			
-		marker.header.frame_id="/golfcart/map";
+		
+		char buf[100];
+		sprintf(buf,"%s%s",ModelParams::rosns,"/map");
+		marker.header.frame_id=buf;
 		marker.header.stamp=ros::Time::now();
 		marker.ns="basic_shapes";
 		marker.id=0;
@@ -353,6 +364,52 @@ void ped_momdp::publishAction(int action)
 
 }
 //for despot
+
+void ped_momdp::RetrievePaths()
+{
+	//RealSimulator->global_path[];	
+	
+	//pomdp_path_planner::GetPomdpPath srv;	
+	//path_client.call(srv);
+	//int size=srv.response.CurrPaths.size();
+	//cout<<"path size "<<size<<endl;
+	//cout<<"first path"<<endl;
+	//if(size!=0)
+	//{
+	//	pomdp_path_planner::PomdpPath path=srv.response.CurrPaths[0];
+	//	for(int i=0;i<size;i++)
+	//		cout<<path.points[i].x<<" "<<path.points[i].y<<endl;
+	//}
+	nav_msgs::GetPlan srv;
+	geometry_msgs::PoseStamped pose;
+	pose.header.stamp=ros::Time::now();
+	pose.header.frame_id="/map";
+	//pose.pose.position.x=RealWorldPt->car.w/10.0;
+	//pose.pose.position.y=RealWorldPt->car.h/10.0;
+	
+	cout<<"real world car poses "<<RealWorldPt->car.w<<" "<<RealWorldPt->car.h<<endl;
+	pose.pose.position.x=RealWorldPt->car_ground_truth.w/10.0;
+	pose.pose.position.y=RealWorldPt->car_ground_truth.h/10.0;
+	srv.request.start=pose;
+	pose.pose.position.x=18;
+	pose.pose.position.y=49;
+	srv.request.tolerance=1.0;
+	srv.request.goal=pose;
+	path_client.call(srv);
+	//nav_msgs::Path p;
+	//p.header.stamp=ros::Time::now();
+	//p.poses=srv.response.plan;
+	cout<<"receive path from navfn "<<srv.response.plan.poses.size()<<endl;
+	
+	RealWorldPt->world_map.pathLength=srv.response.plan.poses.size();
+	for(int i=0;i<srv.response.plan.poses.size();i++)
+	{
+		RealWorldPt->world_map.global_plan[i][0]=srv.response.plan.poses[i].pose.position.x*10;
+		RealWorldPt->world_map.global_plan[i][1]=srv.response.plan.poses[i].pose.position.y*10;
+	}
+	pathPub_.publish(srv.response.plan);
+}
+
 int brake_counts=0;
 void ped_momdp::controlLoop(const ros::TimerEvent &e)
 {
@@ -361,8 +418,12 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 
         tf::Stamped<tf::Pose> in_pose, out_pose;
 		in_pose.setIdentity();
-		in_pose.frame_id_ = "/golfcart/front_bottom_lidar";
-		if(!getObjectPose("/golfcart/map", in_pose, out_pose)) {
+
+		char buf[100];
+		sprintf(buf,"%s%s",ModelParams::rosns,ModelParams::laser_frame);
+		in_pose.frame_id_ = buf; 
+		sprintf(buf,"%s%s",ModelParams::rosns,"/map");
+		if(!getObjectPose(buf, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 		} else {
 			Car world_car;
@@ -373,8 +434,6 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		
 		publishROSState();
 		
-
-
 		if(RealWorldPt->GoalReached())
 		{
 			goal_reached=true;
@@ -395,7 +454,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			return;
 		}
 
-
+		RetrievePaths();
 		cout<<"State before shift window"<<endl;
 		RealSimulator->PrintState(RealWorldPt->GetCurrState());
 		RealWorldPt->ShiftWindow();
@@ -410,7 +469,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		cout<<"world observation: ";//<<obs<<endl;
 		RealSimulator->PrintState(new_state_old);
 
-
+		
 		PedestrianState ped_state=RealWorldPt->GetCurrState();
 		cout<<"current state"<<endl;
 		RealSimulator->PrintState(ped_state);
@@ -439,8 +498,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		cout<<"n trials "<<n_trials<<endl;
 		
 		cout<<"safe action "<<safeAction<<endl;
-
-		
+	
 		
 		publishBelief();
 
@@ -497,7 +555,10 @@ void ped_momdp::publishMarker(int id,vector<double> belief)
 	for(int i=0;i<belief.size();i++)
 	{
 		visualization_msgs::Marker marker;			
-		marker.header.frame_id="/golfcart/map";
+
+		char buf[100];
+		sprintf(buf,"%s%s",ModelParams::rosns,"/map");
+		marker.header.frame_id=buf;
 		marker.header.stamp=ros::Time::now();
 		marker.ns="basic_shapes";
 		marker.id=i;

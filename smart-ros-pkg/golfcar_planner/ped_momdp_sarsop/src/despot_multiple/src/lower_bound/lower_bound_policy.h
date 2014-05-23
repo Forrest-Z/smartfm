@@ -91,12 +91,18 @@ pair<double, int> PolicyLowerBound<T>::LowerBoundImpl(
   double weight_sum = 0;
   MAP<uint64_t, pair<double, vector<Particle<T>*>>> partitioned_particles;
   double first_step_reward = 0;
-  if(debug)
-	  cerr<<"particle size "<<particles.size()<<endl;
+//  if(debug)
+	 // cerr<<"particle size lower bound "<<particles.size()<<endl;
+
+	 //cout<<"particle address in lower bound "<<&particles<<endl;
   for (auto& p: particles) {
     uint64_t o; double r;
+	//cout << "Before " << p->id << " " << stream_position << endl;
+	//model.PrintState(p->state);
     model.Step(p->state, this->streams_.Entry(p->id, stream_position), 
                act, r, o);
+	//cout << "After" << endl;
+	//model.PrintState(p->state);
     auto& ref = partitioned_particles[o];
     ref.first += p->wt;
     ref.second.push_back(p);
