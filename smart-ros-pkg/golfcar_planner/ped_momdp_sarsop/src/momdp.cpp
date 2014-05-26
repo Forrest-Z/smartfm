@@ -5,14 +5,6 @@
 #include "globals.h"
 #include "problems/pedestrian_changelane/pedestrian_changelane.h"
 
-Model<PedestrianState>* RealSimulator;
-Solver<PedestrianState>* solver;
-ILowerBound<PedestrianState>* lb;
-BeliefUpdate<PedestrianState>* bu;
-
-RandomStreams streams(Globals::config.n_particles, Globals::config.search_depth, 
-                        Globals::config.root_seed);
-
 int WorldSeed() {
   cout<<"root seed"<<Globals::config.root_seed<<endl;
   return Globals::config.root_seed ^ Globals::config.n_particles;
@@ -27,14 +19,9 @@ int RandomActionSeed() {
   return Globals::config.root_seed ^ (Globals::config.n_particles + 2);
 }
 
-ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh,WorldSimulator*rw)
+ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh) : worldBeliefTracker(worldModel) 
 {
 	cerr <<"DEBUG: Entering ped_momdp()"<<endl;
-    X_SIZE=4;
-	//X_SIZE=ModelParams::XSIZE;
-    Y_SIZE=ModelParams::YSIZE;
-    dY= 1;// step size in Y
-    dX= 1;// step size in X
 	control_freq=frequency;
 
 	cerr << "DEBUG: Initializing publishers..." << endl;
@@ -70,31 +57,6 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
 
 
 
-/*for pomcp
-void ped_momdp::initRealSimulator()
-{
-
-	RealSimulator=new PEDESTRIAN_CHANGELANE(ModelParams::XSIZE,ModelParams::YSIZE);
-	RealSimulator->rob_map=RealWorldPt->window.rob_map;
-	RealSimulator->sfm=&RealWorldPt->sfm;
-
-	PedestrianState startState=RealWorldPt->GetCurrState();
-	RealSimulator->SetStartState(startState);
-	cout<<"Initial State"<<endl;
-	RealSimulator->DisplayState(startState,cout);
-
-    MCTS::InitFastUCB(50000);
-    MCTS::PARAMS SearchParams;
-	solver=new MCTS(*RealSimulator, SearchParams);
-	solver->root_list.push_back(solver->Root);
-
-	solver->pedproblem_c=RealSimulator;
-
-	//cout<<"Initial Belief"<<endl;
-	//RealSimulator->DisplayBeliefs(solver->Root->Beliefs(),cout);
-
-
-}*/
 bool ped_momdp::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const
 {
     out_pose.setIdentity();
@@ -133,18 +95,16 @@ void ped_momdp::initRealSimulator()
   fin >> Globals::config.pruning_constant;
   cerr << "Pruning constant = " << Globals::config.pruning_constant << endl;
 
-  RealSimulator  = new Model<PedestrianState>(streams, "pedestrian.config");
-  RealSimulator->control_freq=control_freq;
-  RealSimulator->worldModelPt=&worldModel;
+  RealSimulator  =  new Model<PedestrianState>(streams, "pedestrian.config");
 
+  RandomStreams* streams = NULL;
+  streams = new RandomStreams(Seeds::Next(Globals::config.n_particles), Globals::config.search_depth);
+  PomdpModel.InitializeParticleLowerBound(options[E_BLBTYPE].arg);
+  PomdpModel.InitializeScenarioLowerBound(options[E_LBTYPE].arg, *streams);
+  PomdpModel.InitializeParticleUpperBound(options[E_BUBTYPE].arg);
+  PomdpModel.InitializeScenarioUpperBound(options[E_UBTYPE].arg, *streams);
+  solver = new DESPOTSTAR(&PomdpModel, NULL, *streams);
 
-  int knowledge = 2;
-  lb = new RandomPolicyLowerBound<PedestrianState>(
-		  streams, knowledge, RandomActionSeed());
-
-  cout<<"lower bound address "<<lb<<endl;
-  //IUpperBound<PedestrianState>* ub =
-      //new UpperBoundStochastic<PedestrianState>(streams, *model);
 
 
   bu = new ParticleFilterUpdate<PedestrianState>(BeliefUpdateSeed(), *RealSimulator);
@@ -238,44 +198,6 @@ void ped_momdp::publishROSState()
 }
 
 
-//for pomcp
-/*
-void ped_momdp::controlLoop(const ros::TimerEvent &e)
-{
-	    cout<<"entering control loop"<<endl;
-		RealWorldPt->ShiftWindow();
-		publishROSState();
-		cout<<"here"<<endl;
-        if(RealWorldPt->NumPedInView()==0) return;   //no pedestrian detected yet
-		RealSimulator->rob_map=RealWorldPt->window.rob_map;
-		OBS_T obs=RealWorldPt->GetCurrObs();
-
-		cout<<"world observation "<<obs<<endl;
-		PedestrianState ped_state=RealWorldPt->GetCurrState();
-		RealSimulator->SetStartState(ped_state);
-		RealSimulator->DisplayState(ped_state,cout);
-
-		double reward;
-		solver->Update(safeAction, obs, reward, &ped_state);
-	
-		////////////////////////////////////////////////////////////////////
-		
-		safeAction=solver->SelectAction();
-		
-		cout<<"safe action "<<safeAction<<endl;
-
-		
-        if(safeAction==0) momdp_speed_ += 0;
-        else if(safeAction==1) momdp_speed_ += 1.0;
-        else if(safeAction==2) momdp_speed_ -= 1.0;
-        if(momdp_speed_<=0) momdp_speed_ = 0;
-        if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
-		
-
-		cout<<"momdp_spped "<<momdp_speed_<<endl;
-		publishBelief();
-
-}*/
 
 double marker_colors[20][3] = {
 	{0.0,1.0,0.0},
@@ -448,28 +370,16 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 
 		RetrievePaths();
 		cout<<"State before shift window"<<endl;
-		RealSimulator->PrintState(RealWorldPt->GetCurrState());
-		RealWorldPt->ShiftWindow();
+		
         worldStateTracker.cleanPed();
 
-
-		cout<<"here"<<endl;
-		PedestrianState new_state_old=RealWorldPt->GetCurrObs();
-
-		cout<<"world observation: ";//<<obs<<endl;
-		RealSimulator->PrintState(new_state_old);
-
-		
-		PedestrianState ped_state=RealWorldPt->GetCurrState();
-		cout<<"current state"<<endl;
-		RealSimulator->PrintState(ped_state);
 
 		double reward;
 		solver->UpdateBelief(safeAction, ped_state,new_state_old);
 	
 		////////////////////////////////////////////////////////////////////
 
-		if(RealWorldPt->Emergency())
+		if(worldTracker.emergency())
 		{
 			momdp_speed_=-1;	
 			return;
@@ -555,9 +465,9 @@ void ped_momdp::publishMarker(int id,vector<double> belief)
 		marker.type=shape;
 		marker.action = visualization_msgs::Marker::ADD;
 
-		double px,py;
-		px=RealWorldPt->ped_list[RealWorldPt->pedInView_list[id]].w/ModelParams::map_rln;
-		py=RealWorldPt->ped_list[RealWorldPt->pedInView_list[id]].h/ModelParams::map_rln;
+		double px=0,py=0;
+		//px=RealWorldPt->ped_list[RealWorldPt->pedInView_list[id]].w;
+		//py=RealWorldPt->ped_list[RealWorldPt->pedInView_list[id]].h;
 		marker.pose.position.x = px+i*0.7;
 		marker.pose.position.y = py+belief[i]*2;
 		marker.pose.position.z = 0;
@@ -599,84 +509,3 @@ void ped_momdp::publishBelief()
 	}
 
 }
-/*
-int enter=false;
-void ped_momdp::controlLoop(const ros::TimerEvent &e)
-{
-
-    cout << "Control loop dj .. " << " lPedInView " << lPedInView.size() << endl;
-
-    //publish goal point at 25 meter in global frame
- 
-
-    if(lPedInView.size()==0)
-    {
-        momdp_speed_ = 0.0;
-        return;
-    }
-    ///Start pomdp stuff
-    cout << "=====================================================================" << endl;
-
-    /// update belief based on the action taken
-	
-	if(enter==false)
-	{
-	  enter=true;
-	}
-	else
-	{
-		for(int ii=0; ii<lPedInView.size(); ii++)
-		{
-			int id = lPedInView[ii].id;
-			updateBelief(id,safeAction);
-			//updatePomcpBelief(ii,safeAction);
-		}
-	}
-
-    //clean_momdp_problem();
-    /// Get new action
-    for(int ii=0; ii<lPedInView.size(); ii++)
-    {
-       lPedInView[ii].currAction =0;// policy->getBestActionLookAhead(*(lPedInView[ii].currBelSt));
-       //lPedInView[ii].currAction =Executers[ii]->GetAction();
-       cout<<"momdp action:"<<lPedInView[ii].currAction<<endl;
-    }
-
-    /// combining the actions by picking the safest action
-    /// Do the far away pedestrians create a freezing action ???
-
-    safeAction=1; /// actions : cru=0, acc=1, decc=2
-    for(int ii=0; ii<lPedInView.size(); ii++)
-    {
-        if( (lPedInView[ii].currAction!=safeAction) && (safeAction!=2) )
-        {
-            if(lPedInView[ii].currAction==2)
-                safeAction = 2;
-            else if (lPedInView[ii].currAction==0)
-                safeAction =0;
-        }
-    }
-
-    map<string, string> aa = problem->getActionsSymbols(safeAction);
-    cout << "safe action " << aa["action_robot"] << endl;
-
-
-    if(!stationary_)
-    {
-        /// TBP : Change numbers to parameters
-        if(safeAction==0) momdp_speed_ += 0;
-        else if(safeAction==1) momdp_speed_ += 1.0;
-        else if(safeAction==2) momdp_speed_ -= 1.0;
-        if(momdp_speed_<=0) momdp_speed_ = 0;
-        if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
-    }
-
-	cout<<"momdp speed"<<momdp_speed_<<endl;
-    publish_belief();
-
-
-	//clean_momdp_problem();
-}*/
-
-
-

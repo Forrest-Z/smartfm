@@ -79,11 +79,6 @@ public:
 	void publishBelief();
 	void publishMarker(int id,vector<double> belief);
 	bool getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
-    //vector<Executer*> Executers; 
-	//WorldSimulator world;
-	//for pomcp
-	//MCTS*solver;
-	//PEDESTRIAN_CHANGELANE* RealSimulator;
 	
 	//for despot
 	
@@ -106,6 +101,7 @@ public:
     tf::TransformListener tf_;
     WorldStateTracker worldStateTracker;
     WorldModel worldModel;
+	WorldBeliefTracker worldBeliefTracker;
 	double momdp_speed_,real_speed_;
 private:
 	double control_freq;

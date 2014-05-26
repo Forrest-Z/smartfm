@@ -1,4 +1,6 @@
-#include<numeric_limits>
+#include<limits>
+#include<cmath>
+#include<cstdlib>
 #include"WorldModel.h"
 using namespace std;
 
@@ -31,6 +33,7 @@ double WorldModel::inCollision(PomdpState state, int action) {
         if(d < mindist) mindist = d;
     }
 
+    // TODO set as a param
     if(mindist < 1) {
         penalty += CRASH_PENALTY * (carvel + 1);
     }
@@ -41,11 +44,17 @@ double WorldModel::inCollision(PomdpState state, int action) {
     return penalty;
 }
 
-void WorldModel::PedStep(PedStruct &ped, UtilUniform &unif) {
+double WorldModel::minStepToGoal(PomdpState state) {
+    // TODO
+    return 0;
+}
+
+
+void WorldModel::PedStep(PedStruct &ped, Random& random) {
     COORD& goal = goals[ped.goal];
 	MyVector goal_vec(goal.x - pos.x, goal.y - pos.y);
     double a = goal_vec.GetAngle();
-    a += unif.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
+    a += random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
     //TODO noisy speed
     MyVector move(a, ModelParams::PED_SPEED, 0);
     goal.x += move.dw;
@@ -53,7 +62,24 @@ void WorldModel::PedStep(PedStruct &ped, UtilUniform &unif) {
     return;
 }
 
-void WorldModel::RobStep(CarStruct &car, UtilUniform &unif) {
+inline double sqr(double a) {
+    return a*a;
+}
+
+double gaussian_prob(double x, double stddev) {
+    double a = 1.0 / stddev / sqrt(2 * M_PI);
+    double b = -sqr(x) / 2 / sqr(stddev);
+    return a * exp(b);
+}
+
+void WorldModel::pedMoveProb(COORD p0, COORD p1, int goal_id) {
+    double cosa = DotProduct(p0.x, p0.y, p1.x, p1.y) / Norm(p0.x, p0.y) / Norm(p1.x, p1.y);
+    double a = acos(cosa);
+    double p = gaussian_prob(a, ModelParams::NOISE_GOAL_ANGLE);
+    return p;
+}
+
+void WorldModel::RobStep(CarStruct &car, Random& random) {
     //TODO noise
     double dist = car.vel / freq;
     int curr = path.nearest(car.pos);
@@ -62,8 +88,8 @@ void WorldModel::RobStep(CarStruct &car, UtilUniform &unif) {
     car.dist_travelled += dist;
 }
 
-void WorldModel::RobVelStep(CarStruct &car, double acc, UtilUniform& unfi) {
-    double prob = unif.next();
+void WorldModel::RobVelStep(CarStruct &car, double acc, Random& random) {
+    double prob = random.NextDouble();
     if (prob > 0.2) {
         car.vel += acc / freq;
     }
@@ -74,6 +100,23 @@ void WorldModel::RobVelStep(CarStruct &car, double acc, UtilUniform& unfi) {
 
 void WorldModel::setPath(Path path) {
     this->path = path;
+}
+
+void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
+    for(int i=0; i<goals.size(); i++) {
+        b.prob_goals[i] *= PedMoveProb(b.pos, curr_ped.pos, i);
+    }
+
+    // normalize
+    double total_weight = accumulate(b.prob_goals.begin(), b.prob_goals.end(), 0);
+    for(double& w : b.prob_goals) {
+        w /= total_weight;
+    }
+}
+
+PedBelief& WorldModel::initPedBelief(const PedStruct& ped) {
+    PedBelief b = {ped.pos, vector<double>(goals.size(), 1.0/goals.size())};
+    return b;
 }
 
 double timestamp() {
@@ -130,19 +173,94 @@ void WorldStateTracker::updatePed(Pedestrian& ped){
         ped_list.push_back(ped);
     }
 }
+
 void WorldStateTracker::updateCar(COORD& car) {
     this->car.pos=car;
+}
+
+bool WorldStateTracker::emergency() {
+    //TODO check for emergency stop
+    return false;
 }
 
 void updateVel(double vel) {
     this->car.vel=vel;
 }
+
 PomdpState getPomdpState() {
     PomdpState pomdpState;
     pomdpState.car=car;
     pomdpState.num=ped_list.size();
+
+    assert(pomdpState.num <= ModelParams::N_PED_IN);
+
     for(int i=0;i<pomdpState.num;i++) {
         pomdpState.peds[i].pos.x=ped_list[i].w;
         pomdpState.peds[i].pos.y=ped_list[i].h;
+		pomdpState.peds[i].id = ped_list[i].id;
     }
 }
+
+void WorldBeliefTracker::update(const PomdpState& s) {
+    car = s.car;
+
+    map<int, PedStruct> newpeds;
+    for(auto p: s.peds) {
+        newpeds[p.id] = p;
+    }
+
+    // remove disappeared peds
+    auto peds_disappeared = find_if(peds.begin(), peds.end(),
+                [](auto p) {return newpeds.find(p.first) == newpeds.end(); });
+    peds.erase(peds_disappeared, peds.end());
+
+    // update existing peds
+    for(auto& kv : peds) {
+        model.updatePedBelief(kv.second, newpeds[kv.first]);
+    }
+
+    // add new peds
+    for(auto p: s.peds) {
+        if (peds.find(p.id) == peds.end()) {
+            peds[p.id] = model.initPedBelief(p);
+        }
+    }
+
+    return;
+}
+
+int PedBelief::sample_goal() {
+    double r = double(rand()) / RAND_MAX;
+    int i = 0;
+    r -= prob_goals[i];
+    while(r > 0) {
+        i++;
+        r -= prob_goals[i];
+    }
+    return i;
+}
+
+PomdpState WorldBeliefTracker::sample() {
+    PomdpState s;
+    s.car = car;
+    s.num = peds.size();
+
+    int i=0;
+    for(auto& kv : peds) {
+        s.peds[i].pos = kv.second.pos;
+        s.peds[i].goal = kv.second.sample_goal();
+        s.peds[i].id = kv.first;
+        i++;
+    }
+    return s;
+}
+
+vector<PomdpState> WorldBeliefTracker::sample(int num) {
+    vector<PomdpState> particles;
+    for(int i=0; i<num; i++) {
+        particles.push_back(sample());
+    }
+    return particles;
+}
+
+

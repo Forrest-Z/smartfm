@@ -1,5 +1,5 @@
 #include<vector>
-#include"COORD.h"
+#include"coord.h"
 
 struct Path : std::vector<COORD> {
     int nearest(COORD pos);

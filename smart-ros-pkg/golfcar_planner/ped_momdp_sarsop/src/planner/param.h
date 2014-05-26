@@ -4,10 +4,8 @@
 
 
 namespace ModelParams {
-	const double rln=10;
-	const double ped_rln=10;
-	const double path_rln=10;
-	const double map_rln=10;
+	const double pos_rln=0.5;
+	const double vel_rln=0.3;
 	const double pi=3.1415926;
 	const int UCT_CONST=50000;
 	const int XSIZE=7;

@@ -359,7 +359,7 @@ bool Solver<T>::Finished() const {
 
 template<typename T>
 void Solver<T>::UpdateBelief(int act,T new_state, T new_state_old) {
-  belief_ = bu_.Update(belief_, Globals::config.n_belief_particles, act, new_state,new_state_old);
+  belief_ = bu_.Update(belief_, Globals::config.n_belief_particles, act, new_state, new_state_old);
   cerr << "DEBUG: Current number of particles in belief: " << belief_.size() << endl;
   vector<Particle<T>*> particles = bu_.Sample(belief_, Globals::config.n_particles);
   cerr << "DEBUG: Sampled " << particles.size() << " particles from initial belief" << endl; 
