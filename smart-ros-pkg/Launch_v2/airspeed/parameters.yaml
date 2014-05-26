@@ -9,7 +9,7 @@ $ROBOT/purepursuitController:
   car_length: 2.55
   min_lookahead: 4.0
 #elseif($vehicle=="buggy")
-  min_lookahead: 2.5
+  min_lookahead: 1.5
 #end
 $ROBOT/topTilted:
 #if($vehicle=="buggy")  host: 192.168.1.201
@@ -25,7 +25,7 @@ $ROBOT/base_link_to_front_top_lidar:
 #if($vehicle=="buggy")
   x: 1.78
   z: 1.82
-  pitch: 0.0
+  pitch: 0.0 #0.28
 #elseif($vehicle=="car")
   x: 1.825
   z: 1.66
@@ -227,10 +227,10 @@ $ROBOT/speed_generator:
   max_jerk: 1.5
   frequency: 100.0
 #elseif($vehicle=="buggy")
-  max_speed: 1.5
-  max_acc: 2.0
+  max_speed: 1.2
+  max_acc: 0.8
   max_dec: 3.0
-  max_jerk: 1.5
+  max_jerk: 3.0
   frequency: 100.0
 #end
 $ROBOT/dynamic_virtual_bumper:
@@ -249,9 +249,12 @@ $ROBOT/dynamic_virtual_bumper:
   speed_increment: 0.3
   relative_speed_diff: 0.3
   x_coeff: 2.0
-  y_coeff: 0.2
-  offcenter_y: 0.7
-  offcenter_x: 1.7
+  y_coeff: 0.5 #0.2 used for semi
+  offcenter_y: 0.65
+  offcenter_x: 1.95
+  x_buffer: 0.5
+  y_buffer: 0.2
+  angle_coeff: 1.0 #0.5 semi
 #end
 $ROBOT/Dist_Map:
   base_frame: $ROBOT/base_link
@@ -271,3 +274,10 @@ $ROBOT/Obst_Avoid:
   offcenter_x: 0.9
   offcenter_y: 0.7
 #end
+$ROBOT/stm32f3node:
+  kp: 0.55
+  ki: 0.4
+  kp_br: 1.7
+  ki_br: 2.0
+  b_weight: 1.0
+  b_weight_br: 1.0

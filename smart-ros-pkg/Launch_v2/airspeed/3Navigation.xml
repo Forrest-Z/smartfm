@@ -3,7 +3,9 @@
     <!--3Autonomous-->
 #if($vehicle=="buggy")    
     <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller"/>
-    <node pkg="long_control" type="speedcontroller" name="speed_controller_v2" output="screen"/>
+    #if($stm32f3!=1)
+        <node pkg="long_control" type="speedcontroller" name="speed_controller_v2" output="screen"/>
+    #end
 #elseif($vehicle=="car")
     <node pkg="lowlevel_controllers" type="steering_controller_iMiev" name="steering_controller">
 	<remap from="steer_angle" to="pronto/joy_steer"/>
@@ -29,7 +31,7 @@
   <node pkg="golfcar_ppc" type="purepursuit_controller" name="purepursuitController"/>
 #end
 #if($dynamic_safety)
-    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper">
+    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper" output="screen">
 #if($vehicle=="car")
       <remap from="front_bottom_scan" to="front_bottom_scan_filtered"/>
 #end
