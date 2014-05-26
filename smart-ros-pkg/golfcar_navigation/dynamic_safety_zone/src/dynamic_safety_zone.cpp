@@ -137,8 +137,11 @@ class dynamic_safety_zone
 		double dt = (time_now - filter_time_).toSec();
 		current_vel_ = fabs(vFilter_.filter_dt(dt, odom_in->twist.twist.linear.x));
 		filter_time_ = time_now;
-		front_boundary_ = offcenter_x_ + x_buffer_ + x_coeff_*current_vel_;
-		side_boundary_  = offcenter_y_ + y_buffer_ + y_coeff_*current_vel_ + angle_coeff_*current_angle_*current_vel_;
+
+        double deputy_vel = current_vel_>2.0 ? current_vel_ : 2.0;
+
+		front_boundary_ = offcenter_x_ + x_buffer_ + x_coeff_*deputy_vel;
+		side_boundary_  = offcenter_y_ + y_buffer_ + y_coeff_*deputy_vel + angle_coeff_*current_angle_*deputy_vel;
 		geometry_msgs::PolygonStamped current_safety_zoon;
 		current_safety_zoon.header = odom_in->header;
 		current_safety_zoon.header.frame_id = base_frame_;
@@ -194,6 +197,7 @@ class dynamic_safety_zone
     	for(size_t i=0; i<local_points.points.size(); i++)
     	{
 			geometry_msgs::Point32 point_tmp = local_points.points[i];
+            //cout<<point_tmp.x<<","<<point_tmp.y<<endl;
 			//if(point_tmp.x < 1.7 && point_tmp.y < 0.7 && point_tmp.y > -0.7) continue;
 			//if point out of current_polygon, ignore;
 			if((point_tmp.x < -back_boundary_ || point_tmp.x > front_boundary_) || (point_tmp.y>side_boundary_||point_tmp.y<-side_boundary_)) continue;
@@ -228,6 +232,7 @@ class dynamic_safety_zone
     	}
 
 		//very important: to avoid sudden acceleration when vehicle is static;
+        /*
 		if(minimum_speed > current_vel_)
 		{
             double speed_temp;
@@ -238,7 +243,8 @@ class dynamic_safety_zone
             else speed_temp = current_vel_ + (minimum_speed-current_vel_);
 			minimum_speed = speed_temp > 0.6? speed_temp:0.6;
 		}
-		
+		*/
+
     	fused_speed_ = advised_speed_;
     	if(advised_speed_.linear.x > minimum_speed) fused_speed_.linear.x = minimum_speed;
     	fused_speed_pub_.publish(fused_speed_);
