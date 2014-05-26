@@ -188,7 +188,7 @@ private:
 	//choose whether to use "pose-variant" or "pose-invariant" features;
 	bool													pose_variant_features_;
 
-
+	ros::Publisher                              			first_scan_pub_;
 };
 
 DATMO::DATMO()
@@ -290,6 +290,7 @@ DATMO::DATMO()
 	debug_pcl_pub_				=   nh_.advertise<sensor_msgs::PointCloud>("debug_cloud", 2);
 	rough_pose_pub_				=   nh_.advertise<geometry_msgs::PoseArray>("rough_poses", 2);
 	segment_pose_batch_pub_		=   nh_.advertise<MODT::segment_pose_batches>("segment_pose_batches", 2);
+	first_scan_pub_ 			=   nh_.advertise<sensor_msgs::LaserScan>("oldest_scan",2);
 
     if(program_mode_==0)
     {
@@ -434,6 +435,10 @@ void DATMO::scanCallback (const sensor_msgs::LaserScan::ConstPtr& verti_scan_in)
 		}
 	}
 	ROS_INFO("scan callback finished");
+
+	sensor_msgs::LaserScan oldest_laser_scan = scan_vector_.front();
+	oldest_laser_scan.header = scan_vector_.back().header;
+	first_scan_pub_.publish(oldest_laser_scan);
 }
 
 void DATMO::process_accumulated_data(bool process_flag)
