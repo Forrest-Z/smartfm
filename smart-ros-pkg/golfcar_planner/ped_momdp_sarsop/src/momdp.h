@@ -84,7 +84,7 @@ public:
 	
 	
 	//void initSimulator();
-	void initRealSimulator();
+	void initSimulator();
 	void momdpInit();
 	void RetrievePaths();
 	//void updatePedPoses();
@@ -102,6 +102,8 @@ public:
     WorldStateTracker worldStateTracker;
     WorldModel worldModel;
 	WorldBeliefTracker worldBeliefTracker;
+	DSPOMDP * despot;
+	Solver* solver;
 	double momdp_speed_,real_speed_;
 private:
 	double control_freq;

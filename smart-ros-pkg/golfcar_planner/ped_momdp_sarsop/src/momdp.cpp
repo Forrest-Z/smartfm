@@ -43,15 +43,13 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
 	momdp_speed_=0.0;
 	goal_reached=false;
 	cerr << "DEBUG: Init simulator" << endl;
-	initRealSimulator();
+	initSimulator();
     RetrievePath();
 
 	cerr <<"frequency "<<frequency<<endl;
 	cerr <<"DEBUG: before entering controlloop"<<endl;
   	timer_ = nh.createTimer(ros::Duration(1.0/frequency), &ped_momdp::controlLoop, this);
 	timer_speed=nh.createTimer(ros::Duration(0.05), &ped_momdp::publishSpeed, this);
-
-	//initRealSimulator();
 
 }
 
@@ -81,49 +79,30 @@ bool ped_momdp::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pos
 
 
 /*for despot*/
-void ped_momdp::initRealSimulator()
+void ped_momdp::initSimulator()
 {
   Globals::config.root_seed=1024;
-  Globals::config.n_belief_particles=2000;
+  //Globals::config.n_belief_particles=2000;
   Globals::config.n_particles=500;
+  Globals::config.time_per_move = 1.0/ModelParams::contro_freq;
+  Seeds::root_seed(Globals::config.root_seed);
+  cerr << "Random root seed set to " << Globals::config.root_seed << endl;
 
-  cout<<"global particle "<<Globals::config.n_particles<<endl;
-  cout<<"root seed "<<Globals::config.root_seed<<endl;
-  cout<<"search depth"<<Globals::config.search_depth<<endl;
+  // Global random generator
+  seed = Seeds::Next();
+  Random::RANDOM = Random(seed);
+  cerr << "Initialized global random generator with seed " << seed << endl;
 
-  ifstream fin("despot.config");
-  fin >> Globals::config.pruning_constant;
-  cerr << "Pruning constant = " << Globals::config.pruning_constant << endl;
-
-  RealSimulator  =  new Model<PedestrianState>(streams, "pedestrian.config");
+  despot=new PedPomdp(worldModel); 
+  despot->num_active_particles = 0;
 
   RandomStreams* streams = NULL;
   streams = new RandomStreams(Seeds::Next(Globals::config.n_particles), Globals::config.search_depth);
-  PomdpModel.InitializeParticleLowerBound(options[E_BLBTYPE].arg);
-  PomdpModel.InitializeScenarioLowerBound(options[E_LBTYPE].arg, *streams);
-  PomdpModel.InitializeParticleUpperBound(options[E_BUBTYPE].arg);
-  PomdpModel.InitializeScenarioUpperBound(options[E_UBTYPE].arg, *streams);
-  solver = new DESPOTSTAR(&PomdpModel, NULL, *streams);
-
-
-
-  bu = new ParticleFilterUpdate<PedestrianState>(BeliefUpdateSeed(), *RealSimulator);
-
-  // int ret = Run(model, lb, ub, bu, streams);
-  VNode<PedestrianState>::set_model(*RealSimulator);
-  int action;
-  int i;
-
-  PomdpState ped_state=worldStateTracker.getPomdpState();
-
-  cout<<"start state"<<endl;
-  RealSimulator->PrintState(ped_state);
-
-  RealSimulator->SetStartState(ped_state);
-  solver=new Solver<PedestrianState>(*RealSimulator, RealSimulator->InitialBelief(), *lb, *RealSimulator, *bu, streams);	
-  solver->Init();
-  int n_trials;
-  solver->Search(1.0/control_freq,n_trials);
+  despot->InitializeParticleLowerBound("smart");
+  despot->InitializeScenarioLowerBound("smart", *streams);
+  despot->InitializeParticleUpperBound("smart");
+  despot->InitializeScenarioUpperBound("smart", *streams);
+  solver = new DESPOTSTAR(despot, NULL, *streams);
 
 }
 
@@ -325,7 +304,6 @@ void ped_momdp::updatePedPoseReal(PedStruct ped) {
     }
 }
 
-int brake_counts=0;
 void ped_momdp::controlLoop(const ros::TimerEvent &e)
 {
 	    cout<<"entering control loop"<<endl;
@@ -346,7 +324,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			worldStateTracker.updateCar(coord);
 		}
 		
-		publishROSState();
+		//publishROSState();
 		
 		if(stateModel.isGlobalGoal(worldStateTracker.car))
 		{
@@ -373,10 +351,13 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		
         worldStateTracker.cleanPed();
 
-
-		double reward;
-		solver->UpdateBelief(safeAction, ped_state,new_state_old);
-	
+		PomdpState curr_state = worldStateTracker.getPomdpState();
+		worldBeliefTracker.update(curr_state);	
+		vector<PomdpState> samples= worldBeliefTracker.sample(1000);
+		vector<State*> particles = model->ConstructParticles(samples);
+		ParticleBelief pb=new ParticleBelief(particles,model);
+		solver->belief(pb);
+			
 		////////////////////////////////////////////////////////////////////
 
 		if(worldTracker.emergency())
@@ -389,18 +370,16 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		int n_trials;
 
 
-		safeAction=solver->Search(1.0/control_freq,n_trials);
+		safeAction=solver->Search();
 		//safeAction=solver->Search(0.01,n_trials);
 
 		//actionPub_.publish(action);
-		publishAction(safeAction);
-
-		cout<<"n trials "<<n_trials<<endl;
+		//publishAction(safeAction);
 		
 		cout<<"safe action "<<safeAction<<endl;
 	
 		
-		publishBelief();
+		//publishBelief();
 
 		momdp_speed_=real_speed_;
         if(safeAction==0) {}
@@ -409,40 +388,8 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
 		if(momdp_speed_>=ModelParams::VEL_MAX) momdp_speed_ = ModelParams::VEL_MAX;
 
-		/*
-		momdp_speed_=real_speed_;
-        if(safeAction==1) {
-			if(momdp_speed_ < 0.6) {
-				momdp_speed_ = 1.0;
-			} else {
-				momdp_speed_ += 0.5;
-			}
-		}
-        else if(safeAction==2) {
-			/
-			if (momdp_speed_ < 0.6) {
-				momdp_speed_ -= 0.2;
-			}
-			else if(momdp_speed_ < 1.0) {
-				momdp_speed_-=0.3;
-			} else {
-			/
-				momdp_speed_ -= 0.7;
-		//		if(momdp_speed_<=0.1) momdp_speed_ = 0.1;
-			
-		}
-        if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
-        if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
-		
-		if(safeAction==2) brake_counts++;
-		if(safeAction==1) brake_counts=0;
-
-	//	if(brake_counts>=5)  momdp_speed_=0.1;
-		*/
-		
 
 		cout<<"momdp_spped "<<momdp_speed_<<endl;
-
 
 }
 

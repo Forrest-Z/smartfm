@@ -62,8 +62,6 @@ vector<int> PedPomdp::ObserveVector(const PomdpState& state) const {
 	obs_vec.push_back(rvel);
 
 	for(int i = 0; i < state.num; i ++) {
-		int this_obs = int(state.peds[i].pos.x * pedObsRate) * int(Y_SIZE * pedObsRate)
-			+ int(state.peds[i].pos.y * pedObsRate);
 		int px=int(state.peds[i].pos.x/ModelParams::pos_rln);
 		int py=int(state.peds[i].pos.y/ModelParams::pos_rln);
 		obs_vec.push_back(px);
@@ -82,11 +80,21 @@ uint64_t PedPomdp::Observe(const PomdpState& state) const {
 }
 
 
+vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
+	int num_particles=samples.size();
+	vector<State*> particles;
+	for(int i=0;i<samples.size();i++) {
+		PomdpState* particle = static_cast<PomdpState*>(Allocate(i, 1.0/num_particles));
+		(*particle)=samples[i];
+		particles.push_back(particle);
+	}
+	return particles;
+}
 
 bool PedPomdp::Step(PomdpState& state, double rNum, int action, double& reward, uint64_t& obs) const {
 	reward = 0;
 	// double collision_penalty = world.inCollision(state, action); // TODO
-	if(world.isGlobalGoal(state)) {
+	if(world.isGlobalGoal(state.car)) {
 		reward = GOAL_REWARD;	
 		return true;
 	}
@@ -104,7 +112,8 @@ bool PedPomdp::Step(PomdpState& state, double rNum, int action, double& reward, 
 
 	world.RobStep(state.car, random);
 	world.RobVelStep(state.car,ModelParams::AccSpeed,random);
-	world.PedStep(state, random);
+	for(int i=0;i<state.num;i++)
+		world.PedStep(state.peds[i], random);
 
 	obs = Observe(state);
 
@@ -172,7 +181,7 @@ vector<vector<double>> PedPomdp::GetBeliefVector(const vector<State*> particles)
 	*/
 	return belief_vec;
 }
-
+/*
 class PedPomdpBelief : public Belief {
 private:
 	const PedPomdp* model_;
@@ -188,7 +197,7 @@ public:
 	}
 
 	vector<State*> Sample(int num_particles) const { // TODO
-		vector<State*> sample;
+		//vector<State*> sample;
 		//model_->world.getPomdpState();
 		//model_->world.sample_goal();
 		return sample;
@@ -202,7 +211,7 @@ public:
 		return "TODO";
 	}
 };
-
+*/
 Belief* PedPomdp::InitialBelief(const State* start, string type) const {
 	vector<State*> particles;
 
@@ -369,7 +378,7 @@ public:
 		const PomdpState& state = static_cast<const PomdpState&>(s);
 
 		//TODO noise
-		int d = ped_pomdp_->world.minStepToGoal(s);
+		int d = ped_pomdp_->world.minStepToGoal(state);
 
 		return ped_pomdp_->GOAL_REWARD * pow(Discount(), d);
 	}
@@ -399,6 +408,7 @@ void PedPomdp::InitializeScenarioUpperBound(string name, RandomStreams& streams)
 }
 
 void PedPomdp::PrintState(const PomdpState& state, ostream& out) const {
+	/*
 	out << "Rob Pos: " << rob_map[state.car.pos.y].first << " " <<rob_map[state.car.pos.y].second << endl;
 	for(int i = 0; i < state.num; i ++) {
 		out << "Ped Pos: " << state.peds[i].pos.x << " " << state.peds[i].pos.y << endl;
@@ -407,6 +417,7 @@ void PedPomdp::PrintState(const PomdpState& state, ostream& out) const {
 	}
 	out << "Vel: " << state.car.vel << endl;
 	out<<  "num  " << state.num << endl;
+	*/
 }
 
 void PedPomdp::PrintObs(uint64_t obs, ostream& out) const {

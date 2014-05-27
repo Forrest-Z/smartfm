@@ -9,7 +9,7 @@
 #include "upper_bound.h"
 #include "string.h"
 #include "util/coord.h"
-#include "problems/param.h"
+#include "param.h"
 #include "state.h"
 #include "WorldModel.h"
 // #include "SFM.h"
@@ -27,7 +27,7 @@ struct PathNode { // TODO
 
 class PedPomdp : public DSPOMDP {
 public:
-	PedPomdp();
+	PedPomdp(WorldModel &);
 
 	void UpdateVel(int& vel, int action, Random& random) const;
 	void RobStep(int &robY,int &rob_vel, int action, Random& random) const;
@@ -67,10 +67,12 @@ public:
 	State* Copy(const State* particle) const;
 	void Free(State* particle) const;
 
+	vector<State*> ConstructParticles(vector<PomdpState> & samples); 
 	static int action_vel[3];
 	static const int CRASH_PENALTY;
 	static const int GOAL_REWARD;
 
+	WorldModel &world;
 protected:
 	double OBSTACLE_PROB;
 
@@ -83,7 +85,6 @@ protected:
 private:
 	int** map;
 	PomdpState startState;
-	WorldModel &world;
 	mutable MemoryPool<PomdpState> memory_pool_;
 	mutable Random random_;
 
