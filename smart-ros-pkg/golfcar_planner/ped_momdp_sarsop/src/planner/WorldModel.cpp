@@ -2,9 +2,11 @@
 #include<cmath>
 #include<cstdlib>
 #include"WorldModel.h"
+#include"math_utils.h"
+#include"coord.h"
 using namespace std;
 
-WorldModel(): freq(ModelParams::control_freq) {
+WorldModel::WorldModel(): freq(ModelParams::control_freq) {
     goals = {
         COORD(54, 4),
         COORD(31, 4),
@@ -19,8 +21,8 @@ bool WorldModel::isLocalGoal(PomdpState state) {
 }
 
 bool WorldModel::isGlobalGoal(CarStruct car) {
-    double d = EuclideanDistance(car.pos, path[path.size()-1]);  
-    return (d<ModelParams::tolerance);
+    double d = COORD::EuclideanDistance(car.pos, path[path.size()-1]);  
+    return (d<ModelParams::GOAL_TOLERANCE);
 }
 
 double WorldModel::inCollision(PomdpState state, int action) {
@@ -29,17 +31,17 @@ double WorldModel::inCollision(PomdpState state, int action) {
     auto& carpos = state.car.pos;
     double carvel = state.car.vel;
     for(auto& p: state.peds) {
-        double d = EuclideanDistance(carpos, p.pos);
+        double d = COORD::EuclideanDistance(carpos, p.pos);
         if(d < mindist) mindist = d;
     }
 
     // TODO set as a param
     if(mindist < 1) {
-        penalty += CRASH_PENALTY * (carvel + 1);
+        penalty += ModelParams::CRASH_PENALTY * (carvel + 1);
     }
 
     if(carvel > 1.0 and mindist < 2) {
-        penalty += CRASH_PENALTY / 2;
+        penalty += ModelParams::CRASH_PENALTY / 2;
     }
     return penalty;
 }
@@ -52,7 +54,7 @@ double WorldModel::minStepToGoal(PomdpState state) {
 
 void WorldModel::PedStep(PedStruct &ped, Random& random) {
     COORD& goal = goals[ped.goal];
-	MyVector goal_vec(goal.x - pos.x, goal.y - pos.y);
+	MyVector goal_vec(goal.x - ped.pos.x, goal.y - ped.pos.y);
     double a = goal_vec.GetAngle();
     a += random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
     //TODO noisy speed
@@ -72,7 +74,7 @@ double gaussian_prob(double x, double stddev) {
     return a * exp(b);
 }
 
-void WorldModel::pedMoveProb(COORD p0, COORD p1, int goal_id) {
+double WorldModel::pedMoveProb(COORD p0, COORD p1, int goal_id) {
     double cosa = DotProduct(p0.x, p0.y, p1.x, p1.y) / Norm(p0.x, p0.y) / Norm(p1.x, p1.y);
     double a = acos(cosa);
     double p = gaussian_prob(a, ModelParams::NOISE_GOAL_ANGLE);
@@ -94,7 +96,7 @@ void WorldModel::RobVelStep(CarStruct &car, double acc, Random& random) {
         car.vel += acc / freq;
     }
     if (car.vel < 0) car.vel = 0;
-    if (car.vel > ModelParams::MAX_VEL) car.vel = ModelParams::MAX_VEL;
+    if (car.vel > ModelParams::VEL_MAX) car.vel = ModelParams::VEL_MAX;
     return;
 }
 
@@ -104,7 +106,7 @@ void WorldModel::setPath(Path path) {
 
 void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
     for(int i=0; i<goals.size(); i++) {
-        b.prob_goals[i] *= PedMoveProb(b.pos, curr_ped.pos, i);
+        b.prob_goals[i] *= pedMoveProb(b.pos, curr_ped.pos, i);
     }
 
     // normalize
@@ -154,7 +156,8 @@ void WorldStateTracker::cleanPed() {
 
 
 void WorldStateTracker::updatePed(Pedestrian& ped){
-    for(int i=0;i<ped_list.size();i++)
+    int i=0;
+    for(;i<ped_list.size();i++)
     {
         if(ped_list[i].id==ped.id)
         {
@@ -164,7 +167,7 @@ void WorldStateTracker::updatePed(Pedestrian& ped){
             ped_list[i].last_update = timestamp();
             break;
         }
-        if(abs(ped_list[i].w-ped.w)<=0.1&&abs(ped_list[i].h-ped.h)<=0.1)   //overladp 
+        if(abs(ped_list[i].w-ped.w)<=0.1&&abs(ped_list[i].h-ped.h)<=0.1)   //overlap 
             return;
     }
     if(i==ped_list.size())   //not found, new ped
@@ -183,11 +186,11 @@ bool WorldStateTracker::emergency() {
     return false;
 }
 
-void updateVel(double vel) {
+void WorldStateTracker::updateVel(double vel) {
     this->car.vel=vel;
 }
 
-PomdpState getPomdpState() {
+PomdpState WorldStateTracker::getPomdpState() {
     PomdpState pomdpState;
     pomdpState.car=car;
     pomdpState.num=ped_list.size();
@@ -211,7 +214,8 @@ void WorldBeliefTracker::update(const PomdpState& s) {
 
     // remove disappeared peds
     auto peds_disappeared = find_if(peds.begin(), peds.end(),
-                [](auto p) {return newpeds.find(p.first) == newpeds.end(); });
+                [&](decltype(*peds.begin()) p) -> bool {
+                return newpeds.find(p.first) == newpeds.end(); });
     peds.erase(peds_disappeared, peds.end());
 
     // update existing peds

@@ -4,7 +4,7 @@ const int PedPomdp::CRASH_PENALTY = -1000;
 const int PedPomdp::GOAL_REWARD = 500;
 int PedPomdp::action_vel[3] = {0, 1, -1};
 
-PedPomdp::PedPomdp(worldModel &model_) :
+PedPomdp::PedPomdp(WorldModel &model_) :
 	world(model_),
 	random_(Random((unsigned) Seeds::Next())) {
 
@@ -65,7 +65,7 @@ vector<int> PedPomdp::ObserveVector(const PomdpState& state) const {
 		int this_obs = int(state.peds[i].pos.x * pedObsRate) * int(Y_SIZE * pedObsRate)
 			+ int(state.peds[i].pos.y * pedObsRate);
 		int px=int(state.peds[i].pos.x/ModelParams::pos_rln);
-		int py=int(state.peds[i].pos.y/Modelparams::pos_rln);
+		int py=int(state.peds[i].pos.y/ModelParams::pos_rln);
 		obs_vec.push_back(px);
 		obs_vec.push_back(py);
 	}
@@ -86,7 +86,7 @@ uint64_t PedPomdp::Observe(const PomdpState& state) const {
 bool PedPomdp::Step(PomdpState& state, double rNum, int action, double& reward, uint64_t& obs) const {
 	reward = 0;
 	// double collision_penalty = world.inCollision(state, action); // TODO
-	if(world.isGoal(state)) {
+	if(world.isGlobalGoal(state)) {
 		reward = GOAL_REWARD;	
 		return true;
 	}

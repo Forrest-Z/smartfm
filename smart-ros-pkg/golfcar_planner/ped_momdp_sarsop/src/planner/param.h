@@ -14,6 +14,8 @@ namespace ModelParams {
 	const int N_PED_IN=10;
 	const int GOAL_TRAVELLED=10;
 
+    const double CRASH_PENALTY = 10000;
+
 	//const int NGOAL=13;
 	//const int GOAL_DIST=22;  //the distance between ped and its goal
 	
@@ -22,6 +24,7 @@ namespace ModelParams {
 
 
 	const int GOAL_DIST=100;
+    const double GOAL_TOLERANCE = 1;
 	
 	const int goodrob=0;
 	const int goodped=1;
