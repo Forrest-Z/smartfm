@@ -14,10 +14,6 @@
 #include "WorldModel.h"
 // #include "SFM.h"
 
-int Y_SIZE;
-int X_SIZE;
-int N_GOAL;
-
 /*
 struct PathNode { // TODO
 	vector<PathNode> children;
@@ -41,7 +37,6 @@ public:
 	vector<int> ObserveVector(const State& )   const;
 	double ObsProb(uint64_t z, const State& s, int action) const;
 
-	int NumStates() const;
 	inline int NumActions() const { return 3; }
 
 	PomdpState RandomState(unsigned& seed, PomdpState obs_state) const;

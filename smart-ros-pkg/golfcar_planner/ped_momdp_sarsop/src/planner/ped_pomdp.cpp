@@ -127,10 +127,6 @@ double PedPomdp::ObsProb(uint64_t obs, const State& s, int action) const {
 	return obs == Observe(s);
 }
 
-int PedPomdp::NumStates() const {
-	return pow((X_SIZE * Y_SIZE*N_GOAL),ModelParams::N_PED_IN) * ModelParams::RMMax* ModelParams::VEL_N +1;  //plus one dummy state	
-}
-
 PomdpState PedPomdp::RandomState(unsigned& seed, PomdpState obs_state) const {
 	for(int i = 0; i < obs_state.num; i++) {
 		obs_state.peds[i].goal = rand_r(&seed) % ModelParams::NGOAL;
@@ -241,7 +237,7 @@ void PedPomdp::Statistics(const vector<PomdpState*> particles) const {
 
 	for(int j = 0; j < state_0->num; j ++) {
 		cout << "Ped " << j << " Belief is ";
-		for(int i = 0; i < N_GOAL; i ++) {
+		for(int i = 0; i < ModelParams::NGOAL; i ++) {
 			cout << (goal_count[j][i] + 0.0) <<" ";
 		}
 		cout << endl;
