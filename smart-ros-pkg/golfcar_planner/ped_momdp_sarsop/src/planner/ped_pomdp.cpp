@@ -52,10 +52,11 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 vector<int> PedPomdp::ObserveVector(const State& state_) const {
 	const PomdpState &state=static_cast<const PomdpState&>(state_);
 	vector<int> obs_vec;
-	int rx=int(state.car.pos.x/ModelParams::pos_rln);
-	obs_vec.push_back(rx);
-	int ry=int(state.car.pos.y/ModelParams::pos_rln);
-	obs_vec.push_back(ry);
+	//int rx=int(state.car.pos.x/ModelParams::pos_rln);
+	//obs_vec.push_back(rx);
+	//int ry=int(state.car.pos.y/ModelParams::pos_rln);
+	//obs_vec.push_back(ry);
+    obs_vec.push_back(state.car.pos);
 	int rvel=int(state.car.vel/ModelParams::vel_rln);
 	obs_vec.push_back(rvel);
 
@@ -98,8 +99,8 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	// double collision_penalty = world.inCollision(state, action); // TODO
 	if(world.isLocalGoal(state)) {
 		reward = GOAL_REWARD;
-		cout << "goal reached!" << endl;
-		PrintState(state, cout);
+		//cout << "goal reached!" << endl;
+		//PrintState(state, cout);
 		return true;
 	}
 	double collision_penalty = world.inCollision(state,action);
@@ -107,7 +108,6 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		reward += collision_penalty;
 	}
 
-	int robY = state.car.pos.y;
 	int rob_vel = state.car.vel;
 
 	Random random(rNum);
@@ -351,8 +351,9 @@ void PedPomdp::InitializeScenarioUpperBound(string name, RandomStreams& streams)
 
 void PedPomdp::PrintState(const State& s, ostream& out) const {
 	const PomdpState & state=static_cast<const PomdpState&> (s);
+    COORD& carpos = world.path[state.car.pos];
 	
-	out << "Rob Pos: " << state.car.pos.x<< " " <<state.car.pos.y << endl;
+	out << "Rob Pos: " << carpos.x<< " " <<carpos.y << endl;
 	out << "Rob travelled: " << state.car.dist_travelled << endl;
 	for(int i = 0; i < state.num; i ++) {
 		out << "Ped Pos: " << state.peds[i].pos.x << " " << state.peds[i].pos.y << endl;

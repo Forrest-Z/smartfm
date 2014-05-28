@@ -33,7 +33,7 @@ public:
 };
 
 struct CarStruct {
-	COORD pos;
+	int pos;
 	double vel;
 	double dist_travelled;
 };

@@ -17,7 +17,7 @@ int RandomActionSeed() {
   return Globals::config.root_seed ^ (Globals::config.n_particles + 2);
 }
 
-ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh) : worldBeliefTracker(worldModel) 
+ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh) : worldBeliefTracker(worldModel), worldStateTracker(worldModel)
 {
 	cerr <<"DEBUG: Entering ped_momdp()"<<endl;
 	control_freq=frequency;
@@ -147,8 +147,8 @@ void ped_momdp::publishROSState()
 	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
 	pose_stamped.header.frame_id=buf;
 
-	pose_stamped.pose.position.x=(worldStateTracker.car.pos.x+0.0);
-	pose_stamped.pose.position.y=(worldStateTracker.car.pos.y+0.0);
+	pose_stamped.pose.position.x=(worldStateTracker.carpos.x+0.0);
+	pose_stamped.pose.position.y=(worldStateTracker.carpos.y+0.0);
 	pose_stamped.pose.orientation.w=1.0;
 	car_pub.publish(pose_stamped);
 	
@@ -201,8 +201,8 @@ void ped_momdp::publishAction(int action)
 		marker.action = visualization_msgs::Marker::ADD;
 
 		double px,py;
-		px=worldStateTracker.car.pos.x;
-		py=worldStateTracker.car.pos.y;
+		px=worldStateTracker.carpos.x;
+		py=worldStateTracker.carpos.y;
 		marker.pose.position.x = px+1;
 		marker.pose.position.y = py+1;
 		marker.pose.position.z = 0;
@@ -252,8 +252,8 @@ void ped_momdp::RetrievePaths()
 	pose.header.stamp=ros::Time::now();
 	pose.header.frame_id="/map";
 	
-	pose.pose.position.x=worldStateTracker.car.pos.x;
-	pose.pose.position.y=worldStateTracker.car.pos.y;
+	pose.pose.position.x=worldStateTracker.carpos.x;
+	pose.pose.position.y=worldStateTracker.carpos.y;
 	srv.request.start=pose;
 	pose.pose.position.x=18;
 	pose.pose.position.y=49;
@@ -297,11 +297,15 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			cout << "transformed pose = " << coord.x << " " << coord.y << endl;
 			worldStateTracker.updateCar(coord);
 		}
-		
+
+		RetrievePaths();
+        worldStateTracker.cleanPed();
+
+		PomdpState curr_state = worldStateTracker.getPomdpState();
 		//publishROSState();
-		despot->PrintState(worldStateTracker.getPomdpState(),cout);
-		RetrievePaths();		
-		if(worldModel.isGlobalGoal(worldStateTracker.car))
+		despot->PrintState(curr_state, cout);
+
+		if(worldModel.isGlobalGoal(curr_state.car))
 		{
 			goal_reached=true;
 		}
@@ -310,24 +314,14 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			safeAction=2;
 
 			momdp_speed_=real_speed_;
-			if(safeAction==0) momdp_speed_ += 0;
-			else if(safeAction==1) momdp_speed_ += 0.3;
-			else if(safeAction==2) momdp_speed_ -= 0.5;
+		    momdp_speed_ -= 0.5;
 			if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
-			//if(momdp_speed_>=2.0) momdp_speed_ = 2.0;
-
-			if(momdp_speed_>=ModelParams::VEL_MAX) momdp_speed_ = ModelParams::VEL_MAX;
-
 			return;
 		}
 
-		cout<<"State before shift window"<<endl;
-		
-        worldStateTracker.cleanPed();
 
-		PomdpState curr_state = worldStateTracker.getPomdpState();
 		worldBeliefTracker.update(curr_state);	
-		vector<PomdpState> samples= worldBeliefTracker.sample(1000);
+		vector<PomdpState> samples = worldBeliefTracker.sample(1000);
 		vector<State*> particles = despot->ConstructParticles(samples);
 		double sum=0;
 		for(int i=0;i<particles.size();i++)
@@ -335,28 +329,22 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		cout<<"particle weight sum "<<sum<<endl;
 		ParticleBelief *pb=new ParticleBelief(particles, despot);
 		solver->belief(pb);
-			
-		////////////////////////////////////////////////////////////////////
 
 		if(worldStateTracker.emergency())
 		{
-			momdp_speed_=-1;	
+			momdp_speed_=-1;
 			return;
 		}
 
-		
-		int n_trials;
-
 
 		safeAction=solver->Search();
-		//safeAction=solver->Search(0.01,n_trials);
 
 		//actionPub_.publish(action);
 		//publishAction(safeAction);
-		
+
 		cout<<"safe action "<<safeAction<<endl;
-	
-		
+
+
 		//publishBelief();
 
 		momdp_speed_=real_speed_;
@@ -366,9 +354,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
 		if(momdp_speed_>=ModelParams::VEL_MAX) momdp_speed_ = ModelParams::VEL_MAX;
 
-
-		cout<<"momdp_spped "<<momdp_speed_<<endl;
-
+		cout<<"momdp_speed "<<momdp_speed_<<endl;
 }
 
 

@@ -20,10 +20,14 @@ int Path::nearest(COORD pos) {
 
 int Path::forward(int i, double len) {
     auto& path = *this;
-    while(len > 0 and i<path.size()-1) {
-        double d = COORD::EuclideanDistance(path[i], path[i+1]);
-        len -= d;
-		i++;
+    //while(len > 0 and i<path.size()-1) {
+        //double d = COORD::EuclideanDistance(path[i], path[i+1]);
+        //len -= d;
+		//i++;
+    //}
+    i += int(len / ModelParams::PATH_STEP);
+    if(i > path.size()-1) {
+        i = path.size()-1;
     }
     return i;
 }

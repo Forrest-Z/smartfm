@@ -16,6 +16,9 @@ namespace ModelParams {
 
     const double CRASH_PENALTY = 10000;
 
+    //TODO dynamically calculate this
+    const double PATH_STEP = 0.05;
+
 	//const int NGOAL=13;
 	//const int GOAL_DIST=22;  //the distance between ped and its goal
 	

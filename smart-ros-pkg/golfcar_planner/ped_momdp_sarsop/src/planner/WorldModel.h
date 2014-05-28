@@ -35,6 +35,7 @@ public:
 
 class WorldStateTracker {
 public:
+    WorldStateTracker(WorldModel& _model): model(_model) {}
 
     void updatePed(Pedestrian& ped);
     void updateCar(COORD& car);
@@ -45,10 +46,12 @@ public:
 
     PomdpState getPomdpState();
 
-    CarStruct car;
+    COORD carpos;
+    double carvel;
 
     std::vector<Pedestrian> ped_list;
 
+    WorldModel& model;
 };
 
 class WorldBeliefTracker {

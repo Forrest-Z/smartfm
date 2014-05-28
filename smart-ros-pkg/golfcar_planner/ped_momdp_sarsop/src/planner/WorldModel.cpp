@@ -24,14 +24,14 @@ bool WorldModel::isLocalGoal(PomdpState state) {
 }
 
 bool WorldModel::isGlobalGoal(CarStruct car) {
-    double d = COORD::EuclideanDistance(car.pos, path[path.size()-1]);
+    double d = COORD::EuclideanDistance(path[car.pos], path[path.size()-1]);
     return (d<ModelParams::GOAL_TOLERANCE);
 }
 
 double WorldModel::inCollision(PomdpState state, int action) {
     double penalty = 0;
     double mindist = numeric_limits<double>::infinity();
-    auto& carpos = state.car.pos;
+    auto& carpos = path[state.car.pos];
     double carvel = state.car.vel;
     for(int i=0; i<state.num; i++) {
 		auto& p = state.peds[i];
@@ -54,8 +54,9 @@ double WorldModel::inCollision(PomdpState state, int action) {
 }
 
 double WorldModel::minStepToGoal(PomdpState state) {
-    // TODO
-    return 0;
+    double d = ModelParams::GOAL_TRAVELLED - state.car.dist_travelled;
+    if (d < 0) d = 0;
+    return d / ModelParams::VEL_MAX;
 }
 
 
@@ -91,9 +92,9 @@ double WorldModel::pedMoveProb(COORD p0, COORD p1, int goal_id) {
 void WorldModel::RobStep(CarStruct &car, Random& random) {
     //TODO noise
     double dist = car.vel / freq;
-    int curr = path.nearest(car.pos);
-    int nxt = path.forward(curr, dist);
-    car.pos = path[nxt];
+    //int curr = path.nearest(car.pos);
+    int nxt = path.forward(car.pos, dist);
+    car.pos = nxt;
     car.dist_travelled += dist;
 }
 
@@ -185,7 +186,7 @@ void WorldStateTracker::updatePed(Pedestrian& ped){
 }
 
 void WorldStateTracker::updateCar(COORD& car) {
-    this->car.pos=car;
+    carpos=car;
 }
 
 bool WorldStateTracker::emergency() {
@@ -194,14 +195,15 @@ bool WorldStateTracker::emergency() {
 }
 
 void WorldStateTracker::updateVel(double vel) {
-    this->car.vel=vel;
+    carvel = vel;
 }
 
 PomdpState WorldStateTracker::getPomdpState() {
     PomdpState pomdpState;
-    pomdpState.car=car;
+    pomdpState.car.pos = model.path.nearest(carpos);
+    pomdpState.car.vel = carvel;
 	pomdpState.car.dist_travelled = 0;
-    pomdpState.num=ped_list.size();
+    pomdpState.num = ped_list.size();
 
     assert(pomdpState.num <= ModelParams::N_PED_IN);
 
