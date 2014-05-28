@@ -1,4 +1,6 @@
 #include<Path.h>
+#include<iostream>
+using namespace std;
 
 
 
@@ -8,7 +10,7 @@ int Path::nearest(COORD pos) {
     int imin = 0;
     for(int i=0; i<path.size(); i++) {
         double d = COORD::EuclideanDistance(pos, path[i]);
-        if(dmin < d) {
+        if(dmin > d) {
             dmin = d;
             imin = i;
         }
@@ -21,6 +23,7 @@ int Path::forward(int i, double len) {
     while(len > 0 and i<path.size()-1) {
         double d = COORD::EuclideanDistance(path[i], path[i+1]);
         len -= d;
+		i++;
     }
     return i;
 }

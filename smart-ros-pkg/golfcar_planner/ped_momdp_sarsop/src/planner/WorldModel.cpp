@@ -17,11 +17,14 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq) {
 }
 
 bool WorldModel::isLocalGoal(PomdpState state) {
+    if (state.car.dist_travelled > ModelParams::GOAL_TRAVELLED) {
+
+	}
     return state.car.dist_travelled > ModelParams::GOAL_TRAVELLED;
 }
 
 bool WorldModel::isGlobalGoal(CarStruct car) {
-    double d = COORD::EuclideanDistance(car.pos, path[path.size()-1]);  
+    double d = COORD::EuclideanDistance(car.pos, path[path.size()-1]);
     return (d<ModelParams::GOAL_TOLERANCE);
 }
 
@@ -30,7 +33,8 @@ double WorldModel::inCollision(PomdpState state, int action) {
     double mindist = numeric_limits<double>::infinity();
     auto& carpos = state.car.pos;
     double carvel = state.car.vel;
-    for(auto& p: state.peds) {
+    for(int i=0; i<state.num; i++) {
+		auto& p = state.peds[i];
         double d = COORD::EuclideanDistance(carpos, p.pos);
         if(d < mindist) mindist = d;
     }
@@ -40,9 +44,12 @@ double WorldModel::inCollision(PomdpState state, int action) {
         penalty += ModelParams::CRASH_PENALTY * (carvel + 1);
     }
 
-    if(carvel > 1.0 and mindist < 2) {
+    if(carvel > 1.0 && mindist < 2) {
         penalty += ModelParams::CRASH_PENALTY / 2;
     }
+	if (penalty != 0) {
+		cout << "penalty =" << penalty << endl;
+	}
     return penalty;
 }
 
@@ -193,6 +200,7 @@ void WorldStateTracker::updateVel(double vel) {
 PomdpState WorldStateTracker::getPomdpState() {
     PomdpState pomdpState;
     pomdpState.car=car;
+	pomdpState.car.dist_travelled = 0;
     pomdpState.num=ped_list.size();
 
     assert(pomdpState.num <= ModelParams::N_PED_IN);
@@ -202,13 +210,15 @@ PomdpState WorldStateTracker::getPomdpState() {
         pomdpState.peds[i].pos.y=ped_list[i].h;
 		pomdpState.peds[i].id = ped_list[i].id;
     }
+	return pomdpState;
 }
 
 void WorldBeliefTracker::update(const PomdpState& s) {
     car = s.car;
 
     map<int, PedStruct> newpeds;
-    for(auto p: s.peds) {
+    for(int i=0; i<s.num; i++) {
+		auto& p = s.peds[i];
         newpeds[p.id] = p;
     }
 
@@ -224,7 +234,8 @@ void WorldBeliefTracker::update(const PomdpState& s) {
     }
 
     // add new peds
-    for(auto p: s.peds) {
+    for(int i=0; i<s.num; i++) {
+		auto& p = s.peds[i];
         if (peds.find(p.id) == peds.end()) {
             peds[p.id] = model.initPedBelief(p);
         }

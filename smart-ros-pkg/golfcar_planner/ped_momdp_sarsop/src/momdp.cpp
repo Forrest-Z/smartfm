@@ -294,11 +294,13 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
             COORD coord;
 			coord.x=out_pose.getOrigin().getX();
 			coord.y=out_pose.getOrigin().getY();
+			cout << "transformed pose = " << coord.x << " " << coord.y << endl;
 			worldStateTracker.updateCar(coord);
 		}
 		
 		//publishROSState();
-		
+		despot->PrintState(worldStateTracker.getPomdpState(),cout);
+		RetrievePaths();		
 		if(worldModel.isGlobalGoal(worldStateTracker.car))
 		{
 			goal_reached=true;
@@ -319,7 +321,6 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			return;
 		}
 
-		RetrievePaths();
 		cout<<"State before shift window"<<endl;
 		
         worldStateTracker.cleanPed();
@@ -328,6 +329,10 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		worldBeliefTracker.update(curr_state);	
 		vector<PomdpState> samples= worldBeliefTracker.sample(1000);
 		vector<State*> particles = despot->ConstructParticles(samples);
+		double sum=0;
+		for(int i=0;i<particles.size();i++)
+			sum+=particles[i]->weight;
+		cout<<"particle weight sum "<<sum<<endl;
 		ParticleBelief *pb=new ParticleBelief(particles, despot);
 		solver->belief(pb);
 			

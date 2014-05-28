@@ -183,8 +183,8 @@ int DESPOTSTAR::Search() {
 
 	start = get_time_second();
 	HSVISearch(root_, statistics_, Globals::config.time_per_move);
-	// root_->PrintPolicyTree();
-	// root_->PrintTree(1);
+	//root_->PrintPolicyTree();
+	root_->PrintTree(1);
 	statistics_.num_particles_after_search = model_->num_active_particles;
 	cout << "Time for search " << (get_time_second() - start) <<endl;
 

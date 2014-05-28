@@ -42,7 +42,6 @@ public:
 	PomdpState RandomState(unsigned& seed, PomdpState obs_state) const;
 	PomdpState* GreateStartState(string type) const;
 
-	void EnumerateBelief(vector<State*> &belief, State state,int depth) const;
 	vector<vector<double>> GetBeliefVector(const vector<State*> particles) const;
 	Belief* InitialBelief(const State* start, string type) const;
 
@@ -54,7 +53,6 @@ public:
 	void InitializeScenarioUpperBound(string name, RandomStreams& streams);
 
 	void Statistics(const vector<PomdpState*> particles) const;
-	void ModifyObsStates(const vector<PomdpState*> &particles,PomdpState&new_state,unsigned & seed) const;
 
 	void PrintState(const State& state, ostream& out = cout) const;
 	void PrintObs(const State & state, uint64_t obs, ostream& out = cout) const;

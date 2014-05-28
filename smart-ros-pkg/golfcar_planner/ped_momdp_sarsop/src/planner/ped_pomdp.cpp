@@ -10,7 +10,7 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 
 	OBSTACLE_PROB = 0.0;
 
-	//TODO
+	//TODO remove these?
 	double noisyMove[3][3] /*vel, move*/ = {{0, 1, 0},
 		{0, 1, 2},
 		{0, 1, 2}};
@@ -48,10 +48,7 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 			{{1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.5, 0.5, 0.0}}};
 		memcpy(robotUpdateProb, updateProb, sizeof(updateProb));
 	}
-}
-
-
-
+} 
 vector<int> PedPomdp::ObserveVector(const State& state_) const {
 	const PomdpState &state=static_cast<const PomdpState&>(state_);
 	vector<int> obs_vec;
@@ -87,6 +84,8 @@ vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 	for(int i=0;i<samples.size();i++) {
 		PomdpState* particle = static_cast<PomdpState*>(Allocate(i, 1.0/num_particles));
 		(*particle)=samples[i];
+		particle->state_id=i;
+		particle->weight=1.0/num_particles;
 		particles.push_back(particle);
 	}
 	return particles;
@@ -97,8 +96,10 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0;
 	// double collision_penalty = world.inCollision(state, action); // TODO
-	if(world.isGlobalGoal(state.car)) {
-		reward = GOAL_REWARD;	
+	if(world.isLocalGoal(state)) {
+		reward = GOAL_REWARD;
+		cout << "goal reached!" << endl;
+		PrintState(state, cout);
 		return true;
 	}
 	double collision_penalty = world.inCollision(state,action);
@@ -111,10 +112,19 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
 	Random random(rNum);
 	double p = random.NextDouble();
-	reward += (action == ACT_DEC) ? 10 : -1;
+	//reward += (action == ACT_DEC) ? 10 : -1;
+
+	double acc;
+	if (action == ACT_ACC) {
+		acc = ModelParams::AccSpeed;
+	} else if (action == ACT_CUR) {
+		acc = 0;
+	} else {
+		acc = -ModelParams::AccSpeed;
+	}
 
 	world.RobStep(state.car, random);
-	world.RobVelStep(state.car,ModelParams::AccSpeed,random);
+	world.RobVelStep(state.car, acc, random);
 	for(int i=0;i<state.num;i++)
 		world.PedStep(state.peds[i], random);
 
@@ -122,7 +132,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
 	return false;
 }
-
+	
 double PedPomdp::ObsProb(uint64_t obs, const State& s, int action) const {
 	return obs == Observe(s);
 }
@@ -132,26 +142,6 @@ PomdpState PedPomdp::RandomState(unsigned& seed, PomdpState obs_state) const {
 		obs_state.peds[i].goal = rand_r(&seed) % ModelParams::NGOAL;
 	}
 	return obs_state;
-}
-
-// TODO
-void PedPomdp::EnumerateBelief(vector<State*>& belief, State state, int depth) const {
-	/*
-	if(depth == 0) {
-		belief.push_back(pair<PomdpState,double>(state, 1.0/pow(ModelParams::NGOAL,state.num)));
-		return;
-	}
-
-	for(int i = 0; i < ModelParams::NGOAL; i ++) {
-		int x=state.peds[depth-1].first.x;
-		int y=state.peds[depth-1].first.y;
-		if(fabs(sfm->local_goals[i][0]-x)<ModelParams::GOAL_DIST&&fabs(sfm->local_goals[i][1]-y)<ModelParams::GOAL_DIST)
-		{
-			state.peds[depth-1].goal=i;
-			EnumerateBelief(belief,state,depth-1);
-		}
-	}
-	*/
 }
 
 // TODO
@@ -212,12 +202,8 @@ public:
 };
 */
 Belief* PedPomdp::InitialBelief(const State* start, string type) const {
-	vector<State*> particles;
-
-	EnumerateBelief(particles, *start, startState.num);
-
-	Belief* belief = new ParticleBelief(particles, this);
-	return belief;
+	assert(false);
+	return NULL;
 }
 
 void PedPomdp::Statistics(const vector<PomdpState*> particles) const {
@@ -244,49 +230,6 @@ void PedPomdp::Statistics(const vector<PomdpState*> particles) const {
 	}
 }
 
-// TODO
-void PedPomdp::ModifyObsStates(const vector<PomdpState*>& particles, PomdpState& new_state, unsigned& seed) const {
-	/*
-	int num_ped = new_state.num;
-
-	// Copy pedestrians and goals of existing pedestrians
-	for (int i=0; i<particles.size(); i++) {
-		PomdpState state = particles[i]->state;
-		for (int j=0; j<num_ped; j++) {
-			new_state.peds[j].goal = -1;
-			for(int k=0;k<state.num;k++)
-			{
-				if(state.peds[k].id==new_state.peds[j].id)  {
-					new_state.peds[j].goal=state.peds[k].goal;
-					break;
-				}
-			}
-		}
-		particles[i]->state = new_state;
-	}
-
-	// Assign goal to new pedestrians
-	for(int j=0;j<num_ped;j++)   {
-		vector<int> perm;
-		for (int i=0; i<particles.size(); i++)
-			perm.push_back(i);
-		random_shuffle(perm.begin(), perm.end());
-		double cur_wgt = 0, cur_goal = 0, unit = 1.0 / ModelParams::NGOAL;
-
-		for(int i : perm) {
-			PomdpState state=particles[i]->state;
-			if(state.peds[j].goal==-1)  
-				particles[i]->state.peds[j].goal = cur_goal;
-
-			cur_wgt += particles[i]->weight;
-			if (cur_wgt >= unit) {
-				cur_goal ++;
-				unit += 1.0 /ModelParams::NGOAL;
-			}
-		}
-	}
-	*/
-}
 
 ValuedAction PedPomdp::GetMinRewardAction() const {
 	return ValuedAction(0, CRASH_PENALTY * ModelParams::VEL_N * ModelParams::N_PED_IN);
@@ -304,7 +247,7 @@ public:
 	}
 
 	int Action(const vector<State*>& particles,
-			RandomStreams& streams, History& history) const { // TODO
+			RandomStreams& streams, History& history) const { // TODO default policy
 
 		return 0;
 		//const PomdpState* state = static_cast<const PomdpState*>(particles[0]);
@@ -406,9 +349,11 @@ void PedPomdp::InitializeScenarioUpperBound(string name, RandomStreams& streams)
 	}
 }
 
-void PedPomdp::PrintState(const State& state, ostream& out) const {
-	/*
-	out << "Rob Pos: " << rob_map[state.car.pos.y].first << " " <<rob_map[state.car.pos.y].second << endl;
+void PedPomdp::PrintState(const State& s, ostream& out) const {
+	const PomdpState & state=static_cast<const PomdpState&> (s);
+	
+	out << "Rob Pos: " << state.car.pos.x<< " " <<state.car.pos.y << endl;
+	out << "Rob travelled: " << state.car.dist_travelled << endl;
 	for(int i = 0; i < state.num; i ++) {
 		out << "Ped Pos: " << state.peds[i].pos.x << " " << state.peds[i].pos.y << endl;
 		out << "Goal: " << state.peds[i].goal << endl;
@@ -416,7 +361,7 @@ void PedPomdp::PrintState(const State& state, ostream& out) const {
 	}
 	out << "Vel: " << state.car.vel << endl;
 	out<<  "num  " << state.num << endl;
-	*/
+	
 }
 
 void PedPomdp::PrintObs(const State&state, uint64_t obs, ostream& out) const {
