@@ -34,14 +34,17 @@
 //#include "mcts.h"
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
-#include "problems/pedestrian_changelane/param.h"
+#include "param.h"
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
-#include  "problems/pedestrian_changelane/world_simulator.h"
 #include <pomdp_path_planner/GetPomdpPath.h>
 #include <pomdp_path_planner/PomdpPath.h>
 #include <nav_msgs/GetPlan.h>
+#include "WorldModel.h"
+#include "ped_pomdp.h"
+#include "belief.h"
+#include "despotstar.h"
 
 /*
 #include "belief_update/belief_update_exact.h"
@@ -67,7 +70,7 @@ using namespace std;
 class ped_momdp
 {
 public:
-    ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh,WorldSimulator*);
+    ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh);
     
     ~ped_momdp();
     
@@ -102,8 +105,8 @@ public:
     WorldStateTracker worldStateTracker;
     WorldModel worldModel;
 	WorldBeliefTracker worldBeliefTracker;
-	DSPOMDP * despot;
-	Solver* solver;
+	PedPomdp * despot;
+	DESPOTSTAR* solver;
 	double momdp_speed_,real_speed_;
 private:
 	double control_freq;

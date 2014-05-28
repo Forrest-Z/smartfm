@@ -24,7 +24,6 @@ public:
 	ros::Publisher pc_pub,path_pub,goal_pub;
     ped_momdp* momdp;
 
-	WorldSimulator RealWorld;
 	bool pathPublished;
 };
 

@@ -52,7 +52,8 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 
 
 
-vector<int> PedPomdp::ObserveVector(const PomdpState& state) const {
+vector<int> PedPomdp::ObserveVector(const State& state_) const {
+	const PomdpState &state=static_cast<const PomdpState&>(state_);
 	vector<int> obs_vec;
 	int rx=int(state.car.pos.x/ModelParams::pos_rln);
 	obs_vec.push_back(rx);
@@ -74,7 +75,7 @@ vector<int> PedPomdp::ObserveVector(const PomdpState& state) const {
 //	PomdpState 	
 //}
 
-uint64_t PedPomdp::Observe(const PomdpState& state) const {
+uint64_t PedPomdp::Observe(const State& state) const {
 	hash<vector<int>> myhash;
 	return myhash(ObserveVector(state));
 }
@@ -91,7 +92,9 @@ vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 	return particles;
 }
 
-bool PedPomdp::Step(PomdpState& state, double rNum, int action, double& reward, uint64_t& obs) const {
+bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint64_t& obs) const {
+
+	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0;
 	// double collision_penalty = world.inCollision(state, action); // TODO
 	if(world.isGlobalGoal(state.car)) {
@@ -120,7 +123,7 @@ bool PedPomdp::Step(PomdpState& state, double rNum, int action, double& reward, 
 	return false;
 }
 
-double PedPomdp::ObsProb(uint64_t obs, const PomdpState s, int action) const {
+double PedPomdp::ObsProb(uint64_t obs, const State& s, int action) const {
 	return obs == Observe(s);
 }
 
@@ -407,7 +410,7 @@ void PedPomdp::InitializeScenarioUpperBound(string name, RandomStreams& streams)
 	}
 }
 
-void PedPomdp::PrintState(const PomdpState& state, ostream& out) const {
+void PedPomdp::PrintState(const State& state, ostream& out) const {
 	/*
 	out << "Rob Pos: " << rob_map[state.car.pos.y].first << " " <<rob_map[state.car.pos.y].second << endl;
 	for(int i = 0; i < state.num; i ++) {
@@ -420,12 +423,16 @@ void PedPomdp::PrintState(const PomdpState& state, ostream& out) const {
 	*/
 }
 
-void PedPomdp::PrintObs(uint64_t obs, ostream& out) const {
+void PedPomdp::PrintObs(const State&state, uint64_t obs, ostream& out) const {
 	out << obs << endl;
 }
 
 void PedPomdp::PrintAction(int action, ostream& out) const {
 	out << action << endl;
+}
+
+void PedPomdp::PrintBelief(const Belief& belief, ostream& out ) const {
+	
 }
 
 State* PedPomdp::Allocate(int state_id, double weight) const {

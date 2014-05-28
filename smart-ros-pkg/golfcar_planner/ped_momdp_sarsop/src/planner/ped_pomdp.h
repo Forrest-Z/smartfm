@@ -28,16 +28,18 @@ struct PathNode { // TODO
 class PedPomdp : public DSPOMDP {
 public:
 	PedPomdp(WorldModel &);
-
 	void UpdateVel(int& vel, int action, Random& random) const;
 	void RobStep(int &robY,int &rob_vel, int action, Random& random) const;
 	void PedStep(PomdpState& state, Random& random) const;
-	bool Step(PomdpState& state, double rNum, int action, double& reward, uint64_t& obs) const;
+	bool Step(State& state_, double rNum, int action, double& reward, uint64_t& obs) const;
+    State* CreateStartState(string type = "DEFAULT") const {
+		return 0;	
+	}
 	double TransitionProbability(const PomdpState& curr, const PomdpState& next, int action) const;
 
-	uint64_t Observe(const PomdpState& state) const;
-	vector<int> ObserveVector(const PomdpState& state)   const;
-	double ObsProb(uint64_t z, const PomdpState s, int action) const;
+	uint64_t Observe(const State& ) const;
+	vector<int> ObserveVector(const State& )   const;
+	double ObsProb(uint64_t z, const State& s, int action) const;
 
 	int NumStates() const;
 	inline int NumActions() const { return 3; }
@@ -53,15 +55,16 @@ public:
 	void InitializeScenarioLowerBound(string name, RandomStreams& streams);
 
 	double GetMaxReward() const;
-	virtual void InitializeParticleUpperBound(string name, RandomStreams& streams);
-	virtual void InitializeScenarioUpperBound(string name, RandomStreams& streams);
+	void InitializeParticleUpperBound(string name, RandomStreams& streams);
+	void InitializeScenarioUpperBound(string name, RandomStreams& streams);
 
 	void Statistics(const vector<PomdpState*> particles) const;
 	void ModifyObsStates(const vector<PomdpState*> &particles,PomdpState&new_state,unsigned & seed) const;
 
-	void PrintState(const PomdpState& state, ostream& out = cout) const;
-	void PrintObs(uint64_t obs, ostream& out = cout) const;
+	void PrintState(const State& state, ostream& out = cout) const;
+	void PrintObs(const State & state, uint64_t obs, ostream& out = cout) const;
 	void PrintAction(int action, ostream& out = cout) const;
+	void PrintBelief(const Belief& belief, ostream& out = cout) const;
 
 	State* Allocate(int state_id, double weight) const;
 	State* Copy(const State* particle) const;

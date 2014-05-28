@@ -31,7 +31,7 @@ INCLUDE_DIRECTORIES(
     src/planner/
 )
 
-FILE(GLOB LIBDESPOT_SRCS src/despot/*.cpp src/planner/*.cpp)
+FILE(GLOB LIBDESPOT_SRCS src/despot/*.cpp src/despot/util/*.cpp src/planner/*.cpp)
 
 # There are too many compiler warnings with problem-solver code, so let's disable some:
 #set(WARNING_FLAGS "-Wno-sign-compare -Wno-unused-variable -Wno-ignored-qualifiers -Wno-write-strings")

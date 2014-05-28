@@ -6,7 +6,7 @@
 #include <ped_momdp_sarsop/ped_local_frame_vector.h>
 #include <sensing_on_road/pedestrian_vision_batch.h>
 #include <fstream>
-#include "problems/pedestrian_changelane/param.h"
+#include "param.h"
 
 using namespace std;
 struct ped_transforms
@@ -63,10 +63,9 @@ local_frame::~local_frame()
 	//write the path_record to the file
 	ofstream path_out("curr_real_path");
 	path_out<<path_record.size()<<endl;
-	double rln=ModelParams::map_rln;
 	for(int i=0;i<path_record.size();i++)
 	{
-		path_out<<int(path_record[i].first*rln)<<" "<<int(path_record[i].second*rln)<<endl;
+		path_out<<int(path_record[i].first)<<" "<<int(path_record[i].second)<<endl;
 	}
 }
 
@@ -272,7 +271,7 @@ void local_frame::publishTransform(const ros::TimerEvent& event)
 				now_y=out_pose.getOrigin().getY();
 				double dx=fabs(last_x-now_x);
 				double dy=fabs(last_y-now_y);
-				if(sqrt(dx*dx+dy*dy)>(1.0/ModelParams::path_rln)) //find the next record
+				if(sqrt(dx*dx+dy*dy)>0.1) //find the next record
 				{
 					path_record.push_back(make_pair(now_x,now_y));	
 				}

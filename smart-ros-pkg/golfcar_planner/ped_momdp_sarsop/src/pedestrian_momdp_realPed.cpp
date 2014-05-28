@@ -14,12 +14,10 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Path.h>
-#include "problems/pedestrian_changelane/world_simulator.h"
 #include <pomdp_path_planner/GetPomdpPath.h>
 #include <pomdp_path_planner/PomdpPath.h>
 #include <navfn/MakeNavPlan.h>
 
-WorldSimulator RealWorld;
 pedestrian_momdp::pedestrian_momdp()
 {
     ROS_INFO("Starting Pedestrian Avoidance ... ");
@@ -53,13 +51,8 @@ pedestrian_momdp::pedestrian_momdp()
     //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
 
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
-	momdp = new ped_momdp(model_file, policy_file, simLen, simNum, stationary, frequency, use_sim_time, nh,&RealWorld);
+	momdp = new ped_momdp(model_file, policy_file, simLen, simNum, stationary, frequency, use_sim_time, nh);
 
-	//momdp->RealWorldPt=&RealWorld;
-	//momdp->momdpInit();
-	//momde->world=&world;
-//	Executer* exec=new Executer();
-//	momdp->Executers.push_back(exec);
 	momdp->window_pub=nh.advertise<geometry_msgs::PolygonStamped>("/my_window",1000);
 	momdp->pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);
 	momdp->car_pub=nh.advertise<geometry_msgs::PoseStamped>("car_pose",1000);
@@ -82,12 +75,12 @@ void pedestrian_momdp::publishPath()
 	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
 	msg.header.frame_id=buf;
 	msg.header.stamp=ros::Time::now();
-	int length=RealWorld.world_map.pathLength;
-	msg.poses.resize(length);
-	for(int i=0;i<length;i++)
+	vector<COORD> path=momdp->worldModel.path;
+	msg.poses.resize(path.size());
+	for(int i=0;i<path.size();i++)
 	{
-		msg.poses[i].pose.position.x=RealWorld.world_map.global_plan[i][0]/ModelParams::map_rln;
-		msg.poses[i].pose.position.y=RealWorld.world_map.global_plan[i][1]/ModelParams::map_rln;
+		msg.poses[i].pose.position.x=momdp->worldModel.path[i].x;
+		msg.poses[i].pose.position.y=momdp->worldModel.path[i].y;
 		msg.poses[i].pose.position.z=0;
 		msg.poses[i].header.frame_id=msg.header.frame_id;
 		msg.poses[i].header.stamp=ros::Time::now();
@@ -113,8 +106,8 @@ void pedestrian_momdp::publishPath()
 		marker.action = visualization_msgs::Marker::ADD;
 
 
-		marker.pose.position.x = RealWorld.world_map.goal_pos[i][0]/ModelParams::map_rln;
-		marker.pose.position.y = RealWorld.world_map.goal_pos[i][1]/ModelParams::map_rln;
+		marker.pose.position.x = momdp->worldModel.goals[i].x;
+		marker.pose.position.y = momdp->worldModel.goals[i].y;
 		marker.pose.position.z = 0;
 		marker.pose.orientation.x = 0.0;
 		marker.pose.orientation.y = 0.0;
@@ -159,20 +152,9 @@ bool sortFn(Pedestrian p1,Pedestrian p2)
 
 void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector lPedLocal)
 {
-	
-	if(!pathPublished)  {
-		pathPublished=true;
-		publishPath();
-	}
+
 	if(lPedLocal.ped_local.size()==0) return;
-	ped_momdp_sarsop::ped_local_frame ped=lPedLocal.ped_local[0];
-	Car world_car;
-	world_car.w=ped.rob_pose.x*ModelParams::map_rln;
-	world_car.h=ped.rob_pose.y*ModelParams::map_rln;
-	//RealWorld.UpdateRobPoseReal(world_car);
-	//update the ped poses
-	//cout<<"rob pose "<<ped.rob_pose.x<<" "<<ped.rob_pose.y<<endl;
-	//cout<<"Number of Pedestrians "<<lPedLocal.ped_local.size()<<endl;
+
 	sensor_msgs::PointCloud pc;
 
 	char buf[100];
@@ -187,8 +169,8 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 		Pedestrian world_ped;
 		ped_momdp_sarsop::ped_local_frame ped=lPedLocal.ped_local[ii];
 		world_ped.id=ped.ped_id;
-		world_ped.w = ped.ped_pose.x*ModelParams::map_rln;
-		world_ped.h = ped.ped_pose.y*ModelParams::map_rln;
+		world_ped.w = ped.ped_pose.x;
+		world_ped.h = ped.ped_pose.y;
 		//TODO : goal
 		p.x=ped.ped_pose.x;
 		p.y=ped.ped_pose.y;

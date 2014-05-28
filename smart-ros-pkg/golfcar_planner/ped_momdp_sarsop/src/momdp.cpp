@@ -1,9 +1,7 @@
 #include "momdp.h"
-#include "belief_update/belief_update_particle.h"
-#include "vnode.h"
+#include "node.h"
 #include "solver.h"
 #include "globals.h"
-#include "problems/pedestrian_changelane/pedestrian_changelane.h"
 
 int WorldSeed() {
   cout<<"root seed"<<Globals::config.root_seed<<endl;
@@ -44,7 +42,7 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
 	goal_reached=false;
 	cerr << "DEBUG: Init simulator" << endl;
 	initSimulator();
-    RetrievePath();
+    RetrievePaths();
 
 	cerr <<"frequency "<<frequency<<endl;
 	cerr <<"DEBUG: before entering controlloop"<<endl;
@@ -84,12 +82,12 @@ void ped_momdp::initSimulator()
   Globals::config.root_seed=1024;
   //Globals::config.n_belief_particles=2000;
   Globals::config.n_particles=500;
-  Globals::config.time_per_move = 1.0/ModelParams::contro_freq;
+  Globals::config.time_per_move = 1.0/ModelParams::control_freq;
   Seeds::root_seed(Globals::config.root_seed);
   cerr << "Random root seed set to " << Globals::config.root_seed << endl;
 
   // Global random generator
-  seed = Seeds::Next();
+  double seed = Seeds::Next();
   Random::RANDOM = Random(seed);
   cerr << "Initialized global random generator with seed " << seed << endl;
 
@@ -100,10 +98,9 @@ void ped_momdp::initSimulator()
   streams = new RandomStreams(Seeds::Next(Globals::config.n_particles), Globals::config.search_depth);
   despot->InitializeParticleLowerBound("smart");
   despot->InitializeScenarioLowerBound("smart", *streams);
-  despot->InitializeParticleUpperBound("smart");
+  despot->InitializeParticleUpperBound("smart", *streams);
   despot->InitializeScenarioUpperBound("smart", *streams);
   solver = new DESPOTSTAR(despot, NULL, *streams);
-
 }
 
 
@@ -136,7 +133,6 @@ void ped_momdp::publishSpeed(const ros::TimerEvent &e)
 
 void ped_momdp::publishROSState()
 {
-	double rln=ModelParams::map_rln;
 	geometry_msgs::Point32 pnt;
 	
 	char buf[100];
@@ -151,8 +147,8 @@ void ped_momdp::publishROSState()
 	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
 	pose_stamped.header.frame_id=buf;
 
-	pose_stamped.pose.position.x=(worldStateTracker.car.pos.x+0.0)/rln;
-	pose_stamped.pose.position.y=(worldStateTracker.car.pos.y+0.0)/rln;
+	pose_stamped.pose.position.x=(worldStateTracker.car.pos.x+0.0);
+	pose_stamped.pose.position.y=(worldStateTracker.car.pos.y+0.0);
 	pose_stamped.pose.orientation.w=1.0;
 	car_pub.publish(pose_stamped);
 	
@@ -164,8 +160,8 @@ void ped_momdp::publishROSState()
 	for(int i=0;i<worldStateTracker.ped_list.size();i++)
 	{
 		//GetCurrentState(ped_list[i]);
-		pose.position.x=(worldStateTracker.ped_list[i].w+0.0)/rln;
-		pose.position.y=(worldStateTracker.ped_list[i].h+0.0)/rln;
+		pose.position.x=(worldStateTracker.ped_list[i].w+0.0);
+		pose.position.y=(worldStateTracker.ped_list[i].h+0.0);
 		pose.orientation.w=1.0;
 		pA.poses.push_back(pose);
 		//ped_pubs[i].publish(pose);
@@ -205,8 +201,8 @@ void ped_momdp::publishAction(int action)
 		marker.action = visualization_msgs::Marker::ADD;
 
 		double px,py;
-		px=worldStateTracker.car.pos.x/ModelParams::map_rln;
-		py=worldStateTracker.car.pos.y/ModelParams::map_rln;
+		px=worldStateTracker.car.pos.x;
+		py=worldStateTracker.car.pos.y;
 		marker.pose.position.x = px+1;
 		marker.pose.position.y = py+1;
 		marker.pose.position.z = 0;
@@ -276,33 +272,10 @@ void ped_momdp::RetrievePaths()
 		coord.y=srv.response.plan.poses[i].pose.position.y;
         p.push_back(coord);
 	}
-    stateModel.setPath(p);
+    worldModel.setPath(p);
 	pathPub_.publish(srv.response.plan);
 }
 
-void ped_momdp::updatePedPoseReal(PedStruct ped) { 
-    for(int i=0;i<ped_list.size();i++)
-    {
-        if(ped_list[i].id==ped.id)
-        {
-            //found the corresponding ped,update the pose
-            ped_list[i].w=ped.w;
-            ped_list[i].h=ped.h;
-            ped_list[i].last_update=t_stamp;
-            break;
-        }
-        if(abs(ped_list[i].w-ped.w)<=1&&abs(ped_list[i].h-ped.h)<=1)   //overladp 
-            return;
-        //		cout<<ped_list[i].w<<" "<<ped_list[i].h<<endl;
-    }
-    if(i==ped_list.size())   //not found, new ped
-    {
-        //		cout<<"add"<<endl;
-        ped.last_update=t_stamp;
-        ped_list.push_back(ped);
-
-    }
-}
 
 void ped_momdp::controlLoop(const ros::TimerEvent &e)
 {
@@ -319,14 +292,14 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			cerr<<"transform error within control loop"<<endl;
 		} else {
             COORD coord;
-			coord.x=out_pose.getOrigin().getX()*ModelParams::map_rln;
-			coord.y=out_pose.getOrigin().getY()*ModelParams::map_rln;
+			coord.x=out_pose.getOrigin().getX();
+			coord.y=out_pose.getOrigin().getY();
 			worldStateTracker.updateCar(coord);
 		}
 		
 		//publishROSState();
 		
-		if(stateModel.isGlobalGoal(worldStateTracker.car))
+		if(worldModel.isGlobalGoal(worldStateTracker.car))
 		{
 			goal_reached=true;
 		}
@@ -354,13 +327,13 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		PomdpState curr_state = worldStateTracker.getPomdpState();
 		worldBeliefTracker.update(curr_state);	
 		vector<PomdpState> samples= worldBeliefTracker.sample(1000);
-		vector<State*> particles = model->ConstructParticles(samples);
-		ParticleBelief pb=new ParticleBelief(particles,model);
+		vector<State*> particles = despot->ConstructParticles(samples);
+		ParticleBelief *pb=new ParticleBelief(particles, despot);
 		solver->belief(pb);
 			
 		////////////////////////////////////////////////////////////////////
 
-		if(worldTracker.emergency())
+		if(worldStateTracker.emergency())
 		{
 			momdp_speed_=-1;	
 			return;
@@ -448,11 +421,11 @@ void ped_momdp::publishMarker(int id,vector<double> belief)
 }
 void ped_momdp::publishBelief()
 {
-	vector<vector<double> > ped_beliefs=RealSimulator->GetBeliefVector(solver->root_->particles());	
+//	vector<vector<double> > ped_beliefs=RealSimulator->GetBeliefVector(solver->root_->particles());	
 	//cout<<"belief vector size "<<ped_beliefs.size()<<endl;
-	for(int i=0;i<ped_beliefs.size();i++)
-	{
-		publishMarker(i,ped_beliefs[i]);
-	}
+//	for(int i=0;i<ped_beliefs.size();i++)
+//	{
+//		publishMarker(i,ped_beliefs[i]);
+//	}
 
 }
