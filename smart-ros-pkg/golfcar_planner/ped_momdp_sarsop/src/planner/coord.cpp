@@ -1,5 +1,6 @@
 #include "coord.h"
 
+/*
 const COORD COORD::Null(-1, -1);
 const COORD COORD::North(0, 1);
 const COORD COORD::East(1, 0);
@@ -33,5 +34,5 @@ const char* COORD::CompassString[8] =
     "SW",
     "NW"
 };
-
+*/
 

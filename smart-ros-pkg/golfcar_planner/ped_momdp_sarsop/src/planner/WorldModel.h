@@ -13,10 +13,10 @@ public:
 
     WorldModel();
 
-	double inCollision(PomdpState state, int action);
-    bool isLocalGoal(PomdpState state);
-    bool isGlobalGoal(CarStruct car);
-    double minStepToGoal(PomdpState state);
+	double inCollision(const PomdpState& state, int action);
+    bool isLocalGoal(const PomdpState& state);
+    bool isGlobalGoal(const CarStruct& car);
+    double minStepToGoal(const PomdpState& state);
 
 	void PedStep(PedStruct &ped, Random& random);
 	void RobStep(CarStruct &car, Random& random);
@@ -25,7 +25,7 @@ public:
     double pedMoveProb(COORD p0, COORD p1, int goal_id);
     void setPath(Path path);
     void updatePedBelief(PedBelief& b, const PedStruct& curr_ped);
-    PedBelief& initPedBelief(const PedStruct& ped);
+    PedBelief initPedBelief(const PedStruct& ped);
 
 
 	Path path;
@@ -37,8 +37,8 @@ class WorldStateTracker {
 public:
     WorldStateTracker(WorldModel& _model): model(_model) {}
 
-    void updatePed(Pedestrian& ped);
-    void updateCar(COORD& car);
+    void updatePed(const Pedestrian& ped);
+    void updateCar(const COORD& car);
     void updateVel(double vel);
     void cleanPed();
 

@@ -41,11 +41,11 @@ add_definitions(-DDEBUG_LOG_ON)
 
 #rosbuild_add_library(pomcp ${LIBPOMCP_SRCS})
 rosbuild_add_library(despot ${LIBDESPOT_SRCS})
-rosbuild_add_compile_flags(despot -std=c++0x -O3 -ggdb  -fbounds-check)
+rosbuild_add_compile_flags(despot -std=c++0x -O2 -ggdb  -fbounds-check)
 #rosbuild_add_compile_flags(despot -std=c++0x -O3)
 rosbuild_add_executable(ped-momdp-sarsop src/pedestrian_momdp_realPed.cpp src/momdp.cpp)
 #rosbuild_add_compile_flags(ped-momdp-sarsop -std=c++0x -O0 -ggdb -fbounds-check)
-rosbuild_add_compile_flags(ped-momdp-sarsop -std=c++0x -O3)
+rosbuild_add_compile_flags(ped-momdp-sarsop -std=c++0x -O2 -ggdb -fbounds-check)
 rosbuild_add_compile_flags(ped-momdp-sarsop ${WARNING_FLAGS})
 
 target_link_libraries(ped-momdp-sarsop despot)

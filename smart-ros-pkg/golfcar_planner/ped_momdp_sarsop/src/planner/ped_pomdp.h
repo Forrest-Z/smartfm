@@ -39,7 +39,6 @@ public:
 
 	inline int NumActions() const { return 3; }
 
-	PomdpState RandomState(unsigned& seed, PomdpState obs_state) const;
 	PomdpState* GreateStartState(string type) const;
 
 	vector<vector<double>> GetBeliefVector(const vector<State*> particles) const;

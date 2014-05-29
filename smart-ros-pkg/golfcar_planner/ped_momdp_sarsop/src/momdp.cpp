@@ -288,15 +288,16 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		sprintf(buf,"%s%s",ModelParams::rosns,ModelParams::laser_frame);
 		in_pose.frame_id_ = buf; 
 		sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-		if(!getObjectPose(buf, in_pose, out_pose)) {
+		while(!getObjectPose(buf, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
-		} else {
-            COORD coord;
-			coord.x=out_pose.getOrigin().getX();
-			coord.y=out_pose.getOrigin().getY();
-			cout << "transformed pose = " << coord.x << " " << coord.y << endl;
-			worldStateTracker.updateCar(coord);
-		}
+		} 
+
+		COORD coord;
+		coord.x=out_pose.getOrigin().getX();
+		coord.y=out_pose.getOrigin().getY();
+		cout << "transformed pose = " << coord.x << " " << coord.y << endl;
+		worldStateTracker.updateCar(coord);
+		
 
 		RetrievePaths();
         worldStateTracker.cleanPed();
@@ -304,7 +305,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		PomdpState curr_state = worldStateTracker.getPomdpState();
 		//publishROSState();
 		despot->PrintState(curr_state, cout);
-
+		cout<<"here"<<endl;
 		if(worldModel.isGlobalGoal(curr_state.car))
 		{
 			goal_reached=true;
@@ -319,8 +320,9 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			return;
 		}
 
-
+		cout<<"before belief update"<<endl;
 		worldBeliefTracker.update(curr_state);	
+		cout<<"after belief update"<<endl;
 		vector<PomdpState> samples = worldBeliefTracker.sample(1000);
 		vector<State*> particles = despot->ConstructParticles(samples);
 		double sum=0;

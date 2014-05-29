@@ -16,7 +16,7 @@
 #include <nav_msgs/Path.h>
 #include <pomdp_path_planner/GetPomdpPath.h>
 #include <pomdp_path_planner/PomdpPath.h>
-#include <navfn/MakeNavPlan.h>
+#include <ped_navfn/MakeNavPlan.h>
 
 pedestrian_momdp::pedestrian_momdp()
 {
@@ -174,7 +174,7 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 		//TODO : goal
 		p.x=ped.ped_pose.x;
 		p.y=ped.ped_pose.y;
-		p.z=2.0;
+		p.z=1.0;
 		pc.points.push_back(p);
 
 		//cout<<"ped pose "<<ped.ped_pose.x<<" "<<ped.ped_pose.y<<" "<<world_ped.id<<endl;

@@ -44,6 +44,12 @@ struct COORD
     return COORD(x * mul, y * mul);
   }
 
+  
+  static double EuclideanDistance(COORD lhs, COORD rhs);
+  static int ManhattanDistance(COORD lhs, COORD rhs);
+  
+/*
+  static int DirectionalDistance(COORD lhs, COORD rhs, int direction);
   enum {
     E_NORTH,
     E_EAST,
@@ -54,11 +60,6 @@ struct COORD
     E_SOUTHWEST,
     E_NORTHWEST
   };
-  
-  static double EuclideanDistance(COORD lhs, COORD rhs);
-  static int ManhattanDistance(COORD lhs, COORD rhs);
-  static int DirectionalDistance(COORD lhs, COORD rhs, int direction);
-  
   static const COORD Null;
   static const COORD North, East, South, West;
   static const COORD NorthEast, SouthEast, SouthWest, NorthWest;
@@ -68,6 +69,7 @@ struct COORD
   static int Opposite(int dir) { return (dir + 2) % 4; }
   static int Anticlockwise(int dir) { return (dir + 3) % 4; }
 
+  */
  // static void UnitTest();
 };
 
@@ -80,6 +82,7 @@ inline int COORD::ManhattanDistance(COORD lhs, COORD rhs) {
   return abs(lhs.x - rhs.x) + abs(lhs.y - rhs.y);
 }
 
+/*
 inline int COORD::DirectionalDistance(COORD lhs, COORD rhs, int direction) {
   switch (direction) {
     case E_NORTH: return rhs.y - lhs.y;
@@ -89,6 +92,7 @@ inline int COORD::DirectionalDistance(COORD lhs, COORD rhs, int direction) {
     default: assert(false);
   }
 }
+*/
 
 inline std::ostream& operator<<(std::ostream& ostr, COORD& COORD) {
   ostr << "(" << COORD.x << ", " << COORD.y << ")";

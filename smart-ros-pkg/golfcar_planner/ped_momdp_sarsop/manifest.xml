@@ -20,8 +20,8 @@
   <depend package="pnc_msgs"/>
   <depend package="nav_msgs"/>
   <depend package="visualization_msgs"/>
-  <depend package="costmap_2d"/>
-  <depend package="navfn_pomdp"/>
+  <depend package="ped_costmap"/>
+  <depend package="ped_navfn"/>
   <depend package="pomdp_path_planner"/>
 </package>
 

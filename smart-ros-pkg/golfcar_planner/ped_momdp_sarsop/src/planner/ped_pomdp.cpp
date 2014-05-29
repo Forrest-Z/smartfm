@@ -83,9 +83,8 @@ vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 	int num_particles=samples.size();
 	vector<State*> particles;
 	for(int i=0;i<samples.size();i++) {
-		PomdpState* particle = static_cast<PomdpState*>(Allocate(i, 1.0/num_particles));
+		PomdpState* particle = static_cast<PomdpState*>(Allocate(-1, 1.0/num_particles));
 		(*particle)=samples[i];
-		particle->state_id=i;
 		particle->weight=1.0/num_particles;
 		particles.push_back(particle);
 	}
@@ -96,7 +95,6 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0;
-	// double collision_penalty = world.inCollision(state, action); // TODO
 	if(world.isLocalGoal(state)) {
 		reward = GOAL_REWARD;
 		//cout << "goal reached!" << endl;
@@ -135,13 +133,6 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	
 double PedPomdp::ObsProb(uint64_t obs, const State& s, int action) const {
 	return obs == Observe(s);
-}
-
-PomdpState PedPomdp::RandomState(unsigned& seed, PomdpState obs_state) const {
-	for(int i = 0; i < obs_state.num; i++) {
-		obs_state.peds[i].goal = rand_r(&seed) % ModelParams::NGOAL;
-	}
-	return obs_state;
 }
 
 // TODO
@@ -232,7 +223,8 @@ void PedPomdp::Statistics(const vector<PomdpState*> particles) const {
 
 
 ValuedAction PedPomdp::GetMinRewardAction() const {
-	return ValuedAction(0, CRASH_PENALTY * ModelParams::VEL_N * ModelParams::N_PED_IN);
+	//return ValuedAction(0, CRASH_PENALTY * ModelParams::VEL_N * ModelParams::N_PED_IN);
+	return ValuedAction(0, 0);
 }
 
 class PedPomdpSmartScenarioLowerBound : public Policy {
@@ -289,7 +281,7 @@ public:
 };
 
 void PedPomdp::InitializeScenarioLowerBound(string name, RandomStreams& streams) {
-	name = "SMART";
+	name = "TRIVIAL";
 	if(name == "TRIVIAL") {
 		scenario_lower_bound_ = new TrivialScenarioLowerBound(this);
 	} else if(name == "RANDOM") {

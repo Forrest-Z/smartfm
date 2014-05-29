@@ -9,6 +9,7 @@ ped_costmap:
     observation_sources: peds
     peds:
         topic: confident_objects_momdp
+        clearing: true
         obstacle_range: 5000
-        raytrace_range: 1
+        raytrace_range: 5000
 

@@ -26,7 +26,8 @@ public:
 	Pedestrian(int _w,int _h,int _goal,int _id) {w=_w;h=_h;goal=_goal;id=_id;ts=0;}
 	Pedestrian(int _w,int _h) {w=_w;h=_h;}
 
-	int w,h,goal;
+	double w,h;
+	int goal;
 	int id;   //each pedestrian has a unique identity
 	int ts;
 	int last_update;

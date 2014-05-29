@@ -16,19 +16,19 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq) {
     };
 }
 
-bool WorldModel::isLocalGoal(PomdpState state) {
+bool WorldModel::isLocalGoal(const PomdpState& state) {
     if (state.car.dist_travelled > ModelParams::GOAL_TRAVELLED) {
 
 	}
     return state.car.dist_travelled > ModelParams::GOAL_TRAVELLED;
 }
 
-bool WorldModel::isGlobalGoal(CarStruct car) {
+bool WorldModel::isGlobalGoal(const CarStruct& car) {
     double d = COORD::EuclideanDistance(path[car.pos], path[path.size()-1]);
     return (d<ModelParams::GOAL_TOLERANCE);
 }
 
-double WorldModel::inCollision(PomdpState state, int action) {
+double WorldModel::inCollision(const PomdpState& state, int action) {
     double penalty = 0;
     double mindist = numeric_limits<double>::infinity();
     auto& carpos = path[state.car.pos];
@@ -53,7 +53,7 @@ double WorldModel::inCollision(PomdpState state, int action) {
     return penalty;
 }
 
-double WorldModel::minStepToGoal(PomdpState state) {
+double WorldModel::minStepToGoal(const PomdpState& state) {
     double d = ModelParams::GOAL_TRAVELLED - state.car.dist_travelled;
     if (d < 0) d = 0;
     return d / ModelParams::VEL_MAX;
@@ -67,8 +67,8 @@ void WorldModel::PedStep(PedStruct &ped, Random& random) {
     a += random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
     //TODO noisy speed
     MyVector move(a, ModelParams::PED_SPEED, 0);
-    goal.x += move.dw;
-    goal.y += move.dh;
+    ped.pos.x += move.dw;
+    ped.pos.y += move.dh;
     return;
 }
 
@@ -85,7 +85,7 @@ double gaussian_prob(double x, double stddev) {
 double WorldModel::pedMoveProb(COORD p0, COORD p1, int goal_id) {
     double cosa = DotProduct(p0.x, p0.y, p1.x, p1.y) / Norm(p0.x, p0.y) / Norm(p1.x, p1.y);
     double a = acos(cosa);
-    double p = gaussian_prob(a, ModelParams::NOISE_GOAL_ANGLE);
+    double p = gaussian_prob(a, ModelParams::NOISE_GOAL_ANGLE) + 0.01;
     return p;
 }
 
@@ -113,18 +113,32 @@ void WorldModel::setPath(Path path) {
 }
 
 void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
+	for(double w: b.prob_goals) {
+		cout << w << " ";
+	}
+	cout << endl;
     for(int i=0; i<goals.size(); i++) {
         b.prob_goals[i] *= pedMoveProb(b.pos, curr_ped.pos, i);
     }
+	for(double w: b.prob_goals) {
+		cout << w << " ";
+	}
+	cout << endl;
 
     // normalize
-    double total_weight = accumulate(b.prob_goals.begin(), b.prob_goals.end(), 0);
+    double total_weight = accumulate(b.prob_goals.begin(), b.prob_goals.end(), double(0.0));
+	cout << "total_weight = " << total_weight << endl;
     for(double& w : b.prob_goals) {
         w /= total_weight;
     }
+
+	for(double w: b.prob_goals) {
+		cout << w << " ";
+	}
+	cout << endl;
 }
 
-PedBelief& WorldModel::initPedBelief(const PedStruct& ped) {
+PedBelief WorldModel::initPedBelief(const PedStruct& ped) {
     PedBelief b = {ped.pos, vector<double>(goals.size(), 1.0/goals.size())};
     return b;
 }
@@ -163,7 +177,7 @@ void WorldStateTracker::cleanPed() {
 }
 
 
-void WorldStateTracker::updatePed(Pedestrian& ped){
+void WorldStateTracker::updatePed(const Pedestrian& ped){
     int i=0;
     for(;i<ped_list.size();i++)
     {
@@ -180,12 +194,12 @@ void WorldStateTracker::updatePed(Pedestrian& ped){
     }
     if(i==ped_list.size())   //not found, new ped
     {
-        ped.last_update = timestamp();
         ped_list.push_back(ped);
+        ped_list.back().last_update = timestamp();
     }
 }
 
-void WorldStateTracker::updateCar(COORD& car) {
+void WorldStateTracker::updateCar(const COORD& car) {
     carpos=car;
 }
 
@@ -211,6 +225,7 @@ PomdpState WorldStateTracker::getPomdpState() {
         pomdpState.peds[i].pos.x=ped_list[i].w;
         pomdpState.peds[i].pos.y=ped_list[i].h;
 		pomdpState.peds[i].id = ped_list[i].id;
+		pomdpState.peds[i].goal = -1;
     }
 	return pomdpState;
 }
@@ -231,9 +246,12 @@ void WorldBeliefTracker::update(const PomdpState& s) {
     peds.erase(peds_disappeared, peds.end());
 
     // update existing peds
+	cout<<"before udpate ped"<<endl;
     for(auto& kv : peds) {
+		cout<<"inside loop"<<endl;
         model.updatePedBelief(kv.second, newpeds[kv.first]);
     }
+	cout<<"after update ped"<<endl;
 
     // add new peds
     for(int i=0; i<s.num; i++) {
