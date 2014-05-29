@@ -821,17 +821,20 @@ namespace costmap_2d{
     //we know that we want to clear all non-lethal obstacles in this window to get it ready for inflation
     unsigned int index = getIndex(map_sx, map_sy);
     unsigned char* current = &costmap_[index];
+	unsigned char* static_current = &static_map_[index];
     for(unsigned int j = map_sy; j <= map_ey; ++j){
       for(unsigned int i = map_sx; i <= map_ex; ++i){
         //if the cell is a lethal obstacle... we'll keep it and queue it, otherwise... we'll clear it
-        if(*current != LETHAL_OBSTACLE){
+        if(*static_current != LETHAL_OBSTACLE){
           if(clear_no_info || *current != NO_INFORMATION) 
             *current = FREE_SPACE;
         }
         current++;
+		static_current++;
         index++;
       }
       current += size_x_ - (map_ex - map_sx) - 1;
+      static_current += size_x_ - (map_ex - map_sx) - 1;
       index += size_x_ - (map_ex - map_sx) - 1;
     }
   }
