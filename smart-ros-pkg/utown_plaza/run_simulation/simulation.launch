@@ -53,6 +53,9 @@
 
     <node pkg="rviz" type="rviz" name="rviz" respawn="false" />  
 	<node pkg="velmixer" type="vel_miexer" name="vel_mixer" respawn="false"/>
+	<node pkg="velmixer" type="ped_publisher" name="ped_publisher" output="screen" respawn="false">
+		<param name="pedNum" value="1000"/>
+	</node>
 	<node pkg="dummyPed" type="dummyPed_marker" name="dummyPed" respawn="false"/>
 
 </launch>

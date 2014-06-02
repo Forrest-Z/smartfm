@@ -1,12 +1,25 @@
 #include "ped_pomdp.h"
 
-const int PedPomdp::CRASH_PENALTY = -1000;
-const int PedPomdp::GOAL_REWARD = 500;
 int PedPomdp::action_vel[3] = {0, 1, -1};
+
+class PedPomdpParticleLowerBound : public ParticleLowerBound {
+public:
+	PedPomdpParticleLowerBound(const DSPOMDP* model) :
+		ParticleLowerBound(model) {
+	}
+
+	virtual ValuedAction Value(const vector<State*>& particles) const {
+		PomdpState* state = static_cast<PomdpState*>(particles[0]);
+		return ValuedAction(0, State::Weight(particles) * ModelParams::CRASH_PENALTY * ModelParams::VEL_MAX / (1 - Discount()));
+	}
+};
+
 
 PedPomdp::PedPomdp(WorldModel &model_) :
 	world(model_),
-	random_(Random((unsigned) Seeds::Next())) {
+	random_(Random((unsigned) Seeds::Next()))
+{
+	particle_lower_bound_ = new PedPomdpParticleLowerBound(this);
 
 	OBSTACLE_PROB = 0.0;
 
@@ -51,20 +64,22 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 } 
 vector<int> PedPomdp::ObserveVector(const State& state_) const {
 	const PomdpState &state=static_cast<const PomdpState&>(state_);
-	vector<int> obs_vec;
+	static vector<int> obs_vec;
+	obs_vec.resize(state.num*2+2);
 	//int rx=int(state.car.pos.x/ModelParams::pos_rln);
 	//obs_vec.push_back(rx);
 	//int ry=int(state.car.pos.y/ModelParams::pos_rln);
 	//obs_vec.push_back(ry);
-    obs_vec.push_back(state.car.pos);
+	int i=0;
+    obs_vec[i++]=(state.car.pos);
 	int rvel=int(state.car.vel/ModelParams::vel_rln);
-	obs_vec.push_back(rvel);
+	obs_vec[i++]=(rvel);
 
 	for(int i = 0; i < state.num; i ++) {
 		int px=int(state.peds[i].pos.x/ModelParams::pos_rln);
 		int py=int(state.peds[i].pos.y/ModelParams::pos_rln);
-		obs_vec.push_back(px);
-		obs_vec.push_back(py);
+		obs_vec[i++]=(px);
+		obs_vec[i++]=(py);
 	}
 	return obs_vec;
 }
@@ -96,7 +111,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0;
 	if(world.isLocalGoal(state)) {
-		reward = GOAL_REWARD;
+		reward = ModelParams::GOAL_REWARD;
 		//cout << "goal reached!" << endl;
 		//PrintState(state, cout);
 		return true;
@@ -223,9 +238,10 @@ void PedPomdp::Statistics(const vector<PomdpState*> particles) const {
 
 
 ValuedAction PedPomdp::GetMinRewardAction() const {
-	//return ValuedAction(0, CRASH_PENALTY * ModelParams::VEL_N * ModelParams::N_PED_IN);
-	return ValuedAction(0, 0);
+	return ValuedAction(0, ModelParams::CRASH_PENALTY * ModelParams::VEL_MAX);
+	// return ValuedAction(0, 0);
 }
+
 
 class PedPomdpSmartScenarioLowerBound : public Policy {
 protected:
@@ -295,7 +311,7 @@ void PedPomdp::InitializeScenarioLowerBound(string name, RandomStreams& streams)
 }
 
 double PedPomdp::GetMaxReward() const {
-	return GOAL_REWARD;
+	return ModelParams::GOAL_REWARD;
 }
 
 class PedPomdpSmartParticleUpperBound : public ParticleUpperBound {
@@ -314,7 +330,7 @@ public:
 		//TODO noise
 		int d = ped_pomdp_->world.minStepToGoal(state);
 
-		return ped_pomdp_->GOAL_REWARD * pow(Discount(), d);
+		return ModelParams::GOAL_REWARD * pow(Discount(), d);
 	}
 };
 

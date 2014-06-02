@@ -64,8 +64,6 @@ public:
 
 	vector<State*> ConstructParticles(vector<PomdpState> & samples); 
 	static int action_vel[3];
-	static const int CRASH_PENALTY;
-	static const int GOAL_REWARD;
 
 	WorldModel &world;
 protected:

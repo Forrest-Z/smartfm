@@ -49,6 +49,7 @@ float marker_pos = 0;
 interactive_markers::MenuHandler menu_handler;
 ros::Publisher Pedpub_;
 geometry_msgs::Point ped1, ped2, ped3;
+sensing_on_road::pedestrian_vision_batch psglaser_batch;
 // %EndTag(vars)%
 
 inline geometry_msgs::Point32 convertGeoPt64To32(geometry_msgs::Point p)
@@ -62,8 +63,8 @@ inline geometry_msgs::Point32 convertGeoPt64To32(geometry_msgs::Point p)
 
 void publish_ped()
 {
-    sensing_on_road::pedestrian_vision_batch psglaser_batch;
-    sensing_on_road::pedestrian_vision psglaser;
+	psglaser_batch.pd_vector.clear();
+	sensing_on_road::pedestrian_vision psglaser;
 
     psglaser_batch.header.frame_id = "/map";
     psglaser.cluster.centroid = convertGeoPt64To32(ped1);
@@ -78,7 +79,6 @@ void publish_ped()
     psglaser.object_label = 3;
     psglaser_batch.pd_vector.push_back(psglaser);
 
-    Pedpub_.publish(psglaser_batch);
 }
 
 
@@ -171,6 +171,10 @@ void makeViewFacingMarker(std_msgs::ColorRGBA color, string name, geometry_msgs:
 // %EndTag(ViewFacing)%
 
 // %Tag(main)%
+
+void publishPed(const ros::TimerEvent& event) {
+    Pedpub_.publish(psglaser_batch);
+}
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "basic_controls");
@@ -193,6 +197,7 @@ int main(int argc, char** argv)
 
     server->applyChanges();
 
+    ros::Timer timer = n.createTimer(ros::Duration(0.1), publishPed);
     ros::spin();
 
     server.reset();

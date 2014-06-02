@@ -1,0 +1,12 @@
+0. run this command line to generate the bag for simulation to use (here we name it 3394_new.bag)
+rosbag filter 3394.bag 3394_new.bag "topic=='/golfcart/ped_data_assoc'"
+
+1. rosbag play 3394_new.bag
+
+2. run simulation.launch
+   you can set the number of pedestrians in the playback bag through pedNum parameter
+
+3. run testplanning.launch
+
+4. run momdp.launch
+

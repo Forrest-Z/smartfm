@@ -48,7 +48,7 @@ double WorldModel::inCollision(const PomdpState& state, int action) {
         penalty += ModelParams::CRASH_PENALTY / 2;
     }
 	if (penalty != 0) {
-		cout << "penalty =" << penalty << endl;
+//		cout << "penalty =" << penalty << endl;
 	}
     return penalty;
 }
@@ -83,7 +83,11 @@ double gaussian_prob(double x, double stddev) {
 }
 
 double WorldModel::pedMoveProb(COORD p0, COORD p1, int goal_id) {
-    double cosa = DotProduct(p0.x, p0.y, p1.x, p1.y) / Norm(p0.x, p0.y) / Norm(p1.x, p1.y);
+    const COORD& goal = goals[goal_id];
+	double norm = Norm(p1.x-p0.x, p1.y-p0.y) * Norm(goal.x-p0.x, goal.y-p0.y);
+	if(norm <= 0.0)
+		return 1.0;
+    double cosa = DotProduct(p1.x-p0.x, p1.y-p0.y, goal.x-p0.x, goal.y-p0.y) / norm;
     double a = acos(cosa);
     double p = gaussian_prob(a, ModelParams::NOISE_GOAL_ANGLE) + 0.01;
     return p;
@@ -136,6 +140,8 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
 		cout << w << " ";
 	}
 	cout << endl;
+
+	b.pos = curr_ped.pos;
 }
 
 PedBelief WorldModel::initPedBelief(const PedStruct& ped) {
@@ -204,8 +210,14 @@ void WorldStateTracker::updateCar(const COORD& car) {
 }
 
 bool WorldStateTracker::emergency() {
-    //TODO check for emergency stop
-    return false;
+    //TODO improve emergency stop to prevent the false detection of leg
+    double mindist = numeric_limits<double>::infinity();
+    for(auto& ped : ped_list) {
+		COORD p(ped.w, ped.h);
+        double d = COORD::EuclideanDistance(carpos, p);
+        if(d < mindist) mindist = d;
+    }
+	return (mindist < 0.5);
 }
 
 void WorldStateTracker::updateVel(double vel) {
@@ -219,7 +231,10 @@ PomdpState WorldStateTracker::getPomdpState() {
 	pomdpState.car.dist_travelled = 0;
     pomdpState.num = ped_list.size();
 
-    assert(pomdpState.num <= ModelParams::N_PED_IN);
+    //assert(pomdpState.num <= ModelParams::N_PED_IN);
+	if(pomdpState.num > ModelParams::N_PED_IN) {
+		pomdpState.num = ModelParams::N_PED_IN;
+	}
 
     for(int i=0;i<pomdpState.num;i++) {
         pomdpState.peds[i].pos.x=ped_list[i].w;
@@ -246,12 +261,9 @@ void WorldBeliefTracker::update(const PomdpState& s) {
     peds.erase(peds_disappeared, peds.end());
 
     // update existing peds
-	cout<<"before udpate ped"<<endl;
     for(auto& kv : peds) {
-		cout<<"inside loop"<<endl;
         model.updatePedBelief(kv.second, newpeds[kv.first]);
     }
-	cout<<"after update ped"<<endl;
 
     // add new peds
     for(int i=0; i<s.num; i++) {

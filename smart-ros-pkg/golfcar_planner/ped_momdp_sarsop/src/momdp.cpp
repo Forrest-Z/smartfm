@@ -81,7 +81,7 @@ void ped_momdp::initSimulator()
 {
   Globals::config.root_seed=1024;
   //Globals::config.n_belief_particles=2000;
-  Globals::config.n_particles=500;
+  Globals::config.n_particles=100;
   Globals::config.time_per_move = 1.0/ModelParams::control_freq;
   Seeds::root_seed(Globals::config.root_seed);
   cerr << "Random root seed set to " << Globals::config.root_seed << endl;
@@ -247,6 +247,9 @@ void ped_momdp::RetrievePaths()
 	//	for(int i=0;i<size;i++)
 	//		cout<<path.points[i].x<<" "<<path.points[i].y<<endl;
 	//}
+	//
+		
+//	if(worldModel.path.size()>0)  return ;
 	nav_msgs::GetPlan srv;
 	geometry_msgs::PoseStamped pose;
 	pose.header.stamp=ros::Time::now();
@@ -272,7 +275,8 @@ void ped_momdp::RetrievePaths()
 		coord.y=srv.response.plan.poses[i].pose.position.y;
         p.push_back(coord);
 	}
-    worldModel.setPath(p);
+	worldModel.setPath(p);
+
 	pathPub_.publish(srv.response.plan);
 }
 
@@ -303,7 +307,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
         worldStateTracker.cleanPed();
 
 		PomdpState curr_state = worldStateTracker.getPomdpState();
-		//publishROSState();
+		publishROSState();
 		despot->PrintState(curr_state, cout);
 		cout<<"here"<<endl;
 		if(worldModel.isGlobalGoal(curr_state.car))
@@ -347,7 +351,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		cout<<"safe action "<<safeAction<<endl;
 
 
-		//publishBelief();
+		publishBelief();
 
 		momdp_speed_=real_speed_;
         if(safeAction==0) {}
@@ -360,11 +364,12 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 }
 
 
-void ped_momdp::publishMarker(int id,vector<double> belief)
+void ped_momdp::publishMarker(int id,PedBelief & ped)
 {
 	visualization_msgs::MarkerArray markers;
 	uint32_t shape = visualization_msgs::Marker::CUBE;
 	//cout<<"belief vector size "<<belief.size()<<endl;
+	std::vector<double> belief = ped.prob_goals;
 	for(int i=0;i<belief.size();i++)
 	{
 		visualization_msgs::Marker marker;			
@@ -379,8 +384,8 @@ void ped_momdp::publishMarker(int id,vector<double> belief)
 		marker.action = visualization_msgs::Marker::ADD;
 
 		double px=0,py=0;
-		//px=RealWorldPt->ped_list[RealWorldPt->pedInView_list[id]].w;
-		//py=RealWorldPt->ped_list[RealWorldPt->pedInView_list[id]].h;
+		px=ped.pos.x;
+		py=ped.pos.y;
 		marker.pose.position.x = px+i*0.7;
 		marker.pose.position.y = py+belief[i]*2;
 		marker.pose.position.z = 0;
@@ -410,15 +415,15 @@ void ped_momdp::publishMarker(int id,vector<double> belief)
 		markers.markers.push_back(marker);
 	}
 	markers_pubs[id].publish(markers);
-
 }
 void ped_momdp::publishBelief()
 {
-//	vector<vector<double> > ped_beliefs=RealSimulator->GetBeliefVector(solver->root_->particles());	
+	//vector<vector<double> > ped_beliefs=RealSimulator->GetBeliefVector(solver->root_->particles());	
 	//cout<<"belief vector size "<<ped_beliefs.size()<<endl;
-//	for(int i=0;i<ped_beliefs.size();i++)
-//	{
-//		publishMarker(i,ped_beliefs[i]);
-//	}
+	int i=0;
+	for(auto & kv: worldBeliefTracker.peds)
+	{
+		publishMarker(i++,kv.second);
+	}
 
 }

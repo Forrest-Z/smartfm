@@ -80,7 +80,7 @@ public:
 	void publishROSState();
 	void publishAction(int);
 	void publishBelief();
-	void publishMarker(int id,vector<double> belief);
+	void publishMarker(int , PedBelief & ped);
 	bool getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
 	
 	//for despot

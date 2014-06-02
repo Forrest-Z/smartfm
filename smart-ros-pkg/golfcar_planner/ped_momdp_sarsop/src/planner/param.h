@@ -11,10 +11,11 @@ namespace ModelParams {
 	const int XSIZE=7;
 	const int YSIZE=15;
 	const int RMMax=30;   //maximum length of the rob_map structure
-	const int N_PED_IN=10;
+	const int N_PED_IN=15;
 	const int GOAL_TRAVELLED=10;
 
-    const double CRASH_PENALTY = 10000;
+    const double CRASH_PENALTY = -10000;
+	const double GOAL_REWARD = 500;
 
     //TODO dynamically calculate this
     const double PATH_STEP = 0.05;
@@ -36,7 +37,7 @@ namespace ModelParams {
 	const bool SocialForceModel=false;
 	const bool SocialForceWorld=false;
 
-    const double NOISE_GOAL_ANGLE = 1.0;
+    const double NOISE_GOAL_ANGLE = 3.14 * 0.6;
     const double PED_SPEED = 1.2;
 
 	const double vel_levels [10] = { 0.0, 1.0, 2.0 };
@@ -45,7 +46,7 @@ namespace ModelParams {
 	
 	const int  VEL_N=3;
 	const double VEL_MAX=2;
-	const double control_freq=1;
+	const double control_freq=3;
 	const double AccSpeed=1.0;
 	const char rosns[100]="";
 	const char laser_frame[100]="/base_laser_link";
