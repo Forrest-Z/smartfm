@@ -49,7 +49,7 @@ class dynamic_safety_zone
 
     double current_vel_;
     double current_angle_;
-    
+    double speed_increment_, relative_speed_diff_;
     double front_boundary_, side_boundary_, back_boundary_;
     geometry_msgs::PolygonStamped inner_safety_zone_;
     sensor_msgs::PointCloud remained_pointcloud_;
@@ -78,10 +78,12 @@ class dynamic_safety_zone
 
 		private_nh.param("x_buffer", x_buffer_, 1.5);
 		private_nh.param("y_buffer", y_buffer_, 0.2);
-		private_nh.param("x_coeff", x_coeff_, 2.0);
+		private_nh.param("x_coeff", x_coeff_, 3.0);
 		private_nh.param("y_coeff", y_coeff_, 0.25);
 		private_nh.param("angle_coeff", angle_coeff_, 2.0);
-
+		
+		private_nh.param("speed_increment", speed_increment_, 0.3);
+		private_nh.param("relative_speed_diff", relative_speed_diff_, 0.3);
 		private_nh.param("stop_time_threshold", stop_time_threshold_, 5.0);
 
 
@@ -135,8 +137,11 @@ class dynamic_safety_zone
 		double dt = (time_now - filter_time_).toSec();
 		current_vel_ = fabs(vFilter_.filter_dt(dt, odom_in->twist.twist.linear.x));
 		filter_time_ = time_now;
-		front_boundary_ = offcenter_x_ + x_buffer_ + x_coeff_*current_vel_;
-		side_boundary_  = offcenter_y_ + y_buffer_ + y_coeff_*current_vel_ + angle_coeff_*current_angle_*current_vel_;
+
+        double deputy_vel = current_vel_>2.0 ? current_vel_ : 2.0;
+
+		front_boundary_ = offcenter_x_ + x_buffer_ + x_coeff_*deputy_vel;
+		side_boundary_  = offcenter_y_ + y_buffer_ + y_coeff_*deputy_vel + angle_coeff_*current_angle_*deputy_vel;
 		geometry_msgs::PolygonStamped current_safety_zoon;
 		current_safety_zoon.header = odom_in->header;
 		current_safety_zoon.header.frame_id = base_frame_;
@@ -192,6 +197,7 @@ class dynamic_safety_zone
     	for(size_t i=0; i<local_points.points.size(); i++)
     	{
 			geometry_msgs::Point32 point_tmp = local_points.points[i];
+            //cout<<point_tmp.x<<","<<point_tmp.y<<endl;
 			//if(point_tmp.x < 1.7 && point_tmp.y < 0.7 && point_tmp.y > -0.7) continue;
 			//if point out of current_polygon, ignore;
 			if((point_tmp.x < -back_boundary_ || point_tmp.x > front_boundary_) || (point_tmp.y>side_boundary_||point_tmp.y<-side_boundary_)) continue;
@@ -226,15 +232,19 @@ class dynamic_safety_zone
     	}
 
 		//very important: to avoid sudden acceleration when vehicle is static;
+        /*
 		if(minimum_speed > current_vel_)
 		{
             double speed_temp;
 		  //double speed_temp = current_vel_ + (minimum_speed-current_vel_)/control_freq_;
-            if(minimum_speed-current_vel_ >0.3) speed_temp = current_vel_ + 0.3;
+	    //relative_speed_diff_ 1.0 for iMiev, 0.3 for golfcart
+	    //speed_increment_ 0.5 for iMiev, 0.3 for golfcart
+            if(minimum_speed-current_vel_ >relative_speed_diff_) speed_temp = current_vel_ + speed_increment_;
             else speed_temp = current_vel_ + (minimum_speed-current_vel_);
 			minimum_speed = speed_temp > 0.6? speed_temp:0.6;
 		}
-		
+		*/
+
     	fused_speed_ = advised_speed_;
     	if(advised_speed_.linear.x > minimum_speed) fused_speed_.linear.x = minimum_speed;
     	fused_speed_pub_.publish(fused_speed_);

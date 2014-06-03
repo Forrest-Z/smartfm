@@ -3,12 +3,16 @@
     <!--3Autonomous-->
 #if($vehicle=="buggy")    
     <node pkg="lowlevel_controllers" type="steering_controller" name="steering_controller"/>
-    <node pkg="long_control" type="speedcontroller" name="speed_controller_v2" output="screen"/>
+    #if($stm32f3!=1)
+        <node pkg="long_control" type="speedcontroller" name="speed_controller_v2" output="screen"/>
+    #end
 #elseif($vehicle=="car")
     <node pkg="lowlevel_controllers" type="steering_controller_iMiev" name="steering_controller">
 	<remap from="steer_angle" to="pronto/joy_steer"/>
     </node>
-    <node pkg="long_control" type="iMiev_speedcontroller" name="speed_controller_v2" output="screen"/>
+    <node pkg="long_control" type="iMiev_speedcontroller" name="speed_controller_v2" output="screen">
+      <!--remap from="pronto/veh_throttle" to="p_pronto/veh_throttle"/-->
+    </node>
 #end
 #if($ppc=="move_base")
     <node pkg="move_base" type="move_base" respawn="false" name="move_base_node">
@@ -24,18 +28,28 @@
 	<rosparam file="$(find Launch_v2)/move_base/global_costmap_params.yaml" command="load" />
     </node>
 #elseif($ppc=="standalone")
-  <node pkg="golfcar_ppc" type="purepursuit_controller" name="ppc"/>
+  <node pkg="golfcar_ppc" type="purepursuit_controller" name="purepursuitController"/>
 #end
-#if($!rrt)
-
-<!--    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper"/> -->
-	
+#if($dynamic_safety)
+    <node pkg="dynamic_safety_zone" type="dynamic_safety_zone" name="dynamic_virtual_bumper" output="screen">
+#if($vehicle=="car")
+      <remap from="front_bottom_scan" to="front_bottom_scan_filtered"/>
+#end
+#if($reflexxes)
+<!-- <remap from="cmd_vel" to="cmd_cmd"/> -->
+#end
+      </node>
 #end
     <node name="soundplay_node" pkg="sound_play" type="soundplay_node.py"/>
     <node name="sound_speaker" pkg="sound_speaker" type="sound_speaker">
       <param name="sound_path" value="$(find sound_speaker)/sounds/"/>
     </node>
-
+#if($reflexxes)
+    <node pkg="trajectory_simulator" type="speed_generator" name="speed_generator">
+        <remap from="cmd_vel" to="cmd_cmd"/>
+        <remap from="cmd_generator" to="cmd_vel"/>
+    </node>
+#end
     <!--5SpeedAdvisor-->
     <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen"/>
     <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
@@ -48,11 +62,21 @@
 #if($rrt)
       <!--Metric_Map-->
       <node pkg="Metric_Map" type="Local_Map" name="Dist_Map">
+#if($vehicle=="car")
+		<remap from = "sick_scan2" to ="front_bottom_scan_filtered"/>
+#elseif($vehicle=="buggy")
 		<remap from = "sick_scan2" to ="front_bottom_scan"/>
-		<remap from = "static_map" to ="/golfcart/static_map"/>
+#end
+		<remap from = "static_map" to ="/$ROBOT/static_map"/>
       </node>
       <!--StateMachine-->
-      <node pkg="Automoton_Control" type="ObstAvoid" name="Obst_Avoid" output="screen"/>
+      <node pkg="Automoton_Control" type="ObstAvoid" name="Obst_Avoid" output="screen">
+	<remap from="cmd_sm" to="cmd_vel"/>
+#if($vehicle=="car")
+	<remap from="front_bottom_scan" to="front_bottom_scan_filtered"/>
 #end
+      </node>
+#end
+  <node pkg="speed_advisor" type="simple_intersection_sm" name="simple_intersection_sm"/>
   </group>
 </launch> 

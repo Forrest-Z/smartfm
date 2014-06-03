@@ -18,7 +18,8 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 find_package(OpenCV REQUIRED)
 find_package( PkgConfig REQUIRED)
-pkg_check_modules( gsl REQUIRED gsl )
+pkg_check_modules( gsl REQUIRED gsl)
+
 #rosbuild_add_library(evg-thin src/evg/evg-thin.cc)
 #target_link_libraries(evg-thin ${OpenCV_LIBRARIES})
 #rosbuild_add_executable(example src/evg/example.cc)

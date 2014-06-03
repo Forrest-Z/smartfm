@@ -54,6 +54,7 @@ int main(int argc, char* argv[])
             {
                 if(i==j) continue;
                 StationPath path = complete.getPath(sl.get(i),sl.get(j));
+		cout<<i<<" "<<j<<":"<<endl;
                 print_signals(&path);
                 cout<<endl;
             }

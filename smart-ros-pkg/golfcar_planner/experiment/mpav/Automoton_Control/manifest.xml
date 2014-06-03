@@ -1,0 +1,23 @@
+<package>
+  <description brief="Automoton_Control">
+
+     Automoton_Control
+
+  </description>
+  <author>LIUWLZ</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/Automoton_Control</url>
+  <depend package="roscpp"/>
+  <depend package="MPMsgs"/>
+  <depend package="pnc_msgs"/>
+  <depend package="rrts_exp"/>
+  <depend package="nav_msgs"/>
+  <depend package="Goal_Generator"/>
+  <depend package="Speed_Control"/>
+  
+  <export>
+  	<cpp cflags="-I${prefix}/include" lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -lAutomoton_Control"/>
+  </export>
+  
+</package>

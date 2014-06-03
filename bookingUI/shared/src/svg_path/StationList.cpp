@@ -13,10 +13,10 @@ using namespace std;
 
 StationList::StationList()
 {
-    knownStations_.push_back( Station("CREATE", 0) );
-    knownStations_.push_back( Station("CREATE Garage", 1) );
-    knownStations_.push_back( Station("ENTERPRISE", 2) );
-    knownStations_.push_back( Station("ENTERPRISE Garage", 3) );
+    knownStations_.push_back( Station("ENTRANCE", 0) );
+    knownStations_.push_back( Station("VIP LOUNGE", 1) );
+    knownStations_.push_back( Station("TECH ARENA", 2) );
+    knownStations_.push_back( Station("PARKING", 3) );
     // knownStations_.push_back( Station("DCC workshop", 0) );
     // knownStations_.push_back( Station("McDonalds", 1) );
     // knownStations_.push_back( Station("EA", 2) );

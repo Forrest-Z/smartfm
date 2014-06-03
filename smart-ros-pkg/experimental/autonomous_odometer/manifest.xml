@@ -1,0 +1,21 @@
+<package>
+  <description brief="autonomous_odometer">
+
+     autonomous_odometer
+
+  </description>
+  <author>demian</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/autonomous_odometer</url>
+  <depend package="roscpp"/>
+  <depend package="std_msgs"/>
+  <depend package="pnc_msgs"/>
+  <depend package="long_control"/>
+  <depend package="lowlevel_controllers"/>
+  <depend package="rosbag"/>
+  <depend package="old_msgs"/>
+  <depend package="nav_msgs"/>
+</package>
+
+

@@ -1,45 +1,66 @@
 extern poseResult best_translation(float res, float step_size,
 			int x_step, int y_step, int x_range, int y_range,
-			vector<int> point_x, vector<int> point_y,
+			vector<cudaPointNormal> point,
 			int voronoi_width, int voronoi_height,
-			device_vector<int> &dev_px, device_vector<int> &dev_py,
+			device_vector<cudaPointNormal> &dev_p,
 			device_vector<int> &dev_voronoi_data, int stream_idx);
 extern host_vector<int> voronoi_jfa(int voronoi_width, int voronoi_height, 
-		 vector<int> point_x, vector<int> point_y,
-		 device_vector<int> &dev_px, device_vector<int> &dev_py,
-		 device_vector<int> &dev_voronoi_data
+		 vector<cudaPointNormal> point,
+		 device_vector<cudaPointNormal> &dev_p,
+		 device_vector<int> &dev_voronoi_data, bool gotNormal
 		);
+extern void clearCSM();
 extern void setDevFreeSpaceData(device_vector<float> &device_free_space);
 
 bool rowMajorDataSort(rowMajorData d1, rowMajorData d2){
    return d1.data_idx < d2.data_idx;
  }
- 
+ //add calculation of normal value as part of the scores
 template <class T>
 void CsmGPU<T>::getVoronoiTemplate(pcl::PointCloud<T> &cloud, bool visualize){
-  vector<int> seeds_x, seeds_y;
-  cv::Mat voronoi_initial_data = removeRepeatedPts(cloud, seeds_x, seeds_y);
-  host_vector<int> voronoi_data = voronoi_jfa(voronoi_size_.width, voronoi_size_.height,
-				  seeds_x, seeds_y, dev_px_, dev_py_,
-				  dev_voronoi_data_
+  vector<cudaPointNormal> seeds;
+  cv::Mat voronoi_initial_data = removeRepeatedPts(cloud, seeds);
+  voronoi_jfa(voronoi_size_.width, voronoi_size_.height,
+				  seeds, dev_p_,
+				  dev_voronoi_data_, gotNormal_
 					);
-  
-  if(visualize)
+  if(visualize){
+    host_vector<int> voronoi_data = dev_voronoi_data_;
     visualize_data(voronoi_data, string("voronoi"));
+  }
+}
+
+template <class T>
+CsmGPU<T>::~CsmGPU(){
+  clearCSM();
 }
 
 template <class T>
 CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size, 
 	  pcl::PointCloud<T> &cloud, bool visualize):
   res_(res)
-  {  
+  {
+    cudaSetDevice(0);
+    cudaDeviceSynchronize();
+    cudaThreadSynchronize();
+    
+    size_t free_byte ;
+    size_t total_byte ;
+
+    cudaMemGetInfo( &free_byte, &total_byte ) ;
+    cout<<"Cuda usage: remaining "<<free_byte/1024000.0<<"MiB out of "<<total_byte/1024000.0<<"MiB"<<endl;
+	      
     cv::Size voronoi_size(template_size.x/res_, template_size.y/res_);
     voronoi_size_ = voronoi_size;
     vector<cv::Vec3b> id_rgbs;
     map<int, cv::Vec3b> color_map;
     cv::Mat voronoi_temp(voronoi_size, CV_16UC1);
     
-    getVoronoiTemplate(cloud, false);
+    string pclFieldList = pcl::getFieldsList(cloud);
+    gotNormal_ = true;
+    if(pclFieldList.find("normal") == string::npos)
+      gotNormal_ = false;
+    getVoronoiTemplate(cloud, visualize);
   }
   
   void drawPathOnOpenCV(ClipperLib::Path &path, cv::Mat &freeSpaceTemplate, cv::Scalar color, 
@@ -147,6 +168,7 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
   template <class T>
   CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size, sensor_msgs::LaserScan &laser, bool visualize):res_(res){
     cv::Size voronoi_size(template_size.x/res_, template_size.y/res_);
+    gotNormal_ = false;
     voronoi_size_ = voronoi_size;
     laser_geometry::LaserProjection projector;
     sensor_msgs::PointCloud cloud;
@@ -170,14 +192,14 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
     pcl::PointCloud<T> pcl_pts;
     for(size_t i=0; i<cloud.points.size(); i++)
       pcl_pts.push_back(T(cloud.points[i].x, cloud.points[i].y, 0.0));
-    return getBestMatch(x_step, y_step, r_step, x_range, y_range, r_range, pcl_pts, offset);
+    return getBestMatch(x_step, y_step, r_step, x_range, y_range, r_range, pcl_pts, offset, &pcl::transformPointCloud);
   }
-		      
   template <class T>
   poseResult CsmGPU<T>::getBestMatch(double x_step, double y_step, double r_step,
 		    double x_range, double y_range, double r_range,
 		    pcl::PointCloud<T> &matching_pts,
-		    poseResult offset
+		    poseResult offset,void(*transformFunc)(const pcl::PointCloud< T > &, pcl::PointCloud< T > &, const Eigen::Matrix4f &)
+		    = &pcl::transformPointCloudWithNormals
  			){
     poseResult best_result;
     best_result.score = 0.0;
@@ -185,7 +207,7 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
     vector<double> r_array;
     for(double r = -r_range+offset.r; r<= r_range+offset.r; r+=r_step) r_array.push_back(r);
     vector<poseResult> results(r_array.size());
-#pragma omp parallel for
+//#pragma omp parallel for
     for(size_t i=0; i<r_array.size(); i++){
       pcl::PointCloud<T> cloud_out;
       Eigen::Matrix4f transform;
@@ -197,9 +219,8 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
       //cout<<r<<"deg ="<<endl<<transform<<endl;
       stringstream ss;
       ss<<"rotate_"<<r_array[i]<<".pcd";
-      pcl::transformPointCloud (matching_pts, cloud_out, transform);
-      
-      
+      transformFunc(matching_pts, cloud_out, transform);
+	
       //cudaDeviceSynchronize();
       //pcl::io::savePCDFileASCII (ss.str(), cloud_out);
       int stream_idx = stream_count%4;
@@ -223,28 +244,29 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
   poseResult CsmGPU<T>::getBestTranslation(double x_step, double y_step, 
 			  double x_range, double y_range,
 			  pcl::PointCloud<T> &matching_pts, int stream_idx){
-    vector<int> px, py;
-    removeRepeatedPts(matching_pts, px, py);
+    vector<cudaPointNormal> p;
+    removeRepeatedPts(matching_pts, p);
     double step_size = x_step;
     if(step_size > y_step) step_size = y_step;
     //step_size = res_;
     if(PRINT_DEBUG)
-      cout<<"matching pts "<<px.size()<<"x"<<py.size()<<endl;
+      cout<<"matching pts "<<p.size()<<endl;
     return best_translation(res_, step_size, x_step/res_, y_step/res_, x_range/res_, y_range/res_,
-		     px, py, 
+		     p, 
 		     voronoi_size_.width, voronoi_size_.height,
-		     dev_px_, dev_py_, dev_voronoi_data_,stream_idx
+		     dev_p_, dev_voronoi_data_,stream_idx
 		    );
   
   }
   
   template <class T>
  cv::Mat CsmGPU<T>::removeRepeatedPts(pcl::PointCloud<T> &cloud,
-			vector<int> &seeds_x, vector<int> &seeds_y){
+			vector<cudaPointNormal> &cuda_seeds){
     uint16_t total_seed = 1;
-    seeds_x.clear(); seeds_y.clear();
+    cuda_seeds.clear();
     vector<rowMajorData> seeds;
     cv::Mat voronoi_data = cv::Mat::zeros(voronoi_size_, CV_16UC1);
+    
     for(size_t i=0; i<cloud.size(); i++){
       
       int x = cloud[i].x/res_ + voronoi_size_.width/2;
@@ -260,6 +282,13 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
 	  data.x = x;
 	  data.y = y;
 	  data.data_idx = x + y * voronoi_size_.width;
+	  
+#if PCLNORMAL
+	  if(gotNormal_){
+	    data.normal_x = cloud[i].normal_x;
+	    data.normal_y = cloud[i].normal_y;
+	  }
+#endif
 	  seeds.push_back(data);
 	  total_seed++;
 	}
@@ -267,8 +296,12 @@ CsmGPU<T>::CsmGPU(double res, cv::Point2d template_size,
     }
     std::sort(seeds.begin(), seeds.end(), rowMajorDataSort);
     for(size_t i=0; i<seeds.size(); i++){
-      seeds_x.push_back(seeds[i].x);
-      seeds_y.push_back(seeds[i].y);
+      cudaPointNormal cuda_seed;
+      cuda_seed.x = seeds[i].x;
+      cuda_seed.y = seeds[i].y;
+      cuda_seed.normal_x = seeds[i].normal_x;
+      cuda_seed.normal_y = seeds[i].normal_y;
+      cuda_seeds.push_back(cuda_seed);
     }
     return voronoi_data;
  }

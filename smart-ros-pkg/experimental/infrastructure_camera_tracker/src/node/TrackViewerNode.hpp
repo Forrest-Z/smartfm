@@ -27,6 +27,8 @@ class TrackViewerNode
 
     image_transport::ImageTransport img_transport;
     image_transport::Subscriber img_subscriber;
+    image_transport::Publisher img_tracker_pub;
+    
     ros::Subscriber trackset_subscriber;
 
     static std::vector<cv::Scalar> colormap;

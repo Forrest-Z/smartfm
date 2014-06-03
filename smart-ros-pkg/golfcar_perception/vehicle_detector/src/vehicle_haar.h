@@ -12,7 +12,7 @@
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
-#include <feature_detection/clusters.h>
+//#include <feature_detection/clusters.h>
 #include <geometry_msgs/PolygonStamped.h>
 
 using namespace std;

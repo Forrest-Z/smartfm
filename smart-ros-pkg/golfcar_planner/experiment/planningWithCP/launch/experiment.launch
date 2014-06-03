@@ -1,5 +1,0 @@
-<launch>
-   	 <node pkg="map_server" type="map_server" name="map_server2" args="$(find amcl_pc)/maps/utown.yaml"/>
-   	 <include file="$(find local_map)/single_launch/amcl_diff.launch"/>
-</launch>
-

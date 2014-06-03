@@ -23,6 +23,8 @@
   <depend package="common_rosdeps" />
   <depend package="pcl"/>
   <depend package="pcl_ros"/>
+  <depend package="pcl16"/>
+  <depend package="pcl16_ros"/>
   <rosdep name="eigen" />
   <depend package="svm_classifier"/>
   <depend package="mrpt_libs"/>

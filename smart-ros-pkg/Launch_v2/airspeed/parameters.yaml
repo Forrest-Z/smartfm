@@ -1,5 +1,16 @@
 #robot_name: &ROBOT_NAME !!python/object/apply:os.getenv ['ROBOT']
 #frame_id: &FRAME_ID !!python/object/apply:string.replace ['robot_name/front_top_lidar', robot_name, *ROBOT_NAME]
+$ROBOT/purepursuitController:
+  global_frame: $ROBOT/map
+  robot_frame: $ROBOT/base_link
+  max_pose_delay: 0.1
+  frequency: 50
+#if($vehicle=="car")
+  car_length: 2.55
+  min_lookahead: 4.0
+#elseif($vehicle=="buggy")
+  min_lookahead: 1.5
+#end
 $ROBOT/topTilted:
 #if($vehicle=="buggy")  host: 192.168.1.201
 #elseif($vehicle=="car")  host: 192.168.200.201
@@ -14,7 +25,7 @@ $ROBOT/base_link_to_front_top_lidar:
 #if($vehicle=="buggy")
   x: 1.78
   z: 1.82
-  pitch: 0.0
+  pitch: 0.0 #0.28
 #elseif($vehicle=="car")
   x: 1.825
   z: 1.66
@@ -27,8 +38,9 @@ $ROBOT/base_link_to_front_bottom_lidar:
   x: 1.78
   z: 0.755
 #elseif($vehicle=="car")
-  x: 3.17
-  z: 0.76
+  x: 3.17 #previously 3.14
+  z: 0.76 #previously 0.27
+  roll: 0 #previously 180
 #end
   parent_frame_id: $ROBOT/base_link
   child_frame_id: $ROBOT/front_bottom_lidar
@@ -57,7 +69,11 @@ $ROBOT/camera_front:
   frame_id: $ROBOT/camera_front_img
 $ROBOT/microstrain_3dmgx2_node:
   time_offset: -0.040
+#if($vehicle=="car")  
+  port: /dev/ttyACM0
+#elseif($vehicle=="buggy")
   port: /dev/msimu
+#end
   autostart: true
   frameid: $ROBOT/imu
   autocalibrate: true
@@ -119,13 +135,14 @@ $ROBOT/speed_controller_fastStop:
   coeff_brakepedal: 70
   err_threshold: 0.01
 $ROBOT/speed_controller_v2:
+#if($vehicle=="buggy")
   tau_v: 0.2
   throttleZeroThres: 0.1 #main switching surface of throttle
   brakeZeroThres: -0.2 #main switching surface of brake
-  fullBrakeThres: 0.05 #to make sure the car will stop at the end
+  fullBrakeThres: 0.5 #to make sure the car will stop at the end
 ###Throttle Settings###
   fullThrottleThres: 1.0
-  kp: 0.05    
+  kp: 0.06    
   ki: 0.01    
   kd: 0.005 
   kp_sat: 1.0
@@ -141,11 +158,29 @@ $ROBOT/speed_controller_v2:
   #full brake value
   coeff_brakepedal: -70
   brakeToThrottleThres: -20
-$ROBOT/ppc:
-  global_frame: $ROBOT/map
-  robot_frame: $ROBOT/base_link
-  max_pose_delay: 0.1
-  frequency: 50
+#elseif($vehicle=="car")
+  throttleZeroThres: 0.1 #main switching surface of throttle
+  brakeZeroThres: -0.5 #main switching surface of brake
+  fullBrakeThres: 0.5 #to make sure the car will stop at the end
+###Throttle Settings###
+  fullThrottleThres: 1000.0
+  kp: 250.0    
+  ki: 3.0    
+  kd: 30.0 
+  kp_sat: 1000.0
+  ki_sat: 700.0
+  kd_sat: 300.0
+###Brake Settings###
+  kp_brake: 5.0 #80
+  ki_brake: 1.0 #5
+  kd_brake: 0.0
+  kp_sat_brake: 100.0
+  ki_sat_brake: 70.0
+  kd_sat_brake: 0.0
+#full brake value
+  coeff_brakepedal: 100
+  brakeToThrottleThres: 10
+#end
 $ROBOT/move_base_node:
   footprint_padding: 0.01
   controller_frequency: 20.0
@@ -165,7 +200,11 @@ $ROBOT/route_planner:
 $ROBOT/speed_advisor:
   map_frame_id: $ROBOT/map 
   robot_frame_id: $ROBOT/base_link
+#if($vehicle=="car")  
+  max_speed: 5.0
+#elseif($vehicle=="buggy")
   max_speed: 1.5
+#end
   acc: 0.2
   max_dec: 1.0
   norm_dec: 0.3
@@ -174,14 +213,49 @@ $ROBOT/speed_advisor:
   frequency: 20.0
   tolerance: 0.5
   emergency_zone: 3.0
-  slow_zone: 7.0
-  slow_speed: 1.5
-  enterstation_speed: 1.5
-  stationspeed_dist: 30.0
+  slow_zone: 40.0
+  slow_speed: 2.0
+  enterstation_speed: 2.0
+  stationspeed_dist: 40.0
   baselink_carfront_length: 2.0
   kinematic_acceleration: false
+$ROBOT/speed_generator:
+#if($vehicle=="car")  
+  max_speed: 2.0
+  max_acc: 2.0
+  max_dec: 3.0
+  max_jerk: 1.5
+  frequency: 100.0
+#elseif($vehicle=="buggy")
+  max_speed: 1.2
+  max_acc: 0.8
+  max_dec: 3.0
+  max_jerk: 3.0
+  frequency: 100.0
+#end
 $ROBOT/dynamic_virtual_bumper:
   base_frame: $ROBOT/base_link
+  x_buffer: 1.2
+  y_buffer: 0.2
+  min_speed: 0.05
+#if($vehicle=="car")
+  x_coeff: 2.0
+  y_coeff: 0.02 #0.001 was used for utown to counter the narrow lanes
+  speed_increment: 0.5
+  relative_speed_diff: 1.0
+  offcenter_x: 4.0
+  offcenter_y: 0.8
+#elseif($vehicle=="buggy")
+  speed_increment: 0.3
+  relative_speed_diff: 0.3
+  x_coeff: 2.0
+  y_coeff: 0.5 #0.2 used for semi
+  offcenter_y: 0.65
+  offcenter_x: 1.95
+  x_buffer: 0.5
+  y_buffer: 0.2
+  angle_coeff: 1.0 #0.5 semi
+#end
 $ROBOT/Dist_Map:
   base_frame: $ROBOT/base_link
   global_frame: $ROBOT/map
@@ -190,4 +264,20 @@ $ROBOT/Obst_Avoid:
   base_frame: $ROBOT/base_link
   global_frame: $ROBOT/map
   local_frame: $ROBOT/local_map
-  obst_avoid_trigger: false
+  obst_avoid_trigger: true
+#if($vehicle=="car")  
+  slow_move_vel: 0.1
+  offcenter_x: 3.5
+  offcenter_y: 0.9
+#elseif($vehicle=="buggy")
+  slow_move_vel: 0.6
+  offcenter_x: 0.9
+  offcenter_y: 0.7
+#end
+$ROBOT/stm32f3node:
+  kp: 0.55
+  ki: 0.4
+  kp_br: 1.7
+  ki_br: 2.0
+  b_weight: 1.0
+  b_weight_br: 1.0

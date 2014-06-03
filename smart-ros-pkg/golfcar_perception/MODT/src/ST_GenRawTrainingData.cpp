@@ -98,6 +98,8 @@ private:
 	int														scanNum_perVector_;
 	size_t 													interval_;
 	double													speed_threshold_;
+	double													smallest_size_threshold_;
+
 	std::vector<std::pair<int, std::vector<int> > > 		object_cluster_IDs_;
 	DATMO_RawTrainingData									raw_training_data_;
 
@@ -119,13 +121,14 @@ DATMO::DATMO()
 	private_nh_.param("map_frame_id",       map_frame_id_,      std::string("map"));
 
 	private_nh_.param("speed_threshold",		speed_threshold_,      	3.0);
+	private_nh_.param("smallest_size_threshold",      		smallest_size_threshold_,     0.1);
 
 	//to reduce the size of feature vector;
 	private_nh_.param("downsample_interval",	downsample_interval_,    1);
 	private_nh_.param("scanNum_perVector",	scanNum_perVector_,    9);
 	interval_ = (downsample_interval_)*(scanNum_perVector_-1) +1;
 
-	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "/front_bottom_scan", 100);
+	laser_sub_ = new message_filters::Subscriber<sensor_msgs::LaserScan> (nh_, "front_bottom_scan", 100);
 	tf_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_sub_, tf_, odom_frame_id_, 100);
 	tf_filter_->registerCallback(boost::bind(&DATMO::scanCallback, this, _1));
 	tf_filter_->setTolerance(ros::Duration(0.1));
@@ -390,7 +393,7 @@ void DATMO::perform_prefiltering_movingEvidence()
 			float x_dim1 = max_pt1.x - min_pt1.x;
 			float y_dim1 = max_pt1.y - min_pt1.y;
 			float max_dim1 = (float)sqrt(x_dim1*x_dim1+y_dim1*y_dim1);
-			cluster_tobe_filtered = cluster_tobe_filtered || (max_dim1 < 2.0);
+			cluster_tobe_filtered = cluster_tobe_filtered || (max_dim1 < smallest_size_threshold_);
 
 			//a-2: for latest scan points;
 			pcl::PointXYZ min_pt2, max_pt2;

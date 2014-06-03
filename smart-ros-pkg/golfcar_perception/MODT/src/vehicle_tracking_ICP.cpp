@@ -2,7 +2,8 @@
 
 namespace mrpt{
 	
-	vehicle_tracking::vehicle_tracking()
+	vehicle_tracking::vehicle_tracking():
+			private_nh_("~")
 	{
 		ros::NodeHandle nh;
 		segpose_batch_sub_  = nh.subscribe("segment_pose_batches", 1, &vehicle_tracking::measurement_callback, this);
@@ -13,6 +14,8 @@ namespace mrpt{
 		model_deputy_pub_   = nh.advertise<sensor_msgs::PointCloud>("model_deputy", 2);
 		contour_cloud_debug_pub_	= nh.advertise<sensor_msgs::PointCloud>("contour_pcl_debug", 2);
 		object_total_id_ = 0;
+
+		private_nh_.param("odom_frame_id",      odom_frame_id_,     std::string("odom"));
 	}
 
 	void vehicle_tracking::measurement_callback(const MODT::segment_pose_batches& batches)
@@ -747,9 +750,9 @@ namespace mrpt{
 	void vehicle_tracking::tracks_visualization()
 	{
 		sensor_msgs::PointCloud contour_pcl, anchor_pcl, filtered_anchor_pcl;
-		contour_pcl.header.frame_id = "odom";
-		anchor_pcl.header.frame_id = "odom";
-		filtered_anchor_pcl.header.frame_id = "odom";
+		contour_pcl.header.frame_id = odom_frame_id_;
+		anchor_pcl.header.frame_id = odom_frame_id_;
+		filtered_anchor_pcl.header.frame_id = odom_frame_id_;
 		contour_pcl.header.stamp = latest_input_time_;
 		anchor_pcl.header.stamp = latest_input_time_;
 		filtered_anchor_pcl.header.stamp = latest_input_time_;

@@ -1,6 +1,7 @@
 #include <oculus_driver/oculus_ros.h>
 #include <oculus_driver/util.h>
 #include <oculus_msgs/HMDInfo.h>
+#include <pan_tilt_udp_remap/pan_tilt_msg.h>
 
 using namespace std;
 
@@ -33,8 +34,9 @@ bool OculusRos::init() {
   if (sensor_) {
     fusion_result_.AttachToSensor(sensor_);
     pub_ = node_.advertise<geometry_msgs::Quaternion>("/oculus/orientation", 10);
-    pan_pub_ = node_.advertise<std_msgs::Float32>("/pan_servo_angle", 10);
-    tilt_pub_ = node_.advertise<std_msgs::Float32>("/tilt_servo_angle", 10);
+    pan_tilt_pub_ = node_.advertise<pan_tilt_udp_remap::pan_tilt_msg>("/pan_tilt_servo_angle_udp",1);
+    //pan_pub_ = node_.advertise<std_msgs::Float32>("/pan_servo_angle_udp", 1);
+    //tilt_pub_ = node_.advertise<std_msgs::Float32>("/tilt_servo_angle_udp", 1);
   }
   return is_info_loaded_ || sensor_;
 }
@@ -61,6 +63,7 @@ void OculusRos::publish() {
   
   if (sensor_) {
     // topic
+    static int seq = 0;
     geometry_msgs::Quaternion q_msg;
     OVR::Quatf quaternion = fusion_result_.GetPredictedOrientation();
     //crashed somewhere here. Changed to GetPredictedOrientation solved the problem
@@ -74,15 +77,21 @@ void OculusRos::publish() {
     yaw -= yaw_init_;
     std::cout.setf(std::ios::fixed);
     std::cout.precision(2);
-    float pitch_degree = pitch/M_PI*180;
+    float pitch_degree = -pitch/M_PI*180;
     float yaw_degree = yaw/M_PI*180;
     cout<<"Pan="<<yaw_degree<<"\t"<<"Pitch= "<<pitch_degree<<"\xd"<<flush;
     
     std_msgs::Float32 yaw_msg, pitch_msg;
-    yaw_msg.data = yaw_degree;
-    pitch_msg.data = pitch_degree;
-    pan_pub_.publish(yaw_msg);
-    tilt_pub_.publish(pitch_msg);
+    yaw_msg.data = -yaw_degree;
+    pitch_msg.data = -pitch_degree;
+    pan_tilt_udp_remap::pan_tilt_msg pan_tilt_angle;
+    pan_tilt_angle.header.stamp = ros::Time::now();
+    pan_tilt_angle.header.seq = seq++;
+    pan_tilt_angle.pan_angle = yaw_msg;
+    pan_tilt_angle.tilt_angle = pitch_msg;
+    pan_tilt_pub_.publish(pan_tilt_angle);
+    //pan_pub_.publish(yaw_msg);
+    //tilt_pub_.publish(pitch_msg);
     convertYPRToMsg(-yaw, pitch, roll, q_msg);
     pub_.publish(q_msg);
     // tf

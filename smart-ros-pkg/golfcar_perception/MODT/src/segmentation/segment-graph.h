@@ -24,6 +24,7 @@ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307 USA
 #include "disjoint-set.h"
 
 // threshold function
+//#define MIN_DIST 0.1
 #define MIN_DIST 0.5
 #define THRESHOLD(size, c) (c/size)>MIN_DIST?(c/size):MIN_DIST
 

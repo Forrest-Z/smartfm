@@ -37,6 +37,7 @@ namespace mrpt{
 		sensor_msgs::PointCloud contour_points;
 		std::vector<geometry_msgs::Point32> anchor_points, filtered_anchor_points;
 
+
 		double					moving_direction;
 		double 					velocity;
 		double					omega;
@@ -134,7 +135,7 @@ namespace mrpt{
     class vehicle_tracking
     {
 	     public:
-
+		ros::NodeHandle private_nh_;
 		int object_total_id_;
     	//need a datatype to serve as the track history;
 		std::vector<model_free_track> object_tracks_;
@@ -142,6 +143,7 @@ namespace mrpt{
     	ros::Subscriber segpose_batch_sub_;
     	ros::Publisher contour_cloud_pub_, anchor_point_pub_, filtered_anchor_point_pub_, meas_deputy_pub_, model_deputy_pub_, contour_cloud_debug_pub_;
     	ros::Time latest_input_time_;
+		std::string				odom_frame_id_;
     	vehicle_tracking();
 		~vehicle_tracking(){};
 

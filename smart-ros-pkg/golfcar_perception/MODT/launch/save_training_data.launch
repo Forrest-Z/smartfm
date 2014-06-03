@@ -1,0 +1,14 @@
+<launch>
+    <node pkg="MODT" type="spatial_temporal_segmentation" name="spatial_temporal_segmentation" ns="iMiev" output="screen">
+		<param name="program_mode" value="0"/>
+		<param name="skip_scan_times" value="1"/>
+		<param name="downsample_interval" value="1"/>
+		<param name="scanNum_perVector" value="10"/>
+		<param name="feature_vector_length" value="115"/>
+		<param name="laser_frame_id" value="iMiev/front_bottom_lidar"/>
+		<param name="odom_frame_id" value="iMiev/odom"/>
+		<param name="derived_data_path" value="$(find MODT)/data"/>
+		<param name="abstract_summary_path" value="$(find MODT)/data/abstract_summary.yml"/>
+    </node>
+</launch>
+

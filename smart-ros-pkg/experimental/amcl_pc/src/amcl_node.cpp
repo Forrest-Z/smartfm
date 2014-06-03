@@ -40,6 +40,10 @@
 
 // Messages that I need
 #include "sensor_msgs/LaserScan.h"
+#include "sensor_msgs/PointCloud2.h"
+#include <pcl/ros/conversions.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "geometry_msgs/PoseArray.h"
 #include "geometry_msgs/Pose.h"
@@ -158,8 +162,8 @@ private:
 	message_filters::Subscriber<sensor_msgs::LaserScan>* laser_scan_sub_;
 	tf::MessageFilter<sensor_msgs::LaserScan>* laser_scan_filter_;
 
-	message_filters::Subscriber<sensor_msgs::PointCloud>* pc_scan_sub_;
-	tf::MessageFilter<sensor_msgs::PointCloud>* pc_scan_filter_;
+	message_filters::Subscriber<sensor_msgs::PointCloud2>* pc_scan_sub_;
+	tf::MessageFilter<sensor_msgs::PointCloud2>* pc_scan_filter_;
 
 	ros::Subscriber initial_pose_sub_;
 	std::vector< AMCLLaser* > lasers_;
@@ -229,7 +233,7 @@ private:
 	void checkLaserReceived(const ros::TimerEvent& event);
 
 	void resampleParticles(bool force_publication, bool resampled, tf::Stamped<tf::Pose>& odom_pose, std_msgs::Header header);
-	void pcReceived(const sensor_msgs::PointCloudConstPtr& pc_scan);
+	void pcReceived(const sensor_msgs::PointCloud2ConstPtr& pc_scan);
 	void initializeSensor(std_msgs::Header header, int &laser_index, tf::Stamped<tf::Pose> &odom_pose, pf_vector_t &pose,
 			bool &force_publication);
 };
@@ -383,7 +387,7 @@ AmclNode::AmclNode() :
 	pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2);
 	particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2);
 	amcllaser_pose_pub_ = nh_.advertise<geometry_msgs::PoseArray>("amcllaser_pose", 1);
-	amcllaser_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud>("amcllaser_pc", 1);
+	amcllaser_pc_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("amcllaser_pc", 1);
 	global_loc_srv_ = nh_.advertiseService("global_localization",
 			&AmclNode::globalLocalizationCallback,
 			this);
@@ -396,9 +400,9 @@ AmclNode::AmclNode() :
 	laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
 			this, _1));
 
-	pc_scan_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud>(nh_, pc_topic_, 1);
+	pc_scan_sub_ = new message_filters::Subscriber<sensor_msgs::PointCloud2>(nh_, pc_topic_, 1);
 	pc_scan_filter_ =
-				new tf::MessageFilter<sensor_msgs::PointCloud>(*pc_scan_sub_,
+				new tf::MessageFilter<sensor_msgs::PointCloud2>(*pc_scan_sub_,
 						*tf_,
 						odom_frame_id_,
 						100);
@@ -827,7 +831,7 @@ AmclNode::globalLocalizationCallback(std_srvs::Empty::Request& req,
 }
 
 void
-AmclNode::pcReceived(const sensor_msgs::PointCloudConstPtr& pc_scan)
+AmclNode::pcReceived(const sensor_msgs::PointCloud2ConstPtr& pc_scan)
 {
 	int laser_index = -1; tf::Stamped<tf::Pose> odom_pose; pf_vector_t pose;
 	bool force_publication = false;
@@ -835,11 +839,13 @@ AmclNode::pcReceived(const sensor_msgs::PointCloudConstPtr& pc_scan)
 	initializeSensor(pc_scan->header, laser_index, odom_pose, pose, force_publication);
 	// If the robot has moved, update the filter
 	bool resampled = false;
+	pcl::PointCloud<pcl::PointXYZ> cloud;
+	pcl::fromROSMsg (*pc_scan, cloud);
 	if(lasers_update_[laser_index])
 	{
 		AMCLLaserData ldata;
 		ldata.sensor = lasers_[laser_index];
-		ldata.range_count = pc_scan->points.size();
+		ldata.range_count = cloud.points.size();
 
 
 		// The AMCLLaserData destructor will free this memory
@@ -847,8 +853,8 @@ AmclNode::pcReceived(const sensor_msgs::PointCloudConstPtr& pc_scan)
 		ROS_ASSERT(ldata.ranges);
 		for(int i=0;i<ldata.range_count;i++)
 		{
-			ldata.ranges[i][0] = pc_scan->points[i].x;
-			ldata.ranges[i][1] = pc_scan->points[i].y;
+			ldata.ranges[i][0] = cloud.points[i].x;
+			ldata.ranges[i][1] = cloud.points[i].y;
 		}
 
 		lasers_[laser_index]->UpdateSensor(pf_, (AMCLSensorData*)&ldata);

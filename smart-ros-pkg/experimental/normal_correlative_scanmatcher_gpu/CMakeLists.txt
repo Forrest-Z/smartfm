@@ -29,15 +29,22 @@ set(ISAM_LIBS isam cholmod colamd amd lapack blas rt)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
 
-include_directories(/usr/include/vtk-5.8)
+include_directories(/usr/include/vtk-5.8 /usr/local/cuda/include/)
 find_package(OpenCV REQUIRED)
 find_package(CUDA REQUIRED)
-
-CUDA_ADD_LIBRARY(raster_map src/raster_pc_grayscale_v2.cu)
+FIND_LIBRARY(cudalibs cudart /usr/local/cuda/lib64)
+# CUDA_ADD_LIBRARY(raster_map src/raster_pc_grayscale_v2.cu)
 INCLUDE_DIRECTORIES( "/usr/include/mysql" )
 rosbuild_add_executable(isam_full src/isam_full.cpp src/dbgstream.cpp)
-target_link_libraries(isam_full ${ISAM_LIBS} ${OpenCV_LIBS} mysqlpp raster_map)
-rosbuild_add_openmp_flags(isam_full)
+target_link_libraries(isam_full ${ISAM_LIBS} ${cudalibs} ${OpenCV_LIBS} mysqlpp)
 
-rosbuild_add_executable(all_matching src/all_matching.cpp src/dbgstream.cpp)
-target_link_libraries(all_matching ${ISAM_LIBS} ${OpenCV_LIBS} mysqlpp raster_map)
+set_property(
+   TARGET isam_full
+   PROPERTY COMPILE_DEFINITIONS PCLNORMAL
+   )   
+rosbuild_add_openmp_flags(isam_full)
+# 
+# rosbuild_add_executable(all_matching src/all_matching.cpp src/dbgstream.cpp)
+# target_link_libraries(all_matching ${ISAM_LIBS} ${OpenCV_LIBS} mysqlpp raster_map)
+
+#rosbuild_add_executable(simple_occupancy_grid_construction src/simple_occupancy_grid_construction.cpp)

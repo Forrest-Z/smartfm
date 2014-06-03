@@ -1,10 +1,10 @@
 <launch>
 	<node pkg="vision_sandbox" type="vehicle_detection" name="vehicle_detection" output="screen">
 		<param name="image_transport" value="compressed" />
-		<param name="car_model" value="$(find vision_sandbox)/model/car_final.xml"/>
+		<param name="car_model" value="$(find vision_sandbox)/model/car.xml"/>
 	</node>
 
-	<node pkg="vision_sandbox" type="ground_extraction" name="ground_extraction" output="screen">
+	<!--node pkg="vision_sandbox" type="ground_extraction" name="ground_extraction" output="screen">
 		<param name="image_transport" value="compressed" />
-	</node>
+	</node-->
 </launch>

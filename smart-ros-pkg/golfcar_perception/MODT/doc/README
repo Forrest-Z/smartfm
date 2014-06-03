@@ -1,4 +1,16 @@
-Format the data using "./bin/DATMO_dataformatting"
-./svm-scale -s data/range_4batch data/4formated > data/scaled_4batch
-python tools/grid.py data/scaled_4batch 
-./svm-train -s 0 -c 32 -g 0.5 -e 0.1 data/scaled_4batch
+Below is a description of how to use this MODT package for object detection;
+
+1. to generate raw training data, use "ST_GenRawTrainingData"
+2. label the raw training data to get a mask summary of LIDAR scans, for certain ros databag, use "ST_LabelRawTrainingData"
+   "DATMO_Label_Parameters.yaml" is used to give some parameters;
+   The output file is "abstract_summary.yaml"
+3. Based on the summary file of scan masks, generate derived training data, using "spatial_temporal_segmentation" by setting the program mode to "0";
+4. Use the derived data to train you svm classifer;
+	Format the data using "./bin/DATMO_dataformatting", remember to change the sample number;
+	./svm-scale -s data/range_9_4 data/9_4formatted > data/scaled_9_4
+	 python tools/grid.py data/scaled_9_4
+	./svm-train -s 0 -c 32 -g 0.5 -e 0.1 data/scaled_9_4
+5. Run the detection online using "spatial_temporal_segmentation" by setting the program mode to "1";
+
+python tools/subset.py data/scaled_ped151 3000 data/subsetPed151 data/subsetPed151rest
+

@@ -1,0 +1,16 @@
+int32 automode
+int32 throttle_state
+float64 target_speed
+float64 kp
+float64 ki
+float64 b_weight
+float64 p
+float64 i
+float64 u
+float64 u_t_1
+float64 feedback_speed
+float64 filtered_speed
+float64 feedback_err
+int32 serial_received
+int32 enc1_penalty
+int32 enc2_penalty
