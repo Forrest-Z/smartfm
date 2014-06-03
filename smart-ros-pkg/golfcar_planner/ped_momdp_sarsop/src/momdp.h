@@ -38,8 +38,8 @@
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
-#include <pomdp_path_planner/GetPomdpPath.h>
-#include <pomdp_path_planner/PomdpPath.h>
+//#include <pomdp_path_planner/GetPomdpPath.h>
+//#include <pomdp_path_planner/PomdpPath.h>
 #include <nav_msgs/GetPlan.h>
 #include "WorldModel.h"
 #include "ped_pomdp.h"

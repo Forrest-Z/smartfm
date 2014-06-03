@@ -14,8 +14,8 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Path.h>
-#include <pomdp_path_planner/GetPomdpPath.h>
-#include <pomdp_path_planner/PomdpPath.h>
+//#include <pomdp_path_planner/GetPomdpPath.h>
+//#include <pomdp_path_planner/PomdpPath.h>
 #include <ped_navfn/MakeNavPlan.h>
 
 pedestrian_momdp::pedestrian_momdp()
