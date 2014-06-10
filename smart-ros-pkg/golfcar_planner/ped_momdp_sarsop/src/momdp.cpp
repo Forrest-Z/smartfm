@@ -253,7 +253,10 @@ void ped_momdp::RetrievePaths()
 	nav_msgs::GetPlan srv;
 	geometry_msgs::PoseStamped pose;
 	pose.header.stamp=ros::Time::now();
-	pose.header.frame_id="/map";
+
+	char buf[100];
+	sprintf(buf,"%s%s",ModelParams::rosns, "/map");
+	pose.header.frame_id=buf;
 	
 	pose.pose.position.x=worldStateTracker.carpos.x;
 	pose.pose.position.y=worldStateTracker.carpos.y;

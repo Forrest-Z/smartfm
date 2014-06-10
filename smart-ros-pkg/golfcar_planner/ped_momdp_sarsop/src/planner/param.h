@@ -48,8 +48,10 @@ namespace ModelParams {
 	const double VEL_MAX=2;
 	const double control_freq=3;
 	const double AccSpeed=1.0;
-	const char rosns[100]="";
-	const char laser_frame[100]="/base_laser_link";
+	const char rosns[100]="/golfcart";
+//	const char laser_frame[100]="/base_laser_link";
+
+	const char laser_frame[100]="/front_bottom_lidar";
 	const int NPATH=2;
 };
 

@@ -23,8 +23,10 @@
 	 </node>
 
 
-     <!-- **** cost map and path planning **** -->
+     <!-- **** cost map and path planning **** 
+	 -->
      <node name="ped_path_planner" pkg="ped_momdp_sarsop" type="path_planner"  ns="/golfcart">
          <rosparam file="$(find ped_momdp_sarsop)/path_planner.yaml" command="load" />
+         <remap from="/ped_path_planner/planner/plan" to="/new_global_plan" />
      </node>
 </launch>
