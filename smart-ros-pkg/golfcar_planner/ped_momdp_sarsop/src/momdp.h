@@ -108,6 +108,8 @@ public:
 	PedPomdp * despot;
 	DESPOTSTAR* solver;
 	double momdp_speed_,real_speed_;
+	string global_frame_id;
+
 private:
 	double control_freq;
 	bool goal_reached;

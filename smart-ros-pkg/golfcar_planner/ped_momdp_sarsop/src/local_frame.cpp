@@ -50,7 +50,7 @@ local_frame::local_frame()
 	loadFilter();
     ros::NodeHandle n("~");
     //n.param("global_frame", global_frame_, string("/odom"));
-	n.param("global_frame", global_frame_, ModelParams::rosns+string("/map"));
+	n.param("global_frame", global_frame_, ModelParams::rosns + string("/map"));
     n.param("threshold", threshold_, 3.0);
     n.param("offsetx", offsetx_, 0.0);
     n.param("offsety", offsety_, 3.0);
@@ -141,9 +141,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
                 frame_id<<"ped_"<<ped_transforms_[matched_ped].label;
                 plf.header.frame_id = frame_id.str();
 				*/
-				char buf[100];
-				sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-				plf.header.frame_id=buf;
+				plf.header.frame_id = ModelParams::rosns + "/map";
 
                 tf::Stamped<tf::Pose> in_pose, out_pose;
 
@@ -169,8 +167,7 @@ void local_frame::pedCallback(sensing_on_road::pedestrian_vision_batchConstPtr p
 				*/
                 //then update the robot pose with the same frame
                 in_pose.setIdentity();
-				sprintf(buf,"%s%s",ModelParams::rosns,ModelParams::laser_frame);
-                in_pose.frame_id_ = buf;
+                in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
                 if(!getObjectPose(plf.header.frame_id, in_pose, out_pose)) continue;
 
                 plf.rob_pose.x = out_pose.getOrigin().getX();
@@ -248,11 +245,8 @@ void local_frame::publishTransform(const ros::TimerEvent& event)
 	
         tf::Stamped<tf::Pose> in_pose, out_pose;
 		in_pose.setIdentity();
-		char buf[100];
-		sprintf(buf,"%s%s",ModelParams::rosns,ModelParams::laser_frame);
-		in_pose.frame_id_ = buf;
-		sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-		if(!getObjectPose(buf, in_pose, out_pose)) {
+		in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
+		if(!getObjectPose(ModelParams::rosns + "/map", in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 		} else {
 			if(path_record.size()==0)

@@ -58,9 +58,7 @@ pedestrian_momdp::pedestrian_momdp()
 	momdp->car_pub=nh.advertise<geometry_msgs::PoseStamped>("car_pose",1000);
 	//momdp->path_client=nh.serviceClient<pomdp_path_planner::GetPomdpPath>("get_pomdp_paths");
 	
-	char buf[100];
-	sprintf(buf,"%s%s",ModelParams::rosns, "/ped_path_planner/planner/make_plan");
-	momdp->path_client=nh.serviceClient<nav_msgs::GetPlan>(buf);
+	momdp->path_client=nh.serviceClient<nav_msgs::GetPlan>(ModelParams::rosns + "/ped_path_planner/planner/make_plan");
 
 	
 
@@ -74,9 +72,7 @@ void pedestrian_momdp::publishPath()
 	cerr << "DEBUG: Call publishPath() " << endl;
 	nav_msgs::Path msg;
 
-	char buf[100];
-	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-	msg.header.frame_id=buf;
+	msg.header.frame_id=ModelParams::rosns+"/map";
 	msg.header.stamp=ros::Time::now();
 	vector<COORD> path=momdp->worldModel.path;
 	msg.poses.resize(path.size());
@@ -99,9 +95,7 @@ void pedestrian_momdp::publishPath()
 	{
 		visualization_msgs::Marker marker;			
 
-		char buf[100];
-		sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-		marker.header.frame_id=buf;
+		marker.header.frame_id=ModelParams::rosns+"/map";
 		marker.header.stamp=ros::Time::now();
 		marker.ns="basic_shapes";
 		marker.id=i;
@@ -160,9 +154,7 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 
 	sensor_msgs::PointCloud pc;
 
-	char buf[100];
-	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-	pc.header.frame_id=buf;
+	pc.header.frame_id=ModelParams::rosns+"/map";
 	pc.header.stamp=lPedLocal.ped_local[0].header.stamp;
 	//RealWorld.ped_list.clear();
 	vector<Pedestrian> ped_list;

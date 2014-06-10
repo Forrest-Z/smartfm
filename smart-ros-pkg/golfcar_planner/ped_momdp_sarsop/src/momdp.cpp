@@ -19,6 +19,7 @@ int RandomActionSeed() {
 
 ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh) : worldBeliefTracker(worldModel), worldStateTracker(worldModel)
 {
+	global_frame_id = ModelParams::rosns + "/map";
 	cerr <<"DEBUG: Entering ped_momdp()"<<endl;
 	control_freq=frequency;
 
@@ -135,17 +136,12 @@ void ped_momdp::publishROSState()
 {
 	geometry_msgs::Point32 pnt;
 	
-	char buf[100];
-	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-	
-
 	geometry_msgs::Pose pose;
 	
 	geometry_msgs::PoseStamped pose_stamped;
 	pose_stamped.header.stamp=ros::Time::now();
 
-	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-	pose_stamped.header.frame_id=buf;
+	pose_stamped.header.frame_id=global_frame_id;
 
 	pose_stamped.pose.position.x=(worldStateTracker.carpos.x+0.0);
 	pose_stamped.pose.position.y=(worldStateTracker.carpos.y+0.0);
@@ -155,8 +151,7 @@ void ped_momdp::publishROSState()
 	geometry_msgs::PoseArray pA;
 	pA.header.stamp=ros::Time::now();
 
-	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-	pA.header.frame_id=buf;
+	pA.header.frame_id=global_frame_id;
 	for(int i=0;i<worldStateTracker.ped_list.size();i++)
 	{
 		//GetCurrentState(ped_list[i]);
@@ -191,9 +186,7 @@ void ped_momdp::publishAction(int action)
 		uint32_t shape = visualization_msgs::Marker::CUBE;
 		visualization_msgs::Marker marker;			
 		
-		char buf[100];
-		sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-		marker.header.frame_id=buf;
+		marker.header.frame_id=global_frame_id;
 		marker.header.stamp=ros::Time::now();
 		marker.ns="basic_shapes";
 		marker.id=0;
@@ -254,9 +247,7 @@ void ped_momdp::RetrievePaths()
 	geometry_msgs::PoseStamped pose;
 	pose.header.stamp=ros::Time::now();
 
-	char buf[100];
-	sprintf(buf,"%s%s",ModelParams::rosns, "/map");
-	pose.header.frame_id=buf;
+	pose.header.frame_id=global_frame_id;
 	
 	pose.pose.position.x=worldStateTracker.carpos.x;
 	pose.pose.position.y=worldStateTracker.carpos.y;
@@ -291,11 +282,8 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
         tf::Stamped<tf::Pose> in_pose, out_pose;
 		in_pose.setIdentity();
 
-		char buf[100];
-		sprintf(buf,"%s%s",ModelParams::rosns,ModelParams::laser_frame);
-		in_pose.frame_id_ = buf; 
-		sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-		while(!getObjectPose(buf, in_pose, out_pose)) {
+		in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame; 
+		while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 		} 
 
@@ -377,9 +365,7 @@ void ped_momdp::publishMarker(int id,PedBelief & ped)
 	{
 		visualization_msgs::Marker marker;			
 
-		char buf[100];
-		sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-		marker.header.frame_id=buf;
+		marker.header.frame_id=global_frame_id;
 		marker.header.stamp=ros::Time::now();
 		marker.ns="basic_shapes";
 		marker.id=i;

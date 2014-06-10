@@ -1,6 +1,7 @@
 
 #ifndef MODELPARAMS_H
 #define MODELPARAMS_H
+#include<string>
 
 
 namespace ModelParams {
@@ -48,10 +49,12 @@ namespace ModelParams {
 	const double VEL_MAX=2;
 	const double control_freq=3;
 	const double AccSpeed=1.0;
-	const char rosns[100]="/golfcart";
+//  const char rosns[100]="/golfcart";
 //	const char laser_frame[100]="/base_laser_link";
 
-	const char laser_frame[100]="/front_bottom_lidar";
+//	const char laser_frame[100]="/front_bottom_lidar";
+	const std::string rosns="/golfcart";
+	const std::string laser_frame="/front_bottom_lider";
 	const int NPATH=2;
 };
 
