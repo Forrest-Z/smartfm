@@ -252,8 +252,13 @@ void ped_momdp::RetrievePaths()
 	pose.pose.position.x=worldStateTracker.carpos.x;
 	pose.pose.position.y=worldStateTracker.carpos.y;
 	srv.request.start=pose;
-	pose.pose.position.x=18;
-	pose.pose.position.y=49;
+	//for simulation
+	//pose.pose.position.x=18;
+	//pose.pose.position.y=49;
+	//for utown 
+	
+	pose.pose.position.x=108;
+	pose.pose.position.y=143;
 	srv.request.tolerance=1.0;
 	srv.request.goal=pose;
 	path_client.call(srv);
@@ -337,7 +342,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		safeAction=solver->Search();
 
 		//actionPub_.publish(action);
-		//publishAction(safeAction);
+		publishAction(safeAction);
 
 		cout<<"safe action "<<safeAction<<endl;
 

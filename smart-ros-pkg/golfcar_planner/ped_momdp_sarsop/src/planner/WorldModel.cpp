@@ -7,12 +7,21 @@
 using namespace std;
 
 WorldModel::WorldModel(): freq(ModelParams::control_freq) {
+	/*
     goals = {
         COORD(54, 4),
         COORD(31, 4),
         COORD(5,  5),
         COORD(44,49),
         COORD(18,62)
+    };
+	*/
+    goals = {
+        COORD(107, 167),
+        COORD(121, 169),
+        COORD(125,  143),
+        COORD(109,109),
+        COORD(122,114)
     };
 }
 

@@ -1,37 +1,25 @@
-#include <golfcar_ppc/golfcar_purepursuit.h>
+#include "golfcar_purepursuit.h"
 
 #include <fmutil/fm_math.h>
 
 namespace golfcar_purepursuit
 {
 
-PurePursuit::PurePursuit(string global_frameID, double min_look_ahead_dist, double forward_achor_pt_dist, double car_length)
+PurePursuit::PurePursuit(string global_frameID)
 {
     global_frameID_ = global_frameID;
     Lfw_ = 3;
-    min_lookahead_ = min_look_ahead_dist;
-    lfw_ = forward_achor_pt_dist;
-    car_length_ = car_length;
+    lfw_ = 1;
+    car_length_ = 1.632;
     nextPathThres_ = 5;
     dist_to_final_point = 100;
     initialized_ = false;
-    lookahead_ini_ =false;
     path_n_ = 0;
     nextPathCount_ = 0;
     ros::NodeHandle n;
     pp_vis_pub_ = n.advertise<geometry_msgs::PolygonStamped>("pp_vis", 1);
 }
 
-void PurePursuit::updateCommandedSpeed(double speed_now){
-  speed_now = fabs(speed_now);
-  double Lfw = 2.24*speed_now;
-  if(Lfw < min_lookahead_)
-    Lfw_ = min_lookahead_;
-  else if(Lfw > 12.0)
-    Lfw_ = 12.0;
-  else
-    Lfw_ = Lfw;
-}
 
 bool PurePursuit::steering_control(double *wheel_angle, double *dist_to_goal)
 {
@@ -69,16 +57,13 @@ bool PurePursuit::heading_lookahead(double *heading_la, double *dist_to_goal)
     //reverse search to ensure that the pursuing point will always
     //be the one in front of the vehicle
     *dist_to_goal = 0;
-    //if( !circle_line_collision(anchor_pt, &collided_pt_) || !lookahead_ini_)
+    for( path_n_=(int)path_.poses.size()-2; path_n_>=0; path_n_-- )
     {
-      lookahead_ini_ = true;
-      for( path_n_=(int)path_.poses.size()-2; path_n_>=0; path_n_-- )
-      {
-	  current_point_ = path_.poses[path_n_].pose.position;
-	  next_point_ = path_.poses[path_n_+1].pose.position;
-	  if( circle_line_collision(anchor_pt, &collided_pt_) ) break;
-      }
+        current_point_ = path_.poses[path_n_].pose.position;
+        next_point_ = path_.poses[path_n_+1].pose.position;
+        if( circle_line_collision(anchor_pt, &collided_pt_) ) break;
     }
+
     //calculate distance to goal
     if( ! current_pos_to_point_dist(path_.poses.size()-1, dist_to_goal) )
     	return false;
@@ -112,7 +97,7 @@ bool PurePursuit::current_pos_to_point_dist(int end_point, double* path_dist)
         return false;
     }
 
-    for( int i=path_n_+1; i<end_point; i++ )
+    for( unsigned i=path_n_+1; i<end_point; i++ )
     {
         *path_dist += fmutil::distance(path_.poses[i].pose.position,
                                         path_.poses[i+1].pose.position);

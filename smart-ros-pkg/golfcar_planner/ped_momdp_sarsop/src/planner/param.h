@@ -54,7 +54,7 @@ namespace ModelParams {
 
 //	const char laser_frame[100]="/front_bottom_lidar";
 	const std::string rosns="/golfcart";
-	const std::string laser_frame="/front_bottom_lider";
+	const std::string laser_frame="/front_bottom_lidar";
 	const int NPATH=2;
 };
 
