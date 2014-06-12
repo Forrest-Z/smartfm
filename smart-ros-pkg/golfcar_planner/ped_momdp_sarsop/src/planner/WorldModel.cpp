@@ -7,7 +7,6 @@
 using namespace std;
 
 WorldModel::WorldModel(): freq(ModelParams::control_freq) {
-	/*
     goals = {
         COORD(54, 4),
         COORD(31, 4),
@@ -15,7 +14,7 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq) {
         COORD(44,49),
         COORD(18,62)
     };
-	*/
+	/*
     goals = {
         COORD(107, 167),
         COORD(121, 169),
@@ -23,6 +22,7 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq) {
         COORD(109,109),
         COORD(122,114)
     };
+	*/
 }
 
 bool WorldModel::isLocalGoal(const PomdpState& state) {

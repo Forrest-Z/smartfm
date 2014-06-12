@@ -73,9 +73,10 @@ class VelPublisher2 : public VelPublisher {
 		}
         target_vel = pomdp_vel->linear.x;
 		
+		/*
 		if(0.2<target_vel && target_vel < 0.5) {
 			target_vel = 0.6;
-		} 
+		} */
     }
 
     void publishSpeed(const ros::TimerEvent& event) {

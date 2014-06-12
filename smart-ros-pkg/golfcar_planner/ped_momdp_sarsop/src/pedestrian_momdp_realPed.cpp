@@ -30,7 +30,6 @@ pedestrian_momdp::pedestrian_momdp()
 	//pathSub_=nh.subscribe("global_plan", 1, &pedestrian_momdp::pathCallback,this);
 	pc_pub=nh.advertise<sensor_msgs::PointCloud>("confident_objects_momdp",1);
 	path_pub=nh.advertise<nav_msgs::Path>("momdp_path",10);
-	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
     ros::NodeHandle n("~");
 
 	pathPublished=false;
@@ -87,41 +86,6 @@ void pedestrian_momdp::publishPath()
 	path_pub.publish(msg);
 	cout<<"path with length "<<length<<" published"<<endl;
 
-	//publish goals also
-	visualization_msgs::MarkerArray markers;
-	uint32_t shape = visualization_msgs::Marker::CYLINDER;
-
-	for(int i=0;i<ModelParams::NGOAL;i++)
-	{
-		visualization_msgs::Marker marker;			
-
-		marker.header.frame_id=ModelParams::rosns+"/map";
-		marker.header.stamp=ros::Time::now();
-		marker.ns="basic_shapes";
-		marker.id=i;
-		marker.type=shape;
-		marker.action = visualization_msgs::Marker::ADD;
-
-
-		marker.pose.position.x = momdp->worldModel.goals[i].x;
-		marker.pose.position.y = momdp->worldModel.goals[i].y;
-		marker.pose.position.z = 0;
-		marker.pose.orientation.x = 0.0;
-		marker.pose.orientation.y = 0.0;
-		marker.pose.orientation.z = 0.0;
-		marker.pose.orientation.w = 1.0;
-
-		marker.scale.x = 1;
-		marker.scale.y = 1;
-		marker.scale.z = 1;
-		marker.color.r = marker_colors[i][0];
-		marker.color.g = marker_colors[i][1];
-		marker.color.b = marker_colors[i][2];
-		marker.color.a = 1.0;
-		
-		markers.markers.push_back(marker);
-	}
-	goal_pub.publish(markers);
 	cerr << "DEBUG: Done publishPath() " << endl;
 }
 pedestrian_momdp::~pedestrian_momdp()

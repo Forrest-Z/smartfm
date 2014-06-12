@@ -14,8 +14,8 @@
 
 <node pkg="laser_clustering_known_environment" type="ped_clustering_laser_only" name="ped_clustering">
 <param name="dist_thres" value="1.0"/>
-<!--<param name="svg_file" value="$(find laser_clustering_known_environment)/utown_exp_launch_files/utown_plaza_ped_boundary_small.svg"/>-->
-<param name="svg_file" value="$(find laser_clustering_known_environment)/utown_exp_launch_files/utown_plaza_ped_boundary.svg"/>
+<param name="svg_file" value="$(find laser_clustering_known_environment)/utown_exp_launch_files/utown_plaza_ped_boundary_small.svg"/>
+<!--<param name="svg_file" value="$(find laser_clustering_known_environment)/utown_exp_launch_files/utown_plaza_ped_boundary.svg"/>-->
 </node>
 
 <node pkg="dataAssoc_experimental" type="dataAssoc" name="dataAssoc"  ns="golfcart" output="screen">

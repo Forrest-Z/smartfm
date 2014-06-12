@@ -1,6 +1,7 @@
 ped_costmap:
     global_frame: /golfcart/map
     robot_base_frame: /golfcart/base_link
+    map_topic: map_cost
     static_map: true
     publish_frequency: 5
     robot_radius: 0.6
