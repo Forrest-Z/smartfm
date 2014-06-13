@@ -94,7 +94,7 @@ public:
 	//void updateObsStates();
 	//void clean_momdp_problem_sim();
 
-	ros::Publisher window_pub;
+	ros::Publisher window_pub, goal_pub;
 	ros::Publisher car_pub;
 	ros::Publisher pa_pub;
 	ros::Publisher pathPub_;
@@ -108,6 +108,8 @@ public:
 	PedPomdp * despot;
 	DESPOTSTAR* solver;
 	double momdp_speed_,real_speed_;
+	string global_frame_id;
+
 private:
 	double control_freq;
 	bool goal_reached;

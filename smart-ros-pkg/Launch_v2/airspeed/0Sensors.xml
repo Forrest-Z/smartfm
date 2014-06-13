@@ -17,8 +17,9 @@
     <node pkg="Launch_v2" type="static_transform_publisher_param" name="base_link_to_camera_front_base"/>
     <node pkg="Launch_v2" type="static_transform_publisher_param" name="camera_front_base_to_img"/>
     <node pkg="uvc_cam" type="uvc_cam_node" name="camera_front" output="screen">
-		<param name="device" type="string" value="/dev/video1"/>
-		<remap from="camera" to="camera_front"/>
+	<remap from="camera" to="camera_front"/>
+    <param name="contrast" value="50"/>
+    <param name="device" type="string" value="/dev/cam_front" />
 	<param name="camera_info_url" value="file://$(find Launch)/golfcar/sensors/logitech_webcam_param_camera0_LD.ini"/>
     </node>
     <node pkg="uvc_cam" type="uvc_cam_node" name="camera_front_seat" output="screen">

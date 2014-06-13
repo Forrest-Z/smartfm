@@ -1,7 +1,14 @@
 <launch>
+<group ns="golfcart">
+
+	<node name="map_server_costmap" pkg="map_server" type="map_server"  args="$(find utown_plaza)/utown_momdp_small_fill.yaml">
+		<remap from="map" to="map_cost"/>
+		<param name="frame_id" value="/golfcart/map"/>
+	</node>
      <!-- **** cost map and path planning **** -->
-     <node name="ped_path_planner" pkg="ped_momdp_sarsop" type="path_planner" output="screen">
+     <node name="ped_path_planner" pkg="ped_momdp_sarsop" type="path_planner" output="screen" >
          <rosparam file="$(find ped_momdp_sarsop)/path_planner.yaml" command="load" />
          <remap from="/ped_path_planner/planner/plan" to="/new_global_plan" />
      </node>
+</group>
 </launch>

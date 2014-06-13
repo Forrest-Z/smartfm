@@ -1,6 +1,7 @@
 
 #ifndef MODELPARAMS_H
 #define MODELPARAMS_H
+#include<string>
 
 
 namespace ModelParams {
@@ -12,7 +13,7 @@ namespace ModelParams {
 	const int YSIZE=15;
 	const int RMMax=30;   //maximum length of the rob_map structure
 	const int N_PED_IN=15;
-	const int GOAL_TRAVELLED=10;
+	const int GOAL_TRAVELLED=5;
 
     const double CRASH_PENALTY = -10000;
 	const double GOAL_REWARD = 500;
@@ -45,11 +46,15 @@ namespace ModelParams {
 	//const double VEL_MAX=2.0;
 	
 	const int  VEL_N=3;
-	const double VEL_MAX=2;
+	const double VEL_MAX=1.5;
 	const double control_freq=3;
 	const double AccSpeed=1.0;
-	const char rosns[100]="";
-	const char laser_frame[100]="/base_laser_link";
+//  const char rosns[100]="/golfcart";
+//	const char laser_frame[100]="/base_laser_link";
+
+//	const char laser_frame[100]="/front_bottom_lidar";
+	const std::string rosns="/golfcart";
+	const std::string laser_frame="/front_bottom_lidar";
 	const int NPATH=2;
 };
 

@@ -30,7 +30,6 @@ pedestrian_momdp::pedestrian_momdp()
 	//pathSub_=nh.subscribe("global_plan", 1, &pedestrian_momdp::pathCallback,this);
 	pc_pub=nh.advertise<sensor_msgs::PointCloud>("confident_objects_momdp",1);
 	path_pub=nh.advertise<nav_msgs::Path>("momdp_path",10);
-	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
     ros::NodeHandle n("~");
 
 	pathPublished=false;
@@ -57,7 +56,8 @@ pedestrian_momdp::pedestrian_momdp()
 	momdp->pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);
 	momdp->car_pub=nh.advertise<geometry_msgs::PoseStamped>("car_pose",1000);
 	//momdp->path_client=nh.serviceClient<pomdp_path_planner::GetPomdpPath>("get_pomdp_paths");
-	momdp->path_client=nh.serviceClient<nav_msgs::GetPlan>("/ped_path_planner/planner/make_plan");
+	
+	momdp->path_client=nh.serviceClient<nav_msgs::GetPlan>(ModelParams::rosns + "/ped_path_planner/planner/make_plan");
 
 
 	//momdp->simLoop();
@@ -65,46 +65,27 @@ pedestrian_momdp::pedestrian_momdp()
     ros::spin();
 }
 extern double marker_colors[20][3];
-void pedestrian_momdp::publishGoal()
+void pedestrian_momdp::publishPath()
 {
+	cerr << "DEBUG: Call publishPath() " << endl;
+	nav_msgs::Path msg;
 
-	//publish goals also
-	visualization_msgs::MarkerArray markers;
-	uint32_t shape = visualization_msgs::Marker::CYLINDER;
-
-	for(int i=0;i<ModelParams::NGOAL;i++)
+	msg.header.frame_id=ModelParams::rosns+"/map";
+	msg.header.stamp=ros::Time::now();
+	vector<COORD> path=momdp->worldModel.path;
+	msg.poses.resize(path.size());
+	for(int i=0;i<path.size();i++)
 	{
-		visualization_msgs::Marker marker;			
-
-		char buf[100];
-		sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-		marker.header.frame_id=buf;
-		marker.header.stamp=ros::Time::now();
-		marker.ns="basic_shapes";
-		marker.id=i;
-		marker.type=shape;
-		marker.action = visualization_msgs::Marker::ADD;
-
-
-		marker.pose.position.x = momdp->worldModel.goals[i].x;
-		marker.pose.position.y = momdp->worldModel.goals[i].y;
-		marker.pose.position.z = 0;
-		marker.pose.orientation.x = 0.0;
-		marker.pose.orientation.y = 0.0;
-		marker.pose.orientation.z = 0.0;
-		marker.pose.orientation.w = 1.0;
-
-		marker.scale.x = 1;
-		marker.scale.y = 1;
-		marker.scale.z = 1;
-		marker.color.r = marker_colors[i][0];
-		marker.color.g = marker_colors[i][1];
-		marker.color.b = marker_colors[i][2];
-		marker.color.a = 1.0;
-		
-		markers.markers.push_back(marker);
+		msg.poses[i].pose.position.x=momdp->worldModel.path[i].x;
+		msg.poses[i].pose.position.y=momdp->worldModel.path[i].y;
+		msg.poses[i].pose.position.z=0;
+		msg.poses[i].header.frame_id=msg.header.frame_id;
+		msg.poses[i].header.stamp=ros::Time::now();
 	}
-	goal_pub.publish(markers);
+	path_pub.publish(msg);
+	cout<<"path with length "<<length<<" published"<<endl;
+
+	cerr << "DEBUG: Done publishPath() " << endl;
 }
 pedestrian_momdp::~pedestrian_momdp()
 {
@@ -136,9 +117,7 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 
 	sensor_msgs::PointCloud pc;
 
-	char buf[100];
-	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-	pc.header.frame_id=buf;
+	pc.header.frame_id=ModelParams::rosns+"/map";
 	pc.header.stamp=lPedLocal.ped_local[0].header.stamp;
 	//RealWorld.ped_list.clear();
 	vector<Pedestrian> ped_list;

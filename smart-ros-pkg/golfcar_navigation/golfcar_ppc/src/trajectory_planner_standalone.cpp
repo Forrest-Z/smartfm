@@ -10,7 +10,7 @@
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/PoseArray.h>
-#include <golfcar_ppc/golfcar_purepursuit.h>
+#include "golfcar_purepursuit.h"
 #include <pnc_msgs/move_status.h>
 #include <pnc_msgs/poi.h>
 #include <fmutil/fm_math.h>
@@ -45,21 +45,16 @@ public:
     cmd_steer_pub_ = nh.advertise<geometry_msgs::Twist>("cmd_steer", 1);
     global_plan_pub_ = nh.advertise<nav_msgs::Path>("global_plan", 1);
     slowZone_pub_ = nh.advertise<geometry_msgs::PoseArray>("slowZone", 1, true);
-    intersections_pub_ = nh.advertise<sensor_msgs::PointCloud>("intersection_pts", 1, true);
     poi_pub_ = nh.advertise<pnc_msgs::poi>("poi", 1, true);
     g_plan_repub_sub_ = nh.subscribe("global_plan_repub", 1, &TrajectoryPlannerStandalone::repubCallback, this);
 	switch_sub= nh.subscribe("new_global_plan", 1, &TrajectoryPlannerStandalone::switchCallback, this);
     origin_destination_pt_sub_ = nh.subscribe("move_base_simple/goal", 1, &TrajectoryPlannerStandalone::originDestinationCallback, this);
-    cmd_vel_sub_ = nh.subscribe("cmd_vel", 1, &TrajectoryPlannerStandalone::cmdVelCallback, this);
     priv_nh.param("global_frame", global_frame_, string("/map")); 
     priv_nh.param("robot_frame", robot_frame_, string("/base_link"));
     priv_nh.param("frequency", frequency_, 100.0);
     priv_nh.param("max_pose_delay", delay_, 0.015);
-    double min_lookahead, anchor_pt_dist, car_length;
-    priv_nh.param("min_lookahead", min_lookahead, 3.0);
-    priv_nh.param("anchor_pt_dist", anchor_pt_dist, 1.0);
-    priv_nh.param("car_length", car_length, 1.632);
-    pp_ = new golfcar_purepursuit::PurePursuit(global_frame_.c_str(), min_lookahead, anchor_pt_dist, car_length);
+    
+    pp_ = new golfcar_purepursuit::PurePursuit(global_frame_.c_str());
     
     //without a variable to hold the timer, the timer won't start!!!
     ros::Timer timer = nh.createTimer(ros::Duration(1.0/frequency_), &TrajectoryPlannerStandalone::controlLoop, this);
@@ -68,10 +63,6 @@ public:
   }
   
 private:
-  void cmdVelCallback(geometry_msgs::Twist twist){
-    pp_->updateCommandedSpeed(twist.linear.x);
-  }
-  
   void repubCallback(nav_msgs::PathConstPtr p){
     ROS_INFO("New path received from rrt with size of: %d", (int)p->poses.size());
     rrt_path_ = *p;
@@ -187,17 +178,6 @@ private:
       //p.poses.push_back(goal);
       global_plan_pub_.publish(p);
       //plan.push_back(targets);
-      sensor_msgs::PointCloud int_pc;
-      int_pc.header.frame_id = global_frame_;
-      int_pc.header.stamp = ros::Time::now();
-      
-      for(size_t j=0; j<poi_.int_pts.size(); j++){
-	geometry_msgs::Point32 p;
-	p.x = plan[poi_.int_pts[j]].pose.position.x;
-	p.y = plan[poi_.int_pts[j]].pose.position.y;
-	int_pc.points.push_back(p);
-      }
-      intersections_pub_.publish(int_pc);
     }
     //send the rrt path to the local planner
     else {
@@ -225,17 +205,17 @@ private:
     //the intersections points is strictly increasing, getting the distance is easier
     for( unsigned i=0; i<poi_.int_pts.size(); i++ )
     {
-      if( poi_.int_pts[i] >= pp_->path_n_ )
-      {
-	double dist;
-	*int_point = pp_->path_.poses[poi_.int_pts[i]].pose.position;
-	if( pp_->current_pos_to_point_dist_simple(poi_.int_pts[i], &dist) )
-	{
-	  ROS_DEBUG_STREAM("int_p "<<poi_.int_pts[i]<<" path_n "<< pp_->path_n_);
-	  return dist;
-	}
-	else return -1;
-      }
+        if( poi_.int_pts[i] >= pp_->path_n_ )
+        {
+            double dist;
+            *int_point = pp_->path_.poses[poi_.int_pts[i]].pose.position;
+            if( pp_->current_pos_to_point_dist_simple(poi_.int_pts[i], &dist) )
+            {
+				ROS_DEBUG("int_pt %d, path_n %d", poi_.int_pts[i], pp_->path_n_);
+				return dist;
+			}
+            else return -1;
+        }
     }
     return -1;
   }
@@ -293,8 +273,6 @@ private:
 
 
     }
-    poi_.cur_node = pp_->path_n_;
-    poi_pub_.publish(poi_);
     move_status_pub_.publish(move_status);
     cmd_vel.angular.z = move_status.steer_angle;
     cmd_steer_pub_.publish(cmd_vel);

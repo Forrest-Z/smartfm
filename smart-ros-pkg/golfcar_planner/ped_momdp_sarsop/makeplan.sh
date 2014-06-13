@@ -1,11 +1,11 @@
 #!/bin/sh
-rosservice call /ped_path_planner/planner/make_plan "start:
+rosservice call /golfcart/ped_path_planner/planner/make_plan "start:
   header:
     seq: 0
     stamp:
       secs: 0
       nsecs: 0
-    frame_id: '/map'
+    frame_id: '/golfcart/map'
   pose:
     position:
       x: 50
@@ -22,7 +22,7 @@ goal:
     stamp:
       secs: 0
       nsecs: 0
-    frame_id: '/map'
+    frame_id: '/golfcart/map'
   pose:
     position:
       x: 18.0

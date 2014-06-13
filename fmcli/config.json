@@ -8,7 +8,7 @@
         "4-sensors": "roslaunch $(rospack find Launch_v2)/airspeed/0Sensors.launch",
 		"5-localization": "roslaunch $(rospack find Launch_v2)/airspeed/1Localization.launch",
 		"6-ped-detection": "roslaunch Launch_v2 4pedestrian_detect_pomdp.launch",
-		"7-navigation": "roslaunch $(rospack find Launch_v2)/airspeed/3Navigation.launch",
+		"7-navigation": "roslaunch $(rospack find Launch_v2)/airspeed/3Navigation_pomdp.launch",
 		"pomdp": "roslaunch ped_momdp_sarsop momdp.launch",
 		"reset-steering": "rostopic pub /golfcart/steer_angle std_msgs/Float64 0"
     }

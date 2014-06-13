@@ -597,6 +597,7 @@ bool data_assoc::imageProjection(Mat& img, std_msgs::Header& source_header, sens
     Point BR = Point(rect.lower_right.x, rect.lower_right.y);
 
 
+	/*
     if(generate_image_hash)
     {
         vector<double> img_hash;
@@ -606,6 +607,7 @@ bool data_assoc::imageProjection(Mat& img, std_msgs::Header& source_header, sens
         colorHist(ped_img, img_hash);
         ped.image_hash = img_hash;
     }
+	*/
     return true;
 }
 

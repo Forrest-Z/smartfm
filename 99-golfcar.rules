@@ -25,6 +25,7 @@ SUBSYSTEMS=="usb", ACTION=="add", ATTRS{idVendor}=="06c2", ATTRS{idProduct}=="00
 # Cameras
 #   Serial number was obtained with the following command:
 #     udevadm info --attribute-walk --name=/dev/video0 | grep serial
+#   sudo service udev restart
 
 # Front
 SUBSYSTEM=="video4linux", ATTR{name}=="UVC Camera (046d:0821)", ATTRS{serial}=="3C33E4E0", SYMLINK+="cam_front"

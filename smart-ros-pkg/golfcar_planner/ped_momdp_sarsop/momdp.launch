@@ -1,8 +1,7 @@
 <launch>
-	 <!--
+<!--
 	 <node name="ped_momdp" pkg="ped_momdp_sarsop" type="ped-momdp-sarsop" launch-prefix="gdb -ex run - -args" respawn="false" output="screen" ns="/golfcart">
 	 -->
-
 	 <node name="ped_momdp" pkg="ped_momdp_sarsop" type="ped-momdp-sarsop"  respawn="false" output="screen" ns="/golfcart">
 	    <param name="model_file" value="$(find ped_momdp_sarsop)/policy-files/20120308/rss-lane-u1.pomdpx"/>
 	    <param name="policy_file" value="$(find ped_momdp_sarsop)/policy-files/20120308/rss-lane-momdp-u1.policy"/>
@@ -10,6 +9,7 @@
 	    <param name="simNum" value="1"/>
         <param name="frequency" value="3.0"/>
 	    <param name="stationary" value="false"/>
+		<remap from="pomdp_path_repub" to="new_global_plan"/>
 	    <remap from="robot_0/amcl_pose" to="amcl_pose"/>
             <remap from="odom" to="odom"/>
 	 </node>
@@ -23,8 +23,10 @@
 	 </node>
 
 
-     <!-- **** cost map and path planning **** -->
-     <node name="ped_path_planner" pkg="ped_momdp_sarsop" type="path_planner"  ns="/golfcart">
+     <!-- **** cost map and path planning **** 
+    <node name="ped_path_planner" pkg="ped_momdp_sarsop" type="path_planner"  ns="/golfcart">
          <rosparam file="$(find ped_momdp_sarsop)/path_planner.yaml" command="load" />
+         <remap from="/ped_path_planner/planner/plan" to="/new_global_plan" />
      </node>
+	 -->
 </launch>
