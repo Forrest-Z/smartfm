@@ -59,34 +59,14 @@ pedestrian_momdp::pedestrian_momdp()
 	//momdp->path_client=nh.serviceClient<pomdp_path_planner::GetPomdpPath>("get_pomdp_paths");
 	momdp->path_client=nh.serviceClient<nav_msgs::GetPlan>("/ped_path_planner/planner/make_plan");
 
-	
 
 	//momdp->simLoop();
 
     ros::spin();
 }
 extern double marker_colors[20][3];
-void pedestrian_momdp::publishPath()
+void pedestrian_momdp::publishGoal()
 {
-	cerr << "DEBUG: Call publishPath() " << endl;
-	nav_msgs::Path msg;
-
-	char buf[100];
-	sprintf(buf,"%s%s",ModelParams::rosns,"/map");
-	msg.header.frame_id=buf;
-	msg.header.stamp=ros::Time::now();
-	vector<COORD> path=momdp->worldModel.path;
-	msg.poses.resize(path.size());
-	for(int i=0;i<path.size();i++)
-	{
-		msg.poses[i].pose.position.x=momdp->worldModel.path[i].x;
-		msg.poses[i].pose.position.y=momdp->worldModel.path[i].y;
-		msg.poses[i].pose.position.z=0;
-		msg.poses[i].header.frame_id=msg.header.frame_id;
-		msg.poses[i].header.stamp=ros::Time::now();
-	}
-	path_pub.publish(msg);
-	cout<<"path with length "<<length<<" published"<<endl;
 
 	//publish goals also
 	visualization_msgs::MarkerArray markers;
@@ -125,7 +105,6 @@ void pedestrian_momdp::publishPath()
 		markers.markers.push_back(marker);
 	}
 	goal_pub.publish(markers);
-	cerr << "DEBUG: Done publishPath() " << endl;
 }
 pedestrian_momdp::~pedestrian_momdp()
 {

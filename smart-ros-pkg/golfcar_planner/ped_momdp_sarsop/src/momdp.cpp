@@ -168,8 +168,44 @@ void ped_momdp::publishROSState()
 	}
 
 	pa_pub.publish(pA);
-	ros::Rate loop_rate(1);
-	//loop_rate.sleep();
+
+	visualization_msgs::MarkerArray markers;
+	uint32_t shape = visualization_msgs::Marker::CYLINDER;
+
+	for(int i=0;i<ModelParams::NGOAL;i++)
+	{
+		visualization_msgs::Marker marker;			
+
+		char buf[100];
+		sprintf(buf,"%s%s",ModelParams::rosns,"/map");
+		marker.header.frame_id=buf;
+		marker.header.stamp=ros::Time::now();
+		marker.ns="basic_shapes";
+		marker.id=i;
+		marker.type=shape;
+		marker.action = visualization_msgs::Marker::ADD;
+
+
+		marker.pose.position.x = momdp->worldModel.goals[i].x;
+		marker.pose.position.y = momdp->worldModel.goals[i].y;
+		marker.pose.position.z = 0;
+		marker.pose.orientation.x = 0.0;
+		marker.pose.orientation.y = 0.0;
+		marker.pose.orientation.z = 0.0;
+		marker.pose.orientation.w = 1.0;
+
+		marker.scale.x = 1;
+		marker.scale.y = 1;
+		marker.scale.z = 1;
+		marker.color.r = marker_colors[i][0];
+		marker.color.g = marker_colors[i][1];
+		marker.color.b = marker_colors[i][2];
+		marker.color.a = 1.0;
+		
+		markers.markers.push_back(marker);
+	}
+	goal_pub.publish(markers);
+
 }
 
 
@@ -421,9 +457,20 @@ void ped_momdp::publishBelief()
 	//vector<vector<double> > ped_beliefs=RealSimulator->GetBeliefVector(solver->root_->particles());	
 	//cout<<"belief vector size "<<ped_beliefs.size()<<endl;
 	int i=0;
+	ped_momdp_sarsop::peds_believes pbs;	
 	for(auto & kv: worldBeliefTracker.peds)
 	{
 		publishMarker(i++,kv.second);
+		ped_momdp_sarsop::ped_belief pb;
+		PedBelief belief = kv.second;	
+		pb.ped_x=belief.pos.x;
+		pb.ped_y=belief.pos.y;
+		for(auto & v : belief.prob_goals)
+			pb.belief_value.push_back(v);
+		pbs.believes.push_back(pb);
 	}
-
+	pbs.cmd_vel=worldStateTracker.carvel;
+	pbs.robotx=worldStateTracker.carpos.x;
+	pbs.roboty=worldStateTracker.carpos.y;
+	believesPub_.publish(pbs);
 }
