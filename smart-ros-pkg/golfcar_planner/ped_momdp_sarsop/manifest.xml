@@ -22,6 +22,7 @@
   <depend package="visualization_msgs"/>
   <depend package="ped_costmap"/>
   <depend package="ped_navfn"/>
+  <depend package="ped_pathplan"/>
   <depend package="pomdp_path_planner"/>
 </package>
 
