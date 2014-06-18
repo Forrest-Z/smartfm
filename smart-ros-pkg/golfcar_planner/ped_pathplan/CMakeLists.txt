@@ -27,8 +27,8 @@ rosbuild_add_library (ped_pathplan src/pathplan.cpp src/pathplan_ros.cpp)
 
 rosbuild_add_compile_flags(ped_pathplan -std=c++0x -O2 -ggdb  -fbounds-check)
 
-#rosbuild_add_executable(bin/navfn_node src/navfn_node.cpp)
-#target_link_libraries(bin/navfn_node navfn)
+rosbuild_add_executable(bin/path_planner src/PathPlanner.cpp)
+target_link_libraries(bin/path_planner ped_pathplan)
 
 
 

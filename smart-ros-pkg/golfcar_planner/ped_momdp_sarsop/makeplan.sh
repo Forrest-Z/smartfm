@@ -1,5 +1,6 @@
 #!/bin/sh
-rosservice call /golfcart/ped_path_planner/planner/make_plan "start:
+#rosservice call /golfcart/ped_path_planner/planner/make_plan "start:
+rosservice call /ped_path_planner/planner/make_plan "start:
   header:
     seq: 0
     stamp:

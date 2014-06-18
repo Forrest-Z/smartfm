@@ -5,6 +5,7 @@
 #include <set>
 #include <queue>
 #include <utility>
+#include <iostream>
 
 namespace ped_pathplan {
 
@@ -80,10 +81,12 @@ namespace ped_pathplan {
     }
 
     void PathPlan::setGoal(const State& goal) {
+		cout << "goal: " << goal[0] << " " << goal[1] << endl;
         this->goal = goal;
     }
 
     void PathPlan::setStart(const State& start) {
+		cout << "start: " << start[0] << " " << start[1] << endl;
         this->start = start;
     }
 
@@ -93,6 +96,7 @@ namespace ped_pathplan {
         priority_queue<QPair, vector<QPair>, greater<QPair>> q;
 
         PathItem p0 = {start, 0, heuristic(start), 0, -1};
+		items.push_back(p0);
         visited.insert(discretize(start));
         q.push(QPair(p0.g+p0.h, p0.index));
 
@@ -104,13 +108,19 @@ namespace ped_pathplan {
             q.pop();
             PathItem p = items[qp.second];
 
+			//cout << "(" <<  p.state[0] << " " << p.state[1] << " " << p.state[2] << ")" << " " << qp.first << endl;
+
             if(isGoalReached(p.state)) {
                 found_solution = true;
                 goal_item = p;
+				break;
             }
 
             for(float t: steerings) {
                 PathItem p1 = next(p, t);
+				if (! (0 < p1.state[0] && p1.state[0] < nx && 0 < p1.state[1] && p1.state[1] < ny)) {
+					break;
+				}
                 auto dp1 = discretize(p1.state);
                 if (visited.count(dp1)) {
                     break;
@@ -141,11 +151,14 @@ namespace ped_pathplan {
         PathItem p1;
         float dx = step * cos(s0[2]);
         float dy = step * sin(s0[2]);
+		p1.state.resize(3);
         p1.state[0] = s0[0] + dx;
         p1.state[1] = s0[1] + dy;
         p1.state[2] = s0[2] + t;
         DiscreteState ds1 = discretize(p1.state);
-        float cost = costarr[ds1[1]*nx + ds1[0]];
+		int mx = int(s0[0]);
+		int my = int(s0[1]);
+        float cost = costarr[my*nx + mx];
         p1.g = p.g + cost;
         p1.h = heuristic(p1.state);
         p1.prev_index = p.index;
@@ -165,15 +178,16 @@ namespace ped_pathplan {
         return h;
     }
 
-    float PathPlan::isGoalReached(const State& s) {
+    bool PathPlan::isGoalReached(const State& s) {
         float d = distToGoal(s);
-        return (d < TOLERANCE);
+        return (d < step);
     }
 
     DiscreteState PathPlan::discretize(const State& s) {
         DiscreteState ds(3);
-        ds[0] = int(s[0]);
-        ds[1] = int(s[1]);
+		float dd = step / 2;
+        ds[0] = int(s[0] / dd);
+        ds[1] = int(s[1] / dd);
         ds[2] = int(s[2] / D_YAW);
         return ds;
     }

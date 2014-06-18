@@ -89,7 +89,7 @@ public:
 	//void initSimulator();
 	void initSimulator();
 	void momdpInit();
-	void RetrievePaths();
+	void RetrievePaths(const tf::Stamped<tf::Pose>& carpose);
 	//void updatePedPoses();
 	//void updateObsStates();
 	//void clean_momdp_problem_sim();

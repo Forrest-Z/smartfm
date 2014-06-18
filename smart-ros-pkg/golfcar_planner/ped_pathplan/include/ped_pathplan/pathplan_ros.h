@@ -23,6 +23,7 @@ namespace ped_pathplan {
                 const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
 
         bool makePlanService(nav_msgs::GetPlan::Request& req, nav_msgs::GetPlan::Response& resp);
+		void publishPlan(const std::vector<geometry_msgs::PoseStamped>& path);
 
     protected:
       void updateCostmap(); 
@@ -34,6 +35,7 @@ namespace ped_pathplan {
       std::string tf_prefix;
       boost::mutex mutex;
       ros::ServiceServer make_plan_srv;
+      ros::Publisher plan_pub;
     };
 }
 

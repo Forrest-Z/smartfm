@@ -145,7 +145,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
 	obs = Observe(state);
 
-	assert(reward>=0);
+	//assert(reward>=0);
 	return false;
 }
 	

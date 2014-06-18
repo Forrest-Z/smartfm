@@ -47,12 +47,12 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
 
     // TODO set as a param
     if(mindist < 1.5) {
-		assert(false);
+		//assert(false);
 		return 2;
     }
 
     if(mindist < 3) {
-		assert(false);
+		//assert(false);
 		if(carvel>1.0) return 2;	
 		else if(carvel<0.5) return 1;
 		else return 0;

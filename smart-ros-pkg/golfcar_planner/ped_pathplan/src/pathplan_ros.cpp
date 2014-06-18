@@ -25,6 +25,8 @@ namespace ped_pathplan {
 
             ros::NodeHandle private_nh("~/" + name);
 
+			plan_pub = private_nh.advertise<nav_msgs::Path>("plan", 1);
+
             //string global_frame = cmros->getGlobalFrameID();
             make_plan_srv =  private_nh.advertiseService("make_plan", &PathPlanROS::makePlanService, this);
 
@@ -123,6 +125,8 @@ namespace ped_pathplan {
             plan.push_back(pose);
         }
 
+		publishPlan(plan);
+
         return !plan.empty();
     }
 
@@ -134,5 +138,29 @@ namespace ped_pathplan {
         wx = costmap.getOriginX() + mx * costmap.getResolution();
         wy = costmap.getOriginY() + my * costmap.getResolution();
     }
+
+	void PathPlanROS::publishPlan(const std::vector<geometry_msgs::PoseStamped>& path){
+		if(!initialized){
+			ROS_ERROR("This planner has not been initialized yet, but it is being used, please call initialize() before use");
+			return;
+		}
+
+		//create a message for the plan 
+		nav_msgs::Path gui_path;
+		gui_path.poses.resize(path.size());
+
+		if(!path.empty())
+		{
+			gui_path.header.frame_id = path[0].header.frame_id;
+			gui_path.header.stamp = path[0].header.stamp;
+		}
+
+		// Extract the plan in world co-ordinates, we assume the path is all in the same frame
+		for(unsigned int i=0; i < path.size(); i++){
+			gui_path.poses[i] = path[i];
+		}
+
+		plan_pub.publish(gui_path);
+	}
 
 }

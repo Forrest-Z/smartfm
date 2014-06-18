@@ -55,7 +55,7 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
 	goal_reached=false;
 	cerr << "DEBUG: Init simulator" << endl;
 	initSimulator();
-    RetrievePaths();
+    //RetrievePaths();
 
 	cerr <<"frequency "<<frequency<<endl;
 	cerr <<"DEBUG: before entering controlloop"<<endl;
@@ -262,7 +262,7 @@ void ped_momdp::publishAction(int action)
 }
 //for despot
 
-void ped_momdp::RetrievePaths()
+void ped_momdp::RetrievePaths(const tf::Stamped<tf::Pose>& carpose)
 {
 	//RealSimulator->global_path[];	
 	
@@ -282,13 +282,16 @@ void ped_momdp::RetrievePaths()
 //	if(worldModel.path.size()>0)  return ;
 	nav_msgs::GetPlan srv;
 	geometry_msgs::PoseStamped pose;
-	pose.header.stamp=ros::Time::now();
+	tf::poseStampedTFToMsg(carpose, pose);
 
-	pose.header.frame_id=global_frame_id;
-	
-	pose.pose.position.x=worldStateTracker.carpos.x;
-	pose.pose.position.y=worldStateTracker.carpos.y;
+	//pose.header.stamp=ros::Time::now();
+	//pose.header.frame_id=global_frame_id;
+	//pose.pose.position.x=worldStateTracker.carpos.x;
+	//pose.pose.position.y=worldStateTracker.carpos.y;
+
 	srv.request.start=pose;
+
+	// set goal
 	//for simulation
 	pose.pose.position.x=18;
 	pose.pose.position.y=49;
@@ -336,7 +339,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		worldStateTracker.updateCar(coord);
 		
 
-		RetrievePaths();
+		RetrievePaths(out_pose);
         worldStateTracker.cleanPed();
 
 		PomdpState curr_state = worldStateTracker.getPomdpState();
