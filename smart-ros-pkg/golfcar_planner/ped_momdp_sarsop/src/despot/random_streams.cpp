@@ -27,7 +27,7 @@ void RandomStreams::Back() const { position_--; }
 void RandomStreams::position(int value) const { position_ = value; }
 int RandomStreams::position() const { return position_; }
 
-bool RandomStreams::Exhausted() const { return position_ >= Length()-1; }
+bool RandomStreams::Exhausted() const { return position_ > Length()-1; }
 
 double RandomStreams::Entry(int stream) const {
 	return streams_[stream][position_];

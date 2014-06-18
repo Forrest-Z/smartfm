@@ -35,9 +35,9 @@ ValuedAction Policy::Value(const vector<State*>& particles,
 
 ValuedAction Policy::RecursiveValue(const vector<State*>& particles,
 		RandomStreams& streams, History& history) const {
-	if (streams.Exhausted() || (history.Size() - initial_depth_ >= Globals::config.max_policy_sim_len)) {
-		// cout << "simulated until depth " << (history.Size() - initial_depth_) << endl;
-		return Value(particles);
+	if (streams.Exhausted() || (history.Size() - initial_depth_ > Globals::config.max_policy_sim_len)) {
+		ValuedAction value = Value(particles);
+		return value;
 	} else {
 		int action = Action(particles, streams, history);
 

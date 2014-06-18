@@ -13,7 +13,7 @@ namespace ModelParams {
 	const int YSIZE=15;
 	const int RMMax=30;   //maximum length of the rob_map structure
 	const int N_PED_IN=15;
-	const int GOAL_TRAVELLED=5;
+	const int GOAL_TRAVELLED=20;
 
     const double CRASH_PENALTY = -10000;
 	const double GOAL_REWARD = 500;
