@@ -178,7 +178,7 @@ namespace costmap_2d {
       source_node.param("min_obstacle_height", min_obstacle_height, 0.0);
       source_node.param("max_obstacle_height", max_obstacle_height, 2.0);
 
-      if(!(data_type == "PointCloud2" || data_type == "PointCloud" || data_type == "LaserScan")){
+      if(!(data_type == "PointCloud2" || data_type == "PointCloud" || data_type == "LaserScan" || data_type == "peds_believes")){
         ROS_FATAL("Only topics that use point clouds or laser scans are currently supported");
         throw std::runtime_error("Only topics that use point clouds or laser scans are currently supported");
       }
@@ -250,6 +250,17 @@ namespace costmap_2d {
         observation_subscribers_.push_back(sub);
         observation_notifiers_.push_back(filter);
       }
+	  else if(data_type == "peds_believes") {
+        boost::shared_ptr<message_filters::Subscriber<sensor_msgs::PointCloud> > sub(
+              new message_filters::Subscriber<sensor_msgs::PointCloud>(g_nh, topic, 50));
+
+        boost::shared_ptr<tf::MessageFilter<sensor_msgs::PointCloud> > filter(
+            new tf::MessageFilter<sensor_msgs::PointCloud>(*sub, tf_, global_frame_, 50));
+        filter->registerCallback(boost::bind(&Costmap2DROS::pointCloudCallback, this, _1, observation_buffers_.back()));
+
+        observation_subscribers_.push_back(sub);
+        observation_notifiers_.push_back(filter);
+	  }
       else{
         boost::shared_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2> > sub(
               new message_filters::Subscriber<sensor_msgs::PointCloud2>(g_nh, topic, 50));
@@ -1433,7 +1444,7 @@ namespace costmap_2d {
     double max_inflation_dist = 2 * (costmap_->getInflationRadius() + costmap_->getCircumscribedRadius());
 
     //clear all non-lethal obstacles out to the maximum inflation distance of an obstacle in the robot footprint
-    costmap_->clearNonLethal(global_pose.getOrigin().x(), global_pose.getOrigin().y(), max_inflation_dist, max_inflation_dist);
+    //costmap_->clearNonLethal(global_pose.getOrigin().x(), global_pose.getOrigin().y(), max_inflation_dist, max_inflation_dist);
 
     //make sure to re-inflate obstacles in the affected region... plus those obstalces that could inflate to have costs in the footprint
     costmap_->reinflateWindow(global_pose.getOrigin().x(), global_pose.getOrigin().y(), 
