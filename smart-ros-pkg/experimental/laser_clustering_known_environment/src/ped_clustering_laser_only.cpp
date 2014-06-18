@@ -20,9 +20,12 @@
 #include "read_svg.h"
 #include "pnpoly.h"
 using namespace std;
-const char ns[100]="";
-const char laser_frame[100]="/base_laser_link";
-const char laser_topic[100]="sick_scan2";
+const char ns[100]="/golfcart";
+//const char laser_frame[100]="/base_laser_link";
+//const char laser_topic[100]="/sick_scan2";
+
+const char laser_frame[100]="/front_bottom_lidar";
+const char laser_topic[100]="/front_bottom_scan";
 class ped_clustering
 {
 public:

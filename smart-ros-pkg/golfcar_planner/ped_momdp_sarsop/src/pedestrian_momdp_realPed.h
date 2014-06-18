@@ -21,7 +21,7 @@ public:
     void moveSpeedCallback(geometry_msgs::Twist speed);
 	void publishPath();
     ros::Subscriber speedSub_, pedSub_, scanSub_, move_base_speed_;
-	ros::Publisher pc_pub,path_pub,goal_pub;
+	ros::Publisher pc_pub,path_pub;
     ped_momdp* momdp;
 
 	bool pathPublished;

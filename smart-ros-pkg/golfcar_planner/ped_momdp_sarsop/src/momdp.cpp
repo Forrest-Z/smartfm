@@ -3,6 +3,17 @@
 #include "solver.h"
 #include "globals.h"
 
+double marker_colors[20][3] = {
+	{0.0,1.0,0.0},
+		{1.0,0.0,0.0},
+		{0.0,0.0,1.0},
+		{1.0,1.0,0.0},
+		{0.0,1.0,1.0},
+		{1.0,0.0,1.0},
+		{0.0,0.0,0.0}
+};
+
+int action_map[3]={2,0,1};
 int WorldSeed() {
   cout<<"root seed"<<Globals::config.root_seed<<endl;
   return Globals::config.root_seed ^ Globals::config.n_particles;
@@ -31,6 +42,7 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp",1);
 	actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
 	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1);
+	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
 	char buf[100];
 	for(int i=0;i<ModelParams::N_PED_IN;i++) {
 		sprintf(buf,"pomdp_beliefs%d",i);
@@ -163,23 +175,48 @@ void ped_momdp::publishROSState()
 	}
 
 	pa_pub.publish(pA);
-	ros::Rate loop_rate(1);
-	//loop_rate.sleep();
+
+
+	visualization_msgs::MarkerArray markers;
+	uint32_t shape = visualization_msgs::Marker::CYLINDER;
+
+	for(int i=0;i<ModelParams::NGOAL;i++)
+	{
+		visualization_msgs::Marker marker;			
+
+		marker.header.frame_id=ModelParams::rosns+"/map";
+		marker.header.stamp=ros::Time::now();
+		marker.ns="basic_shapes";
+		marker.id=i;
+		marker.type=shape;
+		marker.action = visualization_msgs::Marker::ADD;
+
+
+
+		marker.pose.position.x = worldModel.goals[i].x;
+		marker.pose.position.y = worldModel.goals[i].y;
+		marker.pose.position.z = 0;
+		marker.pose.orientation.x = 0.0;
+		marker.pose.orientation.y = 0.0;
+		marker.pose.orientation.z = 0.0;
+		marker.pose.orientation.w = 1.0;
+
+		marker.scale.x = 1;
+		marker.scale.y = 1;
+		marker.scale.z = 1;
+		marker.color.r = marker_colors[i][0];
+		marker.color.g = marker_colors[i][1];
+		marker.color.b = marker_colors[i][2];
+		marker.color.a = 1.0;
+		
+		markers.markers.push_back(marker);
+	}
+	goal_pub.publish(markers);
+
 }
 
 
 
-double marker_colors[20][3] = {
-	{0.0,1.0,0.0},
-		{1.0,0.0,0.0},
-		{0.0,0.0,1.0},
-		{1.0,1.0,0.0},
-		{0.0,1.0,1.0},
-		{1.0,0.0,1.0},
-		{0.0,0.0,0.0}
-};
-
-int action_map[3]={2,0,1};
 
 void ped_momdp::publishAction(int action)
 {
@@ -252,8 +289,13 @@ void ped_momdp::RetrievePaths()
 	pose.pose.position.x=worldStateTracker.carpos.x;
 	pose.pose.position.y=worldStateTracker.carpos.y;
 	srv.request.start=pose;
+	//for simulation
 	pose.pose.position.x=18;
 	pose.pose.position.y=49;
+	//for utown 
+	
+	//pose.pose.position.x=108;
+	//pose.pose.position.y=143;
 	srv.request.tolerance=1.0;
 	srv.request.goal=pose;
 	path_client.call(srv);
@@ -337,7 +379,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		safeAction=solver->Search();
 
 		//actionPub_.publish(action);
-		//publishAction(safeAction);
+		publishAction(safeAction);
 
 		cout<<"safe action "<<safeAction<<endl;
 
@@ -410,9 +452,20 @@ void ped_momdp::publishBelief()
 	//vector<vector<double> > ped_beliefs=RealSimulator->GetBeliefVector(solver->root_->particles());	
 	//cout<<"belief vector size "<<ped_beliefs.size()<<endl;
 	int i=0;
+	ped_momdp_sarsop::peds_believes pbs;	
 	for(auto & kv: worldBeliefTracker.peds)
 	{
 		publishMarker(i++,kv.second);
+		ped_momdp_sarsop::ped_belief pb;
+		PedBelief belief = kv.second;	
+		pb.ped_x=belief.pos.x;
+		pb.ped_y=belief.pos.y;
+		for(auto & v : belief.prob_goals)
+			pb.belief_value.push_back(v);
+		pbs.believes.push_back(pb);
 	}
-
+	pbs.cmd_vel=worldStateTracker.carvel;
+	pbs.robotx=worldStateTracker.carpos.x;
+	pbs.roboty=worldStateTracker.carpos.y;
+	believesPub_.publish(pbs);
 }

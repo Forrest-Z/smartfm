@@ -616,7 +616,7 @@ namespace costmap_2d{
     ROS_ASSERT_MSG(inflation_queue_.empty(), "The inflation queue must be empty at the beginning of inflation");
 
     //raytrace freespace
-    raytraceFreespace(clearing_observations);
+    //raytraceFreespace(clearing_observations);
 
     //if we raytrace X meters out... we must re-inflate obstacles within the containing square of that circle
     double inflation_window_size = 2 * (max_raytrace_range_ + inflation_radius_);

@@ -80,7 +80,7 @@ int main(int argc, char **argv)
   priv_nh.param("ki_br", ki_br_, 0.2);
   priv_nh.param("b_weight_br", b_weight_br_, 1.0);
   
-  serial_port_ = new SerialStream(string("/dev/ttyACM0"), SerialStreamBuf::BAUD_19200,
+  serial_port_ = new SerialStream(string("/dev/stm"), SerialStreamBuf::BAUD_19200,
 			   SerialStreamBuf::CHAR_SIZE_8, SerialStreamBuf::PARITY_NONE, 1, SerialStreamBuf::FLOW_CONTROL_NONE);
 
   //Error management for serial port

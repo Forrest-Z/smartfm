@@ -1,11 +1,13 @@
 ped_costmap:
-    global_frame: /golfcart/map
-    robot_base_frame: /golfcart/base_link
+    global_frame: /map
+    robot_base_frame: /base_link
+    map_topic: map_cost
     static_map: true
     publish_frequency: 5
     robot_radius: 0.6
     inflation_radius: 5.0
     cost_scaling_factor: 2.0
+    update_frequency: 0.5
     observation_sources: peds
     peds:
         topic: confident_objects_momdp

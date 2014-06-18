@@ -111,7 +111,9 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0;
 	if(world.isLocalGoal(state)) {
-		reward = ModelParams::GOAL_REWARD;
+		reward = ModelParams::GOAL_REWARD
+			+ (state.car.dist_travelled - ModelParams::GOAL_TRAVELLED)
+			- (ModelParams::VEL_MAX/ModelParams::control_freq);
 		//cout << "goal reached!" << endl;
 		//PrintState(state, cout);
 		return true;
@@ -143,6 +145,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
 	obs = Observe(state);
 
+	assert(reward>=0);
 	return false;
 }
 	
@@ -256,8 +259,7 @@ public:
 
 	int Action(const vector<State*>& particles,
 			RandomStreams& streams, History& history) const { // TODO default policy
-
-		return 0;
+		return ped_pomdp_->world.defaultPolicy(particles);
 		//const PomdpState* state = static_cast<const PomdpState*>(particles[0]);
 				
 
@@ -297,7 +299,8 @@ public:
 };
 
 void PedPomdp::InitializeScenarioLowerBound(string name, RandomStreams& streams) {
-	name = "TRIVIAL";
+	//name = "TRIVIAL";
+	name="SMART";
 	if(name == "TRIVIAL") {
 		scenario_lower_bound_ = new TrivialScenarioLowerBound(this);
 	} else if(name == "RANDOM") {
