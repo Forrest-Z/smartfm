@@ -1,0 +1,138 @@
+#include <ped_pathplan/pathplan_ros.h>
+
+namespace ped_pathplan {
+    using namespace std;
+    using namespace costmap_2d;
+    PathPlanROS::PathPlanROS()
+        : costmap_ros(NULL), initialized(false), allow_unknown(false)
+    {}
+    PathPlanROS::PathPlanROS(string name, Costmap2DROS* costmap)
+        : costmap_ros(NULL), initialized(false), allow_unknown(false) {
+        initialize(name, costmap_ros);
+    }
+
+    void PathPlanROS::initialize(string name, Costmap2DROS* cmros) {
+        if(!initialized) {
+            costmap_ros = cmros;
+
+            int nx = cmros->getSizeInCellsX();
+            int ny = cmros->getSizeInCellsY();
+            //float resolution = cmros->getResolution();
+            planner = boost::shared_ptr<PathPlan>(new PathPlan(nx, ny));
+
+            updateCostmap();
+
+
+            ros::NodeHandle private_nh("~/" + name);
+
+            //string global_frame = cmros->getGlobalFrameID();
+            make_plan_srv =  private_nh.advertiseService("make_plan", &PathPlanROS::makePlanService, this);
+
+            ros::NodeHandle prefix_nh;
+            tf_prefix = tf::getPrefixParam(prefix_nh);
+        
+            initialized = true;
+        } else {
+          ROS_WARN("This planner has already been initialized, you can't call it twice, doing nothing");
+        }
+    
+    }
+
+    bool PathPlanROS::makePlanService(nav_msgs::GetPlan::Request& req, nav_msgs::GetPlan::Response& resp) {
+        bool ret = makePlan(req.start, req.goal, resp.plan.poses);
+        resp.plan.header.stamp = ros::Time::now();
+        resp.plan.header.frame_id = costmap_ros->getGlobalFrameID();
+
+        return ret;
+    }
+
+    bool PathPlanROS::makePlan(const geometry_msgs::PoseStamped& start, 
+            const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan) {
+        boost::mutex::scoped_lock lock(mutex);
+        if(!initialized){
+            ROS_ERROR("This planner has not been initialized yet, but it is being used, please call initialize() before use");
+            return false;
+        }
+
+        plan.clear();
+        updateCostmap();
+
+        ros::NodeHandle n;
+
+        if(tf::resolve(tf_prefix, goal.header.frame_id) != tf::resolve(tf_prefix, costmap_ros->getGlobalFrameID())){
+            ROS_ERROR("The goal pose passed to this planner must be in the %s frame.  It is instead in the %s frame.", 
+                    tf::resolve(tf_prefix, costmap_ros->getGlobalFrameID()).c_str(), tf::resolve(tf_prefix, goal.header.frame_id).c_str());
+            return false;
+        }
+
+        if(tf::resolve(tf_prefix, start.header.frame_id) != tf::resolve(tf_prefix, costmap_ros->getGlobalFrameID())){
+            ROS_ERROR("The start pose passed to this planner must be in the %s frame.  It is instead in the %s frame.", 
+                    tf::resolve(tf_prefix, costmap_ros->getGlobalFrameID()).c_str(), tf::resolve(tf_prefix, start.header.frame_id).c_str());
+            return false;
+        }
+
+        double wx = start.pose.position.x;
+        double wy = start.pose.position.y;
+        double yaw = tf::getYaw(start.pose.orientation);
+
+        unsigned int mx, my;
+        if(!costmap.worldToMap(wx, wy, mx, my)){
+            ROS_WARN("The robot's start position is off the global costmap. Planning will always fail, are you sure the robot has been properly localized?");
+            return false;
+        }
+
+        tf::Stamped<tf::Pose> start_pose;
+        tf::poseStampedMsgToTF(start, start_pose);
+
+        planner->setCostmap(costmap.getCharMap(), true, allow_unknown);
+
+        State start_state = {float(mx),float(my), float(yaw)};
+
+        wx = goal.pose.position.x;
+        wy = goal.pose.position.y;
+
+        if(!costmap.worldToMap(wx, wy, mx, my)){
+            ROS_WARN("The goal sent to the navfn planner is off the global costmap. Planning will always fail to this goal.");
+            return false;
+        }
+
+        State goal_state = {float(mx), float(my), 0};
+        planner->setStart(start_state);
+        planner->setGoal(goal_state);
+
+
+        auto path_states = planner->calcPath();
+
+        // extract the plan
+        ros::Time plan_time = ros::Time::now();
+        std::string global_frame = costmap_ros->getGlobalFrameID();
+        for(const auto& s: path_states) {
+            double world_x, world_y;
+            mapToWorld(s[0], s[1], world_x, world_y);
+
+            geometry_msgs::PoseStamped pose;
+            pose.header.stamp = plan_time;
+            pose.header.frame_id = global_frame;
+            pose.pose.position.x = world_x;
+            pose.pose.position.y = world_y;
+            pose.pose.position.z = 0.0;
+            pose.pose.orientation.x = 0.0;
+            pose.pose.orientation.y = 0.0;
+            pose.pose.orientation.z = 0.0;
+            pose.pose.orientation.w = 1.0;
+            plan.push_back(pose);
+        }
+
+        return !plan.empty();
+    }
+
+    void PathPlanROS::updateCostmap() {
+        costmap_ros->getCostmapCopy(costmap);
+    }
+
+    void PathPlanROS::mapToWorld(double mx, double my, double& wx, double& wy) {
+        wx = costmap.getOriginX() + mx * costmap.getResolution();
+        wy = costmap.getOriginY() + my * costmap.getResolution();
+    }
+
+}

@@ -1,0 +1,34 @@
+<package>
+ <description brief="Path planner for pedestrian avoidance.">
+
+     Path planner for pedestrian avoidance.
+
+
+ </description>
+ <author>Haoyu Bai</author>
+ <license>BSD</license>
+ <review status="Doc reviewed" notes=""/>
+ <url>http://ros.org/wiki/navfn</url>
+ <depend package="rosconsole"/>
+ <depend package="roscpp"/>
+ <depend package="geometry_msgs"/>
+ <depend package="ped_costmap"/>
+ <depend package="nav_core"/>
+ <depend package="pluginlib"/>
+ <depend package="nav_msgs"/>
+ <depend package="tf"/>
+ <depend package="visualization_msgs"/>
+ <depend package="pcl_ros" />
+ <depend package="common_rosdeps" />
+ <rosdep name="eigen" />
+
+ <rosdep name="fltk"/>
+ <rosdep name="netpbm"/>
+ <export>
+  <cpp cflags="-I${prefix}/include -I${prefix}/cfg/cpp" lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -lped_pathplan"/>
+  <nav_core plugin="${prefix}/bgp_plugin.xml" />
+ </export>
+  <platform os="ubuntu" version="9.04"/>
+  <platform os="ubuntu" version="9.10"/>
+  <platform os="ubuntu" version="10.04"/>
+</package>
