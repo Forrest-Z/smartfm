@@ -4,7 +4,7 @@ ped_costmap:
     map_topic: map_cost
     static_map: true
     publish_frequency: 5
-    robot_radius: 0.6
+    robot_radius: 1.0
     inflation_radius: 5.0
     cost_scaling_factor: 2.0
     update_frequency: 0.5

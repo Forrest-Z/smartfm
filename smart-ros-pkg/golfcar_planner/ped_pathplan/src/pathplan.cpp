@@ -91,6 +91,7 @@ namespace ped_pathplan {
     }
 
     vector<State> PathPlan::calcPath() {
+		cout << "calcPath start" << endl;
         vector<PathItem> items;
         set<DiscreteState> visited;
         priority_queue<QPair, vector<QPair>, greater<QPair>> q;
@@ -103,18 +104,31 @@ namespace ped_pathplan {
         bool found_solution = false;
         PathItem goal_item;
 
+		float curr_min_dist = distToGoal(start);
+
         while(!q.empty()) {
             QPair qp = q.top();
             q.pop();
             PathItem p = items[qp.second];
 
-			//cout << "(" <<  p.state[0] << " " << p.state[1] << " " << p.state[2] << ")" << " " << qp.first << endl;
+			float curr_dist = distToGoal(p.state);
+			if(curr_dist < curr_min_dist) {
+				cout << "dist to goal = " << curr_dist << endl;
+				cout << "(" <<  p.state[0] << " " << p.state[1] << " " << p.state[2] << ")" << " " << qp.first << endl;
+				curr_min_dist = curr_dist;
+			}
+
 
             if(isGoalReached(p.state)) {
                 found_solution = true;
                 goal_item = p;
 				break;
             }
+
+			if(items.size() > 100000000) {
+				break;
+			}
+
 
             for(float t: steerings) {
 				bool success;
@@ -144,8 +158,11 @@ namespace ped_pathplan {
             }
             reverse(sol.begin(), sol.end());
         }
+		cout << "calcPath done pathlen = " << sol.size() <<  endl;
         return sol;
     }
+
+    inline float sqr(float x) { return x*x;}
 
     PathItem PathPlan::next(const PathItem& p, float t, bool& success) {
         const State& s0 = p.state;
@@ -160,15 +177,13 @@ namespace ped_pathplan {
 		int mx = int(s0[0]);
 		int my = int(s0[1]);
         float cost = costarr[my*nx + mx];
-		float steer_cost = t * COST_STEERING;
+		float steer_cost = sqr(t) * COST_STEERING;
 		success = (cost < COST_OBS_ROS * 0.99);
         p1.g = p.g + cost + steer_cost;
         p1.h = heuristic(p1.state);
         p1.prev_index = p.index;
         return p1;
     }
-
-    inline float sqr(float x) { return x*x;}
 
     float PathPlan::distToGoal(const State& s) {
         float dist = sqrt(sqr(goal[0]-s[0]) + sqr(goal[1]-s[1]));

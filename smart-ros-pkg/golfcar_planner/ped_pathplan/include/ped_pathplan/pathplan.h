@@ -10,14 +10,14 @@
 #define COST_OBS 254		// 254 for forbidden regions
 #define COST_OBS_ROS 253	// ROS values of 253 are obstacles
 #define COST_NEUTRAL 50		// Set this to "open space" value
-#define COST_FACTOR 3		// Used for translating costs in NavFn::setCostmap()
+#define COST_FACTOR 2		// Used for translating costs in NavFn::setCostmap()
 const float COST_STEERING = (10 / M_PI * 180 );
 
 #define COSTTYPE unsigned char	// Whatever is used...
 
 namespace ped_pathplan {
-    const float STEERING_LIMIT = M_PI / 180 * 5;
-    const int N_YAWS = 72;
+    const float STEERING_LIMIT = M_PI / 180 * 15;
+    const int N_YAWS = 73;
     const float TOLERANCE = 10;
     const float D_YAW = M_PI * 2 / N_YAWS;
 

@@ -107,11 +107,12 @@ vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 }
 
 bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint64_t& obs) const {
+	const bool REWARD_DIST = true;
 
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0;
 	if(world.isLocalGoal(state)) {
-		reward = ModelParams::GOAL_REWARD
+		reward = (REWARD_DIST ? 0 : ModelParams::GOAL_REWARD)
 			+ (state.car.dist_travelled - ModelParams::GOAL_TRAVELLED)
 			- (ModelParams::VEL_MAX/ModelParams::control_freq);
 		//cout << "goal reached!" << endl;
@@ -138,7 +139,12 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		acc = -ModelParams::AccSpeed;
 	}
 
+	
 	world.RobStep(state.car, random);
+
+	if (REWARD_DIST)
+		reward+=state.car.vel/ModelParams::control_freq*(ModelParams::GOAL_REWARD/ModelParams::GOAL_TRAVELLED);
+
 	world.RobVelStep(state.car, acc, random);
 	for(int i=0;i<state.num;i++)
 		world.PedStep(state.peds[i], random);

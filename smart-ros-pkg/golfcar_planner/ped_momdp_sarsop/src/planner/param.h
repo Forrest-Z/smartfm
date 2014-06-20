@@ -47,6 +47,7 @@ namespace ModelParams {
 	
 	const int  VEL_N=3;
 	const double VEL_MAX=2;
+	//const double VEL_MAX=1;
 	const double control_freq=3;
 	const double AccSpeed=1.0;
 //  const char rosns[100]="/golfcart";
@@ -56,7 +57,10 @@ namespace ModelParams {
 
 	const std::string rosns="/golfcart";
 	const std::string laser_frame="/front_bottom_lidar";
+	
 	//const std::string rosns="";
+	
+	//const std::string laser_frame="/base_link";
 	//const std::string laser_frame="/base_laser_link";
 	const int NPATH=2;
 };

@@ -296,8 +296,8 @@ void ped_momdp::RetrievePaths(const tf::Stamped<tf::Pose>& carpose)
 
 	// set goal
 	//for simulation
-	pose.pose.position.x=18;
-	pose.pose.position.y=49;
+	pose.pose.position.x=17;
+	pose.pose.position.y=52;
 	//for utown 
 	
 	//pose.pose.position.x=108;
@@ -318,7 +318,7 @@ void ped_momdp::RetrievePaths(const tf::Stamped<tf::Pose>& carpose)
 		coord.y=srv.response.plan.poses[i].pose.position.y;
         p.push_back(coord);
 	}
-	worldModel.setPath(p);
+	worldModel.setPath(p.interpolate());
 
 	pathPub_.publish(srv.response.plan);
 }
@@ -331,7 +331,8 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
         tf::Stamped<tf::Pose> in_pose, out_pose;
 		in_pose.setIdentity();
 
-		in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame; 
+		//in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame; 
+		in_pose.frame_id_ = ModelParams::rosns + "/base_link"; 
 		while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 		} 
