@@ -309,6 +309,7 @@ void ped_momdp::RetrievePaths(const tf::Stamped<tf::Pose>& carpose)
 	//p.header.stamp=ros::Time::now();
 	//p.poses=srv.response.plan;
 	cout<<"receive path from navfn "<<srv.response.plan.poses.size()<<endl;
+	if(srv.response.plan.poses.size()==0) return;
     Path p;
 	for(int i=0;i<srv.response.plan.poses.size();i++)
 	{
@@ -367,6 +368,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		worldBeliefTracker.update(curr_state);	
 		cout<<"after belief update"<<endl;
 		vector<PomdpState> samples = worldBeliefTracker.sample(1000);
+		// TODO maybe should free particles after use
 		vector<State*> particles = despot->ConstructParticles(samples);
 		double sum=0;
 		for(int i=0;i<particles.size();i++)
@@ -410,7 +412,6 @@ void ped_momdp::publishMarker(int id,PedBelief & ped)
 	uint32_t shape = visualization_msgs::Marker::CUBE;
 	for(int i=0;i<belief.size();i++)
 	{
-		cout<<"belief prob size "<<belief.size()<<endl;
 		visualization_msgs::Marker marker;			
 
 		marker.header.frame_id=global_frame_id;

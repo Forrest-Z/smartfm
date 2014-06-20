@@ -5,7 +5,7 @@ Axes.Reference\ Frame=/golfcart/base_link
 Background\ ColorB=0
 Background\ ColorG=0
 Background\ ColorR=0
-Camera\ Config=27.0587 -0.897996 4.13631 1.6
+Camera\ Config=22.159 -7.60529 11.4108 1.585
 Camera\ Type=rviz::FixedOrientationOrthoViewController
 Camera.Enabled=1
 Camera.Image\ Rendering=background & overlay
@@ -34,7 +34,7 @@ GridCells.Alpha=1
 GridCells.ColorB=0
 GridCells.ColorG=1
 GridCells.ColorR=0.1
-GridCells.Enabled=1
+GridCells.Enabled=0
 GridCells.Topic=/golfcart/ped_path_planner/ped_costmap/obstacles
 Image.Enabled=0
 Image.Image\ Topic=/camera_front/image_raw
@@ -132,33 +132,14 @@ LaserScan2.Queue\ Size=10
 LaserScan2.Selectable=1
 LaserScan2.Style=1
 LaserScan2.Topic=/golfcart/front_bottom_scan
-Marker.Enabled=0
+Marker.Enabled=1
 Marker.Marker\ Topic=/golfcart/pomdp_action
 Marker.Queue\ Size=100
-MarkerArray.Enabled=0
-MarkerArray.Marker\ Array\ Topic=/golfcart/pomdp_beliefs0
-MarkerArray.Queue\ Size=100
-MarkerArray2.Enabled=0
-MarkerArray2.Marker\ Array\ Topic=/golfcart/pomdp_beliefs1
-MarkerArray2.Queue\ Size=100
-MarkerArray3.Enabled=0
-MarkerArray3.Marker\ Array\ Topic=/golfcart/pomdp_beliefs2
-MarkerArray3.Queue\ Size=100
-MarkerArray4.Enabled=0
-MarkerArray4.Marker\ Array\ Topic=/golfcart/pomdp_beliefs3
-MarkerArray4.Queue\ Size=100
-MarkerArray5.Enabled=0
-MarkerArray5.Marker\ Array\ Topic=/golfcart/pomdp_goals
-MarkerArray5.Queue\ Size=100
-MarkerArray6.Enabled=0
-MarkerArray6.Marker\ Array\ Topic=/golfcart/pomdp_beliefs4
+Marker.basic_shapes=1
+MarkerArray6.Enabled=1
+MarkerArray6.Marker\ Array\ Topic=/golfcart/pomdp_belief
 MarkerArray6.Queue\ Size=100
-MarkerArray7.Enabled=0
-MarkerArray7.Marker\ Array\ Topic=/golfcart/pomdp_beliefs5
-MarkerArray7.Queue\ Size=100
-MarkerArray8.Enabled=0
-MarkerArray8.Marker\ Array\ Topic=/golfcart/pomdp_beliefs6
-MarkerArray8.Queue\ Size=100
+MarkerArray6.basic_shapes=1
 Odometry3.Angle\ Tolerance=0.1
 Odometry3.ColorB=0
 Odometry3.ColorG=0.1
@@ -189,7 +170,7 @@ Path3.Topic=/golfcart/global_plan_repub
 PlanarMap.Alpha=0.7
 PlanarMap.Draw\ Behind=0
 PlanarMap.Enabled=1
-PlanarMap.Topic=/golfcart/map_cost
+PlanarMap.Topic=/golfcart/map
 Point\ Cloud..AxisColorAutocompute\ Value\ Bounds=1
 Point\ Cloud..AxisColorAxis=2
 Point\ Cloud..AxisColorMax\ Value=10
@@ -492,9 +473,9 @@ Pose2.Shaft\ Length=1
 Pose2.Shaft\ Radius=0.5
 Pose2.Shape=0
 Pose2.Topic=/golfcart/car_pose
-Property\ Grid\ Splitter=546,255
-Property\ Grid\ State=expanded=.Global Options,PlanarMap.Enabled,PlanarMap.Status,Polygon.Enabled,LaserScan2.Enabled,Path2.Enabled,Polygon2.Enabled,Polygon5.Enabled,Camera.Enabled,PointCloud6.Enabled,Polygon6.Enabled,Pose2.Enabled,Pose2.Shape Properties,Path.Enabled,PointCloud7.Enabled,MarkerArray.Enabled,MarkerArray2.Enabled,MarkerArray3.Enabled,MarkerArray4.Enabled,MarkerArray5.Enabled,Marker.Enabled,MarkerArray6.Enabled,MarkerArray7.Enabled,MarkerArray8.Enabled,Polygon7.Enabled,GridCells.Enabled;splitterratio=0.5
-QMainWindow=000000ff00000000fd00000002000000000000015e00000373fc0200000002fb000000100044006900730070006c006100790073010000001d00000373000000ee00fffffffb0000000a0049006d0061006700650000000226000000380000001900ffffff000000010000013700000373fc0200000005fb0000000c00430061006d006500720061010000001d0000004f0000001900fffffffb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000072000001190000006700fffffffb0000000a005600690065007700730100000191000001ff000000bb00fffffffb0000000800540069006d006502000000410000033e000005ff00000046fb0000001200530065006c0065006300740069006f006e0000000279000000af0000006700ffffff0000036e0000037300000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+Property\ Grid\ Splitter=510,255
+Property\ Grid\ State=expanded=.Global Options,PlanarMap.Enabled,PlanarMap.Status,Polygon.Enabled,LaserScan2.Enabled,Path2.Enabled,Polygon2.Enabled,Polygon5.Enabled,Camera.Enabled,PointCloud6.Enabled,Polygon6.Enabled,Pose2.Enabled,Pose2.Shape Properties,Path.Enabled,PointCloud7.Enabled,MarkerArray6.Enabled,Polygon7.Enabled,GridCells.Enabled,Marker.Enabled,Marker.Namespaces;splitterratio=0.5
+QMainWindow=000000ff00000000fd00000002000000000000015e0000034ffc0200000002fb000000100044006900730070006c006100790073010000001d0000034f000000ee00fffffffb0000000a0049006d0061006700650000000226000000380000001900ffffff00000001000001370000034ffc0200000005fb0000000c00430061006d006500720061010000001d0000004c0000001900fffffffb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000006f0000010e0000006700fffffffb0000000a005600690065007700730100000183000001e9000000bb00fffffffb0000000800540069006d006502000000410000033e000005ff00000046fb0000001200530065006c0065006300740069006f006e0000000279000000af0000006700ffffff0000035e0000034f00000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
 RobotModel.Alpha=1
 RobotModel.Collision\ Enabled=0
 RobotModel.Enabled=1
@@ -593,40 +574,19 @@ ClassName=rviz::PointCloudDisplay
 Name=PointCloud7
 [Display32]
 ClassName=rviz::MarkerArrayDisplay
-Name=MarkerArray
+Name=MarkerArray6
 [Display33]
-ClassName=rviz::MarkerArrayDisplay
-Name=MarkerArray2
+ClassName=rviz::PolygonDisplay
+Name=Polygon7
 [Display34]
-ClassName=rviz::MarkerArrayDisplay
-Name=MarkerArray3
+ClassName=rviz::GridCellsDisplay
+Name=GridCells
 [Display35]
-ClassName=rviz::MarkerArrayDisplay
-Name=MarkerArray4
-[Display36]
-ClassName=rviz::MarkerArrayDisplay
-Name=MarkerArray5
-[Display37]
 ClassName=rviz::MarkerDisplay
 Name=Marker
-[Display38]
-ClassName=rviz::MarkerArrayDisplay
-Name=MarkerArray6
-[Display39]
-ClassName=rviz::MarkerArrayDisplay
-Name=MarkerArray7
 [Display4]
 ClassName=rviz::OdometryDisplay
 Name=Odometry3
-[Display40]
-ClassName=rviz::MarkerArrayDisplay
-Name=MarkerArray8
-[Display41]
-ClassName=rviz::PolygonDisplay
-Name=Polygon7
-[Display42]
-ClassName=rviz::GridCellsDisplay
-Name=GridCells
 [Display5]
 ClassName=rviz::InteractiveMarkerDisplay
 Name=Interactive Markers
@@ -652,7 +612,7 @@ front_top_lidar.Enabled=1
 map.Enabled=0
 odom.Enabled=0
 [Window]
-Height=948
-Width=1567
+Height=876
+Width=1535
 X=-1886
 Y=-471

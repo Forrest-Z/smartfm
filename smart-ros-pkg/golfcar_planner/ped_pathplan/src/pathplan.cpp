@@ -12,16 +12,16 @@ namespace ped_pathplan {
     using namespace std;
 
 
-    PathPlan::PathPlan(int xs, int ys): nx(xs), ny(ys), step(2) {
+    PathPlan::PathPlan(int xs, int ys): nx(xs), ny(ys), step(8) {
         ns = xs * ys;
         costarr = new COSTTYPE[ns]; // cost array, 2d config space
         memset(costarr, 0, ns*sizeof(COSTTYPE));
 
-        steerings.push_back(0);
-        for(float f=D_YAW; f<=STEERING_LIMIT; f+=D_YAW) {
+        for(float f=STEERING_LIMIT; f>0; f-=D_YAW) {
             steerings.push_back(f);
             steerings.push_back(-f);
         }
+        steerings.push_back(0);
     }
 
     void PathPlan::setCostmap(const COSTTYPE *cmap, bool isROS, bool allow_unknown)
@@ -117,8 +117,9 @@ namespace ped_pathplan {
             }
 
             for(float t: steerings) {
-                PathItem p1 = next(p, t);
-				if (! (0 < p1.state[0] && p1.state[0] < nx && 0 < p1.state[1] && p1.state[1] < ny)) {
+				bool success;
+                PathItem p1 = next(p, t, success);
+				if (!success or (! (0 < p1.state[0] && p1.state[0] < nx && 0 < p1.state[1] && p1.state[1] < ny))) {
 					break;
 				}
                 auto dp1 = discretize(p1.state);
@@ -146,7 +147,7 @@ namespace ped_pathplan {
         return sol;
     }
 
-    PathItem PathPlan::next(const PathItem& p, float t) {
+    PathItem PathPlan::next(const PathItem& p, float t, bool& success) {
         const State& s0 = p.state;
         PathItem p1;
         float dx = step * cos(s0[2]);
@@ -159,7 +160,9 @@ namespace ped_pathplan {
 		int mx = int(s0[0]);
 		int my = int(s0[1]);
         float cost = costarr[my*nx + mx];
-        p1.g = p.g + cost;
+		float steer_cost = t * COST_STEERING;
+		success = (cost < COST_OBS_ROS * 0.99);
+        p1.g = p.g + cost + steer_cost;
         p1.h = heuristic(p1.state);
         p1.prev_index = p.index;
         return p1;
@@ -180,7 +183,7 @@ namespace ped_pathplan {
 
     bool PathPlan::isGoalReached(const State& s) {
         float d = distToGoal(s);
-        return (d < step);
+        return (d < TOLERANCE);
     }
 
     DiscreteState PathPlan::discretize(const State& s) {
