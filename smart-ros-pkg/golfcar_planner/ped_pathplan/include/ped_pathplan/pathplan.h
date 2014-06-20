@@ -15,7 +15,7 @@
 #define COSTTYPE unsigned char	// Whatever is used...
 
 namespace ped_pathplan {
-    const float STEERING_LIMIT = M_PI / 180 * 15;
+    const float STEERING_LIMIT = M_PI / 180 * 10;
     const int N_YAWS = 72;
     const float TOLERANCE = 0.5;
     const float D_YAW = M_PI * 2 / N_YAWS;

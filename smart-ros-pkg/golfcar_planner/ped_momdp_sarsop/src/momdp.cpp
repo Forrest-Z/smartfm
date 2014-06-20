@@ -44,10 +44,14 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
 	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1);
 	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
 	char buf[100];
+	/*
 	for(int i=0;i<ModelParams::N_PED_IN;i++) {
 		sprintf(buf,"pomdp_beliefs%d",i);
 		markers_pubs[i]=nh.advertise<visualization_msgs::MarkerArray>(buf,1);
 	}
+	*/
+
+	markers_pub=nh.advertise<visualization_msgs::MarkerArray>("pomdp_belief",1);
     //initPedGoal();
     //policy_initialize(model_file, policy_file, simLen, simNum);
 	safeAction=2;
@@ -177,7 +181,6 @@ void ped_momdp::publishROSState()
 	pa_pub.publish(pA);
 
 
-	visualization_msgs::MarkerArray markers;
 	uint32_t shape = visualization_msgs::Marker::CYLINDER;
 
 	for(int i=0;i<ModelParams::NGOAL;i++)
@@ -212,7 +215,7 @@ void ped_momdp::publishROSState()
 		markers.markers.push_back(marker);
 	}
 	goal_pub.publish(markers);
-
+	markers.markers.clear();
 }
 
 
@@ -402,18 +405,18 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 
 void ped_momdp::publishMarker(int id,PedBelief & ped)
 {
-	visualization_msgs::MarkerArray markers;
-	uint32_t shape = visualization_msgs::Marker::CUBE;
 	//cout<<"belief vector size "<<belief.size()<<endl;
 	std::vector<double> belief = ped.prob_goals;
+	uint32_t shape = visualization_msgs::Marker::CUBE;
 	for(int i=0;i<belief.size();i++)
 	{
+		cout<<"belief prob size "<<belief.size()<<endl;
 		visualization_msgs::Marker marker;			
 
 		marker.header.frame_id=global_frame_id;
 		marker.header.stamp=ros::Time::now();
 		marker.ns="basic_shapes";
-		marker.id=i;
+		marker.id=id*ped.prob_goals.size()+i;
 		marker.type=shape;
 		marker.action = visualization_msgs::Marker::ADD;
 
@@ -448,7 +451,6 @@ void ped_momdp::publishMarker(int id,PedBelief & ped)
 		marker.lifetime=d;
 		markers.markers.push_back(marker);
 	}
-	markers_pubs[id].publish(markers);
 }
 void ped_momdp::publishBelief()
 {
@@ -471,4 +473,6 @@ void ped_momdp::publishBelief()
 	pbs.robotx=worldStateTracker.carpos.x;
 	pbs.roboty=worldStateTracker.carpos.y;
 	believesPub_.publish(pbs);
+	markers_pub.publish(markers);
+	markers.markers.clear();
 }

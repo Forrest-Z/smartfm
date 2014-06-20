@@ -12,7 +12,8 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq) {
         COORD(31, 4),
         COORD(5,  5),
         COORD(44,49),
-        COORD(18,62)
+        COORD(18,62),
+		COORD(-1,-1)
     };
 	/*
     goals = {
@@ -93,11 +94,21 @@ double WorldModel::minStepToGoal(const PomdpState& state) {
 
 void WorldModel::PedStep(PedStruct &ped, Random& random) {
     COORD& goal = goals[ped.goal];
+	if(goal.x==-1&&goal.y==-1) {  //stop intention 
+		if(random.NextDouble()<0.1)	 { //move	
+			double a = random.NextDouble()*2*3.14;
+			MyVector move(a, ModelParams::PED_SPEED/freq, 0);
+			ped.pos.x += move.dw;
+			ped.pos.y += move.dh;
+		}
+		return;
+	}
+//	if(random.NextDouble()<0.1) return;   //not move
 	MyVector goal_vec(goal.x - ped.pos.x, goal.y - ped.pos.y);
     double a = goal_vec.GetAngle();
     a += random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
     //TODO noisy speed
-    MyVector move(a, ModelParams::PED_SPEED, 0);
+    MyVector move(a, ModelParams::PED_SPEED/freq, 0);
     ped.pos.x += move.dw;
     ped.pos.y += move.dh;
     return;
@@ -114,13 +125,27 @@ double gaussian_prob(double x, double stddev) {
 }
 
 double WorldModel::pedMoveProb(COORD p0, COORD p1, int goal_id) {
+	const double K = 0.001;
     const COORD& goal = goals[goal_id];
+	cout<<"goal id "<<goal_id<<endl;
+	if(goal_id==goals.size()-1)  {
+		double a = ModelParams::PED_SPEED*0.5/freq;
+		double b = 6*a;
+		double p;
+		if(Norm(p1.x-p0.x, p1.y-p0.y)<a) {
+			p = 0.9/a;
+		}
+		else p = 0.1/(b-a);
+		return p * 0.2;
+	}
+
 	double norm = Norm(p1.x-p0.x, p1.y-p0.y) * Norm(goal.x-p0.x, goal.y-p0.y);
 	if(norm <= 0.0)
-		return 1.0;
+		return 0.1;
     double cosa = DotProduct(p1.x-p0.x, p1.y-p0.y, goal.x-p0.x, goal.y-p0.y) / norm;
     double a = acos(cosa);
-    double p = gaussian_prob(a, ModelParams::NOISE_GOAL_ANGLE) + 0.01;
+    double p = gaussian_prob(a, ModelParams::NOISE_GOAL_ANGLE) + K;
+
     return p;
 }
 
@@ -153,8 +178,11 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
 	}
 	cout << endl;
     for(int i=0; i<goals.size(); i++) {
-        b.prob_goals[i] *= pedMoveProb(b.pos, curr_ped.pos, i);
-    }
+		double prob = pedMoveProb(b.pos, curr_ped.pos, i);
+		cout << prob << endl;
+        b.prob_goals[i] *=  prob;
+		b.prob_goals[i] += 0.01;
+	}
 	for(double w: b.prob_goals) {
 		cout << w << " ";
 	}

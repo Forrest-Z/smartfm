@@ -98,7 +98,8 @@ public:
 	ros::Publisher car_pub;
 	ros::Publisher pa_pub;
 	ros::Publisher pathPub_;
-	ros::Publisher markers_pubs[ModelParams::N_PED_IN];
+	//ros::Publisher markers_pubs[ModelParams::N_PED_IN];
+	ros::Publisher markers_pub;
 	ros::ServiceClient path_client;
 
     tf::TransformListener tf_;
@@ -109,6 +110,7 @@ public:
 	DESPOTSTAR* solver;
 	double momdp_speed_,real_speed_;
 	string global_frame_id;
+	visualization_msgs::MarkerArray markers;
 
 private:
 	double control_freq;

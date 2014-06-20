@@ -793,6 +793,7 @@ namespace costmap_2d{
   }
 
   void Costmap2D::clearNonLethal(double wx, double wy, double w_size_x, double w_size_y, bool clear_no_info){
+	cout << "clearNonLethal start" << endl;
     //get the cell coordinates of the center point of the window
     unsigned int mx, my;
     if(!worldToMap(wx, wy, mx, my))
@@ -837,6 +838,7 @@ namespace costmap_2d{
       static_current += size_x_ - (map_ex - map_sx) - 1;
       index += size_x_ - (map_ex - map_sx) - 1;
     }
+	cout << "clearNonLethal done" << endl;
   }
 
   void Costmap2D::resetInflationWindow(double wx, double wy, double w_size_x, double w_size_y,

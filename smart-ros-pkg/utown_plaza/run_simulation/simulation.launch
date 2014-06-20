@@ -49,9 +49,9 @@
 		<remap from="cmd_vel" to="cmd_vel"/>
 		</node>
 
-<!--    <node pkg="rviz" type="rviz" name="rviz" respawn="false" args="-d $(find utown_plaza)/utown_simulation.vcg" />  -->
+<!--    <node pkg="rviz" type="rviz" name="rviz" respawn="true" args="-d $(find utown_plaza)/utown_simulation.vcg" />  -->
 
-    <node pkg="rviz" type="rviz" name="rviz" respawn="false" />  
+    <node pkg="rviz" type="rviz" name="rviz" respawn="true" />  
 	<node pkg="velmixer" type="ped_publisher" name="ped_publisher" output="screen" respawn="false">
 		<param name="pedNum" value="1000"/>
 	</node>
