@@ -13,7 +13,7 @@ set (ROS_BUILD_TYPE RelWithDebInfo)
 add_definitions (-Wall)
 rosbuild_init()
 #rosbuild_gensrv()
-#rosbuild_genmsg()
+rosbuild_genmsg()
 
 set(CMAKE_C_COMPILER "colorgcc")
 set(CMAKE_CXX_COMPILER "colorgcc")

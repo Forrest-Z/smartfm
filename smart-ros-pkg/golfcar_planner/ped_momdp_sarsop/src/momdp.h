@@ -45,6 +45,7 @@
 #include "ped_pomdp.h"
 #include "belief.h"
 #include "despotstar.h"
+#include <ped_pathplan/StartGoal.h>
 
 /*
 #include "belief_update/belief_update_exact.h"
@@ -90,6 +91,7 @@ public:
 	void initSimulator();
 	void momdpInit();
 	void RetrievePaths(const tf::Stamped<tf::Pose>& carpose);
+	void RetrievePathCallBack(const nav_msgs::Path::ConstPtr path); 
 	//void updatePedPoses();
 	//void updateObsStates();
 	//void clean_momdp_problem_sim();
@@ -98,6 +100,8 @@ public:
 	ros::Publisher car_pub;
 	ros::Publisher pa_pub;
 	ros::Publisher pathPub_;
+	ros::Subscriber pathSub_;
+	ros::Publisher start_goal_pub;
 	//ros::Publisher markers_pubs[ModelParams::N_PED_IN];
 	ros::Publisher markers_pub;
 	ros::ServiceClient path_client;

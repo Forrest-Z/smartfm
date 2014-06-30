@@ -11,6 +11,7 @@
   <depend package="roscpp"/>
   <depend package="rospy" />
   <depend package="sensor_msgs"/>
+  <depend package="ped_pathplan"/>
   <depend package="sensing_on_road"/>
   <depend package="dataAssoc_experimental"/>
   <depend package="tf"/>
