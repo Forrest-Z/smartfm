@@ -71,6 +71,7 @@ private:
 
   void switchCallback(nav_msgs::PathConstPtr p){
     ROS_INFO("New path received from path swtiching module with size of: %d", (int)p->poses.size());
+	if(p->poses.empty()) return;
     std::vector<geometry_msgs::PoseStamped> plan;
 	for(size_t i=0; i<p->poses.size(); i++){
 		geometry_msgs::PoseStamped ps_temp;
