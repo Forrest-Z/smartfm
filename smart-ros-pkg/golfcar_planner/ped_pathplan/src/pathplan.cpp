@@ -12,7 +12,7 @@ namespace ped_pathplan {
     using namespace std;
 
 
-    PathPlan::PathPlan(int xs, int ys): nx(xs), ny(ys), step(8) {
+    PathPlan::PathPlan(int xs, int ys): nx(xs), ny(ys), step(6) {
         ns = xs * ys;
         costarr = new COSTTYPE[ns]; // cost array, 2d config space
         memset(costarr, 0, ns*sizeof(COSTTYPE));
@@ -125,7 +125,7 @@ namespace ped_pathplan {
 				break;
             }
 
-			if(items.size() > 100000000) {
+			if(items.size() > 1000000) {
 				break;
 			}
 
@@ -203,7 +203,7 @@ namespace ped_pathplan {
 
     DiscreteState PathPlan::discretize(const State& s) {
         DiscreteState ds(3);
-		float dd = step / 2;
+		float dd = step * 0.2;
         ds[0] = int(s[0] / dd);
         ds[1] = int(s[1] / dd);
         ds[2] = int(s[2] / D_YAW);
