@@ -25,7 +25,7 @@ namespace ped_pathplan {
 
             ros::NodeHandle private_nh("~/" + name);
 
-			plan_pub = private_nh.advertise<nav_msgs::Path>("plan", 1);
+			plan_pub = private_nh.advertise<nav_msgs::Path>("plan", 1, true);
 
             //string global_frame = cmros->getGlobalFrameID();
             make_plan_srv =  private_nh.advertiseService("make_plan", &PathPlanROS::makePlanService, this);
@@ -131,7 +131,12 @@ namespace ped_pathplan {
             plan.push_back(pose);
         }
 
-		publishPlan(plan);
+		static bool published=false;
+		if(published==false)
+		{
+			//published=true;
+			publishPlan(plan);
+		}
 
         return !plan.empty();
     }

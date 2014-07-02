@@ -12,7 +12,7 @@ struct COORD
   
   COORD() {}
 
-  COORD(int _x, int _y) : x(_x), y(_y) {}
+  COORD(double _x, double _y) : x(_x), y(_y) {}
 
   bool Valid() const {
     return x >= 0 && y >= 0;
