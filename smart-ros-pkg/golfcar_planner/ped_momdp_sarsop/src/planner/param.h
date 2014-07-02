@@ -29,7 +29,7 @@ namespace ModelParams {
 
 
 	const int GOAL_DIST=100;
-    const double GOAL_TOLERANCE = 1;
+    const double GOAL_TOLERANCE = 3;
 	
 	const int goodrob=0;
 	const int goodped=1;
@@ -55,13 +55,13 @@ namespace ModelParams {
 
 //	const char laser_frame[100]="/front_bottom_lidar";
 
-	//const std::string rosns="/golfcart";
-	//const std::string laser_frame="/front_bottom_lidar";
+	const std::string rosns="/golfcart";
+	const std::string laser_frame="/front_bottom_lidar";
 	
-	const std::string rosns="";
+	//const std::string rosns="";
 	
 	//const std::string laser_frame="/base_link";
-	const std::string laser_frame="/base_laser_link";
+	//const std::string laser_frame="/base_laser_link";
 	const int NPATH=2;
 };
 

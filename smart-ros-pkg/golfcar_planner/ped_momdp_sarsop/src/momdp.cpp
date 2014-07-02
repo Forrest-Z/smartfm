@@ -41,7 +41,7 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp",1);
 	actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
-	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1);
+	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1, true);
 	pathSub_= nh.subscribe("plan", 1, &ped_momdp::RetrievePathCallBack, this);
 	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
 	start_goal_pub=nh.advertise<ped_pathplan::StartGoal> ("ped_path_planner/planner/start_goal", 1);
@@ -103,7 +103,7 @@ void ped_momdp::initSimulator()
   Globals::config.n_particles=100;
   Globals::config.time_per_move = 1.0/ModelParams::control_freq;
   Seeds::root_seed(Globals::config.root_seed);
-  Globals::config.pruning_constant=10000;
+  Globals::config.pruning_constant=1000000;
   cerr << "Random root seed set to " << Globals::config.root_seed << endl;
 
   // Global random generator
