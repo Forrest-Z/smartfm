@@ -103,6 +103,7 @@ void ped_momdp::initSimulator()
   Globals::config.n_particles=100;
   Globals::config.time_per_move = 1.0/ModelParams::control_freq;
   Seeds::root_seed(Globals::config.root_seed);
+  Globals::config.pruning_constant=10000;
   cerr << "Random root seed set to " << Globals::config.root_seed << endl;
 
   // Global random generator

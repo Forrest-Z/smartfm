@@ -13,7 +13,7 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq) {
         COORD(5,  5),
         COORD(44,49),
         COORD(18,62),
-		COORD(-1,-1)
+		//COORD(-1,-1)
     };
 	/*
     goals = {
@@ -72,15 +72,15 @@ double WorldModel::inCollision(const PomdpState& state, int action) {
     }
 
     // TODO set as a param
-    if(mindist < 1) {
+    if(mindist < 2 && carvel > 0) {
         penalty += ModelParams::CRASH_PENALTY * (carvel + 1);
     }
 
-    if(carvel > 1.0 && mindist < 2) {
+    if(carvel > 1.0 && mindist < 4) {
         penalty += ModelParams::CRASH_PENALTY / 2;
     }
 	if (penalty != 0) {
-//		cout << "penalty =" << penalty << endl;
+		//cout << "penalty =" << penalty << endl;
 	}
     return penalty;
 }
@@ -95,7 +95,7 @@ double WorldModel::minStepToGoal(const PomdpState& state) {
 void WorldModel::PedStep(PedStruct &ped, Random& random) {
     COORD& goal = goals[ped.goal];
 	if(goal.x==-1&&goal.y==-1) {  //stop intention 
-		if(random.NextDouble()<0.1)	 { //move	
+		if(random.NextDouble()<0.5)	 { //move	
 			double a = random.NextDouble()*2*3.14;
 			MyVector move(a, ModelParams::PED_SPEED/freq, 0);
 			ped.pos.x += move.dw;
@@ -128,7 +128,7 @@ double WorldModel::pedMoveProb(COORD p0, COORD p1, int goal_id) {
 	const double K = 0.001;
     const COORD& goal = goals[goal_id];
 	cout<<"goal id "<<goal_id<<endl;
-	if(goal_id==goals.size()-1)  {
+	if(goal.x==-1&&goal.y==-1) {  //stop intention 
 		double a = ModelParams::PED_SPEED*0.5/freq;
 		double b = 6*a;
 		double p;
@@ -170,6 +170,11 @@ void WorldModel::RobVelStep(CarStruct &car, double acc, Random& random) {
 
 void WorldModel::setPath(Path path) {
     this->path = path;
+	/*
+	for(int i=0; i<this->path.size(); i++) {
+		const auto& p = this->path[i];
+		cout << p.x << " " << p.y << endl;
+	}*/
 }
 
 void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
@@ -276,6 +281,7 @@ bool WorldStateTracker::emergency() {
         double d = COORD::EuclideanDistance(carpos, p);
         if(d < mindist) mindist = d;
     }
+	cout << "emergency mindist = " << mindist << endl;
 	return (mindist < 0.5);
 }
 
