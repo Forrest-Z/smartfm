@@ -687,7 +687,7 @@ namespace costmap_2d{
         unsigned int index = getIndex(mx, my);
 
         //push the relevant cell index back onto the inflation queue
-        enqueue(index, mx, my, mx, my, inflation_queue);
+        enqueue(index, mx, my, mx, my, inflation_queue, 0.5);
       }
     }
   }
@@ -702,16 +702,17 @@ namespace costmap_2d{
       unsigned int my = current_cell.y_;
       unsigned int sx = current_cell.src_x_;
       unsigned int sy = current_cell.src_y_;
+	  float cost_ratio = current_cell.cost_ratio_;
 
       //attempt to put the neighbors of the current cell onto the queue
       if(mx > 0)
-        enqueue(index - 1, mx - 1, my, sx, sy, inflation_queue); 
+        enqueue(index - 1, mx - 1, my, sx, sy, inflation_queue, cost_ratio); 
       if(my > 0)
-        enqueue(index - size_x_, mx, my - 1, sx, sy, inflation_queue);
+        enqueue(index - size_x_, mx, my - 1, sx, sy, inflation_queue, cost_ratio);
       if(mx < size_x_ - 1)
-        enqueue(index + 1, mx + 1, my, sx, sy, inflation_queue);
+        enqueue(index + 1, mx + 1, my, sx, sy, inflation_queue, cost_ratio);
       if(my < size_y_ - 1)
-        enqueue(index + size_x_, mx, my + 1, sx, sy, inflation_queue);
+        enqueue(index + size_x_, mx, my + 1, sx, sy, inflation_queue, cost_ratio);
 
       //remove the current cell from the priority queue
       inflation_queue.pop();

@@ -10,7 +10,8 @@ public:
 
 	virtual ValuedAction Value(const vector<State*>& particles) const {
 		PomdpState* state = static_cast<PomdpState*>(particles[0]);
-		return ValuedAction(0, State::Weight(particles) * ModelParams::CRASH_PENALTY * ModelParams::VEL_MAX / (1 - Discount()));
+		//return ValuedAction(0, State::Weight(particles) * ModelParams::CRASH_PENALTY * ModelParams::VEL_MAX / (1 - Discount()));
+		return ValuedAction(0, State::Weight(particles) * ModelParams::CRASH_PENALTY * state->car.vel / (1 - Discount()));
 	}
 };
 
@@ -107,7 +108,7 @@ vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 }
 
 bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint64_t& obs) const {
-	const bool REWARD_DIST = true;
+	const bool REWARD_DIST = false;
 
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0;
@@ -248,7 +249,6 @@ void PedPomdp::Statistics(const vector<PomdpState*> particles) const {
 
 ValuedAction PedPomdp::GetMinRewardAction() const {
 	return ValuedAction(0, ModelParams::CRASH_PENALTY * ModelParams::VEL_MAX);
-	// return ValuedAction(0, 0);
 }
 
 

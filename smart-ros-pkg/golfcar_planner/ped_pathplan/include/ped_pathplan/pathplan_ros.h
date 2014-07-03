@@ -11,6 +11,7 @@
 #include <nav_core/base_global_planner.h>
 #include <nav_msgs/GetPlan.h>
 #include <ped_pathplan/pathplan.h>
+#include <ped_pathplan/StartGoal.h>
 
 namespace ped_pathplan {
 
@@ -22,7 +23,8 @@ namespace ped_pathplan {
         bool makePlan(const geometry_msgs::PoseStamped& start, 
                 const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan);
 
-        bool makePlanService(nav_msgs::GetPlan::Request& req, nav_msgs::GetPlan::Response& resp);
+		bool makePlanService(nav_msgs::GetPlan::Request& req, nav_msgs::GetPlan::Response& resp);
+		void makePlanAsync(const ped_pathplan::StartGoal::ConstPtr & startGoal);
 		void publishPlan(const std::vector<geometry_msgs::PoseStamped>& path);
 
     protected:
@@ -35,6 +37,7 @@ namespace ped_pathplan {
       std::string tf_prefix;
       boost::mutex mutex;
       ros::ServiceServer make_plan_srv;
+	  ros::Subscriber make_plan_sub;
       ros::Publisher plan_pub;
     };
 }

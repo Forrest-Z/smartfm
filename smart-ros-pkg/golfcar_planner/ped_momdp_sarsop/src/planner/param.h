@@ -29,7 +29,7 @@ namespace ModelParams {
 
 
 	const int GOAL_DIST=100;
-    const double GOAL_TOLERANCE = 1;
+    const double GOAL_TOLERANCE = 3;
 	
 	const int goodrob=0;
 	const int goodped=1;

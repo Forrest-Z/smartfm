@@ -53,12 +53,13 @@ namespace costmap_2d {
        * @param  sy The y coordinate of the closest obstacle cell in the costmap
        * @return 
        */
-      CellData(double d, double i, unsigned int x, unsigned int y, unsigned int sx, unsigned int sy) : distance_(d), 
-      index_(i), x_(x), y_(y), src_x_(sx), src_y_(sy) {}
+      CellData(double d, double i, unsigned int x, unsigned int y, unsigned int sx, unsigned int sy, float cost_ratio) : distance_(d), 
+      index_(i), x_(x), y_(y), src_x_(sx), src_y_(sy), cost_ratio_(cost_ratio)  {}
       double distance_;
       unsigned int index_;
       unsigned int x_, y_;
       unsigned int src_x_, src_y_;
+	  float cost_ratio_;
   };
 
   /**

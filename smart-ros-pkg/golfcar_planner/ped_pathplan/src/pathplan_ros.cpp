@@ -25,10 +25,11 @@ namespace ped_pathplan {
 
             ros::NodeHandle private_nh("~/" + name);
 
-			plan_pub = private_nh.advertise<nav_msgs::Path>("plan", 1);
+			plan_pub = private_nh.advertise<nav_msgs::Path>("plan", 1, true);
 
             //string global_frame = cmros->getGlobalFrameID();
             make_plan_srv =  private_nh.advertiseService("make_plan", &PathPlanROS::makePlanService, this);
+			make_plan_sub =  private_nh.subscribe("start_goal",1,&PathPlanROS::makePlanAsync, this);
 
             ros::NodeHandle prefix_nh;
             tf_prefix = tf::getPrefixParam(prefix_nh);
@@ -39,6 +40,11 @@ namespace ped_pathplan {
         }
     
     }
+
+	void PathPlanROS::makePlanAsync(const ped_pathplan::StartGoal::ConstPtr & startGoal) {
+		std::vector<geometry_msgs::PoseStamped> plan;
+		bool ret = makePlan(startGoal->start, startGoal->goal, plan);
+	}
 
     bool PathPlanROS::makePlanService(nav_msgs::GetPlan::Request& req, nav_msgs::GetPlan::Response& resp) {
         bool ret = makePlan(req.start, req.goal, resp.plan.poses);
@@ -125,7 +131,12 @@ namespace ped_pathplan {
             plan.push_back(pose);
         }
 
-		publishPlan(plan);
+		static bool published=false;
+		if(published==false)
+		{
+			//published=true;
+			publishPlan(plan);
+		}
 
         return !plan.empty();
     }

@@ -41,8 +41,10 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp",1);
 	actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
-	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1);
+	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1, true);
+	pathSub_= nh.subscribe("plan", 1, &ped_momdp::RetrievePathCallBack, this);
 	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
+	start_goal_pub=nh.advertise<ped_pathplan::StartGoal> ("ped_path_planner/planner/start_goal", 1);
 	char buf[100];
 	/*
 	for(int i=0;i<ModelParams::N_PED_IN;i++) {
@@ -101,6 +103,7 @@ void ped_momdp::initSimulator()
   Globals::config.n_particles=100;
   Globals::config.time_per_move = 1.0/ModelParams::control_freq;
   Seeds::root_seed(Globals::config.root_seed);
+  Globals::config.pruning_constant=1000000;
   cerr << "Random root seed set to " << Globals::config.root_seed << endl;
 
   // Global random generator
@@ -283,6 +286,7 @@ void ped_momdp::RetrievePaths(const tf::Stamped<tf::Pose>& carpose)
 	//
 		
 //	if(worldModel.path.size()>0)  return ;
+	ped_pathplan::StartGoal startGoal; 
 	nav_msgs::GetPlan srv;
 	geometry_msgs::PoseStamped pose;
 	tf::poseStampedTFToMsg(carpose, pose);
@@ -292,7 +296,8 @@ void ped_momdp::RetrievePaths(const tf::Stamped<tf::Pose>& carpose)
 	//pose.pose.position.x=worldStateTracker.carpos.x;
 	//pose.pose.position.y=worldStateTracker.carpos.y;
 
-	srv.request.start=pose;
+	//srv.request.start=pose;
+	startGoal.start=pose;
 
 	// set goal
 	//for simulation
@@ -302,37 +307,51 @@ void ped_momdp::RetrievePaths(const tf::Stamped<tf::Pose>& carpose)
 	
 	//pose.pose.position.x=108;
 	//pose.pose.position.y=143;
-	srv.request.tolerance=1.0;
-	srv.request.goal=pose;
-	path_client.call(srv);
+	//srv.request.tolerance=1.0;
+	//srv.request.goal=pose;
+	startGoal.goal=pose;
+	start_goal_pub.publish(startGoal);	
+
+//	path_client.call(srv);
+
 	//nav_msgs::Path p;
 	//p.header.stamp=ros::Time::now();
 	//p.poses=srv.response.plan;
-	cout<<"receive path from navfn "<<srv.response.plan.poses.size()<<endl;
-	if(srv.response.plan.poses.size()==0) return;
-    Path p;
-	for(int i=0;i<srv.response.plan.poses.size();i++)
+
+}
+
+void ped_momdp::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
+	cout<<"receive path from navfn "<<path->poses.size()<<endl;
+	if(path->poses.size()==0) return;
+	Path p;
+	for(int i=0;i<path->poses.size();i++)
 	{
         COORD coord;
-		coord.x=srv.response.plan.poses[i].pose.position.x;
-		coord.y=srv.response.plan.poses[i].pose.position.y;
+		coord.x=path->poses[i].pose.position.x;
+		coord.y=path->poses[i].pose.position.y;
         p.push_back(coord);
 	}
 	worldModel.setPath(p.interpolate());
-
-	pathPub_.publish(srv.response.plan);
+	pathPub_.publish(*path);
 }
-
 
 void ped_momdp::controlLoop(const ros::TimerEvent &e)
 {
 	    cout<<"entering control loop"<<endl;
-
         tf::Stamped<tf::Pose> in_pose, out_pose;
-		in_pose.setIdentity();
 
-		//in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame; 
+		//transpose to base link
+		in_pose.setIdentity();
 		in_pose.frame_id_ = ModelParams::rosns + "/base_link"; 
+		while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
+			cerr<<"transform error within control loop"<<endl;
+		} 
+
+		RetrievePaths(out_pose);
+		if(worldModel.path.size()==0) return;
+		//transpose to laser frame
+		in_pose.setIdentity();
+		in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame; 
 		while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 		} 
@@ -343,8 +362,6 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		cout << "transformed pose = " << coord.x << " " << coord.y << endl;
 		worldStateTracker.updateCar(coord);
 		
-
-		RetrievePaths(out_pose);
         worldStateTracker.cleanPed();
 
 		PomdpState curr_state = worldStateTracker.getPomdpState();

@@ -12,7 +12,7 @@ namespace ped_pathplan {
     using namespace std;
 
 
-    PathPlan::PathPlan(int xs, int ys): nx(xs), ny(ys), step(8) {
+    PathPlan::PathPlan(int xs, int ys): nx(xs), ny(ys), step(6) {
         ns = xs * ys;
         costarr = new COSTTYPE[ns]; // cost array, 2d config space
         memset(costarr, 0, ns*sizeof(COSTTYPE));
@@ -113,8 +113,8 @@ namespace ped_pathplan {
 
 			float curr_dist = distToGoal(p.state);
 			if(curr_dist < curr_min_dist) {
-				cout << "dist to goal = " << curr_dist << endl;
-				cout << "(" <<  p.state[0] << " " << p.state[1] << " " << p.state[2] << ")" << " " << qp.first << endl;
+				//cout << "dist to goal = " << curr_dist << endl;
+				//cout << "(" <<  p.state[0] << " " << p.state[1] << " " << p.state[2] << ")" << " " << qp.first << endl;
 				curr_min_dist = curr_dist;
 			}
 
@@ -125,11 +125,10 @@ namespace ped_pathplan {
 				break;
             }
 
-			if(items.size() > 10000000) {
+			if(items.size() > 1000000) {
                 cout << "no solution found!" << endl;
 				break;
 			}
-
 
             for(float t: steerings) {
 				bool success;
@@ -204,7 +203,7 @@ namespace ped_pathplan {
 
     DiscreteState PathPlan::discretize(const State& s) {
         DiscreteState ds(3);
-		float dd = step / 2;
+		float dd = step * 0.2;
         ds[0] = int(s[0] / dd);
         ds[1] = int(s[1] / dd);
         ds[2] = int(s[2] / D_YAW);

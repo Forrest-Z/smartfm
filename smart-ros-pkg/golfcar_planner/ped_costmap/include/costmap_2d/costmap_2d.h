@@ -403,7 +403,7 @@ namespace costmap_2d {
        * @param  inflation_queue The priority queue to insert into
        */
       inline void enqueue(unsigned int index, unsigned int mx, unsigned int my, 
-          unsigned int src_x, unsigned int src_y, std::priority_queue<CellData>& inflation_queue){
+          unsigned int src_x, unsigned int src_y, std::priority_queue<CellData>& inflation_queue, float cost_ratio=1.0){
         unsigned char* marked = &markers_[index];
         //set the cost of the cell being inserted
         if(*marked == 0){
@@ -415,10 +415,10 @@ namespace costmap_2d {
             return;
 
           //assign the cost associated with the distance from an obstacle to the cell
-          updateCellCost(index, costLookup(mx, my, src_x, src_y));
+          updateCellCost(index, int(cost_ratio * costLookup(mx, my, src_x, src_y)));
 
           //push the cell data onto the queue and mark
-          CellData data(distance, index, mx, my, src_x, src_y);
+          CellData data(distance, index, mx, my, src_x, src_y, cost_ratio);
           inflation_queue.push(data);
           *marked = 1;
         }
