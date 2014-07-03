@@ -1,28 +1,21 @@
-	<launch>	
+<launch>	
 
 	<node pkg="velmixer" type="vel_miexer" name="vel_mixer" respawn="false"/>
 
-		<node name="ped_momdp" pkg="ped_momdp_sarsop" type="ped-momdp-sarsop"  respawn="false" output="screen" >
-		<param name="model_file" value="$(find ped_momdp_sarsop)/policy-files/20120308/rss-lane-u1.pomdpx"/>
-		<param name="policy_file" value="$(find ped_momdp_sarsop)/policy-files/20120308/rss-lane-momdp-u1.policy"/>
-		<param name="simLen" value="30"/>
-		<param name="simNum" value="1"/>
-		<param name="frequency" value="3.0"/>
-		<param name="stationary" value="false"/>
+	<node name="ped_momdp" pkg="ped_momdp_sarsop" type="ped-momdp-sarsop"  respawn="false" output="screen" >
+		<param name="simulation" value="false"/>
 		<remap from="robot_0/amcl_pose" to="amcl_pose"/>
 		<remap from="odom" to="odom"/>
 		<remap from="pomdp_path_repub" to="new_global_plan"/>
+	</node>
 
-		</node>
-
-		<node name="ped_momdp_local_transform" pkg="ped_momdp_sarsop" type="local_frame">  
+	<node name="ped_momdp_local_transform" pkg="ped_momdp_sarsop" type="local_frame">  
         <remap from="plan" to="new_global_plan" />
 		<param name="threshold" value="0.0"/>
-		</node>
+	</node>
 
-		<node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher" >
+	<node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher" >
 		<remap from="cmd_vel" to="cmd_speed"/>
-		</node>
+	</node>
 
-
-		</launch>
+</launch>

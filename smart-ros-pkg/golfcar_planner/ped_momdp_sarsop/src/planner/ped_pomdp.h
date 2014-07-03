@@ -67,8 +67,6 @@ public:
 
 	WorldModel &world;
 protected:
-	double OBSTACLE_PROB;
-
 	enum {
 		ACT_CUR,
 		ACT_ACC,
@@ -80,22 +78,7 @@ private:
 	PomdpState startState;
 	mutable MemoryPool<PomdpState> memory_pool_;
 	mutable Random random_;
-
-	double robotNoisyMove[3][3]; /*vel,move*/
-	double robotMoveProbs[3][3];
-	double robotVelUpdate[3][3][3]; /*action,vel,new vel*/
-	double robotUpdateProb[3][3][3];
-
-	int lookup(const double probs[], double prob) const {
-		int pos = 0;
-		double sum = probs[0];
-		while(sum < prob) {
-			pos ++;
-			sum += probs[pos];
-		}
-		return pos;
-	}
-
 };
 
 #endif
+

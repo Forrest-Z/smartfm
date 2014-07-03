@@ -28,16 +28,13 @@ int RandomActionSeed() {
   return Globals::config.root_seed ^ (Globals::config.n_particles + 2);
 }
 
-ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh) : worldBeliefTracker(worldModel), worldStateTracker(worldModel)
+ped_momdp::ped_momdp(ros::NodeHandle& nh) : worldBeliefTracker(worldModel), worldStateTracker(worldModel)
 {
 	global_frame_id = ModelParams::rosns + "/map";
 	cerr <<"DEBUG: Entering ped_momdp()"<<endl;
-	control_freq=frequency;
+	control_freq=ModelParams::control_freq;
 
 	cerr << "DEBUG: Initializing publishers..." << endl;
-    momdp_problem_timeout = 5.0;
-    stationary_ = stationary;
-    use_sim_time_ = use_sim_time;
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp",1);
 	actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
@@ -55,7 +52,6 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
 
 	markers_pub=nh.advertise<visualization_msgs::MarkerArray>("pomdp_belief",1);
     //initPedGoal();
-    //policy_initialize(model_file, policy_file, simLen, simNum);
 	safeAction=2;
 	momdp_speed_=0.0;
 	goal_reached=false;
@@ -63,9 +59,8 @@ ped_momdp::ped_momdp(string model_file, string policy_file, int simLen, int simN
 	initSimulator();
     //RetrievePaths();
 
-	cerr <<"frequency "<<frequency<<endl;
 	cerr <<"DEBUG: before entering controlloop"<<endl;
-  	timer_ = nh.createTimer(ros::Duration(1.0/frequency), &ped_momdp::controlLoop, this);
+    timer_ = nh.createTimer(ros::Duration(1.0/control_freq), &ped_momdp::controlLoop, this);
 	timer_speed=nh.createTimer(ros::Duration(0.05), &ped_momdp::publishSpeed, this);
 
 }
@@ -186,9 +181,9 @@ void ped_momdp::publishROSState()
 
 	uint32_t shape = visualization_msgs::Marker::CYLINDER;
 
-	for(int i=0;i<ModelParams::NGOAL;i++)
+	for(int i=0;i<worldModel.goals.size();i++)
 	{
-		visualization_msgs::Marker marker;			
+		visualization_msgs::Marker marker;
 
 		marker.header.frame_id=ModelParams::rosns+"/map";
 		marker.header.stamp=ros::Time::now();

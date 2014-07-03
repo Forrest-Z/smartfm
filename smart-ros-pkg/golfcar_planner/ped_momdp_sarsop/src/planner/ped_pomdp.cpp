@@ -21,48 +21,8 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 	random_(Random((unsigned) Seeds::Next()))
 {
 	particle_lower_bound_ = new PedPomdpParticleLowerBound(this);
+}
 
-	OBSTACLE_PROB = 0.0;
-
-	//TODO remove these?
-	double noisyMove[3][3] /*vel, move*/ = {{0, 1, 0},
-		{0, 1, 2},
-		{0, 1, 2}};
-	memcpy(robotNoisyMove, noisyMove, sizeof(noisyMove));
-
-	if(ModelParams::goodrob == 0) {
-		double moveProbs[3][3] = {{0.9, 0.1, 0.0},
-			{0.1, 0.8, 0.1},
-
-			{0.1, 0.1, 0.8}};
-		memcpy(robotMoveProbs, moveProbs, sizeof(moveProbs));
-	} else {
-		double moveProbs[3][3] = {{1.0, 0.0, 0.0},
-			{0.1, 0.8, 0.1},
-			{0.1, 0.1, 0.8}};
-		memcpy(robotMoveProbs, moveProbs, sizeof(moveProbs));
-	}
-
-	double velUpdate[3][3][3] /*action,vel,updated*/ = {
-		{{0, 1, 0}, {0, 1, 2}, {0, 1, 2}},
-		{{0, 1, 2}, {0, 1, 2}, {0, 1, 2}},
-		{{0, 1, 0}, {0, 1, 0}, {0, 1, 2}}};
-	memcpy(robotVelUpdate, velUpdate, sizeof(velUpdate));
-
-	if(ModelParams::goodrob == 0) {
-		double updateProb[3][3][3] /*action,vel,updated*/ = {
-			{{0.9, 0.1, 0.0}, {0.2, 0.7, 0.1}, {0.1, 0.1, 0.8}},
-			{{0.2, 0.7, 0.1}, {0.1, 0.1, 0.8}, {0.1, 0.1, 0.8}},
-			{{0.9, 0.1, 0.0}, {0.9, 0.1, 0.0}, {0.2, 0.7, 0.1}}};
-		memcpy(robotUpdateProb, updateProb, sizeof(updateProb));
-	} else {
-		double updateProb[3][3][3] /*action,vel,updated*/ = {
-			{{1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}},
-			{{0.0, 1.0, 0.0}, {0.0, 0.0, 1.0}, {0.0, 0.0, 1.0}},
-			{{1.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.5, 0.5, 0.0}}};
-		memcpy(robotUpdateProb, updateProb, sizeof(updateProb));
-	}
-} 
 vector<int> PedPomdp::ObserveVector(const State& state_) const {
 	const PomdpState &state=static_cast<const PomdpState&>(state_);
 	static vector<int> obs_vec;
@@ -77,8 +37,8 @@ vector<int> PedPomdp::ObserveVector(const State& state_) const {
 	obs_vec[i++]=(rvel);
 
 	for(int i = 0; i < state.num; i ++) {
-		int px=int(state.peds[i].pos.x/ModelParams::pos_rln);
-		int py=int(state.peds[i].pos.y/ModelParams::pos_rln);
+		int px = int(state.peds[i].pos.x/ModelParams::pos_rln);
+		int py = int(state.peds[i].pos.y/ModelParams::pos_rln);
 		obs_vec[i++]=(px);
 		obs_vec[i++]=(py);
 	}
@@ -239,7 +199,7 @@ void PedPomdp::Statistics(const vector<PomdpState*> particles) const {
 
 	for(int j = 0; j < state_0->num; j ++) {
 		cout << "Ped " << j << " Belief is ";
-		for(int i = 0; i < ModelParams::NGOAL; i ++) {
+		for(int i = 0; i < world.goals.size(); i ++) {
 			cout << (goal_count[j][i] + 0.0) <<" ";
 		}
 		cout << endl;

@@ -71,7 +71,7 @@ using namespace std;
 class ped_momdp
 {
 public:
-    ped_momdp(string model_file, string policy_file, int simLen, int simNum, bool stationary, double frequency, bool use_sim_time, ros::NodeHandle& nh);
+    ped_momdp(ros::NodeHandle& nh);
     
     ~ped_momdp();
     

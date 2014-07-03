@@ -126,9 +126,9 @@ namespace ped_pathplan {
             }
 
 			if(items.size() > 1000000) {
+                cout << "no solution found!" << endl;
 				break;
 			}
-
 
             for(float t: steerings) {
 				bool success;
