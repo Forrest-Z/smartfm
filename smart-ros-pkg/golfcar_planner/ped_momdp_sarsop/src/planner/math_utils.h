@@ -23,7 +23,7 @@ public:
 double DotProduct(double x1,double y1,double x2,double y2);
 double CrossProduct(MyVector vec1, MyVector vec2);
 double Norm(double x,double y);
-double Uniform(double x,double y,double &ux,double &uy);
+void Uniform(double x,double y,double &ux,double &uy);
 void AddVector(double in_angle,double in_length,double &out_angle,double &out_length);
 
 

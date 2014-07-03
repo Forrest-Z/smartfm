@@ -181,9 +181,9 @@ void ped_momdp::publishROSState()
 
 	uint32_t shape = visualization_msgs::Marker::CYLINDER;
 
-	for(int i=0;i<ModelParams::NGOAL;i++)
+	for(int i=0;i<worldModel.goals.size();i++)
 	{
-		visualization_msgs::Marker marker;			
+		visualization_msgs::Marker marker;
 
 		marker.header.frame_id=ModelParams::rosns+"/map";
 		marker.header.stamp=ros::Time::now();

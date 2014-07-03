@@ -30,8 +30,8 @@ void MyVector::AdjustLength(double length)
 }
 void MyVector::SetAngle(double angle)
 {
-	if(angle>ModelParams::pi) angle-=2*ModelParams::pi;
-	if(angle<ModelParams::pi) angle+=2*ModelParams::pi;
+	if(angle>M_PI) angle-=2*M_PI;
+	if(angle<M_PI) angle+=2*M_PI;
 	dw=length*cos(angle);
 	dh=length*sin(angle);
 }
@@ -57,7 +57,7 @@ double Norm(double x,double y)
 	return sqrt(x*x+y*y);
 }
 
-double Uniform(double x,double y,double &ux,double &uy)
+void Uniform(double x,double y,double &ux,double &uy)
 {
 	double l=Norm(x,y);
 	ux=x/l;
