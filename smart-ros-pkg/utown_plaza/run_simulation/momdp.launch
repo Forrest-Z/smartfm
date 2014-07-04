@@ -10,6 +10,7 @@
 	</node>
 
 	<node name="ped_momdp_local_transform" pkg="ped_momdp_sarsop" type="local_frame">  
+		<param name="simulation" value="true"/>
         <remap from="plan" to="new_global_plan" />
 		<param name="threshold" value="0.0"/>
 	</node>
