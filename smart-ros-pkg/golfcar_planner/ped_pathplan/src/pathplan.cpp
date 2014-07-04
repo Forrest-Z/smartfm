@@ -12,7 +12,7 @@ namespace ped_pathplan {
     using namespace std;
 
 
-    PathPlan::PathPlan(int xs, int ys): nx(xs), ny(ys), step(6) {
+    PathPlan::PathPlan(int xs, int ys): nx(xs), ny(ys), step(3) {
         ns = xs * ys;
         costarr = new COSTTYPE[ns]; // cost array, 2d config space
         memset(costarr, 0, ns*sizeof(COSTTYPE));
@@ -125,7 +125,7 @@ namespace ped_pathplan {
 				break;
             }
 
-			if(items.size() > 1000000) {
+			if(items.size() > 100000000) {
                 cout << "no solution found!" << endl;
 				break;
 			}
