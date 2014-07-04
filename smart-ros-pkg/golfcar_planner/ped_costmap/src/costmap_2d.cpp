@@ -650,6 +650,7 @@ namespace costmap_2d{
   }
 
   void Costmap2D::updateObstacles(const vector<Observation>& observations, priority_queue<CellData>& inflation_queue){
+    const float PED_COST_RATIO = 0.5;
     //place the new obstacles into a priority queue... each with a priority of zero to begin with
     for(vector<Observation>::const_iterator it = observations.begin(); it != observations.end(); ++it){
       const Observation& obs = *it;
@@ -687,7 +688,7 @@ namespace costmap_2d{
         unsigned int index = getIndex(mx, my);
 
         //push the relevant cell index back onto the inflation queue
-        enqueue(index, mx, my, mx, my, inflation_queue, 0.5);
+        enqueue(index, mx, my, mx, my, inflation_queue, PED_COST_RATIO);
       }
     }
   }
@@ -827,10 +828,13 @@ namespace costmap_2d{
     for(unsigned int j = map_sy; j <= map_ey; ++j){
       for(unsigned int i = map_sx; i <= map_ex; ++i){
         //if the cell is a lethal obstacle... we'll keep it and queue it, otherwise... we'll clear it
+        /*
         if(*static_current != LETHAL_OBSTACLE){
           if(clear_no_info || *current != NO_INFORMATION) 
-            *current = FREE_SPACE;
-        }
+            // *current = FREE_SPACE;
+            *current = *static_current;
+        }*/
+        *current = *static_current;
         current++;
 		static_current++;
         index++;
