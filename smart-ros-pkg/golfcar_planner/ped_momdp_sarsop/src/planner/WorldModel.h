@@ -36,6 +36,8 @@ public:
 
 class WorldStateTracker {
 public:
+    typedef pair<float, Pedestrian> PedDistPair;
+
     WorldStateTracker(WorldModel& _model): model(_model) {}
 
     void updatePed(const Pedestrian& ped);
@@ -44,6 +46,8 @@ public:
     void cleanPed();
 
     bool emergency();
+
+    std::vector<PedDistPair> getSortedPeds();
 
     PomdpState getPomdpState();
 
@@ -57,13 +61,14 @@ public:
 
 class WorldBeliefTracker {
 public:
-    WorldBeliefTracker(WorldModel& _model): model(_model) {}
+    WorldBeliefTracker(WorldModel& _model, WorldStateTracker& _stateTracker): model(_model), stateTracker(_stateTracker) {}
 
-    void update(const PomdpState& s);
+    void update();
     PomdpState sample();
     vector<PomdpState> sample(int num);
 
     WorldModel& model;
+    WorldStateTracker& stateTracker;
     CarStruct car;
     std::map<int, PedBelief> peds;
 };

@@ -28,7 +28,7 @@ int RandomActionSeed() {
   return Globals::config.root_seed ^ (Globals::config.n_particles + 2);
 }
 
-ped_momdp::ped_momdp(ros::NodeHandle& nh) : worldBeliefTracker(worldModel), worldStateTracker(worldModel)
+ped_momdp::ped_momdp(ros::NodeHandle& nh) :  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker)
 {
     nh.param("fixed_path", fixed_path_, false);
     nh.param("pruning_constant", Globals::config.pruning_constant, 0.0);
@@ -378,7 +378,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		}
 
 		cout<<"before belief update"<<endl;
-		worldBeliefTracker.update(curr_state);	
+		worldBeliefTracker.update();	
 		cout<<"after belief update"<<endl;
 		vector<PomdpState> samples = worldBeliefTracker.sample(1000);
 		// TODO maybe should free particles after use

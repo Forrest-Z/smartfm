@@ -289,34 +289,57 @@ void WorldStateTracker::updateVel(double vel) {
     carvel = vel;
 }
 
+vector<WorldStateTracker::PedDistPair> WorldStateTracker::getSortedPeds() {
+    // sort peds
+    vector<PedDistPair> sorted_peds;
+    for(const auto& p: ped_list) {
+        COORD cp(p.w, p.h);
+        float dist = COORD::EuclideanDistance(cp, carpos);
+        sorted_peds.push_back(PedDistPair(dist, p));
+    }
+    sort(sorted_peds.begin(), sorted_peds.end(),
+            [](const PedDistPair& a, const PedDistPair& b) -> bool {
+                return a.first < b.first;
+            });
+    return sorted_peds;
+}
+
 PomdpState WorldStateTracker::getPomdpState() {
+    auto sorted_peds = getSortedPeds();
+
+    // construct PomdpState
     PomdpState pomdpState;
     pomdpState.car.pos = model.path.nearest(carpos);
     pomdpState.car.vel = carvel;
 	pomdpState.car.dist_travelled = 0;
-    pomdpState.num = ped_list.size();
+    pomdpState.num = sorted_peds.size();
 
-    //assert(pomdpState.num <= ModelParams::N_PED_IN);
 	if(pomdpState.num > ModelParams::N_PED_IN) {
 		pomdpState.num = ModelParams::N_PED_IN;
 	}
 
     for(int i=0;i<pomdpState.num;i++) {
-        pomdpState.peds[i].pos.x=ped_list[i].w;
-        pomdpState.peds[i].pos.y=ped_list[i].h;
-		pomdpState.peds[i].id = ped_list[i].id;
+        const auto& ped = sorted_peds[i].second;
+        pomdpState.peds[i].pos.x=ped.w;
+        pomdpState.peds[i].pos.y=ped.h;
+		pomdpState.peds[i].id = ped.id;
 		pomdpState.peds[i].goal = -1;
     }
 	return pomdpState;
 }
 
-void WorldBeliefTracker::update(const PomdpState& s) {
-    car = s.car;
+void WorldBeliefTracker::update() {
+    // update car
+    car.pos = model.path.nearest(stateTracker.carpos);
+    car.vel = stateTracker.carvel;
+	car.dist_travelled = 0;
 
+    auto sorted_peds = stateTracker.getSortedPeds();
     map<int, PedStruct> newpeds;
-    for(int i=0; i<s.num; i++) {
-		auto& p = s.peds[i];
-        newpeds[p.id] = p;
+    for(const auto& dp: sorted_peds) {
+        auto& p = dp.second;
+        PedStruct ped(COORD(p.w, p.h), -1, p.id);
+        newpeds[p.id] = ped;
     }
 
     // remove disappeared peds
@@ -331,8 +354,8 @@ void WorldBeliefTracker::update(const PomdpState& s) {
     }
 
     // add new peds
-    for(int i=0; i<s.num; i++) {
-		auto& p = s.peds[i];
+    for(const auto& kv: newpeds) {
+		auto& p = kv.second;
         if (peds.find(p.id) == peds.end()) {
             peds[p.id] = model.initPedBelief(p);
         }
