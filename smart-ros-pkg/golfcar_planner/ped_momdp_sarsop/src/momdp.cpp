@@ -386,13 +386,14 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		vector<PomdpState> samples = worldBeliefTracker.sample(1000);
 		// TODO maybe should free particles after use
 		vector<State*> particles = despot->ConstructParticles(samples);
+
 		double sum=0;
 		for(int i=0;i<particles.size();i++)
 			sum+=particles[i]->weight;
 		cout<<"particle weight sum "<<sum<<endl;
 		ParticleBelief *pb=new ParticleBelief(particles, despot);
 		solver->belief(pb);
-
+	
 		if(worldStateTracker.emergency())
 		{
 			momdp_speed_=-1;
@@ -418,6 +419,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		if(momdp_speed_>=ModelParams::VEL_MAX) momdp_speed_ = ModelParams::VEL_MAX;
 
 		cout<<"momdp_speed "<<momdp_speed_<<endl;
+		delete pb;	
 }
 
 

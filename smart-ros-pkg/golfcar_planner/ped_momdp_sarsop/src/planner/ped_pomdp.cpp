@@ -61,6 +61,7 @@ vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 	for(int i=0;i<samples.size();i++) {
 		PomdpState* particle = static_cast<PomdpState*>(Allocate(-1, 1.0/num_particles));
 		(*particle)=samples[i];
+		particle->SetAllocated();
 		particle->weight=1.0/num_particles;
 		particles.push_back(particle);
 	}

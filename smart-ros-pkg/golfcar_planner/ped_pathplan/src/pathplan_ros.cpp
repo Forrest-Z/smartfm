@@ -134,7 +134,7 @@ namespace ped_pathplan {
 		static bool published=false;
 		if(published==false)
 		{
-			published=true;
+		//	published=true;
 			publishPlan(plan);
 		}
 

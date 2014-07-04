@@ -11,7 +11,7 @@ namespace ModelParams {
 	const int GOAL_TRAVELLED=10;
 
     const double CRASH_PENALTY = -10000;
-	const double GOAL_REWARD = 500;
+	const double GOAL_REWARD = 5;
 
     const double PATH_STEP = 0.05;
 
