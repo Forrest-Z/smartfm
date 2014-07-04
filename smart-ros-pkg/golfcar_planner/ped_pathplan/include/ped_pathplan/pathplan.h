@@ -12,7 +12,7 @@
 #define COST_NEUTRAL 50		// Set this to "open space" value
 #define COST_FACTOR 2		// Used for translating costs in NavFn::setCostmap()
 //const float COST_STEERING = (10 / M_PI * 180 );
-const float COST_STEERING = (80 / M_PI * 180 );
+const float COST_STEERING = (100 / M_PI * 180 );
 
 #define COSTTYPE unsigned char	// Whatever is used...
 
