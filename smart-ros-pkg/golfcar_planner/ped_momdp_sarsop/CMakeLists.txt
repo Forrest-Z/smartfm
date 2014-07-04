@@ -61,3 +61,9 @@ rosbuild_add_executable(vel_publisher src/VelPublisher.cpp)
 
 rosbuild_add_executable(path_planner src/PathPlanner.cpp)
 
+
+
+rosbuild_add_executable(ped_costmap src/planner/ped_costmap.cpp)
+
+rosbuild_add_compile_flags(ped_costmap -std=c++0x -O3) 
+target_link_libraries(ped_costmap despot)

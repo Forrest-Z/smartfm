@@ -21,6 +21,7 @@ set(CMAKE_CXX_COMPILER "colorgcc")
 
 find_package(Eigen)
 include_directories(${EIGEN_INCLUDE_DIRS})
+include_directories(/home/david/smartfm/smart-ros-pkg/golfcar_planner/ped_momdp_sarsop/src/planner)
 add_definitions(${EIGEN_DEFINITIONS})
 
 rosbuild_add_library (ped_pathplan src/pathplan.cpp src/pathplan_ros.cpp)
