@@ -51,7 +51,7 @@ pedestrian_momdp::pedestrian_momdp()
 	momdp->pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);
 	momdp->car_pub=nh.advertise<geometry_msgs::PoseStamped>("car_pose",1000);
 	//momdp->path_client=nh.serviceClient<pomdp_path_planner::GetPomdpPath>("get_pomdp_paths");
-	
+
 	momdp->path_client=nh.serviceClient<nav_msgs::GetPlan>(ModelParams::rosns + "/ped_path_planner/planner/make_plan");
 
 

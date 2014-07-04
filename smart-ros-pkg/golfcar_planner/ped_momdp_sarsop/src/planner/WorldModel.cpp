@@ -36,7 +36,7 @@ bool WorldModel::isGlobalGoal(const CarStruct& car) {
 }
 
 int WorldModel::defaultPolicy(const vector<State*>& particles)  {
-	const PomdpState *state=static_cast<const PomdpState*>(particles[0]);	
+	const PomdpState *state=static_cast<const PomdpState*>(particles[0]);
     double mindist = numeric_limits<double>::infinity();
     auto& carpos = path[state->car.pos];
     double carvel = state->car.vel;
