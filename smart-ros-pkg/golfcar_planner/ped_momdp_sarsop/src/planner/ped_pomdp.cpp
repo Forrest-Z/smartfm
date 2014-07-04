@@ -3,15 +3,38 @@
 int PedPomdp::action_vel[3] = {0, 1, -1};
 
 class PedPomdpParticleLowerBound : public ParticleLowerBound {
+private:
+	const PedPomdp* ped_pomdp_;
 public:
 	PedPomdpParticleLowerBound(const DSPOMDP* model) :
-		ParticleLowerBound(model) {
+		ParticleLowerBound(model),
+		ped_pomdp_(static_cast<const PedPomdp*>(model))
+	{
 	}
 
 	virtual ValuedAction Value(const vector<State*>& particles) const {
 		PomdpState* state = static_cast<PomdpState*>(particles[0]);
-		//return ValuedAction(0, State::Weight(particles) * ModelParams::CRASH_PENALTY * ModelParams::VEL_MAX / (1 - Discount()));
-		return ValuedAction(0, State::Weight(particles) * ModelParams::CRASH_PENALTY * state->car.vel / (1 - Discount()));
+		double mindist = numeric_limits<double>::infinity();
+		auto& carpos = ped_pomdp_->world.path[state->car.pos];
+		double carvel = state->car.vel;
+		int minstep = numeric_limits<int>::infinity();
+		for(int i=0; i<state->num; i++) {
+			auto& p = state->peds[i];
+			double d = COORD::EuclideanDistance(carpos, p.pos);
+		}
+
+		double value = State::Weight(particles) * (-20);
+		/*
+		if (mindist != numeric_limits<double>::infinity()) {
+			double step = max(mindist - 2.0, 0.0) / (carvel + ModelParams::PED_SPEED) * ModelParams::control_freq;
+	
+			double value = State::Weight(particles) *  
+				ModelParams::CRASH_PENALTY  
+				* (carvel + 0.2) * (1 - Discount(step)) / (1 - Discount());
+		}
+		*/
+
+		return ValuedAction(0, value);
 	}
 };
 
@@ -69,43 +92,40 @@ vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 }
 
 bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint64_t& obs) const {
-	const bool REWARD_DIST = false;
-
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0;
-	if(world.isLocalGoal(state)) {
-		reward = (REWARD_DIST ? 0 : ModelParams::GOAL_REWARD)
-			+ (state.car.dist_travelled - ModelParams::GOAL_TRAVELLED)
-			- (ModelParams::VEL_MAX/ModelParams::control_freq);
-		//cout << "goal reached!" << endl;
-		//PrintState(state, cout);
+
+	// Terminate upon reaching goal
+	if (world.isLocalGoal(state)) {
+		reward += state.car.dist_travelled-ModelParams::GOAL_TRAVELLED-ModelParams::VEL_MAX/ModelParams::control_freq;
 		return true;
 	}
-	double collision_penalty = world.inCollision(state,action);
-	if(collision_penalty < 0) {
-		reward += collision_penalty;
+
+	// Safety control: Warning or collision
+	double penalty = world.inCollision(state,action);
+	if (penalty < 0) {
+		reward += penalty;
 	}
+	// Terminate upon collision
+	if (penalty < ModelParams::CRASH_PENALTY * 0.2) { 
+		return true;
+	}
+
+	// Smoothness control: Avoid frequent dec or acc
+	reward += (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0;
+
+	// Speed control: Encourage higher speed
+	reward += -1;
 
 	int rob_vel = state.car.vel;
 
 	Random random(rNum);
 	double p = random.NextDouble();
-	//reward += (action == ACT_DEC) ? 10 : -1;
 
-	double acc;
-	if (action == ACT_ACC) {
-		acc = ModelParams::AccSpeed;
-	} else if (action == ACT_CUR) {
-		acc = 0;
-	} else {
-		acc = -ModelParams::AccSpeed;
-	}
-
+	double acc = (action == ACT_ACC) ? ModelParams::AccSpeed :
+		((action == ACT_CUR) ?  0 : (-ModelParams::AccSpeed));
 	
 	world.RobStep(state.car, random);
-
-	if (REWARD_DIST)
-		reward+=state.car.vel/ModelParams::control_freq*(ModelParams::GOAL_REWARD/ModelParams::GOAL_TRAVELLED);
 
 	world.RobVelStep(state.car, acc, random);
 	for(int i=0;i<state.num;i++)
@@ -113,7 +133,6 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
 	obs = Observe(state);
 
-	//assert(reward>=0);
 	return false;
 }
 	
@@ -298,9 +317,10 @@ public:
 		const PomdpState& state = static_cast<const PomdpState&>(s);
 
 		//TODO noise
-		int d = ped_pomdp_->world.minStepToGoal(state);
+		// int d = ped_pomdp_->world.minStepToGoal(state);
 
-		return ModelParams::GOAL_REWARD * pow(Discount(), d);
+		return 0;
+		//return pow(Discount(), d);
 	}
 };
 

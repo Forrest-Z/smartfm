@@ -6,12 +6,12 @@
 
 namespace ModelParams {
 	const double pos_rln=0.5;
-	const double vel_rln=0.3;
+	const double vel_rln=0.03;
 	const int N_PED_IN=15;
 	const int GOAL_TRAVELLED=10;
 
-    const double CRASH_PENALTY = -10000;
-	const double GOAL_REWARD = 5;
+    const double CRASH_PENALTY = -100;
+	const double GOAL_REWARD = 500;
 
     const double PATH_STEP = 0.05;
 

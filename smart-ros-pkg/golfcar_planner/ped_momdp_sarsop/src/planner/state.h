@@ -45,6 +45,10 @@ public:
 	int num;
 	PedStruct peds[ModelParams::N_PED_IN];
 	PomdpState() {}
+
+	string text() const {
+		return concat(car.vel);
+	}
 };
 
 #endif

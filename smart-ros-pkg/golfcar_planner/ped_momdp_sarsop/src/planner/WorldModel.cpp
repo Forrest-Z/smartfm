@@ -35,6 +35,7 @@ bool WorldModel::isGlobalGoal(const CarStruct& car) {
     return (d<ModelParams::GOAL_TOLERANCE);
 }
 
+//TODO add direction of the pedestrian to the criteria
 int WorldModel::defaultPolicy(const vector<State*>& particles)  {
 	const PomdpState *state=static_cast<const PomdpState*>(particles[0]);
     double mindist = numeric_limits<double>::infinity();
@@ -60,28 +61,33 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
     }
     return 1;
 }
+
+int WorldModel::aligned(COORD ped_pos, int car) {
+	COORD car_pos = path[car];
+	COORD forward_pos = path[path.forward(car, 1.0)];
+	return DotProduct(forward_pos.x - car_pos.x, forward_pos.y - car_pos.y,
+			ped_pos.x - car_pos.x, ped_pos.y - ped_pos.y) < 0 ? -1 : 1;
+}
+
 double WorldModel::inCollision(const PomdpState& state, int action) {
     double penalty = 0;
     double mindist = numeric_limits<double>::infinity();
     auto& carpos = path[state.car.pos];
     double carvel = state.car.vel;
+
+	// Find the closest pedestrian in front
     for(int i=0; i<state.num; i++) {
 		auto& p = state.peds[i];
-        double d = COORD::EuclideanDistance(carpos, p.pos);
-        if(d < mindist) mindist = d;
+        double d = COORD::EuclideanDistance(carpos, p.pos) * aligned(p.pos, state.car.pos);
+        if(d > 0 && d < mindist) mindist = d;
     }
 
     // TODO set as a param
-    if(mindist < 2 && carvel > 0) {
-        penalty += ModelParams::CRASH_PENALTY * (carvel + 1);
+    if(mindist < 2) { // Collision penalty
+        penalty += ModelParams::CRASH_PENALTY * (carvel + 0.2);
+    } else if(carvel > 1.0 && mindist < 4) { // Warning (should be smaller than collision penalty)
+        penalty += ModelParams::CRASH_PENALTY * 0.1;
     }
-
-    if(carvel > 1.0 && mindist < 4) {
-        penalty += ModelParams::CRASH_PENALTY / 2;
-    }
-	if (penalty != 0) {
-		//cout << "penalty =" << penalty << endl;
-	}
     return penalty;
 }
 
@@ -95,7 +101,7 @@ double WorldModel::minStepToGoal(const PomdpState& state) {
 void WorldModel::PedStep(PedStruct &ped, Random& random) {
     COORD& goal = goals[ped.goal];
 	if(goal.x==-1&&goal.y==-1) {  //stop intention 
-		if(random.NextDouble()<0.5)	 { //move	
+		if(random.NextDouble()<0.0)	 { //move	
 			double a = random.NextDouble()*2*3.14;
 			MyVector move(a, ModelParams::PED_SPEED/freq, 0);
 			ped.pos.x += move.dw;
@@ -164,7 +170,9 @@ void WorldModel::RobVelStep(CarStruct &car, double acc, Random& random) {
         car.vel += acc / freq;
     }
     if (car.vel < 0) car.vel = 0;
-    if (car.vel > ModelParams::VEL_MAX) car.vel = ModelParams::VEL_MAX;
+    if (car.vel > ModelParams::VEL_MAX) {
+		car.vel = ModelParams::VEL_MAX;
+	}
     return;
 }
 
@@ -186,7 +194,7 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
 		double prob = pedMoveProb(b.pos, curr_ped.pos, i);
 		cout << prob << endl;
         b.prob_goals[i] *=  prob;
-		b.prob_goals[i] += 0.01;
+		//b.prob_goals[i] += 0.001;
 	}
 	for(double w: b.prob_goals) {
 		cout << w << " ";
@@ -286,7 +294,12 @@ bool WorldStateTracker::emergency() {
 }
 
 void WorldStateTracker::updateVel(double vel) {
-    carvel = vel;
+	/*
+	if(vel>ModelParams::VEL_MAX)
+		carvel=ModelParams::VEL_MAX;
+	else carvel = vel;
+	*/
+	carvel = vel;
 }
 
 vector<WorldStateTracker::PedDistPair> WorldStateTracker::getSortedPeds() {

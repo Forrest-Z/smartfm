@@ -17,6 +17,7 @@ public:
 	int defaultPolicy(const vector<State*>& particles);
     bool isLocalGoal(const PomdpState& state);
     bool isGlobalGoal(const CarStruct& car);
+	int aligned(COORD ped_pos, int car);
     double minStepToGoal(const PomdpState& state);
 
 	void PedStep(PedStruct &ped, Random& random);
