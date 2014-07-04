@@ -332,6 +332,7 @@ void ped_momdp::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 
 void ped_momdp::controlLoop(const ros::TimerEvent &e)
 {
+		
 	    cout<<"entering control loop"<<endl;
         tf::Stamped<tf::Pose> in_pose, out_pose;
 
@@ -340,6 +341,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		in_pose.frame_id_ = ModelParams::rosns + "/base_link"; 
 		while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
+			cout<<"laser frame "<<in_pose.frame_id_<<endl;
 		} 
 
 		RetrievePaths(out_pose);
@@ -349,6 +351,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame; 
 		while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
+			cout<<"laser frame "<<in_pose.frame_id_<<endl;
 		} 
 
 		COORD coord;

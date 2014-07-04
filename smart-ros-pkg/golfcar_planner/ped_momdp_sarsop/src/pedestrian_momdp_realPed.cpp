@@ -38,6 +38,8 @@ pedestrian_momdp::pedestrian_momdp()
     bool simulation;
     n.param("simulation", simulation, false);
     ModelParams::init_params(simulation);
+	cout << "simulation = " << simulation << endl;
+	cout << "rosns = " << ModelParams::rosns << endl;
 
     move_base_speed_=nh.subscribe("momdp_speed_dummy",1, &pedestrian_momdp::moveSpeedCallback, this);
     //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);

@@ -50,6 +50,11 @@ local_frame::local_frame()
 	loadFilter();
     ros::NodeHandle n("~");
     //n.param("global_frame", global_frame_, string("/odom"));
+	
+	bool simulation;
+	n.param("simulation", simulation, false);
+	ModelParams::init_params(simulation);
+
 	n.param("global_frame", global_frame_, ModelParams::rosns + string("/map"));
     n.param("threshold", threshold_, 3.0);
     n.param("offsetx", offsetx_, 0.0);
@@ -247,7 +252,7 @@ void local_frame::publishTransform(const ros::TimerEvent& event)
 		in_pose.setIdentity();
 		in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
 		if(!getObjectPose(ModelParams::rosns + "/map", in_pose, out_pose)) {
-			cerr<<"transform error within control loop"<<endl;
+			cerr<<"transform error within local_frame"<<endl;
 		} else {
 			if(path_record.size()==0)
 			{

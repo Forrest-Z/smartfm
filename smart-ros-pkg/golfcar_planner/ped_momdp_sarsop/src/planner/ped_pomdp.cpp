@@ -265,7 +265,7 @@ public:
 };
 
 void PedPomdp::InitializeScenarioLowerBound(string name, RandomStreams& streams) {
-	//name = "TRIVIAL";
+	// name = "TRIVIAL";
 	name="SMART";
 	if(name == "TRIVIAL") {
 		scenario_lower_bound_ = new TrivialScenarioLowerBound(this);

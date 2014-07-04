@@ -27,8 +27,8 @@ namespace ModelParams {
 	const double control_freq=3;
 	const double AccSpeed=1.0;
 
-	static std::string rosns="/golfcart";
-	static std::string laser_frame="/front_bottom_lidar";
+	extern std::string rosns;
+	extern std::string laser_frame;
 
     inline void init_params(bool in_simulation) {
         if(in_simulation) {

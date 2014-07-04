@@ -54,7 +54,7 @@ target_link_libraries(ped-momdp-sarsop despot)
 #rosbuild_add_compile_flags(pomcp-test ${WARNING_FLAGS})
 #target_link_libraries(pomcp-test pomcp)
 
-rosbuild_add_executable(local_frame src/local_frame.cpp)
+rosbuild_add_executable(local_frame src/local_frame.cpp src/planner/param.cpp)
 rosbuild_add_compile_flags(local_frame -std=c++0x)
 
 rosbuild_add_executable(vel_publisher src/VelPublisher.cpp)

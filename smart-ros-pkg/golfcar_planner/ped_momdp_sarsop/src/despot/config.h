@@ -21,7 +21,7 @@ struct Config {
 	double noise;
 
 	Config() :
-		search_depth(90),
+		search_depth(45),
 		discount(0.95),
 		root_seed(42),
 		time_per_move(1),
@@ -32,7 +32,7 @@ struct Config {
 		default_action(""),
 		create_mdp_bound(false),
 		bound_file(NULL),
-		max_policy_sim_len(90),
+		max_policy_sim_len(45),
 		noise(0)
 	{
 	}
