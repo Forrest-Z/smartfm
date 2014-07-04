@@ -1,0 +1,5 @@
+<launch>
+<node pkg="velmixer" type="ped_publisher" name="ped_publisher" output="screen" respawn="false">
+<param name="pedNum" value="5"/>
+</node>
+</launch>
