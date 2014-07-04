@@ -1,0 +1,148 @@
+Background\ ColorB=0
+Background\ ColorG=0
+Background\ ColorR=0
+Camera\ Config=13.5938 16.1036 19.5603 1.665
+Camera\ Type=rviz::FixedOrientationOrthoViewController
+Fixed\ Frame=/map
+GridCells.Alpha=1
+GridCells.ColorB=0
+GridCells.ColorG=1
+GridCells.ColorR=0.1
+GridCells.Enabled=0
+GridCells.Topic=/ped_path_planner/ped_costmap/inflated_obstacles
+GridCells2.Alpha=1
+GridCells2.ColorB=0
+GridCells2.ColorG=1
+GridCells2.ColorR=0.1
+GridCells2.Enabled=1
+GridCells2.Topic=
+InteractiveMarker.Enabled=1
+InteractiveMarker.Show\ Axes=0
+InteractiveMarker.Show\ Descriptions=1
+InteractiveMarker.Show\ Tool\ Tips=1
+InteractiveMarker.Update\ Topic=/basic_controls/update
+Map.Alpha=0.7
+Map.Draw\ Behind=0
+Map.Enabled=1
+Map.Topic=/map_cost
+Marker.Enabled=1
+Marker.Marker\ Topic=/pomdp_action
+Marker.Queue\ Size=100
+Marker.basic_shapes=1
+MarkerArray.Enabled=0
+MarkerArray.Marker\ Array\ Topic=/pomdp_belief
+MarkerArray.Queue\ Size=100
+Path.Alpha=1
+Path.ColorB=0
+Path.ColorG=1
+Path.ColorR=0.1
+Path.Enabled=1
+Path.Topic=/new_global_plan
+Path2.Alpha=1
+Path2.ColorB=0
+Path2.ColorG=0
+Path2.ColorR=1
+Path2.Enabled=1
+Path2.Topic=/pomdp_path_repub
+PointCloud..AxisColorAutocompute\ Value\ Bounds=1
+PointCloud..AxisColorAxis=2
+PointCloud..AxisColorMax\ Value=10
+PointCloud..AxisColorMin\ Value=-10
+PointCloud..AxisColorUse\ Fixed\ Frame=1
+PointCloud..FlatColorColorB=1
+PointCloud..FlatColorColorG=1
+PointCloud..FlatColorColorR=1
+PointCloud..IntensityAutocompute\ Intensity\ Bounds=1
+PointCloud..IntensityChannel\ Name=z
+PointCloud..IntensityMax\ ColorB=0
+PointCloud..IntensityMax\ ColorG=0
+PointCloud..IntensityMax\ ColorR=1
+PointCloud..IntensityMax\ Intensity=1
+PointCloud..IntensityMin\ ColorB=0
+PointCloud..IntensityMin\ ColorG=0
+PointCloud..IntensityMin\ ColorR=1
+PointCloud..IntensityMin\ Intensity=1
+PointCloud..IntensityUse\ full\ RGB\ spectrum=0
+PointCloud.Alpha=1
+PointCloud.Billboard\ Size=0.5
+PointCloud.Color\ Transformer=Intensity
+PointCloud.Decay\ Time=0
+PointCloud.Enabled=0
+PointCloud.Position\ Transformer=XYZ
+PointCloud.Queue\ Size=10
+PointCloud.Selectable=1
+PointCloud.Style=3
+PointCloud.Topic=/confident_objects_momdp
+Polygon.Alpha=1
+Polygon.ColorB=0
+Polygon.ColorG=1
+Polygon.ColorR=0.1
+Polygon.Enabled=1
+Polygon.Topic=
+Polygon2.Alpha=1
+Polygon2.ColorB=0
+Polygon2.ColorG=1
+Polygon2.ColorR=0.1
+Polygon2.Enabled=1
+Polygon2.Topic=/pp_vis
+Property\ Grid\ Splitter=743,78
+Property\ Grid\ State=expanded=.Global Options,Map.Enabled,Polygon.Enabled,PointCloud.Enabled,TF.Enabled,TF.Tree,TF.Tree./map,TF.Tree./odom,TF.Tree./base_footprint,TF.Tree./base_link,Path.Enabled,Path.Status,Polygon2.Enabled,GridCells.Enabled,Path2.Enabled,InteractiveMarker.Enabled,Marker.Enabled,MarkerArray.Enabled,GridCells2.Enabled;splitterratio=0.5
+QMainWindow=000000ff00000000fd00000003000000000000011d00000387fc0200000001fb000000100044006900730070006c006100790073010000001d00000387000000ee00ffffff000000010000013100000387fc0200000003fb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000001d000000e70000006700fffffffb0000000a00560069006500770073010000010a000001ad000000bb00fffffffb0000001200530065006c0065006300740069006f006e01000002bd000000e70000006700ffffff00000003000004bf0000003efc0100000001fb0000000800540069006d00650100000000000004bf000002bf00ffffff000002650000038700000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+TF.All\ Enabled=1
+TF.Enabled=1
+TF.Frame\ Timeout=15
+TF.Marker\ Scale=7
+TF.Show\ Arrows=1
+TF.Show\ Axes=1
+TF.Show\ Names=1
+TF.Update\ Interval=0
+Target\ Frame=/map
+Tool\ 2D\ Nav\ GoalTopic=/move_base_simple/goal
+Tool\ 2D\ Pose\ EstimateTopic=initialpose
+[Display0]
+ClassName=rviz::MapDisplay
+Name=Map
+[Display1]
+ClassName=rviz::PolygonDisplay
+Name=Polygon
+[Display10]
+ClassName=rviz::MarkerArrayDisplay
+Name=MarkerArray
+[Display11]
+ClassName=rviz::GridCellsDisplay
+Name=GridCells2
+[Display2]
+ClassName=rviz::PointCloudDisplay
+Name=PointCloud
+[Display3]
+ClassName=rviz::TFDisplay
+Name=TF
+[Display4]
+ClassName=rviz::PathDisplay
+Name=Path
+[Display5]
+ClassName=rviz::PolygonDisplay
+Name=Polygon2
+[Display6]
+ClassName=rviz::GridCellsDisplay
+Name=GridCells
+[Display7]
+ClassName=rviz::PathDisplay
+Name=Path2
+[Display8]
+ClassName=rviz::InteractiveMarkerDisplay
+Name=InteractiveMarker
+[Display9]
+ClassName=rviz::MarkerDisplay
+Name=Marker
+[TF.Frames.]
+base_footprint.Enabled=1
+base_laser_link.Enabled=1
+base_link.Enabled=1
+map.Enabled=1
+odom.Enabled=1
+[Window]
+Height=1000
+Width=1215
+X=63
+Y=212

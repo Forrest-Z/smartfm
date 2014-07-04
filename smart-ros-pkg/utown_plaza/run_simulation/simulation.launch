@@ -5,7 +5,7 @@
     <node name="fake_localization" pkg="fake_localization" type="fake_localization" respawn="false" />
 
 	<!--node name="amcl" pkg="amcl" type="amcl" respawn="false">
-		<remap from="scan" to="sick_scan2"/>		
+		<remap from="scan" to="sick_scan2"/>
 	</node-->
 
     <node pkg="stage" type="stageros" name="stageros" args="$(find utown_plaza)/empty_world.world" respawn="false">
@@ -49,9 +49,8 @@
 		<remap from="cmd_vel" to="cmd_vel"/>
 		</node>
 
-<!--    <node pkg="rviz" type="rviz" name="rviz" respawn="true" args="-d $(find utown_plaza)/utown_simulation.vcg" />  -->
+    <node pkg="rviz" type="rviz" name="rviz" respawn="true" args="-d $(find utown_plaza)/pomdp_simulation.vcg" />
 
-    <node pkg="rviz" type="rviz" name="rviz" respawn="true" />  
 	<node pkg="velmixer" type="ped_publisher" name="ped_publisher" output="screen" respawn="false">
 		<param name="pedNum" value="1000"/>
 	</node>
