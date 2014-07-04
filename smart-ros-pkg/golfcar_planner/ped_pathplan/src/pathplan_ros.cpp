@@ -110,7 +110,6 @@ namespace ped_pathplan {
         planner->setStart(start_state);
         planner->setGoal(goal_state);
 
-
         auto path_states = planner->calcPath();
 
         // extract the plan
@@ -133,12 +132,7 @@ namespace ped_pathplan {
             plan.push_back(pose);
         }
 
-		static bool published=false;
-		if(published==false)
-		{
-		//	published=true;
-			publishPlan(plan);
-		}
+		publishPlan(plan);
 
         return !plan.empty();
     }
