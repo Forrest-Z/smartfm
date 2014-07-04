@@ -1,7 +1,7 @@
 Background\ ColorB=0
 Background\ ColorG=0
 Background\ ColorR=0
-Camera\ Config=13.5938 16.1036 19.5603 1.665
+Camera\ Config=8.77291 38.887 20.1565 1.66
 Camera\ Type=rviz::FixedOrientationOrthoViewController
 Fixed\ Frame=/map
 GridCells.Alpha=1
@@ -24,7 +24,7 @@ InteractiveMarker.Update\ Topic=/basic_controls/update
 Map.Alpha=0.7
 Map.Draw\ Behind=0
 Map.Enabled=1
-Map.Topic=/map_cost
+Map.Topic=/map
 Marker.Enabled=1
 Marker.Marker\ Topic=/pomdp_action
 Marker.Queue\ Size=100
@@ -141,8 +141,14 @@ base_laser_link.Enabled=1
 base_link.Enabled=1
 map.Enabled=1
 odom.Enabled=1
+[Views]
+0Name=full
+[Views/0]
+Config=9.63277 49.3043 35.2227 1.575
+Target=/map
+Type=rviz::FixedOrientationOrthoViewController
 [Window]
-Height=1000
-Width=1215
-X=63
-Y=212
+Height=1036
+Width=1231
+X=55
+Y=184

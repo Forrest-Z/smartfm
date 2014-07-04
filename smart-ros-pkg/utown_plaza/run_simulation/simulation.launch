@@ -38,6 +38,7 @@
 		<param name="dummy_vehicle" value="false"/>
 		<param name="use_dbserver" value="false"/>
 		</node>
+
 		<node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
 		<remap from="laser_area_policy/scan" to="sick_scan2"/>
 		<remap from="cmd_vel" to="cmd_speed_dummy"/>
