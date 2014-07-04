@@ -15,3 +15,7 @@ ped_costmap:
         obstacle_range: 5000
         raytrace_range: 5000
 
+planner:
+    steering_limit_deg: 6
+    yaw_res_deg: 2.5
+

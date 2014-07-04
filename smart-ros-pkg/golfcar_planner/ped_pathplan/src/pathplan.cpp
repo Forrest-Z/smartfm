@@ -12,12 +12,16 @@ namespace ped_pathplan {
     using namespace std;
 
 
-    PathPlan::PathPlan(int xs, int ys): nx(xs), ny(ys), step(3) {
+    PathPlan::PathPlan(int xs, int ys, float steering_limit_deg, float yaw_res_deg)
+        : nx(xs), ny(ys), step(3)
+    {
+        float steering_limit = steering_limit_deg / 180 * M_PI;
+        float d_yaw = yaw_res_deg / 180 * M_PI;
         ns = xs * ys;
         costarr = new COSTTYPE[ns]; // cost array, 2d config space
         memset(costarr, 0, ns*sizeof(COSTTYPE));
 
-        for(float f=STEERING_LIMIT; f>0; f-=D_YAW) {
+        for(float f=steering_limit; f>0; f-=d_yaw) {
             steerings.push_back(f);
             steerings.push_back(-f);
         }
