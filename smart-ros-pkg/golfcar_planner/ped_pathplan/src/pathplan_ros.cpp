@@ -6,9 +6,9 @@ namespace ped_pathplan {
     PathPlanROS::PathPlanROS()
         : costmap_ros(NULL), initialized(false), allow_unknown(false)
     {}
-    PathPlanROS::PathPlanROS(string name, Costmap2DROS* costmap)
+    PathPlanROS::PathPlanROS(string name, Costmap2DROS* cmros)
         : costmap_ros(NULL), initialized(false), allow_unknown(false) {
-        initialize(name, costmap_ros);
+        initialize(name, cmros);
     }
 
     void PathPlanROS::initialize(string name, Costmap2DROS* cmros) {

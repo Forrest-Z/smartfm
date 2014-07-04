@@ -391,6 +391,11 @@ namespace costmap_2d {
           unsigned int data_size_x, unsigned int data_size_y,
           const std::vector<unsigned char>& static_data);
 
+      /**
+       * @brief  Resets the costmap and static_map to be unknown space
+       */
+      virtual void resetMaps();
+
 
     protected:
       /**
@@ -465,11 +470,6 @@ namespace costmap_2d {
        * @brief  Deletes the costmap, static_map, and markers data structures
        */
       virtual void deleteMaps();
-
-      /**
-       * @brief  Resets the costmap and static_map to be unknown space
-       */
-      virtual void resetMaps();
 
       /**
        * @brief  Deletes the cached kernels
