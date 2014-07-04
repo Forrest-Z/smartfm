@@ -47,34 +47,15 @@
 #include "despotstar.h"
 #include <ped_pathplan/StartGoal.h>
 
-/*
-#include "belief_update/belief_update_exact.h"
-#include "belief_update/belief_update_particle.h"
-#include "globals.h"
-#include "lower_bound_policy_mode.h"
-#include "lower_bound_policy_random.h"
-#include "lower_bound_policy_suffix.h"
-#include "model.h"
-
-
-#include "solver.h"
-#include "util_uniform.h"
-#include "upper_bound/upper_bound_nonstochastic.h"
-#include "upper_bound/upper_bound_stochastic.h"
-#include "world.h"
-*/
-
 using namespace std;
-
-
 
 class ped_momdp
 {
 public:
     ped_momdp(ros::NodeHandle& nh);
-    
+
     ~ped_momdp();
-    
+
     void updateSteerAnglePublishSpeed(geometry_msgs::Twist speed);
 	void publishSpeed(const ros::TimerEvent &e);
 	//void simLoop();
@@ -83,18 +64,12 @@ public:
 	void publishBelief();
 	void publishMarker(int , PedBelief & ped);
 	bool getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
-	
+
 	//for despot
-	
-	
-	//void initSimulator();
 	void initSimulator();
 	void momdpInit();
 	void RetrievePaths(const tf::Stamped<tf::Pose>& carpose);
 	void RetrievePathCallBack(const nav_msgs::Path::ConstPtr path); 
-	//void updatePedPoses();
-	//void updateObsStates();
-	//void clean_momdp_problem_sim();
 
 	ros::Publisher window_pub, goal_pub;
 	ros::Publisher car_pub;
@@ -125,17 +100,11 @@ private:
     double momdp_problem_timeout;
     bool robot_pose_available;
     double robotx_, roboty_, robotspeedx_;
-    bool use_sim_time_, stationary_;
+    bool fixed_path_;
     ros::Timer timer_,timer_speed;
-	//SharedPointer<AlphaVectorPolicy> policy;
-	//SharedPointer<AlphaVectorPolicy> qmdp_policy;
     ros::Publisher believesPub_, cmdPub_,actionPub_;
 
-    
     void controlLoop(const ros::TimerEvent &e);
-
-    
-
 
 
 

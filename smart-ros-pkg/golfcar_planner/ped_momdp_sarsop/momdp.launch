@@ -7,7 +7,10 @@
         <remap from="robot_0/amcl_pose" to="amcl_pose"/>
         <remap from="odom" to="odom"/>
         <param name="simulation" value="false"/>
+        <param name="fixed_path" value="false"/>
+        <param name="pruning_constant" value="0"/>
 	 </node>
+
 	 <node name="ped_momdp_local_transform" pkg="ped_momdp_sarsop" type="local_frame"   ns="/golfcart">
 	    <param name="global_frame" value="/golfcart/map"/>
         <param name="threshold" value="0.0"/>

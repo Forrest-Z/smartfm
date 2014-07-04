@@ -30,6 +30,9 @@ int RandomActionSeed() {
 
 ped_momdp::ped_momdp(ros::NodeHandle& nh) : worldBeliefTracker(worldModel), worldStateTracker(worldModel)
 {
+    nh.param("fixed_path", fixed_path_, false);
+    nh.param("pruning_constant", Globals::config.pruning_constant, 0.0);
+
 	global_frame_id = ModelParams::rosns + "/map";
 	cerr <<"DEBUG: Entering ped_momdp()"<<endl;
 	control_freq=ModelParams::control_freq;
@@ -42,16 +45,8 @@ ped_momdp::ped_momdp(ros::NodeHandle& nh) : worldBeliefTracker(worldModel), worl
 	pathSub_= nh.subscribe("plan", 1, &ped_momdp::RetrievePathCallBack, this);
 	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
 	start_goal_pub=nh.advertise<ped_pathplan::StartGoal> ("ped_path_planner/planner/start_goal", 1);
-	char buf[100];
-	/*
-	for(int i=0;i<ModelParams::N_PED_IN;i++) {
-		sprintf(buf,"pomdp_beliefs%d",i);
-		markers_pubs[i]=nh.advertise<visualization_msgs::MarkerArray>(buf,1);
-	}
-	*/
 
 	markers_pub=nh.advertise<visualization_msgs::MarkerArray>("pomdp_belief",1);
-    //initPedGoal();
 	safeAction=2;
 	momdp_speed_=0.0;
 	goal_reached=false;
@@ -98,7 +93,6 @@ void ped_momdp::initSimulator()
   Globals::config.n_particles=100;
   Globals::config.time_per_move = 1.0/ModelParams::control_freq;
   Seeds::root_seed(Globals::config.root_seed);
- // Globals::config.pruning_constant=1000000;
   cerr << "Random root seed set to " << Globals::config.root_seed << endl;
 
   // Global random generator
@@ -279,8 +273,9 @@ void ped_momdp::RetrievePaths(const tf::Stamped<tf::Pose>& carpose)
 	//		cout<<path.points[i].x<<" "<<path.points[i].y<<endl;
 	//}
 	//
-		
-//	if(worldModel.path.size()>0)  return ;
+
+	if(fixed_path_ && worldModel.path.size()>0)  return;
+
 	ped_pathplan::StartGoal startGoal; 
 	nav_msgs::GetPlan srv;
 	geometry_msgs::PoseStamped pose;
@@ -317,6 +312,8 @@ void ped_momdp::RetrievePaths(const tf::Stamped<tf::Pose>& carpose)
 
 void ped_momdp::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 	cout<<"receive path from navfn "<<path->poses.size()<<endl;
+	if(fixed_path_ && worldModel.path.size()>0) return;
+
 	if(path->poses.size()==0) return;
 	Path p;
 	for(int i=0;i<path->poses.size();i++)
