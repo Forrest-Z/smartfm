@@ -1,3 +1,4 @@
+#include<algorithm>
 #include"layered_costmap.h"
 
 PedCostmap::PedCostmap(costmap_2d::Costmap2DROS* cm_ros) {
@@ -11,15 +12,16 @@ const unsigned char* PedCostmap::get() {
 
 CrowdCostmap::CrowdCostmap(costmap_2d::Costmap2DROS* cmros)
     :nx(cmros->getSizeInCellsX()), ny(cmros->getSizeInCellsY()),
+    costarr(nx*ny, 0)
 {
-    costarr = new float[nx*ny];
-
 }
 
 CrowdCostmap::~CrowdCostmap() {
-    delete[] costarr;
 }
 
 CrowdCostmap::update() {
-    for()
+    fill(costarr.begin(), costarr.end(), 1.0);
+    for(auto& p: peds) {
+        
+    }
 }
