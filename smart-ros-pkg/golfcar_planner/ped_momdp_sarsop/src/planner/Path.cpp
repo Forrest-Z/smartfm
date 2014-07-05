@@ -18,7 +18,7 @@ int Path::nearest(COORD pos) {
     return imin;
 }
 
-int Path::forward(int i, double len) {
+int Path::forward(int i, double len) const {
     auto& path = *this;
     //while(len > 0 and i<path.size()-1) {
         //double d = COORD::EuclideanDistance(path[i], path[i+1]);

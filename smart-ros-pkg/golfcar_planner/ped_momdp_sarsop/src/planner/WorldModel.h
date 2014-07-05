@@ -14,12 +14,12 @@ public:
 
     WorldModel();
 
-	double inCollision(const PomdpState& state, int action);
+	bool inCollision(const PomdpState& state, int action);
 	int defaultPolicy(const vector<State*>& particles);
     bool isLocalGoal(const PomdpState& state);
     bool isGlobalGoal(const CarStruct& car);
-	int aligned(COORD ped_pos, int car);
-    double minStepToGoal(const PomdpState& state);
+	bool inFront(COORD ped_pos, int car) const;
+    int minStepToGoal(const PomdpState& state);
 
 	void PedStep(PedStruct &ped, Random& random);
 	void RobStep(CarStruct &car, Random& random);

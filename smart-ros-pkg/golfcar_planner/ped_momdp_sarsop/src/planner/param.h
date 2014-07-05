@@ -5,8 +5,8 @@
 
 
 namespace ModelParams {
-	const double pos_rln=0.5;
-	const double vel_rln=0.03;
+	const double pos_rln=0.5; // position resolution
+	const double vel_rln=0.03; // velocity resolution
 	const int N_PED_IN=15;
 	const int GOAL_TRAVELLED=10;
 
@@ -19,7 +19,7 @@ namespace ModelParams {
 
 	const bool debug=false;
 
-    const double NOISE_GOAL_ANGLE = 3.14 * 0.6;
+    const double NOISE_GOAL_ANGLE = 3.14 * 0.25;
     const double PED_SPEED = 1.2;
 
 	const double VEL_MAX=2;

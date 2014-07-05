@@ -14,27 +14,28 @@ public:
 
 	virtual ValuedAction Value(const vector<State*>& particles) const {
 		PomdpState* state = static_cast<PomdpState*>(particles[0]);
-		double mindist = numeric_limits<double>::infinity();
+		double min_dist = numeric_limits<double>::infinity();
 		auto& carpos = ped_pomdp_->world.path[state->car.pos];
 		double carvel = state->car.vel;
-		int minstep = numeric_limits<int>::infinity();
+	
+		// Find mininum car-pedestrian distance
 		for(int i=0; i<state->num; i++) {
 			auto& p = state->peds[i];
-			double d = COORD::EuclideanDistance(carpos, p.pos);
+			double dist = COORD::EuclideanDistance(carpos, p.pos);
+			min_dist = min(dist, min_dist);
 		}
 
-		double value = State::Weight(particles) * (-20);
-		/*
-		if (mindist != numeric_limits<double>::infinity()) {
-			double step = max(mindist - 2.0, 0.0) / (carvel + ModelParams::PED_SPEED) * ModelParams::control_freq;
+		// Assume car does not change speed
+		double value = -20; // Value when no pedestrian present
+		if (min_dist != numeric_limits<double>::infinity()) {
+			double step = max(min_dist - 2.0, 0.0) / (carvel + ModelParams::PED_SPEED) * ModelParams::control_freq;
+			assert(step < 10000);
 	
-			double value = State::Weight(particles) *  
-				ModelParams::CRASH_PENALTY  
-				* (carvel + 0.2) * (1 - Discount(step)) / (1 - Discount());
+			value = -(1 - Discount(step)) / (1 - Discount()) 
+				+ ModelParams::CRASH_PENALTY  * (carvel + 0.2) * Discount(step) / (1 - Discount());
 		}
-		*/
 
-		return ValuedAction(0, value);
+		return ValuedAction(0, State::Weight(particles) * value);
 	}
 };
 
@@ -49,43 +50,32 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 vector<int> PedPomdp::ObserveVector(const State& state_) const {
 	const PomdpState &state=static_cast<const PomdpState&>(state_);
 	static vector<int> obs_vec;
-	obs_vec.resize(state.num*2+2);
-	//int rx=int(state.car.pos.x/ModelParams::pos_rln);
-	//obs_vec.push_back(rx);
-	//int ry=int(state.car.pos.y/ModelParams::pos_rln);
-	//obs_vec.push_back(ry);
+	obs_vec.resize(state.num * 2 + 2);
+	
 	int i=0;
-    obs_vec[i++]=(state.car.pos);
-	int rvel=int(state.car.vel/ModelParams::vel_rln);
-	obs_vec[i++]=(rvel);
+    obs_vec[i++] = state.car.pos;
+	obs_vec[i++] = int(state.car.vel / ModelParams::vel_rln);
 
 	for(int i = 0; i < state.num; i ++) {
-		int px = int(state.peds[i].pos.x/ModelParams::pos_rln);
-		int py = int(state.peds[i].pos.y/ModelParams::pos_rln);
-		obs_vec[i++]=(px);
-		obs_vec[i++]=(py);
+		obs_vec[i++] = int(state.peds[i].pos.x / ModelParams::pos_rln); 
+		obs_vec[i++] = int(state.peds[i].pos.y / ModelParams::pos_rln);
 	}
 	return obs_vec;
 }
-
-//PomdpState PedPomdp::Discretize(const PomdpState& state) const {
-//	PomdpState 	
-//}
 
 uint64_t PedPomdp::Observe(const State& state) const {
 	hash<vector<int>> myhash;
 	return myhash(ObserveVector(state));
 }
 
-
 vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 	int num_particles=samples.size();
 	vector<State*> particles;
 	for(int i=0;i<samples.size();i++) {
 		PomdpState* particle = static_cast<PomdpState*>(Allocate(-1, 1.0/num_particles));
-		(*particle)=samples[i];
+		(*particle) = samples[i];
 		particle->SetAllocated();
-		particle->weight=1.0/num_particles;
+		particle->weight = 1.0/num_particles;
 		particles.push_back(particle);
 	}
 	return particles;
@@ -93,44 +83,37 @@ vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 
 bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint64_t& obs) const {
 	PomdpState& state = static_cast<PomdpState&>(state_);
-	reward = 0;
+	reward = 0.0;
 
 	// Terminate upon reaching goal
 	if (world.isLocalGoal(state)) {
+		// Prefer higher speed even though same number of discrete steps needed to reach local goal
 		reward += state.car.dist_travelled-ModelParams::GOAL_TRAVELLED-ModelParams::VEL_MAX/ModelParams::control_freq;
 		return true;
 	}
 
-	// Safety control: Warning or collision
-	double penalty = world.inCollision(state,action);
-	if (penalty < 0) {
-		reward += penalty;
-	}
-	// Terminate upon collision
-	if (penalty < ModelParams::CRASH_PENALTY * 0.2) { 
+ 	// Safety control: collision; Terminate upon collision
+	if (world.inCollision(state, action)) {
+		reward += ModelParams::CRASH_PENALTY * (state.car.vel + 0.2);
 		return true;
 	}
 
 	// Smoothness control: Avoid frequent dec or acc
-	reward += (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0;
+	reward += (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0.0;
 
 	// Speed control: Encourage higher speed
 	reward += -1;
 
-	int rob_vel = state.car.vel;
-
+	// State transition
 	Random random(rNum);
-	double p = random.NextDouble();
-
 	double acc = (action == ACT_ACC) ? ModelParams::AccSpeed :
 		((action == ACT_CUR) ?  0 : (-ModelParams::AccSpeed));
-	
 	world.RobStep(state.car, random);
-
 	world.RobVelStep(state.car, acc, random);
 	for(int i=0;i<state.num;i++)
 		world.PedStep(state.peds[i], random);
 
+	// Observation
 	obs = Observe(state);
 
 	return false;
@@ -228,7 +211,7 @@ void PedPomdp::Statistics(const vector<PomdpState*> particles) const {
 
 
 ValuedAction PedPomdp::GetMinRewardAction() const {
-	return ValuedAction(0, ModelParams::CRASH_PENALTY * ModelParams::VEL_MAX);
+	return ValuedAction(0, ModelParams::CRASH_PENALTY * (ModelParams::VEL_MAX + 0.2));
 }
 
 
@@ -244,43 +227,8 @@ public:
 	}
 
 	int Action(const vector<State*>& particles,
-			RandomStreams& streams, History& history) const { // TODO default policy
+			RandomStreams& streams, History& history) const {
 		return ped_pomdp_->world.defaultPolicy(particles);
-		//const PomdpState* state = static_cast<const PomdpState*>(particles[0]);
-				
-
-		/*
-		PomdpState state=particles[0]->state;
-		int robY=state.car.pos.y
-		int rx=rob_map[robY].first;
-		int ry=rob_map[robY].second;
-		double rate=ModelParams::map_rln/ModelParams::rln;
-
-		int rangeX=(ModelParams::map_rln/ModelParams::rln)*1;
-		int rangeY=(ModelParams::map_rln/ModelParams::rln)*3;
-		for(int i=0;i<state.num;i++)
-		{
-			int px=state.peds[i].pos.x;
-			int py=state.peds[i].pos.y;
-			int crash_point=sfm->crash_model[px][py];
-			int crashx=rob_map[crash_point].first;
-			int crashy=rob_map[crash_point].second;
-			if(abs(px-crashx)<=rangeX&&crashy-ry>=-rate&&crashy-ry<=rangeY)
-			{
-				return 2;
-			}
-			//if(abs(px-crashx)<=rangeX*2+2&&crashy-ry>=-4&&crashy-ry<=rangeY*2+2)
-			if(abs(px-crashx)<=rangeX*2&&crashy-ry>=-rate&&crashy-ry<=rangeY*2)
-			{
-
-				double unit=ModelParams::VEL_MAX/(ModelParams::VEL_N-1);
-				if(state.car.vel>1.0/unit) return 2;
-				else if(state.car.vel<0.5/unit) return 1;
-				else return 0;
-			}
-		}
-		*/
-		//return 1;
 	}
 };
 
@@ -300,7 +248,7 @@ void PedPomdp::InitializeScenarioLowerBound(string name, RandomStreams& streams)
 }
 
 double PedPomdp::GetMaxReward() const {
-	return ModelParams::GOAL_REWARD;
+	return 0;
 }
 
 class PedPomdpSmartParticleUpperBound : public ParticleUpperBound {
@@ -315,12 +263,7 @@ public:
 
 	double Value(const State& s) const {
 		const PomdpState& state = static_cast<const PomdpState&>(s);
-
-		//TODO noise
-		// int d = ped_pomdp_->world.minStepToGoal(state);
-
 		return 0;
-		//return pow(Discount(), d);
 	}
 };
 

@@ -35,42 +35,41 @@ bool WorldModel::isGlobalGoal(const CarStruct& car) {
     return (d<ModelParams::GOAL_TOLERANCE);
 }
 
-//TODO add direction of the pedestrian to the criteria
 int WorldModel::defaultPolicy(const vector<State*>& particles)  {
 	const PomdpState *state=static_cast<const PomdpState*>(particles[0]);
     double mindist = numeric_limits<double>::infinity();
     auto& carpos = path[state->car.pos];
     double carvel = state->car.vel;
-    for(int i=0; i<state->num; i++) {
+    for (int i=0; i<state->num; i++) {
 		auto& p = state->peds[i];
-        double d = COORD::EuclideanDistance(carpos, p.pos);
-        if(d < mindist) mindist = d;
+        double d = COORD::EuclideanDistance(carpos, p.pos) *  inFront(p.pos, state->car.pos);
+        if (d > 0 && d < mindist) 
+			mindist = d;
     }
 
     // TODO set as a param
-    if(mindist < 3) {
-		//assert(false);
+    if (mindist < 3) {
 		return 2;
     }
 
-    if(mindist < 6) {
-		//assert(false);
-		if(carvel>1.0) return 2;	
-		else if(carvel<0.5) return 1;
+    if (mindist < 6) {
+		if (carvel > 1.0) return 2;	
+		else if (carvel < 0.5) return 1;
 		else return 0;
     }
     return 1;
 }
 
-int WorldModel::aligned(COORD ped_pos, int car) {
+bool WorldModel::inFront(COORD ped_pos, int car) const {
 	COORD car_pos = path[car];
 	COORD forward_pos = path[path.forward(car, 1.0)];
+
+	/*NOTE: To increase the region checked, compute the cosine value and set a negative threshold.*/
 	return DotProduct(forward_pos.x - car_pos.x, forward_pos.y - car_pos.y,
-			ped_pos.x - car_pos.x, ped_pos.y - ped_pos.y) < 0 ? -1 : 1;
+			ped_pos.x - car_pos.x, ped_pos.y - ped_pos.y) < 0;
 }
 
-double WorldModel::inCollision(const PomdpState& state, int action) {
-    double penalty = 0;
+bool WorldModel::inCollision(const PomdpState& state, int action) {
     double mindist = numeric_limits<double>::infinity();
     auto& carpos = path[state.car.pos];
     double carvel = state.car.vel;
@@ -78,87 +77,63 @@ double WorldModel::inCollision(const PomdpState& state, int action) {
 	// Find the closest pedestrian in front
     for(int i=0; i<state.num; i++) {
 		auto& p = state.peds[i];
-        double d = COORD::EuclideanDistance(carpos, p.pos) * aligned(p.pos, state.car.pos);
-        if(d > 0 && d < mindist) mindist = d;
+        double d = COORD::EuclideanDistance(carpos, p.pos) * inFront(p.pos, state.car.pos);
+        if (d > 0 && d < mindist) mindist = d;
     }
 
-    // TODO set as a param
-    if(mindist < 2) { // Collision penalty
-        penalty += ModelParams::CRASH_PENALTY * (carvel + 0.2);
-    } else if(carvel > 1.0 && mindist < 4) { // Warning (should be smaller than collision penalty)
-        penalty += ModelParams::CRASH_PENALTY * 0.1;
-    }
-    return penalty;
+	return mindist < 2;
 }
 
-double WorldModel::minStepToGoal(const PomdpState& state) {
+int WorldModel::minStepToGoal(const PomdpState& state) {
     double d = ModelParams::GOAL_TRAVELLED - state.car.dist_travelled;
     if (d < 0) d = 0;
-    return d / (ModelParams::VEL_MAX/freq);
+    return ceil(d / (ModelParams::VEL_MAX/freq));
 }
-
 
 void WorldModel::PedStep(PedStruct &ped, Random& random) {
     COORD& goal = goals[ped.goal];
-	if(goal.x==-1&&goal.y==-1) {  //stop intention 
-		if(random.NextDouble()<0.0)	 { //move	
-			double a = random.NextDouble()*2*3.14;
-			MyVector move(a, ModelParams::PED_SPEED/freq, 0);
-			ped.pos.x += move.dw;
-			ped.pos.y += move.dh;
-		}
+	if (goal.x == -1 && goal.y == -1) {  //stop intention 
 		return;
 	}
-//	if(random.NextDouble()<0.1) return;   //not move
+	
 	MyVector goal_vec(goal.x - ped.pos.x, goal.y - ped.pos.y);
     double a = goal_vec.GetAngle();
     a += random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
-    //TODO noisy speed
+    
+	//TODO noisy speed
     MyVector move(a, ModelParams::PED_SPEED/freq, 0);
     ped.pos.x += move.dw;
     ped.pos.y += move.dh;
     return;
 }
 
-inline double sqr(double a) {
-    return a*a;
-}
-
 double gaussian_prob(double x, double stddev) {
     double a = 1.0 / stddev / sqrt(2 * M_PI);
-    double b = -sqr(x) / 2 / sqr(stddev);
+    double b = - x * x / 2 / (stddev * stddev);
     return a * exp(b);
 }
 
-double WorldModel::pedMoveProb(COORD p0, COORD p1, int goal_id) {
+double WorldModel::pedMoveProb(COORD prev, COORD curr, int goal_id) {
 	const double K = 0.001;
     const COORD& goal = goals[goal_id];
+	double move_dist = Norm(curr.x-prev.x, curr.y-prev.y),
+		   goal_dist = Norm(goal.x-prev.x, goal.y-prev.y);
+	double sensor_noise = 0.1;
+
 	cout<<"goal id "<<goal_id<<endl;
-	if(goal.x==-1&&goal.y==-1) {  //stop intention 
-		double a = ModelParams::PED_SPEED*0.5/freq;
-		double b = 6*a;
-		double p;
-		if(Norm(p1.x-p0.x, p1.y-p0.y)<a) {
-			p = 0.9/a;
-		}
-		else p = 0.1/(b-a);
-		return p * 0.2;
+	if (goal.x == -1 && goal.y == -1) {  //stop intention 
+		return (move_dist < sensor_noise);
+	} else {
+		if (move_dist < sensor_noise) return 0;
+
+		double cosa = DotProduct(curr.x-prev.x, curr.y-prev.y, goal.x-prev.x, goal.y-prev.y) / (move_dist * goal_dist);
+		double angle = acos(cosa);
+		return gaussian_prob(angle, ModelParams::NOISE_GOAL_ANGLE) + K;
 	}
-
-	double norm = Norm(p1.x-p0.x, p1.y-p0.y) * Norm(goal.x-p0.x, goal.y-p0.y);
-	if(norm <= 0.0)
-		return 0.1;
-    double cosa = DotProduct(p1.x-p0.x, p1.y-p0.y, goal.x-p0.x, goal.y-p0.y) / norm;
-    double a = acos(cosa);
-    double p = gaussian_prob(a, ModelParams::NOISE_GOAL_ANGLE) + K;
-
-    return p;
 }
 
 void WorldModel::RobStep(CarStruct &car, Random& random) {
-    //TODO noise
     double dist = car.vel / freq;
-    //int curr = path.nearest(car.pos);
     int nxt = path.forward(car.pos, dist);
     car.pos = nxt;
     car.dist_travelled += dist;
@@ -169,11 +144,10 @@ void WorldModel::RobVelStep(CarStruct &car, double acc, Random& random) {
     if (prob > 0.2) {
         car.vel += acc / freq;
     }
-    if (car.vel < 0) car.vel = 0;
-    if (car.vel > ModelParams::VEL_MAX) {
-		car.vel = ModelParams::VEL_MAX;
-	}
-    return;
+
+	car.vel = max(min(car.vel, ModelParams::VEL_MAX), 0.0);
+    
+	return;
 }
 
 void WorldModel::setPath(Path path) {
@@ -192,9 +166,11 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
 	cout << endl;
     for(int i=0; i<goals.size(); i++) {
 		double prob = pedMoveProb(b.pos, curr_ped.pos, i);
-		cout << prob << endl;
+		cout << "likelihood " << i << ": " << prob << endl;
         b.prob_goals[i] *=  prob;
-		//b.prob_goals[i] += 0.001;
+
+		// Important: Keep the belief noisy to avoid aggressive policies
+		b.prob_goals[i] += 0.001;
 	}
 	for(double w: b.prob_goals) {
 		cout << w << " ";
@@ -240,15 +216,15 @@ void WorldStateTracker::cleanPed() {
             int w2,h2;
             w2=ped_list[j].w;
             h2=ped_list[j].h;
-            //if(abs(it->w-it2->w)<=1&&abs(it->h-it2->h)<=1)
-            if(abs(w1-w2)<=0.1&&abs(h1-h2)<=0.1)
+            //if (abs(it->w-it2->w)<=1&&abs(it->h-it2->h)<=1)
+            if (abs(w1-w2)<=0.1&&abs(h1-h2)<=0.1)
             {
                 insert=false;
                 break;
             }
         }
-        if(timestamp() - ped_list[i].last_update > 1.0) insert=false;
-        if(insert)
+        if (timestamp() - ped_list[i].last_update > 1.0) insert=false;
+        if (insert)
             ped_list_new.push_back(ped_list[i]);
     }
     ped_list=ped_list_new;
@@ -259,7 +235,7 @@ void WorldStateTracker::updatePed(const Pedestrian& ped){
     int i=0;
     for(;i<ped_list.size();i++)
     {
-        if(ped_list[i].id==ped.id)
+        if (ped_list[i].id==ped.id)
         {
             //found the corresponding ped,update the pose
             ped_list[i].w=ped.w;
@@ -267,10 +243,10 @@ void WorldStateTracker::updatePed(const Pedestrian& ped){
             ped_list[i].last_update = timestamp();
             break;
         }
-        if(abs(ped_list[i].w-ped.w)<=0.1&&abs(ped_list[i].h-ped.h)<=0.1)   //overlap 
+        if (abs(ped_list[i].w-ped.w)<=0.1&&abs(ped_list[i].h-ped.h)<=0.1)   //overlap 
             return;
     }
-    if(i==ped_list.size())   //not found, new ped
+    if (i==ped_list.size())   //not found, new ped
     {
         ped_list.push_back(ped);
         ped_list.back().last_update = timestamp();
@@ -287,7 +263,7 @@ bool WorldStateTracker::emergency() {
     for(auto& ped : ped_list) {
 		COORD p(ped.w, ped.h);
         double d = COORD::EuclideanDistance(carpos, p);
-        if(d < mindist) mindist = d;
+        if (d < mindist) mindist = d;
     }
 	cout << "emergency mindist = " << mindist << endl;
 	return (mindist < 0.5);
@@ -295,7 +271,7 @@ bool WorldStateTracker::emergency() {
 
 void WorldStateTracker::updateVel(double vel) {
 	/*
-	if(vel>ModelParams::VEL_MAX)
+	if (vel>ModelParams::VEL_MAX)
 		carvel=ModelParams::VEL_MAX;
 	else carvel = vel;
 	*/
@@ -327,7 +303,7 @@ PomdpState WorldStateTracker::getPomdpState() {
 	pomdpState.car.dist_travelled = 0;
     pomdpState.num = sorted_peds.size();
 
-	if(pomdpState.num > ModelParams::N_PED_IN) {
+	if (pomdpState.num > ModelParams::N_PED_IN) {
 		pomdpState.num = ModelParams::N_PED_IN;
 	}
 
@@ -356,7 +332,7 @@ void WorldBeliefTracker::update() {
     }
 
     // remove disappeared peds
-    auto peds_disappeared = find_if(peds.begin(), peds.end(),
+    auto peds_disappeared = find_if (peds.begin(), peds.end(),
                 [&](decltype(*peds.begin()) p) -> bool {
                 return newpeds.find(p.first) == newpeds.end(); });
     peds.erase(peds_disappeared, peds.end());
@@ -415,5 +391,3 @@ vector<PomdpState> WorldBeliefTracker::sample(int num) {
     }
     return particles;
 }
-
-
