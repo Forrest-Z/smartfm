@@ -1,8 +1,6 @@
 /*
- * pedestrian_momdp.h
+ * PedPomdpNode.h
  *
- *  Created on: Sep 15, 2011
- *      Author: golfcar
  */
 
 #ifndef PEDESTRIAN_MOMDP_H_
@@ -10,11 +8,11 @@
 
 #include "momdp.h"
 
-class pedestrian_momdp
+class PedPomdpNode
 {
 public:
-    pedestrian_momdp();
-    ~pedestrian_momdp();
+    PedPomdpNode();
+    ~PedPomdpNode();
     void robotPoseCallback(geometry_msgs::PoseWithCovarianceStamped odo);
     void speedCallback(nav_msgs::Odometry odo);
     void pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector);
