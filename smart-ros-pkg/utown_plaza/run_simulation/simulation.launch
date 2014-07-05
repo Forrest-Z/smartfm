@@ -4,37 +4,16 @@
 
     <node name="fake_localization" pkg="fake_localization" type="fake_localization" respawn="false" />
 
-	<!--node name="amcl" pkg="amcl" type="amcl" respawn="false">
-		<remap from="scan" to="sick_scan2"/>
-	</node-->
-
     <node pkg="stage" type="stageros" name="stageros" args="$(find utown_plaza)/empty_world.world" respawn="false">
         <param name="base_watchdog_timeout" value="0.2"/>
         <remap from="base_scan" to="sick_scan2"/>
     </node>
 
     <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/utown_momdp_small.yaml"/>
-<!--
-    <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
-        <remap from="cmd_vel" to="cmd_steer"/>
-        <remap from="map" to="curb_map"/>
-        <param name="footprint_padding" value="0.01" />
-        <param name="controller_frequency" value="20.0" />
-        <param name="controller_patience" value="100.0" />
-        <param name="base_global_planner" value="golfcar_gp/GlobalPlan"/>
-        <param name="base_local_planner" value="golfcar_purepursuit/PurePursuitBase"/>
-        <param name="PurePursuitBase/tracking_distance" value="5.0"/>
 
-        <rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params_simulation.yaml" command="load" ns="global_costmap" />
-		<rosparam file="$(find golfcar_ppc)/launch/move_base/costmap_common_params_simulation.yaml" command="load" ns="local_costmap" />
-		<rosparam file="$(find golfcar_ppc)/launch/move_base/local_costmap_params_close.yaml" command="load" />
-		<rosparam file="$(find golfcar_ppc)/launch/move_base/global_costmap_params.yaml" command="load" />
-		<rosparam file="$(find golfcar_ppc)/launch/move_base/sbpl_global_params.yaml" command="load" />
-		</node>
-		-->
 		<node pkg="golfcar_ppc" type="purepursuit_controller" name="purepursuitController" output="screen"/>
 
-		<node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen">
+		<node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="log">
 		<param name="dummy_vehicle" value="false"/>
 		<param name="use_dbserver" value="false"/>
 		</node>
@@ -52,7 +31,7 @@
 
     <node pkg="rviz" type="rviz" name="rviz" respawn="true" args="-d $(find utown_plaza)/pomdp_simulation.vcg" />
 
-	<node pkg="velmixer" type="ped_publisher" name="ped_publisher" output="screen" respawn="false">
+	<node pkg="velmixer" type="ped_publisher" name="ped_publisher" output="log" respawn="false">
 		<param name="pedNum" value="1000"/>
 	</node>
 	<node pkg="dummyPed" type="dummyPed_marker" name="dummyPed" respawn="false"/>
