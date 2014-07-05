@@ -86,7 +86,7 @@ namespace costmap_2d {
           double circumscribed_radius = 0.0, double inflation_radius = 0.0, double max_obstacle_range = 0.0,
           double max_obstacle_height = 0.0, double max_raytrace_range = 0.0, double weight = 25.0,
           const std::vector<unsigned char>& static_data = std::vector<unsigned char>(0), unsigned char lethal_threshold = 0,
-          bool track_unknown_space = false, unsigned char unknown_cost_value = 0);
+          bool track_unknown_space = false, unsigned char unknown_cost_value = 0, double ped_cost_ratio=1.0);
 
       /**
        * @brief  Copy constructor for a costmap, creates a copy efficiently
@@ -681,6 +681,8 @@ namespace costmap_2d {
       bool track_unknown_space_;
       unsigned char unknown_cost_value_;
       std::priority_queue<CellData> inflation_queue_;
+
+      double ped_cost_ratio_;
 
       //functors for raytracing actions
       class ClearCell {

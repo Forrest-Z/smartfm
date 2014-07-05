@@ -322,6 +322,9 @@ namespace costmap_2d {
       circumscribed_radius = max_dist;
     }
 
+    double ped_cost_ratio;
+    private_nh.param("ped_cost_ratio", ped_cost_ratio, 0.5);
+
     double max_obstacle_height;
     private_nh.param("max_obstacle_height", max_obstacle_height, 2.0);
 
@@ -346,7 +349,7 @@ namespace costmap_2d {
       boost::recursive_mutex::scoped_lock lock(map_data_lock_);
       costmap_ = new Costmap2D(map_width, map_height,
           map_resolution, map_origin_x, map_origin_y, inscribed_radius, circumscribed_radius, inflation_radius,
-          obstacle_range, max_obstacle_height, raytrace_range, cost_scale, input_data_, lethal_threshold, track_unknown_space, unknown_cost_value);
+          obstacle_range, max_obstacle_height, raytrace_range, cost_scale, input_data_, lethal_threshold, track_unknown_space, unknown_cost_value, ped_cost_ratio);
     }
     else if(map_type == "voxel"){
 

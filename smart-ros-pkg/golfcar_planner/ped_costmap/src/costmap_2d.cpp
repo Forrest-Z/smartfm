@@ -46,12 +46,12 @@ namespace costmap_2d{
       double resolution, double origin_x, double origin_y, double inscribed_radius,
       double circumscribed_radius, double inflation_radius, double max_obstacle_range,
       double max_obstacle_height, double max_raytrace_range, double weight,
-      const std::vector<unsigned char>& static_data, unsigned char lethal_threshold, bool track_unknown_space, unsigned char unknown_cost_value) : size_x_(cells_size_x),
+      const std::vector<unsigned char>& static_data, unsigned char lethal_threshold, bool track_unknown_space, unsigned char unknown_cost_value, double ped_cost_ratio) : size_x_(cells_size_x),
   size_y_(cells_size_y), resolution_(resolution), origin_x_(origin_x), origin_y_(origin_y), static_map_(NULL),
   costmap_(NULL), markers_(NULL), max_obstacle_range_(max_obstacle_range), 
   max_obstacle_height_(max_obstacle_height), max_raytrace_range_(max_raytrace_range), cached_costs_(NULL), cached_distances_(NULL), 
   inscribed_radius_(inscribed_radius), circumscribed_radius_(circumscribed_radius), inflation_radius_(inflation_radius),
-  weight_(weight), lethal_threshold_(lethal_threshold), track_unknown_space_(track_unknown_space), unknown_cost_value_(unknown_cost_value), inflation_queue_(){
+  weight_(weight), lethal_threshold_(lethal_threshold), track_unknown_space_(track_unknown_space), unknown_cost_value_(unknown_cost_value), inflation_queue_(), ped_cost_ratio_(ped_cost_ratio){
     //create the costmap, static_map, and markers
     costmap_ = new unsigned char[size_x_ * size_y_];
     static_map_ = new unsigned char[size_x_ * size_y_];
@@ -650,7 +650,6 @@ namespace costmap_2d{
   }
 
   void Costmap2D::updateObstacles(const vector<Observation>& observations, priority_queue<CellData>& inflation_queue){
-    const float PED_COST_RATIO = 0.5;
     //place the new obstacles into a priority queue... each with a priority of zero to begin with
     for(vector<Observation>::const_iterator it = observations.begin(); it != observations.end(); ++it){
       const Observation& obs = *it;
@@ -688,7 +687,7 @@ namespace costmap_2d{
         unsigned int index = getIndex(mx, my);
 
         //push the relevant cell index back onto the inflation queue
-        enqueue(index, mx, my, mx, my, inflation_queue, PED_COST_RATIO);
+        enqueue(index, mx, my, mx, my, inflation_queue, ped_cost_ratio_);
       }
     }
   }
