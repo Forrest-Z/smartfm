@@ -2,4 +2,5 @@
     <include file="$(find utown_plaza)/run_simulation/simulation.launch" />
     <include file="$(find utown_plaza)/run_simulation/momdp.launch" />
     <include file="$(find utown_plaza)/run_simulation/pathplan.launch" />
+	<node pkg="utown_plaza" type="record.sh" name="bag_recorder" cwd="node" required="true"/>
 </launch>
