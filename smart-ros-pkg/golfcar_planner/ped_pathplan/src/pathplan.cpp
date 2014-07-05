@@ -12,16 +12,16 @@ namespace ped_pathplan {
     using namespace std;
 
 
-    PathPlan::PathPlan(int xs, int ys, float steering_limit_deg, float yaw_res_deg)
-        : nx(xs), ny(ys), step(3)
+    PathPlan::PathPlan(int xs, int ys, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg)
+        : nx(xs), ny(ys), step(3), cost_steering(cost_steering_deg / M_PI * 180)
     {
         float steering_limit = steering_limit_deg / 180 * M_PI;
-        float d_yaw = yaw_res_deg / 180 * M_PI;
+        yaw_rln = yaw_res_deg / 180 * M_PI;
         ns = xs * ys;
         costarr = new COSTTYPE[ns]; // cost array, 2d config space
         memset(costarr, 0, ns*sizeof(COSTTYPE));
 
-        for(float f=steering_limit; f>0; f-=d_yaw) {
+        for(float f=steering_limit; f>0; f-=yaw_rln) {
             steerings.push_back(f);
             steerings.push_back(-f);
         }
@@ -181,7 +181,7 @@ namespace ped_pathplan {
 		int mx = int(s0[0]);
 		int my = int(s0[1]);
         float cost = costarr[my*nx + mx];
-		float steer_cost = sqr(t) * COST_STEERING;
+		float steer_cost = sqr(t) * cost_steering;
 		success = (cost < COST_OBS_ROS * 0.99);
         p1.g = p.g + cost + steer_cost;
         p1.h = heuristic(p1.state);
@@ -210,7 +210,7 @@ namespace ped_pathplan {
 		float dd = step * 0.2;
         ds[0] = int(s[0] / dd);
         ds[1] = int(s[1] / dd);
-        ds[2] = int(s[2] / D_YAW);
+        ds[2] = int(s[2] / yaw_rln);
         return ds;
     }
 }

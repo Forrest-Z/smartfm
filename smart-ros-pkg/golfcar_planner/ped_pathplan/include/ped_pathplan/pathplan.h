@@ -11,17 +11,11 @@
 #define COST_OBS_ROS 253	// ROS values of 253 are obstacles
 #define COST_NEUTRAL 50		// Set this to "open space" value
 #define COST_FACTOR 2		// Used for translating costs in NavFn::setCostmap()
-//const float COST_STEERING = (10 / M_PI * 180 );
-const float COST_STEERING = (100 / M_PI * 180 );
 
 #define COSTTYPE unsigned char	// Whatever is used...
 
 namespace ped_pathplan {
-    //const float STEERING_LIMIT = M_PI / 180 * 15;
-    const float STEERING_LIMIT = M_PI / 180 * 5;
-    const int N_YAWS = 1+72*2;
     const float TOLERANCE = 10;
-    const float D_YAW = M_PI * 2 / N_YAWS;
 
     typedef std::vector<float> State;
     typedef std::vector<int> DiscreteState;
@@ -38,9 +32,10 @@ namespace ped_pathplan {
 
     class PathPlan {
         public:
-            PathPlan(int nx, int ny, float steering_limit_deg, float yaw_res_deg);	// size of map
+            PathPlan(int nx, int ny, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg);	// size of map
 
 
+            float cost_steering, yaw_rln;
             float resolution;
             float step;
             int nx, ny, ns;		/**< size of grid, in pixels */
