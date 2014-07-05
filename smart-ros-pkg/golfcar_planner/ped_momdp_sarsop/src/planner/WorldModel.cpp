@@ -217,7 +217,7 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
 }
 
 PedBelief WorldModel::initPedBelief(const PedStruct& ped) {
-    PedBelief b = {ped.pos, vector<double>(goals.size(), 1.0/goals.size())};
+    PedBelief b = {ped.id, ped.pos, vector<double>(goals.size(), 1.0/goals.size())};
     return b;
 }
 
@@ -374,6 +374,12 @@ void WorldBeliefTracker::update() {
         }
     }
 
+	sorted_beliefs.clear();
+	for(const auto& dp: sorted_peds) {
+		auto& p = dp.second;
+		sorted_beliefs.push_back(peds[p.id]);
+	}
+
     return;
 }
 
@@ -391,14 +397,13 @@ int PedBelief::sample_goal() {
 PomdpState WorldBeliefTracker::sample() {
     PomdpState s;
     s.car = car;
-    s.num = peds.size();
+    s.num = min(int(sorted_beliefs.size()), ModelParams::N_PED_IN);
 
-    int i=0;
-    for(auto& kv : peds) {
-        s.peds[i].pos = kv.second.pos;
-        s.peds[i].goal = kv.second.sample_goal();
-        s.peds[i].id = kv.first;
-        i++;
+    for(int i=0; i<s.num; i++) {
+		auto& p = sorted_beliefs[i];
+        s.peds[i].pos = p.pos;
+        s.peds[i].goal = p.sample_goal();
+        s.peds[i].id = p.id;
     }
     return s;
 }

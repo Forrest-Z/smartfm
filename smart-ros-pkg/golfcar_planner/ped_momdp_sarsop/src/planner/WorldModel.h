@@ -3,6 +3,7 @@
 #include"Path.h"
 
 struct PedBelief {
+	int id;
     COORD pos;
     std::vector<double> prob_goals;
     int sample_goal();
@@ -72,5 +73,6 @@ public:
     WorldStateTracker& stateTracker;
     CarStruct car;
     std::map<int, PedBelief> peds;
+	std::vector<PedBelief> sorted_beliefs;
 };
 

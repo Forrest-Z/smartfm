@@ -38,14 +38,15 @@ FILE(GLOB LIBDESPOT_SRCS src/despot/*.cpp src/despot/util/*.cpp src/planner/*.cp
 
 add_definitions(-DDEBUG_LOG_ON)
 
+#set(PED_COMPILE_FLAGS -std=c++0x -O0 -ggdb  -fbounds-check)
+set(PED_COMPILE_FLAGS -std=c++0x -O3)
+
 
 #rosbuild_add_library(pomcp ${LIBPOMCP_SRCS})
 rosbuild_add_library(despot ${LIBDESPOT_SRCS})
-#rosbuild_add_compile_flags(despot -std=c++0x -O2 -ggdb  -fbounds-check)
-rosbuild_add_compile_flags(despot -std=c++0x -O3)
+rosbuild_add_compile_flags(despot ${PED_COMPILE_FLAGS})
 rosbuild_add_executable(ped-momdp-sarsop src/pedestrian_momdp_realPed.cpp src/momdp.cpp)
-#rosbuild_add_compile_flags(ped-momdp-sarsop -std=c++0x -O0 -ggdb -fbounds-check)
-rosbuild_add_compile_flags(ped-momdp-sarsop -std=c++0x -O3) 
+rosbuild_add_compile_flags(ped-momdp-sarsop ${PED_COMPILE_FLAGS}) 
 rosbuild_add_compile_flags(ped-momdp-sarsop ${WARNING_FLAGS})
 
 target_link_libraries(ped-momdp-sarsop despot)
@@ -55,7 +56,7 @@ target_link_libraries(ped-momdp-sarsop despot)
 #target_link_libraries(pomcp-test pomcp)
 
 rosbuild_add_executable(local_frame src/local_frame.cpp src/planner/param.cpp)
-rosbuild_add_compile_flags(local_frame -std=c++0x)
+rosbuild_add_compile_flags(local_frame ${PED_COMPILE_FLAGS})
 
 rosbuild_add_executable(vel_publisher src/VelPublisher.cpp)
 
