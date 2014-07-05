@@ -329,34 +329,34 @@ void ped_momdp::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 
 void ped_momdp::controlLoop(const ros::TimerEvent &e)
 {
-		
+
 	    cout<<"entering control loop"<<endl;
         tf::Stamped<tf::Pose> in_pose, out_pose;
 
 		//transpose to base link
 		in_pose.setIdentity();
-		in_pose.frame_id_ = ModelParams::rosns + "/base_link"; 
+		in_pose.frame_id_ = ModelParams::rosns + "/base_link";
 		while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 			cout<<"laser frame "<<in_pose.frame_id_<<endl;
-		} 
+		}
 
 		RetrievePaths(out_pose);
 		if(worldModel.path.size()==0) return;
 		//transpose to laser frame
 		in_pose.setIdentity();
-		in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame; 
+		in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
 		while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 			cout<<"laser frame "<<in_pose.frame_id_<<endl;
-		} 
+		}
 
 		COORD coord;
 		coord.x=out_pose.getOrigin().getX();
 		coord.y=out_pose.getOrigin().getY();
 		cout << "transformed pose = " << coord.x << " " << coord.y << endl;
 		worldStateTracker.updateCar(coord);
-		
+
         worldStateTracker.cleanPed();
 
 		PomdpState curr_state = worldStateTracker.getPomdpState();
@@ -374,14 +374,19 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 			momdp_speed_=real_speed_;
 		    momdp_speed_ -= 0.5;
 			if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
+
+            // shutdown the node after reaching goal
+            // TODO consider do this in simulaiton only for safety
+            if(real_speed_ <= 1e-5) {
+                ros::shutdown();
+            }
 			return;
 		}
 
 		cout<<"before belief update"<<endl;
-		worldBeliefTracker.update();	
+		worldBeliefTracker.update();
 		cout<<"after belief update"<<endl;
 		vector<PomdpState> samples = worldBeliefTracker.sample(1000);
-		// TODO maybe should free particles after use
 		vector<State*> particles = despot->ConstructParticles(samples);
 
 		double sum=0;
@@ -390,7 +395,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		cout<<"particle weight sum "<<sum<<endl;
 		ParticleBelief *pb=new ParticleBelief(particles, despot);
 		solver->belief(pb);
-	
+
 		if(worldStateTracker.emergency())
 		{
 			momdp_speed_=-1;

@@ -1,0 +1,5 @@
+<launch>
+    <include file="$(find utown_plaza)/run_simulation/simulation.launch" />
+    <include file="$(find utown_plaza)/run_simulation/momdp.launch" />
+    <include file="$(find utown_plaza)/run_simulation/pathplan.launch" />
+</launch>
