@@ -5,6 +5,7 @@
  *      Author: golfcar
  */
 
+#include <fenv.h>
 #include "pedestrian_momdp_realPed.h"
 #include <time.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -162,6 +163,9 @@ void pedestrian_momdp::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector 
 int main(int argc, char** argv)
 {
     ros::init(argc, argv, "mdp");
+
+    // raise error for floating point exceptions rather than silently return nan
+    feenableexcept(FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW);
 
     srand(unsigned(time(0)));
     pedestrian_momdp mdp_node;

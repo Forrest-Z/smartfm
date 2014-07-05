@@ -335,12 +335,15 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 	    cout<<"entering control loop"<<endl;
         tf::Stamped<tf::Pose> in_pose, out_pose;
 
+        ros::Rate err_retry_rate(10);
+
 		//transpose to base link
 		in_pose.setIdentity();
 		in_pose.frame_id_ = ModelParams::rosns + "/base_link";
 		while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 			cout<<"laser frame "<<in_pose.frame_id_<<endl;
+            err_retry_rate.sleep();
 		}
 
 		RetrievePaths(out_pose);
@@ -351,6 +354,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 		while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 			cout<<"laser frame "<<in_pose.frame_id_<<endl;
+            err_retry_rate.sleep();
 		}
 
 		COORD coord;
