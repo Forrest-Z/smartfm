@@ -6,7 +6,7 @@
 #ifndef PEDESTRIAN_MOMDP_H_
 #define PEDESTRIAN_MOMDP_H_
 
-#include "momdp.h"
+#include "controller.h"
 
 class PedPomdpNode
 {
@@ -20,7 +20,7 @@ public:
 	void publishPath();
     ros::Subscriber speedSub_, pedSub_, scanSub_, move_base_speed_;
 	ros::Publisher pc_pub,path_pub;
-    ped_momdp* momdp;
+    Controller* controller;
 
 	bool pathPublished;
 };

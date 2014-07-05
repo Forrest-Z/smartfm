@@ -49,14 +49,14 @@ PedPomdpNode::PedPomdpNode()
     //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
 
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
-	momdp = new ped_momdp(nh, fixed_path, pruning_constant);
+	controller = new Controller(nh, fixed_path, pruning_constant);
 
-	momdp->window_pub=nh.advertise<geometry_msgs::PolygonStamped>("/my_window",1000);
-	momdp->pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);
-	momdp->car_pub=nh.advertise<geometry_msgs::PoseStamped>("car_pose",1000);
+	controller->window_pub=nh.advertise<geometry_msgs::PolygonStamped>("/my_window",1000);
+	controller->pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);
+	controller->car_pub=nh.advertise<geometry_msgs::PoseStamped>("car_pose",1000);
 
-	//momdp->path_client=nh.serviceClient<pomdp_path_planner::GetPomdpPath>("get_pomdp_paths");
-	momdp->path_client=nh.serviceClient<nav_msgs::GetPlan>(ModelParams::rosns + "/ped_path_planner/planner/make_plan");
+	//controller->path_client=nh.serviceClient<pomdp_path_planner::GetPomdpPath>("get_pomdp_paths");
+	controller->path_client=nh.serviceClient<nav_msgs::GetPlan>(ModelParams::rosns + "/ped_path_planner/planner/make_plan");
 
 
 
@@ -70,12 +70,12 @@ void PedPomdpNode::publishPath()
 
 	msg.header.frame_id=ModelParams::rosns+"/map";
 	msg.header.stamp=ros::Time::now();
-	vector<COORD> path=momdp->worldModel.path;
+	vector<COORD> path=controller->worldModel.path;
 	msg.poses.resize(path.size());
 	for(int i=0;i<path.size();i++)
 	{
-		msg.poses[i].pose.position.x=momdp->worldModel.path[i].x;
-		msg.poses[i].pose.position.y=momdp->worldModel.path[i].y;
+		msg.poses[i].pose.position.x=controller->worldModel.path[i].x;
+		msg.poses[i].pose.position.y=controller->worldModel.path[i].y;
 		msg.poses[i].pose.position.z=0;
 		msg.poses[i].header.frame_id=msg.header.frame_id;
 		msg.poses[i].header.stamp=ros::Time::now();
@@ -87,18 +87,18 @@ void PedPomdpNode::publishPath()
 }
 PedPomdpNode::~PedPomdpNode()
 {
-    //momdp->~ped_momdp();
+    //controller->~ped_momdp();
 }
 
 void PedPomdpNode::speedCallback(nav_msgs::Odometry odo)
 {
-    momdp->worldStateTracker.updateVel(odo.twist.twist.linear.x);
-	momdp->real_speed_=odo.twist.twist.linear.x;
+    controller->worldStateTracker.updateVel(odo.twist.twist.linear.x);
+	controller->real_speed_=odo.twist.twist.linear.x;
 }
 
 void PedPomdpNode::moveSpeedCallback(geometry_msgs::Twist speed)
 {
-    momdp->updateSteerAnglePublishSpeed(speed);
+    controller->updateSteerAnglePublishSpeed(speed);
 }
 
 bool sortFn(Pedestrian p1,Pedestrian p2)
@@ -137,7 +137,7 @@ void PedPomdpNode::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector lPed
 	std::sort(ped_list.begin(),ped_list.end(),sortFn);
 	for(int i=0;i<ped_list.size();i++)
 	{
-		momdp->worldStateTracker.updatePed(ped_list[i]);
+		controller->worldStateTracker.updatePed(ped_list[i]);
 		//cout<<ped_list[i].id<<" ";
 	}
 	//cout<<endl;

@@ -49,12 +49,12 @@
 
 using namespace std;
 
-class ped_momdp
+class Controller
 {
 public:
-    ped_momdp(ros::NodeHandle& nh, bool fixed_path, double pruning_constant);
+    Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant);
 
-    ~ped_momdp();
+    ~Controller();
 
     void updateSteerAnglePublishSpeed(geometry_msgs::Twist speed);
 	void publishSpeed(const ros::TimerEvent &e);

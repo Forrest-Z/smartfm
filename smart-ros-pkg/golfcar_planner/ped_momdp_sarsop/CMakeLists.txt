@@ -45,7 +45,7 @@ set(PED_COMPILE_FLAGS -std=c++0x -O3)
 #rosbuild_add_library(pomcp ${LIBPOMCP_SRCS})
 rosbuild_add_library(despot ${LIBDESPOT_SRCS})
 rosbuild_add_compile_flags(despot ${PED_COMPILE_FLAGS})
-rosbuild_add_executable(ped_pomdp src/PedPomdpNode.cpp src/momdp.cpp)
+rosbuild_add_executable(ped_pomdp src/PedPomdpNode.cpp src/controller.cpp)
 rosbuild_add_compile_flags(ped_pomdp ${PED_COMPILE_FLAGS}) 
 rosbuild_add_compile_flags(ped_pomdp ${WARNING_FLAGS})
 

@@ -1,4 +1,4 @@
-#include "momdp.h"
+#include "controller.h"
 #include "node.h"
 #include "solver.h"
 #include "globals.h"
@@ -28,7 +28,7 @@ int RandomActionSeed() {
   return Globals::config.root_seed ^ (Globals::config.n_particles + 2);
 }
 
-ped_momdp::ped_momdp(ros::NodeHandle& nh, bool fixed_path, double pruning_constant):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path)
+Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path)
 {
 	cout << "fixed_path = " << fixed_path_ << endl;
 	Globals::config.pruning_constant = pruning_constant;
@@ -36,7 +36,7 @@ ped_momdp::ped_momdp(ros::NodeHandle& nh, bool fixed_path, double pruning_consta
     nh.param("pruning_constant", Globals::config.pruning_constant, 0.0);
 
 	global_frame_id = ModelParams::rosns + "/map";
-	cerr <<"DEBUG: Entering ped_momdp()"<<endl;
+	cerr <<"DEBUG: Entering Controller()"<<endl;
 	control_freq=ModelParams::control_freq;
 
 	cerr << "DEBUG: Initializing publishers..." << endl;
@@ -44,7 +44,7 @@ ped_momdp::ped_momdp(ros::NodeHandle& nh, bool fixed_path, double pruning_consta
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp",1);
 	actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
 	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1, true);
-	pathSub_= nh.subscribe("plan", 1, &ped_momdp::RetrievePathCallBack, this);
+	pathSub_= nh.subscribe("plan", 1, &Controller::RetrievePathCallBack, this);
 	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
 	start_goal_pub=nh.advertise<ped_pathplan::StartGoal> ("ped_path_planner/planner/start_goal", 1);
 
@@ -57,14 +57,14 @@ ped_momdp::ped_momdp(ros::NodeHandle& nh, bool fixed_path, double pruning_consta
     //RetrievePaths();
 
 	cerr <<"DEBUG: before entering controlloop"<<endl;
-    timer_ = nh.createTimer(ros::Duration(1.0/control_freq), &ped_momdp::controlLoop, this);
-	timer_speed=nh.createTimer(ros::Duration(0.05), &ped_momdp::publishSpeed, this);
+    timer_ = nh.createTimer(ros::Duration(1.0/control_freq), &Controller::controlLoop, this);
+	timer_speed=nh.createTimer(ros::Duration(0.05), &Controller::publishSpeed, this);
 
 }
 
 
 
-bool ped_momdp::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const
+bool Controller::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const
 {
     out_pose.setIdentity();
 
@@ -88,7 +88,7 @@ bool ped_momdp::getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pos
 
 
 /*for despot*/
-void ped_momdp::initSimulator()
+void Controller::initSimulator()
 {
   Globals::config.root_seed=1024;
   //Globals::config.n_belief_particles=2000;
@@ -116,7 +116,7 @@ void ped_momdp::initSimulator()
 
 
 
-ped_momdp::~ped_momdp()
+Controller::~Controller()
 {
     geometry_msgs::Twist cmd;
     cmd.angular.z = 0;
@@ -126,12 +126,12 @@ ped_momdp::~ped_momdp()
 
 
 
-void ped_momdp::updateSteerAnglePublishSpeed(geometry_msgs::Twist speed)
+void Controller::updateSteerAnglePublishSpeed(geometry_msgs::Twist speed)
 {
     //cmdPub_.publish(speed);
 }
 
-void ped_momdp::publishSpeed(const ros::TimerEvent &e)
+void Controller::publishSpeed(const ros::TimerEvent &e)
 {
 	geometry_msgs::Twist cmd;
 	cmd.angular.z = 0;       	
@@ -142,7 +142,7 @@ void ped_momdp::publishSpeed(const ros::TimerEvent &e)
 
 
 
-void ped_momdp::publishROSState()
+void Controller::publishROSState()
 {
 	geometry_msgs::Point32 pnt;
 	
@@ -215,7 +215,7 @@ void ped_momdp::publishROSState()
 
 
 
-void ped_momdp::publishAction(int action)
+void Controller::publishAction(int action)
 {
 		uint32_t shape = visualization_msgs::Marker::CUBE;
 		visualization_msgs::Marker marker;			
@@ -259,7 +259,7 @@ void ped_momdp::publishAction(int action)
 }
 //for despot
 
-void ped_momdp::RetrievePaths(const tf::Stamped<tf::Pose>& carpose)
+void Controller::RetrievePaths(const tf::Stamped<tf::Pose>& carpose)
 {
 	//RealSimulator->global_path[];	
 	
@@ -312,7 +312,7 @@ void ped_momdp::RetrievePaths(const tf::Stamped<tf::Pose>& carpose)
 
 }
 
-void ped_momdp::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
+void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 	cout<<"receive path from navfn "<<path->poses.size()<<endl;
 	if(fixed_path_ && worldModel.path.size()>0) return;
 
@@ -329,9 +329,10 @@ void ped_momdp::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 	pathPub_.publish(*path);
 }
 
-void ped_momdp::controlLoop(const ros::TimerEvent &e)
+void Controller::controlLoop(const ros::TimerEvent &e)
 {
 
+        cout<<"*********************"<<endl;
 	    cout<<"entering control loop"<<endl;
         tf::Stamped<tf::Pose> in_pose, out_pose;
 
@@ -431,7 +432,7 @@ void ped_momdp::controlLoop(const ros::TimerEvent &e)
 }
 
 
-void ped_momdp::publishMarker(int id,PedBelief & ped)
+void Controller::publishMarker(int id,PedBelief & ped)
 {
 	//cout<<"belief vector size "<<belief.size()<<endl;
 	std::vector<double> belief = ped.prob_goals;
@@ -479,7 +480,7 @@ void ped_momdp::publishMarker(int id,PedBelief & ped)
 		markers.markers.push_back(marker);
 	}
 }
-void ped_momdp::publishBelief()
+void Controller::publishBelief()
 {
 	//vector<vector<double> > ped_beliefs=RealSimulator->GetBeliefVector(solver->root_->particles());	
 	//cout<<"belief vector size "<<ped_beliefs.size()<<endl;
