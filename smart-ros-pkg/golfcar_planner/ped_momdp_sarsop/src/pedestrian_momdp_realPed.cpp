@@ -41,11 +41,16 @@ pedestrian_momdp::pedestrian_momdp()
 	cout << "simulation = " << simulation << endl;
 	cout << "rosns = " << ModelParams::rosns << endl;
 
+	bool fixed_path;
+	double pruning_constant;
+    n.param("pruning_constant", pruning_constant, 0.0);
+	n.param("fixed_path", fixed_path, false);
+
     move_base_speed_=nh.subscribe("momdp_speed_dummy",1, &pedestrian_momdp::moveSpeedCallback, this);
     //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
 
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
-	momdp = new ped_momdp(nh);
+	momdp = new ped_momdp(nh, fixed_path, pruning_constant);
 
 	momdp->window_pub=nh.advertise<geometry_msgs::PolygonStamped>("/my_window",1000);
 	momdp->pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);

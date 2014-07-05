@@ -28,9 +28,11 @@ int RandomActionSeed() {
   return Globals::config.root_seed ^ (Globals::config.n_particles + 2);
 }
 
-ped_momdp::ped_momdp(ros::NodeHandle& nh) :  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker)
+ped_momdp::ped_momdp(ros::NodeHandle& nh, bool fixed_path, double pruning_constant):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path)
 {
-    nh.param("fixed_path", fixed_path_, false);
+	cout << "fixed_path = " << fixed_path_ << endl;
+	Globals::config.pruning_constant = pruning_constant;
+
     nh.param("pruning_constant", Globals::config.pruning_constant, 0.0);
 
 	global_frame_id = ModelParams::rosns + "/map";

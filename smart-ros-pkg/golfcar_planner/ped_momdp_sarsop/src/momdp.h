@@ -52,7 +52,7 @@ using namespace std;
 class ped_momdp
 {
 public:
-    ped_momdp(ros::NodeHandle& nh);
+    ped_momdp(ros::NodeHandle& nh, bool fixed_path, double pruning_constant);
 
     ~ped_momdp();
 
