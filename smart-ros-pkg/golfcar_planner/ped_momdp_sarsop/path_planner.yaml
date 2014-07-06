@@ -17,8 +17,8 @@ ped_costmap:
     ped_cost_ratio: 0.5
 
 planner:
-    steering_limit_deg: 6
+    steering_limit_deg: 8
     yaw_res_deg: 2.5
     cost_steering_deg: 100
-    steplen: 4
+    steplen: 6
 

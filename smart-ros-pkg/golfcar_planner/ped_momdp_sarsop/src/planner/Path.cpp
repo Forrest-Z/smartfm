@@ -35,7 +35,6 @@ int Path::forward(int i, double len) const {
 Path Path::interpolate() {
     auto& path = *this;
 	Path p;
-	cout<<"interpolated path"<<endl;
 	for(int i=0; i<path.size()-1; i++) {
         double d = COORD::EuclideanDistance(path[i], path[i+1]);
 		int n = int(d/ModelParams::PATH_STEP);
@@ -46,7 +45,6 @@ Path Path::interpolate() {
 		nx=path[i].x;
 		ny=path[i].y;
 		for(int j=0;j<n;j++) {
-			cout<<nx<<" "<<ny<<endl;
 			p.push_back(COORD(nx,ny));	
 			nx+=dx;
 			ny+=dy;
