@@ -129,7 +129,7 @@ namespace ped_pathplan {
 				break;
             }
 
-			if(items.size() > 2000000) {
+			if(items.size() > 500000) {
                 cout << "no solution found!" << endl;
 				break;
 			}

@@ -94,11 +94,11 @@ floorplan
 ( 
   name "willow"
   bitmap "utown_momdp_small_fill.png"
-  size [69.600 64.20 1.000]
-  pose [-32.10 34.8. 0.000 90]
+  size [69.600 64.200 1.000]
+  pose [-32.100 34.800 0.000 90.000]
 )
 
 # throw in a robot
-gc1( pose [-21 50 0.000 -91.678] name "gc1" color "red")
+gc1( pose [-21.000 50.000 0.000 -91.678] name "gc1" color "red")
 
-block( pose [ -34.369 28.454 0.000 0.000 ] color "red")
+block( pose [ -52.436 32.454 0.000 0.000 ] color "red")

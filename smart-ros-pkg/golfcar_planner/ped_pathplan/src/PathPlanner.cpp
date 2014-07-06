@@ -14,7 +14,9 @@ int main(int argc, char** argv) {
     ped_pathplan::PathPlanROS p;
     p.initialize("planner", &costmap);
 
-    ros::spin();
+	ros::MultiThreadedSpinner spinner(3); // Use 4 threads
+	spinner.spin();
+    //ros::spin();
     return 0;
 }
 

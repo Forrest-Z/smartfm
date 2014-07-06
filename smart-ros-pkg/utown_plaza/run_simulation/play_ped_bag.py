@@ -18,6 +18,7 @@ def get_duration(bagfn):
 
 def main(bagfn):
     t = get_duration(bagfn)
+    #start = t / 8.0
     start = random.uniform(0, t)
 
     os.execv(ROSBAG, [ROSBAG, 'play', '-s', str(start), '-l', bagfn])
