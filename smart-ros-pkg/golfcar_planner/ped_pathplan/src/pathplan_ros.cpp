@@ -15,16 +15,18 @@ namespace ped_pathplan {
         if(!initialized) {
             ros::NodeHandle private_nh("~/" + name);
             double steering_limit_deg, yaw_res_deg, cost_steering_deg;
+            int steplen;
 
             private_nh.param("steering_limit_deg", steering_limit_deg, 5.0);
             private_nh.param("yaw_res_deg", yaw_res_deg, 2.5);
             private_nh.param("cost_steering_deg", cost_steering_deg, 100.0);
+            private_nh.param("steplen", steplen, 3);
 
             costmap_ros = cmros;
 
             int nx = cmros->getSizeInCellsX();
             int ny = cmros->getSizeInCellsY();
-            planner = boost::shared_ptr<PathPlan>(new PathPlan(nx, ny, steering_limit_deg, yaw_res_deg, cost_steering_deg));
+            planner = boost::shared_ptr<PathPlan>(new PathPlan(nx, ny, steering_limit_deg, yaw_res_deg, cost_steering_deg, steplen));
 
             updateCostmap();
 

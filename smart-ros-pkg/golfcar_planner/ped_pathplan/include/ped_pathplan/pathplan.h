@@ -32,7 +32,7 @@ namespace ped_pathplan {
 
     class PathPlan {
         public:
-            PathPlan(int nx, int ny, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg);	// size of map
+            PathPlan(int nx, int ny, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int steplen);	// size of map
 
 
             float cost_steering, yaw_rln;

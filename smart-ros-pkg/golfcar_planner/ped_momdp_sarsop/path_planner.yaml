@@ -20,4 +20,5 @@ planner:
     steering_limit_deg: 6
     yaw_res_deg: 2.5
     cost_steering_deg: 100
+    steplen: 4
 

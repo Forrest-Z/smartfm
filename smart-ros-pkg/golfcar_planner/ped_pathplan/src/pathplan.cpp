@@ -12,8 +12,8 @@ namespace ped_pathplan {
     using namespace std;
 
 
-    PathPlan::PathPlan(int xs, int ys, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg)
-        : nx(xs), ny(ys), step(3), cost_steering(cost_steering_deg / M_PI * 180)
+    PathPlan::PathPlan(int xs, int ys, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int steplen)
+        : nx(xs), ny(ys), step(steplen), cost_steering(cost_steering_deg / M_PI * 180)
     {
         float steering_limit = steering_limit_deg / 180 * M_PI;
         yaw_rln = yaw_res_deg / 180 * M_PI;
@@ -196,7 +196,7 @@ namespace ped_pathplan {
 
     float PathPlan::heuristic(const State& s) {
         float d = distToGoal(s);
-        float h = (d / step) * COST_NEUTRAL;
+        float h = (d / float(step)) * COST_NEUTRAL;
         return h;
     }
 
