@@ -32,6 +32,17 @@ int Path::forward(int i, double len) const {
     return i;
 }
 
+double Path::getYaw(int i) const {
+	//TODO review this code
+	if(i == path.size()-1) return 0;
+
+	const COORD& pos = path[i];
+	const COORD& forward_pos = path[i+1];
+	MyVector vec(pos.x - forward_pos.x, pos.y - forward_pos.y);
+    double a = vec.GetAngle(); // is this the yaw angle?
+	return a;
+}
+
 Path Path::interpolate() {
     auto& path = *this;
 	Path p;
@@ -52,4 +63,10 @@ Path Path::interpolate() {
 	}
 	p.push_back(path[path.size()-1]);
 	return p;
+}
+
+void Path::cutjoin(const Path& p) {
+	int i = nearest(p[0]);
+	erase(at(i), end());
+	insert(end(), p.begin(), p.end());
 }

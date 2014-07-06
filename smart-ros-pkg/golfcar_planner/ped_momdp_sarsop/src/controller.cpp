@@ -28,7 +28,7 @@ int RandomActionSeed() {
   return Globals::config.root_seed ^ (Globals::config.n_particles + 2);
 }
 
-Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path)
+Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(3.0)
 {
 	cout << "fixed_path = " << fixed_path_ << endl;
 	Globals::config.pruning_constant = pruning_constant;
@@ -237,79 +237,69 @@ void Controller::publishAction(int action)
 		marker.pose.orientation.y = 0.0;
 		marker.pose.orientation.z = 0.0;
 		marker.pose.orientation.w = 1.0;
-		// Set the scale of the marker -- 1x1x1 here means 1m on a side
+
+		// Set the scale of the marker in meters
 		marker.scale.x = 0.6;
 		marker.scale.y = 3;
 		marker.scale.z = 0.6;
-		//
-		// Set the color -- be sure to set alpha to something non-zero!
-		//marker.color.r = 0.0f;
-		//marker.color.g = 1.0f;
-		//marker.color.b = 0.0f;
-		//marker.color.a = 1.0;
+
 		marker.color.r = marker_colors[action_map[action]][0];
         marker.color.g = marker_colors[action_map[action]][1];
-		marker.color.b = marker_colors[action_map[action]][2];//marker.lifetime = ros::Duration();
+		marker.color.b = marker_colors[action_map[action]][2];
 		marker.color.a = 1.0;
 
 		ros::Duration d(1/control_freq);
 		marker.lifetime=d;
-		actionPub_.publish(marker);		
-
+		actionPub_.publish(marker);
 }
-//for despot
 
-void Controller::RetrievePaths(const tf::Stamped<tf::Pose>& carpose)
-{
-	//RealSimulator->global_path[];	
-	
-	//pomdp_path_planner::GetPomdpPath srv;	
-	//path_client.call(srv);
-	//int size=srv.response.CurrPaths.size();
-	//cout<<"path size "<<size<<endl;
-	//cout<<"first path"<<endl;
-	//if(size!=0)
-	//{
-	//	pomdp_path_planner::PomdpPath path=srv.response.CurrPaths[0];
-	//	for(int i=0;i<size;i++)
-	//		cout<<path.points[i].x<<" "<<path.points[i].y<<endl;
-	//}
-	//
+COORD poseToCoord(const tf::Stamped<tf::Pose>& pose) {
+	COORD coord;
+	coord.x=pose.getOrigin().getX();
+	coord.y=pose.getOrigin().getY();
+	return coord;
+}
 
+
+geometry_msgs::PoseStamped Controller::getPoseAhead(const tf::Stamped<tf::Pose>& carpose) {
+	auto& path = worldModel.path;
+	COORD coord = poseToCoord(carpose);
+	int i = path.nearest(coord);
+	int j = path.forward(i, pathplan_ahead_);
+	COORD ahead = path[j];
+	double yaw = path.getYaw(j);
+
+	auto q = tf::createQuaternionFromYaw(yaw);
+	tf::Pose p(q, tf::Vector3(ahead.x, ahead.y, 0));
+	tf::Stamped<tf::Pose> pose_ahead(p, carpos.stamp_, carpose.frame_id_);
+	geometry_msgs::PoseStamped posemsg;
+	tf::poseStampedTFToMsg(pose_ahead, posemsg);
+	return posemsg;
+}
+
+void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 	if(fixed_path_ && worldModel.path.size()>0)  return;
 
 	ped_pathplan::StartGoal startGoal; 
-	nav_msgs::GetPlan srv;
-	geometry_msgs::PoseStamped pose;
-	tf::poseStampedTFToMsg(carpose, pose);
 
-	//pose.header.stamp=ros::Time::now();
-	//pose.header.frame_id=global_frame_id;
-	//pose.pose.position.x=worldStateTracker.carpos.x;
-	//pose.pose.position.y=worldStateTracker.carpos.y;
-
-	//srv.request.start=pose;
-	startGoal.start=pose;
+	if(pathplan_ahead_ > 0) {
+		startGoal.start = getPoseAhead(carpose);
+	} else {
+		geometry_msgs::PoseStamped pose;
+		tf::poseStampedTFToMsg(carpose, pose);
+		startGoal.start=pose;
+	}
 
 	// set goal
-	//for simulation
+	geometry_msgs::PoseStamped pose;
 	pose.pose.position.x=17;
 	pose.pose.position.y=52;
-	//for utown 
-	
+	// large map goal
 	//pose.pose.position.x=108;
 	//pose.pose.position.y=143;
-	//srv.request.tolerance=1.0;
-	//srv.request.goal=pose;
+	
 	startGoal.goal=pose;
 	start_goal_pub.publish(startGoal);	
-
-//	path_client.call(srv);
-
-	//nav_msgs::Path p;
-	//p.header.stamp=ros::Time::now();
-	//p.poses=srv.response.plan;
-
 }
 
 void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
@@ -318,16 +308,25 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 
 	if(path->poses.size()==0) return;
 	Path p;
-	for(int i=0;i<path->poses.size();i++)
-	{
+	for(int i=0;i<path->poses.size();i++) {
         COORD coord;
 		coord.x=path->poses[i].pose.position.x;
 		coord.y=path->poses[i].pose.position.y;
         p.push_back(coord);
 	}
-	worldModel.setPath(p.interpolate());
+
+	auto pi = p.interpolate();
+	if(pathplan_ahead_>0 && worldModel.path.size()>0) {
+		worldModel.path.cutjoin(pi);
+	} else {
+		worldModel.setPath(p.interpolate());
+	}
+
+	// TODO
 	pathPub_.publish(*path);
 }
+
+//void Controller::publishPath(
 
 void Controller::controlLoop(const ros::TimerEvent &e)
 {
@@ -349,7 +348,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
             err_retry_rate.sleep();
 		}
 
-		RetrievePaths(out_pose);
+		sendPathPlanStart(out_pose);
 		if(worldModel.path.size()==0) return;
 
 		// transpose to laser frame for ped avoidance
@@ -363,9 +362,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
         worldStateTracker.updateVel(real_speed_);
 
-		COORD coord;
-		coord.x=out_pose.getOrigin().getX();
-		coord.y=out_pose.getOrigin().getY();
+		COORD coord = poseToCoord(out_pose);
 		cout << "transformed pose = " << coord.x << " " << coord.y << endl;
 		worldStateTracker.updateCar(coord);
 
