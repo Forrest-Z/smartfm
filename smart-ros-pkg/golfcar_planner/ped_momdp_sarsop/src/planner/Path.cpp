@@ -37,8 +37,8 @@ double Path::getYaw(int i) const {
     auto& path = *this;
 	//TODO review this code
 	
-	int j = forward(i, 0.5);
-	if(i==j) return 0;
+	int j = forward(i, 1.0);
+	if(i==j) { i = max(0, i-3);}
 
 	const COORD& pos = path[i];
 	const COORD& forward_pos = path[j];
@@ -71,7 +71,7 @@ Path Path::interpolate() {
 
 void Path::cutjoin(const Path& p) {
 	//TODO discard the new path when the dist between the two path are too large
-	int i = nearest(p[0]);
+	int i = max(0, nearest(p[0])-1);
 	erase(begin()+i, end());
-	insert(end(), p.begin(), p.end());
+	insert(end(), p.begin()+1, p.end());
 }

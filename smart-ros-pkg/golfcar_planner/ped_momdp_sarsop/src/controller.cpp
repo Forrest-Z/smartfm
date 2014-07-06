@@ -28,7 +28,7 @@ int RandomActionSeed() {
   return Globals::config.root_seed ^ (Globals::config.n_particles + 2);
 }
 
-Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(6.0)
+Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(3.0)
 {
 	cout << "fixed_path = " << fixed_path_ << endl;
 	Globals::config.pruning_constant = pruning_constant;

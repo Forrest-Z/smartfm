@@ -115,12 +115,13 @@ namespace ped_pathplan {
             q.pop();
             PathItem p = items[qp.second];
 
+			/*
 			float curr_dist = distToGoal(p.state);
 			if(curr_dist < curr_min_dist) {
-				//cout << "dist to goal = " << curr_dist << endl;
-				//cout << "(" <<  p.state[0] << " " << p.state[1] << " " << p.state[2] << ")" << " " << qp.first << endl;
+				cout << "dist to goal = " << curr_dist << endl;
+				cout << "(" <<  p.state[0] << " " << p.state[1] << " " << p.state[2] << ")" << " " << qp.first << endl;
 				curr_min_dist = curr_dist;
-			}
+			}*/
 
 
             if(isGoalReached(p.state)) {
@@ -130,7 +131,7 @@ namespace ped_pathplan {
             }
 
 			if(items.size() > num_search) {
-                cout << "no solution found!" << endl;
+                cout << "no solution found after searching " << items.size() << " states!" << endl;
 				break;
 			}
 

@@ -13,7 +13,7 @@ namespace ModelParams {
     const double CRASH_PENALTY = -100;
 	const double GOAL_REWARD = 500;
 
-    const double PATH_STEP = 0.10;
+    const double PATH_STEP = 0.05;
 
     const double GOAL_TOLERANCE = 3;
 
