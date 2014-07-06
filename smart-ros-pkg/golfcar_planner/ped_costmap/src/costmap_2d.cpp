@@ -622,7 +622,8 @@ namespace costmap_2d{
     double inflation_window_size = 2 * (max_raytrace_range_ + inflation_radius_);
 
     //clear all non-lethal obstacles in preparation for re-inflation
-    clearNonLethal(robot_x, robot_y, inflation_window_size, inflation_window_size);
+    //clearNonLethal(robot_x, robot_y, inflation_window_size, inflation_window_size);
+	memcpy(costmap_, static_map_, size_x_ * size_y_ * sizeof(unsigned char));
 
     //reset the inflation window
     resetInflationWindow(robot_x, robot_y, inflation_window_size + 2 * inflation_radius_, inflation_window_size + 2 * inflation_radius_, inflation_queue_, false);
