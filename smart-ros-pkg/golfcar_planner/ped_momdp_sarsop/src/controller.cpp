@@ -28,7 +28,7 @@ int RandomActionSeed() {
   return Globals::config.root_seed ^ (Globals::config.n_particles + 2);
 }
 
-Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(3.0)
+Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(6.0)
 {
 	cout << "fixed_path = " << fixed_path_ << endl;
 	Globals::config.pruning_constant = pruning_constant;
@@ -271,7 +271,7 @@ geometry_msgs::PoseStamped Controller::getPoseAhead(const tf::Stamped<tf::Pose>&
 
 	auto q = tf::createQuaternionFromYaw(yaw);
 	tf::Pose p(q, tf::Vector3(ahead.x, ahead.y, 0));
-	tf::Stamped<tf::Pose> pose_ahead(p, carpos.stamp_, carpose.frame_id_);
+	tf::Stamped<tf::Pose> pose_ahead(p, carpose.stamp_, carpose.frame_id_);
 	geometry_msgs::PoseStamped posemsg;
 	tf::poseStampedTFToMsg(pose_ahead, posemsg);
 	return posemsg;
@@ -281,17 +281,17 @@ void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 	if(fixed_path_ && worldModel.path.size()>0)  return;
 
 	ped_pathplan::StartGoal startGoal; 
+	geometry_msgs::PoseStamped pose;
+	tf::poseStampedTFToMsg(carpose, pose);
 
-	if(pathplan_ahead_ > 0) {
+	// set start
+	if(pathplan_ahead_ > 0 && worldModel.path.size()>0) {
 		startGoal.start = getPoseAhead(carpose);
 	} else {
-		geometry_msgs::PoseStamped pose;
-		tf::poseStampedTFToMsg(carpose, pose);
 		startGoal.start=pose;
 	}
 
 	// set goal
-	geometry_msgs::PoseStamped pose;
 	pose.pose.position.x=17;
 	pose.pose.position.y=52;
 	// large map goal
@@ -323,10 +323,33 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 	}
 
 	// TODO
-	pathPub_.publish(*path);
+	//pathPub_.publish(*path);
+	publishPath(path->header.frame_id, worldModel.path);
 }
 
-//void Controller::publishPath(
+void Controller::publishPath(const string& frame_id, const Path& path) {
+	nav_msgs::Path navpath;
+	ros::Time plan_time = ros::Time::now();
+
+	navpath.header.frame_id = frame_id;
+	navpath.header.stamp = plan_time;
+	
+	for(const auto& s: path) {
+		geometry_msgs::PoseStamped pose;
+		pose.header.stamp = plan_time;
+		pose.header.frame_id = frame_id;
+		pose.pose.position.x = s.x;
+		pose.pose.position.y = s.y;
+		pose.pose.position.z = 0.0;
+		pose.pose.orientation.x = 0.0;
+		pose.pose.orientation.y = 0.0;
+		pose.pose.orientation.z = 0.0;
+		pose.pose.orientation.w = 1.0;
+		navpath.poses.push_back(pose);
+	}
+
+	pathPub_.publish(navpath);
+}
 
 void Controller::controlLoop(const ros::TimerEvent &e)
 {

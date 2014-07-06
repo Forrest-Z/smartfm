@@ -13,10 +13,12 @@
 
     <node pkg="golfcar_ppc" type="purepursuit_controller" name="purepursuitController" output="screen"/>
 
+<!-- XXX do we really need this??
     <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="log">
         <param name="dummy_vehicle" value="false"/>
         <param name="use_dbserver" value="false"/>
     </node>
+	-->
 
     <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
         <remap from="laser_area_policy/scan" to="sick_scan2"/>

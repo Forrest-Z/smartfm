@@ -1,5 +1,6 @@
 #include<Path.h>
 #include<iostream>
+#include "math_utils.h"
 using namespace std;
 
 
@@ -33,12 +34,15 @@ int Path::forward(int i, double len) const {
 }
 
 double Path::getYaw(int i) const {
+    auto& path = *this;
 	//TODO review this code
-	if(i == path.size()-1) return 0;
+	
+	int j = forward(i, 0.5);
+	if(i==j) return 0;
 
 	const COORD& pos = path[i];
-	const COORD& forward_pos = path[i+1];
-	MyVector vec(pos.x - forward_pos.x, pos.y - forward_pos.y);
+	const COORD& forward_pos = path[j];
+	MyVector vec(forward_pos.x - pos.x, forward_pos.y - pos.y);
     double a = vec.GetAngle(); // is this the yaw angle?
 	return a;
 }
@@ -66,7 +70,8 @@ Path Path::interpolate() {
 }
 
 void Path::cutjoin(const Path& p) {
+	//TODO discard the new path when the dist between the two path are too large
 	int i = nearest(p[0]);
-	erase(at(i), end());
+	erase(begin()+i, end());
 	insert(end(), p.begin(), p.end());
 }

@@ -63,13 +63,15 @@ public:
 	void publishAction(int);
 	void publishBelief();
 	void publishMarker(int , PedBelief & ped);
+	void publishPath(const string& frame_id, const Path& path);
 	bool getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
 
 	//for despot
 	void initSimulator();
 	void momdpInit();
-	void RetrievePaths(const tf::Stamped<tf::Pose>& carpose);
+	void sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose);
 	void RetrievePathCallBack(const nav_msgs::Path::ConstPtr path); 
+	geometry_msgs::PoseStamped getPoseAhead(const tf::Stamped<tf::Pose>& carpose);
 
 	ros::Publisher window_pub, goal_pub;
 	ros::Publisher car_pub;
@@ -92,6 +94,7 @@ public:
 	visualization_msgs::MarkerArray markers;
 
 private:
+	double pathplan_ahead_;
 	double control_freq;
 	bool goal_reached;
 	int safeAction;

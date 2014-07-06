@@ -32,7 +32,7 @@ namespace ped_pathplan {
 
             updateCostmap();
 
-			plan_pub = private_nh.advertise<nav_msgs::Path>("plan", 1, true);
+			plan_pub = private_nh.advertise<nav_msgs::Path>("plan", 1, false);
 
             //string global_frame = cmros->getGlobalFrameID();
             make_plan_srv =  private_nh.advertiseService("make_plan", &PathPlanROS::makePlanService, this);
