@@ -32,9 +32,10 @@ double Random::NextDouble() {
 }
 
 double Random::NextGaussian() {
-	double u = NextDouble(),
-				 v = NextDouble();
-	return sqrt(-2 * log(u) * cos(2 * M_PI * v)); 
+	const double eps = 1e-5;
+	double u = NextDouble(eps, 1-eps),
+				 v = NextDouble(eps, 1-eps);
+	return sqrt(-2 * log(u)) * cos(2 * M_PI * v); 
 }
 
 int Random::NextCategory(vector<double> category_probs) {

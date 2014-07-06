@@ -29,6 +29,15 @@ public:
 		double value = -20; // Value when no pedestrian present
 		if (min_dist != numeric_limits<double>::infinity()) {
 			double step = max(min_dist - 2.0, 0.0) / (carvel + ModelParams::PED_SPEED) * ModelParams::control_freq;
+			cout << step << endl;
+			//if(step >= 10000) {
+				cout << carpos.x << " " << carpos.y << endl;
+				for(int i=0; i<state->num; i++) {
+					auto& p = state->peds[i];
+					double dist = COORD::EuclideanDistance(carpos, p.pos);
+					cout << p.id << " " << p.pos.x << " " << p.pos.y << endl;
+				}
+			//}
 			assert(step < 10000);
 	
 			value = -(1 - Discount(step)) / (1 - Discount()) 

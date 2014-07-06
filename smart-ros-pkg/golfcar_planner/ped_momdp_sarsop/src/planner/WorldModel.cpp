@@ -98,7 +98,8 @@ void WorldModel::PedStep(PedStruct &ped, Random& random) {
 	
 	MyVector goal_vec(goal.x - ped.pos.x, goal.y - ped.pos.y);
     double a = goal_vec.GetAngle();
-    a += random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
+	double noise = random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
+    a += noise;
     
 	//TODO noisy speed
     MyVector move(a, ModelParams::PED_SPEED/freq, 0);
@@ -109,7 +110,7 @@ void WorldModel::PedStep(PedStruct &ped, Random& random) {
 
 double gaussian_prob(double x, double stddev) {
     double a = 1.0 / stddev / sqrt(2 * M_PI);
-    double b = - x * x / 2 / (stddev * stddev);
+    double b = - x * x / 2.0 / (stddev * stddev);
     return a * exp(b);
 }
 
