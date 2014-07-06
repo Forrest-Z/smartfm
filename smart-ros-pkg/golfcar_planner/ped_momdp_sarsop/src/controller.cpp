@@ -335,12 +335,15 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 	    cout<<"entering control loop"<<endl;
         tf::Stamped<tf::Pose> in_pose, out_pose;
 
+
+        /****** update world state ******/
+
         ros::Rate err_retry_rate(10);
 
-		//transpose to base link
+		// transpose to base link for path planing
 		in_pose.setIdentity();
 		in_pose.frame_id_ = ModelParams::rosns + "/base_link";
-		while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
+		if(!getObjectPose(global_frame_id, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 			cout<<"laser frame "<<in_pose.frame_id_<<endl;
             err_retry_rate.sleep();
@@ -349,14 +352,16 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		RetrievePaths(out_pose);
 		if(worldModel.path.size()==0) return;
 
-		//transpose to laser frame
+		// transpose to laser frame for ped avoidance
 		in_pose.setIdentity();
 		in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
-		while(!getObjectPose(global_frame_id, in_pose, out_pose)) {
+		if(!getObjectPose(global_frame_id, in_pose, out_pose)) {
 			cerr<<"transform error within control loop"<<endl;
 			cout<<"laser frame "<<in_pose.frame_id_<<endl;
             err_retry_rate.sleep();
 		}
+
+        worldStateTracker.updateVel(real_speed_);
 
 		COORD coord;
 		coord.x=out_pose.getOrigin().getX();
@@ -371,6 +376,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
         cout << "root state:" << endl;
 		despot->PrintState(curr_state, cout);
+
+        /****** check world state *****/
 
 		if(worldModel.isGlobalGoal(curr_state.car)) {
 			goal_reached=true;
@@ -390,19 +397,6 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 			return;
 		}
 
-		cout<<"before belief update"<<endl;
-		worldBeliefTracker.update();
-		cout<<"after belief update"<<endl;
-		vector<PomdpState> samples = worldBeliefTracker.sample(1000);
-		vector<State*> particles = despot->ConstructParticles(samples);
-
-		double sum=0;
-		for(int i=0;i<particles.size();i++)
-			sum+=particles[i]->weight;
-		cout<<"particle weight sum "<<sum<<endl;
-		ParticleBelief *pb=new ParticleBelief(particles, despot);
-		solver->belief(pb);
-
 		if(worldStateTracker.emergency())
 		{
 			target_speed_=-1;
@@ -410,6 +404,26 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		}
 
 
+        /****** update belief ******/
+
+		cout<<"before belief update"<<endl;
+		worldBeliefTracker.update();
+		cout<<"after belief update"<<endl;
+		vector<PomdpState> samples = worldBeliefTracker.sample(1000);
+		vector<State*> particles = despot->ConstructParticles(samples);
+
+        /*
+		double sum=0;
+		for(int i=0; i<particles.size(); i++)
+			sum+=particles[i]->weight;
+		cout<<"particle weight sum "<<sum<<endl;
+        */
+
+		ParticleBelief *pb=new ParticleBelief(particles, despot);
+		solver->belief(pb);
+
+
+        /****** solve for safe action ******/
 		safeAction=solver->Search();
 
 		//actionPub_.publish(action);
@@ -419,6 +433,9 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 
 		publishBelief();
+
+
+        /****** update target speed ******/
 
 		target_speed_=real_speed_;
         if(safeAction==0) {}

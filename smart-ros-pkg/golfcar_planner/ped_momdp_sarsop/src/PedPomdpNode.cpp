@@ -92,7 +92,6 @@ PedPomdpNode::~PedPomdpNode()
 
 void PedPomdpNode::speedCallback(nav_msgs::Odometry odo)
 {
-    controller->worldStateTracker.updateVel(odo.twist.twist.linear.x);
 	controller->real_speed_=odo.twist.twist.linear.x;
 }
 
