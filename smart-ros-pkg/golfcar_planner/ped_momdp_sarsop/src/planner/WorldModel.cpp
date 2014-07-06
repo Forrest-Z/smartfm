@@ -43,12 +43,15 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
     for (int i=0; i<state->num; i++) {
 		auto& p = state->peds[i];
         double d = COORD::EuclideanDistance(carpos, p.pos) *  inFront(p.pos, state->car.pos);
+		// cout << d << " " << carpos.x << " " << carpos.y << " "<< p.pos.x << " " << p.pos.y << endl;
         if (d > 0 && d < mindist) 
 			mindist = d;
     }
 
+	// cout << "min_dist = " << mindist << endl;
+
     // TODO set as a param
-    if (mindist < 3) {
+    if (mindist < 4) {
 		return 2;
     }
 
@@ -66,10 +69,10 @@ bool WorldModel::inFront(COORD ped_pos, int car) const {
 
 	/*NOTE: To increase the region checked, compute the cosine value and set a negative threshold.*/
 	return DotProduct(forward_pos.x - car_pos.x, forward_pos.y - car_pos.y,
-			ped_pos.x - car_pos.x, ped_pos.y - ped_pos.y) < 0;
+			ped_pos.x - car_pos.x, ped_pos.y - ped_pos.y) > 0;
 }
 
-bool WorldModel::inCollision(const PomdpState& state, int action) {
+bool WorldModel::inCollision(const PomdpState& state) {
     double mindist = numeric_limits<double>::infinity();
     auto& carpos = path[state.car.pos];
     double carvel = state.car.vel;
@@ -171,7 +174,7 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
         b.prob_goals[i] *=  prob;
 
 		// Important: Keep the belief noisy to avoid aggressive policies
-		b.prob_goals[i] += 0.001;
+		b.prob_goals[i] += 0.1 / goals.size();
 	}
 	for(double w: b.prob_goals) {
 		cout << w << " ";

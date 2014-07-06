@@ -14,7 +14,7 @@ public:
 
     WorldModel();
 
-	bool inCollision(const PomdpState& state, int action);
+	bool inCollision(const PomdpState& state);
 	int defaultPolicy(const vector<State*>& particles);
     bool isLocalGoal(const PomdpState& state);
     bool isGlobalGoal(const CarStruct& car);

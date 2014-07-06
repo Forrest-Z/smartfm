@@ -25,19 +25,21 @@ public:
 			min_dist = min(dist, min_dist);
 		}
 
-		// Assume car does not change speed
+		// Assume constant car speed
 		double value = -20; // Value when no pedestrian present
 		if (min_dist != numeric_limits<double>::infinity()) {
 			double step = max(min_dist - 2.0, 0.0) / (carvel + ModelParams::PED_SPEED) * ModelParams::control_freq;
-			cout << step << endl;
-			//if(step >= 10000) {
-				cout << carpos.x << " " << carpos.y << endl;
+			/*
+			// cout << step << endl;
+			if(step >= 10000) {
+				// cout << carpos.x << " " << carpos.y << endl;
 				for(int i=0; i<state->num; i++) {
 					auto& p = state->peds[i];
 					double dist = COORD::EuclideanDistance(carpos, p.pos);
-					cout << p.id << " " << p.pos.x << " " << p.pos.y << endl;
+					// cout << p.id << " " << p.pos.x << " " << p.pos.y << endl;
 				}
-			//}
+			}
+			*/
 			assert(step < 10000);
 	
 			value = -(1 - Discount(step)) / (1 - Discount()) 
@@ -97,16 +99,18 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	// Terminate upon reaching goal
 	if (world.isLocalGoal(state)) {
 		// Prefer higher speed even though same number of discrete steps needed to reach local goal
-		reward += state.car.dist_travelled-ModelParams::GOAL_TRAVELLED-ModelParams::VEL_MAX/ModelParams::control_freq;
+		// reward += state.car.dist_travelled-ModelParams::GOAL_TRAVELLED-ModelParams::VEL_MAX/ModelParams::control_freq;
 		return true;
 	}
 
  	// Safety control: collision; Terminate upon collision
-	if (world.inCollision(state, action)) {
-		reward += ModelParams::CRASH_PENALTY * (state.car.vel + 0.2);
+	if (world.inCollision(state)) {
+		reward = ModelParams::CRASH_PENALTY * (state.car.vel + 0.2);
 		return true;
 	}
 
+	reward += 0.5 * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
+	
 	// Smoothness control: Avoid frequent dec or acc
 	reward += (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0.0;
 
@@ -272,6 +276,8 @@ public:
 
 	double Value(const State& s) const {
 		const PomdpState& state = static_cast<const PomdpState&>(s);
+		if (ped_pomdp_->world.inCollision(state))
+			return ModelParams::CRASH_PENALTY * (state.car.vel + 0.2);
 		return 0;
 	}
 };
