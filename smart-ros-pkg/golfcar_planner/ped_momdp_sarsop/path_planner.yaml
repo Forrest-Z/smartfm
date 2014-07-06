@@ -21,4 +21,5 @@ planner:
     yaw_res_deg: 2.0
     cost_steering_deg: 200
     steplen: 7
+    num_search: 500000
 

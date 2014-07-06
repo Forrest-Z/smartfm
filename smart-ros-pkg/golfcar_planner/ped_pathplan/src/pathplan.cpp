@@ -12,8 +12,8 @@ namespace ped_pathplan {
     using namespace std;
 
 
-    PathPlan::PathPlan(int xs, int ys, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int steplen)
-        : nx(xs), ny(ys), step(steplen), cost_steering(cost_steering_deg / M_PI * 180)
+    PathPlan::PathPlan(int xs, int ys, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int steplen, int num_search)
+        : nx(xs), ny(ys), step(steplen), cost_steering(cost_steering_deg / M_PI * 180), num_search(num_search)
     {
         float steering_limit = steering_limit_deg / 180 * M_PI;
         yaw_rln = yaw_res_deg / 180 * M_PI;
@@ -129,7 +129,7 @@ namespace ped_pathplan {
 				break;
             }
 
-			if(items.size() > 500000) {
+			if(items.size() > num_search) {
                 cout << "no solution found!" << endl;
 				break;
 			}
