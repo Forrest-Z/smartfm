@@ -50,7 +50,7 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
 
 	markers_pub=nh.advertise<visualization_msgs::MarkerArray>("pomdp_belief",1);
 	safeAction=2;
-	momdp_speed_=0.0;
+	target_speed_=0.0;
 	goal_reached=false;
 	cerr << "DEBUG: Init simulator" << endl;
 	initSimulator();
@@ -135,8 +135,8 @@ void Controller::publishSpeed(const ros::TimerEvent &e)
 {
 	geometry_msgs::Twist cmd;
 	cmd.angular.z = 0;       	
-	cmd.linear.x = momdp_speed_;
-	cout<<"publishing cmd speed "<<momdp_speed_<<endl;
+	cmd.linear.x = target_speed_;
+	cout<<"publishing cmd speed "<<target_speed_<<endl;
 	cmdPub_.publish(cmd);
 }
 
@@ -331,7 +331,6 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
 
 void Controller::controlLoop(const ros::TimerEvent &e)
 {
-
         cout<<"*********************"<<endl;
 	    cout<<"entering control loop"<<endl;
         tf::Stamped<tf::Pose> in_pose, out_pose;
@@ -349,6 +348,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		RetrievePaths(out_pose);
 		if(worldModel.path.size()==0) return;
+
 		//transpose to laser frame
 		in_pose.setIdentity();
 		in_pose.frame_id_ = ModelParams::rosns + ModelParams::laser_frame;
@@ -368,19 +368,19 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		PomdpState curr_state = worldStateTracker.getPomdpState();
 		publishROSState();
+
+        cout << "root state:" << endl;
 		despot->PrintState(curr_state, cout);
-		cout<<"here"<<endl;
-		if(worldModel.isGlobalGoal(curr_state.car))
-		{
+
+		if(worldModel.isGlobalGoal(curr_state.car)) {
 			goal_reached=true;
 		}
-		if(goal_reached==true)
-		{
+		if(goal_reached==true) {
 			safeAction=2;
 
-			momdp_speed_=real_speed_;
-		    momdp_speed_ -= 0.5;
-			if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
+			target_speed_=real_speed_;
+		    target_speed_ -= 0.5;
+			if(target_speed_<=0.0) target_speed_ = 0.0;
 
             // shutdown the node after reaching goal
             // TODO consider do this in simulaiton only for safety
@@ -405,7 +405,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		if(worldStateTracker.emergency())
 		{
-			momdp_speed_=-1;
+			target_speed_=-1;
 			return;
 		}
 
@@ -415,20 +415,20 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		//actionPub_.publish(action);
 		publishAction(safeAction);
 
-		cout<<"safe action "<<safeAction<<endl;
+		cout<<"safe action = "<<safeAction<<endl;
 
 
 		publishBelief();
 
-		momdp_speed_=real_speed_;
+		target_speed_=real_speed_;
         if(safeAction==0) {}
-		else if(safeAction==1) momdp_speed_ += 0.3*2;
-		else if(safeAction==2) momdp_speed_ -= 0.5*2;
-		if(momdp_speed_<=0.0) momdp_speed_ = 0.0;
-		if(momdp_speed_>=ModelParams::VEL_MAX) momdp_speed_ = ModelParams::VEL_MAX;
+		else if(safeAction==1) target_speed_ += 0.3*2;
+		else if(safeAction==2) target_speed_ -= 0.5*2;
+		if(target_speed_<=0.0) target_speed_ = 0.0;
+		if(target_speed_>=ModelParams::VEL_MAX) target_speed_ = ModelParams::VEL_MAX;
 
-		cout<<"momdp_speed "<<momdp_speed_<<endl;
-		delete pb;	
+		cout<<"target_speed = "<<target_speed_<<endl;
+		delete pb;
 }
 
 

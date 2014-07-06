@@ -87,7 +87,7 @@ public:
 	WorldBeliefTracker worldBeliefTracker;
 	PedPomdp * despot;
 	DESPOTSTAR* solver;
-	double momdp_speed_,real_speed_;
+	double target_speed_, real_speed_;
 	string global_frame_id;
 	visualization_msgs::MarkerArray markers;
 
