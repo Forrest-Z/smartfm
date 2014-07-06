@@ -11,30 +11,31 @@
 
     <node name="map_server" pkg="map_server" type="map_server" args="$(find utown_plaza)/utown_momdp_small.yaml"/>
 
-		<node pkg="golfcar_ppc" type="purepursuit_controller" name="purepursuitController" output="screen"/>
+    <node pkg="golfcar_ppc" type="purepursuit_controller" name="purepursuitController" output="screen"/>
 
-		<node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="log">
-		<param name="dummy_vehicle" value="false"/>
-		<param name="use_dbserver" value="false"/>
-		</node>
+    <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="log">
+        <param name="dummy_vehicle" value="false"/>
+        <param name="use_dbserver" value="false"/>
+    </node>
 
-		<node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
-		<remap from="laser_area_policy/scan" to="sick_scan2"/>
-		<remap from="cmd_vel" to="cmd_speed_dummy"/>
-		</node>
+    <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
+        <remap from="laser_area_policy/scan" to="sick_scan2"/>
+        <remap from="cmd_vel" to="cmd_speed_dummy"/>
+    </node>
 
 
 
-		<node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher"   ns="/golfcart">
-		<remap from="cmd_vel" to="cmd_vel"/>
-		</node>
+    <node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher"   ns="/golfcart">
+        <remap from="cmd_vel" to="cmd_vel"/>
+    </node>
 
     <node pkg="rviz" type="rviz" name="rviz" respawn="true" args="-d $(find utown_plaza)/pomdp_simulation.vcg" />
 
-	<node pkg="velmixer" type="ped_publisher" name="ped_publisher" output="log" respawn="false">
-		<param name="pedNum" value="1000"/>
-	</node>
-	<node pkg="dummyPed" type="dummyPed_marker" name="dummyPed" respawn="false"/>
+    <node pkg="velmixer" type="ped_publisher" name="ped_publisher" output="log" respawn="false">
+        <param name="pedNum" value="1000"/>
+    </node>
+
+    <node pkg="dummyPed" type="dummyPed_marker" name="dummyPed" respawn="false"/>
 
 </launch>
 
