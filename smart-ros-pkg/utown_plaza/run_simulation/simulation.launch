@@ -25,9 +25,11 @@
 
 
 
+<!-- XXX wtf?
     <node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher"   ns="/golfcart">
         <remap from="cmd_vel" to="cmd_vel"/>
     </node>
+    -->
 
     <node pkg="rviz" type="rviz" name="rviz" respawn="true" args="-d $(find utown_plaza)/pomdp_simulation.vcg" />
 
