@@ -52,7 +52,7 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
 
     // TODO set as a param
     if (mindist < 4) {
-		return 2;
+		return (carvel == 0.0) ? 0 : 2;
     }
 
     if (mindist < 6) {
@@ -124,6 +124,7 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int goal_id) {
 		   goal_dist = Norm(goal.x-prev.x, goal.y-prev.y);
 	double sensor_noise = 0.1;
 
+	// CHECK: beneficial to add back noise?
 	cout<<"goal id "<<goal_id<<endl;
 	if (goal.x == -1 && goal.y == -1) {  //stop intention 
 		return (move_dist < sensor_noise);
@@ -174,7 +175,7 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
         b.prob_goals[i] *=  prob;
 
 		// Important: Keep the belief noisy to avoid aggressive policies
-		b.prob_goals[i] += 0.1 / goals.size();
+		b.prob_goals[i] += 0.1 / goals.size(); // CHECK: decrease or increase noise
 	}
 	for(double w: b.prob_goals) {
 		cout << w << " ";

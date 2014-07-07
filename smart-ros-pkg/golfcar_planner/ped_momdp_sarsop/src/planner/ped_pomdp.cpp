@@ -96,6 +96,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0.0;
 
+	// CHECK: relative weights of each reward component
 	// Terminate upon reaching goal
 	if (world.isLocalGoal(state)) {
 		// Prefer higher speed even though same number of discrete steps needed to reach local goal
@@ -109,13 +110,13 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		return true;
 	}
 
-	reward += 0.5 * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
-	
 	// Smoothness control: Avoid frequent dec or acc
 	reward += (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0.0;
 
 	// Speed control: Encourage higher speed
-	reward += -1;
+	// reward += -1;
+	// Prefer higher speed even though same number of discrete steps needed to reach local goal
+	reward += 0.5 * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX; 
 
 	// State transition
 	Random random(rNum);
@@ -308,7 +309,7 @@ void PedPomdp::InitializeScenarioUpperBound(string name, RandomStreams& streams)
 void PedPomdp::PrintState(const State& s, ostream& out) const {
 	const PomdpState & state=static_cast<const PomdpState&> (s);
     COORD& carpos = world.path[state.car.pos];
-	
+
 	out << "Rob Pos: " << carpos.x<< " " <<carpos.y << endl;
 	out << "Rob travelled: " << state.car.dist_travelled << endl;
 	for(int i = 0; i < state.num; i ++) {
@@ -316,9 +317,10 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
 		out << "Goal: " << state.peds[i].goal << endl;
 		out << "id: " << state.peds[i].id << endl;
 	}
+	double min_dist = COORD::EuclideanDistance(carpos, state.peds[0].pos);
 	out << "Vel: " << state.car.vel << endl;
 	out<<  "num  " << state.num << endl;
-	
+	out << "MinDist: " << min_dist << endl;
 }
 
 void PedPomdp::PrintObs(const State&state, uint64_t obs, ostream& out) const {

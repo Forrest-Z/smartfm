@@ -31,6 +31,7 @@ int RandomActionSeed() {
 Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead)
 {
 	cout << "fixed_path = " << fixed_path_ << endl;
+	cout << "pathplan_ahead = " << pathplan_ahead_ << endl;
 	Globals::config.pruning_constant = pruning_constant;
 
     nh.param("pruning_constant", Globals::config.pruning_constant, 0.0);
