@@ -41,15 +41,16 @@ PedPomdpNode::PedPomdpNode()
 	cout << "rosns = " << ModelParams::rosns << endl;
 
 	bool fixed_path;
-	double pruning_constant;
+	double pruning_constant, pathplan_ahead;
     n.param("pruning_constant", pruning_constant, 0.0);
 	n.param("fixed_path", fixed_path, false);
+	n.param("pathplan_ahead", pathplan_ahead, 4.0);
 
     move_base_speed_=nh.subscribe("momdp_speed_dummy",1, &PedPomdpNode::moveSpeedCallback, this);
     //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);
 
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
-	controller = new Controller(nh, fixed_path, pruning_constant);
+	controller = new Controller(nh, fixed_path, pruning_constant, pathplan_ahead);
 
 	controller->window_pub=nh.advertise<geometry_msgs::PolygonStamped>("/my_window",1000);
 	controller->pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);

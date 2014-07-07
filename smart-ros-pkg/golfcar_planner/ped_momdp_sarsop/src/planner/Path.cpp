@@ -50,8 +50,26 @@ double Path::getYaw(int i) const {
 Path Path::interpolate() {
     auto& path = *this;
 	Path p;
+
+	const double step = ModelParams::PATH_STEP;
+	double t=0, ti=0;
 	for(int i=0; i<path.size()-1; i++) {
         double d = COORD::EuclideanDistance(path[i], path[i+1]);
+		double dx = (path[i+1].x-path[i].x) / d;
+		double dy = (path[i+1].y-path[i].y) / d;
+		double sx = path[i].x;
+		double sy = path[i].y;
+		while(t < ti+d) {
+			double u = t - ti;
+			double nx = sx + dx*u;
+			double ny = sy + dy*u;
+			p.push_back(COORD(nx, ny));
+			t += step;
+		}
+
+		ti += d;
+
+		/*
 		int n = int(d/ModelParams::PATH_STEP);
 		double dx,dy;
 		dx=(path[i+1].x-path[i].x)/n;
@@ -64,6 +82,7 @@ Path Path::interpolate() {
 			nx+=dx;
 			ny+=dy;
 		}
+		*/
 	}
 	p.push_back(path[path.size()-1]);
 	return p;

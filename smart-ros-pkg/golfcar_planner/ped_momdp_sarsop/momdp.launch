@@ -3,12 +3,11 @@
 	 <node name="ped_momdp" pkg="ped_momdp_sarsop" type="ped-momdp-sarsop" launch-prefix="gdb -ex run - -args" respawn="false" output="screen" ns="/golfcart">
 	 -->
 	 <node name="ped_pomdp" pkg="ped_momdp_sarsop" type="ped_pomdp"  respawn="false" output="screen" ns="/golfcart">
+	    <rosparam file="$(find ped_momdp_sarsop)/params.yaml" command="load" />
 		<remap from="pomdp_path_repub" to="new_global_plan"/>
         <remap from="robot_0/amcl_pose" to="amcl_pose"/>
         <remap from="odom" to="odom"/>
         <param name="simulation" value="false"/>
-        <param name="fixed_path" value="false"/>
-        <param name="pruning_constant" value="0"/>
 	 </node>
 
 	 <node name="ped_momdp_local_transform" pkg="ped_momdp_sarsop" type="local_frame"   ns="/golfcart">

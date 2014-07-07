@@ -28,7 +28,7 @@ int RandomActionSeed() {
   return Globals::config.root_seed ^ (Globals::config.n_particles + 2);
 }
 
-Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(3.0)
+Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead)
 {
 	cout << "fixed_path = " << fixed_path_ << endl;
 	Globals::config.pruning_constant = pruning_constant;
@@ -315,9 +315,11 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
         p.push_back(coord);
 	}
 
-	auto pi = p.interpolate();
+	//auto pi = p.interpolate();
 	if(pathplan_ahead_>0 && worldModel.path.size()>0) {
-		worldModel.path.cutjoin(pi);
+		worldModel.path.cutjoin(p);
+		auto pi = worldModel.path.interpolate();
+		worldModel.setPath(pi);
 	} else {
 		worldModel.setPath(p.interpolate());
 	}

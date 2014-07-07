@@ -4,10 +4,9 @@
 		<remap from="map" to="map_cost"/>
 	</node>
      <!-- **** cost map and path planning **** -->
-     <!-- <node name="ped_path_planner" pkg="ped_momdp_sarsop" type="path_planner" output="screen" > -->
      <!--<node name="ped_path_planner" pkg="ped_pathplan" type="path_planner" output="screen" launch-prefix="gdb - -args"> -->
      <node name="ped_path_planner" pkg="ped_pathplan" type="path_planner" output="screen"> 
-         <rosparam file="$(find ped_momdp_sarsop)/path_planner.yaml" command="load" />
+         <rosparam file="$(find ped_momdp_sarsop)/params.yaml" command="load" />
          <remap from="ped_path_planner/planner/plan" to="plan" />
      </node>
 </launch>

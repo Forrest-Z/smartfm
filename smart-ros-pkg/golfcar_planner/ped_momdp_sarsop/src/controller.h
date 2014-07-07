@@ -52,7 +52,7 @@ using namespace std;
 class Controller
 {
 public:
-    Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant);
+    Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead);
 
     ~Controller();
 
