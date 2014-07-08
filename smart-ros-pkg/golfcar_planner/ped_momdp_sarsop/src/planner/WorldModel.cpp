@@ -42,9 +42,9 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
     double carvel = state->car.vel;
     for (int i=0; i<state->num; i++) {
 		auto& p = state->peds[i];
-        double d = COORD::EuclideanDistance(carpos, p.pos) *  inFront(p.pos, state->car.pos);
+        double d = COORD::EuclideanDistance(carpos, p.pos); // *  inFront(p.pos, state->car.pos);
 		// cout << d << " " << carpos.x << " " << carpos.y << " "<< p.pos.x << " " << p.pos.y << endl;
-        if (d > 0 && d < mindist) 
+        if (d >= 0 && d < mindist) 
 			mindist = d;
     }
 
@@ -80,11 +80,12 @@ bool WorldModel::inCollision(const PomdpState& state) {
 	// Find the closest pedestrian in front
     for(int i=0; i<state.num; i++) {
 		auto& p = state.peds[i];
-        double d = COORD::EuclideanDistance(carpos, p.pos) * inFront(p.pos, state.car.pos);
-        if (d > 0 && d < mindist) mindist = d;
+		//if(!inFront(p.pos, state.car.pos)) continue;
+        double d = COORD::EuclideanDistance(carpos, p.pos);
+        if (d >= 0 && d < mindist) mindist = d;
     }
 
-	return mindist < 2;
+	return mindist < 1.0;
 }
 
 int WorldModel::minStepToGoal(const PomdpState& state) {
@@ -145,10 +146,11 @@ void WorldModel::RobStep(CarStruct &car, Random& random) {
 }
 
 void WorldModel::RobVelStep(CarStruct &car, double acc, Random& random) {
-    double prob = random.NextDouble();
-    if (prob > 0.2) {
-        car.vel += acc / freq;
-    }
+    //double prob = random.NextDouble();
+    //if (prob > 0.2) {
+        //car.vel += acc / freq;
+    //}
+	car.vel += acc / freq;
 
 	car.vel = max(min(car.vel, ModelParams::VEL_MAX), 0.0);
     
@@ -165,6 +167,7 @@ void WorldModel::setPath(Path path) {
 }
 
 void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
+	const double SMOOTHING=0.01;
 	for(double w: b.prob_goals) {
 		cout << w << " ";
 	}
@@ -175,7 +178,7 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
         b.prob_goals[i] *=  prob;
 
 		// Important: Keep the belief noisy to avoid aggressive policies
-		b.prob_goals[i] += 0.1 / goals.size(); // CHECK: decrease or increase noise
+		b.prob_goals[i] += SMOOTHING / goals.size(); // CHECK: decrease or increase noise
 	}
 	for(double w: b.prob_goals) {
 		cout << w << " ";

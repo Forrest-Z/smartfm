@@ -3,7 +3,7 @@
         "test-foo": "./test.sh foo",
         "test-bar": "./test.sh bar",
 		"1-roscore": "roscore",
-		"2-lowlevel-sync-ntp": "ssh golfcart-lowlevel 'sudo ./force_sync_ntp_check.sh'",
+		"2-lowlevel-sync-ntp": "ssh golfcar@golfcart-lowlevel 'sudo ./force_sync_ntp_check.sh'",
         "3-lowlevel": "ssh linuxcnc@arm 'roslaunch lowlevel_hal lowlevel_hal_ros_adapter.launch'",
         "4-sensors": "roslaunch $(rospack find Launch_v2)/airspeed/0Sensors.launch",
 		"5-localization": "roslaunch $(rospack find Launch_v2)/airspeed/1Localization.launch",

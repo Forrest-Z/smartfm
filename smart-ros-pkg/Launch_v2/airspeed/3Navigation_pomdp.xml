@@ -7,7 +7,7 @@
     <node name="sound_speaker" pkg="sound_speaker" type="sound_speaker">
       <param name="sound_path" value="$(find sound_speaker)/sounds/"/>
     </node>
-    <node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen"/>
+	<node pkg="golfcar_route_planner" type="route_planner_node" name="route_planner" output="screen"/>
 
     <!--5SpeedAdvisor-->
     <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">

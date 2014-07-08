@@ -2,7 +2,7 @@
 <!--
 	 <node name="ped_momdp" pkg="ped_momdp_sarsop" type="ped-momdp-sarsop" launch-prefix="gdb -ex run - -args" respawn="false" output="screen" ns="/golfcart">
 	 -->
-	 <node name="ped_pomdp" pkg="ped_momdp_sarsop" type="ped_pomdp"  respawn="false" output="screen" ns="/golfcart">
+	 <node name="ped_pomdp" pkg="ped_momdp_sarsop" type="ped_pomdp"  respawn="false" output="screen" ns="/golfcart" required="true">
 	    <rosparam file="$(find ped_momdp_sarsop)/params.yaml" command="load" />
 		<remap from="pomdp_path_repub" to="new_global_plan"/>
         <remap from="robot_0/amcl_pose" to="amcl_pose"/>
@@ -18,4 +18,6 @@
 	 <node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher"   ns="/golfcart">
 	    <remap from="cmd_vel" to="cmd_vel"/>
 	 </node>
+
+	 <!--<node pkg="utown_plaza" type="record.sh" name="bag_recorder" cwd="node" required="true"/>-->
 </launch>

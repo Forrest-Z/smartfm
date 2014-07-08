@@ -10,7 +10,7 @@ namespace ModelParams {
 	const int N_PED_IN=15;
 	const int GOAL_TRAVELLED=10;
 
-    const double CRASH_PENALTY = -100;
+    const double CRASH_PENALTY = -1000;
 	const double GOAL_REWARD = 500;
 
     const double PATH_STEP = 0.05;
@@ -20,6 +20,7 @@ namespace ModelParams {
 	const bool debug=false;
 
     const double NOISE_GOAL_ANGLE = 3.14 * 0.25;
+    //const double NOISE_GOAL_ANGLE = 3.14 * 0.1;
     const double PED_SPEED = 1.2;
 
 	const double VEL_MAX=2;

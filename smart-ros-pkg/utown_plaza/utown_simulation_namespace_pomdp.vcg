@@ -5,7 +5,7 @@ Axes.Reference\ Frame=/golfcart/base_link
 Background\ ColorB=0
 Background\ ColorG=0
 Background\ ColorR=0
-Camera\ Config=23.3628 -0.918346 9.28026 1.355
+Camera\ Config=14.4079 28.1935 33.5308 1.575
 Camera\ Type=rviz::FixedOrientationOrthoViewController
 Camera.Enabled=1
 Camera.Image\ Rendering=background & overlay
@@ -136,6 +136,10 @@ Marker.Enabled=1
 Marker.Marker\ Topic=/golfcart/pomdp_action
 Marker.Queue\ Size=100
 Marker.basic_shapes=1
+MarkerArray.Enabled=1
+MarkerArray.Marker\ Array\ Topic=/golfcart/pomdp_goals
+MarkerArray.Queue\ Size=100
+MarkerArray.basic_shapes=1
 MarkerArray6.Enabled=1
 MarkerArray6.Marker\ Array\ Topic=/golfcart/pomdp_belief
 MarkerArray6.Queue\ Size=100
@@ -473,9 +477,9 @@ Pose2.Shaft\ Length=1
 Pose2.Shaft\ Radius=0.5
 Pose2.Shape=0
 Pose2.Topic=/golfcart/car_pose
-Property\ Grid\ Splitter=546,255
-Property\ Grid\ State=expanded=.Global Options,PlanarMap.Enabled,PlanarMap.Status,Polygon.Enabled,Polygon3.Enabled,Polygon3.Status,LaserScan2.Enabled,LaserScan2.Status,Path2.Enabled,Polygon2.Enabled,Polygon5.Enabled,Camera.Enabled,PointCloud6.Enabled,PointCloud6.Status,Polygon6.Enabled,Pose2.Enabled,Pose2.Shape Properties,Path.Enabled,PointCloud7.Enabled,MarkerArray6.Enabled,Polygon7.Enabled,GridCells.Enabled,Marker.Enabled,Marker.Namespaces;splitterratio=0.5
-QMainWindow=000000ff00000000fd00000002000000000000015e00000373fc0200000002fb000000100044006900730070006c006100790073010000001d00000373000000ee00fffffffb0000000a0049006d0061006700650000000226000000380000001900ffffff000000010000013700000373fc0200000005fb0000000c00430061006d006500720061010000001d0000004f0000001900fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007301000000720000011a0000006700fffffffb0000000a005600690065007700730100000192000001fe000000bb00fffffffb0000000800540069006d006502000000410000033e000005ff00000046fb0000001200530065006c0065006300740069006f006e0000000279000000af0000006700ffffff0000036e0000037300000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+Property\ Grid\ Splitter=510,255
+Property\ Grid\ State=expanded=.Global Options,PlanarMap.Enabled,PlanarMap.Status,Polygon.Enabled,Polygon3.Enabled,Polygon3.Status,LaserScan2.Enabled,LaserScan2.Status,Path2.Enabled,Polygon2.Enabled,Polygon5.Enabled,Camera.Enabled,PointCloud6.Enabled,PointCloud6.Status,Polygon6.Enabled,Pose2.Enabled,Pose2.Shape Properties,Path.Enabled,PointCloud7.Enabled,MarkerArray6.Enabled,Polygon7.Enabled,GridCells.Enabled,Marker.Enabled,Marker.Namespaces,MarkerArray.Enabled,MarkerArray.Namespaces;splitterratio=0.5
+QMainWindow=000000ff00000000fd00000002000000000000015e0000034ffc0200000002fb000000100044006900730070006c006100790073010000001d0000034f000000ee00fffffffb0000000a0049006d0061006700650000000226000000380000001900ffffff00000001000001310000034ffc0200000005fb0000000c00430061006d006500720061010000001d0000004c0000001900fffffffb0000001e0054006f006f006c002000500072006f0070006500720074006900650073010000006f0000010f0000006700fffffffb0000000a005600690065007700730100000184000001e8000000bb00fffffffb0000000800540069006d006502000000410000033e000005ff00000046fb0000001200530065006c0065006300740069006f006e0000000279000000af0000006700ffffff000003640000034f00000004000000040000000800000008fc00000002000000020000000000000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
 RobotModel.Alpha=1
 RobotModel.Collision\ Enabled=0
 RobotModel.Enabled=1
@@ -491,7 +495,7 @@ TF.Show\ Arrows=1
 TF.Show\ Axes=1
 TF.Show\ Names=1
 TF.Update\ Interval=0
-Target\ Frame=/golfcart/base_link
+Target\ Frame=/golfcart/map
 Tool\ 2D\ Nav\ GoalTopic=goal
 Tool\ 2D\ Pose\ EstimateTopic=initialpose
 [Display0]
@@ -584,6 +588,9 @@ Name=GridCells
 [Display35]
 ClassName=rviz::MarkerDisplay
 Name=Marker
+[Display36]
+ClassName=rviz::MarkerArrayDisplay
+Name=MarkerArray
 [Display4]
 ClassName=rviz::OdometryDisplay
 Name=Odometry3
@@ -602,8 +609,14 @@ Name=Axes
 [Display9]
 ClassName=rviz::GridDisplay
 Name=Grid
+[Views]
+0Name=full
+[Views/0]
+Config=14.4723 32.4106 32.0906 1.575
+Target=/golfcart/map
+Type=rviz::FixedOrientationOrthoViewController
 [Window]
-Height=948
-Width=1567
-X=-1827
-Y=-500
+Height=912
+Width=1551
+X=-1835
+Y=-528

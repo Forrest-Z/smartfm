@@ -93,7 +93,7 @@ vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 }
 
 bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint64_t& obs) const {
-    const double VEL_FACTOR = 4.0;
+    const double VEL_FACTOR = 2.0;
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0.0;
 
@@ -107,7 +107,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
  	// Safety control: collision; Terminate upon collision
 	if (world.inCollision(state)) {
-		reward = ModelParams::CRASH_PENALTY * (state.car.vel + 0.2);
+		reward = ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + 0.1);
 		return true;
 	}
 
@@ -318,9 +318,9 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
 		out << "Goal: " << state.peds[i].goal << endl;
 		out << "id: " << state.peds[i].id << endl;
 	}
-	double min_dist = COORD::EuclideanDistance(carpos, state.peds[0].pos);
 	out << "Vel: " << state.car.vel << endl;
 	out<<  "num  " << state.num << endl;
+	double min_dist = COORD::EuclideanDistance(carpos, state.peds[0].pos);
 	out << "MinDist: " << min_dist << endl;
 }
 
