@@ -316,17 +316,18 @@ void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
         p.push_back(coord);
 	}
 
-	//auto pi = p.interpolate();
 	if(pathplan_ahead_>0 && worldModel.path.size()>0) {
-		worldModel.path.cutjoin(p);
-		auto pi = worldModel.path.interpolate();
-		worldModel.setPath(pi);
+        double pd = worldModel.path.mindist(p[0]);
+        if(pd < 2 * ModelParams::PATH_STEP) {
+            // only accept new path if the starting point is close to current path
+            worldModel.path.cutjoin(p);
+            auto pi = worldModel.path.interpolate();
+            worldModel.setPath(pi);
+        }
 	} else {
 		worldModel.setPath(p.interpolate());
 	}
 
-	// TODO
-	//pathPub_.publish(*path);
 	publishPath(path->header.frame_id, worldModel.path);
 }
 
