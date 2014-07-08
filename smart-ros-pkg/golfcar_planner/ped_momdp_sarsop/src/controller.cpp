@@ -531,7 +531,7 @@ void Controller::publishBelief()
 	{
 		publishMarker(i++,kv.second);
 		ped_momdp_sarsop::ped_belief pb;
-		PedBelief belief = kv.second;	
+		PedBelief belief = kv.second;
 		pb.ped_x=belief.pos.x;
 		pb.ped_y=belief.pos.y;
 		for(auto & v : belief.prob_goals)

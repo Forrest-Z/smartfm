@@ -208,22 +208,17 @@ double timestamp() {
 
 void WorldStateTracker::cleanPed() {
     vector<Pedestrian> ped_list_new;
-    //for(vector<Pedestrian>::iterator it=ped_list.begin();it!=ped_list.end();++it)
     for(int i=0;i<ped_list.size();i++)
     {
         bool insert=true;
-        //for(vector<Pedestrian>::iterator it2=ped_list.begin();it2!=it;++it2)
         int w1,h1;
         w1=ped_list[i].w;
         h1=ped_list[i].h;
-        for(int j=0;j<i;j++)
-        {
+        for(const auto& p: ped_list_new) {
             int w2,h2;
-            w2=ped_list[j].w;
-            h2=ped_list[j].h;
-            //if (abs(it->w-it2->w)<=1&&abs(it->h-it2->h)<=1)
-            if (abs(w1-w2)<=0.1&&abs(h1-h2)<=0.1)
-            {
+            w2=p.w;
+            h2=p.h;
+            if (abs(w1-w2)<=0.1&&abs(h1-h2)<=0.1) {
                 insert=false;
                 break;
             }
@@ -235,13 +230,10 @@ void WorldStateTracker::cleanPed() {
     ped_list=ped_list_new;
 }
 
-
 void WorldStateTracker::updatePed(const Pedestrian& ped){
     int i=0;
-    for(;i<ped_list.size();i++)
-    {
-        if (ped_list[i].id==ped.id)
-        {
+    for(;i<ped_list.size();i++) {
+        if (ped_list[i].id==ped.id) {
             //found the corresponding ped,update the pose
             ped_list[i].w=ped.w;
             ped_list[i].h=ped.h;
@@ -251,8 +243,8 @@ void WorldStateTracker::updatePed(const Pedestrian& ped){
         if (abs(ped_list[i].w-ped.w)<=0.1&&abs(ped_list[i].h-ped.h)<=0.1)   //overlap 
             return;
     }
-    if (i==ped_list.size())   //not found, new ped
-    {
+    if (i==ped_list.size()) {
+        //not found, new ped
         ped_list.push_back(ped);
         ped_list.back().last_update = timestamp();
     }
