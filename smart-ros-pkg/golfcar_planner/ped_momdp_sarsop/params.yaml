@@ -1,6 +1,6 @@
 fixed_path: false
 pruning_constant: 0
-pathplan_ahead: 5.0
+pathplan_ahead: 3.0
 
 ped_costmap:
     global_frame: /map
@@ -11,7 +11,7 @@ ped_costmap:
     robot_radius: 1.0
     inflation_radius: 5.0
     cost_scaling_factor: 2.0
-    update_frequency: 0.5
+    update_frequency: 2
     observation_sources: peds
     peds:
         topic: confident_objects_momdp
@@ -25,5 +25,5 @@ planner:
     yaw_res_deg: 2.0
     cost_steering_deg: 100
     steplen: 7
-    num_search: 500000
+    num_search: 300000
 

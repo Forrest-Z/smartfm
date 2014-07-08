@@ -93,6 +93,7 @@ vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 }
 
 bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint64_t& obs) const {
+    const double VEL_FACTOR = 4.0;
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0.0;
 
@@ -116,7 +117,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	// Speed control: Encourage higher speed
 	// reward += -1;
 	// Prefer higher speed even though same number of discrete steps needed to reach local goal
-	reward += 0.5 * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX; 
+	reward += VEL_FACTOR * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX; 
 
 	// State transition
 	Random random(rNum);

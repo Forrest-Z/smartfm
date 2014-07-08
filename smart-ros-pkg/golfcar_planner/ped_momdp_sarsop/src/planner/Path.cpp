@@ -95,7 +95,6 @@ Path Path::interpolate() {
 }
 
 void Path::cutjoin(const Path& p) {
-	//TODO discard the new path when the dist between the two path are too large
 	int i = max(0, nearest(p[0])-1);
 	erase(begin()+i, end());
 	insert(end(), p.begin()+1, p.end());
