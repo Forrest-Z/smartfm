@@ -183,7 +183,7 @@ namespace ped_pathplan {
 		int my = int(s0[1]);
         float cost = costarr[my*nx + mx];
 		float steer_cost = sqr(t) * cost_steering;
-		success = (cost < COST_OBS_ROS * 0.99);
+		success = (cost < COST_OBS * 0.999999);
         p1.g = p.g + cost + steer_cost;
         p1.h = heuristic(p1.state);
         p1.prev_index = p.index;

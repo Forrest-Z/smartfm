@@ -93,7 +93,7 @@ vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 }
 
 bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint64_t& obs) const {
-    const double VEL_FACTOR = 2.0;
+    const double VEL_FACTOR = ModelParams::REWARD_FACTOR_VEL;
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0.0;
 
@@ -107,7 +107,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
  	// Safety control: collision; Terminate upon collision
 	if (world.inCollision(state)) {
-		reward = ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + 0.1);
+		reward = ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL);
 		return true;
 	}
 

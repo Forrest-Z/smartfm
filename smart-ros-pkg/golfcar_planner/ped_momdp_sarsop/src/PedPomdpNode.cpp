@@ -15,7 +15,7 @@
 #include <nav_msgs/Path.h>
 //#include <pomdp_path_planner/GetPomdpPath.h>
 //#include <pomdp_path_planner/PomdpPath.h>
-#include <ped_navfn/MakeNavPlan.h>
+//#include <ped_navfn/MakeNavPlan.h>
 
 PedPomdpNode::PedPomdpNode()
 {
@@ -45,6 +45,18 @@ PedPomdpNode::PedPomdpNode()
     n.param("pruning_constant", pruning_constant, 0.0);
 	n.param("fixed_path", fixed_path, false);
 	n.param("pathplan_ahead", pathplan_ahead, 4.0);
+
+    n.param("crash_penalty", ModelParams::CRASH_PENALTY, -10000.0);
+    n.param("reward_base_crash_vel", ModelParams::REWARD_BASE_CRASH_VEL, 0.8);
+    n.param("reward_factor_vel", ModelParams::REWARD_FACTOR_VEL, 1.0);
+    n.param("belief_smoothing", ModelParams::BELIEF_SMOOTHING, 0.05);
+    n.param("noise_robvel", ModelParams::NOISE_ROBVEL, 0.2);
+
+    double noise_goal_angle_deg;
+    n.param("noise_goal_angle_deg", noise_goal_angle_deg, 45.0);
+    ModelParams::NOISE_GOAL_ANGLE = noise_goal_angle_deg / 180.0 * M_PI;
+
+    n.param("max_vel", ModelParams::VEL_MAX, 2.0);
 
     move_base_speed_=nh.subscribe("momdp_speed_dummy",1, &PedPomdpNode::moveSpeedCallback, this);
     //goalPub_ = nh.advertise<geometry_msgs::PoseStamped>("move_base_simple/goal",1);

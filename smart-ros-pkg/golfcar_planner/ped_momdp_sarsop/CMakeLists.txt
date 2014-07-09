@@ -60,5 +60,4 @@ rosbuild_add_compile_flags(local_frame ${PED_COMPILE_FLAGS})
 
 rosbuild_add_executable(vel_publisher src/VelPublisher.cpp)
 
-#rosbuild_add_executable(path_planner src/PathPlanner.cpp)
 

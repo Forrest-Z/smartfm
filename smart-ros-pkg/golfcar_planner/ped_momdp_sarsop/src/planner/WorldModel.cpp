@@ -128,7 +128,7 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int goal_id) {
 	// CHECK: beneficial to add back noise?
 	cout<<"goal id "<<goal_id<<endl;
 	if (goal.x == -1 && goal.y == -1) {  //stop intention 
-		return (move_dist < sensor_noise);
+		return (move_dist < sensor_noise) ? 0.4 : 0;
 	} else {
 		if (move_dist < sensor_noise) return 0;
 
@@ -146,11 +146,15 @@ void WorldModel::RobStep(CarStruct &car, Random& random) {
 }
 
 void WorldModel::RobVelStep(CarStruct &car, double acc, Random& random) {
-    //double prob = random.NextDouble();
-    //if (prob > 0.2) {
-        //car.vel += acc / freq;
-    //}
-	car.vel += acc / freq;
+    const double N = ModelParams::NOISE_ROBVEL;
+    if (N>0) {
+        double prob = random.NextDouble();
+        if (prob > N) {
+            car.vel += acc / freq;
+        }
+    } else {
+        car.vel += acc / freq;
+    }
 
 	car.vel = max(min(car.vel, ModelParams::VEL_MAX), 0.0);
     
@@ -167,7 +171,7 @@ void WorldModel::setPath(Path path) {
 }
 
 void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
-	const double SMOOTHING=0.01;
+	const double SMOOTHING=ModelParams::BELIEF_SMOOTHING;
 	for(double w: b.prob_goals) {
 		cout << w << " ";
 	}
