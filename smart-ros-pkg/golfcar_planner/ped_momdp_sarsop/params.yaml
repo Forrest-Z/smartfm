@@ -17,8 +17,8 @@ ped_costmap:
     map_topic: map_cost
     static_map: true
     publish_frequency: 5
-    robot_radius: 1.2
-    inflation_radius: 6.0
+    robot_radius: 1.5
+    inflation_radius: 8.0
     cost_scaling_factor: 2.0
     update_frequency: 2
     observation_sources: peds

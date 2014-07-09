@@ -27,7 +27,7 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq) {
 }
 
 bool WorldModel::isLocalGoal(const PomdpState& state) {
-    return state.car.dist_travelled > ModelParams::GOAL_TRAVELLED;
+    return state.car.dist_travelled > ModelParams::GOAL_TRAVELLED || state.car.pos >= path.size()-1;
 }
 
 bool WorldModel::isGlobalGoal(const CarStruct& car) {
