@@ -42,17 +42,17 @@ namespace ped_pathplan {
 
             ros::NodeHandle prefix_nh;
             tf_prefix = tf::getPrefixParam(prefix_nh);
-        
+
             initialized = true;
         } else {
           ROS_WARN("This planner has already been initialized, you can't call it twice, doing nothing");
         }
-    
+
     }
 
 	void PathPlanROS::makePlanAsync(const ped_pathplan::StartGoal::ConstPtr & startGoal) {
 		std::vector<geometry_msgs::PoseStamped> plan;
-		bool ret = makePlan(startGoal->start, startGoal->goal, plan);
+		makePlan(startGoal->start, startGoal->goal, plan);
 	}
 
     bool PathPlanROS::makePlanService(nav_msgs::GetPlan::Request& req, nav_msgs::GetPlan::Response& resp) {

@@ -108,7 +108,7 @@ namespace ped_pathplan {
         bool found_solution = false;
         PathItem goal_item;
 
-		float curr_min_dist = distToGoal(start);
+		//float curr_min_dist = distToGoal(start);
 
         while(!q.empty()) {
             QPair qp = q.top();
