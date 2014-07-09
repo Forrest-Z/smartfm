@@ -99,6 +99,6 @@ floorplan
 )
 
 # throw in a robot
-gc1( pose [-21.000 50.000 0.000 -91.678] name "gc1" color "red")
+gc1( pose [-22.200 47.733 0.000 -91.678] name "gc1" color "red")
 
 block( pose [ -52.436 32.454 0.000 0.000 ] color "red")

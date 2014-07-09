@@ -415,7 +415,10 @@ namespace costmap_2d {
             return;
 
           //assign the cost associated with the distance from an obstacle to the cell
-          updateCellCost(index, int(cost_ratio * costLookup(mx, my, src_x, src_y)));
+          float cost = cost_ratio * costLookup(mx, my, src_x, src_y);
+          assert(0<=cost);
+          assert(cost<=255);
+          updateCellCost(index, (unsigned char)(int(cost)));
 
           //push the cell data onto the queue and mark
           CellData data(distance, index, mx, my, src_x, src_y, cost_ratio);
@@ -635,7 +638,7 @@ namespace costmap_2d {
        * @param src_y The y coordinate of the source cell 
        * @return 
        */
-      inline char costLookup(int mx, int my, int src_x, int src_y){
+      inline unsigned char costLookup(int mx, int my, int src_x, int src_y){
         unsigned int dx = abs(mx - src_x);
         unsigned int dy = abs(my - src_y);
         return cached_costs_[dx][dy];

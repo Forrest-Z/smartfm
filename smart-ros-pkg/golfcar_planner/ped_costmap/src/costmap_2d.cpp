@@ -52,6 +52,7 @@ namespace costmap_2d{
   max_obstacle_height_(max_obstacle_height), max_raytrace_range_(max_raytrace_range), cached_costs_(NULL), cached_distances_(NULL), 
   inscribed_radius_(inscribed_radius), circumscribed_radius_(circumscribed_radius), inflation_radius_(inflation_radius),
   weight_(weight), lethal_threshold_(lethal_threshold), track_unknown_space_(track_unknown_space), unknown_cost_value_(unknown_cost_value), inflation_queue_(), ped_cost_ratio_(ped_cost_ratio){
+      cout << "ped_cost_ratio = " << ped_cost_ratio_ << endl;
     //create the costmap, static_map, and markers
     costmap_ = new unsigned char[size_x_ * size_y_];
     static_map_ = new unsigned char[size_x_ * size_y_];
@@ -114,34 +115,7 @@ namespace costmap_2d{
   }
 
   void Costmap2D::reconfigure(Costmap2DConfig &config, const Costmap2DConfig &last_config) {
-      boost::recursive_mutex::scoped_lock rel(configuration_mutex_);
-
-      max_obstacle_height_ = config.max_obstacle_height;
-      max_obstacle_range_ = config.max_obstacle_range;
-      max_raytrace_range_ = config.raytrace_range;
-      
-      if(last_config.inflation_radius != config.inflation_radius)
-      {
-        inflation_radius_ = config.inflation_radius;
-        cell_inflation_radius_ = cellDistance(inflation_radius_);
-        computeCaches();
-      }
-
-      //only update the origin for the map if the
-      if(!config.static_map && (last_config.origin_x != config.origin_x || last_config.origin_y != config.origin_y))
-        updateOrigin(config.origin_x, config.origin_y);
-
-      unknown_cost_value_ = config.unknown_cost_value;
-      lethal_threshold_ = config.lethal_cost_threshold;
-
-      weight_ = config.cost_scaling_factor;
-
-      if((config.footprint == "" || config.footprint == "[]") && config.robot_radius > 0) {
-        inscribed_radius_ = config.robot_radius;
-        circumscribed_radius_ = inscribed_radius_;
-      }
-
-      finishConfiguration(config);
+      assert(false);
   }
 
   void Costmap2D::finishConfiguration(costmap_2d::Costmap2DConfig &config) {
@@ -150,54 +124,7 @@ namespace costmap_2d{
   void Costmap2D::replaceFullMap(double win_origin_x, double win_origin_y,
                              unsigned int data_size_x, unsigned int data_size_y,
                              const std::vector<unsigned char>& static_data){
-    boost::recursive_mutex::scoped_lock rfml(configuration_mutex_);
-
-    //delete our old maps
-    deleteMaps();
-
-    //update the origin and size of the new map
-    size_x_ = data_size_x;
-    size_y_ = data_size_y;
-    origin_x_ = win_origin_x;
-    origin_y_ = win_origin_y;
-
-    //initialize our various maps
-    initMaps(size_x_, size_y_);
-
-    //make sure the inflation queue is empty at the beginning of the cycle (should always be true)
-    ROS_ASSERT_MSG(inflation_queue_.empty(), "The inflation queue must be empty at the beginning of inflation");
-
-    unsigned int index = 0;
-    unsigned char* costmap_index = costmap_;
-    std::vector<unsigned char>::const_iterator static_data_index =  static_data.begin();
-
-    //copy static data into the costmap
-    for(unsigned int i = 0; i < size_y_; ++i){
-      for(unsigned int j = 0; j < size_x_; ++j){
-        //check if the static value is above the unknown or lethal thresholds
-        if(track_unknown_space_ && unknown_cost_value_ > 0 && *static_data_index == unknown_cost_value_)
-          *costmap_index = NO_INFORMATION;
-        else if(*static_data_index >= lethal_threshold_)
-          *costmap_index = LETHAL_OBSTACLE;
-        else
-          *costmap_index = FREE_SPACE;
-
-        if(*costmap_index == LETHAL_OBSTACLE){
-          unsigned int mx, my;
-          indexToCells(index, mx, my);
-          enqueue(index, mx, my, mx, my, inflation_queue_);
-        }
-        ++costmap_index;
-        ++static_data_index;
-        ++index;
-      }
-    }
-
-    //now... let's inflate the obstacles
-    inflateObstacles(inflation_queue_);
-
-    //we also want to keep a copy of the current costmap as the static map
-    memcpy(static_map_, costmap_, size_x_ * size_y_ * sizeof(unsigned char));
+      assert(false);
   }
 
   void Costmap2D::replaceStaticMapWindow(double win_origin_x, double win_origin_y, 
@@ -438,6 +365,8 @@ namespace costmap_2d{
     //copy the window of the static map and the costmap that we're taking
     copyMapRegion(map.costmap_, lower_left_x, lower_left_y, map.size_x_, costmap_, 0, 0, size_x_, size_x_, size_y_);
     copyMapRegion(map.static_map_, lower_left_x, lower_left_y, map.size_x_, static_map_, 0, 0, size_x_, size_x_, size_y_);
+
+    ped_cost_ratio_ = map.ped_cost_ratio_;
     
     max_obstacle_range_ = map.max_obstacle_range_;
     max_obstacle_height_ = map.max_obstacle_height_;
@@ -469,6 +398,8 @@ namespace costmap_2d{
     //clean up old data
     deleteMaps();
     deleteKernels();
+
+    ped_cost_ratio_ = map.ped_cost_ratio_;
 
     size_x_ = map.size_x_;
     size_y_ = map.size_y_;
@@ -626,7 +557,7 @@ namespace costmap_2d{
 	memcpy(costmap_, static_map_, size_x_ * size_y_ * sizeof(unsigned char));
 
     //reset the inflation window
-    resetInflationWindow(robot_x, robot_y, inflation_window_size + 2 * inflation_radius_, inflation_window_size + 2 * inflation_radius_, inflation_queue_, false);
+    //resetInflationWindow(robot_x, robot_y, inflation_window_size + 2 * inflation_radius_, inflation_window_size + 2 * inflation_radius_, inflation_queue_, false);
 
     //now we also want to add the new obstacles we've received to the cost map
     updateObstacles(observations, inflation_queue_);
@@ -635,19 +566,7 @@ namespace costmap_2d{
   }
   
   void Costmap2D::reinflateWindow(double wx, double wy, double w_size_x, double w_size_y, bool clear){
-    boost::recursive_mutex::scoped_lock rwl(configuration_mutex_);
-    //reset the markers for inflation
-    memset(markers_, 0, size_x_ * size_y_ * sizeof(unsigned char));
-
-    //make sure the inflation queue is empty at the beginning of the cycle (should always be true)
-    ROS_ASSERT_MSG(inflation_queue_.empty(), "The inflation queue must be empty at the beginning of inflation");
-
-    //reset the inflation window.. adds all lethal costs to the queue for re-propagation
-    resetInflationWindow(wx, wy, w_size_x, w_size_y, inflation_queue_, clear);
-
-    //inflate the obstacles
-    inflateObstacles(inflation_queue_);
-
+      assert(false);
   }
 
   void Costmap2D::updateObstacles(const vector<Observation>& observations, priority_queue<CellData>& inflation_queue){
@@ -686,6 +605,7 @@ namespace costmap_2d{
         }
 
         unsigned int index = getIndex(mx, my);
+
 
         //push the relevant cell index back onto the inflation queue
         enqueue(index, mx, my, mx, my, inflation_queue, ped_cost_ratio_);
@@ -848,50 +768,8 @@ namespace costmap_2d{
 
   void Costmap2D::resetInflationWindow(double wx, double wy, double w_size_x, double w_size_y,
       priority_queue<CellData>& inflation_queue, bool clear){
-    //get the cell coordinates of the center point of the window
-    unsigned int mx, my;
-    if(!worldToMap(wx, wy, mx, my))
-      return;
-
-    //compute the bounds of the window
-    double start_x = wx - w_size_x / 2;
-    double start_y = wy - w_size_y / 2;
-    double end_x = start_x + w_size_x;
-    double end_y = start_y + w_size_y;
-
-    //scale the window based on the bounds of the costmap
-    start_x = max(origin_x_, start_x);
-    start_y = max(origin_y_, start_y);
-
-    end_x = min(origin_x_ + getSizeInMetersX(), end_x);
-    end_y = min(origin_y_ + getSizeInMetersY(), end_y);
-
-    //get the map coordinates of the bounds of the window
-    unsigned int map_sx, map_sy, map_ex, map_ey;
-
-    //check for legality just in case
-    if(!worldToMap(start_x, start_y, map_sx, map_sy) || !worldToMap(end_x, end_y, map_ex, map_ey)){
-      ROS_ERROR("Bounds not legal for reset window. Doing nothing.");
-      return;
-    }
-
-    //we know that we want to clear all non-lethal obstacles in this window to get it ready for inflation
-    unsigned int index = getIndex(map_sx, map_sy);
-    unsigned char* current = &costmap_[index];
-    for(unsigned int j = map_sy; j <= map_ey; ++j){
-      for(unsigned int i = map_sx; i <= map_ex; ++i){
-        //if the cell is a lethal obstacle... we'll keep it and queue it, otherwise... we'll clear it
-        if(*current == LETHAL_OBSTACLE)
-          enqueue(index, i, j, i, j, inflation_queue);
-        else if(clear && *current != NO_INFORMATION)
-          *current = FREE_SPACE;
-        current++;
-        index++;
-      }
-      current += size_x_ - (map_ex - map_sx) - 1;
-      index += size_x_ - (map_ex - map_sx) - 1;
-    }
-  }
+      assert(false);
+ }
 
   void Costmap2D::computeCaches() {
     //based on the inflation radius... compute distance and cost caches

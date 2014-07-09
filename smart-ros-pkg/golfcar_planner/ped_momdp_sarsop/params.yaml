@@ -3,13 +3,14 @@ pruning_constant: 0
 pathplan_ahead: 3.0
 
 ped_costmap:
+    map_type: costmap
     global_frame: /map
     robot_base_frame: /base_link
     map_topic: map_cost
     static_map: true
     publish_frequency: 5
     robot_radius: 1.2
-    inflation_radius: 7.0
+    inflation_radius: 4.0
     cost_scaling_factor: 2.0
     update_frequency: 2
     observation_sources: peds
@@ -18,12 +19,12 @@ ped_costmap:
         clearing: true
         obstacle_range: 5000
         raytrace_range: 5000
-    ped_cost_ratio: 0.1
+    ped_cost_ratio: 0.8
 
 planner:
     steering_limit_deg: 18
     yaw_res_deg: 2.0
-    cost_steering_deg: 100
+    cost_steering_deg: 60
     steplen: 7
     num_search: 500000
 
