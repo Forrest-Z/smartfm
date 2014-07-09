@@ -12,8 +12,8 @@ namespace ped_pathplan {
     using namespace std;
 
 
-    PathPlan::PathPlan(int xs, int ys, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int steplen, int num_search)
-        : nx(xs), ny(ys), step(steplen), cost_steering(cost_steering_deg / M_PI * 180), num_search(num_search)
+    PathPlan::PathPlan(int xs, int ys, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int steplen, int num_search, float discretize_ratio)
+        : nx(xs), ny(ys), step(steplen), cost_steering(cost_steering_deg / M_PI * 180), num_search(num_search), discretize_ratio(discretize_ratio)
     {
         float steering_limit = steering_limit_deg / 180 * M_PI;
         yaw_rln = yaw_res_deg / 180 * M_PI;
@@ -208,7 +208,7 @@ namespace ped_pathplan {
 
     DiscreteState PathPlan::discretize(const State& s) {
         DiscreteState ds(3);
-		float dd = step * 0.2;
+		float dd = step * discretize_ratio;
         ds[0] = int(s[0] / dd);
         ds[1] = int(s[1] / dd);
         ds[2] = int(s[2] / yaw_rln);

@@ -1,6 +1,6 @@
-fixed_path: true
+fixed_path: false
 pruning_constant: 0
-pathplan_ahead: 3.0
+pathplan_ahead: 4.0
 
 crash_penalty: -10000.0
 reward_factor_vel: 0.5
@@ -27,12 +27,13 @@ ped_costmap:
         clearing: true
         obstacle_range: 5000
         raytrace_range: 5000
-    ped_cost_ratio: 0.7
+    ped_cost_ratio: 0.8
 
 planner:
     steering_limit_deg: 18
     yaw_res_deg: 2.0
     cost_steering_deg: 20
     steplen: 7
-    num_search: 1000000
+    num_search: 500000
+    discretize_ratio: 0.3
 
