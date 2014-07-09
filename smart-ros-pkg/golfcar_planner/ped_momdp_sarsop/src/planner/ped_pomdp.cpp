@@ -202,7 +202,7 @@ Belief* PedPomdp::InitialBelief(const State* start, string type) const {
 }
 
 void PedPomdp::Statistics(const vector<PomdpState*> particles) const {
-	double goal_count[10][10]={0};
+	double goal_count[10][10]={{0}};
 	cout << "Current Belief" << endl;
 	if(particles.size() == 0)
 		return;

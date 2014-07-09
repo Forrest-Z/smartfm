@@ -94,6 +94,7 @@ public:
 	visualization_msgs::MarkerArray markers;
 
 private:
+    bool fixed_path_;
 	double pathplan_ahead_;
 	double control_freq;
 	bool goal_reached;
@@ -103,7 +104,6 @@ private:
     double momdp_problem_timeout;
     bool robot_pose_available;
     double robotx_, roboty_, robotspeedx_;
-    bool fixed_path_;
     ros::Timer timer_,timer_speed;
     ros::Publisher believesPub_, cmdPub_,actionPub_;
 

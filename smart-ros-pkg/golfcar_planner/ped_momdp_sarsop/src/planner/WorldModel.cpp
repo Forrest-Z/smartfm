@@ -75,7 +75,7 @@ bool WorldModel::inFront(COORD ped_pos, int car) const {
 bool WorldModel::inCollision(const PomdpState& state) {
     double mindist = numeric_limits<double>::infinity();
     auto& carpos = path[state.car.pos];
-    double carvel = state.car.vel;
+    //double carvel = state.car.vel;
 
 	// Find the closest pedestrian in front
     for(int i=0; i<state.num; i++) {

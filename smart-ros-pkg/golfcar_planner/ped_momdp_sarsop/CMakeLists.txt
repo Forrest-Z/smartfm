@@ -35,11 +35,12 @@ FILE(GLOB LIBDESPOT_SRCS src/despot/*.cpp src/despot/util/*.cpp src/planner/*.cp
 
 # There are too many compiler warnings with problem-solver code, so let's disable some:
 #set(WARNING_FLAGS "-Wno-sign-compare -Wno-unused-variable -Wno-ignored-qualifiers -Wno-write-strings")
+set(WARNING_FLAGS "-Wno-sign-compare")
 
 add_definitions(-DDEBUG_LOG_ON)
 
 #set(PED_COMPILE_FLAGS -std=c++0x -O0 -ggdb  -fbounds-check)
-set(PED_COMPILE_FLAGS -std=c++0x -O3)
+set(PED_COMPILE_FLAGS -std=c++0x -O3 ${WARNING_FLAGS})
 
 
 #rosbuild_add_library(pomcp ${LIBPOMCP_SRCS})
