@@ -559,7 +559,7 @@ void Controller::publishMarker(int id,PedBelief & ped)
 		ros::Duration d2(1/control_freq);
 		marker.lifetime=d2;
 		markers.markers.push_back(marker);
-		markers.markers.push_back(marker_text);
+		//markers.markers.push_back(marker_text);
 	}
 }
 void Controller::publishBelief()
