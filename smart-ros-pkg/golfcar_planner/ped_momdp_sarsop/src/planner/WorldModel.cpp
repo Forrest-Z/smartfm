@@ -336,10 +336,15 @@ void WorldBeliefTracker::update() {
     }
 
     // remove disappeared peds
-    auto peds_disappeared = find_if (peds.begin(), peds.end(),
-                [&](decltype(*peds.begin()) p) -> bool {
-                return newpeds.find(p.first) == newpeds.end(); });
-    peds.erase(peds_disappeared, peds.end());
+    vector<int> peds_to_remove;
+    for(const auto& p: peds) {
+        if (newpeds.find(p.first) == newpeds.end()) {
+            peds_to_remove.push_back(p.first);
+        }
+    }
+    for(const auto& i: peds_to_remove) {
+        peds.erase(i);
+    }
 
     // update existing peds
     for(auto& kv : peds) {

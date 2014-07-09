@@ -478,9 +478,11 @@ void Controller::publishMarker(int id,PedBelief & ped)
 	//cout<<"belief vector size "<<belief.size()<<endl;
 	std::vector<double> belief = ped.prob_goals;
 	uint32_t shape = visualization_msgs::Marker::CUBE;
+    uint32_t shape_text=visualization_msgs::Marker::TEXT_VIEW_FACING;
 	for(int i=0;i<belief.size();i++)
 	{
 		visualization_msgs::Marker marker;			
+		visualization_msgs::Marker marker_text;			
 
 		marker.header.frame_id=global_frame_id;
 		marker.header.stamp=ros::Time::now();
@@ -489,7 +491,45 @@ void Controller::publishMarker(int id,PedBelief & ped)
 		marker.type=shape;
 		marker.action = visualization_msgs::Marker::ADD;
 
+		marker_text.header.frame_id=global_frame_id;
+		marker_text.header.stamp=ros::Time::now();
+		marker_text.ns="basic_shapes";
+		marker_text.id=id*ped.prob_goals.size()+i+1000;
+		marker_text.type=shape_text;
+		marker_text.action = visualization_msgs::Marker::ADD;
+
+
 		double px=0,py=0;
+		px=ped.pos.x;
+		py=ped.pos.y;
+		marker_text.pose.position.x = px;
+		marker_text.pose.position.y = py;
+		marker_text.pose.position.z = 0.5;
+		marker_text.pose.orientation.x = 0.0;
+		marker_text.pose.orientation.y = 0.0;
+		marker_text.pose.orientation.z = 0.0;
+		marker_text.pose.orientation.w = 1.0;
+	//	cout<<"belief entries "<<px<<" "<<py<<endl;
+		// Set the scale of the marker -- 1x1x1 here means 1m on a side
+		//if(marker.scale.y<0.2) marker.scale.y=0.2;
+		marker_text.scale.z = 1.0;
+		//
+		// Set the color -- be sure to set alpha to something non-zero!
+		//marker.color.r = 0.0f;
+		//marker.color.g = 1.0f;
+		//marker.color.b = 0.0f;
+		//marker.color.a = 1.0;
+		marker_text.color.r = 0.0;
+        marker_text.color.g = 0.0;
+		marker_text.color.b = 0.0;//marker.lifetime = ros::Duration();
+		marker_text.color.a = 1.0;
+        marker_text.text = to_string(ped.id); 
+
+		ros::Duration d1(1/control_freq);
+		marker_text.lifetime=d1;
+
+
+		px=0,py=0;
 		px=ped.pos.x;
 		py=ped.pos.y;
 		marker.pose.position.x = px+i*0.7;
@@ -516,9 +556,10 @@ void Controller::publishMarker(int id,PedBelief & ped)
 		marker.color.b = marker_colors[i][2];//marker.lifetime = ros::Duration();
 		marker.color.a = 1.0;
 
-		ros::Duration d(1/control_freq);
-		marker.lifetime=d;
+		ros::Duration d2(1/control_freq);
+		marker.lifetime=d2;
 		markers.markers.push_back(marker);
+		markers.markers.push_back(marker_text);
 	}
 }
 void Controller::publishBelief()
