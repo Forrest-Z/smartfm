@@ -21,7 +21,7 @@ def main(bagfn):
     #start = t / 8.0 +2
     start = random.uniform(0, t)
 
-    os.execv(ROSBAG, [ROSBAG, 'play', '-s', str(start), '-l', bagfn])
+    os.execv(ROSBAG, [ROSBAG, 'play', '-s', str(start), bagfn])
 
 
 if __name__=='__main__':
