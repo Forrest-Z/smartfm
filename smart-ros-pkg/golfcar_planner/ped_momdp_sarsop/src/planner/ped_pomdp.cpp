@@ -67,10 +67,11 @@ vector<int> PedPomdp::ObserveVector(const State& state_) const {
     obs_vec[i++] = state.car.pos;
 	obs_vec[i++] = int(state.car.vel / ModelParams::vel_rln);
 
-	for(int i = 0; i < state.num; i ++) {
-		obs_vec[i++] = int(state.peds[i].pos.x / ModelParams::pos_rln); 
-		obs_vec[i++] = int(state.peds[i].pos.y / ModelParams::pos_rln);
+	for(int j = 0; j < state.num; j ++) {
+		obs_vec[i++] = int(state.peds[j].pos.x / ModelParams::pos_rln); 
+		obs_vec[i++] = int(state.peds[j].pos.y / ModelParams::pos_rln);
 	}
+
 	return obs_vec;
 }
 
