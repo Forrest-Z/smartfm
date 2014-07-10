@@ -1,6 +1,6 @@
 <launch>
 
-<node pkg="feature_detection" type="cluster_filter.py" name="cluster_filter" output="screen" args="'width &lt; 3.0 and depth &lt; 1.5 and dist &lt; 20'" ns ="golfcart">
+<node pkg="feature_detection" type="cluster_filter.py" name="cluster_filter" output="screen" args="'width &lt; 3.0 and depth &lt; 1.5 and dist &lt; 100'" ns ="golfcart">
 <remap from="cluster_filter_in" to="pedestrian_clusters"/>
 <remap from="cluster_filter_out" to="pedestrian_clusters_filtered"/>
 </node>
@@ -13,6 +13,7 @@
 -->
 
 <node pkg="laser_clustering_known_environment" type="ped_clustering_laser_only" name="ped_clustering">
+<!--<param name="dist_thres" value="1.0"/>-->
 <param name="dist_thres" value="1.0"/>
 <param name="svg_file" value="$(find laser_clustering_known_environment)/utown_exp_launch_files/utown_plaza_ped_boundary_small.svg"/>
 <!--<param name="svg_file" value="$(find laser_clustering_known_environment)/utown_exp_launch_files/utown_plaza_ped_boundary.svg"/>-->

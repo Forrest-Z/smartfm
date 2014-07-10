@@ -42,7 +42,8 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
     double carvel = state->car.vel;
     for (int i=0; i<state->num; i++) {
 		auto& p = state->peds[i];
-        double d = COORD::EuclideanDistance(carpos, p.pos); // *  inFront(p.pos, state->car.pos);
+		if(!inFront(p.pos, state->car.pos)) continue;
+        double d = COORD::EuclideanDistance(carpos, p.pos);
 		// cout << d << " " << carpos.x << " " << carpos.y << " "<< p.pos.x << " " << p.pos.y << endl;
         if (d >= 0 && d < mindist) 
 			mindist = d;
@@ -51,7 +52,7 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
 	// cout << "min_dist = " << mindist << endl;
 
     // TODO set as a param
-    if (mindist < 4) {
+    if (mindist < 3) {
 		return (carvel == 0.0) ? 0 : 2;
     }
 
@@ -66,10 +67,18 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
 bool WorldModel::inFront(COORD ped_pos, int car) const {
 	COORD car_pos = path[car];
 	COORD forward_pos = path[path.forward(car, 1.0)];
+	double d0 = COORD::EuclideanDistance(car_pos, ped_pos);
+	if(d0<=0) return true;
+	double d1 = COORD::EuclideanDistance(car_pos, forward_pos);
+	if(d1<=0) return false;
+	double dot = DotProduct(forward_pos.x - car_pos.x, forward_pos.y - car_pos.y,
+			ped_pos.x - car_pos.x, ped_pos.y - car_pos.y);
+	double cosa = dot / (d0 * d1);
+	cosa = min(cosa, 1.0);
+	cosa = max(cosa, -1.0);
+	double angle = acos(cosa);
 
-	/*NOTE: To increase the region checked, compute the cosine value and set a negative threshold.*/
-	return DotProduct(forward_pos.x - car_pos.x, forward_pos.y - car_pos.y,
-			ped_pos.x - car_pos.x, ped_pos.y - ped_pos.y) > 0;
+	return (fabs(angle) < M_PI / 180 * 80);
 }
 
 bool WorldModel::inCollision(const PomdpState& state) {
@@ -80,7 +89,7 @@ bool WorldModel::inCollision(const PomdpState& state) {
 	// Find the closest pedestrian in front
     for(int i=0; i<state.num; i++) {
 		auto& p = state.peds[i];
-		//if(!inFront(p.pos, state.car.pos)) continue;
+		if(!inFront(p.pos, state.car.pos)) continue;
         double d = COORD::EuclideanDistance(carpos, p.pos);
         if (d >= 0 && d < mindist) mindist = d;
     }
@@ -230,7 +239,7 @@ void WorldStateTracker::cleanPed() {
                 break;
             }
         }
-        if (timestamp() - ped_list[i].last_update > 3.0) insert=false;
+        if (timestamp() - ped_list[i].last_update > 1.0) insert=false;
         if (insert)
             ped_list_new.push_back(ped_list[i]);
     }

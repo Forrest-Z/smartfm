@@ -1,14 +1,14 @@
 fixed_path: false
 pruning_constant: 0
-pathplan_ahead: 4.0
+pathplan_ahead: 3.0
 
-crash_penalty: -10000.0
-reward_factor_vel: 0.5
-reward_base_crash_vel: 0.4
-belief_smoothing: 0.2
-noise_robvel: 0.2
+crash_penalty: -50000.0
+reward_factor_vel: 1.5
+reward_base_crash_vel: 0.2
+belief_smoothing: 0.1
+noise_robvel: 0.1
 noise_goal_angle_deg: 45
-max_vel: 2
+max_vel: 1.5
 
 ped_costmap:
     map_type: costmap
@@ -17,9 +17,9 @@ ped_costmap:
     map_topic: map_cost
     static_map: true
     publish_frequency: 5
-    robot_radius: 1.5
+    robot_radius: 1.0
     inflation_radius: 5.0
-    cost_scaling_factor: 5.0
+    cost_scaling_factor: 8.0
     update_frequency: 2
     observation_sources: peds
     peds:
@@ -27,13 +27,13 @@ ped_costmap:
         clearing: true
         obstacle_range: 5000
         raytrace_range: 5000
-    ped_cost_ratio: 0.6
+    ped_cost_ratio: 0.3
 
 planner:
-    steering_limit_deg: 15
-    yaw_res_deg: 1.0
-    cost_steering_deg: 3
+    steering_limit_deg: 16
+    yaw_res_deg: 1.5
+    cost_steering_deg: 10
     steplen: 6
-    num_search: 500000
+    num_search: 800000
     discretize_ratio: 0.3
 

@@ -10,7 +10,7 @@ namespace ModelParams {
 	//const double VEL_MAX=1;
 
 	const int GOAL_TRAVELLED=8;
-	const int N_PED_IN=7;
+	const int N_PED_IN=4;
     
     extern double NOISE_GOAL_ANGLE;
     extern double CRASH_PENALTY;
@@ -20,7 +20,7 @@ namespace ModelParams {
     extern double NOISE_ROBVEL;
 
 
-	const double pos_rln=0.5; // position resolution
+	const double pos_rln=1.0; // position resolution
 	const double vel_rln=0.03; // velocity resolution
 
     const double PATH_STEP = 0.05;
