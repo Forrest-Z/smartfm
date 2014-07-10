@@ -230,7 +230,7 @@ void WorldStateTracker::cleanPed() {
                 break;
             }
         }
-        if (timestamp() - ped_list[i].last_update > 1.0) insert=false;
+        if (timestamp() - ped_list[i].last_update > 3.0) insert=false;
         if (insert)
             ped_list_new.push_back(ped_list[i]);
     }

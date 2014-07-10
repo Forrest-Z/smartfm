@@ -9,7 +9,7 @@
 #define COST_UNKNOWN_ROS 255		// 255 is unknown cost
 #define COST_OBS 254		// 254 for forbidden regions
 #define COST_OBS_ROS 253	// ROS values of 253 are obstacles
-#define COST_NEUTRAL 50		// Set this to "open space" value
+#define COST_NEUTRAL 10		// Set this to "open space" value
 #define COST_FACTOR 3		// Used for translating costs in NavFn::setCostmap()
 
 #define COSTTYPE unsigned char	// Whatever is used...

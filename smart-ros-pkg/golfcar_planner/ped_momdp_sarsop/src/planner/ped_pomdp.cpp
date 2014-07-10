@@ -113,7 +113,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	}
 
 	// Smoothness control: Avoid frequent dec or acc
-	reward += (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0.0;
+	reward += (action == ACT_DEC || action == ACT_ACC) ? -0.07 : 0.0;
 
 	// Speed control: Encourage higher speed
 	// reward += -1;
