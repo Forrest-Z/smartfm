@@ -27,7 +27,7 @@ ped_costmap:
         clearing: true
         obstacle_range: 5000
         raytrace_range: 5000
-    ped_cost_ratio: 0.3
+    ped_cost_ratio: 0.6
 
 planner:
     steering_limit_deg: 16
