@@ -59,7 +59,7 @@ local_frame::local_frame()
     n.param("threshold", threshold_, 3.0);
     n.param("offsetx", offsetx_, 0.0);
     n.param("offsety", offsety_, 3.0);
-    timer_ = nh.createTimer(ros::Duration(0.01), &local_frame::publishTransform, this);
+    //timer_ = nh.createTimer(ros::Duration(0.01), &local_frame::publishTransform, this);
     ros::spin();
 }
 local_frame::~local_frame()

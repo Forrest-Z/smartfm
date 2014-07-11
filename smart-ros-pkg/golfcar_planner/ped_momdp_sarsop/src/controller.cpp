@@ -513,8 +513,8 @@ void Controller::publishMarker(int id,PedBelief & ped)
     uint32_t shape_text=visualization_msgs::Marker::TEXT_VIEW_FACING;
 	for(int i=0;i<belief.size();i++)
 	{
-		visualization_msgs::Marker marker;			
-		visualization_msgs::Marker marker_text;			
+		visualization_msgs::Marker marker;
+		visualization_msgs::Marker marker_text;
 
 		marker.header.frame_id=global_frame_id;
 		marker.header.stamp=ros::Time::now();

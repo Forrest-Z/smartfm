@@ -137,7 +137,6 @@ void PedPomdpNode::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector lPed
 		world_ped.id=ped.ped_id;
 		world_ped.w = ped.ped_pose.x;
 		world_ped.h = ped.ped_pose.y;
-		//TODO : goal
 		p.x=ped.ped_pose.x;
 		p.y=ped.ped_pose.y;
 		p.z=1.0;
@@ -146,7 +145,7 @@ void PedPomdpNode::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector lPed
 		//cout<<"ped pose "<<ped.ped_pose.x<<" "<<ped.ped_pose.y<<" "<<world_ped.id<<endl;
 		ped_list.push_back(world_ped);
     }
-	std::sort(ped_list.begin(),ped_list.end(),sortFn);
+	//std::sort(ped_list.begin(),ped_list.end(),sortFn);
 	for(int i=0;i<ped_list.size();i++)
 	{
 		controller->worldStateTracker.updatePed(ped_list[i]);

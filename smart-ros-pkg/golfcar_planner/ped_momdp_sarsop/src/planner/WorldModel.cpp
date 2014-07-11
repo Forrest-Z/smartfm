@@ -270,7 +270,7 @@ void WorldStateTracker::updatePed(const Pedestrian& ped){
             ped_list[i].last_update = timestamp();
             break;
         }
-        if (abs(ped_list[i].w-ped.w)<=0.1&&abs(ped_list[i].h-ped.h)<=0.1)   //overlap 
+        if (abs(ped_list[i].w-ped.w)<=0.1 && abs(ped_list[i].h-ped.h)<=0.1)   //overlap
             return;
     }
     if (i==ped_list.size()) {
