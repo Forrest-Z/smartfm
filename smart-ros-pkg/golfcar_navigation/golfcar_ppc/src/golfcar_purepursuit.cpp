@@ -8,7 +8,9 @@ namespace golfcar_purepursuit
 PurePursuit::PurePursuit(string global_frameID)
 {
     global_frameID_ = global_frameID;
-    Lfw_ = 3;
+    //Lfw_ = 3;
+	
+    Lfw_ = 1;
     lfw_ = 1;
     car_length_ = 1.632;
     nextPathThres_ = 5;
@@ -79,7 +81,6 @@ bool PurePursuit::current_pos_to_point_dist_simple(int end_point, double* path_d
 
 	*path_dist = fmutil::distance(vehicle_base_.position,
 				path_.poses[end_point].pose.position);
-
 	if(path_n_<0)
 		return false;
 	else
@@ -96,7 +97,6 @@ bool PurePursuit::current_pos_to_point_dist(int end_point, double* path_dist)
                                         path_.poses[end_point].pose.position);
         return false;
     }
-
     for( unsigned i=path_n_+1; i<end_point; i++ )
     {
         *path_dist += fmutil::distance(path_.poses[i].pose.position,

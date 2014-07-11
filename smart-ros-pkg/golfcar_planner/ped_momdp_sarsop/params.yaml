@@ -1,6 +1,6 @@
-fixed_path: false
+fixed_path: false 
 pruning_constant: 0
-pathplan_ahead: 3.0
+pathplan_ahead: 2.0
 
 crash_penalty: -50000.0
 reward_factor_vel: 1.5

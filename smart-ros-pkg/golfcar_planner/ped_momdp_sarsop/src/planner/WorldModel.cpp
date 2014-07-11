@@ -81,6 +81,20 @@ bool WorldModel::inFront(COORD ped_pos, int car) const {
 	return (fabs(angle) < M_PI / 180 * 60);
 }
 
+double WorldModel::getMinCarPedDist(const PomdpState& state) {
+    double mindist = numeric_limits<double>::infinity();
+    auto& carpos = path[state.car.pos];
+
+	// Find the closest pedestrian in front
+    for(int i=0; i<state.num; i++) {
+		auto& p = state.peds[i];
+		if(!inFront(p.pos, state.car.pos)) continue;
+        double d = COORD::EuclideanDistance(carpos, p.pos);
+        if (d >= 0 && d < mindist) mindist = d;
+    }
+
+	return mindist;
+}
 bool WorldModel::inCollision(const PomdpState& state) {
     double mindist = numeric_limits<double>::infinity();
     auto& carpos = path[state.car.pos];
@@ -391,13 +405,16 @@ int PedBelief::sample_goal() {
 PomdpState WorldBeliefTracker::sample() {
     PomdpState s;
     s.car = car;
-    s.num = min(int(sorted_beliefs.size()), ModelParams::N_PED_IN);
 
-    for(int i=0; i<s.num; i++) {
+	s.num = 0;
+    for(int i=0; i < sorted_beliefs.size() && i < ModelParams::N_PED_IN; i++) {
 		auto& p = sorted_beliefs[i];
-        s.peds[i].pos = p.pos;
-        s.peds[i].goal = p.sample_goal();
-        s.peds[i].id = p.id;
+		if (COORD::EuclideanDistance(p.pos, model.path[car.pos]) < 5) {
+			s.peds[i].pos = p.pos;
+			s.peds[i].goal = p.sample_goal();
+			s.peds[i].id = p.id;
+			s.num ++;
+		}
     }
     return s;
 }
@@ -407,5 +424,9 @@ vector<PomdpState> WorldBeliefTracker::sample(int num) {
     for(int i=0; i<num; i++) {
         particles.push_back(sample());
     }
+	cout << "Num peds for planning: " << particles[0].num << endl;
+
+	// random_simulation();
+
     return particles;
 }

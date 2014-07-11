@@ -107,7 +107,8 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	}
 
  	// Safety control: collision; Terminate upon collision
-	if (world.inCollision(state)) {
+	double min_dist = world.getMinCarPedDist(state);
+	if (min_dist < 1.0) {
 		reward = ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL);
 		return true;
 	}
@@ -115,10 +116,10 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	// Smoothness control: Avoid frequent dec or acc
 	reward += (action == ACT_DEC || action == ACT_ACC) ? -0.07 : 0.0;
 
-	// Speed control: Encourage higher speed
-	// reward += -1;
-	// Prefer higher speed even though same number of discrete steps needed to reach local goal
-	reward += VEL_FACTOR * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX; 
+	// Speed control: Encourage higher speed with no pedestrians nearby, but lower speed with pedestrians nearby
+	reward += //(min_dist > 3.0 || (min_dist < 3.0 && action != ACT_ACC)) ?
+		(1.0 * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX);
+		//: -1.5;
 
 	// State transition
 	Random random(rNum);
@@ -227,9 +228,9 @@ void PedPomdp::Statistics(const vector<PomdpState*> particles) const {
 
 
 ValuedAction PedPomdp::GetMinRewardAction() const {
-	return ValuedAction(0, ModelParams::CRASH_PENALTY * (ModelParams::VEL_MAX + 0.2));
+	return ValuedAction(0, 
+			ModelParams::CRASH_PENALTY * (ModelParams::VEL_MAX*ModelParams::VEL_MAX + ModelParams::REWARD_BASE_CRASH_VEL));
 }
-
 
 class PedPomdpSmartScenarioLowerBound : public Policy {
 protected:
@@ -280,7 +281,7 @@ public:
 	double Value(const State& s) const {
 		const PomdpState& state = static_cast<const PomdpState&>(s);
 		if (ped_pomdp_->world.inCollision(state))
-			return ModelParams::CRASH_PENALTY * (state.car.vel + 0.2);
+			return ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL);
 		return 0;
 	}
 };
