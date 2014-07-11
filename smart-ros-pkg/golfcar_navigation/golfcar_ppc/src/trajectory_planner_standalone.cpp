@@ -52,7 +52,7 @@ public:
     priv_nh.param("global_frame", global_frame_, string("/map")); 
     priv_nh.param("robot_frame", robot_frame_, string("/base_link"));
     priv_nh.param("frequency", frequency_, 100.0);
-    priv_nh.param("max_pose_delay", delay_, 0.015);
+    priv_nh.param("max_pose_delay", delay_, 0.15);
     
     pp_ = new golfcar_purepursuit::PurePursuit(global_frame_.c_str());
     
@@ -222,61 +222,61 @@ private:
   }
   
   void controlLoop(const ros::TimerEvent& event){
-    
-    geometry_msgs::Twist cmd_vel;
-    tf::Stamped<tf::Pose> robot_pose;
-    pnc_msgs::move_status move_status;
-    move_status.path_exist = false;
-    double steer_angle;
-	for(int i=0;i<pp_->path_.poses.size();i++)
-	//	cout<<pp_->path_.poses[i].pose.position.x<<" "<<pp_->path_.poses[i].pose.position.y<<endl;
-    if(pp_->path_.poses.size()>0 && getRobotPose(robot_pose)){
-      geometry_msgs::PoseStamped robot_pose_msg;
-      tf::poseStampedTFToMsg(robot_pose, robot_pose_msg);
-      pp_->vehicle_base_ = robot_pose_msg.pose;
-      double dist_to_goal;
-      bool path_exist = pp_->steering_control(&steer_angle, &dist_to_goal);
-      move_status.dist_to_goal = dist_to_goal;
-      geometry_msgs::Point int_point;
-      move_status.dist_to_ints = getIntDist(&int_point);
-      move_status.int_point = int_point;
-      move_status.sig_type = -1;
-      if(path_exist){
-	move_status.steer_angle = steer_angle;
-	move_status.obstacles_dist = 123;
-	move_status.path_exist = true;
-	if( waypointPassed_ != pp_->path_n_ )
-	{
-	    ROS_INFO("Path %d/%d", pp_->path_n_, (int)pp_->path_.poses.size()-1);
-	    waypointPassed_ = pp_->path_n_;
-	}
+
+      geometry_msgs::Twist cmd_vel;
+      tf::Stamped<tf::Pose> robot_pose;
+      pnc_msgs::move_status move_status;
+      move_status.path_exist = false;
+      double steer_angle;
+      //for(int i=0;i<pp_->path_.poses.size();i++)
+      //	cout<<pp_->path_.poses[i].pose.position.x<<" "<<pp_->path_.poses[i].pose.position.y<<endl;
+      if(pp_->path_.poses.size()>0 && getRobotPose(robot_pose)){
+          geometry_msgs::PoseStamped robot_pose_msg;
+          tf::poseStampedTFToMsg(robot_pose, robot_pose_msg);
+          pp_->vehicle_base_ = robot_pose_msg.pose;
+          double dist_to_goal;
+          bool path_exist = pp_->steering_control(&steer_angle, &dist_to_goal);
+          move_status.dist_to_goal = dist_to_goal;
+          geometry_msgs::Point int_point;
+          move_status.dist_to_ints = getIntDist(&int_point);
+          move_status.int_point = int_point;
+          move_status.sig_type = -1;
+          if(path_exist){
+              move_status.steer_angle = steer_angle;
+              move_status.obstacles_dist = 123;
+              move_status.path_exist = true;
+              if( waypointPassed_ != pp_->path_n_ )
+              {
+                  ROS_INFO("Path %d/%d", pp_->path_n_, (int)pp_->path_.poses.size()-1);
+                  waypointPassed_ = pp_->path_n_;
+              }
+          }
       }
-    }
-    else
-    {
-        move_status.path_exist = false;
-        if( pp_->path_n_ < (int) pp_->path_.poses.size()-1 )
-        {
-            //move_status.emergency = -1;
-            move_status.steer_angle = steer_angle;
-            ROS_WARN("Steering control at unknown state");
-        }
-        else
-        {
+      else
+      {
+          move_status.path_exist = false;
+          if( pp_->path_n_ < (int) pp_->path_.poses.size()-1 )
+          {
+              //move_status.emergency = -1;
+              move_status.steer_angle = steer_angle;
+              ROS_WARN("Steering control at unknown state");
+          }
+          else
+          {
 
-            move_status.steer_angle = 0;
-            if(!goalreached_)
-            {
-                ROS_INFO("No path found");
-                goalreached_=true;
-            }
-        }
+              move_status.steer_angle = 0;
+              if(!goalreached_)
+              {
+                  ROS_INFO("No path found");
+                  goalreached_=true;
+              }
+          }
 
 
-    }
-    move_status_pub_.publish(move_status);
-    cmd_vel.angular.z = move_status.steer_angle;
-    cmd_steer_pub_.publish(cmd_vel);
+      }
+      move_status_pub_.publish(move_status);
+      cmd_vel.angular.z = move_status.steer_angle;
+      cmd_steer_pub_.publish(cmd_vel);
   }
   
     
