@@ -6,6 +6,7 @@ import random
 import rosbag
 
 ROSBAG = '/opt/ros/fuerte/bin/rosbag'
+#BAGFN = '3394_new.bag'
 BAGFN = '3394_new.bag'
 
 def get_duration(bagfn):

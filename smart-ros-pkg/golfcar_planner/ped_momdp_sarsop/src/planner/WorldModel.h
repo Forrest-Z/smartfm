@@ -75,5 +75,8 @@ public:
     CarStruct car;
     std::map<int, PedBelief> peds;
 	std::vector<PedBelief> sorted_beliefs;
+
+    void PrintState(const State& s, ostream& out = cout) const;
+    void printBelief() const;
 };
 

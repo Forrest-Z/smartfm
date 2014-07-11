@@ -402,6 +402,19 @@ int PedBelief::sample_goal() {
     return i;
 }
 
+void WorldBeliefTracker::printBelief() const {
+	int num = 0;
+    for(int i=0; i < sorted_beliefs.size() && i < ModelParams::N_PED_IN; i++) {
+		auto& p = sorted_beliefs[i];
+		if (COORD::EuclideanDistance(p.pos, model.path[car.pos]) < 5) {
+            cout << "ped belief " << num << ": ";
+            for (int g = 0; g < p.prob_goals.size(); g ++)
+                cout << " " << p.prob_goals[g];
+            cout << endl;
+		}
+    }
+}
+
 PomdpState WorldBeliefTracker::sample() {
     PomdpState s;
     s.car = car;
@@ -410,13 +423,30 @@ PomdpState WorldBeliefTracker::sample() {
     for(int i=0; i < sorted_beliefs.size() && i < ModelParams::N_PED_IN; i++) {
 		auto& p = sorted_beliefs[i];
 		if (COORD::EuclideanDistance(p.pos, model.path[car.pos]) < 5) {
-			s.peds[i].pos = p.pos;
-			s.peds[i].goal = p.sample_goal();
-			s.peds[i].id = p.id;
+			s.peds[s.num].pos = p.pos;
+			s.peds[s.num].goal = p.sample_goal();
+			s.peds[s.num].id = p.id;
 			s.num ++;
 		}
     }
     return s;
+}
+
+void WorldBeliefTracker::PrintState(const State& s, ostream& out) const {
+	const PomdpState & state=static_cast<const PomdpState&> (s);
+    COORD& carpos = model.path[state.car.pos];
+
+	out << "Rob Pos: " << carpos.x<< " " <<carpos.y << endl;
+	out << "Rob travelled: " << state.car.dist_travelled << endl;
+	for(int i = 0; i < state.num; i ++) {
+		out << "Ped Pos: " << state.peds[i].pos.x << " " << state.peds[i].pos.y << endl;
+		out << "Goal: " << state.peds[i].goal << endl;
+		out << "id: " << state.peds[i].id << endl;
+	}
+	out << "Vel: " << state.car.vel << endl;
+	out<<  "num  " << state.num << endl;
+	double min_dist = COORD::EuclideanDistance(carpos, state.peds[0].pos);
+	out << "MinDist: " << min_dist << endl;
 }
 
 vector<PomdpState> WorldBeliefTracker::sample(int num) {
@@ -424,9 +454,8 @@ vector<PomdpState> WorldBeliefTracker::sample(int num) {
     for(int i=0; i<num; i++) {
         particles.push_back(sample());
     }
-	cout << "Num peds for planning: " << particles[0].num << endl;
-
-	// random_simulation();
+	
+    cout << "Num peds for planning: " << particles[0].num << endl;
 
     return particles;
 }

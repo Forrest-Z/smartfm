@@ -106,6 +106,7 @@ private:
     double robotx_, roboty_, robotspeedx_;
     ros::Timer timer_,timer_speed;
     ros::Publisher believesPub_, cmdPub_,actionPub_;
+    ros::Publisher pedStatePub_;
 
     void controlLoop(const ros::TimerEvent &e);
 

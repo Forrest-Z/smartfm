@@ -322,7 +322,9 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
 	}
 	out << "Vel: " << state.car.vel << endl;
 	out<<  "num  " << state.num << endl;
-	double min_dist = COORD::EuclideanDistance(carpos, state.peds[0].pos);
+    double min_dist = -1;
+    if (state.num > 0)
+        min_dist = COORD::EuclideanDistance(carpos, state.peds[0].pos);
 	out << "MinDist: " << min_dist << endl;
 }
 

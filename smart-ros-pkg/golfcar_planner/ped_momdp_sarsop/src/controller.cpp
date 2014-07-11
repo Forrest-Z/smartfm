@@ -14,19 +14,6 @@ double marker_colors[20][3] = {
 };
 
 int action_map[3]={2,0,1};
-int WorldSeed() {
-  cout<<"root seed"<<Globals::config.root_seed<<endl;
-  return Globals::config.root_seed ^ Globals::config.n_particles;
-}
-
-int BeliefUpdateSeed() {
-  return Globals::config.root_seed ^ (Globals::config.n_particles + 1);
-}
-
-// Action selection for RandomPolicyLowerBound (if used):
-int RandomActionSeed() {
-  return Globals::config.root_seed ^ (Globals::config.n_particles + 2);
-}
 
 Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_constant, double pathplan_ahead):  worldStateTracker(worldModel), worldBeliefTracker(worldModel, worldStateTracker), fixed_path_(fixed_path), pathplan_ahead_(pathplan_ahead)
 {
@@ -50,6 +37,7 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
 	start_goal_pub=nh.advertise<ped_pathplan::StartGoal> ("ped_path_planner/planner/start_goal", 1);
 
 	markers_pub=nh.advertise<visualization_msgs::MarkerArray>("pomdp_belief",1);
+    pedStatePub_=nh.advertise<sensor_msgs::PointCloud>("ped_state", 1);
 	safeAction=2;
 	target_speed_=0.0;
 	goal_reached=false;
@@ -361,9 +349,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 	    cout<<"entering control loop"<<endl;
         tf::Stamped<tf::Pose> in_pose, out_pose;
 
-
+  
         /****** update world state ******/
-
         ros::Rate err_retry_rate(10);
 
 		// transpose to base link for path planing
@@ -445,6 +432,51 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		ParticleBelief *pb=new ParticleBelief(particles, despot);
 		solver->belief(pb);
+
+        /****** random simulation for verification purpose ******/
+        Random rand((unsigned)1012312);
+        cout << "Starting simulation" << endl;
+        for (int i = 0; i < 100; i ++) {
+            uint64_t obs;
+            double reward;
+
+            PomdpState state = worldBeliefTracker.sample();
+            if (state.num <= 1)
+                continue;
+
+            cout << "Initial state: " << endl;
+            despot->PrintState(state);
+
+	        sensor_msgs::PointCloud pc;
+        	pc.header.frame_id="/map";
+            pc.header.stamp=ros::Time::now();
+            ros::Rate loop_rate(ModelParams::control_freq);
+            for (int j = 0; j < 20; j ++) {
+
+                cout << "Step " << j << endl;
+                int action = rand.NextInt(despot->NumActions());
+                double r = rand.NextDouble();
+                despot->Step(state, r, action, reward, obs);
+                cout << "Action = " << action << endl;
+                despot->PrintState(state);
+                cout << "Reward = " << reward << endl;
+                cout << "Obs = " << obs << endl;
+                worldBeliefTracker.printBelief();
+                for(int k=0;k<state.num;k++) {
+       		        geometry_msgs::Point32 p;
+                    p.x=state.peds[k].pos.x;
+                    p.y=state.peds[k].pos.y;
+                    p.z=1.0;
+                    pc.points.push_back(p);
+                }
+
+                pedStatePub_.publish(pc); 
+  //              publishBelief();
+                loop_rate.sleep();
+            }
+
+        }
+        cout << "End of simulation" << endl;
 
 
         /****** solve for safe action ******/
