@@ -78,7 +78,7 @@ bool WorldModel::inFront(COORD ped_pos, int car) const {
 	cosa = max(cosa, -1.0);
 	double angle = acos(cosa);
 
-	return (fabs(angle) < M_PI / 180 * 80);
+	return (fabs(angle) < M_PI / 180 * 60);
 }
 
 bool WorldModel::inCollision(const PomdpState& state) {

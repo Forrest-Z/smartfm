@@ -4,8 +4,8 @@ pathplan_ahead: 3.0
 
 crash_penalty: -50000.0
 reward_factor_vel: 1.5
-reward_base_crash_vel: 0.2
-belief_smoothing: 0.1
+reward_base_crash_vel: 0.4
+belief_smoothing: 0.15
 noise_robvel: 0.1
 noise_goal_angle_deg: 45
 max_vel: 1.5
@@ -17,9 +17,9 @@ ped_costmap:
     map_topic: map_cost
     static_map: true
     publish_frequency: 5
-    robot_radius: 1.0
-    inflation_radius: 5.0
-    cost_scaling_factor: 8.0
+    robot_radius: 1.2
+    inflation_radius: 7.0
+    cost_scaling_factor: 6.0
     update_frequency: 2
     observation_sources: peds
     peds:
