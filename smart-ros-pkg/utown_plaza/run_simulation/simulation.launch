@@ -13,10 +13,10 @@
 
     <node pkg="golfcar_ppc" type="purepursuit_controller" name="purepursuitController" output="screen"/>
 
-    <node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">
-        <remap from="laser_area_policy/scan" to="sick_scan2"/>
-        <remap from="cmd_vel" to="cmd_speed_dummy"/>
-    </node>
+    <!--<node pkg="speed_advisor" type="speed_advisor" name="speed_advisor" output="screen">-->
+        <!--<remap from="laser_area_policy/scan" to="sick_scan2"/>-->
+        <!--<remap from="cmd_vel" to="cmd_speed_dummy"/>-->
+    <!--</node>-->
 
     <node pkg="velmixer" type="ped_publisher" name="ped_publisher" output="log" respawn="false">
         <param name="pedNum" value="1000"/>
