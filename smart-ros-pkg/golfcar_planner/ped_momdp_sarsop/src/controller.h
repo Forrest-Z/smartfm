@@ -64,6 +64,7 @@ public:
 	void publishBelief();
 	void publishMarker(int , PedBelief & ped);
 	void publishPath(const string& frame_id, const Path& path);
+    void publishPedsPrediciton();
 	bool getObjectPose(string target_frame, tf::Stamped<tf::Pose>& in_pose, tf::Stamped<tf::Pose>& out_pose) const;
 
 	//for despot
@@ -107,6 +108,7 @@ private:
     ros::Timer timer_,timer_speed;
     ros::Publisher believesPub_, cmdPub_,actionPub_;
     ros::Publisher pedStatePub_;
+    ros::Publisher pedPredictionPub_ ;
 
     void controlLoop(const ros::TimerEvent &e);
 

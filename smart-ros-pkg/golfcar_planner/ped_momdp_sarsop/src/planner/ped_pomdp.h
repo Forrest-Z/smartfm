@@ -34,7 +34,7 @@ public:
 	double TransitionProbability(const PomdpState& curr, const PomdpState& next, int action) const;
 
 	uint64_t Observe(const State& ) const;
-	vector<int> ObserveVector(const State& )   const;
+	const vector<int>& ObserveVector(const State& )   const;
 	double ObsProb(uint64_t z, const State& s, int action) const;
 
 	inline int NumActions() const { return 3; }

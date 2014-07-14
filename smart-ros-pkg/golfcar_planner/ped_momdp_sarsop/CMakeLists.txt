@@ -40,7 +40,7 @@ set(WARNING_FLAGS "-Wno-sign-compare")
 add_definitions(-DDEBUG_LOG_ON)
 
 #set(PED_COMPILE_FLAGS -std=c++0x -O0 -ggdb  -fbounds-check)
-set(PED_COMPILE_FLAGS -std=c++0x -O3 ${WARNING_FLAGS})
+set(PED_COMPILE_FLAGS -std=c++0x -O3  ${WARNING_FLAGS})
 
 
 #rosbuild_add_library(pomcp ${LIBPOMCP_SRCS})

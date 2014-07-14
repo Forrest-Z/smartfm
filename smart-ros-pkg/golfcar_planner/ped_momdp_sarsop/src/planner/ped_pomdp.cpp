@@ -58,11 +58,11 @@ PedPomdp::PedPomdp(WorldModel &model_) :
 	particle_lower_bound_ = new PedPomdpParticleLowerBound(this);
 }
 
-vector<int> PedPomdp::ObserveVector(const State& state_) const {
+const vector<int>& PedPomdp::ObserveVector(const State& state_) const {
 	const PomdpState &state=static_cast<const PomdpState&>(state_);
 	static vector<int> obs_vec;
 	obs_vec.resize(state.num * 2 + 2);
-	
+
 	int i=0;
     obs_vec[i++] = state.car.pos;
 	obs_vec[i++] = int(state.car.vel / ModelParams::vel_rln);

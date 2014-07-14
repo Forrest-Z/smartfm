@@ -1,6 +1,6 @@
 fixed_path: false 
 pruning_constant: 0
-pathplan_ahead: 2.0
+pathplan_ahead: 3.0
 
 crash_penalty: -50000.0
 reward_factor_vel: 1.5
@@ -19,20 +19,21 @@ ped_costmap:
     publish_frequency: 5
     robot_radius: 1.2
     inflation_radius: 7.0
-    cost_scaling_factor: 6.0
+    cost_scaling_factor: 4.0
     update_frequency: 2
     observation_sources: peds
     peds:
-        topic: confident_objects_momdp
+        #topic: confident_objects_momdp
+        topic: ped_prediction
         clearing: true
         obstacle_range: 5000
         raytrace_range: 5000
-    ped_cost_ratio: 0.6
+    ped_cost_ratio: 0.4
 
 planner:
-    steering_limit_deg: 16
+    steering_limit_deg: 12
     yaw_res_deg: 1.5
-    cost_steering_deg: 10
+    cost_steering_deg: 15
     steplen: 6
     num_search: 800000
     discretize_ratio: 0.3

@@ -4,7 +4,7 @@
 		<remap from="map" to="map_cost"/>
 	</node>
      <!-- **** cost map and path planning **** -->
-     <!--<node name="ped_path_planner" pkg="ped_pathplan" type="path_planner" output="screen" launch-prefix="gdb - -args"> -->
+     <!--<node name="ped_path_planner" pkg="ped_pathplan" type="path_planner" output="screen" launch-prefix="valgrind - -tool=callgrind" required="true">-->
      <node name="ped_path_planner" pkg="ped_pathplan" type="path_planner" output="screen" required="true">
          <rosparam file="$(find ped_momdp_sarsop)/params.yaml" command="load" />
          <remap from="ped_path_planner/planner/plan" to="plan" />

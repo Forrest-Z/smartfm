@@ -43,7 +43,7 @@ ValuedAction Policy::RecursiveValue(const vector<State*>& particles,
 
 		double value = 0;
 
-		map<uint64_t, vector<State*>> partitions;
+		unordered_map<uint64_t, vector<State*>> partitions;
 		uint64_t obs;
 		double reward;
 		for (auto& particle : particles) {

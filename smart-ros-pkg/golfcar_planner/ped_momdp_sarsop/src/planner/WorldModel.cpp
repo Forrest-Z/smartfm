@@ -6,7 +6,8 @@
 #include"coord.h"
 using namespace std;
 
-WorldModel::WorldModel(): freq(ModelParams::control_freq) {
+WorldModel::WorldModel(): freq(ModelParams::control_freq),
+    in_front_angle_cos(cos(ModelParams::IN_FRONT_ANGLE_DEG / 180.0 * M_PI)) {
     goals = {
         COORD(54, 4),
         COORD(31, 4),
@@ -65,8 +66,8 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
 }
 
 bool WorldModel::inFront(COORD ped_pos, int car) const {
-	COORD car_pos = path[car];
-	COORD forward_pos = path[path.forward(car, 1.0)];
+	const COORD& car_pos = path[car];
+	const COORD& forward_pos = path[path.forward(car, 1.0)];
 	double d0 = COORD::EuclideanDistance(car_pos, ped_pos);
 	if(d0<=0) return true;
 	double d1 = COORD::EuclideanDistance(car_pos, forward_pos);
@@ -76,18 +77,18 @@ bool WorldModel::inFront(COORD ped_pos, int car) const {
 	double cosa = dot / (d0 * d1);
 	cosa = min(cosa, 1.0);
 	cosa = max(cosa, -1.0);
-	double angle = acos(cosa);
-
-	return (fabs(angle) < M_PI / 180 * 60);
+    return cosa > in_front_angle_cos;
+	//double angle = acos(cosa);
+	//return (fabs(angle) < M_PI / 180 * 60);
 }
 
 double WorldModel::getMinCarPedDist(const PomdpState& state) {
     double mindist = numeric_limits<double>::infinity();
-    auto& carpos = path[state.car.pos];
+    const auto& carpos = path[state.car.pos];
 
 	// Find the closest pedestrian in front
     for(int i=0; i<state.num; i++) {
-		auto& p = state.peds[i];
+		const auto& p = state.peds[i];
 		if(!inFront(p.pos, state.car.pos)) continue;
         double d = COORD::EuclideanDistance(carpos, p.pos);
         if (d >= 0 && d < mindist) mindist = d;
@@ -95,14 +96,15 @@ double WorldModel::getMinCarPedDist(const PomdpState& state) {
 
 	return mindist;
 }
+
 bool WorldModel::inCollision(const PomdpState& state) {
     double mindist = numeric_limits<double>::infinity();
-    auto& carpos = path[state.car.pos];
+    const auto& carpos = path[state.car.pos];
     //double carvel = state.car.vel;
 
 	// Find the closest pedestrian in front
     for(int i=0; i<state.num; i++) {
-		auto& p = state.peds[i];
+		const auto& p = state.peds[i];
 		if(!inFront(p.pos, state.car.pos)) continue;
         double d = COORD::EuclideanDistance(carpos, p.pos);
         if (d >= 0 && d < mindist) mindist = d;
@@ -118,21 +120,33 @@ int WorldModel::minStepToGoal(const PomdpState& state) {
 }
 
 void WorldModel::PedStep(PedStruct &ped, Random& random) {
-    COORD& goal = goals[ped.goal];
-	if (goal.x == -1 && goal.y == -1) {  //stop intention 
+    const COORD& goal = goals[ped.goal];
+	if (goal.x == -1 && goal.y == -1) {  //stop intention
 		return;
 	}
-	
+
 	MyVector goal_vec(goal.x - ped.pos.x, goal.y - ped.pos.y);
     double a = goal_vec.GetAngle();
 	double noise = random.NextGaussian() * ModelParams::NOISE_GOAL_ANGLE;
     a += noise;
-    
+
 	//TODO noisy speed
     MyVector move(a, ModelParams::PED_SPEED/freq, 0);
     ped.pos.x += move.dw;
     ped.pos.y += move.dh;
     return;
+}
+
+void WorldModel::PedStepDeterministic(PedStruct& ped, int step) {
+    const COORD& goal = goals[ped.goal];
+	if (goal.x == -1 && goal.y == -1) {  //stop intention
+		return;
+	}
+
+	MyVector goal_vec(goal.x - ped.pos.x, goal.y - ped.pos.y);
+    goal_vec.AdjustLength(step * ModelParams::PED_SPEED / freq);
+    ped.pos.x += goal_vec.dw;
+    ped.pos.y += goal_vec.dh;
 }
 
 double gaussian_prob(double x, double stddev) {
@@ -391,7 +405,7 @@ void WorldBeliefTracker::update() {
     return;
 }
 
-int PedBelief::sample_goal() {
+int PedBelief::sample_goal() const {
     double r = double(rand()) / RAND_MAX;
     int i = 0;
     r -= prob_goals[i];
@@ -400,6 +414,18 @@ int PedBelief::sample_goal() {
         r -= prob_goals[i];
     }
     return i;
+}
+
+int PedBelief::maxlikely_goal() const {
+    double ml = 0;
+    int mi = 0;
+    for(int i=0; i<prob_goals.size(); i++) {
+        if (prob_goals[i] > ml) {
+            ml = prob_goals[i];
+            mi = i;
+        }
+    }
+    return mi;
 }
 
 void WorldBeliefTracker::printBelief() const {
@@ -431,6 +457,36 @@ PomdpState WorldBeliefTracker::sample() {
     }
     return s;
 }
+vector<PomdpState> WorldBeliefTracker::sample(int num) {
+    vector<PomdpState> particles;
+    for(int i=0; i<num; i++) {
+        particles.push_back(sample());
+    }
+
+    cout << "Num peds for planning: " << particles[0].num << endl;
+
+    return particles;
+}
+
+vector<PedStruct> WorldBeliefTracker::predictPeds() {
+    vector<PedStruct> prediction;
+
+    for(const auto& p: sorted_beliefs) {
+        double dist = COORD::EuclideanDistance(p.pos, model.path[car.pos]);
+        int step = int(dist / (ModelParams::PED_SPEED + car.vel) * ModelParams::control_freq);
+        for(int j=0; j<10; j++) {
+            //int goal = p.maxlikely_goal();
+            int goal = p.sample_goal();
+            PedStruct ped0(p.pos, goal, p.id);
+            for(int i=0; i<3; i++) {
+                PedStruct ped = ped0;
+                model.PedStepDeterministic(ped, step+i*6);
+                prediction.push_back(ped);
+            }
+        }
+    }
+    return prediction;
+}
 
 void WorldBeliefTracker::PrintState(const State& s, ostream& out) const {
 	const PomdpState & state=static_cast<const PomdpState&> (s);
@@ -449,13 +505,3 @@ void WorldBeliefTracker::PrintState(const State& s, ostream& out) const {
 	out << "MinDist: " << min_dist << endl;
 }
 
-vector<PomdpState> WorldBeliefTracker::sample(int num) {
-    vector<PomdpState> particles;
-    for(int i=0; i<num; i++) {
-        particles.push_back(sample());
-    }
-	
-    cout << "Num peds for planning: " << particles[0].num << endl;
-
-    return particles;
-}

@@ -38,6 +38,7 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
 
 	markers_pub=nh.advertise<visualization_msgs::MarkerArray>("pomdp_belief",1);
     pedStatePub_=nh.advertise<sensor_msgs::PointCloud>("ped_state", 1);
+    pedPredictionPub_ = nh.advertise<sensor_msgs::PointCloud>("ped_prediction", 1);
 	safeAction=2;
 	target_speed_=0.0;
 	goal_reached=false;
@@ -360,6 +361,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 			cerr<<"transform error within control loop"<<endl;
 			cout<<"laser frame "<<in_pose.frame_id_<<endl;
             err_retry_rate.sleep();
+            return;
 		}
 
 		sendPathPlanStart(out_pose);
@@ -372,6 +374,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 			cerr<<"transform error within control loop"<<endl;
 			cout<<"laser frame "<<in_pose.frame_id_<<endl;
             err_retry_rate.sleep();
+            return;
 		}
 
         worldStateTracker.updateVel(real_speed_);
@@ -420,6 +423,9 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		cout<<"before belief update"<<endl;
 		worldBeliefTracker.update();
 		cout<<"after belief update"<<endl;
+
+        publishPedsPrediciton();
+
 		vector<PomdpState> samples = worldBeliefTracker.sample(1000);
 		vector<State*> particles = despot->ConstructParticles(samples);
 
@@ -434,6 +440,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 		solver->belief(pb);
 
         /****** random simulation for verification purpose ******/
+        /*
         Random rand((unsigned)1012312);
         cout << "Starting simulation" << endl;
         for (int i = 0; i < 100; i ++) {
@@ -477,6 +484,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
         }
         cout << "End of simulation" << endl;
+        */
 
 
         /****** solve for safe action ******/
@@ -502,6 +510,21 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		cout<<"target_speed = "<<target_speed_<<endl;
 		delete pb;
+}
+
+void Controller::publishPedsPrediciton() {
+    vector<PedStruct> peds = worldBeliefTracker.predictPeds();
+    sensor_msgs::PointCloud pc;
+    pc.header.frame_id="/map";
+    pc.header.stamp=ros::Time::now();
+    for(const auto& ped: peds) {
+        geometry_msgs::Point32 p;
+        p.x = ped.pos.x;
+        p.y = ped.pos.y;
+        p.z = 1.0;
+        pc.points.push_back(p);
+    }
+    pedPredictionPub_.publish(pc);
 }
 
 

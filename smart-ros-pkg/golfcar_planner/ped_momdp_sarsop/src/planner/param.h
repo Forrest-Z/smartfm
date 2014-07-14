@@ -19,6 +19,7 @@ namespace ModelParams {
     extern double BELIEF_SMOOTHING;
     extern double NOISE_ROBVEL;
 
+    const double IN_FRONT_ANGLE_DEG = 60;
 
 	const double pos_rln=1.0; // position resolution
 	const double vel_rln=0.03; // velocity resolution

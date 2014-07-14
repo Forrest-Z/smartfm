@@ -197,8 +197,8 @@ namespace ped_pathplan {
 
     float PathPlan::heuristic(const State& s) {
         float d = distToGoal(s);
-        float h = (d / float(step)) * COST_NEUTRAL;
-        return h;
+        float h_dist = (d / float(step)) * COST_NEUTRAL;
+        return h_dist;
     }
 
     bool PathPlan::isGoalReached(const State& s) {

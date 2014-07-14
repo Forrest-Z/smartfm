@@ -6,10 +6,11 @@ struct PedBelief {
 	int id;
     COORD pos;
     std::vector<double> prob_goals;
-    int sample_goal();
+    int sample_goal() const;
+    int maxlikely_goal() const;
 };
 
-class WorldModel  {
+class WorldModel {
 public:
 
     WorldModel();
@@ -23,6 +24,7 @@ public:
     int minStepToGoal(const PomdpState& state);
 
 	void PedStep(PedStruct &ped, Random& random);
+    void PedStepDeterministic(PedStruct& ped, int step);
 	void RobStep(CarStruct &car, Random& random);
     void RobVelStep(CarStruct &car, double acc, Random& random);
 
@@ -35,6 +37,7 @@ public:
 	Path path;
     std::vector<COORD> goals;
     double freq;
+    const double in_front_angle_cos;
 };
 
 class WorldStateTracker {
@@ -69,6 +72,7 @@ public:
     void update();
     PomdpState sample();
     vector<PomdpState> sample(int num);
+    vector<PedStruct> predictPeds();
 
     WorldModel& model;
     WorldStateTracker& stateTracker;
