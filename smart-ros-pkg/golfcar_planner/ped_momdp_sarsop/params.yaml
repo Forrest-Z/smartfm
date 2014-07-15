@@ -23,8 +23,8 @@ ped_costmap:
     update_frequency: 2
     observation_sources: peds
     peds:
-        topic: confident_objects_momdp
-        #topic: ped_prediction
+        #topic: confident_objects_momdp
+        topic: ped_prediction
         clearing: true
         obstacle_range: 5000
         raytrace_range: 5000

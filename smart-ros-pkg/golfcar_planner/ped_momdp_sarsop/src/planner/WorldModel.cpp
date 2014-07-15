@@ -432,9 +432,9 @@ int PedBelief::sample_goal() const {
 
 int PedBelief::maxlikely_goal() const {
     double ml = 0;
-    int mi = 0;
+    int mi = prob_goals.size()-1; // stop intention
     for(int i=0; i<prob_goals.size(); i++) {
-        if (prob_goals[i] > ml) {
+        if (prob_goals[i] > ml && prob_goals[i] > 0.5) {
             ml = prob_goals[i];
             mi = i;
         }
