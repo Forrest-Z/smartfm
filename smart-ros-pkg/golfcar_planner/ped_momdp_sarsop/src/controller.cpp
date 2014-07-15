@@ -515,7 +515,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 void Controller::publishPedsPrediciton() {
     vector<PedStruct> peds = worldBeliefTracker.predictPeds();
     sensor_msgs::PointCloud pc;
-    pc.header.frame_id="/map";
+    pc.header.frame_id=global_frame_id;
     pc.header.stamp=ros::Time::now();
     for(const auto& ped: peds) {
         geometry_msgs::Point32 p;

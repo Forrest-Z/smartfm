@@ -3,7 +3,7 @@ pruning_constant: 0
 pathplan_ahead: 3.0
 
 crash_penalty: -50000.0
-reward_factor_vel: 1.5
+reward_factor_vel: 0.5
 reward_base_crash_vel: 0.4
 belief_smoothing: 0.15
 noise_robvel: 0.1
@@ -34,7 +34,7 @@ planner:
     steering_limit_deg: 16
     yaw_res_deg: 1.5
     #cost_steering_deg: 30
-    cost_steering_deg: 5
+    cost_steering_deg: 20
     steplen: 6
     num_search: 800000
     discretize_ratio: 0.3
