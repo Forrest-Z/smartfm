@@ -185,13 +185,13 @@ int main(int argc, char** argv)
 	//Pedpub_ = n.advertise<sensor_msgs::PointCloud>("confident_objects_momdp", 2);
     ros::Duration(0.1).sleep();
     std_msgs::ColorRGBA color;
-    ped1.x = 1.0; ped1.y = 1.0;
+    ped1.x = 1.0; ped1.y = 1.0; ped1.z=5.0;
     color.r = 1.0; color.a = 1.0;
     makeViewFacingMarker(color, string("Ped1"), ped1);
-    ped2.x = 7.0; ped2.y = 1.0;
+    ped2.x = 7.0; ped2.y = 1.0; ped2.z=5.0;
     color.r = 0.0; color.g = 1.0;
     makeViewFacingMarker(color, string("Ped2"), ped2);
-    ped3.x = 7.0; ped3.y = 7.0;
+    ped3.x = 7.0; ped3.y = 7.0; ped3.z=5.0;
     color.g = 0.0; color.b = 1.0;
     makeViewFacingMarker(color, string("Ped3"), ped3);
 
