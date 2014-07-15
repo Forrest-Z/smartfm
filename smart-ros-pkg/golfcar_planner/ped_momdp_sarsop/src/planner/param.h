@@ -21,7 +21,7 @@ namespace ModelParams {
 
     const double IN_FRONT_ANGLE_DEG = 60;
 
-	const double pos_rln=1.0; // position resolution
+	const double pos_rln=0.5; // position resolution
 	const double vel_rln=0.03; // velocity resolution
 
     const double PATH_STEP = 0.05;
@@ -33,7 +33,7 @@ namespace ModelParams {
 	const bool debug=false;
 
 	const double control_freq=3;
-	const double AccSpeed=1.0;
+	const double AccSpeed=0.5;
 
 	extern std::string rosns;
 	extern std::string laser_frame;

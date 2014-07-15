@@ -16,6 +16,7 @@ public:
     WorldModel();
 
 	double getMinCarPedDist(const PomdpState& state);
+	double getMinCarPedDistAllDirs(const PomdpState& state);
 	bool inCollision(const PomdpState& state);
 	int defaultPolicy(const vector<State*>& particles);
     bool isLocalGoal(const PomdpState& state);

@@ -282,8 +282,11 @@ void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 	}
 
 	// set goal
-	pose.pose.position.x=17;
-	pose.pose.position.y=52;
+	//pose.pose.position.x=17;
+	//pose.pose.position.y=52;
+
+	pose.pose.position.x=19.5;
+	pose.pose.position.y=55.5;
 	// large map goal
 	//pose.pose.position.x=108;
 	//pose.pose.position.y=143;
@@ -503,8 +506,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		target_speed_=real_speed_;
         if(safeAction==0) {}
-		else if(safeAction==1) target_speed_ += 0.3*2;
-		else if(safeAction==2) target_speed_ -= 0.5*2;
+		else if(safeAction==1) target_speed_ += 0.15*2;
+		else if(safeAction==2) target_speed_ -= 0.25*2;
 		if(target_speed_<=0.0) target_speed_ = 0.0;
 		if(target_speed_>=ModelParams::VEL_MAX) target_speed_ = ModelParams::VEL_MAX;
 

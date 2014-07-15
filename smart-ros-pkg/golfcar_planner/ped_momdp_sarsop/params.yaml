@@ -4,7 +4,7 @@ pathplan_ahead: 3.0
 
 crash_penalty: -50000.0
 reward_factor_vel: 0.5
-reward_base_crash_vel: 0.4
+reward_base_crash_vel: 1.0
 belief_smoothing: 0.15
 noise_robvel: 0.1
 noise_goal_angle_deg: 45
@@ -23,8 +23,8 @@ ped_costmap:
     update_frequency: 2
     observation_sources: peds
     peds:
-        #topic: confident_objects_momdp
-        topic: ped_prediction
+        topic: confident_objects_momdp
+        #topic: ped_prediction
         clearing: true
         obstacle_range: 5000
         raytrace_range: 5000
@@ -34,8 +34,8 @@ planner:
     steering_limit_deg: 16
     yaw_res_deg: 1.5
     #cost_steering_deg: 30
-    cost_steering_deg: 20
-    steplen: 6
+    cost_steering_deg: 10
+    steplen: 5
     num_search: 800000
     discretize_ratio: 0.3
 

@@ -10,7 +10,7 @@ PurePursuit::PurePursuit(string global_frameID)
     global_frameID_ = global_frameID;
     //Lfw_ = 3;
 	
-    Lfw_ = 1;
+    Lfw_ = 2;
     lfw_ = 1;
     car_length_ = 1.632;
     nextPathThres_ = 5;

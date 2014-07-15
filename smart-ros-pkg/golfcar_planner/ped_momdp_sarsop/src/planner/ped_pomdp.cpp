@@ -108,9 +108,13 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
  	// Safety control: collision; Terminate upon collision
 	double min_dist = world.getMinCarPedDist(state);
+	double min_dist_all_dirs=world.getMinCarPedDistAllDirs(state);
 	if (min_dist < 1.0) {
 		reward = ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL);
 		return true;
+	}
+	if (min_dist_all_dirs<2.0 && state.car.vel>1.0) {
+		reward+=-4;
 	}
 
 	// Smoothness control: Avoid frequent dec or acc

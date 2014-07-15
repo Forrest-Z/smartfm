@@ -97,6 +97,20 @@ double WorldModel::getMinCarPedDist(const PomdpState& state) {
 	return mindist;
 }
 
+double WorldModel::getMinCarPedDistAllDirs(const PomdpState& state) {
+    double mindist = numeric_limits<double>::infinity();
+    const auto& carpos = path[state.car.pos];
+
+	// Find the closest pedestrian in front
+    for(int i=0; i<state.num; i++) {
+		const auto& p = state.peds[i];
+        double d = COORD::EuclideanDistance(carpos, p.pos);
+        if (d >= 0 && d < mindist) mindist = d;
+    }
+
+	return mindist;
+}
+
 bool WorldModel::inCollision(const PomdpState& state) {
     double mindist = numeric_limits<double>::infinity();
     const auto& carpos = path[state.car.pos];
