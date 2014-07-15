@@ -33,7 +33,8 @@ ped_costmap:
 planner:
     steering_limit_deg: 12
     yaw_res_deg: 1.5
-    cost_steering_deg: 15
+    #cost_steering_deg: 30
+    cost_steering_deg: 10
     steplen: 6
     num_search: 800000
     discretize_ratio: 0.3

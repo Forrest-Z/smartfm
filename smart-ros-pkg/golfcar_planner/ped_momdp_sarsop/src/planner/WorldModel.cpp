@@ -474,9 +474,10 @@ vector<PedStruct> WorldBeliefTracker::predictPeds() {
     for(const auto& p: sorted_beliefs) {
         double dist = COORD::EuclideanDistance(p.pos, model.path[car.pos]);
         int step = int(dist / (ModelParams::PED_SPEED + car.vel) * ModelParams::control_freq);
-        for(int j=0; j<10; j++) {
-            //int goal = p.maxlikely_goal();
-            int goal = p.sample_goal();
+        //for(int j=0; j<10; j++) {
+            //int goal = p.sample_goal();
+        for(int j=0; j<1; j++) {
+            int goal = p.maxlikely_goal();
             PedStruct ped0(p.pos, goal, p.id);
             for(int i=0; i<3; i++) {
                 PedStruct ped = ped0;

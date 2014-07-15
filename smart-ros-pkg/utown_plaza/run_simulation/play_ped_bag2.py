@@ -7,7 +7,7 @@ import rosbag
 
 ROSBAG = '/opt/ros/fuerte/bin/rosbag'
 #BAGFN = '3394_new.bag'
-BAGFN = 'pedestrians1.bag'
+BAGFN = 'pedestrians3.bag'
 
 def get_duration(bagfn):
     b = rosbag.Bag(bagfn)
@@ -30,7 +30,7 @@ def gen_pedindex(bagfn):
     pedindex = []
     for topic, msg, time in read_msg:
         time = time.to_time()
-        if len(msg.pd_vector) > 8:
+        if len(msg.pd_vector) > 10:
             t = time - t0
             pedindex.append(t)
     return pedindex
@@ -40,8 +40,9 @@ def main(bagfn):
     #start = t / 8.0 + random.uniform(0, 4)
     #start = random.uniform(0, t)
     pedindex = gen_pedindex(bagfn)
-    #start = random.choice(pedindex)
-    start = 439.553
+    start = random.choice(pedindex)
+    #start = 439.553
+    print (ROSBAG, [ROSBAG, 'play', '-s', str(start), bagfn])
     os.execv(ROSBAG, [ROSBAG, 'play', '-s', str(start), bagfn])
 
 
