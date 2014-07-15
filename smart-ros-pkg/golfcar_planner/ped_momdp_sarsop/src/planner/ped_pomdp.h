@@ -63,7 +63,6 @@ public:
 	void Free(State* particle) const;
 
 	vector<State*> ConstructParticles(vector<PomdpState> & samples); 
-	static int action_vel[3];
 
 	WorldModel &world;
 protected:

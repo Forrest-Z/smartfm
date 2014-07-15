@@ -1,7 +1,5 @@
 #include "ped_pomdp.h"
 
-int PedPomdp::action_vel[3] = {0, 1, -1};
-
 class PedPomdpParticleLowerBound : public ParticleLowerBound {
 private:
 	const PedPomdp* ped_pomdp_;
@@ -12,6 +10,7 @@ public:
 	{
 	}
 
+    // IMPORTANT: Check after changing reward function.
 	virtual ValuedAction Value(const vector<State*>& particles) const {
 		PomdpState* state = static_cast<PomdpState*>(particles[0]);
 		double min_dist = numeric_limits<double>::infinity();
@@ -19,14 +18,14 @@ public:
 		double carvel = state->car.vel;
 	
 		// Find mininum car-pedestrian distance
-		for(int i=0; i<state->num; i++) {
+		for (int i=0; i<state->num; i++) {
 			auto& p = state->peds[i];
 			double dist = COORD::EuclideanDistance(carpos, p.pos);
 			min_dist = min(dist, min_dist);
 		}
 
 		// Assume constant car speed
-		double value = -20; // Value when no pedestrian present
+		double value = -20; // Value when no pedestrian present 
 		if (min_dist != numeric_limits<double>::infinity()) {
 			double step = max(min_dist - 2.0, 0.0) / (carvel + ModelParams::PED_SPEED) * ModelParams::control_freq;
 			/*
@@ -41,7 +40,7 @@ public:
 			}
 			*/
 			assert(step < 10000);
-	
+
 			value = -(1 - Discount(step)) / (1 - Discount()) 
 				+ ModelParams::CRASH_PENALTY  * (carvel + 0.2) * Discount(step) / (1 - Discount());
 		}
