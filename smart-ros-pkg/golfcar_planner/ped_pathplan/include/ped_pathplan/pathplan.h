@@ -55,6 +55,7 @@ namespace ped_pathplan {
             float heuristic(const State& s);
             DiscreteState discretize(const State& s);
             float distToGoal(const State& s);
+            float angleToGoal(const State& s);
             bool isGoalReached(const State& s);
     };
 
