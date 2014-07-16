@@ -43,7 +43,7 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
     double carvel = state->car.vel;
     for (int i=0; i<state->num; i++) {
 		auto& p = state->peds[i];
-		if(!inFront(p.pos, state->car.pos)) continue;
+		//if(!inFront(p.pos, state->car.pos)) continue;
         double d = COORD::EuclideanDistance(carpos, p.pos);
 		// cout << d << " " << carpos.x << " " << carpos.y << " "<< p.pos.x << " " << p.pos.y << endl;
         if (d >= 0 && d < mindist) 
@@ -89,7 +89,7 @@ double WorldModel::getMinCarPedDist(const PomdpState& state) {
 	// Find the closest pedestrian in front
     for(int i=0; i<state.num; i++) {
 		const auto& p = state.peds[i];
-		if(!inFront(p.pos, state.car.pos)) continue;
+		//if(!inFront(p.pos, state.car.pos)) continue;
         double d = COORD::EuclideanDistance(carpos, p.pos);
         if (d >= 0 && d < mindist) mindist = d;
     }
@@ -112,6 +112,7 @@ double WorldModel::getMinCarPedDistAllDirs(const PomdpState& state) {
 }
 
 bool WorldModel::inCollision(const PomdpState& state) {
+	// TODO
     double mindist = numeric_limits<double>::infinity();
     const auto& carpos = path[state.car.pos];
     //double carvel = state.car.vel;
@@ -119,7 +120,7 @@ bool WorldModel::inCollision(const PomdpState& state) {
 	// Find the closest pedestrian in front
     for(int i=0; i<state.num; i++) {
 		const auto& p = state.peds[i];
-		if(!inFront(p.pos, state.car.pos)) continue;
+		//if(!inFront(p.pos, state.car.pos)) continue;
         double d = COORD::EuclideanDistance(carpos, p.pos);
         if (d >= 0 && d < mindist) mindist = d;
     }
@@ -451,7 +452,7 @@ int PedBelief::maxlikely_goal() const {
     double ml = 0;
     int mi = prob_goals.size()-1; // stop intention
     for(int i=0; i<prob_goals.size(); i++) {
-        if (prob_goals[i] > ml && prob_goals[i] > 0.5) {
+        if (prob_goals[i] > ml && prob_goals[i] > 0.3) {
             ml = prob_goals[i];
             mi = i;
         }

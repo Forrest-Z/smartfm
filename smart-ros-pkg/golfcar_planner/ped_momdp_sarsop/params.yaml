@@ -19,7 +19,7 @@ ped_costmap:
     publish_frequency: 5
     robot_radius: 1.2
     inflation_radius: 7.0
-    cost_scaling_factor: 4.0
+    cost_scaling_factor: 8.0
     update_frequency: 2
     observation_sources: peds
     peds:
@@ -28,13 +28,13 @@ ped_costmap:
         clearing: true
         obstacle_range: 5000
         raytrace_range: 5000
-    ped_cost_ratio: 0.8
+    ped_cost_ratio: 0.5
 
 planner:
-    steering_limit_deg: 16
+    steering_limit_deg: 14
     yaw_res_deg: 1.0
     #cost_steering_deg: 30
-    cost_steering_deg: 10
+    cost_steering_deg: 5
     steplen: 7
     num_search: 800000
     discretize_ratio: 0.3

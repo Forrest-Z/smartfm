@@ -19,8 +19,8 @@ namespace ped_pathplan {
     }
 
     inline float angleDist(float a, float b) {
-        float d = fabs(a-b);
-        if (d > M_PI) d = 2*M_PI - d;
+        float d = fabs(normAngle(a-b));
+        //if (d > M_PI) d = 2*M_PI - d;
         return d;
     }
 
@@ -154,7 +154,7 @@ namespace ped_pathplan {
 				bool success;
                 PathItem p1 = next(p, t, success);
 				if (!success or (! (0 < p1.state[0] && p1.state[0] < nx && 0 < p1.state[1] && p1.state[1] < ny))) {
-					break;
+					continue;
 				}
                 auto dp1 = discretize(p1.state);
                 if (visited.count(dp1)) {
@@ -202,9 +202,9 @@ namespace ped_pathplan {
         float steer_cost = fabs(t) * cost_steering;
 
 		success = (cost < COST_OBS * 0.999999);
-        if(angleDist(angleToGoal(p1.state), p1.state[2]) > M_PI / 180.0 * 75.0) {
-            success = false;
-        }
+		if(angleDist(angleToGoal(p1.state), p1.state[2]) > M_PI / 180.0 * 60.0) {
+			success = false;
+		}
 
         p1.g = p.g + cost + steer_cost;
         p1.h = heuristic(p1.state);

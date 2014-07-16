@@ -15,8 +15,8 @@
 #define COSTTYPE unsigned char	// Whatever is used...
 
 namespace ped_pathplan {
-    //const float TOLERANCE = 10;
-    const float TOLERANCE = 30;
+    const float TOLERANCE = 10;
+    //const float TOLERANCE = 20;
 
     typedef std::vector<float> State;
     typedef std::vector<int> DiscreteState;

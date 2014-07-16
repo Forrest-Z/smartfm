@@ -26,7 +26,7 @@ namespace ModelParams {
 
     const double PATH_STEP = 0.05;
 
-    const double GOAL_TOLERANCE = 3;
+    const double GOAL_TOLERANCE = 2;
 
     const double PED_SPEED = 1.2;
 

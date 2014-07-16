@@ -24,13 +24,13 @@ public:
 			min_dist = min(dist, min_dist);
 		}
 
+        double move_penalty = ped_pomdp_->MovementPenalty(*state);
 		// Case 1, no pedestrian: Constant car speed
-		double value = (state->car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX / (1 - Discount());
+		double value = move_penalty / (1 - Discount());
         // Case 2, with pedestrians: Constant car speed, head-on collision with nearest neighbor
 		if (min_dist != numeric_limits<double>::infinity()) {
 			double step = max(min_dist - 2.0, 0.0) / (carvel + ModelParams::PED_SPEED) * ModelParams::control_freq;
             double crash_penalty = ped_pomdp_->CrashPenalty(*state);
-            double move_penalty = ped_pomdp_->MovementPenalty(*state);
 			value = (move_penalty - 4) * (1 - Discount(int(step))) / (1 - Discount()) 
 				+ crash_penalty * Discount(int(step)) / (1 - Discount());
 		}
@@ -118,7 +118,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		reward = CrashPenalty(state);
 		return true;
 	}
-	if (min_dist_all_dirs<4.0 && state.car.vel>1.0) {
+	if (min_dist_all_dirs<2.0 && state.car.vel>1.0) {
 		reward+=-4;
 	}
 
