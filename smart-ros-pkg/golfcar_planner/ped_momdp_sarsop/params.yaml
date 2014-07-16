@@ -1,4 +1,4 @@
-fixed_path: false 
+fixed_path: false
 pruning_constant: 0
 pathplan_ahead: 3.0
 
@@ -28,14 +28,14 @@ ped_costmap:
         clearing: true
         obstacle_range: 5000
         raytrace_range: 5000
-    ped_cost_ratio: 0.6
+    ped_cost_ratio: 0.8
 
 planner:
     steering_limit_deg: 16
-    yaw_res_deg: 1.5
+    yaw_res_deg: 1.0
     #cost_steering_deg: 30
     cost_steering_deg: 10
-    steplen: 5
+    steplen: 7
     num_search: 800000
     discretize_ratio: 0.3
 
