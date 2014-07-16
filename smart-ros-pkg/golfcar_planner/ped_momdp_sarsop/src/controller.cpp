@@ -252,12 +252,27 @@ COORD poseToCoord(const tf::Stamped<tf::Pose>& pose) {
 
 
 geometry_msgs::PoseStamped Controller::getPoseAhead(const tf::Stamped<tf::Pose>& carpose) {
+    static int last_i = -1;
+    static double last_yaw = 0;
+    static COORD last_ahead;
 	auto& path = worldModel.path;
 	COORD coord = poseToCoord(carpose);
+
 	int i = path.nearest(coord);
-	int j = path.forward(i, pathplan_ahead_);
-	COORD ahead = path[j];
-	double yaw = path.getYaw(j);
+    COORD ahead;
+    double yaw;
+
+    if (i == last_i) {
+        yaw = last_yaw;
+        ahead = last_ahead;
+    } else {
+        int j = path.forward(i, pathplan_ahead_);
+        //yaw = (path.getYaw(j) + path.getYaw(j-1)+ path.getYaw(j-2)) / 3;
+        yaw = path.getYaw(j);
+        ahead = path[j];
+        last_yaw = yaw;
+        last_i = i;
+    }
 
 	auto q = tf::createQuaternionFromYaw(yaw);
 	tf::Pose p(q, tf::Vector3(ahead.x, ahead.y, 0));
