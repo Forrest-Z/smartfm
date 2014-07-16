@@ -191,6 +191,10 @@ double WorldModel::pedMoveProb(COORD prev, COORD curr, int goal_id) {
 
 void WorldModel::RobStep(CarStruct &car, Random& random) {
     double dist = car.vel / freq;
+    //double dist_l=max(0.0,dist-ModelParams::AccSpeed/freq);
+    //double dist_r=min(ModelParams::VEL_MAX,dist+ModelParams::AccSpeed/freq);
+    //double sample_dist=random.NextDouble(dist_l,dist_r);
+    //int nxt = path.forward(car.pos, sample_dist);
     int nxt = path.forward(car.pos, dist);
     car.pos = nxt;
     car.dist_travelled += dist;
@@ -261,7 +265,9 @@ PedBelief WorldModel::initPedBelief(const PedStruct& ped) {
 }
 
 double timestamp() {
-    return ((double) clock()) / CLOCKS_PER_SEC;
+    //return ((double) clock()) / CLOCKS_PER_SEC;
+    static double starttime=get_time_second();
+    return get_time_second()-starttime;
 }
 
 void WorldStateTracker::cleanPed() {
@@ -269,11 +275,11 @@ void WorldStateTracker::cleanPed() {
     for(int i=0;i<ped_list.size();i++)
     {
         bool insert=true;
-        int w1,h1;
+        double w1,h1;
         w1=ped_list[i].w;
         h1=ped_list[i].h;
         for(const auto& p: ped_list_new) {
-            int w2,h2;
+            double w2,h2;
             w2=p.w;
             h2=p.h;
             if (abs(w1-w2)<=0.1&&abs(h1-h2)<=0.1) {
@@ -334,17 +340,26 @@ void WorldStateTracker::updateVel(double vel) {
 }
 
 vector<WorldStateTracker::PedDistPair> WorldStateTracker::getSortedPeds() {
+    cout << "before sorting:" << endl;
     // sort peds
     vector<PedDistPair> sorted_peds;
     for(const auto& p: ped_list) {
         COORD cp(p.w, p.h);
         float dist = COORD::EuclideanDistance(cp, carpos);
         sorted_peds.push_back(PedDistPair(dist, p));
+        cout << " " << dist;
     }
+    cout << endl;
     sort(sorted_peds.begin(), sorted_peds.end(),
             [](const PedDistPair& a, const PedDistPair& b) -> bool {
                 return a.first < b.first;
             });
+    cout << "after sorting:" << endl;
+    for(const auto& p : sorted_peds) {
+        cout << " " << p.first;
+    }
+    cout << endl;
+
     return sorted_peds;
 }
 
@@ -362,12 +377,14 @@ PomdpState WorldStateTracker::getPomdpState() {
 		pomdpState.num = ModelParams::N_PED_IN;
 	}
 
+    cout<<"pedestrian time stamps"<<endl;
     for(int i=0;i<pomdpState.num;i++) {
         const auto& ped = sorted_peds[i].second;
         pomdpState.peds[i].pos.x=ped.w;
         pomdpState.peds[i].pos.y=ped.h;
 		pomdpState.peds[i].id = ped.id;
 		pomdpState.peds[i].goal = -1;
+        cout<<"ped "<<i<<" "<<ped.last_update<<endl;
     }
 	return pomdpState;
 }
@@ -462,13 +479,15 @@ PomdpState WorldBeliefTracker::sample() {
 	s.num = 0;
     for(int i=0; i < sorted_beliefs.size() && i < ModelParams::N_PED_IN; i++) {
 		auto& p = sorted_beliefs[i];
-		if (COORD::EuclideanDistance(p.pos, model.path[car.pos]) < 5) {
+		if (COORD::EuclideanDistance(p.pos, model.path[car.pos]) < 10) {
 			s.peds[s.num].pos = p.pos;
 			s.peds[s.num].goal = p.sample_goal();
 			s.peds[s.num].id = p.id;
 			s.num ++;
 		}
     }
+    //cout<<"print state from planner "<<endl;
+    //PrintState(s,cout);
     return s;
 }
 vector<PomdpState> WorldBeliefTracker::sample(int num) {

@@ -24,31 +24,20 @@ public:
 			min_dist = min(dist, min_dist);
 		}
 
-		// Assume constant car speed
-		double value = -20; // Value when no pedestrian present 
+		// Case 1, no pedestrian: Constant car speed
+		double value = (state->car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX / (1 - Discount());
+        // Case 2, with pedestrians: Constant car speed, head-on collision with nearest neighbor
 		if (min_dist != numeric_limits<double>::infinity()) {
 			double step = max(min_dist - 2.0, 0.0) / (carvel + ModelParams::PED_SPEED) * ModelParams::control_freq;
-			/*
-			// cout << step << endl;
-			if(step >= 10000) {
-				// cout << carpos.x << " " << carpos.y << endl;
-				for(int i=0; i<state->num; i++) {
-					auto& p = state->peds[i];
-					double dist = COORD::EuclideanDistance(carpos, p.pos);
-					// cout << p.id << " " << p.pos.x << " " << p.pos.y << endl;
-				}
-			}
-			*/
-			assert(step < 10000);
-
-			value = -(1 - Discount(int(step))) / (1 - Discount()) 
-				+ ModelParams::CRASH_PENALTY  * (carvel + 0.2) * Discount(int(step)) / (1 - Discount());
+            double crash_penalty = ped_pomdp_->CrashPenalty(*state);
+            double move_penalty = ped_pomdp_->MovementPenalty(*state);
+			value = (move_penalty - 4) * (1 - Discount(int(step))) / (1 - Discount()) 
+				+ crash_penalty * Discount(int(step)) / (1 - Discount());
 		}
 
-		return ValuedAction(0, State::Weight(particles) * value);
+		return ValuedAction(ped_pomdp_->ACT_CUR, State::Weight(particles) * value);
 	}
 };
-
 
 PedPomdp::PedPomdp(WorldModel &model_) :
 	world(model_),
@@ -92,16 +81,33 @@ vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 	return particles;
 }
 
+// Very high cost for collision
+double PedPomdp::CrashPenalty(const PomdpState& state) const {
+    return ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL);
+}
+
+// Avoid frequent dec or acc
+double PedPomdp::ActionPenalty(int action) const {
+    return (action == ACT_DEC || action == ACT_ACC) ? -0.07 : 0.0;
+}
+
+// Less penalty for longer distance travelled
+double PedPomdp::MovementPenalty(const PomdpState& state) const {
+    return ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
+    /*
+    retrun //(min_dist > 3.0 || (min_dist < 3.0 && action != ACT_ACC)) ?
+		(1.0 * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX);
+		//: -1.5;
+    */
+}
+
 bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint64_t& obs) const {
-    const double VEL_FACTOR = ModelParams::REWARD_FACTOR_VEL;
 	PomdpState& state = static_cast<PomdpState&>(state_);
 	reward = 0.0;
 
 	// CHECK: relative weights of each reward component
 	// Terminate upon reaching goal
 	if (world.isLocalGoal(state)) {
-		// Prefer higher speed even though same number of discrete steps needed to reach local goal
-		// reward += state.car.dist_travelled-ModelParams::GOAL_TRAVELLED-ModelParams::VEL_MAX/ModelParams::control_freq;
 		return true;
 	}
 
@@ -109,20 +115,18 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	double min_dist = world.getMinCarPedDist(state);
 	double min_dist_all_dirs=world.getMinCarPedDistAllDirs(state);
 	if (min_dist < 1.0) {
-		reward = ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL);
+		reward = CrashPenalty(state);
 		return true;
 	}
-	if (min_dist_all_dirs<2.0 && state.car.vel>1.0) {
+	if (min_dist_all_dirs<4.0 && state.car.vel>1.0) {
 		reward+=-4;
 	}
 
-	// Smoothness control: Avoid frequent dec or acc
-	reward += (action == ACT_DEC || action == ACT_ACC) ? -0.07 : 0.0;
+	// Smoothness control
+	reward += ActionPenalty(action);
 
 	// Speed control: Encourage higher speed with no pedestrians nearby, but lower speed with pedestrians nearby
-	reward += //(min_dist > 3.0 || (min_dist < 3.0 && action != ACT_ACC)) ?
-		(1.0 * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX);
-		//: -1.5;
+	reward += MovementPenalty(state);
 
 	// State transition
 	Random random(rNum);
@@ -281,6 +285,7 @@ public:
 	{
 	}
 
+    // IMPORTANT: Check after changing reward function.
 	double Value(const State& s) const {
 		const PomdpState& state = static_cast<const PomdpState&>(s);
 		if (ped_pomdp_->world.inCollision(state))
@@ -316,15 +321,16 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
 	const PomdpState & state=static_cast<const PomdpState&> (s);
     COORD& carpos = world.path[state.car.pos];
 
-	out << "Rob Pos: " << carpos.x<< " " <<carpos.y << endl;
-	out << "Rob travelled: " << state.car.dist_travelled << endl;
+	out << "car pos / dist_trav / vel = " << "(" << carpos.x<< ", " <<carpos.y << ") / " 
+        << state.car.dist_travelled << " / "
+        << state.car.vel << endl;
+	out<< state.num << " pedestrians " << endl;
 	for(int i = 0; i < state.num; i ++) {
-		out << "Ped Pos: " << state.peds[i].pos.x << " " << state.peds[i].pos.y << endl;
-		out << "Goal: " << state.peds[i].goal << endl;
-		out << "id: " << state.peds[i].id << endl;
+		out << "ped " << i << ": id / pos / goal / dist2car =  " << state.peds[i].id << " / "
+            << "(" << state.peds[i].pos.x << ", " << state.peds[i].pos.y << ") / "
+            << state.peds[i].goal << " / "
+            << COORD::EuclideanDistance(state.peds[i].pos, carpos) << endl;
 	}
-	out << "Vel: " << state.car.vel << endl;
-	out<<  "num  " << state.num << endl;
     double min_dist = -1;
     if (state.num > 0)
         min_dist = COORD::EuclideanDistance(carpos, state.peds[0].pos);

@@ -33,6 +33,10 @@ public:
 	}
 	double TransitionProbability(const PomdpState& curr, const PomdpState& next, int action) const;
 
+    double CrashPenalty(const PomdpState& state) const;
+    double ActionPenalty(int action) const;
+    double MovementPenalty(const PomdpState& state) const;
+
 	uint64_t Observe(const State& ) const;
 	const vector<int>& ObserveVector(const State& )   const;
 	double ObsProb(uint64_t z, const State& s, int action) const;
@@ -65,13 +69,13 @@ public:
 	vector<State*> ConstructParticles(vector<PomdpState> & samples); 
 
 	WorldModel &world;
-protected:
+
+ // protected:
 	enum {
 		ACT_CUR,
 		ACT_ACC,
 		ACT_DEC
 	};
-
 private:
 	int** map;
 	PomdpState startState;

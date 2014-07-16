@@ -120,7 +120,7 @@ bool sortFn(Pedestrian p1,Pedestrian p2)
 
 void PedPomdpNode::pedPoseCallback(ped_momdp_sarsop::ped_local_frame_vector lPedLocal)
 {
-
+    cout<<"pedestrians received size = "<<lPedLocal.ped_local.size()<<endl;
 	if(lPedLocal.ped_local.size()==0) return;
 
 	sensor_msgs::PointCloud pc;

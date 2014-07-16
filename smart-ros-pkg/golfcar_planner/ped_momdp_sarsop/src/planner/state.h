@@ -23,13 +23,12 @@ class Pedestrian
 {
 public:
 	Pedestrian() {}
-	Pedestrian(int _w,int _h,int _id) {w=_w;h=_h;id=_id;ts=0;}
-	Pedestrian(int _w,int _h) {w=_w;h=_h;}
+	Pedestrian(double _w,double _h,int _id) {w=_w;h=_h;id=_id;}
+	Pedestrian(double _w,double _h) {w=_w;h=_h;}
 
 	double w,h;
 	int id;   //each pedestrian has a unique identity
-	int ts;
-	int last_update;
+	double last_update;
 };
 
 struct CarStruct {
