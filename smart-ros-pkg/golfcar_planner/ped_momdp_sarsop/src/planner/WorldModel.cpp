@@ -130,7 +130,7 @@ bool WorldModel::inCollision(const PomdpState& state) {
 int WorldModel::minStepToGoal(const PomdpState& state) {
     double d = ModelParams::GOAL_TRAVELLED - state.car.dist_travelled;
     if (d < 0) d = 0;
-    return ceil(d / (ModelParams::VEL_MAX/freq));
+    return int(ceil(d / (ModelParams::VEL_MAX/freq)));
 }
 
 void WorldModel::PedStep(PedStruct &ped, Random& random) {

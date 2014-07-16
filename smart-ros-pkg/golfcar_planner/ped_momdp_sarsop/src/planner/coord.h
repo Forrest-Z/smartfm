@@ -46,7 +46,7 @@ struct COORD
 
   
   static double EuclideanDistance(COORD lhs, COORD rhs);
-  static int ManhattanDistance(COORD lhs, COORD rhs);
+  static double ManhattanDistance(COORD lhs, COORD rhs);
   
 /*
   static int DirectionalDistance(COORD lhs, COORD rhs, int direction);
@@ -79,7 +79,7 @@ inline double COORD::EuclideanDistance(COORD lhs, COORD rhs) {
 }
 
 inline double COORD::ManhattanDistance(COORD lhs, COORD rhs) {
-  return abs(lhs.x - rhs.x) + abs(lhs.y - rhs.y);
+  return fabs(lhs.x - rhs.x) + fabs(lhs.y - rhs.y);
 }
 
 /*
