@@ -41,8 +41,8 @@ public:
 			*/
 			assert(step < 10000);
 
-			value = -(1 - Discount(step)) / (1 - Discount()) 
-				+ ModelParams::CRASH_PENALTY  * (carvel + 0.2) * Discount(step) / (1 - Discount());
+			value = -(1 - Discount(int(step))) / (1 - Discount()) 
+				+ ModelParams::CRASH_PENALTY  * (carvel + 0.2) * Discount(int(step)) / (1 - Discount());
 		}
 
 		return ValuedAction(0, State::Weight(particles) * value);

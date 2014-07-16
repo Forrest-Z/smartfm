@@ -78,7 +78,7 @@ inline double COORD::EuclideanDistance(COORD lhs, COORD rhs) {
               (lhs.y - rhs.y) * (lhs.y - rhs.y));
 }
 
-inline int COORD::ManhattanDistance(COORD lhs, COORD rhs) {
+inline double COORD::ManhattanDistance(COORD lhs, COORD rhs) {
   return abs(lhs.x - rhs.x) + abs(lhs.y - rhs.y);
 }
 
