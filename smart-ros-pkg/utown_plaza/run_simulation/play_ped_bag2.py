@@ -7,7 +7,9 @@ import rosbag
 
 ROSBAG = '/opt/ros/fuerte/bin/rosbag'
 #BAGFN = '3394_new.bag'
-BAGFN = 'pedestrians3.bag'
+#BAGFN = 'pedestrians3.bag'
+
+BAGFN = 'static1.bag'
 
 def get_duration(bagfn):
     b = rosbag.Bag(bagfn)
@@ -33,6 +35,7 @@ def gen_pedindex(bagfn):
         if len(msg.pd_vector) > 10:
             t = time - t0
             pedindex.append(t)
+            print t
     return pedindex
 
 def main(bagfn):

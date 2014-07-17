@@ -4,8 +4,8 @@ pathplan_ahead: 3.0
 
 crash_penalty: -50000.0
 reward_factor_vel: 0.5
-reward_base_crash_vel: 1.0
-belief_smoothing: 0.15
+reward_base_crash_vel: 0.5
+belief_smoothing: 0.10
 noise_robvel: 0.1
 noise_goal_angle_deg: 45
 max_vel: 1.5
@@ -28,7 +28,7 @@ ped_costmap:
         clearing: true
         obstacle_range: 5000
         raytrace_range: 5000
-    ped_cost_ratio: 0.5
+    ped_cost_ratio: 0.8
 
 planner:
     steering_limit_deg: 14

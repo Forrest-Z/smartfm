@@ -7,6 +7,7 @@ namespace ModelParams {
     double BELIEF_SMOOTHING = 0.05;
     double NOISE_ROBVEL = 0.2;
     double NOISE_GOAL_ANGLE = 3.14 * 0.25;
+    double COLLISION_DISTANCE = 1.0;
 
 	double VEL_MAX=2;
 

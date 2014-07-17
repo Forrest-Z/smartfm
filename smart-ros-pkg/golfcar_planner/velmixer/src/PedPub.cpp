@@ -15,8 +15,11 @@ void pedCallBack(sensing_on_road::pedestrian_vision_batchConstPtr ped_batch)
 	for(size_t i=0;i<n;i++)
 	{
 		cout<<"before "<<ped_batch->pd_vector[i].cluster.centroid.x<<" "<<ped_batch->pd_vector[i].cluster.centroid.y<<endl;
-		ped_batch_output.pd_vector[i].cluster.centroid.x= ped_batch->pd_vector[i].cluster.centroid.x-(143.19-52.68);
-		ped_batch_output.pd_vector[i].cluster.centroid.y=ped_batch->pd_vector[i].cluster.centroid.y-(121.05-23.11);
+		//ped_batch_output.pd_vector[i].cluster.centroid.x= ped_batch->pd_vector[i].cluster.centroid.x-(143.19-52.68);
+		//ped_batch_output.pd_vector[i].cluster.centroid.y=ped_batch->pd_vector[i].cluster.centroid.y-(121.05-23.11);
+
+		ped_batch_output.pd_vector[i].cluster.centroid.x= ped_batch->pd_vector[i].cluster.centroid.x;
+		ped_batch_output.pd_vector[i].cluster.centroid.y=ped_batch->pd_vector[i].cluster.centroid.y;
 
 		cout<<"after "<<ped_batch_output.pd_vector[i].cluster.centroid.x<<" "<<ped_batch_output.pd_vector[i].cluster.centroid.y<<endl;
 	}

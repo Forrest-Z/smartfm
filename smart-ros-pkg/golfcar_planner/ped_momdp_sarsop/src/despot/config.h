@@ -21,18 +21,18 @@ struct Config {
 	double noise;
 
 	Config() :
-		search_depth(45),
+		search_depth(20),
 		discount(0.95),
 		root_seed(42),
 		time_per_move(1),
 		n_particles(500),
 		pruning_constant(0),
 		xi(0.95),
-		sim_len(90),
+		sim_len(40),
 		default_action(""),
 		create_mdp_bound(false),
 		bound_file(NULL),
-		max_policy_sim_len(45),
+		max_policy_sim_len(20),
 		noise(0)
 	{
 	}

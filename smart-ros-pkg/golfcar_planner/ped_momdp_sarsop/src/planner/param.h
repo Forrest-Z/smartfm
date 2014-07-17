@@ -18,6 +18,7 @@ namespace ModelParams {
     extern double REWARD_BASE_CRASH_VEL;
     extern double BELIEF_SMOOTHING;
     extern double NOISE_ROBVEL;
+    extern double COLLISION_DISTANCE;
 
     const double IN_FRONT_ANGLE_DEG = 60;
 

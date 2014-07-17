@@ -35,11 +35,18 @@ namespace ped_pathplan {
         costarr = new COSTTYPE[ns]; // cost array, 2d config space
         memset(costarr, 0, ns*sizeof(COSTTYPE));
 
+        steerings.push_back(0);
+        for(float f=yaw_rln; f<=steering_limit; f+=yaw_rln) {
+            steerings.push_back(f);
+            steerings.push_back(-f);
+        }
+        /*
         for(float f=steering_limit; f>0; f-=yaw_rln) {
             steerings.push_back(f);
             steerings.push_back(-f);
         }
         steerings.push_back(0);
+        */
     }
 
     void PathPlan::setCostmap(const COSTTYPE *cmap, bool isROS, bool allow_unknown)
@@ -202,7 +209,7 @@ namespace ped_pathplan {
         float steer_cost = fabs(t) * cost_steering;
 
 		success = (cost < COST_OBS * 0.999999);
-		if(angleDist(angleToGoal(p1.state), p1.state[2]) > M_PI / 180.0 * 60.0) {
+		if(angleDist(angleToGoal(p1.state), p1.state[2]) > M_PI / 180.0 * 45.0) {
 			success = false;
 		}
 

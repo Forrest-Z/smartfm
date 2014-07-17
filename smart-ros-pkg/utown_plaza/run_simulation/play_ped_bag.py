@@ -7,7 +7,8 @@ import rosbag
 
 ROSBAG = '/opt/ros/fuerte/bin/rosbag'
 #BAGFN = '3394_new.bag'
-BAGFN = '3394_new.bag'
+BAGFN = 'static1.bag'
+
 
 def get_duration(bagfn):
     b = rosbag.Bag(bagfn)
@@ -21,8 +22,9 @@ def main(bagfn):
     t = get_duration(bagfn)
     #start = t / 8.0 + random.uniform(-2, 6)
 
-    start = t / 8.0 
+    #start = t/8.0 
     #start = random.uniform(0, t)
+    start = 620
 
     os.execv(ROSBAG, [ROSBAG, 'play', '-s', str(start), bagfn])
 

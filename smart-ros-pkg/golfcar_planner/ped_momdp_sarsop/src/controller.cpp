@@ -82,8 +82,8 @@ void Controller::initSimulator()
 {
   Globals::config.root_seed=1024;
   //Globals::config.n_belief_particles=2000;
-  Globals::config.n_particles=300;
-  Globals::config.time_per_move = (1.0/ModelParams::control_freq)*0.9;
+  Globals::config.n_particles=100;
+  Globals::config.time_per_move = (1.0/ModelParams::control_freq) * 0.9;
   Seeds::root_seed(Globals::config.root_seed);
   cerr << "Random root seed set to " << Globals::config.root_seed << endl;
 
@@ -464,6 +464,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
         */
 
 		ParticleBelief *pb=new ParticleBelief(particles, despot);
+        despot->PrintState(*(pb->particles()[0]));
 		solver->belief(pb);
 
         /****** random simulation for verification purpose ******/

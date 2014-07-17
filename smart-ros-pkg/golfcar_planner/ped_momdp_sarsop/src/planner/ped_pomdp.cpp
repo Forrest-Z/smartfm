@@ -31,8 +31,8 @@ public:
 		if (min_dist != numeric_limits<double>::infinity()) {
 			double step = max(min_dist - 2.0, 0.0) / (carvel + ModelParams::PED_SPEED) * ModelParams::control_freq;
             double crash_penalty = ped_pomdp_->CrashPenalty(*state);
-			value = (move_penalty - 4) * (1 - Discount(int(step))) / (1 - Discount()) 
-				+ crash_penalty * Discount(int(step)) / (1 - Discount());
+			value = (move_penalty) * (1 - Discount(int(step))) / (1 - Discount()) 
+				+ crash_penalty * Discount(int(step));
 		}
 
 		return ValuedAction(ped_pomdp_->ACT_CUR, State::Weight(particles) * value);
@@ -95,6 +95,7 @@ double PedPomdp::ActionPenalty(int action) const {
 double PedPomdp::MovementPenalty(const PomdpState& state) const {
     return ModelParams::REWARD_FACTOR_VEL * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX;
     /*
+    // with no pedestrians nearby, but lower speed with pedestrians nearby
     retrun //(min_dist > 3.0 || (min_dist < 3.0 && action != ACT_ACC)) ?
 		(1.0 * (state.car.vel - ModelParams::VEL_MAX) / ModelParams::VEL_MAX);
 		//: -1.5;
@@ -113,19 +114,22 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
  	// Safety control: collision; Terminate upon collision
 	double min_dist = world.getMinCarPedDist(state);
-	double min_dist_all_dirs=world.getMinCarPedDistAllDirs(state);
-	if (min_dist < 1.0) {
+	if (min_dist < ModelParams::COLLISION_DISTANCE) {
 		reward = CrashPenalty(state);
 		return true;
 	}
+
+    /*
+    double min_dist_all_dirs=world.getMinCarPedDistAllDirs(state);
 	if (min_dist_all_dirs<2.0 && state.car.vel>1.0) {
 		reward+=-4;
 	}
+    */
 
 	// Smoothness control
 	reward += ActionPenalty(action);
 
-	// Speed control: Encourage higher speed with no pedestrians nearby, but lower speed with pedestrians nearby
+	// Speed control: Encourage higher speed
 	reward += MovementPenalty(state);
 
 	// State transition
@@ -288,8 +292,10 @@ public:
     // IMPORTANT: Check after changing reward function.
 	double Value(const State& s) const {
 		const PomdpState& state = static_cast<const PomdpState&>(s);
-		if (ped_pomdp_->world.inCollision(state))
-			return ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL);
+          double min_dist = ped_pomdp_->world.getMinCarPedDist(state);
+          if (min_dist < ModelParams::COLLISION_DISTANCE) { 
+			return ped_pomdp_->CrashPenalty(state);
+          }
 		return 0;
 	}
 };
