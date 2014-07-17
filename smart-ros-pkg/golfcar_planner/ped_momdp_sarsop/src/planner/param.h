@@ -9,7 +9,7 @@ namespace ModelParams {
 	extern double VEL_MAX;
 	//const double VEL_MAX=1;
 
-	const int GOAL_TRAVELLED=8;
+	const double GOAL_TRAVELLED=5.0;
 	const int N_PED_IN=4;
     
     extern double NOISE_GOAL_ANGLE;
@@ -50,7 +50,7 @@ namespace ModelParams {
     }
 
     // deprecated params
-	const double GOAL_REWARD = 500;
+	const double GOAL_REWARD = 10;
 };
 
 #endif

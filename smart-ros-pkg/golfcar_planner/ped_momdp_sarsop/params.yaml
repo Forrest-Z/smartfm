@@ -1,4 +1,4 @@
-fixed_path: false
+fixed_path: true
 pruning_constant: 0
 pathplan_ahead: 3.0
 

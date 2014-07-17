@@ -22,9 +22,19 @@ def main(bagfn):
     t = get_duration(bagfn)
     #start = t / 8.0 + random.uniform(-2, 6)
 
+    try:
+        i = int(open('/tmp/bagi').read())
+    except:
+        i = 0
+    i += 1
+    i = i % 8
+
+    open('/tmp/bagi', 'w').write(str(i))
+    
     #start = t/8.0 
     #start = random.uniform(0, t)
-    start = 620
+    #start = 620
+    start = i * t/8.0
 
     os.execv(ROSBAG, [ROSBAG, 'play', '-s', str(start), bagfn])
 

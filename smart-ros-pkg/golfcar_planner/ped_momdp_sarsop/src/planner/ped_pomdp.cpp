@@ -25,7 +25,8 @@ public:
 		}
 
         double move_penalty = ped_pomdp_->MovementPenalty(*state);
-		// Case 1, no pedestrian: Constant car speed
+
+        // Case 1, no pedestrian: Constant car speed
 		double value = move_penalty / (1 - Discount());
         // Case 2, with pedestrians: Constant car speed, head-on collision with nearest neighbor
 		if (min_dist != numeric_limits<double>::infinity()) {
@@ -109,6 +110,7 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 	// CHECK: relative weights of each reward component
 	// Terminate upon reaching goal
 	if (world.isLocalGoal(state)) {
+        reward = ModelParams::GOAL_REWARD;
 		return true;
 	}
 
@@ -292,11 +294,13 @@ public:
     // IMPORTANT: Check after changing reward function.
 	double Value(const State& s) const {
 		const PomdpState& state = static_cast<const PomdpState&>(s);
-          double min_dist = ped_pomdp_->world.getMinCarPedDist(state);
-          if (min_dist < ModelParams::COLLISION_DISTANCE) { 
-			return ped_pomdp_->CrashPenalty(state);
-          }
-		return 0;
+        double min_dist = ped_pomdp_->world.getMinCarPedDist(state);
+        if (min_dist < ModelParams::COLLISION_DISTANCE) { 
+            return ped_pomdp_->CrashPenalty(state);
+        }
+         
+        int min_step = ped_pomdp_->world.minStepToGoal(state);
+		return ModelParams::GOAL_REWARD * Discount(min_step);
 	}
 };
 
