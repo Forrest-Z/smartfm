@@ -160,10 +160,10 @@ int DESPOT::Search() {
 	cout << "# active particles before search = " << model_->num_active_particles << endl;
 	int count = model_->num_active_particles;
 	vector<State*> particles = belief_->Sample(Globals::config.n_particles);
-	// cout << "Sampled particles" << endl;
+	cout << "Sampled particles" << endl;
 	for (int i=0; i<particles.size(); i++) {
 		assert(particles[i]->scenario_id == i);
-		// cout << *particles[i] << endl;
+		model_->PrintState(*particles[i]);
 	}
 
 	// cout << "# vnodes before search = " << VNode::num_vnodes << endl;

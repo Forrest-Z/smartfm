@@ -88,7 +88,7 @@ double PedPomdp::CrashPenalty(const PomdpState& state) const {
 
 // Avoid frequent dec or acc
 double PedPomdp::ActionPenalty(int action) const {
-    return (action == ACT_DEC || action == ACT_ACC) ? -0.07 : 0.0;
+    return (action == ACT_DEC || action == ACT_ACC) ? -0.1 : 0.0;
 }
 
 // Less penalty for longer distance travelled

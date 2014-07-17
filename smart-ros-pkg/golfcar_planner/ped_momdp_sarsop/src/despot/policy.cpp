@@ -37,9 +37,13 @@ ValuedAction Policy::RecursiveValue(const vector<State*>& particles,
 		RandomStreams& streams, History& history) const {
 	if (streams.Exhausted() || (history.Size() - initial_depth_ > Globals::config.max_policy_sim_len)) {
 		ValuedAction value = Value(particles);
+		// cout << "fringe value " << (history.Size() - initial_depth_) << ": " << value << " " << State::Weight(particles) << endl;
+		// model_->PrintState(*(particles[0]));
 		return value;
 	} else {
 		int action = Action(particles, streams, history);
+		// cout << "action at " << (history.Size() - initial_depth_) << ": " << action << endl;
+		// model_->PrintState(*(particles[0]));
 
 		double value = 0;
 
