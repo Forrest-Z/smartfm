@@ -271,6 +271,7 @@ geometry_msgs::PoseStamped Controller::getPoseAhead(const tf::Stamped<tf::Pose>&
         yaw = path.getYaw(j);
         ahead = path[j];
         last_yaw = yaw;
+		last_ahead = ahead;
         last_i = i;
     }
 

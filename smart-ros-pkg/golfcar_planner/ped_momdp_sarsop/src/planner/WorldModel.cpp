@@ -54,11 +54,11 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
 	// cout << "min_dist = " << mindist << endl;
 
     // TODO set as a param
-    if (mindist < 3) {
+    if (mindist < 2) {
 		return (carvel == 0.0) ? 0 : 2;
     }
 
-    if (mindist < 6) {
+    if (mindist < 4) {
 		if (carvel > 1.0) return 2;	
 		else if (carvel < 0.5) return 1;
 		else return 0;

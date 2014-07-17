@@ -37,8 +37,8 @@ namespace ped_pathplan {
 
         steerings.push_back(0);
         for(float f=yaw_rln; f<=steering_limit; f+=yaw_rln) {
-            steerings.push_back(f);
             steerings.push_back(-f);
+            steerings.push_back(f);
         }
         /*
         for(float f=steering_limit; f>0; f-=yaw_rln) {
@@ -113,6 +113,7 @@ namespace ped_pathplan {
     void PathPlan::setStart(const State& start) {
 		cout << "start: " << start[0] << " " << start[1] <<  " " << start[2] << endl;
         this->start = start;
+        //this->start[2] = normAngle(this->start[2] + (-0.5/180 * M_PI));
         this->start[2] = normAngle(this->start[2]);
     }
 
@@ -209,7 +210,7 @@ namespace ped_pathplan {
         float steer_cost = fabs(t) * cost_steering;
 
 		success = (cost < COST_OBS * 0.999999);
-		if(angleDist(angleToGoal(p1.state), p1.state[2]) > M_PI / 180.0 * 45.0) {
+		if(angleDist(angleToGoal(p1.state), p1.state[2]) > M_PI / 180.0 * 60.0) {
 			success = false;
 		}
 
@@ -245,9 +246,9 @@ namespace ped_pathplan {
     DiscreteState PathPlan::discretize(const State& s) {
         DiscreteState ds(3);
 		float dd = step * discretize_ratio;
-        ds[0] = int(s[0] / dd);
-        ds[1] = int(s[1] / dd);
-        ds[2] = int(s[2] / yaw_rln);
+        ds[0] = int(ceil(s[0] / dd));
+        ds[1] = int(ceil(s[1] / dd));
+        ds[2] = int(ceil((s[2] + M_PI) / yaw_rln));
         return ds;
     }
 }

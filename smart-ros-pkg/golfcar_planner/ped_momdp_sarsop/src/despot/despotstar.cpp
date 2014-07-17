@@ -100,14 +100,14 @@ double DESPOTSTAR::HSVISearch(VNode* root, SearchStatistics& statistics, double 
 
 	double used_time = 0;
 	do {
-		double start = clock();
+		double start = get_time_second();
 		VNode* cur = Trial(root);
-		used_time += double (clock() - start) / CLOCKS_PER_SEC;
+		used_time += get_time_second() - start;
 
-		start = clock();
+		start = get_time_second();
 		Backup(cur);
-		statistics.time_backup += double (clock() - start) / CLOCKS_PER_SEC;
-		used_time += double (clock() - start) / CLOCKS_PER_SEC;
+		statistics.time_backup += get_time_second() - start;
+		used_time += get_time_second() - start;
 
 		// cout << statistics.num_trials << " " << root->upper_bound() << " " << root->lower_bound() << " " << (root->upper_bound() - root->lower_bound() > 1e-6) <<
 			// " " << (root->upper_bound() - root->lower_bound()) << endl;
@@ -225,14 +225,14 @@ double DESPOTSTAR::CheckDESPOT(const VNode* vnode, double regularized_value) {
 	int num_trials = 0, prev_num = 0;
 	double pruned_value;
 	do {
-		double start = clock();
+		double start = get_time_second();
 		VNode* cur = Trial(root);
 		num_trials ++;
-		used_time += double (clock() - start) / CLOCKS_PER_SEC;
+		used_time += get_time_second() - start;
 
-		start = clock();
+		start = get_time_second();
 		Backup(cur);
-		used_time += double (clock() - start) / CLOCKS_PER_SEC;
+		used_time += get_time_second() - start;
 
 		if (double (num_trials - prev_num) > 0.05 * prev_num) {
 			int pruned_action;

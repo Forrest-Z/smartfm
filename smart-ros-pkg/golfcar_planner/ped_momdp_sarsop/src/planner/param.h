@@ -20,7 +20,7 @@ namespace ModelParams {
     extern double NOISE_ROBVEL;
     extern double COLLISION_DISTANCE;
 
-    const double IN_FRONT_ANGLE_DEG = 60;
+    const double IN_FRONT_ANGLE_DEG = 80;
 
 	const double pos_rln=0.5; // position resolution
 	const double vel_rln=0.03; // velocity resolution
