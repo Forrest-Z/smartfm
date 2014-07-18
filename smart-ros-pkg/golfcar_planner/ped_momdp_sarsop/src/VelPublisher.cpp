@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <geometry_msgs/Twist.h>
 #include <csignal>
+#include <iostream>
 
 const double freq = 20;
 const double acceleration0 = 0.5;
@@ -39,6 +40,7 @@ public:
         cmd.angular.z = 0;
         cmd.linear.x = emergency_break? 0 : curr_vel;
         cmd_pub.publish(cmd);
+		std::cout<<"vel publisher cmd "<<cmd.linear.x<<std::endl;
     }
 
     double curr_vel, target_vel;
@@ -72,6 +74,7 @@ class VelPublisher2 : public VelPublisher {
 			return;
 		}
         target_vel = pomdp_vel->linear.x;
+
 		
 		if(0.2<target_vel && target_vel < 0.5) {
 			target_vel = 0.6;

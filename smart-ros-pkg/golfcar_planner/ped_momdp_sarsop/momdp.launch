@@ -15,9 +15,10 @@
         <param name="threshold" value="0.0"/>
 	</node>
 
-	 <node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher"   ns="/golfcart">
+	 <node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher" output="screen"  ns="/golfcart">
 	    <remap from="cmd_vel" to="cmd_vel"/>
 	 </node>
 
-	 <!--<node pkg="utown_plaza" type="record.sh" name="bag_recorder" cwd="node" required="true"/>-->
+
+	 <node pkg="ped_momdp_sarsop" type="record.sh" name="bag_recorder" cwd="node"/>
 </launch>

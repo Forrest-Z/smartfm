@@ -107,6 +107,7 @@ PedPomdpNode::~PedPomdpNode()
 
 void PedPomdpNode::speedCallback(nav_msgs::Odometry odo)
 {
+	cout<<"update real speed "<<odo.twist.twist.linear.x<<endl;
 	controller->real_speed_=odo.twist.twist.linear.x;
 }
 

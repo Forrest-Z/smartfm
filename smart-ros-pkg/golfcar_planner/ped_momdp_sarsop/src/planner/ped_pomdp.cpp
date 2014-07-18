@@ -127,9 +127,11 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		reward+=-4;
 	}
     */
+	/*
 	if ((min_dist < 2.5 && (state.car.vel > 1.0 || action == ACT_ACC)) || (min_dist > 4.0 && state.car.vel < 0.5)) {
 		reward += -1000;
 	}
+	*/
 
 	// Smoothness control
 	reward += ActionPenalty(action);
@@ -339,10 +341,11 @@ void PedPomdp::PrintState(const State& s, ostream& out) const {
         << state.car.vel << endl;
 	out<< state.num << " pedestrians " << endl;
 	for(int i = 0; i < state.num; i ++) {
-		out << "ped " << i << ": id / pos / goal / dist2car =  " << state.peds[i].id << " / "
+		out << "ped " << i << ": id / pos / goal / dist2car / infront =  " << state.peds[i].id << " / "
             << "(" << state.peds[i].pos.x << ", " << state.peds[i].pos.y << ") / "
             << state.peds[i].goal << " / "
-            << COORD::EuclideanDistance(state.peds[i].pos, carpos) << endl;
+            << COORD::EuclideanDistance(state.peds[i].pos, carpos) << "/"
+			<< world.inFront(state.peds[i].pos, state.car.pos) << endl;
 	}
     double min_dist = -1;
     if (state.num > 0)

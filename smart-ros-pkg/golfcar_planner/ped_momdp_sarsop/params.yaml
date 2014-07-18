@@ -10,7 +10,7 @@ noise_robvel: 0.1
 noise_goal_angle_deg: 45
 max_vel: 1.5
 collision_distance: 1.5
-infront_angle_deg: 180
+infront_angle_deg: 80
 
 ped_costmap:
     map_type: costmap
