@@ -127,6 +127,9 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		reward+=-4;
 	}
     */
+	if ((min_dist < 2.5 && (state.car.vel > 1.0 || action == ACT_ACC)) || (min_dist > 4.0 && state.car.vel < 0.5)) {
+		reward += -1000;
+	}
 
 	// Smoothness control
 	reward += ActionPenalty(action);

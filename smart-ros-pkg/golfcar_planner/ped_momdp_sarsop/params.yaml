@@ -1,8 +1,8 @@
-fixed_path: true
+fixed_path: false
 pruning_constant: 0
 pathplan_ahead: 3.0
 
-crash_penalty: -10000.0
+crash_penalty: -1000.0
 reward_factor_vel: 0.5
 reward_base_crash_vel: 0.5
 belief_smoothing: 0.05

@@ -50,7 +50,7 @@ namespace ModelParams {
     }
 
     // deprecated params
-	const double GOAL_REWARD = 10;
+	const double GOAL_REWARD = 0;
 };
 
 #endif

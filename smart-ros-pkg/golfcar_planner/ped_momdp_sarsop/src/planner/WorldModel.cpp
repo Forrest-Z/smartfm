@@ -339,10 +339,10 @@ vector<WorldStateTracker::PedDistPair> WorldStateTracker::getSortedPeds() {
                 return a.first < b.first;
             });
     // cout << "after sorting:" << endl;
-    for(const auto& p : sorted_peds) {
+    //for(const auto& p : sorted_peds) {
         // cout << " " << p.first;
-    }
-    cout << endl;
+    //}
+    //cout << endl;
 
     return sorted_peds;
 }

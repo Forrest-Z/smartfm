@@ -1,4 +1,4 @@
 <launch>
     <node pkg="rviz" type="rviz" name="rviz" respawn="true" args="-d $(find utown_plaza)/pomdp_simulation.vcg" />
-    <!--<node pkg="dummyPed" type="dummyPed_marker" name="dummyPed" respawn="false"/>-->
+    <!--node pkg="dummyPed" type="dummyPed_marker" name="dummyPed" respawn="false"/-->
 </launch>
