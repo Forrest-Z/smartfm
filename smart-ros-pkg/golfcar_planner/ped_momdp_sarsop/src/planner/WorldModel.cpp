@@ -133,7 +133,7 @@ void WorldModel::PedStep(PedStruct &ped, Random& random) {
     a += noise;
 
 	//TODO noisy speed
-    MyVector move(a, ModelParams::PED_SPEED/freq, 0);
+    MyVector move(a, ped.vel/freq, 0);
     ped.pos.x += move.dw;
     ped.pos.y += move.dh;
     return;
@@ -214,6 +214,7 @@ void WorldModel::setPath(Path path) {
 }
 
 void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
+    const double ALPHA = 0.9;
 	const double SMOOTHING=ModelParams::BELIEF_SMOOTHING;
 	for(double w: b.prob_goals) {
 		cout << w << " ";
@@ -244,11 +245,13 @@ void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
 	}
 	cout << endl;
 
+    double moved_dist = COORD::EuclideanDistance(b.pos, curr_ped.pos);
+    b.vel = ALPHA * b.vel + (1-ALPHA) * moved_dist * ModelParams::control_freq;
 	b.pos = curr_ped.pos;
 }
 
 PedBelief WorldModel::initPedBelief(const PedStruct& ped) {
-    PedBelief b = {ped.id, ped.pos, vector<double>(goals.size(), 1.0/goals.size())};
+    PedBelief b = {ped.id, ped.pos, ModelParams::PED_SPEED, vector<double>(goals.size(), 1.0/goals.size())};
     return b;
 }
 
@@ -287,8 +290,12 @@ void WorldStateTracker::updatePed(const Pedestrian& ped){
     for(;i<ped_list.size();i++) {
         if (ped_list[i].id==ped.id) {
             //found the corresponding ped,update the pose
+            //double dw = ped.w - ped_list[i].w;
+            //double dh = ped.h - ped_list[i].h;
+            //double dist = sqrt(dw*dw + dh*dh);
             ped_list[i].w=ped.w;
             ped_list[i].h=ped.h;
+            //ped_list[i].vel = ped_list[i].vel * ALPHA + dist * ModelParams::control_freq * (1-ALPHA);
             ped_list[i].last_update = timestamp();
             break;
         }
@@ -371,6 +378,7 @@ PomdpState WorldStateTracker::getPomdpState() {
         pomdpState.peds[i].pos.x=ped.w;
         pomdpState.peds[i].pos.y=ped.h;
 		pomdpState.peds[i].id = ped.id;
+        //pomdpState.peds[i].vel = ped.vel;
 		pomdpState.peds[i].goal = -1;
         cout<<"ped "<<i<<" "<<ped.last_update<<endl;
     }
@@ -471,6 +479,7 @@ PomdpState WorldBeliefTracker::sample() {
 			s.peds[s.num].pos = p.pos;
 			s.peds[s.num].goal = p.sample_goal();
 			s.peds[s.num].id = p.id;
+            s.peds[s.num].vel = p.vel;
 			s.num ++;
 		}
     }
@@ -478,6 +487,7 @@ PomdpState WorldBeliefTracker::sample() {
     //PrintState(s,cout);
     return s;
 }
+
 vector<PomdpState> WorldBeliefTracker::sample(int num) {
     vector<PomdpState> particles;
     for(int i=0; i<num; i++) {

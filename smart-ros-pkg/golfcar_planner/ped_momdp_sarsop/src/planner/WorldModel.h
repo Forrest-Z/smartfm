@@ -5,6 +5,7 @@
 struct PedBelief {
 	int id;
     COORD pos;
+    double vel;
     std::vector<double> prob_goals;
     int sample_goal() const;
     int maxlikely_goal() const;
