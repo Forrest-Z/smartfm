@@ -246,9 +246,9 @@ namespace ped_pathplan {
     DiscreteState PathPlan::discretize(const State& s) {
         DiscreteState ds(3);
 		float dd = step * discretize_ratio;
-        ds[0] = int(ceil(s[0] / dd));
-        ds[1] = int(ceil(s[1] / dd));
-        ds[2] = int(ceil((s[2] + M_PI) / yaw_rln));
+        ds[0] = int((s[0] / dd));
+        ds[1] = int((s[1] / dd));
+        ds[2] = int(((s[2] + M_PI) / yaw_rln));
         return ds;
     }
 }

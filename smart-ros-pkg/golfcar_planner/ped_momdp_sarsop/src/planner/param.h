@@ -5,13 +5,11 @@
 
 
 namespace ModelParams {
-	//const double VEL_MAX=2;
-	extern double VEL_MAX;
-	//const double VEL_MAX=1;
 
 	const double GOAL_TRAVELLED=5.0;
 	const int N_PED_IN=4;
-    
+
+	extern double VEL_MAX;
     extern double NOISE_GOAL_ANGLE;
     extern double CRASH_PENALTY;
     extern double REWARD_FACTOR_VEL;
@@ -20,7 +18,7 @@ namespace ModelParams {
     extern double NOISE_ROBVEL;
     extern double COLLISION_DISTANCE;
 
-    const double IN_FRONT_ANGLE_DEG = 80;
+    extern double IN_FRONT_ANGLE_DEG;
 
 	const double pos_rln=0.5; // position resolution
 	const double vel_rln=0.03; // velocity resolution

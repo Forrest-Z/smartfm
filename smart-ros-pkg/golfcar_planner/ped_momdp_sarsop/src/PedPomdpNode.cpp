@@ -51,6 +51,8 @@ PedPomdpNode::PedPomdpNode()
     n.param("reward_factor_vel", ModelParams::REWARD_FACTOR_VEL, 1.0);
     n.param("belief_smoothing", ModelParams::BELIEF_SMOOTHING, 0.05);
     n.param("noise_robvel", ModelParams::NOISE_ROBVEL, 0.2);
+    n.param("collision_distance", ModelParams::COLLISION_DISTANCE, 1.0);
+    n.param("infront_angle_deg", ModelParams::IN_FRONT_ANGLE_DEG, 90.0);
 
     double noise_goal_angle_deg;
     n.param("noise_goal_angle_deg", noise_goal_angle_deg, 45.0);

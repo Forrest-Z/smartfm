@@ -67,6 +67,10 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
 }
 
 bool WorldModel::inFront(COORD ped_pos, int car) const {
+    if(ModelParams::IN_FRONT_ANGLE_DEG >= 180.0) {
+        // inFront check is disabled
+        return true;
+    }
 	const COORD& car_pos = path[car];
 	const COORD& forward_pos = path[path.forward(car, 1.0)];
 	double d0 = COORD::EuclideanDistance(car_pos, ped_pos);
