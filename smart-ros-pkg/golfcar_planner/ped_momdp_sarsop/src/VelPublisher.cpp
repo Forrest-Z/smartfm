@@ -75,8 +75,8 @@ class VelPublisher2 : public VelPublisher {
 		}
         target_vel = pomdp_vel->linear.x;
 
-		if(0.2<target_vel && target_vel < 0.5) {
-			target_vel = 0.6;
+		if(0.1<target_vel && target_vel < 0.4) {
+			target_vel = 0.4;
 		}
     }
 
