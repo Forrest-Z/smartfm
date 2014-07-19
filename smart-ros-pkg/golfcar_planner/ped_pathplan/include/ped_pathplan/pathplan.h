@@ -16,6 +16,8 @@
 
 namespace ped_pathplan {
     const float TOLERANCE = 10;
+	const float DISCOUNT = 0.99;
+	//const float DISCOUNT = 1.00;
     //const float TOLERANCE = 20;
 
     typedef std::vector<float> State;
@@ -26,6 +28,7 @@ namespace ped_pathplan {
         float g, h;
         int index;
         int prev_index;
+		float d;
     };
 
     typedef std::pair<float, int> QPair;

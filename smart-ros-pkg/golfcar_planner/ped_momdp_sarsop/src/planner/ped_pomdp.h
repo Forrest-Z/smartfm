@@ -33,7 +33,7 @@ public:
 	}
 	double TransitionProbability(const PomdpState& curr, const PomdpState& next, int action) const;
 
-    double CrashPenalty(const PomdpState& state) const;
+    double CrashPenalty(const PomdpState& state) const; //, int closest_ped, double closest_dist) const;
     double ActionPenalty(int action) const;
     double MovementPenalty(const PomdpState& state) const;
 

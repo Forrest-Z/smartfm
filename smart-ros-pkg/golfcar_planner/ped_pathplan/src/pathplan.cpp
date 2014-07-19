@@ -123,7 +123,7 @@ namespace ped_pathplan {
         set<DiscreteState> visited;
         priority_queue<QPair, vector<QPair>, greater<QPair>> q;
 
-        PathItem p0 = {start, 0, heuristic(start), 0, -1};
+        PathItem p0 = {start, 0, heuristic(start), 0, -1, 1.0};
 		items.push_back(p0);
         visited.insert(discretize(start));
         q.push(QPair(p0.g+p0.h, p0.index));
@@ -214,9 +214,15 @@ namespace ped_pathplan {
 			success = false;
 		}
 
+
         p1.g = p.g + cost + steer_cost;
         p1.h = heuristic(p1.state);
+
         p1.prev_index = p.index;
+
+		p1.d = p.d * DISCOUNT;
+		p1.g *= p1.d;
+
         return p1;
     }
 

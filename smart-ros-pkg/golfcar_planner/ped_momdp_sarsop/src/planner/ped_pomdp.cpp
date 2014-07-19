@@ -13,15 +13,17 @@ public:
     // IMPORTANT: Check after changing reward function.
 	virtual ValuedAction Value(const vector<State*>& particles) const {
 		PomdpState* state = static_cast<PomdpState*>(particles[0]);
-		double min_dist = numeric_limits<double>::infinity();
+		int min_step = numeric_limits<int>::max();
 		auto& carpos = ped_pomdp_->world.path[state->car.pos];
 		double carvel = state->car.vel;
 	
-		// Find mininum car-pedestrian distance
+		// Find mininum num of steps for car-pedestrian collision
 		for (int i=0; i<state->num; i++) {
 			auto& p = state->peds[i];
-			double dist = COORD::EuclideanDistance(carpos, p.pos);
-			min_dist = min(dist, min_dist);
+			int step = int(ceil(ModelParams::control_freq 
+						* max(COORD::EuclideanDistance(carpos, p.pos) - ModelParams::COLLISION_DISTANCE, 0.0) 
+						/ ((p.vel + carvel))));
+			min_step = min(step, min_step);
 		}
 
         double move_penalty = ped_pomdp_->MovementPenalty(*state);
@@ -29,11 +31,10 @@ public:
         // Case 1, no pedestrian: Constant car speed
 		double value = move_penalty / (1 - Discount());
         // Case 2, with pedestrians: Constant car speed, head-on collision with nearest neighbor
-		if (min_dist != numeric_limits<double>::infinity()) {
-			double step = max(min_dist - 2.0, 0.0) / (carvel + ModelParams::PED_SPEED) * ModelParams::control_freq;
+		if (min_step != numeric_limits<int>::max()) {
             double crash_penalty = ped_pomdp_->CrashPenalty(*state);
-			value = (move_penalty) * (1 - Discount(int(step))) / (1 - Discount()) 
-				+ crash_penalty * Discount(int(step));
+			value = (move_penalty) * (1 - Discount(min_step)) / (1 - Discount()) 
+				+ crash_penalty * Discount(min_step);
 		}
 
 		return ValuedAction(ped_pomdp_->ACT_CUR, State::Weight(particles) * value);
@@ -83,8 +84,9 @@ vector<State*> PedPomdp::ConstructParticles(vector<PomdpState> & samples) {
 }
 
 // Very high cost for collision
-double PedPomdp::CrashPenalty(const PomdpState& state) const {
-    return ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL);
+double PedPomdp::CrashPenalty(const PomdpState& state) const { // , int closest_ped, double closest_dist) const {
+	// double ped_vel = state.ped[closest_ped].vel;
+    return ModelParams::CRASH_PENALTY * (state.car.vel * state.car.vel + ModelParams::REWARD_BASE_CRASH_VEL); 
 }
 
 // Avoid frequent dec or acc
@@ -114,10 +116,13 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		return true;
 	}
 
+	int closest_ped;
+	double closest_dist;
+	world.getClosestPed(state, closest_ped, closest_dist);
+
  	// Safety control: collision; Terminate upon collision
-	double min_dist = world.getMinCarPedDist(state);
-	if (min_dist < ModelParams::COLLISION_DISTANCE) {
-		reward = CrashPenalty(state);
+	if (closest_dist < ModelParams::COLLISION_DISTANCE) {
+		reward = CrashPenalty(state); //, closest_ped, closest_dist);
 		return true;
 	}
 

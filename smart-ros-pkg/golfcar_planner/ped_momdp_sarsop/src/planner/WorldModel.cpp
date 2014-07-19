@@ -86,6 +86,23 @@ bool WorldModel::inFront(COORD ped_pos, int car) const {
 	//return (fabs(angle) < M_PI / 180 * 60);
 }
 
+void WorldModel::getClosestPed(const PomdpState& state, int& closest_ped, double& closest_dist) {
+	closest_ped = -1;
+	closest_dist = numeric_limits<double>::infinity();
+    const auto& carpos = path[state.car.pos];
+
+	// Find the closest pedestrian in front
+    for(int i=0; i<state.num; i++) {
+		const auto& p = state.peds[i];
+		if(!inFront(p.pos, state.car.pos)) continue;
+        double d = COORD::EuclideanDistance(carpos, p.pos);
+        if (d >= 0 && d < closest_dist) {
+			closest_dist = d;
+			closest_ped = i;
+		}
+    }
+}
+
 double WorldModel::getMinCarPedDist(const PomdpState& state) {
     double mindist = numeric_limits<double>::infinity();
     const auto& carpos = path[state.car.pos];
@@ -146,7 +163,7 @@ void WorldModel::PedStepDeterministic(PedStruct& ped, int step) {
 	}
 
 	MyVector goal_vec(goal.x - ped.pos.x, goal.y - ped.pos.y);
-    goal_vec.AdjustLength(step * ModelParams::PED_SPEED / freq);
+    goal_vec.AdjustLength(step * ped.vel / freq);
     ped.pos.x += goal_vec.dw;
     ped.pos.y += goal_vec.dh;
 }
@@ -504,15 +521,16 @@ vector<PedStruct> WorldBeliefTracker::predictPeds() {
 
     for(const auto& p: sorted_beliefs) {
         double dist = COORD::EuclideanDistance(p.pos, model.path[car.pos]);
-        int step = int(dist / (ModelParams::PED_SPEED + car.vel) * ModelParams::control_freq);
+        int step = int(dist / (p.vel + car.vel) * ModelParams::control_freq);
         //for(int j=0; j<10; j++) {
             //int goal = p.sample_goal();
         for(int j=0; j<1; j++) {
             int goal = p.maxlikely_goal();
             PedStruct ped0(p.pos, goal, p.id);
-            for(int i=0; i<3; i++) {
+			ped0.vel = p.vel;
+            for(int i=0; i<9; i++) {
                 PedStruct ped = ped0;
-                model.PedStepDeterministic(ped, step+i*6);
+                model.PedStepDeterministic(ped, step+i*2);
                 prediction.push_back(ped);
             }
         }
