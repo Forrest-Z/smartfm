@@ -19,6 +19,6 @@
 	    <remap from="cmd_vel" to="cmd_vel"/>
 	 </node>
 
-
 	 <node pkg="ped_momdp_sarsop" type="record.sh" name="bag_recorder" cwd="node"/>
+	 <!--<node pkg="ped_momdp_sarsop" type="plot.sh" name="velplot" cwd="node"/>-->
 </launch>

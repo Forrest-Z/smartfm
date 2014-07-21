@@ -74,7 +74,8 @@ bool WorldModel::inFront(COORD ped_pos, int car) const {
 	const COORD& car_pos = path[car];
 	const COORD& forward_pos = path[path.forward(car, 1.0)];
 	double d0 = COORD::EuclideanDistance(car_pos, ped_pos);
-	if(d0<=0) return true;
+	//if(d0<=0) return true;
+	if(d0 <= 0.7) return true;
 	double d1 = COORD::EuclideanDistance(car_pos, forward_pos);
 	if(d1<=0) return false;
 	double dot = DotProduct(forward_pos.x - car_pos.x, forward_pos.y - car_pos.y,
@@ -464,7 +465,7 @@ int PedBelief::maxlikely_goal() const {
     double ml = 0;
     int mi = prob_goals.size()-1; // stop intention
     for(int i=0; i<prob_goals.size(); i++) {
-        if (prob_goals[i] > ml && prob_goals[i] > 0.3) {
+        if (prob_goals[i] > ml && prob_goals[i] > 0.5) {
             ml = prob_goals[i];
             mi = i;
         }
@@ -528,7 +529,7 @@ vector<PedStruct> WorldBeliefTracker::predictPeds() {
             int goal = p.maxlikely_goal();
             PedStruct ped0(p.pos, goal, p.id);
 			ped0.vel = p.vel;
-            for(int i=0; i<9; i++) {
+            for(int i=0; i<6; i++) {
                 PedStruct ped = ped0;
                 model.PedStepDeterministic(ped, step+i*2);
                 prediction.push_back(ped);

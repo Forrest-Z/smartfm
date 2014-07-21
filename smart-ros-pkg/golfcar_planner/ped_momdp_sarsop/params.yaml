@@ -1,5 +1,6 @@
 fixed_path: false
 pruning_constant: 0
+#pruning_constant: 1000000000
 #pathplan_ahead: 3.0
 pathplan_ahead: 1.5
 
@@ -12,7 +13,7 @@ noise_robvel: 0.1
 noise_goal_angle_deg: 45
 max_vel: 1.5
 collision_distance: 1.5
-infront_angle_deg: 60
+infront_angle_deg: 70
 
 ped_costmap:
     map_type: costmap
@@ -32,7 +33,7 @@ ped_costmap:
         clearing: true
         obstacle_range: 5000
         raytrace_range: 5000
-    ped_cost_ratio: 0.99
+    ped_cost_ratio: 0.9
 
 planner:
     steering_limit_deg: 18
@@ -42,5 +43,5 @@ planner:
     steplen: 6
     num_search: 800000
     discretize_ratio: 0.3
-    discount: 0.99
+    discount: 0.98
 

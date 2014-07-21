@@ -21,8 +21,6 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
 	cout << "pathplan_ahead = " << pathplan_ahead_ << endl;
 	Globals::config.pruning_constant = pruning_constant;
 
-    nh.param("pruning_constant", Globals::config.pruning_constant, 0.0);
-
 	global_frame_id = ModelParams::rosns + "/map";
 	cerr <<"DEBUG: Entering Controller()"<<endl;
 	control_freq=ModelParams::control_freq;

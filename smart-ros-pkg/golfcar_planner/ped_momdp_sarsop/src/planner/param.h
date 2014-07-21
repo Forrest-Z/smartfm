@@ -7,7 +7,7 @@
 namespace ModelParams {
 
 	const double GOAL_TRAVELLED=5.0;
-	const int N_PED_IN=4;
+	const int N_PED_IN=6;
 
 	extern double VEL_MAX;
     extern double NOISE_GOAL_ANGLE;
