@@ -30,7 +30,8 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
 	cerr << "DEBUG: Initializing publishers..." << endl;
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp",1);
-	actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
+    actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
+    actionPubPlot_= nh.advertise<geometry_msgs::Twist>("pomdp_action_plot",1);
 	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1, true);
 	pathSub_= nh.subscribe("plan", 1, &Controller::RetrievePathCallBack, this);
 	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
@@ -209,6 +210,7 @@ void Controller::publishAction(int action)
 {
 		uint32_t shape = visualization_msgs::Marker::CUBE;
 		visualization_msgs::Marker marker;			
+        
 		
 		marker.header.frame_id=global_frame_id;
 		marker.header.stamp=ros::Time::now();
@@ -241,6 +243,9 @@ void Controller::publishAction(int action)
 		ros::Duration d(1/control_freq);
 		marker.lifetime=d;
 		actionPub_.publish(marker);
+        geometry_msgs::Twist action_cmd;
+        action_cmd.linear.x=safeAction;
+        actionPubPlot_.publish(action_cmd);
 }
 
 COORD poseToCoord(const tf::Stamped<tf::Pose>& pose) {
