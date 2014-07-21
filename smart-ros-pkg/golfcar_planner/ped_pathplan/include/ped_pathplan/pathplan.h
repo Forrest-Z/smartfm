@@ -16,8 +16,6 @@
 
 namespace ped_pathplan {
     const float TOLERANCE = 10;
-	const float DISCOUNT = 0.99;
-	//const float DISCOUNT = 1.00;
     //const float TOLERANCE = 20;
 
     typedef std::vector<float> State;
@@ -36,11 +34,12 @@ namespace ped_pathplan {
 
     class PathPlan {
         public:
-            PathPlan(int nx, int ny, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int steplen, int num_search, float discretize_ratio);	// size of map
+            PathPlan(int nx, int ny, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int steplen, int num_search, float discretize_ratio, float discount);	// size of map
 
 
             float cost_steering, yaw_rln;
             float discretize_ratio;
+            float discount;
 			int num_search;
             float step;
             int nx, ny, ns;		/**< size of grid, in pixels */

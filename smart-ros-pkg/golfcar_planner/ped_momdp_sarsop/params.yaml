@@ -42,4 +42,5 @@ planner:
     steplen: 6
     num_search: 800000
     discretize_ratio: 0.3
+    discount: 0.99
 

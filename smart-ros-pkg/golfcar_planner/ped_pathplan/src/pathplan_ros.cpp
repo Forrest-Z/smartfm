@@ -16,6 +16,7 @@ namespace ped_pathplan {
             ros::NodeHandle private_nh("~/" + name);
             double steering_limit_deg, yaw_res_deg, cost_steering_deg;
             double discretize_ratio;
+            double discount;
             int steplen;
 			int num_search;
 
@@ -25,12 +26,13 @@ namespace ped_pathplan {
             private_nh.param("steplen", steplen, 3);
             private_nh.param("num_search", num_search, 500000);
             private_nh.param("discretize_ratio", discretize_ratio, 0.3);
+            private_nh.param("discount", discount, 1.0);
 
             costmap_ros = cmros;
 
             int nx = cmros->getSizeInCellsX();
             int ny = cmros->getSizeInCellsY();
-            planner = boost::shared_ptr<PathPlan>(new PathPlan(nx, ny, steering_limit_deg, yaw_res_deg, cost_steering_deg, steplen, num_search, discretize_ratio));
+            planner = boost::shared_ptr<PathPlan>(new PathPlan(nx, ny, steering_limit_deg, yaw_res_deg, cost_steering_deg, steplen, num_search, discretize_ratio, discount));
 
             updateCostmap();
 

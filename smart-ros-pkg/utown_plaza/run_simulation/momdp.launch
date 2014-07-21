@@ -18,8 +18,8 @@
 		<param name="threshold" value="0.0"/>
 	</node>
 
-	<node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher" >
-		<remap from="cmd_vel" to="cmd_speed"/>
-	</node>
+    <node name="vel_publisher" pkg="ped_momdp_sarsop" type="vel_publisher" >
+        <remap from="cmd_vel" to="cmd_speed"/>
+    </node>
 
 </launch>

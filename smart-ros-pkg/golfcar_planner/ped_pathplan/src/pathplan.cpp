@@ -26,8 +26,8 @@ namespace ped_pathplan {
 
 
 
-    PathPlan::PathPlan(int xs, int ys, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int steplen, int num_search, float discretize_ratio)
-        : nx(xs), ny(ys), step(steplen), cost_steering(cost_steering_deg / M_PI * 180), num_search(num_search), discretize_ratio(discretize_ratio)
+    PathPlan::PathPlan(int xs, int ys, float steering_limit_deg, float yaw_res_deg, float cost_steering_deg, int steplen, int num_search, float discretize_ratio, float discount)
+        : nx(xs), ny(ys), step(steplen), cost_steering(cost_steering_deg / M_PI * 180), num_search(num_search), discretize_ratio(discretize_ratio), discount(discount)
     {
         float steering_limit = steering_limit_deg / 180 * M_PI;
         yaw_rln = yaw_res_deg / 180 * M_PI;
@@ -215,13 +215,11 @@ namespace ped_pathplan {
 		}
 
 
-        p1.g = p.g + cost + steer_cost;
-        p1.h = heuristic(p1.state);
+		p1.d = p.d * discount;
+        p1.g = p.g + (cost + steer_cost) * p1.d;
+        p1.h = heuristic(p1.state) * p1.d;
 
         p1.prev_index = p.index;
-
-		p1.d = p.d * DISCOUNT;
-		p1.g *= p1.d;
 
         return p1;
     }
@@ -240,7 +238,8 @@ namespace ped_pathplan {
 
     float PathPlan::heuristic(const State& s) {
         float d = distToGoal(s);
-        float h_dist = (d / float(step)) * COST_NEUTRAL;
+        float nstep = d / float(step);
+        float h_dist = (1 - pow(discount, nstep)) / (1 - discount) * COST_NEUTRAL;
         return h_dist;
     }
 
