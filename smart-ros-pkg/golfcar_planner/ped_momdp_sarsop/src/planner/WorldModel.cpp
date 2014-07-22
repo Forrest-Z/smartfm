@@ -283,7 +283,7 @@ void WorldModel::setPath(Path path) {
 }
 
 void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
-    const double ALPHA = 0.6;
+    const double ALPHA = 0.8;
 	const double SMOOTHING=ModelParams::BELIEF_SMOOTHING;
 	for(double w: b.prob_goals) {
 		cout << w << " ";

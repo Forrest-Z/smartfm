@@ -4,10 +4,10 @@
 #include <iostream>
 
 const double freq = 40;
-//const double acceleration0 = 0.9;
-//const double acceleration1 = 0.9;
-const double acceleration0 = 0.5;
-const double acceleration1 = 0.8;
+const double acceleration0 = 0.7;
+const double acceleration1 = 0.9;
+//const double acceleration0 = 0.5;
+//const double acceleration1 = 0.8;
 
 const double alpha0 = 0.5;
 const double alpha1 = 0.7;

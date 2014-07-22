@@ -7,7 +7,7 @@ pathplan_ahead: 1.5
 
 crash_penalty: -1000.0
 reward_factor_vel: 0.5
-reward_base_crash_vel: 1.5
+reward_base_crash_vel: 0.5
 belief_smoothing: 0.05
 noise_robvel: 0.1
 noise_goal_angle_deg: 45
