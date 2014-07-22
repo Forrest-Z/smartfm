@@ -67,9 +67,9 @@ bool inCollision(double Mx, double My, double Hx, double Hy, double Nx, double N
 
 	double car_width = 1.2,
 				 car_length = 2.2;
-	double safe_margin = 0.75,
+	double safe_margin = 0.3,
 				 side_margin = car_width / 2.0 + safe_margin,
-				 front_margin = 2 * safe_margin,
+				 front_margin = 5 * safe_margin,
 				 back_margin = car_length + safe_margin;
 
 	return InRectangle(HNx, HNy, HMx, HMy, front_margin, back_margin, side_margin);
