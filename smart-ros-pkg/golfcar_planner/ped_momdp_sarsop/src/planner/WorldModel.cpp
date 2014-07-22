@@ -87,21 +87,48 @@ bool WorldModel::inFront(COORD ped_pos, int car) const {
 	//return (fabs(angle) < M_PI / 180 * 60);
 }
 
-void WorldModel::getClosestPed(const PomdpState& state, int& closest_ped, double& closest_dist) {
-	closest_ped = -1;
-	closest_dist = numeric_limits<double>::infinity();
+void WorldModel::getClosestPed(const PomdpState& state, 
+		int& closest_front_ped, 
+		double& closest_front_dist,
+		int& closest_side_ped, 
+		double& closest_side_dist) {
+	closest_front_ped = -1;
+	closest_front_dist = numeric_limits<double>::infinity();
+	closest_side_ped = -1;
+	closest_side_dist = numeric_limits<double>::infinity();
     const auto& carpos = path[state.car.pos];
 
 	// Find the closest pedestrian in front
     for(int i=0; i<state.num; i++) {
 		const auto& p = state.peds[i];
-		if(!inFront(p.pos, state.car.pos)) continue;
+		bool front = inFront(p.pos, state.car.pos);
         double d = COORD::EuclideanDistance(carpos, p.pos);
-        if (d >= 0 && d < closest_dist) {
-			closest_dist = d;
-			closest_ped = i;
+        if (front) {
+			if (d < closest_front_dist) {
+				closest_front_dist = d;
+				closest_front_ped = i;
+			}
+		} else {
+			if (d < closest_side_dist) {
+				closest_side_dist = d;
+				closest_side_ped = i;
+			}
 		}
     }
+}
+
+bool WorldModel::isMovingAway(const PomdpState& state, int ped) {
+    const auto& carpos = path[state.car.pos];
+	const auto& nextcarpos = path[path.forward(state.car.pos, 1.0)];
+
+	const auto& pedpos = state.peds[ped].pos;
+	const auto& goalpos = goals[state.peds[ped].goal];
+
+	if (goalpos.x == -1 && goalpos.y == -1)
+		return false;
+
+	return DotProduct(goalpos.x - pedpos.x, goalpos.y - pedpos.y,
+			nextcarpos.x - carpos.x, nextcarpos.y - carpos.y) > 0;
 }
 
 double WorldModel::getMinCarPedDist(const PomdpState& state) {

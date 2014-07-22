@@ -4,7 +4,7 @@
 #include <iostream>
 
 const double freq = 40;
-const double acceleration0 = 0.7;
+const double acceleration0 = 0.9;
 const double acceleration1 = 0.9;
 
 const double alpha0 = 0.5;
@@ -75,8 +75,8 @@ class VelPublisher2 : public VelPublisher {
 		}
         target_vel = pomdp_vel->linear.x;
 
-		if(0.1<target_vel && target_vel < 0.4) {
-			target_vel = 0.4;
+		if(0.11<target_vel && target_vel < 0.59) {
+			target_vel = 0.6;
 		}
     }
 

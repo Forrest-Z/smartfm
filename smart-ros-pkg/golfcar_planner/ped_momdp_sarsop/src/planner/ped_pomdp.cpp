@@ -116,21 +116,29 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		return true;
 	}
 
-	int closest_ped;
-	double closest_dist;
-	world.getClosestPed(state, closest_ped, closest_dist);
+	int closest_front_ped;
+	double closest_front_dist;
+	int closest_side_ped;
+	double closest_side_dist;
+	world.getClosestPed(state, closest_front_ped, closest_front_dist,
+			closest_side_ped, closest_side_dist);
 
  	// Safety control: collision; Terminate upon collision
-	if (closest_dist < ModelParams::COLLISION_DISTANCE) {
+	if (closest_front_dist < ModelParams::COLLISION_DISTANCE) {
 		reward = CrashPenalty(state); //, closest_ped, closest_dist);
 		return true;
 	}
 
+	// Forbidden actions
     double carvel = state.car.vel;
     if (action == ACT_CUR && 0.1 < carvel && carvel < 0.6) {
 		reward = CrashPenalty(state);
 		return true;
     }
+
+	if (carvel < 0.1 && closest_side_dist > 1.5 && closest_front_dist > 3.5 && world.isMovingAway(state, closest_front_ped)) {
+		reward += -1000;
+	}
 
     /*
     double min_dist_all_dirs=world.getMinCarPedDistAllDirs(state);

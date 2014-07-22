@@ -16,7 +16,9 @@ public:
 
     WorldModel();
 
-	void getClosestPed(const PomdpState& state, int& closest_ped, double& closest_dist);
+	bool isMovingAway(const PomdpState& state, int ped);
+	void getClosestPed(const PomdpState& state, int& closest_front_ped, double& closest_front_dist,
+			int& closest_side_ped, double& closest_side_dist);
 	double getMinCarPedDist(const PomdpState& state);
 	double getMinCarPedDistAllDirs(const PomdpState& state);
 	int defaultPolicy(const vector<State*>& particles);

@@ -106,13 +106,13 @@ private:
     bool robot_pose_available;
     double robotx_, roboty_, robotspeedx_;
     ros::Timer timer_,timer_speed;
-    ros::Publisher believesPub_, cmdPub_,actionPub_, actionPubPlot_;
+    ros::Publisher believesPub_, cmdPub_,actionPub_, actionPubPlot_, plannerPedsPub_;
     ros::Publisher pedStatePub_;
     ros::Publisher pedPredictionPub_ ;
 
     void controlLoop(const ros::TimerEvent &e);
 
-
+	void publishPlannerPeds(const State &);
 
 
 };

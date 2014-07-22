@@ -28,6 +28,7 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
 	cerr << "DEBUG: Initializing publishers..." << endl;
     believesPub_ = nh.advertise<ped_momdp_sarsop::peds_believes>("peds_believes",1);
     cmdPub_ = nh.advertise<geometry_msgs::Twist>("cmd_vel_pomdp",1);
+	plannerPedsPub_=nh.advertise<sensor_msgs::PointCloud>("planner_peds",1);
     actionPub_ = nh.advertise<visualization_msgs::Marker>("pomdp_action",1);
     actionPubPlot_= nh.advertise<geometry_msgs::Twist>("pomdp_action_plot",1);
 	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1, true);
@@ -203,7 +204,21 @@ void Controller::publishROSState()
 
 
 
-
+void Controller::publishPlannerPeds(const State &s)
+{
+	const PomdpState & state=static_cast<const PomdpState&> (s);
+	sensor_msgs::PointCloud pc;
+	pc.header.frame_id=ModelParams::rosns+"/map";
+	pc.header.stamp=ros::Time::now();
+	for(int i=0;i<state.num;i++) {
+		geometry_msgs::Point32 p;
+		p.x=state.peds[i].pos.x;
+		p.y=state.peds[i].pos.y;
+		p.z=1.5;
+		pc.points.push_back(p);
+	}
+	plannerPedsPub_.publish(pc);	
+}
 void Controller::publishAction(int action)
 {
 		uint32_t shape = visualization_msgs::Marker::CUBE;
@@ -469,6 +484,8 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		ParticleBelief *pb=new ParticleBelief(particles, despot);
         despot->PrintState(*(pb->particles()[0]));
+		publishPlannerPeds(*(pb->particles()[0]));
+		
 		solver->belief(pb);
 
         /****** random simulation for verification purpose ******/
@@ -535,7 +552,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
 		target_speed_=real_speed_;
         if(safeAction==0) {}
-		else if(safeAction==1) target_speed_ += 0.15*2;
+		else if(safeAction==1) target_speed_ += 0.20*2;
 		else if(safeAction==2) target_speed_ -= 0.25*2;
 		if(target_speed_<=0.0) target_speed_ = 0.0;
 		if(target_speed_>=ModelParams::VEL_MAX) target_speed_ = ModelParams::VEL_MAX;
