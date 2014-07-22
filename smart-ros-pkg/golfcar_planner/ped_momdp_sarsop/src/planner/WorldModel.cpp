@@ -9,13 +9,13 @@ using namespace std;
 WorldModel::WorldModel(): freq(ModelParams::control_freq),
     in_front_angle_cos(cos(ModelParams::IN_FRONT_ANGLE_DEG / 180.0 * M_PI)) {
     goals = {
-        COORD(54, 4),
-        COORD(31, 4),
-        COORD(5,  5),
-        COORD(44,49),
-        COORD(18,62),
-        COORD(66,17),
-		COORD(-1,-1)
+        COORD(54, 4),  //green, bus stop
+        COORD(31, 4),  //red    upper bus stop
+        COORD(5,  5),  //blue   bridge to campus
+        COORD(44,49),  //sky blue    after create
+        COORD(18,62),  //yellow     residence area
+        COORD(66,17),  //brown     garage
+		COORD(-1,-1)   //pink     stop intention
     };
 	/*
     goals = {
