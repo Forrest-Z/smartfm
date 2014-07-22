@@ -14,6 +14,7 @@ WorldModel::WorldModel(): freq(ModelParams::control_freq),
         COORD(5,  5),
         COORD(44,49),
         COORD(18,62),
+        COORD(66,17),
 		COORD(-1,-1)
     };
 	/*
