@@ -136,9 +136,9 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		return true;
     }
 
-	if (carvel < 0.1 && closest_side_dist > 1.5 && closest_front_dist > 3.5 && world.isMovingAway(state, closest_front_ped)) {
-		reward += -1000;
-	}
+	//if (carvel < 0.1 && closest_side_dist > 1.5 && closest_front_dist > 3.5 && world.isMovingAway(state, closest_front_ped)) {
+		//reward += -1000;
+	//}
 
     /*
     double min_dist_all_dirs=world.getMinCarPedDistAllDirs(state);
