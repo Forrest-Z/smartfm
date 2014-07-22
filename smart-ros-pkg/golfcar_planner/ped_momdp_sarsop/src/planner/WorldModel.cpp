@@ -88,9 +88,9 @@ bool WorldModel::inFront(COORD ped_pos, int car) const {
 }
 
 void WorldModel::getClosestPed(const PomdpState& state, 
-		int& closest_front_ped, 
+		int& closest_front_ped,
 		double& closest_front_dist,
-		int& closest_side_ped, 
+		int& closest_side_ped,
 		double& closest_side_dist) {
 	closest_front_ped = -1;
 	closest_front_dist = numeric_limits<double>::infinity();
@@ -245,7 +245,7 @@ void WorldModel::RobVelStep(CarStruct &car, double acc, Random& random) {
     }
 
 	car.vel = max(min(car.vel, ModelParams::VEL_MAX), 0.0);
-    
+
 	return;
 }
 
@@ -259,7 +259,7 @@ void WorldModel::setPath(Path path) {
 }
 
 void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
-    const double ALPHA = 0.9;
+    const double ALPHA = 0.3;
 	const double SMOOTHING=ModelParams::BELIEF_SMOOTHING;
 	for(double w: b.prob_goals) {
 		cout << w << " ";

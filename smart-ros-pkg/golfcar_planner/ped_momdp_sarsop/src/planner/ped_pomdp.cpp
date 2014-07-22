@@ -135,17 +135,28 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		reward = CrashPenalty(state);
 		return true;
     }
+    if (action == ACT_ACC && carvel >= ModelParams::VEL_MAX) {
+		reward = CrashPenalty(state);
+		return true;
+    }
+    if (action == ACT_DEC && carvel <= 0.01) {
+		reward = CrashPenalty(state);
+		return true;
+    }
 
-	//if (carvel < 0.1 && closest_side_dist > 1.5 && closest_front_dist > 3.5 && world.isMovingAway(state, closest_front_ped)) {
-		//reward += -1000;
+    // encourage speed up when there's no pedestrian
+    //if (carvel < 0.1 && closest_side_dist > 1.5 && closest_front_dist > 3.5 &&
+            //(closest_front_ped < 0 || world.isMovingAway(state, closest_front_ped))) {
+        //reward += -10;
+    //}
+
+
+    // encourage slowdown when pedestrian is close
+    //double min_dist_all_dirs = min(closest_front_dist, closest_side_dist);
+	//if (min_dist_all_dirs<6.0 && state.car.vel>1.0) {
+		//reward+=-4;
 	//}
 
-    /*
-    double min_dist_all_dirs=world.getMinCarPedDistAllDirs(state);
-	if (min_dist_all_dirs<2.0 && state.car.vel>1.0) {
-		reward+=-4;
-	}
-    */
 	/*
 	if ((min_dist < 2.5 && (state.car.vel > 1.0 || action == ACT_ACC)) || (min_dist > 4.0 && state.car.vel < 0.5)) {
 		reward += -1000;

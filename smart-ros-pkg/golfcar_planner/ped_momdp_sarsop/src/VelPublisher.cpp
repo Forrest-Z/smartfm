@@ -4,7 +4,7 @@
 #include <iostream>
 
 const double freq = 40;
-const double acceleration0 = 0.9;
+const double acceleration0 = 0.7;
 const double acceleration1 = 0.9;
 
 const double alpha0 = 0.5;

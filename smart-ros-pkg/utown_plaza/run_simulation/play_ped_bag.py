@@ -19,6 +19,7 @@ def get_duration(bagfn):
     return duration
 
 def main(bagfn):
+    N = 16
     t = get_duration(bagfn)
     #start = t / 8.0 + random.uniform(-2, 6)
 
@@ -27,14 +28,14 @@ def main(bagfn):
     except:
         i = 0
     i += 1
-    i = i % 8
+    i = i % N
 
     open('/tmp/bagi', 'w').write(str(i))
     
     #start = t/8.0 
     #start = random.uniform(0, t)
     #start = 620
-    start = i * t/8.0
+    start = i * t/ float(N)
 
     os.execv(ROSBAG, [ROSBAG, 'play', '-s', str(start), bagfn])
 
