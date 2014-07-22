@@ -25,6 +25,7 @@ public:
     bool isLocalGoal(const PomdpState& state);
     bool isGlobalGoal(const CarStruct& car);
 	bool inFront(COORD ped_pos, int car) const;
+    bool inCollision(const PomdpState& state);
     int minStepToGoal(const PomdpState& state);
 
 	void PedStep(PedStruct &ped, Random& random);

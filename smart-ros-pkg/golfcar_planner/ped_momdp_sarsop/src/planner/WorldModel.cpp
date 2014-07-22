@@ -56,7 +56,7 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
 
     // TODO set as a param
     if (mindist < 2) {
-		return (carvel == 0.0) ? 0 : 2;
+		return (carvel <= 0.01) ? 0 : 2;
     }
 
     if (mindist < 4) {
@@ -64,7 +64,7 @@ int WorldModel::defaultPolicy(const vector<State*>& particles)  {
 		else if (carvel < 0.5) return 1;
 		else return 0;
     }
-    return 1;
+    return carvel >= ModelParams::VEL_MAX ? 0 : 1;
 }
 
 bool WorldModel::inFront(COORD ped_pos, int car) const {
@@ -86,6 +86,29 @@ bool WorldModel::inFront(COORD ped_pos, int car) const {
     return cosa > in_front_angle_cos;
 	//double angle = acos(cosa);
 	//return (fabs(angle) < M_PI / 180 * 60);
+}
+
+/**
+ * H: center of the head of the car
+ * N: a point right in front of the car
+ * M: an arbitrary point
+ *
+ * Check whether M is in the safety zone
+ */
+bool inCollision(double Mx, double My, double Hx, double Hy, double Nx, double Ny);
+
+bool WorldModel::inCollision(const PomdpState& state) {
+    const int car = state.car.pos;
+	const COORD& car_pos = path[car];
+	const COORD& forward_pos = path[path.forward(car, 1.0)];
+
+    for(int i=0; i<state.num; i++) {
+        const COORD& pedpos = state.peds[i].pos;
+        if(::inCollision(pedpos.x, pedpos.y, car_pos.x, car_pos.y, forward_pos.x, forward_pos.y)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void WorldModel::getClosestPed(const PomdpState& state, 
@@ -260,7 +283,7 @@ void WorldModel::setPath(Path path) {
 }
 
 void WorldModel::updatePedBelief(PedBelief& b, const PedStruct& curr_ped) {
-    const double ALPHA = 0.3;
+    const double ALPHA = 0.6;
 	const double SMOOTHING=ModelParams::BELIEF_SMOOTHING;
 	for(double w: b.prob_goals) {
 		cout << w << " ";

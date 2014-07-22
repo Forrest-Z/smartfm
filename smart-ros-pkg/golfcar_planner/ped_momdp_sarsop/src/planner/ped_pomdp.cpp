@@ -20,8 +20,9 @@ public:
 		// Find mininum num of steps for car-pedestrian collision
 		for (int i=0; i<state->num; i++) {
 			auto& p = state->peds[i];
-			int step = int(ceil(ModelParams::control_freq 
-						* max(COORD::EuclideanDistance(carpos, p.pos) - ModelParams::COLLISION_DISTANCE, 0.0) 
+            // 3.25 is maximum distance to collision boundary from front laser (see collsion.cpp)
+			int step = int(ceil(ModelParams::control_freq
+						* max(COORD::EuclideanDistance(carpos, p.pos) - 3.25, 0.0)
 						/ ((p.vel + carvel))));
 			min_step = min(step, min_step);
 		}
@@ -116,15 +117,16 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		return true;
 	}
 
-	int closest_front_ped;
-	double closest_front_dist;
-	int closest_side_ped;
-	double closest_side_dist;
-	world.getClosestPed(state, closest_front_ped, closest_front_dist,
-			closest_side_ped, closest_side_dist);
+	//int closest_front_ped;
+	//double closest_front_dist;
+	//int closest_side_ped;
+	//double closest_side_dist;
+	//world.getClosestPed(state, closest_front_ped, closest_front_dist,
+			//closest_side_ped, closest_side_dist);
 
  	// Safety control: collision; Terminate upon collision
-	if (closest_front_dist < ModelParams::COLLISION_DISTANCE) {
+	//if (closest_front_dist < ModelParams::COLLISION_DISTANCE) {
+    if(world.inCollision(state)) {
 		reward = CrashPenalty(state); //, closest_ped, closest_dist);
 		return true;
 	}
@@ -277,10 +279,14 @@ public:
     // IMPORTANT: Check after changing reward function.
 	double Value(const State& s) const {
 		const PomdpState& state = static_cast<const PomdpState&>(s);
+        /*
         double min_dist = ped_pomdp_->world.getMinCarPedDist(state);
         if (min_dist < ModelParams::COLLISION_DISTANCE) {
             return ped_pomdp_->CrashPenalty(state);
         }
+        */
+        if (ped_pomdp_->world.inCollision(state))
+            return ped_pomdp_->CrashPenalty(state);
 
         int min_step = ped_pomdp_->world.minStepToGoal(state);
 		return ModelParams::GOAL_REWARD * Discount(min_step);
