@@ -126,6 +126,12 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 		return true;
 	}
 
+    double carvel = state.car.vel;
+    if (action == ACT_CUR && 0.1 < carvel && carvel < 0.6) {
+		reward = CrashPenalty(state);
+		return true;
+    }
+
     /*
     double min_dist_all_dirs=world.getMinCarPedDistAllDirs(state);
 	if (min_dist_all_dirs<2.0 && state.car.vel>1.0) {
@@ -158,68 +164,16 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
 	return false;
 }
-	
+
 double PedPomdp::ObsProb(uint64_t obs, const State& s, int action) const {
 	return obs == Observe(s);
 }
 
-// TODO
 vector<vector<double>> PedPomdp::GetBeliefVector(const vector<State*> particles) const {
-	/*
-	double goal_count[10][10] = {0};
-
-	PomdpState state_0 = particles[0]->state;
-	for(int i=0;i<particles.size();i++) {
-		PomdpState state=particles[i]->state;
-		for(int j=0;j<state.num;j++) {
-			goal_count[j][state.peds[j].goal]+=particles[i]->weight;
-		}
-	}
-	*/
-
 	vector<vector<double>> belief_vec;
-	/*
-	for(int j=0;j<state_0.num;j++) {
-		vector<double> belief;
-		for(int i=0;i<ModelParams::NGOAL;i++) {
-			belief.push_back((goal_count[j][i]+0.0));
-		}
-		belief_vec.push_back(belief);
-	}
-	*/
 	return belief_vec;
 }
-/*
-class PedPomdpBelief : public Belief {
-private:
-	const PedPomdp* model_;
 
-public:
-	PedPomdpBelief(const PedPomdp* model) :
-		Belief(model),
-		model_(model)
-	{
-	}
-
-	void Update(int action, uint64_t obs) { // TODO
-	}
-
-	vector<State*> Sample(int num_particles) const { // TODO
-		//vector<State*> sample;
-		//model_->world.getPomdpState();
-		//model_->world.sample_goal();
-		return sample;
-	}
-
-	Belief* MakeCopy() const { // Not really needed
-		return NULL;
-	}
-
-	string text() const { // TODO
-		return "TODO";
-	}
-};
-*/
 Belief* PedPomdp::InitialBelief(const State* start, string type) const {
 	assert(false);
 	return NULL;
@@ -305,10 +259,10 @@ public:
 	double Value(const State& s) const {
 		const PomdpState& state = static_cast<const PomdpState&>(s);
         double min_dist = ped_pomdp_->world.getMinCarPedDist(state);
-        if (min_dist < ModelParams::COLLISION_DISTANCE) { 
+        if (min_dist < ModelParams::COLLISION_DISTANCE) {
             return ped_pomdp_->CrashPenalty(state);
         }
-         
+
         int min_step = ped_pomdp_->world.minStepToGoal(state);
 		return ModelParams::GOAL_REWARD * Discount(min_step);
 	}
