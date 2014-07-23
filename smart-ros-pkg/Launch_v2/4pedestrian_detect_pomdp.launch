@@ -22,7 +22,7 @@
 <node pkg="dataAssoc_experimental" type="dataAssoc" name="dataAssoc"  ns="golfcart" output="screen">
 <param name="global_frame" value="/golfcart/map"/>
 <param name="camera_frame" value="/golfcart/camera_front_base"/>
-<param name="time_out" value="3.0"/>
+<param name="time_out" value="0.1"/>
 <remap from="pedestrian_clusters" to="pedestrian_clusters_filtered"/>
 <remap from="ped_vision" to="veri_pd_vision"/>
 <param name="image_transport" value="compressed"/>
