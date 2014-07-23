@@ -113,8 +113,8 @@ namespace ped_pathplan {
     void PathPlan::setStart(const State& start) {
 		cout << "start: " << start[0] << " " << start[1] <<  " " << start[2] << endl;
         this->start = start;
-        this->start[2] = normAngle(this->start[2] + (-2.0/180 * M_PI));
-        //this->start[2] = normAngle(this->start[2]);
+        //this->start[2] = normAngle(this->start[2] + (-2.0/180 * M_PI));
+		this->start[2] = normAngle(this->start[2]);
     }
 
     vector<State> PathPlan::calcPath() {

@@ -1,6 +1,6 @@
 <launch>
 
-<node pkg="feature_detection" type="cluster_filter.py" name="cluster_filter" output="screen" args="'width &lt; 3.0 and depth &lt; 1.5 and dist &lt; 100'" ns ="golfcart">
+<node pkg="feature_detection" type="cluster_filter.py" name="cluster_filter" args="'width &lt; 3.0 and depth &lt; 1.5 and dist &lt; 100'" ns ="golfcart">
 <remap from="cluster_filter_in" to="pedestrian_clusters"/>
 <remap from="cluster_filter_out" to="pedestrian_clusters_filtered"/>
 </node>
@@ -19,7 +19,7 @@
 <!--<param name="svg_file" value="$(find laser_clustering_known_environment)/utown_exp_launch_files/utown_plaza_ped_boundary.svg"/>-->
 </node>
 
-<node pkg="dataAssoc_experimental" type="dataAssoc" name="dataAssoc"  ns="golfcart" output="screen">
+<node pkg="dataAssoc_experimental" type="dataAssoc" name="dataAssoc"  ns="golfcart">
 <param name="global_frame" value="/golfcart/map"/>
 <param name="camera_frame" value="/golfcart/camera_front_base"/>
 <param name="time_out" value="0.1"/>

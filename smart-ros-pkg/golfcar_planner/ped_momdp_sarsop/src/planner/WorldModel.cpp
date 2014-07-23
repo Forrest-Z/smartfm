@@ -82,7 +82,7 @@ bool WorldModel::inFront(COORD ped_pos, int car) const {
 	double dot = DotProduct(forward_pos.x - car_pos.x, forward_pos.y - car_pos.y,
 			ped_pos.x - car_pos.x, ped_pos.y - car_pos.y);
 	double cosa = dot / (d0 * d1);
-	assert(cosa <= 1.0 && cosa >= -1.0);
+	assert(cosa <= 1.0 + 1E-8 && cosa >= -1.0 - 1E-8);
     return cosa > in_front_angle_cos;
 	//double angle = acos(cosa);
 	//return (fabs(angle) < M_PI / 180 * 60);
