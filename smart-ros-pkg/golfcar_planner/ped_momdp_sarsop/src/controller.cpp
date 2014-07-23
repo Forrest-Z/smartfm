@@ -33,6 +33,7 @@ Controller::Controller(ros::NodeHandle& nh, bool fixed_path, double pruning_cons
     actionPubPlot_= nh.advertise<geometry_msgs::Twist>("pomdp_action_plot",1);
 	pathPub_= nh.advertise<nav_msgs::Path>("pomdp_path_repub",1, true);
 	pathSub_= nh.subscribe("plan", 1, &Controller::RetrievePathCallBack, this);
+    navGoalSub_ = nh.subscribe("navgoal", 1, &Controller::setGoal, this);
 	goal_pub=nh.advertise<visualization_msgs::MarkerArray> ("pomdp_goals",1);
 	start_goal_pub=nh.advertise<ped_pathplan::StartGoal> ("ped_path_planner/planner/start_goal", 1);
 
@@ -124,7 +125,7 @@ void Controller::updateSteerAnglePublishSpeed(geometry_msgs::Twist speed)
 void Controller::publishSpeed(const ros::TimerEvent &e)
 {
 	geometry_msgs::Twist cmd;
-	cmd.angular.z = 0;       	
+	cmd.angular.z = 0;
 	cmd.linear.x = target_speed_;
 	cout<<"publishing cmd speed "<<target_speed_<<endl;
 	cmdPub_.publish(cmd);
@@ -222,7 +223,7 @@ void Controller::publishPlannerPeds(const State &s)
 void Controller::publishAction(int action)
 {
 		uint32_t shape = visualization_msgs::Marker::CUBE;
-		visualization_msgs::Marker marker;			
+		visualization_msgs::Marker marker;
         
 		
 		marker.header.frame_id=global_frame_id;
@@ -304,7 +305,7 @@ geometry_msgs::PoseStamped Controller::getPoseAhead(const tf::Stamped<tf::Pose>&
 void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 	if(fixed_path_ && worldModel.path.size()>0)  return;
 
-	ped_pathplan::StartGoal startGoal; 
+	ped_pathplan::StartGoal startGoal;
 	geometry_msgs::PoseStamped pose;
 	tf::poseStampedTFToMsg(carpose, pose);
 
@@ -315,14 +316,17 @@ void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 		startGoal.start=pose;
 	}
 
+	pose.pose.position.x=goalx_;
+	pose.pose.position.y=goaly_;
+
 	// set goal
 	// create door
 	//pose.pose.position.x=17;
 	//pose.pose.position.y=52;
 
 	// after CREATE door
-	pose.pose.position.x=19.5;
-	pose.pose.position.y=55.5;
+	//pose.pose.position.x=19.5;
+	//pose.pose.position.y=55.5;
 	
 	// before create door
 	//pose.pose.position.x=18.8;
@@ -339,6 +343,11 @@ void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 	
 	startGoal.goal=pose;
 	start_goal_pub.publish(startGoal);	
+}
+
+void Controller::setGoal(const geometry_msgs::PoseStamped::ConstPtr goal) {
+    goalx_ = goal->pose.position.x;
+    goaly_ = goal->pose.position.y;
 }
 
 void Controller::RetrievePathCallBack(const nav_msgs::Path::ConstPtr path)  {
@@ -456,7 +465,7 @@ void Controller::controlLoop(const ros::TimerEvent &e)
 
             // shutdown the node after reaching goal
             // TODO consider do this in simulaiton only for safety
-            if(real_speed_ <= 1e-5) {
+            if(real_speed_ <= 0.01) {
                 ros::shutdown();
             }
 			return;

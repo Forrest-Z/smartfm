@@ -72,6 +72,7 @@ public:
 	void momdpInit();
 	void sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose);
 	void RetrievePathCallBack(const nav_msgs::Path::ConstPtr path); 
+    void setGoal(const geometry_msgs::PoseStamped::ConstPtr goal);
 	geometry_msgs::PoseStamped getPoseAhead(const tf::Stamped<tf::Pose>& carpose);
 
 	ros::Publisher window_pub, goal_pub;
@@ -79,6 +80,7 @@ public:
 	ros::Publisher pa_pub;
 	ros::Publisher pathPub_;
 	ros::Subscriber pathSub_;
+    ros::Subscriber navGoalSub_;
 	ros::Publisher start_goal_pub;
 	//ros::Publisher markers_pubs[ModelParams::N_PED_IN];
 	ros::Publisher markers_pub;
@@ -93,6 +95,8 @@ public:
 	double target_speed_, real_speed_;
 	string global_frame_id;
 	visualization_msgs::MarkerArray markers;
+
+    double goalx_, goaly_;
 
 private:
     bool fixed_path_;

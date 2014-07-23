@@ -1,3 +1,11 @@
+# GOAL: after CREATE door
+goalx: 19.5
+goaly: 55.5
+
+# GOAL: cheers
+#goalx: 4.0
+#goaly: 9.0
+
 fixed_path: false
 pruning_constant: 0
 #pruning_constant: 1000000000

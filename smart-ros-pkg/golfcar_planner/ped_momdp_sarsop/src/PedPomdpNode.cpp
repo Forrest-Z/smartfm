@@ -66,6 +66,10 @@ PedPomdpNode::PedPomdpNode()
 	cerr << "DEBUG: Creating ped_momdp instance" << endl;
 	controller = new Controller(nh, fixed_path, pruning_constant, pathplan_ahead);
 
+    // default goal: after create door
+    n.param("goalx", controller->goalx_, 19.5);
+    n.param("goaly", controller->goaly_, 55.5);
+
 	controller->window_pub=nh.advertise<geometry_msgs::PolygonStamped>("/my_window",1000);
 	controller->pa_pub=nh.advertise<geometry_msgs::PoseArray>("my_poses",1000);
 	controller->car_pub=nh.advertise<geometry_msgs::PoseStamped>("car_pose",1000);
