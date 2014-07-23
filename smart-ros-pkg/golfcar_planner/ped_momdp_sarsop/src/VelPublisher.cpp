@@ -4,7 +4,7 @@
 #include <iostream>
 
 const double freq = 40;
-const double acceleration0 = 0.9;
+const double acceleration0 = 0.7;
 const double acceleration1 = 0.9;
 //const double acceleration0 = 0.5;
 //const double acceleration1 = 0.8;
@@ -79,6 +79,9 @@ class VelPublisher2 : public VelPublisher {
 
 		if(0.11<target_vel && target_vel < 0.59) {
 			target_vel = 0.6;
+		}
+		if(target_vel <= 0.01) {
+			target_vel = 0.01;
 		}
     }
 

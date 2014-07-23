@@ -133,10 +133,10 @@ bool PedPomdp::Step(State& state_, double rNum, int action, double& reward, uint
 
 	// Forbidden actions
     double carvel = state.car.vel;
-    if (action == ACT_CUR && 0.1 < carvel && carvel < 0.6) {
+	if (action == ACT_CUR && 0.1 < carvel && carvel < 0.6) {
 		reward = CrashPenalty(state);
 		return true;
-    }
+	}
     if (action == ACT_ACC && carvel >= ModelParams::VEL_MAX) {
 		reward = CrashPenalty(state);
 		return true;
