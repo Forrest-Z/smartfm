@@ -321,12 +321,12 @@ void Controller::sendPathPlanStart(const tf::Stamped<tf::Pose>& carpose) {
 	//pose.pose.position.y=52;
 
 	// after CREATE door
-	//pose.pose.position.x=19.5;
-	//pose.pose.position.y=55.5;
+    pose.pose.position.x=19.5;
+    pose.pose.position.y=55.5;
 	
 	// before create door
-	pose.pose.position.x=18.8;
-	pose.pose.position.y=44.5;
+	//pose.pose.position.x=18.8;
+	//pose.pose.position.y=44.5;
 	
 	// large map goal
 	//pose.pose.position.x=108;
