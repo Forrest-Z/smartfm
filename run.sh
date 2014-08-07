@@ -1,4 +1,5 @@
 #!/bin/bash
+cd ~/smartfm/smart-ros-pkg/utown_plaza/run_simulation
 
 # setup env
 source /opt/ros/fuerte/setup.bash
