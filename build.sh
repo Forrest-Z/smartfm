@@ -15,5 +15,5 @@ make
 
 [ -e ~/SvgPath ] || build_bookingui
 
-rosmake ped_momdp_sarsop ped_pathplan golfcar_ppc
+rosmake ped_momdp_sarsop ped_pathplan golfcar_ppc velmixer
 
