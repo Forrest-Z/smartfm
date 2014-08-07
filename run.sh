@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 cd ~/smartfm/smart-ros-pkg/utown_plaza/run_simulation
 
 # setup env
@@ -9,7 +10,7 @@ source aws_access.sh
 
 while true; do
     rm -f *.bag
-    roslaunch all.launch
+    roslaunch all.launch > pomdp.log
     python utils.py count
     s3put -b golfcar.test -p $(pwd) --region ap-southeast-1 -c 100 -k default *.bag
     rm -f *.bag

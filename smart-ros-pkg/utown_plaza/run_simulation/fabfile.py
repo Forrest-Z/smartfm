@@ -16,14 +16,24 @@ def ros():
     require.deb.key('B01FA116', url='http://packages.ros.org/ros.key')
     require.deb.uptodate_index()
     #require.deb.packages(['ros-fuerte-desktop-full', 'libbullet-dev'])
-    require.deb.packages(['colorgcc', 'ros-fuerte-desktop-full', 'ros-fuerte-octomap'])
+    require.deb.packages(['ros-fuerte-desktop-full', 'ros-fuerte-octomap'])
 
 @task
 def repo():
+    SIMDIR = '~/smartfm/smart-ros-pkg/utown_plaza/run_simulation'
+
+    require.deb.packages(['colorgcc', 'python-virtualenv'])
     require.git.working_copy('shaojun@bigbird:~/smartfm.git', path='smartfm/', branch='simulation')
-    rsync(remote_dir='~/smartfm/smart-ros-pkg/utown_plaza/run_simulation/pedbags/', local_dir='pedbags/')
+
+    rsync(remote_dir=SIMDIR + '/pedbags/', local_dir='pedbags/')
     with cd('~/smartfm'):
         run('./build.sh')
+
+    with cd(SIMDIR):
+        require.python.virtualenv('py', system_site_packages=True)
+        with virtualenv('py'):
+            require.python.requirements('requirements.txt')
+
 
 #@task
 #def setup():
