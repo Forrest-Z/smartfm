@@ -1,4 +1,5 @@
 <launch>
+    <arg name="simparam" default="nonexist.yaml" />
 
 	<node pkg="velmixer" type="vel_miexer" name="vel_mixer" respawn="false"/>
 
@@ -6,6 +7,7 @@
     <!--<node name="ped_pomdp" pkg="ped_momdp_sarsop" type="ped_pomdp" launch-prefix="valgrind - -tool=callgrind" respawn="false" output="screen" required="true">-->
     <node name="ped_pomdp" pkg="ped_momdp_sarsop" type="ped_pomdp"  respawn="false" output="screen" required="true">
         <rosparam file="$(find ped_momdp_sarsop)/params.yaml" command="load" />
+        <rosparam file="$(arg simparam)" command="load" />
 		<param name="simulation" value="true"/>
 		<remap from="robot_0/amcl_pose" to="amcl_pose"/>
 		<remap from="odom" to="odom"/>
