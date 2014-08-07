@@ -1,6 +1,7 @@
 #!/bin/bash
 
-source /opt/ros/fuerte/setup.bash
-export ROS_PACKAGE_PATH=~/smartfm/smart-ros-pkg:$ROS_PACKAGE_PATH
+source env.sh
+cd ~/smartfm/smart-ros-pkg/third_party/geometry/bullet
+make
 
 rosmake ped_momdp_sarsop ped_pathplan golfcar_ppc
