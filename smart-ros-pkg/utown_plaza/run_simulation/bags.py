@@ -17,7 +17,9 @@ class Analyzer(object):
         self.time_start = None
         self.time_goal = None
         self.collision = False
+        self.max_collision_speed = 0
         self.goal = None
+        self.speed = 0
 
     def __call__(self):
         dispatch = self.dispatch()
@@ -35,6 +37,10 @@ class Analyzer(object):
         self.update_time_start(time)
         self.check_collision()
         self.check_reached_goal(time)
+
+    def update_speed(self, msg, time):
+        speed = msg.twist.twist.linear.x
+        self.speed = speed
 
     def update_peds(self, msg, time):
         peds = msg.ped_local
@@ -59,8 +65,9 @@ class Analyzer(object):
     def check_collision(self):
         mindist = min(dist(self.carpos, p) for p in self.peds)
         if mindist < 1.0:
-            print 'Collision!', self.carpos, self.peds
+            #print 'Collision!', self.carpos, self.peds, self.speed
             self.collision = True
+            self.max_collision_speed = max(self.max_collision_speed, self.speed)
         #print self.carpos, self.peds
 
     def check_reached_goal(self, time):
@@ -72,6 +79,7 @@ class Analyzer(object):
             '/car_pose': self.update_carpos,
             '/ped_local_frame_vector': self.update_peds,
             '/ped_path_planner/planner/start_goal': self.update_goal,
+            '/odom': self.update_speed,
         }
 
 
@@ -80,10 +88,10 @@ def analyze(fn):
     a()
 
     timelen = a.time_goal - a.time_start
-    collision = a.collision
 
     print 'Time = ', timelen
-    print 'Collision = ', collision
+    print 'Collision = ', a.collision
+    print 'Max collision speed = ', a.max_collision_speed
 
 def show(fn, topic):
     b = rosbag.Bag(fn)
