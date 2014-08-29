@@ -18,14 +18,20 @@ def ros():
     #require.deb.packages(['ros-fuerte-desktop-full', 'libbullet-dev'])
     require.deb.packages(['ros-fuerte-desktop-full', 'ros-fuerte-octomap'])
 
+
+SIMDIR = '~/smartfm/smart-ros-pkg/utown_plaza/run_simulation'
+
+@task
+def pedbags():
+    rsync(remote_dir=SIMDIR + '/pedbags/', local_dir='pedbags/')
+
 @task
 def repo():
-    SIMDIR = '~/smartfm/smart-ros-pkg/utown_plaza/run_simulation'
-
     require.deb.packages(['colorgcc', 'python-virtualenv'])
     require.git.working_copy('shaojun@bigbird:~/smartfm.git', path='smartfm/', branch='simulation')
 
-    rsync(remote_dir=SIMDIR + '/pedbags/', local_dir='pedbags/')
+    pedbags()
+
     with cd('~/smartfm'):
         run('./build.sh')
 
