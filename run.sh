@@ -4,7 +4,10 @@ set -e
 SIMTYPE=$1
 SIMPARAM=sim_${SIMTYPE}.yaml
 
+cd ~/smartfm
 git pull
+./build.sh
+
 
 cd ~/smartfm/smart-ros-pkg/utown_plaza/run_simulation
 [ -e $SIMPARAM ] || ( echo $SIMPARAM does not exist! && exit -1 )
