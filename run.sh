@@ -21,6 +21,7 @@ while true; do
     python utils.py count
     s3put -b golfcar.test -p $(pwd) --region ap-southeast-1 -c 100 -k $SIMTYPE *.bag
     rm -f *.bag
+    yes | rosclean purge
     sleep 1
 done
 
