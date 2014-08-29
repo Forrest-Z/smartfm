@@ -64,7 +64,7 @@ class Analyzer(object):
 
     def check_collision(self):
         mindist = min(dist(self.carpos, p) for p in self.peds)
-        if mindist < 1.0:
+        if mindist < COLLISION_DIST:
             #print 'Collision!', self.carpos, self.peds, self.speed
             self.collision = True
             self.max_collision_speed = max(self.max_collision_speed, self.speed)
@@ -93,6 +93,50 @@ def analyze(fn):
     print 'Collision = ', a.collision
     print 'Max collision speed = ', a.max_collision_speed
 
+    result = {
+            'max_collision_speed': a.max_collision_speed,
+            'timelen':  timelen,
+            }
+    return result
+
+def animate_beliefs(beliefs, rainbows):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import matplotlib.animation as animation
+
+    fig = plt.figure()
+    plt.yticks([])
+    plt.xlim((0, 1))
+
+    ims = []
+    for b, r in zip(beliefs, rainbows):
+        im = plt.barh(-np.arange(len(b)), b, color=r)
+        ims.append(im)
+    im_ani = animation.ArtistAnimation(fig, ims, interval=1000/3, blit=True)
+    im_ani.save('belief.mp4')
+    #plt.show()
+
+def show_belief(fn, topic='/golfcart/pomdp_beliefs0'):
+    """
+    Animate belief for the old belief marker message format.
+    """
+    import numpy as np
+    b = rosbag.Bag(fn)
+    msgs = b.read_messages(topics=[topic])
+    beliefs = []
+    rainbows = []
+    for topic, msg, time in msgs:
+        time = time.to_time()
+        markers = msg.markers
+        belief = np.array([m.scale.y for m in markers])
+        belief = belief / np.sum(belief)
+        beliefs.append(belief)
+
+        rainbow = [(m.color.r, m.color.g, m.color.b) for m in markers]
+        rainbows.append(rainbow)
+    animate_beliefs(beliefs, rainbows)
+
+
 def show(fn, topic):
     b = rosbag.Bag(fn)
     msgs = b.read_messages(topics=[topic])
@@ -100,5 +144,5 @@ def show(fn, topic):
         print msg
 
 if __name__=='__main__':
-    argh.dispatch_commands([show, analyze])
+    argh.dispatch_commands([show, show_belief, analyze])
 
