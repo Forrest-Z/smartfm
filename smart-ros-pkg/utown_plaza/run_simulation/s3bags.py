@@ -29,6 +29,7 @@ def ensure_path_exists(path):
 
 def analyze_key(prefix, key):
     bagfn = '/tmp/' + key.name
+
     ensure_path_exists(bagfn)
     key.get_contents_to_filename(bagfn)
     #a = bags.Analyzer(bagfn)
@@ -39,16 +40,38 @@ def analyze_key(prefix, key):
     #result_table.put_item(r)
     mongo.results.insert(r)
 
-def analyze(prefix):
+def analyze(prefix, force=False):
     prefix = prefix.strip('/')
     keys = get_list(prefix)
     for k in keys:
+        if not force and mongo.results.find({"key": k.name}).count() > 0:
+            print 'skipping ', k.name
+            # result already exists
+            continue
+        print 'analyzing ', k.name
         analyze_key(prefix, k)
+
+def summary_prefix(prefix):
+    rs = list(mongo.results.find({'prefix': prefix}))
+    total = len(rs)
+    collision_rate = len([r for r in rs if r['max_collision_speed'] > 0.5]) / float(total)
+    avg_time = sum(r['timelen'] for r in rs) / float(total)
+
+    print 'prefix = ', prefix
+    print 'total = ', total
+    print 'collision_rate = ', collision_rate
+    print 'avg_time = ', avg_time
+    print
+
+def summary():
+    PREFIXS = ['default', 'reactive']
+    for p in PREFIXS:
+        summary_prefix(p)
 
 def testdb():
     mongo.test.insert({'bar': 1.234})
     mongo.test.insert({'foo': 'bar'})
 
 if __name__=='__main__':
-    argh.dispatch_commands([show, analyze, testdb])
+    argh.dispatch_commands([show, analyze, summary, testdb])
 

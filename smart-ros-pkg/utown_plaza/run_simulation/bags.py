@@ -4,7 +4,7 @@ import rosbag
 import argh
 
 GOAL_TOLERANCE = 4
-COLLISION_DIST = 1
+COLLISION_DIST = 0.5
 
 def dist(a, b):
     return math.sqrt((a[0]-b[0])**2 +(a[1]-b[1])**2)
@@ -64,6 +64,7 @@ class Analyzer(object):
 
     def check_collision(self):
         mindist = min(dist(self.carpos, p) for p in self.peds)
+        #print mindist, self.speed
         if mindist < COLLISION_DIST:
             #print 'Collision!', self.carpos, self.peds, self.speed
             self.collision = True
@@ -89,6 +90,7 @@ def analyze(fn):
 
     timelen = a.time_goal - a.time_start
 
+    print 'bag fn =', fn
     print 'Time = ', timelen
     print 'Collision = ', a.collision
     print 'Max collision speed = ', a.max_collision_speed
