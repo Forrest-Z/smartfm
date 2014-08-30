@@ -23,7 +23,7 @@ SIMDIR = '~/smartfm/smart-ros-pkg/utown_plaza/run_simulation'
 
 @task
 def pedbags():
-    rsync(remote_dir=SIMDIR + '/pedbags/', local_dir='pedbags/')
+    rsync(remote_dir=SIMDIR + '/pedbags/', local_dir='pedbags/', extra_opts="-P")
 
 @task
 def repo():

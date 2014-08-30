@@ -88,7 +88,10 @@ def analyze(fn):
     a = Analyzer(fn)
     a()
 
-    timelen = a.time_goal - a.time_start
+    if a.time_goal is None:
+        timelen = 200
+    else:
+        timelen = a.time_goal - a.time_start
 
     print 'bag fn =', fn
     print 'Time = ', timelen

@@ -19,7 +19,7 @@ source py/bin/activate
 source aws_access.sh
 
 while true; do
-    rm -f *.bag
+    rm -f *.bag *.active
     roslaunch all.launch simparam:=${SIMPARAM} > pomdp.log
     python utils.py count
     s3put -b golfcar.test -p $(pwd) --region ap-southeast-1 -c 100 -k $SIMTYPE *.bag
