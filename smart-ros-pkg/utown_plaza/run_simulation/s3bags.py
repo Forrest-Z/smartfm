@@ -34,7 +34,7 @@ def analyze_key(prefix, key):
     key.get_contents_to_filename(bagfn)
     #a = bags.Analyzer(bagfn)
     #a()
-    r = bags.analyze(bagfn)
+    r = bags.analyze_file(bagfn)
     r['prefix'] = prefix
     r['key'] = key.name
     #result_table.put_item(r)
@@ -52,15 +52,19 @@ def analyze(prefix, force=False):
         analyze_key(prefix, k)
 
 def summary_prefix(prefix):
+    import numpy as np
+    from scipy.stats import sem
     rs = list(mongo.results.find({'prefix': prefix}))
     total = len(rs)
     collision_rate = len([r for r in rs if r['max_collision_speed'] > 0.5]) / float(total)
-    avg_time = sum(r['timelen'] for r in rs) / float(total)
+    times = [r['timelen'] for r in rs]
+    avg_time = np.mean(times)
+    err_time = sem(times)
 
     print 'prefix = ', prefix
     print 'total = ', total
     print 'collision_rate = ', collision_rate
-    print 'avg_time = ', avg_time
+    print 'avg_time = ', avg_time, '+/-', err_time
     print
 
 def summary():

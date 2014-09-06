@@ -13,6 +13,7 @@ class Analyzer(object):
     def __init__(self, bagfn):
         self.bagfn = bagfn
         self.peds = []
+        self.peds_first_appear = {}
         self.carpos = None
         self.time_start = None
         self.time_goal = None
@@ -48,7 +49,14 @@ class Analyzer(object):
             p = peds[0].rob_pose
             self.carpos = (p.x, p.y)
 
-        self.peds = [(a.ped_pose.x, a.ped_pose.y) for a in peds]
+        for a in peds:
+            if a.ped_id not in self.peds_first_appear:
+                self.peds_first_appear[a.ped_id] = time
+
+        #self.peds = [(a.ped_pose.x, a.ped_pose.y) for a in peds]
+        # exclude peds suddenly appear
+        self.peds = [(a.ped_pose.x, a.ped_pose.y) for a in peds
+                        if time - self.peds_first_appear[a.ped_id] > 5]
 
         self.update_time_start(time)
         self.check_collision()
@@ -63,6 +71,9 @@ class Analyzer(object):
             self.time_start = time
 
     def check_collision(self):
+        if not self.peds:
+            return
+
         mindist = min(dist(self.carpos, p) for p in self.peds)
         #print mindist, self.speed
         if mindist < COLLISION_DIST:
@@ -84,7 +95,7 @@ class Analyzer(object):
         }
 
 
-def analyze(fn):
+def analyze_file(fn):
     a = Analyzer(fn)
     a()
 
@@ -103,6 +114,10 @@ def analyze(fn):
             'timelen':  timelen,
             }
     return result
+
+def analyze(*fns):
+    for f in fns:
+        analyze_file(f)
 
 def animate_beliefs(beliefs, rainbows):
     import numpy as np
