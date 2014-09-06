@@ -39,6 +39,7 @@ def analyze_key(prefix, key):
     r['key'] = key.name
     #result_table.put_item(r)
     mongo.results.insert(r)
+    os.remove(bagfn)
 
 def analyze(prefix, force=False):
     prefix = prefix.strip('/')
