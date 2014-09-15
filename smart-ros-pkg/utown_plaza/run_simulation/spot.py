@@ -12,8 +12,14 @@ def connect():
     c = boto.ec2.connect_to_region(REGION)
     return c
 
-def launch(number=1, script='default.sh'):
-    user_data = open(script).read()
+SCRIPT="""
+#!/bin/bash
+su ubuntu -c "git --git-dir=/home/ubuntu/smartfm/.git --work-tree=/home/ubuntu/smartfm/ pull"
+nohup su ubuntu -c "/home/ubuntu/smartfm/run.sh %s" 2>&1 &
+"""
+
+def launch(simtype, number=1):
+    user_data = SCRIPT % simtype
     c = connect()
     r = c.request_spot_instances(price=PRICE, image_id=AMI, count=number,
             instance_type=INSTANCE_TYPE, user_data=user_data,
