@@ -37,11 +37,19 @@ def launch(simtype, number=1):
                 if i>=5:
                     raise
 
+def taginsts():
+    c = connect()
+    spots = c.get_all_spot_instance_requests()
+    acts = [s for s in spots if s.state == 'active']
+    for s in acts:
+        print 'Tagging ', s.instance_id
+        name = s.tags['Name']
+        c.create_tags(s.instance_id, {'Name': name})
 
 def spotprice(instance_type):
     c = connect(REGION)
     print c.get_spot_price_history(instance_type=instance_type)
 
 if __name__=='__main__':
-    argh.dispatch_commands([launch, spotprice])
+    argh.dispatch_commands([launch, spotprice, taginsts])
 
