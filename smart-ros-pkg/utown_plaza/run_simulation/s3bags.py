@@ -5,7 +5,7 @@ import argh
 import bags
 from pymongo import MongoClient
 
-BUCKET = 'golfcar.v2'
+BUCKET = 'golfcar.v3'
 MONGO_URL = 'mongodb://bhy:bhy@ds063869.mongolab.com:63869/golfcar'
 #MONGO_URL = 'mongodb://bhy:bhy@ds063869.mongolab.com:63869/'
 
@@ -64,9 +64,12 @@ def summary_prefix(prefix):
     import numpy as np
     from scipy.stats import sem
     rs = list(mongo.results.find({'prefix': prefix}))
+    fails = [r for r in rs if r['timelen'] == bags.FAIL_TIMELEN]
+    rs = [r for r in rs if r['timelen'] != bags.FAIL_TIMELEN]
     total = len(rs)
     print 'prefix = ', prefix
     print 'total = ', total
+    print 'fails = ', len(fails) / float(total)
     if total == 0:
         return
 

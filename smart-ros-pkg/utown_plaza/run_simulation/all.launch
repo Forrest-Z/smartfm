@@ -6,7 +6,7 @@
     </include>
     <include file="$(find utown_plaza)/run_simulation/pathplan.launch" />
     <node pkg="utown_plaza" type="record.sh" name="bag_recorder" cwd="node" required="true"/>
-    <node pkg="utown_plaza" type="play_ped_bag_random.py" name="ped_player" cwd="node" required="true"/>
-    <node pkg="utown_plaza" type="utils.py" name="watchdog" cwd="node" args="watchdog 90" required="true"/>
+    <node pkg="utown_plaza" type="play_ped_bag_random.py" name="ped_player" cwd="node" />
+    <node pkg="utown_plaza" type="utils.py" name="watchdog" cwd="node" args="watchdog 600" required="true"/>
 </launch>
 

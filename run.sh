@@ -3,7 +3,7 @@ set -e
 
 SIMTYPE=$1
 SIMPARAM=sim_${SIMTYPE}.yaml
-BUCKET=golfcar.v2
+BUCKET=golfcar.v3
 
 cd ~/smartfm
 git pull
