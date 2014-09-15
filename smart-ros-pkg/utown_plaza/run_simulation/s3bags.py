@@ -28,6 +28,13 @@ def ensure_path_exists(path):
     if not os.path.exists(d):
         os.makedirs(d)
 
+def download(path):
+    bucket = s3conn.get_bucket(BUCKET)
+    key = bucket.get_key(path)
+    fn = os.path.basename(path)
+    key.get_contents_to_filename(fn)
+    print 'Downloaded', fn
+
 def analyze_key(prefix, key):
     bagfn = '/tmp/' + key.name
 
@@ -84,5 +91,5 @@ def testdb():
     mongo.test.insert({'foo': 'bar'})
 
 if __name__=='__main__':
-    argh.dispatch_commands([show, analyze, summary, count, testdb])
+    argh.dispatch_commands([show, analyze, summary, count, download, testdb])
 
