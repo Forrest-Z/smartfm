@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import os.path
 import boto
 import argh
@@ -68,15 +69,20 @@ def summary_prefix(prefix):
     print 'avg_time = ', avg_time, '+/-', err_time
     print
 
+PREFIXS = ['default', 'reactive', 'p100']
+
 def summary():
-    PREFIXS = ['default', 'reactive']
     for p in PREFIXS:
         summary_prefix(p)
+
+def count():
+    for p in PREFIXS:
+        print p, ':', len(list(get_list(p)))
 
 def testdb():
     mongo.test.insert({'bar': 1.234})
     mongo.test.insert({'foo': 'bar'})
 
 if __name__=='__main__':
-    argh.dispatch_commands([show, analyze, summary, testdb])
+    argh.dispatch_commands([show, analyze, summary, count, testdb])
 
