@@ -5,7 +5,7 @@ import argh
 import bags
 from pymongo import MongoClient
 
-BUCKET = 'golfcar.test'
+BUCKET = 'golfcar.v2'
 MONGO_URL = 'mongodb://bhy:bhy@ds063869.mongolab.com:63869/golfcar'
 #MONGO_URL = 'mongodb://bhy:bhy@ds063869.mongolab.com:63869/'
 

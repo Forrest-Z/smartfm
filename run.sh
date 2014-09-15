@@ -3,6 +3,7 @@ set -e
 
 SIMTYPE=$1
 SIMPARAM=sim_${SIMTYPE}.yaml
+BUCKET=golfcar.v2
 
 cd ~/smartfm
 git pull
@@ -22,7 +23,7 @@ while true; do
     rm -f *.bag *.active
     roslaunch all.launch simparam:=${SIMPARAM} > pomdp.log
     python utils.py count
-    s3put -b golfcar.test -p $(pwd) --region ap-southeast-1 -c 100 -k $SIMTYPE *.bag
+    s3put -b $BUCKET -p $(pwd) --region ap-southeast-1 -c 100 -k $SIMTYPE *.bag
     rm -f *.bag
     yes | rosclean purge
     sleep 1

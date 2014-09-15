@@ -3,11 +3,14 @@ import math
 import rosbag
 import argh
 
+VERBOSE = False
+
 GOAL_TOLERANCE = 4
 COLLISION_DIST = 0.5
 
 def dist(a, b):
     return math.sqrt((a[0]-b[0])**2 +(a[1]-b[1])**2)
+
 
 class Analyzer(object):
     def __init__(self, bagfn):
@@ -21,6 +24,8 @@ class Analyzer(object):
         self.max_collision_speed = 0
         self.goal = None
         self.speed = 0
+        self.target_speed = 0
+        self.pub_speed = 0
 
     def __call__(self):
         dispatch = self.dispatch()
@@ -28,7 +33,10 @@ class Analyzer(object):
         msgs = bag.read_messages(topics=dispatch.keys())
 
         for topic, msg, time in msgs:
+            tt = time
             time = time.to_time()
+            if VERBOSE:
+                print 't = ', tt, self.speed, self.target_speed, self.pub_speed
             dispatch[topic](msg, time)
 
     def update_carpos(self, msg, time):
@@ -42,6 +50,14 @@ class Analyzer(object):
     def update_speed(self, msg, time):
         speed = msg.twist.twist.linear.x
         self.speed = speed
+
+    def update_target_speed(self, msg, time):
+        speed = msg.linear.x
+        self.target_speed = speed
+
+    def update_pub_speed(self, msg, time):
+        speed = msg.linear.x
+        self.pub_speed = speed
 
     def update_peds(self, msg, time):
         peds = msg.ped_local
@@ -76,8 +92,9 @@ class Analyzer(object):
 
         mindist = min(dist(self.carpos, p) for p in self.peds)
         #print mindist, self.speed
-        if mindist < COLLISION_DIST:
-            #print 'Collision!', self.carpos, self.peds, self.speed
+        if mindist < COLLISION_DIST and self.speed > 0:
+            if VERBOSE:
+                print 'Collision!', mindist, self.carpos, self.peds, self.speed
             self.collision = True
             self.max_collision_speed = max(self.max_collision_speed, self.speed)
         #print self.carpos, self.peds
@@ -92,6 +109,9 @@ class Analyzer(object):
             '/ped_local_frame_vector': self.update_peds,
             '/ped_path_planner/planner/start_goal': self.update_goal,
             '/odom': self.update_speed,
+            '/cmd_vel_pomdp': self.update_target_speed,
+            #'/cmd_vel': self.update_pub_speed,
+            '/cmd_speed': self.update_pub_speed,
         }
 
 
