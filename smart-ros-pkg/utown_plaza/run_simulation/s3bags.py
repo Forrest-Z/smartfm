@@ -65,13 +65,16 @@ def summary_prefix(prefix):
     from scipy.stats import sem
     rs = list(mongo.results.find({'prefix': prefix}))
     total = len(rs)
+    print 'prefix = ', prefix
+    print 'total = ', total
+    if total == 0:
+        return
+
     collision_rate = len([r for r in rs if r['max_collision_speed'] > 0.5]) / float(total)
     times = [r['timelen'] for r in rs]
     avg_time = np.mean(times)
     err_time = sem(times)
 
-    print 'prefix = ', prefix
-    print 'total = ', total
     print 'collision_rate = ', collision_rate
     print 'avg_time = ', avg_time, '+/-', err_time
     print
