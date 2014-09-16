@@ -3,8 +3,13 @@ import sys
 import os
 import yaml
 import random
+import platform
+import time
 import glob
 import rosbag
+
+# reduce corrlation when running parallel
+random.seed((time.time(), platform.node(), os.getpid()))
 
 ROSBAG = '/opt/ros/fuerte/bin/rosbag'
 #BAGFN = '3394_new.bag'
