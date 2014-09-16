@@ -74,7 +74,7 @@ def get_jobs(last=0):
 def handle_job(j):
     prefix, key = j
     if mongo.results.find({"key": key.name}).count() > 0:
-        print 'skipping ', k.name
+        print 'skipping ', key.name
     else:
         analyze_key(prefix, key)
 
@@ -92,7 +92,7 @@ def summary_prefix(prefix):
     if total == 0:
         return
 
-    collision_rate = len([r for r in rs if r['max_collision_speed'] > 0.5]) / float(total)
+    collision_rate = len([r for r in rs if r['max_collision_speed'] > 1.1]) / float(total)
     times = [r['timelen'] for r in rs]
     avg_time = np.mean(times)
     err_time = sem(times)
