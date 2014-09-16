@@ -6,7 +6,10 @@ import time
 REGION='ap-southeast-1'
 AMI = 'ami-c0ebb192'
 INSTANCE_TYPE = 'c3.xlarge'
-PRICE = 0.044
+PRICES = {
+        'c3.xlarge': 0.044,
+        'c3.2xlarge': 0.088,
+        }
 
 
 def connect():
@@ -18,11 +21,15 @@ su ubuntu -c "git --git-dir=/home/ubuntu/smartfm/.git --work-tree=/home/ubuntu/s
 nohup su ubuntu -c "/home/ubuntu/smartfm/run.sh %s" 2>&1 &
 """
 
-def launch(simtype, number=1):
-    user_data = SCRIPT % simtype
+def launch(simtype, number=1, instance=INSTANCE_TYPE):
+    if simtype == 'eval':
+        user_data = ''
+    else:
+        user_data = SCRIPT % simtype
+    price = PRICES[instance]
     c = connect()
-    reqs = c.request_spot_instances(price=PRICE, image_id=AMI, count=number,
-            instance_type=INSTANCE_TYPE, user_data=user_data,
+    reqs = c.request_spot_instances(price=price, image_id=AMI, count=number,
+            instance_type=instance, user_data=user_data,
             key_name='golfcar', type='persistent')
 
     print reqs
