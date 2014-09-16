@@ -4,11 +4,13 @@ import argh
 import time
 
 REGION='ap-southeast-1'
-AMI = 'ami-c0ebb192'
+#AMI = 'ami-c0ebb192'
+AMI = 'ami-1e2f0b4c'
 INSTANCE_TYPE = 'c3.xlarge'
 PRICES = {
         'c3.xlarge': 0.044,
         'c3.2xlarge': 0.088,
+        'c3.8xlarge': 0.33,
         }
 
 
