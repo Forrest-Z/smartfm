@@ -9,6 +9,8 @@ BUCKET = 'golfcar.v3'
 MONGO_URL = 'mongodb://bhy:bhy@ds063869.mongolab.com:63869/golfcar'
 #MONGO_URL = 'mongodb://bhy:bhy@ds063869.mongolab.com:63869/'
 
+PREFIXS = ['default', 'reactive', 'p100']
+
 s3conn = boto.s3.connect_to_region('ap-southeast-1')
 mongo = MongoClient(MONGO_URL).golfcar
 
@@ -49,7 +51,7 @@ def analyze_key(prefix, key):
     mongo.results.insert(r)
     os.remove(bagfn)
 
-def analyze(prefix, force=False):
+def get_task_keys(prefix, force=False):
     prefix = prefix.strip('/')
     keys = get_list(prefix)
     for k in keys:
@@ -57,8 +59,22 @@ def analyze(prefix, force=False):
             print 'skipping ', k.name
             # result already exists
             continue
+        yield k
+
+def analyze(prefix, force=False):
+    for k in get_task_keys(prefix, force):
         print 'analyzing ', k.name
         analyze_key(prefix, k)
+
+def get_jobs(last=0):
+    for p in PREFIXS:
+        for k in get_task_keys(p):
+            yield (p, k)
+
+def handle_job(j):
+    prefix, key = j
+    analyze_key(prefix, key)
+
 
 def summary_prefix(prefix):
     import numpy as np
@@ -81,8 +97,6 @@ def summary_prefix(prefix):
     print 'collision_rate = ', collision_rate
     print 'avg_time = ', avg_time, '+/-', err_time
     print
-
-PREFIXS = ['default', 'reactive', 'p100']
 
 def summary():
     for p in PREFIXS:
