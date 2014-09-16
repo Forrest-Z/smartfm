@@ -17,7 +17,7 @@ mongo = MongoClient(MONGO_URL).golfcar
 
 def get_list(prefix):
     bucket = s3conn.get_bucket(BUCKET)
-    keys = bucket.list(prefix)
+    keys = bucket.list(prefix + '/')
     return keys
 
 def show(prefix):
@@ -88,9 +88,9 @@ def summary_prefix(prefix):
     total = len(rs)
     print 'prefix = ', prefix
     print 'total = ', total
-    print 'fails = ', len(fails) / float(total)
     if total == 0:
         return
+    print 'fails = ', len(fails) / float(total)
 
     collision_rate = len([r for r in rs if r['max_collision_speed'] > 1.1]) / float(total)
     times = [r['timelen'] for r in rs]
