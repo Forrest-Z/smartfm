@@ -23,9 +23,14 @@ su ubuntu -c "git --git-dir=/home/ubuntu/smartfm/.git --work-tree=/home/ubuntu/s
 nohup su ubuntu -c "/home/ubuntu/smartfm/run.sh %s" 2>&1 &
 """
 
+SCRIPT_EVAL="""#!/bin/bash
+su ubuntu -c "git --git-dir=/home/ubuntu/smartfm/.git --work-tree=/home/ubuntu/smartfm/ pull"
+nohup su ubuntu -c "/home/ubuntu/smartfm/tmworker.sh" 2>&1 &
+"""
+
 def launch(simtype, number=1, instance=INSTANCE_TYPE):
     if simtype == 'eval':
-        user_data = ''
+        user_data = SCRIPT_EVAL
     else:
         user_data = SCRIPT % simtype
     price = PRICES[instance]
