@@ -105,6 +105,7 @@ def summary_prefix(prefix):
     print 'collision_rate = ', collision_rate, '+/-', err_rate
     print 'avg_time = ', avg_time, '+/-', err_time
     print 'avg_acc = ', avg_acc, '+/-', err_acc
+    print
 
 def summary():
     for p in PREFIXS:
