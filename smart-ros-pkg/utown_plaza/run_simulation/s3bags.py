@@ -92,12 +92,13 @@ def summary_prefix(prefix):
         return
     print 'fails = ', len(fails) / float(total)
 
-    collision_rate = len([r for r in rs if r['max_collision_speed'] > 1.1]) / float(total)
+    collision_rate = len([r for r in rs if r['max_collision_speed'] > 1.0]) / float(total)
     times = [r['timelen'] for r in rs]
     avg_time = np.mean(times)
     err_time = sem(times)
+    err_rate =  2 * np.sqrt(collision_rate*(1-collision_rate)/total)
 
-    print 'collision_rate = ', collision_rate
+    print 'collision_rate = ', collision_rate, '+/-', err_rate
     print 'avg_time = ', avg_time, '+/-', err_time
     print
 

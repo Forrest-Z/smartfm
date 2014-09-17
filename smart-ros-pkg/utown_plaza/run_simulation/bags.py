@@ -27,6 +27,7 @@ class Analyzer(object):
         self.speed = 0
         self.target_speed = 0
         self.pub_speed = 0
+        self.totalacc = 0
 
     def __call__(self):
         dispatch = self.dispatch()
@@ -50,7 +51,9 @@ class Analyzer(object):
 
     def update_speed(self, msg, time):
         speed = msg.twist.twist.linear.x
+        acc = abs(speed - self.speed)
         self.speed = speed
+        self.totalacc += acc
 
     def update_target_speed(self, msg, time):
         speed = msg.linear.x
@@ -129,9 +132,11 @@ def analyze_file(fn):
     print 'Time = ', timelen
     print 'Collision = ', a.collision
     print 'Max collision speed = ', a.max_collision_speed
+    print 'Total acc = ', a.totalacc
 
     result = {
             'max_collision_speed': a.max_collision_speed,
+            'totalacc': a.totalacc,
             'timelen':  timelen,
             }
     return result
