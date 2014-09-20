@@ -9,7 +9,7 @@ BUCKET = 'golfcar.v3'
 MONGO_URL = 'mongodb://bhy:bhy@ds063869.mongolab.com:63869/golfcar'
 #MONGO_URL = 'mongodb://bhy:bhy@ds063869.mongolab.com:63869/'
 
-PREFIXS = ['default', 'reactive', 'p100', 'p500', 'p10000']
+PREFIXS = ['p10', 'default', 'reactive', 'p100', 'p500', 'p10000']
 
 s3conn = boto.s3.connect_to_region('ap-southeast-1')
 mongo = MongoClient(MONGO_URL).golfcar
