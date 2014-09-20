@@ -105,10 +105,20 @@ def summary_prefix(prefix):
     avg_totalacc = np.mean(totalaccs)
     err_totalacc = sem(totalaccs)
 
+    if prefix.startswith('p'):
+        penalty = float(prefix[1:])
+    else:
+        penalty = 1000.0
+    M = 20.0
+    MAXV = 1.5
+    ACC = 0.5
+    estimated_reward = collision_rate * penalty * 1.5 + (M / avg_time - MAXV) / MAXV * 0.5 + avg_totalacc / ACC * 0.1
+
     print 'collision_rate = ', collision_rate, '+/-', err_rate
     print 'avg_time = ', avg_time, '+/-', err_time
     #print 'avg_acc = ', avg_acc, '+/-', err_acc
     print 'avg_totalacc = ', avg_totalacc, '+/-', err_totalacc
+    print 'estimated_reward = ', estimated_reward
     print
 
 def summary():
