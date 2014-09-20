@@ -102,7 +102,7 @@ def summary_prefix(prefix):
     #avg_acc = np.mean(accs)
     #err_acc = sem(accs)
     totalaccs = [r['totalacc'] for r in rs]
-    avg_totalacc = np.mean(times)
+    avg_totalacc = np.mean(totalaccs)
     err_totalacc = sem(totalaccs)
 
     print 'collision_rate = ', collision_rate, '+/-', err_rate
