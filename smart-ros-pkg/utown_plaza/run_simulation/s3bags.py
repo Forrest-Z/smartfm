@@ -106,9 +106,9 @@ def summary_prefix(prefix):
     err_totalacc = sem(totalaccs)
 
     if prefix.startswith('p'):
-        penalty = float(prefix[1:])
+        penalty = -float(prefix[1:])
     else:
-        penalty = 1000.0
+        penalty = -1000.0
     M = 20.0
     MAXV = 1.5
     ACC = 0.5
