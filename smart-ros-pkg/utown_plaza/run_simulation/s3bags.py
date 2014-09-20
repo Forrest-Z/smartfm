@@ -98,13 +98,17 @@ def summary_prefix(prefix):
     err_time = sem(times)
     err_rate =  2 * np.sqrt(collision_rate*(1-collision_rate)/total)
 
-    accs = [r['totalacc'] / r['timelen'] for r in rs]
-    avg_acc = np.mean(accs)
-    err_acc = sem(accs)
+    #accs = [r['totalacc'] / r['timelen'] for r in rs]
+    #avg_acc = np.mean(accs)
+    #err_acc = sem(accs)
+    totalaccs = [r['totalacc'] for r in rs]
+    avg_totalacc = np.mean(times)
+    err_totalacc = sem(totalaccs)
 
     print 'collision_rate = ', collision_rate, '+/-', err_rate
     print 'avg_time = ', avg_time, '+/-', err_time
-    print 'avg_acc = ', avg_acc, '+/-', err_acc
+    #print 'avg_acc = ', avg_acc, '+/-', err_acc
+    print 'avg_totalacc = ', avg_totalacc, '+/-', err_totalacc
     print
 
 def summary():
