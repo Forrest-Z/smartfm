@@ -9,7 +9,7 @@ REGION='ap-southeast-1'
 AMI = 'ami-46183c14'
 INSTANCE_TYPE = 'c3.xlarge'
 PRICES = {
-        'c3.xlarge': 0.044,
+        'c3.xlarge': 0.048,
         'c3.2xlarge': 0.088,
         'c3.8xlarge': 0.33,
         }
