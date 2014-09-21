@@ -56,7 +56,7 @@ def get_task_keys(prefix, force=False):
     keys = get_list(prefix)
     result_keys = set(t['key'] for t in mongo.results.find({"prefix": prefix}))
     for k in keys:
-        if not force and k in result_keys:
+        if not force and k.name in result_keys:
             print 'skipping ', k.name
             # result already exists
             continue
