@@ -54,8 +54,9 @@ def analyze_key(prefix, key):
 def get_task_keys(prefix, force=False):
     prefix = prefix.strip('/')
     keys = get_list(prefix)
+    result_keys = set(t['key'] for t in mongo.results.find({"prefix": prefix}))
     for k in keys:
-        if not force and mongo.results.find({"key": k.name}).count() > 0:
+        if not force and k in result_keys:
             print 'skipping ', k.name
             # result already exists
             continue
@@ -68,7 +69,7 @@ def analyze(prefix, force=False):
 
 def get_jobs(last=0):
     for p in PREFIXS:
-        for k in get_task_keys(p, force=True):
+        for k in get_task_keys(p):
             yield (p, k)
 
 def handle_job(j):
