@@ -6,7 +6,8 @@ import time
 REGION='ap-southeast-1'
 #AMI = 'ami-c0ebb192'
 #AMI = 'ami-1e2f0b4c'
-AMI = 'ami-46183c14'
+#AMI = 'ami-46183c14'
+AMI = 'ami-6ad7f338'
 INSTANCE_TYPE = 'c3.xlarge'
 PRICES = {
         'c3.xlarge': 0.048,
