@@ -15,10 +15,10 @@ rosbuild_init()
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
-#set(CMAKE_C_COMPILER "gcc-4.8")
-#set(CMAKE_CXX_COMPILER "g++")
-set(CMAKE_C_COMPILER "colorgcc")
-set(CMAKE_CXX_COMPILER "colorgcc")
+set(CMAKE_C_COMPILER "gcc")
+set(CMAKE_CXX_COMPILER "g++")
+#set(CMAKE_C_COMPILER "colorgcc")
+#set(CMAKE_CXX_COMPILER "colorgcc")
 #uncomment if you have defined messages
 rosbuild_genmsg()
 #uncomment if you have defined services
@@ -46,11 +46,16 @@ set(PED_COMPILE_FLAGS -std=c++0x -O3  ${WARNING_FLAGS})
 #rosbuild_add_library(pomcp ${LIBPOMCP_SRCS})
 rosbuild_add_library(despot ${LIBDESPOT_SRCS})
 rosbuild_add_compile_flags(despot ${PED_COMPILE_FLAGS})
+
 rosbuild_add_executable(ped_pomdp src/PedPomdpNode.cpp src/controller.cpp)
 rosbuild_add_compile_flags(ped_pomdp ${PED_COMPILE_FLAGS}) 
 rosbuild_add_compile_flags(ped_pomdp ${WARNING_FLAGS})
-
 target_link_libraries(ped_pomdp despot)
+
+rosbuild_add_executable(simulator src/simulator.cpp)
+rosbuild_add_compile_flags(simulator ${PED_COMPILE_FLAGS}) 
+rosbuild_add_compile_flags(simulator ${WARNING_FLAGS})
+target_link_libraries(simulator despot)
 
 #rosbuild_add_executable(pomcp-test src/pomcp/src/executer.cpp)
 #rosbuild_add_compile_flags(pomcp-test ${WARNING_FLAGS})
