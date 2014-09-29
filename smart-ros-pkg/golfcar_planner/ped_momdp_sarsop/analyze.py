@@ -22,6 +22,7 @@ def parse_trial(r):
             'reward': parse_val(float),
             'total_reward': parse_val(float),
             'goal_reached': parse_val(int),
+            'collision': parse_val(int),
             }
     keys = tuple(s + '=' for s in dispatch)
     for line in r:
@@ -71,41 +72,48 @@ def reader(fn):
     for line in f.readlines():
         yield line.strip()
 
-Result = namedtuple('Result', 'timelen collision goal_reached')
+Result = namedtuple('Result', 'timelen collision goal_reached mindist goals')
 
 def analyze_trial(t):
     steps = 0
     collision = False
     goal_reached = False
+    goal = None
+    curr_state = None
     for k, v in t:
         if k == 'state':
             steps += 1
             mindist = min(p.dist2car for p in v.peds)
-            if mindist < 0.5 and v.car.vel > 1.0:
-                collision = True
+            goal = v.peds[0].goal
+            curr_state = v
+        elif k == 'collision':
+            #if curr_state.car.vel > 0.2:
+            collision = True
         elif k == 'goal_reached':
             goal_reached = True
     timelen = float(steps) / 3 # 3 Hz
-    r = Result(timelen, collision, goal_reached)
+    r = Result(timelen, collision, goal_reached, mindist, goal)
     return r
 
 def analyze(fn):
     r = reader(fn)
     results = [analyze_trial(t) for t in parse_log(r)]
-    not_reach_goal = [r for r in results if not r.goal_reached]
-    results = [r for r in results if r.goal_reached]
+    #not_reach_goal = [r for r in results if not r.goal_reached and not r.collision]
+    #print not_reach_goal
+    collisions = [r for r in results if r.collision]
+    success = [r for r in results if r.goal_reached]
 
     total = len(results)
     
-    timelens = [r.timelen for r in results]
+    timelens = [r.timelen for r in success]
     avg_time = np.mean(timelens)
     err_time = sem(timelens)
 
-    collision_rate = len([r for r in results if r.collision]) / float(len(results))
+    collision_rate = len(collisions) / float(len(results))
     err_rate =  2 * np.sqrt(collision_rate*(1-collision_rate)/total)
 
     print 'total = ', total
-    print 'not_reach_goal = ', len(not_reach_goal) / float(total + len(not_reach_goal))
+    #print 'not_reach_goal = ', len(not_reach_goal) / float(total)
     print 'collision_rate = ', collision_rate , '+/-', err_rate
     print 'avg_time = ', avg_time, '+/-', err_time
 
