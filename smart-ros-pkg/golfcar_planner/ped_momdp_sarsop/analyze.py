@@ -87,8 +87,8 @@ def analyze_trial(t):
             goal = v.peds[0].goal
             curr_state = v
         elif k == 'collision':
-            #if curr_state.car.vel > 0.2:
-            collision = True
+            if curr_state.car.vel > 0.2:
+                collision = True
         elif k == 'goal_reached':
             goal_reached = True
     timelen = float(steps) / 3 # 3 Hz
