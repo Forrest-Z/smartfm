@@ -69,7 +69,7 @@ def parse_val(tp):
 
 def reader(fn):
     f = open(fn)
-    for line in f.readlines():
+    for line in f:
         yield line.strip()
 
 Result = namedtuple('Result', 'timelen collision goal_reached mindist goals')
