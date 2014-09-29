@@ -1,6 +1,10 @@
 from collections import namedtuple
 import numpy as np
-from scipy.stats import sem
+#from scipy.stats import sem
+
+def sem(a): # assume 1 dim
+    s = np.std(a) / np.sqrt(len(a))
+    return s
 
 PedState = namedtuple('PedState', 'id pos vel goal dist2car infront')
 CarState = namedtuple('CarState', 'pos vel')
