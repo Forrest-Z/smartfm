@@ -15,7 +15,8 @@ SEP = '===================='
 def parse_log(r):
     while True:
         line = next(r)
-        assert line == SEP
+        while line != SEP:
+            line = next(r)
         yield parse_trial(r)
 
 def parse_trial(r):
